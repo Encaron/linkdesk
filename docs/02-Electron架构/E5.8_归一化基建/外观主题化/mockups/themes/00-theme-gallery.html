@@ -12,12 +12,19 @@
        一整套生效 CSS 变量（真实 token 名，02 变量契约）+
        驱动它的设计 skill 归属（硬约束 16：外观改动先调 skill）
 
-     【4 主题 × skill 竞标】（design-skills-inventory 路由）
-       ① Glass Aurora 液态玻璃   ← high-end-visual-design（Ethereal Glass 本体）
-       ② 极简编辑部              ← minimalist-ui（Premium Utilitarian Minimalism）
-       ③ 奢华纸感                ← design-taste-frontend（Editorial Luxury→Cold Luxury 变体，
-                                    避开其禁用的 beige+brass+espresso 家族，转银灰冷奢纸感）
-       ④ 薄荷苏打                ← ui-ux-pro-max（真实 mint-soda 4 配色 = 决策 F 迁移后的配方）
+     【主题谱系】（2 现状基线 + 4 悬浮圆角家族 + 5 域极限，design-skills-inventory 路由）
+       ① 现状 · 直角暗/亮         ← 现状基线（theme-defaults/*.json 真实值，非 skill 产物）
+       ② Glass Aurora 液态玻璃   ← high-end-visual-design（Ethereal Glass 本体）
+       ③ 极简编辑部              ← minimalist-ui（Premium Utilitarian Minimalism）
+       ④ 奢华纸感                ← design-taste-frontend（Editorial Luxury→Cold Luxury 变体，
+                                   避开其禁用的 beige+brass+espresso 家族，转银灰冷奢纸感）
+       ⑤ 薄荷苏打                ← ui-ux-pro-max（真实 mint-soda 4 配色 = 决策 F 迁移后的配方）
+       ─ 域极限（每轴一张完整壳，画「设计的极端性」）─
+       radius 极限  全胶囊     ← ui-ux-pro-max（圆角八档拉到 full，zone 胶囊化）
+       surface 极限 悬浮孤岛   ← high-end-visual-design（留缝 12px 独立成岛，双层环境投影）
+       font 极限    终端机     ← design-taste-frontend（ui/mono 双键全 mono，字体单轴重造气质）
+       background 极限 整窗主视觉 ← high-end-visual-design（同图低遮罩当主视觉，chrome 让位）
+       glass 极限   液态玻璃满铺 ← high-end-visual-design（六 zone 全玻璃，无实色块）
 
      【决策对齐】（05 主题数据模型 §2）
        · 字段 = appearance{radius,glass,font,background,surface} + colorways[]{id,name,colors}
@@ -352,7 +359,7 @@
   }
   .footer-note code { font-family: var(--mono); font-size: 10.5px; background: rgba(255,255,255,0.06); padding: 1px 5px; border-radius: 4px; }
 
-  /* ═══ 4 主题变量集 ═══
+  /* ═══ 11 主题变量集 ═══
      data-theme 挂 .shell 上；detail 面板的 accent 用 .skill-card 上的 --theme-accent 兜底 */
 
   /* ── ① Glass Aurora 液态玻璃（high-end Ethereal Glass）── */
@@ -723,6 +730,167 @@
   .shell[data-theme="island"] .side-row { border-radius: 8px; margin: 0 6px; padding-left: 12px; }
   .shell[data-theme="island"] .statusbar { color: var(--theme-text-secondary); }
 
+  /* ── ⑨ 终端机（font 域极限——字体族单轴重造整个观感；形制 = 现状直角）──
+     font.ui + font.mono 双键全指等宽族：一个字体变量换整个气质。
+     与「现状 · 直角暗」同形制（surface/radius 零值）不同字体——证明字体是和圆角/表面并列的独立轴。 */
+  .shell[data-theme="terminal"] {
+    --theme-bg-window: #0C0C0C;
+    --theme-bg-titlebar: #0C0C0C;
+    --theme-bg-card: #141414;
+    --theme-bg-status: #0C0C0C;
+    --theme-bg-input: #1A1A1A;
+    --theme-bg-icon-bar: #101010;
+    --theme-bg-side-panel: #0E0E0E;
+    --theme-bg-toolbar: #121212;
+    --theme-text-primary: #4EC9B0;
+    --theme-text-secondary: #35A584;
+    --theme-text-muted: #3A8A72;
+    --theme-text-on-accent: #0C0C0C;
+    --theme-accent: #00E676;
+    --theme-accent-hover: #25F08C;
+    --theme-border: #1E3A30;
+    --theme-separator: #162A24;
+    --theme-hover-overlay: rgba(78,201,176,0.08);
+    --theme-tab-hover-bg: #12251F;
+    --theme-dirty-dot: #CCA700;
+    --theme-toggle-knob: #4EC9B0;
+    --theme-toggle-knob-on: #00E676;
+    --theme-status-connected: #00E676;
+    --theme-status-disconnected: #2E4A40;
+    --theme-icon-active: #00E676;
+    --theme-icon-inactive: #3A8A72;
+    --theme-font-ui: "Cascadia Mono", "JetBrains Mono", Consolas, monospace;
+    --theme-font-mono: "Cascadia Mono", "JetBrains Mono", Consolas, monospace;
+    --theme-cm-timestamp: #2E7D66;
+    --theme-sent-echo: #00E676;
+    --theme-received: #4EC9B0;
+    --theme-system-log: #3A8A72;
+    --theme-bg-layer: none;
+    --theme-bg-mask: none;
+  }
+  /* font 域极限 = 形制保持现状直角（与现状同款控件直角），isolate 字体轴 */
+  .shell[data-theme="terminal"] { border-radius: 8px; }
+  .shell[data-theme="terminal"] .icon-btn,
+  .shell[data-theme="terminal"] .side-row .sw { border-radius: 0; }
+  .shell[data-theme="terminal"] .tool-btn { border-radius: 2px; }
+  .shell[data-theme="terminal"] .tab { border-radius: 0; }
+  .shell[data-theme="terminal"] .side-row .sw { background: rgba(0,0,0,0.35); color: var(--theme-text-secondary); }
+  .shell[data-theme="terminal"] .icon-btn.active { box-shadow: inset 0 0 0 1px var(--theme-accent); }
+
+  /* ── ⑩ 整窗主视觉（background 域极限——bg-image 全窗铺满 + 低遮罩几乎全露，chrome 让位）──
+     与 glass 同图反着用：glass 0.88 深罩压成氛围，panorama 0.15 浅罩让图当主视觉。
+     zones 变半透明浮层只留 1px 发丝边切分（形制 = 现状直角贴边）；玻璃关、圆角零、字体系统默认。 */
+  .shell[data-theme="panorama"] {
+    --theme-bg-window: rgba(10,14,20,0.30);
+    --theme-bg-titlebar: rgba(8,12,18,0.38);
+    --theme-bg-card: rgba(255,255,255,0.10);
+    --theme-bg-status: rgba(8,12,18,0.50);
+    --theme-bg-input: rgba(255,255,255,0.14);
+    --theme-bg-icon-bar: rgba(8,12,18,0.30);
+    --theme-bg-side-panel: rgba(8,12,18,0.34);
+    --theme-bg-toolbar: rgba(8,12,18,0.30);
+    --theme-text-primary: #FFFFFF;
+    --theme-text-secondary: rgba(255,255,255,0.80);
+    --theme-text-muted: rgba(255,255,255,0.58);
+    --theme-text-on-accent: #10161F;
+    --theme-accent: #FFB85C;
+    --theme-accent-hover: #FFCC85;
+    --theme-border: rgba(255,255,255,0.16);
+    --theme-separator: rgba(255,255,255,0.12);
+    --theme-hover-overlay: rgba(255,255,255,0.08);
+    --theme-tab-hover-bg: rgba(255,255,255,0.10);
+    --theme-dirty-dot: #FFB85C;
+    --theme-toggle-knob: #FFFFFF;
+    --theme-toggle-knob-on: #FFB85C;
+    --theme-status-connected: #4EC9B0;
+    --theme-status-disconnected: rgba(255,255,255,0.30);
+    --theme-icon-active: #FFFFFF;
+    --theme-icon-inactive: rgba(255,255,255,0.55);
+    --theme-font-ui: "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+    --theme-font-mono: "Cascadia Mono", Consolas, monospace;
+    --theme-cm-timestamp: rgba(255,255,255,0.50);
+    --theme-sent-echo: #FFB85C;
+    --theme-received: #FFFFFF;
+    --theme-system-log: rgba(255,255,255,0.65);
+    --theme-bg-layer: url('../../../壳半业务外推/mockups/sailor-moon.jpg') center / cover no-repeat;
+    --theme-bg-mask: rgba(0,0,0,0.15);   /* 低遮罩——图几乎全露（vs glass 0.88 深罩） */
+  }
+  .shell[data-theme="panorama"] { border-radius: 8px; }
+  .shell[data-theme="panorama"] .icon-btn,
+  .shell[data-theme="panorama"] .side-row .sw { border-radius: 0; }
+  .shell[data-theme="panorama"] .tool-btn { border-radius: 2px; }
+  .shell[data-theme="panorama"] .tab { border-radius: 0; }
+  .shell[data-theme="panorama"] .side-row .sw { background: rgba(0,0,0,0.30); color: var(--theme-text-secondary); }
+  .shell[data-theme="panorama"] .icon-btn.active { box-shadow: inset 0 0 0 1px var(--theme-accent); }
+
+  /* ── ⑪ 液态玻璃满铺（glass 域极限——六 zone 全玻璃，无任何实色块）──
+     同 sailor-moon.jpg 第三种读法：图透过全窗玻璃面板发光。
+     titlebar / icon-bar / 侧栏 / tab / 主区 / 状态栏全部 backdrop-blur 液态玻璃 + specular + morph。 */
+  .shell[data-theme="full-glass"] {
+    --theme-bg-window: rgba(6,8,16,0.35);
+    --theme-bg-titlebar: rgba(255,255,255,0.06);
+    --theme-bg-card: rgba(255,255,255,0.08);
+    --theme-bg-status: rgba(255,255,255,0.07);
+    --theme-bg-input: rgba(255,255,255,0.10);
+    --theme-bg-icon-bar: rgba(255,255,255,0.05);
+    --theme-bg-side-panel: rgba(255,255,255,0.05);
+    --theme-bg-toolbar: rgba(255,255,255,0.06);
+    --theme-text-primary: #F4F0FF;
+    --theme-text-secondary: rgba(244,240,255,0.78);
+    --theme-text-muted: rgba(244,240,255,0.52);
+    --theme-text-on-accent: #0A0B18;
+    --theme-accent: #FF6EC7;
+    --theme-accent-hover: #FF92D6;
+    --theme-border: rgba(255,255,255,0.14);
+    --theme-separator: rgba(255,255,255,0.08);
+    --theme-hover-overlay: rgba(255,255,255,0.08);
+    --theme-tab-hover-bg: rgba(255,255,255,0.10);
+    --theme-dirty-dot: #FF6EC7;
+    --theme-toggle-knob: #FFFFFF;
+    --theme-toggle-knob-on: #FF6EC7;
+    --theme-status-connected: #7DFFD4;
+    --theme-status-disconnected: rgba(255,255,255,0.22);
+    --theme-icon-active: #FF92D6;
+    --theme-icon-inactive: rgba(255,255,255,0.50);
+    --theme-font-ui: "Space Grotesk", "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+    --theme-font-mono: "JetBrains Mono", "Cascadia Mono", Consolas, monospace;
+    --theme-cm-timestamp: rgba(244,240,255,0.45);
+    --theme-sent-echo: #FF92D6;
+    --theme-received: #F4F0FF;
+    --theme-system-log: rgba(244,240,255,0.60);
+    --theme-bg-layer: url('../../../壳半业务外推/mockups/sailor-moon.jpg') center / cover no-repeat;
+    --theme-bg-mask: rgba(0,0,0,0.18);   /* 浅罩——图透过玻璃面板发光 */
+    /* 液态玻璃材质键（02 §2.3）：反光 specular + 响应 morph */
+    --glass-specular: 0.7;
+    --glass-morph: 400ms;
+  }
+  /* glass 域极限：六 zone 全玻璃（透光 blur 差异化），surface 域 = 悬浮面板让玻璃有厚度 */
+  .shell[data-theme="full-glass"] .titlebar,
+  .shell[data-theme="full-glass"] .tab-bar,
+  .shell[data-theme="full-glass"] .toolbar,
+  .shell[data-theme="full-glass"] .statusbar {
+    backdrop-filter: blur(24px) saturate(1.6);
+    -webkit-backdrop-filter: blur(24px) saturate(1.6);
+  }
+  .shell[data-theme="full-glass"] .main,
+  .shell[data-theme="full-glass"] .content {
+    backdrop-filter: blur(20px) saturate(1.6);
+    -webkit-backdrop-filter: blur(20px) saturate(1.6);
+  }
+  .shell[data-theme="full-glass"] .icon-bar,
+  .shell[data-theme="full-glass"] .sidebar {
+    backdrop-filter: blur(14px) saturate(1.5);
+    -webkit-backdrop-filter: blur(14px) saturate(1.5);
+  }
+  /* 全 zone 半透明 = 无实色块；active 用内描边锁玻璃上的可读焦点 */
+  .shell[data-theme="full-glass"] .main { background: rgba(8,10,20,0.30); }
+  .shell[data-theme="full-glass"] .content { background: transparent; }
+  .shell[data-theme="full-glass"] .tab-bar { background: rgba(8,10,20,0.25); }
+  .shell[data-theme="full-glass"] .icon-btn.active,
+  .shell[data-theme="full-glass"] .side-row.active { box-shadow: inset 0 0 0 1px var(--theme-accent); }
+  .shell[data-theme="full-glass"] .statusbar { color: rgba(244,240,255,0.85); }
+  .shell[data-theme="full-glass"] .side-row .sw { background: rgba(255,255,255,0.10); color: var(--theme-text-secondary); }
+
   /* ═══ surface 域（#50.6 token 表）═══
      悬浮圆角面板：--surface-inset 留缝 / --surface-radius 圆角 / --surface-shadow 投影 / --surface-border 发丝光边
      data-surf 挂 .shell：on = 悬浮圆角，off = 现状直角贴边（决策：默认零值 = 现状，旧主题零变化）
@@ -741,6 +909,10 @@
   /* 极限形制 surf 开：全胶囊 = radius full 档（胶囊化）；悬浮孤岛 = 留缝 12px + 双层环境投影 */
   .shell[data-theme="pill"][data-surf="on"] { --surface-inset: 8px; --surface-radius: 999px; --surface-shadow: 0 10px 26px rgba(214,51,108,0.14), 0 2px 8px rgba(0,0,0,0.05); --surface-border: rgba(255,255,255,0.65); }
   .shell[data-theme="island"][data-surf="on"] { --surface-inset: 12px; --surface-radius: 18px; --surface-shadow: 0 16px 40px rgba(0,0,0,0.5), 0 3px 10px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.04); --surface-border: rgba(255,255,255,0.05); }
+  /* 极限三壳 surf 开：终端/主视觉 = 现状形制 + surface 域圆角化（同现状暗的「同一套变量两种形制」）；玻璃满铺 = 悬浮玻璃面板有厚度 */
+  .shell[data-theme="terminal"][data-surf="on"] { --surface-inset: 6px; --surface-radius: 12px; --surface-shadow: 0 6px 18px rgba(0,0,0,0.5), 0 1px 4px rgba(0,0,0,0.25); --surface-border: rgba(78,201,176,0.18); }
+  .shell[data-theme="panorama"][data-surf="on"] { --surface-inset: 6px; --surface-radius: 14px; --surface-shadow: 0 10px 30px rgba(0,0,0,0.35), 0 2px 8px rgba(0,0,0,0.2); --surface-border: rgba(255,255,255,0.18); }
+  .shell[data-theme="full-glass"][data-surf="on"] { --surface-inset: 10px; --surface-radius: 20px; --surface-shadow: 0 20px 50px rgba(0,0,0,0.45), 0 4px 14px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.10); --surface-border: rgba(255,255,255,0.16); }
 
   .shell .titlebar, .shell .icon-bar, .shell .sidebar, .shell .main, .shell .statusbar {
     margin: 0;
@@ -776,7 +948,12 @@
   .shell[data-theme="glass"][data-surf="on"] .icon-bar::before,
   .shell[data-theme="glass"][data-surf="on"] .sidebar::before,
   .shell[data-theme="glass"][data-surf="on"] .main::before,
-  .shell[data-theme="glass"][data-surf="on"] .statusbar::before {
+  .shell[data-theme="glass"][data-surf="on"] .statusbar::before,
+  .shell[data-theme="full-glass"][data-surf="on"] .titlebar::before,
+  .shell[data-theme="full-glass"][data-surf="on"] .icon-bar::before,
+  .shell[data-theme="full-glass"][data-surf="on"] .sidebar::before,
+  .shell[data-theme="full-glass"][data-surf="on"] .main::before,
+  .shell[data-theme="full-glass"][data-surf="on"] .statusbar::before {
     content: ''; position: absolute; top: 0; left: 0; right: 0; height: 12px;
     border-radius: inherit;
     background: linear-gradient(180deg, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0) 100%);
@@ -817,20 +994,30 @@
 
 <div class="page-head">
   <div class="kicker">E5.8 · 外观主题化 · 未来主题示意</div>
-  <h1 class="page-title">四个未来可以做出的主题</h1>
+  <h1 class="page-title">十一个主题：现状 → 悬浮圆角家族 → 五域极限</h1>
   <p class="page-sub">
     按已冻结方针（决策 A-F + ai化，<code>05-主题数据模型.md</code> 契约）绘制。每个主题 = 一个配方
     （<code>appearance</code> 风格域 + <code>colorways[]</code> 配色变体）+ 一套生效 CSS 变量（真实 token 名，
     <code>02-变量契约.md</code>）+ 一个驱动它的设计 skill（硬约束 16）。点上方标签实时换肤整个 LinkDesk 壳：
-    顶栏 → 图标栏(42px) → 侧栏 → 标签栏 → 串口视图 → 状态栏串口灯+(N)。每个区域 = 独立表面，
-    点壳上方的 <code>surface</code> 域控制钮可互换「悬浮圆角面板（留缝+圆角+投影）」与「现状直角贴边」
-    （零值 = 现状）；液态玻璃主题（Glass Aurora）带图全窗 + 0.88 遮罩 + specular 反光带 + morph 形变过渡。
+    顶栏 → 图标栏(42px) → 侧栏 → 标签栏 → 串口视图 → 状态栏串口灯+(N)。每个区域 = 独立表面。
+    前两个 = 现状基线（zones 直角贴边，证明「有圆角 ≠ 丢现状」）；后面按形制光谱排开。
+    最后五个 = <strong>五域极限</strong>，每轴一张完整壳画设计的极端性：
+    radius 全胶囊 · surface 悬浮孤岛 · <strong>font 终端机</strong> · background 整窗主视觉 ·
+    glass 液态玻璃满铺。点壳上方 <code>surface</code> 域控制钮可互换「悬浮圆角面板」与「现状直角贴边」
+    （零值 = 现状）；三张带图壳共用仓库真实 sailor-moon.jpg，同图三种读法（深罩氛围 / 低罩主视觉 / 满铺玻璃发光）。
   </p>
   <div class="legend">
-    <span class="legend-chip"><span class="sw" style="background:#8B7CF6;"></span><b>① Glass Aurora</b> 液态玻璃</span>
-    <span class="legend-chip"><span class="sw" style="background:#1F6C9F;"></span><b>② 极简编辑部</b> 暖单色纸面</span>
-    <span class="legend-chip"><span class="sw" style="background:#44556E;"></span><b>③ 奢华纸感</b> 银灰冷奢</span>
-    <span class="legend-chip"><span class="sw" style="background:#6B4AE0;"></span><b>④ 薄荷苏打</b> 真实迁移配色</span>
+    <span class="legend-chip"><span class="sw" style="background:#0E639C;"></span><b>现状 · 直角暗</b> 现状基线</span>
+    <span class="legend-chip"><span class="sw" style="background:#0078D4;"></span><b>现状 · 直角亮</b> 现状基线</span>
+    <span class="legend-chip"><span class="sw" style="background:#8B7CF6;"></span><b>Glass Aurora</b> 液态玻璃</span>
+    <span class="legend-chip"><span class="sw" style="background:#1F6C9F;"></span><b>极简编辑部</b> 暖单色纸面</span>
+    <span class="legend-chip"><span class="sw" style="background:#44556E;"></span><b>奢华纸感</b> 银灰冷奢</span>
+    <span class="legend-chip"><span class="sw" style="background:#6B4AE0;"></span><b>薄荷苏打</b> 真实迁移配色</span>
+    <span class="legend-chip"><span class="sw" style="background:#D6336C;"></span><b>全胶囊</b> radius 极限</span>
+    <span class="legend-chip"><span class="sw" style="background:#7C9CF6;"></span><b>悬浮孤岛</b> surface 极限</span>
+    <span class="legend-chip"><span class="sw" style="background:#00E676;"></span><b>终端机</b> font 极限</span>
+    <span class="legend-chip"><span class="sw" style="background:#FFB85C;"></span><b>整窗主视觉</b> background 极限</span>
+    <span class="legend-chip"><span class="sw" style="background:#FF6EC7;"></span><b>液态玻璃满铺</b> glass 极限</span>
   </div>
 </div>
 
@@ -866,6 +1053,18 @@
   <button class="theme-tab" data-theme="island" role="tab" aria-selected="false">
     <span class="dots"><span class="dot" style="background:#7C9CF6;"></span><span class="dot" style="background:#191B23;"></span><span class="dot" style="background:#E8EAF2;"></span></span>
     <span class="tname">悬浮孤岛 · 极限悬浮</span><span class="tskill">surface 极限</span>
+  </button>
+  <button class="theme-tab" data-theme="terminal" role="tab" aria-selected="false">
+    <span class="dots"><span class="dot" style="background:#00E676;"></span><span class="dot" style="background:#0C0C0C;"></span><span class="dot" style="background:#4EC9B0;"></span></span>
+    <span class="tname">终端机 · 极限字体</span><span class="tskill">font 极限</span>
+  </button>
+  <button class="theme-tab" data-theme="panorama" role="tab" aria-selected="false">
+    <span class="dots"><span class="dot" style="background:#FFB85C;"></span><span class="dot" style="background:#8A9BA8;"></span><span class="dot" style="background:#1A2430;"></span></span>
+    <span class="tname">整窗主视觉 · 极限背景</span><span class="tskill">background 极限</span>
+  </button>
+  <button class="theme-tab" data-theme="full-glass" role="tab" aria-selected="false">
+    <span class="dots"><span class="dot" style="background:#FF6EC7;"></span><span class="dot" style="background:#7DFFD4;"></span><span class="dot" style="background:#8B7CF6;"></span></span>
+    <span class="tname">液态玻璃满铺 · 极限玻璃</span><span class="tskill">glass 极限</span>
   </button>
 </div>
 
@@ -1309,6 +1508,97 @@
       more: '4 配色 = 决策 F 迁移（4 json 平铺 → 1 配方 4 colorways）；换配色不动风格 = 决策 B',
       domains: { colors: 1, font: 1, radius: 1, glass: 0, background: 0, surface: 1 },
       skill: { ico: 'M', name: 'ui-ux-pro-max', desc: '以仓库真实 mint-soda 配色为基底（决策 F 迁移对象），配 desaturated 柔和配色 + 软圆角。设计系统查询：<code>mint light playful soft</code> → 清新色系。' }
+    },
+
+    terminal: {
+      name: '终端机 · 极限字体',
+      read: '读取为：桌面壳 用 <strong>终端机</strong> 语言——<strong>font 域极限</strong>。<code>--font-ui</code> 和 <code>--font-mono</code> 双键全指向等宽族，整个软件（标题栏菜单 / tab / 侧栏 / 按钮 / 状态栏 / 日志）都变 mono，配绿字黑底终端配色。形制 = 现状直角（surface/radius 零值，与现状暗同款控件直角）——<strong>只换字体 + 配色就换了整个气质</strong>，证明字体是和圆角/表面并列的独立轴。',
+      badge: 'dark · font 极限',
+      recipe: {
+        id: 'terminal-monofont', name: '终端机', type: 'dark',
+        appearance: {
+          radius: { sm: 0, md: 0, lg: 0, xl: 0 },
+          glass: { blur: 0, saturate: 1, tint: null, opacity: 1 },
+          font: { ui: 'Cascadia Mono', mono: 'Cascadia Mono' },
+          background: { image: null, opacity: 1, mask: null },
+          surface: { inset: 0, radius: 0, shadow: false, border: false }
+        },
+        colorways: [{
+          id: 'phosphor', name: '磷光绿',
+          colors: { 'bg-window': '#0C0C0C', 'text-primary': '#4EC9B0', accent: '#00E676', 'bg-icon-bar': '#101010', 'bg-side-panel': '#0E0E0E', 'bg-toolbar': '#121212', 'status-connected': '#00E676' }
+        }]
+      },
+      tokens: [
+        ['--font-ui', 'Cascadia Mono', false], ['--font-mono', 'Cascadia Mono', false],
+        ['--bg-window', '#0C0C0C', true], ['--text-primary', '#4EC9B0', true],
+        ['--accent', '#00E676', true], ['--status-connected', '#00E676', true],
+        ['--surface-inset', '0px', false], ['--surface-radius', '0px', false],
+        ['--radius-*', '全部 0px', false], ['--glass-blur', '0px', false]
+      ],
+      more: 'font 域单轴极限：ui/mono 双键都指向等宽族。形制 = 现状直角（surface/radius 零值），与现状暗同形制不同字体——证明字体族单独就能重造观感。',
+      domains: { colors: 1, font: 1, radius: 0, glass: 0, background: 0, surface: 0 },
+      skill: { ico: 'T', name: 'design-taste-frontend', desc: 'Dark tech / hacker 本体：全等宽 mono + 霓虹绿 accent + 终端 motif。design-taste 明确收录「Mono + accent neon, terminal motifs, No library」。' }
+    },
+
+    panorama: {
+      name: '整窗主视觉 · 极限背景',
+      read: '读取为：桌面壳 用 <strong>整窗主视觉</strong> 语言——<strong>background 域极限</strong>。同一张 sailor-moon.jpg 与 Glass Aurora <strong>反着用</strong>：玻璃主题 0.88 深罩把图压成氛围，这里 0.15 浅罩让图几乎全露当<strong>主视觉</strong>。zones 变半透明浮层只留 1px 发丝边切分（形制 = 现状直角贴边），chrome 让位给图——图片就是整个 UI。',
+      badge: 'dark · background 极限',
+      recipe: {
+        id: 'panorama-hero', name: '整窗主视觉', type: 'dark',
+        appearance: {
+          radius: { sm: 0, md: 0, lg: 0, xl: 0 },
+          glass: { blur: 0, saturate: 1, tint: null, opacity: 1 },
+          font: { ui: 'Segoe UI', mono: 'Cascadia Mono' },
+          background: { image: 'assets/sailor-moon.jpg', opacity: 1, mask: 'rgba(0,0,0,0.15)' },
+          surface: { inset: 0, radius: 0, shadow: false, border: false }
+        },
+        colorways: [{
+          id: 'dusk', name: '暮色主视觉',
+          colors: { accent: '#FFB85C', 'text-primary': '#FFFFFF', 'status-connected': '#4EC9B0' }
+        }]
+      },
+      tokens: [
+        ['--bg-image', 'sailor-moon.jpg', false], ['--bg-mask', 'rgba(0,0,0,.15)', false],
+        ['--bg-opacity', '1', false], ['--accent', '#FFB85C', true],
+        ['--text-primary', '#FFFFFF', true], ['--status-connected', '#4EC9B0', true],
+        ['--surface-inset', '0px', false], ['--surface-radius', '0px', false],
+        ['--radius-*', '全部 0px', false], ['--glass-blur', '0px', false]
+      ],
+      more: 'background 域极限：bg-mask 0.15（vs glass 0.88）——同一张图两种读法，图当主视觉。zones 半透明浮层（bg-* 全 rgba）+ 1px 发丝边，chrome 让位给图。',
+      domains: { colors: 1, font: 0, radius: 0, glass: 0, background: 1, surface: 0 },
+      skill: { ico: 'B', name: 'high-end-visual-design', desc: 'Editorial Luxury 影像主导：整窗主视觉 + 悬浮 chrome + 低遮罩。图片即 UI——影像优先于一切控件。' }
+    },
+
+    'full-glass': {
+      name: '液态玻璃满铺 · 极限玻璃',
+      read: '读取为：桌面壳 用 <strong>液态玻璃满铺</strong> 语言——<strong>glass 域极限</strong>。与 Glass Aurora 同图第三种读法：图片透过<strong>全窗玻璃面板</strong>发光——titlebar / icon-bar / 侧栏 / tab / 主区 / 状态栏全部 backdrop-blur 液态玻璃（透光 blur 14-24px 差异化 + 反光 specular 0.7 + 响应 morph 400），<strong>没有任何实色块</strong>。这是玻璃的终点：再叠加就糊成雾了。',
+      badge: 'dark · glass 极限',
+      recipe: {
+        id: 'liquid-glass-full', name: '液态玻璃满铺', type: 'dark',
+        appearance: {
+          radius: { sm: 10, md: 14, lg: 18, xl: 26 },
+          glass: { blur: 24, saturate: 1.6, tint: 'rgba(255,255,255,0.06)', opacity: 0.8, specular: 0.7, morph: 400 },
+          font: { ui: 'Space Grotesk', mono: 'JetBrains Mono' },
+          background: { image: 'assets/sailor-moon.jpg', opacity: 1, mask: 'rgba(0,0,0,0.18)' },
+          surface: { inset: 10, radius: 20, shadow: true, border: true }
+        },
+        colorways: [{
+          id: 'aurora-pink', name: '霓虹粉',
+          colors: { 'bg-window': 'rgba(6,8,16,0.35)', accent: '#FF6EC7', 'text-primary': '#F4F0FF', 'status-connected': '#7DFFD4' }
+        }]
+      },
+      tokens: [
+        ['--glass-blur', '24px', false], ['--glass-saturate', '1.6', false],
+        ['--glass-specular', '0.7', false], ['--glass-morph', '400ms', false],
+        ['--bg-image', 'sailor-moon.jpg', false], ['--bg-mask', 'rgba(0,0,0,.18)', false],
+        ['--surface-inset', '10px', false], ['--surface-radius', '20px', false],
+        ['--accent', '#FF6EC7', true], ['--text-primary', '#F4F0FF', true],
+        ['--status-connected', '#7DFFD4', true]
+      ],
+      more: 'glass 域极限：六 zone 全玻璃（blur 14-24px 差异化 + saturate 1.6）+ specular 0.7 反光带 + morph 400 响应。表面半透明 = 无实色块；再糊就成雾——这是玻璃的终点。',
+      domains: { colors: 1, font: 1, radius: 1, glass: 1, background: 1, surface: 1 },
+      skill: { ico: 'G', name: 'high-end-visual-design', desc: 'Ethereal Glass 拉满：全窗玻璃 + 霓虹跳色 + 大 squircle + 反光带。liquid-glass 无官方库，web 实现 = backdrop-filter 近似（design-taste 诚实标注）。' }
     }
   };
 
@@ -1415,11 +1705,14 @@
     glass: '四个主题 = 四个配方（recipe.json 预览即 <code>03-插件制造/11-主题制作.md</code> 示例的产出格式，人类/AI 都能照着造，即 ai化 落地）。全部走决策 F：<code>colorways[]</code> 无第二种写法。切主题 = 换配方 = 换整套 CSS 变量（<code>02-变量契约</code> 真实 token 名）。圆角/玻璃在设置层再被 scale/绝对覆盖（决策 E）。壳上方 surface 钮演示「悬浮圆角 ⇄ 直角贴边」（surface 域零值 = 现状）；液态玻璃材质 = 透光（blur/saturate）+ 反光（specular）+ 响应（morph）。' ,
     minimal: '玻璃 = 绝对覆盖（决策 E）：glass-blur 0 即「关玻璃」，主题作者可不写 glass 域（稀疏覆盖）。1px #EAEAEA 结构线 + 8/12px 圆角 = minimalist-ui 的形制锁定。',
     luxury: 'design-taste-frontend 的「奢华」默认会被禁用的 beige+brass+espresso 家族带偏，这里走 Cold Luxury（银灰 + 铬银 + 烟墨），纸感来自底色 + 噪点纹理，非暖色古董风。衬线（Cormorant Garamond）仅展示字，正文 sans，遵守其 Serif Discipline。',
-    mint: '迁移演示：theme-mint-soda 4 平铺 json → 1 配方 4 colorways（决策 F）。色值 100% 来自仓库 <code>plugins/user/theme-mint-soda/*.json</code>，非虚构。设置页主题选择器会从 4 张卡片变 1 张卡片 + 4 配色（05 §5 迁移表）。'
+    mint: '迁移演示：theme-mint-soda 4 平铺 json → 1 配方 4 colorways（决策 F）。色值 100% 来自仓库 <code>plugins/user/theme-mint-soda/*.json</code>，非虚构。设置页主题选择器会从 4 张卡片变 1 张卡片 + 4 配色（05 §5 迁移表）。',
+    terminal: '<strong>字体域极限</strong>：font.ui/mono 双键全指等宽族。形制 = 现状直角（与现状暗同款）——<strong>只换字体 + 配色就换了整个气质</strong>，证明「字体」是和「圆角 / 表面」并列的一条独立轴。再等宽就是终端了——这就是字体能走到的极限。',
+    panorama: '<strong>背景域极限</strong>：同一张 sailor-moon.jpg 与 Glass Aurora 反着用——glass 0.88 深罩压成氛围，panorama 0.15 浅罩让图当主视觉。zones 半透明浮层 + 1px 发丝边（形制 = 现状直角贴边），chrome 让位给图。三张壳同图三种读法（玻璃深罩 / 主视觉 / 满铺发光）证明 background + glass 两轴独立可叠。',
+    'full-glass': '<strong>玻璃域极限</strong>：六 zone 全玻璃（透光 blur 差异化 + 反光 specular + 响应 morph），无任何实色块。与「现状 · 直角」对比 = glass 域 0（无玻璃）↔ 满铺的完整光谱。再糊就成雾——这是玻璃的终点。同 sailor-moon.jpg 的第三种读法。'
   };
 
-  /* surface 域默认值：现状基线 = 直角贴边（忠实现状），其余主题 = 悬浮圆角 */
-  const SURF_DEFAULT = { 'current-dark': false, 'current-light': false };
+  /* surface 域默认值：现状基线 + 域极限中的 font/background 轴 = 直角贴边（isolate 单轴），其余主题 = 悬浮圆角 */
+  const SURF_DEFAULT = { 'current-dark': false, 'current-light': false, terminal: false, panorama: false };
 
   function apply(themeId) {
     const t = T[themeId];
