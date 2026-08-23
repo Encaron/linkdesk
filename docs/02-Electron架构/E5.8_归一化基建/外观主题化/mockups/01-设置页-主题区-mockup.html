@@ -177,92 +177,6 @@
   .ld-reset-btn { display: inline-flex; align-items: center; gap: 5px; background: transparent; border: 1px solid var(--separator); color: var(--text-secondary); border-radius: 3px; padding: 4px 10px; font-size: 11.5px; cursor: pointer; white-space: nowrap; }
   .ld-reset-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--text-primary); }
   .ld-reset-btn:disabled { opacity: 0.4; cursor: default; }
-
-  /* ═══ 主题样式一览（mockup 演示——感受主题能力上限，非真实设置行）═══
-     同一套变量契约（02 §2）不同配方取值 → 完全不同的软件观感：
-       现状直角贴边实色 / 液态玻璃悬浮圆角 / 极简纸张留白 / 奢华纸感衬线 /
-       薄荷苏打柔和圆润 / 暮色森林深绿琥珀 / 冷奢铬银 / 黑棕 / 钴蓝奶油
-     每张卡片 = 一个配方渲染的真实 mini 窗口（配色/圆角档/玻璃/字体/背景图/表面悬浮全从配方读）
-     ⚠️ 全部效果都对应已冻结契约（05 schema 六域 + 02 §2 token）——#50.6-#50.12 完成后可真实做出，无超纲
-     ── mini 窗口用 --tw-* 主题变量，与真实变量契约同名同语义（--bg-window→--tw-bg、--glass-blur→--tw-glass 等）── */
-  .theme-showcase-section { margin-top: 26px; padding-top: 16px; border-top: 1px solid var(--separator); }
-  .theme-legend { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 14px; }
-  .theme-legend .lg-chip { font-size: 10px; color: var(--text-muted); border: 1px solid var(--separator); border-radius: 3px; padding: 2px 7px; }
-  .theme-wall { display: grid; grid-template-columns: repeat(auto-fill, minmax(214px, 1fr)); gap: 14px; }
-  .tw-card {
-    border: 1px solid rgba(255,255,255,0.10); border-radius: 14px; background: rgba(255,255,255,0.03);
-    padding: 10px; cursor: pointer;
-    transition: border-color 180ms ease, transform 180ms cubic-bezier(.16,1,.3,1), box-shadow 180ms ease;
-  }
-  .tw-card:hover { transform: translateY(-3px); border-color: rgba(255,255,255,0.26); box-shadow: 0 10px 30px rgba(0,0,0,0.35); }
-  .tw-card.active { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent), 0 10px 30px rgba(0,0,0,0.35); }
-  .tw {
-    position: relative; height: 138px; border-radius: 9px; overflow: hidden; display: flex; flex-direction: column;
-    background-color: var(--tw-bg); background-image: var(--tw-img, none);
-    background-size: cover; background-position: center;
-    font-family: var(--tw-font, var(--font-ui));
-  }
-  .tw::after { content: ''; position: absolute; inset: 0; background: var(--tw-tint, transparent); pointer-events: none; }
-  .tw-title {
-    position: relative; z-index: 1; display: flex; align-items: center; gap: 6px; height: 22px; padding: 0 8px;
-    background: color-mix(in srgb, var(--tw-bg) 82%, transparent);
-    backdrop-filter: blur(var(--tw-glass, 0px)) saturate(1.3); -webkit-backdrop-filter: blur(var(--tw-glass, 0px)) saturate(1.3);
-  }
-  .tw-dots { display: flex; gap: 3px; }
-  .tw-dots i { width: 6px; height: 6px; border-radius: 50%; background: color-mix(in srgb, var(--tw-text) 40%, transparent); }
-  .tw-title-text { font-size: 8.5px; letter-spacing: .5px; font-weight: 600; color: var(--tw-text); opacity: .85; }
-  .tw-title-search {
-    margin-left: auto; width: 46px; height: 9px; border-radius: 5px;
-    background: color-mix(in srgb, var(--tw-text) 10%, transparent);
-    border: 1px solid color-mix(in srgb, var(--tw-text) 12%, transparent);
-  }
-  .tw-body { position: relative; z-index: 1; flex: 1; display: flex; gap: 6px; padding: 5px 6px; min-height: 0; }
-  .tw-rails { width: 11px; display: flex; flex-direction: column; gap: 4px; padding-top: 3px; }
-  .tw-rail { height: 9px; border-radius: 3px; background: color-mix(in srgb, var(--tw-accent) 50%, transparent); }
-  .tw-main { position: relative; flex: 1; display: flex; flex-direction: column; gap: 5px; padding-top: 3px; min-width: 0; }
-  .tw-panel {
-    position: relative; flex: 1; min-height: 0; padding: 6px 7px; overflow: hidden;
-    background: var(--tw-surface);
-    backdrop-filter: blur(var(--tw-glass, 0px)) saturate(1.3); -webkit-backdrop-filter: blur(var(--tw-glass, 0px)) saturate(1.3);
-    border: 1px solid var(--tw-hair, transparent);
-    box-shadow: var(--tw-shadow, none);
-    border-radius: var(--tw-radius, 0px);
-  }
-  .tw-panel::before {
-    content: ''; position: absolute; inset: 0 0 55% 0; border-radius: inherit; pointer-events: none;
-    background: linear-gradient(180deg, rgba(255,255,255,0.9), rgba(255,255,255,0) 100%);
-    opacity: var(--tw-specular, 0);
-  }
-  .tw-panel.sub { flex: 0 0 22px; }
-  .tw-line { height: 4px; border-radius: 2px; background: var(--tw-text); opacity: .85; margin-bottom: 4px; }
-  .tw-line.short { width: 64%; opacity: .5; }
-  .tw-line.tiny { width: 40%; height: 3px; opacity: .3; }
-  .tw-float {
-    position: absolute; right: 5px; bottom: 5px; width: 46%; height: 34px; z-index: 2;
-    background: color-mix(in srgb, var(--tw-surface) 86%, var(--tw-accent) 5%);
-    backdrop-filter: blur(var(--tw-glass, 0px)) saturate(1.3); -webkit-backdrop-filter: blur(var(--tw-glass, 0px)) saturate(1.3);
-    border: 1px solid var(--tw-hair, rgba(255,255,255,0.22));
-    border-radius: calc(var(--tw-radius, 0px) * 1.3);
-    box-shadow: 0 10px 22px rgba(0,0,0,0.35);
-    opacity: var(--tw-float-opacity, 0); pointer-events: none;
-  }
-  .tw-float::before {
-    content: ''; position: absolute; inset: 0 0 55% 0; border-radius: inherit; pointer-events: none;
-    background: linear-gradient(180deg, rgba(255,255,255,0.9), rgba(255,255,255,0) 100%);
-    opacity: var(--tw-specular, 0);
-  }
-  .tw-status {
-    position: relative; z-index: 1; height: 16px; display: flex; align-items: center; gap: 5px; padding: 0 8px;
-    border-top: 1px solid color-mix(in srgb, var(--tw-text) 12%, transparent);
-  }
-  .tw-status-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--tw-accent); }
-  .tw-status-text { font-size: 7px; letter-spacing: .3px; color: var(--tw-text); opacity: .55; }
-  .tw-meta { padding: 8px 2px 0; }
-  .tw-name { font-size: 12px; font-weight: 600; color: var(--text-primary); font-family: var(--tw-font, inherit); letter-spacing: .1px; }
-  .tw-tagline { font-size: 10.5px; color: var(--text-muted); margin-top: 2px; line-height: 1.45; min-height: 30px; }
-  .tsig { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
-  .chip { font-family: var(--font-mono); font-size: 9px; color: var(--text-secondary); background: rgba(255,255,255,0.04); border: 1px solid var(--separator); border-radius: 3px; padding: 1px 6px; }
-  .chip.hero { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 45%, transparent); }
 </style>
 </head>
 <body>
@@ -420,24 +334,6 @@
           </div>
         </div>
         <button class="settings-row-gear">⚙</button>
-      </div>
-
-      <!-- ═══ 主题样式一览（mockup 演示——感受主题系统能力上限）═══
-           同一套变量契约，配方取值不同 → 完全不同的软件观感。
-           每张卡片 = 一个配方渲染的 mini 窗口（配色/圆角档/玻璃/字体/背景图/表面悬浮全从配方读）；
-           点击卡片高亮选中（演示主题选择）。全部效果 #50.6-#50.12 完成后可真实做出（无超纲） -->
-      <div class="settings-sub-section theme-showcase-section">
-        <div class="settings-sub-title">主题样式一览<span class="settings-sub-badge">mockup 演示 · 主题能力上限</span></div>
-        <div class="settings-sub-desc">主题 = 完整外观配方（六域）。配方取值不同 → 观感天差地别——直角贴边实色只是其中一张牌。以下每个 mini 窗口 = 一个配方渲染的真实效果：</div>
-        <div class="theme-legend">
-          <span class="lg-chip">配色 colorways</span>
-          <span class="lg-chip">圆角 radius 八档</span>
-          <span class="lg-chip">玻璃 glass · specular · morph</span>
-          <span class="lg-chip">字体 font</span>
-          <span class="lg-chip">背景图 background</span>
-          <span class="lg-chip">表面 surface（贴边 ↔ 悬浮）</span>
-        </div>
-        <div class="theme-wall" id="theme-wall"><!-- JS 渲染 --></div>
       </div>
 
       <!-- 配色模式：accentMode 同款 SelectBox → dependsOn 控制配色行显隐（用户拍板机制） -->
@@ -857,77 +753,6 @@
     mixModeBox.querySelectorAll('.select-menu button').forEach((b) => b.classList.toggle('selected', b.dataset.opt === '整体配方'));
     document.getElementById('mix-overrides').classList.add('depends-hidden');
     updateMixReset();
-  });
-
-  /* ═══ 主题样式一览：配方 → mini 窗口渲染 ═══
-     每主题 = 一个配方（05 schema 六域：colors/radius/glass/font/background/surface）。
-     --tw-* 与真实变量契约（02 §2）同名同语义：--tw-bg=--bg-window、--tw-glass=--glass-blur、
-     --tw-specular=--glass-specular（液态玻璃反光）、--tw-float=--surface-inset/shadow（悬浮）。
-     效果全部 #50.6-#50.12 完成后可真实做出（无超纲）。 */
-  const THEMES = [
-    { id: 'dark-current', name: '现状 · 暗色', tagline: '默认兜底——直角贴边实色，现在软件的样子', font: null,
-      chips: ['直角 0', '贴边', '实色', '系统字体'],
-      t: { bg: '#1E1E1E', img: 'none', tint: 'transparent', glass: '0px', specular: 0, radius: '0px', surface: '#252526', hair: 'transparent', shadow: 'none', float: 0, text: '#D4D4D4', accent: '#0078D4' } },
-    { id: 'light-current', name: '现状 · 亮色', tagline: '默认亮色——直角贴边实色，颜色只换一组', font: null,
-      chips: ['直角 0', '贴边', '实色', '系统字体'],
-      t: { bg: '#F3F3F3', img: 'none', tint: 'transparent', glass: '0px', specular: 0, radius: '0px', surface: '#FFFFFF', hair: '#E4E4E4', shadow: 'none', float: 0, text: '#333333', accent: '#0067C0' } },
-    { id: 'aurora-glass', name: 'Glass Aurora', tagline: '深空极光 · 悬浮圆角玻璃 · 反光高光 · 400ms 形变', font: null,
-      chips: ['圆角 xl', '玻璃 20px', '反光 0.55', '背景图', '悬浮 8'],
-      t: { bg: '#0B1020',
-        img: 'radial-gradient(90% 70% at 18% 12%, rgba(124,156,246,0.5), transparent 60%), radial-gradient(80% 70% at 88% 84%, rgba(120,70,190,0.45), transparent 62%), radial-gradient(70% 55% at 72% 20%, rgba(60,190,190,0.32), transparent 58%), linear-gradient(160deg, #151B31 0%, #1C2142 45%, #2B1F3C 100%)',
-        tint: 'rgba(5,6,12,0.42)', glass: '20px', specular: 0.55, radius: '14px', surface: 'rgba(24,28,46,0.55)', hair: 'rgba(255,255,255,0.22)', shadow: '0 8px 20px rgba(0,0,0,0.4)', float: 1, text: '#E6E9F2', accent: '#8FA7FF' } },
-    { id: 'editorial', name: '极简编辑部', tagline: '纸张留白 · 发丝边界 · 衬线标题 · 编辑器气质', font: 'Georgia, "Noto Serif SC", serif',
-      chips: ['圆角 md', '发丝边', '衬线字体', '大留白'],
-      t: { bg: '#F6F5F1', img: 'none', tint: 'transparent', glass: '0px', specular: 0, radius: '8px', surface: '#FFFFFF', hair: '#E4E4E0', shadow: 'none', float: 0, text: '#17181A', accent: '#1F6C9F' } },
-    { id: 'paper-luxe', name: '奢华纸感', tagline: '暖纸底 · 陶土点缀 · 衬线 · 柔和阴影 · 温润低调', font: 'Georgia, "Noto Serif SC", serif',
-      chips: ['圆角 2xl', '衬线字体', '暖纸底', '柔和影'],
-      t: { bg: '#F5EFE6', img: 'radial-gradient(80% 60% at 85% 8%, rgba(214,190,160,0.25), transparent 60%)', tint: 'transparent', glass: '0px', specular: 0, radius: '22px', surface: '#FCF8F1', hair: '#E5DBCB', shadow: '0 8px 20px rgba(120,92,60,0.12)', float: 0, text: '#2B2620', accent: '#A24E36' } },
-    { id: 'mint-soda', name: '薄荷苏打', tagline: '薄荷奶油 · 柔和圆润 · 轻阴影 · 4 配色变体', font: null,
-      chips: ['圆角 2xl', '柔和影', '薄荷绿', '4 配色'],
-      t: { bg: '#FFFBF5', img: 'radial-gradient(80% 70% at 20% 6%, rgba(43,168,118,0.10), transparent 60%)', tint: 'transparent', glass: '0px', specular: 0, radius: '22px', surface: '#FFFFFF', hair: '#E4EDE8', shadow: '0 8px 22px rgba(43,168,118,0.14)', float: 0, text: '#1F2933', accent: '#2BA876' } },
-    { id: 'forest', name: '暮色森林', tagline: '深绿沉稳 · 琥珀点缀 · 夜读氛围', font: null,
-      chips: ['圆角 lg', '深绿底', '琥珀点缀'],
-      t: { bg: '#16241D', img: 'none', tint: 'transparent', glass: '0px', specular: 0, radius: '12px', surface: '#20352A', hair: 'transparent', shadow: 'none', float: 0, text: '#E4ECE6', accent: '#C98F4E' } },
-    { id: 'chrome', name: '冷奢铬银', tagline: '金属银 · 冷灰 · 微玻璃通透 · 精密仪表感', font: null,
-      chips: ['圆角 lg', '微玻璃', '金属银'],
-      t: { bg: '#E6E9F0', img: 'radial-gradient(70% 60% at 82% 0%, rgba(150,160,180,0.35), transparent 60%)', tint: 'transparent', glass: '8px', specular: 0.3, radius: '10px', surface: 'rgba(255,255,255,0.6)', hair: '#D7DBE5', shadow: '0 6px 16px rgba(80,90,110,0.12)', float: 0, text: '#2A2F3A', accent: '#8A93A6' } },
-    { id: 'black-tan', name: '黑与棕', tagline: '纯黑衬底 · 暖棕点缀 · 悬浮面板 · 高对比', font: null,
-      chips: ['圆角 xl', '悬浮', '暖棕点缀'],
-      t: { bg: '#0C0C0C', img: 'radial-gradient(60% 45% at 80% 0%, rgba(201,168,124,0.10), transparent 55%)', tint: 'transparent', glass: '0px', specular: 0, radius: '16px', surface: '#161616', hair: 'rgba(201,168,124,0.16)', shadow: '0 10px 24px rgba(0,0,0,0.6)', float: 1, text: '#E9E0D2', accent: '#C9A87C' } },
-    { id: 'cobalt-cream', name: '钴蓝奶油', tagline: '奶油底 · 饱和钴蓝点缀 · 明快利落', font: null,
-      chips: ['圆角 lg', '钴蓝点缀', '奶油底'],
-      t: { bg: '#F4F0E6', img: 'none', tint: 'transparent', glass: '0px', specular: 0, radius: '12px', surface: '#FFFFFF', hair: '#E3DFD4', shadow: '0 4px 12px rgba(40,60,80,0.06)', float: 0, text: '#23262E', accent: '#2143C7' } },
-  ];
-
-  const wall = document.getElementById('theme-wall');
-  THEMES.forEach((th, i) => {
-    const card = document.createElement('div');
-    card.className = 'tw-card' + (i === 0 ? ' active' : '');
-    const fontStyle = th.font ? `--tw-font:${th.font};` : '';
-    card.style.cssText = `--tw-bg:${th.t.bg};--tw-img:${th.t.img};--tw-tint:${th.t.tint};--tw-glass:${th.t.glass};--tw-specular:${th.t.specular};--tw-radius:${th.t.radius};--tw-surface:${th.t.surface};--tw-hair:${th.t.hair};--tw-shadow:${th.t.shadow};--tw-float-opacity:${th.t.float};--tw-text:${th.t.text};--tw-accent:${th.t.accent};${fontStyle}`;
-    card.innerHTML = `
-      <div class="tw">
-        <div class="tw-title"><span class="tw-dots"><i></i><i></i><i></i></span><span class="tw-title-text">LinkDesk</span><span class="tw-title-search"></span></div>
-        <div class="tw-body">
-          <div class="tw-rails"><span class="tw-rail"></span><span class="tw-rail"></span><span class="tw-rail"></span></div>
-          <div class="tw-main">
-            <div class="tw-panel"><div class="tw-line"></div><div class="tw-line short"></div><div class="tw-line tiny"></div></div>
-            <div class="tw-panel sub"></div>
-            <div class="tw-float"></div>
-          </div>
-        </div>
-        <div class="tw-status"><span class="tw-status-dot"></span><span class="tw-status-text">就绪</span></div>
-      </div>
-      <div class="tw-meta">
-        <div class="tw-name">${th.name}</div>
-        <div class="tw-tagline">${th.tagline}</div>
-        <div class="tsig">${th.chips.map((c, ci) => `<span class="chip${ci === 0 ? ' hero' : ''}">${c}</span>`).join('')}</div>
-      </div>`;
-    card.addEventListener('click', () => {
-      wall.querySelectorAll('.tw-card').forEach((c) => c.classList.remove('active'));
-      card.classList.add('active');
-    });
-    wall.appendChild(card);
   });
 </script>
 </body>
