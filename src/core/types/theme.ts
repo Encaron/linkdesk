@@ -78,8 +78,9 @@ export interface ThemeAppearance {
   font?: ThemeFont;
   /** 背景域（panorama 全窗 / zones 切片） */
   background?: ThemeBackground;
-  /** 表面精调域——per-surface 覆盖（menu-blur/menu-radius 等，05 §2 appearance.surface 预留） */
-  surface?: ThemeSurface;
+  /** 表面精调域——per-surface 键映射（05 §2：menu-blur: 12、menu-radius: "lg" 引用档位名），预留暂无 CSS 消费者；
+   *  引擎 flatten 为 `surface-<key>` token 透传。注意与顶层 glass 域的 ThemeSurface 形态字段不同源。 */
+  surface?: Record<string, number | string>;
 }
 
 /** 05 schema 配色变体——颜色域一组具体取值（稀疏，未写的颜色 token 继承 :root） */

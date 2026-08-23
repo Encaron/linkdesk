@@ -18,10 +18,16 @@ import {
   getThemeVariables,
   getAppearanceOverrides,
   applyRadiusScale,
+  applyOverrides,
+  mergeDomains,
+  applyRecipe,
+  getActiveRecipe,
+  getEffectiveTokens,
 } from "./ThemeEngine";
 import { rollback } from "../../registry/registrationTracker";
 import { applyRemoteConfigChange, clearConfigurationCache } from "../configuration/ConfigurationService";
 import type { Theme } from "./ThemeEngine";
+import type { ThemeRecipe } from "../../types/theme";
 
 const MOCK_THEME: Theme = {
   name: "Test Dark",
@@ -379,5 +385,171 @@ describe("ThemeEngine — 外观覆盖 getAppearanceOverrides（E5.8#50.10）", 
     applyRemoteConfigChange("app.glassBlur", 15);
     applyTheme({ ...MOCK_THEME, surface: { type: "glass", blur: 8 } });
     expect(document.documentElement.style.getPropertyValue("--glass-blur")).toBe("15px");
+  });
+});
+
+describe("ThemeEngine — Recipe 合并算法 mergeDomains（E5.8#50.16，05 §4 继承链）", () => {
+  const RECIPE: ThemeRecipe = {
+    id: "demo-recipe",
+    name: "Demo Recipe",
+    type: "dark",
+    appearance: {
+      radius: { sm: 6, lg: 12 },
+      glass: { type: "glass", blur: 14, tint: "rgba(255,255,255,0.4)", radius: 10 },
+      font: { ui: "Noto Sans SC", mono: "JetBrains Mono" },
+      background: { image: "assets/bg.png", opacity: 0.8 },
+      surface: { "menu-blur": 12, "menu-radius": "lg" },
+    },
+    colorways: [
+      { id: "dew", name: "露", colors: { "bg-window": "#FFFBF5", accent: "#2BA876" } },
+      { id: "mint", name: "薄荷", colors: { "bg-window": "#F7FBF8", accent: "#3E9E8C" } },
+    ],
+  };
+  const RADIUS_KEYS = ["radius-xs", "radius-sm", "radius-md", "radius-lg", "radius-xl", "radius-2xl"];
+
+  beforeEach(() => {
+    clearConfigurationCache();
+    const root = document.documentElement;
+    for (const key of ["bg-window", "accent", "glass-blur", "bg-image", "font-ui", ...RADIUS_KEYS]) {
+      root.style.removeProperty(`--${key}`);
+    }
+  });
+
+  it("appearance 稀疏 flatten + 当前 colorway 稀疏覆盖", () => {
+    const tokens = mergeDomains(RECIPE, "dew", {});
+    expect(tokens["radius-sm"]).toBe("6px");
+    expect(tokens["radius-lg"]).toBe("12px");
+    expect(tokens["glass-blur"]).toBe("14px"); // surfaceVariables（glass 域全机制）
+    expect(tokens["font-ui"]).toBe("Noto Sans SC");
+    expect(tokens["font-mono"]).toBe("JetBrains Mono");
+    expect(tokens["bg-image"]).toBe('url("assets/bg.png")'); // backgroundVariables 包 url()
+    expect(tokens["surface-menu-blur"]).toBe("12"); // per-surface pass-through
+    expect(tokens["surface-menu-radius"]).toBe("lg");
+    // 颜色域稀疏覆盖
+    expect(tokens["bg-window"]).toBe("#FFFBF5");
+    expect(tokens.accent).toBe("#2BA876");
+    // 缺的键/域不写——pill/full 形态值不在 appearance.radius 子集 → 缺省
+    expect(tokens["radius-pill"]).toBeUndefined();
+    expect(tokens["radius-full"]).toBeUndefined();
+  });
+
+  it("colorwayId 缺省 = 配方首配色；未知 id 回退首配色", () => {
+    expect(mergeDomains(RECIPE, undefined, {})["bg-window"]).toBe("#FFFBF5");
+    expect(mergeDomains(RECIPE, "no-such", {})["accent"]).toBe("#2BA876");
+  });
+
+  it("overrides radius scale 系数 → 对主题现值 JS 乘算（pill/full 不乘）", () => {
+    const tokens = mergeDomains(RECIPE, "dew", { "radius-lg": 1.5 });
+    expect(tokens["radius-lg"]).toBe("18px"); // 12 × 1.5
+    expect(tokens["radius-sm"]).toBe("9px"); // 6 × 1.5
+    // 主题没写的档 → 壳默认乘算（jsdom 无 CSS 基址 0px → 恒写 0px 清残留）
+    expect(tokens["radius-md"]).toBe("0px");
+    expect(tokens["radius-pill"]).toBeUndefined();
+  });
+
+  it("overrides 绝对 token → 覆盖主题值（glass-blur 绝对覆盖胜过 appearance.glass.blur）", () => {
+    const tokens = mergeDomains(RECIPE, "dew", { "glass-blur": "24px" });
+    expect(tokens["glass-blur"]).toBe("24px");
+  });
+
+  it("applyOverrides — radius 系数对 tokens 现值乘算；非 radius 绝对写", () => {
+    const tokens = { "radius-md": "10px", "glass-blur": "8px" };
+    applyOverrides(tokens, { "radius-md": 2, "glass-blur": "16px" });
+    expect(tokens["radius-md"]).toBe("20px");
+    expect(tokens["glass-blur"]).toBe("16px");
+  });
+
+  it("applyRadiusScale(scale, tokens) — 有现值乘现值；无现值用壳默认（0px）", () => {
+    const scaled = applyRadiusScale(2, { "radius-md": "6px" });
+    expect(scaled["radius-md"]).toBe("12px");
+    expect(scaled["radius-sm"]).toBe("0px");
+    for (const key of RADIUS_KEYS) expect(scaled[key]).toBeDefined();
+    expect(scaled["radius-pill"]).toBeUndefined();
+  });
+});
+
+describe("ThemeEngine — applyRecipe / getActiveRecipe / getEffectiveTokens（E5.8#50.16）", () => {
+  const RECIPE: ThemeRecipe = {
+    id: "demo-recipe",
+    name: "Demo Recipe",
+    type: "dark",
+    appearance: {
+      radius: { sm: 6, lg: 12 },
+      glass: { type: "glass", blur: 14 },
+      font: { ui: "Noto Sans SC" },
+    },
+    colorways: [
+      { id: "dew", name: "露", colors: { "bg-window": "#FFFBF5", accent: "#2BA876" } },
+      { id: "mint", name: "薄荷", colors: { "bg-window": "#F7FBF8", accent: "#3E9E8C" } },
+    ],
+  };
+  const RECIPE_NO_COLOR: ThemeRecipe = {
+    id: "demo-plain",
+    name: "Demo Plain",
+    type: "light",
+    colorways: [{ id: "plain", name: "Plain", colors: { "bg-window": "#FAFAFA" } }],
+  };
+  const GLASS_VARS = ["glass-blur", "glass-saturate", "glass-tint", "glass-opacity", "glass-specular", "glass-morph"];
+
+  beforeEach(() => {
+    clearConfigurationCache();
+    const root = document.documentElement;
+    for (const key of [...GLASS_VARS, "bg-window", "accent", "font-ui", "radius-sm", "radius-lg"]) {
+      root.style.removeProperty(`--${key}`);
+    }
+    root.removeAttribute("data-theme");
+  });
+
+  it("applyRecipe — 写 :root 生效 token + data-theme + getActiveRecipe", () => {
+    applyRecipe(RECIPE, "dew", {});
+    const root = document.documentElement;
+    expect(root.style.getPropertyValue("--radius-lg")).toBe("12px");
+    expect(root.style.getPropertyValue("--glass-blur")).toBe("14px");
+    expect(root.style.getPropertyValue("--font-ui")).toBe("Noto Sans SC");
+    expect(root.style.getPropertyValue("--bg-window")).toBe("#FFFBF5");
+    expect(root.getAttribute("data-theme")).toBe("dark");
+    expect(getActiveRecipe()).toEqual({ recipeId: "demo-recipe", colorwayId: "dew" });
+  });
+
+  it("applyRecipe — colorwayId 指定配色生效", () => {
+    applyRecipe(RECIPE, "mint", {});
+    expect(document.documentElement.style.getPropertyValue("--accent")).toBe("#3E9E8C");
+    expect(getActiveRecipe()?.colorwayId).toBe("mint");
+  });
+
+  it("applyRecipe — flat 快照同步（getCurrentTheme 兼容 bridge 消费方）", () => {
+    applyRecipe(RECIPE, "mint", {});
+    const t = getCurrentTheme();
+    expect(t?.name).toBe("Demo Recipe");
+    expect(t?.type).toBe("dark");
+    expect(t?.colors.accent).toBe("#3E9E8C");
+    expect(t?.surface?.blur).toBe(14); // appearance.glass → flat surface
+  });
+
+  it("换配方 — 陈旧 token 清理（前配方 glass-blur/color 不残留）", () => {
+    applyRecipe(RECIPE, "dew", {});
+    applyRecipe(RECIPE_NO_COLOR, "plain", {});
+    const root = document.documentElement;
+    expect(root.style.getPropertyValue("--glass-blur")).toBe("");
+    expect(root.style.getPropertyValue("--font-ui")).toBe("");
+    expect(root.style.getPropertyValue("--accent")).toBe("");
+    expect(root.style.getPropertyValue("--bg-window")).toBe("#FAFAFA");
+    expect(root.getAttribute("data-theme")).toBe("light");
+    expect(getActiveRecipe()).toEqual({ recipeId: "demo-plain", colorwayId: "plain" });
+  });
+
+  it("getEffectiveTokens — 读当前生效 token 集（含壳默认继承的玻璃零值）", () => {
+    applyRecipe(RECIPE, "dew", {});
+    const tokens = getEffectiveTokens();
+    expect(tokens["glass-blur"]).toBe("14px");
+    expect(tokens["bg-window"]).toBe("#FFFBF5");
+    expect(tokens["radius-lg"]).toBe("12px");
+    expect(tokens["font-ui"]).toBe("Noto Sans SC");
+  });
+
+  it("applyRecipe 后 applyTheme（flat 桥）→ recipe 态清空", () => {
+    applyRecipe(RECIPE, "dew", {});
+    applyTheme({ name: "Test Light", type: "light", colors: { bg: "#fff" } });
+    expect(getActiveRecipe()).toBeNull();
   });
 });

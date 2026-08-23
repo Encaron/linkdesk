@@ -9,6 +9,8 @@ import { normalizePath } from "../../utils/path/pathUtils"; // E5.8#50.10：Wind
 // E5.8#50.15：质感类型下沉 core/types/theme.ts（05 schema 配方数据模型）——此处重导出兼容既有消费方
 import type { ThemeColors, ThemeSurface, ThemeBackground } from "../../types/theme";
 export type { ThemeColors, ThemeSurface, ThemeBackground } from "../../types/theme";
+// E5.8#50.16：Recipe + Colorway 合并算法（05 §4 继承链）——ThemeRecipe/ThemeAppearance/ThemeColorway
+import type { ThemeRecipe, ThemeAppearance, ThemeColorway } from "../../types/theme";
 
 export interface Theme {
   name: string;
@@ -23,6 +25,12 @@ export interface Theme {
 }
 
 let currentTheme: Theme | null = null;
+
+/* ── E5.8#50.16：Recipe 应用态（applyRecipe 更新；flat applyTheme 清空） ── */
+let currentRecipeId: string | null = null;
+let currentColorwayId: string | null = null;
+/** 最近一次 commit 写过的键集——下一次 commit 清陈旧 token（换配方无残留） */
+let _lastCommittedKeys: string[] | null = null;
 
 /** 插件注册的主题——name → Theme */
 const pluginThemes = new Map<string, Theme>();
@@ -131,6 +139,22 @@ const BACKGROUND_ZERO: Record<string, string> = {
   "bg-mask": "0",
 };
 
+/* ── E5.8#50.16：scale 乘算 token 集 + 引擎管理 token 全集 ── */
+
+/** 圆角 scale 乘算 token 集——六档尺寸值；--radius-pill/--radius-full 形态值排除不乘（08 §3 边界，2026-08-24 审视补） */
+export const RADIUS_SCALE_KEYS = [
+  "radius-xs", "radius-sm", "radius-md", "radius-lg", "radius-xl", "radius-2xl",
+] as const;
+
+/** 引擎管理的 token 键全集（去 -- 前缀）——getEffectiveTokens 读当前生效值（含壳默认继承） */
+const MANAGED_TOKEN_KEYS: string[] = [
+  ...Object.keys(SURFACE_ZERO),
+  ...Object.keys(BACKGROUND_ZERO),
+  ...RADIUS_SCALE_KEYS,
+  "radius-pill", "radius-full",
+  "font-ui", "font-mono",
+];
+
 /** 玻璃 + 悬浮面板 + per-surface 纹理变量——缺省 = 零值 */
 function surfaceVariables(surface?: ThemeSurface): Record<string, string> {
   const vars: Record<string, string> = { ...SURFACE_ZERO };
@@ -197,45 +221,157 @@ export function getThemeVariables(theme: Theme): Record<string, string> {
   return vars;
 }
 
-/** 应用主题：清理旧变量 → 写入新变量 → 标记 data-theme → fire 事件 */
-export function applyTheme(theme: Theme): void {
+/* ── E5.8#50.16：写 :root + 广播单一写入点（applyTheme/applyRecipe 共用） ── */
+
+/**
+ * 提交生效 token 集到 :root + 广播 theme:changed + 事件。
+ * 陈旧 token 清理：上一次 commit 写过、本次没写的键 removeProperty——换配方/换 flat 主题无残留。
+ * （accent 三键经 applyAccentColor 单独写，不在提交集内，不受清理影响。）
+ */
+function commitTokens(
+  variables: Record<string, string>,
+  themeType: "light" | "dark",
+  state: { recipeId: string; colorwayId?: string }
+): void {
   // E3f #51：先发 IPC 通知主进程——和 CSS 渲染并行，标题栏不落后
   const linkdesk = window.linkdesk;
-  const isDark = theme.type === "dark";
-  linkdesk?.events?.notifyTheme?.(isDark);
+  linkdesk?.events?.notifyTheme?.(themeType === "dark");
 
   const root = document.documentElement;
-
-  // E2c #19h A1：清理旧主题的 colors 变量——防止残留
-  if (currentTheme) {
-    for (const key of Object.keys(currentTheme.colors)) {
-      root.style.removeProperty(`--${key}`);
+  // E2c #19h A1：清上一次提交的陈旧键——防止换配方残留
+  if (_lastCommittedKeys) {
+    for (const key of _lastCommittedKeys) {
+      if (!(key in variables)) root.style.removeProperty(`--${key}`);
     }
   }
-
-  // E5.8#50.6：全量写入 colors + 玻璃/背景/悬浮——玻璃变量每次都写（缺省零值），
-  // 玻璃主题切回普通主题自动清零不残留；重复应用幂等。
-  const variables = getThemeVariables(theme);
-  // E5.8#50.10：用户外观配置覆盖主题基线（玻璃/背景/radius 缩放）——合并进同一变量集，
-  // 一次写 :root + 一次广播（池侧 --${k} 注入惯例，radius/玻璃覆盖同传，无双广播竞态）。
-  Object.assign(variables, getAppearanceOverrides());
   for (const [key, value] of Object.entries(variables)) {
     root.style.setProperty(`--${key}`, value);
   }
-  root.setAttribute("data-theme", theme.type);
-  currentTheme = theme;
+  _lastCommittedKeys = Object.keys(variables);
+  root.setAttribute("data-theme", themeType);
 
   // E3b #35：广播 CSS 变量到所有插件 WebView——跨进程主题同步
   if (linkdesk?.bridge?.broadcast) {
     linkdesk.bridge.broadcast("theme:changed", {
-      themeId: theme.name,
-      themeType: theme.type,
+      themeId: state.recipeId,
+      themeType,
       variables,
     });
   }
 
   // E2c #19h A5：通知所有订阅者——多 WebView 跨进程主题同步 + UI 联动
-  CoreEvents.onDidChangeTheme.fire({ theme: theme.name });
+  CoreEvents.onDidChangeTheme.fire({ theme: state.recipeId });
+}
+
+/** 应用主题（flat 桥接）：colors + 玻璃/背景/悬浮 + 用户覆盖 → 写 :root + 广播。 */
+export function applyTheme(theme: Theme): void {
+  // E5.8#50.6：全量写入 colors + 玻璃/背景/悬浮——玻璃变量每次都写（缺省零值），
+  // 玻璃主题切回普通主题自动清零不残留；重复应用幂等。
+  const variables = getThemeVariables(theme);
+  // E5.8#50.10：用户外观配置覆盖主题基线（radius scale 系数 / 玻璃绝对）——
+  // applyOverrides 内 JS 乘算（对主题现值/壳默认），一次写 :root + 一次广播，无双广播竞态。
+  applyOverrides(variables, getAppearanceOverrides());
+  commitTokens(variables, theme.type, { recipeId: theme.name });
+  currentTheme = theme;
+  // flat apply 清 recipe 态——两路径互斥（#50.18 IPC 接线后 flat 桥退役）
+  currentRecipeId = null;
+  currentColorwayId = null;
+}
+
+/* ── E5.8#50.16：Recipe 合并算法（05 §4 继承链）+ 应用入口 ── */
+
+/** 解析配色变体——colorwayId 缺省 = 配方首个配色（单配色配方 = 恒首项） */
+function resolveColorway(recipe: ThemeRecipe, colorwayId?: string): ThemeColorway {
+  return recipe.colorways.find((c) => c.id === colorwayId) ?? recipe.colorways[0];
+}
+
+/** 风格域 appearance 稀疏 flatten → token map（键去 --，引擎写入时拼回）。
+ *  域顺序：radius → glass（surfaceVariables 全机制）→ font → background → surface（per-surface pass-through）；
+ *  同键碰撞后者覆盖（surface 最具体排最后）。 */
+function flattenAppearance(appearance: ThemeAppearance, tokens: Record<string, string>): void {
+  if (appearance.radius) {
+    for (const [key, value] of Object.entries(appearance.radius)) {
+      if (value != null && Number.isFinite(Number(value))) tokens[`radius-${key}`] = `${value}px`;
+    }
+  }
+  Object.assign(tokens, surfaceVariables(appearance.glass));
+  if (appearance.font) {
+    if (appearance.font.ui) tokens["font-ui"] = appearance.font.ui;
+    if (appearance.font.mono) tokens["font-mono"] = appearance.font.mono;
+  }
+  Object.assign(tokens, backgroundVariables(appearance.background));
+  if (appearance.surface) {
+    for (const [key, value] of Object.entries(appearance.surface)) {
+      if (value != null) tokens[`surface-${key}`] = String(value);
+    }
+  }
+}
+
+/**
+ * E5.8#50.16：05 §4 合并链——稀疏继承，纯函数只算不改：
+ *   :root 壳默认（缺的域/键不写 → CSS 继承）
+ *   ⊕ recipe.appearance（风格域，稀疏 flatten）
+ *   ⊕ 当前 colorway.colors（颜色域，稀疏覆盖）
+ *   ⊕ overrides（radius scale 系数 JS 乘算 / 绝对 token 覆盖）
+ * 返回生效 token 集（键不带 --）→ 写 :root + 广播共用。
+ */
+export function mergeDomains(
+  recipe: ThemeRecipe,
+  colorwayId?: string,
+  overrides: Record<string, string | number> = {}
+): Record<string, string> {
+  const colorway = resolveColorway(recipe, colorwayId);
+  const tokens: Record<string, string> = {};
+  if (recipe.appearance) flattenAppearance(recipe.appearance, tokens);
+  if (colorway?.colors) {
+    for (const [key, value] of Object.entries(colorway.colors)) tokens[key] = value;
+  }
+  applyOverrides(tokens, overrides);
+  return tokens;
+}
+
+/**
+ * 应用配方——mergeDomains → 写 :root + 广播 theme:changed。
+ * colorwayId 缺省 = 配方首配色；overrides 缺省 = 读用户外观配置（app.*，getAppearanceOverrides）。
+ * 同步 flat 快照到 currentTheme——getCurrentTheme/强调色广播（ThemeBrowser 等 bridge 消费方）兼容。
+ */
+export function applyRecipe(
+  recipe: ThemeRecipe,
+  colorwayId?: string,
+  overrides?: Record<string, string | number>
+): void {
+  const colorway = resolveColorway(recipe, colorwayId);
+  const effective = mergeDomains(recipe, colorway.id, overrides ?? getAppearanceOverrides());
+  commitTokens(effective, recipe.type, { recipeId: recipe.id, colorwayId: colorway.id });
+  currentRecipeId = recipe.id;
+  currentColorwayId = colorway.id;
+  currentTheme = {
+    name: recipe.name,
+    type: recipe.type,
+    colors: colorway.colors ?? {},
+    surface: recipe.appearance?.glass,
+    background: recipe.appearance?.background,
+  };
+}
+
+/** 当前活动配方/配色——无活动配方（flat apply 态）返回 null */
+export function getActiveRecipe(): { recipeId: string; colorwayId: string } | null {
+  if (currentRecipeId == null) return null;
+  return { recipeId: currentRecipeId, colorwayId: currentColorwayId ?? "" };
+}
+
+/** 当前生效 token 集（合并后，含 :root 壳默认继承）——appearanceMode→custom 播种、混搭预览（06 §2）。
+ *  来源 = getComputedStyle 解析：① 最近提交的合并集（appearance + colorway 颜色 + overrides）② 引擎管理 token 全集（壳默认零值）。
+ *  权威在引擎（多窗一致，对标 #54 计数权威上移教训），非某窗 DOM 快照。 */
+export function getEffectiveTokens(): Record<string, string> {
+  const tokens: Record<string, string> = {};
+  const cs = getComputedStyle(document.documentElement);
+  const keys = new Set<string>([...MANAGED_TOKEN_KEYS, ...(_lastCommittedKeys ?? [])]);
+  for (const key of keys) {
+    const value = cs.getPropertyValue(`--${key}`).trim();
+    if (value) tokens[key] = value;
+  }
+  return tokens;
 }
 
 /**
@@ -328,31 +464,93 @@ export function getEffectiveAccentColor(): string {
    surfaceRadius 恒写——不写会残留上一次缩放值（scale 1 = 写基准，幂等清残留）。
    单一写入点：applyTheme 末尾 getAppearanceOverrides() 合并进 variables → 一次写 :root + 一次广播。 */
 
-/** 六档 radius token 基准——首次读 :root 现值（未缩放），模块缓存防复合缩放 */
-const RADIUS_KEYS = ["radius-xs", "radius-sm", "radius-md", "radius-lg", "radius-xl", "radius-2xl"];
+/** 读静态 :root 壳默认（index.css）——非 getComputedStyle（会吞主题写入的 radius，基址被污染）。
+ *  扫所有样式表里 :root 规则的 --* 自定义属性；跨域/受限 sheet 跳过；jsdom 无样式表 → 空 map。 */
+function readCssRootDefaults(): Record<string, string> {
+  const map: Record<string, string> = {};
+  try {
+    for (const sheet of Array.from(document.styleSheets)) {
+      let rules: CSSRuleList | null = null;
+      try {
+        rules = sheet.cssRules;
+      } catch {
+        continue; // 跨域样式表读不到——跳过
+      }
+      if (!rules) continue;
+      for (const rule of Array.from(rules)) {
+        if (
+          rule instanceof CSSStyleRule &&
+          rule.selectorText &&
+          rule.selectorText.replace(/\s/g, "").includes(":root")
+        ) {
+          for (const prop of Array.from(rule.style)) {
+            if (prop.startsWith("--")) map[prop] = rule.style.getPropertyValue(prop).trim();
+          }
+        }
+      }
+    }
+  } catch {
+    // 任何 DOM 异常 → 空 map（调用方回退 0px）
+  }
+  return map;
+}
+
+/** 六档 radius token 基准——读静态 :root 壳默认（与主题写入隔离），模块缓存防复合缩放 */
 let _baseRadius: Record<string, string> | null = null;
 function getBaseRadius(): Record<string, string> {
   if (_baseRadius) return _baseRadius;
-  const cs = getComputedStyle(document.documentElement);
+  const defaults = readCssRootDefaults();
   const base: Record<string, string> = {};
-  for (const key of RADIUS_KEYS) {
-    base[key] = cs.getPropertyValue(`--${key}`).trim() || "0px";
+  for (const key of RADIUS_SCALE_KEYS) {
+    base[key] = defaults[`--${key}`] ?? "0px";
   }
   _baseRadius = base;
   return base;
 }
 
-/** app.surfaceRadius 缩放 → --radius-xs~2xl 六档（--radius-pill/--radius-full 形态值不乘）。纯函数只算不改。 */
-export function applyRadiusScale(scale: number): Record<string, string> {
+/**
+ * app.surfaceRadius scale 系数 → --radius-xs~2xl 六档乘算（--radius-pill/--radius-full 形态值排除不乘，08 §3）。
+ * tokens 传入 → 对当前生效值乘算（主题 appearance.radius 现值）；键缺省 → :root 壳默认乘算。纯函数只算不改。
+ */
+export function applyRadiusScale(scale: number, tokens?: Record<string, string>): Record<string, string> {
   const vars: Record<string, string> = {};
-  for (const [key, baseValue] of Object.entries(getBaseRadius())) {
-    const px = parseFloat(baseValue);
-    if (Number.isFinite(px)) vars[key] = `${Math.round(px * scale)}px`;
+  const base = getBaseRadius();
+  for (const key of RADIUS_SCALE_KEYS) {
+    const current = tokens?.[key];
+    const source = current !== undefined && current.trim() !== "" ? current : (base[key] ?? "0px");
+    const px = parseFloat(source);
+    vars[key] = Number.isFinite(px) ? `${Math.round(px * scale)}px` : "0px";
   }
   return vars;
 }
 
-/** 读用户外观配置 → 覆盖变量集（glass/bg 仅偏离 neutral 时；radius 恒写）。applyTheme 末尾合并。 */
+/**
+ * 应用覆盖集到生效 token 集——radius scale 系数 JS 乘算（对主题现值/壳默认，恒写六档清残留）；
+ * 绝对 token 直接覆盖（glass-* / bg-* / font-* 等）。纯函数只算不改。05 §4 第 ④ 步。
+ */
+export function applyOverrides(
+  tokens: Record<string, string>,
+  overrides: Record<string, string | number>
+): Record<string, string> {
+  // ① radius scale 系数——五档同系数（app.surfaceRadius 单一 scale）一次乘算全六档
+  let scaleFactor: number | null = null;
+  for (const [token, value] of Object.entries(overrides)) {
+    if ((RADIUS_SCALE_KEYS as readonly string[]).includes(token)) {
+      const n = Number(value);
+      if (Number.isFinite(n)) scaleFactor = n;
+      else tokens[token] = String(value); // 已是 px 的 radius 覆盖（防御）→ 绝对写
+    }
+  }
+  if (scaleFactor != null) Object.assign(tokens, applyRadiusScale(scaleFactor, tokens));
+  // ② 绝对 token 覆盖
+  for (const [token, value] of Object.entries(overrides)) {
+    if ((RADIUS_SCALE_KEYS as readonly string[]).includes(token)) continue;
+    tokens[token] = String(value);
+  }
+  return tokens;
+}
+
+/** 读用户外观配置 → 覆盖集（glass/bg 仅偏离 neutral 时；radius 六键恒写 scale 系数——applyOverrides 内乘算）。 */
 export function getAppearanceOverrides(): Record<string, string> {
   const overrides: Record<string, string> = {};
 
@@ -374,7 +572,8 @@ export function getAppearanceOverrides(): Record<string, string> {
 
   const rawScale = getConfigurationValue<number>("app.surfaceRadius");
   const scale = rawScale == null || !Number.isFinite(Number(rawScale)) ? 1 : Number(rawScale);
-  Object.assign(overrides, applyRadiusScale(scale));
+  // radius scale 系数恒写（清残留）——applyOverrides 对当前生效值/壳默认乘算，非预先乘 :root 基准
+  for (const key of RADIUS_SCALE_KEYS) overrides[key] = String(scale);
 
   return overrides;
 }
