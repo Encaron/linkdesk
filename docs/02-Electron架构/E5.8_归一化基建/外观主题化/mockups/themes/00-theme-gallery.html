@@ -942,6 +942,138 @@
   .shell[data-theme="full-glass"] .statusbar { color: rgba(244,240,255,0.85); }
   .shell[data-theme="full-glass"] .side-row .sw { background: rgba(255,255,255,0.10); color: var(--theme-text-secondary); }
 
+  /* ── ⑬ 纸纹分区（方案 A：纹理挂 zone 表面 + 接缝干净——与全窗铺底反着用）──
+     skill = minimalist-ui（暖单色 · 宏留白 · 纸只是呼吸）。
+     texture 不进 BackgroundLayer：每个 zone（顶栏/图标栏/侧栏/主区/状态栏）表面自带
+     褶皱纸纹（feTurbulence 纸粒 + 两道轻折痕 + 左上受光），接缝（zone 间留缝）=
+     暖骨色画布干干净净——纹理只活在 zone 内。 */
+  .shell[data-theme="paper-zones"] {
+    --theme-bg-window: #ECE7DC;           /* 接缝 = 暖骨色画布（无纹理） */
+    --theme-bg-titlebar: transparent;
+    --theme-bg-card: transparent;
+    --theme-bg-status: transparent;
+    --theme-bg-input: rgba(255,255,255,0.55);
+    --theme-bg-icon-bar: transparent;
+    --theme-bg-side-panel: transparent;
+    --theme-bg-toolbar: transparent;
+    --theme-text-primary: #2F3437;
+    --theme-text-secondary: #55564D;
+    --theme-text-muted: #8B8A7E;
+    --theme-text-on-accent: #FFFFFF;
+    --theme-accent: #1F6C9F;
+    --theme-accent-hover: #2B7DBF;
+    --theme-border: #DDD6C7;
+    --theme-separator: #E3DDD0;
+    --theme-hover-overlay: rgba(0,0,0,0.045);
+    --theme-tab-hover-bg: rgba(0,0,0,0.03);
+    --theme-dirty-dot: #1F6C9F;
+    --theme-toggle-knob: #FFFFFF;
+    --theme-toggle-knob-on: #1F6C9F;
+    --theme-status-connected: #346538;
+    --theme-status-disconnected: rgba(0,0,0,0.20);
+    --theme-icon-active: #1F6C9F;
+    --theme-icon-inactive: #A4A193;
+    --theme-font-ui: "Geist Sans", "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+    --theme-font-mono: "Geist Mono", "Cascadia Mono", Consolas, monospace;
+    --theme-cm-timestamp: #8B8A7E;
+    --theme-sent-echo: #1F6C9F;
+    --theme-received: #2F3437;
+    --theme-system-log: #6F6E63;
+  }
+  /* 五个 zone 表面 = 同一张纸（纸基 + 两道折痕 + 左上受光 + feTurbulence 纸粒） */
+  .shell[data-theme="paper-zones"] .titlebar,
+  .shell[data-theme="paper-zones"] .icon-bar,
+  .shell[data-theme="paper-zones"] .sidebar,
+  .shell[data-theme="paper-zones"] .main,
+  .shell[data-theme="paper-zones"] .statusbar {
+    background-color: #F6F2E7;
+    background-image:
+      linear-gradient(24deg, transparent 40%, rgba(120,110,85,0.05) 43%, rgba(255,255,255,0.07) 46%, transparent 50%),
+      linear-gradient(-18deg, transparent 66%, rgba(120,110,85,0.04) 69%, rgba(255,255,255,0.06) 72%, transparent 76%),
+      radial-gradient(200% 90% at 16% 6%, rgba(255,255,255,0.50), transparent 55%),
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' seed='7'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0.60 0 0 0 0 0.56 0 0 0 0 0.50 0 0 0 0.05 0'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+  /* 主区内层透明——让 main 的纸纹透上来 */
+  .shell[data-theme="paper-zones"] .tab-bar,
+  .shell[data-theme="paper-zones"] .content,
+  .shell[data-theme="paper-zones"] .toolbar { background: transparent; }
+  .shell[data-theme="paper-zones"] .tab.active { background: rgba(255,255,255,0.55); }
+  .shell[data-theme="paper-zones"] .side-row .sw { background: rgba(0,0,0,0.05); color: var(--theme-text-secondary); }
+  .shell[data-theme="paper-zones"] .icon-btn.active { box-shadow: inset 0 0 0 1px var(--theme-accent); }
+  .shell[data-theme="paper-zones"] { border-radius: 10px; }
+  .shell[data-theme="paper-zones"] .icon-btn, .shell[data-theme="paper-zones"] .side-row .sw { border-radius: 6px; }
+  .shell[data-theme="paper-zones"] .tool-btn { border-radius: 6px; }
+  .shell[data-theme="paper-zones"] .tab { border-radius: 6px 6px 0 0; }
+
+  /* ── ⑭ 影像分区（方案 B：图挂 zone 表面切片 + 接缝无图——整窗主视觉反转）──
+     skill = high-end-visual-design（影像主导 · 双边框嵌套 · 浓咖啡深底接缝）。
+     与 panorama 反着用：panorama = 图在 BackgroundLayer 全窗铺（接缝也露图）；
+     这里 = 同一张 sailor-moon.jpg 连续切片锚定到每个 zone 表面（background-size=窗尺寸、
+     background-position=-(zone 坐标)），相邻 zone 拼回一张连续图，但接缝（zone 间留缝）=
+     浓咖啡深底无图。图被「装裱」在精密边框里，chrome 让位给影像。 */
+  .shell[data-theme="image-zones"] {
+    --theme-bg-window: #12100C;           /* 接缝 = 浓咖啡深底（无图） */
+    --theme-bg-titlebar: transparent;
+    --theme-bg-card: transparent;
+    --theme-bg-status: transparent;
+    --theme-bg-input: rgba(0,0,0,0.35);
+    --theme-bg-icon-bar: transparent;
+    --theme-bg-side-panel: transparent;
+    --theme-bg-toolbar: transparent;
+    --theme-text-primary: #F5EFE3;
+    --theme-text-secondary: rgba(245,239,227,0.80);
+    --theme-text-muted: rgba(245,239,227,0.55);
+    --theme-text-on-accent: #10161F;
+    --theme-accent: #FFB85C;
+    --theme-accent-hover: #FFCC85;
+    --theme-border: rgba(255,255,255,0.16);
+    --theme-separator: rgba(255,255,255,0.12);
+    --theme-hover-overlay: rgba(255,255,255,0.08);
+    --theme-tab-hover-bg: rgba(255,255,255,0.10);
+    --theme-dirty-dot: #FFB85C;
+    --theme-toggle-knob: #FFFFFF;
+    --theme-toggle-knob-on: #FFB85C;
+    --theme-status-connected: #4EC9B0;
+    --theme-status-disconnected: rgba(255,255,255,0.30);
+    --theme-icon-active: #FFCC85;
+    --theme-icon-inactive: rgba(255,255,255,0.55);
+    --theme-font-ui: "Outfit", "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+    --theme-font-mono: "IBM Plex Mono", "Cascadia Mono", Consolas, monospace;
+    --theme-cm-timestamp: rgba(245,239,227,0.50);
+    --theme-sent-echo: #FFB85C;
+    --theme-received: #F5EFE3;
+    --theme-system-log: rgba(245,239,227,0.65);
+  }
+  /* 五个 zone 表面 = 同一张图连续切片（scrim 压暗保证文字可读）+ 装裱边框 */
+  .shell[data-theme="image-zones"] .titlebar,
+  .shell[data-theme="image-zones"] .icon-bar,
+  .shell[data-theme="image-zones"] .sidebar,
+  .shell[data-theme="image-zones"] .main,
+  .shell[data-theme="image-zones"] .statusbar {
+    background-image:
+      linear-gradient(rgba(10,8,5,0.30), rgba(10,8,5,0.30)),
+      url('../../../壳半业务外推/mockups/sailor-moon.jpg');
+    background-size: auto, 1020px 640px;
+    background-repeat: no-repeat;
+  }
+  /* 切片锚定：每个 zone 显示自己那块（window 几何：title 6,6→40 / icon 6,52→42 /
+     side 54,52→216 / main 276,52 / status 6,608→26；size=1020×640） */
+  .shell[data-theme="image-zones"] .titlebar { background-position: 0 0, -6px -6px; }
+  .shell[data-theme="image-zones"] .icon-bar { background-position: 0 0, -6px -52px; }
+  .shell[data-theme="image-zones"] .sidebar { background-position: 0 0, -54px -52px; }
+  .shell[data-theme="image-zones"] .main { background-position: 0 0, -276px -52px; }
+  .shell[data-theme="image-zones"] .statusbar { background-position: 0 0, -6px -608px; }
+  .shell[data-theme="image-zones"] .tab-bar,
+  .shell[data-theme="image-zones"] .content,
+  .shell[data-theme="image-zones"] .toolbar { background: transparent; }
+  .shell[data-theme="image-zones"] .tab.active { background: rgba(255,255,255,0.10); }
+  .shell[data-theme="image-zones"] .side-row .sw { background: rgba(255,255,255,0.12); color: var(--theme-text-secondary); }
+  .shell[data-theme="image-zones"] .icon-btn.active { box-shadow: inset 0 0 0 1px var(--theme-accent); }
+  .shell[data-theme="image-zones"] { border-radius: 8px; }
+  .shell[data-theme="image-zones"] .icon-btn, .shell[data-theme="image-zones"] .side-row .sw { border-radius: 6px; }
+  .shell[data-theme="image-zones"] .tool-btn { border-radius: 4px; }
+  .shell[data-theme="image-zones"] .tab { border-radius: 6px 6px 0 0; }
+
   /* ═══ surface 域（#50.6 token 表）═══
      悬浮圆角面板：--surface-inset 留缝 / --surface-radius 圆角 / --surface-shadow 投影 / --surface-border 发丝光边
      data-surf 挂 .shell：on = 悬浮圆角，off = 现状直角贴边（决策：默认零值 = 现状，旧主题零变化）
@@ -965,6 +1097,9 @@
   .shell[data-theme="songti"][data-surf="on"] { --surface-inset: 6px; --surface-radius: 12px; --surface-shadow: 0 6px 18px rgba(0,0,0,0.10), 0 1px 4px rgba(0,0,0,0.05); --surface-border: rgba(255,255,255,0.55); }
   .shell[data-theme="panorama"][data-surf="on"] { --surface-inset: 6px; --surface-radius: 14px; --surface-shadow: 0 10px 30px rgba(0,0,0,0.35), 0 2px 8px rgba(0,0,0,0.2); --surface-border: rgba(255,255,255,0.18); }
   .shell[data-theme="full-glass"][data-surf="on"] { --surface-inset: 10px; --surface-radius: 20px; --surface-shadow: 0 20px 50px rgba(0,0,0,0.45), 0 4px 14px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.10); --surface-border: rgba(255,255,255,0.16); }
+  /* 分区纹理双壳 surf 开：纸纹分区 = 编辑部微留缝（纸卡片间缝干净）；影像分区 = 装裱留缝（浓咖接缝） */
+  .shell[data-theme="paper-zones"][data-surf="on"] { --surface-inset: 5px; --surface-radius: 10px; --surface-shadow: 0 1px 0 rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.02); --surface-border: rgba(0,0,0,0.06); }
+  .shell[data-theme="image-zones"][data-surf="on"] { --surface-inset: 6px; --surface-radius: 14px; --surface-shadow: 0 8px 22px rgba(0,0,0,0.45), 0 2px 8px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.10); --surface-border: rgba(255,255,255,0.14); }
 
   .shell .titlebar, .shell .icon-bar, .shell .sidebar, .shell .main, .shell .statusbar {
     margin: 0;
@@ -1062,18 +1197,20 @@
 
 <div class="page-head">
   <div class="kicker">E5.8 · 外观主题化 · 未来主题示意</div>
-  <h1 class="page-title">十二个主题：现状 → 悬浮圆角家族 → 五域极限</h1>
+  <h1 class="page-title">十四个主题：现状 → 悬浮圆角家族 → 五域极限 → 分区纹理</h1>
   <p class="page-sub">
     按已冻结方针（决策 A-F + ai化，<code>05-主题数据模型.md</code> 契约）绘制。每个主题 = 一个配方
     （<code>appearance</code> 风格域 + <code>colorways[]</code> 配色变体）+ 一套生效 CSS 变量（真实 token 名，
     <code>02-变量契约.md</code>）+ 一个驱动它的设计 skill（硬约束 16）。点上方标签实时换肤整个 LinkDesk 壳：
     顶栏 → 图标栏(42px) → 侧栏 → 标签栏 → 串口视图 → 状态栏串口灯+(N)。每个区域 = 独立表面。
     前两个 = 现状基线（zones 直角贴边，证明「有圆角 ≠ 丢现状」）；后面按形制光谱排开。
-    最后六个 = <strong>五域极限</strong>，六张完整壳画设计的极端性（font 域一轴两壳）：
+    五域极限 = 六张完整壳画设计的极端性（font 域一轴两壳）：
     radius 全胶囊 · surface 悬浮孤岛 · <strong>font 终端机（mono 字族）/ 宋体印刷体（宋体字族）</strong> ·
     background 整窗主视觉 · glass 液态玻璃满铺。壳上方 <code>font</code> 域控件可现场切字族
     （宋体 / 黑体 / Times New Roman，= 模拟 app.fontFamily）——一个变量换整个气质；<code>surface</code> 域控件可互换「悬浮圆角面板」与「现状直角贴边」
-    （零值 = 现状）；三张带图壳共用仓库真实 sailor-moon.jpg，同图三种读法（深罩氛围 / 低罩主视觉 / 满铺玻璃发光）。
+    （零值 = 现状）；带图壳共用仓库真实 sailor-moon.jpg，同图多种读法（深罩氛围 / 低罩主视觉 / 满铺玻璃发光）。
+    <strong>最后两个 = background 域反转 · 分区纹理</strong>——图/纹理从背景层挪到 <strong>zone 表面</strong>（纸纹分区 /
+    影像分区），接缝（zone 相接处）= 纯画布零内容：与全景铺底反着用，整体更「分区」、更极简。
   </p>
   <div class="legend">
     <span class="legend-chip"><span class="sw" style="background:#0E639C;"></span><b>现状 · 直角暗</b> 现状基线</span>
@@ -1088,6 +1225,8 @@
     <span class="legend-chip"><span class="sw" style="background:#4A463E;"></span><b>宋体印刷体</b> font 字族·宋体</span>
     <span class="legend-chip"><span class="sw" style="background:#FFB85C;"></span><b>整窗主视觉</b> background 极限</span>
     <span class="legend-chip"><span class="sw" style="background:#FF6EC7;"></span><b>液态玻璃满铺</b> glass 极限</span>
+    <span class="legend-chip"><span class="sw" style="background:#1F6C9F;"></span><b>纸纹分区</b> zone 表面纹理</span>
+    <span class="legend-chip"><span class="sw" style="background:#FFB85C;"></span><b>影像分区</b> zone 表面切片</span>
   </div>
 </div>
 
@@ -1139,6 +1278,14 @@
   <button class="theme-tab" data-theme="full-glass" role="tab" aria-selected="false">
     <span class="dots"><span class="dot" style="background:#FF6EC7;"></span><span class="dot" style="background:#7DFFD4;"></span><span class="dot" style="background:#8B7CF6;"></span></span>
     <span class="tname">液态玻璃满铺 · 极限玻璃</span><span class="tskill">glass 极限</span>
+  </button>
+  <button class="theme-tab" data-theme="paper-zones" role="tab" aria-selected="false">
+    <span class="dots"><span class="dot" style="background:#F6F2E7;"></span><span class="dot" style="background:#ECE7DC;"></span><span class="dot" style="background:#1F6C9F;"></span></span>
+    <span class="tname">纸纹分区 · zone 纹理</span><span class="tskill">minimalist</span>
+  </button>
+  <button class="theme-tab" data-theme="image-zones" role="tab" aria-selected="false">
+    <span class="dots"><span class="dot" style="background:#12100C;"></span><span class="dot" style="background:#FFB85C;"></span><span class="dot" style="background:#F5EFE3;"></span></span>
+    <span class="tname">影像分区 · zone 切片</span><span class="tskill">high-end</span>
   </button>
 </div>
 
@@ -1714,6 +1861,68 @@
       more: 'glass 域极限：六 zone 全玻璃（blur 14-24px 差异化 + saturate 1.6）+ specular 0.7 反光带 + morph 400 响应。表面半透明 = 无实色块；再糊就成雾——这是玻璃的终点。',
       domains: { colors: 1, font: 1, radius: 1, glass: 1, background: 1, surface: 1 },
       skill: { ico: 'G', name: 'high-end-visual-design', desc: 'Ethereal Glass 拉满：全窗玻璃 + 霓虹跳色 + 大 squircle + 反光带。liquid-glass 无官方库，web 实现 = backdrop-filter 近似（design-taste 诚实标注）。' }
+    },
+
+    'paper-zones': {
+      name: '纸纹分区 · zone 纹理',
+      read: '读取为：桌面壳 用 <strong>编辑部极简</strong> 语言，靠 <code>minimalist-ui</code>——<strong>反转「图在背景层」的旧路子</strong>。每个 zone（顶栏/图标栏/侧栏/主区/状态栏）<strong>表面自带褶皱纸纹</strong>（feTurbulence 纸粒 + 两道轻折痕 + 左上受光），但<strong>接缝（zone 之间）什么都没有</strong>：暖骨色画布干干净净。纹理只活在 zone 内——极简编辑部：纸是呼吸，留白即设计。',
+      badge: 'light · 1 配色',
+      recipe: {
+        id: 'paper-zones', name: '纸纹分区', type: 'light',
+        appearance: {
+          radius: { sm: 4, md: 6, lg: 8, xl: 12 },
+          glass: { blur: 0, saturate: 1, tint: null, opacity: 1 },
+          font: { ui: 'Geist Sans', display: 'Newsreader', mono: 'Geist Mono' },
+          background: { image: 'assets/paper-grain.png', opacity: 0.06, mask: null },
+          surface: { inset: 5, radius: 10, shadow: true, border: true }
+        },
+        colorways: [{
+          id: 'paper', name: '暖骨纸面',
+          colors: { 'bg-window': '#ECE7DC', 'text-primary': '#2F3437', accent: '#1F6C9F', 'bg-card': '#F6F2E7' }
+        }]
+      },
+      tokens: [
+        ['--bg-window', '#ECE7DC（接缝）', true], ['--bg-card', '#F6F2E7（纸面）', true],
+        ['--text-primary', '#2F3437', true], ['--accent', '#1F6C9F', true],
+        ['--bg-image', 'paper-grain.png', false], ['--bg-opacity', '0.06', false],
+        ['--surface-inset', '5px', false], ['--surface-radius', '10px', false],
+        ['--radius-lg', '8px', false], ['--font-ui', 'Geist Sans', false],
+        ['--font-display', 'Newsreader', false], ['--glass-blur', '0', false]
+      ],
+      more: 'background 域反转：纹理挂 zone 表面，接缝 = 纯画布。与 panorama（图全窗铺底连缝也露）对照——一个变量从「满铺」改「分区」。纹理资产 = 可平铺纸纹图（tileable），CSS 只做纸粒近似。',
+      domains: { colors: 1, font: 1, radius: 1, glass: 0, background: 1, surface: 1 },
+      skill: { ico: '纸', name: 'minimalist-ui', desc: 'Premium Utilitarian Minimalism（暖单色 + 1px 结构线 + 8/12px 圆角封顶 + 无玻璃无重阴影）。纸感来自底色 + 噪点纹理，接缝宏留白——纹理只在 zone 内。' }
+    },
+
+    'image-zones': {
+      name: '影像分区 · zone 切片',
+      read: '读取为：桌面壳 用 <strong>影像主导</strong> 语言，靠 <code>high-end-visual-design</code>——<strong>整窗主视觉的反转</strong>。与 panorama 同一张 sailor-moon.jpg，但把图<strong>从 BackgroundLayer 挪到每个 zone 表面切片</strong>：background-size=窗尺寸、background-position=-(zone 坐标)，相邻 zone 拼回一张连续图。但<strong>接缝（zone 之间）无图</strong>：浓咖啡深底。图被装裱在精密边框里（双边框嵌套），chrome 让位给影像。',
+      badge: 'dark · 1 配色',
+      recipe: {
+        id: 'image-zones', name: '影像分区', type: 'dark',
+        appearance: {
+          radius: { sm: 4, md: 6, lg: 10, xl: 16 },
+          glass: { blur: 0, saturate: 1, tint: null, opacity: 1 },
+          font: { ui: 'Outfit', display: 'Cormorant Garamond', mono: 'IBM Plex Mono' },
+          background: { image: 'assets/sailor-moon.jpg', opacity: 1, mask: 'rgba(0,0,0,0.15)' },
+          surface: { inset: 6, radius: 14, shadow: true, border: true }
+        },
+        colorways: [{
+          id: 'espresso', name: '浓咖装裱',
+          colors: { 'bg-window': '#12100C', 'text-primary': '#F5EFE3', accent: '#FFB85C', 'status-connected': '#4EC9B0' }
+        }]
+      },
+      tokens: [
+        ['--bg-window', '#12100C（接缝）', true], ['--text-primary', '#F5EFE3', true],
+        ['--accent', '#FFB85C', true], ['--status-connected', '#4EC9B0', true],
+        ['--bg-image', 'sailor-moon.jpg', false], ['--bg-opacity', '1', false],
+        ['--bg-mask', 'rgba(0,0,0,.15)', false], ['--bg-anchor', 'zone 坐标切片', false],
+        ['--surface-inset', '6px', false], ['--surface-radius', '14px', false],
+        ['--font-ui', 'Outfit', false], ['--font-display', 'Cormorant Garamond', false]
+      ],
+      more: 'background 域反转：图挂 zone 表面（连续切片），接缝无图。vs panorama 图全窗铺底连缝也露——同图两种读法：满铺（缝被图盖住）vs 分区（缝干净）。新增语义：background.anchor 按 zone 锚定（需 #50.8 扩展）。',
+      domains: { colors: 1, font: 1, radius: 1, glass: 0, background: 1, surface: 1 },
+      skill: { ico: '影', name: 'high-end-visual-design', desc: 'Editorial Luxury 影像主导 + 双边框嵌套（顶部内高光 + 发丝边）+ 浓咖啡深底接缝。图被装裱、chrome 让位——不是拼图切分而是精密画框。' }
     }
   };
 
@@ -1824,7 +2033,9 @@
     terminal: '<strong>字体域极限（字族轴·mono）</strong>：font.ui/mono 双键全指等宽族。形制 = 现状直角（与现状暗同款）——<strong>只换字体 + 配色就换了整个气质</strong>。字族轴另一端 = 宋体印刷体（SimSun 衬线宋，见下）；再等宽就是终端了。',
     songti: '<strong>字体域极限（字族轴·宋体）</strong>：整个软件换成宋体 SimSun——一个 --font-ui 值，壳从「软件」变「印刷文档」。Times New Roman / 黑体 / 宋体 等 = 用户点名的字族，都是 font 域合法值；下方「font 域·字体族」控件可现场切 宋体/黑体/Times New Roman 看效果（= 模拟 app.fontFamily 覆盖）。形制 = 现状直角（isolate 字族轴），配色纸白墨黑——字形就是设计。',
     panorama: '<strong>背景域极限</strong>：同一张 sailor-moon.jpg 与 Glass Aurora 反着用——glass 0.88 深罩压成氛围，panorama 0.15 浅罩让图当主视觉。zones 半透明浮层 + 1px 发丝边（形制 = 现状直角贴边），chrome 让位给图。三张壳同图三种读法（玻璃深罩 / 主视觉 / 满铺发光）证明 background + glass 两轴独立可叠。',
-    'full-glass': '<strong>玻璃域极限</strong>：六 zone 全玻璃（透光 blur 差异化 + 反光 specular + 响应 morph），无任何实色块。与「现状 · 直角」对比 = glass 域 0（无玻璃）↔ 满铺的完整光谱。再糊就成雾——这是玻璃的终点。同 sailor-moon.jpg 的第三种读法。'
+    'full-glass': '<strong>玻璃域极限</strong>：六 zone 全玻璃（透光 blur 差异化 + 反光 specular + 响应 morph），无任何实色块。与「现状 · 直角」对比 = glass 域 0（无玻璃）↔ 满铺的完整光谱。再糊就成雾——这是玻璃的终点。同 sailor-moon.jpg 的第三种读法。',
+    'paper-zones': '<strong>background 域反转 · 方案 A</strong>：纹理从 BackgroundLayer（全窗铺底）<strong>挪到 zone 表面</strong>——每个 zone（顶栏/图标栏/侧栏/主区/状态栏）自带褶皱纸纹，但<strong>接缝（zone 相接处）= 纯暖骨画布、零纹理</strong>。与 panorama（图全窗连缝也露）对照：一个变量从「满铺」改「分区」。整体更极简、更「分区」——纸是呼吸，留白即设计。',
+    'image-zones': '<strong>background 域反转 · 方案 B</strong>：与 panorama 同图（sailor-moon.jpg）但<strong>把图从背景层切到每个 zone 表面</strong>（background-size=窗尺寸、position=−zone 坐标 → 相邻 zone 拼回一张连续图），<strong>接缝无图</strong>（浓咖深底）。同图两种读法：满铺（缝被图盖住）vs 分区（缝干净装裱）。'
   };
 
   /* surface 域默认值：现状基线 + 域极限中的 font/background 轴（终端机/宋体/主视觉）= 直角贴边（isolate 单轴），其余主题 = 悬浮圆角 */
