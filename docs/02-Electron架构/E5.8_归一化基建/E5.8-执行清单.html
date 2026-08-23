@@ -1,0 +1,1787 @@
+<!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <title>E5&period;8 &#x6267;&#x884c;&#x6e05;&#x5355;&mdash;&mdash;&#x5f52;&#x4e00;&#x5316;&#x57fa;&#x5efa;</title>
+            <style>
+/* From extension vscode.github */
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
+.vscode-dark img[src$=\#gh-light-mode-only],
+.vscode-light img[src$=\#gh-dark-mode-only],
+.vscode-high-contrast:not(.vscode-high-contrast-light) img[src$=\#gh-light-mode-only],
+.vscode-high-contrast-light img[src$=\#gh-dark-mode-only] {
+	display: none;
+}
+
+</style>
+            
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Microsoft/vscode/extensions/markdown-language-features/media/markdown.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Microsoft/vscode/extensions/markdown-language-features/media/highlight.css">
+<style>
+            body {
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe WPC', 'Segoe UI', system-ui, 'Ubuntu', 'Droid Sans', sans-serif;
+                font-size: 14px;
+                line-height: 1.6;
+            }
+        </style>
+        <style>
+.task-list-item {
+    list-style-type: none;
+}
+
+.task-list-item-checkbox {
+    margin-left: -20px;
+    vertical-align: middle;
+    pointer-events: none;
+}
+</style>
+<style>
+:root {
+  --color-note: #0969da;
+  --color-tip: #1a7f37;
+  --color-warning: #9a6700;
+  --color-severe: #bc4c00;
+  --color-caution: #d1242f;
+  --color-important: #8250df;
+}
+
+</style>
+<style>
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-note: #2f81f7;
+    --color-tip: #3fb950;
+    --color-warning: #d29922;
+    --color-severe: #db6d28;
+    --color-caution: #f85149;
+    --color-important: #a371f7;
+  }
+}
+
+</style>
+<style>
+.markdown-alert {
+  padding: 0.5rem 1rem;
+  margin-bottom: 16px;
+  color: inherit;
+  border-left: .25em solid #888;
+}
+
+.markdown-alert>:first-child {
+  margin-top: 0
+}
+
+.markdown-alert>:last-child {
+  margin-bottom: 0
+}
+
+.markdown-alert .markdown-alert-title {
+  display: flex;
+  font-weight: 500;
+  align-items: center;
+  line-height: 1
+}
+
+.markdown-alert .markdown-alert-title .octicon {
+  margin-right: 0.5rem;
+  display: inline-block;
+  overflow: visible !important;
+  vertical-align: text-bottom;
+  fill: currentColor;
+}
+
+.markdown-alert.markdown-alert-note {
+  border-left-color: var(--color-note);
+}
+
+.markdown-alert.markdown-alert-note .markdown-alert-title {
+  color: var(--color-note);
+}
+
+.markdown-alert.markdown-alert-important {
+  border-left-color: var(--color-important);
+}
+
+.markdown-alert.markdown-alert-important .markdown-alert-title {
+  color: var(--color-important);
+}
+
+.markdown-alert.markdown-alert-warning {
+  border-left-color: var(--color-warning);
+}
+
+.markdown-alert.markdown-alert-warning .markdown-alert-title {
+  color: var(--color-warning);
+}
+
+.markdown-alert.markdown-alert-tip {
+  border-left-color: var(--color-tip);
+}
+
+.markdown-alert.markdown-alert-tip .markdown-alert-title {
+  color: var(--color-tip);
+}
+
+.markdown-alert.markdown-alert-caution {
+  border-left-color: var(--color-caution);
+}
+
+.markdown-alert.markdown-alert-caution .markdown-alert-title {
+  color: var(--color-caution);
+}
+
+</style>
+        
+        </head>
+        <body class="vscode-body vscode-light">
+            <span id="markdown-mermaid" aria-hidden="true" data-config="{&quot;darkModeTheme&quot;:&quot;vscode&quot;,&quot;lightModeTheme&quot;:&quot;vscode&quot;,&quot;maxTextSize&quot;:50000,&quot;clickDrag&quot;:&quot;alt&quot;,&quot;showControls&quot;:&quot;onHoverOrFocus&quot;,&quot;resizable&quot;:true,&quot;maxHeight&quot;:&quot;&quot;}"></span>
+				<h1 id="e58-执行清单归一化基建">E5.8 执行清单——归一化基建</h1>
+<blockquote>
+<p>2026-08-16。<strong>dsh 借鉴落地——抄工程纪律，不抄产品形态。</strong> 来源 → <a href="00-dsh%E5%80%9F%E9%89%B4%E6%A1%A3%E6%A1%88.html">00-dsh借鉴档案.md</a>。
+<strong>🔥 进度唯一真相源。</strong> 做完一个勾一个。E5.7 清单已封存，不再追加任务。
+<strong>目标：</strong> 归档基线 → 工程纪律（门禁四件套 + 两条规则）→ IPC 广播归一化 + 归一化全景审计（E6#14 搬入）→ 可逆注册升级 → 依赖编排 → 契约生成（linkdesk.d.ts + 运行期校验）→ 全量回归。</p>
+<p><strong>当前进度：</strong> ✅ 本次精简快照 <strong>195✓/32✗</strong>（原单行 23672 字日志 → 多行指针集，时间正序，每行=一次回勾/立案，计数为当时快照；现象/根因/方案细节见各任务行 ✅ + commit message）。执行 AI 下次回勾时刷新本行。⚠️ 2026-08-23 拆写 Phase 10 补 15 未勾任务 #50.13-#50.27（12✗→27✗）。⚠️ 2026-08-24 阶段 1 补 #50.28-#50.32（gallery ⑬ 纸纹分区 + ⑭ 影像分区落地，27✗→32✗）。</p>
+<ul>
+<li><strong>2026-08-17</strong> 全 Phase 审视收口——实点数 68 主任务 12 Phase（校正旧 3/28 漏数）+ 扩 #50.5-#50.12 八任务 → 76 主任务</li>
+<li><strong>2026-08-17</strong> 末位扩 Phase：多串口升格 Phase 6（设计 → <a href="%E5%A4%9A%E4%B8%B2%E5%8F%A3/01-%E5%A4%9A%E4%B8%B2%E5%8F%A3%E8%AE%BE%E8%AE%A1.html">多串口/01-多串口设计.md</a>）+ 面板三形态 Phase 7/8/9（档案 → <a href="%E9%9D%A2%E6%9D%BF%E7%AA%97%E5%8F%A3/%E9%9D%A2%E6%9D%BF%E7%AA%97%E5%8F%A3%E5%BD%A2%E6%80%81%E6%A1%A3%E6%A1%88.html">面板窗口/面板窗口形态档案.md</a>）重拆 26 任务 + 铁律「通用 API 壳先行」+ 视图动作区 #36.5/#36.6 + 扩 Phase 10 #47-#50（总体审视 #6.6/#22.5 + 逐 Phase #15.5 入库）→ 76</li>
+<li><strong>2026-08-17 晚</strong> 外观玻璃态立案（用户拍板 5 点）→ #50.5-#50.12 八任务拆细粒度</li>
+<li><strong>2026-08-18</strong> 用户补充 #0d.9（编辑器外部文件变更自动重载）+「不给未来留坑」→ src/ 全树审视立案 #0d.7-9~12 + #50.6 登记 → 77 主任务</li>
+<li><strong>2026-08-19</strong> 二次审视 src/ 立案 #0d.7-13~15（禁「等超临界再拆」）+ 全树对照审计 #0d.10/#0d.11（pluginPaths.ts 归位）→ 79 主任务</li>
+<li><strong>2026-08-20</strong> 用户 11 条原则评审快捷键 → Phase 5.6 立案（#24.8.5-#24.8.7）→ 82 主任务</li>
+<li><strong>2026-08-20</strong> 用户实机报告联动 bug（F2 改名/DELETE → 编辑器标签不更新）→ 根因=壳 bridges.ts 无桥 → Phase 5.7 立案（#25.1 壳事件桥 + #25.2 filesystem.rename + #25.3 状态迁移）→ 85 主任务</li>
+<li><strong>2026-08-20</strong> 四轮问答 → Phase 6.5 通道范式·设备插件独立立案（#30.5-#30.7，档案 → <a href="%E9%80%9A%E9%81%93%E8%8C%83%E5%BC%8F/01-%E9%80%9A%E9%81%93%E8%8C%83%E5%BC%8F%E8%AE%BE%E8%AE%A1.html">通道范式/01-通道范式设计.md</a>）→ 88 主任务</li>
+<li><strong>2026-08-20</strong> Phase 6 多串口收官（#26-#30：<code>c98f0639</code>/<code>b4deb673</code>；vitest 619）→ 62/96（Phase 0-6 全收官）</li>
+<li><strong>2026-08-20</strong> P1-P9 定案 → Phase 6.8 立案（#30.8-#30.21 十五任务，UI → <a href="%E5%A4%9A%E4%B8%B2%E5%8F%A3/03-%E5%BD%A2%E6%80%81%E5%AF%B9%E6%AF%94-A-B-C.html">多串口/03-形态对比-A-B-C.html</a>）→ 111 主任务</li>
+<li><strong>2026-08-20</strong> Phase 6.8 插件侧+壳侧收官（#30.8-#30.16 九任务；vitest 620）→ 71/111</li>
+<li><strong>2026-08-20</strong> Phase 6.8 设置扩展收官（#30.17-#30.21 六任务；vitest 631）→ 77/111（Phase 6.8 全收官）</li>
+<li><strong>2026-08-20</strong> Phase 6.5 收官（#30.5 <code>059b5485</code> + #30.6 <code>272d79a9</code> + #30.7 实证；vitest 638）→ 80/111</li>
+<li><strong>2026-08-20</strong> Phase 7 开工：#31 Ctrl+J（<code>0fe467a9</code>）/ #32 [+] QuickPick（<code>0966eb99</code>）/ #33 「面板」菜单（<code>35570599</code>）→ 83/111</li>
+<li><strong>2026-08-21</strong> #34 容器切换器（<code>e22cd43a</code>）+ #35 UI 细致化（三拍板点维持现状）→ 85/111</li>
+<li><strong>2026-08-21</strong> #34.5 panel.reveal（<code>7a0b47e6</code>）/ #35.5 moveToEditor（<code>543b99ec</code>）/ #36 面板全链回归 → 88/111</li>
+<li><strong>2026-08-21</strong> #36.5 视图动作区（<code>05e853c4</code>）/ #36.6 侧栏动作区（<code>abac76a6</code>）→ 90/111</li>
+<li><strong>2026-08-21</strong> 复活 E5 dock 拍板 → 池布局 grid 化 → 立案 #36.7-#36.9 + #37.5-#37.8 七任务（设计 → <a href="%E5%B8%83%E5%B1%80%E6%A0%91%E6%95%B0%E6%8D%AE%E5%8C%96/01-%E5%B8%83%E5%B1%80%E6%A0%91%E6%95%B0%E6%8D%AE%E5%8C%96%E8%AE%BE%E8%AE%A1.html">布局树数据化/01-布局树数据化设计.md</a>）→ 118 主任务；#36.7 收官（<code>0ab5f5d0</code>）→ 91/118</li>
+<li><strong>2026-08-21</strong> 用户拍板弃 moveToEditor → 立案 #36.10 → 119 主任务；#36.8 DTO 扩展（<code>7cd56bb7</code>）→ 92/119</li>
+<li><strong>2026-08-21</strong> 用户实机三问 → 拍板侧栏换边菜单形态（双 when 门控项）；#36.9 轴感知锁步（<code>081ad171</code>）→ 93/119</li>
+<li><strong>2026-08-21</strong> 用户拍板面板标签栏右键菜单形态（位置/对齐/视图显隐）→ 归 #37.7</li>
+<li><strong>2026-08-21</strong> #37.7 过胖拆分 → 瘦身（位置/对齐）+ 新增 #37.7.1 视图显隐列表 → 120 主任务；用户补充图标栏跟随换边 → 立案 #37.6.5 → 121 主任务（93/121）</li>
+<li><strong>2026-08-21</strong> #36.10 移除 moveToEditor（<code>691531e7</code>）→ 94/121</li>
+<li><strong>2026-08-21</strong> #37.5 池布局 grid 化（708）→ 95/121；#37.6 侧栏换边（713）→ 96/121；#37.6.5 图标栏换边（716）→ 97/121</li>
+<li><strong>2026-08-21</strong> #37.7 面板位置/对齐（726）→ 98/121；#37.7.1 视图显隐列表（730）→ 99/121；#37.8 矩阵场景 8 实机验证行（730）→ 100/121</li>
+<li><strong>2026-08-21</strong> 用户亲令 i18n 归一化 → #37.9（734；audit-i18n 升格门禁）→ 101/121；#37.9.1 标签栏仍中文（739）→ 102/121；#37.9.2 任意语言 key（739）→ 103/121</li>
+<li><strong>2026-08-21</strong> #37.9.2.3 entryless 图标（740）→ 104/121；#37.9.2.4 图标栏规则入文档 → 105/121</li>
+<li><strong>2026-08-21</strong> 03-插件制造 全量更新：#37.9.3.1 代码侧同步（750）→ 106/121；#37.9.3.2 局部修五份（750）→ 108/121；#37.9.3.4 重写两份（750）→ 109/121；#37.9.3.5 重写 04-分发（750）→ 110/121</li>
+<li><strong>2026-08-21</strong> 用户拍板 #39 不搬 Marketplace → 111/121；#37 FloatingPanel 三件套（764）→ 112/121；勾选收口四任务（#38/#39.5/#41/#41.10）→ 116/121</li>
+<li><strong>2026-08-21</strong> #41.5 viewId &quot;settings&quot; 碰撞（787）→ 117/121；#41.6 居中大卡（788）→ 118/121；#41.7 回归复测（788）→ 119/121；#41.8 视图命名空间档案 → 120/121；#41.9.1 复合键（794）→ 121/121；#41.9.2 调用点迁移（799）→ 121/121（Phase 8.1 全收官）</li>
+<li><strong>2026-08-22</strong> 实机点修 #41.9.3-#41.9.5 + 动画（<code>7607865c</code>/<code>73701a9f</code>）→ 121/121 维持</li>
+<li><strong>2026-08-22</strong> Phase 8.2 方案 A：#41.11 FactorySlots（<code>e2fe6114</code>）/ #41.12 切换壳能力（<code>ec63ff0e</code>）/ #41.14 作者路径（edb2087c→settings-demo）/ #41.13 切换按钮 / #41.15 文档 → 全收官；实机点修 #41.16/#41.17/#41.18（<code>37cdcaaf</code>）→ 121/121</li>
+<li><strong>2026-08-22</strong> #37.9.3.6（<code>4d0e6c0f</code>）→ Phase 8.2 尾巴清账；⚠️ 计数澄清：顶部 121/121 未含未执行项——实际未勾 15（Phase 9 #42-#46 + Phase 10 #48/#49/#50 + 玻璃态 #50.6-#50.12）</li>
+<li><strong>2026-08-22</strong> Phase 9 实机回归：#46.3/#46.4 已修 + #46.5 主窗 bounds 冻结已修（<code>7a25f07a</code>）；立案 #46.6-#46.11 七项（png 拖拽 <code>5c706888</code> 已修 / 拖拽卡死关闭 / Ctrl+W 路由 / tab:focused / 插入指示线 / bounds 竞态）→ 121/121 维持</li>
+<li><strong>2026-08-23</strong> Phase 10 占位 → 完整拆写（用户四要求拍板：①据档案完善任务清单 ②Phase 11 部分任务抽取归入（图片层/选图 slider 等 = 玻璃机制 #50.5-#50.12 归入阶段 1）③主题插件目录规范禁平铺根目录 = #50.13 ④细分颗粒度层层递进）+ <strong>职责硬边界（用户定义：Phase 10 做完 = 能生产 gallery+设置页 html 任意主题所有细节，任何细节做不出 = 没做完）</strong> + Phase 10.5 重定义（制作真实主题插件端到端验证）→ 15 新任务 #50.13-#50.27 拆写 → 195✓/27✗</li>
+</ul>
+<p><strong>编号铁律（E5.5 任务执行铁律）：</strong> 计划任务用整数；用户后续补充用小数后缀（#45.6/#63.8 同款）<strong>线性插入在当前进度之后</strong>，不清洗重排。序号间隔不做预留——补充就是小数。</p>
+<p><strong>清单/档案分工：</strong> 本文件 = 清单（任务条目一贯连续，永远一个文件）。设计文档/摸底矩阵/落盘物 = 档案，放各 Phase 子目录（指路见各任务条目）。两边互相指路：清单任务 → 档案路径；档案 → 清单任务号。</p>
+<p>📖 <strong>设计总览：</strong> <a href="01-%E5%BD%92%E4%B8%80%E5%8C%96%E5%9F%BA%E5%BB%BA%E8%AE%BE%E8%AE%A1.html">01-归一化基建设计.md</a>
+📖 <strong>文档索引（新 AI 进场先读）：</strong> <a href="README.html">README.md</a>——清单/档案分工、各目录指路
+📖 <strong>借鉴来源：</strong> <a href="00-dsh%E5%80%9F%E9%89%B4%E6%A1%A3%E6%A1%88.html">00-dsh借鉴档案.md</a>（四路侦察摘要 + 借鉴清单 v2 + 不抄清单）
+📖 <strong>对手盘源码：</strong> <code>E:\deepseek-harness</code>（本地克隆，2026-08-16）</p>
+</blockquote>
+<hr>
+<h2 id="关键路径">关键路径</h2>
+<pre><code>Phase 0：归档与基线（串行——文档 + 分支）
+Phase 0.5：用户补充修复（串行——目录归一化先行：Phase 1 门禁配置路径依赖归一化树，避免配置返工；#0d.8 须先于 Phase 1.5）
+Phase 1：工程纪律（串行——先行，零架构风险，保护后续重写期）
+Phase 1.5：IPC 广播归一化 + 归一化全景审计（E6#14 搬入——Phase 1 后，零架构风险）
+Phase 2：可逆注册升级（串行——Phase 1 后；最大推翻：loader + 14 Registry）
+Phase 3：依赖编排（串行——Phase 2 后，状态机之上）
+Phase 4：契约生成（Phase 2 后即可，与 Phase 3 可并行；最大新建：linkdesk.d.ts）
+Phase 5：全量回归（最后）
+Phase 6：多串口支持（基建收官后——Phase 1.5 broadcast + Phase 4 契约门禁先就位；2026-08-17 升格为正式 Phase；#26-#30 五任务）
+Phase 6.5：通道范式 · 设备插件独立（Phase 6 完结后——#30.5-#30.7 三任务；2026-08-20 立案：专门解决「第三方作者独立做设备插件是否依赖壳作者」——通道范式宣言 / 设备插件可行性全景+平台责任边界→第三方文档 / serial 通道范式实证；档案 → [通道范式/01-通道范式设计.md](通道范式/01-通道范式设计.md)）
+Phase 6.8：多串口实机验证修复（Phase 6 实机验证 P1-P9 定案后——#30.8-#30.21 十五任务，#30.19 拆双栏/转义两任务；2026-08-20 立案：插件侧 6 个（P2/P3/P7/P1/P6/P9）+ 壳侧 3 个（P4/P5/P8）+ 设置扩展 5 个，统一 §0.2 状态模型 per-tab 化，新增文字全走 t()/en.json；UI 依据 → [多串口/03-形态对比-A-B-C.html](多串口/03-形态对比-A-B-C.html) 最终形态定稿；决策轨迹 → 讨论稿 [多串口/02-多串口实机验证问题与修复讨论.md](多串口/02-多串口实机验证问题与修复讨论.md) 每节 `&gt; ✅` 拍板行）
+Phase 7：底部面板完形（基建收官后——#31-#36 + #34.5/#35.5 + #36.5/#36.6 + #36.7-#36.10；PanelZone 剩余项 + 面板通用 API + 视图动作区十任务 + 复活 E5 dock 布局引擎前四任务）
+Phase 7.1：复活 E5 dock 布局引擎第二批（#37.5/#37.6/#37.6.5/#37.7/#37.7.1/#37.8——Phase 7 期间完成任务点，2026-08-21 从 Phase 8 段拆出归位，序号/勾选不变）
+Phase 7.2：i18n 归一化 + 图标栏修复 + 03-插件制造 全量更新（#37.9/#37.9.1/#37.9.2/#37.9.2.3/#37.9.2.4/#37.9.3.1-5——同上拆出归位）
+Phase 8：壳内悬浮面板（基建收官后——#37/#38/#39/#39.5/#40/#41；类型 B FloatingPanel 执行化 + 声明制 + CSS/i18n/交互收尾 + 回归）
+Phase 8.1：壳内悬浮面板实机修复 + 形态修正 + 命名空间系统改造（2026-08-21 立案——#41.5-#41.9；实机 bug 报告全量诊断：viewId &quot;settings&quot; 全局碰撞 = 内容全错根因 / position:fixed 缺 no-drag = 整窗误拖 / 用户实机 VS Code 模态浮层拍板居中大卡（宽≈85%·高≈80%·居中·可拖）→ 全部悬浮面板默认居中大卡；裸 id 碰撞 7 面盘点 → 拍板止血（#41.5 **方向翻转：改收发设置 id → receive-and-send，内置设置保持 settings**）+ 插件作用域命名空间系统改造（#41.8 设计[getView 调用方全表硬门槛] / #41.9 执行[审视拆 #41.9.1 注册层复合键 / #41.9.2 解析链+持久化迁移]）；两设置之分 = 基础铁律 → memory settings-plugin-replaceable-ui）
+Phase 8.2：方案 A——万物皆可插件的软件设置（2026-08-21 立案——#41.10-#41.15；用户重开记忆 factory-role-coexistence「E6 不碰」拍板提前——发布首日就要「软件设置页切第三方整套设置 UI」；前置依赖 #41.9 视图命名空间（多套设置并存视图 id 必撞）；FactorySlots 一对多 + 重复 factoryRole fail-loud / 壳能力 window.linkdesk.settings.* + 活动持久化 / 切换按钮常显（每套列全部入口含自身）/ **设置页角色分组动态切换渲染（2026-08-21 补齐——复用同名组优先、没有才新建，落 #41.14 ⑤）** / 内置设置纯插件化 = 自包含参考实现 + 造设置文档）**——2026-08-22 实机 bug 修复三任务收官：#41.16（reveal 链复合寻址——双套并存 Ctrl+,/齿轮 失效）+#41.17（demo 卡片分区大改 + .settings-demo 自命名空间根治 CSS 跨插件污染）+ #41.18（悬浮面板内原地换套——面板里点切换 = 复合替换面板内容，不再背后弹残留 tab）**
+Phase 9：可拖出面板（v1.3 槽位——#42-#46；类型 A 脱出窗口 + 漂移面板五任务）
+Phase 10：主题架构换血——外观主题化（2026-08-23 拆写收官——主题 = 完整外观配方 + 域贡献者 + 混搭 + 设置层 scale；**🔥 职责硬边界：做完 = 能正式生产 gallery + 设置页 html 里预示的任意一种主题包括所有细节，任何细节做不出 = 没做完**；设计 → [外观主题化/](外观主题化/)，拍板 11 条 + A-F 决策；阶段 0-8：前置债+规范 #50.13/#50.14 → 玻璃机制 #50.5-#50.12（归入）→ 数据层 #50.15-#50.18 → 设置层 #50.19-#50.21 → 新控件 #50.22/#50.23 → 命令面 #50.24 → 迁移 #50.25 → 混搭 #50.26 → 效果验收 #50.27）
+Phase 10.5：壳半业务外推 + 装配清单展望 + 主题插件端到端验证（2026-08-23 重定义——玻璃机制 #50.5-#50.12 已归入 Phase 10；**职责 = 制作一个真实主题插件并端到端验证「一个真正的主题插件可以做的界限 = Phase 10 完成」**，发现做不出的细节打回 Phase 10 补任务；基建收官后——与 Phase 6-9 无依赖可并行；#47-#50：串口 bit 外推 / 外观 factoryRole 摸底拍板 / 外观外推执行 / profile 装配清单设计）
+Phase 11：用户实机 7 细节打磨（2026-08-23 立案——#51-#55 五任务：标签栏拖拽竖线右移 / 设置·串口缩窄溢出 / 覆盖层聚焦蓝框 / 状态栏串口灯+计数四现象 / 菜单系统统一三面归一；方案 → [细节打磨/01-细节打磨方案.md](细节打磨/01-细节打磨方案.md)）
+</code></pre>
+<hr>
+<h2 id="现状速查">现状速查</h2>
+<table>
+<thead>
+<tr>
+<th style="text-align:left">文件</th>
+<th style="text-align:left">当前状态</th>
+<th style="text-align:left">E5.8 动作</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left"><code>package.json</code> check 链</td>
+<td style="text-align:left">tsc×2 + grid + pool-css + eslint <code>--max-warnings 0</code> + vitest</td>
+<td style="text-align:left">+ jscpd + knip（Phase 1）</td>
+</tr>
+<tr>
+<td style="text-align:left"><code>src/core/registry/RegistryBase.ts</code></td>
+<td style="text-align:left">markPlugin/unregisterAll 登记注销对称（E4 Emitter Pattern）</td>
+<td style="text-align:left">v2：register 返 disposer + 逆序回滚（Phase 2）</td>
+</tr>
+<tr>
+<td style="text-align:left"><code>src/core/registry/</code> 14 文件</td>
+<td style="text-align:left">register() 返 void，卸载靠 unregisterAll 手动对称</td>
+<td style="text-align:left">逐项返 disposer（Phase 2）</td>
+</tr>
+<tr>
+<td style="text-align:left"><code>src/pluginLoader/loader.ts</code> + <code>lifecycle.ts</code></td>
+<td style="text-align:left">glob 扫描序加载 + PluginLifecycle 事件</td>
+<td style="text-align:left">生命周期状态机（PENDING→ACTIVE→DISPOSED）+ requires 编排（Phase 2/3）</td>
+</tr>
+<tr>
+<td style="text-align:left"><code>preload-pool.ts</code> / <code>preload-shell.ts</code></td>
+<td style="text-align:left">window.linkdesk.* 双面 + ambient 类型 Record&lt;string, any&gt;（E5.7#97 已记）</td>
+<td style="text-align:left">生成契约 linkdesk.d.ts（Phase 4）</td>
+</tr>
+<tr>
+<td style="text-align:left"><code>src/core/api/linkdesk-api.ts</code></td>
+<td style="text-align:left">文档面（与 preload 实现面两份真相源）</td>
+<td style="text-align:left">对接生成契约，文档面收敛（Phase 4）</td>
+</tr>
+<tr>
+<td style="text-align:left">jscpd / knip / lefthook</td>
+<td style="text-align:left">不存在</td>
+<td style="text-align:left">接入（Phase 1）</td>
+</tr>
+<tr>
+<td style="text-align:left"><code>serial-handlers.ts</code> / <code>lsp-handlers.ts</code> / <code>file-handlers.ts</code></td>
+<td style="text-align:left">mainWindow.webContents.send + getAllPluginIds 手动遍历</td>
+<td style="text-align:left">改走 IpcBridge.broadcast + ipc-audit 入 check（Phase 1.5 #6.5）</td>
+</tr>
+<tr>
+<td style="text-align:left"><code>package-lock.json</code>（npm）</td>
+<td style="text-align:left">无 Node 版本带强制</td>
+<td style="text-align:left">engines + engine-strict（Phase 1 #4）</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h1 id="phase-0归档与基线">Phase 0：归档与基线</h1>
+<blockquote>
+<p>不动代码。E5.7 收官封存 + E5.8 边界建立。</p>
+</blockquote>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#0a</strong> 新建 <code>e5.8</code> 分支（从 e5.7 切出）——所有 E5.8 改动在新分支（执行注 2026-08-16：已建，工作树干净，git 用户 Encaron）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#0b</strong> E5.7 执行清单顶部加封存声明 → 指向本清单（执行注 2026-08-16：E5.7 清单标题下加&quot;🔴 2026-08-16 封存——E5.8 已开战&quot;声明行，不追加任务、不动已有任务）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#0c</strong> 🔴 基线实跑——<code>npm run check</code> 全绿并记为 E5.8 基线（执行注 2026-08-18：tsc 0×2 / grid ✓ / pool-css ✓ / eslint 0+0（<code>--max-warnings 0</code>）/ vitest 432/432（33 文件）；E5.7#93 收官 433/433 → #47 删一测试变 432，以本次为准；#23 收口对照刷新）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#0d</strong> E5.8 文档骨架——执行清单（本文件）+ 设计总览 + 借鉴档案（执行注 2026-08-16：三文档落地，见 commit）</li>
+</ul>
+<hr>
+<h1 id="phase-05用户补充修复">Phase 0.5：用户补充修复</h1>
+<blockquote>
+<p>用户后续补充的任务点落此区——小数后缀编号（编号铁律），线性插入在当前进度之后，不清洗重排，与四大支柱正交。<strong>执行顺序（2026-08-17 总体审视拍板）：串行于 Phase 1 之前</strong>——knip/jscpd 配置路径与归一化树耦合（目录先归一，避免配置返工）；#0d.8 在 Phase 1.5 之前（ipc 移动先于 broadcast 改造）。<strong>审视收口 2026-08-17（用户拍板：同意保留）。</strong></p>
+</blockquote>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#0d.5</strong> 设置页&quot;以 JSON 打开&quot;应打开 settings.json 而非弹只读弹窗（用户报告 2026-08-16）
+<ul>
+<li>✅ 已回勾（2026-08-18，commit <code>257ec9e1</code>）：对标 VS Code：<code>getFilePath</code>→<code>fileAssociation.getPluginFor(&quot;json&quot;)</code>→<code>tabs.create</code> pinned 同 file-tree 链（不写死 ID），弹窗整删+生效闭环。<strong>回归 <code>0975e61c</code></strong>（浅比较恒判变→deepEqual 根治死循环）+ <code>144e5877</code>（0 字节自愈）。vitest 452</li>
+</ul>
+</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#0d.6</strong> 根目录杂物清理（用户 2026-08-16&quot;文件目录规范吗&quot;→ 审计立案，逐项鉴定后用户拍板）
+<ul>
+<li>✅ 已回勾（2026-08-16，commit <code>4fe7bc16</code>）：鉴定——SOUL/USER=Codex persona（git rm --cached+.gitignore）、Serial_C_Language/=STM32 配套→保留、memory/ 过时快照→删、散落日志/overlay 残留/误装 node_modules→全清。仓库根只剩 linkdesk/+SOUL/USER（不入库）+Serial_C_Language/</li>
+</ul>
+</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#0d.7</strong> src 内部目录归一化（三 AI 会诊 + 2026-08-18/19 两次审视扩展——用户「平铺是故意的吗」+「禁口头延期」拍板，15 子步全收官父任务回勾）
+<ul>
+<li>✅ 已回勾（2026-08-19）：目标树 → <a href="%E7%9B%AE%E5%BD%95%E5%BD%92%E4%B8%80%E5%8C%96/01-%E7%9B%AE%E6%A0%87%E7%9B%AE%E5%BD%95%E6%A0%91.html"><code>目录归一化/01-目标目录树.md</code></a>——8 执行步 git mv（services 6 夹/shared→commands+protocol/zones 8 域/components 13+3+2 域/hooks+utils 归位/规范 9 项收口/views 4 域+死文件/测试 21 同夹），15 子步各一 commit（<code>248a7973</code>→<code>a9d6a0e9</code>，补刀 <code>471a8307</code>），门禁全绿</li>
+<li>子步（每步独立 commit）：
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>#0d.7-1</strong> core/services → 6 夹</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>#0d.7-2</strong> pool/shared → commands/ + protocol/ 迁出</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>#0d.7-3</strong> pool/zones → 8 域建夹</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>#0d.7-4</strong> components → shared 13 域 + 根三控件 3 域 + views 2 域建夹</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>#0d.7-5</strong> hooks 兑现——pool/hooks/ 新建 + splitTree/fallbackPluginId/tabIdentity → core/utils/</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>#0d.7-6</strong> 壳目录规范表格更新收口（9 项，档案 §8.6）+ 本条目勾选</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>#0d.7-7</strong> pool/views → 4 域建夹 + 2 死文件整删 + CSS 拆耦</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>#0d.7-8</strong> 测试归位——21 测试随单元同夹（判据 5），中央 <strong>tests</strong> 清零</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>#0d.7-9</strong> core/registry 归类修正——QuickPickService/StatusBarService → core/services/ui/</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>#0d.7-10</strong> core/react 按功能细分——events/ 子夹 + hooks 留根 + 2 死文件整删</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>#0d.7-11</strong> pluginLoader 归类修正——iconUtils/semverUtils 纯函数 → core/utils/</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>#0d.7-12</strong> core/types 池 UI DTO 建 pool/ 子夹——4 pool* 类型收拢，fileEntry 留根</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>#0d.7-13</strong> core/utils 细分——path/ + plugin/ 子夹，根留 4 单文件域</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>#0d.7-14</strong> core/registry 细分——commands/ + appearance/ + languages/ 子夹</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>#0d.7-15</strong> core/commands 细分——shell/ + input-bindings/ + palette/ + infra/ 子夹</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#0d.8</strong> electron/ 主进程目录归一化（2026-08-17 全树复查立案）
+<ul>
+<li>✅ 已回勾（2026-08-19）：目标树 → <a href="%E7%9B%AE%E5%BD%95%E5%BD%92%E4%B8%80%E5%8C%96/01-%E7%9B%AE%E6%A0%87%E7%9B%AE%E5%BD%95%E6%A0%91.html"><code>目录归一化/01-目标目录树.md</code></a> §10——根留 4 + ipc/ 4 设施 + handlers/ 10 + windows/ 3 + plugins/ 2；5 子步 commit <code>f4bb74f0</code>→<code>cce68253</code>（回归 <code>c7c4d8f2</code> __dirname 少一层 + <code>cce68253</code> 补 vitest include）；冒烟冷启动 ✅ + 崩溃恢复/串口实机抽查 ✅。门禁全绿</li>
+<li>子步（每步独立 commit）：
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>#0d.8-1</strong> ipc 设施归组——event-system/ipc-bridge/ipc-relay → ipc/</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>#0d.8-2</strong> windows 归组——window-manager/crash-recovery/keyboard-router → windows/</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>#0d.8-3</strong> plugins 归组——plugin-manifest-loader/protocol → plugins/</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>#0d.8-4</strong> handlers 归组——10 handler → ipc/handlers/</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>#0d.8-5</strong> serialHandlers.test 归位 ipc/handlers/ + 中央 <strong>tests</strong> 清零</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#0d.9</strong> 编辑器外部文件变更自动重载（对标 VS Code &quot;file changed on disk&quot;——用户 2026-08-18 实测观察立案）
+<ul>
+<li>✅ 已回勾（2026-08-18，commit <code>b8ca005d</code>，用户回归确认&quot;好了&quot;）：脏 buffer 拍板弹 <code>dialog.confirm</code>（用户&quot;同意&quot;）；<code>reloadFromDisk()</code> 三态（无差异 no-op 滤自存 / 干净自动重载 / 脏弹框）+ EditorView setValue + EditorTab 父目录 watch 200ms 防抖 + markClean 共用。纯插件零壳改动</li>
+</ul>
+</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#0d.10</strong> 文件内模块化——超临界大文件拆分（2026-08-19 全树审计立案，用户「尽早解决」拍板，对标 #50.6 先例）
+<ul>
+<li>✅ 已回勾（2026-08-19，11 子步收官，「拆前先呈现域划分」+独立 commit+验收）：全 ≤500 行；收官 commit <code>73128d4c</code>/<code>f151023d</code>/<code>c292ec62</code>/<code>0a0a2034</code>/<code>4dcf105b</code>/<code>8dab7b19</code>/<code>af64c5e2</code>/<code>5b4475ed</code>/<code>a851da60</code>/<code>95bb163f</code>/<code>80753358</code>；feature-folder 10 变体登规范 §4，门禁全绿</li>
+<li>子步（按行数降序）：
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>#0d.10-1</strong> <code>src/pluginLoader/loader.ts</code>（1767→281）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>#0d.10-2</strong> <code>src/hooks/useTabManager.ts</code>（1169→448）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>#0d.10-3</strong> <code>src/App.tsx</code>（1086→132）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>#0d.10-4</strong> <code>electron/preload-pool.ts</code>（1014→178）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>#0d.10-5</strong> <code>src/hooks/usePoolSync.ts</code>（885→243）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>#0d.10-6</strong> <code>src/pool/zones/main/MainZone.tsx</code>（792→255）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>#0d.10-7</strong> <code>src/components/views/settings/SettingsView.tsx</code>（681→221）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>#0d.10-8</strong> <code>src/core/registry/commands/KeybindingRegistry.ts</code>（662→45）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>#0d.10-9</strong> <code>src/core/api/linkdesk-api.ts</code>（598→87）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>#0d.10-10</strong> <code>src/core/services/plugins/IpcBridgeHandler.ts</code>（591→234）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>#0d.10-11</strong> <code>src/core/services/layout/ViewContainerService.ts</code>（541→413）</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#0d.11</strong> core/pluginPaths.ts 归位（2026-08-19 全树审计立案——双端共用常量按规范 §7.5 应进 src/core/utils/）
+<ul>
+<li>✅ 已回勾（2026-08-19，2 commit 依序 <code>6eca6585</code>+本 commit）：git mv → src/core/utils/plugin/pluginPaths.ts + 消费方改写 4 处（执行中实锤 vite.config.ts 漏列，原清单 3 处）；core/ 根只剩 index.ts；旧路径 grep 清零；零逻辑变更</li>
+</ul>
+</li>
+</ul>
+<hr>
+<h1 id="phase-1工程纪律机械哨兵先行">Phase 1：工程纪律——机械哨兵先行</h1>
+<blockquote>
+<p>目标：机械哨兵先行——重复/死代码/供应链风险不靠人眼。零架构风险，保护 Phase 2/3 重写期。
+✅ 完成标准：<code>npm run check</code> 全绿且含新门禁；存量问题清零或显式豁免（豁免必须带理由注释，不靠基线放过）。
+✅ <strong>审视收口 2026-08-17（用户拍板：同意）</strong>——4 处已落笔修正保留 + 4 处新增立案（jscpd ignore 必备 / knip entry 预演+fix 死路径 / 拆除 simple-git-hooks / electron_mirror 保留+注释）。</p>
+</blockquote>
+<ul class="contains-task-list">
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#1</strong> jscpd 重复检测入 check</p>
+<ul>
+<li>✅ 已回勾（2026-08-19，5 commit <code>95190169</code>→<code>9684b74b</code>）：.jscpd.json（minTokens 60/minLines 6/mode mild + <code>jscpd:ignore</code> 注释块豁免）入 check 链；存量 101 clones 处置——修复 9 克隆 + 豁免 20 结构性克隆带理由，0 clones 全绿。处置账本 → <a href="%E5%B7%A5%E7%A8%8B%E7%BA%AA%E5%BE%8B/jscpd-%E5%AD%98%E9%87%8F%E5%A4%84%E7%BD%AE.html">工程纪律/jscpd-存量处置.md</a></li>
+</ul>
+</li>
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#2</strong> knip 死代码检测入 check</p>
+<ul>
+<li>✅ 已回勾（2026-08-19，3 commit <code>bfeb333c</code>→<code>13a9e7e4</code>）：knip 双工程 entry（src+electron）+ plugins/ 排除；存量 95 exports/8 files/5 deps/1 binary 清零（git rm 3 壳残留 + 删 13 死导出 + 去 export 18 + 删 4 死依赖），豁免 32 聚合器/API 面带理由；shared/ 死路径清除。处置账本 → <a href="%E5%B7%A5%E7%A8%8B%E7%BA%AA%E5%BE%8B/knip-%E5%AD%98%E9%87%8F%E5%A4%84%E7%BD%AE.html">工程纪律/knip-存量处置.md</a></li>
+</ul>
+</li>
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#3</strong> lefthook 自动装 + 快检分层</p>
+<ul>
+<li>✅ 已回勾（2026-08-19，2 commit <code>b075ad6b</code>→<code>d20d69fa</code>）：拆除死配置 simple-git-hooks → lefthook 2.1.10；postinstall 自动装（<a href="../../../linkdesk/scripts/install-lefthook.mjs">scripts/install-lefthook.mjs</a>，CI 跳过/幂等 + monorepo LEFTHOOK_CONFIG 注入）；pre-commit staged lint+whitespace / pre-push typecheck 实测触发。配置说明 → <a href="%E5%B7%A5%E7%A8%8B%E7%BA%AA%E5%BE%8B/README.html">工程纪律/README.md</a></li>
+</ul>
+</li>
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#4</strong> 供应链纪律 npm 适配版</p>
+<ul>
+<li>✅ 已回勾（2026-08-19，commit <code>523b9f9f</code>）：engines node&gt;=24 + .npmrc engine-strict=true 实测错版本 EBADENGINE 拒绝；electron_mirror 保留+注释（@electron/get v5 确认仍读，npm 警告无害）；原生模块清单 → <a href="%E5%B7%A5%E7%A8%8B%E7%BA%AA%E5%BE%8B/%E5%8E%9F%E7%94%9F%E6%A8%A1%E5%9D%97%E6%B8%85%E5%8D%95.html">工程纪律/原生模块清单.md</a>（bindings-cpp 预编译零编译 + electron 懒下载，均零编译期任意代码）</li>
+</ul>
+</li>
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#5</strong> pushLayout 两条规则入协议注释</p>
+<ul>
+<li>✅ 已回勾（2026-08-19，commit <code>0eb74e6e</code>）：whole-value checkpoint（禁裸 delta）+ delta 稳定 id 升序重放 两规则补注三落点（<a href="../../../src/core/types/pool/poolLayout.ts">src/core/types/pool/poolLayout.ts</a> 头注释 + <a href="../../../electron/preload-pool/layout.ts">electron/preload-pool/layout.ts</a> 接收侧 + <a href="../../E5.7_%E6%9E%81%E7%AE%80Pool/01-%E6%9E%81%E7%AE%80Pool%E8%AE%BE%E8%AE%A1.html">E5.7 设计 §7.2</a>）；纯注释零逻辑变更</li>
+</ul>
+</li>
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#6</strong> 决策记录义务（Agent Notes 缩水版）</p>
+<ul>
+<li>✅ 已回勾（2026-08-19，commit <code>4a9d5568</code>）：docs/decisions/ 目录 + 规则成文（<a href="../../../decisions/README.html">README</a>——非平凡改动必落决策记录，路径即状态 proposed/implemented/rejected + Superseded by 归档）+ 示例决策 <a href="../../../decisions/implemented/lefthook-monorepo.html">lefthook-monorepo.md</a> + 义务登记入 <a href="../../../%E5%BC%80%E5%8F%91%E7%AE%A1%E7%90%86/%E5%B7%A5%E7%A8%8B%E7%AE%A1%E7%90%86%E4%B8%8EGit%E7%AD%96%E7%95%A5.html">工程管理与Git策略.md</a> §commit 纪律</li>
+</ul>
+</li>
+</ul>
+<hr>
+<h1 id="phase-15ipc-广播归一化e614-搬入">Phase 1.5：IPC 广播归一化（E6#14 搬入）</h1>
+<blockquote>
+<p>用户拍板 2026-08-16 从 E6 搬入。消灭&quot;新推送事件漏发&quot;隐患（每新增一个推送事件复制 send + 手动遍历——忘写 = 插件 WebView 静默收不到数据）= 归一化基建。ipc-audit 与 Phase 1 门禁同款机械哨兵。
+✅ 完成标准：所有<strong>数据推流</strong>走 IpcBridge.broadcast（壳↔池 UI 指令直发白名单除外）；ipc-audit 入 check 且全绿。
+✅ <strong>审视收口 2026-08-17</strong>——5 处修正立案（#6.5 叙事更新为双发模式 / 池侧监听迁移联动+串口冒烟 / audit 按通道分类；#6.6 基线实跑 294 hex / 清零后机械哨兵）。</p>
+</blockquote>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#6.5</strong> IPC 广播归一化——serial/lsp/file 三 handler 改走 IpcBridge.broadcast + ipc-audit 入 check
+<ul>
+<li>✅ 已回勾（2026-08-19，commit <code>628c3f03</code>/<code>325b9086</code> + ipc-audit）：serial/lsp/file 手动双发 → <code>IpcBridge.broadcast</code>；池/壳侧 <code>listenDirect</code>→<code>events.on</code>（#11.5 防回归核心）；ipc-audit 入 check 按通道分类（推流直发 warn、白名单豁免）。<strong>回归×2 修复</strong>（<code>cbe6f75d</code>/<code>45377fa3</code>，根因见 commit body）</li>
+</ul>
+</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#6.6</strong> 归一化全景审计——5 唯一方式 grep 实证清零（2026-08-17 总体审视立案）
+<ul>
+<li>✅ 已回勾（2026-08-19）：基线修正 no-hardcoded-chinese 原仅 plugins/** → 扩 src/** 修复 11 处 + 豁免 3 类；hex 4 CSS 全修 + TS 16 处豁免；机械哨兵 ×2（no-hardcoded-hex error + no-hardcoded-chinese warn→error）。账本 → <a href="%E5%BD%92%E4%B8%80%E5%8C%96%E5%85%A8%E6%99%AF%E5%AE%A1%E8%AE%A1/%E5%AE%A1%E8%AE%A1%E8%B4%A6%E6%9C%AC.html"><code>归一化全景审计/审计账本.md</code></a>。<strong>回归</strong> <code>04897a2f</code>（i18n key 冒号陷阱）。vitest 452</li>
+</ul>
+</li>
+</ul>
+<hr>
+<h1 id="phase-2可逆注册升级">Phase 2：可逆注册升级</h1>
+<blockquote>
+<p>目标：一切注册返回 disposer，卸载逆序回滚——插件重装契约（&quot;可卸载 ⇒ 可重装&quot;）的机械保障。最大推翻项。
+📖 细节设计 → Phase 开工时写 <a href="%E5%8F%AF%E9%80%86%E6%B3%A8%E5%86%8C/02-%E5%8F%AF%E9%80%86%E6%B3%A8%E5%86%8C%E8%AE%BE%E8%AE%A1.html"><code>可逆注册/02-可逆注册设计.md</code></a>（必备章节见 <a href="%E5%8F%AF%E9%80%86%E6%B3%A8%E5%86%8C/README.html"><code>可逆注册/README.md</code></a>）。
+✅ 完成标准：全仓注册面（#7 矩阵口径，非仅 registry/ 目录内 13）register() 全返 disposer；loader 状态机可诊断；卸载/重装实测拆净。
+✅ <strong>审视收口 2026-08-17</strong>——6 处修正立案（#7 注册面名单补全 + 手动清理点全清单 / #8 主进程侧机制定案 / #9 回滚中断容错 / #10 口径同步 / #11 状态模型三方映射 + 诊断面挂载点）。</p>
+</blockquote>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#7</strong> 摸底矩阵——全仓注册点清单
+<ul>
+<li>✅ 已回勾（2026-08-19）：矩阵落盘 grep 实证——核心发现：core/registry/ 11 模块仅 4 采用 RegistryBase（其余 7 靠手动 unregister*）；已返 disposer 7 处作样板；ProtocolRegistry 唯一实例在主进程。产出 <a href="%E5%8F%AF%E9%80%86%E6%B3%A8%E5%86%8C/%E6%B3%A8%E5%86%8C%E7%82%B9%E7%9F%A9%E9%98%B5.html"><code>可逆注册/注册点矩阵.md</code></a>（Phase 2 执行地图）</li>
+</ul>
+</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#8</strong> 设计文档 <a href="%E5%8F%AF%E9%80%86%E6%B3%A8%E5%86%8C/02-%E5%8F%AF%E9%80%86%E6%B3%A8%E5%86%8C%E8%AE%BE%E8%AE%A1.html"><code>可逆注册/02-可逆注册设计.md</code></a>（必备章节见目录 README）
+<ul>
+<li>✅ 已回勾（2026-08-19）：设计落盘，3 拍板点用户全通过（一步到位 / 主进程保持全重扫 / ContextKeyService 返 disposer 不 track）——抽模块级 <code>registrationTracker.ts</code>（类/函数注册表共用 LIFO 逆序回滚 + onWillUninstall 自动触发）；旧 unregister* 唯一生产消费方 = lifecycle 2b，一步到位删零外部影响。决策记录 <a href="../../decisions/implemented/reversible-registration-decision.html"><code>可逆注册决策</code></a></li>
+</ul>
+</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#9</strong> RegistryBase v2
+<ul>
+<li>✅ 已回勾（2026-08-19）：抽 <code>registrationTracker.ts</code>——类注册表与 7 模块函数注册表共用 LIFO 逆序回滚 + onWillUninstall 自动触发；done 守卫幂等 + 单条抛错不中断；markPlugin/unregisterAll 归并、hasPlugin 零消费删。连带 Emitter 抽 <code>lifecycle-events.ts</code> 破循环。单测 10 条</li>
+</ul>
+</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#10</strong> 13 Registry（+RegistryBase 基建）register() 逐项返 disposer
+<ul>
+<li>✅ 已回勾（2026-08-19）：四批提交（<code>fe98f32c</code>/<code>284434bb</code>/<code>6f0dbaf8</code>/#10-4）——四类模式：① 模块函数注册表 → trackRegistration；② RegistryBase 子类 → this.track；③ 同名覆盖 → no-op + 引用级守卫；④ 非插件作用域 → 返 disposer 不 track。消费方零改动。36 条钉测&quot;注册→dispose→查询为空&quot;。vitest 512</li>
+</ul>
+</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#11</strong> loader 生命周期状态机
+<ul>
+<li>✅ 已回勾（2026-08-19，commit <code>a34dbf1c</code>）：新建 <code>loadState.ts</code>——状态图 PENDING→LOADING→ACTIVE→UNLOADING→DISPOSED + LOADING→FAILED（记 failureReason）；合法迁移图（非法 warn）；<code>unloadPlugin</code> = 唯一卸载路径——<strong>L6b 顺序机械保障</strong>；三方状态边界成文；诊断面定案日志面。测试 19。vitest 531</li>
+</ul>
+</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#12</strong> 卸载链路机械保障 + 测试
+<ul>
+<li>✅ 已回勾（2026-08-19）：一次性删 16 个旧 unregister*（9 设计清单 + 超删 7 grep 实锤死代码），保留 4 例外。<strong>关键顺序不变量</strong>：tracker 回滚订阅先于 lifecycle 消费端 + PLUGIN_REMOVED 移出成独立 notifyPluginRemoved()（revert 需 viewRegistry 尚在）。重装契约全链钉死。门禁全绿（vitest 512）</li>
+</ul>
+</li>
+</ul>
+<hr>
+<h1 id="phase-3依赖编排">Phase 3：依赖编排</h1>
+<blockquote>
+<p>目标：plugin.json <code>requires</code> 声明依赖——顺序框架算，不靠约定。第三方插件互相依赖不惊动壳作者。前置：Phase 2 状态机。
+✅ 完成标准：requires 声明可用；循环依赖（含自环/传递环）fail-loud；依赖消失连带卸载、依赖出现（新装/重装/启用）自动重载；PENDING 用户可见。
+✅ <strong>审视收口 2026-08-17</strong>——6 处修正立案（#13 语义边界 / #14 图级环检测 / #15 触发词补全+逆拓扑序+显式禁用优先 / 新增 #15.5 PENDING 用户可见面）。</p>
+</blockquote>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#13</strong> <code>requires</code> 字段全链路声明
+<ul>
+<li>✅ 已回勾（2026-08-19，commit <code>6aa45b6f</code>）：<code>requires</code> 重塑 <code>string[]</code>（旧 <code>{plugin,version}[]</code> 全仓零实例是死字段）；<code>extensionDependencies</code> 标 @deprecated 归并；docs/06 加详解——四语义（拓扑序/PENDING/连带卸载/环检测）+ 命名边界表（requires 插件级 vs dependsOn 配置项级）。门禁全绿</li>
+</ul>
+</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#14</strong> loader 依赖解析 + PENDING 挂起
+<ul>
+<li>✅ 已回勾（2026-08-19，commit <code>2f605905</code>/<code>4c69d3ab</code>）：dependencies.ts 纯函数层 + runtime 集成——缺依赖 parkPending 挂起；sweep 挂 loadPlugin 完成点（install/enable/reinstall 全自动覆盖，扫描序不再影响激活）；环检测图级 DFS（自环即败、传递环 fail-loud 含路径）。测试 +26。门禁全绿</li>
+</ul>
+</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#15</strong> 依赖消失连带卸载 + 自动重载
+<ul>
+<li>✅ 已回勾（2026-08-19，commit <code>7091eb0e</code>）：连带钩子挂 unloadPlugin（disable/uninstall/watcher 三途径同收敛）——先连带卸载消费方（逆拓扑序）再退自身；orphanPlugin 落 PENDING 不发 onDidUninstall；依赖出现三触发零新增（全走 sweep）；用户显式禁用优先；加载期依赖被卸 → 连带降级挂起。测试 +10。门禁全绿（vitest 567）</li>
+</ul>
+</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#15.5</strong> PENDING 用户可见面（2026-08-17 审视立案——UI 显示面颗粒度独立）
+<ul>
+<li>✅ 已回勾（2026-08-19，commit <code>9f229e9f</code>/<code>a37af029</code>）：壳侧 IPC list 数据源换 <code>getListPluginManifests</code>（active + 挂起合并带 pendingReason）+ 连带 PENDING 聚合 toast（一次连带一次通知含深层全名单）；池侧「等待依赖」琥珀徽标 + 详情页提示条（--warning token）。测试 +9。门禁全绿（vitest 576）</li>
+</ul>
+</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#16</strong> 适配 + 测试
+<ul>
+<li>✅ 已回勾（2026-08-19，commit <code>ed5382b7</code>）：全仓 plugin.json 递归扫描零 <code>requires</code> → 零改动兼容实证（无依赖行为不变）；五态盘点测试（无依赖/有依赖钉序/缺依赖永挂起/循环 fail-loud/重载全景闭环）。测试 +2。门禁全绿（vitest 578）</li>
+</ul>
+</li>
+</ul>
+<hr>
+<h1 id="phase-4契约生成linkdeskdts">Phase 4：契约生成——linkdesk.d.ts</h1>
+<blockquote>
+<p>目标：window.linkdesk.* 从手写契约 + 纪律对齐收敛为单一契约——漂移编译期死，第三方拿 d.ts 获编译期安全。前置：Phase 2 后即可。📖 设计 → <a href="%E5%A5%91%E7%BA%A6%E7%94%9F%E6%88%90/03-%E5%A5%91%E7%BA%A6%E7%94%9F%E6%88%90%E8%AE%BE%E8%AE%A1.html"><code>契约生成/03-契约生成设计.md</code></a>（必备章节见 <a href="%E5%A5%91%E7%BA%A6%E7%94%9F%E6%88%90/README.html"><code>契约生成/README.md</code></a>）。完成标准：d.ts 产出 + 双工程接入 + contracts-ready 门禁 + 插件违规 import 清零 + mock 纳入契约。
+✅ <strong>审视收口 2026-08-17</strong>——4 处修正立案（#17 叙事更新 + 第四面 mock + 插件违规 import 登记 / #18 选型补&quot;契约文件为源&quot;路线 + linkdesk-api.ts 去留 + 消费形态 / #20 插件侧迁移）。
+✅ <strong>审视收口 2026-08-20</strong>（6 任务 #17-#22 全过审）——2 处修正：① 矩阵漂移标记随 #20-b 修复改已修复态；② N1 契约模型注释过时（实测池注入 5/6 面，唯一真壳独有 = bridge）→ 用户拍板：shell.ts 双端面去 <code>?</code>（必选）、bridge/hotExit 保留 <code>?</code> + 重生成 + surfaces NonNullable 清理。satisfies 实证通过。</p>
+</blockquote>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#17</strong> 摸底——linkdesk.* 命名空间全量清单
+<ul>
+<li>✅ 已回勾（2026-08-20，commit <code>23834432</code>）：命名空间真实数 = 契约 40 / pool 39 / shell 22 / mock 12 / ambient 1；漂移 3 处实证（D1 env.get / D2 clipboard.readText / D3 dialog.openFile）；插件违规类型 import 实测 10 文件。产出 <a href="%E5%A5%91%E7%BA%A6%E7%94%9F%E6%88%90/%E5%91%BD%E5%90%8D%E7%A9%BA%E9%97%B4%E7%9F%A9%E9%98%B5.html"><code>契约生成/命名空间矩阵.md</code></a></li>
+</ul>
+</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#18</strong> 设计文档 <a href="%E5%A5%91%E7%BA%A6%E7%94%9F%E6%88%90/03-%E5%A5%91%E7%BA%A6%E7%94%9F%E6%88%90%E8%AE%BE%E8%AE%A1.html"><code>契约生成/03-契约生成设计.md</code></a>（必备章节见目录 README）
+<ul>
+<li>✅ 已回勾（2026-08-20，commit <code>60b96359</code>）：路线 C 拍板（契约类型文件为源——linkdesk-api.ts 留唯一真相源 + 双端 satisfies 纯 tsc 门禁 + 薄生成器打包 d.ts）；漂移处置拍板全补实现零降级；消费形态 = 仓库产物 + docs 下载 + 模板内置 + 补充 #22.6 npm 包；ESLint 类型 import 也禁 + 测试豁免取消。纯文档零代码</li>
+</ul>
+</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#19</strong> 生成器实现
+<ul>
+<li>✅ 已回勾（2026-08-20，commit <code>ce54db1b</code>）：薄生成器 <code>scripts/generate-contract.mjs</code>（TS compiler API 类型图打包，零新依赖）——85 声明自包含单文件 d.ts（零 @src 引用）；JSDoc 按 proximity 挂回 + <code>--check</code> 字节比对（手改 d.ts 也拦）。实测改动源 → 生成物 diff 可见。vitest 578</li>
+</ul>
+</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#20</strong> 双工程接入
+<ul>
+<li>✅ 已回勾（2026-08-20，commit <code>1b49a602</code>/<code>46be33e4</code>/<code>a20b0eba</code>）：surfaces 双面 Pick + satisfies 门禁 + 缺面全补 + 漂移修复 10 处；消费路径通车 + 10 文件 import 全量迁移零 @src/core；<strong>逮出真实缺陷×2</strong>——同名类型声明合并成幽灵复合型 → 源类型改名 + 唯一性硬校验。漂移拦截×2 实测</li>
+</ul>
+</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#21</strong> contracts-ready 门禁
+<ul>
+<li>✅ 已回勾（2026-08-20，commit <code>4856d33d</code>）：<code>npm run check</code> 首段 typecheck 后插 <code>contracts:check</code>（字节比对）。实测删生成物 → 门禁红 exit 1；恢复 → 绿</li>
+</ul>
+</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#22</strong> API 文档对接
+<ul>
+<li>✅ 已回勾（2026-08-20，commit <code>8f0cd9e4</code>）：<a href="http://xn--01-API-k18i502eltvpk5d.html">01-插件API契约.md</a> 指针化（手写能力矩阵/API 定义删除 → 指针唯一真相源 linkdesk.d.ts + 保留 8 类运行时语义约定 + 旧版漂移差异表）；07-插件间通信 号改指新结构；命名空间矩阵 §5-7 同步。grep 类型 import = 0 实测。纯文档零代码</li>
+</ul>
+</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#22.5</strong> 运行期契约校验件（2026-08-17 总体审视立案——编译期契约挡不住版本错配）
+<ul>
+<li>✅ 已回勾（2026-08-20，commit <code>f655671c</code>）：常驻 + log-only（用户拍板——guard 永不抛异常，失配 console.error 进诊断面，生产不崩）；第二产物 runtime-shapes.ts（39 校验函数随 d.ts 双产物 <code>--check</code> 门禁）+ 发射器两 bug 修 + wire-guard 7 挂载单入口。24 单测全绿（vitest 602）</li>
+</ul>
+</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#22.6</strong> 独立 npm 包 @linkdesk/contracts 发布（2026-08-20 #18 消费形态拍板补充立案——必须有真实发布链）
+<ul>
+<li>✅ 已回勾（2026-08-20，commit <code>aa7ee166</code>）：contracts/ 即包根（types 入口 = d.ts、零构建、prepack 生成最新契约）；版本与壳联动 + 漂移校验；<code>contracts-example/</code> 示例 tsc 零错误 + tarball 同验（<strong>教训：示例放 contracts/ 内 file:.. → 递归环 → 挪仓库根兄弟目录</strong>）；发布立案 E6#2.5；壳内走仓库映射，npm 包服务第三方</li>
+</ul>
+</li>
+</ul>
+<hr>
+<h1 id="phase-5全量回归">Phase 5：全量回归</h1>
+<blockquote>
+<p>目标：E5.8 全链验证——门禁刷新 + 场景回归 + 收官。
+✅ <strong>审视收口 2026-08-17</strong>——3 处修正立案（#23 门禁范围补全 / #24 场景补数据推流 + PENDING 可见 / 矩阵场景 2+7 三行同步）。</p>
+</blockquote>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#23</strong> 门禁收口
+<ul>
+<li>✅ 已回勾（2026-08-20，commit <code>a1fad4e8</code>）：check 实测全绿 exit 0，基线刷新取代 #0c 432/432——tsc 0×2 / contracts 3 ✓ / grid ✓ / pool-css ✓ / ipc-audit 46 文件零裸 webContents.send / ESLint 0+0 / jscpd 0 / knip 0 / vitest 602/602（#0c 432→602）</li>
+</ul>
+</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#24</strong> 场景回归——矩阵 → <a href="%E5%9B%9E%E5%BD%92%E9%AA%8C%E8%AF%81/%E5%85%A8%E9%87%8F%E5%9B%9E%E5%BD%92%E7%9F%A9%E9%98%B5.html"><code>回归验证/全量回归矩阵.md</code></a>（对标 E5.7 Phase 16 场景）
+<ul>
+<li>✅ 已回勾（2026-08-20 实机验证通过，commit <code>e1459002</code>/<code>282ec790</code>）：全场景闭环（启动 / 装卸+重装 / 命令+快捷键 / 热更新 / 崩溃恢复 / 分屏拖拽 / 数据推流+PENDING 可见）。<strong>回归发现① .py 跳转静默消失</strong>——#2b knip 误删 pyright → 装回+豁免+文档修正；<strong>② 循环依赖 toast 刷屏</strong>——watcher 跳过 failed/挂起。矩阵 3 处预期纠正 + 补测 5 项全过</li>
+</ul>
+</li>
+</ul>
+<hr>
+<h1 id="phase-55编辑器健康度收尾--收官24-回归反思">Phase 5.5：编辑器健康度收尾 + 收官（#24 回归反思）</h1>
+<blockquote>
+<p>2026-08-20 用户拍板立项。<strong>#24 场景回归实机发现 pyright 回归 → 用户反思「编辑器反复修、同类 bug 重复犯」→ 五根因复盘 → 4 条收敛动作立案（#24.6-#24.9），定位 = E6#15/#16 pre-bundle 搬迁安全网（每条带 🔗E6 联动）——先收网再搬。</strong> 对标 E5.7 收尾补丁先例 + Phase 0.5/1.5 小数阶段先例（2026-08-17 审视，符合 10 准则自主立案）。</p>
+</blockquote>
+<hr>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#24.6</strong> 失败必出声——LSP/编辑器链路错误显性化（#24 回归反思 1/4）
+<ul>
+<li>✅ 已回勾（2026-08-20，commit <code>7cb60156</code>）：静默链三环全堵——主进程 spawn 前哨兵 <code>checkLspDependency</code>（纯函数直测）+ <code>client.start()</code> 15s 超时护栏 + <code>goToDefinitionAt</code> 吞错改 console.error + 壳侧 toast。vitest 612（+9 哨兵单测）</li>
+</ul>
+</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#24.7</strong> 运行时依赖哨兵——spawn 型二进制物理存在门禁（#24 回归反思 2/4）
+<ul>
+<li>✅ 已回勾（2026-08-20，commit <code>1d51a63e</code>）：<code>scripts/check-lsp-deps.mjs</code> 挂 <code>npm run check</code>，扫描 plugin.json 真相源 + electron 源码 spawn 引用，任一缺失 exit 1 红门禁；基准可配置 <code>--base</code>/<code>LSP_DEP_BASE</code>（E6 换基准不换机制）。实测删 pyright 红/恢复绿</li>
+</ul>
+</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#24.8</strong> Monaco 初始化护栏统一（#24 回归反思 3/4）
+<ul>
+<li>✅ 已回勾（2026-08-20，commit <code>a9f68c23</code>）：<code>monaco-bootstrap.ts</code> 取代 <code>monaco-init.ts</code>——收敛两入口 <code>bootstrapMonaco</code>（幂等双守卫）+ <code>getMonaco()</code>（唯一取 monaco 通道，未 resolve 显式抛错）；4 条竞态教训全落护栏 + 顺手修 DiffEditor 静态 import latent 竞态。vitest 612</li>
+</ul>
+</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#24.9</strong> LSP 关键交互集成冒烟（#24 回归反思 4/4）
+<ul>
+<li>✅ 已回勾（2026-08-20，commit <code>b92583e0</code>）：<code>scripts/check-lsp-smoke.mjs</code> + <code>npm run lsp:smoke</code>（有意不挂 check）——自研最小 LSP JSON-RPC 客户端真 spawn pyright → initialize → definition 断言非空；基准三态（默认/<code>--base</code>/<code>--pyright</code>）全验证，缺失红。vitest 612</li>
+</ul>
+</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#24.8.1</strong> 编辑器剪贴板键修复——删壳级死绑定 + 命令族（实机验收发现）
+<ul>
+<li>✅ 已回勾（2026-08-20，commit <code>bcf98ffc</code>）：壳遗留 6 条死绑定 + clipboard/delete/rename 命令族致 Ctrl+C/V/X/A 全死——壳 document 看不到池 Monaco textarea（E5.5#7 Bug D 守卫盲区第二实例）。删后键直通池 WCV 走 Monaco 原生。vitest 612</li>
+</ul>
+</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#24.8.2</strong> 编辑器插件 keybindings 块删除（Ctrl+Z 等 13 条——实机验收发现）
+<ul>
+<li>✅ 已回勾（2026-08-20，commit <code>b4507dcb</code>）：editor/plugin.json <code>contributes.keybindings</code> 13 条指向无 handler 命令（registerKeybinding 不查 handler → hasHandler 恒 false 纯 hijack 吞键）。删整块（F12 走 addAction 不受影响）。vitest 612</li>
+</ul>
+</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#24.8.3</strong> 文件树 Ctrl+C/V/X 池侧自监听（壳级剪贴板键删除后的功能真空）
+<ul>
+<li>✅ 已回勾（2026-08-20，commit <code>6f3829ca</code>/<code>2dedfe0b</code>/<code>1ab8e362</code>）：首版 FileTreeKeyboard 拦截 ctrl/meta+c/v/x 复用右键命令；用户拍板路径 2 = 抽共享 <code>useClipboardKeys</code> hook + 删死模型 ClipboardProviderRegistry。<strong>✅ 实机回归验证通过（2026-08-20 用户拍板）</strong>。vitest 612→606</li>
+</ul>
+</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#24.8.4</strong> 串口 F2 重命名去 document 级劫持（回归验证暴露的焦点守卫缺口）
+<ul>
+<li>✅ 已回勾（2026-08-20，commit <code>899491ad</code>）：SessionListView <code>document</code> 级 keydown 无焦点守卫 → 活动会话劫持全池 F2。改容器 <code>tabIndex={0}</code>+<code>onKeyDown</code>（DOM 焦点天然分区），删模块级 <code>_triggerRename</code> + 两 useEffect。vitest 606</li>
+</ul>
+</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#25</strong> 收官声明 + 下一步指针
+<ul>
+<li>✅ 已收口（2026-08-20 用户拍板）：4/4 收敛动作全闭环 + 验收期补充修复（#24.8.1/.2/.3）实机验收通过——①pyright 移走 toast 显性 + 恢复跳转正常 ②编辑器全功能冒烟含剪贴板键全活 ③双态验证 ④文件树键盘剪贴板含系统粘贴 ⑤Ctrl+Shift+T 冲突红消除。本清单不再追加 Phase 5.5 任务。下一步候选（待拍板）：E6 蓝图 / E5.8 既有 Phase 续推 / E5.9 视用户补充</li>
+</ul>
+</li>
+</ul>
+<hr>
+<h1 id="phase-56快捷键模式化248-系列架构评审收口">Phase 5.6：快捷键模式化（#24.8 系列架构评审收口）</h1>
+<blockquote>
+<p><strong>来源</strong>：Phase 5.5 收官后，用户以 11 条原则评审复制粘贴/快捷键架构（10 条软件哲学 + 第 11 条「对第三方插件作者友好吗？」）→ 方向正确（池侧自处理 + 机制归一共享 hook + 死模型清场），三缺口拍板全做（用户「都做，就当是个新的关于快捷键的 phase」）。执行时机 = 紧跟 Phase 5.5 收官。每任务独立 commit + check 全绿。</p>
+</blockquote>
+<ul class="contains-task-list">
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#24.8.5</strong> 池侧自处理模式文档化——docs/03-插件制造/05 改写快捷键指南（第三方插件作者友好）</p>
+<ul>
+<li>✅ 已回勾（2026-08-20，commit <code>23cabba2</code>）：05 §4 改写三节——轨道一声明式仅限非文本键（文本键注册即吞池）/ 轨道二池侧自处理正解（容器 onKeyDown + tabIndex 焦点分区）/ 剪贴板三选一通道表 + 反模式红字，纯文档零逻辑</li>
+</ul>
+</li>
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#24.8.6</strong> 文件树纯文本 fallback 去 execCommand——换 linkdesk.clipboard.writeText（生存力）</p>
+<ul>
+<li>✅ 已回勾（2026-08-20，commit <code>83395903</code>）：textarea+execCommand 7 行 → <code>await linkdesk.clipboard.writeText</code>（Electron 多格式共存，writeText 只写 text/plain 不影响 CF_HDROP；await 双写消竞态；失败出声）+ 调用点加 await，零新机制归一到既有 API 面，606 绿</li>
+</ul>
+</li>
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#24.8.7</strong> build-plugins.mjs 过时资产处置（保守——保留 E6 改造基础，修运行时错误指引）</p>
+<ul>
+<li>✅ 已回勾（2026-08-20，commit <code>fe832015</code>）：诊断修正——原判「空跑死脚本」，实为 E6#3 独立构建改造资产（CORE_SHARED_PATHS 相对路径在 @src alias 时代失效，修好扫描反致 core inline 双实例）；用户拍板保守处置——头注释标 E6 资产 + 过时清单三处 + 降级提示改 <code>npm run build</code>，606 绿</li>
+</ul>
+</li>
+</ul>
+<p><strong>✅ 已收口（2026-08-20 用户拍板）</strong>：实机回归通过——文件树复制/剪切 → 资源管理器 CF_HDROP + 编辑器/终端纯文本双消费方 + 内部粘贴无损 + Monaco 原生键不受影响。</p>
+<hr>
+<h1 id="phase-57资源事件--标签页联动文件树--编辑器通用机制">Phase 5.7：资源事件 → 标签页联动（文件树 × 编辑器通用机制）</h1>
+<blockquote>
+<p><strong>来源</strong>：Phase 5.6 收官后用户实机报告联动 bug——文件树 F2 重命名/ DELETE 删除后编辑器标签不更新/仍打开。根因：文件树已 emit <code>file:renamed</code>/<code>file:deleted</code>（池广播），壳 <code>bridges.ts</code> 无桥 → TabManager 订阅（<a href="src/hooks/useTabManager.ts#L369-L391">useTabManager.ts:369-391</a> 已有联动）成死代码。tabs 不需新 API——真缺口只有 <code>filesystem.rename</code>。三处补齐（用户拍板：API 通用 + 命名不专一化 + dirty 走状态迁移专项）。每任务独立 commit + check 全绿。</p>
+</blockquote>
+<ul class="contains-task-list">
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#25.1</strong> 壳通用资源事件桥——bridges.ts 补 file:deleted/file:renamed → shellEvents</p>
+<ul>
+<li>✅ 已回勾（2026-08-20，commit <code>d6a7557c</code>）：照 icon:selected 三行桥模式加两事件桥（模式级通用——未来插件 emit 资源事件加一行即联动，零专一化）+ 删联动 toast（i18n t()）；TabManager 死代码复活（deleted→forceCloseTab / renamed→迁移 label+sourceId+filePath），tabs 零新 API，606 绿</li>
+</ul>
+</li>
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#25.2</strong> filesystem.rename 通用 API + 文件树原生重命名</p>
+<ul>
+<li>✅ 已回勾（2026-08-20，commit <code>7c0e957a</code>）：IPC.filesystem.rename + file-service <code>fs.rename</code>（原子，POSIX/VS Code 语义）+ GuardWriteOp 守卫（查写侧 dest）+ 契约再生成 + 双 preload 转发 + finishRename <code>copy+remove</code> → <code>rename</code>，606 绿</li>
+</ul>
+</li>
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#25.3</strong> 编辑器状态迁移专项——EditorTab 路径状态化 + 内容保留</p>
+<ul>
+<li>✅ 已回勾（2026-08-20，commit <code>4728ec27</code>）：EditorModel.setFilePath（内容/dirty 全保留）+ EditorTab 路径状态化（initialFilePathRef 冻结 load / currentPath 运行路径）+ 订阅池 file:renamed 事件驱动迁移（同 WCV 直收零 IPC 中转）+ Monaco uri 迁移（EditorView 零改动）+ hot-exit 备份 key 迁移，+3 单测 609 绿</li>
+</ul>
+</li>
+</ul>
+<hr>
+<h1 id="phase-6多串口支持">Phase 6：多串口支持</h1>
+<blockquote>
+<p>设计真相源 → <a href="%E5%A4%9A%E4%B8%B2%E5%8F%A3/01-%E5%A4%9A%E4%B8%B2%E5%8F%A3%E8%AE%BE%E8%AE%A1.html">多串口/01-多串口设计.md</a>（S1-S16 / D1-D8 / §10 回归）。执行时机 = 基建收官后（Phase 1.5 + Phase 4 契约门禁）。每任务独立 commit + check 全绿。</p>
+</blockquote>
+<ul class="contains-task-list">
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#26</strong> 服务层 Map 化 + 语义变更 + 仲裁 + 连坐（单口 → <code>Map&lt;portName, PortState&gt;</code>）</p>
+<ul>
+<li>✅ 已回勾（2026-08-20，<code>2d155123</code>/<code>fb5f1ef6</code>/<code>efdcf800</code>）：端口共存 D1 + 同口二开拒绝 D8 + 卸载连坐（Phase 2 机制，零新通道）；单测 6，615 绿</li>
+</ul>
+</li>
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#27</strong> 多端口状态查询与恢复——getStatus 双形态 + F5 多口恢复</p>
+<ul>
+<li>✅ 已回勾（2026-08-20，<code>da06826c</code>）：无参 <code>SerialStatus[]</code> / 带 portName 单口快照（D5）+ per-port pluginState 键；侧栏灯 <code>openPorts: Set</code> 每口自己亮（S15）</li>
+</ul>
+</li>
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#28</strong> 推送路由 portName——三通道载荷演化（wire 契约破坏性变更）</p>
+<ul>
+<li>✅ 已回勾（2026-08-20，<code>c98f0639</code>）：serial:data/stats/system 载荷对象化带 portName（S5-S7）+ 契约注释写清多口能力（能力可见性）；616 绿</li>
+</ul>
+</li>
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#29</strong> 插件会话-端口绑定 + 消费方改造（两会话同连 COM3+COM13）</p>
+<ul>
+<li>✅ 已回勾（2026-08-20，<code>b4deb673</code>）：<code>utils/portFilter.ts</code> 三态过滤唯一实现（不新建壳 hook）+ 动作全定向 portName + ControlPanel 按口派生 connected（S14）；619 绿</li>
+</ul>
+</li>
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#30</strong> 双端口实机冒烟 + 收口（实机清单 8 项 + 矩阵三行补测）</p>
+<ul>
+<li>✅ 已回勾（2026-08-20 实机验证通过）：清单 8 项逐项过（双口共存/同口拒绝/断一不断二/F5 恢复/换口隔离/卸载连坐/单口回归/第三方形态）+ 矩阵场景 2/5/7 补测 → P1-P9 立案转 Phase 6.8</li>
+</ul>
+</li>
+</ul>
+<hr>
+<h1 id="phase-65通道范式--设备插件独立">Phase 6.5：通道范式 · 设备插件独立</h1>
+<blockquote>
+<p><strong>2026-08-20 用户拍板立案（Phase 6 开工前四轮问答结论）。</strong> 专门解决「第三方作者独立做设备插件（多形态/多通道/新设备）是否要依赖壳作者」。设计真相源 → <a href="%E9%80%9A%E9%81%93%E8%8C%83%E5%BC%8F/01-%E9%80%9A%E9%81%93%E8%8C%83%E5%BC%8F%E8%AE%BE%E8%AE%A1.html">通道范式/01-通道范式设计.md</a>。执行时机 = Phase 6 完结后（#30.7 依赖 serial 实证）。每任务独立 commit + check 全绿。</p>
+</blockquote>
+<ul class="contains-task-list">
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#30.5</strong> 通道范式宣言落档——「设备无限归插件 / 通道收敛归壳 / 平台测通道·作者测设备 / 插件发布永不触发壳发版」→ 架构文档 + memory（判定标准/责任分工 → 档案 §2-3）</p>
+<ul>
+<li>✅ 已回勾（2026-08-20，commit <code>059b5485</code>）：架构文档 <a href="../%E9%80%9A%E9%81%93%E8%8C%83%E5%BC%8F%C2%B7%E8%AE%BE%E5%A4%87%E6%8F%92%E4%BB%B6%E7%8B%AC%E7%AB%8B.html">通道范式·设备插件独立</a>（长期有效）+ memory shell-change-boundary-principle 补范式正文 + <a href="http://CLAUDE.html">CLAUDE.md</a> 关键文件表加改壳边界导航，638 绿</li>
+</ul>
+</li>
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#30.6</strong> 设备插件可行性全景 + 平台责任边界 → <code>docs/03-插件制造/01-API契约.md</code> 补「通道边界」节（三层全景 → 档案 §4）</p>
+<ul>
+<li>✅ 已回勾（2026-08-20，commit <code>272d79a9</code>）：<a href="http://xn--01-API-k18i502eltvpk5d.html">01-插件API契约.md</a> 补「六、设备通道边界」节（三层全景：串口系立即可写零壳依赖 / 自定义 USB 待 E6 usb 通道 / 厂商 DLL 独立课题；平台责任=通道正确 + API 稳定，解析归作者，同一物理口仅单消费方），638 绿</li>
+</ul>
+</li>
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#30.7</strong> serial 通道范式实证——验证 serial 是「通用通道」而非「串口监视器专属」（三项检查 → 档案 §6）</p>
+<ul>
+<li>✅ 已回勾（2026-08-20，纯检查无 commit）：三项全过——① serial-service/handlers 插件 ID 零硬编码（唯一引用 = ownerPluginId 归属 + closePortsByOwner 连坐 = 通用通道语义）；② 契约多口能力声明（getStatus 双形态 / closePort 可选 / 三推流 portName 路由）；③ #30 第 8 项第三方形态实证已交付 → 「第三方独立做设备插件」结构性成立</li>
+</ul>
+</li>
+</ul>
+<hr>
+<h1 id="phase-68多串口实机验证修复">Phase 6.8：多串口实机验证修复</h1>
+<blockquote>
+<p><strong>2026-08-20 用户拍板立案（P1-P9 实机验证问题定案后拆任务）。</strong> 统一方向 = §0.2 状态模型 per-tab 化（UI 维持现状；操作显式传口 / 灯按口显式写 / 判断按本标签页口，壳 API 面 = 0）。UI 形态依据 → <a href="%E5%A4%9A%E4%B8%B2%E5%8F%A3/03-%E5%BD%A2%E6%80%81%E5%AF%B9%E6%AF%94-A-B-C.html">03-形态对比-A-B-C.html</a>。新增文字全走 t() + en.json 补译。讨论稿每节 <code>&gt; ✅</code> = 拍板 → <a href="%E5%A4%9A%E4%B8%B2%E5%8F%A3/02-%E5%A4%9A%E4%B8%B2%E5%8F%A3%E5%AE%9E%E6%9C%BA%E9%AA%8C%E8%AF%81%E9%97%AE%E9%A2%98%E4%B8%8E%E4%BF%AE%E5%A4%8D%E8%AE%A8%E8%AE%BA.html">02-多串口实机验证问题与修复讨论.md</a>。每任务独立 commit + check 全绿。</p>
+</blockquote>
+<h3 id="插件侧p2p3p7p1p6p9状态模型-per-tab-化">插件侧——P2/P3/P7/P1/P6/P9（状态模型 per-tab 化）</h3>
+<ul class="contains-task-list">
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#30.8</strong> P2 操作显式传口——closePort/toggleOpen/setBaudRate/sendData 显式传 <code>activeSession.port</code>（拍板 §1：投影口仅作兼容视图，不再读全局投影口）</p>
+<ul>
+<li>✅ 已回勾（2026-08-20，commit <code>50d5c419</code>）：closePort/setBaudRate/sendData 显式传口 + toggleOpen 合并 ControlPanel 灭死代码 + serial-monitor.send 命令加可选口名，619 绿</li>
+</ul>
+</li>
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#30.9</strong> P3 灯按口显式写——open/close 动作路径显式写 <code>端口:isOpen</code>，剥离 <code>_setState</code> 单布尔守卫（拍板 §2）</p>
+<ul>
+<li>✅ 已回勾（2026-08-20，commit <code>7dfdcd75</code>）：_writePortState 单一写入咽喉收敛（open/close/toggle/setSourceName/setBaudRate 五路径 + F5 恢复全走咽喉）+ 剥离 _setState 单布尔守卫，619 绿</li>
+</ul>
+</li>
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#30.10</strong> P7 换口 per-tab 触发——关旧开新保留，触发条件改「本标签页口已开」；新标签页选口只记配置（拍板 §7）</p>
+<ul>
+<li>✅ 已回勾（2026-08-20，commit <code>38445b41</code>）：触发条件改本标签页旧口 ∈ openPorts 才关旧开新（他标签页开着不误触）+ setSourceName 显式传旧口 + 新标签页选口只记配置，619 绿</li>
+</ul>
+</li>
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#30.11</strong> P1 状态消息按口过滤 + 错误全局显示（拍板 §0.2：他口操作完全不显示 + 错误全局可见）</p>
+<ul>
+<li>✅ 已回勾（2026-08-20，commit <code>8955db36</code>）：SerialSystemPayload 加 type: status/error 分类标签（来源端分类一处写）+ onSystem 按键路由（status 按口滤 / error 全局）+ 拔线补 error + 契约重生成，620 绿</li>
+</ul>
+</li>
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#30.12</strong> P6 删全局 TX-RX + 归位接收区工具栏（拍板 §6：状态栏只留连接灯 + (N)，TX/RX 归位 per-tab）</p>
+<ul>
+<li>✅ 已回勾（2026-08-20，commit <code>77c01c08</code>）：状态栏删全局 TX/RX 只留连接灯 + (N) 口数（≥2 才显示数字）+ per-tab TX/RX 计数进各标签页接收区工具栏右侧 + 删 plugin.json statusBar.txrx/stats 配置声明 + 投影死数据清零，全绿</li>
+</ul>
+</li>
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#30.13</strong> P9 开着强提示 + 配置开关（拍板 §9：开着删会话 → 强提示 + 开关默认开）</p>
+<ul>
+<li>✅ 已回勾（2026-08-20，commit <code>b5f9e97a</code>）：删开着串口的会话弹「会话正在使用 {{port}}，将断开连接」强提示（确认后走 closePort 咽喉先断开）+ 配置项 confirmOnClose「关闭时提示」默认开，全绿</li>
+</ul>
+</li>
+</ul>
+<h3 id="壳侧p4p5p8通用通道非串口业务">壳侧——P4/P5/P8（通用通道，非串口业务）</h3>
+<ul class="contains-task-list">
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#30.14</strong> P4 合屏迁移 RingBuffer（拍板 §3：方向 c——插件侧快照恢复）</p>
+<ul>
+<li>✅ 已回勾（2026-08-20，commit <code>85ccba2f</code>）：方向 c 落地——unmount 快照（CM6 行 + RingBuffer 内容）mount 后 appendLine 重放恢复（分屏/合屏往返不丢历史；不走会话级持久化 / 不走跨组 keep-alive），全绿</li>
+</ul>
+</li>
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#30.15</strong> P5 点空白聚焦 + accent 环（拍板 §4：点面板空白聚焦 + accent 色细边框）</p>
+<ul>
+<li>✅ 已回勾（2026-08-20，commit <code>3385e743</code>）：壳通用聚焦面板机制（focusGroup + PoolLayout 推送，命令路由前置打通）+ 池侧 accent 环 inset 阴影 var(--accent) 零硬编码 + 单聚焦对齐 VS Code，全绿</li>
+</ul>
+</li>
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#30.16</strong> P8 beforeClose 通用可取消通道（拍板 §8：模型 B——壳重建通用通道 + 插件 handler）</p>
+<ul>
+<li>✅ 已回勾（2026-08-20，commit <code>efc9cb37</code>）：壳重建通用「beforeClose 可取消」通道（注册面 + 关闭路径 await handler + 防重入）+ 串口 handler 注册一次 + closePortFromModule 单一咽喉防循环，全绿</li>
+</ul>
+</li>
+</ul>
+<h3 id="设置扩展新增文字全走-t--enjson-补译">设置扩展——新增文字全走 t() + en.json 补译</h3>
+<blockquote>
+<p>UI 依据 → <a href="%E5%A4%9A%E4%B8%B2%E5%8F%A3/03-%E5%BD%A2%E6%80%81%E5%AF%B9%E6%AF%94-A-B-C.html">03-形态对比-A-B-C.html</a> 最终形态。新增中文 key 两步：组件 <code>t(&quot;key&quot;)</code> + <code>i18n/en.json</code> 补英译。</p>
+</blockquote>
+<ul class="contains-task-list">
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#30.17</strong> 命令条：删协议下拉 + 可输入波特率 + 端口参数 8N1/校验</p>
+<ul>
+<li>✅ 已回勾（2026-08-20，commit <code>1b7df694</code>）：命令条删协议下拉 + 状态栏协议指示（用户拍板「当然删除」）+ 壳通用 Combobox（可输入非标波特率）+ 8N1/校验（openPort 透传 dataBits/stopBits/parity），全绿</li>
+</ul>
+</li>
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#30.18</strong> DTR/RTS 落侧栏「握手信号」group（拍板：命令条放不下 → 移侧栏收发设置）</p>
+<ul>
+<li>✅ 已回勾（2026-08-20，commit <code>aa9f594e</code>）：SerialSession 加 dtr/rts per-COM + 侧栏「握手信号」group 两 Toggle（形态定案 Toggle 开关）+ 打开时应用初始电平 + 运行中切换调 setDtr/setRts 显式传口，全绿</li>
+</ul>
+</li>
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#30.19a</strong> 接收区 HEX+ASCII 双栏（审视 ⑥：从 #30.19 拆出——一个任务 = 一次 commit + 独立验收）</p>
+<ul>
+<li>✅ 已回勾（2026-08-20，commit <code>2d47e760</code>）：接收区双栏渲染开关（双 CM6 并排 keep-alive CSS 显隐，写入时同算 text+hex 双形态、渲染时 renderLine 选形态，暂停缓冲/清空/快照双栏同步），全绿</li>
+</ul>
+</li>
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#30.19b</strong> 接收区不可见字符转义（审视 ⑥：从 #30.19 拆出——独立功能）</p>
+<ul>
+<li>✅ 已回勾（2026-08-20，commit <code>64feceb1</code>）：不可见字符转义开关（Unicode Control Pictures ␀-␟/␉/␊/␍/␡，渲染时转义原始数据不动），全绿</li>
+</ul>
+</li>
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#30.20</strong> 自动保存接收区</p>
+<ul>
+<li>✅ 已回勾（2026-08-20，commit <code>98ad92a2</code>）：端口关闭 + pagehide 应用退出双落盘（pluginDataDir/receive-saves/）+ 文件名消毒 Windows 非法字符，默认开=数据安全优先，全绿</li>
+</ul>
+</li>
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#30.21</strong> 打开即发初始化序列</p>
+<ul>
+<li>✅ 已回勾（2026-08-20，commit <code>49fd5387</code>）：归一化复用 quickSends 不新建平行概念（打开端口按序 performSend 串行自动发 + 标记位，ending/prefix 与手动同款）+ per-COM 记忆默认关=不无故发包，全绿</li>
+</ul>
+</li>
+</ul>
+<hr>
+<h1 id="phase-7底部面板完形">Phase 7：底部面板完形</h1>
+<blockquote>
+<p>设计输入 → <a href="%E9%9D%A2%E6%9D%BF%E7%AA%97%E5%8F%A3/%E9%9D%A2%E6%9D%BF%E7%AA%97%E5%8F%A3%E5%BD%A2%E6%80%81%E6%A1%A3%E6%A1%88.html">面板窗口形态档案.md</a> §3 + 交互 → <a href="%E9%9D%A2%E6%9D%BF%E7%AA%97%E5%8F%A3/02-%E4%BA%A4%E4%BA%92%E7%BB%86%E8%8A%82%E8%AE%BE%E8%AE%A1.html">02-交互细节设计.md</a> I7 系列。PanelZone 骨架已落地（#63.7），本 Phase = 剩余项完形。执行时机 = 基建收官后。决策轨迹 → memory「E5.7 面板未做项 + 菜单『面板』定案」。每任务独立 commit + check 全绿。</p>
+</blockquote>
+<ul class="contains-task-list">
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#31</strong> Ctrl+J 显隐命令</p>
+<ul>
+<li>✅ 已回勾（2026-08-20，commit <code>0fe467a9</code>）：togglePanel 命令 + ctrl+j 键位（现网零占用实查）+ PanelLayout visible 持久化 + usePoolSync 零推 panel 字段复用现网路径，641 绿</li>
+</ul>
+</li>
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#32</strong> [+] 新建 = QuickPick 视图选择器（2026-08-17 拍板：单层切换列表，否决两级子页面）</p>
+<ul>
+<li>✅ 已回勾（2026-08-20，commit <code>0966eb99</code>）：panel:createView 桥 → panelCreatePicker（两级展平含隐藏 + 已激活勾选 + 选中恢复可见）+ checked + i18n，646 绿。mockup → <a href="%E9%9D%A2%E6%9D%BF%E7%AA%97%E5%8F%A3/mockups/01-%E5%BA%95%E9%83%A8%E9%9D%A2%E6%9D%BF-mockup.html">01-底部面板-mockup.html</a> 帧 4</li>
+</ul>
+</li>
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#33</strong> 菜单栏「面板」菜单</p>
+<ul>
+<li>✅ 已回勾（2026-08-20，commit <code>35570599</code>）：MENU_SLOTS 加 Panel 槽 + 壳招牌「面板/打开面板」+ 插件 group:&quot;panel&quot; 子菜单自动归并（零新设施），651 绿</li>
+</ul>
+</li>
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#34</strong> 容器切换器（2026-08-17 当场拍板：B 下拉勾选）</p>
+<ul>
+<li>✅ 已回勾（2026-08-21，commit <code>e22cd43a</code>）：容器名可点下拉（点视图名切激活 / 勾选显隐）+ hidden.ts 持久化 + 空态双形态 + 契约重生成，660 绿。mockup → <a href="%E9%9D%A2%E6%9D%BF%E7%AA%97%E5%8F%A3/mockups/01-%E5%BA%95%E9%83%A8%E9%9D%A2%E6%9D%BF-mockup.html">01-底部面板-mockup.html</a> 帧 2</li>
+</ul>
+</li>
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#34.5</strong> panel.reveal 通用 API（2026-08-17 新铁律拍板纳入——通用 API 壳先行建设不等消费方）</p>
+<ul>
+<li>✅ 已回勾（2026-08-21，commit <code>7a0b47e6</code>）：契约 panel 命名空间 + channels/preload/主进程分发 + usePanelReveal + 持久化自动落盘 + 共享 viewContainerMocks 桩，664 绿</li>
+</ul>
+</li>
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#35</strong> UI 细致化（拍板方式已定：执行时逐项过目再定）</p>
+<ul>
+<li>✅ 已回勾（2026-08-21，用户「参考 ui-ux-pro-max 规定即可」委托拍板，零代码改动）：三项过目点全裁决维持现状（单 ⌄ 禁双指示 / 空态文案保留 / Ctrl+J 噪音不加）+ PanelZone pre-delivery checklist 审计全符合。mockup → <a href="%E9%9D%A2%E6%9D%BF%E7%AA%97%E5%8F%A3/mockups/01-%E5%BA%95%E9%83%A8%E9%9D%A2%E6%9D%BF-mockup.html">01-底部面板-mockup.html</a> 帧 3</li>
+</ul>
+</li>
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#35.5</strong> Move to Editor Area——P→T 通用 API（2026-08-17 新铁律拍板纳入——推翻「不做」）</p>
+<ul>
+<li>✅ 已回勾（2026-08-21，commit <code>543b99ec</code>）：linkdesk.panel.moveToEditor 声明寻址升级标签页（createTab 活动组尾部）+ 面板视图右键「移至主区标签页」+ resolvePanelView 共享寻址基元（#34.5 提取），668 绿</li>
+</ul>
+</li>
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#36</strong> 面板全链回归 + 收口</p>
+<ul>
+<li>✅ 已回勾（2026-08-21，commit <code>a3f13463</code>，纯文档零逻辑变更）：矩阵场景 5 ①③ 改写已实现 + 场景 8「底部面板全链」收口 + reveal/moveToEditor 8 单测；<strong>用户实机验证五行 + 两条 API 实测通过（验收闭环）</strong></li>
+</ul>
+</li>
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#36.5</strong> 视图动作区声明制（2026-08-17 拍板：愿景 2 打底——用户实查 VS Code 底部面板后三愿景讨论；设计 → <a href="%E9%9D%A2%E6%9D%BF%E7%AA%97%E5%8F%A3/%E9%9D%A2%E6%9D%BF%E7%AA%97%E5%8F%A3%E5%BD%A2%E6%80%81%E6%A1%A3%E6%A1%88.html">面板窗口形态档案.md</a> §3.8）</p>
+<ul>
+<li>✅ 已回勾（2026-08-21，commit <code>05e853c4</code>）：contributes.views[].titleActions 三 widget（icon/dropdown/split）+ 壳统一渲染器 ViewTitleActions + PanelZone 标签栏右动作区 + dropdown-card 共享抽取 + panel-demo 载体，678 绿。mockup → <a href="%E9%9D%A2%E6%9D%BF%E7%AA%97%E5%8F%A3/mockups/02-%E5%A3%B3%E5%86%85%E6%82%AC%E6%B5%AE%E9%9D%A2%E6%9D%BF-mockup.html">02-壳内悬浮面板-mockup.html</a> 帧 2</li>
+</ul>
+</li>
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#36.6</strong> 侧栏 section header 动作区（一处声明两处消费）</p>
+<ul>
+<li>✅ 已回勾（2026-08-21，commit <code>abac76a6</code>）：PoolSectionStack 注入 SidebarSection actions 槽 + 左右侧栏 header 合并路径对称消费 + 共用同一渲染器零新声明面 + panel-demo 侧栏载体，681 绿</li>
+</ul>
+</li>
+</ul>
+<hr>
+<h1 id="phase-71复活-e5-dock-布局引擎第二批phase-7-期间完成任务点">Phase 7.1：复活 E5 dock 布局引擎（第二批）——Phase 7 期间完成任务点</h1>
+<blockquote>
+<p><strong>独立任务组——临时插入（自 Phase 8 段拆出避重排，与 Phase 7 底部面板无归属关系）。</strong> 布局任务（#37.5-#37.8 + #37.6.5）——Phase 7 期间发现完成，2026-08-21 用户拍板从 Phase 8 段拆出归本段，序号/勾选不变。设计 → <a href="%E5%B8%83%E5%B1%80%E6%A0%91%E6%95%B0%E6%8D%AE%E5%8C%96/01-%E5%B8%83%E5%B1%80%E6%A0%91%E6%95%B0%E6%8D%AE%E5%8C%96%E8%AE%BE%E8%AE%A1.html">布局树数据化/01-布局树数据化设计.md</a>。</p>
+</blockquote>
+<ul class="contains-task-list">
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#36.7</strong> LayoutEngine 复活 5 方法 + top edge + align/setAlign + rightSidebar zone + dockTo swap 规则（2026-08-21 用户本会话转向立案——复活 E5 dock 第一批；设计决策 1-6）</p>
+<ul>
+<li>✅ 已回勾（2026-08-21，commit <code>0ab5f5d0</code>）：setLayout/addZone/removeZone/dockTo/getAllZones 五方法 + top edge + align/setAlign + rightSidebar zone + dockTo 双槽互换 + 负 contentHeight 钳制，691 绿</li>
+</ul>
+</li>
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#36.8</strong> 布局树 DTO 扩展（zone 组件 props 零改动）</p>
+<ul>
+<li>✅ 已回勾（2026-08-21，commit <code>7cd56bb7</code>）：SidebarLayout.edge + PanelLayout.edge/align/width + RightSidebarLayout 真字段 + 契约重生成，691 绿</li>
+</ul>
+</li>
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#36.9</strong> usePoolSync 轴感知 + bridges/persistence 锁步（S2/S3 最大改动面）</p>
+<ul>
+<li>✅ 已回勾（2026-08-21，commit <code>081ad171</code>）：面板 edge/align/轴尺寸组装 + 侧栏 edge + rightSidebar 真组装 + 持久化双路径恢复 + 窄化守卫，695 绿</li>
+</ul>
+</li>
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#36.10</strong> 移除「移至主区标签页」moveToEditor（2026-08-21 用户拍板：不要了——直接移动 zone 位置不香吗；zone 移动 = #37.6/#37.7 dockTo 消费方）</p>
+<ul>
+<li>✅ 已回勾（2026-08-21，commit <code>691531e7</code>）：删 moveToEditor 全链（右键条目/命令/API/契约/测试）+ resolvePanelView 共享寻址基元保留（#34.5 共用），691 绿</li>
+</ul>
+</li>
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#37.5</strong> 池布局 grid 化 + PanelZone handle 换轴 + RightSidebarZone 真渲染（S9 最大改动面——第二批）</p>
+<ul>
+<li>✅ 已回勾（2026-08-21，commit <code>1266ae23</code>）：pool-body CSS grid（列模板按 panel.edge/可见性 + 覆盖推导单源池函数）+ 纯 CSS 几何换位零重挂 + PanelZone resize handle 换轴 + useResizeDrag 收敛三 Zone + RightSidebarZone 真渲染，全绿</li>
+</ul>
+</li>
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#37.6</strong> 侧栏换边（双槽互换 + 右键/查看菜单/命令 + 持久化 + 启动恢复）</p>
+<ul>
+<li>✅ 已回勾（2026-08-21，commit <code>f020e729</code> + 回归修复 <code>dd13ad07</code>）：toggleSidebarPosition 命令 → dockTo + swap + 双 when 门控菜单项 + when 过滤统一 + 死字段 disabled 整删；实机 bug 修——同命令双 when 门控项被当重复丢弃 → registerMenuItems 幂等键并入 when，733 绿</li>
+</ul>
+</li>
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#37.6.5</strong> 图标栏跟随主侧栏换边（2026-08-21 用户补充：左侧栏换右 → 图标栏跟着到最右，比主侧栏还靠外；先落基本行为）</p>
+<ul>
+<li>✅ 已回勾（2026-08-21，commit <code>27acd83f</code>）：dockTo 联动 iconbar 同边（swap 规则同模式）+ 池 grid 列反推（iconbar 恒贴主侧栏外缘）+ 零 DTO 新字段；自由四向 = 未来候选暂不实现，716 绿</li>
+</ul>
+</li>
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#37.7</strong> 面板位置/对齐——标签栏右键完整形态主体（挂载点迁移 + √/checked 基础设施 + 位置/对齐子菜单 + 命令 + 持久化恢复；视图显隐列表拆 #37.7.1）</p>
+<ul>
+<li>✅ 已回勾（2026-08-21，commit <code>c19e614c</code>）：√/checked 菜单基础设施 + .panel-tabbar 容器右键挂载点迁移 + positionPanel×4/alignPanel×4 八命令 + 「面板位置/对齐面板」两子菜单 + 同边/同对齐 no-op 单选语义，726 绿</li>
+</ul>
+</li>
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#37.7.1</strong> 面板视图显隐列表——标签栏右键动态顶层视图项（2026-08-21 从 #37.7 拆出，用户拍板完整形态④）</p>
+<ul>
+<li>✅ 已回勾（2026-08-21，commit <code>eaf32588</code>）：壳 getItems 动态追加面板视图为顶层项（单一声明面，装插件自动多一项）+ checked 勾选态 + panel:toggleViewVisibility + MenuItemDescriptor.commandArgs wire，730 绿</li>
+</ul>
+</li>
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#37.8</strong> 回归矩阵场景 8 加实机验证行 + <code>npm run check</code> 全绿</p>
+<ul>
+<li>✅ 已回勾（2026-08-21，commit <code>7af5f5b8</code>）：E5.7 全量回归矩阵场景 8 加「布局引擎复活实机验证」行——六验证点收口（面板四向/四对齐/双栏互换+图标栏贴外缘/拖拽钳制/重启恢复/换位零重挂）；实机验证 = 用户验收，730 绿</li>
+</ul>
+</li>
+</ul>
+<hr>
+<h1 id="phase-72i18n-归一化--图标栏修复--03-插件制造phase-7-期间完成任务点">Phase 7.2：i18n 归一化 + 图标栏修复 + 03-插件制造——Phase 7 期间完成任务点</h1>
+<blockquote>
+<p><strong>独立任务组——临时插入（自 Phase 8 段拆出避重排，与 Phase 7 底部面板无归属关系）。</strong> i18n 攻坚 / 图标栏缺口修复 / 03-插件制造 全量更新（#37.9 系列）——Phase 7 期间用户实机报告 + 问答驱动发现完成，2026-08-21 用户拍板从 Phase 8 段拆出归本段，序号/勾选不变。每任务独立 commit + check 全绿。</p>
+</blockquote>
+<ul class="contains-task-list">
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#37.9</strong> i18n 归一化攻坚——全量补译 + 铁律面归一化（壳 + 插件，2026-08-21 用户亲令）</p>
+<ul>
+<li>✅ 已回勾（2026-08-21，commit <code>d90664ef</code>）：三路由未归一根因（DTO 原样推 v.title 违显示文本铁律）+ P1 补 88 缺 key + P2 铁律面归一化（壳 t() 解析 + 4 壳诊断 source-t()）+ audit-i18n --strict 入门禁，734 绿；用户 7 点实机全过</li>
+</ul>
+</li>
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#37.9.1</strong> 标签栏「设置」仍中文——tab label 未走 t() 回归修复（2026-08-21 用户实机二报）</p>
+<ul>
+<li>✅ 已回勾（2026-08-21，commit <code>cbb38149</code>）：getDefaultLabel 落盘即译 + resolvePoolTabTitle 推流二次解析（旧快照幂等回正）+ [+] creatableViews / marketplace 插件名 t() 归一，739 绿</li>
+</ul>
+</li>
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#37.9.2</strong> 外语插件一等公民——文档约定放宽 + 纯英文示范插件（2026-08-21 用户问答：「插件只用法文/英文软件还支持吗」）</p>
+<ul>
+<li>✅ 已回勾（2026-08-21，commit <code>5cb51e6a</code>）：支持（任意 langCode + 缺译文静默回退显示 key 本身）+ 文档约定放宽 4 处（key 非强制中文）+ 新建纯英文示范插件 demo-en（零 i18n 零翻译），739 绿</li>
+</ul>
+</li>
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#37.9.2.3</strong> 图标栏缺口修复——entryless 视图插件进 viewRegistry（用户追问「当时为什么这样设计」→ 查证拍板修）</p>
+<ul>
+<li>✅ 已回勾（2026-08-21，commit <code>e7b9d009</code> + 实机载体 <code>38a4b87d</code>）：根因=registerViewPlugin 只对有 entry 插件调用 → component 可选 + hasSidebarContainers + entryless 注册 + getTabCreatableViews 守卫；demo-en 改 entryless 示范，740 绿</li>
+</ul>
+</li>
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#37.9.2.4</strong> 图标栏规则落档 03-插件制造——第三方作者可查（用户亲令写入）</p>
+<ul>
+<li>✅ 已回勾（2026-08-21，commit <code>6292273a</code>）：06 规范加「图标栏出现规则（appearsIn.iconBar）」小节 + doc schema 裁剪同步（补 appearsIn/删四死字段/iconSource 补 lucide）+ 03 示例死字段修正，纯文档</li>
+</ul>
+</li>
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#37.9.3.1</strong> 03-插件制造 全量更新——代码侧同步（schema 补漏键 + 契约头修正）</p>
+<ul>
+<li>✅ 已回勾（2026-08-21，commit <code>cb0e1577</code>）：plugin.schema.json 补 contributes.themes/titleBar 两漏键（对照实际消费实锤）+ generate-contract 模板头 10→11 域，750 绿</li>
+</ul>
+</li>
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#37.9.3.2</strong> 03-插件制造 局部修五份（05/00/01/09 + 06 复核）</p>
+<ul>
+<li>✅ 已回勾（2026-08-21，commit <code>d79a2587</code>）：05 违规样例清零（@src import → window.linkdesk.*）+ 00 状态行/死 API + 01 安全边界 + 09 目录规范 + 06 复核，750 绿，纯文档</li>
+</ul>
+</li>
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#37.9.3.3</strong> 03-插件制造 大改两份（07-通信 + 08-ViewContainer）</p>
+<ul>
+<li>✅ 已回勾（2026-08-21，commit <code>405741f2</code>）：07 p2p 如实重写 + 「数据管道」整节 + 事件路径重写；08 命令式注册 → 声明制 + titleActions 章节 + views 字段表补全，750 绿，纯文档</li>
+</ul>
+</li>
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#37.9.3.4</strong> 03-插件制造 重写两份（02-生命周期 + 03-contributes）</p>
+<ul>
+<li>✅ 已回勾（2026-08-21，commit <code>e4b0bb4b</code>）：02 以 E5.7 极简 Pool + 状态机整篇重写（10 步管线/依赖编排/可逆注册/9 步卸载）+ 03 贡献点全量对齐 + schema 补 fileAssociations，750 绿，纯文档</li>
+</ul>
+</li>
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#37.9.3.5</strong> 03-插件制造 重写一份（04-分发格式）</p>
+<ul>
+<li>✅ 已回勾（2026-08-21，commit <code>1d95cdde</code> + 收尾 <code>9c47ef47</code>）：目录即分发格式（zip 单一文件废除）+ 安装五步目录复制 + 可卸载⇒可重装 + 数据目录两棵树 + getAssetPath 硬约束 12 段，750 绿，纯文档</li>
+</ul>
+</li>
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#37.9.3.6</strong> 03-插件制造 补「工厂角色与并存/替换」章节——形态一/形态二分界点（2026-08-21 用户追问后立案）</p>
+<ul>
+<li>✅ 已回勾（2026-08-21 概念 + 2026-08-22 形态二补完，commit <code>4d0e6c0f</code> + 勾选 <code>bdab91bc</code>）：分界点规则表（形态一不声明 factoryRole / 形态二声明）+ 形态二六段照方案 A 实体补完（一对多槽位/活动套持久化/角色分组切换/路由接缝/全插件侧换套），822 绿</li>
+</ul>
+</li>
+</ul>
+<hr>
+<h1 id="phase-8壳内悬浮面板类型-b">Phase 8：壳内悬浮面板（类型 B）</h1>
+<blockquote>
+<p>设计输入 → <a href="%E9%9D%A2%E6%9D%BF%E7%AA%97%E5%8F%A3/%E9%9D%A2%E6%9D%BF%E7%AA%97%E5%8F%A3%E5%BD%A2%E6%80%81%E6%A1%A3%E6%A1%88.html">面板窗口形态档案.md</a> §4 + 交互 → <a href="%E9%9D%A2%E6%9D%BF%E7%AA%97%E5%8F%A3/02-%E4%BA%A4%E4%BA%92%E7%BB%86%E8%8A%82%E8%AE%BE%E8%AE%A1.html">02-交互细节设计.md</a> I8 系列。落位定案见档案 §4.1。执行时机 = 基建收官后。每任务独立 commit + check 全绿。</p>
+</blockquote>
+<ul class="contains-task-list">
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#37</strong> FloatingPanel 三件套 + 服务桥 + 挂载</p>
+<ul>
+<li>✅ 已回勾（2026-08-21，commit <code>65cef246</code>）：池侧 FloatingPanelHost/CSS/测试 + 壳 FloatingPanelService 桥（pushPanel 单实例 I8-10）+ DTO/Z_INDEX 1500/三 IPC 通道 + FloatingLayerHost 挂载，764 绿。mockup → <a href="%E9%9D%A2%E6%9D%BF%E7%AA%97%E5%8F%A3/mockups/02-%E5%A3%B3%E5%86%85%E6%82%AC%E6%B5%AE%E9%9D%A2%E6%9D%BF-mockup.html">02-壳内悬浮面板-mockup.html</a> 帧 1</li>
+</ul>
+</li>
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#38</strong> Settings 集成——Ctrl+, 改弹面板</p>
+<ul>
+<li>✅ 已回勾（2026-08-21，commit <code>eae55a67</code>）：core.openSettings 改声明制 reveal（#39.5）+ I8-2 身份开关键 / I8-3 聚焦+右键回程 / I8-4 open-in + 三动作按钮（getTabCreatableViews 门控），787 绿。mockup → <a href="%E9%9D%A2%E6%9D%BF%E7%AA%97%E5%8F%A3/mockups/02-%E5%A3%B3%E5%86%85%E6%82%AC%E6%B5%AE%E9%9D%A2%E6%9D%BF-mockup.html">02-壳内悬浮面板-mockup.html</a> 帧 1/4/5</li>
+</ul>
+</li>
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#39</strong> Marketplace 集成 → <strong>拍板不搬（2026-08-21 用户建议）</strong></p>
+<ul>
+<li>✅ 已回勾（2026-08-21，commit <code>776caae3</code>）：marketplace 大屏形态归 04 线全屏商店视图（<a href="../../04-%E5%87%BA%E5%8E%82%E5%88%B6%E9%80%A0/05-Marketplace-Store-%E6%8F%92%E4%BB%B6%E5%B8%82%E5%9C%BA/02-Marketplace%E5%A2%9E%E5%BC%BA.html">02-Marketplace增强.md</a>）；面板线消费者只留 settings（用户拍板理由），纯文档</li>
+</ul>
+</li>
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#39.5</strong> 浮动面板声明制 + revealFloating 通用 API（2026-08-17 用户建议 + 新铁律拍板）</p>
+<ul>
+<li>✅ 已回勾（2026-08-21，4 commit）：声明面 <code>contributes.floatingPanel</code> <code>38e01646</code> / revealFloating 全链 <code>037d6849</code> / 标签页右键泛化（I8-3）<code>47b3f04c</code> / settings 接入 + floating-panel-demo 第二载体 <code>cf4972d7</code>，785 绿。mockup 帧 5 → <a href="%E9%9D%A2%E6%9D%BF%E7%AA%97%E5%8F%A3/mockups/02-%E5%A3%B3%E5%86%85%E6%82%AC%E6%B5%AE%E9%9D%A2%E6%9D%BF-mockup.html">02-壳内悬浮面板-mockup.html</a></li>
+</ul>
+</li>
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#40</strong> CSS 变量化 + i18n + 交互收尾</p>
+<ul>
+<li>✅ 已回勾（2026-08-21，commit <code>eaeac992</code>）：遮罩/面板影/拖拽影三 token 化 + 标题 i18n 真 bug 修（裸声明透传 → t()）+ Esc/焦点/遮罩/拖拽防误关四件套，787 绿。mockup → <a href="%E9%9D%A2%E6%9D%BF%E7%AA%97%E5%8F%A3/mockups/02-%E5%A3%B3%E5%86%85%E6%82%AC%E6%B5%AE%E9%9D%A2%E6%9D%BF-mockup.html">02-壳内悬浮面板-mockup.html</a> 帧 3/4</li>
+</ul>
+</li>
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#41</strong> 面板回归 + 收口（Phase 8 末站）</p>
+<ul>
+<li>✅ 已回勾（2026-08-21，commit <code>b8e841a1</code>）：矩阵场景 9「壳内悬浮面板全链」八行落盘（<a href="%E5%9B%9E%E5%BD%92%E9%AA%8C%E8%AF%81/%E5%85%A8%E9%87%8F%E5%9B%9E%E5%BD%92%E7%9F%A9%E9%98%B5.html">回归验证/全量回归矩阵.md</a>）+ 插件 API 面复核；实机验收 → Phase 8.1 六条 bug 立案</li>
+</ul>
+</li>
+</ul>
+<hr>
+<h1 id="phase-81壳内悬浮面板实机修复--形态修正">Phase 8.1：壳内悬浮面板实机修复 + 形态修正</h1>
+<blockquote>
+<p><strong>2026-08-21 立案（Phase 8 实机验收 → 全量 bug 报告 → 拍板）。</strong> 六条实机异常 → 两根因：① viewId &quot;settings&quot; 全局碰撞（serial-monitor 先占 id，后注册覆盖 → 内容全错根因）；② .floating-panel 缺 no-drag（顶部落拖拽区整窗误拖）；一形态分歧 → 拍板全部悬浮面板默认居中大卡。决策轨迹：止血 #41.5 改名 → 系统改造 #41.8/#41.9 复合键命名空间 → 两设置之分铁律 → 方案 A 提前（Phase 8.2）。每任务独立 commit + check 全绿。</p>
+</blockquote>
+<ul class="contains-task-list">
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#41.5</strong> 修复 viewId &quot;settings&quot; 碰撞（内容全错根因）</p>
+<ul>
+<li>✅ 已回勾（2026-08-21，commit <code>6da0b5ec</code>）：收发设置 id → <code>receive-and-send</code>（plugin.json + SerialSettingsView 动态 registerView 两处同步），内置 settings 零改动保持 <code>&quot;settings&quot;</code>，②③④⑥ 全解析到设置插件，787 绿</li>
+</ul>
+</li>
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#41.6</strong> 悬浮面板默认形态改居中大卡（几何 + 拖拽 + no-drag + 动画）</p>
+<ul>
+<li>✅ 已回勾（2026-08-21，commit <code>97a72fe9</code> + <code>83f40f98</code> mockup 重画）：右贴边 640px → 居中 <code>85vw × 80vh</code>；顶部 6px 手柄 → 整条标题栏拖拽（actions 排除）+ <code>.floating-panel</code> 本体 no-drag 根治整窗误拖；右滑入 → 淡入 + 微缩放，788 绿</li>
+</ul>
+</li>
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#41.7</strong> 回归复测 + 收口（Phase 8.1 末站）</p>
+<ul>
+<li>✅ 已回勾（2026-08-21，commit <code>c77fd315</code>）：复测发现「最大化只剩左半」真实几何根因（body flex-row 单子项不横展 → 改 flex-column）+ 场景 9 矩阵八行更新，788 绿</li>
+</ul>
+</li>
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#41.8</strong> 插件作用域视图命名空间——设计档案（纯文档 commit，拍板后执行）</p>
+<ul>
+<li>✅ 已回勾（2026-08-21，commit <code>b7322fb5</code>）：→ <a href="%E8%A7%86%E5%9B%BE%E5%91%BD%E5%90%8D%E7%A9%BA%E9%97%B4/01-%E8%A7%86%E5%9B%BE%E5%91%BD%E5%90%8D%E7%A9%BA%E9%97%B4%E8%AE%BE%E8%AE%A1.html">视图命名空间/01-视图命名空间设计.md</a>（7 碰撞面全代码定位 / 复合键方案 / getView 调用方全表 6 行硬门槛 / 持久化迁移 / fail-loud 接口 / 验收 9 项）</li>
+</ul>
+</li>
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#41.9</strong> 插件作用域视图命名空间——执行（按 #41.8 拍板；拆 #41.9.1/#41.9.2 两块独立 commit）</p>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#41.9.1</strong> 注册层复合键 + fail-loud 守卫 + 容器归属（原子块）
+<ul>
+<li>✅ 已回勾（2026-08-21，commit <code>8f41d6bd</code>）：keys 复合键 + 同名共存 + 撞 id 点名 fail-loud + _containerOwner 首主保有，+7 单测 794 绿</li>
+</ul>
+</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#41.9.2</strong> 解析链调用点迁移 + 持久化键迁移（跨文件块）
+<ul>
+<li>✅ 已回勾（2026-08-21，commit <code>f849e75d</code>）：getView 复合化 + 7 调用点全迁 + hidden/collapsed/order 复合键持久化（存量裸键静默弃），799 绿</li>
+</ul>
+</li>
+<li>用户点修①-④（2026-08-22，悬浮面板缺陷）：拖拽去半透明 <code>7607865c</code> / open-in hover 去硬编码 / 语言切换面板标题栏重推 / open-in 动画丝滑化 + 残影双杀 <code>73701a9f</code></li>
+</ul>
+</li>
+</ul>
+<hr>
+<h1 id="phase-82方案-a万物皆可插件的软件设置提前">Phase 8.2：方案 A——万物皆可插件的软件设置（提前）</h1>
+<blockquote>
+<p><strong>独立重大任务——临时插入（8.2 仅为避重排 Phase 9，与 Phase 8 无归属）。</strong> 软件设置 = <code>factoryRole:&quot;settings&quot;</code> 工厂插件，UI 万物皆可替换（并存 + 自动识别 + 通用区列全部入口含自身 + 可装多套）。两设置之分铁律 → memory <code>settings-plugin-replaceable-ui</code>。前置 #41.9 复合键免疫撞 id。每任务独立 commit + check 全绿。</p>
+</blockquote>
+<ul class="contains-task-list">
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#41.10</strong> 方案 A 设计档案（纯文档 commit，拍板后执行）</p>
+<ul>
+<li>✅ 已回勾（2026-08-21，commit <code>e71c2c2e</code> + <code>301a99dc</code>）：FactorySlots 一对多 fail-loud / 槽位无关通用化 / 角色分组动态切换 / 设置页结构四定案 / 第三方两形态 + 四帧 mockup → <a href="%E5%B7%A5%E5%8E%82%E8%A7%92%E8%89%B2%E5%B9%B6%E5%AD%98/01-%E5%BD%A2%E6%80%81%E4%B8%80%E5%BD%A2%E6%80%81%E4%BA%8C-%E5%A4%8D%E6%9D%82%E5%9C%BA%E6%99%AF%E5%9B%BE.html">01-形态一形态二-复杂场景图.html</a></li>
+</ul>
+</li>
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#41.11</strong> FactorySlots 一对多 + 重复 factoryRole fail-loud（原子块）</p>
+<ul>
+<li>✅ 已回勾（2026-08-22，commit <code>e2fe6114</code>）：Map&lt;Role,string[]&gt; + core 稳定排序置前 + getPluginIds/getDefaultPluginId + 多候选 fail-loud + buildIconBar 槽位感知（形态二只渲染激活套），+8 单测 810 绿</li>
+</ul>
+</li>
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#41.12</strong> 设置插件枚举/切换壳能力 + 活动设置持久化（跨文件块）</p>
+<ul>
+<li>✅ 已回勾（2026-08-22，commit <code>ec63ff0e</code>）：<code>linkdesk.settings.*</code>（list/getActive/setActive）+ 活动套落盘 + 路由接缝翻 getActive（Ctrl+,/齿轮/启动恢复走激活套），814 绿</li>
+</ul>
+</li>
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#41.13</strong> 切换按钮 UI（每套设置 UI 通用区 = 全部 N 个入口，常显不隐藏）</p>
+<ul>
+<li>✅ 已回勾（2026-08-22，commit <code>1ae524d8</code>）：N 套恒 N 按钮含自身（拓扑拍板：全部显示无过滤）+ 当前激活项视觉标记 + 按钮随删随消失（运行时推导），817 绿</li>
+</ul>
+</li>
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#41.14</strong> 内置设置纯插件化 + 参考实现（作者路径实体）</p>
+<ul>
+<li>✅ 已回勾（2026-08-22，4 commit）：壳侧 factorySlots.* 枚举面+契约 <code>edb2087c</code> / SettingsView 整迁 plugins/builtin/settings + 去 @src/core 依赖 <code>f959151e</code> / 角色分组动态切换渲染 <code>29ac4bdb</code> / settings-demo 复制参考实现 <code>b1502ba0</code>，817 绿</li>
+</ul>
+</li>
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#41.15</strong> 「如何造一个设置插件」文档（03-插件制造 新节，纯文档 commit）</p>
+<ul>
+<li>✅ 已回勾（2026-08-22，commit <code>c2d4d133</code>）：照 #41.14 自包含内置实体写——声明清单 + 数据 API 形状 + 白名单控件 + 编排组合 + 「隐藏课纲」+ CSS 作用域铁律，817 绿</li>
+</ul>
+</li>
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#41.16</strong> 设置套并存 reveal 链复合寻址（2026-08-22 实机 bug 1：Ctrl+,/齿轮 双套并存时失效）</p>
+<ul>
+<li>✅ 已回勾（2026-08-22，commit <code>f26a65d0</code>）：panel:reveal-floating 载荷补 pluginId → resolveFloatingPanelView 复合键 O(1) 寻址 + 复合身份开关键，822 绿</li>
+</ul>
+</li>
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#41.17</strong> settings-demo 卡片分区大改 + CSS 作用域根治（2026-08-22 实机 bug 2+3：布局不符 mockup + 裸类泄漏）</p>
+<ul>
+<li>✅ 已回勾（2026-08-22，commit <code>0ecd3412</code>）：按 mockup 形态二从零编排（banner 头 + 卡片网格 + 右下胶囊 + 键帽卡）+ <code>.sd-*</code> 自命名空间根治裸类污染内置套，822 绿 + vite build</li>
+</ul>
+</li>
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#41.18</strong> 悬浮面板内原地换套（2026-08-22 实机点修：面板里点切换 = 背后弹残留 tab + 双设置 tab）</p>
+<ul>
+<li>✅ 已回勾（2026-08-22，commit <code>37cdcaaf</code>）：panel.revealFloating(viewId, pluginId?) 契约加可选 pluginId → handleSettingsSwitch 悬浮面板分支复合替换原地换套，822 绿</li>
+</ul>
+</li>
+</ul>
+<hr>
+<h1 id="phase-9可拖出面板类型-a">Phase 9：可拖出面板（类型 A）</h1>
+<blockquote>
+<p>设计输入 → <a href="%E9%9D%A2%E6%9D%BF%E7%AA%97%E5%8F%A3/%E9%9D%A2%E6%9D%BF%E7%AA%97%E5%8F%A3%E5%BD%A2%E6%80%81%E6%A1%A3%E6%A1%88.html">面板窗口形态档案.md</a> §5 + <a href="../E5.7_%E6%9E%81%E7%AE%80Pool/%E8%84%B1%E5%87%BA%E7%AA%97%E5%8F%A3/%E8%84%B1%E5%87%BA%E7%AA%97%E5%8F%A3%E8%AE%BE%E8%AE%A1.html">脱出窗口设计.md</a> + 交互 → <a href="%E9%9D%A2%E6%9D%BF%E7%AA%97%E5%8F%A3/02-%E4%BA%A4%E4%BA%92%E7%BB%86%E8%8A%82%E8%AE%BE%E8%AE%A1.html">02-交互细节设计.md</a> I9 系列。时机 = v1.3 槽位（纳入清单统一管理，不改版本归属）。每任务独立 commit + <code>npm run check</code> 全绿。</p>
+</blockquote>
+<ul class="contains-task-list">
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#42</strong> 前置修正决策落盘——脱出窗口设计稿全量修正（先于任何代码）</p>
+<ul>
+<li>✅ 已回勾（2026-08-22，commit <code>d5c86c2c</code>）：拍板 8 项——拖出者自担迁移 / frame:false 无菜单栏 / 玻璃继承 / ×关全部标签 / 吸附=释放点 / 命令按窗路由 / 崩溃 reload / 漂移关=关面板。mockup → <a href="%E9%9D%A2%E6%9D%BF%E7%AA%97%E5%8F%A3/mockups/03-%E5%8F%AF%E6%8B%96%E5%87%BA%E9%9D%A2%E6%9D%BF-mockup.html">03-可拖出面板-mockup.html</a> 帧 2/4</li>
+</ul>
+</li>
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#43</strong> 窗口转移机械（多窗口底座 / 壳侧多窗口 tabState / 浮窗生命周期+持久化 / 命令按窗口路由）——拆 #43-1~4 四子步，父任务回勾</p>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>#43-1</strong> 多窗口底座——createPoolView 参数化 + 窗口注册表 + detach/attachPluginView + 空窗自灭 + 就绪流
+<ul>
+<li>✅ 已回勾（2026-08-22，commit <code>672c9cf3</code>）：A1 参数化 / A2 注册表 / A3 就绪流 / A4 底座 API 四步收官</li>
+</ul>
+</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>#43-2</strong> 壳侧多窗口 tabState——窗口模式策略表 + tab 归属 windowId + 按窗 pushLayout + 关窗×壳处理
+<ul>
+<li>✅ 已回勾（2026-08-22，commit <code>3deae0f8</code>）：B1a 按窗推布局 / B1b 布局子集化 / B1c 策略表 / B2 标题随 tab / B3 控制按 sender 路由（831 绿）</li>
+</ul>
+</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>#43-3</strong> 浮窗生命周期 + 布局持久化——关浮窗不退出 + bounds 落盘 + 双屏越界钳制 + 重启恢复
+<ul>
+<li>✅ 已回勾（2026-08-22，commit <code>bd0386b5</code>）：越界钳制 / bounds 上报 / 落盘恢复建窗 + 主窗 closed=quitApp 拍板（834 绿）</li>
+</ul>
+</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>#43-4</strong> 命令执行按窗口路由（§8.6 方案 B 四件套）
+<ul>
+<li>✅ 已回勾（2026-08-22，commit <code>bc94f2d3</code>）：归属表 + origin 亲和 + 定向发 + 回执校验，+8 测试（842 绿）</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#44</strong> 手势 + 右键菜单降级（A3+A4 + 跨窗吸附）</p>
+<ul>
+<li>✅ 已回勾（2026-08-22，commit <code>578409fd</code>）：右键「新窗口/并回主窗」<code>f920ee2e</code> + 拖出手势 <code>a4dd08f5</code> + 跨窗吸附 live 高亮，856 绿。mockup → <a href="%E9%9D%A2%E6%9D%BF%E7%AA%97%E5%8F%A3/mockups/03-%E5%8F%AF%E6%8B%96%E5%87%BA%E9%9D%A2%E6%9D%BF-mockup.html">03-可拖出面板-mockup.html</a> 帧 1/3</li>
+</ul>
+</li>
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#45</strong> 漂移面板——PanelZone ⤢ → detachPanel()</p>
+<ul>
+<li>✅ 已回勾（2026-08-22，commit <code>23cf91d7</code>）：drift 窗口模式 + ⤢ 按钮 + panelDrift 模块 + 关窗即关面板（I9-13），860 绿</li>
+</ul>
+</li>
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#46</strong> 回归——矩阵场景 9（v1.3 验证稿）实机（#46.1~#46.19 子任务全收官）</p>
+<ul>
+<li>拖出/独立编辑/关闭回归/漂移面板四行 + 双屏 + 补测行（并窗吸附/逐个拖回/分屏/chrome/Ctrl+W 最后 tab）。mockup → <a href="%E9%9D%A2%E6%9D%BF%E7%AA%97%E5%8F%A3/mockups/03-%E5%8F%AF%E6%8B%96%E5%87%BA%E9%9D%A2%E6%9D%BF-mockup.html">03-可拖出面板-mockup.html</a> 帧 4/5</li>
+</ul>
+</li>
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#46.1</strong> 合并去重——merge 插入目标组身份去重（2026-08-22 拍板做；dirty 守卫暂不做）</p>
+<ul>
+<li>✅ 已回勾（2026-08-23 实机验证通过，commit <code>d32d517a</code>）：insertIntoWindow 查目标组同身份消除被拖的（singleton 语义），+5 测试 925 绿</li>
+</ul>
+</li>
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox"type="checkbox"> <strong>E5.8#46.2</strong> 跨窗资源事件联动（2026-08-22 独立立案——脱出窗 tab 不随文件树 rename/delete 更新）</p>
+<ul>
+<li>现状：壳 file:renamed/deleted 桥只更新主窗——脱出窗 tabState 在 windowHost 注册表跨窗不可见 → 幽灵标签。方向：壳资源事件按注册表全窗广播（对标 VS Code）。验收：脱出窗 tab 随 rename/delete 联动（待设计拍板，不阻塞 #46 回归）</li>
+</ul>
+</li>
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#46.3</strong> 实机 bug②——跨 OS 窗口释放判定坐标系错误（拖入主屏无动作）</p>
+<ul>
+<li>✅ 已回勾（2026-08-22 实机验证通过，commit <code>44f7a40b</code>）：screenX-clientX 推窗口屏幕原点，onMouseUp 屏幕坐标判定窗外，+2 测试 866 绿</li>
+</ul>
+</li>
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#46.4</strong> 实机 bug③——独立窗口内标签操作路由缺口（分屏/关闭/重排/聚焦全失效）</p>
+<ul>
+<li>✅ 已回勾（2026-08-22 实机验证通过，commit <code>eb85c0cb</code>）：createTabActionHandler 按 sourceWindowId 分流脱出窗注册表纯 reducer + 空窗自灭，+6 测试 866 绿</li>
+</ul>
+</li>
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#46.5</strong> 实机 bug①——主窗 bounds 冻结 → 拖入主屏=新窗</p>
+<ul>
+<li>✅ 已回勾（2026-08-22 实机验证通过，commit <code>7a25f07a</code>）：registerPool 归一化挂 moved/resized 上报，createPoolWindow 重复块删除，866 绿</li>
+</ul>
+</li>
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#46.6</strong> 现象三——串口监视器 png 图标被 OS 原生拖拽</p>
+<ul>
+<li>✅ 已回勾（2026-08-22 实机验证通过，commit <code>5c706888</code>）：三处 img draggable=false + .group-tab-icon user-drag none 双防御，866 绿</li>
+</ul>
+</li>
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#46.7</strong> 现象四——拖拽松手后卡死（<strong>关闭</strong>：无法复现 + 疑为 #46.4 症状误判）</p>
+<ul>
+<li>✅ 关闭（2026-08-22 用户拍板候因三选一）：若再现带复现现场重新立案</li>
+</ul>
+</li>
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#46.8</strong> Ctrl+W 按窗路由——脱出窗聚焦时快捷键关闭脱出窗 tab</p>
+<ul>
+<li>✅ 已回勾（2026-08-22 实机验证通过，commit <code>8bd96959</code>）：executeShortcut 载荷带 sourceWindowId → 脱出窗 registry reduceRemoveTab + 空窗自灭，+9 测试 875 绿；身份丢失 → 归一化根治见 #46.12</li>
+</ul>
+</li>
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#46.9</strong> 脱出窗 tab:focused/tab:activated 事件补发（2026-08-23 拍板——实机复现 autoReveal 不跟随）</p>
+<ul>
+<li>✅ 已回勾（2026-08-23 实机验证通过，commit <code>bf9d5ae1</code>）：focusTab 补发双事件（复用 emitTabActivated 导出），+2 测试 899 绿</li>
+</ul>
+</li>
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#46.10</strong> VS Code 式跨窗吸附插入指示线（2026-08-23 拍板——细竖线替代整条高亮，叠窗归属清晰）</p>
+<ul>
+<li>✅ 已回勾（2026-08-23 实机验证通过，commit <code>b3813d68</code>）：AdsorbIndexPayload + 共享 computeTabInsertIndex + releaseOutside 先取缝再 clearAdsorb + reduceInsertTab 加 index 中插，+13 测试 909 绿</li>
+</ul>
+</li>
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#46.11</strong> main.bounds 启动竞态——壳重载丢 bounds（2026-08-23 拍板方案 A 双向接线）</p>
+<ul>
+<li>✅ 已回勾（2026-08-23 实机验证通过，commit <code>029448a5</code>）：pushAllWindowBounds 全量 seed + onWindowBoundsChanged 模块顶层 ipcRenderer.on + IpcRelay 缓冲回放，909 绿</li>
+</ul>
+</li>
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#46.12</strong> 归一化「窗口身份丢失」类根治（2026-08-22 拍板三步——铺通用通道不逐处修）</p>
+<ul>
+<li>✅ 已回勾（2026-08-22 实机回归通过）：信封章+sourceId 族按窗路由 <code>a0d21f7f</code> / 聚焦窗跟踪+推流默认聚焦窗 <code>ff6cc37e</code> / 脱出窗 close 补 dirty 确认 <code>55f9ec38</code>（894 绿）</li>
+<li>🔥 回归修复（commit <code>b39643d6</code>，896 绿）：Step1 死循环 2800MB+ 卡死——订阅回调引用不稳 × 回放缓冲；createStableSourceIdRoutersBridge 恒等桥根治。教训铁律见 memory</li>
+</ul>
+</li>
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#46.13</strong> 脱出窗批量关闭补 dirty 确认（#46.12 遗留——ContextMenu 关其他/右侧/全部）</p>
+<ul>
+<li>✅ 已回勾（2026-08-23 实机验证通过，commit <code>fa44cb05</code>）：applyDetachedTabAction async + confirmBatchDirtyTabs 逐 tab 过滤，+6 测试 915 绿</li>
+</ul>
+</li>
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#46.14</strong> 脱出窗命令执行 bug——面板显示但 Enter 报「未在池内注册」</p>
+<ul>
+<li>✅ 已回勾（2026-08-23 实机验证通过，commit <code>2d1a0ac2</code>）：unregisterPoolCommands 遍历集补 _poolCommandWindows 键（声明命令从不入运行时集 → 归属漏摘），899 绿</li>
+</ul>
+</li>
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#46.15</strong> 脱出窗补拍板 7「无菜单栏」——assembleWindowLayout 按策略抑制 detached/drift 菜单栏</p>
+<ul>
+<li>✅ 已回勾（2026-08-23 实机验证通过，commit <code>b76533cf</code>）：策略表加 titleBarMenu（main:true/detached:false/drift:false）+ 菜单组按策略覆盖，916 绿</li>
+</ul>
+</li>
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#46.16</strong> 脱出窗最大化图标不切「还原」+ 无法还原</p>
+<ul>
+<li>✅ 已回勾（2026-08-23 实机验证通过，commit <code>f881989f</code>）：createPoolWindow 补挂 maximize/unmaximize → sendPoolMaximizeChange，916 绿</li>
+</ul>
+</li>
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#46.17</strong> 漂移窗形态适配——面板脱出成「面板专属小窗」（2026-08-23 拍板先适配看效果）</p>
+<ul>
+<li>✅ 已回勾（2026-08-23 实机验证通过，用户「满意」，commit <code>f8e74f02</code> + <code>9b2d0080</code>）：默认 bounds 小窗 + drift zones 去 groups + 图标 open-preview，920 绿</li>
+</ul>
+</li>
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#46.18</strong> 窗口置顶（pin）——「钉在最顶部」OS 级盖过其他应用（2026-08-23 用户点名；位置=窗口控制区 ─ 前，三窗统一）</p>
+<ul>
+<li>✅ 已回勾（2026-08-23 用户确认，commit <code>d07fb1d6</code>）：setAlwaysOnTop 全链 + pin/pinned 两态按钮 + accent 高亮</li>
+</ul>
+</li>
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#46.19</strong> 拖拽幽灵满屏可视（对标 VS Code 拖影——OS 级透明幽灵窗跟随）</p>
+<ul>
+<li>✅ 已回勾（2026-08-23 用户确认，commit <code>a783efab</code>）：主进程 drag-ghost 透明置顶穿透窗 + 池窗外标志上报，零契约改动</li>
+<li>✅ 进化（2026-08-23 用户接受，commit <code>cfb6276d</code>）：带标签图标 + 跟主题色</li>
+</ul>
+</li>
+</ul>
+<hr>
+<h1 id="phase-10主题架构换血外观主题化机制--域贡献者--混搭--设置层调节">Phase 10：主题架构换血——外观主题化（机制 + 域贡献者 + 混搭 + 设置层调节）</h1>
+<blockquote>
+<p><strong>2026-08-23 拍板拆写（原「🔴 占位」落笔）。</strong> 主题从「只换颜色」升级为「完整外观配方 + 域贡献者 + 混搭 + 设置层调节」——彻底换血。设计档案 → <a href="%E5%A4%96%E8%A7%82%E4%B8%BB%E9%A2%98%E5%8C%96/">外观主题化/</a>（01 边界 / 02 变量契约 / 03 域贡献者 / 04 两层调节 / 05 schema 冻结 / 06 API / 07 代码规划定稿 / 08 持久化 / 09 命令面 / 10 混搭 / 11 主题制作）。<strong>效果终态 = 任务可达成目标</strong> → <a href="%E5%A4%96%E8%A7%82%E4%B8%BB%E9%A2%98%E5%8C%96/mockups/themes/00-theme-gallery.html">00-theme-gallery.html</a>（12 主题六域画廊）+ <a href="%E5%A4%96%E8%A7%82%E4%B8%BB%E9%A2%98%E5%8C%96/mockups/01-%E8%AE%BE%E7%BD%AE%E9%A1%B5-%E4%B8%BB%E9%A2%98%E5%8C%BA-mockup.html">01-设置页-主题区-mockup.html</a> + 玻璃五帧 <a href="%E5%A3%B3%E5%8D%8A%E4%B8%9A%E5%8A%A1%E5%A4%96%E6%8E%A8/mockups/01-%E5%9B%BE%E7%89%87%E7%8E%BB%E7%92%83%E6%80%81-mockup.html">01-图片玻璃态-mockup.html</a>。</p>
+<p><strong>🔥 Phase 10 职责（2026-08-23 用户拍板定义——硬验收边界）：</strong> Phase 10 做完 = 能正式生产上述 html（gallery + 设置页 mockup）里预示的<strong>任意一种主题，包括其所有细节</strong>——app.fontFamily / FontFamilySelect / slider / 选图 / 六域全都在本 Phase 内。<strong>若 Phase 10 完成后 html 里有任何一个细节做不出来 = Phase 10 没做完</strong>（打回补任务）。「一个真正的主题插件可以做的界限 = Phase 10 完成」——Phase 10.5 即以此时限制作一个真实主题插件并端到端验证（见 10.5 头）。</p>
+<p><strong>执行顺序 = 阶段 0 前置债 → 阶段 1 玻璃/背景机制（原 Phase 10.5 外观玻璃态 #50.6-#50.12 归入——2026-08-23 用户拍板抽取）→ 阶段 2 数据层换血 → 阶段 3 设置层 → 阶段 4 新控件 → 阶段 5 命令面 → 阶段 6 迁移 → 阶段 7 混搭 → 阶段 8 效果验收。</strong> 小步快走：一任务一 commit + <code>npm run check</code> 门禁 + 实机验证零回归再回勾（清单先行 + 实机门禁铁律）。</p>
+<p><strong>任务拆写依据：</strong> <a href="%E5%A4%96%E8%A7%82%E4%B8%BB%E9%A2%98%E5%8C%96/07-%E4%BB%A3%E7%A0%81%E8%A7%84%E5%88%92.html">07-代码规划</a> A-E 五阶段定稿 + 05/02/08/06/09/10 各档案章节；新任务落点均按 2026-08-23 目录现状实锤（如 SettingsView 在 settings 插件、FontFamilySelect 现只支持等宽）。</p>
+</blockquote>
+<h2 id="阶段-0前置债--规范token-化地基--主题插件目录规范">阶段 0：前置债 + 规范（token 化地基 + 主题插件目录规范）</h2>
+<ul class="contains-task-list">
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox"type="checkbox"> <strong>E5.8#50.13</strong> 主题插件目录规范落盘——<code>themes/</code>（配方 json）+ <code>assets/</code>（字体/背景图资产），禁止平铺在根目录</p>
+<ul>
+<li>依据：用户 2026-08-23「完善主题插件制作规范，禁止平铺在根目录；未来更多主题定制化，要容易加入主题制作」；现状实锤 mint-soda/defaults 主题 json 平铺插件根目录（<code>plugins/user/theme-mint-soda/*.json</code>）</li>
+<li>方案：11-主题制作 §2 补「目录结构」节 + 09-插件目录规范 补主题专属节——<code>themes/</code> 放配方 json（plugin.json contributes.themes.path 指向）、<code>assets/</code> 放字体/背景图（json 相对路径 <code>assets/...</code> 走 getAssetPath）、<code>resources/</code> 插件图标；禁根目录平铺；扩展槽 = 每类定制化各归其位（per-surface 覆盖 json / i18n / README）</li>
+<li>落点：<a href="../../03-%E6%8F%92%E4%BB%B6%E5%88%B6%E9%80%A0/11-%E4%B8%BB%E9%A2%98%E5%88%B6%E4%BD%9C.html">11-主题制作.md</a> + <a href="../../03-%E6%8F%92%E4%BB%B6%E5%88%B6%E9%80%A0/09-%E6%8F%92%E4%BB%B6%E7%9B%AE%E5%BD%95%E8%A7%84%E8%8C%83.html">09-插件目录规范.md</a></li>
+<li>验收：两文档含 themes/ + assets/ 目录规范 + 禁平铺规则 + getAssetPath 指引；现有主题插件迁移（阶段 6）按此结构</li>
+<li>门禁：<code>npm run check</code> 全绿 + git commit</li>
+</ul>
+</li>
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox"type="checkbox"> <strong>E5.8#50.14</strong> 六域 token 全量替换——radius ~70 处 / font-ui / font-mono / shadow → <code>--radius-*</code>/<code>--font-*</code>/<code>--shadow-*</code></p>
+<ul>
+<li>依据：<a href="%E5%A4%96%E8%A7%82%E4%B8%BB%E9%A2%98%E5%8C%96/02-%E5%8F%98%E9%87%8F%E5%A5%91%E7%BA%A6.html">02 §1.2 缺口 + §3 消费方清单</a>——07 §0 前置债表映射 #50.7，但 #50.7 文本仅玻璃（2026-08-23 审计缺口）→ 拆独立任务补覆盖</li>
+<li>方案：<code>:root</code> 加 <code>--radius-*</code> 八档 / <code>--font-ui</code>/<code>--font-mono</code> / <code>--shadow-*</code> 默认值 = 现状；消费方逐文件替换：src/index.css L148/L163/173/186/197/213、src/pool/<strong>/*.css + components/</strong>/*.css ~70 处 border-radius（偏门值归并就近档）、PanelZone.css:204 + ContextMenu/QuickPickHost/ColorPicker.css:119 三处 font-mono 归一、散落 box-shadow ~10 处</li>
+<li>落点：<code>src/index.css</code> + <code>src/pool/**</code> + <code>src/components/**</code>（按 02 §3 消费方清单）</li>
+<li>验收：grep border-radius/font-family 硬编码零命中（除默认值行）；无主题时视觉零变化（默认值 = 现状）；npm run check 全绿（含 pool-css）</li>
+<li>门禁：<code>npm run check</code> 全绿 + git commit</li>
+</ul>
+</li>
+</ul>
+<h2 id="阶段-1玻璃背景机制原-phase-105-外观玻璃态-506-5012-归入本-phase任务定义见下方各条2026-08-23-用户拍板抽取">阶段 1：玻璃/背景机制（原 Phase 10.5 外观玻璃态 #50.6-#50.12 归入本 Phase——任务定义见下方各条，2026-08-23 用户拍板抽取）</h2>
+<ul class="contains-task-list">
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#50.5</strong> 外观玻璃态设计档案落盘</p>
+<ul>
+<li>✅ 已回勾（2026-08-17，纯文档 commit <code>3199f64d</code> + 形态补录 <code>a17f09fb</code>）：用户拍板 5 点 → 设计档案 <a href="%E5%A3%B3%E5%8D%8A%E4%B8%9A%E5%8A%A1%E5%A4%96%E6%8E%A8/02-%E5%A4%96%E8%A7%82%E7%8E%BB%E7%92%83%E6%80%81%E8%AE%BE%E8%AE%A1.html"><code>壳半业务外推/02-外观玻璃态设计.md</code></a>（机制切分/BackgroundLayer+surface 玻璃变量/Slider+uiHint/#50.6-#50.12 拆分/可拖出继承）；<strong>形态拍板悬浮圆角玻璃</strong>（圆角悬浮面板留缝+投影+光边+顶部高光，图从缝隙透出——直角贴边→玻璃与图无边界）；mockup 五帧 <a href="%E5%A3%B3%E5%8D%8A%E4%B8%9A%E5%8A%A1%E5%A4%96%E6%8E%A8/mockups/01-%E5%9B%BE%E7%89%87%E7%8E%BB%E7%92%83%E6%80%81-mockup.html"><code>壳半业务外推/mockups/01-图片玻璃态-mockup.html</code></a></li>
+</ul>
+</li>
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox"type="checkbox"> <strong>E5.8#50.6</strong> ThemeEngine surface/background 机制扩展——Theme 类型加可选 <code>surface</code>/<code>background</code> 字段 + applyTheme 写玻璃变量 + 广播</p>
+<ul>
+<li>现状（已实锤）：Theme = <code>{ name, type: &quot;dark&quot;|&quot;light&quot;, colors, pluginId? }</code>；applyTheme 写 <code>--{key}</code> CSS 变量 + <code>data-theme</code> + notifyTheme IPC + broadcast theme:changed（ThemeEngine.ts）</li>
+<li>方案：Theme 类型加 <code>surface?: { type: &quot;glass&quot;, blur?, saturate?, tint?, opacity?, specular?, morph?, radius?, inset?, shadow? }</code> + <code>background?: { image?, opacity?, mask? }</code>；applyTheme 把 surface/background 写成 <code>--glass-blur</code>/<code>--glass-saturate</code>/<code>--glass-tint</code>/<code>--glass-opacity</code>/<code>--glass-specular</code>/<code>--glass-morph</code>/<code>--bg-image</code>/<code>--bg-opacity</code>/<code>--bg-mask</code>/<code>--surface-radius</code>/<code>--surface-inset</code>/<code>--surface-shadow</code> 变量；<strong>默认零值 = 无玻璃无图无悬浮（blur 0 / opacity 1 / specular 0 / morph 0 / 无 image / radius 0 inset 0 shadow none）= 现有主题零变化</strong>；契约同步 linkdesk-api.ts / plugin.schema.json（themes 数组项）</li>
+<li>参考 mockup：帧 4 theme JSON 机制 + CSS 变量面、帧 2 单色 vs 玻璃对比（<a href="%E5%A3%B3%E5%8D%8A%E4%B8%9A%E5%8A%A1%E5%A4%96%E6%8E%A8/mockups/01-%E5%9B%BE%E7%89%87%E7%8E%BB%E7%92%83%E6%80%81-mockup.html">壳半业务外推/mockups/01-图片玻璃态-mockup.html</a>）</li>
+<li><strong>落点（壳目录规范）：</strong> Theme 类型 + surface/background 字段 + 写变量逻辑 → <strong><code>src/core/services/ui/ThemeEngine.ts</code></strong>（现状就这一个文件，无新文件）；契约 → <strong><code>src/core/api/linkdesk-api.ts</code></strong>（linkdesk-api 是类型契约唯一面）+ <strong><code>plugins/../plugin.schema.json</code></strong>（themes 数组项 schema）</li>
+<li><strong>🔀 落点修正（2026-08-20 目录现状审计）</strong>：原落点 <code>src/core/services/ThemeEngine.ts</code> 过时——<code>#0d.7-11</code> services 细分已把 ThemeEngine 归位 <code>core/services/ui/</code>（现状 <code>ThemeEngine.ts</code> + <code>ThemeEngine.test.ts</code> 同夹），执行落点补 <code>ui/</code>；#50.10 覆盖写入点同改（见该条）</li>
+<li><strong>🔀 审视登记（2026-08-18 #0d.7 全树审视，用户&quot;不给未来留坑&quot;）：</strong> 本任务扩展 ThemeEngine surface/background 后若 <code>ThemeEngine.ts</code> 单文件超临界（&gt;500 行）→ <strong>拆 <code>core/services/ui/themes/</code> 子夹</strong>（theme 类型 / 写变量 / 广播 三件分文件）——在<strong>本任务点</strong>落地，不留口头延期</li>
+<li>验收：带 surface/background 的 theme JSON 加载后 DOM 出现玻璃+悬浮变量；不带 = 变量不出现或为默认零值；现有 Dark/Light 主题零变化；npm run check 全绿</li>
+<li>门禁：<code>npm run check</code> 全绿 + git commit</li>
+<li><strong>注（2026-08-17 mockup 拍板）：</strong> surface 含悬浮面板三字段 radius/inset/shadow（形态拍板悬浮圆角玻璃——默认零值 = 现状直角贴边无缝无浮起，旧主题零变化；用户自由度三层 = 滑杆全局默认 / 主题 per-surface 覆盖 / 用户配置覆盖基线）</li>
+</ul>
+</li>
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox"type="checkbox"> <strong>E5.8#50.7</strong> 玻璃表面 CSS 变量化——surface 元素统一 <code>backdrop-filter</code> + per-surface blur 差异化 + 悬浮面板 + root 背景透明化</p>
+<ul>
+<li>现状（已实锤）：index.css html/body/#root/#pool-root 背 <code>--bg-window</code> 不透明底色（L129-139）；各表面用 <code>--bg-*</code> 实色 token</li>
+<li>方案：① 表面选择器统一声明 <code>backdrop-filter: blur(var(--glass-blur, 0px)) saturate(var(--glass-saturate, 1))</code>（blur 0 = 零开销零变化，非破坏）；② <strong>per-surface blur 差异化</strong>——窄表面（侧栏/图标栏）blur 小（mockup 实测 8px 图可辨，18px 糊成色块）、大表面（主区/状态栏）氛围 blur（18px）、悬浮面板 20px；③ <strong>悬浮面板形态</strong>——surface 元素声明 <code>border-radius: var(--surface-radius)</code> / <code>margin: var(--surface-inset)</code> / <code>box-shadow: var(--surface-shadow)</code> + 发丝光边 + 顶部高光（零值 = 直角贴边无缝无浮起 = 现状）；④ 根容器背景改 <code>transparent</code> 让 BackgroundLayer 图片层显形（默认主题视觉等价——玻璃变量默认零值时表面实色仍盖住图片）；⑤ <code>--glass-tint</code> 由主题写、作为玻璃面叠加色（玻璃颜色选择器消费它）；⑥ <strong>玻璃域六键消费对齐（缺口①，2026-08-24）</strong>——<code>--glass-opacity</code>（玻璃面不透明度，1 = 不透明 = 现状）、<code>--glass-specular</code>（顶部发丝高光强度，液态玻璃「反光」）、<code>--glass-morph</code>（hover 表面轻微形变响应，液态玻璃「响应」，<a href="%E5%A4%96%E8%A7%82%E4%B8%BB%E9%A2%98%E5%8C%96/02-%E5%8F%98%E9%87%8F%E5%A5%91%E7%BA%A6.html">02 §2.3</a> 材质定位）——零值 = 现状零变化</li>
+<li><strong>落点（壳目录规范）：</strong> 全在 <strong><code>src/index.css</code></strong>（极简 Pool 单文件——root 透明化 L129 + 各 zone 表面 CSS + 悬浮面板变量）——无新文件；surface 表面选择器 = 现有 zone 类（.title-bar/.icon-bar/.sidebar/.main/.status-bar 等，按实际类名）</li>
+<li>参考 mockup：<a href="%E5%A3%B3%E5%8D%8A%E4%B8%9A%E5%8A%A1%E5%A4%96%E6%8E%A8/mockups/01-%E5%9B%BE%E7%89%87%E7%8E%BB%E7%92%83%E6%80%81-mockup.html">壳半业务外推/mockups/01-图片玻璃态-mockup.html</a> 帧 1 主视觉（整窗图 + 全表面悬浮圆角玻璃）、帧 2 单色 vs 玻璃对比（默认主题视觉零变化对照）、帧 4 CSS 变量面</li>
+<li>验收：默认主题下视觉零变化（截图对比）；玻璃变量非零时表面出现模糊；悬浮变量非零时表面出现圆角留缝投影；per-surface blur 生效（侧栏不糊图）；npm run check 全绿（含 pool-css）</li>
+<li>门禁：<code>npm run check</code> 全绿 + git commit</li>
+</ul>
+</li>
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox"type="checkbox"> <strong>E5.8#50.8</strong> BackgroundLayer 组件——全窗图片层 + 遮罩 + 挂载</p>
+<ul>
+<li><strong>落点（壳目录规范 §2）：新建 <code>src/pool/zones/BackgroundLayer.tsx</code></strong>——与 FloatingLayerHost 同款全窗固定层（FloatingLayerHost = 顶镜像 z-index toast，BackgroundLayer = 底镜像 z-index 0；二者皆非 flex 布局分区但同属 zones/ 既有惯例）；<strong>PoolZoneShell.tsx import 并挂载为 <code>.pool-root</code> 第一个子元素</strong>（zone 层之下，z-index 0）</li>
+<li>实现：<code>position: fixed; inset: 0; z-index: 0; pointer-events: none</code>（不挡交互，避开硬约束 #18 拖拽区）+ <code>background-image: var(--bg-image)</code> + <code>background-size: cover</code> + <code>opacity: var(--bg-opacity)</code> + 遮罩 <code>background: rgba(0,0,0,var(--bg-mask))</code>（对标 dsh mask-photo 0.88——图+玻璃可读性生命线）</li>
+<li>挂载：pool root 最底层（在 zone 层之下）；主题/配置变化驱动变量更新（ThemeEngine 已广播）</li>
+<li>参考 mockup：<a href="%E5%A3%B3%E5%8D%8A%E4%B8%9A%E5%8A%A1%E5%A4%96%E6%8E%A8/mockups/01-%E5%9B%BE%E7%89%87%E7%8E%BB%E7%92%83%E6%80%81-mockup.html">壳半业务外推/mockups/01-图片玻璃态-mockup.html</a> 帧 1 主视觉（全窗图片层铺底、图从表面缝隙透出——BackgroundLayer 就是这层）</li>
+<li>验收：设图片后全窗出现背景图（含主区）；无图 = 不可见零成本；拖拽区/交互不被图层拦截；npm run check 全绿</li>
+<li>门禁：<code>npm run check</code> 全绿 + git commit</li>
+</ul>
+</li>
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox"type="checkbox"> <strong>E5.8#50.9</strong> Slider 通用控件 + uiHint &quot;slider&quot;（壳先行建设通用 API 面）</p>
+<ul>
+<li><strong>落点（壳目录规范 §2）：新建 <code>src/components/shared/slider/Slider.tsx</code></strong>（共享控件层——与 color-picker/file-path-input/number-input/toggle 同子目录惯例）+ <strong>settings 插件</strong> <code>plugins/builtin/settings/src/views/SettingsView/renderControl.tsx</code> uiHint switch 加 <code>&quot;slider&quot;</code> 分支（L27-62 现有 switch；不认识降级回 type 默认渲染，机制现成）</li>
+<li><strong>🔀 落点修正（2026-08-23 目录现状复核）</strong>：原落点 <code>src/components/views/settings/SettingsView.tsx</code> <strong>不存在</strong>（<code>src/components/</code> 无 views 子夹）——设置 UI 实为 settings 插件 <code>renderControl.tsx</code>（壳迁出 E5.8#41.14，控件 import 走例外表白名单，零 <code>@src/core</code>）；行号 L552-584 → <strong>L27-62</strong>（#50.20/#50.22/#50.23 同落点已对）；Slider 归 <code>components/shared/slider/</code>（子目录惯例，非平铺）两点原修正保留</li>
+<li>现状（已实锤）：renderControl <code>uiHint</code> switch 现支持 fontSize/color/fontFamily/file/directory（L27-62）——<strong>无 slider</strong>；全仓无 Slider 组件（grep 零命中）</li>
+<li>方案：新建 Slider（通用控件——外观设置第一个消费者，插件以后也要用；含 value/label/min/max/step/onChange + 键盘可达 + prefers-reduced-motion）→ SettingsView 渲染它；<strong>plugin.schema.json 无需改 enum</strong>——E5.7#66 已开放 string enum（public/schemas/plugin.schema.json L370），&quot;slider&quot; 第三方可直接声明</li>
+<li>参考 mockup：<a href="%E5%A3%B3%E5%8D%8A%E4%B8%9A%E5%8A%A1%E5%A4%96%E6%8E%A8/mockups/01-%E5%9B%BE%E7%89%87%E7%8E%BB%E7%92%83%E6%80%81-mockup.html">壳半业务外推/mockups/01-图片玻璃态-mockup.html</a> 帧 3 设置滑块（blur/opacity/saturation/mask/radius 五个滑杆 + 选中态样式）</li>
+<li>验收：Slider 单测 + SettingsView 声明 uiHint:&quot;slider&quot; 的配置渲染出滑杆；不认识的 hint 仍降级不抛错；npm run check 全绿</li>
+<li>门禁：<code>npm run check</code> 全绿 + git commit</li>
+</ul>
+</li>
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox"type="checkbox"> <strong>E5.8#50.10</strong> 外观配置接线——app.backgroundImage / app.glassOpacity / app.glassBlur / app.glassTint / app.surfaceRadius 注册 + onApply</p>
+<ul>
+<li><strong>落点：<code>src/App/startup.ts</code> registerConfiguration（L61 现有外观接线处；accent 播种先例 L102-118）</strong>——五配置注册 + onApply（对标现有 app.accentColor 接线同款）；<strong>覆盖写入落点：<code>src/core/services/ui/ThemeEngine.ts</code> applyTheme</strong>——读用户玻璃配置覆盖主题基线，对标 L196 <code>getConfigurationValue(&quot;app.accentColor&quot;)</code> 同款（壳目录规范 §1 services/ 有副作用 Service）——<strong>单一写入点，避免 onApply 与 applyTheme 双写变量不一致</strong></li>
+<li><strong>🔀 落点修正（2026-08-20 目录现状审计）</strong>：覆盖写入点 <code>src/core/services/ThemeEngine.ts</code> 过时（缺 <code>ui/</code>）——同 #50.6 修正为 <code>src/core/services/ui/ThemeEngine.ts</code></li>
+<li><strong>🔀 落点修正（2026-08-24 目录现状复核）</strong>：接线点 <code>src/App.tsx</code> 过时——<code>registerConfiguration</code> 与 accent 播种实为 <code>src/App/startup.ts</code>（L61/L102-118；App.tsx 无 registerConfiguration，grep 实锤）——同 #50.19/#50.21 落点</li>
+<li>现状（已实锤）：外观配置全在 <code>src/App/startup.ts</code> registerConfiguration 接线住壳（L61 起，app.theme/app.language/app.accentMode/app.accentColor/app.menuStyle）</li>
+<li>方案：registerConfiguration 加五配置（app.backgroundImage 文件路径 / app.glassOpacity 滑杆 0-1 / app.glassBlur 滑杆 0-40px / app.glassTint 颜色 / <strong>app.surfaceRadius scale 系数 0.5-2——08 §3 拍板（2026-08-24），作用于 <code>--radius-*</code> 八档整体缩放</strong>）——onApply 写对应 CSS 变量（走 ThemeEngine 同款变量面）+ 玻璃主题 vs 用户配置覆盖优先级定案（主题声明 = 基线，用户配置 = 覆盖——对标 app.accentColor 覆盖主题 accent 同款；用户自由度三层：滑杆全局默认 → 主题 per-surface 覆盖 → 用户配置覆盖基线）</li>
+<li>参考 mockup：<a href="%E5%A3%B3%E5%8D%8A%E4%B8%9A%E5%8A%A1%E5%A4%96%E6%8E%A8/mockups/01-%E5%9B%BE%E7%89%87%E7%8E%BB%E7%92%83%E6%80%81-mockup.html">壳半业务外推/mockups/01-图片玻璃态-mockup.html</a> 帧 3 设置滑块（五配置对应滑杆；圆角滑杆按 08 §3 scale 语义读——0.5× = 半角非直角；悬浮圆角面板属主题层 surface 域 #50.6）</li>
+<li>验收：设置里出现玻璃五配置且可改；改后即时生效；改回主题默认可还原；圆角 scale 滑杆 0.5×→2× 联动 <code>--radius-xs~2xl</code> 六档（1× = 主题原样）；<strong><code>--radius-pill</code>/<code>--radius-full</code> 形态值不被乘</strong>（胶囊主题拖滑杆不破形）；npm run check 全绿</li>
+<li>门禁：<code>npm run check</code> 全绿 + git commit</li>
+</ul>
+</li>
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox"type="checkbox"> <strong>E5.8#50.11</strong> 设置「选择图片」按键——本地选图 + 拷贝入库 + 路径持久化</p>
+<ul>
+<li><strong>落点（四层分工，全部对齐现有目录）：</strong> ① 壳侧 UI「选择图片…」按钮 → <strong>settings 插件</strong> <code>plugins/builtin/settings/src/views/SettingsView/renderControl.tsx</code> 背景行扩展（设置 UI 实为插件，壳无 SettingsView.tsx——#50.9 同修正）；② 主进程拷贝 → <code>electron/services/file-service.ts</code> 加 copyFile 方法（FileService 已有 appDataDir/join——userData 唯一入口，归一化）+ <strong>新 <code>electron/ipc/handlers/appearance-handlers.ts</code></strong>（真实目录 = <code>electron/ipc/handlers/</code>，对齐 dialog/serial/lsp-handlers 按域拆分惯例；importImage：源路径 → userData/appearance 拷贝 → 返回受控路径）+ <code>electron/ipc/channels.ts</code> 加 <code>IPC.appearance.importImage</code> 通道；③ API 契约 → <code>src/core/api/linkdesk-api/</code>（域面，E5.8#0d 已拆 ui 等子面）+ <code>electron/preload-pool/</code> 暴露 window.linkdesk.appearance.importImage（壳机制 API 面先行，插件也走 window.linkdesk.*——通信铁律）；④ 选图对话框 → 复用现有 <code>window.linkdesk.dialog.open</code>（<strong>已支持 filters</strong>——dialog-handlers.ts <code>filters: options?.filters</code>，直接传 <code>{ filters:[{name:'图片',extensions:['png','jpg','jpeg','webp']}] }</code>，零改动）</li>
+<li>现状（已实锤）：uiHint &quot;file&quot; 现走 FilePathInput（renderControl.tsx L57-58——文件对话框，路径直接当值）；但用户任选路径不能直接 <code>file://</code> 读（Electron 安全模型）</li>
+<li>方案（2026-08-17 定案 A 拷贝入库）：设置加「选择图片…」按钮 → 文件对话框（过滤图像扩展名 png/jpg/jpeg/webp）→ <strong>拷贝进 app userData appearance 目录</strong> → 存受控路径到 app.backgroundImage（重启还在）——对标 getAssetPath 受控来源；配「清除图片」还原无图</li>
+<li>参考 mockup：帧 3 设置（「选择图片…」按钮 + 图像过滤；<a href="%E5%A3%B3%E5%8D%8A%E4%B8%9A%E5%8A%A1%E5%A4%96%E6%8E%A8/mockups/01-%E5%9B%BE%E7%89%87%E7%8E%BB%E7%92%83%E6%80%81-mockup.html">壳半业务外推/mockups/01-图片玻璃态-mockup.html</a>）</li>
+<li>验收：选图 → 全窗出现背景图；重启后图片还在（路径持久化）；清除 → 还原；卸载重装不丢（userData 不在插件目录）；npm run check 全绿</li>
+<li>门禁：<code>npm run check</code> 全绿 + git commit</li>
+</ul>
+</li>
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox"type="checkbox"> <strong>E5.8#50.12</strong> 示例玻璃主题插件——业务侧验证壳机制（第一个消费者）</p>
+<ul>
+<li><em><em>落点（对齐现有 theme-</em> 惯例）：<code>plugins/user/theme-aurora-glass/</code></em>*——与 theme-defaults/theme-mint-soda/theme-twilight-forest 同款结构：plugin.json <code>contributes.themes</code> 声明 + 主题 JSON 文件（aurora-glass.json）+ <code>resources/</code> 图片资产；theme JSON 带 <code>surface: { type: &quot;glass&quot;, blur, saturate, tint, radius, inset, shadow }</code> + <code>background: { image, opacity, mask }</code>；图片走 <code>getAssetPath()</code> 插件打包（硬约束 #12）</li>
+<li>验证闭环：#50.6-#50.11 壳机制全链被真实消费者驱动；插件在 ThemeBrowser 显示 + 可切换</li>
+<li>验收：切到玻璃主题 → 全窗图 + 表面悬浮圆角液态玻璃漂浮效果成立（对照 mockup <a href="%E5%A3%B3%E5%8D%8A%E4%B8%9A%E5%8A%A1%E5%A4%96%E6%8E%A8/mockups/01-%E5%9B%BE%E7%89%87%E7%8E%BB%E7%92%83%E6%80%81-mockup.html"><code>壳半业务外推/mockups/01-图片玻璃态-mockup.html</code></a> 帧 1 主视觉 / 帧 5 脱出窗口继承）；侧栏图可辨（per-surface blur）；圆角 scale 滑杆 0.5×→2× 整体缩放（互切验证）；切回 Dark/Light 单色调原样；卸载插件 → 壳机制零残留</li>
+<li>门禁：<code>npm run check</code> 全绿 + git commit</li>
+</ul>
+</li>
+</ul>
+<blockquote>
+<p><strong>阶段 1 补（2026-08-24 用户拍板）：</strong> gallery ⑬ 纸纹分区 + ⑭ 影像分区落地——per-surface 背景机制 4 任务（#50.28-#50.31）+ 示例主题 1 任务（#50.32）；职责硬边界「Phase 10 做完 = 能生产 gallery 任意主题所有细节」含此二壳</p>
+</blockquote>
+<ul class="contains-task-list">
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox"type="checkbox"> <strong>E5.8#50.28</strong> 表面纹理机制——<code>surface.texture</code> 键 + 引擎写 per-surface 纹理变量（gallery ⑬ 纸纹分区·方案 A）</p>
+<ul>
+<li>依据：gallery ⑬ 纸纹分区（<a href="%E5%A4%96%E8%A7%82%E4%B8%BB%E9%A2%98%E5%8C%96/mockups/themes/00-theme-gallery.html">mockups/themes/00-theme-gallery.html</a>）+ 决策 C surface 键随 #50.6 token 表冻结</li>
+<li>方案：05 schema <code>appearance.surface</code> 加 <code>texture</code> 键（可平铺纹理图资产路径，应用全部 zone 表面）+ 可选 <code>textureOpacity</code>；<strong>05 schema 冻结文档增量修订（扩展键 surface.texture/textureOpacity，结构不变，2026-08-24 用户拍板）</strong>；ThemeEngine 写 per-surface 纹理变量（<code>--surface-bg-image</code>/<code>--surface-bg-opacity</code>，5 zone 共用一张平铺图）；默认无 texture = 现状零变化</li>
+<li>落点：<code>src/core/services/ui/ThemeEngine.ts</code>（#50.6 扩展字段后追加）+ 契约同步 05 schema + plugin.schema.json；依赖 #50.6</li>
+<li>验收：带 <code>surface.texture</code> 的配方加载后每个 zone 表面出现平铺纹理、接缝（surface-inset 留缝）干净露底色；无 texture = 现状零变化；npm run check 全绿</li>
+<li>门禁：<code>npm run check</code> 全绿 + git commit</li>
+</ul>
+</li>
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox"type="checkbox"> <strong>E5.8#50.29</strong> 背景分区切片机制——<code>background.mode:&quot;zones&quot;</code> + 布局坐标锚定（gallery ⑭ 影像分区·方案 B 静态）</p>
+<ul>
+<li>依据：gallery ⑭ 影像分区 + [e5.8-layout-tree-grid]（布局树 grid 坐标源已 grid 化）</li>
+<li>方案：05 schema <code>appearance.background</code> 加 <code>mode: &quot;panorama&quot; | &quot;zones&quot;</code>（默认 &quot;panorama&quot; = 现全窗语义零变化；&quot;zones&quot; = 同图连续切片挂 zone 表面）；<strong>05 schema 冻结文档增量修订（扩展键 background.mode，结构不变，2026-08-24 用户拍板）</strong>；mode=&quot;zones&quot; 时 ThemeEngine 读布局树每 zone 坐标 → 写 per-surface 切片变量（<code>--surface-&lt;zone&gt;-bg-position</code> = 负偏移 -(zone 坐标)，相邻 zone 拼回连续图）+ <code>--surface-bg-size</code>（= 窗口尺寸）；作者只写 mode + image，坐标由引擎算（一种写法 ai 化）</li>
+<li>落点：<code>src/core/services/ui/ThemeEngine.ts</code> + 契约同步 05 schema + plugin.schema.json；依赖 #50.6 + 布局树 grid（已回勾）</li>
+<li>验收：<code>background: { mode:&quot;zones&quot;, image }</code> 加载后固定窗口下相邻 zone 拼回连续图、接缝露底色；默认 panorama = 现状零变化；npm run check 全绿</li>
+<li>门禁：<code>npm run check</code> 全绿 + git commit</li>
+</ul>
+</li>
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox"type="checkbox"> <strong>E5.8#50.30</strong> 表面背景 CSS 消费层——zone 表面读 per-surface image/position 变量</p>
+<ul>
+<li>依据：#50.7 表面选择器先例（.title-bar/.icon-bar/.sidebar/.main/.status-bar 等 zone 类）</li>
+<li>方案：zone 表面选择器统一声明 <code>background-image: var(--surface-bg-image, none)</code> + <code>background-position: var(--surface-&lt;zone&gt;-bg-position, 0 0)</code> + <code>background-size</code>（纹理 repeat / 切片读 <code>--surface-bg-size</code>（= 窗口尺寸）锚定）+ 纹理/切片主题下 zone 内层透明化（同 #50.7 root 透明化先例，让 per-surface 背景透上来）；零值 = 现状零变化</li>
+<li>落点：<code>src/index.css</code>（zone 表面选择器）；依赖 #50.28/#50.29</li>
+<li>验收：纹理/切片变量非零时 zone 出现背景；无变量 = 现状零变化；npm run check 全绿</li>
+<li>门禁：<code>npm run check</code> 全绿 + git commit</li>
+</ul>
+</li>
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox"type="checkbox"> <strong>E5.8#50.31</strong> 切片坐标动态重算——窗口 resize/布局变化 → 重算 per-zone position（方案 B 动态）</p>
+<ul>
+<li>依据：#50.29 静态切片只在应用时算一次；真实窗口可缩放/可脱出（#46），尺寸变化切片失准</li>
+<li>方案：窗口尺寸/布局变化订阅在<strong>壳层</strong>（复用聚焦窗跟踪/推流既有订阅）→ 触发重算每 zone 切片坐标 → 重写 <code>--surface-&lt;zone&gt;-bg-position</code>；坐标源 = 布局树（脱出窗/漂移窗形态同走布局树 [e5.8-layout-tree-grid]）；<strong>ThemeEngine 保持纯函数合并（05 §4 / 10 混搭「引擎已是纯函数合并，混搭零新机制」承诺）——窗口尺寸加为 apply 参数（<code>applyRecipe(recipe, colorway, overrides, windowSize?)</code>），引擎不订阅事件</strong></li>
+<li>落点：重算 + 写变量 → <code>src/core/services/ui/ThemeEngine.ts</code>（或超临界拆 <code>ui/themes/</code> 子夹）；窗口订阅 + 触发在壳层（不落引擎）；依赖 #50.29</li>
+<li>验收：resize 窗口后相邻 zone 仍拼回连续图；脱出窗/漂移窗切片正确；npm run check 全绿 + 实机验证</li>
+<li>门禁：<code>npm run check</code> 全绿 + 实机验证零回归 + git commit</li>
+</ul>
+</li>
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox"type="checkbox"> <strong>E5.8#50.32</strong> 分区纹理示例主题插件——纸纹 + 影像 2 配方端到端（gallery ⑬⑭ 验收闭环）</p>
+<ul>
+<li>依据：gallery ⑬⑭（<a href="%E5%A4%96%E8%A7%82%E4%B8%BB%E9%A2%98%E5%8C%96/mockups/themes/00-theme-gallery.html">mockups/themes/00-theme-gallery.html</a>）+ #50.12 示例主题先例 + #50.13 目录规范</li>
+<li>方案：<code>plugins/user/theme-zones/</code> 插件 = 2 配方（paper-zones 纸纹分区 / image-zones 影像分区）+ 资产（可平铺纸纹图程序生成 + 演示背景图）；配方走 <code>surface.texture</code>（⑬）+ <code>background.mode:&quot;zones&quot;</code>（⑭）；对齐 #50.13 themes/ + assets/ 目录；<strong>ai化验收（缺口③实例）：AI 只读 11-主题制作 + 05 schema 独立产出这 2 个配方（不发参考文件、不抄 gallery）——验证「AI 读文档能仿造」</strong></li>
+<li>验证闭环：#50.28-#50.31 壳机制被真实消费者驱动；两主题在 ThemeBrowser 显示 + 可切换</li>
+<li>验收：切到 paper-zones → 每 zone 平铺纸纹 + 接缝干净；切到 image-zones → 相邻 zone 拼回连续图 + 接缝无图（对照 gallery ⑬⑭）；resize 后仍连续；npm run check 全绿 + 实机验证</li>
+<li>门禁：<code>npm run check</code> 全绿 + 实机验证零回归 + git commit</li>
+</ul>
+</li>
+</ul>
+<h2 id="阶段-2数据层换血07-a05-schema-落地--资产字体">阶段 2：数据层换血（07 A——05 schema 落地 + 资产字体）</h2>
+<ul class="contains-task-list">
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox"type="checkbox"> <strong>E5.8#50.15</strong> ThemeRegistry Recipe+Colorway 解析——<code>colorways[]</code> + <code>appearance</code> 域，只读新格式（决策 F 零兼容读）</p>
+<ul>
+<li>依据：<a href="%E5%A4%96%E8%A7%82%E4%B8%BB%E9%A2%98%E5%8C%96/05-%E4%B8%BB%E9%A2%98%E6%95%B0%E6%8D%AE%E6%A8%A1%E5%9E%8B.html">05 §2/§5</a> schema 冻结 + 决策 F；<a href="%E5%A4%96%E8%A7%82%E4%B8%BB%E9%A2%98%E5%8C%96/07-%E4%BB%A3%E7%A0%81%E8%A7%84%E5%88%92.html">07 A</a></li>
+<li>方案：解析新 schema 成 <code>Recipe { id, name, type, appearance, colorways[] }</code>；<code>appearance</code> 域键 = token 名去 <code>--</code>（radius/glass/font/background/surface）；只读新格式，旧平铺 colors 不兼容读；<code>RecipeMeta</code> 含 <code>domains</code>（混搭来源过滤用）</li>
+<li>落点：<code>src/core/registry/appearance/ThemeRegistry.ts</code>（07 A）；契约 → <code>plugins/../plugin.schema.json</code> themes 数组项</li>
+<li>验收：带 colorways 的 theme 解析出 Recipe；旧格式报错/忽略；npm run check 全绿</li>
+<li>门禁：<code>npm run check</code> 全绿 + git commit</li>
+</ul>
+</li>
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox"type="checkbox"> <strong>E5.8#50.16</strong> applyRecipe 合并算法 + getEffectiveTokens——ThemeEngine 重构（稀疏继承链 + scale 乘算）</p>
+<ul>
+<li>依据：<a href="%E5%A4%96%E8%A7%82%E4%B8%BB%E9%A2%98%E5%8C%96/05-%E4%B8%BB%E9%A2%98%E6%95%B0%E6%8D%AE%E6%A8%A1%E5%9E%8B.html">05 §4 合并算法</a>（:root → appearance → colorway → userOverrides）+ <a href="%E5%A4%96%E8%A7%82%E4%B8%BB%E9%A2%98%E5%8C%96/07-%E4%BB%A3%E7%A0%81%E8%A7%84%E5%88%92.html">07 A</a></li>
+<li>方案：<code>Theme{name,type,colors}</code> → <code>applyRecipe(recipe, colorwayId, overrides)</code> + <code>mergeDomains</code>；颜色域稀疏继承；scale token（<code>--radius-xs~2xl</code> 六档）JS 乘算、<strong><code>--radius-pill</code>/<code>--radius-full</code> 形态值排除不乘（08 §3 边界，2026-08-24 审视补）</strong>、绝对 token 覆盖；<code>getEffectiveTokens()</code>（06 §2 播种/混搭预览用）；写 :root + 广播 theme:changed 保留</li>
+<li>落点：<code>src/core/services/ui/ThemeEngine.ts</code>（现 L13-19 Theme 接口 + L98-131 applyTheme；超临界拆 <code>ui/themes/</code> 子夹，#50.6 已登记）</li>
+<li>验收：配方+配色合并正确；无主题时 :root 兜底；getEffectiveTokens 返回合并后全集；现有 Dark/Light 主题迁移后零变化；npm run check 全绿</li>
+<li>门禁：<code>npm run check</code> 全绿 + git commit</li>
+</ul>
+</li>
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox"type="checkbox"> <strong>E5.8#50.17</strong> 资产字体加载——作者自带字体两步机制（getAssetPath → @font-face 注册 → 族名写 <code>--font-ui</code>）</p>
+<ul>
+<li>依据：<a href="%E5%A4%96%E8%A7%82%E4%B8%BB%E9%A2%98%E5%8C%96/05-%E4%B8%BB%E9%A2%98%E6%95%B0%E6%8D%AE%E6%A8%A1%E5%9E%8B.html">05 §2</a> <code>font.ui</code> 两种形式（资产路径 / 系统族名字符串）+ 用户 2026-08-23「作者可以在自己的主题中自带字体，依靠包支持系统以外的字体」；<a href="%E5%A4%96%E8%A7%82%E4%B8%BB%E9%A2%98%E5%8C%96/06-%E4%B8%BB%E9%A2%98API%E5%A5%91%E7%BA%A6.html">06 §4 资产解析</a></li>
+<li>方案：font.ui = 资产相对路径 → <code>getAssetPath(pluginId, path)</code>（硬约束 12）解析 file:///dev URL → 注册 <code>@font-face</code>（族名 = 文件名去扩展名或 pluginId 派生）→ <code>--font-ui</code> 写<strong>族名</strong>（font-family 不能吃 url()，必须两步）；系统族名字符串 = 直接写</li>
+<li>落点：<code>src/core/services/ui/ThemeEngine.ts</code> + <code>src/core/utils/path/assetPath.ts</code>（现 L13）</li>
+<li>验收：主题带 woff2 资产 → 全 UI 换字体；卸载插件 → 字体回默认；系统字族主题直接生效；npm run check 全绿</li>
+<li>门禁：<code>npm run check</code> 全绿 + git commit</li>
+</ul>
+</li>
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox"type="checkbox"> <strong>E5.8#50.18</strong> contracts + <code>linkdesk.theme</code> API + IPC——listRecipes / getActive / getEffectiveTokens / setRecipe / setColorway / resetAppearance</p>
+<ul>
+<li>依据：<a href="%E5%A4%96%E8%A7%82%E4%B8%BB%E9%A2%98%E5%8C%96/06-%E4%B8%BB%E9%A2%98API%E5%A5%91%E7%BA%A6.html">06 §2 命名空间全表</a> + <a href="%E5%A4%96%E8%A7%82%E4%B8%BB%E9%A2%98%E5%8C%96/07-%E4%BB%A3%E7%A0%81%E8%A7%84%E5%88%92.html">07 A</a></li>
+<li>方案：<code>RecipeMeta</code>/<code>ColorwayMeta</code> 类型 + <code>linkdesk.theme</code> 命名空间声明（contracts/runtime-shapes.ts + linkdesk.d.ts）；preload 桥 → 主进程 ThemeRegistry 查询（数据权威在主进程，多窗一致）；set* 落到配置 app.theme/app.themeColor；theme:changed payload 扩展 <code>{ recipeId, colorwayId, tokens, domains }</code>（06 §3）</li>
+<li>落点：<code>contracts/</code> + <code>linkdesk.d.ts</code> + <code>electron/preload-pool.ts</code> + <code>electron/ipc/</code>（xxx-handlers.ts 惯例）+ <code>src/core/api/linkdesk-api/</code></li>
+<li>验收：渲染器可 list/get/set；跨窗口一致；第三方插件可订阅/调用（通用 API 铁律）；npm run check 全绿</li>
+<li>门禁：<code>npm run check</code> 全绿 + git commit</li>
+</ul>
+</li>
+</ul>
+<h2 id="阶段-3设置层07-b--08">阶段 3：设置层（07 B + 08）</h2>
+<ul class="contains-task-list">
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox"type="checkbox"> <strong>E5.8#50.19</strong> app.* 全表注册 + 播种 + 主题组归属——外观设置层落地（theme/themeColor/appearanceMode + 6 覆盖项 + 混搭 6 键占位）</p>
+<ul>
+<li>依据：<a href="%E5%A4%96%E8%A7%82%E4%B8%BB%E9%A2%98%E5%8C%96/08-%E6%8C%81%E4%B9%85%E5%8C%96%E4%B8%8E%E9%85%8D%E7%BD%AE.html">08 §1 key 全表 + §2 播种 + §7 显隐矩阵/接线总表</a> + <a href="%E5%A4%96%E8%A7%82%E4%B8%BB%E9%A2%98%E5%8C%96/07-%E4%BB%A3%E7%A0%81%E8%A7%84%E5%88%92.html">07 B</a></li>
+<li>方案：<code>registerConfiguration</code> 全表 key（app.theme/app.themeColorMode/app.themeColor/app.appearanceMode/app.surfaceRadius/app.glassBlur/app.glassOpacity/app.glassTint/app.backgroundImage/app.fontFamily/app.mixMode/app.mix*）；<strong>播种</strong> = appearanceMode→custom 读 getEffectiveTokens 反推（对标 accent 播种先例 startup.ts L101-105）；app.theme/app.themeColor 改动态 enum 来源；主题组 = 壳注册第二配置贡献（pluginId <code>appearance</code>，标题「主题」，08 §5）</li>
+<li>落点：<code>src/App/startup.ts</code> registerConfiguration + <code>src/core/registry/ConfigurationRegistry.ts</code></li>
+<li>验收：设置页出现主题组 + 6 覆盖行；followTheme→custom 播种当前值非归零；改配置即时生效；npm run check 全绿</li>
+<li>门禁：<code>npm run check</code> 全绿 + git commit</li>
+</ul>
+</li>
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox"type="checkbox"> <strong>E5.8#50.20</strong> app.fontFamily 接线 + FontFamilySelect 通用字族化——用户级字体覆盖写 <code>--font-ui</code></p>
+<ul>
+<li>依据：<a href="%E5%A4%96%E8%A7%82%E4%B8%BB%E9%A2%98%E5%8C%96/08-%E6%8C%81%E4%B9%85%E5%8C%96%E4%B8%8E%E9%85%8D%E7%BD%AE.html">08 §1</a> app.fontFamily 行 + 用户 2026-08-23「用户可以通过混搭改变字体等」；现状实锤 FontFamilySelect mono-only（isMonospace 过滤 + FALLBACK_MONO_FONTS，宋体/黑体/Times 选不了）</li>
+<li>方案：① FontFamilySelect 加 <code>monoOnly?: boolean</code>（默认 true 兼容等宽场景；false = 全字族，queryLocalFonts 不过等宽过滤）② app.fontFamily 注册 + onApply 写 <code>--font-ui</code>（onApply 走 ThemeEngine 覆盖面单一写入点）；UI 落点在 settings 插件（renderControl.tsx uiHint &quot;fontFamily&quot; 已接）；<strong>③ 当前值边界（2026-08-24 审视补）</strong>：未覆盖时「跟随主题」，当前值 = 主题资产字体族名（@font-face 注册，不在 queryLocalFonts 系统列表）——FontFamilySelect 对非系统值<strong>只显示不提供下拉选项</strong>（或显示「跟随主题」空态），不允许把资产族名当可选项展示</li>
+<li>落点：<code>src/components/shared/font-family-select/FontFamilySelect.tsx</code> + <code>plugins/builtin/settings/src/views/SettingsView/renderControl.tsx</code>（L55-56）+ <code>src/App/startup.ts</code> 接线</li>
+<li>验收：设置里 app.fontFamily 可选宋体/黑体/Times 等全字族；选择后全 UI 换字体；切回跟随主题还原；npm run check 全绿</li>
+<li>门禁：<code>npm run check</code> 全绿 + git commit</li>
+</ul>
+</li>
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox"type="checkbox"> <strong>E5.8#50.21</strong> app.theme 迁移——旧值映射 + 现有主题插件迁移启动</p>
+<ul>
+<li>依据：<a href="%E5%A4%96%E8%A7%82%E4%B8%BB%E9%A2%98%E5%8C%96/08-%E6%8C%81%E4%B9%85%E5%8C%96%E4%B8%8E%E9%85%8D%E7%BD%AE.html">08 §4 迁移表</a>（app.theme &quot;Dark&quot;/&quot;Light&quot; → &quot;dark&quot;/&quot;light&quot; 壳内置配方 id）+ <a href="%E5%A4%96%E8%A7%82%E4%B8%BB%E9%A2%98%E5%8C%96/05-%E4%B8%BB%E9%A2%98%E6%95%B0%E6%8D%AE%E6%A8%A1%E5%9E%8B.html">05 §5</a></li>
+<li>方案：启动时旧值归一化（映射表，不弹窗不重置）；迁移结果 = 阶段 6 主题插件迁移的前置契约</li>
+<li>落点：<code>src/App/startup.ts</code> 启动配置归一化</li>
+<li>验收：旧 workspace.json 的 &quot;Dark&quot; 启动后变 &quot;dark&quot; 且主题生效；无弹窗；npm run check 全绿</li>
+<li>门禁：<code>npm run check</code> 全绿 + git commit</li>
+</ul>
+</li>
+</ul>
+<h2 id="阶段-4新控件07-cmockup-里出现的全造">阶段 4：新控件（07 C——mockup 里出现的全造）</h2>
+<ul class="contains-task-list">
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox"type="checkbox"> <strong>E5.8#50.22</strong> ThemePicker 卡片控件——配方卡片 + 配色徽标</p>
+<ul>
+<li>依据：<a href="%E5%A4%96%E8%A7%82%E4%B8%BB%E9%A2%98%E5%8C%96/07-%E4%BB%A3%E7%A0%81%E8%A7%84%E5%88%92.html">07 C</a> + <a href="%E5%A4%96%E8%A7%82%E4%B8%BB%E9%A2%98%E5%8C%96/mockups/01-%E8%AE%BE%E7%BD%AE%E9%A1%B5-%E4%B8%BB%E9%A2%98%E5%8C%BA-mockup.html">01-设置页-主题区-mockup.html</a> 主题区</li>
+<li>方案：<code>shared/theme-picker/ThemePicker.tsx</code>（配方卡片列表 + colorways 徽标 + 选中态 + 键盘可达）+ renderControl uiHint &quot;themePicker&quot;；数据来自 linkdesk.theme.listRecipes()（06 §2）</li>
+<li>落点：<code>src/components/shared/theme-picker/</code> + <code>plugins/builtin/settings/src/views/SettingsView/renderControl.tsx</code> 加分支</li>
+<li>验收：app.theme 配置渲染出配方卡片；多配色配方显示徽标；点卡片 setRecipe；npm run check 全绿</li>
+<li>门禁：<code>npm run check</code> 全绿 + git commit</li>
+</ul>
+</li>
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox"type="checkbox"> <strong>E5.8#50.23</strong> 动态 SelectBox——uiHint &quot;select&quot; + optionsFrom（colorways / 混搭来源）</p>
+<ul>
+<li>依据：<a href="%E5%A4%96%E8%A7%82%E4%B8%BB%E9%A2%98%E5%8C%96/07-%E4%BB%A3%E7%A0%81%E8%A7%84%E5%88%92.html">07 C</a>（静态 enum 撑不起动态列表的缺口）+ <a href="%E5%A4%96%E8%A7%82%E4%B8%BB%E9%A2%98%E5%8C%96/06-%E4%B8%BB%E9%A2%98API%E5%A5%91%E7%BA%A6.html">06 §1</a> + <a href="%E5%A4%96%E8%A7%82%E4%B8%BB%E9%A2%98%E5%8C%96/10-%E6%B7%B7%E6%90%AD%E8%AE%BE%E8%AE%A1.html">10 §2</a></li>
+<li>方案：renderControl 扩展 <code>uiHint: &quot;select&quot;</code> + <code>optionsFrom</code>（如 <code>theme.colorways</code> / <code>theme.sources</code>——渲染时调 listRecipes 动态取）+ 预览色块；不改主进程配置注册表结构</li>
+<li>落点：<code>plugins/builtin/settings/src/views/SettingsView/renderControl.tsx</code> + <code>src/components/shared/select-box/SelectBox.tsx</code>（如需扩展）</li>
+<li>验收：app.themeColor 随活动配方动态换选项；混搭来源下拉列出贡献域配方；npm run check 全绿</li>
+<li>门禁：<code>npm run check</code> 全绿 + git commit</li>
+</ul>
+</li>
+</ul>
+<h2 id="阶段-5命令面07-d--09">阶段 5：命令面（07 D + 09）</h2>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E5.8#50.24</strong> theme.pick 两段式 QuickPick + 复位命令（resetAppearance / resetMix）
+<ul>
+<li>依据：<a href="%E5%A4%96%E8%A7%82%E4%B8%BB%E9%A2%98%E5%8C%96/09-%E5%91%BD%E4%BB%A4%E9%9D%A2.html">09 命令清单</a>（theme.pick 配方→配色两段 / theme.pickColorway 先并入 pick / theme.resetAppearance / theme.resetMix）+ <a href="%E5%A4%96%E8%A7%82%E4%B8%BB%E9%A2%98%E5%8C%96/07-%E4%BB%A3%E7%A0%81%E8%A7%84%E5%88%92.html">07 D</a></li>
+<li>方案：ensureCoreCommands 注册（App 启动）；两段式 QuickPick ↑↓ 预览保留；复位 = app.appearanceMode→followTheme + 覆盖清空 / mixMode→recipe + 来源清空，不弹确认（09 §4 拍板）</li>
+<li>落点：<code>src/core/commands/shell/settingsCommands.ts</code> + App 启动 ensureCoreCommands</li>
+<li>验收：Ctrl+Shift+P 可两段选主题/配色；预览实时；复位回配方默认；标题走 t()；npm run check 全绿</li>
+<li>门禁：<code>npm run check</code> 全绿 + git commit</li>
+</ul>
+</li>
+</ul>
+<h2 id="阶段-6迁移05-5--11-5决策-f-零向后兼容">阶段 6：迁移（05 §5 + 11 §5——决策 F 零向后兼容）</h2>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E5.8#50.25</strong> 现有主题插件迁移——theme-defaults / mint-soda / twilight-forest → <code>colorways[]</code> 单配方多配色
+<ul>
+<li>依据：<a href="%E5%A4%96%E8%A7%82%E4%B8%BB%E9%A2%98%E5%8C%96/05-%E4%B8%BB%E9%A2%98%E6%95%B0%E6%8D%AE%E6%A8%A1%E5%9E%8B.html">05 §5 迁移表</a> + <a href="../../03-%E6%8F%92%E4%BB%B6%E5%88%B6%E9%80%A0/11-%E4%B8%BB%E9%A2%98%E5%88%B6%E4%BD%9C.html">11 §5</a>（纯数据编辑，不动引擎）</li>
+<li>方案：defaults → 单配方 json <code>colorways:[{id:&quot;dark&quot;},{id:&quot;light&quot;}]</code>；mint-soda / twilight-forest → 4 json 合并 1 配方 4 colorways（theme 列表收 1 卡片）；目录按 #50.13 规范（themes/ + assets/）</li>
+<li>落点：<code>plugins/user/theme-defaults/</code> + <code>plugins/user/theme-mint-soda/</code> + <code>plugins/user/theme-twilight-forest/</code></li>
+<li>验收：迁移后 ThemeBrowser 显示 1 卡片多配色；切换配色生效；旧格式零兼容（不读）；npm run check 全绿</li>
+<li>门禁：<code>npm run check</code> 全绿 + git commit</li>
+</ul>
+</li>
+</ul>
+<h2 id="阶段-7混搭07-e--10排期靠后ac-动态-enum-就绪后">阶段 7：混搭（07 E + 10——排期靠后，A/C 动态 enum 就绪后）</h2>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E5.8#50.26</strong> 混搭机制——mixMode + 6 域来源 + 引擎按域合并 + 一键复位
+<ul>
+<li>依据：<a href="%E5%A4%96%E8%A7%82%E4%B8%BB%E9%A2%98%E5%8C%96/10-%E6%B7%B7%E6%90%AD%E8%AE%BE%E8%AE%A1.html">10 混搭设计</a>（决策 B：混搭 = 按域换来源）+ <a href="%E5%A4%96%E8%A7%82%E4%B8%BB%E9%A2%98%E5%8C%96/03-%E5%9F%9F%E8%B4%A1%E7%8C%AE%E8%80%85%E4%B8%8E%E6%B7%B7%E6%90%AD.html">03 §5</a> + <a href="%E5%A4%96%E8%A7%82%E4%B8%BB%E9%A2%98%E5%8C%96/07-%E4%BB%A3%E7%A0%81%E8%A7%84%E5%88%92.html">07 E</a></li>
+<li>方案：app.mixMode/mixColor/mixRadius/mixGlass/mixFont/mixBackground/mixSurface 注册（08 §1）；混搭区 UI（6 行域来源 + 复位，01 mockup）；引擎 mergeDomains 推广——每个域各自取来源再设置层覆盖；颜色域 = 配方+配色粒度（决策 B），其余域 = 配方粒度；<code>theme.resetMix</code> 命令（#50.24 已含）</li>
+<li>落点：<code>src/App/startup.ts</code> + <code>src/core/services/ui/ThemeEngine.ts</code> + settings 插件混搭区</li>
+<li>验收：每域可选来源实时预览；一键复位回整体配方；app.mixFont 换字体生效；npm run check 全绿</li>
+<li>门禁：<code>npm run check</code> 全绿 + git commit</li>
+</ul>
+</li>
+</ul>
+<h2 id="阶段-8效果验收对照-00-theme-gallery任务可达成终检">阶段 8：效果验收（对照 00-theme-gallery——任务可达成终检）</h2>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E5.8#50.27</strong> 外观主题化效果验收——Phase 10 职责终检：gallery + 设置页 html 任意细节必须全部可生产
+<ul>
+<li>依据：用户 2026-08-23「确保 html 中的是完成所有任务后一定可以真实做出来的效果」+「Phase 10 做完 = 能正式生产 html 里预示的任意一种主题包括其所有细节；有任何一个细节做不出来 = Phase 10 没做完」；<a href="%E5%A4%96%E8%A7%82%E4%B8%BB%E9%A2%98%E5%8C%96/mockups/themes/00-theme-gallery.html">00-theme-gallery.html</a>（12 主题六域画廊）+ <a href="%E5%A4%96%E8%A7%82%E4%B8%BB%E9%A2%98%E5%8C%96/mockups/01-%E8%AE%BE%E7%BD%AE%E9%A1%B5-%E4%B8%BB%E9%A2%98%E5%8C%BA-mockup.html">01-设置页-主题区-mockup.html</a></li>
+<li>方案：用真实产物重建 html 全部效果——迁移后的 mint-soda（colors 域）+ #50.12 玻璃主题（glass/background/surface 域）+ 按 #50.13 规范造 2-3 个极限壳主题（宋体印刷体 font 域 / 终端机 font-mono 域 / 胶囊或主视觉 radius 域）；逐主题逐控件对照：gallery 配方 JSON ↔ 生效 token 一一核验，设置页 slider ↔ #50.10 圆角滑杆、font 切换 ↔ #50.20 app.fontFamily/FontFamilySelect、选图 ↔ #50.8 背景图、ThemePicker ↔ #50.22；<strong>逐项打勾对照表</strong></li>
+<li>落点：<code>plugins/user/</code> 新主题插件 + 核验对照表下沉 commit/档案</li>
+<li>验收：<strong>硬边界——gallery + 设置页 html 有任何细节做不出来 = Phase 10 未做完</strong>（打回补任务再验）；逐项核验通过后由 Phase 10.5 制作真实主题插件做端到端最终裁决</li>
+<li>门禁：<code>npm run check</code> 全绿 + 实机验证零回归 + git commit</li>
+</ul>
+</li>
+</ul>
+<hr>
+<h1 id="phase-105壳半业务外推--装配清单展望">Phase 10.5：壳半业务外推 + 装配清单展望</h1>
+<blockquote>
+<p>设计动机 → 2026-08-17 dsh 哲学收敛深潜（memory「API 通用优先铁律」同线）——从「产品壳」退向「纯机制壳」：壳不再认识具体业务（串口/主题/语言），只提供桌子+电话本。三件外推 + 一个展望。<strong>执行时机 = E5.8 基建收官后</strong>（与 Phase 6-9 无依赖可并行——#47 可先于 Phase 6 多串口，多口时代 sourceOpen = <code>openPorts.size &gt; 0</code> 兼容）。
+<strong>2026-08-23 拍板重定义（外观玻璃态 #50.5-#50.12 已归入 Phase 10 阶段 1——见上，2026-08-23 用户「抽取到 phase10」拍板）：</strong> Phase 10.5 职责 = <strong>制作一个真实主题插件并端到端验证</strong>——「一个真正的主题插件可以做的界限 = Phase 10 完成」（用户 2026-08-23）。Phase 10 做完后按其产物制作一个真实主题插件，逐项对照 <a href="%E5%A4%96%E8%A7%82%E4%B8%BB%E9%A2%98%E5%8C%96/mockups/themes/00-theme-gallery.html">00-theme-gallery.html</a> + <a href="%E5%A4%96%E8%A7%82%E4%B8%BB%E9%A2%98%E5%8C%96/mockups/01-%E8%AE%BE%E7%BD%AE%E9%A1%B5-%E4%B8%BB%E9%A2%98%E5%8C%BA-mockup.html">01-设置页-主题区-mockup.html</a> 端到端核验<strong>任意细节可生产</strong>；<strong>发现做不出的细节 → 打回 Phase 10 补任务</strong>（Phase 10 职责硬边界）。原 #47-#50 三件外推 + 一个展望保留本 Phase。玻璃态设计档案 → <a href="%E5%A3%B3%E5%8D%8A%E4%B8%9A%E5%8A%A1%E5%A4%96%E6%8E%A8/02-%E5%A4%96%E8%A7%82%E7%8E%BB%E7%92%83%E6%80%81%E8%AE%BE%E8%AE%A1.html">壳半业务外推/02-外观玻璃态设计.md</a>。</p>
+</blockquote>
+<ul class="contains-task-list">
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#47</strong> 串口 isOpen bit 外推——壳删串口镜像，插件自设 sourceOpen</p>
+<ul>
+<li>✅ 已回勾（2026-08-17，commit <code>0033f747</code>）：插件 SerialContext 加 contextKey.set 一行 + 壳删镜像链（App/AppInitializer/initCoreKeys/CoreEvents 四触点）+ 测试 433→432。<strong>回归 <code>f390fddd</code></strong>（contextKey.set().catch() 触发合同违反——preload 漏 return invoke Promise，补 return）。档案 → <code>壳半业务外推/01-串口bit外推-执行草案.md</code></li>
+</ul>
+</li>
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox"type="checkbox"> <strong>E5.8#48</strong> 外观业务摸底 + 拍板——theme/language/accent 是否成为第三个 factoryRole</p>
+<ul>
+<li>现状（已实锤）：app.theme/app.language/app.accentMode/app.accentColor/app.menuStyle 配置 + onApply 接线住壳（App.tsx:130-212——&quot;换主题联动强调色&quot;/&quot;切语言跨进程广播资源包&quot; = 产品规则非机制）；ThemeBrowser/LanguagePicker/ColorPicker 壳组件；selectTheme/selectLanguage 壳命令（settingsCommands.ts）；color-picker.pick 壳命令（App.tsx:220-232）；factorySlots 现只有 settings/marketplace 两角色（FactoryRole 自由字符串——加角色零成本）；registerFallbackThemes 空态兜底机制已存在（App.tsx:127）</li>
+<li><strong>2026-08-17 晚补充：外观玻璃态方向已另立案 #50.5-#50.12（用户拍板——新增图片+液态玻璃风格、不删现有单色调；壳机制先行、玻璃主题业务做插件）——本任务摸底时把 #50.10 外观配置接线（app.backgroundImage/app.glassOpacity/app.glassBlur/app.glassTint）纳入消费方清单，玻璃态配置与 theme/language/accent 同一 onApply 接线模式</strong></li>
+<li>摸底：① 壳 components/ 产品功能组件全清单（ThemeBrowser/LanguagePicker/ColorPicker 及同类）② 外观配置消费方全清单（含 #50.10 玻璃态四配置）③ 外推后空态行为（registerFallbackThemes 覆盖度）</li>
+<li>拍板点：外观 = 第三个 factoryRole（可替换——对标 settings/marketplace 先例）vs 保留壳持（VS Code 留 workbench 同款）；若外推 → 独立「外观」角色插件（core:true + 可替换两态）还是并入 settings 插件</li>
+<li>产出：摸底清单 + 拍板记录 → 02 §6 拍板记录</li>
+<li>验收：用户逐项过目拍板</li>
+</ul>
+</li>
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox"type="checkbox"> <strong>E5.8#49</strong> 外观外推执行（依赖 #48 拍板结果）</p>
+<ul>
+<li>按 #48 拍板方向：配置 + onApply 接线 + picker 组件 + selectTheme/selectLanguage 命令迁入外观/设置插件；壳保留 ThemeEngine 机制（registry + applyTheme + broadcast）+ ConfigurationApplier 分发 + fallback 兜底</li>
+<li>验收：外观切换全链无回归；卸载外观插件 → 空态兜底生效（registerFallbackThemes）；npm run check 全绿</li>
+<li>门禁：<code>npm run check</code> 全绿 + git commit</li>
+</ul>
+</li>
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox"type="checkbox"> <strong>E5.8#50</strong> 装配清单 profile 设计（新能力展望——非清残留，与 dsh 的 cordis.yml 对齐）</p>
+<ul>
+<li>差距（已实锤）：dsh 应用 = cordis.yml 插件组合列表；LinkDesk 无「组合声明」——壳固定装配 zones，插件靠 contributes 挤入；workspace.json 是<strong>状态快照</strong>非<strong>组合声明</strong></li>
+<li>设计：profile 概念——「这套环境 = base + serial + terminal + 主题 X」按声明组装；服务 AI 一站式（agent 按声明组装环境）</li>
+<li>产出：设计文档（含与 workspace.json / plugin.json contributes 边界 + 排期建议）</li>
+<li>验收：用户过目拍板；排期待定（E6 插件生态或 E5.9）</li>
+</ul>
+</li>
+</ul>
+<hr>
+<h1 id="phase-11用户实机-7-细节打磨">Phase 11：用户实机 7 细节打磨</h1>
+<blockquote>
+<p>2026-08-23 立案。Phase 9 收官后用户实机提出 7 个细节问题，拍板「先审视代码→解决方案→对应文档→列 Phase 11」。4 路并行审视落定 → 方案真相源 → <a href="%E7%BB%86%E8%8A%82%E6%89%93%E7%A3%A8/01-%E7%BB%86%E8%8A%82%E6%89%93%E7%A3%A8%E6%96%B9%E6%A1%88.html">细节打磨/01-细节打磨方案.md</a>。任务编号 #51-#55（细节 5+6+7 同一根因——菜单系统双渲染器，合并一任务）。一任务一 commit + <code>npm run check</code> 全绿 + <strong>实机验证零回归再回勾</strong>（清单先行+实机门禁）。CSS/UI 先过 design skill。</p>
+</blockquote>
+<ul class="contains-task-list">
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#51</strong> 标签栏拖拽竖线右移——竞标 D 修订定稿：tab 圆角 6px + 4px 常驻空隙 + 顶横杠；竖杠=独立落点指示（长按不出现、拖起才显示、居中两胶囊空隙正中）</p>
+<ul>
+<li>✅ 已回勾（2026-08-23 用户确认）：①竞标 D 形态 <code>85b831e0</code> ②时序+坐标修订 <code>4c10f0e4</code> ③实机打回二「跨组插中间落末尾」——moveTab 契约加 newIndex 全链路中插 <code>d5b3d700</code> ④实机打回「替换交替」——删 dragLocalTabs re-splice 对标 VS Code 竖线落点模型 <code>8d09edfa</code>；926 全绿。档案 → <a href="%E7%BB%86%E8%8A%82%E6%89%93%E7%A3%A8/01-%E7%BB%86%E8%8A%82%E6%89%93%E7%A3%A8%E6%96%B9%E6%A1%88.html">细节打磨/01-细节打磨方案.md</a> 细节①</li>
+</ul>
+</li>
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#52</strong> 设置页/串口缩窄溢出——「配色主题」竖排、「强调色自定义」延伸、「暂停接收」等竖排拉长（分屏更严重）</p>
+<ul>
+<li>✅ 已回勾（2026-08-23 用户确认）：desc 三件套（nowrap+ellipsis）+ toolbar-btn nowrap/flex-shrink + 容器 flex-wrap（commit <code>ce97fc86</code>），926 全绿。档案 → <a href="%E7%BB%86%E8%8A%82%E6%89%93%E7%A3%A8/01-%E7%BB%86%E8%8A%82%E6%89%93%E7%A3%A8%E6%96%B9%E6%A1%88.html">细节打磨/01-细节打磨方案.md</a> 细节②</li>
+</ul>
+</li>
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#53</strong> 覆盖层聚焦蓝框——右键/浮空面板（Ctrl+,）外层冒蓝框（跟主题变色，难看违和）</p>
+<ul>
+<li>✅ 已回勾（2026-08-23 用户确认）：三覆盖层根类补显式 :focus-visible 豁免（commit <code>9ed662db</code>），926 全绿。档案 → <a href="%E7%BB%86%E8%8A%82%E6%89%93%E7%A3%A8/01-%E7%BB%86%E8%8A%82%E6%89%93%E7%A3%A8%E6%96%B9%E6%A1%88.html">细节打磨/01-细节打磨方案.md</a> 细节③</li>
+</ul>
+</li>
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#54</strong> 状态栏串口灯+计数——四现象（开第 2 口不计数 / 换口灯误灭不恢复 / 拖回同组才计数 / 灯与计数间竖杠）</p>
+<ul>
+<li>✅ 已回勾（2026-08-23 用户确认）：计数权威上移主进程 getStatus() 根治（跨窗口一致无竞态）+ 灯/(N) 对齐补修（commit <code>6b304d2f</code> + <code>491545da</code>），926 全绿。档案 → <a href="%E7%BB%86%E8%8A%82%E6%89%93%E7%A3%A8/01-%E7%BB%86%E8%8A%82%E6%89%93%E7%A3%A8%E6%96%B9%E6%A1%88.html">细节打磨/01-细节打磨方案.md</a> 细节④</li>
+</ul>
+</li>
+<li class="task-list-item enabled">
+<p><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E5.8#55</strong> 菜单系统统一——顶部/汉堡/右键三面归一（对标 VS Code 顶部嵌套子菜单）</p>
+<ul>
+<li>✅ 已回勾（2026-08-23 用户确认）：三面统一 ContextMenu 渲染器（顶部出嵌套子菜单/汉堡不拉长/右键不回归）+ 删 MenuItemList + A/B/C 补修（Escape 统一 / backdrop+点外合并 variant / resolveItem 收窄）+ 同类缺口 #55.1 menuStyle 重推 + #55.2 状态栏开关重推（commit <code>1990d114</code> + <code>9efc2b92</code> + <code>8cd88093</code>），926 全绿。档案 → <a href="%E7%BB%86%E8%8A%82%E6%89%93%E7%A3%A8/01-%E7%BB%86%E8%8A%82%E6%89%93%E7%A3%A8%E6%96%B9%E6%A1%88.html">细节打磨/01-细节打磨方案.md</a> 细节⑤⑥⑦</li>
+</ul>
+</li>
+</ul>
+<hr>
+<h1 id="门禁每任务通用">门禁（每任务通用）</h1>
+<p><code>npm run check</code> 全绿（= 双工程 tsc + grid + pool-css + eslint <code>--max-warnings 0</code> + vitest + <strong>E5.8 新增 jscpd/knip + ipc-audit（Phase 1.5 起）</strong>）+ git commit。一次一个小任务，做完等用户检查。执行注写入任务条目（E5.7 同款）。</p>
+
+            
+            
+        </body>
+        </html>

@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>E5.8 Phase 11 细节①——标签栏风格竞标（多 skill）</title>
+<style>
+  /* ═══════════ 设计系统——项目真实 token（index.css 同值）+ skill 竞标 ═══════════ */
+  :root[data-theme="dark"] {
+    --bg-window: #1E1E1E; --bg-card: #2D2D2D; --bg-hover: #3C3C3C;
+    --text-primary: #D4D4D4; --text-secondary: #9D9D9D; --text-muted: #8A8A8A;
+    --accent: #0078D4; --accent-hover: #1A8CE8; --border: #3C3C3C; --separator: #474747;
+    --tab-hover-bg: #353535; --dirty-dot: #CCA700;
+    --page-bg: #141414; --card-bg: #1E1E1E; --note-bg: #262626;
+    --shadow-soft: 0 2px 8px rgba(0,0,0,0.35); --shadow-lift: 0 4px 14px rgba(0,0,0,0.45);
+    --hairline: rgba(255,255,255,0.10);
+  }
+  :root[data-theme="light"] {
+    --bg-window: #FFFFFF; --bg-card: #F5F5F5; --bg-hover: #E0E0E0;
+    --text-primary: #2D2D2D; --text-secondary: #5A5A5A; --text-muted: #767676;
+    --accent: #0078D4; --accent-hover: #106EBE; --border: #D4D4D4; --separator: #E8E8E8;
+    --tab-hover-bg: #E8E8E8; --dirty-dot: #D4A017;
+    --page-bg: #ECECEC; --card-bg: #FFFFFF; --note-bg: #F7F7F7;
+    --shadow-soft: 0 2px 8px rgba(0,0,0,0.08); --shadow-lift: 0 4px 14px rgba(0,0,0,0.10);
+    --hairline: rgba(0,0,0,0.12);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: "Segoe UI", "Microsoft YaHei", system-ui, sans-serif; font-size: 13px; background: var(--page-bg); color: var(--text-primary); padding: 40px 48px 80px; transition: background 200ms, color 200ms; }
+
+  .page-head { max-width: 960px; margin: 0 auto 30px; }
+  .page-head h1 { font-size: 20px; font-weight: 600; margin-bottom: 8px; }
+  .page-head p { color: var(--text-secondary); line-height: 1.7; }
+  .page-head .tags { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+  .tag { padding: 3px 10px; border-radius: 999px; font-size: 12px; background: var(--note-bg); border: 1px solid var(--separator); color: var(--text-secondary); }
+  .tag.best { background: var(--accent); color: #fff; border-color: transparent; font-weight: 600; }
+
+  .theme-toggle { position: fixed; top: 20px; right: 24px; z-index: 50; display: flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 8px; cursor: pointer; background: var(--card-bg); border: 1px solid var(--separator); color: var(--text-primary); font-size: 13px; box-shadow: var(--shadow-soft); transition: background 150ms; }
+  .theme-toggle:hover { background: var(--tab-hover-bg); }
+
+  /* 竞标卡 */
+  .bid { max-width: 960px; margin: 0 auto 30px; background: var(--card-bg); border: 1px solid var(--separator); border-radius: 12px; padding: 24px 28px 26px; box-shadow: var(--shadow-soft); position: relative; overflow: hidden; }
+  .bid-head { display: flex; align-items: center; gap: 12px; margin-bottom: 4px; flex-wrap: wrap; }
+  .bid-head .bid-no { font-size: 11px; font-weight: 700; letter-spacing: 0.06em; padding: 3px 9px; border-radius: 6px; background: var(--note-bg); border: 1px solid var(--separator); color: var(--text-secondary); }
+  .bid-head h2 { font-size: 15px; font-weight: 600; }
+  .bid-head .skill { font-size: 11px; padding: 2px 9px; border-radius: 999px; background: var(--note-bg); border: 1px solid var(--separator); color: var(--text-secondary); }
+  .bid-head .skill.one { border-color: var(--accent); color: var(--accent); }
+  .bid-desc { color: var(--text-secondary); font-size: 12.5px; line-height: 1.65; margin: 6px 0 16px; max-width: 860px; }
+  .bid-desc code { background: var(--note-bg); padding: 1px 6px; border-radius: 4px; font-size: 11.5px; }
+  .bid-pros { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+  .bid-pros span { font-size: 11.5px; padding: 2px 9px; border-radius: 999px; background: var(--note-bg); border: 1px solid var(--separator); color: var(--text-secondary); }
+  .bid-pros span.pro { border-color: rgba(0,180,120,0.5); color: #00A86B; }
+  .bid-pros span.con { border-color: rgba(220,60,60,0.5); color: #D43A3A; }
+
+  .demo { margin-top: 4px; }
+  .demo-body { height: 42px; display: flex; align-items: center; padding: 0 12px; color: var(--text-muted); font-size: 11.5px; font-style: italic; border-top: 1px solid var(--separator); }
+
+  /* ═══════ 竞标 A：编辑部极简（minimalist-ui skill） ═══════ */
+  .ta { display: flex; align-items: stretch; height: 36px; background: transparent; user-select: none; border-bottom: 1px solid var(--hairline); }
+  .ta .t { display: flex; align-items: center; gap: 5px; padding: 0 16px; color: var(--text-muted); cursor: pointer; position: relative; letter-spacing: 0.01em; transition: color 200ms; }
+  .ta .t:hover { color: var(--text-primary); }
+  .ta .t.active { color: var(--text-primary); }
+  .ta .t.active::after { content: ""; position: absolute; left: 12px; right: 12px; bottom: -1px; height: 2px; background: var(--text-primary); }
+  .ta .t .lbl { font-size: 12.5px; font-weight: 400; }
+  .ta .t.active .lbl { font-weight: 600; }
+  .ta .t .x { width: 16px; height: 16px; border-radius: 3px; display: flex; align-items: center; justify-content: center; font-size: 12px; opacity: 0; transition: opacity 120ms, background 120ms; }
+  .ta .t:hover .x, .ta .t.active .x { opacity: 1; }
+  .ta .t .x:hover { background: var(--note-bg); }
+
+  /* ═══════ 竞标 B：液态玻璃（high-end-visual-design skill） ═══════ */
+  .bid.b { background: linear-gradient(135deg, #1a1d2e 0%, #1e2436 40%, #16212e 100%); }
+  :root[data-theme="light"] .bid.b { background: linear-gradient(135deg, #E8ECF5 0%, #DCE6F2 40%, #E6ECF2 100%); }
+  .tb-stage { position: relative; border-radius: 10px; padding: 14px 12px 16px; }
+  .tb-stage .orb { position: absolute; border-radius: 50%; filter: blur(46px); opacity: 0.5; pointer-events: none; }
+  .tb-stage .orb.o1 { width: 160px; height: 160px; background: rgba(0,120,212,0.55); top: -70px; left: 20%; }
+  .tb-stage .orb.o2 { width: 120px; height: 120px; background: rgba(124,58,237,0.4); bottom: -50px; right: 15%; }
+  .tb { display: flex; align-items: center; gap: 4px; height: 40px; padding: 5px 8px; position: relative; z-index: 1; user-select: none; }
+  .tb .t {
+    display: flex; align-items: center; gap: 5px; height: 30px; padding: 0 11px;
+    color: var(--text-secondary); cursor: pointer; border-radius: 8px; position: relative;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.08);
+    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.08);
+    transition: background 200ms, border-color 200ms, transform 200ms, box-shadow 200ms;
+  }
+  :root[data-theme="light"] .tb .t { background: rgba(255,255,255,0.55); border: 1px solid rgba(255,255,255,0.7); box-shadow: inset 0 1px 0 rgba(255,255,255,0.9); }
+  .tb .t:hover { transform: translateY(-1px); box-shadow: inset 0 1px 0 rgba(255,255,255,0.12), 0 4px 14px rgba(0,0,0,0.35); }
+  .tb .t.active {
+    background: rgba(0,120,212,0.18); color: var(--text-primary);
+    border-color: rgba(0,120,212,0.55);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.14), 0 4px 18px rgba(0,120,212,0.30);
+  }
+  :root[data-theme="light"] .tb .t.active { background: rgba(0,120,212,0.12); }
+  .tb .t .lbl { font-size: 12.5px; white-space: nowrap; }
+  .tb .t .x { width: 16px; height: 16px; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 12px; opacity: 0; transition: opacity 120ms, background 120ms; }
+  .tb .t:hover .x, .tb .t.active .x { opacity: 1; }
+  .tb .t .x:hover { background: rgba(255,255,255,0.12); }
+  .tb .ind { width: 2px; align-self: center; height: 18px; border-radius: 2px; background: rgba(0,120,212,0.9); flex-shrink: 0; }
+  .tb-stage .cap { position: relative; z-index: 1; margin: 2px 8px 0; color: rgba(255,255,255,0.5); font-size: 11.5px; }
+  :root[data-theme="light"] .tb-stage .cap { color: rgba(0,0,0,0.4); }
+
+  /* ═══════ 竞标 C：双贝塞尔嵌套（high-end double-bezel） ═══════ */
+  .tc-outer { padding: 2px; border-radius: 10px; background: var(--bg-window); border: 1px solid var(--separator); box-shadow: inset 0 1px 0 rgba(255,255,255,0.04); }
+  .tc { display: flex; align-items: center; gap: 3px; height: 32px; padding: 3px 6px; border-radius: 8px; background: var(--bg-window); user-select: none; }
+  .tc .t {
+    display: flex; align-items: center; gap: 5px; height: 26px; padding: 0 10px;
+    color: var(--text-secondary); cursor: pointer; border-radius: 6px; position: relative;
+    background: transparent; border: 1px solid transparent;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0);
+    transition: background 180ms, border-color 180ms, box-shadow 180ms;
+  }
+  .tc .t:hover { background: var(--bg-card); border-color: var(--separator); box-shadow: inset 0 1px 0 rgba(255,255,255,0.05); }
+  .tc .t.active { background: var(--bg-card); border-color: var(--border); box-shadow: inset 0 1px 0 rgba(255,255,255,0.06); }
+  .tc .t.active::before { content: ""; position: absolute; top: -1px; left: 8px; right: 8px; height: 2px; border-radius: 2px; background: var(--accent); }
+  .tc .t .lbl { font-size: 12.5px; white-space: nowrap; }
+  .tc .t .x { width: 16px; height: 16px; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 12px; opacity: 0; transition: opacity 120ms, background 120ms; }
+  .tc .t:hover .x, .tc .t.active .x { opacity: 1; }
+  .tc .t .x:hover { background: var(--bg-hover); }
+  .tc .ind { width: 2px; align-self: center; height: 16px; border-radius: 2px; background: var(--accent); flex-shrink: 0; }
+
+  /* ═══════ 竞标 D：基准进化（ui-ux-pro-max 参考）+ 顶横杠 ═══════ */
+  .td { display: flex; align-items: center; gap: 4px; height: 36px; padding: 4px 8px 0; user-select: none; }
+  .td .t {
+    display: flex; align-items: center; gap: 4px; height: 30px; flex: 0 1 120px; min-width: 56px; padding: 0 9px;
+    background: var(--bg-card); color: var(--text-secondary); cursor: pointer; border-radius: 6px;
+    border: 1px solid transparent; position: relative;
+    transition: background 150ms, color 150ms, border-color 150ms, box-shadow 150ms;
+  }
+  .td .t:hover { background: var(--tab-hover-bg); }
+  .td .t.active { background: var(--bg-window); color: var(--text-primary); border-color: var(--separator); box-shadow: 0 1px 4px rgba(0,0,0,0.18); }
+  .td .t .topline { position: absolute; top: 0; left: 8px; right: 8px; height: 2px; border-radius: 2px; background: transparent; }
+  .td .t.active .topline { background: var(--accent); }
+  .td .t .lbl { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; min-width: 0; }
+  .td .t .x { width: 18px; height: 18px; border-radius: 4px; display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity 100ms; flex-shrink: 0; }
+  .td .t:hover .x, .td .t.active .x { opacity: 1; }
+  .td .t .x:hover { background: var(--bg-hover); }
+  .td .ind { width: 2px; align-self: stretch; border-radius: 2px; background: var(--accent); flex-shrink: 0; }
+  .demo-body.dd { background: var(--bg-window); border: 1px solid var(--separator); border-radius: 6px; margin: 0 8px; }
+
+  /* 对照表 */
+  .compare { max-width: 960px; margin: 10px auto 0; border-collapse: collapse; font-size: 12.5px; }
+  .compare th, .compare td { padding: 9px 14px; text-align: left; border-bottom: 1px solid var(--separator); }
+  .compare th { color: var(--text-secondary); font-weight: 600; font-size: 12px; }
+  .compare td:first-child { font-weight: 600; white-space: nowrap; }
+  .compare .ok { color: #00A86B; }
+  .compare .no { color: #D43A3A; }
+
+  .hint { max-width: 960px; margin: 22px auto 0; padding: 14px 18px; border-radius: 10px; background: var(--note-bg); border: 1px dashed var(--separator); color: var(--text-secondary); font-size: 12.5px; line-height: 1.7; }
+  .hint b { color: var(--text-primary); }
+  .foot { max-width: 960px; margin: 24px auto 0; color: var(--text-muted); font-size: 12px; line-height: 1.6; }
+</style>
+</head>
+<body data-theme="dark">
+
+<div class="theme-toggle" id="themeToggle">🌓 切换主题</div>
+
+<div class="page-head">
+  <h1>E5.8 Phase 11 细节①——标签栏风格竞标（多 skill）</h1>
+  <p>同一个「tab 间留空隙 + 竖杠落空隙」的机制底座（根治右移），由不同设计 skill 各自出一个视觉风格，竞标谁的整体观感最贴合 LinkDesk。点击 tab 切换 active、顶部切换主题。</p>
+  <div class="tags">
+    <span class="tag">A · minimalist-ui</span>
+    <span class="tag">B · high-end (液态玻璃)</span>
+    <span class="tag">C · high-end (双贝塞尔)</span>
+    <span class="tag">D · ui-ux-pro-max 基准</span>
+    <span class="tag best">2026-08-23 开放竞标</span>
+  </div>
+</div>
+
+<!-- ═══════ 竞标 A：编辑部极简 ═══════ -->
+<div class="bid">
+  <div class="bid-head">
+    <span class="bid-no">竞标 A</span>
+    <h2>编辑部极简</h2>
+    <span class="skill one">skill：minimalist-ui</span>
+  </div>
+  <div class="bid-desc">
+    编辑排版感——无卡片无背景块，标签就是文字。active = 加粗 + 文字色 2px 下划线（<b>不用 accent 亮色</b>，走单色高对比）。分隔线用 hairline。最「轻」的一档，几乎感觉不到标签栏存在。
+  </div>
+  <div class="demo">
+    <div class="ta">
+      <div class="t active"><span class="lbl">app.tsx</span><span class="x">✕</span></div>
+      <div class="t"><span class="lbl">README.md</span><span class="x">✕</span></div>
+      <div class="t"><span class="lbl">serial-monitor</span></div>
+      <div class="t"><span class="lbl">settings</span><span class="x">✕</span></div>
+    </div>
+    <div class="demo-body">编辑器内容区</div>
+  </div>
+  <div class="bid-pros">
+    <span class="pro">✓ 最轻量、无视觉噪音</span>
+    <span class="pro">✓ 单色高对比，换主题零违和</span>
+    <span class="con">✗ 可点击性弱（无标签块感）</span>
+    <span class="con">✗ 丢 accent 强调色语义</span>
+  </div>
+</div>
+
+<!-- ═══════ 竞标 B：液态玻璃 ═══════ -->
+<div class="bid b">
+  <div class="bid-head">
+    <span class="bid-no" style="background:rgba(255,255,255,0.1);border-color:rgba(255,255,255,0.2);color:rgba(255,255,255,0.7);">竞标 B</span>
+    <h2 style="color:#fff;">液态玻璃</h2>
+    <span class="skill" style="background:rgba(255,255,255,0.1);border-color:rgba(255,255,255,0.2);color:rgba(255,255,255,0.7);">skill：high-end-visual-design</span>
+  </div>
+  <div class="bid-desc" style="color:rgba(255,255,255,0.6);">
+    悬浮毛玻璃条——tab 是 <code>backdrop-filter: blur(10px)</code> 半透明磨砂胶囊，active 亮蓝光边 + 内发光，hover 浮起 1px。背景放两块光斑展示玻璃通透感（窗口壁纸场景）。最「液态玻璃漂浮」的一档，直连你的 #50.5 玻璃态方向。
+  </div>
+  <div class="demo">
+    <div class="tb-stage">
+      <div class="orb o1"></div><div class="orb o2"></div>
+      <div class="tb">
+        <div class="t active"><span class="lbl">app.tsx</span><span class="x">✕</span></div>
+        <div class="t"><span class="lbl">README.md</span><span class="x">✕</span></div>
+        <span class="ind"></span>
+        <div class="t"><span class="lbl">serial-monitor</span></div>
+        <div class="t"><span class="lbl">settings</span><span class="x">✕</span></div>
+      </div>
+      <div class="cap">壁纸 / 玻璃态背景下的磨砂标签</div>
+    </div>
+  </div>
+  <div class="bid-pros">
+    <span class="pro" style="border-color:rgba(0,200,140,0.5);color:#00D68F;">✓ 对标 #50.5 玻璃态，风格连续</span>
+    <span class="pro" style="border-color:rgba(0,200,140,0.5);color:#00D68F;">✓ 悬浮漂浮观感</span>
+    <span class="con" style="border-color:rgba(255,100,100,0.5);color:#FF8A8A;">✗ 无玻璃主题时灰底观感平淡</span>
+    <span class="con" style="border-color:rgba(255,100,100,0.5);color:#FF8A8A;">✗ blur 有 GPU 开销（标签高频）</span>
+  </div>
+</div>
+
+<!-- ═══════ 竞标 C：双贝塞尔嵌套 ═══════ -->
+<div class="bid">
+  <div class="bid-head">
+    <span class="bid-no">竞标 C</span>
+    <h2>双贝塞尔嵌套</h2>
+    <span class="skill">skill：high-end-visual-design（double-bezel）</span>
+  </div>
+  <div class="bid-desc">
+    机械质感嵌套——外层 <code>2px</code> shell 槽 + 内层 tab 单元，hairline ring 定义边界，active 顶部 accent 横杠 + 内衬高光。像「玻璃板坐在铝托盘里」。有空隙有竖杠落点，观感比 A 重、比 B 克制。
+  </div>
+  <div class="demo">
+    <div class="tc-outer">
+      <div class="tc">
+        <div class="t active"><span class="lbl">app.tsx</span><span class="x">✕</span></div>
+        <div class="t"><span class="lbl">README.md</span><span class="x">✕</span></div>
+        <span class="ind"></span>
+        <div class="t"><span class="lbl">serial-monitor</span></div>
+        <div class="t"><span class="lbl">settings</span><span class="x">✕</span></div>
+      </div>
+    </div>
+    <div class="demo-body">编辑器内容区</div>
+  </div>
+  <div class="bid-pros">
+    <span class="pro">✓ 层次分明，机械精密感</span>
+    <span class="pro">✓ 保留横杠 + 有竖杠落点</span>
+    <span class="con">✗ 槽壁占高，标签面积偏小</span>
+    <span class="con">✗ 双框略显「包裹感」</span>
+  </div>
+</div>
+
+<!-- ═══════ 竞标 D：基准进化（ui-ux-pro-max） ═══════ -->
+<div class="bid">
+  <div class="bid-head">
+    <span class="bid-no">竞标 D</span>
+    <h2>基准进化（圆角 + 空隙）</h2>
+    <span class="skill">skill：ui-ux-pro-max</span>
+  </div>
+  <div class="bid-desc">
+    ui-ux-pro-max 基准线（先前形态 3）——tab 独立圆角矩形 + 4px 空隙 + active 顶横杠。最稳妥的一档：现代、克制、可辨识度最高（active 白底 + 描边浮起），与主题系统天然兼容。
+  </div>
+  <div class="demo">
+    <div class="td">
+      <div class="t active"><span class="topline"></span><span class="lbl">app.tsx</span><span class="x">✕</span></div>
+      <div class="t"><span class="topline"></span><span class="lbl">README.md</span><span class="x">✕</span></div>
+      <span class="ind"></span>
+      <div class="t"><span class="topline"></span><span class="lbl">serial-monitor</span></div>
+      <div class="t"><span class="topline"></span><span class="lbl">settings</span><span class="x">✕</span></div>
+    </div>
+    <div class="demo-body dd">编辑器内容区</div>
+  </div>
+  <div class="bid-pros">
+    <span class="pro">✓ 最稳妥、可辨识度最高</span>
+    <span class="pro">✓ 横杠保留 + 竖杠落空隙</span>
+    <span class="pro">✓ 双主题天然兼容</span>
+    <span class="con">✗ 观感偏「工具型」不惊艳</span>
+  </div>
+</div>
+
+<!-- ═══════ 对照表 ═══════ -->
+<table class="compare">
+  <tr><th></th><th>A 编辑部极简</th><th>B 液态玻璃</th><th>C 双贝塞尔</th><th>D 基准进化</th></tr>
+  <tr><td>观感</td><td>轻·纸感</td><td>悬浮·通透</td><td>机械·层次</td><td>工具·稳妥</td></tr>
+  <tr><td>active 指示</td><td>文字下划线</td><td>蓝光边+发光</td><td>顶横杠+高光</td><td>顶横杠+浮起</td></tr>
+  <tr><td>竖杠落空隙</td><td class="ok">✓ 需要空隙</td><td class="ok">✓</td><td class="ok">✓</td><td class="ok">✓</td></tr>
+  <tr><td>无玻璃时观感</td><td class="ok">优秀</td><td class="no">平淡</td><td class="ok">良好</td><td class="ok">优秀</td></tr>
+  <tr><td>主题系统兼容</td><td class="ok">强（单色）</td><td class="no">弱（玻璃专用）</td><td class="ok">良好</td><td class="ok">强</td></tr>
+  <tr><td>与 #50.5 玻璃态衔接</td><td class="no">弱</td><td class="ok">直接</td><td class="no">弱</td><td class="no">弱</td></tr>
+</table>
+
+<div class="hint">
+  <b>竞标逻辑：</b>四方案共用同一机制底座（tab 间空隙 = 竖杠自然落点，从根消灭右移），差异只在视觉语言。A/D 是「稳妥实用线」（D 最接近你现在、A 最轻），B/C 是「设计风格线」（B 直连玻璃态方向、C 机械层次）。<b>也可以混搭</b>——比如 B 的玻璃胶囊 × D 的顶横杠。
+</div>
+
+<div class="foot">
+  所有颜色走项目 token（暗/亮主题 index.css 同值），非硬编码。B 的玻璃变量对应 #50.5 的 --glass-blur/--glass-tint 方向。选定后写回 Phase 11 #51 方案再实现。
+</div>
+
+<script>
+  const toggle = document.getElementById('themeToggle');
+  toggle.addEventListener('click', () => {
+    const root = document.documentElement;
+    const next = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+    root.setAttribute('data-theme', next);
+    toggle.textContent = next === 'dark' ? '🌓 切换主题' : '☀️ 切换主题';
+  });
+  document.documentElement.setAttribute('data-theme', 'dark');
+
+  document.querySelectorAll('.ta, .tb, .tc, .td').forEach(bar => {
+    bar.querySelectorAll('.t').forEach(tab => {
+      tab.addEventListener('click', () => {
+        bar.querySelectorAll('.t').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+      });
+    });
+  });
+</script>
+
+</body>
+</html>
