@@ -645,9 +645,10 @@ function readCssRootDefaults(): Record<string, string> {
   return map;
 }
 
-/** 六档 radius token 基准——读静态 :root 壳默认（与主题写入隔离），模块缓存防复合缩放 */
+/** 六档 radius token 基准——读静态 :root 壳默认（与主题写入隔离），模块缓存防复合缩放。
+ *  E5.8#50.19：export——appearanceMode→custom 播种反推 scale 系数（当前 radius-md ÷ 主题原值）消费。 */
 let _baseRadius: Record<string, string> | null = null;
-function getBaseRadius(): Record<string, string> {
+export function getBaseRadius(): Record<string, string> {
   if (_baseRadius) return _baseRadius;
   const defaults = readCssRootDefaults();
   const base: Record<string, string> = {};
@@ -700,6 +701,42 @@ export function applyOverrides(
   return tokens;
 }
 
+/** 外观覆盖播种值形状——deriveAppearanceSeeds 返回值（08 §2：设置层永远只存用户偏离量） */
+export interface AppearanceSeedValues {
+  surfaceRadius: number;
+  glassBlur: number;
+  glassOpacity: number;
+  glassTint: string;
+  backgroundImage: string;
+  fontFamily: string;
+}
+
+/**
+ * 反推外观覆盖播种值——appearanceMode→custom 瞬间从生效 token 集反推 6 覆盖 key（08 §2）。
+ * 纯函数只算不改：surfaceRadius = 当前 radius-md ÷ 主题原值（scale 系数，clamp 0.5-2）；
+ * 玻璃绝对 = token 值直播；bg 剥 url() 存受控路径；font 跳过资产族（__ld_ 前缀 = 插件 @font-face，
+ * #50.20 边界：资产族只显示不选，播种空 = 跟随主题）。themeRadiusPx = 主题原值（配方 appearance.radius.md
+ * 或 :root 壳默认，调用方解析后传入；≤0 → scale 回退 1）。
+ */
+export function deriveAppearanceSeeds(
+  tokens: Record<string, string>,
+  themeRadiusPx: number
+): AppearanceSeedValues {
+  const effRadiusPx = parseFloat(tokens["radius-md"] ?? "0");
+  const scale = themeRadiusPx > 0 && effRadiusPx > 0 ? effRadiusPx / themeRadiusPx : 1;
+  const bg = tokens["bg-image"];
+  const bgPath = bg && bg !== "none" ? bg.replace(/^url\(["']?/, "").replace(/["']?\)$/, "") : "";
+  const fam = tokens["font-ui"];
+  return {
+    surfaceRadius: Math.min(2, Math.max(0.5, Math.round(scale * 10) / 10)),
+    glassBlur: parseFloat(tokens["glass-blur"] ?? "0") || 0,
+    glassOpacity: parseFloat(tokens["glass-opacity"] ?? "1"),
+    glassTint: tokens["glass-tint"] && tokens["glass-tint"] !== "transparent" ? tokens["glass-tint"] : "",
+    backgroundImage: bgPath,
+    fontFamily: fam && !fam.startsWith("__ld_") ? fam : "",
+  };
+}
+
 /** 读用户外观配置 → 覆盖集（glass/bg 仅偏离 neutral 时；radius 六键恒写 scale 系数——applyOverrides 内乘算）。 */
 export function getAppearanceOverrides(): Record<string, string> {
   const overrides: Record<string, string> = {};
@@ -718,6 +755,12 @@ export function getAppearanceOverrides(): Record<string, string> {
     // Windows 反斜杠路径在 CSS url() 串里是转义符——normalizePath 归一化正斜杠（Chromium 下可解析）
     const img = normalizePath(String(bgImage).trim());
     overrides["bg-image"] = /^url\(/i.test(img) ? img : `url("${img}")`;
+  }
+
+  // E5.8#50.19：app.fontFamily 用户级字体覆盖——族名写 --font-ui（空 = 不覆盖，跟随主题）
+  const fontFamily = getConfigurationValue<string>("app.fontFamily");
+  if (fontFamily != null && String(fontFamily).trim() !== "") {
+    overrides["font-ui"] = String(fontFamily).trim();
   }
 
   const rawScale = getConfigurationValue<number>("app.surfaceRadius");

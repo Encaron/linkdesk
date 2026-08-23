@@ -506,9 +506,16 @@ async function loadPluginI18nData(pluginId: string, manifest: PluginManifest): P
 
 /* ── 枚举同步——主题/语言注册/注销后更新下拉选项 ── */
 
-/** 同步 app.theme 枚举——主题注册/注销后调用。不影响 onApply，只更新下拉选项。 */
+/**
+ * 同步 app.theme 枚举——主题/配方注册注销后调用。不影响 onApply，只更新下拉选项。
+ * E5.8#50.19：枚举 = 配方 id 优先 + flat 主题名退路（08 §7.2 #1「动态配方 id 列表」）。
+ * 决策 F 迁移期：旧 flat 主题（Dark/Light/未迁移 json 名）仍可选中——app.theme onApply 有 flat 桥接；
+ * #50.25 全量迁移 colorways 后 flat 名自然消失，枚举收敛为纯配方 id。
+ */
 function syncAppThemeEnum(): void {
-  const available = getAvailableThemes();
+  const recipeIds = ThemeRegistry.getRecipes().map((r) => r.id);
+  const flatNames = getAvailableThemes().filter((n) => !recipeIds.includes(n));
+  const available = [...recipeIds, ...flatNames];
   if (available.length === 0) return; // 无主题时不更新——保留上次枚举，避免下拉变输入框
   updateConfigurationEnum("app.theme", available, available.includes("Dark") ? "Dark" : available[0]);
 }

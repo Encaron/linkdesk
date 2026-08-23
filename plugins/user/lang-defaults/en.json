@@ -321,5 +321,19 @@
   "介绍": "About",
   "未知壳视图 {{shellType}}": "Unknown shell view {{shellType}}",
   "壳视图": "Shell View",
-  "没有打开的标签页": "No Open Tabs"
+  "没有打开的标签页": "No Open Tabs",
+  "主题": "Theme",
+  "主题配方——选择配色与外观来源（配方卡片）": "Theme Recipe — choose colors & appearance source (recipe cards)",
+  "配色模式——跟随主题配方配色 / 手动选择配色变体": "Color Mode — follow theme recipe colors / manually pick a color variant",
+  "配色变体——活动主题配方的可用配色": "Color Variant — available colors of the active theme recipe",
+  "外观模式——跟随主题配方外观 / 手动覆盖外观": "Appearance Mode — follow theme recipe appearance / manually override appearance",
+  "界面圆角缩放——1 主题默认，0.5 半角锐利，2 圆润": "UI corner radius scale — 1 theme default, 0.5 half-angle sharp, 2 rounded",
+  "界面字体——空 = 跟随主题；选择后写 --font-ui": "Interface font — empty = follow theme; choosing writes --font-ui",
+  "混搭模式——单一主题配方 / 按域混搭多个主题来源": "Mix Mode — single theme recipe / mix multiple theme sources by domain",
+  "配色域来源——跟随主题配方 / 指定主题配方 id": "Color domain source — follow theme recipe / specify a theme recipe id",
+  "字体域来源——跟随主题配方 / 指定主题配方 id": "Font domain source — follow theme recipe / specify a theme recipe id",
+  "圆角域来源——跟随主题配方 / 指定主题配方 id": "Radius domain source — follow theme recipe / specify a theme recipe id",
+  "玻璃域来源——跟随主题配方 / 指定主题配方 id": "Glass domain source — follow theme recipe / specify a theme recipe id",
+  "背景域来源——跟随主题配方 / 指定主题配方 id": "Background domain source — follow theme recipe / specify a theme recipe id",
+  "表面域来源——跟随主题配方 / 指定主题配方 id": "Surface domain source — follow theme recipe / specify a theme recipe id"
 }

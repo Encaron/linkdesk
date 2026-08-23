@@ -12,15 +12,25 @@ import { pushToast } from "../core/services/ui/NotificationService";
 import {
   loadTheme,
   applyTheme,
+  applyRecipe,
   applyAccentColor,
   registerFallbackThemes,
   getEffectiveAccentColor,
+  getEffectiveTokens,
+  getActiveRecipe,
+  getBaseRadius,
+  getAvailableThemes,
   getCurrentTheme,
+  deriveAppearanceSeeds,
 } from "../core/services/ui/ThemeEngine";
+import { ThemeRegistry } from "../core/registry/appearance/ThemeRegistry";
+import type { ThemeRecipe } from "../core/types/theme"; // E5.8#50.19：配方路径应用 helper 的类型标注
 import { initPluginLoader, startPluginWatcher, stopPluginWatcher, getLoadedPluginManifests } from "../pluginLoader/loader";
 import { factorySlots } from "../core/services/bootstrap/FactorySlots";
-import { getConfigurationValue, setConfigurationValue } from "../core/services/configuration/ConfigurationService";
-import { registerConfiguration } from "../core/registry/ConfigurationRegistry";
+import {
+  getConfigurationValue, setConfigurationValue, resetConfigurationValue,
+} from "../core/services/configuration/ConfigurationService";
+import { registerConfiguration, updateConfigurationEnum } from "../core/registry/ConfigurationRegistry";
 import { initLayoutService, getTabLayout } from "../core/services/layout/LayoutService";
 import { initWorkspaceService } from "../core/services/layout/WorkspaceService";
 import { initPluginStates, APP_PLUGIN_ID } from "../core/services/plugins/PluginStateService";
@@ -40,13 +50,66 @@ export interface AppStartupDeps {
   setReady: (v: boolean) => void;
 }
 
-/** E5.8#50.10：外观覆盖配置 onApply 统一入口——当前主题存在才重应用（启动时 app.theme 先注册先 apply，本组恒非空）。
- * 重应用 = applyTheme（内部合并用户外观覆盖） + applyAccentColor——防 applyTheme 重写主题 accent 覆盖用户自定义强调色。 */
+/** E5.8#50.10+50.19：外观覆盖配置 onApply 统一入口——当前主题存在才重应用（启动时 app.theme 先注册先 apply，本组恒非空）。
+ * 重应用 = 配方路径 applyRecipeForConfig（内部合并用户外观覆盖 + 强调色） / flat 主题 applyTheme——
+ * 防 applyTheme 重写主题 accent 覆盖用户自定义强调色；配方态不被 flat 重写（applyTheme 会清 currentRecipeId）。 */
 const applyThemeIfReady = (): void => {
+  const recipe = resolveActiveRecipe();
+  if (recipe) {
+    applyRecipeForConfig(recipe);
+    return;
+  }
   const theme = getCurrentTheme();
   if (!theme) return;
   applyTheme(theme);
   applyAccentColor(getEffectiveAccentColor());
+};
+
+/* ── E5.8#50.19：主题组 helper——配方路径应用 / 播种 / 覆盖 key 全集（08 §7.2 接线总表） ── */
+
+/** 活动配方解析——引擎活动态优先，配置回退（applyRecipe 未提交但 app.theme 已设的场景） */
+const resolveActiveRecipe = (): ThemeRecipe | undefined => {
+  const id = getActiveRecipe()?.recipeId ?? getConfigurationValue<string>("app.theme");
+  return id ? ThemeRegistry.getRecipe(id) : undefined;
+};
+
+/** 配方路径应用——按 themeColorMode/themeColor 解析配色 + 同步 app.themeColor 动态 enum（下拉 = 活动配方 colorways）。
+ *  overrides 缺省读用户外观配置（getAppearanceOverrides，applyRecipe 内置）。 */
+const applyRecipeForConfig = (recipe: ThemeRecipe): void => {
+  const mode = (getConfigurationValue("app.themeColorMode") as string) ?? "followTheme";
+  const storedColor = getConfigurationValue<string>("app.themeColor");
+  const colorwayId = mode === "custom" && storedColor ? storedColor : undefined;
+  applyRecipe(recipe, colorwayId);
+  applyAccentColor(getEffectiveAccentColor());
+  updateConfigurationEnum("app.themeColor", recipe.colorways.map((c) => c.id));
+};
+
+/** 外观覆盖 key 全集——切回 followTheme 删除（覆盖丢弃回配方，08 §7.3.5） */
+const APPEARANCE_OVERRIDE_KEYS = [
+  "app.surfaceRadius", "app.glassBlur", "app.glassOpacity",
+  "app.glassTint", "app.backgroundImage", "app.fontFamily",
+] as const;
+
+/** 混搭来源 key 全集——mixMode→mix 播种全 "theme"（#50.26 做实际按域合并，此处仅注册 + 播种） */
+const MIX_SOURCE_KEYS = [
+  "app.mixColor", "app.mixFont", "app.mixRadius", "app.mixGlass", "app.mixBackground", "app.mixSurface",
+] as const;
+
+/**
+ * 播种外观覆盖——appearanceMode→custom 瞬间读 getEffectiveTokens() 反推 6 覆盖 key（08 §2，对标 accent 播种先例）。
+ * 反推计算委托 ThemeEngine.deriveAppearanceSeeds（纯函数，测试直测）；本处只组装来源 + 落配置。
+ */
+const seedAppearanceOverrides = (): void => {
+  const tokens = getEffectiveTokens();
+  const recipe = resolveActiveRecipe();
+  const themeRadiusPx = recipe?.appearance?.radius?.md ?? parseFloat(getBaseRadius()["radius-md"] ?? "0");
+  const seeds = deriveAppearanceSeeds(tokens, themeRadiusPx);
+  setConfigurationValue("app.surfaceRadius", seeds.surfaceRadius, "user");
+  setConfigurationValue("app.glassBlur", seeds.glassBlur, "user");
+  setConfigurationValue("app.glassOpacity", seeds.glassOpacity, "user");
+  setConfigurationValue("app.glassTint", seeds.glassTint, "user");
+  setConfigurationValue("app.backgroundImage", seeds.backgroundImage, "user");
+  setConfigurationValue("app.fontFamily", seeds.fontFamily, "user");
 };
 
 /** mount-once 启动管线：注册 + initAll + post-init state 同步 + cleanup（HMR/StrictMode 安全） */
@@ -67,22 +130,11 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
       // M2：注册内置兜底主题——插件主题后注册同名覆盖。确保卸载全部主题插件后下拉框不为空
       registerFallbackThemes();
 
-      // Phase 5：注册核心配置（对标 VS Code 内置 settings）——Settings Editor "通用"分组
+      // Phase 5：注册核心配置（对标 VS Code 内置 settings）——Settings Editor "通用"分组。
+      // E5.8#50.19：app.theme + 5 外观覆盖 key 已迁入「主题」组（第二贡献 pluginId "appearance"，08 §5 决策 D）。
       registerConfiguration(APP_PLUGIN_ID, {
         title: t("通用"),
         properties: {
-          "app.theme": {
-            type: "string",
-            default: "Dark",
-            enum: ["Dark", "Light"],
-            description: t("配色主题"),
-            onApply: async (v) => {
-              const t = await loadTheme(v as string);
-              applyTheme(t);
-              // E3f #59d2：强调色走归一化函数——三种路径一条函数，不手写 if/else
-              applyAccentColor(getEffectiveAccentColor());
-            },
-          },
           "app.language": {
             type: "string",
             default: "zh",
@@ -128,49 +180,6 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
             // accentMode="followTheme" 时，app.accentColor 的 onApply 不应覆盖主题的 accent。
             onApply: () => applyAccentColor(getEffectiveAccentColor()),
           },
-          // E5.8#50.10：用户外观覆盖配置——neutral 默认值 = 不覆盖主题基线（玻璃主题零影响）。
-          // onApply 统一走 applyThemeIfReady——单一写入点 applyTheme 末尾读本组配置覆盖（getAppearanceOverrides）。
-          "app.glassBlur": {
-            type: "number",
-            default: 0,
-            minimum: 0,
-            maximum: 40,
-            description: t("玻璃模糊——0 关闭，数值越大背景越模糊"),
-            uiHint: "slider",
-            onApply: () => applyThemeIfReady(),
-          },
-          "app.glassOpacity": {
-            type: "number",
-            default: 1,
-            minimum: 0,
-            maximum: 1,
-            description: t("玻璃不透明度——1 不透明，越小越透明"),
-            uiHint: "slider",
-            onApply: () => applyThemeIfReady(),
-          },
-          "app.glassTint": {
-            type: "string",
-            default: "",
-            description: t("玻璃叠加色——空 = 主题自带"),
-            renderHint: "color",
-            onApply: () => applyThemeIfReady(),
-          },
-          "app.backgroundImage": {
-            type: "string",
-            default: "",
-            description: t("窗口背景图片路径——空 = 主题自带"),
-            uiHint: "image", // E5.8#50.11：专属「选择图片」控件（选图→拷贝入库→受控路径持久化）
-            onApply: () => applyThemeIfReady(),
-          },
-          "app.surfaceRadius": {
-            type: "number",
-            default: 1,
-            minimum: 0.5,
-            maximum: 2,
-            description: t("界面圆角缩放——1 主题默认，0.5 锐利，2 圆润"),
-            uiHint: "slider",
-            onApply: () => applyThemeIfReady(),
-          },
           "app.menuStyle": {
             type: "string",
             default: "titlebar",
@@ -193,6 +202,190 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
               const level = Number.isFinite(n) ? Math.min(8, Math.max(-8, n)) : 0;
               window.linkdesk?.window?.setZoom?.(Math.pow(1.2, level));
             },
+          },
+        },
+      });
+
+      // ── E5.8#50.19：主题组——壳注册第二配置贡献（08 §5 决策 D：pluginId "appearance"，标题「主题」）。
+      //    key 全表 = app.theme + 配色三件 + 外观六覆盖 + 混搭七键（08 §1/§6 行序 = mockup DOM 顺序）。
+      //    显隐 = dependsOn 声明驱动（appearanceMode=custom 显 6 覆盖行，mixMode=mix 显 6 来源行）；
+      //    播种 = 设置层永远只存用户偏离量（08 §2）——切 custom 反推播种，切回 followTheme 删覆盖回配方。
+      //    app.theme 枚举 = 配方 id + flat 退路（syncAppThemeEnum 注册/注销时同步，动态配方 id 列表 08 §7.2 #1）。
+      registerConfiguration("appearance", {
+        title: t("主题"),
+        properties: {
+          "app.theme": {
+            type: "string",
+            // 初始枚举 = 配方 id + flat 名（与 syncAppThemeEnum 同构——StrictMode remount 幂等）；
+            // 注册时 fallback 主题已登记（Dark/Light），插件配方加载后 syncAppThemeEnum 持续刷新
+            default: "Dark",
+            enum: (() => {
+              const ids = ThemeRegistry.getRecipes().map((r) => r.id);
+              const names = getAvailableThemes().filter((n) => !ids.includes(n));
+              const available = [...ids, ...names];
+              return available.length ? available : ["Dark"];
+            })(),
+            description: t("主题配方——选择配色与外观来源（配方卡片）"),
+            onApply: async (v) => {
+              const value = v as string;
+              const recipe = ThemeRegistry.getRecipe(value);
+              if (recipe) {
+                // 配方路径——按 themeColorMode/themeColor 解析配色 + 合并外观覆盖
+                applyRecipeForConfig(recipe);
+              } else {
+                // flat 桥接——旧格式主题（Dark/Light/未迁移 json 名，决策 F 迁移期退路；#50.25 后仅剩配方路径）
+                const theme = await loadTheme(value);
+                applyTheme(theme);
+                applyAccentColor(getEffectiveAccentColor());
+              }
+            },
+          },
+          "app.themeColorMode": {
+            type: "string",
+            default: "followTheme",
+            enum: ["followTheme", "custom"],
+            description: t("配色模式——跟随主题配方配色 / 手动选择配色变体"),
+            onApply: (v) => {
+              // 切 custom → 播种 app.themeColor = 活动配方首个配色 id（08 §7.2 #2）
+              if (v === "custom") {
+                const recipe = resolveActiveRecipe();
+                if (recipe?.colorways[0]?.id) {
+                  setConfigurationValue("app.themeColor", recipe.colorways[0].id, "user");
+                  updateConfigurationEnum("app.themeColor", recipe.colorways.map((c) => c.id));
+                }
+              }
+              applyThemeIfReady();
+            },
+          },
+          "app.themeColor": {
+            type: "string",
+            default: "",
+            description: t("配色变体——活动主题配方的可用配色"),
+            dependsOn: { key: "app.themeColorMode", value: "custom" },
+            // 枚举 = 活动配方 colorways（applyRecipeForConfig 每次应用同步）——#50.23 optionsFrom 泛化前的注册表实现
+            onApply: () => applyThemeIfReady(),
+          },
+          "app.appearanceMode": {
+            type: "string",
+            default: "followTheme",
+            enum: ["followTheme", "custom"],
+            description: t("外观模式——跟随主题配方外观 / 手动覆盖外观"),
+            onApply: (v) => {
+              if (v === "custom") {
+                // 切 custom → 读 getEffectiveTokens() 反推播种 6 覆盖 key（非归零，08 §2 对标 accent 播种）
+                seedAppearanceOverrides();
+              } else {
+                // 切回 followTheme → 覆盖丢弃回配方（08 §7.3.5）——删 6 覆盖 key
+                for (const key of APPEARANCE_OVERRIDE_KEYS) resetConfigurationValue(key, "user");
+              }
+              applyThemeIfReady();
+            },
+          },
+          // 外观六覆盖——dependsOn appearanceMode=custom 才出现（08 §7.1 #5-10）。
+          // neutral 默认值 = 不覆盖主题基线；onApply 统一走 applyThemeIfReady（单一写入点）。
+          "app.surfaceRadius": {
+            type: "number",
+            default: 1,
+            minimum: 0.5,
+            maximum: 2,
+            description: t("界面圆角缩放——1 主题默认，0.5 半角锐利，2 圆润"),
+            uiHint: "slider",
+            dependsOn: { key: "app.appearanceMode", value: "custom" },
+            onApply: () => applyThemeIfReady(),
+          },
+          "app.glassBlur": {
+            type: "number",
+            default: 0,
+            minimum: 0,
+            maximum: 32,
+            description: t("玻璃模糊——0 关闭，数值越大背景越模糊"),
+            uiHint: "slider",
+            dependsOn: { key: "app.appearanceMode", value: "custom" },
+            onApply: () => applyThemeIfReady(),
+          },
+          "app.glassOpacity": {
+            type: "number",
+            default: 1,
+            minimum: 0,
+            maximum: 1,
+            description: t("玻璃不透明度——1 不透明，越小越透明"),
+            uiHint: "slider",
+            dependsOn: { key: "app.appearanceMode", value: "custom" },
+            onApply: () => applyThemeIfReady(),
+          },
+          "app.glassTint": {
+            type: "string",
+            default: "",
+            description: t("玻璃叠加色——空 = 主题自带"),
+            renderHint: "color",
+            dependsOn: { key: "app.appearanceMode", value: "custom" },
+            onApply: () => applyThemeIfReady(),
+          },
+          "app.backgroundImage": {
+            type: "string",
+            default: "",
+            description: t("窗口背景图片路径——空 = 主题自带"),
+            uiHint: "image", // E5.8#50.11：专属「选择图片」控件（选图→拷贝入库→受控路径持久化）
+            dependsOn: { key: "app.appearanceMode", value: "custom" },
+            onApply: () => applyThemeIfReady(),
+          },
+          "app.fontFamily": {
+            type: "string",
+            default: "",
+            description: t("界面字体——空 = 跟随主题；选择后写 --font-ui"),
+            // #50.20 全字族化 FontFamilySelect 接线（当前注册表已支持 onApply 覆盖面——getAppearanceOverrides 读本 key 写 font-ui）
+            dependsOn: { key: "app.appearanceMode", value: "custom" },
+            onApply: () => applyThemeIfReady(),
+          },
+          // 混搭七键——mixMode 常显，六域来源 mixMode=mix 才出现（08 §7.1 #11-17）。
+          // mix* 的按域合并实现在 #50.26——此处仅注册 + 播种 + dependsOn 显隐。
+          "app.mixMode": {
+            type: "string",
+            default: "recipe",
+            enum: ["recipe", "mix"],
+            description: t("混搭模式——单一主题配方 / 按域混搭多个主题来源"),
+            onApply: (v) => {
+              // 切 mix → 播种 6 域来源 = "theme"（跟随主题，08 §7.2 #11）
+              if (v === "mix") {
+                for (const key of MIX_SOURCE_KEYS) setConfigurationValue(key, "theme", "user");
+              }
+            },
+          },
+          "app.mixColor": {
+            type: "string",
+            default: "followTheme",
+            description: t("配色域来源——跟随主题配方 / 指定主题配方 id"),
+            dependsOn: { key: "app.mixMode", value: "mix" },
+          },
+          "app.mixFont": {
+            type: "string",
+            default: "followTheme",
+            description: t("字体域来源——跟随主题配方 / 指定主题配方 id"),
+            dependsOn: { key: "app.mixMode", value: "mix" },
+          },
+          "app.mixRadius": {
+            type: "string",
+            default: "followTheme",
+            description: t("圆角域来源——跟随主题配方 / 指定主题配方 id"),
+            dependsOn: { key: "app.mixMode", value: "mix" },
+          },
+          "app.mixGlass": {
+            type: "string",
+            default: "followTheme",
+            description: t("玻璃域来源——跟随主题配方 / 指定主题配方 id"),
+            dependsOn: { key: "app.mixMode", value: "mix" },
+          },
+          "app.mixBackground": {
+            type: "string",
+            default: "followTheme",
+            description: t("背景域来源——跟随主题配方 / 指定主题配方 id"),
+            dependsOn: { key: "app.mixMode", value: "mix" },
+          },
+          "app.mixSurface": {
+            type: "string",
+            default: "followTheme",
+            description: t("表面域来源——跟随主题配方 / 指定主题配方 id"),
+            dependsOn: { key: "app.mixMode", value: "mix" },
           },
         },
       });

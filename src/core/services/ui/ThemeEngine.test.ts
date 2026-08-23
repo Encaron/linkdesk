@@ -28,6 +28,7 @@ import {
   resolveRecipeFonts,
   cleanupPluginFontFaces,
   ensurePluginFontFacesCleanup,
+  deriveAppearanceSeeds,
 } from "./ThemeEngine";
 import { rollback } from "../../registry/registrationTracker";
 import { ThemeRegistry } from "../../registry/appearance/ThemeRegistry";
@@ -374,6 +375,16 @@ describe("ThemeEngine — 外观覆盖 getAppearanceOverrides（E5.8#50.10）", 
     expect(getAppearanceOverrides()["bg-image"]).toBe('url("C:/Users/feng/bg.png")');
   });
 
+  it("fontFamily 非空 → font-ui 覆盖（E5.8#50.19：用户级字体写 --font-ui）", () => {
+    applyRemoteConfigChange("app.fontFamily", "SimSun");
+    expect(getAppearanceOverrides()["font-ui"]).toBe("SimSun");
+  });
+
+  it("fontFamily 空 → font-ui 不覆盖（跟随主题）", () => {
+    applyRemoteConfigChange("app.fontFamily", "");
+    expect(getAppearanceOverrides()["font-ui"]).toBeUndefined();
+  });
+
   it("surfaceRadius 偏离默认 → 缩放 radius 六键仍全写", () => {
     applyRemoteConfigChange("app.surfaceRadius", 1.5);
     const overrides = getAppearanceOverrides();
@@ -673,5 +684,43 @@ describe("ThemeEngine — 资产字体两步机制（E5.8#50.17，@font-face →
     ensurePluginFontFacesCleanup(PLUGIN);
     ensureFontFace(ASSET_URL, PLUGIN);
     expect(document.getElementById(`ld-ff-${FAMILY}`)).not.toBeNull();
+  });
+});
+
+describe("ThemeEngine — deriveAppearanceSeeds 反推播种（E5.8#50.19，08 §2）", () => {
+  it("圆角反推 scale——当前 radius-md ÷ 主题原值，clamp 0.5-2", () => {
+    const seeds = deriveAppearanceSeeds({ "radius-md": "12px" }, 8);
+    expect(seeds.surfaceRadius).toBe(1.5);
+    expect(deriveAppearanceSeeds({ "radius-md": "20px" }, 8).surfaceRadius).toBe(2);
+    expect(deriveAppearanceSeeds({ "radius-md": "2px" }, 8).surfaceRadius).toBe(0.5);
+  });
+
+  it("主题原值 ≤ 0 / 无 radius token → scale 回退 1（非归零）", () => {
+    expect(deriveAppearanceSeeds({ "radius-md": "10px" }, 0).surfaceRadius).toBe(1);
+    expect(deriveAppearanceSeeds({}, 8).surfaceRadius).toBe(1);
+  });
+
+  it("玻璃绝对播种——token 值直播；tint 剥 transparent → 空", () => {
+    const seeds = deriveAppearanceSeeds({
+      "glass-blur": "18px",
+      "glass-opacity": "0.4",
+      "glass-tint": "rgba(10,20,30,0.5)",
+    }, 8);
+    expect(seeds.glassBlur).toBe(18);
+    expect(seeds.glassOpacity).toBe(0.4);
+    expect(seeds.glassTint).toBe("rgba(10,20,30,0.5)");
+    expect(deriveAppearanceSeeds({ "glass-tint": "transparent" }, 8).glassTint).toBe("");
+  });
+
+  it("背景剥 url() 存受控路径；none/缺省 → 空", () => {
+    const seeds = deriveAppearanceSeeds({ "bg-image": 'url("C:/app/bg.png")' }, 8);
+    expect(seeds.backgroundImage).toBe("C:/app/bg.png");
+    expect(deriveAppearanceSeeds({ "bg-image": "none" }, 8).backgroundImage).toBe("");
+    expect(deriveAppearanceSeeds({}, 8).backgroundImage).toBe("");
+  });
+
+  it("字体播种跳过资产族（__ld_ 前缀只显示不选，#50.20 边界）；系统族名直播", () => {
+    expect(deriveAppearanceSeeds({ "font-ui": "SimSun" }, 8).fontFamily).toBe("SimSun");
+    expect(deriveAppearanceSeeds({ "font-ui": "__ld_demo-plugin_serif" }, 8).fontFamily).toBe("");
   });
 });
