@@ -30,6 +30,16 @@
        配色模式=跟随主题配色 → 配色行消失；自定义配色 → 配色行出现（换配方卡片 → 配色列表跟着换）
        外观模式=自定义 → 6 覆盖行出现；跟随主题 → 全消失
        通用组：app.accentMode=自定义 → app.accentColor 自选色行出现（现有真实行为）
+
+     【混搭区 = 设置页新增内容】（10-混搭设计.md 方向定稿；执行排期靠后，UI 交互已定稿）
+       混搭模式 app.mixMode = 整体配方（默认）/ 混搭 → dependsOn 混搭 → 6 行域来源 SelectBox
+       来源 = 动态 enum（linkdesk.theme.listRecipes 按 RecipeMeta.domains 过滤，06 契约）——随已装配方自动出现
+       一键复位 = 6 来源回「跟随主题」+ mixMode 回「整体配方」；全跟随主题时按钮置灰（10 §6 待拍板 3）
+
+     【文档双向指针】（00-文档地图 §3 图纸对应表）——改图纸必对文档，改文档必对图纸
+       · 结构 = 04 §5 设置页正式规格（与真实 SettingsView 类名一一对应）
+       · key = 08 §1 全表（app.* 平铺进 workspace.json）· schema = 05 §2（配方/配色/域）
+       · 混搭 = 10 混搭设计 · 总目录 = 00 文档地图
      ════════════════════════════════════════════════════════════════════ */
   :root {
     --bg-window: #1E1E1E;
@@ -158,6 +168,15 @@
   .tp-forest .theme-preview { background: #1B2A23; }
   .tp-dark .theme-preview { background: #1E1E1E; }
   .tp-dark .pv-bar { background: #3C3C3C; }
+
+  /* ── 混搭区（10 混搭设计 §2 UI）── */
+  .settings-sub-section { margin-top: 24px; padding-top: 14px; border-top: 1px solid var(--separator); }
+  .settings-sub-title { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+  .settings-sub-badge { font-size: 9px; color: var(--text-muted); border: 1px solid var(--separator); border-radius: 3px; padding: 1px 5px; white-space: nowrap; }
+  .settings-sub-desc { font-size: 12px; color: var(--text-muted); margin-bottom: 6px; }
+  .ld-reset-btn { display: inline-flex; align-items: center; gap: 5px; background: transparent; border: 1px solid var(--separator); color: var(--text-secondary); border-radius: 3px; padding: 4px 10px; font-size: 11.5px; cursor: pointer; white-space: nowrap; }
+  .ld-reset-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--text-primary); }
+  .ld-reset-btn:disabled { opacity: 0.4; cursor: default; }
 </style>
 </head>
 <body>
@@ -188,7 +207,7 @@
     <!-- 左侧分组树——「主题」= 完成后新增 -->
     <nav class="settings-nav">
       <button class="settings-nav-item" data-nav="form-common">通用<span class="settings-nav-count">5</span></button>
-      <button class="settings-nav-item active" data-nav="form-theme">主题<span class="settings-nav-count">10</span></button>
+      <button class="settings-nav-item active" data-nav="form-theme">主题<span class="settings-nav-count">17</span></button>
       <button class="settings-nav-item">编辑器<span class="settings-nav-count">26</span></button>
       <button class="settings-nav-item">资源管理器<span class="settings-nav-count">18</span></button>
       <button class="settings-nav-item">串口监视器<span class="settings-nav-count">2</span></button>
@@ -456,6 +475,155 @@
           <button class="settings-row-gear">⚙</button>
         </div>
       </div>
+
+      <!-- ═══ 混搭区（10-混搭设计 §2——方向定稿/执行排期靠后，UI 交互已定稿）═══ -->
+      <div class="settings-sub-section">
+        <div class="settings-sub-title">混搭<span class="settings-sub-badge">排期靠后 · UI 已定稿</span></div>
+        <div class="settings-sub-desc">按域选来源——想要 A 的玻璃 + B 的菜单样式：配方是整体默认，混搭是按域显式覆盖。来源列表随已装配方自动出现（动态 enum）。</div>
+
+        <!-- 混搭模式：SelectBox → dependsOn 控制 6 行显隐（默认整体配方） -->
+        <div class="settings-row">
+          <div class="settings-row-info">
+            <label class="settings-row-label">app.mixMode</label>
+            <span class="settings-row-desc">混搭模式——整体配方：全域跟随当前主题 / 混搭：以下各行选来源</span>
+          </div>
+          <div class="settings-row-control">
+            <div class="select-box" data-mode data-target="#mix-overrides" data-hide-opts="整体配方">
+              <span class="select-val">整体配方</span><span class="caret">▾</span>
+              <div class="select-menu">
+                <button data-opt="整体配方" class="selected">整体配方</button>
+                <button data-opt="混搭">混搭</button>
+              </div>
+            </div>
+          </div>
+          <button class="settings-row-gear">⚙</button>
+        </div>
+
+        <div id="mix-overrides" class="depends-hidden">
+          <!-- 6 行域来源：动态 SelectBox（来源 = listRecipes 按 RecipeMeta.domains 过滤，06） -->
+          <div class="settings-row">
+            <div class="settings-row-info">
+              <label class="settings-row-label">app.mixColor</label>
+              <span class="settings-row-desc">颜色来源——哪个配方的配色（该配方取默认配色变体）</span>
+            </div>
+            <div class="settings-row-control">
+              <div class="select-box" data-mix>
+                <span class="select-val">跟随主题</span><span class="caret">▾</span>
+                <div class="select-menu">
+                  <button data-opt="跟随主题" class="selected">跟随主题</button>
+                  <button data-opt="清凉薄荷包·薄荷苏打">清凉薄荷包·薄荷苏打</button>
+                  <button data-opt="暮色森林包·深林">暮色森林包·深林</button>
+                  <button data-opt="Glass Aurora">Glass Aurora</button>
+                </div>
+              </div>
+            </div>
+            <button class="settings-row-gear">⚙</button>
+          </div>
+
+          <div class="settings-row">
+            <div class="settings-row-info">
+              <label class="settings-row-label">app.mixFont</label>
+              <span class="settings-row-desc">字体来源——含字体插件的主题/插件（只贡献 font 域也可）</span>
+            </div>
+            <div class="settings-row-control">
+              <div class="select-box" data-mix>
+                <span class="select-val">跟随主题</span><span class="caret">▾</span>
+                <div class="select-menu">
+                  <button data-opt="跟随主题" class="selected">跟随主题</button>
+                  <button data-opt="霞鹜文楷">霞鹜文楷</button>
+                  <button data-opt="JetBrains Mono">JetBrains Mono</button>
+                  <button data-opt="系统默认">系统默认</button>
+                </div>
+              </div>
+            </div>
+            <button class="settings-row-gear">⚙</button>
+          </div>
+
+          <div class="settings-row">
+            <div class="settings-row-info">
+              <label class="settings-row-label">app.mixRadius</label>
+              <span class="settings-row-desc">圆角来源——哪套配方的圆角档位（scale 设置层仍在其上）</span>
+            </div>
+            <div class="settings-row-control">
+              <div class="select-box" data-mix>
+                <span class="select-val">跟随主题</span><span class="caret">▾</span>
+                <div class="select-menu">
+                  <button data-opt="跟随主题" class="selected">跟随主题</button>
+                  <button data-opt="Glass Aurora">Glass Aurora</button>
+                  <button data-opt="清凉薄荷包">清凉薄荷包</button>
+                </div>
+              </div>
+            </div>
+            <button class="settings-row-gear">⚙</button>
+          </div>
+
+          <div class="settings-row">
+            <div class="settings-row-info">
+              <label class="settings-row-label">app.mixGlass</label>
+              <span class="settings-row-desc">玻璃来源——哪套配方的玻璃效果（设置层 glassBlur 仍在其上）</span>
+            </div>
+            <div class="settings-row-control">
+              <div class="select-box" data-mix>
+                <span class="select-val">跟随主题</span><span class="caret">▾</span>
+                <div class="select-menu">
+                  <button data-opt="跟随主题" class="selected">跟随主题</button>
+                  <button data-opt="Glass Aurora">Glass Aurora</button>
+                  <button data-opt="清凉薄荷包">清凉薄荷包</button>
+                </div>
+              </div>
+            </div>
+            <button class="settings-row-gear">⚙</button>
+          </div>
+
+          <div class="settings-row">
+            <div class="settings-row-info">
+              <label class="settings-row-label">app.mixBackground</label>
+              <span class="settings-row-desc">背景来源——哪套配方的背景图/遮罩</span>
+            </div>
+            <div class="settings-row-control">
+              <div class="select-box" data-mix>
+                <span class="select-val">跟随主题</span><span class="caret">▾</span>
+                <div class="select-menu">
+                  <button data-opt="跟随主题" class="selected">跟随主题</button>
+                  <button data-opt="Glass Aurora 背景">Glass Aurora 背景</button>
+                  <button data-opt="暮色森林包">暮色森林包</button>
+                </div>
+              </div>
+            </div>
+            <button class="settings-row-gear">⚙</button>
+          </div>
+
+          <div class="settings-row">
+            <div class="settings-row-info">
+              <label class="settings-row-label">app.mixSurface</label>
+              <span class="settings-row-desc">菜单/表面来源——菜单、悬浮面板等 per-surface 样式</span>
+            </div>
+            <div class="settings-row-control">
+              <div class="select-box" data-mix>
+                <span class="select-val">跟随主题</span><span class="caret">▾</span>
+                <div class="select-menu">
+                  <button data-opt="跟随主题" class="selected">跟随主题</button>
+                  <button data-opt="暮色森林包">暮色森林包</button>
+                  <button data-opt="清凉薄荷包">清凉薄荷包</button>
+                </div>
+              </div>
+            </div>
+            <button class="settings-row-gear">⚙</button>
+          </div>
+
+          <!-- 一键复位（10 §2——全跟随主题时置灰） -->
+          <div class="settings-row" style="border-bottom:none;">
+            <div class="settings-row-info">
+              <label class="settings-row-label">混搭复位</label>
+              <span class="settings-row-desc">全部域来源回「跟随主题」+ 混搭模式回「整体配方」</span>
+            </div>
+            <div class="settings-row-control">
+              <button class="ld-reset-btn" id="mix-reset" disabled>⟲ 全部复位为整体配方</button>
+            </div>
+            <button class="settings-row-gear">⚙</button>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -489,15 +657,19 @@
         menu.style.display = 'none';
         menu.querySelectorAll('button').forEach(b => b.classList.toggle('selected', b === opt));
         // dependsOn：目标组显隐（SettingRow: prop.dependsOn 不匹配 → return null）
+        // 隐藏值 = data-hide-opts（默认「跟随主题配色/跟随主题」；混搭模式 = 「整体配方」）
         if (box.dataset.mode && box.dataset.target) {
           const target = document.querySelector(box.dataset.target);
-          target.classList.toggle('depends-hidden', opt.dataset.opt === '跟随主题配色' || opt.dataset.opt === '跟随主题');
+          const hideVals = (box.dataset.hideOpts || '跟随主题配色,跟随主题').split(',');
+          target.classList.toggle('depends-hidden', hideVals.includes(opt.dataset.opt));
         }
+        updateMixReset();
       });
     });
   }
   document.querySelectorAll('.select-box[data-mode]').forEach(wireSelect);
   document.querySelectorAll('.select-box[data-colorway]').forEach(wireSelect);
+  document.querySelectorAll('.select-box[data-mix]').forEach(wireSelect);
 
   /* ── 主题配方卡片：选中 + 配色色板动态填充 ── */
   const colorwayBox = document.querySelector('.select-box[data-colorway]');
@@ -559,6 +731,28 @@
     track.addEventListener('pointerdown', (e) => { dragging = true; setFromX(e.clientX); track.setPointerCapture(e.pointerId); });
     track.addEventListener('pointermove', (e) => { if (dragging) setFromX(e.clientX); });
     track.addEventListener('pointerup', () => { dragging = false; });
+  });
+
+  /* ── 混搭来源：复位按钮状态（10 §6 待拍板 3——全跟随主题置灰）── */
+  function updateMixReset() {
+    const resetBtn = document.getElementById('mix-reset');
+    if (!resetBtn) return;
+    const anyCustom = [...document.querySelectorAll('.select-box[data-mix]')]
+      .some((b) => b.querySelector('.select-val').textContent !== '跟随主题');
+    resetBtn.disabled = !anyCustom;
+  }
+
+  /* ── 一键复位：6 来源回「跟随主题」+ mixMode 回「整体配方」── */
+  document.getElementById('mix-reset').addEventListener('click', () => {
+    document.querySelectorAll('.select-box[data-mix]').forEach((box) => {
+      box.querySelector('.select-val').textContent = '跟随主题';
+      box.querySelectorAll('.select-menu button').forEach((b) => b.classList.toggle('selected', b.dataset.opt === '跟随主题'));
+    });
+    const mixModeBox = document.querySelector('.select-box[data-target="#mix-overrides"]');
+    mixModeBox.querySelector('.select-val').textContent = '整体配方';
+    mixModeBox.querySelectorAll('.select-menu button').forEach((b) => b.classList.toggle('selected', b.dataset.opt === '整体配方'));
+    document.getElementById('mix-overrides').classList.add('depends-hidden');
+    updateMixReset();
   });
 </script>
 </body>
