@@ -10,6 +10,7 @@ import SelectBox from "@src/components/shared/select-box/SelectBox";
 import FontFamilySelect from "@src/components/shared/font-family-select/FontFamilySelect";
 import FilePathInput from "@src/components/shared/file-path-input/FilePathInput";
 import NumberInput from "@src/components/shared/number-input/NumberInput";
+import Slider from "@src/components/shared/slider/Slider"; // E5.8#50.9：滑杆控件（shared 白名单惯例，非 @src/core 零警告）
 import ObjectEditor from "./ObjectEditor";
 import type { ConfigProperty } from "./types";
 
@@ -58,6 +59,15 @@ function renderControl(
       return <FilePathInput value={String(val)} onChange={(v) => onChange(v)} dialogType="file" />;
     case "directory":
       return <FilePathInput value={String(val)} onChange={(v) => onChange(v)} dialogType="directory" />;
+    case "slider": // E5.8#50.9：滑杆（#50.10 玻璃五配置消费）——schema 无 step 字段，默认 1
+      return (
+        <Slider
+          value={Number(val)}
+          onChange={(v) => onChange(v)}
+          min={prop.minimum ?? 0}
+          max={prop.maximum ?? 100}
+        />
+      );
     default:
       break;
   }
