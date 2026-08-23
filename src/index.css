@@ -347,7 +347,11 @@ select {
   width: 100%;
   height: 100%;
   overflow: hidden;
-  background: var(--bg-window);
+  /* E5.8#50.7 ④：仅 shell 透明——#pool-root/html/body/#root 保留 --bg-window 不透明作窗口底座
+     （Electron 窗底硬编码暗色 #1e1e1e 需 DOM 底座盖住；MainZone 无背景依赖底座）。
+     BackgroundLayer（#50.8，shell 首子，z-index 0）显形于底座之上、表面之下；
+     默认主题表面实色仍盖住图片 = 视觉零变化。 */
+  background: transparent;
 }
 
 .pool-body {
@@ -358,10 +362,89 @@ select {
 }
 
 /* grid cell 包装——各 zone 的 grid 放置容器。min-width/min-height 0 保证 1fr 轨道内
-   内容正确收缩（grid item 默认 min-content 不收缩会撑破主区）。 */
+   内容正确收缩（grid item 默认 min-content 不收缩会撑破主区）。
+   E5.8#50.7 ③：留缝——网格内表面（icon-bar/side-panel/main-zone/panel-zone）走 cell padding
+   （height:100% 表面加 margin 会被本 cell overflow:hidden 裁掉 = 不悬浮）；直连子表面
+   （titlebar/status-bar）用 margin。统一 --surface-inset 驱动，0px = 现状贴边。 */
 .pool-grid-cell {
   min-width: 0;
   min-height: 0;
   overflow: hidden;
+  padding: var(--surface-inset, 0px);
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   E5.8#50.7 玻璃表面——12 玻璃/背景/悬浮变量消费（#50.6 ThemeEngine 写 :root）。
+   材质定位（02-变量契约 §2.3）：Apple Liquid Glass 近似——blur/saturate 透射、
+   specular 反光（顶部受光带 + 发丝光边）、morph 响应（悬浮/圆角平滑形变）。
+   表面透明来自主题 rgba --bg-*（玻璃主题把 --bg-window/--bg-titlebar 等设半透明）——
+   CSS 不改底色。零值 = 现状零变化（非破坏）。
+   ════════════════════════════════════════════════════════════════════════ */
+
+/* ② per-surface blur 差异化——窄表面（图标栏/侧栏）0.44×（18px 基值 → ≈8px，mockup 实测
+   图可辨，18px 糊成色块）；面板（悬浮面板）1.11×（≈20px）；大表面（顶栏/主区/状态栏）
+   持基值（18px）。零基值 × 系数 = 0px → 零变化。局部 --glass-blur 遮蔽继承。 */
+.icon-bar,
+.side-panel {
+  --glass-blur: calc(var(--glass-blur, 0px) * 0.44);
+}
+.panel-zone {
+  --glass-blur: calc(var(--glass-blur, 0px) * 1.11);
+}
+
+/* 表面统一——backdrop-filter（透射）+ 悬浮面板形态（圆角/投影；留缝在 cell padding /
+   titlebar/statusbar margin）+ morph 过渡。z-index: 1：抬到 BackgroundLayer（z0）之上、
+   浮层宿主（1500+）之下——表面内浮层全 portal 出（#55 统一渲染器），层叠上下文不困浮层。
+   注：.side-panel 自带 transition: width（折叠动画），同特异性后载覆盖本 transition——
+   折叠优先，morph 对侧栏不生效（已知取舍）。 */
+.titlebar,
+.icon-bar,
+.side-panel,
+.main-zone,
+.panel-zone,
+.status-bar {
+  position: relative;
+  z-index: 1;
+  backdrop-filter: blur(var(--glass-blur, 0px)) saturate(var(--glass-saturate, 1));
+  border-radius: var(--surface-radius, 0px);
+  box-shadow: var(--surface-shadow, none);
+  transition:
+    border-radius var(--glass-morph, 0ms),
+    box-shadow var(--glass-morph, 0ms),
+    backdrop-filter var(--glass-morph, 0ms),
+    margin var(--glass-morph, 0ms);
+}
+
+/* 主区表面——MainZone 根原无背景（依赖 pool-root 底座）；玻璃主题 --bg-window rgba →
+   主区 = 18px 玻璃面板（mockup 主视觉「图全窗铺底」）；默认主题不透明 = 现状零变化。 */
+.main-zone {
+  background: var(--bg-window);
+}
+
+/* titlebar/status-bar——直连 pool-root 子表面，留缝用 margin（网格内表面已走 cell padding）。 */
+.titlebar,
+.status-bar {
+  margin: var(--surface-inset, 0px);
+}
+
+/* 玻璃面叠加色（tint——表面底上、内容下，不盖文字）+ 玻璃面不透明度（opacity）+
+   顶部受光带 + 发丝光边（specular 派生——契约无独立光边变量，inset ring 零 specular 时
+   透明无描边 = 现状零变化）。 */
+.titlebar::before,
+.icon-bar::before,
+.side-panel::before,
+.main-zone::before,
+.panel-zone::before,
+.status-bar::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--glass-tint, transparent);
+  opacity: var(--glass-opacity, 1);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / var(--glass-specular, 0)),
+    inset 0 0 0 1px rgb(255 255 255 / var(--glass-specular, 0));
+  pointer-events: none;
 }
 

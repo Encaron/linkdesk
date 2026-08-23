@@ -146,6 +146,7 @@ export default function MainZone({ groups, root, creatableViews, activeGroupId }
   if (groups.length === 0) {
     return (
       <div
+        className="main-zone" // E5.8#50.7：主区玻璃表面（index.css 消费 --surface-*/--glass-*；默认零值零变化）
         style={{
           display: "flex",
           alignItems: "center",
@@ -172,6 +173,7 @@ export default function MainZone({ groups, root, creatableViews, activeGroupId }
   return (
     <div
       ref={containerRef}
+      className="main-zone" // E5.8#50.7：主区玻璃表面（index.css 消费 --surface-*/--glass-*；默认零值零变化）
       style={{
         display: "flex",
         flex: 1,
