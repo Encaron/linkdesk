@@ -23,12 +23,20 @@
   box-shadow: 0 0 1px rgba(0,0,0,0.2), 0 4px 12px rgba(0,0,0,0.3);
   padding: 4px 0;
   overflow: hidden;
+  /* E5.8#53：容器程序化聚焦（tabIndex=-1 + .focus() 抢键盘焦点）不画 outline——
+     显式豁免稳压全局 *:focus-visible（同特异性时全局后声明胜，光写 outline:none 不够）；
+     菜单项键盘高亮仍走 .ctx-item.focused 背景，不受影响 */
+  outline: none;
 
   /* E3.5: 出现动画——scale+opacity 150ms */
   opacity: 0;
   transform: scale(0.96);
   transform-origin: top left;
   transition: opacity 150ms ease-out, transform 150ms ease-out;
+}
+
+.ctx-menu:focus-visible {
+  outline: none; /* E5.8#53：特异性(0,2,0)稳压全局 *:focus-visible */
 }
 
 .ctx-menu.show {

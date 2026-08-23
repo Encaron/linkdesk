@@ -33,6 +33,10 @@
   outline: none; /* 面板聚焦（tabIndex=-1）不显示 outline */
 }
 
+.dialog-host-panel:focus-visible {
+  outline: none; /* E5.8#53：显式豁免稳压全局 *:focus-visible（outline:none 同特异性时写不赢） */
+}
+
 .dialog-host-title {
   margin: 0 0 8px 0;
   font-size: 14px;

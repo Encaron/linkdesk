@@ -39,6 +39,10 @@
   animation: floating-panel-in 250ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+.floating-panel:focus-visible {
+  outline: none; /* E5.8#53：显式豁免稳压全局 *:focus-visible（outline:none 同特异性时写不赢） */
+}
+
 /* #41.6 居中卡入场——右滑入对居中违和 → 淡入 + 微缩放（from scale 0.96/opacity 0） */
 @keyframes floating-panel-in {
   from { transform: scale(0.96); opacity: 0; }
