@@ -107,3 +107,7 @@ export interface ThemeRecipe {
   /** 配色变体列表（至少 1 项；颜色域多值） */
   colorways: ThemeColorway[];
 }
+
+/** 配方贡献域——theme 元数据 domains（混搭来源过滤）+ theme:changed 载荷（域级细粒度刷新）共用（06 §2/§6.2）。
+ *  六域：colors（配色，colorways 恒贡献） + appearance 五风格域（radius/glass/font/background/surface）。 */
+export type ThemeDomain = "colors" | "font" | "radius" | "glass" | "background" | "surface";

@@ -27,6 +27,7 @@ import { handleDialogChannel, handleSettingsChannel, handleSettingsMethod, handl
 import { handleKeybindingsMethod, subscribeKeybindings, unsubscribeKeybindings } from "./IpcBridgeHandler/keybindings"; // E5.8#0d.10-10f：快捷键域
 import { handleDataChannel, subscribeData, unsubscribeData } from "./IpcBridgeHandler/data"; // E5.8#0d.10-10g：数据域（pluginState/search/encoding/生命周期广播）
 import { handlePanelChannel } from "./IpcBridgeHandler/panel"; // E5.8#34.5：底部面板域（panel.reveal）
+import { handleThemeMethod } from "./IpcBridgeHandler/theme"; // E5.8#50.18：主题配方/配色域（theme.* 六方法）
 import type { BridgeRequestPayload } from "../../types/ipc/bridge"; // E5.8#46.12：信封契约（含来源窗盖章）
 import { handleFactorySlotMethod } from "./IpcBridgeHandler/factory-slots"; // E5.8#41.14：系统插槽域（factorySlots 通用面 + settings 角色别名）
 export { setPluginAPI } from "./IpcBridgeHandler/pluginManager"; // E5#43：接口反转——loader 注册自己（loader.ts import 路径不变）
@@ -249,6 +250,14 @@ async function handlePluginsCall(method: string, args: unknown[]): Promise<unkno
     case "finishNotification":
     case "cancelNotification":
       return handleUiMethod(method, args);
+    // ── E5.8#50.18：主题配方/配色（06 §2 六方法）——IpcBridgeHandler/theme 域委派（查询壳侧权威/应用落配置）──
+    case "theme.listRecipes":
+    case "theme.getActive":
+    case "theme.getEffectiveTokens":
+    case "theme.setRecipe":
+    case "theme.setColorway":
+    case "theme.resetAppearance":
+      return handleThemeMethod(method, args);
     default:
       throw new Error(`未知的 plugins 方法: ${method}`);
   }

@@ -6,6 +6,8 @@
  * 壳 emit 侧 / 池 preload 订阅侧 import type——字段名改动 tsc 双端报错。
  */
 
+import type { ThemeDomain } from "../theme";
+
 /** 配置变更——config:changed / plugin:push(config.changed) 载荷 */
 export interface ConfigurationChangedPayload {
   key: string;
@@ -22,12 +24,20 @@ export interface FontFaceSpec {
   format?: string;
 }
 
-/** 主题切换——theme:changed 载荷（themeType + CSS 变量表 + 资产字族复刻表） */
+/** 主题切换——theme:changed 载荷（themeType + CSS 变量表 + 资产字族复刻表）。
+ *  E5.8#50.18：追加 recipeId/colorwayId/domains——applyRecipe 提交才带；
+ *  flat applyTheme（旧格式桥）缺省——既有消费者（pool events.ts 读 themeType/variables/fontFaces）零改动。 */
 export interface ThemeChangedPayload {
   themeType: string;
   variables: Record<string, string>;
   /** 当前配方涉及的全部 @font-face——池侧复刻注入；配方无资产字体 → 缺省（池清空上次注入） */
   fontFaces?: FontFaceSpec[];
+  /** 当前活动配方 id——applyRecipe 提交带；flat applyTheme 态缺省 */
+  recipeId?: string;
+  /** 当前活动配色变体 id——applyRecipe 提交带；flat applyTheme 态缺省 */
+  colorwayId?: string;
+  /** 当前生效域列表——细粒度消费（混搭预览按域刷新，06 §6.2）；flat applyTheme 态 = 全六域 */
+  domains?: ThemeDomain[];
 }
 
 /** 强调色变更——accent:changed 载荷（仅 CSS 变量表） */

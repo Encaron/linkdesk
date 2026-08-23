@@ -10,7 +10,7 @@ import { normalizePath } from "../../utils/path/pathUtils"; // E5.8#50.10：Wind
 import type { ThemeColors, ThemeSurface, ThemeBackground } from "../../types/theme";
 export type { ThemeColors, ThemeSurface, ThemeBackground } from "../../types/theme";
 // E5.8#50.16：Recipe + Colorway 合并算法（05 §4 继承链）——ThemeRecipe/ThemeAppearance/ThemeColorway
-import type { ThemeRecipe, ThemeAppearance, ThemeColorway } from "../../types/theme";
+import type { ThemeRecipe, ThemeAppearance, ThemeColorway, ThemeDomain } from "../../types/theme";
 // E5.8#50.17：资产字体两步机制——相对路径 → getPluginAssetPath 解析 linkdesk://（硬约束 12 同族）→ @font-face → 族名
 import { getPluginAssetPath } from "../../utils/path/pluginAssetPath";
 import { ThemeRegistry } from "../../registry/appearance/ThemeRegistry"; // getRecipeOwner——资产路径归属插件域
@@ -235,7 +235,7 @@ export function getThemeVariables(theme: Theme): Record<string, string> {
 function commitTokens(
   variables: Record<string, string>,
   themeType: "light" | "dark",
-  state: { recipeId: string; colorwayId?: string },
+  state: { recipeId: string; colorwayId?: string; domains?: ThemeDomain[] },
   fontFaces?: FontFaceSpec[]
 ): void {
   // E3f #51：先发 IPC 通知主进程——和 CSS 渲染并行，标题栏不落后
@@ -257,12 +257,16 @@ function commitTokens(
 
   // E3b #35：广播 CSS 变量到所有插件 WebView——跨进程主题同步
   // E5.8#50.17：fontFaces 随载荷带给池——池侧复刻 @font-face（独立文档，壳注册的不生效）
+  // E5.8#50.18：recipeId/colorwayId/domains 随载荷——recipe 态提交（domains 恒非空）带；flat applyTheme（无 domains）缺省
   if (linkdesk?.bridge?.broadcast) {
     linkdesk.bridge.broadcast("theme:changed", {
       themeId: state.recipeId,
       themeType,
       variables,
       ...(fontFaces?.length ? { fontFaces } : {}),
+      ...(state.domains?.length
+        ? { recipeId: state.recipeId, colorwayId: state.colorwayId ?? "", domains: state.domains }
+        : {}),
     });
   }
 
@@ -290,6 +294,19 @@ export function applyTheme(theme: Theme): void {
 /** 解析配色变体——colorwayId 缺省 = 配方首个配色（单配色配方 = 恒首项） */
 function resolveColorway(recipe: ThemeRecipe, colorwayId?: string): ThemeColorway {
   return recipe.colorways.find((c) => c.id === colorwayId) ?? recipe.colorways[0];
+}
+
+/** 配方贡献域——colorways 恒贡献 colors；appearance 五风格域稀疏判定（缺的域不声明）。
+ *  供 listRecipes 元数据（混搭来源过滤）+ applyRecipe 广播 domains（域级细粒度刷新）共用。 */
+export function recipeDomains(recipe: ThemeRecipe): ThemeDomain[] {
+  const domains: ThemeDomain[] = ["colors"];
+  const a = recipe.appearance;
+  if (a?.radius) domains.push("radius");
+  if (a?.glass) domains.push("glass");
+  if (a?.font) domains.push("font");
+  if (a?.background) domains.push("background");
+  if (a?.surface) domains.push("surface");
+  return domains;
 }
 
 /** 风格域 appearance 稀疏 flatten → token map（键去 --，引擎写入时拼回）。
@@ -352,7 +369,12 @@ export function applyRecipe(
   // （副作用在注册；纯合并用解析后的 appearance；fontFaces 广播给池复刻）
   const { appearance, fontFaces } = resolveRecipeFonts(recipe);
   const effective = mergeDomains({ ...recipe, appearance }, colorway.id, overrides ?? getAppearanceOverrides());
-  commitTokens(effective, recipe.type, { recipeId: recipe.id, colorwayId: colorway.id }, fontFaces);
+  commitTokens(
+    effective,
+    recipe.type,
+    { recipeId: recipe.id, colorwayId: colorway.id, domains: recipeDomains(recipe) },
+    fontFaces
+  );
   currentRecipeId = recipe.id;
   currentColorwayId = colorway.id;
   currentTheme = {

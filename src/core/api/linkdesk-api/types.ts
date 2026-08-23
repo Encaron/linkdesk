@@ -9,6 +9,7 @@
 
 import type { PluginManifest } from "../types";
 import type { ThemeSurface, ThemeBackground } from "../../services/ui/ThemeEngine";
+import type { ThemeDomain } from "../../types/theme";
 
 export interface LinkDeskCommand {
   id: string;
@@ -30,6 +31,27 @@ export interface LinkDeskLanguage {
   id: string;
   label: string;
   pluginId: string;
+}
+
+/** E5.8#50.18：配色变体元数据——theme.listRecipes() 返回（colorways[] 元素，06 §2）。
+ *  预览色供 ThemePicker 卡片取色；单配色配方 = 1 项。 */
+export interface ColorwayMeta {
+  /** 配色变体 id——全局唯一（theme.setColorway 入参；app.themeColor 动态 enum 存此） */
+  id: string;
+  /** 配色显示名 */
+  name: string;
+  /** 预览色——强调色 + 窗口背景（卡片徽标取色用；缺省配色无该 token → 空串） */
+  preview: { accent: string; bgWindow: string };
+}
+
+/** E5.8#50.18：配方元数据——theme.listRecipes() 返回（全部可用配方 + 配色变体 + 预览色，06 §2）。
+ *  domains = 该配方贡献哪些域（混搭来源过滤依据，10 §2）；type = 明暗类别。 */
+export interface RecipeMeta {
+  id: string;
+  name: string;
+  type: "light" | "dark";
+  colorways: ColorwayMeta[];
+  domains: ThemeDomain[];
 }
 
 /** 配置 schema 中的单个属性定义——E5.8#41.14 🛤 补全 uiHint/minimum/maximum/renderHint/dependsOn

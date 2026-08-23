@@ -166,6 +166,31 @@ export interface LinkDeskTheme {
     background?: ThemeBackground;
     pluginId?: string;
 }
+/** E5.8#50.18：配色变体元数据——theme.listRecipes() 返回（colorways[] 元素，06 §2）。
+ *  预览色供 ThemePicker 卡片取色；单配色配方 = 1 项。 */
+export interface ColorwayMeta {
+    /** 配色变体 id——全局唯一（theme.setColorway 入参；app.themeColor 动态 enum 存此） */
+    id: string;
+    /** 配色显示名 */
+    name: string;
+    /** 预览色——强调色 + 窗口背景（卡片徽标取色用；缺省配色无该 token → 空串） */
+    preview: {
+        accent: string;
+        bgWindow: string;
+    };
+}
+/** 配方贡献域——theme 元数据 domains（混搭来源过滤）+ theme:changed 载荷（域级细粒度刷新）共用（06 §2/§6.2）。
+ *  六域：colors（配色，colorways 恒贡献） + appearance 五风格域（radius/glass/font/background/surface）。 */
+export type ThemeDomain = "colors" | "font" | "radius" | "glass" | "background" | "surface";
+/** E5.8#50.18：配方元数据——theme.listRecipes() 返回（全部可用配方 + 配色变体 + 预览色，06 §2）。
+ *  domains = 该配方贡献哪些域（混搭来源过滤依据，10 §2）；type = 明暗类别。 */
+export interface RecipeMeta {
+    id: string;
+    name: string;
+    type: "light" | "dark";
+    colorways: ColorwayMeta[];
+    domains: ThemeDomain[];
+}
 export interface LinkDeskLanguage {
     id: string;
     label: string;
@@ -180,6 +205,22 @@ export interface AppearanceAPI {
         getAvailable(): Promise<LinkDeskTheme[]>;
         /** 应用主题 */
         apply(themeId: string): Promise<void>;
+        // ── E5.8#50.18：配方/配色 06 §2 六方法——列表走 API（数据），选中走配置（持久化 app.*）──
+        /** 全部可用配方（含各配色变体 + 预览色）——ThemePicker 卡片 / 配色与混搭动态 SelectBox 数据源 */
+        listRecipes(): Promise<RecipeMeta[]>;
+        /** 当前活动配方/配色——合并配置计算（getActiveRecipe + app.theme/app.themeColor 回退） */
+        getActive(): Promise<{
+            recipeId: string;
+            colorwayId: string;
+        } | null>;
+        /** 当前生效 token 集（合并后）——appearanceMode→custom 播种、混搭预览 */
+        getEffectiveTokens(): Promise<Record<string, string>>;
+        /** 应用配方——落 app.theme（配色随配方自动跟随） */
+        setRecipe(recipeId: string): Promise<void>;
+        /** 应用配色变体——落 app.themeColor */
+        setColorway(colorwayId: string): Promise<void>;
+        /** 复位外观——清设置层外观覆盖（回主题基线） */
+        resetAppearance(): Promise<void>;
     };
     language: {
         /** 获取当前语言 ID */
