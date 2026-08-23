@@ -259,6 +259,10 @@
   font-size: 12px;
   color: var(--text-muted);
   line-height: 1.5;
+  /* E5.8#52：对齐同文件 .settings-row-label 三件套——缩窄时长 desc 单行省略号截断，不延伸/竖排 */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* ── 控件区 ── */

@@ -64,6 +64,8 @@
   background: var(--bg-toolbar);
   border-bottom: 1px solid var(--separator);
   flex-shrink: 0;
+  /* E5.8#52：缩窄时按钮整行换行，不压碎按钮文字竖排 */
+  flex-wrap: wrap;
 }
 
 .toolbar-btn {
@@ -78,6 +80,9 @@
   padding: 3px 10px;
   cursor: pointer;
   transition: background 150ms, color 150ms;
+  /* E5.8#52：按钮文字单行不竖排；配合容器 flex-wrap 挤不下换行而非压缩 */
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .toolbar-btn:hover {
