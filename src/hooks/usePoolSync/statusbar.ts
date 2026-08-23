@@ -51,7 +51,7 @@ export function buildStatusBarItems(t: TFunction, eventEntries: StatusBarEntry[]
       pluginId: "__shell_right__", id: e.id, label: e.text, align: "right",
     })),
     { pluginId: "__shell_right__", id: "lang", icon: "globe", label: "", title: t("选择语言"), align: "right", onClick: "workbench.action.selectLanguage" },
-    { pluginId: "__shell_right__", id: "theme", icon: "color-mode", label: "", title: t("切换主题"), align: "right", onClick: "workbench.action.selectTheme" },
+    { pluginId: "__shell_right__", id: "theme", icon: "color-mode", label: "", title: t("切换主题"), align: "right", onClick: "theme.pick" }, // E5.8#50.24：theme.pick 归一化命令 id
   ];
 
   // 去重插件 ID（保持顺序）——壳 orderedPluginIds 同款

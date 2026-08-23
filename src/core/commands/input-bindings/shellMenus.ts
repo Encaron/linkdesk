@@ -28,7 +28,7 @@ export function registerShellMenus(): void {
       children: [
         { command: "workbench.action.showCommands", group: "view" },
         { command: "workbench.action.showOutput", group: "view" },
-        { command: "workbench.action.selectTheme", group: "view" },
+        { command: "theme.pick", group: "view" }, // E5.8#50.24：theme.pick 归一化命令 id
         { command: "workbench.action.selectLanguage", group: "view" },
         { command: "workbench.action.openKeybindingsSettings", group: "view" },
         // E5.8#37.6：侧栏换边——双 when 门控菜单项（左边 → 显示「移动到右侧」；右边 → 显示「移动到左侧」，

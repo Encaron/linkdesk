@@ -362,6 +362,9 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
               // 切 mix → 播种 6 域来源 = "followTheme"（跟随整体配方，10 §2/08 §7.2 #11）
               if (v === "mix") {
                 for (const key of MIX_SOURCE_KEYS) setConfigurationValue(key, "followTheme", "user");
+              } else {
+                // 切回 recipe → 来源清空回默认（08 §7.3.5 对称于外观复位——theme.resetMix 单一写入点）
+                for (const key of MIX_SOURCE_KEYS) resetConfigurationValue(key, "user");
               }
             },
           },
