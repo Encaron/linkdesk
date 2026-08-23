@@ -170,4 +170,11 @@ describe("computePoolGrid——无主区内容（E5.8#46.17 drift 面板专用�
     expect(computePoolGrid(input).gridTemplateRows).toBe("1fr");
     expect(areaOf(input, "main")).toBe("1 / 2 / 3 / 4");
   });
+  it("hasMain=false + 竖条面板 → 兜底 1 行承载全高竖条（防空 rows→空模板）", () => {
+    const input = base({ panelVisible: true, panelEdge: "left", panelAlign: "center", hasMain: false });
+    const spec = computePoolGrid(input);
+    expect(spec.gridTemplateRows).toBe("1fr"); // 兜底行
+    expect(spec.cells.panel).toEqual({ rowStart: 1, colStart: 3, rowEnd: 2, colEnd: 4 }); // 竖条全高
+    expect(areaOf(input, "main")).toBe("1 / 1 / 4 / 5"); // main 0 行高
+  });
 });

@@ -109,6 +109,9 @@ export function computePoolGrid(input: PoolGridInput): PoolGridSpec {
   if (hasTop) rows.push("auto"); // 行 1 = 顶面板行
   if (hasMain) rows.push("1fr"); // 内容行（hasTop ? 2 : 1）
   if (hasBottom) rows.push("auto"); // 末行 = 底面板行
+  // E5.8#46.17：hasMain=false（drift 面板专用窗）+ 竖条面板（无顶/底横带行）→ 兜底 1 行承载全高竖条
+  //（防空 rows → gridTemplateRows 空模板崩坏）
+  if (rows.length === 0) rows.push("1fr");
   const totalRows = rows.length;
 
   // ── 行跨度推导 ──
