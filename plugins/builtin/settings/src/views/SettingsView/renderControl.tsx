@@ -8,6 +8,7 @@
 import { useState } from "react"; // E5.8#50.11：背景图导入 busy 态
 import Toggle from "@src/components/shared/toggle/Toggle";
 import SelectBox from "@src/components/shared/select-box/SelectBox";
+import DynamicSelect from "@src/components/shared/select-box/DynamicSelect"; // E5.8#50.23：动态下拉（optionsFrom 渲染时调 listRecipes）
 import FontFamilySelect from "@src/components/shared/font-family-select/FontFamilySelect";
 import FilePathInput from "@src/components/shared/file-path-input/FilePathInput";
 import NumberInput from "@src/components/shared/number-input/NumberInput";
@@ -75,6 +76,15 @@ function renderControl(
       );
     case "themePicker": // E5.8#50.22：主题配方卡片——value=app.theme，点卡片 onChange(recipeId)（onApply 应用配方）
       return <ThemePicker value={String(val)} onChange={(v) => onChange(v)} />;
+    case "select": // E5.8#50.23：动态下拉——optionsFrom 渲染时调 listRecipes 动态取（colorways 配色变体 / sources 混搭来源）
+      return (
+        <DynamicSelect
+          value={String(val)}
+          onChange={(v) => onChange(v)}
+          optionsFrom={prop.optionsFrom ?? ""}
+          domain={prop.optionsFromDomain}
+        />
+      );
     default:
       break;
   }

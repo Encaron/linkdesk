@@ -268,7 +268,10 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
             default: "",
             description: t("配色变体——活动主题配方的可用配色"),
             dependsOn: { key: "app.themeColorMode", value: "custom" },
-            // 枚举 = 活动配方 colorways（applyRecipeForConfig 每次应用同步）——#50.23 optionsFrom 泛化前的注册表实现
+            // E5.8#50.23：动态下拉——optionsFrom 渲染时调 listRecipes 取活动配方（app.theme）配色，选项带预览色块。
+            // 枚举仍由 applyRecipeForConfig 每次应用同步（第三方设置 UI 读取 + setConfigurationValue 校验）；壳 UI 走 optionsFrom 动态取。
+            uiHint: "select",
+            optionsFrom: "theme.colorways",
             onApply: () => applyThemeIfReady(),
           },
           "app.appearanceMode": {
@@ -348,15 +351,17 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
           },
           // 混搭七键——mixMode 常显，六域来源 mixMode=mix 才出现（08 §7.1 #11-17）。
           // mix* 的按域合并实现在 #50.26——此处仅注册 + 播种 + dependsOn 显隐。
+          // 六域来源 = uiHint "select" + optionsFrom "theme.sources"（#50.23 动态下拉按域过滤 listRecipes）。
+          // 「跟随主题」哨兵值 = "followTheme"（10-混搭设计 §1/§3 定稿；缺省与播种同一值）。
           "app.mixMode": {
             type: "string",
             default: "recipe",
             enum: ["recipe", "mix"],
             description: t("混搭模式——单一主题配方 / 按域混搭多个主题来源"),
             onApply: (v) => {
-              // 切 mix → 播种 6 域来源 = "theme"（跟随主题，08 §7.2 #11）
+              // 切 mix → 播种 6 域来源 = "followTheme"（跟随整体配方，10 §2/08 §7.2 #11）
               if (v === "mix") {
-                for (const key of MIX_SOURCE_KEYS) setConfigurationValue(key, "theme", "user");
+                for (const key of MIX_SOURCE_KEYS) setConfigurationValue(key, "followTheme", "user");
               }
             },
           },
@@ -365,36 +370,54 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
             default: "followTheme",
             description: t("配色域来源——跟随主题配方 / 指定主题配方 id"),
             dependsOn: { key: "app.mixMode", value: "mix" },
+            uiHint: "select",
+            optionsFrom: "theme.sources",
+            optionsFromDomain: "colors",
           },
           "app.mixFont": {
             type: "string",
             default: "followTheme",
             description: t("字体域来源——跟随主题配方 / 指定主题配方 id"),
             dependsOn: { key: "app.mixMode", value: "mix" },
+            uiHint: "select",
+            optionsFrom: "theme.sources",
+            optionsFromDomain: "font",
           },
           "app.mixRadius": {
             type: "string",
             default: "followTheme",
             description: t("圆角域来源——跟随主题配方 / 指定主题配方 id"),
             dependsOn: { key: "app.mixMode", value: "mix" },
+            uiHint: "select",
+            optionsFrom: "theme.sources",
+            optionsFromDomain: "radius",
           },
           "app.mixGlass": {
             type: "string",
             default: "followTheme",
             description: t("玻璃域来源——跟随主题配方 / 指定主题配方 id"),
             dependsOn: { key: "app.mixMode", value: "mix" },
+            uiHint: "select",
+            optionsFrom: "theme.sources",
+            optionsFromDomain: "glass",
           },
           "app.mixBackground": {
             type: "string",
             default: "followTheme",
             description: t("背景域来源——跟随主题配方 / 指定主题配方 id"),
             dependsOn: { key: "app.mixMode", value: "mix" },
+            uiHint: "select",
+            optionsFrom: "theme.sources",
+            optionsFromDomain: "background",
           },
           "app.mixSurface": {
             type: "string",
             default: "followTheme",
             description: t("表面域来源——跟随主题配方 / 指定主题配方 id"),
             dependsOn: { key: "app.mixMode", value: "mix" },
+            uiHint: "select",
+            optionsFrom: "theme.sources",
+            optionsFromDomain: "surface",
           },
         },
       });

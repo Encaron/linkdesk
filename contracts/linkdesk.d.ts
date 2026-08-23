@@ -18,6 +18,9 @@ export interface LinkDeskCommand {
     title: string;
     category?: string;
 }
+/** 配方贡献域——theme 元数据 domains（混搭来源过滤）+ theme:changed 载荷（域级细粒度刷新）共用（06 §2/§6.2）。
+ *  六域：colors（配色，colorways 恒贡献） + appearance 五风格域（radius/glass/font/background/surface）。 */
+export type ThemeDomain = "colors" | "font" | "radius" | "glass" | "background" | "surface";
 /** 配置 schema 中的单个属性定义——E5.8#41.14 🛤 补全 uiHint/minimum/maximum/renderHint/dependsOn
  * （壳 SettingsView renderControl/SettingRow 官方控件切换 + 依赖显隐字段，与 SettingsView/types ConfigProperty 对齐） */
 export interface LinkDeskConfigProperty {
@@ -41,6 +44,12 @@ export interface LinkDeskConfigProperty {
         key: string;
         value: unknown;
     };
+    /** 动态下拉数据源——uiHint "select" 时读取（渲染时调 theme.listRecipes() 动态取，E5.8#50.23）。
+     *  "theme.colorways" = 活动配方（app.theme）配色变体（选项带预览色块）；
+     *  "theme.sources" = 混搭来源（按 optionsFromDomain 过滤 RecipeMeta.domains）。 */
+    optionsFrom?: string;
+    /** 混搭来源域过滤——optionsFrom "theme.sources" 时按此域过滤 RecipeMeta.domains（10 §2 六域） */
+    optionsFromDomain?: ThemeDomain;
 }
 /** 配置 schema——key → 属性定义（index signature 保持现有消费方） */
 export interface LinkDeskConfigSchema {
@@ -181,9 +190,6 @@ export interface ColorwayMeta {
         bgWindow: string;
     };
 }
-/** 配方贡献域——theme 元数据 domains（混搭来源过滤）+ theme:changed 载荷（域级细粒度刷新）共用（06 §2/§6.2）。
- *  六域：colors（配色，colorways 恒贡献） + appearance 五风格域（radius/glass/font/background/surface）。 */
-export type ThemeDomain = "colors" | "font" | "radius" | "glass" | "background" | "surface";
 /** E5.8#50.18：配方元数据——theme.listRecipes() 返回（全部可用配方 + 配色变体 + 预览色，06 §2）。
  *  domains = 该配方贡献哪些域（混搭来源过滤依据，10 §2）；type = 明暗类别。 */
 export interface RecipeMeta {

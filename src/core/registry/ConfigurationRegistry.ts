@@ -42,6 +42,12 @@ export interface ConfigurationProperty {
   /** E5.8#50.20：等宽限定——仅 uiHint "fontFamily" 有意义。true/缺省 = 只列等宽族
    *  （编辑器字体）；false = 全字族（UI 字体，如 app.fontFamily 写 --font-ui）。 */
   monoOnly?: boolean;
+  /** E5.8#50.23：动态下拉数据源——uiHint "select" 时读取（渲染时调 theme.listRecipes() 动态取）。
+   *  渲染器扩展，不改本注册表存储结构（08 §7.3 #3）。"theme.colorways" = 活动配方配色；
+   *  "theme.sources" = 混搭来源（按 optionsFromDomain 过滤 RecipeMeta.domains）。 */
+  optionsFrom?: string;
+  /** 混搭来源域过滤——optionsFrom "theme.sources" 时按此域过滤（10 §2 六域之一） */
+  optionsFromDomain?: string;
 }
 
 /** 插件贡献的 configuration 分组——对标 VS Code package.json contributes.configuration */

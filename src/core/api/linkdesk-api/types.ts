@@ -74,6 +74,12 @@ export interface LinkDeskConfigProperty {
   monoOnly?: boolean;
   /** 依赖条件——本项仅在 dependsOn.key 配置值 === value 时显示（SettingRow 读它显隐整行） */
   dependsOn?: { key: string; value: unknown };
+  /** 动态下拉数据源——uiHint "select" 时读取（渲染时调 theme.listRecipes() 动态取，E5.8#50.23）。
+   *  "theme.colorways" = 活动配方（app.theme）配色变体（选项带预览色块）；
+   *  "theme.sources" = 混搭来源（按 optionsFromDomain 过滤 RecipeMeta.domains）。 */
+  optionsFrom?: string;
+  /** 混搭来源域过滤——optionsFrom "theme.sources" 时按此域过滤 RecipeMeta.domains（10 §2 六域） */
+  optionsFromDomain?: ThemeDomain;
 }
 
 /** 配置 schema——key → 属性定义（index signature 保持现有消费方） */

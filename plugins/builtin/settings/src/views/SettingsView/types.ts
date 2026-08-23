@@ -36,6 +36,10 @@ interface ConfigProperty {
   monoOnly?: boolean;
   dependsOn?: { key: string; value: unknown };
   onApply?: ((v: unknown) => void) | null; // E4V#46 renderHint "action"
+  /** E5.8#50.23：动态下拉数据源——uiHint "select" 时读取（"theme.colorways" / "theme.sources"） */
+  optionsFrom?: string;
+  /** 混搭来源域过滤——optionsFrom "theme.sources" 时按此域过滤（RecipeMeta.domains 六域之一） */
+  optionsFromDomain?: string;
 }
 
 export type { SettingsViewProps, GroupInfo, ConfigProperty };

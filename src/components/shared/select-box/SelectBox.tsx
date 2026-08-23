@@ -17,6 +17,8 @@ import "./SelectBox.css";
 interface SelectBoxOption {
   value: string;
   label: string;
+  /** E5.8#50.23：选项预览色块（如配色变体的 accent）——触发器与下拉项显示前置色点 */
+  preview?: string;
 }
 
 interface SelectBoxProps {
@@ -56,14 +58,14 @@ function SelectBox({ value, options, onChange, disabled, placeholder, title, cla
     return normalized.filter((o) => o.label.toLowerCase().includes(s));
   }, [normalized, search]);
 
-  // 当前选中项的 label——有值但不在选项（外部/动态值如资产字体族）显示真实值（只显示不选）；
+  // 当前选中项——有值但不在选项（外部/动态值如资产字体族）显示真实值（只显示不选）；
   // 仅空值才用 placeholder 兜底（E5.8#50.20 ③ 当前值边界）
+  const selected = useMemo(() => normalized.find((o) => o.value === value), [normalized, value]);
   const currentLabel = useMemo(() => {
-    const found = normalized.find((o) => o.value === value);
-    if (found) return found.label;
+    if (selected) return selected.label;
     if (value !== "") return value;
     return placeholder ?? value;
-  }, [normalized, value, placeholder]);
+  }, [selected, value, placeholder]);
 
   // focus index clamp
   useEffect(() => {
@@ -141,7 +143,10 @@ function SelectBox({ value, options, onChange, disabled, placeholder, title, cla
         title={title}
         onClick={() => setOpen((v) => !v)}
       >
-        <span className="selectbox-label">{currentLabel}</span>
+        <span className="selectbox-label">
+          {selected?.preview && <span className="selectbox-swatch" style={{ background: selected.preview }} />}
+          {currentLabel}
+        </span>
         <span className={`codicon codicon-chevron-down selectbox-arrow ${open ? "selectbox-arrow-up" : ""}`} />
       </button>
 
@@ -175,6 +180,7 @@ function SelectBox({ value, options, onChange, disabled, placeholder, title, cla
                 onClick={() => select(o.value)}
                 onMouseEnter={() => setFocusIdx(i)}
               >
+                {o.preview && <span className="selectbox-swatch" style={{ background: o.preview }} />}
                 {o.label}
               </li>
             ))

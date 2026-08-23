@@ -47,6 +47,18 @@
   white-space: nowrap;
 }
 
+/* E5.8#50.23：选项预览色块——触发器与下拉项的前置色点（配色变体 accent 等） */
+.selectbox-swatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-right: 5px;
+  border-radius: 50%;
+  border: 1px solid color-mix(in srgb, var(--text-primary) 35%, transparent);
+  vertical-align: middle;
+  flex-shrink: 0;
+}
+
 .selectbox-arrow {
   flex-shrink: 0;
   font-size: 12px;

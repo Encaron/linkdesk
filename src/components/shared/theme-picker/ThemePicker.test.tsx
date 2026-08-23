@@ -9,43 +9,15 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, fireEvent, cleanup } from "@testing-library/react";
 import ThemePicker from "./ThemePicker";
 import "@src/i18n"; // 装 parseMissingKeyHandler——{{count}} 插值在 jsdom 无资源时也替换（徽标计数断言）
-import type { RecipeMeta } from "@src/core/api/linkdesk-api/types";
+import { MINT, FOREST, mockListRecipes } from "../theme-recipes.fixture";
 
 afterEach(() => cleanup());
-
-const MINT: RecipeMeta = {
-  id: "demo-mint",
-  name: "Demo Mint",
-  type: "light",
-  colorways: [
-    { id: "dew", name: "Alpha", preview: { accent: "#3E9E8C", bgWindow: "#F7FBF8" } },
-    { id: "tea", name: "Beta", preview: { accent: "#A5D8E8", bgWindow: "#F7FBF8" } },
-  ],
-  domains: ["colors"],
-};
-
-const FOREST: RecipeMeta = {
-  id: "demo-forest",
-  name: "Demo Forest",
-  type: "dark",
-  colorways: [{ id: "pine", name: "Gamma", preview: { accent: "#4C8C6A", bgWindow: "#1B2A23" } }],
-  domains: ["colors"],
-};
 
 beforeEach(() => {
   // 每测试重设 theme API——listRecipes 由用例注入（as unknown as 收窄，同 dependencies.test 先例）
   const lk = window as unknown as { linkdesk?: { theme?: unknown } };
   if (lk.linkdesk) lk.linkdesk.theme = undefined;
 });
-
-function mockListRecipes(recipes: RecipeMeta[]): void {
-  const lk = window as unknown as {
-    linkdesk?: { theme?: { listRecipes: () => Promise<RecipeMeta[]> } };
-  };
-  if (lk.linkdesk) {
-    lk.linkdesk.theme = { listRecipes: vi.fn().mockResolvedValue(recipes) };
-  }
-}
 
 function renderPicker(value = "demo-mint") {
   const onChange = vi.fn();
