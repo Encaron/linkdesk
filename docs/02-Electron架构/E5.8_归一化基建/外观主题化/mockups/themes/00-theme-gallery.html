@@ -633,6 +633,96 @@
   .shell[data-theme="current-dark"] .side-row .sw,
   .shell[data-theme="current-light"] .side-row .sw { background: rgba(0,0,0,0.06); color: var(--theme-text-secondary); }
 
+  /* ── ⑦ 全胶囊（radius 域极限——八档拉到 full，所有 zone 变胶囊）──
+     形制 = 圆角极限：zone 本身胶囊化 + tab/按钮/侧栏行全 pill，配泡泡糖跳色。 */
+  .shell[data-theme="pill"] {
+    --theme-bg-window: #FFF0F5;
+    --theme-bg-titlebar: #FFF0F5;
+    --theme-bg-card: #FFFFFF;
+    --theme-bg-status: #FFFFFF;
+    --theme-bg-input: #FFFFFF;
+    --theme-bg-icon-bar: #FFFFFF;
+    --theme-bg-side-panel: #FFFFFF;
+    --theme-bg-toolbar: #FFF7FA;
+    --theme-text-primary: #3A2E34;
+    --theme-text-secondary: #8A7B83;
+    --theme-text-muted: #B4A6AD;
+    --theme-text-on-accent: #FFFFFF;
+    --theme-accent: #D6336C;
+    --theme-accent-hover: #E44E82;
+    --theme-border: rgba(214,51,108,0.18);
+    --theme-separator: rgba(214,51,108,0.10);
+    --theme-hover-overlay: rgba(214,51,108,0.06);
+    --theme-tab-hover-bg: #FFE4EE;
+    --theme-dirty-dot: #D6336C;
+    --theme-toggle-knob: #FFFFFF;
+    --theme-toggle-knob-on: #D6336C;
+    --theme-status-connected: #10B981;
+    --theme-status-disconnected: #E8D9E0;
+    --theme-icon-active: #D6336C;
+    --theme-icon-inactive: #B4A6AD;
+    --theme-font-ui: "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+    --theme-font-mono: "Cascadia Mono", Consolas, monospace;
+    --theme-cm-timestamp: #B4A6AD;
+    --theme-sent-echo: #D6336C;
+    --theme-received: #3A2E34;
+    --theme-system-log: #8A7B83;
+    --theme-bg-layer: radial-gradient(620px 380px at 15% 0%, rgba(214,51,108,0.05), transparent 60%);
+    --theme-bg-mask: none;
+  }
+  .shell[data-theme="pill"] .tab { border-radius: 999px; margin: 0 2px 6px; padding: 6px 16px; }
+  .shell[data-theme="pill"] .tab.active { background: var(--theme-accent); color: var(--theme-text-on-accent); border-bottom-color: transparent; }
+  .shell[data-theme="pill"] .tab.active .tab-ico { color: var(--theme-text-on-accent); }
+  .shell[data-theme="pill"] .tool-btn { border-radius: 999px; }
+  .shell[data-theme="pill"] .icon-btn { border-radius: 999px; }
+  .shell[data-theme="pill"] .side-row,
+  .shell[data-theme="island"] .side-row { border-left: none; }
+  .shell[data-theme="pill"] .side-row.active,
+  .shell[data-theme="island"] .side-row.active { background: color-mix(in srgb, var(--theme-accent) 12%, transparent); }
+  .shell[data-theme="pill"] .side-row { border-radius: 999px; margin: 0 8px; padding-left: 12px; }
+
+  /* ── ⑧ 悬浮孤岛（surface 域极限——留缝 12px，每个 zone 独立成岛 + 分层环境投影 + morph）──
+     形制 = 悬浮极限：zone 之间大留缝 + 大圆角 + 双层环境投影，像漂浮的岛。 */
+  .shell[data-theme="island"] {
+    --theme-bg-window: #0E0F14;
+    --theme-bg-titlebar: #191B23;
+    --theme-bg-card: #21242F;
+    --theme-bg-status: #191B23;
+    --theme-bg-input: #21242F;
+    --theme-bg-icon-bar: #191B23;
+    --theme-bg-side-panel: #1B1E27;
+    --theme-bg-toolbar: #20232E;
+    --theme-text-primary: #E8EAF2;
+    --theme-text-secondary: #A6ABB8;
+    --theme-text-muted: #767C8C;
+    --theme-text-on-accent: #0A0B10;
+    --theme-accent: #7C9CF6;
+    --theme-accent-hover: #9DB6FF;
+    --theme-border: rgba(255,255,255,0.08);
+    --theme-separator: rgba(255,255,255,0.06);
+    --theme-hover-overlay: rgba(255,255,255,0.05);
+    --theme-tab-hover-bg: rgba(255,255,255,0.06);
+    --theme-dirty-dot: #7C9CF6;
+    --theme-toggle-knob: #FFFFFF;
+    --theme-toggle-knob-on: #7C9CF6;
+    --theme-status-connected: #34D399;
+    --theme-status-disconnected: #3A3F4E;
+    --theme-icon-active: #9DB6FF;
+    --theme-icon-inactive: #767C8C;
+    --theme-font-ui: "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+    --theme-font-mono: "Cascadia Mono", Consolas, monospace;
+    --theme-cm-timestamp: #767C8C;
+    --theme-sent-echo: #9DB6FF;
+    --theme-received: #E8EAF2;
+    --theme-system-log: #A6ABB8;
+    --theme-bg-layer: radial-gradient(700px 420px at 80% -10%, rgba(124,156,246,0.07), transparent 60%);
+    --theme-bg-mask: none;
+  }
+  .shell[data-theme="island"] .tab { border-radius: 10px; }
+  .shell[data-theme="island"] .tool-btn { border-radius: 8px; }
+  .shell[data-theme="island"] .side-row { border-radius: 8px; margin: 0 6px; padding-left: 12px; }
+  .shell[data-theme="island"] .statusbar { color: var(--theme-text-secondary); }
+
   /* ═══ surface 域（#50.6 token 表）═══
      悬浮圆角面板：--surface-inset 留缝 / --surface-radius 圆角 / --surface-shadow 投影 / --surface-border 发丝光边
      data-surf 挂 .shell：on = 悬浮圆角，off = 现状直角贴边（决策：默认零值 = 现状，旧主题零变化）
@@ -648,6 +738,9 @@
   /* 现状主题 surf 开 = 演示「同一套变量，两种形制」：现状配色 + surface 域 = 圆角化的现状（证明现状没被消灭） */
   .shell[data-theme="current-dark"][data-surf="on"] { --surface-inset: 6px; --surface-radius: 12px; --surface-shadow: 0 6px 18px rgba(0,0,0,0.35), 0 1px 4px rgba(0,0,0,0.18); --surface-border: rgba(255,255,255,0.07); }
   .shell[data-theme="current-light"][data-surf="on"] { --surface-inset: 6px; --surface-radius: 12px; --surface-shadow: 0 6px 18px rgba(0,0,0,0.08), 0 1px 4px rgba(0,0,0,0.05); --surface-border: rgba(255,255,255,0.55); }
+  /* 极限形制 surf 开：全胶囊 = radius full 档（胶囊化）；悬浮孤岛 = 留缝 12px + 双层环境投影 */
+  .shell[data-theme="pill"][data-surf="on"] { --surface-inset: 8px; --surface-radius: 999px; --surface-shadow: 0 10px 26px rgba(214,51,108,0.14), 0 2px 8px rgba(0,0,0,0.05); --surface-border: rgba(255,255,255,0.65); }
+  .shell[data-theme="island"][data-surf="on"] { --surface-inset: 12px; --surface-radius: 18px; --surface-shadow: 0 16px 40px rgba(0,0,0,0.5), 0 3px 10px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.04); --surface-border: rgba(255,255,255,0.05); }
 
   .shell .titlebar, .shell .icon-bar, .shell .sidebar, .shell .main, .shell .statusbar {
     margin: 0;
@@ -853,6 +946,14 @@
   <button class="theme-tab" data-theme="mint" role="tab" aria-selected="false">
     <span class="dots"><span class="dot" style="background:#6B4AE0;"></span><span class="dot" style="background:#8FD6B5;"></span><span class="dot" style="background:#A5D8E8;"></span><span class="dot" style="background:#C6E9B0;"></span></span>
     <span class="tname">薄荷苏打</span><span class="tskill">ui-ux</span>
+  </button>
+  <button class="theme-tab" data-theme="pill" role="tab" aria-selected="false">
+    <span class="dots"><span class="dot" style="background:#D6336C;"></span><span class="dot" style="background:#FFF0F5;"></span><span class="dot" style="background:#3A2E34;"></span></span>
+    <span class="tname">全胶囊 · 极限圆角</span><span class="tskill">radius 极限</span>
+  </button>
+  <button class="theme-tab" data-theme="island" role="tab" aria-selected="false">
+    <span class="dots"><span class="dot" style="background:#7C9CF6;"></span><span class="dot" style="background:#191B23;"></span><span class="dot" style="background:#E8EAF2;"></span></span>
+    <span class="tname">悬浮孤岛 · 极限悬浮</span><span class="tskill">surface 极限</span>
   </button>
 </div>
 
@@ -1130,6 +1231,65 @@
       skill: { ico: 'C', name: '现状基线（非 skill 产物）', desc: '仓库 theme-defaults/light.json 真实现状。形制 = 配色正交轴的演示：同一直角形制可配任意颜色。' }
     },
 
+    pill: {
+      name: '全胶囊 · 极限圆角',
+      read: '读取为：桌面壳 用 全胶囊 语言——<strong>radius 域极限</strong>。圆角八档拉到 <code>full</code>：每个 zone 本身胶囊化（图标栏/侧栏/主区全变胶囊），tab/按钮/侧栏行全 pill，配泡泡糖跳色。这是圆角的终点——八档封顶，再往上没有档位了。',
+      badge: 'light · radius 极限',
+      recipe: {
+        id: 'pill-bubble', name: '全胶囊', type: 'light',
+        appearance: {
+          radius: { sm: 999, md: 999, lg: 999, xl: 999 },
+          glass: { blur: 0, saturate: 1, tint: null, opacity: 1 },
+          font: { ui: 'Segoe UI', mono: 'Cascadia Mono' },
+          background: { image: null, opacity: 1, mask: null },
+          surface: { inset: 8, radius: 999, shadow: true, border: true }
+        },
+        colorways: [{
+          id: 'bubble', name: '泡泡糖',
+          colors: { 'bg-window': '#FFF0F5', accent: '#D6336C', 'text-primary': '#3A2E34', 'status-connected': '#10B981' }
+        }]
+      },
+      tokens: [
+        ['--surface-inset', '8px', false], ['--surface-radius', '999px', false],
+        ['--radius-sm', '999px', false], ['--radius-xl', '999px', false],
+        ['--bg-window', '#FFF0F5', true], ['--accent', '#D6336C', true],
+        ['--text-primary', '#3A2E34', true], ['--status-connected', '#10B981', true],
+        ['--surface-shadow', '浮起投影', false], ['--glass-blur', '0px', false]
+      ],
+      more: 'radius 域 full 档 = 胶囊化（八档封顶）。zone 本身变胶囊 = surface-radius 999px；tab/按钮 pill = 各自 radius full。这是圆角域的极限。',
+      domains: { colors: 1, font: 0, radius: 1, glass: 0, background: 0, surface: 1 },
+      skill: { ico: 'P', name: 'ui-ux-pro-max', desc: '圆角胶囊化极限。设计系统查询：<code>playful bubble rounded pill</code> → 卡通/趣味形制。' }
+    },
+
+    island: {
+      name: '悬浮孤岛 · 极限悬浮',
+      read: '读取为：桌面壳 用 悬浮孤岛 语言——<strong>surface 域极限</strong>。留缝 12px 让每个 zone 独立成岛（标题栏/图标栏/侧栏/主区/状态栏互不相连）+ 大圆角 18px + 双层环境投影（近投影 + 远环境光）+ morph 形变过渡。这是悬浮的终点——再大的留缝就散架了。',
+      badge: 'dark · surface 极限',
+      recipe: {
+        id: 'island-drift', name: '悬浮孤岛', type: 'dark',
+        appearance: {
+          radius: { sm: 10, md: 14, lg: 18, xl: 24 },
+          glass: { blur: 0, saturate: 1, tint: null, opacity: 1, morph: 400 },
+          font: { ui: 'Segoe UI', mono: 'Cascadia Mono' },
+          background: { image: null, opacity: 1, mask: null },
+          surface: { inset: 12, radius: 18, shadow: true, border: true }
+        },
+        colorways: [{
+          id: 'drift', name: '深空漂移',
+          colors: { 'bg-window': '#0E0F14', accent: '#7C9CF6', 'text-primary': '#E8EAF2', 'status-connected': '#34D399' }
+        }]
+      },
+      tokens: [
+        ['--surface-inset', '12px', false], ['--surface-radius', '18px', false],
+        ['--surface-shadow', '双层环境投影', false], ['--glass-morph', '400ms', false],
+        ['--bg-window', '#0E0F14', true], ['--accent', '#7C9CF6', true],
+        ['--text-primary', '#E8EAF2', true], ['--status-connected', '#34D399', true]
+      ],
+      more: 'surface 域极限：inset 12px（zone 独立成岛）+ radius 18 + 双层投影（0 16px 40px 环境 + 0 3px 10px 近）。再大留缝就散架。',
+      domains: { colors: 1, font: 0, radius: 1, glass: 0, background: 0, surface: 1 },
+      skill: { ico: 'S', name: 'high-end-visual-design', desc: 'Soft Structuralism 本体：银灰深空 + 大留缝 + 空气感漂浮组件 + 极柔和扩散投影。标签：<code>variance 6 · motion 5 · density 2</code>' }
+    },
+
     glass: {
       name: 'Glass Aurora · 液态玻璃',
       read: '读取为：桌面壳 用 高质感液态玻璃 语言，靠 <code>high-end-visual-design</code> 的 Ethereal Glass 本体。图片全窗铺底（sailor-moon.jpg）+ 0.88 深罩 + 每区域悬浮圆角面板（surface 域：留缝/圆角/投影/发丝光边）+ 液态玻璃材质三层：透光（per-surface blur 8/18/20px 差异化）、反光（specular 顶部渐变受光带）、响应（morph 400ms 形变过渡）。',
@@ -1361,6 +1521,8 @@
   const NOTES = {
     'current-dark': '<strong>现状基线</strong>：theme-defaults/dark.json 100% 真实值。看 <strong>zones 之间</strong>——顶栏 / 图标栏 / 侧栏 / 主区 / 状态栏全部<strong>直角贴边</strong>，1px 分隔线切开，无圆角、无留缝、无投影、无玻璃（状态栏就是那条蓝 #007ACC）。这就是「没有圆角之前咱们自己的样子」，它不会被主题化消灭：surface/radius 域零值就是它，任何配方缺这些域就继承回它（稀疏覆盖）。点上方 <code>surface</code> 钮 = 「现状 + 圆角域」= 圆角化的现状——同一套变量，两种形制。',
     'current-light': '现状亮色基线：theme-defaults/light.json 真实值。同形制（直角贴边）只换一组颜色——形制与配色是正交两轴（appearance × colorways）。',
+    pill: '<strong>圆角域极限</strong>：radius 八档拉到 full（999px）——zone 本身胶囊化 + tab/按钮全 pill。八档封顶，这就是圆角能走到的终点；再想要更圆只能靠「形制融合」，而那已超出 radius 单域。与最左「现状 · 直角」对比 = radius 域 0 ↔ full 的完整光谱。',
+    island: '<strong>表面域极限</strong>：surface-inset 12px 让每个 zone 独立成岛（互不相连），大圆角 + 双层环境投影 + morph 400ms。与「现状 · 直角」对比 = surface 域 0（贴边）↔ 12（孤岛）的完整光谱。再大留缝就散架了——这就是悬浮的终点。',
     glass: '四个主题 = 四个配方（recipe.json 预览即 <code>03-插件制造/11-主题制作.md</code> 示例的产出格式，人类/AI 都能照着造，即 ai化 落地）。全部走决策 F：<code>colorways[]</code> 无第二种写法。切主题 = 换配方 = 换整套 CSS 变量（<code>02-变量契约</code> 真实 token 名）。圆角/玻璃在设置层再被 scale/绝对覆盖（决策 E）。壳上方 surface 钮演示「悬浮圆角 ⇄ 直角贴边」（surface 域零值 = 现状）；液态玻璃材质 = 透光（blur/saturate）+ 反光（specular）+ 响应（morph）。' ,
     minimal: '玻璃 = 绝对覆盖（决策 E）：glass-blur 0 即「关玻璃」，主题作者可不写 glass 域（稀疏覆盖）。1px #EAEAEA 结构线 + 8/12px 圆角 = minimalist-ui 的形制锁定。',
     luxury: 'design-taste-frontend 的「奢华」默认会被禁用的 beige+brass+espresso 家族带偏，这里走 Cold Luxury（银灰 + 铬银 + 烟墨），纸感来自底色 + 噪点纹理，非暖色古董风。衬线（Cormorant Garamond）仅展示字，正文 sans，遵守其 Serif Discipline。',
