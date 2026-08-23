@@ -259,7 +259,12 @@ export function useTabDrag({ containerRef, tabAction, groups, tabBarRects, dragP
     // E5.8#44-B：窗口外释放 → tabAction（壳侧命中检测：TabBar→并窗 / 空白→新窗）——恒启用（拖出即手势）
     onReleaseOutside: (tabId, screenX, screenY) => tabAction({ action: "releaseOutsideWindow", tabId, screenX, screenY }),
     // E5.8#44-C：拎起后全程上报拖拽位置（壳排除源窗命中——窗内自然清提示，窗外命中目标窗 TabBar 高亮）
-    onDragPosition: (pos) => dragPosition?.(pos),
+    // E5.8#46.19：附带被拖标签标题——主进程幽灵窗渲染文字（主进程不持 tabState，标题由池上报）
+    onDragPosition: (pos) => {
+      const srcGroup = groupsRef.current.find((g) => g.tabs.some((t) => t.id === pos.tabId));
+      const title = srcGroup?.tabs.find((t) => t.id === pos.tabId)?.title;
+      dragPosition?.({ ...pos, title });
+    },
   });
 
   // ── dragLocalTabs：同组拖拽时乐观重排标签页（视觉反馈）──

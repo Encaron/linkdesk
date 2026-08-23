@@ -10,6 +10,8 @@
 import { app, ipcMain, BrowserWindow } from 'electron';
 import type { WindowManager } from '../../windows/window-manager.js'; // E5.6#8d
 import { IPC } from '../channels.js';
+// E5.8#46.19：OS 级拖拽幽灵窗——drag-position 流直接驱动（取消/释放隐藏，其余跟随光标）
+import { showDragGhost, hideDragGhost } from '../../windows/drag-ghost.js';
 
 let _mainWindow: BrowserWindow | null = null;
 let _windowManager: WindowManager | null = null;
@@ -72,6 +74,9 @@ export function registerPoolHandlers(windowManager: WindowManager, mainWindow: B
   // windowId）。壳读 sourceWindowId 判源窗（releaseOutsideWindow 拖出源 / detach 同窗不并）。
   ipcMain.on(IPC.pool.tabAction, (event, action: unknown) => {
     const sourceWindowId = _windowManager?.getWindowIdByWebContents(event.sender) ?? 'main';
+    // E5.8#46.19：窗外松手 = 拖拽结束——隐藏幽灵（窗内松手由池补 canceled；Esc 由 dragPosition canceled）
+    const a = typeof action === 'object' && action !== null ? action as { action?: string } : null;
+    if (a?.action === 'releaseOutsideWindow') hideDragGhost();
     const shellAction = typeof action === 'object' && action !== null ? { ...action, sourceWindowId } : action;
     if (_mainWindow && !_mainWindow.isDestroyed()) {
       _mainWindow.webContents.send(IPC.pool.tabAction, shellAction);
@@ -91,8 +96,23 @@ export function registerPoolHandlers(windowManager: WindowManager, mainWindow: B
   // E5.8#44-C：池→壳——拖拽位置上报（拎起后 mousemove 全程——吸附命中检测数据源）。
   // 池组件 pool.dragPosition(pos) 发送，主进程按 sender 解析 sourceWindowId 附上转发壳——
   // 壳排除源窗命中（窗内拖拽 = 非跨窗吸附，天然清提示）；窗外命中目标窗 TabBar → 下发高亮。
+  // E5.8#46.19：同处理点驱动 OS 级拖拽幽灵——canceled（Esc/窗内松手池补发）→ 隐藏；outside（窗外）
+  // → 显示跟随光标（首次建窗 / 后续 setPosition）；回到窗内 → 隐藏（DOM 浮块可见）。title 池上报
+  // （主进程不持 tabState），幽灵框渲染标签文字。
   ipcMain.on(IPC.pool.dragPosition, (event, pos: unknown) => {
     const sourceWindowId = _windowManager?.getWindowIdByWebContents(event.sender) ?? 'main';
+    const p = typeof pos === 'object' && pos !== null
+      ? pos as { canceled?: boolean; outside?: boolean; screenX?: number; screenY?: number; title?: string }
+      : null;
+    if (p) {
+      if (p.canceled) {
+        hideDragGhost();
+      } else if (p.outside && typeof p.screenX === 'number' && typeof p.screenY === 'number') {
+        showDragGhost(p.screenX, p.screenY, p.title);
+      } else if (p.outside === false) {
+        hideDragGhost();
+      }
+    }
     const shellPos = typeof pos === 'object' && pos !== null ? { ...pos, sourceWindowId } : pos;
     if (_mainWindow && !_mainWindow.isDestroyed()) {
       _mainWindow.webContents.send(IPC.pool.dragPosition, shellPos);

@@ -165,8 +165,12 @@ export function useDragReorder(
       }
 
       // E5.8#44-C：拎起后全程上报拖拽位置（含窗内——壳排除源窗命中，窗内拖拽自然 null 清提示；窗外命中目标窗 TabBar 高亮）
+      // E5.8#46.19：附窗内外标志——窗外 → 主进程 OS 幽灵（DOM 浮块出窗被裁剪不可见）；窗内 → OS 幽灵隐藏
+      // （DOM 浮块可见）。判定与 onMouseUp 窗外判定同源（winScreenX + 视口尺寸近似，够用）。
       if (ds.lifted && onDragPosition) {
-        onDragPosition({ tabId: ds.tabId, screenX: e.screenX, screenY: e.screenY });
+        const outside = e.screenX < ds.winScreenX || e.screenX > ds.winScreenX + window.innerWidth ||
+          e.screenY < ds.winScreenY || e.screenY > ds.winScreenY + window.innerHeight;
+        onDragPosition({ tabId: ds.tabId, screenX: e.screenX, screenY: e.screenY, outside });
       }
 
       // 检测鼠标下是否有标签栏
@@ -274,6 +278,11 @@ export function useDragReorder(
         setPreviewPos(null);
         ds.phase = "idle";
         setDraggingId(null);
+        // E5.8#46.19：窗内松手 = 拖拽终止——补发 canceled（幽灵隐藏信号；窗外松手走 releaseOutsideWindow
+        // tabAction 主进程隐藏，Esc 已发 canceled）。仅拎起后（未拎起 = 普通点击，无幽灵）。
+        if (dragState.current.lifted && onDragPosition) {
+          onDragPosition({ tabId: ds.tabId, screenX: 0, screenY: 0, canceled: true });
+        }
         return;
       }
 
@@ -294,6 +303,10 @@ export function useDragReorder(
       setInsertIndex(null);
       setDraggingId(null);
       setPreviewPos(null);
+      // E5.8#46.19：窗内松手 = 拖拽终止——补发 canceled（幽灵隐藏信号，同 split 分支）。
+      if (dragState.current.lifted && onDragPosition) {
+        onDragPosition({ tabId: ds.tabId, screenX: 0, screenY: 0, canceled: true });
+      }
     };
 
     const onKeyDown = (e: KeyboardEvent) => {

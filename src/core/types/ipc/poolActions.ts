@@ -97,6 +97,11 @@ export interface TabDragPositionPayload {
   screenY: number;
   /** Esc 取消拖拽——壳清吸附提示（keydown 无坐标，仅置标志；screenX/screenY 填 0） */
   canceled?: boolean;
+  /** E5.8#46.19：被拖标签标题——池上报供主进程幽灵窗渲染文字（主进程不持 tabState，标题由池带）。壳/吸附忽略此字段 */
+  title?: string;
+  /** E5.8#46.19：光标是否在源窗外（屏坐标对照 winScreenX+视口尺寸，与 onMouseUp 窗外判定同源）——
+   *  窗外 → 主进程 OS 幽灵显示（DOM 浮块出窗被裁剪）；窗内 → OS 幽灵隐藏（DOM 浮块可见）。壳/吸附忽略此字段 */
+  outside?: boolean;
 }
 
 /** 池→壳：拖拽位置上报载荷——主进程按 sender 解析附上 sourceWindowId（E5.8#44-C 源窗排除——池永远不知自身 windowId） */
