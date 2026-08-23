@@ -1,0 +1,52 @@
+{
+  "name": "影像分区 Image Zones",
+  "type": "dark",
+  "colors": {
+    "bg-window": "#12100C",
+    "bg-card": "#1B1813",
+    "bg-status": "#14110C",
+    "bg-input": "#221D16",
+    "bg-icon-bar": "#14110C",
+    "bg-side-panel": "#181410",
+    "bg-toolbar": "#17130E",
+    "text-primary": "#F2EDE3",
+    "text-secondary": "#B5AB97",
+    "text-muted": "#877C68",
+    "accent": "#E8923C",
+    "accent-hover": "#F0A554",
+    "border": "rgba(242, 237, 227, 0.09)",
+    "separator": "rgba(242, 237, 227, 0.06)",
+    "icon-active": "#F2EDE3",
+    "icon-inactive": "#6E6350",
+    "toggle-knob": "#E8923C",
+    "toggle-knob-on": "#FFFFFF",
+    "status-connected": "#86C36A",
+    "status-disconnected": "#6E6350",
+    "scrollbar-thumb": "rgba(232, 146, 60, 0.30)",
+    "scrollbar-thumb-hover": "rgba(232, 146, 60, 0.45)",
+    "tab-hover-bg": "rgba(242, 237, 227, 0.06)",
+    "drop-indicator": "rgba(232, 146, 60, 0.30)",
+    "dirty-dot": "#E8923C",
+    "context-menu-shadow": "0 8px 32px rgba(10, 8, 5, 0.55)",
+    "drag-preview-shadow": "0 8px 40px rgba(10, 8, 5, 0.65)",
+    "hover-overlay": "rgba(242, 237, 227, 0.04)",
+    "system-log": "#877C68",
+    "sent-echo": "#F0A554",
+    "received": "#F2EDE3",
+    "cm-timestamp": "#877C68",
+    "badge-text": "#FFFFFF",
+    "text-on-accent": "#1A140D",
+    "danger": "#F87171",
+    "error": "#F87171",
+    "warning": "#E8923C"
+  },
+  "surface": {
+    "radius": 8,
+    "inset": 4
+  },
+  "background": {
+    "mode": "zones",
+    "image": "linkdesk://theme-zones/resources/zones-bg.svg",
+    "opacity": 0.95
+  }
+}
