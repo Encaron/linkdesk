@@ -240,6 +240,59 @@ describe("ThemeEngine — surface/background 玻璃机制（E5.8#50.6）", () =>
     expect(vars.bg).toBe("#000");
     expect(vars["--bg"]).toBeUndefined();
   });
+
+  it("带 surface.texture → 写 per-surface 纹理变量（repeat + opacity，无 glass 也可用）", () => {
+    applyTheme({
+      ...MOCK_THEME,
+      surface: { texture: "linkdesk://demo-zones/paper.svg", textureOpacity: 0.45, radius: 8, inset: 4 },
+    });
+    const root = document.documentElement;
+    expect(root.style.getPropertyValue("--surface-bg-image")).toBe('url("linkdesk://demo-zones/paper.svg")');
+    expect(root.style.getPropertyValue("--surface-bg-repeat")).toBe("repeat");
+    expect(root.style.getPropertyValue("--surface-bg-opacity")).toBe("0.45");
+    expect(root.style.getPropertyValue("--surface-bg-zones")).toBe("0");
+    // glass 变量仍零值——纹理与 glass 正交
+    expect(root.style.getPropertyValue("--glass-blur")).toBe("0px");
+  });
+
+  it("background.mode=zones → 写 per-surface 切片变量（no-repeat + zones 标记），不铺全窗 bg-image", () => {
+    applyTheme({
+      ...MOCK_THEME,
+      background: { mode: "zones", image: "linkdesk://demo-zones/bg.svg", opacity: 0.95 },
+    });
+    const root = document.documentElement;
+    expect(root.style.getPropertyValue("--surface-bg-image")).toBe('url("linkdesk://demo-zones/bg.svg")');
+    expect(root.style.getPropertyValue("--surface-bg-repeat")).toBe("no-repeat");
+    expect(root.style.getPropertyValue("--surface-bg-zones")).toBe("1");
+    expect(root.style.getPropertyValue("--surface-bg-opacity")).toBe("0.95");
+    expect(root.style.getPropertyValue("--bg-image")).toBe("none");
+  });
+
+  it("background 无 mode（默认 panorama）→ 现全窗语义不变", () => {
+    applyTheme({ ...MOCK_THEME, background: { image: "bg.png", opacity: 0.9 } });
+    const root = document.documentElement;
+    expect(root.style.getPropertyValue("--bg-image")).toBe('url("bg.png")');
+    expect(root.style.getPropertyValue("--surface-bg-zones")).toBe("0");
+    expect(root.style.getPropertyValue("--surface-bg-image")).toBe("none");
+  });
+
+  it("无 surface 无 background → per-surface 背景零值（zones 0 / image none / 5 zone 位置 0 0）", () => {
+    applyTheme(MOCK_THEME);
+    const root = document.documentElement;
+    expect(root.style.getPropertyValue("--surface-bg-zones")).toBe("0");
+    expect(root.style.getPropertyValue("--surface-bg-image")).toBe("none");
+    expect(root.style.getPropertyValue("--surface-main-zone-bg-position")).toBe("0 0");
+    expect(root.style.getPropertyValue("--surface-status-bar-bg-position")).toBe("0 0");
+  });
+
+  it("zones 主题切回无质感主题 → per-surface 变量清零不残留", () => {
+    applyTheme({ ...MOCK_THEME, background: { mode: "zones", image: "bg.svg" } });
+    applyTheme(MOCK_THEME2);
+    const root = document.documentElement;
+    expect(root.style.getPropertyValue("--surface-bg-zones")).toBe("0");
+    expect(root.style.getPropertyValue("--surface-bg-image")).toBe("none");
+    expect(root.style.getPropertyValue("--surface-titlebar-bg-position")).toBe("0 0");
+  });
 });
 
 describe("ThemeEngine — registerFallbackThemes", () => {

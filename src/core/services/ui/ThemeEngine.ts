@@ -13,7 +13,8 @@ export interface ThemeColors {
 
 /** E5.8#50.6：玻璃 + 悬浮面板质感字段——主题 JSON `surface`（缺省 = 无玻璃无悬浮） */
 export interface ThemeSurface {
-  type: "glass";
+  /** 玻璃配方——缺省 = 无玻璃（纹理 texture 与 glass 正交，⑬ 纸纹分区不带玻璃也能用 per-surface 纹理） */
+  type?: "glass";
   /** backdrop blur px——0 = 关 */
   blur?: number;
   /** 饱和度增强——1 = 关 */
@@ -32,6 +33,10 @@ export interface ThemeSurface {
   inset?: number;
   /** 投影浮起——true = 悬浮投影（引擎映射 --shadow-lift） */
   shadow?: boolean;
+  /** E5.8#50.28：可平铺纹理图资产路径（⑬ 纸纹分区）——应用全部 5 zone 表面，与 glass 正交独立生效 */
+  texture?: string;
+  /** 纹理不透明度——1 = 不透明 */
+  textureOpacity?: number;
 }
 
 /** E5.8#50.6：图片背景质感字段——主题 JSON `background`（缺省 = 无图） */
@@ -42,6 +47,8 @@ export interface ThemeBackground {
   opacity?: number;
   /** 图片遮罩明暗（0-1 rgba 透明度）——0 = 无遮罩 */
   mask?: number;
+  /** E5.8#50.29：切片模式——"panorama"（默认）= 现全窗语义零变化；"zones" = 同图连续切片挂 5 zone 表面（⑭ 影像分区，图不铺全窗） */
+  mode?: "panorama" | "zones";
 }
 
 export interface Theme {
@@ -145,6 +152,18 @@ const SURFACE_ZERO: Record<string, string> = {
   "surface-radius": "0px",
   "surface-inset": "0px",
   "surface-shadow": "none",
+  /* E5.8#50.28/50.29：per-surface 背景零值——纹理（repeat 平铺）/影像切片（no-repeat + 负偏移）共用。
+     --surface-bg-zones: 1 标记 zones 模式（池侧 preload 按此门控量测本窗切片坐标，见 preload-pool/surface-zones） */
+  "surface-bg-image": "none",
+  "surface-bg-repeat": "no-repeat",
+  "surface-bg-opacity": "1",
+  "surface-bg-size": "auto",
+  "surface-bg-zones": "0",
+  "surface-titlebar-bg-position": "0 0",
+  "surface-icon-bar-bg-position": "0 0",
+  "surface-side-panel-bg-position": "0 0",
+  "surface-main-zone-bg-position": "0 0",
+  "surface-status-bar-bg-position": "0 0",
 };
 
 const BACKGROUND_ZERO: Record<string, string> = {
@@ -153,10 +172,18 @@ const BACKGROUND_ZERO: Record<string, string> = {
   "bg-mask": "0",
 };
 
-/** 玻璃 + 悬浮面板变量——缺省 = 零值 */
+/** 玻璃 + 悬浮面板 + per-surface 纹理变量——缺省 = 零值 */
 function surfaceVariables(surface?: ThemeSurface): Record<string, string> {
   const vars: Record<string, string> = { ...SURFACE_ZERO };
-  if (!surface || surface.type !== "glass") return vars;
+  if (!surface) return vars;
+  // E5.8#50.28：纹理与 glass 正交——⑬ 纸纹分区不带玻璃也能用 per-surface 平铺纹理
+  if (surface.texture != null && surface.texture !== "") {
+    // 已 url() 包裹则原样写；否则包裹（background-image 需 url()）
+    vars["surface-bg-image"] = /^url\(/i.test(surface.texture.trim()) ? surface.texture : `url("${surface.texture}")`;
+    vars["surface-bg-repeat"] = "repeat";
+    if (surface.textureOpacity != null) vars["surface-bg-opacity"] = String(surface.textureOpacity);
+  }
+  if (surface.type !== "glass") return vars;
   if (surface.blur != null) vars["glass-blur"] = `${surface.blur}px`;
   if (surface.saturate != null) vars["glass-saturate"] = String(surface.saturate);
   if (surface.tint != null) vars["glass-tint"] = surface.tint;
@@ -170,16 +197,27 @@ function surfaceVariables(surface?: ThemeSurface): Record<string, string> {
   return vars;
 }
 
-/** 图片背景变量——缺省 = 零值 */
+/** 图片背景变量——缺省 = 零值（panorama = 现全窗语义；zones = 切片挂 zone 表面） */
 function backgroundVariables(background?: ThemeBackground): Record<string, string> {
   const vars: Record<string, string> = { ...BACKGROUND_ZERO };
   if (!background) return vars;
+  const mode = background.mode ?? "panorama";
   if (background.image != null && background.image !== "") {
     // 已 url() 包裹则原样写；否则包裹（background-image 需 url()）
-    vars["bg-image"] = /^url\(/i.test(background.image.trim()) ? background.image : `url("${background.image}")`;
+    const url = /^url\(/i.test(background.image.trim()) ? background.image : `url("${background.image}")`;
+    if (mode === "zones") {
+      // ⑭ 影像分区：图不铺全窗（BackgroundLayer 留 none，缝露底座色）——挂 5 zone 表面做切片；
+      // 尺寸/每 zone 负偏移由池侧按自身窗口量测注入（多窗各自尺寸，见 preload-pool/surface-zones）
+      vars["surface-bg-image"] = url;
+      vars["surface-bg-repeat"] = "no-repeat";
+      vars["surface-bg-zones"] = "1";
+      if (background.opacity != null) vars["surface-bg-opacity"] = String(background.opacity);
+    } else {
+      vars["bg-image"] = url;
+    }
   }
-  if (background.opacity != null) vars["bg-opacity"] = String(background.opacity);
-  if (background.mask != null) vars["bg-mask"] = String(background.mask);
+  if (background.opacity != null && mode !== "zones") vars["bg-opacity"] = String(background.opacity);
+  if (background.mask != null && mode !== "zones") vars["bg-mask"] = String(background.mask);
   return vars;
 }
 

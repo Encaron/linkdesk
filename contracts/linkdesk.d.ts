@@ -120,7 +120,8 @@ export interface CommandsAPI {
 }
 /** E5.8#50.6：玻璃 + 悬浮面板质感字段——主题 JSON `surface`（缺省 = 无玻璃无悬浮） */
 export interface ThemeSurface {
-    type: "glass";
+    /** 玻璃配方——缺省 = 无玻璃（纹理 texture 与 glass 正交，⑬ 纸纹分区不带玻璃也能用 per-surface 纹理） */
+    type?: "glass";
     /** backdrop blur px——0 = 关 */
     blur?: number;
     /** 饱和度增强——1 = 关 */
@@ -139,6 +140,10 @@ export interface ThemeSurface {
     inset?: number;
     /** 投影浮起——true = 悬浮投影（引擎映射 --shadow-lift） */
     shadow?: boolean;
+    /** E5.8#50.28：可平铺纹理图资产路径（⑬ 纸纹分区）——应用全部 5 zone 表面，与 glass 正交独立生效 */
+    texture?: string;
+    /** 纹理不透明度——1 = 不透明 */
+    textureOpacity?: number;
 }
 /** E5.8#50.6：图片背景质感字段——主题 JSON `background`（缺省 = 无图） */
 export interface ThemeBackground {
@@ -148,6 +153,8 @@ export interface ThemeBackground {
     opacity?: number;
     /** 图片遮罩明暗（0-1 rgba 透明度）——0 = 无遮罩 */
     mask?: number;
+    /** E5.8#50.29：切片模式——"panorama"（默认）= 现全窗语义零变化；"zones" = 同图连续切片挂 5 zone 表面（⑭ 影像分区，图不铺全窗） */
+    mode?: "panorama" | "zones";
 }
 export interface LinkDeskTheme {
     name: string;

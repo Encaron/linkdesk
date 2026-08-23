@@ -11,6 +11,7 @@ import { IPC } from '../ipc/channels';
 import { createEventSystem, type EventSystemApi } from '../ipc/event-system';
 import type { ThemeChangedPayload, AccentChangedPayload } from '../../src/core/types/ipc/events';
 import { onLangChanged } from './language';
+import { ensureSurfaceZonesObserver, measureSurfaceZones } from './surface-zones';
 
 // ── E5.7#37：心跳 pong——主进程 5s ping，模块顶层自动回复 ──
 // 硬约束 20：模块顶层注册（contextBridge.exposeInMainWorld 之前）。
@@ -35,6 +36,9 @@ export function createPoolEvents(): EventSystemApi {
           for (const [k, v] of Object.entries(variables as Record<string, string>)) {
             root.style.setProperty(`--${k}`, v);
           }
+          // E5.8#50.29/50.31：zones 模式下按本窗 DOM 量测切片坐标（+ ResizeObserver 重算）
+          ensureSurfaceZonesObserver();
+          measureSurfaceZones();
         } catch (e) {
           console.error('[preload-pool] theme:changed CSS 注入失败:', e);
         }

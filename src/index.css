@@ -448,3 +448,42 @@ select {
   pointer-events: none;
 }
 
+/* ════════════════════════════════════════════════════════════════════════
+   E5.8#50.30 per-surface 背景层（⑬ 纸纹 / ⑭ 影像分区）——zone 表面读
+   --surface-bg-image（纹理 repeat 平铺 / 影像切片 no-repeat）+ --surface-bg-size
+   （zones = 窗口尺寸，preload 量测注入）+ 每 zone 独立 --surface-<zone>-bg-position
+   （负偏移拉回正确区域）。z-index: -1 → 自 surface 自身 background 之上、内容之下
+   （内容不遮纹理/切片；玻璃 tint ::before 仍浮在内容上）。opacity 承载
+   --surface-bg-opacity（纹理/切片透明度）。零值 --surface-bg-image: none = 现状零变化。 */
+.titlebar::after,
+.icon-bar::after,
+.side-panel::after,
+.main-zone::after,
+.status-bar::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background-image: var(--surface-bg-image, none);
+  background-repeat: var(--surface-bg-repeat, no-repeat);
+  background-size: var(--surface-bg-size, auto);
+  opacity: var(--surface-bg-opacity, 1);
+  pointer-events: none;
+}
+.titlebar::after {
+  background-position: var(--surface-titlebar-bg-position, 0 0);
+}
+.icon-bar::after {
+  background-position: var(--surface-icon-bar-bg-position, 0 0);
+}
+.side-panel::after {
+  background-position: var(--surface-side-panel-bg-position, 0 0);
+}
+.main-zone::after {
+  background-position: var(--surface-main-zone-bg-position, 0 0);
+}
+.status-bar::after {
+  background-position: var(--surface-status-bar-bg-position, 0 0);
+}
+
