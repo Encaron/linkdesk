@@ -3,13 +3,13 @@
  * E5.8#0d.10-6b：自 MainZone.tsx 拆出——groupsRef / totalTabCount / sourceGroupRef / targetGroupRef /
  *   dragInsertGroupId / dropZoneState + useDragReorder 8 回调（computeInsertIndex / findOtherContainer /
  *   computeSplitZone / isInPureEditor / onReorder / onMoveToOther / onDropSplit / onDragDropZone）+
- *   dragLocalTabs / getEffectiveTabs / handleTabDragStart + 标签排序回执 effect + pendingReordersRef +
+ *   getEffectiveTabs / handleTabDragStart + 标签排序回执 effect + pendingReordersRef +
  *   tabBarRefs / registerTabBar。
  * 依赖方向：useTabDrag → useDragReorder + ./layout（TAB_BAR_HEIGHT）+ core types；无反向。
  * 🔴 拖出窗口检测接入点：useDragDetach（#33）已推迟 v1.3（脱出窗口设计.md）——届时在此接入。
  */
 
-import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
+import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 import type * as React from "react";
 import type { MouseEvent as ReactMouseEvent } from "react";
 import type { PoolGroup, PoolTab } from "../../../../core/types/pool/poolLayout";
@@ -149,21 +149,20 @@ export function useTabDrag({ containerRef, tabAction, groups, tabBarRects, dragP
     itemCount: totalTabCount,
 
     // ── computeInsertIndex：找鼠标落在哪个 GroupTabBar → 计算插入位置（含 scrollLeft 补偿）──
-    computeInsertIndex: (clientX, clientY, _container, fromIndex, _count) => {
+    computeInsertIndex: (clientX, clientY, _container, _fromIndex, _count) => {
       for (const [gid, el] of tabBarRefs.current) {
         const rect = el.getBoundingClientRect();
         if (clientX >= rect.left && clientX <= rect.right &&
             clientY >= rect.top && clientY <= rect.bottom) {
           targetGroupRef.current = gid;
           setDragInsertGroupId(gid);
-          // E5.8#46.10：缝隙计算提取到共享 computeTabInsertIndex——本地重排 + 跨窗吸附竖线同一算法（scrollLeft 补偿一处写）
-          let idx = computeTabInsertIndex(el, clientX);
-          // 同组内拖拽：插入位置需补偿被拖走标签页的偏移
-          if (gid === sourceGroupRef.current && idx > fromIndex) idx--;
-          return idx;
+          // E5.8#46.10：缝隙计算提取到共享 computeTabInsertIndex——本地拖拽 + 跨窗吸附竖线同一算法（scrollLeft 补偿一处写）
+          // E5.8#51：不再实时重排 tab（dragLocalTabs 已删，对标 VS Code 竖线落点模型）——DOM 里 tab 恒原序，
+          // computeTabInsertIndex 直接在完整数组上算缝（含被拖 tab），无需「同组 idx > fromIndex 补偿」
+          return computeTabInsertIndex(el, clientX);
         }
       }
-      return fromIndex;
+      return _fromIndex;
     },
 
     // ── findOtherContainer：检测鼠标是否在另一个 TabBar 上（跨 group 移动）──
@@ -224,7 +223,7 @@ export function useTabDrag({ containerRef, tabAction, groups, tabBarRects, dragP
       if (!sourceGroup) return;
       const fromIdx = sourceGroup.tabs.findIndex((t) => t.id === tabId);
       if (fromIdx < 0) return;
-      // E5.7#86：回执对齐——记录拖前序 + 提交序。松手后 draggingId 置空、dragLocalTabs 释放，
+      // E5.7#86：回执对齐——记录拖前序 + 提交序。松手后 draggingId 置空、dragging 半透明解除，
       // 无覆盖则回执前渲染壳侧旧序一帧（回闪——分隔线同款提前释放）。pendingReordersRef.tabs
       // 在 getEffectiveTabs 顶替壳推送，回执 effect 对齐壳推流后才释放。
       const committedTabs = [...sourceGroup.tabs];
@@ -293,32 +292,19 @@ export function useTabDrag({ containerRef, tabAction, groups, tabBarRects, dragP
     },
   });
 
-  // ── dragLocalTabs：同组拖拽时乐观重排标签页（视觉反馈）──
-  const dragLocalTabs = useMemo(() => {
-    if (!draggingId || dragInsertIndex == null) return null;
-    const gs = groups; // E5.7#99：memo 直接读 groups（270 行同 render 已同步 ref）——render 期读 ref 有并发撕裂隐患
-    for (const g of gs) {
-      const srcIdx = g.tabs.findIndex((t) => t.id === draggingId);
-      if (srcIdx >= 0) {
-        const tabs = [...g.tabs];
-        const [moved] = tabs.splice(srcIdx, 1);
-        tabs.splice(Math.min(dragInsertIndex, tabs.length), 0, moved);
-        return { [g.id]: tabs };
-      }
-    }
-    return null;
-  }, [draggingId, dragInsertIndex, groups]);
-
-  // ── Get effective tabs for a group（drag-local or original）──
+  // ── Get effective tabs for a group ──
+  // E5.8#51：dragLocalTabs（同组拖动中每帧 re-splice 乐观重排）已删——对标 VS Code 竖线落点模型：
+  // 拖动中 tab 恒原序（被拖 tab .dragging 半透明原位 + DragOverlays 浮层跟手 + 竖线指示落点），
+  // 松手才提交落位。不再每帧让位「交替跳动」（用户实机打回：第一个和第三个交替别扭）。
+  // 落点唯一指示 = 竖线（computeInsertIndex 缝），落位 = onReorder 提交序 → 壳回执覆盖。
   const getEffectiveTabs = useCallback(
     (groupId: string, group: PoolGroup): PoolTab[] => {
-      if (dragLocalTabs?.[groupId]) return dragLocalTabs[groupId];
       // E5.7#86：回执对齐——pending 覆盖优先于壳推送（松手后、回执前保持提交序不闪）
       const pending = pendingReordersRef.current.get(groupId);
       if (pending) return pending.tabs;
       return group.tabs;
     },
-    [dragLocalTabs],
+    [],
   );
 
   // ── startDrag wrapper：捕获源 group ──
