@@ -1,6 +1,7 @@
 :root {
-  /* 暗色主题默认值——ThemeEngine 会在启动时从 themes/dark.json 覆盖。
-     如果 JSON 加载失败，这里的值作为 fallback 保证软件可用。 */
+  /* 暗色主题默认值——E5.8#50.25 迁移后 theme-defaults 单配方 themes/defaults.json
+     （id "light"，含 light/dark 两配色）；"dark" 走壳空兜底配方（colors:{}）清变量 →
+     此处 :root 硬兜底接管（值 = 历史 dark.json 调色板）。加载失败时这里的值保证软件可用。 */
   --bg-window: #1E1E1E;
   --bg-card: #2D2D2D;
   --bg-status: #0078D4;

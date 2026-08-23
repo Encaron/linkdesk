@@ -7,16 +7,10 @@
   "contributes": {
     "themes": [
       {
-        "id": "dark",
-        "label": "Dark",
-        "uiTheme": "dark",
-        "path": "dark.json"
-      },
-      {
         "id": "light",
         "label": "Light",
         "uiTheme": "light",
-        "path": "light.json"
+        "path": "themes/defaults.json"
       }
     ]
   }

@@ -577,7 +577,8 @@ export function normalizeThemeValue(value: string | undefined): string | undefin
 /**
  * 内置兜底配方——在插件加载前注册，确保卸载全部主题插件后设置下拉框仍有 dark/light 配方。
  * 空 colorways（colors: {}）——应用时清空插件变量，index.css :root 硬兜底接管。
- * 插件主题（theme-defaults）后注册同名配方（id "dark"/"light"）→ 覆盖兜底（registerRecipe 无归属不告警）。
+ * 插件主题（theme-defaults）后注册同名配方（id "light"）→ 覆盖亮兜底；"dark" 兜底保持空配方
+ *   → :root 硬兜底接管（历史 dark.json 调色板）。registerRecipe 无归属不告警。
  * E5.8#50.21：壳兜底从 flat Theme 迁为 Recipe（决策 F 迁移表「壳内置配方 id」），不再进 flat 登记本。
  *
  * 🔥 #59c fix：防重入——React StrictMode 双重 effect 导致本函数在插件加载后再次执行。
