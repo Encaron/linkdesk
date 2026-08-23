@@ -163,7 +163,7 @@ export interface LinkDeskLanguage {
     label: string;
     pluginId: string;
 }
-/** 主题 + 语言命名空间面——对标 VS Code 外观面 */
+/** 主题 + 语言 + 外观资产命名空间面——对标 VS Code 外观面 */
 export interface AppearanceAPI {
     theme: {
         /** 获取当前主题 ID */
@@ -190,6 +190,11 @@ export interface AppearanceAPI {
             lang: string;
             resources: Record<string, unknown>;
         }) => void): () => void;
+    };
+    /** E5.8#50.11：外观资产——本地选图拷贝入库（受控来源——用户任选路径不能 file:// 直读） */
+    appearance: {
+        /** 导入图片到 userData/appearance/（重名去重）——返回受控路径，供 app.backgroundImage 持久化 */
+        importImage(sourcePath: string): Promise<string>;
     };
 }
 /** 标签页命名空间面——对标 VS Code vscode.window.createTerminal() */

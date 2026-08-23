@@ -159,7 +159,7 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
             type: "string",
             default: "",
             description: t("窗口背景图片路径——空 = 主题自带"),
-            uiHint: "file",
+            uiHint: "image", // E5.8#50.11：专属「选择图片」控件（选图→拷贝入库→受控路径持久化）
             onApply: () => applyThemeIfReady(),
           },
           "app.surfaceRadius": {

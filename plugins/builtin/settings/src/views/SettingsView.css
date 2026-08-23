@@ -336,6 +336,23 @@
   white-space: nowrap;
 }
 .settings-action-btn:hover { opacity: 0.85; }
+.settings-action-btn:disabled { opacity: 0.5; cursor: default; }
+
+/* E5.8#50.11——背景图选择（uiHint: "image"）——按钮行 + 受控路径省略显示 */
+.settings-image-picker {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.settings-image-path {
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  color: var(--text-muted);
+}
 
 /* ── ObjectEditor——object/array 配置项键值对编辑器 ── */
 

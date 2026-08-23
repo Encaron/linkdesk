@@ -5,6 +5,7 @@
  *   + ObjectEditor + types；被 SettingRow 消费。
  */
 
+import { useState } from "react"; // E5.8#50.11：背景图导入 busy 态
 import Toggle from "@src/components/shared/toggle/Toggle";
 import SelectBox from "@src/components/shared/select-box/SelectBox";
 import FontFamilySelect from "@src/components/shared/font-family-select/FontFamilySelect";
@@ -59,6 +60,8 @@ function renderControl(
       return <FilePathInput value={String(val)} onChange={(v) => onChange(v)} dialogType="file" />;
     case "directory":
       return <FilePathInput value={String(val)} onChange={(v) => onChange(v)} dialogType="directory" />;
+    case "image": // E5.8#50.11：背景图——选图拷贝入库 + 清除（受控来源）
+      return <BackgroundImagePicker value={String(val)} onChange={onChange} t={t} />;
     case "slider": // E5.8#50.9：滑杆（#50.10 玻璃五配置消费）——schema 无 step 字段，默认 1
       return (
         <Slider
@@ -169,6 +172,53 @@ function renderControl(
     default:
       return <span className="text-muted">{String(val)}</span>;
   }
+}
+
+/**
+ * E5.8#50.11：背景图选择——对话框选图（图像扩展名过滤）→ appearance.importImage 拷贝入库
+ * （受控来源——用户任选路径不能 file:// 直读）→ 受控路径持久化；「清除图片」还原无图。
+ */
+function BackgroundImagePicker({
+  value,
+  onChange,
+  t,
+}: {
+  value: string;
+  onChange: (v: unknown) => void;
+  t: (key: string) => string;
+}) {
+  const [busy, setBusy] = useState(false);
+  const handlePick = async () => {
+    setBusy(true);
+    try {
+      const picked = await window.linkdesk?.dialog?.open({
+        title: t("选择图片…"),
+        filters: [{ name: t("图片"), extensions: ["png", "jpg", "jpeg", "webp"] }],
+      });
+      if (!picked) return; // 取消——不动值
+      const controlled = await window.linkdesk?.appearance?.importImage(picked);
+      if (controlled) onChange(controlled);
+    } catch (e) {
+      console.error("[settings] 导入背景图失败:", e);
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <div className="settings-image-picker">
+      <button className="settings-action-btn" onClick={handlePick} disabled={busy}>
+        {t("选择图片…")}
+      </button>
+      {value ? (
+        <button className="settings-action-btn" onClick={() => onChange("")}>
+          {t("清除图片")}
+        </button>
+      ) : null}
+      <span className="settings-image-path" title={value}>
+        {value}
+      </span>
+    </div>
+  );
 }
 
 export default renderControl;

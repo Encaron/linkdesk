@@ -201,6 +201,10 @@ export const IPC = {
     updateLabelBySourceId: 'tabs:updateLabelBySourceId',
     closeBySourceId: 'tabs:closeBySourceId',
   },
+  // E5.8#50.11：外观资产——选择图片拷贝入库（受控来源——用户任选路径不能 file:// 直读）
+  appearance: {
+    importImage: 'appearance:importImage',
+  },
   theme: { changed: 'theme:changed' },
   viewContainer: {
     getContainer: 'viewContainer:getContainer',

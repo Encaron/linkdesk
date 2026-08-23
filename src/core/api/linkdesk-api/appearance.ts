@@ -1,12 +1,12 @@
 /**
  * linkdesk-api 外观域——自 linkdesk-api.ts 拆出（E5.8#0d.10-9b）。
- * theme + language 二命名空间面 verbatim。
+ * theme + language + appearance 三命名空间面。
  * 依赖方向：appearance → ./types（LinkDeskTheme/LinkDeskLanguage）；被聚合器交叉组装。
  */
 
 import type { LinkDeskTheme, LinkDeskLanguage } from "./types";
 
-/** 主题 + 语言命名空间面——对标 VS Code 外观面 */
+/** 主题 + 语言 + 外观资产命名空间面——对标 VS Code 外观面 */
 export interface AppearanceAPI {
   theme: {
     /** 获取当前主题 ID */
@@ -28,5 +28,11 @@ export interface AppearanceAPI {
     getInitial(): { lang: string; resources: Record<string, unknown> } | null;
     /** 订阅语言变更——返回 unsubscribe */
     onChange(cb: (data: { lang: string; resources: Record<string, unknown> }) => void): () => void;
+  };
+
+  /** E5.8#50.11：外观资产——本地选图拷贝入库（受控来源——用户任选路径不能 file:// 直读） */
+  appearance: {
+    /** 导入图片到 userData/appearance/（重名去重）——返回受控路径，供 app.backgroundImage 持久化 */
+    importImage(sourcePath: string): Promise<string>;
   };
 }

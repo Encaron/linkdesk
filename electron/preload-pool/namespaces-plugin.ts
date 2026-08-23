@@ -52,6 +52,13 @@ export function buildTheme() {
   };
 }
 
+/** appearance 命名空间——外观资产（E5.8#50.11：选择图片拷贝入库——受控来源） */
+export function buildAppearance() {
+  return {
+    importImage: (sourcePath: string) => ipcRenderer.invoke(IPC.appearance.importImage, sourcePath),
+  };
+}
+
 /** keybindings 命名空间——快捷键查询/注册/捕获 */
 export function buildKeybindings(events: EventSystemApi) {
   // E5.8#1d EXEMPT：壳 preload-shell 镜像——双 preload 各持 window.linkdesk.* 契约（keybindings 命名空间），无法共享
