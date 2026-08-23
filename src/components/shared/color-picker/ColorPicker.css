@@ -13,9 +13,9 @@
   z-index: var(--z-overlay); /* E5#98 */
   background: var(--bg-window);
   border: 1px solid var(--separator);
-  border-radius: 6px;
+  border-radius: var(--radius-md);
   padding: 12px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+  box-shadow: var(--shadow-float);
   display: flex;
   flex-wrap: wrap;
   width: 232px;
@@ -35,7 +35,7 @@
 .colorpicker-sv {
   width: 180px;
   height: 150px;
-  border-radius: 3px;
+  border-radius: var(--radius-sm);
   position: relative;
   cursor: crosshair;
   overflow: hidden;
@@ -59,8 +59,8 @@
   width: 10px;
   height: 10px;
   border: 2px solid #fff;
-  border-radius: 50%;
-  box-shadow: 0 0 2px rgba(0, 0, 0, 0.5);
+  border-radius: var(--radius-full);
+  box-shadow: var(--shadow-tiny);
   transform: translate(-50%, -50%);
   pointer-events: none;
 }
@@ -69,7 +69,7 @@
 .colorpicker-hue {
   width: 180px;
   height: 14px;
-  border-radius: 7px;
+  border-radius: var(--radius-md);
   position: relative;
   cursor: pointer;
   user-select: none;
@@ -85,8 +85,8 @@
   width: 4px;
   height: 18px;
   background: #fff;
-  border-radius: 2px;
-  box-shadow: 0 0 2px rgba(0, 0, 0, 0.5);
+  border-radius: var(--radius-xs);
+  box-shadow: var(--shadow-tiny);
   transform: translateX(-50%);
   pointer-events: none;
 }
@@ -102,7 +102,7 @@
 .colorpicker-preview {
   width: 28px;
   height: 28px;
-  border-radius: 3px;
+  border-radius: var(--radius-sm);
   border: 1px solid var(--separator);
   flex-shrink: 0;
 }
@@ -113,7 +113,7 @@
   height: 26px;
   padding: 2px 6px;
   border: 1px solid var(--separator);
-  border-radius: 3px;
+  border-radius: var(--radius-sm);
   background: var(--bg-input);
   color: var(--text-primary);
   font-family: var(--font-mono);
@@ -132,7 +132,7 @@
   background: var(--accent);
   color: var(--text-on-accent);
   border: none;
-  border-radius: 3px;
+  border-radius: var(--radius-sm);
   font-size: 12px;
   cursor: pointer;
   flex-shrink: 0;
@@ -155,7 +155,7 @@
 .colorpicker-preset {
   width: 18px;
   height: 18px;
-  border-radius: 50%;
+  border-radius: var(--radius-full);
   border: 1px solid var(--separator);
   cursor: pointer;
   transition: transform 0.1s;

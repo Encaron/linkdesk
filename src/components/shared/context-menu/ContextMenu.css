@@ -19,8 +19,8 @@
   max-width: 280px;
   background: var(--bg-card);
   border: 1px solid var(--border);
-  border-radius: 8px;
-  box-shadow: 0 0 1px rgba(0,0,0,0.2), 0 4px 12px rgba(0,0,0,0.3);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-hairline), var(--context-menu-shadow);
   padding: 4px 0;
   overflow: hidden;
   /* E5.8#53：容器程序化聚焦（tabIndex=-1 + .focus() 抢键盘焦点）不画 outline——
@@ -94,7 +94,7 @@
   margin-left: 12px;
   font-size: 11px;
   opacity: 0.6;
-  font-family: var(--font-mono, 'Sarasa Mono SC', Consolas, 'Courier New', monospace);
+  font-family: var(--font-mono);
   letter-spacing: 0.2px;
 }
 

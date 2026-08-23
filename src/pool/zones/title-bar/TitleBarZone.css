@@ -45,7 +45,7 @@
   font-family: inherit;
   cursor: pointer;
   -webkit-app-region: no-drag;
-  border-radius: 3px;
+  border-radius: var(--radius-sm);
   transition: background 120ms, color 120ms;
   white-space: nowrap;
 }
@@ -80,7 +80,7 @@
   font-size: 14px;
   cursor: pointer;
   -webkit-app-region: no-drag;
-  border-radius: 3px;
+  border-radius: var(--radius-sm);
   transition: background 120ms, color 120ms;
   flex-shrink: 0;
 }

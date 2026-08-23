@@ -18,7 +18,7 @@
   background: var(--bg-input, var(--bg-panel));
   color: var(--fg-input, var(--fg-default));
   border: 1px solid var(--border-input, var(--border-default));
-  border-radius: 2px;
+  border-radius: var(--radius-xs);
   font-size: 13px;
   line-height: 20px;
   cursor: text;

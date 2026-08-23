@@ -52,7 +52,7 @@
   width: 28px;
   height: 28px;
   line-height: 28px;
-  border-radius: 14px;
+  border-radius: var(--radius-2xl);
   background: var(--accent);
   color: var(--badge-text);
   font-size: 16px !important;
@@ -94,7 +94,7 @@
 .pd-badge {
   font-size: 10px;
   padding: 1px 6px;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   font-weight: 500;
   white-space: nowrap;
 }
@@ -135,7 +135,7 @@
 .pd-btn {
   font-size: 12px;
   padding: 4px 12px;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   border: 1px solid var(--separator);
   background: transparent;
   color: var(--text-primary);
@@ -212,7 +212,7 @@
   color: var(--warning-text);
   background: var(--warning-bg);
   border: 1px solid var(--separator);
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   padding: 6px 12px;
   display: flex;
   align-items: center;
@@ -315,7 +315,7 @@
   align-items: center;
   gap: 6px;
   padding: 4px 8px;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   font-size: 13px;
   color: var(--text-secondary);
 }
@@ -335,7 +335,7 @@
 
 .pd-rec-name {
   font-weight: 500;
-  font-family: monospace;
+  font-family: var(--font-mono);
   font-size: 12px;
   color: var(--text-primary);
 }
@@ -388,7 +388,7 @@
 }
 
 .pd-info-value.mono {
-  font-family: monospace;
+  font-family: var(--font-mono);
   font-size: 11px;
 }
 

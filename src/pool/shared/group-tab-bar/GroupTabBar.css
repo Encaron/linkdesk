@@ -49,7 +49,7 @@
   font-size: 13px;
   cursor: pointer;
   border: 1px solid transparent; /* 预留 active 描边——border-box 下不增宽 */
-  border-radius: 6px;
+  border-radius: var(--radius-md);
   transition: background 150ms, color 150ms, border-color 150ms, box-shadow 150ms;
   position: relative;
 }
@@ -71,7 +71,7 @@
   left: 8px;
   right: 8px;
   height: 2px;
-  border-radius: 2px;
+  border-radius: var(--radius-xs);
   background: transparent;
   pointer-events: none;
 }
@@ -87,7 +87,7 @@
 .group-tab-dirty-dot {
   width: 8px;
   height: 8px;
-  border-radius: 50%;
+  border-radius: var(--radius-full);
   background: var(--dirty-dot);
   flex-shrink: 0;
 }
@@ -135,7 +135,7 @@
   width: 18px;
   height: 18px;
   border: none;
-  border-radius: 3px;
+  border-radius: var(--radius-sm);
   background: transparent;
   color: var(--text-muted);
   font-size: 14px;
@@ -206,7 +206,7 @@
   width: 2px;
   height: 30px;
   margin: 4px 1px 0 -3px;
-  border-radius: 2px;
+  border-radius: var(--radius-xs);
   background: var(--accent);
   flex-shrink: 0;
 }
@@ -220,10 +220,10 @@
   padding: 4px 12px;
   background: var(--bg-card);
   border: 1px solid var(--border-normal);
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   color: var(--text-primary);
   font-size: 13px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  box-shadow: var(--shadow-pop);
 }
 
 /* ── E5.7#14：右键菜单归一化——池侧 group-tab-context-* 死代码已删（E5.6#16.7k 前身）。
@@ -278,10 +278,10 @@
 .group-tab-plus-menu {
   background: var(--bg-dropdown);
   border: 1px solid var(--border-normal);
-  border-radius: 6px;
+  border-radius: var(--radius-md);
   padding: 4px 0;
   min-width: 160px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  box-shadow: var(--shadow-lift);
 }
 
 .group-tab-plus-menu-item {

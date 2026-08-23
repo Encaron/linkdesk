@@ -37,8 +37,8 @@
 .toast-item {
   background: var(--bg-card);
   border: 1px solid var(--separator);
-  border-radius: 4px;       /* VS Code border-radius */
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  border-radius: var(--radius-sm);       /* VS Code border-radius */
+  box-shadow: var(--shadow-tooltip);
   padding: 8px 4px;        /* VS Code: padding: 10px 5px，归一化到 4px 刻度 */
   box-sizing: border-box;
 
@@ -129,7 +129,7 @@
   color: var(--text-muted);
   cursor: pointer;
   padding: 2px;
-  border-radius: 3px;
+  border-radius: var(--radius-sm);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -183,7 +183,7 @@
 
 .toast-action-btn {
   border: none;
-  border-radius: 3px;
+  border-radius: var(--radius-sm);
   padding: 2px 8px;
   font-size: 11px;
   cursor: pointer;

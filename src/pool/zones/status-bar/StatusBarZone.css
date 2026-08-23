@@ -99,7 +99,7 @@
   font-weight: 600;
   background: var(--accent);
   color: var(--badge-text);
-  border-radius: 50%;
+  border-radius: var(--radius-full);
   min-width: 12px;
   height: 12px;
   line-height: 12px;
@@ -118,8 +118,8 @@
   max-height: 400px;
   background: var(--bg-card);
   border: 1px solid var(--separator);
-  border-radius: 6px;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.35); /* 见文件头阴影注记——壳原值，无匹配 token */
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-dialog-soft); /* E5.8#50.14：原壳值 0 8px 32px rgba(0,0,0,0.35) 收编为 token */
   overflow: hidden;
   z-index: var(--z-overlay); /* E5#98: above modal backdrop, below quick input */
   display: flex;
@@ -160,7 +160,7 @@
   cursor: pointer;
   font-family: inherit;
   padding: 2px 6px;
-  border-radius: 3px;
+  border-radius: var(--radius-sm);
 }
 
 .notif-panel-clear:hover {
@@ -248,7 +248,7 @@
 .notif-panel-dismiss:hover {
   color: var(--text-primary);
   background: var(--tab-hover-bg);
-  border-radius: 3px;
+  border-radius: var(--radius-sm);
 }
 
 /* VS Code: details row below message——source + action buttons */
@@ -280,7 +280,7 @@
   font-family: inherit;
   cursor: pointer;
   padding: 2px 8px;
-  border-radius: 3px;
+  border-radius: var(--radius-sm);
   white-space: nowrap;
 }
 
@@ -330,7 +330,7 @@
   font-weight: 600;
   background: var(--accent);
   color: var(--badge-text);
-  border-radius: 8px;
+  border-radius: var(--radius-lg);
   padding: 0 5px;
   min-width: 14px;
   height: 14px;

@@ -30,7 +30,7 @@
   overflow: hidden;
   background: var(--bg-window);
   border: 1px solid var(--separator);
-  border-radius: 8px;
+  border-radius: var(--radius-lg);
   box-shadow: var(--floating-panel-shadow); /* mockup 大面板强投影（亮/暗主题 token） */
   outline: none; /* 面板聚焦（tabIndex=-1）不显示 outline */
   /* #41.6 no-drag 链——本体显式豁免（根治⑤整窗误拖；根容器 no-drag 已有，双重防御） */
@@ -63,7 +63,7 @@
 
 /* I8-9 最大化铺满（mockup 帧 4 .fp.max）——resize 手柄由 JSX 隐藏 */
 .floating-panel.maximized {
-  border-radius: 6px;
+  border-radius: var(--radius-md);
 }
 
 /* 标题栏 = I8-5 拖拽面（#41.6 顶部 6px 手柄 → 整条标题栏）——cursor:grab + no-drag + touch-action */
@@ -113,7 +113,7 @@
   background: transparent;
   color: var(--text-secondary);
   font-size: 12px;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
   transition: background 150ms ease, color 150ms ease;
 }
@@ -173,7 +173,7 @@
   color: var(--text-primary);
   font-size: 11px;
   padding: 3px 8px;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   white-space: nowrap;
   opacity: 0;
   pointer-events: none;
@@ -197,7 +197,7 @@
   content: "";
   width: 26px;
   height: 2px;
-  border-radius: 1px;
+  border-radius: var(--radius-xs);
   background: var(--separator);
 }
 .floating-panel-resize:hover { background: color-mix(in srgb, var(--accent) 20%, transparent); }

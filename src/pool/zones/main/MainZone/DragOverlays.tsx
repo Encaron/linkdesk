@@ -93,10 +93,10 @@ export default function DragOverlays({
                   padding: "4px 12px",
                   background: "var(--bg-card)",
                   border: "1px solid var(--border-normal)",
-                  borderRadius: 4,
+                  borderRadius: "var(--radius-sm)",
                   color: "var(--text-primary)",
                   fontSize: 13,
-                  boxShadow: "0 4px 12px rgba(0, 0, 0, 0.4)",
+                  boxShadow: "var(--shadow-pop)",
                   pointerEvents: "none",
                   zIndex: Z_INDEX.dragPreview,
                 }}

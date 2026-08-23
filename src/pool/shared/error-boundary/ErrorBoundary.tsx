@@ -80,7 +80,7 @@ class ErrorBoundary extends Component<Props, State> {
             style={{
               padding: "4px 16px",
               border: "1px solid var(--border-normal)",
-              borderRadius: 3,
+              borderRadius: "var(--radius-sm)",
               background: "var(--bg-button)",
               color: "var(--text-normal)",
               cursor: "pointer",

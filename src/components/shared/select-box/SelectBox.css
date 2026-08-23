@@ -19,7 +19,7 @@
   background: var(--bg-input, var(--bg-panel, #3c3c3c));
   color: var(--fg-input, var(--fg-default, #ccc));
   border: 1px solid var(--border-input, var(--border-default, #555));
-  border-radius: 2px;
+  border-radius: var(--radius-xs);
   font-size: 13px;
   line-height: 20px;
   cursor: pointer;
@@ -68,8 +68,8 @@
   margin-top: 2px;
   background: var(--bg-window, #252526);
   border: 1px solid var(--border-default, #555);
-  border-radius: 3px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-pop);
   z-index: var(--z-dropdown); /* E5#98 */
   max-height: 260px;
   max-width: calc(100vw - 24px); /* 绝对不溢出窗口——viewport 兜底，无硬编码固定值 */
@@ -96,7 +96,7 @@
   background: var(--bg-input, var(--bg-panel, #3c3c3c));
   color: var(--fg-input, var(--fg-default, #ccc));
   border: 1px solid var(--border-input, var(--border-default, #555));
-  border-radius: 2px;
+  border-radius: var(--radius-xs);
   font-size: 12px;
   font-family: inherit;
   outline: none;
