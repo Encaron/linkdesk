@@ -186,7 +186,8 @@ export interface TabActionHandlerDeps {
   closeTab: (tabId: string) => Promise<CloseTabResult>;
   groups: TabState["groups"];
   reorderTab: (tabId: string, toIndex: number) => void;
-  moveTab: (tabId: string, targetGroupId: string) => void;
+  // E5.8#51：insertIndex = 跨组拖拽落点缝（竖杠缝）——透传 reduceMoveTab 中插，缺省 append
+  moveTab: (tabId: string, targetGroupId: string, insertIndex?: number) => void;
   splitTabAt: (tabId: string, direction: "horizontal" | "vertical", targetGroupId?: string, zone?: "left" | "right" | "up" | "down") => void;
   duplicateTab: (tabId: string) => string | null;
   pinTab: (tabId: string) => void;
@@ -281,7 +282,7 @@ async function applyDetachedTabAction(
       next = reduceReorderTab(next, action.tabId, action.newIndex);
       break;
     case "moveTab":
-      next = reduceMoveTab(next, action.tabId, action.targetGroupId);
+      next = reduceMoveTab(next, action.tabId, action.targetGroupId, action.newIndex);
       break;
     case "splitTab":
       next = reduceSplitTabAt(
@@ -397,7 +398,7 @@ export function createTabActionHandler(deps: TabActionHandlerDeps): (action: She
         reorderTab(action.tabId, action.newIndex);
         break;
       case "moveTab":
-        moveTab(action.tabId, action.targetGroupId);
+        moveTab(action.tabId, action.targetGroupId, action.newIndex);
         break;
       case "splitTab":
         // E5.6#16.7j-3：splitTabAt 无 solo guard + 支持 zone 精确定位——修复分屏后无法改方向 (d)

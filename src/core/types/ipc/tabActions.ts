@@ -32,7 +32,8 @@ export type PoolTabAction =
   | { action: "closeTabsToRight"; groupId: string; tabId: string }
   | { action: "closeAllTabs"; groupId: string }
   | { action: "reorderTab"; groupId: string; tabId: string; newIndex: number; oldIndex: number }
-  | { action: "moveTab"; tabId: string; targetGroupId: string }
+  // E5.8#51：newIndex = 目标组内插入缝（跨组拖拽落点 = 竖杠缝隙；缺省 append 末尾）
+  | { action: "moveTab"; tabId: string; targetGroupId: string; newIndex?: number }
   | { action: "splitTab"; tabId: string; direction: TabSplitDirection; zone?: DropZone; targetGroupId?: string }
   | { action: "duplicateTab"; tabId: string }
   | { action: "pinTab"; tabId: string }

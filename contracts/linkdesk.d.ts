@@ -1454,10 +1454,13 @@ export type PoolTabAction = {
     tabId: string;
     newIndex: number;
     oldIndex: number;
-} | {
+}
+// E5.8#51：newIndex = 目标组内插入缝（跨组拖拽落点 = 竖杠缝隙；缺省 append 末尾）
+ | {
     action: "moveTab";
     tabId: string;
     targetGroupId: string;
+    newIndex?: number;
 } | {
     action: "splitTab";
     tabId: string;

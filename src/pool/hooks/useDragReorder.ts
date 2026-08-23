@@ -43,8 +43,10 @@ export interface UseDragReorderOptions {
 
   /** 重排完成 */
   onReorder: (tabId: string, toIndex: number) => void;
-  /** 移到另一个容器（如另一个标签栏）。可选 targetGroupId——中央放手时传目标面板 */
-  onMoveToOther?: (tabId: string, targetGroupId?: string) => void;
+  /** 移到另一个容器（如另一个标签栏）。可选 targetGroupId——中央放手时传目标面板。
+   *  E5.8#51：insertIndex = 跨组落点缝隙（拖动中 computeInsertIndex 算的目标组竖线缝，
+   *  缺省/负值 → 目标组 append 末尾）——跨组拖拽「竖杠落哪插哪」，不再只显示竖线落末尾。 */
+  onMoveToOther?: (tabId: string, targetGroupId?: string, insertIndex?: number) => void;
   /** 拖拽状态变化通知（用于毛玻璃等） */
   onDraggingChange?: (v: boolean) => void;
   /** drop zone 变化通知（分屏模式）。targetGroupId 用于在目标面板内定位毛玻璃 */
@@ -293,7 +295,9 @@ export function useDragReorder(
       if (onMoveToOther && findOtherContainer) {
         const targetId = findOtherContainer(e.clientX, e.clientY, container);
         if (targetId) {
-          onMoveToOther(ds.tabId, targetId);
+          // E5.8#51：跨组落位带 ds.toIndex（拖动中 computeInsertIndex 算的目标组竖线缝）——
+          // 竖杠显示在哪、落位就插到哪。toIndex < 0 = 从未算过缝（异常）→ 缺省 append 末尾。
+          onMoveToOther(ds.tabId, targetId, ds.toIndex >= 0 ? ds.toIndex : undefined);
           moved = true;
         }
       }

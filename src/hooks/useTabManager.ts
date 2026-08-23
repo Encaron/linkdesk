@@ -288,8 +288,9 @@ export function useTabManager() {
     []
   );
 
-  const moveTab = useCallback((tabId: string, targetGroupId: string) => {
-    setTabState((prev) => reduceMoveTab(prev, tabId, targetGroupId));
+  // E5.8#51：insertIndex = 跨组拖拽落点缝（竖杠缝）——透传 reduceMoveTab 中插，缺省 append
+  const moveTab = useCallback((tabId: string, targetGroupId: string, insertIndex?: number) => {
+    setTabState((prev) => reduceMoveTab(prev, tabId, targetGroupId, insertIndex));
   }, []);
 
   const splitTab = useCallback(

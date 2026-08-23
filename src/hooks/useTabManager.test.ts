@@ -258,6 +258,27 @@ describe("reduceMoveTab", () => {
     const g2New = next.groups.find((g) => g.id === g2.id)!;
     expect(g2New.tabs).toHaveLength(2);
   });
+
+  it("E5.8#51：跨组拖拽带插入缝 → 中插（竖杠落点），缺省 append 末尾", () => {
+    // 构造：左组 [welcome, demo-view-2]、右组 [demo-view-1]——把 demo-view-2 拖到右组中间（insertIndex 0）
+    let state = createInitialTabState();
+    state = reduceCreateTab(state, "demo-view").state; // [welcome, demo-view-1]
+    state = reduceCreateTab(state, "demo-view").state; // [welcome, demo-view-1, demo-view-2]
+    state = reduceSplitTab(state, "demo-view-1", "horizontal"); // [welcome, demo-view-2] | [demo-view-1]
+    const leafIds = getAllLeafGroupIds(state.root);
+    const gLeft = state.groups.find((g) => g.id === leafIds[0])!;
+    const gRight = state.groups.find((g) => g.id === leafIds[1])!;
+
+    // 带插入缝 → 中插：目标组 [demo-view-1] ← demo-view-2 @0 → [demo-view-2, demo-view-1]
+    const mid = reduceMoveTab(state, gLeft.tabs[1].id, gRight.id, 0);
+    const gRightMid = mid.groups.find((g) => g.id === gRight.id)!;
+    expect(gRightMid.tabs.map((t) => t.id)).toEqual(["demo-view-2", "demo-view-1"]);
+
+    // 缺省 → append 末尾（第三方裸 moveTab 语义）：目标组 [demo-view-1] ← demo-view-2 → [demo-view-1, demo-view-2]
+    const end = reduceMoveTab(state, gLeft.tabs[1].id, gRight.id);
+    const gRightEnd = end.groups.find((g) => g.id === gRight.id)!;
+    expect(gRightEnd.tabs.map((t) => t.id)).toEqual(["demo-view-1", "demo-view-2"]);
+  });
 });
 
 /* ── reduceCloseTab ── */

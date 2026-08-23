@@ -244,15 +244,18 @@ export function useTabDrag({ containerRef, tabAction, groups, tabBarRects, dragP
       });
     },
 
-    onMoveToOther: (tabId, targetGroupId) => {
+    onMoveToOther: (tabId, targetGroupId, insertIndex) => {
       // E5.7#96：契约 targetGroupId: string——ref 可为 null（any 时代 null 会透传，
       // 壳 find 不到组静默 no-op），提前空守卫
       const gid = targetGroupId ?? targetGroupRef.current;
       if (!gid) return;
+      // E5.8#51：跨组拖拽落点带 newIndex（目标组内插入缝 = 竖杠缝隙）——「竖杠落哪插哪」，
+      // 不再只显示竖线却 append 末尾。undefined = 未知落点（非拖拽路径）→ 缺省 append。
       tabAction({
         action: "moveTab",
         tabId,
         targetGroupId: gid,
+        newIndex: insertIndex ?? undefined,
       });
     },
 

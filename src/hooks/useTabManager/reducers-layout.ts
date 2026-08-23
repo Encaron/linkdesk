@@ -21,8 +21,12 @@ import { findGroup } from "./types";
 import type { Tab, TabState, LayoutData } from "./types";
 import { createGroup, createInitialTabState, ensureFallback, syncGroupCounterFromGroups } from "./defaults";
 
-/** 移动标签页到另一个组 */
-export function reduceMoveTab(prev: TabState, tabId: string, targetGroupId: string): TabState {
+/**
+ * 移动标签页到另一个组。
+ * E5.8#51：insertIndex = 目标组内插入缝（跨组拖拽落点 = 竖杠缝隙）→ splice 中插；
+ * 缺省 → append 末尾（第三方插件裸 moveTab 无落点语义）。越界钳制 [0, tabs.length]。
+ */
+export function reduceMoveTab(prev: TabState, tabId: string, targetGroupId: string, insertIndex?: number): TabState {
   const sourceGroup = findGroup(prev, tabId);
   if (!sourceGroup || sourceGroup.id === targetGroupId) return prev;
 
@@ -36,6 +40,15 @@ export function reduceMoveTab(prev: TabState, tabId: string, targetGroupId: stri
     ? (sourceRemaining[0]?.id ?? "")
     : sourceGroup.activeTabId;
 
+  // 目标组落位——insertIndex 中插（竖杠缝），缺省 append
+  const insertIntoTarget = (tabs: Tab[]): Tab[] => {
+    if (insertIndex === undefined) return [...tabs, tab];
+    const at = Math.min(Math.max(insertIndex, 0), tabs.length);
+    const next = [...tabs];
+    next.splice(at, 0, tab);
+    return next;
+  };
+
   // 如果源组变空 → 从树中移除该 leaf
   if (sourceRemaining.length === 0) {
     const allLeafIds = getAllLeafGroupIds(prev.root);
@@ -48,7 +61,7 @@ export function reduceMoveTab(prev: TabState, tabId: string, targetGroupId: stri
       .filter((g) => g.id !== sourceGroup.id)
       .map((g) =>
         g.id === targetGroupId
-          ? { ...g, tabs: [...g.tabs, tab], activeTabId: tab.id }
+          ? { ...g, tabs: insertIntoTarget(g.tabs), activeTabId: tab.id }
           : g
       );
     return {
@@ -64,7 +77,7 @@ export function reduceMoveTab(prev: TabState, tabId: string, targetGroupId: stri
     activeGroupId: targetGroupId,
     groups: prev.groups.map((g) => {
       if (g.id === sourceGroup.id) return { ...g, tabs: sourceRemaining, activeTabId: sourceActiveId };
-      if (g.id === targetGroup.id) return { ...g, tabs: [...g.tabs, tab], activeTabId: tab.id };
+      if (g.id === targetGroup.id) return { ...g, tabs: insertIntoTarget(g.tabs), activeTabId: tab.id };
       return g;
     }),
   };
