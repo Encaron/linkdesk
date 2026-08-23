@@ -21,6 +21,13 @@ function isRightAligned(item: { align?: string; alignment?: string }): boolean {
   }
 }
 
+/** configurable 状态栏条目开关 key 判定——契约 `${pluginId}.statusBar.${item.id}`
+ *  （contributions.ts:355 注册同源）。供 useSubscriptions 配置订阅判断是否需重推布局
+ *  （E5.8#55.2：显隐开关改动与 menuStyle 同构缺口——动态 key 无法静态枚举）。 */
+export function isStatusBarConfigKey(key: string): boolean {
+  return key.includes(".statusBar.");
+}
+
 /**
  * E5.7#8：状态栏条目序列化——壳 StatusBar.tsx 三源合并 + 分隔线语义照搬。
  * 贡献项 + 动态项 + eventEntries（按 alignment 拆 __shell_left__/__shell_right__）+ 壳固定项（语言/主题）。

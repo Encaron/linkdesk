@@ -17,6 +17,7 @@ import { ViewContainerService } from "../../core/services/layout/ViewContainerSe
 import { layoutEngine } from "../../core/services/layout/LayoutEngine"; // E5.6#11-fix7：池◀按钮→壳 setZoneWidth("sidebar", 28)
 import { ContextKeyService } from "../../core/registry/commands/ContextKeyService"; // E5.7#5：槽位按钮 when 过滤 + context 变化重推
 import { onDidChangeConfiguration } from "../../core/services/configuration/ConfigurationService"; // E5.8#55.1：app.menuStyle 配置变化重推布局
+import { isStatusBarConfigKey } from "./statusbar"; // E5.8#55.2：configurable 状态栏条目开关重推布局
 import { getViewPlugin, onDidRegister, onDidUnregister } from "../../pluginLoader/viewRegistry";
 import { onDidChangeStatusBar } from "../../core/services/ui/StatusBarService"; // E5.7#8：状态栏动态项变化订阅
 import { CUSTOM_EVENTS } from "../../core/react/events/CoreEvents"; // E5.7#8：Chord 提示
@@ -77,13 +78,15 @@ export function useSyncSubscriptions({
     };
   }, [i18n, setLayoutVersion]);
 
-  // E5.8#55.1：app.menuStyle 配置变化 → 布局重推（menuBarVisible/hamburgerVisible 即时生效）。
-  // 缺口根因：usePoolSync 主推送 effect 不订阅配置，menuStyle 改动无人触发重推——E5.7 迁移时
-  // 壳 DOM 条件渲染的等价物没迁进序列化层（git 实证 from E5.7 起从无 onDidChangeConfiguration）。
-  // 对标 VS Code 分布式订阅：只监听本订阅关心的 key，其他配置变化不 bump（避免无关重推）。
+  // E5.8#55.1/#55.2：影响布局的配置变化 → 布局重推（menuBarVisible/hamburgerVisible 即时生效 +
+  // configurable 状态栏条目显隐开关即时生效）。
+  // 缺口根因：usePoolSync 主推送 effect 不订阅配置，改动无人触发重推——E5.7 迁移时壳 DOM
+  // 条件渲染的等价物没迁进序列化层（git 实证 from E5.7 起从无 onDidChangeConfiguration）。
+  // 对标 VS Code 分布式订阅：只监听本订阅关心的 key（menuStyle 静态 + statusBar 动态契约），
+  // 其他配置变化不 bump（避免无关重推）。
   useEffect(() => {
     return onDidChangeConfiguration((key) => {
-      if (key === "app.menuStyle") setLayoutVersion((v) => v + 1);
+      if (key === "app.menuStyle" || isStatusBarConfigKey(key)) setLayoutVersion((v) => v + 1);
     });
   }, [setLayoutVersion]);
 
