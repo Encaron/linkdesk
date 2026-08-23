@@ -26,6 +26,13 @@ function useIsOpen(port: string | null): boolean {
   useEffect(() => {
     setIsOpen(false); // 切口时重置——新口真实状态等事件到来
     if (!port) return;
+    let cancelled = false;
+    // E5.8#54：播种真实状态——plugin-state:changed 事件不重放，旧 :isOpen 写入此刻收不到
+    //（点标签切活动口时「先强制灭灯再等事件」→ 事件永不来 → 灯卡灭）。初始 mount/换口直接读
+    // pluginState 权威值，事件只兜底后续变化（通用「事件不重放」解法）。
+    lk()?.pluginState?.get(SERIAL_MONITOR_PLUGIN_ID, `${port}:isOpen`).then((v) => {
+      if (!cancelled && typeof v === "boolean") setIsOpen(v);
+    }).catch(() => {});
     const handler = (data: PluginStateChangedPayload) => {
       if (data?.pluginId !== SERIAL_MONITOR_PLUGIN_ID) return;
       const k: string = data.key ?? "";
@@ -34,7 +41,10 @@ function useIsOpen(port: string | null): boolean {
       }
     };
     const unsub = lk()?.events?.on<PluginStateChangedPayload>("plugin-state:changed", handler);
-    return () => unsub?.();
+    return () => {
+      cancelled = true;
+      unsub?.();
+    };
   }, [port]);
   return isOpen;
 }
@@ -74,12 +84,10 @@ export default function SerialMonitorStatusBar() {
           <span className="codicon codicon-circle-filled" />
         </span>
       )}
-      {/* E5.8#30.12：口数 (N)——≥2 才显示数字，开 1 个只亮灯；随 connection 配置一并显隐 */}
+      {/* E5.8#30.12：口数 (N)——≥2 才显示数字，开 1 个只亮灯；随 connection 配置一并显隐
+          E5.8#54：删 status-divider 竖杠——分组分隔线误用于灯的附属计数，灯与 (N) 靠容器 gap 紧贴 */}
       {showConnection && openPortCount >= 2 && (
-        <>
-          <span className="status-divider" />
-          <span className="status-text">{`(${openPortCount})`}</span>
-        </>
+        <span className="status-text">{`(${openPortCount})`}</span>
       )}
     </>
   );
