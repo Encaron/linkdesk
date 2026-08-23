@@ -45,6 +45,17 @@ export interface ContextMenuProps {
    * @returns 子菜单项列表，或 undefined 表示无子项
    */
   resolveChildren?: (parentId: string, ctx: Record<string, unknown>) => Array<{ id: string; label: string }> | undefined;
+  /**
+   * E5.8#55：外部注入菜单项——顶部/汉堡下拉复用本渲染器（menuId 仅作标识，
+   * 数据不走 menu.getItems IPC，布局快照 PoolMenuItem[] 转换后直接注入）。
+   * 提供时跳过 getItems 拉取——壳侧布局已 when 过滤 + t() 翻译（显示文本铁律）。
+   */
+  items?: MenuItemDescriptor[];
+  /** E5.8#55：浮层形态——两行为耦合成一词（B1 合并，2026-08-23 拍板）：
+   *  - "overlay"（默认，右键/汉堡）：全屏透明 backdrop 吞第一击 + 点外部关闭（现状行为）。
+   *  - "embedded"（顶部菜单栏下拉）：无 backdrop + 点外关闭由宿主自管——菜单嵌在按钮行
+   *    hover 切换交互里，backdrop 会吞掉按钮行第一击导致切换失效（硬约束 18 已钳制菜单 top≥30）。 */
+  variant?: "overlay" | "embedded";
 }
 
 // E5.7#97：原 EnrichedItem 本地类型整删——menu.getItems() 已按 LinkDeskAPI 契约定型
@@ -69,7 +80,7 @@ interface ResolvedItem {
 
 /* ── 组件 ── */
 
-export default function ContextMenu({ menuId, anchor, context, onClose, resolveChildren }: ContextMenuProps) {
+export default function ContextMenu({ menuId, anchor, context, onClose, resolveChildren, items, variant }: ContextMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
   const subRef = useRef<HTMLDivElement>(null);
   const subTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -81,14 +92,19 @@ export default function ContextMenu({ menuId, anchor, context, onClose, resolveC
 
   useEffect(() => {
     let cancelled = false;
-    lk().menu?.getItems?.(menuId, context).then((items) => {
-      if (!cancelled && items) setRawItems(items);
+    // E5.8#55：外部注入 items → 布局快照直接渲染（跳过 IPC 拉取）
+    if (items) {
+      setRawItems(items);
+      return () => { cancelled = true; };
+    }
+    lk().menu?.getItems?.(menuId, context).then((raw) => {
+      if (!cancelled && raw) setRawItems(raw);
     }).catch(() => {
       // 菜单获取失败 → 不显示项，静默处理
     });
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [menuId, contextKey]);
+  }, [menuId, contextKey, items]);
 
   /* ── 菜单项解析（分组 + 分隔线）── */
   const resolved = useMemo((): Array<ResolvedItem | { type: "divider"; group: string }> => {
@@ -169,14 +185,16 @@ export default function ContextMenu({ menuId, anchor, context, onClose, resolveC
     window.addEventListener("keydown", onKey);
     window.addEventListener("blur", onBlur);
     window.addEventListener("wheel", onWheel, true);
-    window.addEventListener("mousedown", onMouseDown, true);
+    // E5.8#55：variant="embedded"（顶部菜单栏）不挂 mousedown——
+    // 外部点击关闭由 TitleBarZone 自己管理（豁免 group 按钮行，保留 hover 切换）
+    if (variant !== "embedded") window.addEventListener("mousedown", onMouseDown, true);
     return () => {
       window.removeEventListener("keydown", onKey);
       window.removeEventListener("blur", onBlur);
       window.removeEventListener("wheel", onWheel, true);
-      window.removeEventListener("mousedown", onMouseDown, true);
+      if (variant !== "embedded") window.removeEventListener("mousedown", onMouseDown, true);
     };
-  }, [onClose, subData, visible]);
+  }, [onClose, subData, visible, variant]);
 
   /* ── 键盘导航 ── */
   const [focusIdx, setFocusIdx] = useState(-1);
@@ -268,14 +286,18 @@ export default function ContextMenu({ menuId, anchor, context, onClose, resolveC
       {/* E5.7#14：透明 backdrop——吞掉第一击（VS Code 行为）：点击即关且不激活下层内容。
           层级 = contextMenu-1，与菜单本体同 wrapper stacking context 内比较。
           窗口级 mousedown 监听（下方"统一失焦"）已处理 backdrop 点击关闭。
-          pointer-events 不在此写——池侧由 #context-menu-root 根级提供（补丁 2026-08-14）。 */}
-      <div
-        style={{
-          position: "fixed",
-          inset: 0,
-          zIndex: Z_INDEX.contextMenu - 1,
-        }}
-      />
+          pointer-events 不在此写——池侧由 #context-menu-root 根级提供（补丁 2026-08-14）。
+          E5.8#55：variant="embedded" 时跳过——顶部菜单栏下拉点按钮行 hover 切换，
+          无需全屏吞击（吞了按钮行第一击 hover 切换失效）。 */}
+      {variant !== "embedded" && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: Z_INDEX.contextMenu - 1,
+          }}
+        />
+      )}
 
       {/* 主菜单 */}
       <div

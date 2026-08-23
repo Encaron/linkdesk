@@ -7,8 +7,8 @@
  * 职责（设计 Zone分解设计.md §2.1）：
  *   - Logo（logoUrl——壳 getAssetPath 解析）
  *   - 左右槽位按钮（插件 contributes.titleBar，when 已壳侧过滤）
- *   - 菜单栏（menuBarVisible 条件渲染）——group 按钮 + fixed 下拉（WCV 满窗无裁剪，
- *     无需 OverlayPortal；下拉在 30px 拖拽区之下——硬约束 #18 满足）
+ *   - 菜单栏（menuBarVisible 条件渲染）——group 按钮 + ContextMenu 下拉
+ *     （E5.8#55 统一渲染器；portal 到 #context-menu-root，30px 拖拽区之下——硬约束 #18 满足）
  *   - 拖拽区（-webkit-app-region: drag）+ 按钮 no-drag
  *   - 窗口控制（─ □ ×）——window.linkdesk.window → 主进程
  *
@@ -16,11 +16,13 @@
  *   ① 壳 TitleBar 不渲染 title 文本（仅 Logo）——零丢失照搬。
  *   ② 壳下拉无快捷键显示/无 when 灰显（checkWhen=false）——池同。
  *   ③ Alt 调出隐藏菜单栏——壳未实现，池也未实现（设计稿远期项）。
+ *   ④ E5.8#55：hover 切换按钮行 + 外部点击关闭由本组件管理（ContextMenu variant="embedded"）；
  */
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import type { TitleBarLayout, TitleBarSlotButton } from "../../../core/types/pool/poolLayout";
-import MenuItemList from "../../shared/menu-item-list/MenuItemList"; // E5.7#6：菜单项列表提取为池共享组件（汉堡复用）
+import ContextMenu from "@src/components/shared/context-menu/ContextMenu"; // E5.8#55：菜单栏下拉统一右键菜单渲染器
+import { poolMenuToDescriptors } from "../../shared/menu-items"; // E5.8#55：池布局 DTO → ContextMenu 契约
 import { executePoolCommand } from "../../commands/executePoolCommand"; // E5.7#6：命令执行提取为池共享（IconBarZone 复用）
 import "./TitleBarZone.css";
 
@@ -29,12 +31,6 @@ import "./TitleBarZone.css";
 function TitleBarZone({ titleBar }: { titleBar: TitleBarLayout }) {
   const [openGroup, setOpenGroup] = useState<string | null>(null);
   const btnRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
-  const dropdownRef = useRef<HTMLDivElement>(null);
-
-  const handleCommand = useCallback((command: string) => {
-    setOpenGroup(null);
-    executePoolCommand(command);
-  }, []);
 
   /** 鼠标划过不同 group 按钮时自动切换下拉（壳 TitleBar 同款） */
   const handleButtonHover = useCallback(
@@ -44,23 +40,23 @@ function TitleBarZone({ titleBar }: { titleBar: TitleBarLayout }) {
     [openGroup]
   );
 
-  // 外部点击 + Escape 关闭（壳 OverlayPortal 的 backdrop click + Escape 同款语义）
+  // 外部点击关闭（壳 OverlayPortal 的 backdrop click 同款语义）。
+  // E5.8#55：下拉已换 ContextMenu——菜单 portal 到 #context-menu-root（OverlayPortal），
+  // 点菜单项先关后点会丢点击，须豁免整个浮层宿主；variant="embedded" 时 ContextMenu
+  // 不自挂 mousedown，外部点击关闭由本 effect 全权负责（豁免按钮行）。
+  // Escape 由 ContextMenu 统一管（有子菜单先关子菜单——A 修复，避免双监听竞态）。
   useEffect(() => {
     if (!openGroup) return;
     const onMouseDown = (e: MouseEvent) => {
       const target = e.target as Node;
       const btn = btnRefs.current.get(openGroup);
-      if (btn?.contains(target) || dropdownRef.current?.contains(target)) return;
+      const menuRoot = document.getElementById("context-menu-root");
+      if (btn?.contains(target) || menuRoot?.contains(target)) return;
       setOpenGroup(null);
     };
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpenGroup(null);
-    };
     document.addEventListener("mousedown", onMouseDown);
-    document.addEventListener("keydown", onKeyDown);
     return () => {
       document.removeEventListener("mousedown", onMouseDown);
-      document.removeEventListener("keydown", onKeyDown);
     };
   }, [openGroup]);
 
@@ -104,13 +100,13 @@ function TitleBarZone({ titleBar }: { titleBar: TitleBarLayout }) {
     </button>
   );
 
-  /** 下拉定位——按钮 rect 下方（池 WCV 满窗，rect 即窗口坐标） */
-  const dropdownStyle = (() => {
-    if (!openGroup) return { display: "none" as const };
+  /** 下拉锚点——group 按钮左下角（池 WCV 满窗，rect 即窗口坐标，ContextMenu 定位消费） */
+  const dropdownAnchor = (() => {
+    if (!openGroup) return null;
     const btn = btnRefs.current.get(openGroup);
-    if (!btn) return { display: "none" as const };
+    if (!btn) return null;
     const rect = btn.getBoundingClientRect();
-    return { position: "fixed" as const, top: rect.bottom, left: rect.left };
+    return { x: rect.left, y: rect.bottom };
   })();
 
   return (
@@ -179,11 +175,19 @@ function TitleBarZone({ titleBar }: { titleBar: TitleBarLayout }) {
         </button>
       </div>
 
-      {/* 下拉面板——fixed 定位在按钮下方 */}
-      {openGroup && openItems && (
-        <div className="titlebar-dropdown" style={dropdownStyle} ref={dropdownRef}>
-          <MenuItemList key={openGroup} items={openItems.items} onCommand={handleCommand} cssPrefix="titlebar" />
-        </div>
+      {/* 下拉菜单——E5.8#55：统一 ContextMenu 渲染器（右键菜单同源）。
+          variant="embedded"：无 backdrop + 点外关闭由上方 TitleBarZone effect 管理——
+          顶部菜单栏保留按钮行 hover 切换（backdrop 会吞按钮行第一击）+ 豁免按钮行点外关闭。
+          布局快照 items 注入——跳过 menu.getItems IPC（壳侧已 when 过滤 + t() 翻译）。 */}
+      {openGroup && openItems && dropdownAnchor && (
+        <ContextMenu
+          key={openGroup}
+          menuId={`titlebar:${openGroup}`}
+          anchor={dropdownAnchor}
+          items={poolMenuToDescriptors(openItems.items)}
+          variant="embedded"
+          onClose={() => setOpenGroup(null)}
+        />
       )}
     </div>
   );
