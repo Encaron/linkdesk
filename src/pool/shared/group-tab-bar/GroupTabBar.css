@@ -23,6 +23,9 @@
   overflow-y: hidden;
   flex: 1;
   min-width: 0;
+  /* E5.8#51：左 padding 4px——最左吸附竖线（index 0 前）居中于「条左缘↔tab0」空隙，
+     不被负 margin 越出容器裁剪；scrollLeft 语义不受 padding 影响 */
+  padding-left: 4px;
   scrollbar-width: none;
 }
 .group-tab-list::-webkit-scrollbar {
@@ -194,13 +197,15 @@
 
 /* ── 拖拽插入指示器 ── */
 
-/* E5.8#51 竞标 D：指示器净占 0 布局——width 2px + margin 0 -1px（±1px 抵消自身宽）
-   落 tab 间 4px 空隙正中；mousedown 即 setInsertIndex（现状时序）也零挤占，整排纹丝不动。
-   高度 30px + margin-top 4px 对齐 tab 可视高（非整条 35px 条）。 */
+/* E5.8#51 竞标 D：指示器净占 0 布局 + 居中于 tab 间 4px 空隙。
+   空隙 G=4px、竖线 W=2px → 居中需左移 (G−W)/2−G = −3px（margin-left −3），
+   margin-right +1 使净占 = W−3+1 = 0（整排纹丝不动，长按/拖动零挤占）。
+   竖线落 [P+1, P+3]（P=前一 tab 右缘），空隙 [P, P+4]——两边各留 1px，正正好好站两个胶囊中间。
+   高度 30px + margin-top 4px 对齐 tab 可视高。 */
 .group-tab-drop-indicator {
   width: 2px;
   height: 30px;
-  margin: 4px -1px 0;
+  margin: 4px 1px 0 -3px;
   border-radius: 2px;
   background: var(--accent);
   flex-shrink: 0;

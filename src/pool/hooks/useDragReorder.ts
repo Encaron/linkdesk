@@ -138,7 +138,8 @@ export function useDragReorder(
         winScreenX: (e.screenX ?? 0) - e.clientX,
         winScreenY: (e.screenY ?? 0) - e.clientY,
       };
-      setInsertIndex(fromIndex);
+      // E5.8#51：mousedown 不再同步出竖杠——插入指示是「拖到目标缝」的落点标记，
+      // 长按（未拖动）就该干干净净。起始落点在拎起（越阈值）时才显示。
     },
     []
   );
@@ -158,10 +159,11 @@ export function useDragReorder(
       // 未超阈值的移动 → 不启动
       if (ds.phase === "reorder" && Math.abs(dx) < threshold && Math.abs(dy) < threshold) return;
 
-      // 首次超阈值 → 拎起标签页
+      // 首次超阈值 → 拎起标签页；同时显示起始落点竖杠（E5.8#51：长按不显示，真正拖起才有）
       if (ds.phase === "reorder" && !ds.lifted) {
         ds.lifted = true;
         setDraggingId(ds.tabId);
+        setInsertIndex(ds.fromIndex);
       }
 
       // E5.8#44-C：拎起后全程上报拖拽位置（含窗内——壳排除源窗命中，窗内拖拽自然 null 清提示；窗外命中目标窗 TabBar 高亮）
