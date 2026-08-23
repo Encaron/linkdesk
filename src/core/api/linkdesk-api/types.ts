@@ -8,6 +8,7 @@
  */
 
 import type { PluginManifest } from "../types";
+import type { ThemeSurface, ThemeBackground } from "../../services/ui/ThemeEngine";
 
 export interface LinkDeskCommand {
   id: string;
@@ -18,6 +19,10 @@ export interface LinkDeskCommand {
 export interface LinkDeskTheme {
   name: string;
   type: "dark" | "light";
+  /** E5.8#50.6：玻璃/悬浮质感——主题 JSON `surface`（缺省 = 无玻璃无悬浮） */
+  surface?: ThemeSurface;
+  /** E5.8#50.6：图片背景——主题 JSON `background`（缺省 = 无图） */
+  background?: ThemeBackground;
   pluginId?: string;
 }
 

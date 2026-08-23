@@ -15,6 +15,7 @@ import {
   findTheme,
   getCurrentTheme,
   registerFallbackThemes,
+  getThemeVariables,
 } from "./ThemeEngine";
 import { rollback } from "../../registry/registrationTracker";
 import type { Theme } from "./ThemeEngine";
@@ -151,6 +152,90 @@ describe("ThemeEngine — applyTheme / getCurrentTheme", () => {
   it("getCurrentTheme — applyTheme 后返回当前主题", () => {
     applyTheme(MOCK_THEME);
     expect(getCurrentTheme()?.name).toBe("Test Dark");
+  });
+});
+
+describe("ThemeEngine — surface/background 玻璃机制（E5.8#50.6）", () => {
+  // 玻璃/背景/悬浮零值变量——applyTheme 每次全量写入，测试间清理防残留
+  const GLASS_VARS = [
+    "glass-blur", "glass-saturate", "glass-tint", "glass-opacity",
+    "glass-specular", "glass-morph", "bg-image", "bg-opacity", "bg-mask",
+    "surface-radius", "surface-inset", "surface-shadow",
+  ];
+  beforeEach(() => {
+    const root = document.documentElement;
+    for (const key of GLASS_VARS) {
+      root.style.removeProperty(`--${key}`);
+    }
+    root.removeAttribute("data-theme");
+  });
+
+  it("无 surface/background 的主题 → 写入玻璃零值（无玻璃无图无悬浮）", () => {
+    applyTheme(MOCK_THEME);
+    const root = document.documentElement;
+    expect(root.style.getPropertyValue("--glass-blur")).toBe("0px");
+    expect(root.style.getPropertyValue("--glass-saturate")).toBe("1");
+    expect(root.style.getPropertyValue("--glass-tint")).toBe("transparent");
+    expect(root.style.getPropertyValue("--glass-opacity")).toBe("1");
+    expect(root.style.getPropertyValue("--glass-specular")).toBe("0");
+    expect(root.style.getPropertyValue("--glass-morph")).toBe("0ms");
+    expect(root.style.getPropertyValue("--bg-image")).toBe("none");
+    expect(root.style.getPropertyValue("--bg-opacity")).toBe("1");
+    expect(root.style.getPropertyValue("--bg-mask")).toBe("0");
+    expect(root.style.getPropertyValue("--surface-radius")).toBe("0px");
+    expect(root.style.getPropertyValue("--surface-inset")).toBe("0px");
+    expect(root.style.getPropertyValue("--surface-shadow")).toBe("none");
+  });
+
+  it("带 glass surface → 写入玻璃六键", () => {
+    applyTheme({
+      ...MOCK_THEME,
+      surface: { type: "glass", blur: 18, saturate: 1.5, tint: "rgba(0,0,0,0.2)", opacity: 0.9, specular: 0.6, morph: 400 },
+    });
+    const root = document.documentElement;
+    expect(root.style.getPropertyValue("--glass-blur")).toBe("18px");
+    expect(root.style.getPropertyValue("--glass-saturate")).toBe("1.5");
+    expect(root.style.getPropertyValue("--glass-tint")).toBe("rgba(0,0,0,0.2)");
+    expect(root.style.getPropertyValue("--glass-opacity")).toBe("0.9");
+    expect(root.style.getPropertyValue("--glass-specular")).toBe("0.6");
+    expect(root.style.getPropertyValue("--glass-morph")).toBe("400ms");
+  });
+
+  it("带悬浮面板 surface → 写入 radius/inset/shadow（shadow:true → 映射 --shadow-lift）", () => {
+    applyTheme({ ...MOCK_THEME, surface: { type: "glass", radius: 10, inset: 8, shadow: true } });
+    const root = document.documentElement;
+    expect(root.style.getPropertyValue("--surface-radius")).toBe("10px");
+    expect(root.style.getPropertyValue("--surface-inset")).toBe("8px");
+    expect(root.style.getPropertyValue("--surface-shadow")).toBe("var(--shadow-lift)");
+  });
+
+  it("带 background → 写入 bg-image（url 包裹）/opacity/mask", () => {
+    applyTheme({ ...MOCK_THEME, background: { image: "assets/aurora.jpg", opacity: 0.9, mask: 0.88 } });
+    const root = document.documentElement;
+    expect(root.style.getPropertyValue("--bg-image")).toBe('url("assets/aurora.jpg")');
+    expect(root.style.getPropertyValue("--bg-opacity")).toBe("0.9");
+    expect(root.style.getPropertyValue("--bg-mask")).toBe("0.88");
+  });
+
+  it("玻璃主题切回无质感主题 → 玻璃变量清零不残留", () => {
+    applyTheme({ ...MOCK_THEME, surface: { type: "glass", blur: 18, radius: 10 }, background: { image: "bg.png" } });
+    applyTheme(MOCK_THEME2);
+    const root = document.documentElement;
+    expect(root.style.getPropertyValue("--glass-blur")).toBe("0px");
+    expect(root.style.getPropertyValue("--surface-radius")).toBe("0px");
+    expect(root.style.getPropertyValue("--bg-image")).toBe("none");
+  });
+
+  it("getThemeVariables — 键不带 -- 前缀（与广播/池侧 --${k} 注入惯例一致）", () => {
+    const vars = getThemeVariables({
+      ...MOCK_THEME,
+      surface: { type: "glass", blur: 12 },
+      background: { image: "bg.png" },
+    });
+    expect(vars["glass-blur"]).toBe("12px");
+    expect(vars["bg-image"]).toBe('url("bg.png")');
+    expect(vars.bg).toBe("#000");
+    expect(vars["--bg"]).toBeUndefined();
   });
 });
 

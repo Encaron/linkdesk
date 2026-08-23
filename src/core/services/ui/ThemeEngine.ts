@@ -10,10 +10,47 @@ export interface ThemeColors {
   [key: string]: string;
 }
 
+/** E5.8#50.6：玻璃 + 悬浮面板质感字段——主题 JSON `surface`（缺省 = 无玻璃无悬浮） */
+export interface ThemeSurface {
+  type: "glass";
+  /** backdrop blur px——0 = 关 */
+  blur?: number;
+  /** 饱和度增强——1 = 关 */
+  saturate?: number;
+  /** 玻璃面叠加色 */
+  tint?: string;
+  /** 玻璃面不透明度——1 = 不透明 */
+  opacity?: number;
+  /** 液态玻璃顶部高光强度——0 = 关 */
+  specular?: number;
+  /** 形变过渡 ms——0 = 关 */
+  morph?: number;
+  /** 悬浮圆角 px——0 = 直角贴边 */
+  radius?: number;
+  /** 四周留缝 px——0 = 贴边 */
+  inset?: number;
+  /** 投影浮起——true = 悬浮投影（引擎映射 --shadow-lift） */
+  shadow?: boolean;
+}
+
+/** E5.8#50.6：图片背景质感字段——主题 JSON `background`（缺省 = 无图） */
+export interface ThemeBackground {
+  /** 图片路径——作者提供可解析 URL，引擎写入 `--bg-image` 时 url() 包裹 */
+  image?: string;
+  /** 图片层不透明度——1 = 不透明 */
+  opacity?: number;
+  /** 图片遮罩明暗（0-1 rgba 透明度）——0 = 无遮罩 */
+  mask?: number;
+}
+
 export interface Theme {
   name: string;
   type: "dark" | "light";
   colors: ThemeColors;
+  /** 玻璃/悬浮质感（缺省 = 无玻璃无悬浮，现有主题零变化） */
+  surface?: ThemeSurface;
+  /** 图片背景（缺省 = 无图，现有主题零变化） */
+  background?: ThemeBackground;
   /** 提供方插件 ID——单真源：ThemeRegistry.get() fallback 通过此字段找到归属 */
   pluginId?: string;
 }
@@ -94,6 +131,72 @@ export async function loadTheme(themeName: string): Promise<Theme> {
   throw new Error(`Theme "${themeName}" not found——主题未注册或已被卸载`);
 }
 
+/* ── E5.8#50.6：玻璃/背景/悬浮变量零值——主题不带 surface/background 时写入（= 无玻璃无图无悬浮 = 现状零变化） ──
+   --bg-mask 默认 0（rgba 遮罩透明度，0 = 无遮罩）；--surface-shadow 默认 none（无浮起）。 */
+
+const SURFACE_ZERO: Record<string, string> = {
+  "glass-blur": "0px",
+  "glass-saturate": "1",
+  "glass-tint": "transparent",
+  "glass-opacity": "1",
+  "glass-specular": "0",
+  "glass-morph": "0ms",
+  "surface-radius": "0px",
+  "surface-inset": "0px",
+  "surface-shadow": "none",
+};
+
+const BACKGROUND_ZERO: Record<string, string> = {
+  "bg-image": "none",
+  "bg-opacity": "1",
+  "bg-mask": "0",
+};
+
+/** 玻璃 + 悬浮面板变量——缺省 = 零值 */
+function surfaceVariables(surface?: ThemeSurface): Record<string, string> {
+  const vars: Record<string, string> = { ...SURFACE_ZERO };
+  if (!surface || surface.type !== "glass") return vars;
+  if (surface.blur != null) vars["glass-blur"] = `${surface.blur}px`;
+  if (surface.saturate != null) vars["glass-saturate"] = String(surface.saturate);
+  if (surface.tint != null) vars["glass-tint"] = surface.tint;
+  if (surface.opacity != null) vars["glass-opacity"] = String(surface.opacity);
+  if (surface.specular != null) vars["glass-specular"] = String(surface.specular);
+  if (surface.morph != null) vars["glass-morph"] = `${surface.morph}ms`;
+  if (surface.radius != null) vars["surface-radius"] = `${surface.radius}px`;
+  if (surface.inset != null) vars["surface-inset"] = `${surface.inset}px`;
+  // 投影浮起 → 映射六域悬浮 token（JS 不硬编码 shadow 值——#50.14 已 token 化）
+  if (surface.shadow === true) vars["surface-shadow"] = "var(--shadow-lift)";
+  return vars;
+}
+
+/** 图片背景变量——缺省 = 零值 */
+function backgroundVariables(background?: ThemeBackground): Record<string, string> {
+  const vars: Record<string, string> = { ...BACKGROUND_ZERO };
+  if (!background) return vars;
+  if (background.image != null && background.image !== "") {
+    // 已 url() 包裹则原样写；否则包裹（background-image 需 url()）
+    vars["bg-image"] = /^url\(/i.test(background.image.trim()) ? background.image : `url("${background.image}")`;
+  }
+  if (background.opacity != null) vars["bg-opacity"] = String(background.opacity);
+  if (background.mask != null) vars["bg-mask"] = String(background.mask);
+  return vars;
+}
+
+/**
+ * E5.8#50.6：计算生效 CSS 变量全集（键不带 `--` 前缀——与广播/池侧 `--${k}` 注入惯例一致）。
+ * colors + 玻璃 + 背景 + 悬浮——缺省域/键 = 默认零值（无玻璃无图无悬浮）→ 现有主题零变化。
+ * 写入 :root 与广播共用此函数——同一变量集，幂等。
+ */
+export function getThemeVariables(theme: Theme): Record<string, string> {
+  const vars: Record<string, string> = {};
+  for (const [key, value] of Object.entries(theme.colors)) {
+    vars[key] = value;
+  }
+  Object.assign(vars, surfaceVariables(theme.surface));
+  Object.assign(vars, backgroundVariables(theme.background));
+  return vars;
+}
+
 /** 应用主题：清理旧变量 → 写入新变量 → 标记 data-theme → fire 事件 */
 export function applyTheme(theme: Theme): void {
   // E3f #51：先发 IPC 通知主进程——和 CSS 渲染并行，标题栏不落后
@@ -103,15 +206,17 @@ export function applyTheme(theme: Theme): void {
 
   const root = document.documentElement;
 
-  // E2c #19h A1：清理旧主题的所有 CSS 变量——防止残留
+  // E2c #19h A1：清理旧主题的 colors 变量——防止残留
   if (currentTheme) {
     for (const key of Object.keys(currentTheme.colors)) {
       root.style.removeProperty(`--${key}`);
     }
   }
 
-  // 写入新变量
-  for (const [key, value] of Object.entries(theme.colors)) {
+  // E5.8#50.6：全量写入 colors + 玻璃/背景/悬浮——玻璃变量每次都写（缺省零值），
+  // 玻璃主题切回普通主题自动清零不残留；重复应用幂等。
+  const variables = getThemeVariables(theme);
+  for (const [key, value] of Object.entries(variables)) {
     root.style.setProperty(`--${key}`, value);
   }
   root.setAttribute("data-theme", theme.type);
@@ -122,7 +227,7 @@ export function applyTheme(theme: Theme): void {
     linkdesk.bridge.broadcast("theme:changed", {
       themeId: theme.name,
       themeType: theme.type,
-      variables: theme.colors,
+      variables,
     });
   }
 

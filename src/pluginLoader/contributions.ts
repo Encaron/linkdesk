@@ -13,6 +13,7 @@
 import type { PluginManifest, ViewPluginEntry, ThemeContribution, IconThemeContribution, IconContribution, LanguageContribution, ContributesViews } from "../core/api/types";
 import { registerViewPlugin } from "./viewRegistry";
 import { registerTheme, getAvailableThemes } from "../core/services/ui/ThemeEngine";
+import type { ThemeSurface, ThemeBackground } from "../core/services/ui/ThemeEngine";
 import { ThemeRegistry } from "../core/registry/appearance/ThemeRegistry";
 import { IconRegistry } from "../core/registry/appearance/IconRegistry";
 import { LanguageRegistry } from "../core/registry/languages/LanguageRegistry";
@@ -412,7 +413,10 @@ async function loadThemeContributionData(pluginId: string, manifest: PluginManif
     if (!data) continue;
     const themeType = (data.type as "dark" | "light") ?? tc.uiTheme;
     const colors = extractThemeColors(data);
-    registerTheme({ name: tc.label, type: themeType as "dark" | "light", colors }, pluginId);
+    // E5.8#50.6：surface/background 透传——主题 JSON 质感字段（缺省 = undefined → 引擎默认零值）
+    const surface = (data.surface as ThemeSurface) || undefined;
+    const background = (data.background as ThemeBackground) || undefined;
+    registerTheme({ name: tc.label, type: themeType as "dark" | "light", colors, surface, background }, pluginId);
   }
 }
 

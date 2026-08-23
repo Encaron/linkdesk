@@ -118,9 +118,44 @@ export interface CommandsAPI {
     /** @deprecated E3j #75——向后兼容别名，新代码用 configuration */
     config: CommandsAPI["configuration"];
 }
+/** E5.8#50.6：玻璃 + 悬浮面板质感字段——主题 JSON `surface`（缺省 = 无玻璃无悬浮） */
+export interface ThemeSurface {
+    type: "glass";
+    /** backdrop blur px——0 = 关 */
+    blur?: number;
+    /** 饱和度增强——1 = 关 */
+    saturate?: number;
+    /** 玻璃面叠加色 */
+    tint?: string;
+    /** 玻璃面不透明度——1 = 不透明 */
+    opacity?: number;
+    /** 液态玻璃顶部高光强度——0 = 关 */
+    specular?: number;
+    /** 形变过渡 ms——0 = 关 */
+    morph?: number;
+    /** 悬浮圆角 px——0 = 直角贴边 */
+    radius?: number;
+    /** 四周留缝 px——0 = 贴边 */
+    inset?: number;
+    /** 投影浮起——true = 悬浮投影（引擎映射 --shadow-lift） */
+    shadow?: boolean;
+}
+/** E5.8#50.6：图片背景质感字段——主题 JSON `background`（缺省 = 无图） */
+export interface ThemeBackground {
+    /** 图片路径——作者提供可解析 URL，引擎写入 `--bg-image` 时 url() 包裹 */
+    image?: string;
+    /** 图片层不透明度——1 = 不透明 */
+    opacity?: number;
+    /** 图片遮罩明暗（0-1 rgba 透明度）——0 = 无遮罩 */
+    mask?: number;
+}
 export interface LinkDeskTheme {
     name: string;
     type: "dark" | "light";
+    /** E5.8#50.6：玻璃/悬浮质感——主题 JSON `surface`（缺省 = 无玻璃无悬浮） */
+    surface?: ThemeSurface;
+    /** E5.8#50.6：图片背景——主题 JSON `background`（缺省 = 无图） */
+    background?: ThemeBackground;
     pluginId?: string;
 }
 export interface LinkDeskLanguage {
