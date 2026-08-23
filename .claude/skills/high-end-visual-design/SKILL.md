@@ -1,6 +1,6 @@
 ---
 name: high-end-visual-design
-description: Teaches the AI to design like a high-end agency. Defines the exact fonts, spacing, shadows, card structures, and animations that make a website feel expensive. Blocks all the common defaults that make AI designs look cheap or generic.
+description: Teaches the AI to design like a high-end agency. Defines the exact fonts, spacing, shadows, card structures, and animations that make a website feel expensive. Blocks all the common defaults that make AI designs look cheap or generic. 中文触发：高端感、agency 级、高级感、奢侈感、液态玻璃、悬浮圆角、毛玻璃、玻璃态、发丝光边、顶部高光、微光、精致、精细动效、Ethereal Glass。仅用于独立 web 界面/插件页面——LinkDesk 壳 UI（玻璃态壳机制/ThemeEngine surface）走 ui-ux-pro-max。
 ---
 
 # Agent Skill: Principal UI/UX Architect & Motion Choreographer (Awwwards-Tier)
