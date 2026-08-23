@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>E5.8 外观玻璃态——四 skill 竞标（同一场景 图全窗+悬浮面板 各画一版）</title>
+<style>
+  /* ============================================================
+     竞标页：同一场景「图全窗 + 悬浮面板主视觉」由四个 skill 各画一版
+     选手：ui-ux-pro-max（正统 Liquid Glass）/ high-end-visual-design（Ethereal Glass）
+            / minimalist-ui（编辑部极简）/ impeccable（craft-floor 框架）
+     场景不变（图全窗铺底 + 表面面板 + 悬浮设置面板），风格语言各自签名。
+     目的：实机对比各 skill 视觉产出，供拍板壳玻璃态走向。
+     ============================================================ */
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #0B0B0E;
+    color: #E8E8EC;
+    font-family: "Inter", "Segoe UI", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+    font-size: 13px;
+    padding: 40px 32px 72px;
+    max-width: 1560px;
+    margin: 0 auto;
+  }
+  h1 { font-size: 22px; font-weight: 700; letter-spacing: -0.01em; }
+  h1 small { display: block; font-size: 13px; font-weight: 400; color: #9A9AA3; margin-top: 8px; line-height: 1.7; max-width: 1100px; }
+  h1 code { color: #7C9CF6; font-family: "JetBrains Mono", Consolas, monospace; font-size: 12px; }
+
+  .grid {
+    margin-top: 36px;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 28px;
+  }
+
+  /* ---------- 每版卡片（Double-Bezel 风格外层壳） ---------- */
+  .bid {
+    border-radius: 18px;
+    padding: 10px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.08);
+  }
+  .bid .bid-inner {
+    border-radius: 12px;
+    overflow: hidden;
+    background: #101014;
+  }
+  .bid-head {
+    padding: 14px 18px 12px;
+    display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+  .bid-head .no { font-family: "JetBrains Mono", Consolas, monospace; font-size: 11px; color: #7C9CF6; }
+  .bid-head b { font-size: 14px; font-weight: 600; }
+  .bid-head .sig { font-size: 11.5px; color: #9A9AA3; margin-left: auto; }
+  .bid-body {
+    padding: 22px 18px 18px;
+    display: flex; justify-content: center;
+    background:
+      radial-gradient(700px 300px at 50% 0%, rgba(255,255,255,0.02), transparent 70%),
+      #0C0C10;
+    min-height: 560px;
+    align-items: center;
+  }
+  .bid-note {
+    padding: 12px 18px;
+    border-top: 1px solid rgba(255,255,255,0.06);
+    color: #8A8A93; font-size: 12px; line-height: 1.8;
+  }
+  .bid-note b { color: #C8C8CF; }
+
+  @media (max-width: 1080px) { .grid { grid-template-columns: 1fr; } }
+
+  /* ============================================================
+     统一场景骨架：窗口 + 图全窗 + 表面 + 悬浮面板
+     ============================================================ */
+  .app {
+    position: relative;
+    display: flex; flex-direction: column;
+    width: 470px; height: 420px;
+    font-size: 12px;
+    overflow: hidden;
+    border-radius: 8px;
+    flex: none;
+  }
+  .bg-layer {
+    position: absolute; inset: 0; z-index: 0;
+    background-image: url('sailor-moon.jpg');
+    background-size: cover;
+    background-position: center;
+    pointer-events: none;
+  }
+  .app > .titlebar, .app > .mid, .app > .statusbar { position: relative; z-index: 2; }
+  .app .mid { flex: 1; display: flex; min-height: 0; }
+  .titlebar { height: 28px; flex: none; display: flex; align-items: center; padding: 0 10px 0 12px; gap: 8px; user-select: none; }
+  .titlebar .logo { width: 14px; height: 14px; flex: none; }
+  .titlebar .app-name { font-size: 12px; }
+  .titlebar .drag { flex: 1; }
+  .win-btns { display: flex; gap: 2px; }
+  .win-btn { width: 34px; height: 22px; border: none; background: transparent; border-radius: 3px; display: flex; align-items: center; justify-content: center; }
+  .icon-bar { width: 40px; flex: none; display: flex; flex-direction: column; align-items: center; padding-top: 6px; gap: 2px; }
+  .icon-btn { width: 40px; height: 36px; border: none; background: transparent; display: flex; align-items: center; justify-content: center; }
+  .sidebar { width: 148px; flex: none; display: flex; flex-direction: column; font-size: 12px; }
+  .sidebar-header { padding: 8px 12px; letter-spacing: 0.06em; font-size: 10.5px; text-transform: uppercase; }
+  .tree-row { display: flex; align-items: center; gap: 6px; padding: 3px 12px; font-family: "JetBrains Mono", Consolas, monospace; font-size: 10.5px; }
+  .tree-row svg { width: 12px; height: 12px; flex: none; }
+  .main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+  .tabbar { height: 28px; flex: none; display: flex; align-items: stretch; }
+  .tab { display: flex; align-items: center; gap: 6px; padding: 0 11px; font-size: 12px; border-right: 1px solid rgba(255,255,255,0.08); }
+  .editor { flex: 1; min-height: 0; padding: 10px 16px; font-family: "JetBrains Mono", Consolas, monospace; font-size: 10.5px; line-height: 1.6; overflow: hidden; }
+  .editor .ln { display: inline-block; width: 24px; text-align: right; margin-right: 12px; user-select: none; }
+  .statusbar { height: 22px; flex: none; display: flex; align-items: center; gap: 14px; padding: 0 12px; font-size: 11px; }
+  .statusbar .right { margin-left: auto; opacity: 0.9; }
+  .fp {
+    position: absolute; z-index: 20;
+    top: 44px; right: 12px; bottom: 32px;
+    width: 280px;
+    display: flex; flex-direction: column; overflow: hidden;
+  }
+  .fp-title { height: 34px; flex: none; display: flex; align-items: center; gap: 8px; padding: 0 8px 0 12px; border-bottom: 1px solid rgba(255,255,255,0.08); font-size: 12px; }
+  .fp-title svg { width: 14px; height: 14px; }
+  .fp-body { flex: 1; min-height: 0; padding: 10px 12px; display: flex; flex-direction: column; gap: 10px; overflow: hidden; }
+  .fp .row { display: flex; align-items: center; gap: 8px; min-height: 22px; }
+  .fp .row .name { flex: 1; font-size: 11.5px; }
+  .fp .row .switch { width: 30px; height: 16px; border-radius: 8px; position: relative; }
+  .fp .row .switch::after { content: ''; position: absolute; top: 2px; right: 2px; width: 10px; height: 10px; border-radius: 50%; background: #fff; }
+
+  /* ============================================================
+     选手 1：ui-ux-pro-max —— Liquid Glass 正统（token 驱动）
+     blur 克制 + 遮罩生命线 + Inter + Lucide 细线 + system blue
+     ============================================================ */
+  .v-ux .app {
+    background: rgba(20,22,26,0.28);
+    border: 1px solid rgba(255,255,255,0.14);
+    box-shadow: 0 18px 50px rgba(0,0,0,0.5);
+  }
+  .v-ux .bg-layer::after { content:''; position:absolute; inset:0; background: rgba(0,0,0,0.62); }
+  .v-ux .surf {
+    background: rgba(15,17,20,0.40);
+    -webkit-backdrop-filter: blur(14px) saturate(1.5);
+    backdrop-filter: blur(14px) saturate(1.5);
+    border: 1px solid rgba(255,255,255,0.12);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.08);
+  }
+  .v-ux .titlebar { margin: 8px 8px 4px 8px; border-radius: 10px; color: #D4D4DC; }
+  .v-ux .titlebar .app-name { color: #9A9AA6; }
+  .v-ux .icon-bar { margin: 4px 4px 4px 0; border-radius: 10px; }
+  .v-ux .icon-btn { color: #8A8A96; }
+  .v-ux .icon-btn.active { color: #fff; }
+  .v-ux .icon-btn svg { width: 18px; height: 18px; }
+  .v-ux .sidebar { margin: 4px; border-radius: 10px; color: #D4D4DC; }
+  .v-ux .sidebar-header { color: #8A8A96; }
+  .v-ux .tree-row { color: #C8C8D0; }
+  .v-ux .tree-row.selected { background: rgba(0,122,255,0.22); }
+  .v-ux .tree-row svg { color: #8A8A96; }
+  .v-ux .main { margin: 4px 4px 4px 0; border-radius: 10px; }
+  .v-ux .tab { color: #9A9AA6; }
+  .v-ux .tab.active { color: #fff; background: rgba(255,255,255,0.06); }
+  .v-ux .editor { color: #D8D8E0; }
+  .v-ux .editor .ln { color: rgba(255,255,255,0.30); }
+  .v-ux .statusbar { margin: 4px 8px 8px 8px; border-radius: 10px; color: #fff; background: rgba(0,122,255,0.55); }
+  .v-ux .fp { border-radius: 12px; }
+  .v-ux .fp-title { color: #E8E8F0; }
+  .v-ux .fp-title svg { color: #4D9BFF; }
+  .v-ux .fp .row .switch { background: #007AFF; border: 1px solid rgba(255,255,255,0.25); }
+  .v-ux .code .kw { color: #7FB8FF; } .v-ux .code .cm { color: #7ECF9A; } .v-ux .code .str { color: #E5A88F; }
+
+  /* ============================================================
+     选手 2：high-end-visual-design —— Ethereal Glass（华丽版）
+     深黑 #050505 + 径向光斑 + Vantablack 玻璃 + 发丝光边 + Grotesk + 双边框
+     ============================================================ */
+  .v-he .app {
+    background: rgba(5,5,7,0.30);
+    border: 1px solid rgba(255,255,255,0.10);
+    border-radius: 16px;
+    box-shadow:
+      0 0 0 1px rgba(255,255,255,0.03),
+      0 24px 80px rgba(0,0,0,0.65),
+      inset 0 1px 0 rgba(255,255,255,0.06);
+  }
+  .v-he .bg-layer::after { content:''; position:absolute; inset:0; background: rgba(0,0,0,0.55); }
+  .v-he .surf {
+    background: rgba(10,10,14,0.55);
+    -webkit-backdrop-filter: blur(24px) saturate(1.8);
+    backdrop-filter: blur(24px) saturate(1.8);
+    border: 1px solid rgba(255,255,255,0.10);
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.10),
+      inset 0 0 0 1px rgba(255,255,255,0.03);
+  }
+  .v-he .titlebar { margin: 10px 10px 5px 10px; border-radius: 14px; color: #F2F2F6; font-family: "Space Grotesk", "Segoe UI", sans-serif; letter-spacing: 0.02em; }
+  .v-he .titlebar .app-name { color: rgba(255,255,255,0.45); font-weight: 300; }
+  .v-he .win-btn { color: rgba(255,255,255,0.45); }
+  .v-he .icon-bar { margin: 5px 5px 5px 0; border-radius: 14px; }
+  .v-he .icon-btn { color: rgba(255,255,255,0.38); }
+  .v-he .icon-btn.active { color: #E7E7FF; }
+  .v-he .icon-btn svg { width: 17px; height: 17px; }
+  .v-he .sidebar { margin: 5px; border-radius: 14px; color: #F2F2F6; font-family: "Space Grotesk", "Segoe UI", sans-serif; }
+  .v-he .sidebar-header { color: rgba(255,255,255,0.32); letter-spacing: 0.16em; font-size: 10px; }
+  .v-he .tree-row { color: rgba(255,255,255,0.72); }
+  .v-he .tree-row.selected { background: rgba(124,108,246,0.18); }
+  .v-he .tree-row svg { color: rgba(255,255,255,0.35); }
+  .v-he .main { margin: 5px 5px 5px 0; border-radius: 14px; }
+  .v-he .tab { color: rgba(255,255,255,0.42); font-family: "Space Grotesk", "Segoe UI", sans-serif; }
+  .v-he .tab.active { color: #F2F2F6; background: rgba(255,255,255,0.05); }
+  .v-he .editor { color: rgba(255,255,255,0.78); font-family: "Space Grotesk", "JetBrains Mono", monospace; font-size: 11px; }
+  .v-he .editor .ln { color: rgba(255,255,255,0.22); }
+  .v-he .statusbar { margin: 5px 10px 10px 10px; border-radius: 14px; color: rgba(255,255,255,0.85); font-family: "Space Grotesk", "Segoe UI", sans-serif; }
+  .v-he .fp { border-radius: 16px; }
+  .v-he .fp-title { color: #F2F2F6; font-family: "Space Grotesk", "Segoe UI", sans-serif; letter-spacing: 0.02em; }
+  .v-he .fp-title svg { color: #9C8CFF; }
+  .v-he .fp .row .switch { background: linear-gradient(90deg, #7C6CF6, #34D399); border: 1px solid rgba(255,255,255,0.18); box-shadow: 0 0 14px rgba(124,108,246,0.35); }
+  .v-he .code .kw { color: #A79BFF; } .v-he .code .cm { color: #6FC79E; } .v-he .code .str { color: #F0B98C; }
+
+  /* ============================================================
+     选手 3：minimalist-ui —— 编辑部极简（暖单色 + 平面）
+     禁玻璃禁渐变——图照放，面板平面化 1px #EAEAEA，serif 标题 + 宏留白
+     ============================================================ */
+  .v-min .app {
+    background: #FFFFFF;
+    border: 1px solid #EAEAEA;
+    border-radius: 12px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.03);
+  }
+  .v-min .bg-layer { opacity: 0.35; filter: saturate(0.55) brightness(1.05); }
+  .v-min .bg-layer::after { content:''; position:absolute; inset:0; background: rgba(247,246,243,0.78); }
+  .v-min .surf {
+    background: #F9F9F8;
+    border: 1px solid #EAEAEA;
+  }
+  .v-min .titlebar { margin: 10px; border-radius: 8px; background: #FFFFFF; color: #2F3437; border: 1px solid #EAEAEA; }
+  .v-min .titlebar .app-name { color: #6E6E68; font-weight: 500; }
+  .v-min .win-btn { color: #B0B0AA; }
+  .v-min .icon-bar { margin: 0 10px 10px 10px; border-radius: 8px; background: #FFFFFF; border: 1px solid #EAEAEA; padding-top: 8px; }
+  .v-min .icon-btn { color: #8A8A84; }
+  .v-min .icon-btn.active { color: #111111; }
+  .v-min .icon-btn svg { width: 18px; height: 18px; }
+  .v-min .sidebar { margin: 0 10px 10px 10px; border-radius: 8px; background: #FFFFFF; border: 1px solid #EAEAEA; font-family: "Instrument Serif", Georgia, serif; }
+  .v-min .sidebar-header { color: #9A9A94; font-family: "SF Pro Display", "Segoe UI", sans-serif; letter-spacing: 0.1em; }
+  .v-min .tree-row { color: #2F3437; font-family: "SF Pro Display", "Segoe UI", sans-serif; font-size: 12px; }
+  .v-min .tree-row.selected { background: #FBF3DB; }
+  .v-min .tree-row svg { color: #9A9A94; }
+  .v-min .main { margin: 0 10px 10px 0; border-radius: 8px; background: #FFFFFF; border: 1px solid #EAEAEA; }
+  .v-min .tab { color: #8A8A84; font-family: "SF Pro Display", "Segoe UI", sans-serif; }
+  .v-min .tab.active { color: #111111; border-top: 2px solid #111111; }
+  .v-min .editor { color: #3A3F42; font-family: "SF Pro Display", "Segoe UI", sans-serif; font-size: 12px; line-height: 1.9; }
+  .v-min .editor .ln { color: #C0C0BA; }
+  .v-min .statusbar { margin: 0 10px 10px 10px; border-radius: 8px; background: #FFFFFF; border: 1px solid #EAEAEA; color: #8A8A84; }
+  .v-min .fp { border-radius: 8px; background: #FFFFFF; border: 1px solid #EAEAEA; top: 46px; }
+  .v-min .fp-title { color: #2F3437; font-family: "SF Pro Display", "Segoe UI", sans-serif; }
+  .v-min .fp-title svg { color: #346538; }
+  .v-min .fp .row .switch { background: #2F3437; border: 1px solid #D6D6D0; }
+  .v-min .code .kw { color: #1F6C9F; } .v-min .code .cm { color: #346538; } .v-min .code .str { color: #9F2F2D; }
+  .v-min .editor .cm { font-style: italic; }
+
+  /* ============================================================
+     选手 4：impeccable —— craft-floor 框架（hairline + 内联 SVG）
+     1px 发丝线 + 禁彩色粗边 + 内联细线图标 + 克制均衡
+     ============================================================ */
+  .v-im .app {
+    background: rgba(16,16,20,0.35);
+    border: 1px solid rgba(255,255,255,0.14);
+    border-radius: 10px;
+    box-shadow: 0 14px 40px rgba(0,0,0,0.42);
+  }
+  .v-im .bg-layer::after { content:''; position:absolute; inset:0; background: rgba(10,10,14,0.60); }
+  .v-im .surf {
+    background: rgba(18,18,24,0.42);
+    -webkit-backdrop-filter: blur(16px) saturate(1.4);
+    backdrop-filter: blur(16px) saturate(1.4);
+    border: 1px solid rgba(255,255,255,0.14);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.07);
+  }
+  .v-im .titlebar { margin: 8px 8px 4px 8px; border-radius: 10px; color: #E6E6EC; }
+  .v-im .titlebar .app-name { color: #8E8E98; }
+  .v-im .win-btn { color: #8E8E98; }
+  .v-im .icon-bar { margin: 4px 4px 4px 0; border-radius: 10px; }
+  .v-im .icon-btn { color: #8E8E98; }
+  .v-im .icon-btn.active { color: #FFFFFF; }
+  .v-im .icon-btn svg { width: 18px; height: 18px; }
+  .v-im .sidebar { margin: 4px; border-radius: 10px; color: #E6E6EC; }
+  .v-im .sidebar-header { color: #8E8E98; }
+  .v-im .tree-row { color: #C6C6CE; }
+  .v-im .tree-row.selected { background: rgba(90,160,255,0.18); }
+  .v-im .tree-row svg { color: #8E8E98; }
+  .v-im .main { margin: 4px 4px 4px 0; border-radius: 10px; }
+  .v-im .tab { color: #8E8E98; }
+  .v-im .tab.active { color: #E6E6EC; background: rgba(255,255,255,0.05); }
+  .v-im .editor { color: #D2D2D8; }
+  .v-im .editor .ln { color: rgba(255,255,255,0.26); }
+  .v-im .statusbar { margin: 4px 8px 8px 8px; border-radius: 10px; color: #fff; background: rgba(70,130,220,0.5); }
+  .v-im .fp { border-radius: 12px; }
+  .v-im .fp-title { color: #E6E6EC; }
+  .v-im .fp-title svg { color: #5AA0FF; }
+  .v-im .fp .row .switch { background: #4A82CC; border: 1px solid rgba(255,255,255,0.2); }
+  .v-im .code .kw { color: #7FB0F5; } .v-im .code .cm { color: #79C08E; } .v-im .code .str { color: #E0A184; }
+</style>
+</head>
+<body>
+
+<h1>E5.8 外观玻璃态——四 skill 竞标
+  <small>同一场景（<code>sailor-moon.jpg</code> 图全窗铺底 + 标题栏/图标栏/侧栏/主区/状态栏表面 + 悬浮设置面板）由四个 skill 各自绘制。目的：实机对比各 skill 的视觉签名，供拍板壳玻璃态走向。风格差异即 skill 理念差异。</small>
+</h1>
+
+<div class="grid">
+
+  <!-- ============ 选手 1：ui-ux-pro-max ============ -->
+  <div class="bid">
+    <div class="bid-inner">
+      <div class="bid-head">
+        <span class="no">01</span>
+        <b>ui-ux-pro-max</b>
+        <span class="sig">Liquid Glass 正统 · token 驱动</span>
+      </div>
+      <div class="bid-body v-ux">
+        <div class="app">
+          <div class="bg-layer"></div>
+          <div class="titlebar surf">
+            <svg class="logo" viewBox="0 0 16 16"><rect x="2" y="2" width="12" height="12" rx="3" fill="#007AFF"/><rect x="5" y="5" width="6" height="6" rx="1.5" fill="#fff"/></svg>
+            <span class="app-name">LinkDesk</span>
+            <span class="drag"></span>
+            <div class="win-btns"><button class="win-btn">─</button><button class="win-btn">□</button><button class="win-btn">✕</button></div>
+          </div>
+          <div class="mid">
+            <div class="icon-bar surf">
+              <button class="icon-btn active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg></button>
+              <button class="icon-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg></button>
+              <button class="icon-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg></button>
+            </div>
+            <div class="sidebar surf">
+              <div class="sidebar-header">资源管理器</div>
+              <div class="tree-row"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg>linkdesk</div>
+              <div class="tree-row selected"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 5h16M4 12h16M4 19h10"/></svg>main.ts</div>
+            </div>
+            <div class="main surf">
+              <div class="tabbar"><div class="tab active"><span style="width:6px;height:6px;border-radius:50%;background:#CCA700;flex:none"></span>main.ts</div><div class="tab">serial.tsx</div></div>
+              <div class="editor code">
+                <div><span class="ln">1</span><span class="cm">// 图全窗铺底——每块表面 = 悬浮圆角玻璃面板</span></div>
+                <div><span class="ln">2</span><span class="kw">import</span> { initShell } <span class="kw">from</span> <span class="str">"@src/core"</span>;</div>
+                <div><span class="ln">3</span>&nbsp;</div>
+                <div><span class="ln">4</span><span class="cm">// 遮罩 0.88 生命线 · blur 侧栏8/主区18</span></div>
+              </div>
+            </div>
+          </div>
+          <div class="statusbar surf"><span>就绪</span><span class="right">Aurora Glass · 悬浮圆角</span></div>
+          <div class="fp surf">
+            <div class="fp-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.6M12 18.6v2.6M2.8 12h2.6M18.6 12h2.6"/></svg>设置
+              <div style="margin-left:auto"><button class="win-btn">✕</button></div>
+            </div>
+            <div class="fp-body">
+              <div class="row"><span class="name">底部面板</span><span class="switch"></span></div>
+              <div class="row"><span class="name">主题</span><span style="font-size:11px;color:rgba(255,255,255,0.5)">Aurora Glass ▾</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="bid-note"><b>正统基线：</b>Liquid Glass 风格 + Inter + Lucide + system blue。blur 克制（侧栏小/主区大），遮罩 0.62 演示（默认 0.88 生命线）。<b>这正是壳 token 体系（--glass-*/--bg-*/--surface-*）真实落地的样子。</b></div>
+    </div>
+  </div>
+
+  <!-- ============ 选手 2：high-end-visual-design ============ -->
+  <div class="bid">
+    <div class="bid-inner">
+      <div class="bid-head">
+        <span class="no">02</span>
+        <b>high-end-visual-design</b>
+        <span class="sig">Ethereal Glass 华丽 · 营销级</span>
+      </div>
+      <div class="bid-body v-he">
+        <div class="app">
+          <div class="bg-layer"></div>
+          <div class="titlebar surf">
+            <svg class="logo" viewBox="0 0 16 16"><path d="M2.5 4.5 L8 2 L13.5 4.5 V11.5 L8 14 L2.5 11.5 Z" fill="none" stroke="rgba(255,255,255,0.7)" stroke-width="1"/><path d="M8 2 V14 M2.5 4.5 L13.5 11.5 M13.5 4.5 L2.5 11.5" stroke="rgba(255,255,255,0.25)" stroke-width="0.5"/></svg>
+            <span class="app-name">LinkDesk</span>
+            <span class="drag"></span>
+            <div class="win-btns"><button class="win-btn">─</button><button class="win-btn">□</button><button class="win-btn">✕</button></div>
+          </div>
+          <div class="mid">
+            <div class="icon-bar surf">
+              <button class="icon-btn active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.1"><path d="M3 7.5a2.5 2.5 0 0 1 2.5-2.5h4.5l2 2H18.5A2.5 2.5 0 0 1 21 9.5v8a2.5 2.5 0 0 1-2.5 2.5H5.5A2.5 2.5 0 0 1 3 17.5z"/></svg></button>
+              <button class="icon-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.1"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M20 20l-4.5-4.5"/></svg></button>
+              <button class="icon-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.1"><rect x="3.5" y="3.5" width="7.5" height="7.5" rx="2"/><rect x="13" y="3.5" width="7.5" height="7.5" rx="2"/><rect x="3.5" y="13" width="7.5" height="7.5" rx="2"/><rect x="13" y="13" width="7.5" height="7.5" rx="2"/></svg></button>
+            </div>
+            <div class="sidebar surf">
+              <div class="sidebar-header">资源管理器</div>
+              <div class="tree-row"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.1"><path d="M3 7.5a2.5 2.5 0 0 1 2.5-2.5h4.5l2 2H18.5A2.5 2.5 0 0 1 21 9.5v8a2.5 2.5 0 0 1-2.5 2.5H5.5A2.5 2.5 0 0 1 3 17.5z"/></svg>linkdesk</div>
+              <div class="tree-row selected"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.1"><path d="M4 5h16M4 12h16M4 19h10"/></svg>main.ts</div>
+            </div>
+            <div class="main surf">
+              <div class="tabbar"><div class="tab active"><span style="width:6px;height:6px;border-radius:50%;background:#CCA700;flex:none"></span>main.ts</div><div class="tab">serial.tsx</div></div>
+              <div class="editor code">
+                <div><span class="ln">1</span><span class="cm">// 深黑底 + 光斑 + Vantablack 玻璃</span></div>
+                <div><span class="ln">2</span><span class="kw">import</span> { initShell } <span class="kw">from</span> <span class="str">"@src/core"</span>;</div>
+                <div><span class="ln">3</span>&nbsp;</div>
+                <div><span class="ln">4</span><span class="cm">// 发丝光边 + 内阴影折射 · blur 24</span></div>
+              </div>
+            </div>
+          </div>
+          <div class="statusbar surf"><span>就绪</span><span class="right">Ethereal Glass</span></div>
+          <div class="fp surf">
+            <div class="fp-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.1"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.6M12 18.6v2.6M2.8 12h2.6M18.6 12h2.6"/></svg>设置
+              <div style="margin-left:auto"><button class="win-btn">✕</button></div>
+            </div>
+            <div class="fp-body">
+              <div class="row"><span class="name">底部面板</span><span class="switch"></span></div>
+              <div class="row"><span class="name">主题</span><span style="font-size:11px;color:rgba(255,255,255,0.42)">Ethereal ▾</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="bid-note"><b>华丽版：</b>Ethereal Glass——极深黑 + 径向光斑 + Vantablack 玻璃 + 纯白/10 发丝 + 内阴影折射 + Grotesk 字体 + 双边框。视觉冲击力最强，但<b>与壳 token 体系冲突</b>（禁 Inter/Lucide，像素级精调每处，token 化成本高）。适合展示级/营销页，落壳 UI 要大幅改造。</div>
+    </div>
+  </div>
+
+  <!-- ============ 选手 3：minimalist-ui ============ -->
+  <div class="bid">
+    <div class="bid-inner">
+      <div class="bid-head">
+        <span class="no">03</span>
+        <b>minimalist-ui</b>
+        <span class="sig">编辑部极简 · 暖单色平面</span>
+      </div>
+      <div class="bid-body v-min">
+        <div class="app">
+          <div class="bg-layer"></div>
+          <div class="titlebar surf">
+            <svg class="logo" viewBox="0 0 16 16"><rect x="2" y="2" width="12" height="12" rx="2" fill="#2F3437"/><rect x="5.5" y="5.5" width="5" height="5" fill="#FBF3DB"/></svg>
+            <span class="app-name">LinkDesk</span>
+            <span class="drag"></span>
+            <div class="win-btns"><button class="win-btn">─</button><button class="win-btn">□</button><button class="win-btn">✕</button></div>
+          </div>
+          <div class="mid">
+            <div class="icon-bar surf">
+              <button class="icon-btn active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg></button>
+              <button class="icon-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg></button>
+              <button class="icon-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="7" height="7"/><rect x="13" y="4" width="7" height="7"/><rect x="4" y="13" width="7" height="7"/><rect x="13" y="13" width="7" height="7"/></svg></button>
+            </div>
+            <div class="sidebar surf">
+              <div class="sidebar-header">资源管理器</div>
+              <div class="tree-row"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg>linkdesk</div>
+              <div class="tree-row selected"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 5h16M4 12h16M4 19h10"/></svg>main.ts</div>
+            </div>
+            <div class="main surf">
+              <div class="tabbar"><div class="tab active"><span style="width:6px;height:6px;border-radius:50%;background:#956400;flex:none"></span>main.ts</div><div class="tab">serial.tsx</div></div>
+              <div class="editor code">
+                <div><span class="ln">1</span><span class="cm">// 图保留但平面化——面板是纸不是玻璃</span></div>
+                <div><span class="ln">2</span><span class="kw">import</span> { initShell } <span class="kw">from</span> <span class="str">"@src/core"</span>;</div>
+                <div><span class="ln">3</span>&nbsp;</div>
+                <div><span class="ln">4</span><span class="cm">// 1px #EAEAEA · 无投影 · serif 标题</span></div>
+              </div>
+            </div>
+          </div>
+          <div class="statusbar surf"><span>就绪</span><span class="right">Editorial Warm</span></div>
+          <div class="fp surf">
+            <div class="fp-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.6M12 18.6v2.6M2.8 12h2.6M18.6 12h2.6"/></svg>设置
+              <div style="margin-left:auto"><button class="win-btn">✕</button></div>
+            </div>
+            <div class="fp-body">
+              <div class="row"><span class="name">底部面板</span><span class="switch"></span></div>
+              <div class="row"><span class="name">主题</span><span style="font-size:11px;color:#9A9A94">Editorial ▾</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="bid-note"><b>极简版：</b>编辑部暖单色——图保留但降饱和淡化（平面背景），面板从玻璃变「纸」（1px #EAEAEA 边框 + 无投影 + 8px 圆角），serif 标题 + 宏留白 + 少量 pastel 点缀。理念与玻璃态<b>直接对立</b>（禁玻璃禁渐变）——用它是「去掉玻璃只留图」的另一极。</div>
+    </div>
+  </div>
+
+  <!-- ============ 选手 4：impeccable ============ -->
+  <div class="bid">
+    <div class="bid-inner">
+      <div class="bid-head">
+        <span class="no">04</span>
+        <b>impeccable</b>
+        <span class="sig">craft-floor 框架 · 审慎均衡</span>
+      </div>
+      <div class="bid-body v-im">
+        <div class="app">
+          <div class="bg-layer"></div>
+          <div class="titlebar surf">
+            <svg class="logo" viewBox="0 0 16 16"><rect x="2" y="2" width="12" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="1"/><rect x="5" y="5" width="6" height="6" fill="currentColor" opacity="0.85"/></svg>
+            <span class="app-name">LinkDesk</span>
+            <span class="drag"></span>
+            <div class="win-btns"><button class="win-btn">─</button><button class="win-btn">□</button><button class="win-btn">✕</button></div>
+          </div>
+          <div class="mid">
+            <div class="icon-bar surf">
+              <button class="icon-btn active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg></button>
+              <button class="icon-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg></button>
+              <button class="icon-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="4" y="4" width="7" height="7" rx="1"/><rect x="13" y="4" width="7" height="7" rx="1"/><rect x="4" y="13" width="7" height="7" rx="1"/><rect x="13" y="13" width="7" height="7" rx="1"/></svg></button>
+            </div>
+            <div class="sidebar surf">
+              <div class="sidebar-header">资源管理器</div>
+              <div class="tree-row"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg>linkdesk</div>
+              <div class="tree-row selected"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M4 5h16M4 12h16M4 19h10"/></svg>main.ts</div>
+            </div>
+            <div class="main surf">
+              <div class="tabbar"><div class="tab active"><span style="width:6px;height:6px;border-radius:50%;background:#CCA700;flex:none"></span>main.ts</div><div class="tab">serial.tsx</div></div>
+              <div class="editor code">
+                <div><span class="ln">1</span><span class="cm">// 1px hairline + 内联 SVG 细线</span></div>
+                <div><span class="ln">2</span><span class="kw">import</span> { initShell } <span class="kw">from</span> <span class="str">"@src/core"</span>;</div>
+                <div><span class="ln">3</span>&nbsp;</div>
+                <div><span class="ln">4</span><span class="cm">// 可验证 · brief wins · 克制配色</span></div>
+              </div>
+            </div>
+          </div>
+          <div class="statusbar surf"><span>就绪</span><span class="right">Impeccable Craft</span></div>
+          <div class="fp surf">
+            <div class="fp-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.6M12 18.6v2.6M2.8 12h2.6M18.6 12h2.6"/></svg>设置
+              <div style="margin-left:auto"><button class="win-btn">✕</button></div>
+            </div>
+            <div class="fp-body">
+              <div class="row"><span class="name">底部面板</span><span class="switch"></span></div>
+              <div class="row"><span class="name">主题</span><span style="font-size:11px;color:rgba(255,255,255,0.5)">Craft ▾</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="bid-note"><b>框架版：</b>craft-floor 标准——1px 发丝线 + 内联 SVG 细线图标 + 禁彩色粗边 + 克制的玻璃。介于正统与华丽之间的均衡态，视觉最「稳」，但风格签名较弱（它重在质量底线而非风格主张）。</div>
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>
