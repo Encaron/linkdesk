@@ -36,10 +36,12 @@ import {
 } from "./ThemeEngine";
 import type { MixProfile } from "./ThemeEngine";
 import { rollback } from "../../registry/registrationTracker";
-import { ThemeRegistry } from "../../registry/appearance/ThemeRegistry";
+import { ThemeRegistry, parseThemeRecipe } from "../../registry/appearance/ThemeRegistry";
 import { applyRemoteConfigChange, clearConfigurationCache } from "../configuration/ConfigurationService";
 import type { Theme } from "./ThemeEngine";
 import type { ThemeRecipe } from "../../types/theme";
+import fs from "node:fs";
+import path from "node:path";
 
 const MOCK_THEME: Theme = {
   name: "Test Dark",
@@ -836,5 +838,71 @@ describe("ThemeEngine — 混搭合并（E5.8#50.26，10 §1/§3 每域各自取
     expect(root.style.getPropertyValue("--font-ui")).toBe("__ld_demo-mix_DemoFont"); // 资产 → 两步换族名
     expect(document.getElementById("ld-ff-__ld_demo-mix_DemoFont")).not.toBeNull();
     expect(root.style.getPropertyValue("--bg-window")).toBe("#FFFBF5"); // 颜色域跟随 → dew
+  });
+});
+
+/* ── E5.8#50.27：真实极限壳主题端到端裁决——gallery ①⑨⑩ 壳真实落地。
+   读取 plugins/user/theme-{songti,terminal,pill} 真实主题 JSON（#50.27 验收「制作真实主题插件做端到端最终裁决」）。
+   例外依据：验证真实接线而必须用真 id/真数据（硬约束 21 豁免区）——虚构 fixture 无法裁决「gallery 配方 ↔ 引擎」契约。 */
+describe("ThemeEngine — 真实极限壳主题（E5.8#50.27，gallery 端到端裁决）", () => {
+  const ROOT = process.cwd();
+
+  /** 读真实主题 JSON → parseThemeRecipe → 返回 Recipe（null = 解析失败） */
+  function loadRealRecipe(rel: string, id: string, label: string, uiTheme: "light" | "dark") {
+    const raw = fs.readFileSync(path.join(ROOT, rel), "utf8");
+    const recipe = parseThemeRecipe(JSON.parse(raw), { id, label, uiTheme, path: rel });
+    return { raw, recipe };
+  }
+
+  it("songti-print — 宋体印刷体 font 域（ui=SimSun 全 UI 宋体；形制现状直角 isolate 字族轴）", () => {
+    const { recipe } = loadRealRecipe(
+      "plugins/user/theme-songti/themes/songti-print.json",
+      "songti-print", "宋体印刷体 Songti Print", "light",
+    );
+    expect(recipe).not.toBeNull();
+    expect(recipe!.type).toBe("light");
+    expect(recipe!.appearance?.font).toEqual({ ui: "SimSun", mono: "Cascadia Mono" });
+    const tokens = mergeDomains(recipe!);
+    expect(tokens["font-ui"]).toBe("SimSun");
+    expect(tokens["font-mono"]).toBe("Cascadia Mono");
+    expect(tokens["radius-sm"]).toBeUndefined(); // 形制零值——不写 --radius-*（继承现状直角）
+    expect(tokens["bg-window"]).toBe("#FBF8F2"); // 纸白墨黑
+    expect(tokens["accent"]).toBe("#4A463E");
+  });
+
+  it("terminal-monofont — 终端机 font 域（ui+mono 全 Cascadia Mono 等宽族；形制现状直角）", () => {
+    const { recipe } = loadRealRecipe(
+      "plugins/user/theme-terminal/themes/terminal-monofont.json",
+      "terminal-monofont", "终端机 Terminal Mono", "dark",
+    );
+    expect(recipe).not.toBeNull();
+    expect(recipe!.appearance?.font).toEqual({ ui: "Cascadia Mono", mono: "Cascadia Mono" });
+    const tokens = mergeDomains(recipe!);
+    expect(tokens["font-ui"]).toBe("Cascadia Mono");
+    expect(tokens["font-mono"]).toBe("Cascadia Mono");
+    expect(tokens["radius-sm"]).toBeUndefined();
+    expect(tokens["bg-window"]).toBe("#0C0C0C"); // 终端黑底
+    expect(tokens["accent"]).toBe("#00E676"); // 磷光绿
+    expect(tokens["status-connected"]).toBe("#00E676");
+  });
+
+  it("pill-bubble — 全胶囊 radius 域（八档 999px + 悬浮形态 radius999/inset8/shadow + 泡泡糖）", () => {
+    const { recipe } = loadRealRecipe(
+      "plugins/user/theme-pill/themes/pill-bubble.json",
+      "pill-bubble", "全胶囊 Pill Bubble", "light",
+    );
+    expect(recipe).not.toBeNull();
+    expect(recipe!.appearance?.radius).toEqual({
+      xs: 999, sm: 999, md: 999, lg: 999, xl: 999, "2xl": 999, pill: 999, full: 999,
+    });
+    const tokens = mergeDomains(recipe!);
+    expect(tokens["radius-md"]).toBe("999px"); // tab 胶囊
+    expect(tokens["radius-pill"]).toBe("999px");
+    expect(tokens["surface-radius"]).toBe("999px"); // zone 胶囊化
+    expect(tokens["surface-inset"]).toBe("8px"); // 留缝
+    expect(tokens["surface-shadow"]).toBe("var(--shadow-lift)"); // 投影浮起
+    expect(tokens["glass-specular"]).toBe("0.4"); // 发丝光边（gallery surface.border 意图 = specular 派生）
+    expect(tokens["bg-window"]).toBe("#FFF0F5");
+    expect(tokens["accent"]).toBe("#D6336C"); // 泡泡糖
   });
 });
