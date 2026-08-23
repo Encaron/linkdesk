@@ -12,6 +12,7 @@ import FontFamilySelect from "@src/components/shared/font-family-select/FontFami
 import FilePathInput from "@src/components/shared/file-path-input/FilePathInput";
 import NumberInput from "@src/components/shared/number-input/NumberInput";
 import Slider from "@src/components/shared/slider/Slider"; // E5.8#50.9：滑杆控件（shared 白名单惯例，非 @src/core 零警告）
+import ThemePicker from "@src/components/shared/theme-picker/ThemePicker"; // E5.8#50.22：主题配方卡片（数据走 window.linkdesk.theme）
 import ObjectEditor from "./ObjectEditor";
 import type { ConfigProperty } from "./types";
 
@@ -72,6 +73,8 @@ function renderControl(
           max={prop.maximum ?? 100}
         />
       );
+    case "themePicker": // E5.8#50.22：主题配方卡片——value=app.theme，点卡片 onChange(recipeId)（onApply 应用配方）
+      return <ThemePicker value={String(val)} onChange={(v) => onChange(v)} />;
     default:
       break;
   }

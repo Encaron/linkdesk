@@ -218,6 +218,9 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
         properties: {
           "app.theme": {
             type: "string",
+            // E5.8#50.22：uiHint 声明卡片控件——设置页 renderControl "themePicker" 分支渲染配方卡片
+            // （数据走 linkdesk.theme.listRecipes，选中写回本 key 走下方 onApply 应用配方）
+            uiHint: "themePicker",
             // 初始枚举 = 配方 id + flat 名（与 syncAppThemeEnum 同构——StrictMode remount 幂等）；
             // 注册时 fallback 配方已登记（dark/light），插件配方加载后 syncAppThemeEnum 持续刷新
             default: "dark",

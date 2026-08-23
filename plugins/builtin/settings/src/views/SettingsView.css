@@ -275,6 +275,18 @@
   justify-content: flex-end;
 }
 
+/* E5.8#50.22：主题配方卡片行（uiHint "themePicker"）——整行铺开（mockup 主题区帧：
+   说明在上、卡片网格占满下一行）。:has() Chromium 105+ 安全。 */
+.settings-row:has(.theme-picker) {
+  flex-wrap: wrap;
+}
+
+.settings-row:has(.theme-picker) .settings-row-control {
+  flex-basis: 100%;
+  justify-content: stretch;
+  min-width: 0;
+}
+
 /* ── E3f #53c：设置项齿轮——hover 时出现，对标 VS Code Settings Editor ── */
 
 .settings-row-gear {
