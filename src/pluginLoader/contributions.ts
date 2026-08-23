@@ -12,7 +12,7 @@
 
 import type { PluginManifest, ViewPluginEntry, ThemeContribution, IconThemeContribution, IconContribution, LanguageContribution, ContributesViews } from "../core/api/types";
 import { registerViewPlugin } from "./viewRegistry";
-import { registerTheme, getAvailableThemes } from "../core/services/ui/ThemeEngine";
+import { registerTheme, getAvailableThemes, ensurePluginFontFacesCleanup } from "../core/services/ui/ThemeEngine";
 import { ThemeRegistry, parseThemeRecipe } from "../core/registry/appearance/ThemeRegistry";
 import { IconRegistry } from "../core/registry/appearance/IconRegistry";
 import { LanguageRegistry } from "../core/registry/languages/LanguageRegistry";
@@ -419,6 +419,9 @@ async function loadThemeContributionData(pluginId: string, manifest: PluginManif
     }
     // 数据层：Recipe 登记（05 schema 配方单真源）
     ThemeRegistry.registerRecipe(recipe, pluginId);
+    // E5.8#50.17：登记资产字体卸载清理——配方带 font.ui 资产路径时 applyRecipe 才注册 @font-face，
+    // 卸载须移除 style + 还原 --font-*（字体回默认验收）；幂等 + 重装可再登记
+    ensurePluginFontFacesCleanup(pluginId);
     // 桥接：flat Theme → ThemeEngine（现 apply 路径；#50.16 引擎按 Recipe 合并后此桥退役）
     const themeType = recipe.type ?? (tc.uiTheme === "light" ? "light" : "dark");
     const surface = recipe.appearance?.glass;

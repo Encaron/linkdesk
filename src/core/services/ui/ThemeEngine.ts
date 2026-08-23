@@ -11,6 +11,10 @@ import type { ThemeColors, ThemeSurface, ThemeBackground } from "../../types/the
 export type { ThemeColors, ThemeSurface, ThemeBackground } from "../../types/theme";
 // E5.8#50.16：Recipe + Colorway 合并算法（05 §4 继承链）——ThemeRecipe/ThemeAppearance/ThemeColorway
 import type { ThemeRecipe, ThemeAppearance, ThemeColorway } from "../../types/theme";
+// E5.8#50.17：资产字体两步机制——相对路径 → getPluginAssetPath 解析 linkdesk://（硬约束 12 同族）→ @font-face → 族名
+import { getPluginAssetPath } from "../../utils/path/pluginAssetPath";
+import { ThemeRegistry } from "../../registry/appearance/ThemeRegistry"; // getRecipeOwner——资产路径归属插件域
+import type { FontFaceSpec } from "../../types/ipc/events"; // 广播给池复刻 @font-face（池独立文档，不跨文档继承）
 
 export interface Theme {
   name: string;
@@ -231,7 +235,8 @@ export function getThemeVariables(theme: Theme): Record<string, string> {
 function commitTokens(
   variables: Record<string, string>,
   themeType: "light" | "dark",
-  state: { recipeId: string; colorwayId?: string }
+  state: { recipeId: string; colorwayId?: string },
+  fontFaces?: FontFaceSpec[]
 ): void {
   // E3f #51：先发 IPC 通知主进程——和 CSS 渲染并行，标题栏不落后
   const linkdesk = window.linkdesk;
@@ -251,11 +256,13 @@ function commitTokens(
   root.setAttribute("data-theme", themeType);
 
   // E3b #35：广播 CSS 变量到所有插件 WebView——跨进程主题同步
+  // E5.8#50.17：fontFaces 随载荷带给池——池侧复刻 @font-face（独立文档，壳注册的不生效）
   if (linkdesk?.bridge?.broadcast) {
     linkdesk.bridge.broadcast("theme:changed", {
       themeId: state.recipeId,
       themeType,
       variables,
+      ...(fontFaces?.length ? { fontFaces } : {}),
     });
   }
 
@@ -341,8 +348,11 @@ export function applyRecipe(
   overrides?: Record<string, string | number>
 ): void {
   const colorway = resolveColorway(recipe, colorwayId);
-  const effective = mergeDomains(recipe, colorway.id, overrides ?? getAppearanceOverrides());
-  commitTokens(effective, recipe.type, { recipeId: recipe.id, colorwayId: colorway.id });
+  // E5.8#50.17：资产字体两步解析——appearance.font 资产相对路径 → @font-face 注册 + 换族名
+  // （副作用在注册；纯合并用解析后的 appearance；fontFaces 广播给池复刻）
+  const { appearance, fontFaces } = resolveRecipeFonts(recipe);
+  const effective = mergeDomains({ ...recipe, appearance }, colorway.id, overrides ?? getAppearanceOverrides());
+  commitTokens(effective, recipe.type, { recipeId: recipe.id, colorwayId: colorway.id }, fontFaces);
   currentRecipeId = recipe.id;
   currentColorwayId = colorway.id;
   currentTheme = {
@@ -352,6 +362,124 @@ export function applyRecipe(
     surface: recipe.appearance?.glass,
     background: recipe.appearance?.background,
   };
+}
+
+/* ── E5.8#50.17：资产字体两步机制（作者自带 woff2/ttf/otf → @font-face 注册 → 族名写 --font-*）。
+   font-family 不能吃 url()——资产相对路径必须先注册 @font-face 拿族名，再写族名；系统族名直接写。 ── */
+
+/** @font-face 会话注册表——已注册族名 → spec（广播给池复刻；重复注册幂等去重） */
+const _activeFontFaces = new Map<string, FontFaceSpec>();
+/** pluginId → 已注册族名（卸载清理用——移除 style + 摘会话表） */
+const _pluginFontFaces = new Map<string, string[]>();
+
+/** 判定 font 域值是否为资产路径（需两步注册）——含路径分隔符或字体扩展名 → 资产；否则 = 系统族名直接写 */
+export function isAssetFontPath(value: string): boolean {
+  return /[/\\]/.test(value) || /\.(woff2?|ttf|otf)$/i.test(value);
+}
+
+/** 族名标识符净化——@font-face font-family 与 --font-* 值共用的合法 ident（pluginId/文件名可含 . 等非法字符） */
+function sanitizeFamilyPart(part: string): string {
+  return part.replace(/[^A-Za-z0-9_-]/g, "-");
+}
+
+/** 文件名去扩展名 + 净化——族名 stem（同文件重复注册去重键） */
+function extractFontStem(url: string): string {
+  const base = url.split(/[/\\]/).pop() ?? "";
+  return sanitizeFamilyPart(base.replace(/\.[^.]+$/, ""));
+}
+
+/** 按扩展名推断 src format 提示——未知扩展不写（浏览器自嗅探） */
+function fontFormatOf(url: string): string | undefined {
+  const ext = url.split(/[?#]/)[0].split(".").pop()?.toLowerCase();
+  if (ext === "woff2" || ext === "woff" || ext === "ttf" || ext === "otf") return ext;
+  return undefined;
+}
+
+/** 注册 @font-face（当前文档 head）——两步机制第一链。幂等：同族名已注册 → 直接返族名不重复插 style。 */
+export function ensureFontFace(url: string, pluginId: string): string {
+  const family = `__ld_${sanitizeFamilyPart(pluginId)}_${extractFontStem(url)}`;
+  if (_activeFontFaces.has(family)) return family;
+
+  const format = fontFormatOf(url);
+  const style = document.createElement("style");
+  style.id = `ld-ff-${family}`;
+  style.textContent =
+    `@font-face{font-family:"${family}";src:url("${url}")` +
+    `${format ? ` format("${format}")` : ""};font-display:swap}`;
+  document.head.appendChild(style);
+
+  _activeFontFaces.set(family, { family, url, format });
+  const owned = _pluginFontFaces.get(pluginId) ?? [];
+  if (!owned.includes(family)) owned.push(family);
+  _pluginFontFaces.set(pluginId, owned);
+  return family;
+}
+
+/**
+ * 解析配方字体域——资产相对路径 → 注册 @font-face + 换族名；系统族名原样。
+ * 副作用只在 @font-face 注册；返回：① 换好族名的 appearance（mergeDomains 纯合并消费）
+ * ② 本配方涉及的 fontFaces（commitTokens 广播给池复刻——池独立文档，壳注册的不生效）。
+ */
+export function resolveRecipeFonts(recipe: ThemeRecipe): {
+  appearance: ThemeAppearance | undefined;
+  fontFaces: FontFaceSpec[];
+} {
+  const font = recipe.appearance?.font;
+  if (!font?.ui && !font?.mono) return { appearance: recipe.appearance, fontFaces: [] };
+  const pluginId = ThemeRegistry.getRecipeOwner(recipe.id);
+  const resolved: { ui?: string; mono?: string } = {};
+  const fontFaces: FontFaceSpec[] = [];
+  const seen = new Set<string>();
+  for (const key of ["ui", "mono"] as const) {
+    const value = font[key];
+    if (value == null || value === "") continue;
+    if (!isAssetFontPath(value) || !pluginId) {
+      resolved[key] = value; // 系统族名直接写 / 找不到归属插件 → 写原值（浏览器回退，作者路径错误场景）
+      continue;
+    }
+    // 已含协议（linkdesk:// / http(s):// / data:）→ 原样；相对路径 → getPluginAssetPath 解析插件资产
+    const url = /^[a-z][a-z0-9+.-]*:/i.test(value) ? value : getPluginAssetPath(pluginId, value);
+    const family = ensureFontFace(url, pluginId);
+    resolved[key] = family;
+    if (!seen.has(family)) {
+      seen.add(family);
+      const spec = _activeFontFaces.get(family);
+      if (spec) fontFaces.push(spec);
+    }
+  }
+  const appearance: ThemeAppearance = recipe.appearance
+    ? { ...recipe.appearance, font: resolved }
+    : { font: resolved };
+  return { appearance, fontFaces };
+}
+
+/** 清理某插件注册的全部 @font-face（卸载回滚）——移除 style + 摘会话表 + 摘插件归属。
+ *  被清族名若正生效于 --font-ui/--font-mono → 还原（字体回默认）。幂等。 */
+export function cleanupPluginFontFaces(pluginId: string): void {
+  const families = _pluginFontFaces.get(pluginId);
+  if (families) {
+    for (const family of families) {
+      document.getElementById(`ld-ff-${family}`)?.remove();
+      _activeFontFaces.delete(family);
+    }
+    _pluginFontFaces.delete(pluginId);
+  }
+  const root = document.documentElement;
+  for (const token of ["font-ui", "font-mono"] as const) {
+    const current = root.style.getPropertyValue(`--${token}`).trim();
+    if (families?.includes(current)) root.style.removeProperty(`--${token}`);
+  }
+}
+
+/** 登记卸载清理——插件注册配方时调一次；回滚 disposer 自删守卫键（重装后能再登记）。 */
+const _fontCleanupRegistered = new Set<string>();
+export function ensurePluginFontFacesCleanup(pluginId: string): void {
+  if (_fontCleanupRegistered.has(pluginId)) return;
+  _fontCleanupRegistered.add(pluginId);
+  trackRegistration(pluginId, () => {
+    _fontCleanupRegistered.delete(pluginId);
+    cleanupPluginFontFaces(pluginId);
+  });
 }
 
 /** 当前活动配方/配色——无活动配方（flat apply 态）返回 null */

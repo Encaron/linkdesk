@@ -12,10 +12,22 @@ export interface ConfigurationChangedPayload {
   value: unknown;
 }
 
-/** 主题切换——theme:changed 载荷（themeType + CSS 变量表） */
+/** @font-face 规格（E5.8#50.17 资产字体）——壳注册后广播给池复刻（池是独立文档，@font-face 不跨文档继承） */
+export interface FontFaceSpec {
+  /** 注册的族名（引擎派生 `__ld_{pluginId}_{stem}`）——font-family 写这个，两步机制第一链 */
+  family: string;
+  /** 字体资产 URL（linkdesk://{pluginId}/{path} 或作者写的绝对 URL） */
+  url: string;
+  /** src format 提示（woff2/woff/ttf/otf 按扩展名推断） */
+  format?: string;
+}
+
+/** 主题切换——theme:changed 载荷（themeType + CSS 变量表 + 资产字族复刻表） */
 export interface ThemeChangedPayload {
   themeType: string;
   variables: Record<string, string>;
+  /** 当前配方涉及的全部 @font-face——池侧复刻注入；配方无资产字体 → 缺省（池清空上次注入） */
+  fontFaces?: FontFaceSpec[];
 }
 
 /** 强调色变更——accent:changed 载荷（仅 CSS 变量表） */

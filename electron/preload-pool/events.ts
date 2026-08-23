@@ -9,9 +9,32 @@
 import { ipcRenderer } from 'electron';
 import { IPC } from '../ipc/channels';
 import { createEventSystem, type EventSystemApi } from '../ipc/event-system';
-import type { ThemeChangedPayload, AccentChangedPayload } from '../../src/core/types/ipc/events';
+import type { ThemeChangedPayload, AccentChangedPayload, FontFaceSpec } from '../../src/core/types/ipc/events';
 import { onLangChanged } from './language';
 import { ensureSurfaceZonesObserver, measureSurfaceZones } from './surface-zones';
+
+// ── E5.8#50.17：资产字体 @font-face 复刻——池是独立文档，壳注册的 @font-face 不生效；
+//    壳随 theme:changed 广播 fontFaces 表，池侧注入单一 `<style data-ld-font-faces>`（整表替换，幂等）。
+const FONT_FACES_STYLE_ID = 'ld-font-faces';
+function applyFontFaces(fontFaces?: FontFaceSpec[]): void {
+  let style = document.getElementById(FONT_FACES_STYLE_ID) as HTMLStyleElement | null;
+  if (!fontFaces || fontFaces.length === 0) {
+    style?.remove();
+    return;
+  }
+  if (!style) {
+    style = document.createElement('style');
+    style.id = FONT_FACES_STYLE_ID;
+    document.head.appendChild(style);
+  }
+  style.textContent = fontFaces
+    .map(
+      (f) =>
+        `@font-face{font-family:"${f.family}";src:url("${f.url}")` +
+        `${f.format ? ` format("${f.format}")` : ''};font-display:swap}`
+    )
+    .join('');
+}
 
 // ── E5.7#37：心跳 pong——主进程 5s ping，模块顶层自动回复 ──
 // 硬约束 20：模块顶层注册（contextBridge.exposeInMainWorld 之前）。
@@ -29,13 +52,15 @@ export function createPoolEvents(): EventSystemApi {
     logPrefix: 'preload-pool',
     extraHandlers: {
       [IPC.theme.changed]: (payload) => {
-        const { themeType, variables } = payload as ThemeChangedPayload;
+        const { themeType, variables, fontFaces } = payload as ThemeChangedPayload;
         try {
           const root = document.documentElement;
           root.setAttribute('data-theme', themeType ?? 'dark');
           for (const [k, v] of Object.entries(variables as Record<string, string>)) {
             root.style.setProperty(`--${k}`, v);
           }
+          // E5.8#50.17：资产字体 @font-face 复刻（池独立文档）；载荷无 fontFaces → 清空上次注入
+          applyFontFaces(fontFaces);
           // E5.8#50.29/50.31：zones 模式下按本窗 DOM 量测切片坐标（+ ResizeObserver 重算）
           ensureSurfaceZonesObserver();
           measureSurfaceZones();

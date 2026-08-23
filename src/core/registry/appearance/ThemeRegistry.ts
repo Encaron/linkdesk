@@ -28,6 +28,8 @@ const pluginThemeIds = new Map<string, string[]>();
 
 const recipes = new Map<string, ThemeRecipe>();
 const pluginRecipeIds = new Map<string, string[]>();
+/** recipeId → 提供方插件 id（#50.17 资产字体归属解析——asset 相对路径需知插件域；#50.19 主题组归属复用） */
+const recipeOwners = new Map<string, string>();
 
 /**
  * E5.8#50.15：主题 JSON → Recipe（05 schema 解析，纯函数）。
@@ -193,6 +195,7 @@ export const ThemeRegistry = {
       console.warn(`[ThemeRegistry] 配方 "${recipe.id}" 重复注册——后注册者 "${pluginId}" 覆盖`);
     }
     recipes.set(recipe.id, recipe);
+    recipeOwners.set(recipe.id, pluginId);
     const ids = pluginRecipeIds.get(pluginId) ?? [];
     if (!ids.includes(recipe.id)) ids.push(recipe.id);
     pluginRecipeIds.set(pluginId, ids);
@@ -201,6 +204,7 @@ export const ThemeRegistry = {
       if (recipes.get(recipe.id) === recipe) {
         recipes.delete(recipe.id);
       }
+      if (recipeOwners.get(recipe.id) === pluginId) recipeOwners.delete(recipe.id);
       const owned = pluginRecipeIds.get(pluginId);
       if (owned) {
         const kept = owned.filter((id) => id !== recipe.id);
@@ -228,5 +232,10 @@ export const ThemeRegistry = {
   /** 指定插件注册的配方 id */
   getRecipesByPlugin(pluginId: string): string[] {
     return pluginRecipeIds.get(pluginId) ?? [];
+  },
+
+  /** 配方提供方插件 id——资产相对路径解析（#50.17）与主题组归属（#50.19）用；未注册返回 undefined */
+  getRecipeOwner(recipeId: string): string | undefined {
+    return recipeOwners.get(recipeId);
   },
 };
