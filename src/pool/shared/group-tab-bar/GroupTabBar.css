@@ -38,15 +38,16 @@
   flex: 0 1 120px;
   min-width: 64px;
   max-width: 240px;
-  height: 100%;
+  height: 30px;
+  margin: 4px 4px 0 0; /* E5.8#51 竞标 D：顶浮 4px + tab 间常驻 4px 空隙（指示器净占 0 落空隙） */
   padding: 0 8px;
   background: var(--bg-card);
   color: var(--text-secondary);
   font-size: 13px;
   cursor: pointer;
-  border-right: 1px solid var(--separator);
-  border-bottom: 1px solid var(--separator);
-  transition: background 120ms, color 120ms;
+  border: 1px solid transparent; /* 预留 active 描边——border-box 下不增宽 */
+  border-radius: 6px;
+  transition: background 150ms, color 150ms, border-color 150ms, box-shadow 150ms;
   position: relative;
 }
 .group-tab-item:hover {
@@ -55,8 +56,24 @@
 .group-tab-item.active {
   background: var(--bg-window);
   color: var(--text-primary);
-  border-bottom-color: transparent;
-  border-top: 2px solid var(--accent);
+  border-color: var(--separator);
+  box-shadow: var(--tab-active-shadow);
+}
+/* E5.8#51 竞标 D：active 顶部 2px accent 横杠——独立 ::before 元素（非 border-top），
+   圆角 tab 上呈「短横杠」而非沿角线；left/right 8px 内缩避开圆角。 */
+.group-tab-item::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 8px;
+  right: 8px;
+  height: 2px;
+  border-radius: 2px;
+  background: transparent;
+  pointer-events: none;
+}
+.group-tab-item.active::before {
+  background: var(--accent);
 }
 .group-tab-item.dragging {
   opacity: 0.3;
@@ -177,9 +194,14 @@
 
 /* ── 拖拽插入指示器 ── */
 
+/* E5.8#51 竞标 D：指示器净占 0 布局——width 2px + margin 0 -1px（±1px 抵消自身宽）
+   落 tab 间 4px 空隙正中；mousedown 即 setInsertIndex（现状时序）也零挤占，整排纹丝不动。
+   高度 30px + margin-top 4px 对齐 tab 可视高（非整条 35px 条）。 */
 .group-tab-drop-indicator {
   width: 2px;
-  height: 100%;
+  height: 30px;
+  margin: 4px -1px 0;
+  border-radius: 2px;
   background: var(--accent);
   flex-shrink: 0;
 }

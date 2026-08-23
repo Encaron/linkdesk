@@ -17,8 +17,8 @@
 
 import { BrowserWindow } from 'electron';
 
-/** 幽灵标签框高——对齐标签栏 TAB_BAR_HEIGHT=35（用户口中「36px 那个框」） */
-const GHOST_HEIGHT = 35;
+/** 幽灵标签框高——对齐标签可视高 30px（E5.8#51 竞标 D：tab 浮于 35px 条内 30px 圆角卡片） */
+const GHOST_HEIGHT = 30;
 /** 幽灵窗固定宽——框内容自适应（flex 只占内容宽），右侧透明区鼠标穿透无碍 */
 const GHOST_MAX_WIDTH = 240;
 /** 框左上角相对光标的偏移——光标落在框内左上（对标 VS Code setDragImage offset (-10,-10)，框在光标下不遮视） */

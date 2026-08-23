@@ -32,6 +32,8 @@
   --dirty-dot: #CCA700;
   --context-menu-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
   --drag-preview-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+  /* E5.8#51 竞标 D：标签栏 active tab 轻投影浮起 */
+  --tab-active-shadow: 0 1px 4px rgba(0, 0, 0, 0.18);
   /* E5.8#40 壳内悬浮面板（类型 B）——遮罩 + 强投影 + 拖拽投影（mockups/02 暗色值） */
   --floating-panel-backdrop: rgba(0, 0, 0, 0.35);
   --floating-panel-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
@@ -107,6 +109,8 @@
   --dirty-dot: #D4A017;
   --context-menu-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
   --drag-preview-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  /* E5.8#51 竞标 D：标签栏 active tab 轻投影浮起（亮色值——亮面黑幕读感降低） */
+  --tab-active-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
   /* E5.8#40 壳内悬浮面板——亮色值：遮罩减密（亮面底色黑幕过读）；投影沿 --context-menu-shadow ×0.4 主题差 */
   --floating-panel-backdrop: rgba(0, 0, 0, 0.28);
   --floating-panel-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);
