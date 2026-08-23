@@ -19,11 +19,11 @@
        ④ 奢华纸感                ← design-taste-frontend（Editorial Luxury→Cold Luxury 变体，
                                    避开其禁用的 beige+brass+espresso 家族，转银灰冷奢纸感）
        ⑤ 薄荷苏打                ← ui-ux-pro-max（真实 mint-soda 4 配色 = 决策 F 迁移后的配方）
-       ─ 域极限（每轴一张完整壳；font 一轴两壳——字族 + 样式）─
+       ─ 域极限（每轴一张完整壳；font 一轴两壳——mono 终端机 / 宋体印刷体，都是字族轴）─
        radius 极限  全胶囊     ← ui-ux-pro-max（圆角八档拉到 full，zone 胶囊化）
        surface 极限 悬浮孤岛   ← high-end-visual-design（留缝 12px 独立成岛，双层环境投影）
        font 字族极限 终端机     ← design-taste-frontend（ui/mono 双键全 mono，字体单轴重造气质）
-       font 样式极限 字体海报   ← design-taste-frontend（字重/字号/字距/大小写/行高五轴全推，样式单独说话）
+       font 字族·宋体 宋体印刷体 ← design-taste-frontend（全 UI SimSun 衬线宋，纸白墨黑文档感；下方字体族控件现场切）
        background 极限 整窗主视觉 ← high-end-visual-design（同图低遮罩当主视觉，chrome 让位）
        glass 极限   液态玻璃满铺 ← high-end-visual-design（六 zone 全玻璃，无实色块）
 
@@ -38,9 +38,10 @@
          人类/AI 都能照着造
 
      【本页控件清单】
-       · theme-tab：4 主题切换（换配方 = 换整套 CSS 变量）
+       · theme-tab：12 主题切换（换配方 = 换整套 CSS 变量）
+       · font-switch：font 域字体族切换（宋体/黑体/Times New Roman/现状 = 模拟 app.fontFamily 覆盖 --font-ui）
        · surf-btn：surface 域互换（悬浮圆角面板 ⇄ 现状直角贴边，零值 = 现状）
-       新控件落点：两个均为纯演示层（画廊工作台），不属主题 token；对应文档见 00-文档地图 §3
+       新控件落点：均为纯演示层（画廊工作台），不属主题 token；对应文档见 00-文档地图 §3
 
      【壳 = 真实 LinkDesk 结构】（部件命名规范）
        顶栏 titlebar → 图标栏 icon-bar(42px) → 侧栏 sidebar → 主区(tab-bar + content) → 状态栏 statusbar
@@ -778,78 +779,54 @@
   .shell[data-theme="terminal"] .side-row .sw { background: rgba(0,0,0,0.35); color: var(--theme-text-secondary); }
   .shell[data-theme="terminal"] .icon-btn.active { box-shadow: inset 0 0 0 1px var(--theme-accent); }
 
-  /* ── ⑩ 字体海报（font 域极限·样式轴——字重/字号/字距/大小写/行高五轴全推，配色抽干让样式说话）──
-     与终端机互补：终端机推「字族」（ui/mono 双键全 mono），海报推「样式」——字族保持现状默认
-     （--font-ui/--font-mono 不换，样式是主角），只推样式五轴：
-       字重 400→800 / 字号 9→17px / 字距 -0.02→0.28em / 大小写全大写 / 行高 1→2。
-     样式子键（weight/size/spacing/case/line-height）= font 域预留子键，随 #50.6 token 表冻结
-     （luxury display 先例，02 契约 §2.1 现仅冻结字族）。
-     配色 = 暖骨近黑 + 骨白 accent（抽干饱和度）——颜色不抢戏，样式单独就是设计。
-     形制 = 现状直角（isolate 样式轴）。 */
-  .shell[data-theme="poster"] {
-    --theme-bg-window: #141412;
-    --theme-bg-titlebar: #141412;
-    --theme-bg-card: #1C1C19;
-    --theme-bg-status: #141412;
-    --theme-bg-input: #232320;
-    --theme-bg-icon-bar: #161614;
-    --theme-bg-side-panel: #171715;
-    --theme-bg-toolbar: #1B1B18;
-    --theme-text-primary: #EDEBE4;
-    --theme-text-secondary: #A8A69C;
-    --theme-text-muted: #6E6C63;
-    --theme-text-on-accent: #141412;
-    --theme-accent: #CFC9BA;
-    --theme-accent-hover: #DAD4C6;
-    --theme-border: #2E2C27;
-    --theme-separator: #24221E;
-    --theme-hover-overlay: rgba(237,235,228,0.06);
-    --theme-tab-hover-bg: #23231F;
-    --theme-dirty-dot: #CFC9BA;
-    --theme-toggle-knob: #EDEBE4;
-    --theme-toggle-knob-on: #CFC9BA;
-    --theme-status-connected: #8A9A7A;   /* 低饱和鼠尾草——功能灯可辨但不抢视线 */
-    --theme-status-disconnected: #3A3833;
-    --theme-icon-active: #CFC9BA;
-    --theme-icon-inactive: #6E6C63;
-    --theme-font-ui: "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
-    --theme-font-mono: "Cascadia Mono", Consolas, monospace;
-    --theme-cm-timestamp: #6E6C63;
-    --theme-sent-echo: #CFC9BA;
-    --theme-received: #EDEBE4;
-    --theme-system-log: #A8A69C;
+  /* ── ⑩ 宋体印刷体（font 域极限·字族轴——全 UI 宋体 SimSun，纸白墨黑文档感）──
+     与终端机同是「字族轴」：终端机换 mono，宋体换衬线宋——一个 --font-ui 值换整个气质。
+     用户点名的字族（Times New Roman / 黑体 / 宋体 等）都是 font 域合法值；本壳 = 宋体，
+     下方「font 域·字体族」控件可现场切 宋体/黑体/Times New Roman 看效果。
+     层级对应 01 设置页 mockup：配方自带 font.ui（主题级）vs app.fontFamily 覆盖（用户级）。 */
+  .shell[data-theme="songti"] {
+    --theme-bg-window: #FBF8F2;
+    --theme-bg-titlebar: #FBF8F2;
+    --theme-bg-card: #FFFFFF;
+    --theme-bg-status: #FBF8F2;
+    --theme-bg-input: #FFFFFF;
+    --theme-bg-icon-bar: #F5F1E8;
+    --theme-bg-side-panel: #F7F4ED;
+    --theme-bg-toolbar: #FBF8F2;
+    --theme-text-primary: #2A2722;
+    --theme-text-secondary: #5C584F;
+    --theme-text-muted: #8B8577;
+    --theme-text-on-accent: #FBF8F2;
+    --theme-accent: #4A463E;
+    --theme-accent-hover: #5E594F;
+    --theme-border: #DDD6C8;
+    --theme-separator: #E8E2D6;
+    --theme-hover-overlay: rgba(0,0,0,0.04);
+    --theme-tab-hover-bg: #F0EBE2;
+    --theme-dirty-dot: #4A463E;
+    --theme-toggle-knob: #FFFFFF;
+    --theme-toggle-knob-on: #4A463E;
+    --theme-status-connected: #6B7255;
+    --theme-status-disconnected: #C9C2B4;
+    --theme-icon-active: #4A463E;
+    --theme-icon-inactive: #8B8577;
+    --theme-font-ui: "SimSun", "宋体", "Microsoft YaHei", serif;   /* 全 UI 宋体——字族轴主角 */
+    --theme-font-mono: "Cascadia Mono", Consolas, monospace;       /* mono 保持现状（日志是数据） */
+    --theme-cm-timestamp: #8B8577;
+    --theme-sent-echo: #4A463E;
+    --theme-received: #2A2722;
+    --theme-system-log: #5C584F;
     --theme-bg-layer: none;
     --theme-bg-mask: none;
   }
-  /* font 域极限（样式轴）：形制保持现状直角（isolate 样式轴，与终端机同款） */
-  .shell[data-theme="poster"] { border-radius: 8px; }
-  .shell[data-theme="poster"] .icon-btn,
-  .shell[data-theme="poster"] .side-row .sw { border-radius: 0; }
-  .shell[data-theme="poster"] .tool-btn { border-radius: 2px; }
-  .shell[data-theme="poster"] .tab { border-radius: 0; }
-  .shell[data-theme="poster"] .side-row .sw { background: rgba(0,0,0,0.35); color: var(--theme-text-secondary); }
-  .shell[data-theme="poster"] .icon-btn.active { box-shadow: inset 0 0 0 1px var(--theme-accent); }
-  /* ── 样式五轴落地：每区域一个设计意图，拼成一张字体海报 ── */
-  .shell[data-theme="poster"] .brand-text {          /* 展示字：17px + 800 + 0.26em 宽字距 + 全大写 + 行高 1 = 海报锚点 */
-    font-size: 17px; font-weight: 800; letter-spacing: 0.26em;
-    text-transform: uppercase; line-height: 1;
-  }
-  .shell[data-theme="poster"] .menu-item { font-weight: 500; }          /* 菜单 = 常规基准 500 */
-  .shell[data-theme="poster"] .side-title {          /* 微标签：全壳最小字号 9px + 700 重 + 0.18em 宽字距 */
-    font-size: 9px; font-weight: 700; letter-spacing: 0.18em; line-height: 1.6;
-  }
-  .shell[data-theme="poster"] .side-row { font-weight: 400; letter-spacing: -0.02em; }  /* 正文 = 字重谱底线 400 + 微紧字距 */
-  .shell[data-theme="poster"] .side-row.folder { font-weight: 600; }
-  .shell[data-theme="poster"] .side-row.active { font-weight: 700; }   /* active 跳 700 */
-  .shell[data-theme="poster"] .tab { font-weight: 400; }               /* 未激活 tab = 细体 400 */
-  .shell[data-theme="poster"] .tab.active { font-size: 13px; font-weight: 800; }  /* 激活 tab = 字重谱顶点 800（vs 品牌同重） */
-  .shell[data-theme="poster"] .tool-btn { font-size: 10.5px; font-weight: 600; letter-spacing: 0.08em; }  /* 按钮 = 小字号 + 宽字距 */
-  .shell[data-theme="poster"] .tool-btn.primary { font-weight: 700; }
-  .shell[data-theme="poster"] .port-name { font-size: 9.5px; letter-spacing: 0.10em; text-transform: uppercase; }  /* 端口 = mono 微标签 + 全大写 */
-  .shell[data-theme="poster"] .log { font-size: 11px; line-height: 2; letter-spacing: -0.02em; }  /* 日志 = 行高谱终点 2.0 + 微紧字距 */
-  .shell[data-theme="poster"] .log-line .ts { font-size: 10px; }
-  .shell[data-theme="poster"] .statusbar { font-size: 9.5px; letter-spacing: 0.08em; text-transform: uppercase; }  /* 状态栏 = 微标签 + 全大写（Ln→LN / utf-8→UTF-8 可见） */
-  .shell[data-theme="poster"] .statusbar .sb-count { font-size: 9px; letter-spacing: 0.12em; }  /* 计数 = 全壳最小 9px */
+  /* font 域极限（字族轴·宋体）：形制保持现状直角（isolate 字族轴，与终端机同款） */
+  .shell[data-theme="songti"] { border-radius: 8px; }
+  .shell[data-theme="songti"] .icon-btn,
+  .shell[data-theme="songti"] .side-row .sw { border-radius: 0; }
+  .shell[data-theme="songti"] .tool-btn { border-radius: 2px; }
+  .shell[data-theme="songti"] .tab { border-radius: 0; }
+  .shell[data-theme="songti"] .side-row .sw { background: rgba(0,0,0,0.06); color: var(--theme-text-secondary); }
+  .shell[data-theme="songti"] .icon-btn.active { box-shadow: inset 0 0 0 1px var(--theme-accent); }
 
   /* ── ⑪ 整窗主视觉（background 域极限——bg-image 全窗铺满 + 低遮罩几乎全露，chrome 让位）──
      与 glass 同图反着用：glass 0.88 深罩压成氛围，panorama 0.15 浅罩让图当主视觉。
@@ -983,9 +960,9 @@
   /* 极限形制 surf 开：全胶囊 = radius full 档（胶囊化）；悬浮孤岛 = 留缝 12px + 双层环境投影 */
   .shell[data-theme="pill"][data-surf="on"] { --surface-inset: 8px; --surface-radius: 999px; --surface-shadow: 0 10px 26px rgba(214,51,108,0.14), 0 2px 8px rgba(0,0,0,0.05); --surface-border: rgba(255,255,255,0.65); }
   .shell[data-theme="island"][data-surf="on"] { --surface-inset: 12px; --surface-radius: 18px; --surface-shadow: 0 16px 40px rgba(0,0,0,0.5), 0 3px 10px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.04); --surface-border: rgba(255,255,255,0.05); }
-  /* 极限四壳 surf 开：终端/海报/主视觉 = 现状形制 + surface 域圆角化（同现状暗的「同一套变量两种形制」）；玻璃满铺 = 悬浮玻璃面板有厚度 */
+  /* 极限四壳 surf 开：终端/宋体/主视觉 = 现状形制 + surface 域圆角化（同现状暗的「同一套变量两种形制」）；玻璃满铺 = 悬浮玻璃面板有厚度 */
   .shell[data-theme="terminal"][data-surf="on"] { --surface-inset: 6px; --surface-radius: 12px; --surface-shadow: 0 6px 18px rgba(0,0,0,0.5), 0 1px 4px rgba(0,0,0,0.25); --surface-border: rgba(78,201,176,0.18); }
-  .shell[data-theme="poster"][data-surf="on"] { --surface-inset: 6px; --surface-radius: 12px; --surface-shadow: 0 6px 18px rgba(0,0,0,0.5), 0 1px 4px rgba(0,0,0,0.25); --surface-border: rgba(237,235,228,0.14); }
+  .shell[data-theme="songti"][data-surf="on"] { --surface-inset: 6px; --surface-radius: 12px; --surface-shadow: 0 6px 18px rgba(0,0,0,0.10), 0 1px 4px rgba(0,0,0,0.05); --surface-border: rgba(255,255,255,0.55); }
   .shell[data-theme="panorama"][data-surf="on"] { --surface-inset: 6px; --surface-radius: 14px; --surface-shadow: 0 10px 30px rgba(0,0,0,0.35), 0 2px 8px rgba(0,0,0,0.2); --surface-border: rgba(255,255,255,0.18); }
   .shell[data-theme="full-glass"][data-surf="on"] { --surface-inset: 10px; --surface-radius: 20px; --surface-shadow: 0 20px 50px rgba(0,0,0,0.45), 0 4px 14px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.10); --surface-border: rgba(255,255,255,0.16); }
 
@@ -1053,6 +1030,22 @@
   }
   .dc-btn:hover { border-color: #3A3E4C; }
   .dc-btn.off { color: var(--studio-faint); }
+  /* font 域字体族切换钮（画廊工作台控件，模拟 app.fontFamily 覆盖 --font-ui——用户点到的「字体」= 挑字族） */
+  .fc-group { margin-left: auto; display: flex; gap: 6px; flex-shrink: 0; }
+  .fc-btn {
+    cursor: pointer; font-size: 11px; font-family: inherit;
+    color: var(--studio-muted); background: rgba(255,255,255,0.06);
+    border: 1px solid var(--studio-line); border-radius: 8px; padding: 5px 12px;
+    transition: border-color 150ms ease, color 150ms ease, background 150ms ease;
+  }
+  .fc-btn:hover { border-color: #3A3E4C; }
+  .fc-btn.active { border-color: var(--accent-pill); color: var(--studio-text); }
+
+  /* ═══ 字体族切换（data-font 挂 .shell——覆盖当前主题 --theme-font-ui，模拟 ThemeEngine 写 font.ui）
+     不属主题 token（= app.fontFamily 用户覆盖层，见 01-设置页 mockup）；值 = 用户点名的字族 */
+  .shell[data-font="songti"] { --theme-font-ui: "SimSun", "宋体", "Microsoft YaHei", serif; }
+  .shell[data-font="heiti"] { --theme-font-ui: "SimHei", "黑体", "Microsoft YaHei", sans-serif; }
+  .shell[data-font="times"] { --theme-font-ui: "Times New Roman", "SimSun", "宋体", serif; }
 
   /* 侧栏文件树图标按主题上色 */
   .shell[data-theme="glass"] .side-row .sw, .shell[data-theme="mint"] .side-row .sw { background: color-mix(in srgb, var(--theme-accent) 14%, transparent); color: var(--theme-accent); }
@@ -1077,8 +1070,9 @@
     顶栏 → 图标栏(42px) → 侧栏 → 标签栏 → 串口视图 → 状态栏串口灯+(N)。每个区域 = 独立表面。
     前两个 = 现状基线（zones 直角贴边，证明「有圆角 ≠ 丢现状」）；后面按形制光谱排开。
     最后六个 = <strong>五域极限</strong>，六张完整壳画设计的极端性（font 域一轴两壳）：
-    radius 全胶囊 · surface 悬浮孤岛 · <strong>font 终端机（字族） / 字体海报（样式）</strong> ·
-    background 整窗主视觉 · glass 液态玻璃满铺。点壳上方 <code>surface</code> 域控制钮可互换「悬浮圆角面板」与「现状直角贴边」
+    radius 全胶囊 · surface 悬浮孤岛 · <strong>font 终端机（mono 字族）/ 宋体印刷体（宋体字族）</strong> ·
+    background 整窗主视觉 · glass 液态玻璃满铺。壳上方 <code>font</code> 域控件可现场切字族
+    （宋体 / 黑体 / Times New Roman，= 模拟 app.fontFamily）——一个变量换整个气质；<code>surface</code> 域控件可互换「悬浮圆角面板」与「现状直角贴边」
     （零值 = 现状）；三张带图壳共用仓库真实 sailor-moon.jpg，同图三种读法（深罩氛围 / 低罩主视觉 / 满铺玻璃发光）。
   </p>
   <div class="legend">
@@ -1091,7 +1085,7 @@
     <span class="legend-chip"><span class="sw" style="background:#D6336C;"></span><b>全胶囊</b> radius 极限</span>
     <span class="legend-chip"><span class="sw" style="background:#7C9CF6;"></span><b>悬浮孤岛</b> surface 极限</span>
     <span class="legend-chip"><span class="sw" style="background:#00E676;"></span><b>终端机</b> font 字族极限</span>
-    <span class="legend-chip"><span class="sw" style="background:#CFC9BA;"></span><b>字体海报</b> font 样式极限</span>
+    <span class="legend-chip"><span class="sw" style="background:#4A463E;"></span><b>宋体印刷体</b> font 字族·宋体</span>
     <span class="legend-chip"><span class="sw" style="background:#FFB85C;"></span><b>整窗主视觉</b> background 极限</span>
     <span class="legend-chip"><span class="sw" style="background:#FF6EC7;"></span><b>液态玻璃满铺</b> glass 极限</span>
   </div>
@@ -1134,9 +1128,9 @@
     <span class="dots"><span class="dot" style="background:#00E676;"></span><span class="dot" style="background:#0C0C0C;"></span><span class="dot" style="background:#4EC9B0;"></span></span>
     <span class="tname">终端机 · 极限字体</span><span class="tskill">font 字族极限</span>
   </button>
-  <button class="theme-tab" data-theme="poster" role="tab" aria-selected="false">
-    <span class="dots"><span class="dot" style="background:#CFC9BA;"></span><span class="dot" style="background:#141412;"></span><span class="dot" style="background:#EDEBE4;"></span></span>
-    <span class="tname">字体海报 · 极限样式</span><span class="tskill">font 样式极限</span>
+  <button class="theme-tab" data-theme="songti" role="tab" aria-selected="false">
+    <span class="dots"><span class="dot" style="background:#FBF8F2;"></span><span class="dot" style="background:#2A2722;"></span><span class="dot" style="background:#4A463E;"></span></span>
+    <span class="tname">宋体印刷体 · 极限字族</span><span class="tskill">font 宋体</span>
   </button>
   <button class="theme-tab" data-theme="panorama" role="tab" aria-selected="false">
     <span class="dots"><span class="dot" style="background:#FFB85C;"></span><span class="dot" style="background:#8A9BA8;"></span><span class="dot" style="background:#1A2430;"></span></span>
@@ -1152,6 +1146,16 @@
 
   <!-- ═══ 左：主题壳 ═══ -->
   <div class="stage-left">
+    <div class="demo-control">
+      <span><code>font</code> 域 · 字体族（<code>--font-ui</code>，挑字族 = 换整个气质；<code>现状</code> = 恢复主题自带字族）</span>
+      <div class="fc-group" id="font-switch">
+        <button class="fc-btn active" data-font="none" type="button">现状</button>
+        <button class="fc-btn" data-font="songti" type="button">宋体</button>
+        <button class="fc-btn" data-font="heiti" type="button">黑体</button>
+        <button class="fc-btn" data-font="times" type="button">Times New Roman</button>
+      </div>
+    </div>
+
     <div class="demo-control">
       <span><code>surface</code> 域 · 悬浮圆角面板（<code>--surface-inset/radius/shadow</code>，零值 = 现状直角贴边）</span>
       <button class="dc-btn" id="surf-btn" type="button">悬浮圆角 · ON</button>
@@ -1620,37 +1624,35 @@
       skill: { ico: 'T', name: 'design-taste-frontend', desc: 'Dark tech / hacker 本体：全等宽 mono + 霓虹绿 accent + 终端 motif。design-taste 明确收录「Mono + accent neon, terminal motifs, No library」。' }
     },
 
-    poster: {
-      name: '字体海报 · 极限样式',
-      read: '读取为：桌面壳 用 <strong>字体海报</strong> 语言——<strong>font 域极限·样式轴</strong>。<strong>字族不换</strong>（--font-ui/--font-mono 保持现状默认），只推<strong>样式五轴</strong>：字重 400→800、字号 9→17px、字距 -0.02→0.28em、大小写全大写、行高 1→2。配色抽干成暖骨近黑 + 骨白 accent——<strong>颜色不抢戏，样式单独就是设计</strong>。品牌 "LinkDesk" = 17px + 800 + 0.26em 宽字距 + 全大写 = 海报锚点；侧栏标题/状态栏 = 9px 微标签；激活 tab = 800 重体。形制 = 现状直角（isolate 样式轴）。',
-      badge: 'dark · font 样式极限',
+    songti: {
+      name: '宋体印刷体 · 极限字族',
+      read: '读取为：桌面壳 用 <strong>宋体印刷体</strong> 语言——<strong>font 域极限·字族轴</strong>。整个软件（标题栏菜单 / tab / 侧栏 / 按钮 / 状态栏）全部换成 <code>宋体 SimSun</code>——一个 <code>--font-ui</code> 值，整个壳从「软件」变「印刷文档」（纸白墨黑 + 墨水灰 accent，<strong>字形自己就是设计</strong>）。形制 = 现状直角（isolate 字族轴）。用户点名的字族（Times New Roman / 黑体 / 宋体 等）都是 font 域合法值——下方「font 域·字体族」控件可现场切换看效果。',
+      badge: 'light · font 宋体',
       recipe: {
-        id: 'type-poster', name: '字体海报', type: 'dark',
+        id: 'songti-print', name: '宋体印刷体', type: 'light',
         appearance: {
           radius: { sm: 0, md: 0, lg: 0, xl: 0 },
           glass: { blur: 0, saturate: 1, tint: null, opacity: 1 },
-          font: { ui: 'Segoe UI', mono: 'Cascadia Mono', weight: '400–800', size: '9–17px', spacing: '-0.02–0.28em', case: 'uppercase', 'line-height': '1–2' },
+          font: { ui: 'SimSun', mono: 'Cascadia Mono' },
           background: { image: null, opacity: 1, mask: null },
           surface: { inset: 0, radius: 0, shadow: false, border: false }
         },
         colorways: [{
-          id: 'bone', name: '骨白近黑',
-          colors: { 'bg-window': '#141412', 'text-primary': '#EDEBE4', accent: '#CFC9BA', 'bg-icon-bar': '#161614', 'bg-side-panel': '#171715', 'bg-toolbar': '#1B1B18', 'status-connected': '#8A9A7A' }
+          id: 'paper', name: '纸白墨黑',
+          colors: { 'bg-window': '#FBF8F2', 'text-primary': '#2A2722', accent: '#4A463E', 'bg-icon-bar': '#F5F1E8', 'bg-side-panel': '#F7F4ED', 'bg-toolbar': '#FBF8F2' }
         }]
       },
       tokens: [
-        ['--font-ui', 'Segoe UI（现状）', false], ['--font-mono', 'Cascadia Mono（现状）', false],
-        ['font:weight', '400 → 800', false], ['font:size', '9 → 17px', false],
-        ['font:spacing', '-0.02 → 0.28em', false], ['font:case', 'uppercase', false],
-        ['font:line-height', '1 → 2', false],
-        ['--bg-window', '#141412', true], ['--text-primary', '#EDEBE4', true],
-        ['--accent', '#CFC9BA', true], ['--status-connected', '#8A9A7A', true],
+        ['--font-ui', 'SimSun（宋体）', false], ['--font-mono', 'Cascadia Mono', false],
+        ['font.ui 字族谱', '宋体/黑体/Times/楷体', false],
+        ['--bg-window', '#FBF8F2', true], ['--text-primary', '#2A2722', true],
+        ['--accent', '#4A463E', true], ['--bg-icon-bar', '#F5F1E8', true],
         ['--surface-inset', '0px', false], ['--radius-*', '全部 0px', false],
         ['--glass-blur', '0px', false]
       ],
-      more: '字族保持现状默认（样式是主角）；样式五轴 = font 域预留子键，随 #50.6 token 表冻结（luxury display 先例，02 §2.1 现仅冻结字族）。配色抽干 = 颜色不抢戏。',
+      more: 'font 域极限（字族轴·宋体）：全 UI 宋体 = 一个 --font-ui 值换整个气质。Times New Roman / 黑体 / 宋体 都是 font.ui 合法值（下方字体族控件现场可切）。配色纸白墨黑 isolate 字族轴——字形就是设计。',
       domains: { colors: 1, font: 1, radius: 0, glass: 0, background: 0, surface: 0 },
-      skill: { ico: 'P', name: 'design-taste-frontend', desc: '编辑部排版：展示字 / 微标签 / 重体对比 + 字距五轴（editorial typography）。design-taste 明确收录 Editorial 风格；纯 sans 展示字不触发其 Serif Discipline（根本没换字族）。' }
+      skill: { ico: '宋', name: 'design-taste-frontend', desc: '印刷体 / 文档美学：全 UI 宋体 SimSun + 纸白墨黑，像报纸 / 古籍排印。design-taste 明确收录 Editorial·manuscript；宋体即中文衬线——字族是主角，字形就是设计。' }
     },
 
     panorama: {
@@ -1819,14 +1821,14 @@
     minimal: '玻璃 = 绝对覆盖（决策 E）：glass-blur 0 即「关玻璃」，主题作者可不写 glass 域（稀疏覆盖）。1px #EAEAEA 结构线 + 8/12px 圆角 = minimalist-ui 的形制锁定。',
     luxury: 'design-taste-frontend 的「奢华」默认会被禁用的 beige+brass+espresso 家族带偏，这里走 Cold Luxury（银灰 + 铬银 + 烟墨），纸感来自底色 + 噪点纹理，非暖色古董风。衬线（Cormorant Garamond）仅展示字，正文 sans，遵守其 Serif Discipline。',
     mint: '迁移演示：theme-mint-soda 4 平铺 json → 1 配方 4 colorways（决策 F）。色值 100% 来自仓库 <code>plugins/user/theme-mint-soda/*.json</code>，非虚构。设置页主题选择器会从 4 张卡片变 1 张卡片 + 4 配色（05 §5 迁移表）。',
-    terminal: '<strong>字体域极限（字族轴）</strong>：font.ui/mono 双键全指等宽族。形制 = 现状直角（与现状暗同款）——<strong>只换字体 + 配色就换了整个气质</strong>。字体轴分两端：这一端「字族」（换什么字体），另一端「样式」（怎么排，见 字体海报）。再等宽就是终端了。',
-    poster: '<strong>字体域极限（样式轴）</strong>：与终端机互补——终端机推「字族」（ui/mono 双键全 mono），海报推「样式」。字族保持现状默认，只推样式五轴（字重 400→800 / 字号 9→17px / 字距 -0.02→0.28em / 大小写全大写 / 行高 1→2）；配色抽干成暖骨近黑 + 骨白 accent——<strong>颜色不抢戏，样式单独就是设计</strong>。样式子键 = font 域预留子键（随 #50.6 token 表冻结，luxury display 先例）。形制 = 现状直角（isolate 样式轴）。',
+    terminal: '<strong>字体域极限（字族轴·mono）</strong>：font.ui/mono 双键全指等宽族。形制 = 现状直角（与现状暗同款）——<strong>只换字体 + 配色就换了整个气质</strong>。字族轴另一端 = 宋体印刷体（SimSun 衬线宋，见下）；再等宽就是终端了。',
+    songti: '<strong>字体域极限（字族轴·宋体）</strong>：整个软件换成宋体 SimSun——一个 --font-ui 值，壳从「软件」变「印刷文档」。Times New Roman / 黑体 / 宋体 等 = 用户点名的字族，都是 font 域合法值；下方「font 域·字体族」控件可现场切 宋体/黑体/Times New Roman 看效果（= 模拟 app.fontFamily 覆盖）。形制 = 现状直角（isolate 字族轴），配色纸白墨黑——字形就是设计。',
     panorama: '<strong>背景域极限</strong>：同一张 sailor-moon.jpg 与 Glass Aurora 反着用——glass 0.88 深罩压成氛围，panorama 0.15 浅罩让图当主视觉。zones 半透明浮层 + 1px 发丝边（形制 = 现状直角贴边），chrome 让位给图。三张壳同图三种读法（玻璃深罩 / 主视觉 / 满铺发光）证明 background + glass 两轴独立可叠。',
     'full-glass': '<strong>玻璃域极限</strong>：六 zone 全玻璃（透光 blur 差异化 + 反光 specular + 响应 morph），无任何实色块。与「现状 · 直角」对比 = glass 域 0（无玻璃）↔ 满铺的完整光谱。再糊就成雾——这是玻璃的终点。同 sailor-moon.jpg 的第三种读法。'
   };
 
-  /* surface 域默认值：现状基线 + 域极限中的 font/background 轴（终端机/字体海报/主视觉）= 直角贴边（isolate 单轴），其余主题 = 悬浮圆角 */
-  const SURF_DEFAULT = { 'current-dark': false, 'current-light': false, terminal: false, poster: false, panorama: false };
+  /* surface 域默认值：现状基线 + 域极限中的 font/background 轴（终端机/宋体/主视觉）= 直角贴边（isolate 单轴），其余主题 = 悬浮圆角 */
+  const SURF_DEFAULT = { 'current-dark': false, 'current-light': false, terminal: false, songti: false, panorama: false };
 
   function apply(themeId) {
     const t = T[themeId];
@@ -1861,6 +1863,16 @@
     surfBtn.classList.toggle('off', !on);
   }
   surfBtn.addEventListener('click', () => setSurf(!surfOn));
+
+  /* ═══ 字体族切换（font 域演示：挑字族 = 覆盖当前主题 --font-ui，模拟 app.fontFamily 用户覆盖层）═══ */
+  const fontBtns = document.querySelectorAll('.fc-btn');
+  function setFont(f) {
+    const shell = $('#shell');
+    if (f === 'none') { delete shell.dataset.font; }   // 恢复主题自带字族
+    else { shell.dataset.font = f; }
+    fontBtns.forEach((b) => b.classList.toggle('active', b.dataset.font === f));
+  }
+  fontBtns.forEach((b) => b.addEventListener('click', () => setFont(b.dataset.font)));
 
   /* 初始：现状 · 直角暗——先把「咱们现在的样子」（zones 直角贴边）画出来，再点开看极限 */
   apply('current-dark');
