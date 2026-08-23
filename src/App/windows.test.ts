@@ -37,6 +37,16 @@ describe("WINDOW_MODE_STRATEGIES 窗口模式策略表", () => {
     expect(detached.zones).toContain("groups");
   });
 
+  it("drift 面板专用窗——推 titleBar+panel，无 groups 主区（E5.8#46.17 面板独占全窗，去空占位）", () => {
+    const drift = WINDOW_MODE_STRATEGIES.drift;
+    expect(drift.zones).toContain("titleBar");
+    expect(drift.zones).toContain("panel");
+    expect(drift.zones).not.toContain("groups");
+    expect(drift.zones).not.toContain("iconBar");
+    expect(drift.zones).not.toContain("sidebar");
+    expect(drift.zones).not.toContain("statusBar");
+  });
+
   it("空窗行为/关窗语义/创建菜单/标题栏菜单按模式区分", () => {
     expect(WINDOW_MODE_STRATEGIES.main.emptyBehavior).toBe("fallback");
     expect(WINDOW_MODE_STRATEGIES.detached.emptyBehavior).toBe("autoClose");

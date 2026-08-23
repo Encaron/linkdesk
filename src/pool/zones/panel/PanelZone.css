@@ -266,7 +266,8 @@
 }
 
 /* ── E5.8#45：⤢ 脱出面板到独立窗口——与 [+] 同款方形按钮（28px 窄行内视觉一致）。
-      codicon-empty-window 画 14px（对齐 create 14px 字号）；hover 同 hover-overlay。 ── */
+      #46.17 图标换 codicon-open-preview（窗口+箭头，语义「独立成窗」——原 empty-window 带横线方框
+      用户看着像文件夹）；画 14px（对齐 create 14px 字号）；hover 同 hover-overlay。 ── */
 
 .panel-tab-detach {
   width: 28px;

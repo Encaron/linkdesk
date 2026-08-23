@@ -156,3 +156,18 @@ describe("computePoolGrid——侧栏换右（swap 规则 + iconbar 跟随 E5.8#
     expect(spec.cells.panel).toEqual({ rowStart: 1, colStart: 2, rowEnd: 2, colEnd: 3 }); // 面板左竖条
   });
 });
+
+describe("computePoolGrid——无主区内容（E5.8#46.17 drift 面板专用窗）", () => {
+  it("hasMain=false → 无内容行，面板独占整窗（底面板单 auto 行）", () => {
+    const input = base({ panelVisible: true, panelEdge: "bottom", panelAlign: "center", hasMain: false });
+    const spec = computePoolGrid(input);
+    expect(spec.gridTemplateRows).toBe("auto"); // 无 1fr 内容行——面板独占，无主区空白
+    expect(areaOf(input, "main")).toBe("1 / 1 / 3 / 4"); // main 0 行高（rowStart=rowEnd=1）
+    expect(spec.cells.panel).toEqual({ rowStart: 1, colStart: 3, rowEnd: 2, colEnd: 4 }); // 面板占第 1 行（主列）
+  });
+  it("hasMain 缺省（main/detached）→ 内容行照常 1fr", () => {
+    const input = base();
+    expect(computePoolGrid(input).gridTemplateRows).toBe("1fr");
+    expect(areaOf(input, "main")).toBe("1 / 2 / 3 / 4");
+  });
+});

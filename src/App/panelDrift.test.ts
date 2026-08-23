@@ -1,7 +1,8 @@
 /**
  * usePanelDrift——面板脱出到独立窗口（E5.8#45）测试。
- * 覆盖：detachPanel 无 drift 窗 → 建 mode:"drift" 窗（空 tabState + 主窗级联 bounds + 主进程建窗）；
+ * 覆盖：detachPanel 无 drift 窗 → 建 mode:"drift" 窗（空 tabState + 面板小窗 bounds + 主进程建窗）；
  *       已有 drift 窗 → 幂等 no-op（面板独占——面板恒只在一个窗口渲染）。
+ * E5.8#46.17：默认 bounds 改面板专属小窗（高 280 = 标题栏+面板默认 220，宽收窄 800 上限）。
  * 测试夹具全用虚构值（硬约束 21：windowId 用 "main"/"drift-1" 模式域 id，非真实插件）。
  */
 import { describe, it, expect, vi } from "vitest";
@@ -31,14 +32,15 @@ function setup(withDrift = false) {
 }
 
 describe("usePanelDrift —— E5.8#45", () => {
-  it("无 drift 窗 → detachPanel 建 mode:drift 窗（空 tabState + 主窗级联 bounds + 主进程建窗）", () => {
+  it("无 drift 窗 → detachPanel 建 mode:drift 窗（空 tabState + 面板小窗 bounds + 主进程建窗）", () => {
     const { hook, createWindow } = setup(false);
     hook.result.current.detachPanel();
     expect(createWindow).toHaveBeenCalledTimes(1);
     const [windowId, tabState, bounds, mode] = createWindow.mock.calls[0];
     expect(typeof windowId).toBe("string"); // crypto.randomUUID 壳生成
-    expect(tabState).toEqual(EMPTY); // 漂移面板窗恒空（主区空占位 I9-13）
-    expect(bounds).toEqual({ x: 40, y: 40, width: 800, height: 600 }); // 主窗级联偏移（+40）
+    expect(tabState).toEqual(EMPTY); // 漂移面板窗恒空（面板独占，无 tab）
+    // E5.8#46.17 面板小窗：x/y 主窗级联偏移（+40）；宽 = min(主窗 800, 800) = 800；高 = 280（面板小窗，非主窗 600）
+    expect(bounds).toEqual({ x: 40, y: 40, width: 800, height: 280 });
     expect(mode).toBe("drift");
   });
 

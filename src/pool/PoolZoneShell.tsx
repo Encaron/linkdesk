@@ -40,6 +40,9 @@ function PoolZoneShell({ layout }: { layout: PoolLayout }) {
     panelVisible: layout.panel?.visible === true,
     panelEdge: layout.panel?.edge ?? "bottom",
     panelAlign: layout.panel?.align ?? "center",
+    // E5.8#46.17：drift 面板专用窗恒空 groups（主窗 fallback 组/detached 空窗自灭保证非空窗口
+    // 恒有 groups）→ 无主区 → 无内容行，面板独占全窗（不渲染 MainZone 空态「没有打开的标签页」）
+    hasMain: layout.groups.length > 0,
   });
 
   // 参数排除 null——grid.cells.panel 隐藏时为 null（调用处已 guard），其余 zone 恒非空
@@ -79,10 +82,14 @@ function PoolZoneShell({ layout }: { layout: PoolLayout }) {
 
         {/* MainZone——E5.7#20（Phase 5）：MainRenderer 693 行行为零丢失提取（13 项验收）。
             tab bar 收在 panel 内 per-panel GroupTabBar——TabBarZone（#7）已取消。
-            #37.5：直接成 grid cell（原 pool-main-column 删）；恒只跨内容行。 */}
-        <div className="pool-grid-cell" style={cellStyle(grid.cells.main)}>
-          <MainZone groups={layout.groups} root={layout.root} creatableViews={layout.creatableViews} activeGroupId={layout.activeGroupId} />
-        </div>
+            #37.5：直接成 grid cell（原 pool-main-column 删）；恒只跨内容行。
+            E5.8#46.17：无主区内容（drift 面板专用窗恒空 groups）→ 不渲染 MainZone（配合 grid
+            hasMain=false 无内容行——面板独占全窗，无「没有打开的标签页」空占位）。 */}
+        {layout.groups.length > 0 && (
+          <div className="pool-grid-cell" style={cellStyle(grid.cells.main)}>
+            <MainZone groups={layout.groups} root={layout.root} creatableViews={layout.creatableViews} activeGroupId={layout.activeGroupId} />
+          </div>
+        )}
 
         {/* PanelZone——E5.7#21 骨架 + #63.7 数据生产者：无面板贡献的插件时 layout.panel 缺省
             → 条件渲染永假 = 零 DOM（生产者建好前与建好后行为一致）。#37.5：面板行/列随

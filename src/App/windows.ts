@@ -59,12 +59,13 @@ export const WINDOW_MODE_STRATEGIES: Record<WindowMode, WindowModeStrategy> = {
     tabBarCreate: "suppressed",
     titleBarMenu: false,
   },
-  // E5.8#45 漂移面板窗：zones = titleBar + groups（空=主区空占位，I9-13）+ panel。
+  // E5.8#45 漂移面板窗：zones = titleBar + panel（#46.17 去 groups——面板独占全窗，无「没有打开的
+  // 标签页」主区空占位；I9-13 原「恒空 groups 主区空占位」落地即用户点名敷衍，形态改面板专属小窗）。
   // 面板独占性 = 布局组装按 ctx.panelDetached 裁决（main 有 drift 窗时停推 panel——面板恒只在
   // 一个窗口渲染）。恒空 groups 零 tab 操作 → emptyBehavior/closeSemantics 实际不触发（无 tab）；
   // 关窗×语义 = 关闭面板（I9-13 拍板 A——windowHost onDriftWindowClosed 回调消费）。
   drift: {
-    zones: ["titleBar", "groups", "panel"],
+    zones: ["titleBar", "panel"],
     emptyBehavior: "autoClose",
     closeSemantics: "closeTabs",
     tabBarCreate: "suppressed",

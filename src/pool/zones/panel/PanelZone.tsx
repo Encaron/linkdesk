@@ -209,7 +209,7 @@ export default function PanelZone({ panel }: PanelZoneProps) {
                 window.linkdesk?.events?.emit("panel:detach", undefined);
               }}
             >
-              <span className="codicon codicon-empty-window" aria-hidden="true" />
+              <span className="codicon codicon-open-preview" aria-hidden="true" />
             </button>
           )}
           {/* [+] 新建面板视图——panel:createView 归 Phase 12（现无监听者 no-op）；
