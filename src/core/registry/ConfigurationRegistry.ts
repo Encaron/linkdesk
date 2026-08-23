@@ -39,6 +39,9 @@ export interface ConfigurationProperty {
    *  E5.7#74：闭合 union → string（同上——已知值 "fontFamily"/"fontSize"/"color"/"file"/"directory"
    *  仅文档化，不构成类型白名单）。 */
   uiHint?: string;
+  /** E5.8#50.20：等宽限定——仅 uiHint "fontFamily" 有意义。true/缺省 = 只列等宽族
+   *  （编辑器字体）；false = 全字族（UI 字体，如 app.fontFamily 写 --font-ui）。 */
+  monoOnly?: boolean;
 }
 
 /** 插件贡献的 configuration 分组——对标 VS Code package.json contributes.configuration */

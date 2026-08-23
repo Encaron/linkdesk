@@ -333,7 +333,10 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
             type: "string",
             default: "",
             description: t("界面字体——空 = 跟随主题；选择后写 --font-ui"),
-            // #50.20 全字族化 FontFamilySelect 接线（当前注册表已支持 onApply 覆盖面——getAppearanceOverrides 读本 key 写 font-ui）
+            // E5.8#50.20：全字族化 FontFamilySelect（monoOnly:false 列全族非等宽）——
+            // onApply 覆盖面单一写入点 getAppearanceOverrides 读本 key 写 --font-ui
+            uiHint: "fontFamily",
+            monoOnly: false,
             dependsOn: { key: "app.appearanceMode", value: "custom" },
             onApply: () => applyThemeIfReady(),
           },

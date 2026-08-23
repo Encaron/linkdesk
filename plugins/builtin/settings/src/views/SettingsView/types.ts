@@ -32,6 +32,8 @@ interface ConfigProperty {
   maximum?: number;
   uiHint?: string;
   renderHint?: string;
+  /** E5.8#50.20：等宽限定——uiHint "fontFamily" 时 monoOnly=false = 全字族（UI 字体） */
+  monoOnly?: boolean;
   dependsOn?: { key: string; value: unknown };
   onApply?: ((v: unknown) => void) | null; // E4V#46 renderHint "action"
 }

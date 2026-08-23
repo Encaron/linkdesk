@@ -360,7 +360,8 @@
                   "enum": { "type": "array" },
                   "enumDescriptions": { "type": "object", "description": "enum 值 → 显示名映射" },
                   "description": { "type": "string" },
-                  "uiHint": { "type": "string", "description": "设置编辑器渲染提示。SettingsView 按提示选择控件。不认识的 hint 降级回 type 默认渲染——不抛错。E5.7#66：enum 开放——第三方可声明新 hint 名。" }
+                  "uiHint": { "type": "string", "description": "设置编辑器渲染提示。SettingsView 按提示选择控件。不认识的 hint 降级回 type 默认渲染——不抛错。E5.7#66：enum 开放——第三方可声明新 hint 名。" },
+                  "monoOnly": { "type": "boolean", "description": "等宽限定——仅 uiHint \"fontFamily\" 有意义。true/缺省 = 只列等宽族（编辑器字体）；false = 全字族（UI 字体）。E5.8#50.20。" }
                 },
                 "additionalProperties": false
               }

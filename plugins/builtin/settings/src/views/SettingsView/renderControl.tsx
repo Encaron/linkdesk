@@ -55,7 +55,8 @@ function renderControl(
         </div>
       );
     case "fontFamily":
-      return <FontFamilySelect value={String(val)} onChange={(v) => onChange(v)} />;
+      // E5.8#50.20：monoOnly 从 property 声明读（缺省 = 等宽编辑器字体；app.fontFamily monoOnly:false = 全字族）
+      return <FontFamilySelect value={String(val)} onChange={(v) => onChange(v)} monoOnly={prop.monoOnly} />;
     case "file":
       return <FilePathInput value={String(val)} onChange={(v) => onChange(v)} dialogType="file" />;
     case "directory":

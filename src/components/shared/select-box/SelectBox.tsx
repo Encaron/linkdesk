@@ -56,10 +56,13 @@ function SelectBox({ value, options, onChange, disabled, placeholder, title, cla
     return normalized.filter((o) => o.label.toLowerCase().includes(s));
   }, [normalized, search]);
 
-  // 当前选中项的 label
+  // 当前选中项的 label——有值但不在选项（外部/动态值如资产字体族）显示真实值（只显示不选）；
+  // 仅空值才用 placeholder 兜底（E5.8#50.20 ③ 当前值边界）
   const currentLabel = useMemo(() => {
     const found = normalized.find((o) => o.value === value);
-    return found?.label ?? placeholder ?? value;
+    if (found) return found.label;
+    if (value !== "") return value;
+    return placeholder ?? value;
   }, [normalized, value, placeholder]);
 
   // focus index clamp

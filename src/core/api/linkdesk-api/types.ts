@@ -70,6 +70,8 @@ export interface LinkDeskConfigProperty {
   maximum?: number;
   /** 渲染提示——renderControl 第二判据（"action" 渲染操作按钮 / "color" 渲染色块预览） */
   renderHint?: string;
+  /** 等宽限定——仅 uiHint "fontFamily" 有意义。true/缺省 = 只列等宽族（编辑器字体）；false = 全字族（UI 字体）。E5.8#50.20 */
+  monoOnly?: boolean;
   /** 依赖条件——本项仅在 dependsOn.key 配置值 === value 时显示（SettingRow 读它显隐整行） */
   dependsOn?: { key: string; value: unknown };
 }
