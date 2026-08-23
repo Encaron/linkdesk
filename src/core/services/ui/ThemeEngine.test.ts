@@ -255,6 +255,16 @@ describe("ThemeEngine — surface/background 玻璃机制（E5.8#50.6）", () =>
     expect(root.style.getPropertyValue("--glass-blur")).toBe("0px");
   });
 
+  it("无 glass 的 surface（⑬⑭ 分区）→ radius/inset 仍生效（悬浮形态与玻璃材质正交）", () => {
+    applyTheme({ ...MOCK_THEME, surface: { texture: "tile.svg", radius: 8, inset: 4 } });
+    const root = document.documentElement;
+    expect(root.style.getPropertyValue("--surface-radius")).toBe("8px");
+    expect(root.style.getPropertyValue("--surface-inset")).toBe("4px");
+    expect(root.style.getPropertyValue("--surface-bg-image")).toBe('url("tile.svg")');
+    // 玻璃键仍零值——无 glass type 不写玻璃
+    expect(root.style.getPropertyValue("--glass-blur")).toBe("0px");
+  });
+
   it("background.mode=zones → 写 per-surface 切片变量（no-repeat + zones 标记），不铺全窗 bg-image", () => {
     applyTheme({
       ...MOCK_THEME,

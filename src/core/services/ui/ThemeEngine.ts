@@ -183,6 +183,12 @@ function surfaceVariables(surface?: ThemeSurface): Record<string, string> {
     vars["surface-bg-repeat"] = "repeat";
     if (surface.textureOpacity != null) vars["surface-bg-opacity"] = String(surface.textureOpacity);
   }
+  // 悬浮面板形态（radius/inset/shadow）——与 glass 材质正交：⑬⑭ 分区主题无玻璃也要圆角+留缝（接缝露底色）
+  if (surface.radius != null) vars["surface-radius"] = `${surface.radius}px`;
+  if (surface.inset != null) vars["surface-inset"] = `${surface.inset}px`;
+  // 投影浮起 → 映射六域悬浮 token（JS 不硬编码 shadow 值——#50.14 已 token 化）
+  if (surface.shadow === true) vars["surface-shadow"] = "var(--shadow-lift)";
+
   if (surface.type !== "glass") return vars;
   if (surface.blur != null) vars["glass-blur"] = `${surface.blur}px`;
   if (surface.saturate != null) vars["glass-saturate"] = String(surface.saturate);
@@ -190,10 +196,6 @@ function surfaceVariables(surface?: ThemeSurface): Record<string, string> {
   if (surface.opacity != null) vars["glass-opacity"] = String(surface.opacity);
   if (surface.specular != null) vars["glass-specular"] = String(surface.specular);
   if (surface.morph != null) vars["glass-morph"] = `${surface.morph}ms`;
-  if (surface.radius != null) vars["surface-radius"] = `${surface.radius}px`;
-  if (surface.inset != null) vars["surface-inset"] = `${surface.inset}px`;
-  // 投影浮起 → 映射六域悬浮 token（JS 不硬编码 shadow 值——#50.14 已 token 化）
-  if (surface.shadow === true) vars["surface-shadow"] = "var(--shadow-lift)";
   return vars;
 }
 
