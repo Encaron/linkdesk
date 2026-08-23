@@ -540,6 +540,99 @@
   }
   .shell[data-theme="mint"] .tool-btn, .shell[data-theme="mint"] .tab { border-radius: 10px; }
 
+  /* ── ⑤ 现状 · 直角暗（theme-defaults/dark.json 100% 真实值——决策 F 迁移对象）──
+     形制 = 现状：zones 之间直角贴边 / 无缝无投影无玻璃，仅 1px 分隔线切分。
+     surface/radius/glass 域全零 = 继承链兜底，任何配方缺这些域就落回这里（03 §3 稀疏覆盖）。 */
+  .shell[data-theme="current-dark"] {
+    --theme-bg-window: #1E1E1E;
+    --theme-bg-titlebar: #1E1E1E;
+    --theme-bg-card: #2D2D2D;
+    --theme-bg-status: #007ACC;          /* 真实现状：状态栏就是这条蓝 */
+    --theme-bg-input: #3C3C3C;
+    --theme-bg-icon-bar: #18181B;
+    --theme-bg-side-panel: #1E1E22;
+    --theme-bg-toolbar: #1E1E22;
+    --theme-text-primary: #D4D4D4;
+    --theme-text-secondary: #9D9D9D;
+    --theme-text-muted: #8A8A8A;
+    --theme-text-on-accent: #FFFFFF;
+    --theme-accent: #0E639C;
+    --theme-accent-hover: #1177BB;
+    --theme-border: #3C3C3C;
+    --theme-separator: #474747;
+    --theme-hover-overlay: rgba(255,255,255,0.06);
+    --theme-tab-hover-bg: #353535;
+    --theme-dirty-dot: #CCA700;
+    --theme-toggle-knob: #FFFFFF;
+    --theme-toggle-knob-on: #0E639C;
+    --theme-status-connected: #4EC9B0;
+    --theme-status-disconnected: #6A6A6A;
+    --theme-icon-active: #FFFFFF;
+    --theme-icon-inactive: #858585;
+    --theme-font-ui: "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+    --theme-font-mono: "Cascadia Mono", Consolas, monospace;
+    --theme-cm-timestamp: #8A8A8A;
+    --theme-sent-echo: #0E639C;
+    --theme-received: #D4D4D4;
+    --theme-system-log: #8A8A8A;
+    --theme-bg-layer: none;
+    --theme-bg-mask: none;
+  }
+  .shell[data-theme="current-dark"] .icon-btn.active { box-shadow: inset 0 0 0 1px var(--theme-accent); }
+  .shell[data-theme="current-dark"] .statusbar, .shell[data-theme="current-light"] .statusbar { color: #E8F0FF; }
+  .shell[data-theme="current-dark"] .statusbar .sb-count, .shell[data-theme="current-light"] .statusbar .sb-count { color: rgba(255,255,255,0.72); }
+
+  /* ── ⑥ 现状 · 直角亮（theme-defaults/light.json 100% 真实值）── */
+  .shell[data-theme="current-light"] {
+    --theme-bg-window: #FFFFFF;
+    --theme-bg-titlebar: #FFFFFF;
+    --theme-bg-card: #F5F5F5;
+    --theme-bg-status: #007ACC;
+    --theme-bg-input: #FFFFFF;
+    --theme-bg-icon-bar: #F0F0F0;
+    --theme-bg-side-panel: #F5F5F5;
+    --theme-bg-toolbar: #F5F5F5;
+    --theme-text-primary: #2D2D2D;
+    --theme-text-secondary: #5A5A5A;
+    --theme-text-muted: #767676;
+    --theme-text-on-accent: #FFFFFF;
+    --theme-accent: #0078D4;
+    --theme-accent-hover: #106EBE;
+    --theme-border: #D4D4D4;
+    --theme-separator: #E8E8E8;
+    --theme-hover-overlay: rgba(0,0,0,0.04);
+    --theme-tab-hover-bg: #E8E8E8;
+    --theme-dirty-dot: #D4A017;
+    --theme-toggle-knob: #2D2D2D;
+    --theme-toggle-knob-on: #0078D4;
+    --theme-status-connected: #388A34;
+    --theme-status-disconnected: #999999;
+    --theme-icon-active: #2D2D2D;
+    --theme-icon-inactive: #767676;
+    --theme-font-ui: "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+    --theme-font-mono: "Cascadia Mono", Consolas, monospace;
+    --theme-cm-timestamp: #767676;
+    --theme-sent-echo: #0078D4;
+    --theme-received: #2D2D2D;
+    --theme-system-log: #767676;
+    --theme-bg-layer: none;
+    --theme-bg-mask: none;
+  }
+  .shell[data-theme="current-light"] .icon-btn.active { box-shadow: inset 0 0 0 1px var(--theme-accent); }
+  /* 现状形制锁定：内部控件回归直角（vs 上方主题的 6-10px），壳框 8px ≈ 现实 Win11 窗口 */
+  .shell[data-theme="current-dark"],
+  .shell[data-theme="current-light"] { border-radius: 8px; }
+  .shell[data-theme="current-dark"] .icon-btn,
+  .shell[data-theme="current-light"] .icon-btn,
+  .shell[data-theme="current-dark"] .side-row .sw,
+  .shell[data-theme="current-light"] .side-row .sw { border-radius: 0; }
+  .shell[data-theme="current-dark"] .tool-btn,
+  .shell[data-theme="current-light"] .tool-btn { border-radius: 2px; }
+  .shell[data-theme="current-dark"] .tab,
+  .shell[data-theme="current-light"] .tab { border-radius: 0; }
+  .shell[data-theme="current-dark"] .side-row .sw,
+  .shell[data-theme="current-light"] .side-row .sw { background: rgba(0,0,0,0.06); color: var(--theme-text-secondary); }
+
   /* ═══ surface 域（#50.6 token 表）═══
      悬浮圆角面板：--surface-inset 留缝 / --surface-radius 圆角 / --surface-shadow 投影 / --surface-border 发丝光边
      data-surf 挂 .shell：on = 悬浮圆角，off = 现状直角贴边（决策：默认零值 = 现状，旧主题零变化）
@@ -552,6 +645,9 @@
   .shell[data-theme="minimal"][data-surf="on"] { --surface-inset: 5px; --surface-radius: 10px; --surface-shadow: 0 1px 0 rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.02); --surface-border: rgba(0,0,0,0.06); }
   .shell[data-theme="luxury"][data-surf="on"] { --surface-inset: 6px; --surface-radius: 9px; --surface-shadow: 0 2px 12px rgba(68,85,110,0.12), 0 1px 3px rgba(68,85,110,0.06); --surface-border: rgba(0,0,0,0.05); }
   .shell[data-theme="mint"][data-surf="on"] { --surface-inset: 6px; --surface-radius: 13px; --surface-shadow: 0 4px 14px rgba(107,74,224,0.12), 0 1px 4px rgba(0,0,0,0.04); --surface-border: rgba(0,0,0,0.05); }
+  /* 现状主题 surf 开 = 演示「同一套变量，两种形制」：现状配色 + surface 域 = 圆角化的现状（证明现状没被消灭） */
+  .shell[data-theme="current-dark"][data-surf="on"] { --surface-inset: 6px; --surface-radius: 12px; --surface-shadow: 0 6px 18px rgba(0,0,0,0.35), 0 1px 4px rgba(0,0,0,0.18); --surface-border: rgba(255,255,255,0.07); }
+  .shell[data-theme="current-light"][data-surf="on"] { --surface-inset: 6px; --surface-radius: 12px; --surface-shadow: 0 6px 18px rgba(0,0,0,0.08), 0 1px 4px rgba(0,0,0,0.05); --surface-border: rgba(255,255,255,0.55); }
 
   .shell .titlebar, .shell .icon-bar, .shell .sidebar, .shell .main, .shell .statusbar {
     margin: 0;
@@ -734,7 +830,15 @@
 </div>
 
 <div class="theme-tabs" id="tabs" role="tablist" aria-label="主题切换">
-  <button class="theme-tab active" data-theme="glass" role="tab" aria-selected="true">
+  <button class="theme-tab active" data-theme="current-dark" role="tab" aria-selected="true">
+    <span class="dots"><span class="dot" style="background:#0E639C;"></span><span class="dot" style="background:#007ACC;"></span><span class="dot" style="background:#1E1E1E;"></span></span>
+    <span class="tname">现状 · 直角暗</span><span class="tskill">现状基线</span>
+  </button>
+  <button class="theme-tab" data-theme="current-light" role="tab" aria-selected="false">
+    <span class="dots"><span class="dot" style="background:#0078D4;"></span><span class="dot" style="background:#007ACC;"></span><span class="dot" style="background:#FFFFFF;"></span></span>
+    <span class="tname">现状 · 直角亮</span><span class="tskill">现状基线</span>
+  </button>
+  <button class="theme-tab" data-theme="glass" role="tab" aria-selected="false">
     <span class="dots"><span class="dot" style="background:#8B7CF6;"></span><span class="dot" style="background:#34D399;"></span><span class="dot" style="background:#A69CFF;"></span></span>
     <span class="tname">Glass Aurora</span><span class="tskill">high-end</span>
   </button>
@@ -962,6 +1066,70 @@
      ════════════════════════════════════════════════════════════════════ */
 
   const T = {
+    'current-dark': {
+      name: '现状 · 直角暗',
+      read: '读取为：桌面壳 <strong>保持现状形制</strong>——zones 之间<strong>直角贴边</strong>、无缝无投影无玻璃，只有 1px 分隔线切分（顶栏/图标栏/侧栏/主区/状态栏）。配色 100% = 仓库 <code>theme-defaults/dark.json</code>（状态栏就是这条蓝 #007ACC）。这是 surface/radius/glass 域的<strong>零值</strong>，也是每个配方的继承兜底——主题化不会让它消失。',
+      badge: 'dark · 现状基线',
+      recipe: {
+        id: 'current-dark', name: '现状 · 直角暗', type: 'dark',
+        appearance: {
+          radius: { sm: 0, md: 0, lg: 0, xl: 0 },
+          glass: { blur: 0, saturate: 1, tint: null, opacity: 1 },
+          font: { ui: 'Segoe UI', mono: 'Cascadia Mono' },
+          background: { image: null, opacity: 1, mask: null },
+          surface: { inset: 0, radius: 0, shadow: false, border: false }
+        },
+        colorways: [{
+          id: 'current-dark', name: '现状暗',
+          colors: { 'bg-window': '#1E1E1E', 'bg-status': '#007ACC', 'text-primary': '#D4D4D4', accent: '#0E639C', 'bg-icon-bar': '#18181B', 'bg-side-panel': '#1E1E22', 'bg-toolbar': '#1E1E22' }
+        }]
+      },
+      tokens: [
+        ['--bg-window', '#1E1E1E', true], ['--bg-status', '#007ACC', true],
+        ['--text-primary', '#D4D4D4', true], ['--accent', '#0E639C', true],
+        ['--bg-icon-bar', '#18181B', true], ['--bg-side-panel', '#1E1E22', true],
+        ['--border', '#3C3C3C', false], ['--separator', '#474747', false],
+        ['--surface-inset', '0px', false], ['--surface-radius', '0px', false],
+        ['--radius-*', '全部 0px', false], ['--glass-blur', '0px', false],
+        ['--font-ui', 'Segoe UI', false]
+      ],
+      more: 'theme-defaults/dark.json 100% 真实值（决策 F 迁移对象）。zones 直角贴边 = surface/radius 域全零；配方缺这些域就继承回这里（稀疏覆盖），现状永远兜底。',
+      domains: { colors: 1, font: 0, radius: 0, glass: 0, background: 0, surface: 0 },
+      skill: { ico: 'C', name: '现状基线（非 skill 产物）', desc: '不是设计 skill 的输出——是仓库 theme-defaults/dark.json 真实现状。它证明「有圆角 ≠ 丢现状」：surface/radius 域零值就是它，任何配方缺这些域都继承回这里。' }
+    },
+
+    'current-light': {
+      name: '现状 · 直角亮',
+      read: '读取为：桌面壳 保持现状形制（直角贴边），只换一组颜色——100% = 仓库 <code>theme-defaults/light.json</code>。与暗色同形制同兜底：zones 直角贴边、无缝无投影无玻璃，状态栏同为蓝 #007ACC。',
+      badge: 'light · 现状基线',
+      recipe: {
+        id: 'current-light', name: '现状 · 直角亮', type: 'light',
+        appearance: {
+          radius: { sm: 0, md: 0, lg: 0, xl: 0 },
+          glass: { blur: 0, saturate: 1, tint: null, opacity: 1 },
+          font: { ui: 'Segoe UI', mono: 'Cascadia Mono' },
+          background: { image: null, opacity: 1, mask: null },
+          surface: { inset: 0, radius: 0, shadow: false, border: false }
+        },
+        colorways: [{
+          id: 'current-light', name: '现状亮',
+          colors: { 'bg-window': '#FFFFFF', 'bg-status': '#007ACC', 'text-primary': '#2D2D2D', accent: '#0078D4', 'bg-icon-bar': '#F0F0F0', 'bg-side-panel': '#F5F5F5', 'bg-toolbar': '#F5F5F5' }
+        }]
+      },
+      tokens: [
+        ['--bg-window', '#FFFFFF', true], ['--bg-status', '#007ACC', true],
+        ['--text-primary', '#2D2D2D', true], ['--accent', '#0078D4', true],
+        ['--bg-icon-bar', '#F0F0F0', true], ['--bg-side-panel', '#F5F5F5', true],
+        ['--border', '#D4D4D4', false], ['--separator', '#E8E8E8', false],
+        ['--surface-inset', '0px', false], ['--surface-radius', '0px', false],
+        ['--radius-*', '全部 0px', false], ['--glass-blur', '0px', false],
+        ['--font-ui', 'Segoe UI', false]
+      ],
+      more: 'theme-defaults/light.json 真实值。同现状形制（直角贴边），只换颜色——证明「形制」和「配色」是正交两轴（appearance × colorways）。',
+      domains: { colors: 1, font: 0, radius: 0, glass: 0, background: 0, surface: 0 },
+      skill: { ico: 'C', name: '现状基线（非 skill 产物）', desc: '仓库 theme-defaults/light.json 真实现状。形制 = 配色正交轴的演示：同一直角形制可配任意颜色。' }
+    },
+
     glass: {
       name: 'Glass Aurora · 液态玻璃',
       read: '读取为：桌面壳 用 高质感液态玻璃 语言，靠 <code>high-end-visual-design</code> 的 Ethereal Glass 本体。图片全窗铺底（sailor-moon.jpg）+ 0.88 深罩 + 每区域悬浮圆角面板（surface 域：留缝/圆角/投影/发丝光边）+ 液态玻璃材质三层：透光（per-surface blur 8/18/20px 差异化）、反光（specular 顶部渐变受光带）、响应（morph 400ms 形变过渡）。',
@@ -1191,16 +1359,22 @@
   }
 
   const NOTES = {
+    'current-dark': '<strong>现状基线</strong>：theme-defaults/dark.json 100% 真实值。看 <strong>zones 之间</strong>——顶栏 / 图标栏 / 侧栏 / 主区 / 状态栏全部<strong>直角贴边</strong>，1px 分隔线切开，无圆角、无留缝、无投影、无玻璃（状态栏就是那条蓝 #007ACC）。这就是「没有圆角之前咱们自己的样子」，它不会被主题化消灭：surface/radius 域零值就是它，任何配方缺这些域就继承回它（稀疏覆盖）。点上方 <code>surface</code> 钮 = 「现状 + 圆角域」= 圆角化的现状——同一套变量，两种形制。',
+    'current-light': '现状亮色基线：theme-defaults/light.json 真实值。同形制（直角贴边）只换一组颜色——形制与配色是正交两轴（appearance × colorways）。',
     glass: '四个主题 = 四个配方（recipe.json 预览即 <code>03-插件制造/11-主题制作.md</code> 示例的产出格式，人类/AI 都能照着造，即 ai化 落地）。全部走决策 F：<code>colorways[]</code> 无第二种写法。切主题 = 换配方 = 换整套 CSS 变量（<code>02-变量契约</code> 真实 token 名）。圆角/玻璃在设置层再被 scale/绝对覆盖（决策 E）。壳上方 surface 钮演示「悬浮圆角 ⇄ 直角贴边」（surface 域零值 = 现状）；液态玻璃材质 = 透光（blur/saturate）+ 反光（specular）+ 响应（morph）。' ,
     minimal: '玻璃 = 绝对覆盖（决策 E）：glass-blur 0 即「关玻璃」，主题作者可不写 glass 域（稀疏覆盖）。1px #EAEAEA 结构线 + 8/12px 圆角 = minimalist-ui 的形制锁定。',
     luxury: 'design-taste-frontend 的「奢华」默认会被禁用的 beige+brass+espresso 家族带偏，这里走 Cold Luxury（银灰 + 铬银 + 烟墨），纸感来自底色 + 噪点纹理，非暖色古董风。衬线（Cormorant Garamond）仅展示字，正文 sans，遵守其 Serif Discipline。',
     mint: '迁移演示：theme-mint-soda 4 平铺 json → 1 配方 4 colorways（决策 F）。色值 100% 来自仓库 <code>plugins/user/theme-mint-soda/*.json</code>，非虚构。设置页主题选择器会从 4 张卡片变 1 张卡片 + 4 配色（05 §5 迁移表）。'
   };
 
+  /* surface 域默认值：现状基线 = 直角贴边（忠实现状），其余主题 = 悬浮圆角 */
+  const SURF_DEFAULT = { 'current-dark': false, 'current-light': false };
+
   function apply(themeId) {
     const t = T[themeId];
     const shell = $('#shell');
     shell.dataset.theme = themeId;
+    setSurf(SURF_DEFAULT[themeId] === undefined ? true : SURF_DEFAULT[themeId]);
     document.querySelectorAll('.theme-tab').forEach((b) => {
       const on = b.dataset.theme === themeId;
       b.classList.toggle('active', on);
@@ -1225,11 +1399,10 @@
   function setSurf(on) {
     surfOn = on;
     $('#shell').dataset.surf = on ? 'on' : 'off';
-    surfBtn.textContent = on ? '悬浮圆角 · ON' : '直角贴边 · OFF';
+    surfBtn.textContent = on ? '悬浮圆角 · 开' : '直角贴边 · 开';
     surfBtn.classList.toggle('off', !on);
   }
   surfBtn.addEventListener('click', () => setSurf(!surfOn));
-  setSurf(true);
 
   /* ═══ 主题样式一览（谱系）：配方 → mini 窗口渲染 ═══
      每主题 = 一个配方（05 §2 schema 六域）。--tw-* 与真实变量契约（02 §2）同名同语义：
@@ -1355,8 +1528,8 @@
     wallEl.appendChild(card);
   });
 
-  /* 初始：Glass Aurora */
-  apply('glass');
+  /* 初始：现状 · 直角暗——先把「咱们现在的样子」（zones 直角贴边）画出来，再点开看极限 */
+  apply('current-dark');
 </script>
 </body>
 </html>
