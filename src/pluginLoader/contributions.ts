@@ -12,7 +12,7 @@
 
 import type { PluginManifest, ViewPluginEntry, ThemeContribution, IconThemeContribution, IconContribution, LanguageContribution, ContributesViews } from "../core/api/types";
 import { registerViewPlugin } from "./viewRegistry";
-import { registerTheme, getAvailableThemes, ensurePluginFontFacesCleanup } from "../core/services/ui/ThemeEngine";
+import { registerTheme, getAvailableThemes, ensurePluginFontFacesCleanup, normalizeThemeValue } from "../core/services/ui/ThemeEngine";
 import { ThemeRegistry, parseThemeRecipe } from "../core/registry/appearance/ThemeRegistry";
 import { IconRegistry } from "../core/registry/appearance/IconRegistry";
 import { LanguageRegistry } from "../core/registry/languages/LanguageRegistry";
@@ -509,15 +509,16 @@ async function loadPluginI18nData(pluginId: string, manifest: PluginManifest): P
 /**
  * 同步 app.theme 枚举——主题/配方注册注销后调用。不影响 onApply，只更新下拉选项。
  * E5.8#50.19：枚举 = 配方 id 优先 + flat 主题名退路（08 §7.2 #1「动态配方 id 列表」）。
- * 决策 F 迁移期：旧 flat 主题（Dark/Light/未迁移 json 名）仍可选中——app.theme onApply 有 flat 桥接；
- * #50.25 全量迁移 colorways 后 flat 名自然消失，枚举收敛为纯配方 id。
+ * E5.8#50.21：flat 名归一化后与配方 id 冲突（"Dark"/"Light" → "dark"/"light"）→ 剔除，收敛为纯配方 id
+ *   （旧值持久化经读时归一化照常解析；未迁移 json 名如 "薄荷苏打" 保留——flat 桥接仍可选）。
+ * #50.25 全量迁移 colorways 后 flat 名自然消失，枚举纯配方 id。
  */
 function syncAppThemeEnum(): void {
   const recipeIds = ThemeRegistry.getRecipes().map((r) => r.id);
-  const flatNames = getAvailableThemes().filter((n) => !recipeIds.includes(n));
+  const flatNames = getAvailableThemes().filter((n) => !recipeIds.includes(normalizeThemeValue(n) ?? n));
   const available = [...recipeIds, ...flatNames];
   if (available.length === 0) return; // 无主题时不更新——保留上次枚举，避免下拉变输入框
-  updateConfigurationEnum("app.theme", available, available.includes("Dark") ? "Dark" : available[0]);
+  updateConfigurationEnum("app.theme", available, available.includes("dark") ? "dark" : available[0]);
 }
 
 /** 同步 app.language 枚举——语言注册/注销后调用。不影响 onApply，只更新下拉选项。 */

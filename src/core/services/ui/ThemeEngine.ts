@@ -559,9 +559,26 @@ export function applyAccentColor(hexColor: string): void {
 }
 
 /**
- * 内置兜底主题——在插件加载前注册，确保卸载全部主题插件后设置下拉框仍有 Dark/Light。
- * 空 colors——应用时清空插件变量，index.css :root 硬兜底接管。
- * 插件主题（theme-defaults）后注册 → 同名覆盖 → getAvailableThemes() 返回插件版本。
+ * E5.8#50.21：app.theme 旧值归一化（08 §4 迁移表）——旧 flat 主题名 → 壳内置配方 id。
+ * "Dark"→"dark" / "Light"→"light"；其余（配方 id / 未迁移 json 名）恒等。
+ * 读时归一化——所有消费 app.theme 的路径都过这里（resolveActiveRecipe / onApply / getActive / revert…）；
+ * 启动时另做持久化写回（旧值落盘转新，映射表不弹窗不重置）。
+ * #50.25 主题插件迁移 colorways 后，json 名 → 配方 id 的映射在此扩展（08 §4 行 2）。
+ */
+const THEME_VALUE_MIGRATIONS: Record<string, string> = {
+  Dark: "dark",
+  Light: "light",
+};
+export function normalizeThemeValue(value: string | undefined): string | undefined {
+  if (!value) return value;
+  return THEME_VALUE_MIGRATIONS[value] ?? value;
+}
+
+/**
+ * 内置兜底配方——在插件加载前注册，确保卸载全部主题插件后设置下拉框仍有 dark/light 配方。
+ * 空 colorways（colors: {}）——应用时清空插件变量，index.css :root 硬兜底接管。
+ * 插件主题（theme-defaults）后注册同名配方（id "dark"/"light"）→ 覆盖兜底（registerRecipe 无归属不告警）。
+ * E5.8#50.21：壳兜底从 flat Theme 迁为 Recipe（决策 F 迁移表「壳内置配方 id」），不再进 flat 登记本。
  *
  * 🔥 #59c fix：防重入——React StrictMode 双重 effect 导致本函数在插件加载后再次执行。
  */
@@ -569,8 +586,14 @@ let _fallbacksRegistered = false;
 export function registerFallbackThemes(): void {
   if (_fallbacksRegistered) return;
   _fallbacksRegistered = true;
-  registerTheme({ name: "Dark", type: "dark", colors: {} });
-  registerTheme({ name: "Light", type: "light", colors: {} });
+  ThemeRegistry.registerRecipe(
+    { id: "dark", name: "Dark", type: "dark", colorways: [{ id: "dark", name: "Dark", colors: {} }] },
+    undefined
+  );
+  ThemeRegistry.registerRecipe(
+    { id: "light", name: "Light", type: "light", colorways: [{ id: "light", name: "Light", colors: {} }] },
+    undefined
+  );
 }
 
 /** 同步查找主题——ThemeRegistry.get() 单真源 fallback（旧格式主题未在 ThemeRegistry 登记时走此路） */

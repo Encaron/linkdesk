@@ -22,13 +22,14 @@ import {
   getAvailableThemes,
   getCurrentTheme,
   deriveAppearanceSeeds,
+  normalizeThemeValue,
 } from "../core/services/ui/ThemeEngine";
 import { ThemeRegistry } from "../core/registry/appearance/ThemeRegistry";
 import type { ThemeRecipe } from "../core/types/theme"; // E5.8#50.19：配方路径应用 helper 的类型标注
 import { initPluginLoader, startPluginWatcher, stopPluginWatcher, getLoadedPluginManifests } from "../pluginLoader/loader";
 import { factorySlots } from "../core/services/bootstrap/FactorySlots";
 import {
-  getConfigurationValue, setConfigurationValue, resetConfigurationValue,
+  getConfigurationValue, setConfigurationValue, resetConfigurationValue, inspectConfiguration,
 } from "../core/services/configuration/ConfigurationService";
 import { registerConfiguration, updateConfigurationEnum } from "../core/registry/ConfigurationRegistry";
 import { initLayoutService, getTabLayout } from "../core/services/layout/LayoutService";
@@ -69,7 +70,8 @@ const applyThemeIfReady = (): void => {
 
 /** 活动配方解析——引擎活动态优先，配置回退（applyRecipe 未提交但 app.theme 已设的场景） */
 const resolveActiveRecipe = (): ThemeRecipe | undefined => {
-  const id = getActiveRecipe()?.recipeId ?? getConfigurationValue<string>("app.theme");
+  // E5.8#50.21：配置回退读时归一化——旧值 "Dark"/"Light" → 壳内置配方 id "dark"/"light"
+  const id = getActiveRecipe()?.recipeId ?? normalizeThemeValue(getConfigurationValue<string>("app.theme"));
   return id ? ThemeRegistry.getRecipe(id) : undefined;
 };
 
@@ -217,23 +219,24 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
           "app.theme": {
             type: "string",
             // 初始枚举 = 配方 id + flat 名（与 syncAppThemeEnum 同构——StrictMode remount 幂等）；
-            // 注册时 fallback 主题已登记（Dark/Light），插件配方加载后 syncAppThemeEnum 持续刷新
-            default: "Dark",
+            // 注册时 fallback 配方已登记（dark/light），插件配方加载后 syncAppThemeEnum 持续刷新
+            default: "dark",
             enum: (() => {
               const ids = ThemeRegistry.getRecipes().map((r) => r.id);
               const names = getAvailableThemes().filter((n) => !ids.includes(n));
               const available = [...ids, ...names];
-              return available.length ? available : ["Dark"];
+              return available.length ? available : ["dark"];
             })(),
             description: t("主题配方——选择配色与外观来源（配方卡片）"),
             onApply: async (v) => {
-              const value = v as string;
+              // E5.8#50.21：旧值归一化——"Dark"/"Light"（legacy flat）→ 壳内置配方 id "dark"/"light"
+              const value = normalizeThemeValue(v as string) ?? (v as string);
               const recipe = ThemeRegistry.getRecipe(value);
               if (recipe) {
                 // 配方路径——按 themeColorMode/themeColor 解析配色 + 合并外观覆盖
                 applyRecipeForConfig(recipe);
               } else {
-                // flat 桥接——旧格式主题（Dark/Light/未迁移 json 名，决策 F 迁移期退路；#50.25 后仅剩配方路径）
+                // flat 桥接——未迁移 json 名（决策 F 迁移期退路；#50.25 后仅剩配方路径）
                 const theme = await loadTheme(value);
                 applyTheme(theme);
                 applyAccentColor(getEffectiveAccentColor());
@@ -439,7 +442,16 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
       keybindingCleanup = result.keybindingCleanup;
 
       // ═══ Post-init：React state 同步 ═══
-      const initTheme = getConfigurationValue<string>("app.theme") ?? "Dark";
+      // E5.8#50.21：旧值归一化 + 落盘——workspace/user 里 legacy "Dark"/"Light" 启动即转 "dark"/"light"
+      // （映射表，不弹窗不重置；getConfigurationValue 会经 enum 校验把 legacy 值读成默认，须 inspect 取原始值）
+      const inspectedTheme = inspectConfiguration<string>("app.theme");
+      const rawTheme = inspectedTheme.workspaceValue ?? inspectedTheme.userValue ?? "dark";
+      const initTheme = normalizeThemeValue(rawTheme) ?? "dark";
+      if (initTheme !== rawTheme) {
+        const scope = inspectedTheme.workspaceValue !== undefined ? "workspace" : "user";
+        setConfigurationValue("app.theme", initTheme, scope)
+          .catch((e) => { console.error("[startup] app.theme 迁移落盘失败:", e); });
+      }
       const initLang = getConfigurationValue<string>("app.language") ?? "zh";
       setTheme(initTheme);
       setLang(initLang as "zh" | "en");

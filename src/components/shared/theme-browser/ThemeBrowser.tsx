@@ -16,6 +16,7 @@ import {
   applyAccentColor,
   getCurrentTheme,
   getEffectiveAccentColor,
+  normalizeThemeValue, // E5.8#50.21：选中 flat "Dark"/"Light" 时写配方 id（enum 已收敛，拒写 legacy 名）
 } from "../../../core/services/ui/ThemeEngine";
 import { ThemeRegistry } from "../../../core/registry/appearance/ThemeRegistry"; // E3.5 #CP23
 import { setConfigurationValue } from "../../../core/services/configuration/ConfigurationService";
@@ -50,7 +51,9 @@ export function showThemePicker(pluginId?: string): void {
     getKey: (name) => name,
     onSelect: (name) => {
       committed = true;
-      setConfigurationValue("app.theme", name, "user").catch((e) => { console.error("[ThemeBrowser] 切换主题失败:", e); });
+      // E5.8#50.21：归一化后写入——flat "Dark"/"Light" 也落配方 id（enum 校验拒写 legacy 名）
+      setConfigurationValue("app.theme", normalizeThemeValue(name) ?? name, "user")
+        .catch((e) => { console.error("[ThemeBrowser] 切换主题失败:", e); });
     },
     onHighlight: async (name) => {
       try {

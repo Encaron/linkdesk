@@ -41,7 +41,7 @@ function App() {
   useHeartbeat();
   // E2a #6：内存监控——每 10s 采样，JS heap > 80% → toast 告警
   useMemoryMonitor();
-  const [, setTheme] = useState<string>("Dark");
+  const [, setTheme] = useState<string>("dark"); // E5.8#50.21：初始 = 壳内置配方 id（启动后由 app.theme 覆盖）
   const [, setLang] = useState<"zh" | "en">("zh");
 
   // E5.8#0d.10-3b：启动初始化管线（mount-once 注册 + initAll + post-init state 同步）迁入 src/App/startup.ts

@@ -20,6 +20,7 @@ import {
 import { setConfigurationValue, getConfigurationValue, getUserSettings } from "../configuration/ConfigurationService";
 import { pushToast, TOAST_TTL_ERROR } from "../ui/NotificationService";
 import { deepEqual } from "../../utils/deepEqual"; // E5.8 归一化：JSON.stringify 深比较捷径统一走共享工具
+import { normalizeThemeValue } from "../ui/ThemeEngine"; // E5.8#50.21：快照导出/校验前旧值归一化
 import {
   appDataDir,
   joinPath,
@@ -147,7 +148,8 @@ export function snapshotCurrentAsProfile(name: string): Profile {
     name,
     plugins: manifests.map((m) => m.pluginId),
     settings: {
-      "app.theme": getConfigurationValue("app.theme"),
+      // E5.8#50.21：快照导出前归一化——legacy "Dark"/"Light" 不落盘，profile 恒存配方 id
+      "app.theme": normalizeThemeValue(getConfigurationValue<string>("app.theme")),
       "app.language": getConfigurationValue("app.language"),
     },
   };
@@ -223,10 +225,13 @@ async function _validateSwitch(expected: Profile): Promise<ValidationError[]> {
     }
   }
 
-  // 维度 2：settings 值——关键配置必须和 Profile 一致
+  // 维度 2：settings 值——关键配置必须和 Profile 一致（app.theme 两侧归一化——旧 profile "Dark" vs 现值 "dark" 判等）
   for (const [key, expectedVal] of Object.entries(expected.settings)) {
     const actual = getConfigurationValue(key);
-    if (!deepEqual(actual, expectedVal)) {
+    const isTheme = key === "app.theme";
+    const actualCmp = isTheme ? normalizeThemeValue(String(actual)) : actual;
+    const expectedCmp = isTheme ? normalizeThemeValue(String(expectedVal)) : expectedVal;
+    if (!deepEqual(actualCmp, expectedCmp)) {
       errors.push({
         dimension: 2,
         message: `设置 "${key}" 期望=${JSON.stringify(expectedVal)} 实际=${JSON.stringify(actual)}`,

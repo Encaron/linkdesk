@@ -189,29 +189,39 @@ export const ThemeRegistry = {
 
   /* ── E5.8#50.15：Recipe 登记/查询（05 schema 数据层） ── */
 
-  /** 注册解析后的配方。同名 id 后注册者覆盖（warn）。E5.8#10 返 disposer——删"这一条"（仅当仍是当前占位者）。 */
-  registerRecipe(recipe: ThemeRecipe, pluginId: string): () => void {
+  /** 注册解析后的配方。同名 id 后注册者覆盖——壳兜底（无归属，pluginId 省略）被插件配方覆盖不告警
+   *  （registerTheme 同款语义，兜底上位是预期行为）；插件间重复仍告警。
+   *  E5.8#10 返 disposer——删"这一条"（仅当仍是当前占位者）；无 pluginId（壳兜底）不追踪，返裸 disposer。 */
+  registerRecipe(recipe: ThemeRecipe, pluginId?: string): () => void {
     if (recipes.has(recipe.id)) {
-      console.warn(`[ThemeRegistry] 配方 "${recipe.id}" 重复注册——后注册者 "${pluginId}" 覆盖`);
+      const existingOwner = recipeOwners.get(recipe.id);
+      if (existingOwner) {
+        console.warn(`[ThemeRegistry] 配方 "${recipe.id}" 重复注册——后注册者 "${pluginId}" 覆盖`);
+      }
     }
     recipes.set(recipe.id, recipe);
-    recipeOwners.set(recipe.id, pluginId);
-    const ids = pluginRecipeIds.get(pluginId) ?? [];
-    if (!ids.includes(recipe.id)) ids.push(recipe.id);
-    pluginRecipeIds.set(pluginId, ids);
+    if (pluginId) {
+      recipeOwners.set(recipe.id, pluginId);
+      const ids = pluginRecipeIds.get(pluginId) ?? [];
+      if (!ids.includes(recipe.id)) ids.push(recipe.id);
+      pluginRecipeIds.set(pluginId, ids);
+    }
 
-    return trackRegistration(pluginId, () => {
+    const dispose = (): void => {
       if (recipes.get(recipe.id) === recipe) {
         recipes.delete(recipe.id);
       }
-      if (recipeOwners.get(recipe.id) === pluginId) recipeOwners.delete(recipe.id);
-      const owned = pluginRecipeIds.get(pluginId);
-      if (owned) {
-        const kept = owned.filter((id) => id !== recipe.id);
-        if (kept.length === 0) pluginRecipeIds.delete(pluginId);
-        else pluginRecipeIds.set(pluginId, kept);
+      if (pluginId) {
+        if (recipeOwners.get(recipe.id) === pluginId) recipeOwners.delete(recipe.id);
+        const owned = pluginRecipeIds.get(pluginId);
+        if (owned) {
+          const kept = owned.filter((id) => id !== recipe.id);
+          if (kept.length === 0) pluginRecipeIds.delete(pluginId);
+          else pluginRecipeIds.set(pluginId, kept);
+        }
       }
-    });
+    };
+    return pluginId ? trackRegistration(pluginId, dispose) : dispose;
   },
 
   /** 注销单个配方 */

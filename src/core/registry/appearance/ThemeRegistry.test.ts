@@ -3,7 +3,7 @@
  * 测试夹具一律虚构值（demo-recipe/Demo Recipe——硬约束 21 测试卫生）。
  */
 
-import { describe, it, expect, afterEach } from "vitest";
+import { describe, it, expect, afterEach, vi } from "vitest";
 import { parseThemeRecipe, ThemeRegistry } from "./ThemeRegistry";
 import type { ThemeContribution } from "../../api/types";
 
@@ -141,6 +141,28 @@ describe("ThemeRegistry — registerRecipe / 查询 / 回滚", () => {
 
   it("getRecipe 未注册 → undefined", () => {
     expect(ThemeRegistry.getRecipe("no-such")).toBeUndefined();
+  });
+
+  it("壳兜底注册（无 pluginId）→ 无归属 + 插件配方覆盖不告警 + 不追踪", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      // 壳兜底配方无归属——getRecipeOwner 应为 undefined
+      const fallback = ThemeRegistry.registerRecipe(recipe("demo-fallback", "Fallback"), undefined);
+      expect(ThemeRegistry.getRecipe("demo-fallback")?.name).toBe("Fallback");
+      expect(ThemeRegistry.getRecipeOwner("demo-fallback")).toBeUndefined();
+      // 插件配方覆盖兜底——无归属 → 不告警（registerTheme 同款语义）
+      const plugin = ThemeRegistry.registerRecipe(recipe("demo-fallback", "Plugin"), "plugin-a");
+      expect(ThemeRegistry.getRecipe("demo-fallback")?.name).toBe("Plugin");
+      expect(warn).not.toHaveBeenCalled();
+      expect(ThemeRegistry.getRecipesByPlugin("plugin-a")).toContain("demo-fallback");
+      // 插件 dispose → 兜底配方删除；兜底裸 disposer 幂等（不复活、不误删新占位者）
+      plugin();
+      expect(ThemeRegistry.getRecipe("demo-fallback")).toBeUndefined();
+      fallback();
+      expect(ThemeRegistry.getRecipe("demo-fallback")).toBeUndefined();
+    } finally {
+      warn.mockRestore();
+    }
   });
 
   it("parseThemeRecipe → registerRecipe 端到端（loader 接线形状）", () => {

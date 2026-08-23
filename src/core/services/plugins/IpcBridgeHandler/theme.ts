@@ -8,7 +8,7 @@
  */
 
 import { ThemeRegistry } from "../../../registry/appearance/ThemeRegistry";
-import { recipeDomains, getActiveRecipe, getEffectiveTokens } from "../../ui/ThemeEngine";
+import { recipeDomains, getActiveRecipe, getEffectiveTokens, normalizeThemeValue } from "../../ui/ThemeEngine";
 import {
   getConfigurationValue, setConfigurationValue, resetConfigurationValue,
 } from "../../configuration/ConfigurationService";
@@ -58,8 +58,9 @@ export async function handleThemeMethod(method: string, args: unknown[]): Promis
       // ① 引擎活动配方（applyRecipe 已提交）
       const active = getActiveRecipe();
       if (active?.recipeId) return active;
-      // ② 配置回退——app.theme 是已注册配方 → 报配置值（applyRecipe 未提交、配置已设的场景）
-      const recipeId = getConfigurationValue<string>("app.theme");
+      // ② 配置回退——app.theme 是已注册配方 → 报配置值（applyRecipe 未提交、配置已设的场景）。
+      //    E5.8#50.21：读时归一化——旧值 "Dark"/"Light" → "dark"/"light"
+      const recipeId = normalizeThemeValue(getConfigurationValue<string>("app.theme"));
       const recipe = recipeId ? ThemeRegistry.getRecipe(recipeId) : undefined;
       if (recipe) {
         return {

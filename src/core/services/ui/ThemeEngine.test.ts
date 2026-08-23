@@ -29,6 +29,7 @@ import {
   cleanupPluginFontFaces,
   ensurePluginFontFacesCleanup,
   deriveAppearanceSeeds,
+  normalizeThemeValue,
 } from "./ThemeEngine";
 import { rollback } from "../../registry/registrationTracker";
 import { ThemeRegistry } from "../../registry/appearance/ThemeRegistry";
@@ -319,15 +320,23 @@ describe("ThemeEngine — surface/background 玻璃机制（E5.8#50.6）", () =>
 });
 
 describe("ThemeEngine — registerFallbackThemes", () => {
-  it("registerFallbackThemes — 注册 Dark/Light 且幂等", () => {
+  it("registerFallbackThemes — 注册 dark/light 壳内置配方且幂等", () => {
     registerFallbackThemes();
-    const themes = getAvailableThemes();
-    expect(themes).toContain("Dark");
-    expect(themes).toContain("Light");
+    expect(ThemeRegistry.getRecipe("dark")).toBeDefined();
+    expect(ThemeRegistry.getRecipe("light")).toBeDefined();
     // 幂等——重复调用不重复注册
-    const before = themes.length;
+    const before = ThemeRegistry.getRecipes().length;
     registerFallbackThemes();
-    expect(getAvailableThemes().length).toBe(before);
+    expect(ThemeRegistry.getRecipes().length).toBe(before);
+  });
+
+  it("normalizeThemeValue — legacy Dark/Light → 壳内置配方 id，其余恒等", () => {
+    expect(normalizeThemeValue("Dark")).toBe("dark");
+    expect(normalizeThemeValue("Light")).toBe("light");
+    // 配方 id / 未迁移 json 名 / 空值恒等
+    expect(normalizeThemeValue("mint-soda")).toBe("mint-soda");
+    expect(normalizeThemeValue("薄荷苏打 Mint Soda")).toBe("薄荷苏打 Mint Soda");
+    expect(normalizeThemeValue(undefined)).toBeUndefined();
   });
 });
 

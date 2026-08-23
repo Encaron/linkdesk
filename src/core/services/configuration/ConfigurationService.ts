@@ -370,7 +370,8 @@ function _validateEnum(key: string, value: unknown, _scope: "user" | "workspace"
  */
 function getSystemFallback<T>(key: string): T {
   const fallbacks: Record<string, unknown> = {
-    "app.theme": "Dark",
+    // E5.8#50.21：系统兜底 = 壳内置配方 id "dark"（legacy "Dark" 已随迁移归一化落盘）
+    "app.theme": "dark",
     "app.language": "zh",
   };
   return (fallbacks[key] ?? undefined) as T;
