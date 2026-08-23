@@ -216,6 +216,10 @@ export const IPC = {
     isMaximized: 'window:isMaximized',
     toggleDevTools: 'window:toggleDevTools',
     maximizeChange: 'window:maximize-change',
+    // E5.8#46.18：OS 级置顶——setAlwaysOnTop（send）+ isAlwaysOnTop（handle）+ alwaysOnTopChange 状态推送
+    setAlwaysOnTop: 'window:set-always-on-top',
+    isAlwaysOnTop: 'window:is-always-on-top',
+    alwaysOnTopChange: 'window:always-on-top-change',
     // E5.7#79：缩放——壳配置 window.zoomLevel onApply → 应用到池 WCV（主进程缓存供崩溃重建重放）
     setZoom: 'window:setZoom',
   },

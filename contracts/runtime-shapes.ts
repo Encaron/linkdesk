@@ -196,6 +196,8 @@ function chkTitleBarLayout(v: unknown, p: string, errs: string[]): void {
       if (typeof _t26.maximize !== "string") errs.push((((p) + ".windowControls") + ".maximize") + ": 期望 string，实收 " + typeof _t26.maximize);
       if (typeof _t26.restore !== "string") errs.push((((p) + ".windowControls") + ".restore") + ": 期望 string，实收 " + typeof _t26.restore);
       if (typeof _t26.close !== "string") errs.push((((p) + ".windowControls") + ".close") + ": 期望 string，实收 " + typeof _t26.close);
+      if (typeof _t26.pin !== "string") errs.push((((p) + ".windowControls") + ".pin") + ": 期望 string，实收 " + typeof _t26.pin);
+      if (typeof _t26.unpin !== "string") errs.push((((p) + ".windowControls") + ".unpin") + ": 期望 string，实收 " + typeof _t26.unpin);
     }
   }
 }

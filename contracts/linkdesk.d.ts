@@ -1013,12 +1013,14 @@ export interface TitleBarLayout {
         left: TitleBarSlotButton[];
         right: TitleBarSlotButton[];
     };
-    /** 窗口控件 tooltip——显示文本铁律：壳 t() 解析后推送 */
+    /** 窗口控件 tooltip——显示文本铁律：壳 t() 解析后推送（E5.8#46.18：pin/unpin 置顶两态） */
     windowControls: {
         minimize: string;
         maximize: string;
         restore: string;
         close: string;
+        pin: string;
+        unpin: string;
     };
 }
 /** 图标栏图标——壳 resolvePluginIcon 序列化（池不 import pluginLoader，Lucide 名由池映射组件渲染） */
@@ -1653,7 +1655,7 @@ export interface ShellAPI {
         unregisterBeforeClose(pluginId: string): void;
         beforeClose(pluginId: string, tab: PoolTab): Promise<boolean>;
     };
-    /** 窗口控制——TitleBar 按钮映射，双端注入（8 方法同通道，共享模块 electron/window-namespace.ts） */
+    /** 窗口控制——TitleBar 按钮映射，双端注入（11 方法同通道，共享模块 electron/window-namespace.ts） */
     window: {
         minimize(): void;
         maximize(): void;
@@ -1664,6 +1666,10 @@ export interface ShellAPI {
         toggleDevTools(): Promise<void>;
         isMaximized(): Promise<boolean>;
         onMaximizeChange(cb: (maximized: boolean) => void): () => void;
+        /** E5.8#46.18：OS 级置顶（盖过其他应用）——true 置顶 / false 解除；按 sender 路由宿主窗 */
+        setAlwaysOnTop(pinned: boolean): void;
+        isAlwaysOnTop(): Promise<boolean>;
+        onAlwaysOnTopChange(cb: (pinned: boolean) => void): () => void;
     };
     /** 壳级命令——revealInOS / openInTerminal / startDrag，双端注入 */
     shell: {

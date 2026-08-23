@@ -74,6 +74,16 @@ function TitleBarZone({ titleBar }: { titleBar: TitleBarLayout }) {
     return () => { unsub?.(); };
   }, []);
 
+  // E5.8#46.18：窗口 OS 置顶状态——pin 按钮两态（钉上/解除）。与 maximized 同款：invoke 初始化 + 事件跟随
+  const [pinned, setPinned] = useState(false);
+  useEffect(() => {
+    const win = window.linkdesk?.window;
+    if (!win) return;
+    win.isAlwaysOnTop?.().then((p: boolean) => setPinned(!!p)).catch(() => { /* 静默 */ });
+    const unsub = win.onAlwaysOnTopChange?.((p: boolean) => setPinned(!!p));
+    return () => { unsub?.(); };
+  }, []);
+
   const wc = titleBar.windowControls;
   const openItems = openGroup ? titleBar.menuGroups.find((g) => g.group === openGroup) : undefined;
 
@@ -137,8 +147,19 @@ function TitleBarZone({ titleBar }: { titleBar: TitleBarLayout }) {
       {/* 拖拽区——填充剩余空间 */}
       <div className="titlebar-drag-area" />
 
-      {/* 窗口控制（─ □ ×）——tooltip 壳 t() 推送 */}
+      {/* 窗口控制（pin ─ □ ×）——tooltip 壳 t() 推送；pin 置顶两态（E5.8#46.18：OS 级置顶，盖过其他应用） */}
       <div className="window-controls">
+        <button
+          className={`wc-btn wc-pin${pinned ? " wc-pin-active" : ""}`}
+          onClick={() => {
+            const win = window.linkdesk?.window;
+            if (pinned) win?.setAlwaysOnTop(false);
+            else win?.setAlwaysOnTop(true);
+          }}
+          title={pinned ? wc.unpin : wc.pin}
+        >
+          <span className={`codicon ${pinned ? "codicon-pinned" : "codicon-pin"}`} />
+        </button>
         <button className="wc-btn" onClick={() => window.linkdesk?.window?.minimize()} title={wc.minimize}>
           <span className="codicon codicon-chrome-minimize" />
         </button>

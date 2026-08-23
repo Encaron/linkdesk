@@ -42,6 +42,8 @@
   "最小化": "Minimize",
   "在主窗口中打开": "Open in Main Window",
   "还原": "Restore",
+  "置顶": "Always on Top",
+  "取消置顶": "Unpin",
   "刚刚": "Just now",
   "{{d}} 天前": "{{d}} days ago",
   "{{hr}} 小时前": "{{hr}} hr ago",

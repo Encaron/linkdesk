@@ -187,8 +187,8 @@ export interface TitleBarLayout {
   menuGroups: PoolMenuGroup[];
   /** 插件贡献槽位按钮（left/right） */
   slots: { left: TitleBarSlotButton[]; right: TitleBarSlotButton[] };
-  /** 窗口控件 tooltip——显示文本铁律：壳 t() 解析后推送 */
-  windowControls: { minimize: string; maximize: string; restore: string; close: string };
+  /** 窗口控件 tooltip——显示文本铁律：壳 t() 解析后推送（E5.8#46.18：pin/unpin 置顶两态） */
+  windowControls: { minimize: string; maximize: string; restore: string; close: string; pin: string; unpin: string };
 }
 
 /** 图标栏图标——壳 resolvePluginIcon 序列化（池不 import pluginLoader，Lucide 名由池映射组件渲染） */

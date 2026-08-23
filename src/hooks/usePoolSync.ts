@@ -254,7 +254,8 @@ export function usePoolSync({ windows, sidebarView, isSidebarVisible, panelActiv
         menuBarVisible: MENU_STYLE_MENUBAR_VISIBLE[getConfigurationValue<string>("app.menuStyle") ?? "titlebar"] ?? true,
         menuGroups: buildTitleBarMenuGroups(t),
         slots: { left: buildTitleBarSlots("left"), right: buildTitleBarSlots("right") },
-        windowControls: { minimize: t("最小化"), maximize: t("最大化"), restore: t("还原"), close: t("关闭") },
+        // E5.8#46.18：pin/unpin tooltip 两态（TitleBarZone 置顶按钮按置顶态切换显示）
+        windowControls: { minimize: t("最小化"), maximize: t("最大化"), restore: t("还原"), close: t("关闭"), pin: t("置顶"), unpin: t("取消置顶") },
       },
       iconBar: buildIconBar(t, sidebarView, isSidebarVisible),
       sidebar,

@@ -11,7 +11,7 @@ import { ipcRenderer } from 'electron';
 import { IPC } from './ipc/channels';
 import { listenDirect } from './ipc/event-system';
 
-/** window 命名空间——TitleBar 自定义 ─ □ × 按钮 + 缩放/DevTools/最大化状态（双 preload 同款） */
+/** window 命名空间——TitleBar 自定义 ─ □ × 按钮 + 缩放/DevTools/最大化状态/置顶（双 preload 同款） */
 export function buildWindow() {
   return {
     minimize:  () => ipcRenderer.send(IPC.window.minimize),
@@ -24,5 +24,10 @@ export function buildWindow() {
     isMaximized:() => ipcRenderer.invoke(IPC.window.isMaximized),
     onMaximizeChange: (cb: (maximized: boolean) => void) =>
       listenDirect(ipcRenderer, IPC.window.maximizeChange, (m: boolean) => cb(m)),
+    // E5.8#46.18：OS 级置顶（盖过其他应用）——send 置顶/解除 + invoke 查状态 + 事件跟随
+    setAlwaysOnTop: (pinned: boolean) => ipcRenderer.send(IPC.window.setAlwaysOnTop, pinned),
+    isAlwaysOnTop: () => ipcRenderer.invoke(IPC.window.isAlwaysOnTop),
+    onAlwaysOnTopChange: (cb: (pinned: boolean) => void) =>
+      listenDirect(ipcRenderer, IPC.window.alwaysOnTopChange, (p: boolean) => cb(!!p)),
   };
 }

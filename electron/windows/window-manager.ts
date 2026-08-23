@@ -226,6 +226,12 @@ export class WindowManager {
     // 壳 UI 推流（pushQuickPick/pushToast/pushDialog/pushFloatingPanel）默认落该窗。
     const onFocus = () => { this._focusedWindowId = windowId; };
     hostWindow.on('focus', onFocus);
+    // E5.8#46.18：宿主窗 OS 置顶状态 → 该窗池 WCV 推 alwaysOnTopChange（TitleBarZone pin 按钮两态跟随）。
+    // registerPool = 主/脱出/漂移三窗共用创建路径——三窗统一覆盖（#46.16 只补 createPoolWindow 只覆盖脱出窗的教训：
+    // 新监听挂共用路径，任何新窗口类型自动继承）。
+    const onAlwaysOnTopChanged = (_e: Electron.Event, isAlwaysOnTop: boolean) =>
+      this.sendPoolAlwaysOnTopChange(windowId, isAlwaysOnTop);
+    hostWindow.on('always-on-top-changed', onAlwaysOnTopChanged);
     this.poolWindows.set(windowId, {
       windowId,
       hostWindow,
@@ -235,6 +241,7 @@ export class WindowManager {
         hostWindow.removeListener('moved', reportBounds);
         hostWindow.removeListener('resized', reportBounds);
         hostWindow.removeListener('focus', onFocus);
+        hostWindow.removeListener('always-on-top-changed', onAlwaysOnTopChanged);
       },
     });
     this.syncPoolBounds(windowId);
@@ -543,6 +550,13 @@ export class WindowManager {
         return;
       }
     }
+  }
+
+  /** E5.8#46.18：宿主窗 OS 置顶状态 → 该窗池 WCV（按 windowId 定向——registerPool 挂载处持有 windowId）。
+   *  与 sendPoolMaximizeChange 同款：字面量频道直发池（check-ipc-audit 可审计）。 */
+  sendPoolAlwaysOnTopChange(windowId: string, isAlwaysOnTop: boolean): void {
+    const view = this.getPoolViewByWindowId(windowId);
+    if (view) view.webContents.send(IPC.window.alwaysOnTopChange, isAlwaysOnTop);
   }
 
   /**

@@ -204,6 +204,10 @@ export function installMockLinkdesk(): void {
       toggleDevTools: makeAsyncLogger("window.toggleDevTools"),
       isMaximized: async () => false,
       onMaximizeChange: () => () => {},
+      // E5.8#46.18：置顶（preview 无主进程——no-op 实现）
+      setAlwaysOnTop: makeLogger("window.setAlwaysOnTop"),
+      isAlwaysOnTop: async () => false,
+      onAlwaysOnTopChange: () => () => {},
     },
     toast: {
       onShow: toastReplay.subscribe,

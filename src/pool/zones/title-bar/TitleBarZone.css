@@ -121,6 +121,13 @@
   color: var(--text-primary);
 }
 
+/* E5.8#46.18：置顶激活态——实心 icon + accent 高亮（ui-ux-pro-max「active state 需视觉反馈」；
+   置顶/解除两态一眼可辨，不依赖只换 icon） */
+.wc-btn.wc-pin-active,
+.wc-btn.wc-pin-active:hover {
+  color: var(--accent);
+}
+
 .wc-close:hover {
   background: var(--titlebar-close-hover);
   color: var(--text-on-accent);

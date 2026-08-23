@@ -159,6 +159,10 @@ function createWindow(): void {
     ipcMain.on(IPC.window.unmaximize, (event) => hostWindowFor(event)?.unmaximize());
     ipcMain.on(IPC.window.close, (event) => hostWindowFor(event)?.close());
     ipcMain.handle(IPC.window.isMaximized, (event) => hostWindowFor(event)?.isMaximized() ?? false);
+    // E5.8#46.18：OS 级置顶——setAlwaysOnTop 按 sender 路由宿主窗（脱出窗/漂移窗/主窗各自置顶互不影响）；
+    // isAlwaysOnTop 供 TitleBarZone pin 按钮挂载时初始化两态。
+    ipcMain.on(IPC.window.setAlwaysOnTop, (event, pinned: boolean) => hostWindowFor(event)?.setAlwaysOnTop(!!pinned));
+    ipcMain.handle(IPC.window.isAlwaysOnTop, (event) => hostWindowFor(event)?.isAlwaysOnTop() ?? false);
     // E5.7#79：窗口缩放——壳配置 onApply 推来的因子应用到池 WCV（可见 UI 全在池）。
     // 缓存供 createWindow 重建池后重放（池 WCV 是新 webContents，缩放不随窗口重建保留）。
     ipcMain.on(IPC.window.setZoom, (_event, factor: number) => {

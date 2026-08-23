@@ -59,7 +59,7 @@ export function buildSampleLayout(): PoolLayout {
       menuBarVisible: true,
       menuGroups,
       slots: { left: [], right: [] },
-      windowControls: { minimize: "最小化", maximize: "最大化", restore: "还原", close: "关闭" },
+      windowControls: { minimize: "最小化", maximize: "最大化", restore: "还原", close: "关闭", pin: "置顶", unpin: "取消置顶" },
     },
     iconBar: {
       icons: [

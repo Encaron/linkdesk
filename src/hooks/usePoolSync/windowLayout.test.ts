@@ -52,7 +52,7 @@ function makeCtx(): WindowLayoutContext {
       // 非空菜单组——#46.15 测「脱出窗菜单栏抑制」需要全局有可抑制的菜单数据（虚构值，硬约束 21）
       menuGroups: [{ group: "demo-menu", label: "Demo Menu", items: [{ label: "Demo Item", command: "" }] }],
       slots: { left: [], right: [] },
-      windowControls: { minimize: "最小化", maximize: "最大化", restore: "还原", close: "关闭" },
+      windowControls: { minimize: "最小化", maximize: "最大化", restore: "还原", close: "关闭", pin: "置顶", unpin: "取消置顶" },
     },
     iconBar: { icons: [], hamburgerVisible: false, navLabel: "nav" },
     sidebar: { visible: false, width: 0, containerId: null, containerTitle: "", views: [] },
