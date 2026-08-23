@@ -20,13 +20,19 @@
        ④ 薄荷苏打                ← ui-ux-pro-max（真实 mint-soda 4 配色 = 决策 F 迁移后的配方）
 
      【决策对齐】（05 主题数据模型 §2）
-       · 字段 = appearance{radius,glass,font,background} + colorways[]{id,name,colors}
+       · 字段 = appearance{radius,glass,font,background,surface} + colorways[]{id,name,colors}
        · 单配色也走 colorways[1 项]（决策 F 零向后兼容读，无第二种写法）
        · 颜色域严格只颜色；混搭按域换来源（决策 B）→ 每主题标注 domains 域贡献
        · 圆角 scale + 玻璃绝对覆盖（决策 E）→ token 块含 --radius-*/--glass-*
-       · surface 域 schema 预留（决策 C）
+       · surface 域 schema 预留（决策 C）→ 本画廊实装悬浮圆角面板，壳上方按钮演示互换
+       · 液态玻璃材质键 specular/morph（02 §2.3）→ 反光带 + 形变过渡（零动画成本 + 一次性 transition）
        · ai化 = AI 友好度：recipe JSON 预览即 03-插件制造 11-主题制作 示例的产出格式，
          人类/AI 都能照着造
+
+     【本页控件清单】
+       · theme-tab：4 主题切换（换配方 = 换整套 CSS 变量）
+       · surf-btn：surface 域互换（悬浮圆角面板 ⇄ 现状直角贴边，零值 = 现状）
+       新控件落点：两个均为纯演示层（画廊工作台），不属主题 token；对应文档见 00-文档地图 §3
 
      【壳 = 真实 LinkDesk 结构】（部件命名规范）
        顶栏 titlebar → 图标栏 icon-bar(42px) → 侧栏 sidebar → 主区(tab-bar + content) → 状态栏 statusbar
@@ -354,7 +360,7 @@
     --theme-bg-window: #050505;
     --theme-bg-titlebar: rgba(8,8,10,0.7);
     --theme-bg-card: rgba(24,26,34,0.62);
-    --theme-bg-status: #0A0A0C;
+    --theme-bg-status: rgba(10,10,12,0.55);
     --theme-bg-input: rgba(255,255,255,0.07);
     --theme-bg-icon-bar: #0A0A0C;
     --theme-bg-side-panel: rgba(12,13,17,0.78);
@@ -382,25 +388,36 @@
     --theme-sent-echo: #A69CFF;
     --theme-received: #F3F4F7;
     --theme-system-log: rgba(228,232,240,0.60);
-    --theme-bg-layer:
-      radial-gradient(900px 520px at 8% 0%, rgba(139,124,246,0.22), transparent 62%),
-      radial-gradient(700px 480px at 96% 18%, rgba(52,211,153,0.10), transparent 60%),
-      radial-gradient(640px 500px at 50% 108%, rgba(92,43,224,0.16), transparent 62%);
-    --theme-bg-mask: none;
+    /* 图片全窗铺底（背景域：#50.6 --bg-image/opacity/mask）——sailor-moon.jpg 实体文件，任务完成即此效果 */
+    --theme-bg-layer: url('../../../壳半业务外推/mockups/sailor-moon.jpg') center / cover no-repeat;
+    --theme-bg-mask: rgba(0,0,0,0.88);   /* 深罩——可读性生命线（壳半业务外推 02 玻璃态设计 0.88） */
+    /* 液态玻璃材质键（02 §2.3）：specular = 顶部反光带强度，morph = 形变过渡时长 */
+    --glass-specular: 0.6;
+    --glass-morph: 400ms;
   }
-  /* glass 域：壳本体玻璃化（设置页 mockup 同款 backdrop-filter 写法） */
+  /* glass 域：per-surface blur 差异化（02 玻璃态设计实测——窄表面 8px 防糊图，大表面 18px，悬浮面板 20px） */
   .shell[data-theme="glass"] .titlebar,
-  .shell[data-theme="glass"] .icon-bar,
-  .shell[data-theme="glass"] .sidebar,
   .shell[data-theme="glass"] .tab-bar,
-  .shell[data-theme="glass"] .toolbar,
-  .shell[data-theme="glass"] .statusbar {
-    backdrop-filter: blur(24px) saturate(1.8);
-    -webkit-backdrop-filter: blur(24px) saturate(1.8);
+  .shell[data-theme="glass"] .toolbar {
+    backdrop-filter: blur(20px) saturate(1.8);
+    -webkit-backdrop-filter: blur(20px) saturate(1.8);
   }
+  .shell[data-theme="glass"] .main,
+  .shell[data-theme="glass"] .statusbar {
+    backdrop-filter: blur(18px) saturate(1.8);
+    -webkit-backdrop-filter: blur(18px) saturate(1.8);
+  }
+  .shell[data-theme="glass"] .icon-bar,
+  .shell[data-theme="glass"] .sidebar {
+    backdrop-filter: blur(8px) saturate(1.5);
+    -webkit-backdrop-filter: blur(8px) saturate(1.5);
+  }
+  /* 主内容区玻璃化（图透出）：main 全窗玻璃 + 内部子层半透明 */
+  .shell[data-theme="glass"] .main { background: rgba(8,9,14,0.55); }
+  .shell[data-theme="glass"] .content { background: transparent; }
+  .shell[data-theme="glass"] .tab-bar { background: rgba(8,9,14,0.45); }
+  .shell[data-theme="glass"] .icon-bar { background: rgba(10,10,12,0.5); }
   .shell[data-theme="glass"] .icon-btn.active { box-shadow: inset 0 0 0 1px var(--theme-accent); }
-  /* double-bezel：玻璃面板内圈高光（high-end-visual-design §4.A） */
-  .shell[data-theme="glass"] .sidebar { border-right: 1px solid rgba(255,255,255,0.08); box-shadow: inset 1px 0 0 rgba(255,255,255,0.05); }
 
   /* ── ② 极简编辑部（minimalist-ui 暖单色）── */
   .shell[data-theme="minimal"] {
@@ -523,6 +540,79 @@
   }
   .shell[data-theme="mint"] .tool-btn, .shell[data-theme="mint"] .tab { border-radius: 10px; }
 
+  /* ═══ surface 域（#50.6 token 表）═══
+     悬浮圆角面板：--surface-inset 留缝 / --surface-radius 圆角 / --surface-shadow 投影 / --surface-border 发丝光边
+     data-surf 挂 .shell：on = 悬浮圆角，off = 现状直角贴边（决策：默认零值 = 现状，旧主题零变化）
+     morph（--glass-morph，液态玻璃响应）：换肤/互换时一次性 400ms 过渡，不持续重绘 */
+  .shell {
+    --surface-inset: 0px; --surface-radius: 0px; --surface-shadow: none; --surface-border: transparent;
+    --glass-specular: 0; --glass-morph: 0ms;
+  }
+  .shell[data-theme="glass"][data-surf="on"] { --surface-inset: 8px; --surface-radius: 14px; --surface-shadow: 0 10px 28px rgba(0,0,0,0.42), 0 2px 8px rgba(0,0,0,0.24); --surface-border: rgba(255,255,255,0.10); }
+  .shell[data-theme="minimal"][data-surf="on"] { --surface-inset: 5px; --surface-radius: 10px; --surface-shadow: 0 1px 0 rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.02); --surface-border: rgba(0,0,0,0.06); }
+  .shell[data-theme="luxury"][data-surf="on"] { --surface-inset: 6px; --surface-radius: 9px; --surface-shadow: 0 2px 12px rgba(68,85,110,0.12), 0 1px 3px rgba(68,85,110,0.06); --surface-border: rgba(0,0,0,0.05); }
+  .shell[data-theme="mint"][data-surf="on"] { --surface-inset: 6px; --surface-radius: 13px; --surface-shadow: 0 4px 14px rgba(107,74,224,0.12), 0 1px 4px rgba(0,0,0,0.04); --surface-border: rgba(0,0,0,0.05); }
+
+  .shell .titlebar, .shell .icon-bar, .shell .sidebar, .shell .main, .shell .statusbar {
+    margin: 0;
+    transition:
+      margin var(--glass-morph, 0ms) cubic-bezier(0.22,1,0.36,1),
+      border-radius var(--glass-morph, 0ms) cubic-bezier(0.22,1,0.36,1),
+      box-shadow var(--glass-morph, 0ms) cubic-bezier(0.22,1,0.36,1),
+      background 320ms ease, border-color 320ms ease;
+  }
+  .shell .shell-body {
+    transition:
+      padding var(--glass-morph, 0ms) cubic-bezier(0.22,1,0.36,1),
+      gap var(--glass-morph, 0ms) cubic-bezier(0.22,1,0.36,1);
+  }
+  .shell[data-surf="on"] .titlebar { margin: var(--surface-inset) var(--surface-inset) 0; }
+  .shell[data-surf="on"] .shell-body { padding: 0 var(--surface-inset); gap: var(--surface-inset); }
+  .shell[data-surf="on"] .icon-bar,
+  .shell[data-surf="on"] .sidebar,
+  .shell[data-surf="on"] .main { margin: var(--surface-inset) 0; }
+  .shell[data-surf="on"] .statusbar { margin: 0 var(--surface-inset) var(--surface-inset); }
+  .shell[data-surf="on"] .titlebar,
+  .shell[data-surf="on"] .icon-bar,
+  .shell[data-surf="on"] .sidebar,
+  .shell[data-surf="on"] .main,
+  .shell[data-surf="on"] .statusbar {
+    position: relative;
+    border-radius: var(--surface-radius);
+    box-shadow: var(--surface-shadow), inset 0 0 0 1px var(--surface-border);
+    border-color: transparent;
+  }
+  /* 液态玻璃 specular：表面顶部静态渐变受光带（零动画成本；强度 = --glass-specular，0 = 关） */
+  .shell[data-theme="glass"][data-surf="on"] .titlebar::before,
+  .shell[data-theme="glass"][data-surf="on"] .icon-bar::before,
+  .shell[data-theme="glass"][data-surf="on"] .sidebar::before,
+  .shell[data-theme="glass"][data-surf="on"] .main::before,
+  .shell[data-theme="glass"][data-surf="on"] .statusbar::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 12px;
+    border-radius: inherit;
+    background: linear-gradient(180deg, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0) 100%);
+    opacity: var(--glass-specular, 0);
+    pointer-events: none; z-index: 2;
+  }
+
+  /* 演示控制：surface 域互换钮（画廊工作台控件，不属主题 token） */
+  .demo-control {
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 12px; padding: 8px 12px;
+    border-radius: 10px; background: var(--studio-panel); border: 1px solid var(--studio-line);
+    font-size: 11px; color: var(--studio-muted);
+  }
+  .demo-control code { font-family: var(--mono); font-size: 10px; color: var(--studio-text); background: rgba(255,255,255,0.06); padding: 1px 5px; border-radius: 4px; }
+  .dc-btn {
+    margin-left: auto; flex-shrink: 0; cursor: pointer;
+    font-size: 11px; font-family: inherit; color: var(--studio-text);
+    background: rgba(255,255,255,0.06); border: 1px solid var(--studio-line);
+    border-radius: 8px; padding: 5px 12px;
+    transition: border-color 150ms ease, color 150ms ease, background 150ms ease;
+  }
+  .dc-btn:hover { border-color: #3A3E4C; }
+  .dc-btn.off { color: var(--studio-faint); }
+
   /* 侧栏文件树图标按主题上色 */
   .shell[data-theme="glass"] .side-row .sw, .shell[data-theme="mint"] .side-row .sw { background: color-mix(in srgb, var(--theme-accent) 14%, transparent); color: var(--theme-accent); }
   .shell[data-theme="minimal"] .side-row .sw, .shell[data-theme="luxury"] .side-row .sw { background: rgba(0,0,0,0.04); color: var(--theme-text-secondary); }
@@ -542,7 +632,9 @@
     按已冻结方针（决策 A-F + ai化，<code>05-主题数据模型.md</code> 契约）绘制。每个主题 = 一个配方
     （<code>appearance</code> 风格域 + <code>colorways[]</code> 配色变体）+ 一套生效 CSS 变量（真实 token 名，
     <code>02-变量契约.md</code>）+ 一个驱动它的设计 skill（硬约束 16）。点上方标签实时换肤整个 LinkDesk 壳：
-    顶栏 → 图标栏(42px) → 侧栏 → 标签栏 → 串口视图 → 状态栏串口灯+(N)。
+    顶栏 → 图标栏(42px) → 侧栏 → 标签栏 → 串口视图 → 状态栏串口灯+(N)。每个区域 = 独立表面，
+    点壳上方的 <code>surface</code> 域控制钮可互换「悬浮圆角面板（留缝+圆角+投影）」与「现状直角贴边」
+    （零值 = 现状）；液态玻璃主题（Glass Aurora）带图全窗 + 0.88 遮罩 + specular 反光带 + morph 形变过渡。
   </p>
   <div class="legend">
     <span class="legend-chip"><span class="sw" style="background:#8B7CF6;"></span><b>① Glass Aurora</b> 液态玻璃</span>
@@ -575,7 +667,12 @@
 
   <!-- ═══ 左：主题壳 ═══ -->
   <div class="stage-left">
-    <div class="shell" data-theme="glass" id="shell">
+    <div class="demo-control">
+      <span><code>surface</code> 域 · 悬浮圆角面板（<code>--surface-inset/radius/shadow</code>，零值 = 现状直角贴边）</span>
+      <button class="dc-btn" id="surf-btn" type="button">悬浮圆角 · ON</button>
+    </div>
+
+    <div class="shell" data-theme="glass" id="shell" data-surf="on">
       <!-- 顶栏 -->
       <div class="titlebar">
         <div class="menus">
@@ -755,15 +852,16 @@
   const T = {
     glass: {
       name: 'Glass Aurora · 液态玻璃',
-      read: '读取为：桌面壳 用 高质感玻璃 语言，靠 <code>high-end-visual-design</code> 的 Ethereal Glass 本体。OLED 黑 #050505 底 + 极光紫径向光晕 + 每面板 backdrop-blur 24px + white/10 hairline 双圈内描边（double-bezel）。圆角走大 squircle，MOTION_INTENSITY 高、VISUAL_DENSITY 低。',
+      read: '读取为：桌面壳 用 高质感液态玻璃 语言，靠 <code>high-end-visual-design</code> 的 Ethereal Glass 本体。图片全窗铺底（sailor-moon.jpg）+ 0.88 深罩 + 每区域悬浮圆角面板（surface 域：留缝/圆角/投影/发丝光边）+ 液态玻璃材质三层：透光（per-surface blur 8/18/20px 差异化）、反光（specular 顶部渐变受光带）、响应（morph 400ms 形变过渡）。',
       badge: 'dark · 1 配色',
       recipe: {
         id: 'glass-aurora', name: 'Glass Aurora', type: 'dark',
         appearance: {
           radius: { sm: 6, md: 10, lg: 16, xl: 24 },
-          glass: { blur: 24, saturate: 1.8, tint: 'rgba(14,16,24,0.38)', opacity: 0.9 },
+          glass: { blur: 20, saturate: 1.8, tint: 'rgba(14,16,24,0.38)', opacity: 0.9, specular: 0.6, morph: 400 },
           font: { ui: 'Space Grotesk', mono: 'JetBrains Mono' },
-          background: { image: null, opacity: 1, mask: null }
+          background: { image: 'assets/sailor-moon.jpg', opacity: 1, mask: 'rgba(0,0,0,0.88)' },
+          surface: { inset: 8, radius: 14, shadow: true, border: true }
         },
         colorways: [{
           id: 'aurora', name: '极光紫',
@@ -773,13 +871,16 @@
       tokens: [
         ['--bg-window', '#050505', true], ['--accent', '#8B7CF6', true],
         ['--text-primary', '#F3F4F7', true], ['--border', 'rgba(255,255,255,.10)', false],
-        ['--glass-blur', '24px', false], ['--glass-saturate', '1.8', false],
-        ['--glass-tint', 'rgba(14,16,24,.38)', false], ['--radius-xl', '24px', false],
+        ['--bg-image', 'sailor-moon.jpg', false], ['--bg-mask', 'rgba(0,0,0,.88)', false],
+        ['--glass-blur', '20px', false], ['--glass-saturate', '1.8', false],
+        ['--glass-specular', '0.6', false], ['--glass-morph', '400ms', false],
+        ['--surface-inset', '8px', false], ['--surface-radius', '14px', false],
+        ['--surface-shadow', '浮起投影', false], ['--radius-xl', '24px', false],
         ['--font-ui', 'Space Grotesk', false], ['--font-mono', 'JetBrains Mono', false],
-        ['--bg-icon-bar', '#0A0A0C', true], ['--icon-active', '#A69CFF', true]
+        ['--bg-icon-bar', 'rgba(10,10,12,.5)', true], ['--icon-active', '#A69CFF', true]
       ],
-      more: '其余 30+ token 继承 :root 壳默认或随配方稀疏覆盖（决策：缺的域继承默认）',
-      domains: { colors: 1, font: 1, radius: 1, glass: 1, background: 1, surface: 0 },
+      more: 'per-surface blur 差异化（窄面 8px / 主区 18px / 悬浮面板 20px）；surface 域零值 = 现状直角贴边；specular/morph = 液态玻璃材质键（反光/响应）',
+      domains: { colors: 1, font: 1, radius: 1, glass: 1, background: 1, surface: 1 },
       skill: { ico: 'H', name: 'high-end-visual-design', desc: 'Ethereal Glass 本体（#050505 + 径向光晕 + 双圈内描边 + 大 squircle + 自定义 cubic-bezier 动效）。标签：<code>variance 7 · motion 7 · density 3</code>' }
     },
 
@@ -793,7 +894,8 @@
           radius: { sm: 4, md: 6, lg: 8, xl: 12 },
           glass: { blur: 0, saturate: 1, tint: null, opacity: 1 },
           font: { ui: 'Geist Sans', display: 'Newsreader', mono: 'Geist Mono' },
-          background: { image: null, opacity: 1, mask: null }
+          background: { image: null, opacity: 1, mask: null },
+          surface: { inset: 5, radius: 10, shadow: true, border: true }
         },
         colorways: [{
           id: 'ink', name: '墨蓝',
@@ -806,6 +908,7 @@
         ['--glass-blur', '0', false], ['--radius-lg', '8px', false],
         ['--radius-xl', '12px', false], ['--font-ui', 'Geist Sans', false],
         ['--font-mono', 'Geist Mono', false], ['--hover-overlay', 'rgba(0,0,0,.03)', false],
+        ['--surface-inset', '5px', false], ['--surface-radius', '10px', false],
         ['--bg-icon-bar', '#F2F1EE', true], ['--dirty-dot', '#1F6C9F', true]
       ],
       more: '无玻璃（glass-blur 0=关）、无重阴影：编辑部的「纸」感来自底色与 1px 结构线',
@@ -823,7 +926,8 @@
           radius: { sm: 2, md: 4, lg: 6, xl: 8 },
           glass: { blur: 0, saturate: 1, tint: null, opacity: 1 },
           font: { ui: 'Outfit', display: 'Cormorant Garamond', mono: 'IBM Plex Mono' },
-          background: { image: 'grain.png', opacity: 0.05, mask: null }
+          background: { image: 'grain.png', opacity: 0.05, mask: null },
+          surface: { inset: 6, radius: 9, shadow: true, border: true }
         },
         colorways: [{
           id: 'steel', name: '钢青',
@@ -836,6 +940,7 @@
         ['--glass-blur', '0', false], ['--radius-xl', '8px', false],
         ['--font-ui', 'Outfit', false], ['--font-mono', 'IBM Plex Mono', false],
         ['--bg-mask', 'feTurbulence 噪点', false], ['--bg-image', 'grain.png', false],
+        ['--surface-inset', '6px', false], ['--surface-radius', '9px', false],
         ['--bg-icon-bar', '#ECEEF1', true], ['--icon-active', '#44556E', true]
       ],
       more: 'display 域（衬线展示字）为 font 域预留子键，具体键随 #50.6 token 表冻结',
@@ -853,7 +958,8 @@
           radius: { sm: 6, md: 8, lg: 14, xl: 20 },
           glass: { blur: 0, saturate: 1, tint: null, opacity: 1 },
           font: { ui: 'IBM Plex Sans', mono: 'JetBrains Mono' },
-          background: { image: null, opacity: 1, mask: null }
+          background: { image: null, opacity: 1, mask: null },
+          surface: { inset: 6, radius: 13, shadow: true, border: true }
         },
         colorways: [
           { id: 'mint-soda', name: '薄荷苏打', colors: { 'bg-window': '#FFFBF5', 'bg-icon-bar': '#B8ECD6', 'bg-side-panel': '#E4EBFF', accent: '#6B4AE0', 'text-primary': '#382E24' } },
@@ -868,6 +974,7 @@
         ['--bg-icon-bar', '#B8ECD6', true], ['--bg-side-panel', '#E4EBFF', true],
         ['--bg-toolbar', '#FFEDDF', true], ['--bg-status', '#EDE3FF', true],
         ['--icon-active', '#6B4AE0', true], ['--hover-overlay', 'rgba(107,74,224,.04)', false],
+        ['--surface-inset', '6px', false], ['--surface-radius', '13px', false],
         ['--radius-xl', '20px', false], ['--font-ui', 'IBM Plex Sans', false]
       ],
       more: '4 配色 = 决策 F 迁移（4 json 平铺 → 1 配方 4 colorways）；换配色不动风格 = 决策 B',
@@ -922,6 +1029,14 @@
       return `    { <span class="k">"id"</span>: <span class="s">"${c.id}"</span>, <span class="k">"name"</span>: <span class="s">"${c.name}"</span>,\n      <span class="k">"colors"</span>: {\n${cols}\n      } }`;
     }).join(',\n');
     const ap = r.appearance;
+    const g = ap.glass;
+    const gk = [`blur: ${g.blur}`, `saturate: ${g.saturate}`, `tint: ${g.tint ? `<span class="s">"${esc(g.tint)}"</span>` : 'null'}`, `opacity: ${g.opacity}`];
+    if (g.specular !== undefined) gk.push(`specular: ${g.specular}`);
+    if (g.morph !== undefined) gk.push(`morph: ${g.morph}`);
+    let surfaceLine = '';
+    if (ap.surface) {
+      surfaceLine = `,\n    <span class="k">"surface"</span>: { inset: ${ap.surface.inset}, radius: ${ap.surface.radius}, shadow: ${ap.surface.shadow}, border: ${ap.surface.border} }`;
+    }
     const lines = [
       `{`,
       `  <span class="k">"id"</span>: <span class="s">"${r.id}"</span>,`,
@@ -929,9 +1044,9 @@
       `  <span class="k">"type"</span>: <span class="s">"${r.type}"</span>,`,
       `  <span class="k">"appearance"</span>: {`,
       `    <span class="k">"radius"</span>: { sm: ${ap.radius.sm}, md: ${ap.radius.md}, lg: ${ap.radius.lg}, xl: ${ap.radius.xl} },`,
-      `    <span class="k">"glass"</span>: { blur: ${ap.glass.blur}, saturate: ${ap.glass.saturate}, tint: ${ap.glass.tint ? `<span class="s">"${esc(ap.glass.tint)}"</span>` : 'null'}, opacity: ${ap.glass.opacity} },`,
+      `    <span class="k">"glass"</span>: { ${gk.join(', ')} },`,
       `    <span class="k">"font"</span>: ${JSON.stringify(ap.font)},`,
-      `    <span class="k">"background"</span>: ${JSON.stringify(ap.background)}`,
+      `    <span class="k">"background"</span>: ${JSON.stringify(ap.background)}${surfaceLine}`,
       `  },`,
       `  <span class="k">"colorways"</span>: [`,
       `\n${cw}`,
@@ -964,9 +1079,9 @@
   }
 
   const NOTES = {
-    glass: '四个主题 = 四个配方（recipe.json 预览即 <code>03-插件制造/11-主题制作.md</code> 示例的产出格式——人类/AI 都能照着造，即 ai化 落地）。全部走决策 F：<code>colorways[]</code> 无第二种写法。切主题 = 换配方 = 换整套 CSS 变量（<code>02-变量契约</code> 真实 token 名）。圆角/玻璃在设置层再被 scale/绝对覆盖（决策 E）。' ,
+    glass: '四个主题 = 四个配方（recipe.json 预览即 <code>03-插件制造/11-主题制作.md</code> 示例的产出格式，人类/AI 都能照着造，即 ai化 落地）。全部走决策 F：<code>colorways[]</code> 无第二种写法。切主题 = 换配方 = 换整套 CSS 变量（<code>02-变量契约</code> 真实 token 名）。圆角/玻璃在设置层再被 scale/绝对覆盖（决策 E）。壳上方 surface 钮演示「悬浮圆角 ⇄ 直角贴边」（surface 域零值 = 现状）；液态玻璃材质 = 透光（blur/saturate）+ 反光（specular）+ 响应（morph）。' ,
     minimal: '玻璃 = 绝对覆盖（决策 E）：glass-blur 0 即「关玻璃」，主题作者可不写 glass 域（稀疏覆盖）。1px #EAEAEA 结构线 + 8/12px 圆角 = minimalist-ui 的形制锁定。',
-    luxury: 'design-taste-frontend 的「奢华」默认会被禁用的 beige+brass+espresso 家族带偏——这里走 Cold Luxury（银灰 + 铬银 + 烟墨），纸感来自底色 + 噪点纹理，非暖色古董风。衬线（Cormorant Garamond）仅展示字，正文 sans，遵守其 Serif Discipline。',
+    luxury: 'design-taste-frontend 的「奢华」默认会被禁用的 beige+brass+espresso 家族带偏，这里走 Cold Luxury（银灰 + 铬银 + 烟墨），纸感来自底色 + 噪点纹理，非暖色古董风。衬线（Cormorant Garamond）仅展示字，正文 sans，遵守其 Serif Discipline。',
     mint: '迁移演示：theme-mint-soda 4 平铺 json → 1 配方 4 colorways（决策 F）。色值 100% 来自仓库 <code>plugins/user/theme-mint-soda/*.json</code>，非虚构。设置页主题选择器会从 4 张卡片变 1 张卡片 + 4 配色（05 §5 迁移表）。'
   };
 
@@ -991,6 +1106,18 @@
   document.querySelectorAll('.theme-tab').forEach((btn) => {
     btn.addEventListener('click', () => apply(btn.dataset.theme));
   });
+
+  /* ═══ 悬浮圆角 ⇄ 直角贴边（surface 域演示：零值 = 现状直角贴边无缝无投影）═══ */
+  const surfBtn = $('#surf-btn');
+  let surfOn = true;
+  function setSurf(on) {
+    surfOn = on;
+    $('#shell').dataset.surf = on ? 'on' : 'off';
+    surfBtn.textContent = on ? '悬浮圆角 · ON' : '直角贴边 · OFF';
+    surfBtn.classList.toggle('off', !on);
+  }
+  surfBtn.addEventListener('click', () => setSurf(!surfOn));
+  setSurf(true);
 
   /* 初始：Glass Aurora */
   apply('glass');
