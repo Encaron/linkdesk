@@ -10,7 +10,7 @@ import { useState, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import ContextMenu from "@src/components/shared/context-menu/ContextMenu";
 import ColorPicker from "@src/components/shared/color-picker/ColorPicker";
-import { useConfigurationValueIpc } from "../hooks/useConfigurationValueIpc";
+import { useConfigurationValueIpc, useConfigurationValuesIpc } from "../hooks/useConfigurationValueIpc";
 import renderControl from "./renderControl";
 import { lk } from "./helpers";
 import type { ConfigProperty } from "./types";
@@ -40,6 +40,11 @@ function SettingRow({
   // IPC 版 hook——替代 useConfigurationValue
   const currentValue = useConfigurationValueIpc(configKey);
   const depValue = useConfigurationValueIpc(prop?.dependsOn?.key ?? "");
+  // E5.8#50.26：actionDisabledAll——动作按钮禁用条件（混搭复位「6 来源全跟随主题 → 置灰」）：
+  // 全部 {key,value} 匹配当前配置值时禁用（mockup 01 updateMixReset 同款 `!anyCustom`）
+  const actionKeys = prop?.actionDisabledAll?.map((c) => c.key) ?? [];
+  const actionValues = useConfigurationValuesIpc(actionKeys);
+  const actionDisabled = (prop?.actionDisabledAll ?? []).every((c) => actionValues[c.key] === c.value);
 
   const handleChange = useCallback(
     async (value: unknown) => {
@@ -90,7 +95,7 @@ function SettingRow({
           const rect = e.currentTarget.getBoundingClientRect();
           setColorPickerAnchor({ x: rect.right + 4, y: rect.top });
           setColorPickerOpen(true);
-        })}
+        }, actionDisabled)}
       </div>
       {/* hover 齿轮 */}
       <button

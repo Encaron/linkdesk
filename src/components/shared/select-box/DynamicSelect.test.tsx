@@ -101,15 +101,16 @@ describe("DynamicSelect", () => {
     await screen.findByText("无匹配项");
   });
 
-  it("sources——「跟随主题」置顶 + 只列贡献该域的配方", async () => {
+  it("sources——颜色域「跟随主题」置顶 + 配方×配色粒度（决策 B，每配色一选项）", async () => {
     mockListRecipes([MINT, FOREST, SERIF]);
     const { open, dropdownItems } = renderSelect({ optionsFrom: "theme.sources", domain: "colors" });
     open();
-    await screen.findByText("Demo Mint");
+    await screen.findByText("Demo Mint·Alpha");
     const items = dropdownItems();
     expect(items[0]).toBe("跟随主题");
-    expect(items).toContain("Demo Mint");
-    expect(items).toContain("Demo Forest");
+    expect(items).toContain("Demo Mint·Alpha");
+    expect(items).toContain("Demo Mint·Beta"); // 同配方两配色各一选项
+    expect(items).toContain("Demo Forest·Gamma");
     expect(items).not.toContain("Demo Serif"); // 只贡献 font 域——colors 行排除
   });
 

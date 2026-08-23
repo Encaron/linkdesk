@@ -35,11 +35,15 @@ interface ConfigProperty {
   /** E5.8#50.20：等宽限定——uiHint "fontFamily" 时 monoOnly=false = 全字族（UI 字体） */
   monoOnly?: boolean;
   dependsOn?: { key: string; value: unknown };
-  onApply?: ((v: unknown) => void) | null; // E4V#46 renderHint "action"
+  onApply?: ((v: unknown) => void) | null; // E4V#46 renderHint "action"（IPC 剥除——插件不可达，按钮走 actionCommand）
   /** E5.8#50.23：动态下拉数据源——uiHint "select" 时读取（"theme.colorways" / "theme.sources"） */
   optionsFrom?: string;
   /** 混搭来源域过滤——optionsFrom "theme.sources" 时按此域过滤（RecipeMeta.domains 六域之一） */
   optionsFromDomain?: string;
+  /** E5.8#50.26：renderHint "action" 按钮动作——点击执行此壳命令（混搭复位 → theme.resetMix） */
+  actionCommand?: string;
+  /** E5.8#50.26：renderHint "action" 按钮禁用条件——全部 {key,value} 匹配当前配置值时禁用（混搭复位置灰） */
+  actionDisabledAll?: Array<{ key: string; value: unknown }>;
 }
 
 export type { SettingsViewProps, GroupInfo, ConfigProperty };

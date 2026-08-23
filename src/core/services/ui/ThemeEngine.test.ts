@@ -30,7 +30,11 @@ import {
   ensurePluginFontFacesCleanup,
   deriveAppearanceSeeds,
   normalizeThemeValue,
+  getMixProfile,
+  mergeMixDomains,
+  MIX_FOLLOW_THEME,
 } from "./ThemeEngine";
+import type { MixProfile } from "./ThemeEngine";
 import { rollback } from "../../registry/registrationTracker";
 import { ThemeRegistry } from "../../registry/appearance/ThemeRegistry";
 import { applyRemoteConfigChange, clearConfigurationCache } from "../configuration/ConfigurationService";
@@ -48,6 +52,37 @@ const MOCK_THEME2: Theme = {
   type: "light",
   colors: { bg: "#fff", fg: "#000" },
 };
+
+/* 共享配方 fixture（虚构值，硬约束 21）——applyRecipe / 资产字体 / 混搭 三组 describe 复用：
+ * 模块级单份定义，避免 jscpd 同款复制（每 describe 各写一份 = 重复代码）。 */
+const RECIPE: ThemeRecipe = {
+  id: "demo-recipe",
+  name: "Demo Recipe",
+  type: "dark",
+  appearance: {
+    radius: { sm: 6, lg: 12 },
+    glass: { type: "glass", blur: 14 },
+    font: { ui: "Noto Sans SC" },
+  },
+  colorways: [
+    { id: "dew", name: "露", colors: { "bg-window": "#FFFBF5", accent: "#2BA876" } },
+    { id: "mint", name: "薄荷", colors: { "bg-window": "#F7FBF8", accent: "#3E9E8C" } },
+  ],
+};
+const RECIPE_NO_COLOR: ThemeRecipe = {
+  id: "demo-plain",
+  name: "Demo Plain",
+  type: "light",
+  colorways: [{ id: "plain", name: "Plain", colors: { "bg-window": "#FAFAFA" } }],
+};
+const RECIPE_ASSET: ThemeRecipe = {
+  id: "demo-font-recipe",
+  name: "Demo Font Recipe",
+  type: "dark",
+  appearance: { font: { ui: "./resources/DemoFont.woff2" } },
+  colorways: [{ id: "base", name: "Base", colors: { "bg-window": "#101014" } }],
+};
+const GLASS_VARS = ["glass-blur", "glass-saturate", "glass-tint", "glass-opacity", "glass-specular", "glass-morph"];
 
 describe("ThemeEngine — registerTheme / unregisterTheme", () => {
   beforeEach(() => {
@@ -495,28 +530,7 @@ describe("ThemeEngine — Recipe 合并算法 mergeDomains（E5.8#50.16，05 §4
 });
 
 describe("ThemeEngine — applyRecipe / getActiveRecipe / getEffectiveTokens（E5.8#50.16）", () => {
-  const RECIPE: ThemeRecipe = {
-    id: "demo-recipe",
-    name: "Demo Recipe",
-    type: "dark",
-    appearance: {
-      radius: { sm: 6, lg: 12 },
-      glass: { type: "glass", blur: 14 },
-      font: { ui: "Noto Sans SC" },
-    },
-    colorways: [
-      { id: "dew", name: "露", colors: { "bg-window": "#FFFBF5", accent: "#2BA876" } },
-      { id: "mint", name: "薄荷", colors: { "bg-window": "#F7FBF8", accent: "#3E9E8C" } },
-    ],
-  };
-  const RECIPE_NO_COLOR: ThemeRecipe = {
-    id: "demo-plain",
-    name: "Demo Plain",
-    type: "light",
-    colorways: [{ id: "plain", name: "Plain", colors: { "bg-window": "#FAFAFA" } }],
-  };
-  const GLASS_VARS = ["glass-blur", "glass-saturate", "glass-tint", "glass-opacity", "glass-specular", "glass-morph"];
-
+  // RECIPE / RECIPE_NO_COLOR / GLASS_VARS = 模块级共享 fixture（见文件顶部）
   beforeEach(() => {
     clearConfigurationCache();
     const root = document.documentElement;
@@ -587,13 +601,7 @@ describe("ThemeEngine — 资产字体两步机制（E5.8#50.17，@font-face →
   const ASSET_URL = "linkdesk://demo-font/resources/DemoFont.woff2";
   const FAMILY = "__ld_demo-font_DemoFont";
 
-  const RECIPE_ASSET: ThemeRecipe = {
-    id: "demo-font-recipe",
-    name: "Demo Font Recipe",
-    type: "dark",
-    appearance: { font: { ui: ASSET_REL } },
-    colorways: [{ id: "base", name: "Base", colors: { "bg-window": "#101014" } }],
-  };
+  // RECIPE_ASSET = 模块级共享 fixture（文件顶部）；此处只用其资产相对路径 + 归属 demo-font 插件
   const RECIPE_SYSTEM: ThemeRecipe = {
     id: "demo-system-recipe",
     name: "Demo System Recipe",
@@ -731,5 +739,102 @@ describe("ThemeEngine — deriveAppearanceSeeds 反推播种（E5.8#50.19，08 �
   it("字体播种跳过资产族（__ld_ 前缀只显示不选，#50.20 边界）；系统族名直播", () => {
     expect(deriveAppearanceSeeds({ "font-ui": "SimSun" }, 8).fontFamily).toBe("SimSun");
     expect(deriveAppearanceSeeds({ "font-ui": "__ld_demo-plugin_serif" }, 8).fontFamily).toBe("");
+  });
+});
+
+describe("ThemeEngine — 混搭合并（E5.8#50.26，10 §1/§3 每域各自取来源）", () => {
+  // 虚构 fixture（硬约束 21）：demo-mix 插件 + demo-recipe/demo-radius 两配方（RECIPE/RECIPE_ASSET/GLASS_VARS = 模块级共享）
+  const PLUGIN = "demo-mix";
+  // 另一配方——圆角域来源（只贡献 radius 域；颜色/字体/玻璃域归 demo-recipe）
+  const RADIUS_RECIPE: ThemeRecipe = {
+    id: "demo-radius",
+    name: "Demo Radius",
+    type: "light",
+    appearance: { radius: { sm: 2, lg: 4 } },
+    colorways: [{ id: "base", name: "Base", colors: {} }],
+  };
+
+  beforeEach(() => {
+    clearConfigurationCache();
+    rollback(PLUGIN);
+    cleanupPluginFontFaces(PLUGIN);
+    const root = document.documentElement;
+    for (const key of [...GLASS_VARS, "bg-window", "accent", "font-ui", "radius-sm", "radius-lg"]) {
+      root.style.removeProperty(`--${key}`);
+    }
+    root.removeAttribute("data-theme");
+    ThemeRegistry.registerRecipe(RECIPE, PLUGIN);
+    ThemeRegistry.registerRecipe(RADIUS_RECIPE, PLUGIN);
+  });
+
+  it("getMixProfile — 缺省全 followTheme；读 app.mix* 配置", () => {
+    const p1 = getMixProfile();
+    for (const d of ["colors", "font", "radius", "glass", "background", "surface"] as const) {
+      expect(p1[d]).toBe(MIX_FOLLOW_THEME);
+    }
+    applyRemoteConfigChange("app.mixColor", "mint");
+    applyRemoteConfigChange("app.mixFont", "demo-radius");
+    const p2 = getMixProfile();
+    expect(p2.colors).toBe("mint");
+    expect(p2.font).toBe("demo-radius");
+    expect(p2.radius).toBe(MIX_FOLLOW_THEME);
+  });
+
+  it("mergeMixDomains — 每域各自取来源（颜色=配方+配色；圆角=来源配方；跟随域=基础配方）", () => {
+    const profile: MixProfile = {
+      colors: "mint",
+      font: MIX_FOLLOW_THEME,
+      radius: "demo-radius",
+      glass: MIX_FOLLOW_THEME,
+      background: MIX_FOLLOW_THEME,
+      surface: MIX_FOLLOW_THEME,
+    };
+    const tokens = mergeMixDomains(RECIPE, RECIPE.colorways[0], profile, {});
+    expect(tokens["bg-window"]).toBe("#F7FBF8"); // 颜色域 → mint 配色
+    expect(tokens["accent"]).toBe("#3E9E8C");
+    expect(tokens["radius-lg"]).toBe("4px"); // 圆角域 → demo-radius
+    expect(tokens["radius-sm"]).toBe("2px");
+    expect(tokens["font-ui"]).toBe("Noto Sans SC"); // 字体域跟随 → 基础配方
+    expect(tokens["glass-blur"]).toBe("14px"); // 玻璃域跟随 → 基础配方
+  });
+
+  it("mergeMixDomains — 来源配方缺失 → 回退基础配方（域不空窗）", () => {
+    const profile: MixProfile = {
+      colors: "mint",
+      font: "demo-missing",
+      radius: MIX_FOLLOW_THEME,
+      glass: MIX_FOLLOW_THEME,
+      background: MIX_FOLLOW_THEME,
+      surface: MIX_FOLLOW_THEME,
+    };
+    const tokens = mergeMixDomains(RECIPE, RECIPE.colorways[0], profile, {});
+    expect(tokens["font-ui"]).toBe("Noto Sans SC"); // 缺失来源 → 基础配方兜底
+    expect(tokens["bg-window"]).toBe("#F7FBF8"); // 颜色域仍按来源
+  });
+
+  it("applyRecipe mix — 配色跟颜色域来源；圆角跟圆角域；明暗/activeRecipe 跟基础配方", () => {
+    applyRemoteConfigChange("app.mixMode", "mix");
+    applyRemoteConfigChange("app.mixColor", "mint");
+    applyRemoteConfigChange("app.mixRadius", "demo-radius");
+    applyRecipe(RECIPE, "dew", {});
+    const root = document.documentElement;
+    expect(root.style.getPropertyValue("--bg-window")).toBe("#F7FBF8"); // 颜色域 → mint
+    expect(root.style.getPropertyValue("--accent")).toBe("#3E9E8C");
+    expect(root.style.getPropertyValue("--radius-lg")).toBe("4px"); // 圆角域 → demo-radius
+    expect(root.style.getPropertyValue("--glass-blur")).toBe("14px"); // 玻璃域跟随 → 基础配方
+    expect(root.getAttribute("data-theme")).toBe("dark"); // 明暗跟基础配方
+    expect(getActiveRecipe()).toEqual({ recipeId: "demo-recipe", colorwayId: "dew" });
+    expect(getCurrentTheme()?.colors.accent).toBe("#3E9E8C"); // 快照 accent 跟混搭颜色域来源
+  });
+
+  it("applyRecipe mix — mixFont 资产字体来源 → 族名写 --font-ui + @font-face 落 DOM", () => {
+    ThemeRegistry.registerRecipe(RECIPE_ASSET, PLUGIN);
+    applyRemoteConfigChange("app.mixMode", "mix");
+    applyRemoteConfigChange("app.mixFont", "demo-font-recipe");
+    applyRecipe(RECIPE, "dew", {});
+    const root = document.documentElement;
+    expect(root.style.getPropertyValue("--font-ui")).toBe("__ld_demo-mix_DemoFont"); // 资产 → 两步换族名
+    expect(document.getElementById("ld-ff-__ld_demo-mix_DemoFont")).not.toBeNull();
+    expect(root.style.getPropertyValue("--bg-window")).toBe("#FFFBF5"); // 颜色域跟随 → dew
   });
 });

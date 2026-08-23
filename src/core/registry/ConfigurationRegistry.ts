@@ -48,6 +48,12 @@ export interface ConfigurationProperty {
   optionsFrom?: string;
   /** 混搭来源域过滤——optionsFrom "theme.sources" 时按此域过滤（10 §2 六域之一） */
   optionsFromDomain?: string;
+  /** E5.8#50.26：renderHint "action" 按钮动作——点击执行此壳命令（混搭复位执行 theme.resetMix，
+   *  单一写入点；onApply 被 IPC 剥除不可达插件，按钮经命令触发壳侧 onApply 链）。 */
+  actionCommand?: string;
+  /** E5.8#50.26：renderHint "action" 按钮禁用条件——全部 {key,value} 匹配当前配置值时禁用
+   *  （混搭复位「6 来源全跟随主题 → 置灰」，10 §6 决策记录 3）。 */
+  actionDisabledAll?: Array<{ key: string; value: unknown }>;
 }
 
 /** 插件贡献的 configuration 分组——对标 VS Code package.json contributes.configuration */

@@ -92,10 +92,13 @@ const APPEARANCE_OVERRIDE_KEYS = [
   "app.glassTint", "app.backgroundImage", "app.fontFamily",
 ] as const;
 
-/** 混搭来源 key 全集——mixMode→mix 播种全 "theme"（#50.26 做实际按域合并，此处仅注册 + 播种） */
+/** 混搭来源 key 全集——mixMode→mix 播种全 "followTheme"（与 ThemeEngine MIX_DOMAIN_KEYS 同源） */
 const MIX_SOURCE_KEYS = [
   "app.mixColor", "app.mixFont", "app.mixRadius", "app.mixGlass", "app.mixBackground", "app.mixSurface",
 ] as const;
+
+/** 混搭复位禁用条件——6 来源全「跟随主题」时复位按钮置灰（10 §6 决策记录 3，mockup 已实现） */
+const MIX_RESET_DISABLED_WHEN = MIX_SOURCE_KEYS.map((key) => ({ key, value: "followTheme" }));
 
 /**
  * 播种外观覆盖——appearanceMode→custom 瞬间读 getEffectiveTokens() 反推 6 覆盖 key（08 §2，对标 accent 播种先例）。
@@ -349,9 +352,10 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
             dependsOn: { key: "app.appearanceMode", value: "custom" },
             onApply: () => applyThemeIfReady(),
           },
-          // 混搭七键——mixMode 常显，六域来源 mixMode=mix 才出现（08 §7.1 #11-17）。
-          // mix* 的按域合并实现在 #50.26——此处仅注册 + 播种 + dependsOn 显隐。
-          // 六域来源 = uiHint "select" + optionsFrom "theme.sources"（#50.23 动态下拉按域过滤 listRecipes）。
+          // 混搭七键 + 复位——mixMode 常显，六域来源 + 复位 mixMode=mix 才出现（08 §7.1 #11-17）。
+          // mix* 按域合并实现在 ThemeEngine（#50.26 mergeMixDomains）——此处注册 + 播种 + dependsOn 显隐。
+          // 六域来源 = uiHint "select" + optionsFrom "theme.sources"（#50.23 动态下拉按域过滤 listRecipes）；
+          // onApply = applyThemeIfReady（换来源即重合并 + 广播 theme:changed，10 §2 实时预览）。
           // 「跟随主题」哨兵值 = "followTheme"（10-混搭设计 §1/§3 定稿；缺省与播种同一值）。
           "app.mixMode": {
             type: "string",
@@ -366,6 +370,8 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
                 // 切回 recipe → 来源清空回默认（08 §7.3.5 对称于外观复位——theme.resetMix 单一写入点）
                 for (const key of MIX_SOURCE_KEYS) resetConfigurationValue(key, "user");
               }
+              // 混搭开关本身即重应用——引擎读 mixMode 决定按域合并路径（#50.26）
+              applyThemeIfReady();
             },
           },
           "app.mixColor": {
@@ -376,6 +382,7 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
             uiHint: "select",
             optionsFrom: "theme.sources",
             optionsFromDomain: "colors",
+            onApply: () => applyThemeIfReady(),
           },
           "app.mixFont": {
             type: "string",
@@ -385,6 +392,7 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
             uiHint: "select",
             optionsFrom: "theme.sources",
             optionsFromDomain: "font",
+            onApply: () => applyThemeIfReady(),
           },
           "app.mixRadius": {
             type: "string",
@@ -394,6 +402,7 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
             uiHint: "select",
             optionsFrom: "theme.sources",
             optionsFromDomain: "radius",
+            onApply: () => applyThemeIfReady(),
           },
           "app.mixGlass": {
             type: "string",
@@ -403,6 +412,7 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
             uiHint: "select",
             optionsFrom: "theme.sources",
             optionsFromDomain: "glass",
+            onApply: () => applyThemeIfReady(),
           },
           "app.mixBackground": {
             type: "string",
@@ -412,6 +422,7 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
             uiHint: "select",
             optionsFrom: "theme.sources",
             optionsFromDomain: "background",
+            onApply: () => applyThemeIfReady(),
           },
           "app.mixSurface": {
             type: "string",
@@ -421,6 +432,19 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
             uiHint: "select",
             optionsFrom: "theme.sources",
             optionsFromDomain: "surface",
+            onApply: () => applyThemeIfReady(),
+          },
+          // 混搭复位按钮（10 §2/§6 决策记录 3）——renderHint "action" 渲染操作按钮；
+          // 点击执行 theme.resetMix 命令（单一写入点：app.mixMode→recipe → onApply 清 6 来源回跟随主题）。
+          // actionDisabledAll：6 来源全「跟随主题」→ 置灰（mockup 已实现，减少噪音）。
+          "app.mixReset": {
+            type: "string",
+            default: "",
+            description: t("⟲ 全部复位为整体配方"),
+            renderHint: "action",
+            actionCommand: "theme.resetMix",
+            dependsOn: { key: "app.mixMode", value: "mix" },
+            actionDisabledAll: MIX_RESET_DISABLED_WHEN,
           },
         },
       });

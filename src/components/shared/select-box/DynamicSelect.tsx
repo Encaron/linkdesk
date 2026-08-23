@@ -48,6 +48,21 @@ function DynamicSelect({ value, onChange, optionsFrom, domain, disabled, placeho
     try {
       const recipes = (await list()) ?? [];
       if (optionsFrom === "theme.sources") {
+        if (domain === "colors") {
+          // 颜色域 = 配方+配色粒度（决策 B）——每配色一个选项（value = 配色 id 全局唯一，theme.ts L88 契约），
+          // label = 「配方名·配色名」（mockup 01「清凉薄荷包·薄荷苏打」同款），带配色预览色块。
+          setOptions([
+            { value: FOLLOW_THEME, label: t("跟随主题") },
+            ...recipes.flatMap((r) =>
+              r.colorways.map((cw) => ({
+                value: cw.id,
+                label: `${r.name}·${cw.name}`,
+                preview: cw.preview?.accent || undefined,
+              }))
+            ),
+          ]);
+          return;
+        }
         const filtered = domain
           ? recipes.filter((r) => r.domains.includes(domain as RecipeMeta["domains"][number]))
           : recipes;

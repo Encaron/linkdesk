@@ -80,6 +80,10 @@ export interface LinkDeskConfigProperty {
   optionsFrom?: string;
   /** 混搭来源域过滤——optionsFrom "theme.sources" 时按此域过滤 RecipeMeta.domains（10 §2 六域） */
   optionsFromDomain?: ThemeDomain;
+  /** E5.8#50.26：renderHint "action" 按钮动作——点击执行此壳命令（第三方设置 UI 经 commands.executeCommand 触发） */
+  actionCommand?: string;
+  /** E5.8#50.26：renderHint "action" 按钮禁用条件——全部 {key,value} 匹配当前配置值时禁用 */
+  actionDisabledAll?: Array<{ key: string; value: unknown }>;
 }
 
 /** 配置 schema——key → 属性定义（index signature 保持现有消费方） */

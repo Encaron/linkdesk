@@ -159,6 +159,29 @@ const MANAGED_TOKEN_KEYS: string[] = [
   "font-ui", "font-mono",
 ];
 
+/* ── E5.8#50.26：混搭域常量（10-混搭设计 §1/§3——按域换来源，引擎按域合并） ── */
+
+/** 混搭来源「跟随主题」哨兵值——与 app.mix* 默认值对齐（10 §1/§3 定稿） */
+export const MIX_FOLLOW_THEME = "followTheme";
+
+/** 混搭域 → 来源配置 key（与 startup.ts MIX_SOURCE_KEYS 同源）——getMixProfile 读配置 */
+const MIX_DOMAIN_KEYS: Record<ThemeDomain, string> = {
+  colors: "app.mixColor",
+  font: "app.mixFont",
+  radius: "app.mixRadius",
+  glass: "app.mixGlass",
+  background: "app.mixBackground",
+  surface: "app.mixSurface",
+};
+
+/** 混搭域应用顺序——颜色→字体→圆角→玻璃→背景→表面（10 §2 mockup 行序；碰撞后者覆盖） */
+const MIX_DOMAIN_ORDER: ThemeDomain[] = ["colors", "font", "radius", "glass", "background", "surface"];
+
+/** glass 域 token 键——surfaceVariables 产物中归玻璃域（glass-* 六键；surface-* 归表面域） */
+const GLASS_TOKEN_KEYS = [
+  "glass-blur", "glass-saturate", "glass-tint", "glass-opacity", "glass-specular", "glass-morph",
+] as const;
+
 /** 玻璃 + 悬浮面板 + per-surface 纹理变量——缺省 = 零值 */
 function surfaceVariables(surface?: ThemeSurface): Record<string, string> {
   const vars: Record<string, string> = { ...SURFACE_ZERO };
@@ -354,6 +377,142 @@ export function mergeDomains(
   return tokens;
 }
 
+/* ── E5.8#50.26：混搭合并——10 §1/§3 模型「每域各自取来源」── */
+
+/** 混搭档案——6 域来源映射。colors = 配方 id/配色 id/followTheme（决策 B：配方+配色粒度）；
+ *  其余域 = 配方 id/followTheme（配方粒度）。 */
+export type MixProfile = Record<ThemeDomain, string>;
+
+/** 读当前混搭来源配置 → 档案（mixMode=mix 时引擎消费；缺省 = 全跟随主题） */
+export function getMixProfile(): MixProfile {
+  const profile = {} as MixProfile;
+  for (const [domain, key] of Object.entries(MIX_DOMAIN_KEYS)) {
+    profile[domain as ThemeDomain] = String(getConfigurationValue<string>(key) ?? MIX_FOLLOW_THEME);
+  }
+  return profile;
+}
+
+/** 按配色 id 找归属配方——颜色域来源 = 配方+配色粒度（决策 B：可选任一配方的任一配色变体） */
+function findColorwayOwner(colorwayId: string): { recipe: ThemeRecipe; colorway: ThemeColorway } | undefined {
+  for (const recipe of ThemeRegistry.getRecipes()) {
+    const colorway = recipe.colorways.find((c) => c.id === colorwayId);
+    if (colorway) return { recipe, colorway };
+  }
+  return undefined;
+}
+
+/** 解析某域来源——followTheme → 当前配方；颜色域 = 配方+配色粒度，其余域 = 配方粒度。
+ *  来源找不到（配方未注册/已卸载）→ 回退当前配方（followTheme 行为，域不空窗）。 */
+function resolveDomainSource(
+  domain: ThemeDomain,
+  profile: MixProfile,
+  baseRecipe: ThemeRecipe,
+  baseColorway: ThemeColorway
+): { recipe: ThemeRecipe; colorway?: ThemeColorway } {
+  const value = profile[domain];
+  if (!value || value === MIX_FOLLOW_THEME) {
+    return { recipe: baseRecipe, colorway: domain === "colors" ? baseColorway : undefined };
+  }
+  if (domain === "colors") {
+    const owner = findColorwayOwner(value);
+    if (owner) return owner;
+    const recipe = ThemeRegistry.getRecipe(value);
+    if (recipe) return { recipe, colorway: recipe.colorways[0] };
+    return { recipe: baseRecipe, colorway: baseColorway };
+  }
+  const recipe = ThemeRegistry.getRecipe(value);
+  return recipe ? { recipe } : { recipe: baseRecipe };
+}
+
+/** 单域 flatten——混搭按域取来源（10 §1）；缺省域/键 = 零值（surfaceVariables/backgroundVariables 内置）。
+ *  域 token 归属（03 §1 表）：colors = 配色 token；font = --font-*；radius = --radius-*；
+ *  glass = --glass-*；background = --bg-*（+ zones 切片挂 surface-bg-*）；surface = --surface-*（含 per-surface 透传）。 */
+function domainTokens(
+  appearance: ThemeAppearance | undefined,
+  domain: ThemeDomain,
+  colorway?: ThemeColorway
+): Record<string, string> {
+  const tokens: Record<string, string> = {};
+  switch (domain) {
+    case "colors":
+      if (colorway?.colors) {
+        for (const [key, value] of Object.entries(colorway.colors)) tokens[key] = value;
+      }
+      return tokens;
+    case "radius":
+      if (appearance?.radius) {
+        for (const [key, value] of Object.entries(appearance.radius)) {
+          if (value != null && Number.isFinite(Number(value))) tokens[`radius-${key}`] = `${value}px`;
+        }
+      }
+      return tokens;
+    case "glass": {
+      const sv = surfaceVariables(appearance?.glass);
+      for (const key of GLASS_TOKEN_KEYS) tokens[key] = sv[key];
+      return tokens;
+    }
+    case "font":
+      if (appearance?.font?.ui) tokens["font-ui"] = appearance.font.ui;
+      if (appearance?.font?.mono) tokens["font-mono"] = appearance.font.mono;
+      return tokens;
+    case "background":
+      // backgroundVariables 全量——bg-* + zones 模式切片（surface-bg-*，⑭ 影像分区）
+      return backgroundVariables(appearance?.background);
+    case "surface": {
+      const sv = surfaceVariables(appearance?.glass);
+      for (const [key, value] of Object.entries(sv)) {
+        if (key.startsWith("surface-")) tokens[key] = value;
+      }
+      if (appearance?.surface) {
+        for (const [key, value] of Object.entries(appearance.surface)) {
+          if (value != null) tokens[`surface-${key}`] = String(value);
+        }
+      }
+      return tokens;
+    }
+  }
+}
+
+/** 混搭字体域来源——resolveRecipeFonts 解析后的字体域来源配方（资产族名） */
+interface MixFontSource {
+  recipeId: string;
+  appearance: ThemeAppearance | undefined;
+}
+
+/**
+ * E5.8#50.26：混搭合并——10 §1/§3 模型：
+ *   :root 壳默认（缺的域/键不写 → CSS 继承）
+ *   ⊕ 每域各自取来源 flatten（followTheme → 当前配方；颜色域 = 配方+配色）
+ *   ⊕ overrides（设置层 scale/绝对覆盖，最上层）
+ * 返回生效 token 集（键不带 --）——applyRecipe mix 分支专用；单配方路径仍走 mergeDomains（零回归）。
+ */
+export function mergeMixDomains(
+  baseRecipe: ThemeRecipe,
+  baseColorway: ThemeColorway,
+  profile: MixProfile,
+  overrides: Record<string, string | number>,
+  fontSource?: MixFontSource
+): Record<string, string> {
+  const tokens: Record<string, string> = {};
+  for (const domain of MIX_DOMAIN_ORDER) {
+    const source = resolveDomainSource(domain, profile, baseRecipe, baseColorway);
+    // 字体域——源配方资产字体须用已解析 appearance（resolveRecipeFonts 换族名）；其余域用源配方原 appearance
+    const appearance =
+      domain === "font" && fontSource && source.recipe.id === fontSource.recipeId
+        ? fontSource.appearance
+        : source.recipe.appearance;
+    Object.assign(tokens, domainTokens(appearance, domain, source.colorway));
+  }
+  applyOverrides(tokens, overrides);
+  return tokens;
+}
+
+/** 混搭字体域来源配方——followTheme → 当前配方；否则按 app.mixFont 来源（找不到回退当前配方） */
+function resolveFontSource(recipe: ThemeRecipe, profile: MixProfile): ThemeRecipe {
+  if (!profile.font || profile.font === MIX_FOLLOW_THEME) return recipe;
+  return ThemeRegistry.getRecipe(profile.font) ?? recipe;
+}
+
 /**
  * 应用配方——mergeDomains → 写 :root + 广播 theme:changed。
  * colorwayId 缺省 = 配方首配色；overrides 缺省 = 读用户外观配置（app.*，getAppearanceOverrides）。
@@ -365,14 +524,41 @@ export function applyRecipe(
   overrides?: Record<string, string | number>
 ): void {
   const colorway = resolveColorway(recipe, colorwayId);
-  // E5.8#50.17：资产字体两步解析——appearance.font 资产相对路径 → @font-face 注册 + 换族名
-  // （副作用在注册；纯合并用解析后的 appearance；fontFaces 广播给池复刻）
-  const { appearance, fontFaces } = resolveRecipeFonts(recipe);
-  const effective = mergeDomains({ ...recipe, appearance }, colorway.id, overrides ?? getAppearanceOverrides());
+  // E5.8#50.26：mixMode=mix → 混搭合并（每域各自取来源）；否则单配方路径（零回归）。
+  const isMix = getConfigurationValue<string>("app.mixMode") === "mix";
+  let effective: Record<string, string>;
+  let fontFaces: FontFaceSpec[];
+  let domains: ThemeDomain[];
+  let effectiveColors: Record<string, string> = {};
+
+  if (isMix) {
+    const profile = getMixProfile();
+    // 字体域来源配方（followTheme → 当前配方）——资产字体两步解析在源配方上（#50.17）
+    const fontSource = resolveFontSource(recipe, profile);
+    const { appearance: fontAppearance, fontFaces: faces } = resolveRecipeFonts(fontSource);
+    effective = mergeMixDomains(recipe, colorway, profile, overrides ?? getAppearanceOverrides(), {
+      recipeId: fontSource.id,
+      appearance: fontAppearance,
+    });
+    fontFaces = faces;
+    // 混搭下生效集可触及全部域——广播全域（池侧按 variables 全量写入，domains 为细粒度刷新信号）
+    domains = MIX_DOMAIN_ORDER;
+    // currentTheme 快照用生效配色（accent 跟随主题取混搭颜色域来源的 accent，非整体配方默认）
+    effectiveColors = resolveDomainSource("colors", profile, recipe, colorway).colorway?.colors ?? colorway.colors ?? {};
+  } else {
+    // E5.8#50.17：资产字体两步解析——appearance.font 资产相对路径 → @font-face 注册 + 换族名
+    // （副作用在注册；纯合并用解析后的 appearance；fontFaces 广播给池复刻）
+    const { appearance, fontFaces: faces } = resolveRecipeFonts(recipe);
+    effective = mergeDomains({ ...recipe, appearance }, colorway.id, overrides ?? getAppearanceOverrides());
+    fontFaces = faces;
+    domains = recipeDomains(recipe);
+    effectiveColors = colorway.colors ?? {};
+  }
+
   commitTokens(
     effective,
     recipe.type,
-    { recipeId: recipe.id, colorwayId: colorway.id, domains: recipeDomains(recipe) },
+    { recipeId: recipe.id, colorwayId: colorway.id, domains },
     fontFaces
   );
   currentRecipeId = recipe.id;
@@ -380,7 +566,7 @@ export function applyRecipe(
   currentTheme = {
     name: recipe.name,
     type: recipe.type,
-    colors: colorway.colors ?? {},
+    colors: effectiveColors,
     surface: recipe.appearance?.glass,
     background: recipe.appearance?.background,
   };

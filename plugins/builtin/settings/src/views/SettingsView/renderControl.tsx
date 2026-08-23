@@ -24,6 +24,7 @@ function renderControl(
   onChange: (v: unknown) => void,
   t: (key: string) => string,
   onColorSwatchClick?: (e: React.MouseEvent<HTMLDivElement>) => void,
+  actionDisabled?: boolean,
 ): React.ReactNode {
   const val = value ?? prop.default;
 
@@ -99,12 +100,16 @@ function renderControl(
       );
 
     case "string":
-      // renderHint "action"：渲染操作按钮
+      // renderHint "action"：渲染操作按钮。
+      // E5.8#50.26：onApply 是函数——IPC 序列化剥除（configuration.ts 剥离）——插件侧不可达，
+      // 点击改走 actionCommand 执行壳命令（混搭复位 → theme.resetMix 单一写入点触发壳侧 onApply 链）；
+      // actionDisabled = actionDisabledAll 全命中当前配置值 → 置灰（mockup 01 updateMixReset）。
       if (prop.renderHint === "action") {
         return (
           <button
             className="settings-action-btn"
-            onClick={() => { prop.onApply?.(null); }}
+            disabled={actionDisabled}
+            onClick={() => { void window.linkdesk?.commands?.executeCommand?.(prop.actionCommand ?? ""); }}
           >
             {t(prop.description ?? "")}
           </button>
