@@ -204,6 +204,40 @@ export function findTabByIdentity(
 }
 
 /**
+ * E5.8#46.1：判断目标组已有标签页中是否存在与被拖标签同一身份——跨窗口合并去重。
+ * VS Code EditorInput.matches() 对标：组内每资源唯一——松手并窗瞬间消除被拖的。
+ *
+ * ⚠️ 不能复用 isSameTabIdentity——它对 identityField null 返回 true（reduceCreateTab preview
+ * 替换语义），合并去重会误杀多实例类型（两个不同 terminal 并窗被消除一个）。正确语义 = findTabByIdentity
+ * （identityField 有值才匹配）+ singleton 补充：
+ *   - singleton → 类型级唯一（组内已有同 type → 同身份）
+ *   - identityField 有值 → 同 type + 同字段值（editor 文件路径 / 插件详情 / 按插件声明）
+ *   - identityField null → 允许多实例，不去重（terminal）
+ * 范围 = 目标组（不是整窗）——分屏两栏各放同文件是 VS Code 允许的。
+ */
+export function tabsShareIdentity(existingTabs: Tab[], dragged: Tab): boolean {
+  // singleton：组内已有同 type → 同身份（settings 等全局唯一类型，getViewPlugin 同款判定）
+  if (getViewPlugin(dragged.type)?.manifest?.tabBehavior?.singleton === true) {
+    return existingTabs.some((t) => t.type === dragged.type);
+  }
+  const meta = getMeta(dragged.type);
+  if (!meta.identityField) return false; // 多实例类型不去重（terminal）
+  const field = meta.identityField;
+  const value = (dragged as unknown as Record<string, unknown>)[field] as string | undefined;
+  if (!value) return false;
+  return existingTabs.some((t) => {
+    if (t.type !== dragged.type) return false;
+    const tabVal = (t as unknown as Record<string, unknown>)[field] as string | undefined;
+    if (!tabVal) return false;
+    // filePath 大小写不敏感——Windows 驱动器字母（findTabByIdentity 同款）
+    if (field === "filePath") {
+      return normalizePath(tabVal).toLowerCase() === normalizePath(value).toLowerCase();
+    }
+    return tabVal === value;
+  });
+}
+
+/**
  * VS Code isPinned 对标：判断已有标签页 t 是否与要创建的 (type, opts) 同一身份。
  */
 export function isSameTabIdentity(t: Tab, type: string, opts?: CreateTabOptions): boolean {

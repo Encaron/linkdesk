@@ -15,6 +15,7 @@
 import { useCallback, useEffect, useRef } from "react";
 import { allTabs, createGroup, reduceRemoveTab, reduceInsertTab } from "../hooks/useTabManager";
 import type { Tab, TabState } from "../hooks/useTabManager";
+import { tabsShareIdentity } from "../core/utils/tabIdentity";
 import type { WindowShellState, WindowMode } from "./windows";
 import type { PoolWindowBoundsPayload, TabBarRectsPayload, TabBarViewportRect, ShellTabDragPosition, AdsorbHintPayload, AdsorbIndexPayload } from "../core/types/ipc/poolActions";
 
@@ -112,10 +113,14 @@ export function useWindowRelocation(deps: UseWindowRelocationDeps): UseWindowRel
   }, [removeTab, closeWindow, updateTabState]);
 
   /** 向任意窗口插入 tab——main 走 useTabManager；detached 走 reduceInsertTab + updateTabState。
-   *  E5.8#46.10：index = 竖线缝隙（0..tabs.length）——松手落位与竖线一致（提示不撒谎）；缺省 = 组尾追加。 */
+   *  E5.8#46.10：index = 竖线缝隙（0..tabs.length）——松手落位与竖线一致（提示不撒谎）；缺省 = 组尾追加。
+   *  E5.8#46.1：合并去重——目标组内已有同身份标签（同文件/单实例）→ 消除被拖的（VS Code 拖并行为）。
+   *  removeFromWindow 已摘除 tab——不插入即被消除。范围 = 目标组（分屏两栏各放同文件允许）。 */
   const insertIntoWindow = useCallback((windowId: string, tab: Tab, targetGroupId?: string, index?: number): void => {
     const target = windowsRef.current.find((w) => w.windowId === windowId);
     if (!target) return;
+    const targetGroup = target.tabState.groups.find((g) => g.id === (targetGroupId ?? target.tabState.activeGroupId)) ?? target.tabState.groups[0];
+    if (targetGroup && tabsShareIdentity(targetGroup.tabs, tab)) return; // 消除被拖的
     if (target.mode === "main") {
       insertTab(tab, targetGroupId, index);
       return;

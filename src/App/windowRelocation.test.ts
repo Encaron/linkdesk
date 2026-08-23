@@ -14,6 +14,25 @@ import type { WindowShellState } from "./windows";
 import type { ShellTabDragPosition, TabBarRectsPayload, AdsorbIndexPayload } from "../core/types/ipc/poolActions";
 import type { LinkDeskAPI } from "../core/api/linkdesk-api";
 
+/* ── E5.8#46.1 合并去重——mock 插件声明（虚构类型 demo-editor/demo-term/demo-tool，硬约束 21）──
+ * tabIdentity.getMeta 经 getViewPlugin 读 manifest.tabBehavior.identityField/singleton。
+ * identityField="filePath" → 资源身份匹配；demo-term 无 identityField → 多实例不去重；
+ * demo-tool singleton → 类型级唯一。未知类型（现有测试 "view"）返回 undefined → 与真实一致（null → 不去重）。 */
+vi.mock("../pluginLoader/viewRegistry", () => ({
+  getViewPlugin: (type: string) => {
+    switch (type) {
+      case "demo-editor":
+        return { manifest: { name: "Demo Editor", tabBehavior: { identityField: "filePath" } } };
+      case "demo-term":
+        return { manifest: { name: "Demo Term", tabBehavior: {} } };
+      case "demo-tool":
+        return { manifest: { name: "Demo Tool", tabBehavior: { singleton: true } } };
+      default:
+        return undefined;
+    }
+  },
+}));
+
 /* ── 虚构夹具（硬约束 21） ── */
 
 function makeTab(id: string): Tab {
@@ -187,5 +206,88 @@ describe("useWindowRelocation —— E5.8#44-C 吸附 live 高亮", () => {
         })],
       }),
     );
+  });
+});
+
+/* ── E5.8#46.1 合并去重——跨窗口 merge 目标组身份去重（VS Code 组内每资源唯一）── */
+
+/** demo-editor（identityField=filePath）——资源身份标签 */
+function editorTab(id: string, filePath: string): Tab {
+  return { id, type: "demo-editor", label: `Demo ${id}`, filePath, dirty: false, pinned: true };
+}
+
+/** demo-term（identityField=null）——多实例类型 */
+function termTab(id: string): Tab {
+  return { id, type: "demo-term", label: `Demo ${id}`, dirty: false, pinned: true };
+}
+
+/** demo-tool（singleton）——类型级唯一 */
+function toolTab(id: string): Tab {
+  return { id, type: "demo-tool", label: `Demo ${id}`, dirty: false, pinned: true };
+}
+
+/** 单组 TabState——groupId 恒 "grp-1" */
+function groupTabState(tabs: Tab[]): TabState {
+  const groupId = "grp-1";
+  return { groups: [{ id: groupId, tabs, activeTabId: tabs[0].id }], activeGroupId: groupId, root: { type: "leaf", groupId } };
+}
+
+/** 渲染 relocation + 主窗 target 固定（det-1 持有被拖 tab，经 mergeTabToMain 合并到 main）——返回 hook + mocks */
+function setupMerge(mainState: TabState, detTab: Tab) {
+  const insertTab = vi.fn();
+  const closeWindow = vi.fn();
+  const updateTabState = vi.fn();
+  const deps: Omit<UseWindowRelocationDeps, "windows"> = {
+    createWindow: vi.fn(),
+    closeWindow,
+    updateTabState,
+    removeTab: vi.fn(() => makeTab("tab-1")), // main 分支摘除——本组测试源窗全是 detached，不触发
+    insertTab,
+  };
+  const mainWin: WindowShellState = { windowId: "main", mode: "main", ready: true, tabState: mainState, bounds: MAIN_BOUNDS };
+  const detWin: WindowShellState = { windowId: "det-1", mode: "detached", ready: true, tabState: groupTabState([detTab]), bounds: DET_BOUNDS };
+  const hook = renderHook(() => useWindowRelocation({ ...deps, windows: [mainWin, detWin] }));
+  return { hook, insertTab, closeWindow, updateTabState };
+}
+
+describe("useWindowRelocation —— E5.8#46.1 合并去重", () => {
+  it("目标组已有同文件 → 消除被拖的（不插入，源窗照常摘除自灭）", () => {
+    const { hook, insertTab, closeWindow } = setupMerge(groupTabState([editorTab("t-ed", "/a/hello.c")]), editorTab("tab-1", "/a/hello.c"));
+    hook.result.current.mergeTabToMain("tab-1");
+    expect(insertTab).not.toHaveBeenCalled(); // 被消除
+    expect(closeWindow).toHaveBeenCalledWith("det-1"); // 源窗摘空自灭（既有行为不变）
+  });
+
+  it("目标组无同文件 → 正常插入（并回主窗）", () => {
+    const { hook, insertTab } = setupMerge(groupTabState([editorTab("t-ed", "/a/hello.c")]), editorTab("tab-1", "/b/world.c"));
+    hook.result.current.mergeTabToMain("tab-1");
+    expect(insertTab).toHaveBeenCalledWith(expect.objectContaining({ id: "tab-1", type: "demo-editor", filePath: "/b/world.c" }), undefined, undefined);
+  });
+
+  it("多实例类型（identityField=null）→ 不去重，两个 terminal 并存", () => {
+    const { hook, insertTab } = setupMerge(groupTabState([termTab("t-1")]), termTab("tab-1"));
+    hook.result.current.mergeTabToMain("tab-1");
+    expect(insertTab).toHaveBeenCalledWith(expect.objectContaining({ id: "tab-1", type: "demo-term" }), undefined, undefined);
+  });
+
+  it("singleton 类型 → 组内已有同 type 即消除", () => {
+    const { hook, insertTab } = setupMerge(groupTabState([toolTab("t-tool")]), toolTab("tab-1"));
+    hook.result.current.mergeTabToMain("tab-1");
+    expect(insertTab).not.toHaveBeenCalled();
+  });
+
+  it("去重范围 = 目标组——同窗另一组有同文件不阻断插入（分屏两栏各放一个允许）", () => {
+    const mainState: TabState = {
+      groups: [
+        { id: "grp-a", tabs: [editorTab("t-ed1", "/a/hello.c")], activeTabId: "t-ed1" },
+        { id: "grp-b", tabs: [editorTab("t-ed2", "/b/world.c")], activeTabId: "t-ed2" },
+      ],
+      activeGroupId: "grp-b",
+      root: { type: "branch", direction: "horizontal", children: [{ type: "leaf", groupId: "grp-a" }, { type: "leaf", groupId: "grp-b" }], sizes: [0.5, 0.5] },
+    };
+    // det 拖入的同文件 hello.c 在 grp-a——目标组 activeGroupId=grp-b 没有 → 插入
+    const { hook, insertTab } = setupMerge(mainState, editorTab("tab-1", "/a/hello.c"));
+    hook.result.current.mergeTabToMain("tab-1");
+    expect(insertTab).toHaveBeenCalledWith(expect.objectContaining({ id: "tab-1", type: "demo-editor", filePath: "/a/hello.c" }), undefined, undefined);
   });
 });
