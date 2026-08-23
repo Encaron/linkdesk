@@ -38,6 +38,7 @@
 14. **新格式 only、零向后兼容读**（决策 F）：现有主题插件迁移改造（theme-defaults/mint-soda/twilight-forest）——[05 §5](05-主题数据模型.md)
 15. **ai化 = AI 友好度**（2026-08-23 澄清）：schema 自文档化 + 文档读者含 AI + 示例可仿造 + 一种写法——[07 §0](07-代码规划.md)
 16. **surface 域 schema 预留**（决策 C）：per-surface 精调键随 #50.6 token 表冻结
+17. **液态玻璃材质 = Apple Liquid Glass 近似**（2026-08-23 澄清）：不是静态磨砂（Glassmorphism）、不是虹彩色差——透光（blur/saturate）+ 反光（specular 顶部高光）+ 响应（morph 形变）三层；glass 域键 `specular`/`morph` 已定——[02 §2.3](02-变量契约.md) + [壳半业务外推/02](../壳半业务外推/02-外观玻璃态设计.md)「液态玻璃材质」节
 
 ## 相关档案
 
