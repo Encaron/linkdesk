@@ -15,6 +15,7 @@ import {
   applyAccentColor,
   registerFallbackThemes,
   getEffectiveAccentColor,
+  getCurrentTheme,
 } from "../core/services/ui/ThemeEngine";
 import { initPluginLoader, startPluginWatcher, stopPluginWatcher, getLoadedPluginManifests } from "../pluginLoader/loader";
 import { factorySlots } from "../core/services/bootstrap/FactorySlots";
@@ -38,6 +39,15 @@ export interface AppStartupDeps {
   setLang: (v: "zh" | "en") => void;
   setReady: (v: boolean) => void;
 }
+
+/** E5.8#50.10：外观覆盖配置 onApply 统一入口——当前主题存在才重应用（启动时 app.theme 先注册先 apply，本组恒非空）。
+ * 重应用 = applyTheme（内部合并用户外观覆盖） + applyAccentColor——防 applyTheme 重写主题 accent 覆盖用户自定义强调色。 */
+const applyThemeIfReady = (): void => {
+  const theme = getCurrentTheme();
+  if (!theme) return;
+  applyTheme(theme);
+  applyAccentColor(getEffectiveAccentColor());
+};
 
 /** mount-once 启动管线：注册 + initAll + post-init state 同步 + cleanup（HMR/StrictMode 安全） */
 export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): void {
@@ -117,6 +127,49 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
             // E3.5 fix: dependsOn 只控制 UI 显隐，不阻止 applyConfiguration 在启动时调用。
             // accentMode="followTheme" 时，app.accentColor 的 onApply 不应覆盖主题的 accent。
             onApply: () => applyAccentColor(getEffectiveAccentColor()),
+          },
+          // E5.8#50.10：用户外观覆盖配置——neutral 默认值 = 不覆盖主题基线（玻璃主题零影响）。
+          // onApply 统一走 applyThemeIfReady——单一写入点 applyTheme 末尾读本组配置覆盖（getAppearanceOverrides）。
+          "app.glassBlur": {
+            type: "number",
+            default: 0,
+            minimum: 0,
+            maximum: 40,
+            description: t("玻璃模糊——0 关闭，数值越大背景越模糊"),
+            uiHint: "slider",
+            onApply: () => applyThemeIfReady(),
+          },
+          "app.glassOpacity": {
+            type: "number",
+            default: 1,
+            minimum: 0,
+            maximum: 1,
+            description: t("玻璃不透明度——1 不透明，越小越透明"),
+            uiHint: "slider",
+            onApply: () => applyThemeIfReady(),
+          },
+          "app.glassTint": {
+            type: "string",
+            default: "",
+            description: t("玻璃叠加色——空 = 主题自带"),
+            renderHint: "color",
+            onApply: () => applyThemeIfReady(),
+          },
+          "app.backgroundImage": {
+            type: "string",
+            default: "",
+            description: t("窗口背景图片路径——空 = 主题自带"),
+            uiHint: "file",
+            onApply: () => applyThemeIfReady(),
+          },
+          "app.surfaceRadius": {
+            type: "number",
+            default: 1,
+            minimum: 0.5,
+            maximum: 2,
+            description: t("界面圆角缩放——1 主题默认，0.5 锐利，2 圆润"),
+            uiHint: "slider",
+            onApply: () => applyThemeIfReady(),
           },
           "app.menuStyle": {
             type: "string",

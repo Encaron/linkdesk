@@ -5,6 +5,7 @@
 
 import { CoreEvents } from "../../react/events/CoreEvents";
 import { trackRegistration } from "../../registry/registrationTracker"; // E5.8#10：register 返 disposer——卸载自动逆序回滚
+import { normalizePath } from "../../utils/path/pathUtils"; // E5.8#50.10：Windows 路径归一化（ESLint no-raw-path-replace 强制走正源）
 
 export interface ThemeColors {
   [key: string]: string;
@@ -216,6 +217,9 @@ export function applyTheme(theme: Theme): void {
   // E5.8#50.6：全量写入 colors + 玻璃/背景/悬浮——玻璃变量每次都写（缺省零值），
   // 玻璃主题切回普通主题自动清零不残留；重复应用幂等。
   const variables = getThemeVariables(theme);
+  // E5.8#50.10：用户外观配置覆盖主题基线（玻璃/背景/radius 缩放）——合并进同一变量集，
+  // 一次写 :root + 一次广播（池侧 --${k} 注入惯例，radius/玻璃覆盖同传，无双广播竞态）。
+  Object.assign(variables, getAppearanceOverrides());
   for (const [key, value] of Object.entries(variables)) {
     root.style.setProperty(`--${key}`, value);
   }
@@ -317,4 +321,61 @@ export function getEffectiveAccentColor(): string {
     if (theme?.colors?.accent) return theme.colors.accent;
   }
   return customColor;
+}
+
+/* ── E5.8#50.10：用户外观配置覆盖主题基线（对标上块 accent 覆盖 theme accent 同款）。
+   neutral 默认值 = 不覆盖：glassBlur 0 / glassOpacity 1 / glassTint 空 / backgroundImage 空——
+   偏离默认 → 覆盖；改回默认 → 还原主题基线（玻璃主题零影响）。
+   surfaceRadius 恒写——不写会残留上一次缩放值（scale 1 = 写基准，幂等清残留）。
+   单一写入点：applyTheme 末尾 getAppearanceOverrides() 合并进 variables → 一次写 :root + 一次广播。 */
+
+/** 六档 radius token 基准——首次读 :root 现值（未缩放），模块缓存防复合缩放 */
+const RADIUS_KEYS = ["radius-xs", "radius-sm", "radius-md", "radius-lg", "radius-xl", "radius-2xl"];
+let _baseRadius: Record<string, string> | null = null;
+function getBaseRadius(): Record<string, string> {
+  if (_baseRadius) return _baseRadius;
+  const cs = getComputedStyle(document.documentElement);
+  const base: Record<string, string> = {};
+  for (const key of RADIUS_KEYS) {
+    base[key] = cs.getPropertyValue(`--${key}`).trim() || "0px";
+  }
+  _baseRadius = base;
+  return base;
+}
+
+/** app.surfaceRadius 缩放 → --radius-xs~2xl 六档（--radius-pill/--radius-full 形态值不乘）。纯函数只算不改。 */
+export function applyRadiusScale(scale: number): Record<string, string> {
+  const vars: Record<string, string> = {};
+  for (const [key, baseValue] of Object.entries(getBaseRadius())) {
+    const px = parseFloat(baseValue);
+    if (Number.isFinite(px)) vars[key] = `${Math.round(px * scale)}px`;
+  }
+  return vars;
+}
+
+/** 读用户外观配置 → 覆盖变量集（glass/bg 仅偏离 neutral 时；radius 恒写）。applyTheme 末尾合并。 */
+export function getAppearanceOverrides(): Record<string, string> {
+  const overrides: Record<string, string> = {};
+
+  const blur = getConfigurationValue<number>("app.glassBlur");
+  if (blur != null && Number(blur) !== 0) overrides["glass-blur"] = `${blur}px`;
+
+  const opacity = getConfigurationValue<number>("app.glassOpacity");
+  if (opacity != null && Number(opacity) !== 1) overrides["glass-opacity"] = String(opacity);
+
+  const tint = getConfigurationValue<string>("app.glassTint");
+  if (tint != null && String(tint).trim() !== "") overrides["glass-tint"] = String(tint).trim();
+
+  const bgImage = getConfigurationValue<string>("app.backgroundImage");
+  if (bgImage != null && String(bgImage).trim() !== "") {
+    // Windows 反斜杠路径在 CSS url() 串里是转义符——normalizePath 归一化正斜杠（Chromium 下可解析）
+    const img = normalizePath(String(bgImage).trim());
+    overrides["bg-image"] = /^url\(/i.test(img) ? img : `url("${img}")`;
+  }
+
+  const rawScale = getConfigurationValue<number>("app.surfaceRadius");
+  const scale = rawScale == null || !Number.isFinite(Number(rawScale)) ? 1 : Number(rawScale);
+  Object.assign(overrides, applyRadiusScale(scale));
+
+  return overrides;
 }

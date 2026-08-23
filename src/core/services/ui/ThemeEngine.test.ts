@@ -16,8 +16,11 @@ import {
   getCurrentTheme,
   registerFallbackThemes,
   getThemeVariables,
+  getAppearanceOverrides,
+  applyRadiusScale,
 } from "./ThemeEngine";
 import { rollback } from "../../registry/registrationTracker";
+import { applyRemoteConfigChange, clearConfigurationCache } from "../configuration/ConfigurationService";
 import type { Theme } from "./ThemeEngine";
 
 const MOCK_THEME: Theme = {
@@ -249,5 +252,69 @@ describe("ThemeEngine — registerFallbackThemes", () => {
     const before = themes.length;
     registerFallbackThemes();
     expect(getAvailableThemes().length).toBe(before);
+  });
+});
+
+describe("ThemeEngine — 外观覆盖 getAppearanceOverrides（E5.8#50.10）", () => {
+  const RADIUS_KEYS = ["radius-xs", "radius-sm", "radius-md", "radius-lg", "radius-xl", "radius-2xl"];
+  const GLASS_VARS = [
+    "glass-blur", "glass-opacity", "glass-tint", "bg-image",
+  ];
+  beforeEach(() => {
+    clearConfigurationCache(); // 清空上一测试的 applyRemoteConfigChange 残留
+    const root = document.documentElement;
+    for (const key of [...GLASS_VARS, ...RADIUS_KEYS]) {
+      root.style.removeProperty(`--${key}`);
+    }
+  });
+
+  it("neutral 默认 → 仅 radius 键恒写，玻璃/背景不覆盖", () => {
+    const overrides = getAppearanceOverrides();
+    expect(overrides["glass-blur"]).toBeUndefined();
+    expect(overrides["glass-opacity"]).toBeUndefined();
+    expect(overrides["glass-tint"]).toBeUndefined();
+    expect(overrides["bg-image"]).toBeUndefined();
+    for (const key of RADIUS_KEYS) expect(overrides[key]).toBeDefined();
+    // --radius-pill/--radius-full 形态值不乘不入覆盖集
+    expect(overrides["radius-pill"]).toBeUndefined();
+  });
+
+  it("glassBlur 偏离默认 → glass-blur 覆盖", () => {
+    applyRemoteConfigChange("app.glassBlur", 15);
+    expect(getAppearanceOverrides()["glass-blur"]).toBe("15px");
+  });
+
+  it("glassOpacity 0.5 → glass-opacity 覆盖", () => {
+    applyRemoteConfigChange("app.glassOpacity", 0.5);
+    expect(getAppearanceOverrides()["glass-opacity"]).toBe("0.5");
+  });
+
+  it("glassTint 非空 → glass-tint 覆盖", () => {
+    applyRemoteConfigChange("app.glassTint", "#123456");
+    expect(getAppearanceOverrides()["glass-tint"]).toBe("#123456");
+  });
+
+  it("backgroundImage Windows 反斜杠路径 → url() 归一化正斜杠", () => {
+    applyRemoteConfigChange("app.backgroundImage", "C:\\Users\\feng\\bg.png");
+    expect(getAppearanceOverrides()["bg-image"]).toBe('url("C:/Users/feng/bg.png")');
+  });
+
+  it("surfaceRadius 偏离默认 → 缩放 radius 六键仍全写", () => {
+    applyRemoteConfigChange("app.surfaceRadius", 1.5);
+    const overrides = getAppearanceOverrides();
+    for (const key of RADIUS_KEYS) expect(overrides[key]).toBeDefined();
+  });
+
+  it("applyRadiusScale — 返回六档键集、不含形态值（数值来自 :root 基准，jsdom 无 CSS = 0px）", () => {
+    const scaled = applyRadiusScale(2);
+    for (const key of RADIUS_KEYS) expect(scaled[key]).toBeDefined();
+    expect(scaled["radius-pill"]).toBeUndefined();
+    expect(scaled["radius-full"]).toBeUndefined();
+  });
+
+  it("applyTheme 折叠覆盖——glassBlur 覆盖胜过主题 surface.blur", () => {
+    applyRemoteConfigChange("app.glassBlur", 15);
+    applyTheme({ ...MOCK_THEME, surface: { type: "glass", blur: 8 } });
+    expect(document.documentElement.style.getPropertyValue("--glass-blur")).toBe("15px");
   });
 });
