@@ -193,6 +193,11 @@ export const ThemeRegistry = {
    *  （registerTheme 同款语义，兜底上位是预期行为）；插件间重复仍告警。
    *  E5.8#10 返 disposer——删"这一条"（仅当仍是当前占位者）；无 pluginId（壳兜底）不追踪，返裸 disposer。 */
   registerRecipe(recipe: ThemeRecipe, pluginId?: string): () => void {
+    // E5.8#61 审计#3：记录被覆盖的旧占位者（壳兜底/前插件配方）——disposer 卸载覆盖者时回填。
+    //  原实现直接删 → 插件覆盖壳兜底（registerFallbackThemes 的 dark/light）后卸载，兜底会话内丢失
+    //  （重启才恢复）；回填旧占位者让 getRecipe/getRecipes 立即恢复可用。
+    const prev = recipes.get(recipe.id);
+    const prevOwner = recipeOwners.get(recipe.id);
     if (recipes.has(recipe.id)) {
       const existingOwner = recipeOwners.get(recipe.id);
       if (existingOwner) {
@@ -209,7 +214,14 @@ export const ThemeRegistry = {
 
     const dispose = (): void => {
       if (recipes.get(recipe.id) === recipe) {
-        recipes.delete(recipe.id);
+        if (prev) {
+          recipes.set(recipe.id, prev);
+          if (prevOwner) recipeOwners.set(recipe.id, prevOwner);
+          else recipeOwners.delete(recipe.id);
+        } else {
+          recipes.delete(recipe.id);
+          recipeOwners.delete(recipe.id);
+        }
       }
       if (pluginId) {
         if (recipeOwners.get(recipe.id) === pluginId) recipeOwners.delete(recipe.id);

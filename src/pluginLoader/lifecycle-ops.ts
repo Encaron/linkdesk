@@ -7,7 +7,7 @@
 
 import i18n from "../i18n"; // E5.8#37.9：toast 动作标签壳 t() 解析（显示文本铁律——ToastHost 哑渲染零自产文本）
 import type { PluginManifest } from "../core/api/types";
-import { getAvailableThemes, normalizeThemeValue } from "../core/services/ui/ThemeEngine";
+import { getAvailableThemes, normalizeThemeValue, isMixSourceOwner } from "../core/services/ui/ThemeEngine";
 import { ThemeRegistry } from "../core/registry/appearance/ThemeRegistry";
 import { LanguageRegistry } from "../core/registry/languages/LanguageRegistry";
 import { pushToast, TOAST_TTL_SUCCESS } from "../core/services/ui/NotificationService";
@@ -346,20 +346,30 @@ async function revertLanguageIfCurrent(pluginId: string): Promise<void> {
   } catch { /* 非关键路径 */ }
 }
 
-/** 当前主题是否来自此插件——卸载/禁用当前主题时自动回退 */
+/** 当前主题是否来自此插件——卸载/禁用当前主题时自动回退；混搭来源卸载时重应用当前主题（E5.8#61 审计#1） */
 async function revertThemeIfCurrent(pluginId: string): Promise<void> {
   try {
     // E5.8#50.21：读时归一化——legacy "Dark"/"Light" 匹配不到（无 flat 登记）会漏判，先转配方 id
     const currentTheme = normalizeThemeValue(getConfigurationValue<string>("app.theme"));
     const theme = ThemeRegistry.get(currentTheme ?? "");
-    if (!theme || theme.pluginId !== pluginId) return;
 
-    // 当前主题来自被卸载/禁用的插件 → 找替代（配方优先，flat 退路；值归一化落配置）
-    const available = [...ThemeRegistry.getRecipes().map((r) => r.id), ...getAvailableThemes()];
-    if (available.length > 0) {
-      await setConfigurationValue("app.theme", normalizeThemeValue(available[0]) ?? available[0], "user");
+    // 活动主题来自本插件 → 换替代主题（配方优先，flat 退路；值归一化落配置）
+    if (theme?.pluginId === pluginId) {
+      const available = [...ThemeRegistry.getRecipes().map((r) => r.id), ...getAvailableThemes()];
+      if (available.length > 0) {
+        await setConfigurationValue("app.theme", normalizeThemeValue(available[0]) ?? available[0], "user");
+      }
+      // 无可用主题 → 保持当前 CSS（index.css :root 为兜底），设定下次启动的默认值
+      return;
     }
-    // 无可用主题 → 保持当前 CSS（index.css :root 为兜底），设定下次启动的默认值
+
+    // E5.8#61 审计#1：活动主题不是本插件，但本插件可能是混搭来源（app.mix* 引用其配方/配色）——
+    // 卸载/禁用后源配方已摘（@font-face 清理）但 :root 残留其颜色/字体变量（颜色卡死字体断裂）。
+    // 同值重写 app.theme 触发 applier → applyThemeIfReady 重合并——来源缺失走 #58 缺域回退回主题基线。
+    if (isMixSourceOwner(pluginId)) {
+      const cur = normalizeThemeValue(getConfigurationValue<string>("app.theme"));
+      if (cur) await setConfigurationValue("app.theme", cur, "user");
+    }
   } catch { /* 非关键路径 */ }
 }
 

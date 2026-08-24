@@ -26,6 +26,9 @@ import { initLifecycleConsumers } from "./lifecycle";
 // E5.8#11：状态机——watcher 卸载走 unloadPlugin（唯一卸载路径）+ 启动收尾失败诊断日志
 // E5.8#24 回归：watcher 跳过已失败/已挂起插件需要 getLoadDiagnostics 读状态机
 import { unloadPlugin, getLoadDiagnosticsSummary, getLoadDiagnostics } from "./loadState";
+// E5.8#61 审计#2：watcher 手动删目录卸载路径补 revert（原只有 lifecycle-ops 正规卸载走）——
+// lifecycle-ops 不 import loader（无环），此处反向 import 安全
+import { revertThemeIfCurrent, revertLanguageIfCurrent } from "./lifecycle-ops";
 import {
   pluginsApi,
   log,
@@ -293,6 +296,11 @@ export function startPluginWatcher(): void {
       for (const id of [...loadedPluginIds]) {
         if (!fsSet.has(id) && !getDisabledList().includes(id)) {
           log.appendLine(`插件 "${id}" 目录已手动删除——自动移除注册`);
+          // E5.8#61 审计#2：watcher 卸载路径补 revert——原只有 marketplace 正规卸载走
+          // （revertThemeIfCurrent/revertLanguageIfCurrent 须在 unloadPlugin 前——onWillUninstall
+          //  注销主题/语言后 revert 找不到归属；目录删除时插件仍 loaded，revert 照常生效）
+          await revertThemeIfCurrent(id);
+          await revertLanguageIfCurrent(id);
           unloadPlugin(id, "uninstall", id);
         }
       }

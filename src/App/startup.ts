@@ -34,7 +34,7 @@ import {
   getConfigurationValue, setConfigurationValue, resetConfigurationValue, inspectConfiguration,
   setConfigurationValueBatch, resetConfigurationValueBatch,
 } from "../core/services/configuration/ConfigurationService";
-import { registerConfiguration, updateConfigurationEnum } from "../core/registry/ConfigurationRegistry";
+import { registerConfiguration, updateConfigurationEnum, getMergedSchema } from "../core/registry/ConfigurationRegistry";
 import { initLayoutService, getTabLayout } from "../core/services/layout/LayoutService";
 import { initWorkspaceService } from "../core/services/layout/WorkspaceService";
 import { initPluginStates, APP_PLUGIN_ID } from "../core/services/plugins/PluginStateService";
@@ -517,11 +517,19 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
       // （映射表，不弹窗不重置；getConfigurationValue 会经 enum 校验把 legacy 值读成默认，须 inspect 取原始值）
       const inspectedTheme = inspectConfiguration<string>("app.theme");
       const rawTheme = inspectedTheme.workspaceValue ?? inspectedTheme.userValue ?? "dark";
-      const initTheme = normalizeThemeValue(rawTheme) ?? "dark";
-      if (initTheme !== rawTheme) {
+      let initTheme = normalizeThemeValue(rawTheme) ?? "dark";
+
+      // E5.8#61 审计#5：死 app.theme id 清扫——插件卸载后残留 id 不在当前 enum（配方/主题已注销）
+      // → 每次 getConfigurationValue 读都经 _validateEnum warn「不在 enum——回退默认值」刷屏。
+      // 此时 initAll 已完成：全插件已加载、enum 已稳定（syncAppThemeEnum 于 applyPostLoadSteps 后调用），清扫最安全。
+      // inspect 直读原始值判断——getConfigurationValue 会把死 id 读成默认值掩盖残留，不能用作判断。
+      const themeEnum = getMergedSchema()["app.theme"]?.enum;
+      const isDeadId = themeEnum ? !themeEnum.includes(initTheme) : false;
+      if (initTheme !== rawTheme || isDeadId) {
         const scope = inspectedTheme.workspaceValue !== undefined ? "workspace" : "user";
+        if (isDeadId) initTheme = themeEnum!.includes("dark") ? "dark" : themeEnum![0];
         setConfigurationValue("app.theme", initTheme, scope)
-          .catch((e) => { console.error("[startup] app.theme 迁移落盘失败:", e); });
+          .catch((e) => { console.error("[startup] app.theme 迁移/清扫落盘失败:", e); });
       }
       const initLang = getConfigurationValue<string>("app.language") ?? "zh";
       setTheme(initTheme);

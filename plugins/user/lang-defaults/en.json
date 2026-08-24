@@ -345,5 +345,7 @@
   "玻璃域来源——跟随主题配方 / 指定主题配方 id": "Glass domain source — follow theme recipe / specify a theme recipe id",
   "背景域来源——跟随主题配方 / 指定主题配方 id": "Background domain source — follow theme recipe / specify a theme recipe id",
   "表面域来源——跟随主题配方 / 指定主题配方 id": "Surface domain source — follow theme recipe / specify a theme recipe id",
-  "跟随主题": "Follow Theme"
+  "跟随主题": "Follow Theme",
+  "主题「{{name}}」数据文件加载失败，已跳过": "Theme \"{{name}}\" data file failed to load; skipped",
+  "主题「{{name}}」数据损坏，已跳过加载": "Theme \"{{name}}\" data is corrupted; skipped loading"
 }

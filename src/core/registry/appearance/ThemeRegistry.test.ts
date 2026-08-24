@@ -5,6 +5,7 @@
 
 import { describe, it, expect, afterEach, vi } from "vitest";
 import { parseThemeRecipe, ThemeRegistry } from "./ThemeRegistry";
+import { rollback } from "../registrationTracker";
 import type { ThemeContribution } from "../../api/types";
 
 const FALLBACK: ThemeContribution = {
@@ -130,13 +131,17 @@ describe("ThemeRegistry — registerRecipe / 查询 / 回滚", () => {
   });
 
   it("disposer 回滚——删当前占位者；后注册者覆盖后 dispose 不误删新占位者", () => {
-    const d1 = ThemeRegistry.registerRecipe(recipe("demo-recipe", "One"), "plugin-a");
-    const d2 = ThemeRegistry.registerRecipe(recipe("demo-recipe", "Two"), "plugin-b");
-    d1(); // 先注册者 dispose——当前占位者是 Two，不应删
+    ThemeRegistry.registerRecipe(recipe("demo-recipe", "One"), "plugin-a");
+    ThemeRegistry.registerRecipe(recipe("demo-recipe", "Two"), "plugin-b");
+    // 卸载 plugin-a（先卸载方）——当前占位者是 Two，plugin-a 的 disposer 不应误删新占位者
+    rollback("plugin-a");
     expect(ThemeRegistry.getRecipe("demo-recipe")?.name).toBe("Two");
     expect(ThemeRegistry.getRecipesByPlugin("plugin-a")).not.toContain("demo-recipe");
-    d2();
-    expect(ThemeRegistry.getRecipe("demo-recipe")).toBeUndefined();
+    // E5.8#61 审计#3：卸载 plugin-b → 回填被覆盖的旧占位者 One（非删空——插件卸载不吞前一个配方）
+    rollback("plugin-b");
+    expect(ThemeRegistry.getRecipe("demo-recipe")?.name).toBe("One");
+    expect(ThemeRegistry.getRecipeOwner("demo-recipe")).toBe("plugin-a");
+    ThemeRegistry.unregisterRecipe("demo-recipe"); // 清理残留——One 的 disposer 已随 rollback 耗尽，直删恢复测试前状态
   });
 
   it("getRecipe 未注册 → undefined", () => {
@@ -155,9 +160,13 @@ describe("ThemeRegistry — registerRecipe / 查询 / 回滚", () => {
       expect(ThemeRegistry.getRecipe("demo-fallback")?.name).toBe("Plugin");
       expect(warn).not.toHaveBeenCalled();
       expect(ThemeRegistry.getRecipesByPlugin("plugin-a")).toContain("demo-fallback");
-      // 插件 dispose → 兜底配方删除；兜底裸 disposer 幂等（不复活、不误删新占位者）
+      // E5.8#61 审计#3：插件 dispose → 回填壳兜底配方（原实现删空——插件覆盖兜底后卸载，兜底会话内丢失，
+      // 重启才恢复）；兜底配方恢复且无归属（owner 清空）
       plugin();
-      expect(ThemeRegistry.getRecipe("demo-fallback")).toBeUndefined();
+      expect(ThemeRegistry.getRecipe("demo-fallback")?.name).toBe("Fallback");
+      expect(ThemeRegistry.getRecipeOwner("demo-fallback")).toBeUndefined();
+      expect(ThemeRegistry.getRecipesByPlugin("plugin-a")).not.toContain("demo-fallback");
+      // 兜底裸 disposer 幂等（不复活、不误删新占位者）——此时占位者即兜底自身 → 删空
       fallback();
       expect(ThemeRegistry.getRecipe("demo-fallback")).toBeUndefined();
     } finally {

@@ -16,7 +16,7 @@ import { registerTheme, getAvailableThemes, ensurePluginFontFacesCleanup, normal
 import { ThemeRegistry, parseThemeRecipe } from "../core/registry/appearance/ThemeRegistry";
 import { IconRegistry } from "../core/registry/appearance/IconRegistry";
 import { LanguageRegistry } from "../core/registry/languages/LanguageRegistry";
-import { pushToast } from "../core/services/ui/NotificationService";
+import { pushToast, TOAST_TTL_INFO } from "../core/services/ui/NotificationService";
 import { registerConfiguration, registerConfigurationDefaults, updateConfigurationEnum } from "../core/registry/ConfigurationRegistry";
 import type { ManifestMenuItem, TitleBarContribution } from "../core/registry/commands/MenuRegistry";
 import { registerMenuItems, registerTitleBarContribution } from "../core/registry/commands/MenuRegistry";
@@ -411,10 +411,26 @@ async function loadThemeContributionData(pluginId: string, manifest: PluginManif
 
   for (const tc of themeList) {
     const data = await fetchPluginDataFile(pluginId, tc.path);
-    if (!data) continue;
+    if (!data) {
+      // E5.8#61 审计#4：主题数据文件损坏/缺失 → UI 反馈（原仅 console.warn 无提示——
+      // metadata 已注册但 recipe/flat 缺失 → 应用时静默无效果，用户不知道为什么）
+      pushToast({
+        message: i18n.t("主题「{{name}}」数据文件加载失败，已跳过", { name: tc.label }),
+        severity: "warning",
+        ttl: TOAST_TTL_INFO,
+        source: pluginId,
+      });
+      continue;
+    }
     const recipe = parseThemeRecipe(data, tc);
     if (!recipe) {
       console.warn(`[theme] "${tc.label}" 解析失败——既无 colorways[] 也无平铺 colors（决策 F：只读新格式）`);
+      pushToast({
+        message: i18n.t("主题「{{name}}」数据损坏，已跳过加载", { name: tc.label }),
+        severity: "warning",
+        ttl: TOAST_TTL_INFO,
+        source: pluginId,
+      });
       continue;
     }
     // 数据层：Recipe 登记（05 schema 配方单真源）

@@ -36,6 +36,7 @@ import {
   MIX_FOLLOW_THEME,
   syncThemeColorConfig,
   APPEARANCE_OVERRIDE_KEYS,
+  isMixSourceOwner,
 } from "./ThemeEngine";
 import type { MixProfile } from "./ThemeEngine";
 import { rollback } from "../../registry/registrationTracker";
@@ -1060,6 +1061,24 @@ describe("ThemeEngine — 混搭合并（E5.8#50.26，10 §1/§3 每域各自取
     // 非 mix 零回归：分母 = 活动配方原生 8
     applyRemoteConfigChange("app.mixMode", "recipe");
     expect(getRadiusSourcePx()).toBe(8);
+  });
+
+  it("E5.8#61 审计#1——isMixSourceOwner：mix 域配置引用其配方/配色 → true；引用他人/未引用 → false", () => {
+    // 初始无 mix 配置（beforeEach 未设 app.mix*）→ 全 followTheme → false
+    expect(isMixSourceOwner(PLUGIN)).toBe(false);
+    // 颜色域 = 配色粒度：RECIPE 的 mint 配色归 demo-mix → true
+    applyRemoteConfigChange("app.mixColor", "mint");
+    expect(isMixSourceOwner(PLUGIN)).toBe(true);
+    // 引用 demo-mix 配方但对 demo-other 是 false（归属精确到插件）
+    expect(isMixSourceOwner("demo-other")).toBe(false);
+    // 清空颜色域 → 回 false
+    applyRemoteConfigChange("app.mixColor", MIX_FOLLOW_THEME);
+    expect(isMixSourceOwner(PLUGIN)).toBe(false);
+    // 圆角域 = 配方粒度：demo-radius 归 demo-mix → true
+    applyRemoteConfigChange("app.mixRadius", "demo-radius");
+    expect(isMixSourceOwner(PLUGIN)).toBe(true);
+    applyRemoteConfigChange("app.mixRadius", MIX_FOLLOW_THEME);
+    expect(isMixSourceOwner(PLUGIN)).toBe(false);
   });
 });
 

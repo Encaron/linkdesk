@@ -398,6 +398,28 @@ export function getMixProfile(): MixProfile {
   return profile;
 }
 
+/**
+ * E5.8#61 审计#1：指定插件是否为当前混搭来源——任一 mix 域配置引用其配方/配色（颜色域 = 配方+配色粒度）。
+ * 卸载/禁用混搭来源后需重应用当前主题——源配方已摘（含 @font-face 清理）但 :root 残留其颜色/字体变量，
+ * 重应用走 #58 缺域回退兜底回主题基线（resolveDomainSource 来源缺失 → 基础配方）。
+ */
+export function isMixSourceOwner(pluginId: string): boolean {
+  const profile = getMixProfile();
+  for (const [domain, raw] of Object.entries(profile)) {
+    const value = raw == null ? "" : String(raw);
+    if (!value || value === MIX_FOLLOW_THEME) continue;
+    let recipeId: string | undefined;
+    if (domain === "colors") {
+      const owner = findColorwayOwner(value);
+      recipeId = owner ? owner.recipe.id : ThemeRegistry.getRecipe(value)?.id;
+    } else {
+      recipeId = ThemeRegistry.getRecipe(value)?.id;
+    }
+    if (recipeId && ThemeRegistry.getRecipeOwner(recipeId) === pluginId) return true;
+  }
+  return false;
+}
+
 /** 按配色 id 找归属配方——颜色域来源 = 配方+配色粒度（决策 B：可选任一配方的任一配色变体） */
 function findColorwayOwner(colorwayId: string): { recipe: ThemeRecipe; colorway: ThemeColorway } | undefined {
   for (const recipe of ThemeRegistry.getRecipes()) {

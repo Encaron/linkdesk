@@ -35,6 +35,12 @@ import { getConfigurationValue } from "../core/services/configuration/Configurat
 
 const PLUGIN_ID = "test-revert-plugin";
 
+/** 注册"非被卸载插件"提供的当前主题（多用例共享夹具——jscpd 防重复） */
+function registerBuiltinDarkTheme(): void {
+  ThemeRegistry.register({ id: "builtin-dark", label: "Builtin Dark", uiTheme: "dark", path: "dark.json" }, "builtin");
+  registerTheme({ name: "Builtin Dark", type: "dark", colors: { bg: "#111" } }, "builtin");
+}
+
 describe("revertIfCurrent——卸载当前贡献时自动回退", () => {
   beforeEach(() => {
     // 清理 ThemeEngine
@@ -68,14 +74,57 @@ describe("revertIfCurrent——卸载当前贡献时自动回退", () => {
   });
 
   it("revertThemeIfCurrent——当前主题不属于被卸载插件→不触发回退", async () => {
-    ThemeRegistry.register({ id: "builtin-dark", label: "Builtin Dark", uiTheme: "dark", path: "dark.json" }, "builtin");
-    registerTheme({ name: "Builtin Dark", type: "dark", colors: { bg: "#111" } }, "builtin");
+    registerBuiltinDarkTheme();
 
     const { setConfigurationValue } = await import("../core/services/configuration/ConfigurationService");
     await revertThemeIfCurrent(PLUGIN_ID);
 
     // builtin-dark 不属于 PLUGIN_ID → setConfigurationValue 不应被调用
     expect(setConfigurationValue).not.toHaveBeenCalled();
+  });
+
+  it("E5.8#61 审计#1——revertThemeIfCurrent：活动主题非本插件但本插件是混搭来源→同值重写触发重合并", async () => {
+    // 另一插件（builtin）提供当前主题；demo-mix-plugin 只作为混搭来源（app.mixColor 引用其配色）
+    registerBuiltinDarkTheme();
+    ThemeRegistry.registerRecipe(
+      {
+        id: "demo-mix-recipe", name: "Demo Mix Recipe", type: "dark",
+        colorways: [{ id: "mix-cw", name: "Mix", colors: { bg: "#222" } }],
+      },
+      PLUGIN_ID
+    );
+    const { setConfigurationValue: setCfg } = await import("../core/services/configuration/ConfigurationService");
+    await setCfg("app.theme", "builtin-dark", "user");
+    await setCfg("app.mixColor", "mix-cw", "user");
+
+    await revertThemeIfCurrent(PLUGIN_ID);
+
+    // 活动主题来自 builtin → 不换主题；但本插件是混搭来源 → 同值重写 app.theme 触发 applier 重合并
+    // （来源配方已摘，重合并走 #58 缺域回退回主题基线）
+    expect(setCfg).toHaveBeenCalledWith("app.theme", "builtin-dark", "user");
+    // 清理 store——防泄漏到后续用例
+    await setCfg("app.mixColor", "followTheme", "user");
+  });
+
+  it("E5.8#61 审计#1——revertThemeIfCurrent：混搭来源是其他插件→不触发重应用", async () => {
+    registerBuiltinDarkTheme();
+    // 混搭来源配方归其他插件——PLUGIN_ID 不提供任何配方
+    ThemeRegistry.registerRecipe(
+      {
+        id: "demo-other-recipe", name: "Demo Other Recipe", type: "dark",
+        colorways: [{ id: "other-cw", name: "Other", colors: { bg: "#333" } }],
+      },
+      "demo-other-plugin"
+    );
+    const { setConfigurationValue: setCfg } = await import("../core/services/configuration/ConfigurationService");
+    await setCfg("app.theme", "builtin-dark", "user");
+    await setCfg("app.mixColor", "other-cw", "user");
+    vi.mocked(setCfg).mockClear();
+
+    await revertThemeIfCurrent(PLUGIN_ID);
+
+    expect(setCfg).not.toHaveBeenCalled();
+    await setCfg("app.mixColor", "followTheme", "user");
   });
 
   /* ── 2. 语言 revert ── */
