@@ -281,6 +281,79 @@ export async function resetConfigurationValue(
   _configApplier?.(key, effective);
 }
 
+/* ── E5.8#59：批量写/复位——播种/复位路径广播收敛 ── */
+
+/**
+ * E5.8#59（审计#7）：批量写配置——一次动作收敛为单次持久化 + 单次 applier。
+ * 播种/复位先例：appearanceMode→custom 6 覆盖连写、mixMode→mix 6 来源连写——每连 setConfigurationValue
+ * 各自 await + 各触发一次 applier → N 次 applyRecipe 全量重合并 + N 次 theme:changed 广播（脱出窗多池放大中间态）。
+ * 本 API：同步写内存全部 key → 单次持久化 → 逐 key 通知监听器（SettingsView 逐行刷新）→ 单次 applier（末 key 代表性）。
+ * 各 key onApply 全量读生效配置（壳外观覆盖 onApply = applyThemeIfReady），末 key 触发 = 读到完整终态，一次广播即收敛。
+ * enum 逐 key 校验——非法 key 跳过（行为对齐 setConfigurationValue）；全部非法则零写入零广播。
+ */
+export async function setConfigurationValueBatch(
+  entries: Array<{ key: string; value: unknown }>,
+  scope: "user" | "workspace" = "user"
+): Promise<void> {
+  const valid: Array<{ key: string; value: unknown }> = [];
+  const schema = getMergedSchema();
+  for (const { key, value } of entries) {
+    const prop = schema[key];
+    if (prop?.enum && !prop.enum.includes(value as string)) {
+      console.warn(`[ConfigurationService] "${key}: ${value}" 不在 enum [${prop.enum}] 中——跳过`);
+      continue;
+    }
+    valid.push({ key, value });
+  }
+  if (valid.length === 0) return;
+
+  if (scope === "workspace") {
+    for (const { key, value } of valid) _workspaceSettings[key] = value;
+    await _persistWorkspace();
+  } else {
+    for (const { key, value } of valid) _userSettings[key] = value;
+    await _persistUser();
+  }
+
+  for (const { key, value } of valid) {
+    for (const fn of _changeListeners) {
+      try { fn(key, value, scope); } catch (e) { console.error("[ConfigurationService] 监听器异常:", e); }
+    }
+  }
+
+  // 收敛——单次 applier（末 key 代表性：各 onApply 全量读生效态，终态一致）
+  const last = valid[valid.length - 1];
+  _configApplier?.(last.key, last.value);
+}
+
+/**
+ * E5.8#59（审计#7）：批量复位——删除多个用户覆盖 key → 单次持久化 + 单次 applier。
+ * 对称于 setConfigurationValueBatch（appearanceMode→followTheme 6 覆盖删 / mixMode→recipe 6 来源删）。
+ * 未被显式写过的 key 跳过（无删除动作零广播）；删除后按回退生效值通知监听器。
+ */
+export async function resetConfigurationValueBatch(
+  keys: readonly string[],
+  scope: "user" | "workspace" = "user"
+): Promise<void> {
+  const target = scope === "workspace" ? _workspaceSettings : _userSettings;
+  const present = keys.filter((key) => key in target);
+  if (present.length === 0) return;
+
+  for (const key of present) delete target[key];
+  if (scope === "workspace") await _persistWorkspace();
+  else await _persistUser();
+
+  for (const key of present) {
+    const effective = getConfigurationValue(key);
+    for (const fn of _changeListeners) {
+      try { fn(key, effective, scope); } catch (e) { console.error("[ConfigurationService] 监听器异常:", e); }
+    }
+  }
+
+  const last = present[present.length - 1];
+  _configApplier?.(last, getConfigurationValue(last));
+}
+
 /* ── 监听变化 ── */
 
 /** 订阅配置变化——对标 VS Code onDidChangeConfiguration */

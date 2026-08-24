@@ -31,6 +31,7 @@ import { initPluginLoader, startPluginWatcher, stopPluginWatcher, getLoadedPlugi
 import { factorySlots } from "../core/services/bootstrap/FactorySlots";
 import {
   getConfigurationValue, setConfigurationValue, resetConfigurationValue, inspectConfiguration,
+  setConfigurationValueBatch, resetConfigurationValueBatch,
 } from "../core/services/configuration/ConfigurationService";
 import { registerConfiguration, updateConfigurationEnum } from "../core/registry/ConfigurationRegistry";
 import { initLayoutService, getTabLayout } from "../core/services/layout/LayoutService";
@@ -114,12 +115,17 @@ const seedAppearanceOverrides = (): void => {
   // mix 下生效 radius 来自 mixRadius 来源，拿活动配方当分母会二次缩放暴涨（来源 20px÷活动 8px=scale 2.5→20×2=40px）。
   const themeRadiusPx = getRadiusSourcePx();
   const seeds = deriveAppearanceSeeds(tokens, themeRadiusPx);
-  setConfigurationValue("app.surfaceRadius", seeds.surfaceRadius, "user");
-  setConfigurationValue("app.glassBlur", seeds.glassBlur, "user");
-  setConfigurationValue("app.glassOpacity", seeds.glassOpacity, "user");
-  setConfigurationValue("app.glassTint", seeds.glassTint, "user");
-  setConfigurationValue("app.backgroundImage", seeds.backgroundImage, "user");
-  setConfigurationValue("app.fontFamily", seeds.fontFamily, "user");
+  // E5.8#59（审计#7）：六键一次批量写 + 单次 applier——原 6 连 setConfigurationValue 各触发
+  // 一次 applyRecipe 全量重合并 + theme:changed 广播（6× 广播，脱出窗多池放大中间态闪变）。
+  // 各覆盖 key onApply 均 applyThemeIfReady 全量读生效态 → 末 key 触发读到完整终态一次广播即收敛。
+  setConfigurationValueBatch([
+    { key: "app.surfaceRadius", value: seeds.surfaceRadius },
+    { key: "app.glassBlur", value: seeds.glassBlur },
+    { key: "app.glassOpacity", value: seeds.glassOpacity },
+    { key: "app.glassTint", value: seeds.glassTint },
+    { key: "app.backgroundImage", value: seeds.backgroundImage },
+    { key: "app.fontFamily", value: seeds.fontFamily },
+  ], "user");
 };
 
 /** mount-once 启动管线：注册 + initAll + post-init state 同步 + cleanup（HMR/StrictMode 安全） */
@@ -296,10 +302,11 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
                 // 切 custom → 读 getEffectiveTokens() 反推播种 6 覆盖 key（非归零，08 §2 对标 accent 播种）
                 seedAppearanceOverrides();
               } else {
-                // 切回 followTheme → 覆盖丢弃回配方（08 §7.3.5）——删 6 覆盖 key
-                for (const key of APPEARANCE_OVERRIDE_KEYS) resetConfigurationValue(key, "user");
+                // 切回 followTheme → 覆盖丢弃回配方（08 §7.3.5）——删 6 覆盖 key（批量复位单次 applier）
+                resetConfigurationValueBatch(APPEARANCE_OVERRIDE_KEYS, "user");
               }
-              applyThemeIfReady();
+              // E5.8#59：播种/复位批量 API 已触发单次 applier（末 key 全量读生效态）——不再补
+              // applyThemeIfReady 避免二次广播（原 6 连写 + 尾部补调 = 7 次 theme:changed）
             },
           },
           // 外观六覆盖——dependsOn appearanceMode=custom 才出现（08 §7.1 #5-10）。
@@ -372,15 +379,18 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
             enum: ["recipe", "mix"],
             description: t("混搭模式——单一主题配方 / 按域混搭多个主题来源"),
             onApply: (v) => {
-              // 切 mix → 播种 6 域来源 = "followTheme"（跟随整体配方，10 §2/08 §7.2 #11）
+              // 切 mix → 播种 6 域来源 = "followTheme"（跟随整体配方，10 §2/08 §7.2 #11，批量写单次 applier）
               if (v === "mix") {
-                for (const key of MIX_SOURCE_KEYS) setConfigurationValue(key, "followTheme", "user");
+                setConfigurationValueBatch(
+                  MIX_SOURCE_KEYS.map((key) => ({ key, value: "followTheme" })),
+                  "user"
+                );
               } else {
-                // 切回 recipe → 来源清空回默认（08 §7.3.5 对称于外观复位——theme.resetMix 单一写入点）
-                for (const key of MIX_SOURCE_KEYS) resetConfigurationValue(key, "user");
+                // 切回 recipe → 来源清空回默认（08 §7.3.5 对称于外观复位——theme.resetMix 单一写入点，批量复位单次 applier）
+                resetConfigurationValueBatch(MIX_SOURCE_KEYS, "user");
               }
-              // 混搭开关本身即重应用——引擎读 mixMode 决定按域合并路径（#50.26）
-              applyThemeIfReady();
+              // E5.8#59：批量 API 末 key applier 全量读生效态（含 mixMode 本键）——引擎读 mixMode
+              // 决定按域合并路径（#50.26），不再补 applyThemeIfReady 避免二次广播
             },
           },
           "app.mixColor": {

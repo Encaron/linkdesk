@@ -918,6 +918,45 @@ describe("ThemeEngine — 混搭合并（E5.8#50.26，10 §1/§3 每域各自取
     expect(getCurrentTheme()?.colors.accent).toBe("#3E9E8C"); // 快照 accent 跟混搭颜色域来源
   });
 
+  it("E5.8#59 审计#7——applyRecipe mix：currentTheme.surface/background 取混搭各域生效来源（非基础配方）", () => {
+    // 虚构 fixture：玻璃域来源 demo-glass（blur 24/tint）与背景域来源 demo-bg——基础配方 RECIPE glass.blur=14 无 background
+    const GLASS_SRC: ThemeRecipe = {
+      id: "demo-glass", name: "Demo Glass", type: "light",
+      appearance: { glass: { type: "glass", blur: 24, tint: "#123456", opacity: 0.4 } },
+      colorways: [{ id: "c", name: "C", colors: {} }],
+    };
+    const BG_SRC: ThemeRecipe = {
+      id: "demo-bg", name: "Demo Bg", type: "light",
+      appearance: { background: { image: "assets/b.png", opacity: 0.8, mask: 0.3 } },
+      colorways: [{ id: "c", name: "C", colors: {} }],
+    };
+    ThemeRegistry.registerRecipe(GLASS_SRC, PLUGIN);
+    ThemeRegistry.registerRecipe(BG_SRC, PLUGIN);
+    applyRemoteConfigChange("app.mixMode", "mix");
+    applyRemoteConfigChange("app.mixGlass", "demo-glass");
+    applyRemoteConfigChange("app.mixBackground", "demo-bg");
+    applyRecipe(RECIPE, "dew", {});
+    const t = getCurrentTheme();
+    expect(t?.surface?.blur).toBe(24); // 玻璃域来源 demo-glass（修复前取基础配方 blur 14）
+    expect(t?.surface?.tint).toBe("#123456");
+    expect(t?.background?.image).toBe("assets/b.png"); // 背景域来源 demo-bg（修复前 undefined）
+    expect(t?.background?.opacity).toBe(0.8);
+    expect(t?.colors.accent).toBe("#2BA876"); // 颜色域 followTheme → 基础配方 dew——域独立性零回归
+  });
+
+  it("E5.8#59——mix 来源缺 glass 域 → currentTheme.surface 回退基础配方该域（缺域回退同 mergeMixDomains）", () => {
+    const NO_GLASS: ThemeRecipe = {
+      id: "demo-noglass", name: "Demo NoGlass", type: "light",
+      appearance: { radius: { sm: 4 } },
+      colorways: [{ id: "c", name: "C", colors: {} }],
+    };
+    ThemeRegistry.registerRecipe(NO_GLASS, PLUGIN);
+    applyRemoteConfigChange("app.mixMode", "mix");
+    applyRemoteConfigChange("app.mixGlass", "demo-noglass");
+    applyRecipe(RECIPE, "dew", {});
+    expect(getCurrentTheme()?.surface?.blur).toBe(14); // 来源缺 glass 域 → 基础配方 RECIPE 兜底
+  });
+
   it("applyRecipe mix — mixFont 资产字体来源 → 族名写 --font-ui + @font-face 落 DOM", () => {
     ThemeRegistry.registerRecipe(RECIPE_ASSET, PLUGIN);
     applyRemoteConfigChange("app.mixMode", "mix");

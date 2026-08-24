@@ -18,6 +18,9 @@ import {
   inspectConfiguration,
   onDidChangeConfiguration,
   setConfigurationValue,
+  setConfigurationValueBatch,
+  resetConfigurationValueBatch,
+  registerConfigApplier,
   clearConfigurationCache,
   diffUserSettings,
 } from "./ConfigurationService";
@@ -131,6 +134,63 @@ describe("ConfigurationService — onDidChangeConfiguration 订阅", () => {
     expect(typeof unsub).toBe("function");
     unsub();
     expect(typeof unsub).toBe("function"); // 取消订阅不抛异常
+  });
+});
+
+describe("ConfigurationService — 批量写/复位（E5.8#59 播种广播收敛）", () => {
+  beforeEach(() => {
+    clearConfigurationRegistrations();
+    clearConfigurationCache();
+    registerConfiguration("test", freshConfig());
+  });
+
+  it("setConfigurationValueBatch — 全部 key 写入 + 逐 key 监听器 + 单次 applier（末 key 代表性）", async () => {
+    const listenerKeys: string[] = [];
+    const unsub = onDidChangeConfiguration((key) => { listenerKeys.push(key); });
+    const applierKeys: string[] = [];
+    registerConfigApplier((key) => { applierKeys.push(key); });
+    await setConfigurationValueBatch([
+      { key: "app.theme", value: "Sunset" },
+      { key: "app.fontSize", value: 16 },
+    ], "user");
+    expect(getConfigurationValue("app.theme")).toBe("Sunset");
+    expect(getConfigurationValue("app.fontSize")).toBe(16);
+    expect(listenerKeys).toEqual(["app.theme", "app.fontSize"]); // 逐 key 通知
+    expect(applierKeys).toEqual(["app.fontSize"]); // 单次 applier——6 连写收敛为 1 次（原 6 次全量重合并）
+    unsub();
+  });
+
+  it("setConfigurationValueBatch — 非法 enum key 跳过，合法 key 仍写入", async () => {
+    await setConfigurationValueBatch([
+      { key: "app.theme", value: "invalid_theme" },
+      { key: "app.fontSize", value: 18 },
+    ], "user");
+    expect(getConfigurationValue("app.theme")).toBe("Dark"); // 非法跳过——仍是 default
+    expect(getConfigurationValue("app.fontSize")).toBe(18);
+  });
+
+  it("setConfigurationValueBatch — 全非法 → 零写入零 applier", async () => {
+    const applierKeys: string[] = [];
+    registerConfigApplier((key) => { applierKeys.push(key); });
+    await setConfigurationValueBatch([{ key: "app.theme", value: "bad" }], "user");
+    expect(applierKeys).toEqual([]);
+    expect(getConfigurationValue("app.theme")).toBe("Dark");
+  });
+
+  it("resetConfigurationValueBatch — 删除被写 key + 单次 applier；未写 key 跳过", async () => {
+    try { await setConfigurationValue("app.theme", "Sunset", "user"); } catch { /* persist ignored */ }
+    const applierKeys: string[] = [];
+    registerConfigApplier((key) => { applierKeys.push(key); });
+    await resetConfigurationValueBatch(["app.theme", "app.fontSize"], "user");
+    expect(getConfigurationValue("app.theme")).toBe("Dark"); // 回 default
+    expect(applierKeys).toEqual(["app.theme"]); // 仅被写的 key 触发单次 applier
+  });
+
+  it("resetConfigurationValueBatch — 无被写 key → 零广播", async () => {
+    const applierKeys: string[] = [];
+    registerConfigApplier((key) => { applierKeys.push(key); });
+    await resetConfigurationValueBatch(["app.theme"], "user");
+    expect(applierKeys).toEqual([]);
   });
 });
 

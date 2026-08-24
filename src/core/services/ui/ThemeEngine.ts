@@ -430,6 +430,25 @@ function resolveDomainSource(
   return recipe ? { recipe } : { recipe: baseRecipe };
 }
 
+/**
+ * E5.8#59（审计#7 附注）：混搭域生效来源配方——currentTheme 快照 surface/background 取混搭各域来源。
+ * 解析与 mergeMixDomains 完全一致（含 #58 缺域回退：来源配方存在但缺该域 → 基础配方该域不空窗）。
+ * 原快照取基础配方 appearance.glass/background，mix 下与生效玻璃/背景来源不符——消费
+ * getCurrentTheme().surface 下游（ThemeBrowser 等）拿到错数据。
+ */
+function resolveMixDomainRecipe(
+  domain: "glass" | "background",
+  profile: MixProfile,
+  baseRecipe: ThemeRecipe,
+  baseColorway: ThemeColorway
+): ThemeRecipe {
+  const source = resolveDomainSource(domain, profile, baseRecipe, baseColorway);
+  if (source.recipe !== baseRecipe && !recipeDomains(source.recipe).includes(domain)) {
+    return baseRecipe;
+  }
+  return source.recipe;
+}
+
 /** 单域 flatten——混搭按域取来源（10 §1）；缺省域/键 = 零值（surfaceVariables/backgroundVariables 内置）。
  *  域 token 归属（03 §1 表）：colors = 配色 token；font = --font-*；radius = --radius-*；
  *  glass = --glass-*；background = --bg-*（+ zones 切片挂 surface-bg-*）；surface = --surface-*（含 per-surface 透传）。 */
@@ -586,8 +605,14 @@ export function applyRecipe(
     name: recipe.name,
     type: recipe.type,
     colors: effectiveColors,
-    surface: recipe.appearance?.glass,
-    background: recipe.appearance?.background,
+    // E5.8#59（审计#7 附注）：mix 下 surface/background 取混搭各域生效来源配方——原取基础配方
+    // appearance.glass/background 与生效玻璃/背景来源不符（resolveMixDomainRecipe 同 mergeMixDomains 含缺域回退）
+    surface: isMix
+      ? resolveMixDomainRecipe("glass", getMixProfile(), recipe, colorway).appearance?.glass
+      : recipe.appearance?.glass,
+    background: isMix
+      ? resolveMixDomainRecipe("background", getMixProfile(), recipe, colorway).appearance?.background
+      : recipe.appearance?.background,
   };
 }
 
