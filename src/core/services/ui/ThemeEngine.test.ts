@@ -929,6 +929,57 @@ describe("ThemeEngine — 混搭合并（E5.8#50.26，10 §1/§3 每域各自取
     expect(root.style.getPropertyValue("--bg-window")).toBe("#FFFBF5"); // 颜色域跟随 → dew
   });
 
+  it("E5.8#58 审计#1——mix 下 zones 背景不被 surface 域零值吞掉（surface-bg-* 归 background 域）", () => {
+    const ZONES: ThemeRecipe = {
+      id: "demo-zones", name: "Demo Zones", type: "light",
+      appearance: { background: { mode: "zones", image: "assets/z.png", opacity: 0.9 } },
+      colorways: [{ id: "c", name: "C", colors: {} }],
+    };
+    ThemeRegistry.registerRecipe(ZONES, PLUGIN);
+    applyRemoteConfigChange("app.mixMode", "mix");
+    applyRemoteConfigChange("app.mixBackground", "demo-zones");
+    // mixSurface 缺省 followTheme → 基础配方（RECIPE 无 texture）——修复前 surface 域 SURFACE_ZERO 写 zones:0 吞掉切片
+    const profile = getMixProfile();
+    const tokens = mergeMixDomains(RECIPE, RECIPE.colorways[0], profile, {});
+    expect(tokens["surface-bg-zones"]).toBe("1");
+    expect(tokens["surface-bg-image"]).toBe('url("assets/z.png")');
+    expect(tokens["surface-bg-repeat"]).toBe("no-repeat");
+    // surface 域自身零值不残留吞切片
+    expect(tokens["surface-bg-image"]).not.toBe("none");
+  });
+
+  it("E5.8#58 审计#5——mix 来源配方存在但缺该域 → 回退基础配方该域（域不空窗）", () => {
+    const NO_RADIUS: ThemeRecipe = {
+      id: "demo-noradius", name: "Demo NoRadius", type: "light",
+      appearance: { font: { ui: "Arial" } },
+      colorways: [{ id: "c", name: "C", colors: {} }],
+    };
+    ThemeRegistry.registerRecipe(NO_RADIUS, PLUGIN);
+    const profile: MixProfile = {
+      colors: MIX_FOLLOW_THEME,
+      font: MIX_FOLLOW_THEME,
+      radius: "demo-noradius", // 来源存在但无 radius 域
+      glass: MIX_FOLLOW_THEME,
+      background: MIX_FOLLOW_THEME,
+      surface: MIX_FOLLOW_THEME,
+    };
+    const tokens = mergeMixDomains(RECIPE, RECIPE.colorways[0], profile, {});
+    expect(tokens["radius-sm"]).toBe("6px"); // 回退基础配方 RECIPE radius.sm=6
+    expect(tokens["radius-lg"]).toBe("12px");
+  });
+
+  it("E5.8#58 审计#6——registerRecipe({colorways:[]}) + applyRecipe 空配色不崩（resolveColorway 兜底）", () => {
+    const EMPTY: ThemeRecipe = {
+      id: "demo-empty", name: "Demo Empty", type: "light",
+      appearance: { radius: { sm: 4 } },
+      colorways: [],
+    };
+    ThemeRegistry.registerRecipe(EMPTY, PLUGIN);
+    expect(() => applyRecipe(EMPTY, undefined, {})).not.toThrow();
+    // 空配色 → 无颜色 token，radius 仍写
+    expect(document.documentElement.style.getPropertyValue("--radius-sm")).toBe("4px");
+  });
+
   it("E5.8#57 审计#3——getRadiusSourcePx：mix 下读圆角域来源配方原生 radius-md 当播种分母（二次缩放根治）", () => {
     // 虚构 fixture：demo-base（radius.md 8）+ demo-src（radius.md 20）两配方
     const BASE: ThemeRecipe = {

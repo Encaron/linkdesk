@@ -315,9 +315,14 @@ export function applyTheme(theme: Theme): void {
 
 /* ── E5.8#50.16：Recipe 合并算法（05 §4 继承链）+ 应用入口 ── */
 
-/** 解析配色变体——colorwayId 缺省 = 配方首个配色（单配色配方 = 恒首项） */
+/** 解析配色变体——colorwayId 缺省 = 配方首个配色（单配色配方 = 恒首项）。
+ *  E5.8#58（审计#6）：空 colorways 防线——空配色回退空色透明配色（不崩；注册路径 parseThemeRecipe
+ *  已拒空数组，此兜底覆盖程序化 registerRecipe({colorways:[]}) 等越界入口）。 */
 function resolveColorway(recipe: ThemeRecipe, colorwayId?: string): ThemeColorway {
-  return recipe.colorways.find((c) => c.id === colorwayId) ?? recipe.colorways[0];
+  const found = recipe.colorways.find((c) => c.id === colorwayId);
+  if (found) return found;
+  if (recipe.colorways.length > 0) return recipe.colorways[0];
+  return { id: "", name: "", colors: {} };
 }
 
 /** 配方贡献域——colorways 恒贡献 colors；appearance 五风格域稀疏判定（缺的域不声明）。
@@ -461,8 +466,16 @@ function domainTokens(
       return backgroundVariables(appearance?.background);
     case "surface": {
       const sv = surfaceVariables(appearance?.glass);
+      // E5.8#58（审计#1）：surface-bg-* 零值不写——zones 切片归 background 域（⑭ 影像分区）、
+      // 纹理归 surface.texture 显式声明（⑬ 纸纹）。SURFACE_ZERO 的 surface-bg-* 只是「无纹理/无切片」兜底，
+      // 表面域整面覆盖会吞掉 background 域 zones 切片（mix 顺序 background→surface 后覆盖）——
+      // 单配方路径 flattenAppearance 是 surface 先 background 后（zones 存活），两路径不一致即此。
+      const hasTexture = appearance?.surface?.texture != null && appearance.surface.texture !== "";
       for (const [key, value] of Object.entries(sv)) {
-        if (key.startsWith("surface-")) tokens[key] = value;
+        if (key.startsWith("surface-")) {
+          if (key.startsWith("surface-bg-") && !hasTexture) continue;
+          tokens[key] = value;
+        }
       }
       if (appearance?.surface) {
         for (const [key, value] of Object.entries(appearance.surface)) {
@@ -496,7 +509,12 @@ export function mergeMixDomains(
 ): Record<string, string> {
   const tokens: Record<string, string> = {};
   for (const domain of MIX_DOMAIN_ORDER) {
-    const source = resolveDomainSource(domain, profile, baseRecipe, baseColorway);
+    let source = resolveDomainSource(domain, profile, baseRecipe, baseColorway);
+    // E5.8#58（审计#5）：来源配方存在但缺该域（appearance 稀疏，recipeDomains 不含）→ 回退基础配方该域
+    // ——与来源配方缺失同语义（域不空窗整域落 :root）。colors 域恒有 colorways 不触发。
+    if (source.recipe !== baseRecipe && !recipeDomains(source.recipe).includes(domain)) {
+      source = { recipe: baseRecipe, colorway: domain === "colors" ? baseColorway : undefined };
+    }
     // 字体域——源配方资产字体须用已解析 appearance（resolveRecipeFonts 换族名）；其余域用源配方原 appearance
     const appearance =
       domain === "font" && fontSource && source.recipe.id === fontSource.recipeId
