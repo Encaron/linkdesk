@@ -528,8 +528,13 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
       if (initTheme !== rawTheme || isDeadId) {
         const scope = inspectedTheme.workspaceValue !== undefined ? "workspace" : "user";
         if (isDeadId) initTheme = themeEnum!.includes("dark") ? "dark" : themeEnum![0];
-        setConfigurationValue("app.theme", initTheme, scope)
-          .catch((e) => { console.error("[startup] app.theme 迁移/清扫落盘失败:", e); });
+        try {
+          // E5.8#61 审计#6：await 落盘——清扫值必须成为最后一个写入者，否则 settings.json watcher
+          // 去抖 reload 读到陈旧死 id 文件 → diff 反向把内存改回死 id → 清扫静默失效（CDP 实测幽灵残留）
+          await setConfigurationValue("app.theme", initTheme, scope);
+        } catch (e) {
+          console.error("[startup] app.theme 迁移/清扫落盘失败:", e);
+        }
       }
       const initLang = getConfigurationValue<string>("app.language") ?? "zh";
       setTheme(initTheme);

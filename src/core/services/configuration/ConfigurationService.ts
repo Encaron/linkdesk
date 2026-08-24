@@ -30,6 +30,15 @@ let _userSettings: Record<string, unknown> = {};
 let _workspaceSettings: Record<string, unknown> = {};
 let _workspaceRoot: string | null = null;
 let _initialized = false;
+
+/* ── E5.8#61 审计#6：持久化串行队列 ──
+ * 并发 setConfigurationValue 各自 await _persist*()——不串行时两个 fs.writeFile 并发写同一
+ * settings.json → 交错/截断 → 文件损坏（CDP 实测：启动期多路播种/清扫连写，valid JSON + 尾部垃圾）。
+ * 链式 then：每个写等前一个 resolve 再执行；task.catch 吞错防断链（本次失败仍向调用方传播）。
+ * _pendingUserPersists：队列未排空计数——reloadUserSettings 用它在队列排空前跳过（防读陈旧文件回滚内存）。 */
+let _userPersistChain: Promise<void> = Promise.resolve();
+let _workspacePersistChain: Promise<void> = Promise.resolve();
+let _pendingUserPersists = 0;
 /** initConfigurationService 的进行中 Promise——StrictMode 双重 effect 时第二次调用等第一次完成 */
 let _initPromise: Promise<void> | null = null;
 
@@ -60,7 +69,7 @@ export async function initConfigurationService(): Promise<void> {
     const filePath = await getFilePath("settings");
     if (!filePath) return; // 非 Electron 环境——无文件路径
     const raw = await readFile(filePath);
-    if (!raw.trim()) await write("settings", _userSettings);
+    if (!raw.trim()) await _persistUser();
   }
   })());
 }
@@ -88,6 +97,15 @@ export function diffUserSettings(
  * 零变更则零通知（防自写自触发循环）；非法 JSON 不覆盖内存（等下一次保存）。
  */
 export async function reloadUserSettings(): Promise<void> {
+  // E5.8#61 审计#6：应用自写持久化队列未排空时跳过——启动期播种/清扫/种子连写，去抖 reload 可能
+  // 读到「队列未排空的陈旧文件」→ 假 diff → 内存被回滚成陈旧值 → 清扫/播种值落盘前被覆盖
+  // （CDP 实测：内存 dark 磁盘 ghost 并存）。队列排空后文件 = 内存，reload 零 diff 零回滚。
+  // 重排 80ms 直至排空——外部编辑撞上写突发时同样兜底生效（下次 watcher 事件也会触发，双保险）。
+  if (_pendingUserPersists > 0) {
+    clearTimeout(_reloadDebounceTimer);
+    _reloadDebounceTimer = setTimeout(() => { void reloadUserSettings(); }, 80);
+    return;
+  }
   const filePath = await getFilePath("settings");
   if (!filePath) return; // 非 Electron 环境（npm run dev 浏览器模式）
 
@@ -124,8 +142,9 @@ export async function reloadUserSettings(): Promise<void> {
     _configApplier?.(key, value);
   }
 
-  // 双写同步 localStorage——StorageService.write 同时写文件 + localStorage（F5/重启安全，防读到旧配置）
-  await write("settings", _userSettings);
+  // 双写同步 localStorage——StorageService.write 同时写文件 + localStorage（F5/重启安全，防读到旧配置）。
+  // E5.8#61 审计#6：走串行队列——外部编辑回写不得与 set 路径并发写文件（防交错/截断损坏）。
+  await _persistUser();
 }
 
 let _settingsWatcherStarted = false;
@@ -416,28 +435,41 @@ export function getWorkspaceSettings(): Record<string, unknown> {
 
 /* ── 持久化 ── */
 
-/** User scope 持久化——Phase 5f 归一化到 StorageService */
-async function _persistUser(): Promise<void> {
-  await write("settings", _userSettings);
+/** User scope 持久化——Phase 5f 归一化到 StorageService。串行队列防并发写损坏（审计#6）。 */
+function _persistUser(): Promise<void> {
+  _pendingUserPersists++;
+  const task = _userPersistChain.then(() => {
+    try {
+      return write("settings", _userSettings);
+    } finally {
+      _pendingUserPersists--; // 写完成（成功或失败）才释放——reload 在此窗口内保持跳过
+    }
+  });
+  _userPersistChain = task.catch(() => {});
+  return task;
 }
 
 /**
  * Workspace scope 持久化——写 .linkdesk/settings.json。
- * E2c #19c：统一走 FileService。
+ * E2c #19c：统一走 FileService。串行队列防并发写损坏（审计#6）。
  */
-async function _persistWorkspace(): Promise<void> {
-  if (!_workspaceRoot) return;
-
-  try {
-    const linkdeskDir = await joinPath(_workspaceRoot, ".linkdesk");
-    if (!(await exists(linkdeskDir))) {
-      await createDir(linkdeskDir);
+function _persistWorkspace(): Promise<void> {
+  const root = _workspaceRoot;
+  if (!root) return Promise.resolve();
+  const task = _workspacePersistChain.then(async () => {
+    try {
+      const linkdeskDir = await joinPath(root, ".linkdesk");
+      if (!(await exists(linkdeskDir))) {
+        await createDir(linkdeskDir);
+      }
+      const wsSettingsPath = await joinPath(root, ".linkdesk", "settings.json");
+      await writeFile(wsSettingsPath, JSON.stringify(_workspaceSettings, null, 2));
+    } catch (e) {
+      console.warn("[ConfigurationService] 写入 .linkdesk/settings.json 失败:", e);
     }
-    const wsSettingsPath = await joinPath(linkdeskDir, "settings.json");
-    await writeFile(wsSettingsPath, JSON.stringify(_workspaceSettings, null, 2));
-  } catch (e) {
-    console.warn("[ConfigurationService] 写入 .linkdesk/settings.json 失败:", e);
-  }
+  });
+  _workspacePersistChain = task.catch(() => {});
+  return task;
 }
 
 /* ── M3：enum 验证 —— */
@@ -474,6 +506,7 @@ export function clearConfigurationCache(): void {
   _workspaceSettings = {};
   _workspaceRoot = null;
   _initialized = false;
+  _pendingUserPersists = 0;
 }
 
 /**

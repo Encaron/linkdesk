@@ -6,12 +6,36 @@
  * 纯 vitest 环境无 FS——此处聚焦纯内存逻辑：三层合并、enum 验证、变更订阅。
  */
 
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import {
   registerConfiguration,
   registerConfigurationDefaults,
   clearConfigurationRegistrations,
 } from "../../registry/ConfigurationRegistry";
+
+// E5.8#61 审计#6：持久化串行性测试——mock write 记录起止序列，验证并发 setConfigurationValue 不交错写文件
+const persistProbe = vi.hoisted(() => ({ sequence: [] as string[], failOn: -1 as number }));
+// 审计#6 reload 防回滚测试：mock FileService.readFile 供 reloadUserSettings 读文件内容
+const fileProbe = vi.hoisted(() => ({ readFile: vi.fn(async () => ""), exists: vi.fn(async () => true) }));
+vi.mock("./StorageService", async (importOriginal) => {
+  const mod = await importOriginal<typeof import("./StorageService")>();
+  return {
+    ...mod,
+    write: vi.fn(async (key: string) => {
+      persistProbe.failOn -= 1;
+      if (persistProbe.failOn === 0) throw new Error("write failed");
+      persistProbe.sequence.push(`${key}:start`);
+      await new Promise((r) => setTimeout(r, 5));
+      persistProbe.sequence.push(`${key}:end`);
+    }),
+    // reloadUserSettings 走 getFilePath → readFile——非 Electron 测试环境默认无路径，mock 出可读路径
+    getFilePath: vi.fn(async () => "C:/linkdesk/settings.json"),
+  };
+});
+vi.mock("../files/FileService", async (importOriginal) => {
+  const mod = await importOriginal<typeof import("../files/FileService")>();
+  return { ...mod, readFile: fileProbe.readFile, exists: fileProbe.exists };
+});
 import { rollback } from "../../registry/registrationTracker";
 import {
   getConfigurationValue,
@@ -23,6 +47,7 @@ import {
   registerConfigApplier,
   clearConfigurationCache,
   diffUserSettings,
+  reloadUserSettings,
 } from "./ConfigurationService";
 import type { ConfigurationContribution } from "../../registry/ConfigurationRegistry";
 
@@ -245,5 +270,65 @@ describe("ConfigurationService — diffUserSettings（E5.8#0d.5 settings.json �
     };
     const next = JSON.parse(JSON.stringify(current)); // 模拟 reloadUserSettings 的 file→parse 新引用
     expect(diffUserSettings(current, next)).toEqual([]);
+  });
+});
+
+describe("ConfigurationService — 持久化串行队列（E5.8#61 审计#6）", () => {
+  beforeEach(() => {
+    clearConfigurationRegistrations();
+    clearConfigurationCache();
+    registerConfiguration("test", freshConfig());
+    persistProbe.sequence.length = 0;
+    persistProbe.failOn = -1;
+  });
+
+  it("并发 setConfigurationValue → write 串行（start,end,start,end），不交错", async () => {
+    await Promise.all([
+      setConfigurationValue("app.theme", "Light", "user"),
+      setConfigurationValue("app.fontSize", 16, "user"),
+    ]);
+    // 无串行时两个 write 同时 start → [start,start,end,end]；串行后第二个等第一个完成
+    expect(persistProbe.sequence).toEqual([
+      "settings:start", "settings:end",
+      "settings:start", "settings:end",
+    ]);
+  });
+
+  it("某次 write 失败 → 链不断，后续写仍执行", async () => {
+    persistProbe.failOn = 1; // 第一次 write 抛错
+    await Promise.allSettled([
+      setConfigurationValue("app.theme", "Light", "user"),
+      setConfigurationValue("app.fontSize", 16, "user"),
+    ]);
+    // 第一次失败不阻断第二次——队列 catch 吞错防断链
+    expect(persistProbe.sequence).toEqual(["settings:start", "settings:end"]);
+  });
+});
+
+describe("ConfigurationService — reload 防陈旧文件回滚（E5.8#61 审计#6）", () => {
+  beforeEach(() => {
+    clearConfigurationRegistrations();
+    clearConfigurationCache();
+    registerConfiguration("test", freshConfig());
+    // 文件内容 = 死 id——陈旧文件（启动期清扫前磁盘仍是幽灵值）
+    fileProbe.readFile.mockResolvedValue(JSON.stringify({ "app.theme": "ghost-theme-404" }));
+    persistProbe.sequence.length = 0;
+    persistProbe.failOn = -1;
+  });
+
+  it("持久化队列未排空 → reload 跳过（不把内存清扫值回滚成陈旧文件）", async () => {
+    // 未 await 的 set——队列排空前的窗口（write 5ms 延迟），内存 app.theme=Sunset
+    const pending = setConfigurationValue("app.theme", "Sunset", "user");
+    // 队列未排空时 reload——应跳过：陈旧文件 ghost 不得覆盖内存 Sunset（否则清扫静默失效）
+    await reloadUserSettings();
+    expect(inspectConfiguration("app.theme").userValue).toBe("Sunset");
+    await pending;
+  });
+
+  it("持久化队列排空 → reload 正常应用文件变更（外部编辑生效语义）", async () => {
+    await setConfigurationValue("app.theme", "Sunset", "user");
+    await reloadUserSettings();
+    // 队列排空后 reload 读陈旧文件 → 应用 ghost（文件是外部编辑真相源——只在无自写冲突时生效）
+    expect(inspectConfiguration("app.theme").userValue).toBe("ghost-theme-404");
   });
 });
