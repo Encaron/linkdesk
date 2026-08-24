@@ -151,6 +151,8 @@ export interface ThemeSurface {
     opacity?: number;
     /** 液态玻璃顶部高光强度——0 = 关 */
     specular?: number;
+    /** E5.8#63：顶部高光基色（发丝光边颜色）——缺省 = 白；alpha 仍走 specular */
+    specularColor?: string;
     /** 形变过渡 ms——0 = 关 */
     morph?: number;
     /** 悬浮圆角 px——0 = 直角贴边 */
@@ -172,6 +174,8 @@ export interface ThemeBackground {
     opacity?: number;
     /** 图片遮罩明暗（0-1 rgba 透明度）——0 = 无遮罩 */
     mask?: number;
+    /** E5.8#63：遮罩基色（暗化层颜色）——缺省 = 黑；alpha 仍走 mask。仅 panorama 生效（同 mask） */
+    maskColor?: string;
     /** E5.8#50.29：切片模式——"panorama"（默认）= 现全窗语义零变化；"zones" = 同图连续切片挂 5 zone 表面（⑭ 影像分区） */
     mode?: "panorama" | "zones";
 }

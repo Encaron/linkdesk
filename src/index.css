@@ -451,9 +451,12 @@ select {
   border-radius: inherit;
   background: var(--glass-tint, transparent);
   opacity: calc(var(--glass-opacity, 1) * 0.5);
+  /* E5.8#63：发丝光边基色 token 化——--glass-specular-color 缺省白，alpha 走 --glass-specular（0-1 → 0-100%），
+     color-mix 组合基色+强度（主题可换光边颜色）；零 specular = 透明无描边（现状零变化） */
+  --glass-specular-line: color-mix(in srgb, var(--glass-specular-color, #fff) calc(var(--glass-specular, 0) * 100%), transparent);
   box-shadow:
-    inset 0 1px 0 rgb(255 255 255 / var(--glass-specular, 0)),
-    inset 0 0 0 1px rgb(255 255 255 / var(--glass-specular, 0));
+    inset 0 1px 0 var(--glass-specular-line),
+    inset 0 0 0 1px var(--glass-specular-line);
   pointer-events: none;
 }
 

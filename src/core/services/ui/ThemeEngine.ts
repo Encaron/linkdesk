@@ -120,6 +120,9 @@ const SURFACE_ZERO: Record<string, string> = {
   "glass-tint": "transparent",
   "glass-opacity": "1",
   "glass-specular": "0",
+  // E5.8#63 hex 豁免：默认色数据——高光基色 token 缺省现状值（消费侧 color-mix 基色），主题覆盖才生效
+  // eslint-disable-next-line linkdesk/no-hardcoded-hex
+  "glass-specular-color": "#ffffff",
   "glass-morph": "0ms",
   "surface-radius": "0px",
   "surface-inset": "0px",
@@ -142,6 +145,9 @@ const BACKGROUND_ZERO: Record<string, string> = {
   "bg-image": "none",
   "bg-opacity": "1",
   "bg-mask": "0",
+  // E5.8#63 hex 豁免：默认色数据——遮罩基色 token 缺省现状值（消费侧 color-mix 基色），主题覆盖才生效
+  // eslint-disable-next-line linkdesk/no-hardcoded-hex
+  "bg-mask-color": "#000000",
 };
 
 /* ── E5.8#50.16：scale 乘算 token 集 + 引擎管理 token 全集 ── */
@@ -180,7 +186,7 @@ const MIX_DOMAIN_ORDER: ThemeDomain[] = ["colors", "font", "radius", "glass", "b
 
 /** glass 域 token 键——surfaceVariables 产物中归玻璃域（glass-* 六键；surface-* 归表面域） */
 const GLASS_TOKEN_KEYS = [
-  "glass-blur", "glass-saturate", "glass-tint", "glass-opacity", "glass-specular", "glass-morph",
+  "glass-blur", "glass-saturate", "glass-tint", "glass-opacity", "glass-specular", "glass-specular-color", "glass-morph",
 ] as const;
 
 /** 玻璃 + 悬浮面板 + per-surface 纹理变量——缺省 = 零值 */
@@ -206,6 +212,8 @@ function surfaceVariables(surface?: ThemeSurface): Record<string, string> {
   if (surface.tint != null) vars["glass-tint"] = surface.tint;
   if (surface.opacity != null) vars["glass-opacity"] = String(surface.opacity);
   if (surface.specular != null) vars["glass-specular"] = String(surface.specular);
+  // E5.8#63：高光基色 token——发丝光边颜色（缺省白）；alpha 仍走 glass-specular（消费侧 color-mix 组合）
+  if (surface.specularColor != null) vars["glass-specular-color"] = surface.specularColor;
   if (surface.morph != null) vars["glass-morph"] = `${surface.morph}ms`;
   return vars;
 }
@@ -231,6 +239,8 @@ function backgroundVariables(background?: ThemeBackground): Record<string, strin
   }
   if (background.opacity != null && mode !== "zones") vars["bg-opacity"] = String(background.opacity);
   if (background.mask != null && mode !== "zones") vars["bg-mask"] = String(background.mask);
+  // E5.8#63：遮罩基色 token——暗化层颜色（缺省黑）；alpha 仍走 bg-mask（消费侧 color-mix 组合）。同 mask 只 panorama 生效
+  if (background.maskColor != null && mode !== "zones") vars["bg-mask-color"] = background.maskColor;
   return vars;
 }
 

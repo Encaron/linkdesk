@@ -90,7 +90,7 @@ const RECIPE_ASSET: ThemeRecipe = {
   appearance: { font: { ui: "./resources/DemoFont.woff2" } },
   colorways: [{ id: "base", name: "Base", colors: { "bg-window": "#101014" } }],
 };
-const GLASS_VARS = ["glass-blur", "glass-saturate", "glass-tint", "glass-opacity", "glass-specular", "glass-morph"];
+const GLASS_VARS = ["glass-blur", "glass-saturate", "glass-tint", "glass-opacity", "glass-specular", "glass-specular-color", "glass-morph"];
 
 describe("ThemeEngine — registerTheme / unregisterTheme", () => {
   beforeEach(() => {
@@ -261,6 +261,19 @@ describe("ThemeEngine — surface/background 玻璃机制（E5.8#50.6）", () =>
     expect(root.style.getPropertyValue("--glass-morph")).toBe("400ms");
   });
 
+  it("带 specularColor glass → 写入 glass-specular-color（E5.8#63 高光基色契约化）", () => {
+    applyTheme({
+      ...MOCK_THEME,
+      surface: { type: "glass", specular: 0.6, specularColor: "#ffe08a" },
+    });
+    const root = document.documentElement;
+    expect(root.style.getPropertyValue("--glass-specular")).toBe("0.6");
+    expect(root.style.getPropertyValue("--glass-specular-color")).toBe("#ffe08a");
+    // 缺省（无 specularColor）→ SURFACE_ZERO 白
+    applyTheme({ ...MOCK_THEME, surface: { type: "glass", specular: 0.4 } });
+    expect(root.style.getPropertyValue("--glass-specular-color")).toBe("#ffffff");
+  });
+
   it("带悬浮面板 surface → 写入 radius/inset/shadow（shadow:true → 映射 --shadow-lift）", () => {
     applyTheme({ ...MOCK_THEME, surface: { type: "glass", radius: 10, inset: 8, shadow: true } });
     const root = document.documentElement;
@@ -275,6 +288,17 @@ describe("ThemeEngine — surface/background 玻璃机制（E5.8#50.6）", () =>
     expect(root.style.getPropertyValue("--bg-image")).toBe('url("assets/aurora.jpg")');
     expect(root.style.getPropertyValue("--bg-opacity")).toBe("0.9");
     expect(root.style.getPropertyValue("--bg-mask")).toBe("0.88");
+  });
+
+  it("带 maskColor background → 写入 bg-mask-color（E5.8#63 遮罩基色契约化）；zones 模式不写（同 mask）", () => {
+    applyTheme({ ...MOCK_THEME, background: { image: "bg.png", mask: 0.3, maskColor: "#0a1e3f" } });
+    const root = document.documentElement;
+    expect(root.style.getPropertyValue("--bg-mask")).toBe("0.3");
+    expect(root.style.getPropertyValue("--bg-mask-color")).toBe("#0a1e3f");
+    // zones 模式——mask/maskColor 均不写（切片挂 zone 表面，遮罩不适用）
+    applyTheme({ ...MOCK_THEME, background: { image: "bg.png", mode: "zones", mask: 0.3, maskColor: "#0a1e3f" } });
+    expect(root.style.getPropertyValue("--bg-mask")).not.toBe("0.3");
+    expect(root.style.getPropertyValue("--bg-mask-color")).toBe("#000000"); // 回到 BACKGROUND_ZERO 默认
   });
 
   it("玻璃主题切回无质感主题 → 玻璃变量清零不残留", () => {

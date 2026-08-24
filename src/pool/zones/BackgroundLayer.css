@@ -20,5 +20,7 @@
   content: "";
   position: absolute;
   inset: 0;
-  background: rgba(0, 0, 0, var(--bg-mask, 0));
+  /* E5.8#63：遮罩基色 token 化——--bg-mask-color 缺省黑，alpha 走 --bg-mask（0-1 → 0-100%），
+     color-mix 组合基色+强度（主题可换有色遮罩）；mask 0 = 透明无遮罩（现状零变化） */
+  background: color-mix(in srgb, var(--bg-mask-color, #000) calc(var(--bg-mask, 0) * 100%), transparent);
 }
