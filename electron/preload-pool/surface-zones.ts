@@ -26,11 +26,16 @@ function isZonesMode(root: HTMLElement): boolean {
   return root.style.getPropertyValue("--surface-bg-zones") === "1";
 }
 
-/** 重测量试上限——React 挂载晚于 theme:changed 时轮询等 zone 出现（200ms × 15 = 3s 兜底） */
+/** 重测量试上限——React 挂载晚于 theme:changed 时轮询等 zone 出现（200ms × 15 = 3s 兜底；命中 0 的空窗口封顶） */
 const MAX_RETRY = 15;
 
 let _retryCount = 0;
 let _retryTimer: ReturnType<typeof setTimeout> | null = null;
+// E5.8#62 审计#3：收敛判据——以「本窗实际 zone 集」为准，不再硬编码全 5 zone。
+// 连续重试间的命中数比较：命中 >0 且连续 2 轮不增长 = 本窗 zone 集已量测完整（收敛）；
+// 命中 0（React mount 竞态——zone 尚未挂载）继续轮询。
+let _lastFound = -1;
+let _stableRounds = 0;
 
 function cancelRetry(): void {
   if (_retryTimer) {
@@ -38,6 +43,8 @@ function cancelRetry(): void {
     _retryTimer = null;
   }
   _retryCount = 0;
+  _lastFound = -1;
+  _stableRounds = 0;
 }
 
 /** 量测本窗 5 zone rect → 写 size + 每 zone 负偏移。幂等；无 zones 门控直接跳过。 */
@@ -69,15 +76,33 @@ export function measureSurfaceZones(): void {
     console.error("[preload-pool] surface-zones 量测失败:", e);
   }
 
-  // zone 未全挂载 → 定时重试（react mount 竞态兜底）
-  if (found < ZONE_SELECTORS.length && _retryCount < MAX_RETRY && !_retryTimer) {
+  // E5.8#62 审计#3：收敛判据改「本窗实际 zone 集」——原硬编码 found===ZONE_SELECTORS.length（5）判全量挂载
+  // → 脱出窗仅 titlebar+main 2 zone，found 恒 <5 → 每切 zones 主题 15×200ms 重试风暴 + 永不归零静默放弃。
+  // 新判据：命中 >0 且连续 2 轮不增长 = 本窗 zone 集已量测完整，停止；命中 0（zone 尚未挂载——react
+  // mount 竞态）继续轮询，MAX_RETRY 封顶防空窗口无限风暴；zone 两波挂载（found 增长）重置稳定计数，
+  // 不提前收敛漏收迟挂 zone（两波间隔 < 2 轮重试 ≈400ms，固定壳表面同帧挂载，迟挂竞态窗口足够）。
+  if (found > 0) {
+    if (found === _lastFound) {
+      _stableRounds++;
+      if (_stableRounds >= 2) {
+        cancelRetry(); // 收敛——本窗全部存在的 zone 已量测，无新 zone 会再出现
+        return;
+      }
+    } else {
+      _stableRounds = 0;
+    }
+  }
+  _lastFound = found;
+  if (_retryCount >= MAX_RETRY) {
+    cancelRetry(); // 兜底封顶——zones 模式但始终无 zone（空布局/选择器失配）静默放弃，不再风暴
+    return;
+  }
+  if (!_retryTimer) {
     _retryTimer = setTimeout(() => {
       _retryTimer = null;
       _retryCount++;
       measureSurfaceZones();
     }, 200);
-  } else if (found === ZONE_SELECTORS.length) {
-    _retryCount = 0;
   }
 }
 

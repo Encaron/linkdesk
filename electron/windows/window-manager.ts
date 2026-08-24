@@ -520,6 +520,15 @@ export class WindowManager {
       .map((e) => e.view);
   }
 
+  /** E5.8#62 审计#2：全部 Pool 宿主窗（主窗 + 脱出/漂移窗）——theme:changed 更新 OS 层背景用。
+   *  脱出宿主窗 backgroundColor 是创建时一次性值（nativeTheme 快照），切主题只更新主窗 → 脱出窗
+   *  OS 背景残留旧主题色（池加载/闪白间隙可见）。setBackgroundColor 幂等，主窗重复设置无害。 */
+  getAllHostWindows(): BrowserWindow[] {
+    return [...this.poolWindows.values()]
+      .filter((e) => !e.hostWindow.isDestroyed())
+      .map((e) => e.hostWindow);
+  }
+
   /** E5.8#43-1（A3）：按发送者 webContents 反查 windowId——池 IPC 的 sender 校验/就绪路由用（非池来源返回 null） */
   getWindowIdByWebContents(wc: WebContents): string | null {
     for (const [windowId, entry] of this.poolWindows) {

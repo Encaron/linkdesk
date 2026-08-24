@@ -86,7 +86,6 @@ function createWindow(): void {
 
   // ── 注册 IPC 处理器（E5.7#36：全部幂等——首次注册 + 重建时刷新引用；无状态 handler 重复调用直接跳过）──
   registerPluginHandlers();
-  registerDialogHandlers();
   registerEnvHandlers();
   registerClipboardHandlers();
   registerRegistryHandlers();  // E5.7#49：三表直连（数据由 plugin-manifest-loader 预加载）
@@ -112,6 +111,7 @@ function createWindow(): void {
   registerLspHandlers();   // E5#74c
   registerSerialHandlers(); // E5#74b
   registerFileHandlers(windowManager);              // E5#80
+  registerDialogHandlers(windowManager);            // E5.8#62 审计#4：对话框 parent 反查宿主窗——须在 windowManager 创建后注入
   registerPoolHandlers(windowManager, win);  // E5.6#8e
 
   // E5.6#9 → E5.7#4：创建唯一 Pool WebContentsView——极简Pool 单 WCV（#12 提前：SidebarPool 已删）
@@ -167,13 +167,21 @@ function createWindow(): void {
     ipcMain.handle(IPC.window.isAlwaysOnTop, (event) => hostWindowFor(event)?.isAlwaysOnTop() ?? false);
     // E5.7#79：窗口缩放——壳配置 onApply 推来的因子应用到池 WCV（可见 UI 全在池）。
     // 缓存供 createWindow 重建池后重放（池 WCV 是新 webContents，缩放不随窗口重建保留）。
-    ipcMain.on(IPC.window.setZoom, (_event, factor: number) => {
+    // E5.8#62 审计#1：按 sender 路由——原恒取主池 getPoolView()，脱出窗池插件调 setZoom 错指主窗
+    //（意图落空副作用错位，#46.8「IPC 路由默认主窗」同款缺陷模式）。池 sender → 其所属窗池 WCV；
+    // 壳渲染进程（startup.ts window.zoomLevel onApply）sender 非池 → 回退主池。缩放缓存仅主池——
+    // 脱出窗池随宿主窗销毁，无需跨壳崩重建重放（壳按持久化清单重建脱出窗，F5 后缩放回落为既有行为）。
+    ipcMain.on(IPC.window.setZoom, (event, factor: number) => {
       // Number.isFinite 而非 typeof === "number"——no-restricted-syntax 字符串比较启发式误报
       const n = Number(factor);
-      _lastZoomFactor = Number.isFinite(n) ? n : 1;
-      const poolView = windowManager?.getPoolView();
+      const zoom = Number.isFinite(n) ? n : 1;
+      const windowId = windowManager?.getWindowIdByWebContents(event.sender) ?? 'main';
+      const poolView = windowManager?.getPoolViewByWindowId(windowId);
       if (poolView && !poolView.webContents.isDestroyed()) {
-        poolView.webContents.setZoomFactor(_lastZoomFactor);
+        poolView.webContents.setZoomFactor(zoom);
+      }
+      if (windowId === 'main') {
+        _lastZoomFactor = zoom;
       }
     });
     // E3f #58：切换壳窗口 DevTools——多 WebView 未激活时的兜底
@@ -308,6 +316,15 @@ ipcMain.on(IPC.theme.changed, (_event, isDark: boolean) => {
   // E5.8#6.6 hex 豁免：窗口背景色随主题（OS 层 setBackgroundColor，CSS 变量不可达）
   // eslint-disable-next-line linkdesk/no-hardcoded-hex
   const bg = isDark ? '#1e1e1e' : '#f5f5f5';
+  // E5.8#62 审计#2：全部宿主窗 OS 层背景随主题——脱出宿主窗 backgroundColor 是创建时一次性值
+  //（window-manager.ts:335 nativeTheme 快照），原只更新主窗 → 切主题后脱出窗 OS 背景残留旧主题色
+  //（池加载/闪白间隙可见）。getAllHostWindows 覆盖 main + 脱出/漂移窗，setBackgroundColor 幂等。
+  if (windowManager) {
+    for (const hostWin of windowManager.getAllHostWindows()) {
+      if (!hostWin.isDestroyed()) hostWin.setBackgroundColor(bg);
+    }
+  }
+  // 主窗显式兜底（windowManager 未创建/主池未注册的早期窗口期）——getAllHostWindows 已含 main，此处幂等
   if (mainWindow && !mainWindow.isDestroyed()) {
     mainWindow.setBackgroundColor(bg);
   }
