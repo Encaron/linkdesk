@@ -1170,4 +1170,28 @@ describe("ThemeEngine — 真实极限壳主题（E5.8#50.27，gallery 端到端
     expect(tokens["bg-window"]).toBe("#FFF0F5");
     expect(tokens["accent"]).toBe("#D6336C"); // 泡泡糖
   });
+
+  it("panorama — 整窗主视觉 background 域（mode:panorama 全窗铺图 + 低遮罩 0.15 + zone 半透明让位，chrome 让位给影像）", () => {
+    const { recipe } = loadRealRecipe(
+      "plugins/user/theme-panorama/themes/panorama.json",
+      "panorama", "整窗主视觉 Main Visual", "dark",
+    );
+    expect(recipe).not.toBeNull();
+    expect(recipe!.type).toBe("dark");
+    expect(recipe!.appearance?.background).toEqual({
+      mode: "panorama",
+      image: "linkdesk://theme-panorama/resources/sailor-moon.jpg",
+      opacity: 1,
+      mask: 0.15,
+    });
+    const tokens = mergeDomains(recipe!);
+    expect(tokens["bg-image"]).toBe('url("linkdesk://theme-panorama/resources/sailor-moon.jpg")'); // 全窗铺图
+    expect(tokens["bg-opacity"]).toBe("1");
+    expect(tokens["bg-mask"]).toBe("0.15"); // 低遮罩——图几乎全露
+    expect(tokens["bg-mask-color"]).toBe("#000000"); // 遮罩基色缺省黑
+    expect(tokens["radius-sm"]).toBeUndefined(); // 形制现状直角——不写 --radius-*（继承现状）
+    expect(tokens["font-ui"]).toBeUndefined(); // 字体系统默认——不写 --font-ui
+    expect(tokens["bg-window"]).toBe("rgba(10, 14, 20, 0.30)"); // zone 半透明让位给图
+    expect(tokens["accent"]).toBe("#FFB85C"); // 月夜暖光
+  });
 });
