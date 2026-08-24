@@ -129,10 +129,17 @@ export async function reloadUserSettings(): Promise<void> {
 }
 
 let _settingsWatcherStarted = false;
+let _reloadDebounceTimer: ReturnType<typeof setTimeout> | undefined;
 
 /**
  * 挂 settings.json 文件监听——外部编辑（编辑器标签页保存）→ 重读生效。App mount 前调用一次。
  * 幂等（防 StrictMode 双重调用）；非 Electron 环境静默跳过。
+ *
+ * E5.8#59（审计#7）：去抖——壳自写持久化（set/batch 写文件）会连发 watcher 事件，
+ * 立即 reload 会读到「上一写尚未落盘」的中间态文件 → 与已同步更新的内存产生假 diff →
+ * 对每个「被删 key」重复调 _configApplier → 复位路径 6 覆盖 key 各多广播 1 次 theme:changed（7 连发）。
+ * 去抖合并自写突发（P1+P2）→ 事件停息后读到的文件 = 内存 → diff 空 → 零重放；
+ * 外部编辑（编辑器保存 settings.json）仍生效，仅延迟 ~80ms。
  */
 export async function initUserSettingsWatcher(): Promise<void> {
   if (_settingsWatcherStarted) return;
@@ -143,11 +150,12 @@ export async function initUserSettingsWatcher(): Promise<void> {
 
   try {
     const dir = await appDataDir();
-    await watcher(dir, async (e: { path: string; type: string }) => {
+    await watcher(dir, (e: { path: string; type: string }) => {
       if (e.type === "deleted") return;
       const basename = String(e.path).split(/[\\/]/).pop();
       if (basename !== "settings.json") return;
-      await reloadUserSettings();
+      clearTimeout(_reloadDebounceTimer);
+      _reloadDebounceTimer = setTimeout(() => { void reloadUserSettings(); }, 80);
     });
   } catch (e) {
     // watcher 启动失败不阻塞 mount——降级为"保存后重启生效"（现状）
