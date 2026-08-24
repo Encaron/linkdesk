@@ -416,9 +416,24 @@ describe("ThemeEngine — 外观覆盖 getAppearanceOverrides（E5.8#50.10）", 
     expect(getAppearanceOverrides()["glass-tint"]).toBe("#123456");
   });
 
-  it("backgroundImage Windows 反斜杠路径 → url() 归一化正斜杠", () => {
-    applyRemoteConfigChange("app.backgroundImage", "C:\\Users\\feng\\bg.png");
-    expect(getAppearanceOverrides()["bg-image"]).toBe('url("C:/Users/feng/bg.png")');
+  it("backgroundImage 旧版 plain 绝对路径 → 受控协议 URL（E5.8#64：file:// 被沙箱拦截）", () => {
+    applyRemoteConfigChange("app.backgroundImage", "C:\\Users\\feng\\AppData\\Roaming\\linkdesk\\appearance\\bg.png");
+    expect(getAppearanceOverrides()["bg-image"]).toBe('url("linkdesk-userdata://appearance/bg.png")');
+  });
+
+  it("backgroundImage 旧版 plain 路径含空格中文 → basename 编码进受控协议 URL", () => {
+    applyRemoteConfigChange("app.backgroundImage", "C:\\AppData\\linkdesk\\appearance\\背景 图.png");
+    expect(getAppearanceOverrides()["bg-image"]).toBe('url("linkdesk-userdata://appearance/%E8%83%8C%E6%99%AF%20%E5%9B%BE.png")');
+  });
+
+  it("backgroundImage 已是受控协议 URL → 原样 url() 包裹（值已协议化，幂等）", () => {
+    applyRemoteConfigChange("app.backgroundImage", "linkdesk-userdata://appearance/bg.png");
+    expect(getAppearanceOverrides()["bg-image"]).toBe('url("linkdesk-userdata://appearance/bg.png")');
+  });
+
+  it("backgroundImage 已是主题资产协议 URL（linkdesk://）→ 原样包裹", () => {
+    applyRemoteConfigChange("app.backgroundImage", "linkdesk://demo-theme/assets/bg.png");
+    expect(getAppearanceOverrides()["bg-image"]).toBe('url("linkdesk://demo-theme/assets/bg.png")');
   });
 
   it("fontFamily 非空 → font-ui 覆盖（E5.8#50.19：用户级字体写 --font-ui）", () => {

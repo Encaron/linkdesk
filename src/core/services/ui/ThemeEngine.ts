@@ -5,7 +5,8 @@
 
 import { CoreEvents } from "../../react/events/CoreEvents";
 import { trackRegistration } from "../../registry/registrationTracker"; // E5.8#10：register 返 disposer——卸载自动逆序回滚
-import { normalizePath } from "../../utils/path/pathUtils"; // E5.8#50.10：Windows 路径归一化（ESLint no-raw-path-replace 强制走正源）
+// E5.8#64：受控背景图 URL 解析——配置值 → 沙箱可加载协议 URL（file:// 绝对路径被拦截）
+import { resolveBackgroundImageUrl } from "../../utils/path/userDataImagePath";
 // E5.8#50.15：质感类型下沉 core/types/theme.ts（05 schema 配方数据模型）——此处重导出兼容既有消费方
 import type { ThemeColors, ThemeSurface, ThemeBackground } from "../../types/theme";
 export type { ThemeColors, ThemeSurface, ThemeBackground } from "../../types/theme";
@@ -962,9 +963,10 @@ export function getAppearanceOverrides(): Record<string, string> {
 
   const bgImage = getConfigurationValue<string>("app.backgroundImage");
   if (bgImage != null && String(bgImage).trim() !== "") {
-    // Windows 反斜杠路径在 CSS url() 串里是转义符——normalizePath 归一化正斜杠（Chromium 下可解析）
-    const img = normalizePath(String(bgImage).trim());
-    overrides["bg-image"] = /^url\(/i.test(img) ? img : `url("${img}")`;
+    // E5.8#64：配置值 → 沙箱可加载 URL——受控协议 URL（linkdesk-userdata://…）原样 / 旧版 plain 绝对路径
+    // 映射受控协议 / 主题资产（linkdesk:// 相对）原样。file:// 绝对路径会被 Chromium 拦截（实机 bug 13）。
+    const resolved = resolveBackgroundImageUrl(String(bgImage));
+    if (resolved) overrides["bg-image"] = `url("${resolved}")`;
   }
 
   // E5.8#50.19：app.fontFamily 用户级字体覆盖——族名写 --font-ui（空 = 不覆盖，跟随主题）

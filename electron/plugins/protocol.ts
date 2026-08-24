@@ -13,9 +13,10 @@
 import { protocol, app } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
-import { APP_SCHEME } from '../constants';
+import { APP_SCHEME, APPEARANCE_SCHEME } from '../constants';
 import { scanPluginSubdirs } from '../services/plugin-file-service.js';
 import { resolveLinkdeskPath } from '../../src/core/utils/path/linkdeskProtocolPath.js';
+import { APPEARANCE_SUBDIR } from '../../src/core/utils/path/userDataImagePath.js';
 
 /** E5#114d 诊断：写入文件而非 console.log（生产环境 stdout 不可见） */
 function diag(msg: string): void {
@@ -84,6 +85,40 @@ export function registerProtocol(): void {
       return new Response(buf, { status: 200, headers });
     } catch (err) {
       diag(`500 ERROR — ${urlPath}: ${String(err)}`);
+      return new Response('Not Found', { status: 404, headers: corsHeaders() });
+    }
+  });
+
+  // E5.8#64：受控外观图片协议——linkdesk-userdata://appearance/<编码文件名> → <userData>/appearance/<文件名>。
+  // importImage 把用户选图拷贝进该目录，值存协议 URL；sandboxed pool 经此加载（file:// 绝对路径被拦截——bug 13）。
+  // 安全：只读映射 + 白名单目录（必须解析在 userData/appearance 内，防穿越）。
+  protocol.handle(APPEARANCE_SCHEME, async (request) => {
+    if (request.method === 'OPTIONS') {
+      return new Response(null, { status: 204, headers: corsHeaders() });
+    }
+    // URI: linkdesk-userdata://appearance/<编码文件名>——去 scheme + query，解 % 编码
+    const raw = request.url.replace(new RegExp(`^${APPEARANCE_SCHEME}://`), "").split("?")[0];
+    let filePath: string;
+    try {
+      filePath = decodeURIComponent(raw);
+    } catch {
+      return new Response('Bad Request', { status: 400, headers: corsHeaders() });
+    }
+    const userData = app.getPath('userData');
+    const fullPath = path.resolve(userData, filePath);
+    const base = path.join(userData, APPEARANCE_SUBDIR);
+    // 白名单：只允许 userData/appearance/ 内的文件（path.resolve 已兜穿越）
+    if (fullPath !== base && !fullPath.startsWith(base + path.sep)) {
+      diag(`403 FORBIDDEN (appearance) — ${filePath}`);
+      return new Response('Forbidden', { status: 403, headers: corsHeaders() });
+    }
+    try {
+      const buf = fs.readFileSync(fullPath);
+      const mimeType = getMimeType(fullPath);
+      const headers = corsHeaders();
+      headers.set('Content-Type', mimeType);
+      return new Response(buf, { status: 200, headers });
+    } catch {
       return new Response('Not Found', { status: 404, headers: corsHeaders() });
     }
   });

@@ -257,7 +257,8 @@ export interface AppearanceAPI {
     };
     /** E5.8#50.11：外观资产——本地选图拷贝入库（受控来源——用户任选路径不能 file:// 直读） */
     appearance: {
-        /** 导入图片到 userData/appearance/（重名去重）——返回受控路径，供 app.backgroundImage 持久化 */
+        /** 导入图片到 userData/appearance/（重名去重）——返回受控协议 URL（linkdesk-userdata://…，E5.8#64），
+         *  供 app.backgroundImage 持久化；沙箱经特权协议加载（plain 绝对路径被拦截） */
         importImage(sourcePath: string): Promise<string>;
     };
 }

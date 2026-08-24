@@ -29,7 +29,7 @@ import { WindowManager } from './windows/window-manager.js';
 import { syncKeybindings } from './windows/keyboard-router.js'; // E5.5#7-p6
 import { IpcBridge } from './ipc/ipc-bridge.js';
 import { setupCrashRecovery, replayAfterShellRebuild, type CrashRecoveryDeps } from './windows/crash-recovery.js'; // E5.7#36
-import { APP_SCHEME, DEV_SERVER_URL } from './constants.js'; // E5#102b：DEV_SERVER_URL 定义在 constants.ts
+import { APP_SCHEME, APPEARANCE_SCHEME, DEV_SERVER_URL } from './constants.js'; // E5#102b：DEV_SERVER_URL 定义在 constants.ts
 import { IPC } from './ipc/channels.js';
 // ── 单实例锁 ──
 const gotLock = app.requestSingleInstanceLock();
@@ -370,6 +370,10 @@ protocol.registerSchemesAsPrivileged([
   // E5.6#9h：注册 extension-file 协议——@codingame Monaco 内部虚拟文件系统，
   // 无此注册则 extension-file:// fetch 请求全 404，console 噪音。
   { scheme: "extension-file", privileges: { standard: true, secure: true, supportFetchAPI: true } },
+  // E5.8#64：受控外观图片协议——importImage 拷贝进 userData/appearance 的图（实机 bug 13：
+  // plain 绝对路径被 Chromium 归一 file:// 拦截报「Not allowed to load local resource」）。
+  // standard+secure+fetch 才能被 sandboxed pool 的 CSS background-image 加载。
+  { scheme: APPEARANCE_SCHEME, privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true } },
 ]);
 
 // ── 应用生命周期 ──
