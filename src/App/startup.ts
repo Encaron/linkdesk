@@ -298,9 +298,9 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
           "app.surfaceRadius": {
             type: "number",
             default: 1,
-            minimum: 0.5,
+            minimum: 0,
             maximum: 2,
-            description: t("界面圆角缩放——1 主题默认，0.5 半角锐利，2 圆润"),
+            description: t("界面圆角缩放——1 主题默认，0 方角，0.5 半角锐利，2 圆润"),
             uiHint: "slider",
             dependsOn: { key: "app.appearanceMode", value: "custom" },
             onApply: () => applyThemeIfReady(),

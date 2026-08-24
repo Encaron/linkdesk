@@ -459,6 +459,13 @@ describe("ThemeEngine — 外观覆盖 getAppearanceOverrides（E5.8#50.10）", 
     expect(scaled["radius-full"]).toBeUndefined();
   });
 
+  it("applyRadiusScale(0) — 0 方角档（E5.8#68）：六档全 0px 方角，形态值仍排除", () => {
+    const scaled = applyRadiusScale(0, { "radius-md": "12px", "radius-sm": "6px", "radius-lg": "16px" });
+    for (const key of RADIUS_KEYS) expect(scaled[key]).toBe("0px");
+    expect(scaled["radius-pill"]).toBeUndefined();
+    expect(scaled["radius-full"]).toBeUndefined();
+  });
+
   it("applyTheme 折叠覆盖——glassBlur 覆盖胜过主题 surface.blur", () => {
     applyRemoteConfigChange("app.glassBlur", 15);
     applyTheme({ ...MOCK_THEME, surface: { type: "glass", blur: 8 } });
@@ -722,11 +729,11 @@ describe("ThemeEngine — 资产字体两步机制（E5.8#50.17，@font-face →
 });
 
 describe("ThemeEngine — deriveAppearanceSeeds 反推播种（E5.8#50.19，08 §2）", () => {
-  it("圆角反推 scale——当前 radius-md ÷ 主题原值，clamp 0.5-2", () => {
+  it("圆角反推 scale——当前 radius-md ÷ 主题原值，clamp 0-2（E5.8#68：0 方角档不再下限 0.5）", () => {
     const seeds = deriveAppearanceSeeds({ "radius-md": "12px" }, 8);
     expect(seeds.surfaceRadius).toBe(1.5);
     expect(deriveAppearanceSeeds({ "radius-md": "20px" }, 8).surfaceRadius).toBe(2);
-    expect(deriveAppearanceSeeds({ "radius-md": "2px" }, 8).surfaceRadius).toBe(0.5);
+    expect(deriveAppearanceSeeds({ "radius-md": "2px" }, 8).surfaceRadius).toBe(0.3);
   });
 
   it("主题原值 ≤ 0 / 无 radius token → scale 回退 1（非归零）", () => {

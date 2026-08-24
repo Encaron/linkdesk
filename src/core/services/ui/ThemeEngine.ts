@@ -924,7 +924,7 @@ export interface AppearanceSeedValues {
 
 /**
  * 反推外观覆盖播种值——appearanceMode→custom 瞬间从生效 token 集反推 6 覆盖 key（08 §2）。
- * 纯函数只算不改：surfaceRadius = 当前 radius-md ÷ 主题原值（scale 系数，clamp 0.5-2）；
+ * 纯函数只算不改：surfaceRadius = 当前 radius-md ÷ 主题原值（scale 系数，clamp 0-2）；
  * 玻璃绝对 = token 值直播；bg 剥 url() 存受控路径；font 跳过资产族（__ld_ 前缀 = 插件 @font-face，
  * #50.20 边界：资产族只显示不选，播种空 = 跟随主题）。themeRadiusPx = 主题原值（配方 appearance.radius.md
  * 或 :root 壳默认，调用方解析后传入；≤0 → scale 回退 1）。
@@ -939,7 +939,7 @@ export function deriveAppearanceSeeds(
   const bgPath = bg && bg !== "none" ? bg.replace(/^url\(["']?/, "").replace(/["']?\)$/, "") : "";
   const fam = tokens["font-ui"];
   return {
-    surfaceRadius: Math.min(2, Math.max(0.5, Math.round(scale * 10) / 10)),
+    surfaceRadius: Math.min(2, Math.max(0, Math.round(scale * 10) / 10)),
     glassBlur: parseFloat(tokens["glass-blur"] ?? "0") || 0,
     glassOpacity: parseFloat(tokens["glass-opacity"] ?? "1"),
     glassTint: tokens["glass-tint"] && tokens["glass-tint"] !== "transparent" ? tokens["glass-tint"] : "",
