@@ -53,6 +53,13 @@ describe("Slider", () => {
     expect(onChange).toHaveBeenCalledWith(70);
   });
 
+  it("step 属性透传到原生 input（E5.8#65——浮点区间 step=0.01 连续可调）", () => {
+    const { input } = renderSlider({ step: 0.01 });
+    expect(input.getAttribute("step")).toBe("0.01");
+    const { input: intInput } = renderSlider({ step: 1 });
+    expect(intInput.getAttribute("step")).toBe("1");
+  });
+
   it("disabled → input disabled", () => {
     const { input } = renderSlider({ disabled: true });
     expect(input.disabled).toBe(true);

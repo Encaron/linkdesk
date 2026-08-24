@@ -30,6 +30,8 @@ interface ConfigProperty {
   enumDescriptions?: string[];
   minimum?: number;
   maximum?: number;
+  /** E5.8#65：滑杆步进——uiHint "slider" 时第三方显式声明；缺省由 renderControl 按区间推导（浮点区间 0.01） */
+  step?: number;
   uiHint?: string;
   renderHint?: string;
   /** E5.8#50.20：等宽限定——uiHint "fontFamily" 时 monoOnly=false = 全字族（UI 字体） */

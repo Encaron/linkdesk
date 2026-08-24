@@ -13,6 +13,7 @@ import FontFamilySelect from "@src/components/shared/font-family-select/FontFami
 import FilePathInput from "@src/components/shared/file-path-input/FilePathInput";
 import NumberInput from "@src/components/shared/number-input/NumberInput";
 import Slider from "@src/components/shared/slider/Slider"; // E5.8#50.9：滑杆控件（shared 白名单惯例，非 @src/core 零警告）
+import { inferSliderStep } from "@src/components/shared/slider/sliderStep"; // E5.8#65：滑杆 step 推导（浮点区间连续可调）
 import ThemePicker from "@src/components/shared/theme-picker/ThemePicker"; // E5.8#50.22：主题配方卡片（数据走 window.linkdesk.theme）
 import ObjectEditor from "./ObjectEditor";
 import type { ConfigProperty } from "./types";
@@ -66,15 +67,19 @@ function renderControl(
       return <FilePathInput value={String(val)} onChange={(v) => onChange(v)} dialogType="directory" />;
     case "image": // E5.8#50.11：背景图——选图拷贝入库 + 清除（受控来源）
       return <BackgroundImagePicker value={String(val)} onChange={onChange} t={t} />;
-    case "slider": // E5.8#50.9：滑杆（#50.10 玻璃五配置消费）——schema 无 step 字段，默认 1
+    case "slider": { // E5.8#50.9：滑杆（#50.10 玻璃五配置消费）——E5.8#65：step 推导（浮点区间 0.01，schema 可显式 step 覆盖）
+      const sliderMin = prop.minimum ?? 0;
+      const sliderMax = prop.maximum ?? 100;
       return (
         <Slider
           value={Number(val)}
           onChange={(v) => onChange(v)}
-          min={prop.minimum ?? 0}
-          max={prop.maximum ?? 100}
+          min={sliderMin}
+          max={sliderMax}
+          step={prop.step ?? inferSliderStep(sliderMin, sliderMax)}
         />
       );
+    }
     case "themePicker": // E5.8#50.22：主题配方卡片——value=app.theme，点卡片 onChange(recipeId)（onApply 应用配方）
       return <ThemePicker value={String(val)} onChange={(v) => onChange(v)} />;
     case "select": // E5.8#50.23：动态下拉——optionsFrom 渲染时调 listRecipes 动态取（colorways 配色变体 / sources 混搭来源）
