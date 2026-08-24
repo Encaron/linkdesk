@@ -886,6 +886,26 @@ export function getBaseRadius(): Record<string, string> {
 }
 
 /**
+ * E5.8#57（审计#3）：当前 radius 域源配方原生 radius-md——播种反推分母。
+ * mix 下生效 radius 来自 mixRadius 来源配方而非活动配方——拿活动配方当分母会把来源半径误判为用户
+ * scale 二次放大（来源 20px ÷ 活动 8px = scale 2.5 → clamp 2 → 20×2=40px 暴涨）。
+ * 读「当前 radius 域来源」的原生值当分母 → scale ≈ 用户真实偏离量（无覆盖 = 1 不暴涨；有覆盖 = 原 scale 恢复）。
+ * 非 mix / followTheme 半径 = 活动配方原值（原行为零回归）。无 radius 域 → :root 壳默认。
+ */
+export function getRadiusSourcePx(): number {
+  const active = getActiveRecipe();
+  const baseRecipe = active?.recipeId ? ThemeRegistry.getRecipe(active.recipeId) : undefined;
+  const base = baseRecipe?.appearance?.radius?.md;
+  if (getConfigurationValue<string>("app.mixMode") === "mix" && baseRecipe) {
+    const profile = getMixProfile();
+    const source = resolveDomainSource("radius", profile, baseRecipe, baseRecipe.colorways[0]);
+    const sourceRadius = source.recipe.appearance?.radius?.md;
+    if (sourceRadius != null) return sourceRadius;
+  }
+  return base ?? parseFloat(getBaseRadius()["radius-md"] ?? "0");
+}
+
+/**
  * app.surfaceRadius scale 系数 → --radius-xs~2xl 六档乘算（--radius-pill/--radius-full 形态值排除不乘，08 §3）。
  * tokens 传入 → 对当前生效值乘算（主题 appearance.radius 现值）；键缺省 → :root 壳默认乘算。纯函数只算不改。
  */

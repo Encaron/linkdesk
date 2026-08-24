@@ -31,6 +31,7 @@ import {
   deriveAppearanceSeeds,
   normalizeThemeValue,
   getMixProfile,
+  getRadiusSourcePx,
   mergeMixDomains,
   MIX_FOLLOW_THEME,
   syncThemeColorConfig,
@@ -926,6 +927,37 @@ describe("ThemeEngine — 混搭合并（E5.8#50.26，10 §1/§3 每域各自取
     expect(root.style.getPropertyValue("--font-ui")).toBe("__ld_demo-mix_DemoFont"); // 资产 → 两步换族名
     expect(document.getElementById("ld-ff-__ld_demo-mix_DemoFont")).not.toBeNull();
     expect(root.style.getPropertyValue("--bg-window")).toBe("#FFFBF5"); // 颜色域跟随 → dew
+  });
+
+  it("E5.8#57 审计#3——getRadiusSourcePx：mix 下读圆角域来源配方原生 radius-md 当播种分母（二次缩放根治）", () => {
+    // 虚构 fixture：demo-base（radius.md 8）+ demo-src（radius.md 20）两配方
+    const BASE: ThemeRecipe = {
+      id: "demo-base", name: "Demo Base", type: "light",
+      appearance: { radius: { md: 8, lg: 16 } },
+      colorways: [{ id: "c", name: "C", colors: {} }],
+    };
+    const SRC: ThemeRecipe = {
+      id: "demo-src", name: "Demo Src", type: "light",
+      appearance: { radius: { md: 20, lg: 40 } },
+      colorways: [{ id: "c", name: "C", colors: {} }],
+    };
+    ThemeRegistry.registerRecipe(BASE, PLUGIN);
+    ThemeRegistry.registerRecipe(SRC, PLUGIN);
+    applyRemoteConfigChange("app.theme", "demo-base");
+    applyRemoteConfigChange("app.themeColorMode", "followTheme");
+    applyRemoteConfigChange("app.mixMode", "mix");
+    applyRemoteConfigChange("app.mixRadius", "demo-src");
+    applyRecipe(BASE, "c", {});
+    // mix：生效 radius 来自 demo-src → 分母 = 来源原生 20（旧逻辑活动配方 8）
+    expect(getRadiusSourcePx()).toBe(20);
+    // 播种反推：生效 20 ÷ 来源 20 = scale 1（旧 20÷8=2.5 → clamp 2 → 20×2=40 暴涨）
+    expect(deriveAppearanceSeeds({ "radius-md": "20px" }, getRadiusSourcePx()).surfaceRadius).toBe(1);
+    // mix 但圆角域 followTheme → 分母 = 活动配方原生 8（跟随域不误取来源）
+    applyRemoteConfigChange("app.mixRadius", MIX_FOLLOW_THEME);
+    expect(getRadiusSourcePx()).toBe(8);
+    // 非 mix 零回归：分母 = 活动配方原生 8
+    applyRemoteConfigChange("app.mixMode", "recipe");
+    expect(getRadiusSourcePx()).toBe(8);
   });
 });
 

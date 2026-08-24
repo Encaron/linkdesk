@@ -18,7 +18,7 @@ import {
   getEffectiveAccentColor,
   getEffectiveTokens,
   getActiveRecipe,
-  getBaseRadius,
+  getRadiusSourcePx,
   getAvailableThemes,
   getCurrentTheme,
   deriveAppearanceSeeds,
@@ -110,8 +110,9 @@ const MIX_RESET_DISABLED_WHEN = MIX_SOURCE_KEYS.map((key) => ({ key, value: "fol
  */
 const seedAppearanceOverrides = (): void => {
   const tokens = getEffectiveTokens();
-  const recipe = resolveActiveRecipe();
-  const themeRadiusPx = recipe?.appearance?.radius?.md ?? parseFloat(getBaseRadius()["radius-md"] ?? "0");
+  // E5.8#57（审计#3）：反推分母用「当前 radius 域源配方原生 radius-md」而非活动配方——
+  // mix 下生效 radius 来自 mixRadius 来源，拿活动配方当分母会二次缩放暴涨（来源 20px÷活动 8px=scale 2.5→20×2=40px）。
+  const themeRadiusPx = getRadiusSourcePx();
   const seeds = deriveAppearanceSeeds(tokens, themeRadiusPx);
   setConfigurationValue("app.surfaceRadius", seeds.surfaceRadius, "user");
   setConfigurationValue("app.glassBlur", seeds.glassBlur, "user");
