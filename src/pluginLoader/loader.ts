@@ -28,7 +28,7 @@ import { initLifecycleConsumers } from "./lifecycle";
 import { unloadPlugin, getLoadDiagnosticsSummary, getLoadDiagnostics } from "./loadState";
 // E5.8#61 审计#2：watcher 手动删目录卸载路径补 revert（原只有 lifecycle-ops 正规卸载走）——
 // lifecycle-ops 不 import loader（无环），此处反向 import 安全
-import { revertThemeIfCurrent, revertLanguageIfCurrent } from "./lifecycle-ops";
+import { revertThemeIfCurrent, revertLanguageIfCurrent, reapplyThemeAfterUnload } from "./lifecycle-ops";
 import {
   pluginsApi,
   log,
@@ -299,9 +299,11 @@ export function startPluginWatcher(): void {
           // E5.8#61 审计#2：watcher 卸载路径补 revert——原只有 marketplace 正规卸载走
           // （revertThemeIfCurrent/revertLanguageIfCurrent 须在 unloadPlugin 前——onWillUninstall
           //  注销主题/语言后 revert 找不到归属；目录删除时插件仍 loaded，revert 照常生效）
-          await revertThemeIfCurrent(id);
+          const needsMixReapply = await revertThemeIfCurrent(id);
           await revertLanguageIfCurrent(id);
           unloadPlugin(id, "uninstall", id);
+          // E5.8#61 审计#1：混搭来源已摘后才重合并（unload 前源配方仍注册——早合并找不到回退）
+          if (needsMixReapply) await reapplyThemeAfterUnload();
         }
       }
     } catch {
@@ -321,4 +323,4 @@ export function stopPluginWatcher(): void {
 }
 
 // 导出供 vitest——防止新增贡献类型时漏加 revert（主题/语言/图标主题…）
-export { revertThemeIfCurrent, revertLanguageIfCurrent } from "./lifecycle-ops";
+export { revertThemeIfCurrent, revertLanguageIfCurrent, reapplyThemeAfterUnload } from "./lifecycle-ops";

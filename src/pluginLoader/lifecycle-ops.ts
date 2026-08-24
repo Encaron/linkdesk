@@ -75,11 +75,13 @@ export async function disablePlugin(pluginId: string): Promise<{ success: boolea
     // B2 fix: 标记为已禁用（缓存保留——marketplace 仍可浏览详情）
     cachePluginMetadata(pluginId, manifest, "disabled");
     // revert 必须在 onWillUninstall 之前——onWillUninstall 注销主题/语言后 revert 找不到归属
-    await revertThemeIfCurrent(pluginId);
+    const needsMixReapply = await revertThemeIfCurrent(pluginId);
     await revertLanguageIfCurrent(pluginId);
     // E5.8#11：唯一卸载路径——unloadPlugin 状态机（unloading → notifyPluginRemoved → fire →
     // 集合清理 → disposed → onDidUninstall），L6b 顺序由迁移图机械保障（设计文档 §3.1）
     unloadPlugin(pluginId, "disable", displayName);
+    // E5.8#61 审计#1：混搭来源已摘后才重合并（unload 前源配方仍注册——早合并找不到回退）
+    if (needsMixReapply) await reapplyThemeAfterUnload();
     syncAppThemeEnum();
     syncAppLanguageEnum();
     log.appendLine(`🔒 已禁用 "${pluginId}"`);
@@ -157,11 +159,13 @@ export async function uninstallPlugin(pluginId: string): Promise<{ success: bool
     // Rust 成功 → 前端更新
     cachePluginMetadata(pluginId, manifest, "uninstalled");
     // revert 必须在 onWillUninstall 之前——onWillUninstall 注销主题/语言后 revert 找不到归属
-    await revertThemeIfCurrent(pluginId);
+    const needsMixReapply = await revertThemeIfCurrent(pluginId);
     await revertLanguageIfCurrent(pluginId);
     // E5.8#11：唯一卸载路径——unloadPlugin 状态机（unloading → notifyPluginRemoved → fire →
     // 集合清理 → disposed → onDidUninstall），L6b 顺序由迁移图机械保障（设计文档 §3.1）
     unloadPlugin(pluginId, "uninstall", displayName);
+    // E5.8#61 审计#1：混搭来源已摘后才重合并（unload 前源配方仍注册——早合并找不到回退）
+    if (needsMixReapply) await reapplyThemeAfterUnload();
 
     // 如果插件之前被禁用过，清理禁用列表——卸载优先级高于禁用。
     // onDidUninstall 消费端不读 disabledPlugins——移到 unloadPlugin 之后顺序安全
@@ -346,8 +350,12 @@ async function revertLanguageIfCurrent(pluginId: string): Promise<void> {
   } catch { /* 非关键路径 */ }
 }
 
-/** 当前主题是否来自此插件——卸载/禁用当前主题时自动回退；混搭来源卸载时重应用当前主题（E5.8#61 审计#1） */
-async function revertThemeIfCurrent(pluginId: string): Promise<void> {
+/**
+ * 当前主题是否来自此插件——卸载/禁用当前主题时自动回退。
+ * E5.8#61 审计#1：返回 true = 本插件是混搭来源（app.mix* 引用其配方/配色）——
+ * 调用方必须在 unloadPlugin 之后调 reapplyThemeAfterUnload 重合并（回退时机见该函数注释）。
+ */
+async function revertThemeIfCurrent(pluginId: string): Promise<boolean> {
   try {
     // E5.8#50.21：读时归一化——legacy "Dark"/"Light" 匹配不到（无 flat 登记）会漏判，先转配方 id
     const currentTheme = normalizeThemeValue(getConfigurationValue<string>("app.theme"));
@@ -360,16 +368,26 @@ async function revertThemeIfCurrent(pluginId: string): Promise<void> {
         await setConfigurationValue("app.theme", normalizeThemeValue(available[0]) ?? available[0], "user");
       }
       // 无可用主题 → 保持当前 CSS（index.css :root 为兜底），设定下次启动的默认值
-      return;
     }
 
-    // E5.8#61 审计#1：活动主题不是本插件，但本插件可能是混搭来源（app.mix* 引用其配方/配色）——
-    // 卸载/禁用后源配方已摘（@font-face 清理）但 :root 残留其颜色/字体变量（颜色卡死字体断裂）。
-    // 同值重写 app.theme 触发 applier → applyThemeIfReady 重合并——来源缺失走 #58 缺域回退回主题基线。
-    if (isMixSourceOwner(pluginId)) {
-      const cur = normalizeThemeValue(getConfigurationValue<string>("app.theme"));
-      if (cur) await setConfigurationValue("app.theme", cur, "user");
-    }
+    // 混搭来源判定必须在 unloadPlugin 之前（此刻配方仍注册，isMixSourceOwner 才能解析到归属）；
+    // 真重应用推迟到 unload 之后（见 reapplyThemeAfterUnload）。
+    return isMixSourceOwner(pluginId);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * E5.8#61 审计#1：混搭来源插件卸载/禁用后的主题重应用——必须在 unloadPlugin 之后调用。
+ * 时机：unload 前源配方仍注册，此刻重合并 resolveDomainSource 能找到来源 → 域不会回退；
+ * 配方摘除后再合并，来源缺失走 #58 缺域回退回主题基线——:root 残留颜色/字体才真正清掉。
+ * 同值重写 app.theme 触发 applier → applyThemeIfReady 重合并（仅当 revertThemeIfCurrent 返回 true 才调用）。
+ */
+async function reapplyThemeAfterUnload(): Promise<void> {
+  try {
+    const cur = normalizeThemeValue(getConfigurationValue<string>("app.theme"));
+    if (cur) await setConfigurationValue("app.theme", cur, "user");
   } catch { /* 非关键路径 */ }
 }
 
@@ -445,5 +463,5 @@ export async function reinstallPlugin(pluginId: string): Promise<{ success: bool
   }
 }
 
-// 导出供 vitest——防止新增贡献类型时漏加 revert（主题/语言/图标主题…）
-export { revertThemeIfCurrent, revertLanguageIfCurrent };
+// 导出供 vitest + loader.ts watcher——防止新增贡献类型时漏加 revert（主题/语言/图标主题…）
+export { revertThemeIfCurrent, revertLanguageIfCurrent, reapplyThemeAfterUnload };

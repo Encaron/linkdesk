@@ -30,7 +30,7 @@ vi.mock("../core/services/configuration/ConfigurationService", () => {
   };
 });
 
-import { revertThemeIfCurrent, revertLanguageIfCurrent } from "./loader";
+import { revertThemeIfCurrent, revertLanguageIfCurrent, reapplyThemeAfterUnload } from "./loader";
 import { getConfigurationValue } from "../core/services/configuration/ConfigurationService";
 
 const PLUGIN_ID = "test-revert-plugin";
@@ -83,7 +83,7 @@ describe("revertIfCurrent——卸载当前贡献时自动回退", () => {
     expect(setConfigurationValue).not.toHaveBeenCalled();
   });
 
-  it("E5.8#61 审计#1——revertThemeIfCurrent：活动主题非本插件但本插件是混搭来源→同值重写触发重合并", async () => {
+  it("E5.8#61 审计#1——revertThemeIfCurrent：活动主题非本插件但本插件是混搭来源→返回 true 待卸载后重合并", async () => {
     // 另一插件（builtin）提供当前主题；demo-mix-plugin 只作为混搭来源（app.mixColor 引用其配色）
     registerBuiltinDarkTheme();
     ThemeRegistry.registerRecipe(
@@ -96,17 +96,23 @@ describe("revertIfCurrent——卸载当前贡献时自动回退", () => {
     const { setConfigurationValue: setCfg } = await import("../core/services/configuration/ConfigurationService");
     await setCfg("app.theme", "builtin-dark", "user");
     await setCfg("app.mixColor", "mix-cw", "user");
+    vi.mocked(setCfg).mockClear(); // 清掉 setup 写入——只断言 revert/reapply 自己的调用
 
-    await revertThemeIfCurrent(PLUGIN_ID);
+    // revert 只做归属判定——返回 true 表示本插件是混搭来源，重合并推迟到 unload 后
+    const result = await revertThemeIfCurrent(PLUGIN_ID);
+    expect(result).toBe(true);
+    // 活动主题来自 builtin → revert 自身不写 app.theme（此时写 = 早合并，来源配方仍注册找不到回退）
+    expect(setCfg).not.toHaveBeenCalledWith("app.theme", expect.anything(), expect.anything());
 
-    // 活动主题来自 builtin → 不换主题；但本插件是混搭来源 → 同值重写 app.theme 触发 applier 重合并
-    // （来源配方已摘，重合并走 #58 缺域回退回主题基线）
+    // reapplyThemeAfterUnload（调用方在 unloadPlugin 之后调）：同值重写 app.theme 触发 applier 重合并
+    // （此刻来源配方已摘，重合并走 #58 缺域回退回主题基线）
+    await reapplyThemeAfterUnload();
     expect(setCfg).toHaveBeenCalledWith("app.theme", "builtin-dark", "user");
     // 清理 store——防泄漏到后续用例
     await setCfg("app.mixColor", "followTheme", "user");
   });
 
-  it("E5.8#61 审计#1——revertThemeIfCurrent：混搭来源是其他插件→不触发重应用", async () => {
+  it("E5.8#61 审计#1——revertThemeIfCurrent：混搭来源是其他插件→返回 false 不触发重应用", async () => {
     registerBuiltinDarkTheme();
     // 混搭来源配方归其他插件——PLUGIN_ID 不提供任何配方
     ThemeRegistry.registerRecipe(
@@ -121,8 +127,9 @@ describe("revertIfCurrent——卸载当前贡献时自动回退", () => {
     await setCfg("app.mixColor", "other-cw", "user");
     vi.mocked(setCfg).mockClear();
 
-    await revertThemeIfCurrent(PLUGIN_ID);
+    const result = await revertThemeIfCurrent(PLUGIN_ID);
 
+    expect(result).toBe(false);
     expect(setCfg).not.toHaveBeenCalled();
     await setCfg("app.mixColor", "followTheme", "user");
   });
