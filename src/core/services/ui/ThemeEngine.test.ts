@@ -39,7 +39,7 @@ import type { MixProfile } from "./ThemeEngine";
 import { rollback } from "../../registry/registrationTracker";
 import { ThemeRegistry, parseThemeRecipe } from "../../registry/appearance/ThemeRegistry";
 import {
-  applyRemoteConfigChange, clearConfigurationCache, getConfigurationValue,
+  applyRemoteConfigChange, clearConfigurationCache, getConfigurationValue, hasConfigurationValue,
 } from "../configuration/ConfigurationService";
 import type { Theme } from "./ThemeEngine";
 import type { ThemeRecipe } from "../../types/theme";
@@ -453,6 +453,37 @@ describe("ThemeEngine — 外观覆盖 getAppearanceOverrides（E5.8#50.10）", 
     applyRemoteConfigChange("app.surfaceRadius", 1.5);
     const overrides = getAppearanceOverrides();
     for (const key of RADIUS_KEYS) expect(overrides[key]).toBeDefined();
+  });
+
+  it("E5.8#56 审计#2——glassBlur 显式拖到 0（端点，presence）→ glass-blur 覆盖 0px（模糊真关）", () => {
+    applyRemoteConfigChange("app.glassBlur", 0);
+    expect(getAppearanceOverrides()["glass-blur"]).toBe("0px");
+  });
+
+  it("E5.8#56 审计#2——glassOpacity 显式拖到 1（端点，presence）→ glass-opacity 覆盖 1（真不透明）", () => {
+    applyRemoteConfigChange("app.glassOpacity", 1);
+    expect(getAppearanceOverrides()["glass-opacity"]).toBe("1");
+  });
+
+  it("E5.8#56——hasConfigurationValue presence 语义：未写 false、applyRemoteConfigChange 后 true（reset 摘除 → 回 neutral）", () => {
+    expect(hasConfigurationValue("app.glassBlur")).toBe(false);
+    applyRemoteConfigChange("app.glassBlur", 0);
+    expect(hasConfigurationValue("app.glassBlur")).toBe(true);
+  });
+
+  it("E5.8#56 审计#4——applyRadiusScale 越界 clamp：scale 5 → 钳到 2（settings.json 直写 5 不再 5× 圆角）", () => {
+    const scaled = applyRadiusScale(5, { "radius-md": "8px" });
+    expect(scaled["radius-md"]).toBe("16px"); // 8 × clamp(2) 非 8 × 5=40px
+  });
+
+  it("E5.8#56 审计#4——applyRadiusScale 负越界 clamp：scale -1 → 钳到 0（方角），非负数取反", () => {
+    const scaled = applyRadiusScale(-1, { "radius-md": "8px" });
+    expect(scaled["radius-md"]).toBe("0px");
+  });
+
+  it("E5.8#56——applyRadiusScale 合法域内不变：scale 1.5 → 8×1.5=12px", () => {
+    const scaled = applyRadiusScale(1.5, { "radius-md": "8px" });
+    expect(scaled["radius-md"]).toBe("12px");
   });
 
   it("applyRadiusScale — 返回六档键集、不含形态值（数值来自 :root 基准，jsdom 无 CSS = 0px）", () => {

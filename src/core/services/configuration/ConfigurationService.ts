@@ -191,6 +191,16 @@ export function getConfigurationValue<T>(key: string): T {
 }
 
 /**
+ * E5.8#56：判断配置是否被显式写过（presence 语义）——User/Workspace scope 存在该 key 即真。
+ * 与 getConfigurationValue（合并 default 层）不同：default 值 ≠「用户写过」。
+ * 消费场景：getAppearanceOverrides 玻璃 neutral 门控——glassBlur 拖到 0（关闭）/ glassOpacity 拖到 1（不透明）
+ * 是用户显式意图，presence 覆盖端点值；reset 摘除 key 后回主题基线。对标 VS Code inspect().userValue。
+ */
+export function hasConfigurationValue(key: string): boolean {
+  return key in _userSettings || key in _workspaceSettings;
+}
+
+/**
  * 检查某个 key 的完整来源——对标 VS Code IConfigurationService.inspect<T>()。
  * 返回每一层的值，让 Settings Editor 可以显示"Workspace 覆盖了 User"。
  */

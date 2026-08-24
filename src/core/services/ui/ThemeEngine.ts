@@ -811,7 +811,7 @@ export function getCurrentTheme(): Theme | null {
 
 /* ── E3f #59d1：强调色归一化——三种路径一条函数 ── */
 
-import { getConfigurationValue, setConfigurationValue } from "../configuration/ConfigurationService";
+import { getConfigurationValue, hasConfigurationValue, setConfigurationValue } from "../configuration/ConfigurationService";
 
 /**
  * 获取有效强调色——三种路径归一化：
@@ -890,13 +890,16 @@ export function getBaseRadius(): Record<string, string> {
  * tokens 传入 → 对当前生效值乘算（主题 appearance.radius 现值）；键缺省 → :root 壳默认乘算。纯函数只算不改。
  */
 export function applyRadiusScale(scale: number, tokens?: Record<string, string>): Record<string, string> {
+  // E5.8#56（审计#4）：消费侧 clamp——settings.json/程序化直写 app.surfaceRadius 越界（如 5）被钳到合法域
+  // （0 方角 ~ 2 圆润，05 §4 scale 域；#68 后下限 0）。播种方向 deriveAppearanceSeeds 已 clamp，此处守消费端单一写入点。
+  const s = Number.isFinite(scale) ? Math.min(2, Math.max(0, scale)) : 1;
   const vars: Record<string, string> = {};
   const base = getBaseRadius();
   for (const key of RADIUS_SCALE_KEYS) {
     const current = tokens?.[key];
     const source = current !== undefined && current.trim() !== "" ? current : (base[key] ?? "0px");
     const px = parseFloat(source);
-    vars[key] = Number.isFinite(px) ? `${Math.round(px * scale)}px` : "0px";
+    vars[key] = Number.isFinite(px) ? `${Math.round(px * s)}px` : "0px";
   }
   return vars;
 }
@@ -967,11 +970,14 @@ export function deriveAppearanceSeeds(
 export function getAppearanceOverrides(): Record<string, string> {
   const overrides: Record<string, string> = {};
 
+  // E5.8#56（审计#2）：glass 两键 neutral 判定改 presence 语义——glassBlur=0（关闭）/ glassOpacity=1（不透明）
+  // 是端点值也是 neutral 默认，值对比会把「用户显式拖到端点」误判为未覆盖 → 模糊关不掉/变不了不透明。
+  // 改：配置被显式写过（hasConfigurationValue）即覆盖，端点值=显式意图照常生效；reset 摘除 key → 回主题基线。
   const blur = getConfigurationValue<number>("app.glassBlur");
-  if (blur != null && Number(blur) !== 0) overrides["glass-blur"] = `${blur}px`;
+  if (hasConfigurationValue("app.glassBlur") && blur != null) overrides["glass-blur"] = `${Number(blur)}px`;
 
   const opacity = getConfigurationValue<number>("app.glassOpacity");
-  if (opacity != null && Number(opacity) !== 1) overrides["glass-opacity"] = String(opacity);
+  if (hasConfigurationValue("app.glassOpacity") && opacity != null) overrides["glass-opacity"] = String(opacity);
 
   const tint = getConfigurationValue<string>("app.glassTint");
   if (tint != null && String(tint).trim() !== "") overrides["glass-tint"] = String(tint).trim();
