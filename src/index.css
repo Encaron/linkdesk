@@ -384,13 +384,17 @@ select {
 
 /* ② per-surface blur 差异化——窄表面（图标栏/侧栏）0.44×（18px 基值 → ≈8px，mockup 实测
    图可辨，18px 糊成色块）；面板（悬浮面板）1.11×（≈20px）；大表面（顶栏/主区/状态栏）
-   持基值（18px）。零基值 × 系数 = 0px → 零变化。局部 --glass-blur 遮蔽继承。 */
+   持基值（18px）。零基值 × 系数 = 0px → 零变化。
+   E5.8#66：改用独立 --surface-glass-blur——旧写法 `--glass-blur: calc(var(--glass-blur)×)`
+   是自定义属性自引用循环 → guaranteed-invalid → 消费端 blur 落回 0px（实机验证侧栏 blur
+   恒 0，per-surface 差异化从未生效）。新 var 读继承的 --glass-blur（非自引用），
+   无覆盖的表面走 backdrop-filter 的嵌套 fallback 回基值。 */
 .icon-bar,
 .side-panel {
-  --glass-blur: calc(var(--glass-blur, 0px) * 0.44);
+  --surface-glass-blur: calc(var(--glass-blur, 0px) * 0.44);
 }
 .panel-zone {
-  --glass-blur: calc(var(--glass-blur, 0px) * 1.11);
+  --surface-glass-blur: calc(var(--glass-blur, 0px) * 1.11);
 }
 
 /* 表面统一——backdrop-filter（透射）+ 悬浮面板形态（圆角/投影；留缝在 cell padding /
@@ -406,7 +410,7 @@ select {
 .status-bar {
   position: relative;
   z-index: 1;
-  backdrop-filter: blur(var(--glass-blur, 0px)) saturate(var(--glass-saturate, 1));
+  backdrop-filter: blur(var(--surface-glass-blur, var(--glass-blur, 0px))) saturate(var(--glass-saturate, 1));
   border-radius: var(--surface-radius, 0px);
   box-shadow: var(--surface-shadow, none);
   transition:
@@ -430,7 +434,11 @@ select {
 
 /* 玻璃面叠加色（tint——表面底上、内容下，不盖文字）+ 玻璃面不透明度（opacity）+
    顶部受光带 + 发丝光边（specular 派生——契约无独立光边变量，inset ring 零 specular 时
-   透明无描边 = 现状零变化）。 */
+   透明无描边 = 现状零变化）。
+   E5.8#66：tint 层 opacity = glass-opacity × 0.5（wash 强度 0→0.5 线性映射）——玻璃
+   不透明度上限半透明，glassOpacity=1 不再全实色盖面（bug 6）；tint 颜色自身 alpha
+   再降一档（aurora 0.35 → 有效 ~10-17%，对齐液态玻璃 wash 区间）。玻璃面板主透明
+   由主题 rgba --bg-* 承担（L381 契约），opacity 只调 wash/发丝光边。 */
 .titlebar::before,
 .icon-bar::before,
 .side-panel::before,
@@ -442,7 +450,7 @@ select {
   inset: 0;
   border-radius: inherit;
   background: var(--glass-tint, transparent);
-  opacity: var(--glass-opacity, 1);
+  opacity: calc(var(--glass-opacity, 1) * 0.5);
   box-shadow:
     inset 0 1px 0 rgb(255 255 255 / var(--glass-specular, 0)),
     inset 0 0 0 1px rgb(255 255 255 / var(--glass-specular, 0));
