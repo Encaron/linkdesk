@@ -47,3 +47,18 @@ export function mockListRecipes(recipes: RecipeMeta[]): void {
     lk.linkdesk.theme = { listRecipes: vi.fn().mockResolvedValue(recipes) };
   }
 }
+
+/** 捕获 configuration.onPluginLifecycleChange 注册的回调——模拟插件热装/卸载（E5.8#60 F1.3，ThemePicker/DynamicSelect 共享） */
+export function captureLifecycleChange(): () => void {
+  let captured: (() => void) | null = null;
+  const lk = window as unknown as {
+    linkdesk?: { configuration?: { onPluginLifecycleChange: (cb: () => void) => () => void } };
+  };
+  if (lk.linkdesk?.configuration) {
+    lk.linkdesk.configuration.onPluginLifecycleChange = ((cb: () => void) => {
+      captured = cb;
+      return () => {};
+    }) as typeof lk.linkdesk.configuration.onPluginLifecycleChange;
+  }
+  return () => { captured?.(); };
+}

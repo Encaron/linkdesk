@@ -24,6 +24,7 @@ import {
   deriveAppearanceSeeds,
   normalizeThemeValue,
   syncThemeColorConfig,
+  APPEARANCE_OVERRIDE_KEYS,
 } from "../core/services/ui/ThemeEngine";
 import { ThemeRegistry } from "../core/registry/appearance/ThemeRegistry";
 import type { ThemeRecipe } from "../core/types/theme"; // E5.8#50.19：配方路径应用 helper 的类型标注
@@ -91,11 +92,9 @@ const applyRecipeForConfig = (recipe: ThemeRecipe): void => {
   syncThemeColorConfig(recipe);
 };
 
-/** 外观覆盖 key 全集——切回 followTheme 删除（覆盖丢弃回配方，08 §7.3.5） */
-const APPEARANCE_OVERRIDE_KEYS = [
-  "app.surfaceRadius", "app.glassBlur", "app.glassOpacity",
-  "app.glassTint", "app.backgroundImage", "app.fontFamily",
-] as const;
+/** 外观覆盖 key 全集——切回 followTheme 批量删除（覆盖丢弃回配方，08 §7.3.5）。
+ *  E5.8#60 F1.1：单一来源 ThemeEngine.APPEARANCE_OVERRIDE_KEYS——插件 API theme.resetAppearance 共用本表
+ *  （曾只清 5 键漏 app.fontFamily → 第三方复位外观后字体不回基线，12 档案 §#60）。 */
 
 /** 混搭来源 key 全集——mixMode→mix 播种全 "followTheme"（与 ThemeEngine MIX_DOMAIN_KEYS 同源） */
 const MIX_SOURCE_KEYS = [

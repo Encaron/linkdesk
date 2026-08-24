@@ -9,7 +9,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, fireEvent, cleanup } from "@testing-library/react";
 import ThemePicker from "./ThemePicker";
 import "@src/i18n"; // 装 parseMissingKeyHandler——{{count}} 插值在 jsdom 无资源时也替换（徽标计数断言）
-import { MINT, FOREST, mockListRecipes } from "../theme-recipes.fixture";
+import { MINT, FOREST, mockListRecipes, captureLifecycleChange } from "../theme-recipes.fixture";
 
 afterEach(() => cleanup());
 
@@ -109,5 +109,20 @@ describe("ThemePicker", () => {
     expect(document.activeElement).toBe(cards[1]);
     expect(cards[1].getAttribute("tabindex")).toBe("0");
     expect(cards[0].getAttribute("tabindex")).toBe("-1");
+  });
+
+  it("插件生命周期变化（onPluginLifecycleChange）→ 重拉配方列表（E5.8#60 F1.3）", async () => {
+    const triggerLifecycle = captureLifecycleChange();
+    mockListRecipes([MINT]);
+    const { container } = renderPicker();
+    await vi.waitFor(() => {
+      expect(container.querySelectorAll(".theme-card")).toHaveLength(1);
+    });
+    // 热装新主题插件 → 配方集变化 → 卡片列表刷新（含新配方）
+    mockListRecipes([MINT, FOREST]);
+    triggerLifecycle();
+    await vi.waitFor(() => {
+      expect(container.querySelectorAll(".theme-card")).toHaveLength(2);
+    });
   });
 });

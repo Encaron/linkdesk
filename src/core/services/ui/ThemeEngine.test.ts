@@ -35,6 +35,7 @@ import {
   mergeMixDomains,
   MIX_FOLLOW_THEME,
   syncThemeColorConfig,
+  APPEARANCE_OVERRIDE_KEYS,
 } from "./ThemeEngine";
 import type { MixProfile } from "./ThemeEngine";
 import { rollback } from "../../registry/registrationTracker";
@@ -505,6 +506,17 @@ describe("ThemeEngine — 外观覆盖 getAppearanceOverrides（E5.8#50.10）", 
     applyRemoteConfigChange("app.glassBlur", 15);
     applyTheme({ ...MOCK_THEME, surface: { type: "glass", blur: 8 } });
     expect(document.documentElement.style.getPropertyValue("--glass-blur")).toBe("15px");
+  });
+
+  it("E5.8#60 F1.1——APPEARANCE_OVERRIDE_KEYS = 全 6 键含 app.fontFamily（单一来源防回归）", () => {
+    // 设置层外观覆盖 key 全集——壳命令（startup appearanceMode onApply）与插件 API（theme.resetAppearance）复位共用
+    expect([...APPEARANCE_OVERRIDE_KEYS]).toEqual([
+      "app.surfaceRadius", "app.glassBlur", "app.glassOpacity",
+      "app.glassTint", "app.backgroundImage", "app.fontFamily",
+    ]);
+    // 每键确与 getAppearanceOverrides 读的配置键对齐（写多了 reset 摘不到、写少了残留覆盖）
+    expect(APPEARANCE_OVERRIDE_KEYS).toContain("app.fontFamily"); // 插件侧旧表漏此键 → 复位后字体不回基线
+    expect(APPEARANCE_OVERRIDE_KEYS).toContain("app.surfaceRadius");
   });
 });
 

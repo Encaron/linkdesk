@@ -9,7 +9,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, fireEvent, screen, cleanup } from "@testing-library/react";
 import DynamicSelect from "./DynamicSelect";
-import { MINT, FOREST, SERIF, mockListRecipes } from "../theme-recipes.fixture";
+import { MINT, FOREST, SERIF, mockListRecipes, captureLifecycleChange } from "../theme-recipes.fixture";
 
 afterEach(() => cleanup());
 
@@ -168,5 +168,21 @@ describe("DynamicSelect", () => {
     const { open } = renderSelect({ optionsFrom: "theme.sources", domain: "colors" });
     open();
     await screen.findByText("无匹配项");
+  });
+
+  it("插件生命周期变化（onPluginLifecycleChange）→ 重取配方（E5.8#60 F1.3）", async () => {
+    const triggerLifecycle = captureLifecycleChange();
+    mockListRecipes([MINT]);
+    const { open, dropdownItems } = renderSelect({ optionsFrom: "theme.sources", domain: "colors" });
+    open();
+    await screen.findByText("Demo Mint·Alpha");
+    expect(dropdownItems()).not.toContain("Demo Forest·Gamma");
+    // 热装新配方 → 配方集变化 → sources 选项刷新（含新配方，colors 行）
+    mockListRecipes([MINT, FOREST]);
+    triggerLifecycle();
+    await screen.findByText("Demo Forest·Gamma");
+    const items = dropdownItems();
+    expect(items).toContain("Demo Forest·Gamma");
+    expect(items[0]).toBe("跟随主题"); // 置顶项不被刷新破坏
   });
 });

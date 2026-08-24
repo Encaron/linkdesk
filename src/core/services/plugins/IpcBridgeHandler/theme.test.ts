@@ -96,16 +96,22 @@ describe("IpcBridgeHandler/theme — 配方/配色 API（E5.8#50.18）", () => {
     expect(getConfigurationValue("app.themeColor")).toBe("demo-mint");
   });
 
-  it("resetAppearance — 清设置层外观覆盖", async () => {
+  it("resetAppearance — 清设置层外观覆盖全 6 键含 app.fontFamily（E5.8#60 F1.1 防回归）", async () => {
     applyRemoteConfigChange("app.glassBlur", 15);
+    applyRemoteConfigChange("app.glassOpacity", 0.4);
+    applyRemoteConfigChange("app.glassTint", "#abcdef");
     applyRemoteConfigChange("app.surfaceRadius", 1.5);
     applyRemoteConfigChange("app.backgroundImage", "C:/bg.png");
+    applyRemoteConfigChange("app.fontFamily", "Comic Sans"); // F1.1——旧 5 键表漏此键 → 第三方复位外观后字体不回基线
     try {
       await handleThemeMethod("theme.resetAppearance", []);
     } catch { /* persist failed — expected in test */ }
     expect(getConfigurationValue("app.glassBlur")).toBeUndefined();
+    expect(getConfigurationValue("app.glassOpacity")).toBeUndefined();
+    expect(getConfigurationValue("app.glassTint")).toBeUndefined();
     expect(getConfigurationValue("app.surfaceRadius")).toBeUndefined();
     expect(getConfigurationValue("app.backgroundImage")).toBeUndefined();
+    expect(getConfigurationValue("app.fontFamily")).toBeUndefined();
   });
 
   it("未知方法抛错", async () => {

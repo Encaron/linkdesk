@@ -1029,6 +1029,15 @@ export function deriveAppearanceSeeds(
   };
 }
 
+/** 设置层外观覆盖配置 key 全集——appearanceMode=custom 播种存这 6 键、reset 摘除这 6 键回主题基线（08 §7.2/§7.3.5）。
+ *  单一来源：getAppearanceOverrides 读同键（glass 两键 presence 门控 / 其余空值不覆盖，见下）。
+ *  E5.8#60 F1.1：壳命令（startup appearanceMode onApply）与插件 API（theme.resetAppearance）复位共用本表——
+ *  插件侧曾只清 5 键漏 app.fontFamily → 第三方复位外观后字体不回基线。 */
+export const APPEARANCE_OVERRIDE_KEYS = [
+  "app.surfaceRadius", "app.glassBlur", "app.glassOpacity",
+  "app.glassTint", "app.backgroundImage", "app.fontFamily",
+] as const;
+
 /** 读用户外观配置 → 覆盖集（glass/bg 仅偏离 neutral 时；radius 六键恒写 scale 系数——applyOverrides 内乘算）。 */
 export function getAppearanceOverrides(): Record<string, string> {
   const overrides: Record<string, string> = {};

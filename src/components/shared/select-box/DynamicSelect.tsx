@@ -86,12 +86,21 @@ function DynamicSelect({ value, onChange, optionsFrom, domain, disabled, placeho
     }
   }, [optionsFrom, domain, t]);
 
-  // 挂载取一次；colorways 额外订阅 app.theme——活动配方切换即重取（配色列表跟着换，mockup 01 动态 enum 演示）
+  // 挂载取一次；colorways 额外订阅 app.theme——活动配方切换即重取（配色列表跟着换，mockup 01 动态 enum 演示）。
+  // E5.8#60 F1.3：订阅插件生命周期——热装/卸载主题插件 → 配方集变化 → sources/colorways 列表刷新。
+  //   走 configuration.onPluginLifecycleChange（设置页专用通道，池侧桥自 IpcBridgeHandler/data.ts 泛化 nudge）。
+  //   E5.8#60 F2.1 防回归：订阅回调必须引用稳定——refresh 为 useCallback（依赖 optionsFrom/domain/t 恒定），
+  //   内联箭头只包一层转发；严禁把非稳定闭包直接传入订阅（回放缓冲变死循环引擎，E5.8 铁律）。 */
   useEffect(() => {
     void refresh();
-    if (optionsFrom !== "theme.colorways") return;
-    const off = window.linkdesk?.configuration?.onChange?.("app.theme", () => { void refresh(); });
-    return () => { off?.(); };
+    const offLifecycle = window.linkdesk?.configuration?.onPluginLifecycleChange?.(() => { void refresh(); });
+    const offTheme = optionsFrom === "theme.colorways"
+      ? window.linkdesk?.configuration?.onChange?.("app.theme", () => { void refresh(); })
+      : undefined;
+    return () => {
+      offLifecycle?.();
+      offTheme?.();
+    };
   }, [refresh, optionsFrom]);
 
   return (

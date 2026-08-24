@@ -8,9 +8,9 @@
  */
 
 import { ThemeRegistry } from "../../../registry/appearance/ThemeRegistry";
-import { recipeDomains, getActiveRecipe, getEffectiveTokens, normalizeThemeValue } from "../../ui/ThemeEngine";
+import { recipeDomains, getActiveRecipe, getEffectiveTokens, normalizeThemeValue, APPEARANCE_OVERRIDE_KEYS } from "../../ui/ThemeEngine";
 import {
-  getConfigurationValue, setConfigurationValue, resetConfigurationValue,
+  getConfigurationValue, setConfigurationValue, resetConfigurationValueBatch,
 } from "../../configuration/ConfigurationService";
 import type { RecipeMeta, ColorwayMeta } from "../../../api/linkdesk-api/types";
 import type { ThemeRecipe } from "../../../types/theme";
@@ -34,19 +34,12 @@ function toRecipeMeta(recipe: ThemeRecipe): RecipeMeta {
   };
 }
 
-/** 设置层外观覆盖配置全集——resetAppearance 逐 key 回退（neutral 默认值 = 不覆盖主题基线） */
-const APPEARANCE_OVERRIDE_KEYS = [
-  "app.glassBlur",
-  "app.glassOpacity",
-  "app.glassTint",
-  "app.backgroundImage",
-  "app.surfaceRadius",
-] as const;
-
+/** 设置层外观覆盖配置全集——resetAppearance 批量回退（neutral 默认值 = 不覆盖主题基线）。
+ *  E5.8#60 F1.1：单一来源 ThemeEngine.APPEARANCE_OVERRIDE_KEYS（壳命令 startup 共用）——
+ *  原本表只列 5 键漏 app.fontFamily → 第三方复位外观后字体不回基线。 */
 async function resetAppearanceOverrides(): Promise<void> {
-  for (const key of APPEARANCE_OVERRIDE_KEYS) {
-    await resetConfigurationValue(key, "user");
-  }
+  // E5.8#59：批量复位——单次持久化 + 单次 applier（原逐 key await = 5 次持久化 + 5 次 applyThemeIfReady 广播）
+  await resetConfigurationValueBatch(APPEARANCE_OVERRIDE_KEYS, "user");
 }
 
 /** theme.* 六方法处理器——列表走 API（数据），选中走配置（持久化，06 §1 分工铁律） */

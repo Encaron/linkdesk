@@ -9,7 +9,7 @@
  * 结构样式全走 CSS 变量（硬约束 1）。
  */
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import type { RecipeMeta } from "@src/core/api/linkdesk-api/types";
 import "./ThemePicker.css";
@@ -32,17 +32,31 @@ function ThemePicker({ value, onChange }: ThemePickerProps) {
   const [focusIndex, setFocusIndex] = useState(0);
   const cardRefs = useRef<Array<HTMLButtonElement | null>>([]);
 
-  // 拉取配方列表——一次（配方集在会话内静态；value 变化由受控 value 驱动选中态）
-  useEffect(() => {
-    let cancelled = false;
+  // 拉取配方列表——挂载取一次（value 变化由受控 value 驱动选中态）。
+  // E5.8#60 F1.3：订阅插件生命周期——热装/卸载主题插件 → 配方集变化 → 卡片列表刷新。
+  //   走 configuration.onPluginLifecycleChange（设置页专用通道，池侧桥自 IpcBridgeHandler/data.ts 泛化 nudge）。
+  //   E5.8#60 F2.1 防回归：订阅回调必须引用稳定——refresh 为 useCallback（闭包仅捕获 listRecipes/setRecipes 稳定引用，
+  //   内联箭头只包一层转发；严禁把非稳定闭包直接传入订阅（回放缓冲变死循环引擎，E5.8 铁律）。
+  const refresh = useCallback((isActive?: () => boolean) => {
     // 可选链只短路后续可选链，不短路 .then——先取函数再调用
     const list = window.linkdesk?.theme?.listRecipes;
     if (!list) return;
     list().then((result) => {
-      if (!cancelled) setRecipes(result ?? []);
+      if (isActive && !isActive()) return; // 卸载竞态守卫——Promise 晚到不 setState
+      setRecipes(result ?? []);
     }).catch(() => { /* API 不可用——保持空列表 */ });
-    return () => { cancelled = true; };
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    const isActive = () => !cancelled;
+    void refresh(isActive);
+    const offLifecycle = window.linkdesk?.configuration?.onPluginLifecycleChange?.(() => { void refresh(); });
+    return () => {
+      cancelled = true;
+      offLifecycle?.();
+    };
+  }, [refresh]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     const n = recipes.length;
