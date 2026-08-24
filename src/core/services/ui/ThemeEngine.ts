@@ -697,6 +697,21 @@ export function getActiveRecipe(): { recipeId: string; colorwayId: string } | nu
   return { recipeId: currentRecipeId, colorwayId: currentColorwayId ?? "" };
 }
 
+/**
+ * E5.8#70：回写 app.themeColor = 生效配色 id（bug 7 复制为空 + #60 F1.2 下拉谎报同源修复）。
+ * applyRecipe 已 resolve 缺省/失效值（followTheme→配方首配色 / custom 空或失效→兜底），本函数把引擎
+ * 真实生效配色同步回配置——复制/展示/下拉高亮路径读 app.themeColor 而非空/旧配置值。
+ * 仅配置提交路径（startup applyRecipeForConfig）调用——预览（applyRecipe 直调）不落配置。
+ * 值已一致不写（防 onApply 重入死循环：写入→onApply→重应用→值已一致→停）。返回是否发生回写（测试断言）。
+ */
+export function syncThemeColorConfig(recipe: ThemeRecipe): boolean {
+  const effective = getActiveRecipe()?.colorwayId ?? recipe.colorways[0]?.id ?? "";
+  if (!effective) return false;
+  if (getConfigurationValue<string>("app.themeColor") === effective) return false;
+  void setConfigurationValue("app.themeColor", effective, "user").catch(() => {});
+  return true;
+}
+
 /** 当前生效 token 集（合并后，含 :root 壳默认继承）——appearanceMode→custom 播种、混搭预览（06 §2）。
  *  来源 = getComputedStyle 解析：① 最近提交的合并集（appearance + colorway 颜色 + overrides）② 引擎管理 token 全集（壳默认零值）。
  *  权威在引擎（多窗一致，对标 #54 计数权威上移教训），非某窗 DOM 快照。 */
@@ -796,7 +811,7 @@ export function getCurrentTheme(): Theme | null {
 
 /* ── E3f #59d1：强调色归一化——三种路径一条函数 ── */
 
-import { getConfigurationValue } from "../configuration/ConfigurationService";
+import { getConfigurationValue, setConfigurationValue } from "../configuration/ConfigurationService";
 
 /**
  * 获取有效强调色——三种路径归一化：

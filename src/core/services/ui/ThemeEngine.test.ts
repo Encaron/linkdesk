@@ -33,11 +33,14 @@ import {
   getMixProfile,
   mergeMixDomains,
   MIX_FOLLOW_THEME,
+  syncThemeColorConfig,
 } from "./ThemeEngine";
 import type { MixProfile } from "./ThemeEngine";
 import { rollback } from "../../registry/registrationTracker";
 import { ThemeRegistry, parseThemeRecipe } from "../../registry/appearance/ThemeRegistry";
-import { applyRemoteConfigChange, clearConfigurationCache } from "../configuration/ConfigurationService";
+import {
+  applyRemoteConfigChange, clearConfigurationCache, getConfigurationValue,
+} from "../configuration/ConfigurationService";
 import type { Theme } from "./ThemeEngine";
 import type { ThemeRecipe } from "../../types/theme";
 import fs from "node:fs";
@@ -615,6 +618,38 @@ describe("ThemeEngine — applyRecipe / getActiveRecipe / getEffectiveTokens（E
     applyRecipe(RECIPE, "dew", {});
     applyTheme({ name: "Test Light", type: "light", colors: { bg: "#fff" } });
     expect(getActiveRecipe()).toBeNull();
+  });
+
+  // E5.8#70：app.themeColor 回写生效配色——bug 7 复制为空 / #60 F1.2 下拉谎报同源修复
+  it("syncThemeColorConfig — 回写生效配色 id（缺省 colorwayId → 配方首配色）", () => {
+    applyRecipe(RECIPE, undefined, {});
+    expect(getActiveRecipe()?.colorwayId).toBe("dew");
+    expect(syncThemeColorConfig(RECIPE)).toBe(true);
+    expect(getConfigurationValue("app.themeColor")).toBe("dew");
+  });
+
+  it("syncThemeColorConfig — 值已一致不写（幂等，防 onApply 重入死循环）", () => {
+    applyRecipe(RECIPE, "mint", {});
+    syncThemeColorConfig(RECIPE); // 首次写
+    expect(getConfigurationValue("app.themeColor")).toBe("mint");
+    expect(syncThemeColorConfig(RECIPE)).toBe(false); // 二次——值已一致
+    expect(getConfigurationValue("app.themeColor")).toBe("mint");
+  });
+
+  it("syncThemeColorConfig — 失效 storedColor 兜底 → 覆盖旧值为生效配色（F1.2 UI 谎报）", () => {
+    applyRemoteConfigChange("app.themeColor", "stale-old"); // 旧配方配色 id
+    applyRecipe(RECIPE, "stale-old", {}); // resolveColorway 兜底 → colorways[0]
+    expect(getActiveRecipe()?.colorwayId).toBe("dew");
+    expect(syncThemeColorConfig(RECIPE)).toBe(true);
+    expect(getConfigurationValue("app.themeColor")).toBe("dew");
+  });
+
+  it("syncThemeColorConfig — custom 用户有效选择保留（值一致不覆盖）", () => {
+    applyRemoteConfigChange("app.themeColor", "mint");
+    applyRecipe(RECIPE, "mint", {});
+    expect(getActiveRecipe()?.colorwayId).toBe("mint");
+    expect(syncThemeColorConfig(RECIPE)).toBe(false);
+    expect(getConfigurationValue("app.themeColor")).toBe("mint");
   });
 });
 

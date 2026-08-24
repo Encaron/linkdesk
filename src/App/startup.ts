@@ -23,6 +23,7 @@ import {
   getCurrentTheme,
   deriveAppearanceSeeds,
   normalizeThemeValue,
+  syncThemeColorConfig,
 } from "../core/services/ui/ThemeEngine";
 import { ThemeRegistry } from "../core/registry/appearance/ThemeRegistry";
 import type { ThemeRecipe } from "../core/types/theme"; // E5.8#50.19：配方路径应用 helper 的类型标注
@@ -76,7 +77,9 @@ const resolveActiveRecipe = (): ThemeRecipe | undefined => {
 };
 
 /** 配方路径应用——按 themeColorMode/themeColor 解析配色 + 同步 app.themeColor 动态 enum（下拉 = 活动配方 colorways）。
- *  overrides 缺省读用户外观配置（getAppearanceOverrides，applyRecipe 内置）。 */
+ *  overrides 缺省读用户外观配置（getAppearanceOverrides，applyRecipe 内置）。
+ *  E5.8#70：enum 同步后回写生效配色 id——选主题后 app.themeColor 立即显示真实配色非空（bug 7 复制为空 +
+ *  #60 F1.2 下拉谎报同源修复；详见 ThemeEngine.syncThemeColorConfig）。 */
 const applyRecipeForConfig = (recipe: ThemeRecipe): void => {
   const mode = (getConfigurationValue("app.themeColorMode") as string) ?? "followTheme";
   const storedColor = getConfigurationValue<string>("app.themeColor");
@@ -84,6 +87,7 @@ const applyRecipeForConfig = (recipe: ThemeRecipe): void => {
   applyRecipe(recipe, colorwayId);
   applyAccentColor(getEffectiveAccentColor());
   updateConfigurationEnum("app.themeColor", recipe.colorways.map((c) => c.id));
+  syncThemeColorConfig(recipe);
 };
 
 /** 外观覆盖 key 全集——切回 followTheme 删除（覆盖丢弃回配方，08 §7.3.5） */
@@ -246,6 +250,10 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
                 const theme = await loadTheme(value);
                 applyTheme(theme);
                 applyAccentColor(getEffectiveAccentColor());
+                // E5.8#70：flat 主题无配色概念——清 stale app.themeColor（曾写入配方/主题 id →
+                // 读时 enum 校验告警 + 复制/展示旧值）。enum 置空 + 删用户值（含旧配方配色，flat 下无意义）。
+                updateConfigurationEnum("app.themeColor", []);
+                await resetConfigurationValue("app.themeColor", "user");
               }
             },
           },
