@@ -152,6 +152,7 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
 
       // Phase 5：注册核心配置（对标 VS Code 内置 settings）——Settings Editor "通用"分组。
       // E5.8#50.19：app.theme + 5 外观覆盖 key 已迁入「主题」组（第二贡献 pluginId "appearance"，08 §5 决策 D）。
+      // E5.8#79：app.accentMode/accentColor 强调色也迁入「主题」组（accent 本质 = 主题色域颜色覆盖）。
       registerConfiguration(APP_PLUGIN_ID, {
         title: t("通用"),
         properties: {
@@ -173,32 +174,6 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
                 bridge.broadcast("lang:changed", { lang: v, resources });
               }
             },
-          },
-          "app.accentMode": {
-            type: "string",
-            default: "custom",
-            enum: ["custom", "followTheme"],
-            description: t("强调色模式——自定义固定色 / 跟随主题（主题无强调色时用自定义兜底）"),
-            onApply: (v) => {
-              if (v === "custom") {
-                // 读当前 DOM 上实际显示的强调色——切模式前可能跟着主题走，不是 app.accentColor 的旧值
-                const current = document.documentElement.style.getPropertyValue("--accent").trim();
-                if (current) setConfigurationValue("app.accentColor", current, "user");
-              }
-              applyAccentColor(getEffectiveAccentColor());
-            },
-          },
-          "app.accentColor": {
-            type: "string",
-            // E5.8#6.6 hex 豁免：配置项默认值数据（用户可改，非样式硬编码）
-            // eslint-disable-next-line linkdesk/no-hardcoded-hex
-            default: "#0078d4",
-            description: t("自定义强调色（图标栏高亮、开关、焦点边框）"),
-            dependsOn: { key: "app.accentMode", value: "custom" },
-            renderHint: "color",
-            // E3.5 fix: dependsOn 只控制 UI 显隐，不阻止 applyConfiguration 在启动时调用。
-            // accentMode="followTheme" 时，app.accentColor 的 onApply 不应覆盖主题的 accent。
-            onApply: () => applyAccentColor(getEffectiveAccentColor()),
           },
           "app.menuStyle": {
             type: "string",
@@ -280,6 +255,36 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
             optionsFrom: "theme.colorways",
             optionsFromDomain: "colors",
             onApply: () => applyThemeIfReady(),
+          },
+          // E5.8#79：强调色移入主题组——accent 本质 = 主题色域的颜色覆盖（与 glassTint 同类），
+          // 注册归属从「通用」迁至 pluginId "appearance"（设置页主题组下展示，对标用户想法 7）。
+          // key 名不变 → 旧 settings.json 的 app.accentMode/app.accentColor 值仍在读（向后兼容），
+          // getEffectiveAccentColor 读配置按 key 名（非注册组）——功能链路零改动。
+          "app.accentMode": {
+            type: "string",
+            default: "custom",
+            enum: ["custom", "followTheme"],
+            description: t("强调色模式——自定义固定色 / 跟随主题（主题无强调色时用自定义兜底）"),
+            onApply: (v) => {
+              if (v === "custom") {
+                // 读当前 DOM 上实际显示的强调色——切模式前可能跟着主题走，不是 app.accentColor 的旧值
+                const current = document.documentElement.style.getPropertyValue("--accent").trim();
+                if (current) setConfigurationValue("app.accentColor", current, "user");
+              }
+              applyAccentColor(getEffectiveAccentColor());
+            },
+          },
+          "app.accentColor": {
+            type: "string",
+            // E5.8#6.6 hex 豁免：配置项默认值数据（用户可改，非样式硬编码）
+            // eslint-disable-next-line linkdesk/no-hardcoded-hex
+            default: "#0078d4",
+            description: t("自定义强调色（图标栏高亮、开关、焦点边框）"),
+            dependsOn: { key: "app.accentMode", value: "custom" },
+            renderHint: "color",
+            // E3.5 fix: dependsOn 只控制 UI 显隐，不阻止 applyConfiguration 在启动时调用。
+            // accentMode="followTheme" 时，app.accentColor 的 onApply 不应覆盖主题的 accent。
+            onApply: () => applyAccentColor(getEffectiveAccentColor()),
           },
           "app.appearanceMode": {
             type: "string",
