@@ -119,9 +119,10 @@ const seedAppearanceOverrides = (): void => {
   // mix 下生效 radius 来自 mixRadius 来源，拿活动配方当分母会二次缩放暴涨（来源 20px÷活动 8px=scale 2.5→20×2=40px）。
   const themeRadiusPx = getRadiusSourcePx();
   const seeds = deriveAppearanceSeeds(tokens, themeRadiusPx);
-  // E5.8#59（审计#7）：六键一次批量写 + 单次 applier——原 6 连 setConfigurationValue 各触发
+  // E5.8#59（审计#7）：八键一次批量写 + 单次 applier——原 6 连 setConfigurationValue 各触发
   // 一次 applyRecipe 全量重合并 + theme:changed 广播（6× 广播，脱出窗多池放大中间态闪变）。
   // 各覆盖 key onApply 均 applyThemeIfReady 全量读生效态 → 末 key 触发读到完整终态一次广播即收敛。
+  // E5.8#80：+zoneRadius（开）/zoneRadiusScale（×1）——切 custom 视觉状态不变（zone 圆角仍 = 主题基线）。
   setConfigurationValueBatch([
     { key: "app.surfaceRadius", value: seeds.surfaceRadius },
     { key: "app.glassBlur", value: seeds.glassBlur },
@@ -129,6 +130,8 @@ const seedAppearanceOverrides = (): void => {
     { key: "app.glassTint", value: seeds.glassTint },
     { key: "app.backgroundImage", value: seeds.backgroundImage },
     { key: "app.fontFamily", value: seeds.fontFamily },
+    { key: "app.zoneRadius", value: true },
+    { key: "app.zoneRadiusScale", value: 1 },
   ], "user");
 };
 
@@ -359,6 +362,26 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
             // onApply 覆盖面单一写入点 getAppearanceOverrides 读本 key 写 --font-ui
             uiHint: "fontFamily",
             monoOnly: false,
+            dependsOn: { key: "app.appearanceMode", value: "custom" },
+            onApply: () => applyThemeIfReady(),
+          },
+          // E5.8#80：zone 圆角第二通道——app.zoneRadius 开关 + app.zoneRadiusScale 倍数（用户想法 1/2、痛点 2）：
+          //   组件圆角（radius-*）由 app.surfaceRadius 乘算，zone 圆角（surface-radius）由这两键独立控（两轴解耦）。
+          //   消费 = getAppearanceOverrides 读本键 → applyOverrides ①b 通道乘算 / "0px" 开关短路（ThemeEngine.ts）。
+          "app.zoneRadius": {
+            type: "boolean",
+            default: true,
+            description: t("分区圆角开关——关闭后各分区强制直角（0px）"),
+            dependsOn: { key: "app.appearanceMode", value: "custom" },
+            onApply: () => applyThemeIfReady(),
+          },
+          "app.zoneRadiusScale": {
+            type: "number",
+            default: 1,
+            minimum: 0,
+            maximum: 2,
+            description: t("分区圆角倍数——1 主题默认，0 方角，2 双倍圆润"),
+            uiHint: "slider",
             dependsOn: { key: "app.appearanceMode", value: "custom" },
             onApply: () => applyThemeIfReady(),
           },

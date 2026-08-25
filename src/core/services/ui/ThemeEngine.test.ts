@@ -418,6 +418,17 @@ describe("ThemeEngine — registerFallbackThemes", () => {
 
 describe("ThemeEngine — 外观覆盖 getAppearanceOverrides（E5.8#50.10）", () => {
   const RADIUS_KEYS = ["radius-xs", "radius-sm", "radius-md", "radius-lg", "radius-xl", "radius-2xl"];
+  // E5.8#80：带 glass.surface.radius=10 的配方——zone 圆角第二通道测试基准（--surface-radius=10px）
+  const ZONE_RECIPE: ThemeRecipe = {
+    id: "demo-zone-radius",
+    name: "Demo Zone Radius",
+    type: "dark",
+    appearance: {
+      radius: { sm: 6, lg: 12 },
+      glass: { type: "glass", blur: 14, radius: 10 },
+    },
+    colorways: [{ id: "base", name: "Base", colors: { "bg-window": "#101014" } }],
+  };
   const GLASS_VARS = [
     "glass-blur", "glass-opacity", "glass-tint", "bg-image",
   ];
@@ -491,6 +502,63 @@ describe("ThemeEngine — 外观覆盖 getAppearanceOverrides（E5.8#50.10）", 
     for (const key of RADIUS_KEYS) expect(overrides[key]).toBeDefined();
   });
 
+  /* ── E5.8#80 zone 圆角第二通道——app.zoneRadius 开关 + app.zoneRadiusScale 倍数（surface-radius）── */
+
+  it("#80 neutral——surface-radius 覆盖 = 系数 1（开关默认开，写回主题原值幂等）", () => {
+    const overrides = getAppearanceOverrides();
+    expect(overrides["surface-radius"]).toBe("1");
+  });
+
+  it("#80 zoneRadius 关 → surface-radius 覆盖 = \"0px\"（直角短路值）", () => {
+    applyRemoteConfigChange("app.zoneRadius", false);
+    expect(getAppearanceOverrides()["surface-radius"]).toBe("0px");
+  });
+
+  it("#80 zoneRadius 开 + zoneRadiusScale 1.5 → 系数 1.5", () => {
+    applyRemoteConfigChange("app.zoneRadius", true);
+    applyRemoteConfigChange("app.zoneRadiusScale", 1.5);
+    expect(getAppearanceOverrides()["surface-radius"]).toBe("1.5");
+  });
+
+  it("#80 zoneRadiusScale 越界 5 → 系数钳到 2（消费侧 clamp 对齐 #56）", () => {
+    applyRemoteConfigChange("app.zoneRadiusScale", 5);
+    expect(getAppearanceOverrides()["surface-radius"]).toBe("2");
+  });
+
+  it("#80 applyOverrides——surface-radius 系数对当前基准乘算（主题 8px × 2 = 16px）", () => {
+    const tokens = { "surface-radius": "8px" };
+    applyOverrides(tokens, { "surface-radius": "2" });
+    expect(tokens["surface-radius"]).toBe("16px");
+  });
+
+  it("#80 applyOverrides——\"0px\" 短路强制直角（开关关，忽略主题 surface.radius）", () => {
+    const tokens = { "surface-radius": "12px" };
+    applyOverrides(tokens, { "surface-radius": "0px" });
+    expect(tokens["surface-radius"]).toBe("0px");
+  });
+
+  it("#80 applyOverrides——无 surface-radius 覆盖 → 不动该键（② 不落绝对）", () => {
+    const tokens = { "surface-radius": "12px" };
+    applyOverrides(tokens, { "radius-md": "2", "glass-blur": "16px" });
+    expect(tokens["surface-radius"]).toBe("12px");
+  });
+
+  it("#80 applyRecipe——zoneRadiusScale 1.5 对配方 surface.radius 生效（组件 radius-* 不受 zoneRadius 影响）", () => {
+    applyRemoteConfigChange("app.zoneRadiusScale", 1.5);
+    applyRecipe(ZONE_RECIPE); // overrides 缺省 = getAppearanceOverrides（含 surface-radius 系数 1.5）
+    const root = document.documentElement;
+    expect(root.style.getPropertyValue("--surface-radius")).toBe("15px"); // 10×1.5
+    expect(root.style.getPropertyValue("--radius-sm")).toBe("6px"); // 组件圆角不受 zoneRadiusScale（两轴独立）
+  });
+
+  it("#80 applyRecipe——zoneRadius 关 → surface-radius 0px（直角），radius-* 仍主题值", () => {
+    applyRemoteConfigChange("app.zoneRadius", false);
+    applyRecipe(ZONE_RECIPE);
+    const root = document.documentElement;
+    expect(root.style.getPropertyValue("--surface-radius")).toBe("0px");
+    expect(root.style.getPropertyValue("--radius-sm")).toBe("6px");
+  });
+
   it("E5.8#56 审计#2——glassBlur 显式拖到 0（端点，presence）→ glass-blur 覆盖 0px（模糊真关）", () => {
     applyRemoteConfigChange("app.glassBlur", 0);
     expect(getAppearanceOverrides()["glass-blur"]).toBe("0px");
@@ -542,15 +610,18 @@ describe("ThemeEngine — 外观覆盖 getAppearanceOverrides（E5.8#50.10）", 
     expect(document.documentElement.style.getPropertyValue("--glass-blur")).toBe("15px");
   });
 
-  it("E5.8#60 F1.1——APPEARANCE_OVERRIDE_KEYS = 全 6 键含 app.fontFamily（单一来源防回归）", () => {
+  it("E5.8#60 F1.1——APPEARANCE_OVERRIDE_KEYS = 全 8 键含 app.fontFamily（单一来源防回归；E5.8#80 +zone 两键）", () => {
     // 设置层外观覆盖 key 全集——壳命令（startup appearanceMode onApply）与插件 API（theme.resetAppearance）复位共用
     expect([...APPEARANCE_OVERRIDE_KEYS]).toEqual([
       "app.surfaceRadius", "app.glassBlur", "app.glassOpacity",
       "app.glassTint", "app.backgroundImage", "app.fontFamily",
+      "app.zoneRadius", "app.zoneRadiusScale",
     ]);
     // 每键确与 getAppearanceOverrides 读的配置键对齐（写多了 reset 摘不到、写少了残留覆盖）
     expect(APPEARANCE_OVERRIDE_KEYS).toContain("app.fontFamily"); // 插件侧旧表漏此键 → 复位后字体不回基线
     expect(APPEARANCE_OVERRIDE_KEYS).toContain("app.surfaceRadius");
+    expect(APPEARANCE_OVERRIDE_KEYS).toContain("app.zoneRadius");
+    expect(APPEARANCE_OVERRIDE_KEYS).toContain("app.zoneRadiusScale");
   });
 });
 

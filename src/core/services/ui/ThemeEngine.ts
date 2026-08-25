@@ -1024,9 +1024,24 @@ export function applyOverrides(
     }
   }
   if (scaleFactor != null) Object.assign(tokens, applyRadiusScale(scaleFactor, tokens));
+  // ①b E5.8#80：zone 圆角第二通道——surface-radius 对当前 token 基准（主题 surface.radius / 壳默认 0px）乘算；
+  //   "0px" 绝对短路 = app.zoneRadius 关（直角），数字系数 = app.zoneRadiusScale 倍数（getAppearanceOverrides 已 clamp）。
+  const zoneRadiusVal = overrides["surface-radius"];
+  if (zoneRadiusVal !== undefined) {
+    if (zoneRadiusVal === "0px") {
+      tokens["surface-radius"] = "0px";
+    } else {
+      const zoneScale = Number(zoneRadiusVal);
+      if (Number.isFinite(zoneScale)) {
+        const px = parseFloat(tokens["surface-radius"] ?? "0");
+        tokens["surface-radius"] = Number.isFinite(px) ? `${Math.round(px * zoneScale)}px` : "0px";
+      }
+    }
+  }
   // ② 绝对 token 覆盖
   for (const [token, value] of Object.entries(overrides)) {
     if ((RADIUS_SCALE_KEYS as readonly string[]).includes(token)) continue;
+    if (token === "surface-radius") continue; // ①b 已处理，② 不落绝对
     tokens[token] = String(value);
   }
   return tokens;
@@ -1068,13 +1083,15 @@ export function deriveAppearanceSeeds(
   };
 }
 
-/** 设置层外观覆盖配置 key 全集——appearanceMode=custom 播种存这 6 键、reset 摘除这 6 键回主题基线（08 §7.2/§7.3.5）。
+/** 设置层外观覆盖配置 key 全集——appearanceMode=custom 播种存这 8 键、reset 摘除这 8 键回主题基线（08 §7.2/§7.3.5）。
  *  单一来源：getAppearanceOverrides 读同键（glass 两键 presence 门控 / 其余空值不覆盖，见下）。
  *  E5.8#60 F1.1：壳命令（startup appearanceMode onApply）与插件 API（theme.resetAppearance）复位共用本表——
- *  插件侧曾只清 5 键漏 app.fontFamily → 第三方复位外观后字体不回基线。 */
+ *  插件侧曾只清 5 键漏 app.fontFamily → 第三方复位外观后字体不回基线。
+ *  E5.8#80：+app.zoneRadius/app.zoneRadiusScale——zone 圆角第二通道（外观覆盖子节，同随 custom 播种/复位）。 */
 export const APPEARANCE_OVERRIDE_KEYS = [
   "app.surfaceRadius", "app.glassBlur", "app.glassOpacity",
   "app.glassTint", "app.backgroundImage", "app.fontFamily",
+  "app.zoneRadius", "app.zoneRadiusScale",
 ] as const;
 
 /** 读用户外观配置 → 覆盖集（glass/bg 仅偏离 neutral 时；radius 六键恒写 scale 系数——applyOverrides 内乘算）。 */
@@ -1111,6 +1128,16 @@ export function getAppearanceOverrides(): Record<string, string> {
   const scale = rawScale == null || !Number.isFinite(Number(rawScale)) ? 1 : Number(rawScale);
   // radius scale 系数恒写（清残留）——applyOverrides 对当前生效值/壳默认乘算，非预先乘 :root 基准
   for (const key of RADIUS_SCALE_KEYS) overrides[key] = String(scale);
+
+  // E5.8#80：zone 圆角第二通道——app.zoneRadius 开关 + app.zoneRadiusScale 倍数（对 surface-radius 基础值乘算）。
+  // 开关 off = 强制 0px 直角（绝对短路值 "0px"，applyOverrides 区分）；on = 系数恒写（同 surfaceRadius 清残留语义，
+  // 默认 1 = 写回主题 surface.radius 原值，幂等）。消费侧 clamp(0,2) 对齐 #56 对 surfaceRadius 的 clamp。
+  const zoneRadius = getConfigurationValue<boolean>("app.zoneRadius");
+  const rawZoneScale = getConfigurationValue<number>("app.zoneRadiusScale");
+  const zoneScale = rawZoneScale == null || !Number.isFinite(Number(rawZoneScale))
+    ? 1
+    : Math.min(2, Math.max(0, Number(rawZoneScale)));
+  overrides["surface-radius"] = zoneRadius === false ? "0px" : String(zoneScale);
 
   return overrides;
 }
