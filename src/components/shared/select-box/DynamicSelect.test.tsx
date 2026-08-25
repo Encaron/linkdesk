@@ -18,7 +18,7 @@ function getConfigStore(): Map<string, unknown> {
 }
 
 /** 捕获 configuration.onChange 注册的某键回调——模拟运行中配置切换
- *  （app.theme 活动配方 / app.mixMode recipe↔mix（E5.8#82 双语义）——单函数参数化防 jscpd 克隆） */
+ *  （app.theme 活动配方 / app.appearanceMode 跟随主题↔custom（E5.8#82 双语义，#90 外观主开关）——单函数参数化防 jscpd 克隆） */
 function captureConfigChange(key: string): (v: unknown) => void {
   let captured: ((v: unknown) => void) | null = null;
   const lk = window as unknown as {
@@ -189,7 +189,7 @@ describe("DynamicSelect", () => {
 
   /* ── E5.8#82 双语义：optionsFrom "theme.colorways" + domain "colors"（app.themeColor schema 静态声明）── */
 
-  it("#82 recipe 模式——双语义下仍走配色变体（非 mix → colorways 行为）", async () => {
+  it("#90 跟随主题模式——双语义下仍走配色变体（非 custom → colorways 行为）", async () => {
     getConfigStore().set("app.theme", "demo-mint");
     mockListRecipes([MINT, FOREST, SERIF]);
     const { open, dropdownItems } = renderSelect({ optionsFrom: "theme.colorways", domain: "colors" });
@@ -202,9 +202,9 @@ describe("DynamicSelect", () => {
     expect(items[0]).not.toBe("跟随主题"); // 无 sources 置顶项
   });
 
-  it("#82 mix 模式——双语义切 sources+colors 域（每配色一选项 + 跟随主题置顶）", async () => {
+  it("#90 自定义模式——双语义切 sources+colors 域（每配色一选项 + 跟随主题置顶）", async () => {
     getConfigStore().set("app.theme", "demo-mint");
-    getConfigStore().set("app.mixMode", "mix");
+    getConfigStore().set("app.appearanceMode", "custom");
     mockListRecipes([MINT, FOREST, SERIF]);
     const { open, dropdownItems } = renderSelect({ optionsFrom: "theme.colorways", domain: "colors" });
     open();
@@ -217,18 +217,18 @@ describe("DynamicSelect", () => {
     expect(items).not.toContain("Alpha"); // 非 recipe 配色粒度
   });
 
-  it("#82 运行中切 mixMode——recipe → mix 重取 sources（onChange 订阅）", async () => {
+  it("#90 运行中切外观模式——跟随主题 → custom 重取 sources（onChange 订阅）", async () => {
     getConfigStore().set("app.theme", "demo-mint");
-    const triggerMixMode = captureConfigChange("app.mixMode");
+    const triggerAppearanceMode = captureConfigChange("app.appearanceMode");
     mockListRecipes([MINT, FOREST]);
     const { open, dropdownItems } = renderSelect({ optionsFrom: "theme.colorways", domain: "colors" });
     open();
-    await screen.findByText("Alpha"); // recipe 模式配色变体
+    await screen.findByText("Alpha"); // 跟随主题模式配色变体
     expect(dropdownItems()).not.toContain("Demo Mint·Alpha");
 
-    getConfigStore().set("app.mixMode", "mix");
-    triggerMixMode("mix");
-    await screen.findByText("Demo Mint·Alpha"); // 切 mix → sources 粒度
+    getConfigStore().set("app.appearanceMode", "custom");
+    triggerAppearanceMode("custom");
+    await screen.findByText("Demo Mint·Alpha"); // 切 custom → sources 粒度
     expect(dropdownItems()[0]).toBe("跟随主题");
   });
 

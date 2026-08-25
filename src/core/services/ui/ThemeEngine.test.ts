@@ -36,6 +36,7 @@ import {
   applyAccentColor,
   deriveRadiusAbsoluteMigration,
   deriveGlassOpacityAbsoluteMigration,
+  resolveMergedAppearanceMode,
   normalizeThemeValue,
   getMixProfile,
   mergeMixDomains,
@@ -735,9 +736,9 @@ describe("ThemeEngine — 外观覆盖 getAppearanceOverrides（E5.8#50.10）", 
     for (const key of FONT_TONE_TEXT_KEYS) expect(overrides[key]).toBeUndefined();
   });
 
-  it("E5.8#91 fontTone 与 mix 共存——mixMode=mix 时显式档照常覆盖（fontTone 非 mix 来源键，无竞争）", () => {
+  it("E5.8#91 fontTone 与 mix 共存——appearanceMode=custom 时显式档照常覆盖（fontTone 非 mix 来源键，无竞争）", () => {
     applyRemoteConfigChange("app.fontTone", "dark");
-    applyRemoteConfigChange("app.mixMode", "mix");
+    applyRemoteConfigChange("app.appearanceMode", "custom");
     const overrides = getAppearanceOverrides();
     expect(overrides["text-primary"]).toBe(FONT_TONE_DARK_TEXT[0]);
     expect(overrides["text-secondary"]).toBe(FONT_TONE_DARK_TEXT[1]);
@@ -1327,6 +1328,27 @@ describe("ThemeEngine — deriveGlassOpacityAbsoluteMigration 旧 wash 语义→
   });
 });
 
+describe("ThemeEngine — resolveMergedAppearanceMode 旧三枚举→单一外观轴（E5.8#90，schemaMigrations v4）", () => {
+  it("任一旧枚举表达自定义意图 → custom（appearanceMode=custom / mixMode=mix / accentMode=custom 各自成立）", () => {
+    expect(resolveMergedAppearanceMode({ appearanceMode: "custom" })).toBe("custom");
+    expect(resolveMergedAppearanceMode({ mixMode: "mix" })).toBe("custom");
+    expect(resolveMergedAppearanceMode({ accentMode: "custom" })).toBe("custom");
+    // 多个旧枚举同时自定义——同收敛 custom
+    expect(resolveMergedAppearanceMode({ appearanceMode: "custom", mixMode: "mix", accentMode: "custom" })).toBe("custom");
+  });
+
+  it("旧枚举全缺省/默认值（无自定义意图）→ followTheme", () => {
+    expect(resolveMergedAppearanceMode({})).toBe("followTheme");
+    expect(resolveMergedAppearanceMode({ appearanceMode: "followTheme", mixMode: "followTheme", accentMode: "followTheme" })).toBe("followTheme");
+    expect(resolveMergedAppearanceMode({ appearanceMode: "followTheme" })).toBe("followTheme");
+  });
+
+  it("appearanceMode 已在新轴（已迁值）→ 重跑幂等零变化", () => {
+    expect(resolveMergedAppearanceMode({ appearanceMode: "custom", mixMode: "mix" })).toBe("custom");
+    expect(resolveMergedAppearanceMode({ appearanceMode: "followTheme", mixMode: "mix" })).toBe("custom"); // 曾开 mix 但已迁 → 仍 custom
+  });
+});
+
 describe("ThemeEngine — 混搭合并（E5.8#50.26，10 §1/§3 每域各自取来源）", () => {
   // 虚构 fixture（硬约束 21）：demo-mix 插件 + demo-recipe/demo-radius 两配方（RECIPE/RECIPE_ASSET/GLASS_VARS = 模块级共享）
   const PLUGIN = "demo-mix";
@@ -1398,7 +1420,7 @@ describe("ThemeEngine — 混搭合并（E5.8#50.26，10 §1/§3 每域各自取
   });
 
   it("applyRecipe mix — 配色跟颜色域来源；圆角跟圆角域；明暗/activeRecipe 跟基础配方", () => {
-    applyRemoteConfigChange("app.mixMode", "mix");
+    applyRemoteConfigChange("app.appearanceMode", "custom");
     applyRemoteConfigChange("app.themeColor", "mint"); // E5.8#82：colors 域来源 = app.themeColor
     applyRemoteConfigChange("app.mixRadius", "demo-radius");
     applyRecipe(RECIPE, "dew", {});
@@ -1426,7 +1448,7 @@ describe("ThemeEngine — 混搭合并（E5.8#50.26，10 §1/§3 每域各自取
     };
     ThemeRegistry.registerRecipe(GLASS_SRC, PLUGIN);
     ThemeRegistry.registerRecipe(BG_SRC, PLUGIN);
-    applyRemoteConfigChange("app.mixMode", "mix");
+    applyRemoteConfigChange("app.appearanceMode", "custom");
     applyRemoteConfigChange("app.mixGlass", "demo-glass");
     applyRemoteConfigChange("app.mixBackground", "demo-bg");
     applyRecipe(RECIPE, "dew", {});
@@ -1445,7 +1467,7 @@ describe("ThemeEngine — 混搭合并（E5.8#50.26，10 §1/§3 每域各自取
       colorways: [{ id: "c", name: "C", colors: {} }],
     };
     ThemeRegistry.registerRecipe(NO_GLASS, PLUGIN);
-    applyRemoteConfigChange("app.mixMode", "mix");
+    applyRemoteConfigChange("app.appearanceMode", "custom");
     applyRemoteConfigChange("app.mixGlass", "demo-noglass");
     applyRecipe(RECIPE, "dew", {});
     expect(getCurrentTheme()?.surface?.blur).toBe(14); // 来源缺 glass 域 → 基础配方 RECIPE 兜底
@@ -1453,7 +1475,7 @@ describe("ThemeEngine — 混搭合并（E5.8#50.26，10 §1/§3 每域各自取
 
   it("applyRecipe mix — mixFont 资产字体来源 → 族名写 --font-ui + @font-face 落 DOM", () => {
     ThemeRegistry.registerRecipe(RECIPE_ASSET, PLUGIN);
-    applyRemoteConfigChange("app.mixMode", "mix");
+    applyRemoteConfigChange("app.appearanceMode", "custom");
     applyRemoteConfigChange("app.mixFont", "demo-font-recipe");
     applyRecipe(RECIPE, "dew", {});
     const root = document.documentElement;
@@ -1469,7 +1491,7 @@ describe("ThemeEngine — 混搭合并（E5.8#50.26，10 §1/§3 每域各自取
       colorways: [{ id: "c", name: "C", colors: {} }],
     };
     ThemeRegistry.registerRecipe(ZONES, PLUGIN);
-    applyRemoteConfigChange("app.mixMode", "mix");
+    applyRemoteConfigChange("app.appearanceMode", "custom");
     applyRemoteConfigChange("app.mixBackground", "demo-zones");
     // mixSurface 缺省 followTheme → 基础配方（RECIPE 无 texture）——修复前 surface 域 SURFACE_ZERO 写 zones:0 吞掉切片
     const profile = getMixProfile();
@@ -1524,7 +1546,7 @@ describe("ThemeEngine — 混搭合并（E5.8#50.26，10 §1/§3 每域各自取
 
   it("E5.8#61 审计#1——isMixSourceOwner：mix 域配置引用其配方/配色 → true；引用他人/未引用 → false", () => {
     // E5.8#82：colors 域来源只在 mix 模式成立（recipe 模式下 themeColor 是真配色 id 非混搭来源）——先置 mix
-    applyRemoteConfigChange("app.mixMode", "mix");
+    applyRemoteConfigChange("app.appearanceMode", "custom");
     // 初始无 mix 配置（beforeEach 未设 app.mix*）→ 全 followTheme → false
     expect(isMixSourceOwner(PLUGIN)).toBe(false);
     // 颜色域 = 配色粒度：RECIPE 的 mint 配色归 demo-mix → true（E5.8#82 colors 域来源 = app.themeColor）

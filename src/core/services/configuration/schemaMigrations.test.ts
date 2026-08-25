@@ -199,4 +199,83 @@ describe("schemaMigrations — 版本编排（E5.8#85 补课）", () => {
     expect(inspectConfiguration("app.glassOpacity").userValue).toBeUndefined(); // 零变更——跟随新 schema 默认 0.5
     expect(getConfigSchemaVersion()).toBe(3);
   });
+
+  it("E5.8#90 deleteMany——收集删除键在 batch 写入前批复位（去重）+ 版本提升", async () => {
+    // 预置废弃键（未注册——raw 直写 store，_validateEnum 对未注册键直通）
+    await setConfigurationValueBatch([{ key: "app.staleA", value: "x" }, { key: "app.staleB", value: 1 }]);
+    expect(getConfigurationValue("app.staleA")).toBe("x");
+
+    registerConfigMigration({
+      version: 2,
+      name: "delete-stale-keys",
+      migrate: async ({ setMany, deleteMany }) => {
+        setMany({ "app.surfaceRadius": 7 });
+        deleteMany(["app.staleA", "app.staleB", "app.staleA"]); // 重复键去重
+      },
+    });
+
+    expect(await runPendingConfigMigrations()).toBe(true);
+    expect(getConfigurationValue("app.surfaceRadius")).toBe(7); // 写入生效
+    expect(getConfigurationValue("app.staleA")).toBeUndefined(); // 删除生效（未注册残留直通清理）
+    expect(getConfigurationValue("app.staleB")).toBeUndefined();
+    expect(getConfigSchemaVersion()).toBe(2);
+  });
+
+  it("E5.8#90 deleteMany 失败语义（原子）——删除写盘失败 → 不提升版本（下次启动重试；内存键已删 → 重跑空操作幂等）", async () => {
+    await setConfigurationValueBatch([{ key: "app.staleA", value: "x" }]);
+    // 让下一次 StorageService.write（迁移的删除持久化）拒绝——模拟磁盘故障
+    const { write } = await import("./StorageService");
+    vi.mocked(write).mockRejectedValueOnce(new Error("fs fail"));
+
+    registerConfigMigration({
+      version: 2,
+      name: "delete-stale-keys",
+      migrate: async ({ deleteMany }) => { deleteMany(["app.staleA"]); },
+    });
+
+    expect(await runPendingConfigMigrations()).toBe(false); // 删除失败 → 原子中止
+    expect(getConfigSchemaVersion()).toBe(1); // 版本不提升——下次启动全量重试
+  });
+
+  // E5.8#90 v4 迁移 replica——编排链路验证（公式 = resolveMergedAppearanceMode，ThemeEngine.test 直测）
+  function registerMergeAppearanceMigration(): void {
+    registerConfigMigration({
+      version: 2,
+      name: "merge-appearance-mode-axis",
+      migrate: async ({ setMany, deleteMany }) => {
+        const appearanceMode = inspectConfiguration<string>("app.appearanceMode").userValue;
+        const mixMode = inspectConfiguration<string>("app.mixMode").userValue;
+        const accentMode = inspectConfiguration<string>("app.accentMode").userValue;
+        const newMode = appearanceMode === "custom" || mixMode === "mix" || accentMode === "custom"
+          ? "custom" : "followTheme";
+        if (appearanceMode !== undefined) {
+          if (appearanceMode !== newMode) setMany({ "app.appearanceMode": newMode });
+        } else if (newMode === "custom") {
+          setMany({ "app.appearanceMode": newMode });
+        }
+        deleteMany(["app.mixMode", "app.accentMode"]);
+      },
+    });
+  }
+
+  it("E5.8#90 v4 外观合并迁移——旧 mixMode=mix → appearanceMode=custom（升格）+ 删两废弃键 + 版本升", async () => {
+    // 旧 settings.json 用户曾开混搭：mixMode=mix、accentMode/appearanceMode 未写（新轴从未存在）
+    await setConfigurationValueBatch([{ key: "app.mixMode", value: "mix" }]);
+    registerMergeAppearanceMigration();
+
+    expect(await runPendingConfigMigrations()).toBe(true);
+    expect(getConfigurationValue("app.appearanceMode")).toBe("custom"); // mixMode=mix 升格自定义
+    expect(getConfigurationValue("app.mixMode")).toBeUndefined(); // 废弃键删除
+    expect(getConfigurationValue("app.accentMode")).toBeUndefined();
+    expect(getConfigSchemaVersion()).toBe(2);
+  });
+
+  it("E5.8#90 v4 外观合并迁移——旧值全默认（无自定义意图）→ appearanceMode 零写（schema 默认 followTheme）+ 删两键", async () => {
+    // 旧 settings.json 干净：mixMode/accentMode 未显式写（缺省）——无自定义意图
+    registerMergeAppearanceMigration();
+
+    expect(await runPendingConfigMigrations()).toBe(true);
+    expect(inspectConfiguration("app.appearanceMode").userValue).toBeUndefined(); // 零变更——不写
+    expect(getConfigSchemaVersion()).toBe(2);
+  });
 });

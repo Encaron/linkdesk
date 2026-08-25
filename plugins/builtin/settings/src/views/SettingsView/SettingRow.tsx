@@ -29,6 +29,7 @@ function SettingRow({
   onChange,
   userOverrides,
   baselineSeeds,
+  description,
 }: {
   configKey: string;
   prop: ConfigProperty | undefined;
@@ -37,6 +38,8 @@ function SettingRow({
   userOverrides: Record<string, unknown>;
   /** E5.8#88：主题/混搭基准种子集（theme.getBaselineSeeds）——「已修改」徽标 value-vs-baseline 判定基准 */
   baselineSeeds: Record<string, unknown>;
+  /** E5.8#90 D5：动态描述覆盖——外观模式等运行时语义（如 themeColor 配色区/域来源双语境）覆盖 schema 静态描述 */
+  description?: string;
 }) {
   const { t } = useTranslation();
   const gearRef = useRef<HTMLButtonElement>(null);
@@ -48,15 +51,16 @@ function SettingRow({
   const currentValue = useConfigurationValueIpc(configKey);
   const depValue = useConfigurationValueIpc(prop?.dependsOn?.key ?? "");
   // E5.8#87：来源徽标——sourceKey 声明槽才派生（appearanceMode 覆盖 9 键；第三方键零侵入）。
-  // mixMode + 域来源值走 IPC 订阅；无 sourceKey 时空 key 退化为 depValue 同款无订阅污染。
-  const mixMode = useConfigurationValueIpc<string>("app.mixMode");
+  // E5.8#90：域来源生效门控读外观主开关 app.appearanceMode（app.mixMode 已删）+ 域来源值走 IPC 订阅；
+  // 无 sourceKey 时空 key 退化为 depValue 同款无订阅污染。
+  const mode = useConfigurationValueIpc<string>("app.appearanceMode");
   const sourceValue = useConfigurationValueIpc(prop?.sourceKey ?? "");
   const badge = prop?.sourceKey
     ? deriveSourceBadge({
         sourceKey: prop.sourceKey,
         userValue: userOverrides[configKey],
         baseline: baselineSeeds[configKey],
-        mixMode,
+        mode,
         sourceValue,
       })
     : null;
@@ -119,7 +123,7 @@ function SettingRow({
             </span>
           )}
         </div>
-        <span className="settings-row-desc">{t(prop.description ?? "")}</span>
+        <span className="settings-row-desc">{t(description ?? prop.description ?? "")}</span>
       </div>
       <div className="settings-row-control">
         {renderControl(prop, currentValue, handleChange, t, (e) => {

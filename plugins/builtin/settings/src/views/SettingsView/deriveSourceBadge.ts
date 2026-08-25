@@ -10,7 +10,8 @@
  *    - 值空 "" = 用户「清除」= 跟随主题 → 🎨（A6 痛点核心：清除后一眼可见回主题）；
  *    - 值 === 主题/混搭基准种子（播种态 / 恰与主题同值——E5.8#88：进 custom 播种写 9 键 ≠ 用户改过）→ 🎨；
  *    - 值非空且偏离基准（含 __none__ 显式无） = 真实用户值 → ✏️。
- * 3. 无用户覆盖：mixMode=mix 且 本键所属域来源 ≠ "followTheme"（混搭来源生效）→ 🔀；否则 🎨 主题。
+ * 3. 无用户覆盖：appearanceMode=custom 且 本键所属域来源 ≠ "followTheme"（域来源生效）→ 🔀；否则 🎨 主题。
+ *    E5.8#90：app.mixMode 删——域来源生效门控改读外观主开关 appearanceMode=custom。
  */
 
 export type SourceBadge = "theme" | "user" | "mix";
@@ -32,12 +33,12 @@ export function deriveSourceBadge(input: {
   userValue?: unknown;
   /** E5.8#88：本键主题/混搭基准种子值（theme.getBaselineSeeds）——播种值/恰与主题同值判「未修改」 */
   baseline?: unknown;
-  /** app.mixMode 当前值（"recipe" / "mix"） */
-  mixMode?: unknown;
+  /** E5.8#90：app.appearanceMode 当前值（"followTheme" / "custom"）——域来源生效门控 */
+  mode?: unknown;
   /** sourceKey 指向的混搭来源键当前值（如 app.mixRadius） */
   sourceValue?: unknown;
 }): SourceBadge | null {
-  const { sourceKey, userValue, baseline, mixMode, sourceValue } = input;
+  const { sourceKey, userValue, baseline, mode, sourceValue } = input;
   if (!sourceKey) return null;
 
   if (userValue !== undefined) {
@@ -47,7 +48,7 @@ export function deriveSourceBadge(input: {
     return "user";
   }
 
-  if (mixMode === "mix" && sourceValue !== undefined && sourceValue !== MIX_FOLLOW_THEME_SENTINEL) {
+  if (mode === "custom" && sourceValue !== undefined && sourceValue !== MIX_FOLLOW_THEME_SENTINEL) {
     return "mix";
   }
   return "theme";

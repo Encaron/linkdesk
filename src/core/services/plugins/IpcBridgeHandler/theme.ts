@@ -8,8 +8,8 @@
  */
 
 import { ThemeRegistry } from "../../../registry/appearance/ThemeRegistry";
-import { recipeDomains, getActiveRecipe, getEffectiveTokens, normalizeThemeValue, deriveAppearanceSeedMap, getThemeBaseTokens } from "../../ui/ThemeEngine";
-import { getConfigurationValue, setConfigurationValue } from "../../configuration/ConfigurationService";
+import { recipeDomains, getActiveRecipe, getEffectiveTokens, normalizeThemeValue, deriveAppearanceSeedMap, getThemeBaseTokens, MIX_SOURCE_KEYS } from "../../ui/ThemeEngine";
+import { getConfigurationValue, setConfigurationValue, resetConfigurationValueBatch } from "../../configuration/ConfigurationService";
 import type { RecipeMeta, ColorwayMeta } from "../../../api/linkdesk-api/types";
 import type { ThemeRecipe } from "../../../types/theme";
 
@@ -67,14 +67,14 @@ export async function handleThemeMethod(method: string, args: unknown[]): Promis
     }
     case "theme.resetAppearance":
       // E5.8#88 C3 复位对称——对齐壳命令（settingsCommands theme.resetAppearance）：app.appearanceMode→followTheme
-      // 单一写入点，onApply（startup）级联 resetConfigurationValueBatch(APPEARANCE_OVERRIDE_KEYS) 清 9 键。
+      // 单一写入点，onApply（startup）级联清 9 覆盖 + 6 域来源 + 强调色回主题基线（E5.8#90 合并）。
       // 原来直接批量复位键却留 appearanceMode=custom——不对称：逐键清空后壳 UI 仍判「custom 覆盖中」，徽标/播种态脱节。
       await setConfigurationValue("app.appearanceMode", "followTheme", "user");
       break;
     case "theme.resetMix":
-      // E5.8#88 C3 复位对称——对齐壳命令（settingsCommands theme.resetMix）：app.mixMode→recipe
-      // 单一写入点，onApply（startup）级联删 6 来源 key 回跟随主题。
-      await setConfigurationValue("app.mixMode", "recipe", "user");
+      // E5.8#90 复位对称——对齐壳命令（settingsCommands theme.resetMix）：批复位 6 来源键回跟随主题
+      // （保持自定义模式；域来源 onApply 重合并回主题基线）。app.mixMode 键已删（三枚举归一外观主开关）。
+      await resetConfigurationValueBatch(MIX_SOURCE_KEYS, "user");
       break;
     case "theme.getBaselineSeeds":
       // E5.8#88：外观覆盖键 → 主题/混搭基准种子值全集（设置页「已修改」徽标基准；无活动配方 = 基准不可算 → null）。

@@ -95,8 +95,8 @@ describe("revertIfCurrent——卸载当前贡献时自动回退", () => {
     );
     const { setConfigurationValue: setCfg } = await import("../core/services/configuration/ConfigurationService");
     await setCfg("app.theme", "builtin-dark", "user");
-    // E5.8#82：isMixSourceOwner 门控——colors 域来源只在 mix 模式成立（recipe 模式下 themeColor 是真配色 id）
-    await setCfg("app.mixMode", "mix", "user");
+    // E5.8#82+#90：isMixSourceOwner 门控——colors 域来源只在 appearanceMode=custom 成立（followTheme 下 themeColor 是真配色 id）
+    await setCfg("app.appearanceMode", "custom", "user");
     await setCfg("app.themeColor", "mix-cw", "user");
     vi.mocked(setCfg).mockClear(); // 清掉 setup 写入——只断言 revert/reapply 自己的调用
 
@@ -112,7 +112,7 @@ describe("revertIfCurrent——卸载当前贡献时自动回退", () => {
     expect(setCfg).toHaveBeenCalledWith("app.theme", "builtin-dark", "user");
     // 清理 store——防泄漏到后续用例
     await setCfg("app.themeColor", "followTheme", "user");
-    await setCfg("app.mixMode", "recipe", "user");
+    await setCfg("app.appearanceMode", "followTheme", "user");
   });
 
   it("E5.8#61 审计#1——revertThemeIfCurrent：混搭来源是其他插件→返回 false 不触发重应用", async () => {
@@ -127,8 +127,8 @@ describe("revertIfCurrent——卸载当前贡献时自动回退", () => {
     );
     const { setConfigurationValue: setCfg } = await import("../core/services/configuration/ConfigurationService");
     await setCfg("app.theme", "builtin-dark", "user");
-    // E5.8#82：同样置 mix 模式——验证非本插件配色归属不会误判为混搭来源
-    await setCfg("app.mixMode", "mix", "user");
+    // E5.8#82+#90：同样置 appearanceMode=custom——验证非本插件配色归属不会误判为混搭来源
+    await setCfg("app.appearanceMode", "custom", "user");
     await setCfg("app.themeColor", "other-cw", "user");
     vi.mocked(setCfg).mockClear();
 
@@ -137,7 +137,7 @@ describe("revertIfCurrent——卸载当前贡献时自动回退", () => {
     expect(result).toBe(false);
     expect(setCfg).not.toHaveBeenCalled();
     await setCfg("app.themeColor", "followTheme", "user");
-    await setCfg("app.mixMode", "recipe", "user");
+    await setCfg("app.appearanceMode", "followTheme", "user");
   });
 
   /* ── 2. 语言 revert ── */

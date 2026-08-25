@@ -6,7 +6,8 @@
 import { registerCommand } from "../../registry/commands/CommandRegistry";
 import { registerMenuItems, MENU_SLOTS } from "../../registry/commands/MenuRegistry";
 import { factorySlots } from "../../services/bootstrap/FactorySlots";
-import { setConfigurationValue } from "../../services/configuration/ConfigurationService"; // E5.8#50.24：复位命令——app.appearanceMode/mixMode 单一写入点
+import { setConfigurationValue, resetConfigurationValueBatch } from "../../services/configuration/ConfigurationService"; // E5.8#50.24：复位命令单一写入点
+import { MIX_SOURCE_KEYS } from "../../services/ui/ThemeEngine"; // E5.8#90：混搭来源 key 全集——theme.resetMix 批复位用（单一来源）
 import { getCallbacks } from "../infra/CoreCallbacks";
 // E5.5#7-p15：CUSTOM_EVENTS.SHOW_THEME_BROWSER / SHOW_LANGUAGE_PICKER 不再使用——走 QuickPickService
 import { openKeybindingsSettings } from "../../registry/commands/KeybindingRegistry";
@@ -50,7 +51,7 @@ export function registerSettingsCommands(): void {
       },
     },
     {
-      // E5.8#50.24：复位外观覆盖——app.appearanceMode→followTheme（onApply 删 6 覆盖 key 回配方默认，08 §7.3.5 单一写入点）
+      // E5.8#50.24：复位外观——app.appearanceMode→followTheme（onApply 级联清 9 覆盖 + 6 域来源 + 强调色回配方，08 §7.3.5 单一写入点）
       id: "theme.resetAppearance",
       title: "外观：复位外观覆盖…",
       handler: async () => {
@@ -58,11 +59,11 @@ export function registerSettingsCommands(): void {
       },
     },
     {
-      // E5.8#50.24：复位混搭——app.mixMode→recipe（onApply else 分支删 6 来源 key 回跟随主题，startup.ts 同构于外观复位）
+      // E5.8#90：复位混搭——批复位 6 来源键回跟随主题（保持自定义模式；域来源 onApply 重合并回主题基线，startup.ts 单一写入点）
       id: "theme.resetMix",
       title: "混搭：复位为整体配方…",
       handler: async () => {
-        await setConfigurationValue("app.mixMode", "recipe", "user");
+        await resetConfigurationValueBatch(MIX_SOURCE_KEYS, "user");
       },
     },
     {

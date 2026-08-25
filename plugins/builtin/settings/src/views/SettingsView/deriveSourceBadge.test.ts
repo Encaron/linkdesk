@@ -2,7 +2,7 @@
  * E5.8#87+#88：来源徽标派生纯函数单测。
  * 派生规则（14-档案 §六 #87 + #88）：无 sourceKey → null；有覆盖且值空 → 🎨 主题；
  * 有覆盖且值 === 主题/混搭基准种子（播种态/恰与主题同值）→ 🎨 主题；值非空且偏离基准（含 __none__）→ ✏️ 用户；
- * 无覆盖 + mixMode=mix 且域来源 ≠ followTheme → 🔀 混搭；否则 🎨 主题。
+ * 无覆盖 + appearanceMode=custom 且域来源 ≠ followTheme → 🔀 混搭；否则 🎨 主题。
  */
 
 import { describe, it, expect } from "vitest";
@@ -44,25 +44,25 @@ describe("deriveSourceBadge", () => {
     expect(deriveSourceBadge({ sourceKey: "app.mixBackground", userValue: "img.jpg" })).toBe("user");
   });
 
-  it("无覆盖 + mixMode=mix 且域来源生效（≠ followTheme）→ 🔀 混搭", () => {
+  it("无覆盖 + appearanceMode=custom 且域来源生效（≠ followTheme）→ 🔀 混搭", () => {
     expect(
-      deriveSourceBadge({ sourceKey: "app.mixRadius", mixMode: "mix", sourceValue: "aurora" }),
+      deriveSourceBadge({ sourceKey: "app.mixRadius", mode: "custom", sourceValue: "aurora" }),
     ).toBe("mix");
   });
 
-  it("无覆盖 + mixMode=mix 但域来源 = followTheme（跟随整体配方）→ 🎨 主题", () => {
+  it("无覆盖 + appearanceMode=custom 但域来源 = followTheme（跟随整体配方）→ 🎨 主题", () => {
     expect(
-      deriveSourceBadge({ sourceKey: "app.mixRadius", mixMode: "mix", sourceValue: MIX_FOLLOW_THEME_SENTINEL }),
+      deriveSourceBadge({ sourceKey: "app.mixRadius", mode: "custom", sourceValue: MIX_FOLLOW_THEME_SENTINEL }),
     ).toBe("theme");
   });
 
-  it("无覆盖 + mixMode=recipe（未开混搭）→ 🎨 主题", () => {
+  it("无覆盖 + appearanceMode=followTheme（未自定义）→ 🎨 主题", () => {
     expect(
-      deriveSourceBadge({ sourceKey: "app.mixRadius", mixMode: "recipe", sourceValue: "aurora" }),
+      deriveSourceBadge({ sourceKey: "app.mixRadius", mode: "followTheme", sourceValue: "aurora" }),
     ).toBe("theme");
   });
 
-  it("无覆盖 + mixMode 未定义（读空）→ 🎨 主题", () => {
+  it("无覆盖 + appearanceMode 未定义（读空）→ 🎨 主题", () => {
     expect(deriveSourceBadge({ sourceKey: "app.mixGlass" })).toBe("theme");
   });
 });

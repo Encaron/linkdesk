@@ -179,9 +179,10 @@ const MANAGED_TOKEN_KEYS: string[] = [
 /** 混搭来源「跟随主题」哨兵值——与 app.mix* 默认值对齐（10 §1/§3 定稿） */
 export const MIX_FOLLOW_THEME = "followTheme";
 
-/** 混搭域 → 来源配置 key（与 startup.ts MIX_SOURCE_KEYS 同源）——getMixProfile 读配置。
+/** 混搭域 → 来源配置 key——getMixProfile 读配置（单真源，startup.ts/settings 命令 import 本表）。
  *  E5.8#82：colors 域来源并入 app.themeColor（app.mixColor 删除）——六域来源 key 对称；
- *  recipe 模式下 themeColor 是配方内配色变体 id，仅 mix 模式作为 colors 域来源被本表消费。 */
+ *  recipe 模式下 themeColor 是配方内配色变体 id，仅 mix 模式作为 colors 域来源被本表消费。
+ *  E5.8#90：外观模型合并——startup.ts 原本地 MIX_SOURCE_KEYS 常量改 import 本表（单一来源）。 */
 const MIX_DOMAIN_KEYS: Record<ThemeDomain, string> = {
   colors: "app.themeColor",
   font: "app.mixFont",
@@ -190,6 +191,9 @@ const MIX_DOMAIN_KEYS: Record<ThemeDomain, string> = {
   background: "app.mixBackground",
   surface: "app.mixSurface",
 };
+
+/** E5.8#90：混搭来源配置 key 全集——外观复位/重置命令批量复位用（theme.resetMix、appearanceMode→followTheme 级联） */
+export const MIX_SOURCE_KEYS: readonly string[] = Object.values(MIX_DOMAIN_KEYS);
 
 /** 混搭域应用顺序——颜色→字体→圆角→玻璃→背景→表面（10 §2 mockup 行序；碰撞后者覆盖） */
 const MIX_DOMAIN_ORDER: ThemeDomain[] = ["colors", "font", "radius", "glass", "background", "surface"];
@@ -435,8 +439,9 @@ export function getMixProfile(): MixProfile {
  */
 export function isMixSourceOwner(pluginId: string): boolean {
   // E5.8#82：colors 域来源并入 app.themeColor——recipe 模式下 themeColor 是真配色 id（非混搭来源），
-  // 不加 mixMode 门控会误判「当前主题的配色归属插件」为混搭来源（卸载重应用误触发）。混搭来源只存在于 mix 模式。
-  if (getConfigurationValue<string>("app.mixMode") !== "mix") return false;
+  // 不加门控会误判「当前主题的配色归属插件」为混搭来源（卸载重应用误触发）。混搭来源只存在于自定义模式。
+  // E5.8#90：外观模型合并——app.mixMode 删，改读外观主开关 appearanceMode=custom。
+  if (getConfigurationValue<string>("app.appearanceMode") !== "custom") return false;
   const profile = getMixProfile();
   for (const [domain, raw] of Object.entries(profile)) {
     const value = raw == null ? "" : String(raw);
@@ -617,8 +622,9 @@ export function applyRecipe(
   overrides?: Record<string, string | number>
 ): void {
   const colorway = resolveColorway(recipe, colorwayId);
-  // E5.8#50.26：mixMode=mix → 混搭合并（每域各自取来源）；否则单配方路径（零回归）。
-  const isMix = getConfigurationValue<string>("app.mixMode") === "mix";
+  // E5.8#50.26：自定义模式 → 混搭合并（每域各自取来源）；否则单配方路径（零回归）。
+  // E5.8#90：外观模型合并——app.mixMode 删，外观主开关 appearanceMode=custom 即「按域混搭」。
+  const isMix = getConfigurationValue<string>("app.appearanceMode") === "custom";
   let effective: Record<string, string>;
   let fontFaces: FontFaceSpec[];
   let domains: ThemeDomain[];
@@ -803,8 +809,9 @@ export function getActiveRecipe(): { recipeId: string; colorwayId: string } | nu
  * 值已一致不写（防 onApply 重入死循环：写入→onApply→重应用→值已一致→停）。返回是否发生回写（测试断言）。
  */
 export function syncThemeColorConfig(recipe: ThemeRecipe): boolean {
-  // E5.8#82：mix 模式下 app.themeColor 是 colors 域来源（配方 id / "followTheme"），回写配色 id 会踩掉来源选择
-  if (getConfigurationValue<string>("app.mixMode") === "mix") return false;
+  // E5.8#82：自定义模式下 app.themeColor 是 colors 域来源（配方 id / "followTheme"），回写配色 id 会踩掉来源选择
+  // E5.8#90：外观模型合并——app.mixMode 删，改读外观主开关 appearanceMode=custom。
+  if (getConfigurationValue<string>("app.appearanceMode") === "custom") return false;
   const effective = getActiveRecipe()?.colorwayId ?? recipe.colorways[0]?.id ?? "";
   if (!effective) return false;
   if (getConfigurationValue<string>("app.themeColor") === effective) return false;
@@ -929,9 +936,13 @@ import { getConfigurationValue, hasConfigurationValue, setConfigurationValue } f
  *
  * 所有需要强调色的地方（onApply app.theme / ThemeBrowser 预览）都走此函数——
  * 不要各自手写 if/else 判断。
+ * E5.8#90：外观模型合并——app.accentMode 删，读外观主开关 appearanceMode。
+ *  ⚠️ 陷阱：getConfigurationValue 对未注册键（_validateEnum 直通）返回原始值，且缺省回退
+ *  getSystemFallback（仅 app.theme/language 硬编码）→ 未写键返回 undefined。若沿用旧
+ *  `?? "custom"`（旧 accentMode 默认）→ 永远 custom → 跟随主题被打破。须 `?? "followTheme"`。
  */
 export function getEffectiveAccentColor(): string {
-  const mode = (getConfigurationValue("app.accentMode") as string) ?? "custom";
+  const mode = (getConfigurationValue("app.appearanceMode") as string) ?? "followTheme";
   // E5.8#6.6 hex 豁免：配置读取兜底默认值数据（与 startup.ts 默认值同源）
   // eslint-disable-next-line linkdesk/no-hardcoded-hex
   const customColor = (getConfigurationValue("app.accentColor") as string) ?? "#0078d4";
@@ -1121,7 +1132,8 @@ export function getThemeBaseTokens(): Record<string, string> {
   const recipe = ThemeRegistry.getRecipe(active.recipeId);
   if (!recipe) return {};
   const colorway = resolveColorway(recipe, active.colorwayId || undefined);
-  if (getConfigurationValue<string>("app.mixMode") === "mix") {
+  // E5.8#90：外观模型合并——app.mixMode 删，外观主开关 appearanceMode=custom 即「按域混搭」。
+  if (getConfigurationValue<string>("app.appearanceMode") === "custom") {
     return mergeMixDomains(recipe, colorway, getMixProfile(), {});
   }
   return mergeDomains(recipe, colorway.id, {});
@@ -1209,6 +1221,22 @@ export function deriveRadiusAbsoluteMigration(
 export function deriveGlassOpacityAbsoluteMigration(userOpacity?: number): Record<string, unknown> {
   if (userOpacity === undefined) return {};
   return { "app.glassOpacity": Math.min(Math.max(userOpacity * 0.5, 0), 1) };
+}
+
+/**
+ * E5.8#90：旧三枚举（appearanceMode/mixMode/accentMode）→ 单一外观模式轴迁移公式（纯函数只算不改，测试直测）。
+ * 合并规则：任一旧枚举表达「自定义意图」（appearanceMode=custom / mixMode=mix / accentMode=custom）
+ *   → 新外观模式 "custom"；否则 "followTheme"（14-档案 §四 归一5）。
+ * 调用方：startup.ts schemaMigrations 登记（version 4）migrate 内使用。
+ */
+export function resolveMergedAppearanceMode(legacy: {
+  appearanceMode?: string;
+  mixMode?: string;
+  accentMode?: string;
+}): "custom" | "followTheme" {
+  return legacy.appearanceMode === "custom" || legacy.mixMode === "mix" || legacy.accentMode === "custom"
+    ? "custom"
+    : "followTheme";
 }
 
 /** 设置层外观覆盖配置 key 全集——appearanceMode=custom 播种存这 9 键、reset 摘除这 9 键回主题基线（08 §7.2/§7.3.5）。

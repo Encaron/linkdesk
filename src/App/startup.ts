@@ -27,10 +27,12 @@ import {
   getAppliedAccent, // E5.8#88 C4：最近应用强调色（accent 播种走引擎追踪非 DOM 读）
   deriveRadiusAbsoluteMigration, // E5.8#85 补课：旧圆角倍数→绝对 px 迁移公式
   deriveGlassOpacityAbsoluteMigration, // E5.8#86：旧 wash 语义→绝对透明度迁移公式
+  resolveMergedAppearanceMode, // E5.8#90：旧三枚举→单一外观模式轴迁移公式
   normalizeThemeValue,
   syncThemeColorConfig,
   APPEARANCE_OVERRIDE_KEYS,
   MIX_FOLLOW_THEME,
+  MIX_SOURCE_KEYS, // E5.8#90：混搭来源 key 全集——单一来源 ThemeEngine（原本地常量改 import）
 } from "../core/services/ui/ThemeEngine";
 import { ThemeRegistry } from "../core/registry/appearance/ThemeRegistry";
 import type { ThemeRecipe } from "../core/types/theme"; // E5.8#50.19：配方路径应用 helper 的类型标注
@@ -127,12 +129,6 @@ const applyRecipeForConfig = (recipe: ThemeRecipe): void => {
  *  E5.8#60 F1.1：单一来源 ThemeEngine.APPEARANCE_OVERRIDE_KEYS——插件 API theme.resetAppearance 共用本表
  *  （曾只清 5 键漏 app.fontFamily → 第三方复位外观后字体不回基线，12 档案 §#60）。 */
 
-/** 混搭来源 key 全集——mixMode→mix 播种全 "followTheme"（与 ThemeEngine MIX_DOMAIN_KEYS 同源）。
- *  E5.8#82：colors 域来源统一为 app.themeColor（app.mixColor 删除）——六域来源 key 对称。 */
-const MIX_SOURCE_KEYS = [
-  "app.themeColor", "app.mixFont", "app.mixRadius", "app.mixGlass", "app.mixBackground", "app.mixSurface",
-] as const;
-
 /** 混搭复位禁用条件——6 来源全「跟随主题」时复位按钮置灰（10 §6 决策记录 3，mockup 已实现） */
 const MIX_RESET_DISABLED_WHEN = MIX_SOURCE_KEYS.map((key) => ({ key, value: "followTheme" }));
 
@@ -149,10 +145,16 @@ const MIX_RESET_DISABLED_WHEN = MIX_SOURCE_KEYS.map((key) => ({ key, value: "fol
  */
 const seedAppearanceOverrides = (): void => {
   const seedMap = deriveAppearanceSeedMap(getEffectiveTokens());
-  setConfigurationValueBatch(
-    APPEARANCE_OVERRIDE_KEYS.map((key) => ({ key, value: seedMap[key] })),
-    "user"
-  );
+  // E5.8#90：强调色并入同一播种批（单次 applier）——取引擎追踪最近实际应用强调色（getAppliedAccent，#88 C4），
+  // 切 custom 强调色视觉零变化（此前 followTheme 显示的主题 accent 物质化为自定义槽值）。
+  // 注意不能用 getEffectiveAccentColor()——此刻模式已切 custom，读到的已是旧 app.accentColor。
+  const accent = getAppliedAccent();
+  // E5.8#90：批写入含强调色（单次 applier）——key 类型放宽到 string（APPEARANCE_OVERRIDE_KEYS 元组 + accentColor）
+  const writes: Array<{ key: string; value: unknown }> = APPEARANCE_OVERRIDE_KEYS.map((key) => ({ key, value: seedMap[key] }));
+  if (accent && getConfigurationValue("app.accentColor") !== accent) {
+    writes.push({ key: "app.accentColor", value: accent });
+  }
+  setConfigurationValueBatch(writes, "user");
 };
 
 /** E5.8#88：当前用户外观覆盖值（raw user scope）——切主题重播种的「显式修改」判定集 */
@@ -217,6 +219,39 @@ registerConfigMigration({
   },
 });
 
+// E5.8#90：外观模型合并——旧三枚举（appearanceMode/mixMode/accentMode）归一单一外观轴（14-档案 §四 归一5）。
+// 合并规则：resolveMergedAppearanceMode（ThemeEngine 纯函数，公式单测在 ThemeEngine.test）——任一旧枚举
+//   表达自定义意图（appearanceMode=custom / mixMode=mix / accentMode=custom）→ 新轴 custom，否则 followTheme。
+// 写入条件：已写且值不同 → 重写（followTheme 用户若曾开 mix 升 custom）；未写但有自定义意图 → 补写。
+//   已写且值同 → 不写（幂等零变化）。
+// 强调色物化：newMode=custom 且 accentColor 未写 且 旧 accentMode 显式 "followTheme" → 写 accentColor =
+//   引擎追踪的最近实际应用强调色（getAppliedAccent——旧逻辑下 followTheme 显示主题 accent，防升级跳 #0078d4）。
+//   注意不能用 getEffectiveAccentColor()——迁移时外观模式可能仍是旧值（custom），读到的已是自定义兜底。
+// deleteMany 删废弃键（app.mixMode/app.accentMode）——残留会在 _validateEnum 对未注册键直通返回（陈旧值
+//   可能被未来代码静默读回）。域来源键（app.mix* / app.themeColor）保留——自定义模式下仍按域合并消费。
+// 幂等：已迁后重跑 appearanceMode 已在新值 → 不写；mixMode/accentMode 已删 → deleteMany 空操作。
+registerConfigMigration({
+  version: 4,
+  name: "E5.8#90 merge-appearance-mode-axis",
+  migrate: async ({ setMany, deleteMany }) => {
+    const appearanceMode = inspectConfiguration<string>("app.appearanceMode").userValue;
+    const mixMode = inspectConfiguration<string>("app.mixMode").userValue;
+    const accentMode = inspectConfiguration<string>("app.accentMode").userValue;
+    const accentColor = inspectConfiguration<string>("app.accentColor").userValue;
+    const newMode = resolveMergedAppearanceMode({ appearanceMode, mixMode, accentMode });
+    if (appearanceMode !== undefined) {
+      if (appearanceMode !== newMode) setMany({ "app.appearanceMode": newMode });
+    } else if (newMode === "custom") {
+      setMany({ "app.appearanceMode": newMode });
+    }
+    if (newMode === "custom" && accentColor === undefined && accentMode === "followTheme") {
+      const applied = getAppliedAccent();
+      if (applied) setMany({ "app.accentColor": applied });
+    }
+    deleteMany(["app.mixMode", "app.accentMode"]);
+  },
+});
+
 /** mount-once 启动管线：注册 + initAll + post-init state 同步 + cleanup（HMR/StrictMode 安全） */
 export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): void {
   const { t } = useTranslation();
@@ -237,7 +272,8 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
 
       // Phase 5：注册核心配置（对标 VS Code 内置 settings）——Settings Editor "通用"分组。
       // E5.8#50.19：app.theme + 5 外观覆盖 key 已迁入「主题」组（第二贡献 pluginId "appearance"，08 §5 决策 D）。
-      // E5.8#79：app.accentMode/accentColor 强调色也迁入「主题」组（accent 本质 = 主题色域颜色覆盖）。
+      // E5.8#79：app.accentColor 强调色也迁入「主题」组（accent 本质 = 主题色域颜色覆盖）。
+      // E5.8#90：app.accentMode/app.mixMode 已删（三枚举归一外观主开关，见组内注释）；强调色并入自定义模式一槽。
       registerConfiguration(APP_PLUGIN_ID, {
         title: t("通用"),
         properties: {
@@ -287,11 +323,12 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
       });
 
       // ── E5.8#50.19：主题组——壳注册第二配置贡献（08 §5 决策 D：pluginId "appearance"，标题「主题」）。
-      //    key 全表 = app.theme + app.themeColor（E5.8#82 配色域来源统一，themeColorMode/mixColor 已删）+ 外观六覆盖 + 混搭六键（08 §1/§6 行序 = mockup DOM 顺序）。
-      //    显隐 = dependsOn 声明驱动（appearanceMode=custom 显 6 覆盖行，mixMode=mix 显 6 来源行）；
+      //    key 全表 = app.theme + app.appearanceMode（E5.8#90 单一外观主开关，吸收 mixMode/accentMode）+ app.themeColor
+      //    + 外观九覆盖 + 混搭六键（08 §1/§6 行序 = mockup DOM 顺序）。
+      //    显隐 = dependsOn 声明驱动（appearanceMode=custom 显强调色 + 9 覆盖行 + 6 来源行 + 复位）。
       //    播种 = 设置层永远只存用户偏离量（08 §2）——切 custom 反推播种，切回 followTheme 删覆盖回配方。
       //    app.theme 枚举 = 配方 id + flat 退路（syncAppThemeEnum 注册/注销时同步，动态配方 id 列表 08 §7.2 #1）。
-      //    E5.8#78 组内二级标题——每 key 声明 group（5 分节：整体配方/配色/强调色/外观覆盖/域混搭），
+      //    E5.8#78 组内二级标题——每 key 声明 group（6 分节：整体配方/配色/强调色/外观覆盖/文字/域混搭），
       //    SettingsView 按 group 归到子标题下渲染（无 group 平铺原样，第三方设置零侵入）。
       registerConfiguration("appearance", {
         title: t("主题"),
@@ -344,8 +381,8 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
             },
           },
           // E5.8#82：配色域来源统一——app.themeColor 双语义（无 themeColorMode 包装层）：
-          //   recipe 模式 = 当前配方内配色变体（optionsFrom theme.colorways，单配色主题控件自隐）；
-          //   mix 模式   = colors 域来源（壳 UI 按 app.mixMode 动态切 theme.sources + colors 域，见 renderControl select 分支）。
+          //   跟随主题模式 = 当前配方内配色变体（optionsFrom theme.colorways，单配色主题控件自隐）；
+          //   自定义模式   = colors 域来源（D5 语义显性——设置页按外观模式动态切描述，见 14-档案 §四 #90）。
           "app.themeColor": {
             type: "string",
             group: t("配色"), // E5.8#78：组内二级标题——主题组分节 2/6（配色）
@@ -357,54 +394,48 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
             optionsFromDomain: "colors",
             onApply: () => debouncedApplyThemeIfReady(),
           },
-          // E5.8#79：强调色移入主题组——accent 本质 = 主题色域的颜色覆盖（与 glassTint 同类），
-          // 注册归属从「通用」迁至 pluginId "appearance"（设置页主题组下展示，对标用户想法 7）。
-          // key 名不变 → 旧 settings.json 的 app.accentMode/app.accentColor 值仍在读（向后兼容），
-          // getEffectiveAccentColor 读配置按 key 名（非注册组）——功能链路零改动。
-          "app.accentMode": {
-            type: "string",
-            group: t("强调色"), // E5.8#78：组内二级标题——主题组分节 3/6（强调色）
-            default: "custom",
-            enum: ["custom", "followTheme"],
-            description: t("强调色模式——自定义固定色 / 跟随主题（主题无强调色时用自定义兜底）"),
-            onApply: (v) => {
-              if (v === "custom") {
-                // E5.8#88 C4：播种反推走引擎追踪的最近实际应用强调色（getAppliedAccent）——删 DOM 读。
-                //  此前 applyAccentColor 每次都写 --accent，DOM 读等价但依赖渲染副作用；引擎追踪 = 权威在引擎
-                // （与 appearance 播种 token 反推同哲学）+ 测试直测（jsdom 无渲染链也能验）。
-                //  注意不能用 getEffectiveAccentColor()——onApply 此刻模式已切 custom，读到的已是旧 app.accentColor。
-                const current = getAppliedAccent();
-                if (current) setConfigurationValue("app.accentColor", current, "user");
-              }
-              applyAccentColor(getEffectiveAccentColor());
-            },
-          },
+          // E5.8#90：强调色并入外观主开关——app.accentMode 删除（三枚举归一单一外观轴，14-档案 §四 归一5）。
+          // 强调色 = 自定义模式下的一槽：写 accentColor = 自定义强调色；清除 = 跟随主题配方强调色
+          // （getEffectiveAccentColor 按 appearanceMode 分流——followTheme 取主题 accent，主题无时自定义兜底）。
           "app.accentColor": {
             type: "string",
-            group: t("强调色"),
+            group: t("强调色"), // E5.8#78：组内二级标题——主题组分节 3/6（强调色）
             // E5.8#6.6 hex 豁免：配置项默认值数据（用户可改，非样式硬编码）
             // eslint-disable-next-line linkdesk/no-hardcoded-hex
             default: "#0078d4",
-            description: t("自定义强调色（图标栏高亮、开关、焦点边框）"),
-            dependsOn: { key: "app.accentMode", value: "custom" },
+            description: t("自定义强调色（图标栏高亮、开关、焦点边框）——清除 = 跟随主题配方"),
+            dependsOn: { key: "app.appearanceMode", value: "custom" },
             renderHint: "color",
             // E3.5 fix: dependsOn 只控制 UI 显隐，不阻止 applyConfiguration 在启动时调用。
-            // accentMode="followTheme" 时，app.accentColor 的 onApply 不应覆盖主题的 accent。
+            // appearanceMode="followTheme" 时，app.accentColor 的 onApply 不应覆盖主题的 accent
+            // （getEffectiveAccentColor 按外观模式分流——followTheme 取主题 accent）。
             onApply: () => applyAccentColor(getEffectiveAccentColor()),
           },
+          // E5.8#90：外观主开关——单一外观模式轴（14-档案 §四 归一5）。三枚举合并：吸收 app.mixMode +
+          // app.accentMode → 跟随主题 / 自定义。自定义下每槽独立指定（外观覆盖 9 键播种 + 强调色播种 +
+          // 域来源 6 键默认 followTheme，未写 = 跟随主题）。group = 整体配方（主开关置顶与主题配方同节）。
+          // enumDescriptions 人话（#90 验收「三枚举术语消失」——设置页不再出现 混搭模式/强调色模式 术语）。
           "app.appearanceMode": {
             type: "string",
-            group: t("外观覆盖"), // E5.8#78：组内二级标题——主题组分节 4/6（外观覆盖）
+            group: t("整体配方"), // E5.8#78：组内二级标题——主题组分节 1/6（整体配方，主开关与主题配方同节）
             default: "followTheme",
             enum: ["followTheme", "custom"],
-            description: t("外观模式——跟随主题配方外观 / 手动覆盖外观"),
+            enumDescriptions: [
+              t("跟随主题——外观/配色/强调色全部由主题配方决定"),
+              t("自定义——逐项指定外观覆盖、域来源与强调色"),
+            ],
+            description: t("外观模式——跟随主题配方整体外观 / 自定义逐项指定"),
             onApply: (v) => {
               if (v === "custom") {
-                // 切 custom → 读 getEffectiveTokens() 反推播种 6 覆盖 key（非归零，08 §2 对标 accent 播种）
+                // 切 custom → 播种 9 覆盖 key + 强调色（同一批量写单次 applier，08 §2 对标 accent 播种）
                 seedAppearanceOverrides();
               } else {
-                // 切回 followTheme → 覆盖丢弃回配方（08 §7.3.5）——删 6 覆盖 key（批量复位单次 applier）
-                resetConfigurationValueBatch(APPEARANCE_OVERRIDE_KEYS, "user");
+                // 切回 followTheme → 覆盖丢弃回配方（08 §7.3.5）——清 9 覆盖 + 6 域来源 + 强调色
+                // 全丢回主题基线（批量复位单次 applier）。域来源无须播种（默认 followTheme，未写 = 跟随）。
+                resetConfigurationValueBatch(
+                  [...APPEARANCE_OVERRIDE_KEYS, ...MIX_SOURCE_KEYS, "app.accentColor"],
+                  "user"
+                );
               }
               // E5.8#59：播种/复位批量 API 已触发单次 applier（末 key 全量读生效态）——不再补
               // applyThemeIfReady 避免二次广播（原 6 连写 + 尾部补调 = 7 次 theme:changed）
@@ -545,41 +576,21 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
             uiHint: "fontTone",
             onApply: () => debouncedApplyThemeIfReady(),
           },
-          // 混搭七键 + 复位——mixMode 常显，六域来源 + 复位 mixMode=mix 才出现（08 §7.1 #11-17）。
-          // mix* 按域合并实现在 ThemeEngine（#50.26 mergeMixDomains）——此处注册 + 播种 + dependsOn 显隐。
+          // E5.8#90：混搭并入外观主开关——app.mixMode 删除（三枚举归一单一外观轴，14-档案 §四 归一5）。
+          // 六域来源槽 = 自定义模式下每域独立指定（跟随主题 / 指定配方 id）；dependsOn appearanceMode=custom。
+          // mix* 按域合并实现在 ThemeEngine（#50.26 mergeMixDomains）——此处注册 + dependsOn 显隐。
           // 六域来源 = uiHint "select" + optionsFrom "theme.sources"（#50.23 动态下拉按域过滤 listRecipes）；
           // onApply = applyThemeIfReady（换来源即重合并 + 广播 theme:changed，10 §2 实时预览）。
           // 「跟随主题」哨兵值 = "followTheme"（10-混搭设计 §1/§3 定稿；缺省与播种同一值）。
-          "app.mixMode": {
-            type: "string",
-            group: t("域混搭"), // E5.8#78：组内二级标题——主题组分节 6/6（域混搭）
-            default: "recipe",
-            enum: ["recipe", "mix"],
-            description: t("混搭模式——单一主题配方 / 按域混搭多个主题来源"),
-            onApply: (v) => {
-              // 切 mix → 播种 6 域来源 = "followTheme"（跟随整体配方，10 §2/08 §7.2 #11，批量写单次 applier）
-              if (v === "mix") {
-                setConfigurationValueBatch(
-                  MIX_SOURCE_KEYS.map((key) => ({ key, value: "followTheme" })),
-                  "user"
-                );
-              } else {
-                // 切回 recipe → 来源清空回默认（08 §7.3.5 对称于外观复位——theme.resetMix 单一写入点，批量复位单次 applier）
-                resetConfigurationValueBatch(MIX_SOURCE_KEYS, "user");
-              }
-              // E5.8#59：批量 API 末 key applier 全量读生效态（含 mixMode 本键）——引擎读 mixMode
-              // 决定按域合并路径（#50.26），不再补 applyThemeIfReady 避免二次广播
-            },
-          },
           // E5.8#82：colors 域来源并入 app.themeColor（app.mixColor 删除）——六域来源 key 对称，
-          // mix 模式下壳 UI 将 app.themeColor 渲染为 theme.sources + colors 域（DynamicSelect 双语义自解析：
-          // schema 静态声明 colorways+colors，运行时读 app.mixMode 决定 recipe/mix 路径，renderControl 零改动）。
+          // 自定义模式下壳 UI 将 app.themeColor 渲染为 theme.sources + colors 域（DynamicSelect 双语义自解析：
+          // schema 静态声明 colorways+colors，运行时读 app.appearanceMode 决定跟随/自定义路径，renderControl 零改动）。
           "app.mixFont": {
             type: "string",
             group: t("域混搭"),
             default: "followTheme",
             description: t("字体域来源——跟随主题配方 / 指定主题配方 id"),
-            dependsOn: { key: "app.mixMode", value: "mix" },
+            dependsOn: { key: "app.appearanceMode", value: "custom" },
             uiHint: "select",
             optionsFrom: "theme.sources",
             optionsFromDomain: "font",
@@ -590,7 +601,7 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
             group: t("域混搭"),
             default: "followTheme",
             description: t("圆角域来源——跟随主题配方 / 指定主题配方 id"),
-            dependsOn: { key: "app.mixMode", value: "mix" },
+            dependsOn: { key: "app.appearanceMode", value: "custom" },
             uiHint: "select",
             optionsFrom: "theme.sources",
             optionsFromDomain: "radius",
@@ -601,7 +612,7 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
             group: t("域混搭"),
             default: "followTheme",
             description: t("玻璃域来源——跟随主题配方 / 指定主题配方 id"),
-            dependsOn: { key: "app.mixMode", value: "mix" },
+            dependsOn: { key: "app.appearanceMode", value: "custom" },
             uiHint: "select",
             optionsFrom: "theme.sources",
             optionsFromDomain: "glass",
@@ -612,7 +623,7 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
             group: t("域混搭"),
             default: "followTheme",
             description: t("背景域来源——跟随主题配方 / 指定主题配方 id"),
-            dependsOn: { key: "app.mixMode", value: "mix" },
+            dependsOn: { key: "app.appearanceMode", value: "custom" },
             uiHint: "select",
             optionsFrom: "theme.sources",
             optionsFromDomain: "background",
@@ -623,14 +634,14 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
             group: t("域混搭"),
             default: "followTheme",
             description: t("表面域来源——跟随主题配方 / 指定主题配方 id"),
-            dependsOn: { key: "app.mixMode", value: "mix" },
+            dependsOn: { key: "app.appearanceMode", value: "custom" },
             uiHint: "select",
             optionsFrom: "theme.sources",
             optionsFromDomain: "surface",
             onApply: () => debouncedApplyThemeIfReady(),
           },
           // 混搭复位按钮（10 §2/§6 决策记录 3）——renderHint "action" 渲染操作按钮；
-          // 点击执行 theme.resetMix 命令（单一写入点：app.mixMode→recipe → onApply 清 6 来源回跟随主题）。
+          // 点击执行 theme.resetMix 命令（单一写入点：批复位 6 来源键回跟随主题，保持自定义模式）。
           // actionDisabledAll：6 来源全「跟随主题」→ 置灰（mockup 已实现，减少噪音）。
           "app.mixReset": {
             type: "string",
@@ -639,7 +650,7 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
             description: t("⟲ 全部复位为整体配方"),
             renderHint: "action",
             actionCommand: "theme.resetMix",
-            dependsOn: { key: "app.mixMode", value: "mix" },
+            dependsOn: { key: "app.appearanceMode", value: "custom" },
             actionDisabledAll: MIX_RESET_DISABLED_WHEN,
           },
         },
@@ -732,8 +743,17 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
       // E5.8#85 补课：跑待执行 schema 迁移——旧 settings.json（圆角倍数）升级即迁绝对 px（视觉零变化）。
       // 位置：post-init（initAll 后主题+旧覆盖已应用，getEffectiveTokens() = 旧视觉，冻结即忠实）。
       // #82 themeColorMode 是迁移机制落位前的历史一次性先例；此后语义切换一律 registerConfigMigration 登记。
+      // E5.8#90：post-migration 重应用——迁移可能改写外观模式（旧 mixMode=mix → appearanceMode=custom），
+      // 但迁移的 setConfigurationValueBatch 末 key 是版本标志（无 onApply）→ 外观模式写静默。模式变更者
+      // 首次启动立即应用（播种覆盖 + 强调色）——否则要等用户下一次手动切模式才生效（一程视觉回归）。
+      // 安全：setTheme 在 App.tsx 只是 React state 同步（非重应用）；本 applyConfiguration 走完整 applier。
+      const modeBefore = getConfigurationValue<string>("app.appearanceMode") ?? "followTheme";
       try {
         await runPendingConfigMigrations();
+        const modeAfter = getConfigurationValue<string>("app.appearanceMode") ?? "followTheme";
+        if (modeBefore !== modeAfter) {
+          await applyConfiguration("app.appearanceMode", modeAfter);
+        }
       } catch (e) {
         console.error("[startup] schema 迁移失败:", e);
       }
