@@ -46,6 +46,15 @@ ipcRenderer.on(IPC.pool.ping, () => {
   ipcRenderer.send(IPC.pool.pong);
 });
 
+// ── E5.8#72：pool 侧陈旧键差集清理（对标壳侧 commitTokens `_lastCommittedKeys`）──
+// 壳侧 ThemeEngine commitTokens 每次提交前 removeProperty 上次写过、本次没写的键；
+// pool 侧 theme:changed 此前只 setProperty 新变量、从不清理 → 切主题后文档根残留旧主题键
+// （bubble surface-radius:999 切 dark 不恢复、极光玻璃深紫顶栏残留、宋体残留 = 用户痛点 3/4/6）。
+// 用户所见全在 pool WCV，池侧残留即永久显示（无 :root 变体兜底）——必须同机制差集清理。
+// 边界：`--surface-<zone>-bg-position`/`--surface-bg-size`/`--surface-bg-zones` 由 surface-zones
+// 自写、不在广播 variables 键集内，差集天然隔离不误删。
+let _lastPoolThemeKeys: string[] | null = null;
+
 /** events 命名空间——createEventSystem + theme/accent/lang 三个 CSS 注入 extraHandler */
 export function createPoolEvents(): EventSystemApi {
   return createEventSystem(ipcRenderer, {
@@ -55,10 +64,18 @@ export function createPoolEvents(): EventSystemApi {
         const { themeType, variables, fontFaces } = payload as ThemeChangedPayload;
         try {
           const root = document.documentElement;
+          const vars = (variables ?? {}) as Record<string, string>;
           root.setAttribute('data-theme', themeType ?? 'dark');
-          for (const [k, v] of Object.entries(variables as Record<string, string>)) {
+          // E5.8#72：清上一次广播写过、本次没写的陈旧键——换配方/换主题无残留
+          if (_lastPoolThemeKeys) {
+            for (const key of _lastPoolThemeKeys) {
+              if (!(key in vars)) root.style.removeProperty(`--${key}`);
+            }
+          }
+          for (const [k, v] of Object.entries(vars)) {
             root.style.setProperty(`--${k}`, v);
           }
+          _lastPoolThemeKeys = Object.keys(vars);
           // E5.8#50.17：资产字体 @font-face 复刻（池独立文档）；载荷无 fontFaces → 清空上次注入
           applyFontFaces(fontFaces);
           // E5.8#50.29/50.31：zones 模式下按本窗 DOM 量测切片坐标（+ ResizeObserver 重算）
