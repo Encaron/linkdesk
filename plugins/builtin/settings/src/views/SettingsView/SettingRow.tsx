@@ -138,11 +138,14 @@ function SettingRow({
         <span className="codicon codicon-gear" />
       </button>
       {gearAnchor && (
+        /* E5.8#92：非模态变体——行内轻量菜单不吞首击（backdrop 吞击 = 每次 gear 后首击被吃 →
+           命中区漂移根因，14-档案 §七）；右键 context menu 保留模态（VS Code 语义）。 */
         <ContextMenu
           menuId={SETTING_ITEM_GEAR_MENU}
           anchor={gearAnchor}
           context={{ settingKey: configKey }}
           onClose={handleGearClose}
+          variant="non-modal"
         />
       )}
       {/* 色块点击 → ColorPicker */}

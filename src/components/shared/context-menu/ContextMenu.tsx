@@ -11,7 +11,8 @@
  * 🔥 E5.7#14 浮层归一化（浮层归一化设计.md §4）：
  *    - portal 到 `#context-menu-root`（OverlayPortal rootId——FloatingLayerHost 内），
  *      壳 DOM 无此 root 时自动回退 body（SettingsView 等壳侧消费者迁移期兼容）
- *    - 透明 backdrop（contextMenu-1 层级）——吞掉第一击：点击即关且不激活下层内容
+ *    - 透明 backdrop（contextMenu-1 层级）——吞掉第一击：点击即关且不激活下层内容；
+ *      E5.8#92 variant="non-modal" 跳过 backdrop（点击穿透下层，修命中区漂移——14-档案 §七）
  *    - 显示文本铁律：标签壳侧 t() 解析后推送——池哑渲染，本组件不再调用 t()
  *    - 翻转钳制 menuTop ≥ 30——TitleBarZone drag 区（硬约束 18，设计 §4.3）
  *    - 打开后聚焦菜单容器——键盘导航（设计 §4.2，防 focusable:false 回归）
@@ -53,9 +54,11 @@ export interface ContextMenuProps {
   items?: MenuItemDescriptor[];
   /** E5.8#55：浮层形态——两行为耦合成一词（B1 合并，2026-08-23 拍板）：
    *  - "overlay"（默认，右键/汉堡）：全屏透明 backdrop 吞第一击 + 点外部关闭（现状行为）。
+   *  - "non-modal"（E5.8#92 设置行齿轮）：无 backdrop + 保留点外关闭——点击穿透下层元素
+   *    （不吞首击）：gear 菜单开着真实点击色块 → 菜单关 + 取色器开（修命中区漂移，14-档案 §七）。
    *  - "embedded"（顶部菜单栏下拉）：无 backdrop + 点外关闭由宿主自管——菜单嵌在按钮行
    *    hover 切换交互里，backdrop 会吞掉按钮行第一击导致切换失效（硬约束 18 已钳制菜单 top≥30）。 */
-  variant?: "overlay" | "embedded";
+  variant?: "overlay" | "non-modal" | "embedded";
 }
 
 // E5.7#97：原 EnrichedItem 本地类型整删——menu.getItems() 已按 LinkDeskAPI 契约定型
@@ -288,8 +291,11 @@ export default function ContextMenu({ menuId, anchor, context, onClose, resolveC
           窗口级 mousedown 监听（下方"统一失焦"）已处理 backdrop 点击关闭。
           pointer-events 不在此写——池侧由 #context-menu-root 根级提供（补丁 2026-08-14）。
           E5.8#55：variant="embedded" 时跳过——顶部菜单栏下拉点按钮行 hover 切换，
-          无需全屏吞击（吞了按钮行第一击 hover 切换失效）。 */}
-      {variant !== "embedded" && (
+          无需全屏吞击（吞了按钮行第一击 hover 切换失效）。
+          E5.8#92：variant="non-modal" 时跳过——设置行齿轮轻量菜单不吞首击（根因修：
+          backdrop 在 mousedown 与 mouseup 间移除 → click 落 body → 每次 gear/右键后首击被吞）；
+          无 backdrop = 点击穿透原目标（mousedown 关菜单、click 照常落色块开取色器）。 */}
+      {variant !== "embedded" && variant !== "non-modal" && (
         <div
           style={{
             position: "fixed",
