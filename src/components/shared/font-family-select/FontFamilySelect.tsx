@@ -135,8 +135,16 @@ export default function FontFamilySelect({ value, onChange, monoOnly = true }: F
     // 跟随主题条目——仅全字族模式（app.fontFamily 空 = 跟随主题，可下拉复位；
     // 等宽编辑器字体恒有具体默认，不提供主题跟随概念）。选项恒为系统字体——
     // 非系统当前值（资产族名等）只显示不列入下拉（E5.8#50.20 ③ 当前值边界）。
-    const followTheme = monoOnly ? [] : [{ value: "", label: t("跟随主题") }];
-    return [...followTheme, ...systemFonts.map((f) => ({ value: f, label: f }))];
+    // E5.8#87：「系统字体」显式项 = 绝对系统默认栈（不跟随主题字体资产）——__none__ 哨兵
+    // 与 ThemeEngine.CONFIG_NONE_SENTINEL 同字面量字符串契约（本共享组件不得引 @src/core）。
+    if (monoOnly) {
+      return systemFonts.map((f) => ({ value: f, label: f }));
+    }
+    return [
+      { value: "", label: t("跟随主题") },
+      { value: "__none__", label: t("系统字体") },
+      ...systemFonts.map((f) => ({ value: f, label: f })),
+    ];
   }, [monoOnly, systemFonts, t]);
 
   return (

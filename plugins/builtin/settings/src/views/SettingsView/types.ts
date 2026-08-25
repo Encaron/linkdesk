@@ -50,6 +50,8 @@ interface ConfigProperty {
   group?: string;
   /** E5.8#77：数值单位——uiHint "slider" 值标签单位（"×" / "px"；空 = 裸数值） */
   unit?: string;
+  /** E5.8#87：来源徽标——本键所属外观域 mix 来源 key（混搭生效时徽标显示 🔀 域来源） */
+  sourceKey?: string;
 }
 
 export type { SettingsViewProps, GroupInfo, ConfigProperty };

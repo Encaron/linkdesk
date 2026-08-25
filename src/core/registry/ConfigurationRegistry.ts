@@ -60,6 +60,9 @@ export interface ConfigurationProperty {
   /** E5.8#77：数值单位——uiHint "slider" 值标签单位（"×" 倍数前缀 / "px" 像素后缀；空 = 裸数值）。
    *  可选字段：第三方不声明 = 只显示数值不显示单位（零侵入）。 */
   unit?: string;
+  /** E5.8#87：来源徽标——本键所属外观域 mix 来源 key（设置页每槽显示值来源：混搭域生效时 🔀）。
+   *  可选字段：第三方不声明 = 不显示来源徽标（零侵入）。 */
+  sourceKey?: string;
 }
 
 /** 插件贡献的 configuration 分组——对标 VS Code package.json contributes.configuration */

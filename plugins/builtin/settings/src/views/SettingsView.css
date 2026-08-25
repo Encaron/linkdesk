@@ -270,6 +270,38 @@
   min-width: 0;
 }
 
+.settings-row-label-line {
+  /* E5.8#87：来源徽标与 label 同行——flex 对齐，徽标不挤压 desc */
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+/* E5.8#87：来源徽标——🎨 主题 / ✏️ 用户 / 🔀 域来源（清除后一眼可见「回主题」）。
+ * 形态对标 .settings-row-gear 惯例（muted 文字 + 浅底胶囊）——三级来源可区分不抢行主体 */
+.settings-source-badge {
+  flex-shrink: 0;
+  font-size: 11px;
+  line-height: 1;
+  padding: 2px 6px;
+  border-radius: 3px;
+  white-space: nowrap;
+  color: var(--text-muted);
+  background: var(--hover-overlay);
+}
+.settings-source-badge--user {
+  /* 用户覆盖——主题强调色系点显（非裸 hex） */
+  color: var(--text-on-accent);
+  background: var(--accent);
+  opacity: 0.92;
+}
+.settings-source-badge--mix {
+  /* 域来源——混搭生效，另类强调区分 */
+  color: var(--text-primary);
+  background: var(--tab-active-bg);
+}
+
 .settings-row-label {
   display: block;
   font-size: 13px;
@@ -407,6 +439,7 @@
   align-items: center;
   gap: 8px;
   min-width: 0;
+  flex-wrap: wrap; /* E5.8#87：三态按钮（选择/无背景/清除）+ 路径超宽换行，不挤压 */
 }
 .settings-image-path {
   max-width: 220px;

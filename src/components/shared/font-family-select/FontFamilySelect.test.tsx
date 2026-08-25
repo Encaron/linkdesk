@@ -60,6 +60,30 @@ describe("FontFamilySelect", () => {
     expect(dropdownItems()).not.toContain("__ld_demo_serif"); // 下拉不含资产族名（不提供选项）
   });
 
+  it("E5.8#87 全字族模式——下拉含「系统字体」显式项（__none__ 哨兵，绝对系统默认）", async () => {
+    const { open, dropdownItems } = renderSelect({ monoOnly: false });
+    open();
+    await screen.findByText("Times New Roman");
+    const items = dropdownItems();
+    expect(items[0]).toBe("跟随主题"); // 复位项置顶
+    expect(items[1]).toBe("系统字体"); // 系统字体紧随（绝对系统默认）
+    expect(items).toContain("Times New Roman"); // 系统字体列表仍在
+  });
+
+  it("E5.8#87 全字族模式——选「系统字体」→ onChange('__none__')", () => {
+    const { open, onChange } = renderSelect({ monoOnly: false });
+    open();
+    const sys = Array.from(document.querySelectorAll(".selectbox-item"))
+      .find((n) => n.textContent === "系统字体")!;
+    fireEvent.click(sys);
+    expect(onChange).toHaveBeenCalledWith("__none__");
+  });
+
+  it("E5.8#87 全字族模式——当前值 __none__ 触发按钮显示「系统字体」（可选态）", () => {
+    const { triggerLabel } = renderSelect({ monoOnly: false, value: "__none__" });
+    expect(triggerLabel()).toBe("系统字体");
+  });
+
   it("全字族模式——选字体 → onChange 传族名", async () => {
     const { open, onChange } = renderSelect({ monoOnly: false });
     open();

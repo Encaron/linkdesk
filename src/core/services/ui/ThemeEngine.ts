@@ -1157,6 +1157,15 @@ export const APPEARANCE_OVERRIDE_KEYS = [
   "app.zoneRadius", "app.zoneRadiusScale", "app.zoneBackgroundImage",
 ] as const;
 
+/** E5.8#87：配置「绝对无」哨兵值——app.backgroundImage/zoneBackgroundImage/fontFamily 显式无 = 不跟随主题（真无图/系统字体）。
+ *  空值 "" = 跟随主题（presence 门控既有语义不变）；非空非哨兵 = 用户值覆盖。与设置插件侧字面量同契约
+ *  （插件不能 import @src/core——config 值契约，对标 "followTheme" 哨兵）。 */
+export const CONFIG_NONE_SENTINEL = "__none__";
+
+/** E5.8#87：系统默认字栈——fontFamily="__none__"（系统字体）覆盖写此栈（index.css :root --font-ui 同栈）。
+ *  绝对系统默认 = 不跟随主题字体资产。 */
+export const SYSTEM_FONT_STACK = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+
 /** 读用户外观配置 → 覆盖集（glass/bg 仅偏离 neutral 时；radius/zone presence 门控写绝对 px——applyOverrides 内换算）。
  *  E5.8#85：圆角不再「恒写」——presence 门控（同 glass #56）：配置被显式写过即覆盖，reset 摘除 key → 回主题基线。 */
 export function getAppearanceOverrides(): Record<string, string> {
@@ -1176,10 +1185,16 @@ export function getAppearanceOverrides(): Record<string, string> {
 
   const bgImage = getConfigurationValue<string>("app.backgroundImage");
   if (bgImage != null && String(bgImage).trim() !== "") {
-    // E5.8#64：配置值 → 沙箱可加载 URL——受控协议 URL（linkdesk-userdata://…）原样 / 旧版 plain 绝对路径
-    // 映射受控协议 / 主题资产（linkdesk:// 相对）原样。file:// 绝对路径会被 Chromium 拦截（实机 bug 13）。
-    const resolved = resolveBackgroundImageUrl(String(bgImage));
-    if (resolved) overrides["bg-image"] = `url("${resolved}")`;
+    const trimmed = String(bgImage).trim();
+    if (trimmed === CONFIG_NONE_SENTINEL) {
+      // E5.8#87：显式「无背景」——真无图（盖掉主题 --bg-image，含 mix 来源/全景模式），CSS none
+      overrides["bg-image"] = "none";
+    } else {
+      // E5.8#64：配置值 → 沙箱可加载 URL——受控协议 URL（linkdesk-userdata://…）原样 / 旧版 plain 绝对路径
+      // 映射受控协议 / 主题资产（linkdesk:// 相对）原样。file:// 绝对路径会被 Chromium 拦截（实机 bug 13）。
+      const resolved = resolveBackgroundImageUrl(trimmed);
+      if (resolved) overrides["bg-image"] = `url("${resolved}")`;
+    }
   }
 
   // E5.8#81：zone 表面背景覆盖入口——写 --surface-bg-image（与全窗 --bg-image 并存非互斥：全窗垫底、
@@ -1188,18 +1203,26 @@ export function getAppearanceOverrides(): Record<string, string> {
   // 表面；no-repeat 对齐 zones 切片语义。清空 → 不写任何键 → 回主题自带 zones 纹理/无 zone 图。
   const zoneBgImage = getConfigurationValue<string>("app.zoneBackgroundImage");
   if (zoneBgImage != null && String(zoneBgImage).trim() !== "") {
-    const resolvedZone = resolveBackgroundImageUrl(String(zoneBgImage));
-    if (resolvedZone) {
-      overrides["surface-bg-image"] = `url("${resolvedZone}")`;
-      overrides["surface-bg-repeat"] = "no-repeat";
-      overrides["surface-bg-zones"] = "1";
+    const trimmedZone = String(zoneBgImage).trim();
+    if (trimmedZone === CONFIG_NONE_SENTINEL) {
+      // E5.8#87：显式「无分区背景」——真无 zone 图（盖掉主题 zones 纹理/mix 来源切片）
+      overrides["surface-bg-image"] = "none";
+    } else {
+      const resolvedZone = resolveBackgroundImageUrl(trimmedZone);
+      if (resolvedZone) {
+        overrides["surface-bg-image"] = `url("${resolvedZone}")`;
+        overrides["surface-bg-repeat"] = "no-repeat";
+        overrides["surface-bg-zones"] = "1";
+      }
     }
   }
 
   // E5.8#50.19：app.fontFamily 用户级字体覆盖——族名写 --font-ui（空 = 不覆盖，跟随主题）
+  // E5.8#87：显式「系统字体」（__none__）= 绝对系统默认栈（不跟随主题字体资产），写 :root 同款默认
   const fontFamily = getConfigurationValue<string>("app.fontFamily");
   if (fontFamily != null && String(fontFamily).trim() !== "") {
-    overrides["font-ui"] = String(fontFamily).trim();
+    const trimmedFont = String(fontFamily).trim();
+    overrides["font-ui"] = trimmedFont === CONFIG_NONE_SENTINEL ? SYSTEM_FONT_STACK : trimmedFont;
   }
 
   // E5.8#85：圆角绝对化——app.surfaceRadius = 组件圆角 md 档绝对 px 0→32。presence 门控（同 glass #56）：

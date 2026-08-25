@@ -38,6 +38,8 @@ import {
   syncThemeColorConfig,
   APPEARANCE_OVERRIDE_KEYS,
   isMixSourceOwner,
+  CONFIG_NONE_SENTINEL,
+  SYSTEM_FONT_STACK,
 } from "./ThemeEngine";
 import type { MixProfile } from "./ThemeEngine";
 import { rollback } from "../../registry/registrationTracker";
@@ -494,6 +496,31 @@ describe("ThemeEngine — 外观覆盖 getAppearanceOverrides（E5.8#50.10）", 
   it("fontFamily 空 → font-ui 不覆盖（跟随主题）", () => {
     applyRemoteConfigChange("app.fontFamily", "");
     expect(getAppearanceOverrides()["font-ui"]).toBeUndefined();
+  });
+
+  /* ── E5.8#87 显式「无」哨兵 __none__——绝对无图/系统字体（盖掉主题/mix），空 ≠ 无（空 = 回主题）── */
+
+  it("E5.8#87 backgroundImage __none__ → bg-image none（绝对无图，盖掉主题全景图）", () => {
+    applyRemoteConfigChange("app.backgroundImage", CONFIG_NONE_SENTINEL);
+    expect(getAppearanceOverrides()["bg-image"]).toBe("none");
+  });
+
+  it("E5.8#87 backgroundImage 空 → bg-image 不覆盖（回主题，非 none）", () => {
+    applyRemoteConfigChange("app.backgroundImage", "");
+    expect(getAppearanceOverrides()["bg-image"]).toBeUndefined();
+  });
+
+  it("E5.8#87 zoneBackgroundImage __none__ → surface-bg-image none（绝对无分区图，盖掉主题 zones 纹理）", () => {
+    applyRemoteConfigChange("app.zoneBackgroundImage", CONFIG_NONE_SENTINEL);
+    const overrides = getAppearanceOverrides();
+    expect(overrides["surface-bg-image"]).toBe("none");
+    expect(overrides["surface-bg-repeat"]).toBeUndefined(); // 无图 → 不量测 zones
+    expect(overrides["surface-bg-zones"]).toBeUndefined();
+  });
+
+  it("E5.8#87 fontFamily __none__ → font-ui = 系统默认栈（绝对系统默认，不跟随主题字体资产）", () => {
+    applyRemoteConfigChange("app.fontFamily", CONFIG_NONE_SENTINEL);
+    expect(getAppearanceOverrides()["font-ui"]).toBe(SYSTEM_FONT_STACK);
   });
 
   it("E5.8#85 surfaceRadius presence → 六键全写 md 档绝对 px（clamp 进标尺）", () => {

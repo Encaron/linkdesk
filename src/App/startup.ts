@@ -367,6 +367,7 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
             description: t("组件圆角——系统标尺 0 方角 / 32 最圆润；数值 = 标准组件圆角 px"),
             uiHint: "slider",
             unit: "px", // E5.8#85：值标签像素单位（绝对 px，非倍数）
+            sourceKey: "app.mixRadius", // E5.8#87：来源徽标——本键所属外观域 mix 来源 key（混搭生效显示 🔀）
             dependsOn: { key: "app.appearanceMode", value: "custom" },
             onApply: () => applyThemeIfReady(),
           },
@@ -381,6 +382,7 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
             description: t("玻璃模糊——0 关闭；数值 = 主表面真实模糊 px"),
             uiHint: "slider",
             unit: "px", // E5.8#77：值标签像素单位（mockup 16px）
+            sourceKey: "app.mixGlass", // E5.8#87：来源徽标——玻璃域 mix 来源 key
             dependsOn: { key: "app.appearanceMode", value: "custom" },
             onApply: () => applyThemeIfReady(),
           },
@@ -393,6 +395,7 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
             // E5.8#86：label 直述绝对语义——0 全透见背景图 / 1 全不透明（消灭 label「1 不透明」实为半透，A3/D1）
             description: t("玻璃面不透明度——0 全透见背景 / 1 全不透明"),
             uiHint: "slider",
+            sourceKey: "app.mixGlass", // E5.8#87：来源徽标——玻璃域 mix 来源 key
             dependsOn: { key: "app.appearanceMode", value: "custom" },
             onApply: () => applyThemeIfReady(),
           },
@@ -402,6 +405,7 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
             default: "",
             description: t("玻璃叠加色——空 = 主题自带"),
             renderHint: "color",
+            sourceKey: "app.mixGlass", // E5.8#87：来源徽标——玻璃域 mix 来源 key
             dependsOn: { key: "app.appearanceMode", value: "custom" },
             onApply: () => applyThemeIfReady(),
           },
@@ -409,8 +413,10 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
             type: "string",
             group: t("外观覆盖"),
             default: "",
-            description: t("窗口背景图片路径——空 = 主题自带"),
+            // E5.8#87：无背景（__none__）= 绝对无图（盖掉主题/mix 图）；空 = 跟随主题
+            description: t("窗口背景图片路径——空 = 主题自带；无背景 = 绝对无图"),
             uiHint: "image", // E5.8#50.11：专属「选择图片」控件（选图→拷贝入库→受控路径持久化）
+            sourceKey: "app.mixBackground", // E5.8#87：来源徽标——背景域 mix 来源 key
             dependsOn: { key: "app.appearanceMode", value: "custom" },
             onApply: () => applyThemeIfReady(),
           },
@@ -418,11 +424,13 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
             type: "string",
             group: t("外观覆盖"),
             default: "",
-            description: t("界面字体——空 = 跟随主题；选择后写 --font-ui"),
+            // E5.8#87：系统字体（__none__）= 绝对系统默认（不跟随主题字体）；空 = 跟随主题
+            description: t("界面字体——空 = 跟随主题；选择后写 --font-ui；系统字体 = 显式系统默认"),
             // E5.8#50.20：全字族化 FontFamilySelect（monoOnly:false 列全族非等宽）——
             // onApply 覆盖面单一写入点 getAppearanceOverrides 读本 key 写 --font-ui
             uiHint: "fontFamily",
             monoOnly: false,
+            sourceKey: "app.mixFont", // E5.8#87：来源徽标——字体域 mix 来源 key
             dependsOn: { key: "app.appearanceMode", value: "custom" },
             onApply: () => applyThemeIfReady(),
           },
@@ -434,6 +442,7 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
             group: t("外观覆盖"),
             default: true,
             description: t("分区圆角开关——关闭后各分区强制直角（0px）"),
+            sourceKey: "app.mixRadius", // E5.8#87：来源徽标——半径域 mix 来源 key
             dependsOn: { key: "app.appearanceMode", value: "custom" },
             onApply: () => applyThemeIfReady(),
           },
@@ -446,6 +455,7 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
             description: t("分区圆角——系统标尺 0 方角 / 32 最圆润；数值 = 分区圆角 px"),
             uiHint: "slider",
             unit: "px", // E5.8#85：值标签像素单位（绝对 px，非倍数）
+            sourceKey: "app.mixRadius", // E5.8#87：来源徽标——半径域 mix 来源 key
             dependsOn: { key: "app.appearanceMode", value: "custom" },
             onApply: () => applyThemeIfReady(),
           },
@@ -456,8 +466,10 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
             type: "string",
             group: t("外观覆盖"),
             default: "",
-            description: t("分区背景图片路径——空 = 主题自带；选择后浮各分区表面"),
+            // E5.8#87：无背景（__none__）= 绝对无图（盖掉主题/mix 图）；空 = 跟随主题
+            description: t("分区背景图片路径——空 = 主题自带；无背景 = 绝对无图"),
             uiHint: "image",
+            sourceKey: "app.mixBackground", // E5.8#87：来源徽标——背景域 mix 来源 key
             dependsOn: { key: "app.appearanceMode", value: "custom" },
             onApply: () => applyThemeIfReady(),
           },

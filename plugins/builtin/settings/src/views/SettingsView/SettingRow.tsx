@@ -13,6 +13,7 @@ import ColorPicker from "@src/components/shared/color-picker/ColorPicker";
 import { useConfigurationValueIpc, useConfigurationValuesIpc } from "../hooks/useConfigurationValueIpc";
 import renderControl from "./renderControl";
 import { lk } from "./helpers";
+import { deriveSourceBadge, SOURCE_BADGE_UI } from "./deriveSourceBadge";
 import type { ConfigProperty } from "./types";
 
 /** 设置项齿轮菜单槽——壳 MenuRegistry.MENU_SLOTS.SettingItemGear 稳定槽 id（菜单项由壳 coreCommands 注册） */
@@ -26,10 +27,13 @@ function SettingRow({
   configKey,
   prop,
   onChange,
+  userOverrides,
 }: {
   configKey: string;
   prop: ConfigProperty | undefined;
   onChange: () => void;
+  /** E5.8#87：用户覆盖集（getUserSettings）——来源徽标 presence 派生（无 override = 主题 🎨） */
+  userOverrides: Record<string, unknown>;
 }) {
   const { t } = useTranslation();
   const gearRef = useRef<HTMLButtonElement>(null);
@@ -40,6 +44,18 @@ function SettingRow({
   // IPC 版 hook——替代 useConfigurationValue
   const currentValue = useConfigurationValueIpc(configKey);
   const depValue = useConfigurationValueIpc(prop?.dependsOn?.key ?? "");
+  // E5.8#87：来源徽标——sourceKey 声明槽才派生（appearanceMode 覆盖 9 键；第三方键零侵入）。
+  // mixMode + 域来源值走 IPC 订阅；无 sourceKey 时空 key 退化为 depValue 同款无订阅污染。
+  const mixMode = useConfigurationValueIpc<string>("app.mixMode");
+  const sourceValue = useConfigurationValueIpc(prop?.sourceKey ?? "");
+  const badge = prop?.sourceKey
+    ? deriveSourceBadge({
+        sourceKey: prop.sourceKey,
+        userValue: userOverrides[configKey],
+        mixMode,
+        sourceValue,
+      })
+    : null;
   // E5.8#50.26：actionDisabledAll——动作按钮禁用条件（混搭复位「6 来源全跟随主题 → 置灰」）：
   // 全部 {key,value} 匹配当前配置值时禁用（mockup 01 updateMixReset 同款 `!anyCustom`）
   const actionKeys = prop?.actionDisabledAll?.map((c) => c.key) ?? [];
@@ -87,7 +103,18 @@ function SettingRow({
   return (
     <div className="settings-row" id={`setting-row-${configKey}`}>
       <div className="settings-row-info">
-        <label className="settings-row-label">{configKey}</label>
+        <div className="settings-row-label-line">
+          <label className="settings-row-label">{configKey}</label>
+          {/* E5.8#87：来源徽标——清除后 🎨 一眼可见「回主题」；改过 ✏️；混搭域来源 🔀 */}
+          {badge && (
+            <span
+              className={`settings-source-badge settings-source-badge--${badge}`}
+              title={t(SOURCE_BADGE_UI[badge].labelKey)}
+            >
+              {SOURCE_BADGE_UI[badge].glyph} {t(SOURCE_BADGE_UI[badge].labelKey)}
+            </span>
+          )}
+        </div>
         <span className="settings-row-desc">{t(prop.description ?? "")}</span>
       </div>
       <div className="settings-row-control">

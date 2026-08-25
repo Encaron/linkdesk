@@ -23,6 +23,7 @@ import KeybindingSettingsView from "./keybinding-settings/KeybindingSettingsView
 import SettingRow from "./SettingsView/SettingRow";
 import useSettingsEvents from "./SettingsView/useSettingsEvents";
 import { lk, OWN_FACTORY_ROLE } from "./SettingsView/helpers";
+import { useUserOverridesIpc } from "./hooks/useUserOverridesIpc";
 import { groupSettingsKeys } from "./SettingsView/grouping";
 import type { GroupInfo, ConfigProperty, SettingsViewProps } from "./SettingsView/types";
 import "./SettingsView.css";
@@ -42,6 +43,9 @@ function SettingsView({ isActive: _isActive, tabId }: SettingsViewProps) {
   const [groupsRaw, setGroupsRaw] = useState<GroupInfo[]>([]);
   const [allProps, setAllProps] = useState<Record<string, ConfigProperty>>({});
   const [dataLoaded, setDataLoaded] = useState(false);
+
+  // E5.8#87：用户覆盖集——来源徽标 presence 派生（单 hook 顶升，SettingRow 按需读 prop，不重复订阅）
+  const userOverrides = useUserOverridesIpc();
 
   // ── 顶部通用区（E5.8#41.13）——本角色（设置套）全部候选 + 激活 id，用于切整套设置 UI ──
   const [settingsCandidates, setSettingsCandidates] = useState<{ pluginId: string; title: string; viewId?: string }[]>([]);
@@ -215,6 +219,7 @@ function SettingsView({ isActive: _isActive, tabId }: SettingsViewProps) {
             configKey={key}
             prop={allProps[key]}
             onChange={() => setVersion((v) => v + 1)}
+            userOverrides={userOverrides}
           />
         ))}
       </div>
