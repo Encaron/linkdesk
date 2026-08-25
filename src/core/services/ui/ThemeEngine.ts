@@ -905,7 +905,10 @@ export function registerFallbackThemes(): void {
   if (_fallbacksRegistered) return;
   _fallbacksRegistered = true;
   ThemeRegistry.registerRecipe(
-    { id: "dark", name: "Dark", type: "dark", colorways: [{ id: "dark", name: "Dark", colors: {} }] },
+    // E5.8 主题过老修正：配色变体 id 须全局唯一（theme.ts L92 契约）——兜底 dark 配方配色 id 若仍为 "dark"
+    //   与 theme-defaults "light" 配方的 "dark" 配色冲突 → 自定义模式配色下拉 React key 碰撞。
+    //   改名 dark-fallback 不破坏遗留 app.themeColor="dark" 解析：resolveColorway 未命中回落 colorways[0]（空配色同渲染）。
+    { id: "dark", name: "Dark", type: "dark", colorways: [{ id: "dark-fallback", name: "Dark", colors: {} }] },
     undefined
   );
   ThemeRegistry.registerRecipe(

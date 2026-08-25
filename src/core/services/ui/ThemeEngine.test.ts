@@ -1601,15 +1601,17 @@ describe("ThemeEngine — 真实极限壳主题（E5.8#50.27，gallery 端到端
     expect(tokens["status-connected"]).toBe("#00E676");
   });
 
-  it("pill-bubble — 全胶囊 radius 域（八档 999px + 悬浮形态 radius999/inset8/shadow + 泡泡糖）", () => {
+  it("pill-bubble — 全胶囊 radius 域（七档 999px 绝对圆角 + radius-full 去键继承 :root 50% + 悬浮形态 radius999/inset8/shadow + 泡泡糖）", () => {
     const { recipe } = loadRealRecipe(
       "plugins/user/theme-pill/themes/pill-bubble.json",
       "pill-bubble", "全胶囊 Pill Bubble", "light",
     );
     expect(recipe).not.toBeNull();
+    // E5.8#85：radius-full 相对几何值 50%（:root 继承）——配方不写绝对 px（去键即继承）
     expect(recipe!.appearance?.radius).toEqual({
-      xs: 999, sm: 999, md: 999, lg: 999, xl: 999, "2xl": 999, pill: 999, full: 999,
+      xs: 999, sm: 999, md: 999, lg: 999, xl: 999, "2xl": 999, pill: 999,
     });
+    expect(recipe!.appearance?.radius?.full).toBeUndefined();
     const tokens = mergeDomains(recipe!);
     expect(tokens["radius-md"]).toBe("999px"); // tab 胶囊
     expect(tokens["radius-pill"]).toBe("999px");
@@ -1728,7 +1730,8 @@ describe("ThemeEngine — 旧格式主题迁移新格式（E5.8#74，决策 F）
     });
     expect(recipe!.appearance?.background).toBeUndefined(); // 旧无 background
     expect(recipe!.colorways).toHaveLength(1);
-    expect(recipe!.colorways[0].id).toBe("paper");
+    // E5.8 主题过老修正：配色 id 全局唯一契约（theme.ts L92）——kraft 避 songti-print 同款 "paper" 冲突
+    expect(recipe!.colorways[0].id).toBe("kraft");
     const tokens = mergeDomains(recipe!);
     expect(tokens["surface-bg-image"]).toBe('url("linkdesk://theme-zones/resources/paper-texture.svg")');
     expect(tokens["surface-bg-repeat"]).toBe("repeat"); // 纹理平铺
