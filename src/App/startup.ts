@@ -119,10 +119,11 @@ const seedAppearanceOverrides = (): void => {
   // mix 下生效 radius 来自 mixRadius 来源，拿活动配方当分母会二次缩放暴涨（来源 20px÷活动 8px=scale 2.5→20×2=40px）。
   const themeRadiusPx = getRadiusSourcePx();
   const seeds = deriveAppearanceSeeds(tokens, themeRadiusPx);
-  // E5.8#59（审计#7）：八键一次批量写 + 单次 applier——原 6 连 setConfigurationValue 各触发
+  // E5.8#59（审计#7）：九键一次批量写 + 单次 applier——原 6 连 setConfigurationValue 各触发
   // 一次 applyRecipe 全量重合并 + theme:changed 广播（6× 广播，脱出窗多池放大中间态闪变）。
   // 各覆盖 key onApply 均 applyThemeIfReady 全量读生效态 → 末 key 触发读到完整终态一次广播即收敛。
   // E5.8#80：+zoneRadius（开）/zoneRadiusScale（×1）——切 custom 视觉状态不变（zone 圆角仍 = 主题基线）。
+  // E5.8#81：+zoneBackgroundImage——zones 模式反推当前 zone 图 / 纹理模式空 = 跟随主题（视觉不变）。
   setConfigurationValueBatch([
     { key: "app.surfaceRadius", value: seeds.surfaceRadius },
     { key: "app.glassBlur", value: seeds.glassBlur },
@@ -132,6 +133,7 @@ const seedAppearanceOverrides = (): void => {
     { key: "app.fontFamily", value: seeds.fontFamily },
     { key: "app.zoneRadius", value: true },
     { key: "app.zoneRadiusScale", value: 1 },
+    { key: "app.zoneBackgroundImage", value: seeds.zoneBackgroundImage },
   ], "user");
 };
 
@@ -382,6 +384,17 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
             maximum: 2,
             description: t("分区圆角倍数——1 主题默认，0 方角，2 双倍圆润"),
             uiHint: "slider",
+            dependsOn: { key: "app.appearanceMode", value: "custom" },
+            onApply: () => applyThemeIfReady(),
+          },
+          // E5.8#81：zone 表面背景覆盖入口——image 控件选图写 --surface-bg-image（与全窗 --bg-image 并存：
+          // 全窗垫底 + zone 浮 surface 表面，缝隙/透明处露全窗 = 预期；痛点 12 双背景语义）。
+          // 消费 = getAppearanceOverrides 读本键 → surface-bg-image + zones=1（池侧量测 zone 坐标）。
+          "app.zoneBackgroundImage": {
+            type: "string",
+            default: "",
+            description: t("分区背景图片路径——空 = 主题自带；选择后浮各分区表面"),
+            uiHint: "image",
             dependsOn: { key: "app.appearanceMode", value: "custom" },
             onApply: () => applyThemeIfReady(),
           },

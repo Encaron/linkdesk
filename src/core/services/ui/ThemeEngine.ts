@@ -1055,14 +1055,17 @@ export interface AppearanceSeedValues {
   glassTint: string;
   backgroundImage: string;
   fontFamily: string;
+  zoneBackgroundImage: string; // E5.8#81：zone 表面背景覆盖（zones 模式才播种）
 }
 
 /**
- * 反推外观覆盖播种值——appearanceMode→custom 瞬间从生效 token 集反推 6 覆盖 key（08 §2）。
+ * 反推外观覆盖播种值——appearanceMode→custom 瞬间从生效 token 集反推 7 覆盖 key（08 §2）。
  * 纯函数只算不改：surfaceRadius = 当前 radius-md ÷ 主题原值（scale 系数，clamp 0-2）；
  * 玻璃绝对 = token 值直播；bg 剥 url() 存受控路径；font 跳过资产族（__ld_ 前缀 = 插件 @font-face，
  * #50.20 边界：资产族只显示不选，播种空 = 跟随主题）。themeRadiusPx = 主题原值（配方 appearance.radius.md
  * 或 :root 壳默认，调用方解析后传入；≤0 → scale 回退 1）。
+ * E5.8#81：zoneBackgroundImage 仅 zones 模式（surface-bg-zones===1）反推 surface-bg-image（切片语义）；
+ * 纹理主题（repeat 平铺，zones=0）播种空 = 跟随主题——避免把 repeat 纹理错播成 zones 切片（视觉变）。
  */
 export function deriveAppearanceSeeds(
   tokens: Record<string, string>,
@@ -1073,6 +1076,10 @@ export function deriveAppearanceSeeds(
   const bg = tokens["bg-image"];
   const bgPath = bg && bg !== "none" ? bg.replace(/^url\(["']?/, "").replace(/["']?\)$/, "") : "";
   const fam = tokens["font-ui"];
+  const zoneBg = tokens["surface-bg-image"];
+  const zoneBgPath = zoneBg && zoneBg !== "none" && tokens["surface-bg-zones"] === "1"
+    ? zoneBg.replace(/^url\(["']?/, "").replace(/["']?\)$/, "")
+    : "";
   return {
     surfaceRadius: Math.min(2, Math.max(0, Math.round(scale * 10) / 10)),
     glassBlur: parseFloat(tokens["glass-blur"] ?? "0") || 0,
@@ -1080,18 +1087,20 @@ export function deriveAppearanceSeeds(
     glassTint: tokens["glass-tint"] && tokens["glass-tint"] !== "transparent" ? tokens["glass-tint"] : "",
     backgroundImage: bgPath,
     fontFamily: fam && !fam.startsWith("__ld_") ? fam : "",
+    zoneBackgroundImage: zoneBgPath,
   };
 }
 
-/** 设置层外观覆盖配置 key 全集——appearanceMode=custom 播种存这 8 键、reset 摘除这 8 键回主题基线（08 §7.2/§7.3.5）。
+/** 设置层外观覆盖配置 key 全集——appearanceMode=custom 播种存这 9 键、reset 摘除这 9 键回主题基线（08 §7.2/§7.3.5）。
  *  单一来源：getAppearanceOverrides 读同键（glass 两键 presence 门控 / 其余空值不覆盖，见下）。
  *  E5.8#60 F1.1：壳命令（startup appearanceMode onApply）与插件 API（theme.resetAppearance）复位共用本表——
  *  插件侧曾只清 5 键漏 app.fontFamily → 第三方复位外观后字体不回基线。
- *  E5.8#80：+app.zoneRadius/app.zoneRadiusScale——zone 圆角第二通道（外观覆盖子节，同随 custom 播种/复位）。 */
+ *  E5.8#80：+app.zoneRadius/app.zoneRadiusScale——zone 圆角第二通道（外观覆盖子节，同随 custom 播种/复位）。
+ *  E5.8#81：+app.zoneBackgroundImage——zone 表面背景覆盖（与全窗 --bg-image 并存）。 */
 export const APPEARANCE_OVERRIDE_KEYS = [
   "app.surfaceRadius", "app.glassBlur", "app.glassOpacity",
   "app.glassTint", "app.backgroundImage", "app.fontFamily",
-  "app.zoneRadius", "app.zoneRadiusScale",
+  "app.zoneRadius", "app.zoneRadiusScale", "app.zoneBackgroundImage",
 ] as const;
 
 /** 读用户外观配置 → 覆盖集（glass/bg 仅偏离 neutral 时；radius 六键恒写 scale 系数——applyOverrides 内乘算）。 */
@@ -1116,6 +1125,20 @@ export function getAppearanceOverrides(): Record<string, string> {
     // 映射受控协议 / 主题资产（linkdesk:// 相对）原样。file:// 绝对路径会被 Chromium 拦截（实机 bug 13）。
     const resolved = resolveBackgroundImageUrl(String(bgImage));
     if (resolved) overrides["bg-image"] = `url("${resolved}")`;
+  }
+
+  // E5.8#81：zone 表面背景覆盖入口——写 --surface-bg-image（与全窗 --bg-image 并存非互斥：全窗垫底、
+  // zone 浮 surface 表面，缝隙/透明处露全窗 = 预期，痛点 12 双背景语义）。surface-bg-zones=1 触发
+  // 池侧量测 zone 坐标（preload-pool/surface-zones，同主题 background.mode:zones 机制）——用户图浮各 zone
+  // 表面；no-repeat 对齐 zones 切片语义。清空 → 不写任何键 → 回主题自带 zones 纹理/无 zone 图。
+  const zoneBgImage = getConfigurationValue<string>("app.zoneBackgroundImage");
+  if (zoneBgImage != null && String(zoneBgImage).trim() !== "") {
+    const resolvedZone = resolveBackgroundImageUrl(String(zoneBgImage));
+    if (resolvedZone) {
+      overrides["surface-bg-image"] = `url("${resolvedZone}")`;
+      overrides["surface-bg-repeat"] = "no-repeat";
+      overrides["surface-bg-zones"] = "1";
+    }
   }
 
   // E5.8#50.19：app.fontFamily 用户级字体覆盖——族名写 --font-ui（空 = 不覆盖，跟随主题）
