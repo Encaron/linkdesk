@@ -18,9 +18,11 @@ import {
   getEffectiveAccentColor,
   getEffectiveTokens,
   getActiveRecipe,
+  mergeDomains, // E5.8#85 补课：迁移取主题基准 token（无 overrides；缺 radius 域回退壳默认在公式内）
   getAvailableThemes,
   getCurrentTheme,
   deriveAppearanceSeeds,
+  deriveRadiusAbsoluteMigration, // E5.8#85 补课：旧圆角倍数→绝对 px 迁移公式
   normalizeThemeValue,
   syncThemeColorConfig,
   APPEARANCE_OVERRIDE_KEYS,
@@ -35,6 +37,10 @@ import {
   setConfigurationValueBatch, resetConfigurationValueBatch,
 } from "../core/services/configuration/ConfigurationService";
 import { registerConfiguration, updateConfigurationEnum, getMergedSchema } from "../core/registry/ConfigurationRegistry";
+import {
+  registerConfigMigration, // E5.8#85 补课：schema 版本迁移登记——未来语义切换的唯一入口（勿再手写一次性块）
+  runPendingConfigMigrations,
+} from "../core/services/configuration/schemaMigrations";
 import { initLayoutService, getTabLayout } from "../core/services/layout/LayoutService";
 import { initWorkspaceService } from "../core/services/layout/WorkspaceService";
 import { initPluginStates, APP_PLUGIN_ID } from "../core/services/plugins/PluginStateService";
@@ -134,6 +140,25 @@ const seedAppearanceOverrides = (): void => {
     { key: "app.zoneBackgroundImage", value: seeds.zoneBackgroundImage },
   ], "user");
 };
+
+/* ── E5.8#85 补课：schema 版本迁移登记（14-档案 §五 #85 + schemaMigrations.ts） ──
+ * 旧 settings.json 圆角倍数（1.15/1.36）在 #85 绝对化后被读成 ~1px——启动跑迁移换算为绝对 px。
+ * 公式 deriveRadiusAbsoluteMigration：主题基准 token × 原始倍数（CDP 实测纠偏——不能读 effective token：
+ *   post-init 时 #85 代码已把旧倍数误读应用，effective 是被污染视觉；基准 = mergeDomains 无 overrides）。
+ * 未来语义切换（#86 glass / #87 清除 / #91 fontTone）在此链路 registerConfigMigration 登记——勿再手写一次性块。 */
+registerConfigMigration({
+  version: 2,
+  name: "E5.8#85 radius-multiplier-to-absolute-px",
+  migrate: async ({ setMany }) => {
+    const surfaceRadius = inspectConfiguration<number>("app.surfaceRadius").userValue;
+    const zoneRadiusScale = inspectConfiguration<number>("app.zoneRadiusScale").userValue;
+    // 主题基准 token——mergeDomains 无 overrides（主题原生 radius 域）；缺 radius → 壳默认（旧 source || base 同基准）
+    const active = getActiveRecipe();
+    const recipe = active ? ThemeRegistry.getRecipe(active.recipeId) : undefined;
+    const baseTokens = active && recipe ? mergeDomains(recipe, active.colorwayId || undefined) : {};
+    setMany(deriveRadiusAbsoluteMigration({ surfaceRadius, zoneRadiusScale }, baseTokens));
+  },
+});
 
 /** mount-once 启动管线：注册 + initAll + post-init state 同步 + cleanup（HMR/StrictMode 安全） */
 export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): void {
@@ -598,6 +623,14 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
         }
       } catch (e) {
         console.error("[startup] themeColorMode 迁移失败:", e);
+      }
+      // E5.8#85 补课：跑待执行 schema 迁移——旧 settings.json（圆角倍数）升级即迁绝对 px（视觉零变化）。
+      // 位置：post-init（initAll 后主题+旧覆盖已应用，getEffectiveTokens() = 旧视觉，冻结即忠实）。
+      // #82 themeColorMode 是迁移机制落位前的历史一次性先例；此后语义切换一律 registerConfigMigration 登记。
+      try {
+        await runPendingConfigMigrations();
+      } catch (e) {
+        console.error("[startup] schema 迁移失败:", e);
       }
 
       const initLang = getConfigurationValue<string>("app.language") ?? "zh";

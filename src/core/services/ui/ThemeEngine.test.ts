@@ -29,6 +29,7 @@ import {
   cleanupPluginFontFaces,
   ensurePluginFontFacesCleanup,
   deriveAppearanceSeeds,
+  deriveRadiusAbsoluteMigration,
   normalizeThemeValue,
   getMixProfile,
   mergeMixDomains,
@@ -1064,6 +1065,61 @@ describe("ThemeEngine — deriveAppearanceSeeds 反推播种（E5.8#50.19，08 �
   it("字体播种跳过资产族（__ld_ 前缀只显示不选，#50.20 边界）；系统族名直播", () => {
     expect(deriveAppearanceSeeds({ "font-ui": "SimSun" }).fontFamily).toBe("SimSun");
     expect(deriveAppearanceSeeds({ "font-ui": "__ld_demo-plugin_serif" }).fontFamily).toBe("");
+  });
+});
+
+describe("ThemeEngine — deriveRadiusAbsoluteMigration 旧圆角倍数→绝对 px（E5.8#85 补课，schemaMigrations v2）", () => {
+  it("主题基准 md × 倍数 → 绝对 px（1.15×6=6.9→7；zone 死区 0×1.36=0）", () => {
+    // baseTokens = mergeDomains 无 overrides（主题原生 radius 域）；dark 无 radius → 缺省走 getBaseRadius 壳默认
+    const out = deriveRadiusAbsoluteMigration(
+      { surfaceRadius: 1.15, zoneRadiusScale: 1.36 },
+      { "radius-md": "6px", "surface-radius": "0px" }
+    );
+    expect(out).toEqual({ "app.surfaceRadius": 7, "app.zoneRadiusScale": 0 });
+  });
+
+  it("主题自定 radius 域——基准取主题 radius-md（非壳默认）：8×1.15=9.2→9", () => {
+    const out = deriveRadiusAbsoluteMigration(
+      { surfaceRadius: 1.15 },
+      { "radius-md": "8px", "surface-radius": "6px" }
+    );
+    expect(out["app.surfaceRadius"]).toBe(9);
+  });
+
+  it("非死区 zone——主题 surface-radius 基准 × zoneScale：6×1.36=8.16→8", () => {
+    const out = deriveRadiusAbsoluteMigration(
+      { zoneRadiusScale: 1.36 },
+      { "radius-md": "6px", "surface-radius": "6px" }
+    );
+    expect(out["app.zoneRadiusScale"]).toBe(8);
+  });
+
+  it("presence 门控——旧值不存在（全新安装/从未设过）→ 不产出对应键（零变更零写）", () => {
+    expect(deriveRadiusAbsoluteMigration({}, { "radius-md": "6px" })).toEqual({});
+    expect(deriveRadiusAbsoluteMigration({ surfaceRadius: 1.15 }, { "radius-md": "6px" })).toEqual({
+      "app.surfaceRadius": 7,
+    });
+    expect(deriveRadiusAbsoluteMigration({ zoneRadiusScale: 1.36 }, { "surface-radius": "0px" })).toEqual({
+      "app.zoneRadiusScale": 0,
+    });
+  });
+
+  it("clamp 进系统标尺——基准越界（999px）×倍数 → 钳 32", () => {
+    const out = deriveRadiusAbsoluteMigration(
+      { surfaceRadius: 2, zoneRadiusScale: 2 },
+      { "radius-md": "999px", "surface-radius": "32px" }
+    );
+    expect(out).toEqual({ "app.surfaceRadius": 32, "app.zoneRadiusScale": 32 });
+  });
+
+  it("主题无 radius 域 → 回退 getBaseRadius 壳默认（与旧 source=tokens[key]||base[key] 同基准）", () => {
+    // 无 radius-md / surface-radius → 壳默认（jsdom 环境 getBaseRadius 读 :root → 0px，故断言 0）
+    const out = deriveRadiusAbsoluteMigration(
+      { surfaceRadius: 1.15, zoneRadiusScale: 1.36 },
+      {}
+    );
+    expect(out["app.surfaceRadius"]).toBe(0);
+    expect(out["app.zoneRadiusScale"]).toBe(0);
   });
 });
 

@@ -1100,6 +1100,35 @@ export function deriveAppearanceSeeds(tokens: Record<string, string>): Appearanc
   };
 }
 
+/**
+ * E5.8#85 补课：旧圆角倍数 → 绝对 px 迁移公式（纯函数只算不改，测试直测）。
+ * 原理（CDP 实测纠偏）：不能读 getEffectiveTokens() 冻结——post-init 时 #85 代码已把旧倍数当绝对值
+ * 误读应用（1.15 → 1px），effective token 是被污染的视觉。正确基准 = **主题基准 token × 原始倍数**：
+ * 旧 applyRadiusScale 语义正是「theme radius-md（缺省壳默认）× scale」、旧 ①b 语义「theme surface-radius × zoneScale」。
+ * baseTokens = mergeDomains(recipe) 无 overrides 输出（主题原生 radius 域），缺 radius → getBaseRadius() 壳默认
+ * （与旧代码 source = tokens[key] || base[key] 完全同基准）。
+ * 非幂等：重跑 = 基准 × 新绝对值二次乘算（7×6=42）——正确性依赖 schemaMigrations 版本标志（写入即不再重跑；
+ *   标志被手动删除 = 值被二次乘算，属手动篡改边界，见 schemaMigrations.ts 模块头）。这正是一开始需要版本号而非
+ *   值检测的原因——新旧域重叠且本公式不可靠检测。
+ * presence 门控：旧值不存在（全新安装 / 用户从未设过）→ 不产出该键（零变更零写）。
+ * 调用方：schemaMigrations.registerConfigMigration 登记（version 2），startup post-init 跑。
+ */
+export function deriveRadiusAbsoluteMigration(
+  userValues: { surfaceRadius?: number; zoneRadiusScale?: number },
+  baseTokens: Record<string, string>
+): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  const baseMd = parseFloat(baseTokens["radius-md"] ?? getBaseRadius()["radius-md"] ?? "0");
+  const baseSurfaceRadius = parseFloat(baseTokens["surface-radius"] ?? "0");
+  if (userValues.surfaceRadius !== undefined) {
+    out["app.surfaceRadius"] = clampRadiusPx(baseMd * userValues.surfaceRadius);
+  }
+  if (userValues.zoneRadiusScale !== undefined) {
+    out["app.zoneRadiusScale"] = clampRadiusPx(baseSurfaceRadius * userValues.zoneRadiusScale);
+  }
+  return out;
+}
+
 /** 设置层外观覆盖配置 key 全集——appearanceMode=custom 播种存这 9 键、reset 摘除这 9 键回主题基线（08 §7.2/§7.3.5）。
  *  单一来源：getAppearanceOverrides 读同键（glass 两键 presence 门控 / 其余空值不覆盖，见下）。
  *  E5.8#60 F1.1：壳命令（startup appearanceMode onApply）与插件 API（theme.resetAppearance）复位共用本表——
