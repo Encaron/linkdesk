@@ -211,11 +211,14 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
       //    显隐 = dependsOn 声明驱动（appearanceMode=custom 显 6 覆盖行，mixMode=mix 显 6 来源行）；
       //    播种 = 设置层永远只存用户偏离量（08 §2）——切 custom 反推播种，切回 followTheme 删覆盖回配方。
       //    app.theme 枚举 = 配方 id + flat 退路（syncAppThemeEnum 注册/注销时同步，动态配方 id 列表 08 §7.2 #1）。
+      //    E5.8#78 组内二级标题——每 key 声明 group（5 分节：整体配方/配色/强调色/外观覆盖/域混搭），
+      //    SettingsView 按 group 归到子标题下渲染（无 group 平铺原样，第三方设置零侵入）。
       registerConfiguration("appearance", {
         title: t("主题"),
         properties: {
           "app.theme": {
             type: "string",
+            group: t("整体配方"), // E5.8#78：组内二级标题——主题组分节 1/5（整体配方）
             // E5.8#50.22：uiHint 声明卡片控件——设置页 renderControl "themePicker" 分支渲染配方卡片
             // （数据走 linkdesk.theme.listRecipes，选中写回本 key 走下方 onApply 应用配方）
             uiHint: "themePicker",
@@ -253,6 +256,7 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
           //   mix 模式   = colors 域来源（壳 UI 按 app.mixMode 动态切 theme.sources + colors 域，见 renderControl select 分支）。
           "app.themeColor": {
             type: "string",
+            group: t("配色"), // E5.8#78：组内二级标题——主题组分节 2/5（配色）
             default: "",
             description: t("配色变体——活动主题配方的可用配色"),
             // 枚举仍由 applyRecipeForConfig 每次应用同步（第三方设置 UI 读取 + setConfigurationValue 校验）；壳 UI 走 optionsFrom 动态取。
@@ -267,6 +271,7 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
           // getEffectiveAccentColor 读配置按 key 名（非注册组）——功能链路零改动。
           "app.accentMode": {
             type: "string",
+            group: t("强调色"), // E5.8#78：组内二级标题——主题组分节 3/5（强调色）
             default: "custom",
             enum: ["custom", "followTheme"],
             description: t("强调色模式——自定义固定色 / 跟随主题（主题无强调色时用自定义兜底）"),
@@ -281,6 +286,7 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
           },
           "app.accentColor": {
             type: "string",
+            group: t("强调色"),
             // E5.8#6.6 hex 豁免：配置项默认值数据（用户可改，非样式硬编码）
             // eslint-disable-next-line linkdesk/no-hardcoded-hex
             default: "#0078d4",
@@ -293,6 +299,7 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
           },
           "app.appearanceMode": {
             type: "string",
+            group: t("外观覆盖"), // E5.8#78：组内二级标题——主题组分节 4/5（外观覆盖）
             default: "followTheme",
             enum: ["followTheme", "custom"],
             description: t("外观模式——跟随主题配方外观 / 手动覆盖外观"),
@@ -312,6 +319,7 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
           // neutral 默认值 = 不覆盖主题基线；onApply 统一走 applyThemeIfReady（单一写入点）。
           "app.surfaceRadius": {
             type: "number",
+            group: t("外观覆盖"),
             default: 1,
             minimum: 0,
             maximum: 2,
@@ -322,6 +330,7 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
           },
           "app.glassBlur": {
             type: "number",
+            group: t("外观覆盖"),
             default: 0,
             minimum: 0,
             maximum: 32,
@@ -332,6 +341,7 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
           },
           "app.glassOpacity": {
             type: "number",
+            group: t("外观覆盖"),
             default: 1,
             minimum: 0,
             maximum: 1,
@@ -342,6 +352,7 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
           },
           "app.glassTint": {
             type: "string",
+            group: t("外观覆盖"),
             default: "",
             description: t("玻璃叠加色——空 = 主题自带"),
             renderHint: "color",
@@ -350,6 +361,7 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
           },
           "app.backgroundImage": {
             type: "string",
+            group: t("外观覆盖"),
             default: "",
             description: t("窗口背景图片路径——空 = 主题自带"),
             uiHint: "image", // E5.8#50.11：专属「选择图片」控件（选图→拷贝入库→受控路径持久化）
@@ -358,6 +370,7 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
           },
           "app.fontFamily": {
             type: "string",
+            group: t("外观覆盖"),
             default: "",
             description: t("界面字体——空 = 跟随主题；选择后写 --font-ui"),
             // E5.8#50.20：全字族化 FontFamilySelect（monoOnly:false 列全族非等宽）——
@@ -372,6 +385,7 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
           //   消费 = getAppearanceOverrides 读本键 → applyOverrides ①b 通道乘算 / "0px" 开关短路（ThemeEngine.ts）。
           "app.zoneRadius": {
             type: "boolean",
+            group: t("外观覆盖"),
             default: true,
             description: t("分区圆角开关——关闭后各分区强制直角（0px）"),
             dependsOn: { key: "app.appearanceMode", value: "custom" },
@@ -379,6 +393,7 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
           },
           "app.zoneRadiusScale": {
             type: "number",
+            group: t("外观覆盖"),
             default: 1,
             minimum: 0,
             maximum: 2,
@@ -392,6 +407,7 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
           // 消费 = getAppearanceOverrides 读本键 → surface-bg-image + zones=1（池侧量测 zone 坐标）。
           "app.zoneBackgroundImage": {
             type: "string",
+            group: t("外观覆盖"),
             default: "",
             description: t("分区背景图片路径——空 = 主题自带；选择后浮各分区表面"),
             uiHint: "image",
@@ -405,6 +421,7 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
           // 「跟随主题」哨兵值 = "followTheme"（10-混搭设计 §1/§3 定稿；缺省与播种同一值）。
           "app.mixMode": {
             type: "string",
+            group: t("域混搭"), // E5.8#78：组内二级标题——主题组分节 5/5（域混搭）
             default: "recipe",
             enum: ["recipe", "mix"],
             description: t("混搭模式——单一主题配方 / 按域混搭多个主题来源"),
@@ -428,6 +445,7 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
           // schema 静态声明 colorways+colors，运行时读 app.mixMode 决定 recipe/mix 路径，renderControl 零改动）。
           "app.mixFont": {
             type: "string",
+            group: t("域混搭"),
             default: "followTheme",
             description: t("字体域来源——跟随主题配方 / 指定主题配方 id"),
             dependsOn: { key: "app.mixMode", value: "mix" },
@@ -438,6 +456,7 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
           },
           "app.mixRadius": {
             type: "string",
+            group: t("域混搭"),
             default: "followTheme",
             description: t("圆角域来源——跟随主题配方 / 指定主题配方 id"),
             dependsOn: { key: "app.mixMode", value: "mix" },
@@ -448,6 +467,7 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
           },
           "app.mixGlass": {
             type: "string",
+            group: t("域混搭"),
             default: "followTheme",
             description: t("玻璃域来源——跟随主题配方 / 指定主题配方 id"),
             dependsOn: { key: "app.mixMode", value: "mix" },
@@ -458,6 +478,7 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
           },
           "app.mixBackground": {
             type: "string",
+            group: t("域混搭"),
             default: "followTheme",
             description: t("背景域来源——跟随主题配方 / 指定主题配方 id"),
             dependsOn: { key: "app.mixMode", value: "mix" },
@@ -468,6 +489,7 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
           },
           "app.mixSurface": {
             type: "string",
+            group: t("域混搭"),
             default: "followTheme",
             description: t("表面域来源——跟随主题配方 / 指定主题配方 id"),
             dependsOn: { key: "app.mixMode", value: "mix" },
@@ -481,6 +503,7 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
           // actionDisabledAll：6 来源全「跟随主题」→ 置灰（mockup 已实现，减少噪音）。
           "app.mixReset": {
             type: "string",
+            group: t("域混搭"),
             default: "",
             description: t("⟲ 全部复位为整体配方"),
             renderHint: "action",

@@ -186,6 +186,39 @@ describe("ConfigurationRegistry — register 返 disposer（E5.8#10）", () => {
   });
 });
 
+describe("ConfigurationRegistry — group 组内二级标题（E5.8#78）", () => {
+  beforeEach(() => {
+    clearConfigurationRegistrations();
+  });
+
+  it("registerConfiguration — group 字段随注册透传 getMergedSchema", () => {
+    registerConfiguration("group-test", {
+      title: "分组测试",
+      properties: {
+        "app.theme": { type: "string", default: "dark", description: "主题", group: "整体配方" },
+        "app.accentMode": { type: "string", default: "custom", description: "强调色模式", group: "强调色" },
+        "app.plain": { type: "boolean", default: true, description: "无分组" },
+      },
+    });
+    const merged = getMergedSchema();
+    expect(merged["app.theme"].group).toBe("整体配方");
+    expect(merged["app.accentMode"].group).toBe("强调色");
+    // 未声明 group → 字段缺省（平铺原样，SettingsView 渲染端按 "" 处理）
+    expect(merged["app.plain"].group).toBeUndefined();
+  });
+
+  it("getConfigurationContributions — group 随插件配置贡献保留（SettingsView IPC 消费面）", () => {
+    registerConfiguration("group-test", {
+      title: "分组测试",
+      properties: {
+        "app.themeColor": { type: "string", default: "", description: "配色", group: "配色" },
+      },
+    });
+    const contrib = getPluginConfiguration("group-test")!;
+    expect(contrib.properties["app.themeColor"].group).toBe("配色");
+  });
+});
+
 describe("ConfigurationRegistry — requestSettingsGroup / consumeSettingsGroup", () => {
   beforeEach(() => {
     clearConfigurationRegistrations();

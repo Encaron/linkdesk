@@ -46,6 +46,8 @@ interface ConfigProperty {
   actionCommand?: string;
   /** E5.8#50.26：renderHint "action" 按钮禁用条件——全部 {key,value} 匹配当前配置值时禁用（混搭复位置灰） */
   actionDisabledAll?: Array<{ key: string; value: unknown }>;
+  /** E5.8#78：组内二级标题——无 group 保持平铺（第三方配置零侵入） */
+  group?: string;
 }
 
 export type { SettingsViewProps, GroupInfo, ConfigProperty };

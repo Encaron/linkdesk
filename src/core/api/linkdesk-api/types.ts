@@ -84,6 +84,8 @@ export interface LinkDeskConfigProperty {
   actionCommand?: string;
   /** E5.8#50.26：renderHint "action" 按钮禁用条件——全部 {key,value} 匹配当前配置值时禁用 */
   actionDisabledAll?: Array<{ key: string; value: unknown }>;
+  /** E5.8#78：组内二级标题——SettingsView 把同 group 的 key 归到子标题下渲染；无 group 保持平铺（零侵入） */
+  group?: string;
 }
 
 /** 配置 schema——key → 属性定义（index signature 保持现有消费方） */

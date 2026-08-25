@@ -54,6 +54,9 @@ export interface ConfigurationProperty {
   /** E5.8#50.26：renderHint "action" 按钮禁用条件——全部 {key,value} 匹配当前配置值时禁用
    *  （混搭复位「6 来源全跟随主题 → 置灰」，10 §6 决策记录 3）。 */
   actionDisabledAll?: Array<{ key: string; value: unknown }>;
+  /** E5.8#78：组内二级标题——SettingsView 按本字段把同组 key 归到子标题下渲染（主题组 5 分节）。
+   *  可选字段：第三方不声明 = 保持平铺原样（零侵入）。组标题字符串走壳 t() i18n（lang-defaults）。 */
+  group?: string;
 }
 
 /** 插件贡献的 configuration 分组——对标 VS Code package.json contributes.configuration */

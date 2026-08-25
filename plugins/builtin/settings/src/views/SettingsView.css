@@ -155,6 +155,33 @@
   color: var(--text-primary);
 }
 
+/* ── 组内二级标题（E5.8#78）——主题组 5 分节；无 group 的 key 平铺不进 subsection ── */
+
+.settings-subsection {
+  /* 分节间距：前节末行与下节标题分隔（含无 group 平铺行） */
+  margin-bottom: 6px;
+}
+
+.settings-subsection-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  margin: 22px 0 10px 0;
+  color: var(--text-secondary);
+}
+
+/* 小竖条修饰——分区纹理同款 left-accent，低饱和不喧宾（对标 VS Code 分组标签） */
+.settings-subsection-title::before {
+  content: "";
+  width: 3px;
+  height: 12px;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--accent) 55%, transparent);
+}
+
 .settings-empty {
   display: flex;
   align-items: center;

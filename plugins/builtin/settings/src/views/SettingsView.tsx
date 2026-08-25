@@ -23,6 +23,7 @@ import KeybindingSettingsView from "./keybinding-settings/KeybindingSettingsView
 import SettingRow from "./SettingsView/SettingRow";
 import useSettingsEvents from "./SettingsView/useSettingsEvents";
 import { lk, OWN_FACTORY_ROLE } from "./SettingsView/helpers";
+import { groupSettingsKeys } from "./SettingsView/grouping";
 import type { GroupInfo, ConfigProperty, SettingsViewProps } from "./SettingsView/types";
 import "./SettingsView.css";
 
@@ -201,6 +202,25 @@ function SettingsView({ isActive: _isActive, tabId }: SettingsViewProps) {
       g.role ? g.role === selectedGroup : g.pluginId === selectedGroup
     ) ?? filteredGroups[0] ?? null;
 
+  // ── 组内二级标题（E5.8#78）——按 prop.group 把 keys 归到子标题下渲染（主题组 5 分节）。
+  //    无 group 的 key 保持平铺原样（第三方配置零侵入）；组标题字符串走 t() i18n（lang-defaults）。
+  //    空桶（搜索过滤后整组无 key）不渲染标题——不显示空标题。归桶逻辑 = grouping.ts 纯函数。
+  const renderGroupedKeys = (keys: string[]): React.ReactNode => {
+    return groupSettingsKeys(keys, (k) => allProps[k]?.group ?? "").map((bucket) => (
+      <div key={bucket.group || `flat-${bucket.keys[0]}`} className="settings-subsection">
+        {bucket.group && <h3 className="settings-subsection-title">{t(bucket.group)}</h3>}
+        {bucket.keys.map((key) => (
+          <SettingRow
+            key={key}
+            configKey={key}
+            prop={allProps[key]}
+            onChange={() => setVersion((v) => v + 1)}
+          />
+        ))}
+      </div>
+    ));
+  };
+
   return (
     <div className="settings-editor">
       {/* 顶部通用区（E5.8#41.13）——N 套设置插件并存切换：全部入口含自身、激活高亮、
@@ -332,14 +352,7 @@ function SettingsView({ isActive: _isActive, tabId }: SettingsViewProps) {
                   )}
                   <h2 className="settings-group-title">{activeGroup.title}</h2>
                   {activeGroup.keys.length > 0 ? (
-                    activeGroup.keys.map((key) => (
-                      <SettingRow
-                        key={key}
-                        configKey={key}
-                        prop={allProps[key]}
-                        onChange={() => setVersion((v) => v + 1)}
-                      />
-                    ))
+                    renderGroupedKeys(activeGroup.keys)
                   ) : activeGroup.role ? (
                     <div className="settings-empty">{t("激活套无配置项")}</div>
                   ) : null}
