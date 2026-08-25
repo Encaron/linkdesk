@@ -250,13 +250,15 @@ async function handlePluginsCall(method: string, args: unknown[]): Promise<unkno
     case "finishNotification":
     case "cancelNotification":
       return handleUiMethod(method, args);
-    // ── E5.8#50.18：主题配方/配色（06 §2 六方法）——IpcBridgeHandler/theme 域委派（查询壳侧权威/应用落配置）──
+    // ── E5.8#50.18+#88：主题配方/配色（八方法）——IpcBridgeHandler/theme 域委派（查询壳侧权威/应用落配置）──
     case "theme.listRecipes":
     case "theme.getActive":
     case "theme.getEffectiveTokens":
     case "theme.setRecipe":
     case "theme.setColorway":
     case "theme.resetAppearance":
+    case "theme.resetMix":
+    case "theme.getBaselineSeeds":
       return handleThemeMethod(method, args);
     default:
       throw new Error(`未知的 plugins 方法: ${method}`);

@@ -1,17 +1,15 @@
 /**
- * IpcBridgeHandler 主题域——E5.8#50.18 配方/配色 API（06 §2 六方法）。
- * 查询（listRecipes/getActive/getEffectiveTokens）走 ThemeRegistry/ThemeEngine——壳侧权威
+ * IpcBridgeHandler 主题域——E5.8#50.18 配方/配色 API（06 §2 六方法）+ E5.8#88 复位对称（C3，八方法）。
+ * 查询（listRecipes/getActive/getEffectiveTokens/getBaselineSeeds）走 ThemeRegistry/ThemeEngine——壳侧权威
  * （ThemeRegistry 在壳渲染进程登记配方，主进程无 recipe 实例——实现偏离 06 §5「主进程 ThemeRegistry」
  * 的定稿，路由经既有 plugins:call 代理 → 壳，见 #50.18 回勾记录）；
- * 应用（setRecipe/setColorway/resetAppearance）落配置（app.*，持久化 + onApply 全窗重推 theme:changed）。
+ * 应用（setRecipe/setColorway/resetAppearance/resetMix）落配置（app.*，持久化 + onApply 全窗重推 theme:changed）。
  * 依赖方向：theme → ThemeRegistry/ThemeEngine/ConfigurationService + linkdesk-api/types（RecipeMeta）；被聚合器委派。
  */
 
 import { ThemeRegistry } from "../../../registry/appearance/ThemeRegistry";
-import { recipeDomains, getActiveRecipe, getEffectiveTokens, normalizeThemeValue, APPEARANCE_OVERRIDE_KEYS } from "../../ui/ThemeEngine";
-import {
-  getConfigurationValue, setConfigurationValue, resetConfigurationValueBatch,
-} from "../../configuration/ConfigurationService";
+import { recipeDomains, getActiveRecipe, getEffectiveTokens, normalizeThemeValue, deriveAppearanceSeedMap, getThemeBaseTokens } from "../../ui/ThemeEngine";
+import { getConfigurationValue, setConfigurationValue } from "../../configuration/ConfigurationService";
 import type { RecipeMeta, ColorwayMeta } from "../../../api/linkdesk-api/types";
 import type { ThemeRecipe } from "../../../types/theme";
 
@@ -34,15 +32,7 @@ function toRecipeMeta(recipe: ThemeRecipe): RecipeMeta {
   };
 }
 
-/** 设置层外观覆盖配置全集——resetAppearance 批量回退（neutral 默认值 = 不覆盖主题基线）。
- *  E5.8#60 F1.1：单一来源 ThemeEngine.APPEARANCE_OVERRIDE_KEYS（壳命令 startup 共用）——
- *  原本表只列 5 键漏 app.fontFamily → 第三方复位外观后字体不回基线。 */
-async function resetAppearanceOverrides(): Promise<void> {
-  // E5.8#59：批量复位——单次持久化 + 单次 applier（原逐 key await = 5 次持久化 + 5 次 applyThemeIfReady 广播）
-  await resetConfigurationValueBatch(APPEARANCE_OVERRIDE_KEYS, "user");
-}
-
-/** theme.* 六方法处理器——列表走 API（数据），选中走配置（持久化，06 §1 分工铁律） */
+/** theme.* 八方法处理器——列表走 API（数据），选中走配置（持久化，06 §1 分工铁律） */
 export async function handleThemeMethod(method: string, args: unknown[]): Promise<unknown> {
   switch (method) {
     case "theme.listRecipes":
@@ -76,9 +66,20 @@ export async function handleThemeMethod(method: string, args: unknown[]): Promis
       break;
     }
     case "theme.resetAppearance":
-      // 清设置层外观覆盖——glass 零值 / bg 空 / radius 1（neutral = 主题基线）
-      await resetAppearanceOverrides();
+      // E5.8#88 C3 复位对称——对齐壳命令（settingsCommands theme.resetAppearance）：app.appearanceMode→followTheme
+      // 单一写入点，onApply（startup）级联 resetConfigurationValueBatch(APPEARANCE_OVERRIDE_KEYS) 清 9 键。
+      // 原来直接批量复位键却留 appearanceMode=custom——不对称：逐键清空后壳 UI 仍判「custom 覆盖中」，徽标/播种态脱节。
+      await setConfigurationValue("app.appearanceMode", "followTheme", "user");
       break;
+    case "theme.resetMix":
+      // E5.8#88 C3 复位对称——对齐壳命令（settingsCommands theme.resetMix）：app.mixMode→recipe
+      // 单一写入点，onApply（startup）级联删 6 来源 key 回跟随主题。
+      await setConfigurationValue("app.mixMode", "recipe", "user");
+      break;
+    case "theme.getBaselineSeeds":
+      // E5.8#88：外观覆盖键 → 主题/混搭基准种子值全集（设置页「已修改」徽标基准；无活动配方 = 基准不可算 → null）。
+      // 无覆盖纯基线（getThemeBaseTokens）——含覆盖的 getEffectiveTokens 会把用户改值误判为「未改」。
+      return getActiveRecipe() ? deriveAppearanceSeedMap(getThemeBaseTokens()) : null;
     default:
       throw new Error(`未知的 plugins 方法: ${method}`);
   }

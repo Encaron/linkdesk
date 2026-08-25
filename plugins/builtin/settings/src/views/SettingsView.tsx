@@ -24,6 +24,7 @@ import SettingRow from "./SettingsView/SettingRow";
 import useSettingsEvents from "./SettingsView/useSettingsEvents";
 import { lk, OWN_FACTORY_ROLE } from "./SettingsView/helpers";
 import { useUserOverridesIpc } from "./hooks/useUserOverridesIpc";
+import { useBaselineSeedsIpc } from "./hooks/useBaselineSeedsIpc";
 import { groupSettingsKeys } from "./SettingsView/grouping";
 import type { GroupInfo, ConfigProperty, SettingsViewProps } from "./SettingsView/types";
 import "./SettingsView.css";
@@ -46,6 +47,8 @@ function SettingsView({ isActive: _isActive, tabId }: SettingsViewProps) {
 
   // E5.8#87：用户覆盖集——来源徽标 presence 派生（单 hook 顶升，SettingRow 按需读 prop，不重复订阅）
   const userOverrides = useUserOverridesIpc();
+  // E5.8#88：基准种子集——「已修改」徽标 value-vs-baseline 判定（播种值/恰与主题同值 = 主题 🎨，非用户 ✏️）
+  const baselineSeeds = useBaselineSeedsIpc();
 
   // ── 顶部通用区（E5.8#41.13）——本角色（设置套）全部候选 + 激活 id，用于切整套设置 UI ──
   const [settingsCandidates, setSettingsCandidates] = useState<{ pluginId: string; title: string; viewId?: string }[]>([]);
@@ -220,6 +223,7 @@ function SettingsView({ isActive: _isActive, tabId }: SettingsViewProps) {
             prop={allProps[key]}
             onChange={() => setVersion((v) => v + 1)}
             userOverrides={userOverrides}
+            baselineSeeds={baselineSeeds}
           />
         ))}
       </div>

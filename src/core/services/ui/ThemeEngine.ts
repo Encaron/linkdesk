@@ -826,11 +826,19 @@ export function getEffectiveTokens(): Record<string, string> {
   return tokens;
 }
 
+/** E5.8#88 C4：最近一次实际应用的强调色——applyAccentColor 写入时追踪（权威在引擎，非 DOM 读）。
+ *  accentMode 切 custom 播种取此值（此前 followTheme 显示的主题 accent），与 appearance 播种 token 反推同哲学。 */
+let _lastAppliedAccent = "";
+export function getAppliedAccent(): string {
+  return _lastAppliedAccent;
+}
+
 /**
  * 应用用户自定义强调色——覆盖主题自带的 accent。
  * 预览主题时调用：先 applyTheme（含主题的 accent）再 applyAccentColor（用户的 accent 盖回去）。
  */
 export function applyAccentColor(hexColor: string): void {
+  _lastAppliedAccent = hexColor;
   document.documentElement.style.setProperty("--accent", hexColor);
   const hex = hexColor.replace("#", "");
   const r = parseInt(hex.substring(0, 2), 16);
@@ -1098,6 +1106,64 @@ export function deriveAppearanceSeeds(tokens: Record<string, string>): Appearanc
     fontFamily: fam && !fam.startsWith("__ld_") ? fam : "",
     zoneBackgroundImage: zoneBgPath,
   };
+}
+
+/**
+ * E5.8#88：主题/混搭基准 token——当前活动配方/配色按域合并，**无外观覆盖**（14-档案 #88 策略 A）。
+ * recipe 模式 = mergeDomains 无 overrides（主题原生 appearance + 配色）；mix 模式 = mergeMixDomains 无 overrides
+ * （各域来源生效——重播种/徽标基准须「无覆盖时主题给什么」，不能读 getEffectiveTokens（含覆盖，被污染））。
+ * 无活动配方 → {}（startup 早期 app.theme onApply 无前主题 → 调用方自然降级为全保留）。
+ * 消费方：切主题重播种（startup app.theme onApply）+ getBaselineSeeds API（设置页已修改徽标基准）。
+ */
+export function getThemeBaseTokens(): Record<string, string> {
+  const active = getActiveRecipe();
+  if (!active) return {};
+  const recipe = ThemeRegistry.getRecipe(active.recipeId);
+  if (!recipe) return {};
+  const colorway = resolveColorway(recipe, active.colorwayId || undefined);
+  if (getConfigurationValue<string>("app.mixMode") === "mix") {
+    return mergeMixDomains(recipe, colorway, getMixProfile(), {});
+  }
+  return mergeDomains(recipe, colorway.id, {});
+}
+
+/** E5.8#88：外观覆盖播种值全集映射——9 覆盖键 → 主题基准种子值（键值直用：设置页徽标基准 + 切主题重播种）。
+ *  deriveAppearanceSeeds 的 token 形状 → 配置键形状（app.zoneRadius 布尔恒 true——seedAppearanceOverrides 先例）。
+ *  单写点：startup seedAppearanceOverrides 改走本映射（播种时机统一——进 custom + 切主题同一哲学）。 */
+export function deriveAppearanceSeedMap(tokens: Record<string, string>): Record<string, unknown> {
+  const seeds = deriveAppearanceSeeds(tokens);
+  return {
+    "app.surfaceRadius": seeds.surfaceRadius,
+    "app.glassBlur": seeds.glassBlur,
+    "app.glassOpacity": seeds.glassOpacity,
+    "app.glassTint": seeds.glassTint,
+    "app.backgroundImage": seeds.backgroundImage,
+    "app.fontFamily": seeds.fontFamily,
+    "app.zoneRadius": true,
+    "app.zoneRadiusScale": seeds.zoneRadiusPx,
+    "app.zoneBackgroundImage": seeds.zoneBackgroundImage,
+  };
+}
+
+/**
+ * E5.8#88：切主题重播种计划——给定旧/新基准种子图 + 当前用户覆盖值，输出需写入新基准的键（纯函数只算不改）。
+ * 策略 A（14-档案 #88 §六 3）：用户显式修改（存了值且偏离旧主题基线）→ 保留不写；未修改（含与旧基准同值/未存）
+ * → 按新主题反推填标尺。空值 ""（跟随主题/清除回主题）≠ 旧基准非空 → 视为显式「跟随主题」保留（自动跟随新主题）。
+ * 值不变跳过（无谓广播/持久化——#59 收敛先例）。调用方：startup app.theme onApply（await batch 落盘）。 */
+export function deriveReseedPlan(
+  oldBaseline: Record<string, unknown>,
+  newBaseline: Record<string, unknown>,
+  stored: Record<string, unknown>
+): Array<{ key: string; value: unknown }> {
+  const writes: Array<{ key: string; value: unknown }> = [];
+  for (const key of APPEARANCE_OVERRIDE_KEYS) {
+    const storedValue = stored[key];
+    // 显式修改 → 保留（用户偏离旧主题基线的选择不随主题切换被覆盖）
+    if (storedValue !== undefined && storedValue !== oldBaseline[key]) continue;
+    // 未修改 → 反推新基准填标尺；与现状同值跳过（零副作用）
+    if (storedValue !== newBaseline[key]) writes.push({ key, value: newBaseline[key] });
+  }
+  return writes;
 }
 
 /**

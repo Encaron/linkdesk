@@ -26,8 +26,12 @@ export interface AppearanceAPI {
     setRecipe(recipeId: string): Promise<void>;
     /** 应用配色变体——落 app.themeColor */
     setColorway(colorwayId: string): Promise<void>;
-    /** 复位外观——清设置层外观覆盖（回主题基线） */
+    /** 复位外观——对齐壳命令：app.appearanceMode→followTheme（onApply 级联清 9 覆盖键回主题基线） */
     resetAppearance(): Promise<void>;
+    /** 复位混搭——对齐壳命令：app.mixMode→recipe（onApply 级联删 6 来源键回跟随主题） */
+    resetMix(): Promise<void>;
+    /** E5.8#88：外观覆盖键 → 主题/混搭基准种子值全集（设置页「已修改」徽标基准；无活动配方 → null） */
+    getBaselineSeeds(): Promise<Record<string, unknown> | null>;
   };
 
   language: {

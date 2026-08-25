@@ -1,7 +1,8 @@
 /**
- * IpcBridgeHandler 主题域单测——E5.8#50.18 六方法（06 §2）。
+ * IpcBridgeHandler 主题域单测——E5.8#50.18 六方法（06 §2）+ E5.8#88 八方法。
  * 覆盖：listRecipes 配方→RecipeMeta（colorways 预览色 + domains）/ getActive 引擎态 + 配置回退 /
- * getEffectiveTokens 合并集 / setRecipe/setColorway 落配置 / resetAppearance 清覆盖 / 未知方法抛错。
+ * getEffectiveTokens 合并集 / setRecipe/setColorway 落配置 / resetAppearance 复位对称（C3 对齐壳命令）/
+ * resetMix 复位对称 / getBaselineSeeds 无覆盖基准种子图 / 未知方法抛错。
  * fixture 用虚构值（硬约束 21：demo-plugin/Demo Recipe/Demo Mint）。
  * @vitest-environment jsdom
  */
@@ -96,22 +97,37 @@ describe("IpcBridgeHandler/theme — 配方/配色 API（E5.8#50.18）", () => {
     expect(getConfigurationValue("app.themeColor")).toBe("demo-mint");
   });
 
-  it("resetAppearance — 清设置层外观覆盖全 6 键含 app.fontFamily（E5.8#60 F1.1 防回归）", async () => {
+  it("resetAppearance — 复位对称 C3：app.appearanceMode→followTheme（对齐壳命令单一写入点，级联清 9 键在 startup onApply）", async () => {
+    applyRemoteConfigChange("app.appearanceMode", "custom");
     applyRemoteConfigChange("app.glassBlur", 15);
-    applyRemoteConfigChange("app.glassOpacity", 0.4);
-    applyRemoteConfigChange("app.glassTint", "#abcdef");
-    applyRemoteConfigChange("app.surfaceRadius", 1.5);
-    applyRemoteConfigChange("app.backgroundImage", "C:/bg.png");
-    applyRemoteConfigChange("app.fontFamily", "Comic Sans"); // F1.1——旧 5 键表漏此键 → 第三方复位外观后字体不回基线
     try {
       await handleThemeMethod("theme.resetAppearance", []);
     } catch { /* persist failed — expected in test */ }
-    expect(getConfigurationValue("app.glassBlur")).toBeUndefined();
-    expect(getConfigurationValue("app.glassOpacity")).toBeUndefined();
-    expect(getConfigurationValue("app.glassTint")).toBeUndefined();
-    expect(getConfigurationValue("app.surfaceRadius")).toBeUndefined();
-    expect(getConfigurationValue("app.backgroundImage")).toBeUndefined();
-    expect(getConfigurationValue("app.fontFamily")).toBeUndefined();
+    // 模式改回 followTheme——onApply（startup 注册）级联 resetConfigurationValueBatch(APPEARANCE_OVERRIDE_KEYS)
+    expect(getConfigurationValue("app.appearanceMode")).toBe("followTheme");
+  });
+
+  it("resetMix — 复位对称 C3：app.mixMode→recipe（对齐壳命令，级联删 6 来源键在 startup onApply）", async () => {
+    applyRemoteConfigChange("app.mixMode", "mix");
+    applyRemoteConfigChange("app.mixFont", "demo-recipe");
+    try {
+      await handleThemeMethod("theme.resetMix", []);
+    } catch { /* persist failed — expected in test */ }
+    expect(getConfigurationValue("app.mixMode")).toBe("recipe");
+  });
+
+  it("getBaselineSeeds — 无覆盖基准种子图（键=配置 key；无活动配方 → null）", async () => {
+    // 无活动配方（beforeEach flat apply 清 recipe 态）→ 基准不可算 → null
+    expect(await handleThemeMethod("theme.getBaselineSeeds", [])).toBeNull();
+    // 活动配方后 → 9 覆盖键种子图——纯基线（deriveAppearanceSeeds token 直播：radius-md 8 / font-ui Times New Roman）
+    applyRecipe(RECIPE, "demo-mint", {});
+    const seeds = (await handleThemeMethod("theme.getBaselineSeeds", [])) as Record<string, unknown>;
+    expect(seeds["app.zoneRadius"]).toBe(true);
+    expect(seeds["app.surfaceRadius"]).toBe(8);
+    expect(seeds["app.fontFamily"]).toBe("Times New Roman");
+    expect(seeds["app.glassBlur"]).toBe(0);
+    expect(seeds["app.glassOpacity"]).toBe(1);
+    expect(seeds["app.glassTint"]).toBe("");
   });
 
   it("未知方法抛错", async () => {

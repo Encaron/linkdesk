@@ -29,6 +29,11 @@ import {
   cleanupPluginFontFaces,
   ensurePluginFontFacesCleanup,
   deriveAppearanceSeeds,
+  deriveAppearanceSeedMap,
+  deriveReseedPlan,
+  getThemeBaseTokens,
+  getAppliedAccent,
+  applyAccentColor,
   deriveRadiusAbsoluteMigration,
   deriveGlassOpacityAbsoluteMigration,
   normalizeThemeValue,
@@ -1093,6 +1098,117 @@ describe("ThemeEngine — deriveAppearanceSeeds 反推播种（E5.8#50.19，08 �
   it("字体播种跳过资产族（__ld_ 前缀只显示不选，#50.20 边界）；系统族名直播", () => {
     expect(deriveAppearanceSeeds({ "font-ui": "SimSun" }).fontFamily).toBe("SimSun");
     expect(deriveAppearanceSeeds({ "font-ui": "__ld_demo-plugin_serif" }).fontFamily).toBe("");
+  });
+});
+
+describe("ThemeEngine — E5.8#88 切主题重播种 + 徽标基准（deriveAppearanceSeedMap/deriveReseedPlan/getThemeBaseTokens/getAppliedAccent）", () => {
+  const PLUGIN = "demo-reseed";
+
+  beforeEach(() => {
+    clearConfigurationCache();
+    rollback(PLUGIN);
+    const root = document.documentElement;
+    for (const key of ["bg-window", "accent", "font-ui", "radius-sm", "radius-lg", "glass-blur"]) {
+      root.style.removeProperty(`--${key}`);
+    }
+    root.removeAttribute("data-theme");
+    ThemeRegistry.registerRecipe(RECIPE, PLUGIN);
+    // 清 recipe 活动态（applyTheme flat 桥接置 currentRecipeId=null）——getThemeBaseTokens 无活动配方分支需干净起点
+    applyTheme(MOCK_THEME);
+  });
+
+  it("deriveAppearanceSeedMap — 9 覆盖键 → 种子值全集映射（键=配置 key，单写点）", () => {
+    const map = deriveAppearanceSeedMap({
+      "radius-md": "8px",
+      "surface-radius": "10px",
+      "glass-blur": "18px",
+      "glass-opacity": "0.4",
+      "glass-tint": "rgba(10,20,30,0.5)",
+      "bg-image": 'url("C:/app/bg.png")',
+      "font-ui": "SimSun",
+      "surface-bg-image": 'url("linkdesk-userdata://appearance/zone.png")',
+      "surface-bg-zones": "1",
+    });
+    expect(map).toEqual({
+      "app.surfaceRadius": 8,
+      "app.glassBlur": 18,
+      "app.glassOpacity": 0.4,
+      "app.glassTint": "rgba(10,20,30,0.5)",
+      "app.backgroundImage": "C:/app/bg.png",
+      "app.fontFamily": "SimSun",
+      "app.zoneRadius": true,
+      "app.zoneRadiusScale": 10,
+      "app.zoneBackgroundImage": "linkdesk-userdata://appearance/zone.png",
+    });
+    // 缺省 token → 零值/空（不抛）——zoneBackgroundImage 需 zones=1
+    const empty = deriveAppearanceSeedMap({});
+    expect(empty["app.surfaceRadius"]).toBe(0);
+    expect(empty["app.glassOpacity"]).toBe(1);
+    expect(empty["app.zoneRadius"]).toBe(true);
+    expect(empty["app.zoneBackgroundImage"]).toBe("");
+    expect(empty["app.backgroundImage"]).toBe("");
+  });
+
+  it("deriveReseedPlan — 未修改（无 stored）→ 反推新基准填标尺；新旧同值跳过", () => {
+    const oldBaseline = { "app.surfaceRadius": 8, "app.glassBlur": 0, "app.backgroundImage": "" };
+    const newBaseline = { "app.surfaceRadius": 12, "app.glassBlur": 4, "app.backgroundImage": "" };
+    const plan = deriveReseedPlan(oldBaseline, newBaseline, {});
+    expect(plan).toEqual([
+      { key: "app.surfaceRadius", value: 12 },
+      { key: "app.glassBlur", value: 4 },
+      { key: "app.backgroundImage", value: "" },
+    ]);
+  });
+
+  it("deriveReseedPlan — 未修改（stored === 旧基准，含播种态/恰与主题同值）→ 随新主题重基线", () => {
+    const oldBaseline = { "app.surfaceRadius": 8 };
+    const newBaseline = { "app.surfaceRadius": 12 };
+    // stored 8 === 旧基准 8 → 非用户偏离（进 custom 播种值）→ 重播种到新基准
+    expect(deriveReseedPlan(oldBaseline, newBaseline, { "app.surfaceRadius": 8 })).toEqual([
+      { key: "app.surfaceRadius", value: 12 },
+    ]);
+    // 新旧同值 → 跳过（零副作用无谓广播）
+    expect(deriveReseedPlan({ "app.surfaceRadius": 8 }, { "app.surfaceRadius": 8 }, { "app.surfaceRadius": 8 })).toEqual([]);
+  });
+
+  it("deriveReseedPlan — 用户显式修改（偏离旧基准）→ 保留不写", () => {
+    const oldBaseline = { "app.surfaceRadius": 8 };
+    const newBaseline = { "app.surfaceRadius": 12 };
+    expect(deriveReseedPlan(oldBaseline, newBaseline, { "app.surfaceRadius": 14 })).toEqual([]);
+  });
+
+  it("deriveReseedPlan — 空串（跟随主题/清除）≠ 旧基准非空 → 保留自动跟随新主题", () => {
+    const oldBaseline = { "app.backgroundImage": "old-bg.png" };
+    const newBaseline = { "app.backgroundImage": "new-bg.png" };
+    expect(deriveReseedPlan(oldBaseline, newBaseline, { "app.backgroundImage": "" })).toEqual([]);
+    // 显式 __none__（绝对无）偏离旧基准 → 真实用户选择保留
+    expect(deriveReseedPlan(oldBaseline, newBaseline, { "app.backgroundImage": "__none__" })).toEqual([]);
+    // zoneRadius=false 偏离播种 true → 保留（用户显式关闭分区圆角）
+    expect(deriveReseedPlan({ "app.zoneRadius": true }, { "app.zoneRadius": true }, { "app.zoneRadius": false })).toEqual([]);
+  });
+
+  it("getThemeBaseTokens — 无覆盖纯基线（recipe 模式）；外观覆盖配置不影响（overrides={} 显式）", () => {
+    applyRecipe(RECIPE, "mint", {});
+    const base = getThemeBaseTokens();
+    expect(base["accent"]).toBe("#3E9E8C"); // mint 配色 accent
+    expect(base["glass-blur"]).toBe("14px"); // 主题原生 appearance.glass
+    expect(base["font-ui"]).toBe("Noto Sans SC");
+    // 设外观覆盖后仍纯基线——重播种判定「无覆盖时主题给什么」不能被用户值污染
+    applyRemoteConfigChange("app.surfaceRadius", 20);
+    applyRemoteConfigChange("app.glassBlur", 6);
+    expect(getThemeBaseTokens()["glass-blur"]).toBe("14px");
+    expect(getThemeBaseTokens()["accent"]).toBe("#3E9E8C");
+  });
+
+  it("getThemeBaseTokens — 无活动配方 → {}（startup 早期降级为全保留）", () => {
+    expect(getThemeBaseTokens()).toEqual({});
+  });
+
+  it("getAppliedAccent — applyAccentColor 追踪最近实际应用强调色（C4 权威在引擎，非 DOM 读）", () => {
+    applyAccentColor("#123456");
+    expect(getAppliedAccent()).toBe("#123456");
+    applyAccentColor("#abcdef");
+    expect(getAppliedAccent()).toBe("#abcdef");
   });
 });
 

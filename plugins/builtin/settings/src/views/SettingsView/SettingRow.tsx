@@ -28,12 +28,15 @@ function SettingRow({
   prop,
   onChange,
   userOverrides,
+  baselineSeeds,
 }: {
   configKey: string;
   prop: ConfigProperty | undefined;
   onChange: () => void;
   /** E5.8#87：用户覆盖集（getUserSettings）——来源徽标 presence 派生（无 override = 主题 🎨） */
   userOverrides: Record<string, unknown>;
+  /** E5.8#88：主题/混搭基准种子集（theme.getBaselineSeeds）——「已修改」徽标 value-vs-baseline 判定基准 */
+  baselineSeeds: Record<string, unknown>;
 }) {
   const { t } = useTranslation();
   const gearRef = useRef<HTMLButtonElement>(null);
@@ -52,6 +55,7 @@ function SettingRow({
     ? deriveSourceBadge({
         sourceKey: prop.sourceKey,
         userValue: userOverrides[configKey],
+        baseline: baselineSeeds[configKey],
         mixMode,
         sourceValue,
       })

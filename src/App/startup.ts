@@ -21,7 +21,10 @@ import {
   mergeDomains, // E5.8#85 补课：迁移取主题基准 token（无 overrides；缺 radius 域回退壳默认在公式内）
   getAvailableThemes,
   getCurrentTheme,
-  deriveAppearanceSeeds,
+  deriveAppearanceSeedMap, // E5.8#88：外观覆盖 9 键播种值全集映射（切主题重播种 + 已修改徽标基准共用）
+  deriveReseedPlan, // E5.8#88：切主题重播种计划（纯函数——显式修改保留 / 未修改随新主题重基线）
+  getThemeBaseTokens, // E5.8#88：主题/混搭基准 token（无外观覆盖——重播种「按新主题反推」的纯基准）
+  getAppliedAccent, // E5.8#88 C4：最近应用强调色（accent 播种走引擎追踪非 DOM 读）
   deriveRadiusAbsoluteMigration, // E5.8#85 补课：旧圆角倍数→绝对 px 迁移公式
   deriveGlassOpacityAbsoluteMigration, // E5.8#86：旧 wash 语义→绝对透明度迁移公式
   normalizeThemeValue,
@@ -116,30 +119,48 @@ const MIX_SOURCE_KEYS = [
 const MIX_RESET_DISABLED_WHEN = MIX_SOURCE_KEYS.map((key) => ({ key, value: "followTheme" }));
 
 /**
- * 播种外观覆盖——appearanceMode→custom 瞬间读 getEffectiveTokens() 反推 6 覆盖 key（08 §2，对标 accent 播种先例）。
- * 反推计算委托 ThemeEngine.deriveAppearanceSeeds（纯函数，测试直测）；本处只组装来源 + 落配置。
+ * 播种外观覆盖——appearanceMode→custom 瞬间读 getEffectiveTokens() 反推 9 覆盖 key（08 §2，对标 accent 播种先例）。
+ * 反推计算委托 ThemeEngine.deriveAppearanceSeedMap（单写点：进 custom + 切主题共用同一映射/哲学，14-档案 #88）。
+ *  E5.8#85：播种反推改绝对——直接从生效 token 读实际 px（mix 下 token 即混搭来源生效值，天然含
+ *  #57 二次缩放根治——比例模型分母概念随 getRadiusSourcePx 一并废弃）。切 custom 视觉状态不变（播种 = 当前生效值直播）。
+ *  E5.8#59（审计#7）：九键一次批量写 + 单次 applier——原 6 连 setConfigurationValue 各触发
+ *  一次 applyRecipe 全量重合并 + theme:changed 广播（6× 广播，脱出窗多池放大中间态闪变）。
+ *  各覆盖 key onApply 均 applyThemeIfReady 全量读生效态 → 末 key 触发读到完整终态一次广播即收敛。
+ *  E5.8#85：+zoneRadiusScale 播种当前 surface-radius 绝对 px（切 custom zone 圆角视觉不变）。
+ *  E5.8#81：+zoneBackgroundImage——zones 模式反推当前 zone 图 / 纹理模式空 = 跟随主题（视觉不变）。
  */
 const seedAppearanceOverrides = (): void => {
-  const tokens = getEffectiveTokens();
-  // E5.8#85：播种反推改绝对——直接从生效 token 读实际 px（mix 下 token 即混搭来源生效值，天然含
-  // #57 二次缩放根治——比例模型分母概念随 getRadiusSourcePx 一并废弃）。切 custom 视觉状态不变（播种 = 当前生效值直播）。
-  const seeds = deriveAppearanceSeeds(tokens);
-  // E5.8#59（审计#7）：九键一次批量写 + 单次 applier——原 6 连 setConfigurationValue 各触发
-  // 一次 applyRecipe 全量重合并 + theme:changed 广播（6× 广播，脱出窗多池放大中间态闪变）。
-  // 各覆盖 key onApply 均 applyThemeIfReady 全量读生效态 → 末 key 触发读到完整终态一次广播即收敛。
-  // E5.8#85：+zoneRadiusScale 播种当前 surface-radius 绝对 px（切 custom zone 圆角视觉不变）。
-  // E5.8#81：+zoneBackgroundImage——zones 模式反推当前 zone 图 / 纹理模式空 = 跟随主题（视觉不变）。
-  setConfigurationValueBatch([
-    { key: "app.surfaceRadius", value: seeds.surfaceRadius },
-    { key: "app.glassBlur", value: seeds.glassBlur },
-    { key: "app.glassOpacity", value: seeds.glassOpacity },
-    { key: "app.glassTint", value: seeds.glassTint },
-    { key: "app.backgroundImage", value: seeds.backgroundImage },
-    { key: "app.fontFamily", value: seeds.fontFamily },
-    { key: "app.zoneRadius", value: true },
-    { key: "app.zoneRadiusScale", value: seeds.zoneRadiusPx },
-    { key: "app.zoneBackgroundImage", value: seeds.zoneBackgroundImage },
-  ], "user");
+  const seedMap = deriveAppearanceSeedMap(getEffectiveTokens());
+  setConfigurationValueBatch(
+    APPEARANCE_OVERRIDE_KEYS.map((key) => ({ key, value: seedMap[key] })),
+    "user"
+  );
+};
+
+/** E5.8#88：当前用户外观覆盖值（raw user scope）——切主题重播种的「显式修改」判定集 */
+const readAppearanceOverrideUserValues = (): Record<string, unknown> => {
+  const stored: Record<string, unknown> = {};
+  for (const key of APPEARANCE_OVERRIDE_KEYS) {
+    const uv = inspectConfiguration<unknown>(key).userValue;
+    if (uv !== undefined) stored[key] = uv;
+  }
+  return stored;
+};
+
+/**
+ * E5.8#88 切主题重播种（策略 A，14-档案 #88）：custom 模式下切主题 = 重新播种——用户显式改过的值保留，
+ * 未修改的覆盖随新主题重基线（deriveReseedPlan 纯函数）。旧基准须在应用新配方前冻结（getThemeBaseTokens 无覆盖）。
+ */
+const reseedAppearanceOnThemeSwitch = async (
+  oldBaseline: Record<string, unknown>,
+  stored: Record<string, unknown>
+): Promise<void> => {
+  const newBaseline = deriveAppearanceSeedMap(getThemeBaseTokens());
+  const writes = deriveReseedPlan(oldBaseline, newBaseline, stored);
+  if (writes.length) {
+    // #59 同款：批量写单次持久化 + 单次 applier（末 key 全量读生效态一次广播收敛）
+    await setConfigurationValueBatch(writes, "user");
+  }
 };
 
 /* ── E5.8#85 补课：schema 版本迁移登记（14-档案 §五 #85 + schemaMigrations.ts） ──
@@ -278,8 +299,20 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
               const value = normalizeThemeValue(v as string) ?? (v as string);
               const recipe = ThemeRegistry.getRecipe(value);
               if (recipe) {
+                // E5.8#88 切主题重播种（策略 A，14-档案 #88）：custom 外观模式下应用新配方前冻结旧基准 + 用户显式修改集。
+                //  旧基准必须用 getThemeBaseTokens（无覆盖纯基线）——读含覆盖的 getEffectiveTokens 会把用户改值
+                //  误判为「未改」而重播种掉用户值（#88 设计关键）。启动首 apply（getActiveRecipe null）→ 跳过：
+                //  持久化覆盖原样保留，播种只在运行中主题切换发生（此时已有活动配方，基准可算）。
+                const reseed =
+                  getConfigurationValue<string>("app.appearanceMode") === "custom" &&
+                  getActiveRecipe() != null;
+                const oldBaseline = reseed
+                  ? deriveAppearanceSeedMap(getThemeBaseTokens())
+                  : {};
+                const stored = reseed ? readAppearanceOverrideUserValues() : {};
                 // 配方路径——按 app.themeColor 解析配色（E5.8#82 配色域来源统一）+ 合并外观覆盖
                 applyRecipeForConfig(recipe);
+                if (reseed) await reseedAppearanceOnThemeSwitch(oldBaseline, stored);
               } else {
                 // flat 桥接——未迁移 json 名（决策 F 迁移期退路；#50.25 后仅剩配方路径）
                 const theme = await loadTheme(value);
@@ -318,8 +351,11 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
             description: t("强调色模式——自定义固定色 / 跟随主题（主题无强调色时用自定义兜底）"),
             onApply: (v) => {
               if (v === "custom") {
-                // 读当前 DOM 上实际显示的强调色——切模式前可能跟着主题走，不是 app.accentColor 的旧值
-                const current = document.documentElement.style.getPropertyValue("--accent").trim();
+                // E5.8#88 C4：播种反推走引擎追踪的最近实际应用强调色（getAppliedAccent）——删 DOM 读。
+                //  此前 applyAccentColor 每次都写 --accent，DOM 读等价但依赖渲染副作用；引擎追踪 = 权威在引擎
+                // （与 appearance 播种 token 反推同哲学）+ 测试直测（jsdom 无渲染链也能验）。
+                //  注意不能用 getEffectiveAccentColor()——onApply 此刻模式已切 custom，读到的已是旧 app.accentColor。
+                const current = getAppliedAccent();
                 if (current) setConfigurationValue("app.accentColor", current, "user");
               }
               applyAccentColor(getEffectiveAccentColor());
