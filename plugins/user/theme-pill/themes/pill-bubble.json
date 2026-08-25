@@ -20,7 +20,6 @@
       "specular": 0.4,
       "morph": 200,
       "radius": 999,
-      "inset": 8,
       "shadow": true
     }
   },

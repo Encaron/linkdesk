@@ -16,6 +16,7 @@
   height: 100%;
   flex-shrink: 0;
   background: var(--bg-icon-bar);
+  overflow: hidden; /* E5.8 缝系统：cell overflow 已移除——表面圆角自裁内容（图标不外溢圆角曲线） */
 }
 
 .icon-bar-top {

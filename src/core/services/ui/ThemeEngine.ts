@@ -114,6 +114,10 @@ export async function loadTheme(themeName: string): Promise<Theme> {
 /* ── E5.8#50.6：玻璃/背景/悬浮变量零值——主题不带 surface/background 时写入（= 无玻璃无图无悬浮 = 现状零变化） ──
    --bg-mask 默认 0（rgba 遮罩透明度，0 = 无遮罩）；--surface-shadow 默认 none（无浮起）。 */
 
+/* ── E5.8 缝系统：--surface-inset 宿主派生常量。内部缝 = 2×SURFACE_SEAM_INSET_PX（相邻格各半）——
+   4px 可拖拽 handle 恰好填满缝（handle 锚 cell 边界 = 缝中心，±2px = 半宽恒等式）。 */
+export const SURFACE_SEAM_INSET_PX = 2;
+
 const SURFACE_ZERO: Record<string, string> = {
   "glass-blur": "0px",
   "glass-saturate": "1",
@@ -214,9 +218,9 @@ function surfaceVariables(surface?: ThemeSurface): Record<string, string> {
     vars["surface-bg-repeat"] = "repeat";
     if (surface.textureOpacity != null) vars["surface-bg-opacity"] = String(surface.textureOpacity);
   }
-  // 悬浮面板形态（radius/inset/shadow）——与 glass 材质正交：⑬⑭ 分区主题无玻璃也要圆角+留缝（接缝露底色）
+  // 悬浮面板形态（radius/shadow）——与 glass 材质正交：⑬⑭ 分区主题无玻璃也要圆角（接缝露底色）。
+  //   inset 不再由主题数据决定——缝=宿主所有（Content vs Space Ownership），applyOverrides 缝法则统一派生
   if (surface.radius != null) vars["surface-radius"] = `${surface.radius}px`;
-  if (surface.inset != null) vars["surface-inset"] = `${surface.inset}px`;
   // 投影浮起 → 映射六域悬浮 token（JS 不硬编码 shadow 值——#50.14 已 token 化）
   if (surface.shadow === true) vars["surface-shadow"] = "var(--shadow-lift)";
 
@@ -1078,6 +1082,11 @@ export function applyOverrides(
     if (token === "surface-radius") continue; // ①b 已处理，② 不落绝对
     tokens[token] = String(value);
   }
+  // ③ 缝法则（E5.8 缝系统）：--surface-inset 由圆角派生——宿主所有、所有主题统一、与 app.zoneRadius 开关耦合。
+  //   直角（surface-radius = 0px/缺省）→ 贴死 0px；圆角开 → 每格半缝（相邻格 = 2× 半缝 = 4px 内部缝）。
+  //   放在 ② 之后 = 最终值赢（主题/overrides 任何旧 inset 数据都无条件覆盖，主题 inset 已废弃）。
+  tokens["surface-inset"] =
+    (tokens["surface-radius"] ?? "0px") === "0px" ? "0px" : `${SURFACE_SEAM_INSET_PX}px`;
   return tokens;
 }
 

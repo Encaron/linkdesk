@@ -295,11 +295,11 @@ describe("ThemeEngine — surface/background 玻璃机制（E5.8#50.6）", () =>
     expect(root.style.getPropertyValue("--glass-specular-color")).toBe("#ffffff");
   });
 
-  it("带悬浮面板 surface → 写入 radius/inset/shadow（shadow:true → 映射 --shadow-lift）", () => {
-    applyTheme({ ...MOCK_THEME, surface: { type: "glass", radius: 10, inset: 8, shadow: true } });
+  it("带悬浮面板 surface → 写入 radius/shadow（shadow:true → 映射 --shadow-lift）；inset 宿主派生 2px（缝法则）", () => {
+    applyTheme({ ...MOCK_THEME, surface: { type: "glass", radius: 10, shadow: true } });
     const root = document.documentElement;
     expect(root.style.getPropertyValue("--surface-radius")).toBe("10px");
-    expect(root.style.getPropertyValue("--surface-inset")).toBe("8px");
+    expect(root.style.getPropertyValue("--surface-inset")).toBe("2px");
     expect(root.style.getPropertyValue("--surface-shadow")).toBe("var(--shadow-lift)");
   });
 
@@ -346,7 +346,7 @@ describe("ThemeEngine — surface/background 玻璃机制（E5.8#50.6）", () =>
   it("带 surface.texture → 写 per-surface 纹理变量（repeat + opacity，无 glass 也可用）", () => {
     applyTheme({
       ...MOCK_THEME,
-      surface: { texture: "linkdesk://demo-zones/paper.svg", textureOpacity: 0.45, radius: 8, inset: 4 },
+      surface: { texture: "linkdesk://demo-zones/paper.svg", textureOpacity: 0.45, radius: 8 },
     });
     const root = document.documentElement;
     expect(root.style.getPropertyValue("--surface-bg-image")).toBe('url("linkdesk://demo-zones/paper.svg")');
@@ -357,11 +357,11 @@ describe("ThemeEngine — surface/background 玻璃机制（E5.8#50.6）", () =>
     expect(root.style.getPropertyValue("--glass-blur")).toBe("0px");
   });
 
-  it("无 glass 的 surface（⑬⑭ 分区）→ radius/inset 仍生效（悬浮形态与玻璃材质正交）", () => {
-    applyTheme({ ...MOCK_THEME, surface: { texture: "tile.svg", radius: 8, inset: 4 } });
+  it("无 glass 的 surface（⑬⑭ 分区）→ radius 生效；inset 宿主派生 2px（悬浮形态与玻璃材质正交）", () => {
+    applyTheme({ ...MOCK_THEME, surface: { texture: "tile.svg", radius: 8 } });
     const root = document.documentElement;
     expect(root.style.getPropertyValue("--surface-radius")).toBe("8px");
-    expect(root.style.getPropertyValue("--surface-inset")).toBe("4px");
+    expect(root.style.getPropertyValue("--surface-inset")).toBe("2px");
     expect(root.style.getPropertyValue("--surface-bg-image")).toBe('url("tile.svg")');
     // 玻璃键仍零值——无 glass type 不写玻璃
     expect(root.style.getPropertyValue("--glass-blur")).toBe("0px");
@@ -600,6 +600,44 @@ describe("ThemeEngine — 外观覆盖 getAppearanceOverrides（E5.8#50.10）", 
     const root = document.documentElement;
     expect(root.style.getPropertyValue("--surface-radius")).toBe("0px");
     expect(root.style.getPropertyValue("--radius-sm")).toBe("6px");
+  });
+
+  /* ── E5.8 缝系统——--surface-inset 宿主派生（Content vs Space Ownership：主题 inset 数据废弃，
+     半径≠0 → 每格半缝 2px / 半径 0px 或缺省 → 贴死 0px）。法则在 applyOverrides ③，覆盖全部路径。 ── */
+
+  it("缝法则 applyOverrides——radius≠0 → surface-inset 派生 2px（每格半缝）", () => {
+    const tokens: Record<string, string> = { "surface-radius": "16px" };
+    applyOverrides(tokens, {});
+    expect(tokens["surface-inset"]).toBe("2px");
+  });
+
+  it("缝法则 applyOverrides——radius 0px → surface-inset 0px（直角贴死）", () => {
+    const tokens: Record<string, string> = { "surface-radius": "0px" };
+    applyOverrides(tokens, {});
+    expect(tokens["surface-inset"]).toBe("0px");
+  });
+
+  it("缝法则 applyOverrides——无 surface-radius（缺省）→ 0px 贴死", () => {
+    const tokens: Record<string, string> = {};
+    applyOverrides(tokens, {});
+    expect(tokens["surface-inset"]).toBe("0px");
+  });
+
+  it("缝法则 applyRecipe——zoneRadiusScale 12 → --surface-inset 2px（圆角开留缝）", () => {
+    applyRemoteConfigChange("app.zoneRadius", true);
+    applyRemoteConfigChange("app.zoneRadiusScale", 12);
+    applyRecipe(ZONE_RECIPE);
+    const root = document.documentElement;
+    expect(root.style.getPropertyValue("--surface-radius")).toBe("12px");
+    expect(root.style.getPropertyValue("--surface-inset")).toBe("2px");
+  });
+
+  it("缝法则 applyRecipe——zoneRadius 关 → --surface-inset 0px（圆角关贴死，与直角短路同门）", () => {
+    applyRemoteConfigChange("app.zoneRadius", false);
+    applyRecipe(ZONE_RECIPE);
+    const root = document.documentElement;
+    expect(root.style.getPropertyValue("--surface-radius")).toBe("0px");
+    expect(root.style.getPropertyValue("--surface-inset")).toBe("0px");
   });
 
   /* ── E5.8#81 zone 表面背景覆盖入口——app.zoneBackgroundImage（写 surface-bg-*，与全窗 bg-image 并存）── */
@@ -1601,7 +1639,7 @@ describe("ThemeEngine — 真实极限壳主题（E5.8#50.27，gallery 端到端
     expect(tokens["status-connected"]).toBe("#00E676");
   });
 
-  it("pill-bubble — 全胶囊 radius 域（七档 999px 绝对圆角 + radius-full 去键继承 :root 50% + 悬浮形态 radius999/inset8/shadow + 泡泡糖）", () => {
+  it("pill-bubble — 全胶囊 radius 域（七档 999px 绝对圆角 + radius-full 去键继承 :root 50% + 悬浮形态 radius999/shadow + 泡泡糖）", () => {
     const { recipe } = loadRealRecipe(
       "plugins/user/theme-pill/themes/pill-bubble.json",
       "pill-bubble", "全胶囊 Pill Bubble", "light",
@@ -1616,7 +1654,7 @@ describe("ThemeEngine — 真实极限壳主题（E5.8#50.27，gallery 端到端
     expect(tokens["radius-md"]).toBe("999px"); // tab 胶囊
     expect(tokens["radius-pill"]).toBe("999px");
     expect(tokens["surface-radius"]).toBe("999px"); // zone 胶囊化
-    expect(tokens["surface-inset"]).toBe("8px"); // 留缝
+    expect(tokens["surface-inset"]).toBe("2px"); // 缝法则宿主派生——主题 inset 数据已废弃，radius≠0 → 每格半缝
     expect(tokens["surface-shadow"]).toBe("var(--shadow-lift)"); // 投影浮起
     expect(tokens["glass-specular"]).toBe("0.4"); // 发丝光边（gallery surface.border 意图 = specular 派生）
     expect(tokens["bg-window"]).toBe("#FFF0F5");
@@ -1663,7 +1701,7 @@ describe("ThemeEngine — 旧格式主题迁移新格式（E5.8#74，决策 F）
     // 旧顶层 surface → appearance.glass（ThemeSurface 全字段）
     expect(recipe!.appearance?.glass).toEqual({
       type: "glass", blur: 24, saturate: 1.25, tint: "rgba(59, 77, 148, 0.35)",
-      opacity: 0.275, specular: 0.6, morph: 200, radius: 12, inset: 1, shadow: true,
+      opacity: 0.275, specular: 0.6, morph: 200, radius: 12, shadow: true,
     });
     expect(recipe!.appearance?.background).toEqual({
       image: "linkdesk://theme-aurora-glass/resources/aurora-bg.svg", opacity: 0.9, mask: 0.3,
@@ -1680,7 +1718,7 @@ describe("ThemeEngine — 旧格式主题迁移新格式（E5.8#74，决策 F）
     expect(tokens["glass-specular"]).toBe("0.6");
     expect(tokens["glass-morph"]).toBe("200ms");
     expect(tokens["surface-radius"]).toBe("12px");
-    expect(tokens["surface-inset"]).toBe("1px");
+    expect(tokens["surface-inset"]).toBe("2px"); // 缝法则——主题 inset 数据已废弃，radius≠0 → 每格半缝
     expect(tokens["surface-shadow"]).toBe("var(--shadow-lift)");
     expect(tokens["bg-image"]).toBe('url("linkdesk://theme-aurora-glass/resources/aurora-bg.svg")');
     expect(tokens["bg-opacity"]).toBe("0.9");
@@ -1697,7 +1735,7 @@ describe("ThemeEngine — 旧格式主题迁移新格式（E5.8#74，决策 F）
     expect(recipe).not.toBeNull();
     expect(recipe!.id).toBe("image-zones");
     expect(recipe!.type).toBe("dark");
-    expect(recipe!.appearance?.glass).toEqual({ radius: 8, inset: 4 });
+    expect(recipe!.appearance?.glass).toEqual({ radius: 8 });
     expect(recipe!.appearance?.background).toEqual({
       mode: "zones", image: "linkdesk://theme-zones/resources/zones-bg.svg", opacity: 0.95,
     });
@@ -1705,7 +1743,7 @@ describe("ThemeEngine — 旧格式主题迁移新格式（E5.8#74，决策 F）
     expect(recipe!.colorways[0].id).toBe("image");
     const tokens = mergeDomains(recipe!);
     expect(tokens["surface-radius"]).toBe("8px");
-    expect(tokens["surface-inset"]).toBe("4px");
+    expect(tokens["surface-inset"]).toBe("2px"); // 缝法则——radius≠0 → 每格半缝
     // zones 模式——图挂 zone 表面，不写全窗 --bg-image
     expect(tokens["surface-bg-image"]).toBe('url("linkdesk://theme-zones/resources/zones-bg.svg")');
     expect(tokens["surface-bg-repeat"]).toBe("no-repeat");
@@ -1726,7 +1764,7 @@ describe("ThemeEngine — 旧格式主题迁移新格式（E5.8#74，决策 F）
     expect(recipe!.type).toBe("light");
     expect(recipe!.appearance?.glass).toEqual({
       texture: "linkdesk://theme-zones/resources/paper-texture.svg", textureOpacity: 0.45,
-      radius: 8, inset: 4,
+      radius: 8,
     });
     expect(recipe!.appearance?.background).toBeUndefined(); // 旧无 background
     expect(recipe!.colorways).toHaveLength(1);
@@ -1737,7 +1775,7 @@ describe("ThemeEngine — 旧格式主题迁移新格式（E5.8#74，决策 F）
     expect(tokens["surface-bg-repeat"]).toBe("repeat"); // 纹理平铺
     expect(tokens["surface-bg-opacity"]).toBe("0.45");
     expect(tokens["surface-radius"]).toBe("8px");
-    expect(tokens["surface-inset"]).toBe("4px");
+    expect(tokens["surface-inset"]).toBe("2px"); // 缝法则——radius≠0 → 每格半缝
     expect(tokens["bg-window"]).toBe("#ECE7DC");
     expect(tokens["accent"]).toBe("#B45309");
   });

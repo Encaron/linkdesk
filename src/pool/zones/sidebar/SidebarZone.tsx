@@ -89,15 +89,19 @@ export default function SidebarZone({ sidebar }: SidebarZoneProps) {
 
   // zone 包装——分隔线活在可见性条件块内（visible=false → 整体 display:none，分隔线随之消失）
   const renderZone = (inner: ReactNode) => (
-    <div className="side-panel-zone" style={sidebar.visible ? undefined : { display: "none" }}>
-      {inner}
-      {/* E5.7#13：4px 分隔线——hover --separator → --separator-hover（HandleLine 行为传承） */}
+    <>
+      <div className="side-panel-zone" style={sidebar.visible ? undefined : { display: "none" }}>
+        {inner}
+      </div>
+      {/* E5.7#13 + 缝系统：4px 分隔线——共享 .zone-resize-handle（index.css 全局层：锚 cell 边界
+          = 缝中心，偏移 -inset 缝居中 / 直角贴边）。hover --separator → --separator-hover（HandleLine 行为传承） */}
       <div
-        className="sidebar-resize-handle"
+        className="zone-resize-handle vertical right"
+        style={sidebar.visible ? undefined : { display: "none" }}
         onMouseDown={resize.onResizeStart}
         aria-hidden="true"
       />
-    </div>
+    </>
   );
 
   // E5.7#84：keep-alive 容器清单——全部容器常驻挂载（display:none 切换视图，不卸载组件）。

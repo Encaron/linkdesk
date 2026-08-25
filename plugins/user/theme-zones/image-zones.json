@@ -4,8 +4,7 @@
   "type": "dark",
   "appearance": {
     "glass": {
-      "radius": 8,
-      "inset": 4
+      "radius": 8
     },
     "background": {
       "mode": "zones",

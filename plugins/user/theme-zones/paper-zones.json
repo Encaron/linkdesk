@@ -6,8 +6,7 @@
     "glass": {
       "texture": "linkdesk://theme-zones/resources/paper-texture.svg",
       "textureOpacity": 0.45,
-      "radius": 8,
-      "inset": 4
+      "radius": 8
     }
   },
   "colorways": [

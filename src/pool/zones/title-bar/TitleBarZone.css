@@ -90,14 +90,12 @@
   color: var(--text-primary);
 }
 
-/* ── 窗口控制（─ □ ×）——fixed 右上角（池 WCV 满窗 = 窗口坐标） ── */
+/* ── 窗口控制（─ □ ×）——流内 flex（E5.8 缝系统：跟随顶栏表面——fixed 早于悬浮表面时代，
+   顶栏 margin 内缩时按钮留在窗口角落不同步；titlebar flex 末位自然右对齐，表面怎么动它怎么动） ── */
 
 .window-controls {
-  position: fixed;
-  top: 0;
-  right: 0;
   display: flex;
-  z-index: var(--z-sticky);
+  flex-shrink: 0;
   -webkit-app-region: no-drag;
 }
 

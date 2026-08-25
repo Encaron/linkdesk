@@ -118,17 +118,11 @@ export default function RightSidebarZone({ rightSidebar }: RightSidebarZoneProps
   };
 
   return (
+    <>
     <div
       className="right-sidebar-zone"
       style={rightSidebar.visible ? undefined : { display: "none" }}
     >
-      {/* E5.7#22：左侧 4px resize handle（#13 同款视觉——--separator → --separator-hover） */}
-      <div
-        className="right-sidebar-resize-handle"
-        onMouseDown={resize.onResizeStart}
-        aria-hidden="true"
-      />
-
       {/* 折叠态——▶ 展开按钮（与 SidebarZone #10 同款：容器视图常驻挂载，折叠不丢状态） */}
       {collapsed && (
         <div className="side-panel collapsed" style={{ width: resize.size, height: "100%" }}>
@@ -165,5 +159,15 @@ export default function RightSidebarZone({ rightSidebar }: RightSidebarZoneProps
         {renderContent()}
       </div>
     </div>
+
+    {/* E5.7#22 + 缝系统：左侧 4px resize handle——共享 .zone-resize-handle（index.css 全局层：
+        锚本格左边界 = 缝中心，偏移 -inset 缝居中 / 直角贴边）。#13 同款视觉（--separator → --separator-hover） */}
+    <div
+      className="zone-resize-handle vertical left"
+      style={rightSidebar.visible ? undefined : { display: "none" }}
+      onMouseDown={resize.onResizeStart}
+      aria-hidden="true"
+    />
+    </>
   );
 }

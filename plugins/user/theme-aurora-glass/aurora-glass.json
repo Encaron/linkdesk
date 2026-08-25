@@ -12,7 +12,6 @@
       "specular": 0.6,
       "morph": 200,
       "radius": 12,
-      "inset": 1,
       "shadow": true
     },
     "background": {

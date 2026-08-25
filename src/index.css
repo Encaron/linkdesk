@@ -364,13 +364,16 @@ select {
 
 /* grid cell 包装——各 zone 的 grid 放置容器。min-width/min-height 0 保证 1fr 轨道内
    内容正确收缩（grid item 默认 min-content 不收缩会撑破主区）。
-   E5.8#50.7 ③：留缝——网格内表面（icon-bar/side-panel/main-zone/panel-zone）走 cell padding
-   （height:100% 表面加 margin 会被本 cell overflow:hidden 裁掉 = 不悬浮）；直连子表面
-   （titlebar/status-bar）用 margin。统一 --surface-inset 驱动，0px = 现状贴边。 */
+   E5.8#50.7 ③ + 缝系统：留缝——网格内表面（icon-bar/side-panel/main-zone/panel-zone）走
+   cell padding；直连子表面（titlebar/status-bar）用 margin。统一 --surface-inset 驱动
+   （宿主派生，见 ThemeEngine 缝法则），0px = 直角贴死。
+   position: relative：resize handle（.zone-resize-handle）绝对定位锚本格边界 = 缝中心。
+   overflow 移除：表面阴影/半缝 handle 跨格渲染（表面各自 overflow:hidden 自裁内容——
+   side-panel/panel-zone/main-zone 已有，icon-bar 补——窗口级 .pool-root/.pool-body 仍裁）。 */
 .pool-grid-cell {
+  position: relative;
   min-width: 0;
   min-height: 0;
-  overflow: hidden;
   padding: var(--surface-inset, 0px);
 }
 
@@ -431,10 +434,57 @@ select {
   background: var(--bg-window);
 }
 
-/* titlebar/status-bar——直连 pool-root 子表面，留缝用 margin（网格内表面已走 cell padding）。 */
+/* titlebar/status-bar——直连 pool-root 子表面，留缝用 margin（网格内表面已走 cell padding）。
+   overflow:hidden = 圆角自裁（内容不外溢圆角曲线；下拉菜单已 portal 到 #context-menu-root 不受限）。 */
 .titlebar,
 .status-bar {
   margin: var(--surface-inset, 0px);
+  overflow: hidden;
+}
+
+/* ── E5.8 缝系统共享 resize handle——宿主所有（pool-css 门禁禁池 @import → 共享几何必须在此全局层）。
+   锚定 cell 边界（= 缝中心）：偏移 = -inset → 圆角开（inset 2px）时 4px 手柄恰好居中填满 4px 缝
+   （相邻表面各半，零重叠零空隙）；直角（inset 0）时手柄落在自身格内边缘（4px 分隔带，不遮邻格）。
+   z-index --z-sticky（= Z_INDEX.panelResizeHandle 200）——表面（z1）之上、浮层（1500+）之下。 ── */
+.zone-resize-handle {
+  position: absolute;
+  background: var(--separator, rgba(255, 255, 255, 0.08));
+  z-index: var(--z-sticky);
+  transition: background 0.15s;
+}
+
+.zone-resize-handle:hover {
+  background: var(--separator-hover, rgba(255, 255, 255, 0.15));
+}
+
+.zone-resize-handle.vertical {
+  width: 4px;
+  top: 0;
+  bottom: 0;
+  cursor: col-resize;
+}
+
+.zone-resize-handle.vertical.right {
+  right: calc(-1 * var(--surface-inset, 0px));
+}
+
+.zone-resize-handle.vertical.left {
+  left: calc(-1 * var(--surface-inset, 0px));
+}
+
+.zone-resize-handle.horizontal {
+  height: 4px;
+  left: 0;
+  right: 0;
+  cursor: row-resize;
+}
+
+.zone-resize-handle.horizontal.top {
+  top: calc(-1 * var(--surface-inset, 0px));
+}
+
+.zone-resize-handle.horizontal.bottom {
+  bottom: calc(-1 * var(--surface-inset, 0px));
 }
 
 /* 玻璃面叠加色（tint——表面底上、内容下，不盖文字）+ 玻璃面不透明度（opacity）+

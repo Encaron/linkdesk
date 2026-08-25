@@ -27,7 +27,6 @@
 
 import { useState, useEffect, useRef, useCallback, Fragment } from "react";
 import type { PanelLayout, PanelSwitcherItem } from "../../../core/types/pool/poolLayout";
-import { Z_INDEX } from "../../../constants"; // E5.7#26：浮层层级表——panelResizeHandle
 import { useResizeDrag } from "../../hooks/useResizeDrag"; // E5.8#37.5：通用 resize 拖拽 hook（收敛结构性重复）
 import PluginComponent from "../../shared/plugin-component/PluginComponent"; // E5.7#63.7：面板视图动态加载（侧栏同款）
 import ViewTitleActions from "../../shared/view-title-actions/ViewTitleActions"; // E5.8#36.5：标签栏右侧动作区（活动视图 titleActions 声明）
@@ -52,8 +51,6 @@ export default function PanelZone({ panel }: PanelZoneProps) {
   const isVertical = edge === "left" || edge === "right";
   // handle 落点（面板自身坐标）：底面板→顶缘 / 顶面板→底缘 / 左面板→右缘 / 右面板→左缘
   const handlePosition = edge === "bottom" ? "top" : edge === "top" ? "bottom" : edge === "left" ? "right" : "left";
-  // handle 位于 flex 主向首/末：顶缘/右缘在 column/row 流首（底/右面板）；底缘/左缘在流末
-  const handleFirst = handlePosition === "top" || handlePosition === "left";
 
   const resize = useResizeDrag({
     axis: isVertical ? "col" : "row",
@@ -67,15 +64,6 @@ export default function PanelZone({ panel }: PanelZoneProps) {
       window.linkdesk?.events?.emit("panel:resize", isVertical ? { width: size } : { height: size });
     },
   });
-
-  const handleEl = (
-    <div
-      className={`panel-resize-handle ${handlePosition}`}
-      style={{ zIndex: Z_INDEX.panelResizeHandle }}
-      onMouseDown={resize.onResizeStart}
-      aria-hidden="true"
-    />
-  );
 
   /* ── E5.8#34：容器切换器——switcher 按钮 + 分组下拉（mockup 帧 2 拍板） ── */
 
@@ -143,15 +131,11 @@ export default function PanelZone({ panel }: PanelZoneProps) {
   const [tabbarMenu, setTabbarMenu] = useState<{ x: number; y: number } | null>(null);
 
   return (
+    <>
     <div
       className={`panel-zone${isVertical ? " vertical" : ""} edge-${edge}${resize.resizing ? " resizing" : ""}`}
       style={isVertical ? { width: resize.size, height: "100%" } : { height: resize.size, width: "100%" }}
     >
-      {/* E5.8#37.5：四向 resize handle——底面板在顶缘（row-resize）/ 顶面板在底缘 / 左面板在右缘 /
-          右面板在左缘（col-resize）。zIndex 走 Z_INDEX.panelResizeHandle（#26 常量表）——不写裸数字。
-          位置随 handleFirst 落 flex 主向首/末：横带（column）顶/底、竖条（row）右/左。 */}
-      {handleFirst && handleEl}
-
       {/* 面板内容体——tabbar + keep-alive 内容区恒 column 排布（竖条时根 row + 本 wrapper column） */}
       <div className="panel-zone-body">
         {/* PanelTabBar 28px——切换器在行首，标签 80px 固定不 shrink，列表溢出滚动，[+] 在滚动区外始终最右 */}
@@ -286,8 +270,6 @@ export default function PanelZone({ panel }: PanelZoneProps) {
         </div>
       </div>
 
-      {!handleFirst && handleEl}
-
       {/* E5.8#37.7：标签栏右键菜单——壳 ContextMenu（聪慧→哑数据流：lk.menu.getItems 壳侧解析）。
           context 只带容器标识（面板自身）——位置/对齐/视图清单上下文全走壳侧（Path B 池只读）。 */}
       {tabbarMenu && (
@@ -299,5 +281,15 @@ export default function PanelZone({ panel }: PanelZoneProps) {
         />
       )}
     </div>
+
+    {/* E5.8#37.5 + 缝系统：四向 resize handle——共享 .zone-resize-handle（index.css 全局层：
+        锚定本格边界 = 缝中心，偏移 -inset 缝居中 / 直角贴边）。底面板顶缘/顶面板底缘/左面板
+        右缘/右面板左缘。zIndex 走共享 var(--z-sticky)（= Z_INDEX.panelResizeHandle #26 常量表）。 */}
+    <div
+      className={`zone-resize-handle ${isVertical ? "vertical" : "horizontal"} ${handlePosition}`}
+      onMouseDown={resize.onResizeStart}
+      aria-hidden="true"
+    />
+    </>
   );
 }

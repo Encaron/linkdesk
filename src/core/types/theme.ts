@@ -33,8 +33,6 @@ export interface ThemeSurface {
   morph?: number;
   /** 悬浮圆角 px——0 = 直角贴边 */
   radius?: number;
-  /** 四周留缝 px——0 = 贴边 */
-  inset?: number;
   /** 投影浮起——true = 悬浮投影（引擎映射 --shadow-lift） */
   shadow?: boolean;
   /** E5.8#50.28：可平铺纹理图资产路径（⑬ 纸纹分区）——应用全部 5 zone 表面，与 glass 正交独立生效 */
