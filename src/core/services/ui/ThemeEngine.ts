@@ -1232,6 +1232,15 @@ export const CONFIG_NONE_SENTINEL = "__none__";
  *  绝对系统默认 = 不跟随主题字体资产。 */
 export const SYSTEM_FONT_STACK = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
 
+/** E5.8#91：系统双字系标尺——亮字系（深底）/ 暗字系（浅底），稳定跨主题不锚主题值（14-档案 #91 §六 6）。
+ *  三级文字同比例保层级：primary 实心 / secondary 0.82·0.75 / muted 0.60·0.55。 */
+// eslint-disable-next-line linkdesk/no-hardcoded-hex -- 系统标尺数据（用户可选值，非样式硬编码）
+export const FONT_TONE_LIGHT_TEXT = ["#FFFFFF", "rgba(255, 255, 255, 0.82)", "rgba(255, 255, 255, 0.60)"] as const;
+// eslint-disable-next-line linkdesk/no-hardcoded-hex
+export const FONT_TONE_DARK_TEXT = ["#1A1A1A", "rgba(26, 26, 26, 0.75)", "rgba(26, 26, 26, 0.55)"] as const;
+/** 文字极性覆盖目标——colorway colors 域三键（app.fontTone 显式选档写这三个 --text-*） */
+export const FONT_TONE_TEXT_KEYS = ["text-primary", "text-secondary", "text-muted"] as const;
+
 /** 读用户外观配置 → 覆盖集（glass/bg 仅偏离 neutral 时；radius/zone presence 门控写绝对 px——applyOverrides 内换算）。
  *  E5.8#85：圆角不再「恒写」——presence 门控（同 glass #56）：配置被显式写过即覆盖，reset 摘除 key → 回主题基线。 */
 export function getAppearanceOverrides(): Record<string, string> {
@@ -1307,6 +1316,21 @@ export function getAppearanceOverrides(): Record<string, string> {
     overrides["surface-radius"] = "0px";
   } else if (hasConfigurationValue("app.zoneRadiusScale") && rawZonePx != null && Number.isFinite(Number(rawZonePx))) {
     overrides["surface-radius"] = String(clampRadiusPx(Number(rawZonePx)));
+  }
+
+  // E5.8#91：文字极性槽——app.fontTone 显式选档覆盖 text-primary/secondary/muted（系统双字系标尺，
+  // 非锚主题值）；跟随主题 = 不写任何键（主题 type 决定极性，colorway text-* 原样）。fontTone 独立于
+  // appearanceMode（非覆盖键，不随 custom 播种/复位）——显式选档切主题自动保留。
+  // 覆盖后置：applyOverrides ② 通道绝对写——recipe 与 mix 路径都读本函数（applyRecipe 传入），显式档压过 mix colors 来源。
+  const fontTone = getConfigurationValue<string>("app.fontTone");
+  if (fontTone === "light") {
+    overrides["text-primary"] = FONT_TONE_LIGHT_TEXT[0];
+    overrides["text-secondary"] = FONT_TONE_LIGHT_TEXT[1];
+    overrides["text-muted"] = FONT_TONE_LIGHT_TEXT[2];
+  } else if (fontTone === "dark") {
+    overrides["text-primary"] = FONT_TONE_DARK_TEXT[0];
+    overrides["text-secondary"] = FONT_TONE_DARK_TEXT[1];
+    overrides["text-muted"] = FONT_TONE_DARK_TEXT[2];
   }
 
   return overrides;

@@ -5,7 +5,7 @@
  *   + ObjectEditor + types；被 SettingRow 消费。
  */
 
-import { useState } from "react"; // E5.8#50.11：背景图导入 busy 态
+import { useRef, useState } from "react"; // E5.8#50.11：背景图导入 busy 态；E5.8#91：roving tabindex 方向键导航
 import Toggle from "@src/components/shared/toggle/Toggle";
 import SelectBox from "@src/components/shared/select-box/SelectBox";
 import DynamicSelect from "@src/components/shared/select-box/DynamicSelect"; // E5.8#50.23：动态下拉（optionsFrom 渲染时调 listRecipes）
@@ -68,6 +68,18 @@ function renderControl(
       return <FilePathInput value={String(val)} onChange={(v) => onChange(v)} dialogType="directory" />;
     case "image": // E5.8#50.11：背景图——选图拷贝入库 + 清除（受控来源）
       return <BackgroundImagePicker value={String(val)} onChange={onChange} t={t} />;
+    case "fontTone": // E5.8#91：文字极性三态分段控件（跟随主题/亮字/暗字）——每态预览方块实时取样系统双字系标尺
+      return (
+        <FontToneControl
+          value={String(val)}
+          options={(prop.enum ?? []).map((v, i) => ({
+            value: v,
+            label: prop.enumDescriptions?.[i] ? t(prop.enumDescriptions[i]) : t(v),
+          }))}
+          onChange={(v) => onChange(v)}
+          t={t}
+        />
+      );
     case "slider": { // E5.8#50.9：滑杆（#50.10 玻璃五配置消费）——E5.8#65：step 推导（浮点区间 0.01，schema 可显式 step 覆盖）
       const sliderMin = prop.minimum ?? 0;
       const sliderMax = prop.maximum ?? 100;
@@ -261,6 +273,84 @@ function BackgroundImagePicker({
       <span className="settings-image-path" title={display}>
         {display}
       </span>
+    </div>
+  );
+}
+
+/* eslint-disable linkdesk/no-hardcoded-hex -- E5.8#91 系统双字系标尺预览数据（与 ThemeEngine FONT_TONE_LIGHT_TEXT/DARK_TEXT 同值取样——预览非运行时样式） */
+const FONT_TONE_PREVIEW: Record<string, { halves: { base: string; ink: string }[] }> = {
+  followTheme: {
+    // 跟随主题——分半深/浅示意「主题明暗决定极性」：深半亮字 + 浅半暗字并置
+    halves: [
+      { base: "#1A1A1A", ink: "#FFFFFF" },
+      { base: "#F2F2F2", ink: "#1A1A1A" },
+    ],
+  },
+  light: { halves: [{ base: "#1A1A1A", ink: "#FFFFFF" }] }, // 亮字（深底用）——深底白字
+  dark: { halves: [{ base: "#F2F2F2", ink: "#1A1A1A" }] }, // 暗字（浅底用）——浅底深字
+};
+/* eslint-enable linkdesk/no-hardcoded-hex */
+
+/**
+ * E5.8#91：文字极性分段控件——三态（跟随主题/亮字/暗字）+ 每态实时预览方块。
+ * 短标签 = enumDescription 全句首个 "—" 前段（如「亮字（深底用）」）；tooltip = 全句解释。
+ * 无线电语义：role radiogroup/radio + aria-checked + 方向键 roving tabindex（←→↑↓ 换档）。
+ * 选中态 = accent 描边 + 微着色（Navigation/Active State——选中档一目了然）；预览块取样系统双字系标尺。
+ */
+function FontToneControl({
+  value,
+  options,
+  onChange,
+  t,
+}: {
+  value: string;
+  options: { value: string; label: string }[];
+  onChange: (v: unknown) => void;
+  t: (key: string) => string;
+}) {
+  const optionRefs = useRef<(HTMLButtonElement | null)[]>([]);
+  const handleKeyDown = (e: React.KeyboardEvent, index: number) => {
+    if (!["ArrowRight", "ArrowLeft", "ArrowUp", "ArrowDown"].includes(e.key)) return;
+    e.preventDefault();
+    const dir = e.key === "ArrowRight" || e.key === "ArrowDown" ? 1 : -1;
+    const next = (index + dir + options.length) % options.length;
+    optionRefs.current[next]?.focus();
+    onChange(options[next].value);
+  };
+  return (
+    <div className="settings-font-tone" role="radiogroup" aria-label={t("文字极性")}>
+      {options.map((opt, i) => {
+        const preview = FONT_TONE_PREVIEW[opt.value];
+        const short = opt.label.split("—")[0];
+        const selected = value === opt.value;
+        return (
+          <button
+            key={opt.value}
+            type="button"
+            ref={(el) => { optionRefs.current[i] = el; }}
+            role="radio"
+            aria-checked={selected}
+            tabIndex={selected ? 0 : -1}
+            className={`settings-font-tone-option${selected ? " selected" : ""}`}
+            title={opt.label}
+            onClick={() => onChange(opt.value)}
+            onKeyDown={(e) => handleKeyDown(e, i)}
+          >
+            <span className="settings-font-tone-swatch" aria-hidden="true">
+              {preview?.halves.map((half, j) => (
+                <span
+                  key={j}
+                  className="settings-font-tone-half"
+                  style={{ background: half.base, color: half.ink }}
+                >
+                  Aa
+                </span>
+              ))}
+            </span>
+            <span className="settings-font-tone-label">{short}</span>
+          </button>
+        );
+      })}
     </div>
   );
 }

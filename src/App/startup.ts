@@ -298,7 +298,7 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
         properties: {
           "app.theme": {
             type: "string",
-            group: t("整体配方"), // E5.8#78：组内二级标题——主题组分节 1/5（整体配方）
+            group: t("整体配方"), // E5.8#78：组内二级标题——主题组分节 1/6（整体配方）
             // E5.8#50.22：uiHint 声明卡片控件——设置页 renderControl "themePicker" 分支渲染配方卡片
             // （数据走 linkdesk.theme.listRecipes，选中写回本 key 走下方 onApply 应用配方）
             uiHint: "themePicker",
@@ -348,7 +348,7 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
           //   mix 模式   = colors 域来源（壳 UI 按 app.mixMode 动态切 theme.sources + colors 域，见 renderControl select 分支）。
           "app.themeColor": {
             type: "string",
-            group: t("配色"), // E5.8#78：组内二级标题——主题组分节 2/5（配色）
+            group: t("配色"), // E5.8#78：组内二级标题——主题组分节 2/6（配色）
             default: "",
             description: t("配色变体——活动主题配方的可用配色"),
             // 枚举仍由 applyRecipeForConfig 每次应用同步（第三方设置 UI 读取 + setConfigurationValue 校验）；壳 UI 走 optionsFrom 动态取。
@@ -363,7 +363,7 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
           // getEffectiveAccentColor 读配置按 key 名（非注册组）——功能链路零改动。
           "app.accentMode": {
             type: "string",
-            group: t("强调色"), // E5.8#78：组内二级标题——主题组分节 3/5（强调色）
+            group: t("强调色"), // E5.8#78：组内二级标题——主题组分节 3/6（强调色）
             default: "custom",
             enum: ["custom", "followTheme"],
             description: t("强调色模式——自定义固定色 / 跟随主题（主题无强调色时用自定义兜底）"),
@@ -394,7 +394,7 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
           },
           "app.appearanceMode": {
             type: "string",
-            group: t("外观覆盖"), // E5.8#78：组内二级标题——主题组分节 4/5（外观覆盖）
+            group: t("外观覆盖"), // E5.8#78：组内二级标题——主题组分节 4/6（外观覆盖）
             default: "followTheme",
             enum: ["followTheme", "custom"],
             description: t("外观模式——跟随主题配方外观 / 手动覆盖外观"),
@@ -527,6 +527,24 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
             dependsOn: { key: "app.appearanceMode", value: "custom" },
             onApply: () => debouncedApplyThemeIfReady(),
           },
+          // E5.8#91：文字极性槽——app.fontTone 独立极性偏好（非外观覆盖键，不随 appearanceMode custom
+          // 播种/复位；显式选档切主题自动保留）。默认跟随主题（主题 type 决定极性）；显式亮/暗字 = 系统
+          // 双字系标尺覆盖 text-primary/secondary/muted（ThemeEngine getAppearanceOverrides 读本键 →
+          // applyOverrides 写 --text-*）。设置插件 uiHint "fontTone" = 三态分段控件 + 深浅底预览方块（14-档案 #91）。
+          "app.fontTone": {
+            type: "string",
+            group: t("文字"), // E5.8#78：组内二级标题——主题组分节 5/6（文字极性）
+            default: "followTheme",
+            enum: ["followTheme", "light", "dark"],
+            enumDescriptions: [
+              t("跟随主题——主题明暗决定文字极性（深主题亮字 / 浅主题暗字）"),
+              t("亮字（深底用）——深色底上白字"),
+              t("暗字（浅底用）——浅色底上深字"),
+            ],
+            description: t("文字极性——文字颜色取系统标尺，不锚主题色板"),
+            uiHint: "fontTone",
+            onApply: () => debouncedApplyThemeIfReady(),
+          },
           // 混搭七键 + 复位——mixMode 常显，六域来源 + 复位 mixMode=mix 才出现（08 §7.1 #11-17）。
           // mix* 按域合并实现在 ThemeEngine（#50.26 mergeMixDomains）——此处注册 + 播种 + dependsOn 显隐。
           // 六域来源 = uiHint "select" + optionsFrom "theme.sources"（#50.23 动态下拉按域过滤 listRecipes）；
@@ -534,7 +552,7 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
           // 「跟随主题」哨兵值 = "followTheme"（10-混搭设计 §1/§3 定稿；缺省与播种同一值）。
           "app.mixMode": {
             type: "string",
-            group: t("域混搭"), // E5.8#78：组内二级标题——主题组分节 5/5（域混搭）
+            group: t("域混搭"), // E5.8#78：组内二级标题——主题组分节 6/6（域混搭）
             default: "recipe",
             enum: ["recipe", "mix"],
             description: t("混搭模式——单一主题配方 / 按域混搭多个主题来源"),

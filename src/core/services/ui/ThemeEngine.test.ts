@@ -45,6 +45,9 @@ import {
   isMixSourceOwner,
   CONFIG_NONE_SENTINEL,
   SYSTEM_FONT_STACK,
+  FONT_TONE_LIGHT_TEXT,
+  FONT_TONE_DARK_TEXT,
+  FONT_TONE_TEXT_KEYS,
 } from "./ThemeEngine";
 import type { MixProfile } from "./ThemeEngine";
 import { rollback } from "../../registry/registrationTracker";
@@ -700,6 +703,44 @@ describe("ThemeEngine — 外观覆盖 getAppearanceOverrides（E5.8#50.10）", 
     expect(APPEARANCE_OVERRIDE_KEYS).toContain("app.zoneRadius");
     expect(APPEARANCE_OVERRIDE_KEYS).toContain("app.zoneRadiusScale");
     expect(APPEARANCE_OVERRIDE_KEYS).toContain("app.zoneBackgroundImage");
+  });
+
+  /* ── E5.8#91 文字极性槽——app.fontTone 显式选档 → 系统双字系标尺覆盖 text-*（非主题色板值）；
+     跟随主题/未写 → 零覆盖（主题 type 决定极性，colorway text-* 原样）── */
+
+  it("E5.8#91 fontTone=light → text-primary/secondary/muted = 系统亮字系（深底用）", () => {
+    applyRemoteConfigChange("app.fontTone", "light");
+    const overrides = getAppearanceOverrides();
+    expect(overrides["text-primary"]).toBe(FONT_TONE_LIGHT_TEXT[0]);
+    expect(overrides["text-secondary"]).toBe(FONT_TONE_LIGHT_TEXT[1]);
+    expect(overrides["text-muted"]).toBe(FONT_TONE_LIGHT_TEXT[2]);
+  });
+
+  it("E5.8#91 fontTone=dark → text-primary/secondary/muted = 系统暗字系（浅底用）", () => {
+    applyRemoteConfigChange("app.fontTone", "dark");
+    const overrides = getAppearanceOverrides();
+    expect(overrides["text-primary"]).toBe(FONT_TONE_DARK_TEXT[0]);
+    expect(overrides["text-secondary"]).toBe(FONT_TONE_DARK_TEXT[1]);
+    expect(overrides["text-muted"]).toBe(FONT_TONE_DARK_TEXT[2]);
+  });
+
+  it("E5.8#91 fontTone=followTheme → 零 text-* 覆盖（主题 type 决定极性）", () => {
+    applyRemoteConfigChange("app.fontTone", "followTheme");
+    const overrides = getAppearanceOverrides();
+    for (const key of FONT_TONE_TEXT_KEYS) expect(overrides[key]).toBeUndefined();
+  });
+
+  it("E5.8#91 fontTone 未写 → 零 text-* 覆盖（default=followTheme 语义）", () => {
+    const overrides = getAppearanceOverrides();
+    for (const key of FONT_TONE_TEXT_KEYS) expect(overrides[key]).toBeUndefined();
+  });
+
+  it("E5.8#91 fontTone 与 mix 共存——mixMode=mix 时显式档照常覆盖（fontTone 非 mix 来源键，无竞争）", () => {
+    applyRemoteConfigChange("app.fontTone", "dark");
+    applyRemoteConfigChange("app.mixMode", "mix");
+    const overrides = getAppearanceOverrides();
+    expect(overrides["text-primary"]).toBe(FONT_TONE_DARK_TEXT[0]);
+    expect(overrides["text-secondary"]).toBe(FONT_TONE_DARK_TEXT[1]);
   });
 });
 

@@ -360,5 +360,11 @@
   "表面域来源——跟随主题配方 / 指定主题配方 id": "Surface domain source — follow theme recipe / specify a theme recipe id",
   "跟随主题": "Follow Theme",
   "主题「{{name}}」数据文件加载失败，已跳过": "Theme \"{{name}}\" data file failed to load; skipped",
-  "主题「{{name}}」数据损坏，已跳过加载": "Theme \"{{name}}\" data is corrupted; skipped loading"
+  "主题「{{name}}」数据损坏，已跳过加载": "Theme \"{{name}}\" data is corrupted; skipped loading",
+  "文字": "Text",
+  "文字极性": "Text Tone",
+  "文字极性——文字颜色取系统标尺，不锚主题色板": "Text Tone — text colors use the system scale, not the theme palette",
+  "跟随主题——主题明暗决定文字极性（深主题亮字 / 浅主题暗字）": "Follow Theme — theme brightness decides text polarity (light text on dark themes / dark text on light themes)",
+  "亮字（深底用）——深色底上白字": "Light Text (for dark surfaces) — white text on dark backgrounds",
+  "暗字（浅底用）——浅色底上深字": "Dark Text (for light surfaces) — dark text on light backgrounds"
 }

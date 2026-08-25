@@ -450,6 +450,64 @@
   color: var(--text-muted);
 }
 
+/* ── E5.8#91：文字极性分段控件（uiHint "fontTone"）——三态 + 每态预览方块 ── */
+.settings-font-tone {
+  display: flex;
+  gap: 6px;
+}
+.settings-font-tone-option {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 7px;
+  background: transparent;
+  border: 1px solid var(--separator);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: border-color 120ms ease, background 120ms ease;
+}
+.settings-font-tone-option:hover {
+  border-color: var(--text-muted);
+  background: var(--hover-overlay);
+}
+.settings-font-tone-option:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: 1px;
+}
+/* 选中档一目了然——accent 描边 + 微着色（Navigation/Active State） */
+.settings-font-tone-option.selected {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+.settings-font-tone-swatch {
+  display: flex;
+  width: 52px;
+  height: 30px;
+  border-radius: 4px;
+  overflow: hidden;
+  border: 1px solid var(--separator);
+}
+.settings-font-tone-half {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  user-select: none;
+}
+.settings-font-tone-label {
+  font-size: 12px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+.settings-font-tone-option.selected .settings-font-tone-label {
+  color: var(--text-primary);
+}
+
 /* ── ObjectEditor——object/array 配置项键值对编辑器 ── */
 
 .object-editor {
