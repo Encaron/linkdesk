@@ -48,6 +48,8 @@ interface ConfigProperty {
   actionDisabledAll?: Array<{ key: string; value: unknown }>;
   /** E5.8#78：组内二级标题——无 group 保持平铺（第三方配置零侵入） */
   group?: string;
+  /** E5.8#77：数值单位——uiHint "slider" 值标签单位（"×" / "px"；空 = 裸数值） */
+  unit?: string;
 }
 
 export type { SettingsViewProps, GroupInfo, ConfigProperty };

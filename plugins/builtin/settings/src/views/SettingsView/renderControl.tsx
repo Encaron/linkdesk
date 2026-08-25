@@ -15,6 +15,7 @@ import NumberInput from "@src/components/shared/number-input/NumberInput";
 import Slider from "@src/components/shared/slider/Slider"; // E5.8#50.9：滑杆控件（shared 白名单惯例，非 @src/core 零警告）
 import { inferSliderStep } from "@src/components/shared/slider/sliderStep"; // E5.8#65：滑杆 step 推导（浮点区间连续可调）
 import ThemePicker from "@src/components/shared/theme-picker/ThemePicker"; // E5.8#50.22：主题配方卡片（数据走 window.linkdesk.theme）
+import { formatSliderValue } from "./sliderValueLabel"; // E5.8#77：滑杆值标签格式化（unit 声明 → ×倍数/px）
 import ObjectEditor from "./ObjectEditor";
 import type { ConfigProperty } from "./types";
 
@@ -70,14 +71,20 @@ function renderControl(
     case "slider": { // E5.8#50.9：滑杆（#50.10 玻璃五配置消费）——E5.8#65：step 推导（浮点区间 0.01，schema 可显式 step 覆盖）
       const sliderMin = prop.minimum ?? 0;
       const sliderMax = prop.maximum ?? 100;
+      // E5.8#77：右侧值标签——当前值 + 单位（schema unit 元数据；无 unit = 裸数值，第三方零侵入）
       return (
-        <Slider
-          value={Number(val)}
-          onChange={(v) => onChange(v)}
-          min={sliderMin}
-          max={sliderMax}
-          step={prop.step ?? inferSliderStep(sliderMin, sliderMax)}
-        />
+        <div className="settings-slider-control">
+          <Slider
+            value={Number(val)}
+            onChange={(v) => onChange(v)}
+            min={sliderMin}
+            max={sliderMax}
+            step={prop.step ?? inferSliderStep(sliderMin, sliderMax)}
+          />
+          <span className="settings-slider-value">
+            {formatSliderValue(Number(val), prop.unit)}
+          </span>
+        </div>
       );
     }
     case "themePicker": // E5.8#50.22：主题配方卡片——value=app.theme，点卡片 onChange(recipeId)（onApply 应用配方）

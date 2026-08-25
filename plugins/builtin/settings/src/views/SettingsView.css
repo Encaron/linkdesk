@@ -314,6 +314,30 @@
   min-width: 0;
 }
 
+/* ── E5.8#77：滑杆值标签——滑杆占满 + 右侧当前值（unit 声明 → ×倍数/px；mockup 数值位置） ── */
+
+.settings-slider-control {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+
+.settings-slider-control .slider {
+  flex: 1;
+  min-width: 0;
+}
+
+.settings-slider-value {
+  flex-shrink: 0;
+  min-width: 44px;
+  text-align: right;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-secondary);
+  user-select: none;
+}
+
 /* ── E3f #53c：设置项齿轮——hover 时出现，对标 VS Code Settings Editor ── */
 
 .settings-row-gear {

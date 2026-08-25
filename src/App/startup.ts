@@ -325,6 +325,7 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
             maximum: 2,
             description: t("界面圆角缩放——1 主题默认，0 方角，0.5 半角锐利，2 圆润"),
             uiHint: "slider",
+            unit: "×", // E5.8#77：值标签倍数单位（mockup ×1.0）
             dependsOn: { key: "app.appearanceMode", value: "custom" },
             onApply: () => applyThemeIfReady(),
           },
@@ -336,6 +337,7 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
             maximum: 32,
             description: t("玻璃模糊——0 关闭，数值越大背景越模糊"),
             uiHint: "slider",
+            unit: "px", // E5.8#77：值标签像素单位（mockup 16px）
             dependsOn: { key: "app.appearanceMode", value: "custom" },
             onApply: () => applyThemeIfReady(),
           },
@@ -399,6 +401,7 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
             maximum: 2,
             description: t("分区圆角倍数——1 主题默认，0 方角，2 双倍圆润"),
             uiHint: "slider",
+            unit: "×", // E5.8#77：值标签倍数单位（同 surfaceRadius × 语义）
             dependsOn: { key: "app.appearanceMode", value: "custom" },
             onApply: () => applyThemeIfReady(),
           },

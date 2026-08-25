@@ -57,6 +57,9 @@ export interface ConfigurationProperty {
   /** E5.8#78：组内二级标题——SettingsView 按本字段把同组 key 归到子标题下渲染（主题组 5 分节）。
    *  可选字段：第三方不声明 = 保持平铺原样（零侵入）。组标题字符串走壳 t() i18n（lang-defaults）。 */
   group?: string;
+  /** E5.8#77：数值单位——uiHint "slider" 值标签单位（"×" 倍数前缀 / "px" 像素后缀；空 = 裸数值）。
+   *  可选字段：第三方不声明 = 只显示数值不显示单位（零侵入）。 */
+  unit?: string;
 }
 
 /** 插件贡献的 configuration 分组——对标 VS Code package.json contributes.configuration */

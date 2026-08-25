@@ -59,6 +59,8 @@ export interface LinkDeskConfigProperty {
     }>;
     /** E5.8#78：组内二级标题——SettingsView 把同 group 的 key 归到子标题下渲染；无 group 保持平铺（零侵入） */
     group?: string;
+    /** E5.8#77：数值单位——uiHint "slider" 值标签单位（"×" / "px"；空 = 裸数值） */
+    unit?: string;
 }
 /** 配置 schema——key → 属性定义（index signature 保持现有消费方） */
 export interface LinkDeskConfigSchema {
