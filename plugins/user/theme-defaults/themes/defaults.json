@@ -35,6 +35,8 @@
         "bg-icon-bar": "#F0F0F0",
         "bg-side-panel": "#F5F5F5",
         "bg-toolbar": "#F5F5F5",
+        "bg-titlebar": "#DDDDDD",
+        "titlebar-close-hover": "#C42B1C",
         "toggle-knob": "#2D2D2D",
         "hover-overlay": "rgba(0, 0, 0, 0.04)",
         "cm-timestamp": "#767676"
@@ -72,6 +74,8 @@
         "bg-icon-bar": "#18181B",
         "bg-side-panel": "#1E1E22",
         "bg-toolbar": "#1E1E22",
+        "bg-titlebar": "#252526",
+        "titlebar-close-hover": "#C42B1C",
         "toggle-knob": "#FFFFFF",
         "hover-overlay": "rgba(255, 255, 255, 0.06)",
         "cm-timestamp": "#8A8A8A"
