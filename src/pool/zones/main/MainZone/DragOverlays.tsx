@@ -2,7 +2,7 @@
  * DragOverlays——MainZone 拖拽视觉浮层（drop zone 毛玻璃 + 拖拽预览 portal）。
  * E5.8#0d.10-6c：自 MainZone.tsx Render 段拆出——纯展示：输入 computeLayout 结果 + 拖拽态，零业务逻辑。
  *   drop zone 毛玻璃对标 VS Code editorDropTarget（E5.6#16.7 Glassmorphism——内发光 box-shadow
- *   定义区域边界 + backdrop-filter blur(6px)，pointer-events: none 不拦截拖拽事件）。
+ *   定义区域边界 + backdrop-filter 跟主题 blur（E5.8#76 变量化，非 6px 死码），pointer-events: none 不拦截拖拽事件）。
  *   拖拽预览 portal 挂 document.body 避免 B34 裁剪。
  * 依赖方向：DragOverlays → react-dom（createPortal）+ ./layout（type）+ hooks（DropZone）+ core types；无反向。
  */
@@ -38,7 +38,7 @@ export default function DragOverlays({
            🔥 E5.6#16.7：毛玻璃半区叠加层。
            设计决策（ui-ux-pro-max Glassmorphism）：
            - 拒绝 dashed 虚线边框 → 改用内发光 box-shadow 定义区域边界
-           - backdrop-filter: blur(6px) 毛玻璃散射面（不是全屏模糊，只作用于半区）
+           - backdrop-filter 毛玻璃散射面跟主题 blur（--surface-glass-blur，零值现状）（不是全屏模糊，只作用于半区）
            - 固态 hairline 边框（1px solid，低透明度）——轻微可见但不抢眼
            - pointer-events: none 不拦截拖拽事件 */}
       {dropZoneState && dropZoneState.zone !== "center" && (() => {

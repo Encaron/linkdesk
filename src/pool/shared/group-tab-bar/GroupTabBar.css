@@ -263,10 +263,11 @@
 .drop-glass-zone {
   position: absolute;
   pointer-events: none;
-  /* 玻璃表面——半透明散射面叠加 backdrop-filter 毛玻璃 */
+  /* 玻璃表面——半透明散射面叠加 backdrop-filter 毛玻璃（E5.8#76 死编码消除：
+     blur 跟主题 --surface-glass-blur（per-surface）→ --glass-blur 基值，零值=现状零变化） */
   background: var(--drop-glass-bg);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(var(--surface-glass-blur, var(--glass-blur, 0px))) saturate(var(--glass-saturate, 1));
+  -webkit-backdrop-filter: blur(var(--surface-glass-blur, var(--glass-blur, 0px)));
   /* 固态 hairline 边界（替代虚线 outline）——轻微可见但不抢眼 */
   border: 1px solid var(--drop-glass-border);
   /* 内发光——模拟玻璃边缘集光，定义区域边界 */
