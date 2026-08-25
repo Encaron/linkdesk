@@ -16,7 +16,7 @@ import { setWorkspaceRoot } from "../configuration/ConfigurationService";
 import { normalizePath } from "../../utils/path/pathUtils";
 import { shellEvents } from "../../react/events/ShellEvents";
 import { setPluginStateValue, getPluginStateValue, APP_PLUGIN_ID } from "../plugins/PluginStateService";
-import { read, write } from "../configuration/StorageService"; // E5.5#0e
+import { read, readSync, write } from "../configuration/StorageService"; // E5.5#0e
 
 /* ── 类型 ── */
 
@@ -204,7 +204,9 @@ function _persistFolders(): void {
  */
 export async function initWorkspaceService(): Promise<void> {
   try {
-    const saved = await read<WorkspaceFolder[]>("workspace-folders");
+    // E5.8#71：read() 已文件优先归一——workspace-folders 的 beforeunload 保底（syncWriteWorkspaceFolders）
+    // 与 layout 同款，显式 readSync 优先（仅 localStorage 无数据才落 read() 文件兜底）。
+    const saved = readSync<WorkspaceFolder[]>("workspace-folders") ?? (await read<WorkspaceFolder[]>("workspace-folders"));
     if (!saved || !Array.isArray(saved) || saved.length === 0) return;
 
     // 验证磁盘上文件夹仍存在——已删除的跳过

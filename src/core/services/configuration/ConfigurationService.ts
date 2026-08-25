@@ -60,6 +60,7 @@ export async function initConfigurationService(): Promise<void> {
 
   return (_initPromise = (async () => {
   // Phase 5f：统一走 StorageService（不再自研 ensureTauri + fsApi + pathApi）
+  // E5.8#71：read() 文件优先（文件 = 真相）——外部编辑 settings.json 即启动生效；localStorage 仅兜底 + 缓存刷新
   const saved = await read<Record<string, unknown>>("settings");
   if (saved) _userSettings = saved;
 
@@ -93,7 +94,8 @@ export function diffUserSettings(
 
 /**
  * 重读 settings.json 文件并应用到内存——外部编辑（编辑器标签页保存）后即时生效。
- * 直读文件不走 StorageService.read（其优先 localStorage——外部写入后壳侧 localStorage 陈旧）。
+ * 直读文件（不走 read() 的缓存回写）——reload 需要 ① 与内存 diff（零变更零通知防自写循环）② 队列未排空跳过。
+ * E5.8#71：read() 已同样归一为文件优先（文件 = 真相），二者语义一致，仅 reload 保留直读以走 diff/apply 流。
  * 零变更则零通知（防自写自触发循环）；非法 JSON 不覆盖内存（等下一次保存）。
  */
 export async function reloadUserSettings(): Promise<void> {

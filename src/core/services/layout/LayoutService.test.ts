@@ -15,6 +15,7 @@ const { store } = vi.hoisted(() => {
 
 vi.mock("../configuration/StorageService", () => ({
   read: vi.fn(async (key: string) => store.get(key) ?? null),
+  readSync: vi.fn((key: string) => store.get(key) ?? null), // E5.8#71：initLayoutService 保底显式 readSync 优先
   write: vi.fn(async (key: string, data: unknown) => { store.set(key, data); }),
   writeSync: vi.fn(),
 }));

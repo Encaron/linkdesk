@@ -11,7 +11,7 @@
  */
 
 import type { LayoutData } from "../../../hooks/useTabManager";
-import { read, write, writeSync } from "../configuration/StorageService";
+import { read, readSync, write, writeSync } from "../configuration/StorageService";
 import { exists, readFile, writeFile, createDir, joinPath, appDataDir } from "../files/FileService";
 
 /* ── 类型 ── */
@@ -74,7 +74,10 @@ let _layoutCache: WorkspaceLayout = { tabs: { groups: [], activeGroupId: "" }, c
 
 /** 初始化——App 启动时调一次。StorageService 统一读写，优先 localStorage，文件兜底。 */
 export async function initLayoutService(): Promise<void> {
-  const saved = await read<WorkspaceLayout>("layout");
+  // E5.8#71：read() 已归一为文件优先（文件 = 真相）。布局的 beforeunload 保底
+  // （syncWriteLayout 写 localStorage-only，beforeunload 无法异步 I/O）是「关窗瞬间最后状态」通道，
+  // 在此显式 readSync 优先——仅当 localStorage 无数据才落 read() 文件兜底。
+  const saved = readSync<WorkspaceLayout>("layout") ?? (await read<WorkspaceLayout>("layout"));
   if (saved) {
     _layoutCache = saved;
   }
@@ -156,7 +159,8 @@ export async function saveDetachedWindows(windows: DetachedWindowState[]): Promi
 /**
  * Phase 5f：同步写入——beforeunload 专用。
  * beforeunload 期间不能做异步 I/O，用 writeSync 写 localStorage 保底。
- * 下次启动时 initLayoutService 从 localStorage 读回，再异步写文件补齐。
+ * E5.8#71：read() 已文件优先归一——保底在 initLayoutService 显式 readSync 优先读回
+ * （仅 localStorage 无数据才落文件），此处写入的 localStorage 即「关窗瞬间最后状态」。
  */
 export function syncWriteLayout(layout: WorkspaceLayout): void {
   _layoutCache = layout;
