@@ -1,7 +1,7 @@
 /**
  * E5.8#50.29/50.31：per-surface 切片坐标锚定（⑭ 影像分区）。
  *
- * 职责：zones 模式（--surface-bg-zones: 1，壳广播注入）下，量测本窗 5 zone 表面真实像素
+ * 职责：zones 模式（--surface-bg-zones: 1，壳广播注入）下，量测本窗 zone 表面真实像素
  * rect → 写 `--surface-bg-size`（= 窗口尺寸）+ `--surface-<zone>-bg-position`（负偏移，
  * 相邻 zone 拼回连续图）；#50.31 ResizeObserver 监听窗口 resize / 布局变化（侧栏折叠、
  * 脱出窗缩放）→ 重算重写。
@@ -11,12 +11,16 @@
  * 依赖方向：events → surface-zones（theme:changed 注入后按标记门控调用）。零反向依赖。
  */
 
-/** 5 个表面 zone——选择器与 #50.7 表面选择器一致（.side-panel = 侧栏内层，动态宽 resize.size） */
+/** 6 个表面 zone——选择器与 #50.7 表面选择器一致（.side-panel = 侧栏内层，动态宽 resize.size）。
+    E5.8#73：补 `.panel-zone`（痛点 11 底部面板无切片——CSS 消费面 + 量测面双缺口补齐）。
+    panel 显隐（Ctrl+J）时 display:none → getBoundingClientRect 全 0 → 写 0px 0px 偏移，
+    无害（panel 不渲染）；重新显示 → ResizeObserver 重算真实偏移（收敛判据沿用 #62）。 */
 const ZONE_SELECTORS: ReadonlyArray<{ key: string; selector: string }> = [
   { key: "titlebar", selector: ".titlebar" },
   { key: "icon-bar", selector: ".icon-bar" },
   { key: "side-panel", selector: ".side-panel" },
   { key: "main-zone", selector: ".main-zone" },
+  { key: "panel-zone", selector: ".panel-zone" },
   { key: "status-bar", selector: ".status-bar" },
 ];
 
@@ -31,7 +35,7 @@ const MAX_RETRY = 15;
 
 let _retryCount = 0;
 let _retryTimer: ReturnType<typeof setTimeout> | null = null;
-// E5.8#62 审计#3：收敛判据——以「本窗实际 zone 集」为准，不再硬编码全 5 zone。
+// E5.8#62 审计#3：收敛判据——以「本窗实际 zone 集」为准，不再硬编码全 zone 数。
 // 连续重试间的命中数比较：命中 >0 且连续 2 轮不增长 = 本窗 zone 集已量测完整（收敛）；
 // 命中 0（React mount 竞态——zone 尚未挂载）继续轮询。
 let _lastFound = -1;
@@ -47,7 +51,7 @@ function cancelRetry(): void {
   _stableRounds = 0;
 }
 
-/** 量测本窗 5 zone rect → 写 size + 每 zone 负偏移。幂等；无 zones 门控直接跳过。 */
+/** 量测本窗 zone rect → 写 size + 每 zone 负偏移。幂等；无 zones 门控直接跳过。 */
 export function measureSurfaceZones(): void {
   if (typeof document === "undefined") return;
   const root = document.documentElement;

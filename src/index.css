@@ -471,6 +471,7 @@ select {
 .icon-bar::after,
 .side-panel::after,
 .main-zone::after,
+.panel-zone::after,
 .status-bar::after {
   content: "";
   position: absolute;
@@ -494,6 +495,9 @@ select {
 }
 .main-zone::after {
   background-position: var(--surface-main-zone-bg-position, 0 0);
+}
+.panel-zone::after {
+  background-position: var(--surface-panel-zone-bg-position, 0 0);
 }
 .status-bar::after {
   background-position: var(--surface-status-bar-bg-position, 0 0);
