@@ -39,6 +39,16 @@ let _initialized = false;
 let _userPersistChain: Promise<void> = Promise.resolve();
 let _workspacePersistChain: Promise<void> = Promise.resolve();
 let _pendingUserPersists = 0;
+
+/* ── E5.8#89 E3：User scope 持久化尾沿去抖 ──
+ * 拖拽滑杆连发 setConfigurationValue → 80ms 窗口内合并为单次磁盘写（对标 settings.json watcher 去抖）。
+ * _persistDebounceTimer/_persistWaiters 模块级——同一窗口的 N 个 set 追加 waiter，fire 时一起 resolve。
+ * _pendingUserPersists：首次排程 +1、写完成（成功或失败）才 -1——reload 在写窗口内保持跳过，
+ * 窗口内再 set 只重置尾沿不重复计数（否则合并写完成只 -1 会泄漏计数）。 */
+const PERSIST_DEBOUNCE_MS = 80;
+let _persistDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+let _persistWaiters: Array<{ resolve: () => void; reject: (e: unknown) => void }> = [];
+
 /** initConfigurationService 的进行中 Promise——StrictMode 双重 effect 时第二次调用等第一次完成 */
 let _initPromise: Promise<void> | null = null;
 
@@ -265,21 +275,28 @@ export async function setConfigurationValue(
     return;
   }
 
+  // 内存先写——读路径立即生效（getConfigurationValue 永远读到最新值）
   if (scope === "workspace") {
     _workspaceSettings[key] = value;
-    await _persistWorkspace();
   } else {
     _userSettings[key] = value;
-    await _persistUser();
   }
 
-  // 通知监听器
+  // E5.8#89 E3：通知监听器 + applier 先于持久化——拖拽逐 tick 即时广播（config:changed → 设置页 label
+  // 实时刷新 / onApply 去抖重算），持久化尾沿去抖只收敛磁盘写，不阻塞逐 tick 通知。
   for (const fn of _changeListeners) {
     try { fn(key, value, scope); } catch (e) { console.error("[ConfigurationService] 监听器异常:", e); }
   }
 
   // Phase 5f：ConfigurationApplier——自动调 onApply，组件无需手动订阅
   _configApplier?.(key, value);
+
+  // 持久化后置——workspace 立即串行写（低频）；user 尾沿去抖（拖拽 N tick → 1 次磁盘写，E5.8#89 E3）
+  if (scope === "workspace") {
+    await _persistWorkspace();
+  } else {
+    await _persistUser();
+  }
 }
 
 /**
@@ -437,18 +454,38 @@ export function getWorkspaceSettings(): Record<string, unknown> {
 
 /* ── 持久化 ── */
 
-/** User scope 持久化——Phase 5f 归一化到 StorageService。串行队列防并发写损坏（审计#6）。 */
+/**
+ * User scope 持久化——Phase 5f 归一化到 StorageService。串行队列防并发写损坏（审计#6）。
+ * E5.8#89 E3：尾沿去抖（PERSIST_DEBOUNCE_MS）——拖拽滑杆连发 set 收敛为单次磁盘写。
+ * setConfigurationValue 已把内存写 + 通知 + onApply 前置，本函数只排程磁盘写：
+ *  - 首次排程 `_pendingUserPersists++`，写完成（成功或失败）才 `--`——reload 在写窗口内保持跳过；
+ *  - 窗口内再调只重置尾沿 timer + 追加 waiter——不重复计数（合并为同一次写）；
+ *  - waiters 数组：被合并的 N 个 set 的 await 全部挂在 fire 后的同一次写上，写完成一起 resolve；
+ *  - `_userPersistChain` 保留：fire 后仍排入串行队列，防与 reload/自愈写并发交错（审计#6）。
+ */
 function _persistUser(): Promise<void> {
-  _pendingUserPersists++;
-  const task = _userPersistChain.then(() => {
-    try {
-      return write("settings", _userSettings);
-    } finally {
-      _pendingUserPersists--; // 写完成（成功或失败）才释放——reload 在此窗口内保持跳过
-    }
+  return new Promise((resolve, reject) => {
+    if (!_persistDebounceTimer) _pendingUserPersists++;
+    _persistWaiters.push({ resolve, reject });
+    if (_persistDebounceTimer) clearTimeout(_persistDebounceTimer);
+    _persistDebounceTimer = setTimeout(() => {
+      _persistDebounceTimer = null;
+      const waiters = _persistWaiters;
+      _persistWaiters = [];
+      const task = _userPersistChain.then(() => write("settings", _userSettings));
+      _userPersistChain = task.catch(() => {});
+      task.then(
+        () => {
+          _pendingUserPersists--;
+          for (const w of waiters) w.resolve();
+        },
+        (e) => {
+          _pendingUserPersists--;
+          for (const w of waiters) w.reject(e);
+        },
+      );
+    }, PERSIST_DEBOUNCE_MS);
   });
-  _userPersistChain = task.catch(() => {});
-  return task;
 }
 
 /**
@@ -509,6 +546,14 @@ export function clearConfigurationCache(): void {
   _workspaceRoot = null;
   _initialized = false;
   _pendingUserPersists = 0;
+  // E5.8#89 E3：同步清掉残留去抖排程——上一个测试 pending 的 timer 不能打进下一个测试的队列
+  if (_persistDebounceTimer) {
+    clearTimeout(_persistDebounceTimer);
+    _persistDebounceTimer = null;
+  }
+  const waiters = _persistWaiters;
+  _persistWaiters = [];
+  for (const w of waiters) w.resolve(); // 悬着的 set await 不悬挂（测试复位语义）
 }
 
 /**

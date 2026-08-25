@@ -402,11 +402,13 @@ select {
   --surface-glass-blur: calc(var(--glass-blur, 0px) * var(--surface-glass-blur-scale, 1));
 }
 
-/* 表面统一——backdrop-filter（透射）+ 悬浮面板形态（圆角/投影；留缝在 cell padding /
+/* 表面统一——悬浮面板形态（圆角/投影；留缝在 cell padding /
    titlebar/statusbar margin）+ morph 过渡。z-index: 1：抬到 BackgroundLayer（z0）之上、
    浮层宿主（1500+）之下——表面内浮层全 portal 出（#55 统一渲染器），层叠上下文不困浮层。
    注：.side-panel 自带 transition: width（折叠动画），同特异性后载覆盖本 transition——
-   折叠优先，morph 对侧栏不生效（已知取舍）。 */
+   折叠优先，morph 对侧栏不生效（已知取舍）。
+   E5.8#89 E4：backdrop-filter 已下移至 ::before 玻璃层（z:-1）——元素自身只留形态，
+   透射模糊归玻璃层，盖住 ::after 影像（z:-2），内容保持锐利（见 ::before/::after 注释）。 */
 .titlebar,
 .icon-bar,
 .side-panel,
@@ -415,13 +417,11 @@ select {
 .status-bar {
   position: relative;
   z-index: 1;
-  backdrop-filter: blur(var(--surface-glass-blur, var(--glass-blur, 0px))) saturate(var(--glass-saturate, 1));
   border-radius: var(--surface-radius, 0px);
   box-shadow: var(--surface-shadow, none);
   transition:
     border-radius var(--glass-morph, 0ms),
     box-shadow var(--glass-morph, 0ms),
-    backdrop-filter var(--glass-morph, 0ms),
     margin var(--glass-morph, 0ms);
 }
 
@@ -445,7 +445,12 @@ select {
    tint 色值 alpha 即用户所选有效强度（aurora 0.35 → 35%，去 #66 wash ×0.5 隐藏乘数 + 去
    「alpha 再降一档」——那本就是 wash 的产物非独立颜色变换）。玻璃面板主透明由主题 rgba
    --bg-* 承担（L381 契约），opacity 只调 tint/发丝光边（底色 alpha 是「表面底色」设定，
-   B1 联动 #86 第 4 点：不透度由玻璃面标尺统一控）。 */
+   B1 联动 #86 第 4 点：不透度由玻璃面标尺统一控）。
+   E5.8#89 E4：backdrop-filter（透射模糊）从元素下移到本玻璃层——本层 z:-1 盖在
+   ::after 影像（z:-2）之上，backdrop 采样 = 元素底色 + 影像（都在本层之下）→ 玻璃模糊
+   盖在 zone 图上（"图上的玻璃"、blur 可见），内容（z auto）仍在本层之上保持锐利。
+   非影像主题：backdrop = 均匀 rgba 底色，blur 均匀色 = 本色，渲染与旧结构逐像素一致
+   （仅 tint/specular 下移一层，本就语义为"底上、内容下"）。 */
 .titlebar::before,
 .icon-bar::before,
 .side-panel::before,
@@ -455,7 +460,9 @@ select {
   content: "";
   position: absolute;
   inset: 0;
+  z-index: -1;
   border-radius: inherit;
+  backdrop-filter: blur(var(--surface-glass-blur, var(--glass-blur, 0px))) saturate(var(--glass-saturate, 1));
   background: var(--glass-tint, transparent);
   opacity: var(--glass-opacity, 1);
   /* E5.8#63：发丝光边基色 token 化——--glass-specular-color 缺省白，alpha 走 --glass-specular（0-1 → 0-100%），
@@ -464,6 +471,7 @@ select {
   box-shadow:
     inset 0 1px 0 var(--glass-specular-line),
     inset 0 0 0 1px var(--glass-specular-line);
+  transition: backdrop-filter var(--glass-morph, 0ms);
   pointer-events: none;
 }
 
@@ -471,9 +479,10 @@ select {
    E5.8#50.30 per-surface 背景层（⑬ 纸纹 / ⑭ 影像分区）——zone 表面读
    --surface-bg-image（纹理 repeat 平铺 / 影像切片 no-repeat）+ --surface-bg-size
    （zones = 窗口尺寸，preload 量测注入）+ 每 zone 独立 --surface-<zone>-bg-position
-   （负偏移拉回正确区域）。z-index: -1 → 自 surface 自身 background 之上、内容之下
-   （内容不遮纹理/切片；玻璃 tint ::before 仍浮在内容上）。opacity 承载
-   --surface-bg-opacity（纹理/切片透明度）。零值 --surface-bg-image: none = 现状零变化。 */
+   （负偏移拉回正确区域）。z-index: -2 → 自 surface 自身 background 之上、玻璃层
+   （::before z:-1，含 backdrop-filter 模糊）之下——E5.8#89 E4：影像被玻璃模糊盖住
+   （"图上的玻璃"、blur 可见），内容仍锐利。opacity 承载 --surface-bg-opacity
+   （纹理/切片透明度）。零值 --surface-bg-image: none = 现状零变化。 */
 .titlebar::after,
 .icon-bar::after,
 .side-panel::after,
@@ -483,7 +492,7 @@ select {
   content: "";
   position: absolute;
   inset: 0;
-  z-index: -1;
+  z-index: -2;
   border-radius: inherit;
   background-image: var(--surface-bg-image, none);
   background-repeat: var(--surface-bg-repeat, no-repeat);

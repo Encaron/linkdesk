@@ -55,6 +55,11 @@ ipcRenderer.on(IPC.pool.ping, () => {
 // 自写、不在广播 variables 键集内，差集天然隔离不误删。
 let _lastPoolThemeKeys: string[] | null = null;
 
+// E5.8#89 E2：zones 量测触发签名——surface-bg-zones/image/repeat 三键不变 = 量测结果不会变，
+// 跳过量测（6× getBoundingClientRect 强制重排）。玻璃/圆角滑杆 tick 广播全量 token 中三键恒不变 → 零量测。
+// 初始 "" 恒 ≠ 首广播 → 首切 zones 主题必量测；换 zone 图/切主题 → 签名变化 → 重量测。
+let _lastZoneSignature = '';
+
 /** events 命名空间——createEventSystem + theme/accent/lang 三个 CSS 注入 extraHandler */
 export function createPoolEvents(): EventSystemApi {
   return createEventSystem(ipcRenderer, {
@@ -78,9 +83,19 @@ export function createPoolEvents(): EventSystemApi {
           _lastPoolThemeKeys = Object.keys(vars);
           // E5.8#50.17：资产字体 @font-face 复刻（池独立文档）；载荷无 fontFaces → 清空上次注入
           applyFontFaces(fontFaces);
-          // E5.8#50.29/50.31：zones 模式下按本窗 DOM 量测切片坐标（+ ResizeObserver 重算）
-          ensureSurfaceZonesObserver();
-          measureSurfaceZones();
+          // E5.8#89 E2：量测触发去耦——zones 相关变量不变 → 跳过（零强制重排）。
+          // 拖玻璃/圆角滑杆 tick 广播全量 token 中 zones 三键不变 → 0× getBoundingClientRect；
+          // 仅 zones 配置变化（切主题/换 zone 图）触发量测；窗口 resize/布局变化由 ResizeObserver 自补。
+          const zoneSignature = [
+            vars['surface-bg-zones'] ?? '',
+            vars['surface-bg-image'] ?? '',
+            vars['surface-bg-repeat'] ?? '',
+          ].join('|');
+          if (zoneSignature !== _lastZoneSignature) {
+            _lastZoneSignature = zoneSignature;
+            ensureSurfaceZonesObserver();
+            measureSurfaceZones();
+          }
         } catch (e) {
           console.error('[preload-pool] theme:changed CSS 注入失败:', e);
         }

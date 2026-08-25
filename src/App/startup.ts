@@ -64,6 +64,9 @@ export interface AppStartupDeps {
   setReady: (v: boolean) => void;
 }
 
+/** E5.8#89 E1：外观 onApply 防抖窗口——与 settings.json watcher 去抖（ConfigurationService 80ms）同哲学 */
+const APPEARANCE_APPLY_DEBOUNCE_MS = 80;
+
 /** E5.8#50.10+50.19：外观覆盖配置 onApply 统一入口——当前主题存在才重应用（启动时 app.theme 先注册先 apply，本组恒非空）。
  * 重应用 = 配方路径 applyRecipeForConfig（内部合并用户外观覆盖 + 强调色） / flat 主题 applyTheme——
  * 防 applyTheme 重写主题 accent 覆盖用户自定义强调色；配方态不被 flat 重写（applyTheme 会清 currentRecipeId）。 */
@@ -77,6 +80,21 @@ const applyThemeIfReady = (): void => {
   if (!theme) return;
   applyTheme(theme);
   applyAccentColor(getEffectiveAccentColor());
+};
+
+/* ── E5.8#89 E1：滑杆 onApply 防抖——拖拽连发收敛为单次重算 + 单次广播 ──
+ * 背景：设置页滑杆/色块每像素 input → setConfigurationValue → onApply → applyThemeIfReady
+ * 全量重合并（commitTokens 写 :root + theme:changed 广播到全部池）——拖 1s ≈ 60 次全量重算 + 60 次广播。
+ * 本防抖：尾沿 80ms——松手/停止后再触发一次 apply；内存值仍逐 tick 同步（setConfigurationValue
+ * 先写内存），去抖只推迟「重算 + 广播」，读路径永远读到最新值。fire 时读生效配置 = 拖拽终态，一次收敛。
+ * 对标：settings.json watcher 去抖（ConfigurationService）同 80ms 尾沿哲学。 */
+let _appearanceApplyTimer: ReturnType<typeof setTimeout> | null = null;
+const debouncedApplyThemeIfReady = (): void => {
+  if (_appearanceApplyTimer) clearTimeout(_appearanceApplyTimer);
+  _appearanceApplyTimer = setTimeout(() => {
+    _appearanceApplyTimer = null;
+    applyThemeIfReady();
+  }, APPEARANCE_APPLY_DEBOUNCE_MS);
 };
 
 /* ── E5.8#50.19：主题组 helper——配方路径应用 / 播种 / 覆盖 key 全集（08 §7.2 接线总表） ── */
@@ -337,7 +355,7 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
             uiHint: "select",
             optionsFrom: "theme.colorways",
             optionsFromDomain: "colors",
-            onApply: () => applyThemeIfReady(),
+            onApply: () => debouncedApplyThemeIfReady(),
           },
           // E5.8#79：强调色移入主题组——accent 本质 = 主题色域的颜色覆盖（与 glassTint 同类），
           // 注册归属从「通用」迁至 pluginId "appearance"（设置页主题组下展示，对标用户想法 7）。
@@ -405,7 +423,7 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
             unit: "px", // E5.8#85：值标签像素单位（绝对 px，非倍数）
             sourceKey: "app.mixRadius", // E5.8#87：来源徽标——本键所属外观域 mix 来源 key（混搭生效显示 🔀）
             dependsOn: { key: "app.appearanceMode", value: "custom" },
-            onApply: () => applyThemeIfReady(),
+            onApply: () => debouncedApplyThemeIfReady(),
           },
           "app.glassBlur": {
             type: "number",
@@ -420,7 +438,7 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
             unit: "px", // E5.8#77：值标签像素单位（mockup 16px）
             sourceKey: "app.mixGlass", // E5.8#87：来源徽标——玻璃域 mix 来源 key
             dependsOn: { key: "app.appearanceMode", value: "custom" },
-            onApply: () => applyThemeIfReady(),
+            onApply: () => debouncedApplyThemeIfReady(),
           },
           "app.glassOpacity": {
             type: "number",
@@ -433,7 +451,7 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
             uiHint: "slider",
             sourceKey: "app.mixGlass", // E5.8#87：来源徽标——玻璃域 mix 来源 key
             dependsOn: { key: "app.appearanceMode", value: "custom" },
-            onApply: () => applyThemeIfReady(),
+            onApply: () => debouncedApplyThemeIfReady(),
           },
           "app.glassTint": {
             type: "string",
@@ -443,7 +461,7 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
             renderHint: "color",
             sourceKey: "app.mixGlass", // E5.8#87：来源徽标——玻璃域 mix 来源 key
             dependsOn: { key: "app.appearanceMode", value: "custom" },
-            onApply: () => applyThemeIfReady(),
+            onApply: () => debouncedApplyThemeIfReady(),
           },
           "app.backgroundImage": {
             type: "string",
@@ -454,7 +472,7 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
             uiHint: "image", // E5.8#50.11：专属「选择图片」控件（选图→拷贝入库→受控路径持久化）
             sourceKey: "app.mixBackground", // E5.8#87：来源徽标——背景域 mix 来源 key
             dependsOn: { key: "app.appearanceMode", value: "custom" },
-            onApply: () => applyThemeIfReady(),
+            onApply: () => debouncedApplyThemeIfReady(),
           },
           "app.fontFamily": {
             type: "string",
@@ -468,7 +486,7 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
             monoOnly: false,
             sourceKey: "app.mixFont", // E5.8#87：来源徽标——字体域 mix 来源 key
             dependsOn: { key: "app.appearanceMode", value: "custom" },
-            onApply: () => applyThemeIfReady(),
+            onApply: () => debouncedApplyThemeIfReady(),
           },
           // E5.8#85：zone 圆角绝对化——app.zoneRadius 开关 + app.zoneRadiusScale 绝对 px（用户想法 1/2、痛点 2）：
           //   组件圆角（radius-*）由 app.surfaceRadius 绝对 px 控，zone 圆角（surface-radius）由这两键独立控（两轴解耦，
@@ -480,7 +498,7 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
             description: t("分区圆角开关——关闭后各分区强制直角（0px）"),
             sourceKey: "app.mixRadius", // E5.8#87：来源徽标——半径域 mix 来源 key
             dependsOn: { key: "app.appearanceMode", value: "custom" },
-            onApply: () => applyThemeIfReady(),
+            onApply: () => debouncedApplyThemeIfReady(),
           },
           "app.zoneRadiusScale": {
             type: "number",
@@ -493,7 +511,7 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
             unit: "px", // E5.8#85：值标签像素单位（绝对 px，非倍数）
             sourceKey: "app.mixRadius", // E5.8#87：来源徽标——半径域 mix 来源 key
             dependsOn: { key: "app.appearanceMode", value: "custom" },
-            onApply: () => applyThemeIfReady(),
+            onApply: () => debouncedApplyThemeIfReady(),
           },
           // E5.8#81：zone 表面背景覆盖入口——image 控件选图写 --surface-bg-image（与全窗 --bg-image 并存：
           // 全窗垫底 + zone 浮 surface 表面，缝隙/透明处露全窗 = 预期；痛点 12 双背景语义）。
@@ -507,7 +525,7 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
             uiHint: "image",
             sourceKey: "app.mixBackground", // E5.8#87：来源徽标——背景域 mix 来源 key
             dependsOn: { key: "app.appearanceMode", value: "custom" },
-            onApply: () => applyThemeIfReady(),
+            onApply: () => debouncedApplyThemeIfReady(),
           },
           // 混搭七键 + 复位——mixMode 常显，六域来源 + 复位 mixMode=mix 才出现（08 §7.1 #11-17）。
           // mix* 按域合并实现在 ThemeEngine（#50.26 mergeMixDomains）——此处注册 + 播种 + dependsOn 显隐。
@@ -547,7 +565,7 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
             uiHint: "select",
             optionsFrom: "theme.sources",
             optionsFromDomain: "font",
-            onApply: () => applyThemeIfReady(),
+            onApply: () => debouncedApplyThemeIfReady(),
           },
           "app.mixRadius": {
             type: "string",
@@ -558,7 +576,7 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
             uiHint: "select",
             optionsFrom: "theme.sources",
             optionsFromDomain: "radius",
-            onApply: () => applyThemeIfReady(),
+            onApply: () => debouncedApplyThemeIfReady(),
           },
           "app.mixGlass": {
             type: "string",
@@ -569,7 +587,7 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
             uiHint: "select",
             optionsFrom: "theme.sources",
             optionsFromDomain: "glass",
-            onApply: () => applyThemeIfReady(),
+            onApply: () => debouncedApplyThemeIfReady(),
           },
           "app.mixBackground": {
             type: "string",
@@ -580,7 +598,7 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
             uiHint: "select",
             optionsFrom: "theme.sources",
             optionsFromDomain: "background",
-            onApply: () => applyThemeIfReady(),
+            onApply: () => debouncedApplyThemeIfReady(),
           },
           "app.mixSurface": {
             type: "string",
@@ -591,7 +609,7 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
             uiHint: "select",
             optionsFrom: "theme.sources",
             optionsFromDomain: "surface",
-            onApply: () => applyThemeIfReady(),
+            onApply: () => debouncedApplyThemeIfReady(),
           },
           // 混搭复位按钮（10 §2/§6 决策记录 3）——renderHint "action" 渲染操作按钮；
           // 点击执行 theme.resetMix 命令（单一写入点：app.mixMode→recipe → onApply 清 6 来源回跟随主题）。

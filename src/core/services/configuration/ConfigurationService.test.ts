@@ -273,7 +273,7 @@ describe("ConfigurationService — diffUserSettings（E5.8#0d.5 settings.json �
   });
 });
 
-describe("ConfigurationService — 持久化串行队列（E5.8#61 审计#6）", () => {
+describe("ConfigurationService — 持久化串行队列 + 尾沿去抖（E5.8#61 审计#6 + E5.8#89 E3）", () => {
   beforeEach(() => {
     clearConfigurationRegistrations();
     clearConfigurationCache();
@@ -282,25 +282,26 @@ describe("ConfigurationService — 持久化串行队列（E5.8#61 审计#6）",
     persistProbe.failOn = -1;
   });
 
-  it("并发 setConfigurationValue → write 串行（start,end,start,end），不交错", async () => {
+  it("并发 set → 尾沿去抖合并为单次 write（E5.8#89 E3 拖拽连发收敛）", async () => {
     await Promise.all([
       setConfigurationValue("app.theme", "Light", "user"),
       setConfigurationValue("app.fontSize", 16, "user"),
     ]);
-    // 无串行时两个 write 同时 start → [start,start,end,end]；串行后第二个等第一个完成
-    expect(persistProbe.sequence).toEqual([
-      "settings:start", "settings:end",
-      "settings:start", "settings:end",
-    ]);
+    // 80ms 窗口内两次 set 合并为一次持久化——拖拽逐 tick 写不再逐次落盘；
+    // 串行队列仍保留：fire 后排队写，防与 reload/自愈写并发交错（审计#6）
+    expect(persistProbe.sequence).toEqual(["settings:start", "settings:end"]);
   });
 
-  it("某次 write 失败 → 链不断，后续写仍执行", async () => {
-    persistProbe.failOn = 1; // 第一次 write 抛错
+  it("合并写失败 → 链不断，后续写仍执行", async () => {
+    persistProbe.failOn = 1; // 合并后唯一的 write 抛错（写失败经 waiters 传播给 await set 的调用方）
     await Promise.allSettled([
       setConfigurationValue("app.theme", "Light", "user"),
       setConfigurationValue("app.fontSize", 16, "user"),
     ]);
-    // 第一次失败不阻断第二次——队列 catch 吞错防断链
+    // 两次 set 合并为单次写、该次写抛错——write 在 push start 前 throw → 序列空（未合并则会 [start,end]）
+    expect(persistProbe.sequence).toEqual([]);
+    // 链不断——紧接着的一次 set 正常写（task.catch 吞错防断链）
+    await setConfigurationValue("editor.wordWrap", true, "user");
     expect(persistProbe.sequence).toEqual(["settings:start", "settings:end"]);
   });
 });
