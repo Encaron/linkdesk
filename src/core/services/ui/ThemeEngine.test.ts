@@ -61,6 +61,15 @@ const MOCK_THEME2: Theme = {
   colors: { bg: "#fff", fg: "#000" },
 };
 
+/* 真实主题 JSON 读取 helper（模块级单份，避免 jscpd 同款复制）——
+ * 读 plugins/user/theme-* 真实 recipe 文件 → parseThemeRecipe → 返回 { raw, recipe }。 */
+const ROOT = process.cwd();
+function loadRealRecipe(rel: string, id: string, label: string, uiTheme: "light" | "dark") {
+  const raw = fs.readFileSync(path.join(ROOT, rel), "utf8");
+  const recipe = parseThemeRecipe(JSON.parse(raw), { id, label, uiTheme, path: rel });
+  return { raw, recipe };
+}
+
 /* 共享配方 fixture（虚构值，硬约束 21）——applyRecipe / 资产字体 / 混搭 三组 describe 复用：
  * 模块级单份定义，避免 jscpd 同款复制（每 describe 各写一份 = 重复代码）。 */
 const RECIPE: ThemeRecipe = {
@@ -1110,15 +1119,6 @@ describe("ThemeEngine — 混搭合并（E5.8#50.26，10 §1/§3 每域各自取
    读取 plugins/user/theme-{songti,terminal,pill} 真实主题 JSON（#50.27 验收「制作真实主题插件做端到端最终裁决」）。
    例外依据：验证真实接线而必须用真 id/真数据（硬约束 21 豁免区）——虚构 fixture 无法裁决「gallery 配方 ↔ 引擎」契约。 */
 describe("ThemeEngine — 真实极限壳主题（E5.8#50.27，gallery 端到端裁决）", () => {
-  const ROOT = process.cwd();
-
-  /** 读真实主题 JSON → parseThemeRecipe → 返回 Recipe（null = 解析失败） */
-  function loadRealRecipe(rel: string, id: string, label: string, uiTheme: "light" | "dark") {
-    const raw = fs.readFileSync(path.join(ROOT, rel), "utf8");
-    const recipe = parseThemeRecipe(JSON.parse(raw), { id, label, uiTheme, path: rel });
-    return { raw, recipe };
-  }
-
   it("songti-print — 宋体印刷体 font 域（ui=SimSun 全 UI 宋体；形制现状直角 isolate 字族轴）", () => {
     const { recipe } = loadRealRecipe(
       "plugins/user/theme-songti/themes/songti-print.json",
@@ -1193,5 +1193,99 @@ describe("ThemeEngine — 真实极限壳主题（E5.8#50.27，gallery 端到端
     expect(tokens["font-ui"]).toBeUndefined(); // 字体系统默认——不写 --font-ui
     expect(tokens["bg-window"]).toBe("rgba(10, 14, 20, 0.30)"); // zone 半透明让位给图
     expect(tokens["accent"]).toBe("#FFB85C"); // 月夜暖光
+  });
+});
+
+/* ── E5.8#74：旧格式主题迁移新格式——决策 F「零向后兼容读」兑现。
+   极光玻璃/影像分区/纸纹分区 3 主题从旧格式（顶层 colors+surface+background）纯数据迁移到
+   { id, name, type, appearance, colorways[] }。本测试断言新格式字段 + mergeDomains token 与迁移前逐键一致（零回归）。 */
+describe("ThemeEngine — 旧格式主题迁移新格式（E5.8#74，决策 F）", () => {
+  it("aurora-glass — 极光玻璃（appearance.glass 全玻璃+悬浮形态 + background 全窗图，colorway 单配色）", () => {
+    const { recipe } = loadRealRecipe(
+      "plugins/user/theme-aurora-glass/aurora-glass.json",
+      "aurora-glass", "极光玻璃 Aurora Glass", "dark",
+    );
+    expect(recipe).not.toBeNull();
+    expect(recipe!.id).toBe("aurora-glass");
+    expect(recipe!.type).toBe("dark");
+    // 旧顶层 surface → appearance.glass（ThemeSurface 全字段）
+    expect(recipe!.appearance?.glass).toEqual({
+      type: "glass", blur: 24, saturate: 1.25, tint: "rgba(59, 77, 148, 0.35)",
+      opacity: 0.55, specular: 0.6, morph: 200, radius: 12, inset: 1, shadow: true,
+    });
+    expect(recipe!.appearance?.background).toEqual({
+      image: "linkdesk://theme-aurora-glass/resources/aurora-bg.svg", opacity: 0.9, mask: 0.3,
+    });
+    expect(recipe!.colorways).toHaveLength(1);
+    expect(recipe!.colorways[0].id).toBe("aurora");
+    // 旧顶层 colors → colorways[0].colors（半透明紫 bg-titlebar 保留）
+    expect(recipe!.colorways[0].colors?.["bg-titlebar"]).toBe("rgba(16, 26, 51, 0.55)");
+    const tokens = mergeDomains(recipe!);
+    expect(tokens["glass-blur"]).toBe("24px");
+    expect(tokens["glass-saturate"]).toBe("1.25");
+    expect(tokens["glass-tint"]).toBe("rgba(59, 77, 148, 0.35)");
+    expect(tokens["glass-opacity"]).toBe("0.55");
+    expect(tokens["glass-specular"]).toBe("0.6");
+    expect(tokens["glass-morph"]).toBe("200ms");
+    expect(tokens["surface-radius"]).toBe("12px");
+    expect(tokens["surface-inset"]).toBe("1px");
+    expect(tokens["surface-shadow"]).toBe("var(--shadow-lift)");
+    expect(tokens["bg-image"]).toBe('url("linkdesk://theme-aurora-glass/resources/aurora-bg.svg")');
+    expect(tokens["bg-opacity"]).toBe("0.9");
+    expect(tokens["bg-mask"]).toBe("0.3");
+    expect(tokens["bg-window"]).toBe("rgba(11, 16, 32, 0.55)");
+    expect(tokens["accent"]).toBe("#7C3AED");
+  });
+
+  it("image-zones — 影像分区（appearance.glass 悬浮形态 + background.mode:zones 连续切片）", () => {
+    const { recipe } = loadRealRecipe(
+      "plugins/user/theme-zones/image-zones.json",
+      "image-zones", "影像分区 Image Zones", "dark",
+    );
+    expect(recipe).not.toBeNull();
+    expect(recipe!.id).toBe("image-zones");
+    expect(recipe!.type).toBe("dark");
+    expect(recipe!.appearance?.glass).toEqual({ radius: 8, inset: 4 });
+    expect(recipe!.appearance?.background).toEqual({
+      mode: "zones", image: "linkdesk://theme-zones/resources/zones-bg.svg", opacity: 0.95,
+    });
+    expect(recipe!.colorways).toHaveLength(1);
+    expect(recipe!.colorways[0].id).toBe("image");
+    const tokens = mergeDomains(recipe!);
+    expect(tokens["surface-radius"]).toBe("8px");
+    expect(tokens["surface-inset"]).toBe("4px");
+    // zones 模式——图挂 zone 表面，不写全窗 --bg-image
+    expect(tokens["surface-bg-image"]).toBe('url("linkdesk://theme-zones/resources/zones-bg.svg")');
+    expect(tokens["surface-bg-repeat"]).toBe("no-repeat");
+    expect(tokens["surface-bg-zones"]).toBe("1");
+    expect(tokens["surface-bg-opacity"]).toBe("0.95");
+    expect(tokens["bg-image"]).toBe("none"); // zones 模式——全窗层零值（图只挂 zone 表面）
+    expect(tokens["bg-window"]).toBe("#12100C");
+    expect(tokens["accent"]).toBe("#E8923C");
+  });
+
+  it("paper-zones — 纸纹分区（appearance.glass texture 平铺纹理 + 悬浮形态，无 background）", () => {
+    const { recipe } = loadRealRecipe(
+      "plugins/user/theme-zones/paper-zones.json",
+      "paper-zones", "纸纹分区 Paper Zones", "light",
+    );
+    expect(recipe).not.toBeNull();
+    expect(recipe!.id).toBe("paper-zones");
+    expect(recipe!.type).toBe("light");
+    expect(recipe!.appearance?.glass).toEqual({
+      texture: "linkdesk://theme-zones/resources/paper-texture.svg", textureOpacity: 0.45,
+      radius: 8, inset: 4,
+    });
+    expect(recipe!.appearance?.background).toBeUndefined(); // 旧无 background
+    expect(recipe!.colorways).toHaveLength(1);
+    expect(recipe!.colorways[0].id).toBe("paper");
+    const tokens = mergeDomains(recipe!);
+    expect(tokens["surface-bg-image"]).toBe('url("linkdesk://theme-zones/resources/paper-texture.svg")');
+    expect(tokens["surface-bg-repeat"]).toBe("repeat"); // 纹理平铺
+    expect(tokens["surface-bg-opacity"]).toBe("0.45");
+    expect(tokens["surface-radius"]).toBe("8px");
+    expect(tokens["surface-inset"]).toBe("4px");
+    expect(tokens["bg-window"]).toBe("#ECE7DC");
+    expect(tokens["accent"]).toBe("#B45309");
   });
 });
