@@ -17,7 +17,7 @@ import {
   registerFallbackThemes,
   getThemeVariables,
   getAppearanceOverrides,
-  applyRadiusScale,
+  applyRadiusAbsolute,
   applyOverrides,
   mergeDomains,
   applyRecipe,
@@ -31,7 +31,6 @@ import {
   deriveAppearanceSeeds,
   normalizeThemeValue,
   getMixProfile,
-  getRadiusSourcePx,
   mergeMixDomains,
   MIX_FOLLOW_THEME,
   syncThemeColorConfig,
@@ -440,15 +439,14 @@ describe("ThemeEngine — 外观覆盖 getAppearanceOverrides（E5.8#50.10）", 
     }
   });
 
-  it("neutral 默认 → 仅 radius 键恒写，玻璃/背景不覆盖", () => {
+  it("E5.8#85 neutral 默认 → radius 不覆盖（presence 门控），玻璃/背景不覆盖", () => {
     const overrides = getAppearanceOverrides();
     expect(overrides["glass-blur"]).toBeUndefined();
     expect(overrides["glass-opacity"]).toBeUndefined();
     expect(overrides["glass-tint"]).toBeUndefined();
     expect(overrides["bg-image"]).toBeUndefined();
-    for (const key of RADIUS_KEYS) expect(overrides[key]).toBeDefined();
-    // --radius-pill/--radius-full 形态值不乘不入覆盖集
-    expect(overrides["radius-pill"]).toBeUndefined();
+    for (const key of RADIUS_KEYS) expect(overrides[key]).toBeUndefined(); // 无覆盖 = 主题圆角
+    expect(overrides["surface-radius"]).toBeUndefined();
   });
 
   it("glassBlur 偏离默认 → glass-blur 覆盖", () => {
@@ -496,62 +494,69 @@ describe("ThemeEngine — 外观覆盖 getAppearanceOverrides（E5.8#50.10）", 
     expect(getAppearanceOverrides()["font-ui"]).toBeUndefined();
   });
 
-  it("surfaceRadius 偏离默认 → 缩放 radius 六键仍全写", () => {
-    applyRemoteConfigChange("app.surfaceRadius", 1.5);
+  it("E5.8#85 surfaceRadius presence → 六键全写 md 档绝对 px（clamp 进标尺）", () => {
+    applyRemoteConfigChange("app.surfaceRadius", 12);
     const overrides = getAppearanceOverrides();
-    for (const key of RADIUS_KEYS) expect(overrides[key]).toBeDefined();
+    for (const key of RADIUS_KEYS) expect(overrides[key]).toBe("12");
   });
 
-  /* ── E5.8#80 zone 圆角第二通道——app.zoneRadius 开关 + app.zoneRadiusScale 倍数（surface-radius）── */
-
-  it("#80 neutral——surface-radius 覆盖 = 系数 1（开关默认开，写回主题原值幂等）", () => {
-    const overrides = getAppearanceOverrides();
-    expect(overrides["surface-radius"]).toBe("1");
+  it("E5.8#85 surfaceRadius 越界 999 → 钳到 32；负 → 0（消费侧 clamp 延续 #56）", () => {
+    applyRemoteConfigChange("app.surfaceRadius", 999);
+    for (const key of RADIUS_KEYS) expect(getAppearanceOverrides()[key]).toBe("32");
+    applyRemoteConfigChange("app.surfaceRadius", -5);
+    for (const key of RADIUS_KEYS) expect(getAppearanceOverrides()[key]).toBe("0");
   });
 
-  it("#80 zoneRadius 关 → surface-radius 覆盖 = \"0px\"（直角短路值）", () => {
+  /* ── E5.8#85 zone 圆角绝对化（原 #80 第二通道改绝对 px）——app.zoneRadius 开关 + app.zoneRadiusScale 绝对 px（surface-radius）── */
+
+  it("#85 neutral——surface-radius 不覆盖（presence 门控；主题自带 surface.radius 原样）", () => {
+    const overrides = getAppearanceOverrides();
+    expect(overrides["surface-radius"]).toBeUndefined();
+  });
+
+  it("#85 zoneRadius 关 → surface-radius 覆盖 = \"0px\"（直角短路值）", () => {
     applyRemoteConfigChange("app.zoneRadius", false);
     expect(getAppearanceOverrides()["surface-radius"]).toBe("0px");
   });
 
-  it("#80 zoneRadius 开 + zoneRadiusScale 1.5 → 系数 1.5", () => {
+  it("#85 zoneRadius 开 + zoneRadiusScale 12 → 绝对 12（数字串，applyOverrides ①b 解析为 12px）", () => {
     applyRemoteConfigChange("app.zoneRadius", true);
-    applyRemoteConfigChange("app.zoneRadiusScale", 1.5);
-    expect(getAppearanceOverrides()["surface-radius"]).toBe("1.5");
+    applyRemoteConfigChange("app.zoneRadiusScale", 12);
+    expect(getAppearanceOverrides()["surface-radius"]).toBe("12");
   });
 
-  it("#80 zoneRadiusScale 越界 5 → 系数钳到 2（消费侧 clamp 对齐 #56）", () => {
-    applyRemoteConfigChange("app.zoneRadiusScale", 5);
-    expect(getAppearanceOverrides()["surface-radius"]).toBe("2");
+  it("#85 zoneRadiusScale 越界 999 → 钳到 32（标尺 clamp）", () => {
+    applyRemoteConfigChange("app.zoneRadiusScale", 999);
+    expect(getAppearanceOverrides()["surface-radius"]).toBe("32");
   });
 
-  it("#80 applyOverrides——surface-radius 系数对当前基准乘算（主题 8px × 2 = 16px）", () => {
-    const tokens = { "surface-radius": "8px" };
-    applyOverrides(tokens, { "surface-radius": "2" });
+  it("#85 applyOverrides——surface-radius 绝对 px 直写（不乘主题基准：直角主题 0 死区根治）", () => {
+    const tokens = { "surface-radius": "0px" }; // 直角主题基准 0
+    applyOverrides(tokens, { "surface-radius": "16" });
     expect(tokens["surface-radius"]).toBe("16px");
   });
 
-  it("#80 applyOverrides——\"0px\" 短路强制直角（开关关，忽略主题 surface.radius）", () => {
+  it("#85 applyOverrides——\"0px\" 短路强制直角（开关关，忽略主题 surface.radius）", () => {
     const tokens = { "surface-radius": "12px" };
     applyOverrides(tokens, { "surface-radius": "0px" });
     expect(tokens["surface-radius"]).toBe("0px");
   });
 
-  it("#80 applyOverrides——无 surface-radius 覆盖 → 不动该键（② 不落绝对）", () => {
+  it("#85 applyOverrides——无 surface-radius 覆盖 → 不动该键", () => {
     const tokens = { "surface-radius": "12px" };
-    applyOverrides(tokens, { "radius-md": "2", "glass-blur": "16px" });
+    applyOverrides(tokens, { "radius-md": "16", "glass-blur": "16px" });
     expect(tokens["surface-radius"]).toBe("12px");
   });
 
-  it("#80 applyRecipe——zoneRadiusScale 1.5 对配方 surface.radius 生效（组件 radius-* 不受 zoneRadius 影响）", () => {
-    applyRemoteConfigChange("app.zoneRadiusScale", 1.5);
-    applyRecipe(ZONE_RECIPE); // overrides 缺省 = getAppearanceOverrides（含 surface-radius 系数 1.5）
+  it("#85 applyRecipe——zoneRadiusScale 12 → surface-radius 12px（组件 radius-* 不受 zoneRadiusScale 影响）", () => {
+    applyRemoteConfigChange("app.zoneRadiusScale", 12);
+    applyRecipe(ZONE_RECIPE); // overrides 缺省 = getAppearanceOverrides（surface-radius 绝对 12px）
     const root = document.documentElement;
-    expect(root.style.getPropertyValue("--surface-radius")).toBe("15px"); // 10×1.5
+    expect(root.style.getPropertyValue("--surface-radius")).toBe("12px");
     expect(root.style.getPropertyValue("--radius-sm")).toBe("6px"); // 组件圆角不受 zoneRadiusScale（两轴独立）
   });
 
-  it("#80 applyRecipe——zoneRadius 关 → surface-radius 0px（直角），radius-* 仍主题值", () => {
+  it("#85 applyRecipe——zoneRadius 关 → surface-radius 0px（直角），radius-* 仍主题值", () => {
     applyRemoteConfigChange("app.zoneRadius", false);
     applyRecipe(ZONE_RECIPE);
     const root = document.documentElement;
@@ -610,30 +615,33 @@ describe("ThemeEngine — 外观覆盖 getAppearanceOverrides（E5.8#50.10）", 
     expect(hasConfigurationValue("app.glassBlur")).toBe(true);
   });
 
-  it("E5.8#56 审计#4——applyRadiusScale 越界 clamp：scale 5 → 钳到 2（settings.json 直写 5 不再 5× 圆角）", () => {
-    const scaled = applyRadiusScale(5, { "radius-md": "8px" });
-    expect(scaled["radius-md"]).toBe("16px"); // 8 × clamp(2) 非 8 × 5=40px
+  it("E5.8#85——applyRadiusAbsolute 越界 clamp：absPx 999 → 钳到 32（settings.json 直写 999 不再 999× 圆角）", () => {
+    const scaled = applyRadiusAbsolute(999, { "radius-md": "8px" });
+    expect(scaled["radius-md"]).toBe("32px");
   });
 
-  it("E5.8#56 审计#4——applyRadiusScale 负越界 clamp：scale -1 → 钳到 0（方角），非负数取反", () => {
-    const scaled = applyRadiusScale(-1, { "radius-md": "8px" });
+  it("E5.8#85——applyRadiusAbsolute 负越界 clamp：absPx -1 → 钳到 0（方角），非负数取反", () => {
+    const scaled = applyRadiusAbsolute(-1, { "radius-md": "8px" });
     expect(scaled["radius-md"]).toBe("0px");
   });
 
-  it("E5.8#56——applyRadiusScale 合法域内不变：scale 1.5 → 8×1.5=12px", () => {
-    const scaled = applyRadiusScale(1.5, { "radius-md": "8px" });
-    expect(scaled["radius-md"]).toBe("12px");
+  it("E5.8#85——applyRadiusAbsolute 合法域：md 档 = 滑杆值；其余档按主题比例换算", () => {
+    const scaled = applyRadiusAbsolute(12, { "radius-md": "8px", "radius-sm": "4px", "radius-lg": "12px" });
+    expect(scaled["radius-md"]).toBe("12px"); // md = 滑杆值
+    expect(scaled["radius-sm"]).toBe("6px"); // 4/8 × 12
+    expect(scaled["radius-lg"]).toBe("18px"); // 12/8 × 12
   });
 
-  it("applyRadiusScale — 返回六档键集、不含形态值（数值来自 :root 基准，jsdom 无 CSS = 0px）", () => {
-    const scaled = applyRadiusScale(2);
+  it("E5.8#85 applyRadiusAbsolute — 返回六档键集、不含形态值（jsdom 无 CSS 基址 0px → md=0 直角无层级 → 等值滑杆）", () => {
+    const scaled = applyRadiusAbsolute(16);
     for (const key of RADIUS_KEYS) expect(scaled[key]).toBeDefined();
     expect(scaled["radius-pill"]).toBeUndefined();
     expect(scaled["radius-full"]).toBeUndefined();
+    expect(scaled["radius-md"]).toBe("16px"); // 等值
   });
 
-  it("applyRadiusScale(0) — 0 方角档（E5.8#68）：六档全 0px 方角，形态值仍排除", () => {
-    const scaled = applyRadiusScale(0, { "radius-md": "12px", "radius-sm": "6px", "radius-lg": "16px" });
+  it("E5.8#85 applyRadiusAbsolute(0) — 0 方角档：六档全 0px，形态值仍排除", () => {
+    const scaled = applyRadiusAbsolute(0, { "radius-md": "12px", "radius-sm": "6px", "radius-lg": "16px" });
     for (const key of RADIUS_KEYS) expect(scaled[key]).toBe("0px");
     expect(scaled["radius-pill"]).toBeUndefined();
     expect(scaled["radius-full"]).toBeUndefined();
@@ -711,13 +719,12 @@ describe("ThemeEngine — Recipe 合并算法 mergeDomains（E5.8#50.16，05 §4
     expect(mergeDomains(RECIPE, "no-such", {})["accent"]).toBe("#2BA876");
   });
 
-  it("overrides radius scale 系数 → 对主题现值 JS 乘算（pill/full 不乘）", () => {
-    const tokens = mergeDomains(RECIPE, "dew", { "radius-lg": 1.5 });
-    expect(tokens["radius-lg"]).toBe("18px"); // 12 × 1.5
-    expect(tokens["radius-sm"]).toBe("9px"); // 6 × 1.5
-    // 主题没写的档 → 壳默认乘算（jsdom 无 CSS 基址 0px → 恒写 0px 清残留）
-    expect(tokens["radius-md"]).toBe("0px");
-    expect(tokens["radius-pill"]).toBeUndefined();
+  it("E5.8#85 overrides radius 绝对 px → applyOverrides 路径换算（md 档 = 滑杆值；主题无 md → 直角无层级等值）", () => {
+    const tokens = mergeDomains(RECIPE, "dew", { "radius-lg": 12 });
+    expect(tokens["radius-lg"]).toBe("12px"); // md 档 = 滑杆值
+    expect(tokens["radius-sm"]).toBe("12px"); // 主题 radius.sm 6 / md 缺省 → 等值滑杆
+    expect(tokens["radius-md"]).toBe("12px"); // md 缺省 → 壳默认 0 → 等值（不再恒写 0px 清残留）
+    expect(tokens["radius-pill"]).toBe("32px"); // radius 覆盖生效 → pill 注入标尺上限（主题无 pill）
   });
 
   it("overrides 绝对 token → 覆盖主题值（glass-blur 绝对覆盖胜过 appearance.glass.blur）", () => {
@@ -725,17 +732,38 @@ describe("ThemeEngine — Recipe 合并算法 mergeDomains（E5.8#50.16，05 §4
     expect(tokens["glass-blur"]).toBe("24px");
   });
 
-  it("applyOverrides — radius 系数对 tokens 现值乘算；非 radius 绝对写", () => {
+  it("E5.8#85 applyOverrides — radius 绝对 px 换算（md 档 = 滑杆值）；非 radius 绝对写", () => {
     const tokens = { "radius-md": "10px", "glass-blur": "8px" };
     applyOverrides(tokens, { "radius-md": 2, "glass-blur": "16px" });
-    expect(tokens["radius-md"]).toBe("20px");
+    expect(tokens["radius-md"]).toBe("2px"); // md 档 = 滑杆值 2（主题 md 10 → 比例 1 → 2px）
     expect(tokens["glass-blur"]).toBe("16px");
   });
 
-  it("applyRadiusScale(scale, tokens) — 有现值乘现值；无现值用壳默认（0px）", () => {
-    const scaled = applyRadiusScale(2, { "radius-md": "6px" });
-    expect(scaled["radius-md"]).toBe("12px");
-    expect(scaled["radius-sm"]).toBe("0px");
+  it("E5.8#85 applyOverrides — radius 覆盖生效时 radius-pill clamp 进标尺（主题 999px 胶囊 → 32）", () => {
+    const tokens = { "radius-md": "8px", "radius-pill": "999px" };
+    applyOverrides(tokens, { "radius-md": 16 });
+    expect(tokens["radius-md"]).toBe("16px");
+    expect(tokens["radius-pill"]).toBe("32px");
+  });
+
+  it("E5.8#85 applyOverrides — radius 覆盖生效且主题无 pill（壳 :root 静态）→ 注入 32px 标尺上限（CDP 实机补齐）", () => {
+    const tokens: Record<string, string> = { "radius-md": "8px" }; // 无 pill 键
+    applyOverrides(tokens, { "radius-md": 16 });
+    expect(tokens["radius-md"]).toBe("16px");
+    expect(tokens["radius-pill"]).toBe("32px");
+  });
+
+  it("E5.8#85 applyOverrides — 无 radius 覆盖 → pill 原样（followTheme 主题自带胶囊不 clamp）", () => {
+    const tokens = { "radius-md": "8px", "radius-pill": "999px" };
+    applyOverrides(tokens, { "glass-blur": "16px" });
+    expect(tokens["radius-md"]).toBe("8px");
+    expect(tokens["radius-pill"]).toBe("999px");
+  });
+
+  it("E5.8#85 applyRadiusAbsolute(absPx, tokens) — 有现值按比例；无现值用壳默认（0px → 0）", () => {
+    const scaled = applyRadiusAbsolute(8, { "radius-md": "6px" });
+    expect(scaled["radius-md"]).toBe("8px");
+    expect(scaled["radius-sm"]).toBe("0px"); // 无现值 → 壳默认 0px → 0
     for (const key of RADIUS_KEYS) expect(scaled[key]).toBeDefined();
     expect(scaled["radius-pill"]).toBeUndefined();
   });
@@ -975,16 +1003,23 @@ describe("ThemeEngine — 资产字体两步机制（E5.8#50.17，@font-face →
 });
 
 describe("ThemeEngine — deriveAppearanceSeeds 反推播种（E5.8#50.19，08 §2）", () => {
-  it("圆角反推 scale——当前 radius-md ÷ 主题原值，clamp 0-2（E5.8#68：0 方角档不再下限 0.5）", () => {
-    const seeds = deriveAppearanceSeeds({ "radius-md": "12px" }, 8);
-    expect(seeds.surfaceRadius).toBe(1.5);
-    expect(deriveAppearanceSeeds({ "radius-md": "20px" }, 8).surfaceRadius).toBe(2);
-    expect(deriveAppearanceSeeds({ "radius-md": "2px" }, 8).surfaceRadius).toBe(0.3);
+  it("E5.8#85 圆角反推绝对 px——surfaceRadius = 当前 radius-md 实际值（非主题比值）；越界 clamp 标尺", () => {
+    const seeds = deriveAppearanceSeeds({ "radius-md": "12px", "surface-radius": "10px" });
+    expect(seeds.surfaceRadius).toBe(12);
+    expect(deriveAppearanceSeeds({ "radius-md": "20px" }).surfaceRadius).toBe(20);
+    expect(deriveAppearanceSeeds({ "radius-md": "2px" }).surfaceRadius).toBe(2);
+    expect(deriveAppearanceSeeds({ "radius-md": "999px" }).surfaceRadius).toBe(32); // clamp 标尺
   });
 
-  it("主题原值 ≤ 0 / 无 radius token → scale 回退 1（非归零）", () => {
-    expect(deriveAppearanceSeeds({ "radius-md": "10px" }, 0).surfaceRadius).toBe(1);
-    expect(deriveAppearanceSeeds({}, 8).surfaceRadius).toBe(1);
+  it("E5.8#85 zoneRadiusPx 播种——当前 surface-radius 实际 px；无 token → 0（直角）", () => {
+    expect(deriveAppearanceSeeds({ "surface-radius": "10px" }).zoneRadiusPx).toBe(10);
+    expect(deriveAppearanceSeeds({ "surface-radius": "999px" }).zoneRadiusPx).toBe(32); // clamp 标尺
+    expect(deriveAppearanceSeeds({}).zoneRadiusPx).toBe(0);
+  });
+
+  it("E5.8#85 无 radius token / 直角主题 → 播种 0（方角起点，非比值 1）", () => {
+    expect(deriveAppearanceSeeds({}).surfaceRadius).toBe(0);
+    expect(deriveAppearanceSeeds({ "radius-md": "0px" }).surfaceRadius).toBe(0);
   });
 
   it("玻璃绝对播种——token 值直播；tint 剥 transparent → 空", () => {
@@ -992,25 +1027,25 @@ describe("ThemeEngine — deriveAppearanceSeeds 反推播种（E5.8#50.19，08 �
       "glass-blur": "18px",
       "glass-opacity": "0.4",
       "glass-tint": "rgba(10,20,30,0.5)",
-    }, 8);
+    });
     expect(seeds.glassBlur).toBe(18);
     expect(seeds.glassOpacity).toBe(0.4);
     expect(seeds.glassTint).toBe("rgba(10,20,30,0.5)");
-    expect(deriveAppearanceSeeds({ "glass-tint": "transparent" }, 8).glassTint).toBe("");
+    expect(deriveAppearanceSeeds({ "glass-tint": "transparent" }).glassTint).toBe("");
   });
 
   it("背景剥 url() 存受控路径；none/缺省 → 空", () => {
-    const seeds = deriveAppearanceSeeds({ "bg-image": 'url("C:/app/bg.png")' }, 8);
+    const seeds = deriveAppearanceSeeds({ "bg-image": 'url("C:/app/bg.png")' });
     expect(seeds.backgroundImage).toBe("C:/app/bg.png");
-    expect(deriveAppearanceSeeds({ "bg-image": "none" }, 8).backgroundImage).toBe("");
-    expect(deriveAppearanceSeeds({}, 8).backgroundImage).toBe("");
+    expect(deriveAppearanceSeeds({ "bg-image": "none" }).backgroundImage).toBe("");
+    expect(deriveAppearanceSeeds({}).backgroundImage).toBe("");
   });
 
   it("E5.8#81 zoneBackgroundImage——zones 模式（surface-bg-zones=1）反推 surface-bg-image 剥 url()", () => {
     const seeds = deriveAppearanceSeeds({
       "surface-bg-image": 'url("linkdesk-userdata://appearance/zone-bg.png")',
       "surface-bg-zones": "1",
-    }, 8);
+    });
     expect(seeds.zoneBackgroundImage).toBe("linkdesk-userdata://appearance/zone-bg.png");
   });
 
@@ -1019,16 +1054,16 @@ describe("ThemeEngine — deriveAppearanceSeeds 反推播种（E5.8#50.19，08 �
     const seeds = deriveAppearanceSeeds({
       "surface-bg-image": 'url("linkdesk://demo-theme/resources/paper.png")',
       "surface-bg-zones": "0",
-    }, 8);
+    });
     expect(seeds.zoneBackgroundImage).toBe("");
     // none/缺省 → 空
-    expect(deriveAppearanceSeeds({ "surface-bg-image": "none", "surface-bg-zones": "1" }, 8).zoneBackgroundImage).toBe("");
-    expect(deriveAppearanceSeeds({}, 8).zoneBackgroundImage).toBe("");
+    expect(deriveAppearanceSeeds({ "surface-bg-image": "none", "surface-bg-zones": "1" }).zoneBackgroundImage).toBe("");
+    expect(deriveAppearanceSeeds({}).zoneBackgroundImage).toBe("");
   });
 
   it("字体播种跳过资产族（__ld_ 前缀只显示不选，#50.20 边界）；系统族名直播", () => {
-    expect(deriveAppearanceSeeds({ "font-ui": "SimSun" }, 8).fontFamily).toBe("SimSun");
-    expect(deriveAppearanceSeeds({ "font-ui": "__ld_demo-plugin_serif" }, 8).fontFamily).toBe("");
+    expect(deriveAppearanceSeeds({ "font-ui": "SimSun" }).fontFamily).toBe("SimSun");
+    expect(deriveAppearanceSeeds({ "font-ui": "__ld_demo-plugin_serif" }).fontFamily).toBe("");
   });
 });
 
@@ -1218,34 +1253,13 @@ describe("ThemeEngine — 混搭合并（E5.8#50.26，10 §1/§3 每域各自取
     expect(document.documentElement.style.getPropertyValue("--radius-sm")).toBe("4px");
   });
 
-  it("E5.8#57 审计#3——getRadiusSourcePx：mix 下读圆角域来源配方原生 radius-md 当播种分母（二次缩放根治）", () => {
-    // 虚构 fixture：demo-base（radius.md 8）+ demo-src（radius.md 20）两配方
-    const BASE: ThemeRecipe = {
-      id: "demo-base", name: "Demo Base", type: "light",
-      appearance: { radius: { md: 8, lg: 16 } },
-      colorways: [{ id: "c", name: "C", colors: {} }],
-    };
-    const SRC: ThemeRecipe = {
-      id: "demo-src", name: "Demo Src", type: "light",
-      appearance: { radius: { md: 20, lg: 40 } },
-      colorways: [{ id: "c", name: "C", colors: {} }],
-    };
-    ThemeRegistry.registerRecipe(BASE, PLUGIN);
-    ThemeRegistry.registerRecipe(SRC, PLUGIN);
-    applyRemoteConfigChange("app.theme", "demo-base");
-    applyRemoteConfigChange("app.mixMode", "mix");
-    applyRemoteConfigChange("app.mixRadius", "demo-src");
-    applyRecipe(BASE, "c", {});
-    // mix：生效 radius 来自 demo-src → 分母 = 来源原生 20（旧逻辑活动配方 8）
-    expect(getRadiusSourcePx()).toBe(20);
-    // 播种反推：生效 20 ÷ 来源 20 = scale 1（旧 20÷8=2.5 → clamp 2 → 20×2=40 暴涨）
-    expect(deriveAppearanceSeeds({ "radius-md": "20px" }, getRadiusSourcePx()).surfaceRadius).toBe(1);
-    // mix 但圆角域 followTheme → 分母 = 活动配方原生 8（跟随域不误取来源）
-    applyRemoteConfigChange("app.mixRadius", MIX_FOLLOW_THEME);
-    expect(getRadiusSourcePx()).toBe(8);
-    // 非 mix 零回归：分母 = 活动配方原生 8
-    applyRemoteConfigChange("app.mixMode", "recipe");
-    expect(getRadiusSourcePx()).toBe(8);
+  it("E5.8#85 混搭播种——deriveAppearanceSeeds 读生效 token 绝对值（mix 下 radius-md = 混搭来源生效值，#57 二次缩放根治随比例模型废弃）", () => {
+    // 生效 token 即混搭来源合并结果——播种绝对值直播，无「分母 ÷ 来源」概念（旧 20÷8=2.5 → 20×2=40 暴涨根治）
+    expect(deriveAppearanceSeeds({ "radius-md": "20px", "surface-radius": "0px" }).surfaceRadius).toBe(20);
+    expect(deriveAppearanceSeeds({ "radius-md": "8px", "surface-radius": "10px" }).surfaceRadius).toBe(8);
+    expect(deriveAppearanceSeeds({ "radius-md": "20px", "surface-radius": "0px" }).zoneRadiusPx).toBe(0);
+    // mix 圆角来源 20px 直播播种 = 20（无覆盖 = 视觉不变；旧逻辑分母变来源 20 → scale 1 同收敛）
+    expect(deriveAppearanceSeeds({ "radius-md": "20px" }).surfaceRadius).toBe(20);
   });
 
   it("E5.8#61 审计#1——isMixSourceOwner：mix 域配置引用其配方/配色 → true；引用他人/未引用 → false", () => {

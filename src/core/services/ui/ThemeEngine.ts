@@ -152,10 +152,18 @@ const BACKGROUND_ZERO: Record<string, string> = {
 
 /* ── E5.8#50.16：scale 乘算 token 集 + 引擎管理 token 全集 ── */
 
-/** 圆角 scale 乘算 token 集——六档尺寸值；--radius-pill/--radius-full 形态值排除不乘（08 §3 边界，2026-08-24 审视补） */
+/** 圆角六档尺寸 token——形态值（--radius-pill/--radius-full）排除不缩放（08 §3 边界，2026-08-24 审视补） */
 export const RADIUS_SCALE_KEYS = [
   "radius-xs", "radius-sm", "radius-md", "radius-lg", "radius-xl", "radius-2xl",
 ] as const;
+
+/** E5.8#85：圆角系统标尺上限——所有绝对 px 圆角 token 统一 clamp 进 [0, 32]（radius-full 相对几何值排除） */
+export const RADIUS_MAX_PX = 32;
+
+/** E5.8#85：clamp 绝对 px 圆角进系统标尺——NaN/负 → 0，>32 → 32（四舍五入整数 px） */
+function clampRadiusPx(v: number): number {
+  return Number.isFinite(v) ? Math.min(RADIUS_MAX_PX, Math.max(0, Math.round(v))) : 0;
+}
 
 /** 引擎管理的 token 键全集（去 -- 前缀）——getEffectiveTokens 读当前生效值（含壳默认继承） */
 const MANAGED_TOKEN_KEYS: string[] = [
@@ -978,40 +986,24 @@ export function getBaseRadius(): Record<string, string> {
 }
 
 /**
- * E5.8#57（审计#3）：当前 radius 域源配方原生 radius-md——播种反推分母。
- * mix 下生效 radius 来自 mixRadius 来源配方而非活动配方——拿活动配方当分母会把来源半径误判为用户
- * scale 二次放大（来源 20px ÷ 活动 8px = scale 2.5 → clamp 2 → 20×2=40px 暴涨）。
- * 读「当前 radius 域来源」的原生值当分母 → scale ≈ 用户真实偏离量（无覆盖 = 1 不暴涨；有覆盖 = 原 scale 恢复）。
- * 非 mix / followTheme 半径 = 活动配方原值（原行为零回归）。无 radius 域 → :root 壳默认。
+ * E5.8#85：圆角绝对化——app.surfaceRadius = 组件圆角「md 档」绝对 px → --radius-xs~2xl 六档。
+ * 语义：滑杆值 = 系统标尺上标准组件圆角 px（0 方角 / 32 最圆润，RADIUS_MAX_PX 标尺）；其余档按当前主题
+ * tier 相对 md 的比例换算（保主题层级性格 + 播种视觉不变），统一 clamp 进 [0,32]。
+ * 主题 md ≤ 0（直角主题无层级）→ 六档等值滑杆值。tokens 传入 → 比例基准取主题现值；键缺省 → :root 壳默认。
+ * 形态值（--radius-pill/--radius-full）排除不缩放（08 §3）。纯函数只算不改。消费侧 clamp（#56 延续）——
+ * 越界直写钳到标尺域。
  */
-export function getRadiusSourcePx(): number {
-  const active = getActiveRecipe();
-  const baseRecipe = active?.recipeId ? ThemeRegistry.getRecipe(active.recipeId) : undefined;
-  const base = baseRecipe?.appearance?.radius?.md;
-  if (getConfigurationValue<string>("app.mixMode") === "mix" && baseRecipe) {
-    const profile = getMixProfile();
-    const source = resolveDomainSource("radius", profile, baseRecipe, baseRecipe.colorways[0]);
-    const sourceRadius = source.recipe.appearance?.radius?.md;
-    if (sourceRadius != null) return sourceRadius;
-  }
-  return base ?? parseFloat(getBaseRadius()["radius-md"] ?? "0");
-}
-
-/**
- * app.surfaceRadius scale 系数 → --radius-xs~2xl 六档乘算（--radius-pill/--radius-full 形态值排除不乘，08 §3）。
- * tokens 传入 → 对当前生效值乘算（主题 appearance.radius 现值）；键缺省 → :root 壳默认乘算。纯函数只算不改。
- */
-export function applyRadiusScale(scale: number, tokens?: Record<string, string>): Record<string, string> {
-  // E5.8#56（审计#4）：消费侧 clamp——settings.json/程序化直写 app.surfaceRadius 越界（如 5）被钳到合法域
-  // （0 方角 ~ 2 圆润，05 §4 scale 域；#68 后下限 0）。播种方向 deriveAppearanceSeeds 已 clamp，此处守消费端单一写入点。
-  const s = Number.isFinite(scale) ? Math.min(2, Math.max(0, scale)) : 1;
-  const vars: Record<string, string> = {};
+export function applyRadiusAbsolute(absPx: number, tokens?: Record<string, string>): Record<string, string> {
+  const s = clampRadiusPx(absPx);
   const base = getBaseRadius();
+  const md = parseFloat(tokens?.["radius-md"]?.trim() || base["radius-md"] || "0");
+  const vars: Record<string, string> = {};
   for (const key of RADIUS_SCALE_KEYS) {
     const current = tokens?.[key];
     const source = current !== undefined && current.trim() !== "" ? current : (base[key] ?? "0px");
     const px = parseFloat(source);
-    vars[key] = Number.isFinite(px) ? `${Math.round(px * s)}px` : "0px";
+    const ratio = md > 0 && Number.isFinite(px) ? px / md : 1; // 直角/无层级主题 → 等值
+    vars[key] = `${clampRadiusPx(ratio * s)}px`;
   }
   return vars;
 }
@@ -1024,28 +1016,38 @@ export function applyOverrides(
   tokens: Record<string, string>,
   overrides: Record<string, string | number>
 ): Record<string, string> {
-  // ① radius scale 系数——五档同系数（app.surfaceRadius 单一 scale）一次乘算全六档
-  let scaleFactor: number | null = null;
+  // ① E5.8#85：组件圆角绝对 px——overrides 携带 radius-* 六键（getAppearanceOverrides presence 门控写 md 档 absPx）
+  //   applyRadiusAbsolute 对当前主题 tier 按比例换算全六档并 clamp 进 [0,32]。
+  let radiusAbs: number | null = null;
   for (const [token, value] of Object.entries(overrides)) {
     if ((RADIUS_SCALE_KEYS as readonly string[]).includes(token)) {
       const n = Number(value);
-      if (Number.isFinite(n)) scaleFactor = n;
+      if (Number.isFinite(n)) radiusAbs = n;
       else tokens[token] = String(value); // 已是 px 的 radius 覆盖（防御）→ 绝对写
     }
   }
-  if (scaleFactor != null) Object.assign(tokens, applyRadiusScale(scaleFactor, tokens));
-  // ①b E5.8#80：zone 圆角第二通道——surface-radius 对当前 token 基准（主题 surface.radius / 壳默认 0px）乘算；
-  //   "0px" 绝对短路 = app.zoneRadius 关（直角），数字系数 = app.zoneRadiusScale 倍数（getAppearanceOverrides 已 clamp）。
+  if (radiusAbs != null) Object.assign(tokens, applyRadiusAbsolute(radiusAbs, tokens));
+  // ①b E5.8#85：zone 圆角绝对 px——app.zoneRadiusScale = 分区圆角 px（"0px" = 开关关强制直角短路）；
+  //   直写当前 surface-radius token（绝对，不乘主题基准——根治直角主题 0px 死区 A1）。
   const zoneRadiusVal = overrides["surface-radius"];
   if (zoneRadiusVal !== undefined) {
     if (zoneRadiusVal === "0px") {
       tokens["surface-radius"] = "0px";
     } else {
-      const zoneScale = Number(zoneRadiusVal);
-      if (Number.isFinite(zoneScale)) {
-        const px = parseFloat(tokens["surface-radius"] ?? "0");
-        tokens["surface-radius"] = Number.isFinite(px) ? `${Math.round(px * zoneScale)}px` : "0px";
-      }
+      const zonePx = Number(zoneRadiusVal);
+      if (Number.isFinite(zonePx)) tokens["surface-radius"] = `${clampRadiusPx(zonePx)}px`;
+    }
+  }
+  // ①c E5.8#85：radius-pill 形态值经标尺 clamp（主题 999px 胶囊 → 32「系统最大圆角预览」）——
+  //   仅用户圆角覆盖生效时 clamp（followTheme 主题自带 pill 原样）；% 相对几何值不碰；
+  //   主题/壳未写 pill（:root 静态 999px 不经 JS token）→ 注入 32px 标尺上限（CDP 实机验证补齐）。
+  if (radiusAbs != null) {
+    const pill = tokens["radius-pill"];
+    if (pill == null || pill.trim() === "") {
+      tokens["radius-pill"] = `${RADIUS_MAX_PX}px`;
+    } else if (!pill.trim().endsWith("%")) {
+      const pillPx = parseFloat(pill);
+      if (Number.isFinite(pillPx)) tokens["radius-pill"] = `${clampRadiusPx(pillPx)}px`;
     }
   }
   // ② 绝对 token 覆盖
@@ -1060,6 +1062,7 @@ export function applyOverrides(
 /** 外观覆盖播种值形状——deriveAppearanceSeeds 返回值（08 §2：设置层永远只存用户偏离量） */
 export interface AppearanceSeedValues {
   surfaceRadius: number;
+  zoneRadiusPx: number; // E5.8#85：zone 分区圆角绝对 px（随 custom 播种/复位）
   glassBlur: number;
   glassOpacity: number;
   glassTint: string;
@@ -1069,20 +1072,15 @@ export interface AppearanceSeedValues {
 }
 
 /**
- * 反推外观覆盖播种值——appearanceMode→custom 瞬间从生效 token 集反推 7 覆盖 key（08 §2）。
- * 纯函数只算不改：surfaceRadius = 当前 radius-md ÷ 主题原值（scale 系数，clamp 0-2）；
- * 玻璃绝对 = token 值直播；bg 剥 url() 存受控路径；font 跳过资产族（__ld_ 前缀 = 插件 @font-face，
- * #50.20 边界：资产族只显示不选，播种空 = 跟随主题）。themeRadiusPx = 主题原值（配方 appearance.radius.md
- * 或 :root 壳默认，调用方解析后传入；≤0 → scale 回退 1）。
+ * 反推外观覆盖播种值——appearanceMode→custom 瞬间从生效 token 集反推覆盖 key（08 §2：设置层永远只存用户偏离量）。
+ * 纯函数只算不改。E5.8#85：圆角绝对化——surfaceRadius = 当前生效 radius-md 绝对值 px（非主题比值，根治
+ * A8「播种显示比值」；mix 下 token 即混搭来源生效值，天然含 #57 二次缩放根治——比例模型分母概念废弃）。
+ * zoneRadiusPx = 当前生效 surface-radius 绝对值 px。玻璃绝对 = token 值直播；bg 剥 url() 存受控路径；
+ * font 跳过资产族（__ld_ 前缀 = 插件 @font-face，#50.20 边界：资产族只显示不选，播种空 = 跟随主题）。
  * E5.8#81：zoneBackgroundImage 仅 zones 模式（surface-bg-zones===1）反推 surface-bg-image（切片语义）；
  * 纹理主题（repeat 平铺，zones=0）播种空 = 跟随主题——避免把 repeat 纹理错播成 zones 切片（视觉变）。
  */
-export function deriveAppearanceSeeds(
-  tokens: Record<string, string>,
-  themeRadiusPx: number
-): AppearanceSeedValues {
-  const effRadiusPx = parseFloat(tokens["radius-md"] ?? "0");
-  const scale = themeRadiusPx > 0 && effRadiusPx > 0 ? effRadiusPx / themeRadiusPx : 1;
+export function deriveAppearanceSeeds(tokens: Record<string, string>): AppearanceSeedValues {
   const bg = tokens["bg-image"];
   const bgPath = bg && bg !== "none" ? bg.replace(/^url\(["']?/, "").replace(/["']?\)$/, "") : "";
   const fam = tokens["font-ui"];
@@ -1091,7 +1089,8 @@ export function deriveAppearanceSeeds(
     ? zoneBg.replace(/^url\(["']?/, "").replace(/["']?\)$/, "")
     : "";
   return {
-    surfaceRadius: Math.min(2, Math.max(0, Math.round(scale * 10) / 10)),
+    surfaceRadius: clampRadiusPx(parseFloat(tokens["radius-md"] ?? "0")),
+    zoneRadiusPx: clampRadiusPx(parseFloat(tokens["surface-radius"] ?? "0")),
     glassBlur: parseFloat(tokens["glass-blur"] ?? "0") || 0,
     glassOpacity: parseFloat(tokens["glass-opacity"] ?? "1"),
     glassTint: tokens["glass-tint"] && tokens["glass-tint"] !== "transparent" ? tokens["glass-tint"] : "",
@@ -1113,7 +1112,8 @@ export const APPEARANCE_OVERRIDE_KEYS = [
   "app.zoneRadius", "app.zoneRadiusScale", "app.zoneBackgroundImage",
 ] as const;
 
-/** 读用户外观配置 → 覆盖集（glass/bg 仅偏离 neutral 时；radius 六键恒写 scale 系数——applyOverrides 内乘算）。 */
+/** 读用户外观配置 → 覆盖集（glass/bg 仅偏离 neutral 时；radius/zone presence 门控写绝对 px——applyOverrides 内换算）。
+ *  E5.8#85：圆角不再「恒写」——presence 门控（同 glass #56）：配置被显式写过即覆盖，reset 摘除 key → 回主题基线。 */
 export function getAppearanceOverrides(): Record<string, string> {
   const overrides: Record<string, string> = {};
 
@@ -1157,20 +1157,23 @@ export function getAppearanceOverrides(): Record<string, string> {
     overrides["font-ui"] = String(fontFamily).trim();
   }
 
-  const rawScale = getConfigurationValue<number>("app.surfaceRadius");
-  const scale = rawScale == null || !Number.isFinite(Number(rawScale)) ? 1 : Number(rawScale);
-  // radius scale 系数恒写（清残留）——applyOverrides 对当前生效值/壳默认乘算，非预先乘 :root 基准
-  for (const key of RADIUS_SCALE_KEYS) overrides[key] = String(scale);
+  // E5.8#85：圆角绝对化——app.surfaceRadius = 组件圆角 md 档绝对 px 0→32。presence 门控（同 glass #56）：
+  // 配置被显式写过即覆盖（端点 0 = 方角意图照常）；reset 摘除 key → 回主题基线。无「恒写」——不写即主题。
+  const radiusAbs = getConfigurationValue<number>("app.surfaceRadius");
+  if (hasConfigurationValue("app.surfaceRadius") && radiusAbs != null) {
+    const absPx = clampRadiusPx(Number(radiusAbs));
+    for (const key of RADIUS_SCALE_KEYS) overrides[key] = String(absPx);
+  }
 
-  // E5.8#80：zone 圆角第二通道——app.zoneRadius 开关 + app.zoneRadiusScale 倍数（对 surface-radius 基础值乘算）。
-  // 开关 off = 强制 0px 直角（绝对短路值 "0px"，applyOverrides 区分）；on = 系数恒写（同 surfaceRadius 清残留语义，
-  // 默认 1 = 写回主题 surface.radius 原值，幂等）。消费侧 clamp(0,2) 对齐 #56 对 surfaceRadius 的 clamp。
+  // E5.8#85：zone 圆角绝对化——app.zoneRadiusScale = 分区圆角绝对 px 0→32（presence 门控）。
+  // 开关 off = 强制 0px 直角（短路值 "0px"，applyOverrides 区分）；on = 滑杆 px 直写 surface-radius。
   const zoneRadius = getConfigurationValue<boolean>("app.zoneRadius");
-  const rawZoneScale = getConfigurationValue<number>("app.zoneRadiusScale");
-  const zoneScale = rawZoneScale == null || !Number.isFinite(Number(rawZoneScale))
-    ? 1
-    : Math.min(2, Math.max(0, Number(rawZoneScale)));
-  overrides["surface-radius"] = zoneRadius === false ? "0px" : String(zoneScale);
+  const rawZonePx = getConfigurationValue<number>("app.zoneRadiusScale");
+  if (zoneRadius === false) {
+    overrides["surface-radius"] = "0px";
+  } else if (hasConfigurationValue("app.zoneRadiusScale") && rawZonePx != null && Number.isFinite(Number(rawZonePx))) {
+    overrides["surface-radius"] = String(clampRadiusPx(Number(rawZonePx)));
+  }
 
   return overrides;
 }
