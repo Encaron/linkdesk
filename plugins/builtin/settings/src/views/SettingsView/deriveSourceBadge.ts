@@ -6,12 +6,14 @@
  *
  * 派生规则：
  * 1. 无 sourceKey（非来源徽标槽）→ null（第三方配置键零侵入）。
- * 2. 有用户覆盖（配置存在）：
- *    - 值空 "" = 用户「清除」= 跟随主题 → 🎨（A6 痛点核心：清除后一眼可见回主题）；
- *    - 值 === 主题/混搭基准种子（播种态 / 恰与主题同值——E5.8#88：进 custom 播种写 9 键 ≠ 用户改过）→ 🎨；
- *    - 值非空且偏离基准（含 __none__ 显式无） = 真实用户值 → ✏️。
- * 3. 无用户覆盖：appearanceMode=custom 且 本键所属域来源 ≠ "followTheme"（域来源生效）→ 🔀；否则 🎨 主题。
+ * 2. 真实用户覆盖——非空且偏离基准（含 __none__ 显式无）→ ✏️ 用户。
+ *    覆盖值在 mergeMixDomains 之上 applyOverrides 胜出（ThemeEngine）——偏离基准 = 用户盖过域来源。
+ * 3. 中性槽（未写 / 清除空 "" / 播种=基准——E5.8#88：进 custom 播种写 9 键 ≠ 用户改过）：
+ *    appearanceMode=custom 且 本键所属域来源 ≠ "followTheme"（域来源生效）→ 🔀（实际值来自混搭域）；
+ *    否则 → 🎨 主题（A6 痛点核心：清除后一眼可见回主题）。
  *    E5.8#90：app.mixMode 删——域来源生效门控改读外观主开关 appearanceMode=custom。
+ *    E5.8#90 修正：旧规则「值空一律 🎨」短路了 rule 3——mix 来源生效 + 中性槽应显 🔀 而非 🎨
+ *    （fontFamily 空 + mixFont=songti → 实际字体来自宋体，14-档案 #87「mix 来源生效 = 🔀」）。
  */
 
 export type SourceBadge = "theme" | "user" | "mix";
@@ -41,13 +43,16 @@ export function deriveSourceBadge(input: {
   const { sourceKey, userValue, baseline, mode, sourceValue } = input;
   if (!sourceKey) return null;
 
-  if (userValue !== undefined) {
-    // 空串 = 显式「跟随主题」（清除）；=== 基准种子 = 播种态/恰与主题同值——都是主题 🎨，非用户偏离
-    if (String(userValue) === "") return "theme";
-    if (baseline !== undefined && userValue === baseline) return "theme";
+  // 真实用户覆盖——非空且偏离基准（含 __none__）→ ✏️（覆盖值盖过域来源，applyOverrides 在域合并之上）
+  if (
+    userValue !== undefined &&
+    String(userValue) !== "" &&
+    (baseline === undefined || userValue !== baseline)
+  ) {
     return "user";
   }
 
+  // 中性槽（未写 / 清除空 / 播种=基准）——实际值由域来源决定：混搭生效 → 🔀，否则跟随主题 🎨
   if (mode === "custom" && sourceValue !== undefined && sourceValue !== MIX_FOLLOW_THEME_SENTINEL) {
     return "mix";
   }

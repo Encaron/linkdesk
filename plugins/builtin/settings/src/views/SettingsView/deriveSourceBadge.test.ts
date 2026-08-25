@@ -50,6 +50,21 @@ describe("deriveSourceBadge", () => {
     ).toBe("mix");
   });
 
+  it("E5.8#90 中性槽 + 域来源生效 → 🔀（清除空 / 播种=基准 均不再被空串规则短路）", () => {
+    // 清除空：fontFamily 空 + mixFont=songti → 实际字体来自宋体配方——🔀 而非 🎨（14-档案 #87「mix 来源生效 = 🔀」）
+    expect(
+      deriveSourceBadge({ sourceKey: "app.mixFont", userValue: "", mode: "custom", sourceValue: "songti-print" }),
+    ).toBe("mix");
+    // 播种=基准：surfaceRadius 播种 8（=主题基准）+ mixRadius=songti → 圆角域来源生效 → 🔀
+    expect(
+      deriveSourceBadge({ sourceKey: "app.mixRadius", userValue: 8, baseline: 8, mode: "custom", sourceValue: "songti-print" }),
+    ).toBe("mix");
+    // 对照——域来源 = 跟随主题（未生效）→ 中性槽仍 🎨（A6 清除回主题保持）
+    expect(
+      deriveSourceBadge({ sourceKey: "app.mixFont", userValue: "", mode: "custom", sourceValue: MIX_FOLLOW_THEME_SENTINEL }),
+    ).toBe("theme");
+  });
+
   it("无覆盖 + appearanceMode=custom 但域来源 = followTheme（跟随整体配方）→ 🎨 主题", () => {
     expect(
       deriveSourceBadge({ sourceKey: "app.mixRadius", mode: "custom", sourceValue: MIX_FOLLOW_THEME_SENTINEL }),
