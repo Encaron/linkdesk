@@ -294,11 +294,21 @@ function commitTokens(
   // E3b #35：广播 CSS 变量到所有插件 WebView——跨进程主题同步
   // E5.8#50.17：fontFaces 随载荷带给池——池侧复刻 @font-face（独立文档，壳注册的不生效）
   // E5.8#50.18：recipeId/colorwayId/domains 随载荷——recipe 态提交（domains 恒非空）带；flat applyTheme（无 domains）缺省
+  // E5.8#84：广播载荷剔除 accent 三键——accent 唯一来源 = accent:changed（applyAccentColor）。
+  //   壳侧 :root 全量写（含 accent）与 applyAccentColor 在同一同步任务 → 无跨帧机会；
+  //   池侧两条独立 IPC 各占一任务 → 若 theme:changed 也带 recipe accent，--accent 与 accent:changed
+  //   跨帧落地振荡（recipe↔custom）→ .toggle.on 的 transition: background 150ms 反复重启 = 开关闪。
+  //   剔除后池侧 --accent 只经 accent:changed 单源写入，振荡根治。
   if (linkdesk?.bridge?.broadcast) {
+    const broadcastVars: Record<string, string> = {};
+    for (const [k, v] of Object.entries(variables)) {
+      if (k === "accent" || k === "accent-hover" || k === "accent-light") continue;
+      broadcastVars[k] = v;
+    }
     linkdesk.bridge.broadcast("theme:changed", {
       themeId: state.recipeId,
       themeType,
-      variables,
+      variables: broadcastVars,
       ...(fontFaces?.length ? { fontFaces } : {}),
       ...(state.domains?.length
         ? { recipeId: state.recipeId, colorwayId: state.colorwayId ?? "", domains: state.domains }

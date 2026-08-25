@@ -805,6 +805,32 @@ describe("ThemeEngine — applyRecipe / getActiveRecipe / getEffectiveTokens（E
     expect(getActiveRecipe()).toBeNull();
   });
 
+  // E5.8#84：广播载荷剔除 accent 三键——theme:changed 携带 recipe accent 与 accent:changed 两条
+  // IPC 在池侧跨帧落地 → --accent 振荡 → .toggle.on transition 反复重启 = 开关闪（CDP 实测 11 次紫↔红）。
+  // 壳 :root 全量写（含 accent）不动——与 applyAccentColor 同任务无跨帧机会。
+  it("applyRecipe — 广播 theme:changed 剔除 accent 三键（壳 :root 仍写 accent）", () => {
+    const payloads: unknown[] = [];
+    const linkdesk = (window as unknown as { linkdesk?: { bridge?: { broadcast: (ch: string, p: unknown) => void } } }).linkdesk;
+    const original = linkdesk?.bridge?.broadcast;
+    linkdesk!.bridge = { broadcast: (ch, p) => payloads.push({ ch, p }) };
+    try {
+      applyRecipe(RECIPE, "dew", {});
+      const root = document.documentElement;
+      // 壳 :root 仍写 --accent（theme:changed 全量变量的副作用，随后 applyAccentColor 覆盖）
+      expect(root.style.getPropertyValue("--accent")).toBe("#2BA876");
+      const themeChanged = payloads.find((p) => (p as { ch: string }).ch === "theme:changed") as { p: { variables: Record<string, string> } } | undefined;
+      expect(themeChanged).toBeDefined();
+      const vars = themeChanged!.p.variables;
+      expect(vars["accent"]).toBeUndefined();
+      expect(vars["accent-hover"]).toBeUndefined();
+      expect(vars["accent-light"]).toBeUndefined();
+      expect(vars["bg-window"]).toBe("#FFFBF5"); // 非 accent 键正常携带
+      expect(vars["radius-lg"]).toBe("12px");
+    } finally {
+      if (original) linkdesk!.bridge = { broadcast: original }; else delete linkdesk!.bridge;
+    }
+  });
+
   // E5.8#70：app.themeColor 回写生效配色——bug 7 复制为空 / #60 F1.2 下拉谎报同源修复
   it("syncThemeColorConfig — 回写生效配色 id（缺省 colorwayId → 配方首配色）", () => {
     applyRecipe(RECIPE, undefined, {});
