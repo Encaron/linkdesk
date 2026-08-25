@@ -4,6 +4,9 @@
  *  - optionsFrom "theme.colorways"：活动配方（app.theme）的配色变体，选项带预览色块（ColorwayMeta.preview.accent）；
  *    随 app.theme 变化重取（configuration.onChange 订阅）+ 下拉打开时刷新（SelectBox onOpen）。
  *  - optionsFrom "theme.sources"：混搭来源——「跟随主题」置顶 + 按 optionsFromDomain 过滤 RecipeMeta.domains 的配方。
+ *  - E5.8#82 双语义（app.themeColor）：schema 静态声明 optionsFrom="theme.colorways"+optionsFromDomain="colors"，
+ *    运行时按 app.mixMode 切换——recipe 模式 = 配方内配色变体；mix 模式 = colors 域来源（sources+colors）。
+ *    仅此处自解析（renderControl 是纯函数不能用 hook、SettingRow 线程化会造条件 hook）——壳设置 UI 零改动复用。
  * 视觉沿用 SelectBox（含色块 swatch）；零 @src/core import（共享控件白名单）——数据全走 window.linkdesk.*。
  */
 
@@ -41,13 +44,31 @@ function DynamicSelect({ value, onChange, optionsFrom, domain, disabled, placeho
   const { t } = useTranslation();
   const [options, setOptions] = useState<DynamicOption[]>(EMPTY_OPTIONS);
 
-  /** 动态取选项——colorways 读 app.theme 找活动配方；sources 按域过滤 */
+  // E5.8#82：app.themeColor 双语义信号 = optionsFrom "theme.colorways" + domain "colors"（schema 静态声明组合）。
+  // 切 mixMode 时读 app.mixMode 决定走 sources（mix）还是 colorways（recipe）。
+  const dualSemantics = optionsFrom === "theme.colorways" && domain === "colors";
+  const [mixMode, setMixMode] = useState<string | undefined>(undefined);
+
+  // 双语义才订阅 app.mixMode——只监听关心 key（E5.8 铁律）；切 mixMode 重渲染走新来源
+  useEffect(() => {
+    if (!dualSemantics) return;
+    let cancelled = false;
+    void window.linkdesk?.configuration?.get<string>("app.mixMode").then((v) => {
+      if (!cancelled) setMixMode(v);
+    });
+    const off = window.linkdesk?.configuration?.onChange?.("app.mixMode", (v: unknown) => setMixMode(v as string));
+    return () => { cancelled = true; off?.(); };
+  }, [dualSemantics]);
+
+  const isMixMode = dualSemantics && mixMode === "mix";
+
+  /** 动态取选项——colorways 读 app.theme 找活动配方；sources 按域过滤；双语义 mix 时并入 sources+colors */
   const refresh = useCallback(async () => {
     const list = window.linkdesk?.theme?.listRecipes;
     if (!list) return;
     try {
       const recipes = (await list()) ?? [];
-      if (optionsFrom === "theme.sources") {
+      if (optionsFrom === "theme.sources" || isMixMode) {
         if (domain === "colors") {
           // 颜色域 = 配方+配色粒度（决策 B）——每配色一个选项（value = 配色 id 全局唯一，theme.ts L88 契约），
           // label = 「配方名·配色名」（mockup 01「清凉薄荷包·薄荷苏打」同款），带配色预览色块。
@@ -84,12 +105,12 @@ function DynamicSelect({ value, onChange, optionsFrom, domain, disabled, placeho
     } catch {
       setOptions(EMPTY_OPTIONS);
     }
-  }, [optionsFrom, domain, t]);
+  }, [optionsFrom, domain, t, isMixMode]);
 
   // 挂载取一次；colorways 额外订阅 app.theme——活动配方切换即重取（配色列表跟着换，mockup 01 动态 enum 演示）。
   // E5.8#60 F1.3：订阅插件生命周期——热装/卸载主题插件 → 配方集变化 → sources/colorways 列表刷新。
   //   走 configuration.onPluginLifecycleChange（设置页专用通道，池侧桥自 IpcBridgeHandler/data.ts 泛化 nudge）。
-  //   E5.8#60 F2.1 防回归：订阅回调必须引用稳定——refresh 为 useCallback（依赖 optionsFrom/domain/t 恒定），
+  //   E5.8#60 F2.1 防回归：订阅回调必须引用稳定——refresh 为 useCallback（依赖 optionsFrom/domain/t/isMixMode 恒定），
   //   内联箭头只包一层转发；严禁把非稳定闭包直接传入订阅（回放缓冲变死循环引擎，E5.8 铁律）。 */
   useEffect(() => {
     void refresh();
@@ -102,6 +123,11 @@ function DynamicSelect({ value, onChange, optionsFrom, domain, disabled, placeho
       offTheme?.();
     };
   }, [refresh, optionsFrom]);
+
+  // E5.8#82 显隐归一：app.themeColor 双语义（dualSemantics）recipe 模式（非 mix）当前配方仅 1 配色变体 → 控件自隐
+  // （用户想法 3「没多配色主题不该有 themeColor」）。仅限双语义——通用 colorways 下拉（无 domain）单配色仍显示
+  // （colorways 数据源本身就该列出配色；隐藏是设置 UI 的 themeColor 行级决策）。options.length===0 不隐（异步未归/失败兜底）。
+  if (dualSemantics && !isMixMode && options.length === 1) return null;
 
   return (
     <SelectBox

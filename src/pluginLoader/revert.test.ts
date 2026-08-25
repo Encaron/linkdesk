@@ -84,7 +84,7 @@ describe("revertIfCurrent——卸载当前贡献时自动回退", () => {
   });
 
   it("E5.8#61 审计#1——revertThemeIfCurrent：活动主题非本插件但本插件是混搭来源→返回 true 待卸载后重合并", async () => {
-    // 另一插件（builtin）提供当前主题；demo-mix-plugin 只作为混搭来源（app.mixColor 引用其配色）
+    // 另一插件（builtin）提供当前主题；demo-mix-plugin 只作为混搭来源（app.themeColor 引用其配色，E5.8#82 colors 域来源统一）
     registerBuiltinDarkTheme();
     ThemeRegistry.registerRecipe(
       {
@@ -95,7 +95,9 @@ describe("revertIfCurrent——卸载当前贡献时自动回退", () => {
     );
     const { setConfigurationValue: setCfg } = await import("../core/services/configuration/ConfigurationService");
     await setCfg("app.theme", "builtin-dark", "user");
-    await setCfg("app.mixColor", "mix-cw", "user");
+    // E5.8#82：isMixSourceOwner 门控——colors 域来源只在 mix 模式成立（recipe 模式下 themeColor 是真配色 id）
+    await setCfg("app.mixMode", "mix", "user");
+    await setCfg("app.themeColor", "mix-cw", "user");
     vi.mocked(setCfg).mockClear(); // 清掉 setup 写入——只断言 revert/reapply 自己的调用
 
     // revert 只做归属判定——返回 true 表示本插件是混搭来源，重合并推迟到 unload 后
@@ -109,7 +111,8 @@ describe("revertIfCurrent——卸载当前贡献时自动回退", () => {
     await reapplyThemeAfterUnload();
     expect(setCfg).toHaveBeenCalledWith("app.theme", "builtin-dark", "user");
     // 清理 store——防泄漏到后续用例
-    await setCfg("app.mixColor", "followTheme", "user");
+    await setCfg("app.themeColor", "followTheme", "user");
+    await setCfg("app.mixMode", "recipe", "user");
   });
 
   it("E5.8#61 审计#1——revertThemeIfCurrent：混搭来源是其他插件→返回 false 不触发重应用", async () => {
@@ -124,14 +127,17 @@ describe("revertIfCurrent——卸载当前贡献时自动回退", () => {
     );
     const { setConfigurationValue: setCfg } = await import("../core/services/configuration/ConfigurationService");
     await setCfg("app.theme", "builtin-dark", "user");
-    await setCfg("app.mixColor", "other-cw", "user");
+    // E5.8#82：同样置 mix 模式——验证非本插件配色归属不会误判为混搭来源
+    await setCfg("app.mixMode", "mix", "user");
+    await setCfg("app.themeColor", "other-cw", "user");
     vi.mocked(setCfg).mockClear();
 
     const result = await revertThemeIfCurrent(PLUGIN_ID);
 
     expect(result).toBe(false);
     expect(setCfg).not.toHaveBeenCalled();
-    await setCfg("app.mixColor", "followTheme", "user");
+    await setCfg("app.themeColor", "followTheme", "user");
+    await setCfg("app.mixMode", "recipe", "user");
   });
 
   /* ── 2. 语言 revert ── */

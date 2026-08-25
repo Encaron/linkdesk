@@ -58,12 +58,11 @@ export function showThemePicker(pluginId?: string): void {
     }
   };
 
-  // 提交——配色变体先写 mode/custom + themeColor（app.theme onApply 同步读取 mode+custom），再写配方 id 触发应用
+  // 提交——配色变体先写 themeColor（E5.8#82：配色域来源统一，无 themeColorMode 包装层），再写配方 id 触发应用
   const commitTheme = async (recipe: ThemeRecipe, colorwayId?: string): Promise<void> => {
     committed = true;
     try {
       if (colorwayId) {
-        await setConfigurationValue("app.themeColorMode", "custom", "user");
         await setConfigurationValue("app.themeColor", colorwayId, "user");
       }
       await setConfigurationValue("app.theme", recipe.id, "user");

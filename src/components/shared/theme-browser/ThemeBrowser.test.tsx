@@ -2,7 +2,7 @@
  * @vitest-environment jsdom
  * E5.8#50.24：showThemePicker 两段式 QuickPick 单元测试（theme.pick 命令调起）。
  * 覆盖：阶段 1 配方列表 + 当前配方 checked + detail（单配色类型 / 多配色计数）/ 多配色配方 Enter →
- *       阶段 2 配色列表 + transitioned 防误关 / 阶段 2 提交时序（themeColorMode→themeColor→app.theme）/
+ *       阶段 2 配色列表 + transitioned 防误关 / 阶段 2 提交时序（themeColor→app.theme，E5.8#82 无 themeColorMode）/
  *       单配色直接提交（不经阶段 2）/ Esc 取消回退打开前配方 / pluginId 过滤。
  * 夹具：ThemeRegistry 真注册表（disposer 清理，虚构配方——硬约束 21）；
  *      QuickPickService / i18n mock + ConfigurationService importOriginal 覆盖 setConfigurationValue
@@ -25,7 +25,7 @@ vi.mock("../../../core/services/ui/QuickPickService", () => ({
   QuickPickService: { show: showMock, hide: hideMock },
 }));
 
-// importOriginal 展开真模块——只覆盖 setConfigurationValue（themeColorMode/themeColor/app.theme 写入断言）
+// importOriginal 展开真模块——只覆盖 setConfigurationValue（themeColor/app.theme 写入断言，E5.8#82 无 themeColorMode）
 vi.mock("../../../core/services/configuration/ConfigurationService", async (importOriginal) => {
   const mod = await importOriginal<typeof import("../../../core/services/configuration/ConfigurationService")>();
   return { ...mod, setConfigurationValue: setConfigMock };
@@ -115,7 +115,7 @@ describe("showThemePicker（E5.8#50.24 两段式）", () => {
     expect(hideMock).not.toHaveBeenCalled();
   });
 
-  it("阶段 2 选配色 → 提交时序 themeColorMode→themeColor→app.theme", async () => {
+  it("阶段 2 选配色 → 提交时序 themeColor→app.theme（E5.8#82 无 themeColorMode 包装层）", async () => {
     registerFixture(MINT);
     registerFixture(FOREST);
     showThemePicker();
@@ -128,13 +128,12 @@ describe("showThemePicker（E5.8#50.24 两段式）", () => {
     const cwSelect = st2.onSelect as (cw: ThemeColorway) => void;
     cwSelect(MINT.colorways[1]); // Beta/tea
 
-    await vi.waitFor(() => expect(setConfigMock).toHaveBeenCalledTimes(3));
+    await vi.waitFor(() => expect(setConfigMock).toHaveBeenCalledTimes(2));
     expect(setConfigMock.mock.calls.map((c) => c[0])).toEqual([
-      "app.themeColorMode",
       "app.themeColor",
       "app.theme",
     ]);
-    expect(setConfigMock.mock.calls.map((c) => c[1])).toEqual(["custom", "tea", "demo-mint"]);
+    expect(setConfigMock.mock.calls.map((c) => c[1])).toEqual(["tea", "demo-mint"]);
 
     // 提交后阶段 2 Esc/关闭 → hide
     const st2Close = st2.onClose as () => void;

@@ -909,7 +909,7 @@ describe("ThemeEngine — 混搭合并（E5.8#50.26，10 §1/§3 每域各自取
     for (const d of ["colors", "font", "radius", "glass", "background", "surface"] as const) {
       expect(p1[d]).toBe(MIX_FOLLOW_THEME);
     }
-    applyRemoteConfigChange("app.mixColor", "mint");
+    applyRemoteConfigChange("app.themeColor", "mint"); // E5.8#82：colors 域来源并入 app.themeColor（app.mixColor 删）
     applyRemoteConfigChange("app.mixFont", "demo-radius");
     const p2 = getMixProfile();
     expect(p2.colors).toBe("mint");
@@ -951,7 +951,7 @@ describe("ThemeEngine — 混搭合并（E5.8#50.26，10 §1/§3 每域各自取
 
   it("applyRecipe mix — 配色跟颜色域来源；圆角跟圆角域；明暗/activeRecipe 跟基础配方", () => {
     applyRemoteConfigChange("app.mixMode", "mix");
-    applyRemoteConfigChange("app.mixColor", "mint");
+    applyRemoteConfigChange("app.themeColor", "mint"); // E5.8#82：colors 域来源 = app.themeColor
     applyRemoteConfigChange("app.mixRadius", "demo-radius");
     applyRecipe(RECIPE, "dew", {});
     const root = document.documentElement;
@@ -1080,7 +1080,6 @@ describe("ThemeEngine — 混搭合并（E5.8#50.26，10 §1/§3 每域各自取
     ThemeRegistry.registerRecipe(BASE, PLUGIN);
     ThemeRegistry.registerRecipe(SRC, PLUGIN);
     applyRemoteConfigChange("app.theme", "demo-base");
-    applyRemoteConfigChange("app.themeColorMode", "followTheme");
     applyRemoteConfigChange("app.mixMode", "mix");
     applyRemoteConfigChange("app.mixRadius", "demo-src");
     applyRecipe(BASE, "c", {});
@@ -1097,15 +1096,17 @@ describe("ThemeEngine — 混搭合并（E5.8#50.26，10 §1/§3 每域各自取
   });
 
   it("E5.8#61 审计#1——isMixSourceOwner：mix 域配置引用其配方/配色 → true；引用他人/未引用 → false", () => {
+    // E5.8#82：colors 域来源只在 mix 模式成立（recipe 模式下 themeColor 是真配色 id 非混搭来源）——先置 mix
+    applyRemoteConfigChange("app.mixMode", "mix");
     // 初始无 mix 配置（beforeEach 未设 app.mix*）→ 全 followTheme → false
     expect(isMixSourceOwner(PLUGIN)).toBe(false);
-    // 颜色域 = 配色粒度：RECIPE 的 mint 配色归 demo-mix → true
-    applyRemoteConfigChange("app.mixColor", "mint");
+    // 颜色域 = 配色粒度：RECIPE 的 mint 配色归 demo-mix → true（E5.8#82 colors 域来源 = app.themeColor）
+    applyRemoteConfigChange("app.themeColor", "mint");
     expect(isMixSourceOwner(PLUGIN)).toBe(true);
     // 引用 demo-mix 配方但对 demo-other 是 false（归属精确到插件）
     expect(isMixSourceOwner("demo-other")).toBe(false);
     // 清空颜色域 → 回 false
-    applyRemoteConfigChange("app.mixColor", MIX_FOLLOW_THEME);
+    applyRemoteConfigChange("app.themeColor", MIX_FOLLOW_THEME);
     expect(isMixSourceOwner(PLUGIN)).toBe(false);
     // 圆角域 = 配方粒度：demo-radius 归 demo-mix → true
     applyRemoteConfigChange("app.mixRadius", "demo-radius");

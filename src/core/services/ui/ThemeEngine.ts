@@ -171,9 +171,11 @@ const MANAGED_TOKEN_KEYS: string[] = [
 /** 混搭来源「跟随主题」哨兵值——与 app.mix* 默认值对齐（10 §1/§3 定稿） */
 export const MIX_FOLLOW_THEME = "followTheme";
 
-/** 混搭域 → 来源配置 key（与 startup.ts MIX_SOURCE_KEYS 同源）——getMixProfile 读配置 */
+/** 混搭域 → 来源配置 key（与 startup.ts MIX_SOURCE_KEYS 同源）——getMixProfile 读配置。
+ *  E5.8#82：colors 域来源并入 app.themeColor（app.mixColor 删除）——六域来源 key 对称；
+ *  recipe 模式下 themeColor 是配方内配色变体 id，仅 mix 模式作为 colors 域来源被本表消费。 */
 const MIX_DOMAIN_KEYS: Record<ThemeDomain, string> = {
-  colors: "app.mixColor",
+  colors: "app.themeColor",
   font: "app.mixFont",
   radius: "app.mixRadius",
   glass: "app.mixGlass",
@@ -414,6 +416,9 @@ export function getMixProfile(): MixProfile {
  * 重应用走 #58 缺域回退兜底回主题基线（resolveDomainSource 来源缺失 → 基础配方）。
  */
 export function isMixSourceOwner(pluginId: string): boolean {
+  // E5.8#82：colors 域来源并入 app.themeColor——recipe 模式下 themeColor 是真配色 id（非混搭来源），
+  // 不加 mixMode 门控会误判「当前主题的配色归属插件」为混搭来源（卸载重应用误触发）。混搭来源只存在于 mix 模式。
+  if (getConfigurationValue<string>("app.mixMode") !== "mix") return false;
   const profile = getMixProfile();
   for (const [domain, raw] of Object.entries(profile)) {
     const value = raw == null ? "" : String(raw);
@@ -780,6 +785,8 @@ export function getActiveRecipe(): { recipeId: string; colorwayId: string } | nu
  * 值已一致不写（防 onApply 重入死循环：写入→onApply→重应用→值已一致→停）。返回是否发生回写（测试断言）。
  */
 export function syncThemeColorConfig(recipe: ThemeRecipe): boolean {
+  // E5.8#82：mix 模式下 app.themeColor 是 colors 域来源（配方 id / "followTheme"），回写配色 id 会踩掉来源选择
+  if (getConfigurationValue<string>("app.mixMode") === "mix") return false;
   const effective = getActiveRecipe()?.colorwayId ?? recipe.colorways[0]?.id ?? "";
   if (!effective) return false;
   if (getConfigurationValue<string>("app.themeColor") === effective) return false;

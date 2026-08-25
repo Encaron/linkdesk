@@ -25,6 +25,7 @@ import {
   normalizeThemeValue,
   syncThemeColorConfig,
   APPEARANCE_OVERRIDE_KEYS,
+  MIX_FOLLOW_THEME,
 } from "../core/services/ui/ThemeEngine";
 import { ThemeRegistry } from "../core/registry/appearance/ThemeRegistry";
 import type { ThemeRecipe } from "../core/types/theme"; // E5.8#50.19：配方路径应用 helper 的类型标注
@@ -78,14 +79,17 @@ const resolveActiveRecipe = (): ThemeRecipe | undefined => {
   return id ? ThemeRegistry.getRecipe(id) : undefined;
 };
 
-/** 配方路径应用——按 themeColorMode/themeColor 解析配色 + 同步 app.themeColor 动态 enum（下拉 = 活动配方 colorways）。
+/** 配方路径应用——app.themeColor 解析配色（E5.8#82：配色域来源统一，无 themeColorMode 包装层）+ 同步动态 enum。
  *  overrides 缺省读用户外观配置（getAppearanceOverrides，applyRecipe 内置）。
  *  E5.8#70：enum 同步后回写生效配色 id——选主题后 app.themeColor 立即显示真实配色非空（bug 7 复制为空 +
- *  #60 F1.2 下拉谎报同源修复；详见 ThemeEngine.syncThemeColorConfig）。 */
+ *  #60 F1.2 下拉谎报同源修复；详见 ThemeEngine.syncThemeColorConfig）。
+ *  E5.8#82：themeColor 双语义——recipe 模式 = 配方内配色变体 id；mix 模式 = colors 域来源（配方 id / "followTheme"）。
+ *  applyRecipe 的 colorwayId 参数只对 recipe 模式有选配语义；mix 模式来源由 mergeMixDomains 按 MIX_DOMAIN_KEYS 读。 */
 const applyRecipeForConfig = (recipe: ThemeRecipe): void => {
-  const mode = (getConfigurationValue("app.themeColorMode") as string) ?? "followTheme";
   const storedColor = getConfigurationValue<string>("app.themeColor");
-  const colorwayId = mode === "custom" && storedColor ? storedColor : undefined;
+  // recipe 模式：配色变体 id（空 / 残留 "followTheme" → 配方首配色）；mix 模式：来源配方 id 被 resolveColorway
+  // 找不到 → 自然回退首配色，颜色域实际由混搭合并按来源取（两者解耦，不互踩）
+  const colorwayId = storedColor && storedColor !== MIX_FOLLOW_THEME ? storedColor : undefined;
   applyRecipe(recipe, colorwayId);
   applyAccentColor(getEffectiveAccentColor());
   updateConfigurationEnum("app.themeColor", recipe.colorways.map((c) => c.id));
@@ -96,9 +100,10 @@ const applyRecipeForConfig = (recipe: ThemeRecipe): void => {
  *  E5.8#60 F1.1：单一来源 ThemeEngine.APPEARANCE_OVERRIDE_KEYS——插件 API theme.resetAppearance 共用本表
  *  （曾只清 5 键漏 app.fontFamily → 第三方复位外观后字体不回基线，12 档案 §#60）。 */
 
-/** 混搭来源 key 全集——mixMode→mix 播种全 "followTheme"（与 ThemeEngine MIX_DOMAIN_KEYS 同源） */
+/** 混搭来源 key 全集——mixMode→mix 播种全 "followTheme"（与 ThemeEngine MIX_DOMAIN_KEYS 同源）。
+ *  E5.8#82：colors 域来源统一为 app.themeColor（app.mixColor 删除）——六域来源 key 对称。 */
 const MIX_SOURCE_KEYS = [
-  "app.mixColor", "app.mixFont", "app.mixRadius", "app.mixGlass", "app.mixBackground", "app.mixSurface",
+  "app.themeColor", "app.mixFont", "app.mixRadius", "app.mixGlass", "app.mixBackground", "app.mixSurface",
 ] as const;
 
 /** 混搭复位禁用条件——6 来源全「跟随主题」时复位按钮置灰（10 §6 决策记录 3，mockup 已实现） */
@@ -222,7 +227,7 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
       });
 
       // ── E5.8#50.19：主题组——壳注册第二配置贡献（08 §5 决策 D：pluginId "appearance"，标题「主题」）。
-      //    key 全表 = app.theme + 配色三件 + 外观六覆盖 + 混搭七键（08 §1/§6 行序 = mockup DOM 顺序）。
+      //    key 全表 = app.theme + app.themeColor（E5.8#82 配色域来源统一，themeColorMode/mixColor 已删）+ 外观六覆盖 + 混搭六键（08 §1/§6 行序 = mockup DOM 顺序）。
       //    显隐 = dependsOn 声明驱动（appearanceMode=custom 显 6 覆盖行，mixMode=mix 显 6 来源行）；
       //    播种 = 设置层永远只存用户偏离量（08 §2）——切 custom 反推播种，切回 followTheme 删覆盖回配方。
       //    app.theme 枚举 = 配方 id + flat 退路（syncAppThemeEnum 注册/注销时同步，动态配方 id 列表 08 §7.2 #1）。
@@ -249,7 +254,7 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
               const value = normalizeThemeValue(v as string) ?? (v as string);
               const recipe = ThemeRegistry.getRecipe(value);
               if (recipe) {
-                // 配方路径——按 themeColorMode/themeColor 解析配色 + 合并外观覆盖
+                // 配方路径——按 app.themeColor 解析配色（E5.8#82 配色域来源统一）+ 合并外观覆盖
                 applyRecipeForConfig(recipe);
               } else {
                 // flat 桥接——未迁移 json 名（决策 F 迁移期退路；#50.25 后仅剩配方路径）
@@ -263,32 +268,17 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
               }
             },
           },
-          "app.themeColorMode": {
-            type: "string",
-            default: "followTheme",
-            enum: ["followTheme", "custom"],
-            description: t("配色模式——跟随主题配方配色 / 手动选择配色变体"),
-            onApply: (v) => {
-              // 切 custom → 播种 app.themeColor = 活动配方首个配色 id（08 §7.2 #2）
-              if (v === "custom") {
-                const recipe = resolveActiveRecipe();
-                if (recipe?.colorways[0]?.id) {
-                  setConfigurationValue("app.themeColor", recipe.colorways[0].id, "user");
-                  updateConfigurationEnum("app.themeColor", recipe.colorways.map((c) => c.id));
-                }
-              }
-              applyThemeIfReady();
-            },
-          },
+          // E5.8#82：配色域来源统一——app.themeColor 双语义（无 themeColorMode 包装层）：
+          //   recipe 模式 = 当前配方内配色变体（optionsFrom theme.colorways，单配色主题控件自隐）；
+          //   mix 模式   = colors 域来源（壳 UI 按 app.mixMode 动态切 theme.sources + colors 域，见 renderControl select 分支）。
           "app.themeColor": {
             type: "string",
             default: "",
             description: t("配色变体——活动主题配方的可用配色"),
-            dependsOn: { key: "app.themeColorMode", value: "custom" },
-            // E5.8#50.23：动态下拉——optionsFrom 渲染时调 listRecipes 取活动配方（app.theme）配色，选项带预览色块。
             // 枚举仍由 applyRecipeForConfig 每次应用同步（第三方设置 UI 读取 + setConfigurationValue 校验）；壳 UI 走 optionsFrom 动态取。
             uiHint: "select",
             optionsFrom: "theme.colorways",
+            optionsFromDomain: "colors",
             onApply: () => applyThemeIfReady(),
           },
           "app.appearanceMode": {
@@ -392,16 +382,9 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
               // 决定按域合并路径（#50.26），不再补 applyThemeIfReady 避免二次广播
             },
           },
-          "app.mixColor": {
-            type: "string",
-            default: "followTheme",
-            description: t("配色域来源——跟随主题配方 / 指定主题配方 id"),
-            dependsOn: { key: "app.mixMode", value: "mix" },
-            uiHint: "select",
-            optionsFrom: "theme.sources",
-            optionsFromDomain: "colors",
-            onApply: () => applyThemeIfReady(),
-          },
+          // E5.8#82：colors 域来源并入 app.themeColor（app.mixColor 删除）——六域来源 key 对称，
+          // mix 模式下壳 UI 将 app.themeColor 渲染为 theme.sources + colors 域（DynamicSelect 双语义自解析：
+          // schema 静态声明 colorways+colors，运行时读 app.mixMode 决定 recipe/mix 路径，renderControl 零改动）。
           "app.mixFont": {
             type: "string",
             default: "followTheme",
@@ -536,6 +519,22 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
           console.error("[startup] app.theme 迁移/清扫落盘失败:", e);
         }
       }
+      // E5.8#82：删 themeColorMode 一次性迁移——旧 settings.json 归一：
+      //   custom     → 保留 app.themeColor 用户值（语义升级为配色域来源，值直接继承）；
+      //   followTheme → 删 app.themeColor 用户值回主题基线（不保留失效配色选择）；
+      //   随后删废弃 key 本身（引擎已不再读 app.themeColorMode）。
+      try {
+        const tcm = inspectConfiguration<string>("app.themeColorMode");
+        if (tcm.userValue !== undefined) {
+          if (tcm.userValue === "followTheme") {
+            await resetConfigurationValue("app.themeColor", "user");
+          }
+          await resetConfigurationValue("app.themeColorMode", "user");
+        }
+      } catch (e) {
+        console.error("[startup] themeColorMode 迁移失败:", e);
+      }
+
       const initLang = getConfigurationValue<string>("app.language") ?? "zh";
       setTheme(initTheme);
       setLang(initLang as "zh" | "en");

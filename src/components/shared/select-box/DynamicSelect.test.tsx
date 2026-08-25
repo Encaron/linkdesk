@@ -17,15 +17,16 @@ function getConfigStore(): Map<string, unknown> {
   return (globalThis as { __ldkConfigStore?: Map<string, unknown> }).__ldkConfigStore!;
 }
 
-/** 捕获 configuration.onChange 注册的 app.theme 回调——模拟活动配方切换 */
-function captureThemeChange(): (v: unknown) => void {
+/** 捕获 configuration.onChange 注册的某键回调——模拟运行中配置切换
+ *  （app.theme 活动配方 / app.mixMode recipe↔mix（E5.8#82 双语义）——单函数参数化防 jscpd 克隆） */
+function captureConfigChange(key: string): (v: unknown) => void {
   let captured: ((v: unknown) => void) | null = null;
   const lk = window as unknown as {
-    linkdesk?: { configuration?: { onChange: (key: string, cb: (v: unknown) => void) => () => void } };
+    linkdesk?: { configuration?: { onChange: (k: string, cb: (v: unknown) => void) => () => void } };
   };
   if (lk.linkdesk?.configuration) {
-    lk.linkdesk.configuration.onChange = ((key: string, cb: (v: unknown) => void) => {
-      if (key === "app.theme") captured = cb;
+    lk.linkdesk.configuration.onChange = ((k: string, cb: (v: unknown) => void) => {
+      if (k === key) captured = cb;
       return () => {};
     }) as typeof lk.linkdesk.configuration.onChange;
   }
@@ -138,7 +139,7 @@ describe("DynamicSelect", () => {
 
   it("colorways——app.theme 变化（onChange 订阅）→ 重取新配方配色", async () => {
     getConfigStore().set("app.theme", "demo-mint");
-    const triggerThemeChange = captureThemeChange();
+    const triggerThemeChange = captureConfigChange("app.theme");
     mockListRecipes([MINT, FOREST]);
     const { open, dropdownItems } = renderSelect({ optionsFrom: "theme.colorways" });
     open();
@@ -184,5 +185,69 @@ describe("DynamicSelect", () => {
     const items = dropdownItems();
     expect(items).toContain("Demo Forest·Gamma");
     expect(items[0]).toBe("跟随主题"); // 置顶项不被刷新破坏
+  });
+
+  /* ── E5.8#82 双语义：optionsFrom "theme.colorways" + domain "colors"（app.themeColor schema 静态声明）── */
+
+  it("#82 recipe 模式——双语义下仍走配色变体（非 mix → colorways 行为）", async () => {
+    getConfigStore().set("app.theme", "demo-mint");
+    mockListRecipes([MINT, FOREST, SERIF]);
+    const { open, dropdownItems } = renderSelect({ optionsFrom: "theme.colorways", domain: "colors" });
+    open();
+    await screen.findByText("Beta");
+    const items = dropdownItems();
+    expect(items).toContain("Alpha");
+    expect(items).toContain("Beta"); // 活动配方配色变体
+    expect(items).not.toContain("Demo Mint·Alpha"); // 非 sources 粒度
+    expect(items[0]).not.toBe("跟随主题"); // 无 sources 置顶项
+  });
+
+  it("#82 mix 模式——双语义切 sources+colors 域（每配色一选项 + 跟随主题置顶）", async () => {
+    getConfigStore().set("app.theme", "demo-mint");
+    getConfigStore().set("app.mixMode", "mix");
+    mockListRecipes([MINT, FOREST, SERIF]);
+    const { open, dropdownItems } = renderSelect({ optionsFrom: "theme.colorways", domain: "colors" });
+    open();
+    await screen.findByText("Demo Mint·Alpha");
+    const items = dropdownItems();
+    expect(items[0]).toBe("跟随主题");
+    expect(items).toContain("Demo Mint·Alpha");
+    expect(items).toContain("Demo Forest·Gamma"); // 其他 colors 域配方也可作来源
+    expect(items).not.toContain("Demo Serif"); // 只贡献 font 域——colors 行排除
+    expect(items).not.toContain("Alpha"); // 非 recipe 配色粒度
+  });
+
+  it("#82 运行中切 mixMode——recipe → mix 重取 sources（onChange 订阅）", async () => {
+    getConfigStore().set("app.theme", "demo-mint");
+    const triggerMixMode = captureConfigChange("app.mixMode");
+    mockListRecipes([MINT, FOREST]);
+    const { open, dropdownItems } = renderSelect({ optionsFrom: "theme.colorways", domain: "colors" });
+    open();
+    await screen.findByText("Alpha"); // recipe 模式配色变体
+    expect(dropdownItems()).not.toContain("Demo Mint·Alpha");
+
+    getConfigStore().set("app.mixMode", "mix");
+    triggerMixMode("mix");
+    await screen.findByText("Demo Mint·Alpha"); // 切 mix → sources 粒度
+    expect(dropdownItems()[0]).toBe("跟随主题");
+  });
+
+  it("#82 无多配色主题不显示——recipe 模式活动配方仅 1 配色 → 控件自隐（用户想法 3）", async () => {
+    getConfigStore().set("app.theme", "demo-forest"); // 单配色 Gamma
+    mockListRecipes([MINT, FOREST]);
+    const { container } = renderSelect({ optionsFrom: "theme.colorways", domain: "colors" });
+    // 异步加载完成后 options 长度 1 → DynamicSelect 返回 null（无 trigger）
+    await vi.waitFor(() =>
+      expect(container.querySelector(".selectbox-trigger")).toBeNull(),
+    );
+  });
+
+  it("#82 多配色主题仍显示——recipe 模式活动配方 2 配色 → 控件保留", async () => {
+    getConfigStore().set("app.theme", "demo-mint");
+    mockListRecipes([MINT, FOREST]);
+    const { open, container } = renderSelect({ optionsFrom: "theme.colorways", domain: "colors" });
+    open();
+    await screen.findByText("Alpha");
+    expect(container.querySelector(".selectbox-trigger")).not.toBeNull();
   });
 });
