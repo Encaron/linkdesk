@@ -8,7 +8,7 @@
       "blur": 24,
       "saturate": 1.25,
       "tint": "rgba(59, 77, 148, 0.35)",
-      "opacity": 0.55,
+      "opacity": 0.275,
       "specular": 0.6,
       "morph": 200,
       "radius": 12,

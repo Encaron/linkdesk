@@ -30,6 +30,7 @@ import {
   ensurePluginFontFacesCleanup,
   deriveAppearanceSeeds,
   deriveRadiusAbsoluteMigration,
+  deriveGlassOpacityAbsoluteMigration,
   normalizeThemeValue,
   getMixProfile,
   mergeMixDomains,
@@ -1123,6 +1124,25 @@ describe("ThemeEngine — deriveRadiusAbsoluteMigration 旧圆角倍数→绝对
   });
 });
 
+describe("ThemeEngine — deriveGlassOpacityAbsoluteMigration 旧 wash 语义→绝对透明度（E5.8#86，schemaMigrations v3）", () => {
+  it("旧 wash 1（label「1 不透明」实为 tint 0.5）→ 绝对 0.5（视觉零变化）", () => {
+    expect(deriveGlassOpacityAbsoluteMigration(1)).toEqual({ "app.glassOpacity": 0.5 });
+  });
+
+  it("旧 wash 0.5 → 绝对 0.25（tint 层 opacity 直用值，旧视觉 0.5×0.5=0.25 保持）", () => {
+    expect(deriveGlassOpacityAbsoluteMigration(0.5)).toEqual({ "app.glassOpacity": 0.25 });
+  });
+
+  it("presence 门控——旧值不存在（全新安装/从未写过）→ 零变更零写（跟随新默认 0.5）", () => {
+    expect(deriveGlassOpacityAbsoluteMigration(undefined)).toEqual({});
+  });
+
+  it("端点——旧 0 → 绝对 0（全透见背景图）；clamp 越界防御（旧值域已 0-1，×0.5 恒在域内）", () => {
+    expect(deriveGlassOpacityAbsoluteMigration(0)).toEqual({ "app.glassOpacity": 0 });
+    expect(deriveGlassOpacityAbsoluteMigration(2)).toEqual({ "app.glassOpacity": 1 });
+  });
+});
+
 describe("ThemeEngine — 混搭合并（E5.8#50.26，10 §1/§3 每域各自取来源）", () => {
   // 虚构 fixture（硬约束 21）：demo-mix 插件 + demo-recipe/demo-radius 两配方（RECIPE/RECIPE_ASSET/GLASS_VARS = 模块级共享）
   const PLUGIN = "demo-mix";
@@ -1435,7 +1455,7 @@ describe("ThemeEngine — 旧格式主题迁移新格式（E5.8#74，决策 F）
     // 旧顶层 surface → appearance.glass（ThemeSurface 全字段）
     expect(recipe!.appearance?.glass).toEqual({
       type: "glass", blur: 24, saturate: 1.25, tint: "rgba(59, 77, 148, 0.35)",
-      opacity: 0.55, specular: 0.6, morph: 200, radius: 12, inset: 1, shadow: true,
+      opacity: 0.275, specular: 0.6, morph: 200, radius: 12, inset: 1, shadow: true,
     });
     expect(recipe!.appearance?.background).toEqual({
       image: "linkdesk://theme-aurora-glass/resources/aurora-bg.svg", opacity: 0.9, mask: 0.3,
@@ -1448,7 +1468,7 @@ describe("ThemeEngine — 旧格式主题迁移新格式（E5.8#74，决策 F）
     expect(tokens["glass-blur"]).toBe("24px");
     expect(tokens["glass-saturate"]).toBe("1.25");
     expect(tokens["glass-tint"]).toBe("rgba(59, 77, 148, 0.35)");
-    expect(tokens["glass-opacity"]).toBe("0.55");
+    expect(tokens["glass-opacity"]).toBe("0.275");
     expect(tokens["glass-specular"]).toBe("0.6");
     expect(tokens["glass-morph"]).toBe("200ms");
     expect(tokens["surface-radius"]).toBe("12px");

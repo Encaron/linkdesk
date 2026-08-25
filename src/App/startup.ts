@@ -23,6 +23,7 @@ import {
   getCurrentTheme,
   deriveAppearanceSeeds,
   deriveRadiusAbsoluteMigration, // E5.8#85 补课：旧圆角倍数→绝对 px 迁移公式
+  deriveGlassOpacityAbsoluteMigration, // E5.8#86：旧 wash 语义→绝对透明度迁移公式
   normalizeThemeValue,
   syncThemeColorConfig,
   APPEARANCE_OVERRIDE_KEYS,
@@ -145,7 +146,7 @@ const seedAppearanceOverrides = (): void => {
  * 旧 settings.json 圆角倍数（1.15/1.36）在 #85 绝对化后被读成 ~1px——启动跑迁移换算为绝对 px。
  * 公式 deriveRadiusAbsoluteMigration：主题基准 token × 原始倍数（CDP 实测纠偏——不能读 effective token：
  *   post-init 时 #85 代码已把旧倍数误读应用，effective 是被污染视觉；基准 = mergeDomains 无 overrides）。
- * 未来语义切换（#86 glass / #87 清除 / #91 fontTone）在此链路 registerConfigMigration 登记——勿再手写一次性块。 */
+ * 未来语义切换（#87 清除 / #91 fontTone）在此链路 registerConfigMigration 登记——勿再手写一次性块。 */
 registerConfigMigration({
   version: 2,
   name: "E5.8#85 radius-multiplier-to-absolute-px",
@@ -157,6 +158,23 @@ registerConfigMigration({
     const recipe = active ? ThemeRegistry.getRecipe(active.recipeId) : undefined;
     const baseTokens = active && recipe ? mergeDomains(recipe, active.colorwayId || undefined) : {};
     setMany(deriveRadiusAbsoluteMigration({ surfaceRadius, zoneRadiusScale }, baseTokens));
+  },
+});
+
+// E5.8#86：glassOpacity 语义绝对化（14-档案 §五 #86）——旧 wash 语义（tint 层 opacity = 值×0.5，index.css:453）
+// 存量值换算为绝对透明度（×0.5，视觉零变化）。公式 deriveGlassOpacityAbsoluteMigration（ThemeEngine.ts 纯函数，
+//   同 #85 先例）；presence 门控：未写过（userValue undefined）→ 零变更，跟随新 schema 默认 0.5（旧默认 1 的
+//   wash 视觉恰好同值，未写用户视觉零变化）。
+// glassTint 不迁：「alpha 再降一档」是 wash ×0.5 的产物非独立颜色变换（色值直写，无压缩代码）——去 ×0.5 后
+//   有效强度自然 = 用户所选 alpha（正是 #86 定案第 2 点）。glassBlur 不迁：px 语义不变，仅每表面系数声明化。
+registerConfigMigration({
+  version: 3,
+  name: "E5.8#86 glass-opacity-wash-to-absolute",
+  migrate: async ({ setMany }) => {
+    const opacity = inspectConfiguration<number>("app.glassOpacity").userValue;
+    if (typeof opacity === "number") {
+      setMany(deriveGlassOpacityAbsoluteMigration(opacity));
+    }
   },
 });
 
@@ -358,7 +376,9 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
             default: 0,
             minimum: 0,
             maximum: 32,
-            description: t("玻璃模糊——0 关闭，数值越大背景越模糊"),
+            // E5.8#86：滑杆值 = 主表面（顶栏/主区/状态栏）真实模糊 px——消灭「显示 X 实际 Y」（A5）；
+            // 窄表面（图标栏/侧栏 0.44×）/面板（悬浮面板 1.11×）按声明式每表面系数缩放（index.css）。
+            description: t("玻璃模糊——0 关闭；数值 = 主表面真实模糊 px"),
             uiHint: "slider",
             unit: "px", // E5.8#77：值标签像素单位（mockup 16px）
             dependsOn: { key: "app.appearanceMode", value: "custom" },
@@ -367,10 +387,11 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
           "app.glassOpacity": {
             type: "number",
             group: t("外观覆盖"),
-            default: 1,
+            default: 0.5, // E5.8#86：绝对不透明度默认半透玻璃面（旧默认 1 的 wash 视觉 = 0.5，同值零变化）
             minimum: 0,
             maximum: 1,
-            description: t("玻璃不透明度——1 不透明，越小越透明"),
+            // E5.8#86：label 直述绝对语义——0 全透见背景图 / 1 全不透明（消灭 label「1 不透明」实为半透，A3/D1）
+            description: t("玻璃面不透明度——0 全透见背景 / 1 全不透明"),
             uiHint: "slider",
             dependsOn: { key: "app.appearanceMode", value: "custom" },
             onApply: () => applyThemeIfReady(),

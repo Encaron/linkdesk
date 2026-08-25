@@ -17,7 +17,7 @@
       "type": "glass",
       "blur": 0,
       "saturate": 1,
-      "opacity": 1,
+      "opacity": 0.5,
       "specular": 0.4,
       "morph": 200,
       "radius": 999,

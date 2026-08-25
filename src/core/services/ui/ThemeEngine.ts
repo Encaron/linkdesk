@@ -1129,6 +1129,22 @@ export function deriveRadiusAbsoluteMigration(
   return out;
 }
 
+/**
+ * E5.8#86：旧 glassOpacity wash 语义 → 绝对透明度迁移公式（纯函数只算不改，测试直测）。
+ * 旧语义（#66）：tint 层 opacity = glassOpacity × 0.5（index.css:453 wash 隐藏乘数）——label「1 不透明」
+ * 实为半透明（bug 6）。新语义（#86 定案）：glassOpacity = 玻璃面绝对不透明度 0→1，tint 层 opacity 直用值。
+ * 迁移公式 = 旧值 × 0.5（旧视觉 1×0.5=0.5 → 新值 0.5；视觉零变化）。
+ * presence 门控：旧值不存在（全新安装 / 用户从未写过）→ 零变更零写（跟随新 schema 默认 0.5——旧默认 1 的
+ *   wash 视觉恰好同值，未写用户视觉零变化）。
+ * 幂等：与 #85 不同（#85 读基准 token × 倍数不可靠自检），本公式纯值换算，正确性依赖 schemaMigrations
+ *   版本标志（v3 写入即不再重跑；原子失败零落盘 → 下次重试读旧值再换算，幂等成立）。
+ * 调用方：schemaMigrations.registerConfigMigration 登记（version 3），startup post-init 跑。
+ */
+export function deriveGlassOpacityAbsoluteMigration(userOpacity?: number): Record<string, unknown> {
+  if (userOpacity === undefined) return {};
+  return { "app.glassOpacity": Math.min(Math.max(userOpacity * 0.5, 0), 1) };
+}
+
 /** 设置层外观覆盖配置 key 全集——appearanceMode=custom 播种存这 9 键、reset 摘除这 9 键回主题基线（08 §7.2/§7.3.5）。
  *  单一来源：getAppearanceOverrides 读同键（glass 两键 presence 门控 / 其余空值不覆盖，见下）。
  *  E5.8#60 F1.1：壳命令（startup appearanceMode onApply）与插件 API（theme.resetAppearance）复位共用本表——

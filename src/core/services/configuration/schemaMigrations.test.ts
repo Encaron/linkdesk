@@ -45,6 +45,7 @@ const RADIUS_CONFIG: ConfigurationContribution = {
   properties: {
     "app.surfaceRadius": { type: "number", default: 0, description: "组件圆角" },
     "app.zoneRadiusScale": { type: "number", default: 0, description: "分区圆角" },
+    "app.glassOpacity": { type: "number", default: 0.5, description: "玻璃面不透明度" }, // E5.8#86：v3 迁移目标键
   },
 };
 
@@ -159,5 +160,43 @@ describe("schemaMigrations — 版本编排（E5.8#85 补课）", () => {
     expect(await runPendingConfigMigrations()).toBe(true); // 新版 migrate 通过 → 标记
     expect(getConfigSchemaVersion()).toBe(2);
     expect(await runPendingConfigMigrations()).toBe(false); // 无待执行
+  });
+
+  it("E5.8#86 v3 glass 迁移——存量 wash 语义 ×0.5 → 绝对透明度 + 版本升 3；未写零变更仍标记（编排骨架，公式单测在 ThemeEngine.test）", async () => {
+    // 用户旧 settings.json 显式写过 wash 语义值（v2 时代 schema default 1，用户拖到 1）
+    await setConfigurationValueBatch([{ key: "app.glassOpacity", value: 1 }]);
+    registerConfigMigration({
+      version: 3,
+      name: "glass-opacity-wash-to-absolute",
+      migrate: async ({ setMany }) => {
+        const opacity = inspectConfiguration<number>("app.glassOpacity").userValue;
+        if (typeof opacity === "number") setMany({ "app.glassOpacity": opacity * 0.5 });
+      },
+    });
+
+    expect(await runPendingConfigMigrations()).toBe(true);
+    expect(getConfigurationValue("app.glassOpacity")).toBe(0.5); // 旧 1 → 绝对 0.5
+    expect(getConfigSchemaVersion()).toBe(3);
+    // 再跑零变更——版本已到，迁移不重跑（值不被二次 ×0.5）
+    expect(await runPendingConfigMigrations()).toBe(false);
+    expect(getConfigurationValue("app.glassOpacity")).toBe(0.5);
+  });
+
+  it("E5.8#86 v3 glass 迁移——未写过（presence skip）→ 零变更零写但仍标记已迁（全新安装不重复跑）", async () => {
+    let ran = 0;
+    registerConfigMigration({
+      version: 3,
+      name: "glass-opacity-wash-to-absolute",
+      migrate: async ({ setMany }) => {
+        ran += 1;
+        const opacity = inspectConfiguration<number>("app.glassOpacity").userValue;
+        if (typeof opacity === "number") setMany({ "app.glassOpacity": opacity * 0.5 });
+      },
+    });
+
+    expect(await runPendingConfigMigrations()).toBe(true);
+    expect(ran).toBe(1);
+    expect(inspectConfiguration("app.glassOpacity").userValue).toBeUndefined(); // 零变更——跟随新 schema 默认 0.5
+    expect(getConfigSchemaVersion()).toBe(3);
   });
 });
