@@ -448,6 +448,8 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
           // E5.8#97：域驱动重组——数值域来源删键（mixRadius/mixGlass 死键，#85/#86 绝对化后混搭数值域
           // 无意义）→ 圆角/玻璃两小组无来源行；资产域来源并入域小组（mixBackground/mixFont/mixSurface
           // 是配方资产唯一入口——字体拾取器选不了 __ld_ 资产族 #50.20）。行序 = mockup DOM 顺序。
+          // E5.8#97 撤销（2026-08-26 用户拍板）：mockup ⑧ 表面分节删除——纹理=主题插件内容资产，
+          // 壳无纹理槽；mixSurface 并入背景小组（域来源随域，surface 域视觉输出 = zone 表面材质）。
           "app.surfaceRadius": {
             type: "number",
             group: t("圆角"),
@@ -672,31 +674,21 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
             dependsOn: { key: "app.appearanceMode", value: "custom" },
             onApply: () => debouncedApplyThemeIfReady(),
           },
-          // E5.8#97：表面域来源并入表面小组（配方表面纹理资产唯一入口，拾取器无资产族 #50.20 边界）。
+          // E5.8#97 撤销（2026-08-26 用户拍板）：表面平铺纹理覆盖槽 app.surfaceTexture 删除——
+          // 纹理 = 主题插件内容资产（Paper Zones 纸纹/某主题磨砂 = 主题特色），壳不提供纹理通道；
+          // 用户换纹理 = 换主题（Content vs Space Ownership，14-档案 §十一 补记）。主题侧
+          // surface.texture 机制保留（主题作者写材质用）。表面域来源行并入背景小组（域来源随域，
+          // 与 mixBackground 同列；surface 域视觉输出 = zone 表面材质 = 背景相邻，且与
+          // zoneBackgroundImage 同写 --surface-bg-image——相关控件同组）。
           "app.mixSurface": {
             type: "string",
-            group: t("表面"),
+            group: t("背景"),
             default: "followTheme",
             description: t("表面域来源——跟随主题配方 / 指定主题配方 id"),
             dependsOn: { key: "app.appearanceMode", value: "custom" },
             uiHint: "select",
             optionsFrom: "theme.sources",
             optionsFromDomain: "surface",
-            onApply: () => debouncedApplyThemeIfReady(),
-          },
-          // E5.8#97：表面平铺纹理覆盖槽——image 控件选图写 --surface-bg-image（repeat 平铺语义，
-          // 镜像主题 surface.texture 机制；mockup ⑧ 表面区纹理槽）。与 zoneBackgroundImage（zones 切片
-          // no-repeat）并存不互斥：本键平铺全表面、彼键浮各 zone 表面；两者都设 → 纹理胜出
-          // （getAppearanceOverrides 本键靠后覆盖同 key）。空 = 跟随主题纹理；无纹理 = 绝对无纹理。
-          // 消费 = getAppearanceOverrides → surface-bg-image + repeat + zones=0（停池侧量测）。
-          "app.surfaceTexture": {
-            type: "string",
-            group: t("表面"),
-            default: "",
-            // E5.8#87 哨兵同契约：无纹理（__none__）= 绝对无纹理（盖掉主题/mix 纹理）；空 = 跟随主题
-            description: t("表面纹理图片路径——空 = 主题自带；无纹理 = 绝对无纹理"),
-            uiHint: "image",
-            dependsOn: { key: "app.appearanceMode", value: "custom" },
             onApply: () => debouncedApplyThemeIfReady(),
           },
           // 复位按钮（10 §2/§6 决策记录 3）——renderHint "action" 渲染操作按钮；

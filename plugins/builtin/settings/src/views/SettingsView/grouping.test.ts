@@ -39,7 +39,7 @@ describe("groupSettingsKeys — E5.8#78 组内二级标题归桶", () => {
     expect(buckets).toEqual([{ group: "", keys: ["k1", "k2"] }]);
   });
 
-  it("主题组 9 分节全量归位——每个分节桶 key 正确（域驱动重组：外观覆盖/域混搭 两旧分节拆散——数值域来源删键、资产域来源并入域小组）", () => {
+  it("主题组 8 分节全量归位——每个分节桶 key 正确（域驱动重组：外观覆盖/域混搭 两旧分节拆散——数值域来源删键、资产域来源并入域小组；#97 撤销后无表面分节，mixSurface 并入背景）", () => {
     const buckets = groupSettingsKeys(
       [
         "app.theme",
@@ -63,7 +63,6 @@ describe("groupSettingsKeys — E5.8#78 组内二级标题归桶", () => {
         "app.zoneRadiusScale",
         "app.zoneBackgroundImage",
         "app.mixSurface",
-        "app.surfaceTexture",
         "app.mixReset",
       ],
       (k) => {
@@ -72,26 +71,24 @@ describe("groupSettingsKeys — E5.8#78 组内二级标题归桶", () => {
         if (k === "app.accentColor") return "强调色";
         if (["app.surfaceRadius", "app.zoneRadius", "app.zoneRadiusScale"].includes(k)) return "圆角";
         if (["app.glassBlur", "app.glassOpacity", "app.glassTint", "app.glassSaturate"].includes(k)) return "玻璃";
-        if (["app.mixBackground", "app.backgroundImage", "app.backgroundOpacity", "app.backgroundMask", "app.zoneBackgroundImage"].includes(k)) return "背景";
+        if (["app.mixBackground", "app.backgroundImage", "app.backgroundOpacity", "app.backgroundMask", "app.zoneBackgroundImage", "app.mixSurface"].includes(k)) return "背景";
         if (["app.fontTone", "app.mixFont", "app.fontFamily", "app.fontFamilyMono"].includes(k)) return "文字";
-        if (["app.mixSurface", "app.surfaceTexture"].includes(k)) return "表面";
         if (k === "app.mixReset") return "复位";
         return "";
       }
     );
     expect(buckets.map((b) => b.group)).toEqual([
-      "整体配方", "配色", "强调色", "圆角", "玻璃", "背景", "文字", "表面", "复位",
+      "整体配方", "配色", "强调色", "圆角", "玻璃", "背景", "文字", "复位",
     ]);
     expect(buckets[0].keys).toEqual(["app.theme", "app.appearanceMode"]); // 主开关与主题配方同节
     expect(buckets[3].keys).toEqual(["app.surfaceRadius", "app.zoneRadius", "app.zoneRadiusScale"]);
     expect(buckets[4].keys).toEqual(["app.glassBlur", "app.glassOpacity", "app.glassTint", "app.glassSaturate"]);
     expect(buckets[5].keys).toEqual([
       "app.mixBackground", "app.backgroundImage", "app.backgroundOpacity",
-      "app.backgroundMask", "app.zoneBackgroundImage",
+      "app.backgroundMask", "app.zoneBackgroundImage", "app.mixSurface",
     ]);
     expect(buckets[6].keys).toEqual(["app.fontTone", "app.mixFont", "app.fontFamily", "app.fontFamilyMono"]);
-    expect(buckets[7].keys).toEqual(["app.mixSurface", "app.surfaceTexture"]);
-    expect(buckets[8].keys).toEqual(["app.mixReset"]);
+    expect(buckets[7].keys).toEqual(["app.mixReset"]);
   });
 
   it("空输入 → 空数组", () => {

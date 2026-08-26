@@ -1105,7 +1105,6 @@ export interface AppearanceSeedValues {
   backgroundImage: string;
   fontFamily: string;
   zoneBackgroundImage: string; // E5.8#81：zone 表面背景覆盖（zones 模式才播种）
-  surfaceTexture: string; // E5.8#97：表面平铺纹理覆盖（repeat 纹理才播种，zones 切片不抢）
   backgroundOpacity: number; // E5.8#94：背景图不透明度（缺省 1 = 原图）
   backgroundMask: number; // E5.8#94：背景遮罩明暗（缺省 0 = 无遮罩）
   fontFamilyMono: string; // E5.8#95：等宽字体（缺省空 = 跟随主题）
@@ -1130,12 +1129,6 @@ export function deriveAppearanceSeeds(tokens: Record<string, string>): Appearanc
   const zoneBgPath = zoneBg && zoneBg !== "none" && tokens["surface-bg-zones"] === "1"
     ? zoneBg.replace(/^url\(["']?/, "").replace(/["']?\)$/, "")
     : "";
-  // E5.8#97：表面纹理播种——仅平铺纹理（surface-bg-repeat=repeat）反推 surface-bg-image；
-  // zones 切片（repeat=no-repeat）归 zoneBackgroundImage 槽，纹理槽空 = 跟随主题（不抢切片语义）。
-  const surfaceTex = tokens["surface-bg-image"];
-  const surfaceTexPath = surfaceTex && surfaceTex !== "none" && tokens["surface-bg-repeat"] === "repeat"
-    ? surfaceTex.replace(/^url\(["']?/, "").replace(/["']?\)$/, "")
-    : "";
   return {
     surfaceRadius: clampRadiusPx(parseFloat(tokens["radius-md"] ?? "0")),
     zoneRadiusPx: clampRadiusPx(parseFloat(tokens["surface-radius"] ?? "0")),
@@ -1145,7 +1138,6 @@ export function deriveAppearanceSeeds(tokens: Record<string, string>): Appearanc
     backgroundImage: bgPath,
     fontFamily: fam && !fam.startsWith("__ld_") ? fam : "",
     zoneBackgroundImage: zoneBgPath,
-    surfaceTexture: surfaceTexPath,
     // E5.8#94/#95/#96：镜像补槽播种——缺省 neutral（bg-opacity 1 / bg-mask 0 / mono 空 = 跟随主题 / saturate 1）
     backgroundOpacity: parseFloat(tokens["bg-opacity"] ?? "1") || 0,
     backgroundMask: parseFloat(tokens["bg-mask"] ?? "0") || 0,
@@ -1189,7 +1181,6 @@ export function deriveAppearanceSeedMap(tokens: Record<string, string>): Record<
     "app.zoneRadius": true,
     "app.zoneRadiusScale": seeds.zoneRadiusPx,
     "app.zoneBackgroundImage": seeds.zoneBackgroundImage,
-    "app.surfaceTexture": seeds.surfaceTexture,
     // E5.8#94/#95/#96：镜像补槽键（同一映射——播种/徽标基准/切主题重播种全走这里）
     "app.backgroundOpacity": seeds.backgroundOpacity,
     "app.backgroundMask": seeds.backgroundMask,
@@ -1288,13 +1279,13 @@ export function resolveMergedAppearanceMode(legacy: {
  *  E5.8#81：+app.zoneBackgroundImage——zone 表面背景覆盖（与全窗 --bg-image 并存）。
  *  E5.8#94/#95/#96：+app.backgroundOpacity/app.backgroundMask/app.fontFamilyMono/app.glassSaturate——
  *  镜像补槽键（13 覆盖键全集；种子/复位/插件 reset/重播种计划单写点同表）。
- *  E5.8#97：+app.surfaceTexture——表面平铺纹理覆盖（repeat 语义，镜像 zoneBackgroundImage 结构）。 */
+ *  E5.8#97 撤销（2026-08-26 用户拍板）：app.surfaceTexture 曾入本表，撤——纹理=主题插件内容资产，
+ *  壳不提供纹理通道（14-档案 §十一 补记）。 */
 export const APPEARANCE_OVERRIDE_KEYS = [
   "app.surfaceRadius", "app.glassBlur", "app.glassOpacity",
   "app.glassTint", "app.backgroundImage", "app.fontFamily",
   "app.zoneRadius", "app.zoneRadiusScale", "app.zoneBackgroundImage",
   "app.backgroundOpacity", "app.backgroundMask", "app.fontFamilyMono", "app.glassSaturate",
-  "app.surfaceTexture",
 ] as const;
 
 /** E5.8#87：配置「绝对无」哨兵值——app.backgroundImage/zoneBackgroundImage/fontFamily 显式无 = 不跟随主题（真无图/系统字体）。
@@ -1377,26 +1368,6 @@ export function getAppearanceOverrides(): Record<string, string> {
         overrides["surface-bg-image"] = `url("${resolvedZone}")`;
         overrides["surface-bg-repeat"] = "no-repeat";
         overrides["surface-bg-zones"] = "1";
-      }
-    }
-  }
-
-  // E5.8#97：表面平铺纹理覆盖——app.surfaceTexture 写 --surface-bg-image（repeat 平铺语义，镜像
-  // surfaceVariables 主题纹理机制）。空 = 不写任何键（跟随主题纹理）；__none__ = 绝对无纹理（真无图，
-  // 盖掉主题/mix 纹理与 zones 切片）+ zones 量测关（纹理非切片，surface-bg-zones=0 停池侧量测）。
-  // 与 zoneBackgroundImage 同写 --surface-bg-image：本键声明靠后 → 冲突时纹理胜出（用户最后意图）。
-  const surfaceTexture = getConfigurationValue<string>("app.surfaceTexture");
-  if (surfaceTexture != null && String(surfaceTexture).trim() !== "") {
-    const trimmedTex = String(surfaceTexture).trim();
-    if (trimmedTex === CONFIG_NONE_SENTINEL) {
-      overrides["surface-bg-image"] = "none";
-      overrides["surface-bg-zones"] = "0";
-    } else {
-      const resolvedTex = resolveBackgroundImageUrl(trimmedTex);
-      if (resolvedTex) {
-        overrides["surface-bg-image"] = `url("${resolvedTex}")`;
-        overrides["surface-bg-repeat"] = "repeat";
-        overrides["surface-bg-zones"] = "0";
       }
     }
   }

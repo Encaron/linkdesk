@@ -676,50 +676,6 @@ describe("ThemeEngine — 外观覆盖 getAppearanceOverrides（E5.8#50.10）", 
     expect(root.style.getPropertyValue("--bg-image")).toBe("none"); // 无全窗背景
   });
 
-  /* ── E5.8#97 表面平铺纹理覆盖槽——app.surfaceTexture（写 surface-bg-image repeat 平铺，镜像主题 surface.texture 机制）── */
-
-  it("#97 surfaceTexture 非空路径 → surface-bg-image + repeat + zones 0（平铺语义停 zones 量测）", () => {
-    applyRemoteConfigChange("app.surfaceTexture", "linkdesk-userdata://appearance/tex.png");
-    const overrides = getAppearanceOverrides();
-    expect(overrides["surface-bg-image"]).toBe('url("linkdesk-userdata://appearance/tex.png")');
-    expect(overrides["surface-bg-repeat"]).toBe("repeat");
-    expect(overrides["surface-bg-zones"]).toBe("0");
-  });
-
-  it("#97 surfaceTexture 空 → 不写 surface-bg-*（跟随主题纹理）", () => {
-    applyRemoteConfigChange("app.surfaceTexture", "");
-    const overrides = getAppearanceOverrides();
-    expect(overrides["surface-bg-image"]).toBeUndefined();
-    expect(overrides["surface-bg-repeat"]).toBeUndefined();
-    expect(overrides["surface-bg-zones"]).toBeUndefined();
-  });
-
-  it("#97 surfaceTexture __none__ → surface-bg-image none + zones 0（绝对无纹理盖掉主题/mix 纹理）", () => {
-    applyRemoteConfigChange("app.surfaceTexture", "__none__");
-    const overrides = getAppearanceOverrides();
-    expect(overrides["surface-bg-image"]).toBe("none");
-    expect(overrides["surface-bg-zones"]).toBe("0");
-  });
-
-  it("#97 surfaceTexture 与 zoneBackgroundImage 同设 → 纹理胜出（getAppearanceOverrides 靠后覆盖同 key）", () => {
-    applyRemoteConfigChange("app.zoneBackgroundImage", "linkdesk-userdata://appearance/zone-bg.png");
-    applyRemoteConfigChange("app.surfaceTexture", "linkdesk-userdata://appearance/tex.png");
-    const overrides = getAppearanceOverrides();
-    expect(overrides["surface-bg-image"]).toBe('url("linkdesk-userdata://appearance/tex.png")');
-    expect(overrides["surface-bg-repeat"]).toBe("repeat");
-    expect(overrides["surface-bg-zones"]).toBe("0");
-  });
-
-  it("#97 applyRecipe——surfaceTexture 覆盖胜主题纹理（surface-bg-image 换用户纹理 + repeat）", () => {
-    applyRemoteConfigChange("app.surfaceTexture", "linkdesk-userdata://appearance/tex.png");
-    applyRecipe(ZONE_RECIPE);
-    const root = document.documentElement;
-    expect(root.style.getPropertyValue("--surface-bg-image"))
-      .toBe('url("linkdesk-userdata://appearance/tex.png")');
-    expect(root.style.getPropertyValue("--surface-bg-repeat")).toBe("repeat");
-    expect(root.style.getPropertyValue("--surface-bg-zones")).toBe("0");
-  });
-
   it("E5.8#56 审计#2——glassBlur 显式拖到 0（端点，presence）→ glass-blur 覆盖 0px（模糊真关）", () => {
     applyRemoteConfigChange("app.glassBlur", 0);
     expect(getAppearanceOverrides()["glass-blur"]).toBe("0px");
@@ -774,14 +730,13 @@ describe("ThemeEngine — 外观覆盖 getAppearanceOverrides（E5.8#50.10）", 
     expect(document.documentElement.style.getPropertyValue("--glass-blur")).toBe("15px");
   });
 
-  it("E5.8#60 F1.1——APPEARANCE_OVERRIDE_KEYS = 全 14 键含 app.fontFamily（单一来源防回归；#80/#81 +zone 三键；#94/#95/#96 镜像补槽四键；#97 +surfaceTexture）", () => {
+  it("E5.8#60 F1.1——APPEARANCE_OVERRIDE_KEYS = 全 13 键含 app.fontFamily（单一来源防回归；#80/#81 +zone 三键；#94/#95/#96 镜像补槽四键；#97 撤销后无 surfaceTexture）", () => {
     // 设置层外观覆盖 key 全集——壳命令（startup appearanceMode onApply）与插件 API（theme.resetAppearance）复位共用
     expect([...APPEARANCE_OVERRIDE_KEYS]).toEqual([
       "app.surfaceRadius", "app.glassBlur", "app.glassOpacity",
       "app.glassTint", "app.backgroundImage", "app.fontFamily",
       "app.zoneRadius", "app.zoneRadiusScale", "app.zoneBackgroundImage",
       "app.backgroundOpacity", "app.backgroundMask", "app.fontFamilyMono", "app.glassSaturate",
-      "app.surfaceTexture",
     ]);
     // 每键确与 getAppearanceOverrides 读的配置键对齐（写多了 reset 摘不到、写少了残留覆盖）
     expect(APPEARANCE_OVERRIDE_KEYS).toContain("app.fontFamily"); // 插件侧旧表漏此键 → 复位后字体不回基线
@@ -794,8 +749,8 @@ describe("ThemeEngine — 外观覆盖 getAppearanceOverrides（E5.8#50.10）", 
     expect(APPEARANCE_OVERRIDE_KEYS).toContain("app.backgroundMask");
     expect(APPEARANCE_OVERRIDE_KEYS).toContain("app.fontFamilyMono");
     expect(APPEARANCE_OVERRIDE_KEYS).toContain("app.glassSaturate");
-    // E5.8#97 表面纹理槽——reseed 计划/复位必须覆盖（写少了残留覆盖盖住主题纹理）
-    expect(APPEARANCE_OVERRIDE_KEYS).toContain("app.surfaceTexture");
+    // E5.8#97 撤销（2026-08-26 用户拍板）——app.surfaceTexture 不入本表（纹理=主题插件内容资产，壳无纹理槽）
+    expect(APPEARANCE_OVERRIDE_KEYS).not.toContain("app.surfaceTexture");
   });
 
   /* ── E5.8#94/#95/#96 镜像补槽覆盖读取——主题可表达属性 ⇒ 设置面必有槽（14-档案 §十）── */
@@ -1320,23 +1275,6 @@ describe("ThemeEngine — deriveAppearanceSeeds 反推播种（E5.8#50.19，08 �
     expect(deriveAppearanceSeeds({}).zoneBackgroundImage).toBe("");
   });
 
-  it("E5.8#97 surfaceTexture——repeat 平铺（surface-bg-repeat=repeat）反推剥 url() 存路径", () => {
-    const seeds = deriveAppearanceSeeds({
-      "surface-bg-image": 'url("linkdesk-userdata://appearance/tex.png")',
-      "surface-bg-repeat": "repeat",
-    });
-    expect(seeds.surfaceTexture).toBe("linkdesk-userdata://appearance/tex.png");
-  });
-
-  it("E5.8#97 surfaceTexture——zones 模式/绝对无/none/缺省 → 播种空（不把 zones 切片或显式 none 错播成平铺纹理）", () => {
-    // zones 模式：surface-bg-image 有值但 repeat 非 repeat（no-repeat zones 切片）——播种空 = 跟随主题
-    const zones = deriveAppearanceSeeds({ "surface-bg-image": 'url("...")', "surface-bg-repeat": "no-repeat" });
-    expect(zones.surfaceTexture).toBe("");
-    // none/缺省 → 空
-    expect(deriveAppearanceSeeds({ "surface-bg-image": "none", "surface-bg-repeat": "repeat" }).surfaceTexture).toBe("");
-    expect(deriveAppearanceSeeds({}).surfaceTexture).toBe("");
-  });
-
   it("字体播种跳过资产族（__ld_ 前缀只显示不选，#50.20 边界）；系统族名直播", () => {
     expect(deriveAppearanceSeeds({ "font-ui": "SimSun" }).fontFamily).toBe("SimSun");
     expect(deriveAppearanceSeeds({ "font-ui": "__ld_demo-plugin_serif" }).fontFamily).toBe("");
@@ -1359,7 +1297,7 @@ describe("ThemeEngine — E5.8#88 切主题重播种 + 徽标基准（deriveAppe
     applyTheme(MOCK_THEME);
   });
 
-  it("deriveAppearanceSeedMap — 14 覆盖键 → 种子值全集映射（键=配置 key，单写点）", () => {
+  it("deriveAppearanceSeedMap — 13 覆盖键 → 种子值全集映射（键=配置 key，单写点）", () => {
     const map = deriveAppearanceSeedMap({
       "radius-md": "8px",
       "surface-radius": "10px",
@@ -1386,8 +1324,6 @@ describe("ThemeEngine — E5.8#88 切主题重播种 + 徽标基准（deriveAppe
       "app.backgroundMask": 0,
       "app.fontFamilyMono": "",
       "app.glassSaturate": 1,
-      // E5.8#97 surfaceTexture——zones 模式（repeat≠repeat）→ 播种空
-      "app.surfaceTexture": "",
     });
     // 缺省 token → 零值/空（不抛）——zoneBackgroundImage 需 zones=1
     const empty = deriveAppearanceSeedMap({});
@@ -1400,7 +1336,7 @@ describe("ThemeEngine — E5.8#88 切主题重播种 + 徽标基准（deriveAppe
     expect(empty["app.backgroundMask"]).toBe(0);
     expect(empty["app.fontFamilyMono"]).toBe("");
     expect(empty["app.glassSaturate"]).toBe(1);
-    expect(empty["app.surfaceTexture"]).toBe("");
+    expect(empty["app.surfaceTexture"]).toBeUndefined();
   });
 
   it("deriveReseedPlan — 未修改（无 stored）→ 反推新基准填标尺；新旧同值跳过", () => {
