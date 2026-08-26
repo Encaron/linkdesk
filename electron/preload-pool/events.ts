@@ -51,8 +51,11 @@ ipcRenderer.on(IPC.pool.ping, () => {
 // pool 侧 theme:changed 此前只 setProperty 新变量、从不清理 → 切主题后文档根残留旧主题键
 // （bubble surface-radius:999 切 dark 不恢复、极光玻璃深紫顶栏残留、宋体残留 = 用户痛点 3/4/6）。
 // 用户所见全在 pool WCV，池侧残留即永久显示（无 :root 变体兜底）——必须同机制差集清理。
-// 边界：`--surface-<zone>-bg-position`/`--surface-bg-size`/`--surface-bg-zones` 由 surface-zones
-// 自写、不在广播 variables 键集内，差集天然隔离不误删。
+// 边界（E5.8 Phase 11.15 R3 根治后）：`--surface-<zone>-bg-position`/`--surface-bg-size` 由
+// surface-zones 自写自清（唯一所有者）、不在广播 variables 键集内，差集天然隔离不误删；
+// `--surface-bg-zones`/`--surface-bg-image`/`--surface-bg-repeat` 归壳引擎广播（zones 标记），
+// 在广播键集内、被差集正常管理。旧注释曾称三组键全不在广播——错（R3 前 size/position 正因
+// 在广播里才被每次重应用覆盖、盖掉池侧量测坐标，此即切片错位根因）。
 let _lastPoolThemeKeys: string[] | null = null;
 
 // E5.8#89 E2：zones 量测触发签名——surface-bg-zones/image/repeat 三键不变 = 量测结果不会变，

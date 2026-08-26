@@ -153,7 +153,9 @@ describe("ThemeEngine — 旧格式主题迁移新格式（E5.8#74，决策 F）
     expect(tokens["surface-bg-zones"]).toBe("1");
     expect(tokens["surface-bg-opacity"]).toBe("0.95");
     expect(tokens["bg-image"]).toBe("none"); // zones 模式——全窗层零值（图只挂 zone 表面）
-    expect(tokens["bg-window"]).toBe("#12100C");
+    // E5.8 Phase 11.15（R4）：配色半透明化（RGB 不变只加 alpha 0.55）——切片图透出，不再实心棕盖死
+    expect(tokens["bg-window"]).toBe("rgba(18, 16, 12, 0.55)");
+    expect(tokens["bg-card"]).toBe("rgba(27, 24, 19, 0.55)");
     expect(tokens["accent"]).toBe("#E8923C");
   });
 

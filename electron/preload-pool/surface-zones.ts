@@ -6,6 +6,10 @@
  * 相邻 zone 拼回连续图）；#50.31 ResizeObserver 监听窗口 resize / 布局变化（侧栏折叠、
  * 脱出窗缩放）→ 重算重写。
  *
+ * E5.8 Phase 11.15（R3 根治）：`--surface-bg-size`/`--surface-<zone>-bg-position` 是本模块
+ * 唯一所有（写/清同源）——壳引擎 SURFACE_ZERO 不再包含这两组键，每次重应用不再覆盖量测值；
+ * 退出 zones 模式对称自清（见 clearZoneMeasurements）。
+ *
  * 放 preload-pool 因：壳 ThemeEngine 单实例广播全窗、无法知每窗像素尺寸；zone rect 只
  * 存在于渲染层 DOM（壳侧无布局像素坐标）。引擎保持纯函数承诺（不订阅事件/不碰 DOM）。
  * 依赖方向：events → surface-zones（theme:changed 注入后按标记门控调用）。零反向依赖。
@@ -23,6 +27,21 @@ const ZONE_SELECTORS: ReadonlyArray<{ key: string; selector: string }> = [
   { key: "panel-zone", selector: ".panel-zone" },
   { key: "status-bar", selector: ".status-bar" },
 ];
+
+/** E5.8 Phase 11.15（R3 根治）：本模块量测写入的全部键——写/清同源（对称所有权）。
+    壳引擎 SURFACE_ZERO 已移除这两组键，池侧是唯一所有者：量测写、退出 zones 自清，
+    否则残留量测值会把纹理拉成整窗大小/负偏移错位（zones→纹理主题切换回归）。 */
+const ZONE_MEASURED_KEYS: readonly string[] = [
+  "surface-bg-size",
+  ...ZONE_SELECTORS.map(({ key }) => `surface-${key}-bg-position`),
+];
+
+/** zones 退出自清——removeProperty 掉本模块量测写入的全部键（写/清同源防漂移） */
+function clearZoneMeasurements(root: HTMLElement): void {
+  for (const key of ZONE_MEASURED_KEYS) {
+    root.style.removeProperty(`--${key}`);
+  }
+}
 
 /** zones 模式活跃 = 文档根内联样式里有 `--surface-bg-zones: 1`（壳 applyTheme 广播注入）。
     `--${k}` 注入惯例——SURFACE_ZERO 恒写 zones: "0"，非 zones 主题自动清标记。 */
@@ -57,6 +76,9 @@ export function measureSurfaceZones(): void {
   const root = document.documentElement;
   if (!isZonesMode(root)) {
     cancelRetry();
+    // E5.8 Phase 11.15（R3/R6）：退出 zones 自清——壳引擎不再写/广播 size+position，
+    // 池侧是唯一所有者，对称清掉上次量测值（zones→纹理主题切换防残留）。
+    clearZoneMeasurements(root);
     return;
   }
 

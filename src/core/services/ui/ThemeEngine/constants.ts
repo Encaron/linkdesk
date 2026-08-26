@@ -25,17 +25,14 @@ export const SURFACE_ZERO: Record<string, string> = {
   "surface-inset": "0px",
   "surface-shadow": "none",
   /* E5.8#50.28/50.29：per-surface 背景零值——纹理（repeat 平铺）/影像切片（no-repeat + 负偏移）共用。
-     --surface-bg-zones: 1 标记 zones 模式（池侧 preload 按此门控量测本窗切片坐标，见 preload-pool/surface-zones） */
+     --surface-bg-zones: 1 标记 zones 模式（池侧 preload 按此门控量测本窗切片坐标，见 preload-pool/surface-zones）。
+     E5.8 Phase 11.15（R3 根治）：--surface-bg-size / --surface-<zone>-bg-position 不在零值集——切片坐标
+     由池侧 surface-zones 自写自清（唯一所有者，见 preload-pool/surface-zones.ts），壳引擎不写不广播，
+     否则每次重应用覆盖池侧量测值（拖滑杆后切片错位须 resize 才恢复）。CSS 消费端 var(--…, fallback) 兜底。 */
   "surface-bg-image": "none",
   "surface-bg-repeat": "no-repeat",
   "surface-bg-opacity": "1",
-  "surface-bg-size": "auto",
   "surface-bg-zones": "0",
-  "surface-titlebar-bg-position": "0 0",
-  "surface-icon-bar-bg-position": "0 0",
-  "surface-side-panel-bg-position": "0 0",
-  "surface-main-zone-bg-position": "0 0",
-  "surface-status-bar-bg-position": "0 0",
 };
 
 export const BACKGROUND_ZERO: Record<string, string> = {

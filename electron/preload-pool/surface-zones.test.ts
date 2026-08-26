@@ -82,4 +82,17 @@ describe("surface-zones 收敛判据（E5.8#62 审计#3）", () => {
     vi.advanceTimersByTime(4000); // 超过 15×200ms 封顶
     expect(vi.getTimerCount()).toBe(0);
   });
+
+  it("E5.8 Phase 11.15（R6 防回归）——退出 zones 自清全部量测键（size + 每 zone 位置）", () => {
+    setupZones("titlebar", "main-zone");
+    measureSurfaceZones();
+    expect(zonePos("titlebar")).toBe("0px 0px");
+    expect(document.documentElement.style.getPropertyValue("--surface-bg-size")).not.toBe("");
+    // 退出 zones——壳引擎不再写/广播坐标键，池侧唯一所有者对称自清（残留会拉大纹理/错位）
+    document.documentElement.style.removeProperty("--surface-bg-zones");
+    measureSurfaceZones();
+    expect(zonePos("titlebar")).toBe("");
+    expect(zonePos("main-zone")).toBe("");
+    expect(document.documentElement.style.getPropertyValue("--surface-bg-size")).toBe("");
+  });
 });

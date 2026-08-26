@@ -159,21 +159,34 @@ describe("ThemeEngine — surface/background 玻璃机制（E5.8#50.6）", () =>
     expect(root.style.getPropertyValue("--surface-bg-image")).toBe("none");
   });
 
-  it("无 surface 无 background → per-surface 背景零值（zones 0 / image none / 5 zone 位置 0 0）", () => {
+  it("无 surface 无 background → per-surface 背景零值（zones 0 / image none）；切片坐标键不写（池侧自持）", () => {
     applyTheme(MOCK_THEME);
     const root = document.documentElement;
     expect(root.style.getPropertyValue("--surface-bg-zones")).toBe("0");
     expect(root.style.getPropertyValue("--surface-bg-image")).toBe("none");
-    expect(root.style.getPropertyValue("--surface-main-zone-bg-position")).toBe("0 0");
-    expect(root.style.getPropertyValue("--surface-status-bar-bg-position")).toBe("0 0");
+    // E5.8 Phase 11.15（R3 根治）：size/position 归池侧 surface-zones 自写自清，壳引擎不写不广播
+    expect(root.style.getPropertyValue("--surface-bg-size")).toBe("");
+    expect(root.style.getPropertyValue("--surface-main-zone-bg-position")).toBe("");
+    expect(root.style.getPropertyValue("--surface-status-bar-bg-position")).toBe("");
   });
 
-  it("zones 主题切回无质感主题 → per-surface 变量清零不残留", () => {
+  it("zones 主题切回无质感主题 → per-surface 变量清零不残留（坐标键不写，池侧退出自清）", () => {
     applyTheme({ ...MOCK_THEME, background: { mode: "zones", image: "bg.svg" } });
     applyTheme(MOCK_THEME2);
     const root = document.documentElement;
     expect(root.style.getPropertyValue("--surface-bg-zones")).toBe("0");
     expect(root.style.getPropertyValue("--surface-bg-image")).toBe("none");
-    expect(root.style.getPropertyValue("--surface-titlebar-bg-position")).toBe("0 0");
+    // R3 根治：引擎不再写坐标键（池侧量测值不残留、不覆盖）
+    expect(root.style.getPropertyValue("--surface-titlebar-bg-position")).toBe("");
+  });
+
+  it("R3 防回归——getThemeVariables 产物不含 surface-bg-size 与 5 个 position 键（引擎不碰池侧坐标）", () => {
+    const vars = getThemeVariables({ ...MOCK_THEME, background: { mode: "zones", image: "bg.svg", opacity: 0.9 } });
+    expect(vars["surface-bg-zones"]).toBe("1");
+    expect(vars["surface-bg-image"]).toBe('url("bg.svg")');
+    expect("surface-bg-size" in vars).toBe(false);
+    for (const zone of ["titlebar", "icon-bar", "side-panel", "main-zone", "status-bar"]) {
+      expect(`surface-${zone}-bg-position` in vars).toBe(false);
+    }
   });
 });
