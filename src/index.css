@@ -499,12 +499,15 @@ select {
   bottom: calc(-1 * var(--surface-inset, 0px));
 }
 
-/* ── E5.8 用户审计 #4：浮层玻璃磨砂隔离——悬浮表面统一 backdrop-filter（pool-css 门禁禁池 @import
-   → 共享原语必须在此全局层，与 .zone-resize-handle 同先例）。玻璃模式激活时浮层表面色被合成半透明
-   （synthesizeGlassSurfaces 半透明化 bg-card/bg-window），无 backdrop-filter 则背后内容透出字叠字；
-   本规则给全部悬浮表面磨砂背后内容。变量链 --glass-blur → --surface-glass-blur（per-surface），
-   零值（玻璃关）= blur(0) 恒等 = 现状零变化。消费方选择器显式列出。GroupTabBar .drop-glass-zone
-   同类规则留在其文件内（drop 目标专属含 drop 属性，不并入）。 ── */
+/* ── E5.8 用户审计 #4 + #103：浮层玻璃磨砂隔离 + 磨砂地板——悬浮表面统一 backdrop-filter
+   （pool-css 门禁禁池 @import → 共享原语必须在此全局层，与 .zone-resize-handle 同先例）。
+   玻璃模式激活时浮层表面色被合成半透明（synthesizeGlassSurfaces 半透明化 bg-card/bg-window），
+   无 backdrop-filter 则背后内容透出字叠字；本规则给全部悬浮表面磨砂背后内容。
+   E5.8#103 磨砂地板：浮层全 portal 出到 body 顶层（不继承 per-surface --surface-glass-blur，
+   原 var 链对它恒落 --glass-blur）→ 改直读 --glass-blur + 保底 --float-blur-floor。用户拍板
+   模型「浮层永远比主屏更重一层磨砂」——玻璃滑杆控主表面；滑杆 0（全景图清晰模式）浮层仍
+   blur(16px) 保底可读，字不再与背景图重叠；滑杆 >16px 浮层继续跟随。消费方选择器显式列出。
+   GroupTabBar .drop-glass-zone 同类规则留在其文件内（drop 目标专属含 drop 属性，不并入）。 ── */
 .ctx-menu,
 .quick-pick-panel,
 .toast-item,
@@ -515,8 +518,10 @@ select {
 .colorpicker-panel,
 .dropdown-card,
 .selectbox-dropdown {
-  backdrop-filter: blur(var(--surface-glass-blur, var(--glass-blur, 0px))) saturate(var(--glass-saturate, 1));
-  -webkit-backdrop-filter: blur(var(--surface-glass-blur, var(--glass-blur, 0px)));
+  /* E5.8#103 磨砂地板——浮层保底模糊，玻璃滑杆 0 也保底，浮层文字永不叠背景图 */
+  --float-blur-floor: 16px;
+  backdrop-filter: blur(max(var(--glass-blur, 0px), var(--float-blur-floor))) saturate(var(--glass-saturate, 1));
+  -webkit-backdrop-filter: blur(max(var(--glass-blur, 0px), var(--float-blur-floor)));
 }
 
 /* 玻璃面叠加色（tint——表面底上、内容下，不盖文字）+ 玻璃面不透明度（opacity）+
