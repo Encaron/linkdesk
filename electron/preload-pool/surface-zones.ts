@@ -1,10 +1,11 @@
 /**
- * E5.8#50.29/50.31：per-surface 切片坐标锚定（⑭ 影像分区）。
+ * E5.8#50.29/50.31：per-surface 切片坐标锚定（⑭ 影像分区 + E5.8#102 全景镜像）。
  *
- * 职责：zones 模式（--surface-bg-zones: 1，壳广播注入）下，量测本窗 zone 表面真实像素
- * rect → 写 `--surface-bg-size`（= 窗口尺寸）+ `--surface-<zone>-bg-position`（负偏移，
- * 相邻 zone 拼回连续图）；#50.31 ResizeObserver 监听窗口 resize / 布局变化（侧栏折叠、
- * 脱出窗缩放）→ 重算重写。
+ * 职责：切片模式（--surface-bg-zones: 1 影像分区，或 --surface-bg-mirror: 1 全景镜像，
+ * 壳广播注入）下，量测本窗 zone 表面真实像素 rect → 写 `--surface-bg-size`（= 窗口尺寸）
+ * + `--surface-<zone>-bg-position`（负偏移，相邻 zone 拼回连续图）；#50.31 ResizeObserver
+ * 监听窗口 resize / 布局变化（侧栏折叠、脱出窗缩放）→ 重算重写。两种切片共用窗口坐标系，
+ * 量测逻辑同一。
  *
  * E5.8 Phase 11.15（R3 根治）：`--surface-bg-size`/`--surface-<zone>-bg-position` 是本模块
  * 唯一所有（写/清同源）——壳引擎 SURFACE_ZERO 不再包含这两组键，每次重应用不再覆盖量测值；
@@ -43,10 +44,13 @@ function clearZoneMeasurements(root: HTMLElement): void {
   }
 }
 
-/** zones 模式活跃 = 文档根内联样式里有 `--surface-bg-zones: 1`（壳 applyTheme 广播注入）。
-    `--${k}` 注入惯例——SURFACE_ZERO 恒写 zones: "0"，非 zones 主题自动清标记。 */
-function isZonesMode(root: HTMLElement): boolean {
-  return root.style.getPropertyValue("--surface-bg-zones") === "1";
+/** 切片模式活跃 = zones 模式（--surface-bg-zones: 1，⑭ 影像分区）或全景镜像
+    （--surface-bg-mirror: 1，E5.8#102：panorama 镜像进表面 ::after 供磨砂采样）。
+    任一为 1 都量测写 size+负偏移——两种切片同用窗口坐标系。`--${k}` 注入惯例——
+    SURFACE_ZERO 恒写两标记 "0"，非切片主题自动清标记。 */
+function isSurfaceSliceMode(root: HTMLElement): boolean {
+  return root.style.getPropertyValue("--surface-bg-zones") === "1"
+    || root.style.getPropertyValue("--surface-bg-mirror") === "1";
 }
 
 /** 重测量试上限——React 挂载晚于 theme:changed 时轮询等 zone 出现（200ms × 15 = 3s 兜底；命中 0 的空窗口封顶） */
@@ -70,14 +74,14 @@ function cancelRetry(): void {
   _stableRounds = 0;
 }
 
-/** 量测本窗 zone rect → 写 size + 每 zone 负偏移。幂等；无 zones 门控直接跳过。 */
+/** 量测本窗 zone rect → 写 size + 每 zone 负偏移。幂等；无切片门控直接跳过。 */
 export function measureSurfaceZones(): void {
   if (typeof document === "undefined") return;
   const root = document.documentElement;
-  if (!isZonesMode(root)) {
+  if (!isSurfaceSliceMode(root)) {
     cancelRetry();
-    // E5.8 Phase 11.15（R3/R6）：退出 zones 自清——壳引擎不再写/广播 size+position，
-    // 池侧是唯一所有者，对称清掉上次量测值（zones→纹理主题切换防残留）。
+    // E5.8 Phase 11.15（R3/R6）：退出切片自清——壳引擎不再写/广播 size+position，
+    // 池侧是唯一所有者，对称清掉上次量测值（zones/mirror → 无切片主题切换防残留）。
     clearZoneMeasurements(root);
     return;
   }

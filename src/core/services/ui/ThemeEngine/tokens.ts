@@ -63,7 +63,16 @@ export function backgroundVariables(background?: ThemeBackground): Record<string
       vars["surface-bg-zones"] = "1";
       if (background.opacity != null) vars["surface-bg-opacity"] = String(background.opacity);
     } else {
+      // 全景模式：全窗底图（BackgroundLayer 清晰底，缝露图）+ 镜像切片挂主表面。
+      // E5.8#102 根因：主表面 ::before 的 backdrop-filter 采不到兄弟 .background-layer
+      // （pool-root 合成边界），只能采自身 ::after——镜像让 glassBlur 重新控制主表面磨砂。
+      // 独立标记 --surface-bg-mirror（不借 zones 标记——zones===1 被 deriveAppearanceSeeds
+      // 反推 zoneBackgroundImage，混用会把全景误报成用户分区图）；量测通道与 zones 共用。
       vars["bg-image"] = url;
+      vars["surface-bg-image"] = url;
+      vars["surface-bg-repeat"] = "no-repeat";
+      vars["surface-bg-mirror"] = "1";
+      if (background.opacity != null) vars["surface-bg-opacity"] = String(background.opacity);
     }
   }
   if (background.opacity != null && mode !== "zones") vars["bg-opacity"] = String(background.opacity);

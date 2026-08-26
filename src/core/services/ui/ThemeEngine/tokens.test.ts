@@ -151,12 +151,16 @@ describe("ThemeEngine — surface/background 玻璃机制（E5.8#50.6）", () =>
     expect(root.style.getPropertyValue("--bg-image")).toBe("none");
   });
 
-  it("background 无 mode（默认 panorama）→ 现全窗语义不变", () => {
+  it("background 无 mode（默认 panorama）→ 全窗底图 + 表面镜像切片（E5.8#102 玻璃磨砂复权）", () => {
     applyTheme({ ...MOCK_THEME, background: { image: "bg.png", opacity: 0.9 } });
     const root = document.documentElement;
     expect(root.style.getPropertyValue("--bg-image")).toBe('url("bg.png")');
+    // 镜像：surface-bg-image 镜像全景 + surface-bg-mirror 独立标记（zones 保持 0——不误报分区背景）
+    expect(root.style.getPropertyValue("--surface-bg-image")).toBe('url("bg.png")');
+    expect(root.style.getPropertyValue("--surface-bg-repeat")).toBe("no-repeat");
+    expect(root.style.getPropertyValue("--surface-bg-mirror")).toBe("1");
     expect(root.style.getPropertyValue("--surface-bg-zones")).toBe("0");
-    expect(root.style.getPropertyValue("--surface-bg-image")).toBe("none");
+    expect(root.style.getPropertyValue("--surface-bg-opacity")).toBe("0.9");
   });
 
   it("无 surface 无 background → per-surface 背景零值（zones 0 / image none）；切片坐标键不写（池侧自持）", () => {
