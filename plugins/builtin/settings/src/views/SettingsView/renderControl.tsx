@@ -18,7 +18,6 @@ import ThemePicker from "@src/components/shared/theme-picker/ThemePicker"; // E5
 import SegmentedRadio from "@src/components/shared/segmented-radio/SegmentedRadio"; // E5.8#99：分段单选（ghost 双轨制——#91 fontTone/#98 accentSource 收敛共用）
 import Button from "@src/components/shared/button/Button"; // E5.8#99：实心动作按钮（双轨制实心轨——原 settings-action-btn 收编壳共享）
 import { formatSliderValue } from "./sliderValueLabel"; // E5.8#77：滑杆值标签格式化（unit 声明 → ×倍数/px）
-import { useConfigurationValueIpc } from "../hooks/useConfigurationValueIpc"; // E5.8#99：accentSource 自定义预览读 app.accentColor 实时值
 import ObjectEditor from "./ObjectEditor";
 import { mapSegmentedOptions } from "./mapSegmentedOptions"; // E5.8#99：分段单选选项映射（通用 segmented + fontTone/accentSource 预览覆盖共用）
 import type { ConfigProperty } from "./types";
@@ -295,33 +294,23 @@ function BackgroundImagePicker({
   );
 }
 
-/* eslint-disable linkdesk/no-hardcoded-hex -- E5.8#91 系统双字系标尺预览数据（与 ThemeEngine FONT_TONE_LIGHT_TEXT/DARK_TEXT 同值取样——预览非运行时样式） */
-const FONT_TONE_PREVIEW: Record<string, { halves: { base: string; ink: string }[] }> = {
-  followTheme: {
-    // 跟随主题——分半深/浅示意「主题明暗决定极性」：深半亮字 + 浅半暗字并置
-    halves: [
-      { base: "#1A1A1A", ink: "#FFFFFF" },
-      { base: "#F2F2F2", ink: "#1A1A1A" },
-    ],
-  },
-  light: { halves: [{ base: "#1A1A1A", ink: "#FFFFFF" }] }, // 亮字（深底用）——深底白字
-  dark: { halves: [{ base: "#F2F2F2", ink: "#1A1A1A" }] }, // 暗字（浅底用）——浅底深字
+/** E5.8#91 文字极性预览半区映射——每态 = 系统双字系标尺两极性取样（深/浅），
+ *  CSS 类消费 shell --tone-* 标尺 token（SettingsView.css，色值定义在 index.css :root）——TS 零 hex 零破例。 */
+const FONT_TONE_POLARITY_HALVES: Record<string, readonly string[]> = {
+  followTheme: ["deep", "light"], // 分半深/浅——主题明暗决定极性（深半亮字 + 浅半暗字并置）
+  light: ["deep"], // 亮字（深底用）——深底白字
+  dark: ["light"], // 暗字（浅底用）——浅底深字
 };
-/* eslint-enable linkdesk/no-hardcoded-hex */
 
 /** 分段控件段内预览 swatch——单一几何（52×30 + var(--radius-sm)，SettingsView.css .settings-segmented-swatch），
  *  fontTone（Aa 分半）+ accentSource（色块）共用（#3 归一化——不再各自造 swatch 变体）。 */
 function FontTonePreview({ value }: { value: string }): React.ReactNode {
-  const preview = FONT_TONE_PREVIEW[value];
-  if (!preview) return null;
+  const halves = FONT_TONE_POLARITY_HALVES[value];
+  if (!halves) return null;
   return (
     <span className="settings-segmented-swatch" aria-hidden="true">
-      {preview.halves.map((half, j) => (
-        <span
-          key={j}
-          className="settings-font-tone-half"
-          style={{ background: half.base, color: half.ink }}
-        >
+      {halves.map((polarity, j) => (
+        <span key={j} className={`settings-font-tone-half settings-font-tone-half--${polarity}`}>
           Aa
         </span>
       ))}
@@ -332,9 +321,10 @@ function FontTonePreview({ value }: { value: string }): React.ReactNode {
 /**
  * E5.8#98+#99：强调色来源分段控件——两态（跟随主题配方/自定义）+ 段内预览（#3 归一化，对标 #91 每态预览）。
  * 跟随主题配方段 = 中性分半示意「主题决定强调色」（themeable 变量，非运行值——真实主题强调色遍布壳 UI）；
- * 自定义段 = 自定义色实时读数（app.accentColor 配置值；清除空 → #5 兜底跟随主题 → 读 --accent 即主题色）。
+ * 自定义段 = 实时生效强调色——applyAccentColor 恒把 effective accent 写 --accent（自定义色 / 清除回主题 /
+ *   跟随主题 三态全对），声明式读 CSS 变量（.settings-segmented-swatch--accent），零 IPC 零 DOM 读。
  * 选项映射（短标签/tooltip）走 mapSegmentedOptions 通用函数（#99 三消费方共用）。无线电语义 + roving tabindex 在壳 SegmentedRadio。
- * （#98 曾用段外生效 swatch——第三 swatch 变体，本号按归一化改为段内预览。）
+ * （#98 曾用段外生效 swatch——第三 swatch 变体，本号按归一化改为段内预览；E5.8 Phase 11.13 去命令式读数。）
  */
 function AccentSourceControl({
   value,
@@ -347,10 +337,6 @@ function AccentSourceControl({
   onChange: (v: unknown) => void;
   t: (key: string) => string;
 }) {
-  const customColor = useConfigurationValueIpc<string>("app.accentColor");
-  // 清除空 → 跟随主题强调色（#5）——--accent 即主题色；重渲染即重读（SettingRow 订阅配置变化 → 本行重渲染）
-  const effectiveAccent = getComputedStyle(document.documentElement).getPropertyValue("--accent").trim();
-  const accentForPreview = (customColor ?? "").trim() || effectiveAccent;
   return (
     <SegmentedRadio
       value={value}
@@ -358,7 +344,7 @@ function AccentSourceControl({
       options={options.map((opt) => ({
         ...opt,
         preview: opt.value === "custom" ? (
-          <span className="settings-segmented-swatch" style={{ background: accentForPreview || undefined }} aria-hidden="true" />
+          <span className="settings-segmented-swatch settings-segmented-swatch--accent" aria-hidden="true" />
         ) : (
           <span className="settings-segmented-swatch settings-segmented-swatch--split" aria-hidden="true" />
         ),
