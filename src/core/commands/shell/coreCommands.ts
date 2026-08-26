@@ -238,6 +238,25 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
     menuGroup: "navigation",
     when: "settingModified",
   },
+  // E5.8 用户审计 #3：跟随主题——单个键删 user scope 回落主题基线（外观键未覆盖时主题胜出，
+  // 删覆盖即切主题跟变，解决 custom 模式切主题丢配置痛点 3）。与「重置此设置」同路径
+  // resetConfigurationValue，差异 = 语义直述 + 仅 resetsToTheme 声明键出现（SettingRow 设 context key
+  // settingFollowTheme）+ 不弹确认（轻操作可逆——重设值即恢复，对标 VS Code 重置语义）。
+  {
+    id: "workbench.action.followTheme",
+    title: "跟随主题",
+    category: "首选项",
+    handler: async (...args) => {
+      const ctx = args[0] as { settingKey?: string } | undefined;
+      const key = ctx?.settingKey;
+      if (!key) return;
+      const { resetConfigurationValue } = await import("../../services/configuration/ConfigurationService");
+      await resetConfigurationValue(key);
+    },
+    menuId: MENU_SLOTS.SettingItemGear,
+    menuGroup: "navigation",
+    when: "settingModified && settingFollowTheme",
+  },
   {
     id: "workbench.action.copySettingId",
     title: "复制设置 ID",

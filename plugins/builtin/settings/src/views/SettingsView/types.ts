@@ -52,6 +52,10 @@ interface ConfigProperty {
   unit?: string;
   /** E5.8#87：来源徽标——本键所属外观域 mix 来源 key（混搭生效时徽标显示 🔀 域来源） */
   sourceKey?: string;
+  /** E5.8 用户审计 #3：跟随主题语义——壳 appearance 键声明；本键 user scope 删除后回落主题基线。
+   *  SettingRow 读本字段 → 齿轮菜单「跟随主题」项可用（context key settingFollowTheme）。
+   *  通用设置插件零外观知识——第三方设置/主题插件在自己的键上声明即获得同能力。 */
+  resetsToTheme?: boolean;
 }
 
 export type { SettingsViewProps, GroupInfo, ConfigProperty };

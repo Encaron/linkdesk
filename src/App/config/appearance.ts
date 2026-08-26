@@ -105,6 +105,10 @@ export function registerAppearanceConfiguration(t: ConfigT): void {
         type: "string",
         group: t("配色"), // E5.8#78：组内二级标题——主题组分节 2/6（配色）
         default: "",
+        // E5.8 用户审计 #3：resetsToTheme——齿轮「跟随主题」删本键 user scope 回落主题基线
+        // （机制见 ConfigurationRegistry.ConfigurationProperty.resetsToTheme；双语义键同样适用——
+        // 自定义模式选过配色变体 → 跟随主题 = 删覆盖回活动配方默认配色，切主题自动跟）
+        resetsToTheme: true,
         description: t("配色变体——活动主题配方的可用配色"),
         // 枚举仍由 applyRecipeForConfig 每次应用同步（第三方设置 UI 读取 + setConfigurationValue 校验）；壳 UI 走 optionsFrom 动态取。
         uiHint: "select",
@@ -198,6 +202,7 @@ export function registerAppearanceConfiguration(t: ConfigT): void {
         type: "number",
         group: t("圆角"),
         default: 0,
+        resetsToTheme: true,
         minimum: 0,
         maximum: 32,
         description: t("组件圆角——系统标尺 0 方角 / 32 最圆润；数值 = 标准组件圆角 px"),
@@ -210,6 +215,7 @@ export function registerAppearanceConfiguration(t: ConfigT): void {
         type: "number",
         group: t("玻璃"),
         default: 0,
+        resetsToTheme: true,
         minimum: 0,
         maximum: 32,
         // E5.8#86：滑杆值 = 主表面（顶栏/主区/状态栏）真实模糊 px——消灭「显示 X 实际 Y」（A5）；
@@ -224,6 +230,7 @@ export function registerAppearanceConfiguration(t: ConfigT): void {
         type: "number",
         group: t("玻璃"),
         default: 0.5, // E5.8#86：绝对不透明度默认半透玻璃面（旧默认 1 的 wash 视觉 = 0.5，同值零变化）
+        resetsToTheme: true,
         minimum: 0,
         maximum: 1,
         // E5.8#86：label 直述绝对语义——0 全透见背景图 / 1 全不透明（消灭 label「1 不透明」实为半透，A3/D1）
@@ -236,6 +243,7 @@ export function registerAppearanceConfiguration(t: ConfigT): void {
         type: "string",
         group: t("玻璃"),
         default: "",
+        resetsToTheme: true,
         description: t("玻璃叠加色——空 = 主题自带"),
         renderHint: "color",
         dependsOn: { key: "app.appearanceMode", value: "custom" },
@@ -248,6 +256,7 @@ export function registerAppearanceConfiguration(t: ConfigT): void {
         type: "number",
         group: t("玻璃"),
         default: 1,
+        resetsToTheme: true,
         minimum: 0,
         maximum: 2,
         // step 不声明——inferSliderStep(0,2) span≤2 → 0.01 连续可调（E5.8#65，与 glassOpacity 同款）
@@ -262,6 +271,7 @@ export function registerAppearanceConfiguration(t: ConfigT): void {
         type: "string",
         group: t("背景"),
         default: "followTheme",
+        resetsToTheme: true,
         description: t("背景域来源——跟随主题配方 / 指定主题配方 id"),
         dependsOn: { key: "app.appearanceMode", value: "custom" },
         uiHint: "select",
@@ -273,6 +283,7 @@ export function registerAppearanceConfiguration(t: ConfigT): void {
         type: "string",
         group: t("背景"),
         default: "",
+        resetsToTheme: true,
         // E5.8#87：无背景（__none__）= 绝对无图（盖掉主题/mix 图）；空 = 跟随主题
         description: t("窗口背景图片路径——空 = 主题自带；无背景 = 绝对无图"),
         uiHint: "image", // E5.8#50.11：专属「选择图片」控件（选图→拷贝入库→受控路径持久化）
@@ -288,6 +299,7 @@ export function registerAppearanceConfiguration(t: ConfigT): void {
         type: "number",
         group: t("背景"),
         default: 1,
+        resetsToTheme: true,
         minimum: 0,
         maximum: 1,
         // step 不声明——inferSliderStep(0,1) span≤2 → 0.01 连续可调（E5.8#65，与 glassOpacity 同款）
@@ -301,6 +313,7 @@ export function registerAppearanceConfiguration(t: ConfigT): void {
         type: "number",
         group: t("背景"),
         default: 0,
+        resetsToTheme: true,
         minimum: 0,
         maximum: 1,
         // step 不声明——inferSliderStep(0,1) span≤2 → 0.01 连续可调（E5.8#65，与 glassOpacity 同款）
@@ -321,6 +334,7 @@ export function registerAppearanceConfiguration(t: ConfigT): void {
         type: "string",
         group: t("文字"), // E5.8#78：组内二级标题——主题组分节 7/9（文字）
         default: "followTheme",
+        resetsToTheme: true,
         enum: ["followTheme", "light", "dark"],
         enumDescriptions: [
           t("跟随主题——主题明暗决定文字极性（深主题亮字 / 浅主题暗字）"),
@@ -345,6 +359,7 @@ export function registerAppearanceConfiguration(t: ConfigT): void {
         type: "string",
         group: t("文字"),
         default: "followTheme",
+        resetsToTheme: true,
         description: t("字体域来源——跟随主题配方 / 指定主题配方 id"),
         dependsOn: { key: "app.appearanceMode", value: "custom" },
         uiHint: "select",
@@ -356,6 +371,7 @@ export function registerAppearanceConfiguration(t: ConfigT): void {
         type: "string",
         group: t("文字"),
         default: "",
+        resetsToTheme: true,
         // E5.8#87：系统字体（__none__）= 绝对系统默认（不跟随主题字体）；空 = 跟随主题
         description: t("界面字体——空 = 跟随主题；选择后写 --font-ui；系统字体 = 显式系统默认"),
         // E5.8#50.20：全字族化 FontFamilySelect（monoOnly:false 列全族非等宽）——
@@ -374,6 +390,7 @@ export function registerAppearanceConfiguration(t: ConfigT): void {
         type: "string",
         group: t("文字"),
         default: "",
+        resetsToTheme: true,
         description: t("等宽字体——空 = 跟随主题；选择后写 --font-mono；系统字体 = 显式系统默认"),
         uiHint: "fontFamily",
         monoOnly: true,
@@ -396,6 +413,7 @@ export function registerAppearanceConfiguration(t: ConfigT): void {
         type: "number",
         group: t("圆角"),
         default: 0,
+        resetsToTheme: true,
         minimum: 0,
         maximum: 32,
         description: t("分区圆角——系统标尺 0 方角 / 32 最圆润；数值 = 分区圆角 px"),
@@ -411,6 +429,7 @@ export function registerAppearanceConfiguration(t: ConfigT): void {
         type: "string",
         group: t("背景"),
         default: "",
+        resetsToTheme: true,
         // E5.8#87：无背景（__none__）= 绝对无图（盖掉主题/mix 图）；空 = 跟随主题
         description: t("分区背景图片路径——空 = 主题自带；无背景 = 绝对无图"),
         uiHint: "image",
@@ -428,6 +447,7 @@ export function registerAppearanceConfiguration(t: ConfigT): void {
         type: "string",
         group: t("背景"),
         default: "followTheme",
+        resetsToTheme: true,
         description: t("表面域来源——跟随主题配方 / 指定主题配方 id"),
         dependsOn: { key: "app.appearanceMode", value: "custom" },
         uiHint: "select",

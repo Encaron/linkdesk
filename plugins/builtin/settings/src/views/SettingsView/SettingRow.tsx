@@ -93,6 +93,9 @@ function SettingRow({
   const handleGearClick = useCallback(async () => {
     try {
       window.linkdesk?.contextKey?.set("settingKey", configKey);
+      // E5.8 用户审计 #3：跟随主题门控——键声明 resetsToTheme 才显示齿轮「跟随主题」项
+      // （coreCommands when="settingModified && settingFollowTheme"——通用设置插件零外观知识）
+      window.linkdesk?.contextKey?.set("settingFollowTheme", !!prop?.resetsToTheme);
       // inspectConfiguration 异步获取修改状态——wire 面 unknown，IPC 边界收窄（主进程组装 { userValue, ... }）
       const insp = await lk().inspectConfiguration(configKey) as { userValue?: unknown } | undefined;
       window.linkdesk?.contextKey?.set("settingModified", insp?.userValue !== undefined);
@@ -101,13 +104,14 @@ function SettingRow({
     if (rect) {
       setGearAnchor({ x: rect.left, y: rect.bottom + 4 });
     }
-  }, [configKey]);
+  }, [configKey, prop]);
 
   // 齿轮关闭——清理 context key
   const handleGearClose = useCallback(() => {
     setGearAnchor(null);
     window.linkdesk?.contextKey?.set("settingKey", undefined);
     window.linkdesk?.contextKey?.set("settingModified", false);
+    window.linkdesk?.contextKey?.set("settingFollowTheme", false);
   }, []);
 
   if (!prop) return null;
