@@ -499,6 +499,26 @@ select {
   bottom: calc(-1 * var(--surface-inset, 0px));
 }
 
+/* ── E5.8 用户审计 #4：浮层玻璃磨砂隔离——悬浮表面统一 backdrop-filter（pool-css 门禁禁池 @import
+   → 共享原语必须在此全局层，与 .zone-resize-handle 同先例）。玻璃模式激活时浮层表面色被合成半透明
+   （synthesizeGlassSurfaces 半透明化 bg-card/bg-window），无 backdrop-filter 则背后内容透出字叠字；
+   本规则给全部悬浮表面磨砂背后内容。变量链 --glass-blur → --surface-glass-blur（per-surface），
+   零值（玻璃关）= blur(0) 恒等 = 现状零变化。消费方选择器显式列出。GroupTabBar .drop-glass-zone
+   同类规则留在其文件内（drop 目标专属含 drop 属性，不并入）。 ── */
+.ctx-menu,
+.quick-pick-panel,
+.toast-item,
+.floating-panel,
+.floating-panel-title,
+.floating-panel-act.tip::after,
+.dialog-host-panel,
+.colorpicker-panel,
+.dropdown-card,
+.selectbox-dropdown {
+  backdrop-filter: blur(var(--surface-glass-blur, var(--glass-blur, 0px))) saturate(var(--glass-saturate, 1));
+  -webkit-backdrop-filter: blur(var(--surface-glass-blur, var(--glass-blur, 0px)));
+}
+
 /* 玻璃面叠加色（tint——表面底上、内容下，不盖文字）+ 玻璃面不透明度（opacity）+
    顶部受光带 + 发丝光边（specular 派生——契约无独立光边变量，inset ring 零 specular 时
    透明无描边 = 现状零变化）。
