@@ -81,7 +81,8 @@
   background: var(--bg-window, #252526);
   border: 1px solid var(--border-default, #555);
   border-radius: var(--radius-sm);
-  box-shadow: var(--shadow-pop);
+  box-shadow: var(--shadow-pop); /* 画在自身 border 盒外，overflow 只裁内容不裁阴影 */
+  overflow: hidden; /* 裁内部 hover 高亮四角——高亮实心块贴圆角边界（用户审计 #1） */
   z-index: var(--z-dropdown); /* E5#98 */
   max-height: 260px;
   max-width: calc(100vw - 24px); /* 绝对不溢出窗口——viewport 兜底，无硬编码固定值 */
