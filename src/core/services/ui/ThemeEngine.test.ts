@@ -46,6 +46,7 @@ import {
   isMixSourceOwner,
   CONFIG_NONE_SENTINEL,
   SYSTEM_FONT_STACK,
+  SYSTEM_MONO_FONT_STACK,
   FONT_TONE_LIGHT_TEXT,
   FONT_TONE_DARK_TEXT,
   FONT_TONE_TEXT_KEYS,
@@ -729,12 +730,13 @@ describe("ThemeEngine — 外观覆盖 getAppearanceOverrides（E5.8#50.10）", 
     expect(document.documentElement.style.getPropertyValue("--glass-blur")).toBe("15px");
   });
 
-  it("E5.8#60 F1.1——APPEARANCE_OVERRIDE_KEYS = 全 9 键含 app.fontFamily（单一来源防回归；#80/#81 +zone 三键）", () => {
+  it("E5.8#60 F1.1——APPEARANCE_OVERRIDE_KEYS = 全 13 键含 app.fontFamily（单一来源防回归；#80/#81 +zone 三键；#94/#95/#96 镜像补槽四键）", () => {
     // 设置层外观覆盖 key 全集——壳命令（startup appearanceMode onApply）与插件 API（theme.resetAppearance）复位共用
     expect([...APPEARANCE_OVERRIDE_KEYS]).toEqual([
       "app.surfaceRadius", "app.glassBlur", "app.glassOpacity",
       "app.glassTint", "app.backgroundImage", "app.fontFamily",
       "app.zoneRadius", "app.zoneRadiusScale", "app.zoneBackgroundImage",
+      "app.backgroundOpacity", "app.backgroundMask", "app.fontFamilyMono", "app.glassSaturate",
     ]);
     // 每键确与 getAppearanceOverrides 读的配置键对齐（写多了 reset 摘不到、写少了残留覆盖）
     expect(APPEARANCE_OVERRIDE_KEYS).toContain("app.fontFamily"); // 插件侧旧表漏此键 → 复位后字体不回基线
@@ -742,6 +744,102 @@ describe("ThemeEngine — 外观覆盖 getAppearanceOverrides（E5.8#50.10）", 
     expect(APPEARANCE_OVERRIDE_KEYS).toContain("app.zoneRadius");
     expect(APPEARANCE_OVERRIDE_KEYS).toContain("app.zoneRadiusScale");
     expect(APPEARANCE_OVERRIDE_KEYS).toContain("app.zoneBackgroundImage");
+    // E5.8#94/#95/#96 镜像补槽四键（主题可表达必有槽——reseed 计划/复位必须覆盖，写少了残留覆盖）
+    expect(APPEARANCE_OVERRIDE_KEYS).toContain("app.backgroundOpacity");
+    expect(APPEARANCE_OVERRIDE_KEYS).toContain("app.backgroundMask");
+    expect(APPEARANCE_OVERRIDE_KEYS).toContain("app.fontFamilyMono");
+    expect(APPEARANCE_OVERRIDE_KEYS).toContain("app.glassSaturate");
+  });
+
+  /* ── E5.8#94/#95/#96 镜像补槽覆盖读取——主题可表达属性 ⇒ 设置面必有槽（14-档案 §十）── */
+
+  it("E5.8#94 backgroundOpacity 显式写过 → bg-opacity 覆盖（1 = neutral 也是显式意图，presence 门控）", () => {
+    applyRemoteConfigChange("app.backgroundOpacity", 0.4);
+    expect(getAppearanceOverrides()["bg-opacity"]).toBe("0.4");
+  });
+
+  it("E5.8#94 backgroundOpacity 未写 → 零 bg-opacity 覆盖（跟随主题）", () => {
+    expect(getAppearanceOverrides()["bg-opacity"]).toBeUndefined();
+  });
+
+  it("E5.8#94 backgroundMask 显式写过 → bg-mask 覆盖", () => {
+    applyRemoteConfigChange("app.backgroundMask", 0.3);
+    expect(getAppearanceOverrides()["bg-mask"]).toBe("0.3");
+  });
+
+  it("E5.8#95 fontFamilyMono 族名 → font-mono 覆盖（--font-mono 契约）", () => {
+    applyRemoteConfigChange("app.fontFamilyMono", "Cascadia Code");
+    expect(getAppearanceOverrides()["font-mono"]).toBe("Cascadia Code");
+  });
+
+  it("E5.8#95 fontFamilyMono=__none__ → 系统等宽栈（绝对系统默认，不跟随主题 mono 资产）", () => {
+    applyRemoteConfigChange("app.fontFamilyMono", "__none__");
+    expect(getAppearanceOverrides()["font-mono"]).toBe(SYSTEM_MONO_FONT_STACK);
+  });
+
+  it("E5.8#95 fontFamilyMono 空/未写 → 零 font-mono 覆盖（跟随主题）", () => {
+    expect(getAppearanceOverrides()["font-mono"]).toBeUndefined();
+  });
+
+  it("E5.8#96 glassSaturate 显式写过 → glass-saturate 覆盖（presence 门控，端点 1 neutral 照常生效）", () => {
+    applyRemoteConfigChange("app.glassSaturate", 1.5);
+    expect(getAppearanceOverrides()["glass-saturate"]).toBe("1.5");
+    // neutral 端点也是显式意图（值对比会把端点误判为未覆盖 → presence 门控）
+    applyRemoteConfigChange("app.glassSaturate", 1);
+    expect(getAppearanceOverrides()["glass-saturate"]).toBe("1");
+  });
+
+  it("E5.8#96 glassSaturate 未写 → 零 glass-saturate 覆盖（跟随主题）", () => {
+    expect(getAppearanceOverrides()["glass-saturate"]).toBeUndefined();
+  });
+
+  /* ── E5.8#94/#95/#96 播种反推——deriveAppearanceSeeds 读生效 token 反向播种（进 custom 单写点）── */
+
+  it("E5.8#94/#95/#96 deriveAppearanceSeeds — 背景可读性/等宽字体/玻璃饱和度 neutral 缺省反推", () => {
+    const seeds = deriveAppearanceSeeds({
+      "bg-opacity": "0.8",
+      "bg-mask": "0.25",
+      "font-mono": "JetBrains Mono",
+      "glass-saturate": "1.4",
+    });
+    expect(seeds.backgroundOpacity).toBe(0.8);
+    expect(seeds.backgroundMask).toBe(0.25);
+    expect(seeds.fontFamilyMono).toBe("JetBrains Mono");
+    expect(seeds.glassSaturate).toBe(1.4);
+  });
+
+  it("E5.8#94/#95/#96 deriveAppearanceSeeds — 缺省 neutral（bg-opacity 1 / bg-mask 0 / 空 mono / saturate 1）", () => {
+    const seeds = deriveAppearanceSeeds({});
+    expect(seeds.backgroundOpacity).toBe(1);
+    expect(seeds.backgroundMask).toBe(0);
+    expect(seeds.fontFamilyMono).toBe("");
+    expect(seeds.glassSaturate).toBe(1);
+  });
+
+  it("E5.8#94/#95/#96 deriveAppearanceSeedMap — 13 覆盖键全集含补槽四键（reseed 计划/徽标基准共用）", () => {
+    const seedMap = deriveAppearanceSeedMap({
+      "bg-opacity": "0.7",
+      "bg-mask": "0.2",
+      "font-mono": "Consolas",
+      "glass-saturate": "1.2",
+    });
+    expect(seedMap["app.backgroundOpacity"]).toBe(0.7);
+    expect(seedMap["app.backgroundMask"]).toBe(0.2);
+    expect(seedMap["app.fontFamilyMono"]).toBe("Consolas");
+    expect(seedMap["app.glassSaturate"]).toBe(1.2);
+  });
+
+  it("E5.8#94/#95/#96 deriveReseedPlan — 补槽四键未修改 → 切主题反推新基准填标尺", () => {
+    const writes = deriveReseedPlan(
+      { "app.backgroundOpacity": 1, "app.backgroundMask": 0, "app.fontFamilyMono": "", "app.glassSaturate": 1 },
+      { "app.backgroundOpacity": 0.6, "app.backgroundMask": 0.3, "app.fontFamilyMono": "Consolas", "app.glassSaturate": 1.5 },
+      {}
+    );
+    const byKey = Object.fromEntries(writes.map((w) => [w.key, w.value]));
+    expect(byKey["app.backgroundOpacity"]).toBe(0.6);
+    expect(byKey["app.backgroundMask"]).toBe(0.3);
+    expect(byKey["app.fontFamilyMono"]).toBe("Consolas");
+    expect(byKey["app.glassSaturate"]).toBe(1.5);
   });
 
   /* ── E5.8#91 文字极性槽——app.fontTone 显式选档 → 系统双字系标尺覆盖 text-*（非主题色板值）；
@@ -1197,7 +1295,7 @@ describe("ThemeEngine — E5.8#88 切主题重播种 + 徽标基准（deriveAppe
     applyTheme(MOCK_THEME);
   });
 
-  it("deriveAppearanceSeedMap — 9 覆盖键 → 种子值全集映射（键=配置 key，单写点）", () => {
+  it("deriveAppearanceSeedMap — 13 覆盖键 → 种子值全集映射（键=配置 key，单写点）", () => {
     const map = deriveAppearanceSeedMap({
       "radius-md": "8px",
       "surface-radius": "10px",
@@ -1219,6 +1317,11 @@ describe("ThemeEngine — E5.8#88 切主题重播种 + 徽标基准（deriveAppe
       "app.zoneRadius": true,
       "app.zoneRadiusScale": 10,
       "app.zoneBackgroundImage": "linkdesk-userdata://appearance/zone.png",
+      // E5.8#94/#95/#96 镜像补槽四键（输入未写 → neutral 缺省反推）
+      "app.backgroundOpacity": 1,
+      "app.backgroundMask": 0,
+      "app.fontFamilyMono": "",
+      "app.glassSaturate": 1,
     });
     // 缺省 token → 零值/空（不抛）——zoneBackgroundImage 需 zones=1
     const empty = deriveAppearanceSeedMap({});
@@ -1227,6 +1330,10 @@ describe("ThemeEngine — E5.8#88 切主题重播种 + 徽标基准（deriveAppe
     expect(empty["app.zoneRadius"]).toBe(true);
     expect(empty["app.zoneBackgroundImage"]).toBe("");
     expect(empty["app.backgroundImage"]).toBe("");
+    expect(empty["app.backgroundOpacity"]).toBe(1);
+    expect(empty["app.backgroundMask"]).toBe(0);
+    expect(empty["app.fontFamilyMono"]).toBe("");
+    expect(empty["app.glassSaturate"]).toBe(1);
   });
 
   it("deriveReseedPlan — 未修改（无 stored）→ 反推新基准填标尺；新旧同值跳过", () => {

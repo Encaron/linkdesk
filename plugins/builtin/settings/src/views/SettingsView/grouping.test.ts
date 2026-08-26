@@ -50,8 +50,12 @@ describe("groupSettingsKeys — E5.8#78 组内二级标题归桶", () => {
         "app.glassBlur",
         "app.glassOpacity",
         "app.glassTint",
+        "app.glassSaturate",
         "app.backgroundImage",
+        "app.backgroundOpacity",
+        "app.backgroundMask",
         "app.fontFamily",
+        "app.fontFamilyMono",
         "app.zoneRadius",
         "app.zoneRadiusScale",
         "app.zoneBackgroundImage",
@@ -78,8 +82,10 @@ describe("groupSettingsKeys — E5.8#78 组内二级标题归桶", () => {
     expect(buckets[0].keys).toEqual(["app.theme", "app.appearanceMode"]); // 主开关与主题配方同节
     expect(buckets[3].keys).toEqual([
       "app.surfaceRadius", "app.glassBlur", "app.glassOpacity",
-      "app.glassTint", "app.backgroundImage", "app.fontFamily", "app.zoneRadius",
-      "app.zoneRadiusScale", "app.zoneBackgroundImage",
+      "app.glassTint", "app.glassSaturate",
+      "app.backgroundImage", "app.backgroundOpacity", "app.backgroundMask",
+      "app.fontFamily", "app.fontFamilyMono",
+      "app.zoneRadius", "app.zoneRadiusScale", "app.zoneBackgroundImage",
     ]);
     expect(buckets[4].keys).toEqual(["app.fontTone"]);
     expect(buckets[5].keys).toEqual([

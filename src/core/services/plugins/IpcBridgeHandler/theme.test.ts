@@ -97,7 +97,7 @@ describe("IpcBridgeHandler/theme — 配方/配色 API（E5.8#50.18）", () => {
     expect(getConfigurationValue("app.themeColor")).toBe("demo-mint");
   });
 
-  it("resetAppearance — 复位对称 C3：app.appearanceMode→followTheme（对齐壳命令单一写入点，级联清 9 键在 startup onApply）", async () => {
+  it("resetAppearance — 复位对称 C3：app.appearanceMode→followTheme（对齐壳命令单一写入点，级联清 13 键在 startup onApply）", async () => {
     applyRemoteConfigChange("app.appearanceMode", "custom");
     applyRemoteConfigChange("app.glassBlur", 15);
     try {

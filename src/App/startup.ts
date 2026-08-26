@@ -21,7 +21,7 @@ import {
   mergeDomains, // E5.8#85 补课：迁移取主题基准 token（无 overrides；缺 radius 域回退壳默认在公式内）
   getAvailableThemes,
   getCurrentTheme,
-  deriveAppearanceSeedMap, // E5.8#88：外观覆盖 9 键播种值全集映射（切主题重播种 + 已修改徽标基准共用）
+  deriveAppearanceSeedMap, // E5.8#88：外观覆盖 13 键播种值全集映射（切主题重播种 + 已修改徽标基准共用）
   deriveReseedPlan, // E5.8#88：切主题重播种计划（纯函数——显式修改保留 / 未修改随新主题重基线）
   getThemeBaseTokens, // E5.8#88：主题/混搭基准 token（无外观覆盖——重播种「按新主题反推」的纯基准）
   getAppliedAccent, // E5.8#88 C4：最近应用强调色（accent 播种走引擎追踪非 DOM 读）
@@ -412,7 +412,7 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
             onApply: () => applyAccentColor(getEffectiveAccentColor()),
           },
           // E5.8#90：外观主开关——单一外观模式轴（14-档案 §四 归一5）。三枚举合并：吸收 app.mixMode +
-          // app.accentMode → 跟随主题 / 自定义。自定义下每槽独立指定（外观覆盖 9 键播种 + 强调色播种 +
+          // app.accentMode → 跟随主题 / 自定义。自定义下每槽独立指定（外观覆盖 13 键播种 + 强调色播种 +
           // 域来源 6 键默认 followTheme，未写 = 跟随主题）。group = 整体配方（主开关置顶与主题配方同节）。
           // enumDescriptions 人话（#90 验收「三枚举术语消失」——设置页不再出现 混搭模式/强调色模式 术语）。
           "app.appearanceMode": {
@@ -427,7 +427,7 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
             description: t("外观模式——跟随主题配方整体外观 / 自定义逐项指定"),
             onApply: (v) => {
               if (v === "custom") {
-                // 切 custom → 播种 9 覆盖 key + 强调色（同一批量写单次 applier，08 §2 对标 accent 播种）
+                // 切 custom → 播种 13 覆盖 key + 强调色（同一批量写单次 applier，08 §2 对标 accent 播种）
                 seedAppearanceOverrides();
               } else {
                 // 切回 followTheme → 覆盖丢弃回配方（08 §7.3.5）——清 9 覆盖 + 6 域来源 + 强调色
@@ -494,6 +494,22 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
             dependsOn: { key: "app.appearanceMode", value: "custom" },
             onApply: () => debouncedApplyThemeIfReady(),
           },
+          // E5.8#96：玻璃饱和度槽（14-档案 §十 镜像补槽）——app.glassSaturate 覆盖 --glass-saturate
+          // （主题 ThemeSurface.saturate 可表达但此前设置面无槽）。1 = neutral 原图（presence 门控：
+          // 显式写过即覆盖，neutral 端点也是显式意图）/ 0 去饱和 / 2 加倍。消费 = getAppearanceOverrides。
+          "app.glassSaturate": {
+            type: "number",
+            group: t("外观覆盖"),
+            default: 1,
+            minimum: 0,
+            maximum: 2,
+            // step 不声明——inferSliderStep(0,2) span≤2 → 0.01 连续可调（E5.8#65，与 glassOpacity 同款）
+            description: t("玻璃饱和度——1 原图 / 2 加倍饱和 / 0 去饱和"),
+            uiHint: "slider",
+            sourceKey: "app.mixGlass", // E5.8#87：来源徽标——玻璃域 mix 来源 key
+            dependsOn: { key: "app.appearanceMode", value: "custom" },
+            onApply: () => debouncedApplyThemeIfReady(),
+          },
           "app.backgroundImage": {
             type: "string",
             group: t("外观覆盖"),
@@ -501,6 +517,36 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
             // E5.8#87：无背景（__none__）= 绝对无图（盖掉主题/mix 图）；空 = 跟随主题
             description: t("窗口背景图片路径——空 = 主题自带；无背景 = 绝对无图"),
             uiHint: "image", // E5.8#50.11：专属「选择图片」控件（选图→拷贝入库→受控路径持久化）
+            sourceKey: "app.mixBackground", // E5.8#87：来源徽标——背景域 mix 来源 key
+            dependsOn: { key: "app.appearanceMode", value: "custom" },
+            onApply: () => debouncedApplyThemeIfReady(),
+          },
+          // E5.8#94：背景可读性槽（14-档案 §十 镜像补槽）——主题 ThemeBackground.opacity/mask 可表达但此前
+          // 设置面无槽。app.backgroundOpacity 覆盖 --bg-opacity（0 全透见窗口底色 / 1 原图）；app.backgroundMask
+          // 覆盖 --bg-mask（0 无遮罩 / 1 全黑）。默认 1/0 = neutral（presence 门控：显式写过即覆盖）。
+          // 消费 = getAppearanceOverrides。maskColor 低优先豁免（14-档案 §十）。
+          "app.backgroundOpacity": {
+            type: "number",
+            group: t("外观覆盖"),
+            default: 1,
+            minimum: 0,
+            maximum: 1,
+            // step 不声明——inferSliderStep(0,1) span≤2 → 0.01 连续可调（E5.8#65，与 glassOpacity 同款）
+            description: t("背景图不透明度——0 全透见窗口底色 / 1 原图"),
+            uiHint: "slider",
+            sourceKey: "app.mixBackground", // E5.8#87：来源徽标——背景域 mix 来源 key
+            dependsOn: { key: "app.appearanceMode", value: "custom" },
+            onApply: () => debouncedApplyThemeIfReady(),
+          },
+          "app.backgroundMask": {
+            type: "number",
+            group: t("外观覆盖"),
+            default: 0,
+            minimum: 0,
+            maximum: 1,
+            // step 不声明——inferSliderStep(0,1) span≤2 → 0.01 连续可调（E5.8#65，与 glassOpacity 同款）
+            description: t("背景图遮罩明暗——0 无遮罩 / 1 全黑"),
+            uiHint: "slider",
             sourceKey: "app.mixBackground", // E5.8#87：来源徽标——背景域 mix 来源 key
             dependsOn: { key: "app.appearanceMode", value: "custom" },
             onApply: () => debouncedApplyThemeIfReady(),
@@ -515,6 +561,21 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
             // onApply 覆盖面单一写入点 getAppearanceOverrides 读本 key 写 --font-ui
             uiHint: "fontFamily",
             monoOnly: false,
+            sourceKey: "app.mixFont", // E5.8#87：来源徽标——字体域 mix 来源 key
+            dependsOn: { key: "app.appearanceMode", value: "custom" },
+            onApply: () => debouncedApplyThemeIfReady(),
+          },
+          // E5.8#95：等宽字体槽（14-档案 §十 镜像补槽）——主题 ThemeFont.mono 可表达但此前设置面无槽。
+          // app.fontFamilyMono 覆盖 --font-mono（context-menu/panel/colorpicker/quick-pick/plugin-detail 消费）。
+          // 空 = 跟随主题；系统字体（__none__）= 显式系统等宽栈。monoOnly:true = FontFamilySelect 只列等宽族。
+          // 消费 = getAppearanceOverrides。
+          "app.fontFamilyMono": {
+            type: "string",
+            group: t("外观覆盖"),
+            default: "",
+            description: t("等宽字体——空 = 跟随主题；选择后写 --font-mono；系统字体 = 显式系统默认"),
+            uiHint: "fontFamily",
+            monoOnly: true,
             sourceKey: "app.mixFont", // E5.8#87：来源徽标——字体域 mix 来源 key
             dependsOn: { key: "app.appearanceMode", value: "custom" },
             onApply: () => debouncedApplyThemeIfReady(),

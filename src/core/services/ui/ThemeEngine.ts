@@ -1100,6 +1100,10 @@ export interface AppearanceSeedValues {
   backgroundImage: string;
   fontFamily: string;
   zoneBackgroundImage: string; // E5.8#81：zone 表面背景覆盖（zones 模式才播种）
+  backgroundOpacity: number; // E5.8#94：背景图不透明度（缺省 1 = 原图）
+  backgroundMask: number; // E5.8#94：背景遮罩明暗（缺省 0 = 无遮罩）
+  fontFamilyMono: string; // E5.8#95：等宽字体（缺省空 = 跟随主题）
+  glassSaturate: number; // E5.8#96：玻璃饱和度（缺省 1 = neutral 原图）
 }
 
 /**
@@ -1115,6 +1119,7 @@ export function deriveAppearanceSeeds(tokens: Record<string, string>): Appearanc
   const bg = tokens["bg-image"];
   const bgPath = bg && bg !== "none" ? bg.replace(/^url\(["']?/, "").replace(/["']?\)$/, "") : "";
   const fam = tokens["font-ui"];
+  const monoFam = tokens["font-mono"];
   const zoneBg = tokens["surface-bg-image"];
   const zoneBgPath = zoneBg && zoneBg !== "none" && tokens["surface-bg-zones"] === "1"
     ? zoneBg.replace(/^url\(["']?/, "").replace(/["']?\)$/, "")
@@ -1128,6 +1133,11 @@ export function deriveAppearanceSeeds(tokens: Record<string, string>): Appearanc
     backgroundImage: bgPath,
     fontFamily: fam && !fam.startsWith("__ld_") ? fam : "",
     zoneBackgroundImage: zoneBgPath,
+    // E5.8#94/#95/#96：镜像补槽播种——缺省 neutral（bg-opacity 1 / bg-mask 0 / mono 空 = 跟随主题 / saturate 1）
+    backgroundOpacity: parseFloat(tokens["bg-opacity"] ?? "1") || 0,
+    backgroundMask: parseFloat(tokens["bg-mask"] ?? "0") || 0,
+    fontFamilyMono: monoFam && !monoFam.startsWith("__ld_") ? monoFam : "",
+    glassSaturate: parseFloat(tokens["glass-saturate"] ?? "1") || 0,
   };
 }
 
@@ -1166,6 +1176,11 @@ export function deriveAppearanceSeedMap(tokens: Record<string, string>): Record<
     "app.zoneRadius": true,
     "app.zoneRadiusScale": seeds.zoneRadiusPx,
     "app.zoneBackgroundImage": seeds.zoneBackgroundImage,
+    // E5.8#94/#95/#96：镜像补槽键（同一映射——播种/徽标基准/切主题重播种全走这里）
+    "app.backgroundOpacity": seeds.backgroundOpacity,
+    "app.backgroundMask": seeds.backgroundMask,
+    "app.fontFamilyMono": seeds.fontFamilyMono,
+    "app.glassSaturate": seeds.glassSaturate,
   };
 }
 
@@ -1251,16 +1266,19 @@ export function resolveMergedAppearanceMode(legacy: {
     : "followTheme";
 }
 
-/** 设置层外观覆盖配置 key 全集——appearanceMode=custom 播种存这 9 键、reset 摘除这 9 键回主题基线（08 §7.2/§7.3.5）。
+/** 设置层外观覆盖配置 key 全集——appearanceMode=custom 播种存这 13 键、reset 摘除这 13 键回主题基线（08 §7.2/§7.3.5）。
  *  单一来源：getAppearanceOverrides 读同键（glass 两键 presence 门控 / 其余空值不覆盖，见下）。
  *  E5.8#60 F1.1：壳命令（startup appearanceMode onApply）与插件 API（theme.resetAppearance）复位共用本表——
  *  插件侧曾只清 5 键漏 app.fontFamily → 第三方复位外观后字体不回基线。
  *  E5.8#80：+app.zoneRadius/app.zoneRadiusScale——zone 圆角第二通道（外观覆盖子节，同随 custom 播种/复位）。
- *  E5.8#81：+app.zoneBackgroundImage——zone 表面背景覆盖（与全窗 --bg-image 并存）。 */
+ *  E5.8#81：+app.zoneBackgroundImage——zone 表面背景覆盖（与全窗 --bg-image 并存）。
+ *  E5.8#94/#95/#96：+app.backgroundOpacity/app.backgroundMask/app.fontFamilyMono/app.glassSaturate——
+ *  镜像补槽键（13 覆盖键全集；种子/复位/插件 reset/重播种计划单写点同表）。 */
 export const APPEARANCE_OVERRIDE_KEYS = [
   "app.surfaceRadius", "app.glassBlur", "app.glassOpacity",
   "app.glassTint", "app.backgroundImage", "app.fontFamily",
   "app.zoneRadius", "app.zoneRadiusScale", "app.zoneBackgroundImage",
+  "app.backgroundOpacity", "app.backgroundMask", "app.fontFamilyMono", "app.glassSaturate",
 ] as const;
 
 /** E5.8#87：配置「绝对无」哨兵值——app.backgroundImage/zoneBackgroundImage/fontFamily 显式无 = 不跟随主题（真无图/系统字体）。
@@ -1271,6 +1289,9 @@ export const CONFIG_NONE_SENTINEL = "__none__";
 /** E5.8#87：系统默认字栈——fontFamily="__none__"（系统字体）覆盖写此栈（index.css :root --font-ui 同栈）。
  *  绝对系统默认 = 不跟随主题字体资产。 */
 export const SYSTEM_FONT_STACK = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+
+/** E5.8#95：系统默认等宽栈——fontFamilyMono="__none__"（系统字体）覆盖写此栈（index.css :root --font-mono 同栈）。 */
+export const SYSTEM_MONO_FONT_STACK = "'JetBrains Mono', Consolas, monospace";
 
 /** E5.8#91：系统双字系标尺——亮字系（深底）/ 暗字系（浅底），稳定跨主题不锚主题值（14-档案 #91 §六 6）。
  *  三级文字同比例保层级：primary 实心 / secondary 0.82·0.75 / muted 0.60·0.55。 */
@@ -1298,6 +1319,11 @@ export function getAppearanceOverrides(): Record<string, string> {
   const tint = getConfigurationValue<string>("app.glassTint");
   if (tint != null && String(tint).trim() !== "") overrides["glass-tint"] = String(tint).trim();
 
+  // E5.8#96：玻璃饱和度——app.glassSaturate 显式写过即覆盖 --glass-saturate（1 = neutral 原图 / 0 去饱和 / 2 加倍）。
+  // presence 门控（同 glass 两键 #56）：端点 1 = neutral 也是默认，值对比会把「显式拖到 neutral」误判为未覆盖。
+  const saturate = getConfigurationValue<number>("app.glassSaturate");
+  if (hasConfigurationValue("app.glassSaturate") && saturate != null) overrides["glass-saturate"] = String(saturate);
+
   const bgImage = getConfigurationValue<string>("app.backgroundImage");
   if (bgImage != null && String(bgImage).trim() !== "") {
     const trimmed = String(bgImage).trim();
@@ -1311,6 +1337,13 @@ export function getAppearanceOverrides(): Record<string, string> {
       if (resolved) overrides["bg-image"] = `url("${resolved}")`;
     }
   }
+
+  // E5.8#94：背景图不透明度/遮罩明暗——app.backgroundOpacity（0 全透 / 1 原图）/ app.backgroundMask（0 无遮罩 / 1 全黑）。
+  // presence 门控：显式写过即覆盖（默认 1 / 0 = neutral 也是端点，值对比会误判「显式拖到 neutral」为未覆盖）。
+  const bgOpacity = getConfigurationValue<number>("app.backgroundOpacity");
+  if (hasConfigurationValue("app.backgroundOpacity") && bgOpacity != null) overrides["bg-opacity"] = String(bgOpacity);
+  const bgMask = getConfigurationValue<number>("app.backgroundMask");
+  if (hasConfigurationValue("app.backgroundMask") && bgMask != null) overrides["bg-mask"] = String(bgMask);
 
   // E5.8#81：zone 表面背景覆盖入口——写 --surface-bg-image（与全窗 --bg-image 并存非互斥：全窗垫底、
   // zone 浮 surface 表面，缝隙/透明处露全窗 = 预期，痛点 12 双背景语义）。surface-bg-zones=1 触发
@@ -1338,6 +1371,13 @@ export function getAppearanceOverrides(): Record<string, string> {
   if (fontFamily != null && String(fontFamily).trim() !== "") {
     const trimmedFont = String(fontFamily).trim();
     overrides["font-ui"] = trimmedFont === CONFIG_NONE_SENTINEL ? SYSTEM_FONT_STACK : trimmedFont;
+  }
+
+  // E5.8#95：等宽字体槽——app.fontFamilyMono 覆盖 --font-mono（空 = 不覆盖跟随主题；__none__ = 系统等宽栈）。
+  const monoFamily = getConfigurationValue<string>("app.fontFamilyMono");
+  if (monoFamily != null && String(monoFamily).trim() !== "") {
+    const trimmedMono = String(monoFamily).trim();
+    overrides["font-mono"] = trimmedMono === CONFIG_NONE_SENTINEL ? SYSTEM_MONO_FONT_STACK : trimmedMono;
   }
 
   // E5.8#85：圆角绝对化——app.surfaceRadius = 组件圆角 md 档绝对 px 0→32。presence 门控（同 glass #56）：
