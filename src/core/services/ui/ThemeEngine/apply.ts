@@ -1,8 +1,9 @@
 /**
  * 主题应用入口——applyTheme（flat 桥接）/ applyRecipe（配方）。合并 token → commitTokens（tokens.ts）写 :root + 广播。
  * 依赖：recipe（mergeDomains/recipeDomains/resolveColorway）+ mix（mergeMixDomains/getMixProfile/resolveFontSource/
- * resolveMixDomainRecipe/resolveDomainSource）+ tokens（getThemeVariables/commitTokens/applyOverrides）+
- * fonts（resolveRecipeFonts）+ seeds（getAppearanceOverrides）+ state（setActiveRecipe/setCurrentTheme）。
+ * resolveMixDomainRecipe/resolveDomainSource）+ tokens（getThemeVariables/commitTokens/applyOverrides/
+ * synthesizeGlassSurfaces）+ fonts（resolveRecipeFonts）+ seeds（getAppearanceOverrides/getGlassSurfaceSpec）+
+ * state（setActiveRecipe/setCurrentTheme）。
  */
 
 import { getConfigurationValue } from "../../configuration/ConfigurationService";
@@ -14,12 +15,12 @@ import { resolveColorway, recipeDomains, mergeDomains } from "./recipe";
 import {
   getMixProfile, mergeMixDomains, resolveFontSource, resolveMixDomainRecipe, resolveDomainSource,
 } from "./mix";
-import { getThemeVariables, commitTokens, applyOverrides } from "./tokens";
+import { getThemeVariables, commitTokens, applyOverrides, synthesizeGlassSurfaces } from "./tokens";
 import { resolveRecipeFonts } from "./fonts";
-import { getAppearanceOverrides } from "./seeds";
+import { getAppearanceOverrides, getGlassSurfaceSpec } from "./seeds";
 import { setActiveRecipe, setCurrentTheme } from "./state";
 
-/** 应用主题（flat 桥接）：colors + 玻璃/背景/悬浮 + 用户覆盖 → 写 :root + 广播。 */
+/** 应用主题（flat 桥接）：colors + 玻璃/背景/悬浮 + 用户覆盖 + 玻璃表面合成 → 写 :root + 广播。 */
 export function applyTheme(theme: Theme): void {
   // E5.8#50.6：全量写入 colors + 玻璃/背景/悬浮——玻璃变量每次都写（缺省零值），
   // 玻璃主题切回普通主题自动清零不残留；重复应用幂等。
@@ -27,6 +28,9 @@ export function applyTheme(theme: Theme): void {
   // E5.8#50.10：用户外观配置覆盖主题基线（radius scale 系数 / 玻璃绝对）——
   // applyOverrides 内 JS 乘算（对主题现值/壳默认），一次写 :root + 一次广播，无双广播竞态。
   applyOverrides(variables, getAppearanceOverrides());
+  // E5.8 Phase 11.16：玻璃系统标尺化——合成放覆盖后、提交前（玻璃激活 → 表面配色键半透明；
+  // 未激活 → 零变化。绝不放 mergeDomains 内部——getThemeBaseTokens 纯基线语义）。
+  synthesizeGlassSurfaces(variables, getGlassSurfaceSpec());
   commitTokens(variables, theme.type, { recipeId: theme.name });
   setCurrentTheme(theme);
   // flat apply 清 recipe 态——两路径互斥（#50.18 IPC 接线后 flat 桥退役）
@@ -76,6 +80,9 @@ export function applyRecipe(
     effectiveColors = colorway.colors ?? {};
   }
 
+  // E5.8 Phase 11.16：玻璃系统标尺化——合成放覆盖（mergeDomains/mergeMixDomains 内已 applyOverrides）后、
+  // 提交前（玻璃激活 → 表面配色键半透明；未激活 → 零变化。绝不放 merge 内部——纯基线语义）。
+  synthesizeGlassSurfaces(effective, getGlassSurfaceSpec());
   commitTokens(
     effective,
     recipe.type,

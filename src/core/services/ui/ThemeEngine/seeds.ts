@@ -10,7 +10,7 @@ import { getConfigurationValue, hasConfigurationValue } from "../../configuratio
 import { ThemeRegistry } from "../../../registry/appearance/ThemeRegistry";
 import {
   RADIUS_SCALE_KEYS, clampRadiusPx, CONFIG_NONE_SENTINEL, SYSTEM_FONT_STACK, SYSTEM_MONO_FONT_STACK,
-  FONT_TONE_LIGHT_TEXT, FONT_TONE_DARK_TEXT,
+  FONT_TONE_LIGHT_TEXT, FONT_TONE_DARK_TEXT, GLASS_SURFACE_DEFAULT_ALPHA,
 } from "./constants";
 import { getActiveRecipe } from "./state";
 import { resolveColorway, mergeDomains } from "./recipe";
@@ -146,6 +146,29 @@ export function getThemeBaseTokens(): Record<string, string> {
     return mergeMixDomains(recipe, colorway, getMixProfile(), {});
   }
   return mergeDomains(recipe, colorway.id, {});
+}
+
+/** E5.8 Phase 11.16：玻璃系统标尺化——表面合成规格（apply 层在 applyOverrides 后消费）。
+ *  active = 任一玻璃键（blur/opacity/tint/saturate）被显式配置（presence 门控，同 #56）——玻璃激活。
+ *  alpha = 表面合成不透明度（0 全透见背景 / 1 主题原生）：显式写了 opacity 用其值；
+ *  激活但没动 opacity → 系统默认 GLASS_SURFACE_DEFAULT_ALPHA（0.5，拍板——保证全不透明主题
+ *  只拖 blur 也立刻见玻璃）。未激活 → active=false（表面零变化回主题原生，alpha 惰性无消费）。 */
+export interface GlassSurfaceSpec {
+  active: boolean;
+  alpha: number;
+}
+export function getGlassSurfaceSpec(): GlassSurfaceSpec {
+  const active =
+    hasConfigurationValue("app.glassBlur") ||
+    hasConfigurationValue("app.glassOpacity") ||
+    hasConfigurationValue("app.glassTint") ||
+    hasConfigurationValue("app.glassSaturate");
+  const opacity = getConfigurationValue<number>("app.glassOpacity");
+  const alpha =
+    hasConfigurationValue("app.glassOpacity") && opacity != null
+      ? Number(opacity)
+      : GLASS_SURFACE_DEFAULT_ALPHA;
+  return { active, alpha };
 }
 
 /** 读用户外观配置 → 覆盖集（glass/bg 仅偏离 neutral 时；radius/zone presence 门控写绝对 px——applyOverrides 内换算）。

@@ -12,8 +12,11 @@ import type { FontFaceSpec } from "../../../types/ipc/events";
 import { getLastCommittedKeys, setLastCommittedKeys } from "./state";
 import {
   SURFACE_ZERO, BACKGROUND_ZERO, RADIUS_SCALE_KEYS, RADIUS_MAX_PX, clampRadiusPx,
-  MANAGED_TOKEN_KEYS, SURFACE_SEAM_INSET_PX,
+  MANAGED_TOKEN_KEYS, SURFACE_SEAM_INSET_PX, SURFACE_COLOR_KEYS,
 } from "./constants";
+// E5.8 Phase 11.16：表面合成规格类型——type-only 引用（seeds 生产 getGlassSurfaceSpec，合成在 apply 层消费；
+//  erasure 后无运行时依赖，seeds⇄apply 循环仍由 state 破）
+import type { GlassSurfaceSpec } from "./seeds";
 
 /** 玻璃 + 悬浮面板 + per-surface 纹理变量——缺省 = 零值 */
 export function surfaceVariables(surface?: ThemeSurface): Record<string, string> {
@@ -287,4 +290,32 @@ export function applyOverrides(
   tokens["surface-inset"] =
     (tokens["surface-radius"] ?? "0px") === "0px" ? "0px" : `${SURFACE_SEAM_INSET_PX}px`;
   return tokens;
+}
+
+/* ── E5.8 Phase 11.16：玻璃系统标尺化——表面合成（applyOverrides 之后、commitTokens 之前调用） ── */
+
+/**
+ * 合成玻璃表面——玻璃激活时把表面配色键变半透明（玻璃 = 系统表面层，非主题材质域）：
+ * 对 tokens 里存在的每个 SURFACE_COLOR_KEYS 键：
+ *   恒写 <key>-solid = 原值（合成引用源 + 主题素材存档）；
+ *   激活 → <key> = color-mix(in srgb, var(--<key>-solid) calc(var(--glass-surface-alpha)*100%), transparent)
+ *     ——预乘插值只缩 alpha 不漂 RGB（rgba(11,16,32,.55) 50% transparent → rgba(11,16,32,.275)），
+ *     库内先例 index.css --glass-specular-line；Electron/Chromium 支持 var()/calc() 进 color-mix 百分比。
+ *   未激活 → <key> 原值（零变化回主题原生）。
+ * 写 glass-surface-alpha = spec.alpha（激活时 color-mix 引用源；未激活惰性无消费）。
+ * 只合成 tokens 里存在的键——主题没写的表面色 = CSS :root 壳默认，不碰。
+ * 调用点：applyTheme/applyRecipe 在 applyOverrides 之后、commitTokens 之前（绝不放
+ * mergeDomains/applyOverrides/mergeMixDomains 内部——getThemeBaseTokens「无覆盖纯基线」
+ * 语义，放进去污染基线）。纯函数只算不改。
+ */
+export function synthesizeGlassSurfaces(tokens: Record<string, string>, spec: GlassSurfaceSpec): void {
+  for (const key of SURFACE_COLOR_KEYS) {
+    const value = tokens[key];
+    if (value == null || value.trim() === "") continue;
+    tokens[`${key}-solid`] = value;
+    if (spec.active) {
+      tokens[key] = `color-mix(in srgb, var(--${key}-solid) calc(var(--glass-surface-alpha) * 100%), transparent)`;
+    }
+  }
+  tokens["glass-surface-alpha"] = String(spec.alpha);
 }

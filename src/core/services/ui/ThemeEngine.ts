@@ -15,9 +15,10 @@ export {
   SURFACE_SEAM_INSET_PX, RADIUS_SCALE_KEYS, RADIUS_MAX_PX, MIX_FOLLOW_THEME, MIX_SOURCE_KEYS,
   CONFIG_NONE_SENTINEL, SYSTEM_FONT_STACK, SYSTEM_MONO_FONT_STACK,
   FONT_TONE_LIGHT_TEXT, FONT_TONE_DARK_TEXT, FONT_TONE_TEXT_KEYS,
+  SURFACE_COLOR_KEYS, GLASS_SURFACE_DEFAULT_ALPHA,
 } from "./ThemeEngine/constants";
 
-export { getThemeVariables, getEffectiveTokens, getBaseRadius, applyRadiusAbsolute, applyOverrides } from "./ThemeEngine/tokens";
+export { getThemeVariables, getEffectiveTokens, getBaseRadius, applyRadiusAbsolute, applyOverrides, synthesizeGlassSurfaces } from "./ThemeEngine/tokens";
 
 export { recipeDomains, mergeDomains } from "./ThemeEngine/recipe";
 
@@ -38,8 +39,8 @@ export { applyAccentColor, getEffectiveAccentColor } from "./ThemeEngine/accent"
 
 export { applyTheme, applyRecipe } from "./ThemeEngine/apply";
 
-export type { AppearanceSeedValues } from "./ThemeEngine/seeds";
+export type { AppearanceSeedValues, GlassSurfaceSpec } from "./ThemeEngine/seeds";
 export {
   APPEARANCE_OVERRIDE_KEYS, deriveAppearanceSeeds, deriveAppearanceSeedMap,
-  deriveReseedPlan, getThemeBaseTokens, getAppearanceOverrides,
+  deriveReseedPlan, getThemeBaseTokens, getAppearanceOverrides, getGlassSurfaceSpec,
 } from "./ThemeEngine/seeds";

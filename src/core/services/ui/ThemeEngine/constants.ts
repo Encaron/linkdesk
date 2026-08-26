@@ -59,6 +59,28 @@ export function clampRadiusPx(v: number): number {
   return Number.isFinite(v) ? Math.min(RADIUS_MAX_PX, Math.max(0, Math.round(v))) : 0;
 }
 
+/* ── E5.8 Phase 11.16：玻璃系统标尺化——表面合成白名单 + 派生键 + 系统默认 alpha。
+   玻璃 = 系统表面层（非主题材质域）：任意主题玻璃滑杆激活 → 表面配色键合成半透明
+   （color-mix 缩 alpha），半透明面透出背景/图，backdrop-filter 磨砂显形；未激活 = 零变化回主题原生。
+   主题玻璃 = 起始预设（--bg-* 原值 = 素材）。必须白名单禁止 bg- 前缀匹配——
+   bg-image/bg-opacity/bg-mask 是背景图/不透明度/遮罩，不参与表面合成。 */
+
+/** 参与表面合成的表面配色键——synthesizeGlassSurfaces 只碰这 8 键（主题没写的不合，CSS :root 壳默认不碰） */
+export const SURFACE_COLOR_KEYS = [
+  "bg-window", "bg-titlebar", "bg-status", "bg-icon-bar", "bg-side-panel", "bg-toolbar", "bg-card", "bg-input",
+] as const;
+
+/** 表面合成派生键全集——solid 原值键（恒写）+ 合成透明度键（激活时 color-mix 引用源）。
+ *  随 variables 广播给池（池侧 color-mix 串两 var 引用齐）；激活→关闭 stale 清理由 lastCommittedKeys 差集承担。
+ *  模块内私有——仅 MANAGED_TOKEN_KEYS 消费（getEffectiveTokens 读合成键）；外部无独立消费方。 */
+const GLASS_SURFACE_KEYS: readonly string[] = [
+  ...SURFACE_COLOR_KEYS.map((k) => `${k}-solid`),
+  "glass-surface-alpha",
+];
+
+/** 玻璃激活但未显式动不透明度 → 表面默认半透明 0.5（拍板——保证全不透明主题只拖 blur 也立刻见玻璃） */
+export const GLASS_SURFACE_DEFAULT_ALPHA = 0.5;
+
 /** 引擎管理的 token 键全集（去 -- 前缀）——getEffectiveTokens 读当前生效值（含壳默认继承） */
 export const MANAGED_TOKEN_KEYS: string[] = [
   ...Object.keys(SURFACE_ZERO),
@@ -66,6 +88,7 @@ export const MANAGED_TOKEN_KEYS: string[] = [
   ...RADIUS_SCALE_KEYS,
   "radius-pill", "radius-full",
   "font-ui", "font-mono",
+  ...GLASS_SURFACE_KEYS,
 ];
 
 /* ── E5.8#50.26：混搭域常量（10-混搭设计 §1/§3——按域换来源，引擎按域合并） ── */
