@@ -499,27 +499,40 @@ select {
   bottom: calc(-1 * var(--surface-inset, 0px));
 }
 
-/* ── E5.8 用户审计 #4 + #103：浮层玻璃磨砂隔离 + 磨砂地板——悬浮表面统一 backdrop-filter
-   （pool-css 门禁禁池 @import → 共享原语必须在此全局层，与 .zone-resize-handle 同先例）。
+/* ── E5.8#107 浮层权威：结构隔离地板（Phase 2 最终态）——悬浮表面统一 backdrop-filter。
+   pool-css 门禁禁池 @import → 共享原语必须在此全局层，与 .zone-resize-handle 同先例。
    玻璃模式激活时浮层表面色被合成半透明（synthesizeGlassSurfaces 半透明化 bg-card/bg-window），
    无 backdrop-filter 则背后内容透出字叠字；本规则给全部悬浮表面磨砂背后内容。
-   E5.8#103 磨砂地板：浮层全 portal 出到 body 顶层（不继承 per-surface --surface-glass-blur，
-   原 var 链对它恒落 --glass-blur）→ 改直读 --glass-blur + 保底 --float-blur-floor。用户拍板
-   模型「浮层永远比主屏更重一层磨砂」——玻璃滑杆控主表面；滑杆 0（全景图清晰模式）浮层仍
-   blur(16px) 保底可读，字不再与背景图重叠；滑杆 >16px 浮层继续跟随。消费方选择器显式列出。
-   GroupTabBar .drop-glass-zone 同类规则留在其文件内（drop 目标专属含 drop 属性，不并入）。 ── */
-.ctx-menu,
-.quick-pick-panel,
-.toast-item,
-.floating-panel,
-.floating-panel-title,
-.floating-panel-act.tip::after,
-.dialog-host-panel,
-.colorpicker-panel,
-.dropdown-card,
-.selectbox-dropdown {
-  /* E5.8#103 磨砂地板——浮层保底模糊，玻璃滑杆 0 也保底，浮层文字永不叠背景图 */
+   E5.8#103 磨砂地板模型（用户拍板）：「浮层永远比主屏更重一层磨砂」——玻璃滑杆控主表面；
+   滑杆 0（全景图清晰模式）浮层仍 blur(16px) 保底可读，字不叠背景图；滑杆 >16px 浮层继续跟随。
+
+   ONE 条结构规则，零表面名枚举（#107 根治 #103 的枚举漏项病——新增即漏：
+   status-bar-notif-panel / group-tab-plus-menu / panel-switcher-dropdown 曾被漏）。深度是结构
+   事实不是类名知识——新浮层（含第三方 OverlayPortal）进层即隔离，零类名知识零枚举零壳改动：
+     深度 2：#ld-float-layer > root > 表面——quick-pick/dialog/floating-panel 面板直接挂 root
+     深度 3：root > OverlayPortal wrapper > 表面——ContextMenu 主菜单 / ColorPicker / dropdown-card
+       / selectbox / status-bar-notif-panel / toast-item（wrapper = position:relative 0×0 空盒，
+       backdrop-filter 命中无害）；.toast-container（深度 2）display:contents 无盒同样无害。
+   scrim-plane 排除（:not(#ld-scrim-plane)）——遮罩满屏无磨砂（与 surface 分离后天然不碰）。
+   GroupTabBar .drop-glass-zone 同类规则留在其文件内（drop 目标专属含 drop 属性，不并入）。
+   拖拽幽灵排除裁决（#107）：icon-drag-preview + MainZone 拖拽预览**不进层**——瞬态 mimetic
+   副本非文字表面，逐帧 backdrop-filter 纯开销；且 pointer-events:none 与层穿透一致（裁决非漏项）。 ── */
+#ld-float-layer {
+  /* 层地板常量——浮层保底模糊（玻璃滑杆 0 也保底）。定义在层容器一处 → 结构地板 + tooltip 例外
+     经 CSS 变量继承共读同一常量（单一权威，不重复写字面量）。 */
   --float-blur-floor: 16px;
+}
+#ld-float-layer > *:not(#ld-scrim-plane) > *,
+#ld-float-layer > *:not(#ld-scrim-plane) > * > * {
+  backdrop-filter: blur(max(var(--glass-blur, 0px), var(--float-blur-floor))) saturate(var(--glass-saturate, 1));
+  -webkit-backdrop-filter: blur(max(var(--glass-blur, 0px), var(--float-blur-floor)));
+}
+
+/* 例外（深度 4+，文档化裁决）：.floating-panel-act.tip::after tooltip 芯片——伪元素嵌在
+   #floating-panel-root > .floating-panel > .floating-panel-title > .floating-panel-actions >
+   .floating-panel-act.tip::after = 深度 5，结构规则只到深度 3 够不着伪元素。唯一例外选择器——
+   新浮层若也嵌到深度 4+ 且需磨砂，先想结构归位（移到表面层），不要学这个例外。 */
+.floating-panel-act.tip::after {
   backdrop-filter: blur(max(var(--glass-blur, 0px), var(--float-blur-floor))) saturate(var(--glass-saturate, 1));
   -webkit-backdrop-filter: blur(max(var(--glass-blur, 0px), var(--float-blur-floor)));
 }

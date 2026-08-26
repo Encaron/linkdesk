@@ -18,9 +18,10 @@
  *    - 打开后聚焦菜单容器——键盘导航（设计 §4.2，防 focusable:false 回归）
  */
 import { useEffect, useMemo, useRef, useCallback, useState, useLayoutEffect } from "react";
+import { createPortal } from "react-dom";
 import type { MenuItemDescriptor } from "@src/core/api/linkdesk-api";
 import { Z_INDEX } from "../../../constants";
-import OverlayPortal from "../overlay-portal/OverlayPortal";
+import OverlayPortal, { getScrimTarget } from "../overlay-portal/OverlayPortal";
 import "./ContextMenu.css";
 
 /* ── 辅助函数 ── */
@@ -290,19 +291,23 @@ export default function ContextMenu({ menuId, anchor, context, onClose, resolveC
           层级 = contextMenu-1，与菜单本体同 wrapper stacking context 内比较。
           窗口级 mousedown 监听（下方"统一失焦"）已处理 backdrop 点击关闭。
           pointer-events 不在此写——池侧由 #context-menu-root 根级提供（补丁 2026-08-14）。
+          E5.8#107 浮层权威：归 #ld-scrim-plane（遮罩平面，无磨砂）——满屏遮罩与 surface 分离，
+          结构隔离地板 :not(#ld-scrim-plane) 天然不碰它。menuRef/subRef contains 守卫不受影响
+          （backdrop 不在 ref 内 → mousedown 点遮罩照常 onClose）。
           E5.8#55：variant="embedded" 时跳过——顶部菜单栏下拉点按钮行 hover 切换，
           无需全屏吞击（吞了按钮行第一击 hover 切换失效）。
           E5.8#92：variant="non-modal" 时跳过——设置行齿轮轻量菜单不吞首击（根因修：
           backdrop 在 mousedown 与 mouseup 间移除 → click 落 body → 每次 gear/右键后首击被吞）；
           无 backdrop = 点击穿透原目标（mousedown 关菜单、click 照常落色块开取色器）。 */}
-      {variant !== "embedded" && variant !== "non-modal" && (
+      {variant !== "embedded" && variant !== "non-modal" && createPortal(
         <div
           style={{
             position: "fixed",
             inset: 0,
             zIndex: Z_INDEX.contextMenu - 1,
           }}
-        />
+        />,
+        getScrimTarget()
       )}
 
       {/* 主菜单 */}

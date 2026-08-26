@@ -211,21 +211,6 @@
   flex-shrink: 0;
 }
 
-/* ── 拖拽预览浮层 ── */
-
-.group-tab-drag-preview {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 4px 12px;
-  background: var(--bg-card);
-  border: 1px solid var(--border-normal);
-  border-radius: var(--radius-sm);
-  color: var(--text-primary);
-  font-size: 13px;
-  box-shadow: var(--shadow-pop);
-}
-
 /* ── E5.7#14：右键菜单归一化——池侧 group-tab-context-* 死代码已删（E5.6#16.7k 前身）。
    ContextMenu 现自备 backdrop（contextMenu-1）+ portal 到 #context-menu-root，
    且 menuTop ≥ 30 钳制（硬约束 18）——旧注释"WCV 视口在 TitleBar 下方"在 E5.7 不成立：

@@ -32,6 +32,8 @@ import type { PoolTabAction } from "../../../core/types/ipc/tabActions"; // E5.7
 import type { LinkDeskAPI } from "../../../core/api/linkdesk-api"; // E5.7#98：pool 命名空间契约类型
 import { normalizePath } from "../../../core/utils/path/pathUtils";
 import ContextMenu from "@src/components/shared/context-menu/ContextMenu";
+import OverlayPortal from "../../../components/shared/overlay-portal/OverlayPortal"; // E5.8#107 浮层权威：PlusMenu 进 #overlay-root
+import { Z_INDEX } from "../../../constants"; // E5.8#107：裸 1001 → Z_INDEX 常量（禁裸数字）
 import "./GroupTabBar.css";
 
 // ═══════════════════════════════════════════════════════════════════
@@ -110,7 +112,8 @@ export default function GroupTabBar({ groupId, tabs, activeTabId, draggingId, dr
   // ── E5.6#16.7k-3：PlusMenu [+] 按钮下拉 ──
   const [showPlusMenu, setShowPlusMenu] = useState(false);
   const [plusMenuPos, setPlusMenuPos] = useState<{ x: number; y: number } | null>(null);
-  const plusMenuRef = useRef<HTMLDivElement | null>(null);
+  // 触发锚 = [+] 按钮（OverlayPortal triggerRef——点击按钮 toggle 关闭，E5.8#107）
+  const plusBtnRef = useRef<HTMLButtonElement | null>(null);
   const labels = useMemo(() => disambiguateLabels(tabs), [tabs]);
 
   // ── Overflow 检测 ──
@@ -154,27 +157,7 @@ export default function GroupTabBar({ groupId, tabs, activeTabId, draggingId, dr
   // ContextMenu 自带 mousedown 外部点击检测（contains 守卫）+ E5.7#14 backdrop 吞第一击
   // ——不需要池侧 useEffect 关闭逻辑。对标壳 ContextMenu.tsx:152。
 
-  // PlusMenu 点外部关闭——mousedown 竞态修复：contains 守卫防菜单项 onClick 被吞
-  useEffect(() => {
-    if (!showPlusMenu) return;
-    const close = (e: MouseEvent) => {
-      if (e.target instanceof Node && plusMenuRef.current?.contains(e.target)) return;
-      setShowPlusMenu(false);
-    };
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setShowPlusMenu(false);
-    };
-    // delay——避免同一次 click 既打开又关闭
-    const timer = setTimeout(() => {
-      window.addEventListener("mousedown", close);
-    }, 0);
-    window.addEventListener("keydown", onKey);
-    return () => {
-      clearTimeout(timer);
-      window.removeEventListener("mousedown", close);
-      window.removeEventListener("keydown", onKey);
-    };
-  }, [showPlusMenu]);
+  // PlusMenu 外部点击/Escape 关闭——E5.8#107 由 OverlayPortal onClose 统一处理（triggerRef=[+] 按钮豁免）
 
   const onContextMenu = useCallback(
     (tabId: string, pluginId: string, e: ReactMouseEvent) => {
@@ -363,12 +346,18 @@ export default function GroupTabBar({ groupId, tabs, activeTabId, draggingId, dr
           </button>
         )}
 
-        {/* [+] PlusMenu——E5.6#16.7k-3：壳推送 creatableViews 时显示动态列表，否则兜底欢迎页 */}
+        {/* [+] PlusMenu——E5.6#16.7k-3：壳推送 creatableViews 时显示动态列表，否则兜底欢迎页。
+            E5.8#107：触发锚 = 本按钮（ref + toggle——再点收起，OverlayPortal onClose 替代手动 mousedown） */}
         <button
+          ref={plusBtnRef}
           className="group-tab-plus-btn"
           onClick={(e) => {
+            if (showPlusMenu) {
+              setShowPlusMenu(false);
+              return;
+            }
             if (creatableViews && creatableViews.length > 0) {
-              const btnRect = (e.target as HTMLElement).getBoundingClientRect();
+              const btnRect = (e.currentTarget as HTMLElement).getBoundingClientRect();
               setPlusMenuPos({ x: btnRect.left, y: btnRect.bottom + 4 });
               setShowPlusMenu(true);
             } else {
@@ -381,16 +370,17 @@ export default function GroupTabBar({ groupId, tabs, activeTabId, draggingId, dr
           +
         </button>
 
-        {/* PlusMenu 下拉——动态列出可创建视图 */}
+        {/* PlusMenu 下拉——动态列出可创建视图。E5.8#107 浮层权威：OverlayPortal 进 #overlay-root（单一门），
+            z-index 走 Z_INDEX.contextMenu 常量（裸 1001 删）——禁裸数字（#26 常量表）。 */}
         {showPlusMenu && plusMenuPos && creatableViews && creatableViews.length > 0 && (
+          <OverlayPortal onClose={() => setShowPlusMenu(false)} triggerRef={plusBtnRef}>
           <div
-            ref={plusMenuRef}
             className="group-tab-plus-menu"
             style={{
               position: "fixed",
               left: plusMenuPos.x,
               top: plusMenuPos.y,
-              zIndex: 1001,
+              zIndex: Z_INDEX.contextMenu,
             }}
           >
             {creatableViews.map((v) => (
@@ -406,6 +396,7 @@ export default function GroupTabBar({ groupId, tabs, activeTabId, draggingId, dr
               </button>
             ))}
           </div>
+          </OverlayPortal>
         )}
       </div>
 

@@ -4,12 +4,28 @@
  *        脱离 App.tsx zone wrapper 的层叠上下文，永远不会被分割线/图标栏/状态栏遮挡。
  * E5#96+：行为归一化——外部点击检测 / ESC 关闭 / 焦点陷阱 统一进组件。
  *         对标 VS Code IContextViewService——组件只声明意图，壳处理机制。
+ * E5.8#107（主题系统最终最优根治 Phase 2）：单一门——默认目标改 #overlay-root（FloatingLayerHost
+ *        浮层权威的通用 surface 根），壳 DOM 无此 root 自动回退 body（SettingsView 等现状行为不变）。
+ *        遮罩归 scrim-plane 的 getScrimTarget() 同模块导出（单一平面常量唯一权威）。
  *
  * 对标 E5#18 InlineInput 归一化——一个组件替代所有 overlay 的 portal + 行为模式。
  * 未来 FloatingPanel / Tooltip / 底部终端面板等新悬浮 UI 默认使用此组件。
  */
 import { useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
+
+/** E5.8#107：通用 surface 根 id——FloatingLayerHost 浮层权威（OverlayPortal 默认 portal 目标）。
+ *  模块私有常量（单一权威 id——不导出；需 root id 的消费方用 getScrimTarget/getRootTarget 语义访问）。 */
+const OVERLAY_ROOT_ID = "overlay-root";
+
+/** E5.8#107：遮罩平面 root id——FloatingLayerHost 双平面架构（遮罩归 scrim-plane，无磨砂） */
+const SCRIM_ROOT_ID = "ld-scrim-plane";
+
+/** E5.8#107：遮罩 portal 目标——scrim-plane 存在（池内浮层权威）用层平面；壳侧无此平面回退 body。
+ *  遮罩满屏无磨砂，与 surface 平面分离后结构隔离地板（:not(#ld-scrim-plane)）天然不碰它。 */
+export function getScrimTarget(): HTMLElement {
+  return document.getElementById(SCRIM_ROOT_ID) ?? document.body;
+}
 
 interface OverlayPortalProps {
   children: React.ReactNode;
@@ -25,7 +41,8 @@ interface OverlayPortalProps {
   /** 叠层 token——透传到 wrapper 的 z-index */
   zIndex?: string;
   /** E5.7#14：portal 目标 root id——归一化到 FloatingLayerHost 的 portal root。
-   *  默认 document.body；root 不存在（壳 DOM 场景）自动回退 body。 */
+   *  E5.8#107 默认改 #overlay-root（浮层权威通用 surface 根）；root 不存在（壳 DOM 场景）
+   *  自动回退 body。显式传 rootId（ContextMenu→context-menu-root）不受影响。 */
   rootId?: string;
 }
 
@@ -100,6 +117,7 @@ export default function OverlayPortal({ children, onClose, triggerRef, trapFocus
     <div ref={contentRef} style={Object.keys(style).length > 1 ? style : {}}>
       {children}
     </div>,
-    (rootId ? document.getElementById(rootId) : null) ?? document.body
+    // E5.8#107 单一门：默认 → #overlay-root（浮层权威 surface 根）；显式 rootId 优先；根缺失回退 body
+    (rootId ? document.getElementById(rootId) : document.getElementById(OVERLAY_ROOT_ID)) ?? document.body
   );
 }

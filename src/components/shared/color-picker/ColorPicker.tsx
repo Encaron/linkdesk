@@ -10,7 +10,8 @@
 
 import { useState, useRef, useEffect, useCallback, useLayoutEffect } from "react";
 import { createRoot } from "react-dom/client";
-import OverlayPortal from "../overlay-portal/OverlayPortal";
+import { createPortal } from "react-dom";
+import OverlayPortal, { getScrimTarget } from "../overlay-portal/OverlayPortal"; // E5.8#107 浮层权威：遮罩归 scrim-plane
 import "./ColorPicker.css";
 
 /* ── E5.8#83 根因 A：视口边界碰撞 ──
@@ -235,8 +236,11 @@ export default function ColorPicker({ open, value, onChange, onClose, presets, a
   return (
     <OverlayPortal onClose={onClose}>
       {/* 遮罩——E5.8#83 根因 B：overlay 全屏拦截背景控件（modal 预期），但需点背景可关闭（对标 VS Code modal）——
-          绑 onClick→onClose，打破「只能 Escape/OK 退、OK 又屏外」的死锁 */}
-      <div className="colorpicker-overlay" onClick={() => onClose()} />
+          绑 onClick→onClose，打破「只能 Escape/OK 退、OK 又屏外」的死锁。
+          E5.8#107 浮层权威：归 #ld-scrim-plane（遮罩平面，无磨砂）——满屏遮罩与 surface 分离，
+          结构隔离地板 :not(#ld-scrim-plane) 天然不碰它。z-index --z-overlay-backdrop(500) 仍 < 面板
+          --z-overlay(600)——层上下文内相对次序不变。 */}
+      {createPortal(<div className="colorpicker-overlay" onClick={() => onClose()} />, getScrimTarget())}
       <div
         ref={panelRef}
         className="colorpicker-panel"
@@ -328,13 +332,13 @@ export interface ShowColorPickerOptions {
 /**
  * 命令式弹出 ColorPicker——对标 QuickPick show() 模式。
  * 插件调 `linkdesk.commands.execute('color-picker.pick', { initialColor: '#f00' })`
- * → 浮层挂到 document.body → 选色 → resolve(hex) → 自动清理 DOM。
+ * → 浮层挂到 #overlay-root（E5.8#107 浮层权威；壳 DOM 无此 root 回退 body）→ 选色 → resolve(hex) → 自动清理 DOM。
+ * .colorpicker-command-root 死类名已删（E5.8#107 死代码清理——挂载点语义由 target 表达，不需要类名知识）。
  */
 export function showColorPicker(options: ShowColorPickerOptions = {}): Promise<string | undefined> {
   return new Promise((resolve) => {
     const container = document.createElement("div");
-    container.className = "colorpicker-command-root";
-    document.body.appendChild(container);
+    (document.getElementById("overlay-root") ?? document.body).appendChild(container);
     const root = createRoot(container);
 
     const cleanup = (color?: string) => {

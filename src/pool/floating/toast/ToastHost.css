@@ -13,9 +13,12 @@
 
 /* ═══════════════════════════════════════════════
    容器——对标 .notifications-toasts
+   E5.8#107 浮层权威：toast 根级归位——布局/穿透由 #toast-root 承担（FloatingLayerHost 挂 #toast-root）。
+   .toast-container 改 display:contents（无盒）——结构隔离地板深度 2 规则（#ld-float-layer > * > *）
+   命中它也无视觉效应（零面积），.toast-item 直接成为 #toast-root 的 flex 子项。
    ═══════════════════════════════════════════════ */
 
-.toast-container {
+#toast-root {
   position: fixed;
   bottom: 30px;              /* 状态栏 22px + 8px gap（现网实测） */
   right: 6px;
@@ -23,11 +26,15 @@
   flex-direction: column-reverse;  /* 最新在底部 */
   gap: 4px;                  /* VS Code: margin: 4px around each toast */
   max-width: 450px;          /* VS Code MAX_DIMENSIONS.width */
-  pointer-events: none;      /* 容器本身不阻挡点击 */
+  pointer-events: none;      /* 容器本身不阻挡点击——子项恢复 auto */
 }
 
-.toast-container * {
+#toast-root > * {
   pointer-events: auto;
+}
+
+.toast-container {
+  display: contents;
 }
 
 /* ═══════════════════════════════════════════════

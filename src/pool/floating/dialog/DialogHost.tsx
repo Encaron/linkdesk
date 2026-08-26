@@ -18,7 +18,9 @@
  */
 
 import { useState, useRef, useEffect, type KeyboardEvent as ReactKeyboardEvent } from "react";
+import { createPortal } from "react-dom";
 import { Z_INDEX } from "../../../constants";
+import { getScrimTarget } from "../../../components/shared/overlay-portal/OverlayPortal"; // E5.8#107 浮层权威：遮罩归 scrim-plane
 import type { PoolDialogData } from "../../../core/types/pool/poolDialog";
 import "./DialogHost.css";
 
@@ -101,14 +103,18 @@ export default function DialogHost() {
 
   return (
     <>
-      {/* Backdrop——设计 §7.1：rgba(0,0,0,0.5)，zIndex dialog-1，点击关闭（alert 除外） */}
-      <div
-        className="dialog-host-backdrop"
-        style={{ zIndex: Z_INDEX.dialog - 1 }}
-        onClick={() => {
-          if (!data.isAlert) api?.cancel();
-        }}
-      />
+      {/* Backdrop——E5.8#107 浮层权威：归 #ld-scrim-plane（遮罩平面，无磨砂）。设计 §7.1：
+          rgba(0,0,0,0.5)，zIndex dialog-1，点击关闭（alert 除外）。 */}
+      {createPortal(
+        <div
+          className="dialog-host-backdrop"
+          style={{ zIndex: Z_INDEX.dialog - 1 }}
+          onClick={() => {
+            if (!data.isAlert) api?.cancel();
+          }}
+        />,
+        getScrimTarget()
+      )}
       {/* Modal——设计 §7.1：居中 50%/50%，minWidth 300，maxWidth 80vw，maxHeight 80vh */}
       <div
         ref={panelRef}
