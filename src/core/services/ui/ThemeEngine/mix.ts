@@ -8,8 +8,8 @@ import type { ThemeRecipe, ThemeAppearance, ThemeColorway, ThemeDomain } from ".
 import { ThemeRegistry } from "../../../registry/appearance/ThemeRegistry";
 import { getConfigurationValue, setConfigurationValue } from "../../configuration/ConfigurationService";
 import { updateConfigurationEnum } from "../../../registry/ConfigurationRegistry";
-import { MIX_DOMAIN_KEYS, MIX_FOLLOW_THEME, GLASS_TOKEN_KEYS, MIX_DOMAIN_ORDER, clampRadiusPx } from "./constants";
-import { surfaceVariables, backgroundVariables, applyOverrides, flattenRadiusTokens } from "./tokens";
+import { MIX_DOMAIN_KEYS, MIX_FOLLOW_THEME, GLASS_TOKEN_KEYS, MIX_DOMAIN_ORDER } from "./constants";
+import { surfaceVariables, backgroundVariables, applyOverrides, flattenRadiusTokens, flattenSurfaceDomain } from "./tokens";
 import { recipeDomains } from "./recipe";
 import { getActiveRecipe } from "./state";
 
@@ -150,14 +150,7 @@ function domainTokens(
           tokens[key] = value;
         }
       }
-      if (appearance?.surface) {
-        for (const [key, value] of Object.entries(appearance.surface)) {
-          if (value != null) {
-            // E5.8#104：surface.radius 绝对 px 同 clamp 进标尺（与 surfaceVariables glass.radius 同规）
-            tokens[`surface-${key}`] = key === "radius" ? `${clampRadiusPx(Number(value))}px` : String(value);
-          }
-        }
-      }
+      flattenSurfaceDomain(appearance?.surface, tokens); // 3d：surface 域 flatten 唯一写法（recipe/mix 共用）
       return tokens;
     }
   }

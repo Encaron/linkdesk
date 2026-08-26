@@ -65,6 +65,13 @@ export function clampRadiusPx(v: number): number {
   return Number.isFinite(v) ? Math.min(RADIUS_MAX_PX, Math.max(0, Math.round(v))) : 0;
 }
 
+/** clamp 进系统标尺后拼 px 串——「圆角数值 → CSS token 值」唯一写法（3d 归一：flattenRadiusTokens /
+ *  surfaceVariables / applyRadiusAbsolute / applyOverrides zone+pill / recipe / mix 全路径共用，每个概念
+ *  只有一种写法）。与 config 数值形态区分（seeds/migration 用 clampRadiusPx→String 存 schema 值，非 px token）。 */
+export function radiusTokenPx(v: number): string {
+  return `${clampRadiusPx(v)}px`;
+}
+
 /* ── E5.8 Phase 11.16：玻璃系统标尺化——表面合成白名单 + 派生键 + 系统默认 alpha。
    玻璃 = 系统表面层（非主题材质域）：任意主题玻璃滑杆激活 → 表面配色键合成半透明
    （color-mix 缩 alpha），半透明面透出背景/图，backdrop-filter 磨砂显形；未激活 = 零变化回主题原生。

@@ -4,8 +4,7 @@
  */
 
 import type { ThemeRecipe, ThemeAppearance, ThemeColorway, ThemeDomain } from "../../../types/theme";
-import { surfaceVariables, backgroundVariables, applyOverrides, flattenRadiusTokens } from "./tokens";
-import { clampRadiusPx } from "./constants";
+import { surfaceVariables, backgroundVariables, applyOverrides, flattenRadiusTokens, flattenSurfaceDomain } from "./tokens";
 
 /** 解析配色变体——colorwayId 缺省 = 配方首个配色（单配色配方 = 恒首项）。
  *  E5.8#58（审计#6）：空 colorways 防线——空配色回退空色透明配色（不崩；注册路径 parseThemeRecipe
@@ -42,14 +41,7 @@ function flattenAppearance(appearance: ThemeAppearance, tokens: Record<string, s
     if (appearance.font.mono) tokens["font-mono"] = appearance.font.mono;
   }
   Object.assign(tokens, backgroundVariables(appearance.background));
-  if (appearance.surface) {
-    for (const [key, value] of Object.entries(appearance.surface)) {
-      if (value != null) {
-        // E5.8#104：surface.radius 绝对 px 同 clamp 进标尺（与 surfaceVariables glass.radius 同规）
-        tokens[`surface-${key}`] = key === "radius" ? `${clampRadiusPx(Number(value))}px` : String(value);
-      }
-    }
-  }
+  flattenSurfaceDomain(appearance.surface, tokens); // 3d：surface 域 flatten 唯一写法（recipe/mix 共用）
 }
 
 /**

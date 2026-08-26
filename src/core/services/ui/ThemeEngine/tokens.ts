@@ -11,7 +11,7 @@ import type { Theme } from "./registry";
 import type { FontFaceSpec } from "../../../types/ipc/events";
 import { getLastCommittedKeys, setLastCommittedKeys } from "./state";
 import {
-  SURFACE_ZERO, BACKGROUND_ZERO, RADIUS_SCALE_KEYS, clampRadiusPx,
+  SURFACE_ZERO, BACKGROUND_ZERO, RADIUS_SCALE_KEYS, radiusTokenPx,
   MANAGED_TOKEN_KEYS, SURFACE_SEAM_INSET_PX, SURFACE_COLOR_KEYS, ACCENT_TOKEN_KEYS,
 } from "./constants";
 // E5.8 Phase 11.16：表面合成规格类型——type-only 引用（seeds 生产 getGlassSurfaceSpec，合成在 apply 层消费；
@@ -30,7 +30,21 @@ export function flattenRadiusTokens<K extends string>(
   if (!radius) return;
   for (const [key, value] of Object.entries(radius)) {
     if (value != null && Number.isFinite(Number(value)) && key !== "full") {
-      tokens[`radius-${key}`] = `${clampRadiusPx(Number(value))}px`;
+      tokens[`radius-${key}`] = radiusTokenPx(Number(value));
+    }
+  }
+}
+
+/** surface 域稀疏 flatten——键直写 surface-* token；radius 键 clamp 进标尺（3d：recipe/mix 两路径共用，
+ *  surface-radius 唯一写法，与 surfaceVariables glass.radius 同规——每个概念只有一种写法）。纯函数只算不改。 */
+export function flattenSurfaceDomain(
+  surface: ThemeSurface | undefined,
+  tokens: Record<string, string>
+): void {
+  if (!surface) return;
+  for (const [key, value] of Object.entries(surface)) {
+    if (value != null) {
+      tokens[`surface-${key}`] = key === "radius" ? radiusTokenPx(Number(value)) : String(value);
     }
   }
 }
@@ -49,7 +63,7 @@ export function surfaceVariables(surface?: ThemeSurface): Record<string, string>
   // 悬浮面板形态（radius/shadow）——与 glass 材质正交：⑬⑭ 分区主题无玻璃也要圆角（接缝露底色）。
   //   inset 不再由主题数据决定——缝=宿主所有（Content vs Space Ownership），applyOverrides 缝法则统一派生
   // E5.8#104：surface.radius 绝对 px 同 clamp 进标尺 [0,32]——主题配方 surface-radius 不可超系统标尺
-  if (surface.radius != null) vars["surface-radius"] = `${clampRadiusPx(surface.radius)}px`;
+  if (surface.radius != null) vars["surface-radius"] = radiusTokenPx(surface.radius);
   // 投影浮起 → 映射六域悬浮 token（JS 不硬编码 shadow 值——#50.14 已 token 化）
   if (surface.shadow === true) vars["surface-shadow"] = "var(--shadow-lift)";
 
@@ -249,10 +263,10 @@ export function getBaseRadius(): Record<string, string> {
  * applyOverrides ①c 直写滑杆值）。纯函数只算不改。消费侧 clamp（#56 延续）——越界直写钳到标尺域。
  */
 export function applyRadiusAbsolute(absPx: number): Record<string, string> {
-  const s = clampRadiusPx(absPx);
+  const s = radiusTokenPx(absPx);
   const vars: Record<string, string> = {};
   for (const key of RADIUS_SCALE_KEYS) {
-    vars[key] = `${s}px`;
+    vars[key] = s;
   }
   return vars;
 }
@@ -284,14 +298,14 @@ export function applyOverrides(
       tokens["surface-radius"] = "0px";
     } else {
       const zonePx = Number(zoneRadiusVal);
-      if (Number.isFinite(zonePx)) tokens["surface-radius"] = `${clampRadiusPx(zonePx)}px`;
+      if (Number.isFinite(zonePx)) tokens["surface-radius"] = radiusTokenPx(zonePx);
     }
   }
   // ①c E5.8 用户审计 #2：radius-pill 形态值 = 滑杆值（clamp 标尺）——用户圆角覆盖生效时胶囊/旋钮随滑杆
   //   （滑杆 0 → 0px 方块胶囊 + 方块旋钮；≥10 → 浏览器 clamp 半边长天然成胶囊）；
   //   followTheme（radiusAbs==null）pill 保持主题原样（默认 999px 胶囊）；本键恒绝对 px，% 分支为 radius-full 语义不涉。
   if (radiusAbs != null) {
-    tokens["radius-pill"] = `${clampRadiusPx(radiusAbs)}px`;
+    tokens["radius-pill"] = radiusTokenPx(radiusAbs);
   }
   // ② 绝对 token 覆盖
   for (const [token, value] of Object.entries(overrides)) {
