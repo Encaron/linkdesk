@@ -11,7 +11,7 @@ import type { Theme } from "./registry";
 import type { FontFaceSpec } from "../../../types/ipc/events";
 import { getLastCommittedKeys, setLastCommittedKeys } from "./state";
 import {
-  SURFACE_ZERO, BACKGROUND_ZERO, RADIUS_SCALE_KEYS, RADIUS_MAX_PX, clampRadiusPx,
+  SURFACE_ZERO, BACKGROUND_ZERO, RADIUS_SCALE_KEYS, clampRadiusPx,
   MANAGED_TOKEN_KEYS, SURFACE_SEAM_INSET_PX, SURFACE_COLOR_KEYS,
 } from "./constants";
 // E5.8 Phase 11.16：表面合成规格类型——type-only 引用（seeds 生产 getGlassSurfaceSpec，合成在 apply 层消费；
@@ -266,17 +266,11 @@ export function applyOverrides(
       if (Number.isFinite(zonePx)) tokens["surface-radius"] = `${clampRadiusPx(zonePx)}px`;
     }
   }
-  // ①c E5.8#85：radius-pill 形态值经标尺 clamp（主题 999px 胶囊 → 32「系统最大圆角预览」）——
-  //   仅用户圆角覆盖生效时 clamp（followTheme 主题自带 pill 原样）；% 相对几何值不碰；
-  //   主题/壳未写 pill（:root 静态 999px 不经 JS token）→ 注入 32px 标尺上限（CDP 实机验证补齐）。
+  // ①c E5.8 用户审计 #2：radius-pill 形态值 = 滑杆值（clamp 标尺）——用户圆角覆盖生效时胶囊/旋钮随滑杆
+  //   （滑杆 0 → 0px 方块胶囊 + 方块旋钮；≥10 → 浏览器 clamp 半边长天然成胶囊）；
+  //   followTheme（radiusAbs==null）pill 保持主题原样（默认 999px 胶囊）；本键恒绝对 px，% 分支为 radius-full 语义不涉。
   if (radiusAbs != null) {
-    const pill = tokens["radius-pill"];
-    if (pill == null || pill.trim() === "") {
-      tokens["radius-pill"] = `${RADIUS_MAX_PX}px`;
-    } else if (!pill.trim().endsWith("%")) {
-      const pillPx = parseFloat(pill);
-      if (Number.isFinite(pillPx)) tokens["radius-pill"] = `${clampRadiusPx(pillPx)}px`;
-    }
+    tokens["radius-pill"] = `${clampRadiusPx(radiusAbs)}px`;
   }
   // ② 绝对 token 覆盖
   for (const [token, value] of Object.entries(overrides)) {

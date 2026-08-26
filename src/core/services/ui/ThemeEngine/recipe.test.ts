@@ -62,7 +62,7 @@ describe("ThemeEngine — Recipe 合并算法 mergeDomains（E5.8#50.16，05 §4
     expect(tokens["radius-lg"]).toBe("12px"); // md 档 = 滑杆值
     expect(tokens["radius-sm"]).toBe("12px"); // 主题 radius.sm 6 / md 缺省 → 等值滑杆
     expect(tokens["radius-md"]).toBe("12px"); // md 缺省 → 壳默认 0 → 等值（不再恒写 0px 清残留）
-    expect(tokens["radius-pill"]).toBe("32px"); // radius 覆盖生效 → pill 注入标尺上限（主题无 pill）
+    expect(tokens["radius-pill"]).toBe("12px"); // E5.8 用户审计 #2：radius 覆盖生效 → pill 直写滑杆值（主题无 pill）
   });
 
   it("overrides 绝对 token → 覆盖主题值（glass-blur 绝对覆盖胜过 appearance.glass.blur）", () => {
@@ -77,18 +77,18 @@ describe("ThemeEngine — Recipe 合并算法 mergeDomains（E5.8#50.16，05 §4
     expect(tokens["glass-blur"]).toBe("16px");
   });
 
-  it("E5.8#85 applyOverrides — radius 覆盖生效时 radius-pill clamp 进标尺（主题 999px 胶囊 → 32）", () => {
+  it("E5.8 用户审计 #2 applyOverrides — radius 覆盖生效时 radius-pill 直写滑杆值（主题 999px 胶囊 → 16）", () => {
     const tokens = { "radius-md": "8px", "radius-pill": "999px" };
     applyOverrides(tokens, { "radius-md": 16 });
     expect(tokens["radius-md"]).toBe("16px");
-    expect(tokens["radius-pill"]).toBe("32px");
+    expect(tokens["radius-pill"]).toBe("16px");
   });
 
-  it("E5.8#85 applyOverrides — radius 覆盖生效且主题无 pill（壳 :root 静态）→ 注入 32px 标尺上限（CDP 实机补齐）", () => {
+  it("E5.8 用户审计 #2 applyOverrides — radius 覆盖生效且主题无 pill（壳 :root 静态）→ 直写滑杆值 16px", () => {
     const tokens: Record<string, string> = { "radius-md": "8px" }; // 无 pill 键
     applyOverrides(tokens, { "radius-md": 16 });
     expect(tokens["radius-md"]).toBe("16px");
-    expect(tokens["radius-pill"]).toBe("32px");
+    expect(tokens["radius-pill"]).toBe("16px");
   });
 
   it("E5.8#85 applyOverrides — 无 radius 覆盖 → pill 原样（followTheme 主题自带胶囊不 clamp）", () => {
@@ -96,6 +96,15 @@ describe("ThemeEngine — Recipe 合并算法 mergeDomains（E5.8#50.16，05 §4
     applyOverrides(tokens, { "glass-blur": "16px" });
     expect(tokens["radius-md"]).toBe("8px");
     expect(tokens["radius-pill"]).toBe("999px");
+  });
+
+  it("E5.8 用户审计 #2 — radius 覆盖 0px（直角）→ pill 0px 方块胶囊；8px → 渐进圆角", () => {
+    const square: Record<string, string> = { "radius-md": "8px" };
+    applyOverrides(square, { "radius-md": 0 });
+    expect(square["radius-pill"]).toBe("0px");
+    const soft: Record<string, string> = { "radius-md": "8px" };
+    applyOverrides(soft, { "radius-md": 8 });
+    expect(soft["radius-pill"]).toBe("8px");
   });
 
   it("E5.8#85 applyRadiusAbsolute(absPx, tokens) — 有现值按比例；无现值用壳默认（0px → 0）", () => {
