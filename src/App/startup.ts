@@ -412,7 +412,7 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
           // #90 曾并入 appearanceMode 单一轴（app.accentMode 删），现用户可独立于外观主开关只调强调色：
           //   followTheme → 强调色恒取当前主题配方 accent（appearanceMode=followTheme 也生效）；
           //   custom → 取 app.accentColor。行序 = 来源开关在上、取色器在下（mockup ③ 强调色区）。
-          // uiHint "accentSource" = 两态分段控件（设置插件）+ 生效强调色 swatch（14-档案 §十二）。
+          // uiHint "accentSource" = 两态分段控件（设置插件，段内预览：跟随主题 = 中性分半 / 自定义 = 色块，14-档案 §十二+#99）。
           // 无 dependsOn——恒显（不随 custom 展开；SettingsView 空桶过滤不再吞强调色节，mockup「始终可见」）。
           "app.accentSource": {
             type: "string",
@@ -428,7 +428,9 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
             onApply: () => applyAccentColor(getEffectiveAccentColor()),
           },
           // E5.8#98：自定义强调色取色器——仅 accentSource=custom 时显示（来源开关为唯一显隐门控）。
-          // 写 accentColor = 自定义强调色；清除 = 系统默认强调色（回主题 = 来源开关切「跟随主题配方」）。
+          // E5.8#99（#5）：写 accentColor = 自定义强调色；清除（空）= 跟随主题强调色——与
+          //   backgroundImage/fontFamily 三键清除语义统一（getEffectiveAccentColor 兜底主题 accent，
+          //   14-档案 #99）。回主题的另一路径 = 来源开关切「跟随主题配方」。
           // getEffectiveAccentColor 按 accentSource 分流（14-档案 §十二）——accentSource=custom 才读本键。
           "app.accentColor": {
             type: "string",
@@ -436,7 +438,7 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
             // E5.8#6.6 hex 豁免：配置项默认值数据（用户可改，非样式硬编码）
             // eslint-disable-next-line linkdesk/no-hardcoded-hex
             default: "#0078d4",
-            description: t("自定义强调色（图标栏高亮、开关、焦点边框）——清除 = 系统默认强调色"),
+            description: t("自定义强调色（图标栏高亮、开关、焦点边框）——清除 = 跟随主题强调色"),
             dependsOn: { key: "app.accentSource", value: "custom" },
             renderHint: "color",
             // E3.5 fix: dependsOn 只控制 UI 显隐，不阻止 applyConfiguration 在启动时调用。

@@ -13,7 +13,7 @@ import ColorPicker from "@src/components/shared/color-picker/ColorPicker";
 import { useConfigurationValueIpc, useConfigurationValuesIpc } from "../hooks/useConfigurationValueIpc";
 import renderControl from "./renderControl";
 import { lk } from "./helpers";
-import { deriveSourceBadge, SOURCE_BADGE_UI } from "./deriveSourceBadge";
+import { deriveSourceBadge } from "./deriveSourceBadge";
 import type { ConfigProperty } from "./types";
 
 /** 设置项齿轮菜单槽——壳 MenuRegistry.MENU_SLOTS.SettingItemGear 稳定槽 id（菜单项由壳 coreCommands 注册） */
@@ -22,6 +22,13 @@ const SETTING_ITEM_GEAR_MENU = "settingItemGear";
 // E5.8#6.6 hex 豁免：取色器预设色板（颜色即数据——用户可选值，非样式硬编码）
 // eslint-disable-next-line linkdesk/no-hardcoded-hex
 const COLOR_PICKER_PRESETS = ["#0078d4", "#e81123", "#10893e", "#ff8c00", "#6b69d6", "#0099bc"];
+
+// E5.8#99（#6）：来源徽标 UI 元数据——codicon 图标（SVG 字体，随 currentColor 主题化）+ i18n label。
+// 只含 user/mix（非默认态才显徽标，降噪；theme 态无徽标 = 主题来源）。deriveSourceBadge 保持纯函数。
+const SOURCE_BADGE_UI: Record<"user" | "mix", { glyph: string; labelKey: string }> = {
+  user: { glyph: "codicon-edit", labelKey: "来源：用户覆盖" },
+  mix: { glyph: "codicon-arrow-swap", labelKey: "来源：混搭域" },
+};
 
 function SettingRow({
   configKey,
@@ -113,15 +120,17 @@ function SettingRow({
       <div className="settings-row-info">
         <div className="settings-row-label-line">
           <label className="settings-row-label">{configKey}</label>
-          {/* E5.8#87：来源徽标——清除后 🎨 一眼可见「回主题」；改过 ✏️；混搭域来源 🔀 */}
-          {badge && (
+          {/* E5.8#87+#99：来源徽标——只显非默认态（#6 降噪）：改过 ✏️ / 混搭域来源 🔀；
+              theme 态无徽标 = 主题来源（清除后徽标消失 = 一眼可见「回主题」，对标 VS Code 非默认态才点显） */}
+          {badge === "user" || badge === "mix" ? (
             <span
               className={`settings-source-badge settings-source-badge--${badge}`}
               title={t(SOURCE_BADGE_UI[badge].labelKey)}
             >
-              {SOURCE_BADGE_UI[badge].glyph} {t(SOURCE_BADGE_UI[badge].labelKey)}
+              <span className={`codicon ${SOURCE_BADGE_UI[badge].glyph}`} aria-hidden="true" />
+              {t(SOURCE_BADGE_UI[badge].labelKey)}
             </span>
-          )}
+          ) : null}
         </div>
         <span className="settings-row-desc">{t(description ?? prop.description ?? "")}</span>
       </div>

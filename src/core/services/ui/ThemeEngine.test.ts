@@ -1539,6 +1539,22 @@ describe("ThemeEngine — getEffectiveAccentColor 强调色独立轴（E5.8#98�
     applyRemoteConfigChange("app.accentColor", "#445566");
     expect(getEffectiveAccentColor()).toBe("#445566");
   });
+
+  // E5.8#99（#5）：accentColor 清除语义——清除（空串）→ 跟随主题强调色（对标 backgroundImage/fontFamily 三键清除）
+  it("accentSource=custom + 清除（空串）→ 跟随主题强调色", () => {
+    applyTheme(MOCK_THEME); // accent #ff0000
+    applyRemoteConfigChange("app.appearanceMode", "followTheme");
+    applyRemoteConfigChange("app.accentSource", "custom");
+    applyRemoteConfigChange("app.accentColor", ""); // 清除
+    expect(getEffectiveAccentColor()).toBe("#ff0000");
+  });
+
+  it("accentSource=custom + 清除 + 主题无 accent → 系统默认兜底（数据默认）", () => {
+    applyTheme(MOCK_THEME2); // 无 accent 域
+    applyRemoteConfigChange("app.accentSource", "custom");
+    applyRemoteConfigChange("app.accentColor", "");
+    expect(getEffectiveAccentColor()).toBe("#0078d4");
+  });
 });
 
 describe("ThemeEngine — 混搭合并（E5.8#50.26，10 §1/§3 每域各自取来源）", () => {

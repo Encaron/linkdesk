@@ -242,8 +242,12 @@ html, body, #root, #pool-root {
 .input:focus { border-color: var(--accent); }
 
 /* E5.8#30.15（P5）：聚焦面板 accent 环——inset 阴影不占布局（聚焦/失焦零位移），
-   var(--accent) 走 CSS 变量可主题化（硬约束 #1 禁硬编码 hex） */
+   var(--accent) 走 CSS 变量可主题化（硬约束 #1 禁硬编码 hex）。
+   E5.8#98 修：border-radius 跟随 --surface-radius（主区表面圆角同源）——环画在包裹元素上，
+   inset box-shadow 沿元素圆角走；缺省 0px = 直角，现状零变化。圆角开大时环四角不再被
+   main-zone overflow 裁掉（此前直角环四角顶在圆角表面上被裁）。 */
 .group-pane-focused {
+  border-radius: var(--surface-radius, 0px);
   box-shadow: inset 0 0 0 1px var(--accent);
 }
 

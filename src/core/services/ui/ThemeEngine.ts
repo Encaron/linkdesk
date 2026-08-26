@@ -958,14 +958,20 @@ import { getConfigurationValue, hasConfigurationValue, setConfigurationValue } f
  */
 export function getEffectiveAccentColor(): string {
   const source = (getConfigurationValue("app.accentSource") as string) ?? "followTheme";
+  // E5.8#99：#5 清除语义——accentColor 清除（空串）→ 跟随主题强调色（对标 backgroundImage/fontFamily 清除 = 回主题）。
+  //   缺省（未写）仍读 schema 默认 #0078d4（startup.ts 同源）；显式清空才走主题兜底。
+  const customColor = (getConfigurationValue("app.accentColor") as string) ?? "";
+  const theme = getCurrentTheme();
+  const themeAccent = theme?.colors?.accent;
+  if (source === "followTheme") {
+    if (themeAccent) return themeAccent;
+  }
+  if (customColor) return customColor;
+  // custom + 清除 → 回主题强调色（14-档案 #99 清除语义统一）；主题无 accent → 最终兜底数据默认
+  if (themeAccent) return themeAccent;
   // E5.8#6.6 hex 豁免：配置读取兜底默认值数据（与 startup.ts 默认值同源）
   // eslint-disable-next-line linkdesk/no-hardcoded-hex
-  const customColor = (getConfigurationValue("app.accentColor") as string) ?? "#0078d4";
-  if (source === "followTheme") {
-    const theme = getCurrentTheme();
-    if (theme?.colors?.accent) return theme.colors.accent;
-  }
-  return customColor;
+  return "#0078d4";
 }
 
 /* ── E5.8#50.10：用户外观配置覆盖主题基线（对标上块 accent 覆盖 theme accent 同款）。

@@ -5,7 +5,7 @@
  *   + ObjectEditor + types；被 SettingRow 消费。
  */
 
-import { useRef, useState } from "react"; // E5.8#50.11：背景图导入 busy 态；E5.8#91：roving tabindex 方向键导航
+import { useState } from "react"; // E5.8#50.11：背景图导入 busy 态
 import Toggle from "@src/components/shared/toggle/Toggle";
 import SelectBox from "@src/components/shared/select-box/SelectBox";
 import DynamicSelect from "@src/components/shared/select-box/DynamicSelect"; // E5.8#50.23：动态下拉（optionsFrom 渲染时调 listRecipes）
@@ -15,8 +15,12 @@ import NumberInput from "@src/components/shared/number-input/NumberInput";
 import Slider from "@src/components/shared/slider/Slider"; // E5.8#50.9：滑杆控件（shared 白名单惯例，非 @src/core 零警告）
 import { inferSliderStep } from "@src/components/shared/slider/sliderStep"; // E5.8#65：滑杆 step 推导（浮点区间连续可调）
 import ThemePicker from "@src/components/shared/theme-picker/ThemePicker"; // E5.8#50.22：主题配方卡片（数据走 window.linkdesk.theme）
+import SegmentedRadio from "@src/components/shared/segmented-radio/SegmentedRadio"; // E5.8#99：分段单选（ghost 双轨制——#91 fontTone/#98 accentSource 收敛共用）
+import Button from "@src/components/shared/button/Button"; // E5.8#99：实心动作按钮（双轨制实心轨——原 settings-action-btn 收编壳共享）
 import { formatSliderValue } from "./sliderValueLabel"; // E5.8#77：滑杆值标签格式化（unit 声明 → ×倍数/px）
+import { useConfigurationValueIpc } from "../hooks/useConfigurationValueIpc"; // E5.8#99：accentSource 自定义预览读 app.accentColor 实时值
 import ObjectEditor from "./ObjectEditor";
+import { mapSegmentedOptions } from "./mapSegmentedOptions"; // E5.8#99：分段单选选项映射（通用 segmented + fontTone/accentSource 预览覆盖共用）
 import type { ConfigProperty } from "./types";
 
 /** 根据 property type 渲染对应控件 */
@@ -68,26 +72,29 @@ function renderControl(
       return <FilePathInput value={String(val)} onChange={(v) => onChange(v)} dialogType="directory" />;
     case "image": // E5.8#50.11：背景图——选图拷贝入库 + 清除（受控来源）
       return <BackgroundImagePicker value={String(val)} onChange={onChange} t={t} />;
-    case "fontTone": // E5.8#91：文字极性三态分段控件（跟随主题/亮字/暗字）——每态预览方块实时取样系统双字系标尺
+    case "segmented": // E5.8#99 通用化：第三方声明 uiHint:"segmented" + enum + enumDescriptions 即得分段单选（ghost 轨，零预览）
+      return (
+        <SegmentedRadio
+          value={String(val)}
+          ariaLabel={prop.description ? t(prop.description) : undefined}
+          options={mapSegmentedOptions(prop, t)}
+          onChange={(v) => onChange(v)}
+        />
+      );
+    case "fontTone": // E5.8#91+#99：文字极性三态分段（跟随主题/亮字/暗字）——Aa 每态预览（预览覆盖，选项映射走 mapSegmentedOptions）
       return (
         <FontToneControl
           value={String(val)}
-          options={(prop.enum ?? []).map((v, i) => ({
-            value: v,
-            label: prop.enumDescriptions?.[i] ? t(prop.enumDescriptions[i]) : t(v),
-          }))}
+          options={mapSegmentedOptions(prop, t)}
           onChange={(v) => onChange(v)}
           t={t}
         />
       );
-    case "accentSource": // E5.8#98：强调色来源分段控件（跟随主题配方/自定义）——生效强调色 swatch 实时读数
+    case "accentSource": // E5.8#98+#99：强调色来源分段（跟随主题配方/自定义）——色块段内预览（预览覆盖，选项映射走 mapSegmentedOptions）
       return (
         <AccentSourceControl
           value={String(val)}
-          options={(prop.enum ?? []).map((v, i) => ({
-            value: v,
-            label: prop.enumDescriptions?.[i] ? t(prop.enumDescriptions[i]) : t(v),
-          }))}
+          options={mapSegmentedOptions(prop, t)}
           onChange={(v) => onChange(v)}
           t={t}
         />
@@ -142,13 +149,12 @@ function renderControl(
       // actionDisabled = actionDisabledAll 全命中当前配置值 → 置灰（mockup 01 updateMixReset）。
       if (prop.renderHint === "action") {
         return (
-          <button
-            className="settings-action-btn"
+          <Button
             disabled={actionDisabled}
             onClick={() => { void window.linkdesk?.commands?.executeCommand?.(prop.actionCommand ?? ""); }}
           >
             {t(prop.description ?? "")}
-          </button>
+          </Button>
         );
       }
       if (prop.enum && prop.enum.length > 0) {
@@ -269,18 +275,18 @@ function BackgroundImagePicker({
   const display = value === CONFIG_NONE_SENTINEL ? t("无背景") : value === "" ? t("跟随主题") : value;
   return (
     <div className="settings-image-picker">
-      <button className="settings-action-btn" onClick={handlePick} disabled={busy}>
+      <Button onClick={handlePick} disabled={busy}>
         {t("选择图片…")}
-      </button>
+      </Button>
       {value !== CONFIG_NONE_SENTINEL && (
-        <button className="settings-action-btn" onClick={() => onChange(CONFIG_NONE_SENTINEL)}>
+        <Button onClick={() => onChange(CONFIG_NONE_SENTINEL)}>
           {t("无背景")}
-        </button>
+        </Button>
       )}
       {value !== "" && (
-        <button className="settings-action-btn" onClick={() => onChange("")}>
+        <Button onClick={() => onChange("")}>
           {t("清除图片")}
-        </button>
+        </Button>
       )}
       <span className="settings-image-path" title={display}>
         {display}
@@ -303,14 +309,32 @@ const FONT_TONE_PREVIEW: Record<string, { halves: { base: string; ink: string }[
 };
 /* eslint-enable linkdesk/no-hardcoded-hex */
 
+/** 分段控件段内预览 swatch——单一几何（52×30 + var(--radius-sm)，SettingsView.css .settings-segmented-swatch），
+ *  fontTone（Aa 分半）+ accentSource（色块）共用（#3 归一化——不再各自造 swatch 变体）。 */
+function FontTonePreview({ value }: { value: string }): React.ReactNode {
+  const preview = FONT_TONE_PREVIEW[value];
+  if (!preview) return null;
+  return (
+    <span className="settings-segmented-swatch" aria-hidden="true">
+      {preview.halves.map((half, j) => (
+        <span
+          key={j}
+          className="settings-font-tone-half"
+          style={{ background: half.base, color: half.ink }}
+        >
+          Aa
+        </span>
+      ))}
+    </span>
+  );
+}
+
 /**
- * E5.8#98：强调色来源分段控件——两态（跟随主题配方/自定义）+ 生效强调色 swatch。
- * 短标签 = enumDescription 全句首个 "—" 前段（如「跟随主题配方」）；tooltip = 全句解释。
- * 无线电语义：role radiogroup/radio + aria-checked + 方向键 roving tabindex（←→ 换档，对标 FontToneControl）。
- * 选中态 = accent 描边 + 微着色（与 FontToneControl 同视觉语言）。
- * swatch = 当前生效强调色实时读数（getComputedStyle --accent——壳 applyAccentColor 已广播 accent:changed
- *  → 池侧 --accent 同步；跟随主题 = 主题 accent，自定义 = 自定义色）。重渲染即重读——主题/配置变化即时反映
- * （SettingRow 的 useConfigurationValueIpc 订阅配置变化 → 本行重渲染 → swatch 刷新，display-only 无状态副作用）。
+ * E5.8#98+#99：强调色来源分段控件——两态（跟随主题配方/自定义）+ 段内预览（#3 归一化，对标 #91 每态预览）。
+ * 跟随主题配方段 = 中性分半示意「主题决定强调色」（themeable 变量，非运行值——真实主题强调色遍布壳 UI）；
+ * 自定义段 = 自定义色实时读数（app.accentColor 配置值；清除空 → #5 兜底跟随主题 → 读 --accent 即主题色）。
+ * 选项映射（短标签/tooltip）走 mapSegmentedOptions 通用函数（#99 三消费方共用）。无线电语义 + roving tabindex 在壳 SegmentedRadio。
+ * （#98 曾用段外生效 swatch——第三 swatch 变体，本号按归一化改为段内预览。）
  */
 function AccentSourceControl({
   value,
@@ -319,60 +343,35 @@ function AccentSourceControl({
   t,
 }: {
   value: string;
-  options: { value: string; label: string }[];
+  options: { value: string; label: string; title: string }[];
   onChange: (v: unknown) => void;
   t: (key: string) => string;
 }) {
-  const optionRefs = useRef<(HTMLButtonElement | null)[]>([]);
-  const handleKeyDown = (e: React.KeyboardEvent, index: number) => {
-    if (!["ArrowRight", "ArrowLeft"].includes(e.key)) return;
-    e.preventDefault();
-    const dir = e.key === "ArrowRight" ? 1 : -1;
-    const next = (index + dir + options.length) % options.length;
-    optionRefs.current[next]?.focus();
-    onChange(options[next].value);
-  };
-  // 生效强调色——渲染时实时读（display-only swatch，非状态）；--accent 未同步时为空串 → 透明兜底
+  const customColor = useConfigurationValueIpc<string>("app.accentColor");
+  // 清除空 → 跟随主题强调色（#5）——--accent 即主题色；重渲染即重读（SettingRow 订阅配置变化 → 本行重渲染）
   const effectiveAccent = getComputedStyle(document.documentElement).getPropertyValue("--accent").trim();
+  const accentForPreview = (customColor ?? "").trim() || effectiveAccent;
   return (
-    <div className="settings-accent-source">
-      <div className="settings-accent-source-options" role="radiogroup" aria-label={t("强调色来源")}>
-        {options.map((opt, i) => {
-          const short = opt.label.split("—")[0];
-          const selected = value === opt.value;
-          return (
-            <button
-              key={opt.value}
-              type="button"
-              ref={(el) => { optionRefs.current[i] = el; }}
-              role="radio"
-              aria-checked={selected}
-              tabIndex={selected ? 0 : -1}
-              className={`settings-accent-source-option${selected ? " selected" : ""}`}
-              title={opt.label}
-              onClick={() => onChange(opt.value)}
-              onKeyDown={(e) => handleKeyDown(e, i)}
-            >
-              {short}
-            </button>
-          );
-        })}
-      </div>
-      <span
-        className="settings-accent-source-swatch"
-        style={{ background: effectiveAccent || undefined }}
-        title={`${t("当前强调色")} ${effectiveAccent}`}
-        aria-hidden="true"
-      />
-    </div>
+    <SegmentedRadio
+      value={value}
+      ariaLabel={t("强调色来源")}
+      options={options.map((opt) => ({
+        ...opt,
+        preview: opt.value === "custom" ? (
+          <span className="settings-segmented-swatch" style={{ background: accentForPreview || undefined }} aria-hidden="true" />
+        ) : (
+          <span className="settings-segmented-swatch settings-segmented-swatch--split" aria-hidden="true" />
+        ),
+      }))}
+      onChange={(v) => onChange(v)}
+    />
   );
 }
 
 /**
- * E5.8#91：文字极性分段控件——三态（跟随主题/亮字/暗字）+ 每态实时预览方块。
- * 短标签 = enumDescription 全句首个 "—" 前段（如「亮字（深底用）」）；tooltip = 全句解释。
- * 无线电语义：role radiogroup/radio + aria-checked + 方向键 roving tabindex（←→↑↓ 换档）。
- * 选中态 = accent 描边 + 微着色（Navigation/Active State——选中档一目了然）；预览块取样系统双字系标尺。
+ * E5.8#91+#99：文字极性分段控件——三态（跟随主题/亮字/暗字）+ 每态预览方块。
+ * 选项映射（短标签/tooltip）走 mapSegmentedOptions 通用函数（#99 三消费方共用）。
+ * 预览块取样系统双字系标尺；跟随主题 = 分半深/浅示意「主题明暗决定极性」。
  */
 function FontToneControl({
   value,
@@ -381,54 +380,17 @@ function FontToneControl({
   t,
 }: {
   value: string;
-  options: { value: string; label: string }[];
+  options: { value: string; label: string; title: string }[];
   onChange: (v: unknown) => void;
   t: (key: string) => string;
 }) {
-  const optionRefs = useRef<(HTMLButtonElement | null)[]>([]);
-  const handleKeyDown = (e: React.KeyboardEvent, index: number) => {
-    if (!["ArrowRight", "ArrowLeft", "ArrowUp", "ArrowDown"].includes(e.key)) return;
-    e.preventDefault();
-    const dir = e.key === "ArrowRight" || e.key === "ArrowDown" ? 1 : -1;
-    const next = (index + dir + options.length) % options.length;
-    optionRefs.current[next]?.focus();
-    onChange(options[next].value);
-  };
   return (
-    <div className="settings-font-tone" role="radiogroup" aria-label={t("文字极性")}>
-      {options.map((opt, i) => {
-        const preview = FONT_TONE_PREVIEW[opt.value];
-        const short = opt.label.split("—")[0];
-        const selected = value === opt.value;
-        return (
-          <button
-            key={opt.value}
-            type="button"
-            ref={(el) => { optionRefs.current[i] = el; }}
-            role="radio"
-            aria-checked={selected}
-            tabIndex={selected ? 0 : -1}
-            className={`settings-font-tone-option${selected ? " selected" : ""}`}
-            title={opt.label}
-            onClick={() => onChange(opt.value)}
-            onKeyDown={(e) => handleKeyDown(e, i)}
-          >
-            <span className="settings-font-tone-swatch" aria-hidden="true">
-              {preview?.halves.map((half, j) => (
-                <span
-                  key={j}
-                  className="settings-font-tone-half"
-                  style={{ background: half.base, color: half.ink }}
-                >
-                  Aa
-                </span>
-              ))}
-            </span>
-            <span className="settings-font-tone-label">{short}</span>
-          </button>
-        );
-      })}
-    </div>
+    <SegmentedRadio
+      value={value}
+      ariaLabel={t("文字极性")}
+      options={options.map((opt) => ({ ...opt, preview: <FontTonePreview value={opt.value} /> }))}
+      onChange={(v) => onChange(v)}
+    />
   );
 }
 
