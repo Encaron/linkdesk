@@ -323,12 +323,14 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
       });
 
       // ── E5.8#50.19：主题组——壳注册第二配置贡献（08 §5 决策 D：pluginId "appearance"，标题「主题」）。
-      //    key 全表 = app.theme + app.appearanceMode（E5.8#90 单一外观主开关，吸收 mixMode/accentMode）+ app.themeColor
-      //    + 外观九覆盖 + 混搭六键（08 §1/§6 行序 = mockup DOM 顺序）。
-      //    显隐 = dependsOn 声明驱动（appearanceMode=custom 显强调色 + 9 覆盖行 + 6 来源行 + 复位）。
+      //    key 全表 = app.theme + app.appearanceMode（E5.8#90 单一外观主开关）+ app.themeColor
+      //    + 外观 14 覆盖 + 域来源 4 键 + 复位（E5.8#97 域驱动重组后结构）。
+      //    显隐 = dependsOn 声明驱动（appearanceMode=custom 显强调色 + 覆盖行 + 来源行 + 复位；文字组
+      //    极性槽 fontTone 无 dependsOn 恒显、字体三槽 custom 展开——部分桶显隐 SettingsView 逐 key 过滤）。
       //    播种 = 设置层永远只存用户偏离量（08 §2）——切 custom 反推播种，切回 followTheme 删覆盖回配方。
       //    app.theme 枚举 = 配方 id + flat 退路（syncAppThemeEnum 注册/注销时同步，动态配方 id 列表 08 §7.2 #1）。
-      //    E5.8#78 组内二级标题——每 key 声明 group（6 分节：整体配方/配色/强调色/外观覆盖/文字/域混搭），
+      //    E5.8#78 组内二级标题——每 key 声明 group（9 分节：整体配方/配色/强调色/圆角/玻璃/背景/文字/
+      //    表面/复位；E5.8#97 外观覆盖/域混搭 两旧分节拆散——数值域来源删键、资产域来源并入域小组），
       //    SettingsView 按 group 归到子标题下渲染（无 group 平铺原样，第三方设置零侵入）。
       registerConfiguration("appearance", {
         title: t("主题"),
@@ -443,22 +445,24 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
           },
           // 外观六覆盖——dependsOn appearanceMode=custom 才出现（08 §7.1 #5-10）。
           // neutral 默认值 = 不覆盖主题基线；onApply 统一走 applyThemeIfReady（单一写入点）。
+          // E5.8#97：域驱动重组——数值域来源删键（mixRadius/mixGlass 死键，#85/#86 绝对化后混搭数值域
+          // 无意义）→ 圆角/玻璃两小组无来源行；资产域来源并入域小组（mixBackground/mixFont/mixSurface
+          // 是配方资产唯一入口——字体拾取器选不了 __ld_ 资产族 #50.20）。行序 = mockup DOM 顺序。
           "app.surfaceRadius": {
             type: "number",
-            group: t("外观覆盖"),
+            group: t("圆角"),
             default: 0,
             minimum: 0,
             maximum: 32,
             description: t("组件圆角——系统标尺 0 方角 / 32 最圆润；数值 = 标准组件圆角 px"),
             uiHint: "slider",
             unit: "px", // E5.8#85：值标签像素单位（绝对 px，非倍数）
-            sourceKey: "app.mixRadius", // E5.8#87：来源徽标——本键所属外观域 mix 来源 key（混搭生效显示 🔀）
             dependsOn: { key: "app.appearanceMode", value: "custom" },
             onApply: () => debouncedApplyThemeIfReady(),
           },
           "app.glassBlur": {
             type: "number",
-            group: t("外观覆盖"),
+            group: t("玻璃"),
             default: 0,
             minimum: 0,
             maximum: 32,
@@ -467,30 +471,27 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
             description: t("玻璃模糊——0 关闭；数值 = 主表面真实模糊 px"),
             uiHint: "slider",
             unit: "px", // E5.8#77：值标签像素单位（mockup 16px）
-            sourceKey: "app.mixGlass", // E5.8#87：来源徽标——玻璃域 mix 来源 key
             dependsOn: { key: "app.appearanceMode", value: "custom" },
             onApply: () => debouncedApplyThemeIfReady(),
           },
           "app.glassOpacity": {
             type: "number",
-            group: t("外观覆盖"),
+            group: t("玻璃"),
             default: 0.5, // E5.8#86：绝对不透明度默认半透玻璃面（旧默认 1 的 wash 视觉 = 0.5，同值零变化）
             minimum: 0,
             maximum: 1,
             // E5.8#86：label 直述绝对语义——0 全透见背景图 / 1 全不透明（消灭 label「1 不透明」实为半透，A3/D1）
             description: t("玻璃面不透明度——0 全透见背景 / 1 全不透明"),
             uiHint: "slider",
-            sourceKey: "app.mixGlass", // E5.8#87：来源徽标——玻璃域 mix 来源 key
             dependsOn: { key: "app.appearanceMode", value: "custom" },
             onApply: () => debouncedApplyThemeIfReady(),
           },
           "app.glassTint": {
             type: "string",
-            group: t("外观覆盖"),
+            group: t("玻璃"),
             default: "",
             description: t("玻璃叠加色——空 = 主题自带"),
             renderHint: "color",
-            sourceKey: "app.mixGlass", // E5.8#87：来源徽标——玻璃域 mix 来源 key
             dependsOn: { key: "app.appearanceMode", value: "custom" },
             onApply: () => debouncedApplyThemeIfReady(),
           },
@@ -499,20 +500,32 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
           // 显式写过即覆盖，neutral 端点也是显式意图）/ 0 去饱和 / 2 加倍。消费 = getAppearanceOverrides。
           "app.glassSaturate": {
             type: "number",
-            group: t("外观覆盖"),
+            group: t("玻璃"),
             default: 1,
             minimum: 0,
             maximum: 2,
             // step 不声明——inferSliderStep(0,2) span≤2 → 0.01 连续可调（E5.8#65，与 glassOpacity 同款）
             description: t("玻璃饱和度——1 原图 / 2 加倍饱和 / 0 去饱和"),
             uiHint: "slider",
-            sourceKey: "app.mixGlass", // E5.8#87：来源徽标——玻璃域 mix 来源 key
             dependsOn: { key: "app.appearanceMode", value: "custom" },
+            onApply: () => debouncedApplyThemeIfReady(),
+          },
+          // E5.8#97：背景域来源并入背景小组（资产入口唯一——配方资源图/纹理只能经来源行取，拾取器
+          // 无资产族；#50.20 边界）。行序 = 来源行置顶，随后 4 覆盖行。
+          "app.mixBackground": {
+            type: "string",
+            group: t("背景"),
+            default: "followTheme",
+            description: t("背景域来源——跟随主题配方 / 指定主题配方 id"),
+            dependsOn: { key: "app.appearanceMode", value: "custom" },
+            uiHint: "select",
+            optionsFrom: "theme.sources",
+            optionsFromDomain: "background",
             onApply: () => debouncedApplyThemeIfReady(),
           },
           "app.backgroundImage": {
             type: "string",
-            group: t("外观覆盖"),
+            group: t("背景"),
             default: "",
             // E5.8#87：无背景（__none__）= 绝对无图（盖掉主题/mix 图）；空 = 跟随主题
             description: t("窗口背景图片路径——空 = 主题自带；无背景 = 绝对无图"),
@@ -527,7 +540,7 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
           // 消费 = getAppearanceOverrides。maskColor 低优先豁免（14-档案 §十）。
           "app.backgroundOpacity": {
             type: "number",
-            group: t("外观覆盖"),
+            group: t("背景"),
             default: 1,
             minimum: 0,
             maximum: 1,
@@ -540,7 +553,7 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
           },
           "app.backgroundMask": {
             type: "number",
-            group: t("外观覆盖"),
+            group: t("背景"),
             default: 0,
             minimum: 0,
             maximum: 1,
@@ -551,9 +564,51 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
             dependsOn: { key: "app.appearanceMode", value: "custom" },
             onApply: () => debouncedApplyThemeIfReady(),
           },
+          // E5.8#97：文字组——字体域来源并入文字小组（配方字体资产唯一入口）+ 极性槽置顶恒显 +
+          // 两字体槽。group 首现序 = 行序（fontTone → mixFont → fontFamily → fontFamilyMono）。
+          // E5.8#91：文字极性槽——app.fontTone 独立极性偏好（非外观覆盖键，不随 appearanceMode custom
+          // 播种/复位；显式选档切主题自动保留）。默认跟随主题（主题 type 决定极性）；显式亮/暗字 = 系统
+          // 双字系标尺覆盖 text-primary/secondary/muted（ThemeEngine getAppearanceOverrides 读本键 →
+          // applyOverrides 写 --text-*）。设置插件 uiHint "fontTone" = 三态分段控件 + 深浅底预览方块（14-档案 #91）。
+          // fontTone 无 dependsOn——恒显（不随 custom 展开，SettingsView 部分桶显隐逐 key 过滤）。
+          "app.fontTone": {
+            type: "string",
+            group: t("文字"), // E5.8#78：组内二级标题——主题组分节 7/9（文字）
+            default: "followTheme",
+            enum: ["followTheme", "light", "dark"],
+            enumDescriptions: [
+              t("跟随主题——主题明暗决定文字极性（深主题亮字 / 浅主题暗字）"),
+              t("亮字（深底用）——深色底上白字"),
+              t("暗字（浅底用）——浅色底上深字"),
+            ],
+            description: t("文字极性——文字颜色取系统标尺，不锚主题色板"),
+            uiHint: "fontTone",
+            onApply: () => debouncedApplyThemeIfReady(),
+          },
+          // E5.8#90：混搭并入外观主开关——app.mixMode 删除（三枚举归一单一外观轴，14-档案 §四 归一5）。
+          // 域来源槽 = 自定义模式下每域独立指定（跟随主题 / 指定配方 id）；dependsOn appearanceMode=custom。
+          // mix* 按域合并实现在 ThemeEngine（#50.26 mergeMixDomains）——此处注册 + dependsOn 显隐。
+          // 域来源 = uiHint "select" + optionsFrom "theme.sources"（#50.23 动态下拉按域过滤 listRecipes）；
+          // onApply = applyThemeIfReady（换来源即重合并 + 广播 theme:changed，10 §2 实时预览）。
+          // 「跟随主题」哨兵值 = "followTheme"（10-混搭设计 §1/§3 定稿；缺省与播种同一值）。
+          // E5.8#82：colors 域来源并入 app.themeColor（app.mixColor 删除）——域来源 key 对称，
+          // 自定义模式下壳 UI 将 app.themeColor 渲染为 theme.sources + colors 域（DynamicSelect 双语义自解析：
+          // schema 静态声明 colorways+colors，运行时读 app.appearanceMode 决定跟随/自定义路径，renderControl 零改动）。
+          // E5.8#97：域来源并组——字体域来源行归文字组（配方字体资产唯一入口，拾取器选不了 __ld_ 资产族 #50.20）。
+          "app.mixFont": {
+            type: "string",
+            group: t("文字"),
+            default: "followTheme",
+            description: t("字体域来源——跟随主题配方 / 指定主题配方 id"),
+            dependsOn: { key: "app.appearanceMode", value: "custom" },
+            uiHint: "select",
+            optionsFrom: "theme.sources",
+            optionsFromDomain: "font",
+            onApply: () => debouncedApplyThemeIfReady(),
+          },
           "app.fontFamily": {
             type: "string",
-            group: t("外观覆盖"),
+            group: t("文字"),
             default: "",
             // E5.8#87：系统字体（__none__）= 绝对系统默认（不跟随主题字体）；空 = 跟随主题
             description: t("界面字体——空 = 跟随主题；选择后写 --font-ui；系统字体 = 显式系统默认"),
@@ -571,7 +626,7 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
           // 消费 = getAppearanceOverrides。
           "app.fontFamilyMono": {
             type: "string",
-            group: t("外观覆盖"),
+            group: t("文字"),
             default: "",
             description: t("等宽字体——空 = 跟随主题；选择后写 --font-mono；系统字体 = 显式系统默认"),
             uiHint: "fontFamily",
@@ -585,23 +640,21 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
           //   同走系统标尺 0→32）。消费 = getAppearanceOverrides 读本键 → applyOverrides ①b 通道直写 / "0px" 开关短路（ThemeEngine.ts）。
           "app.zoneRadius": {
             type: "boolean",
-            group: t("外观覆盖"),
+            group: t("圆角"),
             default: true,
             description: t("分区圆角开关——关闭后各分区强制直角（0px）"),
-            sourceKey: "app.mixRadius", // E5.8#87：来源徽标——半径域 mix 来源 key
             dependsOn: { key: "app.appearanceMode", value: "custom" },
             onApply: () => debouncedApplyThemeIfReady(),
           },
           "app.zoneRadiusScale": {
             type: "number",
-            group: t("外观覆盖"),
+            group: t("圆角"),
             default: 0,
             minimum: 0,
             maximum: 32,
             description: t("分区圆角——系统标尺 0 方角 / 32 最圆润；数值 = 分区圆角 px"),
             uiHint: "slider",
             unit: "px", // E5.8#85：值标签像素单位（绝对 px，非倍数）
-            sourceKey: "app.mixRadius", // E5.8#87：来源徽标——半径域 mix 来源 key
             dependsOn: { key: "app.appearanceMode", value: "custom" },
             onApply: () => debouncedApplyThemeIfReady(),
           },
@@ -610,7 +663,7 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
           // 消费 = getAppearanceOverrides 读本键 → surface-bg-image + zones=1（池侧量测 zone 坐标）。
           "app.zoneBackgroundImage": {
             type: "string",
-            group: t("外观覆盖"),
+            group: t("背景"),
             default: "",
             // E5.8#87：无背景（__none__）= 绝对无图（盖掉主题/mix 图）；空 = 跟随主题
             description: t("分区背景图片路径——空 = 主题自带；无背景 = 绝对无图"),
@@ -619,80 +672,10 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
             dependsOn: { key: "app.appearanceMode", value: "custom" },
             onApply: () => debouncedApplyThemeIfReady(),
           },
-          // E5.8#91：文字极性槽——app.fontTone 独立极性偏好（非外观覆盖键，不随 appearanceMode custom
-          // 播种/复位；显式选档切主题自动保留）。默认跟随主题（主题 type 决定极性）；显式亮/暗字 = 系统
-          // 双字系标尺覆盖 text-primary/secondary/muted（ThemeEngine getAppearanceOverrides 读本键 →
-          // applyOverrides 写 --text-*）。设置插件 uiHint "fontTone" = 三态分段控件 + 深浅底预览方块（14-档案 #91）。
-          "app.fontTone": {
-            type: "string",
-            group: t("文字"), // E5.8#78：组内二级标题——主题组分节 5/6（文字极性）
-            default: "followTheme",
-            enum: ["followTheme", "light", "dark"],
-            enumDescriptions: [
-              t("跟随主题——主题明暗决定文字极性（深主题亮字 / 浅主题暗字）"),
-              t("亮字（深底用）——深色底上白字"),
-              t("暗字（浅底用）——浅色底上深字"),
-            ],
-            description: t("文字极性——文字颜色取系统标尺，不锚主题色板"),
-            uiHint: "fontTone",
-            onApply: () => debouncedApplyThemeIfReady(),
-          },
-          // E5.8#90：混搭并入外观主开关——app.mixMode 删除（三枚举归一单一外观轴，14-档案 §四 归一5）。
-          // 六域来源槽 = 自定义模式下每域独立指定（跟随主题 / 指定配方 id）；dependsOn appearanceMode=custom。
-          // mix* 按域合并实现在 ThemeEngine（#50.26 mergeMixDomains）——此处注册 + dependsOn 显隐。
-          // 六域来源 = uiHint "select" + optionsFrom "theme.sources"（#50.23 动态下拉按域过滤 listRecipes）；
-          // onApply = applyThemeIfReady（换来源即重合并 + 广播 theme:changed，10 §2 实时预览）。
-          // 「跟随主题」哨兵值 = "followTheme"（10-混搭设计 §1/§3 定稿；缺省与播种同一值）。
-          // E5.8#82：colors 域来源并入 app.themeColor（app.mixColor 删除）——六域来源 key 对称，
-          // 自定义模式下壳 UI 将 app.themeColor 渲染为 theme.sources + colors 域（DynamicSelect 双语义自解析：
-          // schema 静态声明 colorways+colors，运行时读 app.appearanceMode 决定跟随/自定义路径，renderControl 零改动）。
-          "app.mixFont": {
-            type: "string",
-            group: t("域混搭"),
-            default: "followTheme",
-            description: t("字体域来源——跟随主题配方 / 指定主题配方 id"),
-            dependsOn: { key: "app.appearanceMode", value: "custom" },
-            uiHint: "select",
-            optionsFrom: "theme.sources",
-            optionsFromDomain: "font",
-            onApply: () => debouncedApplyThemeIfReady(),
-          },
-          "app.mixRadius": {
-            type: "string",
-            group: t("域混搭"),
-            default: "followTheme",
-            description: t("圆角域来源——跟随主题配方 / 指定主题配方 id"),
-            dependsOn: { key: "app.appearanceMode", value: "custom" },
-            uiHint: "select",
-            optionsFrom: "theme.sources",
-            optionsFromDomain: "radius",
-            onApply: () => debouncedApplyThemeIfReady(),
-          },
-          "app.mixGlass": {
-            type: "string",
-            group: t("域混搭"),
-            default: "followTheme",
-            description: t("玻璃域来源——跟随主题配方 / 指定主题配方 id"),
-            dependsOn: { key: "app.appearanceMode", value: "custom" },
-            uiHint: "select",
-            optionsFrom: "theme.sources",
-            optionsFromDomain: "glass",
-            onApply: () => debouncedApplyThemeIfReady(),
-          },
-          "app.mixBackground": {
-            type: "string",
-            group: t("域混搭"),
-            default: "followTheme",
-            description: t("背景域来源——跟随主题配方 / 指定主题配方 id"),
-            dependsOn: { key: "app.appearanceMode", value: "custom" },
-            uiHint: "select",
-            optionsFrom: "theme.sources",
-            optionsFromDomain: "background",
-            onApply: () => debouncedApplyThemeIfReady(),
-          },
+          // E5.8#97：表面域来源并入表面小组（配方表面纹理资产唯一入口，拾取器无资产族 #50.20 边界）。
           "app.mixSurface": {
             type: "string",
-            group: t("域混搭"),
+            group: t("表面"),
             default: "followTheme",
             description: t("表面域来源——跟随主题配方 / 指定主题配方 id"),
             dependsOn: { key: "app.appearanceMode", value: "custom" },
@@ -701,12 +684,27 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
             optionsFromDomain: "surface",
             onApply: () => debouncedApplyThemeIfReady(),
           },
-          // 混搭复位按钮（10 §2/§6 决策记录 3）——renderHint "action" 渲染操作按钮；
-          // 点击执行 theme.resetMix 命令（单一写入点：批复位 6 来源键回跟随主题，保持自定义模式）。
-          // actionDisabledAll：6 来源全「跟随主题」→ 置灰（mockup 已实现，减少噪音）。
+          // E5.8#97：表面平铺纹理覆盖槽——image 控件选图写 --surface-bg-image（repeat 平铺语义，
+          // 镜像主题 surface.texture 机制；mockup ⑧ 表面区纹理槽）。与 zoneBackgroundImage（zones 切片
+          // no-repeat）并存不互斥：本键平铺全表面、彼键浮各 zone 表面；两者都设 → 纹理胜出
+          // （getAppearanceOverrides 本键靠后覆盖同 key）。空 = 跟随主题纹理；无纹理 = 绝对无纹理。
+          // 消费 = getAppearanceOverrides → surface-bg-image + repeat + zones=0（停池侧量测）。
+          "app.surfaceTexture": {
+            type: "string",
+            group: t("表面"),
+            default: "",
+            // E5.8#87 哨兵同契约：无纹理（__none__）= 绝对无纹理（盖掉主题/mix 纹理）；空 = 跟随主题
+            description: t("表面纹理图片路径——空 = 主题自带；无纹理 = 绝对无纹理"),
+            uiHint: "image",
+            dependsOn: { key: "app.appearanceMode", value: "custom" },
+            onApply: () => debouncedApplyThemeIfReady(),
+          },
+          // 复位按钮（10 §2/§6 决策记录 3）——renderHint "action" 渲染操作按钮；
+          // 点击执行 theme.resetMix 命令（单一写入点：批复位 4 来源键回跟随主题，保持自定义模式）。
+          // actionDisabledAll：4 来源全「跟随主题」→ 置灰（mockup 已实现，减少噪音）。
           "app.mixReset": {
             type: "string",
-            group: t("域混搭"),
+            group: t("复位"),
             default: "",
             description: t("⟲ 全部复位为整体配方"),
             renderHint: "action",

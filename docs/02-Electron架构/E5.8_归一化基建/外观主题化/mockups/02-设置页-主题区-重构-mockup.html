@@ -3,20 +3,24 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>主题设置·重构交互 mockup（13-档案 #77-#82 设置 UI 定案）</title>
+<title>主题设置·域驱动重构 mockup（E5.8 主题组重分组定案）</title>
 <style>
   /* ════════════════════════════════════════════════════════════════════
-     主题设置·重构交互 mockup（13-主题系统重构档案 #77-#82 设置 UI 定案）
-     参考 01-设置页-主题区-mockup.html（结构 100% 照抄真实 SettingsView 类名）
-     ——区别：新版落实 13-档案设置 UI 5 项定案——
-       #77 slider 数值显示（×倍数 / px / 0-1）已内建
-       #78 主题组二级标题分组（group 声明才显示；点击子节标题可折叠）
-       #79 强调色移入主题组（不再在「通用」）
-       #80 zone 圆角开关（app.zoneRadius toggle）+ zone 圆角倍数（app.zoneRadiusScale ×）
-       #81 双背景：全窗 backgroundImage + 分区 zoneBackgroundImage（并排说明，无重影困惑）
-       #82 删 themeColorMode——配色来源唯一（app.themeColor），与域混搭 colors 域统一
-     右侧实时预览壳 = 迷你 LinkDesk pool（顶栏/图标栏/侧栏/主区/面板/状态栏），
-     随左侧设置实时变化——拖 slider/换主题/开 zone 圆角立刻看得见。
+     主题设置·域驱动重构 mockup（E5.8 主题组重分组定案）
+     基于 02-设置页-主题区-重构-mockup.html（结构照抄真实 SettingsView 类名）
+     ——本版定案（对照旧版）——
+       ① 删死键：app.mixRadius + app.mixGlass（#85/#86 绝对化后「数值域来源」无意义，
+          系统标尺已表达，来源只剩一组任意数字——混搭无风格可言）
+       ② 「外观覆盖」「域混搭」两组消失 → 按「域」重组 5 小组：圆角/玻璃/背景/字体/表面
+       ③ 资产域来源归位：mixFont / mixBackground / mixSurface 各自进所属域小组首行
+          （资产域 = 字体/背景图/纹理，滑杆表达不了，来源=配方资产唯一通道，🔀 徽标同节内指认）
+       ④ 补槽：表面纹理 app.surfaceTexture（表面域此前只有来源无覆盖槽，全矩阵镜像补齐）
+       ⑤ 系统标尺语义：radius 绝对 px（0-32）、glass 绝对、bg opacity/mask、
+          glassSaturate、fontFamilyMono——全部绝对系统值，非倍数
+       ⑥ 文字极性 app.fontTone 并入「文字」小组首行（配方级始终可见、无 dependsOn），
+          ——与 字体来源/界面字体/等宽字体 同组相邻（用户拍板：文字相关键不分开），三态分段控件
+       ⑦ app.accentMode 已删（#90）——强调色单槽，清除 = 跟随主题配方
+     右侧实时预览壳 = 迷你 LinkDesk pool，随左侧设置实时变化。
      ════════════════════════════════════════════════════════════════════ */
   :root {
     --bg-window: #0E0E12;
@@ -47,7 +51,6 @@
     font-size: 13px; display: flex; justify-content: center; align-items: center;
     min-height: 100vh; padding: 24px;
   }
-  /* 页面背景——Ethereal Glass 深度（延续 01，gallery glass 域质感） */
   .page-bg {
     position: fixed; inset: 0; z-index: 0;
     background:
@@ -58,10 +61,10 @@
   }
   .page-bg::after { content: ''; position: absolute; inset: 0; background: rgba(6,6,10,0.82); }
 
-  /* ═══ 设置编辑器（延续 01）═══ */
+  /* ═══ 设置编辑器 ═══ */
   .settings-editor {
     position: relative; z-index: 1; display: flex; flex-direction: column;
-    width: 1360px; height: 780px;
+    width: 1380px; height: 800px;
     background: var(--glass-tint);
     backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
     -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
@@ -84,15 +87,13 @@
 
   .settings-main { flex: 1; display: flex; min-width: 0; }
 
-  /* ── 左侧设置表单（scroll）── */
   .settings-form { flex: 1; overflow-y: auto; padding: 18px 24px; min-width: 0; }
 
-  /* 二级标题分组（#78）——group 声明才显示；本 mockup 五个子节全声明 */
   .settings-group-title { font-size: 17px; font-weight: 600; margin: 0 0 6px 0; padding-bottom: 10px; border-bottom: 1px solid var(--border); color: var(--text-primary); }
   .settings-group-sub { font-size: 11.5px; color: var(--text-muted); margin-bottom: 16px; line-height: 1.6; }
 
   .settings-sub-section { margin: 18px 0 22px; }
-  .settings-sub-section[data-empty="true"] { display: none; }  /* 无声明配置 → 整节消失（group 语义） */
+  .settings-sub-section[data-empty="true"] { display: none; }
   .settings-sub-head {
     display: flex; align-items: center; gap: 8px; cursor: pointer; user-select: none;
     padding: 5px 0; margin-bottom: 4px; border-radius: 6px;
@@ -103,6 +104,8 @@
   .settings-sub-title { font-size: 12.5px; font-weight: 600; color: var(--text-secondary); letter-spacing: 0.02em; transition: color 150ms; }
   .settings-sub-head::after { content: ''; flex: 1; height: 1px; background: var(--separator); margin-left: 6px; }
   .settings-sub-badge { font-size: 10px; color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent); padding: 1px 7px; border-radius: 999px; white-space: nowrap; }
+  .settings-sub-badge.src { color: var(--ok); background: color-mix(in srgb, var(--ok) 10%, transparent); border-color: color-mix(in srgb, var(--ok) 28%, transparent); }
+  .settings-sub-badge.del { color: var(--error); background: color-mix(in srgb, var(--error) 10%, transparent); border-color: color-mix(in srgb, var(--error) 28%, transparent); text-decoration: line-through; }
   .settings-sub-desc { font-size: 11.5px; color: var(--text-muted); margin: 2px 0 8px 0; line-height: 1.6; }
   .settings-sub-section.collapsed > .settings-sub-body { display: none; }
   .settings-sub-body { transition: opacity 180ms ease; }
@@ -114,13 +117,14 @@
   .settings-row-label .key { font-family: var(--font-mono); font-size: 10.5px; color: var(--text-muted); font-weight: 400; }
   .settings-row-desc { display: block; font-size: 11.5px; color: var(--text-muted); line-height: 1.55; }
   .settings-row-desc em { font-style: normal; color: var(--text-secondary); }
+  .src-badge { display: none; font-size: 10px; color: var(--ok); font-weight: 600; }
+  .settings-sub-section.mix-active .src-badge { display: inline; }
   .settings-row-control { flex-shrink: 0; display: flex; align-items: center; min-width: 110px; justify-content: flex-end; gap: 8px; }
   .settings-row-gear { flex-shrink: 0; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; background: transparent; border: none; border-radius: 3px; color: var(--text-muted); font-size: 13px; cursor: pointer; opacity: 0; transition: opacity 120ms ease, background 120ms ease; margin-left: 2px; }
   .settings-row:hover .settings-row-gear { opacity: 1; }
   .settings-row-gear:hover { background: var(--hover-overlay); color: var(--text-primary); }
   .depends-hidden { display: none !important; }
 
-  /* ── 控件：SelectBox ── */
   .select-box { display: flex; align-items: center; gap: 6px; background: var(--bg-input); border: 1px solid var(--border); border-radius: 4px; padding: 4px 9px; min-width: 158px; color: var(--text-primary); font-size: 12px; cursor: pointer; position: relative; transition: border-color 150ms, background 150ms; }
   .select-box:hover { border-color: var(--separator); background: var(--bg-input-hover); }
   .select-box .caret { font-size: 10px; color: var(--text-muted); margin-left: auto; }
@@ -131,34 +135,33 @@
   .select-menu .sw { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; border: 1px solid rgba(255,255,255,0.18); }
   .select-menu .check { margin-left: auto; font-size: 10px; }
 
-  /* ── 控件：Slider（#77 数值显示内建）── */
   .ld-slider { display: flex; align-items: center; gap: 10px; width: 216px; }
   .ld-slider-track { position: relative; flex: 1; height: 5px; background: rgba(255,255,255,0.12); border-radius: 999px; cursor: pointer; }
   .ld-slider-fill { position: absolute; left: 0; top: 0; height: 100%; background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 70%, transparent), var(--accent)); border-radius: 999px; pointer-events: none; }
   .ld-slider-thumb { position: absolute; top: 50%; width: 15px; height: 15px; border-radius: 50%; background: #fff; transform: translate(-50%, -50%); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 45%, transparent), 0 2px 6px rgba(0,0,0,0.5); cursor: pointer; pointer-events: none; }
-  .ld-slider-value { font-family: var(--font-mono); font-size: 11px; color: var(--text-secondary); min-width: 48px; text-align: right; background: var(--bg-input); border: 1px solid var(--border); border-radius: 3px; padding: 1px 6px; }
+  .ld-slider-value { font-family: var(--font-mono); font-size: 11px; color: var(--text-secondary); min-width: 52px; text-align: right; background: var(--bg-input); border: 1px solid var(--border); border-radius: 3px; padding: 1px 6px; }
 
-  /* ── 控件：Toggle（#80 zone 圆角开关；renderControl 既有 Toggle 胶囊）── */
   .ld-toggle { position: relative; width: 34px; height: 18px; border-radius: 999px; background: rgba(255,255,255,0.14); cursor: pointer; transition: background 180ms ease; flex-shrink: 0; border: none; }
   .ld-toggle::after { content: ''; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: #fff; transition: transform 180ms cubic-bezier(0.32, 0.72, 0, 1); box-shadow: 0 1px 3px rgba(0,0,0,0.4); }
   .ld-toggle.on { background: var(--accent); }
   .ld-toggle.on::after { transform: translateX(16px); }
   .ld-toggle-label { font-size: 11.5px; color: var(--text-secondary); }
 
-  /* ── 控件：色块 / 文件 / 字体 ── */
   .settings-color-control { display: flex; align-items: center; gap: 8px; }
   .settings-color-swatch { width: 22px; height: 22px; border-radius: 4px; border: 1px solid var(--separator); flex-shrink: 0; cursor: pointer; position: relative; overflow: hidden; }
   .settings-color-swatch::before { content: ''; position: absolute; inset: 0; background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.25), transparent 60%); }
   input.settings-color-swatch { padding: 0; -webkit-appearance: none; appearance: none; background: none; }
   input.settings-color-swatch::-webkit-color-swatch-wrapper { padding: 0; }
   input.settings-color-swatch::-webkit-color-swatch { border: none; border-radius: 3px; }
-  .settings-color-control .input { width: 96px; background: var(--bg-input); border: 1px solid var(--border); border-radius: 3px; color: var(--text-primary); padding: 3px 7px; font-size: 12px; font-family: var(--font-mono); }
+  .settings-color-control .input { width: 88px; background: var(--bg-input); border: 1px solid var(--border); border-radius: 3px; color: var(--text-primary); padding: 3px 7px; font-size: 12px; font-family: var(--font-mono); }
+  .clear-btn { background: transparent; border: 1px solid var(--border); color: var(--text-secondary); border-radius: 4px; padding: 2px 8px; font-size: 11px; cursor: pointer; transition: all 150ms; font-family: inherit; }
+  .clear-btn:hover { border-color: var(--separator); color: var(--text-primary); }
   .file-path { display: flex; gap: 5px; align-items: center; width: 300px; }
   .file-path .input { flex: 1; background: var(--bg-input); border: 1px solid var(--border); border-radius: 3px; color: var(--text-primary); padding: 3px 7px; font-size: 12px; color: var(--text-muted); }
   .settings-action-btn { background: var(--accent); color: var(--text-on-accent); border: none; border-radius: 4px; padding: 3px 11px; font-size: 12px; cursor: pointer; white-space: nowrap; transition: background 150ms; }
   .settings-action-btn:hover { background: var(--accent-hover); }
 
-  /* ── 主题配方卡片（延续 01 theme-picker）── */
+  /* ── 主题配方卡片 ── */
   .theme-picker { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
   .theme-card { border: 1px solid rgba(255,255,255,0.12); border-radius: 10px; overflow: hidden; cursor: pointer; background: rgba(255,255,255,0.03); transition: border-color 150ms, transform 150ms, box-shadow 150ms; }
   .theme-card:hover { border-color: rgba(255,255,255,0.25); transform: translateY(-1px); }
@@ -171,9 +174,41 @@
   .theme-card.active .tname { color: #fff; }
   .theme-card .badge { font-size: 9.5px; color: var(--accent); white-space: nowrap; }
 
-  /* ── 右侧实时预览区（#82 定案配色来源唯一 + #80/#81 可视化）── */
+  /* ── 文字极性三态分段（#91 fontTone）── */
+  .font-tone-group { display: flex; gap: 7px; flex-wrap: wrap; }
+  .font-tone-opt {
+    display: flex; align-items: center; gap: 8px; padding: 5px 11px 5px 6px;
+    background: var(--bg-input); border: 1px solid var(--border); border-radius: 7px;
+    cursor: pointer; font-family: inherit; color: var(--text-secondary); font-size: 11.5px;
+    transition: border-color 150ms, background 150ms, color 150ms;
+  }
+  .font-tone-opt:hover { background: var(--bg-input-hover); }
+  .font-tone-opt.active { border-color: var(--accent); color: var(--text-primary); background: color-mix(in srgb, var(--accent) 8%, var(--bg-input)); }
+  .ft-preview { width: 30px; height: 22px; border-radius: 4px; overflow: hidden; display: flex; align-items: center; justify-content: center; border: 1px solid rgba(255,255,255,0.14); flex-shrink: 0; }
+  .ft-preview .ft-a { font-size: 11px; font-weight: 600; line-height: 1; }
+  .ft-split { background: linear-gradient(90deg, #12121A 50%, #E8E6F0 50%); }
+  .ft-split .ft-a { color: transparent; background: linear-gradient(90deg, #fff 50%, #12121A 50%); -webkit-background-clip: text; background-clip: text; }
+  .ft-dark { background: #12121A; } .ft-dark .ft-a { color: #fff; }
+  .ft-light { background: #E8E6F0; } .ft-light .ft-a { color: #12121A; }
+
+  /* ── 表面纹理选择 ── */
+  .texture-picker { display: flex; gap: 6px; align-items: center; }
+  .texture-opt {
+    display: flex; align-items: center; gap: 6px; padding: 4px 9px;
+    background: var(--bg-input); border: 1px solid var(--border); border-radius: 6px;
+    cursor: pointer; font-family: inherit; color: var(--text-secondary); font-size: 11px;
+    transition: border-color 150ms, background 150ms, color 150ms;
+  }
+  .texture-opt:hover { background: var(--bg-input-hover); }
+  .texture-opt.active { border-color: var(--accent); color: var(--text-primary); }
+  .tx-swatch { width: 20px; height: 16px; border-radius: 3px; border: 1px solid rgba(255,255,255,0.14); flex-shrink: 0; background: var(--bg-window); }
+  .tx-swatch.paper { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='60'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='60' height='60' filter='url(%23n)' opacity='0.22'/%3E%3C/svg%3E"); }
+  .tx-swatch.frost { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40'%3E%3Cfilter id='p'%3E%3CfeTurbulence type='turbulence' baseFrequency='1.6' numOctaves='1'/%3E%3C/filter%3E%3Crect width='40' height='40' filter='url(%23p)' opacity='0.18'/%3E%3C/svg%3E"); }
+  .tx-swatch.none { background: repeating-linear-gradient(45deg, rgba(255,255,255,0.05) 0 1px, transparent 1px 4px); }
+
+  /* ── 右侧实时预览区 ── */
   .preview-pane {
-    width: 440px; flex-shrink: 0; border-left: 1px solid var(--border);
+    width: 460px; flex-shrink: 0; border-left: 1px solid var(--border);
     display: flex; flex-direction: column; background: rgba(8,8,12,0.35);
   }
   .preview-head { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid var(--border); }
@@ -184,7 +219,7 @@
   .preview-stage { flex: 1; display: flex; align-items: center; justify-content: center; padding: 14px; overflow: hidden; }
   .preview-shell {
     width: 100%; height: 100%; border-radius: var(--pv-zone-radius, 10px);
-    background: var(--pv-bg-window);
+    background-color: var(--pv-bg-window);
     display: grid;
     grid-template-columns: 34px 1fr;
     grid-template-rows: 28px 1fr 44px 22px;
@@ -192,11 +227,15 @@
     overflow: hidden; box-shadow: 0 18px 50px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.06);
     font-family: var(--pv-font-ui);
     transition: border-radius 300ms ease;
+    position: relative;
   }
-  /* #80 zone 圆角开启 → 各 zone 成独立圆角贴片（留缝）；关闭 → 贴合成直角整板 */
+  /* 背景遮罩层（bgMask）在底色之上、zone 表面之下 */
+  .preview-shell::before { content: ''; position: absolute; inset: 0; background: var(--pv-bg-mask, transparent); pointer-events: none; z-index: 0; }
+  /* 表面纹理层（surfaceTexture）盖在遮罩上、zone 表面下 */
+  .preview-shell::after { content: ''; position: absolute; inset: 0; background: var(--pv-tex, none); pointer-events: none; z-index: 0; opacity: 0.055; }
+  .preview-shell > * { position: relative; z-index: 1; }
   .preview-shell.zone-round { gap: 2px; }
   .preview-shell.zone-round > * { border-radius: var(--pv-zone-radius); }
-  .preview-shell.zone-round .pv-side { overflow: hidden; }
   .preview-shell .pv-titlebar { grid-area: titlebar; display: flex; align-items: center; gap: 7px; padding: 0 10px; background: var(--pv-bg-titlebar); border-radius: var(--pv-zone-radius) var(--pv-zone-radius) 0 0; backdrop-filter: blur(var(--pv-glass-blur)) saturate(var(--pv-glass-sat)); -webkit-backdrop-filter: blur(var(--pv-glass-blur)) saturate(var(--pv-glass-sat)); border-bottom: 1px solid var(--pv-border); position: relative; }
   .preview-shell .pv-titlebar::after { content: ''; position: absolute; inset: 0; border-radius: inherit; background: var(--pv-glass-tint); opacity: var(--pv-glass-wash); pointer-events: none; }
   .preview-shell .win-dots { display: flex; gap: 5px; margin-right: 6px; }
@@ -252,18 +291,18 @@
       </div>
 
       <div class="settings-main">
-        <!-- ══════════ 主题组设置表单（#78 二级标题分组）══════════ -->
+        <!-- ══════════ 主题组设置表单（域驱动重组）══════════ -->
         <div class="settings-form" id="form-theme">
 
           <h1 class="settings-group-title">主题</h1>
-          <div class="settings-group-sub">主题 = 配方（整体外观）+ 配色变体 + 域混搭。换配方 = 换整套外观；二级标题分组由 contributes 声明驱动。</div>
+          <div class="settings-group-sub">主题 = 配方（整体外观）+ 配色变体 + 按域微调。整体配方/配色/强调色始终可见；「文字」组内文字极性始终可见、字体三槽自定义展开；切「自定义」展开 5 域小组 + 复位。删死键 mixRadius/mixGlass、域混搭并入域小组（<del>外观覆盖</del> <del>域混搭</del>）。</div>
 
-          <!-- ── ① 整体配方 ── -->
+          <!-- ── ① 整体配方（配方卡片 + 外观模式主开关）── -->
           <div class="settings-sub-section" data-group="recipe">
             <div class="settings-sub-head" data-fold="recipe">
               <span class="settings-sub-chevron">▾</span>
               <span class="settings-sub-title">整体配方</span>
-              <span class="settings-sub-badge">Glass Aurora 已选</span>
+              <span class="settings-sub-badge" id="recipe-badge">Glass Aurora 已选</span>
             </div>
             <div class="settings-sub-body">
               <div class="settings-row" style="display:block;">
@@ -292,21 +331,38 @@
                   </div>
                 </div>
               </div>
+              <!-- 外观模式主开关（原「外观覆盖」首行，迁入整体配方） -->
+              <div class="settings-row">
+                <div class="settings-row-info">
+                  <label class="settings-row-label">app.appearanceMode <span class="key">select</span></label>
+                  <span class="settings-row-desc">外观模式——<em>跟随主题</em>：全部由配方决定；<em>自定义</em>：展开下方按域微调 + 资产来源</span>
+                </div>
+                <div class="settings-row-control">
+                  <div class="select-box" data-mode="appearance">
+                    <span class="select-val">自定义</span><span class="caret">▾</span>
+                    <div class="select-menu">
+                      <button data-opt="自定义" class="selected">自定义</button>
+                      <button data-opt="跟随主题">跟随主题</button>
+                    </div>
+                  </div>
+                </div>
+                <button class="settings-row-gear">⚙</button>
+              </div>
             </div>
           </div>
 
-          <!-- ── ② 配色（#82：无 themeColorMode，配色来源唯一）── -->
+          <!-- ── ② 配色（colors 域来源 = 配方配色变体）── -->
           <div class="settings-sub-section" data-group="color">
             <div class="settings-sub-head" data-fold="color">
               <span class="settings-sub-chevron">▾</span>
               <span class="settings-sub-title">配色</span>
-              <span class="settings-sub-badge">极光紫</span>
+              <span class="settings-sub-badge" id="color-badge">极光紫</span>
             </div>
             <div class="settings-sub-body">
               <div class="settings-row">
                 <div class="settings-row-info">
                   <label class="settings-row-label">app.themeColor <span class="key">colorways</span></label>
-                  <span class="settings-row-desc">配色来源——<em>当前配方的配色变体</em>（换配方即换板）；单配色主题不显示本行。混搭模式时 = colors 域来源（见「域混搭」）。</span>
+                  <span class="settings-row-desc">配色变体——当前配方的配色板；单配色主题不显示本行</span>
                 </div>
                 <div class="settings-row-control">
                   <div class="select-box" data-colorway>
@@ -316,45 +372,27 @@
                 </div>
                 <button class="settings-row-gear">⚙</button>
               </div>
-              <div class="settings-row" style="display:block;">
-                <div class="settings-row-desc" style="color:var(--text-muted);font-size:11px;">💡 旧版「配色模式 themeColorMode」已删（#82 定案）——配色来源只有这一个入口，与域混搭的 colors 域统一。</div>
-              </div>
             </div>
           </div>
 
-          <!-- ── ③ 强调色（#79：从「通用」移入主题组）── -->
+          <!-- ── ③ 强调色（#90 删 accentMode——单槽，清除 = 跟随主题）── -->
           <div class="settings-sub-section" data-group="accent">
             <div class="settings-sub-head" data-fold="accent">
               <span class="settings-sub-chevron">▾</span>
               <span class="settings-sub-title">强调色</span>
-              <span class="settings-sub-badge">自定义 · #8B7CF6</span>
+              <span class="settings-sub-badge" id="accent-badge">自定义 · #8B7CF6</span>
             </div>
             <div class="settings-sub-body">
               <div class="settings-row">
                 <div class="settings-row-info">
-                  <label class="settings-row-label">app.accentMode <span class="key">select</span></label>
-                  <span class="settings-row-desc">强调色模式——自定义固定色 / 跟随主题（主题无强调色时用自定义兜底）</span>
-                </div>
-                <div class="settings-row-control">
-                  <div class="select-box" data-mode data-target="#accent-color-row" data-hide-opts="跟随主题">
-                    <span class="select-val">跟随主题</span><span class="caret">▾</span>
-                    <div class="select-menu">
-                      <button data-opt="自定义">自定义</button>
-                      <button data-opt="跟随主题" class="selected">跟随主题</button>
-                    </div>
-                  </div>
-                </div>
-                <button class="settings-row-gear">⚙</button>
-              </div>
-              <div class="settings-row depends-hidden" id="accent-color-row">
-                <div class="settings-row-info">
                   <label class="settings-row-label">app.accentColor <span class="key">color</span></label>
-                  <span class="settings-row-desc">自定义强调色（图标栏高亮、开关、焦点边框）</span>
+                  <span class="settings-row-desc">自定义强调色（图标栏高亮、开关、焦点边框）——<em>清除 = 跟随主题配方</em></span>
                 </div>
                 <div class="settings-row-control">
                   <div class="settings-color-control">
-                    <input type="color" class="settings-color-swatch" value="#8B7CF6" title="点击取色">
-                    <input class="input" type="text" value="#8B7CF6">
+                    <input type="color" class="settings-color-swatch" id="accent-pick" value="#8B7CF6" title="点击取色">
+                    <input class="input" type="text" id="accent-hex" value="#8B7CF6">
+                    <button class="clear-btn" id="accent-clear">清除</button>
                   </div>
                 </div>
                 <button class="settings-row-gear">⚙</button>
@@ -362,317 +400,353 @@
             </div>
           </div>
 
-          <!-- ── ④ 外观覆盖（dependsOn appearanceMode=custom）── -->
-          <div class="settings-sub-section" data-group="appearance">
-            <div class="settings-sub-head" data-fold="appearance">
+          <!-- ══════════ 以下 5 域小组 + 复位 = 自定义模式专属（data-custom）；「文字」小组为混合组——文字极性始终可见 + 字体域三槽自定义展开 ══════════ -->
+
+          <!-- ── ④ 圆角（数值域：无来源行——mixRadius 已删，系统标尺 0-32 绝对 px）── -->
+          <div class="settings-sub-section" data-custom="1" data-group="radius">
+            <div class="settings-sub-head" data-fold="radius">
               <span class="settings-sub-chevron">▾</span>
-              <span class="settings-sub-title">外观覆盖</span>
-              <span class="settings-sub-badge">跟随主题</span>
+              <span class="settings-sub-title">圆角</span>
+              <span class="settings-sub-badge">自定义</span>
             </div>
             <div class="settings-sub-body">
               <div class="settings-row">
                 <div class="settings-row-info">
-                  <label class="settings-row-label">app.appearanceMode <span class="key">select</span></label>
-                  <span class="settings-row-desc">外观模式——自定义：以下设置覆盖主题基线 / 跟随主题：用主题配方值</span>
+                  <label class="settings-row-label">app.surfaceRadius <span class="key">slider</span></label>
+                  <span class="settings-row-desc">组件圆角——<em>系统标尺绝对 px</em>：0 方角 / 32 最圆润（下拉、标签、卡片等）</span>
                 </div>
                 <div class="settings-row-control">
-                  <div class="select-box" data-mode data-target="#appearance-overrides" data-hide-opts="跟随主题">
+                  <div class="ld-slider" data-apply="surfaceRadius" data-min="0" data-max="32" data-step="1" data-unit="px" data-fmt="0">
+                    <div class="ld-slider-track"><div class="ld-slider-fill"></div><div class="ld-slider-thumb"></div></div>
+                    <span class="ld-slider-value">12px</span>
+                  </div>
+                </div>
+                <button class="settings-row-gear">⚙</button>
+              </div>
+              <div class="settings-row">
+                <div class="settings-row-info">
+                  <label class="settings-row-label">app.zoneRadius <span class="key">toggle</span></label>
+                  <span class="settings-row-desc">分区圆角开关——关：各分区直角贴死；开：顶栏/图标栏/侧栏/主区/面板/状态栏各自独立圆角 + 留缝</span>
+                </div>
+                <div class="settings-row-control">
+                  <button class="ld-toggle on" id="zone-radius-toggle" aria-label="分区圆角开关"></button>
+                  <span class="ld-toggle-label">开</span>
+                </div>
+                <button class="settings-row-gear">⚙</button>
+              </div>
+              <div class="settings-row">
+                <div class="settings-row-info">
+                  <label class="settings-row-label">app.zoneRadiusScale <span class="key">slider</span></label>
+                  <span class="settings-row-desc">分区圆角——系统标尺绝对 px（zone 的 surface-radius，独立于组件圆角两轴解耦）</span>
+                </div>
+                <div class="settings-row-control">
+                  <div class="ld-slider" data-apply="zoneRadiusScale" data-min="0" data-max="32" data-step="1" data-unit="px" data-fmt="0">
+                    <div class="ld-slider-track"><div class="ld-slider-fill"></div><div class="ld-slider-thumb"></div></div>
+                    <span class="ld-slider-value">10px</span>
+                  </div>
+                </div>
+                <button class="settings-row-gear">⚙</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- ── ⑤ 玻璃（数值域 + 色：无来源行——mixGlass 已删）── -->
+          <div class="settings-sub-section" data-custom="1" data-group="glass">
+            <div class="settings-sub-head" data-fold="glass">
+              <span class="settings-sub-chevron">▾</span>
+              <span class="settings-sub-title">玻璃</span>
+              <span class="settings-sub-badge">自定义</span>
+            </div>
+            <div class="settings-sub-body">
+              <div class="settings-row">
+                <div class="settings-row-info">
+                  <label class="settings-row-label">app.glassBlur <span class="key">slider</span></label>
+                  <span class="settings-row-desc">玻璃模糊——主表面真实模糊 px，0 关闭玻璃效果</span>
+                </div>
+                <div class="settings-row-control">
+                  <div class="ld-slider" data-apply="glassBlur" data-min="0" data-max="32" data-step="1" data-unit="px" data-fmt="0">
+                    <div class="ld-slider-track"><div class="ld-slider-fill"></div><div class="ld-slider-thumb"></div></div>
+                    <span class="ld-slider-value">16px</span>
+                  </div>
+                </div>
+                <button class="settings-row-gear">⚙</button>
+              </div>
+              <div class="settings-row">
+                <div class="settings-row-info">
+                  <label class="settings-row-label">app.glassOpacity <span class="key">slider</span></label>
+                  <span class="settings-row-desc">玻璃面不透明度——0 全透见背景 / 1 全不透明</span>
+                </div>
+                <div class="settings-row-control">
+                  <div class="ld-slider" data-apply="glassOpacity" data-min="0" data-max="1" data-step="0.05" data-unit="" data-fmt="2">
+                    <div class="ld-slider-track"><div class="ld-slider-fill"></div><div class="ld-slider-thumb"></div></div>
+                    <span class="ld-slider-value">0.45</span>
+                  </div>
+                </div>
+                <button class="settings-row-gear">⚙</button>
+              </div>
+              <div class="settings-row">
+                <div class="settings-row-info">
+                  <label class="settings-row-label">app.glassTint <span class="key">color</span></label>
+                  <span class="settings-row-desc">玻璃面叠加色——冷调/暖调微调，空 = 主题自带</span>
+                </div>
+                <div class="settings-row-control">
+                  <div class="settings-color-control">
+                    <input type="color" class="settings-color-swatch" id="glass-tint-pick" value="#4F5B8A" title="点击取色">
+                    <input class="input" type="text" id="glass-tint-hex" value="#4F5B8A">
+                  </div>
+                </div>
+                <button class="settings-row-gear">⚙</button>
+              </div>
+              <div class="settings-row">
+                <div class="settings-row-info">
+                  <label class="settings-row-label">app.glassSaturate <span class="key">slider</span></label>
+                  <span class="settings-row-desc">玻璃饱和度——1 原图 / 2 加倍饱和 / 0 去饱和</span>
+                </div>
+                <div class="settings-row-control">
+                  <div class="ld-slider" data-apply="glassSaturate" data-min="0" data-max="2" data-step="0.1" data-unit="×" data-fmt="1">
+                    <div class="ld-slider-track"><div class="ld-slider-fill"></div><div class="ld-slider-thumb"></div></div>
+                    <span class="ld-slider-value">1.4×</span>
+                  </div>
+                </div>
+                <button class="settings-row-gear">⚙</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- ── ⑥ 背景（资产域：来源行首 + 资产/数值覆盖槽）── -->
+          <div class="settings-sub-section" data-custom="1" data-group="background" data-source-key="mixBackground">
+            <div class="settings-sub-head" data-fold="background">
+              <span class="settings-sub-chevron">▾</span>
+              <span class="settings-sub-title">背景</span>
+              <span class="settings-sub-badge" id="bg-badge">自定义</span>
+            </div>
+            <div class="settings-sub-body">
+              <div class="settings-row">
+                <div class="settings-row-info">
+                  <label class="settings-row-label">app.mixBackground <span class="key">来源</span></label>
+                  <span class="settings-row-desc">背景来源——<em>跟随主题</em>：当前配方背景；指定配方：取该配方的背景图/遮罩（配方资产唯一通道）</span>
+                </div>
+                <div class="settings-row-control">
+                  <div class="select-box" data-mix="mixBackground">
+                    <span class="select-val">暮色森林包</span><span class="caret">▾</span>
+                    <div class="select-menu">
+                      <button data-opt="跟随主题">跟随主题</button>
+                      <button data-opt="Glass Aurora">Glass Aurora</button>
+                      <button data-opt="暮色森林包" class="selected">暮色森林包</button>
+                      <button data-opt="清凉薄荷包">清凉薄荷包</button>
+                    </div>
+                  </div>
+                </div>
+                <button class="settings-row-gear">⚙</button>
+              </div>
+              <div class="settings-row">
+                <div class="settings-row-info">
+                  <label class="settings-row-label">app.backgroundImage <span class="key">image</span> <span class="src-badge">🔀</span></label>
+                  <span class="settings-row-desc">全窗背景图——整窗铺底（玻璃透过可见）；空 = 跟随主题/来源</span>
+                </div>
+                <div class="settings-row-control">
+                  <div class="file-path">
+                    <input class="input" type="text" value="" placeholder="留空 = 跟随来源…">
+                    <button class="settings-action-btn">…</button>
+                  </div>
+                </div>
+                <button class="settings-row-gear">⚙</button>
+              </div>
+              <div class="settings-row">
+                <div class="settings-row-info">
+                  <label class="settings-row-label">app.backgroundOpacity <span class="key">slider</span> <span class="src-badge">🔀</span></label>
+                  <span class="settings-row-desc">背景图不透明度——0 全透见窗口底色 / 1 原图</span>
+                </div>
+                <div class="settings-row-control">
+                  <div class="ld-slider" data-apply="backgroundOpacity" data-min="0" data-max="1" data-step="0.05" data-unit="" data-fmt="2">
+                    <div class="ld-slider-track"><div class="ld-slider-fill"></div><div class="ld-slider-thumb"></div></div>
+                    <span class="ld-slider-value">1.00</span>
+                  </div>
+                </div>
+                <button class="settings-row-gear">⚙</button>
+              </div>
+              <div class="settings-row">
+                <div class="settings-row-info">
+                  <label class="settings-row-label">app.backgroundMask <span class="key">slider</span> <span class="src-badge">🔀</span></label>
+                  <span class="settings-row-desc">背景图遮罩明暗——0 无遮罩 / 1 全黑（压暗保文字可读）</span>
+                </div>
+                <div class="settings-row-control">
+                  <div class="ld-slider" data-apply="backgroundMask" data-min="0" data-max="1" data-step="0.05" data-unit="" data-fmt="2">
+                    <div class="ld-slider-track"><div class="ld-slider-fill"></div><div class="ld-slider-thumb"></div></div>
+                    <span class="ld-slider-value">0.00</span>
+                  </div>
+                </div>
+                <button class="settings-row-gear">⚙</button>
+              </div>
+              <div class="settings-row">
+                <div class="settings-row-info">
+                  <label class="settings-row-label">app.zoneBackgroundImage <span class="key">image</span> <span class="src-badge">🔀</span></label>
+                  <span class="settings-row-desc">分区背景图——各 zone 表面切片/纹理（与全窗并存：全窗垫底、分区浮表面）</span>
+                </div>
+                <div class="settings-row-control">
+                  <div class="file-path">
+                    <input class="input" type="text" value="" placeholder="留空 = 跟随来源…">
+                    <button class="settings-action-btn">…</button>
+                  </div>
+                </div>
+                <button class="settings-row-gear">⚙</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- ── ⑦ 文字（#91 fontTone 文字极性配方级始终可见 + 字体域 来源/界面字体/等宽字体 自定义展开——文字相关键同组）── -->
+          <div class="settings-sub-section" data-group="text" data-source-key="mixFont">
+            <div class="settings-sub-head" data-fold="text">
+              <span class="settings-sub-chevron">▾</span>
+              <span class="settings-sub-title">文字</span>
+              <span class="settings-sub-badge" id="font-badge">自定义</span>
+            </div>
+            <div class="settings-sub-body">
+              <div class="settings-row" style="display:block; border-bottom: 1px solid var(--border);">
+                <div class="settings-row-info" style="margin-bottom:8px;">
+                  <label class="settings-row-label">app.fontTone <span class="key">fontTone</span></label>
+                  <span class="settings-row-desc">文字极性——文字颜色取<em>系统标尺</em>（不锚主题色板），深底亮字 / 浅底暗字保证可读性</span>
+                </div>
+                <div class="settings-row-control" style="justify-content:flex-start;width:100%;">
+                  <div class="font-tone-group" id="font-tone-group">
+                    <button class="font-tone-opt active" data-tone="followTheme">
+                      <span class="ft-preview ft-split"><span class="ft-a">Aa</span></span>
+                      <span class="ft-label">跟随主题</span>
+                    </button>
+                    <button class="font-tone-opt" data-tone="light">
+                      <span class="ft-preview ft-dark"><span class="ft-a">Aa</span></span>
+                      <span class="ft-label">亮字·深底</span>
+                    </button>
+                    <button class="font-tone-opt" data-tone="dark">
+                      <span class="ft-preview ft-light"><span class="ft-a">Aa</span></span>
+                      <span class="ft-label">暗字·浅底</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <div class="settings-row" data-custom-row="1">
+                <div class="settings-row-info">
+                  <label class="settings-row-label">app.mixFont <span class="key">来源</span></label>
+                  <span class="settings-row-desc">字体来源——跟随主题 / 指定含字体的主题（<em>配方捆绑 @font-face 资产唯一通道</em>，拾取器选不了资产族）</span>
+                </div>
+                <div class="settings-row-control">
+                  <div class="select-box" data-mix="mixFont">
                     <span class="select-val">跟随主题</span><span class="caret">▾</span>
                     <div class="select-menu">
-                      <button data-opt="自定义">自定义</button>
                       <button data-opt="跟随主题" class="selected">跟随主题</button>
+                      <button data-opt="宋体主题">宋体主题</button>
+                      <button data-opt="终端机">终端机</button>
+                      <button data-opt="霞鹜文楷">霞鹜文楷</button>
                     </div>
                   </div>
                 </div>
                 <button class="settings-row-gear">⚙</button>
               </div>
-
-              <div id="appearance-overrides" class="depends-hidden">
-                <!-- 组件圆角 scale -->
-                <div class="settings-row">
-                  <div class="settings-row-info">
-                    <label class="settings-row-label">app.surfaceRadius <span class="key">slider</span></label>
-                    <span class="settings-row-desc">组件圆角缩放——×1 = 主题原值（下拉/标签/卡片等小圆角）</span>
-                  </div>
-                  <div class="settings-row-control">
-                    <div class="ld-slider" data-min="0" data-max="2" data-step="0.1" data-unit="×" data-fmt="1" data-apply="radius">
-                      <div class="ld-slider-track"><div class="ld-slider-fill"></div><div class="ld-slider-thumb"></div></div>
-                      <span class="ld-slider-value">×1.0</span>
+              <div class="settings-row" data-custom-row="1">
+                <div class="settings-row-info">
+                  <label class="settings-row-label">app.fontFamily <span class="key">fontFamily</span> <span class="src-badge">🔀</span></label>
+                  <span class="settings-row-desc">界面字体——空 = 跟随主题/来源；选族名写 --font-ui；系统字体 = 显式系统默认</span>
+                </div>
+                <div class="settings-row-control">
+                  <div class="select-box" data-font="fontFamily">
+                    <span class="select-val">跟随主题</span><span class="caret">▾</span>
+                    <div class="select-menu">
+                      <button data-opt="跟随主题" class="selected">跟随主题</button>
+                      <button data-opt="Space Grotesk">Space Grotesk</button>
+                      <button data-opt="Geist Sans">Geist Sans</button>
+                      <button data-opt="宋体 SimSun">宋体 SimSun</button>
+                      <button data-opt="系统字体">系统字体</button>
                     </div>
                   </div>
-                  <button class="settings-row-gear">⚙</button>
                 </div>
-
-                <!-- #80 zone 圆角开关 + 倍数（方案 B 定案） -->
-                <div class="settings-row">
-                  <div class="settings-row-info">
-                    <label class="settings-row-label">app.zoneRadius <span class="key">toggle</span> <span class="settings-sub-badge" style="font-size:9px;">🆕</span></label>
-                    <span class="settings-row-desc">分区圆角开关——开：各 zone（顶栏/图标栏/侧栏/主区/面板/状态栏）圆角跟随主题 + 下方倍数；关：全部直角</span>
-                  </div>
-                  <div class="settings-row-control">
-                    <button class="ld-toggle on" id="zone-radius-toggle" aria-label="zone 圆角开关"></button>
-                    <span class="ld-toggle-label">开</span>
-                  </div>
-                  <button class="settings-row-gear">⚙</button>
+                <button class="settings-row-gear">⚙</button>
+              </div>
+              <div class="settings-row" data-custom-row="1">
+                <div class="settings-row-info">
+                  <label class="settings-row-label">app.fontFamilyMono <span class="key">fontFamily</span> <span class="src-badge">🔀</span></label>
+                  <span class="settings-row-desc">等宽字体——代码/等宽排版（菜单、面板、输入框）；只列等宽族</span>
                 </div>
-                <div class="settings-row">
-                  <div class="settings-row-info">
-                    <label class="settings-row-label">app.zoneRadiusScale <span class="key">slider</span></label>
-                    <span class="settings-row-desc">分区圆角倍数——×1 = 主题 zone 圆角原值，×0.5 更锐利，×2 更圆润</span>
-                  </div>
-                  <div class="settings-row-control">
-                    <div class="ld-slider" data-min="0" data-max="2" data-step="0.1" data-unit="×" data-fmt="1" data-apply="zoneRadius">
-                      <div class="ld-slider-track"><div class="ld-slider-fill"></div><div class="ld-slider-thumb"></div></div>
-                      <span class="ld-slider-value">×1.0</span>
+                <div class="settings-row-control">
+                  <div class="select-box" data-font="fontFamilyMono">
+                    <span class="select-val">跟随主题</span><span class="caret">▾</span>
+                    <div class="select-menu">
+                      <button data-opt="跟随主题" class="selected">跟随主题</button>
+                      <button data-opt="JetBrains Mono">JetBrains Mono</button>
+                      <button data-opt="Cascadia Code">Cascadia Code</button>
+                      <button data-opt="系统等宽">系统等宽</button>
                     </div>
                   </div>
-                  <button class="settings-row-gear">⚙</button>
                 </div>
-
-                <!-- 玻璃模糊 / 不透明度 -->
-                <div class="settings-row">
-                  <div class="settings-row-info">
-                    <label class="settings-row-label">app.glassBlur <span class="key">slider</span></label>
-                    <span class="settings-row-desc">玻璃模糊（px）——0 关闭玻璃效果</span>
-                  </div>
-                  <div class="settings-row-control">
-                    <div class="ld-slider" data-min="0" data-max="32" data-step="1" data-unit="px" data-fmt="0" data-apply="glassBlur">
-                      <div class="ld-slider-track"><div class="ld-slider-fill"></div><div class="ld-slider-thumb"></div></div>
-                      <span class="ld-slider-value">16px</span>
-                    </div>
-                  </div>
-                  <button class="settings-row-gear">⚙</button>
-                </div>
-                <div class="settings-row">
-                  <div class="settings-row-info">
-                    <label class="settings-row-label">app.glassOpacity <span class="key">slider</span></label>
-                    <span class="settings-row-desc">玻璃面不透明度——0 全透仅模糊，1 接近实心</span>
-                  </div>
-                  <div class="settings-row-control">
-                    <div class="ld-slider" data-min="0" data-max="1" data-step="0.05" data-unit="" data-fmt="2" data-apply="glassOpacity">
-                      <div class="ld-slider-track"><div class="ld-slider-fill"></div><div class="ld-slider-thumb"></div></div>
-                      <span class="ld-slider-value">0.45</span>
-                    </div>
-                  </div>
-                  <button class="settings-row-gear">⚙</button>
-                </div>
-
-                <!-- 玻璃叠加色 -->
-                <div class="settings-row">
-                  <div class="settings-row-info">
-                    <label class="settings-row-label">app.glassTint <span class="key">color</span></label>
-                    <span class="settings-row-desc">玻璃面叠加色——冷调/暖调微调</span>
-                  </div>
-                  <div class="settings-row-control">
-                    <div class="settings-color-control">
-                      <input type="color" class="settings-color-swatch" value="#4F5B8A" title="点击取色">
-                      <input class="input" type="text" value="#4F5B8A">
-                    </div>
-                  </div>
-                  <button class="settings-row-gear">⚙</button>
-                </div>
-
-                <!-- #81 双背景：全窗 + 分区（并排，无重影困惑） -->
-                <div class="settings-row">
-                  <div class="settings-row-info">
-                    <label class="settings-row-label">app.backgroundImage <span class="key">image</span> <span class="settings-sub-badge" style="font-size:9px;">全窗</span></label>
-                    <span class="settings-row-desc">全窗背景图——整窗铺底（顶栏/图标栏/侧栏后方，玻璃透过可见）</span>
-                  </div>
-                  <div class="settings-row-control">
-                    <div class="file-path">
-                      <input class="input" type="text" value="" placeholder="留空 = 跟随主题…">
-                      <button class="settings-action-btn">…</button>
-                    </div>
-                  </div>
-                  <button class="settings-row-gear">⚙</button>
-                </div>
-                <div class="settings-row">
-                  <div class="settings-row-info">
-                    <label class="settings-row-label">app.zoneBackgroundImage <span class="key">image</span> <span class="settings-sub-badge" style="font-size:9px;">分区</span> <span class="settings-sub-badge" style="font-size:9px;">🆕</span></label>
-                    <span class="settings-row-desc">分区背景图——各 zone 表面切片/纹理（与全窗背景并存：全窗垫底、分区浮表面）</span>
-                  </div>
-                  <div class="settings-row-control">
-                    <div class="file-path">
-                      <input class="input" type="text" value="" placeholder="留空 = 跟随主题…">
-                      <button class="settings-action-btn">…</button>
-                    </div>
-                  </div>
-                  <button class="settings-row-gear">⚙</button>
-                </div>
-
-                <!-- 字体 -->
-                <div class="settings-row">
-                  <div class="settings-row-info">
-                    <label class="settings-row-label">app.fontFamily <span class="key">fontFamily</span></label>
-                    <span class="settings-row-desc">界面字体——默认跟随主题，此处可覆盖</span>
-                  </div>
-                  <div class="settings-row-control">
-                    <div class="select-box" data-font>
-                      <span class="select-val">跟随主题</span><span class="caret">▾</span>
-                      <div class="select-menu">
-                        <button data-opt="跟随主题" class="selected">跟随主题</button>
-                        <button data-opt="Space Grotesk">Space Grotesk</button>
-                        <button data-opt="Geist Sans">Geist Sans</button>
-                        <button data-opt="宋体 SimSun">宋体 SimSun</button>
-                        <button data-opt="JetBrains Mono">JetBrains Mono</button>
-                      </div>
-                    </div>
-                  </div>
-                  <button class="settings-row-gear">⚙</button>
-                </div>
+                <button class="settings-row-gear">⚙</button>
               </div>
             </div>
           </div>
 
-          <!-- ── ⑤ 域混搭（#82：colors 来源 = 配色子节的 themeColor）── -->
-          <div class="settings-sub-section" data-group="mix">
-            <div class="settings-sub-head" data-fold="mix">
+          <!-- ── ⑧ 表面（资产域：来源 + 新纹理槽）── -->
+          <div class="settings-sub-section" data-custom="1" data-group="surface" data-source-key="mixSurface">
+            <div class="settings-sub-head" data-fold="surface">
               <span class="settings-sub-chevron">▾</span>
-              <span class="settings-sub-title">域混搭</span>
-              <span class="settings-sub-badge">整体配方</span>
+              <span class="settings-sub-title">表面</span>
+              <span class="settings-sub-badge" id="surface-badge">自定义</span>
             </div>
             <div class="settings-sub-body">
               <div class="settings-row">
                 <div class="settings-row-info">
-                  <label class="settings-row-label">app.mixMode <span class="key">select</span></label>
-                  <span class="settings-row-desc">混搭模式——整体配方：全域跟随当前主题 / 混搭：按域选来源（要 A 的玻璃 + B 的字体）</span>
+                  <label class="settings-row-label">app.mixSurface <span class="key">来源</span></label>
+                  <span class="settings-row-desc">表面来源——哪套配方的表面纹理/质感（菜单、悬浮面板等 per-surface 样式）</span>
                 </div>
                 <div class="settings-row-control">
-                  <div class="select-box" data-mode data-target="#mix-overrides" data-hide-opts="整体配方">
-                    <span class="select-val">整体配方</span><span class="caret">▾</span>
+                  <div class="select-box" data-mix="mixSurface">
+                    <span class="select-val">跟随主题</span><span class="caret">▾</span>
                     <div class="select-menu">
-                      <button data-opt="整体配方" class="selected">整体配方</button>
-                      <button data-opt="混搭">混搭</button>
+                      <button data-opt="跟随主题" class="selected">跟随主题</button>
+                      <button data-opt="暮色森林包">暮色森林包</button>
+                      <button data-opt="清凉薄荷包">清凉薄荷包</button>
                     </div>
                   </div>
                 </div>
                 <button class="settings-row-gear">⚙</button>
               </div>
+              <div class="settings-row">
+                <div class="settings-row-info">
+                  <label class="settings-row-label">app.surfaceTexture <span class="key">texture</span> <span class="settings-sub-badge" style="font-size:9px;">🆕</span></label>
+                  <span class="settings-row-desc">表面纹理——给各分区表面叠加质感（全矩阵镜像补槽：表面域此前只有来源、无覆盖槽）</span>
+                </div>
+                <div class="settings-row-control">
+                  <div class="texture-picker" id="texture-picker">
+                    <button class="texture-opt active" data-texture="跟随主题"><span class="tx-swatch"></span>跟随主题</button>
+                    <button class="texture-opt" data-texture="纸纹"><span class="tx-swatch paper"></span>纸纹</button>
+                    <button class="texture-opt" data-texture="磨砂"><span class="tx-swatch frost"></span>磨砂</button>
+                    <button class="texture-opt" data-texture="无纹理"><span class="tx-swatch none"></span>无纹理</button>
+                  </div>
+                </div>
+                <button class="settings-row-gear">⚙</button>
+              </div>
+            </div>
+          </div>
 
-              <div id="mix-overrides" class="depends-hidden">
-                <!-- colors 域来源 = 配色子节 themeColor（#82 统一；此处动态 echo 配色选择） -->
-                <div class="settings-row">
-                  <div class="settings-row-info">
-                    <label class="settings-row-label">colors 域 <span class="key">themeColor</span></label>
-                    <span class="settings-row-desc">配色来源——与「配色」子节同一入口（跟随主题配方 / 指定配方配色）</span>
-                  </div>
-                  <div class="settings-row-control">
-                    <div class="select-box" data-mix data-mixcolors>
-                      <span class="select-val">跟随主题</span><span class="caret">▾</span>
-                      <div class="select-menu">
-                        <button data-opt="跟随主题" class="selected">跟随主题</button>
-                        <button data-opt="清凉薄荷包·薄荷苏打"><span class="sw" style="background:#8FD6B5;"></span>清凉薄荷包·薄荷苏打</button>
-                        <button data-opt="Glass Aurora·极光紫"><span class="sw" style="background:#8B7CF6;"></span>Glass Aurora·极光紫</button>
-                        <button data-opt="暮色森林包·深林"><span class="sw" style="background:#4C8C6A;"></span>暮色森林包·深林</button>
-                      </div>
-                    </div>
-                  </div>
-                  <button class="settings-row-gear">⚙</button>
+          <!-- ── ⑨ 复位（只复位资产域来源 + 覆盖槽）── -->
+          <div class="settings-sub-section" data-custom="1" data-group="reset">
+            <div class="settings-sub-head" data-fold="reset">
+              <span class="settings-sub-chevron">▾</span>
+              <span class="settings-sub-title">复位</span>
+            </div>
+            <div class="settings-sub-body">
+              <div class="settings-row" style="border-bottom:none;">
+                <div class="settings-row-info">
+                  <label class="settings-row-label">全部复位 <span class="key">action</span></label>
+                  <span class="settings-row-desc">资产域来源回「跟随主题」+ 全部覆盖槽回系统默认（保留自定义模式）</span>
                 </div>
-                <div class="settings-row">
-                  <div class="settings-row-info">
-                    <label class="settings-row-label">font 域 <span class="key">app.mixFont</span></label>
-                    <span class="settings-row-desc">字体来源——含字体插件的主题/插件</span>
-                  </div>
-                  <div class="settings-row-control">
-                    <div class="select-box" data-mix>
-                      <span class="select-val">跟随主题</span><span class="caret">▾</span>
-                      <div class="select-menu">
-                        <button data-opt="跟随主题" class="selected">跟随主题</button>
-                        <button data-opt="Glass Aurora">Glass Aurora</button>
-                        <button data-opt="霞鹜文楷">霞鹜文楷</button>
-                        <button data-opt="JetBrains Mono">JetBrains Mono</button>
-                      </div>
-                    </div>
-                  </div>
-                  <button class="settings-row-gear">⚙</button>
+                <div class="settings-row-control">
+                  <button class="settings-action-btn" id="mix-reset">⟲ 全部复位为整体配方</button>
                 </div>
-                <div class="settings-row">
-                  <div class="settings-row-info">
-                    <label class="settings-row-label">radius 域 <span class="key">app.mixRadius</span></label>
-                    <span class="settings-row-desc">圆角来源——哪套配方的圆角档位（scale 设置层仍在其上）</span>
-                  </div>
-                  <div class="settings-row-control">
-                    <div class="select-box" data-mix>
-                      <span class="select-val">跟随主题</span><span class="caret">▾</span>
-                      <div class="select-menu">
-                        <button data-opt="跟随主题" class="selected">跟随主题</button>
-                        <button data-opt="Glass Aurora">Glass Aurora</button>
-                        <button data-opt="清凉薄荷包">清凉薄荷包</button>
-                      </div>
-                    </div>
-                  </div>
-                  <button class="settings-row-gear">⚙</button>
-                </div>
-                <div class="settings-row">
-                  <div class="settings-row-info">
-                    <label class="settings-row-label">glass 域 <span class="key">app.mixGlass</span></label>
-                    <span class="settings-row-desc">玻璃来源——哪套配方的玻璃效果（设置层 glassBlur 仍在其上）</span>
-                  </div>
-                  <div class="settings-row-control">
-                    <div class="select-box" data-mix>
-                      <span class="select-val">跟随主题</span><span class="caret">▾</span>
-                      <div class="select-menu">
-                        <button data-opt="跟随主题" class="selected">跟随主题</button>
-                        <button data-opt="Glass Aurora">Glass Aurora</button>
-                        <button data-opt="清凉薄荷包">清凉薄荷包</button>
-                      </div>
-                    </div>
-                  </div>
-                  <button class="settings-row-gear">⚙</button>
-                </div>
-                <div class="settings-row">
-                  <div class="settings-row-info">
-                    <label class="settings-row-label">background 域 <span class="key">app.mixBackground</span></label>
-                    <span class="settings-row-desc">背景来源——哪套配方的背景图/遮罩</span>
-                  </div>
-                  <div class="settings-row-control">
-                    <div class="select-box" data-mix>
-                      <span class="select-val">跟随主题</span><span class="caret">▾</span>
-                      <div class="select-menu">
-                        <button data-opt="跟随主题" class="selected">跟随主题</button>
-                        <button data-opt="Glass Aurora 背景">Glass Aurora 背景</button>
-                        <button data-opt="暮色森林包">暮色森林包</button>
-                      </div>
-                    </div>
-                  </div>
-                  <button class="settings-row-gear">⚙</button>
-                </div>
-                <div class="settings-row">
-                  <div class="settings-row-info">
-                    <label class="settings-row-label">surface 域 <span class="key">app.mixSurface</span></label>
-                    <span class="settings-row-desc">表面来源——菜单、悬浮面板等 per-surface 样式</span>
-                  </div>
-                  <div class="settings-row-control">
-                    <div class="select-box" data-mix>
-                      <span class="select-val">跟随主题</span><span class="caret">▾</span>
-                      <div class="select-menu">
-                        <button data-opt="跟随主题" class="selected">跟随主题</button>
-                        <button data-opt="暮色森林包">暮色森林包</button>
-                        <button data-opt="清凉薄荷包">清凉薄荷包</button>
-                      </div>
-                    </div>
-                  </div>
-                  <button class="settings-row-gear">⚙</button>
-                </div>
-
-                <!-- 混搭复位 -->
-                <div class="settings-row" style="border-bottom:none;">
-                  <div class="settings-row-info">
-                    <label class="settings-row-label">混搭复位 <span class="key">action</span></label>
-                    <span class="settings-row-desc">全部域来源回「跟随主题」+ 混搭模式回「整体配方」</span>
-                  </div>
-                  <div class="settings-row-control">
-                    <button class="settings-action-btn" id="mix-reset" disabled>⟲ 全部复位为整体配方</button>
-                  </div>
-                  <button class="settings-row-gear">⚙</button>
-                </div>
+                <button class="settings-row-gear">⚙</button>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- 非主题页占位（演示：本 mockup 只做主题页） -->
+        <!-- 非主题页占位 -->
         <div class="settings-form" id="placeholder-form" style="display:none;">
           <h1 class="settings-group-title">通用</h1>
           <div class="settings-group-sub">本页不在本次主题设置重构演示范围内——本 mockup 聚焦「主题」页（右侧实时预览）。</div>
@@ -731,13 +805,13 @@
           <div class="preview-foot" id="preview-foot">
             <span class="pf-tag">配方 Glass Aurora</span>
             <span class="pf-tag">配色 极光紫</span>
-            <span class="pf-tag">zone 圆角 ×1.0</span>
+            <span class="pf-tag">模式 自定义</span>
           </div>
         </div>
       </div>
     </div>
   </div>
-  <div class="mock-note">02-设置页-主题区-重构-mockup — 右侧预览随左侧设置实时变化 · 二级标题可点击折叠</div>
+  <div class="mock-note">02-设置页-主题区-域驱动重构 mockup — 右侧预览随左侧设置实时变化 · 二级标题可折叠 · 外观模式切「跟随主题」收起 5 域小组</div>
 
 <script>
   /* ════════════════════════════════════════════════════════════════════
@@ -770,40 +844,68 @@
     }
   };
   const DEFAULT_FONT = '"Segoe UI", "Microsoft YaHei", system-ui, sans-serif';
+  const NOISE_URL = "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E\")";
+  const FROST_URL = "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40'%3E%3Cfilter id='p'%3E%3CfeTurbulence type='turbulence' baseFrequency='1.6' numOctaves='1'/%3E%3C/filter%3E%3Crect width='40' height='40' filter='url(%23p)' opacity='0.5'/%3E%3C/svg%3E\")";
 
-  /* ── 状态 ── */
+  /* ── 状态（域驱动）── */
   const state = {
-    theme: 'glass', colorway: '极光紫', accentMode: '跟随主题', accentColor: '#8B7CF6',
-    appearanceMode: '跟随主题', surfaceRadius: 1.0, zoneRadius: true, zoneRadiusScale: 1.0,
-    glassBlur: 16, glassOpacity: 0.45, glassTint: '#4F5B8A', fontFamily: '跟随主题',
-    mixMode: '整体配方', mixFont: '跟随主题', mixRadius: '跟随主题', mixGlass: '跟随主题', mixBackground: '跟随主题', mixSurface: '跟随主题', mixColors: '跟随主题'
+    theme: 'glass', colorway: '极光紫', accentColor: '#8B7CF6', accentCleared: false,
+    appearanceMode: '自定义',
+    fontTone: 'followTheme',
+    surfaceRadius: 12, zoneRadius: true, zoneRadiusScale: 10,
+    glassBlur: 16, glassOpacity: 0.45, glassTint: '#4F5B8A', glassSaturate: 1.4,
+    mixBackground: '暮色森林包', mixFont: '跟随主题', mixSurface: '跟随主题',
+    backgroundOpacity: 1, backgroundMask: 0,
+    fontFamily: '跟随主题', fontFamilyMono: '跟随主题',
+    surfaceTexture: '跟随主题'
   };
 
   const shell = document.getElementById('preview-shell');
   const foot = document.getElementById('preview-foot');
 
-  /* ── 主题应用到预览（含域混搭：每域可独立取来源主题）── */
+  /* ── 域来源解析：跟随主题 → 当前配方；指定配方名 → 该配方；找不到 → 当前配方 ── */
+  function mixOf(d) {
+    const base = THEMES[state.theme];
+    const v = state['mix' + d.charAt(0).toUpperCase() + d.slice(1)];
+    if (!v || v === '跟随主题') return base;
+    for (const k in THEMES) if (v === THEMES[k].name) return THEMES[k];
+    return base;
+  }
+
+  function hexToRgb(hex) {
+    const h = String(hex).replace('#', '');
+    const n = parseInt(h, 16);
+    return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
+  }
+  function hexToRgba(hex, a) {
+    const { r, g, b } = hexToRgb(hex);
+    return `rgba(${r},${g},${b},${a})`;
+  }
+
+  const TONE_TEXT = {
+    light:  { text: '#FFFFFF',  text2: 'rgba(255,255,255,0.78)',  muted: 'rgba(255,255,255,0.50)'  },
+    dark:   { text: '#0E0E12',  text2: 'rgba(14,14,18,0.72)',     muted: 'rgba(14,14,18,0.50)'     }
+  };
+
+  /* ── 主题应用到预览（域来源 + 覆盖，最上层）── */
   function applyThemeToPreview() {
     const base = THEMES[state.theme];
-    // 域混搭：mixMode=mix 时每域从「来源主题名」解析；跟随主题 = 当前配方
-    const mixOf = (d) => {
-      const key = 'mix' + d.charAt(0).toUpperCase() + d.slice(1);
-      const v = state[key];
-      if (state.mixMode !== '混搭' || v === '跟随主题') return base;
-      for (const k in THEMES) if (v === THEMES[k].name || v.startsWith(THEMES[k].name)) return THEMES[k];
-      return base;
-    };
-    const cT = mixOf('colors'), fT = mixOf('font'), rT = mixOf('radius'), gT = mixOf('glass'), bT = mixOf('background'), sT = mixOf('surface');
-
     const over = state.appearanceMode === '自定义';
-    const blur = over ? state.glassBlur : gT.glass.blur;
-    const opacity = over ? state.glassOpacity : gT.glass.opacity;
-    const tint = over ? hexToRgba(state.glassTint, 0.5) : gT.glass.tint;
-    const rMd = over ? Math.round(rT.radius.md * state.surfaceRadius) : rT.radius.md;
-    const zoneR = state.zoneRadius ? (over ? Math.round(rT.zoneRadius * state.zoneRadiusScale) : rT.zoneRadius) : 0;
+    const cT = mixOf('colors'), fT = mixOf('font'), bT = mixOf('background'), sT = mixOf('surface');
 
-    // surface 域来源影响卡片/侧栏/输入框底色，其余取 colors 域来源
-    const c = { ...cT.colors, card: sT.colors.card, input: sT.colors.input, side: sT.colors.side };
+    const blur  = over ? state.glassBlur      : base.glass.blur;
+    const op    = over ? state.glassOpacity   : base.glass.opacity;
+    const sat   = over ? state.glassSaturate  : 1.4;
+    const tint  = over ? hexToRgba(state.glassTint, 0.5) : base.glass.tint;
+    const rMd   = over ? state.surfaceRadius  : base.radius.md;
+    const zoneR = state.zoneRadius ? (over ? state.zoneRadiusScale : base.zoneRadius) : 0;
+
+    const c = { ...cT.colors };
+    const tone = state.fontTone !== 'followTheme' ? TONE_TEXT[state.fontTone] : null;
+    const text  = tone ? tone.text  : c.text;
+    const text2 = tone ? tone.text2 : c.text2;
+    const muted = tone ? tone.muted : c.muted;
+
     const st = {
       '--pv-bg-window': c.window,
       '--pv-bg-titlebar': c.titlebar,
@@ -812,51 +914,131 @@
       '--pv-bg-side-panel': c.side,
       '--pv-bg-toolbar': c.toolbar,
       '--pv-bg-status': c.status,
-      '--pv-text-primary': c.text,
-      '--pv-text-secondary': c.text2,
-      '--pv-text-muted': c.muted,
+      '--pv-text-primary': text,
+      '--pv-text-secondary': text2,
+      '--pv-text-muted': muted,
       '--pv-border': c.border,
-      '--pv-accent': state.accentMode === '自定义' ? state.accentColor : cT.accent,
+      '--pv-accent': state.accentCleared ? cT.accent : state.accentColor,
       '--pv-status-connected': c.connected,
       '--pv-glass-blur': blur + 'px',
-      '--pv-glass-sat': '1.4',
+      '--pv-glass-sat': sat,
       '--pv-glass-tint': tint,
-      '--pv-glass-wash': opacity,
+      '--pv-glass-wash': op,
       '--pv-zone-radius': zoneR + 'px',
       '--pv-radius-md': rMd + 'px',
       '--pv-font-ui': state.fontFamily !== '跟随主题' ? state.fontFamily : (fT.font === '系统默认' ? DEFAULT_FONT : fT.font),
+      '--pv-font-mono': state.fontFamilyMono !== '跟随主题' ? state.fontFamilyMono : '"JetBrains Mono", Consolas, monospace'
     };
-    // 全窗背景（background 域来源主题；纯色则落 backgroundColor）
-    shell.style.backgroundColor = c.window;
-    shell.style.backgroundImage = (bT.bg.startsWith('linear-gradient') || bT.bg.startsWith('radial-gradient')) ? bT.bg : 'none';
-    shell.style.backgroundSize = 'cover';
+    // 全窗背景（background 域来源）+ 不透明度 + 遮罩 + 纹理
+    const bgWin = c.window;
+    const { r, g, b } = /^#/.test(bgWin) ? hexToRgb(bgWin) : { r: 10, g: 10, b: 10 };
+    const bgOp = over ? state.backgroundOpacity : 1;
+    const bgMask = over ? state.backgroundMask : 0;
+    let tex = '';
+    if (over) {
+      if (state.surfaceTexture === '纸纹') tex = NOISE_URL;
+      else if (state.surfaceTexture === '磨砂') tex = FROST_URL;
+    }
+    shell.style.backgroundColor = bgWin;
+    const layers = [];
+    if (tex) layers.push(tex);
+    layers.push(`linear-gradient(rgba(${r},${g},${b},${(1 - bgOp).toFixed(3)}), rgba(${r},${g},${b},${(1 - bgOp).toFixed(3)}))`);
+    layers.push(bT.bg);
+    shell.style.backgroundImage = layers.join(', ');
+    shell.style.backgroundSize = tex ? 'auto, auto, cover' : 'auto, cover';
+    shell.style.setProperty('--pv-bg-mask', bgMask > 0 ? `rgba(0,0,0,${bgMask})` : 'transparent');
+    shell.style.setProperty('--pv-tex', tex || 'none');
     for (const [k, v] of Object.entries(st)) shell.style.setProperty(k, v);
-    // #80：zone 圆角开启 → zone 成独立圆角贴片（留缝），关闭 → 贴合成直角整板
     shell.classList.toggle('zone-round', zoneR > 0);
 
-    // 强调色元素
     document.querySelectorAll('#preview-shell .pv-ico.active, #preview-shell .pv-card-title, #preview-shell .pv-brand').forEach(el => {
-      el.style.color = state.accentMode === '自定义' ? state.accentColor : cT.accent;
+      el.style.color = state.accentCleared ? cT.accent : state.accentColor;
     });
 
-    // 页脚 tag
     const fontName = state.fontFamily !== '跟随主题' ? state.fontFamily : (fT.font === '系统默认' ? '系统默认' : fT.font);
+    const toneLabel = { followTheme: '跟随主题', light: '亮字·深底', dark: '暗字·浅底' }[state.fontTone];
     foot.innerHTML = `
       <span class="pf-tag">配方 ${base.name}</span>
       <span class="pf-tag">配色 ${state.colorway}</span>
-      <span class="pf-tag">组件圆角 ×${state.surfaceRadius.toFixed(1)}</span>
-      <span class="pf-tag">zone 圆角 ${state.zoneRadius ? '×' + state.zoneRadiusScale.toFixed(1) : '关'}</span>
-      <span class="pf-tag">玻璃 ${over ? state.glassBlur + 'px / ' + state.glassOpacity.toFixed(2) : '主题'}</span>
+      <span class="pf-tag">模式 ${state.appearanceMode}</span>
+      <span class="pf-tag">文字 ${toneLabel}</span>
+      <span class="pf-tag">组件圆角 ${over ? state.surfaceRadius + 'px' : '主题'}</span>
+      <span class="pf-tag">zone 圆角 ${state.zoneRadius ? (over ? state.zoneRadiusScale + 'px' : '主题') : '关'}</span>
+      <span class="pf-tag">玻璃 ${over ? state.glassBlur + 'px / ' + state.glassOpacity.toFixed(2) + ' / sat' + state.glassSaturate.toFixed(1) : '主题'}</span>
+      <span class="pf-tag">背景 ${bT.name === base.name ? '主题' : '🔀 ' + bT.name}</span>
       <span class="pf-tag">字体 ${fontName}</span>
+      <span class="pf-tag">纹理 ${state.surfaceTexture}</span>
     `;
-    if (state.mixMode === '混搭') foot.innerHTML += '<span class="pf-tag" style="color:var(--accent);">域混搭 ON</span>';
   }
 
-  function hexToRgba(hex, a) {
-    const h = hex.replace('#', '');
-    const n = parseInt(h, 16);
-    const r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
-    return `rgba(${r},${g},${b},${a})`;
+  /* ════════════════════════════════════════════════════════════════════
+     控件同步（状态 → 控件视觉）
+     ════════════════════════════════════════════════════════════════════ */
+  function syncSlider(el) {
+    const key = el.dataset.apply, v = state[key];
+    const min = parseFloat(el.dataset.min), max = parseFloat(el.dataset.max), step = parseFloat(el.dataset.step);
+    const fmt = parseInt(el.dataset.fmt), unit = el.dataset.unit;
+    const pct = max > min ? ((v - min) / (max - min)) * 100 : 0;
+    el.querySelector('.ld-slider-fill').style.width = pct + '%';
+    el.querySelector('.ld-slider-thumb').style.left = pct + '%';
+    el.querySelector('.ld-slider-value').textContent = (fmt ? v.toFixed(fmt) : Math.round(v)) + unit;
+  }
+  function syncSelectVal(box, val) {
+    box.querySelector('.select-val').textContent = val;
+    box.querySelectorAll('.select-menu button').forEach(b => b.classList.toggle('selected', b.dataset.opt === val));
+  }
+  function syncAll() {
+    // 外观模式
+    syncSelectVal(document.querySelector('.select-box[data-mode="appearance"]'), state.appearanceMode);
+    // 自定义域小组显隐
+    const customHidden = state.appearanceMode !== '自定义';
+    document.querySelectorAll('.settings-sub-section[data-custom="1"]').forEach(s =>
+      s.classList.toggle('depends-hidden', customHidden));
+    // 混合组（文字）：仅字体域三槽随自定义模式显隐，文字极性始终可见
+    document.querySelectorAll('.settings-row[data-custom-row="1"]').forEach(r =>
+      r.classList.toggle('depends-hidden', customHidden));
+    // 配色
+    const cwBox = document.querySelector('.select-box[data-colorway]');
+    syncSelectVal(cwBox, state.colorway);
+    // 强调色
+    document.getElementById('accent-pick').value = state.accentColor;
+    document.getElementById('accent-hex').value = state.accentCleared ? '' : state.accentColor;
+    // 文字极性
+    document.querySelectorAll('#font-tone-group .font-tone-opt').forEach(b =>
+      b.classList.toggle('active', b.dataset.tone === state.fontTone));
+    // 纹理
+    document.querySelectorAll('#texture-picker .texture-opt').forEach(b =>
+      b.classList.toggle('active', b.dataset.texture === state.surfaceTexture));
+    // 来源选择（data-mix 直绑 state 键）
+    document.querySelectorAll('.select-box[data-mix]').forEach(box =>
+      syncSelectVal(box, state[box.dataset.mix]));
+    // 字体拾取器（data-font 直绑 state 键）
+    document.querySelectorAll('.select-box[data-font]').forEach(box =>
+      syncSelectVal(box, state[box.dataset.font]));
+    // 滑杆
+    document.querySelectorAll('.ld-slider').forEach(syncSlider);
+    // zone 开关
+    const zt = document.getElementById('zone-radius-toggle');
+    zt.classList.toggle('on', state.zoneRadius);
+    zt.nextElementSibling.textContent = state.zoneRadius ? '开' : '关';
+    // 域小组「来源已混」徽标
+    document.querySelectorAll('.settings-sub-section[data-source-key]').forEach(s => {
+      const srcKey = s.dataset.sourceKey;
+      const mixed = state[srcKey] && state[srcKey] !== '跟随主题';
+      s.classList.toggle('mix-active', mixed);
+    });
+    syncBadges();
+  }
+
+  function syncBadges() {
+    const t = THEMES[state.theme];
+    document.getElementById('recipe-badge').textContent = t.name + ' 已选';
+    document.getElementById('color-badge').textContent = state.colorway;
+    document.getElementById('accent-badge').textContent = state.accentCleared ? '跟随主题' : '自定义 · ' + state.accentColor;
+    const m = state.appearanceMode;
+    document.getElementById('bg-badge').textContent = m + (state.mixBackground !== '跟随主题' ? ' · 🔀 ' + state.mixBackground : '');
+    document.getElementById('font-badge').textContent = m === '跟随主题' ? '跟随主题' : m + (state.mixFont !== '跟随主题' ? ' · 🔀 ' + state.mixFont : '');
+    document.getElementById('surface-badge').textContent = m + (state.mixSurface !== '跟随主题' ? ' · 🔀 ' + state.mixSurface : '');
   }
 
   /* ════════════════════════════════════════════════════════════════════
@@ -865,12 +1047,10 @@
 
   /* ── 二级标题折叠 ── */
   document.querySelectorAll('.settings-sub-head').forEach((head) => {
-    head.addEventListener('click', () => {
-      head.parentElement.classList.toggle('collapsed');
-    });
+    head.addEventListener('click', () => head.parentElement.classList.toggle('collapsed'));
   });
 
-  /* ── tab / 侧栏导航切换（非主题页用占位，不破坏主题页交互状态）── */
+  /* ── tab / 侧栏导航 ── */
   function showPane(isTheme) {
     document.getElementById('form-theme').style.display = isTheme ? '' : 'none';
     document.querySelector('.preview-pane').style.display = isTheme ? '' : 'none';
@@ -882,8 +1062,7 @@
       tab.classList.add('active');
       showPane(tab.dataset.tab === 'theme');
       const titles = { common: '通用', keys: '快捷键', about: '关于' };
-      document.getElementById('placeholder-form').querySelector('.settings-group-title').textContent =
-        titles[tab.dataset.tab] || '通用';
+      document.getElementById('placeholder-form').querySelector('.settings-group-title').textContent = titles[tab.dataset.tab] || '通用';
     });
   });
   document.querySelectorAll('.settings-nav-item').forEach((nav) => {
@@ -896,10 +1075,40 @@
     });
   });
 
-  /* ── 主题卡片选择 → 换配方 + 配色板 + 预览 ── */
+  /* ── SelectBox 通用 ── */
+  function wireSelect(box) {
+    const menu = box.querySelector('.select-menu');
+    box.addEventListener('click', (e) => {
+      if (e.target.closest('.select-menu')) return;
+      document.querySelectorAll('.select-menu').forEach(m => { if (m !== menu) m.style.display = 'none'; });
+      menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+    });
+    menu.querySelectorAll('button').forEach((opt) => {
+      opt.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const val = opt.dataset.opt;
+        if (box.dataset.mix) {
+          state[box.dataset.mix] = val;
+        } else if (box.dataset.font) {
+          state[box.dataset.font] = val;
+        } else if (box.dataset.mode === 'appearance') {
+          state.appearanceMode = val;
+          if (val === '自定义') seedAppearance();
+        } else if (box.closest('[data-colorway]')) {
+          state.colorway = val;
+        }
+        menu.style.display = 'none';
+        menu.querySelectorAll('button').forEach(b => b.classList.toggle('selected', b === opt));
+        syncAll();
+        applyThemeToPreview();
+      });
+    });
+  }
+  document.querySelectorAll('.select-box').forEach(wireSelect);
+
+  /* ── 主题卡片 → 换配方 + 配色板 ── */
   const colorwayBox = document.querySelector('.select-box[data-colorway]');
   const colorwayMenu = colorwayBox.querySelector('.select-menu');
-  const colorwayVal = colorwayBox.querySelector('.select-val');
   function populateColorways(cws) {
     colorwayMenu.innerHTML = '';
     cws.forEach((cw, i) => {
@@ -909,111 +1118,49 @@
       if (i === 0) btn.classList.add('selected');
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
-        colorwayVal.textContent = cw;
         state.colorway = cw;
         colorwayMenu.style.display = 'none';
-        colorwayMenu.querySelectorAll('button').forEach(b => b.classList.toggle('selected', b === btn));
-        syncSubBadges();
+        syncAll();
         applyThemeToPreview();
       });
       colorwayMenu.appendChild(btn);
     });
-    colorwayVal.textContent = cws[0];
+    state.colorway = cws[0];
   }
   document.querySelectorAll('.theme-card').forEach((card) => {
     card.addEventListener('click', () => {
       document.querySelectorAll('.theme-card').forEach(c => {
         c.classList.remove('active');
         const n = JSON.parse(c.dataset.colorways).length;
-        c.querySelector('.badge').textContent = n > 1 ? n + ' 配色' : '';
+        c.querySelector('.badge').textContent = n > 1 ? n + ' 配色' : '●';
       });
       card.classList.add('active');
-      const n = JSON.parse(card.dataset.colorways).length;
-      card.querySelector('.badge').textContent = n > 1 ? n + ' 配色' : '●';
       state.theme = card.dataset.theme;
-      state.colorway = JSON.parse(card.dataset.colorways)[0];
       populateColorways(JSON.parse(card.dataset.colorways));
-      syncSubBadges();
+      if (state.appearanceMode === '自定义') seedAppearance();
+      syncAll();
       applyThemeToPreview();
     });
   });
   populateColorways(JSON.parse(document.querySelector('.theme-card.active').dataset.colorways));
 
-  /* ── SelectBox 通用 ── */
-  function wireSelect(box) {
-    const menu = box.querySelector('.select-menu');
-    const val = box.querySelector('.select-val');
-    box.addEventListener('click', (e) => {
-      if (e.target.closest('.select-menu')) return;
-      document.querySelectorAll('.select-menu').forEach(m => { if (m !== menu) m.style.display = 'none'; });
-      menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
-    });
-    menu.querySelectorAll('button').forEach((opt) => {
-      opt.addEventListener('click', (e) => {
-        e.stopPropagation();
-        val.textContent = opt.dataset.opt;
-        menu.style.display = 'none';
-        menu.querySelectorAll('button').forEach(b => b.classList.toggle('selected', b === opt));
-        const key = box.dataset.bind;
-        if (key) state[key] = opt.dataset.opt;
-        if (box.hasAttribute('data-mode') && box.dataset.target) {
-          const target = document.querySelector(box.dataset.target);
-          const hideVals = (box.dataset.hideOpts || '跟随主题配色,跟随主题').split(',');
-          target.classList.toggle('depends-hidden', hideVals.includes(opt.dataset.opt));
-          if (box.dataset.mode === 'appearance' || box.dataset.target === '#appearance-overrides') {
-            state.appearanceMode = opt.dataset.opt;
-            // 切自定义 → 播种当前主题各覆盖初始值
-            if (opt.dataset.opt === '自定义') seedAppearance();
-          }
-          if (box.dataset.target === '#mix-overrides') {
-            state.mixMode = opt.dataset.opt;
-          }
-          syncSubBadges();
-        }
-        updateMixReset();
-        applyThemeToPreview();
-      });
-    });
-  }
-  // 给外观模式绑定
-  document.querySelectorAll('.select-box[data-mode]').forEach(box => {
-    box.dataset.bind = box.dataset.target === '#appearance-overrides' ? 'appearanceMode' : (box.dataset.target === '#mix-overrides' ? 'mixMode' : 'accentMode');
-    wireSelect(box);
-  });
-  document.querySelectorAll('.select-box[data-colorway]').forEach(wireSelect);
-  document.querySelectorAll('.select-box[data-font]').forEach(box => { box.dataset.bind = 'fontFamily'; wireSelect(box); });
-  document.querySelectorAll('.select-box[data-mix]').forEach(wireSelect);
-  // mix 行 bind 修正（按行内 key 文本映射到 state 字段）
-  document.querySelectorAll('.settings-row .select-box[data-mix]').forEach(box => {
-    const keyEl = box.closest('.settings-row').querySelector('.settings-row-label .key');
-    if (!keyEl) return;
-    const k = keyEl.textContent.trim();
-    box.dataset.bind = k === 'themeColor' ? 'mixColors' : 'mix' + k.replace('app.mix', '').charAt(0).toUpperCase() + k.replace('app.mix', '').slice(1);
-  });
-
-  /* ── Slider ── */
+  /* ── 切自定义 → 从当前配方播种覆盖 ── */
   function seedAppearance() {
     const t = THEMES[state.theme];
-    // 播种覆盖 key 初始 = 主题值（对齐 applyThemeToPreview 的 custom 路径）
-    state.surfaceRadius = 1.0; state.zoneRadiusScale = 1.0;
-    state.glassBlur = t.glass.blur; state.glassOpacity = t.glass.opacity;
-    document.querySelectorAll('.ld-slider').forEach(sl => {
-      const apply = sl.dataset.apply;
-      const v = apply === 'radius' ? state.surfaceRadius : apply === 'zoneRadius' ? state.zoneRadiusScale : apply === 'glassBlur' ? state.glassBlur : state.glassOpacity;
-      const min = parseFloat(sl.dataset.min), max = parseFloat(sl.dataset.max), step = parseFloat(sl.dataset.step);
-      const pct = ((v - min) / (max - min)) * 100;
-      sl.querySelector('.ld-slider-fill').style.width = pct + '%';
-      sl.querySelector('.ld-slider-thumb').style.left = pct + '%';
-      sl.querySelector('.ld-slider-value').textContent = (parseInt(sl.dataset.fmt) ? v.toFixed(parseInt(sl.dataset.fmt)) : v) + sl.dataset.unit;
-    });
+    state.surfaceRadius = t.radius.md;
+    state.zoneRadiusScale = t.zoneRadius || 0;
+    state.glassBlur = t.glass.blur;
+    state.glassOpacity = t.glass.opacity;
+    state.glassSaturate = 1.4;
+    state.backgroundOpacity = 1;
+    state.backgroundMask = 0;
   }
+
+  /* ── Slider ── */
   document.querySelectorAll('.ld-slider').forEach((slider) => {
     const track = slider.querySelector('.ld-slider-track');
-    const fill = slider.querySelector('.ld-slider-fill');
-    const thumb = slider.querySelector('.ld-slider-thumb');
-    const label = slider.querySelector('.ld-slider-value');
     const min = parseFloat(slider.dataset.min), max = parseFloat(slider.dataset.max), step = parseFloat(slider.dataset.step);
-    const unit = slider.dataset.unit, fmt = parseInt(slider.dataset.fmt), apply = slider.dataset.apply;
+    const fmt = parseInt(slider.dataset.fmt);
     const setFromX = (clientX) => {
       const rect = track.getBoundingClientRect();
       let ratio = (clientX - rect.left) / rect.width;
@@ -1021,14 +1168,8 @@
       let val = min + ratio * (max - min);
       val = Math.round(val / step) * step;
       val = Math.max(min, Math.min(max, val));
-      const pct = ((val - min) / (max - min)) * 100;
-      fill.style.width = pct + '%';
-      thumb.style.left = pct + '%';
-      label.textContent = (fmt ? val.toFixed(fmt) : val) + unit;
-      if (apply === 'radius') state.surfaceRadius = val;
-      if (apply === 'zoneRadius') state.zoneRadiusScale = val;
-      if (apply === 'glassBlur') state.glassBlur = val;
-      if (apply === 'glassOpacity') state.glassOpacity = val;
+      state[slider.dataset.apply] = val;
+      syncSlider(slider);
       applyThemeToPreview();
     };
     let dragging = false;
@@ -1037,76 +1178,77 @@
     track.addEventListener('pointerup', () => { dragging = false; });
   });
 
-  /* ── zone 圆角开关（#80）── */
+  /* ── zone 圆角开关 ── */
   document.getElementById('zone-radius-toggle').addEventListener('click', (e) => {
-    e.target.classList.toggle('on');
-    state.zoneRadius = e.target.classList.contains('on');
-    e.target.nextElementSibling.textContent = state.zoneRadius ? '开' : '关';
+    state.zoneRadius = !state.zoneRadius;
+    syncAll();
     applyThemeToPreview();
   });
 
-  /* ── 混搭复位 ── */
-  function updateMixReset() {
-    const resetBtn = document.getElementById('mix-reset');
-    const anyCustom = [...document.querySelectorAll('.select-box[data-mix]')]
-      .some((b) => b.querySelector('.select-val').textContent !== '跟随主题');
-    resetBtn.disabled = !anyCustom;
-  }
+  /* ── 文字极性三态 ── */
+  document.querySelectorAll('#font-tone-group .font-tone-opt').forEach((b) => {
+    b.addEventListener('click', () => {
+      state.fontTone = b.dataset.tone;
+      syncAll();
+      applyThemeToPreview();
+    });
+  });
+
+  /* ── 表面纹理选择 ── */
+  document.querySelectorAll('#texture-picker .texture-opt').forEach((b) => {
+    b.addEventListener('click', () => {
+      state.surfaceTexture = b.dataset.texture;
+      syncAll();
+      applyThemeToPreview();
+    });
+  });
+
+  /* ── 强调色：取色 + hex + 清除 ── */
+  document.getElementById('accent-pick').addEventListener('input', () => {
+    state.accentColor = document.getElementById('accent-pick').value;
+    state.accentCleared = false;
+    syncAll(); applyThemeToPreview();
+  });
+  document.getElementById('accent-hex').addEventListener('input', () => {
+    const v = document.getElementById('accent-hex').value;
+    if (!/^#[0-9a-fA-F]{6}$/.test(v)) return;
+    state.accentColor = v; state.accentCleared = false;
+    document.getElementById('accent-pick').value = v;
+    syncAll(); applyThemeToPreview();
+  });
+  document.getElementById('accent-clear').addEventListener('click', () => {
+    state.accentCleared = true;
+    syncAll(); applyThemeToPreview();
+  });
+
+  /* ── 玻璃叠加色 ── */
+  document.getElementById('glass-tint-pick').addEventListener('input', () => {
+    state.glassTint = document.getElementById('glass-tint-pick').value;
+    document.getElementById('glass-tint-hex').value = state.glassTint;
+    applyThemeToPreview();
+  });
+  document.getElementById('glass-tint-hex').addEventListener('input', () => {
+    const v = document.getElementById('glass-tint-hex').value;
+    if (!/^#[0-9a-fA-F]{6}$/.test(v)) return;
+    state.glassTint = v;
+    document.getElementById('glass-tint-pick').value = v;
+    applyThemeToPreview();
+  });
+
+  /* ── 复位 ── */
   document.getElementById('mix-reset').addEventListener('click', () => {
-    document.querySelectorAll('.select-box[data-mix]').forEach((box) => {
-      box.querySelector('.select-val').textContent = '跟随主题';
-      box.querySelectorAll('.select-menu button').forEach((b) => b.classList.toggle('selected', b.dataset.opt === '跟随主题'));
-    });
-    ['mixColors','mixFont','mixRadius','mixGlass','mixBackground','mixSurface'].forEach((k) => { state[k] = '跟随主题'; });
-    const mixModeBox = document.querySelector('.select-box[data-target="#mix-overrides"]');
-    mixModeBox.querySelector('.select-val').textContent = '整体配方';
-    mixModeBox.querySelectorAll('.select-menu button').forEach((b) => b.classList.toggle('selected', b.dataset.opt === '整体配方'));
-    document.getElementById('mix-overrides').classList.add('depends-hidden');
-    state.mixMode = '整体配方';
-    updateMixReset();
-    syncSubBadges();
-    applyThemeToPreview();
+    state.mixBackground = '跟随主题';
+    state.mixFont = '跟随主题';
+    state.mixSurface = '跟随主题';
+    seedAppearance();
+    state.surfaceTexture = '跟随主题';
+    state.backgroundOpacity = 1; state.backgroundMask = 0;
+    state.fontFamily = '跟随主题'; state.fontFamilyMono = '跟随主题';
+    syncAll(); applyThemeToPreview();
   });
 
-  /* ── 子节 badge 同步 ── */
-  function syncSubBadges() {
-    const t = THEMES[state.theme];
-    const recipeBadge = document.querySelector('[data-group="recipe"] .settings-sub-badge');
-    recipeBadge.textContent = t.name + ' 已选';
-    const colorBadge = document.querySelector('[data-group="color"] .settings-sub-badge');
-    colorBadge.textContent = state.colorway;
-    const accentBadge = document.querySelector('[data-group="accent"] .settings-sub-badge');
-    accentBadge.textContent = state.accentMode === '自定义' ? '自定义 · ' + state.accentColor : '跟随主题';
-    const appearBadge = document.querySelector('[data-group="appearance"] .settings-sub-badge');
-    appearBadge.textContent = state.appearanceMode === '自定义' ? '自定义' : '跟随主题';
-    const mixBadge = document.querySelector('[data-group="mix"] .settings-sub-badge');
-    mixBadge.textContent = state.mixMode === '混搭' ? '混搭' : '整体配方';
-  }
-
-  /* ── 色块取色器 ↔ hex 输入双向联动（accentColor / glassTint）── */
-  function setColorFromInput(pick, hexInput) {
-    const label = pick.closest('.settings-row').querySelector('.settings-row-label').textContent;
-    const v = pick.value;
-    hexInput.value = v;
-    if (label.includes('accentColor')) { state.accentColor = v; syncSubBadges(); }
-    else { state.glassTint = v; }
-    applyThemeToPreview();
-  }
-  document.querySelectorAll('.settings-color-control input[type="color"]').forEach((pick) => {
-    pick.addEventListener('input', () => setColorFromInput(pick, pick.closest('.settings-color-control').querySelector('input[type="text"]')));
-  });
-  document.querySelectorAll('.settings-color-control input[type="text"]').forEach((hex) => {
-    hex.addEventListener('input', () => {
-      const v = hex.value;
-      if (!/^#[0-9a-fA-F]{6}$/.test(v)) return;
-      const pick = hex.closest('.settings-color-control').querySelector('input[type="color"]');
-      pick.value = v;
-      setColorFromInput(pick, hex);
-    });
-  });
-
+  syncAll();
   applyThemeToPreview();
-  syncSubBadges();
 </script>
 </body>
 </html>

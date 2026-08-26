@@ -676,6 +676,50 @@ describe("ThemeEngine — 外观覆盖 getAppearanceOverrides（E5.8#50.10）", 
     expect(root.style.getPropertyValue("--bg-image")).toBe("none"); // 无全窗背景
   });
 
+  /* ── E5.8#97 表面平铺纹理覆盖槽——app.surfaceTexture（写 surface-bg-image repeat 平铺，镜像主题 surface.texture 机制）── */
+
+  it("#97 surfaceTexture 非空路径 → surface-bg-image + repeat + zones 0（平铺语义停 zones 量测）", () => {
+    applyRemoteConfigChange("app.surfaceTexture", "linkdesk-userdata://appearance/tex.png");
+    const overrides = getAppearanceOverrides();
+    expect(overrides["surface-bg-image"]).toBe('url("linkdesk-userdata://appearance/tex.png")');
+    expect(overrides["surface-bg-repeat"]).toBe("repeat");
+    expect(overrides["surface-bg-zones"]).toBe("0");
+  });
+
+  it("#97 surfaceTexture 空 → 不写 surface-bg-*（跟随主题纹理）", () => {
+    applyRemoteConfigChange("app.surfaceTexture", "");
+    const overrides = getAppearanceOverrides();
+    expect(overrides["surface-bg-image"]).toBeUndefined();
+    expect(overrides["surface-bg-repeat"]).toBeUndefined();
+    expect(overrides["surface-bg-zones"]).toBeUndefined();
+  });
+
+  it("#97 surfaceTexture __none__ → surface-bg-image none + zones 0（绝对无纹理盖掉主题/mix 纹理）", () => {
+    applyRemoteConfigChange("app.surfaceTexture", "__none__");
+    const overrides = getAppearanceOverrides();
+    expect(overrides["surface-bg-image"]).toBe("none");
+    expect(overrides["surface-bg-zones"]).toBe("0");
+  });
+
+  it("#97 surfaceTexture 与 zoneBackgroundImage 同设 → 纹理胜出（getAppearanceOverrides 靠后覆盖同 key）", () => {
+    applyRemoteConfigChange("app.zoneBackgroundImage", "linkdesk-userdata://appearance/zone-bg.png");
+    applyRemoteConfigChange("app.surfaceTexture", "linkdesk-userdata://appearance/tex.png");
+    const overrides = getAppearanceOverrides();
+    expect(overrides["surface-bg-image"]).toBe('url("linkdesk-userdata://appearance/tex.png")');
+    expect(overrides["surface-bg-repeat"]).toBe("repeat");
+    expect(overrides["surface-bg-zones"]).toBe("0");
+  });
+
+  it("#97 applyRecipe——surfaceTexture 覆盖胜主题纹理（surface-bg-image 换用户纹理 + repeat）", () => {
+    applyRemoteConfigChange("app.surfaceTexture", "linkdesk-userdata://appearance/tex.png");
+    applyRecipe(ZONE_RECIPE);
+    const root = document.documentElement;
+    expect(root.style.getPropertyValue("--surface-bg-image"))
+      .toBe('url("linkdesk-userdata://appearance/tex.png")');
+    expect(root.style.getPropertyValue("--surface-bg-repeat")).toBe("repeat");
+    expect(root.style.getPropertyValue("--surface-bg-zones")).toBe("0");
+  });
+
   it("E5.8#56 审计#2——glassBlur 显式拖到 0（端点，presence）→ glass-blur 覆盖 0px（模糊真关）", () => {
     applyRemoteConfigChange("app.glassBlur", 0);
     expect(getAppearanceOverrides()["glass-blur"]).toBe("0px");
@@ -730,13 +774,14 @@ describe("ThemeEngine — 外观覆盖 getAppearanceOverrides（E5.8#50.10）", 
     expect(document.documentElement.style.getPropertyValue("--glass-blur")).toBe("15px");
   });
 
-  it("E5.8#60 F1.1——APPEARANCE_OVERRIDE_KEYS = 全 13 键含 app.fontFamily（单一来源防回归；#80/#81 +zone 三键；#94/#95/#96 镜像补槽四键）", () => {
+  it("E5.8#60 F1.1——APPEARANCE_OVERRIDE_KEYS = 全 14 键含 app.fontFamily（单一来源防回归；#80/#81 +zone 三键；#94/#95/#96 镜像补槽四键；#97 +surfaceTexture）", () => {
     // 设置层外观覆盖 key 全集——壳命令（startup appearanceMode onApply）与插件 API（theme.resetAppearance）复位共用
     expect([...APPEARANCE_OVERRIDE_KEYS]).toEqual([
       "app.surfaceRadius", "app.glassBlur", "app.glassOpacity",
       "app.glassTint", "app.backgroundImage", "app.fontFamily",
       "app.zoneRadius", "app.zoneRadiusScale", "app.zoneBackgroundImage",
       "app.backgroundOpacity", "app.backgroundMask", "app.fontFamilyMono", "app.glassSaturate",
+      "app.surfaceTexture",
     ]);
     // 每键确与 getAppearanceOverrides 读的配置键对齐（写多了 reset 摘不到、写少了残留覆盖）
     expect(APPEARANCE_OVERRIDE_KEYS).toContain("app.fontFamily"); // 插件侧旧表漏此键 → 复位后字体不回基线
@@ -749,6 +794,8 @@ describe("ThemeEngine — 外观覆盖 getAppearanceOverrides（E5.8#50.10）", 
     expect(APPEARANCE_OVERRIDE_KEYS).toContain("app.backgroundMask");
     expect(APPEARANCE_OVERRIDE_KEYS).toContain("app.fontFamilyMono");
     expect(APPEARANCE_OVERRIDE_KEYS).toContain("app.glassSaturate");
+    // E5.8#97 表面纹理槽——reseed 计划/复位必须覆盖（写少了残留覆盖盖住主题纹理）
+    expect(APPEARANCE_OVERRIDE_KEYS).toContain("app.surfaceTexture");
   });
 
   /* ── E5.8#94/#95/#96 镜像补槽覆盖读取——主题可表达属性 ⇒ 设置面必有槽（14-档案 §十）── */
@@ -1273,6 +1320,23 @@ describe("ThemeEngine — deriveAppearanceSeeds 反推播种（E5.8#50.19，08 �
     expect(deriveAppearanceSeeds({}).zoneBackgroundImage).toBe("");
   });
 
+  it("E5.8#97 surfaceTexture——repeat 平铺（surface-bg-repeat=repeat）反推剥 url() 存路径", () => {
+    const seeds = deriveAppearanceSeeds({
+      "surface-bg-image": 'url("linkdesk-userdata://appearance/tex.png")',
+      "surface-bg-repeat": "repeat",
+    });
+    expect(seeds.surfaceTexture).toBe("linkdesk-userdata://appearance/tex.png");
+  });
+
+  it("E5.8#97 surfaceTexture——zones 模式/绝对无/none/缺省 → 播种空（不把 zones 切片或显式 none 错播成平铺纹理）", () => {
+    // zones 模式：surface-bg-image 有值但 repeat 非 repeat（no-repeat zones 切片）——播种空 = 跟随主题
+    const zones = deriveAppearanceSeeds({ "surface-bg-image": 'url("...")', "surface-bg-repeat": "no-repeat" });
+    expect(zones.surfaceTexture).toBe("");
+    // none/缺省 → 空
+    expect(deriveAppearanceSeeds({ "surface-bg-image": "none", "surface-bg-repeat": "repeat" }).surfaceTexture).toBe("");
+    expect(deriveAppearanceSeeds({}).surfaceTexture).toBe("");
+  });
+
   it("字体播种跳过资产族（__ld_ 前缀只显示不选，#50.20 边界）；系统族名直播", () => {
     expect(deriveAppearanceSeeds({ "font-ui": "SimSun" }).fontFamily).toBe("SimSun");
     expect(deriveAppearanceSeeds({ "font-ui": "__ld_demo-plugin_serif" }).fontFamily).toBe("");
@@ -1295,7 +1359,7 @@ describe("ThemeEngine — E5.8#88 切主题重播种 + 徽标基准（deriveAppe
     applyTheme(MOCK_THEME);
   });
 
-  it("deriveAppearanceSeedMap — 13 覆盖键 → 种子值全集映射（键=配置 key，单写点）", () => {
+  it("deriveAppearanceSeedMap — 14 覆盖键 → 种子值全集映射（键=配置 key，单写点）", () => {
     const map = deriveAppearanceSeedMap({
       "radius-md": "8px",
       "surface-radius": "10px",
@@ -1322,6 +1386,8 @@ describe("ThemeEngine — E5.8#88 切主题重播种 + 徽标基准（deriveAppe
       "app.backgroundMask": 0,
       "app.fontFamilyMono": "",
       "app.glassSaturate": 1,
+      // E5.8#97 surfaceTexture——zones 模式（repeat≠repeat）→ 播种空
+      "app.surfaceTexture": "",
     });
     // 缺省 token → 零值/空（不抛）——zoneBackgroundImage 需 zones=1
     const empty = deriveAppearanceSeedMap({});
@@ -1334,6 +1400,7 @@ describe("ThemeEngine — E5.8#88 切主题重播种 + 徽标基准（deriveAppe
     expect(empty["app.backgroundMask"]).toBe(0);
     expect(empty["app.fontFamilyMono"]).toBe("");
     expect(empty["app.glassSaturate"]).toBe(1);
+    expect(empty["app.surfaceTexture"]).toBe("");
   });
 
   it("deriveReseedPlan — 未修改（无 stored）→ 反推新基准填标尺；新旧同值跳过", () => {
@@ -1519,43 +1586,42 @@ describe("ThemeEngine — 混搭合并（E5.8#50.26，10 §1/§3 每域各自取
     ThemeRegistry.registerRecipe(RADIUS_RECIPE, PLUGIN);
   });
 
-  it("getMixProfile — 缺省全 followTheme；读 app.mix* 配置", () => {
+  it("E5.8#97 getMixProfile — 缺省全 followTheme；读四域来源配置（radius/glass 来源键已删——数值域无来源）", () => {
     const p1 = getMixProfile();
-    for (const d of ["colors", "font", "radius", "glass", "background", "surface"] as const) {
+    for (const d of ["colors", "font", "background", "surface"] as const) {
       expect(p1[d]).toBe(MIX_FOLLOW_THEME);
     }
+    // E5.8#97：radius/glass 域不在混搭档案（来源键删）——profile 缺省 undefined → resolveDomainSource 回退基础配方
+    expect(p1.radius).toBeUndefined();
+    expect(p1.glass).toBeUndefined();
     applyRemoteConfigChange("app.themeColor", "mint"); // E5.8#82：colors 域来源并入 app.themeColor（app.mixColor 删）
     applyRemoteConfigChange("app.mixFont", "demo-radius");
     const p2 = getMixProfile();
     expect(p2.colors).toBe("mint");
     expect(p2.font).toBe("demo-radius");
-    expect(p2.radius).toBe(MIX_FOLLOW_THEME);
+    expect(p2.background).toBe(MIX_FOLLOW_THEME);
   });
 
-  it("mergeMixDomains — 每域各自取来源（颜色=配方+配色；圆角=来源配方；跟随域=基础配方）", () => {
+  it("E5.8#97 mergeMixDomains — 每域各自取来源（颜色=配方+配色；字体/背景/表面=来源配方；radius/glass 无来源恒基础配方）", () => {
     const profile: MixProfile = {
       colors: "mint",
       font: MIX_FOLLOW_THEME,
-      radius: "demo-radius",
-      glass: MIX_FOLLOW_THEME,
       background: MIX_FOLLOW_THEME,
       surface: MIX_FOLLOW_THEME,
     };
     const tokens = mergeMixDomains(RECIPE, RECIPE.colorways[0], profile, {});
     expect(tokens["bg-window"]).toBe("#F7FBF8"); // 颜色域 → mint 配色
     expect(tokens["accent"]).toBe("#3E9E8C");
-    expect(tokens["radius-lg"]).toBe("4px"); // 圆角域 → demo-radius
-    expect(tokens["radius-sm"]).toBe("2px");
+    expect(tokens["radius-lg"]).toBe("12px"); // 数值域来源已删 → 基础配方 RECIPE radius.lg=12（E5.8#97）
+    expect(tokens["radius-sm"]).toBe("6px");
     expect(tokens["font-ui"]).toBe("Noto Sans SC"); // 字体域跟随 → 基础配方
-    expect(tokens["glass-blur"]).toBe("14px"); // 玻璃域跟随 → 基础配方
+    expect(tokens["glass-blur"]).toBe("14px"); // 玻璃域来源已删 → 基础配方 RECIPE glass.blur=14（E5.8#97）
   });
 
   it("mergeMixDomains — 来源配方缺失 → 回退基础配方（域不空窗）", () => {
     const profile: MixProfile = {
       colors: "mint",
       font: "demo-missing",
-      radius: MIX_FOLLOW_THEME,
-      glass: MIX_FOLLOW_THEME,
       background: MIX_FOLLOW_THEME,
       surface: MIX_FOLLOW_THEME,
     };
@@ -1564,58 +1630,36 @@ describe("ThemeEngine — 混搭合并（E5.8#50.26，10 §1/§3 每域各自取
     expect(tokens["bg-window"]).toBe("#F7FBF8"); // 颜色域仍按来源
   });
 
-  it("applyRecipe mix — 配色跟颜色域来源；圆角跟圆角域；明暗/activeRecipe 跟基础配方", () => {
+  it("E5.8#97 applyRecipe mix — 配色跟颜色域来源；radius/glass 恒基础配方；明暗/activeRecipe 跟基础配方", () => {
     applyRemoteConfigChange("app.appearanceMode", "custom");
     applyRemoteConfigChange("app.themeColor", "mint"); // E5.8#82：colors 域来源 = app.themeColor
-    applyRemoteConfigChange("app.mixRadius", "demo-radius");
     applyRecipe(RECIPE, "dew", {});
     const root = document.documentElement;
     expect(root.style.getPropertyValue("--bg-window")).toBe("#F7FBF8"); // 颜色域 → mint
     expect(root.style.getPropertyValue("--accent")).toBe("#3E9E8C");
-    expect(root.style.getPropertyValue("--radius-lg")).toBe("4px"); // 圆角域 → demo-radius
-    expect(root.style.getPropertyValue("--glass-blur")).toBe("14px"); // 玻璃域跟随 → 基础配方
+    expect(root.style.getPropertyValue("--radius-lg")).toBe("12px"); // 数值域来源已删 → 基础配方 radius.lg=12（#97）
+    expect(root.style.getPropertyValue("--glass-blur")).toBe("14px"); // 玻璃域来源已删 → 基础配方 glass.blur=14（#97）
     expect(root.getAttribute("data-theme")).toBe("dark"); // 明暗跟基础配方
     expect(getActiveRecipe()).toEqual({ recipeId: "demo-recipe", colorwayId: "dew" });
     expect(getCurrentTheme()?.colors.accent).toBe("#3E9E8C"); // 快照 accent 跟混搭颜色域来源
   });
 
-  it("E5.8#59 审计#7——applyRecipe mix：currentTheme.surface/background 取混搭各域生效来源（非基础配方）", () => {
-    // 虚构 fixture：玻璃域来源 demo-glass（blur 24/tint）与背景域来源 demo-bg——基础配方 RECIPE glass.blur=14 无 background
-    const GLASS_SRC: ThemeRecipe = {
-      id: "demo-glass", name: "Demo Glass", type: "light",
-      appearance: { glass: { type: "glass", blur: 24, tint: "#123456", opacity: 0.4 } },
-      colorways: [{ id: "c", name: "C", colors: {} }],
-    };
+  it("E5.8#59 审计#7——applyRecipe mix：currentTheme.background 取背景域来源（非基础配方）；glass 无来源恒基础配方", () => {
+    // 虚构 fixture：背景域来源 demo-bg——基础配方 RECIPE 无 background、glass.blur=14
     const BG_SRC: ThemeRecipe = {
       id: "demo-bg", name: "Demo Bg", type: "light",
       appearance: { background: { image: "assets/b.png", opacity: 0.8, mask: 0.3 } },
       colorways: [{ id: "c", name: "C", colors: {} }],
     };
-    ThemeRegistry.registerRecipe(GLASS_SRC, PLUGIN);
     ThemeRegistry.registerRecipe(BG_SRC, PLUGIN);
     applyRemoteConfigChange("app.appearanceMode", "custom");
-    applyRemoteConfigChange("app.mixGlass", "demo-glass");
     applyRemoteConfigChange("app.mixBackground", "demo-bg");
     applyRecipe(RECIPE, "dew", {});
     const t = getCurrentTheme();
-    expect(t?.surface?.blur).toBe(24); // 玻璃域来源 demo-glass（修复前取基础配方 blur 14）
-    expect(t?.surface?.tint).toBe("#123456");
     expect(t?.background?.image).toBe("assets/b.png"); // 背景域来源 demo-bg（修复前 undefined）
     expect(t?.background?.opacity).toBe(0.8);
+    expect(t?.surface?.blur).toBe(14); // 玻璃域来源已删（E5.8#97）→ 恒基础配方 RECIPE blur 14
     expect(t?.colors.accent).toBe("#2BA876"); // 颜色域 followTheme → 基础配方 dew——域独立性零回归
-  });
-
-  it("E5.8#59——mix 来源缺 glass 域 → currentTheme.surface 回退基础配方该域（缺域回退同 mergeMixDomains）", () => {
-    const NO_GLASS: ThemeRecipe = {
-      id: "demo-noglass", name: "Demo NoGlass", type: "light",
-      appearance: { radius: { sm: 4 } },
-      colorways: [{ id: "c", name: "C", colors: {} }],
-    };
-    ThemeRegistry.registerRecipe(NO_GLASS, PLUGIN);
-    applyRemoteConfigChange("app.appearanceMode", "custom");
-    applyRemoteConfigChange("app.mixGlass", "demo-noglass");
-    applyRecipe(RECIPE, "dew", {});
-    expect(getCurrentTheme()?.surface?.blur).toBe(14); // 来源缺 glass 域 → 基础配方 RECIPE 兜底
   });
 
   it("applyRecipe mix — mixFont 资产字体来源 → 族名写 --font-ui + @font-face 落 DOM", () => {
@@ -1649,23 +1693,22 @@ describe("ThemeEngine — 混搭合并（E5.8#50.26，10 §1/§3 每域各自取
   });
 
   it("E5.8#58 审计#5——mix 来源配方存在但缺该域 → 回退基础配方该域（域不空窗）", () => {
-    const NO_RADIUS: ThemeRecipe = {
-      id: "demo-noradius", name: "Demo NoRadius", type: "light",
-      appearance: { font: { ui: "Arial" } },
+    // E5.8#97：radius/glass 来源键已删——缺域回退改由幸存域（font）验证（原 demo-noradius 圆角来源场景不再可达）
+    const NO_FONT: ThemeRecipe = {
+      id: "demo-nofont", name: "Demo NoFont", type: "light",
+      appearance: { radius: { sm: 4 } },
       colorways: [{ id: "c", name: "C", colors: {} }],
     };
-    ThemeRegistry.registerRecipe(NO_RADIUS, PLUGIN);
+    ThemeRegistry.registerRecipe(NO_FONT, PLUGIN);
     const profile: MixProfile = {
       colors: MIX_FOLLOW_THEME,
-      font: MIX_FOLLOW_THEME,
-      radius: "demo-noradius", // 来源存在但无 radius 域
-      glass: MIX_FOLLOW_THEME,
+      font: "demo-nofont", // 来源存在但无 font 域
       background: MIX_FOLLOW_THEME,
       surface: MIX_FOLLOW_THEME,
     };
     const tokens = mergeMixDomains(RECIPE, RECIPE.colorways[0], profile, {});
-    expect(tokens["radius-sm"]).toBe("6px"); // 回退基础配方 RECIPE radius.sm=6
-    expect(tokens["radius-lg"]).toBe("12px");
+    expect(tokens["font-ui"]).toBe("Noto Sans SC"); // 回退基础配方 RECIPE font.ui
+    expect(tokens["radius-sm"]).toBe("6px"); // radius 无来源恒基础配方 RECIPE radius.sm=6（E5.8#97）
   });
 
   it("E5.8#58 审计#6——registerRecipe({colorways:[]}) + applyRecipe 空配色不崩（resolveColorway 兜底）", () => {
@@ -1702,10 +1745,10 @@ describe("ThemeEngine — 混搭合并（E5.8#50.26，10 §1/§3 每域各自取
     // 清空颜色域 → 回 false
     applyRemoteConfigChange("app.themeColor", MIX_FOLLOW_THEME);
     expect(isMixSourceOwner(PLUGIN)).toBe(false);
-    // 圆角域 = 配方粒度：demo-radius 归 demo-mix → true
-    applyRemoteConfigChange("app.mixRadius", "demo-radius");
+    // 背景域 = 配方粒度：demo-recipe 归 demo-mix → true（E5.8#97：radius 来源键删，改用幸存域背景）
+    applyRemoteConfigChange("app.mixBackground", "demo-recipe");
     expect(isMixSourceOwner(PLUGIN)).toBe(true);
-    applyRemoteConfigChange("app.mixRadius", MIX_FOLLOW_THEME);
+    applyRemoteConfigChange("app.mixBackground", MIX_FOLLOW_THEME);
     expect(isMixSourceOwner(PLUGIN)).toBe(false);
   });
 });

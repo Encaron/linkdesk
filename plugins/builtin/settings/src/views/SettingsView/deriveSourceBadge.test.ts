@@ -3,6 +3,8 @@
  * 派生规则（14-档案 §六 #87 + #88）：无 sourceKey → null；有覆盖且值空 → 🎨 主题；
  * 有覆盖且值 === 主题/混搭基准种子（播种态/恰与主题同值）→ 🎨 主题；值非空且偏离基准（含 __none__）→ ✏️ 用户；
  * 无覆盖 + appearanceMode=custom 且域来源 ≠ followTheme → 🔀 混搭；否则 🎨 主题。
+ * E5.8 超算：app.mixRadius/app.mixGlass 死键已删（#85/#86 圆角/玻璃绝对化——数值域来源删键）。
+ * 本测试夹具全部改用现存键：surfaceRadius/zoneRadius（中性数值键）+ mixBackground/mixFont/mixSurface（资产域来源键）。
  */
 
 import { describe, it, expect } from "vitest";
@@ -24,29 +26,29 @@ describe("deriveSourceBadge", () => {
     // 显式「无背景」= 用户真实选择 → ✏️（非空非哨兵判定，__none__ 也非空）
     expect(deriveSourceBadge({ sourceKey: "app.mixBackground", userValue: "__none__" })).toBe("user");
     // 布尔键（zoneRadius=false 关闭）→ 非空 → ✏️
-    expect(deriveSourceBadge({ sourceKey: "app.mixRadius", userValue: false })).toBe("user");
-    expect(deriveSourceBadge({ sourceKey: "app.mixRadius", userValue: 12 })).toBe("user");
+    expect(deriveSourceBadge({ sourceKey: "app.zoneRadius", userValue: false })).toBe("user");
+    expect(deriveSourceBadge({ sourceKey: "app.surfaceRadius", userValue: 12 })).toBe("user");
   });
 
   it("有用户覆盖 + 值 === 主题/混搭基准种子 → 🎨 主题（E5.8#88 播种态/恰与主题同值）", () => {
     // 进 custom 播种写 9 键 = 主题反推值——不是用户改过（#87 presence 徽标在此显示 ✏️ 误报，本用例根治）
-    expect(deriveSourceBadge({ sourceKey: "app.mixRadius", userValue: 8, baseline: 8 })).toBe("theme");
+    expect(deriveSourceBadge({ sourceKey: "app.surfaceRadius", userValue: 8, baseline: 8 })).toBe("theme");
     expect(deriveSourceBadge({ sourceKey: "app.mixBackground", userValue: "linkdesk-userdata://img.jpg", baseline: "linkdesk-userdata://img.jpg" })).toBe("theme");
     // zoneRadius 播种恒 true——仍 true = 未改
-    expect(deriveSourceBadge({ sourceKey: "app.mixRadius", userValue: true, baseline: true })).toBe("theme");
+    expect(deriveSourceBadge({ sourceKey: "app.zoneRadius", userValue: true, baseline: true })).toBe("theme");
   });
 
   it("有用户覆盖 + 值偏离基准 → ✏️ 用户（真偏离才报已修改）", () => {
-    expect(deriveSourceBadge({ sourceKey: "app.mixRadius", userValue: 12, baseline: 8 })).toBe("user");
+    expect(deriveSourceBadge({ sourceKey: "app.surfaceRadius", userValue: 12, baseline: 8 })).toBe("user");
     // zoneRadius 显式关 = 偏离播种 true → ✏️（真实用户选择）
-    expect(deriveSourceBadge({ sourceKey: "app.mixRadius", userValue: false, baseline: true })).toBe("user");
+    expect(deriveSourceBadge({ sourceKey: "app.zoneRadius", userValue: false, baseline: true })).toBe("user");
     // 无 baseline（无活动配方 → getBaselineSeeds null → 空集）→ 退化 presence 派生
     expect(deriveSourceBadge({ sourceKey: "app.mixBackground", userValue: "img.jpg" })).toBe("user");
   });
 
   it("无覆盖 + appearanceMode=custom 且域来源生效（≠ followTheme）→ 🔀 混搭", () => {
     expect(
-      deriveSourceBadge({ sourceKey: "app.mixRadius", mode: "custom", sourceValue: "aurora" }),
+      deriveSourceBadge({ sourceKey: "app.backgroundOpacity", mode: "custom", sourceValue: "aurora" }),
     ).toBe("mix");
   });
 
@@ -55,9 +57,9 @@ describe("deriveSourceBadge", () => {
     expect(
       deriveSourceBadge({ sourceKey: "app.mixFont", userValue: "", mode: "custom", sourceValue: "songti-print" }),
     ).toBe("mix");
-    // 播种=基准：surfaceRadius 播种 8（=主题基准）+ mixRadius=songti → 圆角域来源生效 → 🔀
+    // 播种=基准：backgroundOpacity 播种 0.5（=主题基准）+ mixBackground=songti → 背景域来源生效 → 🔀
     expect(
-      deriveSourceBadge({ sourceKey: "app.mixRadius", userValue: 8, baseline: 8, mode: "custom", sourceValue: "songti-print" }),
+      deriveSourceBadge({ sourceKey: "app.backgroundOpacity", userValue: 0.5, baseline: 0.5, mode: "custom", sourceValue: "songti-print" }),
     ).toBe("mix");
     // 对照——域来源 = 跟随主题（未生效）→ 中性槽仍 🎨（A6 清除回主题保持）
     expect(
@@ -67,17 +69,17 @@ describe("deriveSourceBadge", () => {
 
   it("无覆盖 + appearanceMode=custom 但域来源 = followTheme（跟随整体配方）→ 🎨 主题", () => {
     expect(
-      deriveSourceBadge({ sourceKey: "app.mixRadius", mode: "custom", sourceValue: MIX_FOLLOW_THEME_SENTINEL }),
+      deriveSourceBadge({ sourceKey: "app.mixBackground", mode: "custom", sourceValue: MIX_FOLLOW_THEME_SENTINEL }),
     ).toBe("theme");
   });
 
   it("无覆盖 + appearanceMode=followTheme（未自定义）→ 🎨 主题", () => {
     expect(
-      deriveSourceBadge({ sourceKey: "app.mixRadius", mode: "followTheme", sourceValue: "aurora" }),
+      deriveSourceBadge({ sourceKey: "app.mixBackground", mode: "followTheme", sourceValue: "aurora" }),
     ).toBe("theme");
   });
 
   it("无覆盖 + appearanceMode 未定义（读空）→ 🎨 主题", () => {
-    expect(deriveSourceBadge({ sourceKey: "app.mixGlass" })).toBe("theme");
+    expect(deriveSourceBadge({ sourceKey: "app.mixSurface" })).toBe("theme");
   });
 });

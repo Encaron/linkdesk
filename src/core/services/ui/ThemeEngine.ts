@@ -186,12 +186,14 @@ export const MIX_FOLLOW_THEME = "followTheme";
 /** 混搭域 → 来源配置 key——getMixProfile 读配置（单真源，startup.ts/settings 命令 import 本表）。
  *  E5.8#82：colors 域来源并入 app.themeColor（app.mixColor 删除）——六域来源 key 对称；
  *  recipe 模式下 themeColor 是配方内配色变体 id，仅 mix 模式作为 colors 域来源被本表消费。
- *  E5.8#90：外观模型合并——startup.ts 原本地 MIX_SOURCE_KEYS 常量改 import 本表（单一来源）。 */
-const MIX_DOMAIN_KEYS: Record<ThemeDomain, string> = {
+ *  E5.8#90：外观模型合并——startup.ts 原本地 MIX_SOURCE_KEYS 常量改 import 本表（单一来源）。
+ *  E5.8#97：数值域来源删键——radius/glass 域来源（app.mixRadius/app.mixGlass）随 #85/#86 圆角/玻璃
+ *  绝对化成为死键（数值域表达系统标尺绝对 px，混搭另一配方多键集无意义）——设置面两域来源行删除，
+ *  混搭键表收缩为四域（colors/font/background/surface）。MIX_DOMAIN_ORDER 仍遍历六域：radius/glass
+ *  域 profile 缺省 → resolveDomainSource 回退基础配方（域不空窗，见 mergeMixDomains）。 */
+const MIX_DOMAIN_KEYS: Partial<Record<ThemeDomain, string>> = {
   colors: "app.themeColor",
   font: "app.mixFont",
-  radius: "app.mixRadius",
-  glass: "app.mixGlass",
   background: "app.mixBackground",
   surface: "app.mixSurface",
 };
@@ -199,7 +201,9 @@ const MIX_DOMAIN_KEYS: Record<ThemeDomain, string> = {
 /** E5.8#90：混搭来源配置 key 全集——外观复位/重置命令批量复位用（theme.resetMix、appearanceMode→followTheme 级联） */
 export const MIX_SOURCE_KEYS: readonly string[] = Object.values(MIX_DOMAIN_KEYS);
 
-/** 混搭域应用顺序——颜色→字体→圆角→玻璃→背景→表面（10 §2 mockup 行序；碰撞后者覆盖） */
+/** 混搭域应用顺序——颜色→字体→圆角→玻璃→背景→表面（10 §2 mockup 行序；碰撞后者覆盖）。
+ *  E5.8#97：六域恒在——radius/glass 来源键已删，但基础配方 radius/glass token 仍须经本顺序合并
+ *  （profile 缺省 → resolveDomainSource 回退基础配方），删任一域会漏合基础配方圆角/玻璃 token。 */
 const MIX_DOMAIN_ORDER: ThemeDomain[] = ["colors", "font", "radius", "glass", "background", "surface"];
 
 /** glass 域 token 键——surfaceVariables 产物中归玻璃域（glass-* 六键；surface-* 归表面域） */
@@ -423,9 +427,10 @@ export function mergeDomains(
 
 /* ── E5.8#50.26：混搭合并——10 §1/§3 模型「每域各自取来源」── */
 
-/** 混搭档案——6 域来源映射。colors = 配方 id/配色 id/followTheme（决策 B：配方+配色粒度）；
- *  其余域 = 配方 id/followTheme（配方粒度）。 */
-export type MixProfile = Record<ThemeDomain, string>;
+/** 混搭档案——来源域映射。colors = 配方 id/配色 id/followTheme（决策 B：配方+配色粒度）；
+ *  其余域 = 配方 id/followTheme（配方粒度）。Partial：radius/glass 域无来源键（E5.8#97 数值域来源删键），
+ *  缺省域 = 基础配方回退（resolveDomainSource）。 */
+export type MixProfile = Partial<Record<ThemeDomain, string>>;
 
 /** 读当前混搭来源配置 → 档案（mixMode=mix 时引擎消费；缺省 = 全跟随主题） */
 export function getMixProfile(): MixProfile {
@@ -1100,6 +1105,7 @@ export interface AppearanceSeedValues {
   backgroundImage: string;
   fontFamily: string;
   zoneBackgroundImage: string; // E5.8#81：zone 表面背景覆盖（zones 模式才播种）
+  surfaceTexture: string; // E5.8#97：表面平铺纹理覆盖（repeat 纹理才播种，zones 切片不抢）
   backgroundOpacity: number; // E5.8#94：背景图不透明度（缺省 1 = 原图）
   backgroundMask: number; // E5.8#94：背景遮罩明暗（缺省 0 = 无遮罩）
   fontFamilyMono: string; // E5.8#95：等宽字体（缺省空 = 跟随主题）
@@ -1124,6 +1130,12 @@ export function deriveAppearanceSeeds(tokens: Record<string, string>): Appearanc
   const zoneBgPath = zoneBg && zoneBg !== "none" && tokens["surface-bg-zones"] === "1"
     ? zoneBg.replace(/^url\(["']?/, "").replace(/["']?\)$/, "")
     : "";
+  // E5.8#97：表面纹理播种——仅平铺纹理（surface-bg-repeat=repeat）反推 surface-bg-image；
+  // zones 切片（repeat=no-repeat）归 zoneBackgroundImage 槽，纹理槽空 = 跟随主题（不抢切片语义）。
+  const surfaceTex = tokens["surface-bg-image"];
+  const surfaceTexPath = surfaceTex && surfaceTex !== "none" && tokens["surface-bg-repeat"] === "repeat"
+    ? surfaceTex.replace(/^url\(["']?/, "").replace(/["']?\)$/, "")
+    : "";
   return {
     surfaceRadius: clampRadiusPx(parseFloat(tokens["radius-md"] ?? "0")),
     zoneRadiusPx: clampRadiusPx(parseFloat(tokens["surface-radius"] ?? "0")),
@@ -1133,6 +1145,7 @@ export function deriveAppearanceSeeds(tokens: Record<string, string>): Appearanc
     backgroundImage: bgPath,
     fontFamily: fam && !fam.startsWith("__ld_") ? fam : "",
     zoneBackgroundImage: zoneBgPath,
+    surfaceTexture: surfaceTexPath,
     // E5.8#94/#95/#96：镜像补槽播种——缺省 neutral（bg-opacity 1 / bg-mask 0 / mono 空 = 跟随主题 / saturate 1）
     backgroundOpacity: parseFloat(tokens["bg-opacity"] ?? "1") || 0,
     backgroundMask: parseFloat(tokens["bg-mask"] ?? "0") || 0,
@@ -1176,6 +1189,7 @@ export function deriveAppearanceSeedMap(tokens: Record<string, string>): Record<
     "app.zoneRadius": true,
     "app.zoneRadiusScale": seeds.zoneRadiusPx,
     "app.zoneBackgroundImage": seeds.zoneBackgroundImage,
+    "app.surfaceTexture": seeds.surfaceTexture,
     // E5.8#94/#95/#96：镜像补槽键（同一映射——播种/徽标基准/切主题重播种全走这里）
     "app.backgroundOpacity": seeds.backgroundOpacity,
     "app.backgroundMask": seeds.backgroundMask,
@@ -1266,19 +1280,21 @@ export function resolveMergedAppearanceMode(legacy: {
     : "followTheme";
 }
 
-/** 设置层外观覆盖配置 key 全集——appearanceMode=custom 播种存这 13 键、reset 摘除这 13 键回主题基线（08 §7.2/§7.3.5）。
+/** 设置层外观覆盖配置 key 全集——appearanceMode=custom 播种存这 14 键、reset 摘除这 14 键回主题基线（08 §7.2/§7.3.5）。
  *  单一来源：getAppearanceOverrides 读同键（glass 两键 presence 门控 / 其余空值不覆盖，见下）。
  *  E5.8#60 F1.1：壳命令（startup appearanceMode onApply）与插件 API（theme.resetAppearance）复位共用本表——
  *  插件侧曾只清 5 键漏 app.fontFamily → 第三方复位外观后字体不回基线。
  *  E5.8#80：+app.zoneRadius/app.zoneRadiusScale——zone 圆角第二通道（外观覆盖子节，同随 custom 播种/复位）。
  *  E5.8#81：+app.zoneBackgroundImage——zone 表面背景覆盖（与全窗 --bg-image 并存）。
  *  E5.8#94/#95/#96：+app.backgroundOpacity/app.backgroundMask/app.fontFamilyMono/app.glassSaturate——
- *  镜像补槽键（13 覆盖键全集；种子/复位/插件 reset/重播种计划单写点同表）。 */
+ *  镜像补槽键（13 覆盖键全集；种子/复位/插件 reset/重播种计划单写点同表）。
+ *  E5.8#97：+app.surfaceTexture——表面平铺纹理覆盖（repeat 语义，镜像 zoneBackgroundImage 结构）。 */
 export const APPEARANCE_OVERRIDE_KEYS = [
   "app.surfaceRadius", "app.glassBlur", "app.glassOpacity",
   "app.glassTint", "app.backgroundImage", "app.fontFamily",
   "app.zoneRadius", "app.zoneRadiusScale", "app.zoneBackgroundImage",
   "app.backgroundOpacity", "app.backgroundMask", "app.fontFamilyMono", "app.glassSaturate",
+  "app.surfaceTexture",
 ] as const;
 
 /** E5.8#87：配置「绝对无」哨兵值——app.backgroundImage/zoneBackgroundImage/fontFamily 显式无 = 不跟随主题（真无图/系统字体）。
@@ -1361,6 +1377,26 @@ export function getAppearanceOverrides(): Record<string, string> {
         overrides["surface-bg-image"] = `url("${resolvedZone}")`;
         overrides["surface-bg-repeat"] = "no-repeat";
         overrides["surface-bg-zones"] = "1";
+      }
+    }
+  }
+
+  // E5.8#97：表面平铺纹理覆盖——app.surfaceTexture 写 --surface-bg-image（repeat 平铺语义，镜像
+  // surfaceVariables 主题纹理机制）。空 = 不写任何键（跟随主题纹理）；__none__ = 绝对无纹理（真无图，
+  // 盖掉主题/mix 纹理与 zones 切片）+ zones 量测关（纹理非切片，surface-bg-zones=0 停池侧量测）。
+  // 与 zoneBackgroundImage 同写 --surface-bg-image：本键声明靠后 → 冲突时纹理胜出（用户最后意图）。
+  const surfaceTexture = getConfigurationValue<string>("app.surfaceTexture");
+  if (surfaceTexture != null && String(surfaceTexture).trim() !== "") {
+    const trimmedTex = String(surfaceTexture).trim();
+    if (trimmedTex === CONFIG_NONE_SENTINEL) {
+      overrides["surface-bg-image"] = "none";
+      overrides["surface-bg-zones"] = "0";
+    } else {
+      const resolvedTex = resolveBackgroundImageUrl(trimmedTex);
+      if (resolvedTex) {
+        overrides["surface-bg-image"] = `url("${resolvedTex}")`;
+        overrides["surface-bg-repeat"] = "repeat";
+        overrides["surface-bg-zones"] = "0";
       }
     }
   }
