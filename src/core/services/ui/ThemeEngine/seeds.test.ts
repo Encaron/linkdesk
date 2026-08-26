@@ -294,33 +294,30 @@ describe("ThemeEngine — 外观覆盖 getAppearanceOverrides（E5.8#50.10）", 
     expect(hasConfigurationValue("app.glassBlur")).toBe(true);
   });
 
-  it("E5.8#85——applyRadiusAbsolute 越界 clamp：absPx 999 → 钳到 32（settings.json 直写 999 不再 999× 圆角）", () => {
-    const scaled = applyRadiusAbsolute(999, { "radius-md": "8px" });
-    expect(scaled["radius-md"]).toBe("32px");
+  it("E5.8 参考系根治——applyRadiusAbsolute 越界 clamp：absPx 999 → 钳到 32（settings.json 直写 999 不再 999× 圆角）", () => {
+    const scaled = applyRadiusAbsolute(999);
+    for (const key of RADIUS_KEYS) expect(scaled[key]).toBe("32px"); // 全档 = 滑杆 clamp 值
   });
 
-  it("E5.8#85——applyRadiusAbsolute 负越界 clamp：absPx -1 → 钳到 0（方角），非负数取反", () => {
-    const scaled = applyRadiusAbsolute(-1, { "radius-md": "8px" });
-    expect(scaled["radius-md"]).toBe("0px");
+  it("E5.8 参考系根治——applyRadiusAbsolute 负越界 clamp：absPx -1 → 钳到 0（方角），非负数取反", () => {
+    const scaled = applyRadiusAbsolute(-1);
+    for (const key of RADIUS_KEYS) expect(scaled[key]).toBe("0px");
   });
 
-  it("E5.8#85——applyRadiusAbsolute 合法域：md 档 = 滑杆值；其余档按主题比例换算", () => {
-    const scaled = applyRadiusAbsolute(12, { "radius-md": "8px", "radius-sm": "4px", "radius-lg": "12px" });
-    expect(scaled["radius-md"]).toBe("12px"); // md = 滑杆值
-    expect(scaled["radius-sm"]).toBe("6px"); // 4/8 × 12
-    expect(scaled["radius-lg"]).toBe("18px"); // 12/8 × 12
+  it("E5.8 参考系根治——applyRadiusAbsolute 合法域：六档平铺全 = 滑杆值（跨主题一致，删主题比例）", () => {
+    const scaled = applyRadiusAbsolute(12);
+    for (const key of RADIUS_KEYS) expect(scaled[key]).toBe("12px"); // 全档 = 滑杆值
   });
 
-  it("E5.8#85 applyRadiusAbsolute — 返回六档键集、不含形态值（jsdom 无 CSS 基址 0px → md=0 直角无层级 → 等值滑杆）", () => {
+  it("E5.8 参考系根治 applyRadiusAbsolute — 返回六档键集、不含形态值（形态键由 applyOverrides ①c/其余路径管）", () => {
     const scaled = applyRadiusAbsolute(16);
-    for (const key of RADIUS_KEYS) expect(scaled[key]).toBeDefined();
+    for (const key of RADIUS_KEYS) expect(scaled[key]).toBe("16px");
     expect(scaled["radius-pill"]).toBeUndefined();
     expect(scaled["radius-full"]).toBeUndefined();
-    expect(scaled["radius-md"]).toBe("16px"); // 等值
   });
 
-  it("E5.8#85 applyRadiusAbsolute(0) — 0 方角档：六档全 0px，形态值仍排除", () => {
-    const scaled = applyRadiusAbsolute(0, { "radius-md": "12px", "radius-sm": "6px", "radius-lg": "16px" });
+  it("E5.8 参考系根治 applyRadiusAbsolute(0) — 0 方角档：六档全 0px，形态值仍排除", () => {
+    const scaled = applyRadiusAbsolute(0);
     for (const key of RADIUS_KEYS) expect(scaled[key]).toBe("0px");
     expect(scaled["radius-pill"]).toBeUndefined();
     expect(scaled["radius-full"]).toBeUndefined();

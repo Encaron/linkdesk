@@ -57,11 +57,11 @@ describe("ThemeEngine — Recipe 合并算法 mergeDomains（E5.8#50.16，05 §4
     expect(mergeDomains(RECIPE, "no-such", {})["accent"]).toBe("#2BA876");
   });
 
-  it("E5.8#85 overrides radius 绝对 px → applyOverrides 路径换算（md 档 = 滑杆值；主题无 md → 直角无层级等值）", () => {
+  it("E5.8 参考系根治 overrides radius 绝对 px → applyOverrides 路径平铺（全档 = 滑杆值）", () => {
     const tokens = mergeDomains(RECIPE, "dew", { "radius-lg": 12 });
-    expect(tokens["radius-lg"]).toBe("12px"); // md 档 = 滑杆值
-    expect(tokens["radius-sm"]).toBe("12px"); // 主题 radius.sm 6 / md 缺省 → 等值滑杆
-    expect(tokens["radius-md"]).toBe("12px"); // md 缺省 → 壳默认 0 → 等值（不再恒写 0px 清残留）
+    expect(tokens["radius-lg"]).toBe("12px"); // 全档 = 滑杆值
+    expect(tokens["radius-sm"]).toBe("12px"); // 主题 tier 不再影响（平铺 = 滑杆值）
+    expect(tokens["radius-md"]).toBe("12px"); // 平铺 = 滑杆值（不再恒写 0px 清残留）
     expect(tokens["radius-pill"]).toBe("12px"); // E5.8 用户审计 #2：radius 覆盖生效 → pill 直写滑杆值（主题无 pill）
   });
 
@@ -73,7 +73,7 @@ describe("ThemeEngine — Recipe 合并算法 mergeDomains（E5.8#50.16，05 §4
   it("E5.8#85 applyOverrides — radius 绝对 px 换算（md 档 = 滑杆值）；非 radius 绝对写", () => {
     const tokens = { "radius-md": "10px", "glass-blur": "8px" };
     applyOverrides(tokens, { "radius-md": 2, "glass-blur": "16px" });
-    expect(tokens["radius-md"]).toBe("2px"); // md 档 = 滑杆值 2（主题 md 10 → 比例 1 → 2px）
+    expect(tokens["radius-md"]).toBe("2px"); // 全档 = 滑杆值 2（平铺）
     expect(tokens["glass-blur"]).toBe("16px");
   });
 
@@ -107,12 +107,11 @@ describe("ThemeEngine — Recipe 合并算法 mergeDomains（E5.8#50.16，05 §4
     expect(soft["radius-pill"]).toBe("8px");
   });
 
-  it("E5.8#85 applyRadiusAbsolute(absPx, tokens) — 有现值按比例；无现值用壳默认（0px → 0）", () => {
-    const scaled = applyRadiusAbsolute(8, { "radius-md": "6px" });
-    expect(scaled["radius-md"]).toBe("8px");
-    expect(scaled["radius-sm"]).toBe("0px"); // 无现值 → 壳默认 0px → 0
-    for (const key of RADIUS_KEYS) expect(scaled[key]).toBeDefined();
+  it("E5.8 参考系根治 applyRadiusAbsolute(8) — 六档平铺全 = 滑杆值（删主题比例）", () => {
+    const scaled = applyRadiusAbsolute(8);
+    for (const key of RADIUS_KEYS) expect(scaled[key]).toBe("8px"); // 全档 = 滑杆值
     expect(scaled["radius-pill"]).toBeUndefined();
+    expect(scaled["radius-full"]).toBeUndefined();
   });
 
   it("E5.8#104 配方圆角 clamp 进系统标尺 [0,32]——全胶囊主题 999px → 32px（full 相对几何排除）", () => {

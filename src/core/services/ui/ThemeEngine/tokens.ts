@@ -241,24 +241,18 @@ export function getBaseRadius(): Record<string, string> {
 }
 
 /**
- * E5.8#85：圆角绝对化——app.surfaceRadius = 组件圆角「md 档」绝对 px → --radius-xs~2xl 六档。
- * 语义：滑杆值 = 系统标尺上标准组件圆角 px（0 方角 / 32 最圆润，RADIUS_MAX_PX 标尺）；其余档按当前主题
- * tier 相对 md 的比例换算（保主题层级性格 + 播种视觉不变），统一 clamp 进 [0,32]。
- * 主题 md ≤ 0（直角主题无层级）→ 六档等值滑杆值。tokens 传入 → 比例基准取主题现值；键缺省 → :root 壳默认。
- * 形态值（--radius-pill/--radius-full）排除不缩放（08 §3）。纯函数只算不改。消费侧 clamp（#56 延续）——
- * 越界直写钳到标尺域。
+ * E5.8 参考系根治：圆角系统标尺唯一权威——app.surfaceRadius = 系统标尺上标准组件圆角 px（0 方角 /
+ * 32 最圆润，RADIUS_MAX_PX 标尺），六档（--radius-xs~2xl）平铺全 = 滑杆值，clamp 进 [0,32]。
+ * 语义：滑杆 = 用户全局覆盖一个值（「我要这么圆」）；六档层级是主题作者的表达，用户覆盖 = 主动统一。
+ * 删 theme_tier/theme_md 比例——根治跨主题圆角漂移（同一滑杆全胶囊 ≠ 普通主题）。followTheme 主题不动
+ * （本函数仅覆盖路径调用）。形态值（--radius-pill/--radius-full）排除不缩放（08 §3；pill 由
+ * applyOverrides ①c 直写滑杆值）。纯函数只算不改。消费侧 clamp（#56 延续）——越界直写钳到标尺域。
  */
-export function applyRadiusAbsolute(absPx: number, tokens?: Record<string, string>): Record<string, string> {
+export function applyRadiusAbsolute(absPx: number): Record<string, string> {
   const s = clampRadiusPx(absPx);
-  const base = getBaseRadius();
-  const md = parseFloat(tokens?.["radius-md"]?.trim() || base["radius-md"] || "0");
   const vars: Record<string, string> = {};
   for (const key of RADIUS_SCALE_KEYS) {
-    const current = tokens?.[key];
-    const source = current !== undefined && current.trim() !== "" ? current : (base[key] ?? "0px");
-    const px = parseFloat(source);
-    const ratio = md > 0 && Number.isFinite(px) ? px / md : 1; // 直角/无层级主题 → 等值
-    vars[key] = `${clampRadiusPx(ratio * s)}px`;
+    vars[key] = `${s}px`;
   }
   return vars;
 }
@@ -271,8 +265,8 @@ export function applyOverrides(
   tokens: Record<string, string>,
   overrides: Record<string, string | number>
 ): Record<string, string> {
-  // ① E5.8#85：组件圆角绝对 px——overrides 携带 radius-* 六键（getAppearanceOverrides presence 门控写 md 档 absPx）
-  //   applyRadiusAbsolute 对当前主题 tier 按比例换算全六档并 clamp 进 [0,32]。
+  // ① E5.8#85→参考系根治：组件圆角绝对 px——overrides 携带 radius-* 六键（getAppearanceOverrides presence
+  //   门控写 md 档 absPx）；applyRadiusAbsolute 六档平铺 = 滑杆值并 clamp 进 [0,32]（删主题比例——跨主题一致）。
   let radiusAbs: number | null = null;
   for (const [token, value] of Object.entries(overrides)) {
     if ((RADIUS_SCALE_KEYS as readonly string[]).includes(token)) {
@@ -281,7 +275,7 @@ export function applyOverrides(
       else tokens[token] = String(value); // 已是 px 的 radius 覆盖（防御）→ 绝对写
     }
   }
-  if (radiusAbs != null) Object.assign(tokens, applyRadiusAbsolute(radiusAbs, tokens));
+  if (radiusAbs != null) Object.assign(tokens, applyRadiusAbsolute(radiusAbs));
   // ①b E5.8#85：zone 圆角绝对 px——app.zoneRadiusScale = 分区圆角 px（"0px" = 开关关强制直角短路）；
   //   直写当前 surface-radius token（绝对，不乘主题基准——根治直角主题 0px 死区 A1）。
   const zoneRadiusVal = overrides["surface-radius"];
