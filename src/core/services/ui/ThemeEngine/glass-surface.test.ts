@@ -7,9 +7,10 @@
  */
 
 import { describe, it, expect, beforeEach } from "vitest";
-import {
-  synthesizeGlassSurfaces, getGlassSurfaceSpec, applyRecipe, applyTheme, deriveAppearanceSeeds,
-} from "../ThemeEngine";
+// E5.8 Phase 11.15 3b：synthesizeGlassSurfaces/getGlassSurfaceSpec 从门面撤出（仅内部消费）——测试直引本体
+import { synthesizeGlassSurfaces } from "./tokens";
+import { getGlassSurfaceSpec } from "./seeds";
+import { applyRecipe, applyTheme, deriveAppearanceSeeds } from "../ThemeEngine";
 import { SURFACE_COLOR_KEYS, GLASS_SURFACE_DEFAULT_ALPHA } from "../ThemeEngine";
 import { applyRemoteConfigChange, clearConfigurationCache } from "../../configuration/ConfigurationService";
 import { RECIPE } from "./testFixtures.mock";

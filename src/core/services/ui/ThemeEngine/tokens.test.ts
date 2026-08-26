@@ -4,7 +4,9 @@
  */
 
 import { describe, it, expect, beforeEach } from "vitest";
-import { applyTheme, getThemeVariables } from "../ThemeEngine";
+// E5.8 Phase 11.15 3b：getThemeVariables 从门面撤出（仅内部消费）——测试直引 tokens 本体
+import { getThemeVariables } from "./tokens";
+import { applyTheme } from "../ThemeEngine";
 import { MOCK_THEME, MOCK_THEME2 } from "./testFixtures.mock";
 
 describe("ThemeEngine — surface/background 玻璃机制（E5.8#50.6）", () => {

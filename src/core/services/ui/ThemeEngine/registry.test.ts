@@ -4,11 +4,11 @@
  */
 
 import { describe, it, expect, beforeEach } from "vitest";
+// E5.8 Phase 11.15 3b：unregisterTheme/getThemesByPlugin 从门面撤出——registry 测试直引本体
+import { unregisterTheme, getThemesByPlugin } from "./registry";
 import {
   registerTheme,
-  unregisterTheme,
   getAvailableThemes,
-  getThemesByPlugin,
   loadTheme,
   findTheme,
   registerFallbackThemes,

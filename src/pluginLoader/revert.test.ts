@@ -12,7 +12,9 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { ThemeRegistry } from "../core/registry/appearance/ThemeRegistry";
 import { LanguageRegistry } from "../core/registry/languages/LanguageRegistry";
-import { registerTheme, unregisterTheme, getAvailableThemes } from "../core/services/ui/ThemeEngine";
+// E5.8 Phase 11.15 3b：unregisterTheme 从门面撤出（零生产消费）——测试直引 registry 本体
+import { registerTheme, getAvailableThemes } from "../core/services/ui/ThemeEngine";
+import { unregisterTheme } from "../core/services/ui/ThemeEngine/registry";
 import { rollback } from "../core/registry/registrationTracker";
 
 // ── Mock ConfigurationService 的 setConfigurationValue（避免 FS 依赖）──

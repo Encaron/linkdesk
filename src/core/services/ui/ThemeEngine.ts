@@ -6,8 +6,9 @@
  */
 
 export type { Theme, ThemeSurface, ThemeBackground } from "./ThemeEngine/registry";
+// E5.8 Phase 11.15 3b：unregisterTheme/getThemesByPlugin 零生产消费（仅测试）——从门面撤出，测试直引 ./registry
 export {
-  registerTheme, unregisterTheme, getAvailableThemes, getThemesByPlugin, loadTheme,
+  registerTheme, getAvailableThemes, loadTheme,
   findTheme, registerFallbackThemes,
 } from "./ThemeEngine/registry";
 
@@ -18,7 +19,9 @@ export {
   SURFACE_COLOR_KEYS, GLASS_SURFACE_DEFAULT_ALPHA,
 } from "./ThemeEngine/constants";
 
-export { getThemeVariables, getEffectiveTokens, getBaseRadius, applyRadiusAbsolute, applyOverrides, synthesizeGlassSurfaces, gateMirrorVisibility } from "./ThemeEngine/tokens";
+// E5.8 Phase 11.15 3b：getThemeVariables/getBaseRadius/synthesizeGlassSurfaces/gateMirrorVisibility 仅内部消费
+// （apply.ts/migration.ts 直引 ./tokens）——从门面撤出不暴露；测试直引 ./tokens
+export { getEffectiveTokens, applyRadiusAbsolute, applyOverrides } from "./ThemeEngine/tokens";
 
 export { recipeDomains, mergeDomains } from "./ThemeEngine/recipe";
 
@@ -40,7 +43,8 @@ export { applyAccentColor, getEffectiveAccentColor } from "./ThemeEngine/accent"
 export { applyTheme, applyRecipe } from "./ThemeEngine/apply";
 
 export type { AppearanceSeedValues, GlassSurfaceSpec } from "./ThemeEngine/seeds";
+// E5.8 Phase 11.15 3b：getGlassSurfaceSpec 仅内部消费（apply.ts 直引 ./seeds）——从门面撤出不暴露
 export {
   APPEARANCE_OVERRIDE_KEYS, deriveAppearanceSeeds, deriveAppearanceSeedMap,
-  deriveReseedPlan, getThemeBaseTokens, getAppearanceOverrides, getGlassSurfaceSpec,
+  deriveReseedPlan, getThemeBaseTokens, getAppearanceOverrides,
 } from "./ThemeEngine/seeds";

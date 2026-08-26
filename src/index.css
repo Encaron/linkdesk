@@ -4,7 +4,6 @@
      此处 :root 硬兜底接管（值 = 历史 dark.json 调色板）。加载失败时这里的值保证软件可用。 */
   --bg-window: #1E1E1E;
   --bg-card: #2D2D2D;
-  --bg-status: #0078D4;
   --bg-input: #3C3C3C;
   --text-primary: #D4D4D4;
   --text-secondary: #9D9D9D;
@@ -20,11 +19,9 @@
   --accent-hover: #1A8CE8;
   --border: #3C3C3C;
   --separator: #474747;
-  --icon-active: #FFFFFF;
   --icon-inactive: #858585;
   --system-log: #6A6A6A;
   --sent-echo: #0078D4;
-  --received: #D4D4D4;
   --status-connected: #4EC9B0;
   --status-disconnected: #6A6A6A;
   --scrollbar-thumb: rgba(255, 255, 255, 0.15);
@@ -55,7 +52,6 @@
   --radius-sm: 4px;
   --radius-md: 6px;
   --radius-lg: 8px;
-  --radius-xl: 12px;
   --radius-2xl: 16px;
   --radius-pill: 999px;
   --radius-full: 50%;
@@ -90,17 +86,7 @@
   --z-overlay: 600;
   --z-drag-preview: 1000;
   /* 🔥 UX10：侧栏内 z-index 分层 */
-  --z-sidebar-content: 0;
   --z-sidebar-sticky-header: 10;
-  --z-sidebar-context-menu: 100;
-  /* Phase 3.5 新增 —— 间距体系。4px 节奏：xs/sm/md/lg/xl/2xl/3xl */
-  --space-xs: 4px;
-  --space-sm: 8px;
-  --space-md: 12px;
-  --space-lg: 16px;
-  --space-xl: 20px;
-  --space-2xl: 24px;
-  --space-3xl: 32px;
   /* E3.5 新增 —— 串口监视器 UI 整改 */
   --warning-text: #E8AB3E;
   --warning-bg: rgba(255, 200, 0, 0.12);
@@ -111,7 +97,6 @@
 [data-theme="light"] {
   --bg-window: #FFFFFF;
   --bg-card: #F5F5F5;
-  --bg-status: #007ACC;
   --bg-input: #FFFFFF;
   --text-primary: #2D2D2D;
   --text-secondary: #5A5A5A;
@@ -120,11 +105,9 @@
   --accent-hover: #106EBE;
   --border: #D4D4D4;
   --separator: #E8E8E8;
-  --icon-active: #2D2D2D;
   --icon-inactive: #999999;
   --system-log: #999999;
   --sent-echo: #0078D4;
-  --received: #2D2D2D;
   --status-connected: #388A34;
   --status-disconnected: #999999;
   --scrollbar-thumb: rgba(0, 0, 0, 0.15);
