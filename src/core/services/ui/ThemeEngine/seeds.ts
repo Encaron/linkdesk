@@ -36,6 +36,7 @@ export const APPEARANCE_OVERRIDE_KEYS = [
 /** 外观覆盖播种值形状——deriveAppearanceSeeds 返回值（08 §2：设置层永远只存用户偏离量） */
 export interface AppearanceSeedValues {
   surfaceRadius: number;
+  zoneRadius: boolean; // E5.8 Phase 11.15：app.zoneRadius 显式进种子（进 custom 播种恒 true——seedAppearanceOverrides 先例）
   zoneRadiusPx: number; // E5.8#85：zone 分区圆角绝对 px（随 custom 播种/复位）
   glassBlur: number;
   glassOpacity: number;
@@ -69,6 +70,9 @@ export function deriveAppearanceSeeds(tokens: Record<string, string>): Appearanc
     : "";
   return {
     surfaceRadius: clampRadiusPx(parseFloat(tokens["radius-md"] ?? "0")),
+    // E5.8 Phase 11.15：播种恒 true——进 custom 即开 zone 圆角（无「反推」：开关语义 = 跟随 surface-radius 的
+    // 显式覆盖，deriveAppearanceSeeds 只反推用户偏离量；zone 圆角开与否由 presence 门控 handle，不在此回读）
+    zoneRadius: true,
     zoneRadiusPx: clampRadiusPx(parseFloat(tokens["surface-radius"] ?? "0")),
     glassBlur: parseFloat(tokens["glass-blur"] ?? "0") || 0,
     glassOpacity: parseFloat(tokens["glass-opacity"] ?? "1"),
@@ -96,7 +100,7 @@ export function deriveAppearanceSeedMap(tokens: Record<string, string>): Record<
     "app.glassTint": seeds.glassTint,
     "app.backgroundImage": seeds.backgroundImage,
     "app.fontFamily": seeds.fontFamily,
-    "app.zoneRadius": true,
+    "app.zoneRadius": seeds.zoneRadius,
     "app.zoneRadiusScale": seeds.zoneRadiusPx,
     "app.zoneBackgroundImage": seeds.zoneBackgroundImage,
     // E5.8#94/#95/#96：镜像补槽键（同一映射——播种/徽标基准/切主题重播种全走这里）

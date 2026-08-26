@@ -5,34 +5,32 @@
  */
 
 import { getConfigurationValue } from "../../configuration/ConfigurationService";
+import { ACCENT_TOKEN_KEYS } from "./constants";
 import { getCurrentTheme, setAppliedAccent } from "./state";
 
 /**
  * 应用用户自定义强调色——覆盖主题自带的 accent。
  * 预览主题时调用：先 applyTheme（含主题的 accent）再 applyAccentColor（用户的 accent 盖回去）。
+ * E5.8 Phase 11.15 归一化：三键写 :root + 广播载荷共用 ACCENT_TOKEN_KEYS 单一清单（无手抄字面量）。
  */
 export function applyAccentColor(hexColor: string): void {
   setAppliedAccent(hexColor);
-  document.documentElement.style.setProperty("--accent", hexColor);
   const hex = hexColor.replace("#", "");
   const r = parseInt(hex.substring(0, 2), 16);
   const g = parseInt(hex.substring(2, 4), 16);
   const b = parseInt(hex.substring(4, 6), 16);
-  document.documentElement.style.setProperty(
-    "--accent-hover",
-    `rgb(${Math.min(255, r + 30)},${Math.min(255, g + 30)},${Math.min(255, b + 30)})`
-  );
-  document.documentElement.style.setProperty(
-    "--accent-light",
-    `rgba(${r},${g},${b},0.15)`
-  );
-
-  // E5.5#7-fix：广播强调色到所有插件 WebView——对标 applyTheme 的 broadcast
-  const accentVars = {
-    "--accent": hexColor,
-    "--accent-hover": `rgb(${Math.min(255, r + 30)},${Math.min(255, g + 30)},${Math.min(255, b + 30)})`,
-    "--accent-light": `rgba(${r},${g},${b},0.15)`,
+  const accentValues: Record<(typeof ACCENT_TOKEN_KEYS)[number], string> = {
+    accent: hexColor,
+    "accent-hover": `rgb(${Math.min(255, r + 30)},${Math.min(255, g + 30)},${Math.min(255, b + 30)})`,
+    "accent-light": `rgba(${r},${g},${b},0.15)`,
   };
+  for (const key of ACCENT_TOKEN_KEYS) {
+    document.documentElement.style.setProperty(`--${key}`, accentValues[key]);
+  }
+
+  // E5.5#7-fix：广播强调色到所有插件 WebView——对标 applyTheme 的 broadcast（同一键清单单一权威）
+  const accentVars: Record<string, string> = {};
+  for (const key of ACCENT_TOKEN_KEYS) accentVars[`--${key}`] = accentValues[key];
   const linkdesk = window.linkdesk;
   if (linkdesk?.bridge?.broadcast) {
     linkdesk.bridge.broadcast("accent:changed", {

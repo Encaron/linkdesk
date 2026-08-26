@@ -12,7 +12,7 @@ import type { FontFaceSpec } from "../../../types/ipc/events";
 import { getLastCommittedKeys, setLastCommittedKeys } from "./state";
 import {
   SURFACE_ZERO, BACKGROUND_ZERO, RADIUS_SCALE_KEYS, clampRadiusPx,
-  MANAGED_TOKEN_KEYS, SURFACE_SEAM_INSET_PX, SURFACE_COLOR_KEYS,
+  MANAGED_TOKEN_KEYS, SURFACE_SEAM_INSET_PX, SURFACE_COLOR_KEYS, ACCENT_TOKEN_KEYS,
 } from "./constants";
 // E5.8 Phase 11.16：表面合成规格类型——type-only 引用（seeds 生产 getGlassSurfaceSpec，合成在 apply 层消费；
 //  erasure 后无运行时依赖，seeds⇄apply 循环仍由 state 破）
@@ -157,7 +157,7 @@ export function commitTokens(
   if (linkdesk?.bridge?.broadcast) {
     const broadcastVars: Record<string, string> = {};
     for (const [k, v] of Object.entries(variables)) {
-      if (k === "accent" || k === "accent-hover" || k === "accent-light") continue;
+      if ((ACCENT_TOKEN_KEYS as readonly string[]).includes(k)) continue;
       broadcastVars[k] = v;
     }
     linkdesk.bridge.broadcast("theme:changed", {

@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect, beforeEach } from "vitest";
-import { mergeDomains, applyOverrides, applyRadiusAbsolute } from "../ThemeEngine";
+import { mergeDomains, applyOverrides, applyRadiusAbsolute, RADIUS_SCALE_KEYS } from "../ThemeEngine";
 import { clearConfigurationCache } from "../../configuration/ConfigurationService";
 import type { ThemeRecipe } from "../../../types/theme";
 
@@ -24,7 +24,8 @@ describe("ThemeEngine — Recipe 合并算法 mergeDomains（E5.8#50.16，05 §4
       { id: "mint", name: "薄荷", colors: { "bg-window": "#F7FBF8", accent: "#3E9E8C" } },
     ],
   };
-  const RADIUS_KEYS = ["radius-xs", "radius-sm", "radius-md", "radius-lg", "radius-xl", "radius-2xl"];
+  // E5.8 Phase 11.15 归一化：radius 键清单单一权威——不再手抄字面量，直接引用引擎常量
+  const RADIUS_KEYS = RADIUS_SCALE_KEYS;
 
   beforeEach(() => {
     clearConfigurationCache();

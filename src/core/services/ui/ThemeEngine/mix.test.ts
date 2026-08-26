@@ -15,6 +15,7 @@ import {
   syncThemeColorEnum, // E5.8 Phase 11.14：app.themeColor 配色全集 enum 同步
   cleanupPluginFontFaces,
   MIX_FOLLOW_THEME,
+  RADIUS_SCALE_KEYS,
 } from "../ThemeEngine";
 import type { MixProfile } from "../ThemeEngine";
 import {
@@ -101,7 +102,8 @@ describe("ThemeEngine — 混搭合并（E5.8#50.26，10 §1/§3 每域各自取
     };
     const tokens = mergeMixDomains(pillBase, pillBase.colorways[0], profile, {});
     // radius/glass 无来源键 → 恒基础配方 → domainTokens case "radius" clamp 进标尺
-    for (const key of ["radius-xs", "radius-sm", "radius-md", "radius-lg", "radius-xl", "radius-2xl", "radius-pill"]) {
+    // E5.8 Phase 11.15 归一化：六档引用 RADIUS_SCALE_KEYS 单一权威 + pill 补位
+    for (const key of [...RADIUS_SCALE_KEYS, "radius-pill"]) {
       expect(tokens[key]).toBe("32px");
     }
     expect(tokens["radius-full"]).toBeUndefined();

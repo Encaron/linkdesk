@@ -22,6 +22,7 @@ import {
   FONT_TONE_LIGHT_TEXT,
   FONT_TONE_DARK_TEXT,
   FONT_TONE_TEXT_KEYS,
+  RADIUS_SCALE_KEYS,
 } from "../ThemeEngine";
 import {
   applyRemoteConfigChange, clearConfigurationCache, hasConfigurationValue,
@@ -32,7 +33,8 @@ import { MOCK_THEME, RECIPE } from "./testFixtures.mock";
 import type { ThemeRecipe } from "../../../types/theme";
 
 describe("ThemeEngine — 外观覆盖 getAppearanceOverrides（E5.8#50.10）", () => {
-  const RADIUS_KEYS = ["radius-xs", "radius-sm", "radius-md", "radius-lg", "radius-xl", "radius-2xl"];
+  // E5.8 Phase 11.15 归一化：radius 键清单单一权威——不再手抄字面量，直接引用引擎常量
+  const RADIUS_KEYS = RADIUS_SCALE_KEYS;
   // E5.8#80：带 glass.surface.radius=10 的配方——zone 圆角第二通道测试基准（--surface-radius=10px）
   const ZONE_RECIPE: ThemeRecipe = {
     id: "demo-zone-radius",
