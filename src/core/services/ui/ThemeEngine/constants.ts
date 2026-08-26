@@ -56,8 +56,9 @@ export const RADIUS_SCALE_KEYS = [
 ] as const;
 
 /** E5.8#85：圆角系统标尺上限——所有绝对 px 圆角 token 统一 clamp 进 [0, 32]（radius-full 相对几何值排除）。
- *  仅 clampRadiusPx 内部使用（tokens.ts ①c 已改 pill 直写滑杆值，外部零引用）——模块私有不导出。 */
-const RADIUS_MAX_PX = 32;
+ *  clampRadiusPx 内部使用；3c 起导出供外观 schema 对齐（app.surfaceRadius/zoneRadiusScale maximum，
+ *  appearance.ts 同源常量——滑杆上限 = 引擎 clamp 上限，单一权威）。 */
+export const RADIUS_MAX_PX = 32;
 
 /** E5.8#85：clamp 绝对 px 圆角进系统标尺——NaN/负 → 0，>32 → 32（四舍五入整数 px） */
 export function clampRadiusPx(v: number): number {

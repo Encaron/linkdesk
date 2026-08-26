@@ -19,6 +19,9 @@ import {
   syncThemeColorEnum, // E5.8 Phase 11.14：切外观模式同步配色全集 enum（custom = 全配方 / followTheme = 活动配方）
   APPEARANCE_OVERRIDE_KEYS,
   MIX_SOURCE_KEYS,
+  // E5.8 Phase 11.15 3c：圆角滑杆上限/玻璃默认不透明度同源引擎常量——滑杆上限 = 引擎 clamp 上限，单一权威
+  RADIUS_MAX_PX,
+  GLASS_SURFACE_DEFAULT_ALPHA,
 } from "../../core/services/ui/ThemeEngine";
 import { ThemeRegistry } from "../../core/registry/appearance/ThemeRegistry";
 import {
@@ -204,7 +207,7 @@ export function registerAppearanceConfiguration(t: ConfigT): void {
         default: 0,
         resetsToTheme: true,
         minimum: 0,
-        maximum: 32,
+        maximum: RADIUS_MAX_PX, // 3c：滑杆上限 = 引擎 clamp 上限（RADIUS_MAX_PX 单一权威）
         description: t("组件圆角——系统标尺 0 方角 / 32 最圆润；数值 = 标准组件圆角 px"),
         uiHint: "slider",
         unit: "px", // E5.8#85：值标签像素单位（绝对 px，非倍数）
@@ -229,7 +232,7 @@ export function registerAppearanceConfiguration(t: ConfigT): void {
       "app.glassOpacity": {
         type: "number",
         group: t("玻璃"),
-        default: 0.5, // E5.8#86：绝对不透明度默认半透玻璃面（旧默认 1 的 wash 视觉 = 0.5，同值零变化）
+        default: GLASS_SURFACE_DEFAULT_ALPHA, // 3c：同源引擎常量——E5.8#86 绝对不透明度默认半透玻璃面（旧默认 1 的 wash 视觉 = 0.5，同值零变化）
         resetsToTheme: true,
         minimum: 0,
         maximum: 1,
@@ -415,7 +418,7 @@ export function registerAppearanceConfiguration(t: ConfigT): void {
         default: 0,
         resetsToTheme: true,
         minimum: 0,
-        maximum: 32,
+        maximum: RADIUS_MAX_PX, // 3c：滑杆上限 = 引擎 clamp 上限（RADIUS_MAX_PX 单一权威）
         description: t("分区圆角——系统标尺 0 方角 / 32 最圆润；数值 = 分区圆角 px"),
         uiHint: "slider",
         unit: "px", // E5.8#85：值标签像素单位（绝对 px，非倍数）
