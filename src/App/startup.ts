@@ -24,7 +24,7 @@ import {
   deriveAppearanceSeedMap, // E5.8#88：外观覆盖 13 键播种值全集映射（切主题重播种 + 已修改徽标基准共用）
   deriveReseedPlan, // E5.8#88：切主题重播种计划（纯函数——显式修改保留 / 未修改随新主题重基线）
   getThemeBaseTokens, // E5.8#88：主题/混搭基准 token（无外观覆盖——重播种「按新主题反推」的纯基准）
-  getAppliedAccent, // E5.8#88 C4：最近应用强调色（accent 播种走引擎追踪非 DOM 读）
+  getAppliedAccent, // E5.8#88 C4：最近应用强调色（仅 v4 迁移物化用；#98 强调色独立轴后播种不再走它）
   deriveRadiusAbsoluteMigration, // E5.8#85 补课：旧圆角倍数→绝对 px 迁移公式
   deriveGlassOpacityAbsoluteMigration, // E5.8#86：旧 wash 语义→绝对透明度迁移公式
   resolveMergedAppearanceMode, // E5.8#90：旧三枚举→单一外观模式轴迁移公式
@@ -145,15 +145,11 @@ const MIX_RESET_DISABLED_WHEN = MIX_SOURCE_KEYS.map((key) => ({ key, value: "fol
  */
 const seedAppearanceOverrides = (): void => {
   const seedMap = deriveAppearanceSeedMap(getEffectiveTokens());
-  // E5.8#90：强调色并入同一播种批（单次 applier）——取引擎追踪最近实际应用强调色（getAppliedAccent，#88 C4），
-  // 切 custom 强调色视觉零变化（此前 followTheme 显示的主题 accent 物质化为自定义槽值）。
+  // E5.8#98：强调色不入播种批——accentSource 独立轴，切 custom 不物化强调色（跟随主题就保持跟随，
+  // 自定义就已是自定义色）。旧 #90 逻辑「取引擎追踪强调色 getAppliedAccent 物质化为槽值」随强调色解耦
+  // 作废——若仍播种，followTheme 用户的 accentColor 被写进一个永不生效的值（14-档案 §十二）。
   // 注意不能用 getEffectiveAccentColor()——此刻模式已切 custom，读到的已是旧 app.accentColor。
-  const accent = getAppliedAccent();
-  // E5.8#90：批写入含强调色（单次 applier）——key 类型放宽到 string（APPEARANCE_OVERRIDE_KEYS 元组 + accentColor）
   const writes: Array<{ key: string; value: unknown }> = APPEARANCE_OVERRIDE_KEYS.map((key) => ({ key, value: seedMap[key] }));
-  if (accent && getConfigurationValue("app.accentColor") !== accent) {
-    writes.push({ key: "app.accentColor", value: accent });
-  }
   setConfigurationValueBatch(writes, "user");
 };
 
@@ -249,6 +245,21 @@ registerConfigMigration({
       if (applied) setMany({ "app.accentColor": applied });
     }
     deleteMany(["app.mixMode", "app.accentMode"]);
+  },
+});
+
+// E5.8#98：强调色独立轴迁移——app.accentSource（跟随主题配方/自定义）从外观主开关解耦（14-档案 §十二）。
+// 旧语义（#90 后）：appearanceMode=custom → 强调色已物化进 app.accentColor（播种）→ 来源=自定义保留；
+//   followTheme → 强调色跟随主题 → 来源=跟随主题。映射后 accentColor 语义不变（custom 仍读它）。
+// 幂等：accentSource 已写 → 不碰；已迁后重跑零写入。
+registerConfigMigration({
+  version: 5,
+  name: "E5.8#98 accent-source-axis",
+  migrate: async ({ setMany }) => {
+    const accentSource = inspectConfiguration<string>("app.accentSource").userValue;
+    if (accentSource !== undefined) return;
+    const appearanceMode = inspectConfiguration<string>("app.appearanceMode").userValue;
+    setMany({ "app.accentSource": appearanceMode === "custom" ? "custom" : "followTheme" });
   },
 });
 
@@ -396,35 +407,56 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
             optionsFromDomain: "colors",
             onApply: () => debouncedApplyThemeIfReady(),
           },
-          // E5.8#90：强调色并入外观主开关——app.accentMode 删除（三枚举归一单一外观轴，14-档案 §四 归一5）。
-          // 强调色 = 自定义模式下的一槽：写 accentColor = 自定义强调色；清除 = 跟随主题配方强调色
-          // （getEffectiveAccentColor 按 appearanceMode 分流——followTheme 取主题 accent，主题无时自定义兜底）。
+          // E5.8#98：强调色独立轴——app.accentSource（跟随主题配方/自定义）从外观主开关解耦
+          // （14-档案 §十二，用户拍板「把强调色的跟随主题配置加回来」）。
+          // #90 曾并入 appearanceMode 单一轴（app.accentMode 删），现用户可独立于外观主开关只调强调色：
+          //   followTheme → 强调色恒取当前主题配方 accent（appearanceMode=followTheme 也生效）；
+          //   custom → 取 app.accentColor。行序 = 来源开关在上、取色器在下（mockup ③ 强调色区）。
+          // uiHint "accentSource" = 两态分段控件（设置插件）+ 生效强调色 swatch（14-档案 §十二）。
+          // 无 dependsOn——恒显（不随 custom 展开；SettingsView 空桶过滤不再吞强调色节，mockup「始终可见」）。
+          "app.accentSource": {
+            type: "string",
+            group: t("强调色"),
+            default: "followTheme",
+            enum: ["followTheme", "custom"],
+            enumDescriptions: [
+              t("跟随主题配方——强调色取当前主题配色的强调色"),
+              t("自定义——自己指定强调色（图标栏高亮、开关、焦点边框）"),
+            ],
+            description: t("强调色来源——跟随主题配方：取当前主题的强调色；自定义：自己指定"),
+            uiHint: "accentSource",
+            onApply: () => applyAccentColor(getEffectiveAccentColor()),
+          },
+          // E5.8#98：自定义强调色取色器——仅 accentSource=custom 时显示（来源开关为唯一显隐门控）。
+          // 写 accentColor = 自定义强调色；清除 = 系统默认强调色（回主题 = 来源开关切「跟随主题配方」）。
+          // getEffectiveAccentColor 按 accentSource 分流（14-档案 §十二）——accentSource=custom 才读本键。
           "app.accentColor": {
             type: "string",
-            group: t("强调色"), // E5.8#78：组内二级标题——主题组分节 3/6（强调色）
+            group: t("强调色"),
             // E5.8#6.6 hex 豁免：配置项默认值数据（用户可改，非样式硬编码）
             // eslint-disable-next-line linkdesk/no-hardcoded-hex
             default: "#0078d4",
-            description: t("自定义强调色（图标栏高亮、开关、焦点边框）——清除 = 跟随主题配方"),
-            dependsOn: { key: "app.appearanceMode", value: "custom" },
+            description: t("自定义强调色（图标栏高亮、开关、焦点边框）——清除 = 系统默认强调色"),
+            dependsOn: { key: "app.accentSource", value: "custom" },
             renderHint: "color",
             // E3.5 fix: dependsOn 只控制 UI 显隐，不阻止 applyConfiguration 在启动时调用。
-            // appearanceMode="followTheme" 时，app.accentColor 的 onApply 不应覆盖主题的 accent
-            // （getEffectiveAccentColor 按外观模式分流——followTheme 取主题 accent）。
+            // accentSource="followTheme" 时，app.accentColor 的 onApply 不应覆盖主题的 accent
+            // （getEffectiveAccentColor 按 accentSource 分流——followTheme 取主题 accent）。
             onApply: () => applyAccentColor(getEffectiveAccentColor()),
           },
           // E5.8#90：外观主开关——单一外观模式轴（14-档案 §四 归一5）。三枚举合并：吸收 app.mixMode +
-          // app.accentMode → 跟随主题 / 自定义。自定义下每槽独立指定（外观覆盖 13 键播种 + 强调色播种 +
+          // app.accentMode → 跟随主题 / 自定义。自定义下每槽独立指定（外观覆盖 13 键播种 +
           // 域来源 6 键默认 followTheme，未写 = 跟随主题）。group = 整体配方（主开关置顶与主题配方同节）。
           // enumDescriptions 人话（#90 验收「三枚举术语消失」——设置页不再出现 混搭模式/强调色模式 术语）。
+          // E5.8#98：强调色独立轴（accentSource）——本开关不再含强调色语义（强调色区来源开关单独控制）。
           "app.appearanceMode": {
             type: "string",
             group: t("整体配方"), // E5.8#78：组内二级标题——主题组分节 1/6（整体配方，主开关与主题配方同节）
             default: "followTheme",
             enum: ["followTheme", "custom"],
             enumDescriptions: [
-              t("跟随主题——外观/配色/强调色全部由主题配方决定"),
-              t("自定义——逐项指定外观覆盖、域来源与强调色"),
+              t("跟随主题——外观/配色由主题配方决定"),
+              t("自定义——逐项指定外观覆盖与域来源"),
             ],
             description: t("外观模式——跟随主题配方整体外观 / 自定义逐项指定"),
             onApply: (v) => {
@@ -432,10 +464,12 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
                 // 切 custom → 播种 13 覆盖 key + 强调色（同一批量写单次 applier，08 §2 对标 accent 播种）
                 seedAppearanceOverrides();
               } else {
-                // 切回 followTheme → 覆盖丢弃回配方（08 §7.3.5）——清 9 覆盖 + 6 域来源 + 强调色
+                // 切回 followTheme → 覆盖丢弃回配方（08 §7.3.5）——清 9 覆盖 + 6 域来源
                 // 全丢回主题基线（批量复位单次 applier）。域来源无须播种（默认 followTheme，未写 = 跟随）。
+                // E5.8#98：强调色不入本批——accentSource/accentColor 独立轴，外观主开关不复位它
+                // （用户 followTheme 也能只调强调色，14-档案 §十二）。
                 resetConfigurationValueBatch(
-                  [...APPEARANCE_OVERRIDE_KEYS, ...MIX_SOURCE_KEYS, "app.accentColor"],
+                  [...APPEARANCE_OVERRIDE_KEYS, ...MIX_SOURCE_KEYS],
                   "user"
                 );
               }

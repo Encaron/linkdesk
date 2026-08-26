@@ -278,4 +278,56 @@ describe("schemaMigrations — 版本编排（E5.8#85 补课）", () => {
     expect(inspectConfiguration("app.appearanceMode").userValue).toBeUndefined(); // 零变更——不写
     expect(getConfigSchemaVersion()).toBe(2);
   });
+
+  // E5.8#98 v5 迁移 replica——accentSource 独立轴编排链路验证（公式 = appearanceMode 语义映射，ThemeEngine.test 直测 getEffectiveAccentColor）
+  /* jscpd:ignore-start -- 编排 replica 忠实镜像生产迁移公式（同 v4 模式），故意重复 */
+  function registerAccentSourceMigration(): void {
+    registerConfigMigration({
+      version: 2,
+      name: "accent-source-axis",
+      migrate: async ({ setMany }) => {
+        const accentSource = inspectConfiguration<string>("app.accentSource").userValue;
+        if (accentSource !== undefined) return;
+        const appearanceMode = inspectConfiguration<string>("app.appearanceMode").userValue;
+        setMany({ "app.accentSource": appearanceMode === "custom" ? "custom" : "followTheme" });
+      },
+    });
+  }
+  /* jscpd:ignore-end */
+
+  it("E5.8#98 v5 accentSource 迁移——旧 appearanceMode=custom（强调色已物化）→ accentSource=custom 保留自定义", async () => {
+    // 旧 settings.json 用户曾自定义外观：appearanceMode=custom + accentColor 已播种物化
+    await setConfigurationValueBatch([
+      { key: "app.appearanceMode", value: "custom" },
+      { key: "app.accentColor", value: "#123456" },
+    ]);
+    registerAccentSourceMigration();
+
+    expect(await runPendingConfigMigrations()).toBe(true);
+    expect(getConfigurationValue("app.accentSource")).toBe("custom"); // 来源=自定义——继续读 accentColor
+    expect(getConfigurationValue("app.accentColor")).toBe("#123456"); // accentColor 语义不变
+    expect(getConfigSchemaVersion()).toBe(2);
+  });
+
+  it("E5.8#98 v5 accentSource 迁移——appearanceMode 未写/跟随主题 → accentSource=followTheme", async () => {
+    // 旧 settings.json 干净（跟随主题）
+    registerAccentSourceMigration();
+
+    expect(await runPendingConfigMigrations()).toBe(true);
+    expect(getConfigurationValue("app.accentSource")).toBe("followTheme");
+    expect(getConfigSchemaVersion()).toBe(2);
+  });
+
+  it("E5.8#98 v5 accentSource 迁移——已写 accentSource → 重跑幂等零写入（不覆盖用户新值）", async () => {
+    // 用户已在新轴上手调 accentSource=custom（即使外观主开关跟随主题——强调色独立）
+    await setConfigurationValueBatch([
+      { key: "app.accentSource", value: "custom" },
+      { key: "app.appearanceMode", value: "followTheme" },
+    ]);
+    registerAccentSourceMigration();
+
+    expect(await runPendingConfigMigrations()).toBe(true);
+    expect(getConfigurationValue("app.accentSource")).toBe("custom"); // 用户值保留
+    expect(getConfigSchemaVersion()).toBe(2);
+  });
 });

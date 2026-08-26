@@ -80,6 +80,18 @@ function renderControl(
           t={t}
         />
       );
+    case "accentSource": // E5.8#98：强调色来源分段控件（跟随主题配方/自定义）——生效强调色 swatch 实时读数
+      return (
+        <AccentSourceControl
+          value={String(val)}
+          options={(prop.enum ?? []).map((v, i) => ({
+            value: v,
+            label: prop.enumDescriptions?.[i] ? t(prop.enumDescriptions[i]) : t(v),
+          }))}
+          onChange={(v) => onChange(v)}
+          t={t}
+        />
+      );
     case "slider": { // E5.8#50.9：滑杆（#50.10 玻璃五配置消费）——E5.8#65：step 推导（浮点区间 0.01，schema 可显式 step 覆盖）
       const sliderMin = prop.minimum ?? 0;
       const sliderMax = prop.maximum ?? 100;
@@ -290,6 +302,71 @@ const FONT_TONE_PREVIEW: Record<string, { halves: { base: string; ink: string }[
   dark: { halves: [{ base: "#F2F2F2", ink: "#1A1A1A" }] }, // 暗字（浅底用）——浅底深字
 };
 /* eslint-enable linkdesk/no-hardcoded-hex */
+
+/**
+ * E5.8#98：强调色来源分段控件——两态（跟随主题配方/自定义）+ 生效强调色 swatch。
+ * 短标签 = enumDescription 全句首个 "—" 前段（如「跟随主题配方」）；tooltip = 全句解释。
+ * 无线电语义：role radiogroup/radio + aria-checked + 方向键 roving tabindex（←→ 换档，对标 FontToneControl）。
+ * 选中态 = accent 描边 + 微着色（与 FontToneControl 同视觉语言）。
+ * swatch = 当前生效强调色实时读数（getComputedStyle --accent——壳 applyAccentColor 已广播 accent:changed
+ *  → 池侧 --accent 同步；跟随主题 = 主题 accent，自定义 = 自定义色）。重渲染即重读——主题/配置变化即时反映
+ * （SettingRow 的 useConfigurationValueIpc 订阅配置变化 → 本行重渲染 → swatch 刷新，display-only 无状态副作用）。
+ */
+function AccentSourceControl({
+  value,
+  options,
+  onChange,
+  t,
+}: {
+  value: string;
+  options: { value: string; label: string }[];
+  onChange: (v: unknown) => void;
+  t: (key: string) => string;
+}) {
+  const optionRefs = useRef<(HTMLButtonElement | null)[]>([]);
+  const handleKeyDown = (e: React.KeyboardEvent, index: number) => {
+    if (!["ArrowRight", "ArrowLeft"].includes(e.key)) return;
+    e.preventDefault();
+    const dir = e.key === "ArrowRight" ? 1 : -1;
+    const next = (index + dir + options.length) % options.length;
+    optionRefs.current[next]?.focus();
+    onChange(options[next].value);
+  };
+  // 生效强调色——渲染时实时读（display-only swatch，非状态）；--accent 未同步时为空串 → 透明兜底
+  const effectiveAccent = getComputedStyle(document.documentElement).getPropertyValue("--accent").trim();
+  return (
+    <div className="settings-accent-source">
+      <div className="settings-accent-source-options" role="radiogroup" aria-label={t("强调色来源")}>
+        {options.map((opt, i) => {
+          const short = opt.label.split("—")[0];
+          const selected = value === opt.value;
+          return (
+            <button
+              key={opt.value}
+              type="button"
+              ref={(el) => { optionRefs.current[i] = el; }}
+              role="radio"
+              aria-checked={selected}
+              tabIndex={selected ? 0 : -1}
+              className={`settings-accent-source-option${selected ? " selected" : ""}`}
+              title={opt.label}
+              onClick={() => onChange(opt.value)}
+              onKeyDown={(e) => handleKeyDown(e, i)}
+            >
+              {short}
+            </button>
+          );
+        })}
+      </div>
+      <span
+        className="settings-accent-source-swatch"
+        style={{ background: effectiveAccent || undefined }}
+        title={`${t("当前强调色")} ${effectiveAccent}`}
+        aria-hidden="true"
+      />
+    </div>
+  );
+}
 
 /**
  * E5.8#91：文字极性分段控件——三态（跟随主题/亮字/暗字）+ 每态实时预览方块。

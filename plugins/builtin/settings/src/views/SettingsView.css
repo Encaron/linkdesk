@@ -508,6 +508,51 @@
   color: var(--text-primary);
 }
 
+/* ── 强调色来源分段控件（E5.8#98）——两态（跟随主题配方/自定义）+ 生效强调色 swatch ── */
+.settings-accent-source {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.settings-accent-source-options {
+  display: flex;
+  gap: 4px;
+}
+.settings-accent-source-option {
+  padding: 4px 10px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  background: transparent;
+  border: 1px solid var(--separator);
+  border-radius: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: border-color 120ms ease, background 120ms ease, color 120ms ease;
+}
+.settings-accent-source-option:hover {
+  border-color: var(--text-muted);
+  background: var(--hover-overlay);
+}
+.settings-accent-source-option:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: 1px;
+}
+/* 选中档一目了然——accent 描边 + 微着色（与 FontToneControl 同视觉语言） */
+.settings-accent-source-option.selected {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  color: var(--text-primary);
+}
+/* 生效强调色 swatch——实时读数（跟随主题 = 主题 accent，自定义 = 自定义色） */
+.settings-accent-source-swatch {
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  border: 1px solid var(--separator);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.15);
+  flex-shrink: 0;
+}
+
 /* ── ObjectEditor——object/array 配置项键值对编辑器 ── */
 
 .object-editor {
