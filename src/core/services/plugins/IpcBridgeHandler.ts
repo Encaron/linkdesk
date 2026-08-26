@@ -226,6 +226,7 @@ async function handlePluginsCall(method: string, args: unknown[]): Promise<unkno
     // ── E5.5#7：壳→设置页导航 + 外观查询（IpcBridgeHandler/ui 域委派）──
     case "consumeSettingsGroup":
     case "consumeScrollToSetting":
+    case "consumeOpenKeybindings":
     case "getAvailableThemes":
     case "getCurrentTheme":
     case "getAvailableLanguages":
