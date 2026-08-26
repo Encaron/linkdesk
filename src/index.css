@@ -569,7 +569,8 @@ select {
    （负偏移拉回正确区域）。z-index: -2 → 自 surface 自身 background 之上、玻璃层
    （::before z:-1，含 backdrop-filter 模糊）之下——E5.8#89 E4：影像被玻璃模糊盖住
    （"图上的玻璃"、blur 可见），内容仍锐利。opacity 承载 --surface-bg-opacity
-   （纹理/切片透明度）。零值 --surface-bg-image: none = 现状零变化。 */
+   （纹理/切片透明度）；panorama 镜像（--surface-bg-mirror=1）另经 --surface-bg-mirror-opacity
+   门控——blur=0 时透明度 0（前景不上图，E5.8#105）。零值 --surface-bg-image: none = 现状零变化。 */
 .titlebar::after,
 .icon-bar::after,
 .side-panel::after,
@@ -584,7 +585,9 @@ select {
   background-image: var(--surface-bg-image, none);
   background-repeat: var(--surface-bg-repeat, no-repeat);
   background-size: var(--surface-bg-size, auto);
-  opacity: var(--surface-bg-opacity, 1);
+  /* E5.8#105：镜像可见门控——panorama 镜像 blur=0 时透明度 0（前景不上图）；zones/纹理无
+     mirror-opacity token → 回 surface-bg-opacity 恒显 */
+  opacity: var(--surface-bg-mirror-opacity, var(--surface-bg-opacity, 1));
   pointer-events: none;
 }
 .titlebar::after {

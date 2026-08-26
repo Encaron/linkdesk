@@ -193,4 +193,35 @@ describe("ThemeEngine — surface/background 玻璃机制（E5.8#50.6）", () =>
       expect(`surface-${zone}-bg-position` in vars).toBe(false);
     }
   });
+
+  describe("E5.8#105 gateMirrorVisibility — panorama 镜像 blur=0 不可见（前景不上图）", () => {
+    it("panorama 无玻璃（blur 0）→ 镜像不透明度 0（回归修复——不再前景双图）", () => {
+      applyTheme({ ...MOCK_THEME, background: { image: "bg.png", opacity: 0.9 } });
+      const root = document.documentElement;
+      expect(root.style.getPropertyValue("--surface-bg-mirror")).toBe("1");
+      expect(root.style.getPropertyValue("--surface-bg-mirror-opacity")).toBe("0");
+    });
+
+    it("panorama + 玻璃 blur>0 → 镜像 = 背景不透明度（磨砂采样源可见）", () => {
+      applyTheme({ ...MOCK_THEME, surface: { type: "glass", blur: 12 }, background: { image: "bg.png", opacity: 0.9 } });
+      const root = document.documentElement;
+      expect(root.style.getPropertyValue("--surface-bg-mirror")).toBe("1");
+      expect(root.style.getPropertyValue("--surface-bg-mirror-opacity")).toBe("0.9");
+    });
+
+    it("zones 切片（surface-bg-mirror=0）→ 不写 mirror-opacity（恒显不受门控）", () => {
+      applyTheme({ ...MOCK_THEME, background: { mode: "zones", image: "bg.svg", opacity: 0.9 } });
+      const root = document.documentElement;
+      expect(root.style.getPropertyValue("--surface-bg-zones")).toBe("1");
+      expect(root.style.getPropertyValue("--surface-bg-mirror")).toBe("0");
+      expect(root.style.getPropertyValue("--surface-bg-mirror-opacity")).toBe("");
+    });
+
+    it("无背景（无镜像）→ 不写 mirror-opacity", () => {
+      applyTheme(MOCK_THEME);
+      const root = document.documentElement;
+      expect(root.style.getPropertyValue("--surface-bg-mirror")).toBe("0");
+      expect(root.style.getPropertyValue("--surface-bg-mirror-opacity")).toBe("");
+    });
+  });
 });

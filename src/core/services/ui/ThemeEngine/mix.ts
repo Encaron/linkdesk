@@ -8,8 +8,8 @@ import type { ThemeRecipe, ThemeAppearance, ThemeColorway, ThemeDomain } from ".
 import { ThemeRegistry } from "../../../registry/appearance/ThemeRegistry";
 import { getConfigurationValue, setConfigurationValue } from "../../configuration/ConfigurationService";
 import { updateConfigurationEnum } from "../../../registry/ConfigurationRegistry";
-import { MIX_DOMAIN_KEYS, MIX_FOLLOW_THEME, GLASS_TOKEN_KEYS, MIX_DOMAIN_ORDER } from "./constants";
-import { surfaceVariables, backgroundVariables, applyOverrides } from "./tokens";
+import { MIX_DOMAIN_KEYS, MIX_FOLLOW_THEME, GLASS_TOKEN_KEYS, MIX_DOMAIN_ORDER, clampRadiusPx } from "./constants";
+import { surfaceVariables, backgroundVariables, applyOverrides, flattenRadiusTokens } from "./tokens";
 import { recipeDomains } from "./recipe";
 import { getActiveRecipe } from "./state";
 
@@ -122,11 +122,8 @@ function domainTokens(
       }
       return tokens;
     case "radius":
-      if (appearance?.radius) {
-        for (const [key, value] of Object.entries(appearance.radius)) {
-          if (value != null && Number.isFinite(Number(value))) tokens[`radius-${key}`] = `${value}px`;
-        }
-      }
+      // E5.8#104：配方圆角 clamp 进标尺 [0,32]（radius-full 相对几何排除）——共用 flattenRadiusTokens（单配方同规）
+      flattenRadiusTokens(appearance?.radius, tokens);
       return tokens;
     case "glass": {
       const sv = surfaceVariables(appearance?.glass);
@@ -155,7 +152,10 @@ function domainTokens(
       }
       if (appearance?.surface) {
         for (const [key, value] of Object.entries(appearance.surface)) {
-          if (value != null) tokens[`surface-${key}`] = String(value);
+          if (value != null) {
+            // E5.8#104：surface.radius 绝对 px 同 clamp 进标尺（与 surfaceVariables glass.radius 同规）
+            tokens[`surface-${key}`] = key === "radius" ? `${clampRadiusPx(Number(value))}px` : String(value);
+          }
         }
       }
       return tokens;

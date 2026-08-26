@@ -114,4 +114,26 @@ describe("ThemeEngine — Recipe 合并算法 mergeDomains（E5.8#50.16，05 §4
     for (const key of RADIUS_KEYS) expect(scaled[key]).toBeDefined();
     expect(scaled["radius-pill"]).toBeUndefined();
   });
+
+  it("E5.8#104 配方圆角 clamp 进系统标尺 [0,32]——全胶囊主题 999px → 32px（full 相对几何排除）", () => {
+    const pillRecipe: ThemeRecipe = {
+      id: "pill-demo",
+      name: "Pill Demo",
+      type: "dark",
+      appearance: {
+        radius: { xs: 999, sm: 999, md: 999, lg: 999, xl: 999, "2xl": 999, pill: 999, full: 999 },
+        glass: { type: "glass", blur: 14, radius: 999 },
+        surface: { radius: 999 },
+      },
+      colorways: [{ id: "c", name: "C", colors: {} }],
+    };
+    const tokens = mergeDomains(pillRecipe, "c", {});
+    // 六档 + pill 全 clamp 进标尺——根治「全胶囊主题圆角可设极大」（配方→token 路径此前绕过 clampRadiusPx）
+    for (const key of ["radius-xs", "radius-sm", "radius-md", "radius-lg", "radius-xl", "radius-2xl", "radius-pill"]) {
+      expect(tokens[key]).toBe("32px");
+    }
+    expect(tokens["radius-full"]).toBeUndefined(); // 相对几何值壳管理，配方不写不 clamp
+    expect(tokens["surface-radius"]).toBe("32px"); // glass.radius + surface.radius 双写同 clamp
+    expect(tokens["glass-blur"]).toBe("14px"); // 非 radius 键不受 clamp 影响
+  });
 });

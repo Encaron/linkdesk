@@ -18,6 +18,23 @@ import {
 //  erasure 后无运行时依赖，seeds⇄apply 循环仍由 state 破）
 import type { GlassSurfaceSpec } from "./seeds";
 
+/** E5.8#104：配方圆角域 flatten——主题配方 appearance.radius → radius-* token，绝对 px 统一 clamp 进标尺
+ *  [0,32]（radius-full 相对几何 50% 排除，壳管理）。recipe.ts flattenAppearance（单配方）与 mix.ts
+ *  domainTokens case "radius"（混搭）两路径共用——根治「全胶囊主题圆角可设极大」：配方→token 路径曾绕过
+ *  clampRadiusPx（#85 只 clamp 覆盖路径，用户审计#2 恢复 followTheme 999px 原样 = 回归），999px 原样进 CSS。
+ *  纯函数只算不改。 */
+export function flattenRadiusTokens<K extends string>(
+  radius: Partial<Record<K, number>> | undefined,
+  tokens: Record<string, string>
+): void {
+  if (!radius) return;
+  for (const [key, value] of Object.entries(radius)) {
+    if (value != null && Number.isFinite(Number(value)) && key !== "full") {
+      tokens[`radius-${key}`] = `${clampRadiusPx(Number(value))}px`;
+    }
+  }
+}
+
 /** 玻璃 + 悬浮面板 + per-surface 纹理变量——缺省 = 零值 */
 export function surfaceVariables(surface?: ThemeSurface): Record<string, string> {
   const vars: Record<string, string> = { ...SURFACE_ZERO };
@@ -31,7 +48,8 @@ export function surfaceVariables(surface?: ThemeSurface): Record<string, string>
   }
   // 悬浮面板形态（radius/shadow）——与 glass 材质正交：⑬⑭ 分区主题无玻璃也要圆角（接缝露底色）。
   //   inset 不再由主题数据决定——缝=宿主所有（Content vs Space Ownership），applyOverrides 缝法则统一派生
-  if (surface.radius != null) vars["surface-radius"] = `${surface.radius}px`;
+  // E5.8#104：surface.radius 绝对 px 同 clamp 进标尺 [0,32]——主题配方 surface-radius 不可超系统标尺
+  if (surface.radius != null) vars["surface-radius"] = `${clampRadiusPx(surface.radius)}px`;
   // 投影浮起 → 映射六域悬浮 token（JS 不硬编码 shadow 值——#50.14 已 token 化）
   if (surface.shadow === true) vars["surface-shadow"] = "var(--shadow-lift)";
 
@@ -321,4 +339,19 @@ export function synthesizeGlassSurfaces(tokens: Record<string, string>, spec: Gl
     }
   }
   tokens["glass-surface-alpha"] = String(spec.alpha);
+}
+
+/**
+ * E5.8#105：panorama 镜像可见门控——--surface-bg-mirror 标记的全景镜像只在玻璃磨砂激活（blur>0）时可见。
+ * 根因（用户「整窗主视觉的图给前景也上图」）：镜像 ::after 是 ::before 磨砂的采样源，但 blur=0 时
+ * backdrop-filter 恒等 → 未磨砂的镜像原图直显在表面（前景也有图，回归 #102 前「后景有图、前景无图」）。
+ * blur>0 → 镜像透明度 = 主题 surface-bg-opacity（供采样磨砂，表面玻璃显形）；blur=0 → 0（表面回
+ * 主题半透明底，背景图层照片透出 = #102 前行为）。zones 切片（surface-bg-zones=1）/ 纹理（repeat）
+ * 不经 mirror 标记 → 不受影响恒显。CSS 消费：surface ::after opacity 读本 token（缺省回 surface-bg-opacity）。
+ * 调用点：applyTheme/applyRecipe 合成后、commitTokens 前（同 synthesizeGlassSurfaces）。纯函数只算不改。
+ */
+export function gateMirrorVisibility(tokens: Record<string, string>): void {
+  if (tokens["surface-bg-mirror"] !== "1") return;
+  const blur = parseFloat(tokens["glass-blur"] ?? "0") || 0;
+  tokens["surface-bg-mirror-opacity"] = blur > 0 ? (tokens["surface-bg-opacity"] ?? "1") : "0";
 }

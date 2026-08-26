@@ -42,7 +42,7 @@ describe("ThemeEngine — 真实极限壳主题（E5.8#50.27，gallery 端到端
     expect(tokens["status-connected"]).toBe("#00E676");
   });
 
-  it("pill-bubble — 全胶囊 radius 域（七档 999px 绝对圆角 + radius-full 去键继承 :root 50% + 悬浮形态 radius999/shadow + 泡泡糖）", () => {
+  it("pill-bubble — 全胶囊 radius 域（七档 999px 配方声明 + radius-full 去键继承 :root 50% + 悬浮形态 radius999/shadow + 泡泡糖；E5.8#104 配方圆角 clamp 进标尺 [0,32]）", () => {
     const { recipe } = loadRealRecipe(
       "plugins/user/theme-pill/themes/pill-bubble.json",
       "pill-bubble", "全胶囊 Pill Bubble", "light",
@@ -54,9 +54,10 @@ describe("ThemeEngine — 真实极限壳主题（E5.8#50.27，gallery 端到端
     });
     expect(recipe!.appearance?.radius?.full).toBeUndefined();
     const tokens = mergeDomains(recipe!);
-    expect(tokens["radius-md"]).toBe("999px"); // tab 胶囊
-    expect(tokens["radius-pill"]).toBe("999px");
-    expect(tokens["surface-radius"]).toBe("999px"); // zone 胶囊化
+    // E5.8#104：配方数据声明仍 999px（胶囊意图），引擎配方→token 边界 clamp 进标尺 [0,32]
+    expect(tokens["radius-md"]).toBe("32px"); // tab 胶囊 → 32px 上限
+    expect(tokens["radius-pill"]).toBe("32px");
+    expect(tokens["surface-radius"]).toBe("32px"); // zone 胶囊化 → 32px 上限
     expect(tokens["surface-inset"]).toBe("2px"); // 缝法则宿主派生——主题 inset 数据已废弃，radius≠0 → 每格半缝
     expect(tokens["surface-shadow"]).toBe("var(--shadow-lift)"); // 投影浮起
     expect(tokens["glass-specular"]).toBe("0.4"); // 发丝光边（gallery surface.border 意图 = specular 派生）

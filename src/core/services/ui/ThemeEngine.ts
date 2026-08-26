@@ -18,7 +18,7 @@ export {
   SURFACE_COLOR_KEYS, GLASS_SURFACE_DEFAULT_ALPHA,
 } from "./ThemeEngine/constants";
 
-export { getThemeVariables, getEffectiveTokens, getBaseRadius, applyRadiusAbsolute, applyOverrides, synthesizeGlassSurfaces } from "./ThemeEngine/tokens";
+export { getThemeVariables, getEffectiveTokens, getBaseRadius, applyRadiusAbsolute, applyOverrides, synthesizeGlassSurfaces, gateMirrorVisibility } from "./ThemeEngine/tokens";
 
 export { recipeDomains, mergeDomains } from "./ThemeEngine/recipe";
 

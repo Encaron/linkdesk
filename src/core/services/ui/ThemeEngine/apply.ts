@@ -15,7 +15,7 @@ import { resolveColorway, recipeDomains, mergeDomains } from "./recipe";
 import {
   getMixProfile, mergeMixDomains, resolveFontSource, resolveMixDomainRecipe, resolveDomainSource,
 } from "./mix";
-import { getThemeVariables, commitTokens, applyOverrides, synthesizeGlassSurfaces } from "./tokens";
+import { getThemeVariables, commitTokens, applyOverrides, synthesizeGlassSurfaces, gateMirrorVisibility } from "./tokens";
 import { resolveRecipeFonts } from "./fonts";
 import { getAppearanceOverrides, getGlassSurfaceSpec } from "./seeds";
 import { setActiveRecipe, setCurrentTheme } from "./state";
@@ -31,6 +31,8 @@ export function applyTheme(theme: Theme): void {
   // E5.8 Phase 11.16：玻璃系统标尺化——合成放覆盖后、提交前（玻璃激活 → 表面配色键半透明；
   // 未激活 → 零变化。绝不放 mergeDomains 内部——getThemeBaseTokens 纯基线语义）。
   synthesizeGlassSurfaces(variables, getGlassSurfaceSpec());
+  // E5.8#105：panorama 镜像 blur=0 不可见（前景不上图）——同合成时机、提交前
+  gateMirrorVisibility(variables);
   commitTokens(variables, theme.type, { recipeId: theme.name });
   setCurrentTheme(theme);
   // flat apply 清 recipe 态——两路径互斥（#50.18 IPC 接线后 flat 桥退役）
@@ -83,6 +85,8 @@ export function applyRecipe(
   // E5.8 Phase 11.16：玻璃系统标尺化——合成放覆盖（mergeDomains/mergeMixDomains 内已 applyOverrides）后、
   // 提交前（玻璃激活 → 表面配色键半透明；未激活 → 零变化。绝不放 merge 内部——纯基线语义）。
   synthesizeGlassSurfaces(effective, getGlassSurfaceSpec());
+  // E5.8#105：panorama 镜像 blur=0 不可见（前景不上图）——同合成时机、提交前
+  gateMirrorVisibility(effective);
   commitTokens(
     effective,
     recipe.type,

@@ -83,6 +83,30 @@ describe("ThemeEngine — 混搭合并（E5.8#50.26，10 §1/§3 每域各自取
     expect(tokens["glass-blur"]).toBe("14px"); // 玻璃域来源已删 → 基础配方 RECIPE glass.blur=14（E5.8#97）
   });
 
+  it("E5.8#104 mergeMixDomains — 配方圆角 clamp 进标尺（domainTokens case radius 同单配方 flattenAppearance 规）", () => {
+    const pillBase: ThemeRecipe = {
+      id: "demo-pill-base",
+      name: "Demo Pill Base",
+      type: "dark",
+      appearance: {
+        radius: { xs: 999, sm: 999, md: 999, lg: 999, xl: 999, "2xl": 999, pill: 999, full: 999 },
+      },
+      colorways: [{ id: "base", name: "Base", colors: {} }],
+    };
+    const profile: MixProfile = {
+      colors: "base",
+      font: MIX_FOLLOW_THEME,
+      background: MIX_FOLLOW_THEME,
+      surface: MIX_FOLLOW_THEME,
+    };
+    const tokens = mergeMixDomains(pillBase, pillBase.colorways[0], profile, {});
+    // radius/glass 无来源键 → 恒基础配方 → domainTokens case "radius" clamp 进标尺
+    for (const key of ["radius-xs", "radius-sm", "radius-md", "radius-lg", "radius-xl", "radius-2xl", "radius-pill"]) {
+      expect(tokens[key]).toBe("32px");
+    }
+    expect(tokens["radius-full"]).toBeUndefined();
+  });
+
   it("mergeMixDomains — 来源配方缺失 → 回退基础配方（域不空窗）", () => {
     const profile: MixProfile = {
       colors: "mint",
