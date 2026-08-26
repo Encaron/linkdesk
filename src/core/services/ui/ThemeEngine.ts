@@ -22,7 +22,7 @@ export { getThemeVariables, getEffectiveTokens, getBaseRadius, applyRadiusAbsolu
 export { recipeDomains, mergeDomains } from "./ThemeEngine/recipe";
 
 export type { MixProfile } from "./ThemeEngine/mix";
-export { getMixProfile, isMixSourceOwner, mergeMixDomains, syncThemeColorConfig } from "./ThemeEngine/mix";
+export { getMixProfile, isMixSourceOwner, mergeMixDomains, syncThemeColorConfig, syncThemeColorEnum } from "./ThemeEngine/mix";
 
 export {
   isAssetFontPath, ensureFontFace, resolveRecipeFonts, cleanupPluginFontFaces, ensurePluginFontFacesCleanup,

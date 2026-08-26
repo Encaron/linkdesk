@@ -7,6 +7,7 @@
 import type { ThemeRecipe, ThemeAppearance, ThemeColorway, ThemeDomain } from "../../../types/theme";
 import { ThemeRegistry } from "../../../registry/appearance/ThemeRegistry";
 import { getConfigurationValue, setConfigurationValue } from "../../configuration/ConfigurationService";
+import { updateConfigurationEnum } from "../../../registry/ConfigurationRegistry";
 import { MIX_DOMAIN_KEYS, MIX_FOLLOW_THEME, GLASS_TOKEN_KEYS, MIX_DOMAIN_ORDER } from "./constants";
 import { surfaceVariables, backgroundVariables, applyOverrides } from "./tokens";
 import { recipeDomains } from "./recipe";
@@ -224,4 +225,27 @@ export function syncThemeColorConfig(recipe: ThemeRecipe): boolean {
   if (getConfigurationValue<string>("app.themeColor") === effective) return false;
   void setConfigurationValue("app.themeColor", effective, "user").catch(() => {});
   return true;
+}
+
+/**
+ * E5.8 Phase 11.14：app.themeColor 动态 enum 同步——按外观模式决定可选配色集，与 UI 宣传全集对齐。
+ * custom 模式：colors 域可跨主题选配——["followTheme", ...全配方全部配色 id]（DynamicSelect custom
+ *   分支同构）。修复「UI 列出全部配色但 setConfigurationValue 只接受当前配方配色」不一致——
+ *   旧逻辑 applyRecipeForConfig 恒把 enum 同步为活动配方配色，跨主题配色选择被 enum 校验拒绝。
+ * followTheme 模式：仅当前活动配方配色（配方内变体，applyRecipe 双语义同构）。
+ * 空集（无活动配方）→ 跳过更新（保留上次 enum——应用前 themeColor 无可选配色，置空会把下拉变输入框）。
+ * export：appearanceApplier.applyRecipeForConfig（替换原 inline updateConfigurationEnum）+
+ *   config/appearance appearanceMode onApply + contributions.syncAppThemeEnum（生命周期四站点折叠）。
+ */
+export function syncThemeColorEnum(): void {
+  // E5.8#90：外观主开关分派——custom = colors 域来源全集；followTheme = 配方内变体
+  if (getConfigurationValue<string>("app.appearanceMode") === "custom") {
+    const ids = ThemeRegistry.getRecipes().flatMap((r) => r.colorways.map((c) => c.id));
+    updateConfigurationEnum("app.themeColor", [MIX_FOLLOW_THEME, ...ids]);
+    return;
+  }
+  const active = getActiveRecipe();
+  const recipe = active ? ThemeRegistry.getRecipe(active.recipeId) : undefined;
+  if (!recipe) return; // 无活动配方——保留上次 enum
+  updateConfigurationEnum("app.themeColor", recipe.colorways.map((c) => c.id));
 }

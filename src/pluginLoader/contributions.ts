@@ -12,7 +12,7 @@
 
 import type { PluginManifest, ViewPluginEntry, ThemeContribution, IconThemeContribution, IconContribution, LanguageContribution, ContributesViews } from "../core/api/types";
 import { registerViewPlugin } from "./viewRegistry";
-import { registerTheme, getAvailableThemes, ensurePluginFontFacesCleanup, normalizeThemeValue } from "../core/services/ui/ThemeEngine";
+import { registerTheme, getAvailableThemes, ensurePluginFontFacesCleanup, normalizeThemeValue, syncThemeColorEnum } from "../core/services/ui/ThemeEngine";
 import { ThemeRegistry, parseThemeRecipe } from "../core/registry/appearance/ThemeRegistry";
 import { IconRegistry } from "../core/registry/appearance/IconRegistry";
 import { LanguageRegistry } from "../core/registry/languages/LanguageRegistry";
@@ -535,6 +535,10 @@ function syncAppThemeEnum(): void {
   const available = [...recipeIds, ...flatNames];
   if (available.length === 0) return; // 无主题时不更新——保留上次枚举，避免下拉变输入框
   updateConfigurationEnum("app.theme", available, available.includes("dark") ? "dark" : available[0]);
+  // E5.8 Phase 11.14：配色全集 enum 随配方集变化折叠同步——主题插件注册/注销后 app.themeColor
+  // 可选配色对齐当前配方集（custom = 全配方配色 / followTheme = 活动配方配色）。四生命周期站点
+  // （applyPostLoadSteps/activatePlugin/disable/uninstall）经本函数单处折叠覆盖。
+  syncThemeColorEnum();
 }
 
 /** 同步 app.language 枚举——语言注册/注销后调用。不影响 onApply，只更新下拉选项。 */

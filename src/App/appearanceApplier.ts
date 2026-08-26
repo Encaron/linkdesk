@@ -24,6 +24,7 @@ import {
   resolveMergedAppearanceMode, // E5.8#90：旧三枚举→单一外观模式轴迁移公式
   normalizeThemeValue,
   syncThemeColorConfig,
+  syncThemeColorEnum, // E5.8 Phase 11.14：app.themeColor 跨主题配色全集 enum（替换原 inline updateConfigurationEnum）
   APPEARANCE_OVERRIDE_KEYS,
   MIX_FOLLOW_THEME,
   MIX_SOURCE_KEYS, // E5.8#90：混搭来源 key 全集——单一来源 ThemeEngine
@@ -33,7 +34,6 @@ import type { ThemeRecipe } from "../core/types/theme";
 import {
   getConfigurationValue, setConfigurationValueBatch, inspectConfiguration,
 } from "../core/services/configuration/ConfigurationService";
-import { updateConfigurationEnum } from "../core/registry/ConfigurationRegistry";
 import { registerConfigMigration } from "../core/services/configuration/schemaMigrations";
 
 /** E5.8#89 E1：外观 onApply 防抖窗口——与 settings.json watcher 去抖（ConfigurationService 80ms）同哲学 */
@@ -91,7 +91,9 @@ export const applyRecipeForConfig = (recipe: ThemeRecipe): void => {
   const colorwayId = storedColor && storedColor !== MIX_FOLLOW_THEME ? storedColor : undefined;
   applyRecipe(recipe, colorwayId);
   applyAccentColor(getEffectiveAccentColor());
-  updateConfigurationEnum("app.themeColor", recipe.colorways.map((c) => c.id));
+  // E5.8 Phase 11.14：按外观模式同步配色全集 enum——custom = 全配方配色（跨主题可选，修复旧逻辑只接受
+  // 当前配方配色 → setConfigurationValue 拒绝写入；UI 宣传全集与写入白名单对齐），followTheme = 配方内变体
+  syncThemeColorEnum();
   syncThemeColorConfig(recipe);
 };
 

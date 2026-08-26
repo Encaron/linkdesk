@@ -7,10 +7,12 @@ import {
   getMixProfile,
   mergeMixDomains,
   applyRecipe,
+  applyTheme,
   getActiveRecipe,
   getCurrentTheme,
   deriveAppearanceSeeds,
   isMixSourceOwner,
+  syncThemeColorEnum, // E5.8 Phase 11.14：app.themeColor 配色全集 enum 同步
   cleanupPluginFontFaces,
   MIX_FOLLOW_THEME,
 } from "../ThemeEngine";
@@ -19,8 +21,9 @@ import {
   applyRemoteConfigChange, clearConfigurationCache,
 } from "../../configuration/ConfigurationService";
 import { rollback } from "../../../registry/registrationTracker";
+import { registerConfiguration, getMergedSchema, updateConfigurationEnum } from "../../../registry/ConfigurationRegistry";
 import { ThemeRegistry } from "../../../registry/appearance/ThemeRegistry";
-import { RECIPE, RECIPE_ASSET, GLASS_VARS } from "./testFixtures.mock";
+import { RECIPE, RECIPE_ASSET, GLASS_VARS, MOCK_THEME } from "./testFixtures.mock";
 import type { ThemeRecipe } from "../../../types/theme";
 
 describe("ThemeEngine — 混搭合并（E5.8#50.26，10 §1/§3 每域各自取来源）", () => {
@@ -212,5 +215,50 @@ describe("ThemeEngine — 混搭合并（E5.8#50.26，10 §1/§3 每域各自取
     expect(isMixSourceOwner(PLUGIN)).toBe(true);
     applyRemoteConfigChange("app.mixBackground", MIX_FOLLOW_THEME);
     expect(isMixSourceOwner(PLUGIN)).toBe(false);
+  });
+
+  it("E5.8 Phase 11.14 syncThemeColorEnum — custom 模式 = followTheme + 全配方配色（跨主题配色全集——修复「只当前配方可写」不一致）", () => {
+    // 最小配置注册——app.appearanceMode + app.themeColor 进 ConfigurationRegistry（updateConfigurationEnum 消费面）；
+    // 注册归 demo-mix → beforeEach rollback(PLUGIN) 自动回收（无需手动 clearConfigurationRegistrations）。
+    registerConfiguration(PLUGIN, {
+      title: "Demo",
+      properties: {
+        "app.appearanceMode": { type: "string", default: "followTheme", description: "" },
+        "app.themeColor": { type: "string", default: "", description: "" },
+      },
+    });
+    applyRemoteConfigChange("app.appearanceMode", "custom");
+    syncThemeColorEnum();
+    // RECIPE（dew/mint）+ RADIUS_RECIPE（base）——custom 下全集含跨配方配色；
+    // 旧逻辑 enum 只含活动配方配色 → setConfigurationValue 拒绝跨主题写入（用户所见「只有该主题配色可用」）
+    expect(getMergedSchema()["app.themeColor"].enum).toEqual([MIX_FOLLOW_THEME, "dew", "mint", "base"]);
+  });
+
+  it("E5.8 Phase 11.14 syncThemeColorEnum — followTheme 模式 = 当前活动配方配色（配方内变体）", () => {
+    registerConfiguration(PLUGIN, {
+      title: "Demo",
+      properties: {
+        "app.appearanceMode": { type: "string", default: "followTheme", description: "" },
+        "app.themeColor": { type: "string", default: "", description: "" },
+      },
+    });
+    applyRecipe(RECIPE, "dew", {}); // 设活动配方（getActiveRecipe 生效）
+    syncThemeColorEnum();
+    expect(getMergedSchema()["app.themeColor"].enum).toEqual(["dew", "mint"]);
+  });
+
+  it("E5.8 Phase 11.14 syncThemeColorEnum — 无活动配方 → 保留上次 enum（不置空——避免下拉变输入框，与 syncAppThemeEnum 同哲学）", () => {
+    registerConfiguration(PLUGIN, {
+      title: "Demo",
+      properties: {
+        "app.appearanceMode": { type: "string", default: "followTheme", description: "" },
+        "app.themeColor": { type: "string", default: "", description: "" },
+      },
+    });
+    updateConfigurationEnum("app.themeColor", ["dew"]); // 模拟上次 enum
+    applyTheme(MOCK_THEME); // flat 应用清 recipe 态（apply.ts 内 setActiveRecipe(null, null)）——模拟无活动配方
+    expect(getActiveRecipe()).toBeNull();
+    expect(() => syncThemeColorEnum()).not.toThrow();
+    expect(getMergedSchema()["app.themeColor"].enum).toEqual(["dew"]);
   });
 });

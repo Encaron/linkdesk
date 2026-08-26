@@ -16,6 +16,7 @@ import {
   getActiveRecipe,
   normalizeThemeValue,
   getAvailableThemes,
+  syncThemeColorEnum, // E5.8 Phase 11.14：切外观模式同步配色全集 enum（custom = 全配方 / followTheme = 活动配方）
   APPEARANCE_OVERRIDE_KEYS,
   MIX_SOURCE_KEYS,
 } from "../../core/services/ui/ThemeEngine";
@@ -179,6 +180,9 @@ export function registerAppearanceConfiguration(t: ConfigT): void {
               "user"
             );
           }
+          // E5.8 Phase 11.14：切模式后同步配色全集 enum——custom = ["followTheme", ...全配方配色]（跨主题可选）；
+          // followTheme = 活动配方配色。播种/复位批量 API 未碰 enum（只写值），须单独同步
+          syncThemeColorEnum();
           // E5.8#59：播种/复位批量 API 已触发单次 applier（末 key 全量读生效态）——不再补
           // applyThemeIfReady 避免二次广播（原 6 连写 + 尾部补调 = 7 次 theme:changed）
         },
