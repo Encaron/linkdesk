@@ -1,7 +1,7 @@
 /**
  * schemaMigrations 单元测试——版本编排：过滤/升序/幂等/失败跳过/标志提升。
  * E5.8#85 补课（用户 2026-08-25：「归一化没做好」）：存量 settings.json 旧值迁移到新参考系。
- * 迁移公式本身的单测在 ThemeEngine.test.ts（deriveRadiusAbsoluteMigration）——本文件测编排骨架。
+ * 迁移公式本身的单测在 ThemeEngine/migration.test.ts（deriveRadiusAbsoluteMigration）——本文件测编排骨架。
  *
  * 同 ConfigurationService.test：mock StorageService.write + FileService.readFile/exists——
  * setConfigurationValueBatch 持久化不触真实 fs。
@@ -162,7 +162,7 @@ describe("schemaMigrations — 版本编排（E5.8#85 补课）", () => {
     expect(await runPendingConfigMigrations()).toBe(false); // 无待执行
   });
 
-  it("E5.8#86 v3 glass 迁移——存量 wash 语义 ×0.5 → 绝对透明度 + 版本升 3；未写零变更仍标记（编排骨架，公式单测在 ThemeEngine.test）", async () => {
+  it("E5.8#86 v3 glass 迁移——存量 wash 语义 ×0.5 → 绝对透明度 + 版本升 3；未写零变更仍标记（编排骨架，公式单测在 ThemeEngine/migration.test）", async () => {
     // 用户旧 settings.json 显式写过 wash 语义值（v2 时代 schema default 1，用户拖到 1）
     await setConfigurationValueBatch([{ key: "app.glassOpacity", value: 1 }]);
     registerConfigMigration({
@@ -237,7 +237,7 @@ describe("schemaMigrations — 版本编排（E5.8#85 补课）", () => {
     expect(getConfigSchemaVersion()).toBe(1); // 版本不提升——下次启动全量重试
   });
 
-  // E5.8#90 v4 迁移 replica——编排链路验证（公式 = resolveMergedAppearanceMode，ThemeEngine.test 直测）
+  // E5.8#90 v4 迁移 replica——编排链路验证（公式 = resolveMergedAppearanceMode，ThemeEngine/migration.test 直测）
   function registerMergeAppearanceMigration(): void {
     registerConfigMigration({
       version: 2,
@@ -279,7 +279,7 @@ describe("schemaMigrations — 版本编排（E5.8#85 补课）", () => {
     expect(getConfigSchemaVersion()).toBe(2);
   });
 
-  // E5.8#98 v5 迁移 replica——accentSource 独立轴编排链路验证（公式 = appearanceMode 语义映射，ThemeEngine.test 直测 getEffectiveAccentColor）
+  // E5.8#98 v5 迁移 replica——accentSource 独立轴编排链路验证（公式 = appearanceMode 语义映射，ThemeEngine/accent.test 直测 getEffectiveAccentColor）
   /* jscpd:ignore-start -- 编排 replica 忠实镜像生产迁移公式（同 v4 模式），故意重复 */
   function registerAccentSourceMigration(): void {
     registerConfigMigration({

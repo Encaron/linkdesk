@@ -216,7 +216,7 @@ registerConfigMigration({
 });
 
 // E5.8#90：外观模型合并——旧三枚举（appearanceMode/mixMode/accentMode）归一单一外观轴（14-档案 §四 归一5）。
-// 合并规则：resolveMergedAppearanceMode（ThemeEngine 纯函数，公式单测在 ThemeEngine.test）——任一旧枚举
+// 合并规则：resolveMergedAppearanceMode（ThemeEngine/migration 纯函数，公式单测在 ThemeEngine/migration.test）——任一旧枚举
 //   表达自定义意图（appearanceMode=custom / mixMode=mix / accentMode=custom）→ 新轴 custom，否则 followTheme。
 // 写入条件：已写且值不同 → 重写（followTheme 用户若曾开 mix 升 custom）；未写但有自定义意图 → 补写。
 //   已写且值同 → 不写（幂等零变化）。

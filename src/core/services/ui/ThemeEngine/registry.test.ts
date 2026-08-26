@@ -1,0 +1,123 @@
+/**
+ * ThemeEngine/registry 单元测试——register/unregister/getAvailable/loadTheme/findTheme/registerFallbackThemes。
+ * #36l1：核心 Registry/Service 层 vitest 覆盖。
+ */
+
+import { describe, it, expect, beforeEach } from "vitest";
+import {
+  registerTheme,
+  unregisterTheme,
+  getAvailableThemes,
+  getThemesByPlugin,
+  loadTheme,
+  findTheme,
+  registerFallbackThemes,
+  normalizeThemeValue,
+} from "../ThemeEngine";
+import { rollback } from "../../../registry/registrationTracker";
+import { ThemeRegistry } from "../../../registry/appearance/ThemeRegistry";
+import { MOCK_THEME, MOCK_THEME2 } from "./testFixtures.mock";
+
+describe("ThemeEngine — registerTheme / unregisterTheme", () => {
+  beforeEach(() => {
+    // 清理当前主题状态
+    for (const name of getAvailableThemes()) {
+      unregisterTheme(name);
+    }
+  });
+
+  it("registerTheme — 注册后 getAvailableThemes 包含该主题", () => {
+    registerTheme(MOCK_THEME);
+    expect(getAvailableThemes()).toContain("Test Dark");
+  });
+
+  it("registerTheme — 带 pluginId 时 getThemesByPlugin 可查询", () => {
+    registerTheme(MOCK_THEME, "my-plugin");
+    expect(getThemesByPlugin("my-plugin")).toContain("Test Dark");
+  });
+
+  it("registerTheme — 内部存储 pluginId 到 Theme 对象", () => {
+    registerTheme(MOCK_THEME, "my-plugin");
+    const theme = findTheme("Test Dark");
+    expect(theme?.pluginId).toBe("my-plugin");
+  });
+
+  it("registerTheme — 覆盖无 pluginId 的 fallback 主题不告警", () => {
+    // Fallback themes have no pluginId
+    registerTheme({ name: "Dark", type: "dark", colors: {} });
+    // Plugin theme overwrites fallback — should not warn (only logged)
+    registerTheme({ name: "Dark", type: "dark", colors: { bg: "#111" } }, "theme-dark");
+    const theme = findTheme("Dark");
+    expect(theme?.pluginId).toBe("theme-dark");
+  });
+
+  it("unregisterTheme — 注销后 getAvailableThemes 不含该主题", () => {
+    registerTheme(MOCK_THEME);
+    unregisterTheme("Test Dark");
+    expect(getAvailableThemes()).not.toContain("Test Dark");
+  });
+
+  // E5.8#12：unregisterPluginThemes 已删——插件主题经 tracker 逆序回滚（rollback 同语义）
+  it("卸载回滚 — 插件主题经 rollback 清空（getThemesByPlugin 同步摘除）", () => {
+    registerTheme(MOCK_THEME, "my-plugin");
+    registerTheme(MOCK_THEME2, "my-plugin");
+    rollback("my-plugin");
+    expect(getAvailableThemes()).not.toContain("Test Dark");
+    expect(getAvailableThemes()).not.toContain("Test Light");
+    expect(getThemesByPlugin("my-plugin")).toEqual([]);
+  });
+
+  it("卸载回滚 — 不影响其他插件的主题", () => {
+    registerTheme(MOCK_THEME, "plugin-a");
+    registerTheme(MOCK_THEME2, "plugin-b");
+    rollback("plugin-a");
+    expect(getAvailableThemes()).toContain("Test Light");
+    expect(getAvailableThemes()).not.toContain("Test Dark");
+  });
+});
+
+describe("ThemeEngine — loadTheme / findTheme", () => {
+  beforeEach(() => {
+    for (const name of getAvailableThemes()) {
+      unregisterTheme(name);
+    }
+  });
+
+  it("loadTheme — 已注册主题返回 Theme 对象", async () => {
+    registerTheme(MOCK_THEME);
+    const theme = await loadTheme("Test Dark");
+    expect(theme.name).toBe("Test Dark");
+    expect(theme.colors.bg).toBe("#000");
+  });
+
+  it("loadTheme — 未注册主题抛异常", async () => {
+    await expect(loadTheme("Nonexistent")).rejects.toThrow("not found");
+  });
+
+  it("findTheme — 已注册返回 Theme，未注册返回 undefined", () => {
+    registerTheme(MOCK_THEME);
+    expect(findTheme("Test Dark")).toBeDefined();
+    expect(findTheme("Nonexistent")).toBeUndefined();
+  });
+});
+
+describe("ThemeEngine — registerFallbackThemes", () => {
+  it("registerFallbackThemes — 注册 dark/light 壳内置配方且幂等", () => {
+    registerFallbackThemes();
+    expect(ThemeRegistry.getRecipe("dark")).toBeDefined();
+    expect(ThemeRegistry.getRecipe("light")).toBeDefined();
+    // 幂等——重复调用不重复注册
+    const before = ThemeRegistry.getRecipes().length;
+    registerFallbackThemes();
+    expect(ThemeRegistry.getRecipes().length).toBe(before);
+  });
+
+  it("normalizeThemeValue — legacy Dark/Light → 壳内置配方 id，其余恒等", () => {
+    expect(normalizeThemeValue("Dark")).toBe("dark");
+    expect(normalizeThemeValue("Light")).toBe("light");
+    // 配方 id / 未迁移 json 名 / 空值恒等
+    expect(normalizeThemeValue("mint-soda")).toBe("mint-soda");
+    expect(normalizeThemeValue("薄荷苏打 Mint Soda")).toBe("薄荷苏打 Mint Soda");
+    expect(normalizeThemeValue(undefined)).toBeUndefined();
+  });
+});
