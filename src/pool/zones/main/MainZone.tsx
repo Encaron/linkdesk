@@ -37,10 +37,11 @@ import type { PoolTabAction } from "../../../core/types/ipc/tabActions"; // E5.7
 import type { TabBarViewportRect, TabDragPositionPayload, AdsorbHintPayload } from "../../../core/types/ipc/poolActions"; // E5.8#44-B/#44-C：TabBar rect + 拖拽位置上报 + 吸附提示契约
 import type { LinkDeskAPI } from "../../../core/api/linkdesk-api"; // E5.7#98：pool 命名空间契约类型
 import { Z_INDEX } from "../../../constants"; // E5.7#26：浮层层级常量表（替代 9999/99999 裸数字）
-import { computeLayout, buildBranchMaps } from "./MainZone/layout";
+import { computeLayout, buildBranchMaps, type PanelRect } from "./MainZone/layout";
 import { useDividerDrag } from "./MainZone/useDividerDrag";
 import { useTabDrag } from "./MainZone/useTabDrag";
 import GroupPane from "./MainZone/GroupPane";
+import TabContentLayer, { type TabContentItem } from "./MainZone/TabContentLayer";
 import DragOverlays from "./MainZone/DragOverlays";
 
 // ═══════════════════════════════════════════════════════════
@@ -126,7 +127,6 @@ export default function MainZone({ groups, root, creatableViews, activeGroupId }
     return (
       <GroupPane
         group={group}
-        focused={group.id === activeGroupId}
         tabs={getEffectiveTabs(group.id, group)}
         draggingId={draggingId ?? undefined}
         dragInsertIndex={dragInsertGroupId === group.id ? dragInsertIndex : null}
@@ -170,6 +170,27 @@ export default function MainZone({ groups, root, creatableViews, activeGroupId }
     ? computeLayout(root!, 0, 0, 100, 100, branchIndices, localSizesRef.current)
     : null;
 
+  // E5.8#141：tab 视图保活——所有标签页内容平级渲染于 .main-zone 根级（key=tab.id 永远同级），
+  // 跨 group 移动只改 rect/显隐不改 DOM 位置（对标 B22 面板平级推广到 tab 层）。
+  // rect 来源：多面板 = layout.panels；单面板 = 全屏 (0,0,100,100)。
+  const tabLayerItems: TabContentItem[] = [];
+  for (const group of groups) {
+    const pane = layout?.panels.find((p) => p.groupId === group.id);
+    const rect: PanelRect = pane
+      ? { groupId: pane.groupId, x: pane.x, y: pane.y, w: pane.w, h: pane.h }
+      : { groupId: group.id, x: 0, y: 0, w: 100, h: 100 };
+    const groupFocused = group.id === activeGroupId;
+    for (const tab of group.tabs) {
+      tabLayerItems.push({
+        tab,
+        groupId: group.id,
+        rect,
+        visible: tab.id === group.activeTabId,
+        focused: groupFocused && tab.id === group.activeTabId,
+      });
+    }
+  }
+
   return (
     <div
       ref={containerRef}
@@ -184,8 +205,10 @@ export default function MainZone({ groups, root, creatableViews, activeGroupId }
     >
       {useAbsolute && layout ? (
         // ── 绝对定位模式：所有面板平级兄弟（key=groupId 永远同级）──
-        <>
-          {layout.panels.map((p) => {
+        // E5.8#141：数组展开替代 Fragment——两分支 `.main-zone` 子位 0 同为 div[key=groupId]，
+        //   React 跨 1↔2 按 key 复用 pane 子树零 remount（Fragment 会变子位 0 元素类型 → 整树 unmount 丢 Monaco/CM6 状态）
+        [
+          ...layout.panels.map((p) => {
             const group = groupMap.get(p.groupId);
             if (!group) return null;
             return (
@@ -214,8 +237,8 @@ export default function MainZone({ groups, root, creatableViews, activeGroupId }
                 {renderGroupPane(group)}
               </div>
             );
-          })}
-          {layout.handles.map((h) => {
+          }),
+          ...layout.handles.map((h) => {
             const isH = h.direction === "horizontal";
             return (
               <div
@@ -258,8 +281,8 @@ export default function MainZone({ groups, root, creatableViews, activeGroupId }
                 }}
               />
             );
-          })}
-        </>
+          }),
+        ]
       ) : (
         // ── 单面板 fallback：flex 填充 ──
         groups.map((group) => (
@@ -285,6 +308,17 @@ export default function MainZone({ groups, root, creatableViews, activeGroupId }
           </div>
         ))
       )}
+
+      {/* E5.8#141：tab 视图保活层——根级 key=tab.id 平级渲染，跨组移动零 remount（内容区从标签栏下方开始） */}
+      <TabContentLayer
+        items={tabLayerItems}
+        creatableViews={creatableViews}
+        onPaneMouseDown={(groupId) => {
+          if (activeGroupId !== groupId) {
+            tabAction({ action: "focusGroup", groupId });
+          }
+        }}
+      />
 
       {/* 拖拽视觉浮层——drop zone 毛玻璃 + 拖拽预览 portal（MainZone/DragOverlays） */}
       <DragOverlays
