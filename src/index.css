@@ -28,7 +28,6 @@
   --scrollbar-thumb-hover: rgba(255, 255, 255, 0.25);
   /* Phase 3 新增 */
   --tab-hover-bg: #353535;
-  --drop-indicator: rgba(255, 255, 255, 0.06);
   /* E5.6 分屏拖拽 glass drop zone——毛玻璃半区叠加层
      Glassmorphism：backdrop-filter blur + 半透明散射面 + 内发光边界（替代虚线边框） */
   --drop-glass-bg: rgba(255, 255, 255, 0.08);
@@ -114,7 +113,6 @@
   --scrollbar-thumb-hover: rgba(0, 0, 0, 0.25);
   /* Phase 3 新增 */
   --tab-hover-bg: #E8E8E8;
-  --drop-indicator: rgba(0, 0, 0, 0.06);
   --drop-glass-bg: rgba(0, 0, 0, 0.05);
   --drop-glass-border: rgba(0, 0, 0, 0.08);
   --drop-glass-inner: inset 0 0 0 1px rgba(0, 0, 0, 0.04);
