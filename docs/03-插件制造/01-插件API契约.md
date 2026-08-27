@@ -133,7 +133,7 @@ async function list(): Promise<FileEntry[]> {
 - **纯工具白名单**：`@src/core/pipeline/*`（DataConverter / DataDispatch / RingBuffer / ProtocolParser）+ `@src/core/utils/CancellationToken` + `@src/core/registry/commands/MenuRegistry`（仅 MenuId 类型/枚举）
 - **例外记录表**：新例外必须写进 memory `plugin-import-exceptions.md` 再放行（插件独立铁律审计项）
 
-> **`useConfiguration` / `useSendData` / `ViewContainerService` 等壳 hooks/服务禁止 import**（有模块级状态 → 调用方的修改壳进程看不到）——插件读配置走 `window.linkdesk.configuration`，状态同步走 `window.linkdesk.data` / `events`（见 `07-插件间通信.md`）。
+> **`useConfiguration` / `useSendData` / `ViewContainerService` 等壳 hooks/服务禁止 import**（有模块级状态 → 调用方的修改壳进程看不到）——插件读配置走 `window.linkdesk.configuration`，状态同步走 `window.linkdesk.events`（订阅广播）/ `serial.onData` 等数据管道（见 `07-插件间通信.md`）。
 
 ---
 

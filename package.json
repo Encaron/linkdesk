@@ -16,7 +16,7 @@
     "typecheck": "tsc --noEmit && tsc -p electron/tsconfig.json --noEmit",
     "duplication": "jscpd --config .jscpd.json src electron scripts",
     "knip": "knip",
-    "check": "npm run typecheck && npm run contracts:check && node scripts/check-spacing-grid.mjs && node scripts/check-pool-css-imports.mjs && node scripts/check-ipc-audit.mjs && node scripts/check-lsp-deps.mjs && node scripts/audit-i18n.mjs --strict && eslint src/ plugins/ electron/ --max-warnings 0 && npm run duplication && npm run knip && vitest run",
+    "check": "npm run typecheck && npm run contracts:check && node scripts/check-spacing-grid.mjs && node scripts/check-pool-css-imports.mjs && node scripts/check-ipc-audit.mjs && node scripts/check-config-baseline.mjs && node scripts/check-contributes.mjs && node scripts/check-api-contracts.mjs && node scripts/check-lsp-deps.mjs && node scripts/audit-i18n.mjs --strict && eslint src/ plugins/ electron/ --max-warnings 0 && npm run duplication && npm run knip && vitest run",
     "electron:dev": "concurrently -k -n vite,electron \"vite\" \"wait-on http://localhost:1420 && tsc -p electron/tsconfig.json && node scripts/electron-commonjs-fix.cjs && electron .\"",
     "electron:build": "npm run build && tsc -p electron/tsconfig.json && node scripts/electron-commonjs-fix.cjs && electron-builder",
     "build:plugins": "node scripts/build-plugins.mjs",
