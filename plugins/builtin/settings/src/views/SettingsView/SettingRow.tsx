@@ -14,6 +14,7 @@ import { useConfigurationValueIpc, useConfigurationValuesIpc } from "../hooks/us
 import renderControl from "./renderControl";
 import { lk } from "./helpers";
 import { deriveSourceBadge } from "./deriveSourceBadge";
+import { resolveEffectiveBadge, formatEffectiveValue } from "./effectiveBadge";
 import type { ConfigProperty } from "./types";
 
 /** 设置项齿轮菜单槽——壳 MenuRegistry.MENU_SLOTS.SettingItemGear 稳定槽 id（菜单项由壳 coreCommands 注册） */
@@ -36,6 +37,7 @@ function SettingRow({
   onChange,
   userOverrides,
   baselineSeeds,
+  effectiveTokens,
   description,
 }: {
   configKey: string;
@@ -45,6 +47,8 @@ function SettingRow({
   userOverrides: Record<string, unknown>;
   /** E5.8#88：主题/混搭基准种子集（theme.getBaselineSeeds）——「已修改」徽标 value-vs-baseline 判定基准 */
   baselineSeeds: Record<string, unknown>;
+  /** E5.8#155：生效 token 集（theme.getEffectiveTokens）——跟随主题生效值徽标数据源 */
+  effectiveTokens: Record<string, string>;
   /** E5.8#90 D5：动态描述覆盖——外观模式等运行时语义（如 themeColor 配色区/域来源双语境）覆盖 schema 静态描述 */
   description?: string;
 }) {
@@ -70,6 +74,20 @@ function SettingRow({
         mode,
         sourceValue,
       })
+    : null;
+  // E5.8#155：跟随主题生效值徽标——跟随主题态（非用户修改）显示行实际生效值（对标 VS Code「从默认值继承」）。
+  // 与来源徽标同源判定（isFollowingThemeValue = deriveSourceBadge 用户条件取反）：theme/mix 态都算跟随主题
+  // （mix 态实际值来自混搭域，生效 token 即混搭来源生效值）；user 态不显（已显 ✏️ 用户覆盖）。
+  // E5.8#155 归一化：token 映射声明进 schema（prop.effectiveToken，对齐 sourceKey 先例）——本行零映射表，
+  // 声明键 + 生效 token 集解析；展示形态 formatEffectiveValue 按值驱动（色块/首族），token 语义零知识。
+  const effectiveBadgeRaw = resolveEffectiveBadge(
+    prop?.effectiveToken,
+    effectiveTokens,
+    userOverrides[configKey],
+    baselineSeeds[configKey],
+  );
+  const effectiveBadge = effectiveBadgeRaw
+    ? { ...effectiveBadgeRaw, ...formatEffectiveValue(effectiveBadgeRaw.value) }
     : null;
   // E5.8#50.26：actionDisabledAll——动作按钮禁用条件（混搭复位「6 来源全跟随主题 → 置灰」）：
   // 全部 {key,value} 匹配当前配置值时禁用（mockup 01 updateMixReset 同款 `!anyCustom`）
@@ -144,6 +162,22 @@ function SettingRow({
           setColorPickerAnchor({ x: rect.right + 4, y: rect.top });
           setColorPickerOpen(true);
         }, actionDisabled)}
+        {/* E5.8#155：跟随主题生效值徽标——控件容器内、控件右侧（行尾/齿轮左），跟随主题态才现。
+            放容器内与控件同一条垂直中心线（容器 align-items:center）——贴住控件而非浮在行中间；
+            字体行「生效：‹首族名›」/ 玻璃色行「生效：‹rgba› + 色块」——播种改空后补回「实际生效成什么」可见性 */}
+        {effectiveBadge && (
+          <span className="settings-effective-badge" title={t("当前跟随主题实际生效的值")}>
+            <span className="settings-effective-badge-label">{t("生效：")}</span>
+            {effectiveBadge.color && (
+              <span
+                className="settings-effective-swatch"
+                style={{ background: effectiveBadge.color }}
+                aria-hidden="true"
+              />
+            )}
+            <span className="settings-effective-badge-value">{effectiveBadge.label}</span>
+          </span>
+        )}
       </div>
       {/* hover 齿轮 */}
       <button

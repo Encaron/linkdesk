@@ -85,6 +85,8 @@
   "系统字体": "System Font",
   "来源：用户覆盖": "Source: User Override",
   "来源：混搭域": "Source: Mix Domain",
+  "生效：": "Effective: ",
+  "当前跟随主题实际生效的值": "The value actually in effect while following the theme",
   "图片": "Image",
   "界面圆角缩放——1 主题默认，0.5 锐利，2 圆润": "UI corner radius scale — 1 theme default, 0.5 sharp, 2 rounded",
   "激活角色套": "Active role set",

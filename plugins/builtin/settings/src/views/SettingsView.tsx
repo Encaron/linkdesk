@@ -25,6 +25,7 @@ import useSettingsEvents from "./SettingsView/useSettingsEvents";
 import { lk, OWN_FACTORY_ROLE } from "./SettingsView/helpers";
 import { useUserOverridesIpc } from "./hooks/useUserOverridesIpc";
 import { useBaselineSeedsIpc } from "./hooks/useBaselineSeedsIpc";
+import { useEffectiveTokensIpc } from "./hooks/useEffectiveTokensIpc"; // E5.8#155：生效 token 集——跟随主题生效值徽标数据源
 import { useConfigurationValueIpc } from "./hooks/useConfigurationValueIpc"; // E5.8#90：外观主开关订阅——空桶过滤 + D5 动态描述
 import { groupSettingsKeys } from "./SettingsView/grouping";
 import type { GroupInfo, ConfigProperty, SettingsViewProps } from "./SettingsView/types";
@@ -50,6 +51,8 @@ function SettingsView({ isActive: _isActive, tabId }: SettingsViewProps) {
   const userOverrides = useUserOverridesIpc();
   // E5.8#88：基准种子集——「已修改」徽标 value-vs-baseline 判定（播种值/恰与主题同值 = 主题 🎨，非用户 ✏️）
   const baselineSeeds = useBaselineSeedsIpc();
+  // E5.8#155：生效 token 集——跟随主题生效值徽标数据源（父级单拉取，SettingRow 按需读 prop，不重复订阅）
+  const effectiveTokens = useEffectiveTokensIpc();
   // E5.8#90：外观主开关订阅——空桶过滤（followTheme 下 强调色/外观覆盖/域混搭 整组空不渲染空子标题）+ themeColor D5 动态描述
   const appearanceMode = useConfigurationValueIpc<string>("app.appearanceMode");
 
@@ -242,6 +245,7 @@ function SettingsView({ isActive: _isActive, tabId }: SettingsViewProps) {
               onChange={() => setVersion((v) => v + 1)}
               userOverrides={userOverrides}
               baselineSeeds={baselineSeeds}
+              effectiveTokens={effectiveTokens}
               description={
                 key === "app.themeColor" && appearanceMode === "custom"
                   ? t("颜色域来源——指定主题配方的配色变体（选「跟随主题」= 整体配方配色）")

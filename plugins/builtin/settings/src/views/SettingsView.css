@@ -307,6 +307,40 @@
   background: var(--tab-active-bg);
 }
 
+/* E5.8#155：跟随主题生效值徽标——控件容器内、控件右侧（行尾/齿轮左）显示行实际生效值（对标 VS Code「从默认值继承」）。
+   只显跟随主题态（非用户修改）；信息性展示 → muted 中性小胶囊（同 .settings-source-badge 惯例，
+   不抢行主体，区别于 user/mix 的状态点显）。垂直对齐借 .settings-row-control align-items:center——
+   与控件同一条中心线（贴住控件而非浮在行中间），margin-left 与控件留隙。 */
+.settings-effective-badge {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 8px;
+  font-size: 11px;
+  line-height: 1;
+  padding: 3px 6px;
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+  color: var(--text-secondary);
+  background: var(--tab-active-bg);
+}
+.settings-effective-badge-label {
+  color: var(--text-muted);
+}
+.settings-effective-badge-value {
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.settings-effective-swatch {
+  flex-shrink: 0;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  border: 1px solid var(--border);
+}
+
 .settings-row-label {
   display: block;
   font-size: 13px;

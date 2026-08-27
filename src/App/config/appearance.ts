@@ -249,6 +249,7 @@ export function registerAppearanceConfiguration(t: ConfigT): void {
         resetsToTheme: true,
         description: t("玻璃叠加色——空 = 主题自带"),
         renderHint: "color",
+        effectiveToken: "glass-tint", // E5.8#155：跟随主题生效值徽标——本键生效 CSS token（--glass-tint）
         dependsOn: { key: "app.appearanceMode", value: "custom" },
         onApply: () => debouncedApplyThemeIfReady(),
       },
@@ -383,6 +384,7 @@ export function registerAppearanceConfiguration(t: ConfigT): void {
         uiHint: "fontFamily",
         monoOnly: false,
         sourceKey: "app.mixFont", // E5.8#87：来源徽标——字体域 mix 来源 key
+        effectiveToken: "font-ui", // E5.8#155：跟随主题生效值徽标——本键生效 CSS token（--font-ui）
         dependsOn: { key: "app.appearanceMode", value: "custom" },
         onApply: () => debouncedApplyThemeIfReady(),
       },
@@ -399,6 +401,7 @@ export function registerAppearanceConfiguration(t: ConfigT): void {
         uiHint: "fontFamily",
         monoOnly: true,
         sourceKey: "app.mixFont", // E5.8#87：来源徽标——字体域 mix 来源 key
+        effectiveToken: "font-mono", // E5.8#155：跟随主题生效值徽标——本键生效 CSS token（--font-mono）
         dependsOn: { key: "app.appearanceMode", value: "custom" },
         onApply: () => debouncedApplyThemeIfReady(),
       },

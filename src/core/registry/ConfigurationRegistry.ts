@@ -63,6 +63,11 @@ export interface ConfigurationProperty {
   /** E5.8#87：来源徽标——本键所属外观域 mix 来源 key（设置页每槽显示值来源：混搭域生效时 🔀）。
    *  可选字段：第三方不声明 = 不显示来源徽标（零侵入）。 */
   sourceKey?: string;
+  /** E5.8#155：跟随主题生效值徽标——本键跟随主题时行尾显示的生效 token key（设置页读
+   *  theme.getEffectiveTokens 显示实际生效值，对标 VS Code「从默认值继承」）。
+   *  token 映射声明进配置 schema（对齐 sourceKey 先例）——设置插件零映射表，读到声明即显示。
+   *  可选字段：第三方不声明 = 不显示生效值徽标（零侵入）。 */
+  effectiveToken?: string;
   /** E5.8 用户审计 #3：跟随主题语义——本键 user scope 删除后回落主题基线（非 schema 默认）。
    *  声明该字段的键，设置行齿轮菜单出现「跟随主题」项（SettingRow 设 context key settingFollowTheme →
    *  coreCommands workbench.action.followTheme → resetConfigurationValue 删 user scope → 外观键切主题跟变）。
