@@ -89,6 +89,48 @@ describe("ThemeEngine — 玻璃系统标尺化（Phase 11.16）", () => {
     }
   });
 
+  /* ── E5.8#125 zone 切片图合成透明度（glass-surface-bg-opacity）── */
+
+  it("#125 激活 + zone 切片图 → 派生 glass-surface-bg-opacity = 原值 × alpha（glassOpacity=0 全透见全窗背景）", () => {
+    const tokens: Record<string, string> = {
+      "bg-window": "#101014",
+      "surface-bg-image": 'url("zone.png")',
+      "surface-bg-opacity": "1",
+    };
+    synthesizeGlassSurfaces(tokens, { active: true, alpha: 0 });
+    expect(tokens["glass-surface-bg-opacity"]).toBe("0");
+    // alpha 0.4 → 0.4
+    synthesizeGlassSurfaces(tokens, { active: true, alpha: 0.4 });
+    expect(tokens["glass-surface-bg-opacity"]).toBe("0.4");
+  });
+
+  it("#125 激活 + 用户已设 surface-bg-opacity（#115 backgroundOpacity 双写）→ 相乘（原值 × alpha）", () => {
+    const tokens: Record<string, string> = {
+      "surface-bg-image": 'url("zone.png")',
+      "surface-bg-opacity": "0.5",
+    };
+    synthesizeGlassSurfaces(tokens, { active: true, alpha: 0.6 });
+    expect(tokens["glass-surface-bg-opacity"]).toBe("0.3");
+  });
+
+  it("#125 未激活 → 不写派生键（CSS 回退 surface-bg-opacity 原值，零变化）", () => {
+    const tokens: Record<string, string> = { "surface-bg-image": 'url("zone.png")', "surface-bg-opacity": "0.7" };
+    synthesizeGlassSurfaces(tokens, { active: false, alpha: GLASS_SURFACE_DEFAULT_ALPHA });
+    expect(tokens["glass-surface-bg-opacity"]).toBeUndefined();
+    expect(tokens["surface-bg-opacity"]).toBe("0.7"); // 原键不动
+  });
+
+  it("#125 激活但无 zone 切片图（surface-bg-image: none / 未写）→ 不写派生键（panorama 无 ::after 图）", () => {
+    for (const tokens of [
+      { "bg-image": 'url("bg.png")' }, // 无 surface-bg-image（panorama 只挂 background-layer）
+      { "surface-bg-image": "none" },
+      { "surface-bg-image": "" },
+    ] as Array<Record<string, string>>) {
+      synthesizeGlassSurfaces(tokens, { active: true, alpha: 0 });
+      expect(tokens["glass-surface-bg-opacity"]).toBeUndefined();
+    }
+  });
+
   /* ── getGlassSurfaceSpec presence 门控 ── */
 
   it("未配置任何玻璃键 → 未激活", () => {
@@ -149,6 +191,25 @@ describe("ThemeEngine — 玻璃系统标尺化（Phase 11.16）", () => {
     expect(root.style.getPropertyValue("--bg-window-solid")).toBe("#FFFBF5"); // solid 恒写
     expect(root.style.getPropertyValue("--glass-surface-alpha")).toBe("0.5"); // alpha 缺省
     expect(root.style.getPropertyValue("--glass-blur")).toBe("14px"); // 回主题基线（RECIPE glass.blur）
+  });
+
+  it("#125 applyRecipe 集成——zone 图 + glassOpacity=0 → :root glass-surface-bg-opacity 落 0；重置玻璃回主题基线", () => {
+    applyRemoteConfigChange("app.zoneBackgroundImage", "linkdesk-userdata://zone.png");
+    applyRemoteConfigChange("app.glassOpacity", 0);
+    applyRecipe(RECIPE, "dew");
+    const root = document.documentElement;
+    expect(root.style.getPropertyValue("--glass-surface-bg-opacity")).toBe("0");
+    // 清 glassOpacity → 玻璃未激活 → 派生键不写（CSS 回退 surface-bg-opacity 原值 1）
+    clearConfigurationCache();
+    applyRecipe(RECIPE, "dew");
+    expect(root.style.getPropertyValue("--glass-surface-bg-opacity")).toBe("");
+  });
+
+  it("#125 applyRecipe 集成——zone 图 + 玻璃激活默认 alpha 0.5 → 派生键 0.5（用户只拖 blur 也见切片淡出）", () => {
+    applyRemoteConfigChange("app.zoneBackgroundImage", "linkdesk-userdata://zone.png");
+    applyRemoteConfigChange("app.glassBlur", 15);
+    applyRecipe(RECIPE, "dew");
+    expect(document.documentElement.style.getPropertyValue("--glass-surface-bg-opacity")).toBe("0.5");
   });
 
   it("applyTheme 集成——含 bg-window 主题：未激活零变化 → 激活 surface 合成", () => {

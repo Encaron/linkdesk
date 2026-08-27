@@ -85,12 +85,14 @@ export const SURFACE_COLOR_KEYS = [
   "bg-window", "bg-titlebar", "bg-status", "bg-icon-bar", "bg-side-panel", "bg-toolbar", "bg-card", "bg-input",
 ] as const;
 
-/** 表面合成派生键全集——solid 原值键（恒写）+ 合成透明度键（激活时 color-mix 引用源）。
+/** 表面合成派生键全集——solid 原值键（恒写）+ 合成透明度键（激活时 color-mix 引用源）+
+ *  zone 切片图合成透明度（E5.8#125：玻璃激活时 = surface-bg-opacity × alpha，CSS ::after 消费回退原值）。
  *  随 variables 广播给池（池侧 color-mix 串两 var 引用齐）；激活→关闭 stale 清理由 lastCommittedKeys 差集承担。
  *  模块内私有——仅 MANAGED_TOKEN_KEYS 消费（getEffectiveTokens 读合成键）；外部无独立消费方。 */
 const GLASS_SURFACE_KEYS: readonly string[] = [
   ...SURFACE_COLOR_KEYS.map((k) => `${k}-solid`),
   "glass-surface-alpha",
+  "glass-surface-bg-opacity",
 ];
 
 /** 玻璃激活但未显式动不透明度 → 表面默认半透明 0.5（拍板——保证全不透明主题只拖 blur 也立刻见玻璃） */

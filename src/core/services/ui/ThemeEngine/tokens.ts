@@ -340,6 +340,18 @@ export function synthesizeGlassSurfaces(tokens: Record<string, string>, spec: Gl
       tokens[key] = `color-mix(in srgb, var(--${key}-solid) calc(var(--glass-surface-alpha) * 100%), transparent)`;
     }
   }
+  // E5.8#125：zone 切片/纹理图透明度随玻璃 alpha 合成——玻璃=系统表面层，激活时表面整层
+  // （配色 + 图）统一半透明。曾漏切片图：glassOpacity=0 只让 8 表面配色键全透明，zone ::after
+  // 切片图仍 opacity:var(--surface-bg-opacity,1)=1 不透明，盖住 .background-layer（z0 全窗背景图）
+  // → 只露切片「变亮」、全窗背景不透（用户报 #125）。
+  // 派生键 glass-surface-bg-opacity = 原值 × alpha（CSS 消费回退原值）；**不改 surface-bg-opacity 原键**
+  // ——播种反推 app.backgroundOpacity 读它（seeds.ts），改写会污染播种。panorama 无 surface-bg-image
+  // （::after 只在 zones/纹理模式非 none）→ 天然跳过。
+  const bgImage = tokens["surface-bg-image"];
+  if (spec.active && bgImage != null && bgImage.trim() !== "" && bgImage !== "none") {
+    const baseOpacity = parseFloat(tokens["surface-bg-opacity"] ?? "1");
+    tokens["glass-surface-bg-opacity"] = String(Number.isFinite(baseOpacity) ? baseOpacity * spec.alpha : 0);
+  }
   tokens["glass-surface-alpha"] = String(spec.alpha);
 }
 

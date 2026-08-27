@@ -585,7 +585,10 @@ select {
   background-image: var(--surface-bg-image, none);
   background-repeat: var(--surface-bg-repeat, no-repeat);
   background-size: var(--surface-bg-size, auto);
-  opacity: var(--surface-bg-opacity, 1);
+  /* E5.8#125：玻璃激活时优先读合成透明度（--glass-surface-bg-opacity = 原 surface-bg-opacity × 玻璃 alpha，
+     synthesizeGlassSurfaces 派生）——glassOpacity 拉到 0 表面整层透明，zone 切片图同步淡出，
+     全窗背景图（.background-layer z0）透出；未激活/无派生键回退原值（零变化）。 */
+  opacity: var(--glass-surface-bg-opacity, var(--surface-bg-opacity, 1));
   pointer-events: none;
 }
 .titlebar::after {
