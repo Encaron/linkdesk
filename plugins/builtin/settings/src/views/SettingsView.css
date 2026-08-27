@@ -453,9 +453,12 @@
   border: 1px solid var(--separator);
   flex-shrink: 0;
 }
-/* 跟随主题配方——中性分半示意「主题决定强调色」（themeable 变量，非运行值） */
+/* 跟随主题配方——中性分半示意「主题决定强调色」（themeable 变量，非运行值）。
+   🔥 E5.8#116：两半改用 --tone-* 实色标尺 token——玻璃合成（synthesizeGlassSurfaces color-mix）把
+   --bg-window 写成 alpha 0 全透明，左半与背后表面融为一体 = 用户报「完全空心」；对标 fontTone 预览
+   （--tone-surface-deep/light 实色标尺渲染正常），零 hex 铁律。 */
 .settings-segmented-swatch--split {
-  background: linear-gradient(90deg, var(--bg-window) 50%, var(--text-secondary) 50%);
+  background: linear-gradient(90deg, var(--tone-surface-deep) 50%, var(--tone-surface-light) 50%);
 }
 /* 自定义——实时生效强调色：applyAccentColor 恒把 effective accent 写 --accent
    （自定义色 / 清除回主题 / 跟随主题 三态全对），声明式读 CSS 变量，零 IPC 零 DOM 读 */
