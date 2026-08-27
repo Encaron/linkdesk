@@ -215,7 +215,20 @@ export function getAppearanceOverrides(): Record<string, string> {
   if (hasConfigurationValue("app.glassBlur") && blur != null) overrides["glass-blur"] = `${Number(blur)}px`;
 
   const tint = getConfigurationValue<string>("app.glassTint");
-  if (tint != null && String(tint).trim() !== "") overrides["glass-tint"] = String(tint).trim();
+  if (tint != null && String(tint).trim() !== "") {
+    overrides["glass-tint"] = String(tint).trim();
+    // E5.8#117：用户设 tint = 玻璃材质色 → tint 盖片不透明度跟随用户玻璃面不透明度
+    // （glassOpacity 或系统默认 0.5）。根因：配方面无 surface.opacity（如 panorama 无 surface 域）
+    // → --glass-opacity 落默认 1 → 用户 hex tint 被当完全不透明盖片糊满 zone（用户报「糊巨大色块」）。
+    // 只设 tint 才写——只拖 glassOpacity 不写（#112：用户值走合成层，token 归配方面材质）。
+    // 语义：用户改玻璃颜色 = 同时定材质色 + 材质强度（默认半透明玻璃面，不透死背景）。
+    const userOpacity = getConfigurationValue<number>("app.glassOpacity");
+    overrides["glass-opacity"] = String(
+      hasConfigurationValue("app.glassOpacity") && userOpacity != null
+        ? Number(userOpacity)
+        : GLASS_SURFACE_DEFAULT_ALPHA
+    );
+  }
 
   // E5.8#96：玻璃饱和度——app.glassSaturate 显式写过即覆盖 --glass-saturate（1 = neutral 原图 / 0 去饱和 / 2 加倍）。
   // presence 门控（同 glass 两键 #56）：端点 1 = neutral 也是默认，值对比会把「显式拖到 neutral」误判为未覆盖。

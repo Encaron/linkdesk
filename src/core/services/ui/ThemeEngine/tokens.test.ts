@@ -153,16 +153,14 @@ describe("ThemeEngine — surface/background 玻璃机制（E5.8#50.6）", () =>
     expect(root.style.getPropertyValue("--bg-image")).toBe("none");
   });
 
-  it("background 无 mode（默认 panorama）→ 全窗底图 + 表面镜像切片（E5.8#102 玻璃磨砂复权）", () => {
+  it("background 无 mode（默认 panorama）→ 全窗底图（E5.8#117 删镜像——不再镜像切片挂表面）", () => {
     applyTheme({ ...MOCK_THEME, background: { image: "bg.png", opacity: 0.9 } });
     const root = document.documentElement;
     expect(root.style.getPropertyValue("--bg-image")).toBe('url("bg.png")');
-    // 镜像：surface-bg-image 镜像全景 + surface-bg-mirror 独立标记（zones 保持 0——不误报分区背景）
-    expect(root.style.getPropertyValue("--surface-bg-image")).toBe('url("bg.png")');
-    expect(root.style.getPropertyValue("--surface-bg-repeat")).toBe("no-repeat");
-    expect(root.style.getPropertyValue("--surface-bg-mirror")).toBe("1");
+    expect(root.style.getPropertyValue("--bg-opacity")).toBe("0.9");
+    // #117：镜像机制废除——surface-bg-image 不再写（::before backdrop-filter 直接采样 background-layer）
+    expect(root.style.getPropertyValue("--surface-bg-image")).toBe("none");
     expect(root.style.getPropertyValue("--surface-bg-zones")).toBe("0");
-    expect(root.style.getPropertyValue("--surface-bg-opacity")).toBe("0.9");
   });
 
   it("无 surface 无 background → per-surface 背景零值（zones 0 / image none）；切片坐标键不写（池侧自持）", () => {
@@ -196,34 +194,7 @@ describe("ThemeEngine — surface/background 玻璃机制（E5.8#50.6）", () =>
     }
   });
 
-  describe("E5.8#105 gateMirrorVisibility — panorama 镜像 blur=0 不可见（前景不上图）", () => {
-    it("panorama 无玻璃（blur 0）→ 镜像不透明度 0（回归修复——不再前景双图）", () => {
-      applyTheme({ ...MOCK_THEME, background: { image: "bg.png", opacity: 0.9 } });
-      const root = document.documentElement;
-      expect(root.style.getPropertyValue("--surface-bg-mirror")).toBe("1");
-      expect(root.style.getPropertyValue("--surface-bg-mirror-opacity")).toBe("0");
-    });
-
-    it("panorama + 玻璃 blur>0 → 镜像 = 背景不透明度（磨砂采样源可见）", () => {
-      applyTheme({ ...MOCK_THEME, surface: { type: "glass", blur: 12 }, background: { image: "bg.png", opacity: 0.9 } });
-      const root = document.documentElement;
-      expect(root.style.getPropertyValue("--surface-bg-mirror")).toBe("1");
-      expect(root.style.getPropertyValue("--surface-bg-mirror-opacity")).toBe("0.9");
-    });
-
-    it("zones 切片（surface-bg-mirror=0）→ 不写 mirror-opacity（恒显不受门控）", () => {
-      applyTheme({ ...MOCK_THEME, background: { mode: "zones", image: "bg.svg", opacity: 0.9 } });
-      const root = document.documentElement;
-      expect(root.style.getPropertyValue("--surface-bg-zones")).toBe("1");
-      expect(root.style.getPropertyValue("--surface-bg-mirror")).toBe("0");
-      expect(root.style.getPropertyValue("--surface-bg-mirror-opacity")).toBe("");
-    });
-
-    it("无背景（无镜像）→ 不写 mirror-opacity", () => {
-      applyTheme(MOCK_THEME);
-      const root = document.documentElement;
-      expect(root.style.getPropertyValue("--surface-bg-mirror")).toBe("0");
-      expect(root.style.getPropertyValue("--surface-bg-mirror-opacity")).toBe("");
-    });
-  });
+  // E5.8#117：gateMirrorVisibility + --surface-bg-mirror 已整体删除——panorama 镜像机制废除
+  // （cp114 证据：::before backdrop-filter 直接采样兄弟 .background-layer，镜像切片多余）
 });
+

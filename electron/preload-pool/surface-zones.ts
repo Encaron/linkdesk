@@ -1,11 +1,14 @@
 /**
- * E5.8#50.29/50.31：per-surface 切片坐标锚定（⑭ 影像分区 + E5.8#102 全景镜像）。
+ * E5.8#50.29/50.31：per-surface 切片坐标锚定（⑭ 影像分区）。
  *
- * 职责：切片模式（--surface-bg-zones: 1 影像分区，或 --surface-bg-mirror: 1 全景镜像，
- * 壳广播注入）下，量测本窗 zone 表面真实像素 rect → 写 `--surface-bg-size`（= 窗口尺寸）
- * + `--surface-<zone>-bg-position`（负偏移，相邻 zone 拼回连续图）；#50.31 ResizeObserver
- * 监听窗口 resize / 布局变化（侧栏折叠、脱出窗缩放）→ 重算重写。两种切片共用窗口坐标系，
- * 量测逻辑同一。
+ * 职责：切片模式（--surface-bg-zones: 1 影像分区，壳广播注入）下，量测本窗 zone 表面
+ * 真实像素 rect → 写 `--surface-bg-size`（= 窗口尺寸）+ `--surface-<zone>-bg-position`
+ * （负偏移，相邻 zone 拼回连续图）；#50.31 ResizeObserver 监听窗口 resize / 布局变化
+ * （侧栏折叠、脱出窗缩放）→ 重算重写。
+ *
+ * E5.8#117：全景镜像分支已删除——panorama 镜像机制整体废除（cp114 证据：主表面 ::before
+ * backdrop-filter 能直接采样兄弟 .background-layer，镜像切片多余；#117 用户三连投诉根治）。
+ * 本模块只管 zones 影像分区切片量测。
  *
  * E5.8 Phase 11.15（R3 根治）：`--surface-bg-size`/`--surface-<zone>-bg-position` 是本模块
  * 唯一所有（写/清同源）——壳引擎 SURFACE_ZERO 不再包含这两组键，每次重应用不再覆盖量测值；
@@ -44,13 +47,12 @@ function clearZoneMeasurements(root: HTMLElement): void {
   }
 }
 
-/** 切片模式活跃 = zones 模式（--surface-bg-zones: 1，⑭ 影像分区）或全景镜像
-    （--surface-bg-mirror: 1，E5.8#102：panorama 镜像进表面 ::after 供磨砂采样）。
-    任一为 1 都量测写 size+负偏移——两种切片同用窗口坐标系。`--${k}` 注入惯例——
-    SURFACE_ZERO 恒写两标记 "0"，非切片主题自动清标记。 */
+/** 切片模式活跃 = zones 模式（--surface-bg-zones: 1，⑭ 影像分区）。量测写 size+负偏移——
+    切片同用窗口坐标系。`--${k}` 注入惯例——SURFACE_ZERO 恒写标记 "0"，非切片主题自动清。
+    E5.8#117：--surface-bg-mirror 全景镜像已删除（cp114 证据：::before backdrop-filter 直接采样
+    .background-layer，镜像机制整体废除）——本模块只管 zones 影像分区切片。 */
 function isSurfaceSliceMode(root: HTMLElement): boolean {
-  return root.style.getPropertyValue("--surface-bg-zones") === "1"
-    || root.style.getPropertyValue("--surface-bg-mirror") === "1";
+  return root.style.getPropertyValue("--surface-bg-zones") === "1";
 }
 
 /** 重测量试上限——React 挂载晚于 theme:changed 时轮询等 zone 出现（200ms × 15 = 3s 兜底；命中 0 的空窗口封顶） */

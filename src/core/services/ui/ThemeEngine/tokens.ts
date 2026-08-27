@@ -95,16 +95,10 @@ export function backgroundVariables(background?: ThemeBackground): Record<string
       vars["surface-bg-zones"] = "1";
       if (background.opacity != null) vars["surface-bg-opacity"] = String(background.opacity);
     } else {
-      // 全景模式：全窗底图（BackgroundLayer 清晰底，缝露图）+ 镜像切片挂主表面。
-      // E5.8#102 根因：主表面 ::before 的 backdrop-filter 采不到兄弟 .background-layer
-      // （pool-root 合成边界），只能采自身 ::after——镜像让 glassBlur 重新控制主表面磨砂。
-      // 独立标记 --surface-bg-mirror（不借 zones 标记——zones===1 被 deriveAppearanceSeeds
-      // 反推 zoneBackgroundImage，混用会把全景误报成用户分区图）；量测通道与 zones 共用。
+      // 全景模式：全窗底图（BackgroundLayer 清晰底，缝露图）。主表面 ::before backdrop-filter
+      // 直接采样兄弟 .background-layer（cp114 决定性证据：非 #102 误判的合成边界，diff 199%/224.5%）
+      // ——无需镜像切片挂表面，glassBlur 连续平滑、无抖动无变图（#117 用户三连投诉根治）。
       vars["bg-image"] = url;
-      vars["surface-bg-image"] = url;
-      vars["surface-bg-repeat"] = "no-repeat";
-      vars["surface-bg-mirror"] = "1";
-      if (background.opacity != null) vars["surface-bg-opacity"] = String(background.opacity);
     }
   }
   if (background.opacity != null && mode !== "zones") vars["bg-opacity"] = String(background.opacity);
@@ -349,17 +343,3 @@ export function synthesizeGlassSurfaces(tokens: Record<string, string>, spec: Gl
   tokens["glass-surface-alpha"] = String(spec.alpha);
 }
 
-/**
- * E5.8#105：panorama 镜像可见门控——--surface-bg-mirror 标记的全景镜像只在玻璃磨砂激活（blur>0）时可见。
- * 根因（用户「整窗主视觉的图给前景也上图」）：镜像 ::after 是 ::before 磨砂的采样源，但 blur=0 时
- * backdrop-filter 恒等 → 未磨砂的镜像原图直显在表面（前景也有图，回归 #102 前「后景有图、前景无图」）。
- * blur>0 → 镜像透明度 = 主题 surface-bg-opacity（供采样磨砂，表面玻璃显形）；blur=0 → 0（表面回
- * 主题半透明底，背景图层照片透出 = #102 前行为）。zones 切片（surface-bg-zones=1）/ 纹理（repeat）
- * 不经 mirror 标记 → 不受影响恒显。CSS 消费：surface ::after opacity 读本 token（缺省回 surface-bg-opacity）。
- * 调用点：applyTheme/applyRecipe 合成后、commitTokens 前（同 synthesizeGlassSurfaces）。纯函数只算不改。
- */
-export function gateMirrorVisibility(tokens: Record<string, string>): void {
-  if (tokens["surface-bg-mirror"] !== "1") return;
-  const blur = parseFloat(tokens["glass-blur"] ?? "0") || 0;
-  tokens["surface-bg-mirror-opacity"] = blur > 0 ? (tokens["surface-bg-opacity"] ?? "1") : "0";
-}

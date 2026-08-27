@@ -569,8 +569,10 @@ select {
    （负偏移拉回正确区域）。z-index: -2 → 自 surface 自身 background 之上、玻璃层
    （::before z:-1，含 backdrop-filter 模糊）之下——E5.8#89 E4：影像被玻璃模糊盖住
    （"图上的玻璃"、blur 可见），内容仍锐利。opacity 承载 --surface-bg-opacity
-   （纹理/切片透明度）；panorama 镜像（--surface-bg-mirror=1）另经 --surface-bg-mirror-opacity
-   门控——blur=0 时透明度 0（前景不上图，E5.8#105）。零值 --surface-bg-image: none = 现状零变化。 */
+   （纹理/切片透明度）。E5.8#117：filter blur 已删除——镜像机制整体废除（cp114 证据：
+   ::before backdrop-filter 能直接采样兄弟 .background-layer，切片图不再作为磨砂采样源；
+   panorama 全景图只挂 background-layer，zone ::before 直接模糊它）。zones/纹理切片图
+   filter 恒清晰（--surface-bg-image 只在 zones/纹理模式非 none）。零值 --surface-bg-image: none = 现状零变化。 */
 .titlebar::after,
 .icon-bar::after,
 .side-panel::after,
@@ -585,14 +587,7 @@ select {
   background-image: var(--surface-bg-image, none);
   background-repeat: var(--surface-bg-repeat, no-repeat);
   background-size: var(--surface-bg-size, auto);
-  /* E5.8#109：磨砂 blur 直接施加在图像层自身（filter），不再依赖 ::before 的 backdrop-filter 采样
-     ——backdrop-filter 采样不到同一元素的兄弟伪元素（::before 的采样集排除元素自身内容含 ::after，
-     镜像因此从未被模糊：blur32 vs blur0 像素完全相同）。filter 糊自身内容 = 可靠的真磨砂玻璃；
-     glassBlur=0 → blur(0px) 无糊 = 清晰背景。saturate 同挂（修 #5——原来挂 ::before 也采不到镜像）。 */
-  filter: blur(var(--surface-glass-blur, var(--glass-blur, 0px))) saturate(var(--glass-saturate, 1));
-  /* E5.8#105：镜像可见门控——panorama 镜像 blur=0 时透明度 0（前景不上图）；zones/纹理无
-     mirror-opacity token → 回 surface-bg-opacity 恒显 */
-  opacity: var(--surface-bg-mirror-opacity, var(--surface-bg-opacity, 1));
+  opacity: var(--surface-bg-opacity, 1);
   pointer-events: none;
 }
 .titlebar::after {
