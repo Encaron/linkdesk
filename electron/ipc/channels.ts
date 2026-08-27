@@ -202,8 +202,10 @@ export const IPC = {
     closeBySourceId: 'tabs:closeBySourceId',
   },
   // E5.8#50.11：外观资产——选择图片拷贝入库（受控来源——用户任选路径不能 file:// 直读）
+  // E5.8#153：revealStorage——背景图齿轮「打开存储位置」（主进程解析 userData/appearance 并 openPath）
   appearance: {
     importImage: 'appearance:importImage',
+    revealStorage: 'appearance:reveal-storage',
   },
   theme: { changed: 'theme:changed' },
   viewContainer: {

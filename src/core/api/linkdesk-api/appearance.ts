@@ -52,5 +52,8 @@ export interface AppearanceAPI {
     /** 导入图片到 userData/appearance/（重名去重）——返回受控协议 URL（linkdesk-userdata://…，E5.8#64），
      *  供 app.backgroundImage 持久化；沙箱经特权协议加载（plain 绝对路径被拦截） */
     importImage(sourcePath: string): Promise<string>;
+    /** E5.8#153：打开外观存储目录（userData/appearance）——主进程解析路径并 shell.openPath 开资源管理器
+     *  内容（非高亮单文件）；目录缺省也建（打开即见存储位置），openPath 失败抛错 fail-loud。 */
+    revealStorage(): Promise<void>;
   };
 }

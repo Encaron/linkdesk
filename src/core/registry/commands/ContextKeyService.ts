@@ -376,6 +376,14 @@ class ContextKeyServiceImpl {
     return this._state.get(key);
   }
 
+  /** E5.8#153-fix：overrides（ContextMenu context prop）优先于全局 state——原 eq/neq/regex/in
+   *  只读全局，gear 菜单的 per-row settingKey 走全局竞态广播（contextKey:set 未 await），
+   *  且与「overrides 优先于全局 _state」文档意图不符；统一经此读键（裸 key 分支早已如此）。 */
+  private _readKey(key: string, overrides?: Record<string, unknown>): unknown {
+    if (overrides && key in overrides) return overrides[key];
+    return this._readValue(key);
+  }
+
   /** 递归求值 AST——overrides 优先于全局 _state */
   private evaluate(node: ExprNode, overrides?: Record<string, unknown>): boolean {
     switch (node.type) {
@@ -384,8 +392,7 @@ class ContextKeyServiceImpl {
       case "false":
         return false;
       case "key":
-        if (overrides && node.value in overrides) return !!overrides[node.value];
-        return !!this._readValue(node.value);
+        return !!this._readKey(node.value, overrides);
       case "not":
         return !this.evaluate(node.operand, overrides);
       case "and":
@@ -393,15 +400,15 @@ class ContextKeyServiceImpl {
       case "or":
         return this.evaluate(node.left, overrides) || this.evaluate(node.right, overrides);
       case "eq": {
-        const val = this._readValue(node.key);
+        const val = this._readKey(node.key, overrides);
         return String(val ?? "") === node.value;
       }
       case "neq": {
-        const val = this._readValue(node.key);
+        const val = this._readKey(node.key, overrides);
         return String(val ?? "") !== node.value;
       }
       case "regex": {
-        const val = String(this._readValue(node.key) ?? "");
+        const val = String(this._readKey(node.key, overrides) ?? "");
         try {
           return new RegExp(node.pattern).test(val);
         } catch {
@@ -409,7 +416,7 @@ class ContextKeyServiceImpl {
         }
       }
       case "in": {
-        const val = String(this._readValue(node.key) ?? "");
+        const val = String(this._readKey(node.key, overrides) ?? "");
         return node.values.includes(val);
       }
     }

@@ -63,10 +63,12 @@ export function buildTheme() {
   };
 }
 
-/** appearance 命名空间——外观资产（E5.8#50.11：选择图片拷贝入库——受控来源） */
+/** appearance 命名空间——外观资产（E5.8#50.11：选择图片拷贝入库——受控来源；E5.8#153：打开存储位置） */
 export function buildAppearance() {
   return {
     importImage: (sourcePath: string) => ipcRenderer.invoke(IPC.appearance.importImage, sourcePath),
+    // E5.8#153：背景图齿轮「打开存储位置」——主进程解析 userData/appearance 并 openPath（池内无路径知识）
+    revealStorage: () => ipcRenderer.invoke(IPC.appearance.revealStorage),
   };
 }
 

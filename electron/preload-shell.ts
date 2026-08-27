@@ -141,7 +141,7 @@ const events = createEventSystem(ipcRenderer, {
 });
 
 try {
-  // E5.8#20：契约面机械对齐——expose 对象 satisfies ShellExposed（22 命名空间，缺面/形状失配即编译红）
+  // E5.8#20：契约面机械对齐——expose 对象 satisfies ShellExposed（23 命名空间，缺面/形状失配即编译红）
   const shellExposed = {
     /** OS 拖入——从 File 对象取真实路径。Electron 43 contextIsolation 下 File.path 为空，必须走 webUtils。 */
     getFilePath: (file: File) => webUtils.getPathForFile(file),
@@ -377,6 +377,10 @@ try {
       openInTerminal:  (dirPath: string, terminalExe?: string, customCommand?: string) => ipcRenderer.invoke(IPC.shell.openInTerminal, dirPath, terminalExe, customCommand),
       // E5#108c：拖出到桌面
       startDrag: (filePath: string, iconPath?: string) => ipcRenderer.send(IPC.shell.startDrag, filePath, iconPath),
+    },
+    // ── 外观资产（E5.8#153：壳侧命令执行用——齿轮命令 handler 跑在壳进程，池 appearance 面不注入壳）──
+    appearance: {
+      revealStorage: () => ipcRenderer.invoke(IPC.appearance.revealStorage),
     },
     // ── 环境信息（E2c #13b——对标 VS Code ExtensionContext）──
     env: {

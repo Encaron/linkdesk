@@ -292,6 +292,26 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
     menuId: MENU_SLOTS.SettingItemGear,
     menuGroup: "navigation",
   },
+  // E5.8#153：背景图两行齿轮「打开存储位置」——when 门控只现 app.backgroundImage/app.zoneBackgroundImage。
+  // handler 调壳侧 appearance.revealStorage（E5.8#153：主进程解析 userData/appearance 并 openPath 开资源
+  // 管理器内容——池内无路径知识）。失败 fail-loud 只记录不中断（console.error → debug 日志）。
+  {
+    id: "workbench.action.openAppearanceStorage",
+    title: "打开存储位置",
+    category: "首选项",
+    handler: async (...args) => {
+      const ctx = args[0] as { settingKey?: string } | undefined;
+      if (!ctx?.settingKey) return;
+      try {
+        await window.linkdesk?.appearance.revealStorage();
+      } catch (e) {
+        console.error("[openAppearanceStorage] 打开存储位置失败:", e);
+      }
+    },
+    menuId: MENU_SLOTS.SettingItemGear,
+    menuGroup: "navigation",
+    when: "settingKey == 'app.backgroundImage' || settingKey == 'app.zoneBackgroundImage'",
+  },
 
   // ── E5.7#79：窗口缩放——真值源 = 配置 window.zoomLevel（onApply 推主进程 setZoomFactor）。──
   // 命令只管读写配置，缩放应用/持久化全走 ConfigurationApplier——单一路径不重复。
@@ -355,13 +375,14 @@ export function ensureCoreCommands(): void {
   registerQuickPickCommand(); // E5.7#18：quickpick.show 插件命令
 
   // ── 注册核心命令 ──
-  const menuItemsMap = new Map<MenuId, Array<{ command: string; group?: string }>>();
+  const menuItemsMap = new Map<MenuId, Array<{ command: string; group?: string; when?: string }>>();
 
   for (const cmd of CORE_COMMANDS) {
     registerCommand(APP_PLUGIN_ID, {
       id: cmd.id,
       title: cmd.title,
       category: cmd.category,
+      when: cmd.when, // E5.8#153-fix：when 必须落注册——命令面板过滤消费（commandPalette matches(cmd.when)）
       handler: cmd.handler,
     });
 
@@ -372,6 +393,10 @@ export function ensureCoreCommands(): void {
       menuItemsMap.get(cmd.menuId)!.push({
         command: cmd.id,
         group: cmd.menuGroup,
+        // E5.8#153-fix：when 必须落菜单项——壳侧 getItems 过滤读 item.when ?? cmd.when，
+        // 漏传 = whenExpr undefined → matches 恒真 → 齿轮菜单全命令无门控裸奔（实测每个齿轮都见
+        // 重置/跟随主题/打开存储位置）。核心命令 when 门控此前从未真正生效（git log 无 when: cmd.when）。
+        when: cmd.when,
       });
     }
   }

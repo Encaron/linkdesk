@@ -6,7 +6,7 @@
  * 依赖方向：appearance-handlers → electron/ipc（channels）+ services/file-service + 路径工具；无反向。
  */
 
-import { ipcMain } from 'electron';
+import { ipcMain, shell } from 'electron';
 import { IPC } from '../channels.js';
 import { fileService } from '../../services/file-service.js';
 import { resolveAssetDestination } from '../../services/asset-dedup.js'; // E5.8#152：内容去重目标解析（资产入库通用规则）
@@ -42,5 +42,17 @@ export function registerAppearanceHandlers(): void {
     // E5.8#64：返回受控协议 URL（linkdesk-userdata://appearance/<编码名>）而非 plain 绝对路径——
     // sandboxed pool 经特权协议加载（file:// 绝对路径被拦截——实机 bug 13）。值即协议 URL，可直接持久化。
     return getUserDataImageUrl(destName);
+  });
+
+  // E5.8#153：背景图齿轮「打开存储位置」——主进程解析 userData/appearance（池内零路径知识）
+  // 并 shell.openPath 开目录内容（非 showItemInFolder 高亮单文件）。目录缺省也建（打开即见存储位置——
+  // 空目录同样合法，绝不崩）；openPath 失败 fail-loud 抛错（invoke 侧 catch，console.error 落 debug 日志）。
+  ipcMain.handle(IPC.appearance.revealStorage, async () => {
+    const dir = fileService.join(fileService.appDataDir(), 'appearance');
+    await fileService.createDir(dir);
+    const err = await shell.openPath(dir);
+    if (err) {
+      throw new Error(`打开存储位置失败: ${err}`);
+    }
   });
 }

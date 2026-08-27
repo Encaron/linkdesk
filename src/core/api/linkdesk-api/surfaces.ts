@@ -38,10 +38,12 @@ export type PoolExposed = Pick<LinkDeskAPI,
   pool: Pick<LinkDeskAPI["pool"], "onLayout" | "ready" | "sidebarAction" | "tabAction" | "tabBarRects" | "dragPosition" | "onAdsorbHint" | "adsorbIndex" | "registerBeforeClose" | "unregisterBeforeClose" | "beforeClose">;
 };
 
-/** 壳 preload 必暴露面（22；bridge 真壳独有）。commands/tabs/pool 三命名空间方法级子集：
+/** 壳 preload 必暴露面（23；bridge 真壳独有）。commands/tabs/pool/appearance 命名空间方法级子集：
  *  commands 壳 = 注册面（execute/executeCommand/unregisterCommands/getCommands 为池侧执行面，壳不实现）
  *  tabs 壳缺 onDidChangeActiveTab（池侧订阅面——壳是标签权威自身，无订阅需求）
- *  pool 壳 = 推送面（onLayout/ready/sidebarAction/tabAction 为池侧发送面，壳不实现） */
+ *  pool 壳 = 推送面（onLayout/ready/sidebarAction/tabAction 为池侧发送面，壳不实现）
+ *  appearance 壳 = 仅 revealStorage（E5.8#153：齿轮命令 handler 在壳进程执行，需壳侧触发主进程 openPath；
+ *    importImage 池独有——选图拷贝入库只在池设置 UI 发生） */
 export type ShellExposed = Pick<LinkDeskAPI,
   | "getFilePath" | "serial" | "filesystem" | "path" | "plugins"
   | "fileAssociation" | "pluginManager" | "dialog" | "pluginState" | "menu"
@@ -50,4 +52,5 @@ export type ShellExposed = Pick<LinkDeskAPI,
   commands: Pick<LinkDeskAPI["commands"], "registerCommand" | "_executeShellLocal">;
   tabs: Omit<LinkDeskAPI["tabs"], "onDidChangeActiveTab">;
   pool: Omit<LinkDeskAPI["pool"], "onLayout" | "ready" | "sidebarAction" | "tabAction" | "tabBarRects" | "dragPosition" | "onAdsorbHint" | "adsorbIndex" | "registerBeforeClose" | "unregisterBeforeClose" | "beforeClose">;
+  appearance: Pick<LinkDeskAPI["appearance"], "revealStorage">;
 };
