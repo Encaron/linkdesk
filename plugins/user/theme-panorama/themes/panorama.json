@@ -35,7 +35,7 @@
         "tab-hover-bg": "rgba(255, 255, 255, 0.10)",
         "dirty-dot": "#FFB85C",
         "toggle-knob": "#FFFFFF",
-        "toggle-knob-on": "#FFB85C",
+        "toggle-knob-on": "#10161F",
         "status-connected": "#4EC9B0",
         "status-disconnected": "rgba(255, 255, 255, 0.30)",
         "icon-active": "#FFFFFF",

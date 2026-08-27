@@ -45,7 +45,7 @@
         "icon-active": "#D6336C",
         "icon-inactive": "#B4A6AD",
         "toggle-knob": "#FFFFFF",
-        "toggle-knob-on": "#D6336C",
+        "toggle-knob-on": "#FFFFFF",
         "status-connected": "#10B981",
         "status-disconnected": "#E8D9E0",
         "scrollbar-thumb": "rgba(214, 51, 108, 0.20)",

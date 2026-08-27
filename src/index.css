@@ -210,10 +210,11 @@ html, body, #root, #pool-root {
 }
 .toggle.on::after {
   transform: translateX(16px);
-  /* toggle-knob-on: ON 态旋钮色，fallback toggle-knob。
-     亮色主题 accent 深 + border 浅 → 同一 knob 色无法同时在两态可见。
-     主题作者可设 toggle-knob: #333 (OFF 态可见) + toggle-knob-on: #FFF (ON 态可见)。 */
-  background: var(--toggle-knob-on, var(--toggle-knob));
+  /* E5.8#144：ON 态旋钮色 fallback 语义 = text-on-accent（accent 上的可读色），不再回落 OFF 态
+     toggle-knob（那是为 border 轨道可见设计的，accent 轨道下可能同色糊——4 主题实测）。
+     链路：toggle-knob-on（主题显式）→ text-on-accent（accent 可读色）→ #FFFFFF。
+     防回潮：scripts/check-theme-audit.mjs 校验 toggle-knob-on ≠ accent。 */
+  background: var(--toggle-knob-on, var(--text-on-accent, #FFFFFF));
 }
 .toggle.disabled { opacity: 0.4; cursor: not-allowed; }
 
