@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>zone 分割线——定稿方向（三点常态 · hover 成线 · 线端镜像 zone 圆角）</title>
+<style>
+  /* ════════════════════════════════════════════════════════════════════
+     zone 分割线（resize handle）——定稿方向
+     用户 2026-08-27 拍板方向：
+       ① 砍「不越弧」——圆弧可设，实时量测=算法债，不值
+       ② 常态 = 三个点（居中，不触角）；hover = 一条线（越弧接受）
+       ③ 线端圆角 = zone 圆角镜像——border-radius: var(--surface-radius)
+          zone 直角（--surface-radius=0px）→ 线端直角
+          zone 圆角（scale≠0 → 绝对 px）→ 线端圆角（2px 线自动成胶囊）
+          零新配置键、零实时监视：线端与 zone 同键（--surface-radius）
+       ④ 这是 zone 分界线的定义（结构元素），不是可配组件——
+          点/线写死固定值，只有线端圆角镜像 zone 圆角（读同一真相源）
+     本页 = 4 个场景（直角·竖 / 圆角·竖 / 直角·横 / 圆角·横），
+     常态看三点，把鼠标移到缝上 hover 看成线。
+     ════════════════════════════════════════════════════════════════════ */
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #0B0B0E; color: #E8E8EC;
+    font-family: "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+    font-size: 13px; padding: 40px 32px 72px; max-width: 1280px; margin: 0 auto;
+  }
+  h1 { font-size: 21px; font-weight: 700; letter-spacing: -0.01em; }
+  h1 small { display: block; font-size: 12.5px; font-weight: 400; color: #9A9AA3; margin-top: 9px; line-height: 1.75; max-width: 1160px; }
+  h1 code { color: #7C9CF6; font-family: "JetBrains Mono", Consolas, monospace; font-size: 11.5px; }
+
+  .legend {
+    margin: 22px 0 0; padding: 12px 16px; border-radius: 10px;
+    background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07);
+    color: #A6A6AF; font-size: 12px; line-height: 1.9;
+  }
+  .legend b { color: #D6D6DE; font-weight: 600; }
+  .legend .hint { color: #7C9CF6; font-family: "JetBrains Mono", Consolas, monospace; font-size: 11px; }
+
+  h2 { font-size: 14px; font-weight: 600; margin-top: 34px; display: flex; align-items: center; gap: 10px; }
+  h2::after { content: ''; flex: 1; height: 1px; background: rgba(255,255,255,0.08); }
+  h2 .tag { font-size: 10.5px; color: #7C9CF6; font-family: "JetBrains Mono", Consolas, monospace; font-weight: 400; }
+
+  /* ── 现状参考 ── */
+  .current { display: flex; gap: 18px; margin-top: 16px; flex-wrap: wrap; }
+  .current .cell {
+    flex: none; width: 300px; padding: 10px; border-radius: 12px;
+    background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07);
+  }
+  .current .cell .cap { font-size: 11px; color: #8A8A93; margin-bottom: 8px; display: flex; justify-content: space-between; }
+  .current .cell .cap b { color: #C8C8CF; }
+  .current .badge { color: #F48771; font-family: "JetBrains Mono", Consolas, monospace; font-size: 10.5px; }
+
+  .cur-handle {
+    position: absolute; top: 0; bottom: 0; width: 4px;
+    left: calc(50% - 2px); background: rgba(255,255,255,0.10); z-index: 3;
+  }
+  .over {
+    position: absolute; left: calc(50% - 14px); top: 0; bottom: 0; width: 28px;
+    border-left: 1px dashed #F48771; border-right: 1px dashed #F48771; z-index: 4; pointer-events: none;
+  }
+  .over::before, .over::after {
+    content: '越弧'; position: absolute; left: 50%; transform: translateX(-50%);
+    color: #F48771; font-size: 8.5px; white-space: nowrap;
+  }
+  .over::before { top: 1px; } .over::after { bottom: 1px; }
+
+  /* ═══ 定稿设计网格 ═══ */
+  .grid { margin-top: 18px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px; }
+  @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+
+  .bid {
+    border-radius: 16px; padding: 10px;
+    background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08);
+  }
+  .bid-inner { border-radius: 11px; overflow: hidden; background: #101014; }
+  .bid-head {
+    padding: 13px 16px 11px; display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+  .bid-head b { font-size: 14px; font-weight: 600; }
+  .bid-head .sig { font-size: 11px; color: #9A9AA3; margin-left: auto; text-align: right; }
+  .bid-body {
+    padding: 20px 16px 16px; display: flex; gap: 14px; justify-content: center; align-items: flex-start; flex-wrap: wrap;
+    background: radial-gradient(600px 240px at 50% 0%, rgba(255,255,255,0.02), transparent 70%), #0C0C10;
+  }
+  .bid-note {
+    padding: 11px 16px; border-top: 1px solid rgba(255,255,255,0.06);
+    color: #8A8A93; font-size: 12px; line-height: 1.85;
+  }
+  .bid-note b { color: #C8C8CF; }
+  .bid-note .hl { color: #7C9CF6; }
+
+  /* ═══ 场景 ═══ */
+  .demo { flex: none; }
+  .demo .cap { font-size: 11px; color: #8A8A93; margin-bottom: 7px; text-align: center; }
+  .demo .cap b { color: #C8C8CF; }
+
+  /* 竖缝窗口。--sr 模拟 --surface-radius：直角 0px / 圆角 10px（唯一真相源） */
+  .win {
+    position: relative; width: 252px; height: 168px;
+    background: #141419; border-radius: 8px; overflow: hidden;
+    border: 1px solid rgba(255,255,255,0.06);
+    font-family: "JetBrains Mono", Consolas, monospace; font-size: 9.5px;
+    --sr: 0px;
+  }
+  .win.rd { --sr: 10px; }
+  .z { position: absolute; top: 0; bottom: 0; background: #232328; overflow: hidden; }
+  .z.a { left: 0; }
+  .z.b { right: 0; }
+  .win.sq .z.a { width: 118px; }
+  .win.sq .z.b { width: 134px; }
+  .win.rd .z.a { left: 2px; top: 2px; bottom: 2px; width: 112px; border-radius: 10px; box-shadow: 0 3px 9px rgba(0,0,0,0.35); }
+  .win.rd .z.b { right: 2px; top: 2px; bottom: 2px; width: 128px; border-radius: 10px; box-shadow: 0 3px 9px rgba(0,0,0,0.35); }
+
+  /* 横缝窗口 */
+  .winh {
+    position: relative; width: 252px; height: 168px;
+    background: #141419; border-radius: 8px; overflow: hidden;
+    border: 1px solid rgba(255,255,255,0.06);
+    font-family: "JetBrains Mono", Consolas, monospace; font-size: 9.5px;
+    --sr: 0px;
+  }
+  .winh.rd { --sr: 10px; }
+  .winh .z.a { left: 0; right: 0; top: 0; height: 78px; }
+  .winh .z.b { left: 0; right: 0; bottom: 0; height: 90px; }
+  .winh.rd .z.a { left: 2px; right: 2px; top: 2px; height: 74px; border-radius: 10px; box-shadow: 0 3px 9px rgba(0,0,0,0.35); }
+  .winh.rd .z.b { left: 2px; right: 2px; bottom: 2px; height: 86px; border-radius: 10px; box-shadow: 0 3px 9px rgba(0,0,0,0.35); }
+
+  .z .tree { padding: 8px 9px; color: #6E7280; line-height: 2; }
+  .z .tree i { display: inline-block; width: 7px; height: 7px; margin-right: 6px; border: 1px solid #454A56; border-radius: 2px; vertical-align: 1px; }
+  .z .tree i.folder { background: #454A56; border: none; border-radius: 2px; }
+  .z .code { padding: 10px; color: #5A5F6B; line-height: 2.05; }
+  .z .code .n { color: #3D414A; }
+  .z.a .code { padding-top: 26px; }
+  .z.b .code { padding-top: 10px; }
+
+  /* ═══ 定稿手柄 ═══
+     命中区 .ha（14px 宽/高透明热区，cursor 拖拽）
+       竖缝 .ha    → 居中，三竖点；hover 成整条竖线
+       横缝 .ha.h  → 居中，三横点；hover 成整条横线
+     线端：border-radius: var(--sr) = 镜像 zone 圆角——
+       0px → 直角端；10px → 圆角端（2px 线端帽自动成胶囊）
+     越弧：线全高/全宽，圆角时越出圆弧——已接受（hover 瞬时） */
+  .ha {
+    position: absolute; top: 0; bottom: 0; width: 14px;
+    left: calc(50% - 7px); z-index: 5; cursor: col-resize;
+  }
+  .ha.h {
+    left: 0; right: 0; width: auto; height: 14px;
+    top: 50%; transform: translateY(-50%); cursor: row-resize;
+  }
+
+  /* 常态三点（居中——离四角圆弧最远，直角/圆角都自然） */
+  .dots {
+    position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+    display: flex; flex-direction: column; gap: 3px; align-items: center;
+    transition: opacity 0.16s ease; pointer-events: none;
+  }
+  .dots i {
+    width: 2px; height: 2px; border-radius: 50%;
+    background: rgba(255,255,255,0.30);
+  }
+  .ha.h .dots { flex-direction: row; }
+
+  /* hover 成线（整条 + 线端镜像 zone 圆角；越弧接受） */
+  .line {
+    position: absolute; left: 50%; transform: translateX(-50%);
+    top: 0; bottom: 0; width: 2px;
+    background: var(--ac, #0078D4);
+    border-radius: var(--sr, 0px);          /* 镜像 --surface-radius：0 直角 / >0 胶囊 */
+    box-shadow: 0 0 6px color-mix(in srgb, var(--ac, #0078D4) 50%, transparent);
+    opacity: 0; transition: opacity 0.2s ease; pointer-events: none;
+  }
+  .ha.h .line { left: 0; right: 0; top: 50%; transform: translateY(-50%); height: 2px; width: auto; }
+
+  .ha:hover .line { opacity: 1; }
+  .ha:hover .dots { opacity: 0; }
+
+  .hover-tip { margin-top: 9px; font-size: 10.5px; color: #6E7280; text-align: center; font-family: "JetBrains Mono", Consolas, monospace; }
+</style>
+</head>
+<body>
+
+<h1>zone 分割线——定稿方向 <code>· 三点常态 · hover 成线 · 线端镜像 zone 圆角</code></h1>
+<small>
+  你的拍板：① 砍「不越弧」（圆弧可设 → 实时量测是算法债，不值）② 常态三个点、hover 一条线（越弧接受）③ 线端圆角镜像 zone 圆角（读 --surface-radius，零新键零监视）④ 这是 zone 分界线的定义，不是组件——点/线写死，只有线端跟 zone 同键。
+  下：4 个场景，常态看三点，把鼠标移到缝上 hover 看成线。
+</small>
+
+<div class="legend">
+  <span><b>常态</b>：三点居中（缝正中心，离四角圆弧最远）</span>
+  <span><b>hover</b>：整条线，线端圆角 = zone 圆角镜像（<b>border-radius: var(--surface-radius)</b>）</span>
+  <span><b>越弧</b>：线全高，圆角时顶/底越出圆弧——已接受（hover 瞬时）</span>
+  <span class="hint">· 悬停区 = 缝上 14px 透明热区</span>
+</div>
+
+<h2>现状 <span class="tag">reference —— 问题根因</span></h2>
+<div class="current">
+  <div class="cell">
+    <div class="cap"><b>直角贴死</b><span>inset 0</span></div>
+    <div class="win sq">
+      <div class="z a"><div class="tree"><i class="folder"></i>src<br><i class="file"></i>App.tsx</div></div>
+      <div class="cur-handle"></div>
+      <div class="z b"><div class="code"><span class="n">1</span> const x = 1;</div></div>
+    </div>
+    <div class="hover-tip">直角：4px 整条 bar 常显，尚可</div>
+  </div>
+  <div class="cell">
+    <div class="cap"><b>圆角留缝</b><span class="badge">⚠ 越弧</span></div>
+    <div class="win rd">
+      <div class="z a"><div class="tree"><i class="folder"></i>src<br><i class="file"></i>App.tsx</div></div>
+      <div class="cur-handle"></div>
+      <div class="over"></div>
+      <div class="z b"><div class="code"><span class="n">1</span> const x = 1;</div></div>
+    </div>
+    <div class="hover-tip">圆角：4px 整条 bar 顶/底越出圆弧 —— 常态就扎眼</div>
+  </div>
+</div>
+
+<h2>定稿方向 <span class="tag">竖缝 + 横缝 · 直角 + 圆角</span></h2>
+<div class="grid">
+
+  <!-- 竖缝 · 直角 -->
+  <section class="bid">
+    <div class="bid-inner">
+      <div class="bid-head">
+        <b>竖缝 · 直角贴死</b>
+        <span class="sig">线端直角（--surface-radius = 0px）</span>
+      </div>
+      <div class="bid-body">
+        <div class="demo">
+          <div class="win sq">
+            <div class="z a"><div class="tree"><i class="folder"></i>src<br><i class="file"></i>App.tsx</div></div>
+            <div class="ha"><div class="dots"><i></i><i></i><i></i></div><div class="line"></div></div>
+            <div class="z b"><div class="code"><span class="n">1</span> const x = 1;</div></div>
+          </div>
+        </div>
+      </div>
+      <div class="bid-note">
+        三点居中贴缝；hover 满高竖线。<b>线端直角</b>（与 zone 直角同源）。常态零噪音。
+      </div>
+    </div>
+  </section>
+
+  <!-- 竖缝 · 圆角 -->
+  <section class="bid">
+    <div class="bid-inner">
+      <div class="bid-head">
+        <b>竖缝 · 圆角留缝</b>
+        <span class="sig">线端圆角（--surface-radius = 10px）</span>
+      </div>
+      <div class="bid-body">
+        <div class="demo">
+          <div class="win rd">
+            <div class="z a"><div class="tree"><i class="folder"></i>src<br><i class="file"></i>App.tsx</div></div>
+            <div class="ha"><div class="dots"><i></i><i></i><i></i></div><div class="line"></div></div>
+            <div class="z b"><div class="code"><span class="n">1</span> const x = 1;</div></div>
+          </div>
+        </div>
+      </div>
+      <div class="bid-note">
+        常态三点居中、<b>离四角圆弧最远不违和</b>；hover 满高线越弧——已接受（瞬时）。
+        <b>线端圆角胶囊</b>：与 zone 圆角同键，2px 线端帽自动成胶囊。
+      </div>
+    </div>
+  </section>
+
+  <!-- 横缝 · 直角 -->
+  <section class="bid">
+    <div class="bid-inner">
+      <div class="bid-head">
+        <b>横缝 · 直角贴死</b>
+        <span class="sig">线端直角（--surface-radius = 0px）</span>
+      </div>
+      <div class="bid-body">
+        <div class="demo">
+          <div class="winh sq">
+            <div class="z a"><div class="code"><span class="n">1</span> const x = 1;</div></div>
+            <div class="ha h"><div class="dots"><i></i><i></i><i></i></div><div class="line"></div></div>
+            <div class="z b"><div class="tree"><i class="folder"></i>src<br><i class="file"></i>App.tsx</div></div>
+          </div>
+        </div>
+      </div>
+      <div class="bid-note">
+        横缝三点横排居中；hover 满宽横线。<b>左右端直角</b>（与 zone 直角同源）。
+      </div>
+    </div>
+  </section>
+
+  <!-- 横缝 · 圆角 -->
+  <section class="bid">
+    <div class="bid-inner">
+      <div class="bid-head">
+        <b>横缝 · 圆角留缝</b>
+        <span class="sig">线端圆角（--surface-radius = 10px）</span>
+      </div>
+      <div class="bid-body">
+        <div class="demo">
+          <div class="winh rd">
+            <div class="z a"><div class="code"><span class="n">1</span> const x = 1;</div></div>
+            <div class="ha h"><div class="dots"><i></i><i></i><i></i></div><div class="line"></div></div>
+            <div class="z b"><div class="tree"><i class="folder"></i>src<br><i class="file"></i>App.tsx</div></div>
+          </div>
+        </div>
+      </div>
+      <div class="bid-note">
+        常态三点居中不触角；hover 满宽线越弧——已接受。<b>左右端圆角胶囊</b>。
+        <b>直角/圆角同一套行为，零适配分支</b>——线端读 --surface-radius 自动跟随。
+      </div>
+    </div>
+  </section>
+
+</div>
+
+</body>
+</html>
