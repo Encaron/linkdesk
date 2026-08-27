@@ -8,7 +8,8 @@
  */
 
 import { describe, it, expect, beforeEach } from "vitest";
-import { parseContributions, validateInstallManifest, resolveVersionConflict, runtimeEntryPath } from "./loader";
+import { parseContributions, validateInstallManifest, resolveVersionConflict, runtimeEntryPath, pruneUninstalledCache } from "./loader";
+import type { CachedPluginMeta } from "./state"; // E5.8#156：差集清理纯函数签名
 import { hasSidebarContainers } from "./manifest"; // E5.8#37.9.2.3：纯函数真源导入
 import { extractThemeColors } from "./contributions"; // E5.8#1c：真源导入，替代本地等价重实现
 import type { PluginManifest } from "../core/api/types";
@@ -305,5 +306,53 @@ describe("E5.7#81 安装包装", () => {
     it("entry 有无不影响判定（入口与容器是两个独立能力轴）", () => {
       expect(hasSidebarContainers({ entry: "src/index.tsx", ...vc({ "s": { title: "S", location: "sidebar" } }) } as unknown as PluginManifest)).toBe(true);
     });
+  });
+});
+
+/* ── E5.8#156：pruneUninstalledCache——幽灵待安装差集清理纯函数 ── */
+
+describe("E5.8#156 pruneUninstalledCache", () => {
+  const mk = (id: string, status: CachedPluginMeta["status"]) =>
+    ({ pluginId: id, name: id, status }) as unknown as CachedPluginMeta;
+
+  it(".disabled 空 + 缓存有 uninstalled → 全删", () => {
+    const cache = { ghost1: mk("ghost1", "uninstalled"), ghost2: mk("ghost2", "uninstalled") };
+    const { cache: out, removed } = pruneUninstalledCache(cache, []);
+    expect(removed.sort()).toEqual(["ghost1", "ghost2"]);
+    expect(out).toEqual({});
+  });
+
+  it(".disabled 有目录 + 缓存对应 → 保留", () => {
+    const cache = { real: mk("real", "uninstalled") };
+    const { cache: out, removed } = pruneUninstalledCache(cache, ["real"]);
+    expect(removed).toEqual([]);
+    expect(out.real).toBeDefined();
+  });
+
+  it(".disabled 有目录 + 缓存不匹配（新移入）→ 保留（目录为准；写缓存是第 7 步扫描职责）", () => {
+    // 纯函数只删「缓存有但目录无」；目录有缓存无的条目不在此函数职责——第 7 步扫描会正常写缓存
+    const cache = { kept: mk("kept", "uninstalled") };
+    const { cache: out, removed } = pruneUninstalledCache(cache, ["kept", "brand-new"]);
+    expect(removed).toEqual([]);
+    expect(out.kept).toBeDefined();
+  });
+
+  it("非 uninstalled 状态不受差集影响（installed/disabled 保留）", () => {
+    const cache = {
+      alive: mk("alive", "installed"),
+      disabled: mk("disabled", "disabled"),
+      ghost: mk("ghost", "uninstalled"),
+    };
+    const { cache: out, removed } = pruneUninstalledCache(cache, []);
+    expect(removed).toEqual(["ghost"]);
+    expect(out.alive).toBeDefined();
+    expect(out.disabled).toBeDefined();
+    expect(out.ghost).toBeUndefined();
+  });
+
+  it("不 mutate 入参（纯函数）——原缓存对象不受影响", () => {
+    const cache = { ghost: mk("ghost", "uninstalled") };
+    pruneUninstalledCache(cache, []);
+    expect(cache.ghost).toBeDefined();
   });
 });
