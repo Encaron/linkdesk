@@ -38,7 +38,11 @@ interface OverlayPortalProps {
   triggerRef?: React.RefObject<HTMLElement>;
   /** Tab/Shift+Tab 在 overlay 内循环。首次渲染自动 focus 第一个可聚焦元素 */
   trapFocus?: boolean;
-  /** 叠层 token——透传到 wrapper 的 z-index */
+  /** 叠层 token——透传到 wrapper 的 z-index。
+   *  🔥 契约（E5.8#111）：z-index/filter/backdrop-filter/transform 会给包装盒建 stacking context，
+   *  内部 fixed 内容的自身 z-index 被困其中、对外只算包装盒层级。scrim 遮罩（--z-overlay-backdrop 500）
+   *  在同一层上下文竞争 → 包装盒 z-index 必须 > 500（ContextMenu→Z_INDEX.contextMenu 即此契约），
+   *  否则面板内容被遮罩盖住 = 点一下自己退。 */
   zIndex?: string;
   /** E5.7#14：portal 目标 root id——归一化到 FloatingLayerHost 的 portal root。
    *  E5.8#107 默认改 #overlay-root（浮层权威通用 surface 根）；root 不存在（壳 DOM 场景）
@@ -118,6 +122,10 @@ export default function OverlayPortal({ children, onClose, triggerRef, trapFocus
     //   包装盒是结构容器（ref/zIndex 载体）不是表面：若地板规则的深度 2 选择器给它的 backdrop-filter，
     //   它就成了 backdrop root，把内部真实表面的 backdrop 采样掐断（E5.8#103 地板因此从未对
     //   右键/toast/命令面板生效——#109 实证：关掉包装盒 blur 后表面 blur 立即渲染，60% 像素变化）。
+    //   🔥 E5.8#111 更深陷阱：backdrop-filter 同时给包装盒建 stacking context——面板 z600 被困其中、
+    //   对外只算包装盒 z-auto(0)，被 scrim 遮罩 z500 盖住 → 点在预期位置实中遮罩 onClose =「点一下自己退」。
+    //   故包装盒必须保持零 stacking-context 属性（backdrop-filter/filter/transform/z-index 均禁；
+    //   zIndex 例外见 prop 契约——需 z-index 时必须 > scrim 遮罩 500）。
     <div ref={contentRef} data-overlay-wrapper style={Object.keys(style).length > 1 ? style : {}}>
       {children}
     </div>,
