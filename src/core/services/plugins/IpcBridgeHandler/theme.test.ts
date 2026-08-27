@@ -130,7 +130,8 @@ describe("IpcBridgeHandler/theme — 配方/配色 API（E5.8#50.18）", () => {
     expect(seeds["app.surfaceRadius"]).toBe(8);
     expect(seeds["app.fontFamily"]).toBe("Times New Roman");
     expect(seeds["app.glassBlur"]).toBe(0);
-    expect(seeds["app.glassOpacity"]).toBe(1);
+    // E5.8#112：无玻璃配方播种玻璃面不透明度 = 系统默认 0.5（非哨兵 1）
+    expect(seeds["app.glassOpacity"]).toBe(0.5);
     expect(seeds["app.glassTint"]).toBe("");
   });
 

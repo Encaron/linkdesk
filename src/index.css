@@ -523,15 +523,16 @@ select {
   -webkit-backdrop-filter: blur(max(var(--glass-blur, 0px), var(--float-blur-floor)));
 }
 
-/* 玻璃面叠加色（tint——表面底上、内容下，不盖文字）+ 玻璃面不透明度（opacity）+
+/* 玻璃面叠加色（tint——表面底上、内容下，不盖文字）+ tint 盖片不透明度（opacity）+
    顶部受光带 + 发丝光边（specular 派生——契约无独立光边变量，inset ring 零 specular 时
    透明无描边 = 现状零变化）。
-   E5.8#86：tint 层 opacity = glass-opacity 直用（玻璃面绝对不透明度 0→1）——0=全透见背景图
-   （tint 层完全透明，露主题 rgba --bg-* 底色 + 背景图）、1=全不透明（tint 实心遮住背景）；
-   tint 色值 alpha 即用户所选有效强度（aurora 0.35 → 35%，去 #66 wash ×0.5 隐藏乘数 + 去
-   「alpha 再降一档」——那本就是 wash 的产物非独立颜色变换）。玻璃面板主透明由主题 rgba
-   --bg-* 承担（L381 契约），opacity 只调 tint/发丝光边（底色 alpha 是「表面底色」设定，
-   B1 联动 #86 第 4 点：不透度由玻璃面标尺统一控）。
+   E5.8#86 曾定义「tint 层 opacity = glass-opacity 直用 = 玻璃面绝对不透明度」——#112 修正：
+   --glass-opacity 现语义 = 配方面玻璃面不透明度（tokens.ts surface.opacity 写，theme.ts 契约），
+   本 opacity 是其残留消费（tint 强度随配方面不透明度缩放）；**用户 app.glassOpacity 不再写本 token**
+   （seeds.ts 摘除）——用户玻璃面不透明度走合成层（getGlassSurfaceSpec 直读配置 →
+   synthesizeGlassSurfaces 合成 SURFACE_COLOR_KEYS 的 --bg-*，含本表面底色）。曾写 token 时用户拖
+   glassOpacity 污染 tint 盖片 opacity → 「增加灰度感/对比度」（#112 根因）；摘除后拖 glassOpacity
+   只变玻璃面不透明度，tint 盖片保持配方面材质。tint 色值 alpha 即用户所选有效强度（aurora 0.35 → 35%）。
    E5.8#89 E4：backdrop-filter（透射模糊）从元素下移到本玻璃层——本层 z:-1 盖在
    ::after 影像（z:-2）之上，backdrop 采样 = 元素底色 + 影像（都在本层之下）→ 玻璃模糊
    盖在 zone 图上（"图上的玻璃"、blur 可见），内容（z auto）仍在本层之上保持锐利。

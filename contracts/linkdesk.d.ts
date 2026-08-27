@@ -151,7 +151,8 @@ export interface ThemeSurface {
     saturate?: number;
     /** 玻璃面叠加色 */
     tint?: string;
-    /** 玻璃面不透明度——1 = 不透明 */
+    /** 玻璃面不透明度（合成层基线）——1 = 不透明 / 0 = 全透见背景。写 --glass-opacity token（tint 盖片
+     *  opacity 消费）+ 播种反推进合成 alpha（#112：配方面基线，用户 app.glassOpacity 覆盖时优先） */
     opacity?: number;
     /** 液态玻璃顶部高光强度——0 = 关 */
     specular?: number;

@@ -50,6 +50,26 @@ export interface AppearanceSeedValues {
   glassSaturate: number; // E5.8#96：玻璃饱和度（缺省 1 = neutral 原图）
 }
 
+/** E5.8#112：配方面玻璃面不透明度——任一玻璃键偏离 SURFACE_ZERO 哨兵（blur "0px"/saturate "1"/tint
+ *  "transparent"/opacity "1"）即「配方声明玻璃」。有玻璃 → 反推配方面 opacity 作玻璃面不透明度基线
+ *  （theme.ts ThemeSurface.opacity 契约 = 玻璃面不透明度）；无玻璃（全哨兵）→ 系统默认
+ *  GLASS_SURFACE_DEFAULT_ALPHA（0.5，拍板）。纯函数。配方面 opacity 现语义 = 玻璃面不透明度基线，
+ *  不再被用户 app.glassOpacity 覆盖成 tint 盖片灰度（#112：用户值改走合成层，token 归配方面） */
+function resolveGlassSurfaceAlpha(tokens: Record<string, string>): number {
+  const blur = tokens["glass-blur"];
+  const saturate = tokens["glass-saturate"];
+  const tint = tokens["glass-tint"];
+  const opacity = tokens["glass-opacity"];
+  const hasGlass =
+    (blur != null && blur !== "0px") ||
+    (saturate != null && saturate !== "1") ||
+    (tint != null && tint !== "transparent") ||
+    (opacity != null && opacity !== "1");
+  if (!hasGlass) return GLASS_SURFACE_DEFAULT_ALPHA;
+  const value = parseFloat(opacity ?? "1");
+  return Number.isFinite(value) ? value : GLASS_SURFACE_DEFAULT_ALPHA;
+}
+
 /**
  * 反推外观覆盖播种值——appearanceMode→custom 瞬间从生效 token 集反推覆盖 key（08 §2：设置层永远只存用户偏离量）。
  * 纯函数只算不改。E5.8#85：圆角绝对化——surfaceRadius = 当前生效 radius-md 绝对值 px（非主题比值，根治
@@ -75,7 +95,10 @@ export function deriveAppearanceSeeds(tokens: Record<string, string>): Appearanc
     zoneRadius: true,
     zoneRadiusPx: clampRadiusPx(parseFloat(tokens["surface-radius"] ?? "0")),
     glassBlur: parseFloat(tokens["glass-blur"] ?? "0") || 0,
-    glassOpacity: parseFloat(tokens["glass-opacity"] ?? "1"),
+    // E5.8#112：玻璃面不透明度播种 = resolveGlassSurfaceAlpha——配方面声明玻璃（任一键偏离哨兵）反推
+    // 配方面 opacity 作基线；无玻璃（全哨兵）→ 系统默认 0.5（拍板）。根治「无玻璃主题切 custom 播种
+    // glassOpacity=哨兵 1 → 合成 alpha=1 全实、拖 blur 采不到背景无玻璃感」（绕过拍板默认 0.5）。
+    glassOpacity: resolveGlassSurfaceAlpha(tokens),
     glassTint: tokens["glass-tint"] && tokens["glass-tint"] !== "transparent" ? tokens["glass-tint"] : "",
     backgroundImage: bgPath,
     fontFamily: fam && !fam.startsWith("__ld_") ? fam : "",
@@ -180,14 +203,15 @@ export function getGlassSurfaceSpec(): GlassSurfaceSpec {
 export function getAppearanceOverrides(): Record<string, string> {
   const overrides: Record<string, string> = {};
 
-  // E5.8#56（审计#2）：glass 两键 neutral 判定改 presence 语义——glassBlur=0（关闭）/ glassOpacity=1（不透明）
-  // 是端点值也是 neutral 默认，值对比会把「用户显式拖到端点」误判为未覆盖 → 模糊关不掉/变不了不透明。
+  // E5.8#56（审计#2）：glass 键 neutral 判定改 presence 语义——glassBlur=0（关闭）/ glassSaturate=1（neutral）
+  // 是端点值也是 neutral 默认，值对比会把「用户显式拖到端点」误判为未覆盖 → 模糊关不掉/饱和度调不了。
   // 改：配置被显式写过（hasConfigurationValue）即覆盖，端点值=显式意图照常生效；reset 摘除 key → 回主题基线。
+  // E5.8#112：glassOpacity 刻意不在本表写 glass-opacity token——用户玻璃面不透明度经合成层消费
+  // （getGlassSurfaceSpec 直读配置 → synthesizeGlassSurfaces 合成 SURFACE_COLOR_KEYS），token 归配方面
+  // 玻璃面不透明度（tokens.ts surface.opacity 写，tint 盖片 opacity 消费）。曾写 token 时用户拖 glassOpacity
+  // 污染 tint 盖片 opacity → 「增加灰度感/对比度」（#112 根因）；摘除后拖 glassOpacity 只变玻璃面不透明度。
   const blur = getConfigurationValue<number>("app.glassBlur");
   if (hasConfigurationValue("app.glassBlur") && blur != null) overrides["glass-blur"] = `${Number(blur)}px`;
-
-  const opacity = getConfigurationValue<number>("app.glassOpacity");
-  if (hasConfigurationValue("app.glassOpacity") && opacity != null) overrides["glass-opacity"] = String(opacity);
 
   const tint = getConfigurationValue<string>("app.glassTint");
   if (tint != null && String(tint).trim() !== "") overrides["glass-tint"] = String(tint).trim();

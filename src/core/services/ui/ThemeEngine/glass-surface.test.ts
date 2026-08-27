@@ -181,4 +181,17 @@ describe("ThemeEngine — 玻璃系统标尺化（Phase 11.16）", () => {
     expect(seeds.surfaceRadius).toBe(8);
     expect(seeds.zoneRadiusPx).toBe(10);
   });
+
+  it("E5.8#112 无玻璃主题播种——全哨兵（SURFACE_ZERO）→ 玻璃面不透明度默认 0.5（根治播种 1 绕过拍板默认 → 合成全实、拖 blur 无玻璃感）", () => {
+    expect(deriveAppearanceSeeds({}).glassOpacity).toBe(GLASS_SURFACE_DEFAULT_ALPHA);
+    // 显式全零哨兵（主题无 surface glass）同理
+    expect(deriveAppearanceSeeds({
+      "glass-blur": "0px",
+      "glass-saturate": "1",
+      "glass-tint": "transparent",
+      "glass-opacity": "1",
+    }).glassOpacity).toBe(GLASS_SURFACE_DEFAULT_ALPHA);
+    // 配方面声明玻璃（任一键偏离哨兵）→ 反推配方面 opacity 作基线（原行为保留）
+    expect(deriveAppearanceSeeds({ "glass-blur": "18px", "glass-opacity": "0.275" }).glassOpacity).toBe(0.275);
+  });
 });

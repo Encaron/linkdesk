@@ -72,9 +72,9 @@ describe("ThemeEngine — 外观覆盖 getAppearanceOverrides（E5.8#50.10）", 
     expect(getAppearanceOverrides()["glass-blur"]).toBe("15px");
   });
 
-  it("glassOpacity 0.5 → glass-opacity 覆盖", () => {
+  it("E5.8#112 glassOpacity 0.5 → 不写 glass-opacity token（用户值走合成层，不污染 tint 盖片）", () => {
     applyRemoteConfigChange("app.glassOpacity", 0.5);
-    expect(getAppearanceOverrides()["glass-opacity"]).toBe("0.5");
+    expect(getAppearanceOverrides()["glass-opacity"]).toBeUndefined();
   });
 
   it("glassTint 非空 → glass-tint 覆盖", () => {
@@ -285,9 +285,9 @@ describe("ThemeEngine — 外观覆盖 getAppearanceOverrides（E5.8#50.10）", 
     expect(getAppearanceOverrides()["glass-blur"]).toBe("0px");
   });
 
-  it("E5.8#56 审计#2——glassOpacity 显式拖到 1（端点，presence）→ glass-opacity 覆盖 1（真不透明）", () => {
+  it("E5.8#112——glassOpacity 显式拖到 1（端点，presence）→ 不写 glass-opacity token（用户值走合成层，合成 alpha=1 即真不透明）", () => {
     applyRemoteConfigChange("app.glassOpacity", 1);
-    expect(getAppearanceOverrides()["glass-opacity"]).toBe("1");
+    expect(getAppearanceOverrides()["glass-opacity"]).toBeUndefined();
   });
 
   it("E5.8#56——hasConfigurationValue presence 语义：未写 false、applyRemoteConfigChange 后 true（reset 摘除 → 回 neutral）", () => {
@@ -596,7 +596,8 @@ describe("ThemeEngine — E5.8#88 切主题重播种 + 徽标基准（deriveAppe
     // 缺省 token → 零值/空（不抛）——zoneBackgroundImage 需 zones=1
     const empty = deriveAppearanceSeedMap({});
     expect(empty["app.surfaceRadius"]).toBe(0);
-    expect(empty["app.glassOpacity"]).toBe(1);
+    // E5.8#112：无玻璃主题播种玻璃面不透明度 = 系统默认 0.5（非哨兵 1——根治合成全实拖 blur 无玻璃感）
+    expect(empty["app.glassOpacity"]).toBe(0.5);
     expect(empty["app.zoneRadius"]).toBe(true);
     expect(empty["app.zoneBackgroundImage"]).toBe("");
     expect(empty["app.backgroundImage"]).toBe("");
