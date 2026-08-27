@@ -3,7 +3,7 @@
  * JSON 是源，CSS 变量是渲染层。用户和 AI 都改 JSON。
  */
 
-import type { ThemeDomain } from "../../../types/theme";
+import { RADIUS_SCALE_STEPS, type RadiusScaleStep, type ThemeDomain } from "../../../types/theme";
 
 /* ── E5.8 缝系统：--surface-inset 宿主派生常量。内部缝 = 2×SURFACE_SEAM_INSET_PX（相邻格各半）——
    4px 可拖拽 handle 恰好填满缝（handle 锚 cell 边界 = 缝中心，±2px = 半宽恒等式）。 */
@@ -48,10 +48,14 @@ export const BACKGROUND_ZERO: Record<string, string> = {
 
 /* ── E5.8#50.16：scale 乘算 token 集 + 引擎管理 token 全集 ── */
 
-/** 圆角六档尺寸 token——形态值（--radius-pill/--radius-full）排除不缩放（08 §3 边界，2026-08-24 审视补） */
-export const RADIUS_SCALE_KEYS = [
-  "radius-xs", "radius-sm", "radius-md", "radius-lg", "radius-xl", "radius-2xl",
-] as const;
+/** 圆角六档尺寸 token 键——形态值（--radius-pill/--radius-full）排除不缩放（08 §3 边界，2026-08-24 审视补）。
+ *  E5.8#122 单一源派生：档名权威在 types/theme.ts RADIUS_SCALE_STEPS（schema 档名），本表从它 map 派生
+ *  token 键（radius-${s}），防两份六档清单漂移（同一概念两层表达）。 */
+export type RadiusScaleKey = `radius-${RadiusScaleStep}`;
+
+export const RADIUS_SCALE_KEYS: readonly RadiusScaleKey[] = RADIUS_SCALE_STEPS.map(
+  (s) => `radius-${s}` as const
+);
 
 /** E5.8#85：圆角系统标尺上限——所有绝对 px 圆角 token 统一 clamp 进 [0, 32]（radius-full 相对几何值排除）。
  *  clampRadiusPx 内部使用；3c 起导出供外观 schema 对齐（app.surfaceRadius/zoneRadiusScale maximum，

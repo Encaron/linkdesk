@@ -65,8 +65,15 @@ interface ThemeFont {
   mono?: string;
 }
 
-/** 圆角域——八档语义 token 名（02 §2.2，偏门值归并就近档） */
-type RadiusTokenKey = "xs" | "sm" | "md" | "lg" | "xl" | "2xl" | "pill" | "full";
+/** 圆角六档相对档名单一权威——schema 档名（xs..2xl）与引擎 token 键（radius-xs..radius-2xl）同一概念两层
+ *  表达；ThemeEngine/constants.ts RADIUS_SCALE_KEYS 从此派生（`radius-${s}`），防两份清单漂移（E5.8#122）。 */
+export const RADIUS_SCALE_STEPS = ["xs", "sm", "md", "lg", "xl", "2xl"] as const;
+
+/** 圆角六档相对档名联合类型——从 RADIUS_SCALE_STEPS 派生（单一源） */
+export type RadiusScaleStep = (typeof RADIUS_SCALE_STEPS)[number];
+
+/** 圆角域——八档语义 token 名（02 §2.2，偏门值归并就近档；六档派生 + 形态值 pill/full 补位） */
+type RadiusTokenKey = RadiusScaleStep | "pill" | "full";
 
 /**
  * 05 schema appearance 域——风格域（单值，稀疏覆盖，缺的域/键继承 :root 壳默认）。
