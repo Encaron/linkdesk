@@ -74,16 +74,14 @@ function resolveGlassSurfaceAlpha(tokens: Record<string, string>): number {
  * 反推外观覆盖播种值——appearanceMode→custom 瞬间从生效 token 集反推覆盖 key（08 §2：设置层永远只存用户偏离量）。
  * 纯函数只算不改。E5.8#85：圆角绝对化——surfaceRadius = 当前生效 radius-md 绝对值 px（非主题比值，根治
  * A8「播种显示比值」；mix 下 token 即混搭来源生效值，天然含 #57 二次缩放根治——比例模型分母概念废弃）。
- * zoneRadiusPx = 当前生效 surface-radius 绝对值 px。玻璃绝对 = token 值直播；bg 剥 url() 存受控路径；
- * font 跳过资产族（__ld_ 前缀 = 插件 @font-face，#50.20 边界：资产族只显示不选，播种空 = 跟随主题）。
+ * zoneRadiusPx = 当前生效 surface-radius 绝对值 px。玻璃绝对 = token 值直播。
+ * E5.8#154：背景/字体/等宽三键播种恒空（用户拍板）——只存用户偏离量，不物质化主题生效值
+ * （覆盖键非空盖死域来源 mixBackground/mixFont）；资产族 __ld_ 边界（#50.20）并入恒空语义。
  * E5.8#81：zoneBackgroundImage 仅 zones 模式（surface-bg-zones===1）反推 surface-bg-image（切片语义）；
  * 纹理主题（repeat 平铺，zones=0）播种空 = 跟随主题——避免把 repeat 纹理错播成 zones 切片（视觉变）。
  */
 export function deriveAppearanceSeeds(tokens: Record<string, string>): AppearanceSeedValues {
-  const bg = tokens["bg-image"];
-  const bgPath = bg && bg !== "none" ? bg.replace(/^url\(["']?/, "").replace(/["']?\)$/, "") : "";
-  const fam = tokens["font-ui"];
-  const monoFam = tokens["font-mono"];
+  // E5.8#154：bg/font-ui/font-mono 不再反推（播种恒空）——bgPath/fam/monoFam 变量已删
   const zoneBg = tokens["surface-bg-image"];
   const zoneBgPath = zoneBg && zoneBg !== "none" && tokens["surface-bg-zones"] === "1"
     ? zoneBg.replace(/^url\(["']?/, "").replace(/["']?\)$/, "")
@@ -100,14 +98,19 @@ export function deriveAppearanceSeeds(tokens: Record<string, string>): Appearanc
     // glassOpacity=哨兵 1 → 合成 alpha=1 全实、拖 blur 采不到背景无玻璃感」（绕过拍板默认 0.5）。
     glassOpacity: resolveGlassSurfaceAlpha(tokens),
     glassTint: tokens["glass-tint"] && tokens["glass-tint"] !== "transparent" ? tokens["glass-tint"] : "",
-    backgroundImage: bgPath,
-    fontFamily: fam && !fam.startsWith("__ld_") ? fam : "",
+    // E5.8#154：背景/字体两键播种恒空（用户拍板）——设置层只存用户偏离量，不物质化主题生效值。
+    // 覆盖键非空会盖死域来源（mixBackground/mixFont 唯一通道）——root cause = 重播种物质化遮蔽
+    // （档案 §二：app.fontFamily 非空 → 覆盖层胜出 → --font-ui 永被用户级值盖死 → mixFont 切换无效）。
+    // 视觉不变（空值不覆盖 → 主题字体/背景照常生效）；显式非空值永不被播种吞（reseed 判显式保留）。
+    backgroundImage: "",
+    fontFamily: "",
     zoneBackgroundImage: zoneBgPath,
     // E5.8#94/#95/#96：镜像补槽播种——缺省 neutral（bg-opacity 1 / bg-mask 0 / mono 空 = 跟随主题 / saturate 1）
     // E5.8#115：反推读 surface-bg-opacity 优先（用户背景不透明度现统一覆盖该 token；配方面 zones/panorama 均写）
     backgroundOpacity: parseFloat(tokens["surface-bg-opacity"] ?? tokens["bg-opacity"] ?? "1") || 0,
     backgroundMask: parseFloat(tokens["bg-mask"] ?? "0") || 0,
-    fontFamilyMono: monoFam && !monoFam.startsWith("__ld_") ? monoFam : "",
+    // E5.8#154：等宽字体播种恒空（与 fontFamily 同域一并，用户拍板范围 = 字体+背景域）
+    fontFamilyMono: "",
     glassSaturate: parseFloat(tokens["glass-saturate"] ?? "1") || 0,
   };
 }

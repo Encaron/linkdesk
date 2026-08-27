@@ -400,7 +400,7 @@ describe("ThemeEngine — 外观覆盖 getAppearanceOverrides（E5.8#50.10）", 
 
   /* ── E5.8#94/#95/#96 播种反推——deriveAppearanceSeeds 读生效 token 反向播种（进 custom 单写点）── */
 
-  it("E5.8#94/#95/#96 deriveAppearanceSeeds — 背景可读性/等宽字体/玻璃饱和度 neutral 缺省反推", () => {
+  it("E5.8#94/#95/#96 deriveAppearanceSeeds — 背景可读性/玻璃饱和度 neutral 缺省反推；等宽字体播种恒空（#154）", () => {
     const seeds = deriveAppearanceSeeds({
       "bg-opacity": "0.8",
       "bg-mask": "0.25",
@@ -409,7 +409,8 @@ describe("ThemeEngine — 外观覆盖 getAppearanceOverrides（E5.8#50.10）", 
     });
     expect(seeds.backgroundOpacity).toBe(0.8);
     expect(seeds.backgroundMask).toBe(0.25);
-    expect(seeds.fontFamilyMono).toBe("JetBrains Mono");
+    // E5.8#154：等宽字体播种恒空——token 反推不再物质化（域来源 mixFont 唯一通道）
+    expect(seeds.fontFamilyMono).toBe("");
     expect(seeds.glassSaturate).toBe(1.4);
   });
 
@@ -437,7 +438,8 @@ describe("ThemeEngine — 外观覆盖 getAppearanceOverrides（E5.8#50.10）", 
     });
     expect(seedMap["app.backgroundOpacity"]).toBe(0.7);
     expect(seedMap["app.backgroundMask"]).toBe(0.2);
-    expect(seedMap["app.fontFamilyMono"]).toBe("Consolas");
+    // E5.8#154：等宽字体播种恒空（映射直用 deriveAppearanceSeeds 值）
+    expect(seedMap["app.fontFamilyMono"]).toBe("");
     expect(seedMap["app.glassSaturate"]).toBe(1.2);
   });
 
@@ -525,9 +527,9 @@ describe("ThemeEngine — deriveAppearanceSeeds 反推播种（E5.8#50.19，08 �
     expect(deriveAppearanceSeeds({ "glass-tint": "transparent" }).glassTint).toBe("");
   });
 
-  it("背景剥 url() 存受控路径；none/缺省 → 空", () => {
+  it("E5.8#154 背景图播种恒空——token 反推不再物质化（域来源 mixBackground 唯一通道）；none/缺省 → 空", () => {
     const seeds = deriveAppearanceSeeds({ "bg-image": 'url("C:/app/bg.png")' });
-    expect(seeds.backgroundImage).toBe("C:/app/bg.png");
+    expect(seeds.backgroundImage).toBe("");
     expect(deriveAppearanceSeeds({ "bg-image": "none" }).backgroundImage).toBe("");
     expect(deriveAppearanceSeeds({}).backgroundImage).toBe("");
   });
@@ -552,8 +554,8 @@ describe("ThemeEngine — deriveAppearanceSeeds 反推播种（E5.8#50.19，08 �
     expect(deriveAppearanceSeeds({}).zoneBackgroundImage).toBe("");
   });
 
-  it("字体播种跳过资产族（__ld_ 前缀只显示不选，#50.20 边界）；系统族名直播", () => {
-    expect(deriveAppearanceSeeds({ "font-ui": "SimSun" }).fontFamily).toBe("SimSun");
+  it("E5.8#154 字体播种恒空——系统族名/资产族都跟随主题（__ld_ 边界并入恒空语义）", () => {
+    expect(deriveAppearanceSeeds({ "font-ui": "SimSun" }).fontFamily).toBe("");
     expect(deriveAppearanceSeeds({ "font-ui": "__ld_demo-plugin_serif" }).fontFamily).toBe("");
   });
 });
@@ -591,8 +593,9 @@ describe("ThemeEngine — E5.8#88 切主题重播种 + 徽标基准（deriveAppe
       "app.glassBlur": 18,
       "app.glassOpacity": 0.4,
       "app.glassTint": "rgba(10,20,30,0.5)",
-      "app.backgroundImage": "C:/app/bg.png",
-      "app.fontFamily": "SimSun",
+      // E5.8#154：背景/字体播种恒空——即使 token 有生效值也不物质化（跟随主题，域来源唯一通道）
+      "app.backgroundImage": "",
+      "app.fontFamily": "",
       "app.zoneRadius": true,
       "app.zoneRadiusScale": 10,
       "app.zoneBackgroundImage": "linkdesk-userdata://appearance/zone.png",
@@ -643,6 +646,19 @@ describe("ThemeEngine — E5.8#88 切主题重播种 + 徽标基准（deriveAppe
     const oldBaseline = { "app.surfaceRadius": 8 };
     const newBaseline = { "app.surfaceRadius": 12 };
     expect(deriveReseedPlan(oldBaseline, newBaseline, { "app.surfaceRadius": 14 })).toEqual([]);
+  });
+
+  it("E5.8#154 附带修正——播种改空后显式字体选择恒判显式保留（旧逻辑非空==旧基准误判未修改丢选择）", () => {
+    // 播种改空前：主题生效字体物质化成 app.fontFamily（旧基准非空），用户显式选的同值字被误判
+    // 「未修改」（stored === 旧基准）→ 切主题重播种丢用户选择。改空后旧基准恒 "" → 显式非空恒判显式保留。
+    const oldBaseline = { "app.fontFamily": "" }; // 新播种语义：字体基准恒空
+    const newBaseline = { "app.fontFamily": "Cascadia Mono" };
+    // 用户显式选了 SimSun（非空 ≠ 空基准）→ 保留不写（不随切主题被重播种吞）
+    expect(deriveReseedPlan(oldBaseline, newBaseline, { "app.fontFamily": "SimSun" })).toEqual([]);
+    // 跟随主题（空 == 基准空）→ 未修改 → 自动跟随新主题填新基准
+    expect(deriveReseedPlan(oldBaseline, newBaseline, { "app.fontFamily": "" })).toEqual([
+      { key: "app.fontFamily", value: "Cascadia Mono" },
+    ]);
   });
 
   it("deriveReseedPlan — 空串（跟随主题/清除）≠ 旧基准非空 → 保留自动跟随新主题", () => {
