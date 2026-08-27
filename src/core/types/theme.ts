@@ -46,7 +46,8 @@ export interface ThemeSurface {
 export interface ThemeBackground {
   /** 图片路径——作者提供可解析 URL，引擎写入 `--bg-image` 时 url() 包裹 */
   image?: string;
-  /** 图片层不透明度——1 = 不透明 */
+  /** 图片层不透明度——1 = 不透明。引擎写 `--bg-opacity`（.background-layer 清晰底图）+ `--surface-bg-opacity`
+   *  （镜像/纹理/切片 ::after 图像层）；用户 app.backgroundOpacity 覆盖时双 token 齐写（#115：图与底统一淡出，避免底图淡而镜像恒显） */
   opacity?: number;
   /** 图片遮罩明暗（0-1 rgba 透明度）——0 = 无遮罩 */
   mask?: number;

@@ -104,7 +104,8 @@ export function deriveAppearanceSeeds(tokens: Record<string, string>): Appearanc
     fontFamily: fam && !fam.startsWith("__ld_") ? fam : "",
     zoneBackgroundImage: zoneBgPath,
     // E5.8#94/#95/#96：镜像补槽播种——缺省 neutral（bg-opacity 1 / bg-mask 0 / mono 空 = 跟随主题 / saturate 1）
-    backgroundOpacity: parseFloat(tokens["bg-opacity"] ?? "1") || 0,
+    // E5.8#115：反推读 surface-bg-opacity 优先（用户背景不透明度现统一覆盖该 token；配方面 zones/panorama 均写）
+    backgroundOpacity: parseFloat(tokens["surface-bg-opacity"] ?? tokens["bg-opacity"] ?? "1") || 0,
     backgroundMask: parseFloat(tokens["bg-mask"] ?? "0") || 0,
     fontFamilyMono: monoFam && !monoFam.startsWith("__ld_") ? monoFam : "",
     glassSaturate: parseFloat(tokens["glass-saturate"] ?? "1") || 0,
@@ -235,10 +236,15 @@ export function getAppearanceOverrides(): Record<string, string> {
     }
   }
 
-  // E5.8#94：背景图不透明度/遮罩明暗——app.backgroundOpacity（0 全透 / 1 原图）/ app.backgroundMask（0 无遮罩 / 1 全黑）。
+  // E5.8#94+#115：背景图不透明度/遮罩明暗——app.backgroundOpacity（0 全透 / 1 原图）/ app.backgroundMask（0 无遮罩 / 1 全黑）。
+  // #115 统一覆盖所有背景图层：--bg-opacity（.background-layer 清晰底图）+ --surface-bg-opacity（镜像/纹理/切片 ::after 图像层）——
+  // 根因：此前只写 bg-opacity → 底图淡出露主题底（感知变亮）但玻璃面镜像 ::after 恒显，图与底脱节。
   // presence 门控：显式写过即覆盖（默认 1 / 0 = neutral 也是端点，值对比会误判「显式拖到 neutral」为未覆盖）。
   const bgOpacity = getConfigurationValue<number>("app.backgroundOpacity");
-  if (hasConfigurationValue("app.backgroundOpacity") && bgOpacity != null) overrides["bg-opacity"] = String(bgOpacity);
+  if (hasConfigurationValue("app.backgroundOpacity") && bgOpacity != null) {
+    overrides["bg-opacity"] = String(bgOpacity);
+    overrides["surface-bg-opacity"] = String(bgOpacity);
+  }
   const bgMask = getConfigurationValue<number>("app.backgroundMask");
   if (hasConfigurationValue("app.backgroundMask") && bgMask != null) overrides["bg-mask"] = String(bgMask);
 

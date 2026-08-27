@@ -356,13 +356,15 @@ describe("ThemeEngine — 外观覆盖 getAppearanceOverrides（E5.8#50.10）", 
 
   /* ── E5.8#94/#95/#96 镜像补槽覆盖读取——主题可表达属性 ⇒ 设置面必有槽（14-档案 §十）── */
 
-  it("E5.8#94 backgroundOpacity 显式写过 → bg-opacity 覆盖（1 = neutral 也是显式意图，presence 门控）", () => {
+  it("E5.8#115 backgroundOpacity 显式写过 → bg-opacity + surface-bg-opacity 双覆盖（统一底图+镜像/纹理；1 = neutral 也是显式意图，presence 门控）", () => {
     applyRemoteConfigChange("app.backgroundOpacity", 0.4);
     expect(getAppearanceOverrides()["bg-opacity"]).toBe("0.4");
+    expect(getAppearanceOverrides()["surface-bg-opacity"]).toBe("0.4");
   });
 
-  it("E5.8#94 backgroundOpacity 未写 → 零 bg-opacity 覆盖（跟随主题）", () => {
+  it("E5.8#115 backgroundOpacity 未写 → 零 bg-opacity/surface-bg-opacity 覆盖（跟随主题）", () => {
     expect(getAppearanceOverrides()["bg-opacity"]).toBeUndefined();
+    expect(getAppearanceOverrides()["surface-bg-opacity"]).toBeUndefined();
   });
 
   it("E5.8#94 backgroundMask 显式写过 → bg-mask 覆盖", () => {
@@ -417,6 +419,13 @@ describe("ThemeEngine — 外观覆盖 getAppearanceOverrides（E5.8#50.10）", 
     expect(seeds.backgroundMask).toBe(0);
     expect(seeds.fontFamilyMono).toBe("");
     expect(seeds.glassSaturate).toBe(1);
+  });
+
+  it("E5.8#115 deriveAppearanceSeeds — surface-bg-opacity 优先反推（用户统一覆盖镜像/纹理后的当前背景不透明度）", () => {
+    const seeds = deriveAppearanceSeeds({ "surface-bg-opacity": "0.55", "bg-opacity": "0.8" });
+    expect(seeds.backgroundOpacity).toBe(0.55);
+    // 无 surface-bg-opacity（旧主题）→ 回退 bg-opacity
+    expect(deriveAppearanceSeeds({ "bg-opacity": "0.3" }).backgroundOpacity).toBe(0.3);
   });
 
   it("E5.8#94/#95/#96 deriveAppearanceSeedMap — 13 覆盖键全集含补槽四键（reseed 计划/徽标基准共用）", () => {

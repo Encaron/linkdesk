@@ -295,8 +295,9 @@ export function registerAppearanceConfiguration(t: ConfigT): void {
         onApply: () => debouncedApplyThemeIfReady(),
       },
       // E5.8#94：背景可读性槽（14-档案 §十 镜像补槽）——主题 ThemeBackground.opacity/mask 可表达但此前
-      // 设置面无槽。app.backgroundOpacity 覆盖 --bg-opacity（0 全透见窗口底色 / 1 原图）；app.backgroundMask
-      // 覆盖 --bg-mask（0 无遮罩 / 1 全黑）。默认 1/0 = neutral（presence 门控：显式写过即覆盖）。
+      // 设置面无槽。app.backgroundOpacity 覆盖 --bg-opacity + --surface-bg-opacity（0 全透见窗口底色 / 1 原图；
+      // #115 双 token 齐写 = 底图 + 镜像/纹理统一淡出）；app.backgroundMask 覆盖 --bg-mask（0 无遮罩 / 1 全黑）。
+      // 默认 1/0 = neutral（presence 门控：显式写过即覆盖）。
       // 消费 = getAppearanceOverrides。maskColor 低优先豁免（14-档案 §十）。
       "app.backgroundOpacity": {
         type: "number",
