@@ -11,7 +11,7 @@ import { IPC } from '../ipc/channels';
 import { createEventSystem, type EventSystemApi } from '../ipc/event-system';
 import type { ThemeChangedPayload, AccentChangedPayload, FontFaceSpec } from '../../src/core/types/ipc/events';
 import { onLangChanged } from './language';
-import { ensureSurfaceZonesObserver, measureSurfaceZones } from './surface-zones';
+import { ensureSurfaceZonesObserver, ensureSurfaceLayoutObserver, measureSurfaceZones } from './surface-zones';
 
 // ── E5.8#50.17：资产字体 @font-face 复刻——池是独立文档，壳注册的 @font-face 不生效；
 //    壳随 theme:changed 广播 fontFaces 表，池侧注入单一 `<style data-ld-font-faces>`（整表替换，幂等）。
@@ -88,7 +88,8 @@ export function createPoolEvents(): EventSystemApi {
           applyFontFaces(fontFaces);
           // E5.8#89 E2：量测触发去耦——zones 相关变量不变 → 跳过（零强制重排）。
           // 拖玻璃/圆角滑杆 tick 广播全量 token 中 zones 三键不变 → 0× getBoundingClientRect；
-          // 仅 zones 配置变化（切主题/换 zone 图）触发量测；窗口 resize/布局变化由 ResizeObserver 自补。
+          // 仅 zones 配置变化（切主题/换 zone 图）触发量测；窗口 resize 由 ResizeObserver、
+          // 布局结构变化（换边/面板显隐，E5.8#127）由 MutationObserver 自补。
           const zoneSignature = [
             vars['surface-bg-zones'] ?? '',
             vars['surface-bg-image'] ?? '',
@@ -97,6 +98,9 @@ export function createPoolEvents(): EventSystemApi {
           if (zoneSignature !== _lastZoneSignature) {
             _lastZoneSignature = zoneSignature;
             ensureSurfaceZonesObserver();
+            // E5.8#127：换边 = grid-template 纯位置平移，zone 尺寸不变 + 三键不变 → 双盲区
+            // token 陈旧；布局观察器补 grid-template 变化触发（单例幂等，zones 未激活量测直返）。
+            ensureSurfaceLayoutObserver();
             measureSurfaceZones();
           }
         } catch (e) {
