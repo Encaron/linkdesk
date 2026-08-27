@@ -114,7 +114,11 @@ export default function OverlayPortal({ children, onClose, triggerRef, trapFocus
   };
 
   return createPortal(
-    <div ref={contentRef} style={Object.keys(style).length > 1 ? style : {}}>
+    // E5.8#109：data-overlay-wrapper 结构标记——浮层权威的「隔离地板」（index.css）用它排除本包装盒。
+    //   包装盒是结构容器（ref/zIndex 载体）不是表面：若地板规则的深度 2 选择器给它的 backdrop-filter，
+    //   它就成了 backdrop root，把内部真实表面的 backdrop 采样掐断（E5.8#103 地板因此从未对
+    //   右键/toast/命令面板生效——#109 实证：关掉包装盒 blur 后表面 blur 立即渲染，60% 像素变化）。
+    <div ref={contentRef} data-overlay-wrapper style={Object.keys(style).length > 1 ? style : {}}>
       {children}
     </div>,
     // E5.8#107 单一门：默认 → #overlay-root（浮层权威 surface 根）；显式 rootId 优先；根缺失回退 body

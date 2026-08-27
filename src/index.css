@@ -494,8 +494,11 @@ select {
    事实不是类名知识——新浮层（含第三方 OverlayPortal）进层即隔离，零类名知识零枚举零壳改动：
      深度 2：#ld-float-layer > root > 表面——quick-pick/dialog/floating-panel 面板直接挂 root
      深度 3：root > OverlayPortal wrapper > 表面——ContextMenu 主菜单 / ColorPicker / dropdown-card
-       / selectbox / status-bar-notif-panel / toast-item（wrapper = position:relative 0×0 空盒，
-       backdrop-filter 命中无害）；.toast-container（深度 2）display:contents 无盒同样无害。
+       / selectbox / status-bar-notif-panel / toast-item。
+       ⚠️ E5.8#109：深度 2 必须排除 wrapper（:not([data-overlay-wrapper])）——包装盒是结构容器
+       （ref/zIndex 载体）不是表面：若它也吃 backdrop-filter 会成 backdrop root，把内部深度 3 表面的
+       采样掐断（#103 地板因此对右键/toast 从未生效；#109 实证关掉包装盒 blur 后表面立即渲染）。
+       .toast-container（深度 2）display:contents 无盒同样无害。
    scrim-plane 排除（:not(#ld-scrim-plane)）——遮罩满屏无磨砂（与 surface 分离后天然不碰）。
    GroupTabBar .drop-glass-zone 同类规则留在其文件内（drop 目标专属含 drop 属性，不并入）。
    拖拽幽灵排除裁决（#107）：icon-drag-preview + MainZone 拖拽预览**不进层**——瞬态 mimetic
@@ -505,7 +508,7 @@ select {
      经 CSS 变量继承共读同一常量（单一权威，不重复写字面量）。 */
   --float-blur-floor: 16px;
 }
-#ld-float-layer > *:not(#ld-scrim-plane) > *,
+#ld-float-layer > *:not(#ld-scrim-plane) > *:not([data-overlay-wrapper]),
 #ld-float-layer > *:not(#ld-scrim-plane) > * > * {
   backdrop-filter: blur(max(var(--glass-blur, 0px), var(--float-blur-floor))) saturate(var(--glass-saturate, 1));
   -webkit-backdrop-filter: blur(max(var(--glass-blur, 0px), var(--float-blur-floor)));
@@ -581,6 +584,11 @@ select {
   background-image: var(--surface-bg-image, none);
   background-repeat: var(--surface-bg-repeat, no-repeat);
   background-size: var(--surface-bg-size, auto);
+  /* E5.8#109：磨砂 blur 直接施加在图像层自身（filter），不再依赖 ::before 的 backdrop-filter 采样
+     ——backdrop-filter 采样不到同一元素的兄弟伪元素（::before 的采样集排除元素自身内容含 ::after，
+     镜像因此从未被模糊：blur32 vs blur0 像素完全相同）。filter 糊自身内容 = 可靠的真磨砂玻璃；
+     glassBlur=0 → blur(0px) 无糊 = 清晰背景。saturate 同挂（修 #5——原来挂 ::before 也采不到镜像）。 */
+  filter: blur(var(--surface-glass-blur, var(--glass-blur, 0px))) saturate(var(--glass-saturate, 1));
   /* E5.8#105：镜像可见门控——panorama 镜像 blur=0 时透明度 0（前景不上图）；zones/纹理无
      mirror-opacity token → 回 surface-bg-opacity 恒显 */
   opacity: var(--surface-bg-mirror-opacity, var(--surface-bg-opacity, 1));
