@@ -86,12 +86,15 @@ function FloatingLayerHost() {
       </div>
 
       {/* 通用 surface 根（#107 浮层权威）——OverlayPortal 默认目标：ColorPicker / SelectBoxDropdown /
-          dropdown-card（vta / panel-switcher / group-tab-plus-menu）/ status-bar-notif-panel 归位。 */}
-      <div id="overlay-root" style={{ pointerEvents: "auto" }} />
+          dropdown-card（vta / panel-switcher / group-tab-plus-menu）/ status-bar-notif-panel 归位。
+          E5.8#142：position:relative（z-index 对 static 无效，实机确诊）+ zIndex 2000 建 stacking context——
+          root 收纳内容 z600/650，整 root 以 2000 参与自分层盖面板 1500。 */}
+      <div id="overlay-root" style={{ pointerEvents: "auto", position: "relative", zIndex: Z_INDEX.overlayRoot }} />
 
       {/* ToastHost——#16 接入（设计 §2：Toast 始终在此，按需显示——空栈/null 自隐藏）。
-          #107 根级归位：#toast-root 布局/穿透由 ToastHost.css 提供（.toast-container display:contents）。 */}
-      <div id="toast-root">
+          #107 根级归位：#toast-root 布局/穿透由 ToastHost.css 提供（.toast-container display:contents）。
+          E5.8#142：配 zIndex 同级 2000，DOM 序本 root 在 overlay-root 后 → toast 盖 overlay。 */}
+      <div id="toast-root" style={{ zIndex: Z_INDEX.toast }}>
         <ToastHost />
       </div>
     </div>
