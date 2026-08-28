@@ -19,8 +19,9 @@ export interface LinkDeskCommand {
     category?: string;
 }
 /** 配方贡献域——theme 元数据 domains（混搭来源过滤）+ theme:changed 载荷（域级细粒度刷新）共用（06 §2/§6.2）。
- *  六域：colors（配色，colorways 恒贡献） + appearance 五风格域（radius/glass/font/background/surface）。 */
-export type ThemeDomain = "colors" | "font" | "radius" | "glass" | "background" | "surface";
+ *  五域：colors（配色，colorways 恒贡献） + appearance 四风格域（radius/glass/font/background）。
+ *  E5.8#132：surface 域删——per-surface 精调死键（A 删拍板），玻璃表面形态 token（--surface-*）归 glass 域。 */
+export type ThemeDomain = "colors" | "font" | "radius" | "glass" | "background";
 /** 配置 schema 中的单个属性定义——E5.8#41.14 🛤 补全 uiHint/minimum/maximum/renderHint/dependsOn
  * （壳 SettingsView renderControl/SettingRow 官方控件切换 + 依赖显隐字段，与 SettingsView/types ConfigProperty 对齐） */
 export interface LinkDeskConfigProperty {
@@ -244,7 +245,7 @@ export interface AppearanceAPI {
         setColorway(colorwayId: string): Promise<void>;
         /** 复位外观——对齐壳命令：app.appearanceMode→followTheme（onApply 级联清 9 覆盖 + 6 域来源 + 强调色回主题基线，E5.8#90 合并） */
         resetAppearance(): Promise<void>;
-        /** 复位混搭——对齐壳命令：批复位 6 来源键回跟随主题（保持自定义模式，E5.8#90 app.mixMode 已删） */
+        /** 复位混搭——对齐壳命令：批复位 3 来源键回跟随主题（保持自定义模式，E5.8#90 app.mixMode 已删、#132 surface 域删） */
         resetMix(): Promise<void>;
         /** E5.8#88：外观覆盖键 → 主题/混搭基准种子值全集（设置页「已修改」徽标基准；无活动配方 → null） */
         getBaselineSeeds(): Promise<Record<string, unknown> | null>;

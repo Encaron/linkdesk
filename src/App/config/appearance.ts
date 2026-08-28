@@ -43,7 +43,7 @@ type ConfigT = (key: string) => string;
 export function registerAppearanceConfiguration(t: ConfigT): void {
   // ── E5.8#50.19：主题组——壳注册第二配置贡献（08 §5 决策 D：pluginId "appearance"，标题「主题」）。
   //    key 全表 = app.theme + app.appearanceMode（E5.8#90 单一外观主开关）+ app.themeColor
-  //    + 外观 14 覆盖 + 域来源 4 键 + 复位（E5.8#97 域驱动重组后结构）。
+  //    + 外观 13 覆盖 + 域来源 3 键 + 复位（E5.8#97 域驱动重组后结构；E5.8#132 surface 域删来源 4→3）。
   //    显隐 = dependsOn 声明驱动（appearanceMode=custom 显强调色 + 覆盖行 + 来源行 + 复位；文字组
   //    极性槽 fontTone 无 dependsOn 恒显、字体三槽 custom 展开——部分桶显隐 SettingsView 逐 key 过滤）。
   //    播种 = 设置层永远只存用户偏离量（08 §2）——切 custom 反推播种，切回 followTheme 删覆盖回配方。
@@ -160,7 +160,7 @@ export function registerAppearanceConfiguration(t: ConfigT): void {
       },
       // E5.8#90：外观主开关——单一外观模式轴（14-档案 §四 归一5）。三枚举合并：吸收 app.mixMode +
       // app.accentMode → 跟随主题 / 自定义。自定义下每槽独立指定（外观覆盖 13 键播种 +
-      // 域来源 6 键默认 followTheme，未写 = 跟随主题）。group = 整体配方（主开关置顶与主题配方同节）。
+      // 域来源 3 键默认 followTheme，未写 = 跟随主题）。group = 整体配方（主开关置顶与主题配方同节）。
       // enumDescriptions 人话（#90 验收「三枚举术语消失」——设置页不再出现 混搭模式/强调色模式 术语）。
       // E5.8#98：强调色独立轴（accentSource）——本开关不再含强调色语义（强调色区来源开关单独控制）。
       "app.appearanceMode": {
@@ -178,7 +178,7 @@ export function registerAppearanceConfiguration(t: ConfigT): void {
             // 切 custom → 播种 13 覆盖 key + 强调色（同一批量写单次 applier，08 §2 对标 accent 播种）
             seedAppearanceOverrides();
           } else {
-            // 切回 followTheme → 覆盖丢弃回配方（08 §7.3.5）——清 9 覆盖 + 6 域来源
+            // 切回 followTheme → 覆盖丢弃回配方（08 §7.3.5）——清 13 覆盖 + 3 域来源
             // 全丢回主题基线（批量复位单次 applier）。域来源无须播种（默认 followTheme，未写 = 跟随）。
             // E5.8#98：强调色不入本批——accentSource/accentColor 独立轴，外观主开关不复位它
             // （用户 followTheme 也能只调强调色，14-档案 §十二）。
@@ -197,10 +197,11 @@ export function registerAppearanceConfiguration(t: ConfigT): void {
       // 外观六覆盖——dependsOn appearanceMode=custom 才出现（08 §7.1 #5-10）。
       // neutral 默认值 = 不覆盖主题基线；onApply 统一走 applyThemeIfReady（单一写入点）。
       // E5.8#97：域驱动重组——数值域来源删键（mixRadius/mixGlass 死键，#85/#86 绝对化后混搭数值域
-      // 无意义）→ 圆角/玻璃两小组无来源行；资产域来源并入域小组（mixBackground/mixFont/mixSurface
-      // 是配方资产唯一入口——字体拾取器选不了 __ld_ 资产族 #50.20）。行序 = mockup DOM 顺序。
+      // 无意义）→ 圆角/玻璃两小组无来源行；资产域来源并入域小组（mixBackground/mixFont 是配方资产
+      // 唯一入口——字体拾取器选不了 __ld_ 资产族 #50.20）。行序 = mockup DOM 顺序。
       // E5.8#97 撤销（2026-08-26 用户拍板）：mockup ⑧ 表面分节删除——纹理=主题插件内容资产，
       // 壳无纹理槽；mixSurface 并入背景小组（域来源随域，surface 域视觉输出 = zone 表面材质）。
+      // E5.8#132：surface 域删——app.mixSurface（表面域来源选择器）随域消失，背景小组只余背景来源。
       "app.surfaceRadius": {
         type: "number",
         group: t("圆角"),
@@ -466,26 +467,11 @@ export function registerAppearanceConfiguration(t: ConfigT): void {
         dependsOn: { key: "app.appearanceMode", value: "custom" },
         onApply: () => debouncedApplyThemeIfReady(),
       },
-      // E5.8#97 撤销（2026-08-26 用户拍板）：表面平铺纹理覆盖槽 app.surfaceTexture 删除——
-      // 纹理 = 主题插件内容资产（Paper Zones 纸纹/某主题磨砂 = 主题特色），壳不提供纹理通道；
-      // 用户换纹理 = 换主题（Content vs Space Ownership，14-档案 §十一 补记）。主题侧
-      // surface.texture 机制保留（主题作者写材质用）。表面域来源行并入背景小组（域来源随域，
-      // 与 mixBackground 同列；surface 域视觉输出 = zone 表面材质 = 背景相邻，且与
-      // zoneBackgroundImage 同写 --surface-bg-image——相关控件同组）。
-      "app.mixSurface": {
-        type: "string",
-        group: t("背景"),
-        default: "followTheme",
-        resetsToTheme: true,
-        description: t("表面域来源——跟随主题配方 / 指定主题配方 id"),
-        dependsOn: { key: "app.appearanceMode", value: "custom" },
-        uiHint: "select",
-        optionsFrom: "theme.sources",
-        optionsFromDomain: "surface",
-        onApply: () => debouncedApplyThemeIfReady(),
-      },
+      // E5.8#132：surface 域删——app.mixSurface（表面域来源选择器）随域消失（原并入背景小组，
+      // 域来源随域；surface 域视觉输出 = zone 表面材质 = 背景相邻，与 zoneBackgroundImage 同写
+      // --surface-bg-image）。
       // 复位按钮（10 §2/§6 决策记录 3）——renderHint "action" 渲染操作按钮；
-      // 点击执行 theme.resetMix 命令（单一写入点：批复位 4 来源键回跟随主题，保持自定义模式）。
+      // 点击执行 theme.resetMix 命令（单一写入点：批复位 3 来源键回跟随主题，保持自定义模式）。
       // actionDisabledAll：4 来源全「跟随主题」→ 置灰（mockup 已实现，减少噪音）。
       "app.mixReset": {
         type: "string",

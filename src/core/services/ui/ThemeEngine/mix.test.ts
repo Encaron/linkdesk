@@ -52,11 +52,12 @@ describe("ThemeEngine — 混搭合并（E5.8#50.26，10 §1/§3 每域各自取
     ThemeRegistry.registerRecipe(RADIUS_RECIPE, PLUGIN);
   });
 
-  it("E5.8#97 getMixProfile — 缺省全 followTheme；读四域来源配置（radius/glass 来源键已删——数值域无来源）", () => {
+  it("E5.8#97 getMixProfile — 缺省全 followTheme；读三域来源配置（radius/glass 来源键已删 + E5.8#132 surface 域删）", () => {
     const p1 = getMixProfile();
-    for (const d of ["colors", "font", "background", "surface"] as const) {
+    for (const d of ["colors", "font", "background"] as const) {
       expect(p1[d]).toBe(MIX_FOLLOW_THEME);
     }
+    // E5.8#132：surface 域删——ThemeDomain 无 surface 成员，MixProfile 无该键（来源键随域整删，无从断言）
     // E5.8#97：radius/glass 域不在混搭档案（来源键删）——profile 缺省 undefined → resolveDomainSource 回退基础配方
     expect(p1.radius).toBeUndefined();
     expect(p1.glass).toBeUndefined();
@@ -68,12 +69,11 @@ describe("ThemeEngine — 混搭合并（E5.8#50.26，10 §1/§3 每域各自取
     expect(p2.background).toBe(MIX_FOLLOW_THEME);
   });
 
-  it("E5.8#97 mergeMixDomains — 每域各自取来源（颜色=配方+配色；字体/背景/表面=来源配方；radius/glass 无来源恒基础配方）", () => {
+  it("E5.8#97 mergeMixDomains — 每域各自取来源（颜色=配方+配色；字体/背景=来源配方；radius/glass 无来源恒基础配方）", () => {
     const profile: MixProfile = {
       colors: "mint",
       font: MIX_FOLLOW_THEME,
       background: MIX_FOLLOW_THEME,
-      surface: MIX_FOLLOW_THEME,
     };
     const tokens = mergeMixDomains(RECIPE, RECIPE.colorways[0], profile, {});
     expect(tokens["bg-window"]).toBe("#F7FBF8"); // 颜色域 → mint 配色
@@ -98,7 +98,6 @@ describe("ThemeEngine — 混搭合并（E5.8#50.26，10 §1/§3 每域各自取
       colors: "base",
       font: MIX_FOLLOW_THEME,
       background: MIX_FOLLOW_THEME,
-      surface: MIX_FOLLOW_THEME,
     };
     const tokens = mergeMixDomains(pillBase, pillBase.colorways[0], profile, {});
     // radius/glass 无来源键 → 恒基础配方 → domainTokens case "radius" clamp 进标尺
@@ -114,7 +113,6 @@ describe("ThemeEngine — 混搭合并（E5.8#50.26，10 §1/§3 每域各自取
       colors: "mint",
       font: "demo-missing",
       background: MIX_FOLLOW_THEME,
-      surface: MIX_FOLLOW_THEME,
     };
     const tokens = mergeMixDomains(RECIPE, RECIPE.colorways[0], profile, {});
     expect(tokens["font-ui"]).toBe("Noto Sans SC"); // 缺失来源 → 基础配方兜底
@@ -173,7 +171,8 @@ describe("ThemeEngine — 混搭合并（E5.8#50.26，10 §1/§3 每域各自取
     ThemeRegistry.registerRecipe(ZONES, PLUGIN);
     applyRemoteConfigChange("app.appearanceMode", "custom");
     applyRemoteConfigChange("app.mixBackground", "demo-zones");
-    // mixSurface 缺省 followTheme → 基础配方（RECIPE 无 texture）——修复前 surface 域 SURFACE_ZERO 写 zones:0 吞掉切片
+    // E5.8#132：surface 域删（来源键随域整删）→ 玻璃表面形态归 glass 域；RECIPE 无 texture → case glass 跳过
+    // surface-bg-*（SURFACE_ZERO 兜底不整面写）——修复前 surface 域 SURFACE_ZERO 写 zones:0 吞掉切片
     const profile = getMixProfile();
     const tokens = mergeMixDomains(RECIPE, RECIPE.colorways[0], profile, {});
     expect(tokens["surface-bg-zones"]).toBe("1");
@@ -195,7 +194,6 @@ describe("ThemeEngine — 混搭合并（E5.8#50.26，10 §1/§3 每域各自取
       colors: MIX_FOLLOW_THEME,
       font: "demo-nofont", // 来源存在但无 font 域
       background: MIX_FOLLOW_THEME,
-      surface: MIX_FOLLOW_THEME,
     };
     const tokens = mergeMixDomains(RECIPE, RECIPE.colorways[0], profile, {});
     expect(tokens["font-ui"]).toBe("Noto Sans SC"); // 回退基础配方 RECIPE font.ui

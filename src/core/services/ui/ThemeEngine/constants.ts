@@ -140,27 +140,27 @@ export const MIX_FOLLOW_THEME = "followTheme";
  *  E5.8#90：外观模型合并——startup.ts 原本地 MIX_SOURCE_KEYS 常量改 import 本表（单一来源）。
  *  E5.8#97：数值域来源删键——radius/glass 域来源（app.mixRadius/app.mixGlass）随 #85/#86 圆角/玻璃
  *  绝对化成为死键（数值域表达系统标尺绝对 px，混搭另一配方多键集无意义）——设置面两域来源行删除，
- *  混搭键表收缩为四域（colors/font/background/surface）。MIX_DOMAIN_ORDER 仍遍历六域：radius/glass
- *  域 profile 缺省 → resolveDomainSource 回退基础配方（域不空窗，见 mergeMixDomains）。 */
+ *  混搭键表收缩为三域（colors/font/background；E5.8#132 surface 域删一并收）。MIX_DOMAIN_ORDER 仍遍历
+ *  五域：radius/glass/surface 域 profile 缺省 → resolveDomainSource 回退基础配方（域不空窗，见 mergeMixDomains）。 */
 export const MIX_DOMAIN_KEYS: Partial<Record<ThemeDomain, string>> = {
   colors: "app.themeColor",
   font: "app.mixFont",
   background: "app.mixBackground",
-  surface: "app.mixSurface",
 };
 
 /** E5.8#90：混搭来源配置 key 全集——外观复位/重置命令批量复位用（theme.resetMix、appearanceMode→followTheme 级联） */
 export const MIX_SOURCE_KEYS: readonly string[] = Object.values(MIX_DOMAIN_KEYS);
 
-/** 混搭域应用顺序——颜色→字体→圆角→玻璃→背景→表面（10 §2 mockup 行序；碰撞后者覆盖）。
- *  E5.8#97：六域恒在——radius/glass 来源键已删，但基础配方 radius/glass token 仍须经本顺序合并
- *  （profile 缺省 → resolveDomainSource 回退基础配方），删任一域会漏合基础配方圆角/玻璃 token。
+/** 混搭域应用顺序——颜色→字体→圆角→玻璃→背景（10 §2 mockup 行序；碰撞后者覆盖）。
+ *  E5.8#97/#132：五域恒在——radius/glass 来源键已删、surface 域随 #132 死键清理删，但基础配方
+ *  radius/glass token 仍须经本顺序合并（profile 缺省 → resolveDomainSource 回退基础配方），
+ *  删任一域会漏合基础配方圆角/玻璃 token；surface 域本就没有独立来源（玻璃表面形态并入 glass case）。
  *  E5.8 Phase 11.15 归一化：域清单单一权威——ThemeDomain（theme.ts 类型层）= 域权威，本表声明
- *  ThemeDomain[] 逐元素类型检查（元素漂移编译报错）；穷尽性（全 6 域必在）不设编译期哨兵——
+ *  ThemeDomain[] 逐元素类型检查（元素漂移编译报错）；穷尽性（全 5 域必在）不设编译期哨兵——
  *  试做 knip 哨兵遭三重工具链摩擦（noUnusedLocals/knip/i18n），按健壮原则撤，欠域症状即时可见
  *  （merge 域被跳过）。MIX_DOMAIN_KEYS 经 Partial<Record<ThemeDomain,string>> 同源，MIX_SOURCE_KEYS
  *  经 Object.values(MIX_DOMAIN_KEYS) 派生——域表无第二份字面量。 */
-export const MIX_DOMAIN_ORDER: ThemeDomain[] = ["colors", "font", "radius", "glass", "background", "surface"];
+export const MIX_DOMAIN_ORDER: ThemeDomain[] = ["colors", "font", "radius", "glass", "background"];
 
 /** glass 域 token 键——SURFACE_ZERO 玻璃键派生（单一权威，删重复静态表）；surfaceVariables 产物中归玻璃域
  *  （glass-*；surface-* 归表面域）。mix.ts domainTokens case "glass" 只碰这组键。 */

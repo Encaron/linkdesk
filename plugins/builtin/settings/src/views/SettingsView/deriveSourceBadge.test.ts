@@ -3,8 +3,9 @@
  * 派生规则（14-档案 §六 #87 + #88）：无 sourceKey → null；有覆盖且值空 → 🎨 主题；
  * 有覆盖且值 === 主题/混搭基准种子（播种态/恰与主题同值）→ 🎨 主题；值非空且偏离基准（含 __none__）→ ✏️ 用户；
  * 无覆盖 + appearanceMode=custom 且域来源 ≠ followTheme → 🔀 混搭；否则 🎨 主题。
- * E5.8 超算：app.mixRadius/app.mixGlass 死键已删（#85/#86 圆角/玻璃绝对化——数值域来源删键）。
- * 本测试夹具全部改用现存键：surfaceRadius/zoneRadius（中性数值键）+ mixBackground/mixFont/mixSurface（资产域来源键）。
+ * E5.8 超算：app.mixRadius/app.mixGlass 死键已删（#85/#86 圆角/玻璃绝对化——数值域来源删键）；
+ * E5.8#132：app.mixSurface 随 surface 域整删——夹具不引用死键。
+ * 本测试夹具全部改用现存键：surfaceRadius/zoneRadius（中性数值键）+ mixBackground/mixFont（资产域来源键）。
  */
 
 import { describe, it, expect } from "vitest";
@@ -80,6 +81,6 @@ describe("deriveSourceBadge", () => {
   });
 
   it("无覆盖 + appearanceMode 未定义（读空）→ 🎨 主题", () => {
-    expect(deriveSourceBadge({ sourceKey: "app.mixSurface" })).toBe("theme");
+    expect(deriveSourceBadge({ sourceKey: "app.mixBackground" })).toBe("theme");
   });
 });

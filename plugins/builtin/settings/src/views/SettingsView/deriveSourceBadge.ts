@@ -32,7 +32,7 @@ export function deriveSourceBadge(input: {
   baseline?: unknown;
   /** E5.8#90：app.appearanceMode 当前值（"followTheme" / "custom"）——域来源生效门控 */
   mode?: unknown;
-  /** sourceKey 指向的混搭来源键当前值（如 app.mixRadius） */
+  /** sourceKey 指向的混搭来源键当前值（如 app.mixFont） */
   sourceValue?: unknown;
 }): SourceBadge | null {
   const { sourceKey, userValue, baseline, mode, sourceValue } = input;

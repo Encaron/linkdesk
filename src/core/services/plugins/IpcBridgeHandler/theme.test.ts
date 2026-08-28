@@ -107,13 +107,13 @@ describe("IpcBridgeHandler/theme — 配方/配色 API（E5.8#50.18）", () => {
     expect(getConfigurationValue("app.appearanceMode")).toBe("followTheme");
   });
 
-  it("resetMix — 复位对称 C3：批复位 6 来源键回跟随主题（保持自定义模式，E5.8#90 app.mixMode 已删）", async () => {
+  it("resetMix — 复位对称 C3：批复位 3 来源键回跟随主题（保持自定义模式，E5.8#90 app.mixMode 已删、#132 surface 域删）", async () => {
     applyRemoteConfigChange("app.appearanceMode", "custom");
     applyRemoteConfigChange("app.mixFont", "demo-recipe");
     try {
       await handleThemeMethod("theme.resetMix", []);
     } catch { /* persist failed — expected in test */ }
-    // 6 来源键批复位摘除——测试环境未注册 schema → 无默认层 → undefined
+    // 3 来源键批复位摘除——测试环境未注册 schema → 无默认层 → undefined
     //（生产 schema 默认 "followTheme"，域来源 onApply 重合并回主题基线——startup 注册）
     expect(getConfigurationValue("app.mixFont")).toBeUndefined();
     // 复位混搭不改变外观模式——保持自定义（appearanceMode 不降级）

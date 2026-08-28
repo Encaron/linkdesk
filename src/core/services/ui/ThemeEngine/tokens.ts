@@ -36,20 +36,6 @@ export function flattenRadiusTokens<K extends string>(
   }
 }
 
-/** surface 域稀疏 flatten——键直写 surface-* token；radius 键 clamp 进标尺（3d：recipe/mix 两路径共用，
- *  surface-radius 唯一写法，与 surfaceVariables glass.radius 同规——每个概念只有一种写法）。纯函数只算不改。 */
-export function flattenSurfaceDomain(
-  surface: ThemeSurface | undefined,
-  tokens: Record<string, string>
-): void {
-  if (!surface) return;
-  for (const [key, value] of Object.entries(surface)) {
-    if (value != null) {
-      tokens[`surface-${key}`] = key === "radius" ? radiusTokenPx(Number(value)) : String(value);
-    }
-  }
-}
-
 /** 玻璃 + 悬浮面板 + per-surface 纹理变量——缺省 = 零值 */
 export function surfaceVariables(surface?: ThemeSurface): Record<string, string> {
   const vars: Record<string, string> = { ...SURFACE_ZERO };

@@ -39,7 +39,7 @@ describe("groupSettingsKeys — E5.8#78 组内二级标题归桶", () => {
     expect(buckets).toEqual([{ group: "", keys: ["k1", "k2"] }]);
   });
 
-  it("主题组 8 分节全量归位——每个分节桶 key 正确（域驱动重组：外观覆盖/域混搭 两旧分节拆散——数值域来源删键、资产域来源并入域小组；#97 撤销后无表面分节，mixSurface 并入背景；#98 强调色独立轴加 accentSource）", () => {
+  it("主题组 8 分节全量归位——每个分节桶 key 正确（域驱动重组：外观覆盖/域混搭 两旧分节拆散——数值域来源删键、资产域来源并入域小组；#97 撤销后无表面分节，背景域来源并入背景小组；#98 强调色独立轴加 accentSource；E5.8#132 mixSurface 死键随 surface 域删）", () => {
     const buckets = groupSettingsKeys(
       [
         "app.theme",
@@ -63,7 +63,6 @@ describe("groupSettingsKeys — E5.8#78 组内二级标题归桶", () => {
         "app.zoneRadius",
         "app.zoneRadiusScale",
         "app.zoneBackgroundImage",
-        "app.mixSurface",
         "app.mixReset",
       ],
       (k) => {
@@ -72,7 +71,7 @@ describe("groupSettingsKeys — E5.8#78 组内二级标题归桶", () => {
         if (k === "app.accentSource" || k === "app.accentColor") return "强调色";
         if (["app.surfaceRadius", "app.zoneRadius", "app.zoneRadiusScale"].includes(k)) return "圆角";
         if (["app.glassBlur", "app.glassOpacity", "app.glassTint", "app.glassSaturate"].includes(k)) return "玻璃";
-        if (["app.mixBackground", "app.backgroundImage", "app.backgroundOpacity", "app.backgroundMask", "app.zoneBackgroundImage", "app.mixSurface"].includes(k)) return "背景";
+        if (["app.mixBackground", "app.backgroundImage", "app.backgroundOpacity", "app.backgroundMask", "app.zoneBackgroundImage"].includes(k)) return "背景";
         if (["app.fontTone", "app.mixFont", "app.fontFamily", "app.fontFamilyMono"].includes(k)) return "文字";
         if (k === "app.mixReset") return "复位";
         return "";
@@ -87,7 +86,7 @@ describe("groupSettingsKeys — E5.8#78 组内二级标题归桶", () => {
     expect(buckets[4].keys).toEqual(["app.glassBlur", "app.glassOpacity", "app.glassTint", "app.glassSaturate"]);
     expect(buckets[5].keys).toEqual([
       "app.mixBackground", "app.backgroundImage", "app.backgroundOpacity",
-      "app.backgroundMask", "app.zoneBackgroundImage", "app.mixSurface",
+      "app.backgroundMask", "app.zoneBackgroundImage",
     ]);
     expect(buckets[6].keys).toEqual(["app.fontTone", "app.mixFont", "app.fontFamily", "app.fontFamilyMono"]);
     expect(buckets[7].keys).toEqual(["app.mixReset"]);

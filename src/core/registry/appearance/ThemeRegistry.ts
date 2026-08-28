@@ -90,7 +90,7 @@ function parseAppearance(raw: unknown, data: Record<string, unknown>): ThemeAppe
     if (a.glass && typeof a.glass === "object") appearance.glass = a.glass as ThemeAppearance["glass"];
     if (a.font && typeof a.font === "object") appearance.font = a.font as ThemeAppearance["font"];
     if (a.background && typeof a.background === "object") appearance.background = a.background as ThemeAppearance["background"];
-    if (a.surface && typeof a.surface === "object") appearance.surface = a.surface as ThemeAppearance["surface"];
+    // E5.8#132：appearance.surface（per-surface 精调域）删——不再解析
     if (Object.keys(appearance).length) return appearance;
     return undefined;
   }

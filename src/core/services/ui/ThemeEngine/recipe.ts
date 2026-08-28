@@ -4,7 +4,7 @@
  */
 
 import type { ThemeRecipe, ThemeAppearance, ThemeColorway, ThemeDomain } from "../../../types/theme";
-import { surfaceVariables, backgroundVariables, applyOverrides, flattenRadiusTokens, flattenSurfaceDomain } from "./tokens";
+import { surfaceVariables, backgroundVariables, applyOverrides, flattenRadiusTokens } from "./tokens";
 
 /** 解析配色变体——colorwayId 缺省 = 配方首个配色（单配色配方 = 恒首项）。
  *  E5.8#58（审计#6）：空 colorways 防线——空配色回退空色透明配色（不崩；注册路径 parseThemeRecipe
@@ -25,13 +25,12 @@ export function recipeDomains(recipe: ThemeRecipe): ThemeDomain[] {
   if (a?.glass) domains.push("glass");
   if (a?.font) domains.push("font");
   if (a?.background) domains.push("background");
-  if (a?.surface) domains.push("surface");
   return domains;
 }
 
 /** 风格域 appearance 稀疏 flatten → token map（键去 --，引擎写入时拼回）。
- *  域顺序：radius → glass（surfaceVariables 全机制）→ font → background → surface（per-surface pass-through）；
- *  同键碰撞后者覆盖（surface 最具体排最后）。 */
+ *  域顺序：radius → glass（surfaceVariables 全机制，含 --surface-* 玻璃表面形态）→ font → background；
+ *  同键碰撞后者覆盖。E5.8#132：surface 域删，玻璃表面形态 token 归 glass 域。 */
 function flattenAppearance(appearance: ThemeAppearance, tokens: Record<string, string>): void {
   // E5.8#104：配方圆角 clamp 进系统标尺 [0,32]（radius-full 相对几何排除）——共用 flattenRadiusTokens（mix 同规）
   flattenRadiusTokens(appearance.radius, tokens);
@@ -41,7 +40,6 @@ function flattenAppearance(appearance: ThemeAppearance, tokens: Record<string, s
     if (appearance.font.mono) tokens["font-mono"] = appearance.font.mono;
   }
   Object.assign(tokens, backgroundVariables(appearance.background));
-  flattenSurfaceDomain(appearance.surface, tokens); // 3d：surface 域 flatten 唯一写法（recipe/mix 共用）
 }
 
 /**

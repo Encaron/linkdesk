@@ -1,6 +1,7 @@
 # 06-主题API契约（window.linkdesk.theme）
 
 > **状态：** 提案（2026-08-23 起草）——待 05 schema 拍板后冻结。
+> **流程状态（设计流程 §8.4 ③）：** 既有能力文档——`window.linkdesk.theme` 已实现并消费（#50.18 走设计前置落地）；本次改动为 E5.8#132 surface 域删同步 → **非新能力**，零新 API/配置/贡献点，不走新能力 8 维度全流程。
 > **一句话：** 主题的**列表**走 API（数据），主题的**选中**走配置（持久化）——`linkdesk.theme` 提供配方/配色查询 + 应用；`app.theme`/`app.themeColor` 存用户选择。
 
 ## 1. 为什么需要新命名空间
@@ -30,7 +31,7 @@ interface ColorwayMeta { id: string; name: string; preview: { accent: string; bg
 interface RecipeMeta {
   id: string; name: string; type: "light" | "dark";
   colorways: ColorwayMeta[];              // 单配色配方 = 1 项
-  domains: Array<"colors"|"font"|"radius"|"glass"|"background"|"surface">; // 该配方贡献哪些域（混搭来源过滤用）
+  domains: Array<"colors"|"font"|"radius"|"glass"|"background">; // 该配方贡献哪些域（混搭来源过滤用）；E5.8#132 surface 域删
 }
 ```
 

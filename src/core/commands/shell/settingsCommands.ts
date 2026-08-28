@@ -59,7 +59,7 @@ export function registerSettingsCommands(): void {
       },
     },
     {
-      // E5.8#90：复位混搭——批复位 6 来源键回跟随主题（保持自定义模式；域来源 onApply 重合并回主题基线，startup.ts 单一写入点）
+      // E5.8#90：复位混搭——批复位 3 来源键回跟随主题（保持自定义模式；域来源 onApply 重合并回主题基线，startup.ts 单一写入点；E5.8#132 surface 域删来源 4→3）
       id: "theme.resetMix",
       title: "混搭：复位为整体配方…",
       handler: async () => {

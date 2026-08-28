@@ -89,9 +89,6 @@ export interface ThemeAppearance {
   font?: ThemeFont;
   /** 背景域（panorama 全窗 / zones 切片） */
   background?: ThemeBackground;
-  /** 表面精调域——per-surface 键映射（05 §2：menu-blur: 12、menu-radius: "lg" 引用档位名），预留暂无 CSS 消费者；
-   *  引擎 flatten 为 `surface-<key>` token 透传。注意与顶层 glass 域的 ThemeSurface 形态字段不同源。 */
-  surface?: Record<string, number | string>;
 }
 
 /** 05 schema 配色变体——颜色域一组具体取值（稀疏，未写的颜色 token 继承 :root） */
@@ -120,5 +117,6 @@ export interface ThemeRecipe {
 }
 
 /** 配方贡献域——theme 元数据 domains（混搭来源过滤）+ theme:changed 载荷（域级细粒度刷新）共用（06 §2/§6.2）。
- *  六域：colors（配色，colorways 恒贡献） + appearance 五风格域（radius/glass/font/background/surface）。 */
-export type ThemeDomain = "colors" | "font" | "radius" | "glass" | "background" | "surface";
+ *  五域：colors（配色，colorways 恒贡献） + appearance 四风格域（radius/glass/font/background）。
+ *  E5.8#132：surface 域删——per-surface 精调死键（A 删拍板），玻璃表面形态 token（--surface-*）归 glass 域。 */
+export type ThemeDomain = "colors" | "font" | "radius" | "glass" | "background";

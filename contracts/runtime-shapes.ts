@@ -60,7 +60,7 @@ function chkThemeChangedPayload(v: unknown, p: string, errs: string[]): void {
     if (!Array.isArray(_t1.domains)) errs.push(((p) + ".domains") + ": 期望数组");
     else {
       for (let _t6 = 0; _t6 < _t1.domains.length; _t6++) {
-          if (!(_t1.domains[_t6] === "colors" || _t1.domains[_t6] === "font" || _t1.domains[_t6] === "radius" || _t1.domains[_t6] === "glass" || _t1.domains[_t6] === "background" || _t1.domains[_t6] === "surface")) errs.push((((p) + ".domains") + "[" + _t6 + "]") + ": 期望 colors|font|radius|glass|background|surface");
+          if (!(_t1.domains[_t6] === "colors" || _t1.domains[_t6] === "font" || _t1.domains[_t6] === "radius" || _t1.domains[_t6] === "glass" || _t1.domains[_t6] === "background")) errs.push((((p) + ".domains") + "[" + _t6 + "]") + ": 期望 colors|font|radius|glass|background");
       }
     }
     }

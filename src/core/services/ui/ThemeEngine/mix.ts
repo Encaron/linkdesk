@@ -9,7 +9,7 @@ import { ThemeRegistry } from "../../../registry/appearance/ThemeRegistry";
 import { getConfigurationValue, setConfigurationValue } from "../../configuration/ConfigurationService";
 import { updateConfigurationEnum } from "../../../registry/ConfigurationRegistry";
 import { MIX_DOMAIN_KEYS, MIX_FOLLOW_THEME, GLASS_TOKEN_KEYS, MIX_DOMAIN_ORDER } from "./constants";
-import { surfaceVariables, backgroundVariables, applyOverrides, flattenRadiusTokens, flattenSurfaceDomain } from "./tokens";
+import { surfaceVariables, backgroundVariables, applyOverrides, flattenRadiusTokens } from "./tokens";
 import { recipeDomains } from "./recipe";
 import { getActiveRecipe } from "./state";
 
@@ -108,7 +108,7 @@ export function resolveMixDomainRecipe(
 
 /** 单域 flatten——混搭按域取来源（10 §1）；缺省域/键 = 零值（surfaceVariables/backgroundVariables 内置）。
  *  域 token 归属（03 §1 表）：colors = 配色 token；font = --font-*；radius = --radius-*；
- *  glass = --glass-*；background = --bg-*（+ zones 切片挂 surface-bg-*）；surface = --surface-*（含 per-surface 透传）。 */
+ *  glass = --glass-* + 玻璃表面形态 --surface-*（E5.8#132 surface 域删后并入）；background = --bg-*（+ zones 切片挂 surface-bg-*）。 */
 function domainTokens(
   appearance: ThemeAppearance | undefined,
   domain: ThemeDomain,
@@ -128,6 +128,16 @@ function domainTokens(
     case "glass": {
       const sv = surfaceVariables(appearance?.glass);
       for (const key of GLASS_TOKEN_KEYS) tokens[key] = sv[key];
+      // E5.8#132：surface 域删——玻璃表面形态 token（--surface-*）并入 glass 域（原 mix case "surface" 职责）；
+      // surface-bg-* 零值不写（E5.8#58 审计#1）：zones 切片归 background 域（⑭ 影像分区）、纹理归 glass.texture
+      // 显式声明（⑬ 纸纹）——SURFACE_ZERO 的 surface-bg-* 只是兜底，整面写会吞 background 域 zones 切片。
+      // 顺序玻璃→背景 = 单配方路径 flattenAppearance 同序（#132 一并归一，zones 存活，两路径一致）。
+      const hasTexture = appearance?.glass?.texture != null && appearance.glass.texture !== "";
+      for (const [key, value] of Object.entries(sv)) {
+        if (!key.startsWith("surface-")) continue;
+        if (key.startsWith("surface-bg-") && !hasTexture) continue;
+        tokens[key] = value;
+      }
       return tokens;
     }
     case "font":
@@ -137,22 +147,6 @@ function domainTokens(
     case "background":
       // backgroundVariables 全量——bg-* + zones 模式切片（surface-bg-*，⑭ 影像分区）
       return backgroundVariables(appearance?.background);
-    case "surface": {
-      const sv = surfaceVariables(appearance?.glass);
-      // E5.8#58（审计#1）：surface-bg-* 零值不写——zones 切片归 background 域（⑭ 影像分区）、
-      // 纹理归 surface.texture 显式声明（⑬ 纸纹）。SURFACE_ZERO 的 surface-bg-* 只是「无纹理/无切片」兜底，
-      // 表面域整面覆盖会吞掉 background 域 zones 切片（mix 顺序 background→surface 后覆盖）——
-      // 单配方路径 flattenAppearance 是 surface 先 background 后（zones 存活），两路径不一致即此。
-      const hasTexture = appearance?.surface?.texture != null && appearance.surface.texture !== "";
-      for (const [key, value] of Object.entries(sv)) {
-        if (key.startsWith("surface-")) {
-          if (key.startsWith("surface-bg-") && !hasTexture) continue;
-          tokens[key] = value;
-        }
-      }
-      flattenSurfaceDomain(appearance?.surface, tokens); // 3d：surface 域 flatten 唯一写法（recipe/mix 共用）
-      return tokens;
-    }
   }
 }
 

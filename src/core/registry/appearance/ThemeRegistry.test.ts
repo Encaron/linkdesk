@@ -24,17 +24,19 @@ describe("parseThemeRecipe — 05 schema 新格式", () => {
         id: "demo-recipe",
         name: "Demo Recipe",
         type: "light",
+        /* jscpd:ignore-start -- 05 schema 新格式 appearance fixture：demo-recipe 数据在 parse（本文件）与 merge（recipe.test.ts）两测试面各自需要完整字面量，故意重复（.jscpd.json ignorePattern 支持） */
         appearance: {
           radius: { sm: 6, lg: 12 },
           glass: { blur: 14, tint: "rgba(255,255,255,0.4)", radius: 10 },
           font: { ui: "Noto Sans SC", mono: "JetBrains Mono" },
           background: { image: "assets/bg.png", opacity: 0.8 },
-          surface: { blur: 8 },
+          // E5.8#132：appearance.surface（per-surface 精调域）删——玻璃表面形态归 appearance.glass（blur 已在上）
         },
         colorways: [
           { id: "dew", name: "露", colors: { "bg-window": "#FFFBF5", accent: "#2BA876" } },
           { id: "mint", name: "薄荷", colors: { "bg-window": "#F7FBF8", accent: "#3E9E8C" } },
         ],
+        /* jscpd:ignore-end */
       },
       FALLBACK
     );
@@ -48,7 +50,7 @@ describe("parseThemeRecipe — 05 schema 新格式", () => {
     expect(recipe!.appearance?.glass?.blur).toBe(14);
     expect(recipe!.appearance?.font?.mono).toBe("JetBrains Mono");
     expect(recipe!.appearance?.background?.opacity).toBe(0.8);
-    expect(recipe!.appearance?.surface?.blur).toBe(8);
+    // E5.8#132：surface 域删——appearance.surface 不再解析（per-surface 精调死键）
   });
 
   it("colorways 缺失 colors → 过滤；空列表 → null", () => {

@@ -72,8 +72,8 @@ export async function handleThemeMethod(method: string, args: unknown[]): Promis
       await setConfigurationValue("app.appearanceMode", "followTheme", "user");
       break;
     case "theme.resetMix":
-      // E5.8#90 复位对称——对齐壳命令（settingsCommands theme.resetMix）：批复位 6 来源键回跟随主题
-      // （保持自定义模式；域来源 onApply 重合并回主题基线）。app.mixMode 键已删（三枚举归一外观主开关）。
+      // E5.8#90 复位对称——对齐壳命令（settingsCommands theme.resetMix）：批复位 3 来源键回跟随主题
+      // （保持自定义模式；域来源 onApply 重合并回主题基线）。app.mixMode 键已删（三枚举归一外观主开关）；E5.8#132 surface 域删来源 4→3。
       await resetConfigurationValueBatch(MIX_SOURCE_KEYS, "user");
       break;
     case "theme.getBaselineSeeds":

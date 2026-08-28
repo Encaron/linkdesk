@@ -17,7 +17,6 @@ describe("ThemeEngine — Recipe 合并算法 mergeDomains（E5.8#50.16，05 §4
       glass: { type: "glass", blur: 14, tint: "rgba(255,255,255,0.4)", radius: 10 },
       font: { ui: "Noto Sans SC", mono: "JetBrains Mono" },
       background: { image: "assets/bg.png", opacity: 0.8 },
-      surface: { "menu-blur": 12, "menu-radius": "lg" },
     },
     colorways: [
       { id: "dew", name: "露", colors: { "bg-window": "#FFFBF5", accent: "#2BA876" } },
@@ -43,8 +42,7 @@ describe("ThemeEngine — Recipe 合并算法 mergeDomains（E5.8#50.16，05 §4
     expect(tokens["font-ui"]).toBe("Noto Sans SC");
     expect(tokens["font-mono"]).toBe("JetBrains Mono");
     expect(tokens["bg-image"]).toBe('url("assets/bg.png")'); // backgroundVariables 包 url()
-    expect(tokens["surface-menu-blur"]).toBe("12"); // per-surface pass-through
-    expect(tokens["surface-menu-radius"]).toBe("lg");
+    // E5.8#132：surface 域删——per-surface pass-through 断言移除（surface-menu-* token 不再产出）
     // 颜色域稀疏覆盖
     expect(tokens["bg-window"]).toBe("#FFFBF5");
     expect(tokens.accent).toBe("#2BA876");
@@ -123,7 +121,6 @@ describe("ThemeEngine — Recipe 合并算法 mergeDomains（E5.8#50.16，05 §4
       appearance: {
         radius: { xs: 999, sm: 999, md: 999, lg: 999, xl: 999, "2xl": 999, pill: 999, full: 999 },
         glass: { type: "glass", blur: 14, radius: 999 },
-        surface: { radius: 999 },
       },
       colorways: [{ id: "c", name: "C", colors: {} }],
     };
@@ -133,7 +130,7 @@ describe("ThemeEngine — Recipe 合并算法 mergeDomains（E5.8#50.16，05 §4
       expect(tokens[key]).toBe("32px");
     }
     expect(tokens["radius-full"]).toBeUndefined(); // 相对几何值壳管理，配方不写不 clamp
-    expect(tokens["surface-radius"]).toBe("32px"); // glass.radius + surface.radius 双写同 clamp
+    expect(tokens["surface-radius"]).toBe("32px"); // E5.8#132：surface 域删——surface-radius 仅玻璃形态单写（glass.radius 999 → clamp 32）
     expect(tokens["glass-blur"]).toBe("14px"); // 非 radius 键不受 clamp 影响
   });
 });
