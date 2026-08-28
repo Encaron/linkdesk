@@ -5,7 +5,7 @@
   display: flex;
   align-items: stretch;
   background: var(--bg-card);
-  height: 35px;
+  height: calc(35px * var(--ui-scale)); /* E5.8 Phase 12 #169：条 35px 乘 scale */
   flex-shrink: 0;
   user-select: none;
 }
@@ -41,12 +41,12 @@
   flex: 0 1 120px;
   min-width: 64px;
   max-width: 240px;
-  height: 30px;
+  height: calc(30px * var(--ui-scale)); /* E5.8 Phase 12 #169：tab 30px 乘 scale（最高危） */
   margin: 4px 4px 0 0; /* E5.8#51 竞标 D：顶浮 4px + tab 间常驻 4px 空隙（指示器净占 0 落空隙） */
   padding: 0 8px;
   background: var(--bg-card);
   color: var(--text-secondary);
-  font-size: 13px;
+  font-size: var(--font-size-md); /* 13→md */
   cursor: pointer;
   border: 1px solid transparent; /* 预留 active 描边——border-box 下不增宽 */
   border-radius: var(--radius-md);
@@ -95,8 +95,8 @@
 /* ── 图标 ── */
 
 .group-tab-icon {
-  width: 14px;
-  height: 14px;
+  width: calc(14px * var(--ui-scale)); /* E5.8 Phase 12 #169：tab 图标盒随 scale（文本相邻图标轨道） */
+  height: calc(14px * var(--ui-scale));
   flex-shrink: 0;
   opacity: 0.8;
   /* E5.8#46.6：禁原生 HTML5 拖拽——img 默认可拖，会与标签页指针拖拽抢手势（拖 tab 出原生图标拖影） */
@@ -106,7 +106,7 @@
   opacity: 1;
 }
 .group-tab-icon-emoji {
-  font-size: 14px;
+  font-size: var(--font-size-lg); /* 14→lg */
   flex-shrink: 0;
   opacity: 0.8;
 }
@@ -132,13 +132,13 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 18px;
-  height: 18px;
+  width: calc(18px * var(--ui-scale)); /* E5.8 Phase 12 #169：close 18px 乘 scale */
+  height: calc(18px * var(--ui-scale));
   border: none;
   border-radius: var(--radius-sm);
   background: transparent;
   color: var(--text-muted);
-  font-size: 14px;
+  font-size: var(--font-size-lg); /* 14→lg */
   line-height: 1;
   cursor: pointer;
   flex-shrink: 0;
@@ -160,12 +160,12 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
+  width: calc(28px * var(--ui-scale)); /* E5.8 Phase 12 #169：plus 28px 乘 scale */
   height: 100%;
   border: none;
   background: transparent;
   color: var(--text-muted);
-  font-size: 16px;
+  font-size: var(--font-size-lg); /* 14→lg */
   cursor: pointer;
   flex-shrink: 0;
   transition: background 100ms, color 100ms;
@@ -186,7 +186,7 @@
   border: none;
   background: var(--bg-card);
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--font-size-sm); /* E5.8 Phase 12 #169：scroll 12→sm */
   cursor: pointer;
   flex-shrink: 0;
 }
@@ -204,7 +204,7 @@
    高度 30px + margin-top 4px 对齐 tab 可视高。 */
 .group-tab-drop-indicator {
   width: 2px;
-  height: 30px;
+  height: calc(30px * var(--ui-scale)); /* E5.8 Phase 12 #169：跟随 tab 高 */
   margin: 4px 1px 0 -3px;
   border-radius: var(--radius-xs);
   background: var(--accent);
@@ -274,7 +274,7 @@
   display: block;
   width: 100%;
   padding: 8px 16px;
-  font-size: 13px;
+  font-size: var(--font-size-md); /* E5.8 Phase 12 #169：菜单项 13→md */
   text-align: left;
   background: none;
   border: none;
