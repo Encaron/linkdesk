@@ -23,7 +23,7 @@
 }
 
 .keybindings-search-icon {
-  font-size: 14px;
+  font-size: var(--font-size-lg); /* E5.8 Phase 12 #174：搜索 codicon 内容图标 14→lg */
   color: var(--text-muted);
   flex-shrink: 0;
 }
@@ -33,7 +33,7 @@
   background: var(--bg-input);
   border: 1px solid var(--border);
   color: var(--text-primary);
-  font-size: 13px;
+  font-size: var(--font-size-md); /* E5.8 Phase 12 #174：search-input 13→md */
   padding: 4px 8px;
   outline: none;
 }
@@ -53,7 +53,7 @@
   display: grid;
   grid-template-columns: 2fr 1fr 80px 120px;
   padding: 8px 16px;
-  font-size: 12px;
+  font-size: var(--font-size-sm); /* E5.8 Phase 12 #174：header 12→sm */
   font-weight: 600;
   color: var(--text-muted);
   text-transform: uppercase;
@@ -68,7 +68,7 @@
   display: grid;
   grid-template-columns: 2fr 1fr 80px 120px;
   padding: 6px 16px;
-  font-size: 13px;
+  font-size: var(--font-size-md); /* E5.8 Phase 12 #174：row 13→md */
   border-bottom: 1px solid var(--border);
   cursor: default;
   align-items: center;
@@ -98,7 +98,7 @@
 }
 
 .keybindings-col-command-id {
-  font-size: 11px;
+  font-size: var(--font-size-xs); /* E5.8 Phase 12 #174：command-id 11→xs */
   color: var(--text-muted);
   margin-top: 1px;
   overflow: hidden;
@@ -108,7 +108,7 @@
 
 .keybindings-col-key {
   font-family: var(--font-mono, 'Cascadia Code', 'Fira Code', 'Consolas', monospace);
-  font-size: 12px;
+  font-size: var(--font-size-sm); /* E5.8 Phase 12 #174：col-key 12→sm（--font-mono 字族不受影响） */
   padding: 2px 6px;
   background: var(--hover-overlay);
   border-radius: 3px;
@@ -122,17 +122,17 @@
 }
 
 .keybindings-col-key-none {
-  font-size: 14px;
+  font-size: var(--font-size-lg); /* E5.8 Phase 12 #174：key-none 14→lg */
   color: var(--text-muted);
 }
 
 .keybindings-col-source {
-  font-size: 12px;
+  font-size: var(--font-size-sm); /* E5.8 Phase 12 #174：col-source 12→sm */
   color: var(--text-muted);
 }
 
 .keybindings-col-when {
-  font-size: 12px;
+  font-size: var(--font-size-sm); /* E5.8 Phase 12 #174：col-when 12→sm（--font-mono 字族不受影响） */
   color: var(--text-muted);
   font-family: var(--font-mono, monospace);
 }
@@ -144,7 +144,7 @@
   align-items: center;
   justify-content: center;
   height: 200px;
-  font-size: 13px;
+  font-size: var(--font-size-md); /* E5.8 Phase 12 #174：empty 13→md */
   color: var(--text-muted);
 }
 
@@ -167,13 +167,13 @@
   background: var(--bg-input);
   border: 1px solid var(--border);
   border-radius: 3px;
-  font-size: 11px;
+  font-size: var(--font-size-xs); /* E5.8 Phase 12 #174：chord-field 11→xs（--font-mono 字族不受影响） */
   font-family: var(--font-mono, 'Cascadia Code', 'Fira Code', 'Consolas', monospace);
   color: var(--text-primary);
   text-align: center;
   outline: none;
   white-space: nowrap;
-  line-height: 18px;
+  line-height: 1.5; /* E5.8 Phase 12 #174：18px 写死 → 单位 1.5（xs 12px×1.5=18px，1.0 零变化） */
 }
 
 .keybindings-chord-field.active {
@@ -187,15 +187,15 @@
 }
 
 .keybindings-inline-conflict {
-  font-size: 13px;
+  font-size: var(--font-size-md); /* E5.8 Phase 12 #174：inline-conflict 13→md */
   color: var(--error, #f44747);
   flex-shrink: 0;
   cursor: help;
 }
 
 .keybindings-inline-btn {
-  width: 20px;
-  height: 20px;
+  width: calc(20px * var(--ui-scale)); /* E5.8 Phase 12 #174：✓✕ 按钮盒乘 scale */
+  height: calc(20px * var(--ui-scale));
   display: flex;
   align-items: center;
   justify-content: center;
@@ -203,7 +203,7 @@
   border: 1px solid var(--border);
   border-radius: 3px;
   color: var(--text-primary);
-  font-size: 12px;
+  font-size: var(--font-size-lg); /* E5.8 Phase 12 #174：✓✕ codicon 内容图标（基类 16px）→lg */
   cursor: pointer;
   flex-shrink: 0;
 }
@@ -235,8 +235,8 @@
 
 .keybindings-row-gear {
   flex-shrink: 0;
-  width: 20px;
-  height: 20px;
+  width: calc(20px * var(--ui-scale)); /* E5.8 Phase 12 #174：齿轮按钮盒乘 scale */
+  height: calc(20px * var(--ui-scale));
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -245,7 +245,7 @@
   border: none;
   border-radius: 3px;
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--font-size-lg); /* E5.8 Phase 12 #174：齿轮 codicon 内容图标（基类 16px）→lg */
   cursor: pointer;
   opacity: 0;
   transition: opacity 120ms ease;
