@@ -42,6 +42,10 @@ import {
   reducePinTab,
   reduceRemoveTab,
   reduceInsertTab,
+  reduceResourceRenamed,
+  reduceResourceDeleted,
+  reduceRemoveTabsByPlugin,
+  reduceRemoveTabsUnderFolder,
 } from "./useTabManager/reducers-tab";
 export {
   reduceCreateTab,
@@ -354,6 +358,28 @@ export function useTabManager() {
     setTabState((prev) => reduceUpdateTabLabelBySourceId(prev, sourceId, label));
   }, []);
 
+  // ── E5.8#46.2 资源事件族——主窗资源联动（windowHost 广播 effect 经 mainResourceActions 消费）──
+
+  /** 资源身份迁移（file:renamed）——sourceId/filePath/label 迁移；label 从事件负载来（壳不派生资源语义） */
+  const renameResourceBySourceId = useCallback((oldSourceId: string, newSourceId: string, label?: string) => {
+    setTabState((prev) => reduceResourceRenamed(prev, oldSourceId, newSourceId, label));
+  }, []);
+
+  /** 资源已删除（file:deleted）——remove 其全部标签 + ensureFallback（main 恒非空） */
+  const deleteResourceBySourceId = useCallback((sourceId: string) => {
+    setTabState((prev) => ensureFallback(reduceResourceDeleted(prev, sourceId)));
+  }, []);
+
+  /** 插件卸载 → remove 其全部标签 + ensureFallback */
+  const removeTabsByPlugin = useCallback((pluginId: string) => {
+    setTabState((prev) => ensureFallback(reduceRemoveTabsByPlugin(prev, pluginId)));
+  }, []);
+
+  /** workspace 文件夹移除 → remove 其下全部标签 + ensureFallback */
+  const removeTabsUnderFolder = useCallback((folderUri: string) => {
+    setTabState((prev) => ensureFallback(reduceRemoveTabsUnderFolder(prev, folderUri)));
+  }, []);
+
   const reorderTab = useCallback((tabId: string, toIndex: number) => {
     setTabState((prev) => reduceReorderTab(prev, tabId, toIndex));
   }, []);
@@ -492,6 +518,12 @@ export function useTabManager() {
     setDirty,
     updateTabLabel,
     updateTabLabelBySourceId,
+
+    // ── 资源事件族（E5.8#46.2——windowHost 广播 effect 主窗分支消费）──
+    renameResourceBySourceId,
+    deleteResourceBySourceId,
+    removeTabsByPlugin,
+    removeTabsUnderFolder,
 
     // ── 持久化（恢复/导出）──
     restoreLayout,

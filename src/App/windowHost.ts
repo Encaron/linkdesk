@@ -47,6 +47,39 @@ export function emptyTabState(): TabState {
   return { groups: [], activeGroupId: "", root: { type: "leaf", groupId: "" } };
 }
 
+/** E5.8#46.2 跨窗资源广播——mapper 结果契约 */
+export interface MapResourceWindowsResult {
+  /** 映射后的窗口注册表（main 跳过；空窗不写回，原引用保留） */
+  windows: WindowShellState[];
+  /** reduce 后变空的脱出窗——壳调 closeWindow 空窗自灭（I9-8 窗口模式策略 autoClose） */
+  emptyWindows: string[];
+}
+
+/** E5.8#46.2：资源事件跨窗广播的纯映射——main 窗跳过（归 useTabManager 真相源，副作用走主窗方法），
+ *  脱出窗逐窗 reduce(tabState)；reduce 后空窗收 emptyWindows 不写回（壳 closeWindow 关窗自灭）。
+ *  全窗无变化 → 返回原 windows 引用（React bailout）——#46.12 死循环止血：setWindows 函数式更新器返回原引用即不触发重渲染。 */
+export function mapResourceAcrossWindows(
+  windows: WindowShellState[],
+  reduce: (tabState: TabState) => TabState,
+): MapResourceWindowsResult {
+  const emptyWindows: string[] = [];
+  let changed = false;
+  const mapped = windows.map((w) => {
+    if (w.mode === "main") return w;
+    const next = reduce(w.tabState);
+    if (next === w.tabState) return w;
+    changed = true;
+    // 空窗判定：groups 空 or 全部组 tabs 空（reduceRemoveAllTabs 单面板末 tab 删 → 空组保留）
+    if (next.groups.length === 0 || next.groups.every((g) => g.tabs.length === 0)) {
+      emptyWindows.push(w.windowId);
+      return w;
+    }
+    return { ...w, tabState: next };
+  });
+  if (!changed) return { windows, emptyWindows };
+  return { windows: mapped, emptyWindows };
+}
+
 export function useWindowHost({ mainTabState, onDriftWindowClosed }: UseWindowHostOptions): UseWindowHostResult {
   // 初始只有主窗——ready:true（主池可立即接收布局，preload 缓冲回放；onReady('main') 仅确认）
   const [windows, setWindows] = useState<WindowShellState[]>(() => [
