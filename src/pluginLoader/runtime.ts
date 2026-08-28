@@ -47,6 +47,7 @@ import {
   loadPluginComponent,
   fetchPluginDataFile,
   loadThemeContributionData,
+  loadIconThemeContributionData,
   loadLanguageContributionData,
   loadPluginI18nData,
   extractThemeColors,
@@ -330,6 +331,9 @@ async function loadPlugin(
         } catch { /* 静默 */ }
       }
     }
+  }
+  if (manifest.contributes?.iconThemes) {
+    await loadIconThemeContributionData(pluginId, manifest);
   }
   if (manifest.contributes?.languages) {
     await loadLanguageContributionData(pluginId, manifest);

@@ -10,7 +10,8 @@
  * lifecycle-ops 双端消费，放此处防 runtime↔lifecycle-ops 成环）。
  */
 
-import type { PluginManifest, ViewPluginEntry, ThemeContribution, IconThemeContribution, IconContribution, LanguageContribution, ContributesViews } from "../core/api/types";
+import type { PluginManifest, ViewPluginEntry, ThemeContribution, IconThemeContribution, IconContribution, LanguageContribution, ContributesViews, IconThemeMappings, IconThemeMapping } from "../core/api/types";
+import { getPluginAssetPath } from "../core/utils/path/pluginAssetPath";
 import { registerViewPlugin } from "./viewRegistry";
 import { registerTheme, getAvailableThemes, ensurePluginFontFacesCleanup, normalizeThemeValue, syncThemeColorEnum } from "../core/services/ui/ThemeEngine";
 import { ThemeRegistry, parseThemeRecipe } from "../core/registry/appearance/ThemeRegistry";
@@ -455,6 +456,74 @@ async function loadThemeContributionData(pluginId: string, manifest: PluginManif
   }
 }
 
+/* ── 图标主题 mappings 数据异步加载（E5.8#133.1） ── */
+
+/**
+ * 归一化插件 mappings JSON → core IconThemeMappings（双形态，E5.8#133 ④ 拍板）。
+ * - 字体 glyph：`{ class: "codicon codicon-x" | "myfont myfont-x", color?: "#f1e05a" }`——原样
+ * - 图像资产：`{ imagePath: "icons/js.svg" }`——getPluginAssetPath 解析 linkdesk:// 绝对 URL（硬约束 12 同族）
+ * 无效条目（无 class 也无 imagePath）跳过 + warn；整表无效 → null（上层 toast 反馈）。
+ */
+function normalizeIconThemeMappings(data: Record<string, unknown>, pluginId: string): IconThemeMappings | null {
+  const result: IconThemeMappings = {};
+  let anyValid = false;
+  for (const section of ["files", "extensions", "folders", "foldersExpanded"] as const) {
+    const raw = data[section];
+    if (!raw || typeof raw !== "object") continue;
+    const out: Record<string, IconThemeMapping> = {};
+    for (const [name, def] of Object.entries(raw as Record<string, unknown>)) {
+      if (!def || typeof def !== "object") {
+        console.warn(`[iconTheme] 映射条目 "${name}" 无效——需对象（class 或 imagePath），已跳过`);
+        continue;
+      }
+      const d = def as Record<string, unknown>;
+      if (typeof d.class === "string") {
+        out[name] = typeof d.color === "string" ? { class: d.class, color: d.color } : { class: d.class };
+        anyValid = true;
+      } else if (typeof d.imagePath === "string") {
+        out[name] = { imagePath: getPluginAssetPath(pluginId, d.imagePath) };
+        anyValid = true;
+      } else {
+        console.warn(`[iconTheme] 映射条目 "${name}" 无效——需 class 或 imagePath，已跳过`);
+      }
+    }
+    if (Object.keys(out).length > 0) result[section] = out;
+  }
+  return anyValid ? result : null;
+}
+
+/** 加载 contributes.iconThemes 声明的 mappings JSON——镜像 loadThemeContributionData + fetchPluginDataFile 复用。
+ *  关联 IconRegistry（ID → mappings），装/卸动态刷新（卸载时 IconRegistry disposer 清理）。 */
+async function loadIconThemeContributionData(pluginId: string, manifest: PluginManifest): Promise<void> {
+  const iconThemeList = manifest.contributes?.iconThemes as IconThemeContribution[] | undefined;
+  if (!iconThemeList?.length) return;
+
+  for (const it of iconThemeList) {
+    const data = await fetchPluginDataFile(pluginId, it.path);
+    if (!data) {
+      pushToast({
+        message: i18n.t("图标主题「{{name}}」数据文件加载失败，已跳过", { name: it.label }),
+        severity: "warning",
+        ttl: TOAST_TTL_INFO,
+        source: pluginId,
+      });
+      continue;
+    }
+    const mappings = normalizeIconThemeMappings(data, pluginId);
+    if (!mappings) {
+      console.warn(`[iconTheme] "${it.label}" 解析失败——mappings JSON 无有效条目`);
+      pushToast({
+        message: i18n.t("图标主题「{{name}}」数据损坏，已跳过加载", { name: it.label }),
+        severity: "warning",
+        ttl: TOAST_TTL_INFO,
+        source: pluginId,
+      });
+      continue;
+    }
+    IconRegistry.setMappings(it.id, mappings);
+  }
+}
+
 /* ── 语言 JSON 数据异步加载（#39 fix：绕过 Vite glob 缓存） ── */
 
 /**
@@ -556,6 +625,8 @@ export {
   loadPluginComponent,
   fetchPluginDataFile,
   loadThemeContributionData,
+  normalizeIconThemeMappings,
+  loadIconThemeContributionData,
   loadLanguageContributionData,
   loadPluginI18nData,
   syncAppThemeEnum,

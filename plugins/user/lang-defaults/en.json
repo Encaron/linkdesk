@@ -375,6 +375,8 @@
   "跟随主题": "Follow Theme",
   "主题「{{name}}」数据文件加载失败，已跳过": "Theme \"{{name}}\" data file failed to load; skipped",
   "主题「{{name}}」数据损坏，已跳过加载": "Theme \"{{name}}\" data is corrupted; skipped loading",
+  "图标主题「{{name}}」数据文件加载失败，已跳过": "Icon theme \"{{name}}\" data file failed to load; skipped",
+  "图标主题「{{name}}」数据损坏，已跳过加载": "Icon theme \"{{name}}\" data is corrupted; skipped loading",
   "文字": "Text",
   "字号": "Font size",
   "％": "%",

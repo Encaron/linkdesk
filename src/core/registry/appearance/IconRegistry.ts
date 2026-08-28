@@ -13,7 +13,7 @@
  */
 
 import { RegistryBase } from "../../registry/RegistryBase";
-import type { IconThemeContribution, IconContribution } from "../../api/types";
+import type { IconThemeContribution, IconContribution, IconThemeMappings } from "../../api/types";
 
 interface RegisteredIconTheme extends IconThemeContribution {
   pluginId: string;
@@ -25,6 +25,8 @@ interface RegisteredIcon extends IconContribution {
 
 class IconRegistryImpl extends RegistryBase {
   private themes = new Map<string, RegisteredIconTheme>();
+  /** E5.8#133.1：主题 ID → 加载好的 mappings（loadIconThemeContributionData 写入）——登记 + 数据两步 */
+  private mappingsByTheme = new Map<string, IconThemeMappings>();
   private pluginThemeIds = new Map<string, string[]>();
   private icons = new Map<string, RegisteredIcon>();
   private pluginIconIds = new Map<string, string[]>();
@@ -49,6 +51,8 @@ class IconRegistryImpl extends RegistryBase {
     return this.track(pluginId, () => {
       if (this.themes.get(theme.id) === theme) {
         this.themes.delete(theme.id);
+        // E5.8#133.1：映射随登记卸载——卸载回退保底时无残留（#133.5 验收点）
+        this.mappingsByTheme.delete(theme.id);
       }
       const owned = this.pluginThemeIds.get(pluginId);
       if (owned) {
@@ -74,6 +78,18 @@ class IconRegistryImpl extends RegistryBase {
   /** 是否有此图标主题 */
   has(themeId: string): boolean {
     return this.themes.has(themeId);
+  }
+
+  /* ── 映射数据（E5.8#133.1：登记元数据与加载数据两步——loadIconThemeContributionData 写入） ── */
+
+  /** 关联加载好的 mappings（含 imagePath 已解析 linkdesk:// 绝对 URL） */
+  setMappings(themeId: string, mappings: IconThemeMappings): void {
+    this.mappingsByTheme.set(themeId, mappings);
+  }
+
+  /** 取 mappings——未加载/已卸载 → undefined（消费方回退 codicon 保底） */
+  getMappings(themeId: string): IconThemeMappings | undefined {
+    return this.mappingsByTheme.get(themeId);
   }
 
   /* ── 共享图标（contributes.icons） ── */
