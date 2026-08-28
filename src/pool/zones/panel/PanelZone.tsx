@@ -22,7 +22,7 @@
  *   "panel:viewSelected" / "panel:resize" 由 #63.7 壳侧消费（App.tsx 事件桥）；
  *   "panel:resize" 载荷轴感知（#36.9 桥锁步）：竖条 { width } / 横带 { height }；
  *   "panel:toggleViewVisibility" 由 #34 壳侧消费（→ ViewContainerService.setVisible 落盘 + 重推回执）；
- *   "panel:createView" 归 Phase 12 面板创建（现无监听者——安全 no-op）。
+ *   "panel:createView" 壳无监听者（安全 no-op——面板创建能力壳侧尚未接线）。
  */
 
 import { useState, useRef, useCallback, Fragment } from "react";
@@ -177,7 +177,7 @@ export default function PanelZone({ panel }: PanelZoneProps) {
               <span className="codicon codicon-open-preview" aria-hidden="true" />
             </button>
           )}
-          {/* [+] 新建面板视图——panel:createView 归 Phase 12（现无监听者 no-op）；
+          {/* [+] 新建面板视图——panel:createView 壳无监听者（安全 no-op）；
               tooltip 由壳推（panel.createTooltip——显示文本铁律，池零自产文本） */}
           <button
             className="panel-tab-create"

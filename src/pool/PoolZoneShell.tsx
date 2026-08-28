@@ -29,7 +29,7 @@ import SidebarZone from "./zones/sidebar/SidebarZone"; // E5.7#10：Phase 3 替�
 import FloatingLayerHost from "./zones/floating-layer/FloatingLayerHost"; // E5.7#25：Phase 4 浮层 portal 容器（#14 前置）
 import MainZone from "./zones/main/MainZone"; // E5.7#20：Phase 5 替换主区占位（MainRenderer 693 行行为零丢失提取）
 import PanelZone from "./zones/panel/PanelZone"; // E5.7#21 骨架 + #63.7 数据生产者（贡献路由/动态加载/高度持久化已落地）
-import RightSidebarZone from "./zones/right-sidebar/RightSidebarZone"; // E5.7#22：Phase 5 右侧栏骨架（数据生产者归 Phase 12）
+import RightSidebarZone from "./zones/right-sidebar/RightSidebarZone"; // E5.7#22：Phase 5 右侧栏骨架（壳侧暂无容器生产者）
 import BackgroundLayer from "./zones/BackgroundLayer"; // E5.8#50.8：全窗背景图片层（shell 首子，z-index 0——FloatingLayerHost 底镜像）
 
 function PoolZoneShell({ layout }: { layout: PoolLayout }) {
@@ -106,8 +106,8 @@ function PoolZoneShell({ layout }: { layout: PoolLayout }) {
           </div>
         )}
 
-        {/* RightSidebarZone——E5.7#22（Phase 5）：右侧栏骨架（greenfield——数据生产者归 Phase 12）。
-            #37.5：真渲染能力（宽度/折叠/展开/handle 镜像）+ grid 放置（swap 规则对边槽）。
+        {/* RightSidebarZone——E5.7#22（Phase 5）：右侧栏骨架（greenfield——壳侧暂无容器生产者，
+            安全 no-op）。#37.5：真渲染能力（宽度/折叠/handle 镜像）+ grid 放置（swap 规则对边槽）。
             #146：edge 从 sidebarEdge 对边反推——handle 落点/拖拽方向随槽位归一化（池布局 DTO
             RightSidebarLayout 不携带自身 edge，防两处字面量）。 */}
         {layout.rightSidebar?.visible && (

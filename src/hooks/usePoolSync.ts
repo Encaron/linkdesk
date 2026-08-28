@@ -220,7 +220,7 @@ export function usePoolSync({ windows, sidebarView, isSidebarVisible, panelActiv
       };
     }
 
-    // E5.8#36.9：右侧栏真 zone——引擎常驻（LayoutEngine 模块级 addZone）但无容器内容生产者（Phase 12 填充）。
+    // E5.8#36.9：右侧栏真 zone——引擎常驻（LayoutEngine 模块级 addZone）但壳侧暂无容器内容生产者。
     // 推 visible:false → 池零 DOM（PoolZoneShell 按 layout.rightSidebar?.visible 条件渲染）；
     // 宽度/钳制界随引擎——#37.5 grid 真渲染消费。edge 不携带（swap 规则 = sidebar 对边，池反推）。
     const rsZone = layoutEngine.getZone("rightSidebar");
@@ -237,8 +237,8 @@ export function usePoolSync({ windows, sidebarView, isSidebarVisible, panelActiv
           maxWidth: rsZone.dock.maxWidth,
           emptyText: t("此容器没有已注册的视图"),
           emptyHint: t("安装插件以添加视图"),
-          // E5.8#37.5：右栏折叠态 + 折叠 tooltip——#37.5 RightSidebarZone 真渲染消费（▶/◀ 按钮）。
-          // 壳无右栏容器生产者（Phase 12）——collapsed 派生自宽度（与左栏同判定）；安全 no-op 语义
+          // E5.8#37.5 + #159：右栏折叠态 + 折叠 tooltip——RightSidebarZone 真渲染消费（◀ 按钮）。
+          // 壳无右栏容器生产者——collapsed 派生自宽度（与左栏同判定）；折叠=真消失（#159 与左栏同源）
           collapsed: rsWidth <= 48,
           expandTooltip: t("展开侧栏"),
           collapseTooltip: t("折叠侧栏"),

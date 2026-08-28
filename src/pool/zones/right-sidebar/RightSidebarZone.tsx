@@ -8,21 +8,23 @@
  *   - header（containerTitle 壳 t() 推送——显示文本铁律）
  *   - toolbar 粘顶（PoolToolbarSlot）+ section stack（PoolSectionStack——折叠/拖排/PaneSash 自带）
  *   - 左侧 4px resize handle——useResizeDrag（#37.5 抽 hook 收敛，growSign -1 左拖增宽，#13 语义零差异迁移）
- *   - collapsed 态（宽度 ≤48 派生）——▶ 展开按钮；header ◀ 折叠按钮；tooltip 壳 t() 推送
+ *   - collapsed 态（宽度 ≤48 派生）——整个 zone 消失（E5.8#159 折叠同源改版：与 #147 左栏同款
+ *     真消失无窄条/▶；壳 layoutEngine zone 宽 ≤48 时壳侧置 collapsed:true——grid auto 列 0 宽，主区占满）
  *   - 空态文案 emptyText/emptyHint 壳 t() 推送（SidebarLayout 既有字段）
  *
- * 🔴 壳侧无生产者（rightSidebar 数据填充归 Phase 12）——当前真渲染的是「空容器」形态
- *   （宽度/折叠/展开/handle 镜像全可用）。与 SidebarZone 的差异（诚实注记）：
- *   ① 折叠/展开按钮 → events.emit("rightSidebar:toggleCollapse", { collapsed })——壳无监听 =
- *      安全 no-op（池 emit 零订阅先例）；Phase 12 接线后直达壳折叠真相源（⚑ 不借 toggleSidebarCollapse
- *      ——该 action 壳 handler 是左栏专属语义，无 containerId 参数）；
- *   ② 视图 reorder/setCollapsed → pool.sidebarAction（通道按 containerId 泛化——
- *      右栏容器注册后同一通道直达壳 ViewContainerService；Phase 12 生效前安全 no-op）；
+ * 🔴 壳侧暂无右栏容器生产者——当前真渲染「空容器」形态（宽度/折叠/handle 镜像全可用）。
+ *   与 SidebarZone 的差异（诚实注记——壳无监听/无生产者 = 安全 no-op，非历史延期）：
+ *   ① ◀ 折叠按钮 → events.emit("rightSidebar:toggleCollapse", { collapsed })——壳无监听 =
+ *      安全 no-op（池 emit 零订阅先例；右栏容器生产后壳接线即直达折叠真相源，⚑ 不借
+ *      toggleSidebarCollapse——该 action 壳 handler 是左栏专属语义，无 containerId 参数）；
+ *   ② 视图 reorder/setCollapsed → pool.sidebarAction（通道按 containerId 泛化——右栏容器
+ *      注册后同一通道直达壳 ViewContainerService；当前无容器 = 安全 no-op）；
  *   ③ 宽度 commit → events.emit("rightSidebar:resize", { width })——不借 setSidebarWidth
- *      （该 action 壳 handler 是左栏专属语义，无 containerId 参数）——Phase 12 #63.7 消费。
+ *      （该 action 壳 handler 是左栏专属语义，无 containerId 参数）——壳无监听 = 安全 no-op。
  */
 
 import { useState, useCallback } from "react";
+import type { ReactNode } from "react";
 import PoolToolbarSlot from "../../shared/pool-toolbar-slot/PoolToolbarSlot";
 import PoolSectionStack from "../../shared/pool-section-stack/PoolSectionStack";
 import ViewTitleActions from "../../shared/view-title-actions/ViewTitleActions"; // E5.8#36.6：mergeHeaderWhenSingle 单视图时容器 header 即视图 header——同声明消费
@@ -46,7 +48,7 @@ export default function RightSidebarZone({ rightSidebar, edge }: RightSidebarZon
   // toolbar height tracked for PoolToolbarSlot（SidebarZone #10 同款）
   const setToolbarHeight = useState(0)[1];
 
-  // 池→壳 IPC 回调（E5.6#11j 通道——按 containerId 泛化，右栏容器 Phase 12 注册后直达）
+  // 池→壳 IPC 回调（E5.6#11j 通道——按 containerId 泛化；右栏容器壳侧注册后同一通道直达）
   const handleSidebarAction = useCallback((action: SidebarAction) => {
     window.linkdesk?.pool?.sidebarAction?.(action);
   }, []);
@@ -64,7 +66,7 @@ export default function RightSidebarZone({ rightSidebar, edge }: RightSidebarZon
     value: rightSidebar.width,
     cursor: "col-resize",
     onCommit: (width) => {
-      // 真相源在壳——Phase 12 #63.7 消费（钳制 → pushLayout 回执）
+      // 真相源在壳——壳无监听 = 安全 no-op（钳制 → pushLayout 回执，右栏容器生产后壳接线即达）
       window.linkdesk?.events?.emit("rightSidebar:resize", { width });
     },
   });
@@ -122,28 +124,31 @@ export default function RightSidebarZone({ rightSidebar, edge }: RightSidebarZon
     );
   };
 
-  return (
-    <>
-    <div
-      className="right-sidebar-zone"
-      style={rightSidebar.visible ? undefined : { display: "none" }}
-    >
-      {/* 折叠态——▶ 展开按钮（与 SidebarZone #10 同款：容器视图常驻挂载，折叠不丢状态） */}
-      {collapsed && (
-        <div className="side-panel collapsed" style={{ width: resize.size, height: "100%" }}>
-          <button
-            className="side-panel-expand"
-            onClick={() => window.linkdesk?.events?.emit("rightSidebar:toggleCollapse", { collapsed: true })}
-            title={rightSidebar.expandTooltip}
-          >
-            ▶
-          </button>
+  // zone 包装——分隔线活在可见性条件块内（visible=false 或 collapsed → 整体 display:none，
+  // grid auto 列 0 宽，主区占满；分隔线随之消失）。E5.8#159：右栏折叠同源改版——折叠=真消失，无窄条残留。
+  const renderZone = (inner: ReactNode) => {
+    const zoneHidden = !rightSidebar.visible || collapsed;
+    return (
+      <>
+        <div className="right-sidebar-zone" style={zoneHidden ? { display: "none" } : undefined}>
+          {inner}
         </div>
-      )}
+        {/* E5.7#22 + 缝系统：左侧 4px resize handle——共享 .zone-resize-handle（index.css 全局层：
+            锚本格左边界 = 缝中心，偏移 -inset 缝居中 / 直角贴边）。#13 同款视觉（--separator → --separator-hover） */}
+        <div
+          className={`zone-resize-handle vertical ${handleEdgeForSlot(edge)}`}
+          style={zoneHidden ? { display: "none" } : undefined}
+          onMouseDown={resize.onResizeStart}
+          aria-hidden="true"
+        />
+      </>
+    );
+  };
 
-      {/* 非折叠——完整面板：header + 内容（空态 / toolbar + section stack） */}
+  return renderZone(
+    <>
       <div className={`side-panel${resize.resizing ? " resizing" : ""}`} style={{ width: resize.size, height: "100%" }}>
-        {/* 容器 header——#37.5 补 ◀ 折叠按钮（SidebarZone 同款；差异注记 ①：emit 安全 no-op 接线归 Phase 12） */}
+        {/* 容器 header——◀ 折叠按钮（SidebarZone #10 同款；差异注记 ①：壳无监听 = 安全 no-op） */}
         {effectiveTitle && (
           <div className="side-panel-header">
             <span className="side-panel-title" title={effectiveTitle}>{effectiveTitle}</span>
@@ -151,7 +156,7 @@ export default function RightSidebarZone({ rightSidebar, edge }: RightSidebarZon
             {mergeHeaderWhenSingle === true && sectionViews.length === 1 && sectionViews[0].titleActions?.length
               ? <ViewTitleActions actions={sectionViews[0].titleActions} />
               : null}
-            {/* ◀ 折叠按钮——右栏折叠真相源归 Phase 12（壳无监听 = 安全 no-op） */}
+            {/* ◀ 折叠按钮——右栏折叠真相源在壳（当前无监听 = 安全 no-op） */}
             <button
               className="side-panel-collapse"
               onClick={() => window.linkdesk?.events?.emit("rightSidebar:toggleCollapse", { collapsed: false })}
@@ -163,16 +168,6 @@ export default function RightSidebarZone({ rightSidebar, edge }: RightSidebarZon
         )}
         {renderContent()}
       </div>
-    </div>
-
-    {/* E5.7#22 + 缝系统：左侧 4px resize handle——共享 .zone-resize-handle（index.css 全局层：
-        锚本格左边界 = 缝中心，偏移 -inset 缝居中 / 直角贴边）。#13 同款视觉（--separator → --separator-hover） */}
-    <div
-      className={`zone-resize-handle vertical ${handleEdgeForSlot(edge)}`}
-      style={rightSidebar.visible ? undefined : { display: "none" }}
-      onMouseDown={resize.onResizeStart}
-      aria-hidden="true"
-    />
     </>
   );
 }

@@ -74,7 +74,7 @@ export function useUiBridges({ setPanelActiveViewId, panelActiveViewIdRef, detac
   // E5.7#63.7：桥接池面板事件（icon:selected 同款通道）——
   //   panel:viewSelected → App state（usePoolSync 重推 activeViewId，真相源在壳）
   //   panel:resize      → LayoutEngine resizeZoneHeight 钳制 → onDidChangeLayout → 重推回执（#13 同款）
-  //   panel:createView  → Phase 12 面板创建消费——三件套范围外，暂无人监听（池 emit 零订阅 = no-op）
+  //   panel:createView  → 面板创建消费——三件套范围外，壳暂无监听（池 emit 零订阅 = 安全 no-op）
   //   panel:toggleViewVisibility → ViewContainerService（E5.8#34 切换器勾选显隐——setVisible 落盘 +
   //     fire onDidChangeActiveViews → usePoolSync layoutVersion 重推回执，全自动）
   useEffect(() => {

@@ -89,8 +89,8 @@ export function buildSampleLayout(): PoolLayout {
       minWidth: 170,
       maxWidth: 600,
     },
-    // E5.8#37.5：右侧栏真渲染样例——空容器（views 空 → emptyText 渲染路径，零插件视图零命名空间风险）。
-    // 宽度 300 + 折叠/展开 tooltip——▶/◀ 按钮 emit 安全 no-op（壳接线归 Phase 12）
+    // E5.8#37.5 + #159：右侧栏真渲染样例——空容器（views 空 → emptyText 渲染路径，零插件视图零命名空间风险）。
+    // 宽度 300 + 折叠 tooltip——◀ 按钮 emit 安全 no-op（壳无监听）；折叠=真消失无 ▶ 按钮（#159 与左栏同源）
     rightSidebar: {
       visible: true,
       width: 300,

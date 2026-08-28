@@ -3,11 +3,12 @@
  * 迁入同 DOM React 组件（Phase 3 目标）。行为零丢失——对照 SidebarRenderer 6 项验收。
  *
  * 数据全部来自 layout.sidebar（壳 ViewContainerService 序列化 + t() 翻译——显示文本铁律）。
- * 池 = 哑渲染器：写操作全走 window.linkdesk.pool.sidebarAction（E5.6#11j 通道，Phase 12 归位命名）。
+ * 池 = 哑渲染器：写操作全走 window.linkdesk.pool.sidebarAction（E5.6#11j 通道——池→壳 wire 契约）。
  *
  * 职责（设计 Zone分解设计.md §2.3）：
  *   - visible=false → display:none（保持挂载——侧栏插件视图状态不丢）
- *   - collapsed → 只渲染 ▶ 展开按钮（壳 layoutEngine zone 宽 ≤48 时壳侧置 collapsed:true）
+ *   - collapsed → 整个 zone 消失（E5.8#147 折叠改版：真消失无窄条/▶；壳 layoutEngine zone 宽
+ *     ≤48 时壳侧置 collapsed:true——折叠态 grid auto 列 0 宽，主区占满）
  *   - views 空 → 空状态文案（emptyText/emptyHint 壳侧 t() 推送）
  *   - header：containerTitle / mergeHeaderWhenSingle 单视图标题合并 + ◀ 折叠按钮 + 右键菜单
  *     （壳 ContextMenu 聪慧组件——menuId "viewTitleContext" 字符串直传，不 import 壳 MenuRegistry（Path B——字符串即桥契约）；
@@ -89,22 +90,26 @@ export default function SidebarZone({ sidebar }: SidebarZoneProps) {
   // 折叠态派生——拖拽期间本地宽实时判定（壳 collapsed 只在重推时更新，拖拽中途会滞后）
   const collapsed = resize.resizing ? resize.size <= 48 : sidebar.collapsed === true;
 
-  // zone 包装——分隔线活在可见性条件块内（visible=false → 整体 display:none，分隔线随之消失）
-  const renderZone = (inner: ReactNode) => (
-    <>
-      <div className="side-panel-zone" style={sidebar.visible ? undefined : { display: "none" }}>
-        {inner}
-      </div>
-      {/* E5.7#13 + 缝系统：4px 分隔线——共享 .zone-resize-handle（index.css 全局层：锚 cell 边界
-          = 缝中心，偏移 -inset 缝居中 / 直角贴边）。hover --separator → --separator-hover（HandleLine 行为传承） */}
-      <div
-        className={`zone-resize-handle vertical ${handleEdgeForSlot(sidebar.edge ?? "left")}`}
-        style={sidebar.visible ? undefined : { display: "none" }}
-        onMouseDown={resize.onResizeStart}
-        aria-hidden="true"
-      />
-    </>
-  );
+  // zone 包装——分隔线活在可见性条件块内（visible=false 或 collapsed → 整体 display:none，
+  // grid auto 列 0 宽，主区占满；分隔线随之消失）。E5.8#147：折叠=真消失，无窄条残留。
+  const renderZone = (inner: ReactNode) => {
+    const zoneHidden = !sidebar.visible || collapsed;
+    return (
+      <>
+        <div className="side-panel-zone" style={zoneHidden ? { display: "none" } : undefined}>
+          {inner}
+        </div>
+        {/* E5.7#13 + 缝系统：4px 分隔线——共享 .zone-resize-handle（index.css 全局层：锚 cell 边界
+            = 缝中心，偏移 -inset 缝居中 / 直角贴边）。hover --separator → --separator-hover（HandleLine 行为传承） */}
+        <div
+          className={`zone-resize-handle vertical ${handleEdgeForSlot(sidebar.edge ?? "left")}`}
+          style={zoneHidden ? { display: "none" } : undefined}
+          onMouseDown={resize.onResizeStart}
+          aria-hidden="true"
+        />
+      </>
+    );
+  };
 
   // E5.7#84：keep-alive 容器清单——全部容器常驻挂载（display:none 切换视图，不卸载组件）。
   // 旧布局（无 containers 字段）回退单容器渲染。真相源在壳：插件卸载 → 容器从清单消失 → 池自然卸载。
@@ -129,18 +134,8 @@ export default function SidebarZone({ sidebar }: SidebarZoneProps) {
     /* visible=false → display:none（设计 §2.3——保持挂载，视图状态不丢）。实际推送路径上
        pool-main lastVisibleLayout 顶替已保证侧栏不闪，此守卫兜冷启动（从未显示过侧栏）。 */
     <>
-      {/* 折叠态——▶ 展开按钮（E5.7#84：不再提前 return——容器视图常驻挂载，折叠不丢状态） */}
-      {collapsed && (
-        <div className={`side-panel collapsed${resize.resizing ? " resizing" : ""}`} style={{ width: resize.size, height: "100%" }}>
-          <button
-            className="side-panel-expand"
-            onClick={() => handleSidebarAction({ action: "toggleSidebarCollapse", containerId: containerId ?? "" })}
-            title={sidebar.expandTooltip}
-          >
-            ▶
-          </button>
-        </div>
-      )}
+      {/* E5.8#147 折叠改版：折叠=真消失（无窄条/▶）。容器视图 keep-alive 保留（display:none 不卸载——
+          折叠态容器仍在 containers.map 内挂载，视图状态不丢）。 */}
       {containers.map((c) => {
         // 无视图容器：活动 → 空态占位；非活动 → 不渲染（无组件可保持）
         if (c.views.length === 0) {

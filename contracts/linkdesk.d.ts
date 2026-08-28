@@ -1275,7 +1275,7 @@ export interface SidebarLayout {
     // ── E5.7#10：侧栏 UI 文本壳侧 t() 推送（显示文本铁律——池渲染零自产文本） ──
     emptyText?: string; // 空状态主文案——"此容器没有已注册的视图"
     emptyHint?: string; // 空状态提示——"安装插件以添加视图"
-    expandTooltip?: string; // ▶ 展开按钮 tooltip
+    expandTooltip?: string; // 展开 tooltip——折叠=真消失后无 ▶ 展开按钮（#147/#159），字段随 DTO 契约保留（零消费方）
     collapseTooltip?: string; // ◀ 折叠按钮 tooltip
     // ── E5.7#13：拖拽钳制界——壳 LayoutEngine dock 声明推送（池本地钳制对齐壳 resizeZone，零硬编码） ──
     minWidth?: number; // 拖拽最小宽——壳 dock.minWidth（170）
@@ -1298,14 +1298,15 @@ export interface RightSidebarLayout {
     views: SidebarViewMeta[];
     containers?: SidebarContainerLayout[];
     collapsedViews?: string[];
-    /** 🆕 E5.8#36.8 + #37.5：右栏折叠态——宽度 ≤48 派生（池），▶/◀ 按钮切换 emit 安全 no-op（壳接线归 Phase 12） */
+    /** 🆕 E5.8#36.8 + #37.5 + #159：右栏折叠态——宽度 ≤48 派生（池），折叠=整个 zone 消失（与左栏 #147 同源）；
+     *  ◀ 按钮切换 emit 安全 no-op（壳无监听） */
     collapsed?: boolean;
     // ── 拖拽钳制界 + 空态文案 + 折叠 tooltip（与 SidebarLayout 同语义）──
     minWidth?: number;
     maxWidth?: number;
     emptyText?: string;
     emptyHint?: string;
-    /** 🆕 E5.8#37.5：▶ 展开按钮 tooltip（壳 t() 推送） */
+    /** 🆕 E5.8#37.5：展开 tooltip（壳 t() 推送）——#159 折叠=真消失后无 ▶ 按钮，字段随 DTO 契约保留（零消费方） */
     expandTooltip?: string;
     /** 🆕 E5.8#37.5：◀ 折叠按钮 tooltip（壳 t() 推送） */
     collapseTooltip?: string;
@@ -1412,7 +1413,7 @@ export interface PanelLayout {
     /** 🆕 E5.8#37.5：竖条面板（左/右）拖拽最小/最大宽——壳 dock.minWidth/maxWidth 推送 */
     minWidth?: number;
     maxWidth?: number;
-    /** E5.7#63.7：[+] 按钮 tooltip——壳 t("新建面板视图") 推送（显示文本铁律；面板创建归 Phase 12，目前壳侧 no-op） */
+    /** E5.7#63.7：[+] 按钮 tooltip——壳 t("新建面板视图") 推送（显示文本铁律；壳无 panel:createView 监听 = 安全 no-op） */
     createTooltip?: string;
     /** E5.8#34：容器切换器下拉 DTO——按容器分组列全部视图（含隐藏），mockup 帧 2 */
     switcher?: PanelSwitcherGroup[];

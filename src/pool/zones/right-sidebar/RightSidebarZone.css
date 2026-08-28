@@ -27,10 +27,8 @@
   transition: width 150ms ease;
 }
 
-/* E5.8#37.5：折叠态（宽度 ≤48 派生）——▶ 展开按钮容器（SidebarZone.css 同款） */
-.side-panel.collapsed {
-  width: 28px;
-}
+/* E5.8#159 折叠同源改版：无窄条——折叠 = wrapper display:none（grid auto 列 0 宽），
+   .side-panel.collapsed / .side-panel-expand 已删（折叠态无 UI 残留，SidebarZone #147 同款）。 */
 
 /* 拖拽期间关闭宽度 transition（#13 同因——rAF 帧帧改宽，150ms 过渡会滞后成橡皮筋） */
 .side-panel.resizing {
@@ -82,9 +80,8 @@
   text-align: center;
 }
 
-/* E5.8#37.5：◀ 折叠 / ▶ 展开按钮（SidebarZone.css 同款） */
-.side-panel-collapse,
-.side-panel-expand {
+/* E5.8#37.5：◀ 折叠按钮（SidebarZone.css 同款；#159 已删 .side-panel-expand——折叠=真消失无 ▶ 按钮） */
+.side-panel-collapse {
   width: 22px;
   height: 22px;
   display: flex;
@@ -99,22 +96,15 @@
   transition: color 150ms, background 150ms;
 }
 
-.side-panel-collapse:hover,
-.side-panel-expand:hover {
+.side-panel-collapse:hover {
   color: var(--text-primary);
   background: var(--hover-overlay);
-}
-
-.side-panel-expand {
-  margin-top: 8px;
-  align-self: center;
 }
 
 /* 🔥 UX04：尊重系统"减少动画"偏好——关闭所有 transition（SidebarZone.css 同款） */
 @media (prefers-reduced-motion: reduce) {
   .side-panel,
-  .side-panel-collapse,
-  .side-panel-expand {
+  .side-panel-collapse {
     transition: none !important;
   }
 }

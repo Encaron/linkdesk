@@ -14,9 +14,8 @@
   transition: width 150ms ease; /* 折叠动画（设计 §2.3）——#13 拖拽期间 .resizing 关闭 */
 }
 
-.side-panel.collapsed {
-  width: 28px;
-}
+/* E5.8#147 折叠改版：无窄条——折叠 = wrapper display:none（grid auto 列 0 宽），
+   .side-panel.collapsed / .side-panel-expand 已删（折叠态无 UI 残留）。 */
 
 /* zone 包装——pool-body flex 行的直接子项（.side-panel 的 flex-shrink 管不到 wrapper）。
    E5.7#13：flex 行——.side-panel + 4px 分隔线并排（分隔线在可见性条件块内，随 display:none 消失） */
@@ -56,8 +55,7 @@
   text-overflow: ellipsis;
 }
 
-.side-panel-collapse,
-.side-panel-expand {
+.side-panel-collapse {
   width: 22px;
   height: 22px;
   display: flex;
@@ -72,15 +70,9 @@
   transition: color 150ms, background 150ms;
 }
 
-.side-panel-collapse:hover,
-.side-panel-expand:hover {
+.side-panel-collapse:hover {
   color: var(--text-primary);
   background: var(--hover-overlay);
-}
-
-.side-panel-expand {
-  margin-top: 8px;
-  align-self: center;
 }
 
 .side-panel-body {
@@ -116,8 +108,7 @@
 /* 🔥 UX04：尊重系统"减少动画"偏好——关闭所有 transition */
 @media (prefers-reduced-motion: reduce) {
   .side-panel,
-  .side-panel-collapse,
-  .side-panel-expand {
+  .side-panel-collapse {
     transition: none !important;
   }
 }
