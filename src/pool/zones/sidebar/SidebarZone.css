@@ -37,7 +37,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: 35px;
+  height: calc(35px * var(--ui-scale)); /* E5.8 Phase 12 #167：header 35px 乘 scale */
   padding: 0 12px;
   border-bottom: 1px solid var(--separator);
   background: var(--bg-side-panel);
@@ -45,7 +45,7 @@
 
 /* 🔥 UX06：对标 VS Code——11px/uppercase/letter-spacing/ellipsis */
 .side-panel-title {
-  font-size: 11px;
+  font-size: var(--font-size-xs); /* E5.8 Phase 12 #167：11→xs */
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -80,7 +80,7 @@
 
 .side-panel-placeholder {
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--font-size-sm); /* E5.8 Phase 12 #167：12→sm */
   padding: 12px;
   text-align: center;
 }
