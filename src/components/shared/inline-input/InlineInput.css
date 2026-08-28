@@ -20,16 +20,16 @@
   box-shadow: 0 0 0 1px var(--accent);
 }
 
-/* 22px——文件树行内重命名 */
+/* 22px——文件树行内重命名（E5.8 Phase 12 #170：22px 乘 scale + 12→sm） */
 .inline-input--compact {
-  height: 22px;
-  font-size: 12px;
+  height: calc(22px * var(--ui-scale));
+  font-size: var(--font-size-sm);
   padding: 0 4px;
 }
 
-/* 32px——设置搜索框 / 串口发送区 */
+/* 32px——设置搜索框 / 串口发送区（E5.8 Phase 12 #170：32px 乘 scale + 13→md） */
 .inline-input--normal {
-  height: 32px;
-  font-size: 13px;
+  height: calc(32px * var(--ui-scale));
+  font-size: var(--font-size-md);
   padding: 0 8px;
 }

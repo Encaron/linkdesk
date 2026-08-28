@@ -20,8 +20,8 @@
   color: var(--fg-input, var(--fg-default, #ccc));
   border: 1px solid var(--border-input, var(--border-default, #555));
   border-radius: var(--radius-xs);
-  font-size: 13px;
-  line-height: 20px;
+  font-size: var(--font-size-md); /* E5.8 Phase 12 #170：trigger 13→md */
+  line-height: 1.6; /* E5.8 Phase 12 #170：line-height 20px → unitless */
   cursor: pointer;
   font-family: inherit;
   text-align: left;
@@ -61,7 +61,7 @@
 
 .selectbox-arrow {
   flex-shrink: 0;
-  font-size: 12px;
+  font-size: var(--font-size-sm); /* E5.8 Phase 12 #170：arrow 12→sm */
   transition: transform 0.15s ease;
 }
 
@@ -110,7 +110,7 @@
   color: var(--fg-input, var(--fg-default, #ccc));
   border: 1px solid var(--border-input, var(--border-default, #555));
   border-radius: var(--radius-xs);
-  font-size: 12px;
+  font-size: var(--font-size-sm); /* E5.8 Phase 12 #170：search 12→sm */
   font-family: inherit;
   outline: none;
   box-sizing: border-box;
@@ -132,8 +132,8 @@
 
 .selectbox-item {
   padding: 3px 8px;
-  font-size: 13px;
-  line-height: 20px;
+  font-size: var(--font-size-md); /* E5.8 Phase 12 #170：item 13→md */
+  line-height: 1.6; /* E5.8 Phase 12 #170：line-height 20px → unitless */
   color: var(--fg-default, #ccc);
   cursor: pointer;
 }
@@ -149,7 +149,7 @@
 
 .selectbox-empty {
   padding: 6px 8px;
-  font-size: 12px;
+  font-size: var(--font-size-sm); /* E5.8 Phase 12 #170：empty 12→sm */
   color: var(--fg-muted, #888);
   text-align: center;
 }

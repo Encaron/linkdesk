@@ -30,7 +30,7 @@
   background: color-mix(in srgb, var(--accent) 12%, transparent);
 }
 .segmented-radio__label {
-  font-size: 12px;
+  font-size: var(--font-size-sm); /* E5.8 Phase 12 #170：12→sm */
   color: var(--text-secondary);
   white-space: nowrap;
 }

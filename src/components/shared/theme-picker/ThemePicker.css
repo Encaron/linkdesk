@@ -67,7 +67,7 @@
 
 .theme-card .tname {
   padding: 6px 8px;
-  font-size: 11.5px;
+  font-size: var(--font-size-xs); /* E5.8 Phase 12 #170：tname 11.5→xs */
   color: var(--text-secondary);
   display: flex;
   align-items: center;
@@ -87,13 +87,13 @@
 }
 
 .theme-card .badge {
-  font-size: 9px;
+  font-size: var(--font-size-2xs); /* E5.8 Phase 12 #170：badge 9→2xs */
   color: var(--accent);
   white-space: nowrap;
 }
 
 .theme-picker-empty {
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--font-size-sm); /* E5.8 Phase 12 #170：12→sm */
   padding: 8px 0;
 }

@@ -51,9 +51,9 @@
   align-items: center;
   gap: 8px;
   padding: 6px 12px;
-  font-size: 13px;
+  font-size: var(--font-size-md); /* E5.8 Phase 12 #170：item 13→md */
   font-weight: 400;
-  line-height: 20px;
+  line-height: 1.6; /* E5.8 Phase 12 #170：line-height 20px → unitless（项高随字号自然增长） */
   color: var(--text-primary);
   cursor: pointer;
   transition: background 60ms;
@@ -70,12 +70,12 @@
   box-shadow: inset 2px 0 0 var(--accent);
 }
 
-/* 图标——E3.5 icon 支持 */
+/* 图标——E3.5 icon 支持（E5.8 Phase 12 #170：盒 16px 乘 scale + 字形 14→lg） */
 .ctx-item-icon {
   flex-shrink: 0;
-  width: 16px;
-  height: 16px;
-  font-size: 14px;
+  width: calc(16px * var(--ui-scale));
+  height: calc(16px * var(--ui-scale));
+  font-size: var(--font-size-lg);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -92,7 +92,7 @@
 .ctx-item-shortcut {
   flex-shrink: 0;
   margin-left: 12px;
-  font-size: 11px;
+  font-size: var(--font-size-xs); /* E5.8 Phase 12 #170：shortcut 11→xs */
   opacity: 0.6;
   font-family: var(--font-mono);
   letter-spacing: 0.2px;
@@ -109,7 +109,7 @@
 .ctx-item-check {
   flex-shrink: 0;
   width: 16px;
-  font-size: 12px;
+  font-size: var(--font-size-sm); /* E5.8 Phase 12 #170：check 12→sm */
   color: var(--accent);
   display: flex;
   align-items: center;

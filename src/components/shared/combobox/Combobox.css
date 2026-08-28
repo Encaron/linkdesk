@@ -19,8 +19,8 @@
   color: var(--fg-input, var(--fg-default));
   border: 1px solid var(--border-input, var(--border-default));
   border-radius: var(--radius-xs);
-  font-size: 13px;
-  line-height: 20px;
+  font-size: var(--font-size-md); /* E5.8 Phase 12 #170：field 13→md */
+  line-height: 1.6; /* E5.8 Phase 12 #170：line-height 20px → unitless */
   cursor: text;
 }
 
@@ -41,7 +41,7 @@
   outline: none;
   color: inherit;
   font: inherit;
-  line-height: 20px;
+  line-height: 1.6; /* E5.8 Phase 12 #170：line-height 20px → unitless */
 }
 
 .combobox-input::placeholder {

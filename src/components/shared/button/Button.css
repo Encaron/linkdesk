@@ -7,7 +7,7 @@
   border: none;
   border-radius: var(--radius-sm);
   padding: 4px 12px;
-  font-size: 12px;
+  font-size: var(--font-size-sm); /* E5.8 Phase 12 #170：12→sm（自动增高，安全） */
   cursor: pointer;
   white-space: nowrap;
 }

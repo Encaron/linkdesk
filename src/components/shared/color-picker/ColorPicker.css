@@ -110,14 +110,14 @@
 .colorpicker-hex {
   flex: 1;
   min-width: 0;
-  height: 26px;
+  height: calc(26px * var(--ui-scale)); /* E5.8 Phase 12 #170：26px 乘 scale */
   padding: 2px 6px;
   border: 1px solid var(--separator);
   border-radius: var(--radius-sm);
   background: var(--bg-input);
   color: var(--text-primary);
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: var(--font-size-sm); /* 12→sm */
   outline: none;
   box-sizing: border-box;
 }
@@ -127,13 +127,13 @@
 }
 
 .colorpicker-ok {
-  height: 26px;
+  height: calc(26px * var(--ui-scale)); /* E5.8 Phase 12 #170：26px 乘 scale */
   padding: 0 12px;
   background: var(--accent);
   color: var(--text-on-accent);
   border: none;
   border-radius: var(--radius-sm);
-  font-size: 12px;
+  font-size: var(--font-size-sm); /* 12→sm */
   cursor: pointer;
   flex-shrink: 0;
 }

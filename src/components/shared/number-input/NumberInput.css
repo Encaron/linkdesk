@@ -13,13 +13,13 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 22px;
-  height: 24px;
+  width: calc(22px * var(--ui-scale)); /* E5.8 Phase 12 #170：btn 乘 scale */
+  height: calc(24px * var(--ui-scale));
   padding: 0;
   border: 1px solid var(--border);
   background: var(--bg-input);
   color: var(--text-primary);
-  font-size: 14px;
+  font-size: var(--font-size-lg); /* 14→lg */
   line-height: 1;
   cursor: pointer;
   transition: background 150ms, border-color 150ms;
@@ -60,7 +60,7 @@
 .number-input-unit {
   margin: 0 6px 0 8px;
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--font-size-sm); /* E5.8 Phase 12 #170：12→sm（过字号审计门禁） */
   line-height: 1;
   user-select: none;
 }
