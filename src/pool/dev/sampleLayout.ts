@@ -39,8 +39,16 @@ function buildSampleMenuGroups() {
       label: "查看",
       items: [
         { label: "命令面板…", command: "workbench.action.showCommands", shortcut: "Ctrl+Shift+P" },
-        { label: "切换侧栏", command: "workbench.action.toggleSidebarVisibility", shortcut: "Ctrl+B" },
-        { label: "切换底部面板", command: "workbench.action.togglePanel" },
+        // E5.8#148：界面嵌套子菜单——dev 预览镜像壳 shellMenus.ts 形状（checked = 样例布局 zone 可见性：
+        // sidebar visible + panel visible，与下方 rightSidebar 样例同真值）
+        {
+          label: "界面",
+          command: "",
+          children: [
+            { label: "主侧栏", command: "workbench.action.toggleSidebarVisibility", checked: true },
+            { label: "面板", command: "workbench.action.togglePanel", checked: true },
+          ],
+        },
       ],
     },
   ];

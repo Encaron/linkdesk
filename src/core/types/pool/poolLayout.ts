@@ -156,6 +156,9 @@ export interface PoolMenuItem {
   command: string;
   /** 快捷键显示文本——formatKeyLabel 后。仅汉堡（showKeybindings）；titlebar 下拉无快捷键（同壳行为） */
   shortcut?: string;
+  /** E5.8#148：当前项 √（显隐勾选菜单）——壳 buildTitleBarMenuGroups/汉堡经 resolveVisibilityChecked
+   *  序列化（zone 可见 = ✓）。显示文本铁律：池哑渲染原文，壳只推布尔。 */
+  checked?: boolean;
   /** 子菜单——titlebar 仅 command+children 父项携带（无 command 父项由壳展平）；汉堡不展平 */
   children?: PoolMenuItem[];
 }

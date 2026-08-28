@@ -252,12 +252,13 @@ export function usePoolSync({ windows, sidebarView, isSidebarVisible, panelActiv
         // 壳 getAssetPath 解析——Path B：池不 import core，logo 以同源相对 URL 推送
         logoUrl: getAssetPath("assets/logo.svg"),
         menuBarVisible: MENU_STYLE_MENUBAR_VISIBLE[getConfigurationValue<string>("app.menuStyle") ?? "titlebar"] ?? true,
-        menuGroups: buildTitleBarMenuGroups(t),
+        // E5.8#148：zone 可见性上下文——查看→界面→主侧栏/面板 勾选态（panelVisible/isSidebarVisible 均入 effect deps → 变化即重推 ✓）
+        menuGroups: buildTitleBarMenuGroups(t, { panelVisible, sidebarVisible: isSidebarVisible }),
         slots: { left: buildTitleBarSlots("left"), right: buildTitleBarSlots("right") },
         // E5.8#46.18：pin/unpin tooltip 两态（TitleBarZone 置顶按钮按置顶态切换显示）
         windowControls: { minimize: t("最小化"), maximize: t("最大化"), restore: t("还原"), close: t("关闭"), pin: t("置顶"), unpin: t("取消置顶") },
       },
-      iconBar: buildIconBar(t, sidebarView, isSidebarVisible),
+      iconBar: buildIconBar(t, sidebarView, isSidebarVisible, panelVisible),
       sidebar,
       rightSidebar,
       panel,

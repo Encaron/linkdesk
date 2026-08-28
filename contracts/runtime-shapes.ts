@@ -158,6 +158,9 @@ function chkPoolMenuItem(v: unknown, p: string, errs: string[]): void {
     if (_t23.shortcut !== undefined) {
     if (typeof _t23.shortcut !== "string") errs.push(((p) + ".shortcut") + ": 期望 string，实收 " + typeof _t23.shortcut);
     }
+    if (_t23.checked !== undefined) {
+    if (!(_t23.checked === false || _t23.checked === true)) errs.push(((p) + ".checked") + ": 期望 false|true");
+    }
     if (_t23.children !== undefined) {
     if (!Array.isArray(_t23.children)) errs.push(((p) + ".children") + ": 期望数组");
     else {

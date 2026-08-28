@@ -1,9 +1,10 @@
 /**
- * titlebar 菜单栏序列化测试——E5.8#33 菜单栏「面板」菜单归并。
+ * titlebar 菜单栏序列化测试——E5.8#148 界面显隐勾选 + group:"panel" 归并。
  *
- * 覆盖：壳招牌「面板/打开面板」→ 面板顶级菜单（order 100 排文件/查看后）/
+ * 覆盖：E5.8#148「查看→界面」嵌套子菜单的勾选态序列化（zone 可见 = ✓，buildTitleBarMenuGroups/
+ * buildHamburgerMenuGroups 经 resolveVisibilityChecked）/ 面板顶级招牌删除后无 "panel" 组 /
  * 插件 contributes.menus.menuBar + group:"panel" 自动归并 / 插件 contributes.menus.panel（新槽直连）同样归并 /
- * 招牌项在菜单首位（面板槽在前）+ 组标签不被插件项抢 / 汉堡菜单同样归并（父项不展平）。
+ * 汉堡菜单同样归并（父项不展平）/ E5.8#37.6 when 过滤（对换菜单当开关至多一项显示）。
  */
 
 import { describe, it, expect, beforeEach } from "vitest";
@@ -16,21 +17,10 @@ import { buildTitleBarMenuGroups, buildHamburgerMenuGroups } from "./titlebar";
 const SHELL = "linkdesk.shell";
 const PLUGIN = "panel-plugin";
 const id = (s: string) => s;
+/** E5.8#148：zone 显隐勾选上下文——buildTitleBarMenuGroups/汉堡 第二参（真实调用 usePoolSync 传 App state） */
+const VIS = (panelVisible: boolean, sidebarVisible: boolean) => ({ panelVisible, sidebarVisible });
 
-/** 注册壳侧面板招牌——panelCommands.ts 同款形状（E5.8#33） */
-function registerShellPanelMenu(): void {
-  registerMenuItems(MENU_SLOTS.Panel, SHELL, [
-    {
-      command: "",
-      label: "面板",
-      group: "panel",
-      order: 100,
-      children: [{ command: "workbench.action.togglePanel", label: "打开面板", group: "panel" }],
-    },
-  ]);
-}
-
-/** 注册壳侧 文件/查看 顶级菜单——shellMenus.ts 同款形状 */
+/** 注册壳侧 文件/查看 顶级菜单——shellMenus.ts 同款形状（查看含 #148「界面」子菜单） */
 function registerShellFileViewMenus(): void {
   registerMenuItems(MENU_SLOTS.MenuBar, SHELL, [
     {
@@ -43,72 +33,106 @@ function registerShellFileViewMenus(): void {
       command: "",
       label: "查看",
       group: "view",
-      children: [{ command: "workbench.action.showCommands", group: "view" }],
+      children: [
+        { command: "workbench.action.showCommands", group: "view" },
+        {
+          command: "",
+          label: "界面",
+          group: "view",
+          children: [
+            { command: "workbench.action.toggleSidebarVisibility", label: "主侧栏", group: "view" },
+            { command: "workbench.action.togglePanel", label: "面板", group: "view" },
+          ],
+        },
+      ],
     },
   ]);
 }
 
-/** 壳招牌命令——togglePanel（panelCommands.ts 注册） */
-function registerTogglePanelCommand(): void {
-  registerCommand(SHELL, {
-    id: "workbench.action.togglePanel",
-    title: "切换底部面板可见性",
-    handler: async () => {},
-  });
-}
-
-describe("buildTitleBarMenuGroups（E5.8#33 面板菜单）", () => {
+describe("buildTitleBarMenuGroups（E5.8#148 面板招牌删除 + group:\"panel\" 归并保留）", () => {
   beforeEach(() => {
     clearRegistrationLayers();
     clearCommands();
     clearMenus();
   });
 
-  it("壳招牌 → 面板顶级菜单，item = 打开面板（togglePanel 同命令）", () => {
-    registerShellPanelMenu();
-    registerTogglePanelCommand();
+  it("无面板槽 + 无 group:\"panel\" 项 → 无 \"panel\" 组（招牌已删，面板入口在 查看→界面）", () => {
+    registerShellFileViewMenus();
 
-    const groups = buildTitleBarMenuGroups(id);
-    const panel = groups.find((g) => g.group === "panel");
-    expect(panel).toBeDefined();
-    expect(panel!.label).toBe("面板");
-    expect(panel!.items).toEqual([{ label: "打开面板", command: "workbench.action.togglePanel" }]);
+    const groups = buildTitleBarMenuGroups(id, VIS(true, true));
+    expect(groups.find((g) => g.group === "panel")).toBeUndefined();
+    expect(groups.map((g) => g.group)).toEqual(["file", "view"]);
   });
 
-  it("插件 contributes.menus.menuBar + group:\"panel\" 自动归并——招牌首位，组序 文件/查看/面板", () => {
-    registerShellPanelMenu();
+  it("插件 contributes.menus.menuBar + group:\"panel\" 自动归并——无招牌时独立成组，标签回退 groupName", () => {
     registerShellFileViewMenus();
-    registerTogglePanelCommand();
-    // 插件声明（loader 从 contributes.menus 转 registerMenuItems）——插件侧零改动，group:"panel" 即归并
     registerMenuItems(MENU_SLOTS.MenuBar, PLUGIN, [{ command: "panel-plugin.newTerminal", group: "panel" }]);
     registerCommand(PLUGIN, { id: "panel-plugin.newTerminal", title: "新建终端", handler: async () => {} });
 
-    const groups = buildTitleBarMenuGroups(id);
-    const panel = groups.find((g) => g.group === "panel")!;
-    expect(panel.label).toBe("面板"); // 组标签 = 壳招牌父项，不被插件项抢
-    expect(panel.items).toEqual([
-      { label: "打开面板", command: "workbench.action.togglePanel" },
-      { label: "新建终端", command: "panel-plugin.newTerminal" },
-    ]);
-    expect(groups.map((g) => g.group)).toEqual(["file", "view", "panel"]);
+    const panel = buildTitleBarMenuGroups(id, VIS(true, true)).find((g) => g.group === "panel")!;
+    expect(panel).toBeDefined();
+    expect(panel.label).toBe("panel"); // 无招牌父项 → 组标签回退 groupName
+    expect(panel.items).toEqual([{ label: "新建终端", command: "panel-plugin.newTerminal" }]);
   });
 
   it("插件 contributes.menus.panel（新槽直连）同样自动归并", () => {
-    registerShellPanelMenu();
-    registerTogglePanelCommand();
     registerMenuItems(MENU_SLOTS.Panel, PLUGIN, [{ command: "panel-plugin.showOutput", group: "panel" }]);
     registerCommand(PLUGIN, { id: "panel-plugin.showOutput", title: "显示输出", handler: async () => {} });
 
-    const panel = buildTitleBarMenuGroups(id).find((g) => g.group === "panel")!;
-    expect(panel.items.map((i) => i.command)).toEqual(["workbench.action.togglePanel", "panel-plugin.showOutput"]);
+    const panel = buildTitleBarMenuGroups(id, VIS(true, true)).find((g) => g.group === "panel")!;
+    expect(panel.items.map((i) => i.command)).toEqual(["panel-plugin.showOutput"]);
+  });
+});
+
+describe("E5.8#148 界面显隐勾选子菜单——checked 序列化（zone 可见 = ✓）", () => {
+  beforeEach(() => {
+    clearRegistrationLayers();
+    clearCommands();
+    clearMenus();
   });
 
-  it("无壳招牌时组标签回退 groupName（行为不变）", () => {
-    registerMenuItems(MENU_SLOTS.MenuBar, PLUGIN, [{ command: "panel-plugin.only", group: "panel" }]);
-    registerCommand(PLUGIN, { id: "panel-plugin.only", title: "仅插件项", handler: async () => {} });
+  /** 断言「查看」组里「界面」子项的两个勾选叶子——0 = 主侧栏 / 1 = 面板 */
+  function findUiSubmenu(viewItems: Array<{ label?: string; command?: string; children?: Array<{ label: string; command: string; checked?: boolean }> }>) {
+    return viewItems.find((i) => i.label === "界面")!.children!;
+  }
 
-    const panel = buildTitleBarMenuGroups(id).find((g) => g.group === "panel")!;
-    expect(panel.label).toBe("panel");
+  it("顶部菜单栏——侧栏可见 + 面板隐藏 → 主侧栏 ✓ / 面板空白", () => {
+    registerShellFileViewMenus();
+
+    const view = buildTitleBarMenuGroups(id, VIS(false, true)).find((g) => g.group === "view")!;
+    const ui = findUiSubmenu(view.items);
+    expect(ui[0]).toEqual({ label: "主侧栏", command: "workbench.action.toggleSidebarVisibility", checked: true });
+    expect(ui[1]).toEqual({ label: "面板", command: "workbench.action.togglePanel", checked: false });
+  });
+
+  it("顶部菜单栏——状态翻转 → 勾选翻转（zone 显隐变化即重推 ✓）", () => {
+    registerShellFileViewMenus();
+
+    const view = buildTitleBarMenuGroups(id, VIS(true, false)).find((g) => g.group === "view")!;
+    const ui = findUiSubmenu(view.items);
+    expect(ui[0].checked).toBe(false);
+    expect(ui[1].checked).toBe(true);
+  });
+
+  it("汉堡同款——界面嵌套子项同样勾选（递归 resolveItemNode 序列化）", () => {
+    registerShellFileViewMenus();
+
+    const view = buildHamburgerMenuGroups(id, VIS(true, false)).find((g) => g.group === "view")!;
+    // 汉堡不展平——「查看」父项保留，子面板含「界面」父项，再展开是两勾选叶子
+    const viewParent = view.items[0];
+    expect(viewParent).toMatchObject({ label: "查看", command: "" });
+    const ui = findUiSubmenu(viewParent.children ?? []);
+    expect(ui[0]).toEqual({ label: "主侧栏", command: "workbench.action.toggleSidebarVisibility", checked: false });
+    expect(ui[1]).toEqual({ label: "面板", command: "workbench.action.togglePanel", checked: true });
+  });
+
+  it("界面父项自身不带 checked（无命令无谓词命中 → undefined 省略）", () => {
+    registerShellFileViewMenus();
+
+    const view = buildTitleBarMenuGroups(id, VIS(true, true)).find((g) => g.group === "view")!;
+    const uiParent = view.items.find((i) => i.label === "界面")!;
+    expect(uiParent).toMatchObject({ command: "" });
+    expect("checked" in uiParent).toBe(false);
   });
 });
 
@@ -141,12 +165,12 @@ describe("when 过滤（E5.8#37.6 侧栏换边菜单项——当开关至多一�
     registerViewMenuWithToggle();
 
     ContextKeyService.setValue("sidebarPosition", "left");
-    const left = buildTitleBarMenuGroups(id).find((g) => g.group === "view")!;
+    const left = buildTitleBarMenuGroups(id, VIS(true, true)).find((g) => g.group === "view")!;
     expect(left.items.filter((i) => i.command === "workbench.action.toggleSidebarPosition"))
       .toEqual([{ label: "移动到右侧", command: "workbench.action.toggleSidebarPosition" }]);
 
     ContextKeyService.setValue("sidebarPosition", "right");
-    const right = buildTitleBarMenuGroups(id).find((g) => g.group === "view")!;
+    const right = buildTitleBarMenuGroups(id, VIS(true, true)).find((g) => g.group === "view")!;
     expect(right.items.filter((i) => i.command === "workbench.action.toggleSidebarPosition"))
       .toEqual([{ label: "移动到左侧", command: "workbench.action.toggleSidebarPosition" }]);
   });
@@ -155,29 +179,9 @@ describe("when 过滤（E5.8#37.6 侧栏换边菜单项——当开关至多一�
     registerViewMenuWithToggle();
 
     ContextKeyService.setValue("sidebarPosition", "left");
-    const view = buildHamburgerMenuGroups(id).find((g) => g.group === "view")!;
+    const view = buildHamburgerMenuGroups(id, VIS(true, true)).find((g) => g.group === "view")!;
     // 父项保留（汉堡不展平）——子面板只含 when 命中的换边项（另一项被过滤隐藏）
     expect(view.items[0].children!.filter((c) => c.command === "workbench.action.toggleSidebarPosition"))
       .toEqual([{ label: "移动到右侧", command: "workbench.action.toggleSidebarPosition" }]);
-  });
-});
-
-describe("buildHamburgerMenuGroups（E5.8#33 汉堡同样归并）", () => {
-  beforeEach(() => {
-    clearRegistrationLayers();
-    clearCommands();
-    clearMenus();
-    ContextKeyService.clear();
-  });
-
-  it("面板槽招牌 → 汉堡面板组——父项保留（不展平），子项 = 打开面板", () => {
-    registerShellPanelMenu();
-    registerTogglePanelCommand();
-
-    const panel = buildHamburgerMenuGroups(id).find((g) => g.group === "panel")!;
-    expect(panel.label).toBe("面板");
-    // 汉堡不展平——父项（command 空 + children）保留，hover 弹出子面板
-    expect(panel.items[0]).toMatchObject({ label: "面板", command: "" });
-    expect(panel.items[0].children).toEqual([{ label: "打开面板", command: "workbench.action.togglePanel" }]);
   });
 });

@@ -13,8 +13,9 @@ import { factorySlots } from "../../core/services/bootstrap/FactorySlots"; // E5
 import { MENU_STYLE_HAMBURGER_VISIBLE, buildHamburgerMenuGroups } from "./titlebar";
 
 /** E5.7#6：图标栏序列化——壳 IconBar 的 ordered 计算照搬（iconOrder 优先 + 剩余按注册序）。
- *  无 iconBar 声明的插件不出现在图标栏（壳 topIcons/bottomIcons filter 同款）。 */
-export function buildIconBar(t: (key: string) => string, sidebarView: string | null, isSidebarVisible: boolean): IconBarLayout {
+ *  无 iconBar 声明的插件不出现在图标栏（壳 topIcons/bottomIcons filter 同款）。
+ *  E5.8#148：panelVisible 透传给汉堡（查看→界面→面板 勾选态序列化）。 */
+export function buildIconBar(t: (key: string) => string, sidebarView: string | null, isSidebarVisible: boolean, panelVisible: boolean): IconBarLayout {
   const plugins = getViewPlugins();
   let order: string[] = [];
   try {
@@ -82,7 +83,7 @@ export function buildIconBar(t: (key: string) => string, sidebarView: string | n
     hamburgerVisible,
     navLabel: t("导航"),
     ...(hamburgerVisible
-      ? { hamburger: { title: t("菜单"), groups: buildHamburgerMenuGroups(t) } }
+      ? { hamburger: { title: t("菜单"), groups: buildHamburgerMenuGroups(t, { panelVisible, sidebarVisible: isSidebarVisible }) } }
       : {}),
   };
 }

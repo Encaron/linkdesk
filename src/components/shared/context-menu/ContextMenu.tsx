@@ -4,6 +4,10 @@
  * E5#44d：支持子菜单——静态 children 或动态 resolveChildren 回调。
  * 对标 VS Code：hover 父项右侧弹出子面板，移开自动收回（150ms 延迟防闪烁）。
  *
+ * E5.8#148：子菜单递归化——数据层（children 递归映射保留孙级）+ 渲染层（多级子面板链，
+ * 每级 portal 平铺——.ctx-menu overflow:hidden 不能嵌套 DOM，兄弟平铺；hover 逐级展开，
+ * Escape 逐级收，mousedown contains 全级覆盖）。顶栏两层 / 汉堡三层（查看→界面→面板）同此渲染器。
+ *
  * 🔥 E5.5#7-p3 多 WebView 改造：零 import @src/core。
  *    壳侧 IpcBridgeHandler 已做 when 过滤 + 命令标题 + 快捷键解析，
  *    组件只管分组和渲染。
@@ -78,15 +82,33 @@ interface ResolvedItem {
    * context 整菜单共享，per-item 身份只能走命令载荷：executeCommand(id, undefined, ...commandArgs, context)。
    */
   commandArgs?: unknown[];
-  /** 子菜单项——有值则渲染为可展开项，hover 弹出子面板 */
+  /** 子菜单项——有值则渲染为可展开项，hover 弹出子面板（E5.8#148：任意深度递归保留） */
   children?: ResolvedItem[];
+}
+
+/* ── E5.8#148：children 递归映射——任意深度保留孙级 children（数据层递归，与渲染层递归配对）。
+     字符串子项 = 命令引用原样透传（E5.7#98 wire 契约）；对象子项 checked/commandArgs 同步透传。 ── */
+function mapChildren(nodes: (string | MenuItemDescriptor)[], group: string): ResolvedItem[] {
+  return nodes.map((c) => {
+    if (typeof c === "string") return { id: c, label: c, group };
+    const kids = c.children && c.children.length > 0 ? mapChildren(c.children, group) : undefined;
+    return {
+      id: c.command,
+      label: c.label ?? c.command,
+      group,
+      checked: c.checked,
+      commandArgs: c.commandArgs,
+      ...(kids ? { children: kids } : {}),
+    };
+  });
 }
 
 /* ── 组件 ── */
 
 export default function ContextMenu({ menuId, anchor, context, onClose, resolveChildren, items, variant }: ContextMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
-  const subRef = useRef<HTMLDivElement>(null);
+  // E5.8#148：多级子面板 ref 注册表（键 = 链索引）——mousedown contains 守卫全级覆盖
+  const panelRefs = useRef<Map<number, HTMLDivElement>>(new Map());
   const subTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   /* ── 异步获取菜单项——壳侧已做 when 过滤 + 命令标题 + 快捷键解析 ── */
@@ -123,18 +145,11 @@ export default function ContextMenu({ menuId, anchor, context, onClose, resolveC
       const group = item.group ?? "__default";
       if (!grouped.has(group)) { grouped.set(group, []); groupOrder.push(group); }
 
-      // 子菜单：静态 children 透传 / 空 children 调 resolveChildren 动态填充
+      // 子菜单：静态 children 递归透传 / 空 children 调 resolveChildren 动态填充
       let children: ResolvedItem[] | undefined;
       if (rawChildren && rawChildren.length > 0) {
-        // E5.7#98：wire 契约 children 是 string | MenuItemDescriptor 联合——
-        // 字符串 = 命令引用原样透传（IpcBridgeHandler 序列化注释同义）。
-        // E5.8#37.7：checked 壳侧 getItems 解析透传（位置/对齐当前项 √ + 视图显隐 visible）。
-        // E5.8#37.7.1：commandArgs 同步透传——子项同样可带命令载荷。
-        children = rawChildren.map((c) =>
-          typeof c === "string"
-            ? { id: c, label: c, group }
-            : { id: c.command, label: c.label ?? c.command, group, checked: c.checked, commandArgs: c.commandArgs },
-        );
+        // E5.8#148：递归映射——孙级 children 不再丢弃（汉堡三层：查看→界面→面板 全链路保留）
+        children = mapChildren(rawChildren, group);
       } else if (rawChildren && rawChildren.length === 0 && resolveChildren) {
         const dyn = resolveChildren(item.command, context ?? {});
         if (dyn && dyn.length > 0) {
@@ -164,8 +179,28 @@ export default function ContextMenu({ menuId, anchor, context, onClose, resolveC
     return result;
   }, [rawItems, context, resolveChildren]);
 
-  /* ═══ E5#44d：hover 子菜单状态 ═══ */
-  const [subData, setSubData] = useState<{ x: number; y: number; items: ResolvedItem[] } | null>(null);
+  /* ═══ E5.8#148：hover 子菜单链状态——subPanels[i] = 第 i+1 级子面板（主菜单 = 0 级）═══ */
+  const [subPanels, setSubPanels] = useState<Array<{ x: number; y: number; items: ResolvedItem[] }>>([]);
+
+  /* ═══ E5.8#148：hover 子菜单链 handler（置于 keyboard nav effect 前——deps 求值序）═══ */
+  const cancelClose = useCallback(() => {
+    if (subTimer.current) { clearTimeout(subTimer.current); subTimer.current = null; }
+  }, []);
+
+  const scheduleCloseFrom = useCallback((depth: number) => {
+    if (subTimer.current) { clearTimeout(subTimer.current); subTimer.current = null; }
+    subTimer.current = setTimeout(() => setSubPanels((p) => p.slice(0, depth)), 150);
+  }, []);
+
+  const openSub = useCallback((el: HTMLElement, items: ResolvedItem[], depth: number) => {
+    cancelClose();
+    const r = el.getBoundingClientRect();
+    // E5#94b：子菜单方向跟随可用空间——右边放不下就放左边
+    const subEstW = 160;
+    const x = r.right + subEstW > window.innerWidth ? r.left - subEstW - 4 : r.right + 4;
+    // depth = 目标子面板链索引（主菜单项 → 0；subPanels[i] 内项 → i+1）——截断更深层再推
+    setSubPanels((p) => [...p.slice(0, depth), { x, y: r.top, items }]);
+  }, [cancelClose]);
 
   /* ── E5#94a：两阶段渲染状态（声明提前——活跃守卫 visible 依赖）── */
   const [menuPos, setMenuPos] = useState({ left: anchor.x, top: anchor.y });
@@ -178,13 +213,21 @@ export default function ContextMenu({ menuId, anchor, context, onClose, resolveC
   /* ── 统一失焦 ── */
   useEffect(() => {
     if (!visible) return; // 活跃守卫——菜单未显示时不挂失焦监听
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") { if (subData) setSubData(null); else onClose(); } };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      // E5.8#148：Escape 逐级收——先收最深子面板，全收起再关菜单
+      if (subPanels.length > 0) setSubPanels((p) => p.slice(0, p.length - 1));
+      else onClose();
+    };
     const onBlur = () => onClose();
     const onWheel = () => onClose();
     const onMouseDown = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node) && !subRef.current?.contains(e.target as Node)) {
-        onClose();
-      }
+      // E5.8#148：contains 全级覆盖——主菜单 + 每级子面板 ref
+      const t = e.target as Node;
+      const inside =
+        (menuRef.current?.contains(t) ?? false) ||
+        [...panelRefs.current.values()].some((el) => el.contains(t));
+      if (!inside) onClose();
     };
     window.addEventListener("keydown", onKey);
     window.addEventListener("blur", onBlur);
@@ -198,7 +241,7 @@ export default function ContextMenu({ menuId, anchor, context, onClose, resolveC
       window.removeEventListener("wheel", onWheel, true);
       if (variant !== "embedded") window.removeEventListener("mousedown", onMouseDown, true);
     };
-  }, [onClose, subData, visible, variant]);
+  }, [onClose, subPanels, visible, variant]);
 
   /* ── 键盘导航 ── */
   const [focusIdx, setFocusIdx] = useState(-1);
@@ -210,6 +253,19 @@ export default function ContextMenu({ menuId, anchor, context, onClose, resolveC
     const onKeyNav = (e: KeyboardEvent) => {
       if (e.key === "ArrowDown") { e.preventDefault(); setFocusIdx((prev) => Math.min(prev + 1, clickableItems.length - 1)); }
       else if (e.key === "ArrowUp") { e.preventDefault(); setFocusIdx((prev) => Math.max(prev - 1, 0)); }
+      else if (e.key === "ArrowRight" && focusIdx >= 0) {
+        // E5.8#148：→ 打开聚焦项的子面板（对标 VS Code 键盘导航）
+        const item = clickableItems[focusIdx];
+        if (item?.children?.length) {
+          e.preventDefault();
+          const el = itemRefs.current.get(focusIdx);
+          if (el) openSub(el, item.children, 0);
+        }
+      }
+      else if (e.key === "ArrowLeft") {
+        // E5.8#148：← 逐级收子面板
+        if (subPanels.length > 0) { e.preventDefault(); setSubPanels((p) => p.slice(0, p.length - 1)); }
+      }
       else if (e.key === "Enter" && focusIdx >= 0) {
         e.preventDefault();
         const item = clickableItems[focusIdx];
@@ -220,7 +276,7 @@ export default function ContextMenu({ menuId, anchor, context, onClose, resolveC
     };
     window.addEventListener("keydown", onKeyNav);
     return () => window.removeEventListener("keydown", onKeyNav);
-  }, [clickableItems, focusIdx, context, onClose, visible]);
+  }, [clickableItems, focusIdx, context, onClose, visible, subPanels, openSub]);
 
   useEffect(() => {
     if (focusIdx >= 0) itemRefs.current.get(focusIdx)?.scrollIntoView({ block: "nearest" });
@@ -268,20 +324,6 @@ export default function ContextMenu({ menuId, anchor, context, onClose, resolveC
     if (menuReady) menuRef.current?.focus();
   }, [menuReady]);
 
-  /* ═══ E5#44d：hover 子菜单 handler ═══ */
-  const openSub = useCallback((el: HTMLElement, items: ResolvedItem[]) => {
-    if (subTimer.current) { clearTimeout(subTimer.current); subTimer.current = null; }
-    const r = el.getBoundingClientRect();
-    // E5#94b：子菜单方向跟随可用空间——右边放不下就放左边
-    const subEstW = 160;
-    const x = r.right + subEstW > window.innerWidth ? r.left - subEstW - 4 : r.right + 4;
-    setSubData({ x, y: r.top, items });
-  }, []);
-
-  const closeSubDelayed = useCallback(() => {
-    subTimer.current = setTimeout(() => setSubData(null), 150);
-  }, []);
-
   /* ── 渲染 ── */
   let clickableIdx = 0;
 
@@ -292,7 +334,7 @@ export default function ContextMenu({ menuId, anchor, context, onClose, resolveC
           窗口级 mousedown 监听（下方"统一失焦"）已处理 backdrop 点击关闭。
           pointer-events 不在此写——池侧由 #context-menu-root 根级提供（补丁 2026-08-14）。
           E5.8#107 浮层权威：归 #ld-scrim-plane（遮罩平面，无磨砂）——满屏遮罩与 surface 分离，
-          结构隔离地板 :not(#ld-scrim-plane) 天然不碰它。menuRef/subRef contains 守卫不受影响
+          结构隔离地板 :not(#ld-scrim-plane) 天然不碰它。menuRef/panelRefs contains 守卫不受影响
           （backdrop 不在 ref 内 → mousedown 点遮罩照常 onClose）。
           E5.8#55：variant="embedded" 时跳过——顶部菜单栏下拉点按钮行 hover 切换，
           无需全屏吞击（吞了按钮行第一击 hover 切换失效）。
@@ -339,9 +381,11 @@ export default function ContextMenu({ menuId, anchor, context, onClose, resolveC
               onClick={(e) => { e.stopPropagation(); if (!hasKids) handleItemClick(item); }}
               onMouseEnter={(e) => {
                 setFocusIdx(idx);
-                if (hasKids) openSub(e.currentTarget as HTMLElement, item.children!);
+                if (hasKids) openSub(e.currentTarget as HTMLElement, item.children!, 0);
+                // E5.8#148：叶子项 hover → 收起已开子面板（对标 VS Code——hover 不同项即切换）
+                else setSubPanels((p) => p.slice(0, 0));
               }}
-              onMouseLeave={() => { if (hasKids) closeSubDelayed(); }}
+              onMouseLeave={() => { if (hasKids) scheduleCloseFrom(1); }}
             >
               {/* E5.7#14：显示文本铁律——壳侧 t() 解析后推送，池哑渲染原文（不初始化 i18n） */}
               {/* E5.8#37.7：当前项 √——固定宽占位保证选中项标签不错位（VS Code 菜单同款） */}
@@ -354,23 +398,40 @@ export default function ContextMenu({ menuId, anchor, context, onClose, resolveC
         })}
       </div>
 
-      {/* 子面板——独立于主菜单，避免 overflow 裁切 */}
-      {subData && (
+      {/* E5.8#148：多级子面板链——每级 portal 平铺（.ctx-menu overflow:hidden → 不能嵌套 DOM，
+          兄弟平铺避免裁切）。每级独立 contains 注册 + hover 子链管理；移出该级 → 从该级收（150ms）。 */}
+      {subPanels.map((panel, level) => (
         <div
-          ref={subRef}
+          key={level}
+          ref={(el) => { if (el) panelRefs.current.set(level, el); else panelRefs.current.delete(level); }}
           className="ctx-menu show"
-          style={{ left: subData.x, top: subData.y, zIndex: Z_INDEX.contextMenu }}
-          onMouseEnter={() => { if (subTimer.current) { clearTimeout(subTimer.current); subTimer.current = null; } }}
-          onMouseLeave={closeSubDelayed}
+          style={{ left: panel.x, top: panel.y, zIndex: Z_INDEX.contextMenu }}
+          onMouseEnter={cancelClose}
+          onMouseLeave={() => scheduleCloseFrom(level + 1)}
         >
-          {subData.items.map((child, ki) => (
-            <div key={ki} className="ctx-item" onClick={(e) => { e.stopPropagation(); handleItemClick(child); }}>
-              <span className="ctx-item-check" aria-hidden="true">{child.checked ? "✓" : ""}</span>
-              <span className="ctx-item-label">{child.label}</span>
-            </div>
-          ))}
+          {panel.items.map((child, ki) => {
+            const childHasKids = !!(child.children && child.children.length > 0);
+            return (
+              <div
+                key={`${child.id}::${ki}`}
+                className="ctx-item"
+                onClick={(e) => { e.stopPropagation(); if (!childHasKids) handleItemClick(child); }}
+                onMouseEnter={(e) => {
+                  if (childHasKids) openSub(e.currentTarget as HTMLElement, child.children!, level + 1);
+                  // 叶子项 hover → 截断更深层子面板
+                  else setSubPanels((p) => p.slice(0, level + 1));
+                }}
+                onMouseLeave={() => { if (childHasKids) scheduleCloseFrom(level + 2); }}
+              >
+                <span className="ctx-item-check" aria-hidden="true">{child.checked ? "✓" : ""}</span>
+                <span className="ctx-item-label">{child.label}</span>
+                {childHasKids && <span className="ctx-item-chevron">›</span>}
+                {child.shortcut && <span className="ctx-item-shortcut">{child.shortcut}</span>}
+              </div>
+            );
+          })}
         </div>
-      )}
+      ))}
     </OverlayPortal>
   );
 }

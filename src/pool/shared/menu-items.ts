@@ -19,6 +19,8 @@ function toDescriptor(item: PoolMenuItem): MenuItemDescriptor {
     command: item.command,
     label: item.label,
     ...(item.shortcut ? { shortcut: item.shortcut } : {}),
+    // E5.8#148：显隐勾选态透传——壳序列化 checked（zone 可见 = ✓），池原样渲染
+    ...(item.checked ? { checked: item.checked } : {}),
     ...(item.children?.length ? { children: item.children.map(toDescriptor) } : {}),
   };
 }
