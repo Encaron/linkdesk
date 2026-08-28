@@ -28,20 +28,22 @@
 .titlebar-menus {
   display: flex;
   align-items: center;
-  gap: 2px;
+  gap: calc(2px * var(--ui-scale)); /* E5.8 Phase 12 #165：间隙随字号比例 */
   flex-shrink: 0;
 }
 
-/* 菜单按钮——如"文件""查看" */
+/* 菜单按钮——如"文件""查看"
+   E5.8 Phase 12 #165：30px 高恒不变（F1 拍板——拖拽区 OS 契约，硬约束 18 上界假设），
+   仅内部文本缩放到 sm 档 + 垂直 padding 乘 scale（1.25× 下 16px 文本 + 缩 padding ≈ 26px < 30px 不溢出）。 */
 .titlebar-menu-btn {
-  padding: 4px 8px;
+  padding: calc(4px * var(--ui-scale)) 8px;
   height: 30px;
   display: flex;
   align-items: center;
   background: none;
   border: none;
   color: var(--text-secondary);
-  font-size: 12px;
+  font-size: var(--font-size-sm);
   font-family: inherit;
   cursor: pointer;
   -webkit-app-region: no-drag;
@@ -67,7 +69,7 @@
   -webkit-app-region: drag;
 }
 
-/* 槽位按钮——插件 contributes.titleBar 的左右槽小图标按钮 */
+/* 槽位按钮——插件 contributes.titleBar 的左右槽小图标按钮（图标 14→lg，E5.8 Phase 12 #165） */
 .titlebar-slot-btn {
   display: flex;
   align-items: center;
@@ -77,7 +79,7 @@
   background: none;
   border: none;
   color: var(--text-secondary);
-  font-size: 14px;
+  font-size: var(--font-size-lg);
   cursor: pointer;
   -webkit-app-region: no-drag;
   border-radius: var(--radius-sm);
@@ -109,7 +111,7 @@
   border: none;
   color: var(--text-secondary);
   cursor: pointer;
-  font-size: 12px;
+  font-size: var(--font-size-sm); /* E5.8 Phase 12 #165：12→sm */
   font-family: inherit;
   transition: background 120ms, color 120ms;
 }
