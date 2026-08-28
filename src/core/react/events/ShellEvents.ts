@@ -89,8 +89,10 @@ export interface ShellEvents {
   "tab:focus": { tabId: string };
   "tab:close": { tabId: string };
   "tab:focusBySourceId": { sourceId: string; sourceWindowId?: string };
-  "tab:updateLabelBySourceId": { sourceId: string; label: string; sourceWindowId?: string };
-  "tab:closeBySourceId": { sourceId: string; sourceWindowId?: string };
+  // E5.8#46.2：updateLabel/close 改走 windowHost 全窗广播（资源事件 = 全窗事实）——payload 去信封章；
+  // focus 保留 sourceWindowId（聚焦是「聚焦到具体某窗」语义，单发路由仍需章）
+  "tab:updateLabelBySourceId": { sourceId: string; label: string };
+  "tab:closeBySourceId": { sourceId: string };
 
   // ── 编辑器（跨文件跳转）──
   /** F12/跨文件跳转——目标编辑器消费 pendingReveal。不依赖 isActive 变化 */

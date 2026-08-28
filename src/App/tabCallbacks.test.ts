@@ -367,82 +367,21 @@ function makeSourceIdDeps(overrides: Partial<SourceIdRouterDeps> = {}) {
   const updateTabState = vi.fn();
   const closeWindow = vi.fn();
   const focusTabBySourceId = vi.fn();
-  const updateTabLabelBySourceId = vi.fn();
-  const closeTabBySourceId = vi.fn();
   const win: WindowShellState = { windowId: "det-1", mode: "detached", ready: true, tabState: makeState([TAB1, TAB2]) };
   const deps: SourceIdRouterDeps = {
     windows: [win],
     updateTabState,
     closeWindow,
     focusTabBySourceId,
-    updateTabLabelBySourceId,
-    closeTabBySourceId,
     ...overrides,
   };
   const routers = createSourceIdRouters(deps);
-  return { routers, updateTabState, closeWindow, focusTabBySourceId, updateTabLabelBySourceId, closeTabBySourceId };
+  return { routers, updateTabState, closeWindow, focusTabBySourceId };
 }
 
-describe("createSourceIdRouters —— E5.8#46.12 按来源窗路由 sourceId 族", () => {
+describe("createSourceIdRouters —— E5.8#46.12/46.2 focusBySourceId 按来源窗单发路由（updateLabel/close 已移出改 windowHost 广播）", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-  });
-
-  it("脱出窗 updateLabelBySourceId → 该窗注册表 label 更新 + updateTabState（黑点同步根修）", () => {
-    const { routers, updateTabState, updateTabLabelBySourceId } = makeSourceIdDeps();
-    routers.updateTabLabelBySourceId("t1", "● Demo Alpha", "det-1");
-    expect(updateTabLabelBySourceId).not.toHaveBeenCalled();
-    expect(updateTabState).toHaveBeenCalledTimes(1);
-    const [wid, state] = updateTabState.mock.calls[0] as [string, TabState];
-    expect(wid).toBe("det-1");
-    expect(state.groups[0].tabs[0].label).toBe("● Demo Alpha");
-  });
-
-  it("主窗/未注 updateLabelBySourceId → 走 useTabManager 主路径", () => {
-    const { routers, updateTabState, updateTabLabelBySourceId } = makeSourceIdDeps();
-    routers.updateTabLabelBySourceId("t1", "● Demo Alpha", "main");
-    routers.updateTabLabelBySourceId("t1", "● Demo Alpha");
-    expect(updateTabLabelBySourceId).toHaveBeenCalledTimes(2);
-    expect(updateTabState).not.toHaveBeenCalled();
-  });
-
-  it("脱出窗 updateLabelBySourceId 但窗内无此 tab → 静默 no-op（不误触主窗同名 tab）", () => {
-    const { routers, updateTabState, updateTabLabelBySourceId } = makeSourceIdDeps();
-    routers.updateTabLabelBySourceId("ghost", "● Demo", "det-1");
-    expect(updateTabState).not.toHaveBeenCalled();
-    expect(updateTabLabelBySourceId).not.toHaveBeenCalled();
-  });
-
-  it("脱出窗 closeBySourceId → 关该窗 tab + updateTabState（窗仍非空，不关窗）", () => {
-    const { routers, updateTabState, closeWindow, closeTabBySourceId } = makeSourceIdDeps();
-    routers.closeTabBySourceId("t1", "det-1");
-    expect(closeTabBySourceId).not.toHaveBeenCalled();
-    expectDetachedUpdate(updateTabState, "det-1", 1);
-    expect(closeWindow).not.toHaveBeenCalled();
-  });
-
-  it("脱出窗 closeBySourceId 关最后一个 tab → 空窗自灭 closeWindow（不 updateTabState）", () => {
-    const { routers, updateTabState, closeWindow } = makeSourceIdDeps({ windows: [{ windowId: "det-1", mode: "detached", ready: true, tabState: makeState([TAB1]) }] });
-    routers.closeTabBySourceId("t1", "det-1");
-    expect(closeWindow).toHaveBeenCalledWith("det-1");
-    expect(updateTabState).not.toHaveBeenCalled();
-  });
-
-  // E5.8#46.12 Step3：脱出窗 sourceId 关脏 tab 静默阻断（镜像主窗 reduceCloseTab dirty 阻断，不弹窗）
-  it("脱出窗 closeBySourceId 关脏 tab → 静默阻断（不 updateTabState/不关窗/不弹确认）", () => {
-    const { routers, updateTabState, closeWindow } = makeSourceIdDeps({ windows: [{ windowId: "det-1", mode: "detached", ready: true, tabState: makeState([DIRTY, TAB2]) }] });
-    routers.closeTabBySourceId("t3", "det-1");
-    expect(showConfirm).not.toHaveBeenCalled();
-    expect(updateTabState).not.toHaveBeenCalled();
-    expect(closeWindow).not.toHaveBeenCalled();
-  });
-
-  it("主窗/未注 closeBySourceId → 走 useTabManager 主路径", () => {
-    const { routers, updateTabState, closeTabBySourceId } = makeSourceIdDeps();
-    routers.closeTabBySourceId("t1", "main");
-    routers.closeTabBySourceId("t1");
-    expect(closeTabBySourceId).toHaveBeenCalledTimes(2);
-    expect(updateTabState).not.toHaveBeenCalled();
   });
 
   it("脱出窗 focusBySourceId → 该窗 activeTabId 切到目标（reduceFocusTab + updateTabState）", () => {
@@ -465,16 +404,11 @@ describe("createSourceIdRouters —— E5.8#46.12 按来源窗路由 sourceId �
     expect(updateTabState).not.toHaveBeenCalled();
   });
 
-  it("脱出窗已关（章指 gone-1）→ sourceId 族全静默丢弃（#46.4 同语义，不误触主窗）", () => {
-    const { routers, updateTabState, closeWindow, focusTabBySourceId, updateTabLabelBySourceId, closeTabBySourceId } = makeSourceIdDeps();
-    routers.updateTabLabelBySourceId("t1", "● Demo Alpha", "gone-1");
-    routers.closeTabBySourceId("t1", "gone-1");
+  it("脱出窗已关（章指 gone-1）→ focus 静默丢弃（#46.4 同语义，不误触主窗）", () => {
+    const { routers, updateTabState, focusTabBySourceId } = makeSourceIdDeps();
     routers.focusTabBySourceId("t1", "gone-1");
     expect(updateTabState).not.toHaveBeenCalled();
-    expect(closeWindow).not.toHaveBeenCalled();
     expect(focusTabBySourceId).not.toHaveBeenCalled();
-    expect(updateTabLabelBySourceId).not.toHaveBeenCalled();
-    expect(closeTabBySourceId).not.toHaveBeenCalled();
   });
 });
 
@@ -498,19 +432,15 @@ describe("createStableSourceIdRoutersBridge —— 函数经 routerRef 委托，
 
     // 换指向 b：脱出窗路径落 b 的注册表（ref 读活值——路由不因函数恒等而冻结在旧 windows 快照）
     routerRef.current = b.routers;
-    bridge.updateTabLabelBySourceId("t1", "● Demo Alpha", "det-1");
+    bridge.focusTabBySourceId("t1", "det-1");
     expect(b.updateTabState).toHaveBeenCalledTimes(1);
     expect(a.updateTabState).not.toHaveBeenCalled();
   });
 
-  it("三个函数全部经桥转发、零路由逻辑——委托到路由器的同签名（防转发遗漏）", () => {
-    const { routers, focusTabBySourceId, updateTabLabelBySourceId, closeTabBySourceId } = makeSourceIdDeps();
+  it("函数经桥转发、零路由逻辑——委托到路由器的同签名（防转发遗漏）", () => {
+    const { routers, focusTabBySourceId } = makeSourceIdDeps();
     const bridge = createStableSourceIdRoutersBridge({ current: routers });
     bridge.focusTabBySourceId("t1", "main");
-    bridge.updateTabLabelBySourceId("t1", "x", "main");
-    bridge.closeTabBySourceId("t1", "main");
     expect(focusTabBySourceId).toHaveBeenCalledWith("t1");
-    expect(updateTabLabelBySourceId).toHaveBeenCalledWith("t1", "x");
-    expect(closeTabBySourceId).toHaveBeenCalledWith("t1");
   });
 });

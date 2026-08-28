@@ -149,25 +149,26 @@ function App() {
   // deps 恒等（setPanelActiveViewId useState setter + panelActiveViewIdRef ref + detachPanel useCallback 稳定）
   useUiBridges({ setPanelActiveViewId, panelActiveViewIdRef, detachPanel });
 
-  // E5.8#46.12：sourceId 族按窗路由——信封来源窗章（池→壳请求自动盖章）落脱出窗注册表（黑点/关/聚焦），
-  // 主窗/未注走 useTabManager。修窗口身份丢失类同根 bug（脱出窗 label/dirty 不同步 + close/focus 静默 no-op）。
+  // E5.8#46.12/46.2：focusBySourceId 按窗路由——信封来源窗章（池→壳请求自动盖章）落脱出窗注册表聚焦，
+  // 主窗/未注走 useTabManager。修窗口身份丢失类同根 bug（脱出窗 focus 静默 no-op）。
+  // E5.8#46.2：updateLabel/close 已移出路由——windowHost 全窗广播（壳侧唯一订阅点，资源事件 = 全窗事实）。
   const sourceIdRouters = useMemo(
     () => createSourceIdRouters({
       windows, updateTabState, closeWindow,
-      focusTabBySourceId, updateTabLabelBySourceId, closeTabBySourceId,
+      focusTabBySourceId,
     }),
-    [windows, updateTabState, closeWindow, focusTabBySourceId, updateTabLabelBySourceId, closeTabBySourceId],
+    [windows, updateTabState, closeWindow, focusTabBySourceId],
   );
 
   // 🔥 E5.8#46.12 回归修复（实机卡死根因）：sourceIdRouters 闭包抓 windows（每次 tabState 变化换引用）
-  // → 三路由函数引用不稳 → useTabActions u5/u6/u7 订阅 effect 每 render 重订阅 → ShellEvents.on()
+  // → 路由函数引用不稳 → useTabActions u5 订阅 effect 每 render 重订阅 → ShellEvents.on()
   // 回放缓冲重放 tab:create → createTab 死循环。ref 读活值 + 稳定桥钉死函数引用（恒等），路由不降。
   const sourceIdRoutersRef = useRef(sourceIdRouters);
   sourceIdRoutersRef.current = sourceIdRouters;
   const stableSourceIdRouters = useMemo(() => createStableSourceIdRoutersBridge(sourceIdRoutersRef), []);
 
   // E5.8#0d.10-3g：标签页动作（图标直开/TabActions 桥接）+ 启动恢复——迁入 src/App/tabActions.ts
-  useTabActions({ ready, createTab, openOrFocusTab, focusTab, closeTab, focusTabBySourceId: stableSourceIdRouters.focusTabBySourceId, updateTabLabelBySourceId: stableSourceIdRouters.updateTabLabelBySourceId, closeTabBySourceId: stableSourceIdRouters.closeTabBySourceId, restoreLayout, setPanelActiveViewId });
+  useTabActions({ ready, createTab, openOrFocusTab, focusTab, closeTab, focusTabBySourceId: stableSourceIdRouters.focusTabBySourceId, restoreLayout, setPanelActiveViewId });
 
   // E5#5c：包装 focusTab——emit tab:focused 通知状态栏
   const handleFocusTab = useMemo(

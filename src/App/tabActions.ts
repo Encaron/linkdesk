@@ -1,7 +1,8 @@
 /**
  * App 标签页动作 hook——useTabActions：图标直开 + TabActions 桥接 + 恢复。
  * E5.8#0d.10-3g：自 App.tsx 拆出——icon:selected tabOnly 插件直开标签页（E5#5b）+
- * TabActions 桥（tab:create/openOrFocus/focus/close/focusBySourceId/updateLabelBySourceId/closeBySourceId）
+ * TabActions 桥（tab:create/openOrFocus/focus/close/focusBySourceId——updateLabelBySourceId/closeBySourceId
+ * 于 E5.8#46.2 移出（改走 windowHost 全窗广播，壳侧唯一订阅点））
  * + mount 时恢复上次保存的标签页/面板布局（ready 守卫）。
  * 依赖方向：tabActions → pluginLoader/viewRegistry + shellEvents + core/services/layout + useTabManager；
  * App 消费：useTabActions({ ready, createTab, openOrFocusTab, focusTab, closeTab, ...setPanelActiveViewId })。无反向依赖。
@@ -21,10 +22,9 @@ export interface TabActionsDeps {
   openOrFocusTab: (type: string, opts?: CreateTabOptions) => string | null;
   focusTab: (tabId: string) => void;
   closeTab: (tabId: string) => Promise<unknown>;
-  /** E5.8#46.12：sourceWindowId = 信封来源窗章——脱出窗 sourceId 操作落到该窗注册表（黑点/关/聚焦），主窗/未注走主路径 */
+  /** E5.8#46.12：sourceWindowId = 信封来源窗章——脱出窗 focusBySourceId 落到该窗注册表，主窗/未注走主路径。
+   *  E5.8#46.2：updateLabel/close 已移出（windowHost 全窗广播）——本 deps 仅 focus 单发路由。 */
   focusTabBySourceId: (sourceId: string, sourceWindowId?: string) => void;
-  updateTabLabelBySourceId: (sourceId: string, label: string, sourceWindowId?: string) => void;
-  closeTabBySourceId: (sourceId: string, sourceWindowId?: string) => void;
   restoreLayout: (saved: LayoutData) => { pluginId: string; tabId: string } | null;
   setPanelActiveViewId: (v: string | null) => void;
 }
@@ -37,8 +37,6 @@ export function useTabActions({
   focusTab,
   closeTab,
   focusTabBySourceId,
-  updateTabLabelBySourceId,
-  closeTabBySourceId,
   restoreLayout,
   setPanelActiveViewId,
 }: TabActionsDeps): void {
@@ -71,12 +69,11 @@ export function useTabActions({
     });
     const u3 = shellEvents.on("tab:focus", ({ tabId }) => focusTab(tabId));
     const u4 = shellEvents.on("tab:close", ({ tabId }) => closeTab(tabId));
-    // E5.8#46.12：sourceWindowId 透传——按窗路由 sourceId 族（信封章 → 注册表 vs 主窗）
+    // E5.8#46.12/46.2：sourceWindowId 透传——focusBySourceId 按窗单发路由（聚焦到具体某窗）；
+    // updateLabel/close 已于 #46.2 改走 windowHost 全窗广播（壳侧唯一订阅点），此处不再订阅（防双处理）
     const u5 = shellEvents.on("tab:focusBySourceId", ({ sourceId, sourceWindowId }) => focusTabBySourceId(sourceId, sourceWindowId));
-    const u6 = shellEvents.on("tab:updateLabelBySourceId", ({ sourceId, label, sourceWindowId }) => updateTabLabelBySourceId(sourceId, label, sourceWindowId));
-    const u7 = shellEvents.on("tab:closeBySourceId", ({ sourceId, sourceWindowId }) => closeTabBySourceId(sourceId, sourceWindowId));
-    return () => { u1(); u2(); u3(); u4(); u5(); u6(); u7(); };
-  }, [createTab, openOrFocusTab, focusTab, closeTab, focusTabBySourceId, updateTabLabelBySourceId, closeTabBySourceId]);
+    return () => { u1(); u2(); u3(); u4(); u5(); };
+  }, [createTab, openOrFocusTab, focusTab, closeTab, focusTabBySourceId]);
 
   // E5#7h3：mount 时恢复上次保存的标签页布局——ready 守卫：
   // 原 MainContent 在 ready 门控的 JSX 内 mount（initAll 完成后才挂载）；

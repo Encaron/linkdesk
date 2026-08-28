@@ -20,9 +20,7 @@ import {
   reduceDuplicateTab,
   reducePinTab,
   reduceUpdateSplitSizes,
-  reduceUpdateTabLabelBySourceId,
   findTabBySourceId,
-  isTabDirty,
   confirmDirtyTabClose,
   emitTabActivated,
 } from "../hooks/useTabManager"; // E5.8#46.4：脱出窗 tab 操作纯 reducer（聚合器 re-export）；#46.12：sourceId 族共用查找/更新；Step3：dirty 判定/确认共用；#46.9：激活事件复用一处
@@ -446,15 +444,15 @@ export interface SourceIdRouterDeps {
   closeWindow: (windowId: string) => void;
   /** 主窗路径（useTabManager）——sourceWindowId 未注/为 main 时走原路 */
   focusTabBySourceId: (sourceId: string) => void;
-  updateTabLabelBySourceId: (sourceId: string, label: string) => void;
-  closeTabBySourceId: (sourceId: string) => void;
 }
 
-/** E5.8#46.12：sourceId 路由产物类型——createSourceIdRouters 与稳定桥共用，一处定义 */
+/**
+ * E5.8#46.12/46.2：sourceId 路由产物类型——createSourceIdRouters 与稳定桥共用，一处定义。
+ * E5.8#46.2 收窄：仅 focus 保留按窗单发路由（聚焦是「聚焦到具体窗」语义）；updateLabel/close 改走
+ * windowHost 全窗广播（资源事件 = 全窗事实，不再需要信封章路由）。
+ */
 export interface SourceIdRouters {
   focusTabBySourceId: (sourceId: string, sourceWindowId?: string) => void;
-  updateTabLabelBySourceId: (sourceId: string, label: string, sourceWindowId?: string) => void;
-  closeTabBySourceId: (sourceId: string, sourceWindowId?: string) => void;
 }
 
 /**
@@ -471,15 +469,15 @@ export interface SourceIdRouters {
 export function createStableSourceIdRoutersBridge(routerRef: { current: SourceIdRouters }): SourceIdRouters {
   return {
     focusTabBySourceId: (sourceId, sourceWindowId) => routerRef.current.focusTabBySourceId(sourceId, sourceWindowId),
-    updateTabLabelBySourceId: (sourceId, label, sourceWindowId) => routerRef.current.updateTabLabelBySourceId(sourceId, label, sourceWindowId),
-    closeTabBySourceId: (sourceId, sourceWindowId) => routerRef.current.closeTabBySourceId(sourceId, sourceWindowId),
   };
 }
 
 /**
- * E5.8#46.12：sourceId 族（改标签/关标签/聚焦）按来源窗路由——信封章（主进程 sender 反查）落脱出窗
+ * E5.8#46.12：sourceId 族（聚焦）按来源窗路由——信封章（主进程 sender 反查）落脱出窗
  * 注册表纯 reducer + updateTabState；主窗/未注走 useTabManager。修窗口身份丢失类同根 bug（脱出窗
- * label/dirty 黑点不同步、close/focus 静默 no-op）——与 #46.4 脱出窗 tabAction 同构归一化。
+ * focus 静默 no-op）——与 #46.4 脱出窗 tabAction 同构归一化。
+ * E5.8#46.2：updateLabel/close 已移出本路由（改走 windowHost 全窗广播——资源事件 = 全窗事实，
+ * 信封章路由冗余）；focus 保留单发（聚焦 = 聚焦到具体某窗，广播多窗全聚焦语义错）。
  */
 export function createSourceIdRouters(deps: SourceIdRouterDeps): SourceIdRouters {
   const { windows, updateTabState, closeWindow } = deps;
@@ -507,25 +505,6 @@ export function createSourceIdRouters(deps: SourceIdRouterDeps): SourceIdRouters
       const tab = findTabBySourceId(r.win.tabState, sourceId);
       if (!tab) return; // 脱出窗无此 tab → 静默（不误触主窗同名 tab）
       void applyDetachedTabAction(r.win, { action: "focusTab", tabId: tab.id, sourceWindowId: r.win.windowId }, { updateTabState, closeWindow });
-    },
-    updateTabLabelBySourceId: (sourceId: string, label: string, sourceWindowId?: string): void => {
-      const r = route(sourceWindowId);
-      if (r.kind === "main") { deps.updateTabLabelBySourceId(sourceId, label); return; }
-      if (r.kind === "gone") return;
-      const next = reduceUpdateTabLabelBySourceId(r.win.tabState, sourceId, label);
-      if (next === r.win.tabState) return; // 脱出窗无此 tab → 静默
-      updateTabState(r.win.windowId, next);
-    },
-    closeTabBySourceId: (sourceId: string, sourceWindowId?: string): void => {
-      const r = route(sourceWindowId);
-      if (r.kind === "main") { deps.closeTabBySourceId(sourceId); return; }
-      if (r.kind === "gone") return;
-      const tab = findTabBySourceId(r.win.tabState, sourceId);
-      if (!tab) return;
-      // E5.8#46.12 Step3：脱出窗 sourceId 关脏 tab 静默阻断（镜像主窗 reduceCloseTab dirty 阻断语义，
-      // 不弹窗——程序化关闭由插件自行确认）。比主窗多查 ● 前缀——与 isTabDirty 判定统一，不分叉。
-      if (isTabDirty(tab)) return;
-      void applyDetachedTabAction(r.win, { action: "closeTab", tabId: tab.id, sourceWindowId: r.win.windowId }, { updateTabState, closeWindow });
     },
   };
 }

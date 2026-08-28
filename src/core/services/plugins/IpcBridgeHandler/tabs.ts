@@ -13,7 +13,8 @@ export const DEFAULT_TAB_TYPE = "editor";
 
 /**
  * tabs:* 七 channel 处理器——插件调壳的 tabs API（经 ShellEvents 事件总线）。全 case void emit 无返回。
- * sourceWindowId = 信封来源窗章（E5.8#46.12，主进程 sender 反查）——sourceId 族按章路由到来源窗注册表。
+ * sourceWindowId = 信封来源窗章（E5.8#46.12，主进程 sender 反查）——focusBySourceId 按章路由到来源窗注册表。
+ * E5.8#46.2：updateLabelBySourceId/closeBySourceId 改走 windowHost 全窗广播（资源事件 = 全窗事实）——emit 不带章。
  */
 export async function handleTabsChannel(channel: string, args: unknown[], sourceWindowId?: string): Promise<void> {
   switch (channel) {
@@ -46,12 +47,13 @@ export async function handleTabsChannel(channel: string, args: unknown[], source
     }
     case "tabs:updateLabelBySourceId": {
       const [sourceId, label] = args as [string, string];
-      shellEvents.emit("tab:updateLabelBySourceId", { sourceId, label, sourceWindowId });
+      // E5.8#46.2：全窗广播（windowHost 唯一订阅点）——不带 sourceWindowId（章只留给 focus 单发路由）
+      shellEvents.emit("tab:updateLabelBySourceId", { sourceId, label });
       break;
     }
     case "tabs:closeBySourceId": {
       const [sourceId] = args as [string];
-      shellEvents.emit("tab:closeBySourceId", { sourceId, sourceWindowId });
+      shellEvents.emit("tab:closeBySourceId", { sourceId });
       break;
     }
     default:
