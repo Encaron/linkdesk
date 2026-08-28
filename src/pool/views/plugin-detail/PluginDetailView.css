@@ -153,7 +153,8 @@
 }
 
 .pd-btn-uninstall {
-  border-color: rgba(231, 76, 60, 0.5);
+  /* E5.8#130：rgba 硬编码 → error token 50% 合成（对标 #128.8 marketplace/keybinding color-mix 先例） */
+  border-color: color-mix(in srgb, var(--error) 50%, transparent);
   color: var(--error);
 }
 
@@ -164,11 +165,13 @@
 
 .pd-btn-disable:hover:not(:disabled) {
   color: var(--warning);
-  border-color: rgba(204, 167, 0, 0.5);
+  /* E5.8#130：rgba 硬编码 → warning token 50% 合成 */
+  border-color: color-mix(in srgb, var(--warning) 50%, transparent);
 }
 
 .pd-btn-enable {
-  border-color: rgba(76, 175, 80, 0.5);
+  /* E5.8#130：rgba 硬编码 → status-connected token 50% 合成（跟随主题绿，对标 #128.8 marketplace 先例） */
+  border-color: color-mix(in srgb, var(--status-connected) 50%, transparent);
   color: var(--status-connected);
 }
 
