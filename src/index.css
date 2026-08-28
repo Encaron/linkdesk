@@ -689,3 +689,14 @@ select {
   background-position: var(--surface-status-bar-bg-position, 0 0);
 }
 
+/* ═══ E5.8 Phase 12 #183：codicon 基类 font-size 归一 ═══
+ * @vscode/codicons 基类 `.codicon[class*="codicon-"] { font-size: 16px }`（(0,2,0)）压过
+ * 内容图标单类规则（(0,1,0)）→ scale>1 时图标不随字缩放（跨 #164-#172 共性问题）。
+ * 覆盖基类默认走 --font-size-lg token（引擎按 app.uiFontScale 算好最终 px）：
+ *   1.0 = 16px 零视觉变化；>1.0 内容图标随字缩放（档案 §3.2「图标字形——配 14px 文字」）。
+ * 独立显示图标零影响——welcome 24px / IconBar 24px / pd 96px 全走 !important 或 (0,2,0)+。
+ * 顺序契约：本文件须在 codicon.css 之后加载（main.tsx / pool-main.tsx 已交换 import）。 */
+.codicon[class*="codicon-"] {
+  font-size: var(--font-size-lg);
+}
+

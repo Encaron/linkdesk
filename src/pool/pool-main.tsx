@@ -17,8 +17,10 @@ import ReactDOM from "react-dom/client";
 import PoolZoneShell from "./PoolZoneShell";
 import type { PoolLayout } from "../core/types/pool/poolLayout";
 // E5.6#11 fix：池独立 WebContentsView——需加载基础 CSS（变量/字体/图标/间距）
-import "../index.css";
 import "@vscode/codicons/dist/codicon.css";
+// E5.8 Phase 12 #183：codicon.css 须在 index.css 之前——index.css 末尾覆盖基类 font-size 走
+// var(--font-size-lg)（内容图标随字缩放，1.0=16px 零变化），后加载者赢同特异性 tie。
+import "../index.css";
 // E5.6#10f：池独立 WebContentsView 需初始化 i18n——模块级 init() + 订阅 lang:changed 广播
 import "../i18n";
 
