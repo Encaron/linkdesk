@@ -143,6 +143,21 @@ describe("ThemeEngine — 外观覆盖 getAppearanceOverrides（E5.8#50.10）", 
     for (const key of RADIUS_KEYS) expect(overrides[key]).toBe("12");
   });
 
+  /* ── E5.8 Phase 12 #163 播种/复位语义——字号独立全局轴 ── */
+
+  it("E5.8#163 uiFontScale 不进 APPEARANCE_OVERRIDE_KEYS（不随 custom 播种/切主题重播种——独立轴，F4 全模式生效的结构保证）", () => {
+    expect(APPEARANCE_OVERRIDE_KEYS).not.toContain("app.uiFontScale");
+  });
+
+  it("E5.8#163 uiFontScale unset → 恒写 ui-font-scale 100（字号轴恒发射，ratio 1 = ⑤ 新基线）", () => {
+    expect(getAppearanceOverrides()["ui-font-scale"]).toBe("100");
+  });
+
+  it("E5.8#163 uiFontScale 用户值跟随（125 → 恒写 125；本键不读 appearanceMode——followTheme 也保持，仅 unset→默认 1）", () => {
+    applyRemoteConfigChange("app.uiFontScale", 125);
+    expect(getAppearanceOverrides()["ui-font-scale"]).toBe("125");
+  });
+
   it("E5.8#85 surfaceRadius 越界 999 → 钳到 32；负 → 0（消费侧 clamp 延续 #56）", () => {
     applyRemoteConfigChange("app.surfaceRadius", 999);
     for (const key of RADIUS_KEYS) expect(getAppearanceOverrides()[key]).toBe("32");
