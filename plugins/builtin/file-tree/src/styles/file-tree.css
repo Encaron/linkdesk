@@ -208,6 +208,12 @@
   margin-left: var(--tree-icon-gap);
 }
 
+/* E5.8#133.3：图像形态图标——linkdesk:// 绝对 URL 渲染，等比缩放进图标盒（零拉伸失真） */
+.file-tree-icon--image {
+  object-fit: contain;
+  vertical-align: text-bottom;
+}
+
 /* ── 文件名 ── */
 
 .file-tree-name {

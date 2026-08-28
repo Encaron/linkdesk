@@ -13,6 +13,8 @@ import type { FlatItem } from "../services/FileTreeKeyboard";
 import { useFileTreeDnD } from "../services/FileTreeDnD";
 
 import { fileTreeClipboard } from "../services/FileTreeClipboard";
+import { updateIconResolver } from "../services/FileIconResolver";
+import type { IconThemeMappings } from "@linkdesk/contracts";
 
 const lk = window.linkdesk;
 
@@ -134,6 +136,16 @@ const FileTree = forwardRef<FileTreeHandle, FileTreeProps>(function FileTree(
   const rerender = useCallback(() => setVersion((v) => v + 1), []);
   /** E4V#35e: 活跃工作区——根节点 accent 色加粗 */
   const [activeWorkspaceUri, setActiveWorkspaceUri] = useState<string>("");
+  /** E5.8#133.3: 图标主题 id——仅作 FileTreeNode memo 重渲染触发器（图标现取 getIconResolver） */
+  const [iconThemeId, setIconThemeId] = useState("default");
+  // E5.8#133.3: 图标主题订阅——切换 → 重建 resolver + 刷新节点。启动时 preload 缓存回放
+  // （iconTheme:changed extraHandler + events.on 回放）→ 挂载即拿到重启前选择，非 default 图标集恢复。
+  useEffect(() => {
+    return lk.events.on("iconTheme:changed", (payload: { iconThemeId: string; mappings?: IconThemeMappings }) => {
+      updateIconResolver(payload.mappings);
+      setIconThemeId(payload.iconThemeId);
+    });
+  }, []);
   useEffect(() => { lk.workspace.getActive().then((v: string | undefined) => { if (v) setActiveWorkspaceUri(v); }); }, []);
   useEffect(() => {
     return lk.workspace.onDidChangeActiveWorkspace((uri: string | null) => { setActiveWorkspaceUri(uri ?? ""); rerender(); });
@@ -435,6 +447,7 @@ const FileTree = forwardRef<FileTreeHandle, FileTreeProps>(function FileTree(
             isCut={cutUris.has(item.uri)}
             isRenaming={item.uri === renamingUri}
             isActiveRoot={item.parent === null && item.uri === activeWorkspaceUri}
+            iconThemeId={iconThemeId}
             onRenameConfirm={finishRename}
             onRenameCancel={cancelRename}
             compactedSegments={compactedSegments} guide={guide} isDimmed={isDimmed}

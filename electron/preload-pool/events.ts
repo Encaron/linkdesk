@@ -10,8 +10,20 @@ import { ipcRenderer } from 'electron';
 import { IPC } from '../ipc/channels';
 import { createEventSystem, type EventSystemApi } from '../ipc/event-system';
 import type { ThemeChangedPayload, AccentChangedPayload, FontFaceSpec } from '../../src/core/types/ipc/events';
+import type { IconThemeMappings } from '../../src/core/api/types';
 import { onLangChanged } from './language';
 import { ensureSurfaceZonesObserver, ensureSurfaceLayoutObserver, measureSurfaceZones } from './surface-zones';
+
+// ── E5.8#133.3：iconTheme:changed 载荷 + 缓存回放 ──
+// 对标 configuration._configCache（E5.5#7a）：启动时 AppInitializer 广播 iconTheme:changed →
+// broadcast storeForReplay=true → 池 did-finish-load 时 replayToPool。replay 可能早于 React 挂载
+// （FileTree 订阅在 useEffect 内），事件静默丢失 → 本 extraHandler 模块级捕获缓存（硬约束 20：
+// preload 顶层注册 + 缓冲回放），events.on 订阅时先回放缓存值再挂监听。
+interface IconThemeChangedPayload {
+  iconThemeId: string;
+  mappings?: IconThemeMappings;
+}
+let _cachedIconTheme: IconThemeChangedPayload | undefined;
 
 // ── E5.8#50.17：资产字体 @font-face 复刻——池是独立文档，壳注册的 @font-face 不生效；
 //    壳随 theme:changed 广播 fontFaces 表，池侧注入单一 `<style data-ld-font-faces>`（整表替换，幂等）。
@@ -65,7 +77,7 @@ let _lastZoneSignature = '';
 
 /** events 命名空间——createEventSystem + theme/accent/lang 三个 CSS 注入 extraHandler */
 export function createPoolEvents(): EventSystemApi {
-  return createEventSystem(ipcRenderer, {
+  const system = createEventSystem(ipcRenderer, {
     logPrefix: 'preload-pool',
     extraHandlers: {
       [IPC.theme.changed]: (payload) => {
@@ -121,6 +133,22 @@ export function createPoolEvents(): EventSystemApi {
       'lang:changed': (payload) => {
         onLangChanged(payload as { lang: string; resources: Record<string, unknown> });
       },
+      'iconTheme:changed': (payload) => {
+        // E5.8#133.3：缓存最新图标主题——events.on 订阅时回放（启动 replay 早于 React 挂载）
+        _cachedIconTheme = payload as IconThemeChangedPayload;
+      },
     },
   });
+
+  // E5.8#133.3：iconTheme:changed 订阅回放——订阅时若缓存已有最新载荷先同步回放一次
+  // （对标 configuration.onChange 的 _configCache 回放；其余通道行为与 createEventSystem 原样一致）。
+  return {
+    ...system,
+    on: <T = unknown>(channel: string, cb: (payload: T) => void): (() => void) => {
+      if (channel === 'iconTheme:changed' && _cachedIconTheme) {
+        try { cb(_cachedIconTheme as T); } catch { /* contextBridge 回调静默失败 */ }
+      }
+      return system.on(channel, cb);
+    },
+  };
 }

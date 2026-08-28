@@ -72,6 +72,15 @@ export type {
 
 export type { DialogOpenOptions } from "../types/ipc/dialogs"; // E5.7#97：归口 src/core/types/ipc/dialogs.ts——此 re-export 保持既有插件 import 路径
 
+// E5.8#133.3：图标主题类型契约化——IconThemeMappings 等供插件消费方 import type
+// （file-tree 双形态渲染按 @linkdesk/contracts 拿映射形状；契约生成器自动收集传递引用）。
+export type {
+  IconThemeMappings,
+  IconThemeMapping,
+  IconThemeGlyph,
+  IconThemeImage,
+} from "./types";
+
 // E5.8#20：PluginStateChangedPayload 补导出——插件经 events.on("plugin-state:changed") 通配订阅
 // （pluginState.onChange 精确 key 匹配捕获不了通配键名），载荷类型属契约面必给消费类型。
 export type { PluginStateChangedPayload } from "../types/ipc/events";

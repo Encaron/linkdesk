@@ -50,6 +50,8 @@ describe("App 启动管线 initAll", () => {
     expect(result.layoutRestored).toBe(true);
     expect(result.pluginsLoaded).toBe(2);
     expect(result.errors).toHaveLength(0);
+    // E5.8#133.3：启动应用图标主题（未设置 → "default" 保底）→ 触发启动广播恢复重启前选择
+    expect(deps.applyConfiguration).toHaveBeenCalledWith("app.iconTheme", "default");
   });
 
   it("initServices 失败 → 记录错误 + 后续步骤继续", async () => {
