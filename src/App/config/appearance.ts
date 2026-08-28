@@ -212,7 +212,14 @@ export function registerAppearanceConfiguration(t: ConfigT): void {
           // E5.8#133 ④：广播 payload 携带壳已解析的绝对路径 mappings（消费方零解析负担）；
           // "default" → undefined（codicon 保底，消费方不应用映射直接回退）
           const mappings = iconThemeId === "default" ? undefined : IconRegistry.getMappings(iconThemeId);
-          window.linkdesk?.bridge?.broadcast("iconTheme:changed", { iconThemeId, mappings });
+          // E5.8#133.4：自定义字体资产随广播进池（fontFaces → 池复刻 @font-face；glyphCss → 池注入 glyph 类）；
+          // 无 font 段/非 default → 缺省（池清空上次注入的自定义图标字体，对标 theme:changed fontFaces 语义）
+          const fontAssets = iconThemeId === "default" ? undefined : IconRegistry.getFontAssets(iconThemeId);
+          window.linkdesk?.bridge?.broadcast("iconTheme:changed", {
+            iconThemeId,
+            mappings,
+            ...(fontAssets ?? {}),
+          });
         },
       },
       // 外观六覆盖——dependsOn appearanceMode=custom 才出现（08 §7.1 #5-10）。

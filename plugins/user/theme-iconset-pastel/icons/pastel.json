@@ -1,0 +1,29 @@
+{
+  "$comment": "粉彩图标集 mappings——双形态混用（E5.8#133 ④ 拍板）：自定义字体 glyph（class+color）+ 图像资产（imagePath）。顶层可选 font 段（E5.8#133.4）：path=字体资产、family=glyph CSS 里的 font-family、glyphs=glyph 类 CSS 文件；@font-face 由壳生成广播进池。",
+  "font": {
+    "path": "icons/fonts/ld-pastel.ttf",
+    "family": "ld-pastel",
+    "glyphs": "icons/ld-pastel.css"
+  },
+  "folders": {
+    "src": { "class": "ld-pastel ld-pastel-folder", "color": "#f9a8d4" },
+    "dist": { "class": "ld-pastel ld-pastel-folder", "color": "#a5b4fc" },
+    "node_modules": { "class": "ld-pastel ld-pastel-folder", "color": "#c4b5fd" }
+  },
+  "foldersExpanded": {
+    "src": { "class": "ld-pastel ld-pastel-folder-open", "color": "#f9a8d4" }
+  },
+  "files": {
+    "package.json": { "class": "ld-pastel ld-pastel-file-json", "color": "#fbbf24" },
+    "tsconfig.json": { "class": "ld-pastel ld-pastel-file-json", "color": "#38bdf8" },
+    "README.md": { "class": "ld-pastel ld-pastel-file-md", "color": "#6ee7b7" }
+  },
+  "extensions": {
+    ".ts": { "imagePath": "icons/ts-doc.svg" },
+    ".tsx": { "imagePath": "icons/ts-doc.svg" },
+    ".js": { "class": "ld-pastel ld-pastel-file-js", "color": "#fde68a" },
+    ".json": { "class": "ld-pastel ld-pastel-file-json", "color": "#fbbf24" },
+    ".md": { "class": "ld-pastel ld-pastel-file-md", "color": "#6ee7b7" },
+    ".svg": { "class": "codicon codicon-file-code", "color": "#c4b5fd" }
+  }
+}

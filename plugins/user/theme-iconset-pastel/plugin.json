@@ -1,0 +1,12 @@
+{
+  "$schema": "../../public/schemas/plugin.schema.json",
+  "name": "粉彩图标集",
+  "version": "1.0.0",
+  "description": "虚构图标主题示例——自定义字体 glyph（彩色）+ 图像资产（多色）双形态闭环（E5.8#133.4 验证实例）",
+  "author": "LinkDesk",
+  "contributes": {
+    "iconThemes": [
+      { "id": "ld-iconset-pastel", "label": "粉彩图标集 Pastel Icons", "path": "icons/pastel.json" }
+    ]
+  }
+}

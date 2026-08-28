@@ -386,5 +386,6 @@
   "文字极性——文字颜色取系统标尺，不锚主题色板": "Text Tone — text colors use the system scale, not the theme palette",
   "跟随主题——主题明暗决定文字极性（深主题亮字 / 浅主题暗字）": "Follow Theme — theme brightness decides text polarity (light text on dark themes / dark text on light themes)",
   "亮字（深底用）——深色底上白字": "Light Text (for dark surfaces) — white text on dark backgrounds",
-  "暗字（浅底用）——浅色底上深字": "Dark Text (for light surfaces) — dark text on light backgrounds"
+  "暗字（浅底用）——浅色底上深字": "Dark Text (for light surfaces) — dark text on light backgrounds",
+  "粉彩图标集 Pastel Icons": "Pastel Icons"
 }

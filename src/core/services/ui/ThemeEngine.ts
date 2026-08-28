@@ -31,7 +31,7 @@ export type { MixProfile } from "./ThemeEngine/mix";
 export { getMixProfile, isMixSourceOwner, mergeMixDomains, syncThemeColorConfig, syncThemeColorEnum } from "./ThemeEngine/mix";
 
 export {
-  isAssetFontPath, ensureFontFace, resolveRecipeFonts, cleanupPluginFontFaces, ensurePluginFontFacesCleanup,
+  isAssetFontPath, fontFormatOf, ensureFontFace, resolveRecipeFonts, cleanupPluginFontFaces, ensurePluginFontFacesCleanup,
 } from "./ThemeEngine/fonts";
 
 export {

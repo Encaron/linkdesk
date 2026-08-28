@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16">
+  <!-- 虚构多色文档图标（E5.8#133.4 图像资产形态——拟物化/任意多色，壳零审查） -->
+  <rect x="1.5" y="1" width="13" height="14" rx="2" fill="#f5f3ff" stroke="#a78bfa" stroke-width="0.8"/>
+  <path d="M1.5 4.2h13v2.6h-13z" fill="#ede9fe"/>
+  <circle cx="4" cy="5.5" r="1" fill="#38bdf8"/>
+  <circle cx="7" cy="5.5" r="1" fill="#f472b6"/>
+  <circle cx="10" cy="5.5" r="1" fill="#fbbf24"/>
+  <rect x="3.5" y="9.3" width="9" height="1.1" rx="0.55" fill="#c4b5fd"/>
+  <rect x="3.5" y="11.6" width="6" height="1.1" rx="0.55" fill="#c4b5fd"/>
+</svg>

@@ -11,9 +11,10 @@
  */
 
 import type { PluginManifest, ViewPluginEntry, ThemeContribution, IconThemeContribution, IconContribution, LanguageContribution, ContributesViews, IconThemeMappings, IconThemeMapping } from "../core/api/types";
+import type { FontFaceSpec } from "../core/types/ipc/events";
 import { getPluginAssetPath } from "../core/utils/path/pluginAssetPath";
 import { registerViewPlugin } from "./viewRegistry";
-import { registerTheme, getAvailableThemes, ensurePluginFontFacesCleanup, normalizeThemeValue, syncThemeColorEnum } from "../core/services/ui/ThemeEngine";
+import { registerTheme, getAvailableThemes, ensurePluginFontFacesCleanup, normalizeThemeValue, syncThemeColorEnum, fontFormatOf } from "../core/services/ui/ThemeEngine";
 import { ThemeRegistry, parseThemeRecipe } from "../core/registry/appearance/ThemeRegistry";
 import { IconRegistry } from "../core/registry/appearance/IconRegistry";
 import { LanguageRegistry } from "../core/registry/languages/LanguageRegistry";
@@ -370,35 +371,57 @@ async function loadPluginComponent(pluginId: string, manifest: PluginManifest): 
  * 🔥 替代 getPluginDataFile——用 fetch() 而非 import.meta.glob。
  * Vite glob 在 dev 模式下只在启动时扫描一次，新插件目录的 JSON 不被实时发现。
  * 运行时主题数据加载（对标 loadPlugin 主题分支）——从一开始就用 fetch。
+ *
+ * E5.8#133.4：拆 URL 解析出 resolvePluginDataUrl——JSON/文本两加载器共用同一寻址
+ * （dev 先探 builtin/user / prod linkdesk:// 协议），单一权威防两处漂移。
  */
-async function fetchPluginDataFile(pluginId: string, filePath: string): Promise<Record<string, unknown> | null> {
-  try {
-    if (import.meta.env.DEV) {
-      // dev 模式：先试 builtin 再试 user
-      for (const sub of ['builtin', 'user']) {
-        const url = `http://localhost:1420/plugins/${sub}/${pluginId}/${filePath}`;
-        try {
-          const response = await fetch(url);
-          if (response.ok) {
-            return await response.json() as Record<string, unknown>;
-          }
-        } catch { /* fetch 失败继续试下一个 */ }
-      }
-      console.warn(`[pluginLoader] 数据文件加载失败 — "${pluginId}/${filePath}" (not in builtin/ or user/)`);
-      return null;
+
+/** 解析插件数据文件可 fetch 的 URL——dev 先探 builtin/user（找到返回）；prod linkdesk:// 协议回退（protocol.ts 已处理）。
+ *  两目录均 404 → null + warn。 */
+async function resolvePluginDataUrl(pluginId: string, filePath: string): Promise<string | null> {
+  if (import.meta.env.DEV) {
+    for (const sub of ["builtin", "user"]) {
+      const url = `http://localhost:1420/plugins/${sub}/${pluginId}/${filePath}`;
+      try {
+        const response = await fetch(url);
+        if (response.ok) return url;
+      } catch { /* fetch 失败继续试下一个 */ }
     }
-    // prod 模式：linkdesk:// 协议——protocol.ts 已处理 builtin/user 回退
-    const url = `linkdesk://${pluginId}/${filePath}`;
+    console.warn(`[pluginLoader] 数据文件加载失败 — "${pluginId}/${filePath}" (not in builtin/ or user/)`);
+    return null;
+  }
+  return `linkdesk://${pluginId}/${filePath}`;
+}
+
+/** fetch 插件数据文件原始响应（JSON/文本共用单一 fetch 逻辑，防两处漂移）——未找到/异常 → null。 */
+async function fetchPluginDataRaw<T>(
+  pluginId: string,
+  filePath: string,
+  parse: (res: Response) => Promise<T>
+): Promise<T | null> {
+  const url = await resolvePluginDataUrl(pluginId, filePath);
+  if (!url) return null;
+  try {
     const response = await fetch(url);
     if (!response.ok) {
       console.warn(`[pluginLoader] 数据文件加载失败 — "${pluginId}/${filePath}" (${response.status})`);
       return null;
     }
-    return await response.json() as Record<string, unknown>;
+    return await parse(response);
   } catch (e) {
     console.warn(`[pluginLoader] 数据文件加载异常 — "${pluginId}/${filePath}": ${errMsg(e)}`);
     return null;
   }
+}
+
+/** fetch 插件数据文件并解析 JSON——未找到/异常 → null（调用方 toast 反馈）。 */
+function fetchPluginDataFile(pluginId: string, filePath: string): Promise<Record<string, unknown> | null> {
+  return fetchPluginDataRaw(pluginId, filePath, (res) => res.json());
+}
+
+/** fetch 插件数据文件原始文本（E5.8#133.4 图标主题 glyph CSS）——未找到/异常 → null。 */
+function fetchPluginDataText(pluginId: string, filePath: string): Promise<string | null> {
+  return fetchPluginDataRaw(pluginId, filePath, (res) => res.text());
 }
 
 /* ── 主题 JSON 数据异步加载（对标 loadLanguageContributionData） ── */
@@ -492,8 +515,39 @@ function normalizeIconThemeMappings(data: Record<string, unknown>, pluginId: str
   return anyValid ? result : null;
 }
 
+/* ── 图标主题自定义字体元数据（E5.8#133.4：mappings JSON 顶层可选 font 段） ── */
+
+/** 图标主题自定义字体元数据——解析后仅含广播所需产物（glyph CSS 文本由调用方 fetch 后并入）。
+ *  契约：作者在 mappings JSON 顶层声明 `font: { path, family, glyphs? }`——
+ *  path = 字体资产相对路径（或绝对 URL），family = 作者 glyph CSS 里 font-family 写的族名，
+ *  glyphs（可选）= glyph 类 CSS 文件相对路径。@font-face 由壳生成（池独立文档复刻），glyph 类作者自写。 */
+export interface IconThemeFontMeta {
+  /** 广播给池复刻 @font-face 的规格（壳已解析 linkdesk:// 绝对 URL） */
+  fontFaces: FontFaceSpec[];
+  /** glyph 类 CSS 文件相对路径——"" = 未声明（仅 @font-face，无自定义 glyph 类） */
+  glyphCssPath: string;
+}
+
+/** 归一化图标主题 font 段——纯函数（不含 fetch/注册，可单测）。
+ *  无 font 段 / 缺 path 或 family → null（自定义字体跳过，mappings 不受影响）。 */
+export function normalizeIconThemeFontMeta(data: Record<string, unknown>, pluginId: string): IconThemeFontMeta | null {
+  const raw = data.font;
+  if (!raw || typeof raw !== "object") return null;
+  const f = raw as Record<string, unknown>;
+  if (typeof f.path !== "string" || typeof f.family !== "string") {
+    console.warn(`[iconTheme] font 段无效——需 path + family，已忽略自定义字体`);
+    return null;
+  }
+  // 已含协议（linkdesk:// / http(s):// / data:）→ 原样；相对路径 → getPluginAssetPath 解析插件资产（硬约束 12 同族）
+  const url = /^[a-z][a-z0-9+.-]*:/i.test(f.path) ? f.path : getPluginAssetPath(pluginId, f.path);
+  const fontFaces: FontFaceSpec[] = [{ family: f.family, url, format: fontFormatOf(f.path) }];
+  const glyphCssPath = typeof f.glyphs === "string" ? f.glyphs : "";
+  return { fontFaces, glyphCssPath };
+}
+
 /** 加载 contributes.iconThemes 声明的 mappings JSON——镜像 loadThemeContributionData + fetchPluginDataFile 复用。
- *  关联 IconRegistry（ID → mappings），装/卸动态刷新（卸载时 IconRegistry disposer 清理）。 */
+ *  关联 IconRegistry（ID → mappings），装/卸动态刷新（卸载时 IconRegistry disposer 清理）。
+ *  E5.8#133.4：可选 font 段 → 自定义字体 @font-face + glyph CSS 一并关联（广播进池复刻）。 */
 async function loadIconThemeContributionData(pluginId: string, manifest: PluginManifest): Promise<void> {
   const iconThemeList = manifest.contributes?.iconThemes as IconThemeContribution[] | undefined;
   if (!iconThemeList?.length) return;
@@ -521,6 +575,14 @@ async function loadIconThemeContributionData(pluginId: string, manifest: PluginM
       continue;
     }
     IconRegistry.setMappings(it.id, mappings);
+    // E5.8#133.4：可选自定义字体——fontFaces（@font-face 规格）+ glyph CSS 文本；font 段缺省 → 零字资产，仅 codicon/imagePath
+    const fontMeta = normalizeIconThemeFontMeta(data, pluginId);
+    if (fontMeta) {
+      const glyphCss = fontMeta.glyphCssPath
+        ? (await fetchPluginDataText(pluginId, fontMeta.glyphCssPath)) ?? ""
+        : "";
+      IconRegistry.setFontAssets(it.id, { fontFaces: fontMeta.fontFaces, glyphCss });
+    }
   }
 }
 

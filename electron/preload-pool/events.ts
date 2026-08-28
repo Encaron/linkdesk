@@ -22,8 +22,37 @@ import { ensureSurfaceZonesObserver, ensureSurfaceLayoutObserver, measureSurface
 interface IconThemeChangedPayload {
   iconThemeId: string;
   mappings?: IconThemeMappings;
+  /** E5.8#133.4：自定义图标字体 @font-face 规格——池复刻注入（池独立文档，壳注册的不生效） */
+  fontFaces?: FontFaceSpec[];
+  /** E5.8#133.4：glyph 类 CSS 原文——池注入 `<style>`（作者自写 .myfont-x::before{content:...}） */
+  glyphCss?: string;
 }
 let _cachedIconTheme: IconThemeChangedPayload | undefined;
+
+// ── E5.8#133.4：图标主题自定义字体——@font-face + glyph 类 CSS 注入 ──
+// 与主题字体分属不同 style 标签（theme:changed 的 applyFontFaces 整表替换——共用会互相清掉）：
+// 图标字体是 glyph 类 CSS 的作者属主，作者需自声明 font-family 写自己的族名（mappings JSON font.family）。
+const ICON_FONT_STYLE_ID = 'ld-icon-font';
+function applyIconFontAssets(fontFaces?: FontFaceSpec[], glyphCss?: string): void {
+  let style = document.getElementById(ICON_FONT_STYLE_ID) as HTMLStyleElement | null;
+  if ((!fontFaces || fontFaces.length === 0) && !glyphCss) {
+    style?.remove();
+    return;
+  }
+  if (!style) {
+    style = document.createElement('style');
+    style.id = ICON_FONT_STYLE_ID;
+    document.head.appendChild(style);
+  }
+  const faces = (fontFaces ?? [])
+    .map(
+      (f) =>
+        `@font-face{font-family:"${f.family}";src:url("${f.url}")` +
+        `${f.format ? ` format("${f.format}")` : ''};font-display:swap}`
+    )
+    .join('');
+  style.textContent = faces + (glyphCss ?? '');
+}
 
 // ── E5.8#50.17：资产字体 @font-face 复刻——池是独立文档，壳注册的 @font-face 不生效；
 //    壳随 theme:changed 广播 fontFaces 表，池侧注入单一 `<style data-ld-font-faces>`（整表替换，幂等）。
@@ -135,7 +164,15 @@ export function createPoolEvents(): EventSystemApi {
       },
       'iconTheme:changed': (payload) => {
         // E5.8#133.3：缓存最新图标主题——events.on 订阅时回放（启动 replay 早于 React 挂载）
-        _cachedIconTheme = payload as IconThemeChangedPayload;
+        const p = payload as IconThemeChangedPayload;
+        _cachedIconTheme = p;
+        // E5.8#133.4：自定义图标字体 @font-face + glyph CSS 注入池文档——与 React 订阅解耦，
+        // 广播即生效（FileTree 只消费 mappings，字体注入归 preload 机械层）
+        try {
+          applyIconFontAssets(p.fontFaces, p.glyphCss);
+        } catch (e) {
+          console.error('[preload-pool] iconTheme:changed 字体注入失败:', e);
+        }
       },
     },
   });

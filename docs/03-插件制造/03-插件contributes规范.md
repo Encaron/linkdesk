@@ -327,10 +327,31 @@ useEffect(() => {
 
 | 形态 | 字段 | 渲染 | 说明 |
 |------|------|------|------|
-| **字体 glyph** | `class`（必）+ `color?`（可选） | `<span>` | 单色/带色字体 glyph（seti/material 即此类，每图标一色）；字体资产走 `@font-face`（主题资产字体基建） |
+| **字体 glyph** | `class`（必）+ `color?`（可选） | `<span>` | 单色/带色字体 glyph（seti/material 即此类，每图标一色）；自定义字体走 `@font-face`（见下方 `font` 段） |
 | **图像资产** | `imagePath` | `<img>` | 任意多色（拟物化/贴图）；相对路径 → 壳加载时解析为 `linkdesk://{pluginId}/{path}` 绝对 URL（消费方零解析负担） |
 
 同一主题可混用两形态。**选择器 = 设置 `app.iconTheme`**（壳声明，默认 `"default"` = 内置 codicon 保底，零图标主题插件也成立；枚举 = 已登记图标主题 + default，装/卸动态刷新）。切换经事件 `iconTheme:changed` 广播（载荷 + 契约见 `01-插件API契约.md` §3.2 壳广播事件表）——**需要自定义文件图标视觉的插件手动订阅应用**。
+
+**可选顶层 `font` 段（E5.8#133.4 自定义图标字体）**——`class` 引用自定义字体 glyph 时声明；壳生成 @font-face 广播进池 + 注入 glyph 类 CSS，作者零 @font-face 负担：
+
+```json
+{
+  "font": {
+    "path": "icons/fonts/my-icons.woff2",
+    "family": "my-icons",
+    "glyphs": "icons/my-icons.css"
+  },
+  "files": { "main.rs": { "class": "my-icons my-icons-rust", "color": "#dea584" } }
+}
+```
+
+| `font` 字段 | 类型 | 说明 |
+|------|------|------|
+| `path` | string（必） | 字体资产相对路径（或绝对 URL）——壳解析 `linkdesk://` + 生成 `@font-face` |
+| `family` | string（必） | 字体族名——glyph CSS 里 `font-family` 写它 |
+| `glyphs` | string（选） | glyph 类 CSS 文件相对路径（`@font-face` **不要**写在里面——壳已生成；只写 `.my-icons-x::before{content:"…"}`） |
+
+无 `font` 段 → 零自定义字体（codicon 保底 / 纯图像资产主题）。字体注入对消费方透明（preload 机械层处理），无需手动订阅。
 
 ### 3.8 `contributes.icons`——共享图标
 

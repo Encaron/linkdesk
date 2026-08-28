@@ -14,6 +14,7 @@
 
 import { RegistryBase } from "../../registry/RegistryBase";
 import type { IconThemeContribution, IconContribution, IconThemeMappings } from "../../api/types";
+import type { FontFaceSpec } from "../../types/ipc/events";
 
 interface RegisteredIconTheme extends IconThemeContribution {
   pluginId: string;
@@ -23,10 +24,20 @@ interface RegisteredIcon extends IconContribution {
   pluginId: string;
 }
 
+/** 图标主题自定义字体资产（E5.8#133.4）——mappings JSON 可选 font 段加载产物，随主题广播进池 */
+interface IconThemeFontAssets {
+  /** @font-face 规格（池复刻注入；缺省 = 无自定义字体） */
+  fontFaces?: FontFaceSpec[];
+  /** glyph 类 CSS 原文（池注入 `<style>`；缺省 = 无 glyph 类） */
+  glyphCss?: string;
+}
+
 class IconRegistryImpl extends RegistryBase {
   private themes = new Map<string, RegisteredIconTheme>();
   /** E5.8#133.1：主题 ID → 加载好的 mappings（loadIconThemeContributionData 写入）——登记 + 数据两步 */
   private mappingsByTheme = new Map<string, IconThemeMappings>();
+  /** E5.8#133.4：主题 ID → 自定义字体资产（@font-face + glyph CSS，广播进池） */
+  private fontAssetsByTheme = new Map<string, IconThemeFontAssets>();
   private pluginThemeIds = new Map<string, string[]>();
   private icons = new Map<string, RegisteredIcon>();
   private pluginIconIds = new Map<string, string[]>();
@@ -53,6 +64,8 @@ class IconRegistryImpl extends RegistryBase {
         this.themes.delete(theme.id);
         // E5.8#133.1：映射随登记卸载——卸载回退保底时无残留（#133.5 验收点）
         this.mappingsByTheme.delete(theme.id);
+        // E5.8#133.4：自定义字体资产随映射一并卸载——池内 @font-face/glyph CSS 由下次广播清空（回退保底）
+        this.fontAssetsByTheme.delete(theme.id);
       }
       const owned = this.pluginThemeIds.get(pluginId);
       if (owned) {
@@ -90,6 +103,18 @@ class IconRegistryImpl extends RegistryBase {
   /** 取 mappings——未加载/已卸载 → undefined（消费方回退 codicon 保底） */
   getMappings(themeId: string): IconThemeMappings | undefined {
     return this.mappingsByTheme.get(themeId);
+  }
+
+  /* ── 自定义字体资产（E5.8#133.4） ── */
+
+  /** 关联加载好的自定义字体资产（loadIconThemeContributionData 写入；无 font 段则不写） */
+  setFontAssets(themeId: string, assets: IconThemeFontAssets): void {
+    this.fontAssetsByTheme.set(themeId, assets);
+  }
+
+  /** 取自定义字体资产——未声明/已卸载 → undefined（广播缺省，池清空上次注入） */
+  getFontAssets(themeId: string): IconThemeFontAssets | undefined {
+    return this.fontAssetsByTheme.get(themeId);
   }
 
   /* ── 共享图标（contributes.icons） ── */

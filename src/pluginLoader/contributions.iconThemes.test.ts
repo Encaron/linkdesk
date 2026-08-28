@@ -8,11 +8,13 @@
  * 4. 无效条目跳过 + warn；整表无效 → null
  * 5. `./` 前缀路径归一化
  *
+ * E5.8#133.4 normalizeIconThemeFontMeta——可选自定义字体 font 段归一化。
+ *
  * fixture 命名遵守硬约束 21：虚构值（demo-plugin / demo-icon / Demo Icon），不指向真实插件。
  */
 
 import { describe, it, expect, vi } from "vitest";
-import { normalizeIconThemeMappings } from "./contributions";
+import { normalizeIconThemeMappings, normalizeIconThemeFontMeta } from "./contributions";
 
 describe("normalizeIconThemeMappings——字体 glyph 形态", () => {
   it("class 单态透传", () => {
@@ -99,5 +101,58 @@ describe("normalizeIconThemeMappings——四段混用 + 无效条目", () => {
 
   it("空数据 → null", () => {
     expect(normalizeIconThemeMappings({}, "demo-plugin")).toBeNull();
+  });
+
+  it("顶层 font 段不进 mappings 结果（只归一化四段）", () => {
+    const m = normalizeIconThemeMappings(
+      { font: { path: "icons/fonts/demo.woff2", family: "demo-font" }, files: { "demo.txt": { class: "demo-font demo-font-demo" } } },
+      "demo-plugin"
+    );
+    expect(m).toEqual({ files: { "demo.txt": { class: "demo-font demo-font-demo" } } });
+  });
+});
+
+describe("normalizeIconThemeFontMeta——自定义字体 font 段（E5.8#133.4）", () => {
+  it("font 段有效 → FontFaceSpec（linkdesk:// 解析 + woff2 format）+ glyphCssPath", () => {
+    const meta = normalizeIconThemeFontMeta(
+      { font: { path: "icons/fonts/demo.woff2", family: "demo-font", glyphs: "icons/demo-glyphs.css" } },
+      "demo-plugin"
+    );
+    expect(meta).toEqual({
+      fontFaces: [{ family: "demo-font", url: "linkdesk://demo-plugin/icons/fonts/demo.woff2", format: "woff2" }],
+      glyphCssPath: "icons/demo-glyphs.css",
+    });
+  });
+
+  it("glyphs 缺省 → glyphCssPath 空串（仅 @font-face，无 glyph 类）", () => {
+    const meta = normalizeIconThemeFontMeta(
+      { font: { path: "icons/fonts/demo.ttf", family: "demo-font" } },
+      "demo-plugin"
+    );
+    expect(meta).toEqual({
+      fontFaces: [{ family: "demo-font", url: "linkdesk://demo-plugin/icons/fonts/demo.ttf", format: "ttf" }],
+      glyphCssPath: "",
+    });
+  });
+
+  it("绝对 URL 原样透传（不二次解析）", () => {
+    const meta = normalizeIconThemeFontMeta(
+      { font: { path: "https://example.test/demo.otf", family: "demo-font" } },
+      "demo-plugin"
+    );
+    expect(meta?.fontFaces[0].url).toBe("https://example.test/demo.otf");
+    expect(meta?.fontFaces[0].format).toBe("otf");
+  });
+
+  it("无 font 段 → null", () => {
+    expect(normalizeIconThemeFontMeta({ files: { "demo.txt": { class: "demo-font" } } }, "demo-plugin")).toBeNull();
+  });
+
+  it("font 段缺 path/family → null + warn", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    expect(normalizeIconThemeFontMeta({ font: { path: "icons/fonts/demo.woff2" } }, "demo-plugin")).toBeNull();
+    expect(normalizeIconThemeFontMeta({ font: { family: "demo-font" } }, "demo-plugin")).toBeNull();
+    expect(warn).toHaveBeenCalledTimes(2);
+    warn.mockRestore();
   });
 });

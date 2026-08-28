@@ -32,8 +32,9 @@ function extractFontStem(url: string): string {
   return sanitizeFamilyPart(base.replace(/\.[^.]+$/, ""));
 }
 
-/** 按扩展名推断 src format 提示——未知扩展不写（浏览器自嗅探） */
-function fontFormatOf(url: string): string | undefined {
+/** 按扩展名推断 src format 提示——未知扩展不写（浏览器自嗅探）。
+ *  E5.8#133.4：export 供插件加载器（contributions.ts 图标主题自定义字体）复用——单一权威，禁止两处漂移 */
+export function fontFormatOf(url: string): string | undefined {
   const ext = url.split(/[?#]/)[0].split(".").pop()?.toLowerCase();
   if (ext === "woff2" || ext === "woff" || ext === "ttf" || ext === "otf") return ext;
   return undefined;
