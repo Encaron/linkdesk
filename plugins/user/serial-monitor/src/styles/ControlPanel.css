@@ -19,7 +19,7 @@
   gap: 4px;
   height: calc(36px * var(--ui-scale)); /* E5.8 Phase 12 #176：control-bar 36px 乘 scale（§三.3） */
   padding: 0 8px;
-  background: var(--bg-base, var(--bg-window));
+  background: var(--bg-window); /* E5.8#128.8：幽灵 --bg-base → 真实 bg-window */
   border-bottom: 1px solid var(--separator);
   flex-shrink: 0;
 }
@@ -81,7 +81,7 @@
   width: 1px;
   height: calc(18px * var(--ui-scale)); /* E5.8 Phase 12 #176：竖分隔随文字行高乘 scale */
 
-  background: var(--border-subtle, var(--separator));
+  background: var(--separator); /* E5.8#128.8：幽灵 --border-subtle → 真实 separator */
   flex-shrink: 0;
   margin: 0 2px;
 }
@@ -100,7 +100,7 @@
   align-items: center;
   gap: 4px;
   background: transparent;
-  border: 1px solid var(--border-subtle, var(--separator));
+  border: 1px solid var(--separator); /* E5.8#128.8：幽灵 --border-subtle → 真实 separator */
   border-radius: 4px;
   color: var(--text-secondary);
   font-size: var(--font-size-sm); /* E5.8 Phase 12 #176：connect-btn 12→sm */
@@ -114,7 +114,7 @@
 .control-connect-btn:hover {
   background: var(--hover-overlay);
   color: var(--text-primary);
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--text-primary) 8%, transparent); /* E5.8#128.8：rgba 硬编码 → 文字色 8% 合成（主题感知） */
 }
 
 .control-connect-btn:focus-visible {

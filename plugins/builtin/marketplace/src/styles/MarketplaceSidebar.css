@@ -1,5 +1,11 @@
 /* MarketplaceSidebar — 对标 VS Code extensionsViewlet.css */
 
+/* E5.8#128.8：插件本地状态 token——主题作者可覆盖（对齐 serial-monitor --serial-monitor-ok 先例）。
+   定义处 = token 定义豁免；消费全走 var，零硬编码 rgba。 */
+:root {
+  --status-connected: #4caf50;
+}
+
 .marketplace-sidebar {
   display: flex;
   flex-direction: column;
@@ -293,7 +299,7 @@
   background: none;
   border: 1px solid var(--separator);
   border-radius: 4px;
-  color: var(--status-connected, #4caf50);
+  color: var(--status-connected); /* E5.8#128.8：幽灵 + #4caf50 fallback → 本地 token */
   cursor: pointer;
   padding: 3px 8px;
   font-size: var(--font-size-lg); /* E5.8 Phase 12 #175：▶ codicon 内容图标（基类 16px）→lg */
@@ -301,8 +307,8 @@
 }
 
 .ms-item-enable-btn:hover {
-  background: rgba(76, 175, 80, 0.1);
-  border-color: rgba(76, 175, 80, 0.4);
+  background: color-mix(in srgb, var(--status-connected) 10%, transparent); /* E5.8#128.8：rgba 硬编码 → 状态绿 10% 合成 */
+  border-color: color-mix(in srgb, var(--status-connected) 40%, transparent);
 }
 
 /* ── Install button (green, VS Code extensionButton) ── */

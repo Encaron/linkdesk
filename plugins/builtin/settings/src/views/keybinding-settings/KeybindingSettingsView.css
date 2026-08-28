@@ -83,11 +83,11 @@
 }
 
 .keybindings-row.conflict {
-  background: rgba(255, 50, 50, 0.08);
+  background: color-mix(in srgb, var(--error) 8%, transparent); /* E5.8#128.8：rgba 硬编码 → error token 8% 合成 */
 }
 
 .keybindings-row.conflict:hover {
-  background: rgba(255, 50, 50, 0.14);
+  background: color-mix(in srgb, var(--error) 14%, transparent);
 }
 
 .keybindings-col-command {
@@ -117,8 +117,8 @@
 }
 
 .keybindings-col-key.conflict-key {
-  color: var(--error, #f44747);
-  background: rgba(255, 50, 50, 0.12);
+  color: var(--error); /* E5.8#128.8：#f44747 fallback → 主题 error token */
+  background: color-mix(in srgb, var(--error) 12%, transparent);
 }
 
 .keybindings-col-key-none {
@@ -188,7 +188,7 @@
 
 .keybindings-inline-conflict {
   font-size: var(--font-size-md); /* E5.8 Phase 12 #174：inline-conflict 13→md */
-  color: var(--error, #f44747);
+  color: var(--error); /* E5.8#128.8：#f44747 fallback → 主题 error token */
   flex-shrink: 0;
   cursor: help;
 }
@@ -228,7 +228,7 @@
 }
 
 .keybindings-inline-btn.cancel:hover {
-  color: var(--error, #f44747);
+  color: var(--error); /* E5.8#128.8：#f44747 fallback → 主题 error token */
 }
 
 /* ── E3f #59-G：快捷键行重置齿轮 ── */

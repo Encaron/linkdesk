@@ -29,7 +29,7 @@
 .demo-toolbar-hint {
   margin-left: auto;
   font-size: var(--font-size-xs); /* E5.8 Phase 12 #178：toolbar-hint 11→xs */
-  color: var(--text-tertiary);
+  color: var(--text-muted); /* E5.8#128.8：幽灵 --text-tertiary → 真实 text-muted */
   user-select: none;
 }
 
@@ -97,12 +97,12 @@
   padding: 8px 12px;
   font-family: var(--font-mono, Consolas, monospace);
   font-size: var(--font-size-sm); /* E5.8 Phase 12 #178：log-empty 12→sm */
-  color: var(--text-tertiary);
+  color: var(--text-muted); /* E5.8#128.8：幽灵 --text-tertiary → 真实 text-muted */
   user-select: none;
 }
 
 .demo-log-time {
-  color: var(--text-tertiary);
+  color: var(--text-muted); /* E5.8#128.8：幽灵 --text-tertiary → 真实 text-muted */
   flex-shrink: 0;
 }
 
@@ -143,7 +143,7 @@
 }
 
 .demo-todo-input::placeholder {
-  color: var(--text-tertiary);
+  color: var(--text-muted); /* E5.8#128.8：幽灵 --text-tertiary → 真实 text-muted */
 }
 
 .demo-todo-input:focus {
@@ -216,7 +216,7 @@
 }
 
 .demo-todo-item.done .demo-todo-text {
-  color: var(--text-tertiary);
+  color: var(--text-muted); /* E5.8#128.8：幽灵 --text-tertiary → 真实 text-muted */
   text-decoration: line-through;
 }
 
@@ -240,7 +240,7 @@
   justify-content: center;
   margin: 0;
   font-size: var(--font-size-sm); /* E5.8 Phase 12 #178：todo-empty 12→sm */
-  color: var(--text-tertiary);
+  color: var(--text-muted); /* E5.8#128.8：幽灵 --text-tertiary → 真实 text-muted */
 }
 
 .demo-todo-footer {
@@ -248,7 +248,7 @@
   padding: 4px 10px;
   border-top: 1px solid var(--separator);
   font-size: var(--font-size-xs); /* E5.8 Phase 12 #178：todo-footer 11→xs */
-  color: var(--text-tertiary);
+  color: var(--text-muted); /* E5.8#128.8：幽灵 --text-tertiary → 真实 text-muted */
   user-select: none;
 }
 

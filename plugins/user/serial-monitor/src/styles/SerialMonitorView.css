@@ -90,7 +90,7 @@
 .toolbar-btn:hover {
   background: var(--hover-overlay);
   color: var(--text-primary);
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--text-primary) 8%, transparent); /* E5.8#128.8：rgba 硬编码 → 文字色 8% 合成 */
 }
 
 .toolbar-btn:focus-visible {
@@ -181,12 +181,12 @@
 }
 
 .search-opt:hover {
-  background: rgba(255,255,255,0.08);
+  background: color-mix(in srgb, var(--text-primary) 8%, transparent); /* E5.8#128.8：rgba → 文字色 8% 合成 */
 }
 
 .search-opt.active {
   background: var(--accent);
-  color: white;
+  color: var(--text-on-accent); /* E5.8#128.8：white 关键词硬编码 → text-on-accent token */
   border-color: var(--accent);
 }
 
@@ -205,7 +205,7 @@
 }
 
 .search-nav:hover {
-  background: rgba(255,255,255,0.08);
+  background: color-mix(in srgb, var(--text-primary) 8%, transparent); /* E5.8#128.8：rgba → 文字色 8% 合成 */
 }
 
 .search-close {
@@ -351,7 +351,7 @@
   cursor: pointer;
 }
 .cm-panels button:hover {
-  background: rgba(255,255,255,0.08);
+  background: color-mix(in srgb, var(--text-primary) 8%, transparent); /* E5.8#128.8：rgba → 文字色 8% 合成 */
   color: var(--text-primary);
 }
 
@@ -377,7 +377,7 @@
   height: calc(36px * var(--ui-scale));
   font-size: var(--font-size-lg); /* E5.8 Phase 12 #176：↓ 字形 16px→lg（16px 零变化） */
   cursor: pointer;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  box-shadow: var(--shadow-tooltip); /* E5.8#128.8：0 2px 8px rgba(0,0,0,0.3) == shadow-tooltip 真值 */
   transition: opacity 150ms;
   animation: fadeIn 150ms ease;
   z-index: var(--z-sticky);
@@ -470,7 +470,7 @@
   font-size: var(--font-size-xs); /* E5.8 Phase 12 #176：hex-warning 11→xs */
   color: var(--warning-text);
   background: var(--warning-bg);
-  border-bottom: 1px solid rgba(255, 200, 0, 0.2);
+  border-bottom: 1px solid color-mix(in srgb, var(--warning) 20%, transparent); /* E5.8#128.8：rgba 硬编码 → warning token 20% 合成 */
 }
 
 .send-editor-wrapper {
@@ -550,7 +550,7 @@
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: 6px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  box-shadow: var(--shadow-pop); /* E5.8#128.8：0 4px 16px rgba(0,0,0,0.4) → 下拉权威 shadow-pop（SelectBox 同款） */
   z-index: var(--z-dropdown);
 }
 

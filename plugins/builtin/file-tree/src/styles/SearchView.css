@@ -25,7 +25,7 @@
   flex: 1;
   height: calc(28px * var(--ui-scale)); /* E5.8 Phase 12 #173：容器乘 scale（§三.3） */
   padding: 0 8px;
-  border: 1px solid var(--input-border, var(--border-color));
+  border: 1px solid var(--border); /* E5.8#128.8：幽灵 --input-border/--border-color（无效值=无边框）→ 真实 border */
   border-radius: 4px;
   background: var(--bg-card);
   color: var(--text-primary);
@@ -67,8 +67,8 @@
 .search-replace-btn {
   height: calc(24px * var(--ui-scale)); /* E5.8 Phase 12 #173：容器乘 scale */
   padding: 0 8px;
-  border: 1px solid var(--border-color);
-  background: var(--bg-secondary);
+  border: 1px solid var(--border); /* E5.8#128.8：幽灵 --border-color → 真实 border */
+  background: var(--bg-card); /* E5.8#128.8：幽灵 --bg-secondary → 真实 bg-card */
   color: var(--text-primary);
   font-size: var(--font-size-xs); /* E5.8 Phase 12 #173：replace 11→xs */
   cursor: pointer;
@@ -92,8 +92,8 @@
   flex: 1;
   height: calc(22px * var(--ui-scale)); /* E5.8 Phase 12 #173：容器乘 scale */
   padding: 0 4px;
-  border: 1px solid var(--input-border, var(--border-color));
-  background: var(--input-bg, var(--bg-primary));
+  border: 1px solid var(--border); /* E5.8#128.8：幽灵链 → 真实 border */
+  background: var(--bg-card); /* E5.8#128.8：幽灵 --input-bg/--bg-primary → 真实 bg-card（同行 search-input 先例） */
   color: var(--text-secondary);
   font-size: var(--font-size-xs); /* E5.8 Phase 12 #173：11→xs */
   outline: none;
@@ -127,7 +127,7 @@
 .search-error {
   padding: 4px 8px;
   font-size: var(--font-size-xs); /* E5.8 Phase 12 #173：11→xs */
-  color: var(--text-error, #f44336);
+  color: var(--error); /* E5.8#128.8：幽灵 --text-error + 硬编码 #f44336 → 真实 error token */
 }
 
 /* ── 结果列表 ── */
@@ -178,7 +178,7 @@
 .search-file-path {
   flex: 1;
   font-size: var(--font-size-2xs); /* E5.8 Phase 12 #173：path 10→2xs */
-  color: var(--text-tertiary);
+  color: var(--text-muted); /* E5.8#128.8：幽灵 --text-tertiary → 真实 text-muted */
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -213,7 +213,7 @@
 
 .search-match-line {
   font-size: var(--font-size-xs); /* E5.8 Phase 12 #173：11→xs */
-  color: var(--text-tertiary);
+  color: var(--text-muted); /* E5.8#128.8：幽灵 --text-tertiary → 真实 text-muted */
   min-width: 28px;
   text-align: right;
   flex-shrink: 0;
@@ -243,8 +243,8 @@
   top: calc(28px * var(--ui-scale)); /* E5.8 Phase 12 #173：锚定缩放后 input 高 */
   left: 0;
   right: 0;
-  background: var(--bg-card, var(--bg-primary));
-  border: 1px solid var(--border-color);
+  background: var(--bg-card); /* E5.8#128.8：幽灵链 --bg-primary fallback 是死路径 → 精简 */
+  border: 1px solid var(--border); /* E5.8#128.8：幽灵 --border-color → 真实 border */
   border-radius: 3px;
   z-index: 10;
   max-height: 220px;
