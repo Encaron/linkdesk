@@ -2,7 +2,7 @@
   "$schema": "../../public/schemas/plugin.schema.json",
   "name": "粉彩图标集",
   "version": "1.0.0",
-  "description": "虚构图标主题示例——自定义字体 glyph（彩色）+ 图像资产（多色）双形态闭环（E5.8#133.4 验证实例）",
+  "description": "完备彩色图标集——全量搬运 Material Icon Theme 的彩色 SVG（MIT，12820 条映射），图像资产形态应用（E5.8#133 图标主题闭环实例）",
   "author": "LinkDesk",
   "contributes": {
     "iconThemes": [

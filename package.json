@@ -24,7 +24,8 @@
     "contracts:gen": "node scripts/generate-contract.mjs",
     "contracts:check": "node scripts/generate-contract.mjs --check",
     "lsp:smoke": "node scripts/check-lsp-smoke.mjs",
-    "postinstall": "node -e \"try{require('fs').rmSync('node_modules/.vite',{recursive:true,force:true})}catch(e){}\" && node scripts/install-lefthook.mjs"
+    "postinstall": "node -e \"try{require('fs').rmSync('node_modules/.vite',{recursive:true,force:true})}catch(e){}\" && node scripts/install-lefthook.mjs",
+    "icons:convert": "node scripts/convert-material-icons.mjs"
   },
   "dependencies": {
     "@codemirror/search": "^6.7.1",
