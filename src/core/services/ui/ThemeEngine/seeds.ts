@@ -15,6 +15,8 @@ import {
 import { getActiveRecipe } from "./state";
 import { resolveColorway, mergeDomains } from "./recipe";
 import { getMixProfile, mergeMixDomains } from "./mix";
+// E5.8#151：tint 强制半透明——用户 glassTint alpha >0.5 封顶（玻璃系统表面层，21-档案 §三）
+import { capTintAlpha } from "./color";
 
 /** 设置层外观覆盖配置 key 全集——appearanceMode=custom 播种存这 14 键、reset 摘除这 14 键回主题基线（08 §7.2/§7.3.5）。
  *  单一来源：getAppearanceOverrides 读同键（glass 两键 presence 门控 / 其余空值不覆盖，见下）。
@@ -219,7 +221,9 @@ export function getAppearanceOverrides(): Record<string, string> {
 
   const tint = getConfigurationValue<string>("app.glassTint");
   if (tint != null && String(tint).trim() !== "") {
-    overrides["glass-tint"] = String(tint).trim();
+    // E5.8#151：用户 solid tint alpha 强制 ≤0.5（封顶保留色相）——取色器 hex 不透明 → 半透明盖片，
+    // backdrop-filter 的 blur/saturate 永远透出有响应（tint 永不当不透明死盖片）
+    overrides["glass-tint"] = capTintAlpha(String(tint).trim());
     // E5.8#117：用户设 tint = 玻璃材质色 → tint 盖片不透明度跟随用户玻璃面不透明度
     // （glassOpacity 或系统默认 0.5）。根因：配方面无 surface.opacity（如 panorama 无 surface 域）
     // → --glass-opacity 落默认 1 → 用户 hex tint 被当完全不透明盖片糊满 zone（用户报「糊巨大色块」）。

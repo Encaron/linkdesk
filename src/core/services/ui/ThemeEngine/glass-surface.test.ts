@@ -65,19 +65,45 @@ describe("ThemeEngine — 玻璃系统标尺化（Phase 11.16）", () => {
     expect(tokens["glass-surface-alpha"]).toBe("0.5");
   });
 
-  it("只合成 tokens 里存在的键——主题没写的表面色（CSS :root 壳默认）不碰；空值跳过", () => {
+  it("E5.8#151 稀疏合成补齐——激活 + 有锚：缺键从系统标尺锚派生（全 8 键均匀半透明，消顶栏岛）", () => {
     const tokens: Record<string, string> = { "bg-window": "#fff" };
     synthesizeGlassSurfaces(tokens, { active: true, alpha: 0.5 });
     expect(tokens["bg-window"]).toBe(mixFor("bg-window"));
-    expect(tokens["bg-titlebar"]).toBeUndefined(); // 未声明 → 不合成不写
+    // 缺键派生：solid 取锚原值（bg-window），键 = 合成 color-mix
+    expect(tokens["bg-titlebar"]).toBe(mixFor("bg-titlebar"));
+    expect(tokens["bg-titlebar-solid"]).toBe("#fff");
+    expect(tokens["bg-input"]).toBe(mixFor("bg-input"));
+    expect(tokens["bg-input-solid"]).toBe("#fff");
+    for (const key of SURFACE_COLOR_KEYS) {
+      expect(tokens[`${key}-solid`]).toBe("#fff");
+      expect(tokens[key]).toBe(mixFor(key));
+    }
+  });
+
+  it("E5.8#151 派生用锚原值非合成串——循环内先合成的 bg-window 不污染后续缺键（锚捕获于循环前）", () => {
+    const tokens: Record<string, string> = { "bg-window": "rgb(18, 16, 12)" };
+    synthesizeGlassSurfaces(tokens, { active: true, alpha: 0.5 });
+    expect(tokens["bg-titlebar-solid"]).toBe("rgb(18, 16, 12)"); // 原值，非 color-mix 串
+    expect(tokens["bg-titlebar"]).toBe(mixFor("bg-titlebar"));
+  });
+
+  it("E5.8#151 未激活 → 缺键不派生（零变化回主题原生，派生键 stale 清理移除）", () => {
+    const tokens: Record<string, string> = { "bg-window": "#fff" };
+    synthesizeGlassSurfaces(tokens, { active: false, alpha: GLASS_SURFACE_DEFAULT_ALPHA });
+    expect(tokens["bg-titlebar"]).toBeUndefined();
     expect(tokens["bg-titlebar-solid"]).toBeUndefined();
-    expect(tokens["bg-input"]).toBeUndefined();
-    // 空值键跳过（防御：主题写了空串）
+    expect(tokens["bg-window"]).toBe("#fff"); // 已写键不受影响
+  });
+
+  it("E5.8#151 无锚（主题无任何表面键 / 全空值）→ 不派生（纯 CSS :root 壳默认主题，glass 经 ::before 生效）", () => {
     const empty: Record<string, string> = { "bg-window": "", "bg-card": "   " };
     synthesizeGlassSurfaces(empty, { active: true, alpha: 0.5 });
     expect(empty["bg-window"]).toBe("");
     expect(empty["bg-window-solid"]).toBeUndefined();
     expect(empty["bg-card"]).toBe("   ");
+    const noKeys: Record<string, string> = { "bg-image": 'url("bg.png")' };
+    synthesizeGlassSurfaces(noKeys, { active: true, alpha: 0.5 });
+    expect(noKeys["bg-window-solid"]).toBeUndefined();
   });
 
   it("SURFACE_COLOR_KEYS 白名单——8 表面色键，bg-image/opacity/mask 绝不在列（防前缀匹配误伤）", () => {
@@ -179,6 +205,21 @@ describe("ThemeEngine — 玻璃系统标尺化（Phase 11.16）", () => {
     expect(root.style.getPropertyValue("--bg-window-solid")).toBe("#FFFBF5");
     expect(root.style.getPropertyValue("--glass-surface-alpha")).toBe("0.4");
     expect(root.style.getPropertyValue("--glass-blur")).toBe("15px"); // 覆盖直写不受合成影响
+  });
+
+  it("E5.8#151 applyRecipe 集成——配方未写 bg-titlebar（RECIPE 只写 bg-window）→ 玻璃激活派生（消顶栏岛），关闭清理", () => {
+    applyRemoteConfigChange("app.glassBlur", 15);
+    applyRecipe(RECIPE, "dew");
+    const root = document.documentElement;
+    expect(root.style.getPropertyValue("--bg-titlebar")).toBe(mixFor("bg-titlebar"));
+    expect(root.style.getPropertyValue("--bg-titlebar-solid")).toBe("#FFFBF5"); // 锚原值 = bg-window
+    expect(root.style.getPropertyValue("--bg-window")).toBe(mixFor("bg-window"));
+    // 关闭玻璃 → 派生键 stale 清理移除（零变化回 :root 壳默认）
+    clearConfigurationCache();
+    applyRecipe(RECIPE, "dew");
+    expect(root.style.getPropertyValue("--bg-titlebar")).toBe("");
+    expect(root.style.getPropertyValue("--bg-titlebar-solid")).toBe("");
+    expect(root.style.getPropertyValue("--bg-window")).toBe("#FFFBF5"); // 已写键回主题原生
   });
 
   it("applyRecipe 集成——重置玻璃（清配置）→ bg-window 回主题原生（合成停），solid/alpha 恒写", () => {

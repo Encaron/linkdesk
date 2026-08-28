@@ -15,6 +15,8 @@ import {
   MANAGED_TOKEN_KEYS, SURFACE_SEAM_INSET_PX, SURFACE_COLOR_KEYS, ACCENT_TOKEN_KEYS,
   FONT_SIZE_STEPS, FONT_SIZE_BASE_PX, UI_FONT_SCALE_DEFAULT,
 } from "./constants";
+// E5.8#151：tint 强制半透明——配方 tint alpha >0.5 封顶（玻璃系统表面层，21-档案 §三）
+import { capTintAlpha } from "./color";
 // E5.8 Phase 11.16：表面合成规格类型——type-only 引用（seeds 生产 getGlassSurfaceSpec，合成在 apply 层消费；
 //  erasure 后无运行时依赖，seeds⇄apply 循环仍由 state 破）
 import type { GlassSurfaceSpec } from "./seeds";
@@ -57,7 +59,8 @@ export function surfaceVariables(surface?: ThemeSurface): Record<string, string>
   if (surface.type !== "glass") return vars;
   if (surface.blur != null) vars["glass-blur"] = `${surface.blur}px`;
   if (surface.saturate != null) vars["glass-saturate"] = String(surface.saturate);
-  if (surface.tint != null) vars["glass-tint"] = surface.tint;
+  // E5.8#151：配方 tint alpha 强制 ≤0.5（封顶保留色相）——solid tint 不当不透明死盖片（盖死 backdrop-filter blur/saturate）
+  if (surface.tint != null) vars["glass-tint"] = capTintAlpha(surface.tint);
   if (surface.opacity != null) vars["glass-opacity"] = String(surface.opacity);
   if (surface.specular != null) vars["glass-specular"] = String(surface.specular);
   // E5.8#63：高光基色 token——发丝光边颜色（缺省白）；alpha 仍走 glass-specular（消费侧 color-mix 组合）
@@ -330,14 +333,31 @@ export function applyOverrides(
  *   未激活 → <key> 原值（零变化回主题原生）。
  * 写 glass-surface-alpha = spec.alpha（激活时 color-mix 引用源；未激活惰性无消费）。
  * 只合成 tokens 里存在的键——主题没写的表面色 = CSS :root 壳默认，不碰。
+ * E5.8#151 稀疏合成补齐（19-档案规则 1）：主题 colorway 未写的 SURFACE_COLOR_KEYS 键（如 mint-soda
+ * 不写 bg-titlebar）玻璃激活时**派生**——从系统标尺锚（锚 = 首个存在的表面键，bg-window 优先，窗底
+ * 系统标尺）取原值合成 → 全 8 键均匀半透明，消除「顶栏岛」（:root 不透明）。锚原值捕获于循环前
+ * （避免读到循环内已合成的 color-mix 串）；未激活不派生（零变化回主题原生，派生键随 lastCommittedKeys
+ * 差集清理移除）。主题无任何表面键 → 无锚 → 跳过（纯 CSS 壳默认主题，glass 仍经 ::before 生效）。
  * 调用点：applyTheme/applyRecipe 在 applyOverrides 之后、commitTokens 之前（绝不放
  * mergeDomains/applyOverrides/mergeMixDomains 内部——getThemeBaseTokens「无覆盖纯基线」
  * 语义，放进去污染基线）。纯函数只算不改。
  */
 export function synthesizeGlassSurfaces(tokens: Record<string, string>, spec: GlassSurfaceSpec): void {
+  const anchorKey = SURFACE_COLOR_KEYS.find((k) => {
+    const v = tokens[k];
+    return v != null && v.trim() !== "";
+  });
+  const anchorValue = anchorKey ? tokens[anchorKey] : undefined;
   for (const key of SURFACE_COLOR_KEYS) {
     const value = tokens[key];
-    if (value == null || value.trim() === "") continue;
+    if (value == null || value.trim() === "") {
+      // E5.8#151：缺键派生（仅玻璃激活且有锚）
+      if (spec.active && anchorValue !== undefined) {
+        tokens[`${key}-solid`] = anchorValue;
+        tokens[key] = `color-mix(in srgb, var(--${key}-solid) calc(var(--glass-surface-alpha) * 100%), transparent)`;
+      }
+      continue;
+    }
     tokens[`${key}-solid`] = value;
     if (spec.active) {
       tokens[key] = `color-mix(in srgb, var(--${key}-solid) calc(var(--glass-surface-alpha) * 100%), transparent)`;

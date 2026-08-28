@@ -55,6 +55,20 @@ describe("ThemeEngine — surface/background 玻璃机制（E5.8#50.6）", () =>
     expect(root.style.getPropertyValue("--glass-morph")).toBe("400ms");
   });
 
+  it("E5.8#151 配方 solid tint → 封顶半透明；已 ≤0.5 原样（生产者 cap，同 capTintAlpha）", () => {
+    applyTheme({
+      ...MOCK_THEME,
+      surface: { type: "glass", tint: "#ff0000" }, // 不透明 hex → 封顶
+    });
+    expect(document.documentElement.style.getPropertyValue("--glass-tint")).toBe("rgba(255,0,0,0.5)");
+    // 已 ≤0.5 → 原样零改动
+    applyTheme({
+      ...MOCK_THEME,
+      surface: { type: "glass", tint: "rgba(59, 77, 148, 0.35)" },
+    });
+    expect(document.documentElement.style.getPropertyValue("--glass-tint")).toBe("rgba(59, 77, 148, 0.35)");
+  });
+
   it("带 specularColor glass → 写入 glass-specular-color（E5.8#63 高光基色契约化）", () => {
     applyTheme({
       ...MOCK_THEME,

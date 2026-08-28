@@ -77,9 +77,13 @@ describe("ThemeEngine — 外观覆盖 getAppearanceOverrides（E5.8#50.10）", 
     expect(getAppearanceOverrides()["glass-opacity"]).toBeUndefined();
   });
 
-  it("glassTint 非空 → glass-tint 覆盖", () => {
+  it("glassTint 非空 → glass-tint 覆盖；不透明 hex 封顶半透明（E5.8#151）", () => {
     applyRemoteConfigChange("app.glassTint", "#123456");
-    expect(getAppearanceOverrides()["glass-tint"]).toBe("#123456");
+    expect(getAppearanceOverrides()["glass-tint"]).toBe("rgba(18,52,86,0.5)"); // 0x12/0x34/0x56 → cap alpha 0.5
+    clearConfigurationCache();
+    // 已 ≤0.5 半透明 → 原样零改动（aurora 先例）
+    applyRemoteConfigChange("app.glassTint", "rgba(59, 77, 148, 0.35)");
+    expect(getAppearanceOverrides()["glass-tint"]).toBe("rgba(59, 77, 148, 0.35)");
   });
 
   it("backgroundImage 旧版 plain 绝对路径 → 受控协议 URL（E5.8#64：file:// 被沙箱拦截）", () => {
