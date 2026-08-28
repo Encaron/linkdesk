@@ -523,7 +523,9 @@ function CadView() {
 }
 ```
 
-**可用菜单 ID：** `editorContext`（标签页内容右键）| `tabContext`（标签栏右键）| `fileContext`（文件树右键，Phase 6）| `cardContext`（卡片右键，Phase 7）
+**可用菜单 ID：** `editorContext`（标签页内容右键）| `tabContext`（标签栏右键）| `fileContext`（文件树右键，Phase 6）| `cardContext`（卡片右键，Phase 7）| MenuId 开放 string（`menuBar` / 任意新注册点）
+
+**菜单项字段：** `command`（命令 ID，有 `children` 时可为空）| `label`（覆盖命令标题）| `group` | `when` | `order`（同组排序）| `children`（嵌套子菜单，**任意深度递归**——E5.8#148/#149）。详见 `03-插件contributes规范.md §3.2`。
 
 **菜单位置（MenuId）由框架定义，你只管在哪个位置挂什么命令。** 框架自己也注册了内置项——"关闭"、"分屏"是框架的，"清空"、"暂停"是终端插件的，"导入 DXF"是 CAD 插件的。用户右键时看到的菜单 = 框架内置 + 终端 + CAD + 你的插件——多方贡献，合并渲染。
 

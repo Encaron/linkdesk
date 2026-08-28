@@ -131,7 +131,7 @@ useEffect(() => {
 | `extensionGear` | 底部齿轮菜单（设置/命令面板/主题选择器） |
 | `marketplaceItemGear` | 插件市场条目齿轮（启用/禁用/卸载） |
 | `menuBar` | ☰ 汉堡菜单栏 |
-| `panel` | 菜单栏「面板」菜单 |
+| `panel` | 菜单栏「面板」组归并（E5.8#148 壳招牌已删——插件 `group:"panel"` 项仍归并入菜单栏独立成组） |
 | `fileContext` | 文件树右键 |
 | `cardContext` | 卡片右键 |
 | `quickSendContext` | 快捷发送药丸右键 |
@@ -143,11 +143,32 @@ useEffect(() => {
 
 | 字段 | 必需 | 说明 |
 |------|:--:|------|
-| `command` | ✅ | 命令 ID |
+| `command` | ✅ | 命令 ID——有 `children` 时可为空字符串（父菜单项不执行命令，展开子菜单） |
+| `label` | ❌ | 显示标签——有值时覆盖命令标题 `getCommand(id).title`；父菜单项（无 `command`）必填 |
 | `group` | ❌ | 分组——同组内聚在一起，组间有分隔线。如 `"navigation"` / `"edit"` / `"delete"` |
 | `when` | ❌ | context key when 条件 |
+| `order` | ❌ | 排序权重——同组内越小越靠前 |
+| `children` | ❌ | 嵌套子菜单——**任意深度递归**（E5.8#148/#149，对标 VS Code `SubmenuAction`）；子项同构（`children` 内可再嵌 `children`） |
 
 **简写：** 只填命令 ID 的字符串 = `{ "command": "<id>" }`
+
+**嵌套子菜单示例（任意深度）：**
+```json
+{
+  "contributes": {
+    "menus": {
+      "menuBar": [
+        { "command": "", "label": "查看", "group": "view", "children": [
+          { "command": "cad.importDxf", "group": "view" },
+          { "command": "", "label": "界面", "group": "view", "children": [
+            { "command": "cad.togglePanel", "label": "面板", "group": "view" }
+          ] }
+        ] }
+      ]
+    }
+  }
+}
+```
 
 ### 3.3 `contributes.keybindings`——快捷键
 
