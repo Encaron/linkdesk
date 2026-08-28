@@ -332,5 +332,12 @@ export function getAppearanceOverrides(): Record<string, string> {
     overrides["text-muted"] = FONT_TONE_DARK_TEXT[2];
   }
 
+  // E5.8 Phase 12：全局字号比例——恒写（字号独立全局轴，主题不贡献字号 token，F4 全模式生效）。
+  //   app.uiFontScale 整数百分比（85-150 step 5，默认 100；#161 声明前读不到 → ?? 100 → ratio 1 = :root 新设计基准）。
+  //   applyOverrides ④ 消费算 --ui-scale / --font-size-*；恒写幂等清残留（对标 surfaceRadius 恒写语义）。
+  //   #163 播种/复位语义（是否进 APPEARANCE_OVERRIDE_KEYS）另立任务，本任务只管引擎发射接线。
+  const fontScale = getConfigurationValue<number>("app.uiFontScale");
+  overrides["ui-font-scale"] = String(fontScale ?? 100);
+
   return overrides;
 }

@@ -98,6 +98,26 @@ const GLASS_SURFACE_KEYS: readonly string[] = [
 /** 玻璃激活但未显式动不透明度 → 表面默认半透明 0.5（拍板——保证全不透明主题只拖 blur 也立刻见玻璃） */
 export const GLASS_SURFACE_DEFAULT_ALPHA = 0.5;
 
+/* ── E5.8 Phase 12：字号档位单一源（度量体系归一化——全局 UI 字号缩放） ── */
+
+/** 字号档名数组——shell 独有轴（主题不规定字号，零贡献点零 schema），对标 RADIUS_SCALE_STEPS（types/theme.ts:70）先例 */
+export const FONT_SIZE_STEPS = ["2xs", "xs", "sm", "md", "lg", "xl", "2xl", "3xl", "4xl"] as const;
+export type FontSizeStep = (typeof FONT_SIZE_STEPS)[number];
+
+/** 档名 → 基准 px 映射——**100% 渲染值 = 新设计默认（⑤ 拍板 VS Code 对齐，非现状收敛值）**：
+ *  sm 13（UI 主文本对齐 VS Code）/ md 14（文件树 name 比 VS Code 资源管理器大 1px）/ lg 16（文件树 icon）/
+ *  xl 18（圆钮箭头+区标题）/ 2xl 22 / 3xl 28 / 4xl 30。引擎 JS 侧算 `${base × ratio}px` 写 --font-size-*。 */
+export const FONT_SIZE_BASE_PX: Record<FontSizeStep, number> = {
+  "2xs": 11, xs: 12, sm: 13, md: 14, lg: 16, xl: 18, "2xl": 22, "3xl": 28, "4xl": 30,
+};
+
+/** 字号 token 键全集（--font-size-<档>）——从 FONT_SIZE_STEPS 单一源派生（对标 RADIUS_SCALE_KEYS）。
+ *  非导出（无外部消费者——MANAGED_TOKEN_KEYS 同文件消费；外部需迭代用 FONT_SIZE_STEPS 派生）。 */
+const FONT_SIZE_KEYS: readonly string[] = FONT_SIZE_STEPS.map((s) => `font-size-${s}`);
+
+/** 全局字号比例默认 ratio = 1（app.uiFontScale 100% = 新设计默认基线）——applyOverrides ④ 消费。 */
+export const UI_FONT_SCALE_DEFAULT = 1;
+
 /** 引擎管理的 token 键全集（去 -- 前缀）——getEffectiveTokens 读当前生效值（含壳默认继承） */
 export const MANAGED_TOKEN_KEYS: string[] = [
   ...Object.keys(SURFACE_ZERO),
@@ -105,6 +125,7 @@ export const MANAGED_TOKEN_KEYS: string[] = [
   ...RADIUS_SCALE_KEYS,
   "radius-pill", "radius-full",
   "font-ui", "font-mono",
+  "ui-scale", ...FONT_SIZE_KEYS,
   ...GLASS_SURFACE_KEYS,
 ];
 

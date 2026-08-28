@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect, beforeEach } from "vitest";
-import { mergeDomains, applyOverrides, applyRadiusAbsolute, RADIUS_SCALE_KEYS } from "../ThemeEngine";
+import { mergeDomains, applyOverrides, applyRadiusAbsolute, RADIUS_SCALE_KEYS, FONT_SIZE_STEPS, FONT_SIZE_BASE_PX } from "../ThemeEngine";
 import { clearConfigurationCache } from "../../configuration/ConfigurationService";
 import type { ThemeRecipe } from "../../../types/theme";
 
@@ -135,5 +135,67 @@ describe("ThemeEngine — Recipe 合并算法 mergeDomains（E5.8#50.16，05 §4
     expect(tokens["radius-full"]).toBeUndefined(); // 相对几何值壳管理，配方不写不 clamp
     expect(tokens["surface-radius"]).toBe("32px"); // glass.radius + surface.radius 双写同 clamp
     expect(tokens["glass-blur"]).toBe("14px"); // 非 radius 键不受 clamp 影响
+  });
+});
+
+describe("ThemeEngine — Phase 12 字号比例（E5.8#160：--ui-scale + --font-size-* 引擎发射）", () => {
+  it("ui-font-scale 100 → --ui-scale 1 + 各档基准 px（⑤ 新设计默认，非现状收敛值）", () => {
+    const tokens: Record<string, string> = {};
+    applyOverrides(tokens, { "ui-font-scale": 100 });
+    expect(tokens["ui-scale"]).toBe("1");
+    for (const step of FONT_SIZE_STEPS) {
+      expect(tokens[`font-size-${step}`]).toBe(`${FONT_SIZE_BASE_PX[step]}px`);
+    }
+    // 基准值抽样对齐档案 §三.2（⑤ 拍板）
+    expect(tokens["font-size-sm"]).toBe("13px"); // UI 主文本对齐 VS Code
+    expect(tokens["font-size-md"]).toBe("14px"); // 文件树 name 比 VS Code 资源管理器大 1px
+    expect(tokens["font-size-lg"]).toBe("16px"); // 文件树 icon
+    expect(tokens["font-size-4xl"]).toBe("30px");
+  });
+
+  it("ui-font-scale 125 → --ui-scale 1.25 + 乘后 px（JS 预算，消费零计算）", () => {
+    const tokens: Record<string, string> = {};
+    applyOverrides(tokens, { "ui-font-scale": 125 });
+    expect(tokens["ui-scale"]).toBe("1.25");
+    expect(tokens["font-size-sm"]).toBe("16.25px");
+    expect(tokens["font-size-md"]).toBe("17.5px");
+    expect(tokens["font-size-lg"]).toBe("20px");
+    expect(tokens["font-size-4xl"]).toBe("37.5px");
+  });
+
+  it("ui-font-scale 非有限数 → 回退默认 ratio 1（防御，不崩）", () => {
+    const tokens: Record<string, string> = {};
+    applyOverrides(tokens, { "ui-font-scale": "abc" });
+    expect(tokens["ui-scale"]).toBe("1");
+    expect(tokens["font-size-md"]).toBe("14px");
+  });
+
+  it("无 ui-font-scale 覆盖 → 字号块整块跳过（getThemeBaseTokens 纯基线 {} 语义，零污染）", () => {
+    const tokens: Record<string, string> = {};
+    applyOverrides(tokens, { "glass-blur": "16px" });
+    expect(tokens["ui-scale"]).toBeUndefined();
+    expect(tokens["font-size-md"]).toBeUndefined();
+    expect(tokens["glass-blur"]).toBe("16px");
+  });
+
+  it("ui-font-scale 不落绝对 token（② 通道排除——不写 --ui-font-scale）", () => {
+    const tokens: Record<string, string> = {};
+    applyOverrides(tokens, { "ui-font-scale": 125 });
+    expect(tokens["ui-font-scale"]).toBeUndefined();
+  });
+
+  it("mergeDomains 全链透传——ui-font-scale 覆盖经 mergeDomains 合并出字号 token（theme:changed 载荷齐备）", () => {
+    const local: ThemeRecipe = {
+      id: "local-demo",
+      name: "Local Demo",
+      type: "dark",
+      colorways: [{ id: "c", name: "C", colors: { "bg-window": "#112233", accent: "#445566" } }],
+    };
+    const tokens = mergeDomains(local, "c", { "ui-font-scale": 150 });
+    expect(tokens["ui-scale"]).toBe("1.5");
+    expect(tokens["font-size-md"]).toBe("21px");
+    // 主题/配方 token 不受字号块影响（并集共存）
+    expect(tokens["bg-window"]).toBe("#112233");
+    expect(tokens["accent"]).toBe("#445566");
   });
 });

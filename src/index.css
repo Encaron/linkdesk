@@ -47,6 +47,19 @@
      shadow 语义见 §2.5（--context-menu-shadow 等既有 token 继续复用）。 */
   --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-mono: "JetBrains Mono", Consolas, monospace;
+  /* E5.8 Phase 12：全局字号比例——--ui-scale（度量乘子）+ --font-size-<档>（文字，引擎算好最终 px）。
+     :root 静态默认 = 100%（ratio 1）新设计基准（⑤ 拍板：sm 13 对齐 VS Code / md 14 文件树 name /
+     lg 16 文件树 icon / xl 18 / 2xl 22 / 3xl 28 / 4xl 30）；引擎 applyOverrides ④ 动态写覆盖。 */
+  --ui-scale: 1;
+  --font-size-2xs: 11px;
+  --font-size-xs: 12px;
+  --font-size-sm: 13px;
+  --font-size-md: 14px;
+  --font-size-lg: 16px;
+  --font-size-xl: 18px;
+  --font-size-2xl: 22px;
+  --font-size-3xl: 28px;
+  --font-size-4xl: 30px;
   --radius-xs: 2px;
   --radius-sm: 4px;
   --radius-md: 6px;

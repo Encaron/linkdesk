@@ -13,6 +13,7 @@ import { getLastCommittedKeys, setLastCommittedKeys } from "./state";
 import {
   SURFACE_ZERO, BACKGROUND_ZERO, RADIUS_SCALE_KEYS, radiusTokenPx,
   MANAGED_TOKEN_KEYS, SURFACE_SEAM_INSET_PX, SURFACE_COLOR_KEYS, ACCENT_TOKEN_KEYS,
+  FONT_SIZE_STEPS, FONT_SIZE_BASE_PX, UI_FONT_SCALE_DEFAULT,
 } from "./constants";
 // E5.8 Phase 11.16：表面合成规格类型——type-only 引用（seeds 生产 getGlassSurfaceSpec，合成在 apply 层消费；
 //  erasure 后无运行时依赖，seeds⇄apply 循环仍由 state 破）
@@ -267,7 +268,8 @@ export function applyRadiusAbsolute(absPx: number): Record<string, string> {
 
 /**
  * 应用覆盖集到生效 token 集——radius scale 系数 JS 乘算（对主题现值/壳默认，恒写六档清残留）；
- * 绝对 token 直接覆盖（glass-* / bg-* / font-* 等）。纯函数只算不改。05 §4 第 ④ 步。
+ * 字号比例恒写（--ui-scale + --font-size-*，Phase 12）；绝对 token 直接覆盖（glass-* / bg-* / font-* 等）。
+ * 纯函数只算不改。05 §4 第 ④ 步。
  */
 export function applyOverrides(
   tokens: Record<string, string>,
@@ -305,6 +307,7 @@ export function applyOverrides(
   for (const [token, value] of Object.entries(overrides)) {
     if ((RADIUS_SCALE_KEYS as readonly string[]).includes(token)) continue;
     if (token === "surface-radius") continue; // ①b 已处理，② 不落绝对
+    if (token === "ui-font-scale") continue; // ④ 已处理（字号比例，非 token 键），② 不落绝对
     tokens[token] = String(value);
   }
   // ③ 缝法则（E5.8 缝系统）：--surface-inset 由圆角派生——宿主所有、所有主题统一、与 app.zoneRadius 开关耦合。
@@ -312,6 +315,20 @@ export function applyOverrides(
   //   放在 ② 之后 = 最终值赢（主题/overrides 任何旧 inset 数据都无条件覆盖，主题 inset 已废弃）。
   tokens["surface-inset"] =
     (tokens["surface-radius"] ?? "0px") === "0px" ? "0px" : `${SURFACE_SEAM_INSET_PX}px`;
+  // ④ E5.8 Phase 12：全局字号比例——overrides 携带 ui-font-scale（整数百分比，getAppearanceOverrides 恒写；
+  //   默认 100 → ratio 1 = :root 新设计基准）。恒写 --ui-scale（度量乘子，calc(Npx * var(--ui-scale))）+
+  //   --font-size-*（JS 预算 `${base × ratio}px`，文字消费零计算）。round 2 位清 float 残迹（scale step 5 至多 2 位小数）。
+  //   恒写幂等清残留（对标 surfaceRadius 恒写语义）；无 ui-font-scale 覆盖（getThemeBaseTokens 纯基线 {}）→ 整块跳过。
+  const fontScaleVal = overrides["ui-font-scale"];
+  if (fontScaleVal !== undefined) {
+    const percent = Number(fontScaleVal);
+    const ratio = Number.isFinite(percent) ? percent / 100 : UI_FONT_SCALE_DEFAULT;
+    tokens["ui-scale"] = String(ratio);
+    for (const step of FONT_SIZE_STEPS) {
+      const px = Math.round(FONT_SIZE_BASE_PX[step] * ratio * 100) / 100;
+      tokens[`font-size-${step}`] = `${px}px`;
+    }
+  }
   return tokens;
 }
 
