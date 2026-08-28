@@ -54,7 +54,7 @@ export default function ShellViewRenderer({ tab, isActive, creatableViews }: She
           justifyContent: "center",
           height: "100%",
           color: "var(--text-muted)",
-          fontSize: 12,
+          fontSize: "var(--font-size-sm)", /* E5.8 Phase 12 #171：12→sm */
           userSelect: "none",
         }}>
           {shellType ? t("未知壳视图 {{shellType}}", { shellType }) : t("壳视图")}

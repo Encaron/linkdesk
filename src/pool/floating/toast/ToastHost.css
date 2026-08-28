@@ -20,7 +20,7 @@
 
 #toast-root {
   position: fixed;
-  bottom: 30px;              /* 状态栏 22px + 8px gap（现网实测） */
+  bottom: calc(22px * var(--ui-scale) + 8px); /* E5.8 Phase 12 #171：状态栏高引用（F8）——22px×scale + 8px gap */
   right: 6px;
   display: flex;
   flex-direction: column-reverse;  /* 最新在底部 */
@@ -102,8 +102,8 @@
 /* 消息——对标 .notification-list-item-message */
 .toast-message {
   flex: 1;
-  line-height: 22px;        /* VS Code LINE_HEIGHT */
-  font-size: 12px;
+  line-height: 1.6; /* E5.8 Phase 12 #171：line-height 22px → unitless */
+  font-size: var(--font-size-sm); /* 12→sm */
   color: var(--text-primary);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -140,9 +140,9 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 22px;
-  height: 22px;
-  font-size: 12px;
+  width: calc(22px * var(--ui-scale)); /* E5.8 Phase 12 #171：btn 22px 乘 scale */
+  height: calc(22px * var(--ui-scale));
+  font-size: var(--font-size-sm); /* 12→sm */
 }
 
 .toast-chevron-btn:hover,
@@ -161,7 +161,7 @@
   padding-left: 28px;       /* 对齐消息文字：16px icon + 8px margin + 4px */
   margin-top: 6px;
   gap: 8px;
-  min-height: 22px;
+  min-height: calc(22px * var(--ui-scale)); /* E5.8 Phase 12 #171：22px 行高链乘 scale */
 }
 
 .toast-item.toast-expanded .toast-details-row {
@@ -170,7 +170,7 @@
 
 /* Source——对标 VS Code "Source: terminal"（文本壳侧已 t() 解析） */
 .toast-source {
-  font-size: 11px;
+  font-size: var(--font-size-xs); /* E5.8 Phase 12 #171：11→xs */
   color: var(--text-muted);
   flex: 1;
   white-space: nowrap;
@@ -192,9 +192,9 @@
   border: none;
   border-radius: var(--radius-sm);
   padding: 2px 8px;
-  font-size: 11px;
+  font-size: var(--font-size-xs); /* E5.8 Phase 12 #171：11→xs */
   cursor: pointer;
-  height: 22px;
+  height: calc(22px * var(--ui-scale)); /* E5.8 Phase 12 #171：22px 乘 scale */
   white-space: nowrap;
 }
 

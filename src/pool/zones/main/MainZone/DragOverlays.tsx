@@ -95,7 +95,7 @@ export default function DragOverlays({
                   border: "1px solid var(--border-normal)",
                   borderRadius: "var(--radius-sm)",
                   color: "var(--text-primary)",
-                  fontSize: 13,
+                  fontSize: "var(--font-size-md)", /* E5.8 Phase 12 #171：13→md */
                   boxShadow: "var(--shadow-pop)",
                   pointerEvents: "none",
                   zIndex: Z_INDEX.dragPreview,

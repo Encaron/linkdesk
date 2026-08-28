@@ -71,7 +71,7 @@ class ErrorBoundary extends Component<Props, State> {
           height: "100%",
           gap: 12,
           color: "var(--text-muted)",
-          fontSize: 13,
+          fontSize: "var(--font-size-md)", /* E5.8 Phase 12 #171：13→md */
           userSelect: "none",
         }}>
           <span>{i18n.t("「{{name}}」已崩溃", { name })}</span>
@@ -84,7 +84,7 @@ class ErrorBoundary extends Component<Props, State> {
               background: "var(--bg-button)",
               color: "var(--text-normal)",
               cursor: "pointer",
-              fontSize: 12,
+              fontSize: "var(--font-size-sm)", /* E5.8 Phase 12 #171：12→sm */
             }}
           >
             {i18n.t("重试")}

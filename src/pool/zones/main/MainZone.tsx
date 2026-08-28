@@ -153,7 +153,7 @@ export default function MainZone({ groups, root, creatableViews, activeGroupId }
           justifyContent: "center",
           height: "100%",
           color: "var(--text-muted, #888)",
-          fontSize: 13,
+          fontSize: "var(--font-size-md)", /* E5.8 Phase 12 #171：13→md */
           userSelect: "none",
         }}
       >

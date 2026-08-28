@@ -68,7 +68,7 @@
 
 /* 标题栏 = I8-5 拖拽面（#41.6 顶部 6px 手柄 → 整条标题栏）——cursor:grab + no-drag + touch-action */
 .floating-panel-title {
-  height: 38px;
+  height: calc(38px * var(--ui-scale)); /* E5.8 Phase 12 #171：title 38px 乘 scale */
   flex: none;
   display: flex;
   align-items: center;
@@ -84,7 +84,7 @@
 .floating-panel-title:active { cursor: grabbing; }
 
 .floating-panel-label {
-  font-size: 12px;
+  font-size: var(--font-size-sm); /* E5.8 Phase 12 #171：label 12→sm */
   color: var(--text-primary);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -103,7 +103,7 @@
 
 .floating-panel-act {
   position: relative;
-  height: 26px;
+  height: calc(26px * var(--ui-scale)); /* E5.8 Phase 12 #171：act 26px 乘 scale */
   padding: 0 8px;
   display: flex;
   align-items: center;
@@ -112,12 +112,12 @@
   border: none;
   background: transparent;
   color: var(--text-secondary);
-  font-size: 12px;
+  font-size: var(--font-size-sm); /* 12→sm */
   border-radius: var(--radius-sm);
   cursor: pointer;
   transition: background 150ms ease, color 150ms ease;
 }
-.floating-panel-act svg { width: 14px; height: 14px; flex: none; }
+.floating-panel-act svg { width: calc(14px * var(--ui-scale)); height: calc(14px * var(--ui-scale)); flex: none; }
 .floating-panel-act:hover { background: var(--hover-overlay); color: var(--text-primary); }
 .floating-panel-act.close:hover { background: var(--titlebar-close-hover); color: var(--badge-text); }
 
@@ -154,7 +154,7 @@
   min-width: 0;
   overflow: hidden; /* 残影①——文字裁在 label 盒内，不外溢到按钮裁剪边 */
   white-space: nowrap;
-  font-size: 12px;
+  font-size: var(--font-size-sm); /* E5.8 Phase 12 #171：label 12→sm */
   opacity: 0;
   transition: opacity 120ms ease;
 }
@@ -171,7 +171,7 @@
   background: var(--bg-input);
   border: 1px solid var(--separator);
   color: var(--text-primary);
-  font-size: 11px;
+  font-size: var(--font-size-xs); /* E5.8 Phase 12 #171：tooltip 11→xs */
   padding: 3px 8px;
   border-radius: var(--radius-sm);
   white-space: nowrap;

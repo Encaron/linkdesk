@@ -39,14 +39,14 @@
 
 .dialog-host-title {
   margin: 0 0 8px 0;
-  font-size: 14px;
+  font-size: var(--font-size-lg); /* E5.8 Phase 12 #171：title 14→lg */
   font-weight: 600;
   color: var(--text-primary);
 }
 
 .dialog-host-message {
   margin: 0 0 20px 0;
-  font-size: 13px;
+  font-size: var(--font-size-md); /* E5.8 Phase 12 #171：msg 13→md */
   line-height: 1.5;
   color: var(--text-primary);
   white-space: pre-wrap;
@@ -62,10 +62,10 @@
 .dialog-host-btn {
   padding: 4px 12px;
   border-radius: var(--radius-sm);
-  font-size: 12px;
+  font-size: var(--font-size-sm); /* E5.8 Phase 12 #171：btn 12→sm */
   cursor: pointer;
   border: none;
-  height: 28px;
+  height: calc(28px * var(--ui-scale)); /* E5.8 Phase 12 #171：btn 28px 乘 scale */
 }
 
 .dialog-host-btn-primary {

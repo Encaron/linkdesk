@@ -17,7 +17,7 @@ export default function OutputPoolView() {
         justifyContent: "center",
         height: "100%",
         color: "var(--text-muted)",
-        fontSize: 13,
+        fontSize: "var(--font-size-md)", /* E5.8 Phase 12 #171：13→md */
         userSelect: "none",
         background: "var(--bg-window)",
       }}
