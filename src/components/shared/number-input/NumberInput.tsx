@@ -15,10 +15,12 @@ interface NumberInputProps {
   min?: number;
   max?: number;
   step?: number;
+  /** E5.8 Phase 12 #161：数值单位后缀（如 "％"）——schema unit 声明走 i18n（F10）；空 = 裸数值 */
+  unit?: string;
   style?: React.CSSProperties;
 }
 
-export default function NumberInput({ value, onChange, min, max, step = 1, style }: NumberInputProps) {
+export default function NumberInput({ value, onChange, min, max, step = 1, unit, style }: NumberInputProps) {
   const { t } = useTranslation();
   const clamp = useCallback(
     (v: number) => {
@@ -55,6 +57,8 @@ export default function NumberInput({ value, onChange, min, max, step = 1, style
         }}
         style={{ width: 56, textAlign: "center" }}
       />
+      {/* E5.8 Phase 12 #161：unit 后缀夹在 input 与 + 之间——+ 保持 :last-child 右圆角不破 */}
+      {unit ? <span className="number-input-unit">{unit}</span> : null}
       <button
         className="number-input-btn"
         onClick={handleStepUp}

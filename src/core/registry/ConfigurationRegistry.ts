@@ -21,6 +21,11 @@ export interface ConfigurationProperty {
   description: string;        // 设置项说明——Settings Editor 渲染为提示
   minimum?: number;           // number 类型时可选的 min/max
   maximum?: number;
+  /** E5.8 Phase 12 #161：数值步进——number 型配置项的增减步长（uiHint "fontSize"/"slider" 渲染读）。
+   *  slider 缺省由 renderControl inferSliderStep 按区间推导（浮点区间 0.01），schema 显式 step 覆盖；
+   *  NumberInput 缺省 1（editor.fontSize 不声明 → 8/72/1 零回归）；app.uiFontScale 声明 5（① 拍板百分比步进）。
+   *  可选字段：第三方不声明 = 各控件缺省步进。 */
+  step?: number;
   /** Phase 5f ConfigurationApplier：配置值变化时框架自动调用。
    *  可 async——applyAllConfigurations 按注册顺序 await 保证时序。
    *  如：theme onApply (async load) → accent onApply (sync setProperty) 不会竞态。 */

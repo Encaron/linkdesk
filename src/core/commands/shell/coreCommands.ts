@@ -221,8 +221,9 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
 
   // E5.8#158：默认项语义真区分——用户实机「重置此设置」与「跟随主题」本应不同（跟随主题=活动主题值，
   // 默认项=内置 dark/light 配方值=无主题时 GUI）但曾同调 resetConfigurationValue（删 user scope→主题胜出）。
-  // 区分：声明 resetsToDefault 的键（字体/背景四键，:root 硬兜底 = __none__ 哨兵）→ 写 CONFIG_NONE_SENTINEL
-  // 落到系统默认（不跟随主题）；其余键 → 删 user scope 回 schema 默认（VS Code 通用重置语义）。
+  // 区分：声明 resetsToDefault 的键（string 型：字体/背景四键，:root 硬兜底 = __none__ 哨兵）→ 写 CONFIG_NONE_SENTINEL
+  // 落到系统默认（不跟随主题）；number 型（E5.8 Phase 12 #161：app.uiFontScale）无哨兵语义 → 删 user scope
+  // 回 schema default；其余键 → 删 user scope 回 schema 默认（VS Code 通用重置语义）。
   // when = settingResetsToDefault（四键恒显）|| (settingModified && !settingFollowTheme)（普通键改后显、
   // 玻璃/圆角不显——它们唯一能回的状态就是跟随主题，由 followTheme 命令覆盖，无独立默认项）。
   {
@@ -241,10 +242,18 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
       const { getMergedSchema } = await import("../../registry/ConfigurationRegistry");
       const prop = getMergedSchema()[key];
       if (prop?.resetsToDefault) {
-        // E5.8#158：默认项 = 内置 dark/light 配方值（:root 硬兜底）——写 __none__ 哨兵，getAppearanceOverrides
-        // 消费（字体→系统栈 / 背景→无图），与「跟随主题」（删覆盖主题胜出）真区分。
-        const { setConfigurationValue } = await import("../../services/configuration/ConfigurationService");
-        await setConfigurationValue(key, CONFIG_NONE_SENTINEL, "user");
+        if (prop.type === "number") {
+          // E5.8 Phase 12 #161：number 型默认项键（app.uiFontScale）无 __none__ 哨兵语义（哨兵 = string 键
+          // 专属——字体→系统栈/背景→无图）——删 user scope 回 schema default（100 = ⑤ 新基线），
+          // 与 VS Code 通用重置同路径，NumberInput 显示不回 NaN。
+          const { resetConfigurationValue } = await import("../../services/configuration/ConfigurationService");
+          await resetConfigurationValue(key);
+        } else {
+          // E5.8#158：默认项 = 内置 dark/light 配方值（:root 硬兜底）——写 __none__ 哨兵，getAppearanceOverrides
+          // 消费（字体→系统栈 / 背景→无图），与「跟随主题」（删覆盖主题胜出）真区分。
+          const { setConfigurationValue } = await import("../../services/configuration/ConfigurationService");
+          await setConfigurationValue(key, CONFIG_NONE_SENTINEL, "user");
+        }
       } else {
         const { resetConfigurationValue } = await import("../../services/configuration/ConfigurationService");
         await resetConfigurationValue(key);

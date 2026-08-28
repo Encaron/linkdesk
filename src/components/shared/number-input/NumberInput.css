@@ -55,3 +55,12 @@
   text-align: center;
   width: 44px;
 }
+
+/* E5.8 Phase 12 #161：数值单位后缀（uiFontScale 的 ％）——静音小字，不抢步进按钮 */
+.number-input-unit {
+  margin: 0 6px 0 8px;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1;
+  user-select: none;
+}

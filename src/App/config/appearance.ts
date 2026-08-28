@@ -408,6 +408,24 @@ export function registerAppearanceConfiguration(t: ConfigT): void {
         dependsOn: { key: "app.appearanceMode", value: "custom" },
         onApply: () => debouncedApplyThemeIfReady(),
       },
+      // E5.8 Phase 12 #161：全局字号轴——壳独占 UI 字号比例。四轴正交（档案 §十）：颜色轴（--text-*，主题独占）
+      //   主题控「什么颜色」、壳控「多大」；主题零字号键 → 本键无 resetsToTheme 无 dependsOn = 恒显恒生效（F4：
+      //   followTheme 也保持用户值）。与 window.zoomLevel 正交双轴（§十）：本键 = CSS token 文字+邻接度量（5% 步进、
+      //   不含 monaco 内容孤岛）；zoomLevel = 主进程光栅整页缩放（含 monaco 内容）。消费 = getAppearanceOverrides
+      //   （#160 恒写 ui-font-scale）→ applyOverrides ④ 算 --ui-scale + --font-size-* → commitTokens 广播。
+      "app.uiFontScale": {
+        type: "number",
+        group: t("字号"), // 字号轴分节——与「文字」组（颜色/字族，主题侧）正交
+        default: 100, // ⑤ 拍板新基线（100% = VS Code 对齐设计默认，非旧现状）
+        resetsToDefault: true, // ② 拍板恒显 + ⑤ 新基线：齿轮重置回 100（number 键无 __none__ 哨兵，resetSetting 删 user scope 回 schema default）
+        minimum: 85,
+        maximum: 150,
+        step: 5, // ① 拍板：NumberInput 百分比步进（非滑杆）
+        unit: t("％"), // F10：百分比符号走 i18n（zh 全角 ％ / en %）
+        description: t("全局字号百分比——界面文字密度（不含编辑器内容字号）；与窗口缩放（整体放大镜）正交"),
+        uiHint: "fontSize", // ⑦ 定案：复用 NumberInput（− 数字 + 步进），prop min/max/step/unit 泛化读（editor 不声明 fallback 零回归）
+        onApply: () => debouncedApplyThemeIfReady(),
+      },
       // E5.8#85：zone 圆角绝对化——app.zoneRadius 开关 + app.zoneRadiusScale 绝对 px（用户想法 1/2、痛点 2）：
       //   组件圆角（radius-*）由 app.surfaceRadius 绝对 px 控，zone 圆角（surface-radius）由这两键独立控（两轴解耦，
       //   同走系统标尺 0→32）。消费 = getAppearanceOverrides 读本键 → applyOverrides ①b 通道直写 / "0px" 开关短路（ThemeEngine.ts）。

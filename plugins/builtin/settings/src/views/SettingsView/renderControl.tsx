@@ -35,14 +35,15 @@ function renderControl(
 
   // uiHint 优先——plugin.json 声明式控件选择
   switch (prop.uiHint) {
-    case "fontSize":
+    case "fontSize": // E5.8 Phase 12 #161：min/max/step/unit 从 schema 读——editor.fontSize 不声明 → 8/72/1/无单位（零回归）；app.uiFontScale 声明 85/150/5/％
       return (
         <NumberInput
           value={Number(val)}
           onChange={(v) => onChange(v)}
-          min={8}
-          max={72}
-          step={1}
+          min={prop.minimum ?? 8}
+          max={prop.maximum ?? 72}
+          step={prop.step ?? 1}
+          unit={prop.unit}
         />
       );
     case "color":
