@@ -294,9 +294,11 @@ useEffect(() => {
 | `id` | ✅ | 主题 ID |
 | `label` | ✅ | 显示名称 |
 | `uiTheme` | ✅ | `"dark"` \| `"light"` \| `"highContrast"` |
-| `path` | ✅ | 主题定义 JSON 文件路径（含 `colors` 映射）——**相对插件目录** |
+| `path` | ✅ | 主题定义 JSON 文件路径（`appearance` + `colorways[]`）——**相对插件目录** |
 
 声明是 metadata-only；主题颜色数据在加载时异步 fetch。旧格式顶层 `themes` 字段自动归一化（见 `02 §二.1`）。
+
+> **🔥 配方 JSON 契约（E5.8#129 立）**：`path` 指向的配方文件按 `public/schemas/theme.schema.json` 机械校验（`npm run check` 链 `check-theme-schema.mjs`），格式错当场红灯 exit 1 不静默——运行时 `parseThemeRecipe` toast 是第二道防线。主题文件建议首行 `"$schema"` 引 schema 拿编辑器 IntelliSense（相对路径见 [11-主题制作](11-主题制作.md) §②）。
 
 ### 3.7 `contributes.iconThemes`——图标主题
 
