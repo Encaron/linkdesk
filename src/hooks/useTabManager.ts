@@ -60,6 +60,11 @@ export {
   reducePinTab,
   reduceRemoveTab,
   reduceInsertTab,
+  reduceResourceRenamed,
+  reduceResourceDeleted,
+  reduceCloseBySourceId,
+  reduceRemoveTabsByPlugin,
+  reduceRemoveTabsUnderFolder,
 } from "./useTabManager/reducers-tab";
 
 import {

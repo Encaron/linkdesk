@@ -9,6 +9,7 @@ import { getTabBehavior, findFallbackPlugin } from "../../pluginLoader/viewRegis
 import { FALLBACK_PLUGIN_ID } from "../../core/utils/plugin/fallbackPluginId";
 import { findTabByIdentity, isSameTabIdentity } from "../../core/utils/tabIdentity";
 import { getAllLeafGroupIds, removeLeafFromTree } from "../../core/utils/splitTree";
+import { normalizePath } from "../../core/utils/path/pathUtils";
 import { allTabs, findGroup } from "./types";
 import type { TabState, CreateTabResult, CloseTabResult, Tab } from "./types";
 import { createTabDefaults, ensureFallback, pickNextActive } from "./defaults";
@@ -371,4 +372,86 @@ export function reducePinTab(prev: TabState, tabId: string): TabState {
       };
     }),
   };
+}
+
+/* ── E5.8#46.2 资源事件族——跨窗资源联动全窗广播的纯 reducer 基元 ──
+   匹配语义：file:* 事件按 sourceId || filePath（资源身份）；tabs API 按 sourceId || id（findTabBySourceId 同源）。
+   删除基元统一 remove 语义（不补 fallback）——窗口模式策略归壳（main=ensureFallback / detached=关窗自灭）。
+   dirty 语义：资源已消失类（file:deleted/plugin/folder）不查 dirty（无保存对象）；程序化关闭（closeBySourceId）dirty 静默阻断（#46.12 决策）。 */
+
+type TabMatcher = (tab: Tab) => boolean;
+
+/** 移除所有匹配 tab（remove 语义，逐 tab reduceRemoveTab——组移除后后续 tab 引用失效自动跳过）。
+ *  skipDirty=true：dirty 的 tab 保留（程序化关闭阻断）；false：不查 dirty 直接移除（资源已消失）。 */
+function reduceRemoveAllTabs(prev: TabState, matcher: TabMatcher, skipDirty: boolean): TabState {
+  const targets = allTabs(prev).filter(matcher);
+  if (targets.length === 0) return prev;
+  if (skipDirty && targets.every((t) => isTabDirty(t))) return prev;
+  let state = prev;
+  for (const tab of targets) {
+    if (skipDirty && isTabDirty(tab)) continue;
+    const r = reduceRemoveTab(state, tab.id);
+    if (!r.removedTab) continue;
+    state = r.state;
+  }
+  return state;
+}
+
+/** E5.8#46.2：资源身份迁移（rename）——sourceId 命中 || filePath 命中；filePath 命中才同步迁 filePath（非文件资源保留）。
+ *  label 从事件负载来（壳不派生资源语义——文件桥派生 basename，串口直传 name）；省略 = 保留原 label。
+ *  无命中 → 原引用（React bailout）。 */
+export function reduceResourceRenamed(
+  prev: TabState,
+  oldSourceId: string,
+  newSourceId: string,
+  label?: string,
+): TabState {
+  let changed = false;
+  const newGroups = prev.groups.map((g) => ({
+    ...g,
+    tabs: g.tabs.map((t) => {
+      if (t.sourceId === oldSourceId || t.filePath === oldSourceId) {
+        changed = true;
+        return {
+          ...t,
+          sourceId: newSourceId,
+          filePath: t.filePath === oldSourceId ? newSourceId : t.filePath,
+          label: label ?? t.label,
+        };
+      }
+      return t;
+    }),
+  }));
+  if (!changed) return prev;
+  return { ...prev, groups: newGroups };
+}
+
+/** E5.8#46.2：资源已删除 → 关闭其全部标签（不查 dirty——资源消失无保存对象） */
+export function reduceResourceDeleted(prev: TabState, sourceId: string): TabState {
+  return reduceRemoveAllTabs(prev, (t) => t.sourceId === sourceId || t.filePath === sourceId, false);
+}
+
+/** E5.8#46.2：程序化关闭（tabs.closeBySourceId）——sourceId || id 命中，dirty 静默阻断（防丢数据，同 #46.12 决策） */
+export function reduceCloseBySourceId(prev: TabState, sourceId: string): TabState {
+  return reduceRemoveAllTabs(prev, (t) => t.sourceId === sourceId || t.id === sourceId, true);
+}
+
+/** E5.8#46.2：插件卸载 → 关闭其全部标签（pluginId 命中 || type 命中——归一化后两者等价） */
+export function reduceRemoveTabsByPlugin(prev: TabState, pluginId: string): TabState {
+  return reduceRemoveAllTabs(prev, (t) => t.pluginId === pluginId || t.type === pluginId, false);
+}
+
+/** E5.8#46.2：workspace 文件夹移除 → 关闭其下全部标签（normalizePath 段边界匹配 filePath ?? sourceId）。
+ *  路径段边界：`E:/demo` 匹配 `E:/demo/a.txt` / 自身，不匹配 `E:/demo2/*`（裸 startsWith 会误删——原 u4 边界 bug，随本 reducer 修复）。 */
+export function reduceRemoveTabsUnderFolder(prev: TabState, folderUri: string): TabState {
+  const normalized = normalizePath(folderUri);
+  const prefix = normalized.endsWith("/") ? normalized : `${normalized}/`;
+  return reduceRemoveAllTabs(
+    prev,
+    (t) => {
+      const fp = normalizePath(t.filePath ?? t.sourceId ?? "");
+      return fp === normalized || fp.startsWith(prefix);
+    },
+    false,
+  );
 }

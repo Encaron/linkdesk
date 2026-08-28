@@ -21,6 +21,11 @@ import {
   reduceRestoreLayout,
   reduceRemoveTab,
   reduceInsertTab,
+  reduceResourceRenamed,
+  reduceResourceDeleted,
+  reduceCloseBySourceId,
+  reduceRemoveTabsByPlugin,
+  reduceRemoveTabsUnderFolder,
   type Tab,
   type TabState,
   type LayoutData,
@@ -554,5 +559,166 @@ describe("reduceInsertTab（E5.8#44）", () => {
       .toEqual(["workspace-demo_alpha", "workspace-demo_beta", "workspace-demo_gamma"]);
     expect(reduceInsertTab(s, w("Gamma", "demo_gamma"), "main", -1).groups[0].tabs.map((t) => t.id))
       .toEqual(["workspace-demo_alpha", "workspace-demo_beta", "workspace-demo_gamma"]);
+  });
+});
+
+/* ── E5.8#46.2 资源事件族——跨窗资源联动纯 reducer（虚构 fixture：demo-view / E:/demo/* 路径）── */
+
+function resTab(id: string, sourceId: string, label: string, opts?: Partial<Tab>): Tab {
+  return { id, type: "demo-view", label, sourceId, filePath: sourceId, dirty: false, pinned: true, ...opts };
+}
+
+describe("reduceResourceRenamed（E5.8#46.2）", () => {
+  it("sourceId 命中 → 迁移 sourceId + label（label 从事件负载来）", () => {
+    const s = stateWithTabs(resTab("t1", "E:/demo/a.txt", "Alpha"), resTab("t2", "E:/demo/b.txt", "Beta"));
+    const next = reduceResourceRenamed(s, "E:/demo/a.txt", "E:/demo/c.txt", "Gamma");
+    expect(next.groups[0].tabs[0]).toMatchObject({ sourceId: "E:/demo/c.txt", filePath: "E:/demo/c.txt", label: "Gamma" });
+    expect(next.groups[0].tabs[1]).toMatchObject({ sourceId: "E:/demo/b.txt", label: "Beta" });
+  });
+
+  it("非文件资源（无 filePath）→ 迁 sourceId + label，filePath 保持 undefined", () => {
+    const s = stateWithTabs(resTab("t1", "session-demo-1", "Alpha", { filePath: undefined }));
+    const next = reduceResourceRenamed(s, "session-demo-1", "session-demo-2", "Gamma");
+    expect(next.groups[0].tabs[0]).toMatchObject({ sourceId: "session-demo-2", label: "Gamma" });
+    expect(next.groups[0].tabs[0].filePath).toBeUndefined();
+  });
+
+  it("省略 label → 保留原 label（壳只迁身份，label 归调用方）", () => {
+    const s = stateWithTabs(resTab("t1", "E:/demo/a.txt", "Alpha"));
+    const next = reduceResourceRenamed(s, "E:/demo/a.txt", "E:/demo/c.txt");
+    expect(next.groups[0].tabs[0]).toMatchObject({ sourceId: "E:/demo/c.txt", label: "Alpha" });
+  });
+
+});
+
+describe("reduceResourceDeleted（E5.8#46.2）", () => {
+  it("命中 sourceId/filePath → 关闭其标签，其余保留", () => {
+    const s = stateWithTabs(resTab("t1", "E:/demo/a.txt", "Alpha"), resTab("t2", "E:/demo/b.txt", "Beta"));
+    const next = reduceResourceDeleted(s, "E:/demo/a.txt");
+    expect(next.groups[0].tabs.map((t) => t.id)).toEqual(["t2"]);
+  });
+
+  it("同资源双面板副本全关 → 组移除摘叶", () => {
+    const s: TabState = {
+      groups: [
+        { id: "g1", tabs: [resTab("t1", "E:/demo/a.txt", "Alpha")], activeTabId: "t1" },
+        { id: "g2", tabs: [resTab("t2", "E:/demo/a.txt", "Alpha"), resTab("t3", "E:/demo/b.txt", "Beta")], activeTabId: "t2" },
+      ],
+      activeGroupId: "g1",
+      root: {
+        type: "branch", direction: "horizontal",
+        children: [{ type: "leaf", groupId: "g1" }, { type: "leaf", groupId: "g2" }],
+        sizes: [50, 50],
+      },
+    };
+    const next = reduceResourceDeleted(s, "E:/demo/a.txt");
+    expect(next.groups.flatMap((g) => g.tabs).map((t) => t.id)).toEqual(["t3"]);
+    expect(next.groups).toHaveLength(1);
+  });
+
+  it("末 tab 命中 → 单面板保留空组（fallback 归壳决策）", () => {
+    const s = stateWithTabs(resTab("t1", "E:/demo/a.txt", "Alpha"));
+    const next = reduceResourceDeleted(s, "E:/demo/a.txt");
+    expect(next.groups).toHaveLength(1);
+    expect(next.groups[0].tabs).toHaveLength(0);
+    expect(next.groups[0].activeTabId).toBe("");
+  });
+
+  it("dirty tab 也删（资源消失无保存对象，不查 dirty）", () => {
+    const s = stateWithTabs(resTab("t1", "E:/demo/a.txt", "Alpha", { dirty: true }));
+    expect(reduceResourceDeleted(s, "E:/demo/a.txt").groups[0].tabs).toHaveLength(0);
+  });
+
+});
+
+describe("reduceCloseBySourceId（E5.8#46.2）", () => {
+  it("非 dirty 命中 sourceId → 关闭", () => {
+    const s = stateWithTabs(resTab("t1", "E:/demo/a.txt", "Alpha"));
+    const next = reduceCloseBySourceId(s, "E:/demo/a.txt");
+    expect(next.groups[0].tabs).toHaveLength(0);
+  });
+
+  it("dirty 命中 → 静默阻断（防丢数据，原引用）", () => {
+    const s = stateWithTabs(resTab("t1", "E:/demo/a.txt", "Alpha", { dirty: true }));
+    expect(reduceCloseBySourceId(s, "E:/demo/a.txt")).toBe(s);
+  });
+
+  it("id 命中（findTabBySourceId：sourceId || id 双命中）", () => {
+    const s = stateWithTabs(resTab("t1", "E:/demo/a.txt", "Alpha"));
+    const next = reduceCloseBySourceId(s, "t1");
+    expect(next.groups[0].tabs).toHaveLength(0);
+  });
+
+  it("混合 dirty/非 dirty 同资源 → 只关非 dirty（dirty 保留）", () => {
+    const s = stateWithTabs(resTab("t1", "E:/demo/a.txt", "Alpha"), resTab("t2", "E:/demo/a.txt", "Alpha", { dirty: true }));
+    const next = reduceCloseBySourceId(s, "E:/demo/a.txt");
+    expect(next.groups[0].tabs.map((t) => t.id)).toEqual(["t2"]);
+  });
+
+});
+
+describe("reduceRemoveTabsByPlugin（E5.8#46.2）", () => {
+  it("pluginId 命中 → 关闭其全部标签", () => {
+    const s = stateWithTabs(
+      resTab("t1", "E:/demo/a.txt", "Alpha", { pluginId: "demo-plugin" }),
+      resTab("t2", "E:/demo/b.txt", "Beta", { pluginId: "demo-plugin" }),
+      resTab("t3", "E:/demo/c.txt", "Gamma", { pluginId: "other-plugin" }),
+    );
+    const next = reduceRemoveTabsByPlugin(s, "demo-plugin");
+    expect(next.groups[0].tabs.map((t) => t.id)).toEqual(["t3"]);
+  });
+
+  it("type 命中（归一化后 type === pluginId）", () => {
+    const s = stateWithTabs(resTab("t1", "E:/demo/a.txt", "Alpha", { pluginId: "demo-plugin" }));
+    const next = reduceRemoveTabsByPlugin(s, "demo-view");
+    expect(next.groups[0].tabs).toHaveLength(0);
+  });
+
+});
+
+describe("reduceRemoveTabsUnderFolder（E5.8#46.2）", () => {
+  it("folderUri 前缀命中（filePath）→ 关闭其下标签", () => {
+    const s = stateWithTabs(
+      resTab("t1", "E:/demo/a.txt", "Alpha"),
+      resTab("t2", "E:/demo/sub/b.txt", "Beta"),
+      resTab("t3", "E:/other/c.txt", "Gamma"),
+    );
+    const next = reduceRemoveTabsUnderFolder(s, "E:/demo");
+    expect(next.groups[0].tabs.map((t) => t.id)).toEqual(["t3"]);
+  });
+
+  it("无 filePath 的资源按 sourceId 前缀匹配", () => {
+    const s = stateWithTabs(
+      resTab("t1", "E:/demo/session-1", "Alpha", { filePath: undefined }),
+      resTab("t2", "E:/other/session-2", "Beta", { filePath: undefined }),
+    );
+    const next = reduceRemoveTabsUnderFolder(s, "E:/demo");
+    expect(next.groups[0].tabs.map((t) => t.id)).toEqual(["t2"]);
+  });
+
+  it("前缀边界不误删——E:/demo 不匹配 E:/demo2/*", () => {
+    const s = stateWithTabs(resTab("t1", "E:/demo2/a.txt", "Alpha"), resTab("t2", "E:/demo/a.txt", "Beta"));
+    const next = reduceRemoveTabsUnderFolder(s, "E:/demo");
+    expect(next.groups[0].tabs.map((t) => t.id)).toEqual(["t1"]);
+  });
+
+  it("反斜杠路径归一化后命中（Windows 盘符大小写统一）", () => {
+    const s = stateWithTabs(resTab("t1", "e:\\demo\\a.txt", "Alpha"), resTab("t2", "E:/other/b.txt", "Beta"));
+    const next = reduceRemoveTabsUnderFolder(s, "E:/demo");
+    expect(next.groups[0].tabs.map((t) => t.id)).toEqual(["t2"]);
+  });
+
+});
+
+describe("资源事件族——无命中 → 原引用（React bailout，参数化单处定义）", () => {
+  const base = stateWithTabs(resTab("t1", "E:/demo/a.txt", "Alpha"));
+  it.each<[string, (s: TabState) => TabState]>([
+    ["reduceResourceRenamed", (s) => reduceResourceRenamed(s, "E:/demo/nope.txt", "E:/demo/c.txt")],
+    ["reduceResourceDeleted", (s) => reduceResourceDeleted(s, "E:/demo/nope.txt")],
+    ["reduceCloseBySourceId", (s) => reduceCloseBySourceId(s, "E:/demo/nope.txt")],
+    ["reduceRemoveTabsByPlugin", (s) => reduceRemoveTabsByPlugin(s, "nope-plugin")],
+    ["reduceRemoveTabsUnderFolder", (s) => reduceRemoveTabsUnderFolder(s, "E:/nope")],
+  ])("%s — 无命中 → 原引用", (_name, fn) => {
+    expect(fn(base)).toBe(base);
   });
 });
