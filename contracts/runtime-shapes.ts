@@ -492,12 +492,6 @@ function chkSidebarLayout(v: unknown, p: string, errs: string[]): void {
     if (_t48.emptyHint !== undefined) {
     if (typeof _t48.emptyHint !== "string") errs.push(((p) + ".emptyHint") + ": 期望 string，实收 " + typeof _t48.emptyHint);
     }
-    if (_t48.expandTooltip !== undefined) {
-    if (typeof _t48.expandTooltip !== "string") errs.push(((p) + ".expandTooltip") + ": 期望 string，实收 " + typeof _t48.expandTooltip);
-    }
-    if (_t48.collapseTooltip !== undefined) {
-    if (typeof _t48.collapseTooltip !== "string") errs.push(((p) + ".collapseTooltip") + ": 期望 string，实收 " + typeof _t48.collapseTooltip);
-    }
     if (_t48.minWidth !== undefined) {
     if (typeof _t48.minWidth !== "number") errs.push(((p) + ".minWidth") + ": 期望 number，实收 " + typeof _t48.minWidth);
     }
@@ -556,12 +550,6 @@ function chkRightSidebarLayout(v: unknown, p: string, errs: string[]): void {
     }
     if (_t69.emptyHint !== undefined) {
     if (typeof _t69.emptyHint !== "string") errs.push(((p) + ".emptyHint") + ": 期望 string，实收 " + typeof _t69.emptyHint);
-    }
-    if (_t69.expandTooltip !== undefined) {
-    if (typeof _t69.expandTooltip !== "string") errs.push(((p) + ".expandTooltip") + ": 期望 string，实收 " + typeof _t69.expandTooltip);
-    }
-    if (_t69.collapseTooltip !== undefined) {
-    if (typeof _t69.collapseTooltip !== "string") errs.push(((p) + ".collapseTooltip") + ": 期望 string，实收 " + typeof _t69.collapseTooltip);
     }
   }
 }

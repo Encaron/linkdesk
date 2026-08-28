@@ -92,13 +92,11 @@ export function buildSampleLayout(): PoolLayout {
       viewId: null,
       emptyText: "此容器没有已注册的视图",
       emptyHint: "安装插件以添加视图",
-      expandTooltip: "展开侧栏",
-      collapseTooltip: "折叠侧栏",
       minWidth: 170,
       maxWidth: 600,
     },
     // E5.8#37.5 + #159：右侧栏真渲染样例——空容器（views 空 → emptyText 渲染路径，零插件视图零命名空间风险）。
-    // 宽度 300 + 折叠 tooltip——◀ 按钮 emit 安全 no-op（壳无监听）；折叠=真消失无 ▶ 按钮（#159 与左栏同源）
+    // 折叠=真消失（#159 与左栏同源，无 ◀/▶ 按钮——折叠/展开仅走图标栏 toggle + 界面勾选菜单）
     rightSidebar: {
       visible: true,
       width: 300,
@@ -111,8 +109,6 @@ export function buildSampleLayout(): PoolLayout {
       maxWidth: 600,
       emptyText: "此容器没有已注册的视图",
       emptyHint: "安装插件以添加视图",
-      expandTooltip: "展开侧栏",
-      collapseTooltip: "折叠侧栏",
     },
     // E5.8#37.5：底部面板样例——emptyText 路径（views 空 + switcher 空 → 无贡献视图空态）。
     // 四向 edge/align 由 computePoolGrid 推导（#37.5）——改 edge/align 字段即换布局几何

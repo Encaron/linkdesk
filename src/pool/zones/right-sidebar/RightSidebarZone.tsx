@@ -14,9 +14,8 @@
  *
  * 🔴 壳侧暂无右栏容器生产者——当前真渲染「空容器」形态（宽度/折叠/handle 镜像全可用）。
  *   与 SidebarZone 的差异（诚实注记——壳无监听/无生产者 = 安全 no-op，非历史延期）：
- *   ① ◀ 折叠按钮 → events.emit("rightSidebar:toggleCollapse", { collapsed })——壳无监听 =
- *      安全 no-op（池 emit 零订阅先例；右栏容器生产后壳接线即直达折叠真相源，⚑ 不借
- *      toggleSidebarCollapse——该 action 壳 handler 是左栏专属语义，无 containerId 参数）；
+ *   ① 无 ◀/▶ 折叠按钮（E5.8#159 收口：折叠=真消失 + 头部箭头按钮整删——折叠/展开仅走
+ *      图标栏 toggle + 界面勾选菜单，与左栏同款）；
  *   ② 视图 reorder/setCollapsed → pool.sidebarAction（通道按 containerId 泛化——右栏容器
  *      注册后同一通道直达壳 ViewContainerService；当前无容器 = 安全 no-op）；
  *   ③ 宽度 commit → events.emit("rightSidebar:resize", { width })——不借 setSidebarWidth
@@ -148,7 +147,7 @@ export default function RightSidebarZone({ rightSidebar, edge }: RightSidebarZon
   return renderZone(
     <>
       <div className={`side-panel${resize.resizing ? " resizing" : ""}`} style={{ width: resize.size, height: "100%" }}>
-        {/* 容器 header——◀ 折叠按钮（SidebarZone #10 同款；差异注记 ①：壳无监听 = 安全 no-op） */}
+        {/* 容器 header（无 ◀/▶ 折叠按钮——差异注记 ①：折叠/展开仅走图标栏 toggle + 界面勾选菜单） */}
         {effectiveTitle && (
           <div className="side-panel-header">
             <span className="side-panel-title" title={effectiveTitle}>{effectiveTitle}</span>
@@ -156,14 +155,6 @@ export default function RightSidebarZone({ rightSidebar, edge }: RightSidebarZon
             {mergeHeaderWhenSingle === true && sectionViews.length === 1 && sectionViews[0].titleActions?.length
               ? <ViewTitleActions actions={sectionViews[0].titleActions} />
               : null}
-            {/* ◀ 折叠按钮——右栏折叠真相源在壳（当前无监听 = 安全 no-op） */}
-            <button
-              className="side-panel-collapse"
-              onClick={() => window.linkdesk?.events?.emit("rightSidebar:toggleCollapse", { collapsed: false })}
-              title={rightSidebar.collapseTooltip}
-            >
-              ◀
-            </button>
           </div>
         )}
         {renderContent()}

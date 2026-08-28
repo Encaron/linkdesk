@@ -1273,13 +1273,11 @@ export interface SidebarLayout {
      *  容器随插件卸载从清单消失 → 池自然卸载（真相源在壳，池零缓存）。旧布局（无此字段）回退单容器渲染。 */
     containers?: SidebarContainerLayout[];
     collapsedViews?: string[]; // 持久化折叠的 view ID 集合——壳 loadCollapsedState()
-    /** E5.6#11-fix7：壳通知池侧栏是否折叠——width ≤ 48 时池渲染 ▶ 展开按钮而非裁剪内容 */
+    /** E5.6#11-fix7：壳通知池侧栏是否折叠——折叠=真消失（#147/#159 无窄条/▶，grid auto 列 0 宽） */
     collapsed?: boolean;
     // ── E5.7#10：侧栏 UI 文本壳侧 t() 推送（显示文本铁律——池渲染零自产文本） ──
     emptyText?: string; // 空状态主文案——"此容器没有已注册的视图"
     emptyHint?: string; // 空状态提示——"安装插件以添加视图"
-    expandTooltip?: string; // 展开 tooltip——折叠=真消失后无 ▶ 展开按钮（#147/#159），字段随 DTO 契约保留（零消费方）
-    collapseTooltip?: string; // ◀ 折叠按钮 tooltip
     // ── E5.7#13：拖拽钳制界——壳 LayoutEngine dock 声明推送（池本地钳制对齐壳 resizeZone，零硬编码） ──
     minWidth?: number; // 拖拽最小宽——壳 dock.minWidth（170）
     maxWidth?: number; // 拖拽最大宽——壳 dock.maxWidth（600）
@@ -1290,7 +1288,7 @@ export interface SidebarLayout {
 /** 🆕 E5.8#36.8：右侧栏布局——右侧栏真 zone（决策 6，E5.8#36.7 addZone("rightSidebar") 消费方）。
  *  与 SidebarLayout 对齐（消费字段同集），但**不携带自身 edge**——swap 规则保证 sidebar ↔ rightSidebar
  *  恒占对边，右栏 edge = sidebar 对边（池 grid #37.5 推导，防两处字面量）。
- *  E5.8#37.5 RightSidebarZone 真渲染：折叠/展开按钮 + tooltip 全壳 t() 推送（显示文本铁律）。 */
+ *  E5.8#37.5 RightSidebarZone 真渲染：文案壳 t() 推送（显示文本铁律）。#159 无 ◀/▶ 折叠按钮——与左栏同款。 */
 export interface RightSidebarLayout {
     visible: boolean;
     width: number;
@@ -1301,18 +1299,14 @@ export interface RightSidebarLayout {
     views: SidebarViewMeta[];
     containers?: SidebarContainerLayout[];
     collapsedViews?: string[];
-    /** 🆕 E5.8#36.8 + #37.5 + #159：右栏折叠态——宽度 ≤48 派生（池），折叠=整个 zone 消失（与左栏 #147 同源）；
-     *  ◀ 按钮切换 emit 安全 no-op（壳无监听） */
+    /** 🆕 E5.8#36.8 + #37.5 + #159：右栏折叠态——宽度 ≤48 派生（池），折叠=整个 zone 消失（与左栏 #147 同源，
+     *  无窄条/▶——折叠/展开仅走图标栏 toggle + 界面勾选菜单） */
     collapsed?: boolean;
-    // ── 拖拽钳制界 + 空态文案 + 折叠 tooltip（与 SidebarLayout 同语义）──
+    // ── 拖拽钳制界 + 空态文案（与 SidebarLayout 同语义）──
     minWidth?: number;
     maxWidth?: number;
     emptyText?: string;
     emptyHint?: string;
-    /** 🆕 E5.8#37.5：展开 tooltip（壳 t() 推送）——#159 折叠=真消失后无 ▶ 按钮，字段随 DTO 契约保留（零消费方） */
-    expandTooltip?: string;
-    /** 🆕 E5.8#37.5：◀ 折叠按钮 tooltip（壳 t() 推送） */
-    collapseTooltip?: string;
 }
 /** 标签页在池中的表示——壳 pushLayout 时序列化 */
 export interface PoolTab {

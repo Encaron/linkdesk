@@ -152,8 +152,6 @@ export function usePoolSync({ windows, sidebarView, isSidebarVisible, panelActiv
         // E5.7#10：侧栏 UI 文本壳侧 t() 推送（显示文本铁律——池渲染零自产文本）
         emptyText: t("此容器没有已注册的视图"),
         emptyHint: t("安装插件以添加视图"),
-        expandTooltip: t("展开侧栏"),
-        collapseTooltip: t("折叠侧栏"),
         // E5.7#13：拖拽钳制界——LayoutEngine dock 声明推池（池本地钳制对齐壳 resizeZone，零硬编码）
         minWidth: layoutEngine.getZone("sidebar")?.dock?.minWidth,
         maxWidth: layoutEngine.getZone("sidebar")?.dock?.maxWidth,
@@ -237,11 +235,9 @@ export function usePoolSync({ windows, sidebarView, isSidebarVisible, panelActiv
           maxWidth: rsZone.dock.maxWidth,
           emptyText: t("此容器没有已注册的视图"),
           emptyHint: t("安装插件以添加视图"),
-          // E5.8#37.5 + #159：右栏折叠态 + 折叠 tooltip——RightSidebarZone 真渲染消费（◀ 按钮）。
+          // E5.8#37.5 + #159：右栏折叠态——RightSidebarZone 真渲染消费。
           // 壳无右栏容器生产者——collapsed 派生自宽度（与左栏同判定）；折叠=真消失（#159 与左栏同源）
           collapsed: rsWidth <= 48,
-          expandTooltip: t("展开侧栏"),
-          collapseTooltip: t("折叠侧栏"),
         }
       : undefined;
 

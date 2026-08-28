@@ -10,7 +10,8 @@
  *   - collapsed → 整个 zone 消失（E5.8#147 折叠改版：真消失无窄条/▶；壳 layoutEngine zone 宽
  *     ≤48 时壳侧置 collapsed:true——折叠态 grid auto 列 0 宽，主区占满）
  *   - views 空 → 空状态文案（emptyText/emptyHint 壳侧 t() 推送）
- *   - header：containerTitle / mergeHeaderWhenSingle 单视图标题合并 + ◀ 折叠按钮 + 右键菜单
+ *   - header：containerTitle / mergeHeaderWhenSingle 单视图标题合并 + 右键菜单（无 ◀/▶ 折叠按钮——
+ *     折叠/展开仅走图标栏 toggle + 界面勾选菜单，E5.8#159 收口）
  *     （壳 ContextMenu 聪慧组件——menuId "viewTitleContext" 字符串直传，不 import 壳 MenuRegistry（Path B——字符串即桥契约）；
  *     GroupTabBar 同款池内用法：菜单项 lk.menu.getItems 壳侧解析、命令壳侧执行）
  *   - toolbar 粘顶（role==="toolbar" 在滚动容器外）+ section stack（折叠/拖排/PaneSash）
@@ -179,14 +180,7 @@ export default function SidebarZone({ sidebar }: SidebarZoneProps) {
                 {c.mergeHeaderWhenSingle === true && sectionViews.length === 1 && sectionViews[0].titleActions?.length
                   ? <ViewTitleActions actions={sectionViews[0].titleActions} />
                   : null}
-                {/* ◀ 折叠按钮——对标壳 SidePanel */}
-                <button
-                  className="side-panel-collapse"
-                  onClick={() => handleSidebarAction({ action: "toggleSidebarCollapse", containerId: c.containerId })}
-                  title={sidebar.collapseTooltip}
-                >
-                  ◀
-                </button>
+                {/* E5.8#159 收口：无 ◀/▶ 折叠按钮——折叠/展开仅走图标栏 toggle + 界面勾选菜单 */}
               </div>
             )}
 
