@@ -90,7 +90,7 @@ async function list(): Promise<FileEntry[]> {
 
 | 频道 | payload | 触发时机 |
 |------|------|------|
-| `theme:changed` | `{ themeId, themeType, variables }` | 用户切换主题（CSS 变量自动注入，无需手动订阅） |
+| `theme:changed` | `{ themeId, themeType, variables }` | 用户切换主题（CSS 变量自动注入，无需手动订阅）。**E5.8 Phase 12：载荷 `variables` 现含字号变量 `--font-size-*` + `--ui-scale`**（全局字号缩放走既有主题通道，**无新事件**；插件字号消费 token 见 05-UI写法规约 §10） |
 | `lang:changed` | `{ lang, resources }` | 用户切换语言 |
 | `workspace:changed` | `{ rootPath }` | 用户打开/切换文件夹 |
 
