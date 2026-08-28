@@ -1,9 +1,13 @@
 {
+  "$schema": "../../../../public/schemas/theme.schema.json",
   "id": "terminal-monofont",
   "name": "终端机 Terminal Mono",
   "type": "dark",
   "appearance": {
-    "font": { "ui": "Cascadia Mono", "mono": "Cascadia Mono" }
+    "font": {
+      "ui": "Cascadia Mono",
+      "mono": "Cascadia Mono"
+    }
   },
   "colorways": [
     {

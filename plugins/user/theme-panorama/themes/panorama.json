@@ -1,4 +1,5 @@
 {
+  "$schema": "../../../../public/schemas/theme.schema.json",
   "id": "panorama",
   "name": "整窗主视觉 Main Visual",
   "type": "dark",

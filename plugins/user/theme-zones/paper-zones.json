@@ -1,4 +1,5 @@
 {
+  "$schema": "../../../public/schemas/theme.schema.json",
   "id": "paper-zones",
   "name": "纸纹分区 Paper Zones",
   "type": "light",

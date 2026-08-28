@@ -1,4 +1,5 @@
 {
+  "$schema": "../../../public/schemas/theme.schema.json",
   "id": "aurora-glass",
   "name": "极光玻璃 Aurora Glass",
   "type": "dark",

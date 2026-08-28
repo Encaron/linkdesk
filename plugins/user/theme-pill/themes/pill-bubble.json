@@ -1,4 +1,5 @@
 {
+  "$schema": "../../../../public/schemas/theme.schema.json",
   "id": "pill-bubble",
   "name": "全胶囊 Pill Bubble",
   "type": "light",

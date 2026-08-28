@@ -1,9 +1,13 @@
 {
+  "$schema": "../../../../public/schemas/theme.schema.json",
   "id": "songti-print",
   "name": "宋体印刷体 Songti Print",
   "type": "light",
   "appearance": {
-    "font": { "ui": "SimSun", "mono": "Cascadia Mono" }
+    "font": {
+      "ui": "SimSun",
+      "mono": "Cascadia Mono"
+    }
   },
   "colorways": [
     {
