@@ -169,7 +169,7 @@ html, body, #root, #pool-root {
   background: var(--bg-window);
   color: var(--text-primary);
   font-family: var(--font-ui);
-  font-size: 12px;
+  font-size: var(--font-size-sm); /* E5.8 Phase 12 #164：全局基准 12→sm */
   user-select: none;
 }
 
@@ -199,7 +199,7 @@ html, body, #root, #pool-root {
 }
 
 .setting-group-title {
-  font-size: 13px;
+  font-size: var(--font-size-md); /* E5.8 Phase 12 #164：13→md */
   font-weight: 600;
   color: var(--text-secondary);
   margin-bottom: 12px;
@@ -237,7 +237,7 @@ html, body, #root, #pool-root {
   border-radius: var(--radius-sm);
   padding: 4px 8px;
   color: var(--text-primary);
-  font-size: 12px;
+  font-size: var(--font-size-sm); /* E5.8 Phase 12 #164：12→sm */
   transition: border-color 150ms;
   outline: none;
 }
@@ -299,7 +299,7 @@ html, body, #root, #pool-root {
   align-items: center;
   gap: 8px;
   margin-bottom: 6px;
-  font-size: 12px;
+  font-size: var(--font-size-sm); /* E5.8 Phase 12 #164：12→sm */
   color: var(--text-primary);
 }
 
