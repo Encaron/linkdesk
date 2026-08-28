@@ -100,8 +100,8 @@ export default function SidebarZone({ sidebar }: SidebarZoneProps) {
         <div className="side-panel-zone" style={zoneHidden ? { display: "none" } : undefined}>
           {inner}
         </div>
-        {/* E5.7#13 + 缝系统：4px 分隔线——共享 .zone-resize-handle（index.css 全局层：锚 cell 边界
-            = 缝中心，偏移 -inset 缝居中 / 直角贴边）。hover --separator → --separator-hover（HandleLine 行为传承） */}
+        {/* E5.7#13 + 缝系统：4px resize handle——共享 .zone-resize-handle（index.css 全局层：锚 cell 边界
+            = 缝中心，偏移 -inset 缝居中 / 直角贴边）。E5.8#143 视觉：常态三点 / hover 成线 + 线端镜像 zone 圆角 */}
         <div
           className={`zone-resize-handle vertical ${handleEdgeForSlot(sidebar.edge ?? "left")}`}
           style={zoneHidden ? { display: "none" } : undefined}

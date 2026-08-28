@@ -269,7 +269,8 @@ export default function PanelZone({ panel }: PanelZoneProps) {
 
     {/* E5.8#37.5 + 缝系统：四向 resize handle——共享 .zone-resize-handle（index.css 全局层：
         锚定本格边界 = 缝中心，偏移 -inset 缝居中 / 直角贴边）。底面板顶缘/顶面板底缘/左面板
-        右缘/右面板左缘。zIndex 走共享 var(--z-sticky)（= Z_INDEX.panelResizeHandle #26 常量表）。 */}
+        右缘/右面板左缘。zIndex 走共享 var(--z-sticky)（= Z_INDEX.panelResizeHandle #26 常量表）。
+        E5.8#143 视觉：常态三点 / hover 成线 + 线端镜像 zone 圆角 */}
     <div
       className={`zone-resize-handle ${isVertical ? "vertical" : "horizontal"} ${handlePosition}`}
       onMouseDown={resize.onResizeStart}

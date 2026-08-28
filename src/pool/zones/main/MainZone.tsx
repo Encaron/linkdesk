@@ -103,7 +103,7 @@ export default function MainZone({ groups, root, creatableViews, activeGroupId }
   const { branchIndices, branchNodesByIndex } = useMemo(() => buildBranchMaps(root), [root]);
 
   // ── 分隔线拖拽状态机（per-branch local sizes + 回执对齐）──
-  const { dividerDragRef, localSizesRef, onDividerMouseDown } = useDividerDrag({
+  const { localSizesRef, onDividerMouseDown } = useDividerDrag({
     tabAction,
     root,
     branchNodesByIndex,
@@ -243,6 +243,9 @@ export default function MainZone({ groups, root, creatableViews, activeGroupId }
             return (
               <div
                 key={`handle-${h.branchIndex}`}
+                // E5.8#143：split-handle = 与 .zone-resize-handle 共享的点/线视觉（index.css 全局层）——
+                //   常态三点 / hover 成线 + 线端镜像 zone 圆角；行为（拖拽/双击复位）零改动
+                className={isH ? "split-handle" : "split-handle row"}
                 style={{
                   position: "absolute",
                   left: `${h.x}%`,
@@ -251,9 +254,6 @@ export default function MainZone({ groups, root, creatableViews, activeGroupId }
                   height: `${h.h}%`,
                   cursor: isH ? "col-resize" : "row-resize",
                   zIndex: Z_INDEX.splitHandle,
-                  // 分隔线始终可见——对标 VS Code sash，默认 subtle，hover accent
-                  background: "var(--separator)",
-                  transition: "background 150ms ease",
                 }}
                 onMouseDown={(e) => {
                   const cr = containerRef.current?.getBoundingClientRect();
@@ -268,16 +268,6 @@ export default function MainZone({ groups, root, creatableViews, activeGroupId }
                     sizes: [50, 50] as [number, number],
                     branchIndex: h.branchIndex,
                   });
-                }}
-                onMouseEnter={(ev) => {
-                  if (!dividerDragRef.current) {
-                    (ev.target as HTMLElement).style.background = "var(--accent)";
-                  }
-                }}
-                onMouseLeave={(ev) => {
-                  if (!dividerDragRef.current) {
-                    (ev.target as HTMLElement).style.background = "var(--separator)";
-                  }
                 }}
               />
             );

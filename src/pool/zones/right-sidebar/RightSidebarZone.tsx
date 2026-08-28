@@ -133,7 +133,7 @@ export default function RightSidebarZone({ rightSidebar, edge }: RightSidebarZon
           {inner}
         </div>
         {/* E5.7#22 + 缝系统：左侧 4px resize handle——共享 .zone-resize-handle（index.css 全局层：
-            锚本格左边界 = 缝中心，偏移 -inset 缝居中 / 直角贴边）。#13 同款视觉（--separator → --separator-hover） */}
+            锚本格左边界 = 缝中心，偏移 -inset 缝居中 / 直角贴边）。E5.8#143 视觉：常态三点 / hover 成线 */}
         <div
           className={`zone-resize-handle vertical ${handleEdgeForSlot(edge)}`}
           style={zoneHidden ? { display: "none" } : undefined}

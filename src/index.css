@@ -436,19 +436,84 @@ select {
   overflow: hidden;
 }
 
-/* ── E5.8 缝系统共享 resize handle——宿主所有（pool-css 门禁禁池 @import → 共享几何必须在此全局层）。
+/* ── E5.8 缝系统共享 resize handle——宿主所有 zone 的分界线（结构元素，非可配组件，E5.8#143 视觉定稿）。
+   pool-css 门禁禁池 @import → 共享几何必须在此全局层（.split-handle 与它共享点/线视觉，零重复）。
    锚定 cell 边界（= 缝中心）：偏移 = -inset → 圆角开（inset 2px）时 4px 手柄恰好居中填满 4px 缝
    （相邻表面各半，零重叠零空隙）；直角（inset 0）时手柄落在自身格内边缘（4px 分隔带，不遮邻格）。
-   z-index --z-sticky（= Z_INDEX.panelResizeHandle 200）——表面（z1）之上、浮层（1500+）之下。 ── */
+   z-index --z-sticky（= Z_INDEX.panelResizeHandle 200）——表面（z1）之上、浮层（1500+）之下。
+   #143 定稿：常态三点居中 → hover 整条线淡入 + 点淡出（opacity 150-200ms，transform/opacity 不触发重排）；
+   命中区仍 4px（不改命中区语义）——手柄本体透明只露点/线；点/线写死固定值，只有线端读 zone 同键。 ── */
 .zone-resize-handle {
   position: absolute;
-  background: var(--separator, rgba(255, 255, 255, 0.08));
   z-index: var(--z-sticky);
-  transition: background 0.15s;
 }
 
-.zone-resize-handle:hover {
-  background: var(--separator-hover, rgba(255, 255, 255, 0.15));
+/* #143 常态三点——缝正中心（离四角圆弧最远，直角/圆角都自然）。
+   单元素 + box-shadow 两兄弟点 = 3 点（5px 中心距 = mockup gap 3px + 2px 点）。 */
+.zone-resize-handle::before,
+.split-handle::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 2px;
+  height: 2px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  box-shadow:
+    0 5px 0 0 var(--text-muted),
+    0 -5px 0 0 var(--text-muted);
+  transform: translate(-50%, -50%);
+  transition: opacity 0.16s ease;
+  pointer-events: none;
+}
+
+/* 横缝（.horizontal + MainZone 横条 .split-handle.row）：三点横排 */
+.zone-resize-handle.horizontal::before,
+.split-handle.row::before {
+  box-shadow:
+    5px 0 0 0 var(--text-muted),
+    -5px 0 0 0 var(--text-muted);
+}
+
+/* #143 hover 成线——整条线淡入 + 点淡出；线端 border-radius 镜像 zone 圆角
+   （读 --surface-radius 唯一真相源：直角 0 → 线端直角 / 圆角 px → 2px 线端帽自动成胶囊，
+   零新键零监视，与缝系统 --surface-inset 派生同血缘）。越弧只在 hover 瞬时出现——用户接受。 */
+.zone-resize-handle::after,
+.split-handle::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  transform: translateX(-50%);
+  background: var(--accent);
+  border-radius: var(--surface-radius, 0px);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  pointer-events: none;
+}
+
+.zone-resize-handle.horizontal::after,
+.split-handle.row::after {
+  left: 0;
+  right: 0;
+  top: 50%;
+  bottom: auto;
+  width: auto;
+  height: 2px;
+  transform: translateY(-50%);
+}
+
+.zone-resize-handle:hover::after,
+.split-handle:hover::after {
+  opacity: 1;
+}
+
+.zone-resize-handle:hover::before,
+.split-handle:hover::before {
+  opacity: 0;
 }
 
 .zone-resize-handle.vertical {
