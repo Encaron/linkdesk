@@ -29,6 +29,7 @@ import ViewTitleActions from "../../shared/view-title-actions/ViewTitleActions";
 import type { SidebarAction } from "../../../core/types/ipc/sidebarActions"; // E5.7#97：wire 契约归口
 import type { RightSidebarLayout, SidebarViewMeta } from "../../../core/types/pool/poolLayout"; // E5.8#36.8：右栏真 zone 类型（消费字段同 SidebarLayout）
 import { useResizeDrag } from "../../hooks/useResizeDrag"; // E5.8#37.5：通用 resize 拖拽 hook（收敛结构性重复）
+import { handleEdgeForSlot } from "../../hooks/gridLayout"; // E5.8#146：handle 落点派生（左槽→右缘、右槽→左缘——恒朝向主区）
 import "./RightSidebarZone.css";
 
 /** role 判别字面量——eslint no-restricted-syntax 拦 `=== "小写字面量"`（SidebarZone #10 同款提大写常量） */
@@ -36,9 +37,12 @@ const ROLE_TOOLBAR = "toolbar" as const;
 
 interface RightSidebarZoneProps {
   rightSidebar: RightSidebarLayout;
+  /** E5.8#146：右栏所在槽边——PoolZoneShell 从 sidebar.edge 对边反推（RightSidebarLayout 不携带自身
+   *  edge，防两处字面量——池布局 DTO 设计注）。handle 落点 + 拖拽方向全由此派生。 */
+  edge: "left" | "right";
 }
 
-export default function RightSidebarZone({ rightSidebar }: RightSidebarZoneProps) {
+export default function RightSidebarZone({ rightSidebar, edge }: RightSidebarZoneProps) {
   // toolbar height tracked for PoolToolbarSlot（SidebarZone #10 同款）
   const setToolbarHeight = useState(0)[1];
 
@@ -47,13 +51,14 @@ export default function RightSidebarZone({ rightSidebar }: RightSidebarZoneProps
     window.linkdesk?.pool?.sidebarAction?.(action);
   }, []);
 
-  /* ── E5.7#22 + E5.8#37.5：左侧 resize handle——useResizeDrag（#13 语义零差异迁移：
+  /* ── E5.7#22 + E5.8#37.5：resize handle——useResizeDrag（#13 语义零差异迁移：
        乐观本地宽 + rAF 节流 + mouseup/buttons===0 一次性 commit + 无位移 no-op + pushLayout 回执对齐）。
-       左侧 handle 向左拖 = 增宽（growSign -1）。 ── */
+       E5.8#146 归一化：handle 落点 + 拖拽方向从 edge 派生（PanelZone 先例同款）——
+       右槽 handle 左缘（左拖增宽 -1）；左槽 handle 右缘（右拖增宽 +1）。 ── */
 
   const resize = useResizeDrag({
     axis: "col",
-    growSign: -1,
+    growSign: edge === "right" ? -1 : 1,
     min: rightSidebar.minWidth ?? 0,
     max: rightSidebar.maxWidth ?? Infinity,
     value: rightSidebar.width,
@@ -163,7 +168,7 @@ export default function RightSidebarZone({ rightSidebar }: RightSidebarZoneProps
     {/* E5.7#22 + 缝系统：左侧 4px resize handle——共享 .zone-resize-handle（index.css 全局层：
         锚本格左边界 = 缝中心，偏移 -inset 缝居中 / 直角贴边）。#13 同款视觉（--separator → --separator-hover） */}
     <div
-      className="zone-resize-handle vertical left"
+      className={`zone-resize-handle vertical ${handleEdgeForSlot(edge)}`}
       style={rightSidebar.visible ? undefined : { display: "none" }}
       onMouseDown={resize.onResizeStart}
       aria-hidden="true"

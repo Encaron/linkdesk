@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { computePoolGrid, isPanelCoveringSlot } from "./gridLayout";
+import { computePoolGrid, isPanelCoveringSlot, handleEdgeForSlot } from "./gridLayout";
 import type { PoolGridInput } from "./gridLayout";
 
 function base(overrides: Partial<PoolGridInput> = {}): PoolGridInput {
@@ -24,6 +24,15 @@ function areaOf(input: PoolGridInput, zone: keyof ReturnType<typeof computePoolG
   if (!c) return null;
   return `${c.rowStart} / ${c.rowEnd} / ${c.colStart} / ${c.colEnd}`;
 }
+
+describe("handleEdgeForSlot——分割线 handle 落点派生（E5.8#146 归一化）", () => {
+  it("左槽 → 右缘（handle 恒朝向主区）", () => {
+    expect(handleEdgeForSlot("left")).toBe("right");
+  });
+  it("右槽 → 左缘（handle 恒朝向主区）", () => {
+    expect(handleEdgeForSlot("right")).toBe("left");
+  });
+});
 
 describe("isPanelCoveringSlot——覆盖推导单一来源（S10）", () => {
   it("center 不覆盖任何槽", () => {

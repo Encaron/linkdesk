@@ -73,6 +73,15 @@ export function isPanelCoveringSlot(align: GridPanelAlign, slot: "left" | "right
   return align === "right" || align === "justify";
 }
 
+/**
+ * zone 分割线 handle 落点派生（E5.8#146 归一化）——handle 恒朝向主区（main 两侧栏之间）：
+ * 「左槽 → 右缘、右槽 → 左缘」。对齐 PanelZone 派生先例（handle 落点 + 拖拽方向全从 edge 派生）。
+ * 单一权威：本 helper + 槽位归属（sidebarEdge / 对边反推）都在本模块，两侧栏组件只消费。
+ */
+export function handleEdgeForSlot(slot: "left" | "right"): "left" | "right" {
+  return slot === "left" ? "right" : "left";
+}
+
 /** 池 grid 唯一推导点——调用方（PoolZoneShell）把 DTO 尺寸归一化后传入 */
 export function computePoolGrid(input: PoolGridInput): PoolGridSpec {
   const panel = input.panelVisible

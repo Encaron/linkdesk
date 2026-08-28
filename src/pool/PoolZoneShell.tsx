@@ -35,9 +35,11 @@ import BackgroundLayer from "./zones/BackgroundLayer"; // E5.8#50.8：全窗背�
 function PoolZoneShell({ layout }: { layout: PoolLayout }) {
   // E5.8#37.5：归一化 DTO → 池 grid 唯一推导（列/行模板 + 各 zone grid 放置）。
   // width/height 不进推导（auto 内容驱动——PanelZone 自身根尺寸决定面板行/列大小）。
-  // E5.8#43-2：iconBar/sidebar/statusBar 可选（脱出窗子集不推）——sidebar 缺省 edge 兜底 left
+  // E5.8#43-2：iconBar/sidebar/statusBar 可选（脱出窗子集不推）——sidebar 缺省 edge 兜底 left。
+  // E5.8#146：sidebarEdge 单一真相源——grid 推导 + RightSidebarZone edge 对边反推同源（零第二字面量）。
+  const sidebarEdge = layout.sidebar?.edge ?? "left";
   const grid = computePoolGrid({
-    sidebarEdge: layout.sidebar?.edge ?? "left",
+    sidebarEdge,
     panelVisible: layout.panel?.visible === true,
     panelEdge: layout.panel?.edge ?? "bottom",
     panelAlign: layout.panel?.align ?? "center",
@@ -105,10 +107,12 @@ function PoolZoneShell({ layout }: { layout: PoolLayout }) {
         )}
 
         {/* RightSidebarZone——E5.7#22（Phase 5）：右侧栏骨架（greenfield——数据生产者归 Phase 12）。
-            #37.5：真渲染能力（宽度/折叠/展开/handle 镜像）+ grid 放置（swap 规则对边槽）。 */}
+            #37.5：真渲染能力（宽度/折叠/展开/handle 镜像）+ grid 放置（swap 规则对边槽）。
+            #146：edge 从 sidebarEdge 对边反推——handle 落点/拖拽方向随槽位归一化（池布局 DTO
+            RightSidebarLayout 不携带自身 edge，防两处字面量）。 */}
         {layout.rightSidebar?.visible && (
           <div className="pool-grid-cell" style={cellStyle(grid.cells.rightSidebar)}>
-            <RightSidebarZone rightSidebar={layout.rightSidebar} />
+            <RightSidebarZone rightSidebar={layout.rightSidebar} edge={sidebarEdge === "left" ? "right" : "left"} />
           </div>
         )}
       </div>

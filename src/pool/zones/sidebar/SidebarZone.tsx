@@ -41,6 +41,7 @@ import PoolSectionStack from "../../shared/pool-section-stack/PoolSectionStack";
 import type { SidebarAction } from "../../../core/types/ipc/sidebarActions"; // E5.7#97：wire 契约归口
 import type { SidebarLayout, SidebarViewMeta } from "../../../core/types/pool/poolLayout";
 import { useResizeDrag } from "../../hooks/useResizeDrag"; // E5.8#37.5：通用 resize 拖拽 hook（收敛结构性重复）
+import { handleEdgeForSlot } from "../../hooks/gridLayout"; // E5.8#146：handle 落点派生（左槽→右缘、右槽→左缘——恒朝向主区）
 // E5.6#11-fix4：header 右键菜单——壳 ContextMenu 聪慧组件（池内用法同 GroupTabBar）
 import ContextMenu from "../../../components/shared/context-menu/ContextMenu";
 import ViewTitleActions from "../../shared/view-title-actions/ViewTitleActions"; // E5.8#36.6：mergeHeaderWhenSingle 单视图时容器 header 即视图 header——同声明消费
@@ -67,11 +68,12 @@ export default function SidebarZone({ sidebar }: SidebarZoneProps) {
 
   /* ── E5.7#13 分隔线 + E5.8#37.5 useResizeDrag 迁移（行为零差异：#13 语义原样——
        乐观本地宽 + rAF 节流 + mouseup/buttons===0 一次性 commit + 无位移 no-op + pushLayout 回执对齐）。
-       右侧 4px 分隔线，右拖增宽（growSign +1）。 ── */
+       E5.8#146 归一化：分隔线落点 + 拖拽方向从 sidebar.edge 派生（PanelZone 先例同款）——
+       左槽 handle 右缘（右拖增宽 +1）；右槽 handle 左缘（左拖增宽 -1）。 ── */
 
   const resize = useResizeDrag({
     axis: "col",
-    growSign: 1,
+    growSign: sidebar.edge === "right" ? -1 : 1,
     min: sidebar.minWidth ?? 0,
     max: sidebar.maxWidth ?? Infinity,
     value: sidebar.width,
@@ -96,7 +98,7 @@ export default function SidebarZone({ sidebar }: SidebarZoneProps) {
       {/* E5.7#13 + 缝系统：4px 分隔线——共享 .zone-resize-handle（index.css 全局层：锚 cell 边界
           = 缝中心，偏移 -inset 缝居中 / 直角贴边）。hover --separator → --separator-hover（HandleLine 行为传承） */}
       <div
-        className="zone-resize-handle vertical right"
+        className={`zone-resize-handle vertical ${handleEdgeForSlot(sidebar.edge ?? "left")}`}
         style={sidebar.visible ? undefined : { display: "none" }}
         onMouseDown={resize.onResizeStart}
         aria-hidden="true"
