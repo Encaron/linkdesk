@@ -45,6 +45,12 @@ export class FileIconResolver {
   private _extMap: Record<string, IconThemeMapping>;
   private _folderMap: Record<string, IconThemeMapping>;
   private _folderOpenMap: Record<string, IconThemeMapping>;
+  // E5.8#133.6：主题顶层默认图标——未命中匹配表时用主题默认而非 codicon（缺省 = 壳 codicon 保底）
+  private _defaultFile?: IconThemeMapping;
+  private _defaultFolder?: IconThemeMapping;
+  private _defaultFolderOpen?: IconThemeMapping;
+  private _defaultRoot?: IconThemeMapping;
+  private _defaultRootOpen?: IconThemeMapping;
 
   constructor(custom?: IconThemeMappings) {
     this._fileMap = { ...toMapping(FILE_ICON_MAP), ...custom?.files };
@@ -52,6 +58,11 @@ export class FileIconResolver {
     this._folderMap = { ...toMapping(FOLDER_ICON_MAP), ...custom?.folders };
     // foldersExpanded——图标主题可选；未指定则复用 folders（契约语义）
     this._folderOpenMap = { ...toMapping(FOLDER_ICON_MAP), ...custom?.foldersExpanded };
+    this._defaultFile = custom?.file;
+    this._defaultFolder = custom?.folder;
+    this._defaultFolderOpen = custom?.folderExpanded;
+    this._defaultRoot = custom?.rootFolder;
+    this._defaultRootOpen = custom?.rootFolderExpanded;
   }
 
   /** 解析映射条目 → 渲染描述符（glyph → class / image → 壳解析好的 linkdesk:// url） */
@@ -65,22 +76,22 @@ export class FileIconResolver {
   getIcon(item: ExplorerItem): IconDescriptor {
     if (item.isDirectory) return this.getFolderIcon(item);
     return this.resolve(
-      this._fileMap[item.name] ?? this._extMap[this._getExt(item.name)],
+      this._fileMap[item.name] ?? this._extMap[this._getExt(item.name)] ?? this._defaultFile,
       DEFAULT_FILE_ICON,
     );
   }
 
   /** 获取文件夹图标 */
   getFolderIcon(item: ExplorerItem): IconDescriptor {
-    if (item.parent === null) return cls(DEFAULT_ROOT_ICON);
-    return this.resolve(this._folderMap[item.name], DEFAULT_FOLDER_ICON);
+    if (item.parent === null) return this.resolve(this._defaultRoot, DEFAULT_ROOT_ICON);
+    return this.resolve(this._folderMap[item.name] ?? this._defaultFolder, DEFAULT_FOLDER_ICON);
   }
 
   /** 获取展开状态的文件夹图标 */
   getFolderIconOpened(item: ExplorerItem): IconDescriptor {
-    if (item.parent === null) return cls(DEFAULT_ROOT_ICON);
+    if (item.parent === null) return this.resolve(this._defaultRootOpen ?? this._defaultRoot, DEFAULT_ROOT_ICON);
     return this.resolve(
-      this._folderOpenMap[item.name] ?? this._folderMap[item.name],
+      this._folderOpenMap[item.name] ?? this._folderMap[item.name] ?? this._defaultFolderOpen ?? this._defaultFolder,
       DEFAULT_FOLDER_OPEN_ICON,
     );
   }

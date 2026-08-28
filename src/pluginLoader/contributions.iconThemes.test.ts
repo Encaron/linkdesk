@@ -118,12 +118,75 @@ describe("normalizeIconThemeMappings——四段混用 + 无效条目", () => {
     expect(normalizeIconThemeMappings({}, "demo-plugin")).toBeNull();
   });
 
-  it("顶层 font 段不进 mappings 结果（只归一化四段）", () => {
+  it("顶层 font 段不进 mappings 结果（只归一化四段 + 默认图标）", () => {
     const m = normalizeIconThemeMappings(
       { font: { path: "icons/fonts/demo.woff2", family: "demo-font" }, files: { "demo.txt": { class: "demo-font demo-font-demo" } } },
       "demo-plugin"
     );
     expect(m).toEqual({ files: { "demo.txt": { class: "demo-font demo-font-demo" } } });
+  });
+});
+
+describe("normalizeIconThemeMappings——顶层默认图标（E5.8#133.6）", () => {
+  it("单条目默认图标 imagePath → linkdesk://（对齐 VS Code iconTheme 顶层键）", () => {
+    const m = normalizeIconThemeMappings(
+      {
+        file: { imagePath: "icons/file.svg" },
+        folder: { imagePath: "icons/folder.svg" },
+        folderExpanded: { imagePath: "icons/folder-open.svg" },
+        rootFolder: { imagePath: "icons/folder-root.svg" },
+        rootFolderExpanded: { imagePath: "icons/folder-root-open.svg" },
+      },
+      "demo-plugin"
+    );
+    expect(m).toEqual({
+      file: { imagePath: "linkdesk://demo-plugin/icons/file.svg" },
+      folder: { imagePath: "linkdesk://demo-plugin/icons/folder.svg" },
+      folderExpanded: { imagePath: "linkdesk://demo-plugin/icons/folder-open.svg" },
+      rootFolder: { imagePath: "linkdesk://demo-plugin/icons/folder-root.svg" },
+      rootFolderExpanded: { imagePath: "linkdesk://demo-plugin/icons/folder-root-open.svg" },
+    });
+  });
+
+  it("glyph 形态默认图标原样透传", () => {
+    const m = normalizeIconThemeMappings(
+      { folder: { class: "demo-font demo-folder", color: "#ffcc00" } },
+      "demo-plugin"
+    );
+    expect(m).toEqual({ folder: { class: "demo-font demo-folder", color: "#ffcc00" } });
+  });
+
+  it("匹配表 + 默认图标混合归一化", () => {
+    const m = normalizeIconThemeMappings(
+      {
+        extensions: { ".py": { imagePath: "icons/python.svg" } },
+        folder: { imagePath: "icons/folder.svg" },
+      },
+      "demo-plugin"
+    );
+    expect(m).toEqual({
+      extensions: { ".py": { imagePath: "linkdesk://demo-plugin/icons/python.svg" } },
+      folder: { imagePath: "linkdesk://demo-plugin/icons/folder.svg" },
+    });
+  });
+
+  it("默认图标无效 → 跳过 + warn，其余有效保留", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const m = normalizeIconThemeMappings(
+      {
+        folder: { imagePath: 42 } as unknown as Record<string, unknown>,
+        files: { "demo.txt": { class: "demo-font" } },
+      },
+      "demo-plugin"
+    );
+    expect(m).toEqual({ files: { "demo.txt": { class: "demo-font" } } });
+    expect(warn).toHaveBeenCalledTimes(1);
+    warn.mockRestore();
+  });
+
+  it("仅默认图标有效也算有效表（整表非空）", () => {
+    const m = normalizeIconThemeMappings({ folder: { imagePath: "icons/folder.svg" } }, "demo-plugin");
+    expect(m).toEqual({ folder: { imagePath: "linkdesk://demo-plugin/icons/folder.svg" } });
   });
 });
 

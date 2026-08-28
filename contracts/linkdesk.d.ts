@@ -1912,6 +1912,17 @@ export interface IconThemeMappings {
     folders?: Record<string, IconThemeMapping>;
     /** 文件夹打开态——可选，未指定则复用 folders */
     foldersExpanded?: Record<string, IconThemeMapping>;
+    /* ── 默认图标（E5.8#133.6：对齐 VS Code iconTheme 顶层默认键——未命中匹配表时用主题默认而非 codicon 保底） ── */
+    /** 默认文件图标——未命中 files/extensions 时使用（缺省 = 壳 codicon 保底） */
+    file?: IconThemeMapping;
+    /** 默认文件夹图标——未命中 folders 时使用（缺省 = 壳 codicon 保底） */
+    folder?: IconThemeMapping;
+    /** 默认文件夹展开图标——未命中 foldersExpanded 时使用（缺省 = 壳 codicon 保底） */
+    folderExpanded?: IconThemeMapping;
+    /** 根文件夹图标（缺省 = 壳 codicon 保底） */
+    rootFolder?: IconThemeMapping;
+    /** 根文件夹展开图标（缺省 = 壳 codicon 保底） */
+    rootFolderExpanded?: IconThemeMapping;
 }
 /** 插件状态变更——plugin-state:changed 载荷（跨 WebView 状态同步原语） */
 export interface PluginStateChangedPayload {

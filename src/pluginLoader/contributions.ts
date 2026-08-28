@@ -488,29 +488,41 @@ async function loadThemeContributionData(pluginId: string, manifest: PluginManif
 function normalizeIconThemeMappings(data: Record<string, unknown>, pluginId: string): IconThemeMappings | null {
   const result: IconThemeMappings = {};
   let anyValid = false;
+  // E5.8#133.6：匹配表（多条目）+ 顶层默认图标（单条目）分别归一化；默认图标对齐 VS Code iconTheme 顶层键
   for (const section of ["files", "extensions", "folders", "foldersExpanded"] as const) {
     const raw = data[section];
     if (!raw || typeof raw !== "object") continue;
     const out: Record<string, IconThemeMapping> = {};
     for (const [name, def] of Object.entries(raw as Record<string, unknown>)) {
-      if (!def || typeof def !== "object") {
-        console.warn(`[iconTheme] 映射条目 "${name}" 无效——需对象（class 或 imagePath），已跳过`);
-        continue;
-      }
-      const d = def as Record<string, unknown>;
-      if (typeof d.class === "string") {
-        out[name] = typeof d.color === "string" ? { class: d.class, color: d.color } : { class: d.class };
-        anyValid = true;
-      } else if (typeof d.imagePath === "string") {
-        out[name] = { imagePath: getPluginAssetPath(pluginId, d.imagePath) };
-        anyValid = true;
-      } else {
-        console.warn(`[iconTheme] 映射条目 "${name}" 无效——需 class 或 imagePath，已跳过`);
-      }
+      const entry = normalizeEntry(name, def, pluginId);
+      if (entry) { out[name] = entry; anyValid = true; }
     }
     if (Object.keys(out).length > 0) result[section] = out;
   }
+  for (const section of ["file", "folder", "folderExpanded", "rootFolder", "rootFolderExpanded"] as const) {
+    const raw = data[section];
+    if (!raw || typeof raw !== "object") continue;
+    const entry = normalizeEntry(section, raw as Record<string, unknown>, pluginId);
+    if (entry) { result[section] = entry; anyValid = true; }
+  }
   return anyValid ? result : null;
+}
+
+/** 单条映射条目归一化——双形态（glyph class 原样 / imagePath 解析 linkdesk://）；无效 → null + warn */
+function normalizeEntry(name: string, def: unknown, pluginId: string): IconThemeMapping | null {
+  if (!def || typeof def !== "object") {
+    console.warn(`[iconTheme] 映射条目 "${name}" 无效——需对象（class 或 imagePath），已跳过`);
+    return null;
+  }
+  const d = def as Record<string, unknown>;
+  if (typeof d.class === "string") {
+    return typeof d.color === "string" ? { class: d.class, color: d.color } : { class: d.class };
+  }
+  if (typeof d.imagePath === "string") {
+    return { imagePath: getPluginAssetPath(pluginId, d.imagePath) };
+  }
+  console.warn(`[iconTheme] 映射条目 "${name}" 无效——需 class 或 imagePath，已跳过`);
+  return null;
 }
 
 /* ── 图标主题自定义字体元数据（E5.8#133.4：mappings JSON 顶层可选 font 段） ── */
