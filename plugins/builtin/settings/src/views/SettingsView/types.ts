@@ -58,6 +58,10 @@ interface ConfigProperty {
    *  SettingRow 读本字段 → 齿轮菜单「跟随主题」项可用（context key settingFollowTheme）。
    *  通用设置插件零外观知识——第三方设置/主题插件在自己的键上声明即获得同能力。 */
   resetsToTheme?: boolean;
+  /** E5.8#158：默认项语义——本键有独立「默认项」落点（= 内置 dark/light 配方值 = __none__ 哨兵）。
+   *  SettingRow 读本字段 → 齿轮「重置此设置」对四键改写成 __none__（真默认，不跟随主题），
+   *  context key settingResetsToDefault。玻璃/圆角等无独立默认项键不声明（只显跟随主题）。 */
+  resetsToDefault?: boolean;
 }
 
 export type { SettingsViewProps, GroupInfo, ConfigProperty };

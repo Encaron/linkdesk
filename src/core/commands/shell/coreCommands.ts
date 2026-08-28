@@ -17,6 +17,7 @@ import { CUSTOM_EVENTS } from "../../react/events/CoreEvents";
 import i18n from "../../../i18n";
 import { getWorkspaceLayout } from "../../services/layout/LayoutService"; // E3f #56
 import { getUserSettings } from "../../services/configuration/ConfigurationService"; // E3f #56
+import { CONFIG_NONE_SENTINEL } from "../../services/ui/ThemeEngine"; // E5.8#158：默认项哨兵（__none__）
 
 // E5#44-1：Callbacks 类型 + 注册函数提取到 CoreCallbacks.ts
 export type { CoreCallbacks } from "../infra/CoreCallbacks";
@@ -218,6 +219,12 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
   },
   // ── E3f #53：设置项齿轮命令 ──
 
+  // E5.8#158：默认项语义真区分——用户实机「重置此设置」与「跟随主题」本应不同（跟随主题=活动主题值，
+  // 默认项=内置 dark/light 配方值=无主题时 GUI）但曾同调 resetConfigurationValue（删 user scope→主题胜出）。
+  // 区分：声明 resetsToDefault 的键（字体/背景四键，:root 硬兜底 = __none__ 哨兵）→ 写 CONFIG_NONE_SENTINEL
+  // 落到系统默认（不跟随主题）；其余键 → 删 user scope 回 schema 默认（VS Code 通用重置语义）。
+  // when = settingResetsToDefault（四键恒显）|| (settingModified && !settingFollowTheme)（普通键改后显、
+  // 玻璃/圆角不显——它们唯一能回的状态就是跟随主题，由 followTheme 命令覆盖，无独立默认项）。
   {
     id: "workbench.action.resetSetting",
     title: "重置此设置",
@@ -231,17 +238,30 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
         i18n.t("确定要将「{{key}}」重置为默认值吗？", { key })
       );
       if (!confirmed) return;
-      const { resetConfigurationValue } = await import("../../services/configuration/ConfigurationService");
-      await resetConfigurationValue(key);
+      const { getMergedSchema } = await import("../../registry/ConfigurationRegistry");
+      const prop = getMergedSchema()[key];
+      if (prop?.resetsToDefault) {
+        // E5.8#158：默认项 = 内置 dark/light 配方值（:root 硬兜底）——写 __none__ 哨兵，getAppearanceOverrides
+        // 消费（字体→系统栈 / 背景→无图），与「跟随主题」（删覆盖主题胜出）真区分。
+        const { setConfigurationValue } = await import("../../services/configuration/ConfigurationService");
+        await setConfigurationValue(key, CONFIG_NONE_SENTINEL, "user");
+      } else {
+        const { resetConfigurationValue } = await import("../../services/configuration/ConfigurationService");
+        await resetConfigurationValue(key);
+      }
     },
     menuId: MENU_SLOTS.SettingItemGear,
     menuGroup: "navigation",
-    when: "settingModified",
+    when: "settingResetsToDefault || (settingModified && !settingFollowTheme)",
   },
   // E5.8 用户审计 #3：跟随主题——单个键删 user scope 回落主题基线（外观键未覆盖时主题胜出，
   // 删覆盖即切主题跟变，解决 custom 模式切主题丢配置痛点 3）。与「重置此设置」同路径
   // resetConfigurationValue，差异 = 语义直述 + 仅 resetsToTheme 声明键出现（SettingRow 设 context key
   // settingFollowTheme）+ 不弹确认（轻操作可逆——重设值即恢复，对标 VS Code 重置语义）。
+  // E5.8#157：恒显（2026-08-28 用户拍板）——原 when 含 settingModified（userValue 存在性动态判）：
+  // #154 播种把值写 user scope，让「其实已跟随主题」的行也显「跟随主题」，点完无变化又消失 = 困惑。
+  // 去 settingModified 恒显 resetsToTheme 键——已跟随的键点击 = 无操作；作用域仍由 settingFollowTheme
+  // 逐行收窄（非 resetsToTheme 键不见），「打开存储位置」等 settingKey 门控命令不受影响。
   {
     id: "workbench.action.followTheme",
     title: "跟随主题",
@@ -255,7 +275,7 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
     },
     menuId: MENU_SLOTS.SettingItemGear,
     menuGroup: "navigation",
-    when: "settingModified && settingFollowTheme",
+    when: "settingFollowTheme",
   },
   {
     id: "workbench.action.copySettingId",

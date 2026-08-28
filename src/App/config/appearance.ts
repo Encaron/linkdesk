@@ -288,6 +288,7 @@ export function registerAppearanceConfiguration(t: ConfigT): void {
         group: t("背景"),
         default: "",
         resetsToTheme: true,
+        resetsToDefault: true, // E5.8#158：默认项 = 内置 dark/light 配方值 = :root 硬兜底 = __none__（绝对无图）
         // E5.8#87：无背景（__none__）= 绝对无图（盖掉主题/mix 图）；空 = 跟随主题
         description: t("窗口背景图片路径——空 = 主题自带；无背景 = 绝对无图"),
         uiHint: "image", // E5.8#50.11：专属「选择图片」控件（选图→拷贝入库→受控路径持久化）
@@ -377,6 +378,7 @@ export function registerAppearanceConfiguration(t: ConfigT): void {
         group: t("文字"),
         default: "",
         resetsToTheme: true,
+        resetsToDefault: true, // E5.8#158：默认项 = 内置 dark/light 配方值 = :root 硬兜底 = __none__（系统字体栈）
         // E5.8#87：系统字体（__none__）= 绝对系统默认（不跟随主题字体）；空 = 跟随主题
         description: t("界面字体——空 = 跟随主题；选择后写 --font-ui；系统字体 = 显式系统默认"),
         // E5.8#50.20：全字族化 FontFamilySelect（monoOnly:false 列全族非等宽）——
@@ -397,6 +399,7 @@ export function registerAppearanceConfiguration(t: ConfigT): void {
         group: t("文字"),
         default: "",
         resetsToTheme: true,
+        resetsToDefault: true, // E5.8#158：默认项 = 内置 dark/light 配方值 = :root 硬兜底 = __none__（系统等宽栈）
         description: t("等宽字体——空 = 跟随主题；选择后写 --font-mono；系统字体 = 显式系统默认"),
         uiHint: "fontFamily",
         monoOnly: true,
@@ -437,6 +440,7 @@ export function registerAppearanceConfiguration(t: ConfigT): void {
         group: t("背景"),
         default: "",
         resetsToTheme: true,
+        resetsToDefault: true, // E5.8#158：默认项 = 内置 dark/light 配方值 = :root 硬兜底 = __none__（绝对无图）
         // E5.8#87：无背景（__none__）= 绝对无图（盖掉主题/mix 图）；空 = 跟随主题
         description: t("分区背景图片路径——空 = 主题自带；无背景 = 绝对无图"),
         uiHint: "image",

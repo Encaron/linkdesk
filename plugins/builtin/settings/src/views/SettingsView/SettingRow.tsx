@@ -114,6 +114,9 @@ function SettingRow({
       // E5.8 用户审计 #3：跟随主题门控——键声明 resetsToTheme 才显示齿轮「跟随主题」项
       // （coreCommands when="settingModified && settingFollowTheme"——通用设置插件零外观知识）
       window.linkdesk?.contextKey?.set("settingFollowTheme", !!prop?.resetsToTheme);
+      // E5.8#158：默认项语义——resetsToDefault 键齿轮「重置此设置」改写 __none__（真默认），
+      // when=settingResetsToDefault || (settingModified && !settingFollowTheme)（coreCommands）
+      window.linkdesk?.contextKey?.set("settingResetsToDefault", !!prop?.resetsToDefault);
       // inspectConfiguration 异步获取修改状态——wire 面 unknown，IPC 边界收窄（主进程组装 { userValue, ... }）
       const insp = await lk().inspectConfiguration(configKey) as { userValue?: unknown } | undefined;
       window.linkdesk?.contextKey?.set("settingModified", insp?.userValue !== undefined);
@@ -130,6 +133,7 @@ function SettingRow({
     window.linkdesk?.contextKey?.set("settingKey", undefined);
     window.linkdesk?.contextKey?.set("settingModified", false);
     window.linkdesk?.contextKey?.set("settingFollowTheme", false);
+    window.linkdesk?.contextKey?.set("settingResetsToDefault", false);
   }, []);
 
   if (!prop) return null;

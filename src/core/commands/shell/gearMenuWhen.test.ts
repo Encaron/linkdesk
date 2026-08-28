@@ -17,7 +17,12 @@ import type { MenuItemDescriptor } from "../../api/linkdesk-api";
 
 const GEAR = MENU_SLOTS.SettingItemGear;
 const OPEN_WHEN = "settingKey == 'app.backgroundImage' || settingKey == 'app.zoneBackgroundImage'";
-const FOLLOW_WHEN = "settingModified && settingFollowTheme";
+// E5.8#157 恒显（用户拍板）：去 settingModified——resetsToTheme 键齿轮恒显「跟随主题」
+//（settingFollowTheme 由 SettingRow 逐行设，作用域仍收窄）；原动态门控致「点完消失又须改配置回来」困惑。
+const FOLLOW_WHEN = "settingFollowTheme";
+// E5.8#158 默认项语义（用户拍板）：settingResetsToDefault 四键恒显「重置此设置」（改写 __none__ 真默认）
+// || 普通键改后显（settingModified && 未跟随主题）；玻璃/圆角无独立默认项不显（唯一能回的状态=跟随主题）。
+const RESET_WHEN = "settingResetsToDefault || (settingModified && !settingFollowTheme)";
 
 function registerGearItem(cmdId: string, when?: string): void {
   registerCommand("demo-plugin", {
@@ -60,14 +65,14 @@ describe("gear 菜单 when 门控（E5.8#153-fix 回归）", () => {
     expect(items.find((i) => i.command === "demo.action.openStorage")).toBeFalsy();
   });
 
-  it("跟随主题——resetsToTheme 键 + 已修改才现（settingModified && settingFollowTheme 全局门控）", async () => {
+  it("跟随主题——恒显：resetsToTheme 键必现（含未修改），非 resetsToTheme 键不现（#157 拍板去 settingModified）", async () => {
     registerGearItem("demo.action.followTheme", FOLLOW_WHEN);
-    // 未修改 → 不现
+    // resetsToTheme 键 + 未修改（settingModified=false）→ 恒显现
     ContextKeyService.setValue("settingModified", false);
     ContextKeyService.setValue("settingFollowTheme", true);
     let items = await gearItems({ settingKey: "app.fontFamily" });
-    expect(items.find((i) => i.command === "demo.action.followTheme")).toBeFalsy();
-    // 非 resetsToTheme 键 → 不现
+    expect(items.find((i) => i.command === "demo.action.followTheme")).toBeTruthy();
+    // 非 resetsToTheme 键（settingFollowTheme=false，即使已修改）→ 不现——作用域不扩散
     ContextKeyService.setValue("settingModified", true);
     ContextKeyService.setValue("settingFollowTheme", false);
     items = await gearItems({ settingKey: "app.fontFamily" });
@@ -77,6 +82,34 @@ describe("gear 菜单 when 门控（E5.8#153-fix 回归）", () => {
     ContextKeyService.setValue("settingFollowTheme", true);
     items = await gearItems({ settingKey: "app.fontFamily" });
     expect(items.find((i) => i.command === "demo.action.followTheme")).toBeTruthy();
+  });
+
+  it("重置此设置——默认项恒显 + 普通键改后显：四键必现（含未修改/已跟随），普通键改后现，玻璃/圆角已跟随不现（#158）", async () => {
+    registerGearItem("demo.action.resetSetting", RESET_WHEN);
+    // ① 四键（settingResetsToDefault=true）→ 恒显——即使未修改、即使已跟随主题（默认项=__none__ 真默认恒可回）
+    ContextKeyService.setValue("settingModified", false);
+    ContextKeyService.setValue("settingFollowTheme", true);
+    ContextKeyService.setValue("settingResetsToDefault", true);
+    let items = await gearItems({ settingKey: "app.fontFamily" });
+    expect(items.find((i) => i.command === "demo.action.resetSetting")).toBeTruthy();
+    // ② 普通键（resetsToDefault=false）+ 已修改 + 未跟随 → 现（重置可回 schema 默认）
+    ContextKeyService.setValue("settingModified", true);
+    ContextKeyService.setValue("settingFollowTheme", false);
+    ContextKeyService.setValue("settingResetsToDefault", false);
+    items = await gearItems({ settingKey: "editor.fontSize" });
+    expect(items.find((i) => i.command === "demo.action.resetSetting")).toBeTruthy();
+    // ③ 玻璃/圆角（resetsToDefault=false）+ 已修改 + 已跟随主题 → 不现（唯一能回的状态就是跟随主题，followTheme 命令覆盖）
+    ContextKeyService.setValue("settingModified", true);
+    ContextKeyService.setValue("settingFollowTheme", true);
+    ContextKeyService.setValue("settingResetsToDefault", false);
+    items = await gearItems({ settingKey: "app.surfaceRadius" });
+    expect(items.find((i) => i.command === "demo.action.resetSetting")).toBeFalsy();
+    // ④ 普通键 + 未修改 → 不现（无默认项可回）
+    ContextKeyService.setValue("settingModified", false);
+    ContextKeyService.setValue("settingFollowTheme", false);
+    ContextKeyService.setValue("settingResetsToDefault", false);
+    items = await gearItems({ settingKey: "editor.fontSize" });
+    expect(items.find((i) => i.command === "demo.action.resetSetting")).toBeFalsy();
   });
 
   it("无 when 菜单项恒现（复制设置 ID 语义——非门控项不受影响）", async () => {

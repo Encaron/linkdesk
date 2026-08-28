@@ -74,6 +74,13 @@ export interface ConfigurationProperty {
    *  壳 appearance 17 键声明；第三方设置/主题插件可在自己键上声明获得同能力（零壳改动）。
    *  不含 = 齿轮无此项（模式开关/布尔开关/动作按钮等 reset≠回落主题 的键不声明）。 */
   resetsToTheme?: boolean;
+  /** E5.8#158：默认项语义——本键有独立「默认项」落点（= 内置 dark/light 配方值，:root 硬兜底）。
+   *  声明该字段的键，设置行齿轮「重置此设置」改写成 `CONFIG_NONE_SENTINEL`（__none__）——字体/背景
+   *  键落到系统栈/无图（不跟随主题），与「跟随主题」（删 user scope 主题胜出）真正区分两语义。
+   *  SettingRow 设 context key settingResetsToDefault → coreCommands resetSetting 分流。
+   *  壳 appearance 四键（fontFamily/fontFamilyMono/backgroundImage/zoneBackgroundImage）声明；
+   *  第三方键声明即得同能力（零壳改动）。不含 = 「重置此设置」保持删 user scope 回 schema 默认。 */
+  resetsToDefault?: boolean;
 }
 
 /** 插件贡献的 configuration 分组——对标 VS Code package.json contributes.configuration */
