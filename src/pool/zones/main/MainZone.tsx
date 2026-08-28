@@ -152,7 +152,7 @@ export default function MainZone({ groups, root, creatableViews, activeGroupId }
           alignItems: "center",
           justifyContent: "center",
           height: "100%",
-          color: "var(--text-muted, #888)",
+          color: "var(--text-muted)", /* E5.8#128.3：去掉 hex fallback */
           fontSize: "var(--font-size-md)", /* E5.8 Phase 12 #171：13→md */
           userSelect: "none",
         }}

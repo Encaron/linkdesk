@@ -262,8 +262,8 @@
 
 /* ── E5.6#16.7k-3：PlusMenu [+] 下拉菜单 ── */
 .group-tab-plus-menu {
-  background: var(--bg-dropdown);
-  border: 1px solid var(--border-normal);
+  background: var(--bg-card); /* E5.8#128.3：幽灵 --bg-dropdown → --bg-card（下拉表面，同 quick-pick） */
+  border: 1px solid var(--border);
   border-radius: var(--radius-md);
   padding: 4px 0;
   min-width: 160px;
@@ -283,5 +283,5 @@
 }
 
 .group-tab-plus-menu-item:hover {
-  background: var(--bg-hover);
+  background: var(--hover-overlay); /* E5.8#128.3：幽灵 --bg-hover → --hover-overlay（原无效值，现恢复 hover 反馈） */
 }

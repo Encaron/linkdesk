@@ -92,7 +92,7 @@ export default function DragOverlays({
                   gap: 4,
                   padding: "4px 12px",
                   background: "var(--bg-card)",
-                  border: "1px solid var(--border-normal)",
+                  border: "1px solid var(--border)",
                   borderRadius: "var(--radius-sm)",
                   color: "var(--text-primary)",
                   fontSize: "var(--font-size-md)", /* E5.8 Phase 12 #171：13→md */

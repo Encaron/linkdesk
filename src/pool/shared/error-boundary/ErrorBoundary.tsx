@@ -79,10 +79,10 @@ class ErrorBoundary extends Component<Props, State> {
             onClick={this.handleRetry}
             style={{
               padding: "4px 16px",
-              border: "1px solid var(--border-normal)",
+              border: "1px solid var(--border)",
               borderRadius: "var(--radius-sm)",
-              background: "var(--bg-button)",
-              color: "var(--text-normal)",
+              background: "var(--bg-card)",
+              color: "var(--text-primary)",
               cursor: "pointer",
               fontSize: "var(--font-size-sm)", /* E5.8 Phase 12 #171：12→sm */
             }}
