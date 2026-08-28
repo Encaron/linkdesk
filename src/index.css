@@ -49,6 +49,9 @@
   /* E5.8#128 遮罩密度 token——浮层权威 scrim-plane 统一消费（遮罩独立于明暗主题，:root 单定义） */
   --scrim-dialog: rgba(0, 0, 0, 0.5);   /* 模态遮罩——DialogHost 设计 §7.1 */
   --scrim-overlay: rgba(0, 0, 0, 0.3);  /* 轻量遮罩——QuickPickHost 设计 §5.1 */
+  /* E5.8#128.9 BackgroundLayer 遮罩基色静态兜底——缺省黑（同 ThemeEngine BACKGROUND_ZERO #000000）；
+     主题经 background.maskColor 覆盖。亮暗同值，单 :root 定义（同 scrim 惯例）。消费侧零 hex fallback。 */
+  --bg-mask-color: #000;
   /* E5.8#50.14 六域 token——字体/圆角/阴影。默认值 = 现状（不加载主题零视觉变化）；主题可覆盖。
      radius 八档语义见 02-变量契约 §2.2（3/7/9/10/14px 偏门值已归并就近档，±1-2px 拍板接受）；
      shadow 语义见 §2.5（--context-menu-shadow 等既有 token 继续复用）。 */
@@ -247,9 +250,10 @@ html, body, #root, #pool-root {
   transform: translateX(16px);
   /* E5.8#144：ON 态旋钮色 fallback 语义 = text-on-accent（accent 上的可读色），不再回落 OFF 态
      toggle-knob（那是为 border 轨道可见设计的，accent 轨道下可能同色糊——4 主题实测）。
-     链路：toggle-knob-on（主题显式）→ text-on-accent（accent 可读色）→ #FFFFFF。
+     链路：toggle-knob-on（主题显式）→ text-on-accent（accent 可读色）。
+     E5.8#128.9：#FFFFFF 内层 fallback 是死路径（text-on-accent :root 恒定义）→ 删除。
      防回潮：scripts/check-theme-audit.mjs 校验 toggle-knob-on ≠ accent。 */
-  background: var(--toggle-knob-on, var(--text-on-accent, #FFFFFF));
+  background: var(--toggle-knob-on, var(--text-on-accent));
 }
 .toggle.disabled { opacity: 0.4; cursor: not-allowed; }
 
