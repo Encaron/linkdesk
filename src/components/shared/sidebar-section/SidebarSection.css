@@ -79,8 +79,8 @@
   height: calc(18px * var(--ui-scale));
   padding: 0 5px;
   border-radius: var(--radius-lg);
-  background: var(--badge-background, var(--accent));
-  color: var(--badge-foreground, var(--badge-text));
+  background: var(--badge-background); /* E5.8#128.7：幽灵键实化（默认 = --accent，colorway 可覆盖） */
+  color: var(--badge-foreground);
   font-size: var(--font-size-2xs); /* 10→2xs */
   font-weight: 600;
   line-height: calc(18px * var(--ui-scale));
@@ -157,7 +157,7 @@
 
 .sidebar-section-more:hover {
   color: var(--text-primary);
-  background: var(--hover-bg, rgba(255,255,255,0.06));
+  background: var(--hover-overlay); /* E5.8#128.7：幽灵 --hover-bg → --hover-overlay */
 }
 
 .sidebar-section-more.show-on-hover {
@@ -176,8 +176,8 @@
   right: 0;
   margin-top: 4px;
   padding: 4px;
-  background: var(--panel-bg, var(--bg-side-panel));
-  border: 1px solid var(--border-color, rgba(255,255,255,0.1));
+  background: var(--bg-side-panel); /* E5.8#128.7：幽灵 --panel-bg/--border-color 折叠真实 token */
+  border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   box-shadow: var(--context-menu-shadow);
   z-index: var(--z-dropdown, 100);

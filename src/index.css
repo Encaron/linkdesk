@@ -88,6 +88,9 @@
   /* badge-text = text-on-accent 别名 —— 归一化：所有 accent 底上的文字走同一 token。
      主题覆盖 text-on-accent 即可同时覆盖 badge-text；单独覆盖 badge-text 也生效。 */
   --badge-text: var(--text-on-accent);
+  /* E5.8#128.7 徽章底/字——原幽灵键实化（默认 = accent 系；主题可经 colorway 覆盖） */
+  --badge-background: var(--accent);
+  --badge-foreground: var(--badge-text);
   /* Phase 3.5 新增 —— 主题全覆盖 */
   --bg-titlebar: #252526;
   --bg-icon-bar: #18181B;
@@ -102,6 +105,7 @@
   --kbd-border: rgba(128, 128, 128, 0.12);        /* 快捷键 keycap 边 */
   --kbd-hover-bg: rgba(255, 255, 255, 0.2);       /* keycap 于选中行（accent 底）亮底 */
   --kbd-hover-border: rgba(255, 255, 255, 0.35);  /* keycap 于选中行亮边 */
+  --bg-selection: color-mix(in srgb, var(--accent) 20%, transparent); /* 非聚焦选中底（原 rgba(0,120,212,0.2)，accent 衍生） */
   --cm-timestamp: #8A8A8A;
   /* Phase 3.5 新增 —— z-index 语义层级。
      🔥 E5#98 重新平衡：对照实际裸数字相对顺序——dropdown 在 overlay 之上，drag 最高。 */

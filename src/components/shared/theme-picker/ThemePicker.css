@@ -23,7 +23,7 @@
 }
 
 .theme-card:hover {
-  border-color: var(--border-normal);
+  border-color: var(--separator); /* E5.8#128.7：幽灵 --border-normal（无效值=无变化）→ separator 轻亮边（hover 亮边恢复意图，主题感知） */
   transform: translateY(-1px);
 }
 

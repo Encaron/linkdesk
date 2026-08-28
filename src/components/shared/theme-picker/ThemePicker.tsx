@@ -23,8 +23,8 @@ interface ThemePickerProps {
 /** 多配色圆点渲染上限——超出仅靠「N 配色」徽标计数，预览区不堆叠 */
 const MAX_PREVIEW_DOTS = 6;
 
-/** 单配色配方无 accent 预览色时的中性条兜底——数据兜底非样式硬编码（rgba 非 hex，同色块先例） */
-const NEUTRAL_BAR = "rgba(128,128,128,0.45)";
+/** 单配色配方无 accent 预览色时的中性条兜底——数据兜底（E5.8#128.7：硬编码 rgba → --text-secondary 45% 合成，主题感知） */
+const NEUTRAL_BAR = "color-mix(in srgb, var(--text-secondary) 45%, transparent)";
 
 function ThemePicker({ value, onChange }: ThemePickerProps) {
   const { t } = useTranslation();
