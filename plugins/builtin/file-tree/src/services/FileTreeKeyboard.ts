@@ -16,7 +16,7 @@ import { useRef, useCallback } from "react";
 import { useClipboardKeys } from "@src/pool/hooks/useClipboardKeys";
 import type { ExplorerItem } from "./FileTreeModel";
 import type { FileTreeModel } from "./FileTreeModel";
-import { TREE_ITEM_HEIGHT } from "../utils/layoutTokens";
+import { getScaledTreeItemHeight } from "../utils/layoutTokens";
 import type { FlatItem } from "../utils/pathUtils";
 
 /* ── 类型 ── */
@@ -43,12 +43,13 @@ export interface KeyboardCallbacks {
 /** 滚动使指定 index 的节点可见 */
 export function scrollToItem(index: number, containerEl: HTMLDivElement | null): void {
   if (!containerEl) return;
-  const targetTop = index * TREE_ITEM_HEIGHT;
+  const itemHeight = getScaledTreeItemHeight();
+  const targetTop = index * itemHeight;
   const { scrollTop: st, clientHeight: ch } = containerEl;
   if (targetTop < st) {
     containerEl.scrollTop = targetTop;
-  } else if (targetTop + TREE_ITEM_HEIGHT > st + ch) {
-    containerEl.scrollTop = targetTop - ch + TREE_ITEM_HEIGHT;
+  } else if (targetTop + itemHeight > st + ch) {
+    containerEl.scrollTop = targetTop - ch + itemHeight;
   }
 }
 
