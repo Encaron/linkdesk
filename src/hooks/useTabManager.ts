@@ -12,7 +12,6 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import i18n from "../i18n";
 import { showConfirm } from "../core/services/ui/DialogService";
 import { shellEvents } from "../core/react/events/ShellEvents";
-import { normalizePath } from "../core/utils/path/pathUtils";
 import type { CreateTabOptions } from "../core/api/types";
 import { getTabBehavior } from "../pluginLoader/viewRegistry";
 import { CoreEvents } from "../core/react/events/CoreEvents";
@@ -31,6 +30,7 @@ import {
   reduceFocusTab,
   reduceFocusGroup,
   reduceCloseTab,
+  reduceCloseBySourceId,
   reduceForceCloseTab,
   reduceDuplicateTab,
   reduceSetDirty,
@@ -227,24 +227,17 @@ export function useTabManager() {
 
   /** 按 sourceId 找标签页并关闭——和 focusTabBySourceId 对称的通用 API。
    *  插件删自己的数据模型时用此 API 关闭对应标签页。
-   *  不依赖 tab.id === session.id 的假设——只用 sourceId 链接。 */
+   *  不依赖 tab.id === session.id 的假设——只用 sourceId 链接（或 id 直接匹配）。
+   *  E5.8#46.2：纯 reducer 化——reduceCloseBySourceId（sourceId/id 全匹配移除）+ ensureFallback（main 恒非空）。
+   *  remove 语义：不弹 dirty 确认（资源身份消失）；dirty tab 静默跳过（#46.12 决策）。 */
   const closeTabBySourceId = useCallback(
     (sourceId: string): CloseTabResult => {
       // 🔥 E5.7 Bug A 修复：返回值同 createTab——不能从 updater 里读。
-      // E5.8#46.12：查找统一走 findTabBySourceId（sourceId 族一处定义，归一化）
+      // E5.8#46.2：closed = eager 有移除发生（调用方当 void 消费返回值）
       const prev = tabStateRef.current;
-      const tab = findTabBySourceId(prev, sourceId);
-      const eager = tab ? reduceCloseTab(prev, tab.id) : null;
-      setTabState((prev2) => {
-        const found = findTabBySourceId(prev2, sourceId);
-        if (!found) return prev2;
-        const r = reduceCloseTab(prev2, found.id);
-        return r.state ?? prev2;
-      });
-      if (tab && eager) {
-        return { closed: eager.closed, tabId: tab.id, reason: eager.reason, newActiveTabId: eager.newActiveTabId };
-      }
-      return { closed: false, tabId: sourceId };
+      const closed = reduceCloseBySourceId(prev, sourceId) !== prev;
+      setTabState((p) => ensureFallback(reduceCloseBySourceId(p, sourceId)));
+      return { closed, tabId: sourceId };
     },
     []
   );
@@ -289,11 +282,6 @@ export function useTabManager() {
       });
       return { closed: eager.closed, tabId, reason: eager.reason, newActiveTabId: eager.newActiveTabId };
     },
-    []
-  );
-
-  const forceCloseTab = useCallback(
-    (tabId: string): CloseTabResult => commitForceClose(tabId),
     []
   );
 
@@ -441,51 +429,9 @@ export function useTabManager() {
     };
   }, []);
 
-  // ── E5#54b：标签页生命周期——集中订阅外部事件，TabManager 唯一权威 ──
-  useEffect(() => {
-    const u1 = shellEvents.on("file:deleted", ({ filePath }) => {
-      const tabs = tabStateRef.current.groups.flatMap((g) => g.tabs);
-      for (const t of tabs) {
-        if (t.sourceId === filePath || t.filePath === filePath) {
-          forceCloseTab(t.id);
-        }
-      }
-    });
-    const u2 = shellEvents.on("file:renamed", ({ oldPath, newPath }) => {
-      setTabState((prev) => {
-        const newGroups = prev.groups.map((g) => ({
-          ...g,
-          tabs: g.tabs.map((t) => {
-            if (t.sourceId === oldPath || t.filePath === oldPath) {
-              const newLabel = normalizePath(newPath).split("/").pop() || newPath;
-              return { ...t, label: newLabel, filePath: newPath, sourceId: newPath };
-            }
-            return t;
-          }),
-        }));
-        return { ...prev, groups: newGroups };
-      });
-    });
-    const u3 = shellEvents.on("plugin:removed", ({ pluginId }) => {
-      const tabs = tabStateRef.current.groups.flatMap((g) => g.tabs);
-      for (const t of tabs) {
-        if (t.pluginId === pluginId || t.type === pluginId) {
-          forceCloseTab(t.id);
-        }
-      }
-    });
-    const u4 = shellEvents.on("workspace:folderRemoved", ({ folderUri }) => {
-      const normalized = normalizePath(folderUri);
-      const tabs = tabStateRef.current.groups.flatMap((g) => g.tabs);
-      for (const t of tabs) {
-        const fp = t.filePath ?? t.sourceId ?? "";
-        if (normalizePath(fp).startsWith(normalized)) {
-          forceCloseTab(t.id);
-        }
-      }
-    });
-    return () => { u1(); u2(); u3(); u4(); };
-  }, [forceCloseTab]);
+  // E5.8#46.2：资源事件订阅已上移 windowHost（壳侧唯一订阅点）——主窗分支经 mainResourceActions 调本 hook 方法，
+  // 脱出窗分支 mapResourceAcrossWindows 广播。旧 u1-u4 订阅（file/plugin/folder forceCloseTab + 内联 rename）已删——
+  // 一窗一订阅（只响应本窗事件）正是 #46.2 要消灭的病；windowHost 广播 = 全窗事实来源。
 
   return {
     tabState,
@@ -498,7 +444,6 @@ export function useTabManager() {
     focusTabBySourceId,
     closeTabBySourceId,
     closeTab,
-    forceCloseTab,
 
     // ── 布局（分屏/合屏/拖拽/分割调整）──
     splitTab,

@@ -16,7 +16,7 @@ import { useHeartbeat } from "./hooks/useHeartbeat"; // E2a #5 心跳看门狗
 import { useMemoryMonitor } from "./hooks/useMemoryMonitor"; // E2a #6 内存监控
 import { useTabManager } from "./hooks/useTabManager";
 import { usePoolSync } from "./hooks/usePoolSync";
-import { useWindowHost } from "./App/windowHost"; // E5.8#43-2：壳窗口注册表（多窗口 tabState + 窗口模式策略）
+import { useWindowHost, type MainResourceActions } from "./App/windowHost"; // E5.8#43-2：壳窗口注册表（多窗口 tabState + 窗口模式策略）；#46.2：主窗资源联动动作集
 
 // Phase 5b：核心命令注册（右键菜单归一化）+ E5#5e-ii-f：核心回调（壳快捷键执行标签页操作）
 import { updateCoreCallbacks, type CoreCallbacks } from "./core/commands/shell/coreCommands";
@@ -102,7 +102,25 @@ function App() {
     restoreClosedTab,
     removeTab, // E5.8#44：跨窗口搬迁源侧摘除（main 专用，内建 ensureFallback）
     insertTab, // E5.8#44：跨窗口搬迁目标侧插入（main）
+    renameResourceBySourceId, // E5.8#46.2：资源事件族——windowHost 广播 effect 主窗分支消费
+    deleteResourceBySourceId,
+    removeTabsByPlugin,
+    removeTabsUnderFolder,
   } = useTabManager();
+
+  // E5.8#46.2：主窗资源联动动作集——windowHost 广播 effect 主窗分支消费（脱出窗走 mapResourceAcrossWindows）。
+  // 6 方法恒等（useCallback []）→ useMemo 稳定 → 广播 effect 经 ref 读活值（deps [] 恒等注册，#46.12 死循环止血）
+  const mainResourceActions: MainResourceActions = useMemo(
+    () => ({
+      renameResourceBySourceId,
+      deleteResourceBySourceId,
+      updateTabLabelBySourceId,
+      closeTabBySourceId,
+      removeTabsByPlugin,
+      removeTabsUnderFolder,
+    }),
+    [renameResourceBySourceId, deleteResourceBySourceId, updateTabLabelBySourceId, closeTabBySourceId, removeTabsByPlugin, removeTabsUnderFolder],
+  );
 
   // E5.8#43-2：壳窗口注册表——main tabState 活同步进注册表；createWindow/closeWindow/updateTabState
   // 供 #44 脱出手势/右键命令消费
@@ -111,6 +129,7 @@ function App() {
   const { windows, createWindow, closeWindow, updateTabState } = useWindowHost({
     mainTabState: tabState,
     onDriftWindowClosed: () => setPanelVisible(false),
+    mainResourceActions,
   });
 
   // E5.8#44：壳侧窗口间标签页搬迁——detach（拖出/右键「在新窗口中打开」）+ merge（吸附并窗/「并回主窗口」）

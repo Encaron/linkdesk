@@ -20,6 +20,28 @@ import type { WindowShellState, WindowMode } from "./windows";
 import { getDetachedWindows } from "../core/services/layout/LayoutService";
 import type { PoolWindowBoundsPayload } from "../core/types/ipc/poolActions";
 import { purgePoolCommandWindows } from "../core/registry/commands/CommandRegistry"; // E5.8#43-4：窗口关闭 → 归属表清该窗命令
+// E5.8#46.2：资源事件跨窗广播——windowHost 是壳侧唯一订阅点（全窗事实来源）
+import { shellEvents } from "../core/react/events/ShellEvents";
+import { normalizePath } from "../core/utils/path/pathUtils"; // file:renamed label 派生（basename——壳桥只做路径语义，不派生资源概念）
+import {
+  reduceUpdateTabLabelBySourceId,
+  reduceResourceRenamed,
+  reduceResourceDeleted,
+  reduceCloseBySourceId,
+  reduceRemoveTabsByPlugin,
+  reduceRemoveTabsUnderFolder,
+} from "../hooks/useTabManager/reducers-tab"; // 脱出窗广播 reducer（与主窗 useTabManager 同源，语义归一）
+
+/** E5.8#46.2：主窗资源联动动作集——windowHost 广播 effect 主窗分支经 ref 调用。
+ *  命名与 useTabManager 稳定方法一一对应（useCallback [] 恒等）——主窗副作用归 useTabManager 真相源。 */
+export interface MainResourceActions {
+  renameResourceBySourceId(oldSourceId: string, newSourceId: string, label?: string): void;
+  deleteResourceBySourceId(sourceId: string): void;
+  updateTabLabelBySourceId(sourceId: string, label: string): void;
+  closeTabBySourceId(sourceId: string): void;
+  removeTabsByPlugin(pluginId: string): void;
+  removeTabsUnderFolder(folderUri: string): void;
+}
 
 interface UseWindowHostOptions {
   /** 主窗标签页真相源（useTabManager）——活同步进注册表，主窗布局随标签操作即时重推 */
@@ -27,6 +49,9 @@ interface UseWindowHostOptions {
   /** E5.8#45：漂移面板窗关闭回调——壳消费关闭面板（I9-13 拍板 A：关窗即关会话，不回归主窗口）。
    *   OS ×（onWindowClosed）与壳驱动 closeWindow 双路径同触发。 */
   onDriftWindowClosed?: () => void;
+  /** E5.8#46.2：主窗资源联动动作集——广播 effect 主窗分支消费（App 传入 useTabManager 方法；
+   *  缺省 = 脱出窗仍广播、主窗不动——hook 可独立用于无主窗场景）。 */
+  mainResourceActions?: MainResourceActions;
 }
 
 export interface UseWindowHostResult {
@@ -80,7 +105,13 @@ export function mapResourceAcrossWindows(
   return { windows: mapped, emptyWindows };
 }
 
-export function useWindowHost({ mainTabState, onDriftWindowClosed }: UseWindowHostOptions): UseWindowHostResult {
+/** E5.8#46.2：file:renamed 标签派生——壳桥只做路径语义（basename），不派生资源概念（label 语义归事件负载）。
+ *  normalizePath 归一斜杠/盘符后取末段；空路径兜底原值。 */
+function basenameOf(path: string): string {
+  return normalizePath(path).split("/").pop() || path;
+}
+
+export function useWindowHost({ mainTabState, onDriftWindowClosed, mainResourceActions }: UseWindowHostOptions): UseWindowHostResult {
   // 初始只有主窗——ready:true（主池可立即接收布局，preload 缓冲回放；onReady('main') 仅确认）
   const [windows, setWindows] = useState<WindowShellState[]>(() => [
     { windowId: "main", mode: "main", ready: true, tabState: mainTabState },
@@ -92,6 +123,9 @@ export function useWindowHost({ mainTabState, onDriftWindowClosed }: UseWindowHo
   // onDriftWindowClosed 稳定 ref——effect 依赖 [] 注册一次，回调体读活值
   const onDriftWindowClosedRef = useRef(onDriftWindowClosed);
   onDriftWindowClosedRef.current = onDriftWindowClosed;
+  // E5.8#46.2：主窗资源联动动作集稳定 ref——广播 effect 依赖 [] 恒等注册，回调体读活值（#46.12 死循环止血：闭包不抓动作集）
+  const mainResourceActionsRef = useRef(mainResourceActions);
+  mainResourceActionsRef.current = mainResourceActions;
 
   // main tabState 活同步进注册表——真相源 = useTabManager（任一标签操作 → 主窗布局重推）
   useEffect(() => {
@@ -178,6 +212,63 @@ export function useWindowHost({ mainTabState, onDriftWindowClosed }: UseWindowHo
     if (isDrift) onDriftWindowClosedRef.current?.();
     // E5.8#43-4（③ 归属表清理）：壳驱动关窗同样销毁池 → 摘除该窗命令归属（同 onWindowClosed 理由）
     purgePoolCommandWindows(windowId);
+  }, []);
+
+  /** E5.8#46.2：脱出窗跨窗广播应用——函数式 setWindows（React 串行应用不丢并发更新）+ reduce 后空窗纯移除
+   *  （自灭注册表侧 I9-8）；IPC 关窗副作用在更新器外（硬约束 6）。空窗预判读 windowsRef 最近提交态
+   *  （事件 handler 串行 + 幂等 reduce 判定稳定）；mapResourceAcrossWindows 无变化返原引用 = React bailout（#46.12 止血）。 */
+  const applyToDetached = useCallback(
+    (reduce: (state: TabState) => TabState) => {
+      const { emptyWindows } = mapResourceAcrossWindows(windowsRef.current, reduce);
+      setWindows((prev) => {
+        const r = mapResourceAcrossWindows(prev, reduce);
+        return r.windows.filter((w) => !emptyWindows.includes(w.windowId));
+      });
+      for (const id of emptyWindows) closeWindow(id);
+    },
+    [closeWindow],
+  );
+
+  // E5.8#46.2：资源事件跨窗广播——windowHost 唯一订阅点（壳侧，全窗事实来源）。
+  // 主窗分支经 mainResourceActionsRef 调 useTabManager 方法（更新器外副作用）；脱出窗分支 applyToDetached
+  // 更新注册表 → usePoolSync 布局重推 → 脱出窗 UI 同步。6 事件族：file:renamed/deleted（文件树）、
+  // tab:updateLabelBySourceId/closeBySourceId（tabs API）、plugin:removed（卸载）、workspace:folderRemoved（工作区）。
+  // 🔥 #46.12 死循环止血铁律：effect deps [] 恒等注册（windows/tabState 变化绝不复订阅）；主窗方法调用在
+  // setWindows 更新器外；无事件重发射；mapResourceAcrossWindows bailout 拦截无变化重渲染。
+  useEffect(() => {
+    const main = mainResourceActionsRef.current;
+    if (!main) return;
+    const unsubs = [
+      shellEvents.on("file:renamed", ({ oldPath, newPath }) => {
+        const label = basenameOf(newPath);
+        main.renameResourceBySourceId(oldPath, newPath, label);
+        applyToDetached((s) => reduceResourceRenamed(s, oldPath, newPath, label));
+      }),
+      shellEvents.on("file:deleted", ({ filePath }) => {
+        main.deleteResourceBySourceId(filePath);
+        applyToDetached((s) => reduceResourceDeleted(s, filePath));
+      }),
+      shellEvents.on("tab:updateLabelBySourceId", ({ sourceId, label }) => {
+        main.updateTabLabelBySourceId(sourceId, label);
+        applyToDetached((s) => reduceUpdateTabLabelBySourceId(s, sourceId, label));
+      }),
+      shellEvents.on("tab:closeBySourceId", ({ sourceId }) => {
+        main.closeTabBySourceId(sourceId);
+        applyToDetached((s) => reduceCloseBySourceId(s, sourceId));
+      }),
+      shellEvents.on("plugin:removed", ({ pluginId }) => {
+        main.removeTabsByPlugin(pluginId);
+        applyToDetached((s) => reduceRemoveTabsByPlugin(s, pluginId));
+      }),
+      shellEvents.on("workspace:folderRemoved", ({ folderUri }) => {
+        main.removeTabsUnderFolder(folderUri);
+        applyToDetached((s) => reduceRemoveTabsUnderFolder(s, folderUri));
+      }),
+    ];
+    return () => {
+      unsubs.forEach((u) => u());
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps [] 恒等注册是 #46.12 死循环止血的铁律（闭包读 ref 活值）
   }, []);
 
   /** 更新某窗口 tabState——脱出窗标签操作经它写注册表（#44 TabBar 复用接线） */
