@@ -20,6 +20,10 @@
   --border: #3C3C3C;
   --separator: #474747;
   --icon-inactive: #858585;
+  /* E5.8#128：img 图标单色化滤镜（filter 无法直接取色——值锚定 --icon-inactive 灰；主题可经
+     colorway 覆盖整链，任意 filter 组合）。active 锚定 --text-on-accent 白。 */
+  --icon-filter-inactive: brightness(0) saturate(100%) invert(52%);
+  --icon-filter-active: brightness(0) saturate(100%) invert(100%);
   --system-log: #6A6A6A;
   --sent-echo: #0078D4;
   --status-connected: #4EC9B0;
@@ -118,6 +122,9 @@
   --border: #D4D4D4;
   --separator: #E8E8E8;
   --icon-inactive: #999999;
+  /* E5.8#128：亮色版 img 图标滤镜——inactive 锚定 --icon-inactive 浅灰；active 锚定 --text-primary 深字 */
+  --icon-filter-inactive: brightness(0) saturate(100%) invert(60%);
+  --icon-filter-active: brightness(0) saturate(100%) invert(18%);
   --system-log: #999999;
   --sent-echo: #0078D4;
   --status-connected: #388A34;

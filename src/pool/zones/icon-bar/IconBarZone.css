@@ -73,7 +73,7 @@
   width: 24px;
   height: 24px;
   opacity: 0.55;
-  filter: brightness(0) saturate(100%) invert(55%);
+  filter: var(--icon-filter-inactive); /* E5.8#128：img 单色滤镜 token 化（--icon-inactive 灰） */
   transition: opacity 150ms, filter 150ms;
 }
 
@@ -113,7 +113,7 @@
 
 .icon-btn.active .plugin-icon--img {
   opacity: 1;
-  filter: brightness(0) saturate(100%) invert(100%);
+  filter: var(--icon-filter-active); /* E5.8#128：active 滤镜 token 化（--text-on-accent 白） */
 }
 
 .icon-btn:hover .plugin-icon--emoji,
