@@ -72,7 +72,7 @@
 }
 
 .session-item-name {
-  font-size: 13px;
+  font-size: var(--font-size-md); /* E5.8 Phase 12 #176：session-item-name 13→md */
   color: var(--text-primary);
   white-space: nowrap;
   overflow: hidden;
@@ -86,7 +86,7 @@
 }
 
 .session-item-subtitle {
-  font-size: 11px;
+  font-size: var(--font-size-xs); /* E5.8 Phase 12 #176：session-item-subtitle 11→xs */
   color: var(--text-muted);
   white-space: nowrap;
   overflow: hidden;
@@ -114,7 +114,7 @@
   background: transparent;
   border: none;
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--font-size-lg); /* E5.8 Phase 12 #176：hover 操作钮 icon-only codicon（基类 16px）→lg */
   padding: 2px 4px;
   border-radius: 3px;
   cursor: pointer;
@@ -140,7 +140,7 @@
   background: transparent;
   border: none;
   color: var(--text-muted);
-  font-size: 11px;
+  font-size: var(--font-size-xs); /* E5.8 Phase 12 #176：create-btn 11→xs */
   font-weight: 400;
   text-transform: none; /* 覆写 SidebarSection header 的 uppercase */
   letter-spacing: 0;
@@ -171,7 +171,7 @@
   border: 1px solid var(--accent);
   border-radius: 3px;
   color: var(--text-primary);
-  font-size: 12px;
+  font-size: var(--font-size-sm); /* E5.8 Phase 12 #176：create-input 12→sm */
   font-family: inherit;
   padding: 4px 6px;
   outline: none;
@@ -185,12 +185,12 @@
 .session-create-ok,
 .session-create-cancel {
   flex-shrink: 0;
-  width: 22px;
-  height: 22px;
+  width: calc(22px * var(--ui-scale)); /* E5.8 Phase 12 #176：✓✕ 按钮盒乘 scale */
+  height: calc(22px * var(--ui-scale));
   background: transparent;
   border: none;
   border-radius: 3px;
-  font-size: 12px;
+  font-size: var(--font-size-lg); /* E5.8 Phase 12 #176：✓✕ codicon 内容图标（基类 16px）→lg */
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -219,7 +219,7 @@
 
 .session-empty {
   padding: 12px 8px;
-  font-size: 12px;
+  font-size: var(--font-size-sm); /* E5.8 Phase 12 #176：session-empty 12→sm */
   color: var(--text-muted);
   text-align: center;
   line-height: 1.6;
@@ -229,7 +229,7 @@
   background: transparent;
   border: none;
   color: var(--accent);
-  font-size: 12px;
+  font-size: var(--font-size-sm); /* E5.8 Phase 12 #176：empty-link 12→sm */
   cursor: pointer;
   padding: 0 2px;
   margin: 0 2px;
@@ -245,7 +245,7 @@
 
 .session-settings-placeholder {
   padding: 12px 8px;
-  font-size: 12px;
+  font-size: var(--font-size-sm); /* E5.8 Phase 12 #176：settings-placeholder 12→sm */
   color: var(--text-muted);
   text-align: center;
 }
@@ -253,7 +253,7 @@
 /* ── 设置分区标题 ── */
 
 .setting-section-label {
-  font-size: 11px;
+  font-size: var(--font-size-xs); /* E5.8 Phase 12 #176：setting-section-label 11→xs */
   font-weight: 600;
   color: var(--text-secondary);
   text-transform: uppercase;

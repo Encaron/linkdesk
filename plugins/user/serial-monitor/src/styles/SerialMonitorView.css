@@ -38,19 +38,21 @@
 }
 
 .serial-monitor-placeholder-icon {
-  font-size: 32px;
+  /* E5.8 Phase 12 #176：独立显示图标 32px 不缩放（§三.2，#180 白名单）；
+     !important 压过 #183 codicon 基类（pd 96px / IconBar 24px 同款约定） */
+  font-size: 32px !important;
   opacity: 0.3;
 }
 
 .serial-monitor-placeholder-title {
-  font-size: 14px;
+  font-size: var(--font-size-lg); /* E5.8 Phase 12 #176：placeholder-title 14→lg */
   font-weight: 500;
   color: var(--text-secondary);
   margin: 0;
 }
 
 .serial-monitor-placeholder-hint {
-  font-size: 12px;
+  font-size: var(--font-size-sm); /* E5.8 Phase 12 #176：placeholder-hint 12→sm */
   color: var(--text-muted);
   margin: 0;
 }
@@ -76,7 +78,7 @@
   border: 1px solid var(--border);
   border-radius: 4px;
   color: var(--text-secondary);
-  font-size: 12px;
+  font-size: var(--font-size-sm); /* E5.8 Phase 12 #176：toolbar-btn 12→sm */
   padding: 3px 10px;
   cursor: pointer;
   transition: background 150ms, color 150ms;
@@ -106,7 +108,7 @@
 .receive-stats {
   margin-left: auto;
   align-self: center;
-  font-size: 11px;
+  font-size: var(--font-size-xs); /* E5.8 Phase 12 #176：receive-stats 11→xs */
   font-family: 'Sarasa Mono SC', Consolas, 'Courier New', monospace;
   color: var(--text-secondary);
   white-space: nowrap;
@@ -131,7 +133,7 @@
 
 .search-icon {
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--font-size-lg); /* E5.8 Phase 12 #176：搜索 codicon 内容图标（基类 16px）→lg */
   flex-shrink: 0;
 }
 
@@ -142,7 +144,7 @@
   border-radius: 4px;
   padding: 3px 8px;
   color: var(--text-primary);
-  font-size: 12px;
+  font-size: var(--font-size-sm); /* E5.8 Phase 12 #176：search-input 12→sm */
   font-family: 'Sarasa Mono SC', Consolas, 'Courier New', monospace;
   outline: none;
   min-width: 120px;
@@ -159,7 +161,7 @@
 
 .search-count {
   color: var(--text-secondary);
-  font-size: 11px;
+  font-size: var(--font-size-xs); /* E5.8 Phase 12 #176：search-count 11→xs */
   white-space: nowrap;
   flex-shrink: 0;
   min-width: 36px;
@@ -171,7 +173,7 @@
   border: 1px solid var(--border);
   border-radius: 3px;
   color: var(--text-secondary);
-  font-size: 11px;
+  font-size: var(--font-size-xs); /* E5.8 Phase 12 #176：search-opt 11→xs */
   font-weight: 600;
   padding: 2px 6px;
   cursor: pointer;
@@ -196,7 +198,7 @@
   border: 1px solid var(--border);
   border-radius: 3px;
   color: var(--text-secondary);
-  font-size: 10px;
+  font-size: var(--font-size-lg); /* E5.8 Phase 12 #176：search-nav icon-only codicon（基类 16px）→lg */
   padding: 3px 6px;
   cursor: pointer;
   transition: background 100ms;
@@ -213,7 +215,7 @@
   background: transparent;
   border: none;
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--font-size-lg); /* E5.8 Phase 12 #176：search-close icon-only codicon（基类 16px）→lg */
   cursor: pointer;
   padding: 2px 4px;
 }
@@ -225,16 +227,16 @@
 /* === 关键字过滤输入 === */
 
 .filter-keyword-input {
-  height: 24px;
-  font-size: 12px;
+  height: calc(24px * var(--ui-scale)); /* E5.8 Phase 12 #176：输入框 24px 乘 scale（§三.3） */
+  font-size: var(--font-size-sm); /* E5.8 Phase 12 #176：12→sm */
 }
 
 /* === 系统消息区域（对标 V2 lbSystemLog：固定两行 36px + accent 左边框） === */
 
 .system-log-area {
-  height: 36px;
-  min-height: 18px;
-  max-height: 72px;
+  height: calc(36px * var(--ui-scale)); /* E5.8 Phase 12 #176：两行系统消息区乘 scale（§三.3 文字行容器） */
+  min-height: calc(18px * var(--ui-scale));
+  max-height: calc(72px * var(--ui-scale));
   background: var(--bg-input);
   border-left: 3px solid var(--accent);
   border-top: 1px solid var(--border);
@@ -247,7 +249,7 @@
 }
 
 .system-log-line {
-  font-size: 11px;
+  font-size: var(--font-size-xs); /* E5.8 Phase 12 #176：system-log-line 11→xs */
   font-family: 'Sarasa Mono SC', Consolas, 'Courier New', monospace;
   color: var(--system-log);
   line-height: 1.4;
@@ -297,7 +299,7 @@
 .cm-container .cm-scroller {
   overflow: auto;
   font-family: 'Sarasa Mono SC', Consolas, 'Courier New', monospace;
-  font-size: 12px;
+  font-size: var(--font-size-sm); /* E5.8 Phase 12 #176：CM6 接收区 12→sm（§六.2 随全局） */
 }
 
 /* 暂停横幅 */
@@ -309,7 +311,7 @@
   padding: 4px 10px;
   background: var(--warning-bg);
   color: var(--warning-text);
-  font-size: 11px;
+  font-size: var(--font-size-xs); /* E5.8 Phase 12 #176：paused-banner 11→xs */
   text-align: center;
   animation: slideDown 200ms ease;
   z-index: var(--z-sticky);
@@ -334,7 +336,7 @@
   border-radius: 4px;
   padding: 4px 8px;
   color: var(--text-primary);
-  font-size: 12px;
+  font-size: var(--font-size-sm); /* E5.8 Phase 12 #176：CM6 搜索面板 12→sm */
   outline: none;
 }
 .cm-panels input[type="text"]:focus {
@@ -355,7 +357,7 @@
 
 .cm-panels label {
   color: var(--text-secondary);
-  font-size: 12px;
+  font-size: var(--font-size-sm); /* E5.8 Phase 12 #176：cm-panels label 12→sm */
 }
 .cm-panels input[type="checkbox"] {
   accent-color: var(--accent);
@@ -371,9 +373,9 @@
   color: var(--text-on-accent);
   border: none;
   border-radius: 50%;
-  width: 36px;
-  height: 36px;
-  font-size: 16px;
+  width: calc(36px * var(--ui-scale)); /* E5.8 Phase 12 #176：FAB 按钮盒乘 scale */
+  height: calc(36px * var(--ui-scale));
+  font-size: var(--font-size-lg); /* E5.8 Phase 12 #176：↓ 字形 16px→lg（16px 零变化） */
   cursor: pointer;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
   transition: opacity 150ms;
@@ -408,7 +410,7 @@
   border: 1px solid var(--border);
   border-radius: 12px;
   padding: 2px 10px;
-  font-size: 11px;
+  font-size: var(--font-size-xs); /* E5.8 Phase 12 #176：quick-send-pill 11→xs */
   font-family: 'Sarasa Mono SC', Consolas, 'Courier New', monospace;
   color: var(--text-primary);
   cursor: pointer;
@@ -431,7 +433,7 @@
   border: 1px solid var(--border);
   border-radius: 12px;
   padding: 2px 10px;
-  font-size: 11px;
+  font-size: var(--font-size-xs); /* E5.8 Phase 12 #176：quick-send-add 11→xs */
   color: var(--text-muted);
   cursor: pointer;
   transition: border-color 150ms, color 150ms;
@@ -450,8 +452,8 @@
 
 .qs-input {
   width: 100px;
-  height: 24px;
-  font-size: 11px;
+  height: calc(24px * var(--ui-scale)); /* E5.8 Phase 12 #176：qs-input 24px 乘 scale */
+  font-size: var(--font-size-xs); /* E5.8 Phase 12 #176：11→xs */
   padding: 2px 6px;
 }
 
@@ -465,7 +467,7 @@
 
 .hex-warning {
   padding: 3px 10px;
-  font-size: 11px;
+  font-size: var(--font-size-xs); /* E5.8 Phase 12 #176：hex-warning 11→xs */
   color: var(--warning-text);
   background: var(--warning-bg);
   border-bottom: 1px solid rgba(255, 200, 0, 0.2);
@@ -483,7 +485,7 @@
   padding: 0 6px 0 10px;
   color: var(--accent);
   font-family: var(--font-mono, 'Cascadia Code', Consolas, monospace);
-  font-size: 14px;
+  font-size: var(--font-size-lg); /* E5.8 Phase 12 #176：发送区 > 前缀 14→lg */
   font-weight: 600;
   background: var(--bg-card);
   flex-shrink: 0;
@@ -492,8 +494,8 @@
 /* CM6 发送编辑器容器 */
 .send-editor-cm {
   flex: 1;
-  min-height: 32px;
-  max-height: 80px;
+  min-height: calc(32px * var(--ui-scale)); /* E5.8 Phase 12 #176：发送区 CM6 容器 min/max 乘 scale */
+  max-height: calc(80px * var(--ui-scale));
 }
 
 .send-editor-cm .cm-editor {
@@ -509,7 +511,7 @@
 
 .send-editor-cm .cm-editor .cm-scroller {
   font-family: var(--font-mono, 'Cascadia Code', Consolas, monospace);
-  font-size: 13px;
+  font-size: var(--font-size-md); /* E5.8 Phase 12 #176：CM6 发送区 13→md（§六.2 随全局） */
 }
 
 .send-editor-cm .cm-editor .cm-content {
@@ -554,7 +556,7 @@
 
 .history-item {
   padding: 6px 12px;
-  font-size: 12px;
+  font-size: var(--font-size-sm); /* E5.8 Phase 12 #176：history-item 12→sm */
   font-family: 'Sarasa Mono SC', Consolas, 'Courier New', monospace;
   color: var(--text-primary);
   cursor: pointer;
@@ -578,7 +580,7 @@
   border: none;
   border-radius: 4px;
   color: var(--text-on-accent);
-  font-size: 12px;
+  font-size: var(--font-size-sm); /* E5.8 Phase 12 #176：send-btn 12→sm */
   padding: 4px 20px;
   cursor: pointer;
   transition: background 150ms;
