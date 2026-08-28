@@ -9,12 +9,27 @@
  * 5. `./` 前缀路径归一化
  *
  * E5.8#133.4 normalizeIconThemeFontMeta——可选自定义字体 font 段归一化。
+ * E5.8#133.5 resolvePluginDataUrl——删除 dev 探测后恒 linkdesk://（dev/prod 零分叉，单一权威契约）。
  *
  * fixture 命名遵守硬约束 21：虚构值（demo-plugin / demo-icon / Demo Icon），不指向真实插件。
  */
 
 import { describe, it, expect, vi } from "vitest";
-import { normalizeIconThemeMappings, normalizeIconThemeFontMeta } from "./contributions";
+import {
+  normalizeIconThemeMappings,
+  normalizeIconThemeFontMeta,
+  resolvePluginDataUrl,
+} from "./contributions";
+
+describe("resolvePluginDataUrl——单一权威：恒 linkdesk://（E5.8#133.5）", () => {
+  it("dev/prod 零分叉——恒返回 linkdesk://{pluginId}/{filePath}，不探测本地端口", () => {
+    expect(resolvePluginDataUrl("demo-plugin", "data.json")).toBe("linkdesk://demo-plugin/data.json");
+    // 嵌套路径（主题/图标/字体/glyph CSS 共用同一条寻址）
+    expect(resolvePluginDataUrl("demo-plugin", "icons/fonts/demo.woff2")).toBe(
+      "linkdesk://demo-plugin/icons/fonts/demo.woff2"
+    );
+  });
+});
 
 describe("normalizeIconThemeMappings——字体 glyph 形态", () => {
   it("class 单态透传", () => {

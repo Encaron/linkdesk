@@ -372,24 +372,23 @@ async function loadPluginComponent(pluginId: string, manifest: PluginManifest): 
  * Vite glob 在 dev 模式下只在启动时扫描一次，新插件目录的 JSON 不被实时发现。
  * 运行时主题数据加载（对标 loadPlugin 主题分支）——从一开始就用 fetch。
  *
- * E5.8#133.4：拆 URL 解析出 resolvePluginDataUrl——JSON/文本两加载器共用同一寻址
- * （dev 先探 builtin/user / prod linkdesk:// 协议），单一权威防两处漂移。
+ * E5.8#133.4：拆 URL 解析出 resolvePluginDataUrl——JSON/文本两加载器共用同一寻址，单一权威防两处漂移。
+ * E5.8#133.5 根因修复：dev/prod 无分叉——恒 linkdesk:// 协议（单一权威，见下）。
  */
 
-/** 解析插件数据文件可 fetch 的 URL——dev 先探 builtin/user（找到返回）；prod linkdesk:// 协议回退（protocol.ts 已处理）。
- *  两目录均 404 → null + warn。 */
-async function resolvePluginDataUrl(pluginId: string, filePath: string): Promise<string | null> {
-  if (import.meta.env.DEV) {
-    for (const sub of ["builtin", "user"]) {
-      const url = `http://localhost:1420/plugins/${sub}/${pluginId}/${filePath}`;
-      try {
-        const response = await fetch(url);
-        if (response.ok) return url;
-      } catch { /* fetch 失败继续试下一个 */ }
-    }
-    console.warn(`[pluginLoader] 数据文件加载失败 — "${pluginId}/${filePath}" (not in builtin/ or user/)`);
-    return null;
-  }
+/**
+ * 插件数据文件可 fetch 的 URL——恒 `linkdesk://{pluginId}/{filePath}`（dev/prod 同一条路零漂移）。
+ *
+ * E5.8#133.5 删除 dev 探测（http://localhost:1420/plugins/{builtin,user}/...）的根因：
+ * 1. Vite SPA fallback 对不存在的路径返回 200 + text/html——仅凭 response.ok 会把 HTML 误判为命中
+ *    （#133.4 重构把 .json() 校验移出探测循环后引入的回归：user 插件先探 builtin 拿到 HTML → 数据全加载失败）；
+ * 2. dev 下 fetch() 一个 .css 返回 Vite HMR 的 JS 模块包装（text/javascript），非原始 CSS——
+ *    图标主题 glyph CSS 注入必炸。
+ * linkdesk:// 协议（electron/plugins/protocol.ts）在请求时读盘 + scanPluginSubdirs 实时扫描：
+ * 正确 MIME（.json/.css/.ttf…）、builtin/user 回退、缺失 404 而非 HTML、运行时发现天然支持
+ * （#39a 原目标——绕开 Vite glob 缓存）。探测不必要，且是两处回归的根源。
+ */
+export function resolvePluginDataUrl(pluginId: string, filePath: string): string {
   return `linkdesk://${pluginId}/${filePath}`;
 }
 
@@ -399,8 +398,7 @@ async function fetchPluginDataRaw<T>(
   filePath: string,
   parse: (res: Response) => Promise<T>
 ): Promise<T | null> {
-  const url = await resolvePluginDataUrl(pluginId, filePath);
-  if (!url) return null;
+  const url = resolvePluginDataUrl(pluginId, filePath);
   try {
     const response = await fetch(url);
     if (!response.ok) {

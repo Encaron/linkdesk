@@ -205,7 +205,10 @@ export function registerAppearanceConfiguration(t: ConfigT): void {
         group: t("整体配方"), // E5.8#78：组内二级标题——主题组分节 1/6（图标主题与配色主题同区，VS Code「颜色主题 + 文件图标主题」心智）
         default: "default",
         enum: ["default", ...IconRegistry.getAll().map((t) => t.id)], // 注册时动态派生 + syncIconThemeEnum 持续刷新
-        uiHint: "select",
+        // 🔴 不加 uiHint:"select"——该 uiHint 专走 DynamicSelect（optionsFrom 动态配方数据源），
+        //   会去读 app.theme 当前配方的配色变体（串路 bug：图标主题下拉显示主题配色 "dark"）。
+        //   图标主题枚举是静态注册集（default + IconRegistry），走 type:"string" + enum 普通 SelectBox
+        //   （renderControl 枚举分支，对标 app.language 模式），enum 由 syncIconThemeEnum 装/卸动态刷新。
         description: t("图标主题——文件图标集（default = 内置 codicon 保底）"),
         onApply: (v) => {
           const iconThemeId = v as string;
