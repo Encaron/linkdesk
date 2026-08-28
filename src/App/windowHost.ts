@@ -237,31 +237,30 @@ export function useWindowHost({ mainTabState, onDriftWindowClosed, mainResourceA
   // setWindows 更新器外；无事件重发射；mapResourceAcrossWindows bailout 拦截无变化重渲染。
   useEffect(() => {
     const main = mainResourceActionsRef.current;
-    if (!main) return;
     const unsubs = [
       shellEvents.on("file:renamed", ({ oldPath, newPath }) => {
         const label = basenameOf(newPath);
-        main.renameResourceBySourceId(oldPath, newPath, label);
+        main?.renameResourceBySourceId(oldPath, newPath, label);
         applyToDetached((s) => reduceResourceRenamed(s, oldPath, newPath, label));
       }),
       shellEvents.on("file:deleted", ({ filePath }) => {
-        main.deleteResourceBySourceId(filePath);
+        main?.deleteResourceBySourceId(filePath);
         applyToDetached((s) => reduceResourceDeleted(s, filePath));
       }),
       shellEvents.on("tab:updateLabelBySourceId", ({ sourceId, label }) => {
-        main.updateTabLabelBySourceId(sourceId, label);
+        main?.updateTabLabelBySourceId(sourceId, label);
         applyToDetached((s) => reduceUpdateTabLabelBySourceId(s, sourceId, label));
       }),
       shellEvents.on("tab:closeBySourceId", ({ sourceId }) => {
-        main.closeTabBySourceId(sourceId);
+        main?.closeTabBySourceId(sourceId);
         applyToDetached((s) => reduceCloseBySourceId(s, sourceId));
       }),
       shellEvents.on("plugin:removed", ({ pluginId }) => {
-        main.removeTabsByPlugin(pluginId);
+        main?.removeTabsByPlugin(pluginId);
         applyToDetached((s) => reduceRemoveTabsByPlugin(s, pluginId));
       }),
       shellEvents.on("workspace:folderRemoved", ({ folderUri }) => {
-        main.removeTabsUnderFolder(folderUri);
+        main?.removeTabsUnderFolder(folderUri);
         applyToDetached((s) => reduceRemoveTabsUnderFolder(s, folderUri));
       }),
     ];

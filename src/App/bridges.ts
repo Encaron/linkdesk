@@ -51,9 +51,10 @@ export function useUiBridges({ setPanelActiveViewId, panelActiveViewIdRef, detac
   }, []);
 
   // E5.8#25.1：桥接池文件资源事件——文件树 emit file:deleted/file:renamed → 主进程 broadcast
-  // （plugin:push 发壳+发池）→ 本桥 → shellEvents → 壳 TabManager 集中联动（E5#54b 订阅：
-  // deleted→forceCloseTab 关标签、renamed→迁移 label+sourceId+filePath）。模式级通用——
-  // 未来任何插件 emit 资源事件走同款桥加一行即联动（零专一化命名；tabs 不需新 API，壳已内置 sourceId 迁移）。
+  // （plugin:push 发壳+发池）→ 本桥 → shellEvents → windowHost 全窗广播（E5.8#46.2 壳侧唯一订阅点：
+  // 主窗走 mainResourceActions 关标签/迁移 label+sourceId+filePath，脱出窗走 mapResourceAcrossWindows）。
+  // 模式级通用——未来任何插件 emit 资源事件走同款桥加一行即联动（零专一化命名；tabs 不需新 API，
+  // 壳已内置 sourceId 迁移）。
   useEffect(() => {
     const events = window.linkdesk?.events;
     const offDeleted = events?.on("file:deleted", (payload) => {

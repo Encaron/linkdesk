@@ -27,7 +27,8 @@ export interface AppLifecycleDeps {
 
 /** 杂项生命周期订阅——全部独立 window/事件总线监听，注册一次（deps 稳定） */
 export function useAppLifecycle({ setTheme, setLang, sidebarView, setSidebarView }: AppLifecycleDeps): void {
-  // E3.6 Bug 2/7 防线：revertContainerIfCurrent 先于 forceCloseTab
+  // E3.6 Bug 2/7 防线：revertContainerIfCurrent 先于标签页关闭（E5.8#46.2 起 plugin:removed 标签页
+  // 关闭走 windowHost 全窗广播 removeTabsByPlugin——此处先 revert 侧栏再 emit，顺序防线保留）
   // 用 ref 桥接——sidebarView 由 App 传入，render 阶段赋值闭包读最新值（避免 TDZ）
   const sidebarViewRef = useRef<string | null>(null);
   sidebarViewRef.current = sidebarView;
