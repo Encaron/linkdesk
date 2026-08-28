@@ -32,7 +32,7 @@ import {
   _pendingPlugins,
 } from "./state";
 import { validateInstallManifest, resolveVersionConflict } from "./manifest";
-import { syncAppThemeEnum, syncAppLanguageEnum } from "./contributions";
+import { syncAppThemeEnum, syncAppLanguageEnum, syncIconThemeEnum } from "./contributions";
 import { loadPlugin } from "./runtime";
 
 /* ═══════════════════════════════════════════════════════════
@@ -84,6 +84,7 @@ export async function disablePlugin(pluginId: string): Promise<{ success: boolea
     if (needsMixReapply) await reapplyThemeAfterUnload();
     syncAppThemeEnum();
     syncAppLanguageEnum();
+    syncIconThemeEnum();
     log.appendLine(`🔒 已禁用 "${pluginId}"`);
     return { success: true };
   } catch (e) {
@@ -178,6 +179,7 @@ export async function uninstallPlugin(pluginId: string): Promise<{ success: bool
 
     syncAppThemeEnum();
     syncAppLanguageEnum();
+    syncIconThemeEnum();
     log.appendLine(`🗑 已卸载 "${pluginId}"`);
     pushToast({ message: `已卸载：${displayName}`, source: pluginId, ttl: TOAST_TTL_SUCCESS, severity: "info" });
     // E5.7#48：主进程静态声明三表（LangDef/Protocol/FileAssociation）重扫——唯一写入方在主进程

@@ -618,6 +618,14 @@ function syncAppLanguageEnum(): void {
   updateConfigurationEnum("app.language", codes, codes.includes("zh") ? "zh" : codes[0]);
 }
 
+/** 同步 app.iconTheme 枚举——图标主题注册/注销后调用。不影响 onApply，只更新下拉选项。
+ *  E5.8#133：枚举 = "default"（codicon 保底）+ 已登记图标主题 id。卸载插件 → 枚举消失（回退保底）。
+ *  对标 syncAppThemeEnum——无主题时不更新（保 enum 空下拉变输入框的坑）；default 恒在。 */
+function syncIconThemeEnum(): void {
+  const themeIds = IconRegistry.getAll().map((t) => t.id);
+  updateConfigurationEnum("app.iconTheme", ["default", ...themeIds], "default");
+}
+
 export {
   extractThemeColors,
   resolveRuntimePluginRoot,
@@ -631,4 +639,5 @@ export {
   loadPluginI18nData,
   syncAppThemeEnum,
   syncAppLanguageEnum,
+  syncIconThemeEnum,
 };

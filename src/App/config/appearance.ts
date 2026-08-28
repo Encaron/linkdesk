@@ -24,6 +24,7 @@ import {
   GLASS_SURFACE_DEFAULT_ALPHA,
 } from "../../core/services/ui/ThemeEngine";
 import { ThemeRegistry } from "../../core/registry/appearance/ThemeRegistry";
+import { IconRegistry } from "../../core/registry/appearance/IconRegistry";
 import {
   getConfigurationValue, resetConfigurationValue, resetConfigurationValueBatch,
 } from "../../core/services/configuration/ConfigurationService";
@@ -192,6 +193,26 @@ export function registerAppearanceConfiguration(t: ConfigT): void {
           syncThemeColorEnum();
           // E5.8#59：播种/复位批量 API 已触发单次 applier（末 key 全量读生效态）——不再补
           // applyThemeIfReady 避免二次广播（原 6 连写 + 尾部补调 = 7 次 theme:changed）
+        },
+      },
+      // E5.8#133：图标主题——独立选择器（VS Code 模式），与配色主题完全独立（概念键分离）。
+      //   默认 "default" = codicon 保底（零图标主题插件也成立，UI 恒显该项）；枚举 = default + 已登记
+      //   图标主题 id（syncIconThemeEnum 装/卸动态刷新）；onApply 广播 iconTheme:changed（载荷带
+      //   mappings——"default" → undefined，消费方回退 codicon 保底；对标 theme:changed 先例）。
+      //   首例「壳声明、壳零自消费」的 app.* 键——壳托管共享视觉状态，文件树纯消费者（20-档案 §三 A 案）。
+      "app.iconTheme": {
+        type: "string",
+        group: t("整体配方"), // E5.8#78：组内二级标题——主题组分节 1/6（图标主题与配色主题同区，VS Code「颜色主题 + 文件图标主题」心智）
+        default: "default",
+        enum: ["default", ...IconRegistry.getAll().map((t) => t.id)], // 注册时动态派生 + syncIconThemeEnum 持续刷新
+        uiHint: "select",
+        description: t("图标主题——文件图标集（default = 内置 codicon 保底）"),
+        onApply: (v) => {
+          const iconThemeId = v as string;
+          // E5.8#133 ④：广播 payload 携带壳已解析的绝对路径 mappings（消费方零解析负担）；
+          // "default" → undefined（codicon 保底，消费方不应用映射直接回退）
+          const mappings = iconThemeId === "default" ? undefined : IconRegistry.getMappings(iconThemeId);
+          window.linkdesk?.bridge?.broadcast("iconTheme:changed", { iconThemeId, mappings });
         },
       },
       // 外观六覆盖——dependsOn appearanceMode=custom 才出现（08 §7.1 #5-10）。

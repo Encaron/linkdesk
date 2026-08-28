@@ -91,6 +91,7 @@ async function list(): Promise<FileEntry[]> {
 | 频道 | payload | 触发时机 |
 |------|------|------|
 | `theme:changed` | `{ themeId, themeType, variables }` | 用户切换主题（CSS 变量自动注入，无需手动订阅）。**E5.8 Phase 12：载荷 `variables` 现含字号变量 `--font-size-*` + `--ui-scale`**（全局字号缩放走既有主题通道，**无新事件**；插件字号消费 token 见 05-UI写法规约 §10） |
+| `iconTheme:changed` | `{ iconThemeId, mappings }` | **E5.8#133：** 用户切换图标主题（设置 `app.iconTheme`）。`iconThemeId` = 选择的图标主题 id；`mappings` = 该主题的映射表（`IconThemeMappings` 形状，图像资产已解析为 `linkdesk://` 绝对 URL）或 `"default"` 时为 `undefined`（消费方回退 codicon 保底）。**不自动生效——需要自定义文件图标视觉的插件手动订阅**（如文件树按 `mappings` 换图标，对标 VS Code `onDidChangeProductIconTheme`） |
 | `lang:changed` | `{ lang, resources }` | 用户切换语言 |
 | `workspace:changed` | `{ rootPath }` | 用户打开/切换文件夹 |
 

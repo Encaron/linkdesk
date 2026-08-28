@@ -310,7 +310,27 @@ useEffect(() => {
 }
 ```
 
-对标 VS Code `productIconThemes`。字段同 themes（id/label/path）。
+对标 VS Code `productIconThemes`。字段同 themes（id/label/path）。**mappings JSON 双形态（E5.8#133 ④ 拍板）**——每条目二选一：
+
+```json
+{
+  "files": {
+    "readme.md": { "class": "codicon codicon-markdown" },
+    "main.rs":  { "class": "myfont myfont-rust", "color": "#dea584" },
+    "logo.svg": { "imagePath": "icons/logo.svg" }
+  },
+  "extensions": { ".ts": { "class": "codicon codicon-typescript" } },
+  "folders":   { "src": { "class": "codicon codicon-folder" } },
+  "foldersExpanded": { "src": { "class": "codicon codicon-folder-opened" } }
+}
+```
+
+| 形态 | 字段 | 渲染 | 说明 |
+|------|------|------|------|
+| **字体 glyph** | `class`（必）+ `color?`（可选） | `<span>` | 单色/带色字体 glyph（seti/material 即此类，每图标一色）；字体资产走 `@font-face`（主题资产字体基建） |
+| **图像资产** | `imagePath` | `<img>` | 任意多色（拟物化/贴图）；相对路径 → 壳加载时解析为 `linkdesk://{pluginId}/{path}` 绝对 URL（消费方零解析负担） |
+
+同一主题可混用两形态。**选择器 = 设置 `app.iconTheme`**（壳声明，默认 `"default"` = 内置 codicon 保底，零图标主题插件也成立；枚举 = 已登记图标主题 + default，装/卸动态刷新）。切换经事件 `iconTheme:changed` 广播（载荷 + 契约见 `01-插件API契约.md` §3.2 壳广播事件表）——**需要自定义文件图标视觉的插件手动订阅应用**。
 
 ### 3.8 `contributes.icons`——共享图标
 

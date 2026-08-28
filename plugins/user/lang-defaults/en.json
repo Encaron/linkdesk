@@ -357,6 +357,7 @@
   "配色模式——跟随主题配方配色 / 手动选择配色变体": "Color Mode — follow theme recipe colors / manually pick a color variant",
   "配色变体——活动主题配方的可用配色": "Color Variant — available colors of the active theme recipe",
   "外观模式——跟随主题配方整体外观 / 自定义逐项指定": "Appearance Mode — follow the theme recipe's overall look / specify items individually",
+  "图标主题——文件图标集（default = 内置 codicon 保底）": "Icon Theme — file icon set (default = built-in codicon fallback)",
   "跟随主题——外观/配色由主题配方决定": "Follow Theme — appearance and colors come from the theme recipe",
   "自定义——逐项指定外观覆盖与域来源": "Custom — specify appearance overrides and domain sources individually",
   "组件圆角——系统标尺 0 方角 / 32 最圆润；数值 = 标准组件圆角 px": "Component corner radius — system ruler 0 square / 32 most rounded; value = standard component corner px",
