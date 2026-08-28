@@ -148,7 +148,7 @@
 .toast-chevron-btn:hover,
 .toast-close-btn:hover {
   color: var(--text-primary);
-  background: var(--bg-hover);
+  background: var(--hover-overlay); /* E5.8#128.6：幽灵 --bg-hover → --hover-overlay（原无效值现恢复 hover 反馈） */
 }
 
 /* ═══════════════════════════════════════════════

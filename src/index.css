@@ -46,6 +46,9 @@
   --floating-panel-backdrop: rgba(0, 0, 0, 0.35);
   --floating-panel-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
   --floating-panel-shadow-dragging: 0 18px 60px rgba(0, 0, 0, 0.6);
+  /* E5.8#128 遮罩密度 token——浮层权威 scrim-plane 统一消费（遮罩独立于明暗主题，:root 单定义） */
+  --scrim-dialog: rgba(0, 0, 0, 0.5);   /* 模态遮罩——DialogHost 设计 §7.1 */
+  --scrim-overlay: rgba(0, 0, 0, 0.3);  /* 轻量遮罩——QuickPickHost 设计 §5.1 */
   /* E5.8#50.14 六域 token——字体/圆角/阴影。默认值 = 现状（不加载主题零视觉变化）；主题可覆盖。
      radius 八档语义见 02-变量契约 §2.2（3/7/9/10/14px 偏门值已归并就近档，±1-2px 拍板接受）；
      shadow 语义见 §2.5（--context-menu-shadow 等既有 token 继续复用）。 */
@@ -93,6 +96,12 @@
   --titlebar-close-hover: #c42b1c;
   --toggle-knob: #FFFFFF;
   --hover-overlay: rgba(255, 255, 255, 0.06);
+  /* E5.8#128 交互态 token——浮层/组件 hover 与 keycap（值 = 原硬编码真值，亮暗各锚） */
+  --icon-btn-hover-bg: rgba(255, 255, 255, 0.1);  /* 图标按钮 hover 底（VS Code iconButton-hoverBackground） */
+  --kbd-bg: rgba(128, 128, 128, 0.1);             /* 快捷键 keycap 底 */
+  --kbd-border: rgba(128, 128, 128, 0.12);        /* 快捷键 keycap 边 */
+  --kbd-hover-bg: rgba(255, 255, 255, 0.2);       /* keycap 于选中行（accent 底）亮底 */
+  --kbd-hover-border: rgba(255, 255, 255, 0.35);  /* keycap 于选中行亮边 */
   --cm-timestamp: #8A8A8A;
   /* Phase 3.5 新增 —— z-index 语义层级。
      🔥 E5#98 重新平衡：对照实际裸数字相对顺序——dropdown 在 overlay 之上，drag 最高。 */
@@ -152,6 +161,8 @@
   --bg-toolbar: #F5F5F5;
   --toggle-knob: #2D2D2D;
   --hover-overlay: rgba(0, 0, 0, 0.04);
+  /* E5.8#128 亮色版交互态 */
+  --icon-btn-hover-bg: rgba(0, 0, 0, 0.08);
   --cm-timestamp: #767676;
   /* E3.5 新增 —— 串口监视器 UI 整改（浅色覆写） */
   --warning-text: #BF8800;

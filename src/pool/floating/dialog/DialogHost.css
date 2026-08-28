@@ -12,7 +12,7 @@
 .dialog-host-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: var(--scrim-dialog); /* 设计 §7.1 0.5——E5.8#128 遮罩密度 token */
 }
 
 .dialog-host-panel {
@@ -84,5 +84,5 @@
 }
 
 .dialog-host-btn-secondary:hover {
-  background: var(--bg-hover);
+  background: var(--hover-overlay); /* E5.8#128.6：幽灵 --bg-hover → --hover-overlay（原无效值现恢复 hover 反馈） */
 }

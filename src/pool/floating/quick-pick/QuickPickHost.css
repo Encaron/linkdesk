@@ -4,7 +4,7 @@
  *   - 面板 width 500px → 400px
  *   - top 20% → 15vh
  *   - max-height min(360px, 60vh) → 60vh
- * 约束：所有颜色走 CSS 变量——禁止硬编码 hex（backdrop 黑遮罩为设计 §5.1 指定值）。
+ * 约束：所有颜色走 CSS 变量——禁止硬编码 hex（E5.8#128.6：backdrop 0.3 收编 --scrim-overlay，keycap/hover 收编 --kbd-*/--icon-btn-hover-bg）。
  * z-index 不写死——inline Z_INDEX.quickPick / quickPick-1（constants.ts 常量表，#26）。
  * pointer-events 不在此写——由 FloatingLayerHost #quick-pick-root 根级提供（§2 根级 opt-in，补丁 2026-08-14）。
  */
@@ -14,7 +14,7 @@
 .quick-pick-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.3); /* 设计 §5.1 */
+  background: var(--scrim-overlay); /* 设计 §5.1 0.3——E5.8#128 遮罩密度 token */
   /* E3.5 #CP02: 遮罩 fade 动画 */
   opacity: 0;
   transition: opacity 150ms ease-out;
@@ -104,7 +104,7 @@
 
 .quick-pick-clear:hover {
   color: var(--text-primary);
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--icon-btn-hover-bg); /* E5.8#128.6：图标按钮 hover token */
 }
 
 /* ── 列表 ── */
@@ -231,8 +231,8 @@
   padding: 1px 5px;
   font-size: var(--font-size-2xs);
   font-family: var(--font-mono);
-  background: rgba(128, 128, 128, 0.1);
-  border: 1px solid rgba(128, 128, 128, 0.12);
+  background: var(--kbd-bg); /* E5.8#128.6：keycap token */
+  border: 1px solid var(--kbd-border);
   border-radius: var(--radius-sm);
   line-height: 1.5;
 }
@@ -245,8 +245,8 @@
 /* hover/selected 态 keycap 变亮 */
 .quick-pick-item:hover .keybinding-pill kbd,
 .quick-pick-item.selected .keybinding-pill kbd {
-  background: rgba(255, 255, 255, 0.2);
-  border-color: rgba(255, 255, 255, 0.35);
+  background: var(--kbd-hover-bg); /* E5.8#128.6：keycap 选中行亮态 token */
+  border-color: var(--kbd-hover-border);
 }
 
 .quick-pick-item:hover .quick-pick-item-category,
@@ -283,7 +283,7 @@
 
 .quick-pick-item-btn:hover {
   opacity: 1 !important;
-  background: rgba(255, 255, 255, 0.15);
+  background: var(--icon-btn-hover-bg); /* E5.8#128.6：图标按钮 hover token（0.15→0.1 归一 VS Code 标准） */
 }
 
 /* ── 空态（E3.5 #CP08a） ── */
