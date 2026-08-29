@@ -49,6 +49,12 @@
   padding: 8px 4px;        /* VS Code: padding: 10px 5px，归一化到 4px 刻度 */
   box-sizing: border-box;
 
+  /* E5.8#187：toast-item 是裸深度 3 表面（#toast-root > .toast-container(contents) > .toast-item，
+     无 OverlayPortal wrapper 且无父面板承接磨砂）——隔离地板选择器2 收窄到 wrapper 内后，
+     结构规则不再覆盖它，补显式磨砂（同 tooltip 例外先例，值与原地板常量一致）。 */
+  backdrop-filter: blur(max(var(--glass-blur, 0px), var(--float-blur-floor))) saturate(var(--glass-saturate, 1));
+  -webkit-backdrop-filter: blur(max(var(--glass-blur, 0px), var(--float-blur-floor)));
+
   /* VS Code 入场动画：从下滑入 + 淡入 */
   opacity: 0;
   transform: translateY(8px);
