@@ -229,5 +229,35 @@ storageService.set("installed-plugins", installed);
 
 ---
 
+### 八、审视实锤（2026-08-30 第 1.2 轮——#7/#12/#13 引言修正依据）
+
+> 2026-08-30 第 1.2 轮整轮审视（E6#7、#10-11、#12、#13、#13.5）落笔的引言修正实锤。清单只留修正结论 + 本锚点。
+
+#### 8.1 E5.6 任务号真相（三处引言引用错误）
+
+| 清单引言写 | E5.6 实为 | 影响 |
+|:--|:--|:--|
+| #7 引「E5.6#81 已建 loader 双分支」 | **#81 = 回退方案文档**（两子项全审计/回退文档）；loader 双分支是 **E5.6#84** 建的（实测 `src/pluginLoader/loader.ts` 有 glob/非 glob 双路径，304-322 行） | #7 引言改 #84 |
+| #12 引「E5.6#80 已建 plugin-install-handlers」 | **#80 = 插件开发指南**（7 子项全文档）；建 handler 的是 **E5.6#83** | #12 引言改 #83 |
+| #13 引「E5.6#80 已创建 plugin-install-handlers」 | 同上 | #13 引言改 #83 |
+
+#### 8.2 纸面完成陷阱——E5.6#83 标记 [x] 但文件从未存在
+
+E5.6#83（PluginInstallService IPC 骨架）a-e 子项全标 [x]，但 `git log --all -- "*plugin-install-handlers*"` 零命中、`electron/ipc/` + `handlers/` 实测无此文件（现有 11 个 handler 全在 handlers/）→ E5.6 封存 51% 系纸面完成。**#12/#13 不"扩展已有文件"，从零建。**
+
+#### 8.3 循环依赖 + 执行序对调（#12 ↔ #13）
+
+原执行序 `#13 → #12`（#12 依赖 handler 已就绪），但 #13a `plugins:install` 内部调 `PluginInstallService.add`——#13 反向依赖 #12。**对调为 `#12 → #13`**：#12 只依赖 StorageService（无外部依赖）先建，handler 消费它。正序 = owner 先建、消费者后到。
+
+#### 8.4 #10 折叠进 #12（任务重叠）
+
+#10b StorageService 读写 == #12a 内部走 StorageService；#10c 市场判断已安装 == #12b isInstalled——两任务做同一件事两遍，且 #10b 字面会诱导 StorageService 直读直写，与 #12b「唯一 owner 禁止直读」矛盾。**折叠：#10a 格式契约并入 #12a，读写实现全归 PluginInstallService；StorageService 仅通用 key-value 通道（`src/core/services/configuration/StorageService.ts` 的 `_filePath` Map + `getFilePath` 实测支持独立文件），不算第二个 owner。**
+
+#### 8.5 #13a 路径对齐
+
+原写 `electron/ipc/plugin-install-handlers.ts`，现有 11 个 handler 全在 `electron/ipc/handlers/`——改 `electron/ipc/handlers/plugin-install-handlers.ts`。
+
+---
+
 > **← 上一文档：** `02-linkdesk-plugin格式规范.md`
 > **→ 下一文档：** `04-安装卸载生命周期.md`
