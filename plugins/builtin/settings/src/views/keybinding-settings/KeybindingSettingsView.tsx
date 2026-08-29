@@ -9,6 +9,7 @@
 
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
+import { compareKeybindingRows } from "./keybindingRowSort";
 import "./KeybindingSettingsView.css";
 
 /* ── 辅助函数 ── */
@@ -89,8 +90,8 @@ function KeybindingSettingsView({ initialQuery }: KeybindingSettingsViewProps) {
         _conflict: kb ? conflictKeys.has(kb.key) : false,
       };
     });
-    // 按命令标题字母升序——对标 VS Code Keyboard Shortcuts
-    rows.sort((a, b) => a.title.localeCompare(b.title, "zh"));
+    // 有绑定的命令浮顶，再按命令标题字母序——对齐 VS Code Keyboard Shortcuts 默认排序（compareKeybindingData）
+    rows.sort(compareKeybindingRows);
     return rows;
   }, [commands, allKeybindings, conflictKeys]);
 
