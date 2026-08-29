@@ -46,6 +46,11 @@ export function applyAccentColor(hexColor: string): void {
  *   accentSource=followTheme + 主题无 accent → 自定义兜底
  *   accentSource=custom → 自定义色
  *
+ * ⚠️ E5.8#185 语义定案：「主题色」= getCurrentTheme().colors.accent，自定义模式（appearanceMode=custom）
+ * 下 currentTheme 快照 colors 取自 colors 域来源（app.themeColor，apply.ts mix 路径）——所以
+ * accentSource=followTheme 实际跟随「当前配色来源」（跟随主题=主题配方 / 自定义=配色来源），
+ * 非整体配方（app.theme）。accent ⊂ colors 域，行为自洽；文案已如实描述（见 185 档案）。
+ *
  * 所有需要强调色的地方（onApply app.theme / ThemeBrowser 预览）都走此函数——
  * 不要各自手写 if/else 判断。
  * E5.8#98：强调色独立轴——app.accentSource（跟随主题/自定义）从外观主开关解耦（14-档案 §十二）。
