@@ -246,6 +246,7 @@ useEffect(() => {
 | `enum` | ❌ | 下拉选项（string 类型时可选） |
 | `enumDescriptions` | ❌ | 选项说明——和 enum 一一对应 |
 | `uiHint` | ❌ | 渲染提示——SettingsView 按 hint 选择控件（已知值 `"color"`/`"fontFamily"`/`"fontSize"`/`"file"`/`"directory"`/`"slider"`/`"segmented"`/`"image"` 等，开放 string——未知 hint 降级回 type 默认渲染）。`"segmented"` = 分段单选（ghost 双轨制，配合 `enum` + `enumDescriptions` 声明，短标签 = enumDescription `—` 前段、tooltip = 全句） |
+| `group` | ❌ | **组内二级标题**（E5.8#78/#189）——同 `group` 值的 key 在设置页归到子标题下渲染；无 `group` 的 key 保持平铺。声明中文节名即显示；节名标题走 i18n（插件 `contributes.i18n` 提供翻译）。零壳改动——壳机制对插件键同样生效。 |
 
 **安装后效果：** Settings Editor 左侧导航树自动出现 "CAD 查看器" 分组 → 右侧自动渲染表单——不需要手写设置界面。
 

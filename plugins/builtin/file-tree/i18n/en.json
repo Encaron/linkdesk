@@ -62,5 +62,9 @@
   "工作区": "Workspace",
   "正则表达式": "Regular Expression",
   "你没有打开文件夹。": "You have no folder open.",
-  "释放以打开文件夹": "Release to open folder"
+  "释放以打开文件夹": "Release to open folder",
+  "行为": "Behavior",
+  "删除与确认": "Delete & Confirm",
+  "排除与嵌套": "Exclude & Nesting",
+  "外部终端": "External Terminal"
 }

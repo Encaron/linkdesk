@@ -62,78 +62,81 @@
           "type": "string",
           "enum": ["default", "mixed", "filesFirst", "type", "modified", "foldersNestsFiles"],
           "default": "default",
-          "description": "文件树排序方式"
+          "description": "文件树排序方式",
+          "group": "显示"
         },
         "explorer.compactFolders": {
           "type": "boolean",
           "default": true,
-          "description": "紧凑文件夹——单子目录压缩为单行路径"
-        },
-        "explorer.expandOnClick": {
-          "type": "boolean",
-          "default": false,
-          "description": "点击目录行即可展开/折叠——关闭后只有 twistie 小三角管展开折叠，点目录行仅选中"
-        },
-        "explorer.autoReveal": {
-          "type": "boolean",
-          "default": true,
-          "description": "切换编辑器标签页时自动在文件树中定位"
-        },
-        "explorer.confirmDelete": {
-          "type": "boolean",
-          "default": true,
-          "description": "删除文件/文件夹前弹出确认框"
-        },
-        "explorer.confirmDragAndDrop": {
-          "type": "boolean",
-          "default": true,
-          "description": "拖放移动文件前弹出确认框"
-        },
-        "explorer.enableDragAndDrop": {
-          "type": "boolean",
-          "default": true,
-          "description": "启用文件树拖放"
+          "description": "紧凑文件夹——单子目录压缩为单行路径",
+          "group": "显示"
         },
         "explorer.expandSingleFolderWorkspaces": {
           "type": "boolean",
           "default": true,
-          "description": "打开文件夹时自动展开根节点"
+          "description": "打开文件夹时自动展开根节点",
+          "group": "显示"
+        },
+        "explorer.decorations.colors": {
+          "type": "boolean",
+          "default": true,
+          "description": "文件装饰器——颜色标记",
+          "group": "显示"
+        },
+        "explorer.decorations.badges": {
+          "type": "boolean",
+          "default": true,
+          "description": "文件装饰器——徽章标记",
+          "group": "显示"
+        },
+        "explorer.expandOnClick": {
+          "type": "boolean",
+          "default": false,
+          "description": "点击目录行即可展开/折叠——关闭后只有 twistie 小三角管展开折叠，点目录行仅选中",
+          "group": "行为"
+        },
+        "explorer.autoReveal": {
+          "type": "boolean",
+          "default": true,
+          "description": "切换编辑器标签页时自动在文件树中定位",
+          "group": "行为"
+        },
+        "explorer.autoOpenDroppedFile": {
+          "type": "boolean",
+          "default": false,
+          "description": "从资源管理器拖入文件后自动打开",
+          "group": "行为"
         },
         "explorer.incrementalNaming": {
           "type": "string",
           "enum": ["smart", "disabled"],
           "default": "smart",
-          "description": "重名文件自动加数字后缀（如 test-1.txt）"
+          "description": "重名文件自动加数字后缀（如 test-1.txt）",
+          "group": "行为"
+        },
+        "explorer.enableDragAndDrop": {
+          "type": "boolean",
+          "default": true,
+          "description": "启用文件树拖放",
+          "group": "行为"
+        },
+        "explorer.confirmDelete": {
+          "type": "boolean",
+          "default": true,
+          "description": "删除文件/文件夹前弹出确认框",
+          "group": "删除与确认"
+        },
+        "explorer.confirmDragAndDrop": {
+          "type": "boolean",
+          "default": true,
+          "description": "拖放移动文件前弹出确认框",
+          "group": "删除与确认"
         },
         "explorer.excludeGitIgnore": {
           "type": "boolean",
           "default": true,
-          "description": "读取 .gitignore 排除文件"
-        },
-        "explorer.autoOpenDroppedFile": {
-          "type": "boolean",
-          "default": false,
-          "description": "从资源管理器拖入文件后自动打开"
-        },
-        "explorer.fileNesting.enabled": {
-          "type": "boolean",
-          "default": false,
-          "description": "文件嵌套——相关文件折叠为父文件的子节点"
-        },
-        "explorer.fileNesting.expand": {
-          "type": "boolean",
-          "default": true,
-          "description": "文件嵌套默认展开"
-        },
-        "explorer.decorations.colors": {
-          "type": "boolean",
-          "default": true,
-          "description": "文件装饰器——颜色标记"
-        },
-        "explorer.decorations.badges": {
-          "type": "boolean",
-          "default": true,
-          "description": "文件装饰器——徽章标记"
+          "description": "读取 .gitignore 排除文件",
+          "group": "排除与嵌套"
         },
         "files.exclude": {
           "type": "object",
@@ -141,7 +144,20 @@
             "**/node_modules": true,
             "**/.git": true
           },
-          "description": "glob 模式排除文件/文件夹"
+          "description": "glob 模式排除文件/文件夹",
+          "group": "排除与嵌套"
+        },
+        "explorer.fileNesting.enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "文件嵌套——相关文件折叠为父文件的子节点",
+          "group": "排除与嵌套"
+        },
+        "explorer.fileNesting.expand": {
+          "type": "boolean",
+          "default": true,
+          "description": "文件嵌套默认展开",
+          "group": "排除与嵌套"
         },
         "terminal.external.windowsExec": {
           "type": "string",
@@ -154,12 +170,14 @@
             "git-bash": "Git Bash",
             "custom": "自定义命令…"
           },
-          "description": "右键'在终端中打开'时使用的外部终端。选'自定义'后在下方的命令模板中填写启动命令。"
+          "description": "右键'在终端中打开'时使用的外部终端。选'自定义'后在下方的命令模板中填写启动命令。",
+          "group": "外部终端"
         },
         "terminal.external.customCommand": {
           "type": "string",
           "default": "",
-          "description": "自定义终端启动命令。用 {{dirPath}} 表示目标目录。例: wt -d \"{{dirPath}}\""
+          "description": "自定义终端启动命令。用 {{dirPath}} 表示目标目录。例: wt -d \"{{dirPath}}\"",
+          "group": "外部终端"
         }
       }
     }

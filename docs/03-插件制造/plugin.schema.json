@@ -355,7 +355,8 @@
                   "monoOnly": { "type": "boolean", "description": "等宽限定——仅 uiHint \"fontFamily\" 有意义。true/缺省 = 只列等宽族（编辑器字体）；false = 全字族（UI 字体）。E5.8#50.20。" },
                   "minimum": { "type": "number", "description": "数值下限——type number 时生效（E5.8#65 补录：滑杆/数值控件范围）" },
                   "maximum": { "type": "number", "description": "数值上限——type number 时生效（E5.8#65 补录：滑杆/数值控件范围）" },
-                  "step": { "type": "number", "description": "滑杆步进——仅 uiHint \"slider\" 有意义。缺省由 SettingsView 按区间推导（浮点区间自动 0.01）。E5.8#65。" }
+                  "step": { "type": "number", "description": "滑杆步进——仅 uiHint \"slider\" 有意义。缺省由 SettingsView 按区间推导（浮点区间自动 0.01）。E5.8#65。" },
+                  "group": { "type": "string", "description": "组内二级标题——同 group 的 key 在设置页归到子标题下渲染（E5.8#78/#189）；无 group 保持平铺（第三方零侵入）" }
                 },
                 "additionalProperties": false
               }
