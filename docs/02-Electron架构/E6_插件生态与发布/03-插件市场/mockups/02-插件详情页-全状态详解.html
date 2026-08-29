@@ -1,0 +1,2157 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>插件详情页·全状态详解 —— A 定稿骨架（壳·玻璃房）逐状态展开</title>
+<style>
+/* ═══════════════════════════════════════════════════════════
+   LinkDesk 设计 token（index.css :root 暗色主题同值）
+   骨架 = 已定稿 A 帧（ui-ux-pro-max 壳·玻璃房）——信息架构/action bar/两栏不动
+   本文件把详情页「全状态」逐帧展开：未安装 / 安装中 / 失败重试 /
+   已装·启用 / 已装·禁用 / 可更新 / 挂起·缺依赖 / 安装确认弹窗 /
+   功能贡献 tab / 更改日志 tab
+   对应任务：E6#30.5a/b/c · #30.6 · #30.8a · #30.9a/b · #33b/c/d · E5.8#15.5
+   ═══════════════════════════════════════════════════════════ */
+:root {
+  --bg-window: #1E1E1E;
+  --bg-card: #2D2D2D;
+  --bg-input: #3C3C3C;
+  --text-primary: #D4D4D4;
+  --text-secondary: #9D9D9D;
+  --text-muted: #8A8A8A;
+  --accent: #0078D4;
+  --accent-hover: #1A8CE8;
+  --border: #3C3C3C;
+  --separator: #474747;
+  --icon-inactive: #858585;
+  --bg-titlebar: #252526;
+  --bg-icon-bar: #18181B;
+  --bg-side-panel: #1E1E22;
+  --hover-overlay: rgba(255,255,255,0.06);
+  --tab-hover-bg: #353535;
+  --status-connected: #4EC9B0;
+  --error: #E06C75;
+  --ok-green: #4CAF50;   /* 安装绿 */
+  --warn-yellow: #CCA700;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  background: #101013;
+  color: var(--text-primary);
+  font-family: "IBM Plex Sans", "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+  font-size: 13px;
+  padding: 32px;
+  max-width: 1460px;
+  margin: 0 auto;
+}
+
+h1 { font-size: 20px; font-weight: 600; letter-spacing: 0.02em; margin-bottom: 6px; }
+h1 small { font-size: 13px; font-weight: 400; color: var(--text-muted); display: block; margin-top: 6px; line-height: 1.8; }
+h1 code { font-family: "JetBrains Mono", Consolas, monospace; font-size: 11px; color: #0078D4; }
+h1 .hl { color: var(--status-connected); }
+h1 .hlr { color: #E06C75; }
+h1 .hly { color: #CCA700; }
+
+/* ---------- 帧容器 ---------- */
+.frame {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  margin-top: 18px;
+}
+.frame-caption {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.frame-caption b { font-size: 14px; }
+.frame-caption .tag {
+  font-size: 11px; color: #fff; background: var(--accent);
+  border-radius: 3px; padding: 1px 8px; font-weight: 600;
+}
+.frame-caption .tag.s1 { background: #0078D4; }
+.frame-caption .tag.s2 { background: #8B5CF6; }
+.frame-caption .tag.s3 { background: #D43A3A; }
+.frame-caption .tag.s4 { background: #1E8E3E; }
+.frame-caption .tag.s5 { background: #5f5f6e; }
+.frame-caption .tag.s6 { background: #C586C0; }
+.frame-caption .tag.s7 { background: #B8860B; }
+.frame-caption .tag.s8 { background: #2D2D2D; border: 1px solid #555; }
+.frame-caption .tag.s9 { background: #3B5BA5; }
+.frame-caption .tag.s10 { background: #00695C; }
+.frame-caption span { color: var(--text-secondary); font-size: 12px; }
+.frame-caption .task { margin-left: auto; font-size: 11px; color: var(--text-muted); font-family: "JetBrains Mono", Consolas, monospace; }
+.frame-note {
+  padding: 10px 14px;
+  border-top: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.85;
+  background: #26262a;
+}
+.frame-note b { color: var(--text-secondary); }
+.frame-note .ok { color: var(--status-connected); }
+.frame-note .warn { color: #CCA700; }
+.frame-note .err { color: #E06C75; }
+.frame-note code { font-family: "JetBrains Mono", Consolas, monospace; font-size: 11px; color: #0078D4; }
+.frame-note .flag { display: inline-block; font-size: 10.5px; border-radius: 3px; padding: 0 6px; margin-right: 3px; border: 1px solid currentColor; }
+
+/* ---------- 应用窗口骨架（壳真实结构，全帧共用） ---------- */
+.app {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 560px;
+  background: var(--bg-window);
+  font-size: 12px;
+  overflow: hidden;
+}
+.titlebar {
+  height: 28px; flex: none;
+  background: var(--bg-titlebar);
+  display: flex; align-items: center;
+  padding: 0 10px 0 12px;
+  gap: 8px;
+  user-select: none;
+}
+.titlebar .logo { width: 14px; height: 14px; flex: none; }
+.titlebar .app-name { font-size: 12px; color: var(--text-secondary); }
+.titlebar .drag { flex: 1; }
+.win-btns { display: flex; gap: 2px; }
+.win-btn {
+  width: 34px; height: 22px; border: none; background: transparent;
+  color: var(--text-secondary); border-radius: 3px;
+  display: flex; align-items: center; justify-content: center;
+}
+.win-btn.close:hover { background: #c42b1c; color: #fff; }
+
+.mid { flex: 1; display: flex; min-height: 0; }
+
+/* ---------- 图标栏（48px 最左） ---------- */
+.icon-bar {
+  width: 48px; flex: none;
+  background: var(--bg-icon-bar);
+  display: flex; flex-direction: column; align-items: center;
+  padding-top: 6px; gap: 2px;
+}
+.icon-btn {
+  width: 48px; height: 42px; border: none; background: transparent;
+  color: var(--icon-inactive);
+  display: flex; align-items: center; justify-content: center;
+  border-left: 2px solid transparent;
+}
+.icon-btn.active { color: #fff; border-left-color: var(--accent); }
+.icon-btn svg { width: 20px; height: 20px; }
+.ib-sep { width: 26px; height: 1px; background: var(--border); margin: 5px 0; }
+
+/* ---------- 侧栏（五节：搜索/已安装/探索插件/已禁用/内置） ---------- */
+.sidebar {
+  width: 216px; flex: none;
+  background: var(--bg-side-panel);
+  border-right: 1px solid var(--border);
+  display: flex; flex-direction: column;
+  font-size: 12px;
+  overflow: hidden;
+}
+.sidebar-header { padding: 10px 12px 4px; color: var(--text-secondary); letter-spacing: 0.06em; font-size: 11px; text-transform: uppercase; flex: none; }
+.ms-search { display: flex; align-items: center; gap: 4px; padding: 0 8px 8px; flex: none; }
+.ms-search input {
+  flex: 1; height: 26px; padding: 3px 8px;
+  background: var(--bg-input); border: 1px solid var(--border); border-radius: 4px;
+  color: var(--text-primary); font-size: 12px; font-family: inherit; outline: none;
+}
+.ms-search input:focus { border-color: var(--accent); }
+.ms-search svg { width: 12px; height: 12px; color: var(--text-muted); flex: none; }
+.ms-body { flex: 1; overflow-y: auto; padding-top: 2px; }
+.ms-sec-head {
+  display: flex; align-items: center; gap: 4px;
+  padding: 4px 12px; width: 100%;
+  font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px;
+  color: var(--text-muted); user-select: none;
+}
+.ms-sec-head .cnt { margin-left: auto; font-weight: 400; }
+.ms-item { display: flex; align-items: flex-start; gap: 9px; padding: 7px 12px 7px 20px; }
+.ms-item.selected { background: rgba(0,120,212,0.18); }
+.ms-item .mi-ic { width: 26px; height: 26px; flex: none; display: flex; align-items: center; justify-content: center; }
+.ms-item .mi-ic svg { width: 24px; height: 24px; }
+.ms-item .mi-dt { flex: 1; min-width: 0; }
+.ms-item .mi-nm { display: flex; align-items: center; gap: 5px; font-size: 12.5px; font-weight: 500; }
+.ms-item .mi-nm .ver { font-size: 10px; color: var(--text-muted); font-weight: 400; }
+.ms-item .mi-ds { font-size: 10.5px; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ms-item .mi-au { font-size: 10px; color: var(--text-muted); }
+.ms-item .mi-badge { font-size: 10px; border-radius: 3px; padding: 1px 6px; font-weight: 600; }
+.ms-item .mi-badge.installed { background: rgba(30,142,62,.25); color: #6FD69A; }
+.ms-item .mi-badge.update { background: rgba(0,120,212,.22); color: #6CB4EE; }
+.ms-item .mi-badge.disabled { background: rgba(255,255,255,.08); color: var(--text-muted); }
+.ms-item .mi-badge.pending { background: rgba(204,167,0,.2); color: #E2C05A; }
+.ms-item .mi-install {
+  flex: none; align-self: center;
+  background: var(--ok-green); border: 1px solid var(--ok-green); border-radius: 4px;
+  color: #fff; font-size: 11px; padding: 2px 9px; font-family: inherit;
+  white-space: nowrap;
+}
+
+/* ---------- 主区 ---------- */
+.main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.tabbar {
+  height: 32px; flex: none;
+  background: var(--bg-titlebar);
+  display: flex; align-items: stretch;
+  border-bottom: 1px solid var(--border);
+}
+.tab {
+  display: flex; align-items: center; gap: 6px;
+  padding: 0 12px;
+  color: var(--text-secondary);
+  border-right: 1px solid var(--border);
+  border-top: 2px solid transparent;
+  background: transparent;
+  font-size: 12px;
+}
+.tab.active { background: var(--bg-window); color: var(--text-primary); border-top-color: var(--accent); }
+.tab .tab-ic { display: flex; align-items: center; }
+.tab .tab-ic svg { width: 14px; height: 14px; }
+.tab .tab-close { color: var(--text-muted); font-size: 10px; padding-left: 4px; }
+
+/* ---------- 状态栏（实机对齐——StatusBarZone.css：bg-window + 左插件项 + 右铃铛，无全局进度槽） ---------- */
+.statusbar {
+  height: 22px; flex: none;
+  background: var(--bg-window);
+  color: var(--text-muted);
+  display: flex; align-items: center;
+  gap: 12px;
+  padding: 0 10px;
+  font-size: 11px;
+  border-top: 1px solid var(--border);
+}
+.statusbar .right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+.statusbar .status-item { color: var(--text-secondary); display: flex; align-items: center; gap: 5px; white-space: nowrap; }
+.statusbar .status-item .st-ic { display: flex; }
+.statusbar .status-item .st-ic svg { width: 12px; height: 12px; }
+.statusbar .status-divider { width: 1px; height: 14px; background: var(--border); }
+.statusbar .bell {
+  background: none; border: none; color: var(--text-muted);
+  padding: 0; cursor: pointer; position: relative;
+  display: flex; align-items: center;
+}
+.statusbar .bell.has-notif { color: var(--accent); }
+.statusbar .bell svg { width: 13px; height: 13px; }
+.statusbar .bell-badge {
+  position: absolute; top: -6px; right: -7px;
+  background: var(--accent); color: #fff; font-size: 9px; font-weight: 600;
+  border-radius: 7px; min-width: 13px; height: 13px; padding: 0 3px;
+  display: flex; align-items: center; justify-content: center;
+}
+
+/* ============================================================
+   A 定稿骨架——详情页（pdva 前缀，与竞标 01 相同结构）
+   只保留结构，状态由 .st-* 变体驱动
+   ============================================================ */
+.pdva { flex: 1; display: flex; flex-direction: column; min-height: 0; overflow-y: auto; }
+
+.pdva-head {
+  position: relative;
+  display: flex; gap: 16px; align-items: flex-start;
+  margin: 14px 14px 0;
+  padding: 18px 20px 16px;
+  border-radius: 10px;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.06) 0%, rgba(255,255,255,.015) 55%, transparent 100%),
+    color-mix(in srgb, #2a2a2e 78%, transparent);
+  border: 1px solid rgba(255,255,255,.09);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.10), 0 4px 16px rgba(0,0,0,.28);
+}
+.pdva-head::after {
+  content: ""; position: absolute; top: 0; left: 8px; right: 8px; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.28), transparent);
+}
+.pdva-ic {
+  width: 56px; height: 56px; flex: none;
+  border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  background: linear-gradient(160deg, rgba(255,255,255,.12), rgba(255,255,255,.03));
+  border: 1px solid rgba(255,255,255,.12);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.14);
+}
+.pdva-ic svg { width: 34px; height: 34px; }
+.pdva-id { flex: 1; min-width: 0; }
+.pdva-nm { display: flex; align-items: center; gap: 8px; font-size: 19px; font-weight: 600; }
+.pdva-nm .v { font-size: 12px; color: var(--text-muted); font-weight: 400; }
+.pdva-pub { display: flex; align-items: center; gap: 7px; margin-top: 2px; font-size: 12px; color: var(--text-secondary); }
+.pdva-pub .badge { font-size: 10px; color: #fff; background: var(--accent); border-radius: 3px; padding: 1px 6px; font-weight: 600; }
+.pdva-desc { margin-top: 7px; font-size: 13px; line-height: 1.55; }
+.pdva-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.pdva-chip { font-size: 10.5px; color: var(--text-secondary); background: color-mix(in srgb, #3c3c3c 65%, transparent); border: 1px solid rgba(255,255,255,.07); border-radius: 10px; padding: 1px 9px; }
+.pdva-chip .ok { color: var(--status-connected); }
+.pdva-acts { flex: none; display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+.pdva-acts .row { display: flex; align-items: center; gap: 8px; }
+
+.pdva-tabs { display: flex; gap: 2px; padding: 0 14px; border-bottom: 1px solid var(--border); margin-top: 8px; flex: none; }
+.pdva-tab {
+  padding: 8px 14px; font-size: 13px; background: transparent; border: none;
+  border-bottom: 2px solid transparent; color: var(--text-muted); cursor: pointer;
+  font-family: inherit; margin-bottom: -1px;
+}
+.pdva-tab:hover { color: var(--text-primary); }
+.pdva-tab.active { color: var(--text-primary); border-bottom-color: var(--accent); }
+.pdva-tab .dot { font-size: 9px; vertical-align: 2px; }
+.pdva-tab .dot.up { color: #C586C0; }
+
+.pdva-body { flex: 1; display: flex; min-height: 0; padding: 0 14px 14px; gap: 14px; }
+.pdva-main { flex: 1; min-width: 0; overflow-y: auto; padding: 14px 18px; border-radius: 8px; margin-top: 12px;
+  background: color-mix(in srgb, #222226 72%, transparent);
+  border: 1px solid rgba(255,255,255,.06);
+}
+.pdva-shots { display: flex; gap: 10px; margin-bottom: 14px; }
+.pdva-shot { flex: 1; height: 88px; border-radius: 6px; border: 1px solid rgba(255,255,255,.08); position: relative; overflow: hidden;
+  background: linear-gradient(150deg, #2b2b31, #1a1a1e); }
+.pdva-shot .cap { position: absolute; left: 0; right: 0; bottom: 0; padding: 3px 8px; font-size: 10px; color: var(--text-secondary);
+  background: linear-gradient(transparent, rgba(0,0,0,.55)); }
+.pdva-h2 { font-size: 16px; font-weight: 600; margin: 14px 0 8px; }
+.pdva-p { font-size: 12.5px; line-height: 1.7; margin-bottom: 8px; }
+.pdva-p .muted { color: var(--text-muted); }
+.pdva-feat { display: flex; flex-direction: column; gap: 7px; margin: 10px 0; }
+.pdva-feat li { list-style: none; display: flex; gap: 8px; align-items: flex-start; font-size: 12.5px; line-height: 1.55; }
+.pdva-feat li .f-ic { display: flex; margin-top: 1px; }
+.pdva-feat li .f-ic svg { width: 13px; height: 13px; color: var(--status-connected); }
+.pdva-info { width: 208px; flex: none; overflow-y: auto; padding: 14px 14px; margin-top: 12px; border-radius: 8px;
+  background: color-mix(in srgb, #26262a 78%, transparent);
+  border: 1px solid rgba(255,255,255,.06);
+}
+.pdva-info h4 { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--text-muted); margin-bottom: 8px; }
+.pdva-if { display: flex; justify-content: space-between; gap: 8px; padding: 4px 0; font-size: 11.5px; }
+.pdva-if .k { color: var(--text-muted); flex: none; }
+.pdva-if .v { text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pdva-if .v.mono { font-family: "JetBrains Mono", Consolas, monospace; font-size: 10.5px; }
+.pdva-if .v.dep-link { color: #6CB4EE; }
+.pdva-if .v.dep-missing { color: #E2C05A; }
+.pdva-safe { margin-top: 10px; padding: 8px 10px; border-radius: 6px; border: 1px dashed rgba(255,255,255,.12);
+  font-size: 10.5px; color: var(--text-secondary); line-height: 1.6; }
+.pdva-safe b { color: var(--status-connected); }
+
+/* ============================================================
+   三态 action bar 变体（st- 前缀）——状态机核心
+   ============================================================ */
+.st-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  border-radius: 4px;
+  font-size: 12px; font-weight: 600; font-family: inherit;
+  padding: 5px 14px; white-space: nowrap;
+  transition: opacity 120ms ease;
+}
+.st-install { background: var(--ok-green); border: 1px solid var(--ok-green); color: #fff; }
+.st-install:hover { opacity: .9; }
+.st-install.small { font-size: 11px; padding: 3px 10px; }
+
+/* 安装中——按钮内进度（E6#30.9a） */
+.st-progress {
+  position: relative; overflow: hidden;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 1px solid rgba(0,120,212,.55); border-radius: 4px;
+  background: rgba(0,120,212,.12); color: var(--text-primary);
+  font-size: 12px; font-weight: 600; font-family: inherit;
+  padding: 0 14px; height: 30px; white-space: nowrap; min-width: 108px;
+}
+.st-progress .fill {
+  position: absolute; left: 0; top: 0; bottom: 0;
+  width: 62%; background: rgba(0,120,212,.35);
+  transition: width 300ms cubic-bezier(0.16,1,0.3,1);
+}
+.st-progress .lbl { position: relative; z-index: 1; }
+
+/* 安装失败——红色重试（E6#30.9b） */
+.st-fail {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: transparent; border: 1px solid #D43A3A; border-radius: 4px;
+  color: #E06C75; font-size: 12px; font-weight: 600; font-family: inherit;
+  padding: 5px 14px; white-space: nowrap;
+}
+.st-fail:hover { background: rgba(212,58,58,.14); }
+
+/* 已装·启用：禁用 + 卸载 */
+.st-disable {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: transparent; border: 1px solid var(--border); border-radius: 4px;
+  color: var(--text-secondary); font-size: 12px; font-family: inherit;
+  padding: 5px 12px; white-space: nowrap;
+}
+.st-disable:hover { color: var(--text-primary); background: var(--hover-overlay); }
+.st-uninstall {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: transparent; border: 1px solid var(--border); border-radius: 4px;
+  color: #E06C75; font-size: 12px; font-family: inherit;
+  padding: 5px 12px; white-space: nowrap;
+}
+.st-uninstall:hover { background: rgba(212,58,58,.12); border-color: rgba(212,58,58,.6); }
+
+/* 已装·禁用：启用 + 卸载 */
+.st-enable { display: inline-flex; align-items: center; gap: 6px;
+  background: var(--ok-green); border: 1px solid var(--ok-green); border-radius: 4px;
+  color: #fff; font-size: 12px; font-weight: 600; font-family: inherit;
+  padding: 5px 14px; white-space: nowrap; }
+.st-enable:hover { opacity: .9; }
+
+/* 可更新：升级入口（第三维，E6#33b） */
+.st-update { display: inline-flex; align-items: center; gap: 6px;
+  background: var(--accent); border: 1px solid var(--accent); border-radius: 4px;
+  color: #fff; font-size: 12px; font-weight: 600; font-family: inherit;
+  padding: 5px 14px; white-space: nowrap; }
+.st-update:hover { background: var(--accent-hover); }
+
+/* 挂起·缺依赖：不可安装（E6#30.5b + E5.8#15.5） */
+.st-blocked { display: inline-flex; align-items: center; gap: 6px;
+  background: rgba(204,167,0,.1); border: 1px dashed #B8860B; border-radius: 4px;
+  color: #E2C05A; font-size: 12px; font-family: inherit;
+  padding: 5px 12px; white-space: nowrap; cursor: default; }
+.st-blocked .reason { font-size: 10.5px; color: var(--text-muted); }
+
+/* 版本下拉 / 自动更新 */
+.version-drop { display: inline-flex; align-items: center; gap: 5px;
+  background: var(--bg-input); border: 1px solid var(--border); border-radius: 4px;
+  color: var(--text-primary); font-size: 12px; font-family: inherit;
+  padding: 4px 9px; white-space: nowrap; }
+.version-drop .arr { font-size: 9px; color: var(--text-muted); }
+.auto-upd { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; color: var(--text-secondary); white-space: nowrap; user-select: none; }
+.auto-upd input { accent-color: var(--accent); }
+
+/* 安装中：版本下拉禁用态 */
+.ver-disabled { opacity: .45; cursor: default; }
+.auto-disabled { opacity: .45; }
+
+/* ============================================================
+   缺依赖挂起（帧 7）——事件型提示走右下角 toast（用户拍板：顶部横幅把整个 UI 往下推 + 影响性能，
+   一律 toast 化，帧 2/3 同款结构）；挂起状态靠侧栏「等待依赖」徽标 + action bar「🚫 安装不可用」持续表达。
+   注：实机 pd-pending-notice（PluginDetailPoolView.tsx:117，E5.8#15.5）是「已装插件因依赖被卸载而挂起」的
+   持续态内嵌条（详情页 header 下，只推详情页一行）——那是另一场景，本帧（市场安装被拦）不走它。
+   ============================================================ */
+
+/* ============================================================
+   右下角 toast——实机对齐（ToastHost.css：#toast-root bottom right、
+   bg-card + separator 边 + radius-sm + shadow-tooltip + 磨砂 + actions primary/secondary）
+   进度模式 = updateToast(id, message) 循环改文字（NotificationService.ts:8-10 原文：
+   「真进度条 UI 留未来，届时 API 面已现成」）。
+   ============================================================ */
+.ld-toast-stack {
+  position: absolute; right: 6px; bottom: calc(22px + 8px);
+  width: 360px; display: flex; flex-direction: column-reverse; gap: 4px;
+  z-index: 30; pointer-events: none;
+}
+.ld-toast {
+  pointer-events: auto;
+  background: var(--bg-card);
+  border: 1px solid var(--separator);
+  border-radius: 4px;              /* radius-sm——实机 ToastHost.css:47 */
+  box-shadow: 0 2px 8px rgba(0,0,0,.3); /* shadow-tooltip——实机 ToastHost.css:49 */
+  padding: 8px 4px;                /* 实机 ToastHost.css:49 */
+  font-size: 12px;
+  backdrop-filter: blur(16px) saturate(1); /* 实机 toast-item（--float-blur-floor 16px，CDP 实测 blur(16px)） */
+}
+.ld-toast .t-main-row {
+  display: flex; align-items: center; gap: 0; min-height: 30px;
+}
+.ld-toast .t-ic { flex: 0 0 16px; display: flex; align-items: center; justify-content: center; font-size: 13px; margin: 0 4px; }
+.ld-toast .t-body { flex: 1; min-width: 0; }
+.ld-toast .t-msg { color: var(--text-primary); line-height: 1.6; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; user-select: text; }
+.ld-toast .t-acts { display: flex; gap: 6px; flex: none; }
+.ld-toast .t-act {
+  border: none; border-radius: 4px; padding: 2px 10px;
+  font-size: 11px; font-family: inherit; cursor: pointer; height: 22px; white-space: nowrap;
+}
+.ld-toast .t-act.primary { background: var(--accent); color: #fff; }
+.ld-toast .t-act.secondary { background: transparent; color: var(--text-muted); border: 1px solid var(--separator); }
+/* 详情行：source + 动作（实机默认折叠——chevron 展开；mockup 关键帧按展开态展示） */
+.ld-toast .t-details {
+  display: flex; align-items: center; gap: 8px;
+  padding-left: 24px; /* 对齐消息：16px icon + 8px margin */
+  margin-top: 4px; min-height: 22px;
+}
+.ld-toast .t-src { font-size: 10px; color: var(--text-muted); flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ld-toast .t-ic.info { color: var(--text-muted); }
+.ld-toast .t-ic.success { color: var(--ok-green); }
+.ld-toast .t-ic.error { color: #E06C75; }
+.ld-toast.toast-error { border-color: rgba(224,108,117,.45); }
+.ld-toast.toast-pending { border-color: rgba(204,167,0,.45); }
+
+/* ============================================================
+   帧8 安装确认弹窗（信任角 E6#30.8a）——overlay 演示
+   ============================================================ */
+.modal-overlay {
+  position: absolute; inset: 28px 0 0 0; z-index: 20;
+  background: rgba(0,0,0,.45);
+  display: flex; align-items: center; justify-content: center;
+}
+.modal {
+  width: 400px; max-width: 90%;
+  background: var(--bg-window);
+  border: 1px solid var(--separator);
+  border-radius: 10px;
+  box-shadow: 0 18px 50px rgba(0,0,0,.55);
+  overflow: hidden;
+  animation: modal-in 180ms cubic-bezier(0.16,1,0.3,1);
+}
+@keyframes modal-in { from { transform: translateY(8px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+.modal-head { display: flex; align-items: center; gap: 8px; padding: 12px 16px; border-bottom: 1px solid var(--border); font-size: 13px; font-weight: 600; }
+.modal-head .ic { width: 22px; height: 22px; border-radius: 5px; display: flex; align-items: center; justify-content: center;
+  background: rgba(76,175,80,.18); }
+.modal-head .ic svg { width: 14px; height: 14px; color: var(--ok-green); }
+.modal-body { padding: 14px 16px; font-size: 12.5px; line-height: 1.7; color: var(--text-secondary); }
+.modal-body .pkg { display: flex; gap: 8px; padding: 7px 0; border-bottom: 1px solid rgba(255,255,255,.05); font-size: 12px; }
+.modal-body .pkg .k { color: var(--text-muted); width: 66px; flex: none; }
+.modal-body .pkg .v { color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.modal-body .pkg .v.mono { font-family: "JetBrains Mono", Consolas, monospace; font-size: 11px; }
+.modal-body .pkg .v .ok { color: var(--status-connected); }
+.modal-body .warn { margin-top: 9px; padding: 7px 10px; border-radius: 5px; background: rgba(204,167,0,.1); border: 1px solid rgba(204,167,0,.3);
+  font-size: 11px; color: #E2C05A; }
+.modal-ft { display: flex; justify-content: flex-end; gap: 8px; padding: 11px 16px; border-top: 1px solid var(--border); }
+.modal-btn { border-radius: 4px; font-size: 12px; font-family: inherit; padding: 5px 14px; cursor: pointer; }
+.modal-btn.cancel { background: transparent; border: 1px solid var(--border); color: var(--text-secondary); }
+.modal-btn.cancel:hover { color: var(--text-primary); background: var(--hover-overlay); }
+.modal-btn.confirm { background: var(--ok-green); border: 1px solid var(--ok-green); color: #fff; font-weight: 600; }
+.modal-btn.confirm:hover { opacity: .9; }
+
+/* ============================================================
+   帧9 功能贡献 tab——contributes 自动列出（对标 VS Code Feature Contributions）
+   ============================================================ */
+.fc-sec { margin-bottom: 16px; }
+.fc-sec-h { display: flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 600; margin-bottom: 6px; }
+.fc-sec-h .cnt { font-size: 10.5px; color: var(--text-muted); font-weight: 400; background: var(--bg-input); border-radius: 8px; padding: 0 8px; }
+.fc-row { display: flex; align-items: center; gap: 8px; padding: 5px 0; font-size: 12px; border-bottom: 1px solid rgba(255,255,255,.04); }
+.fc-row .ic { width: 20px; height: 20px; border-radius: 4px; display: flex; align-items: center; justify-content: center; flex: none;
+  background: rgba(255,255,255,.06); }
+.fc-row .ic svg { width: 11px; height: 11px; }
+.fc-row .nm { flex: 1; color: var(--text-primary); }
+.fc-row .nm code { font-family: "JetBrains Mono", Consolas, monospace; font-size: 11px; color: #6CB4EE; }
+.fc-row .ds { font-size: 10.5px; color: var(--text-muted); width: 130px; text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fc-note { margin-top: 10px; padding: 8px 11px; border-radius: 6px; background: rgba(0,120,212,.07); border: 1px solid rgba(0,120,212,.25);
+  font-size: 11px; color: var(--text-secondary); line-height: 1.7; }
+.fc-note b { color: #6CB4EE; }
+
+/* ============================================================
+   帧10 更改日志 tab——CHANGELOG.md 渲染（E6#33 changelog? 字段）
+   ============================================================ */
+.cl-ver { margin-bottom: 14px; padding-bottom: 12px; border-bottom: 1px solid rgba(255,255,255,.06); }
+.cl-ver-head { display: flex; align-items: center; gap: 9px; margin-bottom: 5px; }
+.cl-ver-head .vtag { font-family: "JetBrains Mono", Consolas, monospace; font-size: 12px; font-weight: 600; color: #6CB4EE; }
+.cl-ver-head .date { font-size: 11px; color: var(--text-muted); }
+.cl-ver-head .badge-new { font-size: 10px; color: #fff; background: var(--accent); border-radius: 3px; padding: 0 6px; font-weight: 600; }
+.cl-ver ul { list-style: none; }
+.cl-ver li { display: flex; gap: 7px; font-size: 12px; line-height: 1.7; color: var(--text-primary); padding: 1.5px 0; }
+.cl-ver li::before { content: "—"; color: var(--text-muted); flex: none; }
+.cl-ver li .tag-fix { color: #E06C75; font-size: 10.5px; }
+.cl-ver li .tag-new { color: #6FD69A; font-size: 10.5px; }
+.cl-ver li .tag-chg { color: #E2C05A; font-size: 10.5px; }
+
+/* ============================================================
+   对照总表
+   ============================================================ */
+.compare { margin-top: 24px; border-collapse: collapse; font-size: 12.5px; width: 100%; background: var(--bg-card); }
+.compare th, .compare td { padding: 9px 14px; text-align: left; border-bottom: 1px solid var(--border); }
+.compare th { color: var(--text-secondary); font-weight: 600; font-size: 12px; }
+.compare td:first-child { font-weight: 600; white-space: nowrap; }
+.compare .ok { color: #6FD69A; }
+.compare .no { color: #E06C75; }
+.compare code { font-family: "JetBrains Mono", Consolas, monospace; font-size: 11px; color: #0078D4; }
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+}
+</style>
+</head>
+<body>
+
+<h1>插件详情页·全状态详解 —— A 定稿骨架逐状态展开
+  <small>骨架 = 已定稿 <b class="hl">A 壳·玻璃房</b>（ui-ux-pro-max）——信息架构 / action bar 结构 / 两栏布局 <b>不动</b>，本文件只变<b>状态</b>。
+  逐帧：<b>未安装 / 安装中 / 失败重试 / 已装·启用 / 已装·禁用 / 可更新 / 挂起·缺依赖 / 安装确认弹窗 / 功能贡献 / 更改日志</b>。
+  对标 VS Code 扩展详情页（README + 元数据侧栏 + Feature Contributions + Changelog）；依赖引擎已实现（<code>dependencies.ts</code>，E5.8#14/#15）。</small>
+</h1>
+
+<!-- ═════════════════════════════════════════════════════════════
+     帧 1 · 未安装（catalog 数据源）
+     ═════════════════════════════════════════════════════════════ -->
+<div class="frame">
+  <div class="frame-caption">
+    <span class="tag s1">帧 1</span>
+    <b>未安装 —— marketEntry 目录数据 + 绿色安装</b>
+    <span>详情页默认态：未装也能看详情/截图/README，看完再决定装不装</span>
+    <span class="task">E6#30.5a/b · #30.6 · #30.7</span>
+  </div>
+
+  <div class="app">
+    <div class="titlebar">
+      <svg class="logo" viewBox="0 0 16 16"><rect x="2" y="2" width="12" height="12" rx="2.5" fill="#0078D4"/><rect x="5" y="5" width="6" height="6" rx="1" fill="#fff"/></svg>
+      <span class="app-name">LinkDesk</span>
+      <span class="drag"></span>
+      <div class="win-btns">
+        <button class="win-btn">─</button><button class="win-btn">□</button><button class="win-btn close">✕</button>
+      </div>
+    </div>
+    <div class="mid">
+      <div class="icon-bar">
+        <button class="icon-btn" title="文件树"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg></button>
+        <button class="icon-btn" title="搜索"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg></button>
+        <div class="ib-sep"></div>
+        <button class="icon-btn active" title="插件市场"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg></button>
+        <div class="ib-sep"></div>
+        <button class="icon-btn" title="设置"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.6M12 18.6v2.6M2.8 12h2.6M18.6 12h2.6M5.5 5.5l1.8 1.8M16.7 16.7l1.8 1.8M18.5 5.5l-1.8 1.8M7.3 16.7l-1.8 1.8"/></svg></button>
+      </div>
+
+      <div class="sidebar">
+        <div class="sidebar-header">插件市场</div>
+        <div class="ms-search">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
+          <input placeholder="搜索插件">
+        </div>
+        <div class="ms-body">
+          <div class="ms-sec-head">▾ 已安装 <span class="cnt">2</span></div>
+          <div class="ms-item">
+            <div class="mi-ic"><svg viewBox="0 0 24 24" fill="none" stroke="#4EC9B0" stroke-width="1.8"><rect x="4" y="5" width="16" height="12" rx="2"/><path d="M9 17v3M15 17v3M12 17v2"/><path d="m9 9 6 4M15 9l-6 4" opacity=".55"/></svg></div>
+            <div class="mi-dt"><div class="mi-nm">串口监视器 <span class="ver">v1.0.0</span></div><div class="mi-ds"><span class="mi-au">内置 · 官方</span></div></div>
+          </div>
+          <div class="ms-item">
+            <div class="mi-ic"><svg viewBox="0 0 24 24" fill="none" stroke="#9A8BFF" stroke-width="1.8"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg></div>
+            <div class="mi-dt"><div class="mi-nm">插件市场 <span class="ver">v1.0.0</span></div><div class="mi-ds"><span class="mi-au">内置 · 官方</span></div></div>
+          </div>
+          <div class="ms-sec-head">▾ 探索插件 <span class="cnt">6</span></div>
+          <div class="ms-item selected">
+            <div class="mi-ic"><svg viewBox="0 0 24 24" fill="none" stroke="#E0AF68" stroke-width="1.8"><rect x="3" y="6" width="18" height="12" rx="2.5"/><circle cx="12" cy="12" r="3.6"/><path d="M17 9.6h.01M6 6l1.5-2h4L13 6" opacity=".8"/></svg></div>
+            <div class="mi-dt"><div class="mi-nm">快照分享 <span class="ver">v1.2.0</span></div><div class="mi-ds"><span class="mi-au">出厂制造</span></div></div>
+            <button class="mi-install">安装</button>
+          </div>
+          <div class="ms-item">
+            <div class="mi-ic"><svg viewBox="0 0 24 24" fill="none" stroke="#4EC9B0" stroke-width="1.8"><circle cx="11" cy="11" r="6.4"/><path d="M11 7.6v3.4l2.3 2.3" stroke-linecap="round"/></svg></div>
+            <div class="mi-dt"><div class="mi-nm">取色器 <span class="ver">v0.9.1</span></div><div class="mi-ds"><span class="mi-au">出厂制造</span></div></div>
+            <button class="mi-install">安装</button>
+          </div>
+          <div class="ms-sec-head">▸ 已禁用 <span class="cnt">1</span></div>
+          <div class="ms-sec-head">▸ 内置 <span class="cnt">6</span></div>
+        </div>
+      </div>
+
+      <div class="main">
+        <div class="tabbar">
+          <div class="tab">插件市场<span class="tab-close">✕</span></div>
+          <div class="tab active"><span class="tab-ic"><svg viewBox="0 0 24 24" fill="none" stroke="#E0AF68" stroke-width="1.8"><rect x="3" y="6" width="18" height="12" rx="2.5"/><circle cx="12" cy="12" r="3.6"/><path d="M17 9.6h.01M6 6l1.5-2h4L13 6" opacity=".8"/></svg></span>快照分享<span class="tab-close">✕</span></div>
+          <div class="tab">main.ts<span class="tab-close">✕</span></div>
+        </div>
+        <div class="pdva">
+          <div class="pdva-head">
+            <div class="pdva-ic">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#E0AF68" stroke-width="1.7"><rect x="3" y="6" width="18" height="12" rx="2.5"/><circle cx="12" cy="12" r="3.6"/><path d="M17 9.6h.01M6 6l1.5-2h4L13 6" opacity=".85"/></svg>
+            </div>
+            <div class="pdva-id">
+              <div class="pdva-nm">快照分享 <span class="v">v1.2.0</span></div>
+              <div class="pdva-pub"><span>出厂制造</span><span class="badge">官方发布</span></div>
+              <div class="pdva-desc">一键把当前工作区（布局 + 打开的文件）保存为快照，生成分享链接。协作者点链接即可跨窗口恢复同一布局。</div>
+              <div class="pdva-chips">
+                <span class="pdva-chip"><span class="ok">●</span> 12.4k 下载</span>
+                <span class="pdva-chip">MIT 许可证</span>
+                <span class="pdva-chip">更新于 2026-08-20</span>
+                <span class="pdva-chip">工具 · 协作</span>
+              </div>
+            </div>
+            <div class="pdva-acts">
+              <div class="row">
+                <button class="st-btn st-install">⬇ 安装</button>
+                <div class="version-drop">1.2.0 <span class="arr">▾</span></div>
+              </div>
+              <div class="row">
+                <label class="auto-upd"><input type="checkbox" checked> 自动更新</label>
+              </div>
+            </div>
+          </div>
+          <div class="pdva-tabs">
+            <button class="pdva-tab active" type="button">详情</button>
+            <button class="pdva-tab" type="button">功能</button>
+            <button class="pdva-tab" type="button">更改日志</button>
+          </div>
+          <div class="pdva-body">
+            <div class="pdva-main">
+              <div class="pdva-shots">
+                <div class="pdva-shot"><span class="cap">工作区快照</span></div>
+                <div class="pdva-shot"><span class="cap">分享链接</span></div>
+                <div class="pdva-shot"><span class="cap">跨窗恢复</span></div>
+              </div>
+              <div class="pdva-h2">快照分享</div>
+              <p class="pdva-p">一键把当前工作区（布局 + 打开的文件）保存为快照，生成分享链接。协作者点链接即可跨窗口恢复同一布局。</p>
+              <div class="pdva-h2">特性</div>
+              <ul class="pdva-feat">
+                <li><span class="f-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="m5 13 4 4L19 7"/></svg></span>完整快照——面板布局、分屏、打开的文件与滚动位置</li>
+                <li><span class="f-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="m5 13 4 4L19 7"/></svg></span>一键分享——生成短链接，复制即用</li>
+                <li><span class="f-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="m5 13 4 4L19 7"/></svg></span>跨窗口恢复——任何窗口粘贴链接即可恢复</li>
+              </ul>
+              <p class="pdva-p muted">上方截图 + 正文 = 未装插件从 <code>readmeUrl</code> + <code>screenshots[]</code> 读取（marketplace.json 目录数据，E6#30.6）。</p>
+            </div>
+            <aside class="pdva-info">
+              <h4>信息</h4>
+              <div class="pdva-if"><span class="k">标识符</span><span class="v mono">snapshot-share</span></div>
+              <div class="pdva-if"><span class="k">版本</span><span class="v mono">1.2.0</span></div>
+              <div class="pdva-if"><span class="k">作者</span><span class="v">出厂制造</span></div>
+              <div class="pdva-if"><span class="k">来源</span><span class="v mono">github.com/linkdesk/…</span></div>
+              <div class="pdva-if"><span class="k">许可证</span><span class="v">MIT</span></div>
+              <div class="pdva-if"><span class="k">下载</span><span class="v">12.4k</span></div>
+              <div class="pdva-if"><span class="k">更新时间</span><span class="v">2026-08-20</span></div>
+              <div class="pdva-if"><span class="k">分类</span><span class="v">工具 · 协作</span></div>
+              <div class="pdva-if"><span class="k">依赖</span><span class="v dep-link mono">storage-utils</span></div>
+              <div class="pdva-if"><span class="k">被依赖</span><span class="v" style="color:var(--text-muted);">—</span></div>
+              <div class="pdva-safe"><b>安装确认</b><br>点「安装」→ 弹出确认：来源仓库 · 许可证 · 版本（见帧 8）<br><span style="color:var(--text-muted);">依赖行 = <code style="font-size:10px;color:#6CB4EE;">requires</code>（数据在依赖引擎）</span></div>
+            </aside>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="statusbar">
+      <span class="status-item"><span class="st-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="5" width="16" height="12" rx="2"/><path d="M9 17v3M15 17v3M12 17v2"/></svg></span>串口监视器 · TX 0 / RX 0</span>
+      <span class="right">
+        <span class="status-item">选择语言</span>
+        <span class="status-item">切换主题</span>
+        <span class="status-item">插件市场</span>
+        <span class="status-divider"></span>
+        <button class="bell" title="通知中心"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg></button>
+      </span>
+    </div>
+  </div>
+
+  <div class="frame-note">
+    <b>帧 1 交互要点：</b>
+    <span class="flag ok">默认态</span>未装插件详情页完整可见——市场第一站「探索优先」原则：目录数据（marketEntry）作 tab 参数传入，壳详情页保持哑。
+    <b>action bar = 三态第一态</b>：<b class="ok">🟢 安装</b>（未装唯一主操作）+ 版本下拉（<code>versions[]</code>，最新在前往前）+ 自动更新勾选。
+    标签页标题 = 市场图标 + 插件名（<b>E6#30.7</b>）。README 数据源 = 未装 fetch <code>readmeUrl</code>，截图 = <code>screenshots[]</code>（<b>E6#30.6</b>）。
+    元数据侧栏全量来自 catalog：标识符/版本/作者/来源/许可证/下载/更新/分类——「来源/下载数/许可证」即<b>信任角</b>（E6#30.8）。
+    <b class="ok">依赖行已画</b>：<code>依赖 = storage-utils</code>（数据来自依赖引擎 <code>dependencies.ts</code> requires，E5.8#14/#15 已实现）+ <code>被依赖 = —</code>——挂起态见帧 7。
+  </div>
+</div>
+
+<!-- ═════════════════════════════════════════════════════════════
+     帧 2 · 安装中（下载进度）
+     ═════════════════════════════════════════════════════════════ -->
+<div class="frame">
+  <div class="frame-caption">
+    <span class="tag s2">帧 2</span>
+    <b>安装中 —— 下载进度在安装按钮内</b>
+    <span>点「安装」确认后：按钮变进度条，随时可看下载到哪了</span>
+    <span class="task">E6#30.9a</span>
+  </div>
+
+  <div class="app">
+    <div class="titlebar">
+      <svg class="logo" viewBox="0 0 16 16"><rect x="2" y="2" width="12" height="12" rx="2.5" fill="#0078D4"/><rect x="5" y="5" width="6" height="6" rx="1" fill="#fff"/></svg>
+      <span class="app-name">LinkDesk</span>
+      <span class="drag"></span>
+      <div class="win-btns">
+        <button class="win-btn">─</button><button class="win-btn">□</button><button class="win-btn close">✕</button>
+      </div>
+    </div>
+    <div class="mid">
+      <div class="icon-bar">
+        <button class="icon-btn" title="文件树"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg></button>
+        <button class="icon-btn" title="搜索"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg></button>
+        <div class="ib-sep"></div>
+        <button class="icon-btn active" title="插件市场"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg></button>
+        <div class="ib-sep"></div>
+        <button class="icon-btn" title="设置"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.6M12 18.6v2.6M2.8 12h2.6M18.6 12h2.6M5.5 5.5l1.8 1.8M16.7 16.7l1.8 1.8M18.5 5.5l-1.8 1.8M7.3 16.7l-1.8 1.8"/></svg></button>
+      </div>
+
+      <div class="sidebar">
+        <div class="sidebar-header">插件市场</div>
+        <div class="ms-search">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
+          <input placeholder="搜索插件">
+        </div>
+        <div class="ms-body">
+          <div class="ms-sec-head">▾ 已安装 <span class="cnt">2</span></div>
+          <div class="ms-item">
+            <div class="mi-ic"><svg viewBox="0 0 24 24" fill="none" stroke="#4EC9B0" stroke-width="1.8"><rect x="4" y="5" width="16" height="12" rx="2"/><path d="M9 17v3M15 17v3M12 17v2"/><path d="m9 9 6 4M15 9l-6 4" opacity=".55"/></svg></div>
+            <div class="mi-dt"><div class="mi-nm">串口监视器 <span class="ver">v1.0.0</span></div><div class="mi-ds"><span class="mi-au">内置 · 官方</span></div></div>
+          </div>
+          <div class="ms-item">
+            <div class="mi-ic"><svg viewBox="0 0 24 24" fill="none" stroke="#9A8BFF" stroke-width="1.8"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg></div>
+            <div class="mi-dt"><div class="mi-nm">插件市场 <span class="ver">v1.0.0</span></div><div class="mi-ds"><span class="mi-au">内置 · 官方</span></div></div>
+          </div>
+          <div class="ms-sec-head">▾ 探索插件 <span class="cnt">6</span></div>
+          <div class="ms-item selected">
+            <div class="mi-ic"><svg viewBox="0 0 24 24" fill="none" stroke="#E0AF68" stroke-width="1.8"><rect x="3" y="6" width="18" height="12" rx="2.5"/><circle cx="12" cy="12" r="3.6"/><path d="M17 9.6h.01M6 6l1.5-2h4L13 6" opacity=".8"/></svg></div>
+            <div class="mi-dt"><div class="mi-nm">快照分享 <span class="ver">v1.2.0</span></div><div class="mi-ds"><span class="mi-badge pending">安装中 62%</span></div></div>
+          </div>
+          <div class="ms-sec-head">▸ 已禁用 <span class="cnt">1</span></div>
+          <div class="ms-sec-head">▸ 内置 <span class="cnt">6</span></div>
+        </div>
+      </div>
+
+      <div class="main">
+        <div class="tabbar">
+          <div class="tab">插件市场<span class="tab-close">✕</span></div>
+          <div class="tab active"><span class="tab-ic"><svg viewBox="0 0 24 24" fill="none" stroke="#E0AF68" stroke-width="1.8"><rect x="3" y="6" width="18" height="12" rx="2.5"/><circle cx="12" cy="12" r="3.6"/><path d="M17 9.6h.01M6 6l1.5-2h4L13 6" opacity=".8"/></svg></span>快照分享<span class="tab-close">✕</span></div>
+          <div class="tab">main.ts<span class="tab-close">✕</span></div>
+        </div>
+        <div class="pdva">
+          <div class="pdva-head">
+            <div class="pdva-ic">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#E0AF68" stroke-width="1.7"><rect x="3" y="6" width="18" height="12" rx="2.5"/><circle cx="12" cy="12" r="3.6"/><path d="M17 9.6h.01M6 6l1.5-2h4L13 6" opacity=".85"/></svg>
+            </div>
+            <div class="pdva-id">
+              <div class="pdva-nm">快照分享 <span class="v">v1.2.0</span></div>
+              <div class="pdva-pub"><span>出厂制造</span><span class="badge">官方发布</span></div>
+              <div class="pdva-desc">一键把当前工作区（布局 + 打开的文件）保存为快照，生成分享链接。协作者点链接即可跨窗口恢复同一布局。</div>
+              <div class="pdva-chips">
+                <span class="pdva-chip"><span class="ok">●</span> 12.4k 下载</span>
+                <span class="pdva-chip">MIT 许可证</span>
+                <span class="pdva-chip">更新于 2026-08-20</span>
+              </div>
+            </div>
+            <div class="pdva-acts">
+              <div class="row">
+                <span class="st-progress"><span class="fill"></span><span class="lbl">⬇ 复制中… 62%</span></span>
+                <div class="version-drop ver-disabled">1.2.0 <span class="arr">▾</span></div>
+              </div>
+              <div class="row">
+                <label class="auto-upd auto-disabled"><input type="checkbox" checked disabled> 自动更新</label>
+              </div>
+            </div>
+          </div>
+          <div class="pdva-tabs">
+            <button class="pdva-tab active" type="button">详情</button>
+            <button class="pdva-tab" type="button">功能</button>
+            <button class="pdva-tab" type="button">更改日志</button>
+          </div>
+          <div class="pdva-body">
+            <div class="pdva-main">
+              <div class="pdva-h2">正在下载…</div>
+              <p class="pdva-p muted">安装中不可重复点击；下载进度实时显示在按钮内（<code>fetch(downloadUrl)</code> → ArrayBuffer → 进度事件，E6#30.9a）。安装完成后自动切「禁用/卸载」（帧 4）。</p>
+              <div class="pdva-shots" style="opacity:.55; filter:saturate(.6);">
+                <div class="pdva-shot"><span class="cap">工作区快照</span></div>
+                <div class="pdva-shot"><span class="cap">分享链接</span></div>
+                <div class="pdva-shot"><span class="cap">跨窗恢复</span></div>
+              </div>
+            </div>
+            <aside class="pdva-info">
+              <h4>信息</h4>
+              <div class="pdva-if"><span class="k">标识符</span><span class="v mono">snapshot-share</span></div>
+              <div class="pdva-if"><span class="k">版本</span><span class="v mono">1.2.0</span></div>
+              <div class="pdva-if"><span class="k">作者</span><span class="v">出厂制造</span></div>
+              <div class="pdva-if"><span class="k">来源</span><span class="v mono">github.com/linkdesk/…</span></div>
+              <div class="pdva-if"><span class="k">许可证</span><span class="v">MIT</span></div>
+              <div class="pdva-if"><span class="k">下载</span><span class="v">12.4k</span></div>
+              <div class="pdva-if"><span class="k">更新时间</span><span class="v">2026-08-20</span></div>
+            </aside>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="ld-toast-stack">
+      <div class="ld-toast toast-pending">
+        <div class="t-main-row">
+          <span class="t-ic info">⏳</span>
+          <div class="t-body"><div class="t-msg">正在安装 快照分享 v1.2.0… 62%</div></div>
+        </div>
+        <div class="t-details">
+          <span class="t-src">来源: 插件市场</span>
+        </div>
+      </div>
+    </div>
+    <div class="statusbar">
+      <span class="status-item"><span class="st-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="5" width="16" height="12" rx="2"/><path d="M9 17v3M15 17v3M12 17v2"/></svg></span>串口监视器 · TX 0 / RX 0</span>
+      <span class="right">
+        <span class="status-item">选择语言</span>
+        <span class="status-item">切换主题</span>
+        <span class="status-item">插件市场</span>
+        <span class="status-divider"></span>
+        <button class="bell" title="通知中心"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg></button>
+      </span>
+    </div>
+  </div>
+
+  <div class="frame-note">
+    <b>帧 2 交互要点：</b>安装进度<b class="ok">就地在安装按钮内显示</b>（stage 文字 + 百分比）；右下角持久 toast「正在安装…」随进度更新百分比。
+    <b class="warn">图形进度条留未来</b>——NotificationService.ts 原话「真进度条 UI（VS Code 式右下角进度卡）留未来，届时 API 面已现成」；现网进度 = 持久 toast + 改消息文字。
+    <b class="ok">实机依据</b>：<code>plugin:installProgress</code> 事件已存在（壳 loader → 主进程 → 池），现推 stage（校验中/复制中/加载中，SearchView.tsx 原文）；E6 下载流程在此通道扩展 percent。
+    <b class="ok">API 边界（读代码实锤）</b>：插件<b>自调</b> <code>window.linkdesk.notifications.show(msg, { progress: true })</code>（UiAPI，preload-pool 白名单 ✅，E3j#76）→ IPC <code>showNotification</code> → 壳 <code>pushToast</code> → 池 ToastHost 渲染。<code>handle.update("正在安装… 62%")</code> 循环改文字；<code>finish/cancel</code> 收尾。市场插件<b>自己决定显示什么</b>——零新 API。
+    安装期间版本下拉 + 自动更新<b class="warn">置灰不可改</b>。
+    <b class="err">多窗一致</b>：另一窗口开同详情页进度同步；安装完成广播后全部窗口切「禁用/卸载」。
+  </div>
+</div>
+
+<!-- ═════════════════════════════════════════════════════════════
+     帧 3 · 安装失败（重试）
+     ═════════════════════════════════════════════════════════════ -->
+<div class="frame">
+  <div class="frame-caption">
+    <span class="tag s3">帧 3</span>
+    <b>安装失败 —— 红色重试 + 原因</b>
+    <span>下载中断/校验失败/断网：明确失败原因，一键重试</span>
+    <span class="task">E6#30.9b</span>
+  </div>
+
+  <div class="app">
+    <div class="titlebar">
+      <svg class="logo" viewBox="0 0 16 16"><rect x="2" y="2" width="12" height="12" rx="2.5" fill="#0078D4"/><rect x="5" y="5" width="6" height="6" rx="1" fill="#fff"/></svg>
+      <span class="app-name">LinkDesk</span>
+      <span class="drag"></span>
+      <div class="win-btns">
+        <button class="win-btn">─</button><button class="win-btn">□</button><button class="win-btn close">✕</button>
+      </div>
+    </div>
+    <div class="mid">
+      <div class="icon-bar">
+        <button class="icon-btn" title="文件树"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg></button>
+        <button class="icon-btn" title="搜索"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg></button>
+        <div class="ib-sep"></div>
+        <button class="icon-btn active" title="插件市场"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg></button>
+        <div class="ib-sep"></div>
+        <button class="icon-btn" title="设置"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.6M12 18.6v2.6M2.8 12h2.6M18.6 12h2.6M5.5 5.5l1.8 1.8M16.7 16.7l1.8 1.8M18.5 5.5l-1.8 1.8M7.3 16.7l-1.8 1.8"/></svg></button>
+      </div>
+
+      <div class="sidebar">
+        <div class="sidebar-header">插件市场</div>
+        <div class="ms-search">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
+          <input placeholder="搜索插件">
+        </div>
+        <div class="ms-body">
+          <div class="ms-sec-head">▾ 已安装 <span class="cnt">2</span></div>
+          <div class="ms-item">
+            <div class="mi-ic"><svg viewBox="0 0 24 24" fill="none" stroke="#4EC9B0" stroke-width="1.8"><rect x="4" y="5" width="16" height="12" rx="2"/><path d="M9 17v3M15 17v3M12 17v2"/><path d="m9 9 6 4M15 9l-6 4" opacity=".55"/></svg></div>
+            <div class="mi-dt"><div class="mi-nm">串口监视器 <span class="ver">v1.0.0</span></div><div class="mi-ds"><span class="mi-au">内置 · 官方</span></div></div>
+          </div>
+          <div class="ms-item">
+            <div class="mi-ic"><svg viewBox="0 0 24 24" fill="none" stroke="#9A8BFF" stroke-width="1.8"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg></div>
+            <div class="mi-dt"><div class="mi-nm">插件市场 <span class="ver">v1.0.0</span></div><div class="mi-ds"><span class="mi-au">内置 · 官方</span></div></div>
+          </div>
+          <div class="ms-sec-head">▾ 探索插件 <span class="cnt">6</span></div>
+          <div class="ms-item selected">
+            <div class="mi-ic"><svg viewBox="0 0 24 24" fill="none" stroke="#E0AF68" stroke-width="1.8"><rect x="3" y="6" width="18" height="12" rx="2.5"/><circle cx="12" cy="12" r="3.6"/><path d="M17 9.6h.01M6 6l1.5-2h4L13 6" opacity=".8"/></svg></div>
+            <div class="mi-dt"><div class="mi-nm">快照分享 <span class="ver">v1.2.0</span></div><div class="mi-ds"><span class="mi-badge pending">安装失败</span></div></div>
+            <button class="mi-install">重试</button>
+          </div>
+          <div class="ms-sec-head">▸ 已禁用 <span class="cnt">1</span></div>
+          <div class="ms-sec-head">▸ 内置 <span class="cnt">6</span></div>
+        </div>
+      </div>
+
+      <div class="main">
+        <div class="tabbar">
+          <div class="tab">插件市场<span class="tab-close">✕</span></div>
+          <div class="tab active"><span class="tab-ic"><svg viewBox="0 0 24 24" fill="none" stroke="#E0AF68" stroke-width="1.8"><rect x="3" y="6" width="18" height="12" rx="2.5"/><circle cx="12" cy="12" r="3.6"/><path d="M17 9.6h.01M6 6l1.5-2h4L13 6" opacity=".8"/></svg></span>快照分享<span class="tab-close">✕</span></div>
+          <div class="tab">main.ts<span class="tab-close">✕</span></div>
+        </div>
+        <div class="pdva">
+          <div class="pdva-head">
+            <div class="pdva-ic">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#E0AF68" stroke-width="1.7"><rect x="3" y="6" width="18" height="12" rx="2.5"/><circle cx="12" cy="12" r="3.6"/><path d="M17 9.6h.01M6 6l1.5-2h4L13 6" opacity=".85"/></svg>
+            </div>
+            <div class="pdva-id">
+              <div class="pdva-nm">快照分享 <span class="v">v1.2.0</span></div>
+              <div class="pdva-pub"><span>出厂制造</span><span class="badge">官方发布</span></div>
+              <div class="pdva-desc">一键把当前工作区（布局 + 打开的文件）保存为快照，生成分享链接。协作者点链接即可跨窗口恢复同一布局。</div>
+              <div class="pdva-chips">
+                <span class="pdva-chip"><span class="ok">●</span> 12.4k 下载</span>
+                <span class="pdva-chip">MIT 许可证</span>
+                <span class="pdva-chip">更新于 2026-08-20</span>
+              </div>
+            </div>
+            <div class="pdva-acts">
+              <div class="row">
+                <button class="st-fail">↻ 重试安装</button>
+                <div class="version-drop">1.2.0 <span class="arr">▾</span></div>
+              </div>
+              <div class="row">
+                <label class="auto-upd"><input type="checkbox" checked> 自动更新</label>
+              </div>
+            </div>
+          </div>
+          <div class="pdva-tabs">
+            <button class="pdva-tab active" type="button">详情</button>
+            <button class="pdva-tab" type="button">功能</button>
+            <button class="pdva-tab" type="button">更改日志</button>
+          </div>
+          <div class="pdva-body">
+            <div class="pdva-main">
+              <div class="pdva-shots">
+                <div class="pdva-shot"><span class="cap">工作区快照</span></div>
+                <div class="pdva-shot"><span class="cap">分享链接</span></div>
+                <div class="pdva-shot"><span class="cap">跨窗恢复</span></div>
+              </div>
+              <div class="pdva-h2">快照分享</div>
+              <p class="pdva-p">一键把当前工作区（布局 + 打开的文件）保存为快照，生成分享链接。协作者点链接即可跨窗口恢复同一布局。</p>
+              <div class="pdva-h2">特性</div>
+              <ul class="pdva-feat">
+                <li><span class="f-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="m5 13 4 4L19 7"/></svg></span>完整快照——面板布局、分屏、打开的文件与滚动位置</li>
+                <li><span class="f-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="m5 13 4 4L19 7"/></svg></span>一键分享——生成短链接，复制即用</li>
+                <li><span class="f-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="m5 13 4 4L19 7"/></svg></span>跨窗口恢复——任何窗口粘贴链接即可恢复</li>
+              </ul>
+              <p class="pdva-p muted">失败是瞬时事件——主区 README 照常展示，失败只由 action bar（红色重试）+ 右下角 toast 表达。</p>
+            </div>
+            <aside class="pdva-info">
+              <h4>信息</h4>
+              <div class="pdva-if"><span class="k">标识符</span><span class="v mono">snapshot-share</span></div>
+              <div class="pdva-if"><span class="k">版本</span><span class="v mono">1.2.0</span></div>
+              <div class="pdva-if"><span class="k">作者</span><span class="v">出厂制造</span></div>
+              <div class="pdva-if"><span class="k">来源</span><span class="v mono">github.com/linkdesk/…</span></div>
+              <div class="pdva-if"><span class="k">许可证</span><span class="v">MIT</span></div>
+              <div class="pdva-if"><span class="k">下载</span><span class="v">12.4k</span></div>
+              <div class="pdva-if"><span class="k">依赖</span><span class="v dep-link mono">storage-utils</span></div>
+              <div class="pdva-if"><span class="k">被依赖</span><span class="v" style="color:var(--text-muted);">—</span></div>
+            </aside>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="ld-toast-stack">
+      <div class="ld-toast toast-error">
+        <div class="t-main-row">
+          <span class="t-ic error">✕</span>
+          <div class="t-body"><div class="t-msg">安装失败：网络连接中断，下载未完成</div></div>
+        </div>
+        <div class="t-details">
+          <span class="t-src">来源: 插件市场</span>
+          <div class="t-acts">
+            <button class="t-act primary">重试</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="statusbar">
+      <span class="status-item"><span class="st-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="5" width="16" height="12" rx="2"/><path d="M9 17v3M15 17v3M12 17v2"/></svg></span>串口监视器 · TX 0 / RX 0</span>
+      <span class="right">
+        <span class="status-item">选择语言</span>
+        <span class="status-item">切换主题</span>
+        <span class="status-item">插件市场</span>
+        <span class="status-divider"></span>
+        <button class="bell" title="通知中心"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg></button>
+      </span>
+    </div>
+  </div>
+
+  <div class="frame-note">
+    <b>帧 3 交互要点：</b>失败是<b>事件型提示</b>——一律走右下角 toast，不占顶部横幅（用户拍板：顶部横幅把整个 UI 往下推 + 影响性能；toast 已在右下角、自带 actions 支持重试）。
+    <b class="err">toast（error severity）</b>：主行 = ✕ + 失败原因「网络连接中断，下载未完成」；详情行 = <code>来源: 插件市场</code> + <b class="err">红色框「重试」</b>（primary 动作）。TTL 比 info 长（TOAST_TTL_ERROR 8000ms）。
+    <b class="err">action bar</b>：回到「未安装」态但按钮变红色「↻ 重试安装」（断点续传或从头，实现时择一）——版本下拉/自动更新恢复可用。
+    <b class="err">侧栏该行</b>：安装失败徽标 + 重试按钮，随时可从列表入口重试。
+    主区 README 照常展示（失败是瞬时事件，页面不卡在失败态）。
+    <b class="warn">断网态</b>：断网时不是「失败」而是「离线」——按钮置灰 + 提示「联网后重试」（E6#30.9 断网态）。
+</div>
+</div>
+
+<!-- ═════════════════════════════════════════════════════════════
+     帧 4 · 已安装 · 启用
+     ═════════════════════════════════════════════════════════════ -->
+<div class="frame">
+  <div class="frame-caption">
+    <span class="tag s4">帧 4</span>
+    <b>已安装 · 启用 —— 禁用 + 卸载</b>
+    <span>安装完成自动切到此态：按钮从「安装」变「禁用 + 卸载」，移入侧栏「已安装」</span>
+    <span class="task">E6#30.5c</span>
+  </div>
+
+  <div class="app">
+    <div class="titlebar">
+      <svg class="logo" viewBox="0 0 16 16"><rect x="2" y="2" width="12" height="12" rx="2.5" fill="#0078D4"/><rect x="5" y="5" width="6" height="6" rx="1" fill="#fff"/></svg>
+      <span class="app-name">LinkDesk</span>
+      <span class="drag"></span>
+      <div class="win-btns">
+        <button class="win-btn">─</button><button class="win-btn">□</button><button class="win-btn close">✕</button>
+      </div>
+    </div>
+    <div class="mid">
+      <div class="icon-bar">
+        <button class="icon-btn" title="文件树"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg></button>
+        <button class="icon-btn" title="搜索"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg></button>
+        <div class="ib-sep"></div>
+        <button class="icon-btn active" title="插件市场"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg></button>
+        <div class="ib-sep"></div>
+        <button class="icon-btn" title="设置"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.6M12 18.6v2.6M2.8 12h2.6M18.6 12h2.6M5.5 5.5l1.8 1.8M16.7 16.7l1.8 1.8M18.5 5.5l-1.8 1.8M7.3 16.7l-1.8 1.8"/></svg></button>
+      </div>
+
+      <div class="sidebar">
+        <div class="sidebar-header">插件市场</div>
+        <div class="ms-search">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
+          <input placeholder="搜索插件">
+        </div>
+        <div class="ms-body">
+          <div class="ms-sec-head">▾ 已安装 <span class="cnt">3</span></div>
+          <div class="ms-item">
+            <div class="mi-ic"><svg viewBox="0 0 24 24" fill="none" stroke="#4EC9B0" stroke-width="1.8"><rect x="4" y="5" width="16" height="12" rx="2"/><path d="M9 17v3M15 17v3M12 17v2"/><path d="m9 9 6 4M15 9l-6 4" opacity=".55"/></svg></div>
+            <div class="mi-dt"><div class="mi-nm">串口监视器 <span class="ver">v1.0.0</span></div><div class="mi-ds"><span class="mi-au">内置 · 官方</span></div></div>
+          </div>
+          <div class="ms-item">
+            <div class="mi-ic"><svg viewBox="0 0 24 24" fill="none" stroke="#9A8BFF" stroke-width="1.8"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg></div>
+            <div class="mi-dt"><div class="mi-nm">插件市场 <span class="ver">v1.0.0</span></div><div class="mi-ds"><span class="mi-au">内置 · 官方</span></div></div>
+          </div>
+          <div class="ms-item selected">
+            <div class="mi-ic"><svg viewBox="0 0 24 24" fill="none" stroke="#E0AF68" stroke-width="1.8"><rect x="3" y="6" width="18" height="12" rx="2.5"/><circle cx="12" cy="12" r="3.6"/><path d="M17 9.6h.01M6 6l1.5-2h4L13 6" opacity=".8"/></svg></div>
+            <div class="mi-dt"><div class="mi-nm">快照分享 <span class="ver">v1.2.0</span></div><div class="mi-ds"><span class="mi-badge installed">已安装</span></div></div>
+          </div>
+          <div class="ms-sec-head">▾ 探索插件 <span class="cnt">5</span></div>
+          <div class="ms-item">
+            <div class="mi-ic"><svg viewBox="0 0 24 24" fill="none" stroke="#4EC9B0" stroke-width="1.8"><circle cx="11" cy="11" r="6.4"/><path d="M11 7.6v3.4l2.3 2.3" stroke-linecap="round"/></svg></div>
+            <div class="mi-dt"><div class="mi-nm">取色器 <span class="ver">v0.9.1</span></div><div class="mi-ds"><span class="mi-au">出厂制造</span></div></div>
+            <button class="mi-install">安装</button>
+          </div>
+          <div class="ms-sec-head">▸ 已禁用 <span class="cnt">1</span></div>
+          <div class="ms-sec-head">▸ 内置 <span class="cnt">6</span></div>
+        </div>
+      </div>
+
+      <div class="main">
+        <div class="tabbar">
+          <div class="tab">插件市场<span class="tab-close">✕</span></div>
+          <div class="tab active"><span class="tab-ic"><svg viewBox="0 0 24 24" fill="none" stroke="#E0AF68" stroke-width="1.8"><rect x="3" y="6" width="18" height="12" rx="2.5"/><circle cx="12" cy="12" r="3.6"/><path d="M17 9.6h.01M6 6l1.5-2h4L13 6" opacity=".8"/></svg></span>快照分享<span class="tab-close">✕</span></div>
+          <div class="tab">main.ts<span class="tab-close">✕</span></div>
+        </div>
+        <div class="pdva">
+          <div class="pdva-head">
+            <div class="pdva-ic">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#E0AF68" stroke-width="1.7"><rect x="3" y="6" width="18" height="12" rx="2.5"/><circle cx="12" cy="12" r="3.6"/><path d="M17 9.6h.01M6 6l1.5-2h4L13 6" opacity=".85"/></svg>
+            </div>
+            <div class="pdva-id">
+              <div class="pdva-nm">快照分享 <span class="v">v1.2.0</span></div>
+              <div class="pdva-pub"><span>出厂制造</span><span class="badge">官方发布</span></div>
+              <div class="pdva-desc">一键把当前工作区（布局 + 打开的文件）保存为快照，生成分享链接。协作者点链接即可跨窗口恢复同一布局。</div>
+              <div class="pdva-chips">
+                <span class="pdva-chip"><span class="ok">●</span> 12.4k 下载</span>
+                <span class="pdva-chip">MIT 许可证</span>
+                <span class="pdva-chip">更新于 2026-08-20</span>
+                <span class="pdva-chip"><span class="ok">已安装 v1.2.0</span></span>
+              </div>
+            </div>
+            <div class="pdva-acts">
+              <div class="row">
+                <button class="st-btn st-disable">⏸ 禁用</button>
+                <button class="st-uninstall">🗑 卸载</button>
+                <div class="version-drop">1.2.0 <span class="arr">▾</span></div>
+              </div>
+              <div class="row">
+                <label class="auto-upd"><input type="checkbox" checked> 自动更新</label>
+              </div>
+            </div>
+          </div>
+          <div class="pdva-tabs">
+            <button class="pdva-tab active" type="button">详情</button>
+            <button class="pdva-tab" type="button">功能</button>
+            <button class="pdva-tab" type="button">更改日志</button>
+          </div>
+          <div class="pdva-body">
+            <div class="pdva-main">
+              <div class="pdva-shots">
+                <div class="pdva-shot"><span class="cap">工作区快照</span></div>
+                <div class="pdva-shot"><span class="cap">分享链接</span></div>
+                <div class="pdva-shot"><span class="cap">跨窗恢复</span></div>
+              </div>
+              <div class="pdva-h2">快照分享</div>
+              <p class="pdva-p">一键把当前工作区（布局 + 打开的文件）保存为快照，生成分享链接。协作者点链接即可跨窗口恢复同一布局。</p>
+              <p class="pdva-p muted">已安装插件 README 改读<b>包内 README.md</b>（IPC 读取），不再 fetch readmeUrl——离线也可看详情（E6#30.6）。</p>
+            </div>
+            <aside class="pdva-info">
+              <h4>信息</h4>
+              <div class="pdva-if"><span class="k">标识符</span><span class="v mono">snapshot-share</span></div>
+              <div class="pdva-if"><span class="k">版本</span><span class="v mono">1.2.0</span></div>
+              <div class="pdva-if"><span class="k">作者</span><span class="v">出厂制造</span></div>
+              <div class="pdva-if"><span class="k">来源</span><span class="v mono">github.com/linkdesk/…</span></div>
+              <div class="pdva-if"><span class="k">许可证</span><span class="v">MIT</span></div>
+              <div class="pdva-if"><span class="k">下载</span><span class="v">12.4k</span></div>
+              <div class="pdva-if"><span class="k">依赖</span><span class="v dep-link mono">storage-utils</span></div>
+              <div class="pdva-if"><span class="k">被依赖</span><span class="v" style="color:var(--text-muted);">—</span></div>
+              <div class="pdva-if"><span class="k">自动更新</span><span class="v">开</span></div>
+            </aside>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="statusbar">
+      <span class="status-item"><span class="st-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="5" width="16" height="12" rx="2"/><path d="M9 17v3M15 17v3M12 17v2"/></svg></span>串口监视器 · TX 0 / RX 0</span>
+      <span class="right">
+        <span class="status-item">选择语言</span>
+        <span class="status-item">切换主题</span>
+        <span class="status-item">插件市场</span>
+        <span class="status-divider"></span>
+        <button class="bell" title="通知中心"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg></button>
+      </span>
+    </div>
+  </div>
+
+  <div class="frame-note">
+    <b>帧 4 交互要点：</b>安装完成 → 订阅 <code>plugin-lifecycle:changed</code> 自动切换：按钮变「<b class="ok">⏸ 禁用</b> + 🗑 卸载」，侧栏该行移入「已安装」组（状态徽标）。
+    <span class="flag ok">实机先例</span>成功安装即时发 info toast「已安装：快照分享（即时生效）」（<code>lifecycle.ts</code> onDidInstall 原文）。
+    README 数据源切换为包内 README.md——<b>离线可读</b>（E6#30.6）。卸载需二次确认（可复用现有 confirm 流程）；禁用立即生效、不影响卸载（E6#30.5b）。
+    元数据侧栏已补全<b class="ok">依赖 / 被依赖</b>行（与帧 1/7 同款，数据源 <code>dependencies.ts</code>）。
+  </div>
+</div>
+
+<!-- ═════════════════════════════════════════════════════════════
+     帧 5 · 已安装 · 禁用
+     ═════════════════════════════════════════════════════════════ -->
+<div class="frame">
+  <div class="frame-caption">
+    <span class="tag s5">帧 5</span>
+    <b>已安装 · 禁用 —— 启用 + 卸载</b>
+    <span>禁用的插件详情页：主按钮变「启用」，视觉降饱和提示非活跃</span>
+    <span class="task">E6#30.5b</span>
+  </div>
+
+  <div class="app">
+    <div class="titlebar">
+      <svg class="logo" viewBox="0 0 16 16"><rect x="2" y="2" width="12" height="12" rx="2.5" fill="#0078D4"/><rect x="5" y="5" width="6" height="6" rx="1" fill="#fff"/></svg>
+      <span class="app-name">LinkDesk</span>
+      <span class="drag"></span>
+      <div class="win-btns">
+        <button class="win-btn">─</button><button class="win-btn">□</button><button class="win-btn close">✕</button>
+      </div>
+    </div>
+    <div class="mid">
+      <div class="icon-bar">
+        <button class="icon-btn" title="文件树"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg></button>
+        <button class="icon-btn" title="搜索"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg></button>
+        <div class="ib-sep"></div>
+        <button class="icon-btn active" title="插件市场"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg></button>
+        <div class="ib-sep"></div>
+        <button class="icon-btn" title="设置"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.6M12 18.6v2.6M2.8 12h2.6M18.6 12h2.6M5.5 5.5l1.8 1.8M16.7 16.7l1.8 1.8M18.5 5.5l-1.8 1.8M7.3 16.7l-1.8 1.8"/></svg></button>
+      </div>
+
+      <div class="sidebar">
+        <div class="sidebar-header">插件市场</div>
+        <div class="ms-search">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
+          <input placeholder="搜索插件">
+        </div>
+        <div class="ms-body">
+          <div class="ms-sec-head">▾ 已安装 <span class="cnt">2</span></div>
+          <div class="ms-item">
+            <div class="mi-ic"><svg viewBox="0 0 24 24" fill="none" stroke="#4EC9B0" stroke-width="1.8"><rect x="4" y="5" width="16" height="12" rx="2"/><path d="M9 17v3M15 17v3M12 17v2"/><path d="m9 9 6 4M15 9l-6 4" opacity=".55"/></svg></div>
+            <div class="mi-dt"><div class="mi-nm">串口监视器 <span class="ver">v1.0.0</span></div><div class="mi-ds"><span class="mi-au">内置 · 官方</span></div></div>
+          </div>
+          <div class="ms-item">
+            <div class="mi-ic"><svg viewBox="0 0 24 24" fill="none" stroke="#9A8BFF" stroke-width="1.8"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg></div>
+            <div class="mi-dt"><div class="mi-nm">插件市场 <span class="ver">v1.0.0</span></div><div class="mi-ds"><span class="mi-au">内置 · 官方</span></div></div>
+          </div>
+          <div class="ms-sec-head">▾ 已禁用 <span class="cnt">1</span></div>
+          <div class="ms-item selected">
+            <div class="mi-ic"><svg viewBox="0 0 24 24" fill="none" stroke="#E0AF68" stroke-width="1.8" opacity=".6"><rect x="3" y="6" width="18" height="12" rx="2.5"/><circle cx="12" cy="12" r="3.6"/><path d="M17 9.6h.01M6 6l1.5-2h4L13 6" opacity=".8"/></svg></div>
+            <div class="mi-dt"><div class="mi-nm">快照分享 <span class="ver">v1.2.0</span></div><div class="mi-ds"><span class="mi-badge disabled">已禁用</span></div></div>
+            <button class="mi-install">启用</button>
+          </div>
+          <div class="ms-sec-head">▾ 探索插件 <span class="cnt">5</span></div>
+          <div class="ms-item">
+            <div class="mi-ic"><svg viewBox="0 0 24 24" fill="none" stroke="#4EC9B0" stroke-width="1.8"><circle cx="11" cy="11" r="6.4"/><path d="M11 7.6v3.4l2.3 2.3" stroke-linecap="round"/></svg></div>
+            <div class="mi-dt"><div class="mi-nm">取色器 <span class="ver">v0.9.1</span></div><div class="mi-ds"><span class="mi-au">出厂制造</span></div></div>
+            <button class="mi-install">安装</button>
+          </div>
+          <div class="ms-sec-head">▸ 内置 <span class="cnt">6</span></div>
+        </div>
+      </div>
+
+      <div class="main">
+        <div class="tabbar">
+          <div class="tab">插件市场<span class="tab-close">✕</span></div>
+          <div class="tab active"><span class="tab-ic"><svg viewBox="0 0 24 24" fill="none" stroke="#E0AF68" stroke-width="1.8"><rect x="3" y="6" width="18" height="12" rx="2.5"/><circle cx="12" cy="12" r="3.6"/><path d="M17 9.6h.01M6 6l1.5-2h4L13 6" opacity=".8"/></svg></span>快照分享<span class="tab-close">✕</span></div>
+          <div class="tab">main.ts<span class="tab-close">✕</span></div>
+        </div>
+        <div class="pdva" style="filter: saturate(.7);">
+          <div class="pdva-head">
+            <div class="pdva-ic">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#E0AF68" stroke-width="1.7" opacity=".75"><rect x="3" y="6" width="18" height="12" rx="2.5"/><circle cx="12" cy="12" r="3.6"/><path d="M17 9.6h.01M6 6l1.5-2h4L13 6" opacity=".85"/></svg>
+            </div>
+            <div class="pdva-id">
+              <div class="pdva-nm">快照分享 <span class="v">v1.2.0</span></div>
+              <div class="pdva-pub"><span>出厂制造</span><span class="badge" style="background:#5f5f6e;">已禁用</span></div>
+              <div class="pdva-desc">一键把当前工作区（布局 + 打开的文件）保存为快照，生成分享链接。协作者点链接即可跨窗口恢复同一布局。</div>
+              <div class="pdva-chips">
+                <span class="pdva-chip"><span class="ok">●</span> 12.4k 下载</span>
+                <span class="pdva-chip">MIT 许可证</span>
+                <span class="pdva-chip">更新于 2026-08-20</span>
+              </div>
+            </div>
+            <div class="pdva-acts">
+              <div class="row">
+                <button class="st-btn st-enable">▶ 启用</button>
+                <button class="st-uninstall">🗑 卸载</button>
+                <div class="version-drop">1.2.0 <span class="arr">▾</span></div>
+              </div>
+              <div class="row">
+                <label class="auto-upd"><input type="checkbox" checked> 自动更新</label>
+              </div>
+            </div>
+          </div>
+          <div class="pdva-tabs">
+            <button class="pdva-tab active" type="button">详情</button>
+            <button class="pdva-tab" type="button">功能</button>
+            <button class="pdva-tab" type="button">更改日志</button>
+          </div>
+          <div class="pdva-body">
+            <div class="pdva-main">
+              <div class="pdva-h2">快照分享 <span style="font-size:12px;color:var(--text-muted);font-weight:400;">（已禁用）</span></div>
+              <p class="pdva-p">此插件当前已禁用——禁用后不加载、不占资源，但文件保留，可随时重新启用。</p>
+              <p class="pdva-p muted">详情内容仍可读（README 在包内）；「启用」后立即生效，无需重启（E6#30.5b）。</p>
+            </div>
+            <aside class="pdva-info">
+              <h4>信息</h4>
+              <div class="pdva-if"><span class="k">标识符</span><span class="v mono">snapshot-share</span></div>
+              <div class="pdva-if"><span class="k">版本</span><span class="v mono">1.2.0</span></div>
+              <div class="pdva-if"><span class="k">依赖</span><span class="v dep-link mono">storage-utils</span></div>
+              <div class="pdva-if"><span class="k">被依赖</span><span class="v" style="color:var(--text-muted);">—</span></div>
+              <div class="pdva-if"><span class="k">作者</span><span class="v">出厂制造</span></div>
+              <div class="pdva-if"><span class="k">来源</span><span class="v mono">github.com/linkdesk/…</span></div>
+              <div class="pdva-if"><span class="k">许可证</span><span class="v">MIT</span></div>
+              <div class="pdva-if"><span class="k">状态</span><span class="v">已禁用</span></div>
+            </aside>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="statusbar">
+      <span class="status-item"><span class="st-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="5" width="16" height="12" rx="2"/><path d="M9 17v3M15 17v3M12 17v2"/></svg></span>串口监视器 · TX 0 / RX 0</span>
+      <span class="right">
+        <span class="status-item">选择语言</span>
+        <span class="status-item">切换主题</span>
+        <span class="status-item">插件市场</span>
+        <span class="status-divider"></span>
+        <button class="bell" title="通知中心"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg></button>
+      </span>
+    </div>
+  </div>
+
+  <div class="frame-note">
+    <b>帧 5 交互要点：</b>禁用态三态第二态：主按钮变「▶ 启用」+ 卸载；整页降饱和（非活跃视觉）。侧栏该行移入「已禁用」组。卸载在禁用态仍可用（禁用 ≠ 卸载）。
+    <span class="flag ok">实机先例</span>禁用即时发 info toast「已禁用：快照分享」+ 右侧 <b class="ok">[撤销]</b> primary 动作（<code>lifecycle.ts</code> onDidUninstall 原文；撤销 = enablePlugin）——禁用可逆，撤销入口直接给在 toast 里。
+    禁用后详情仍可读（README 包内），启用立即生效无需重启。
+  </div>
+</div>
+
+<!-- ═════════════════════════════════════════════════════════════
+     帧 6 · 可更新
+     ═════════════════════════════════════════════════════════════ -->
+<div class="frame">
+  <div class="frame-caption">
+    <span class="tag s6">帧 6</span>
+    <b>已安装 · 可更新 —— 升级入口（第三维）</b>
+    <span>有新版：升级入口叠加在「禁用/卸载」旁，更改日志 tab 亮徽标</span>
+    <span class="task">E6#33b/c/d · #29c</span>
+  </div>
+
+  <div class="app">
+    <div class="titlebar">
+      <svg class="logo" viewBox="0 0 16 16"><rect x="2" y="2" width="12" height="12" rx="2.5" fill="#0078D4"/><rect x="5" y="5" width="6" height="6" rx="1" fill="#fff"/></svg>
+      <span class="app-name">LinkDesk</span>
+      <span class="drag"></span>
+      <div class="win-btns">
+        <button class="win-btn">─</button><button class="win-btn">□</button><button class="win-btn close">✕</button>
+      </div>
+    </div>
+    <div class="mid">
+      <div class="icon-bar">
+        <button class="icon-btn" title="文件树"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg></button>
+        <button class="icon-btn" title="搜索"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg></button>
+        <div class="ib-sep"></div>
+        <button class="icon-btn active" title="插件市场"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg></button>
+        <div class="ib-sep"></div>
+        <button class="icon-btn" title="设置"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.6M12 18.6v2.6M2.8 12h2.6M18.6 12h2.6M5.5 5.5l1.8 1.8M16.7 16.7l1.8 1.8M18.5 5.5l-1.8 1.8M7.3 16.7l-1.8 1.8"/></svg></button>
+      </div>
+
+      <div class="sidebar">
+        <div class="sidebar-header">插件市场</div>
+        <div class="ms-search">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
+          <input placeholder="搜索插件">
+        </div>
+        <div class="ms-body">
+          <div class="ms-sec-head">▾ 已安装 <span class="cnt">3</span></div>
+          <div class="ms-item">
+            <div class="mi-ic"><svg viewBox="0 0 24 24" fill="none" stroke="#4EC9B0" stroke-width="1.8"><rect x="4" y="5" width="16" height="12" rx="2"/><path d="M9 17v3M15 17v3M12 17v2"/><path d="m9 9 6 4M15 9l-6 4" opacity=".55"/></svg></div>
+            <div class="mi-dt"><div class="mi-nm">串口监视器 <span class="ver">v1.0.0</span></div><div class="mi-ds"><span class="mi-au">内置 · 官方</span></div></div>
+          </div>
+          <div class="ms-item selected">
+            <div class="mi-ic"><svg viewBox="0 0 24 24" fill="none" stroke="#E0AF68" stroke-width="1.8"><rect x="3" y="6" width="18" height="12" rx="2.5"/><circle cx="12" cy="12" r="3.6"/><path d="M17 9.6h.01M6 6l1.5-2h4L13 6" opacity=".8"/></svg></div>
+            <div class="mi-dt"><div class="mi-nm">快照分享 <span class="ver">v1.2.0</span></div><div class="mi-ds"><span class="mi-badge update">可更新 v1.3.0</span></div></div>
+          </div>
+          <div class="ms-item">
+            <div class="mi-ic"><svg viewBox="0 0 24 24" fill="none" stroke="#9A8BFF" stroke-width="1.8"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg></div>
+            <div class="mi-dt"><div class="mi-nm">插件市场 <span class="ver">v1.0.0</span></div><div class="mi-ds"><span class="mi-au">内置 · 官方</span></div></div>
+          </div>
+          <div class="ms-sec-head">▾ 探索插件 <span class="cnt">5</span></div>
+          <div class="ms-item">
+            <div class="mi-ic"><svg viewBox="0 0 24 24" fill="none" stroke="#4EC9B0" stroke-width="1.8"><circle cx="11" cy="11" r="6.4"/><path d="M11 7.6v3.4l2.3 2.3" stroke-linecap="round"/></svg></div>
+            <div class="mi-dt"><div class="mi-nm">取色器 <span class="ver">v0.9.1</span></div><div class="mi-ds"><span class="mi-au">出厂制造</span></div></div>
+            <button class="mi-install">安装</button>
+          </div>
+          <div class="ms-sec-head">▸ 已禁用 <span class="cnt">1</span></div>
+          <div class="ms-sec-head">▸ 内置 <span class="cnt">6</span></div>
+        </div>
+      </div>
+
+      <div class="main">
+        <div class="tabbar">
+          <div class="tab">插件市场<span class="tab-close">✕</span></div>
+          <div class="tab active"><span class="tab-ic"><svg viewBox="0 0 24 24" fill="none" stroke="#E0AF68" stroke-width="1.8"><rect x="3" y="6" width="18" height="12" rx="2.5"/><circle cx="12" cy="12" r="3.6"/><path d="M17 9.6h.01M6 6l1.5-2h4L13 6" opacity=".8"/></svg></span>快照分享<span class="tab-close">✕</span></div>
+          <div class="tab">main.ts<span class="tab-close">✕</span></div>
+        </div>
+        <div class="pdva">
+          <div class="pdva-head">
+            <div class="pdva-ic">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#E0AF68" stroke-width="1.7"><rect x="3" y="6" width="18" height="12" rx="2.5"/><circle cx="12" cy="12" r="3.6"/><path d="M17 9.6h.01M6 6l1.5-2h4L13 6" opacity=".85"/></svg>
+            </div>
+            <div class="pdva-id">
+              <div class="pdva-nm">快照分享 <span class="v">v1.2.0</span></div>
+              <div class="pdva-pub"><span>出厂制造</span><span class="badge">官方发布</span></div>
+              <div class="pdva-desc">一键把当前工作区（布局 + 打开的文件）保存为快照，生成分享链接。协作者点链接即可跨窗口恢复同一布局。</div>
+              <div class="pdva-chips">
+                <span class="pdva-chip"><span class="ok">●</span> 12.4k 下载</span>
+                <span class="pdva-chip">MIT 许可证</span>
+                <span class="pdva-chip">更新于 2026-08-20</span>
+                <span class="pdva-chip" style="border-color:rgba(197,134,192,.5);color:#C586C0;">可更新 v1.3.0</span>
+              </div>
+            </div>
+            <div class="pdva-acts">
+              <div class="row">
+                <button class="st-btn st-update">⬆ 更新到 v1.3.0</button>
+                <button class="st-btn st-disable">⏸ 禁用</button>
+                <button class="st-uninstall">🗑 卸载</button>
+              </div>
+              <div class="row">
+                <div class="version-drop">v1.2.0 ▸ v1.3.0 <span class="arr">▾</span></div>
+                <label class="auto-upd"><input type="checkbox" checked> 自动更新</label>
+              </div>
+            </div>
+          </div>
+          <div class="pdva-tabs">
+            <button class="pdva-tab active" type="button">详情</button>
+            <button class="pdva-tab" type="button">功能</button>
+            <button class="pdva-tab" type="button">更改日志 <span class="dot up">●</span></button>
+          </div>
+          <div class="pdva-body">
+            <div class="pdva-main">
+              <div class="pdva-h2">有新版本可用</div>
+              <p class="pdva-p">当前安装 v1.2.0，市场最新 v1.3.0。<span style="color:#C586C0;">更新内容见「更改日志」tab</span>（版本下拉列出全部历史版本，最新在前）。</p>
+              <p class="pdva-p muted">更新 = 重新走安装流程（下载新包 → 校验 → 替换）。可开启「自动更新」后台静默升级；自动更新时详情页可同时看更改日志了解变什么（E6#33c）。</p>
+            </div>
+            <aside class="pdva-info">
+              <h4>信息</h4>
+              <div class="pdva-if"><span class="k">标识符</span><span class="v mono">snapshot-share</span></div>
+              <div class="pdva-if"><span class="k">已装版本</span><span class="v mono">1.2.0</span></div>
+              <div class="pdva-if"><span class="k">最新版本</span><span class="v mono" style="color:#C586C0;">1.3.0</span></div>
+              <div class="pdva-if"><span class="k">作者</span><span class="v">出厂制造</span></div>
+              <div class="pdva-if"><span class="k">来源</span><span class="v mono">github.com/linkdesk/…</span></div>
+              <div class="pdva-if"><span class="k">许可证</span><span class="v">MIT</span></div>
+              <div class="pdva-if"><span class="k">下载</span><span class="v">12.4k</span></div>
+              <div class="pdva-if"><span class="k">依赖</span><span class="v dep-link mono">storage-utils</span></div>
+              <div class="pdva-if"><span class="k">被依赖</span><span class="v" style="color:var(--text-muted);">—</span></div>
+            </aside>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="statusbar">
+      <span class="status-item"><span class="st-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="5" width="16" height="12" rx="2"/><path d="M9 17v3M15 17v3M12 17v2"/></svg></span>串口监视器 · TX 0 / RX 0</span>
+      <span class="right">
+        <span class="status-item">选择语言</span>
+        <span class="status-item">切换主题</span>
+        <span class="status-item">插件市场</span>
+        <span class="status-divider"></span>
+        <button class="bell" title="通知中心"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg></button>
+      </span>
+    </div>
+  </div>
+
+  <div class="frame-note">
+    <b>帧 6 交互要点：</b>「更新可用」= 第三维——<b>不改变三态</b>，在「禁用/卸载」旁叠加「⬆ 更新到 v1.3.0」主入口（蓝色）。
+    侧栏徽标「可更新 v1.3.0」；版本下拉从单值变「v1.2.0 ▸ v1.3.0」指示升级路径（<code>versions[]</code> 最新在前）。
+    <b>更改日志 tab 亮徽标</b>引导看更新内容（E6#33c）。自动更新开着 = 后台静默升级，详情页仍可看版本历史。
+    更新 = 重新走安装流程 → 进度 toast 复用帧 2（下载新包 → 校验 → 替换）；完成后 info toast「已更新：快照分享 v1.3.0」。进度 toast = 实机 <code>notifications.show(progress)</code> + <code>handle.update()</code>（帧 2 同款）。
+  </div>
+</div>
+
+<!-- ═════════════════════════════════════════════════════════════
+     帧 7 · 挂起 · 缺依赖
+     ═════════════════════════════════════════════════════════════ -->
+<div class="frame">
+  <div class="frame-caption">
+    <span class="tag s7">帧 7</span>
+    <b>挂起 · 缺依赖 —— 依赖/被依赖展示</b>
+    <span>插件 requires 依赖缺位：缺依赖 toast（事件型）+ 不可安装 + 元数据「依赖」行</span>
+    <span class="task">E6#30.5b · E5.8#14/#15 · marketplace/#15.5</span>
+  </div>
+
+  <div class="app">
+    <div class="titlebar">
+      <svg class="logo" viewBox="0 0 16 16"><rect x="2" y="2" width="12" height="12" rx="2.5" fill="#0078D4"/><rect x="5" y="5" width="6" height="6" rx="1" fill="#fff"/></svg>
+      <span class="app-name">LinkDesk</span>
+      <span class="drag"></span>
+      <div class="win-btns">
+        <button class="win-btn">─</button><button class="win-btn">□</button><button class="win-btn close">✕</button>
+      </div>
+    </div>
+    <div class="mid">
+      <div class="icon-bar">
+        <button class="icon-btn" title="文件树"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg></button>
+        <button class="icon-btn" title="搜索"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg></button>
+        <div class="ib-sep"></div>
+        <button class="icon-btn active" title="插件市场"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg></button>
+        <div class="ib-sep"></div>
+        <button class="icon-btn" title="设置"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.6M12 18.6v2.6M2.8 12h2.6M18.6 12h2.6M5.5 5.5l1.8 1.8M16.7 16.7l1.8 1.8M18.5 5.5l-1.8 1.8M7.3 16.7l-1.8 1.8"/></svg></button>
+      </div>
+
+      <div class="sidebar">
+        <div class="sidebar-header">插件市场</div>
+        <div class="ms-search">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
+          <input placeholder="搜索插件">
+        </div>
+        <div class="ms-body">
+          <div class="ms-sec-head">▾ 已安装 <span class="cnt">2</span></div>
+          <div class="ms-item">
+            <div class="mi-ic"><svg viewBox="0 0 24 24" fill="none" stroke="#4EC9B0" stroke-width="1.8"><rect x="4" y="5" width="16" height="12" rx="2"/><path d="M9 17v3M15 17v3M12 17v2"/><path d="m9 9 6 4M15 9l-6 4" opacity=".55"/></svg></div>
+            <div class="mi-dt"><div class="mi-nm">串口监视器 <span class="ver">v1.0.0</span></div><div class="mi-ds"><span class="mi-au">内置 · 官方</span></div></div>
+          </div>
+          <div class="ms-item">
+            <div class="mi-ic"><svg viewBox="0 0 24 24" fill="none" stroke="#9A8BFF" stroke-width="1.8"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg></div>
+            <div class="mi-dt"><div class="mi-nm">插件市场 <span class="ver">v1.0.0</span></div><div class="mi-ds"><span class="mi-au">内置 · 官方</span></div></div>
+          </div>
+          <div class="ms-sec-head">▾ 探索插件 <span class="cnt">6</span></div>
+          <div class="ms-item selected">
+            <div class="mi-ic"><svg viewBox="0 0 24 24" fill="none" stroke="#E0AF68" stroke-width="1.8"><rect x="3" y="6" width="18" height="12" rx="2.5"/><circle cx="12" cy="12" r="3.6"/><path d="M17 9.6h.01M6 6l1.5-2h4L13 6" opacity=".8"/></svg></div>
+            <div class="mi-dt"><div class="mi-nm">快照分享 <span class="ver">v1.2.0</span></div><div class="mi-ds"><span class="mi-badge pending">等待依赖</span></div></div>
+          </div>
+          <div class="ms-item">
+            <div class="mi-ic"><svg viewBox="0 0 24 24" fill="none" stroke="#4EC9B0" stroke-width="1.8"><circle cx="11" cy="11" r="6.4"/><path d="M11 7.6v3.4l2.3 2.3" stroke-linecap="round"/></svg></div>
+            <div class="mi-dt"><div class="mi-nm">取色器 <span class="ver">v0.9.1</span></div><div class="mi-ds"><span class="mi-au">出厂制造</span></div></div>
+            <button class="mi-install">安装</button>
+          </div>
+          <div class="ms-sec-head">▸ 已禁用 <span class="cnt">1</span></div>
+          <div class="ms-sec-head">▸ 内置 <span class="cnt">6</span></div>
+        </div>
+      </div>
+
+      <div class="main">
+        <div class="tabbar">
+          <div class="tab">插件市场<span class="tab-close">✕</span></div>
+          <div class="tab active"><span class="tab-ic"><svg viewBox="0 0 24 24" fill="none" stroke="#E0AF68" stroke-width="1.8"><rect x="3" y="6" width="18" height="12" rx="2.5"/><circle cx="12" cy="12" r="3.6"/><path d="M17 9.6h.01M6 6l1.5-2h4L13 6" opacity=".8"/></svg></span>快照分享<span class="tab-close">✕</span></div>
+          <div class="tab">main.ts<span class="tab-close">✕</span></div>
+        </div>
+        <div class="pdva">
+          <div class="pdva-head">
+            <div class="pdva-ic">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#E0AF68" stroke-width="1.7"><rect x="3" y="6" width="18" height="12" rx="2.5"/><circle cx="12" cy="12" r="3.6"/><path d="M17 9.6h.01M6 6l1.5-2h4L13 6" opacity=".85"/></svg>
+            </div>
+            <div class="pdva-id">
+              <div class="pdva-nm">快照分享 <span class="v">v1.2.0</span></div>
+              <div class="pdva-pub"><span>出厂制造</span><span class="badge">官方发布</span></div>
+              <div class="pdva-desc">一键把当前工作区（布局 + 打开的文件）保存为快照，生成分享链接。协作者点链接即可跨窗口恢复同一布局。</div>
+              <div class="pdva-chips">
+                <span class="pdva-chip"><span class="ok">●</span> 12.4k 下载</span>
+                <span class="pdva-chip">MIT 许可证</span>
+                <span class="pdva-chip">更新于 2026-08-20</span>
+              </div>
+            </div>
+            <div class="pdva-acts">
+              <div class="row">
+                <span class="st-blocked">🚫 安装不可用 <span class="reason">缺依赖</span></span>
+                <div class="version-drop">1.2.0 <span class="arr">▾</span></div>
+              </div>
+              <div class="row">
+                <label class="auto-upd"><input type="checkbox" checked> 自动更新</label>
+              </div>
+            </div>
+          </div>
+          <div class="pdva-tabs">
+            <button class="pdva-tab active" type="button">详情</button>
+            <button class="pdva-tab" type="button">功能</button>
+            <button class="pdva-tab" type="button">更改日志</button>
+          </div>
+          <div class="pdva-body">
+            <div class="pdva-main">
+              <div class="pdva-h2">依赖未满足</div>
+              <p class="pdva-p">此插件声明依赖 <code>storage-utils</code>（<code>requires</code> 字段），但该依赖尚未安装 → 挂起不可用。</p>
+              <p class="pdva-p muted">安装依赖后自动解除挂起（依赖引擎：缺失检测 → 补齐 → 自动加载，E5.8#15）。挂起原因文案「等待依赖」由依赖引擎统一生成（<code>dependencies.ts</code>）。</p>
+            </div>
+            <aside class="pdva-info">
+              <h4>信息</h4>
+              <div class="pdva-if"><span class="k">标识符</span><span class="v mono">snapshot-share</span></div>
+              <div class="pdva-if"><span class="k">版本</span><span class="v mono">1.2.0</span></div>
+              <div class="pdva-if"><span class="k">依赖</span><span class="v dep-missing mono">storage-utils ✕</span></div>
+              <div class="pdva-if"><span class="k">被依赖</span><span class="v mono" style="color:var(--text-muted);">—</span></div>
+              <div class="pdva-if"><span class="k">作者</span><span class="v">出厂制造</span></div>
+              <div class="pdva-if"><span class="k">来源</span><span class="v mono">github.com/linkdesk/…</span></div>
+              <div class="pdva-if"><span class="k">许可证</span><span class="v">MIT</span></div>
+              <div class="pdva-if"><span class="k">下载</span><span class="v">12.4k</span></div>
+              <div class="pdva-safe" style="border-color:rgba(204,167,0,.4);"><b style="color:#E2C05A;">依赖状态</b><br>缺失依赖点击可跳转对应插件详情页；被依赖列表展示哪些插件在用我</div>
+            </aside>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="ld-toast-stack">
+      <div class="ld-toast toast-pending">
+        <div class="t-main-row">
+          <span class="t-ic info">ⓘ</span>
+          <div class="t-body"><div class="t-msg">无法安装：缺少依赖 <code>storage-utils</code></div></div>
+        </div>
+        <div class="t-details">
+          <span class="t-src">来源: 插件市场 · 安装被拦</span>
+          <div class="t-acts">
+            <button class="t-act primary">查看依赖</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="statusbar">
+      <span class="status-item"><span class="st-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="5" width="16" height="12" rx="2"/><path d="M9 17v3M15 17v3M12 17v2"/></svg></span>串口监视器 · TX 0 / RX 0</span>
+      <span class="right">
+        <span class="status-item">选择语言</span>
+        <span class="status-item">切换主题</span>
+        <span class="status-item">插件市场</span>
+        <span class="status-divider"></span>
+        <button class="bell" title="通知中心"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg></button>
+      </span>
+    </div>
+  </div>
+
+  <div class="frame-note">
+    <b>帧 7 交互要点：</b>缺依赖 = <b>事件型提示</b>——点「安装」发现缺依赖 → 右下角 toast「无法安装：缺少依赖 storage-utils」+ <b class="ok">[查看依赖]</b> 主动作（点击跳依赖插件详情页）。<b class="err">顶部/头部零横幅</b>（对齐用户③④点拍板：顶部横幅把整个 UI 往下推 + 影响性能——全走 toast，帧 3 同款结构）。toast 发起方 = 市场插件<b class="ok">自调</b> <code>notifications.show("无法安装：缺少依赖 …", { type: "warning" })</code>（实机四方法，E3j#76；marketplace 实现细节留实现阶段）。
+    <b class="ok">挂起状态持续表达</b>（非瞬时，不靠 toast）：侧栏徽标「等待依赖」（琥珀）+ action bar「🚫 安装不可用（缺依赖）」+ 主区「依赖未满足」说明块——三通道一望即知。
+    <b class="warn">场景区分</b>：实机 pd-pending-notice（PluginDetailPoolView.tsx:117，E5.8#15.5）是<b>已装插件</b>因依赖被卸载而挂起的<b>持续态内嵌条</b>（详情页 header 下，只推详情页一行，不推整个 UI）——那是另一场景，本帧（市场安装被拦）不走它，两者不冲突。
+    <b class="warn">依赖/被依赖 = 详情页元数据行</b>（数据源全在 <code>dependencies.ts</code>）：<b>依赖</b> = 本插件 <code>requires</code> 的插件（缺失标黄 ✕，点击跳其详情页）；<b>被依赖</b> = <code>findActiveConsumers</code> 发现谁在用我（卸载/禁用时提示连带影响，E5.8#15）。
+    依赖补齐（装好 storage-utils）自动解除挂起。<b class="ok">依赖行已在帧 1/4/5/6 侧栏补齐</b>（对应「插件链接，a 依赖 b」）。
+  </div>
+</div>
+
+<!-- ═════════════════════════════════════════════════════════════
+     帧 8 · 安装确认弹窗（信任角）
+     ═════════════════════════════════════════════════════════════ -->
+<div class="frame">
+  <div class="frame-caption">
+    <span class="tag s8">帧 8</span>
+    <b>安装确认弹窗 —— 信任角落地</b>
+    <span>点「安装」→ 确认：来源仓库 · 许可证 · 版本 · 大小，确认后才下载</span>
+    <span class="task">E6#30.8a</span>
+  </div>
+
+  <div class="app">
+    <div class="titlebar">
+      <svg class="logo" viewBox="0 0 16 16"><rect x="2" y="2" width="12" height="12" rx="2.5" fill="#0078D4"/><rect x="5" y="5" width="6" height="6" rx="1" fill="#fff"/></svg>
+      <span class="app-name">LinkDesk</span>
+      <span class="drag"></span>
+      <div class="win-btns">
+        <button class="win-btn">─</button><button class="win-btn">□</button><button class="win-btn close">✕</button>
+      </div>
+    </div>
+    <div class="mid">
+      <div class="icon-bar">
+        <button class="icon-btn" title="文件树"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg></button>
+        <button class="icon-btn" title="搜索"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg></button>
+        <div class="ib-sep"></div>
+        <button class="icon-btn active" title="插件市场"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg></button>
+        <div class="ib-sep"></div>
+        <button class="icon-btn" title="设置"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.6M12 18.6v2.6M2.8 12h2.6M18.6 12h2.6M5.5 5.5l1.8 1.8M16.7 16.7l1.8 1.8M18.5 5.5l-1.8 1.8M7.3 16.7l-1.8 1.8"/></svg></button>
+      </div>
+
+      <div class="sidebar">
+        <div class="sidebar-header">插件市场</div>
+        <div class="ms-search">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
+          <input placeholder="搜索插件">
+        </div>
+        <div class="ms-body">
+          <div class="ms-sec-head">▾ 已安装 <span class="cnt">2</span></div>
+          <div class="ms-item">
+            <div class="mi-ic"><svg viewBox="0 0 24 24" fill="none" stroke="#4EC9B0" stroke-width="1.8"><rect x="4" y="5" width="16" height="12" rx="2"/><path d="M9 17v3M15 17v3M12 17v2"/><path d="m9 9 6 4M15 9l-6 4" opacity=".55"/></svg></div>
+            <div class="mi-dt"><div class="mi-nm">串口监视器 <span class="ver">v1.0.0</span></div><div class="mi-ds"><span class="mi-au">内置 · 官方</span></div></div>
+          </div>
+          <div class="ms-item">
+            <div class="mi-ic"><svg viewBox="0 0 24 24" fill="none" stroke="#9A8BFF" stroke-width="1.8"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg></div>
+            <div class="mi-dt"><div class="mi-nm">插件市场 <span class="ver">v1.0.0</span></div><div class="mi-ds"><span class="mi-au">内置 · 官方</span></div></div>
+          </div>
+          <div class="ms-sec-head">▾ 探索插件 <span class="cnt">6</span></div>
+          <div class="ms-item selected">
+            <div class="mi-ic"><svg viewBox="0 0 24 24" fill="none" stroke="#E0AF68" stroke-width="1.8"><rect x="3" y="6" width="18" height="12" rx="2.5"/><circle cx="12" cy="12" r="3.6"/><path d="M17 9.6h.01M6 6l1.5-2h4L13 6" opacity=".8"/></svg></div>
+            <div class="mi-dt"><div class="mi-nm">快照分享 <span class="ver">v1.2.0</span></div><div class="mi-ds"><span class="mi-au">出厂制造</span></div></div>
+            <button class="mi-install">安装</button>
+          </div>
+          <div class="ms-item">
+            <div class="mi-ic"><svg viewBox="0 0 24 24" fill="none" stroke="#4EC9B0" stroke-width="1.8"><circle cx="11" cy="11" r="6.4"/><path d="M11 7.6v3.4l2.3 2.3" stroke-linecap="round"/></svg></div>
+            <div class="mi-dt"><div class="mi-nm">取色器 <span class="ver">v0.9.1</span></div><div class="mi-ds"><span class="mi-au">出厂制造</span></div></div>
+            <button class="mi-install">安装</button>
+          </div>
+          <div class="ms-sec-head">▸ 已禁用 <span class="cnt">1</span></div>
+          <div class="ms-sec-head">▸ 内置 <span class="cnt">6</span></div>
+        </div>
+      </div>
+
+      <div class="main" style="position:relative;">
+        <div class="tabbar">
+          <div class="tab">插件市场<span class="tab-close">✕</span></div>
+          <div class="tab active"><span class="tab-ic"><svg viewBox="0 0 24 24" fill="none" stroke="#E0AF68" stroke-width="1.8"><rect x="3" y="6" width="18" height="12" rx="2.5"/><circle cx="12" cy="12" r="3.6"/><path d="M17 9.6h.01M6 6l1.5-2h4L13 6" opacity=".8"/></svg></span>快照分享<span class="tab-close">✕</span></div>
+          <div class="tab">main.ts<span class="tab-close">✕</span></div>
+        </div>
+        <div class="pdva" style="filter: blur(1.5px) brightness(.8);">
+          <div class="pdva-head">
+            <div class="pdva-ic">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#E0AF68" stroke-width="1.7"><rect x="3" y="6" width="18" height="12" rx="2.5"/><circle cx="12" cy="12" r="3.6"/><path d="M17 9.6h.01M6 6l1.5-2h4L13 6" opacity=".85"/></svg>
+            </div>
+            <div class="pdva-id">
+              <div class="pdva-nm">快照分享 <span class="v">v1.2.0</span></div>
+              <div class="pdva-pub"><span>出厂制造</span><span class="badge">官方发布</span></div>
+              <div class="pdva-desc">一键把当前工作区（布局 + 打开的文件）保存为快照，生成分享链接。协作者点链接即可跨窗口恢复同一布局。</div>
+            </div>
+            <div class="pdva-acts">
+              <div class="row">
+                <button class="st-btn st-install">⬇ 安装</button>
+                <div class="version-drop">1.2.0 <span class="arr">▾</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 确认弹窗 -->
+        <div class="modal-overlay">
+          <div class="modal">
+            <div class="modal-head">
+              <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 12 9 3v7H4v4h5v7z"/></svg></span>
+              安装「快照分享」
+            </div>
+            <div class="modal-body">
+              <div class="pkg"><span class="k">插件</span><span class="v">快照分享 · v1.2.0</span></div>
+              <div class="pkg"><span class="k">来源仓库</span><span class="v mono">github.com/linkdesk/snapshot-share</span></div>
+              <div class="pkg"><span class="k">许可证</span><span class="v">MIT</span></div>
+              <div class="pkg"><span class="k">大小</span><span class="v mono">3.8 MB</span></div>
+              <div class="pkg"><span class="k">发布者</span><span class="v">出厂制造 <span class="ok">✓ 官方发布</span></span></div>
+              <div class="warn">⚠ 安装即信任：插件可访问你的工作区数据。请确认来源可信后再安装。</div>
+            </div>
+            <div class="modal-ft">
+              <button class="modal-btn cancel">取消</button>
+              <button class="modal-btn confirm">确认安装</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="statusbar">
+      <span class="status-item"><span class="st-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="5" width="16" height="12" rx="2"/><path d="M9 17v3M15 17v3M12 17v2"/></svg></span>串口监视器 · TX 0 / RX 0</span>
+      <span class="right">
+        <span class="status-item">选择语言</span>
+        <span class="status-item">切换主题</span>
+        <span class="status-item">插件市场</span>
+        <span class="status-divider"></span>
+        <button class="bell" title="通知中心"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg></button>
+      </span>
+    </div>
+  </div>
+
+  <div class="frame-note">
+    <b>帧 8 交互要点：</b><b class="ok">信任角落地（E6#30.8a）</b>：点「安装」先弹确认，列出<b>来源仓库 / 许可证 / 大小 / 发布者</b>，并显式提示「安装即信任」。取消 → 回到帧 1；确认 → 进入帧 2 下载。
+    <b>下载数</b>来自 GitHub Releases API（GitHub 统计，我们只读，非自己数）；<b>许可证</b>作者声明。无下载数的源不崩（缺字段跳过）。
+    <span class="flag ok">实机保底</span>弹窗 = 壳共享 Dialog（<code>#dialog-root</code> 保底 UI，帧面已具），遮罩点击 / Esc / 取消 三路关闭。<span class="flag">E6 新增</span>弹窗内容（来源/许可证/大小/发布者）数据来自 catalog <code>marketEntry</code>。
+  </div>
+</div>
+
+<!-- ═════════════════════════════════════════════════════════════
+     帧 9 · 功能贡献 tab（contributes 自动列出）
+     ═════════════════════════════════════════════════════════════ -->
+<div class="frame">
+  <div class="frame-caption">
+    <span class="tag s9">帧 9</span>
+    <b>功能贡献 tab —— contributes 自动列出（对标 VS Code Feature Contributions）</b>
+    <span>命令 / 配置项 / 键绑定 / 菜单项——作者不用写，manifest 声明了什么就列什么</span>
+    <span class="task">VS Code 对标 · E6#30.6</span>
+  </div>
+
+  <div class="app">
+    <div class="titlebar">
+      <svg class="logo" viewBox="0 0 16 16"><rect x="2" y="2" width="12" height="12" rx="2.5" fill="#0078D4"/><rect x="5" y="5" width="6" height="6" rx="1" fill="#fff"/></svg>
+      <span class="app-name">LinkDesk</span>
+      <span class="drag"></span>
+      <div class="win-btns">
+        <button class="win-btn">─</button><button class="win-btn">□</button><button class="win-btn close">✕</button>
+      </div>
+    </div>
+    <div class="mid">
+      <div class="icon-bar">
+        <button class="icon-btn" title="文件树"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg></button>
+        <button class="icon-btn" title="搜索"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg></button>
+        <div class="ib-sep"></div>
+        <button class="icon-btn active" title="插件市场"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg></button>
+        <div class="ib-sep"></div>
+        <button class="icon-btn" title="设置"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.6M12 18.6v2.6M2.8 12h2.6M18.6 12h2.6M5.5 5.5l1.8 1.8M16.7 16.7l1.8 1.8M18.5 5.5l-1.8 1.8M7.3 16.7l-1.8 1.8"/></svg></button>
+      </div>
+
+      <div class="sidebar">
+        <div class="sidebar-header">插件市场</div>
+        <div class="ms-search">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
+          <input placeholder="搜索插件">
+        </div>
+        <div class="ms-body">
+          <div class="ms-sec-head">▾ 已安装 <span class="cnt">3</span></div>
+          <div class="ms-item">
+            <div class="mi-ic"><svg viewBox="0 0 24 24" fill="none" stroke="#4EC9B0" stroke-width="1.8"><rect x="4" y="5" width="16" height="12" rx="2"/><path d="M9 17v3M15 17v3M12 17v2"/><path d="m9 9 6 4M15 9l-6 4" opacity=".55"/></svg></div>
+            <div class="mi-dt"><div class="mi-nm">串口监视器 <span class="ver">v1.0.0</span></div><div class="mi-ds"><span class="mi-au">内置 · 官方</span></div></div>
+          </div>
+          <div class="ms-item selected">
+            <div class="mi-ic"><svg viewBox="0 0 24 24" fill="none" stroke="#E0AF68" stroke-width="1.8"><rect x="3" y="6" width="18" height="12" rx="2.5"/><circle cx="12" cy="12" r="3.6"/><path d="M17 9.6h.01M6 6l1.5-2h4L13 6" opacity=".8"/></svg></div>
+            <div class="mi-dt"><div class="mi-nm">快照分享 <span class="ver">v1.2.0</span></div><div class="mi-ds"><span class="mi-badge installed">已安装</span></div></div>
+          </div>
+          <div class="ms-item">
+            <div class="mi-ic"><svg viewBox="0 0 24 24" fill="none" stroke="#9A8BFF" stroke-width="1.8"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg></div>
+            <div class="mi-dt"><div class="mi-nm">插件市场 <span class="ver">v1.0.0</span></div><div class="mi-ds"><span class="mi-au">内置 · 官方</span></div></div>
+          </div>
+          <div class="ms-sec-head">▾ 探索插件 <span class="cnt">5</span></div>
+          <div class="ms-item">
+            <div class="mi-ic"><svg viewBox="0 0 24 24" fill="none" stroke="#4EC9B0" stroke-width="1.8"><circle cx="11" cy="11" r="6.4"/><path d="M11 7.6v3.4l2.3 2.3" stroke-linecap="round"/></svg></div>
+            <div class="mi-dt"><div class="mi-nm">取色器 <span class="ver">v0.9.1</span></div><div class="mi-ds"><span class="mi-au">出厂制造</span></div></div>
+            <button class="mi-install">安装</button>
+          </div>
+          <div class="ms-sec-head">▸ 已禁用 <span class="cnt">1</span></div>
+          <div class="ms-sec-head">▸ 内置 <span class="cnt">6</span></div>
+        </div>
+      </div>
+
+      <div class="main">
+        <div class="tabbar">
+          <div class="tab">插件市场<span class="tab-close">✕</span></div>
+          <div class="tab active"><span class="tab-ic"><svg viewBox="0 0 24 24" fill="none" stroke="#E0AF68" stroke-width="1.8"><rect x="3" y="6" width="18" height="12" rx="2.5"/><circle cx="12" cy="12" r="3.6"/><path d="M17 9.6h.01M6 6l1.5-2h4L13 6" opacity=".8"/></svg></span>快照分享<span class="tab-close">✕</span></div>
+          <div class="tab">main.ts<span class="tab-close">✕</span></div>
+        </div>
+        <div class="pdva">
+          <div class="pdva-head">
+            <div class="pdva-ic">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#E0AF68" stroke-width="1.7"><rect x="3" y="6" width="18" height="12" rx="2.5"/><circle cx="12" cy="12" r="3.6"/><path d="M17 9.6h.01M6 6l1.5-2h4L13 6" opacity=".85"/></svg>
+            </div>
+            <div class="pdva-id">
+              <div class="pdva-nm">快照分享 <span class="v">v1.2.0</span></div>
+              <div class="pdva-pub"><span>出厂制造</span><span class="badge">官方发布</span></div>
+            </div>
+            <div class="pdva-acts">
+              <div class="row">
+                <button class="st-btn st-disable">⏸ 禁用</button>
+                <button class="st-uninstall">🗑 卸载</button>
+                <div class="version-drop">1.2.0 <span class="arr">▾</span></div>
+              </div>
+            </div>
+          </div>
+          <div class="pdva-tabs">
+            <button class="pdva-tab" type="button">详情</button>
+            <button class="pdva-tab active" type="button">功能</button>
+            <button class="pdva-tab" type="button">更改日志</button>
+          </div>
+          <div class="pdva-body">
+            <div class="pdva-main">
+              <div class="pdva-h2">功能贡献</div>
+              <p class="pdva-p muted" style="margin-bottom:10px;">由插件 manifest <code>contributes</code> 声明<b>自动列出</b>——作者不写介绍，壳读声明渲染。声明什么就显示什么，不声明 = 空态不报错。</p>
+
+              <div class="fc-sec">
+                <div class="fc-sec-h">命令 <span class="cnt">3</span></div>
+                <div class="fc-row"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m6 8 4 4-4 4M11 16h7"/></svg></span><span class="nm"><code>snapshot.create</code></span><span class="ds">创建快照</span></div>
+                <div class="fc-row"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m6 8 4 4-4 4M11 16h7"/></svg></span><span class="nm"><code>snapshot.share</code></span><span class="ds">生成分享链接</span></div>
+                <div class="fc-row"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m6 8 4 4-4 4M11 16h7"/></svg></span><span class="nm"><code>snapshot.restore</code></span><span class="ds">从链接恢复布局</span></div>
+              </div>
+
+              <div class="fc-sec">
+                <div class="fc-sec-h">配置项 <span class="cnt">2</span></div>
+                <div class="fc-row"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.6M12 18.6v2.6M2.8 12h2.6M18.6 12h2.6M5.5 5.5l1.8 1.8M16.7 16.7l1.8 1.8M18.5 5.5l-1.8 1.8M7.3 16.7l-1.8 1.8"/></svg></span><span class="nm"><code>snapshot.maxSize</code></span><span class="ds">快照大小上限</span></div>
+                <div class="fc-row"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.6M12 18.6v2.6M2.8 12h2.6M18.6 12h2.6M5.5 5.5l1.8 1.8M16.7 16.7l1.8 1.8M18.5 5.5l-1.8 1.8M7.3 16.7l-1.8 1.8"/></svg></span><span class="nm"><code>snapshot.autoRestore</code></span><span class="ds">打开链接自动恢复</span></div>
+              </div>
+
+              <div class="fc-sec">
+                <div class="fc-sec-h">键绑定 <span class="cnt">1</span></div>
+                <div class="fc-row"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M8 9l4 6 4-6" opacity=".6"/></svg></span><span class="nm"><code>snapshot.create</code></span><span class="ds">Ctrl+Shift+S</span></div>
+              </div>
+
+              <div class="fc-sec">
+                <div class="fc-sec-h">菜单项 <span class="cnt">1</span></div>
+                <div class="fc-row"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 6h16M4 12h16M4 18h10"/></svg></span><span class="nm">「相机」图标 → 状态栏</span><span class="ds">创建快照入口</span></div>
+              </div>
+
+              <div class="fc-note"><b>对标 VS Code Feature Contributions：</b>VS Code 扩展详情页底部就是「Feature Contributions」——列出该扩展声明的命令/设置/键绑定/菜单。数据源 = manifest <code>contributes</code> 字段，壳只做渲染。点击命令可复制命令 ID；配置项点击跳设置页对应组。</div>
+            </div>
+            <aside class="pdva-info">
+              <h4>信息</h4>
+              <div class="pdva-if"><span class="k">标识符</span><span class="v mono">snapshot-share</span></div>
+              <div class="pdva-if"><span class="k">版本</span><span class="v mono">1.2.0</span></div>
+              <div class="pdva-if"><span class="k">依赖</span><span class="v dep-link mono">storage-utils</span></div>
+              <div class="pdva-if"><span class="k">被依赖</span><span class="v" style="color:var(--text-muted);">—</span></div>
+              <div class="pdva-if"><span class="k">作者</span><span class="v">出厂制造</span></div>
+              <div class="pdva-if"><span class="k">许可证</span><span class="v">MIT</span></div>
+              <div class="pdva-if"><span class="k">下载</span><span class="v">12.4k</span></div>
+            </aside>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="statusbar">
+      <span class="status-item"><span class="st-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="5" width="16" height="12" rx="2"/><path d="M9 17v3M15 17v3M12 17v2"/></svg></span>串口监视器 · TX 0 / RX 0</span>
+      <span class="right">
+        <span class="status-item">选择语言</span>
+        <span class="status-item">切换主题</span>
+        <span class="status-item">插件市场</span>
+        <span class="status-divider"></span>
+        <button class="bell" title="通知中心"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg></button>
+      </span>
+    </div>
+  </div>
+
+  <div class="frame-note">
+    <b>帧 9 交互要点：</b>「功能」tab = <b>Feature Contributions 对标</b>——按类型分组（命令/配置项/键绑定/菜单项），每行 <b>声明 ID + 一句话描述</b>。
+    <span class="flag ok">实机数据</span>数据全部来自 manifest <code>contributes</code>（我们已有：commands / configuration / keybindings / menus），<span class="flag">E6 新增</span>只是详情页这个「功能」tab 渲染面——壳零新 API 只渲染，作者不用写介绍。
+    这就是「插件市场已实现的丰富能力」在详情页的呈现（对应你提的第 5 点）。
+  </div>
+</div>
+
+<!-- ═════════════════════════════════════════════════════════════
+     帧 10 · 更改日志 tab
+     ═════════════════════════════════════════════════════════════ -->
+<div class="frame">
+  <div class="frame-caption">
+    <span class="tag s10">帧 10</span>
+    <b>更改日志 tab —— CHANGELOG 渲染</b>
+    <span>版本历史 + 更新内容，可更新时亮徽标引导</span>
+    <span class="task">E6#33 changelog · VS Code 对标</span>
+  </div>
+
+  <div class="app">
+    <div class="titlebar">
+      <svg class="logo" viewBox="0 0 16 16"><rect x="2" y="2" width="12" height="12" rx="2.5" fill="#0078D4"/><rect x="5" y="5" width="6" height="6" rx="1" fill="#fff"/></svg>
+      <span class="app-name">LinkDesk</span>
+      <span class="drag"></span>
+      <div class="win-btns">
+        <button class="win-btn">─</button><button class="win-btn">□</button><button class="win-btn close">✕</button>
+      </div>
+    </div>
+    <div class="mid">
+      <div class="icon-bar">
+        <button class="icon-btn" title="文件树"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg></button>
+        <button class="icon-btn" title="搜索"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg></button>
+        <div class="ib-sep"></div>
+        <button class="icon-btn active" title="插件市场"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg></button>
+        <div class="ib-sep"></div>
+        <button class="icon-btn" title="设置"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.6M12 18.6v2.6M2.8 12h2.6M18.6 12h2.6M5.5 5.5l1.8 1.8M16.7 16.7l1.8 1.8M18.5 5.5l-1.8 1.8M7.3 16.7l-1.8 1.8"/></svg></button>
+      </div>
+
+      <div class="sidebar">
+        <div class="sidebar-header">插件市场</div>
+        <div class="ms-search">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
+          <input placeholder="搜索插件">
+        </div>
+        <div class="ms-body">
+          <div class="ms-sec-head">▾ 已安装 <span class="cnt">3</span></div>
+          <div class="ms-item">
+            <div class="mi-ic"><svg viewBox="0 0 24 24" fill="none" stroke="#4EC9B0" stroke-width="1.8"><rect x="4" y="5" width="16" height="12" rx="2"/><path d="M9 17v3M15 17v3M12 17v2"/><path d="m9 9 6 4M15 9l-6 4" opacity=".55"/></svg></div>
+            <div class="mi-dt"><div class="mi-nm">串口监视器 <span class="ver">v1.0.0</span></div><div class="mi-ds"><span class="mi-au">内置 · 官方</span></div></div>
+          </div>
+          <div class="ms-item selected">
+            <div class="mi-ic"><svg viewBox="0 0 24 24" fill="none" stroke="#E0AF68" stroke-width="1.8"><rect x="3" y="6" width="18" height="12" rx="2.5"/><circle cx="12" cy="12" r="3.6"/><path d="M17 9.6h.01M6 6l1.5-2h4L13 6" opacity=".8"/></svg></div>
+            <div class="mi-dt"><div class="mi-nm">快照分享 <span class="ver">v1.2.0</span></div><div class="mi-ds"><span class="mi-badge update">可更新 v1.3.0</span></div></div>
+          </div>
+          <div class="ms-item">
+            <div class="mi-ic"><svg viewBox="0 0 24 24" fill="none" stroke="#9A8BFF" stroke-width="1.8"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg></div>
+            <div class="mi-dt"><div class="mi-nm">插件市场 <span class="ver">v1.0.0</span></div><div class="mi-ds"><span class="mi-au">内置 · 官方</span></div></div>
+          </div>
+          <div class="ms-sec-head">▾ 探索插件 <span class="cnt">5</span></div>
+          <div class="ms-item">
+            <div class="mi-ic"><svg viewBox="0 0 24 24" fill="none" stroke="#4EC9B0" stroke-width="1.8"><circle cx="11" cy="11" r="6.4"/><path d="M11 7.6v3.4l2.3 2.3" stroke-linecap="round"/></svg></div>
+            <div class="mi-dt"><div class="mi-nm">取色器 <span class="ver">v0.9.1</span></div><div class="mi-ds"><span class="mi-au">出厂制造</span></div></div>
+            <button class="mi-install">安装</button>
+          </div>
+          <div class="ms-sec-head">▸ 已禁用 <span class="cnt">1</span></div>
+          <div class="ms-sec-head">▸ 内置 <span class="cnt">6</span></div>
+        </div>
+      </div>
+
+      <div class="main">
+        <div class="tabbar">
+          <div class="tab">插件市场<span class="tab-close">✕</span></div>
+          <div class="tab active"><span class="tab-ic"><svg viewBox="0 0 24 24" fill="none" stroke="#E0AF68" stroke-width="1.8"><rect x="3" y="6" width="18" height="12" rx="2.5"/><circle cx="12" cy="12" r="3.6"/><path d="M17 9.6h.01M6 6l1.5-2h4L13 6" opacity=".8"/></svg></span>快照分享<span class="tab-close">✕</span></div>
+          <div class="tab">main.ts<span class="tab-close">✕</span></div>
+        </div>
+        <div class="pdva">
+          <div class="pdva-head">
+            <div class="pdva-ic">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#E0AF68" stroke-width="1.7"><rect x="3" y="6" width="18" height="12" rx="2.5"/><circle cx="12" cy="12" r="3.6"/><path d="M17 9.6h.01M6 6l1.5-2h4L13 6" opacity=".85"/></svg>
+            </div>
+            <div class="pdva-id">
+              <div class="pdva-nm">快照分享 <span class="v">v1.2.0</span></div>
+              <div class="pdva-pub"><span>出厂制造</span><span class="badge">官方发布</span></div>
+            </div>
+            <div class="pdva-acts">
+              <div class="row">
+                <button class="st-btn st-update">⬆ 更新到 v1.3.0</button>
+                <button class="st-btn st-disable">⏸ 禁用</button>
+                <button class="st-uninstall">🗑 卸载</button>
+              </div>
+            </div>
+          </div>
+          <div class="pdva-tabs">
+            <button class="pdva-tab" type="button">详情</button>
+            <button class="pdva-tab" type="button">功能</button>
+            <button class="pdva-tab active" type="button">更改日志 <span class="dot up">●</span></button>
+          </div>
+          <div class="pdva-body">
+            <div class="pdva-main">
+              <div class="cl-ver">
+                <div class="cl-ver-head"><span class="vtag">v1.3.0</span><span class="date">2026-08-25</span><span class="badge-new">最新</span></div>
+                <ul>
+                  <li><span class="tag-new">[新增]</span> 快照差异对比——两个快照并排 diff 布局差异</li>
+                  <li><span class="tag-new">[新增]</span> 团队工作区——共享快照到团队，成员一键应用</li>
+                  <li><span class="tag-fix">[修复]</span> 大快照（&gt;10MB）分享超时的问题</li>
+                  <li><span class="tag-chg">[变更]</span> 快照链接格式升级，旧链接仍兼容</li>
+                </ul>
+              </div>
+              <div class="cl-ver">
+                <div class="cl-ver-head"><span class="vtag">v1.2.0</span><span class="date">2026-08-20</span><span class="badge-new" style="background:#5f5f6e;">已安装</span></div>
+                <ul>
+                  <li><span class="tag-new">[新增]</span> 跨窗口恢复——粘贴链接恢复布局</li>
+                  <li><span class="tag-new">[新增]</span> 状态栏「相机」图标一键创建快照</li>
+                  <li><span class="tag-fix">[修复]</span> 分屏布局快照不完整的问题</li>
+                </ul>
+              </div>
+              <div class="cl-ver">
+                <div class="cl-ver-head"><span class="vtag">v1.1.0</span><span class="date">2026-08-10</span></div>
+                <ul>
+                  <li><span class="tag-new">[新增]</span> 一键生成分享短链接</li>
+                  <li><span class="tag-chg">[变更]</span> 快照默认不包含临时文件</li>
+                </ul>
+              </div>
+              <div class="cl-ver">
+                <div class="cl-ver-head"><span class="vtag">v1.0.0</span><span class="date">2026-08-01</span></div>
+                <ul>
+                  <li><span class="tag-new">[首发]</span> 快照分享首版——保存/恢复工作区布局</li>
+                </ul>
+              </div>
+            </div>
+            <aside class="pdva-info">
+              <h4>信息</h4>
+              <div class="pdva-if"><span class="k">标识符</span><span class="v mono">snapshot-share</span></div>
+              <div class="pdva-if"><span class="k">已装版本</span><span class="v mono">1.2.0</span></div>
+              <div class="pdva-if"><span class="k">最新版本</span><span class="v mono" style="color:#C586C0;">1.3.0</span></div>
+              <div class="pdva-if"><span class="k">版本数</span><span class="v">4</span></div>
+              <div class="pdva-if"><span class="k">依赖</span><span class="v dep-link mono">storage-utils</span></div>
+              <div class="pdva-if"><span class="k">被依赖</span><span class="v" style="color:var(--text-muted);">—</span></div>
+              <div class="pdva-if"><span class="k">许可证</span><span class="v">MIT</span></div>
+            </aside>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="statusbar">
+      <span class="status-item"><span class="st-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="5" width="16" height="12" rx="2"/><path d="M9 17v3M15 17v3M12 17v2"/></svg></span>串口监视器 · TX 0 / RX 0</span>
+      <span class="right">
+        <span class="status-item">选择语言</span>
+        <span class="status-item">切换主题</span>
+        <span class="status-item">插件市场</span>
+        <span class="status-divider"></span>
+        <button class="bell" title="通知中心"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg></button>
+      </span>
+    </div>
+  </div>
+
+  <div class="frame-note">
+    <b>帧 10 交互要点：</b>「更改日志」tab = 版本历史渲染。版本倒序最新在前，当前已安装版本标「已安装」徽标，最新版标「最新」。
+    可更新时 tab 标题亮紫色徽标（帧 6 同款）引导用户点进来看「这次更新变什么」。<span class="flag">E6 新增</span>数据源：未装 = catalog <code>versions[].changelog?</code>（marketplace.json 扩展字段）；已装 = 包内 <code>CHANGELOG.md</code>（E6#4a 打包结构补）。
+  </div>
+</div>
+
+<!-- ═════════════════════════════════════════════════════════════
+     对照总表
+     ═════════════════════════════════════════════════════════════ -->
+<h1 style="margin-top:30px;">状态机对照总表</h1>
+<table class="compare">
+  <thead>
+    <tr>
+      <th>状态</th>
+      <th>action bar 主按钮</th>
+      <th>副按钮</th>
+      <th>侧栏该行</th>
+      <th>事件提示（toast）</th>
+      <th>README 数据源</th>
+      <th>对应任务</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>未安装</td>
+      <td class="ok">🟢 安装</td>
+      <td>版本下拉 · 自动更新勾选</td>
+      <td>探索插件组 + 行内「安装」</td>
+      <td>—（无事件；点安装先弹确认，帧 8）</td>
+      <td><code>readmeUrl</code> + <code>screenshots[]</code></td>
+      <td>E6#30.5a/b · #30.6</td>
+    </tr>
+    <tr>
+      <td>安装中</td>
+      <td>进度条（按钮内 62%）</td>
+      <td class="no">下拉/自动更新 置灰</td>
+      <td>「安装中 62%」徽标</td>
+      <td class="ok">⏳ 正在安装… 62%（实机：插件自调 <code>notifications.show({progress})</code> + <code>handle.update()</code>，帧 2）</td>
+      <td><code>readmeUrl</code>（可留旧帧）</td>
+      <td>E6#30.9a</td>
+    </tr>
+    <tr>
+      <td>安装失败</td>
+      <td class="no">↻ 重试（红）</td>
+      <td>版本下拉</td>
+      <td>「安装失败」+ 重试</td>
+      <td class="no">✕ 安装失败：网络连接中断 + [重试]（error toast，帧 3）</td>
+      <td><code>readmeUrl</code></td>
+      <td>E6#30.9b</td>
+    </tr>
+    <tr>
+      <td>已装 · 启用</td>
+      <td>⏸ 禁用</td>
+      <td>🗑 卸载 · 版本下拉 · 自动更新</td>
+      <td>已安装组 + 「已安装」徽标</td>
+      <td class="ok">✓ 已安装：快照分享（info toast，lifecycle 先例）</td>
+      <td>包内 README.md（离线可读）</td>
+      <td>E6#30.5c</td>
+    </tr>
+    <tr>
+      <td>已装 · 禁用</td>
+      <td class="ok">▶ 启用</td>
+      <td>🗑 卸载</td>
+      <td>已禁用组 + 「已禁用」徽标</td>
+      <td class="ok">✓ 已禁用：快照分享 + [撤销]（info toast，lifecycle 先例）</td>
+      <td>包内 README.md</td>
+      <td>E6#30.5b</td>
+    </tr>
+    <tr>
+      <td>已装 · 可更新</td>
+      <td class="ok">⬆ 更新到 v1.3.0</td>
+      <td>⏸ 禁用 · 🗑 卸载 · 版本下拉(升级路径)</td>
+      <td>已安装组 + 「可更新」徽标</td>
+      <td>—（静默检测；点更新时走安装进度 toast，帧 2）</td>
+      <td>包内 README.md</td>
+      <td>E6#33b/c · #29c</td>
+    </tr>
+    <tr>
+      <td>挂起 · 缺依赖</td>
+      <td class="no">🚫 安装不可用</td>
+      <td>版本下拉 · 自动更新</td>
+      <td>探索插件组 + 「等待依赖」徽标</td>
+      <td>ⓘ 无法安装：缺少依赖 storage-utils + [查看依赖]（缺依赖 toast，实机：插件自调 <code>notifications.show(type:warning)</code>，帧 7）</td>
+      <td><code>readmeUrl</code></td>
+      <td>E6#30.5b · E5.8#14/#15</td>
+    </tr>
+    <tr>
+      <td>确认弹窗</td>
+      <td class="ok">确认安装（信任角）</td>
+      <td>取消</td>
+      <td>—</td>
+      <td>—（无事件；确认后进「安装中」进度 toast）</td>
+      <td>—</td>
+      <td>E6#30.8a</td>
+    </tr>
+  </tbody>
+</table>
+
+<p style="color:var(--text-muted);font-size:12px;margin-top:14px;line-height:1.8;">
+<b>骨架固定、内容自由、状态驱动</b>：action bar 随状态机自动切换（<code>plugin-lifecycle:changed</code> 订阅）；README 主区内容 100% 作者自由（markdown）；元数据侧栏数据驱动（有字段显示、无字段留空）；功能/更改日志 = contributes 与 versions 自动渲染，作者不写介绍。
+</p>
+<p style="color:var(--text-muted);font-size:12px;margin-top:6px;line-height:1.8;">
+<b class="warn" style="color:#CCA700;">状态栏 = 壳固定表面</b>（bg-window + 插件贡献项 + 铃铛，不承载插件安装状态）——插件状态反馈三通道：<b>事件型</b>（安装进度/成功/失败/禁用/卸载/缺依赖被拦）走右下角 toast（lifecycle 先例已实机；进度/缺依赖 toast = 插件自调 <code>notifications.show</code>，实机四方法 E3j#76）；<b>状态型</b>（已装插件因依赖被卸载而挂起）走详情页 header 下内嵌 pd-pending-notice（实机，只推详情页一行，不推整个 UI）；<b>一望即知</b>走侧栏徽标（已安装/可更新/等待依赖/已禁用）。
+</p>
+
+</body>
+</html>
