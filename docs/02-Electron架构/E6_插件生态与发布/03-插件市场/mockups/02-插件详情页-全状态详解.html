@@ -332,6 +332,7 @@ h1 .hly { color: #CCA700; }
 .pdva-if .v.mono { font-family: "JetBrains Mono", Consolas, monospace; font-size: 10.5px; }
 .pdva-if .v.dep-link { color: #6CB4EE; }
 .pdva-if .v.dep-missing { color: #E2C05A; }
+.pdva-if .v.link { color: #6CB4EE; cursor: pointer; text-decoration: underline dotted; }
 .pdva-safe { margin-top: 10px; padding: 8px 10px; border-radius: 6px; border: 1px dashed rgba(255,255,255,.12);
   font-size: 10.5px; color: var(--text-secondary); line-height: 1.6; }
 .pdva-safe b { color: var(--status-connected); }
@@ -691,10 +692,14 @@ h1 .hly { color: #CCA700; }
               <div class="pdva-if"><span class="k">标识符</span><span class="v mono">snapshot-share</span></div>
               <div class="pdva-if"><span class="k">版本</span><span class="v mono">1.2.0</span></div>
               <div class="pdva-if"><span class="k">作者</span><span class="v">出厂制造</span></div>
+              <div class="pdva-if"><span class="k">大小</span><span class="v">2.74 MB</span></div>
               <div class="pdva-if"><span class="k">来源</span><span class="v mono">github.com/linkdesk/…</span></div>
+              <div class="pdva-if"><span class="k">仓库</span><span class="v link mono">打开仓库 ↗</span></div>
+              <div class="pdva-if"><span class="k">问题</span><span class="v link mono">报告问题 ↗</span></div>
               <div class="pdva-if"><span class="k">许可证</span><span class="v">MIT</span></div>
               <div class="pdva-if"><span class="k">下载</span><span class="v">12.4k</span></div>
               <div class="pdva-if"><span class="k">更新时间</span><span class="v">2026-08-20</span></div>
+              <div class="pdva-if"><span class="k">首次发布</span><span class="v">2026-01-15</span></div>
               <div class="pdva-if"><span class="k">分类</span><span class="v">工具 · 协作</span></div>
               <div class="pdva-if"><span class="k">依赖</span><span class="v dep-link mono">storage-utils</span></div>
               <div class="pdva-if"><span class="k">被依赖</span><span class="v" style="color:var(--text-muted);">—</span></div>
@@ -722,7 +727,7 @@ h1 .hly { color: #CCA700; }
     <b>action bar = 三态第一态</b>：<b class="ok">🟢 安装</b>（未装唯一主操作）+ 版本下拉（<code>versions[]</code>，最新在前往前）——<b class="warn">无自动更新勾选</b>（G2：autoUpdate 是已装条目属性，装完进已装态才显示且默认不勾，05 §五）。
     <b class="ok">官方发布徽标</b> = <code>source.id === 'official'</code> 默认源派生，零新字段（G1，08 §八）。
     标签页标题 = 市场图标 + 插件名（<b>E6#30.7</b>）。README 数据源 = 未装 fetch <code>readmeUrl</code>，截图 = <code>screenshots[]</code>（<b>E6#30.6</b>）。
-    元数据侧栏全量来自 catalog：标识符/版本/作者/来源/许可证/下载/更新/分类——「来源/下载数/许可证」即<b>信任角</b>（E6#30.8）。
+    元数据侧栏全量来自 catalog：标识符/版本/作者/大小/来源/仓库/问题/许可证/下载/更新时间/首次发布/分类——「来源/下载数/许可证」即<b>信任角</b>（E6#30.8）；大小 = catalog <code>size</code> 字段；仓库/问题 = 来源 URL 派生（<code>/issues</code> 约定，零服务器）；首次发布 = <code>versions[最后].publishedAt</code>（零新字段）。
     <b class="ok">依赖行已画</b>：<code>依赖 = storage-utils</code>（数据来自依赖引擎 <code>dependencies.ts</code> requires，E5.8#14/#15 已实现）+ <code>被依赖 = —</code>——挂起态见帧 7。
   </div>
 </div>
@@ -834,10 +839,14 @@ h1 .hly { color: #CCA700; }
               <div class="pdva-if"><span class="k">标识符</span><span class="v mono">snapshot-share</span></div>
               <div class="pdva-if"><span class="k">版本</span><span class="v mono">1.2.0</span></div>
               <div class="pdva-if"><span class="k">作者</span><span class="v">出厂制造</span></div>
+              <div class="pdva-if"><span class="k">大小</span><span class="v">2.74 MB</span></div>
               <div class="pdva-if"><span class="k">来源</span><span class="v mono">github.com/linkdesk/…</span></div>
+              <div class="pdva-if"><span class="k">仓库</span><span class="v link mono">打开仓库 ↗</span></div>
+              <div class="pdva-if"><span class="k">问题</span><span class="v link mono">报告问题 ↗</span></div>
               <div class="pdva-if"><span class="k">许可证</span><span class="v">MIT</span></div>
               <div class="pdva-if"><span class="k">下载</span><span class="v">12.4k</span></div>
               <div class="pdva-if"><span class="k">更新时间</span><span class="v">2026-08-20</span></div>
+              <div class="pdva-if"><span class="k">首次发布</span><span class="v">2026-01-15</span></div>
             </aside>
           </div>
         </div>
@@ -991,7 +1000,10 @@ h1 .hly { color: #CCA700; }
               <div class="pdva-if"><span class="k">标识符</span><span class="v mono">snapshot-share</span></div>
               <div class="pdva-if"><span class="k">版本</span><span class="v mono">1.2.0</span></div>
               <div class="pdva-if"><span class="k">作者</span><span class="v">出厂制造</span></div>
+              <div class="pdva-if"><span class="k">大小</span><span class="v">2.74 MB</span></div>
               <div class="pdva-if"><span class="k">来源</span><span class="v mono">github.com/linkdesk/…</span></div>
+              <div class="pdva-if"><span class="k">仓库</span><span class="v link mono">打开仓库 ↗</span></div>
+              <div class="pdva-if"><span class="k">问题</span><span class="v link mono">报告问题 ↗</span></div>
               <div class="pdva-if"><span class="k">许可证</span><span class="v">MIT</span></div>
               <div class="pdva-if"><span class="k">下载</span><span class="v">12.4k</span></div>
               <div class="pdva-if"><span class="k">依赖</span><span class="v dep-link mono">storage-utils</span></div>
@@ -1152,7 +1164,10 @@ h1 .hly { color: #CCA700; }
               <div class="pdva-if"><span class="k">标识符</span><span class="v mono">snapshot-share</span></div>
               <div class="pdva-if"><span class="k">版本</span><span class="v mono">1.2.0</span></div>
               <div class="pdva-if"><span class="k">作者</span><span class="v">出厂制造</span></div>
+              <div class="pdva-if"><span class="k">大小</span><span class="v">2.74 MB</span></div>
               <div class="pdva-if"><span class="k">来源</span><span class="v mono">github.com/linkdesk/…</span></div>
+              <div class="pdva-if"><span class="k">仓库</span><span class="v link mono">打开仓库 ↗</span></div>
+              <div class="pdva-if"><span class="k">问题</span><span class="v link mono">报告问题 ↗</span></div>
               <div class="pdva-if"><span class="k">许可证</span><span class="v">MIT</span></div>
               <div class="pdva-if"><span class="k">下载</span><span class="v">12.4k</span></div>
               <div class="pdva-if"><span class="k">依赖</span><span class="v dep-link mono">storage-utils</span></div>
@@ -1295,7 +1310,10 @@ h1 .hly { color: #CCA700; }
               <div class="pdva-if"><span class="k">依赖</span><span class="v dep-link mono">storage-utils</span></div>
               <div class="pdva-if"><span class="k">被依赖</span><span class="v" style="color:var(--text-muted);">—</span></div>
               <div class="pdva-if"><span class="k">作者</span><span class="v">出厂制造</span></div>
+              <div class="pdva-if"><span class="k">大小</span><span class="v">2.74 MB</span></div>
               <div class="pdva-if"><span class="k">来源</span><span class="v mono">github.com/linkdesk/…</span></div>
+              <div class="pdva-if"><span class="k">仓库</span><span class="v link mono">打开仓库 ↗</span></div>
+              <div class="pdva-if"><span class="k">问题</span><span class="v link mono">报告问题 ↗</span></div>
               <div class="pdva-if"><span class="k">许可证</span><span class="v">MIT</span></div>
               <div class="pdva-if"><span class="k">状态</span><span class="v">已禁用</span></div>
             </aside>
@@ -1434,7 +1452,10 @@ h1 .hly { color: #CCA700; }
               <div class="pdva-if"><span class="k">已装版本</span><span class="v mono">1.2.0</span></div>
               <div class="pdva-if"><span class="k">最新版本</span><span class="v mono" style="color:#C586C0;">1.3.0</span></div>
               <div class="pdva-if"><span class="k">作者</span><span class="v">出厂制造</span></div>
+              <div class="pdva-if"><span class="k">大小</span><span class="v">2.74 MB</span></div>
               <div class="pdva-if"><span class="k">来源</span><span class="v mono">github.com/linkdesk/…</span></div>
+              <div class="pdva-if"><span class="k">仓库</span><span class="v link mono">打开仓库 ↗</span></div>
+              <div class="pdva-if"><span class="k">问题</span><span class="v link mono">报告问题 ↗</span></div>
               <div class="pdva-if"><span class="k">许可证</span><span class="v">MIT</span></div>
               <div class="pdva-if"><span class="k">下载</span><span class="v">12.4k</span></div>
               <div class="pdva-if"><span class="k">依赖</span><span class="v dep-link mono">storage-utils</span></div>
@@ -1574,7 +1595,10 @@ h1 .hly { color: #CCA700; }
               <div class="pdva-if"><span class="k">依赖</span><span class="v dep-missing mono">storage-utils ✕</span></div>
               <div class="pdva-if"><span class="k">被依赖</span><span class="v mono" style="color:var(--text-muted);">—</span></div>
               <div class="pdva-if"><span class="k">作者</span><span class="v">出厂制造</span></div>
+              <div class="pdva-if"><span class="k">大小</span><span class="v">2.74 MB</span></div>
               <div class="pdva-if"><span class="k">来源</span><span class="v mono">github.com/linkdesk/…</span></div>
+              <div class="pdva-if"><span class="k">仓库</span><span class="v link mono">打开仓库 ↗</span></div>
+              <div class="pdva-if"><span class="k">问题</span><span class="v link mono">报告问题 ↗</span></div>
               <div class="pdva-if"><span class="k">许可证</span><span class="v">MIT</span></div>
               <div class="pdva-if"><span class="k">下载</span><span class="v">12.4k</span></div>
               <div class="pdva-safe" style="border-color:rgba(204,167,0,.4);"><b style="color:#E2C05A;">依赖状态</b><br>缺失依赖点击可跳转对应插件详情页；被依赖列表展示哪些插件在用我</div>
@@ -1873,6 +1897,7 @@ h1 .hly { color: #CCA700; }
               <div class="pdva-if"><span class="k">依赖</span><span class="v dep-link mono">storage-utils</span></div>
               <div class="pdva-if"><span class="k">被依赖</span><span class="v" style="color:var(--text-muted);">—</span></div>
               <div class="pdva-if"><span class="k">作者</span><span class="v">出厂制造</span></div>
+              <div class="pdva-if"><span class="k">大小</span><span class="v">2.74 MB</span></div>
               <div class="pdva-if"><span class="k">许可证</span><span class="v">MIT</span></div>
               <div class="pdva-if"><span class="k">下载</span><span class="v">12.4k</span></div>
             </aside>

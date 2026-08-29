@@ -12,7 +12,7 @@
 | **插件发现** | 所有市场插件的"橱窗"——用户在这里发现、了解、安装插件 |
 | **转化率** | App Store 风格 > 文字列表。卡片网格的视觉吸引力远高于列表 |
 | **双模式** | 侧边栏模式（日常快速操作）+ 全屏商店（发现和浏览）——不是替代，是互补 |
-| **依赖链** | 依赖 FloatingPanel（#03 壳级组件）。被 #06 Plugin Showcase 嵌入顶部 |
+| **依赖链** | 依赖「标签页通用容器」（壳 tab 系统——宽屏/浮出/独立窗全免费，2026-08-29 拍板）。被 #06 Plugin Showcase 嵌入顶部 |
 
 ## 排序理由
 
@@ -26,6 +26,6 @@
 | [02-Marketplace增强](02-Marketplace增强.md) | 功能分层 + 双模式（侧边栏/全屏商店）+ 任务清单 |
 | [marketplace-preview.html](marketplace-preview.html) | 🎨 **交互预览**——在浏览器查看效果 |
 
-## 容器
+## 容器（2026-08-29 落位更新）
 
-FloatingPanel（[#03 FloatingPanel](../03-FloatingPanel-通用悬浮面板/README.md) 类型 B）——`<FloatingPanel title="插件市场"><MarketplaceContent /></FloatingPanel>`
+**落位 = 市场插件的一个主区标签页**（`contributes.views location:"main"` 声明，宽屏）——标签页 = 通用表面容器：右键「在悬浮面板中打开」（声明 `floatingPanel.viewId`）→ 浮出面板；拖出 → 独立窗口（E5.8#44）。**容器层不再设计独立宿主。** 早期「FloatingPanel 类型 B」为 2026-07-28 旧设计，已被标签页落位取代（视觉规格仍见 [01-UI布局规格](01-UI布局规格.md)）。
