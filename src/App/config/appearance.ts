@@ -135,10 +135,10 @@ export function registerAppearanceConfiguration(t: ConfigT): void {
         enumDescriptions: [
           // E5.8#185 语义定案：accent ⊂ colors 域——自定义模式下跟随主题配方 = 跟随配色来源（app.themeColor），
           //   非整体配方（app.theme）。文案如实说清，避免「切主题不变强调色」的误解（根因链见 185 档案）。
-          t("跟随主题配方——强调色取当前配色来源的强调色（跟随主题=主题配方；自定义=配色来源 app.themeColor）"),
+          t("跟随主题配方——取当前配色来源的强调色"),
           t("自定义——自己指定强调色（图标栏高亮、开关、焦点边框）"),
         ],
-        description: t("强调色来源——跟随主题配方：强调色跟随当前配色来源（自定义模式下即配色来源 app.themeColor）；自定义：自己指定"),
+        description: t("强调色来源——跟随主题配方：取当前配色来源的强调色；自定义：自己指定"),
         uiHint: "accentSource",
         onApply: () => applyAccentColor(getEffectiveAccentColor()),
       },
