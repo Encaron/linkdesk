@@ -661,9 +661,7 @@ h1 .hly { color: #CCA700; }
                 <button class="st-btn st-install">⬇ 安装</button>
                 <div class="version-drop">1.2.0 <span class="arr">▾</span></div>
               </div>
-              <div class="row">
-                <label class="auto-upd"><input type="checkbox" checked> 自动更新</label>
-              </div>
+              <!-- 帧1=未安装：不显示自动更新勾选（G2，2026-08-29——autoUpdate 是已装条目属性，装完进入已装态才显示且默认不勾） -->
             </div>
           </div>
           <div class="pdva-tabs">
@@ -721,7 +719,8 @@ h1 .hly { color: #CCA700; }
   <div class="frame-note">
     <b>帧 1 交互要点：</b>
     <span class="flag ok">默认态</span>未装插件详情页完整可见——市场第一站「探索优先」原则：目录数据（marketEntry）作 tab 参数传入，壳详情页保持哑。
-    <b>action bar = 三态第一态</b>：<b class="ok">🟢 安装</b>（未装唯一主操作）+ 版本下拉（<code>versions[]</code>，最新在前往前）+ 自动更新勾选。
+    <b>action bar = 三态第一态</b>：<b class="ok">🟢 安装</b>（未装唯一主操作）+ 版本下拉（<code>versions[]</code>，最新在前往前）——<b class="warn">无自动更新勾选</b>（G2：autoUpdate 是已装条目属性，装完进已装态才显示且默认不勾，05 §五）。
+    <b class="ok">官方发布徽标</b> = <code>source.id === 'official'</code> 默认源派生，零新字段（G1，08 §八）。
     标签页标题 = 市场图标 + 插件名（<b>E6#30.7</b>）。README 数据源 = 未装 fetch <code>readmeUrl</code>，截图 = <code>screenshots[]</code>（<b>E6#30.6</b>）。
     元数据侧栏全量来自 catalog：标识符/版本/作者/来源/许可证/下载/更新/分类——「来源/下载数/许可证」即<b>信任角</b>（E6#30.8）。
     <b class="ok">依赖行已画</b>：<code>依赖 = storage-utils</code>（数据来自依赖引擎 <code>dependencies.ts</code> requires，E5.8#14/#15 已实现）+ <code>被依赖 = —</code>——挂起态见帧 7。
@@ -2074,7 +2073,7 @@ h1 .hly { color: #CCA700; }
     <tr>
       <td>未安装</td>
       <td class="ok">🟢 安装</td>
-      <td>版本下拉 · 自动更新勾选</td>
+      <td>版本下拉</td>
       <td>探索插件组 + 行内「安装」</td>
       <td>—（无事件；点安装先弹确认，帧 8）</td>
       <td><code>readmeUrl</code> + <code>screenshots[]</code></td>
@@ -2094,7 +2093,7 @@ h1 .hly { color: #CCA700; }
       <td class="no">↻ 重试（红）</td>
       <td>版本下拉</td>
       <td>「安装失败」+ 重试</td>
-      <td class="no">✕ 安装失败：网络连接中断 + [重试]（error toast，帧 3）</td>
+      <td class="no">✕ 安装失败：网络连接中断 + [重试]（error toast，帧 3；[重试] = E6#13.5 主动作按钮，09 §五）</td>
       <td><code>readmeUrl</code></td>
       <td>E6#30.9b</td>
     </tr>
@@ -2128,9 +2127,9 @@ h1 .hly { color: #CCA700; }
     <tr>
       <td>挂起 · 缺依赖</td>
       <td class="no">🚫 安装不可用</td>
-      <td>版本下拉 · 自动更新</td>
+      <td>版本下拉</td>
       <td>探索插件组 + 「等待依赖」徽标</td>
-      <td>ⓘ 无法安装：缺少依赖 storage-utils + [查看依赖]（缺依赖 toast，实机：插件自调 <code>notifications.show(type:warning)</code>，帧 7）</td>
+      <td>ⓘ 无法安装：缺少依赖 storage-utils + [查看依赖]（缺依赖 toast，实机：插件自调 <code>notifications.show(type:warning, actions)</code>，帧 7；[查看依赖] = E6#13.5 主动作按钮，09 §五）</td>
       <td><code>readmeUrl</code></td>
       <td>E6#30.5b · E5.8#14/#15</td>
     </tr>

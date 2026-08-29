@@ -70,7 +70,8 @@ github.com/encaron/linkdesk-marketplace/
 | `description` | ✅ | 一句话描述 |
 | `author.name` | ✅ | 作者名 |
 | `downloadUrl` | ✅ | 下载直链 |
-| `size` | ✅ | 文件大小（bytes）——显示下载大小 |
+| `size` | ✅ | 文件大小（bytes）——显示下载大小；**下载后校验实际字节，显著不符 → 警告 toast（09 §二，不拒装仅提示）** |
+| `checksum` | - | 作者 sha256——下载后校验完整性（09 §二）；旧条目无此字段 → 跳过校验（纯增量兼容） |
 | `icon` | - | 图标名（Lucide 或 codicon） |
 | `iconSource` | - | "lucide" / "codicon" / "url" |
 | `category` | - | 分类 |
@@ -118,6 +119,15 @@ const data = await response.json();
 - 首次加载 → 缓存到本地 Storage
 - 后续 → 先读缓存（5 分钟内），后台拉取更新
 - 拉取失败 → 用缓存
+- **parse 失败（catalog 手改坏/非法 JSON）→ 用缓存；无缓存 → 空态「目录损坏」+ [重试]**（缝隙 G12）
+- **全源不可达 + 无缓存（首次离线）→ 探索组空态「无法加载市场，请联网重试」+ [重试]**（缝隙 G8）
+
+---
+
+## 四·五、下载临时文件（缝隙 B1——下载中关软件）
+
+- 下载文件落 `{userData}/tmp/*.part`（半截标记）→ 完成后 rename 为正式包。
+- 下载中用户退出软件 → 启动时清理 `tmp/*.part` 残留（孤儿临时文件不留）。
 
 ---
 
