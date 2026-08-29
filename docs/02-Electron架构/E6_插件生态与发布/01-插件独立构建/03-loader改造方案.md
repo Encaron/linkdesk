@@ -257,6 +257,34 @@ E5.6#83（PluginInstallService IPC 骨架）a-e 子项全标 [x]，但 `git log 
 
 原写 `electron/ipc/plugin-install-handlers.ts`，现有 11 个 handler 全在 `electron/ipc/handlers/`——改 `electron/ipc/handlers/plugin-install-handlers.ts`。
 
+### 九、审视实锤（2026-08-30 第 1.3 轮——#15/#16/#18/#20/#54c 修正依据）
+
+> 2026-08-30 第 1.3 轮整轮审视（E6#54、#15-#20）落笔的现状实测 + 拍板实锤。清单只留修正结论 + 本锚点。
+
+#### 9.1 serialport 定性方案①拍板（用户 2026-08-30）
+
+serialport 留壳——electron-builder npmRebuild 自动保证 ABI；serial-monitor 走 `window.linkdesk.serial.*`（数据源后门通道：UI 独立 build + 原生设备层壳托管），package.json **不列 serialport**。否决方案②（native .node 绑 Electron ABI，每次升级大版本插件侧 rebuild，永久维护债）。连带：#16b 删 serialport/iconv-lite 移出项。
+
+#### 9.2 插件清单全量盘点（#15a 补全依据）
+
+实测 `plugins/` 现状：builtin 4（editor/file-tree/marketplace/settings，全 React）+ user **17**（React 4：serial-monitor/python/floating-panel-demo/panel-demo；JSON 12：lang-defaults/lang-test-ja/theme×10）。#15a 原列 6 个严重过时。**全量覆盖**：React 8 独立 build + JSON 12 纯打包（zip 含 plugin.json + JSON 资源，无 index.bundle.js，loader 只注册贡献）——#15f「壳零插件代码」要求源码树全部插件独立分发，dev/prod 一致。JSON 插件无入口 → **#7 路径 C 需支持无 entry 分支（纯贡献插件）**，实现时补。
+
+#### 9.3 壳依赖现状实测（#16 修正依据）
+
+`package.json` deps + devDeps 实测：**@codingame/monaco-vscode-* 已完全不存在**（#16a 原「42 包」是 E5.6 时代数据，删）；serialport/iconv-lite 留壳（方案①）；剩余要判定 4 项：monaco-editor / monaco-languageclient（→ editor 插件）/ @codemirror×3 / canvas（待确认归属）。
+
+#### 9.4 #20 现状重写依据
+
+`electron/protocol.ts` **不存在**——实际 `electron/plugins/protocol.ts`（55 行 `protocol.handle`）+ 解析已抽 `src/core/utils/path/linkdeskProtocolPath.ts`（E5.7#82 纯函数 `resolveLinkdeskPath(pluginsDir, scanPluginSubdirs, urlPath)`，内部 builtin>user>字母序扫描，非硬编码回退链）。任务改「扫描 → Map 直查」，**吃 #9 plugins:listAll 一次性构建**。
+
+#### 9.5 #18 落点依据
+
+卸载守卫在 `src/pluginLoader/lifecycle-ops.ts:252`（`manifest.distribution !== "user" || manifest.core === true`，E5.8#1c 去重），非 loader.ts。落点改 lifecycle-ops.ts。
+
+#### 9.6 #54c 计数依据
+
+实测 `plugins/` 下 `@src/components/shared` 引用：**13 文件 33 处**（settings 4 文件含 views/SettingsView/ 子目录 + serial-monitor 4 + file-tree 2 + marketplace 3）。#54c 原「12 文件 29 处」微修。
+
 ---
 
 > **← 上一文档：** `02-linkdesk-plugin格式规范.md`
