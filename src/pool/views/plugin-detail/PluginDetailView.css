@@ -9,6 +9,15 @@
   margin: 0 auto;
   padding: 0;
   color: var(--text-primary);
+  user-select: text; /* E5.8#186 详情页=内容页：正文可选中复制（对标 VS Code 插件详情页；全局基类 index.css user-select:none，白名单增补同 dialog/toast 先例） */
+}
+
+/* E5.8#186 交互件/装饰不参与复制——按钮/标签页/图标容器保持不可选 */
+.plugin-detail .pd-btn,
+.plugin-detail .pd-navtab,
+.plugin-detail .pd-icon-container,
+.plugin-detail .codicon {
+  user-select: none;
 }
 
 .plugin-detail-empty {
@@ -18,6 +27,7 @@
   height: 100%;
   color: var(--text-muted);
   font-size: var(--font-size-lg); /* E5.8 Phase 12 #180：plugin-detail-empty 14→lg（⑤ +1 档） */
+  user-select: text; /* E5.8#186 空态提示也属可复制内容（含插件 ID） */
 }
 
 /* ═══ Header — VS Code: padding-top 20, padding-bottom 12, padding-left 20 ═══ */
