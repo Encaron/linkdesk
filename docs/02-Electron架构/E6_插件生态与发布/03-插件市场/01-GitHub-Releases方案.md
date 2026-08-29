@@ -87,6 +87,19 @@ github.com/encaron/linkdesk-marketplace/
 
 **对标 VS Code：** `package.json` 的 `contributes` 从 1.0 到现在加了几十个新贡献点。旧扩展不升级不崩。LinkDesk 同理。
 
+### 3.2 新增字段（2026-08-29 第一站体验——纯增量，旧插件不填不崩）
+
+| 新字段 | 必需 | 说明 |
+|:--|:--|:--|
+| `versions[]` | - | 版本历史 `{version, downloadUrl, publishedAt, changelog?}`，**最新在前**；顶层 `version`/`downloadUrl` 仍 = 最新（兼容旧条目）——版本下拉数据源 |
+| `readmeUrl` | - | 作者仓库 raw README——未装插件详情页数据源 |
+| `screenshots[]` | - | 截图 URL 数组——详情页画廊 |
+| `license` | - | 许可证标识——详情页侧栏 |
+| `categories[]` | - | 多分类（替代单 `category`） |
+| `icon` url 形态 | - | 作者自制彩色图标（SVG/PNG 直接 `<img>`；`iconSource: "url"` 既有兜底） |
+
+交互设计 → [03-市场交互设计.md](03-市场交互设计.md)。配套：`.linkdesk-plugin` 包内带 `README.md`（E6#4a 打包补）。
+
 ---
 
 ## 四、读取方式
