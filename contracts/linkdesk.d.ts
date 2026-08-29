@@ -18,6 +18,10 @@ export interface LinkDeskCommand {
     title: string;
     category?: string;
 }
+/** 配方贡献域——theme 元数据 domains（混搭来源过滤）+ theme:changed 载荷（域级细粒度刷新）共用（06 §2/§6.2）。
+ *  五域：colors（配色，colorways 恒贡献） + appearance 四风格域（radius/glass/font/background）。
+ *  E5.8#132：surface 域删——per-surface 精调死键（A 删拍板），玻璃表面形态 token（--surface-*）归 glass 域。 */
+export type ThemeDomain = "colors" | "font" | "radius" | "glass" | "background";
 /** 配置 schema 中的单个属性定义——E5.8#41.14 🛤 补全 uiHint/minimum/maximum/renderHint/dependsOn
  * （壳 SettingsView renderControl/SettingRow 官方控件切换 + 依赖显隐字段，与 SettingsView/types ConfigProperty 对齐） */
 export interface LinkDeskConfigProperty {
@@ -34,11 +38,30 @@ export interface LinkDeskConfigProperty {
     maximum?: number;
     /** 渲染提示——renderControl 第二判据（"action" 渲染操作按钮 / "color" 渲染色块预览） */
     renderHint?: string;
+    /** 等宽限定——仅 uiHint "fontFamily" 有意义。true/缺省 = 只列等宽族（编辑器字体）；false = 全字族（UI 字体）。E5.8#50.20 */
+    monoOnly?: boolean;
     /** 依赖条件——本项仅在 dependsOn.key 配置值 === value 时显示（SettingRow 读它显隐整行） */
     dependsOn?: {
         key: string;
         value: unknown;
     };
+    /** 动态下拉数据源——uiHint "select" 时读取（渲染时调 theme.listRecipes() 动态取，E5.8#50.23）。
+     *  "theme.colorways" = 活动配方（app.theme）配色变体（选项带预览色块）；
+     *  "theme.sources" = 混搭来源（按 optionsFromDomain 过滤 RecipeMeta.domains）。 */
+    optionsFrom?: string;
+    /** 混搭来源域过滤——optionsFrom "theme.sources" 时按此域过滤 RecipeMeta.domains（10 §2 六域） */
+    optionsFromDomain?: ThemeDomain;
+    /** E5.8#50.26：renderHint "action" 按钮动作——点击执行此壳命令（第三方设置 UI 经 commands.executeCommand 触发） */
+    actionCommand?: string;
+    /** E5.8#50.26：renderHint "action" 按钮禁用条件——全部 {key,value} 匹配当前配置值时禁用 */
+    actionDisabledAll?: Array<{
+        key: string;
+        value: unknown;
+    }>;
+    /** E5.8#78：组内二级标题——SettingsView 把同 group 的 key 归到子标题下渲染；无 group 保持平铺（零侵入） */
+    group?: string;
+    /** E5.8#77：数值单位——uiHint "slider" 值标签单位（"×" / "px"；空 = 裸数值） */
+    unit?: string;
 }
 /** 配置 schema——key → 属性定义（index signature 保持现有消费方） */
 export interface LinkDeskConfigSchema {
@@ -118,17 +141,86 @@ export interface CommandsAPI {
     /** @deprecated E3j #75——向后兼容别名，新代码用 configuration */
     config: CommandsAPI["configuration"];
 }
+/** E5.8#50.6：玻璃 + 悬浮面板质感字段——主题 JSON `surface`（缺省 = 无玻璃无悬浮）。
+ * 纹理 texture 与 glass 正交（⑬ 纸纹分区不带玻璃也能用 per-surface 纹理）。 */
+export interface ThemeSurface {
+    /** 玻璃配方——缺省 = 无玻璃 */
+    type?: "glass";
+    /** backdrop blur px——0 = 关 */
+    blur?: number;
+    /** 饱和度增强——1 = 关 */
+    saturate?: number;
+    /** 玻璃面叠加色 */
+    tint?: string;
+    /** 玻璃面不透明度（合成层基线）——1 = 不透明 / 0 = 全透见背景。写 --glass-opacity token（tint 盖片
+     *  opacity 消费）+ 播种反推进合成 alpha（#112：配方面基线，用户 app.glassOpacity 覆盖时优先） */
+    opacity?: number;
+    /** 液态玻璃顶部高光强度——0 = 关 */
+    specular?: number;
+    /** E5.8#63：顶部高光基色（发丝光边颜色）——缺省 = 白；alpha 仍走 specular */
+    specularColor?: string;
+    /** 形变过渡 ms——0 = 关 */
+    morph?: number;
+    /** 悬浮圆角 px——0 = 直角贴边 */
+    radius?: number;
+    /** 投影浮起——true = 悬浮投影（引擎映射 --shadow-lift） */
+    shadow?: boolean;
+    /** E5.8#50.28：可平铺纹理图资产路径（⑬ 纸纹分区）——应用全部 5 zone 表面，与 glass 正交独立生效 */
+    texture?: string;
+    /** 纹理不透明度——1 = 不透明 */
+    textureOpacity?: number;
+}
+/** E5.8#50.6：图片背景质感字段——主题 JSON `background`（缺省 = 无图） */
+export interface ThemeBackground {
+    /** 图片路径——作者提供可解析 URL，引擎写入 `--bg-image` 时 url() 包裹 */
+    image?: string;
+    /** 图片层不透明度——1 = 不透明。引擎写 `--bg-opacity`（.background-layer 清晰底图）+ `--surface-bg-opacity`
+     *  （镜像/纹理/切片 ::after 图像层）；用户 app.backgroundOpacity 覆盖时双 token 齐写（#115：图与底统一淡出，避免底图淡而镜像恒显） */
+    opacity?: number;
+    /** 图片遮罩明暗（0-1 rgba 透明度）——0 = 无遮罩 */
+    mask?: number;
+    /** E5.8#63：遮罩基色（暗化层颜色）——缺省 = 黑；alpha 仍走 mask。仅 panorama 生效（同 mask） */
+    maskColor?: string;
+    /** E5.8#50.29：切片模式——"panorama"（默认）= 现全窗语义零变化；"zones" = 同图连续切片挂 5 zone 表面（⑭ 影像分区） */
+    mode?: "panorama" | "zones";
+}
 export interface LinkDeskTheme {
     name: string;
     type: "dark" | "light";
+    /** E5.8#50.6：玻璃/悬浮质感——主题 JSON `surface`（缺省 = 无玻璃无悬浮） */
+    surface?: ThemeSurface;
+    /** E5.8#50.6：图片背景——主题 JSON `background`（缺省 = 无图） */
+    background?: ThemeBackground;
     pluginId?: string;
+}
+/** E5.8#50.18：配色变体元数据——theme.listRecipes() 返回（colorways[] 元素，06 §2）。
+ *  预览色供 ThemePicker 卡片取色；单配色配方 = 1 项。 */
+export interface ColorwayMeta {
+    /** 配色变体 id——全局唯一（theme.setColorway 入参；app.themeColor 动态 enum 存此） */
+    id: string;
+    /** 配色显示名 */
+    name: string;
+    /** 预览色——强调色 + 窗口背景（卡片徽标取色用；缺省配色无该 token → 空串） */
+    preview: {
+        accent: string;
+        bgWindow: string;
+    };
+}
+/** E5.8#50.18：配方元数据——theme.listRecipes() 返回（全部可用配方 + 配色变体 + 预览色，06 §2）。
+ *  domains = 该配方贡献哪些域（混搭来源过滤依据，10 §2）；type = 明暗类别。 */
+export interface RecipeMeta {
+    id: string;
+    name: string;
+    type: "light" | "dark";
+    colorways: ColorwayMeta[];
+    domains: ThemeDomain[];
 }
 export interface LinkDeskLanguage {
     id: string;
     label: string;
     pluginId: string;
 }
-/** 主题 + 语言命名空间面——对标 VS Code 外观面 */
+/** 主题 + 语言 + 外观资产命名空间面——对标 VS Code 外观面 */
 export interface AppearanceAPI {
     theme: {
         /** 获取当前主题 ID */
@@ -137,6 +229,26 @@ export interface AppearanceAPI {
         getAvailable(): Promise<LinkDeskTheme[]>;
         /** 应用主题 */
         apply(themeId: string): Promise<void>;
+        // ── E5.8#50.18：配方/配色 06 §2 六方法——列表走 API（数据），选中走配置（持久化 app.*）──
+        /** 全部可用配方（含各配色变体 + 预览色）——ThemePicker 卡片 / 配色与混搭动态 SelectBox 数据源 */
+        listRecipes(): Promise<RecipeMeta[]>;
+        /** 当前活动配方/配色——合并配置计算（getActiveRecipe + app.theme/app.themeColor 回退） */
+        getActive(): Promise<{
+            recipeId: string;
+            colorwayId: string;
+        } | null>;
+        /** 当前生效 token 集（合并后）——appearanceMode→custom 播种、混搭预览 */
+        getEffectiveTokens(): Promise<Record<string, string>>;
+        /** 应用配方——落 app.theme（配色随配方自动跟随） */
+        setRecipe(recipeId: string): Promise<void>;
+        /** 应用配色变体——落 app.themeColor */
+        setColorway(colorwayId: string): Promise<void>;
+        /** 复位外观——对齐壳命令：app.appearanceMode→followTheme（onApply 级联清 9 覆盖 + 6 域来源 + 强调色回主题基线，E5.8#90 合并） */
+        resetAppearance(): Promise<void>;
+        /** 复位混搭——对齐壳命令：批复位 3 来源键回跟随主题（保持自定义模式，E5.8#90 app.mixMode 已删、#132 surface 域删） */
+        resetMix(): Promise<void>;
+        /** E5.8#88：外观覆盖键 → 主题/混搭基准种子值全集（设置页「已修改」徽标基准；无活动配方 → null） */
+        getBaselineSeeds(): Promise<Record<string, unknown> | null>;
     };
     language: {
         /** 获取当前语言 ID */
@@ -155,6 +267,15 @@ export interface AppearanceAPI {
             lang: string;
             resources: Record<string, unknown>;
         }) => void): () => void;
+    };
+    /** E5.8#50.11：外观资产——本地选图拷贝入库（受控来源——用户任选路径不能 file:// 直读） */
+    appearance: {
+        /** 导入图片到 userData/appearance/（重名去重）——返回受控协议 URL（linkdesk-userdata://…，E5.8#64），
+         *  供 app.backgroundImage 持久化；沙箱经特权协议加载（plain 绝对路径被拦截） */
+        importImage(sourcePath: string): Promise<string>;
+        /** E5.8#153：打开外观存储目录（userData/appearance）——主进程解析路径并 shell.openPath 开资源管理器
+         *  内容（非高亮单文件）；目录缺省也建（打开即见存储位置），openPath 失败抛错 fail-loud。 */
+        revealStorage(): Promise<void>;
     };
 }
 /** 标签页命名空间面——对标 VS Code vscode.window.createTerminal() */
@@ -208,6 +329,14 @@ export interface KeyboardInput {
     key: string;
     code: string;
 }
+/**
+ * E5.8#46.8：主进程 before-input-event 转发的 executeShortcut 载荷——键盘快照 + 来源窗标注。
+ * KeyboardInput 保持纯净（纯键盘字段）；来源作为组合类型必选字段（attachKeyboardRouting 恒有 windowId）。
+ * 壳 dispatch 据此按聚焦窗裁决快捷键（Ctrl+W 关本窗 tab）——与 ShellTabAction 顶层 sourceWindowId 同构（#46.4 归一化）。
+ */
+export interface ForwardedKeyboardInput extends KeyboardInput {
+    sourceWindowId: string;
+}
 /** 快捷键——壳/池双端注入（syncToMainProcess/onForwardedEvent 为壳侧独有）。池插件消费 setKeybindingCaptureActive（file-tree），必选 */
 export interface KeybindingsAPI {
     keybindings: {
@@ -225,8 +354,8 @@ export interface KeybindingsAPI {
         onChange(cb: () => void): () => void;
         /** 壳→主进程同步快捷键表（chord 状态机查表） */
         syncToMainProcess?(data: KeybindingSyncData): Promise<void>;
-        /** 接收主进程 before-input-event 转发的拦截事件 */
-        onForwardedEvent?(cb: (input: KeyboardInput) => void): () => void;
+        /** 接收主进程 before-input-event 转发的拦截事件（E5.8#46.8：载荷含 sourceWindowId——按聚焦窗裁决） */
+        onForwardedEvent?(cb: (input: ForwardedKeyboardInput) => void): () => void;
     };
 }
 /** 进度通知句柄——progress=true 时 show() 返回 */
@@ -958,6 +1087,12 @@ export interface BridgeRequestPayload {
     requestId: string;
     channel: string;
     args: unknown[];
+    /**
+     * E5.8#46.12：信封来源窗盖章——主进程按 sender 反查 windowId（池不知自身 windowId，#43-4 铁律），
+     * 池→壳每一请求自带来源窗身份。壳按此路由按窗操作（sourceId 族：标签改/关/聚焦落到来源窗注册表，
+     * 主窗照旧）——窗口身份丢失类（黑点/面板/弹窗）同根归一化。壳侧 switch 收窄时按需消费，无消费方忽略。
+     */
+    sourceWindowId?: string;
 }
 /** 菜单项——壳侧已解析（显示文本铁律：label 已 t()，池哑渲染）。titlebar 下拉与 ☰ 汉堡共用。 */
 export interface PoolMenuItem {
@@ -967,6 +1102,9 @@ export interface PoolMenuItem {
     command: string;
     /** 快捷键显示文本——formatKeyLabel 后。仅汉堡（showKeybindings）；titlebar 下拉无快捷键（同壳行为） */
     shortcut?: string;
+    /** E5.8#148：当前项 √（显隐勾选菜单）——壳 buildTitleBarMenuGroups/汉堡经 resolveVisibilityChecked
+     *  序列化（zone 可见 = ✓）。显示文本铁律：池哑渲染原文，壳只推布尔。 */
+    checked?: boolean;
     /** 子菜单——titlebar 仅 command+children 父项携带（无 command 父项由壳展平）；汉堡不展平 */
     children?: PoolMenuItem[];
 }
@@ -999,12 +1137,14 @@ export interface TitleBarLayout {
         left: TitleBarSlotButton[];
         right: TitleBarSlotButton[];
     };
-    /** 窗口控件 tooltip——显示文本铁律：壳 t() 解析后推送 */
+    /** 窗口控件 tooltip——显示文本铁律：壳 t() 解析后推送（E5.8#46.18：pin/unpin 置顶两态） */
     windowControls: {
         minimize: string;
         maximize: string;
         restore: string;
         close: string;
+        pin: string;
+        unpin: string;
     };
 }
 /** 图标栏图标——壳 resolvePluginIcon 序列化（池不 import pluginLoader，Lucide 名由池映射组件渲染） */
@@ -1134,13 +1274,11 @@ export interface SidebarLayout {
      *  容器随插件卸载从清单消失 → 池自然卸载（真相源在壳，池零缓存）。旧布局（无此字段）回退单容器渲染。 */
     containers?: SidebarContainerLayout[];
     collapsedViews?: string[]; // 持久化折叠的 view ID 集合——壳 loadCollapsedState()
-    /** E5.6#11-fix7：壳通知池侧栏是否折叠——width ≤ 48 时池渲染 ▶ 展开按钮而非裁剪内容 */
+    /** E5.6#11-fix7：壳通知池侧栏是否折叠——折叠=真消失（#147/#159 无窄条/▶，grid auto 列 0 宽） */
     collapsed?: boolean;
     // ── E5.7#10：侧栏 UI 文本壳侧 t() 推送（显示文本铁律——池渲染零自产文本） ──
     emptyText?: string; // 空状态主文案——"此容器没有已注册的视图"
     emptyHint?: string; // 空状态提示——"安装插件以添加视图"
-    expandTooltip?: string; // ▶ 展开按钮 tooltip
-    collapseTooltip?: string; // ◀ 折叠按钮 tooltip
     // ── E5.7#13：拖拽钳制界——壳 LayoutEngine dock 声明推送（池本地钳制对齐壳 resizeZone，零硬编码） ──
     minWidth?: number; // 拖拽最小宽——壳 dock.minWidth（170）
     maxWidth?: number; // 拖拽最大宽——壳 dock.maxWidth（600）
@@ -1151,7 +1289,7 @@ export interface SidebarLayout {
 /** 🆕 E5.8#36.8：右侧栏布局——右侧栏真 zone（决策 6，E5.8#36.7 addZone("rightSidebar") 消费方）。
  *  与 SidebarLayout 对齐（消费字段同集），但**不携带自身 edge**——swap 规则保证 sidebar ↔ rightSidebar
  *  恒占对边，右栏 edge = sidebar 对边（池 grid #37.5 推导，防两处字面量）。
- *  E5.8#37.5 RightSidebarZone 真渲染：折叠/展开按钮 + tooltip 全壳 t() 推送（显示文本铁律）。 */
+ *  E5.8#37.5 RightSidebarZone 真渲染：文案壳 t() 推送（显示文本铁律）。#159 无 ◀/▶ 折叠按钮——与左栏同款。 */
 export interface RightSidebarLayout {
     visible: boolean;
     width: number;
@@ -1162,17 +1300,14 @@ export interface RightSidebarLayout {
     views: SidebarViewMeta[];
     containers?: SidebarContainerLayout[];
     collapsedViews?: string[];
-    /** 🆕 E5.8#36.8 + #37.5：右栏折叠态——宽度 ≤48 派生（池），▶/◀ 按钮切换 emit 安全 no-op（壳接线归 Phase 12） */
+    /** 🆕 E5.8#36.8 + #37.5 + #159：右栏折叠态——宽度 ≤48 派生（池），折叠=整个 zone 消失（与左栏 #147 同源，
+     *  无窄条/▶——折叠/展开仅走图标栏 toggle + 界面勾选菜单） */
     collapsed?: boolean;
-    // ── 拖拽钳制界 + 空态文案 + 折叠 tooltip（与 SidebarLayout 同语义）──
+    // ── 拖拽钳制界 + 空态文案（与 SidebarLayout 同语义）──
     minWidth?: number;
     maxWidth?: number;
     emptyText?: string;
     emptyHint?: string;
-    /** 🆕 E5.8#37.5：▶ 展开按钮 tooltip（壳 t() 推送） */
-    expandTooltip?: string;
-    /** 🆕 E5.8#37.5：◀ 折叠按钮 tooltip（壳 t() 推送） */
-    collapseTooltip?: string;
 }
 /** 标签页在池中的表示——壳 pushLayout 时序列化 */
 export interface PoolTab {
@@ -1276,7 +1411,7 @@ export interface PanelLayout {
     /** 🆕 E5.8#37.5：竖条面板（左/右）拖拽最小/最大宽——壳 dock.minWidth/maxWidth 推送 */
     minWidth?: number;
     maxWidth?: number;
-    /** E5.7#63.7：[+] 按钮 tooltip——壳 t("新建面板视图") 推送（显示文本铁律；面板创建归 Phase 12，目前壳侧 no-op） */
+    /** E5.7#63.7：[+] 按钮 tooltip——壳 t("新建面板视图") 推送（显示文本铁律；壳无 panel:createView 监听 = 安全 no-op） */
     createTooltip?: string;
     /** E5.8#34：容器切换器下拉 DTO——按容器分组列全部视图（含隐藏），mockup 帧 2 */
     switcher?: PanelSwitcherGroup[];
@@ -1284,6 +1419,11 @@ export interface PanelLayout {
     emptyText?: string;
     /** E5.8#34：空态占位指路——同 emptyText 壳 t() 推送 */
     emptyHint?: string;
+    /** 🆕 E5.8#45：面板可脱出（PanelZone ⤢ 按钮显隐）——true 时渲染脱出按钮，点击 emit "panel:detach"（壳 detachPanel 接）
+     *  ——脱出后漂移面板窗独占渲染本面板（主区空占位 I9-13），drift 窗内置 false（面板已在外，无需再脱出） */
+    detachable?: boolean;
+    /** 🆕 E5.8#45：⤢ 按钮 tooltip——壳 t("面板独立窗口") 推送（显示文本铁律） */
+    detachTooltip?: string;
 }
 /** 状态栏条目——序列化自壳 StatusBar 三源（贡献/动态/事件）+ 壳固定项（显示文本铁律：壳 t() 已解析）。
  *  E5.8#20-c：改名 PoolStatusBarItem——与 api/types.ts StatusBarItem（manifest 贡献型）同名，
@@ -1349,13 +1489,16 @@ export interface StatusBarLayout {
 }
 /**
  * PoolLayout v2——E5.7 唯一的 Pool 收到全量布局快照。
- * titleBar/iconBar/sidebar/statusBar 必有；rightSidebar/panel 可选（未启用时不推）。
+ * titleBar 必有（窗口 chrome——池恒渲染）；iconBar/sidebar/statusBar/panel/rightSidebar 可选——
+ * 主池恒推全量，脱出窗（E5.8#43-2 窗口模式策略表）只推 titleBar+groups 子集（池按字段条件渲染，无空列/空条）。
  */
 export interface PoolLayout {
     version: 2;
     titleBar: TitleBarLayout;
-    iconBar: IconBarLayout;
-    sidebar: SidebarLayout;
+    /** 图标栏——缺省 = 池不渲染该 zone（脱出窗子集；主池恒推） */
+    iconBar?: IconBarLayout;
+    /** 侧栏——缺省 = 池不渲染该 zone（脱出窗子集；主池恒推） */
+    sidebar?: SidebarLayout;
     /** E5.8#36.8：右侧栏真 zone 布局——RightSidebarLayout（edge 反推 = sidebar 对边，不携带自身 edge） */
     rightSidebar?: RightSidebarLayout;
     groups: PoolGroup[];
@@ -1365,10 +1508,12 @@ export interface PoolLayout {
     /** E5.6#16.7：递归分屏树——MainRenderer 递归渲染，替代平铺 groups.map。
      *  leaf = 单 GroupPane，branch = 水平/垂直 flex 容器。 */
     root?: SplitNode;
-    /** E5.6#16.7k-3：可创建为标签页的视图列表——池 GroupTabBar [+] 按钮动态菜单 */
+    /** E5.6#16.7k-3：可创建为标签页的视图列表——池 GroupTabBar [+] 按钮动态菜单。
+     *  空数组 = [+] 不提供创建菜单（脱出窗 I9-6）；缺省 = 池兜底欢迎页 */
     creatableViews?: CreatableViewMeta[];
     panel?: PanelLayout;
-    statusBar: StatusBarLayout;
+    /** 状态栏——缺省 = 池不渲染该 zone（脱出窗子集；主池恒推） */
+    statusBar?: StatusBarLayout;
 }
 /**
  * 池→壳侧栏动作 wire 契约——E5.7#97。
@@ -1428,10 +1573,13 @@ export type PoolTabAction = {
     tabId: string;
     newIndex: number;
     oldIndex: number;
-} | {
+}
+// E5.8#51：newIndex = 目标组内插入缝（跨组拖拽落点 = 竖杠缝隙；缺省 append 末尾）
+ | {
     action: "moveTab";
     tabId: string;
     targetGroupId: string;
+    newIndex?: number;
 } | {
     action: "splitTab";
     tabId: string;
@@ -1456,7 +1604,83 @@ export type PoolTabAction = {
         number
     ];
     branchIndex?: number;
+}
+// E5.8#44-B：标签页拖出窗口后释放——screenX/Y = 释放点屏幕坐标（壳侧命中检测：TabBar→并窗 / 空白→新窗）
+ | {
+    action: "releaseOutsideWindow";
+    tabId: string;
+    screenX: number;
+    screenY: number;
 };
+/**
+ * E5.8#43-4 ① 同款：壳侧接收的 tab 动作——主进程按 sender 解析注入 sourceWindowId（#44-B 权威窗口身份）。
+ * 池永远不知自身 windowId；壳读 sourceWindowId 判源窗（detach 源 / 同窗不并）。
+ */
+export type ShellTabAction = PoolTabAction & {
+    sourceWindowId: string;
+};
+/** E5.8#44-B：TabBar viewport rect——池侧 getBoundingClientRect 上报（吸附/释放并窗命中检测数据源）。
+ *  坐标 = 视口相对（0,0 = 窗口内容区左上），壳持权威 window bounds 后转 screen（bounds.x + rect.left）。
+ *  groupId 携带——命中后 mergeTabToWindow 直落目标组。 */
+export interface TabBarViewportRect {
+    groupId: string;
+    left: number;
+    top: number;
+    width: number;
+    height: number;
+}
+/** 池→壳：TabBar rects 上报载荷——主进程按 sender 解析附上 windowId（E5.8#44-B） */
+export interface TabBarRectsPayload {
+    windowId: string;
+    rects: TabBarViewportRect[];
+}
+/** E5.8#44-C：拖拽位置上报载荷——池拖出手势（拎起后 mousemove 全程）上报，壳排除源窗转 screen 吸附命中检测。
+ *  坐标 = 屏幕坐标（e.screenX/screenY——窗口 bounds 同为屏幕坐标，可直接命中）。canceled = Esc 取消（keydown 无坐标）。 */
+export interface TabDragPositionPayload {
+    tabId: string;
+    screenX: number;
+    screenY: number;
+    /** Esc 取消拖拽——壳清吸附提示（keydown 无坐标，仅置标志；screenX/screenY 填 0） */
+    canceled?: boolean;
+    /** E5.8#46.19：被拖标签标题——池上报供主进程幽灵窗渲染文字（主进程不持 tabState，标题由池带）。壳/吸附忽略此字段 */
+    title?: string;
+    /** E5.8#46.19：光标是否在源窗外（屏坐标对照 winScreenX+视口尺寸，与 onMouseUp 窗外判定同源）——
+     *  窗外 → 主进程 OS 幽灵显示（DOM 浮块出窗被裁剪）；窗内 → OS 幽灵隐藏（DOM 浮块可见）。壳/吸附忽略此字段 */
+    outside?: boolean;
+    /** E5.8#46.19 进化：拖拽幽灵外观——主题三色（源池 getComputedStyle 读 --bg-card/--border/--text-primary，
+     *  均为纯 hex 值）+ 被拖标签图标（tab.icon：emoji 字符或 getAssetPath 解析的图片 URL，iconKind 区分渲染）。
+     *  仅 outside=true（窗外）时主进程消费；壳/吸附忽略此字段。可选用——旧池不带上限。
+     *  iconKind 判定与 DragOverlays 浮块同款（emoji：len≤2 且命中 emoji 正则；img：其余一律当图片 URL）。 */
+    ghost?: {
+        theme: {
+            bg: string;
+            border: string;
+            text: string;
+        };
+        icon: string | null;
+        iconKind: "emoji" | "img" | null;
+    };
+}
+/** 池→壳：拖拽位置上报载荷——主进程按 sender 解析附上 sourceWindowId（E5.8#44-C 源窗排除——池永远不知自身 windowId） */
+export type ShellTabDragPosition = TabDragPositionPayload & {
+    sourceWindowId: string;
+};
+/** 壳→池：吸附提示载荷——目标窗 TabBar 插入指示（groupId 命中）/ 清除（groupId null = 无吸附目标，清光）。
+ *  E5.8#46.10：groupId 命中时携带 viewportX/Y——光标在目标窗 viewport 坐标（壳由屏坐标 − 窗口 bounds 原点换算），
+ *  目标池用它算插入缝隙（竖线落点，复用 computeTabInsertIndex）。 */
+export interface AdsorbHintPayload {
+    groupId: string | null;
+    viewportX?: number;
+    viewportY?: number;
+}
+/** 池→壳：吸附插入缝隙回传——目标池每次算出新的缝隙（竖线落点）就上报，壳存吸附注册表供释放并窗精确落位。
+ *  windowId 由主进程按 sender 注入（池永远不知自身 windowId，E5.8#44 定案）。 */
+export interface AdsorbIndexPayload {
+    windowId: string;
+    groupId: string;
+    /** 插入缝隙 0..tabs.length（竖线落点）——松手 merge 落位 = 竖线指的那根缝（提示不撒谎） */
+    insertIndex: number;
+}
 /** QuickPick 动作——select/highlight/close/itemAction 按 key 回传 */
 export interface PoolQuickPickAction {
     type: string;
@@ -1483,6 +1707,27 @@ export interface MemoryPressureData {
     totalRSS: number;
     threshold: number;
 }
+/** 壳→主：创建池窗请求——windowId 壳生成（tabState 归属），bounds 可选（E5.8#43-1 A4 多窗口底座） */
+export interface CreatePoolWindowRequest {
+    windowId: string;
+    width?: number;
+    height?: number;
+    x?: number;
+    y?: number;
+}
+/** E5.8#43-3：池窗位置/大小变更矩形——主进程 moved/resized 事件上报（壳据 windowId 更新注册表 + 落盘 A6）。
+ *  非独立契约入口（契约生成器 walkRefs 命中引用即强制 export 进 linkdesk.d.ts）——源码不 export，knip 不报死面。 */
+export interface WindowBounds {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+}
+/** 主→壳：脱出池窗 bounds 变更通知（用户移动/缩放窗口）——壳持久化浮窗位置（I9-14 位置/大小记录） */
+export interface PoolWindowBoundsPayload {
+    windowId: string;
+    bounds: WindowBounds;
+}
 /** 壳↔插件中继/池控制/窗口/壳级命令/热退出暂存命名空间面——双端注入面（bridge 真壳独有 / hotExit 池侧独有） */
 export interface ShellAPI {
     /** 壳↔插件通信中继——壳 preload 独有 */
@@ -1495,11 +1740,22 @@ export interface ShellAPI {
     /** 池控制——壳 preload：推送布局 + 注册池→壳动作回调；池 preload：收布局 + 发动作。双端各实现自己那半（方法级子集面，surfaces.ts） */
     pool: {
         // ── 壳侧（池 preload 无） ──
-        pushLayout(layout: PoolLayout): void;
-        onReady(cb: () => void): () => void;
+        /** E5.8#43-2：windowId 可选定向推送（缺省 'main'）——壳窗口注册表遍历按 id 推送各窗布局 */
+        pushLayout(layout: PoolLayout, windowId?: string): void;
+        /** E5.8#43-1 A3：回调收 windowId（主池='main'，脱出池=壳生成 id）——壳据 id 定向推该窗布局 */
+        onReady(cb: (windowId: string) => void): () => void;
         toggleDevTools(): void;
         onSidebarAction(cb: (action: SidebarAction) => void): () => void;
-        onTabAction(cb: (action: PoolTabAction) => void): () => void;
+        // E5.8#44-B：壳侧收 action = ShellTabAction（主进程按 sender 注入 sourceWindowId——#43-4 权威窗口身份）
+        onTabAction(cb: (action: ShellTabAction) => void): () => void;
+        // E5.8#44-B：池→壳 TabBar viewport rects 上报（吸附/释放并窗命中检测数据源）——windowId 由主进程注入
+        onTabBarRects(cb: (payload: TabBarRectsPayload) => void): () => void;
+        // E5.8#44-C：池→壳 拖拽位置上报（拎起后 mousemove 全程）——sourceWindowId 由主进程注入（壳排除源窗命中）
+        onDragPosition(cb: (pos: ShellTabDragPosition) => void): () => void;
+        // E5.8#44-C：壳→池 吸附提示（目标窗 TabBar 插入指示/清除）——windowId 壳命中解析后定向推送（#46.10 载荷带 viewport 坐标）
+        pushAdsorbHint(hint: AdsorbHintPayload, windowId: string): void;
+        // E5.8#46.10：池→壳 吸附插入缝隙回传（壳侧——windowId 由主进程注入，壳存吸附注册表供释放并窗精确落位）
+        onAdsorbIndex(cb: (payload: AdsorbIndexPayload) => void): () => void;
         pushQuickPick(data: unknown): void;
         onQuickPickAction(cb: (action: PoolQuickPickAction) => void): () => void;
         pushToast(data: unknown): void;
@@ -1510,11 +1766,28 @@ export interface ShellAPI {
         pushFloatingPanel(data: unknown): void;
         onFloatingPanelAction(cb: (action: PoolFloatingPanelAction) => void): () => void;
         onMemoryPressure(cb: (data: MemoryPressureData) => void): () => void;
+        // ── E5.8#43-1（A4）：多窗口底座——壳驱动创建/关闭池窗 + 监听 OS 关窗（主进程执行窗口生命周期）──
+        createWindow(opts: CreatePoolWindowRequest): void;
+        closeWindow(windowId: string): void;
+        onWindowClosed(cb: (windowId: string) => void): () => void;
+        // ── E5.8#43-3：主→壳 池窗 bounds 变更（moved/resized 上报）——壳注册表更新 + 落盘浮窗位置（I9-14）──
+        onWindowBoundsChanged(cb: (payload: PoolWindowBoundsPayload) => void): () => void;
         // ── 池侧（壳 preload 无） ──
         onLayout(cb: (layout: PoolLayout) => void): () => void;
         ready(): void;
         sidebarAction(action: SidebarAction): void;
         tabAction(action: PoolTabAction): void;
+        // E5.8#44-B：池→壳 TabBar viewport rects 上报（池侧——MainZone useTabDrag 报告 getBoundingClientRect）
+        tabBarRects(rects: TabBarViewportRect[]): void;
+        // E5.8#44-C：池→壳 拖拽位置上报（池侧——useDragReorder 拎起后 mousemove 上报，壳吸附命中）
+        dragPosition(pos: TabDragPositionPayload): void;
+        // E5.8#44-C：壳→池 吸附提示订阅（池侧——MainZone 订阅目标窗 TabBar 插入指示/清除）
+        onAdsorbHint(cb: (hint: AdsorbHintPayload) => void): () => void;
+        // E5.8#46.10：池→壳 吸附插入缝隙回传（池侧——目标池算竖线落点后上报，壳释放并窗精确落位）
+        adsorbIndex(payload: {
+            groupId: string;
+            insertIndex: number;
+        }): void;
         // ── E5.8#30.16（P8）：通用「beforeClose 可取消」通道（池侧）──
         // 插件注册 handler（自己定逻辑：弹确认/清理资源/返回 boolean 决定是否允许关标签页）；
         // GroupTabBar 关闭路径 `await beforeClose`——handler 返回 false（或 Promise<false>）则关闭被取消。
@@ -1522,7 +1795,7 @@ export interface ShellAPI {
         unregisterBeforeClose(pluginId: string): void;
         beforeClose(pluginId: string, tab: PoolTab): Promise<boolean>;
     };
-    /** 窗口控制——TitleBar 按钮映射，双端注入（8 方法同通道，共享模块 electron/window-namespace.ts） */
+    /** 窗口控制——TitleBar 按钮映射，双端注入（11 方法同通道，共享模块 electron/window-namespace.ts） */
     window: {
         minimize(): void;
         maximize(): void;
@@ -1533,6 +1806,10 @@ export interface ShellAPI {
         toggleDevTools(): Promise<void>;
         isMaximized(): Promise<boolean>;
         onMaximizeChange(cb: (maximized: boolean) => void): () => void;
+        /** E5.8#46.18：OS 级置顶（盖过其他应用）——true 置顶 / false 解除；按 sender 路由宿主窗 */
+        setAlwaysOnTop(pinned: boolean): void;
+        isAlwaysOnTop(): Promise<boolean>;
+        onAlwaysOnTopChange(cb: (pinned: boolean) => void): () => void;
     };
     /** 壳级命令——revealInOS / openInTerminal / startDrag，双端注入 */
     shell: {
@@ -1614,6 +1891,39 @@ export interface FactorySlotsAPI {
  * 索引访问 LinkDeskAPI["pool"]/["configuration"] 等消费方契约不变）。
  */
 export type LinkDeskAPI = CommandsAPI & AppearanceAPI & TabsAPI & KeybindingsAPI & UiAPI & DataAPI & WorkspaceAPI & EditorAPI & PluginsAPI & ShellAPI & PanelAPI & SettingsAPI & FactorySlotsAPI;
+/** 图标映射条目——字体 glyph 形态（单色/带色字体，seti 类每图标一色；codicon 即保底单色） */
+export interface IconThemeGlyph {
+    /** CSS 类名（codicon 保底 / 自定义图标字体资产） */
+    class: string;
+    /** 可选每图标颜色（seti 类彩色字体） */
+    color?: string;
+}
+/** 图标映射条目——图像资产形态（任意多色/拟物化/贴图） */
+export interface IconThemeImage {
+    /** 图像资产相对路径——壳加载时解析为 linkdesk:// 绝对 URL（getPluginAssetPath），消费方零解析负担 */
+    imagePath: string;
+}
+/** 图标映射条目——双形态（E5.8#133 ④ 拍板：字体 glyph 或图像资产，同一主题可混用，壳零审查） */
+export type IconThemeMapping = IconThemeGlyph | IconThemeImage;
+/** 图标主题映射表——fileExtensions/fileNames/folderNames → 双形态条目 */
+export interface IconThemeMappings {
+    files?: Record<string, IconThemeMapping>;
+    extensions?: Record<string, IconThemeMapping>;
+    folders?: Record<string, IconThemeMapping>;
+    /** 文件夹打开态——可选，未指定则复用 folders */
+    foldersExpanded?: Record<string, IconThemeMapping>;
+    /* ── 默认图标（E5.8#133.6：对齐 VS Code iconTheme 顶层默认键——未命中匹配表时用主题默认而非 codicon 保底） ── */
+    /** 默认文件图标——未命中 files/extensions 时使用（缺省 = 壳 codicon 保底） */
+    file?: IconThemeMapping;
+    /** 默认文件夹图标——未命中 folders 时使用（缺省 = 壳 codicon 保底） */
+    folder?: IconThemeMapping;
+    /** 默认文件夹展开图标——未命中 foldersExpanded 时使用（缺省 = 壳 codicon 保底） */
+    folderExpanded?: IconThemeMapping;
+    /** 根文件夹图标（缺省 = 壳 codicon 保底） */
+    rootFolder?: IconThemeMapping;
+    /** 根文件夹展开图标（缺省 = 壳 codicon 保底） */
+    rootFolderExpanded?: IconThemeMapping;
+}
 /** 插件状态变更——plugin-state:changed 载荷（跨 WebView 状态同步原语） */
 export interface PluginStateChangedPayload {
     pluginId: string;

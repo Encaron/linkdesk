@@ -148,6 +148,20 @@ export const IPC = {
     floatingPanel: 'pool:floating-panel',
     floatingPanelShow: 'pool:floating-panel-show',
     floatingPanelAction: 'pool:floating-panel-action',
+    // E5.8#43-1（A4）：多窗口底座——壳→主创建/关闭池窗 + 主→壳 OS 关窗通知（壳驱动，主进程执行）
+    createWindow: 'pool:create-window',
+    closeWindow: 'pool:close-window',
+    windowClosed: 'pool:window-closed',
+    // E5.8#43-3：主→壳 池窗 bounds 变更通知（moved/resized 上报，壳落盘浮窗位置 I9-14）
+    windowBoundsChanged: 'pool:window-bounds-changed',
+    // E5.8#44-B：池→壳 TabBar viewport rects 上报（吸附/释放并窗命中检测数据源——窗口 bounds 壳已掌握，视口 rect 转 screen 壳做）
+    tabBarRects: 'pool:tabbar-rects',
+    // E5.8#44-C：池→壳 拖拽位置上报（拎起后 mousemove 全程——壳排除源窗命中检测：窗内自然清提示，窗外命中目标窗 TabBar 高亮）
+    dragPosition: 'pool:drag-position',
+    // E5.8#44-C：壳→池 吸附提示（目标窗 TabBar 插入指示/清除——按 windowId 定向推送）
+    adsorbHint: 'pool:adsorb-hint',
+    // E5.8#46.10：池→壳 吸附插入缝隙回传（目标池算竖线落点后上报——主进程按 sender 注入 windowId）
+    adsorbIndex: 'pool:adsorb-index',
   },
   protocol: {
     listProtocols: 'protocol:listProtocols',
@@ -187,6 +201,12 @@ export const IPC = {
     updateLabelBySourceId: 'tabs:updateLabelBySourceId',
     closeBySourceId: 'tabs:closeBySourceId',
   },
+  // E5.8#50.11：外观资产——选择图片拷贝入库（受控来源——用户任选路径不能 file:// 直读）
+  // E5.8#153：revealStorage——背景图齿轮「打开存储位置」（主进程解析 userData/appearance 并 openPath）
+  appearance: {
+    importImage: 'appearance:importImage',
+    revealStorage: 'appearance:reveal-storage',
+  },
   theme: { changed: 'theme:changed' },
   viewContainer: {
     getContainer: 'viewContainer:getContainer',
@@ -202,6 +222,10 @@ export const IPC = {
     isMaximized: 'window:isMaximized',
     toggleDevTools: 'window:toggleDevTools',
     maximizeChange: 'window:maximize-change',
+    // E5.8#46.18：OS 级置顶——setAlwaysOnTop（send）+ isAlwaysOnTop（handle）+ alwaysOnTopChange 状态推送
+    setAlwaysOnTop: 'window:set-always-on-top',
+    isAlwaysOnTop: 'window:is-always-on-top',
+    alwaysOnTopChange: 'window:always-on-top-change',
     // E5.7#79：缩放——壳配置 window.zoomLevel onApply → 应用到池 WCV（主进程缓存供崩溃重建重放）
     setZoom: 'window:setZoom',
   },

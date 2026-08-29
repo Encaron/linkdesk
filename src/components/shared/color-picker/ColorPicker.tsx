@@ -8,10 +8,46 @@
  * VS Code 对标：src/vs/editor/contrib/colorPicker/browser/colorPickerParts.ts
  */
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useLayoutEffect } from "react";
 import { createRoot } from "react-dom/client";
-import OverlayPortal from "../overlay-portal/OverlayPortal";
+import { createPortal } from "react-dom";
+import OverlayPortal, { getScrimTarget } from "../overlay-portal/OverlayPortal"; // E5.8#107 浮层权威：遮罩归 scrim-plane
 import "./ColorPicker.css";
+
+/* ── E5.8#83 根因 A：视口边界碰撞 ──
+   面板固定宽 232px（CSS .colorpicker-panel）；高随 presets 有无 ≈224/263。首帧估算 clamp，
+   挂载后实测校正——保证任意滚动位置 OK 键恒在视口内可 hover/点击。 */
+
+export const PANEL_WIDTH = 232;
+const PANEL_HEIGHT = 224;
+const PANEL_HEIGHT_WITH_PRESETS = 263;
+const PANEL_MARGIN = 8;
+
+export interface PanelPos { left: number; top: number; }
+
+/** 纯函数——锚点右上角 + 视口 → 面板落点（右/下方放不下翻到左/上 + clamp 收拢入视口）。
+ *  恒在视口内（margin 8px）。抽出纯函数便于单测。 */
+export function resolvePanelPosition(
+  anchor: { x: number; y: number },
+  panelWidth: number,
+  panelHeight: number,
+  viewport: { width: number; height: number },
+  margin = PANEL_MARGIN,
+): PanelPos {
+  const maxLeft = Math.max(margin, viewport.width - panelWidth - margin);
+  const maxTop = Math.max(margin, viewport.height - panelHeight - margin);
+  // 水平：优先右排（面板左缘 = 锚点 x）；右侧放不下翻到左侧
+  const left = Math.min(Math.max(
+    anchor.x + panelWidth + margin <= viewport.width ? anchor.x : anchor.x - panelWidth - margin,
+    margin,
+  ), maxLeft);
+  // 垂直：优先下排（面板顶 = 锚点 y）；下方放不下翻到上方
+  const top = Math.min(Math.max(
+    anchor.y + panelHeight + margin <= viewport.height ? anchor.y : anchor.y - panelHeight - margin,
+    margin,
+  ), maxTop);
+  return { left, top };
+}
 
 /* ── 颜色转换工具（内联——零依赖）── */
 
@@ -97,8 +133,11 @@ export default function ColorPicker({ open, value, onChange, onClose, presets, a
   const [hexInput, setHexInput] = useState(value);
   const svRef = useRef<HTMLDivElement>(null);
   const hueRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
   const dragging = useRef<"sv" | "hue" | null>(null);
   const hsvRef = useRef<Hsv>(hsv); // 🔥 拖拽时用 ref 避回调闭包过期
+  // E5.8#83：面板落点（anchor 时）。首帧用估算尺寸 clamp，挂载后实测校正。
+  const [panelPos, setPanelPos] = useState<PanelPos | null>(null);
 
   // 外部 value 变化时同步内部状态
   useEffect(() => {
@@ -164,6 +203,18 @@ export default function ColorPicker({ open, value, onChange, onClose, presets, a
     };
   }, [open, handleSvMouse, handleHueMouse]);
 
+  // E5.8#83 根因 A：视口边界碰撞——anchor 时实测面板尺寸 → clamp/翻转落点
+  // （首帧渲染已用估算 clamp，此处校正精确高度——presets 有无影响面板高）
+  useLayoutEffect(() => {
+    if (!open || !anchor) { setPanelPos(null); return; }
+    const el = panelRef.current;
+    const viewport = { width: window.innerWidth, height: window.innerHeight };
+    const pos = el
+      ? resolvePanelPosition(anchor, el.offsetWidth, el.offsetHeight, viewport)
+      : resolvePanelPosition(anchor, PANEL_WIDTH, presets?.length ? PANEL_HEIGHT_WITH_PRESETS : PANEL_HEIGHT, viewport);
+    setPanelPos((prev) => (prev && prev.left === pos.left && prev.top === pos.top ? prev : pos));
+  }, [open, anchor, presets]);
+
   // E5#96n: Esc 关闭 → OverlayPortal onClose 处理
   if (!open) return null;
 
@@ -171,14 +222,29 @@ export default function ColorPicker({ open, value, onChange, onClose, presets, a
   const posLeft = `${Math.round(hsv.s * 100)}%`;
   const posTop = `${Math.round((1 - hsv.v) * 100)}%`;
   const hueLeft = `${Math.round((hsv.h / 360) * 100)}%`;
+  // 首帧兜底——layout effect 实测校正前用估算尺寸 clamp（避免 anchor 时闪居中再跳位）
+  const estPos = anchor && !panelPos
+    ? resolvePanelPosition(
+        anchor,
+        PANEL_WIDTH,
+        presets?.length ? PANEL_HEIGHT_WITH_PRESETS : PANEL_HEIGHT,
+        { width: window.innerWidth, height: window.innerHeight },
+      )
+    : null;
+  const displayPos = panelPos ?? estPos;
 
   return (
     <OverlayPortal onClose={onClose}>
-      {/* 遮罩 */}
-      <div className="colorpicker-overlay" />
+      {/* 遮罩——E5.8#83 根因 B：overlay 全屏拦截背景控件（modal 预期），但需点背景可关闭（对标 VS Code modal）——
+          绑 onClick→onClose，打破「只能 Escape/OK 退、OK 又屏外」的死锁。
+          E5.8#107 浮层权威：归 #ld-scrim-plane（遮罩平面，无磨砂）——满屏遮罩与 surface 分离，
+          结构隔离地板 :not(#ld-scrim-plane) 天然不碰它。z-index --z-overlay-backdrop(500) 仍 < 面板
+          --z-overlay(600)——层上下文内相对次序不变。 */}
+      {createPortal(<div className="colorpicker-overlay" onClick={() => onClose()} />, getScrimTarget())}
       <div
+        ref={panelRef}
         className="colorpicker-panel"
-        style={anchor ? { left: anchor.x, top: anchor.y } : undefined}
+        style={anchor && displayPos ? { left: displayPos.left, top: displayPos.top } : undefined}
         onClick={(e) => e.stopPropagation()}
       >
         {/* SV 面板 */}
@@ -266,13 +332,13 @@ export interface ShowColorPickerOptions {
 /**
  * 命令式弹出 ColorPicker——对标 QuickPick show() 模式。
  * 插件调 `linkdesk.commands.execute('color-picker.pick', { initialColor: '#f00' })`
- * → 浮层挂到 document.body → 选色 → resolve(hex) → 自动清理 DOM。
+ * → 浮层挂到 #overlay-root（E5.8#107 浮层权威；壳 DOM 无此 root 回退 body）→ 选色 → resolve(hex) → 自动清理 DOM。
+ * .colorpicker-command-root 死类名已删（E5.8#107 死代码清理——挂载点语义由 target 表达，不需要类名知识）。
  */
 export function showColorPicker(options: ShowColorPickerOptions = {}): Promise<string | undefined> {
   return new Promise((resolve) => {
     const container = document.createElement("div");
-    container.className = "colorpicker-command-root";
-    document.body.appendChild(container);
+    (document.getElementById("overlay-root") ?? document.body).appendChild(container);
     const root = createRoot(container);
 
     const cleanup = (color?: string) => {

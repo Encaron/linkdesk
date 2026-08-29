@@ -15,6 +15,8 @@
 
 // E5.7#98：InitDeps manifest 字段归口 PluginManifest（原 any——契约收紧，测试替身补 name/version）
 import type { PluginManifest } from "../../api/types";
+// E5.8#50.21：app.theme 旧值归一化（启动应用前映射 "Dark"/"Light" → "dark"/"light"）
+import { normalizeThemeValue } from "../ui/ThemeEngine";
 
 // ── 依赖注入接口 ──
 
@@ -139,11 +141,17 @@ export async function initAll(deps: InitDeps): Promise<InitResult> {
 
   // ── Step 5: 配置应用 ──
   try {
-    const initTheme = deps.getConfigurationValue<string>("app.theme") ?? "Dark";
+    // E5.8#50.21：读时归一化——legacy "Dark"/"Light" → 壳内置配方 id "dark"/"light"（onApply 先命中配方路径）
+    const rawTheme = deps.getConfigurationValue<string>("app.theme") ?? "dark";
+    const initTheme = normalizeThemeValue(rawTheme) ?? "dark";
     const initLang = deps.getConfigurationValue<string>("app.language") ?? "zh";
     await deps.applyConfiguration("app.theme", initTheme);
     deps.applyConfiguration("app.language", initLang);
     deps.applyConfiguration("app.accentColor", deps.getConfigurationValue<string>("app.accentColor"));
+    // E5.8#133.3：启动应用图标主题——触发 onApply 广播 iconTheme:changed（broadcast storeForReplay=true
+    // → lastBroadcasts → 池 did-finish-load 时 replayToPool），重启后非 default 图标主题经启动广播恢复。
+    // 池 preload 的 iconTheme:changed 缓存回放兜住「replay 早于 React 订阅」竞态（硬约束 20 缓冲回放模式）。
+    deps.applyConfiguration("app.iconTheme", deps.getConfigurationValue<string>("app.iconTheme") ?? "default");
   } catch (e) {
     logStep("applyConfig", e);
   }

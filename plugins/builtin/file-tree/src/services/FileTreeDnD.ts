@@ -8,7 +8,7 @@
 import { useState, useCallback, useRef } from "react";
 import type { ExplorerItem } from "./FileTreeModel";
 import type { FileTreeModel } from "./FileTreeModel";
-import { TREE_ITEM_HEIGHT } from "../utils/layoutTokens";
+import { getScaledTreeItemHeight } from "../utils/layoutTokens";
 import { dirname, joinPath, normalizePath } from "../utils/pathUtils";
 
 const lk = window.linkdesk;
@@ -37,7 +37,7 @@ export function getDropTargetIndex(
   scrollTop: number,
   containerTop: number,
 ): number {
-  return Math.floor((mouseY - containerTop + scrollTop) / TREE_ITEM_HEIGHT);
+  return Math.floor((mouseY - containerTop + scrollTop) / getScaledTreeItemHeight());
 }
 
 /**

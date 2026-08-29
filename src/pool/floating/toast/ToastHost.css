@@ -13,21 +13,28 @@
 
 /* ═══════════════════════════════════════════════
    容器——对标 .notifications-toasts
+   E5.8#107 浮层权威：toast 根级归位——布局/穿透由 #toast-root 承担（FloatingLayerHost 挂 #toast-root）。
+   .toast-container 改 display:contents（无盒）——结构隔离地板深度 2 规则（#ld-float-layer > * > *）
+   命中它也无视觉效应（零面积），.toast-item 直接成为 #toast-root 的 flex 子项。
    ═══════════════════════════════════════════════ */
 
-.toast-container {
+#toast-root {
   position: fixed;
-  bottom: 30px;              /* 状态栏 22px + 8px gap（现网实测） */
+  bottom: calc(22px * var(--ui-scale) + 8px); /* E5.8 Phase 12 #171：状态栏高引用（F8）——22px×scale + 8px gap */
   right: 6px;
   display: flex;
   flex-direction: column-reverse;  /* 最新在底部 */
   gap: 4px;                  /* VS Code: margin: 4px around each toast */
   max-width: 450px;          /* VS Code MAX_DIMENSIONS.width */
-  pointer-events: none;      /* 容器本身不阻挡点击 */
+  pointer-events: none;      /* 容器本身不阻挡点击——子项恢复 auto */
 }
 
-.toast-container * {
+#toast-root > * {
   pointer-events: auto;
+}
+
+.toast-container {
+  display: contents;
 }
 
 /* ═══════════════════════════════════════════════
@@ -37,10 +44,16 @@
 .toast-item {
   background: var(--bg-card);
   border: 1px solid var(--separator);
-  border-radius: 4px;       /* VS Code border-radius */
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  border-radius: var(--radius-sm);       /* VS Code border-radius */
+  box-shadow: var(--shadow-tooltip);
   padding: 8px 4px;        /* VS Code: padding: 10px 5px，归一化到 4px 刻度 */
   box-sizing: border-box;
+
+  /* E5.8#187：toast-item 是裸深度 3 表面（#toast-root > .toast-container(contents) > .toast-item，
+     无 OverlayPortal wrapper 且无父面板承接磨砂）——隔离地板选择器2 收窄到 wrapper 内后，
+     结构规则不再覆盖它，补显式磨砂（同 tooltip 例外先例，值与原地板常量一致）。 */
+  backdrop-filter: blur(max(var(--glass-blur, 0px), var(--float-blur-floor))) saturate(var(--glass-saturate, 1));
+  -webkit-backdrop-filter: blur(max(var(--glass-blur, 0px), var(--float-blur-floor)));
 
   /* VS Code 入场动画：从下滑入 + 淡入 */
   opacity: 0;
@@ -95,8 +108,8 @@
 /* 消息——对标 .notification-list-item-message */
 .toast-message {
   flex: 1;
-  line-height: 22px;        /* VS Code LINE_HEIGHT */
-  font-size: 12px;
+  line-height: 1.6; /* E5.8 Phase 12 #171：line-height 22px → unitless */
+  font-size: var(--font-size-sm); /* 12→sm */
   color: var(--text-primary);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -129,19 +142,19 @@
   color: var(--text-muted);
   cursor: pointer;
   padding: 2px;
-  border-radius: 3px;
+  border-radius: var(--radius-sm);
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 22px;
-  height: 22px;
-  font-size: 12px;
+  width: calc(22px * var(--ui-scale)); /* E5.8 Phase 12 #171：btn 22px 乘 scale */
+  height: calc(22px * var(--ui-scale));
+  font-size: var(--font-size-sm); /* 12→sm */
 }
 
 .toast-chevron-btn:hover,
 .toast-close-btn:hover {
   color: var(--text-primary);
-  background: var(--bg-hover);
+  background: var(--hover-overlay); /* E5.8#128.6：幽灵 --bg-hover → --hover-overlay（原无效值现恢复 hover 反馈） */
 }
 
 /* ═══════════════════════════════════════════════
@@ -154,7 +167,7 @@
   padding-left: 28px;       /* 对齐消息文字：16px icon + 8px margin + 4px */
   margin-top: 6px;
   gap: 8px;
-  min-height: 22px;
+  min-height: calc(22px * var(--ui-scale)); /* E5.8 Phase 12 #171：22px 行高链乘 scale */
 }
 
 .toast-item.toast-expanded .toast-details-row {
@@ -163,7 +176,7 @@
 
 /* Source——对标 VS Code "Source: terminal"（文本壳侧已 t() 解析） */
 .toast-source {
-  font-size: 11px;
+  font-size: var(--font-size-xs); /* E5.8 Phase 12 #171：11→xs */
   color: var(--text-muted);
   flex: 1;
   white-space: nowrap;
@@ -183,11 +196,11 @@
 
 .toast-action-btn {
   border: none;
-  border-radius: 3px;
+  border-radius: var(--radius-sm);
   padding: 2px 8px;
-  font-size: 11px;
+  font-size: var(--font-size-xs); /* E5.8 Phase 12 #171：11→xs */
   cursor: pointer;
-  height: 22px;
+  height: calc(22px * var(--ui-scale)); /* E5.8 Phase 12 #171：22px 乘 scale */
   white-space: nowrap;
 }
 

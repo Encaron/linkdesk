@@ -1,29 +1,37 @@
 :root {
-  /* 暗色主题默认值——ThemeEngine 会在启动时从 themes/dark.json 覆盖。
-     如果 JSON 加载失败，这里的值作为 fallback 保证软件可用。 */
+  /* 暗色主题默认值——E5.8#50.25 迁移后 theme-defaults 单配方 themes/defaults.json
+     （id "light"，含 light/dark 两配色）；"dark" 走壳空兜底配方（colors:{}）清变量 →
+     此处 :root 硬兜底接管（值 = 历史 dark.json 调色板）。加载失败时这里的值保证软件可用。 */
   --bg-window: #1E1E1E;
   --bg-card: #2D2D2D;
-  --bg-status: #0078D4;
   --bg-input: #3C3C3C;
   --text-primary: #D4D4D4;
   --text-secondary: #9D9D9D;
   --text-muted: #8A8A8A;
+  /* E5.8#91 系统双字系标尺 token——文字极性（亮字/暗字）预览取样。深/浅两极表面 + 各自文字色；
+     静态标尺（非主题色板，明暗主题同值）——ThemeEngine FONT_TONE_LIGHT_TEXT/DARK_TEXT 同值
+     （TS 应用侧与 CSS 预览侧同一标尺，见 14-档案 #91）。 */
+  --tone-surface-deep: #1A1A1A;
+  --tone-ink-on-deep: #FFFFFF;
+  --tone-surface-light: #F2F2F2;
+  --tone-ink-on-light: #1A1A1A;
   --accent: #0078D4;
   --accent-hover: #1A8CE8;
   --border: #3C3C3C;
   --separator: #474747;
-  --icon-active: #FFFFFF;
   --icon-inactive: #858585;
+  /* E5.8#128：img 图标单色化滤镜（filter 无法直接取色——值锚定 --icon-inactive 灰；主题可经
+     colorway 覆盖整链，任意 filter 组合）。active 锚定 --text-on-accent 白。 */
+  --icon-filter-inactive: brightness(0) saturate(100%) invert(52%);
+  --icon-filter-active: brightness(0) saturate(100%) invert(100%);
   --system-log: #6A6A6A;
   --sent-echo: #0078D4;
-  --received: #D4D4D4;
   --status-connected: #4EC9B0;
   --status-disconnected: #6A6A6A;
   --scrollbar-thumb: rgba(255, 255, 255, 0.15);
   --scrollbar-thumb-hover: rgba(255, 255, 255, 0.25);
   /* Phase 3 新增 */
   --tab-hover-bg: #353535;
-  --drop-indicator: rgba(255, 255, 255, 0.06);
   /* E5.6 分屏拖拽 glass drop zone——毛玻璃半区叠加层
      Glassmorphism：backdrop-filter blur + 半透明散射面 + 内发光边界（替代虚线边框） */
   --drop-glass-bg: rgba(255, 255, 255, 0.08);
@@ -32,16 +40,60 @@
   --dirty-dot: #CCA700;
   --context-menu-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
   --drag-preview-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+  /* E5.8#51 竞标 D：标签栏 active tab 轻投影浮起 */
+  --tab-active-shadow: 0 1px 4px rgba(0, 0, 0, 0.18);
   /* E5.8#40 壳内悬浮面板（类型 B）——遮罩 + 强投影 + 拖拽投影（mockups/02 暗色值） */
   --floating-panel-backdrop: rgba(0, 0, 0, 0.35);
   --floating-panel-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
   --floating-panel-shadow-dragging: 0 18px 60px rgba(0, 0, 0, 0.6);
+  /* E5.8#128 遮罩密度 token——浮层权威 scrim-plane 统一消费（遮罩独立于明暗主题，:root 单定义） */
+  --scrim-dialog: rgba(0, 0, 0, 0.5);   /* 模态遮罩——DialogHost 设计 §7.1 */
+  --scrim-overlay: rgba(0, 0, 0, 0.3);  /* 轻量遮罩——QuickPickHost 设计 §5.1 */
+  /* E5.8#128.9 BackgroundLayer 遮罩基色静态兜底——缺省黑（同 ThemeEngine BACKGROUND_ZERO #000000）；
+     主题经 background.maskColor 覆盖。亮暗同值，单 :root 定义（同 scrim 惯例）。消费侧零 hex fallback。 */
+  --bg-mask-color: #000;
+  /* E5.8#50.14 六域 token——字体/圆角/阴影。默认值 = 现状（不加载主题零视觉变化）；主题可覆盖。
+     radius 八档语义见 02-变量契约 §2.2（3/7/9/10/14px 偏门值已归并就近档，±1-2px 拍板接受）；
+     shadow 语义见 §2.5（--context-menu-shadow 等既有 token 继续复用）。 */
+  --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "JetBrains Mono", Consolas, monospace;
+  /* E5.8 Phase 12：全局字号比例——--ui-scale（度量乘子）+ --font-size-<档>（文字，引擎算好最终 px）。
+     :root 静态默认 = 100%（ratio 1）新设计基准（⑤ 拍板：sm 13 对齐 VS Code / md 14 文件树 name /
+     lg 16 文件树 icon / xl 18 / 2xl 22 / 3xl 28 / 4xl 30）；引擎 applyOverrides ④ 动态写覆盖。 */
+  --ui-scale: 1;
+  --font-size-2xs: 11px;
+  --font-size-xs: 12px;
+  --font-size-sm: 13px;
+  --font-size-md: 14px;
+  --font-size-lg: 16px;
+  --font-size-xl: 18px;
+  --font-size-2xl: 22px;
+  --font-size-3xl: 28px;
+  --font-size-4xl: 30px;
+  --radius-xs: 2px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-2xl: 16px;
+  --radius-pill: 999px;
+  --radius-full: 50%;
+  --shadow-hairline: 0 0 1px rgba(0, 0, 0, 0.2);
+  --shadow-tiny: 0 0 2px rgba(0, 0, 0, 0.5);
+  --shadow-float: 0 4px 16px rgba(0, 0, 0, 0.25);
+  --shadow-pop: 0 4px 12px rgba(0, 0, 0, 0.4);
+  --shadow-tooltip: 0 2px 8px rgba(0, 0, 0, 0.3);
+  --shadow-dialog: 0 8px 32px rgba(0, 0, 0, 0.5);
+  --shadow-dialog-soft: 0 8px 32px rgba(0, 0, 0, 0.35);
+  --shadow-lift: 0 8px 24px rgba(0, 0, 0, 0.4);
   /* Phase 4 新增 —— 通知/错误/徽章 */
   --error: #E06C75;
   --warning: #CCA700;
   /* badge-text = text-on-accent 别名 —— 归一化：所有 accent 底上的文字走同一 token。
      主题覆盖 text-on-accent 即可同时覆盖 badge-text；单独覆盖 badge-text 也生效。 */
   --badge-text: var(--text-on-accent);
+  /* E5.8#128.7 徽章底/字——原幽灵键实化（默认 = accent 系；主题可经 colorway 覆盖） */
+  --badge-background: var(--accent);
+  --badge-foreground: var(--badge-text);
   /* Phase 3.5 新增 —— 主题全覆盖 */
   --bg-titlebar: #252526;
   --bg-icon-bar: #18181B;
@@ -50,6 +102,13 @@
   --titlebar-close-hover: #c42b1c;
   --toggle-knob: #FFFFFF;
   --hover-overlay: rgba(255, 255, 255, 0.06);
+  /* E5.8#128 交互态 token——浮层/组件 hover 与 keycap（值 = 原硬编码真值，亮暗各锚） */
+  --icon-btn-hover-bg: rgba(255, 255, 255, 0.1);  /* 图标按钮 hover 底（VS Code iconButton-hoverBackground） */
+  --kbd-bg: rgba(128, 128, 128, 0.1);             /* 快捷键 keycap 底 */
+  --kbd-border: rgba(128, 128, 128, 0.12);        /* 快捷键 keycap 边 */
+  --kbd-hover-bg: rgba(255, 255, 255, 0.2);       /* keycap 于选中行（accent 底）亮底 */
+  --kbd-hover-border: rgba(255, 255, 255, 0.35);  /* keycap 于选中行亮边 */
+  --bg-selection: color-mix(in srgb, var(--accent) 20%, transparent); /* 非聚焦选中底（原 rgba(0,120,212,0.2)，accent 衍生） */
   --cm-timestamp: #8A8A8A;
   /* Phase 3.5 新增 —— z-index 语义层级。
      🔥 E5#98 重新平衡：对照实际裸数字相对顺序——dropdown 在 overlay 之上，drag 最高。 */
@@ -59,17 +118,7 @@
   --z-overlay: 600;
   --z-drag-preview: 1000;
   /* 🔥 UX10：侧栏内 z-index 分层 */
-  --z-sidebar-content: 0;
   --z-sidebar-sticky-header: 10;
-  --z-sidebar-context-menu: 100;
-  /* Phase 3.5 新增 —— 间距体系。4px 节奏：xs/sm/md/lg/xl/2xl/3xl */
-  --space-xs: 4px;
-  --space-sm: 8px;
-  --space-md: 12px;
-  --space-lg: 16px;
-  --space-xl: 20px;
-  --space-2xl: 24px;
-  --space-3xl: 32px;
   /* E3.5 新增 —— 串口监视器 UI 整改 */
   --warning-text: #E8AB3E;
   --warning-bg: rgba(255, 200, 0, 0.12);
@@ -80,7 +129,6 @@
 [data-theme="light"] {
   --bg-window: #FFFFFF;
   --bg-card: #F5F5F5;
-  --bg-status: #007ACC;
   --bg-input: #FFFFFF;
   --text-primary: #2D2D2D;
   --text-secondary: #5A5A5A;
@@ -89,24 +137,26 @@
   --accent-hover: #106EBE;
   --border: #D4D4D4;
   --separator: #E8E8E8;
-  --icon-active: #2D2D2D;
   --icon-inactive: #999999;
+  /* E5.8#128：亮色版 img 图标滤镜——inactive 锚定 --icon-inactive 浅灰；active 锚定 --text-primary 深字 */
+  --icon-filter-inactive: brightness(0) saturate(100%) invert(60%);
+  --icon-filter-active: brightness(0) saturate(100%) invert(18%);
   --system-log: #999999;
   --sent-echo: #0078D4;
-  --received: #2D2D2D;
   --status-connected: #388A34;
   --status-disconnected: #999999;
   --scrollbar-thumb: rgba(0, 0, 0, 0.15);
   --scrollbar-thumb-hover: rgba(0, 0, 0, 0.25);
   /* Phase 3 新增 */
   --tab-hover-bg: #E8E8E8;
-  --drop-indicator: rgba(0, 0, 0, 0.06);
   --drop-glass-bg: rgba(0, 0, 0, 0.05);
   --drop-glass-border: rgba(0, 0, 0, 0.08);
   --drop-glass-inner: inset 0 0 0 1px rgba(0, 0, 0, 0.04);
   --dirty-dot: #D4A017;
   --context-menu-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
   --drag-preview-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  /* E5.8#51 竞标 D：标签栏 active tab 轻投影浮起（亮色值——亮面黑幕读感降低） */
+  --tab-active-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
   /* E5.8#40 壳内悬浮面板——亮色值：遮罩减密（亮面底色黑幕过读）；投影沿 --context-menu-shadow ×0.4 主题差 */
   --floating-panel-backdrop: rgba(0, 0, 0, 0.28);
   --floating-panel-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);
@@ -118,6 +168,8 @@
   --bg-toolbar: #F5F5F5;
   --toggle-knob: #2D2D2D;
   --hover-overlay: rgba(0, 0, 0, 0.04);
+  /* E5.8#128 亮色版交互态 */
+  --icon-btn-hover-bg: rgba(0, 0, 0, 0.08);
   --cm-timestamp: #767676;
   /* E3.5 新增 —— 串口监视器 UI 整改（浅色覆写） */
   --warning-text: #BF8800;
@@ -141,8 +193,8 @@ html, body, #root, #pool-root {
   flex-direction: column;
   background: var(--bg-window);
   color: var(--text-primary);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  font-size: 12px;
+  font-family: var(--font-ui);
+  font-size: var(--font-size-sm); /* E5.8 Phase 12 #164：全局基准 12→sm */
   user-select: none;
 }
 
@@ -156,7 +208,7 @@ html, body, #root, #pool-root {
 }
 ::-webkit-scrollbar-thumb {
   background: var(--scrollbar-thumb);
-  border-radius: 2px;
+  border-radius: var(--radius-xs);
 }
 ::-webkit-scrollbar-thumb:hover {
   background: var(--scrollbar-thumb-hover);
@@ -166,20 +218,20 @@ html, body, #root, #pool-root {
 
 .setting-group {
   background: var(--bg-card);
-  border-radius: 6px;
+  border-radius: var(--radius-md);
   padding: 12px;
   margin-bottom: 8px;
 }
 
 .setting-group-title {
-  font-size: 13px;
+  font-size: var(--font-size-md); /* E5.8 Phase 12 #164：13→md */
   font-weight: 600;
   color: var(--text-secondary);
   margin-bottom: 12px;
 }
 
 .toggle {
-  width: 36px; height: 20px; border-radius: 10px;
+  width: 36px; height: 20px; border-radius: var(--radius-pill);
   background: var(--border);
   transition: background 150ms;
   cursor: pointer;
@@ -190,34 +242,40 @@ html, body, #root, #pool-root {
 .toggle::after {
   content: '';
   position: absolute; top: 2px; left: 2px;
-  width: 16px; height: 16px; border-radius: 50%;
+  width: 16px; height: 16px; border-radius: var(--radius-pill);
   background: var(--toggle-knob);
   transition: transform 150ms;
 }
 .toggle.on::after {
   transform: translateX(16px);
-  /* toggle-knob-on: ON 态旋钮色，fallback toggle-knob。
-     亮色主题 accent 深 + border 浅 → 同一 knob 色无法同时在两态可见。
-     主题作者可设 toggle-knob: #333 (OFF 态可见) + toggle-knob-on: #FFF (ON 态可见)。 */
-  background: var(--toggle-knob-on, var(--toggle-knob));
+  /* E5.8#144：ON 态旋钮色 fallback 语义 = text-on-accent（accent 上的可读色），不再回落 OFF 态
+     toggle-knob（那是为 border 轨道可见设计的，accent 轨道下可能同色糊——4 主题实测）。
+     链路：toggle-knob-on（主题显式）→ text-on-accent（accent 可读色）。
+     E5.8#128.9：#FFFFFF 内层 fallback 是死路径（text-on-accent :root 恒定义）→ 删除。
+     防回潮：scripts/check-theme-audit.mjs 校验 toggle-knob-on ≠ accent。 */
+  background: var(--toggle-knob-on, var(--text-on-accent));
 }
 .toggle.disabled { opacity: 0.4; cursor: not-allowed; }
 
 .input {
   background: var(--bg-input);
   border: 1px solid var(--border);
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   padding: 4px 8px;
   color: var(--text-primary);
-  font-size: 12px;
+  font-size: var(--font-size-sm); /* E5.8 Phase 12 #164：12→sm */
   transition: border-color 150ms;
   outline: none;
 }
 .input:focus { border-color: var(--accent); }
 
 /* E5.8#30.15（P5）：聚焦面板 accent 环——inset 阴影不占布局（聚焦/失焦零位移），
-   var(--accent) 走 CSS 变量可主题化（硬约束 #1 禁硬编码 hex） */
+   var(--accent) 走 CSS 变量可主题化（硬约束 #1 禁硬编码 hex）。
+   E5.8#98 修：border-radius 跟随 --surface-radius（主区表面圆角同源）——环画在包裹元素上，
+   inset box-shadow 沿元素圆角走；缺省 0px = 直角，现状零变化。圆角开大时环四角不再被
+   main-zone overflow 裁掉（此前直角环四角顶在圆角表面上被裁）。 */
 .group-pane-focused {
+  border-radius: var(--surface-radius, 0px);
   box-shadow: inset 0 0 0 1px var(--accent);
 }
 
@@ -267,7 +325,7 @@ html, body, #root, #pool-root {
   align-items: center;
   gap: 8px;
   margin-bottom: 6px;
-  font-size: 12px;
+  font-size: var(--font-size-sm); /* E5.8 Phase 12 #164：12→sm */
   color: var(--text-primary);
 }
 
@@ -322,7 +380,11 @@ select {
   width: 100%;
   height: 100%;
   overflow: hidden;
-  background: var(--bg-window);
+  /* E5.8#50.7 ④：仅 shell 透明——#pool-root/html/body/#root 保留 --bg-window 不透明作窗口底座
+     （Electron 窗底硬编码暗色 #1e1e1e 需 DOM 底座盖住；MainZone 无背景依赖底座）。
+     BackgroundLayer（#50.8，shell 首子，z-index 0）显形于底座之上、表面之下；
+     默认主题表面实色仍盖住图片 = 视觉零变化。 */
+  background: transparent;
 }
 
 .pool-body {
@@ -333,10 +395,343 @@ select {
 }
 
 /* grid cell 包装——各 zone 的 grid 放置容器。min-width/min-height 0 保证 1fr 轨道内
-   内容正确收缩（grid item 默认 min-content 不收缩会撑破主区）。 */
+   内容正确收缩（grid item 默认 min-content 不收缩会撑破主区）。
+   E5.8#50.7 ③ + 缝系统：留缝——网格内表面（icon-bar/side-panel/main-zone/panel-zone）走
+   cell padding；直连子表面（titlebar/status-bar）用 margin。统一 --surface-inset 驱动
+   （宿主派生，见 ThemeEngine 缝法则），0px = 直角贴死。
+   position: relative：resize handle（.zone-resize-handle）绝对定位锚本格边界 = 缝中心。
+   overflow 移除：表面阴影/半缝 handle 跨格渲染（表面各自 overflow:hidden 自裁内容——
+   side-panel/panel-zone/main-zone 已有，icon-bar 补——窗口级 .pool-root/.pool-body 仍裁）。 */
 .pool-grid-cell {
+  position: relative;
   min-width: 0;
   min-height: 0;
+  padding: var(--surface-inset, 0px);
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   E5.8#50.7 玻璃表面——12 玻璃/背景/悬浮变量消费（#50.6 ThemeEngine 写 :root）。
+   材质定位（02-变量契约 §2.3）：Apple Liquid Glass 近似——blur/saturate 透射、
+   specular 反光（顶部受光带 + 发丝光边）、morph 响应（悬浮/圆角平滑形变）。
+   表面透明 = 系统合成（Phase 11.16：玻璃激活 → 引擎把 --bg-window/--bg-titlebar 等
+   color-mix 缩 alpha 变半透明，半透明面透出背景/图、磨砂显形；主题 rgba 只是素材。
+   未激活 = 原值零变化回主题原生）。CSS 不改底色。零值 = 现状零变化（非破坏）。
+   ════════════════════════════════════════════════════════════════════════ */
+
+/* ② per-surface blur 差异化——声明式每表面系数（E5.8#86：系数显式声明为变量，不再内联 calc
+   魔法数字，消灭「滑杆显示 X 实际 Y」的隐式倍率）。窄表面（图标栏/侧栏）0.44×（18px 基值 →
+   ≈8px，mockup 实测图可辨，18px 糊成色块）；面板（悬浮面板）1.11×（≈20px）；主表面（顶栏/
+   主区/状态栏）持系数 1 → 滑杆值 = 主表面真实模糊 px。零基值 × 系数 = 0px → 零变化。
+   E5.8#66 背景：旧写法 `--glass-blur: calc(var(--glass-blur)×)` 是自定义属性自引用循环 →
+   guaranteed-invalid → 消费端 blur 落回 0px（实机验证侧栏 blur 恒 0，per-surface 差异化从未
+   生效）。新 var 读继承的 --glass-blur（非自引用），无覆盖的表面走 backdrop-filter 嵌套 fallback。 */
+.icon-bar,
+.side-panel {
+  --surface-glass-blur-scale: 0.44;
+}
+.panel-zone {
+  --surface-glass-blur-scale: 1.11;
+}
+.icon-bar,
+.side-panel,
+.panel-zone {
+  --surface-glass-blur: calc(var(--glass-blur, 0px) * var(--surface-glass-blur-scale, 1));
+}
+
+/* 表面统一——悬浮面板形态（圆角/投影；留缝在 cell padding /
+   titlebar/statusbar margin）+ morph 过渡。z-index: 1：抬到 BackgroundLayer（z0）之上、
+   浮层宿主（1500+）之下——表面内浮层全 portal 出（#55 统一渲染器），层叠上下文不困浮层。
+   注：.side-panel 自带 transition: width（折叠动画），同特异性后载覆盖本 transition——
+   折叠优先，morph 对侧栏不生效（已知取舍）。
+   E5.8#89 E4：backdrop-filter 已下移至 ::before 玻璃层（z:-1）——元素自身只留形态，
+   透射模糊归玻璃层，盖住 ::after 影像（z:-2），内容保持锐利（见 ::before/::after 注释）。 */
+.titlebar,
+.icon-bar,
+.side-panel,
+.main-zone,
+.panel-zone,
+.status-bar {
+  position: relative;
+  z-index: 1;
+  border-radius: var(--surface-radius, 0px);
+  box-shadow: var(--surface-shadow, none);
+  transition:
+    border-radius var(--glass-morph, 0ms),
+    box-shadow var(--glass-morph, 0ms),
+    margin var(--glass-morph, 0ms);
+}
+
+/* 主区表面——MainZone 根原无背景（依赖 pool-root 底座）；玻璃主题 --bg-window rgba →
+   主区 = 18px 玻璃面板（mockup 主视觉「图全窗铺底」）；默认主题不透明 = 现状零变化。 */
+.main-zone {
+  background: var(--bg-window);
+}
+
+/* titlebar/status-bar——直连 pool-root 子表面，留缝用 margin（网格内表面已走 cell padding）。
+   overflow:hidden = 圆角自裁（内容不外溢圆角曲线；下拉菜单已 portal 到 #context-menu-root 不受限）。 */
+.titlebar,
+.status-bar {
+  margin: var(--surface-inset, 0px);
   overflow: hidden;
+}
+
+/* ── E5.8 缝系统共享 resize handle——宿主所有 zone 的分界线（结构元素，非可配组件，E5.8#143 视觉定稿）。
+   pool-css 门禁禁池 @import → 共享几何必须在此全局层（.split-handle 与它共享点/线视觉，零重复）。
+   锚定 cell 边界（= 缝中心）：偏移 = -inset → 圆角开（inset 2px）时 4px 手柄恰好居中填满 4px 缝
+   （相邻表面各半，零重叠零空隙）；直角（inset 0）时手柄落在自身格内边缘（4px 分隔带，不遮邻格）。
+   z-index --z-sticky（= Z_INDEX.panelResizeHandle 200）——表面（z1）之上、浮层（1500+）之下。
+   #143 定稿：常态三点居中 → hover 整条线淡入 + 点淡出（opacity 150-200ms，transform/opacity 不触发重排）；
+   命中区仍 4px（不改命中区语义）——手柄本体透明只露点/线；点/线写死固定值，只有线端读 zone 同键。 ── */
+.zone-resize-handle {
+  position: absolute;
+  z-index: var(--z-sticky);
+}
+
+/* #143 常态三点——缝正中心（离四角圆弧最远，直角/圆角都自然）。
+   单元素 + box-shadow 两兄弟点 = 3 点（5px 中心距 = mockup gap 3px + 2px 点）。 */
+.zone-resize-handle::before,
+.split-handle::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 2px;
+  height: 2px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  box-shadow:
+    0 5px 0 0 var(--text-muted),
+    0 -5px 0 0 var(--text-muted);
+  transform: translate(-50%, -50%);
+  transition: opacity 0.16s ease;
+  pointer-events: none;
+}
+
+/* 横缝（.horizontal + MainZone 横条 .split-handle.row）：三点横排 */
+.zone-resize-handle.horizontal::before,
+.split-handle.row::before {
+  box-shadow:
+    5px 0 0 0 var(--text-muted),
+    -5px 0 0 0 var(--text-muted);
+}
+
+/* #143 hover 成线——整条线淡入 + 点淡出；线端 border-radius 镜像 zone 圆角
+   （读 --surface-radius 唯一真相源：直角 0 → 线端直角 / 圆角 px → 2px 线端帽自动成胶囊，
+   零新键零监视，与缝系统 --surface-inset 派生同血缘）。越弧只在 hover 瞬时出现——用户接受。 */
+.zone-resize-handle::after,
+.split-handle::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  transform: translateX(-50%);
+  background: var(--accent);
+  border-radius: var(--surface-radius, 0px);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  pointer-events: none;
+}
+
+.zone-resize-handle.horizontal::after,
+.split-handle.row::after {
+  left: 0;
+  right: 0;
+  top: 50%;
+  bottom: auto;
+  width: auto;
+  height: 2px;
+  transform: translateY(-50%);
+}
+
+.zone-resize-handle:hover::after,
+.split-handle:hover::after {
+  opacity: 1;
+}
+
+.zone-resize-handle:hover::before,
+.split-handle:hover::before {
+  opacity: 0;
+}
+
+.zone-resize-handle.vertical {
+  width: 4px;
+  top: 0;
+  bottom: 0;
+  cursor: col-resize;
+}
+
+.zone-resize-handle.vertical.right {
+  right: calc(-1 * var(--surface-inset, 0px));
+}
+
+.zone-resize-handle.vertical.left {
+  left: calc(-1 * var(--surface-inset, 0px));
+}
+
+.zone-resize-handle.horizontal {
+  height: 4px;
+  left: 0;
+  right: 0;
+  cursor: row-resize;
+}
+
+.zone-resize-handle.horizontal.top {
+  top: calc(-1 * var(--surface-inset, 0px));
+}
+
+.zone-resize-handle.horizontal.bottom {
+  bottom: calc(-1 * var(--surface-inset, 0px));
+}
+
+/* ── E5.8#107 浮层权威：结构隔离地板（Phase 2 最终态）——悬浮表面统一 backdrop-filter。
+   pool-css 门禁禁池 @import → 共享原语必须在此全局层，与 .zone-resize-handle 同先例。
+   玻璃模式激活时浮层表面色被合成半透明（synthesizeGlassSurfaces 半透明化 bg-card/bg-window），
+   无 backdrop-filter 则背后内容透出字叠字；本规则给全部悬浮表面磨砂背后内容。
+   E5.8#103 磨砂地板模型（用户拍板）：「浮层永远比主屏更重一层磨砂」——玻璃滑杆控主表面；
+   滑杆 0（全景图清晰模式）浮层仍 blur(16px) 保底可读，字不叠背景图；滑杆 >16px 浮层继续跟随。
+
+   ONE 条结构规则，零表面名枚举（#107 根治 #103 的枚举漏项病——新增即漏：
+   status-bar-notif-panel / group-tab-plus-menu / panel-switcher-dropdown 曾被漏）。深度是结构
+   事实不是类名知识——新浮层（含第三方 OverlayPortal）进层即隔离，零类名知识零枚举零壳改动：
+     深度 2：#ld-float-layer > root > 表面——quick-pick/dialog/floating-panel 面板直接挂 root
+     深度 3：root > OverlayPortal wrapper > 表面（选择器2 收窄到 wrapper 内，见 #187）——
+       ContextMenu 主菜单 / ColorPicker / dropdown-card / selectbox / status-bar-notif-panel。
+       ⚠️ E5.8#109：深度 2 必须排除 wrapper（:not([data-overlay-wrapper])）——包装盒是结构容器
+       （ref/zIndex 载体）不是表面：若它也吃 backdrop-filter 会成 backdrop root，把内部深度 3 表面的
+       采样掐断（#103 地板因此对右键/toast 从未生效；#109 实证关掉包装盒 blur 后表面立即渲染）。
+       .toast-container（深度 2）display:contents 无盒同样无害。
+   ⚠️ E5.8#187：选择器2 只磨砂 wrapper 内表面——裸深度 3 内容（dialog-host-message/actions、
+     quick-pick 输入/列表、floating-panel 标题/正文）坐在父面板单层磨砂上，**不再**二次加厚
+     （#187 色环根治：双层磨砂 → 文字/按钮行边缘「加厚磨砂框」）。toast-item 是裸深度 3 表面
+     （无 wrapper 且无父面板承接磨砂）→ 补显式 backdrop-filter（ToastHost.css，同 tooltip 例外先例）。
+   scrim-plane 排除（:not(#ld-scrim-plane)）——遮罩满屏无磨砂（与 surface 分离后天然不碰）。
+   GroupTabBar .drop-glass-zone 同类规则留在其文件内（drop 目标专属含 drop 属性，不并入）。
+   拖拽幽灵排除裁决（#107）：icon-drag-preview + MainZone 拖拽预览**不进层**——瞬态 mimetic
+   副本非文字表面，逐帧 backdrop-filter 纯开销；且 pointer-events:none 与层穿透一致（裁决非漏项）。 ── */
+#ld-float-layer {
+  /* 层地板常量——浮层保底模糊（玻璃滑杆 0 也保底）。定义在层容器一处 → 结构地板 + tooltip 例外
+     经 CSS 变量继承共读同一常量（单一权威，不重复写字面量）。 */
+  --float-blur-floor: 16px;
+}
+#ld-float-layer > *:not(#ld-scrim-plane) > *:not([data-overlay-wrapper]),
+#ld-float-layer > *:not(#ld-scrim-plane) > [data-overlay-wrapper] > * {
+  backdrop-filter: blur(max(var(--glass-blur, 0px), var(--float-blur-floor))) saturate(var(--glass-saturate, 1));
+  -webkit-backdrop-filter: blur(max(var(--glass-blur, 0px), var(--float-blur-floor)));
+}
+
+/* 例外（深度 4+，文档化裁决）：.floating-panel-act.tip::after tooltip 芯片——伪元素嵌在
+   #floating-panel-root > .floating-panel > .floating-panel-title > .floating-panel-actions >
+   .floating-panel-act.tip::after = 深度 5，结构规则只到深度 3 够不着伪元素。唯一例外选择器——
+   新浮层若也嵌到深度 4+ 且需磨砂，先想结构归位（移到表面层），不要学这个例外。 */
+.floating-panel-act.tip::after {
+  backdrop-filter: blur(max(var(--glass-blur, 0px), var(--float-blur-floor))) saturate(var(--glass-saturate, 1));
+  -webkit-backdrop-filter: blur(max(var(--glass-blur, 0px), var(--float-blur-floor)));
+}
+
+/* 玻璃面叠加色（tint——表面底上、内容下，不盖文字）+ tint 盖片不透明度（opacity）+
+   顶部受光带 + 发丝光边（specular 派生——契约无独立光边变量，inset ring 零 specular 时
+   透明无描边 = 现状零变化）。
+   E5.8#86 曾定义「tint 层 opacity = glass-opacity 直用 = 玻璃面绝对不透明度」——#112 修正：
+   --glass-opacity 现语义 = 配方面玻璃面不透明度（tokens.ts surface.opacity 写，theme.ts 契约），
+   本 opacity 是其残留消费（tint 强度随配方面不透明度缩放）；**用户 app.glassOpacity 不再写本 token**
+   （seeds.ts 摘除）——用户玻璃面不透明度走合成层（getGlassSurfaceSpec 直读配置 →
+   synthesizeGlassSurfaces 合成 SURFACE_COLOR_KEYS 的 --bg-*，含本表面底色）。曾写 token 时用户拖
+   glassOpacity 污染 tint 盖片 opacity → 「增加灰度感/对比度」（#112 根因）；摘除后拖 glassOpacity
+   只变玻璃面不透明度，tint 盖片保持配方面材质。tint 色值 alpha 即用户所选有效强度（aurora 0.35 → 35%）。
+   E5.8#89 E4：backdrop-filter（透射模糊）从元素下移到本玻璃层——本层 z:-1 盖在
+   ::after 影像（z:-2）之上，backdrop 采样 = 元素底色 + 影像（都在本层之下）→ 玻璃模糊
+   盖在 zone 图上（"图上的玻璃"、blur 可见），内容（z auto）仍在本层之上保持锐利。
+   非影像主题：backdrop = 均匀 rgba 底色，blur 均匀色 = 本色，渲染与旧结构逐像素一致
+   （仅 tint/specular 下移一层，本就语义为"底上、内容下"）。 */
+.titlebar::before,
+.icon-bar::before,
+.side-panel::before,
+.main-zone::before,
+.panel-zone::before,
+.status-bar::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  backdrop-filter: blur(var(--surface-glass-blur, var(--glass-blur, 0px))) saturate(var(--glass-saturate, 1));
+  background: var(--glass-tint, transparent);
+  /* E5.8#150：--glass-saturate 端点语义修复——滑杆 0 = 任意主题整面全灰（tint 盖片自去饱和
+     filter: saturate(0) + 不透明度提升 ≥1 → 盖片变不透明灰，backdrop 亦灰，无歧义）；滑杆 ≥1 =
+     主题默认零变化（filter min-clamp 恒等 + opacity 提升项归零）。backdrop-filter 的 saturate 不动
+     （保留 >1 主题增强，如 aurora 1.25 增色）；tint 盖片独立 filter 只 min-clamp——不去增强，不增歧义。 */
+  filter: saturate(min(var(--glass-saturate, 1), 1));
+  opacity: max(var(--glass-opacity, 1), calc(1 - var(--glass-saturate, 1)));
+  /* E5.8#63：发丝光边基色 token 化——--glass-specular-color 缺省白，alpha 走 --glass-specular（0-1 → 0-100%），
+     color-mix 组合基色+强度（主题可换光边颜色）；零 specular = 透明无描边（现状零变化） */
+  --glass-specular-line: color-mix(in srgb, var(--glass-specular-color, #fff) calc(var(--glass-specular, 0) * 100%), transparent);
+  box-shadow:
+    inset 0 1px 0 var(--glass-specular-line),
+    inset 0 0 0 1px var(--glass-specular-line);
+  transition: backdrop-filter var(--glass-morph, 0ms);
+  pointer-events: none;
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   E5.8#50.30 per-surface 背景层（⑬ 纸纹 / ⑭ 影像分区）——zone 表面读
+   --surface-bg-image（纹理 repeat 平铺 / 影像切片 no-repeat）+ --surface-bg-size
+   （zones = 窗口尺寸，preload 量测注入）+ 每 zone 独立 --surface-<zone>-bg-position
+   （负偏移拉回正确区域）。z-index: -2 → 自 surface 自身 background 之上、玻璃层
+   （::before z:-1，含 backdrop-filter 模糊）之下——E5.8#89 E4：影像被玻璃模糊盖住
+   （"图上的玻璃"、blur 可见），内容仍锐利。opacity 承载 --surface-bg-opacity
+   （纹理/切片透明度）。E5.8#117：filter blur 已删除——镜像机制整体废除（cp114 证据：
+   ::before backdrop-filter 能直接采样兄弟 .background-layer，切片图不再作为磨砂采样源；
+   panorama 全景图只挂 background-layer，zone ::before 直接模糊它）。zones/纹理切片图
+   filter 恒清晰（--surface-bg-image 只在 zones/纹理模式非 none）。零值 --surface-bg-image: none = 现状零变化。 */
+.titlebar::after,
+.icon-bar::after,
+.side-panel::after,
+.main-zone::after,
+.panel-zone::after,
+.status-bar::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  border-radius: inherit;
+  background-image: var(--surface-bg-image, none);
+  background-repeat: var(--surface-bg-repeat, no-repeat);
+  background-size: var(--surface-bg-size, auto);
+  /* E5.8#125：玻璃激活时优先读合成透明度（--glass-surface-bg-opacity = 原 surface-bg-opacity × 玻璃 alpha，
+     synthesizeGlassSurfaces 派生）——glassOpacity 拉到 0 表面整层透明，zone 切片图同步淡出，
+     全窗背景图（.background-layer z0）透出；未激活/无派生键回退原值（零变化）。 */
+  opacity: var(--glass-surface-bg-opacity, var(--surface-bg-opacity, 1));
+  pointer-events: none;
+}
+.titlebar::after {
+  background-position: var(--surface-titlebar-bg-position, 0 0);
+}
+.icon-bar::after {
+  background-position: var(--surface-icon-bar-bg-position, 0 0);
+}
+.side-panel::after {
+  background-position: var(--surface-side-panel-bg-position, 0 0);
+}
+.main-zone::after {
+  background-position: var(--surface-main-zone-bg-position, 0 0);
+}
+.panel-zone::after {
+  background-position: var(--surface-panel-zone-bg-position, 0 0);
+}
+.status-bar::after {
+  background-position: var(--surface-status-bar-bg-position, 0 0);
+}
+
+/* ═══ E5.8 Phase 12 #183：codicon 基类 font-size 归一 ═══
+ * @vscode/codicons 基类 `.codicon[class*="codicon-"] { font-size: 16px }`（(0,2,0)）压过
+ * 内容图标单类规则（(0,1,0)）→ scale>1 时图标不随字缩放（跨 #164-#172 共性问题）。
+ * 覆盖基类默认走 --font-size-lg token（引擎按 app.uiFontScale 算好最终 px）：
+ *   1.0 = 16px 零视觉变化；>1.0 内容图标随字缩放（档案 §3.2「图标字形——配 14px 文字」）。
+ * 独立显示图标零影响——welcome 24px / IconBar 24px / pd 96px 全走 !important 或 (0,2,0)+。
+ * 顺序契约：本文件须在 codicon.css 之后加载（main.tsx / pool-main.tsx 已交换 import）。 */
+.codicon[class*="codicon-"] {
+  font-size: var(--font-size-lg);
 }
 

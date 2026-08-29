@@ -11,11 +11,13 @@ import { useEffect } from "react";
 import type { Dispatch, MutableRefObject, SetStateAction } from "react";
 import { useTranslation } from "react-i18next";
 import type { LinkDeskAPI } from "../../core/api/linkdesk-api"; // E5.7#98：poolApiRef 类型正源
-import type { PoolTabAction } from "../../core/types/ipc/tabActions"; // E5.7#96：池→壳 tab 动作 wire 契约
+import type { ShellTabAction } from "../../core/types/ipc/tabActions"; // E5.7#96：池→壳 tab 动作 wire 契约（E5.8#44-B：壳侧收 ShellTabAction 含 sourceWindowId）
 import type { SidebarAction } from "../../core/types/ipc/sidebarActions"; // E5.7#98：onSidebarAction 回调参数正源
 import { ViewContainerService } from "../../core/services/layout/ViewContainerService";
 import { layoutEngine } from "../../core/services/layout/LayoutEngine"; // E5.6#11-fix7：池◀按钮→壳 setZoneWidth("sidebar", 28)
 import { ContextKeyService } from "../../core/registry/commands/ContextKeyService"; // E5.7#5：槽位按钮 when 过滤 + context 变化重推
+import { onDidChangeConfiguration } from "../../core/services/configuration/ConfigurationService"; // E5.8#55.1：app.menuStyle 配置变化重推布局
+import { isStatusBarConfigKey } from "./statusbar"; // E5.8#55.2：configurable 状态栏条目开关重推布局
 import { getViewPlugin, onDidRegister, onDidUnregister } from "../../pluginLoader/viewRegistry";
 import { onDidChangeStatusBar } from "../../core/services/ui/StatusBarService"; // E5.7#8：状态栏动态项变化订阅
 import { CUSTOM_EVENTS } from "../../core/react/events/CoreEvents"; // E5.7#8：Chord 提示
@@ -25,7 +27,7 @@ import { _seenIds } from "./notif"; // 通知未读追踪——事件回传共�
 
 interface UseSyncSubscriptionsInput {
   poolApiRef: MutableRefObject<NonNullable<LinkDeskAPI["pool"]> | null>;
-  onTabAction?: (action: PoolTabAction) => void; // E5.7#96：wire 契约定型
+  onTabAction?: (action: ShellTabAction) => void; // E5.7#96：wire 契约定型（E5.8#44-B：ShellTabAction 含 sourceWindowId）
   setLayoutVersion: Dispatch<SetStateAction<number>>;
   setChordLabel: Dispatch<SetStateAction<string | null>>;
   setEventEntries: Dispatch<SetStateAction<StatusBarEntry[]>>;
@@ -75,6 +77,18 @@ export function useSyncSubscriptions({
       i18n.off("languageChanged", onLangChanged);
     };
   }, [i18n, setLayoutVersion]);
+
+  // E5.8#55.1/#55.2：影响布局的配置变化 → 布局重推（menuBarVisible/hamburgerVisible 即时生效 +
+  // configurable 状态栏条目显隐开关即时生效）。
+  // 缺口根因：usePoolSync 主推送 effect 不订阅配置，改动无人触发重推——E5.7 迁移时壳 DOM
+  // 条件渲染的等价物没迁进序列化层（git 实证 from E5.7 起从无 onDidChangeConfiguration）。
+  // 对标 VS Code 分布式订阅：只监听本订阅关心的 key（menuStyle 静态 + statusBar 动态契约），
+  // 其他配置变化不 bump（避免无关重推）。
+  useEffect(() => {
+    return onDidChangeConfiguration((key) => {
+      if (key === "app.menuStyle" || isStatusBarConfigKey(key)) setLayoutVersion((v) => v + 1);
+    });
+  }, [setLayoutVersion]);
 
   // E5.7#6：Phase 5h Step 1 同款——插件注册/注销时重推（安装插件后图标栏即时更新）
   useEffect(() => {
@@ -134,7 +148,7 @@ export function useSyncSubscriptions({
   useEffect(() => {
     const poolApi = poolApiRef.current;
     if (!poolApi || !onTabAction) return;
-    const unsub = poolApi.onTabAction?.((action: PoolTabAction) => {
+    const unsub = poolApi.onTabAction?.((action: ShellTabAction) => {
       onTabAction(action);
     });
     return unsub;

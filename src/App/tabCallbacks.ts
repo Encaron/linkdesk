@@ -8,12 +8,28 @@
 import { shellEvents } from "../core/react/events/ShellEvents";
 import { invokeBeforeCloseTab } from "../pluginLoader/viewRegistry";
 import { getAllLeafGroupIds } from "../core/utils/splitTree";
-import { allTabs } from "../hooks/useTabManager";
+import {
+  allTabs,
+  reduceCreateTab,
+  reduceFocusTab,
+  reduceFocusGroup,
+  reduceRemoveTab,
+  reduceReorderTab,
+  reduceMoveTab,
+  reduceSplitTabAt,
+  reduceDuplicateTab,
+  reducePinTab,
+  reduceUpdateSplitSizes,
+  findTabBySourceId,
+  confirmDirtyTabClose,
+  emitTabActivated,
+} from "../hooks/useTabManager"; // E5.8#46.4：脱出窗 tab 操作纯 reducer（聚合器 re-export）；#46.12：sourceId 族共用查找/更新；Step3：dirty 判定/确认共用；#46.9：激活事件复用一处
 import { FALLBACK_PLUGIN_ID } from "../core/utils/plugin/fallbackPluginId";
 import type { CoreCallbacks } from "../core/commands/shell/coreCommands";
-import type { PoolTabAction } from "../core/types/ipc/tabActions";
+import type { ShellTabAction } from "../core/types/ipc/tabActions"; // E5.8#44-B：壳侧收 ShellTabAction（含 sourceWindowId）
 import type { CreateTabOptions } from "../core/api/types";
-import type { CloseTabResult, TabState } from "../hooks/useTabManager";
+import type { CloseTabResult, TabState, Tab } from "../hooks/useTabManager";
+import type { WindowMode, WindowShellState } from "./windows"; // E5.8#45：deps 类型同 relocation 返回值（WindowMode）——core 契约已宽化；#46.4：脱出窗路由查注册表
 
 /* ── handleFocusTab ── */
 
@@ -48,11 +64,19 @@ export interface CoreCallbacksDeps {
   restoreClosedTab: () => string | null;
   duplicateTab: (tabId: string) => string | null;
   pinTab: (tabId: string) => void;
+  /** E5.8#44：可拖出窗口——右键「在新窗口中打开」/「并回主窗口」/ tab 窗口判定 */
+  detachTab: (tabId: string) => void;
+  mergeTabToMain: (tabId: string) => void;
+  findTabWindow: (tabId: string) => { windowId: string; mode: WindowMode } | null;
+  /** E5.8#46.8：壳窗口注册表——Ctrl+W 按聚焦窗路由（脱出窗走 registry reduceRemoveTab + 空窗自灭） */
+  windows: WindowShellState[];
+  updateTabState: (windowId: string, tabState: TabState) => void;
+  closeWindow: (windowId: string) => void;
 }
 
 /** E5#5e-ii-f：核心回调——注册到 coreCommands，壳快捷键（Ctrl+W/Ctrl+Tab 等）走这里 */
 export function createCoreCallbacks(deps: CoreCallbacksDeps): CoreCallbacks {
-  const { closeTab, splitTab, tabState, handleFocusTab, unsplit, openOrFocusTab, restoreClosedTab, duplicateTab, pinTab } = deps;
+  const { closeTab, splitTab, tabState, handleFocusTab, unsplit, openOrFocusTab, restoreClosedTab, duplicateTab, pinTab, detachTab, mergeTabToMain, findTabWindow, windows, updateTabState, closeWindow } = deps;
   return {
     closeTab,
     closeOtherTabs: (groupId, exceptTabId) => {
@@ -72,7 +96,21 @@ export function createCoreCallbacks(deps: CoreCallbacksDeps): CoreCallbacks {
       return null;
     },
     openTab: (pluginId) => openOrFocusTab(pluginId, { pinned: true })!,
-    closeActiveTab: async () => {
+    // E5.8#46.8：Ctrl+W 按聚焦窗路由——脱出窗（sourceWindowId ≠ "main"）关该窗 registry active tab
+    // （reduceRemoveTab + 空窗自灭 I9-8，复用 #46.4 applyDetachedTabAction）；主窗/未注走 useTabManager。
+    closeActiveTab: async (sourceWindowId) => {
+      if (sourceWindowId && sourceWindowId !== "main") {
+        const win = windows.find((w) => w.windowId === sourceWindowId);
+        if (!win) return;
+        const group = win.tabState.groups.find((g) => g.id === win.tabState.activeGroupId);
+        const tab = group?.tabs.find((t) => t.id === group.activeTabId);
+        if (!tab) return;
+        if (tab.pluginId && !await invokeBeforeCloseTab(tab.pluginId)) return;
+        // E5.8#46.12 Step3：脱出窗 Ctrl+W 补 dirty 确认（镜像主窗 closeTab——此前静默关脏标签丢数据）
+        if (!(await confirmDirtyTabClose(tab))) return;
+        await applyDetachedTabAction(win, { action: "closeTab", tabId: tab.id, sourceWindowId }, { updateTabState, closeWindow });
+        return;
+      }
       const group = tabState.groups.find((g) => g.id === tabState.activeGroupId);
       const tab = group?.tabs.find((t) => t.id === group.activeTabId);
       if (!tab) return;
@@ -130,6 +168,10 @@ export function createCoreCallbacks(deps: CoreCallbacksDeps): CoreCallbacks {
       }
       return false;
     },
+    // E5.8#44：可拖出窗口——壳侧 relocation（windowRelocation.ts）直通
+    detachTab: (tabId) => detachTab(tabId),
+    mergeTabToMain: (tabId) => mergeTabToMain(tabId),
+    findTabWindow: (tabId) => findTabWindow(tabId),
   };
 }
 
@@ -142,22 +184,170 @@ export interface TabActionHandlerDeps {
   closeTab: (tabId: string) => Promise<CloseTabResult>;
   groups: TabState["groups"];
   reorderTab: (tabId: string, toIndex: number) => void;
-  moveTab: (tabId: string, targetGroupId: string) => void;
+  // E5.8#51：insertIndex = 跨组拖拽落点缝（竖杠缝）——透传 reduceMoveTab 中插，缺省 append
+  moveTab: (tabId: string, targetGroupId: string, insertIndex?: number) => void;
   splitTabAt: (tabId: string, direction: "horizontal" | "vertical", targetGroupId?: string, zone?: "left" | "right" | "up" | "down") => void;
   duplicateTab: (tabId: string) => string | null;
   pinTab: (tabId: string) => void;
   createTab: (type: string, opts?: CreateTabOptions) => string;
   updateSplitSizes: (anchorGroupId: string, sizes: [number, number], branchIndex?: number) => void;
+  /** E5.8#44-B：窗口外释放决策（拖出手势）——命中 TabBar→并窗 / 空白→新窗 */
+  releaseOutside: (tabId: string, screenX: number, screenY: number, sourceWindowId: string) => void;
+  /** E5.8#46.4：壳窗口注册表——脱出窗 tabAction 按 sourceWindowId 路由（查该窗 tabState + 空窗裁决） */
+  windows: WindowShellState[];
+  /** E5.8#46.4：写脱出窗 tabState（纯 reducer 结果）→ usePoolSync 按窗重推布局 */
+  updateTabState: (windowId: string, tabState: TabState) => void;
+  /** E5.8#46.4：空窗自灭（I9-8）——脱出窗无标签 → closeWindow（不 updateTabState） */
+  closeWindow: (windowId: string) => void;
+}
+
+/**
+ * E5.8#46.4：脱出窗 tab 操作——纯 reducer 应用到该窗注册表 tabState + updateTabState。
+ * E5.8#46.9：focusTab 补发 tab:focused + tab:activated（实机复现 B：插件订阅如 file-tree autoReveal
+ * 需事件跟随，主窗 handleFocusTab 双发对齐）——其余动作仍不发射（布局推流 activeTabId 驱动池渲染，
+ * 插件 isActive prop 已覆盖；KISS，实机暴露缺口再补）。
+ * closeTab 用 reduceRemoveTab（不查 dirty——池侧 × 已按 closeBehavior 确认过，与主窗 × 同语义）；
+ * 空窗自灭（I9-8）由壳裁决（groups 全空 → closeWindow）。
+ * E5.8#46.13：三批量 case（closeOtherTabs/closeTabsToRight/closeAllTabs）逐 tab 确认后移除——
+ * 此前静默关脏丢数据（主窗同动作逐条 closeTab 逐个弹确认）；async 化只在批量 case 首个 await 前同步，
+ * 单 tab/focus 路径副作用仍同步（既有测试不破坏）。
+ */
+
+/** E5.8#46.13：批量关闭目标逐 tab 过滤——非脏直关、脏逐个弹确认、被否决的跳过（与主窗
+ *  closeOtherTabs/closeRightTabs/closeAllTabs 逐条 closeTab 确认语义对齐；confirmDirtyTabClose
+ *  非脏恒 true 短路，判定一处不分叉）。返回实际应移除的 tab 集。 */
+async function confirmBatchDirtyTabs(tabs: Tab[]): Promise<Tab[]> {
+  const approved: Tab[] = [];
+  for (const t of tabs) {
+    if (await confirmDirtyTabClose(t)) approved.push(t);
+  }
+  return approved;
+}
+
+async function applyDetachedTabAction(
+  win: WindowShellState,
+  action: ShellTabAction,
+  deps: Pick<TabActionHandlerDeps, "updateTabState" | "closeWindow">,
+): Promise<void> {
+  let next = win.tabState;
+  let changed = true;
+  switch (action.action) {
+    case "focusTab": {
+      next = reduceFocusTab(next, action.tabId);
+      // E5.8#46.9：脱出窗聚焦补发事件——此前 KISS 不发射（#46.4 注），实机复现 B 暴露缺口：
+      // tab:activated 不发 → 插件订阅（file-tree autoReveal）不跟随。双发与主窗 handleFocusTab 对齐
+      //（tab:focused → activeEditor/布局推流；tab:activated → CoreEvents + 插件 IPC 广播）。
+      const focused = next.groups.flatMap((g) => g.tabs).find((t) => t.id === action.tabId);
+      if (focused) {
+        shellEvents.emit("tab:focused", { pluginId: focused.pluginId || focused.type, tabId: focused.id });
+        emitTabActivated(focused.id, focused.pluginId, focused.filePath);
+      }
+      break;
+    }
+    case "focusGroup":
+      next = reduceFocusGroup(next, action.groupId);
+      break;
+    case "closeTab":
+      next = reduceRemoveTab(next, action.tabId).state;
+      break;
+    case "closeOtherTabs": {
+      const g = next.groups.find((x) => x.id === action.groupId);
+      if (g) {
+        const targets = g.tabs.filter((t) => t.id !== action.tabId);
+        for (const t of await confirmBatchDirtyTabs(targets)) next = reduceRemoveTab(next, t.id).state;
+      }
+      break;
+    }
+    case "closeTabsToRight": {
+      const g = next.groups.find((x) => x.id === action.groupId);
+      if (g) {
+        const idx = g.tabs.findIndex((t) => t.id === action.tabId);
+        if (idx >= 0) {
+          const targets = g.tabs.slice(idx + 1);
+          for (const t of await confirmBatchDirtyTabs(targets)) next = reduceRemoveTab(next, t.id).state;
+        }
+      }
+      break;
+    }
+    case "closeAllTabs": {
+      const g = next.groups.find((x) => x.id === action.groupId);
+      if (g) {
+        for (const t of await confirmBatchDirtyTabs([...g.tabs])) next = reduceRemoveTab(next, t.id).state;
+      }
+      break;
+    }
+    case "reorderTab":
+      next = reduceReorderTab(next, action.tabId, action.newIndex);
+      break;
+    case "moveTab":
+      next = reduceMoveTab(next, action.tabId, action.targetGroupId, action.newIndex);
+      break;
+    case "splitTab":
+      next = reduceSplitTabAt(
+        next,
+        action.tabId,
+        action.direction,
+        action.targetGroupId,
+        action.zone && action.zone !== "center" ? action.zone : undefined,
+      );
+      break;
+    case "duplicateTab": {
+      const r = reduceDuplicateTab(next, action.tabId);
+      if (!r) { changed = false; break; }
+      next = r;
+      break;
+    }
+    case "pinTab":
+      next = reducePinTab(next, action.tabId);
+      break;
+    case "createTab":
+      next = reduceCreateTab(next, action.pluginId ?? FALLBACK_PLUGIN_ID, { workspaceName: action.workspaceName }).state;
+      break;
+    case "updateSplitSizes":
+      next = reduceUpdateSplitSizes(next, action.anchorGroupId, action.sizes, action.branchIndex);
+      break;
+    default:
+      changed = false; // releaseOutsideWindow 已在路由前消费；未识别动作不写回
+  }
+  if (!changed) return;
+  // 空窗自灭（I9-8）：脱出窗无标签 → closeWindow；否则写回注册表（usePoolSync 按窗重推布局）
+  if (next.groups.length === 0 || next.groups.every((g) => g.tabs.length === 0)) {
+    deps.closeWindow(win.windowId);
+  } else {
+    deps.updateTabState(win.windowId, next);
+  }
 }
 
 /**
  * E5.6#16.5：MainPool tab 操作→壳 useTabManager。
  * 池 GroupTabBar 通过 pool.tabAction() → IPC → 此 handler → tabState 更新 → pushLayout 回环。
  * E5.7#96：action 载荷定型为 PoolTabAction wire 契约——枚举值/字段名壳池双端 tsc 对齐。
+ * E5.8#46.4：按 sourceWindowId 路由——主窗走 useTabManager；脱出窗走注册表 tabState + 纯 reducer。
  */
-export function createTabActionHandler(deps: TabActionHandlerDeps): (action: PoolTabAction) => void {
-  const { handleFocusTab, focusGroup, closeTab, groups, reorderTab, moveTab, splitTabAt, duplicateTab, pinTab, createTab, updateSplitSizes } = deps;
-  return (action) => {
+export function createTabActionHandler(deps: TabActionHandlerDeps): (action: ShellTabAction) => Promise<void> {
+  const { handleFocusTab, focusGroup, closeTab, groups, reorderTab, moveTab, splitTabAt, duplicateTab, pinTab, createTab, updateSplitSizes, releaseOutside, windows, updateTabState, closeWindow } = deps;
+  return async (action) => {
+    // E5.8#44-B：窗口外释放恒走全局 relocation（跨窗命中检测——sourceWindowId 内部路由），不随源窗分流
+    if (action.action === "releaseOutsideWindow") {
+      releaseOutside(action.tabId, action.screenX, action.screenY, action.sourceWindowId);
+      return;
+    }
+    // E5.8#46.4：窗内标签操作按 sourceWindowId 路由——脱出窗走注册表 tabState + 纯 reducer +
+    // updateTabState（此前全部无脑打主窗 useTabManager → 脱出窗 tabId 不在主窗 tabState → 静默 no-op，
+    // 窗内分屏/关闭/重排/聚焦全失效根因）。窗已关的迟到动作 → 静默丢弃。
+    const sourceWindowId = action.sourceWindowId;
+    if (sourceWindowId && sourceWindowId !== "main") {
+      const win = windows.find((w) => w.windowId === sourceWindowId);
+      if (win) {
+        // E5.8#46.12 Step3：脱出窗关闭补 dirty 确认（镜像主窗 closeTab——池侧 × 此前静默关脏标签丢数据）
+        if (action.action === "closeTab") {
+          const tab = win.tabState.groups.flatMap((g) => g.tabs).find((t) => t.id === action.tabId);
+          if (tab && !(await confirmDirtyTabClose(tab))) return;
+        }
+        await applyDetachedTabAction(win, action, { updateTabState, closeWindow });
+      }
+      return;
+    }
     switch (action.action) {
       case "focusTab":
         handleFocusTab(action.tabId);
@@ -206,7 +396,7 @@ export function createTabActionHandler(deps: TabActionHandlerDeps): (action: Poo
         reorderTab(action.tabId, action.newIndex);
         break;
       case "moveTab":
-        moveTab(action.tabId, action.targetGroupId);
+        moveTab(action.tabId, action.targetGroupId, action.newIndex);
         break;
       case "splitTab":
         // E5.6#16.7j-3：splitTabAt 无 solo guard + 支持 zone 精确定位——修复分屏后无法改方向 (d)
@@ -240,6 +430,81 @@ export function createTabActionHandler(deps: TabActionHandlerDeps): (action: Poo
       case "updateSplitSizes":
         updateSplitSizes(action.anchorGroupId, action.sizes, action.branchIndex);
         break;
+      // releaseOutsideWindow 已在路由前（handler 顶部）统一消费——跨窗手势不随源窗分流
     }
+  };
+}
+
+/* ── E5.8#46.12：sourceId 族按窗路由（信封来源窗章）── */
+
+export interface SourceIdRouterDeps {
+  /** 壳窗口注册表——脱出窗 sourceId 操作落该窗 tabState（#46.4 同源） */
+  windows: WindowShellState[];
+  updateTabState: (windowId: string, tabState: TabState) => void;
+  closeWindow: (windowId: string) => void;
+  /** 主窗路径（useTabManager）——sourceWindowId 未注/为 main 时走原路 */
+  focusTabBySourceId: (sourceId: string) => void;
+}
+
+/**
+ * E5.8#46.12/46.2：sourceId 路由产物类型——createSourceIdRouters 与稳定桥共用，一处定义。
+ * E5.8#46.2 收窄：仅 focus 保留按窗单发路由（聚焦是「聚焦到具体窗」语义）；updateLabel/close 改走
+ * windowHost 全窗广播（资源事件 = 全窗事实，不再需要信封章路由）。
+ */
+export interface SourceIdRouters {
+  focusTabBySourceId: (sourceId: string, sourceWindowId?: string) => void;
+}
+
+/**
+ * E5.8#46.12 回归修复（实机卡死根因）：sourceId 路由函数**恒等**化——死循环止血。
+ *
+ * 死循环链：createSourceIdRouters 闭包抓 windows → windows 每次 tabState 变化换引用
+ * （useWindowHost 主窗同步 effect 恒 map 新数组）→ 传入 useTabActions 的三路由函数引用不稳 →
+ * u5/u6/u7 订阅 effect deps 变 → 每 render 重订阅 → ShellEvents.on() 回放缓冲重放最近一次
+ * tab:create → u1 createTab 再触发 → setTabState → windows 再变 → 无限循环（2800MB+ 崩溃）。
+ *
+ * 本桥：函数引用由 useMemo([]) 钉死一次（恒等），内部经 routerRef.current 读**最新**路由——
+ * 路由正确性不降（脱出窗注册表/主窗双路仍按当前 windows 裁决），订阅 effect 永不再重跑。
+ */
+export function createStableSourceIdRoutersBridge(routerRef: { current: SourceIdRouters }): SourceIdRouters {
+  return {
+    focusTabBySourceId: (sourceId, sourceWindowId) => routerRef.current.focusTabBySourceId(sourceId, sourceWindowId),
+  };
+}
+
+/**
+ * E5.8#46.12：sourceId 族（聚焦）按来源窗路由——信封章（主进程 sender 反查）落脱出窗
+ * 注册表纯 reducer + updateTabState；主窗/未注走 useTabManager。修窗口身份丢失类同根 bug（脱出窗
+ * focus 静默 no-op）——与 #46.4 脱出窗 tabAction 同构归一化。
+ * E5.8#46.2：updateLabel/close 已移出本路由（改走 windowHost 全窗广播——资源事件 = 全窗事实，
+ * 信封章路由冗余）；focus 保留单发（聚焦 = 聚焦到具体某窗，广播多窗全聚焦语义错）。
+ */
+export function createSourceIdRouters(deps: SourceIdRouterDeps): SourceIdRouters {
+  const { windows, updateTabState, closeWindow } = deps;
+  /**
+   * 信封来源窗章 → 三态路由：
+   *  - main（未注/显式 "main"）→ 走 useTabManager 主路径
+   *  - detached（章指注册表存在）→ 走该窗注册表纯 reducer
+   *  - gone（章指非 main 且注册表无此窗）→ 静默丢弃——窗已关的迟到动作（#46.4 同语义，
+   *    不误触主窗同名 tab；若 tab 已并回主窗，并入时对象自带 label，迟到更新无意义）
+   */
+  type SourceIdRoute =
+    | { kind: "main" }
+    | { kind: "detached"; win: WindowShellState }
+    | { kind: "gone" };
+  const route = (sourceWindowId?: string): SourceIdRoute => {
+    if (!sourceWindowId || sourceWindowId === "main") return { kind: "main" };
+    const win = windows.find((w) => w.windowId === sourceWindowId);
+    return win ? { kind: "detached", win } : { kind: "gone" };
+  };
+  return {
+    focusTabBySourceId: (sourceId: string, sourceWindowId?: string): void => {
+      const r = route(sourceWindowId);
+      if (r.kind === "main") { deps.focusTabBySourceId(sourceId); return; }
+      if (r.kind === "gone") return; // 迟到/已迁走，静默
+      const tab = findTabBySourceId(r.win.tabState, sourceId);
+      if (!tab) return; // 脱出窗无此 tab → 静默（不误触主窗同名 tab）
+      void applyDetachedTabAction(r.win, { action: "focusTab", tabId: tab.id, sourceWindowId: r.win.windowId }, { updateTabState, closeWindow });
+    },
   };
 }

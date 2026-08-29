@@ -190,6 +190,49 @@ describe("ContextKeyService — when clause parser & evaluator", () => {
     ContextKeyService.setValue("activeEditor", "welcome");
     expect(ContextKeyService.matches("activeEditor in ['terminal', 'settings']")).toBe(false);
   });
+
+  /* ── E5.8#153：背景图两行齿轮「打开存储位置」when 门控——只现两行，他行不现 ── */
+
+  it("#153 门控——背景图两行 true / 他行 false", () => {
+    const WHEN = "settingKey == 'app.backgroundImage' || settingKey == 'app.zoneBackgroundImage'";
+    ContextKeyService.setValue("settingKey", "app.backgroundImage");
+    expect(ContextKeyService.matches(WHEN)).toBe(true);
+    ContextKeyService.setValue("settingKey", "app.zoneBackgroundImage");
+    expect(ContextKeyService.matches(WHEN)).toBe(true);
+    ContextKeyService.setValue("settingKey", "app.fontFamily");
+    expect(ContextKeyService.matches(WHEN)).toBe(false);
+    ContextKeyService.setValue("settingKey", "");
+    expect(ContextKeyService.matches(WHEN)).toBe(false);
+  });
+
+  /* ── E5.8#153-fix：overrides（ContextMenu context prop）优先于全局 state ── */
+
+  it("#153-fix eq——overrides 优先于全局（gear context.settingKey 权威）", () => {
+    // 全局被污染成他行值，overrides 仍胜出（竞态广播不再影响门控）
+    ContextKeyService.setValue("settingKey", "app.fontFamily");
+    const WHEN = "settingKey == 'app.backgroundImage'";
+    expect(ContextKeyService.matches(WHEN, { settingKey: "app.backgroundImage" })).toBe(true);
+    expect(ContextKeyService.matches(WHEN, { settingKey: "app.zoneBackgroundImage" })).toBe(false);
+  });
+
+  it("#153-fix eq——无 overrides 时回落全局", () => {
+    ContextKeyService.setValue("settingKey", "app.zoneBackgroundImage");
+    expect(ContextKeyService.matches("settingKey == 'app.zoneBackgroundImage'")).toBe(true);
+    expect(ContextKeyService.matches("settingKey == 'app.backgroundImage'")).toBe(false);
+  });
+
+  it("#153-fix neq——overrides 优先于全局", () => {
+    ContextKeyService.setValue("settingKey", "app.backgroundImage");
+    // overrides 说当前行是 app.fontFamily → != 'app.backgroundImage' 真（全局是背景图，旧行为假）
+    expect(ContextKeyService.matches("settingKey != 'app.backgroundImage'", { settingKey: "app.fontFamily" })).toBe(true);
+    expect(ContextKeyService.matches("settingKey != 'app.backgroundImage'", { settingKey: "app.backgroundImage" })).toBe(false);
+  });
+
+  it("#153-fix in——overrides 优先于全局", () => {
+    ContextKeyService.setValue("activeEditor", "terminal");
+    expect(ContextKeyService.matches("activeEditor in ['terminal', 'settings']", { activeEditor: "settings" })).toBe(true);
+    expect(ContextKeyService.matches("activeEditor in ['terminal', 'settings']", { activeEditor: "welcome" })).toBe(false);
+  });
 });
 
 describe("ContextKeyService — setValue / getValue / onDidChangeContext", () => {

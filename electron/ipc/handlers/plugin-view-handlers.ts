@@ -10,6 +10,9 @@
 import { app, ipcMain, BrowserWindow } from 'electron';
 import type { WindowManager } from '../../windows/window-manager.js'; // E5.6#8d
 import { IPC } from '../channels.js';
+// E5.8#46.19：OS 级拖拽幽灵窗——drag-position 流直接驱动（取消/释放隐藏，其余跟随光标）
+import { showDragGhost, hideDragGhost } from '../../windows/drag-ghost.js';
+import type { GhostAppearance } from '../../windows/drag-ghost.js';
 
 let _mainWindow: BrowserWindow | null = null;
 let _windowManager: WindowManager | null = null;
@@ -26,17 +29,22 @@ export function registerPoolHandlers(windowManager: WindowManager, mainWindow: B
   if (_poolHandlersRegistered) return;
   _poolHandlersRegistered = true;
 
-  // 壳→Pool：推送布局快照——单 WCV 直推（E5.7#4）
-  ipcMain.on(IPC.pool.pushLayout, (_event, layout: unknown) => {
-    _windowManager?.pushLayout(layout);
+  // 壳→Pool：推送布局快照——按 windowId 定向（缺省 'main'，E5.7#4 单 WCV 直推；E5.8#43-2 脱出窗按 id 推送）
+  ipcMain.on(IPC.pool.pushLayout, (_event, layout: unknown, windowId?: string) => {
+    _windowManager?.pushLayout(layout, windowId);
   });
 
-  // Pool→壳：池 React 挂载完成（E5.7#54：zone 参数已删——单 Pool 无路由）
-  ipcMain.on(IPC.pool.ready, (_event) => {
+  // Pool→壳：池 React 挂载完成（E5.8#43-1 A3：按 sender 反查 windowId 转发——壳据 windowId 定向推该窗布局）。
+  // 主池→'main'，脱出池→脱出窗 id；sender 非注册池来源则兜底 'main'。
+  ipcMain.on(IPC.pool.ready, (event) => {
+    const windowId = _windowManager?.getWindowIdByWebContents(event.sender) ?? 'main';
     if (_mainWindow && !_mainWindow.isDestroyed()) {
-      _mainWindow.webContents.send(IPC.pool.ready);
+      _mainWindow.webContents.send(IPC.pool.ready, { windowId });
     }
-    console.log('[pool-handlers] Pool 就绪');
+    // E5.8#44-B：补推窗口 bounds——主窗启动时壳注册表 bounds 恒缺（moved/resized 上报只在用户移动后触发），
+    // TabBar 命中检测需权威 bounds（视口 rect 转 screen 坐标）。脱出窗 created 已带 bounds，同样幂等补推。
+    _windowManager?.pushWindowBounds(windowId);
+    console.log(`[pool-handlers] Pool 就绪 (windowId=${windowId})`);
   });
 
   // E5.6#9 → E5.7#4：壳→Pool：切换 Pool DevTools——调试用
@@ -63,10 +71,68 @@ export function registerPoolHandlers(windowManager: WindowManager, mainWindow: B
 
   // E5.6#16.5：Pool→壳——主区 tab 操作（切标签/关闭/拖拽排序/分屏/右键菜单等）。
   // 池组件通过 pool.tabAction() 发送，主进程转发到壳窗口。
-  // 壳侧 preload 接收后调 useTabManager 方法。
-  ipcMain.on(IPC.pool.tabAction, (_event, action: unknown) => {
+  // E5.8#44-B：按 sender 反查 windowId 注入 sourceWindowId（#43-4 权威窗口身份——池永远不知自身
+  // windowId）。壳读 sourceWindowId 判源窗（releaseOutsideWindow 拖出源 / detach 同窗不并）。
+  ipcMain.on(IPC.pool.tabAction, (event, action: unknown) => {
+    const sourceWindowId = _windowManager?.getWindowIdByWebContents(event.sender) ?? 'main';
+    // E5.8#46.19：窗外松手 = 拖拽结束——隐藏幽灵（窗内松手由池补 canceled；Esc 由 dragPosition canceled）
+    const a = typeof action === 'object' && action !== null ? action as { action?: string } : null;
+    if (a?.action === 'releaseOutsideWindow') hideDragGhost();
+    const shellAction = typeof action === 'object' && action !== null ? { ...action, sourceWindowId } : action;
     if (_mainWindow && !_mainWindow.isDestroyed()) {
-      _mainWindow.webContents.send(IPC.pool.tabAction, action);
+      _mainWindow.webContents.send(IPC.pool.tabAction, shellAction);
+    }
+  });
+
+  // E5.8#44-B：池→壳——TabBar viewport rects 上报（吸附/释放并窗命中检测数据源）。
+  // 池组件 pool.tabBarRects(rects) 发送，主进程按 sender 解析 windowId 附上转发壳——
+  // 窗口 bounds 壳已掌握（onWindowBoundsChanged），视口 rect 转 screen 坐标壳做（bounds.x + rect.left）。
+  ipcMain.on(IPC.pool.tabBarRects, (event, rects: unknown) => {
+    const windowId = _windowManager?.getWindowIdByWebContents(event.sender) ?? 'main';
+    if (_mainWindow && !_mainWindow.isDestroyed()) {
+      _mainWindow.webContents.send(IPC.pool.tabBarRects, { windowId, rects });
+    }
+  });
+
+  // E5.8#44-C：池→壳——拖拽位置上报（拎起后 mousemove 全程——吸附命中检测数据源）。
+  // 池组件 pool.dragPosition(pos) 发送，主进程按 sender 解析 sourceWindowId 附上转发壳——
+  // 壳排除源窗命中（窗内拖拽 = 非跨窗吸附，天然清提示）；窗外命中目标窗 TabBar → 下发高亮。
+  // E5.8#46.19：同处理点驱动 OS 级拖拽幽灵——canceled（Esc/窗内松手池补发）→ 隐藏；outside（窗外）
+  // → 显示跟随光标（首次建窗 / 后续 setPosition）；回到窗内 → 隐藏（DOM 浮块可见）。title 池上报
+  // （主进程不持 tabState），幽灵框渲染标签文字。
+  ipcMain.on(IPC.pool.dragPosition, (event, pos: unknown) => {
+    const sourceWindowId = _windowManager?.getWindowIdByWebContents(event.sender) ?? 'main';
+    const p = typeof pos === 'object' && pos !== null
+      ? pos as { canceled?: boolean; outside?: boolean; screenX?: number; screenY?: number; title?: string; ghost?: GhostAppearance }
+      : null;
+    if (p) {
+      if (p.canceled) {
+        hideDragGhost();
+      } else if (p.outside && typeof p.screenX === 'number' && typeof p.screenY === 'number') {
+        // E5.8#46.19 进化：透传 ghost 外观（主题三色 + 图标）——幽灵窗跟主题、带图标；旧池无此字段自动走默认中灰
+        showDragGhost(p.screenX, p.screenY, p.title, p.ghost);
+      } else if (p.outside === false) {
+        hideDragGhost();
+      }
+    }
+    const shellPos = typeof pos === 'object' && pos !== null ? { ...pos, sourceWindowId } : pos;
+    if (_mainWindow && !_mainWindow.isDestroyed()) {
+      _mainWindow.webContents.send(IPC.pool.dragPosition, shellPos);
+    }
+  });
+
+  // E5.8#44-C：壳→池——吸附提示（目标窗 TabBar 插入指示/清除）——按 windowId 定向推送（targetWindowId 壳命中解析）。
+  ipcMain.on(IPC.pool.adsorbHint, (_event, hint: unknown, windowId: string) => {
+    _windowManager?.pushAdsorbHint(hint, windowId);
+  });
+
+  // E5.8#46.10：池→壳——吸附插入缝隙回传（目标池算竖线落点后上报）。
+  // 池组件 pool.adsorbIndex(p) 发送，主进程按 sender 解析 windowId 附上转发壳——壳存吸附注册表供释放并窗精确落位。
+  ipcMain.on(IPC.pool.adsorbIndex, (event, p: unknown) => {
+    const windowId = _windowManager?.getWindowIdByWebContents(event.sender) ?? 'main';
+    const shellIndex = typeof p === 'object' && p !== null ? { ...p, windowId } : p;
+    if (_mainWindow && !_mainWindow.isDestroyed()) {
+      _mainWindow.webContents.send(IPC.pool.adsorbIndex, shellIndex);
     }
   });
 
@@ -118,6 +184,20 @@ export function registerPoolHandlers(windowManager: WindowManager, mainWindow: B
     }
   });
 
+  // E5.8#43-1（A4）：壳→主——创建脱出池窗（壳驱动：壳生成 windowId + bounds，主进程只执行窗口+池生命周期）
+  ipcMain.on(IPC.pool.createWindow, (_event, opts: { windowId: string; width?: number; height?: number; x?: number; y?: number }) => {
+    if (!opts?.windowId) {
+      console.error('[pool-handlers] createWindow 缺 windowId');
+      return;
+    }
+    _windowManager?.createPoolWindow(opts);
+  });
+
+  // E5.8#43-1（A4）：壳→主——关闭脱出池窗（空窗自灭/并回主窗口销毁；tab 归属已由壳先行处理）
+  ipcMain.on(IPC.pool.closeWindow, (_event, windowId: string) => {
+    _windowManager?.closePoolWindow(windowId);
+  });
+
   // E5.7#12.5：pool:set-bounds 已死链删除——bounds 换主进程（window-manager syncPoolBounds）
-  console.log('[pool-handlers] 已注册 13 个 pool IPC handler（pool:push-layout / pool:ready / pool:toggleDevTools / pool:sidebar-action / pool:tab-action / pool:quickpick-show / pool:quickpick-action / pool:toast-show / pool:toast-action / pool:dialog-show / pool:dialog-action / pool:floating-panel-show / pool:floating-panel-action）');
+  console.log('[pool-handlers] 已注册 18 个 pool IPC handler（pool:push-layout / pool:ready / pool:toggleDevTools / pool:sidebar-action / pool:tab-action / pool:tabbar-rects / pool:drag-position / pool:adsorb-hint / pool:quickpick-show / pool:quickpick-action / pool:toast-show / pool:toast-action / pool:dialog-show / pool:dialog-action / pool:floating-panel-show / pool:floating-panel-action / pool:create-window / pool:close-window）');
 }

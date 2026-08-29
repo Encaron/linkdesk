@@ -90,6 +90,22 @@ export type ManifestMenuItem =
 
 const _menus = new Map<MenuId, Array<MenuItem & { pluginId: string }>>();
 
+/** ManifestMenuItem → MenuItem 归一化——E3f #52a 嵌套 children 递归（E5.8#149：任意深度，
+ *  声明式 schema 三件套之一——运行时 ManifestMenuItem 本已含 children，loader 纯透传，零消费方缺口）。
+ *  字符串 = 命令引用原样透传；对象 = 字段直写 + children 递归（order 归一化透传——#33 排序依赖）。 */
+function normalizeMenuItem(c: ManifestMenuItem, pluginId: string): MenuItem & { pluginId: string } {
+  if (typeof c === "string") return { command: c, pluginId };
+  return {
+    command: c.command,
+    label: c.label,
+    group: c.group,
+    when: c.when,
+    order: c.order,
+    pluginId,
+    ...(c.children ? { children: c.children.map((gc) => normalizeMenuItem(gc, pluginId)) } : {}),
+  };
+}
+
 /** 注册菜单项——loader 在 parseContributions 阶段调用。幂等：同 pluginId + command 不会重复。
  *  E5.8#10 返 disposer：只删本次调用新增的条目（引用级精确）——去重跳过的条目不碰。 */
 export function registerMenuItems(
@@ -100,41 +116,7 @@ export function registerMenuItems(
   const existing = _menus.get(menuId) ?? [];
   const added: Array<MenuItem & { pluginId: string }> = [];
   for (const item of items) {
-    let normalized: MenuItem & { pluginId: string };
-
-    if (typeof item === "string") {
-      normalized = { command: item, pluginId };
-    } else {
-      normalized = {
-        command: item.command,
-        label: item.label,
-        group: item.group,
-        when: item.when,
-        order: item.order, // E5.8#33：order 归一化透传——getMenuItems 排序依赖（面板招牌排文件/查看后）
-        pluginId,
-      };
-      // E3f #52a：递归处理嵌套 children
-      if (item.children) {
-        normalized.children = item.children.map((c): MenuItem & { pluginId: string } => {
-          if (typeof c === "string") return { command: c, pluginId };
-          return {
-            command: c.command,
-            label: c.label,
-            group: c.group,
-            when: c.when,
-            order: c.order,
-            pluginId,
-            ...(c.children ? {
-              children: c.children.map((gc): MenuItem & { pluginId: string } =>
-                typeof gc === "string"
-                  ? { command: gc, pluginId }
-                  : { command: gc.command, label: gc.label, group: gc.group, when: gc.when, order: gc.order, pluginId }
-              ),
-            } : {}),
-          };
-        });
-      }
-    }
+    const normalized = normalizeMenuItem(item, pluginId);
 
     // 幂等——同一 menuId 下同一 pluginId 同一 command 同一 when 不重复注册
     // 父菜单项（command 为空但有 children）不做幂等检查——允许多个同名组

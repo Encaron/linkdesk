@@ -12,15 +12,15 @@
 .status-bar {
   display: flex;
   align-items: center;
-  height: 22px;
+  height: calc(22px * var(--ui-scale)); /* E5.8 Phase 12 #166：22px 高+行高链乘 scale */
   padding: 0 8px;
   background: var(--bg-window);
   border-top: 1px solid var(--separator);
   gap: 6px;
-  font-size: 12px;
+  font-size: var(--font-size-sm); /* 12→sm */
   color: var(--text-muted);
   flex-shrink: 0;
-  line-height: 22px;
+  line-height: calc(22px * var(--ui-scale));
 }
 
 .status-text {
@@ -36,7 +36,7 @@
 }
 
 .status-chord {
-  font-size: 11px;
+  font-size: var(--font-size-xs); /* 11→xs */
   color: var(--accent);
   max-width: 320px;
   overflow: hidden;
@@ -63,10 +63,10 @@
   background: none;
   border: none;
   color: var(--text-secondary);
-  font-size: 12px;
+  font-size: var(--font-size-sm); /* 12→sm */
   padding: 0 6px;
-  height: 22px;
-  line-height: 22px;
+  height: calc(22px * var(--ui-scale));
+  line-height: calc(22px * var(--ui-scale));
   border-radius: 0;
   cursor: pointer;
   transition: background 120ms, color 120ms;
@@ -84,7 +84,7 @@
 }
 
 .status-bar-notif-btn .codicon-bell {
-  font-size: 14px;
+  font-size: var(--font-size-lg); /* 14→lg */
 }
 
 .status-bar-notif-btn.has-notifications {
@@ -95,14 +95,14 @@
   position: absolute;
   top: 1px;
   right: 1px;
-  font-size: 9px;
+  font-size: var(--font-size-2xs); /* 9→2xs */
   font-weight: 600;
   background: var(--accent);
   color: var(--badge-text);
-  border-radius: 50%;
-  min-width: 12px;
-  height: 12px;
-  line-height: 12px;
+  border-radius: var(--radius-full);
+  min-width: calc(12px * var(--ui-scale));
+  height: calc(12px * var(--ui-scale));
+  line-height: calc(12px * var(--ui-scale));
   text-align: center;
   padding: 0 2px;
 }
@@ -113,13 +113,13 @@
 .status-bar-notif-panel {
   position: fixed;
   right: 7px;
-  bottom: 29px; /* 22px status bar + 7px */
+  bottom: calc(22px * var(--ui-scale) + 7px); /* E5.8 Phase 12 #166：22px status bar（scaled）+ 7px */
   width: 420px;
   max-height: 400px;
   background: var(--bg-card);
   border: 1px solid var(--separator);
-  border-radius: 6px;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.35); /* 见文件头阴影注记——壳原值，无匹配 token */
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-dialog-soft); /* E5.8#50.14：原壳值 0 8px 32px rgba(0,0,0,0.35) 收编为 token */
   overflow: hidden;
   z-index: var(--z-overlay); /* E5#98: above modal backdrop, below quick input */
   display: flex;
@@ -134,14 +134,14 @@
   align-items: center;
   justify-content: space-between;
   padding: 0 8px 0 12px;
-  height: 35px;
+  height: calc(35px * var(--ui-scale)); /* E5.8 Phase 12 #166：notif-header 35px 乘 scale */
   border-bottom: 1px solid var(--separator);
   flex-shrink: 0;
 }
 
 .notif-panel-header .notif-panel-title {
   text-transform: uppercase;
-  font-size: 11px;
+  font-size: var(--font-size-xs); /* 11→xs */
   font-weight: 600;
   letter-spacing: 0.3px;
   color: var(--text-secondary);
@@ -156,11 +156,11 @@
   background: none;
   border: none;
   color: var(--text-muted);
-  font-size: 11px;
+  font-size: var(--font-size-xs); /* 11→xs */
   cursor: pointer;
   font-family: inherit;
   padding: 2px 6px;
-  border-radius: 3px;
+  border-radius: var(--radius-sm);
 }
 
 .notif-panel-clear:hover {
@@ -171,7 +171,7 @@
 .notif-panel-empty {
   padding: 32px 16px;
   text-align: center;
-  font-size: 12px;
+  font-size: var(--font-size-sm); /* 12→sm */
   color: var(--text-muted);
 }
 
@@ -202,11 +202,11 @@
 .notif-panel-item .notif-icon {
   flex: 0 0 16px;
   width: 16px;
-  height: 22px;
+  height: calc(22px * var(--ui-scale)); /* E5.8 Phase 12 #166：22px 行高链乘 scale */
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 14px;
+  font-size: var(--font-size-lg); /* 14→lg */
   margin: 0 2px;
 }
 
@@ -217,9 +217,9 @@
 /* VS Code: message flex:1, line-height 22px, text-overflow ellipsis */
 .notif-panel-msg {
   flex: 1;
-  font-size: 12px;
+  font-size: var(--font-size-sm); /* 12→sm */
   color: var(--text-primary);
-  line-height: 22px;
+  line-height: calc(22px * var(--ui-scale)); /* E5.8 Phase 12 #166：22px 行高链乘 scale */
   overflow: hidden;
   text-overflow: ellipsis;
   min-width: 0;
@@ -231,10 +231,10 @@
   border: none;
   color: var(--text-muted);
   cursor: pointer;
-  font-size: 12px;
+  font-size: var(--font-size-sm); /* 12→sm */
   flex-shrink: 0;
   padding: 0 4px;
-  height: 22px;
+  height: calc(22px * var(--ui-scale)); /* E5.8 Phase 12 #166：22px 行高链乘 scale */
   display: flex;
   align-items: center;
   opacity: 0;
@@ -248,7 +248,7 @@
 .notif-panel-dismiss:hover {
   color: var(--text-primary);
   background: var(--tab-hover-bg);
-  border-radius: 3px;
+  border-radius: var(--radius-sm);
 }
 
 /* VS Code: details row below message——source + action buttons */
@@ -258,7 +258,7 @@
   gap: 8px;
   padding-left: 24px; /* align with message after icon */
   margin-top: 4px;
-  font-size: 11px;
+  font-size: var(--font-size-xs); /* 11→xs */
   color: var(--text-muted);
   flex-wrap: wrap;
 }
@@ -276,11 +276,11 @@
 .notif-action-btn {
   background: none;
   border: none;
-  font-size: 11px;
+  font-size: var(--font-size-xs); /* 11→xs */
   font-family: inherit;
   cursor: pointer;
   padding: 2px 8px;
-  border-radius: 3px;
+  border-radius: var(--radius-sm);
   white-space: nowrap;
 }
 
@@ -318,7 +318,7 @@
 }
 
 .notif-source-group-label {
-  font-size: 11px;
+  font-size: var(--font-size-xs); /* 11→xs */
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.3px;
@@ -326,21 +326,21 @@
 }
 
 .notif-source-group-badge {
-  font-size: 10px;
+  font-size: var(--font-size-2xs); /* 10→2xs */
   font-weight: 600;
   background: var(--accent);
   color: var(--badge-text);
-  border-radius: 8px;
+  border-radius: var(--radius-lg);
   padding: 0 5px;
-  min-width: 14px;
-  height: 14px;
-  line-height: 14px;
+  min-width: calc(14px * var(--ui-scale)); /* E5.8 Phase 12 #166：badge 14px 乘 scale */
+  height: calc(14px * var(--ui-scale));
+  line-height: calc(14px * var(--ui-scale));
   text-align: center;
 }
 
 /* 时间标签 */
 .notif-panel-time {
-  font-size: 10px;
+  font-size: var(--font-size-2xs); /* 10→2xs */
   color: var(--text-muted);
   flex-shrink: 0;
   margin-left: 8px;

@@ -26,6 +26,9 @@ import { initLifecycleConsumers } from "./lifecycle";
 // E5.8#11：状态机——watcher 卸载走 unloadPlugin（唯一卸载路径）+ 启动收尾失败诊断日志
 // E5.8#24 回归：watcher 跳过已失败/已挂起插件需要 getLoadDiagnostics 读状态机
 import { unloadPlugin, getLoadDiagnosticsSummary, getLoadDiagnostics } from "./loadState";
+// E5.8#61 审计#2：watcher 手动删目录卸载路径补 revert（原只有 lifecycle-ops 正规卸载走）——
+// lifecycle-ops 不 import loader（无环），此处反向 import 安全
+import { revertThemeIfCurrent, revertLanguageIfCurrent, reapplyThemeAfterUnload } from "./lifecycle-ops";
 import {
   pluginsApi,
   log,
@@ -37,6 +40,7 @@ import {
   getMetadataCache,
   cachePluginMetadata,
   getDisabledList,
+  type CachedPluginMeta,
 } from "./state";
 export { validateInstallManifest, resolveVersionConflict } from "./manifest";
 export { runtimeEntryPath, parseContributions } from "./contributions";
@@ -199,6 +203,8 @@ export async function initPluginLoader(): Promise<void> {
   // 7. E5.6#16.7k——扫描 .disabled/ 目录，缓存已卸载插件元数据
   //    .disabled/ 不在 import.meta.glob 和 listPluginDirs() 的扫描范围内，
   //    必须单独扫描才能让 marketplace 的"待安装"区域显示这些插件。
+  // E5.8#156：扫描后差集清理——缓存 uninstalled ∉ 目录 → 删 + 持久化。
+  //   .disabled/ 清空后残留即时消失（用户实机：目录已空仍显 9 个幽灵待安装）。
   try {
     const disabledDirs: string[] = await pluginsApi().listDisabledDirs();
     for (const pluginId of disabledDirs) {
@@ -214,8 +220,43 @@ export async function initPluginLoader(): Promise<void> {
         log.appendLine(`⚠️ 已卸载插件 "${pluginId}" 元数据读取失败: ${errMsg(e)}`);
       }
     }
+
+    const { cache: pruned, removed } = pruneUninstalledCache(getMetadataCache(), disabledDirs);
+    if (removed.length > 0) {
+      try {
+        await setPluginStateValue(APP_PLUGIN_ID, "pluginMetadataCache", pruned);
+        log.appendLine(`🧹 清理 ${removed.length} 条幽灵待安装缓存（.disabled 已无目录）: ${removed.join(", ")}`);
+      } catch { /* 非关键路径 */ }
+    }
   } catch { /* 非 Electron 环境（npm run dev 浏览器模式）——listDisabledDirs 不可用 */ }
   })());
+}
+
+/**
+ * E5.8#156：差集清理纯函数——缓存里 `status="uninstalled"` 但 `.disabled/` 目录已不存在的条目删除。
+ *
+ * 语义：「待安装」= 当前 `.disabled/` 里**真可重装**的插件（目录为准），缓存只做显示名兜底。
+ * 目录清空 → 残留即时消失；目录仍存在（含新移入）的条目不动——写缓存是第 7 步扫描的职责，
+ * 本函数只删不增（差集方向单向）。
+ *
+ * 纯函数（不 mutate 入参——可单测可预测，loader.test.ts 三态）：返回 { cache（新对象）, removed（被删 pluginId 列表） }，
+ * 调用方决定是否持久化（loader 第 7 步：有删除才 setPluginStateValue）。
+ */
+export function pruneUninstalledCache(
+  cache: Record<string, CachedPluginMeta>,
+  disabledDirs: readonly string[],
+): { cache: Record<string, CachedPluginMeta>; removed: string[] } {
+  const dirSet = new Set(disabledDirs);
+  const out: Record<string, CachedPluginMeta> = {};
+  const removed: string[] = [];
+  for (const [id, meta] of Object.entries(cache)) {
+    if (meta.status === "uninstalled" && !dirSet.has(id)) {
+      removed.push(id);
+      continue;
+    }
+    out[id] = meta;
+  }
+  return { cache: out, removed };
 }
 
 // E5#43：接口反转——loader 注册自己到 IpcBridgeHandler，核心不再直接 import loader
@@ -293,7 +334,14 @@ export function startPluginWatcher(): void {
       for (const id of [...loadedPluginIds]) {
         if (!fsSet.has(id) && !getDisabledList().includes(id)) {
           log.appendLine(`插件 "${id}" 目录已手动删除——自动移除注册`);
+          // E5.8#61 审计#2：watcher 卸载路径补 revert——原只有 marketplace 正规卸载走
+          // （revertThemeIfCurrent/revertLanguageIfCurrent 须在 unloadPlugin 前——onWillUninstall
+          //  注销主题/语言后 revert 找不到归属；目录删除时插件仍 loaded，revert 照常生效）
+          const needsMixReapply = await revertThemeIfCurrent(id);
+          await revertLanguageIfCurrent(id);
           unloadPlugin(id, "uninstall", id);
+          // E5.8#61 审计#1：混搭来源已摘后才重合并（unload 前源配方仍注册——早合并找不到回退）
+          if (needsMixReapply) await reapplyThemeAfterUnload();
         }
       }
     } catch {
@@ -313,4 +361,4 @@ export function stopPluginWatcher(): void {
 }
 
 // 导出供 vitest——防止新增贡献类型时漏加 revert（主题/语言/图标主题…）
-export { revertThemeIfCurrent, revertLanguageIfCurrent } from "./lifecycle-ops";
+export { revertThemeIfCurrent, revertLanguageIfCurrent, reapplyThemeAfterUnload } from "./lifecycle-ops";

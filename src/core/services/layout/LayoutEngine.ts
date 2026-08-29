@@ -350,8 +350,8 @@ export class LayoutEngine {
 export const layoutEngine = new LayoutEngine();
 
 // E5.8#36.9：右侧栏真 zone——决策 6 addZone 消费方（双槽互换对边 + #37.5 grid 真渲染）。
-// 常驻引擎（recalculate 右边堆叠数学现成）但池推 rightSidebar.visible:false（无容器内容生产者，
-// Phase 12 填充）——零 DOM 变化；#37.6 dockTo("sidebar", edge) swap 的 rightSidebar 对边分支自此可命中。
+// 常驻引擎（recalculate 右边堆叠数学现成）但池推 rightSidebar.visible:false（壳侧暂无容器内容生产者，
+// 安全 no-op）——零 DOM 变化；#37.6 dockTo("sidebar", edge) swap 的 rightSidebar 对边分支自此可命中。
 layoutEngine.addZone({
   zone: "rightSidebar",
   dock: { edge: "right", width: 300, minWidth: 180, maxWidth: 600, resizable: true },

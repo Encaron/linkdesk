@@ -1,0 +1,15 @@
+/* E5.8#99：实心 accent 动作按钮（按钮双轨制实心轨，对标 VS Code 动作按钮）——动作/提交。
+   ghost 轨 = SegmentedRadio（选择/分组）。样式自持（原 settings .settings-action-btn 收编）。
+   全部走 CSS 变量，半径 var(--radius-sm)（硬约束 1/6），零硬编码 hex。 */
+.button {
+  background: var(--accent);
+  color: var(--text-on-accent);
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 4px 12px;
+  font-size: var(--font-size-sm); /* E5.8 Phase 12 #170：12→sm（自动增高，安全） */
+  cursor: pointer;
+  white-space: nowrap;
+}
+.button:hover { opacity: 0.85; }
+.button:disabled { opacity: 0.5; cursor: default; }

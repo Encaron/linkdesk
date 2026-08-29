@@ -84,12 +84,15 @@ async function list(): Promise<FileEntry[]> {
 | **serial** | **E5.8#28 多口路由：** 打开/关闭/动作定向接口的 `portName` **可选**——缺省 = 唯一打开口（0 口抛「串口未打开」；≥2 口抛「多串口已打开，请指定 portName」；**失败可见，不静默**）。三推流通道（`onData`/`onStats`/`onSystem`）载荷**对象化**带 `portName` 路由键（`SerialDataPayload`/`SerialStatsPayload`/`SerialSystemPayload`）——订阅方按**会话口**过滤（key=portName 是通用路由键模式：谁消费谁过滤，壳不代收）。每标签页仍单口（D3），会话-端口绑定在插件侧 |
 | **panel** | **E5.8#34.5：** `panel.reveal(viewId)` 声明寻址聚焦底部面板视图——面板隐藏 → 展开并切到该视图（Ctrl+J 同机制）；已显示 → 切换聚焦；**viewId 不在 panel 容器 → no-op**（不报错）。**#36.10 已移除 `panel.moveToEditor`**（用户拍板弃内容迁移——zone 位置移动是 #37.6/#37.7 布局命令的事）。**E5.8#39.5：** `panel.revealFloating(viewId)` 壳内悬浮面板（类型 B）——按声明弹出某视图为悬浮面板。声明寻址 = ViewContainerService 全局视图索引（`contributes.views` 已注册**任意容器**视图，不限 panel——插件声明 `contributes.floatingPanel.viewId` 引用之）。**身份开关键（I8-2）**：无面板 → 开；同视图 → 关（toggle）；他面板 → 替换；**viewId 未声明/声明插件未装 → no-op**（不崩）。面板默认动作 =「在主窗口中打开」（仅声明插件可开成标签页时出现）+ 最大化 toggle + 关闭 |
 | **hotExit** | 崩溃恢复专用——脏内容落盘 `%APPDATA%/linkdesk/hot-exit/`（主进程路径约定单源，插件零直写）；保存/关闭标签页后调 `clear` 删备份 |
+| **appearance** | **E5.8#153：** `revealStorage()` 打开外观存储目录（`userData/appearance`）——主进程解析路径并 `shell.openPath` 开资源管理器**内容**（非 `showItemInFolder` 高亮单文件）；目录缺省也建（打开即见存储位置，空目录合法），`openPath` 失败抛错 fail-loud。返回 `Promise<void>` |
+| **tabs** | **E5.8#46.2 跨窗资源事件联动：** `updateLabelBySourceId(sourceId, label)` / `closeBySourceId(sourceId)` = **全窗广播语义**——资源持有者在主窗与全部脱出窗的标签页同步更新/关闭；`sourceId` 为全局唯一资源身份（文件路径/会话 id），变更即全局事实（联动**不依赖调用方与标签页同窗**——脱出窗标签随侧栏改名/删除即时联动，对标 VS Code）。`focusBySourceId(sourceId)` = **按来源窗路由**（视图动作，聚焦到具体某窗，非全局事实）。**无新 API**——复用既有面，此行为契约由 E5.8#46.2 全窗广播保证 |
 
 **壳广播事件（插件可订阅，走 `events.on`）：**
 
 | 频道 | payload | 触发时机 |
 |------|------|------|
-| `theme:changed` | `{ themeId, themeType, variables }` | 用户切换主题（CSS 变量自动注入，无需手动订阅） |
+| `theme:changed` | `{ themeId, themeType, variables }` | 用户切换主题（CSS 变量自动注入，无需手动订阅）。**E5.8 Phase 12：载荷 `variables` 现含字号变量 `--font-size-*` + `--ui-scale`**（全局字号缩放走既有主题通道，**无新事件**；插件字号消费 token 见 05-UI写法规约 §10） |
+| `iconTheme:changed` | `{ iconThemeId, mappings, fontFaces?, glyphCss? }` | **E5.8#133：** 用户切换图标主题（设置 `app.iconTheme`）。`iconThemeId` = 选择的图标主题 id；`mappings` = 该主题的映射表（`IconThemeMappings` 形状，图像资产已解析为 `linkdesk://` 绝对 URL）或 `"default"` 时为 `undefined`（消费方回退 codicon 保底）。**E5.8#133.4：** `fontFaces`/`glyphCss` = 主题声明了自定义字体时（mappings JSON 顶层 `font` 段）的 @font-face 规格与 glyph 类 CSS 原文——池 preload 已自动注入池文档（自定义图标字体渲染，消费方无需处理）；无 font 段/`"default"` 时缺省。**E5.8#133.6：** `mappings` 顶层可声明 5 个默认图标 `file`/`folder`/`folderExpanded`/`rootFolder`/`rootFolderExpanded`（单条目，对齐 VS Code iconTheme 顶层键）——未命中匹配表（普通文件夹/新建文件/根文件夹）时消费方用主题默认图标而非 codicon；缺省 = codicon 保底。**不自动生效的仅是映射本身——需要自定义文件图标视觉的插件手动订阅**（如文件树按 `mappings` 换图标，对标 VS Code `onDidChangeProductIconTheme`） |
 | `lang:changed` | `{ lang, resources }` | 用户切换语言 |
 | `workspace:changed` | `{ rootPath }` | 用户打开/切换文件夹 |
 
@@ -133,7 +136,7 @@ async function list(): Promise<FileEntry[]> {
 - **纯工具白名单**：`@src/core/pipeline/*`（DataConverter / DataDispatch / RingBuffer / ProtocolParser）+ `@src/core/utils/CancellationToken` + `@src/core/registry/commands/MenuRegistry`（仅 MenuId 类型/枚举）
 - **例外记录表**：新例外必须写进 memory `plugin-import-exceptions.md` 再放行（插件独立铁律审计项）
 
-> **`useConfiguration` / `useSendData` / `ViewContainerService` 等壳 hooks/服务禁止 import**（有模块级状态 → 调用方的修改壳进程看不到）——插件读配置走 `window.linkdesk.configuration`，状态同步走 `window.linkdesk.data` / `events`（见 `07-插件间通信.md`）。
+> **`useConfiguration` / `useSendData` / `ViewContainerService` 等壳 hooks/服务禁止 import**（有模块级状态 → 调用方的修改壳进程看不到）——插件读配置走 `window.linkdesk.configuration`，状态同步走 `window.linkdesk.events`（订阅广播）/ `serial.onData` 等数据管道（见 `07-插件间通信.md`）。
 
 ---
 

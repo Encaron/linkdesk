@@ -2,24 +2,22 @@
  * App 启动初始化 hook——useAppStartup：mount-once 初始化管线。
  * E5.8#0d.10-3b：自 App.tsx 拆出——IpcBridge/兜底主题/核心配置/核心命令/color-picker 命令/壳快捷键注册
  * + initAll 异步管线 + post-init React state 同步 + cleanup。
- * 依赖方向：startup → core 服务/registry + pluginLoader + i18n + components/shared（color-picker 动态加载）；
- * App 消费：useAppStartup({ setTheme, setLang, setReady })。无反向依赖。
+ * E5.8 Phase 11.13 结构归一化（Domain 拆解）：「主题」配置声明 → config/appearance.ts（registerAppearanceConfiguration），
+ *   外观应用编排（应用/播种/迁移）→ appearanceApplier.ts——本文件保留：hook 签名 + 「通用」配置组 + 生命周期接线 + post-init 同步。
+ * 依赖方向：startup → appearanceApplier + config/appearance + core 服务/registry + pluginLoader + i18n。无反向。
  */
 
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { pushToast } from "../core/services/ui/NotificationService";
-import {
-  loadTheme,
-  applyTheme,
-  applyAccentColor,
-  registerFallbackThemes,
-  getEffectiveAccentColor,
-} from "../core/services/ui/ThemeEngine";
+import { registerFallbackThemes, normalizeThemeValue } from "../core/services/ui/ThemeEngine";
 import { initPluginLoader, startPluginWatcher, stopPluginWatcher, getLoadedPluginManifests } from "../pluginLoader/loader";
 import { factorySlots } from "../core/services/bootstrap/FactorySlots";
-import { getConfigurationValue, setConfigurationValue } from "../core/services/configuration/ConfigurationService";
-import { registerConfiguration } from "../core/registry/ConfigurationRegistry";
+import {
+  getConfigurationValue, setConfigurationValue, resetConfigurationValue, inspectConfiguration,
+} from "../core/services/configuration/ConfigurationService";
+import { registerConfiguration, getMergedSchema } from "../core/registry/ConfigurationRegistry";
+import { runPendingConfigMigrations } from "../core/services/configuration/schemaMigrations";
 import { initLayoutService, getTabLayout } from "../core/services/layout/LayoutService";
 import { initWorkspaceService } from "../core/services/layout/WorkspaceService";
 import { initPluginStates, APP_PLUGIN_ID } from "../core/services/plugins/PluginStateService";
@@ -32,6 +30,7 @@ import { ensureCoreCommands, ensureCoreKeybindings } from "../core/commands/shel
 import { registerCommand } from "../core/registry/commands/CommandRegistry";
 import i18n from "../i18n";
 import { syncCountersAfterRestore } from "../hooks/useTabManager";
+import { registerAppearanceConfiguration } from "./config/appearance";
 
 export interface AppStartupDeps {
   setTheme: (v: string) => void;
@@ -57,22 +56,13 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
       // M2：注册内置兜底主题——插件主题后注册同名覆盖。确保卸载全部主题插件后下拉框不为空
       registerFallbackThemes();
 
-      // Phase 5：注册核心配置（对标 VS Code 内置 settings）——Settings Editor "通用"分组
+      // Phase 5：注册核心配置（对标 VS Code 内置 settings）——Settings Editor "通用"分组。
+      // E5.8#50.19：app.theme + 5 外观覆盖 key 已迁入「主题」组（第二贡献 pluginId "appearance"，08 §5 决策 D）。
+      // E5.8#79：app.accentColor 强调色也迁入「主题」组（accent 本质 = 主题色域颜色覆盖）。
+      // E5.8#90：app.accentMode/app.mixMode 已删（三枚举归一外观主开关，见组内注释）；强调色并入自定义模式一槽。
       registerConfiguration(APP_PLUGIN_ID, {
         title: t("通用"),
         properties: {
-          "app.theme": {
-            type: "string",
-            default: "Dark",
-            enum: ["Dark", "Light"],
-            description: t("配色主题"),
-            onApply: async (v) => {
-              const t = await loadTheme(v as string);
-              applyTheme(t);
-              // E3f #59d2：强调色走归一化函数——三种路径一条函数，不手写 if/else
-              applyAccentColor(getEffectiveAccentColor());
-            },
-          },
           "app.language": {
             type: "string",
             default: "zh",
@@ -91,32 +81,6 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
                 bridge.broadcast("lang:changed", { lang: v, resources });
               }
             },
-          },
-          "app.accentMode": {
-            type: "string",
-            default: "custom",
-            enum: ["custom", "followTheme"],
-            description: t("强调色模式——自定义固定色 / 跟随主题（主题无强调色时用自定义兜底）"),
-            onApply: (v) => {
-              if (v === "custom") {
-                // 读当前 DOM 上实际显示的强调色——切模式前可能跟着主题走，不是 app.accentColor 的旧值
-                const current = document.documentElement.style.getPropertyValue("--accent").trim();
-                if (current) setConfigurationValue("app.accentColor", current, "user");
-              }
-              applyAccentColor(getEffectiveAccentColor());
-            },
-          },
-          "app.accentColor": {
-            type: "string",
-            // E5.8#6.6 hex 豁免：配置项默认值数据（用户可改，非样式硬编码）
-            // eslint-disable-next-line linkdesk/no-hardcoded-hex
-            default: "#0078d4",
-            description: t("自定义强调色（图标栏高亮、开关、焦点边框）"),
-            dependsOn: { key: "app.accentMode", value: "custom" },
-            renderHint: "color",
-            // E3.5 fix: dependsOn 只控制 UI 显隐，不阻止 applyConfiguration 在启动时调用。
-            // accentMode="followTheme" 时，app.accentColor 的 onApply 不应覆盖主题的 accent。
-            onApply: () => applyAccentColor(getEffectiveAccentColor()),
           },
           "app.menuStyle": {
             type: "string",
@@ -143,6 +107,10 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
           },
         },
       });
+
+      // 「主题」配置组声明（pluginId "appearance"）——E5.8 Phase 11.13 结构归一化：配置声明 + onApply 编排
+      // 拆至 config/appearance.ts（registerAppearanceConfiguration）；onApply 委托 appearanceApplier 外观应用编排。
+      registerAppearanceConfiguration(t);
 
       // Phase 5：初始化 context key 核心状态
       ContextKeyService.initCoreKeys();
@@ -190,7 +158,63 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
       keybindingCleanup = result.keybindingCleanup;
 
       // ═══ Post-init：React state 同步 ═══
-      const initTheme = getConfigurationValue<string>("app.theme") ?? "Dark";
+      // E5.8#50.21：旧值归一化 + 落盘——workspace/user 里 legacy "Dark"/"Light" 启动即转 "dark"/"light"
+      // （映射表，不弹窗不重置；getConfigurationValue 会经 enum 校验把 legacy 值读成默认，须 inspect 取原始值）
+      const inspectedTheme = inspectConfiguration<string>("app.theme");
+      const rawTheme = inspectedTheme.workspaceValue ?? inspectedTheme.userValue ?? "dark";
+      let initTheme = normalizeThemeValue(rawTheme) ?? "dark";
+
+      // E5.8#61 审计#5：死 app.theme id 清扫——插件卸载后残留 id 不在当前 enum（配方/主题已注销）
+      // → 每次 getConfigurationValue 读都经 _validateEnum warn「不在 enum——回退默认值」刷屏。
+      // 此时 initAll 已完成：全插件已加载、enum 已稳定（syncAppThemeEnum 于 applyPostLoadSteps 后调用），清扫最安全。
+      // inspect 直读原始值判断——getConfigurationValue 会把死 id 读成默认值掩盖残留，不能用作判断。
+      const themeEnum = getMergedSchema()["app.theme"]?.enum;
+      const isDeadId = themeEnum ? !themeEnum.includes(initTheme) : false;
+      if (initTheme !== rawTheme || isDeadId) {
+        const scope = inspectedTheme.workspaceValue !== undefined ? "workspace" : "user";
+        if (isDeadId) initTheme = themeEnum!.includes("dark") ? "dark" : themeEnum![0];
+        try {
+          // E5.8#61 审计#6：await 落盘——清扫值必须成为最后一个写入者，否则 settings.json watcher
+          // 去抖 reload 读到陈旧死 id 文件 → diff 反向把内存改回死 id → 清扫静默失效（CDP 实测幽灵残留）
+          await setConfigurationValue("app.theme", initTheme, scope);
+        } catch (e) {
+          console.error("[startup] app.theme 迁移/清扫落盘失败:", e);
+        }
+      }
+      // E5.8#82：删 themeColorMode 一次性迁移——旧 settings.json 归一：
+      //   custom     → 保留 app.themeColor 用户值（语义升级为配色域来源，值直接继承）；
+      //   followTheme → 删 app.themeColor 用户值回主题基线（不保留失效配色选择）；
+      //   随后删废弃 key 本身（引擎已不再读 app.themeColorMode）。
+      try {
+        const tcm = inspectConfiguration<string>("app.themeColorMode");
+        if (tcm.userValue !== undefined) {
+          if (tcm.userValue === "followTheme") {
+            await resetConfigurationValue("app.themeColor", "user");
+          }
+          await resetConfigurationValue("app.themeColorMode", "user");
+        }
+      } catch (e) {
+        console.error("[startup] themeColorMode 迁移失败:", e);
+      }
+      // E5.8#85 补课：跑待执行 schema 迁移——旧 settings.json（圆角倍数）升级即迁绝对 px（视觉零变化）。
+      // 位置：post-init（initAll 后主题+旧覆盖已应用，getEffectiveTokens() = 旧视觉，冻结即忠实）。
+      // #82 themeColorMode 是迁移机制落位前的历史一次性先例；此后语义切换一律 registerConfigMigration 登记
+      // （迁移登记在 appearanceApplier 模块级——import 时已注册，先于本 post-init 执行）。
+      // E5.8#90：post-migration 重应用——迁移可能改写外观模式（旧 mixMode=mix → appearanceMode=custom），
+      // 但迁移的 setConfigurationValueBatch 末 key 是版本标志（无 onApply）→ 外观模式写静默。模式变更者
+      // 首次启动立即应用（播种覆盖 + 强调色）——否则要等用户下一次手动切模式才生效（一程视觉回归）。
+      // 安全：setTheme 在 App.tsx 只是 React state 同步（非重应用）；本 applyConfiguration 走完整 applier。
+      const modeBefore = getConfigurationValue<string>("app.appearanceMode") ?? "followTheme";
+      try {
+        await runPendingConfigMigrations();
+        const modeAfter = getConfigurationValue<string>("app.appearanceMode") ?? "followTheme";
+        if (modeBefore !== modeAfter) {
+          await applyConfiguration("app.appearanceMode", modeAfter);
+        }
+      } catch (e) {
+        console.error("[startup] schema 迁移失败:", e);
+      }
+
       const initLang = getConfigurationValue<string>("app.language") ?? "zh";
       setTheme(initTheme);
       setLang(initLang as "zh" | "en");

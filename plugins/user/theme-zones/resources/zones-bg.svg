@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900">
+  <!-- E5.8#50.29 影像分区演示图（⑭）——连续图挂 5 zone 表面做切片，相邻 zone 负偏移拼回。
+       黄昏湖畔：天空渐变 + 落日 + 双层山脊 + 湖面波光，水平特征清晰便于目检切片连续性。 -->
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2E1E3B"/>
+      <stop offset="0.4" stop-color="#8A4B5B"/>
+      <stop offset="0.62" stop-color="#D98A5F"/>
+      <stop offset="1" stop-color="#F2C98A"/>
+    </linearGradient>
+    <linearGradient id="water" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#C97B54"/>
+      <stop offset="1" stop-color="#4A2C3E"/>
+    </linearGradient>
+    <radialGradient id="sunGlow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#FFF4D6"/>
+      <stop offset="0.55" stop-color="#FFD98A" stop-opacity="0.75"/>
+      <stop offset="1" stop-color="#FFD98A" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <rect width="1600" height="900" fill="url(#sky)"/>
+
+  <!-- 落日辉光 + 日盘 -->
+  <circle cx="1180" cy="330" r="160" fill="url(#sunGlow)"/>
+  <circle cx="1180" cy="330" r="52" fill="#FFE9B8" opacity="0.92"/>
+
+  <!-- 远山脊 -->
+  <path d="M0 620 L220 460 L420 600 L640 470 L860 610 L1080 470 L1300 610 L1500 490 L1600 560 L1600 900 L0 900 Z" fill="#6B3A52" opacity="0.55"/>
+  <!-- 近山脊 -->
+  <path d="M0 690 L180 560 L380 680 L560 560 L760 690 L940 560 L1160 690 L1380 570 L1600 690 L1600 900 L0 900 Z" fill="#3D2438" opacity="0.82"/>
+
+  <!-- 湖面 + 波光 -->
+  <rect y="700" width="1600" height="200" fill="url(#water)"/>
+  <path d="M0 720 Q 200 710 400 722 T 800 722 T 1200 722 T 1600 720" stroke="#F2C98A" stroke-width="2" fill="none" opacity="0.25"/>
+  <path d="M0 760 Q 200 752 400 762 T 800 762 T 1200 762 T 1600 760" stroke="#F2C98A" stroke-width="1.5" fill="none" opacity="0.18"/>
+  <path d="M0 800 Q 200 794 400 802 T 800 802 T 1200 802 T 1600 800" stroke="#F2C98A" stroke-width="1" fill="none" opacity="0.12"/>
+
+  <!-- 星点 -->
+  <g fill="#F5EFE0">
+    <circle cx="140" cy="120" r="1.6" opacity="0.7"/>
+    <circle cx="420" cy="80" r="1.2" opacity="0.5"/>
+    <circle cx="760" cy="140" r="1.4" opacity="0.6"/>
+    <circle cx="980" cy="70" r="1.1" opacity="0.45"/>
+    <circle cx="1480" cy="110" r="1.5" opacity="0.65"/>
+    <circle cx="60" cy="260" r="1.1" opacity="0.4"/>
+    <circle cx="620" cy="200" r="1.0" opacity="0.35"/>
+  </g>
+</svg>

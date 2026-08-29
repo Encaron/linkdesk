@@ -15,17 +15,17 @@
   align-items: center;
   gap: 4px;
   padding: 3px 6px;
-  background: var(--bg-input, var(--bg-panel));
-  color: var(--fg-input, var(--fg-default));
-  border: 1px solid var(--border-input, var(--border-default));
-  border-radius: 2px;
-  font-size: 13px;
-  line-height: 20px;
+  background: var(--bg-input); /* E5.8#128.7：幽灵链归一真实 token */
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xs);
+  font-size: var(--font-size-md); /* E5.8 Phase 12 #170：field 13→md */
+  line-height: 1.6; /* E5.8 Phase 12 #170：line-height 20px → unitless */
   cursor: text;
 }
 
 .combobox-field:hover:not(.selectbox-disabled) {
-  border-color: var(--border-input-focus, var(--accent));
+  border-color: var(--accent);
 }
 
 .combobox.selectbox-open .combobox-field {
@@ -41,11 +41,11 @@
   outline: none;
   color: inherit;
   font: inherit;
-  line-height: 20px;
+  line-height: 1.6; /* E5.8 Phase 12 #170：line-height 20px → unitless */
 }
 
 .combobox-input::placeholder {
-  color: var(--fg-muted);
+  color: var(--text-muted); /* E5.8#128.7：幽灵 --fg-muted → --text-muted */
 }
 
 .combobox-input:disabled {

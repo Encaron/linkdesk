@@ -17,8 +17,10 @@ import ReactDOM from "react-dom/client";
 import PoolZoneShell from "./PoolZoneShell";
 import type { PoolLayout } from "../core/types/pool/poolLayout";
 // E5.6#11 fix：池独立 WebContentsView——需加载基础 CSS（变量/字体/图标/间距）
-import "../index.css";
 import "@vscode/codicons/dist/codicon.css";
+// E5.8 Phase 12 #183：codicon.css 须在 index.css 之前——index.css 末尾覆盖基类 font-size 走
+// var(--font-size-lg)（内容图标随字缩放，1.0=16px 零变化），后加载者赢同特异性 tie。
+import "../index.css";
 // E5.6#10f：池独立 WebContentsView 需初始化 i18n——模块级 init() + 订阅 lang:changed 广播
 import "../i18n";
 
@@ -42,7 +44,8 @@ function PoolApp() {
 
     const unsub = poolApi.onLayout((next: PoolLayout) => {
       // 闪烁修复：visible 且有 views 时更新 lastVisibleLayout
-      if (next.sidebar.visible && next.sidebar.views?.length > 0) {
+      // E5.8#43-2：sidebar 缺省（脱出窗子集）→ 不更新（无侧栏可保）
+      if (next.sidebar?.visible && (next.sidebar.views?.length ?? 0) > 0) {
         lastVisibleLayout.current = next;
       }
       // Transition——React 后台渲染新布局，前台保持旧内容。
@@ -62,9 +65,12 @@ function PoolApp() {
 
   // E5.6#11-fix6：侧栏防闪烁——当前 push 的 sidebar 不可见/空时，用上次可见的 sidebar 顶替。
   // 其余 zone 一律用当前布局。E5.7#2 之前此逻辑分发给 SidebarRenderer，现合并进唯一布局。
-  const effectiveSidebar = layout.sidebar.visible && layout.sidebar.views?.length > 0
-    ? layout.sidebar
-    : lastVisibleLayout.current?.sidebar ?? layout.sidebar;
+  // E5.8#43-2：sidebar 缺省（脱出窗子集）→ effectiveSidebar 恒 undefined（PoolZoneShell 不渲染侧栏 cell）
+  const effectiveSidebar = layout.sidebar
+    ? (layout.sidebar.visible && (layout.sidebar.views?.length ?? 0) > 0
+      ? layout.sidebar
+      : lastVisibleLayout.current?.sidebar ?? layout.sidebar)
+    : undefined;
 
   // E5.7#2：唯一根组件——无 zone 路由
   return <PoolZoneShell layout={{ ...layout, sidebar: effectiveSidebar }} />;

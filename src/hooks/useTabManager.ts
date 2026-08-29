@@ -12,18 +12,17 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import i18n from "../i18n";
 import { showConfirm } from "../core/services/ui/DialogService";
 import { shellEvents } from "../core/react/events/ShellEvents";
-import { normalizePath } from "../core/utils/path/pathUtils";
 import type { CreateTabOptions } from "../core/api/types";
 import { getTabBehavior } from "../pluginLoader/viewRegistry";
 import { CoreEvents } from "../core/react/events/CoreEvents";
 
 import { findGroup } from "./useTabManager/types";
-import type { TabState, LayoutData, CloseTabResult } from "./useTabManager/types";
+import type { TabState, LayoutData, CloseTabResult, Tab } from "./useTabManager/types";
 export { allTabs, findGroup } from "./useTabManager/types";
 export type { TabType, Tab, TabGroup, TabState, LayoutData, CreateTabResult, CloseTabResult } from "./useTabManager/types";
 
-import { createInitialTabState } from "./useTabManager/defaults";
-export { createTabDefaults, createInitialTabState, resetPluginCounter, syncCountersAfterRestore, resetFallbackCounter } from "./useTabManager/defaults";
+import { createInitialTabState, ensureFallback } from "./useTabManager/defaults";
+export { createTabDefaults, createInitialTabState, createGroup, resetPluginCounter, syncCountersAfterRestore, resetFallbackCounter } from "./useTabManager/defaults";
 
 import {
   reduceCreateTab,
@@ -31,12 +30,22 @@ import {
   reduceFocusTab,
   reduceFocusGroup,
   reduceCloseTab,
+  reduceCloseBySourceId,
   reduceForceCloseTab,
   reduceDuplicateTab,
   reduceSetDirty,
   reduceUpdateTabLabel,
+  reduceUpdateTabLabelBySourceId,
+  findTabBySourceId,
+  isTabDirty,
   reduceReorderTab,
   reducePinTab,
+  reduceRemoveTab,
+  reduceInsertTab,
+  reduceResourceRenamed,
+  reduceResourceDeleted,
+  reduceRemoveTabsByPlugin,
+  reduceRemoveTabsUnderFolder,
 } from "./useTabManager/reducers-tab";
 export {
   reduceCreateTab,
@@ -48,8 +57,18 @@ export {
   reduceDuplicateTab,
   reduceSetDirty,
   reduceUpdateTabLabel,
+  reduceUpdateTabLabelBySourceId,
+  findTabBySourceId,
+  isTabDirty,
   reduceReorderTab,
   reducePinTab,
+  reduceRemoveTab,
+  reduceInsertTab,
+  reduceResourceRenamed,
+  reduceResourceDeleted,
+  reduceCloseBySourceId,
+  reduceRemoveTabsByPlugin,
+  reduceRemoveTabsUnderFolder,
 } from "./useTabManager/reducers-tab";
 
 import {
@@ -71,10 +90,20 @@ export {
 
 /* ── Hook ── */
 
-/** E4V#32：标签页激活事件双发（CoreEvents + 插件 IPC）——聚焦/激活共用一处（归一性，E5.8#30.15 消重）。 */
-function emitTabActivated(tabId: string, pluginId: string | undefined, filePath: string | undefined): void {
+/** E4V#32：标签页激活事件双发（CoreEvents + 插件 IPC）——聚焦/激活共用一处（归一性，E5.8#30.15 消重）。
+ *  E5.8#46.9：export——脱出窗聚焦补发（tabCallbacks.applyDetachedTabAction）复用同一发射点，防 v2.6 分叉。 */
+export function emitTabActivated(tabId: string, pluginId: string | undefined, filePath: string | undefined): void {
   CoreEvents.onDidChangeActiveTab.fire({ tabId, pluginId, filePath });
   try { window.linkdesk?.events?.emit("tab:activated", { tabId, pluginId, filePath }); } catch { /* 静默 */ }
+}
+
+/** E5.8#46.12 Step3：dirty tab 关闭确认——主窗 closeTab + 脱出窗 close 路径共用，一处定义（防 v2.6 判定分叉）。
+ *  非脏 → true（直接过）；脏 → 弹确认框。label ● 前缀剥掉再展示（黑点不污染文案）。 */
+export async function confirmDirtyTabClose(tab: Tab | undefined): Promise<boolean> {
+  if (!isTabDirty(tab)) return true;
+  const raw = tab?.label ?? "";
+  const displayLabel = raw.startsWith("● ") ? raw.slice(2) : raw;
+  return showConfirm(i18n.t("「{{label}}」有未保存的修改，确定关闭？", { label: i18n.t(displayLabel) }));
 }
 
 export function useTabManager() {
@@ -178,13 +207,10 @@ export function useTabManager() {
   const focusTabBySourceId = useCallback((sourceId: string) => {
     // 🔥 E5.7 Bug A 修复：focusedId 守卫 + 事件数据同 createTab——不能从 updater 里读。
     // 预计算只做"提交态里找到 tab 与否"——聚焦不改 tab 字段，事件数据即找到的 tab 本身。
-    const tab = tabStateRef.current.groups.flatMap((g) => g.tabs).find(
-      (t) => t.sourceId === sourceId || t.id === sourceId,
-    );
+    // E5.8#46.12：查找统一走 findTabBySourceId（sourceId 族一处定义，归一化）
+    const tab = findTabBySourceId(tabStateRef.current, sourceId);
     setTabState((prev) => {
-      const found = prev.groups.flatMap((g) => g.tabs).find(
-        (t) => t.sourceId === sourceId || t.id === sourceId,
-      );
+      const found = findTabBySourceId(prev, sourceId);
       if (!found) return prev;
       const next = reduceFocusTab(prev, found.id);
       const group = findGroup(next, found.id);
@@ -201,27 +227,17 @@ export function useTabManager() {
 
   /** 按 sourceId 找标签页并关闭——和 focusTabBySourceId 对称的通用 API。
    *  插件删自己的数据模型时用此 API 关闭对应标签页。
-   *  不依赖 tab.id === session.id 的假设——只用 sourceId 链接。 */
+   *  不依赖 tab.id === session.id 的假设——只用 sourceId 链接（或 id 直接匹配）。
+   *  E5.8#46.2：纯 reducer 化——reduceCloseBySourceId（sourceId/id 全匹配移除）+ ensureFallback（main 恒非空）。
+   *  remove 语义：不弹 dirty 确认（资源身份消失）；dirty tab 静默跳过（#46.12 决策）。 */
   const closeTabBySourceId = useCallback(
     (sourceId: string): CloseTabResult => {
       // 🔥 E5.7 Bug A 修复：返回值同 createTab——不能从 updater 里读。
+      // E5.8#46.2：closed = eager 有移除发生（调用方当 void 消费返回值）
       const prev = tabStateRef.current;
-      const tab = prev.groups.flatMap((g) => g.tabs).find(
-        (t) => t.sourceId === sourceId || t.id === sourceId,
-      );
-      const eager = tab ? reduceCloseTab(prev, tab.id) : null;
-      setTabState((prev2) => {
-        const found = prev2.groups.flatMap((g) => g.tabs).find(
-          (t) => t.sourceId === sourceId || t.id === sourceId,
-        );
-        if (!found) return prev2;
-        const r = reduceCloseTab(prev2, found.id);
-        return r.state ?? prev2;
-      });
-      if (tab && eager) {
-        return { closed: eager.closed, tabId: tab.id, reason: eager.reason, newActiveTabId: eager.newActiveTabId };
-      }
-      return { closed: false, tabId: sourceId };
+      const closed = reduceCloseBySourceId(prev, sourceId) !== prev;
+      setTabState((p) => ensureFallback(reduceCloseBySourceId(p, sourceId)));
+      return { closed, tabId: sourceId };
     },
     []
   );
@@ -242,13 +258,9 @@ export function useTabManager() {
     async (tabId: string): Promise<CloseTabResult> => {
       const tab = tabStateRef.current.groups.flatMap((g) => g.tabs).find((t) => t.id === tabId);
       // E5#52：dirty 可能在 tab.dirty 字段，也可能在 label 的 ● 前缀（EditorTab 只改 label 不改 dirty）
-      const isDirty = tab?.dirty || (tab?.label?.startsWith("● ") ?? false);
-      if (isDirty) {
-        const displayLabel = tab!.label.startsWith("● ") ? tab!.label.slice(2) : tab!.label;
-        const confirmed = await showConfirm(
-          i18n.t("「{{label}}」有未保存的修改，确定关闭？", { label: i18n.t(displayLabel) })
-        );
-        if (!confirmed) return { closed: false, tabId, reason: "dirty" };
+      // E5.8#46.12 Step3：判定/确认下沉共享 helper（isTabDirty + confirmDirtyTabClose）——脱出窗 close 路径同语义复用，一处定义
+      if (isTabDirty(tab)) {
+        if (!(await confirmDirtyTabClose(tab))) return { closed: false, tabId, reason: "dirty" };
         // 确认弹窗 await 之后重新读提交态（期间状态可能已变）
         return commitForceClose(tabId);
       }
@@ -273,13 +285,9 @@ export function useTabManager() {
     []
   );
 
-  const forceCloseTab = useCallback(
-    (tabId: string): CloseTabResult => commitForceClose(tabId),
-    []
-  );
-
-  const moveTab = useCallback((tabId: string, targetGroupId: string) => {
-    setTabState((prev) => reduceMoveTab(prev, tabId, targetGroupId));
+  // E5.8#51：insertIndex = 跨组拖拽落点缝（竖杠缝）——透传 reduceMoveTab 中插，缺省 append
+  const moveTab = useCallback((tabId: string, targetGroupId: string, insertIndex?: number) => {
+    setTabState((prev) => reduceMoveTab(prev, tabId, targetGroupId, insertIndex));
   }, []);
 
   const splitTab = useCallback(
@@ -333,15 +341,31 @@ export function useTabManager() {
     setTabState((prev) => reduceUpdateTabLabel(prev, tabId, label));
   }, []);
 
-  /** 按 sourceId 更新标签页标题——A2+N1：侧栏改会话名 → 标签栏标题同步。 */
+  /** 按 sourceId 更新标签页标题——A2+N1：侧栏改会话名 → 标签栏标题同步。E5.8#46.12：纯 reducer 化（脱出窗路由复用） */
   const updateTabLabelBySourceId = useCallback((sourceId: string, label: string) => {
-    setTabState((prev) => {
-      const tab = prev.groups.flatMap((g) => g.tabs).find(
-        (t) => t.sourceId === sourceId || t.id === sourceId,
-      );
-      if (!tab) return prev;
-      return reduceUpdateTabLabel(prev, tab.id, label);
-    });
+    setTabState((prev) => reduceUpdateTabLabelBySourceId(prev, sourceId, label));
+  }, []);
+
+  // ── E5.8#46.2 资源事件族——主窗资源联动（windowHost 广播 effect 经 mainResourceActions 消费）──
+
+  /** 资源身份迁移（file:renamed）——sourceId/filePath/label 迁移；label 从事件负载来（壳不派生资源语义） */
+  const renameResourceBySourceId = useCallback((oldSourceId: string, newSourceId: string, label?: string) => {
+    setTabState((prev) => reduceResourceRenamed(prev, oldSourceId, newSourceId, label));
+  }, []);
+
+  /** 资源已删除（file:deleted）——remove 其全部标签 + ensureFallback（main 恒非空） */
+  const deleteResourceBySourceId = useCallback((sourceId: string) => {
+    setTabState((prev) => ensureFallback(reduceResourceDeleted(prev, sourceId)));
+  }, []);
+
+  /** 插件卸载 → remove 其全部标签 + ensureFallback */
+  const removeTabsByPlugin = useCallback((pluginId: string) => {
+    setTabState((prev) => ensureFallback(reduceRemoveTabsByPlugin(prev, pluginId)));
+  }, []);
+
+  /** workspace 文件夹移除 → remove 其下全部标签 + ensureFallback */
+  const removeTabsUnderFolder = useCallback((folderUri: string) => {
+    setTabState((prev) => ensureFallback(reduceRemoveTabsUnderFolder(prev, folderUri)));
   }, []);
 
   const reorderTab = useCallback((tabId: string, toIndex: number) => {
@@ -351,6 +375,26 @@ export function useTabManager() {
   /** 对标 VS Code：双击标签页 → 固定/取消固定 */
   const pinTab = useCallback((tabId: string) => {
     setTabState((prev) => reducePinTab(prev, tabId));
+  }, []);
+
+  /**
+   * E5.8#44：摘除标签页（不关不查 dirty）——跨窗口搬家源侧用（detach/merge 源窗）。
+   * 🔥 E5.7 Bug A：removedTab 返回值用 tabStateRef eager 预计算（updater 内只应用，不读返回值）。
+   * main 专用（detached 源走 windowRelocation reduceRemoveTab + updateTabState 路径）——
+   * main 摘到空 = 组空 → ensureFallback 补欢迎页（main 恒非空，welcome 兜底）。
+   */
+  const removeTab = useCallback((tabId: string): Tab | null => {
+    const eager = reduceRemoveTab(tabStateRef.current, tabId);
+    setTabState((prev) => ensureFallback(reduceRemoveTab(prev, tabId).state));
+    return eager.removedTab;
+  }, []);
+
+  /**
+   * E5.8#44：插入标签页对象——跨窗口搬家目标侧用（源窗摘出的原对象 insert，id 保持）。
+   * targetGroupId 缺省 = activeGroupId；E5.8#46.10：index = 插入缝隙（竖线落点，缺省组尾追加）。
+   */
+  const insertTab = useCallback((tab: Tab, targetGroupId?: string, index?: number) => {
+    setTabState((prev) => reduceInsertTab(prev, tab, targetGroupId, index));
   }, []);
 
   /**
@@ -385,51 +429,9 @@ export function useTabManager() {
     };
   }, []);
 
-  // ── E5#54b：标签页生命周期——集中订阅外部事件，TabManager 唯一权威 ──
-  useEffect(() => {
-    const u1 = shellEvents.on("file:deleted", ({ filePath }) => {
-      const tabs = tabStateRef.current.groups.flatMap((g) => g.tabs);
-      for (const t of tabs) {
-        if (t.sourceId === filePath || t.filePath === filePath) {
-          forceCloseTab(t.id);
-        }
-      }
-    });
-    const u2 = shellEvents.on("file:renamed", ({ oldPath, newPath }) => {
-      setTabState((prev) => {
-        const newGroups = prev.groups.map((g) => ({
-          ...g,
-          tabs: g.tabs.map((t) => {
-            if (t.sourceId === oldPath || t.filePath === oldPath) {
-              const newLabel = normalizePath(newPath).split("/").pop() || newPath;
-              return { ...t, label: newLabel, filePath: newPath, sourceId: newPath };
-            }
-            return t;
-          }),
-        }));
-        return { ...prev, groups: newGroups };
-      });
-    });
-    const u3 = shellEvents.on("plugin:removed", ({ pluginId }) => {
-      const tabs = tabStateRef.current.groups.flatMap((g) => g.tabs);
-      for (const t of tabs) {
-        if (t.pluginId === pluginId || t.type === pluginId) {
-          forceCloseTab(t.id);
-        }
-      }
-    });
-    const u4 = shellEvents.on("workspace:folderRemoved", ({ folderUri }) => {
-      const normalized = normalizePath(folderUri);
-      const tabs = tabStateRef.current.groups.flatMap((g) => g.tabs);
-      for (const t of tabs) {
-        const fp = t.filePath ?? t.sourceId ?? "";
-        if (normalizePath(fp).startsWith(normalized)) {
-          forceCloseTab(t.id);
-        }
-      }
-    });
-    return () => { u1(); u2(); u3(); u4(); };
-  }, [forceCloseTab]);
+  // E5.8#46.2：资源事件订阅已上移 windowHost（壳侧唯一订阅点）——主窗分支经 mainResourceActions 调本 hook 方法，
+  // 脱出窗分支 mapResourceAcrossWindows 广播。旧 u1-u4 订阅（file/plugin/folder forceCloseTab + 内联 rename）已删——
+  // 一窗一订阅（只响应本窗事件）正是 #46.2 要消灭的病；windowHost 广播 = 全窗事实来源。
 
   return {
     tabState,
@@ -442,7 +444,6 @@ export function useTabManager() {
     focusTabBySourceId,
     closeTabBySourceId,
     closeTab,
-    forceCloseTab,
 
     // ── 布局（分屏/合屏/拖拽/分割调整）──
     splitTab,
@@ -454,10 +455,20 @@ export function useTabManager() {
     reorderTab,
     pinTab,
 
+    // ── 跨窗口搬迁（#44——detach/merge 源侧摘除 + 目标侧插入）──
+    removeTab,
+    insertTab,
+
     // ── 状态（标记/标签）──
     setDirty,
     updateTabLabel,
     updateTabLabelBySourceId,
+
+    // ── 资源事件族（E5.8#46.2——windowHost 广播 effect 主窗分支消费）──
+    renameResourceBySourceId,
+    deleteResourceBySourceId,
+    removeTabsByPlugin,
+    removeTabsUnderFolder,
 
     // ── 持久化（恢复/导出）──
     restoreLayout,

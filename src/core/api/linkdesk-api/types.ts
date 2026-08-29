@@ -8,6 +8,8 @@
  */
 
 import type { PluginManifest } from "../types";
+import type { ThemeSurface, ThemeBackground } from "../../services/ui/ThemeEngine";
+import type { ThemeDomain } from "../../types/theme";
 
 export interface LinkDeskCommand {
   id: string;
@@ -18,6 +20,10 @@ export interface LinkDeskCommand {
 export interface LinkDeskTheme {
   name: string;
   type: "dark" | "light";
+  /** E5.8#50.6：玻璃/悬浮质感——主题 JSON `surface`（缺省 = 无玻璃无悬浮） */
+  surface?: ThemeSurface;
+  /** E5.8#50.6：图片背景——主题 JSON `background`（缺省 = 无图） */
+  background?: ThemeBackground;
   pluginId?: string;
 }
 
@@ -25,6 +31,27 @@ export interface LinkDeskLanguage {
   id: string;
   label: string;
   pluginId: string;
+}
+
+/** E5.8#50.18：配色变体元数据——theme.listRecipes() 返回（colorways[] 元素，06 §2）。
+ *  预览色供 ThemePicker 卡片取色；单配色配方 = 1 项。 */
+export interface ColorwayMeta {
+  /** 配色变体 id——全局唯一（theme.setColorway 入参；app.themeColor 动态 enum 存此） */
+  id: string;
+  /** 配色显示名 */
+  name: string;
+  /** 预览色——强调色 + 窗口背景（卡片徽标取色用；缺省配色无该 token → 空串） */
+  preview: { accent: string; bgWindow: string };
+}
+
+/** E5.8#50.18：配方元数据——theme.listRecipes() 返回（全部可用配方 + 配色变体 + 预览色，06 §2）。
+ *  domains = 该配方贡献哪些域（混搭来源过滤依据，10 §2）；type = 明暗类别。 */
+export interface RecipeMeta {
+  id: string;
+  name: string;
+  type: "light" | "dark";
+  colorways: ColorwayMeta[];
+  domains: ThemeDomain[];
 }
 
 /** 配置 schema 中的单个属性定义——E5.8#41.14 🛤 补全 uiHint/minimum/maximum/renderHint/dependsOn
@@ -43,8 +70,24 @@ export interface LinkDeskConfigProperty {
   maximum?: number;
   /** 渲染提示——renderControl 第二判据（"action" 渲染操作按钮 / "color" 渲染色块预览） */
   renderHint?: string;
+  /** 等宽限定——仅 uiHint "fontFamily" 有意义。true/缺省 = 只列等宽族（编辑器字体）；false = 全字族（UI 字体）。E5.8#50.20 */
+  monoOnly?: boolean;
   /** 依赖条件——本项仅在 dependsOn.key 配置值 === value 时显示（SettingRow 读它显隐整行） */
   dependsOn?: { key: string; value: unknown };
+  /** 动态下拉数据源——uiHint "select" 时读取（渲染时调 theme.listRecipes() 动态取，E5.8#50.23）。
+   *  "theme.colorways" = 活动配方（app.theme）配色变体（选项带预览色块）；
+   *  "theme.sources" = 混搭来源（按 optionsFromDomain 过滤 RecipeMeta.domains）。 */
+  optionsFrom?: string;
+  /** 混搭来源域过滤——optionsFrom "theme.sources" 时按此域过滤 RecipeMeta.domains（10 §2 六域） */
+  optionsFromDomain?: ThemeDomain;
+  /** E5.8#50.26：renderHint "action" 按钮动作——点击执行此壳命令（第三方设置 UI 经 commands.executeCommand 触发） */
+  actionCommand?: string;
+  /** E5.8#50.26：renderHint "action" 按钮禁用条件——全部 {key,value} 匹配当前配置值时禁用 */
+  actionDisabledAll?: Array<{ key: string; value: unknown }>;
+  /** E5.8#78：组内二级标题——SettingsView 把同 group 的 key 归到子标题下渲染；无 group 保持平铺（零侵入） */
+  group?: string;
+  /** E5.8#77：数值单位——uiHint "slider" 值标签单位（"×" / "px"；空 = 裸数值） */
+  unit?: string;
 }
 
 /** 配置 schema——key → 属性定义（index signature 保持现有消费方） */

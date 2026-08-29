@@ -22,8 +22,10 @@
  */
 
 import { useState, useRef, useEffect, useMemo, useCallback, type KeyboardEvent as ReactKeyboardEvent } from "react";
+import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { Z_INDEX } from "../../../constants";
+import { getScrimTarget } from "../../../components/shared/overlay-portal/OverlayPortal"; // E5.8#107 浮层权威：遮罩归 scrim-plane
 import type { PoolQuickPickData, PoolQuickPickItem, PluginQuickPickItem, PluginQuickPickRequest } from "../../../core/types/pool/poolQuickPick";
 import "./QuickPickHost.css";
 
@@ -310,12 +312,16 @@ export default function QuickPickHost() {
 
   return (
     <>
-      {/* Backdrop——zIndex quickPick-1，点击关闭 */}
-      <div
-        className={`quick-pick-backdrop${show && !closing ? " show" : ""}${closing ? " closing" : ""}`}
-        style={{ zIndex: Z_INDEX.quickPick - 1 }}
-        onClick={() => closeCurrent()}
-      />
+      {/* Backdrop——E5.8#107 浮层权威：归 #ld-scrim-plane（遮罩平面，无磨砂）——满屏遮罩与 surface
+          分离后结构隔离地板 :not(#ld-scrim-plane) 天然不碰它。zIndex quickPick-1，点击关闭。 */}
+      {createPortal(
+        <div
+          className={`quick-pick-backdrop${show && !closing ? " show" : ""}${closing ? " closing" : ""}`}
+          style={{ zIndex: Z_INDEX.quickPick - 1 }}
+          onClick={() => closeCurrent()}
+        />,
+        getScrimTarget()
+      )}
       {/* Panel——设计 §5.1：top 15vh 居中，400px 宽，max 60vh 高 */}
       <div
         className={`quick-pick-panel${show && !closing ? " show" : ""}${closing ? " closing" : ""}`}

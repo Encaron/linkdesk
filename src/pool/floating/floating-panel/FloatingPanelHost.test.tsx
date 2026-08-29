@@ -203,9 +203,10 @@ describe("动作回传壳（非 toggle）", () => {
 
 describe("遮罩 / Esc 关闭（I8-8）", () => {
   it("遮罩点击 → action('close')", () => {
-    const { container } = render(<FloatingPanelHost />);
+    render(<FloatingPanelHost />);
     pushShell(sampleData());
-    const backdrop = container.querySelector(".floating-panel-backdrop") as HTMLElement;
+    // E5.8#107 浮层权威：遮罩 portal 出 container（createPortal → scrim-plane/body 兜底）——查 document 而非 container
+    const backdrop = document.querySelector(".floating-panel-backdrop") as HTMLElement;
     fireEvent.click(backdrop);
     expect(mockAction).toHaveBeenCalledWith("close");
   });
@@ -269,13 +270,14 @@ describe("I8-5 拖拽（整条标题栏 + 壳内钳制）", () => {
 
 describe("I8-6 拖拽/调整后遮罩点击抑制", () => {
   it("松手同拍内 backdrop 点击被忽略（suppress 标志延迟一拍）", () => {
-    const { container, panel } = setupPanel();
+    const { panel } = setupPanel();
     const title = panel.querySelector(".floating-panel-title") as HTMLElement;
     startGesture(title, { x: 200, y: 100 });
     moveGesture(title, { x: 220, y: 120 });
     endGesture(title);
 
-    const backdrop = container.querySelector(".floating-panel-backdrop") as HTMLElement;
+    // E5.8#107 浮层权威：遮罩 portal 出 container（createPortal → scrim-plane/body 兜底）——查 document 而非 container
+    const backdrop = document.querySelector(".floating-panel-backdrop") as HTMLElement;
     fireEvent.click(backdrop);
     expect(mockAction).not.toHaveBeenCalled();
   });

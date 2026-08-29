@@ -5,10 +5,16 @@
  * 🔥 v2 扩展点：customMappings 注入——图标主题插件替换全部映射。
  * 🔥 R19：响应 IconRegistry——主题切换时自动重建。
  *
+ * E5.8#133.3：双形态对齐——插件侧 IconMappings 删除，映射形状 = core IconThemeMappings
+ * （@linkdesk/contracts 类型 import，零 @src/core 运行时耦合）；resolve 统一出渲染描述符：
+ *   { kind: "class" } → `<span className={`codicon ${class}`} />`（含可选每图标 color）
+ *   { kind: "image" } → `<img src={linkdesk:// 绝对 URL} />`（壳已解析，消费方零解析负担）
+ *
  * 对标 VS Code seti 图标主题 + getIconClasses()。
  */
 
 import type { ExplorerItem } from "./FileTreeModel";
+import type { IconThemeMappings, IconThemeMapping } from "@linkdesk/contracts";
 import {
   FILE_ICON_MAP,
   EXT_ICON_MAP,
@@ -19,40 +25,75 @@ import {
   DEFAULT_ROOT_ICON,
 } from "../utils/icon-mappings";
 
-export interface IconMappings {
-  files?: Record<string, string>;
-  extensions?: Record<string, string>;
-  folders?: Record<string, string>;
+/** 解析结果渲染描述符——双形态（E5.8#133 ④ 拍板：class → span / imagePath → img） */
+export type IconDescriptor =
+  | { kind: "class"; className: string; color?: string }
+  | { kind: "image"; url: string };
+
+/** 保底 codicon 类名 → 类描述符（统一出口，禁止各调用方手拼） */
+const cls = (className: string): IconDescriptor => ({ kind: "class", className });
+
+/** 硬编码 codicon 字符串表 → IconThemeMappings 形状（`"codicon-file"` ≡ `{ class: "codicon-file" }`） */
+function toMapping(map: Record<string, string>): Record<string, IconThemeMapping> {
+  const out: Record<string, IconThemeMapping> = {};
+  for (const [k, v] of Object.entries(map)) out[k] = { class: v };
+  return out;
 }
 
 export class FileIconResolver {
-  private _fileMap: Record<string, string>;
-  private _extMap: Record<string, string>;
-  private _folderMap: Record<string, string>;
+  private _fileMap: Record<string, IconThemeMapping>;
+  private _extMap: Record<string, IconThemeMapping>;
+  private _folderMap: Record<string, IconThemeMapping>;
+  private _folderOpenMap: Record<string, IconThemeMapping>;
+  // E5.8#133.6：主题顶层默认图标——未命中匹配表时用主题默认而非 codicon（缺省 = 壳 codicon 保底）
+  private _defaultFile?: IconThemeMapping;
+  private _defaultFolder?: IconThemeMapping;
+  private _defaultFolderOpen?: IconThemeMapping;
+  private _defaultRoot?: IconThemeMapping;
+  private _defaultRootOpen?: IconThemeMapping;
 
-  constructor(custom?: IconMappings) {
-    this._fileMap = { ...FILE_ICON_MAP, ...custom?.files };
-    this._extMap = { ...EXT_ICON_MAP, ...custom?.extensions };
-    this._folderMap = { ...FOLDER_ICON_MAP, ...custom?.folders };
+  constructor(custom?: IconThemeMappings) {
+    this._fileMap = { ...toMapping(FILE_ICON_MAP), ...custom?.files };
+    this._extMap = { ...toMapping(EXT_ICON_MAP), ...custom?.extensions };
+    this._folderMap = { ...toMapping(FOLDER_ICON_MAP), ...custom?.folders };
+    // foldersExpanded——图标主题可选；未指定则复用 folders（契约语义）
+    this._folderOpenMap = { ...toMapping(FOLDER_ICON_MAP), ...custom?.foldersExpanded };
+    this._defaultFile = custom?.file;
+    this._defaultFolder = custom?.folder;
+    this._defaultFolderOpen = custom?.folderExpanded;
+    this._defaultRoot = custom?.rootFolder;
+    this._defaultRootOpen = custom?.rootFolderExpanded;
   }
 
-  /** 获取文件/文件夹的 codicon CSS 类名 */
-  getIcon(item: ExplorerItem): string {
+  /** 解析映射条目 → 渲染描述符（glyph → class / image → 壳解析好的 linkdesk:// url） */
+  private resolve(mapping: IconThemeMapping | undefined, fallbackClass: string): IconDescriptor {
+    if (!mapping) return cls(fallbackClass);
+    if ("imagePath" in mapping) return { kind: "image", url: mapping.imagePath };
+    return { kind: "class", className: mapping.class, color: mapping.color };
+  }
+
+  /** 获取文件/文件夹的图标描述符 */
+  getIcon(item: ExplorerItem): IconDescriptor {
     if (item.isDirectory) return this.getFolderIcon(item);
-    return this._fileMap[item.name]
-      ?? this._extMap[this._getExt(item.name)]
-      ?? DEFAULT_FILE_ICON;
+    return this.resolve(
+      this._fileMap[item.name] ?? this._extMap[this._getExt(item.name)] ?? this._defaultFile,
+      DEFAULT_FILE_ICON,
+    );
   }
 
   /** 获取文件夹图标 */
-  getFolderIcon(item: ExplorerItem): string {
-    if (item.parent === null) return DEFAULT_ROOT_ICON;
-    return this._folderMap[item.name] ?? DEFAULT_FOLDER_ICON;
+  getFolderIcon(item: ExplorerItem): IconDescriptor {
+    if (item.parent === null) return this.resolve(this._defaultRoot, DEFAULT_ROOT_ICON);
+    return this.resolve(this._folderMap[item.name] ?? this._defaultFolder, DEFAULT_FOLDER_ICON);
   }
 
   /** 获取展开状态的文件夹图标 */
-  getFolderIconOpened(): string {
-    return DEFAULT_FOLDER_OPEN_ICON;
+  getFolderIconOpened(item: ExplorerItem): IconDescriptor {
+    if (item.parent === null) return this.resolve(this._defaultRootOpen ?? this._defaultRoot, DEFAULT_ROOT_ICON);
+    return this.resolve(
+      this._folderOpenMap[item.name] ?? this._folderMap[item.name] ?? this._defaultFolderOpen ?? this._defaultFolder,
+      DEFAULT_FOLDER_OPEN_ICON,
+    );
   }
 
   private _getExt(filename: string): string {
@@ -64,8 +105,8 @@ export class FileIconResolver {
 /** 全局默认实例 */
 let _resolver = new FileIconResolver();
 
-/** 更新图标解析器——图标主题切换时调用（E5 接线） */
-export function updateIconResolver(mappings?: IconMappings): void {
+/** 更新图标解析器——图标主题切换时调用（E5.8#133.3 订阅 iconTheme:changed 接线）；undefined → codicon 保底 */
+export function updateIconResolver(mappings?: IconThemeMappings): void {
   _resolver = new FileIconResolver(mappings);
 }
 

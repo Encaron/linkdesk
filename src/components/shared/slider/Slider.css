@@ -1,0 +1,40 @@
+/* Slider——E5.8#50.9 通用滑杆（mockup 帧 3 .slider 视觉）。
+   轨道 4px 圆角：填充段 --accent（到 --slider-pct），余段 --border。
+   thumb 12px 圆点：--text-primary（暗色白/亮色黑自适应）+ tiny 投影（mockup 0 1px 4px 近似）。
+   零硬编码——全走 token。 */
+
+.slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 130px;
+  height: 4px;
+  margin: 0;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(
+    to right,
+    var(--accent) var(--slider-pct, 0%),
+    var(--border) var(--slider-pct, 0%)
+  );
+  cursor: pointer;
+  outline-offset: 4px;
+}
+
+.slider:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--text-primary);
+  box-shadow: var(--shadow-tiny);
+  cursor: grab;
+}
+
+.slider::-webkit-slider-thumb:active {
+  cursor: grabbing;
+}

@@ -47,11 +47,13 @@ import {
   loadPluginComponent,
   fetchPluginDataFile,
   loadThemeContributionData,
+  loadIconThemeContributionData,
   loadLanguageContributionData,
   loadPluginI18nData,
   extractThemeColors,
   syncAppThemeEnum,
   syncAppLanguageEnum,
+  syncIconThemeEnum,
 } from "./contributions";
 
 /* ── 当前应用版本（从 package.json 读取） ── */
@@ -331,6 +333,9 @@ async function loadPlugin(
       }
     }
   }
+  if (manifest.contributes?.iconThemes) {
+    await loadIconThemeContributionData(pluginId, manifest);
+  }
   if (manifest.contributes?.languages) {
     await loadLanguageContributionData(pluginId, manifest);
   }
@@ -371,6 +376,7 @@ function applyPostLoadSteps(pluginId: string, manifest: PluginManifest, reason: 
   markLoadSuccess(pluginId);
   syncAppThemeEnum();
   syncAppLanguageEnum();
+  syncIconThemeEnum();
   PluginLifecycle.onDidInstall.fire({ pluginId, manifest, reason });
 }
 
@@ -391,6 +397,7 @@ async function activatePlugin(pluginId: string): Promise<boolean> {
     // 图标排序已正确。只需通知 UI 刷新（例如图标从灰变亮）
     syncAppThemeEnum();
     syncAppLanguageEnum();
+    syncIconThemeEnum();
     onPluginLifecycleChange.fire();
     console.log(`[pluginLoader] ⚡ 延迟激活 "${pluginId}"`);
     log.appendLine(`⚡ 延迟激活 "${pluginId}"`);

@@ -7,12 +7,14 @@ import React, { useState, useRef, useCallback, useEffect, useMemo, useImperative
 import FileTreeNode from "./FileTreeNode";
 import type { ExplorerItem } from "../services/FileTreeModel";
 import type { FileTreeModel } from "../services/FileTreeModel";
-import { TREE_ITEM_HEIGHT, OVERSCAN } from "../utils/layoutTokens";
+import { OVERSCAN, getScaledTreeItemHeight, setUiFontScale } from "../utils/layoutTokens";
 import { useFileTreeKeyboard } from "../services/FileTreeKeyboard";
 import type { FlatItem } from "../services/FileTreeKeyboard";
 import { useFileTreeDnD } from "../services/FileTreeDnD";
 
 import { fileTreeClipboard } from "../services/FileTreeClipboard";
+import { updateIconResolver } from "../services/FileIconResolver";
+import type { IconThemeMappings } from "@linkdesk/contracts";
 
 const lk = window.linkdesk;
 
@@ -23,6 +25,12 @@ const compactFoldersRef = { get current() { return _compactFolders; } };
 /** 从 lk.configuration 加载 compactFolders 并订阅变更 */
 async function loadCompactFolders(): Promise<void> {
   _compactFolders = await lk.configuration.get("explorer.compactFolders") ?? true;
+}
+
+/** E5.8 Phase 12 #172: 装载 app.uiFontScale 到 layoutTokens 缓存——行高运行时桥（F2），与 CSS calc(26px*var(--ui-scale)) 精确一致 */
+async function loadUiFontScale(): Promise<void> {
+  const v = await lk.configuration.get("app.uiFontScale");
+  setUiFontScale(typeof v === "number" && Number.isFinite(v) ? v : 100);
 }
 
 /* ── 类型 ── */
@@ -128,6 +136,16 @@ const FileTree = forwardRef<FileTreeHandle, FileTreeProps>(function FileTree(
   const rerender = useCallback(() => setVersion((v) => v + 1), []);
   /** E4V#35e: 活跃工作区——根节点 accent 色加粗 */
   const [activeWorkspaceUri, setActiveWorkspaceUri] = useState<string>("");
+  /** E5.8#133.3: 图标主题 id——仅作 FileTreeNode memo 重渲染触发器（图标现取 getIconResolver） */
+  const [iconThemeId, setIconThemeId] = useState("default");
+  // E5.8#133.3: 图标主题订阅——切换 → 重建 resolver + 刷新节点。启动时 preload 缓存回放
+  // （iconTheme:changed extraHandler + events.on 回放）→ 挂载即拿到重启前选择，非 default 图标集恢复。
+  useEffect(() => {
+    return lk.events.on("iconTheme:changed", (payload: { iconThemeId: string; mappings?: IconThemeMappings }) => {
+      updateIconResolver(payload.mappings);
+      setIconThemeId(payload.iconThemeId);
+    });
+  }, []);
   useEffect(() => { lk.workspace.getActive().then((v: string | undefined) => { if (v) setActiveWorkspaceUri(v); }); }, []);
   useEffect(() => {
     return lk.workspace.onDidChangeActiveWorkspace((uri: string | null) => { setActiveWorkspaceUri(uri ?? ""); rerender(); });
@@ -141,6 +159,16 @@ const FileTree = forwardRef<FileTreeHandle, FileTreeProps>(function FileTree(
       rerender();
     });
   }, [rerender]); // rerender 稳定（useCallback []）——零重跑，满足规则
+
+  // E5.8 Phase 12 #172: 行高运行时桥——app.uiFontScale 变化 → 缓存 + state 更新 → 虚拟滚动按新行高重算
+  const [itemHeight, setItemHeight] = useState(getScaledTreeItemHeight);
+  useEffect(() => {
+    loadUiFontScale().then(() => setItemHeight(getScaledTreeItemHeight()));
+    return lk.configuration.onChange("app.uiFontScale", (v: unknown) => {
+      setUiFontScale(typeof v === "number" && Number.isFinite(v) ? v : 100);
+      setItemHeight(getScaledTreeItemHeight());
+    });
+  }, []);
 
   /** E4V#27: 行内重命名——F2 或右键重命名 */
   const [renamingUri, setRenamingUri] = useState<string | null>(null);
@@ -235,23 +263,23 @@ const FileTree = forwardRef<FileTreeHandle, FileTreeProps>(function FileTree(
       if (idx === -1) { setRevealTarget(null); return; }
       const scrollEl = scrollElRef.current;
       if (!scrollEl) { setRevealTarget(null); return; }
-      const itemTop = idx * TREE_ITEM_HEIGHT;
+      const itemTop = idx * itemHeight;
       const viewHalf = scrollEl.clientHeight / 2;
       // 居中显示——上限不超过 totalHeight（防空白）
-      const target = Math.max(0, itemTop - viewHalf + TREE_ITEM_HEIGHT / 2);
+      const target = Math.max(0, itemTop - viewHalf + itemHeight / 2);
       scrollEl.scrollTop = target;
       setRevealTarget(null);
     });
     return () => cancelAnimationFrame(timer);
-  }, [revealTarget]);
+  }, [revealTarget, itemHeight]);
   /** 🔥 剪切中 URI 集合——render body 直读，FoldersView.rerender 驱动刷新 */
   const cutUris = fileTreeClipboard.isCut ? new Set(fileTreeClipboard.uris) : new Set<string>();
   const flatItems = useMemo(() => { void (version); return flattenTree(model); }, [model, version]);
   flatItemsRef.current = flatItems; // E4V#22: handleSelect 通过 ref 读最新 flatItems
-  const startIndex = Math.max(0, Math.floor(scrollTop / TREE_ITEM_HEIGHT) - OVERSCAN);
-  const visibleCount = containerHeight > 0 ? Math.ceil(containerHeight / TREE_ITEM_HEIGHT) + 2 * OVERSCAN : 50;
+  const startIndex = Math.max(0, Math.floor(scrollTop / itemHeight) - OVERSCAN);
+  const visibleCount = containerHeight > 0 ? Math.ceil(containerHeight / itemHeight) + 2 * OVERSCAN : 50;
   const endIndex = Math.min(flatItems.length, startIndex + visibleCount);
-  const totalHeight = flatItems.length * TREE_ITEM_HEIGHT;
+  const totalHeight = flatItems.length * itemHeight;
   const renderedItems = useMemo(() => flatItems.slice(startIndex, endIndex), [flatItems, startIndex, endIndex]);
 
   /* ── 滚动检测——.side-panel-content 是实际滚动容器 ── */
@@ -409,7 +437,7 @@ const FileTree = forwardRef<FileTreeHandle, FileTreeProps>(function FileTree(
       onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop}
       className="file-tree-scroll">
       <div style={{ height: totalHeight, position: "relative" }}>
-        <div style={{ height: startIndex * TREE_ITEM_HEIGHT }} />
+        <div style={{ height: startIndex * itemHeight }} />
         {renderedItems.map(({ item, depth, compactedSegments, guide, isDimmed }, i) => (
           <FileTreeNode key={item.uri} item={item} decoration={item.decoration} depth={depth} indent={0}
             expanded={item.isDirectory && model.isExpanded(item.uri)}
@@ -419,6 +447,7 @@ const FileTree = forwardRef<FileTreeHandle, FileTreeProps>(function FileTree(
             isCut={cutUris.has(item.uri)}
             isRenaming={item.uri === renamingUri}
             isActiveRoot={item.parent === null && item.uri === activeWorkspaceUri}
+            iconThemeId={iconThemeId}
             onRenameConfirm={finishRename}
             onRenameCancel={cancelRename}
             compactedSegments={compactedSegments} guide={guide} isDimmed={isDimmed}

@@ -59,7 +59,7 @@ export function PluginIcon({ pluginId, className, alt = "" }: PluginIconProps) {
   }
   if (resolved.src) {
     return (
-      <img src={resolved.src} alt={alt} className={`plugin-icon plugin-icon--img ${className ?? ""}`} />
+      <img src={resolved.src} alt={alt} className={`plugin-icon plugin-icon--img ${className ?? ""}`} draggable={false} />
     );
   }
   // @deprecated E5#100：emoji 回退——保留一个月后删除。新图标优先走 Lucide。

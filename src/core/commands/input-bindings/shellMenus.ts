@@ -28,7 +28,7 @@ export function registerShellMenus(): void {
       children: [
         { command: "workbench.action.showCommands", group: "view" },
         { command: "workbench.action.showOutput", group: "view" },
-        { command: "workbench.action.selectTheme", group: "view" },
+        { command: "theme.pick", group: "view" }, // E5.8#50.24：theme.pick 归一化命令 id
         { command: "workbench.action.selectLanguage", group: "view" },
         { command: "workbench.action.openKeybindingsSettings", group: "view" },
         // E5.8#37.6：侧栏换边——双 when 门控菜单项（左边 → 显示「移动到右侧」；右边 → 显示「移动到左侧」，
@@ -37,6 +37,19 @@ export function registerShellMenus(): void {
         // context key 由 usePoolSync 随布局推送保持同步。
         { command: "workbench.action.toggleSidebarPosition", label: "移动到右侧", group: "view", when: "sidebarPosition == 'left'" },
         { command: "workbench.action.toggleSidebarPosition", label: "移动到左侧", group: "view", when: "sidebarPosition == 'right'" },
+        // E5.8#148：「界面」嵌套子菜单——zone 显隐勾选菜单（对标 VS Code 查看→面板 显隐区）。
+        // 主侧栏/面板 两命令 = 显隐 toggle（emit sidebar:toggle / panel:toggle）；勾选态由壳
+        // buildTitleBarMenuGroups/汉堡 经 resolveVisibilityChecked 序列化（zone 可见 = ✓）。
+        // 递归渲染：顶部下拉 = 查看→界面 两级；汉堡 = 查看→界面 两级（全链路 ContextMenu 递归 #148）。
+        {
+          command: "",
+          label: "界面",
+          group: "view",
+          children: [
+            { command: "workbench.action.toggleSidebarVisibility", label: "主侧栏", group: "view" },
+            { command: "workbench.action.togglePanel", label: "面板", group: "view" },
+          ],
+        },
       ],
     },
   ]);

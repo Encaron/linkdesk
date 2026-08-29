@@ -65,13 +65,11 @@ export interface SidebarLayout {
    *  容器随插件卸载从清单消失 → 池自然卸载（真相源在壳，池零缓存）。旧布局（无此字段）回退单容器渲染。 */
   containers?: SidebarContainerLayout[];
   collapsedViews?: string[];              // 持久化折叠的 view ID 集合——壳 loadCollapsedState()
-  /** E5.6#11-fix7：壳通知池侧栏是否折叠——width ≤ 48 时池渲染 ▶ 展开按钮而非裁剪内容 */
+  /** E5.6#11-fix7：壳通知池侧栏是否折叠——折叠=真消失（#147/#159 无窄条/▶，grid auto 列 0 宽） */
   collapsed?: boolean;
   // ── E5.7#10：侧栏 UI 文本壳侧 t() 推送（显示文本铁律——池渲染零自产文本） ──
   emptyText?: string;      // 空状态主文案——"此容器没有已注册的视图"
   emptyHint?: string;      // 空状态提示——"安装插件以添加视图"
-  expandTooltip?: string;  // ▶ 展开按钮 tooltip
-  collapseTooltip?: string;// ◀ 折叠按钮 tooltip
   // ── E5.7#13：拖拽钳制界——壳 LayoutEngine dock 声明推送（池本地钳制对齐壳 resizeZone，零硬编码） ──
   minWidth?: number;       // 拖拽最小宽——壳 dock.minWidth（170）
   maxWidth?: number;       // 拖拽最大宽——壳 dock.maxWidth（600）
@@ -83,7 +81,7 @@ export interface SidebarLayout {
 /** 🆕 E5.8#36.8：右侧栏布局——右侧栏真 zone（决策 6，E5.8#36.7 addZone("rightSidebar") 消费方）。
  *  与 SidebarLayout 对齐（消费字段同集），但**不携带自身 edge**——swap 规则保证 sidebar ↔ rightSidebar
  *  恒占对边，右栏 edge = sidebar 对边（池 grid #37.5 推导，防两处字面量）。
- *  E5.8#37.5 RightSidebarZone 真渲染：折叠/展开按钮 + tooltip 全壳 t() 推送（显示文本铁律）。 */
+ *  E5.8#37.5 RightSidebarZone 真渲染：文案壳 t() 推送（显示文本铁律）。#159 无 ◀/▶ 折叠按钮——与左栏同款。 */
 export interface RightSidebarLayout {
   visible: boolean;
   width: number;
@@ -94,17 +92,14 @@ export interface RightSidebarLayout {
   views: SidebarViewMeta[];
   containers?: SidebarContainerLayout[];
   collapsedViews?: string[];
-  /** 🆕 E5.8#36.8 + #37.5：右栏折叠态——宽度 ≤48 派生（池），▶/◀ 按钮切换 emit 安全 no-op（壳接线归 Phase 12） */
+  /** 🆕 E5.8#36.8 + #37.5 + #159：右栏折叠态——宽度 ≤48 派生（池），折叠=整个 zone 消失（与左栏 #147 同源，
+   *  无窄条/▶——折叠/展开仅走图标栏 toggle + 界面勾选菜单） */
   collapsed?: boolean;
-  // ── 拖拽钳制界 + 空态文案 + 折叠 tooltip（与 SidebarLayout 同语义）──
+  // ── 拖拽钳制界 + 空态文案（与 SidebarLayout 同语义）──
   minWidth?: number;
   maxWidth?: number;
   emptyText?: string;
   emptyHint?: string;
-  /** 🆕 E5.8#37.5：▶ 展开按钮 tooltip（壳 t() 推送） */
-  expandTooltip?: string;
-  /** 🆕 E5.8#37.5：◀ 折叠按钮 tooltip（壳 t() 推送） */
-  collapseTooltip?: string;
 }
 
 /** 标签页在池中的表示——壳 pushLayout 时序列化 */
@@ -155,6 +150,9 @@ export interface PoolMenuItem {
   command: string;
   /** 快捷键显示文本——formatKeyLabel 后。仅汉堡（showKeybindings）；titlebar 下拉无快捷键（同壳行为） */
   shortcut?: string;
+  /** E5.8#148：当前项 √（显隐勾选菜单）——壳 buildTitleBarMenuGroups/汉堡经 resolveVisibilityChecked
+   *  序列化（zone 可见 = ✓）。显示文本铁律：池哑渲染原文，壳只推布尔。 */
+  checked?: boolean;
   /** 子菜单——titlebar 仅 command+children 父项携带（无 command 父项由壳展平）；汉堡不展平 */
   children?: PoolMenuItem[];
 }
@@ -187,8 +185,8 @@ export interface TitleBarLayout {
   menuGroups: PoolMenuGroup[];
   /** 插件贡献槽位按钮（left/right） */
   slots: { left: TitleBarSlotButton[]; right: TitleBarSlotButton[] };
-  /** 窗口控件 tooltip——显示文本铁律：壳 t() 解析后推送 */
-  windowControls: { minimize: string; maximize: string; restore: string; close: string };
+  /** 窗口控件 tooltip——显示文本铁律：壳 t() 解析后推送（E5.8#46.18：pin/unpin 置顶两态） */
+  windowControls: { minimize: string; maximize: string; restore: string; close: string; pin: string; unpin: string };
 }
 
 /** 图标栏图标——壳 resolvePluginIcon 序列化（池不 import pluginLoader，Lucide 名由池映射组件渲染） */
@@ -279,7 +277,7 @@ export interface PanelLayout {
   /** 🆕 E5.8#37.5：竖条面板（左/右）拖拽最小/最大宽——壳 dock.minWidth/maxWidth 推送 */
   minWidth?: number;
   maxWidth?: number;
-  /** E5.7#63.7：[+] 按钮 tooltip——壳 t("新建面板视图") 推送（显示文本铁律；面板创建归 Phase 12，目前壳侧 no-op） */
+  /** E5.7#63.7：[+] 按钮 tooltip——壳 t("新建面板视图") 推送（显示文本铁律；壳无 panel:createView 监听 = 安全 no-op） */
   createTooltip?: string;
   /** E5.8#34：容器切换器下拉 DTO——按容器分组列全部视图（含隐藏），mockup 帧 2 */
   switcher?: PanelSwitcherGroup[];
@@ -287,6 +285,11 @@ export interface PanelLayout {
   emptyText?: string;
   /** E5.8#34：空态占位指路——同 emptyText 壳 t() 推送 */
   emptyHint?: string;
+  /** 🆕 E5.8#45：面板可脱出（PanelZone ⤢ 按钮显隐）——true 时渲染脱出按钮，点击 emit "panel:detach"（壳 detachPanel 接）
+   *  ——脱出后漂移面板窗独占渲染本面板（主区空占位 I9-13），drift 窗内置 false（面板已在外，无需再脱出） */
+  detachable?: boolean;
+  /** 🆕 E5.8#45：⤢ 按钮 tooltip——壳 t("面板独立窗口") 推送（显示文本铁律） */
+  detachTooltip?: string;
 }
 
 /** 状态栏条目——序列化自壳 StatusBar 三源（贡献/动态/事件）+ 壳固定项（显示文本铁律：壳 t() 已解析）。
@@ -359,13 +362,16 @@ export interface StatusBarLayout {
 
 /**
  * PoolLayout v2——E5.7 唯一的 Pool 收到全量布局快照。
- * titleBar/iconBar/sidebar/statusBar 必有；rightSidebar/panel 可选（未启用时不推）。
+ * titleBar 必有（窗口 chrome——池恒渲染）；iconBar/sidebar/statusBar/panel/rightSidebar 可选——
+ * 主池恒推全量，脱出窗（E5.8#43-2 窗口模式策略表）只推 titleBar+groups 子集（池按字段条件渲染，无空列/空条）。
  */
 export interface PoolLayout {
   version: 2;
   titleBar: TitleBarLayout;
-  iconBar: IconBarLayout;
-  sidebar: SidebarLayout;
+  /** 图标栏——缺省 = 池不渲染该 zone（脱出窗子集；主池恒推） */
+  iconBar?: IconBarLayout;
+  /** 侧栏——缺省 = 池不渲染该 zone（脱出窗子集；主池恒推） */
+  sidebar?: SidebarLayout;
   /** E5.8#36.8：右侧栏真 zone 布局——RightSidebarLayout（edge 反推 = sidebar 对边，不携带自身 edge） */
   rightSidebar?: RightSidebarLayout;
   groups: PoolGroup[];
@@ -375,8 +381,10 @@ export interface PoolLayout {
   /** E5.6#16.7：递归分屏树——MainRenderer 递归渲染，替代平铺 groups.map。
    *  leaf = 单 GroupPane，branch = 水平/垂直 flex 容器。 */
   root?: SplitNode;
-  /** E5.6#16.7k-3：可创建为标签页的视图列表——池 GroupTabBar [+] 按钮动态菜单 */
+  /** E5.6#16.7k-3：可创建为标签页的视图列表——池 GroupTabBar [+] 按钮动态菜单。
+   *  空数组 = [+] 不提供创建菜单（脱出窗 I9-6）；缺省 = 池兜底欢迎页 */
   creatableViews?: CreatableViewMeta[];
   panel?: PanelLayout;
-  statusBar: StatusBarLayout;
+  /** 状态栏——缺省 = 池不渲染该 zone（脱出窗子集；主池恒推） */
+  statusBar?: StatusBarLayout;
 }

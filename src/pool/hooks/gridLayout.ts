@@ -38,6 +38,8 @@ export interface PoolGridInput {
   panelVisible: boolean;
   panelEdge: GridPanelEdge;
   panelAlign: GridPanelAlign;
+  /** E5.8#46.17：该窗是否有主区内容（groups 非空）——drift 面板专用窗无主区 → 无内容行，面板独占全窗 */
+  hasMain?: boolean;
 }
 
 /** 单 zone 的 grid 放置——grid-row: rowStart/rowEnd + grid-column: colStart/colEnd（1-based 线号） */
@@ -71,6 +73,15 @@ export function isPanelCoveringSlot(align: GridPanelAlign, slot: "left" | "right
   return align === "right" || align === "justify";
 }
 
+/**
+ * zone 分割线 handle 落点派生（E5.8#146 归一化）——handle 恒朝向主区（main 两侧栏之间）：
+ * 「左槽 → 右缘、右槽 → 左缘」。对齐 PanelZone 派生先例（handle 落点 + 拖拽方向全从 edge 派生）。
+ * 单一权威：本 helper + 槽位归属（sidebarEdge / 对边反推）都在本模块，两侧栏组件只消费。
+ */
+export function handleEdgeForSlot(slot: "left" | "right"): "left" | "right" {
+  return slot === "left" ? "right" : "left";
+}
+
 /** 池 grid 唯一推导点——调用方（PoolZoneShell）把 DTO 尺寸归一化后传入 */
 export function computePoolGrid(input: PoolGridInput): PoolGridSpec {
   const panel = input.panelVisible
@@ -100,16 +111,22 @@ export function computePoolGrid(input: PoolGridInput): PoolGridSpec {
   const iconbarCol = iconbarAtLeft ? 1 : cols.length + 1;
   if (!iconbarAtLeft) cols.push("auto"); // iconbar 列（最右——比主侧栏更靠外）
 
-  // ── 行模板：内容行 1fr + 顶/底面板行 auto（高由 PanelZone 根决定） ──
+  // ── 行模板：内容行 1fr + 顶/底面板行 auto（高由 PanelZone 根决定）。
+  // E5.8#46.17：hasMain=false（drift 面板专用窗）→ 无内容行——面板独占整窗（无主区空白） ──
+  const hasMain = input.hasMain ?? true;
   const rows: string[] = [];
   if (hasTop) rows.push("auto"); // 行 1 = 顶面板行
-  rows.push("1fr"); // 内容行（hasTop ? 2 : 1）
+  if (hasMain) rows.push("1fr"); // 内容行（hasTop ? 2 : 1）
   if (hasBottom) rows.push("auto"); // 末行 = 底面板行
+  // E5.8#46.17：hasMain=false（drift 面板专用窗）+ 竖条面板（无顶/底横带行）→ 兜底 1 行承载全高竖条
+  //（防空 rows → gridTemplateRows 空模板崩坏）
+  if (rows.length === 0) rows.push("1fr");
   const totalRows = rows.length;
 
   // ── 行跨度推导 ──
-  const contentRowStart = hasTop ? 2 : 1;
-  const contentRowEnd = totalRows + 1 - (hasBottom ? 1 : 0); // 内容行最后一行 + 1（线号）
+  // hasMain=false → 无内容行（main cell 0 高，见下）
+  const contentRowStart = hasMain ? (hasTop ? 2 : 1) : 1;
+  const contentRowEnd = hasMain ? totalRows + 1 - (hasBottom ? 1 : 0) : 1; // 内容行最后一行 + 1（线号）
   const align = panel?.align ?? "center";
   // 槽位归属：sidebar 落槽 = sidebarEdge；rightSidebar 恒占对边（swap 规则）——按「各自所在槽」判覆盖
   const sidebarSlot = input.sidebarEdge;
@@ -160,7 +177,9 @@ export function computePoolGrid(input: PoolGridInput): PoolGridSpec {
       iconbar: { rowStart: 1, colStart: iconbarCol, rowEnd: totalRows + 1, colEnd: iconbarCol + 1 },
       sidebar: { rowStart: sidebarRowStart, colStart: sidebarCol, rowEnd: sidebarRowEnd, colEnd: sidebarCol + 1 },
       panel: panelCell,
-      main: { rowStart: contentRowStart, colStart: mainCol, rowEnd: contentRowEnd, colEnd: mainCol + 1 },
+      main: hasMain
+        ? { rowStart: contentRowStart, colStart: mainCol, rowEnd: contentRowEnd, colEnd: mainCol + 1 }
+        : { rowStart: 1, colStart: mainCol, rowEnd: 1, colEnd: mainCol + 1 }, // 无主区内容 → 0 行高
       rightSidebar: { rowStart: rightRowStart, colStart: rightSidebarCol, rowEnd: rightRowEnd, colEnd: rightSidebarCol + 1 },
     },
   };

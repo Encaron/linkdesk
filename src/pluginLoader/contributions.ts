@@ -10,13 +10,15 @@
  * lifecycle-ops 双端消费，放此处防 runtime↔lifecycle-ops 成环）。
  */
 
-import type { PluginManifest, ViewPluginEntry, ThemeContribution, IconThemeContribution, IconContribution, LanguageContribution, ContributesViews } from "../core/api/types";
+import type { PluginManifest, ViewPluginEntry, ThemeContribution, IconThemeContribution, IconContribution, LanguageContribution, ContributesViews, IconThemeMappings, IconThemeMapping } from "../core/api/types";
+import type { FontFaceSpec } from "../core/types/ipc/events";
+import { getPluginAssetPath } from "../core/utils/path/pluginAssetPath";
 import { registerViewPlugin } from "./viewRegistry";
-import { registerTheme, getAvailableThemes } from "../core/services/ui/ThemeEngine";
-import { ThemeRegistry } from "../core/registry/appearance/ThemeRegistry";
+import { registerTheme, getAvailableThemes, ensurePluginFontFacesCleanup, normalizeThemeValue, syncThemeColorEnum, fontFormatOf } from "../core/services/ui/ThemeEngine";
+import { ThemeRegistry, parseThemeRecipe } from "../core/registry/appearance/ThemeRegistry";
 import { IconRegistry } from "../core/registry/appearance/IconRegistry";
 import { LanguageRegistry } from "../core/registry/languages/LanguageRegistry";
-import { pushToast } from "../core/services/ui/NotificationService";
+import { pushToast, TOAST_TTL_INFO } from "../core/services/ui/NotificationService";
 import { registerConfiguration, registerConfigurationDefaults, updateConfigurationEnum } from "../core/registry/ConfigurationRegistry";
 import type { ManifestMenuItem, TitleBarContribution } from "../core/registry/commands/MenuRegistry";
 import { registerMenuItems, registerTitleBarContribution } from "../core/registry/commands/MenuRegistry";
@@ -369,50 +371,228 @@ async function loadPluginComponent(pluginId: string, manifest: PluginManifest): 
  * 🔥 替代 getPluginDataFile——用 fetch() 而非 import.meta.glob。
  * Vite glob 在 dev 模式下只在启动时扫描一次，新插件目录的 JSON 不被实时发现。
  * 运行时主题数据加载（对标 loadPlugin 主题分支）——从一开始就用 fetch。
+ *
+ * E5.8#133.4：拆 URL 解析出 resolvePluginDataUrl——JSON/文本两加载器共用同一寻址，单一权威防两处漂移。
+ * E5.8#133.5 根因修复：dev/prod 无分叉——恒 linkdesk:// 协议（单一权威，见下）。
  */
-async function fetchPluginDataFile(pluginId: string, filePath: string): Promise<Record<string, unknown> | null> {
+
+/**
+ * 插件数据文件可 fetch 的 URL——恒 `linkdesk://{pluginId}/{filePath}`（dev/prod 同一条路零漂移）。
+ *
+ * E5.8#133.5 删除 dev 探测（http://localhost:1420/plugins/{builtin,user}/...）的根因：
+ * 1. Vite SPA fallback 对不存在的路径返回 200 + text/html——仅凭 response.ok 会把 HTML 误判为命中
+ *    （#133.4 重构把 .json() 校验移出探测循环后引入的回归：user 插件先探 builtin 拿到 HTML → 数据全加载失败）；
+ * 2. dev 下 fetch() 一个 .css 返回 Vite HMR 的 JS 模块包装（text/javascript），非原始 CSS——
+ *    图标主题 glyph CSS 注入必炸。
+ * linkdesk:// 协议（electron/plugins/protocol.ts）在请求时读盘 + scanPluginSubdirs 实时扫描：
+ * 正确 MIME（.json/.css/.ttf…）、builtin/user 回退、缺失 404 而非 HTML、运行时发现天然支持
+ * （#39a 原目标——绕开 Vite glob 缓存）。探测不必要，且是两处回归的根源。
+ */
+export function resolvePluginDataUrl(pluginId: string, filePath: string): string {
+  return `linkdesk://${pluginId}/${filePath}`;
+}
+
+/** fetch 插件数据文件原始响应（JSON/文本共用单一 fetch 逻辑，防两处漂移）——未找到/异常 → null。 */
+async function fetchPluginDataRaw<T>(
+  pluginId: string,
+  filePath: string,
+  parse: (res: Response) => Promise<T>
+): Promise<T | null> {
+  const url = resolvePluginDataUrl(pluginId, filePath);
   try {
-    if (import.meta.env.DEV) {
-      // dev 模式：先试 builtin 再试 user
-      for (const sub of ['builtin', 'user']) {
-        const url = `http://localhost:1420/plugins/${sub}/${pluginId}/${filePath}`;
-        try {
-          const response = await fetch(url);
-          if (response.ok) {
-            return await response.json() as Record<string, unknown>;
-          }
-        } catch { /* fetch 失败继续试下一个 */ }
-      }
-      console.warn(`[pluginLoader] 数据文件加载失败 — "${pluginId}/${filePath}" (not in builtin/ or user/)`);
-      return null;
-    }
-    // prod 模式：linkdesk:// 协议——protocol.ts 已处理 builtin/user 回退
-    const url = `linkdesk://${pluginId}/${filePath}`;
     const response = await fetch(url);
     if (!response.ok) {
       console.warn(`[pluginLoader] 数据文件加载失败 — "${pluginId}/${filePath}" (${response.status})`);
       return null;
     }
-    return await response.json() as Record<string, unknown>;
+    return await parse(response);
   } catch (e) {
     console.warn(`[pluginLoader] 数据文件加载异常 — "${pluginId}/${filePath}": ${errMsg(e)}`);
     return null;
   }
 }
 
+/** fetch 插件数据文件并解析 JSON——未找到/异常 → null（调用方 toast 反馈）。 */
+function fetchPluginDataFile(pluginId: string, filePath: string): Promise<Record<string, unknown> | null> {
+  return fetchPluginDataRaw(pluginId, filePath, (res) => res.json());
+}
+
+/** fetch 插件数据文件原始文本（E5.8#133.4 图标主题 glyph CSS）——未找到/异常 → null。 */
+function fetchPluginDataText(pluginId: string, filePath: string): Promise<string | null> {
+  return fetchPluginDataRaw(pluginId, filePath, (res) => res.text());
+}
+
 /* ── 主题 JSON 数据异步加载（对标 loadLanguageContributionData） ── */
 
-/** 加载 contributes.themes 声明的 JSON 颜色文件——用 fetch() 绕开 glob 缓存 */
+/** 加载 contributes.themes 声明的 JSON 颜色文件——用 fetch() 绕开 glob 缓存。
+ *  E5.8#50.15：05 schema 解析——主题 JSON → Recipe → ThemeRegistry.registerRecipe（数据层单真源）；
+ *  同时桥接 flat Theme → ThemeEngine（现 apply 路径仍读 flat，引擎 Recipe 化在 #50.16）。 */
 async function loadThemeContributionData(pluginId: string, manifest: PluginManifest): Promise<void> {
   const themeList = manifest.contributes?.themes as ThemeContribution[] | undefined;
   if (!themeList?.length) return;
 
   for (const tc of themeList) {
     const data = await fetchPluginDataFile(pluginId, tc.path);
-    if (!data) continue;
-    const themeType = (data.type as "dark" | "light") ?? tc.uiTheme;
-    const colors = extractThemeColors(data);
-    registerTheme({ name: tc.label, type: themeType as "dark" | "light", colors }, pluginId);
+    if (!data) {
+      // E5.8#61 审计#4：主题数据文件损坏/缺失 → UI 反馈（原仅 console.warn 无提示——
+      // metadata 已注册但 recipe/flat 缺失 → 应用时静默无效果，用户不知道为什么）
+      pushToast({
+        message: i18n.t("主题「{{name}}」数据文件加载失败，已跳过", { name: tc.label }),
+        severity: "warning",
+        ttl: TOAST_TTL_INFO,
+        source: pluginId,
+      });
+      continue;
+    }
+    const recipe = parseThemeRecipe(data, tc);
+    if (!recipe) {
+      console.warn(`[theme] "${tc.label}" 解析失败——既无 colorways[] 也无平铺 colors（决策 F：只读新格式）`);
+      pushToast({
+        message: i18n.t("主题「{{name}}」数据损坏，已跳过加载", { name: tc.label }),
+        severity: "warning",
+        ttl: TOAST_TTL_INFO,
+        source: pluginId,
+      });
+      continue;
+    }
+    // 数据层：Recipe 登记（05 schema 配方单真源）
+    ThemeRegistry.registerRecipe(recipe, pluginId);
+    // E5.8#50.17：登记资产字体卸载清理——配方带 font.ui 资产路径时 applyRecipe 才注册 @font-face，
+    // 卸载须移除 style + 还原 --font-*（字体回默认验收）；幂等 + 重装可再登记
+    ensurePluginFontFacesCleanup(pluginId);
+    // 桥接：flat Theme → ThemeEngine（现 apply 路径；#50.16 引擎按 Recipe 合并后此桥退役）
+    const themeType = recipe.type ?? (tc.uiTheme === "light" ? "light" : "dark");
+    const surface = recipe.appearance?.glass;
+    const background = recipe.appearance?.background;
+    registerTheme(
+      {
+        name: recipe.name,
+        type: themeType,
+        colors: recipe.colorways[0]?.colors ?? {},
+        surface,
+        background,
+      },
+      pluginId
+    );
+  }
+}
+
+/* ── 图标主题 mappings 数据异步加载（E5.8#133.1） ── */
+
+/**
+ * 归一化插件 mappings JSON → core IconThemeMappings（双形态，E5.8#133 ④ 拍板）。
+ * - 字体 glyph：`{ class: "codicon codicon-x" | "myfont myfont-x", color?: "#f1e05a" }`——原样
+ * - 图像资产：`{ imagePath: "icons/js.svg" }`——getPluginAssetPath 解析 linkdesk:// 绝对 URL（硬约束 12 同族）
+ * 无效条目（无 class 也无 imagePath）跳过 + warn；整表无效 → null（上层 toast 反馈）。
+ */
+function normalizeIconThemeMappings(data: Record<string, unknown>, pluginId: string): IconThemeMappings | null {
+  const result: IconThemeMappings = {};
+  let anyValid = false;
+  // E5.8#133.6：匹配表（多条目）+ 顶层默认图标（单条目）分别归一化；默认图标对齐 VS Code iconTheme 顶层键
+  for (const section of ["files", "extensions", "folders", "foldersExpanded"] as const) {
+    const raw = data[section];
+    if (!raw || typeof raw !== "object") continue;
+    const out: Record<string, IconThemeMapping> = {};
+    for (const [name, def] of Object.entries(raw as Record<string, unknown>)) {
+      const entry = normalizeEntry(name, def, pluginId);
+      if (entry) { out[name] = entry; anyValid = true; }
+    }
+    if (Object.keys(out).length > 0) result[section] = out;
+  }
+  for (const section of ["file", "folder", "folderExpanded", "rootFolder", "rootFolderExpanded"] as const) {
+    const raw = data[section];
+    if (!raw || typeof raw !== "object") continue;
+    const entry = normalizeEntry(section, raw as Record<string, unknown>, pluginId);
+    if (entry) { result[section] = entry; anyValid = true; }
+  }
+  return anyValid ? result : null;
+}
+
+/** 单条映射条目归一化——双形态（glyph class 原样 / imagePath 解析 linkdesk://）；无效 → null + warn */
+function normalizeEntry(name: string, def: unknown, pluginId: string): IconThemeMapping | null {
+  if (!def || typeof def !== "object") {
+    console.warn(`[iconTheme] 映射条目 "${name}" 无效——需对象（class 或 imagePath），已跳过`);
+    return null;
+  }
+  const d = def as Record<string, unknown>;
+  if (typeof d.class === "string") {
+    return typeof d.color === "string" ? { class: d.class, color: d.color } : { class: d.class };
+  }
+  if (typeof d.imagePath === "string") {
+    return { imagePath: getPluginAssetPath(pluginId, d.imagePath) };
+  }
+  console.warn(`[iconTheme] 映射条目 "${name}" 无效——需 class 或 imagePath，已跳过`);
+  return null;
+}
+
+/* ── 图标主题自定义字体元数据（E5.8#133.4：mappings JSON 顶层可选 font 段） ── */
+
+/** 图标主题自定义字体元数据——解析后仅含广播所需产物（glyph CSS 文本由调用方 fetch 后并入）。
+ *  契约：作者在 mappings JSON 顶层声明 `font: { path, family, glyphs? }`——
+ *  path = 字体资产相对路径（或绝对 URL），family = 作者 glyph CSS 里 font-family 写的族名，
+ *  glyphs（可选）= glyph 类 CSS 文件相对路径。@font-face 由壳生成（池独立文档复刻），glyph 类作者自写。 */
+export interface IconThemeFontMeta {
+  /** 广播给池复刻 @font-face 的规格（壳已解析 linkdesk:// 绝对 URL） */
+  fontFaces: FontFaceSpec[];
+  /** glyph 类 CSS 文件相对路径——"" = 未声明（仅 @font-face，无自定义 glyph 类） */
+  glyphCssPath: string;
+}
+
+/** 归一化图标主题 font 段——纯函数（不含 fetch/注册，可单测）。
+ *  无 font 段 / 缺 path 或 family → null（自定义字体跳过，mappings 不受影响）。 */
+export function normalizeIconThemeFontMeta(data: Record<string, unknown>, pluginId: string): IconThemeFontMeta | null {
+  const raw = data.font;
+  if (!raw || typeof raw !== "object") return null;
+  const f = raw as Record<string, unknown>;
+  if (typeof f.path !== "string" || typeof f.family !== "string") {
+    console.warn(`[iconTheme] font 段无效——需 path + family，已忽略自定义字体`);
+    return null;
+  }
+  // 已含协议（linkdesk:// / http(s):// / data:）→ 原样；相对路径 → getPluginAssetPath 解析插件资产（硬约束 12 同族）
+  const url = /^[a-z][a-z0-9+.-]*:/i.test(f.path) ? f.path : getPluginAssetPath(pluginId, f.path);
+  const fontFaces: FontFaceSpec[] = [{ family: f.family, url, format: fontFormatOf(f.path) }];
+  const glyphCssPath = typeof f.glyphs === "string" ? f.glyphs : "";
+  return { fontFaces, glyphCssPath };
+}
+
+/** 加载 contributes.iconThemes 声明的 mappings JSON——镜像 loadThemeContributionData + fetchPluginDataFile 复用。
+ *  关联 IconRegistry（ID → mappings），装/卸动态刷新（卸载时 IconRegistry disposer 清理）。
+ *  E5.8#133.4：可选 font 段 → 自定义字体 @font-face + glyph CSS 一并关联（广播进池复刻）。 */
+async function loadIconThemeContributionData(pluginId: string, manifest: PluginManifest): Promise<void> {
+  const iconThemeList = manifest.contributes?.iconThemes as IconThemeContribution[] | undefined;
+  if (!iconThemeList?.length) return;
+
+  for (const it of iconThemeList) {
+    const data = await fetchPluginDataFile(pluginId, it.path);
+    if (!data) {
+      pushToast({
+        message: i18n.t("图标主题「{{name}}」数据文件加载失败，已跳过", { name: it.label }),
+        severity: "warning",
+        ttl: TOAST_TTL_INFO,
+        source: pluginId,
+      });
+      continue;
+    }
+    const mappings = normalizeIconThemeMappings(data, pluginId);
+    if (!mappings) {
+      console.warn(`[iconTheme] "${it.label}" 解析失败——mappings JSON 无有效条目`);
+      pushToast({
+        message: i18n.t("图标主题「{{name}}」数据损坏，已跳过加载", { name: it.label }),
+        severity: "warning",
+        ttl: TOAST_TTL_INFO,
+        source: pluginId,
+      });
+      continue;
+    }
+    IconRegistry.setMappings(it.id, mappings);
+    // E5.8#133.4：可选自定义字体——fontFaces（@font-face 规格）+ glyph CSS 文本；font 段缺省 → 零字资产，仅 codicon/imagePath
+    const fontMeta = normalizeIconThemeFontMeta(data, pluginId);
+    if (fontMeta) {
+      const glyphCss = fontMeta.glyphCssPath
+        ? (await fetchPluginDataText(pluginId, fontMeta.glyphCssPath)) ?? ""
+        : "";
+      IconRegistry.setFontAssets(it.id, { fontFaces: fontMeta.fontFaces, glyphCss });
+    }
   }
 }
 
@@ -483,11 +663,23 @@ async function loadPluginI18nData(pluginId: string, manifest: PluginManifest): P
 
 /* ── 枚举同步——主题/语言注册/注销后更新下拉选项 ── */
 
-/** 同步 app.theme 枚举——主题注册/注销后调用。不影响 onApply，只更新下拉选项。 */
+/**
+ * 同步 app.theme 枚举——主题/配方注册注销后调用。不影响 onApply，只更新下拉选项。
+ * E5.8#50.19：枚举 = 配方 id 优先 + flat 主题名退路（08 §7.2 #1「动态配方 id 列表」）。
+ * E5.8#50.21：flat 名归一化后与配方 id 冲突（"Dark"/"Light" → "dark"/"light"）→ 剔除，收敛为纯配方 id
+ *   （旧值持久化经读时归一化照常解析；未迁移 json 名如 "薄荷苏打" 保留——flat 桥接仍可选）。
+ * #50.25 全量迁移 colorways 后 flat 名自然消失，枚举纯配方 id。
+ */
 function syncAppThemeEnum(): void {
-  const available = getAvailableThemes();
+  const recipeIds = ThemeRegistry.getRecipes().map((r) => r.id);
+  const flatNames = getAvailableThemes().filter((n) => !recipeIds.includes(normalizeThemeValue(n) ?? n));
+  const available = [...recipeIds, ...flatNames];
   if (available.length === 0) return; // 无主题时不更新——保留上次枚举，避免下拉变输入框
-  updateConfigurationEnum("app.theme", available, available.includes("Dark") ? "Dark" : available[0]);
+  updateConfigurationEnum("app.theme", available, available.includes("dark") ? "dark" : available[0]);
+  // E5.8 Phase 11.14：配色全集 enum 随配方集变化折叠同步——主题插件注册/注销后 app.themeColor
+  // 可选配色对齐当前配方集（custom = 全配方配色 / followTheme = 活动配方配色）。四生命周期站点
+  // （applyPostLoadSteps/activatePlugin/disable/uninstall）经本函数单处折叠覆盖。
+  syncThemeColorEnum();
 }
 
 /** 同步 app.language 枚举——语言注册/注销后调用。不影响 onApply，只更新下拉选项。 */
@@ -498,6 +690,14 @@ function syncAppLanguageEnum(): void {
   updateConfigurationEnum("app.language", codes, codes.includes("zh") ? "zh" : codes[0]);
 }
 
+/** 同步 app.iconTheme 枚举——图标主题注册/注销后调用。不影响 onApply，只更新下拉选项。
+ *  E5.8#133：枚举 = "default"（codicon 保底）+ 已登记图标主题 id。卸载插件 → 枚举消失（回退保底）。
+ *  对标 syncAppThemeEnum——无主题时不更新（保 enum 空下拉变输入框的坑）；default 恒在。 */
+function syncIconThemeEnum(): void {
+  const themeIds = IconRegistry.getAll().map((t) => t.id);
+  updateConfigurationEnum("app.iconTheme", ["default", ...themeIds], "default");
+}
+
 export {
   extractThemeColors,
   resolveRuntimePluginRoot,
@@ -505,8 +705,11 @@ export {
   loadPluginComponent,
   fetchPluginDataFile,
   loadThemeContributionData,
+  normalizeIconThemeMappings,
+  loadIconThemeContributionData,
   loadLanguageContributionData,
   loadPluginI18nData,
   syncAppThemeEnum,
   syncAppLanguageEnum,
+  syncIconThemeEnum,
 };

@@ -18,7 +18,7 @@
  *
  * 与壳行为差异（诚实注记）：
  *   ② 壳 icon-btn 48×48 在 42px 列内横向溢出——池按设计修正为 42×42（Zone分解设计.md:81）。
- *   ③ 壳汉堡子面板仅 2 层——池共享 MenuItemList 递归支持 N 层（实际菜单数据 ≤2 层，无感）。
+ *   ③ 壳汉堡子面板仅 2 层——池 ContextMenu（E5.8#55 统一渲染器）递归支持 N 层（实际菜单数据 ≤2 层，无感）。
  *   ④ 拖拽落点范围：壳只把 icon-bar-top 作目标容器（底部图标不可作落点——壳实现遗漏），
  *      池整列可作落点。换位语义不变（全序 splice），只是落点检测完整化。
  *   ⑤ E4V#48 跨容器拖放（视图拖到图标栏 → 视图移入目标插件容器）——并入 #10 迁移
@@ -31,10 +31,9 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
 import type { IconBarLayout, IconBarItem } from "../../../core/types/pool/poolLayout";
-import MenuItemList from "../../shared/menu-item-list/MenuItemList";
 import PoolPluginIcon from "../../shared/pool-plugin-icon/PoolPluginIcon";
-import { executePoolCommand } from "../../commands/executePoolCommand";
 import ContextMenu from "@src/components/shared/context-menu/ContextMenu"; // 齿轮菜单——#14 门户（壳 IconBar 同款消费者）
+import { poolGroupsToDescriptors } from "../../shared/menu-items"; // E5.8#55：汉堡多组下拉 → ContextMenu 契约
 import { VIEW_DRAG_MIME } from "../../protocol/viewDragProtocol"; // E4V#48：跨容器拖放入口（drop 目标判别）
 import "./IconBarZone.css";
 
@@ -59,34 +58,12 @@ function sameOrder(a: string[], b: string[]): boolean {
 function IconBarZone({ iconBar }: { iconBar: IconBarLayout }) {
   const [hamburgerOpen, setHamburgerOpen] = useState(false);
   const hamburgerBtnRef = useRef<HTMLButtonElement>(null);
-  const dropdownRef = useRef<HTMLDivElement>(null);
 
   // 齿轮菜单锚点（壳 IconBar gearAnchor 同款）——底部图标左键/右键 → ExtensionGear 菜单
   const [gearAnchor, setGearAnchor] = useState<{ x: number; y: number } | null>(null);
 
-  const handleCommand = useCallback((command: string) => {
-    setHamburgerOpen(false);
-    executePoolCommand(command);
-  }, []);
-
-  // 外部点击 + Escape 关闭（TitleBarZone 同款模式）
-  useEffect(() => {
-    if (!hamburgerOpen) return;
-    const onMouseDown = (e: MouseEvent) => {
-      const target = e.target as Node;
-      if (hamburgerBtnRef.current?.contains(target) || dropdownRef.current?.contains(target)) return;
-      setHamburgerOpen(false);
-    };
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setHamburgerOpen(false);
-    };
-    document.addEventListener("mousedown", onMouseDown);
-    document.addEventListener("keydown", onKeyDown);
-    return () => {
-      document.removeEventListener("mousedown", onMouseDown);
-      document.removeEventListener("keydown", onKeyDown);
-    };
-  }, [hamburgerOpen]);
+  // E5.8#55：汉堡下拉换 ContextMenu——点外关闭/Escape/失焦/滚轮由 ContextMenu 自管
+  // （默认 variant="overlay"——汉堡是点击开关无 hover 切换，backdrop 吞第一击 + 点外关闭）
 
   /* ── E5.7#6 补丁：拖拽换位——壳 IconBar.tsx 状态机迁入 ── */
 
@@ -210,6 +187,16 @@ function IconBarZone({ iconBar }: { iconBar: IconBarLayout }) {
 
   const draggedIcon = draggedId ? localIcons.find((x) => x.pluginId === draggedId) : null;
 
+  // E5.8#55：汉堡下拉锚点——按钮右上角（对齐原 CSS 固定 top:30 + left:42 语义：菜单贴 TitleBar
+  // 下沿 + 贴图标栏右缘，避开拖拽区硬约束 #18）。⚠️ y 用 r.top 而非 r.bottom——按钮高 42px，
+  // 若用底边菜单会整体下移 42px 贴到图标栏图标区（实机打回）。
+  const hamburgerAnchor = hamburgerOpen && hamburgerBtnRef.current
+    ? (() => {
+      const r = hamburgerBtnRef.current!.getBoundingClientRect();
+      return { x: r.right, y: r.top };
+    })()
+    : null;
+
   const renderIcon = (item: IconBarItem, isBottom: boolean) => {
     const showBefore = dropTarget?.id === item.pluginId && dropTarget.pos === DROP_POS_TOP;
     const showAfter = dropTarget?.id === item.pluginId && dropTarget.pos === DROP_POS_BOTTOM;
@@ -300,11 +287,16 @@ function IconBarZone({ iconBar }: { iconBar: IconBarLayout }) {
               <span className="codicon codicon-menu" />
             </button>
 
-            {/* 下拉——fixed 贴图标栏（top: 30px 避开拖拽区，硬约束 #18；WCV 满窗 = 窗口坐标） */}
-            {hamburgerOpen && (
-              <div className="hamburger-dropdown" ref={dropdownRef}>
-                <MenuItemList groups={iconBar.hamburger.groups} onCommand={handleCommand} cssPrefix="hamburger" />
-              </div>
+            {/* 下拉——E5.8#55：统一 ContextMenu 渲染器（右键菜单同源）。
+                多组展平 + 标 group → ContextMenu 按 group 分组出 divider（替代原组标题区块）。
+                布局快照 items 注入——跳过 menu.getItems IPC（壳侧已 when 过滤 + t() 翻译）。 */}
+            {hamburgerOpen && hamburgerAnchor && (
+              <ContextMenu
+                menuId="hamburger"
+                anchor={hamburgerAnchor}
+                items={poolGroupsToDescriptors(iconBar.hamburger.groups)}
+                onClose={() => setHamburgerOpen(false)}
+              />
             )}
           </>
         )}

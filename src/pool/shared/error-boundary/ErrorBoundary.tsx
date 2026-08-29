@@ -71,7 +71,7 @@ class ErrorBoundary extends Component<Props, State> {
           height: "100%",
           gap: 12,
           color: "var(--text-muted)",
-          fontSize: 13,
+          fontSize: "var(--font-size-md)", /* E5.8 Phase 12 #171：13→md */
           userSelect: "none",
         }}>
           <span>{i18n.t("「{{name}}」已崩溃", { name })}</span>
@@ -79,12 +79,12 @@ class ErrorBoundary extends Component<Props, State> {
             onClick={this.handleRetry}
             style={{
               padding: "4px 16px",
-              border: "1px solid var(--border-normal)",
-              borderRadius: 3,
-              background: "var(--bg-button)",
-              color: "var(--text-normal)",
+              border: "1px solid var(--border)",
+              borderRadius: "var(--radius-sm)",
+              background: "var(--bg-card)",
+              color: "var(--text-primary)",
               cursor: "pointer",
-              fontSize: 12,
+              fontSize: "var(--font-size-sm)", /* E5.8 Phase 12 #171：12→sm */
             }}
           >
             {i18n.t("重试")}

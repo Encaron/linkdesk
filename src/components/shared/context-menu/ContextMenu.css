@@ -19,16 +19,24 @@
   max-width: 280px;
   background: var(--bg-card);
   border: 1px solid var(--border);
-  border-radius: 8px;
-  box-shadow: 0 0 1px rgba(0,0,0,0.2), 0 4px 12px rgba(0,0,0,0.3);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-hairline), var(--context-menu-shadow);
   padding: 4px 0;
   overflow: hidden;
+  /* E5.8#53：容器程序化聚焦（tabIndex=-1 + .focus() 抢键盘焦点）不画 outline——
+     显式豁免稳压全局 *:focus-visible（同特异性时全局后声明胜，光写 outline:none 不够）；
+     菜单项键盘高亮仍走 .ctx-item.focused 背景，不受影响 */
+  outline: none;
 
   /* E3.5: 出现动画——scale+opacity 150ms */
   opacity: 0;
   transform: scale(0.96);
   transform-origin: top left;
   transition: opacity 150ms ease-out, transform 150ms ease-out;
+}
+
+.ctx-menu:focus-visible {
+  outline: none; /* E5.8#53：特异性(0,2,0)稳压全局 *:focus-visible */
 }
 
 .ctx-menu.show {
@@ -43,9 +51,9 @@
   align-items: center;
   gap: 8px;
   padding: 6px 12px;
-  font-size: 13px;
+  font-size: var(--font-size-md); /* E5.8 Phase 12 #170：item 13→md */
   font-weight: 400;
-  line-height: 20px;
+  line-height: 1.6; /* E5.8 Phase 12 #170：line-height 20px → unitless（项高随字号自然增长） */
   color: var(--text-primary);
   cursor: pointer;
   transition: background 60ms;
@@ -62,12 +70,12 @@
   box-shadow: inset 2px 0 0 var(--accent);
 }
 
-/* 图标——E3.5 icon 支持 */
+/* 图标——E3.5 icon 支持（E5.8 Phase 12 #170：盒 16px 乘 scale + 字形 14→lg） */
 .ctx-item-icon {
   flex-shrink: 0;
-  width: 16px;
-  height: 16px;
-  font-size: 14px;
+  width: calc(16px * var(--ui-scale));
+  height: calc(16px * var(--ui-scale));
+  font-size: var(--font-size-lg);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -84,9 +92,9 @@
 .ctx-item-shortcut {
   flex-shrink: 0;
   margin-left: 12px;
-  font-size: 11px;
+  font-size: var(--font-size-xs); /* E5.8 Phase 12 #170：shortcut 11→xs */
   opacity: 0.6;
-  font-family: var(--font-mono, 'Sarasa Mono SC', Consolas, 'Courier New', monospace);
+  font-family: var(--font-mono);
   letter-spacing: 0.2px;
 }
 
@@ -101,7 +109,7 @@
 .ctx-item-check {
   flex-shrink: 0;
   width: 16px;
-  font-size: 12px;
+  font-size: var(--font-size-sm); /* E5.8 Phase 12 #170：check 12→sm */
   color: var(--accent);
   display: flex;
   align-items: center;

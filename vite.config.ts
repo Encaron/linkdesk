@@ -74,9 +74,13 @@ export default defineConfig(async ({ command }) => {
           }
         : undefined,
       watch: {
-        // src-tauri/ 是 Rust 项目，plugins/ 插件由 Rust 命令操作文件（安装/卸载/重装）
-        // 忽略两者避免 Vite 检测到文件系统变化后全量 reload
-        ignored: ["**/src-tauri/**", "**/plugins/**"],
+        // 🔥 E5.8#116 根因修复（2026-08-27）：Tauri 时代遗留的 plugins/ 忽略已删除——
+        //   当时 Rust 命令操作插件文件，忽略避免全量 reload；Electron 时代（src-tauri/ 已删）
+        //   插件源码 = 壳源码同级 dev 资产，改 CSS/TS 必须被 Vite watcher 检测后失效模块图缓存。
+        //   实证：忽略 plugins/ 时模块图缓存永不失效，改 SettingsView.css 经 Page.reload 不生效
+        //   （同一物理文件 /@fs/E: 大写缓存旧版、/@fs/e: 小写新 URL 读盘新版 = 双 key 分歧）。
+        //   移除后插件热更与壳 src/ 一致；src-tauri/ 目录已不存在，一并清空。
+        ignored: [],
       },
     },
     build: {

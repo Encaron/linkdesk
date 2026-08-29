@@ -21,7 +21,7 @@
 
 .settings-tab {
   padding: 8px 16px;
-  font-size: 13px;
+  font-size: var(--font-size-md); /* E5.8 Phase 12 #174：tab 13→md */
   background: transparent;
   border: none;
   border-bottom: 2px solid transparent;
@@ -50,7 +50,7 @@
 }
 
 .settings-search-icon {
-  font-size: 14px;
+  font-size: var(--font-size-lg); /* E5.8 Phase 12 #174：搜索 codicon 内容图标 14→lg */
   color: var(--text-muted);
   flex-shrink: 0;
 }
@@ -66,7 +66,7 @@
   background: transparent;
   border: 1px solid var(--border);
   color: var(--text-primary);
-  font-size: 12px;
+  font-size: var(--font-size-sm); /* E5.8 Phase 12 #174：json 12→sm */
   cursor: pointer;
   border-radius: 2px;
 }
@@ -76,7 +76,7 @@
 }
 
 .settings-json-label {
-  font-size: 11px;
+  font-size: var(--font-size-xs); /* E5.8 Phase 12 #174：json-label 11→xs */
 }
 
 /* ── 主体：左树 + 右表单 ── */
@@ -103,7 +103,7 @@
   justify-content: space-between;
   width: 100%;
   padding: 6px 20px;
-  font-size: 13px;
+  font-size: var(--font-size-md); /* E5.8 Phase 12 #174：nav-item 13→md */
   color: var(--text-primary);
   background: transparent;
   border: none;
@@ -124,7 +124,7 @@
 }
 
 .settings-nav-count {
-  font-size: 11px;
+  font-size: var(--font-size-xs); /* E5.8 Phase 12 #174：nav-count 11→xs */
   color: var(--text-muted);
   background: var(--hover-overlay);
   padding: 0 6px;
@@ -133,7 +133,7 @@
 
 .settings-nav-empty {
   padding: 20px;
-  font-size: 13px;
+  font-size: var(--font-size-md); /* E5.8 Phase 12 #174：nav-empty 13→md */
   color: var(--text-muted);
   text-align: center;
 }
@@ -147,7 +147,7 @@
 }
 
 .settings-group-title {
-  font-size: 18px;
+  font-size: var(--font-size-xl); /* E5.8 Phase 12 #174：group-title 18→xl（F3 定案：xl=18 零视觉变化） */
   font-weight: 600;
   margin: 0 0 20px 0;
   padding-bottom: 12px;
@@ -155,12 +155,39 @@
   color: var(--text-primary);
 }
 
+/* ── 组内二级标题（E5.8#78）——主题组 5 分节；无 group 的 key 平铺不进 subsection ── */
+
+.settings-subsection {
+  /* 分节间距：前节末行与下节标题分隔（含无 group 平铺行） */
+  margin-bottom: 6px;
+}
+
+.settings-subsection-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--font-size-sm); /* E5.8 Phase 12 #174：subsection 12→sm */
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  margin: 22px 0 10px 0;
+  color: var(--text-secondary);
+}
+
+/* 小竖条修饰——分区纹理同款 left-accent，低饱和不喧宾（对标 VS Code 分组标签） */
+.settings-subsection-title::before {
+  content: "";
+  width: 3px;
+  height: 12px;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--accent) 55%, transparent);
+}
+
 .settings-empty {
   display: flex;
   align-items: center;
   justify-content: center;
   height: 100%;
-  font-size: 13px;
+  font-size: var(--font-size-md); /* E5.8 Phase 12 #174：empty 13→md */
   color: var(--text-muted);
 }
 
@@ -181,7 +208,7 @@
 }
 
 .settings-role-switch-label {
-  font-size: 12px;
+  font-size: var(--font-size-sm); /* E5.8 Phase 12 #174：role-label 12→sm */
   color: var(--text-muted);
   flex-shrink: 0;
 }
@@ -194,7 +221,7 @@
   border: 1px solid var(--border);
   background: var(--bg-input);
   color: var(--text-secondary);
-  font-size: 11.5px;
+  font-size: var(--font-size-xs); /* E5.8 Phase 12 #174：role-switch-btn 11.5→xs */
   font-family: inherit;
   cursor: pointer;
   transition: border-color 150ms ease, background 150ms ease, color 150ms ease;
@@ -243,9 +270,80 @@
   min-width: 0;
 }
 
+.settings-row-label-line {
+  /* E5.8#87：来源徽标与 label 同行——flex 对齐，徽标不挤压 desc */
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+/* E5.8#87+#99：来源徽标——✏️ 用户覆盖 / 🔀 域来源（#6 归一化：emoji → codicon 图标 + 降噪——
+   theme 态不显徽标，无徽标 = 主题来源；清除后徽标消失 = 一眼可见「回主题」，对标 VS Code 非默认态才点显）。
+   形态对标 .settings-row-gear 惯例（小胶囊）——不抢行主体 */
+.settings-source-badge {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: var(--font-size-xs); /* E5.8 Phase 12 #174：source-badge 11→xs */
+  line-height: 1;
+  padding: 3px 6px;
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+}
+.settings-source-badge .codicon {
+  font-size: var(--font-size-xs); /* E5.8 Phase 12 #174：badge codicon 11→xs */
+}
+.settings-source-badge--user {
+  /* 用户覆盖——主题强调色系点显（非裸 hex） */
+  color: var(--text-on-accent);
+  background: var(--accent);
+  opacity: 0.92;
+}
+.settings-source-badge--mix {
+  /* 域来源——混搭生效，另类强调区分 */
+  color: var(--text-primary);
+  background: var(--tab-active-bg);
+}
+
+/* E5.8#155：跟随主题生效值徽标——控件容器内、控件右侧（行尾/齿轮左）显示行实际生效值（对标 VS Code「从默认值继承」）。
+   只显跟随主题态（非用户修改）；信息性展示 → muted 中性小胶囊（同 .settings-source-badge 惯例，
+   不抢行主体，区别于 user/mix 的状态点显）。垂直对齐借 .settings-row-control align-items:center——
+   与控件同一条中心线（贴住控件而非浮在行中间），margin-left 与控件留隙。 */
+.settings-effective-badge {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 8px;
+  font-size: var(--font-size-xs); /* E5.8 Phase 12 #174：effective-badge 11→xs */
+  line-height: 1;
+  padding: 3px 6px;
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+  color: var(--text-secondary);
+  background: var(--tab-active-bg);
+}
+.settings-effective-badge-label {
+  color: var(--text-muted);
+}
+.settings-effective-badge-value {
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.settings-effective-swatch {
+  flex-shrink: 0;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  border: 1px solid var(--border);
+}
+
 .settings-row-label {
   display: block;
-  font-size: 13px;
+  font-size: var(--font-size-md); /* E5.8 Phase 12 #174：row-label 13→md */
   font-weight: 500;
   color: var(--text-primary);
   margin-bottom: 3px;
@@ -256,9 +354,13 @@
 
 .settings-row-desc {
   display: block;
-  font-size: 12px;
+  font-size: var(--font-size-sm); /* E5.8 Phase 12 #174：row-desc 12→sm */
   color: var(--text-muted);
-  line-height: 1.5;
+  line-height: 1.5; /* 已单位化，保持 */
+  /* E5.8#52：对齐同文件 .settings-row-label 三件套——缩窄时长 desc 单行省略号截断，不延伸/竖排 */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* ── 控件区 ── */
@@ -271,12 +373,48 @@
   justify-content: flex-end;
 }
 
+/* E5.8#50.22：主题配方卡片行（uiHint "themePicker"）——整行铺开（mockup 主题区帧：
+   说明在上、卡片网格占满下一行）。:has() Chromium 105+ 安全。 */
+.settings-row:has(.theme-picker) {
+  flex-wrap: wrap;
+}
+
+.settings-row:has(.theme-picker) .settings-row-control {
+  flex-basis: 100%;
+  justify-content: stretch;
+  min-width: 0;
+}
+
+/* ── E5.8#77：滑杆值标签——滑杆占满 + 右侧当前值（unit 声明 → ×倍数/px；mockup 数值位置） ── */
+
+.settings-slider-control {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+
+.settings-slider-control .slider {
+  flex: 1;
+  min-width: 0;
+}
+
+.settings-slider-value {
+  flex-shrink: 0;
+  min-width: 44px;
+  text-align: right;
+  font-size: var(--font-size-sm); /* E5.8 Phase 12 #174：slider-value 12→sm */
+  font-variant-numeric: tabular-nums;
+  color: var(--text-secondary);
+  user-select: none;
+}
+
 /* ── E3f #53c：设置项齿轮——hover 时出现，对标 VS Code Settings Editor ── */
 
 .settings-row-gear {
   flex-shrink: 0;
-  width: 24px;
-  height: 24px;
+  width: calc(24px * var(--ui-scale)); /* E5.8 Phase 12 #174：齿轮按钮盒乘 scale（§三.3） */
+  height: calc(24px * var(--ui-scale));
   display: flex;
   align-items: center;
   justify-content: center;
@@ -284,7 +422,7 @@
   border: none;
   border-radius: 3px;
   color: var(--text-muted);
-  font-size: 13px;
+  font-size: var(--font-size-lg); /* E5.8 Phase 12 #174：齿轮 codicon 内容图标（基类 16px）→lg */
   cursor: pointer;
   opacity: 0;
   transition: opacity 120ms ease, background 120ms ease;
@@ -310,7 +448,7 @@
 .settings-color-swatch {
   width: 20px;
   height: 20px;
-  border-radius: 3px;
+  border-radius: var(--radius-sm);
   border: 1px solid var(--separator);
   flex-shrink: 0;
   cursor: pointer;
@@ -320,18 +458,67 @@
   border-color: var(--accent);
 }
 
-/* E4V#46——action 按钮（renderHint: "action"） */
-.settings-action-btn {
-  background: var(--accent);
-  color: var(--text-on-accent);
-  border: none;
-  border-radius: 3px;
-  padding: 4px 12px;
-  font-size: 12px;
-  cursor: pointer;
-  white-space: nowrap;
+/* E5.8#50.11——背景图选择（uiHint: "image"）——按钮行 + 受控路径省略显示 */
+.settings-image-picker {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex-wrap: wrap; /* E5.8#87：三态按钮（选择/无背景/清除）+ 路径超宽换行，不挤压 */
 }
-.settings-action-btn:hover { opacity: 0.85; }
+.settings-image-path {
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--font-size-sm); /* E5.8 Phase 12 #174：image-path 12→sm */
+  color: var(--text-muted);
+}
+
+/* ── E5.8#99：分段控件段内预览 swatch——单一几何（52×30 + var(--radius-sm)），
+   fontTone（Aa 分半）+ accentSource（色块）共用（#3 归一化——删 #91/#98 各自 swatch 变体）。
+   分段按钮本体（ghost 双轨制）在壳 SegmentedRadio.css（#1+#4 收敛），此处只留预览内容样式。 ── */
+.settings-segmented-swatch {
+  display: flex;
+  width: 52px;
+  height: 30px;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  border: 1px solid var(--separator);
+  flex-shrink: 0;
+}
+/* 跟随主题配方——中性分半示意「主题决定强调色」（themeable 变量，非运行值）。
+   🔥 E5.8#116：两半改用 --tone-* 实色标尺 token——玻璃合成（synthesizeGlassSurfaces color-mix）把
+   --bg-window 写成 alpha 0 全透明，左半与背后表面融为一体 = 用户报「完全空心」；对标 fontTone 预览
+   （--tone-surface-deep/light 实色标尺渲染正常），零 hex 铁律。 */
+.settings-segmented-swatch--split {
+  background: linear-gradient(90deg, var(--tone-surface-deep) 50%, var(--tone-surface-light) 50%);
+}
+/* 自定义——实时生效强调色：applyAccentColor 恒把 effective accent 写 --accent
+   （自定义色 / 清除回主题 / 跟随主题 三态全对），声明式读 CSS 变量，零 IPC 零 DOM 读 */
+.settings-segmented-swatch--accent {
+  background: var(--accent);
+}
+.settings-font-tone-half {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--font-size-sm); /* E5.8 Phase 12 #174：font-tone-half 12→sm */
+  font-weight: 600;
+  line-height: 1;
+  user-select: none;
+}
+/* E5.8#91 文字极性预览两极性取样——色值 = shell 标尺 token（--tone-* 系统双字系，非主题色板） */
+.settings-font-tone-half--deep {
+  background: var(--tone-surface-deep);
+  color: var(--tone-ink-on-deep);
+}
+.settings-font-tone-half--light {
+  background: var(--tone-surface-light);
+  color: var(--tone-ink-on-light);
+}
 
 /* ── ObjectEditor——object/array 配置项键值对编辑器 ── */
 
@@ -351,13 +538,13 @@
 .object-editor-key {
   flex: 1;
   min-width: 80px;
-  font-size: 12px;
+  font-size: var(--font-size-sm); /* E5.8 Phase 12 #174：key 12→sm */
   padding: 2px 6px;
-  height: 24px;
+  height: calc(24px * var(--ui-scale)); /* E5.8 Phase 12 #174：输入行容器乘 scale（§三.3） */
 }
 
 .object-editor-colon {
-  font-size: 12px;
+  font-size: var(--font-size-sm); /* E5.8 Phase 12 #174：colon 12→sm */
   color: var(--text-muted);
   flex-shrink: 0;
 }
@@ -366,15 +553,15 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 24px;
+  width: calc(24px * var(--ui-scale)); /* E5.8 Phase 12 #174：toggle 按钮盒乘 scale */
+  height: calc(24px * var(--ui-scale));
   padding: 0;
   background: transparent;
   border: 1px solid var(--border);
   border-radius: 3px;
   color: var(--text-muted);
   cursor: pointer;
-  font-size: 12px;
+  font-size: var(--font-size-lg); /* E5.8 Phase 12 #174：toggle codicon 内容图标（基类 16px）→lg */
   flex-shrink: 0;
   transition: background 150ms ease, color 150ms ease, border-color 150ms ease;
 }
@@ -396,24 +583,24 @@
 .object-editor-value {
   flex: 1;
   min-width: 60px;
-  font-size: 12px;
+  font-size: var(--font-size-sm); /* E5.8 Phase 12 #174：value 12→sm */
   padding: 2px 6px;
-  height: 24px;
+  height: calc(24px * var(--ui-scale)); /* E5.8 Phase 12 #174：输入行容器乘 scale */
 }
 
 .object-editor-delete {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 24px;
+  width: calc(24px * var(--ui-scale)); /* E5.8 Phase 12 #174：delete 按钮盒乘 scale */
+  height: calc(24px * var(--ui-scale));
   padding: 0;
   background: transparent;
   border: none;
   border-radius: 3px;
   color: var(--text-muted);
   cursor: pointer;
-  font-size: 12px;
+  font-size: var(--font-size-lg); /* E5.8 Phase 12 #174：delete codicon 内容图标 →lg */
   flex-shrink: 0;
   transition: color 150ms ease, background 150ms ease;
 }
@@ -432,7 +619,7 @@
   border: 1px dashed var(--border);
   border-radius: 3px;
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--font-size-sm); /* E5.8 Phase 12 #174：add 12→sm */
   cursor: pointer;
   transition: color 150ms ease, border-color 150ms ease;
 }

@@ -9,7 +9,7 @@ import { registerKeybinding } from "../../registry/commands/KeybindingRegistry";
 export const CORE_KEYBINDINGS: Array<{ command: string; key: string; args?: unknown[] }> = [
   { command: "core.openSettings",             key: "ctrl+," },
   { command: "workbench.action.showCommands", key: "ctrl+shift+p" },
-  { command: "workbench.action.selectTheme",  key: "ctrl+k ctrl+t" },
+  { command: "theme.pick",  key: "ctrl+k ctrl+t" }, // E5.8#50.24：theme.pick 归一化命令 id
   { command: "workbench.action.selectLanguage", key: "ctrl+k ctrl+l" },
   { command: "workbench.action.closeActiveTab", key: "ctrl+w" },
   { command: "workbench.action.reopenClosedEditor", key: "ctrl+shift+t" },

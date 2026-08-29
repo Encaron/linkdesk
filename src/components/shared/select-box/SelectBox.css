@@ -1,4 +1,6 @@
-/* SelectBox——归一化下拉组件。对标 VS Code selectBox 样式。 */
+/* SelectBox——归一化下拉组件。对标 VS Code selectBox 样式。
+   E5.8#128.7：幽灵 token 链（--bg-panel/--fg-input/--fg-default/--border-input/--border-default/
+   --border-input-focus/--bg-selection/--fg-muted）全归一真实 token——首 token 恒解析，幽灵链+hex 是死路径。 */
 
 .selectbox {
   position: relative;
@@ -16,19 +18,19 @@
   gap: 4px;
   width: 100%;
   padding: 3px 6px;
-  background: var(--bg-input, var(--bg-panel, #3c3c3c));
-  color: var(--fg-input, var(--fg-default, #ccc));
-  border: 1px solid var(--border-input, var(--border-default, #555));
-  border-radius: 2px;
-  font-size: 13px;
-  line-height: 20px;
+  background: var(--bg-input);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xs);
+  font-size: var(--font-size-md); /* E5.8 Phase 12 #170：trigger 13→md */
+  line-height: 1.6; /* E5.8 Phase 12 #170：line-height 20px → unitless */
   cursor: pointer;
   font-family: inherit;
   text-align: left;
 }
 
 .selectbox-trigger:hover:not(:disabled) {
-  border-color: var(--border-input-focus, var(--accent, #0078d4));
+  border-color: var(--accent);
 }
 
 .selectbox-trigger:disabled {
@@ -37,7 +39,7 @@
 }
 
 .selectbox-open .selectbox-trigger {
-  border-color: var(--accent, #0078d4);
+  border-color: var(--accent);
 }
 
 .selectbox-label {
@@ -47,9 +49,21 @@
   white-space: nowrap;
 }
 
+/* E5.8#50.23：选项预览色块——触发器与下拉项的前置色点（配色变体 accent 等） */
+.selectbox-swatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-right: 5px;
+  border-radius: 50%;
+  border: 1px solid color-mix(in srgb, var(--text-primary) 35%, transparent);
+  vertical-align: middle;
+  flex-shrink: 0;
+}
+
 .selectbox-arrow {
   flex-shrink: 0;
-  font-size: 12px;
+  font-size: var(--font-size-sm); /* E5.8 Phase 12 #170：arrow 12→sm */
   transition: transform 0.15s ease;
 }
 
@@ -66,10 +80,11 @@
   /* right: 0 已移除——inline style 用 position:fixed 时 right:0 会导致面板拉伸到窗口右边缘。
      宽度由 inline style 的 minWidth + maxWidth 控制，CSS 只提供 viewport 兜底。 */
   margin-top: 2px;
-  background: var(--bg-window, #252526);
-  border: 1px solid var(--border-default, #555);
-  border-radius: 3px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  background: var(--bg-window);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-pop); /* 画在自身 border 盒外，overflow 只裁内容不裁阴影 */
+  overflow: hidden; /* 裁内部 hover 高亮四角——高亮实心块贴圆角边界（用户审计 #1） */
   z-index: var(--z-dropdown); /* E5#98 */
   max-height: 260px;
   max-width: calc(100vw - 24px); /* 绝对不溢出窗口——viewport 兜底，无硬编码固定值 */
@@ -87,24 +102,24 @@
 
 .selectbox-search {
   padding: 4px;
-  border-bottom: 1px solid var(--separator, #444);
+  border-bottom: 1px solid var(--separator);
 }
 
 .selectbox-search-input {
   width: 100%;
   padding: 2px 6px;
-  background: var(--bg-input, var(--bg-panel, #3c3c3c));
-  color: var(--fg-input, var(--fg-default, #ccc));
-  border: 1px solid var(--border-input, var(--border-default, #555));
-  border-radius: 2px;
-  font-size: 12px;
+  background: var(--bg-input);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xs);
+  font-size: var(--font-size-sm); /* E5.8 Phase 12 #170：search 12→sm */
   font-family: inherit;
   outline: none;
   box-sizing: border-box;
 }
 
 .selectbox-search-input:focus {
-  border-color: var(--accent, #0078d4);
+  border-color: var(--accent);
 }
 
 /* ── 列表 ── */
@@ -119,25 +134,25 @@
 
 .selectbox-item {
   padding: 3px 8px;
-  font-size: 13px;
-  line-height: 20px;
-  color: var(--fg-default, #ccc);
+  font-size: var(--font-size-md); /* E5.8 Phase 12 #170：item 13→md */
+  line-height: 1.6; /* E5.8 Phase 12 #170：line-height 20px → unitless */
+  color: var(--text-primary);
   cursor: pointer;
 }
 
 .selectbox-item-focus {
-  background: var(--accent, #0078d4);
+  background: var(--accent);
   color: var(--text-on-accent);
 }
 
 .selectbox-item-selected:not(.selectbox-item-focus) {
-  background: var(--bg-selection, rgba(0, 120, 212, 0.2));
+  background: var(--bg-selection); /* E5.8#128.7：非聚焦选中底（accent 20% 衍生） */
 }
 
 .selectbox-empty {
   padding: 6px 8px;
-  font-size: 12px;
-  color: var(--fg-muted, #888);
+  font-size: var(--font-size-sm); /* E5.8 Phase 12 #170：empty 12→sm */
+  color: var(--text-muted);
   text-align: center;
 }
 

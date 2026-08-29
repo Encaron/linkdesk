@@ -9,25 +9,7 @@
         "id": "mint-soda",
         "label": "薄荷苏打 Mint Soda",
         "uiTheme": "light",
-        "path": "mint-soda.json"
-      },
-      {
-        "id": "mint-dew",
-        "label": "薄荷冰露 Mint Dew",
-        "uiTheme": "light",
-        "path": "mint-dew.json"
-      },
-      {
-        "id": "sea-salt-mint",
-        "label": "海盐薄荷 Sea Salt Mint",
-        "uiTheme": "light",
-        "path": "sea-salt-mint.json"
-      },
-      {
-        "id": "lime-mint",
-        "label": "青柠薄荷 Lime Mint",
-        "uiTheme": "light",
-        "path": "lime-mint.json"
+        "path": "themes/mint-soda.json"
       }
     ]
   }

@@ -651,8 +651,8 @@
 <div class="frame">
   <div class="frame-caption">
     <span class="tag">回程</span>
-    <b>逐个拖回只回一个 · 拖空自灭 · 关窗 mergeAllTabs 全部回归</b>
-    <span>I9-7 逐个拖回 · I9-8 拖空自灭 · I9-9 关窗回归 · I9-19 右键菜单</span>
+    <b>逐个拖回只回一个 · 拖空自灭 · 关窗× = 关闭全部标签页非回归</b>
+    <span>I9-7 逐个拖回 · I9-8 拖空自灭 · I9-9 关窗非回归 · I9-19 右键菜单</span>
   </div>
 
   <div class="stage">
@@ -685,15 +685,15 @@
               <div class="tab">串口监视器</div>
             </div>
             <div class="editor code">
-              <div><span class="ln">1</span><span class="cm">// 逐个拖回：D 窗口 tab 拖回主窗口 → 只回那一个</span></div>
-              <div><span class="ln">2</span><span class="cm">// 关窗 × → mergeAllTabs 全部回归（I9-9）</span></div>
-              <div><span class="ln">3</span><span class="cm">// Ctrl+W 关最后 tab → 窗口随 tab 关闭 + tab 回归（I9-10）</span></div>
+              <div><span class="ln">1</span><span class="cm">// 逐个拖回：W1 tab 拖回主窗口 → 只回那一个（I9-7）</span></div>
+              <div><span class="ln">2</span><span class="cm">// 关窗 × → 关闭窗口内全部标签页，不回归主窗口（I9-9）</span></div>
+              <div><span class="ln">3</span><span class="cm">// Ctrl+W 关最后 tab → 窗口随 tab 关闭，tab 也不回归（I9-10）</span></div>
             </div>
           </div>
         </div>
         <div class="statusbar">
           <span>就绪</span>
-          <span class="right">回程：逐个拖回 / 关窗回归</span>
+          <span class="right">回程：逐个拖回 / 关窗 = 关闭全部标签页</span>
         </div>
       </div>
       <span class="lbl">主窗口</span>
@@ -722,7 +722,8 @@
         <div class="dwin-main">
           <div class="tabbar">
             <div class="tab active">设置</div>
-            <!-- 脱出窗口内 tab 右键菜单（I9-19） -->
+            <div class="tab">串口监视器</div>
+            <!-- 脱出窗口内 tab 右键菜单（I9-19）——多 tab 窗口示意：关窗× = 两个全关 -->
             <div class="ctx" style="top:30px; left:60px;">
               <div class="ctx-item rule">设置 tab · 右键</div>
               <div class="ctx-sep"></div>
@@ -765,7 +766,7 @@
     </div>
   </div>
 
-  <div class="frame-note"><b>回程三路径：</b>① <b>逐个拖回</b>（I9-7）——从 D 窗口拖 tab 回主窗口 → 只回被拖的那一个（moveTab 语义不区分窗口内外）；② <b>拖空自灭</b>（I9-8）——最后一个 tab 移出/关闭 → 窗口自动销毁（VS Code 同款：窗口没有 tab 就没了）；③ <b>关窗 ×</b>（I9-9）——<code>mergeAllTabs</code> 窗口内全部 tab 回归主窗口；④ 右键菜单（I9-19）——主窗口 tab「在新窗口中打开」/ 脱出窗口 tab「并回主窗口」（该 tab 回归，最后一个则窗口自灭）；⑤ 崩溃恢复（I9-16）——脱出窗口崩 → 关窗 + tab 回归主窗口。</div>
+  <div class="frame-note"><b>回程路径（2026-08-22 拍板修正）：</b>① <b>逐个拖回</b>（I9-7）——从脱出窗口拖 tab 回主窗口 → 只回被拖的那一个（moveTab 语义不区分窗口内外，目标 = 释放点命中的 group 标签栏）；② <b>拖空自灭</b>（I9-8）——最后一个 tab 移出/关闭 → 窗口自动销毁（VS Code 同款：窗口没有 tab 就没了）；③ <b>关窗 ×</b>（I9-9）——<b>关闭窗口内全部标签页，不回归主窗口</b>（VS Code 行为，<code>mergeAllTabs</code> 作废——用户 2026-08-22 拍板）；④ 右键菜单（I9-19）——主窗口 tab「在新窗口中打开」/ 脱出窗口 tab「并回主窗口」（该 tab 回归，最后一个则窗口自灭）；⑤ 崩溃恢复（I9-16 拍板 A）——脱出窗口崩 → 弹 reload 提示（复用 E5.7 熔断 + 手动重试按钮 + 心跳假死），不自动关窗。</div>
 </div>
 
 </body>

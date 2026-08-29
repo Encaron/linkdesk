@@ -45,14 +45,14 @@
 }
 
 .welcome-title {
-  font-size: 28px;
+  font-size: var(--font-size-4xl); /* E5.8 Phase 12 #171：title 28→4xl（30） */
   font-weight: 600;
   margin: 0 0 8px;
   color: var(--text-primary);
 }
 
 .welcome-subtitle {
-  font-size: 14px;
+  font-size: var(--font-size-lg); /* E5.8 Phase 12 #171：subtitle 14→lg（16） */
   color: var(--text-muted);
   margin: 0;
 }
@@ -66,7 +66,7 @@
 }
 
 .welcome-section-title {
-  font-size: 13px;
+  font-size: var(--font-size-md); /* E5.8 Phase 12 #171：section 13→md（14） */
   font-weight: 600;
   color: var(--text-muted);
   text-transform: uppercase;
@@ -91,7 +91,7 @@
   gap: 6px;
   padding: 16px 12px;
   border: 1px solid var(--separator);
-  border-radius: 6px;
+  border-radius: var(--radius-md);
   background: var(--bg-card);
   cursor: pointer;
   transition: background 120ms ease;
@@ -113,7 +113,7 @@
 }
 
 .welcome-card-label {
-  font-size: 13px;
+  font-size: var(--font-size-md); /* E5.8 Phase 12 #171：13→md */
   font-weight: 600;
   color: var(--text-primary);
 }
@@ -121,7 +121,7 @@
 /* ── Empty State ── */
 
 .welcome-empty {
-  font-size: 13px;
+  font-size: var(--font-size-md); /* E5.8 Phase 12 #171：13→md */
   color: var(--text-muted);
   text-align: center;
   padding: 16px;
@@ -140,11 +140,11 @@
   gap: 8px;
   padding: 6px 8px;
   border: none;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   background: transparent;
   cursor: pointer;
   color: var(--text-primary);
-  font-size: 13px;
+  font-size: var(--font-size-md); /* E5.8 Phase 12 #171：13→md */
   text-align: left;
   transition: background 120ms ease;
 }
@@ -169,10 +169,10 @@
 }
 
 .welcome-recent-workspace {
-  font-size: 11px;
+  font-size: var(--font-size-xs); /* E5.8 Phase 12 #171：recent 11→xs */
   color: var(--text-muted);
   padding: 1px 6px;
-  border-radius: 3px;
+  border-radius: var(--radius-sm);
   background: var(--bg-card);
   border: 1px solid var(--separator);
 }
@@ -185,7 +185,7 @@
 }
 
 .welcome-help-item {
-  font-size: 13px;
+  font-size: var(--font-size-md); /* E5.8 Phase 12 #171：13→md */
   color: var(--text-muted);
   cursor: default;
 }

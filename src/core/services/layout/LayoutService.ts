@@ -11,7 +11,7 @@
  */
 
 import type { LayoutData } from "../../../hooks/useTabManager";
-import { read, write, writeSync } from "../configuration/StorageService";
+import { read, readSync, write, writeSync } from "../configuration/StorageService";
 import { exists, readFile, writeFile, createDir, joinPath, appDataDir } from "../files/FileService";
 
 /* ── 类型 ── */
@@ -47,6 +47,14 @@ export interface SidebarLayoutState {
   edge?: "left" | "right";
 }
 
+/** E5.8#43-3：脱出窗持久化状态——重启/F5 恢复浮窗（I9-15）。此刻浮窗无 tab（tab 归属随 #44 拖出后扩展），仅落盘窗口矩形。 */
+export interface DetachedWindowState {
+  /** 壳生成 id——主进程按 id 幂等建/复窗 */
+  windowId: string;
+  /** 上次落盘的窗口矩形——重启 createPoolWindow 用（越界钳制主进程做，I9-14） */
+  bounds: { x: number; y: number; width: number; height: number };
+}
+
 export interface WorkspaceLayout {
   tabs: LayoutData;
   cards: CardLayout[];
@@ -54,6 +62,8 @@ export interface WorkspaceLayout {
   panel?: PanelLayoutState;
   /** 🆕 E5.8#36.9：侧栏状态——edge 持久化（#37.6 换边）。未设置过则缺省（不落盘） */
   sidebar?: SidebarLayoutState;
+  /** 🆕 E5.8#43-3：脱出窗清单——bounds 落盘（A6/I9-14），重启恢复建窗源。未脱出过则缺省（不落盘） */
+  detachedWindows?: DetachedWindowState[];
 }
 
 /* ── 缓存 ── */
@@ -64,7 +74,10 @@ let _layoutCache: WorkspaceLayout = { tabs: { groups: [], activeGroupId: "" }, c
 
 /** 初始化——App 启动时调一次。StorageService 统一读写，优先 localStorage，文件兜底。 */
 export async function initLayoutService(): Promise<void> {
-  const saved = await read<WorkspaceLayout>("layout");
+  // E5.8#71：read() 已归一为文件优先（文件 = 真相）。布局的 beforeunload 保底
+  // （syncWriteLayout 写 localStorage-only，beforeunload 无法异步 I/O）是「关窗瞬间最后状态」通道，
+  // 在此显式 readSync 优先——仅当 localStorage 无数据才落 read() 文件兜底。
+  const saved = readSync<WorkspaceLayout>("layout") ?? (await read<WorkspaceLayout>("layout"));
   if (saved) {
     _layoutCache = saved;
   }
@@ -95,6 +108,11 @@ export function getPanelLayout(): PanelLayoutState | undefined {
 /** E5.8#36.9：读取侧栏布局状态 */
 export function getSidebarLayout(): SidebarLayoutState | undefined {
   return _layoutCache.sidebar;
+}
+
+/** E5.8#43-3：读取脱出窗清单——重启恢复建窗源（I9-15）。无则空数组 */
+export function getDetachedWindows(): DetachedWindowState[] {
+  return _layoutCache.detachedWindows ?? [];
 }
 
 /* ── 保存 ── */
@@ -132,10 +150,17 @@ export async function saveSidebarLayout(sidebar: SidebarLayoutState): Promise<vo
   await write("layout", _layoutCache);
 }
 
+/** E5.8#43-3：保存脱出窗清单——bounds 落盘（A6/I9-14），整表替换（壳注册表是脱出窗唯一真相源） */
+export async function saveDetachedWindows(windows: DetachedWindowState[]): Promise<void> {
+  _layoutCache.detachedWindows = windows;
+  await write("layout", _layoutCache);
+}
+
 /**
  * Phase 5f：同步写入——beforeunload 专用。
  * beforeunload 期间不能做异步 I/O，用 writeSync 写 localStorage 保底。
- * 下次启动时 initLayoutService 从 localStorage 读回，再异步写文件补齐。
+ * E5.8#71：read() 已文件优先归一——保底在 initLayoutService 显式 readSync 优先读回
+ * （仅 localStorage 无数据才落文件），此处写入的 localStorage 即「关窗瞬间最后状态」。
  */
 export function syncWriteLayout(layout: WorkspaceLayout): void {
   _layoutCache = layout;

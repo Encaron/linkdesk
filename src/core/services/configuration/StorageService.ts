@@ -71,29 +71,49 @@ export async function initStorageService(): Promise<void> {
 /* ── 读取 ── */
 
 /**
- * 读取持久化数据。优先读 localStorage（beforeunload 同步写入，永远最新），
- * 文件兜底（100ms 防抖异步落盘，可能略旧于 localStorage）。
+ * 纯函数——读取源优先序：文件优先（真相），localStorage 兜底。可单测。
+ * fileRaw 非 null = 文件存在且有内容；lsRaw 非 null = localStorage 有缓存。
+ * 返回 null = 两源皆空。
+ */
+export function pickReadSource(fileRaw: string | null, lsRaw: string | null): "file" | "ls" | null {
+  if (fileRaw != null) return "file";
+  if (lsRaw != null) return "ls";
+  return null;
+}
+
+/**
+ * 读取持久化数据——文件优先（文件 = 真相：用户/AI 直接编辑 settings.json 即生效，AI 友好第 2 层；
+ * E5.8#71 归一，修 localStorage 陈旧快照盖掉文件的启动主题错乱 bug），localStorage 兜底
+ * （beforeunload 同步写入的最后状态）。读到文件回写 localStorage 刷新缓存（覆盖陈旧快照）；
+ * 文件缺失/损坏时 localStorage 兜底只读（不回写文件——缺失=用户重置，不复活）。
  */
 export async function read<T>(key: string): Promise<T | null> {
   const lsKey = _lsKey(key);
 
-  // 1. 尝试 localStorage
-  try {
-    const raw = localStorage.getItem(lsKey);
-    if (raw) return JSON.parse(raw) as T;
-  } catch { /* ignore */ }
+  let lsRaw: string | null = null;
+  try { lsRaw = localStorage.getItem(lsKey); } catch { /* ignore */ }
 
-  // 2. 尝试文件系统
+  // 1. 文件优先——文件 = 真相
   if (_hasLinkdesk()) {
     try {
       const path = await _filePath(key);
       if (path && await fsExists(path)) {
-        const raw = await readFile(path);
-        // 读到后回写 localStorage——补齐 beforeunload 没写文件的缺口
-        try { localStorage.setItem(lsKey, raw); } catch { /* ignore */ }
-        return JSON.parse(raw) as T;
+        const fileRaw = await readFile(path);
+        try {
+          const parsed = JSON.parse(fileRaw) as T;
+          // 读到文件回写 localStorage——刷新缓存，覆盖外部编辑后的陈旧快照
+          if (fileRaw !== lsRaw) {
+            try { localStorage.setItem(lsKey, fileRaw); } catch { /* ignore */ }
+          }
+          return parsed;
+        } catch { /* 文件损坏——JSON 解析失败 → 走 localStorage 兜底 */ }
       }
-    } catch { /* 文件不存在或损坏 */ }
+    } catch { /* 文件不存在或不可读 */ }
+  }
+
+  // 2. localStorage 兜底（文件缺失/损坏）——只读，不回写文件
+  if (lsRaw != null) {
+    try { return JSON.parse(lsRaw) as T; } catch { /* ignore */ }
   }
 
   return null;

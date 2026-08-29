@@ -20,7 +20,7 @@ const validPoolLayout = {
     menuBarVisible: true,
     menuGroups: [{ group: "file", label: "文件", items: [{ label: "新建", command: "file.new" }] }],
     slots: { left: [], right: [] },
-    windowControls: { minimize: "最小化", maximize: "最大化", restore: "还原", close: "关闭" },
+    windowControls: { minimize: "最小化", maximize: "最大化", restore: "还原", close: "关闭", pin: "置顶", unpin: "取消置顶" },
   },
   iconBar: {
     icons: [{ pluginId: "terminal", icon: { kind: "lucide", name: "terminal" }, label: "终端", location: "top" as const }],

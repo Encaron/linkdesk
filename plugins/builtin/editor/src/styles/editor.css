@@ -5,12 +5,12 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  height: 22px;
+  height: calc(22px * var(--ui-scale)); /* E5.8 Phase 12 #177：editor-status-bar 22px 乘 scale（§三.3） */
   padding: 0 8px;
   background: var(--bg-window);
   border-top: 1px solid var(--separator);
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--font-size-sm); /* E5.8 Phase 12 #177：12→sm */
   flex-shrink: 0;
   user-select: none;
 }
@@ -33,19 +33,19 @@
 
 .editor-status-sep {
   opacity: 0.4;
-  font-size: 10px;
+  font-size: var(--font-size-2xs); /* E5.8 Phase 12 #177：sep 10→2xs */
 }
 
 /* E4V#40k EditorBreadcrumb——编辑器面包屑 */
 .editor-breadcrumb {
   display: flex;
   align-items: center;
-  height: 22px;
+  height: calc(22px * var(--ui-scale)); /* E5.8 Phase 12 #177：editor-breadcrumb 22px 乘 scale（§三.3） */
   padding: 0 8px;
   background: var(--bg-window);
   border-bottom: 1px solid var(--separator);
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--font-size-sm); /* E5.8 Phase 12 #177：12→sm */
   flex-shrink: 0;
   user-select: none;
   overflow: hidden;

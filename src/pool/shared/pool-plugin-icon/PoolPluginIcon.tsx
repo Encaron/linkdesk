@@ -57,7 +57,8 @@ function PoolPluginIcon({ icon, className = "", alt = "" }: PoolPluginIconProps)
     case "codicon":
       return <span className={`codicon ${icon.name} plugin-icon plugin-icon--codicon ${className}`} />;
     case "img":
-      return <img src={icon.src} alt={alt} className={`plugin-icon plugin-icon--img ${className}`} />;
+      // E5.8#46.6：draggable=false 禁原生拖拽——图标栏指针拖拽重排时 img 默认可拖会抢手势（同 GroupTabBar 修）
+      return <img src={icon.src} alt={alt} className={`plugin-icon plugin-icon--img ${className}`} draggable={false} />;
     default:
       return <span className={`plugin-icon plugin-icon--emoji ${className}`}>{icon.text}</span>;
   }

@@ -13,6 +13,8 @@ import { useState, useEffect } from "react";
 import type { PluginStateChangedPayload } from "@linkdesk/contracts";
 import { useTranslation } from "react-i18next";
 import { SERIAL_MONITOR_PLUGIN_ID } from "../utils/pluginId";
+// E5.8#54：灯 + (N) 同组对齐样式（serial-status-conn/led）
+import "../styles/StatusBar.css";
 // E5.8#29：活动会话口——状态栏只显示活动标签页的口（多口下各标签页各亮各的）
 import { useSerialSessions } from "../hooks/useSerialSessions";
 // E5.8#30.12（P6）：打开口计数——状态栏 (N)（≥2 才显示数字，开 1 个只亮灯）
@@ -26,6 +28,13 @@ function useIsOpen(port: string | null): boolean {
   useEffect(() => {
     setIsOpen(false); // 切口时重置——新口真实状态等事件到来
     if (!port) return;
+    let cancelled = false;
+    // E5.8#54：播种真实状态——plugin-state:changed 事件不重放，旧 :isOpen 写入此刻收不到
+    //（点标签切活动口时「先强制灭灯再等事件」→ 事件永不来 → 灯卡灭）。初始 mount/换口直接读
+    // pluginState 权威值，事件只兜底后续变化（通用「事件不重放」解法）。
+    lk()?.pluginState?.get(SERIAL_MONITOR_PLUGIN_ID, `${port}:isOpen`).then((v) => {
+      if (!cancelled && typeof v === "boolean") setIsOpen(v);
+    }).catch(() => {});
     const handler = (data: PluginStateChangedPayload) => {
       if (data?.pluginId !== SERIAL_MONITOR_PLUGIN_ID) return;
       const k: string = data.key ?? "";
@@ -34,7 +43,10 @@ function useIsOpen(port: string | null): boolean {
       }
     };
     const unsub = lk()?.events?.on<PluginStateChangedPayload>("plugin-state:changed", handler);
-    return () => unsub?.();
+    return () => {
+      cancelled = true;
+      unsub?.();
+    };
   }, [port]);
   return isOpen;
 }
@@ -67,19 +79,20 @@ export default function SerialMonitorStatusBar() {
   return (
     <>
       {showConnection && (
-        <span
-          title={isOpen ? t("已连接") : t("未连接")}
-          style={{ color: isOpen ? "var(--serial-monitor-ok)" : "var(--text-muted)" }}
-        >
-          <span className="codicon codicon-circle-filled" />
+        /* E5.8#54：灯 + (N) 同组 inline-flex——垂直中线对齐 + 紧凑 gap，不再各占外部 gap 产生大间距 */
+        <span className="serial-status-conn">
+          <span
+            className="serial-status-led"
+            title={isOpen ? t("已连接") : t("未连接")}
+            style={{ color: isOpen ? "var(--serial-monitor-ok)" : "var(--text-muted)" }}
+          >
+            <span className="codicon codicon-circle-filled" />
+          </span>
+          {/* E5.8#30.12：口数 (N)——≥2 才显示数字，开 1 个只亮灯；随 connection 配置一并显隐 */}
+          {openPortCount >= 2 && (
+            <span className="status-text">{`(${openPortCount})`}</span>
+          )}
         </span>
-      )}
-      {/* E5.8#30.12：口数 (N)——≥2 才显示数字，开 1 个只亮灯；随 connection 配置一并显隐 */}
-      {showConnection && openPortCount >= 2 && (
-        <>
-          <span className="status-divider" />
-          <span className="status-text">{`(${openPortCount})`}</span>
-        </>
       )}
     </>
   );

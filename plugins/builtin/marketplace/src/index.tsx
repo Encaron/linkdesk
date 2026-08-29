@@ -66,7 +66,7 @@ function ensureMarketplaceCommands(): void {
 
   lk().menu?.registerItems?.("marketplaceItemGear", "marketplace", [
     { command: "core.openSettings", group: "navigation", when: "extensionHasConfiguration" },
-    { command: "workbench.action.selectTheme", group: "navigation", when: "extensionHasThemes" },
+    { command: "theme.pick", group: "navigation", when: "extensionHasThemes" }, // E5.8#50.24：theme.pick 归一化命令 id
     { command: "workbench.action.selectLanguage", group: "navigation", when: "extensionHasLanguages" },
     { command: "workbench.action.selectIconTheme", group: "navigation", when: "extensionHasIconThemes" },
     { command: "workbench.action.openExtensionKeybindings", group: "navigation", when: "extensionHasKeybindings" },

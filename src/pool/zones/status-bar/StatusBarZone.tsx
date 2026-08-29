@@ -10,8 +10,8 @@
  *     （ToastAction.onClick 是壳侧闭包，不可序列化——usePoolSync 订阅 notif:* 通道）
  *
  * 与壳行为差异（诚实注记）：
- *   ① 面板从 OverlayPortal（壳侧 backdrop + Escape）改为 fixed 定位 + document mousedown
- *      outside-click + Escape——池无 OverlayPortal 依赖，行为等价。
+ *   ① E5.8#107 浮层权威：面板已收敛为壳同款 OverlayPortal（进 #overlay-root，外部点击/Escape
+ *      由 OverlayPortal 统一处理）——原「fixed + document mousedown」手动实现删除。
  *   ② 通知面板关闭期间 toast 继续出现在右下角——setToastsSuppressed 由壳在 notif:panel
  *      事件里执行（面板打开 → 隐藏 toast），语义与壳一致。
  */
@@ -20,6 +20,7 @@ import { Fragment, useState, useRef, useEffect } from "react";
 import type { StatusBarLayout, PoolStatusBarItem } from "../../../core/types/pool/poolLayout";
 import PoolStatusBarComponent from "../../shared/pool-status-bar/PoolStatusBarComponent";
 import { executePoolCommand } from "../../commands/executePoolCommand";
+import OverlayPortal from "../../../components/shared/overlay-portal/OverlayPortal";
 import "./StatusBarZone.css";
 
 /** 池 → 壳通知事件——usePoolSync 订阅（壳侧 dismissToast/setToastsSuppressed/action.onClick） */
@@ -30,32 +31,12 @@ function emitNotif(channel: string, payload?: unknown) {
 function StatusBarZone({ statusBar }: { statusBar: StatusBarLayout }) {
   const [panelOpen, setPanelOpen] = useState(false);
   const bellRef = useRef<HTMLButtonElement>(null);
-  const panelRef = useRef<HTMLDivElement>(null);
 
   // 面板开闭 → 壳（setToastsSuppressed + 标记已读）。首帧跳过——避免 mount 即发 false。
   const firstRenderRef = useRef(true);
   useEffect(() => {
     if (firstRenderRef.current) { firstRenderRef.current = false; return; }
     emitNotif("notif:panel", panelOpen);
-  }, [panelOpen]);
-
-  // 外部点击 + Escape 关闭（TitleBarZone 同款模式；壳侧为 OverlayPortal backdrop click）
-  useEffect(() => {
-    if (!panelOpen) return;
-    const onMouseDown = (e: MouseEvent) => {
-      const target = e.target as Node;
-      if (bellRef.current?.contains(target) || panelRef.current?.contains(target)) return;
-      setPanelOpen(false);
-    };
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setPanelOpen(false);
-    };
-    document.addEventListener("mousedown", onMouseDown);
-    document.addEventListener("keydown", onKeyDown);
-    return () => {
-      document.removeEventListener("mousedown", onMouseDown);
-      document.removeEventListener("keydown", onKeyDown);
-    };
   }, [panelOpen]);
 
   // 左/右分列——switch 判别（eslint E5.5#10 规则拦 `=== "小写字面量"`，tag 判别用 switch 不误报）
@@ -128,7 +109,8 @@ function StatusBarZone({ statusBar }: { statusBar: StatusBarLayout }) {
         </button>
 
         {panelOpen && (
-          <div className="status-bar-notif-panel" ref={panelRef}>
+          <OverlayPortal onClose={() => setPanelOpen(false)} triggerRef={bellRef}>
+            <div className="status-bar-notif-panel">
             <div className="notif-panel-header">
               <span className="notif-panel-title">{notif.panelTitle}</span>
               <div className="notif-panel-toolbar">
@@ -191,7 +173,8 @@ function StatusBarZone({ statusBar }: { statusBar: StatusBarLayout }) {
                 ))}
               </div>
             )}
-          </div>
+            </div>
+          </OverlayPortal>
         )}
       </div>
     </div>

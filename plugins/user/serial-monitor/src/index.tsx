@@ -147,16 +147,16 @@ const darkTheme: Extension = EditorView.theme(
     "&": { background: "var(--bg-card)", color: "var(--text-primary)" },
     ".cm-gutters": { background: "var(--bg-window)", borderRight: "1px solid var(--separator)", color: "var(--text-muted)" },
     ".cm-activeLineGutter": { background: "var(--bg-card)" },
-    ".cm-activeLine": { background: "rgba(255,255,255,0.04)" },
+    ".cm-activeLine": { background: "color-mix(in srgb, var(--text-primary) 4%, transparent)" }, /* E5.8#128.8：rgba → 文字色 4% 合成 */
     ".cm-cursor": { borderLeftColor: "var(--text-primary)" },
-    ".cm-selectionBackground": { background: "rgba(0,120,212,0.3)" },
-    ".cm-selectionMatch": { background: "rgba(0,120,212,0.15)" },
-    ".cm-searchMatch": { background: "rgba(255,255,0,0.2)", outline: "1px solid rgba(255,255,0,0.4)" },
+    ".cm-selectionBackground": { background: "color-mix(in srgb, var(--accent) 30%, transparent)" }, /* E5.8#128.8：rgba 蓝 → accent 30% 合成 */
+    ".cm-selectionMatch": { background: "color-mix(in srgb, var(--accent) 15%, transparent)" },
+    ".cm-searchMatch": { background: "color-mix(in srgb, var(--warning) 20%, transparent)", outline: "1px solid color-mix(in srgb, var(--warning) 40%, transparent)" },
     ".cm-line-sent": { color: "var(--sent-echo)" },
     ".cm-line-system": { color: "var(--system-log)" },
     ".cm-timestamp": { color: "var(--cm-timestamp, var(--text-muted))" },
-    ".cm-search-match": { background: "rgba(255, 200, 0, 0.25)" },
-    ".cm-search-current": { background: "rgba(255, 140, 0, 0.45)", outline: "1px solid rgba(255, 140, 0, 0.6)" },
+    ".cm-search-match": { background: "color-mix(in srgb, var(--warning) 25%, transparent)" },
+    ".cm-search-current": { background: "color-mix(in srgb, var(--warning) 45%, transparent)", outline: "1px solid color-mix(in srgb, var(--warning) 60%, transparent)" },
   },
   { dark: true }
 );
@@ -1382,10 +1382,10 @@ const writable = await handle.createWritable();
         marginLeft: "-1px",
       },
       ".cm-activeLine": {
-        background: "rgba(255,255,255,0.04)",
+        background: "color-mix(in srgb, var(--text-primary) 4%, transparent)", /* E5.8#128.8：rgba → 文字色 4% 合成 */
       },
       ".cm-selectionBackground": {
-        background: "rgba(0,120,212,0.3)",
+        background: "color-mix(in srgb, var(--accent) 30%, transparent)", /* E5.8#128.8：rgba 蓝 → accent 30% 合成 */
       },
     });
 

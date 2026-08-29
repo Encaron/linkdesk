@@ -43,12 +43,32 @@ export function buildPlugins() {
   };
 }
 
-/** theme 命名空间——主题查询/应用 */
+/** theme 命名空间——主题查询/应用（06 §2：列表走 API，选中走配置）。
+ *  E5.8#50.18：追加 recipe/colorway 六方法 + E5.8#88 八方法（getBaselineSeeds/resetMix）；
+ *  旧三方法 getCurrent/getAvailable/apply 保留（既有设置 UI 兼容）。 */
 export function buildTheme() {
   return {
     getCurrent: () => ipcRenderer.invoke(IPC.plugins.call, 'getCurrentTheme'),
     getAvailable: () => ipcRenderer.invoke(IPC.plugins.call, 'getAvailableThemes'),
     apply: (themeId: string) => ipcRenderer.invoke(IPC.config.set, 'app.theme', themeId),
+    // ── E5.8#50.18 + #88：配方/配色 API（经 plugins:call 代理 → 壳 IpcBridgeHandler/theme 域）──
+    listRecipes: () => ipcRenderer.invoke(IPC.plugins.call, 'theme.listRecipes'),
+    getActive: () => ipcRenderer.invoke(IPC.plugins.call, 'theme.getActive'),
+    getEffectiveTokens: () => ipcRenderer.invoke(IPC.plugins.call, 'theme.getEffectiveTokens'),
+    setRecipe: (recipeId: string) => ipcRenderer.invoke(IPC.plugins.call, 'theme.setRecipe', recipeId),
+    setColorway: (colorwayId: string) => ipcRenderer.invoke(IPC.plugins.call, 'theme.setColorway', colorwayId),
+    resetAppearance: () => ipcRenderer.invoke(IPC.plugins.call, 'theme.resetAppearance'),
+    resetMix: () => ipcRenderer.invoke(IPC.plugins.call, 'theme.resetMix'),
+    getBaselineSeeds: () => ipcRenderer.invoke(IPC.plugins.call, 'theme.getBaselineSeeds'),
+  };
+}
+
+/** appearance 命名空间——外观资产（E5.8#50.11：选择图片拷贝入库——受控来源；E5.8#153：打开存储位置） */
+export function buildAppearance() {
+  return {
+    importImage: (sourcePath: string) => ipcRenderer.invoke(IPC.appearance.importImage, sourcePath),
+    // E5.8#153：背景图齿轮「打开存储位置」——主进程解析 userData/appearance 并 openPath（池内无路径知识）
+    revealStorage: () => ipcRenderer.invoke(IPC.appearance.revealStorage),
   };
 }
 

@@ -8,6 +8,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import type { DropZone } from "./tabDragTypes";
+import type { TabDragPositionPayload } from "../../core/types/ipc/poolActions"; // E5.8#44-C：拖拽位置上报 wire 契约
 
 /* ── 类型 ── */
 
@@ -21,6 +22,11 @@ interface DragState {
   startY: number;
   phase: DragPhase;
   lifted: boolean;
+  /** E5.8#46.3：窗口屏幕原点——startDrag 时由 screenX-clientX 推出（screen=屏幕绝对坐标，client=相对本窗视口，
+   *  相减=窗口屏幕左/上缘，同在逻辑坐标 DPI 一致）。跨窗释放判定用屏幕坐标对照窗口屏幕 bounds——client 坐标
+   *  跨窗口不可靠（tab 落在其他 OS 窗口上方时 clientX 恰落进本窗视口 → 判不出「窗外」→ 拖入主屏无动作根因）。 */
+  winScreenX: number;
+  winScreenY: number;
 }
 
 export interface UseDragReorderOptions {
@@ -37,8 +43,10 @@ export interface UseDragReorderOptions {
 
   /** 重排完成 */
   onReorder: (tabId: string, toIndex: number) => void;
-  /** 移到另一个容器（如另一个标签栏）。可选 targetGroupId——中央放手时传目标面板 */
-  onMoveToOther?: (tabId: string, targetGroupId?: string) => void;
+  /** 移到另一个容器（如另一个标签栏）。可选 targetGroupId——中央放手时传目标面板。
+   *  E5.8#51：insertIndex = 跨组落点缝隙（拖动中 computeInsertIndex 算的目标组竖线缝，
+   *  缺省/负值 → 目标组 append 末尾）——跨组拖拽「竖杠落哪插哪」，不再只显示竖线落末尾。 */
+  onMoveToOther?: (tabId: string, targetGroupId?: string, insertIndex?: number) => void;
   /** 拖拽状态变化通知（用于毛玻璃等） */
   onDraggingChange?: (v: boolean) => void;
   /** drop zone 变化通知（分屏模式）。targetGroupId 用于在目标面板内定位毛玻璃 */
@@ -64,6 +72,11 @@ export interface UseDragReorderOptions {
   onDropSplit?: (tabId: string, zone: Exclude<DropZone, null | "center">, targetGroupId?: string) => void;
   /** Shift+拖 = 复制标签页到新面板（对标 VS Code） */
   onDropCopySplit?: (tabId: string, zone: Exclude<DropZone, null | "center">, targetGroupId?: string) => void;
+  /** E5.8#44-B：窗口外释放回调——拖出手势（标签页拖出窗口边界后释放）。screenX/Y = 屏幕坐标（壳转 screen 命中 TabBar/新窗）。仅拎起后触发。 */
+  onReleaseOutside?: (tabId: string, screenX: number, screenY: number) => void;
+  /** E5.8#44-C：拖拽位置上报回调——拎起后 mousemove 全程（含窗内——壳排除源窗命中，窗内自然清提示）。
+   *  canceled = Esc 取消拖拽（keydown 无坐标，壳清吸附提示）。仅拎起后触发。 */
+  onDragPosition?: (pos: TabDragPositionPayload) => void;
 }
 
 export interface UseDragReorderResult {
@@ -95,10 +108,13 @@ export function useDragReorder(
     isInPureEditor,
     findOtherContainer,
     computeSplitZone,
+    onReleaseOutside,
+    onDragPosition,
   } = options;
 
   const dragState = useRef<DragState>({
     tabId: "", fromIndex: -1, toIndex: -1, startX: 0, startY: 0, phase: "idle", lifted: false,
+    winScreenX: 0, winScreenY: 0,
   });
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [insertIndex, setInsertIndex] = useState<number | null>(null);
@@ -106,6 +122,11 @@ export function useDragReorder(
 
   const startDrag = useCallback(
     (tabId: string, fromIndex: number, e: React.MouseEvent) => {
+      // E5.8#44-B：指针捕获——鼠标拖出窗口边界后仍收 mouseup（Windows 隐式捕获之外的跨平台稳健）。
+      // pointerId 在 PointerEvent 上（React.MouseEvent 泛型类型无）——nativeEvent 运行时取；测试合成事件
+      // nativeEvent 缺（undefined）或非指针事件 → 跳过捕获（拖出手势在真实环境恒为指针事件）。
+      const pointerId = (e.nativeEvent as PointerEvent | undefined)?.pointerId;
+      if (typeof pointerId === "number") e.currentTarget.setPointerCapture?.(pointerId);
       dragState.current = {
         tabId,
         fromIndex,
@@ -114,8 +135,13 @@ export function useDragReorder(
         startY: e.clientY,
         phase: "reorder",
         lifted: false,
+        // E5.8#46.3：窗口屏幕原点——mousedown 时指针必在本窗内（刚按下标签），client 坐标未钳制，
+        // screenX-clientX = 窗口左缘精确。合成事件缺 screenX（undefined）→ ?? 0 兜底（测试桩，NaN 比较恒 false 安全）。
+        winScreenX: (e.screenX ?? 0) - e.clientX,
+        winScreenY: (e.screenY ?? 0) - e.clientY,
       };
-      setInsertIndex(fromIndex);
+      // E5.8#51：mousedown 不再同步出竖杠——插入指示是「拖到目标缝」的落点标记，
+      // 长按（未拖动）就该干干净净。起始落点在拎起（越阈值）时才显示。
     },
     []
   );
@@ -135,10 +161,20 @@ export function useDragReorder(
       // 未超阈值的移动 → 不启动
       if (ds.phase === "reorder" && Math.abs(dx) < threshold && Math.abs(dy) < threshold) return;
 
-      // 首次超阈值 → 拎起标签页
+      // 首次超阈值 → 拎起标签页；同时显示起始落点竖杠（E5.8#51：长按不显示，真正拖起才有）
       if (ds.phase === "reorder" && !ds.lifted) {
         ds.lifted = true;
         setDraggingId(ds.tabId);
+        setInsertIndex(ds.fromIndex);
+      }
+
+      // E5.8#44-C：拎起后全程上报拖拽位置（含窗内——壳排除源窗命中，窗内拖拽自然 null 清提示；窗外命中目标窗 TabBar 高亮）
+      // E5.8#46.19：附窗内外标志——窗外 → 主进程 OS 幽灵（DOM 浮块出窗被裁剪不可见）；窗内 → OS 幽灵隐藏
+      // （DOM 浮块可见）。判定与 onMouseUp 窗外判定同源（winScreenX + 视口尺寸近似，够用）。
+      if (ds.lifted && onDragPosition) {
+        const outside = e.screenX < ds.winScreenX || e.screenX > ds.winScreenX + window.innerWidth ||
+          e.screenY < ds.winScreenY || e.screenY > ds.winScreenY + window.innerHeight;
+        onDragPosition({ tabId: ds.tabId, screenX: e.screenX, screenY: e.screenY, outside });
       }
 
       // 检测鼠标下是否有标签栏
@@ -195,6 +231,28 @@ export function useDragReorder(
       const ds = dragState.current;
       if (ds.phase === "idle") return;
 
+      // E5.8#44-B：窗口外释放 = 拖出手势——仅拎起后触发（防普通点击误判）。screenX/Y = 屏幕坐标，
+      // 壳转 screen 命中 TabBar（并窗）/空白（新窗）。先于 reorder/split 正常流程处理并复位拖拽态。
+      // E5.8#46.3：判定用屏幕坐标对照窗口屏幕 bounds（winScreenX + innerWidth/Height）——client 坐标跨窗
+      // 不可靠：tab 拖到其他 OS 窗口上方时 clientX 相对本窗视口可能仍落进 [0,innerWidth] → 判不出窗外
+      // （拖入主屏无动作 bug 根因）。screenX/Y 是屏幕绝对坐标，不随窗口钳制，跨窗判定恒可靠；
+      // 窗内死区松手 = 屏幕坐标在 bounds 内 → 判 false → 正常走窗内逻辑 no-op（不误触发）。
+      if (
+        ds.lifted &&
+        onReleaseOutside &&
+        (e.screenX < ds.winScreenX || e.screenX > ds.winScreenX + window.innerWidth ||
+         e.screenY < ds.winScreenY || e.screenY > ds.winScreenY + window.innerHeight)
+      ) {
+        onReleaseOutside(ds.tabId, e.screenX, e.screenY);
+        ds.phase = "idle";
+        onDragDropZone?.(null);
+        onDraggingChange?.(false);
+        setPreviewPos(null);
+        setInsertIndex(null);
+        setDraggingId(null);
+        return;
+      }
+
       if (ds.phase === "split") {
         // 检测是否放到另一个容器上
         let moved = false;
@@ -224,6 +282,11 @@ export function useDragReorder(
         setPreviewPos(null);
         ds.phase = "idle";
         setDraggingId(null);
+        // E5.8#46.19：窗内松手 = 拖拽终止——补发 canceled（幽灵隐藏信号；窗外松手走 releaseOutsideWindow
+        // tabAction 主进程隐藏，Esc 已发 canceled）。仅拎起后（未拎起 = 普通点击，无幽灵）。
+        if (dragState.current.lifted && onDragPosition) {
+          onDragPosition({ tabId: ds.tabId, screenX: 0, screenY: 0, canceled: true });
+        }
         return;
       }
 
@@ -232,7 +295,9 @@ export function useDragReorder(
       if (onMoveToOther && findOtherContainer) {
         const targetId = findOtherContainer(e.clientX, e.clientY, container);
         if (targetId) {
-          onMoveToOther(ds.tabId, targetId);
+          // E5.8#51：跨组落位带 ds.toIndex（拖动中 computeInsertIndex 算的目标组竖线缝）——
+          // 竖杠显示在哪、落位就插到哪。toIndex < 0 = 从未算过缝（异常）→ 缺省 append 末尾。
+          onMoveToOther(ds.tabId, targetId, ds.toIndex >= 0 ? ds.toIndex : undefined);
           moved = true;
         }
       }
@@ -244,10 +309,18 @@ export function useDragReorder(
       setInsertIndex(null);
       setDraggingId(null);
       setPreviewPos(null);
+      // E5.8#46.19：窗内松手 = 拖拽终止——补发 canceled（幽灵隐藏信号，同 split 分支）。
+      if (dragState.current.lifted && onDragPosition) {
+        onDragPosition({ tabId: ds.tabId, screenX: 0, screenY: 0, canceled: true });
+      }
     };
 
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape" && dragState.current.phase !== "idle") {
+        // E5.8#44-C：Esc 取消拖拽——上报 canceled 供壳清吸附提示（keydown 无坐标，screenX/Y 填 0）
+        if (dragState.current.lifted && onDragPosition) {
+          onDragPosition({ tabId: dragState.current.tabId, screenX: 0, screenY: 0, canceled: true });
+        }
         dragState.current.phase = "idle";
         onDragDropZone?.(null);
         onDraggingChange?.(false);
@@ -268,7 +341,7 @@ export function useDragReorder(
   }, [
     containerRef, threshold, splitThreshold, editorAreaRef, itemCount,
     onReorder, onDropSplit, onDropCopySplit, onMoveToOther, onDraggingChange, onDragDropZone,
-    computeInsertIndex, isInPureEditor, findOtherContainer, computeSplitZone,
+    computeInsertIndex, isInPureEditor, findOtherContainer, computeSplitZone, onReleaseOutside, onDragPosition,
   ]);
 
   return { draggingId, insertIndex, previewPos, startDrag };

@@ -13,7 +13,9 @@ import { clearRegistrationLayers } from "./registrationTracker";
 import { ThemeRegistry } from "./appearance/ThemeRegistry";
 import { IconRegistry } from "./appearance/IconRegistry";
 import { LanguageRegistry } from "./languages/LanguageRegistry";
-import { registerTheme, getAvailableThemes, unregisterTheme } from "../services/ui/ThemeEngine";
+// E5.8 Phase 11.15 3b：unregisterTheme 从门面撤出（零生产消费）——测试直引 registry 本体
+import { registerTheme, getAvailableThemes } from "../services/ui/ThemeEngine";
+import { unregisterTheme } from "../services/ui/ThemeEngine/registry";
 import { registerLangDef, getLangDef, getAllLangDefs, clearLangDefs } from "./languages/LangDefRegistry";
 import { registerProtocol, listProtocols, getProtocol, setActiveProtocol, getActiveProtocolId, clearProtocols } from "./ProtocolRegistry";
 import { createLogChannel, getLogChannels, clearLogChannels } from "../services/ui/LogChannel";

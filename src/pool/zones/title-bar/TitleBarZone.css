@@ -28,24 +28,26 @@
 .titlebar-menus {
   display: flex;
   align-items: center;
-  gap: 2px;
+  gap: calc(2px * var(--ui-scale)); /* E5.8 Phase 12 #165：间隙随字号比例 */
   flex-shrink: 0;
 }
 
-/* 菜单按钮——如"文件""查看" */
+/* 菜单按钮——如"文件""查看"
+   E5.8 Phase 12 #165：30px 高恒不变（F1 拍板——拖拽区 OS 契约，硬约束 18 上界假设），
+   仅内部文本缩放到 sm 档 + 垂直 padding 乘 scale（1.25× 下 16px 文本 + 缩 padding ≈ 26px < 30px 不溢出）。 */
 .titlebar-menu-btn {
-  padding: 4px 8px;
+  padding: calc(4px * var(--ui-scale)) 8px;
   height: 30px;
   display: flex;
   align-items: center;
   background: none;
   border: none;
   color: var(--text-secondary);
-  font-size: 12px;
+  font-size: var(--font-size-sm);
   font-family: inherit;
   cursor: pointer;
   -webkit-app-region: no-drag;
-  border-radius: 3px;
+  border-radius: var(--radius-sm);
   transition: background 120ms, color 120ms;
   white-space: nowrap;
 }
@@ -67,7 +69,7 @@
   -webkit-app-region: drag;
 }
 
-/* 槽位按钮——插件 contributes.titleBar 的左右槽小图标按钮 */
+/* 槽位按钮——插件 contributes.titleBar 的左右槽小图标按钮（图标 14→lg，E5.8 Phase 12 #165） */
 .titlebar-slot-btn {
   display: flex;
   align-items: center;
@@ -77,10 +79,10 @@
   background: none;
   border: none;
   color: var(--text-secondary);
-  font-size: 14px;
+  font-size: var(--font-size-lg);
   cursor: pointer;
   -webkit-app-region: no-drag;
-  border-radius: 3px;
+  border-radius: var(--radius-sm);
   transition: background 120ms, color 120ms;
   flex-shrink: 0;
 }
@@ -90,14 +92,12 @@
   color: var(--text-primary);
 }
 
-/* ── 窗口控制（─ □ ×）——fixed 右上角（池 WCV 满窗 = 窗口坐标） ── */
+/* ── 窗口控制（─ □ ×）——流内 flex（E5.8 缝系统：跟随顶栏表面——fixed 早于悬浮表面时代，
+   顶栏 margin 内缩时按钮留在窗口角落不同步；titlebar flex 末位自然右对齐，表面怎么动它怎么动） ── */
 
 .window-controls {
-  position: fixed;
-  top: 0;
-  right: 0;
   display: flex;
-  z-index: var(--z-sticky);
+  flex-shrink: 0;
   -webkit-app-region: no-drag;
 }
 
@@ -111,7 +111,7 @@
   border: none;
   color: var(--text-secondary);
   cursor: pointer;
-  font-size: 12px;
+  font-size: var(--font-size-sm); /* E5.8 Phase 12 #165：12→sm */
   font-family: inherit;
   transition: background 120ms, color 120ms;
 }
@@ -121,92 +121,14 @@
   color: var(--text-primary);
 }
 
+/* E5.8#46.18：置顶激活态——实心 icon + accent 高亮（ui-ux-pro-max「active state 需视觉反馈」；
+   置顶/解除两态一眼可辨，不依赖只换 icon） */
+.wc-btn.wc-pin-active,
+.wc-btn.wc-pin-active:hover {
+  color: var(--accent);
+}
+
 .wc-close:hover {
   background: var(--titlebar-close-hover);
   color: var(--text-on-accent);
 }
-
-/* ── 下拉面板 ── */
-
-/* 下拉容器——flex 横向，左侧主面板 + 右侧子面板 */
-.titlebar-dropdown {
-  position: fixed;
-  display: flex;
-  max-height: 60vh;
-  background: var(--bg-card);
-  border: 1px solid var(--separator);
-  box-shadow: var(--context-menu-shadow);
-  z-index: var(--z-dropdown);
-  border-radius: 4px;
-  animation: titlebar-dropdown-in 150ms ease-out;
-}
-
-@keyframes titlebar-dropdown-in {
-  from { opacity: 0; transform: translateY(-4px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-
-/* E5.8#1d EXEMPT：pool-css gate → TitleBarZone 下拉菜单自包含壳同款（main/sub-panel + item/right/chevron），结构性重复 */
-/* jscpd:ignore-start */
-/* 主面板（左侧） */
-.titlebar-main-panel {
-  width: 200px;
-  padding: 4px 0;
-  overflow-y: auto;
-  flex-shrink: 0;
-}
-
-/* 子面板（右侧——hover 时出现） */
-.titlebar-sub-panel {
-  width: 200px;
-  padding: 4px 0;
-  border-left: 1px solid var(--separator);
-  overflow-y: auto;
-  flex-shrink: 0;
-}
-
-/* 菜单项 */
-.titlebar-item {
-  display: flex;
-  align-items: center;
-  width: 100%;
-  padding: 4px 12px;
-  background: none;
-  border: none;
-  color: var(--text-primary);
-  font-size: 12px;
-  line-height: 24px;
-  cursor: pointer;
-  text-align: left;
-  font-family: inherit;
-  transition: background 80ms;
-}
-
-.titlebar-item:hover,
-.titlebar-item.titlebar-item-hovered {
-  background: var(--tab-hover-bg);
-  color: var(--text-primary);
-  box-shadow: inset 2px 0 0 var(--accent);
-}
-
-/* 右侧：chevron */
-.titlebar-item-right {
-  display: flex;
-  align-items: center;
-  flex-shrink: 0;
-  margin-left: auto;
-}
-
-/* 展开箭头 */
-.titlebar-chevron {
-  font-size: 10px;
-  color: var(--text-muted);
-  flex-shrink: 0;
-}
-
-.titlebar-item:hover .titlebar-chevron,
-.titlebar-item.titlebar-item-hovered .titlebar-chevron {
-  color: var(--text-secondary);
-  opacity: 1;
-}
-/* jscpd:ignore-end */

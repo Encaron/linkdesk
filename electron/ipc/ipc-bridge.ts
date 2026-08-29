@@ -170,7 +170,25 @@ export class IpcBridge {
           this.broadcast(IPC.contextKey.changed, { key, value });
         }
 
+        // ── E5.8#43-4（①）：commands:register/executeResult/unregister 载荷加 sender windowId ──
+        // 池 preload 不知自身 windowId（同就绪流 IPC.pool.ready），主进程 sender→windowId 是唯一权威映射
+        // （getWindowIdByWebContents）。壳 CommandRegistry 归属表（命令→窗口集合）据此登记路由，
+        // executeResult 回执校验据此验窗口——插件零改动（注入发生在主进程边界）。
+        let forwardedArgs = args;
+        if (
+          channel === IPC.commands.register
+          || channel === IPC.commands.executeResult
+          || channel === IPC.commands.unregister
+        ) {
+          const windowId = this.windowManager.getWindowIdByWebContents(_event.sender) ?? 'main';
+          forwardedArgs = [...args, windowId];
+        }
+
         const requestId = `bridge-${++this.requestCounter}-${Date.now()}`;
+
+        // E5.8#46.12：信封来源窗盖章——池→壳每一请求自带来源窗身份（#43-4 同款 sender 反查）。
+        // 壳按此路由按窗操作（sourceId 族落到来源窗注册表）——窗口身份丢失类同根归一化。
+        const sourceWindowId = this.windowManager.getWindowIdByWebContents(_event.sender) ?? 'main';
 
         const doRequest = (): Promise<unknown> => {
           return new Promise<unknown>((resolve, reject) => {
@@ -179,12 +197,13 @@ export class IpcBridge {
               reject(new Error(`[IpcBridge] 请求超时: ${channel} (requestId=${requestId})`));
             }, 10_000);
 
-            this.pendingRequests.set(requestId, { resolve, reject, timer, channel, args });
+            this.pendingRequests.set(requestId, { resolve, reject, timer, channel, args: forwardedArgs });
 
             this.mainWindow.webContents.send(IPC.bridge.request, {
               requestId,
               channel,
-              args,
+              args: forwardedArgs,
+              sourceWindowId,
             });
           });
         };
@@ -237,6 +256,16 @@ export class IpcBridge {
   }) => {
     // E5#61b + E5.7#43：解析事件来源——壳 emit 标 "shell"，池 emit 标 "pool"
     const sourceId = event.sender === this.mainWindow.webContents ? "shell" : "pool";
+    // ── E5.8#43-4（②）：commands:executeRequest 定向发目标窗口池 ──
+    // 壳 CommandRegistry 归属表路由已把目标窗口算进载荷 targetWindowId——broadcast 按窗口过滤池视图，
+    // 不再全池广播（否则模式 B：同命令双窗口注册 → 双池都执行 → 副作用双跑）。
+    // storeForReplay=false：命令执行是命令式请求非幂等状态——新池创建不得重放过期 executeRequest
+    //（否则开新窗触发陈旧命令双执行；对标 #6.5 流数据不复播同理由）。
+    if (channel === "commands:executeRequest") {
+      const target = (payload as { targetWindowId?: string })?.targetWindowId;
+      this.broadcast(channel, payload, sourceId, false, target);
+      return;
+    }
     // E5.8#6.5：broadcast 已归一化为发壳+发池——壳侧补发行随 #6.5 删除（原 234 行手动 plugin:push）
     // 广播到唯一 Pool WebView + 壳（含自己——对标 CoreEvents 模式）
     this.broadcast(channel, payload, sourceId);
@@ -263,13 +292,22 @@ export class IpcBridge {
    *  #6.5-regress-2：流数据（serial.*、lsp:data、filesystem:changed:&lt;watcherId&gt;）传 storeForReplay=false
    *  ——#6.5 前直发从不重放，误入 lastBroadcasts 后 watcherId 动态通道 Map 永久涨 + 新池收到陈旧流数据。
    *  onPluginEmit/onBridgeBroadcast 的壳补发行随 #6.5 归一化进本方法——不再任何地方手动双发。 */
-  broadcast(channel: string, payload: unknown, source?: string, storeForReplay = true): void {
+  broadcast(channel: string, payload: unknown, source?: string, storeForReplay = true, targetWindowId?: string): void {
     if (storeForReplay) {
       this.lastBroadcasts.set(channel, payload);
     }
     // 壳渲染进程（plugin:push）——壳侧 events.on 订阅（E5.6#2 双路径归一化进 broadcast）
     if (this.mainWindow && !this.mainWindow.isDestroyed()) {
       this.mainWindow.webContents.send(IPC.plugin.push, { channel, payload, source });
+    }
+    // E5.8#43-4（②）：targetWindowId 指定 → 只发目标窗口池（executeRequest 定向发——命令作用于该窗口上下文）；
+    // 未指定 → 全池广播（常态：theme/lang/config 等全局事件）。壳侧恒发（executeRequest 壳无订阅，无害一致）。
+    if (targetWindowId) {
+      const targetView = this.windowManager.getPoolViewByWindowId(targetWindowId);
+      if (targetView && !targetView.webContents.isDestroyed()) {
+        targetView.webContents.send(IPC.plugin.push, { channel, payload, source });
+      }
+      return;
     }
     // 唯一 Pool WebContentsView（plugin:push）——lang:changed / theme:changed / serial.* 等
     for (const poolView of this.windowManager.getAllPoolViews()) {

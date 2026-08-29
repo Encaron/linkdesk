@@ -39,8 +39,16 @@ function buildSampleMenuGroups() {
       label: "查看",
       items: [
         { label: "命令面板…", command: "workbench.action.showCommands", shortcut: "Ctrl+Shift+P" },
-        { label: "切换侧栏", command: "workbench.action.toggleSidebarVisibility", shortcut: "Ctrl+B" },
-        { label: "切换底部面板", command: "workbench.action.togglePanel" },
+        // E5.8#148：界面嵌套子菜单——dev 预览镜像壳 shellMenus.ts 形状（checked = 样例布局 zone 可见性：
+        // sidebar visible + panel visible，与下方 rightSidebar 样例同真值）
+        {
+          label: "界面",
+          command: "",
+          children: [
+            { label: "主侧栏", command: "workbench.action.toggleSidebarVisibility", checked: true },
+            { label: "面板", command: "workbench.action.togglePanel", checked: true },
+          ],
+        },
       ],
     },
   ];
@@ -59,7 +67,7 @@ export function buildSampleLayout(): PoolLayout {
       menuBarVisible: true,
       menuGroups,
       slots: { left: [], right: [] },
-      windowControls: { minimize: "最小化", maximize: "最大化", restore: "还原", close: "关闭" },
+      windowControls: { minimize: "最小化", maximize: "最大化", restore: "还原", close: "关闭", pin: "置顶", unpin: "取消置顶" },
     },
     iconBar: {
       icons: [
@@ -84,13 +92,11 @@ export function buildSampleLayout(): PoolLayout {
       viewId: null,
       emptyText: "此容器没有已注册的视图",
       emptyHint: "安装插件以添加视图",
-      expandTooltip: "展开侧栏",
-      collapseTooltip: "折叠侧栏",
       minWidth: 170,
       maxWidth: 600,
     },
-    // E5.8#37.5：右侧栏真渲染样例——空容器（views 空 → emptyText 渲染路径，零插件视图零命名空间风险）。
-    // 宽度 300 + 折叠/展开 tooltip——▶/◀ 按钮 emit 安全 no-op（壳接线归 Phase 12）
+    // E5.8#37.5 + #159：右侧栏真渲染样例——空容器（views 空 → emptyText 渲染路径，零插件视图零命名空间风险）。
+    // 折叠=真消失（#159 与左栏同源，无 ◀/▶ 按钮——折叠/展开仅走图标栏 toggle + 界面勾选菜单）
     rightSidebar: {
       visible: true,
       width: 300,
@@ -103,8 +109,6 @@ export function buildSampleLayout(): PoolLayout {
       maxWidth: 600,
       emptyText: "此容器没有已注册的视图",
       emptyHint: "安装插件以添加视图",
-      expandTooltip: "展开侧栏",
-      collapseTooltip: "折叠侧栏",
     },
     // E5.8#37.5：底部面板样例——emptyText 路径（views 空 + switcher 空 → 无贡献视图空态）。
     // 四向 edge/align 由 computePoolGrid 推导（#37.5）——改 edge/align 字段即换布局几何

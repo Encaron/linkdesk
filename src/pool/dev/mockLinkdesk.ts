@@ -152,6 +152,10 @@ export function installMockLinkdesk(): void {
       ready: makeLogger("pool.ready"),
       sidebarAction: makeLogger("pool.sidebarAction"),
       tabAction: makeLogger("pool.tabAction"),
+      // E5.8#44-B：TabBar rects 上报（拖出手势/吸附命中检测数据源——preview 无壳侧消费，留日志）
+      tabBarRects: makeLogger("pool.tabBarRects"),
+      // E5.8#44-C：拖拽位置上报（拎起后 mousemove——preview 无壳侧消费，留日志）
+      dragPosition: makeLogger("pool.dragPosition"),
       // E5.8#30.16（P8）：dev 预览无插件注册——关闭一律放行（beforeClose 返回 true，Handler 注册/注销留日志）
       registerBeforeClose: makeLogger("pool.registerBeforeClose"),
       unregisterBeforeClose: makeLogger("pool.unregisterBeforeClose"),
@@ -162,6 +166,18 @@ export function installMockLinkdesk(): void {
       toggleDevTools: makeLogger("pool.toggleDevTools"),
       onSidebarAction: () => () => {},
       onTabAction: () => () => {},
+      // E5.8#44-B：TabBar rects 上报订阅（preview 无壳侧消费——no-op 订阅）
+      onTabBarRects: () => () => {},
+      // E5.8#44-C：拖拽位置订阅（preview 无壳侧消费——no-op 订阅）
+      onDragPosition: () => () => {},
+      // E5.8#44-C：吸附提示订阅（preview 无壳侧消费——no-op 订阅）
+      onAdsorbHint: () => () => {},
+      // E5.8#44-C：壳推送吸附提示（preview 无壳侧消费——留日志）
+      pushAdsorbHint: makeLogger("pool.pushAdsorbHint"),
+      // E5.8#46.10：吸附插入缝隙订阅（池→壳——preview 无壳侧消费，no-op 订阅）
+      onAdsorbIndex: () => () => {},
+      // E5.8#46.10：吸附插入缝隙上报（preview 无壳侧消费——留日志）
+      adsorbIndex: makeLogger("pool.adsorbIndex"),
       pushQuickPick: makeLogger("pool.pushQuickPick"),
       onQuickPickAction: () => () => {},
       pushToast: makeLogger("pool.pushToast"),
@@ -172,6 +188,12 @@ export function installMockLinkdesk(): void {
       pushFloatingPanel: makeLogger("pool.pushFloatingPanel"),
       onFloatingPanelAction: () => () => {},
       onMemoryPressure: () => () => {},
+      // E5.8#43-1（A4）：多窗口底座——壳侧创建/关闭池窗 + 监听 OS 关窗（preview 无壳侧消费——留日志 + no-op 订阅）
+      createWindow: makeLogger("pool.createWindow"),
+      closeWindow: makeLogger("pool.closeWindow"),
+      onWindowClosed: () => () => {},
+      // E5.8#43-3：池窗 bounds 变更上报（preview 无壳侧消费——no-op 订阅）
+      onWindowBoundsChanged: () => () => {},
     },
     window: {
       minimize: makeLogger("window.minimize"),
@@ -182,6 +204,10 @@ export function installMockLinkdesk(): void {
       toggleDevTools: makeAsyncLogger("window.toggleDevTools"),
       isMaximized: async () => false,
       onMaximizeChange: () => () => {},
+      // E5.8#46.18：置顶（preview 无主进程——no-op 实现）
+      setAlwaysOnTop: makeLogger("window.setAlwaysOnTop"),
+      isAlwaysOnTop: async () => false,
+      onAlwaysOnTopChange: () => () => {},
     },
     toast: {
       onShow: toastReplay.subscribe,

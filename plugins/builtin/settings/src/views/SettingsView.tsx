@@ -23,6 +23,11 @@ import KeybindingSettingsView from "./keybinding-settings/KeybindingSettingsView
 import SettingRow from "./SettingsView/SettingRow";
 import useSettingsEvents from "./SettingsView/useSettingsEvents";
 import { lk, OWN_FACTORY_ROLE } from "./SettingsView/helpers";
+import { useUserOverridesIpc } from "./hooks/useUserOverridesIpc";
+import { useBaselineSeedsIpc } from "./hooks/useBaselineSeedsIpc";
+import { useEffectiveTokensIpc } from "./hooks/useEffectiveTokensIpc"; // E5.8#155：生效 token 集——跟随主题生效值徽标数据源
+import { useConfigurationValueIpc } from "./hooks/useConfigurationValueIpc"; // E5.8#90：外观主开关订阅——空桶过滤 + D5 动态描述
+import { groupSettingsKeys } from "./SettingsView/grouping";
 import type { GroupInfo, ConfigProperty, SettingsViewProps } from "./SettingsView/types";
 import "./SettingsView.css";
 
@@ -41,6 +46,15 @@ function SettingsView({ isActive: _isActive, tabId }: SettingsViewProps) {
   const [groupsRaw, setGroupsRaw] = useState<GroupInfo[]>([]);
   const [allProps, setAllProps] = useState<Record<string, ConfigProperty>>({});
   const [dataLoaded, setDataLoaded] = useState(false);
+
+  // E5.8#87：用户覆盖集——来源徽标 presence 派生（单 hook 顶升，SettingRow 按需读 prop，不重复订阅）
+  const userOverrides = useUserOverridesIpc();
+  // E5.8#88：基准种子集——「已修改」徽标 value-vs-baseline 判定（播种值/恰与主题同值 = 主题 🎨，非用户 ✏️）
+  const baselineSeeds = useBaselineSeedsIpc();
+  // E5.8#155：生效 token 集——跟随主题生效值徽标数据源（父级单拉取，SettingRow 按需读 prop，不重复订阅）
+  const effectiveTokens = useEffectiveTokensIpc();
+  // E5.8#90：外观主开关订阅——空桶过滤（followTheme 下 强调色/外观覆盖/域混搭 整组空不渲染空子标题）+ themeColor D5 动态描述
+  const appearanceMode = useConfigurationValueIpc<string>("app.appearanceMode");
 
   // ── 顶部通用区（E5.8#41.13）——本角色（设置套）全部候选 + 激活 id，用于切整套设置 UI ──
   const [settingsCandidates, setSettingsCandidates] = useState<{ pluginId: string; title: string; viewId?: string }[]>([]);
@@ -201,6 +215,49 @@ function SettingsView({ isActive: _isActive, tabId }: SettingsViewProps) {
       g.role ? g.role === selectedGroup : g.pluginId === selectedGroup
     ) ?? filteredGroups[0] ?? null;
 
+  // ── 组内二级标题（E5.8#78）——按 prop.group 把 keys 归到子标题下渲染（主题组 6 分节）。
+  //    无 group 的 key 保持平铺原样（第三方配置零侵入）；组标题字符串走 t() i18n（lang-defaults）。
+  //    空桶（搜索过滤后整组无 key）不渲染标题——不显示空标题。归桶逻辑 = grouping.ts 纯函数。
+  //    E5.8#90：空桶过滤——外观覆盖/域混搭 两节 dependsOn 挂外观主开关（appearanceMode=custom 才显），
+  //    followTheme 下 整组空 → 不渲染空子标题（与搜索过滤后空桶同语义）。
+  //    E5.8#98：强调色节不入本过滤——accentSource 独立轴恒显（无 dependsOn），accentColor 只门控
+  //    accentSource=custom；强调色不再随外观主开关整组消失（mockup「始终可见」）。
+  //    通用化：仅对 appearanceMode 门控的键判空（第三方配置 dependsOn 其他键不可评估，保守保留——
+  //    SettingRow 自身 dependsOn 显隐兜底，本过滤只负责「整组空不显示标题」）。
+  //    D5 语义显性：themeColor 双语义——custom 模式 = colors 域来源描述（覆盖 schema 静态「配色变体」，
+  //    配色区变体语义只在跟随主题下成立；14-档案 §四 #90）。
+  const renderGroupedKeys = (keys: string[]): React.ReactNode => {
+    return groupSettingsKeys(keys, (k) => allProps[k]?.group ?? "").map((bucket) => {
+      const visible = bucket.keys.filter((key) => {
+        const dep = allProps[key]?.dependsOn;
+        if (dep?.key === "app.appearanceMode") return appearanceMode === dep.value;
+        return true;
+      });
+      if (visible.length === 0) return null;
+      return (
+        <div key={bucket.group || `flat-${bucket.keys[0]}`} className="settings-subsection">
+          {bucket.group && <h3 className="settings-subsection-title">{t(bucket.group)}</h3>}
+          {visible.map((key) => (
+            <SettingRow
+              key={key}
+              configKey={key}
+              prop={allProps[key]}
+              onChange={() => setVersion((v) => v + 1)}
+              userOverrides={userOverrides}
+              baselineSeeds={baselineSeeds}
+              effectiveTokens={effectiveTokens}
+              description={
+                key === "app.themeColor" && appearanceMode === "custom"
+                  ? t("颜色域来源——指定主题配方的配色变体（选「跟随主题」= 整体配方配色）")
+                  : undefined
+              }
+            />
+          ))}
+        </div>
+      );
+    });
+  };
+
   return (
     <div className="settings-editor">
       {/* 顶部通用区（E5.8#41.13）——N 套设置插件并存切换：全部入口含自身、激活高亮、
@@ -332,14 +389,7 @@ function SettingsView({ isActive: _isActive, tabId }: SettingsViewProps) {
                   )}
                   <h2 className="settings-group-title">{activeGroup.title}</h2>
                   {activeGroup.keys.length > 0 ? (
-                    activeGroup.keys.map((key) => (
-                      <SettingRow
-                        key={key}
-                        configKey={key}
-                        prop={allProps[key]}
-                        onChange={() => setVersion((v) => v + 1)}
-                      />
-                    ))
+                    renderGroupedKeys(activeGroup.keys)
                   ) : activeGroup.role ? (
                     <div className="settings-empty">{t("激活套无配置项")}</div>
                   ) : null}

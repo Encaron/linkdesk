@@ -9,6 +9,15 @@
   margin: 0 auto;
   padding: 0;
   color: var(--text-primary);
+  user-select: text; /* E5.8#186 详情页=内容页：正文可选中复制（对标 VS Code 插件详情页；全局基类 index.css user-select:none，白名单增补同 dialog/toast 先例） */
+}
+
+/* E5.8#186 交互件/装饰不参与复制——按钮/标签页/图标容器保持不可选 */
+.plugin-detail .pd-btn,
+.plugin-detail .pd-navtab,
+.plugin-detail .pd-icon-container,
+.plugin-detail .codicon {
+  user-select: none;
 }
 
 .plugin-detail-empty {
@@ -17,7 +26,8 @@
   justify-content: center;
   height: 100%;
   color: var(--text-muted);
-  font-size: 14px;
+  font-size: var(--font-size-lg); /* E5.8 Phase 12 #180：plugin-detail-empty 14→lg（⑤ +1 档） */
+  user-select: text; /* E5.8#186 空态提示也属可复制内容（含插件 ID） */
 }
 
 /* ═══ Header — VS Code: padding-top 20, padding-bottom 12, padding-left 20 ═══ */
@@ -52,7 +62,7 @@
   width: 28px;
   height: 28px;
   line-height: 28px;
-  border-radius: 14px;
+  border-radius: var(--radius-2xl);
   background: var(--accent);
   color: var(--badge-text);
   font-size: 16px !important;
@@ -78,23 +88,23 @@
 }
 
 .pd-name {
-  font-size: 26px;
-  line-height: 30px;
+  font-size: var(--font-size-3xl); /* E5.8 Phase 12 #171：name 26→3xl（28） */
+  line-height: 1.2; /* 30px → unitless */
   font-weight: 600;
   margin: 0;
   white-space: nowrap;
 }
 
 .pd-version {
-  font-size: 14px;
+  font-size: var(--font-size-lg); /* E5.8 Phase 12 #171：14→lg */
   color: var(--text-muted);
   white-space: nowrap;
 }
 
 .pd-badge {
-  font-size: 10px;
+  font-size: var(--font-size-2xs); /* E5.8 Phase 12 #171：10→2xs */
   padding: 1px 6px;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   font-weight: 500;
   white-space: nowrap;
 }
@@ -110,13 +120,13 @@
 }
 
 .pd-subtitle {
-  font-size: 13px;
+  font-size: var(--font-size-md); /* E5.8 Phase 12 #171：13→md */
   color: var(--text-secondary);
   margin: 0;
 }
 
 .pd-short-desc {
-  font-size: 13px;
+  font-size: var(--font-size-md); /* E5.8 Phase 12 #171：13→md */
   color: var(--text-secondary);
   margin: 4px 0 0;
   line-height: 1.4;
@@ -133,9 +143,9 @@
 }
 
 .pd-btn {
-  font-size: 12px;
+  font-size: var(--font-size-sm); /* E5.8 Phase 12 #171：btn 12→sm */
   padding: 4px 12px;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   border: 1px solid var(--separator);
   background: transparent;
   color: var(--text-primary);
@@ -153,7 +163,8 @@
 }
 
 .pd-btn-uninstall {
-  border-color: rgba(231, 76, 60, 0.5);
+  /* E5.8#130：rgba 硬编码 → error token 50% 合成（对标 #128.8 marketplace/keybinding color-mix 先例） */
+  border-color: color-mix(in srgb, var(--error) 50%, transparent);
   color: var(--error);
 }
 
@@ -164,11 +175,13 @@
 
 .pd-btn-disable:hover:not(:disabled) {
   color: var(--warning);
-  border-color: rgba(204, 167, 0, 0.5);
+  /* E5.8#130：rgba 硬编码 → warning token 50% 合成 */
+  border-color: color-mix(in srgb, var(--warning) 50%, transparent);
 }
 
 .pd-btn-enable {
-  border-color: rgba(76, 175, 80, 0.5);
+  /* E5.8#130：rgba 硬编码 → status-connected token 50% 合成（跟随主题绿，对标 #128.8 marketplace 先例） */
+  border-color: color-mix(in srgb, var(--status-connected) 50%, transparent);
   color: var(--status-connected);
 }
 
@@ -184,18 +197,18 @@
 }
 
 .pd-btn .codicon {
-  font-size: 12px;
+  font-size: var(--font-size-sm); /* E5.8 Phase 12 #171：12→sm */
   vertical-align: middle;
 }
 
 .pd-action-error {
-  font-size: 12px;
+  font-size: var(--font-size-sm); /* E5.8 Phase 12 #171：12→sm */
   color: var(--error);
   flex-basis: 100%;
 }
 
 .pd-core-notice {
-  font-size: 12px;
+  font-size: var(--font-size-sm); /* E5.8 Phase 12 #171：12→sm */
   color: var(--text-muted);
   display: flex;
   align-items: center;
@@ -203,16 +216,16 @@
 }
 
 .pd-core-notice .codicon {
-  font-size: 14px;
+  font-size: var(--font-size-lg); /* E5.8 Phase 12 #171：14→lg */
 }
 
 /* E5.8#15.5：缺依赖挂起（PENDING）提示条——琥珀信息态（等待非错误，ui-ux-pro-max muted chip） */
 .pd-pending-notice {
-  font-size: 12px;
+  font-size: var(--font-size-sm); /* E5.8 Phase 12 #171：12→sm */
   color: var(--warning-text);
   background: var(--warning-bg);
   border: 1px solid var(--separator);
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   padding: 6px 12px;
   display: flex;
   align-items: center;
@@ -221,12 +234,12 @@
 }
 
 .pd-pending-notice .codicon {
-  font-size: 14px;
+  font-size: var(--font-size-lg); /* E5.8 Phase 12 #171：14→lg */
   flex-shrink: 0;
 }
 
 .pd-reverse-warn {
-  font-size: 11px;
+  font-size: var(--font-size-xs); /* E5.8 Phase 12 #171：11→xs */
   color: var(--warning);
   display: flex;
   align-items: center;
@@ -248,7 +261,7 @@
   border: none;
   border-bottom: 2px solid transparent;
   padding: 8px 12px;
-  font-size: 13px;
+  font-size: var(--font-size-md); /* E5.8 Phase 12 #171：navtab 13→md */
   font-family: inherit;
   color: var(--text-muted);
   cursor: pointer;
@@ -285,7 +298,7 @@
 }
 
 .pd-description {
-  font-size: 13px;
+  font-size: var(--font-size-md); /* E5.8 Phase 12 #171：13→md */
   color: var(--text-secondary);
   line-height: 1.6;
   margin: 0 0 20px;
@@ -298,7 +311,7 @@
 }
 
 .pd-recommend-section h4 {
-  font-size: 12px;
+  font-size: var(--font-size-sm); /* E5.8 Phase 12 #171：12→sm */
   font-weight: 600;
   margin: 0 0 6px;
   color: var(--text-primary);
@@ -315,8 +328,8 @@
   align-items: center;
   gap: 6px;
   padding: 4px 8px;
-  border-radius: 4px;
-  font-size: 13px;
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-md); /* E5.8 Phase 12 #171：13→md */
   color: var(--text-secondary);
 }
 
@@ -329,29 +342,29 @@
 }
 
 .pd-recommend-section li .codicon {
-  font-size: 12px;
+  font-size: var(--font-size-sm); /* E5.8 Phase 12 #171：12→sm */
   flex-shrink: 0;
 }
 
 .pd-rec-name {
   font-weight: 500;
-  font-family: monospace;
-  font-size: 12px;
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm); /* E5.8 Phase 12 #171：12→sm */
   color: var(--text-primary);
 }
 
 .pd-rec-reason {
   flex: 1;
-  font-size: 12px;
+  font-size: var(--font-size-sm); /* E5.8 Phase 12 #171：12→sm */
 }
 
 .pd-rec-ver {
-  font-size: 11px;
+  font-size: var(--font-size-xs); /* E5.8 Phase 12 #171：11→xs */
   color: var(--text-muted);
 }
 
 .pd-rec-status {
-  font-size: 11px;
+  font-size: var(--font-size-xs); /* E5.8 Phase 12 #171：11→xs */
   flex-shrink: 0;
 }
 
@@ -377,19 +390,19 @@
 }
 
 .pd-info-label {
-  font-size: 11px;
+  font-size: var(--font-size-xs); /* E5.8 Phase 12 #171：11→xs */
   color: var(--text-muted);
 }
 
 .pd-info-value {
-  font-size: 12px;
+  font-size: var(--font-size-sm); /* E5.8 Phase 12 #171：12→sm */
   color: var(--text-primary);
   word-break: break-all;
 }
 
 .pd-info-value.mono {
-  font-family: monospace;
-  font-size: 11px;
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs); /* E5.8 Phase 12 #171：11→xs */
 }
 
 /* ═══ Changelog ═══ */
@@ -410,19 +423,19 @@
 }
 
 .pd-changelog-ver {
-  font-size: 14px;
+  font-size: var(--font-size-lg); /* E5.8 Phase 12 #171：14→lg */
   font-weight: 600;
 }
 
 .pd-changelog-date {
-  font-size: 11px;
+  font-size: var(--font-size-xs); /* E5.8 Phase 12 #171：11→xs */
   color: var(--text-muted);
 }
 
 .pd-changelog ul {
   padding-left: 16px;
   margin: 4px 0;
-  font-size: 13px;
+  font-size: var(--font-size-md); /* E5.8 Phase 12 #171：13→md */
   color: var(--text-secondary);
   line-height: 1.6;
 }

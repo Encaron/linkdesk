@@ -17,6 +17,7 @@ import { findKeybindingForCommand } from "../../../registry/commands/KeybindingR
 import { resolvePanelChecked } from "../../../commands/shell/panelCommands"; // E5.8#37.7：面板位置/对齐当前项 √ 解析
 import { ViewContainerService } from "../../../services/layout/ViewContainerService"; // E5.8#37.7.1：面板视图显隐清单数据源（壳布局真相，Path B 池只读）
 import { getFloatingPanelViewId } from "../../../../pluginLoader/viewRegistry"; // E5.8#39.5 子项 C：标签页右键「在悬浮面板中打开」声明读取（tabIdentity 同源 core→pluginLoader）
+import { getCallbacks } from "../../../commands/infra/CoreCallbacks"; // E5.8#44：tab 所在窗口判定——「并回主窗口」可见性（detached 才注入）
 import { onRequestSettingsGroup, onRequestScrollToSetting, onRequestOpenKeybindings, consumeSettingsGroup, consumeScrollToSetting, consumeOpenKeybindings } from "../../../registry/ConfigurationRegistry";
 import { getAvailableThemes, getCurrentTheme } from "../../ui/ThemeEngine";
 import { LanguageRegistry } from "../../../registry/languages/LanguageRegistry";
@@ -149,7 +150,7 @@ export async function handleSettingsChannel(channel: string, args: unknown[]): P
       // 复用 #39.5 子项 B wire（resolve→toggle→push，零新编排）；commandArgs=[viewId] per-item 身份走命令载荷
       // （context 整菜单共享，同 #37.7.1）。
       if (menuId === MENU_SLOTS.TabContext) {
-        const tabCtx = (context ?? {}) as { pluginId?: unknown };
+        const tabCtx = (context ?? {}) as { pluginId?: unknown; tabId?: unknown };
         if (typeof tabCtx.pluginId === "string") {
           const fpViewId = getFloatingPanelViewId(tabCtx.pluginId);
           if (fpViewId) {
@@ -159,6 +160,18 @@ export async function handleSettingsChannel(channel: string, args: unknown[]): P
               command: "workbench.action.revealFloatingPanel",
               label: i18n.t("在悬浮面板中打开"),
               commandArgs: [fpViewId, tabCtx.pluginId],
+            });
+          }
+        }
+        // E5.8#44：「并回主窗口」动态注入——tab 所在窗口 detached 才出现（壳侧 findTabWindow 搜注册表）。
+        // 命令 core.mergeBackToMain 无 menuId 不常驻所有 tab 右键（#39.5 同款动态注入）。
+        if (typeof tabCtx.tabId === "string") {
+          const win = getCallbacks()?.findTabWindow(tabCtx.tabId);
+          if (win?.mode === "detached") {
+            items.push({
+              command: "core.mergeBackToMain",
+              label: i18n.t("并回主窗口"),
+              group: "window",
             });
           }
         }

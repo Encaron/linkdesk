@@ -17,9 +17,9 @@
   display: flex;
   align-items: center;
   gap: 4px;
-  height: 36px;
+  height: calc(36px * var(--ui-scale)); /* E5.8 Phase 12 #176：control-bar 36px 乘 scale（§三.3） */
   padding: 0 8px;
-  background: var(--bg-base, var(--bg-window));
+  background: var(--bg-window); /* E5.8#128.8：幽灵 --bg-base → 真实 bg-window */
   border-bottom: 1px solid var(--separator);
   flex-shrink: 0;
 }
@@ -27,8 +27,8 @@
 /* ── 连接状态点 ── */
 
 .control-dot {
-  width: 8px;
-  height: 8px;
+  width: calc(8px * var(--ui-scale)); /* E5.8 Phase 12 #176：状态点 8px 乘 scale */
+  height: calc(8px * var(--ui-scale));
   border-radius: 50%;
   background: var(--status-disconnected);
   flex-shrink: 0;
@@ -48,7 +48,7 @@
   border: 1px solid var(--border);
   border-radius: 4px;
   padding: 2px 8px;
-  font-size: 12px;
+  font-size: var(--font-size-sm); /* E5.8 Phase 12 #176：selectbox-trigger 12→sm */
 }
 
 /* ── E5.8#30.17：Combobox 在命令条内——与 SelectBox 同视觉密度 ── */
@@ -62,11 +62,11 @@
   border: 1px solid var(--border);
   border-radius: 4px;
   padding: 2px 8px;
-  font-size: 12px;
+  font-size: var(--font-size-sm); /* E5.8 Phase 12 #176：combobox-field 12→sm */
 }
 
 .control-bar .combobox-input {
-  font-size: 12px;
+  font-size: var(--font-size-sm); /* E5.8 Phase 12 #176：combobox-input 12→sm */
 }
 
 /* ── E5.8#30.17：8N1 窄下拉（只放 4 个组合）── */
@@ -79,8 +79,9 @@
 
 .control-sep {
   width: 1px;
-  height: 18px;
-  background: var(--border-subtle, var(--separator));
+  height: calc(18px * var(--ui-scale)); /* E5.8 Phase 12 #176：竖分隔随文字行高乘 scale */
+
+  background: var(--separator); /* E5.8#128.8：幽灵 --border-subtle → 真实 separator */
   flex-shrink: 0;
   margin: 0 2px;
 }
@@ -99,10 +100,10 @@
   align-items: center;
   gap: 4px;
   background: transparent;
-  border: 1px solid var(--border-subtle, var(--separator));
+  border: 1px solid var(--separator); /* E5.8#128.8：幽灵 --border-subtle → 真实 separator */
   border-radius: 4px;
   color: var(--text-secondary);
-  font-size: 12px;
+  font-size: var(--font-size-sm); /* E5.8 Phase 12 #176：connect-btn 12→sm */
   font-family: inherit;
   padding: 3px 10px;
   cursor: pointer;
@@ -113,7 +114,7 @@
 .control-connect-btn:hover {
   background: var(--hover-overlay);
   color: var(--text-primary);
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--text-primary) 8%, transparent); /* E5.8#128.8：rgba 硬编码 → 文字色 8% 合成（主题感知） */
 }
 
 .control-connect-btn:focus-visible {

@@ -1029,6 +1029,7 @@ const noHardcodedHex = {
     // 豁免文件类别（path 白名单——按审计账本五类证据）
     const isExemptFile =
       /\.(test|spec)\.(ts|tsx)$/.test(filename) ||
+      /mock/i.test(filename) || // 测试 mock/桩数据文件（与 audit-i18n /mock/i 惯例一致——测试桩数据含主题色值等被测数据）
       /\/themes?\//.test(filename) || // 主题定义文件（主题即数据）
       /\/i18n\//.test(filename) || // i18n 资源（文案数据）
       /\/color-picker\//.test(filename) || // 取色器组件（色板数据）

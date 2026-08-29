@@ -37,4 +37,29 @@ export function detectDropZone(
   return "center";
 }
 
+/**
+ * 计算光标 X 在标签栏内的插入缝隙（0..tabs.length）——E5.8#46.10 归一化：
+ * 本地拖拽排序（useTabDrag.computeInsertIndex）与跨窗吸附竖线（onAdsorbHint）共用同一算法，一处写。
+ * el = 目标 GroupTabBar 元素；clientX = 光标在窗口 viewport 的 X（与 getBoundingClientRect 同坐标系——
+ * 壳推的 viewportX = 屏坐标 − 窗口 bounds 原点，同 DIP 直接可比）。
+ * scrollLeft 补偿：标签栏内部横向滚动时 getBoundingClientRect 是视口坐标，+ scrollLeft 映射到内容坐标，
+ * 溢出折叠的 tab 也按内容坐标命中（VS Code 同款——照抄 computeInsertIndex 原实现）。
+ */
+export function computeTabInsertIndex(el: HTMLElement, clientX: number): number {
+  const rect = el.getBoundingClientRect();
+  const tabEls = el.querySelectorAll<HTMLElement>(".group-tab-item");
+  if (clientX < rect.left) return 0;
+  if (clientX > rect.right) return tabEls.length;
+  const scrollLeft = el.scrollLeft;
+  const mouseX = clientX - rect.left + scrollLeft;
+  let idx = 0;
+  for (let i = 0; i < tabEls.length; i++) {
+    const tr = tabEls[i].getBoundingClientRect();
+    const midX = tr.left - rect.left + tr.width / 2 + scrollLeft;
+    if (mouseX < midX) break;
+    idx = i + 1;
+  }
+  return idx;
+}
+
 // E5.8#2：zoneToDirection/zoneToSide 已删——零消费（分屏方向由消费方内联判定）

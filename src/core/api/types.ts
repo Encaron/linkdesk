@@ -24,13 +24,41 @@ export interface IconThemeContribution {
   path: string;
 }
 
-/** 图标主题映射表——fileExtensions/fileNames/folderNames → CSS 类名 */
+/** 图标映射条目——字体 glyph 形态（单色/带色字体，seti 类每图标一色；codicon 即保底单色） */
+export interface IconThemeGlyph {
+  /** CSS 类名（codicon 保底 / 自定义图标字体资产） */
+  class: string;
+  /** 可选每图标颜色（seti 类彩色字体） */
+  color?: string;
+}
+
+/** 图标映射条目——图像资产形态（任意多色/拟物化/贴图） */
+export interface IconThemeImage {
+  /** 图像资产相对路径——壳加载时解析为 linkdesk:// 绝对 URL（getPluginAssetPath），消费方零解析负担 */
+  imagePath: string;
+}
+
+/** 图标映射条目——双形态（E5.8#133 ④ 拍板：字体 glyph 或图像资产，同一主题可混用，壳零审查） */
+export type IconThemeMapping = IconThemeGlyph | IconThemeImage;
+
+/** 图标主题映射表——fileExtensions/fileNames/folderNames → 双形态条目 */
 export interface IconThemeMappings {
-  files?: Record<string, string>;
-  extensions?: Record<string, string>;
-  folders?: Record<string, string>;
+  files?: Record<string, IconThemeMapping>;
+  extensions?: Record<string, IconThemeMapping>;
+  folders?: Record<string, IconThemeMapping>;
   /** 文件夹打开态——可选，未指定则复用 folders */
-  foldersExpanded?: Record<string, string>;
+  foldersExpanded?: Record<string, IconThemeMapping>;
+  /* ── 默认图标（E5.8#133.6：对齐 VS Code iconTheme 顶层默认键——未命中匹配表时用主题默认而非 codicon 保底） ── */
+  /** 默认文件图标——未命中 files/extensions 时使用（缺省 = 壳 codicon 保底） */
+  file?: IconThemeMapping;
+  /** 默认文件夹图标——未命中 folders 时使用（缺省 = 壳 codicon 保底） */
+  folder?: IconThemeMapping;
+  /** 默认文件夹展开图标——未命中 foldersExpanded 时使用（缺省 = 壳 codicon 保底） */
+  folderExpanded?: IconThemeMapping;
+  /** 根文件夹图标（缺省 = 壳 codicon 保底） */
+  rootFolder?: IconThemeMapping;
+  /** 根文件夹展开图标（缺省 = 壳 codicon 保底） */
+  rootFolderExpanded?: IconThemeMapping;
 }
 
 /** contributes.icons 条目——对标 VS Code icon extension point。插件贡献共享图标供其他插件引用。 */

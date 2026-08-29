@@ -30,5 +30,9 @@
   "补全列表显示代码片段": "Show snippet suggestions in completion list",
   "文件已在外部被修改，重新加载将丢失未保存的更改。重新加载？": "The file has been modified on disk. Reloading will discard your unsaved changes. Reload?",
   "编辑器（双击文件打开）": "Editor (double-click a file to open)",
-  "加载对比…": "Loading comparison…"
+  "加载对比…": "Loading comparison…",
+  "字体": "Fonts",
+  "缩进": "Indentation",
+  "光标与滚动": "Cursor & Scrolling",
+  "智能提示": "Suggestions"
 }

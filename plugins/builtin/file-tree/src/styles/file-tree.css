@@ -8,10 +8,11 @@
 /* ═══ 设计 Token（§十三） ═══ */
 
 .file-tree-root {
-  --tree-item-height: 22px;
+  /* E5.8 Phase 12 #172：行高 22→26px 基准（⑥ 拍板）+ 全局字号比例乘子——TS 侧 getScaledTreeItemHeight 镜像（F2 运行时桥） */
+  --tree-item-height: calc(26px * var(--ui-scale));
   --tree-indent: 16px;
-  --tree-twistie-size: 16px;
-  --tree-icon-size: 16px;
+  --tree-twistie-size: calc(16px * var(--ui-scale)); /* E5.8 Phase 12 #172：图标盒乘 scale */
+  --tree-icon-size: calc(16px * var(--ui-scale));
   --tree-icon-gap: 6px;
   --tree-item-padding-x: 8px;
   /* E4b #99j: 选中背景——15% accent 叠加，自适应亮暗主题 */
@@ -30,11 +31,11 @@
 }
 
 .file-tree-header {
-  height: 28px;
+  height: calc(28px * var(--ui-scale)); /* E5.8 Phase 12 #172：容器乘 scale（F11） */
   display: flex;
   align-items: center;
   padding: 0 12px;
-  font-size: 11px;
+  font-size: var(--font-size-xs); /* header 11→xs */
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -45,11 +46,11 @@
 /* ── 路径面包屑 ── */
 
 .file-tree-breadcrumb {
-  height: 28px;
+  height: calc(28px * var(--ui-scale)); /* E5.8 Phase 12 #172：容器乘 scale */
   display: flex;
   align-items: center;
   padding: 0 12px;
-  font-size: 12px;
+  font-size: var(--font-size-sm); /* breadcrumb 12→sm */
   color: var(--text-secondary);
   flex-shrink: 0;
   border-bottom: 1px solid var(--border);
@@ -57,7 +58,7 @@
 
 .file-tree-breadcrumb-icon {
   margin-right: 6px;
-  font-size: 14px;
+  font-size: var(--font-size-lg); /* 14→lg */
 }
 
 .file-tree-breadcrumb-path {
@@ -69,7 +70,7 @@
 /* ── 工具栏 ── */
 
 .file-tree-toolbar {
-  height: 28px;
+  height: calc(28px * var(--ui-scale)); /* E5.8 Phase 12 #172：容器乘 scale */
   display: flex;
   align-items: center;
   gap: 4px;
@@ -83,8 +84,8 @@
 }
 
 .file-tree-toolbar-btn {
-  width: 22px;
-  height: 22px;
+  width: calc(22px * var(--ui-scale)); /* E5.8 Phase 12 #172：按钮盒乘 scale（F11 免裁字形） */
+  height: calc(22px * var(--ui-scale));
   display: flex;
   align-items: center;
   justify-content: center;
@@ -101,7 +102,7 @@
 }
 
 .file-tree-toolbar-btn .codicon {
-  font-size: 14px;
+  font-size: var(--font-size-lg); /* E5.8 Phase 12 #172：14→lg */
 }
 
 /* ── 树容器 ── */
@@ -174,7 +175,7 @@
 .file-tree-twistie {
   width: var(--tree-twistie-size);
   height: var(--tree-twistie-size);
-  font-size: 12px;
+  font-size: var(--font-size-sm); /* E5.8 Phase 12 #172：twistie 12→sm */
   display: flex;
   align-items: center;
   justify-content: center;
@@ -202,9 +203,15 @@
 .file-tree-icon {
   width: var(--tree-icon-size);
   height: var(--tree-icon-size);
-  font-size: 14px;
+  font-size: var(--font-size-lg); /* E5.8 Phase 12 #172：icon 14→lg */
   flex-shrink: 0;
   margin-left: var(--tree-icon-gap);
+}
+
+/* E5.8#133.3：图像形态图标——linkdesk:// 绝对 URL 渲染，等比缩放进图标盒（零拉伸失真） */
+.file-tree-icon--image {
+  object-fit: contain;
+  vertical-align: text-bottom;
 }
 
 /* ── 文件名 ── */
@@ -214,7 +221,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 13px;
+  font-size: var(--font-size-md); /* E5.8 Phase 12 #172：name 13→md */
   line-height: var(--tree-item-height);
 }
 
@@ -224,7 +231,7 @@
 
 .file-tree-badge {
   margin-left: 4px;
-  font-size: 11px;
+  font-size: var(--font-size-xs); /* E5.8 Phase 12 #172：badge 11→xs */
   font-weight: 600;
   flex-shrink: 0;
 }
@@ -233,7 +240,7 @@
 
 .file-tree-compact-sep {
   color: var(--text-secondary);
-  font-size: 11px;
+  font-size: var(--font-size-xs); /* E5.8 Phase 12 #172：11→xs */
   font-weight: normal;
 }
 
@@ -247,7 +254,7 @@
   height: 100%;
   padding: 24px;
   color: var(--text-secondary);
-  font-size: 13px;
+  font-size: var(--font-size-md); /* E5.8 Phase 12 #172：welcome 13→md */
   text-align: center;
   gap: 12px;
   border: 2px solid transparent;
@@ -270,7 +277,7 @@
   background: var(--bg-card);
   color: var(--text-primary);
   cursor: pointer;
-  font-size: 12px;
+  font-size: var(--font-size-sm); /* E5.8 Phase 12 #172：12→sm */
 }
 
 /* ── 最近文件夹 ── */
@@ -282,7 +289,7 @@
 }
 
 .file-tree-recent-title {
-  font-size: 11px;
+  font-size: var(--font-size-xs); /* E5.8 Phase 12 #172：11→xs */
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -301,7 +308,7 @@
   background: transparent;
   color: var(--text-secondary);
   cursor: pointer;
-  font-size: 12px;
+  font-size: var(--font-size-sm); /* E5.8 Phase 12 #172：recent 12→sm */
   text-align: left;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -313,12 +320,12 @@
 }
 
 .file-tree-recent-item-icon {
-  font-size: 14px;
+  font-size: var(--font-size-lg); /* E5.8 Phase 12 #172：14→lg */
   flex-shrink: 0;
 }
 
 .file-tree-recent-item-path {
-  font-size: 11px;
+  font-size: var(--font-size-xs); /* E5.8 Phase 12 #172：11→xs */
   opacity: 0.5;
   margin-left: auto;
   flex-shrink: 0;
@@ -327,7 +334,7 @@
 .file-tree-dragover-hint {
   margin: 0;
   color: var(--accent);
-  font-size: 12px;
+  font-size: var(--font-size-sm); /* E5.8 Phase 12 #172：12→sm */
 }
 
 /* ═══ 缩进引导线（E4b #99k） ═══ */

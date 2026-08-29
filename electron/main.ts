@@ -20,6 +20,7 @@ import { registerEnvHandlers } from './ipc/handlers/env-handlers.js';
 import { registerClipboardHandlers } from './ipc/handlers/clipboard-handlers.js';
 import { registerRegistryHandlers } from './ipc/handlers/registry-handlers.js'; // E5.7#49：主进程三表直连 IPC
 import { registerHotExitHandlers } from './ipc/handlers/hot-exit-handlers.js'; // E5.7#38
+import { registerAppearanceHandlers } from './ipc/handlers/appearance-handlers.js'; // E5.8#50.11：外观资产
 import { registerPoolHandlers } from './ipc/handlers/plugin-view-handlers.js'; // E5.6#8d
 import { registerLspHandlers } from './ipc/handlers/lsp-handlers.js'; // E4V#40s1
 import { registerProtocol } from './plugins/protocol.js';
@@ -28,7 +29,7 @@ import { WindowManager } from './windows/window-manager.js';
 import { syncKeybindings } from './windows/keyboard-router.js'; // E5.5#7-p6
 import { IpcBridge } from './ipc/ipc-bridge.js';
 import { setupCrashRecovery, replayAfterShellRebuild, type CrashRecoveryDeps } from './windows/crash-recovery.js'; // E5.7#36
-import { APP_SCHEME, DEV_SERVER_URL } from './constants.js'; // E5#102b：DEV_SERVER_URL 定义在 constants.ts
+import { APP_SCHEME, APPEARANCE_SCHEME, DEV_SERVER_URL } from './constants.js'; // E5#102b：DEV_SERVER_URL 定义在 constants.ts
 import { IPC } from './ipc/channels.js';
 // ── 单实例锁 ──
 const gotLock = app.requestSingleInstanceLock();
@@ -85,11 +86,11 @@ function createWindow(): void {
 
   // ── 注册 IPC 处理器（E5.7#36：全部幂等——首次注册 + 重建时刷新引用；无状态 handler 重复调用直接跳过）──
   registerPluginHandlers();
-  registerDialogHandlers();
   registerEnvHandlers();
   registerClipboardHandlers();
   registerRegistryHandlers();  // E5.7#49：三表直连（数据由 plugin-manifest-loader 预加载）
   registerHotExitHandlers();   // E5.7#38
+  registerAppearanceHandlers(); // E5.8#50.11：外观资产——选择图片拷贝入库
 
   // E3a #24：初始化 WindowManager（E5.7#43：PluginViewRegistry 已删）
   windowManager = new WindowManager(win);
@@ -110,6 +111,7 @@ function createWindow(): void {
   registerLspHandlers();   // E5#74c
   registerSerialHandlers(); // E5#74b
   registerFileHandlers(windowManager);              // E5#80
+  registerDialogHandlers(windowManager);            // E5.8#62 审计#4：对话框 parent 反查宿主窗——须在 windowManager 创建后注入
   registerPoolHandlers(windowManager, win);  // E5.6#8e
 
   // E5.6#9 → E5.7#4：创建唯一 Pool WebContentsView——极简Pool 单 WCV（#12 提前：SidebarPool 已删）
@@ -146,22 +148,40 @@ function createWindow(): void {
   });
 
   // E3f #52f：自定义窗口控制（─ □ ×）——TitleBar 按钮 → 主进程窗口操作
+  // E5.8#43-2（B3）：按发送者路由——池 TitleBarZone 按钮来自哪个 Pool 窗口就作用于哪个宿主窗
+  //（脱出窗点 ─ □ × 作用于自身；壳渲染进程 sender 不在 poolWindows 注册表 → 回退主窗）。
+  const hostWindowFor = (event: Electron.IpcMainEvent | Electron.IpcMainInvokeEvent): BrowserWindow => {
+    const windowId = windowManager?.getWindowIdByWebContents(event.sender) ?? 'main';
+    return windowManager?.getHostWindow(windowId) ?? mainWindow!;
+  };
   if (!_windowIpcRegistered) {
     _windowIpcRegistered = true;
-    ipcMain.on(IPC.window.minimize, () => mainWindow?.minimize());
-    ipcMain.on(IPC.window.maximize, () => mainWindow?.maximize());
-    ipcMain.on(IPC.window.unmaximize, () => mainWindow?.unmaximize());
-    ipcMain.on(IPC.window.close, () => mainWindow?.close());
-    ipcMain.handle(IPC.window.isMaximized, () => mainWindow?.isMaximized() ?? false);
+    ipcMain.on(IPC.window.minimize, (event) => hostWindowFor(event)?.minimize());
+    ipcMain.on(IPC.window.maximize, (event) => hostWindowFor(event)?.maximize());
+    ipcMain.on(IPC.window.unmaximize, (event) => hostWindowFor(event)?.unmaximize());
+    ipcMain.on(IPC.window.close, (event) => hostWindowFor(event)?.close());
+    ipcMain.handle(IPC.window.isMaximized, (event) => hostWindowFor(event)?.isMaximized() ?? false);
+    // E5.8#46.18：OS 级置顶——setAlwaysOnTop 按 sender 路由宿主窗（脱出窗/漂移窗/主窗各自置顶互不影响）；
+    // isAlwaysOnTop 供 TitleBarZone pin 按钮挂载时初始化两态。
+    ipcMain.on(IPC.window.setAlwaysOnTop, (event, pinned: boolean) => hostWindowFor(event)?.setAlwaysOnTop(!!pinned));
+    ipcMain.handle(IPC.window.isAlwaysOnTop, (event) => hostWindowFor(event)?.isAlwaysOnTop() ?? false);
     // E5.7#79：窗口缩放——壳配置 onApply 推来的因子应用到池 WCV（可见 UI 全在池）。
     // 缓存供 createWindow 重建池后重放（池 WCV 是新 webContents，缩放不随窗口重建保留）。
-    ipcMain.on(IPC.window.setZoom, (_event, factor: number) => {
+    // E5.8#62 审计#1：按 sender 路由——原恒取主池 getPoolView()，脱出窗池插件调 setZoom 错指主窗
+    //（意图落空副作用错位，#46.8「IPC 路由默认主窗」同款缺陷模式）。池 sender → 其所属窗池 WCV；
+    // 壳渲染进程（startup.ts window.zoomLevel onApply）sender 非池 → 回退主池。缩放缓存仅主池——
+    // 脱出窗池随宿主窗销毁，无需跨壳崩重建重放（壳按持久化清单重建脱出窗，F5 后缩放回落为既有行为）。
+    ipcMain.on(IPC.window.setZoom, (event, factor: number) => {
       // Number.isFinite 而非 typeof === "number"——no-restricted-syntax 字符串比较启发式误报
       const n = Number(factor);
-      _lastZoomFactor = Number.isFinite(n) ? n : 1;
-      const poolView = windowManager?.getPoolView();
+      const zoom = Number.isFinite(n) ? n : 1;
+      const windowId = windowManager?.getWindowIdByWebContents(event.sender) ?? 'main';
+      const poolView = windowManager?.getPoolViewByWindowId(windowId);
       if (poolView && !poolView.webContents.isDestroyed()) {
-        poolView.webContents.setZoomFactor(_lastZoomFactor);
+        poolView.webContents.setZoomFactor(zoom);
+      }
+      if (windowId === 'main') {
+        _lastZoomFactor = zoom;
       }
     });
     // E3f #58：切换壳窗口 DevTools——多 WebView 未激活时的兜底
@@ -171,8 +191,11 @@ function createWindow(): void {
       wc.isDevToolsOpened() ? wc.closeDevTools() : wc.openDevTools({ mode: 'detach' });
     });
   }
-  win.on('maximize', () => win.webContents.send(IPC.window.maximizeChange, true));
-  win.on('unmaximize', () => win.webContents.send(IPC.window.maximizeChange, false));
+  // E5.8#43-2（B3）：最大化状态 → 该窗池 WCV（TitleBar □/还原按钮态跟随所在窗口）。
+  // 原 win.webContents.send 发的是壳渲染进程（index.html）——池是独立 WCV 收不到（E5.7 潜伏缺口），
+  // 且脱出窗壳 webContents 无人消费。sendPoolMaximizeChange 按宿主窗反查池定向发送。
+  win.on('maximize', () => windowManager?.sendPoolMaximizeChange(win, true));
+  win.on('unmaximize', () => windowManager?.sendPoolMaximizeChange(win, false));
 
   // ── E5.7#36：无状态 shell IPC——无窗口引用，只注册一次 ──
   if (!_shellIpcRegistered) {
@@ -252,7 +275,13 @@ function createWindow(): void {
 
   win.on('closed', () => {
     // E5.7#36：身份校验——壳崩重建先建新窗后毁旧窗，旧窗的 closed 不得清掉新引用
-    if (mainWindow === win) mainWindow = null;
+    if (mainWindow !== win) return;
+    mainWindow = null;
+    // E5.8#43-3（2026-08-22 用户拍板）：主窗关闭 = 整个应用退出——脱出窗一同关闭（quitApp）。
+    // 不能靠 window-all-closed（脱出窗还开着时不触发 → 壳死 + 脱出窗变僵尸：池收不到 pushLayout、
+    // 键盘路由挂已销毁 mainWindow）。壳 = 主窗 webContents，主窗没了壳就死 → 必须连带退出全部窗口。
+    // app.quit() 关全部窗口 → 壳 beforeunload 落盘（syncWriteLayout 含脱出窗 bounds）→ 正常退出。
+    app.quit();
   });
 }
 
@@ -287,6 +316,15 @@ ipcMain.on(IPC.theme.changed, (_event, isDark: boolean) => {
   // E5.8#6.6 hex 豁免：窗口背景色随主题（OS 层 setBackgroundColor，CSS 变量不可达）
   // eslint-disable-next-line linkdesk/no-hardcoded-hex
   const bg = isDark ? '#1e1e1e' : '#f5f5f5';
+  // E5.8#62 审计#2：全部宿主窗 OS 层背景随主题——脱出宿主窗 backgroundColor 是创建时一次性值
+  //（window-manager.ts:335 nativeTheme 快照），原只更新主窗 → 切主题后脱出窗 OS 背景残留旧主题色
+  //（池加载/闪白间隙可见）。getAllHostWindows 覆盖 main + 脱出/漂移窗，setBackgroundColor 幂等。
+  if (windowManager) {
+    for (const hostWin of windowManager.getAllHostWindows()) {
+      if (!hostWin.isDestroyed()) hostWin.setBackgroundColor(bg);
+    }
+  }
+  // 主窗显式兜底（windowManager 未创建/主池未注册的早期窗口期）——getAllHostWindows 已含 main，此处幂等
   if (mainWindow && !mainWindow.isDestroyed()) {
     mainWindow.setBackgroundColor(bg);
   }
@@ -301,8 +339,12 @@ ipcMain.on(IPC.theme.changed, (_event, isDark: boolean) => {
 });
 
 // ── preload 加载确认（新风险 3 防御——preload 抛异常不进 ErrorBoundary）──
+// E5.8#46.11：每次壳加载（fresh+reload）主动 seed 全部池窗 bounds——壳 reload 后注册表 bounds 清空、
+// 池不随壳 reload 重发 pool:ready → main.bounds 恒缺直至用户动窗（#46.10 吸附对无 bounds 窗跳过命中）。
+// preloadReady 恒在池注册之后触发（windowManager 建于壳页面加载前），此 handler 无需等待窗。
 ipcMain.on(IPC.app.preloadReady, () => {
   console.log('[main] preload-shell 加载成功，window.linkdesk 已就绪');
+  windowManager?.pushAllWindowBounds();
 });
 
 // ── E2a #5：心跳看门狗——检测 JS 主线程死循环/卡死 ──
@@ -345,6 +387,10 @@ protocol.registerSchemesAsPrivileged([
   // E5.6#9h：注册 extension-file 协议——@codingame Monaco 内部虚拟文件系统，
   // 无此注册则 extension-file:// fetch 请求全 404，console 噪音。
   { scheme: "extension-file", privileges: { standard: true, secure: true, supportFetchAPI: true } },
+  // E5.8#64：受控外观图片协议——importImage 拷贝进 userData/appearance 的图（实机 bug 13：
+  // plain 绝对路径被 Chromium 归一 file:// 拦截报「Not allowed to load local resource」）。
+  // standard+secure+fetch 才能被 sandboxed pool 的 CSS background-image 加载。
+  { scheme: APPEARANCE_SCHEME, privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true } },
 ]);
 
 // ── 应用生命周期 ──

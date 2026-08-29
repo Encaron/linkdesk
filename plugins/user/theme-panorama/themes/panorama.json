@@ -1,0 +1,60 @@
+{
+  "$schema": "../../../../public/schemas/theme.schema.json",
+  "id": "panorama",
+  "name": "整窗主视觉 Main Visual",
+  "type": "dark",
+  "appearance": {
+    "background": {
+      "mode": "panorama",
+      "image": "linkdesk://theme-panorama/resources/sailor-moon.jpg",
+      "opacity": 1,
+      "mask": 0.15
+    }
+  },
+  "colorways": [
+    {
+      "id": "moonlight",
+      "name": "月夜主视觉",
+      "colors": {
+        "bg-window": "rgba(10, 14, 20, 0.30)",
+        "bg-titlebar": "rgba(8, 12, 18, 0.38)",
+        "bg-card": "rgba(255, 255, 255, 0.10)",
+        "bg-status": "rgba(8, 12, 18, 0.50)",
+        "bg-input": "rgba(255, 255, 255, 0.14)",
+        "bg-icon-bar": "rgba(8, 12, 18, 0.30)",
+        "bg-side-panel": "rgba(8, 12, 18, 0.34)",
+        "bg-toolbar": "rgba(8, 12, 18, 0.30)",
+        "text-primary": "#FFFFFF",
+        "text-secondary": "rgba(255, 255, 255, 0.80)",
+        "text-muted": "rgba(255, 255, 255, 0.58)",
+        "text-on-accent": "#10161F",
+        "accent": "#FFB85C",
+        "accent-hover": "#FFCC85",
+        "border": "rgba(255, 255, 255, 0.16)",
+        "separator": "rgba(255, 255, 255, 0.12)",
+        "hover-overlay": "rgba(255, 255, 255, 0.08)",
+        "tab-hover-bg": "rgba(255, 255, 255, 0.10)",
+        "dirty-dot": "#FFB85C",
+        "toggle-knob": "#FFFFFF",
+        "toggle-knob-on": "#10161F",
+        "status-connected": "#4EC9B0",
+        "status-disconnected": "rgba(255, 255, 255, 0.30)",
+        "icon-active": "#FFFFFF",
+        "icon-inactive": "rgba(255, 255, 255, 0.55)",
+        "scrollbar-thumb": "rgba(255, 184, 92, 0.30)",
+        "scrollbar-thumb-hover": "rgba(255, 184, 92, 0.45)",
+        "drop-indicator": "rgba(255, 184, 92, 0.30)",
+        "context-menu-shadow": "0 8px 32px rgba(0, 0, 0, 0.45)",
+        "drag-preview-shadow": "0 8px 40px rgba(0, 0, 0, 0.55)",
+        "badge-text": "#10161F",
+        "cm-timestamp": "rgba(255, 255, 255, 0.50)",
+        "sent-echo": "#FFB85C",
+        "received": "#FFFFFF",
+        "system-log": "rgba(255, 255, 255, 0.65)",
+        "danger": "#F87171",
+        "error": "#F87171",
+        "warning": "#FFB85C"
+      }
+    }
+  ]
+}

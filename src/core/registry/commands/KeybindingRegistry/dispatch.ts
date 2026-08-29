@@ -7,7 +7,7 @@
 
 import { executeCommand, hasHandler } from "../CommandRegistry";
 import { CoreEvents, CUSTOM_EVENTS } from "../../../react/events/CoreEvents";
-import type { KeyboardInput } from "../../../types/ipc/keyboard";
+import type { ForwardedKeyboardInput } from "../../../types/ipc/keyboard";
 import { keyboardInputToKeyString, keyboardEventToKeyString } from "../../../utils/keybindingNormalization";
 import { isChordPrefix, keybindingResolver, clearBindings, getKeybindingSyncData } from "./registry";
 import { _chordState, resetChord, CHORD_TIMEOUT } from "./chord";
@@ -38,12 +38,15 @@ function shouldDispatchKey(): boolean {
 }
 
 /** Resolver 仲裁 winner + 执行——chord-2nd/单键共用（E5.8#1c 去重）。执行成功返回 true */
-function runWinner(seq: string, e?: KeyboardEvent): boolean {
+function runWinner(seq: string, e?: KeyboardEvent, sourceWindowId?: string): boolean {
   const winner = keybindingResolver.resolve(seq);
   if (winner && hasHandler(winner.command)) {
     e?.preventDefault();
     e?.stopImmediatePropagation();
-    executeCommand(winner.command, undefined, ...(winner.args ?? []));
+    // E5.8#46.8：主进程转发路径追加 { sourceWindowId } 到命令 args 末尾——壳命令按聚焦窗裁决
+    // （closeActiveTab 等）。DOM 路径（无 sourceWindowId）不附加，现有 args 索引零影响。
+    const args = winner.args ?? [];
+    executeCommand(winner.command, undefined, ...args, ...(sourceWindowId ? [{ sourceWindowId }] : []));
     return true;
   }
   return false;
@@ -54,7 +57,7 @@ function runWinner(seq: string, e?: KeyboardEvent): boolean {
  * keyString 归一化后进入 chord 状态机 + 单键匹配；e 存在（DOM keydown 路径）时命中后
  * preventDefault + stopImmediatePropagation，主进程转发路径（无 e）跳过。
  */
-function tryExecute(keyString: string, e?: KeyboardEvent): boolean {
+function tryExecute(keyString: string, e?: KeyboardEvent, sourceWindowId?: string): boolean {
   if (!keyString) return false; // modifier 键自己
 
   // ── Chord 第二键 ──
@@ -65,7 +68,7 @@ function tryExecute(keyString: string, e?: KeyboardEvent): boolean {
     resetChord(); // 清除 timer + 清除状态栏提示
     const fullChord = `${firstKey} ${keyString}`;
 
-    if (runWinner(fullChord, e)) return true;
+    if (runWinner(fullChord, e, sourceWindowId)) return true;
     // chord 第二键不匹配 → 通知状态栏显示错误提示（对标 VS Code）
     window.dispatchEvent(new CustomEvent(CUSTOM_EVENTS.CHORD_CHANGED, {
       detail: { isPending: false, failedKey: keyString, firstKey },
@@ -86,7 +89,7 @@ function tryExecute(keyString: string, e?: KeyboardEvent): boolean {
   }
 
   // ── 单键匹配——Resolver 仲裁（E2c #17a） ──
-  return runWinner(keyString, e);
+  return runWinner(keyString, e, sourceWindowId);
 }
 
 /**
@@ -105,9 +108,10 @@ export function handleKeyEvent(e: KeyboardEvent): boolean {
  * 逻辑与 handleKeyEvent 一致，但不调用 preventDefault/stopImmediatePropagation（无 event 对象）。
  * 返回 true 表示壳消费了此按键（应已 preventDefault 在主进程侧）。
  */
-export function handleKeyInput(input: KeyboardInput): boolean {
+export function handleKeyInput(input: ForwardedKeyboardInput): boolean {
   if (!shouldDispatchKey()) return false;
-  return tryExecute(keyboardInputToKeyString(input));
+  // E5.8#46.8：sourceWindowId 随转发载荷进命令 args——壳命令按聚焦窗裁决（Ctrl+W 关本窗 tab）
+  return tryExecute(keyboardInputToKeyString(input), undefined, input.sourceWindowId);
 }
 
 /**
@@ -129,7 +133,7 @@ export function mountGlobalKeybindings(): () => void {
   const linkdesk = window.linkdesk;
   let forwardCleanup: (() => void) | null = null;
   if (linkdesk?.keybindings?.onForwardedEvent) {
-    forwardCleanup = linkdesk.keybindings.onForwardedEvent((input: KeyboardInput) => {
+    forwardCleanup = linkdesk.keybindings.onForwardedEvent((input: ForwardedKeyboardInput) => {
       handleKeyInput(input);
     });
   }

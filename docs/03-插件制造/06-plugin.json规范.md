@@ -293,7 +293,7 @@ LinkDesk 通过 `distribution` 字段 + 物理目录区分两种插件：
 | 本质 | 普通视图插件（`appearsIn.iconBar` + 自己的 view） | 该角色的一个候选，进 FactorySlots 槽位 |
 | 图标栏 | 自己的图标和官方**并排** | 激活套图标**占槽**、非激活套隐藏 |
 | 切换 | 无——用户自己点哪个进哪个 | 设置页自动出该**角色名分组** + 切换按钮 |
-| 今天能做吗 | ✅ 零壳改动 | ⏳ 依赖 E5.8 方案A（#41.11 一对多）落地 |
+| 今天能做吗 | ✅ 零壳改动 | ✅ E5.8 方案A 已落地（#41.11-#41.18） |
 
 **名字不参与机制。** 壳没有任何「比名字」的逻辑——pluginId 各归各永不撞；视图 id 由 `(pluginId, viewId)` 复合键免疫碰撞；显示名只是给用户看的。所谓「同名分组」其实是「**同角色分组**」——分组按**角色名**命名（如「插件市场」），你叫 "Marketplace" 还是 "Map Store"，只要声明了同一 `factoryRole` 就进同一组。
 
@@ -301,9 +301,34 @@ LinkDesk 通过 `distribution` 字段 + 物理目录区分两种插件：
 - **想并存 → 不填。** 例：第三方做全新市场 UI，图标栏官方旁边多一个自己的图标，点进去是自己的 UI，和官方拿同一份数据
 - **想替换 → 填。** 例：声明 `factoryRole:"marketplace"` → 设置页出「插件市场」组 + 切换按钮，切过去后图标/内容换成你的
 
-> ⚠️ **形态二当前状态：** 方案A（E5.8 Phase 8.2 #41.10-#41.13）落地前，`factoryRole` 仍是单槽——多个声明同 role 时**第一个 core:true 胜出**（旧行为）。形态二的全套替换机制（一对多 + 切换 + 图标占槽）随方案A 生效；**形态一现在就能用**。
->
-> 📖 设计拍板档案 → 记忆 `factory-role-coexistence`；任务 → E5.8 执行清单 #41.10 ⑧ / #37.9.3.6
+**形态二实现细节**（E5.8 Phase 8.2 方案A 已落地，#41.11-#41.18；参考实体 `plugins/user/settings-demo/` + `10-如何造一个设置插件.md`）：
+
+- **① 一对多槽位**：同一 `factoryRole` 多插件声明 = **合法并存**，全收进槽位候选（不再"第一个胜出"）。**默认**（用户没切过/打开时）= `core:true` 优先、否则注册序首声明（稳定排序，不靠扫描序巧合）。多候选并存不再静默——壳控制台 fail-loud 点名全部候选 + 默认（每候选集合变化才重喷一次）。
+- **② 活动套 = 用户切换选择，落盘持久化**（重启保持）。公开枚举/切换面 `window.linkdesk.factorySlots.*`（#41.14 ⑤ 通用枚举面，槽位无关收 role 参数；settings 角色另有 `window.linkdesk.settings.*` 兼容别名，内部原样转发）：
+
+  | 方法 | 作用 |
+  |------|------|
+  | `factorySlots.listRoles()` | 全部已填充角色名（注册序）——设置页先枚举角色再 list(role) 判候选数 |
+  | `factorySlots.list(role)` | 该角色全部候选 `[{ pluginId, title, viewId? }]`——title=显示名原文，viewId=该套 `contributes.floatingPanel.viewId`（无声明 = undefined） |
+  | `factorySlots.getActive(role)` | 活动套插件 ID——读持久化，无记录/已卸载回退默认（内置） |
+  | `factorySlots.setActive(role, pluginId)` | 切换活动套——校验候选后落盘；**非候选 fail-loud 抛错** |
+
+- **③ 切换入口 = 设置页角色分组（动态出现）**：设置 UI 打开时枚举 `listRoles()` → 对每个**非设置插件角色** `list(role)` → **候选 ≥2 才建组**（单候选无切换意义）。组形态 = 切换按钮在顶（列出该角色全部候选，激活高亮）+ 激活套自己的配置在下方；复用同名组优先（按 pluginId 找激活候选自己的配置组）、没有才新建；激活套无配置项 → 空状态。切换 = `setActive` → 重拉数据 → 配置随激活套换。你的设置插件**自身角色**（settings）的切换 = 顶部通用区按钮（见 `10-如何造一个设置插件.md`）。
+- **④ 图标栏占槽**：声明 `factoryRole` 的插件（形态二），图标栏**只渲染激活套图标**、非激活套隐藏——"把官方的剔除换成你的"；不声明的形态一照旧全出并排。
+- **⑤ 路由接缝**：打开设置（`Ctrl+,` / 齿轮）= `factorySlots.getActive("settings")` → 已开标签页聚焦 / 声明了 `floatingPanel` → 悬浮面板（载荷带 pluginId 复合寻址）/ 无声明 → 开标签页。切换激活套后，后续打开全走新套，两端一致。
+- **⑥ 全插件侧换套**（切换按钮点击，零壳改动）：`setActive` → 标签页形态 = 关本套 tab → 开目标套（singleton 去重已存在则聚焦）；悬浮面板形态 = `panel.revealFloating(viewId, pluginId?)` **原地复合替换**面板内容（不背后弹残留 tab；目标套无 floatingPanel 声明 → 退回开标签页）。删任意套 → `onPluginLifecycleChange` → 重拉 → 按钮自动消失。
+
+**双场景示例（官方 + 第三方 插件市场）：**
+
+| | 形态一（并存） | 形态二（替换） |
+|---|---|---|
+| 第三方声明 | 不填 `factoryRole`——普通视图插件（`appearsIn.iconBar` + 自己的 view + `pluginManager.*` 数据） | 填 `factoryRole: "marketplace"` |
+| 图标栏 | 官方 Marketplace 旁并排你自己的图标，两个市场各自独立 | 只显示**激活套**图标（默认=内置 core:true 优先），非激活套隐藏 |
+| 设置页 | 无槽位概念 | 出「插件市场」角色组（候选 2）+ 切换按钮 |
+| 用户切换 | 无——自己点哪个进哪个 | 切到你的 Map Store → 图标/打开行为全换成你的，持久化重启保持 |
+| 数据 | 同一份 `pluginManager.*` API，各做各的 UI | 同一份数据，UI 换成激活套 |
+
+> 📖 设计拍板档案 → 记忆 `factory-role-coexistence`；任务 → E5.8 执行清单 #41.10 ⑧ / #41.11-#41.18 / #37.9.3.6
 
 ### `icon` 字段详解
 
@@ -498,7 +523,9 @@ function CadView() {
 }
 ```
 
-**可用菜单 ID：** `editorContext`（标签页内容右键）| `tabContext`（标签栏右键）| `fileContext`（文件树右键，Phase 6）| `cardContext`（卡片右键，Phase 7）
+**可用菜单 ID：** `editorContext`（标签页内容右键）| `tabContext`（标签栏右键）| `fileContext`（文件树右键，Phase 6）| `cardContext`（卡片右键，Phase 7）| MenuId 开放 string（`menuBar` / 任意新注册点）
+
+**菜单项字段：** `command`（命令 ID，有 `children` 时可为空）| `label`（覆盖命令标题）| `group` | `when` | `order`（同组排序）| `children`（嵌套子菜单，**任意深度递归**——E5.8#148/#149）。详见 `03-插件contributes规范.md §3.2`。
 
 **菜单位置（MenuId）由框架定义，你只管在哪个位置挂什么命令。** 框架自己也注册了内置项——"关闭"、"分屏"是框架的，"清空"、"暂停"是终端插件的，"导入 DXF"是 CAD 插件的。用户右键时看到的菜单 = 框架内置 + 终端 + CAD + 你的插件——多方贡献，合并渲染。
 

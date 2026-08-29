@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { computePoolGrid, isPanelCoveringSlot } from "./gridLayout";
+import { computePoolGrid, isPanelCoveringSlot, handleEdgeForSlot } from "./gridLayout";
 import type { PoolGridInput } from "./gridLayout";
 
 function base(overrides: Partial<PoolGridInput> = {}): PoolGridInput {
@@ -24,6 +24,15 @@ function areaOf(input: PoolGridInput, zone: keyof ReturnType<typeof computePoolG
   if (!c) return null;
   return `${c.rowStart} / ${c.rowEnd} / ${c.colStart} / ${c.colEnd}`;
 }
+
+describe("handleEdgeForSlot——分割线 handle 落点派生（E5.8#146 归一化）", () => {
+  it("左槽 → 右缘（handle 恒朝向主区）", () => {
+    expect(handleEdgeForSlot("left")).toBe("right");
+  });
+  it("右槽 → 左缘（handle 恒朝向主区）", () => {
+    expect(handleEdgeForSlot("right")).toBe("left");
+  });
+});
 
 describe("isPanelCoveringSlot——覆盖推导单一来源（S10）", () => {
   it("center 不覆盖任何槽", () => {
@@ -154,5 +163,27 @@ describe("computePoolGrid——侧栏换右（swap 规则 + iconbar 跟随 E5.8#
     expect(spec.cells.iconbar).toEqual({ rowStart: 1, colStart: 5, rowEnd: 2, colEnd: 6 });
     expect(spec.cells.sidebar).toEqual({ rowStart: 1, colStart: 4, rowEnd: 2, colEnd: 5 }); // 右槽
     expect(spec.cells.panel).toEqual({ rowStart: 1, colStart: 2, rowEnd: 2, colEnd: 3 }); // 面板左竖条
+  });
+});
+
+describe("computePoolGrid——无主区内容（E5.8#46.17 drift 面板专用窗）", () => {
+  it("hasMain=false → 无内容行，面板独占整窗（底面板单 auto 行）", () => {
+    const input = base({ panelVisible: true, panelEdge: "bottom", panelAlign: "center", hasMain: false });
+    const spec = computePoolGrid(input);
+    expect(spec.gridTemplateRows).toBe("auto"); // 无 1fr 内容行——面板独占，无主区空白
+    expect(areaOf(input, "main")).toBe("1 / 1 / 3 / 4"); // main 0 行高（rowStart=rowEnd=1）
+    expect(spec.cells.panel).toEqual({ rowStart: 1, colStart: 3, rowEnd: 2, colEnd: 4 }); // 面板占第 1 行（主列）
+  });
+  it("hasMain 缺省（main/detached）→ 内容行照常 1fr", () => {
+    const input = base();
+    expect(computePoolGrid(input).gridTemplateRows).toBe("1fr");
+    expect(areaOf(input, "main")).toBe("1 / 2 / 3 / 4");
+  });
+  it("hasMain=false + 竖条面板 → 兜底 1 行承载全高竖条（防空 rows→空模板）", () => {
+    const input = base({ panelVisible: true, panelEdge: "left", panelAlign: "center", hasMain: false });
+    const spec = computePoolGrid(input);
+    expect(spec.gridTemplateRows).toBe("1fr"); // 兜底行
+    expect(spec.cells.panel).toEqual({ rowStart: 1, colStart: 3, rowEnd: 2, colEnd: 4 }); // 竖条全高
+    expect(areaOf(input, "main")).toBe("1 / 1 / 4 / 5"); // main 0 行高
   });
 });

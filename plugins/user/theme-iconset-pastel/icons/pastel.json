@@ -1,0 +1,442 @@
+{
+  "file": {
+    "imagePath": "icons/material/file.svg"
+  },
+  "folder": {
+    "imagePath": "icons/material/folder.svg"
+  },
+  "folderExpanded": {
+    "imagePath": "icons/material/folder-open.svg"
+  },
+  "rootFolder": {
+    "imagePath": "icons/material/folder-root.svg"
+  },
+  "rootFolderExpanded": {
+    "imagePath": "icons/material/folder-root-open.svg"
+  },
+  "extensions": {
+    ".js": {
+      "imagePath": "icons/material/javascript.svg"
+    },
+    ".jsx": {
+      "imagePath": "icons/material/react.svg"
+    },
+    ".mjs": {
+      "imagePath": "icons/material/javascript.svg"
+    },
+    ".cjs": {
+      "imagePath": "icons/material/javascript.svg"
+    },
+    ".ts": {
+      "imagePath": "icons/material/typescript.svg"
+    },
+    ".tsx": {
+      "imagePath": "icons/material/react_ts.svg"
+    },
+    ".mts": {
+      "imagePath": "icons/material/typescript.svg"
+    },
+    ".cts": {
+      "imagePath": "icons/material/typescript.svg"
+    },
+    ".html": {
+      "imagePath": "icons/material/html.svg"
+    },
+    ".htm": {
+      "imagePath": "icons/material/html.svg"
+    },
+    ".css": {
+      "imagePath": "icons/material/css.svg"
+    },
+    ".scss": {
+      "imagePath": "icons/material/sass.svg"
+    },
+    ".sass": {
+      "imagePath": "icons/material/sass.svg"
+    },
+    ".less": {
+      "imagePath": "icons/material/less.svg"
+    },
+    ".vue": {
+      "imagePath": "icons/material/vue.svg"
+    },
+    ".svelte": {
+      "imagePath": "icons/material/svelte.svg"
+    },
+    ".c": {
+      "imagePath": "icons/material/c.svg"
+    },
+    ".h": {
+      "imagePath": "icons/material/h.svg"
+    },
+    ".cpp": {
+      "imagePath": "icons/material/cpp.svg"
+    },
+    ".cxx": {
+      "imagePath": "icons/material/cpp.svg"
+    },
+    ".hpp": {
+      "imagePath": "icons/material/hpp.svg"
+    },
+    ".cc": {
+      "imagePath": "icons/material/cpp.svg"
+    },
+    ".py": {
+      "imagePath": "icons/material/python.svg"
+    },
+    ".pyw": {
+      "imagePath": "icons/material/python.svg"
+    },
+    ".java": {
+      "imagePath": "icons/material/java.svg"
+    },
+    ".go": {
+      "imagePath": "icons/material/go.svg"
+    },
+    ".rs": {
+      "imagePath": "icons/material/rust.svg"
+    },
+    ".rb": {
+      "imagePath": "icons/material/ruby.svg"
+    },
+    ".php": {
+      "imagePath": "icons/material/php.svg"
+    },
+    ".cs": {
+      "imagePath": "icons/material/csharp.svg"
+    },
+    ".kt": {
+      "imagePath": "icons/material/kotlin.svg"
+    },
+    ".swift": {
+      "imagePath": "icons/material/swift.svg"
+    },
+    ".scala": {
+      "imagePath": "icons/material/scala.svg"
+    },
+    ".lua": {
+      "imagePath": "icons/material/lua.svg"
+    },
+    ".r": {
+      "imagePath": "icons/material/r.svg"
+    },
+    ".dart": {
+      "imagePath": "icons/material/dart.svg"
+    },
+    ".sh": {
+      "imagePath": "icons/material/console.svg"
+    },
+    ".bash": {
+      "imagePath": "icons/material/console.svg"
+    },
+    ".zsh": {
+      "imagePath": "icons/material/console.svg"
+    },
+    ".bat": {
+      "imagePath": "icons/material/console.svg"
+    },
+    ".cmd": {
+      "imagePath": "icons/material/console.svg"
+    },
+    ".ps1": {
+      "imagePath": "icons/material/powershell.svg"
+    },
+    ".json": {
+      "imagePath": "icons/material/json.svg"
+    },
+    ".yaml": {
+      "imagePath": "icons/material/yaml.svg"
+    },
+    ".yml": {
+      "imagePath": "icons/material/yaml.svg"
+    },
+    ".toml": {
+      "imagePath": "icons/material/toml.svg"
+    },
+    ".ini": {
+      "imagePath": "icons/material/settings.svg"
+    },
+    ".cfg": {
+      "imagePath": "icons/material/settings.svg"
+    },
+    ".conf": {
+      "imagePath": "icons/material/settings.svg"
+    },
+    ".xml": {
+      "imagePath": "icons/material/xml.svg"
+    },
+    ".csv": {
+      "imagePath": "icons/material/table.svg"
+    },
+    ".sql": {
+      "imagePath": "icons/material/database.svg"
+    },
+    ".md": {
+      "imagePath": "icons/material/markdown.svg"
+    },
+    ".markdown": {
+      "imagePath": "icons/material/markdown.svg"
+    },
+    ".txt": {
+      "imagePath": "icons/material/document.svg"
+    },
+    ".svg": {
+      "imagePath": "icons/material/svg.svg"
+    },
+    ".png": {
+      "imagePath": "icons/material/image.svg"
+    },
+    ".jpg": {
+      "imagePath": "icons/material/image.svg"
+    },
+    ".jpeg": {
+      "imagePath": "icons/material/image.svg"
+    },
+    ".gif": {
+      "imagePath": "icons/material/image.svg"
+    },
+    ".webp": {
+      "imagePath": "icons/material/image.svg"
+    },
+    ".ico": {
+      "imagePath": "icons/material/image.svg"
+    },
+    ".pdf": {
+      "imagePath": "icons/material/pdf.svg"
+    }
+  },
+  "files": {
+    "package.json": {
+      "imagePath": "icons/material/nodejs.svg"
+    },
+    "package-lock.json": {
+      "imagePath": "icons/material/nodejs.svg"
+    },
+    "tsconfig.json": {
+      "imagePath": "icons/material/tsconfig.svg"
+    },
+    "tsconfig.app.json": {
+      "imagePath": "icons/material/tsconfig.svg"
+    },
+    "vite.config.ts": {
+      "imagePath": "icons/material/vite.svg"
+    },
+    "next.config.js": {
+      "imagePath": "icons/material/next.svg"
+    },
+    "webpack.config.js": {
+      "imagePath": "icons/material/webpack.svg"
+    },
+    "rollup.config.js": {
+      "imagePath": "icons/material/rollup.svg"
+    },
+    "go.mod": {
+      "imagePath": "icons/material/go-mod.svg"
+    },
+    "go.sum": {
+      "imagePath": "icons/material/go-mod.svg"
+    },
+    "requirements.txt": {
+      "imagePath": "icons/material/python-misc.svg"
+    },
+    "pyproject.toml": {
+      "imagePath": "icons/material/python-misc.svg"
+    },
+    "pom.xml": {
+      "imagePath": "icons/material/maven.svg"
+    },
+    "makefile": {
+      "imagePath": "icons/material/makefile.svg"
+    },
+    "cmakelists.txt": {
+      "imagePath": "icons/material/cmake.svg"
+    },
+    "dockerfile": {
+      "imagePath": "icons/material/docker.svg"
+    },
+    "docker-compose.yml": {
+      "imagePath": "icons/material/docker.svg"
+    },
+    ".gitignore": {
+      "imagePath": "icons/material/git.svg"
+    },
+    ".env.local": {
+      "imagePath": "icons/material/tune.svg"
+    },
+    ".npmrc": {
+      "imagePath": "icons/material/npm.svg"
+    },
+    ".editorconfig": {
+      "imagePath": "icons/material/editorconfig.svg"
+    },
+    ".gitattributes": {
+      "imagePath": "icons/material/git.svg"
+    },
+    "readme.md": {
+      "imagePath": "icons/material/readme.svg"
+    },
+    "changelog.md": {
+      "imagePath": "icons/material/changelog.svg"
+    },
+    "license": {
+      "imagePath": "icons/material/license.svg"
+    },
+    "license.md": {
+      "imagePath": "icons/material/license.svg"
+    }
+  },
+  "folders": {
+    "src": {
+      "imagePath": "icons/material/folder-src.svg"
+    },
+    "dist": {
+      "imagePath": "icons/material/folder-dist.svg"
+    },
+    "build": {
+      "imagePath": "icons/material/folder-dist.svg"
+    },
+    "out": {
+      "imagePath": "icons/material/folder-dist.svg"
+    },
+    "node_modules": {
+      "imagePath": "icons/material/folder-node.svg"
+    },
+    "target": {
+      "imagePath": "icons/material/folder-target.svg"
+    },
+    "bin": {
+      "imagePath": "icons/material/folder-dist.svg"
+    },
+    ".git": {
+      "imagePath": "icons/material/folder-git.svg"
+    },
+    ".github": {
+      "imagePath": "icons/material/folder-github.svg"
+    },
+    ".vscode": {
+      "imagePath": "icons/material/folder-vscode.svg"
+    },
+    ".idea": {
+      "imagePath": "icons/material/folder-intellij.svg"
+    },
+    "docs": {
+      "imagePath": "icons/material/folder-docs.svg"
+    },
+    "test": {
+      "imagePath": "icons/material/folder-test.svg"
+    },
+    "tests": {
+      "imagePath": "icons/material/folder-test.svg"
+    },
+    "spec": {
+      "imagePath": "icons/material/folder-test.svg"
+    },
+    "e2e": {
+      "imagePath": "icons/material/folder-coverage.svg"
+    },
+    "coverage": {
+      "imagePath": "icons/material/folder-coverage.svg"
+    },
+    "components": {
+      "imagePath": "icons/material/folder-components.svg"
+    },
+    "assets": {
+      "imagePath": "icons/material/folder-resource.svg"
+    },
+    "public": {
+      "imagePath": "icons/material/folder-public.svg"
+    },
+    "lib": {
+      "imagePath": "icons/material/folder-lib.svg"
+    },
+    "libs": {
+      "imagePath": "icons/material/folder-lib.svg"
+    },
+    "config": {
+      "imagePath": "icons/material/folder-config.svg"
+    },
+    "include": {
+      "imagePath": "icons/material/folder-include.svg"
+    },
+    "vendor": {
+      "imagePath": "icons/material/folder-lib.svg"
+    }
+  },
+  "foldersExpanded": {
+    "src": {
+      "imagePath": "icons/material/folder-src-open.svg"
+    },
+    "dist": {
+      "imagePath": "icons/material/folder-dist-open.svg"
+    },
+    "build": {
+      "imagePath": "icons/material/folder-dist-open.svg"
+    },
+    "out": {
+      "imagePath": "icons/material/folder-dist-open.svg"
+    },
+    "node_modules": {
+      "imagePath": "icons/material/folder-node-open.svg"
+    },
+    "target": {
+      "imagePath": "icons/material/folder-target-open.svg"
+    },
+    "bin": {
+      "imagePath": "icons/material/folder-dist-open.svg"
+    },
+    ".git": {
+      "imagePath": "icons/material/folder-git-open.svg"
+    },
+    ".github": {
+      "imagePath": "icons/material/folder-github-open.svg"
+    },
+    ".vscode": {
+      "imagePath": "icons/material/folder-vscode-open.svg"
+    },
+    ".idea": {
+      "imagePath": "icons/material/folder-intellij-open.svg"
+    },
+    "docs": {
+      "imagePath": "icons/material/folder-docs-open.svg"
+    },
+    "test": {
+      "imagePath": "icons/material/folder-test-open.svg"
+    },
+    "tests": {
+      "imagePath": "icons/material/folder-test-open.svg"
+    },
+    "spec": {
+      "imagePath": "icons/material/folder-test-open.svg"
+    },
+    "e2e": {
+      "imagePath": "icons/material/folder-coverage-open.svg"
+    },
+    "coverage": {
+      "imagePath": "icons/material/folder-coverage-open.svg"
+    },
+    "components": {
+      "imagePath": "icons/material/folder-components-open.svg"
+    },
+    "assets": {
+      "imagePath": "icons/material/folder-resource-open.svg"
+    },
+    "public": {
+      "imagePath": "icons/material/folder-public-open.svg"
+    },
+    "lib": {
+      "imagePath": "icons/material/folder-lib-open.svg"
+    },
+    "libs": {
+      "imagePath": "icons/material/folder-lib-open.svg"
+    },
+    "config": {
+      "imagePath": "icons/material/folder-config-open.svg"
+    },
+    "include": {
+      "imagePath": "icons/material/folder-include-open.svg"
+    },
+    "vendor": {
+      "imagePath": "icons/material/folder-lib-open.svg"
+    }
+  }
+}

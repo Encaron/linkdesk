@@ -1,12 +1,12 @@
 /**
  * linkdesk-api 外观域——自 linkdesk-api.ts 拆出（E5.8#0d.10-9b）。
- * theme + language 二命名空间面 verbatim。
+ * theme + language + appearance 三命名空间面。
  * 依赖方向：appearance → ./types（LinkDeskTheme/LinkDeskLanguage）；被聚合器交叉组装。
  */
 
-import type { LinkDeskTheme, LinkDeskLanguage } from "./types";
+import type { LinkDeskTheme, LinkDeskLanguage, RecipeMeta } from "./types";
 
-/** 主题 + 语言命名空间面——对标 VS Code 外观面 */
+/** 主题 + 语言 + 外观资产命名空间面——对标 VS Code 外观面 */
 export interface AppearanceAPI {
   theme: {
     /** 获取当前主题 ID */
@@ -15,6 +15,23 @@ export interface AppearanceAPI {
     getAvailable(): Promise<LinkDeskTheme[]>;
     /** 应用主题 */
     apply(themeId: string): Promise<void>;
+    // ── E5.8#50.18：配方/配色 06 §2 六方法——列表走 API（数据），选中走配置（持久化 app.*）──
+    /** 全部可用配方（含各配色变体 + 预览色）——ThemePicker 卡片 / 配色与混搭动态 SelectBox 数据源 */
+    listRecipes(): Promise<RecipeMeta[]>;
+    /** 当前活动配方/配色——合并配置计算（getActiveRecipe + app.theme/app.themeColor 回退） */
+    getActive(): Promise<{ recipeId: string; colorwayId: string } | null>;
+    /** 当前生效 token 集（合并后）——appearanceMode→custom 播种、混搭预览 */
+    getEffectiveTokens(): Promise<Record<string, string>>;
+    /** 应用配方——落 app.theme（配色随配方自动跟随） */
+    setRecipe(recipeId: string): Promise<void>;
+    /** 应用配色变体——落 app.themeColor */
+    setColorway(colorwayId: string): Promise<void>;
+    /** 复位外观——对齐壳命令：app.appearanceMode→followTheme（onApply 级联清 9 覆盖 + 6 域来源 + 强调色回主题基线，E5.8#90 合并） */
+    resetAppearance(): Promise<void>;
+    /** 复位混搭——对齐壳命令：批复位 3 来源键回跟随主题（保持自定义模式，E5.8#90 app.mixMode 已删、#132 surface 域删） */
+    resetMix(): Promise<void>;
+    /** E5.8#88：外观覆盖键 → 主题/混搭基准种子值全集（设置页「已修改」徽标基准；无活动配方 → null） */
+    getBaselineSeeds(): Promise<Record<string, unknown> | null>;
   };
 
   language: {
@@ -28,5 +45,15 @@ export interface AppearanceAPI {
     getInitial(): { lang: string; resources: Record<string, unknown> } | null;
     /** 订阅语言变更——返回 unsubscribe */
     onChange(cb: (data: { lang: string; resources: Record<string, unknown> }) => void): () => void;
+  };
+
+  /** E5.8#50.11：外观资产——本地选图拷贝入库（受控来源——用户任选路径不能 file:// 直读） */
+  appearance: {
+    /** 导入图片到 userData/appearance/（重名去重）——返回受控协议 URL（linkdesk-userdata://…，E5.8#64），
+     *  供 app.backgroundImage 持久化；沙箱经特权协议加载（plain 绝对路径被拦截） */
+    importImage(sourcePath: string): Promise<string>;
+    /** E5.8#153：打开外观存储目录（userData/appearance）——主进程解析路径并 shell.openPath 开资源管理器
+     *  内容（非高亮单文件）；目录缺省也建（打开即见存储位置），openPath 失败抛错 fail-loud。 */
+    revealStorage(): Promise<void>;
   };
 }

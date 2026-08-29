@@ -11,8 +11,12 @@ import { shellEvents } from "../../../react/events/ShellEvents"; // E5#68
 // 为什么是编辑器：tabs:create 语义 = "打开点什么"——编辑器是唯一无参数可开的通用内容容器。
 export const DEFAULT_TAB_TYPE = "editor";
 
-/** tabs:* 七 channel 处理器——插件调壳的 tabs API（经 ShellEvents 事件总线）。全 case void emit 无返回 */
-export async function handleTabsChannel(channel: string, args: unknown[]): Promise<void> {
+/**
+ * tabs:* 七 channel 处理器——插件调壳的 tabs API（经 ShellEvents 事件总线）。全 case void emit 无返回。
+ * sourceWindowId = 信封来源窗章（E5.8#46.12，主进程 sender 反查）——focusBySourceId 按章路由到来源窗注册表。
+ * E5.8#46.2：updateLabelBySourceId/closeBySourceId 改走 windowHost 全窗广播（资源事件 = 全窗事实）——emit 不带章。
+ */
+export async function handleTabsChannel(channel: string, args: unknown[], sourceWindowId?: string): Promise<void> {
   switch (channel) {
     // ── E5#68：标签页操作——插件调壳的 tabs API ──
     case "tabs:create": {
@@ -38,11 +42,12 @@ export async function handleTabsChannel(channel: string, args: unknown[]): Promi
     }
     case "tabs:focusBySourceId": {
       const [sourceId] = args as [string];
-      shellEvents.emit("tab:focusBySourceId", { sourceId });
+      shellEvents.emit("tab:focusBySourceId", { sourceId, sourceWindowId });
       break;
     }
     case "tabs:updateLabelBySourceId": {
       const [sourceId, label] = args as [string, string];
+      // E5.8#46.2：全窗广播（windowHost 唯一订阅点）——不带 sourceWindowId（章只留给 focus 单发路由）
       shellEvents.emit("tab:updateLabelBySourceId", { sourceId, label });
       break;
     }

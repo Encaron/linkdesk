@@ -1,0 +1,1254 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>主题设置·域驱动重构 mockup（E5.8 主题组重分组定案）</title>
+<style>
+  /* ════════════════════════════════════════════════════════════════════
+     主题设置·域驱动重构 mockup（E5.8 主题组重分组定案）
+     基于 02-设置页-主题区-重构-mockup.html（结构照抄真实 SettingsView 类名）
+     ——本版定案（对照旧版）——
+       ① 删死键：app.mixRadius + app.mixGlass（#85/#86 绝对化后「数值域来源」无意义，
+          系统标尺已表达，来源只剩一组任意数字——混搭无风格可言）
+       ② 「外观覆盖」「域混搭」两组消失 → 按「域」重组 5 小组：圆角/玻璃/背景/字体/表面
+       ③ 资产域来源归位：mixFont / mixBackground / mixSurface 各自进所属域小组首行
+          （资产域 = 字体/背景图/纹理，滑杆表达不了，来源=配方资产唯一通道，🔀 徽标同节内指认）
+       ④ 补槽：表面纹理 app.surfaceTexture（表面域此前只有来源无覆盖槽，全矩阵镜像补齐）
+       ⑤ 系统标尺语义：radius 绝对 px（0-32）、glass 绝对、bg opacity/mask、
+          glassSaturate、fontFamilyMono——全部绝对系统值，非倍数
+       ⑥ 文字极性 app.fontTone 并入「文字」小组首行（配方级始终可见、无 dependsOn），
+          ——与 字体来源/界面字体/等宽字体 同组相邻（用户拍板：文字相关键不分开），三态分段控件
+       ⑦ app.accentMode 已删（#90）——强调色单槽，清除 = 跟随主题配方
+     右侧实时预览壳 = 迷你 LinkDesk pool，随左侧设置实时变化。
+     ════════════════════════════════════════════════════════════════════ */
+  :root {
+    --bg-window: #0E0E12;
+    --bg-input: #1D1E26;
+    --bg-input-hover: #262838;
+    --text-primary: #D4D4D4;
+    --text-secondary: #9D9D9D;
+    --text-muted: #6E7280;
+    --accent: #8B7CF6;
+    --accent-hover: #A69CFF;
+    --text-on-accent: #0E0E12;
+    --border: #262838;
+    --separator: #34364A;
+    --hover-overlay: rgba(255,255,255,0.06);
+    --error: #F48771;
+    --ok: #34D399;
+    --font-ui: "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+    --font-mono: "JetBrains Mono", Consolas, monospace;
+    --radius-sm: 4px; --radius-md: 6px; --radius-lg: 10px; --radius-xl: 14px;
+    --glass-blur: 16px; --glass-saturate: 1.4;
+    --glass-tint: rgba(18,20,28,0.55);
+    --surface-shadow: 0 24px 60px rgba(0,0,0,0.55);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    background: #06060A; color: var(--text-primary); font-family: var(--font-ui);
+    font-size: 13px; display: flex; justify-content: center; align-items: center;
+    min-height: 100vh; padding: 24px;
+  }
+  .page-bg {
+    position: fixed; inset: 0; z-index: 0;
+    background:
+      radial-gradient(1100px 700px at 12% -8%, rgba(124,156,246,0.22), transparent 60%),
+      radial-gradient(900px 640px at 108% 108%, rgba(139,124,246,0.26), transparent 60%),
+      radial-gradient(700px 500px at 50% 120%, rgba(52,211,153,0.08), transparent 60%),
+      linear-gradient(160deg, #14121F 0%, #191630 45%, #231C33 100%);
+  }
+  .page-bg::after { content: ''; position: absolute; inset: 0; background: rgba(6,6,10,0.82); }
+
+  /* ═══ 设置编辑器 ═══ */
+  .settings-editor {
+    position: relative; z-index: 1; display: flex; flex-direction: column;
+    width: 1380px; height: 800px;
+    background: var(--glass-tint);
+    backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+    border: 1px solid rgba(255,255,255,0.10);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--surface-shadow), inset 0 1px 0 rgba(255,255,255,0.07);
+    color: var(--text-primary); overflow: hidden;
+  }
+  .settings-tab-bar { display: flex; border-bottom: 1px solid var(--border); padding: 0 18px; margin-top: 8px; flex-shrink: 0; }
+  .settings-tab { padding: 9px 16px; font-size: 13px; background: transparent; border: none; border-bottom: 2px solid transparent; color: var(--text-muted); cursor: pointer; margin-bottom: -1px; font-family: inherit; transition: color 150ms; }
+  .settings-tab:hover { color: var(--text-primary); }
+  .settings-tab.active { color: var(--text-primary); border-bottom-color: var(--accent); }
+
+  .settings-body { display: flex; flex: 1; overflow: hidden; }
+  .settings-nav { width: 172px; flex-shrink: 0; overflow-y: auto; border-right: 1px solid var(--border); padding: 10px 0; }
+  .settings-nav-item { display: flex; align-items: center; justify-content: space-between; width: 100%; padding: 7px 20px; font-size: 13px; color: var(--text-primary); background: transparent; border: none; border-left: 2px solid transparent; cursor: pointer; text-align: left; font-family: inherit; }
+  .settings-nav-item:hover { background: var(--hover-overlay); }
+  .settings-nav-item.active { background: var(--hover-overlay); color: var(--text-primary); font-weight: 500; border-left-color: var(--accent); }
+  .settings-nav-count { font-size: 11px; color: var(--text-muted); background: var(--hover-overlay); padding: 0 6px; border-radius: 10px; }
+
+  .settings-main { flex: 1; display: flex; min-width: 0; }
+
+  .settings-form { flex: 1; overflow-y: auto; padding: 18px 24px; min-width: 0; }
+
+  .settings-group-title { font-size: 17px; font-weight: 600; margin: 0 0 6px 0; padding-bottom: 10px; border-bottom: 1px solid var(--border); color: var(--text-primary); }
+  .settings-group-sub { font-size: 11.5px; color: var(--text-muted); margin-bottom: 16px; line-height: 1.6; }
+
+  .settings-sub-section { margin: 18px 0 22px; }
+  .settings-sub-section[data-empty="true"] { display: none; }
+  .settings-sub-head {
+    display: flex; align-items: center; gap: 8px; cursor: pointer; user-select: none;
+    padding: 5px 0; margin-bottom: 4px; border-radius: 6px;
+  }
+  .settings-sub-head:hover .settings-sub-title { color: var(--text-primary); }
+  .settings-sub-chevron { font-size: 10px; color: var(--text-muted); transition: transform 180ms ease; width: 12px; text-align: center; }
+  .settings-sub-section.collapsed .settings-sub-chevron { transform: rotate(-90deg); }
+  .settings-sub-title { font-size: 12.5px; font-weight: 600; color: var(--text-secondary); letter-spacing: 0.02em; transition: color 150ms; }
+  .settings-sub-head::after { content: ''; flex: 1; height: 1px; background: var(--separator); margin-left: 6px; }
+  .settings-sub-badge { font-size: 10px; color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent); padding: 1px 7px; border-radius: 999px; white-space: nowrap; }
+  .settings-sub-badge.src { color: var(--ok); background: color-mix(in srgb, var(--ok) 10%, transparent); border-color: color-mix(in srgb, var(--ok) 28%, transparent); }
+  .settings-sub-badge.del { color: var(--error); background: color-mix(in srgb, var(--error) 10%, transparent); border-color: color-mix(in srgb, var(--error) 28%, transparent); text-decoration: line-through; }
+  .settings-sub-desc { font-size: 11.5px; color: var(--text-muted); margin: 2px 0 8px 0; line-height: 1.6; }
+  .settings-sub-section.collapsed > .settings-sub-body { display: none; }
+  .settings-sub-body { transition: opacity 180ms ease; }
+
+  .settings-row { display: flex; align-items: flex-start; justify-content: space-between; padding: 9px 0; border-bottom: 1px solid var(--border); gap: 18px; }
+  .settings-row:last-child { border-bottom: none; }
+  .settings-row-info { flex: 1; min-width: 0; }
+  .settings-row-label { display: flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 500; color: var(--text-primary); margin-bottom: 3px; }
+  .settings-row-label .key { font-family: var(--font-mono); font-size: 10.5px; color: var(--text-muted); font-weight: 400; }
+  .settings-row-desc { display: block; font-size: 11.5px; color: var(--text-muted); line-height: 1.55; }
+  .settings-row-desc em { font-style: normal; color: var(--text-secondary); }
+  .src-badge { display: none; font-size: 10px; color: var(--ok); font-weight: 600; }
+  .settings-sub-section.mix-active .src-badge { display: inline; }
+  .settings-row-control { flex-shrink: 0; display: flex; align-items: center; min-width: 110px; justify-content: flex-end; gap: 8px; }
+  .settings-row-gear { flex-shrink: 0; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; background: transparent; border: none; border-radius: 3px; color: var(--text-muted); font-size: 13px; cursor: pointer; opacity: 0; transition: opacity 120ms ease, background 120ms ease; margin-left: 2px; }
+  .settings-row:hover .settings-row-gear { opacity: 1; }
+  .settings-row-gear:hover { background: var(--hover-overlay); color: var(--text-primary); }
+  .depends-hidden { display: none !important; }
+
+  .select-box { display: flex; align-items: center; gap: 6px; background: var(--bg-input); border: 1px solid var(--border); border-radius: 4px; padding: 4px 9px; min-width: 158px; color: var(--text-primary); font-size: 12px; cursor: pointer; position: relative; transition: border-color 150ms, background 150ms; }
+  .select-box:hover { border-color: var(--separator); background: var(--bg-input-hover); }
+  .select-box .caret { font-size: 10px; color: var(--text-muted); margin-left: auto; }
+  .select-menu { position: absolute; top: calc(100% + 5px); right: 0; min-width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 6px; box-shadow: 0 12px 32px rgba(0,0,0,0.5); z-index: 40; overflow: hidden; display: none; max-height: 220px; overflow-y: auto; }
+  .select-menu button { display: flex; align-items: center; gap: 7px; width: 100%; text-align: left; padding: 6px 11px; font-size: 12px; color: var(--text-primary); background: transparent; border: none; cursor: pointer; }
+  .select-menu button:hover { background: var(--hover-overlay); }
+  .select-menu button.selected { color: var(--accent); }
+  .select-menu .sw { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; border: 1px solid rgba(255,255,255,0.18); }
+  .select-menu .check { margin-left: auto; font-size: 10px; }
+
+  .ld-slider { display: flex; align-items: center; gap: 10px; width: 216px; }
+  .ld-slider-track { position: relative; flex: 1; height: 5px; background: rgba(255,255,255,0.12); border-radius: 999px; cursor: pointer; }
+  .ld-slider-fill { position: absolute; left: 0; top: 0; height: 100%; background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 70%, transparent), var(--accent)); border-radius: 999px; pointer-events: none; }
+  .ld-slider-thumb { position: absolute; top: 50%; width: 15px; height: 15px; border-radius: 50%; background: #fff; transform: translate(-50%, -50%); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 45%, transparent), 0 2px 6px rgba(0,0,0,0.5); cursor: pointer; pointer-events: none; }
+  .ld-slider-value { font-family: var(--font-mono); font-size: 11px; color: var(--text-secondary); min-width: 52px; text-align: right; background: var(--bg-input); border: 1px solid var(--border); border-radius: 3px; padding: 1px 6px; }
+
+  .ld-toggle { position: relative; width: 34px; height: 18px; border-radius: 999px; background: rgba(255,255,255,0.14); cursor: pointer; transition: background 180ms ease; flex-shrink: 0; border: none; }
+  .ld-toggle::after { content: ''; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: #fff; transition: transform 180ms cubic-bezier(0.32, 0.72, 0, 1); box-shadow: 0 1px 3px rgba(0,0,0,0.4); }
+  .ld-toggle.on { background: var(--accent); }
+  .ld-toggle.on::after { transform: translateX(16px); }
+  .ld-toggle-label { font-size: 11.5px; color: var(--text-secondary); }
+
+  .settings-color-control { display: flex; align-items: center; gap: 8px; }
+  .settings-color-swatch { width: 22px; height: 22px; border-radius: 4px; border: 1px solid var(--separator); flex-shrink: 0; cursor: pointer; position: relative; overflow: hidden; }
+  .settings-color-swatch::before { content: ''; position: absolute; inset: 0; background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.25), transparent 60%); }
+  input.settings-color-swatch { padding: 0; -webkit-appearance: none; appearance: none; background: none; }
+  input.settings-color-swatch::-webkit-color-swatch-wrapper { padding: 0; }
+  input.settings-color-swatch::-webkit-color-swatch { border: none; border-radius: 3px; }
+  .settings-color-control .input { width: 88px; background: var(--bg-input); border: 1px solid var(--border); border-radius: 3px; color: var(--text-primary); padding: 3px 7px; font-size: 12px; font-family: var(--font-mono); }
+  .clear-btn { background: transparent; border: 1px solid var(--border); color: var(--text-secondary); border-radius: 4px; padding: 2px 8px; font-size: 11px; cursor: pointer; transition: all 150ms; font-family: inherit; }
+  .clear-btn:hover { border-color: var(--separator); color: var(--text-primary); }
+  .file-path { display: flex; gap: 5px; align-items: center; width: 300px; }
+  .file-path .input { flex: 1; background: var(--bg-input); border: 1px solid var(--border); border-radius: 3px; color: var(--text-primary); padding: 3px 7px; font-size: 12px; color: var(--text-muted); }
+  .settings-action-btn { background: var(--accent); color: var(--text-on-accent); border: none; border-radius: 4px; padding: 3px 11px; font-size: 12px; cursor: pointer; white-space: nowrap; transition: background 150ms; }
+  .settings-action-btn:hover { background: var(--accent-hover); }
+
+  /* ── 主题配方卡片 ── */
+  .theme-picker { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .theme-card { border: 1px solid rgba(255,255,255,0.12); border-radius: 10px; overflow: hidden; cursor: pointer; background: rgba(255,255,255,0.03); transition: border-color 150ms, transform 150ms, box-shadow 150ms; }
+  .theme-card:hover { border-color: rgba(255,255,255,0.25); transform: translateY(-1px); }
+  .theme-card.active { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+  .theme-preview { height: 46px; display: flex; align-items: flex-end; gap: 3px; padding: 6px; }
+  .theme-preview .pv-dots { display: flex; gap: 3px; }
+  .theme-preview .pv-dot { width: 11px; height: 11px; border-radius: 3px; }
+  .theme-preview .pv-bar { flex: 1; height: 7px; border-radius: 2px; background: rgba(255,255,255,0.14); }
+  .theme-card .tname { padding: 6px 9px; font-size: 11.5px; color: var(--text-secondary); display: flex; align-items: center; justify-content: space-between; gap: 4px; border-top: 1px solid rgba(255,255,255,0.06); }
+  .theme-card.active .tname { color: #fff; }
+  .theme-card .badge { font-size: 9.5px; color: var(--accent); white-space: nowrap; }
+
+  /* ── 文字极性三态分段（#91 fontTone）── */
+  .font-tone-group { display: flex; gap: 7px; flex-wrap: wrap; }
+  .font-tone-opt {
+    display: flex; align-items: center; gap: 8px; padding: 5px 11px 5px 6px;
+    background: var(--bg-input); border: 1px solid var(--border); border-radius: 7px;
+    cursor: pointer; font-family: inherit; color: var(--text-secondary); font-size: 11.5px;
+    transition: border-color 150ms, background 150ms, color 150ms;
+  }
+  .font-tone-opt:hover { background: var(--bg-input-hover); }
+  .font-tone-opt.active { border-color: var(--accent); color: var(--text-primary); background: color-mix(in srgb, var(--accent) 8%, var(--bg-input)); }
+  .ft-preview { width: 30px; height: 22px; border-radius: 4px; overflow: hidden; display: flex; align-items: center; justify-content: center; border: 1px solid rgba(255,255,255,0.14); flex-shrink: 0; }
+  .ft-preview .ft-a { font-size: 11px; font-weight: 600; line-height: 1; }
+  .ft-split { background: linear-gradient(90deg, #12121A 50%, #E8E6F0 50%); }
+  .ft-split .ft-a { color: transparent; background: linear-gradient(90deg, #fff 50%, #12121A 50%); -webkit-background-clip: text; background-clip: text; }
+  .ft-dark { background: #12121A; } .ft-dark .ft-a { color: #fff; }
+  .ft-light { background: #E8E6F0; } .ft-light .ft-a { color: #12121A; }
+
+  /* ── 表面纹理选择 ── */
+  .texture-picker { display: flex; gap: 6px; align-items: center; }
+  .texture-opt {
+    display: flex; align-items: center; gap: 6px; padding: 4px 9px;
+    background: var(--bg-input); border: 1px solid var(--border); border-radius: 6px;
+    cursor: pointer; font-family: inherit; color: var(--text-secondary); font-size: 11px;
+    transition: border-color 150ms, background 150ms, color 150ms;
+  }
+  .texture-opt:hover { background: var(--bg-input-hover); }
+  .texture-opt.active { border-color: var(--accent); color: var(--text-primary); }
+  .tx-swatch { width: 20px; height: 16px; border-radius: 3px; border: 1px solid rgba(255,255,255,0.14); flex-shrink: 0; background: var(--bg-window); }
+  .tx-swatch.paper { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='60'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='60' height='60' filter='url(%23n)' opacity='0.22'/%3E%3C/svg%3E"); }
+  .tx-swatch.frost { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40'%3E%3Cfilter id='p'%3E%3CfeTurbulence type='turbulence' baseFrequency='1.6' numOctaves='1'/%3E%3C/filter%3E%3Crect width='40' height='40' filter='url(%23p)' opacity='0.18'/%3E%3C/svg%3E"); }
+  .tx-swatch.none { background: repeating-linear-gradient(45deg, rgba(255,255,255,0.05) 0 1px, transparent 1px 4px); }
+
+  /* ── 右侧实时预览区 ── */
+  .preview-pane {
+    width: 460px; flex-shrink: 0; border-left: 1px solid var(--border);
+    display: flex; flex-direction: column; background: rgba(8,8,12,0.35);
+  }
+  .preview-head { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid var(--border); }
+  .preview-head .pv-title { font-size: 12.5px; font-weight: 600; color: var(--text-secondary); display: flex; align-items: center; gap: 7px; }
+  .preview-head .pv-live { display: flex; align-items: center; gap: 5px; font-size: 10.5px; color: var(--ok); }
+  .preview-head .pv-live .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 6px var(--ok); animation: live-pulse 1.8s ease infinite; }
+  @keyframes live-pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.35; } }
+  .preview-stage { flex: 1; display: flex; align-items: center; justify-content: center; padding: 14px; overflow: hidden; }
+  .preview-shell {
+    width: 100%; height: 100%; border-radius: var(--pv-zone-radius, 10px);
+    background-color: var(--pv-bg-window);
+    display: grid;
+    grid-template-columns: 34px 1fr;
+    grid-template-rows: 28px 1fr 44px 22px;
+    grid-template-areas: "titlebar titlebar" "icon-bar main" "panel panel" "status status";
+    overflow: hidden; box-shadow: 0 18px 50px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.06);
+    font-family: var(--pv-font-ui);
+    transition: border-radius 300ms ease;
+    position: relative;
+  }
+  /* 背景遮罩层（bgMask）在底色之上、zone 表面之下 */
+  .preview-shell::before { content: ''; position: absolute; inset: 0; background: var(--pv-bg-mask, transparent); pointer-events: none; z-index: 0; }
+  /* 表面纹理层（surfaceTexture）盖在遮罩上、zone 表面下 */
+  .preview-shell::after { content: ''; position: absolute; inset: 0; background: var(--pv-tex, none); pointer-events: none; z-index: 0; opacity: 0.055; }
+  .preview-shell > * { position: relative; z-index: 1; }
+  .preview-shell.zone-round { gap: 2px; }
+  .preview-shell.zone-round > * { border-radius: var(--pv-zone-radius); }
+  .preview-shell .pv-titlebar { grid-area: titlebar; display: flex; align-items: center; gap: 7px; padding: 0 10px; background: var(--pv-bg-titlebar); border-radius: var(--pv-zone-radius) var(--pv-zone-radius) 0 0; backdrop-filter: blur(var(--pv-glass-blur)) saturate(var(--pv-glass-sat)); -webkit-backdrop-filter: blur(var(--pv-glass-blur)) saturate(var(--pv-glass-sat)); border-bottom: 1px solid var(--pv-border); position: relative; }
+  .preview-shell .pv-titlebar::after { content: ''; position: absolute; inset: 0; border-radius: inherit; background: var(--pv-glass-tint); opacity: var(--pv-glass-wash); pointer-events: none; }
+  .preview-shell .win-dots { display: flex; gap: 5px; margin-right: 6px; }
+  .preview-shell .win-dot { width: 9px; height: 9px; border-radius: 50%; }
+  .preview-shell .pv-brand { font-size: 9px; font-weight: 600; color: var(--pv-text-muted); letter-spacing: 0.05em; }
+  .preview-shell .pv-menu { flex: 1; display: flex; gap: 8px; font-size: 8.5px; color: var(--pv-text-secondary); }
+  .preview-shell .pv-icon-bar { grid-area: icon-bar; display: flex; flex-direction: column; align-items: center; gap: 7px; padding: 9px 0; background: var(--pv-bg-icon-bar); border-right: 1px solid var(--pv-border); }
+  .preview-shell .pv-ico { width: 19px; height: 19px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 10px; }
+  .preview-shell .pv-ico.active { background: color-mix(in srgb, var(--pv-accent) 18%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--pv-accent) 45%, transparent); }
+  .preview-shell .pv-side { grid-area: main; display: grid; grid-template-columns: 84px 1fr; min-height: 0; }
+  .preview-shell .pv-sidebar { border-right: 1px solid var(--pv-border); padding: 8px 7px; background: var(--pv-bg-side-panel); backdrop-filter: blur(var(--pv-glass-blur)) saturate(var(--pv-glass-sat)); -webkit-backdrop-filter: blur(var(--pv-glass-blur)) saturate(var(--pv-glass-sat)); position: relative; }
+  .preview-shell .pv-sidebar::after { content: ''; position: absolute; inset: 0; background: var(--pv-glass-tint); opacity: var(--pv-glass-wash); pointer-events: none; }
+  .preview-shell .pv-side-item { font-size: 8.5px; color: var(--pv-text-secondary); padding: 4px 6px; border-radius: var(--pv-radius-md); margin-bottom: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .preview-shell .pv-side-item.active { background: color-mix(in srgb, var(--pv-accent) 14%, transparent); color: var(--pv-text-primary); }
+  .preview-shell .pv-main { display: flex; flex-direction: column; min-width: 0; background: var(--pv-bg-window); }
+  .preview-shell .pv-tabbar { display: flex; align-items: flex-end; gap: 3px; padding: 4px 6px 0; background: var(--pv-bg-toolbar); border-bottom: 1px solid var(--pv-border); backdrop-filter: blur(var(--pv-glass-blur)) saturate(var(--pv-glass-sat)); -webkit-backdrop-filter: blur(var(--pv-glass-blur)) saturate(var(--pv-glass-sat)); position: relative; }
+  .preview-shell .pv-tabbar::after { content: ''; position: absolute; inset: 0; background: var(--pv-glass-tint); opacity: var(--pv-glass-wash); pointer-events: none; }
+  .preview-shell .pv-tab { font-size: 8px; color: var(--pv-text-muted); padding: 3px 9px; border-radius: var(--pv-radius-md) var(--pv-radius-md) 0 0; border: 1px solid transparent; border-bottom: none; white-space: nowrap; }
+  .preview-shell .pv-tab.active { background: color-mix(in srgb, var(--pv-bg-window) 88%, transparent); color: var(--pv-text-primary); border-color: var(--pv-border); }
+  .preview-shell .pv-content { flex: 1; padding: 7px; display: flex; flex-direction: column; gap: 5px; background: var(--pv-bg-window); }
+  .preview-shell .pv-card { flex: 1; background: var(--pv-bg-card); border: 1px solid var(--pv-border); border-radius: var(--pv-radius-md); padding: 6px 7px; }
+  .preview-shell .pv-card-title { font-size: 8px; color: var(--pv-accent); font-weight: 600; margin-bottom: 4px; }
+  .preview-shell .pv-lines { display: flex; flex-direction: column; gap: 4px; }
+  .preview-shell .pv-line { height: 4px; border-radius: 2px; background: color-mix(in srgb, var(--pv-text-muted) 34%, transparent); }
+  .preview-shell .pv-line.w { width: 72%; } .preview-shell .pv-line.s { width: 52%; } .preview-shell .pv-line.x { width: 64%; }
+  .preview-shell .pv-panel { grid-area: panel; background: var(--pv-bg-card); border-top: 1px solid var(--pv-border); border-bottom: 1px solid var(--pv-border); padding: 6px 9px; display: flex; align-items: center; gap: 6px; backdrop-filter: blur(var(--pv-glass-blur)) saturate(var(--pv-glass-sat)); -webkit-backdrop-filter: blur(var(--pv-glass-blur)) saturate(var(--pv-glass-sat)); position: relative; }
+  .preview-shell .pv-panel::after { content: ''; position: absolute; inset: 0; background: var(--pv-glass-tint); opacity: var(--pv-glass-wash); pointer-events: none; }
+  .preview-shell .pv-panel-tab { font-size: 8px; color: var(--pv-text-muted); padding: 2px 8px; border-radius: var(--pv-radius-md); border: 1px solid var(--pv-border); }
+  .preview-shell .pv-panel-tab.active { color: var(--pv-text-primary); border-color: color-mix(in srgb, var(--pv-accent) 50%, transparent); }
+  .preview-shell .pv-status { grid-area: status; background: var(--pv-bg-status); display: flex; align-items: center; gap: 8px; padding: 0 10px; font-size: 8px; color: var(--pv-text-muted); }
+  .preview-shell .pv-status .ok { color: var(--pv-status-connected); }
+  .preview-foot { padding: 9px 16px; border-top: 1px solid var(--border); font-size: 11px; color: var(--text-muted); font-family: var(--font-mono); display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .preview-foot .pf-tag { background: var(--bg-input); border: 1px solid var(--border); padding: 1px 7px; border-radius: 999px; font-size: 10px; color: var(--text-secondary); }
+
+  .mock-note { position: absolute; left: 50%; transform: translateX(-50%); bottom: -26px; font-size: 11px; color: rgba(255,255,255,0.34); white-space: nowrap; font-family: var(--font-mono); }
+</style>
+</head>
+<body>
+  <div class="page-bg"></div>
+
+  <div class="settings-editor">
+    <div class="settings-tab-bar">
+      <button class="settings-tab active" data-tab="theme">主题</button>
+      <button class="settings-tab" data-tab="common">通用</button>
+      <button class="settings-tab" data-tab="keys">快捷键</button>
+      <button class="settings-tab" data-tab="about">关于</button>
+    </div>
+
+    <div class="settings-body">
+      <div class="settings-nav">
+        <button class="settings-nav-item active" data-nav="nav-theme">主题<span class="settings-nav-count">1 插件</span></button>
+        <button class="settings-nav-item" data-nav="nav-common">通用<span class="settings-nav-count">6 项</span></button>
+      </div>
+
+      <div class="settings-main">
+        <!-- ══════════ 主题组设置表单（域驱动重组）══════════ -->
+        <div class="settings-form" id="form-theme">
+
+          <h1 class="settings-group-title">主题</h1>
+          <div class="settings-group-sub">主题 = 配方（整体外观）+ 配色变体 + 按域微调。整体配方/配色/强调色始终可见；「文字」组内文字极性始终可见、字体三槽自定义展开；切「自定义」展开 5 域小组 + 复位。删死键 mixRadius/mixGlass、域混搭并入域小组（<del>外观覆盖</del> <del>域混搭</del>）。</div>
+
+          <!-- ── ① 整体配方（配方卡片 + 外观模式主开关）── -->
+          <div class="settings-sub-section" data-group="recipe">
+            <div class="settings-sub-head" data-fold="recipe">
+              <span class="settings-sub-chevron">▾</span>
+              <span class="settings-sub-title">整体配方</span>
+              <span class="settings-sub-badge" id="recipe-badge">Glass Aurora 已选</span>
+            </div>
+            <div class="settings-sub-body">
+              <div class="settings-row" style="display:block;">
+                <div class="settings-row-info" style="margin-bottom:7px;">
+                  <label class="settings-row-label">app.theme <span class="key">themePicker</span></label>
+                  <span class="settings-row-desc">主题配方——颜色/字体/圆角/玻璃/背景图全由配方决定；换配方 = 换整套外观</span>
+                </div>
+                <div class="settings-row-control" style="justify-content:stretch;width:100%;">
+                  <div class="theme-picker" id="theme-picker">
+                    <div class="theme-card tp-mint" data-theme="mint" data-colorways='["薄荷苏打","薄荷露","海盐薄荷","青柠薄荷"]'>
+                      <div class="theme-preview"><div class="pv-dots"><div class="pv-dot" style="background:#8FD6B5;"></div><div class="pv-dot" style="background:#A9E8C8;"></div><div class="pv-dot" style="background:#A5D8E8;"></div><div class="pv-dot" style="background:#C6E9B0;"></div></div></div>
+                      <div class="tname">清凉薄荷包<span class="badge">4 配色</span></div>
+                    </div>
+                    <div class="theme-card tp-forest" data-theme="forest" data-colorways='["深林","暮紫","落日","青瓷"]'>
+                      <div class="theme-preview"><div class="pv-dots"><div class="pv-dot" style="background:#4C8C6A;"></div><div class="pv-dot" style="background:#7A5C9E;"></div><div class="pv-dot" style="background:#C78A4A;"></div><div class="pv-dot" style="background:#4C7A8C;"></div></div></div>
+                      <div class="tname">暮色森林包<span class="badge">4 配色</span></div>
+                    </div>
+                    <div class="theme-card active tp-glass" data-theme="glass" data-colorways='["极光紫"]'>
+                      <div class="theme-preview"><div class="pv-bar"></div><div class="pv-bar"></div><div class="pv-bar"></div></div>
+                      <div class="tname">Glass Aurora<span class="badge">●</span></div>
+                    </div>
+                    <div class="theme-card tp-dark" data-theme="dark" data-colorways='["暗色"]'>
+                      <div class="theme-preview"><div class="pv-bar"></div><div class="pv-bar"></div><div class="pv-bar"></div></div>
+                      <div class="tname">Dark<span class="badge">●</span></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <!-- 外观模式主开关（原「外观覆盖」首行，迁入整体配方） -->
+              <div class="settings-row">
+                <div class="settings-row-info">
+                  <label class="settings-row-label">app.appearanceMode <span class="key">select</span></label>
+                  <span class="settings-row-desc">外观模式——<em>跟随主题</em>：全部由配方决定；<em>自定义</em>：展开下方按域微调 + 资产来源</span>
+                </div>
+                <div class="settings-row-control">
+                  <div class="select-box" data-mode="appearance">
+                    <span class="select-val">自定义</span><span class="caret">▾</span>
+                    <div class="select-menu">
+                      <button data-opt="自定义" class="selected">自定义</button>
+                      <button data-opt="跟随主题">跟随主题</button>
+                    </div>
+                  </div>
+                </div>
+                <button class="settings-row-gear">⚙</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- ── ② 配色（colors 域来源 = 配方配色变体）── -->
+          <div class="settings-sub-section" data-group="color">
+            <div class="settings-sub-head" data-fold="color">
+              <span class="settings-sub-chevron">▾</span>
+              <span class="settings-sub-title">配色</span>
+              <span class="settings-sub-badge" id="color-badge">极光紫</span>
+            </div>
+            <div class="settings-sub-body">
+              <div class="settings-row">
+                <div class="settings-row-info">
+                  <label class="settings-row-label">app.themeColor <span class="key">colorways</span></label>
+                  <span class="settings-row-desc">配色变体——当前配方的配色板；单配色主题不显示本行</span>
+                </div>
+                <div class="settings-row-control">
+                  <div class="select-box" data-colorway>
+                    <span class="select-val">极光紫</span><span class="caret">▾</span>
+                    <div class="select-menu"></div>
+                  </div>
+                </div>
+                <button class="settings-row-gear">⚙</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- ── ③ 强调色（#90 删 accentMode——单槽，清除 = 跟随主题）── -->
+          <div class="settings-sub-section" data-group="accent">
+            <div class="settings-sub-head" data-fold="accent">
+              <span class="settings-sub-chevron">▾</span>
+              <span class="settings-sub-title">强调色</span>
+              <span class="settings-sub-badge" id="accent-badge">自定义 · #8B7CF6</span>
+            </div>
+            <div class="settings-sub-body">
+              <div class="settings-row">
+                <div class="settings-row-info">
+                  <label class="settings-row-label">app.accentColor <span class="key">color</span></label>
+                  <span class="settings-row-desc">自定义强调色（图标栏高亮、开关、焦点边框）——<em>清除 = 跟随主题配方</em></span>
+                </div>
+                <div class="settings-row-control">
+                  <div class="settings-color-control">
+                    <input type="color" class="settings-color-swatch" id="accent-pick" value="#8B7CF6" title="点击取色">
+                    <input class="input" type="text" id="accent-hex" value="#8B7CF6">
+                    <button class="clear-btn" id="accent-clear">清除</button>
+                  </div>
+                </div>
+                <button class="settings-row-gear">⚙</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- ══════════ 以下 5 域小组 + 复位 = 自定义模式专属（data-custom）；「文字」小组为混合组——文字极性始终可见 + 字体域三槽自定义展开 ══════════ -->
+
+          <!-- ── ④ 圆角（数值域：无来源行——mixRadius 已删，系统标尺 0-32 绝对 px）── -->
+          <div class="settings-sub-section" data-custom="1" data-group="radius">
+            <div class="settings-sub-head" data-fold="radius">
+              <span class="settings-sub-chevron">▾</span>
+              <span class="settings-sub-title">圆角</span>
+              <span class="settings-sub-badge">自定义</span>
+            </div>
+            <div class="settings-sub-body">
+              <div class="settings-row">
+                <div class="settings-row-info">
+                  <label class="settings-row-label">app.surfaceRadius <span class="key">slider</span></label>
+                  <span class="settings-row-desc">组件圆角——<em>系统标尺绝对 px</em>：0 方角 / 32 最圆润（下拉、标签、卡片等）</span>
+                </div>
+                <div class="settings-row-control">
+                  <div class="ld-slider" data-apply="surfaceRadius" data-min="0" data-max="32" data-step="1" data-unit="px" data-fmt="0">
+                    <div class="ld-slider-track"><div class="ld-slider-fill"></div><div class="ld-slider-thumb"></div></div>
+                    <span class="ld-slider-value">12px</span>
+                  </div>
+                </div>
+                <button class="settings-row-gear">⚙</button>
+              </div>
+              <div class="settings-row">
+                <div class="settings-row-info">
+                  <label class="settings-row-label">app.zoneRadius <span class="key">toggle</span></label>
+                  <span class="settings-row-desc">分区圆角开关——关：各分区直角贴死；开：顶栏/图标栏/侧栏/主区/面板/状态栏各自独立圆角 + 留缝</span>
+                </div>
+                <div class="settings-row-control">
+                  <button class="ld-toggle on" id="zone-radius-toggle" aria-label="分区圆角开关"></button>
+                  <span class="ld-toggle-label">开</span>
+                </div>
+                <button class="settings-row-gear">⚙</button>
+              </div>
+              <div class="settings-row">
+                <div class="settings-row-info">
+                  <label class="settings-row-label">app.zoneRadiusScale <span class="key">slider</span></label>
+                  <span class="settings-row-desc">分区圆角——系统标尺绝对 px（zone 的 surface-radius，独立于组件圆角两轴解耦）</span>
+                </div>
+                <div class="settings-row-control">
+                  <div class="ld-slider" data-apply="zoneRadiusScale" data-min="0" data-max="32" data-step="1" data-unit="px" data-fmt="0">
+                    <div class="ld-slider-track"><div class="ld-slider-fill"></div><div class="ld-slider-thumb"></div></div>
+                    <span class="ld-slider-value">10px</span>
+                  </div>
+                </div>
+                <button class="settings-row-gear">⚙</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- ── ⑤ 玻璃（数值域 + 色：无来源行——mixGlass 已删）── -->
+          <div class="settings-sub-section" data-custom="1" data-group="glass">
+            <div class="settings-sub-head" data-fold="glass">
+              <span class="settings-sub-chevron">▾</span>
+              <span class="settings-sub-title">玻璃</span>
+              <span class="settings-sub-badge">自定义</span>
+            </div>
+            <div class="settings-sub-body">
+              <div class="settings-row">
+                <div class="settings-row-info">
+                  <label class="settings-row-label">app.glassBlur <span class="key">slider</span></label>
+                  <span class="settings-row-desc">玻璃模糊——主表面真实模糊 px，0 关闭玻璃效果</span>
+                </div>
+                <div class="settings-row-control">
+                  <div class="ld-slider" data-apply="glassBlur" data-min="0" data-max="32" data-step="1" data-unit="px" data-fmt="0">
+                    <div class="ld-slider-track"><div class="ld-slider-fill"></div><div class="ld-slider-thumb"></div></div>
+                    <span class="ld-slider-value">16px</span>
+                  </div>
+                </div>
+                <button class="settings-row-gear">⚙</button>
+              </div>
+              <div class="settings-row">
+                <div class="settings-row-info">
+                  <label class="settings-row-label">app.glassOpacity <span class="key">slider</span></label>
+                  <span class="settings-row-desc">玻璃面不透明度——0 全透见背景 / 1 全不透明</span>
+                </div>
+                <div class="settings-row-control">
+                  <div class="ld-slider" data-apply="glassOpacity" data-min="0" data-max="1" data-step="0.05" data-unit="" data-fmt="2">
+                    <div class="ld-slider-track"><div class="ld-slider-fill"></div><div class="ld-slider-thumb"></div></div>
+                    <span class="ld-slider-value">0.45</span>
+                  </div>
+                </div>
+                <button class="settings-row-gear">⚙</button>
+              </div>
+              <div class="settings-row">
+                <div class="settings-row-info">
+                  <label class="settings-row-label">app.glassTint <span class="key">color</span></label>
+                  <span class="settings-row-desc">玻璃面叠加色——冷调/暖调微调，空 = 主题自带</span>
+                </div>
+                <div class="settings-row-control">
+                  <div class="settings-color-control">
+                    <input type="color" class="settings-color-swatch" id="glass-tint-pick" value="#4F5B8A" title="点击取色">
+                    <input class="input" type="text" id="glass-tint-hex" value="#4F5B8A">
+                  </div>
+                </div>
+                <button class="settings-row-gear">⚙</button>
+              </div>
+              <div class="settings-row">
+                <div class="settings-row-info">
+                  <label class="settings-row-label">app.glassSaturate <span class="key">slider</span></label>
+                  <span class="settings-row-desc">玻璃饱和度——1 原图 / 2 加倍饱和 / 0 去饱和</span>
+                </div>
+                <div class="settings-row-control">
+                  <div class="ld-slider" data-apply="glassSaturate" data-min="0" data-max="2" data-step="0.1" data-unit="×" data-fmt="1">
+                    <div class="ld-slider-track"><div class="ld-slider-fill"></div><div class="ld-slider-thumb"></div></div>
+                    <span class="ld-slider-value">1.4×</span>
+                  </div>
+                </div>
+                <button class="settings-row-gear">⚙</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- ── ⑥ 背景（资产域：来源行首 + 资产/数值覆盖槽）── -->
+          <div class="settings-sub-section" data-custom="1" data-group="background" data-source-key="mixBackground">
+            <div class="settings-sub-head" data-fold="background">
+              <span class="settings-sub-chevron">▾</span>
+              <span class="settings-sub-title">背景</span>
+              <span class="settings-sub-badge" id="bg-badge">自定义</span>
+            </div>
+            <div class="settings-sub-body">
+              <div class="settings-row">
+                <div class="settings-row-info">
+                  <label class="settings-row-label">app.mixBackground <span class="key">来源</span></label>
+                  <span class="settings-row-desc">背景来源——<em>跟随主题</em>：当前配方背景；指定配方：取该配方的背景图/遮罩（配方资产唯一通道）</span>
+                </div>
+                <div class="settings-row-control">
+                  <div class="select-box" data-mix="mixBackground">
+                    <span class="select-val">暮色森林包</span><span class="caret">▾</span>
+                    <div class="select-menu">
+                      <button data-opt="跟随主题">跟随主题</button>
+                      <button data-opt="Glass Aurora">Glass Aurora</button>
+                      <button data-opt="暮色森林包" class="selected">暮色森林包</button>
+                      <button data-opt="清凉薄荷包">清凉薄荷包</button>
+                    </div>
+                  </div>
+                </div>
+                <button class="settings-row-gear">⚙</button>
+              </div>
+              <div class="settings-row">
+                <div class="settings-row-info">
+                  <label class="settings-row-label">app.backgroundImage <span class="key">image</span> <span class="src-badge">🔀</span></label>
+                  <span class="settings-row-desc">全窗背景图——整窗铺底（玻璃透过可见）；空 = 跟随主题/来源</span>
+                </div>
+                <div class="settings-row-control">
+                  <div class="file-path">
+                    <input class="input" type="text" value="" placeholder="留空 = 跟随来源…">
+                    <button class="settings-action-btn">…</button>
+                  </div>
+                </div>
+                <button class="settings-row-gear">⚙</button>
+              </div>
+              <div class="settings-row">
+                <div class="settings-row-info">
+                  <label class="settings-row-label">app.backgroundOpacity <span class="key">slider</span> <span class="src-badge">🔀</span></label>
+                  <span class="settings-row-desc">背景图不透明度——0 全透见窗口底色 / 1 原图</span>
+                </div>
+                <div class="settings-row-control">
+                  <div class="ld-slider" data-apply="backgroundOpacity" data-min="0" data-max="1" data-step="0.05" data-unit="" data-fmt="2">
+                    <div class="ld-slider-track"><div class="ld-slider-fill"></div><div class="ld-slider-thumb"></div></div>
+                    <span class="ld-slider-value">1.00</span>
+                  </div>
+                </div>
+                <button class="settings-row-gear">⚙</button>
+              </div>
+              <div class="settings-row">
+                <div class="settings-row-info">
+                  <label class="settings-row-label">app.backgroundMask <span class="key">slider</span> <span class="src-badge">🔀</span></label>
+                  <span class="settings-row-desc">背景图遮罩明暗——0 无遮罩 / 1 全黑（压暗保文字可读）</span>
+                </div>
+                <div class="settings-row-control">
+                  <div class="ld-slider" data-apply="backgroundMask" data-min="0" data-max="1" data-step="0.05" data-unit="" data-fmt="2">
+                    <div class="ld-slider-track"><div class="ld-slider-fill"></div><div class="ld-slider-thumb"></div></div>
+                    <span class="ld-slider-value">0.00</span>
+                  </div>
+                </div>
+                <button class="settings-row-gear">⚙</button>
+              </div>
+              <div class="settings-row">
+                <div class="settings-row-info">
+                  <label class="settings-row-label">app.zoneBackgroundImage <span class="key">image</span> <span class="src-badge">🔀</span></label>
+                  <span class="settings-row-desc">分区背景图——各 zone 表面切片/纹理（与全窗并存：全窗垫底、分区浮表面）</span>
+                </div>
+                <div class="settings-row-control">
+                  <div class="file-path">
+                    <input class="input" type="text" value="" placeholder="留空 = 跟随来源…">
+                    <button class="settings-action-btn">…</button>
+                  </div>
+                </div>
+                <button class="settings-row-gear">⚙</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- ── ⑦ 文字（#91 fontTone 文字极性配方级始终可见 + 字体域 来源/界面字体/等宽字体 自定义展开——文字相关键同组）── -->
+          <div class="settings-sub-section" data-group="text" data-source-key="mixFont">
+            <div class="settings-sub-head" data-fold="text">
+              <span class="settings-sub-chevron">▾</span>
+              <span class="settings-sub-title">文字</span>
+              <span class="settings-sub-badge" id="font-badge">自定义</span>
+            </div>
+            <div class="settings-sub-body">
+              <div class="settings-row" style="display:block; border-bottom: 1px solid var(--border);">
+                <div class="settings-row-info" style="margin-bottom:8px;">
+                  <label class="settings-row-label">app.fontTone <span class="key">fontTone</span></label>
+                  <span class="settings-row-desc">文字极性——文字颜色取<em>系统标尺</em>（不锚主题色板），深底亮字 / 浅底暗字保证可读性</span>
+                </div>
+                <div class="settings-row-control" style="justify-content:flex-start;width:100%;">
+                  <div class="font-tone-group" id="font-tone-group">
+                    <button class="font-tone-opt active" data-tone="followTheme">
+                      <span class="ft-preview ft-split"><span class="ft-a">Aa</span></span>
+                      <span class="ft-label">跟随主题</span>
+                    </button>
+                    <button class="font-tone-opt" data-tone="light">
+                      <span class="ft-preview ft-dark"><span class="ft-a">Aa</span></span>
+                      <span class="ft-label">亮字·深底</span>
+                    </button>
+                    <button class="font-tone-opt" data-tone="dark">
+                      <span class="ft-preview ft-light"><span class="ft-a">Aa</span></span>
+                      <span class="ft-label">暗字·浅底</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <div class="settings-row" data-custom-row="1">
+                <div class="settings-row-info">
+                  <label class="settings-row-label">app.mixFont <span class="key">来源</span></label>
+                  <span class="settings-row-desc">字体来源——跟随主题 / 指定含字体的主题（<em>配方捆绑 @font-face 资产唯一通道</em>，拾取器选不了资产族）</span>
+                </div>
+                <div class="settings-row-control">
+                  <div class="select-box" data-mix="mixFont">
+                    <span class="select-val">跟随主题</span><span class="caret">▾</span>
+                    <div class="select-menu">
+                      <button data-opt="跟随主题" class="selected">跟随主题</button>
+                      <button data-opt="宋体主题">宋体主题</button>
+                      <button data-opt="终端机">终端机</button>
+                      <button data-opt="霞鹜文楷">霞鹜文楷</button>
+                    </div>
+                  </div>
+                </div>
+                <button class="settings-row-gear">⚙</button>
+              </div>
+              <div class="settings-row" data-custom-row="1">
+                <div class="settings-row-info">
+                  <label class="settings-row-label">app.fontFamily <span class="key">fontFamily</span> <span class="src-badge">🔀</span></label>
+                  <span class="settings-row-desc">界面字体——空 = 跟随主题/来源；选族名写 --font-ui；系统字体 = 显式系统默认</span>
+                </div>
+                <div class="settings-row-control">
+                  <div class="select-box" data-font="fontFamily">
+                    <span class="select-val">跟随主题</span><span class="caret">▾</span>
+                    <div class="select-menu">
+                      <button data-opt="跟随主题" class="selected">跟随主题</button>
+                      <button data-opt="Space Grotesk">Space Grotesk</button>
+                      <button data-opt="Geist Sans">Geist Sans</button>
+                      <button data-opt="宋体 SimSun">宋体 SimSun</button>
+                      <button data-opt="系统字体">系统字体</button>
+                    </div>
+                  </div>
+                </div>
+                <button class="settings-row-gear">⚙</button>
+              </div>
+              <div class="settings-row" data-custom-row="1">
+                <div class="settings-row-info">
+                  <label class="settings-row-label">app.fontFamilyMono <span class="key">fontFamily</span> <span class="src-badge">🔀</span></label>
+                  <span class="settings-row-desc">等宽字体——代码/等宽排版（菜单、面板、输入框）；只列等宽族</span>
+                </div>
+                <div class="settings-row-control">
+                  <div class="select-box" data-font="fontFamilyMono">
+                    <span class="select-val">跟随主题</span><span class="caret">▾</span>
+                    <div class="select-menu">
+                      <button data-opt="跟随主题" class="selected">跟随主题</button>
+                      <button data-opt="JetBrains Mono">JetBrains Mono</button>
+                      <button data-opt="Cascadia Code">Cascadia Code</button>
+                      <button data-opt="系统等宽">系统等宽</button>
+                    </div>
+                  </div>
+                </div>
+                <button class="settings-row-gear">⚙</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- ── ⑧ 表面（资产域：来源 + 新纹理槽）── -->
+          <div class="settings-sub-section" data-custom="1" data-group="surface" data-source-key="mixSurface">
+            <div class="settings-sub-head" data-fold="surface">
+              <span class="settings-sub-chevron">▾</span>
+              <span class="settings-sub-title">表面</span>
+              <span class="settings-sub-badge" id="surface-badge">自定义</span>
+            </div>
+            <div class="settings-sub-body">
+              <div class="settings-row">
+                <div class="settings-row-info">
+                  <label class="settings-row-label">app.mixSurface <span class="key">来源</span></label>
+                  <span class="settings-row-desc">表面来源——哪套配方的表面纹理/质感（菜单、悬浮面板等 per-surface 样式）</span>
+                </div>
+                <div class="settings-row-control">
+                  <div class="select-box" data-mix="mixSurface">
+                    <span class="select-val">跟随主题</span><span class="caret">▾</span>
+                    <div class="select-menu">
+                      <button data-opt="跟随主题" class="selected">跟随主题</button>
+                      <button data-opt="暮色森林包">暮色森林包</button>
+                      <button data-opt="清凉薄荷包">清凉薄荷包</button>
+                    </div>
+                  </div>
+                </div>
+                <button class="settings-row-gear">⚙</button>
+              </div>
+              <div class="settings-row">
+                <div class="settings-row-info">
+                  <label class="settings-row-label">app.surfaceTexture <span class="key">texture</span> <span class="settings-sub-badge" style="font-size:9px;">🆕</span></label>
+                  <span class="settings-row-desc">表面纹理——给各分区表面叠加质感（全矩阵镜像补槽：表面域此前只有来源、无覆盖槽）</span>
+                </div>
+                <div class="settings-row-control">
+                  <div class="texture-picker" id="texture-picker">
+                    <button class="texture-opt active" data-texture="跟随主题"><span class="tx-swatch"></span>跟随主题</button>
+                    <button class="texture-opt" data-texture="纸纹"><span class="tx-swatch paper"></span>纸纹</button>
+                    <button class="texture-opt" data-texture="磨砂"><span class="tx-swatch frost"></span>磨砂</button>
+                    <button class="texture-opt" data-texture="无纹理"><span class="tx-swatch none"></span>无纹理</button>
+                  </div>
+                </div>
+                <button class="settings-row-gear">⚙</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- ── ⑨ 复位（只复位资产域来源 + 覆盖槽）── -->
+          <div class="settings-sub-section" data-custom="1" data-group="reset">
+            <div class="settings-sub-head" data-fold="reset">
+              <span class="settings-sub-chevron">▾</span>
+              <span class="settings-sub-title">复位</span>
+            </div>
+            <div class="settings-sub-body">
+              <div class="settings-row" style="border-bottom:none;">
+                <div class="settings-row-info">
+                  <label class="settings-row-label">全部复位 <span class="key">action</span></label>
+                  <span class="settings-row-desc">资产域来源回「跟随主题」+ 全部覆盖槽回系统默认（保留自定义模式）</span>
+                </div>
+                <div class="settings-row-control">
+                  <button class="settings-action-btn" id="mix-reset">⟲ 全部复位为整体配方</button>
+                </div>
+                <button class="settings-row-gear">⚙</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 非主题页占位 -->
+        <div class="settings-form" id="placeholder-form" style="display:none;">
+          <h1 class="settings-group-title">通用</h1>
+          <div class="settings-group-sub">本页不在本次主题设置重构演示范围内——本 mockup 聚焦「主题」页（右侧实时预览）。</div>
+        </div>
+
+        <!-- ══════════ 右侧实时预览壳 ══════════ -->
+        <div class="preview-pane">
+          <div class="preview-head">
+            <div class="pv-title">实时预览<span class="settings-sub-badge" style="font-size:9px;">交互</span></div>
+            <div class="pv-live"><span class="dot"></span>LIVE</div>
+          </div>
+          <div class="preview-stage">
+            <div class="preview-shell" id="preview-shell">
+              <div class="pv-titlebar">
+                <div class="win-dots"><span class="win-dot" style="background:#FF5F57;"></span><span class="win-dot" style="background:#FEBC2E;"></span><span class="win-dot" style="background:#28C840;"></span></div>
+                <span class="pv-brand">LinkDesk</span>
+                <div class="pv-menu"><span>文件</span><span>编辑</span><span>视图</span><span>工具</span></div>
+              </div>
+              <div class="pv-icon-bar">
+                <div class="pv-ico active">✏️</div>
+                <div class="pv-ico">⌁</div>
+                <div class="pv-ico">▦</div>
+                <div class="pv-ico">⚙</div>
+              </div>
+              <div class="pv-side">
+                <div class="pv-sidebar">
+                  <div class="pv-side-item active">demo-plugin</div>
+                  <div class="pv-side-item">串口监视器</div>
+                  <div class="pv-side-item">终端</div>
+                  <div class="pv-side-item">文件树</div>
+                </div>
+                <div class="pv-main">
+                  <div class="pv-tabbar">
+                    <div class="pv-tab active">demo-view</div>
+                    <div class="pv-tab">Serial</div>
+                    <div class="pv-tab">Terminal</div>
+                  </div>
+                  <div class="pv-content">
+                    <div class="pv-card">
+                      <div class="pv-card-title">Demo View</div>
+                      <div class="pv-lines"><div class="pv-line"></div><div class="pv-line w"></div><div class="pv-line s"></div><div class="pv-line x"></div></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="pv-panel">
+                <div class="pv-panel-tab active">输出</div>
+                <div class="pv-panel-tab">问题</div>
+                <div class="pv-panel-tab">串口</div>
+              </div>
+              <div class="pv-status">
+                <span>✓ 已连接</span><span>UTF-8</span><span style="margin-left:auto;">Ln 12, Col 8</span>
+              </div>
+            </div>
+          </div>
+          <div class="preview-foot" id="preview-foot">
+            <span class="pf-tag">配方 Glass Aurora</span>
+            <span class="pf-tag">配色 极光紫</span>
+            <span class="pf-tag">模式 自定义</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="mock-note">02-设置页-主题区-域驱动重构 mockup — 右侧预览随左侧设置实时变化 · 二级标题可折叠 · 外观模式切「跟随主题」收起 5 域小组</div>
+
+<script>
+  /* ════════════════════════════════════════════════════════════════════
+     主题配方数据（4 卡片）——appearance 各域，驱动右侧预览壳
+     ════════════════════════════════════════════════════════════════════ */
+  const THEMES = {
+    glass: {
+      name: 'Glass Aurora', colorways: ['极光紫'], accent: '#8B7CF6', font: 'Space Grotesk',
+      radius: { sm: 8, md: 12 }, zoneRadius: 10, glass: { blur: 20, opacity: 0.5, tint: 'rgba(16,18,26,0.55)' },
+      bg: 'radial-gradient(600px 400px at 20% 0%, rgba(139,124,246,0.25), transparent 60%), radial-gradient(500px 360px at 90% 110%, rgba(80,60,180,0.3), transparent 60%), linear-gradient(160deg,#0A0A14,#151230)',
+      colors: { window:'#050505', titlebar:'rgba(8,8,10,0.72)', card:'rgba(24,26,34,0.62)', input:'rgba(255,255,255,0.07)', iconbar:'#0A0A0C', side:'rgba(12,13,17,0.8)', toolbar:'rgba(13,14,18,0.72)', status:'rgba(10,10,12,0.55)', text:'#F3F4F7', text2:'rgba(228,232,240,0.66)', muted:'rgba(228,232,240,0.42)', border:'rgba(255,255,255,0.10)', connected:'#34D399' }
+    },
+    mint: {
+      name: '清凉薄荷包', colorways: ['薄荷苏打','薄荷露','海盐薄荷','青柠薄荷'], accent: '#2FA573', font: '系统默认',
+      radius: { sm: 6, md: 10 }, zoneRadius: 12, glass: { blur: 10, opacity: 0.35, tint: 'rgba(255,255,255,0.3)' },
+      bg: 'radial-gradient(500px 320px at 15% -5%, rgba(143,214,181,0.35), transparent 60%), linear-gradient(160deg,#E9F5EE,#DCEFE6)',
+      colors: { window:'#E9F5EE', titlebar:'rgba(255,255,255,0.6)', card:'rgba(255,255,255,0.75)', input:'#FFFFFF', iconbar:'rgba(226,244,234,0.9)', side:'rgba(252,255,253,0.85)', toolbar:'rgba(232,246,239,0.9)', status:'rgba(226,244,234,0.92)', text:'#1D3A2E', text2:'#4A7260', muted:'#7FA393', border:'rgba(45,100,75,0.16)', connected:'#2FA573' }
+    },
+    forest: {
+      name: '暮色森林包', colorways: ['深林','暮紫','落日','青瓷'], accent: '#4C8C6A', font: '系统默认',
+      radius: { sm: 4, md: 8 }, zoneRadius: 6, glass: { blur: 8, opacity: 0.4, tint: 'rgba(10,16,12,0.45)' },
+      bg: 'radial-gradient(500px 360px at 85% 0%, rgba(74,140,106,0.3), transparent 60%), linear-gradient(160deg,#10170F,#1B2418)',
+      colors: { window:'#10170F', titlebar:'rgba(22,32,22,0.9)', card:'rgba(40,54,40,0.75)', input:'rgba(255,255,255,0.06)', iconbar:'#141E14', side:'rgba(24,34,24,0.9)', toolbar:'rgba(26,36,26,0.88)', status:'rgba(18,26,18,0.92)', text:'#DDE8DC', text2:'rgba(220,230,218,0.7)', muted:'rgba(210,225,208,0.45)', border:'rgba(255,255,255,0.10)', connected:'#6FCF97' }
+    },
+    dark: {
+      name: 'Dark', colorways: ['暗色'], accent: '#7C9CF6', font: '系统默认',
+      radius: { sm: 4, md: 6 }, zoneRadius: 0, glass: { blur: 0, opacity: 0, tint: 'transparent' },
+      bg: '#1E1E1E',
+      colors: { window:'#1E1E1E', titlebar:'#252526', card:'#2D2D30', input:'#3C3C3C', iconbar:'#252526', side:'#252526', toolbar:'#252526', status:'#1E1E1E', text:'#D4D4D4', text2:'#9D9D9D', muted:'#8A8A8A', border:'#3C3C3C', connected:'#34D399' }
+    }
+  };
+  const DEFAULT_FONT = '"Segoe UI", "Microsoft YaHei", system-ui, sans-serif';
+  const NOISE_URL = "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E\")";
+  const FROST_URL = "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40'%3E%3Cfilter id='p'%3E%3CfeTurbulence type='turbulence' baseFrequency='1.6' numOctaves='1'/%3E%3C/filter%3E%3Crect width='40' height='40' filter='url(%23p)' opacity='0.5'/%3E%3C/svg%3E\")";
+
+  /* ── 状态（域驱动）── */
+  const state = {
+    theme: 'glass', colorway: '极光紫', accentColor: '#8B7CF6', accentCleared: false,
+    appearanceMode: '自定义',
+    fontTone: 'followTheme',
+    surfaceRadius: 12, zoneRadius: true, zoneRadiusScale: 10,
+    glassBlur: 16, glassOpacity: 0.45, glassTint: '#4F5B8A', glassSaturate: 1.4,
+    mixBackground: '暮色森林包', mixFont: '跟随主题', mixSurface: '跟随主题',
+    backgroundOpacity: 1, backgroundMask: 0,
+    fontFamily: '跟随主题', fontFamilyMono: '跟随主题',
+    surfaceTexture: '跟随主题'
+  };
+
+  const shell = document.getElementById('preview-shell');
+  const foot = document.getElementById('preview-foot');
+
+  /* ── 域来源解析：跟随主题 → 当前配方；指定配方名 → 该配方；找不到 → 当前配方 ── */
+  function mixOf(d) {
+    const base = THEMES[state.theme];
+    const v = state['mix' + d.charAt(0).toUpperCase() + d.slice(1)];
+    if (!v || v === '跟随主题') return base;
+    for (const k in THEMES) if (v === THEMES[k].name) return THEMES[k];
+    return base;
+  }
+
+  function hexToRgb(hex) {
+    const h = String(hex).replace('#', '');
+    const n = parseInt(h, 16);
+    return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
+  }
+  function hexToRgba(hex, a) {
+    const { r, g, b } = hexToRgb(hex);
+    return `rgba(${r},${g},${b},${a})`;
+  }
+
+  const TONE_TEXT = {
+    light:  { text: '#FFFFFF',  text2: 'rgba(255,255,255,0.78)',  muted: 'rgba(255,255,255,0.50)'  },
+    dark:   { text: '#0E0E12',  text2: 'rgba(14,14,18,0.72)',     muted: 'rgba(14,14,18,0.50)'     }
+  };
+
+  /* ── 主题应用到预览（域来源 + 覆盖，最上层）── */
+  function applyThemeToPreview() {
+    const base = THEMES[state.theme];
+    const over = state.appearanceMode === '自定义';
+    const cT = mixOf('colors'), fT = mixOf('font'), bT = mixOf('background'), sT = mixOf('surface');
+
+    const blur  = over ? state.glassBlur      : base.glass.blur;
+    const op    = over ? state.glassOpacity   : base.glass.opacity;
+    const sat   = over ? state.glassSaturate  : 1.4;
+    const tint  = over ? hexToRgba(state.glassTint, 0.5) : base.glass.tint;
+    const rMd   = over ? state.surfaceRadius  : base.radius.md;
+    const zoneR = state.zoneRadius ? (over ? state.zoneRadiusScale : base.zoneRadius) : 0;
+
+    const c = { ...cT.colors };
+    const tone = state.fontTone !== 'followTheme' ? TONE_TEXT[state.fontTone] : null;
+    const text  = tone ? tone.text  : c.text;
+    const text2 = tone ? tone.text2 : c.text2;
+    const muted = tone ? tone.muted : c.muted;
+
+    const st = {
+      '--pv-bg-window': c.window,
+      '--pv-bg-titlebar': c.titlebar,
+      '--pv-bg-card': c.card,
+      '--pv-bg-icon-bar': c.iconbar,
+      '--pv-bg-side-panel': c.side,
+      '--pv-bg-toolbar': c.toolbar,
+      '--pv-bg-status': c.status,
+      '--pv-text-primary': text,
+      '--pv-text-secondary': text2,
+      '--pv-text-muted': muted,
+      '--pv-border': c.border,
+      '--pv-accent': state.accentCleared ? cT.accent : state.accentColor,
+      '--pv-status-connected': c.connected,
+      '--pv-glass-blur': blur + 'px',
+      '--pv-glass-sat': sat,
+      '--pv-glass-tint': tint,
+      '--pv-glass-wash': op,
+      '--pv-zone-radius': zoneR + 'px',
+      '--pv-radius-md': rMd + 'px',
+      '--pv-font-ui': state.fontFamily !== '跟随主题' ? state.fontFamily : (fT.font === '系统默认' ? DEFAULT_FONT : fT.font),
+      '--pv-font-mono': state.fontFamilyMono !== '跟随主题' ? state.fontFamilyMono : '"JetBrains Mono", Consolas, monospace'
+    };
+    // 全窗背景（background 域来源）+ 不透明度 + 遮罩 + 纹理
+    const bgWin = c.window;
+    const { r, g, b } = /^#/.test(bgWin) ? hexToRgb(bgWin) : { r: 10, g: 10, b: 10 };
+    const bgOp = over ? state.backgroundOpacity : 1;
+    const bgMask = over ? state.backgroundMask : 0;
+    let tex = '';
+    if (over) {
+      if (state.surfaceTexture === '纸纹') tex = NOISE_URL;
+      else if (state.surfaceTexture === '磨砂') tex = FROST_URL;
+    }
+    shell.style.backgroundColor = bgWin;
+    const layers = [];
+    if (tex) layers.push(tex);
+    layers.push(`linear-gradient(rgba(${r},${g},${b},${(1 - bgOp).toFixed(3)}), rgba(${r},${g},${b},${(1 - bgOp).toFixed(3)}))`);
+    layers.push(bT.bg);
+    shell.style.backgroundImage = layers.join(', ');
+    shell.style.backgroundSize = tex ? 'auto, auto, cover' : 'auto, cover';
+    shell.style.setProperty('--pv-bg-mask', bgMask > 0 ? `rgba(0,0,0,${bgMask})` : 'transparent');
+    shell.style.setProperty('--pv-tex', tex || 'none');
+    for (const [k, v] of Object.entries(st)) shell.style.setProperty(k, v);
+    shell.classList.toggle('zone-round', zoneR > 0);
+
+    document.querySelectorAll('#preview-shell .pv-ico.active, #preview-shell .pv-card-title, #preview-shell .pv-brand').forEach(el => {
+      el.style.color = state.accentCleared ? cT.accent : state.accentColor;
+    });
+
+    const fontName = state.fontFamily !== '跟随主题' ? state.fontFamily : (fT.font === '系统默认' ? '系统默认' : fT.font);
+    const toneLabel = { followTheme: '跟随主题', light: '亮字·深底', dark: '暗字·浅底' }[state.fontTone];
+    foot.innerHTML = `
+      <span class="pf-tag">配方 ${base.name}</span>
+      <span class="pf-tag">配色 ${state.colorway}</span>
+      <span class="pf-tag">模式 ${state.appearanceMode}</span>
+      <span class="pf-tag">文字 ${toneLabel}</span>
+      <span class="pf-tag">组件圆角 ${over ? state.surfaceRadius + 'px' : '主题'}</span>
+      <span class="pf-tag">zone 圆角 ${state.zoneRadius ? (over ? state.zoneRadiusScale + 'px' : '主题') : '关'}</span>
+      <span class="pf-tag">玻璃 ${over ? state.glassBlur + 'px / ' + state.glassOpacity.toFixed(2) + ' / sat' + state.glassSaturate.toFixed(1) : '主题'}</span>
+      <span class="pf-tag">背景 ${bT.name === base.name ? '主题' : '🔀 ' + bT.name}</span>
+      <span class="pf-tag">字体 ${fontName}</span>
+      <span class="pf-tag">纹理 ${state.surfaceTexture}</span>
+    `;
+  }
+
+  /* ════════════════════════════════════════════════════════════════════
+     控件同步（状态 → 控件视觉）
+     ════════════════════════════════════════════════════════════════════ */
+  function syncSlider(el) {
+    const key = el.dataset.apply, v = state[key];
+    const min = parseFloat(el.dataset.min), max = parseFloat(el.dataset.max), step = parseFloat(el.dataset.step);
+    const fmt = parseInt(el.dataset.fmt), unit = el.dataset.unit;
+    const pct = max > min ? ((v - min) / (max - min)) * 100 : 0;
+    el.querySelector('.ld-slider-fill').style.width = pct + '%';
+    el.querySelector('.ld-slider-thumb').style.left = pct + '%';
+    el.querySelector('.ld-slider-value').textContent = (fmt ? v.toFixed(fmt) : Math.round(v)) + unit;
+  }
+  function syncSelectVal(box, val) {
+    box.querySelector('.select-val').textContent = val;
+    box.querySelectorAll('.select-menu button').forEach(b => b.classList.toggle('selected', b.dataset.opt === val));
+  }
+  function syncAll() {
+    // 外观模式
+    syncSelectVal(document.querySelector('.select-box[data-mode="appearance"]'), state.appearanceMode);
+    // 自定义域小组显隐
+    const customHidden = state.appearanceMode !== '自定义';
+    document.querySelectorAll('.settings-sub-section[data-custom="1"]').forEach(s =>
+      s.classList.toggle('depends-hidden', customHidden));
+    // 混合组（文字）：仅字体域三槽随自定义模式显隐，文字极性始终可见
+    document.querySelectorAll('.settings-row[data-custom-row="1"]').forEach(r =>
+      r.classList.toggle('depends-hidden', customHidden));
+    // 配色
+    const cwBox = document.querySelector('.select-box[data-colorway]');
+    syncSelectVal(cwBox, state.colorway);
+    // 强调色
+    document.getElementById('accent-pick').value = state.accentColor;
+    document.getElementById('accent-hex').value = state.accentCleared ? '' : state.accentColor;
+    // 文字极性
+    document.querySelectorAll('#font-tone-group .font-tone-opt').forEach(b =>
+      b.classList.toggle('active', b.dataset.tone === state.fontTone));
+    // 纹理
+    document.querySelectorAll('#texture-picker .texture-opt').forEach(b =>
+      b.classList.toggle('active', b.dataset.texture === state.surfaceTexture));
+    // 来源选择（data-mix 直绑 state 键）
+    document.querySelectorAll('.select-box[data-mix]').forEach(box =>
+      syncSelectVal(box, state[box.dataset.mix]));
+    // 字体拾取器（data-font 直绑 state 键）
+    document.querySelectorAll('.select-box[data-font]').forEach(box =>
+      syncSelectVal(box, state[box.dataset.font]));
+    // 滑杆
+    document.querySelectorAll('.ld-slider').forEach(syncSlider);
+    // zone 开关
+    const zt = document.getElementById('zone-radius-toggle');
+    zt.classList.toggle('on', state.zoneRadius);
+    zt.nextElementSibling.textContent = state.zoneRadius ? '开' : '关';
+    // 域小组「来源已混」徽标
+    document.querySelectorAll('.settings-sub-section[data-source-key]').forEach(s => {
+      const srcKey = s.dataset.sourceKey;
+      const mixed = state[srcKey] && state[srcKey] !== '跟随主题';
+      s.classList.toggle('mix-active', mixed);
+    });
+    syncBadges();
+  }
+
+  function syncBadges() {
+    const t = THEMES[state.theme];
+    document.getElementById('recipe-badge').textContent = t.name + ' 已选';
+    document.getElementById('color-badge').textContent = state.colorway;
+    document.getElementById('accent-badge').textContent = state.accentCleared ? '跟随主题' : '自定义 · ' + state.accentColor;
+    const m = state.appearanceMode;
+    document.getElementById('bg-badge').textContent = m + (state.mixBackground !== '跟随主题' ? ' · 🔀 ' + state.mixBackground : '');
+    document.getElementById('font-badge').textContent = m === '跟随主题' ? '跟随主题' : m + (state.mixFont !== '跟随主题' ? ' · 🔀 ' + state.mixFont : '');
+    document.getElementById('surface-badge').textContent = m + (state.mixSurface !== '跟随主题' ? ' · 🔀 ' + state.mixSurface : '');
+  }
+
+  /* ════════════════════════════════════════════════════════════════════
+     交互
+     ════════════════════════════════════════════════════════════════════ */
+
+  /* ── 二级标题折叠 ── */
+  document.querySelectorAll('.settings-sub-head').forEach((head) => {
+    head.addEventListener('click', () => head.parentElement.classList.toggle('collapsed'));
+  });
+
+  /* ── tab / 侧栏导航 ── */
+  function showPane(isTheme) {
+    document.getElementById('form-theme').style.display = isTheme ? '' : 'none';
+    document.querySelector('.preview-pane').style.display = isTheme ? '' : 'none';
+    document.getElementById('placeholder-form').style.display = isTheme ? 'none' : '';
+  }
+  document.querySelectorAll('.settings-tab').forEach((tab) => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.settings-tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      showPane(tab.dataset.tab === 'theme');
+      const titles = { common: '通用', keys: '快捷键', about: '关于' };
+      document.getElementById('placeholder-form').querySelector('.settings-group-title').textContent = titles[tab.dataset.tab] || '通用';
+    });
+  });
+  document.querySelectorAll('.settings-nav-item').forEach((nav) => {
+    nav.addEventListener('click', () => {
+      document.querySelectorAll('.settings-nav-item').forEach(n => n.classList.remove('active'));
+      nav.classList.add('active');
+      const isTheme = nav.dataset.nav === 'nav-theme';
+      showPane(isTheme);
+      document.querySelectorAll('.settings-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === (isTheme ? 'theme' : 'common')));
+    });
+  });
+
+  /* ── SelectBox 通用 ── */
+  function wireSelect(box) {
+    const menu = box.querySelector('.select-menu');
+    box.addEventListener('click', (e) => {
+      if (e.target.closest('.select-menu')) return;
+      document.querySelectorAll('.select-menu').forEach(m => { if (m !== menu) m.style.display = 'none'; });
+      menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+    });
+    menu.querySelectorAll('button').forEach((opt) => {
+      opt.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const val = opt.dataset.opt;
+        if (box.dataset.mix) {
+          state[box.dataset.mix] = val;
+        } else if (box.dataset.font) {
+          state[box.dataset.font] = val;
+        } else if (box.dataset.mode === 'appearance') {
+          state.appearanceMode = val;
+          if (val === '自定义') seedAppearance();
+        } else if (box.closest('[data-colorway]')) {
+          state.colorway = val;
+        }
+        menu.style.display = 'none';
+        menu.querySelectorAll('button').forEach(b => b.classList.toggle('selected', b === opt));
+        syncAll();
+        applyThemeToPreview();
+      });
+    });
+  }
+  document.querySelectorAll('.select-box').forEach(wireSelect);
+
+  /* ── 主题卡片 → 换配方 + 配色板 ── */
+  const colorwayBox = document.querySelector('.select-box[data-colorway]');
+  const colorwayMenu = colorwayBox.querySelector('.select-menu');
+  function populateColorways(cws) {
+    colorwayMenu.innerHTML = '';
+    cws.forEach((cw, i) => {
+      const btn = document.createElement('button');
+      btn.textContent = cw;
+      btn.dataset.opt = cw;
+      if (i === 0) btn.classList.add('selected');
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        state.colorway = cw;
+        colorwayMenu.style.display = 'none';
+        syncAll();
+        applyThemeToPreview();
+      });
+      colorwayMenu.appendChild(btn);
+    });
+    state.colorway = cws[0];
+  }
+  document.querySelectorAll('.theme-card').forEach((card) => {
+    card.addEventListener('click', () => {
+      document.querySelectorAll('.theme-card').forEach(c => {
+        c.classList.remove('active');
+        const n = JSON.parse(c.dataset.colorways).length;
+        c.querySelector('.badge').textContent = n > 1 ? n + ' 配色' : '●';
+      });
+      card.classList.add('active');
+      state.theme = card.dataset.theme;
+      populateColorways(JSON.parse(card.dataset.colorways));
+      if (state.appearanceMode === '自定义') seedAppearance();
+      syncAll();
+      applyThemeToPreview();
+    });
+  });
+  populateColorways(JSON.parse(document.querySelector('.theme-card.active').dataset.colorways));
+
+  /* ── 切自定义 → 从当前配方播种覆盖 ── */
+  function seedAppearance() {
+    const t = THEMES[state.theme];
+    state.surfaceRadius = t.radius.md;
+    state.zoneRadiusScale = t.zoneRadius || 0;
+    state.glassBlur = t.glass.blur;
+    state.glassOpacity = t.glass.opacity;
+    state.glassSaturate = 1.4;
+    state.backgroundOpacity = 1;
+    state.backgroundMask = 0;
+  }
+
+  /* ── Slider ── */
+  document.querySelectorAll('.ld-slider').forEach((slider) => {
+    const track = slider.querySelector('.ld-slider-track');
+    const min = parseFloat(slider.dataset.min), max = parseFloat(slider.dataset.max), step = parseFloat(slider.dataset.step);
+    const fmt = parseInt(slider.dataset.fmt);
+    const setFromX = (clientX) => {
+      const rect = track.getBoundingClientRect();
+      let ratio = (clientX - rect.left) / rect.width;
+      ratio = Math.max(0, Math.min(1, ratio));
+      let val = min + ratio * (max - min);
+      val = Math.round(val / step) * step;
+      val = Math.max(min, Math.min(max, val));
+      state[slider.dataset.apply] = val;
+      syncSlider(slider);
+      applyThemeToPreview();
+    };
+    let dragging = false;
+    track.addEventListener('pointerdown', (e) => { dragging = true; setFromX(e.clientX); if (track.setPointerCapture) track.setPointerCapture(e.pointerId); });
+    track.addEventListener('pointermove', (e) => { if (dragging) setFromX(e.clientX); });
+    track.addEventListener('pointerup', () => { dragging = false; });
+  });
+
+  /* ── zone 圆角开关 ── */
+  document.getElementById('zone-radius-toggle').addEventListener('click', (e) => {
+    state.zoneRadius = !state.zoneRadius;
+    syncAll();
+    applyThemeToPreview();
+  });
+
+  /* ── 文字极性三态 ── */
+  document.querySelectorAll('#font-tone-group .font-tone-opt').forEach((b) => {
+    b.addEventListener('click', () => {
+      state.fontTone = b.dataset.tone;
+      syncAll();
+      applyThemeToPreview();
+    });
+  });
+
+  /* ── 表面纹理选择 ── */
+  document.querySelectorAll('#texture-picker .texture-opt').forEach((b) => {
+    b.addEventListener('click', () => {
+      state.surfaceTexture = b.dataset.texture;
+      syncAll();
+      applyThemeToPreview();
+    });
+  });
+
+  /* ── 强调色：取色 + hex + 清除 ── */
+  document.getElementById('accent-pick').addEventListener('input', () => {
+    state.accentColor = document.getElementById('accent-pick').value;
+    state.accentCleared = false;
+    syncAll(); applyThemeToPreview();
+  });
+  document.getElementById('accent-hex').addEventListener('input', () => {
+    const v = document.getElementById('accent-hex').value;
+    if (!/^#[0-9a-fA-F]{6}$/.test(v)) return;
+    state.accentColor = v; state.accentCleared = false;
+    document.getElementById('accent-pick').value = v;
+    syncAll(); applyThemeToPreview();
+  });
+  document.getElementById('accent-clear').addEventListener('click', () => {
+    state.accentCleared = true;
+    syncAll(); applyThemeToPreview();
+  });
+
+  /* ── 玻璃叠加色 ── */
+  document.getElementById('glass-tint-pick').addEventListener('input', () => {
+    state.glassTint = document.getElementById('glass-tint-pick').value;
+    document.getElementById('glass-tint-hex').value = state.glassTint;
+    applyThemeToPreview();
+  });
+  document.getElementById('glass-tint-hex').addEventListener('input', () => {
+    const v = document.getElementById('glass-tint-hex').value;
+    if (!/^#[0-9a-fA-F]{6}$/.test(v)) return;
+    state.glassTint = v;
+    document.getElementById('glass-tint-pick').value = v;
+    applyThemeToPreview();
+  });
+
+  /* ── 复位 ── */
+  document.getElementById('mix-reset').addEventListener('click', () => {
+    state.mixBackground = '跟随主题';
+    state.mixFont = '跟随主题';
+    state.mixSurface = '跟随主题';
+    seedAppearance();
+    state.surfaceTexture = '跟随主题';
+    state.backgroundOpacity = 1; state.backgroundMask = 0;
+    state.fontFamily = '跟随主题'; state.fontFamilyMono = '跟随主题';
+    syncAll(); applyThemeToPreview();
+  });
+
+  syncAll();
+  applyThemeToPreview();
+</script>
+</body>
+</html>

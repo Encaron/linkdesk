@@ -12,12 +12,14 @@
  * 铁律对齐：widget 是通用件不是给终端造的——谁声明谁用（插件独立铁律：第三方声明即用零壳改动）。
  * 无声明（actions 空数组）→ 渲染 null（右侧空白——现状保持）。
  * 显示文本铁律：label/title 壳侧声明 = i18n key，池 t() 解析（key 缺失 → key 原文兜底）。
- * 下拉交互：PanelZone 切换器下拉同款（fixed 锚点 + document 外部点击/Escape 关闭 + 入场动画）。
+ * 下拉交互（E5.8#107 浮层权威）：OverlayPortal 进 #overlay-root——外部点击/Escape 由 OverlayPortal
+ * 统一处理，anchor 坐标原样传入（.dropdown-card fixed 定位），触发锚 = chevronRef。
  */
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useRef, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import type { TitleActionItem, TitleActionWidget } from "../../../core/api/types";
+import OverlayPortal from "../../../components/shared/overlay-portal/OverlayPortal";
 import "../dropdown-card/dropdown-card.css"; // 共享下拉卡片本体（.dropdown-card）
 import "./ViewTitleActions.css";
 
@@ -44,7 +46,8 @@ export default function ViewTitleActions({ actions }: ViewTitleActionsProps) {
   // 展开的下拉 widget ID + 锚点——fixed 定位在 chevron 正下方（TitleBarZone 下拉同款）
   const [openId, setOpenId] = useState<string | null>(null);
   const [anchor, setAnchor] = useState<{ top: number; left: number } | null>(null);
-  const dropdownRef = useRef<HTMLDivElement>(null);
+  // 触发锚 = 展开中 widget 的 chevron 按钮（OverlayPortal triggerRef——点击它不算外部，可 toggle 关闭）
+  const chevronRef = useRef<HTMLButtonElement>(null);
 
   /** 展开/收起 chevron 下拉——按当前按钮几何计算锚点 */
   const handleToggle = useCallback(
@@ -60,25 +63,6 @@ export default function ViewTitleActions({ actions }: ViewTitleActionsProps) {
     [openId],
   );
 
-  /** 外部点击 + Escape 关闭——document 级（池 DOM 焦点天然分区） */
-  useEffect(() => {
-    if (openId === null) return;
-    const onMouseDown = (e: MouseEvent) => {
-      const target = e.target as Node;
-      if (dropdownRef.current?.contains(target)) return;
-      setOpenId(null);
-    };
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpenId(null);
-    };
-    document.addEventListener("mousedown", onMouseDown);
-    document.addEventListener("keydown", onKeyDown);
-    return () => {
-      document.removeEventListener("mousedown", onMouseDown);
-      document.removeEventListener("keydown", onKeyDown);
-    };
-  }, [openId]);
-
   /** 下拉条目点击——执行命令 + 关闭 */
   const handleItemClick = useCallback((item: TitleActionItem) => {
     runCommand(item.command, item.args);
@@ -87,33 +71,38 @@ export default function ViewTitleActions({ actions }: ViewTitleActionsProps) {
 
   if (actions.length === 0) return null;
 
-  /** 渲染下拉（dropdown / split 共用）——fixed 定位 + role=menu + 键盘 Enter/Space 激活 */
+  /** 渲染下拉（dropdown / split 共用）——fixed 定位 + role=menu + 键盘 Enter/Space 激活。
+   *  E5.8#107 浮层权威：OverlayPortal 进 #overlay-root（单一门）——外部点击/Escape 统一处理。 */
   const renderDropdown = (w: MenuWidget) =>
     openId === w.id && anchor ? (
-      <div className="dropdown-card vta-dropdown" style={anchor} ref={dropdownRef} role="menu">
-        {w.items.map((item, i) => (
-          <div
-            key={i}
-            className="vta-item"
-            role="menuitem"
-            tabIndex={0}
-            onClick={() => handleItemClick(item)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                handleItemClick(item);
-              }
-            }}
-          >
-            {t(item.label)}
-          </div>
-        ))}
-      </div>
+      <OverlayPortal onClose={() => setOpenId(null)} triggerRef={chevronRef}>
+        <div className="dropdown-card vta-dropdown" style={anchor} role="menu">
+          {w.items.map((item, i) => (
+            <div
+              key={i}
+              className="vta-item"
+              role="menuitem"
+              tabIndex={0}
+              onClick={() => handleItemClick(item)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  handleItemClick(item);
+                }
+              }}
+            >
+              {t(item.label)}
+            </div>
+          ))}
+        </div>
+      </OverlayPortal>
     ) : null;
 
-  /** chevron 按钮（dropdown / split 共用）——展开下拉；dropdown 可选 title tooltip */
+  /** chevron 按钮（dropdown / split 共用）——展开下拉；dropdown 可选 title tooltip。
+   *  展开中 widget 的 chevron 挂 chevronRef——OverlayPortal triggerRef（点击 chevron toggle 关闭）。 */
   const renderChevron = (w: MenuWidget) => (
     <button
+      ref={openId === w.id ? chevronRef : undefined}
       className={`vta-btn vta-chev${openId === w.id ? " open" : ""}`}
       title={w.type === "dropdown" && w.title ? t(w.title) : undefined}
       aria-label={w.type === "dropdown" && w.title ? t(w.title) : t("更多操作")}

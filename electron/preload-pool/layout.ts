@@ -13,6 +13,7 @@ import { IPC } from '../ipc/channels';
 import { IpcRelay } from '../ipc/ipc-relay';
 import { guardPush } from '../ipc/wire-guard';
 import type { PoolLayout, PoolTab } from '../../src/core/types/pool/poolLayout';
+import type { TabBarViewportRect, TabDragPositionPayload, AdsorbHintPayload } from '../../src/core/types/ipc/poolActions'; // E5.8#44-B/#44-C：TabBar rect 上报 + 拖拽位置 + 吸附提示 wire 契约
 
 // ── E5.6#8b：pool:layout 缓冲回放——IPC 可能在 React mount 前到达 ──
 // E5.7#78：手写 buffer+callback+active 三件套 → IpcRelay<T>（electron/ipc/ipc-relay.ts）
@@ -22,6 +23,16 @@ ipcRenderer.on(IPC.pool.layout, (_event, layout: PoolLayout) => {
   // E5.8#22.5：pool:layout 直收点接收边界断言——guard 只记录不阻断，透传缓冲
   guardPush(IPC.pool.layout, layout);
   _layoutRelay.push(layout);
+});
+
+// ── E5.8#44-C：pool:adsorb-hint 缓冲回放——吸附提示（目标窗 TabBar 高亮/清除）可能在 MainZone 订阅前到达 ──
+// 对标 pool:layout 模式（硬约束 20）：模块顶层注册 + 缓冲 + 回放。只保留最后一份（全量替换——新提示整体取代旧提示）。
+const _adsorbRelay = new IpcRelay<AdsorbHintPayload>();
+
+ipcRenderer.on(IPC.pool.adsorbHint, (_event, hint: AdsorbHintPayload) => {
+  // E5.8#22.5：pool:adsorb-hint 直收点接收边界断言——guard 只记录不阻断，透传缓冲
+  guardPush(IPC.pool.adsorbHint, hint);
+  _adsorbRelay.push(hint);
 });
 
 // ── E5.8#30.16（P8）：通用「beforeClose 可取消」通道注册表（池侧）──
@@ -37,6 +48,14 @@ export function buildPool() {
     sidebarAction: (action: unknown) => ipcRenderer.send(IPC.pool.sidebarAction, action),
     // E5.6#16.5：池→壳 tab 操作（切标签/关闭/拖拽排序/分屏/右键菜单等）
     tabAction: (action: unknown) => ipcRenderer.send(IPC.pool.tabAction, action),
+    // E5.8#44-B：池→壳 TabBar viewport rects 上报（吸附/释放并窗命中检测数据源）——主进程附 windowId 转发壳
+    tabBarRects: (rects: TabBarViewportRect[]) => ipcRenderer.send(IPC.pool.tabBarRects, rects),
+    // E5.8#44-C：池→壳 拖拽位置上报（拎起后 mousemove 全程）——主进程按 sender 注入 sourceWindowId 转壳吸附命中
+    dragPosition: (pos: TabDragPositionPayload) => ipcRenderer.send(IPC.pool.dragPosition, pos),
+    // E5.8#44-C：壳→池 吸附提示订阅（缓冲+回放——目标窗 TabBar 插入指示/清除，groupId null = 清光）
+    onAdsorbHint: (cb: (hint: AdsorbHintPayload) => void) => _adsorbRelay.onReady(cb),
+    // E5.8#46.10：池→壳 吸附插入缝隙回传（目标池算竖线落点后上报——主进程按 sender 注入 windowId 转壳，释放并窗精确落位）
+    adsorbIndex: (p: { groupId: string; insertIndex: number }) => ipcRenderer.send(IPC.pool.adsorbIndex, p),
     // E5.8#30.16（P8）：注册/注销关闭前检查 handler——插件自己定逻辑（确认弹窗/清理资源）
     registerBeforeClose: (pluginId: string, handler: (tab: PoolTab) => boolean | Promise<boolean>) => {
       _beforeCloseHandlers.set(pluginId, handler);

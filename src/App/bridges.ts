@@ -22,10 +22,13 @@ export interface UiBridgesDeps {
   setPanelActiveViewId: (v: string | null) => void;
   /** E5.8#32：面板激活视图 ref（App 同步）——panel:createView 桥 serialize 判断已激活勾选。ref 稳定 → 桥 effect 不重注册 */
   panelActiveViewIdRef: { current: string | null };
+  /** E5.8#45：脱出面板——panel:detach 桥消费（usePanelDrift.detachPanel——建 drift 窗 + 面板独占迁移）。
+   *  稳定 ref 包装（App useCallback 恒等）→ 桥 effect 不重注册 */
+  detachPanel: () => void;
 }
 
 /** 壳↔池 UI 桥接器集合——全部独立 window/服务订阅，注册一次（setPanelActiveViewId 是 useState 稳定 setter，deps 恒不变） */
-export function useUiBridges({ setPanelActiveViewId, panelActiveViewIdRef }: UiBridgesDeps): void {
+export function useUiBridges({ setPanelActiveViewId, panelActiveViewIdRef, detachPanel }: UiBridgesDeps): void {
   // E5.7#6：桥接池图标栏点击——池 events.emit("icon:selected") → 主进程 plugin:emit →
   // 壳 plugin:push → linkdesk.events.on → 转壳内 shellEvents（消费方 App/useTabManager 开标签）。
   useEffect(() => {
@@ -48,9 +51,10 @@ export function useUiBridges({ setPanelActiveViewId, panelActiveViewIdRef }: UiB
   }, []);
 
   // E5.8#25.1：桥接池文件资源事件——文件树 emit file:deleted/file:renamed → 主进程 broadcast
-  // （plugin:push 发壳+发池）→ 本桥 → shellEvents → 壳 TabManager 集中联动（E5#54b 订阅：
-  // deleted→forceCloseTab 关标签、renamed→迁移 label+sourceId+filePath）。模式级通用——
-  // 未来任何插件 emit 资源事件走同款桥加一行即联动（零专一化命名；tabs 不需新 API，壳已内置 sourceId 迁移）。
+  // （plugin:push 发壳+发池）→ 本桥 → shellEvents → windowHost 全窗广播（E5.8#46.2 壳侧唯一订阅点：
+  // 主窗走 mainResourceActions 关标签/迁移 label+sourceId+filePath，脱出窗走 mapResourceAcrossWindows）。
+  // 模式级通用——未来任何插件 emit 资源事件走同款桥加一行即联动（零专一化命名；tabs 不需新 API，
+  // 壳已内置 sourceId 迁移）。
   useEffect(() => {
     const events = window.linkdesk?.events;
     const offDeleted = events?.on("file:deleted", (payload) => {
@@ -71,7 +75,7 @@ export function useUiBridges({ setPanelActiveViewId, panelActiveViewIdRef }: UiB
   // E5.7#63.7：桥接池面板事件（icon:selected 同款通道）——
   //   panel:viewSelected → App state（usePoolSync 重推 activeViewId，真相源在壳）
   //   panel:resize      → LayoutEngine resizeZoneHeight 钳制 → onDidChangeLayout → 重推回执（#13 同款）
-  //   panel:createView  → Phase 12 面板创建消费——三件套范围外，暂无人监听（池 emit 零订阅 = no-op）
+  //   panel:createView  → 面板创建消费——三件套范围外，壳暂无监听（池 emit 零订阅 = 安全 no-op）
   //   panel:toggleViewVisibility → ViewContainerService（E5.8#34 切换器勾选显隐——setVisible 落盘 +
   //     fire onDidChangeActiveViews → usePoolSync layoutVersion 重推回执，全自动）
   useEffect(() => {
@@ -107,8 +111,13 @@ export function useUiBridges({ setPanelActiveViewId, panelActiveViewIdRef }: UiB
         ViewContainerService.toggleViewVisibility(p.containerId, p.viewId);
       }
     });
-    return () => { offSelect?.(); offResize?.(); offToggleVis?.(); };
-  }, [setPanelActiveViewId]);
+    // E5.8#45：桥接池 ⤢ 脱出面板——PanelZone emit "panel:detach"（无载荷）→ 壳 detachPanel()
+    // 建漂移面板窗（detachPanel 内建幂等：已有 drift 窗 no-op）。detachPanel 稳定（App useCallback 恒等）。
+    const offDetach = events?.on("panel:detach", () => {
+      detachPanel();
+    });
+    return () => { offSelect?.(); offResize?.(); offToggleVis?.(); offDetach?.(); };
+  }, [setPanelActiveViewId, detachPanel]);
 
   // E5.8#32：桥接池面板 [+] 新建视图——panel:createView（现网 emit 零监听 no-op——#88 ③）→
   // QuickPick 视图选择器（showPanelCreatePicker 壳侧构建 + QuickPick 桥推 DTO，复用 #15 现成链路）。

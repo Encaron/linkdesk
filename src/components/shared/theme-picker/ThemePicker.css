@@ -1,0 +1,99 @@
+/* ThemePicker——E5.8#50.22 主题配方卡片（mockup 01-设置页-主题区 .theme-picker/.theme-card 视觉）。
+   四列网格 + 卡片边框/悬停上浮/选中 accent 描边；预览区色 = 配方数据（inline，非样式硬编码）。
+   结构样式全走 token（硬约束 1）——零硬编码 hex。 */
+
+.theme-picker {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  width: 100%;
+}
+
+.theme-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  cursor: pointer;
+  background: var(--bg-card);
+  padding: 0;
+  text-align: left;
+  color: inherit;
+  font: inherit;
+  transition: border-color 150ms ease, transform 150ms ease;
+}
+
+.theme-card:hover {
+  border-color: var(--separator); /* E5.8#128.7：幽灵 --border-normal（无效值=无变化）→ separator 轻亮边（hover 亮边恢复意图，主题感知） */
+  transform: translateY(-1px);
+}
+
+.theme-card:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.theme-card.active {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+.theme-preview {
+  height: 44px;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 8px;
+  overflow: hidden;
+}
+
+.theme-preview .pv-bar {
+  width: 26px;
+  height: 12px;
+  /* E5.8#63：审计#1——原 3px 硬编码 → --radius-xs（2px，最贴近原值，预览条贴角）；同行 slider/卡片全走 --radius-* */
+  border-radius: var(--radius-xs);
+}
+
+.theme-preview .pv-dots {
+  display: flex;
+  gap: 3px;
+}
+
+.theme-preview .pv-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 1px solid color-mix(in srgb, var(--text-primary) 35%, transparent);
+}
+
+.theme-card .tname {
+  padding: 6px 8px;
+  font-size: var(--font-size-xs); /* E5.8 Phase 12 #170：tname 11.5→xs */
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  overflow: hidden;
+}
+
+.theme-card.active .tname {
+  color: var(--text-primary);
+}
+
+.theme-card .tname-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.theme-card .badge {
+  font-size: var(--font-size-2xs); /* E5.8 Phase 12 #170：badge 9→2xs */
+  color: var(--accent);
+  white-space: nowrap;
+}
+
+.theme-picker-empty {
+  color: var(--text-muted);
+  font-size: var(--font-size-sm); /* E5.8 Phase 12 #170：12→sm */
+  padding: 8px 0;
+}

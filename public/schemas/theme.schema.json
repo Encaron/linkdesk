@@ -1,0 +1,109 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://linkdesk.local/schemas/theme.schema.json",
+  "title": "LinkDesk 主题定义（ThemeRecipe，05 schema）",
+  "description": "contributes.themes 指向的主题 JSON 文件契约（E5.8#129 立——对标 plugin.schema.json，格式错当场拦）。镜像 src/core/types/theme.ts ThemeRecipe；解析语义见 parseThemeRecipe。新格式必备 colorways[]（决策 F：引擎只读新格式）；appearance 各域稀疏，缺的域继承 :root 壳默认。校验脚本 scripts/check-theme-schema.mjs（npm run check 链）。",
+  "type": "object",
+  "required": ["id", "name", "type", "colorways"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "编辑器 IntelliSense 引用（可选）——相对路径 ../../../public/schemas/theme.schema.json"
+    },
+    "id": {
+      "type": "string",
+      "description": "主题 id——全局唯一（app.theme 存此；惯例 = 插件短名）"
+    },
+    "name": {
+      "type": "string",
+      "description": "主题显示名——主题选择器/浏览器标题"
+    },
+    "type": {
+      "type": "string",
+      "enum": ["light", "dark"],
+      "description": "基础明暗——dark 基底 :root / light 覆盖层 data-theme"
+    },
+    "appearance": {
+      "type": "object",
+      "description": "风格域（单值稀疏）——缺的域继承 :root 壳默认",
+      "additionalProperties": false,
+      "properties": {
+        "radius": {
+          "type": "object",
+          "description": "圆角八档（键 = 档位名，值 = px；999 = 全胶囊 pill）",
+          "additionalProperties": false,
+          "properties": {
+            "xs": { "type": "number" },
+            "sm": { "type": "number" },
+            "md": { "type": "number" },
+            "lg": { "type": "number" },
+            "xl": { "type": "number" },
+            "2xl": { "type": "number" },
+            "pill": { "type": "number" },
+            "full": { "type": "number" }
+          }
+        },
+        "glass": {
+          "type": "object",
+          "description": "玻璃 + 悬浮面板材质（ThemeSurface）——缺省 = 无玻璃无悬浮",
+          "additionalProperties": false,
+          "properties": {
+            "type": { "type": "string", "enum": ["glass"], "description": "玻璃配方——缺省 = 无玻璃" },
+            "blur": { "type": "number", "description": "backdrop blur px——0 = 关" },
+            "saturate": { "type": "number", "description": "饱和度增强——1 = 关" },
+            "tint": { "type": "string", "description": "玻璃面叠加色" },
+            "opacity": { "type": "number", "description": "玻璃面不透明度（合成层基线）——1 = 不透明 / 0 = 全透见背景" },
+            "specular": { "type": "number", "description": "液态玻璃顶部高光强度——0 = 关" },
+            "specularColor": { "type": "string", "description": "顶部高光基色——缺省 = 白；alpha 仍走 specular" },
+            "morph": { "type": "number", "description": "形变过渡 ms——0 = 关" },
+            "radius": { "type": "number", "description": "悬浮圆角 px——0 = 直角贴边" },
+            "shadow": { "type": "boolean", "description": "投影浮起——true = 悬浮投影（映射 --shadow-lift）" },
+            "texture": { "type": "string", "description": "可平铺纹理图资产路径（⑬ 纸纹分区）" },
+            "textureOpacity": { "type": "number", "description": "纹理不透明度——1 = 不透明" }
+          }
+        },
+        "font": {
+          "type": "object",
+          "description": "字体域——系统字体族名字符串 or 资产相对路径（#50.17：资产 → @font-face → 族名）",
+          "additionalProperties": false,
+          "properties": {
+            "ui": { "type": "string", "description": "UI 字体（--font-ui）" },
+            "mono": { "type": "string", "description": "等宽字体（--font-mono）" }
+          }
+        },
+        "background": {
+          "type": "object",
+          "description": "图片背景域（panorama 全窗 / zones 切片）",
+          "additionalProperties": false,
+          "properties": {
+            "image": { "type": "string", "description": "图片路径——作者提供可解析 URL，引擎写 --bg-image 时 url() 包裹" },
+            "opacity": { "type": "number", "description": "图片层不透明度——1 = 不透明" },
+            "mask": { "type": "number", "description": "图片遮罩明暗（0-1）——0 = 无遮罩" },
+            "maskColor": { "type": "string", "description": "遮罩基色——缺省 = 黑；alpha 仍走 mask" },
+            "mode": { "type": "string", "enum": ["panorama", "zones"], "description": "切片模式——panorama（默认）/ zones（同图连续切片）" }
+          }
+        }
+      }
+    },
+    "colorways": {
+      "type": "array",
+      "description": "配色变体列表（颜色域多值，至少 1 项）",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "name"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string", "description": "配色变体 id——全局唯一（app.themeColor 动态 enum 存此）" },
+          "name": { "type": "string", "description": "配色显示名" },
+          "colors": {
+            "type": "object",
+            "description": "颜色 token 集（键 = 变量契约 token 名去 -- 前缀；值 = 颜色字符串）",
+            "additionalProperties": { "type": "string" }
+          }
+        }
+      }
+    }
+  }
+}

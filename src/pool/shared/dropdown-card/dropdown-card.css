@@ -14,7 +14,7 @@
   background: var(--bg-card);
   border: 1px solid var(--separator);
   box-shadow: var(--context-menu-shadow);
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   z-index: var(--z-dropdown);
   animation: dropdown-card-in 150ms ease-out;
 }

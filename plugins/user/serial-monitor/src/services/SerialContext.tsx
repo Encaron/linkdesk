@@ -11,6 +11,8 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import type { PluginStateChangedPayload } from "@linkdesk/contracts";
+import { SERIAL_MONITOR_PLUGIN_ID } from "../utils/pluginId";
 
 // ── 类型 ──
 
@@ -325,8 +327,10 @@ export function useSerialContext(): { state: SerialState; actions: SerialActions
     }
     // E5.8#27：定向取刚开的口——多口下 getStatus()[0] 未必是本次开的（#26 遗留，D5 定向修复）
     const fresh = (await s.getStatus(portName));
-    if (fresh) _setState((p) => mergeStatus(p, fresh));
+    // E5.8#54：set 挪到 _setState 前——对齐 closePortFromModule（delete→setState→notify→write），
+    // 消除「开一关一不对称」：订阅 _openPorts 的瞬时读不再拿到旧态
     _openPorts.set(portName, { baudRate, txBytes: 0, rxBytes: 0 });
+    if (fresh) _setState((p) => mergeStatus(p, fresh));
     _notifyPort(portName); // E5.8#30.12：打开 → 接收区 per-tab 计数从 0 起
     _writePortState(portName, true); // E5.8#30.9：打开按口显式亮灯
   }, [s]);
@@ -414,13 +418,33 @@ export function useSerialContext(): { state: SerialState; actions: SerialActions
 // E5.8#30.12（P6）：per-port 只读 hooks——状态栏 (N) + 接收区工具栏 per-tab TX/RX
 // ═══════════════════════════════════════════════════════
 
-/** 打开口计数——状态栏 (N)（≥2 才显示数字）。订阅全局 _setState notify（开/关/换口/F5 都触发）。 */
+/**
+ * 打开口计数——状态栏 (N)（≥2 才显示数字）。
+ * E5.8#54 根治：权威从局部 _openPorts Map（每 JS 上下文独享——脱出窗/分屏感知不到别窗口开的口）
+ * 上移到主进程 serial-service 全口 getStatus()（唯一真相，跨窗口一致、无读-增-写竞态）——
+ * 初始播种 + 订阅 plugin-state:changed 的 *:isOpen 变化重拉。写侧零新增：_writePortState 写 :isOpen 已广播。
+ */
 export function useOpenPortCount(): number {
-  const [count, setCount] = useState(_openPorts.size);
+  const [count, setCount] = useState(0);
   useEffect(() => {
-    const update = () => setCount(_openPorts.size);
-    update();
-    return _subscribe(update);
+    let cancelled = false;
+    let inflight = 0; // 并发重拉只认最新发起——乱序响应丢弃
+    const refresh = async () => {
+      const my = ++inflight;
+      const statuses = await window.linkdesk?.serial?.getStatus?.();
+      if (cancelled || my !== inflight) return;
+      setCount(Array.isArray(statuses) ? statuses.filter((s) => s?.portName).length : 0);
+    };
+    refresh(); // 初始播种——主进程权威全口
+    const handler = (data: PluginStateChangedPayload) => {
+      if (data?.pluginId !== SERIAL_MONITOR_PLUGIN_ID) return;
+      if (typeof data?.key === "string" && data.key.endsWith(":isOpen")) refresh();
+    };
+    const unsub = window.linkdesk?.events?.on<PluginStateChangedPayload>("plugin-state:changed", handler);
+    return () => {
+      cancelled = true;
+      unsub?.();
+    };
   }, []);
   return count;
 }

@@ -51,7 +51,7 @@
 | `tabBehavior` | 标签页行为（singleton/isFallback/confirmOnClose/identityField）——见 `02 §六` |
 | `appearsIn` | 插件 UI 出现位置（iconBar/sidePanel/tabBar/statusBar）——替代旧 iconLocation/viewRole |
 | `requires` | 插件级激活顺序依赖（string 数组）——见 `02 §四` |
-| `factoryRole` | 系统插槽（settings=设置页 / marketplace=插件市场）——**填 = 形态二（替换/进槽位切换）；不填 = 形态一（普通视图插件并存）**，详见 `06 §factoryRole 字段详解`。当前单槽（多个声明同 role → 第一个 core:true 胜出），方案A（E5.8 #41.11）改一对多 + 重复 fail-loud |
+| `factoryRole` | 系统插槽（settings=设置页 / marketplace=插件市场）——**填 = 形态二（替换/进槽位切换）；不填 = 形态一（普通视图插件并存）**，详见 `06 §factoryRole 字段详解`。**E5.8 方案A 已落地（#41.11-#41.18）**：同角色多插件合法并存（一对多），默认 core:true 优先，设置页角色分组 + 切换按钮 + 图标激活套占槽，活动套持久化重启保持 |
 | `pluginRole` | 加载策略（view/data）——不填自动推导，见 `02 §二.1` |
 
 ### ❌ 不存在 / 已删的假点
@@ -131,7 +131,7 @@ useEffect(() => {
 | `extensionGear` | 底部齿轮菜单（设置/命令面板/主题选择器） |
 | `marketplaceItemGear` | 插件市场条目齿轮（启用/禁用/卸载） |
 | `menuBar` | ☰ 汉堡菜单栏 |
-| `panel` | 菜单栏「面板」菜单 |
+| `panel` | 菜单栏「面板」组归并（E5.8#148 壳招牌已删——插件 `group:"panel"` 项仍归并入菜单栏独立成组） |
 | `fileContext` | 文件树右键 |
 | `cardContext` | 卡片右键 |
 | `quickSendContext` | 快捷发送药丸右键 |
@@ -143,11 +143,32 @@ useEffect(() => {
 
 | 字段 | 必需 | 说明 |
 |------|:--:|------|
-| `command` | ✅ | 命令 ID |
+| `command` | ✅ | 命令 ID——有 `children` 时可为空字符串（父菜单项不执行命令，展开子菜单） |
+| `label` | ❌ | 显示标签——有值时覆盖命令标题 `getCommand(id).title`；父菜单项（无 `command`）必填 |
 | `group` | ❌ | 分组——同组内聚在一起，组间有分隔线。如 `"navigation"` / `"edit"` / `"delete"` |
 | `when` | ❌ | context key when 条件 |
+| `order` | ❌ | 排序权重——同组内越小越靠前 |
+| `children` | ❌ | 嵌套子菜单——**任意深度递归**（E5.8#148/#149，对标 VS Code `SubmenuAction`）；子项同构（`children` 内可再嵌 `children`） |
 
 **简写：** 只填命令 ID 的字符串 = `{ "command": "<id>" }`
+
+**嵌套子菜单示例（任意深度）：**
+```json
+{
+  "contributes": {
+    "menus": {
+      "menuBar": [
+        { "command": "", "label": "查看", "group": "view", "children": [
+          { "command": "cad.importDxf", "group": "view" },
+          { "command": "", "label": "界面", "group": "view", "children": [
+            { "command": "cad.togglePanel", "label": "面板", "group": "view" }
+          ] }
+        ] }
+      ]
+    }
+  }
+}
+```
 
 ### 3.3 `contributes.keybindings`——快捷键
 
@@ -224,7 +245,8 @@ useEffect(() => {
 | `description` | ✅ | 说明——Settings Editor 渲染为提示 |
 | `enum` | ❌ | 下拉选项（string 类型时可选） |
 | `enumDescriptions` | ❌ | 选项说明——和 enum 一一对应 |
-| `uiHint` | ❌ | 渲染提示——SettingsView 按 hint 选择控件（已知值 `"color"`/`"fontFamily"`/`"fontSize"`/`"file"`/`"directory"` 等，开放 string——未知 hint 降级回 type 默认渲染） |
+| `uiHint` | ❌ | 渲染提示——SettingsView 按 hint 选择控件（已知值 `"color"`/`"fontFamily"`/`"fontSize"`/`"file"`/`"directory"`/`"slider"`/`"segmented"`/`"image"` 等，开放 string——未知 hint 降级回 type 默认渲染）。`"segmented"` = 分段单选（ghost 双轨制，配合 `enum` + `enumDescriptions` 声明，短标签 = enumDescription `—` 前段、tooltip = 全句） |
+| `group` | ❌ | **组内二级标题**（E5.8#78/#189）——同 `group` 值的 key 在设置页归到子标题下渲染；无 `group` 的 key 保持平铺。声明中文节名即显示；节名标题走 i18n（插件 `contributes.i18n` 提供翻译）。零壳改动——壳机制对插件键同样生效。 |
 
 **安装后效果：** Settings Editor 左侧导航树自动出现 "CAD 查看器" 分组 → 右侧自动渲染表单——不需要手写设置界面。
 
@@ -273,9 +295,11 @@ useEffect(() => {
 | `id` | ✅ | 主题 ID |
 | `label` | ✅ | 显示名称 |
 | `uiTheme` | ✅ | `"dark"` \| `"light"` \| `"highContrast"` |
-| `path` | ✅ | 主题定义 JSON 文件路径（含 `colors` 映射）——**相对插件目录** |
+| `path` | ✅ | 主题定义 JSON 文件路径（`appearance` + `colorways[]`）——**相对插件目录** |
 
 声明是 metadata-only；主题颜色数据在加载时异步 fetch。旧格式顶层 `themes` 字段自动归一化（见 `02 §二.1`）。
+
+> **🔥 配方 JSON 契约（E5.8#129 立）**：`path` 指向的配方文件按 `public/schemas/theme.schema.json` 机械校验（`npm run check` 链 `check-theme-schema.mjs`），格式错当场红灯 exit 1 不静默——运行时 `parseThemeRecipe` toast 是第二道防线。主题文件建议首行 `"$schema"` 引 schema 拿编辑器 IntelliSense（相对路径见 [11-主题制作](11-主题制作.md) §②）。
 
 ### 3.7 `contributes.iconThemes`——图标主题
 
@@ -289,7 +313,48 @@ useEffect(() => {
 }
 ```
 
-对标 VS Code `productIconThemes`。字段同 themes（id/label/path）。
+对标 VS Code `productIconThemes`。字段同 themes（id/label/path）。**mappings JSON 双形态（E5.8#133 ④ 拍板）**——每条目二选一：
+
+```json
+{
+  "files": {
+    "readme.md": { "class": "codicon codicon-markdown" },
+    "main.rs":  { "class": "myfont myfont-rust", "color": "#dea584" },
+    "logo.svg": { "imagePath": "icons/logo.svg" }
+  },
+  "extensions": { ".ts": { "class": "codicon codicon-typescript" } },
+  "folders":   { "src": { "class": "codicon codicon-folder" } },
+  "foldersExpanded": { "src": { "class": "codicon codicon-folder-opened" } }
+}
+```
+
+| 形态 | 字段 | 渲染 | 说明 |
+|------|------|------|------|
+| **字体 glyph** | `class`（必）+ `color?`（可选） | `<span>` | 单色/带色字体 glyph（seti/material 即此类，每图标一色）；自定义字体走 `@font-face`（见下方 `font` 段） |
+| **图像资产** | `imagePath` | `<img>` | 任意多色（拟物化/贴图）；相对路径 → 壳加载时解析为 `linkdesk://{pluginId}/{path}` 绝对 URL（消费方零解析负担） |
+
+同一主题可混用两形态。**选择器 = 设置 `app.iconTheme`**（壳声明，默认 `"default"` = 内置 codicon 保底，零图标主题插件也成立；枚举 = 已登记图标主题 + default，装/卸动态刷新）。切换经事件 `iconTheme:changed` 广播（载荷 + 契约见 `01-插件API契约.md` §3.2 壳广播事件表）——**需要自定义文件图标视觉的插件手动订阅应用**。
+
+**可选顶层 `font` 段（E5.8#133.4 自定义图标字体）**——`class` 引用自定义字体 glyph 时声明；壳生成 @font-face 广播进池 + 注入 glyph 类 CSS，作者零 @font-face 负担：
+
+```json
+{
+  "font": {
+    "path": "icons/fonts/my-icons.woff2",
+    "family": "my-icons",
+    "glyphs": "icons/my-icons.css"
+  },
+  "files": { "main.rs": { "class": "my-icons my-icons-rust", "color": "#dea584" } }
+}
+```
+
+| `font` 字段 | 类型 | 说明 |
+|------|------|------|
+| `path` | string（必） | 字体资产相对路径（或绝对 URL）——壳解析 `linkdesk://` + 生成 `@font-face` |
+| `family` | string（必） | 字体族名——glyph CSS 里 `font-family` 写它 |
+| `glyphs` | string（选） | glyph 类 CSS 文件相对路径（`@font-face` **不要**写在里面——壳已生成；只写 `.my-icons-x::before{content:"…"}`） |
+
+无 `font` 段 → 零自定义字体（codicon 保底 / 纯图像资产主题）。字体注入对消费方透明（preload 机械层处理），无需手动订阅。
 
 ### 3.8 `contributes.icons`——共享图标
 

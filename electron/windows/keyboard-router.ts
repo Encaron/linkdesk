@@ -100,8 +100,10 @@ export function syncKeybindings(data: KeybindingSyncData): void {
   debug(`  chordPrefixes: ${data.chordPrefixes.join(', ')}`);
 }
 
-/** 处理单个 before-input-event——同步查表 + chord 状态机 */
-function handleBeforeInput(event: Event, input: Input, mainWindow: BrowserWindow): void {
+/** 处理单个 before-input-event——同步查表 + chord 状态机。
+ *  E5.8#46.8：sourceWindowId 标注来源 WCV 所属窗（attachKeyboardRouting 在 createPoolView 工厂注入）——
+ *  随 executeShortcut 载荷转发壳，键盘快捷键按聚焦窗裁决（Ctrl+W 关本窗 tab）。 */
+function handleBeforeInput(event: Event, input: Input, mainWindow: BrowserWindow, sourceWindowId: string): void {
   if (input.type !== 'keyDown') return;
   if (input.isAutoRepeat) return; // key repeat 不触发快捷键——防止 toggle 型命令重复翻转
 
@@ -126,8 +128,9 @@ function handleBeforeInput(event: Event, input: Input, mainWindow: BrowserWindow
       debug(`  → dedup skip: "${keyString}" already forwarded within 50ms`);
       return;
     }
-    debug(`  → SEND keyboard:executeShortcut to shell`);
-    mainWindow.webContents.send(IPC.keyboard.executeShortcut, ki);
+    debug(`  → SEND keyboard:executeShortcut to shell (sourceWindowId=${sourceWindowId})`);
+    // E5.8#46.8：合并 sourceWindowId——壳 dispatch 按聚焦窗裁决快捷键路由
+    mainWindow.webContents.send(IPC.keyboard.executeShortcut, { ...ki, sourceWindowId });
   };
 
   // ── Chord 第二键 ──
@@ -191,8 +194,8 @@ function handleBeforeInput(event: Event, input: Input, mainWindow: BrowserWindow
  * 不挂 = 全局快捷键全灭（Ctrl+Shift+P 等壳 keydown 收不到）。挂载在工厂处
  * 保证 rebuildPool 崩溃恢复后重建的视图也自动带上路由。
  */
-export function attachKeyboardRouting(view: WebContentsView, mainWindow: BrowserWindow): void {
+export function attachKeyboardRouting(view: WebContentsView, mainWindow: BrowserWindow, sourceWindowId: string): void {
   view.webContents.on('before-input-event', (event, input) => {
-    handleBeforeInput(event, input, mainWindow);
+    handleBeforeInput(event, input, mainWindow, sourceWindowId);
   });
 }

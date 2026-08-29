@@ -45,6 +45,10 @@ export function useSidebarHost({ setSidebarView, setIsSidebarExpanded, ready }: 
       } else {
         layoutEngine.setZoneWidth("sidebar", s.preCollapseWidth);
       }
+      // E5.8#148：展开态唯一广播点——全部折叠路径（icon:selected/sidebar:toggle/view:toggleCollapse/
+      // resetPosition）都过 doCollapse，单一发射保证 isSidebarExpanded（界面→主侧栏勾选态）恒同步。
+      // 此前 sidebar:toggle 等 3 条路径漏发 → 折叠后勾选仍打 ✓（#148 CDP 实证）。
+      shellEvents.emit("sidebar:toggled", !collapse);
     };
 
     // E3.6/E5#4b：图标栏点击——读 contributes.viewsContainers 取 containerId
@@ -58,9 +62,8 @@ export function useSidebarHost({ setSidebarView, setIsSidebarExpanded, ready }: 
       if (s.containerId === cid) {
         // E5#49：同图标 → toggle 折叠/展开（与 ◀/▶ 按钮行为一致）
         const shouldCollapse = !zoneCollapsed();
-        doCollapse(shouldCollapse);
+        doCollapse(shouldCollapse); // E5.8#148：内部已广播 sidebar:toggled（单一发射点）
         shellEvents.emit("sidebar:containerChanged", shouldCollapse ? null : cid);
-        shellEvents.emit("sidebar:toggled", !shouldCollapse);
         return;
       }
 
@@ -72,6 +75,7 @@ export function useSidebarHost({ setSidebarView, setIsSidebarExpanded, ready }: 
       // iconOrder 同款机制 PluginStateService，归一化不新发明）
       setPluginStateValue(APP_PLUGIN_ID, "activeSidebarPlugin", pluginId);
       shellEvents.emit("sidebar:containerChanged", cid);
+      // 切换容器 ⇒ 侧栏展开态（若此前折叠 doCollapse(false) 内部已发 true——双重同值无副作用）
       shellEvents.emit("sidebar:toggled", true);
     });
 

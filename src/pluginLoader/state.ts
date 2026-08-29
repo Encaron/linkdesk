@@ -155,8 +155,10 @@ function extractPluginId(path: string): string {
  * 卸载/禁用只改状态字段（不删条目）。marketplace 从缓存读，不依赖文件系统。
  *
  * 缓存键：app.pluginMetadataCache → Record<pluginId, CachedPluginMeta>
+ *
+ * E5.8#156：export——loader.pruneUninstalledCache 纯函数签名需引用该类型（差集清理）。
  */
-interface CachedPluginMeta {
+export interface CachedPluginMeta {
   pluginId: string;
   name: string;
   description?: string;

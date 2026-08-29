@@ -21,14 +21,14 @@ import type { ShellExposed } from '../src/core/api/linkdesk-api/surfaces';
 import { buildWindow } from './window-namespace';
 // ── E5.7#97：wire 契约归口——preload 边界载荷全部从 src/core/types/ipc/ import type ──
 import type { PoolLayout } from '../src/core/types/pool/poolLayout';
-import type { PoolTabAction } from '../src/core/types/ipc/tabActions';
+import type { ShellTabAction } from '../src/core/types/ipc/tabActions';
 import type { SidebarAction } from '../src/core/types/ipc/sidebarActions';
-import type { KeyboardInput, KeybindingSyncData } from '../src/core/types/ipc/keyboard';
+import type { ForwardedKeyboardInput, KeybindingSyncData } from '../src/core/types/ipc/keyboard';
 import type { OpenPortConfig, SerialDataPayload, SerialStatsPayload, SerialSystemPayload } from '../src/core/types/ipc/serial';
 import type { DialogOpenOptions } from '../src/core/types/ipc/dialogs';
 import type { ConfigurationChangedPayload, PluginStateChangedPayload } from '../src/core/types/ipc/events';
 import type { BridgeRequestPayload } from '../src/core/types/ipc/bridge';
-import type { PoolQuickPickAction, PoolToastAction, PoolDialogAction, PoolFloatingPanelAction, MemoryPressureData } from '../src/core/types/ipc/poolActions';
+import type { PoolQuickPickAction, PoolToastAction, PoolDialogAction, PoolFloatingPanelAction, MemoryPressureData, PoolReadyPayload, CreatePoolWindowRequest, PoolWindowClosedPayload, PoolWindowBoundsPayload, TabBarRectsPayload, ShellTabDragPosition, AdsorbHintPayload, AdsorbIndexPayload } from '../src/core/types/ipc/poolActions';
 import type { FileChangeEvent } from '../src/core/services/files/FileService';
 import type { MenuItemDescriptor } from '../src/core/api/linkdesk-api/types'; // E5.8#20：契约语义类型——menu.getItems 返回面
 // E5.8#1b：keybinding 归一化集中——主进程/壳/池三端共用单一权威源（防 E5.7#79 漂移复发）
@@ -53,6 +53,14 @@ ipcRenderer.on(IPC.bridge.request, (_event, req: BridgeRequestPayload) => {
   _bridgeRequestRelay.push(req);
 });
 
+// ── E5.8#46.11：池窗 bounds 上报缓冲——壳 reload 后主进程 preloadReady seed 补推（见 main.ts），
+// 缓冲+回放防 IPC 早于 React 订阅到达（对标 _bridgeRequestRelay 硬约束 20 同款）──
+const _windowBoundsRelay = new IpcRelay<PoolWindowBoundsPayload>();
+
+ipcRenderer.on(IPC.pool.windowBoundsChanged, (_event, payload: PoolWindowBoundsPayload) => {
+  _windowBoundsRelay.push(payload);
+});
+
 // ── E5.7#56：壳侧命令 handler 地图——插件入口模块双进程执行（壳 glob loader + 池视图渲染）──
 // 壳进程执行时 registerCommand 传入的 handler 是页面世界函数（contextBridge 双向代理，
 // 隔离世界可调用——preload-pool _poolCommands 同款机制）。壳 CommandRegistry 条目执行时
@@ -60,8 +68,9 @@ ipcRenderer.on(IPC.bridge.request, (_event, req: BridgeRequestPayload) => {
 const _shellCommands = new Map<string, (...args: unknown[]) => unknown>();
 
 // E5.5#7-p6：键盘路由——接收主进程 before-input-event 转发的快捷键
-let _keyboardForwardHandler: ((input: KeyboardInput) => void) | null = null;
-ipcRenderer.on(IPC.keyboard.executeShortcut, (_event, input: KeyboardInput) => {
+// E5.8#46.8：载荷含 sourceWindowId（ForwardedKeyboardInput）——壳按聚焦窗裁决
+let _keyboardForwardHandler: ((input: ForwardedKeyboardInput) => void) | null = null;
+ipcRenderer.on(IPC.keyboard.executeShortcut, (_event, input: ForwardedKeyboardInput) => {
   if (_keyboardForwardHandler) _keyboardForwardHandler(input);
 });
 
@@ -72,9 +81,28 @@ ipcRenderer.on(IPC.pool.sidebarAction, (_event, action: SidebarAction) => {
 });
 
 // E5.6#16.5：主区 tab 操作回调——池→主进程→壳，壳侧 React 注册 handler 调 useTabManager
-let _tabActionHandler: ((action: PoolTabAction) => void) | null = null;
-ipcRenderer.on(IPC.pool.tabAction, (_event, action: PoolTabAction) => {
+// E5.8#44-B：主进程按 sender 注入 sourceWindowId → 壳收 ShellTabAction（#43-4 权威窗口身份）
+let _tabActionHandler: ((action: ShellTabAction) => void) | null = null;
+ipcRenderer.on(IPC.pool.tabAction, (_event, action: ShellTabAction) => {
   if (_tabActionHandler) _tabActionHandler(action);
+});
+
+// E5.8#44-B：TabBar viewport rects 上报回调——池→主进程→壳，壳侧 React 注册 handler 存吸附命中注册表
+let _tabBarRectsHandler: ((payload: TabBarRectsPayload) => void) | null = null;
+ipcRenderer.on(IPC.pool.tabBarRects, (_event, payload: TabBarRectsPayload) => {
+  if (_tabBarRectsHandler) _tabBarRectsHandler(payload);
+});
+
+// E5.8#44-C：拖拽位置上报回调——池→主进程→壳，壳侧 React 注册 handler 做吸附命中检测（排除源窗）
+let _dragPositionHandler: ((pos: ShellTabDragPosition) => void) | null = null;
+ipcRenderer.on(IPC.pool.dragPosition, (_event, pos: ShellTabDragPosition) => {
+  if (_dragPositionHandler) _dragPositionHandler(pos);
+});
+
+// E5.8#46.10：吸附插入缝隙回传回调——池→主进程（按 sender 注入 windowId）→壳，壳存吸附注册表供释放并窗精确落位
+let _adsorbIndexHandler: ((payload: AdsorbIndexPayload) => void) | null = null;
+ipcRenderer.on(IPC.pool.adsorbIndex, (_event, payload: AdsorbIndexPayload) => {
+  if (_adsorbIndexHandler) _adsorbIndexHandler(payload);
 });
 
 // E5.7#15：QuickPick 动作回调——池→主进程→壳，壳侧 React 注册 handler 调 QuickPickService
@@ -113,7 +141,7 @@ const events = createEventSystem(ipcRenderer, {
 });
 
 try {
-  // E5.8#20：契约面机械对齐——expose 对象 satisfies ShellExposed（22 命名空间，缺面/形状失配即编译红）
+  // E5.8#20：契约面机械对齐——expose 对象 satisfies ShellExposed（23 命名空间，缺面/形状失配即编译红）
   const shellExposed = {
     /** OS 拖入——从 File 对象取真实路径。Electron 43 contextIsolation 下 File.path 为空，必须走 webUtils。 */
     getFilePath: (file: File) => webUtils.getPathForFile(file),
@@ -304,7 +332,7 @@ try {
       // E5.5#7-p7：壳→主进程同步快捷键表
       syncToMainProcess: (data: KeybindingSyncData) => ipcRenderer.invoke(IPC.keyboard.syncShortcuts, data),
       // E5.5#7-p7：接收主进程转发的 before-input-event 拦截事件
-      onForwardedEvent: (cb: (input: KeyboardInput) => void) => {
+      onForwardedEvent: (cb: (input: ForwardedKeyboardInput) => void) => {
         _keyboardForwardHandler = cb;
         return () => { _keyboardForwardHandler = null; };
       },
@@ -350,6 +378,10 @@ try {
       // E5#108c：拖出到桌面
       startDrag: (filePath: string, iconPath?: string) => ipcRenderer.send(IPC.shell.startDrag, filePath, iconPath),
     },
+    // ── 外观资产（E5.8#153：壳侧命令执行用——齿轮命令 handler 跑在壳进程，池 appearance 面不注入壳）──
+    appearance: {
+      revealStorage: () => ipcRenderer.invoke(IPC.appearance.revealStorage),
+    },
     // ── 环境信息（E2c #13b——对标 VS Code ExtensionContext）──
     env: {
       get: (pluginId?: string) => ipcRenderer.invoke(IPC.env.get, pluginId),
@@ -384,11 +416,12 @@ try {
     // ── E5.6#8c → E5.7#4：pool API——壳推送布局到唯一池、监听池就绪 ──
     pool: {
       /** 推送布局到唯一 Pool——单 WCV 直推（E5.7#4） */
-      pushLayout: (layout: PoolLayout) => ipcRenderer.send(IPC.pool.pushLayout, layout),
-      /** 监听池就绪（E5.7#54：zone 过滤已删——单 Pool）。返回 unsubscribe */
-      onReady: (cb: () => void) => {
-        const handler = () => {
-          try { cb(); } catch { /* contextBridge 回调静默失败 */ }
+      // E5.8#43-2：windowId 可选——缺省 'main'。壳据窗口注册表定向推送（脱出窗 = 壳生成 id）
+      pushLayout: (layout: PoolLayout, windowId?: string) => ipcRenderer.send(IPC.pool.pushLayout, layout, windowId),
+      /** 监听池就绪——回调收 windowId（E5.8#43-1 A3：主池='main'，脱出池=壳生成 id，壳据 id 定向推该窗布局）。返回 unsubscribe */
+      onReady: (cb: (windowId: string) => void) => {
+        const handler = (_event: unknown, payload: PoolReadyPayload) => {
+          try { cb(payload?.windowId ?? 'main'); } catch { /* contextBridge 回调静默失败 */ }
         };
         ipcRenderer.on(IPC.pool.ready, handler);
         return () => ipcRenderer.removeListener(IPC.pool.ready, handler);
@@ -400,11 +433,29 @@ try {
         _sidebarActionHandler = cb;
         return () => { _sidebarActionHandler = null; };
       },
-      /** E5.6#16.5：注册主区 tab 操作回调——池→壳→useTabManager。返回 unsubscribe */
-      onTabAction: (cb: (action: PoolTabAction) => void) => {
+      /** E5.6#16.5：注册主区 tab 操作回调——池→壳→useTabManager（E5.8#44-B：载荷 = ShellTabAction，含 sourceWindowId）。返回 unsubscribe */
+      onTabAction: (cb: (action: ShellTabAction) => void) => {
         _tabActionHandler = cb;
         return () => { _tabActionHandler = null; };
       },
+      /** E5.8#44-B：注册 TabBar rects 上报回调——池→壳→吸附命中注册表（windowRelocation.handleTabBarRects）。返回 unsubscribe */
+      onTabBarRects: (cb: (payload: TabBarRectsPayload) => void) => {
+        _tabBarRectsHandler = cb;
+        return () => { _tabBarRectsHandler = null; };
+      },
+      /** E5.8#44-C：注册拖拽位置上报回调——池→壳→吸附命中检测（windowRelocation.handleDragPosition，排除源窗）。返回 unsubscribe */
+      onDragPosition: (cb: (pos: ShellTabDragPosition) => void) => {
+        _dragPositionHandler = cb;
+        return () => { _dragPositionHandler = null; };
+      },
+      /** E5.8#46.10：注册吸附插入缝隙回传回调——池→壳→吸附注册表（windowRelocation.handleAdsorbIndex，释放并窗精确落位）。返回 unsubscribe */
+      onAdsorbIndex: (cb: (payload: AdsorbIndexPayload) => void) => {
+        _adsorbIndexHandler = cb;
+        return () => { _adsorbIndexHandler = null; };
+      },
+      /** E5.8#44-C：推送吸附提示到目标窗——壳命中解析出 targetWindowId 后定向推送（目标窗 TabBar 插入指示/清除；#46.10 载荷带 viewport 坐标） */
+      pushAdsorbHint: (hint: AdsorbHintPayload, windowId: string) =>
+        ipcRenderer.send(IPC.pool.adsorbHint, hint, windowId),
       /** E5.7#15：推送 QuickPick 哑渲染数据到池——壳 QuickPickService 序列化后直推（聪慧→哑） */
       pushQuickPick: (data: unknown) => ipcRenderer.send(IPC.pool.quickpickShow, data),
       /** E5.7#15：注册 QuickPick 动作回调——池→壳→QuickPickService。返回 unsubscribe */
@@ -438,6 +489,21 @@ try {
         _memoryPressureHandler = cb;
         return () => { _memoryPressureHandler = null; };
       },
+      // ── E5.8#43-1（A4）：多窗口底座——创建/关闭池窗 + 监听 OS 关窗（壳驱动，主进程执行窗口生命周期）──
+      /** 壳→主：创建脱出池窗——windowId 壳生成（tab 归属），bounds 可选。tab 内容随后 pushLayout 定向该 windowId */
+      createWindow: (opts: CreatePoolWindowRequest) => ipcRenderer.send(IPC.pool.createWindow, opts),
+      /** 壳→主：关闭脱出池窗——空窗自灭/并回主窗口销毁（tab 归属已由壳先行处理） */
+      closeWindow: (windowId: string) => ipcRenderer.send(IPC.pool.closeWindow, windowId),
+      /** 主→壳：监听池窗被 OS 关闭（用户点 ×/系统关窗）——回调收 windowId，壳按窗口策略处理 tab。返回 unsubscribe */
+      onWindowClosed: (cb: (windowId: string) => void) => {
+        const handler = (_event: unknown, payload: PoolWindowClosedPayload) => {
+          try { cb(payload?.windowId ?? ''); } catch { /* contextBridge 回调静默失败 */ }
+        };
+        ipcRenderer.on(IPC.pool.windowClosed, handler);
+        return () => ipcRenderer.removeListener(IPC.pool.windowClosed, handler);
+      },
+      /** E5.8#43-3：主→壳 监听池窗位置/大小变更（moved/resized 上报 + #46.11 preloadReady seed）——壳注册表更新 + 落盘浮窗位置（I9-14）。返回 unsubscribe */
+      onWindowBoundsChanged: (cb: (payload: PoolWindowBoundsPayload) => void) => _windowBoundsRelay.onReady(cb),
     },
 
     // ── E3f #52f：窗口控制——TitleBar 的自定义 ─ □ × 按钮（E5.8#20 共享模块——双端同版，防 setZoom 类漂移）──

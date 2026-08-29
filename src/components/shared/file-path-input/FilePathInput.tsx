@@ -7,6 +7,7 @@
  */
 
 import { useTranslation } from "react-i18next";
+import Button from "../button/Button"; // E5.8#99：实心动作按钮——修「壳组件依赖 settings 插件 .settings-action-btn 样式」的倒置耦合
 
 interface FilePathInputProps {
   value: string;
@@ -47,11 +48,10 @@ export default function FilePathInput({ value, onChange, dialogType }: FilePathI
         style={{ flex: 1 }}
         placeholder={dialogType === "directory" ? t("选择目录…") : t("选择文件…")}
       />
-      <button
-        className="settings-action-btn"
+      <Button
         onClick={handleBrowse}
         title={dialogType === "directory" ? t("浏览目录…") : t("浏览文件…")}
-      >…</button>
+      >…</Button>
     </div>
   );
 }

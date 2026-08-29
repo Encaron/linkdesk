@@ -5,10 +5,14 @@
   display: flex;
   align-items: stretch;
   background: var(--bg-card);
-  height: 35px;
+  height: calc(35px * var(--ui-scale)); /* E5.8 Phase 12 #169：条 35px 乘 scale */
   flex-shrink: 0;
   user-select: none;
 }
+
+/* ── E5.8#46.10：整条 `tab-bar-adsorb` 高亮已删——吸附指示改为 .group-tab-drop-indicator
+   细竖线（两 tab 间插入缝隙，VS Code 式）。现象二（叠窗时横条被误认成菜单栏）随竖线
+   归属（竖线落在哪个标签栏）自然消除。零新 CSS——复用已过审的拖拽插入指示器样式。 ── */
 
 /* ── 标签页列表── */
 
@@ -19,6 +23,9 @@
   overflow-y: hidden;
   flex: 1;
   min-width: 0;
+  /* E5.8#51：左 padding 4px——最左吸附竖线（index 0 前）居中于「条左缘↔tab0」空隙，
+     不被负 margin 越出容器裁剪；scrollLeft 语义不受 padding 影响 */
+  padding-left: 4px;
   scrollbar-width: none;
 }
 .group-tab-list::-webkit-scrollbar {
@@ -34,15 +41,16 @@
   flex: 0 1 120px;
   min-width: 64px;
   max-width: 240px;
-  height: 100%;
+  height: calc(30px * var(--ui-scale)); /* E5.8 Phase 12 #169：tab 30px 乘 scale（最高危） */
+  margin: 4px 4px 0 0; /* E5.8#51 竞标 D：顶浮 4px + tab 间常驻 4px 空隙（指示器净占 0 落空隙） */
   padding: 0 8px;
   background: var(--bg-card);
   color: var(--text-secondary);
-  font-size: 13px;
+  font-size: var(--font-size-md); /* 13→md */
   cursor: pointer;
-  border-right: 1px solid var(--separator);
-  border-bottom: 1px solid var(--separator);
-  transition: background 120ms, color 120ms;
+  border: 1px solid transparent; /* 预留 active 描边——border-box 下不增宽 */
+  border-radius: var(--radius-md);
+  transition: background 150ms, color 150ms, border-color 150ms, box-shadow 150ms;
   position: relative;
 }
 .group-tab-item:hover {
@@ -51,8 +59,24 @@
 .group-tab-item.active {
   background: var(--bg-window);
   color: var(--text-primary);
-  border-bottom-color: transparent;
-  border-top: 2px solid var(--accent);
+  border-color: var(--separator);
+  box-shadow: var(--tab-active-shadow);
+}
+/* E5.8#51 竞标 D：active 顶部 2px accent 横杠——独立 ::before 元素（非 border-top），
+   圆角 tab 上呈「短横杠」而非沿角线；left/right 8px 内缩避开圆角。 */
+.group-tab-item::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 8px;
+  right: 8px;
+  height: 2px;
+  border-radius: var(--radius-xs);
+  background: transparent;
+  pointer-events: none;
+}
+.group-tab-item.active::before {
+  background: var(--accent);
 }
 .group-tab-item.dragging {
   opacity: 0.3;
@@ -63,7 +87,7 @@
 .group-tab-dirty-dot {
   width: 8px;
   height: 8px;
-  border-radius: 50%;
+  border-radius: var(--radius-full);
   background: var(--dirty-dot);
   flex-shrink: 0;
 }
@@ -71,16 +95,18 @@
 /* ── 图标 ── */
 
 .group-tab-icon {
-  width: 14px;
-  height: 14px;
+  width: calc(14px * var(--ui-scale)); /* E5.8 Phase 12 #169：tab 图标盒随 scale（文本相邻图标轨道） */
+  height: calc(14px * var(--ui-scale));
   flex-shrink: 0;
   opacity: 0.8;
+  /* E5.8#46.6：禁原生 HTML5 拖拽——img 默认可拖，会与标签页指针拖拽抢手势（拖 tab 出原生图标拖影） */
+  -webkit-user-drag: none;
 }
 .group-tab-item.active .group-tab-icon {
   opacity: 1;
 }
 .group-tab-icon-emoji {
-  font-size: 14px;
+  font-size: var(--font-size-lg); /* 14→lg */
   flex-shrink: 0;
   opacity: 0.8;
 }
@@ -106,13 +132,13 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 18px;
-  height: 18px;
+  width: calc(18px * var(--ui-scale)); /* E5.8 Phase 12 #169：close 18px 乘 scale */
+  height: calc(18px * var(--ui-scale));
   border: none;
-  border-radius: 3px;
+  border-radius: var(--radius-sm);
   background: transparent;
   color: var(--text-muted);
-  font-size: 14px;
+  font-size: var(--font-size-lg); /* 14→lg */
   line-height: 1;
   cursor: pointer;
   flex-shrink: 0;
@@ -134,12 +160,12 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
+  width: calc(28px * var(--ui-scale)); /* E5.8 Phase 12 #169：plus 28px 乘 scale */
   height: 100%;
   border: none;
   background: transparent;
   color: var(--text-muted);
-  font-size: 16px;
+  font-size: var(--font-size-lg); /* 14→lg */
   cursor: pointer;
   flex-shrink: 0;
   transition: background 100ms, color 100ms;
@@ -160,7 +186,7 @@
   border: none;
   background: var(--bg-card);
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--font-size-sm); /* E5.8 Phase 12 #169：scroll 12→sm */
   cursor: pointer;
   flex-shrink: 0;
 }
@@ -171,26 +197,18 @@
 
 /* ── 拖拽插入指示器 ── */
 
+/* E5.8#51 竞标 D：指示器净占 0 布局 + 居中于 tab 间 4px 空隙。
+   空隙 G=4px、竖线 W=2px → 居中需左移 (G−W)/2−G = −3px（margin-left −3），
+   margin-right +1 使净占 = W−3+1 = 0（整排纹丝不动，长按/拖动零挤占）。
+   竖线落 [P+1, P+3]（P=前一 tab 右缘），空隙 [P, P+4]——两边各留 1px，正正好好站两个胶囊中间。
+   高度 30px + margin-top 4px 对齐 tab 可视高。 */
 .group-tab-drop-indicator {
   width: 2px;
-  height: 100%;
+  height: calc(30px * var(--ui-scale)); /* E5.8 Phase 12 #169：跟随 tab 高 */
+  margin: 4px 1px 0 -3px;
+  border-radius: var(--radius-xs);
   background: var(--accent);
   flex-shrink: 0;
-}
-
-/* ── 拖拽预览浮层 ── */
-
-.group-tab-drag-preview {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 4px 12px;
-  background: var(--bg-card);
-  border: 1px solid var(--border-normal);
-  border-radius: 4px;
-  color: var(--text-primary);
-  font-size: 13px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
 }
 
 /* ── E5.7#14：右键菜单归一化——池侧 group-tab-context-* 死代码已删（E5.6#16.7k 前身）。
@@ -230,10 +248,11 @@
 .drop-glass-zone {
   position: absolute;
   pointer-events: none;
-  /* 玻璃表面——半透明散射面叠加 backdrop-filter 毛玻璃 */
+  /* 玻璃表面——半透明散射面叠加 backdrop-filter 毛玻璃（E5.8#76 死编码消除：
+     blur 跟主题 --surface-glass-blur（per-surface）→ --glass-blur 基值，零值=现状零变化） */
   background: var(--drop-glass-bg);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(var(--surface-glass-blur, var(--glass-blur, 0px))) saturate(var(--glass-saturate, 1));
+  -webkit-backdrop-filter: blur(var(--surface-glass-blur, var(--glass-blur, 0px)));
   /* 固态 hairline 边界（替代虚线 outline）——轻微可见但不抢眼 */
   border: 1px solid var(--drop-glass-border);
   /* 内发光——模拟玻璃边缘集光，定义区域边界 */
@@ -243,19 +262,19 @@
 
 /* ── E5.6#16.7k-3：PlusMenu [+] 下拉菜单 ── */
 .group-tab-plus-menu {
-  background: var(--bg-dropdown);
-  border: 1px solid var(--border-normal);
-  border-radius: 6px;
+  background: var(--bg-card); /* E5.8#128.3：幽灵 --bg-dropdown → --bg-card（下拉表面，同 quick-pick） */
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
   padding: 4px 0;
   min-width: 160px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  box-shadow: var(--shadow-lift);
 }
 
 .group-tab-plus-menu-item {
   display: block;
   width: 100%;
   padding: 8px 16px;
-  font-size: 13px;
+  font-size: var(--font-size-md); /* E5.8 Phase 12 #169：菜单项 13→md */
   text-align: left;
   background: none;
   border: none;
@@ -264,5 +283,5 @@
 }
 
 .group-tab-plus-menu-item:hover {
-  background: var(--bg-hover);
+  background: var(--hover-overlay); /* E5.8#128.3：幽灵 --bg-hover → --hover-overlay（原无效值，现恢复 hover 反馈） */
 }

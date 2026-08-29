@@ -82,9 +82,14 @@ html, body {
   flex-shrink: 0;
 }
 
-/* ── Quick-copy pill in tab bar ── */
-#quick-copy {
+/* ── Quick-copy pills in tab bar ── */
+.quick-copy-group {
   margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.quick-copy {
   padding: 5px 14px;
   font-family: "JetBrains Mono", "Cascadia Code", "Consolas", monospace;
   font-size: 13px;
@@ -97,15 +102,31 @@ html, body {
   transition: all 0.2s ease;
   white-space: nowrap;
 }
-#quick-copy:hover {
+.quick-copy:hover {
   background: rgba(52,211,153,0.22);
   border-color: #34d399;
   box-shadow: 0 0 8px rgba(52,211,153,0.2);
 }
-#quick-copy.copied {
+.quick-copy.copied {
   color: #fff;
   background: #22C55E;
   border-color: #22C55E;
+}
+/* ── Kill-port pill — semantic rose for "stop" action ── */
+.quick-copy--kill {
+  color: #fb7185;
+  background: var(--rose-soft);
+  border: 1px solid rgba(244,63,94,0.3);
+}
+.quick-copy--kill:hover {
+  background: rgba(244,63,94,0.22);
+  border-color: #fb7185;
+  box-shadow: 0 0 8px rgba(244,63,94,0.2);
+}
+.quick-copy--kill.copied {
+  color: #fff;
+  background: #f43f5e;
+  border-color: #f43f5e;
 }
 #tab-bar .tab-label {
   font-family: "Inter", "Noto Sans SC", sans-serif;
@@ -440,7 +461,10 @@ mark {
   <span class="tab-label">切换模式</span>
   <button class="tab-btn active" data-tab="new">🆕 新AI对话</button>
   <button class="tab-btn" data-tab="e35">🎨 E3.5对话</button>
-  <button id="quick-copy" title="点击复制 npm run electron:dev">npm run electron:dev</button>
+  <div class="quick-copy-group">
+    <button class="quick-copy" data-cmd="npm run electron:dev" title="点击复制 npm run electron:dev">npm run electron:dev</button>
+    <button class="quick-copy quick-copy--kill" data-cmd="kill-port 1420" title="点击复制 kill-port 1420">kill-port 1420</button>
+  </div>
 </div>
 
 <div id="app">
@@ -1190,16 +1214,18 @@ tabBtns.forEach(btn => {
   }
 })();
 
-// ── Quick-copy pill ──
-const quickCopy = document.getElementById('quick-copy');
-quickCopy.addEventListener('click', () => {
-  navigator.clipboard.writeText('npm run electron:dev').then(() => {
-    quickCopy.textContent = '✓ 已复制';
-    quickCopy.classList.add('copied');
-    setTimeout(() => {
-      quickCopy.textContent = 'npm run electron:dev';
-      quickCopy.classList.remove('copied');
-    }, 1200);
+// ── Quick-copy pills (tab bar) ──
+document.querySelectorAll('.quick-copy').forEach(pill => {
+  pill.addEventListener('click', () => {
+    const cmd = pill.dataset.cmd;
+    navigator.clipboard.writeText(cmd).then(() => {
+      pill.textContent = '✓ 已复制';
+      pill.classList.add('copied');
+      setTimeout(() => {
+        pill.textContent = cmd;
+        pill.classList.remove('copied');
+      }, 1200);
+    });
   });
 });
 

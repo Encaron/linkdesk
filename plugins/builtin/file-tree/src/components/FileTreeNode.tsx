@@ -35,6 +35,9 @@ interface FileTreeNodeProps {
   isCut?: boolean;
   /** E4V#35e: 活跃工作区根节点——accent 色加粗 */
   isActiveRoot?: boolean;
+  /** E5.8#133.3: 图标主题版本——切换时变化 → React.memo 浅比较不同 → 重渲染走新 resolver。
+   *  仅作 memo 触发器（图标在组件体内调 getIconResolver() 现取），不在渲染中读值。 */
+  iconThemeId?: string;
   /** E4V#27: 行内重命名——true 时显示 input 替代文件名 */
   isRenaming?: boolean;
   onRenameConfirm?: (uri: string, newName: string) => void;
@@ -50,12 +53,21 @@ interface FileTreeNodeProps {
   expandOnClick?: boolean;
 }
 
-function getFileIconClass(item: ExplorerItem, expanded: boolean): string {
+/** E5.8#133.3：双形态图标渲染——class → codicon span（可带每图标 color）/ imagePath → linkdesk:// img */
+function renderFileIcon(item: ExplorerItem, expanded: boolean): React.ReactNode {
   const resolver = getIconResolver();
-  if (item.isDirectory) {
-    return expanded ? resolver.getFolderIconOpened() : resolver.getFolderIcon(item);
+  const icon = item.isDirectory
+    ? (expanded ? resolver.getFolderIconOpened(item) : resolver.getFolderIcon(item))
+    : resolver.getIcon(item);
+  if (icon.kind === "image") {
+    return <img className="file-tree-icon file-tree-icon--image" src={icon.url} alt="" draggable={false} />;
   }
-  return resolver.getIcon(item);
+  return (
+    <span
+      className={`codicon ${icon.className} file-tree-icon`}
+      style={icon.color ? { color: icon.color } : undefined}
+    />
+  );
 }
 
 const FileTreeNode: React.FC<FileTreeNodeProps> = ({
@@ -155,8 +167,8 @@ const FileTreeNode: React.FC<FileTreeNodeProps> = ({
         <span className="file-tree-twistie-placeholder" />
       )}
 
-      {/* 图标 */}
-      <span className={`codicon ${getFileIconClass(item, expanded)} file-tree-icon`} />
+      {/* 图标——双形态（class → span / imagePath → img），E5.8#133.3 */}
+      {renderFileIcon(item, expanded)}
 
       {/* 文件名 / E5#19a 行内重命名——InlineInput 归一化 */}
       {isRenaming ? (

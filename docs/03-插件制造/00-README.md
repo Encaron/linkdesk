@@ -91,6 +91,7 @@
 | 8 | `08-ViewContainer-视图容器API.md` | 如何注册侧栏/面板视图、往别人的容器里加内容、titleActions 声明制 |
 | 9 | `09-插件目录规范.md` | 插件目录结构——文件放哪、命名约定 |
 | 10 | `10-如何造一个设置插件.md` | 整套设置 UI 替代品——factoryRole:settings 声明 + 数据 API 形状 + 白名单控件 + 切换激活套 |
+| 11 | `11-主题制作.md` | 主题插件作者指南——配方 json（风格域 + 配色变体）+ 资产 + 混搭自动出现（E5.8 外观主题化） |
 
 **JSON Schema：** `plugin.schema.json`——IDE 自动补全
 

@@ -107,6 +107,7 @@ import {
   buildPluginManager,
   buildPlugins,
   buildTheme,
+  buildAppearance, // E5.8#50.11：外观资产（选择图片拷贝入库）
   buildKeybindings,
   buildPluginState,
   buildHotExit,
@@ -148,6 +149,7 @@ try {
     pluginManager: buildPluginManager(),
     plugins: buildPlugins(),
     theme: buildTheme(),
+    appearance: buildAppearance(), // E5.8#50.11：外观资产（选择图片拷贝入库）
     keybindings: buildKeybindings(events),
     pluginState: buildPluginState(events),
     hotExit: buildHotExit(),

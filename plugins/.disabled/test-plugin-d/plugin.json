@@ -1,7 +1,0 @@
-{
-  "name": "测试插件 D — Delta",
-  "version": "1.0.0",
-  "description": "E3.6 sticky 测试——确保列表够长可滚动",
-  "author": "测试",
-  "entry": "src/index.tsx"
-}

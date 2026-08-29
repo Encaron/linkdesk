@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>E5.8 #46.10 · 跨窗吸附插入指示 — 设计示意图</title>
+<style>
+  /* 讨论用示意图——深色主题模拟 LinkDesk 视觉。产品实现时颜色一律走 CSS 变量（var(--accent) 等）。 */
+  :root {
+    --bg: #16161e;
+    --panel: #1e1e2b;
+    --win: #232333;
+    --win-border: #2e2e42;
+    --menu: #2a2a3c;
+    --tabbar: #1b1b26;
+    --tab: #26263a;
+    --tab-active: #2f2f46;
+    --content: #1b1b26;
+    --text: #d8d8e6;
+    --muted: #8a8aa0;
+    --accent: #4da3ff;          /* 竖线（产品用 var(--accent)） */
+    --warn: #ffb054;            /* 现状横条高亮 */
+    --ok: #5ecf8a;
+    --bad: #ff7a7a;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font: 14px/1.6 -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
+    padding: 28px 20px 60px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .page { width: 100%; max-width: 1080px; }
+
+  h1 { font-size: 22px; letter-spacing: .2px; }
+  h1 .tag { color: var(--accent); font-size: 13px; font-weight: 600; margin-left: 10px; vertical-align: 3px; }
+  .sub { color: var(--muted); margin-top: 6px; max-width: 860px; }
+  .sub b { color: var(--text); }
+
+  .compare { display: grid; grid-template-columns: 1fr; gap: 26px; margin-top: 26px; }
+  @media (min-width: 1020px) { .compare { grid-template-columns: 1fr 1fr; } }
+
+  .scene {
+    background: var(--panel);
+    border: 1px solid var(--win-border);
+    border-radius: 10px;
+    padding: 18px 18px 14px;
+  }
+  .scene h2 { font-size: 15px; font-weight: 600; margin-bottom: 12px; }
+  .scene h2 .status-a { color: var(--bad); margin-left: 8px; font-size: 12px; }
+  .scene h2 .status-b { color: var(--ok); margin-left: 8px; font-size: 12px; }
+
+  /* ── 画布：两个窗口叠放 ── */
+  .canvas {
+    position: relative;
+    border: 1px dashed var(--win-border);
+    border-radius: 8px;
+    background:
+      repeating-linear-gradient(45deg, rgba(255,255,255,.012) 0 8px, transparent 8px 16px),
+      #191924;
+    min-height: 210px;
+    padding: 10px;
+    overflow: hidden;
+  }
+
+  /* 主窗 */
+  .win-main {
+    width: 100%;
+    max-width: 560px;
+    background: var(--win);
+    border: 1px solid var(--win-border);
+    border-radius: 6px;
+    box-shadow: 0 6px 18px rgba(0,0,0,.35);
+  }
+  .menu {
+    height: 22px;
+    background: var(--menu);
+    border-radius: 5px 5px 0 0;
+    font-size: 11px;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 0 10px;
+    white-space: nowrap;
+  }
+  .menu .dot { width: 7px; height: 7px; border-radius: 50%; background: #3a3a52; display: inline-block; }
+  .tabs, .dt-tabs {
+    display: flex;
+    align-items: stretch;
+    background: var(--tabbar);
+    height: 35px;                 /* 真实标签栏高 = 35px */
+    padding-left: 4px;
+    position: relative;
+  }
+  .tab {
+    height: 28px;
+    align-self: center;
+    background: var(--tab);
+    border: 1px solid transparent;
+    border-radius: 5px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0 12px;
+    margin-right: 3px;
+    font-size: 12px;
+    color: var(--text);
+    white-space: nowrap;
+  }
+  .tab.active { background: var(--tab-active); box-shadow: inset 0 1px 0 rgba(255,255,255,.05); }
+  .tab .ic { width: 12px; height: 12px; border-radius: 3px; background: linear-gradient(135deg, #3a3a55, #2a2a40); }
+  .plus {
+    width: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 15px;
+    color: var(--muted);
+  }
+  .content { height: 78px; background: var(--content); border-radius: 0 0 5px 5px; }
+
+  /* 脱出窗——absolute 叠放，标签栏对准主窗菜单栏（复现清单：标签栏屏幕 y 叠在主窗菜单栏上） */
+  .win-detached {
+    position: absolute;
+    left: 170px;
+    top: 2px;                    /* 使 35px 标签栏竖直中心 ≈ 主窗 22px 菜单栏中心 */
+    width: 235px;
+    background: var(--win);
+    border: 1px solid #3a3a55;
+    border-radius: 6px;
+    box-shadow: 0 10px 26px rgba(0,0,0,.5), 0 0 0 1px rgba(77,163,255,.12);
+    z-index: 2;
+  }
+  .win-detached .content { height: 56px; }
+
+  /* ── 现状 A：整条横条高亮（叠在主窗菜单栏上方 → 误认） ── */
+  .dt-tabs.a-adsorb {
+    background: rgba(255, 176, 84, 0.30);
+    box-shadow: inset 0 0 0 1px rgba(255, 176, 84, 0.75),
+                inset 0 0 14px rgba(255, 176, 84, 0.28);
+  }
+  .annot {
+    position: absolute;
+    left: 10px;
+    bottom: 10px;
+    font-size: 12px;
+    color: var(--muted);
+    background: rgba(20,20,30,.85);
+    border: 1px solid var(--win-border);
+    border-radius: 6px;
+    padding: 6px 10px;
+    max-width: 96%;
+  }
+  .annot b.bad { color: var(--bad); }
+  .annot b.ok { color: var(--ok); }
+
+  /* ── 方案 B：两 tab 间细竖线（复用 .group-tab-drop-indicator 视觉语言） ── */
+  .dt-tabs.b-ind { background: var(--tabbar); box-shadow: none; }
+  .ind {
+    width: 2px;
+    height: 22px;                /* ≈36px 的示意（真实为标签栏全高 35px） */
+    align-self: center;
+    background: var(--accent);
+    box-shadow: 0 0 6px rgba(77,163,255,.65);
+    flex-shrink: 0;
+    margin-right: 3px;
+    border-radius: 1px;
+  }
+
+  /* ── 竖线游走 mini 图 ── */
+  .mini {
+    margin-top: 12px;
+    border-top: 1px dashed var(--win-border);
+    padding-top: 12px;
+  }
+  .mini h3 { font-size: 12px; color: var(--muted); font-weight: 500; margin-bottom: 8px; }
+  .mini-frames { display: flex; gap: 14px; flex-wrap: wrap; }
+  .frame {
+    flex: 1;
+    min-width: 215px;
+    background: #181823;
+    border: 1px solid var(--win-border);
+    border-radius: 6px;
+    padding: 8px;
+  }
+  .frame .cap { font-size: 11px; color: var(--muted); margin-bottom: 6px; }
+  .frame .cap b { color: var(--text); font-weight: 600; }
+  .mini-tabs {
+    display: flex;
+    align-items: stretch;
+    background: var(--tabbar);
+    height: 30px;
+    border-radius: 4px;
+    padding-left: 3px;
+    position: relative;
+  }
+  .mini-tabs .tab { height: 24px; padding: 0 9px; font-size: 11px; }
+  .mini-tabs .ind { height: 18px; margin-right: 0; }
+  .cursor {
+    position: absolute;
+    top: -6px;
+    width: 0; height: 0;
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    border-top: 6px solid var(--accent);
+    transform: translateX(-5px);
+    z-index: 3;
+  }
+
+  /* ── 设计要点 ── */
+  .points {
+    margin-top: 28px;
+    background: var(--panel);
+    border: 1px solid var(--win-border);
+    border-radius: 10px;
+    padding: 16px 20px;
+  }
+  .points h2 { font-size: 15px; font-weight: 600; margin-bottom: 10px; }
+  .points ol { padding-left: 22px; display: flex; flex-direction: column; gap: 7px; }
+  .points li { color: var(--text); }
+  .points li b { color: var(--accent); }
+  .points code { background: #24243a; border: 1px solid var(--win-border); border-radius: 4px; padding: 0 5px; font-size: 12px; }
+  .accept {
+    margin-top: 12px;
+    border-top: 1px dashed var(--win-border);
+    padding-top: 12px;
+    font-size: 13px;
+    color: var(--ok);
+  }
+</style>
+</head>
+<body>
+<div class="page">
+  <h1>E5.8 #46.10 · 跨窗吸附插入指示<span class="tag">设计示意图 · 讨论用</span></h1>
+  <p class="sub">
+    <b>现象二（2026-08-22 已定位）：</b>叠放的脱出窗标签栏被<b>整条高亮</b>——脱出窗 (1217,0) 时其标签栏屏幕 y∈[36,72]，
+    叠在主窗菜单栏 y∈[66,114] 上方。横条按目标窗渲染，叠窗时用户误认归属<b>主窗菜单栏</b>。
+    <b>方案：</b>对标 VS Code，两 tab 之间出细竖线插入指示（≈36px 高）替代整条高亮，归属随竖线落在哪个标签栏自然清晰。
+  </p>
+
+  <div class="compare">
+
+    <!-- ══════════ 场景 A · 现状 ══════════ -->
+    <section class="scene">
+      <h2>场景 A · 现状：整条横条高亮<span class="status-a">✗ 归属误认</span></h2>
+      <div class="canvas">
+        <!-- 主窗：菜单栏 + 标签栏 + 内容 -->
+        <div class="win-main">
+          <div class="menu"><span class="dot"></span> File Edit View Go Run Terminal Help</div>
+          <div class="tabs">
+            <div class="tab active"><span class="ic"></span>工作区</div>
+            <div class="tab"><span class="ic"></span>串口监视器</div>
+            <div class="tab"><span class="ic"></span>文件树</div>
+            <div class="plus">+</div>
+          </div>
+          <div class="content"></div>
+        </div>
+
+        <!-- 脱出窗：标签栏整条被高亮，叠在主窗菜单栏上方 -->
+        <div class="win-detached">
+          <div class="dt-tabs a-adsorb">
+            <div class="tab active"><span class="ic"></span>串口监视器</div>
+            <div class="plus">+</div>
+          </div>
+          <div class="content"></div>
+        </div>
+
+        <div class="annot">
+          <b class="bad">✗ 问题：</b>橙色横条横贯标签栏——叠在主窗<b>菜单栏</b>正上方时，
+          看起来像「主窗菜单栏被点亮」。横条是横向条带，不表达"插进哪根缝"，归属靠猜。
+        </div>
+      </div>
+    </section>
+
+    <!-- ══════════ 场景 B · 方案 ══════════ -->
+    <section class="scene">
+      <h2>场景 B · 方案：两 tab 间细竖线（对标 VS Code）<span class="status-b">✓ 归属清晰</span></h2>
+      <div class="canvas">
+        <!-- 同样的叠放布局，只换提示形态 -->
+        <div class="win-main">
+          <div class="menu"><span class="dot"></span> File Edit View Go Run Terminal Help</div>
+          <div class="tabs">
+            <div class="tab active"><span class="ic"></span>工作区</div>
+            <div class="tab"><span class="ic"></span>串口监视器</div>
+            <div class="tab"><span class="ic"></span>文件树</div>
+            <div class="plus">+</div>
+          </div>
+          <div class="content"></div>
+        </div>
+
+        <!-- 脱出窗：正常标签栏 + 一根 2px 竖线插在「串口监视器」右侧的缝 -->
+        <div class="win-detached">
+          <div class="dt-tabs b-ind">
+            <div class="tab active"><span class="ic"></span>串口监视器</div>
+            <div class="ind"></div>
+            <div class="plus">+</div>
+          </div>
+          <div class="content"></div>
+        </div>
+
+        <div class="annot">
+          <b class="ok">✓ 归属：</b>2px 竖线插在<b>脱出窗</b>标签栏第 1 根缝里 =「把拖着的 tab 插到脱出窗这根缝」。
+          细竖线是明确的指针语义，不可能被误读成菜单栏横条——叠窗也不歧义。
+        </div>
+
+        <!-- 竖线随光标游走 -->
+        <div class="mini">
+          <h3>竖线随光标游走（目标标签栏局部 · 同一算法算缝隙）</h3>
+          <div class="mini-frames">
+            <div class="frame">
+              <div class="cap"><b>光标在 tab0 / tab1 之间</b> → 竖线在 tab0 右侧</div>
+              <div class="mini-tabs">
+                <div class="cursor" style="left: 36px;"></div>
+                <div class="tab active">tab0</div>
+                <div class="ind"></div>
+                <div class="tab">tab1</div>
+                <div class="tab">tab2</div>
+                <div class="plus">+</div>
+              </div>
+            </div>
+            <div class="frame">
+              <div class="cap"><b>光标在 tab1 / tab2 之间</b> → 竖线在 tab1 右侧</div>
+              <div class="mini-tabs">
+                <div class="cursor" style="left: 88px;"></div>
+                <div class="tab active">tab0</div>
+                <div class="tab">tab1</div>
+                <div class="ind"></div>
+                <div class="tab">tab2</div>
+                <div class="plus">+</div>
+              </div>
+            </div>
+            <div class="frame">
+              <div class="cap"><b>光标在标签栏末尾</b> → 竖线在 tab2 右侧（缝 = tabs.length）</div>
+              <div class="mini-tabs">
+                <div class="cursor" style="left: 140px;"></div>
+                <div class="tab active">tab0</div>
+                <div class="tab">tab1</div>
+                <div class="tab">tab2</div>
+                <div class="ind"></div>
+                <div class="plus">+</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- ══════════ 设计要点 ══════════ -->
+  <section class="points">
+    <h2>三个设计要点</h2>
+    <ol>
+      <li><b>一个算法，不复制逻辑。</b>竖线缝隙 = 池本地拖拽同一套 <code>computeInsertIndex</code>（提成共享 util）。
+          壳把光标换算成目标窗 viewport 坐标（<code>screenX − bounds.x</code>）随提示下发，池用自己的 tab 几何算缝。</li>
+      <li><b>松手落位 = 竖线缝隙，提示不撒谎。</b>现状并窗是组尾追加（<code>reduceInsertTab</code> 恒 <code>[...tabs, tab]</code>）；
+          需加可选 <code>index</code> 参数 <code>splice(index, 0, tab)</code>，释放时插到竖线指的那根缝。</li>
+      <li><b>残留遮挡风险（诚实说明）。</b>源窗压住目标标签栏时竖线可能被遮——现状横条同样被遮，本次不做屏幕锚点浮层，
+          实机验证后若体验不佳再考虑。</li>
+    </ol>
+    <div class="accept">
+      验收：拖 tab 靠近目标窗标签栏 → 光标所在缝隙出竖线（tab 间 / 末尾游走）→ 松手落到那根缝 → 叠窗归属清晰；拖回 / Esc / 释放 → 竖线消失。
+    </div>
+  </section>
+</div>
+</body>
+</html>

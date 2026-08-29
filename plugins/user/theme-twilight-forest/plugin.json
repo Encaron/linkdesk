@@ -7,28 +7,10 @@
   "contributes": {
     "themes": [
       {
-        "id": "sunset",
-        "label": "暮光 Sunset",
+        "id": "twilight-forest",
+        "label": "暮色森林",
         "uiTheme": "dark",
-        "path": "sunset.json"
-      },
-      {
-        "id": "teal",
-        "label": "青澜 Teal",
-        "uiTheme": "dark",
-        "path": "teal.json"
-      },
-      {
-        "id": "twilight-purple",
-        "label": "暮紫 Twilight Purple",
-        "uiTheme": "dark",
-        "path": "purple.json"
-      },
-      {
-        "id": "verdant",
-        "label": "翠微 Verdant",
-        "uiTheme": "dark",
-        "path": "green.json"
+        "path": "themes/twilight-forest.json"
       }
     ]
   }

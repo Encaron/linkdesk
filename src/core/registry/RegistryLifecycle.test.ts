@@ -19,7 +19,9 @@ import { registerKeybinding, getKeybindings, clearKeybindings } from "./commands
 import { registerMenuItems, getMenuItems, MENU_SLOTS, clearMenus } from "./commands/MenuRegistry";
 import { registerProtocol, listProtocols, clearProtocols } from "./ProtocolRegistry";
 import { createLogChannel, getLogChannels, clearLogChannels } from "../services/ui/LogChannel";
-import { registerTheme, unregisterTheme, getAvailableThemes } from "../services/ui/ThemeEngine";
+// E5.8 Phase 11.15 3b：unregisterTheme 从门面撤出（零生产消费）——测试直引 registry 本体
+import { registerTheme, getAvailableThemes } from "../services/ui/ThemeEngine";
+import { unregisterTheme } from "../services/ui/ThemeEngine/registry";
 import { registerFileAssociation, getAssociationsForPlugin, clearFileAssociations } from "../services/files/FileAssociationService";
 import { registerConfiguration, getPluginConfiguration, clearConfigurationRegistrations } from "./ConfigurationRegistry";
 import { ThemeRegistry } from "./appearance/ThemeRegistry";

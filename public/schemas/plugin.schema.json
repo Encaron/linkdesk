@@ -314,16 +314,7 @@
             "items": {
               "oneOf": [
                 { "type": "string", "description": "命令 ID（简写）" },
-                {
-                  "type": "object",
-                  "required": ["command"],
-                  "properties": {
-                    "command": { "type": "string", "description": "命令 ID" },
-                    "group": { "type": "string", "description": "分组——navigation/edit/terminal/delete/split" },
-                    "when": { "type": "string", "description": "context key when 条件" }
-                  },
-                  "additionalProperties": false
-                }
+                { "$ref": "#/$defs/menuItem" }
               ]
             }
           }
@@ -360,7 +351,12 @@
                   "enum": { "type": "array" },
                   "enumDescriptions": { "type": "object", "description": "enum 值 → 显示名映射" },
                   "description": { "type": "string" },
-                  "uiHint": { "type": "string", "description": "设置编辑器渲染提示。SettingsView 按提示选择控件。不认识的 hint 降级回 type 默认渲染——不抛错。E5.7#66：enum 开放——第三方可声明新 hint 名。" }
+                  "uiHint": { "type": "string", "description": "设置编辑器渲染提示。SettingsView 按提示选择控件。不认识的 hint 降级回 type 默认渲染——不抛错。E5.7#66：enum 开放——第三方可声明新 hint 名。" },
+                  "monoOnly": { "type": "boolean", "description": "等宽限定——仅 uiHint \"fontFamily\" 有意义。true/缺省 = 只列等宽族（编辑器字体）；false = 全字族（UI 字体）。E5.8#50.20。" },
+                  "minimum": { "type": "number", "description": "数值下限——type number 时生效（E5.8#65 补录：滑杆/数值控件范围）" },
+                  "maximum": { "type": "number", "description": "数值上限——type number 时生效（E5.8#65 补录：滑杆/数值控件范围）" },
+                  "step": { "type": "number", "description": "滑杆步进——仅 uiHint \"slider\" 有意义。缺省由 SettingsView 按区间推导（浮点区间自动 0.01）。E5.8#65。" },
+                  "group": { "type": "string", "description": "组内二级标题——同 group 的 key 在设置页归到子标题下渲染（E5.8#78/#189）；无 group 保持平铺（第三方零侵入）" }
                 },
                 "additionalProperties": false
               }
@@ -628,6 +624,26 @@
           "type": "object",
           "description": "插件自带翻译——key=语言代码, value=相对插件根目录的 JSON 文件路径。如 { \"en\": \"i18n/en.json\" }。不需要 zh.json——中文 key 自带兜底。",
           "additionalProperties": { "type": "string" }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "$defs": {
+    "menuItem": {
+      "type": "object",
+      "required": ["command"],
+      "description": "菜单项——与运行时 ManifestMenuItem（MenuRegistry）对齐（E5.8#149 声明式 schema 唯一缺口补齐：label/order/children 递归自引用）。children 任意深度递归，与运行时归一一对一。",
+      "properties": {
+        "command": { "type": "string", "description": "命令 ID（有 children 时可为空——父菜单项不执行命令，展开子菜单）" },
+        "label": { "type": "string", "description": "显示标签——有值时覆盖命令标题（getCommand(id).title）；父菜单项（无 command）必填" },
+        "group": { "type": "string", "description": "分组——navigation/edit/terminal/delete/split" },
+        "when": { "type": "string", "description": "context key when 条件" },
+        "order": { "type": "number", "description": "排序权重——同 group 内越小越靠前（E5.8#33）" },
+        "children": {
+          "type": "array",
+          "description": "嵌套子菜单——任意深度递归（对标 VS Code SubmenuAction，E5.8#148/#149）；有 children 时 command 可为空",
+          "items": { "$ref": "#/$defs/menuItem" }
         }
       },
       "additionalProperties": false

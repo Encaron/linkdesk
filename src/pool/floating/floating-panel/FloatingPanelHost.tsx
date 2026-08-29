@@ -29,7 +29,9 @@ import {
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from "react";
+import { createPortal } from "react-dom";
 import { Z_INDEX } from "../../../constants";
+import { getScrimTarget } from "../../../components/shared/overlay-portal/OverlayPortal"; // E5.8#107 浮层权威：遮罩归 scrim-plane
 import type { PoolFloatingPanelButton, PoolFloatingPanelData } from "../../../core/types/pool/poolFloatingPanel";
 import PluginComponent from "../../shared/plugin-component/PluginComponent";
 import "./FloatingPanel.css";
@@ -223,17 +225,20 @@ export default function FloatingPanelHost() {
 
   return (
     <>
-      {/* 遮罩——I8-8 点击关闭；I8-9 最大化时消失；I8-6 拖拽/调高后松手一拍内不响应 */}
-      {!maximized && (
-        <div
-          className="floating-panel-backdrop"
-          style={{ zIndex: Z_INDEX.floatingPanel - 1 }}
-          onClick={() => {
-            if (suppressBackdropRef.current) return;
-            api?.action("close");
-          }}
-        />
-      )}
+      {/* 遮罩——E5.8#107 浮层权威：归 #ld-scrim-plane（遮罩平面，无磨砂）。I8-8 点击关闭；
+          I8-9 最大化时消失；I8-6 拖拽/调高后松手一拍内不响应。 */}
+      {!maximized &&
+        createPortal(
+          <div
+            className="floating-panel-backdrop"
+            style={{ zIndex: Z_INDEX.floatingPanel - 1 }}
+            onClick={() => {
+              if (suppressBackdropRef.current) return;
+              api?.action("close");
+            }}
+          />,
+          getScrimTarget()
+        )}
 
       <div
         ref={panelRef}

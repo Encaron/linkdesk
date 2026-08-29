@@ -21,6 +21,11 @@ export interface ConfigurationProperty {
   description: string;        // 设置项说明——Settings Editor 渲染为提示
   minimum?: number;           // number 类型时可选的 min/max
   maximum?: number;
+  /** E5.8 Phase 12 #161：数值步进——number 型配置项的增减步长（uiHint "fontSize"/"slider" 渲染读）。
+   *  slider 缺省由 renderControl inferSliderStep 按区间推导（浮点区间 0.01），schema 显式 step 覆盖；
+   *  NumberInput 缺省 1（editor.fontSize 不声明 → 8/72/1 零回归）；app.uiFontScale 声明 5（① 拍板百分比步进）。
+   *  可选字段：第三方不声明 = 各控件缺省步进。 */
+  step?: number;
   /** Phase 5f ConfigurationApplier：配置值变化时框架自动调用。
    *  可 async——applyAllConfigurations 按注册顺序 await 保证时序。
    *  如：theme onApply (async load) → accent onApply (sync setProperty) 不会竞态。 */
@@ -39,6 +44,48 @@ export interface ConfigurationProperty {
    *  E5.7#74：闭合 union → string（同上——已知值 "fontFamily"/"fontSize"/"color"/"file"/"directory"
    *  仅文档化，不构成类型白名单）。 */
   uiHint?: string;
+  /** E5.8#50.20：等宽限定——仅 uiHint "fontFamily" 有意义。true/缺省 = 只列等宽族
+   *  （编辑器字体）；false = 全字族（UI 字体，如 app.fontFamily 写 --font-ui）。 */
+  monoOnly?: boolean;
+  /** E5.8#50.23：动态下拉数据源——uiHint "select" 时读取（渲染时调 theme.listRecipes() 动态取）。
+   *  渲染器扩展，不改本注册表存储结构（08 §7.3 #3）。"theme.colorways" = 活动配方配色；
+   *  "theme.sources" = 混搭来源（按 optionsFromDomain 过滤 RecipeMeta.domains）。 */
+  optionsFrom?: string;
+  /** 混搭来源域过滤——optionsFrom "theme.sources" 时按此域过滤（10 §2 六域之一） */
+  optionsFromDomain?: string;
+  /** E5.8#50.26：renderHint "action" 按钮动作——点击执行此壳命令（混搭复位执行 theme.resetMix，
+   *  单一写入点；onApply 被 IPC 剥除不可达插件，按钮经命令触发壳侧 onApply 链）。 */
+  actionCommand?: string;
+  /** E5.8#50.26：renderHint "action" 按钮禁用条件——全部 {key,value} 匹配当前配置值时禁用
+   *  （混搭复位「6 来源全跟随主题 → 置灰」，10 §6 决策记录 3）。 */
+  actionDisabledAll?: Array<{ key: string; value: unknown }>;
+  /** E5.8#78：组内二级标题——SettingsView 按本字段把同组 key 归到子标题下渲染（主题组 5 分节）。
+   *  可选字段：第三方不声明 = 保持平铺原样（零侵入）。组标题字符串走壳 t() i18n（lang-defaults）。 */
+  group?: string;
+  /** E5.8#77：数值单位——uiHint "slider" 值标签单位（"×" 倍数前缀 / "px" 像素后缀；空 = 裸数值）。
+   *  可选字段：第三方不声明 = 只显示数值不显示单位（零侵入）。 */
+  unit?: string;
+  /** E5.8#87：来源徽标——本键所属外观域 mix 来源 key（设置页每槽显示值来源：混搭域生效时 🔀）。
+   *  可选字段：第三方不声明 = 不显示来源徽标（零侵入）。 */
+  sourceKey?: string;
+  /** E5.8#155：跟随主题生效值徽标——本键跟随主题时行尾显示的生效 token key（设置页读
+   *  theme.getEffectiveTokens 显示实际生效值，对标 VS Code「从默认值继承」）。
+   *  token 映射声明进配置 schema（对齐 sourceKey 先例）——设置插件零映射表，读到声明即显示。
+   *  可选字段：第三方不声明 = 不显示生效值徽标（零侵入）。 */
+  effectiveToken?: string;
+  /** E5.8 用户审计 #3：跟随主题语义——本键 user scope 删除后回落主题基线（非 schema 默认）。
+   *  声明该字段的键，设置行齿轮菜单出现「跟随主题」项（SettingRow 设 context key settingFollowTheme →
+   *  coreCommands workbench.action.followTheme → resetConfigurationValue 删 user scope → 外观键切主题跟变）。
+   *  壳 appearance 17 键声明；第三方设置/主题插件可在自己键上声明获得同能力（零壳改动）。
+   *  不含 = 齿轮无此项（模式开关/布尔开关/动作按钮等 reset≠回落主题 的键不声明）。 */
+  resetsToTheme?: boolean;
+  /** E5.8#158：默认项语义——本键有独立「默认项」落点（= 内置 dark/light 配方值，:root 硬兜底）。
+   *  声明该字段的键，设置行齿轮「重置此设置」改写成 `CONFIG_NONE_SENTINEL`（__none__）——字体/背景
+   *  键落到系统栈/无图（不跟随主题），与「跟随主题」（删 user scope 主题胜出）真正区分两语义。
+   *  SettingRow 设 context key settingResetsToDefault → coreCommands resetSetting 分流。
+   *  壳 appearance 四键（fontFamily/fontFamilyMono/backgroundImage/zoneBackgroundImage）声明；
+   *  第三方键声明即得同能力（零壳改动）。不含 = 「重置此设置」保持删 user scope 回 schema 默认。 */
+  resetsToDefault?: boolean;
 }
 
 /** 插件贡献的 configuration 分组——对标 VS Code package.json contributes.configuration */

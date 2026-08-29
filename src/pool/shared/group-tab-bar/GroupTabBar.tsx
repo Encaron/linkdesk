@@ -32,6 +32,8 @@ import type { PoolTabAction } from "../../../core/types/ipc/tabActions"; // E5.7
 import type { LinkDeskAPI } from "../../../core/api/linkdesk-api"; // E5.7#98：pool 命名空间契约类型
 import { normalizePath } from "../../../core/utils/path/pathUtils";
 import ContextMenu from "@src/components/shared/context-menu/ContextMenu";
+import OverlayPortal from "../../../components/shared/overlay-portal/OverlayPortal"; // E5.8#107 浮层权威：PlusMenu 进 #overlay-root
+import { Z_INDEX } from "../../../constants"; // E5.8#107：裸 1001 → Z_INDEX 常量（禁裸数字）
 import "./GroupTabBar.css";
 
 // ═══════════════════════════════════════════════════════════════════
@@ -52,6 +54,9 @@ interface GroupTabBarProps {
   onTabBarMount?: (el: HTMLDivElement | null) => void;
   /** E5.6#16.7k-3：可创建为标签页的视图——[+] 按钮下拉菜单 */
   creatableViews?: { pluginId: string; label: string }[];
+  /** E5.8#46.10：吸附插入缝隙（跨窗拖拽命中本组 TabBar——壳下发 viewport，池算缝隙）——两 tab 间渲染细竖线
+   *  （VS Code 式插入指示，替代原整条 `tab-bar-adsorb` 高亮——归属随竖线落在哪个标签栏自然清晰）。父层已按组解析（非本组传 null） */
+  adsorbInsertIndex?: number | null;
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -79,7 +84,7 @@ function disambiguateLabels(tabs: PoolTab[]): Map<string, string> {
 // 组件
 // ═══════════════════════════════════════════════════════════════════
 
-export default function GroupTabBar({ groupId, tabs, activeTabId, draggingId, dragInsertIndex, onTabDragStart, onTabBarMount, creatableViews }: GroupTabBarProps) {
+export default function GroupTabBar({ groupId, tabs, activeTabId, draggingId, dragInsertIndex, onTabDragStart, onTabBarMount, creatableViews, adsorbInsertIndex }: GroupTabBarProps) {
   // ── i18n ──
   const { t } = useTranslation();
 
@@ -107,7 +112,8 @@ export default function GroupTabBar({ groupId, tabs, activeTabId, draggingId, dr
   // ── E5.6#16.7k-3：PlusMenu [+] 按钮下拉 ──
   const [showPlusMenu, setShowPlusMenu] = useState(false);
   const [plusMenuPos, setPlusMenuPos] = useState<{ x: number; y: number } | null>(null);
-  const plusMenuRef = useRef<HTMLDivElement | null>(null);
+  // 触发锚 = [+] 按钮（OverlayPortal triggerRef——点击按钮 toggle 关闭，E5.8#107）
+  const plusBtnRef = useRef<HTMLButtonElement | null>(null);
   const labels = useMemo(() => disambiguateLabels(tabs), [tabs]);
 
   // ── Overflow 检测 ──
@@ -151,27 +157,7 @@ export default function GroupTabBar({ groupId, tabs, activeTabId, draggingId, dr
   // ContextMenu 自带 mousedown 外部点击检测（contains 守卫）+ E5.7#14 backdrop 吞第一击
   // ——不需要池侧 useEffect 关闭逻辑。对标壳 ContextMenu.tsx:152。
 
-  // PlusMenu 点外部关闭——mousedown 竞态修复：contains 守卫防菜单项 onClick 被吞
-  useEffect(() => {
-    if (!showPlusMenu) return;
-    const close = (e: MouseEvent) => {
-      if (e.target instanceof Node && plusMenuRef.current?.contains(e.target)) return;
-      setShowPlusMenu(false);
-    };
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setShowPlusMenu(false);
-    };
-    // delay——避免同一次 click 既打开又关闭
-    const timer = setTimeout(() => {
-      window.addEventListener("mousedown", close);
-    }, 0);
-    window.addEventListener("keydown", onKey);
-    return () => {
-      clearTimeout(timer);
-      window.removeEventListener("mousedown", close);
-      window.removeEventListener("keydown", onKey);
-    };
-  }, [showPlusMenu]);
+  // PlusMenu 外部点击/Escape 关闭——E5.8#107 由 OverlayPortal onClose 统一处理（triggerRef=[+] 按钮豁免）
 
   const onContextMenu = useCallback(
     (tabId: string, pluginId: string, e: ReactMouseEvent) => {
@@ -243,7 +229,10 @@ export default function GroupTabBar({ groupId, tabs, activeTabId, draggingId, dr
   if (tabs.length === 0) return null;
 
   return (
-    <div className="group-tab-bar" ref={setBarRef}>
+    <div
+      className="group-tab-bar"
+      ref={setBarRef}
+    >
       {/* 左滚动箭头 */}
       {overflowLeft && (
         <button
@@ -272,6 +261,11 @@ export default function GroupTabBar({ groupId, tabs, activeTabId, draggingId, dr
             <div key={tab.id} style={{ display: "contents" }}>
               {/* 拖拽插入指示器——E5.6#16.7：props 驱动 */}
               {dragInsertIndex === idx && draggingId !== tab.id && (
+                <div className="group-tab-drop-indicator" />
+              )}
+              {/* E5.8#46.10：跨窗吸附插入指示竖线（替代原整条 tab-bar-adsorb 高亮）——壳下发缝隙，父层按组解析。
+                  本地拖拽与被动吸附不同时发生（壳排除源窗），两指示器恒不同帧生效 */}
+              {adsorbInsertIndex === idx && (
                 <div className="group-tab-drop-indicator" />
               )}
               <div
@@ -311,7 +305,7 @@ export default function GroupTabBar({ groupId, tabs, activeTabId, draggingId, dr
                 {tab.icon && (
                   tab.icon.length <= 2 && /[\p{Emoji}]/u.test(tab.icon)
                     ? <span className="group-tab-icon-emoji">{tab.icon}</span>
-                    : <img className="group-tab-icon" src={tab.icon} alt="" />
+                    : <img className="group-tab-icon" src={tab.icon} alt="" draggable={false} />
                 )}
 
                 {/* 标签文字 */}
@@ -337,6 +331,10 @@ export default function GroupTabBar({ groupId, tabs, activeTabId, draggingId, dr
         {dragInsertIndex === tabs.length && (
           <div className="group-tab-drop-indicator" />
         )}
+        {/* E5.8#46.10：吸附竖线——末尾缝隙（落到最后一个标签之后） */}
+        {adsorbInsertIndex === tabs.length && (
+          <div className="group-tab-drop-indicator" />
+        )}
 
         {/* 右滚动箭头 */}
         {overflowRight && (
@@ -348,12 +346,18 @@ export default function GroupTabBar({ groupId, tabs, activeTabId, draggingId, dr
           </button>
         )}
 
-        {/* [+] PlusMenu——E5.6#16.7k-3：壳推送 creatableViews 时显示动态列表，否则兜底欢迎页 */}
+        {/* [+] PlusMenu——E5.6#16.7k-3：壳推送 creatableViews 时显示动态列表，否则兜底欢迎页。
+            E5.8#107：触发锚 = 本按钮（ref + toggle——再点收起，OverlayPortal onClose 替代手动 mousedown） */}
         <button
+          ref={plusBtnRef}
           className="group-tab-plus-btn"
           onClick={(e) => {
+            if (showPlusMenu) {
+              setShowPlusMenu(false);
+              return;
+            }
             if (creatableViews && creatableViews.length > 0) {
-              const btnRect = (e.target as HTMLElement).getBoundingClientRect();
+              const btnRect = (e.currentTarget as HTMLElement).getBoundingClientRect();
               setPlusMenuPos({ x: btnRect.left, y: btnRect.bottom + 4 });
               setShowPlusMenu(true);
             } else {
@@ -366,16 +370,17 @@ export default function GroupTabBar({ groupId, tabs, activeTabId, draggingId, dr
           +
         </button>
 
-        {/* PlusMenu 下拉——动态列出可创建视图 */}
+        {/* PlusMenu 下拉——动态列出可创建视图。E5.8#107 浮层权威：OverlayPortal 进 #overlay-root（单一门），
+            z-index 走 Z_INDEX.contextMenu 常量（裸 1001 删）——禁裸数字（#26 常量表）。 */}
         {showPlusMenu && plusMenuPos && creatableViews && creatableViews.length > 0 && (
+          <OverlayPortal onClose={() => setShowPlusMenu(false)} triggerRef={plusBtnRef}>
           <div
-            ref={plusMenuRef}
             className="group-tab-plus-menu"
             style={{
               position: "fixed",
               left: plusMenuPos.x,
               top: plusMenuPos.y,
-              zIndex: 1001,
+              zIndex: Z_INDEX.contextMenu,
             }}
           >
             {creatableViews.map((v) => (
@@ -391,6 +396,7 @@ export default function GroupTabBar({ groupId, tabs, activeTabId, draggingId, dr
               </button>
             ))}
           </div>
+          </OverlayPortal>
         )}
       </div>
 

@@ -39,3 +39,29 @@ function useSubscribedConfigValueIpc<T>(key: string): T | undefined {
 export function useConfigurationValueIpc<T>(key: string): T | undefined {
   return useSubscribedConfigValueIpc<T>(key);
 }
+
+/** 多键只读配置值——SettingRow actionDisabledAll 消费（混搭复位按钮「6 来源全跟随主题 → 置灰」）。
+ *  键集稳定串为 effect 依赖（keys 数组每渲染新 identity）；空键集返回空对象不订阅。 */
+export function useConfigurationValuesIpc(keys: string[]): Record<string, unknown> {
+  const keySet = keys.join("\u0000");
+  const [values, setValues] = useState<Record<string, unknown>>({});
+
+  useEffect(() => {
+    let cancelled = false;
+    const list = keySet ? keySet.split("\u0000") : [];
+    if (list.length === 0) return;
+    Promise.all(list.map(async (k) => [k, await lk().get(k)] as const)).then((pairs) => {
+      if (!cancelled) setValues(Object.fromEntries(pairs));
+    }).catch(() => {});
+    const unsubs = list.map((k) =>
+      lk().onChange(k, () => {
+        lk().get(k).then((v) => {
+          if (!cancelled) setValues((prev) => ({ ...prev, [k]: v }));
+        }).catch(() => {});
+      })
+    );
+    return () => { cancelled = true; unsubs.forEach((u) => u()); };
+  }, [keySet]);
+
+  return values;
+}
