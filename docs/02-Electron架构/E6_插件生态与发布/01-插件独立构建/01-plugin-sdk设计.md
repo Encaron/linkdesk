@@ -1,5 +1,6 @@
 # plugin-sdk 设计——`@linkdesk/plugin-sdk`
 
+> ⚠️ **2026-08-29 审计标注：§3.1 已被 E6#2 废止，仅历史参考。** E6#2 定案「类型从 E5.8 生成契约派生（`linkdesk.d.ts`），不再从 `linkdesk-api.ts` 手写提取」；§3.2「26 命名空间」为立项估计，真实数以 E5.8#17 摸底为准。现状以 [E6-执行清单](../E6-执行清单.md) #2 为准。
 > 对标 `@types/vscode`。插件作者 `npm install @linkdesk/plugin-sdk` 后获得：类型定义、Vite 构建配置、验证工具。
 > 对应任务：E6#1-#5。
 
