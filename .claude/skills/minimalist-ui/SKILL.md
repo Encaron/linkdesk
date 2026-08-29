@@ -1,6 +1,6 @@
 ---
 name: minimalist-ui
-description: Clean editorial-style interfaces. Warm monochrome palette, typographic contrast, flat bento grids, muted pastels. No gradients, no heavy shadows. 中文触发：极简、简洁、素净、留白、编辑部风格、高密度、workspace 平台 UI、bento 网格、暖单色、高对比排版。仅用于独立 web 界面/插件页面——LinkDesk 壳 UI（池/标题栏/主题系统）走 ui-ux-pro-max。
+description: Clean editorial-style interfaces. Warm monochrome palette, typographic contrast, flat bento grids, muted pastels. No gradients, no heavy shadows. 中文触发：极简、简洁、素净、留白、编辑部风格、高密度、workspace 平台 UI、bento 网格、暖单色、高对比排版。壳 UI 也可参与竞标（池/标题栏/主题系统）——ui-ux-pro-max 仍为默认基线拿设计系统，本 skill 作风格方向竞标。
 ---
 
 # Protocol: Premium Utilitarian Minimalism UI Architect

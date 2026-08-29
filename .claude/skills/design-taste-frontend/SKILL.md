@@ -1,6 +1,6 @@
 ---
 name: design-taste-frontend
-description: Anti-slop frontend skill for landing pages, portfolios, and redesigns. The agent reads the brief, infers the right design direction, and ships interfaces that do not look templated. Real design systems when applicable, audit-first on redesigns, strict pre-flight check. 中文触发：高级感、不要模板化、不要千篇一律、去模板味、去 AI 味、Landing 页、官网、主页、作品集、网页重设计。仅用于独立 web 界面/插件页面——LinkDesk 壳 UI（池/标题栏/主题系统）走 ui-ux-pro-max。
+description: Anti-slop frontend skill for landing pages, portfolios, and redesigns. The agent reads the brief, infers the right design direction, and ships interfaces that do not look templated. Real design systems when applicable, audit-first on redesigns, strict pre-flight check. 中文触发：高级感、不要模板化、不要千篇一律、去模板味、去 AI 味、Landing 页、官网、主页、作品集、网页重设计。壳 UI 也可参与竞标（池/标题栏/主题系统）——ui-ux-pro-max 仍为默认基线拿设计系统，本 skill 作风格方向竞标。
 ---
 
 # tasteskill: Anti-Slop Frontend Skill

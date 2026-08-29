@@ -1,6 +1,6 @@
 ---
 name: redesign-existing-projects
-description: Upgrades existing websites and apps to premium quality. Audits current design, identifies generic AI patterns, and applies high-end design standards without breaking functionality. Works with any CSS framework or vanilla CSS. 中文触发：重设计、改版、美化、打磨、升级现有界面、翻新、去模板感、去 AI 味、现有界面太丑/过时。仅用于独立 web 界面/插件页面——LinkDesk 壳 UI 走 ui-ux-pro-max。
+description: Upgrades existing websites and apps to premium quality. Audits current design, identifies generic AI patterns, and applies high-end design standards without breaking functionality. Works with any CSS framework or vanilla CSS. 中文触发：重设计、改版、美化、打磨、升级现有界面、翻新、去模板感、去 AI 味、现有界面太丑/过时。壳 UI 也可参与竞标——ui-ux-pro-max 仍为默认基线拿设计系统，本 skill 作风格方向竞标。
 ---
 
 # Redesign Skill
