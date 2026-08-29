@@ -1,6 +1,7 @@
 # create-linkdesk-plugin 脚手架
 
-> 对应任务：E6#9-#11。对标 `yo code`（VS Code Extension Generator）。
+> 对应任务：E6#21-#23。对标 `yo code`（VS Code Extension Generator）。
+> ⚠️ 2026-08-30 第 2.1 轮审视：§四 模板 plugin.json 原为 E5.6 schema，已按 E5.8 实测换代（见 §八）。
 > 插件作者打一行命令 → 获得完整的插件项目骨架。
 
 ---
@@ -185,6 +186,39 @@ npm 自动识别 `create-*` 前缀包名为 `npm create` 的别名：
 - `npm create linkdesk-plugin` → 自动下载 `create-linkdesk-plugin` → 执行 `index.js`
 
 无需额外配置。
+
+---
+
+---
+
+## 八、审视实锤（2026-08-30 第 2.1 轮——#21-#23 模板 E5.6→E5.8 换代依据）
+
+> 2026-08-30 第 2.1 轮整轮审视（E6#21-#23 脚手架）落笔的修正实锤。清单只留修正结论 + 本锚点。
+
+### 8.1 模板 plugin.json 是 E5.6 schema——照原样生成的插件 E5.8 加载不了
+
+| 设计稿模板（E5.6 时代） | E5.8 实测真相 | 依据 |
+|:--|:--|:--|
+| `contributes.views: { "main": { "title": "…" } }`（对象、无 render） | `views: { "<containerId>": [ { id, title, render, order } ] }`——**数组，render 指向视图文件** | `plugins/user/panel-demo/plugin.json` 实锤 |
+| `viewsContainers.sidePanel: { title, icon }` | `viewsContainers: { "<id>": { title, location } }`，location 枚举 `sidebar/panel/auxiliarybar` | `public/schemas/plugin.schema.json:523-527` |
+| `pluginRole: "view"` | 真实插件用 `factoryRole`（settings 用 `"factoryRole": "settings"`） | `plugins/builtin/settings/plugin.json` |
+| 缺 `$schema` / `distribution` / `entry` 对齐 | 第三方默认 `distribution: "user"`（schema:41-46） | schema 实锤 |
+
+**结论：** 模板 plugin.json 按 E5.8 schema 重写——`$schema` 指向 plugin.schema.json + `factoryRole` + `appearsIn` + `viewsContainers(location)` + `views` 数组含 `render` + `entry` + `contributes.i18n`，参照 `plugins/user/panel-demo` 最小视图插件。
+
+### 8.2 模板组件契约过时 + devDependencies 缺 react 类型
+
+- **契约：** 设计稿 `{ isActive }: { isActive: boolean }`；E5.8 真实契约 `{ isActive?: boolean; tabId?: string; sourceId?: string }`（`plugins/builtin/editor/src/index.tsx:8` 实锤）。模板组件签名对齐。
+- **样式：** 设计稿模板用内联 `style={{ padding: "20px" }}` 硬编码——改为示范共享 CSS 变量（var(--xxx)）。
+- **类型：** 模板 `src/index.tsx` `import React` → tsc 需 react 类型；设计稿模板 devDependencies 只有 `typescript`。补 `@types/react`。模板结构含 `tsconfig.json` 但设计稿无内容——补要点：`jsx: "react-jsx"` + `types` 引 `@linkdesk/plugin-sdk`。
+
+### 8.3 #23a 发布登录态前置同步
+
+#23a 有 `--registry` 参数（对齐 #2.5b），缺 #2.5b 的 npm 登录态前置——2026-08-30 实测 `npm whoami --registry=https://registry.npmjs.org` 返回 **401**，发布前必须 `npm login`（用户 fengyili）。同步 E6#6b 的 whoami 确认写法到 #23a。
+
+### 8.4 设计稿对应任务号更新
+
+设计稿头部「对应任务：E6#9-#11」是 E5.6 时代编号——脚手架现在是 **E6#21-#23**。已同步更新头部。
 
 ---
 
