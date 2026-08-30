@@ -131,27 +131,9 @@ const data = await response.json();
 
 ---
 
-## 五、发布流程（v1.0 手动版）
+## 五、发布流程（2026-08-30 第 3.1 轮审视——自动链路当下做全）
 
-```
-1. 作者 npm run build → 产出 my-plugin.linkdesk-plugin
-2. 打开 GitHub Releases 页面 → 新建 Release
-   - Tag: my-plugin-v1.0.0
-   - 上传 my-plugin.linkdesk-plugin
-   - 发布
-3. 编辑 marketplace.json → 加一条目 → commit
-4. 完成
-```
-
-### 未来自动化版（v1.1）
-
-```
-npm run publish
-→ 读 GITHUB_TOKEN
-→ GitHub API: 创建 Release + 上传 asset
-→ GitHub API: 更新 marketplace.json
-→ 完成
-```
+> 🔴 **deferral 残留清除（第 3.1 轮顺带）**：原「v1.0 手动版 + 未来自动化版」是"当前够用、未来再补"话术——第 2.2 轮已拍板自动链路当下做全（沉 [03-插件发布流水线.md §四](02-插件开发工具链/03-插件发布流水线.md)）。发布 = GitHub REST API 自动链路：作者市场 UI 填 GitHub PAT → 创建 Release + 上传 asset + 更新自己仓库 marketplace.json → 全自动。
 
 ---
 
@@ -213,6 +195,38 @@ npm run publish
 - **读取侧** → E6#30c：marketplace 插件多源支持（源列表配置化 + 合并去重 + 来源标注）
 - **发布侧** → E6#26b：作者发布到自己的仓库（Releases + 自己的 marketplace.json）
 - 壳零改动——全部在 marketplace 插件内部
+
+---
+
+## 七、审视实锤（2026-08-30 第 3.1 轮——#29 marketplace.json + #30 壳侧改造拍板依据）
+
+> 2026-08-30 第 3.1 轮整轮审视（E6#29、#30）落笔的修正实锤。清单只留修正结论 + 本锚点。
+
+### 7.1 marketplace 插件现状（E5.8 实测）
+
+- `plugins/builtin/marketplace/` 已存在，E5.8 schema（`factoryRole: "marketplace"`，core:true），5 视图 search/installed/builtin/disabled/uninstalled，全读 `pluginManager.list()`（IPC 子集 `PluginListEntry`，types.ts:107）。**无 fetch、无多源、无探索视图**。
+- 卸载缓存函数名 = `getUninstalledPluginInfo`（lifecycle-ops.ts:68），非「getUninstalled」。
+
+### 7.2 #30b 交叉比对 = list() 集合（非 installed-plugins.json）
+
+E5.8 **无 installed-plugins.json 文件**——已安装状态由 `pluginManager.list()` 的 `PluginListEntry` 集合决定。catalog pluginId ∈ list() → 已安装；catalog version > list().manifest.version → 更新；不在 → 安装。
+
+### 7.3 #30d 改名归属理顺（#30d 承担，#32a M8 只对齐顺序）
+
+「待安装」组改名「探索插件」在 #30d 与 #32a M8（执行清单 833 行）**双写 = 双份工**。理顺：改名随 #30d（视图改造原子性——数据源切 catalog 的同一动作，标题立即一致）；#32a M8 只做「顺序对齐 已安装/探索插件/已禁用/内置」。
+
+### 7.4 #30c 多源配置归 marketplace 插件命名空间
+
+源列表 `marketplace.marketplaceSources` 归 **marketplace 插件命名空间配置**（plugin.json `contributes.configuration` 声明，含默认官方源），非壳 `app.*`——壳零改动（§6.6「全部在 marketplace 插件内部」），第三方市场插件各自声明源管理。
+
+### 7.5 F3 语言切换 = react-i18next 自动（纸面任务清除）
+
+- **全 src 实测 E5.8 无语言变更事件**（CoreEvents.ts 只有 `SHOW_LANGUAGE_PICKER`；无 `onDidChangeLanguage`）。原 11 档 §三·五 F3「市场插件订阅壳语言变更事件」是 E5.6 时代假设（自己标「实现时核对壳事件通道名」）。
+- **正确方案 = 零订阅**：市场插件用 react-i18next `t()`，壳切语言调 `i18next.changeLanguage` → 所有 `useTranslation` 组件自动重渲染。清单已删「订阅事件」子项，改验证点「切语言 → 市场 UI 即时刷新」。
+
+### 7.6 §五 deferral 残留清除（顺带）
+
+原 §五「v1.0 手动版 + 未来自动化版」是"当前够用、未来再补"话术——第 2.2 轮已拍板自动链路当下做全（沉 03-插件发布流水线.md §四），本档 §五 未同步 = 文档漂移。已更新 §五 指向自动链路。
 
 ---
 
