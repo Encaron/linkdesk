@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>添加市场源 · 三形态抉择板——入口位置 × 添加交互</title>
+<style>
+/* ═══════════════════════════════════════════════════════
+   LinkDesk 设计 token（复制自 src/index.css :root 暗色主题 +
+   参考 mockup「01-形态一形态二-复杂场景图.html」——mockup 仅示意）
+   ═══════════════════════════════════════════════════════ */
+:root {
+  --bg-window: #1E1E1E;
+  --bg-card: #2D2D2D;
+  --bg-input: #3C3C3C;
+  --bg-titlebar: #252526;
+  --bg-icon-bar: #18181B;
+  --bg-side-panel: #1E1E22;
+  --text-primary: #D4D4D4;
+  --text-secondary: #9D9D9D;
+  --text-muted: #8A8A8A;
+  --accent: #0078D4;
+  --accent-hover: #1A8CE8;
+  --border: #3C3C3C;
+  --separator: #474747;
+  --icon-inactive: #858585;
+  --hover-overlay: rgba(255,255,255,0.06);
+  --error: #E06C75;
+  --status-connected: #4EC9B0;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  background: #101013;
+  color: var(--text-primary);
+  font-family: "IBM Plex Sans", "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+  font-size: 13px;
+  padding: 32px;
+  max-width: 1500px;
+  margin: 0 auto;
+}
+
+h1 { font-size: 20px; font-weight: 600; letter-spacing: 0.02em; margin-bottom: 6px; }
+h1 small { font-size: 13px; font-weight: 400; color: var(--text-muted); display: block; margin-top: 6px; line-height: 1.7; }
+h1 code, .mono { font-family: "JetBrains Mono", Consolas, monospace; font-size: 11px; color: var(--accent-hover); }
+h1 .hl { color: var(--status-connected); }
+h1 .warn { color: var(--error); }
+
+.frame { background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; margin-top: 18px; }
+.frame-caption { padding: 10px 14px; border-bottom: 1px solid var(--border); display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.frame-caption b { font-size: 14px; }
+.frame-caption .tag { font-size: 11px; color: #fff; background: var(--accent); border-radius: 3px; padding: 1px 8px; font-weight: 600; }
+.frame-caption .tag.a { background: var(--status-connected); }
+.frame-caption .tag.b { background: #8B5CF6; }
+.frame-caption .tag.c { background: #E8A33D; }
+.frame-caption span { color: var(--text-secondary); font-size: 12px; }
+.frame-note { padding: 10px 14px; border-top: 1px solid var(--border); color: var(--text-muted); font-size: 12px; line-height: 1.8; background: #26262a; }
+.frame-note b { color: var(--text-secondary); }
+.frame-note .ok { color: var(--status-connected); }
+.frame-note .warn { color: var(--error); }
+.frame-note code { font-family: "JetBrains Mono", Consolas, monospace; font-size: 11px; color: var(--accent-hover); }
+
+/* ── 应用窗口骨架 ── */
+.app { position: relative; display: flex; flex-direction: column; min-height: 560px; background: var(--bg-window); font-size: 12px; overflow: hidden; }
+.titlebar { height: 28px; flex: none; background: var(--bg-titlebar); display: flex; align-items: center; padding: 0 10px 0 12px; gap: 8px; user-select: none; }
+.titlebar .logo { width: 14px; height: 14px; flex: none; }
+.titlebar .app-name { font-size: 12px; color: var(--text-secondary); }
+.titlebar .drag { flex: 1; }
+.win-btns { display: flex; gap: 2px; }
+.win-btn { width: 34px; height: 22px; border: none; background: transparent; color: var(--text-secondary); border-radius: 3px; display: flex; align-items: center; justify-content: center; }
+.win-btn:hover { background: var(--hover-overlay); color: var(--text-primary); }
+.win-btn.close:hover { background: #c42b1c; color: #fff; }
+
+.mid { flex: 1; display: flex; min-height: 0; }
+.icon-bar { width: 48px; flex: none; background: var(--bg-icon-bar); display: flex; flex-direction: column; align-items: center; padding-top: 6px; gap: 2px; }
+.icon-btn { width: 48px; height: 42px; border: none; background: transparent; color: var(--icon-inactive); display: flex; align-items: center; justify-content: center; border-left: 2px solid transparent; }
+.icon-btn:hover { color: var(--text-primary); background: var(--hover-overlay); }
+.icon-btn.active { color: #FFFFFF; border-left-color: var(--accent); }
+.icon-btn svg { width: 20px; height: 20px; }
+.ib-sep { width: 26px; height: 1px; background: var(--border); margin: 5px 0; }
+
+/* 侧栏（设置页用） */
+.sidebar { width: 172px; flex: none; background: var(--bg-side-panel); border-right: 1px solid var(--border); display: flex; flex-direction: column; font-size: 12px; overflow: hidden; }
+.sidebar-header { padding: 8px 12px; color: var(--text-secondary); letter-spacing: 0.06em; font-size: 11px; text-transform: uppercase; flex: none; }
+.tree-row { display: flex; align-items: center; gap: 6px; padding: 3px 12px; color: var(--text-primary); font-family: "JetBrains Mono", Consolas, monospace; font-size: 11.5px; flex: none; }
+.tree-row .arrow { color: var(--text-muted); width: 12px; flex: none; }
+.tree-row svg { width: 13px; height: 13px; flex: none; color: var(--text-muted); }
+.tree-row.selected { background: rgba(0,120,212,0.18); }
+
+.main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.tabbar { height: 32px; flex: none; background: var(--bg-titlebar); display: flex; align-items: stretch; border-bottom: 1px solid var(--border); }
+.tab { display: flex; align-items: center; gap: 6px; padding: 0 12px; color: var(--text-secondary); border-right: 1px solid var(--border); border-top: 2px solid transparent; font-size: 12px; }
+.tab.active { background: var(--bg-window); color: var(--text-primary); border-top-color: var(--accent); }
+.tab .tab-close { display: flex; align-items: center; justify-content: center; width: 16px; height: 16px; border-radius: 3px; color: var(--text-muted); font-size: 10px; flex: none; }
+
+/* ── 设置页 ── */
+.set-wrap { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+.search-bar { display: flex; align-items: center; padding: 8px 16px; border-bottom: 1px solid var(--separator); gap: 8px; flex: none; }
+.search-icon { color: var(--text-muted); flex: none; display: flex; }
+.search-input { flex: 1; background: var(--bg-input); border: 1px solid var(--border); color: var(--text-primary); font-size: 13px; padding: 5px 8px; outline: none; border-radius: 3px; }
+.json-btn { display: flex; align-items: center; gap: 4px; padding: 4px 8px; background: transparent; border: 1px solid var(--border); color: var(--text-primary); font-size: 12px; border-radius: 3px; }
+.set-body { flex: 1; display: flex; min-height: 0; }
+.nav { width: 210px; flex: none; overflow-y: auto; border-right: 1px solid var(--separator); padding: 4px 0; }
+.nav-group-header { display: flex; align-items: center; width: 100%; padding: 6px 12px 6px 16px; font-size: 13px; color: var(--text-primary); background: transparent; border: none; cursor: pointer; text-align: left; font-family: inherit; border-left: 2px solid transparent; }
+.nav-group-header:hover { background: var(--hover-overlay); }
+.nav-group-header .lbl { display: flex; align-items: center; gap: 5px; }
+.nav-group-header .arrow { font-size: 10px; color: var(--text-muted); }
+.nav-group.flat > .nav-group-header[aria-current=page] { background: var(--hover-overlay); font-weight: 500; border-left-color: var(--accent); }
+.nav-badge { font-size: 10px; padding: 1px 6px; border-radius: 8px; color: var(--accent); background: rgba(0,120,212,0.12); }
+.form { flex: 1; overflow-y: auto; padding: 20px 28px; }
+.main-title { font-size: 20px; font-weight: 600; margin: 0 0 4px; color: var(--text-primary); }
+.section-title { font-size: 13px; color: var(--text-muted); margin: 0 0 18px; line-height: 1.7; }
+.section-title code { font-family: "JetBrains Mono", Consolas, monospace; font-size: 11px; color: var(--accent-hover); }
+.set-row { display: flex; align-items: flex-start; padding: 8px 12px; border-radius: 4px; border-left: 2px solid transparent; gap: 20px; }
+.set-row.modified { border-left-color: var(--accent); }
+.set-row-info { flex: 1; min-width: 0; }
+.set-row-label { display: block; font-size: 13px; font-weight: 500; color: var(--text-primary); margin-bottom: 2px; }
+.set-row-desc { display: block; font-size: 12px; color: var(--text-muted); line-height: 1.5; }
+.set-row-ctrl { flex-shrink: 0; display: flex; align-items: flex-start; gap: 6px; min-width: 360px; justify-content: flex-end; }
+
+/* ── 源列表编辑器（帧① 行内形态） ── */
+.src-editor { width: 360px; display: flex; flex-direction: column; gap: 4px; }
+.src-row { display: flex; align-items: center; gap: 6px; padding: 3px 6px; border: 1px solid var(--border); border-radius: 4px; background: var(--bg-input); min-width: 0; }
+.src-row:hover { border-color: var(--separator); }
+.src-row .src-icon { flex: none; display: flex; align-items: center; color: var(--text-muted); }
+.src-row .src-icon svg { width: 13px; height: 13px; }
+.src-row .src-url { flex: 1; min-width: 0; font-family: "JetBrains Mono", Consolas, monospace; font-size: 10.5px; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.src-badge { flex: none; font-size: 10px; font-weight: 600; padding: 1px 6px; border-radius: 8px; color: var(--accent); background: rgba(0,120,212,0.14); }
+.src-lock { flex: none; display: flex; color: var(--text-muted); opacity: .5; }
+.src-lock svg { width: 12px; height: 12px; }
+.src-del { flex: none; display: flex; align-items: center; justify-content: center; width: 22px; height: 22px; padding: 0; background: transparent; border: none; border-radius: 3px; color: var(--text-muted); cursor: pointer; }
+.src-del:hover { color: var(--error); background: var(--hover-overlay); }
+.src-del svg { width: 13px; height: 13px; }
+.src-row--builtin { border-style: dashed; background: transparent; }
+
+.src-add-row { display: flex; align-items: center; gap: 6px; margin-top: 2px; }
+.src-add-input { flex: 1; min-width: 0; background: var(--bg-input); border: 1px solid var(--border); border-radius: 3px; color: var(--text-primary); font-size: 11.5px; font-family: "JetBrains Mono", Consolas, monospace; padding: 4px 8px; outline: none; }
+.src-add-input:focus { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.src-add-input::placeholder { color: var(--text-muted); font-family: "IBM Plex Sans", "Segoe UI", "Microsoft YaHei", sans-serif; }
+.src-add-input.err { border-color: var(--error); box-shadow: 0 0 0 1px var(--error); }
+.src-add-btn { flex: none; display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 3px; border: 1px solid var(--border); background: var(--bg-input); color: var(--text-secondary); font-size: 11.5px; font-family: inherit; cursor: pointer; }
+.src-add-btn:hover { background: var(--hover-overlay); color: var(--text-primary); }
+.src-msg { font-size: 10.5px; line-height: 1.6; }
+.src-msg--hint { color: var(--text-muted); }
+.src-msg--error { color: var(--error); }
+
+/* ── 「添加市场源」按钮（帧②③ 触发点） ── */
+.addsrc-trigger { display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 3px; border: 1px solid var(--border); background: transparent; color: var(--text-secondary); font-size: 11px; font-family: inherit; cursor: pointer; transition: color 150ms, border-color 150ms, background 150ms; }
+.addsrc-trigger:hover { color: var(--text-primary); border-color: var(--accent); background: var(--hover-overlay); }
+.addsrc-trigger svg { width: 12px; height: 12px; }
+
+/* ── 添加浮层（帧②③） ── */
+.addsrc-pop { position: absolute; z-index: 50; width: 320px; background: var(--bg-card); border: 1px solid var(--separator); border-radius: 6px; box-shadow: 0 6px 20px rgba(0,0,0,0.35); padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; }
+.addsrc-pop-title { font-size: 12px; color: var(--text-primary); font-weight: 500; }
+.addsrc-pop-input { background: var(--bg-input); border: 1px solid var(--border); border-radius: 3px; color: var(--text-primary); font-size: 11.5px; font-family: "JetBrains Mono", Consolas, monospace; padding: 5px 8px; outline: none; }
+.addsrc-pop-input:focus { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.addsrc-pop-input.err { border-color: var(--error); box-shadow: 0 0 0 1px var(--error); }
+.addsrc-pop-actions { display: flex; justify-content: flex-end; gap: 6px; margin-top: 2px; }
+.addsrc-pop-btn { padding: 3px 10px; border-radius: 3px; font-size: 11.5px; font-family: inherit; cursor: pointer; border: 1px solid var(--border); background: var(--bg-input); color: var(--text-secondary); }
+.addsrc-pop-btn:hover { background: var(--hover-overlay); color: var(--text-primary); }
+.addsrc-pop-btn--primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.addsrc-pop-btn--primary:hover { background: var(--accent-hover); }
+.addsrc-pop-hint { font-size: 10.5px; color: var(--text-muted); }
+.addsrc-pop-err { font-size: 10.5px; color: var(--error); }
+
+/* ── 市场页侧栏（帧③，真实结构：SearchView + 列表） ── */
+.ms-side { width: 240px; flex: none; background: var(--bg-side-panel); border-right: 1px solid var(--border); display: flex; flex-direction: column; min-height: 0; }
+.ms-header { padding: 10px 10px 6px; display: flex; flex-direction: column; gap: 8px; border-bottom: 1px solid var(--separator); flex: none; }
+.ms-header-top { display: flex; gap: 6px; align-items: center; }
+.ms-install-btn { flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 4px; padding: 4px 8px; border-radius: 3px; border: 1px solid var(--accent); background: rgba(0,120,212,0.15); color: var(--accent-hover); font-size: 12px; font-family: inherit; cursor: pointer; }
+.ms-install-btn:hover { background: rgba(0,120,212,0.28); }
+.ms-search-container { position: relative; }
+.ms-search-box { width: 100%; background: var(--bg-input); border: 1px solid var(--border); color: var(--text-primary); font-size: 12px; padding: 4px 24px 4px 8px; outline: none; border-radius: 3px; }
+.ms-search-box:focus { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.ms-search-clear { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); background: transparent; border: none; color: var(--text-muted); cursor: pointer; }
+.ms-group { flex: none; }
+.ms-group-head { padding: 6px 12px; font-size: 11px; color: var(--text-secondary); display: flex; align-items: center; gap: 4px; }
+.ms-item { display: flex; align-items: center; gap: 8px; padding: 5px 12px; cursor: pointer; }
+.ms-item:hover { background: var(--hover-overlay); }
+.ms-item.selected { background: rgba(0,120,212,0.18); }
+.ms-item .ic { width: 20px; height: 20px; border-radius: 4px; background: var(--bg-input); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 11px; flex: none; }
+.ms-item .nm { flex: 1; font-size: 12px; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ms-item .ver { font-size: 10px; color: var(--text-muted); flex: none; }
+
+/* ── 市场页主区 hero（真实：MarketplaceView） ── */
+.marketplace-view { flex: 1; display: flex; align-items: center; justify-content: center; }
+.marketplace-hero { text-align: center; }
+.marketplace-hero-icon { font-size: 42px; display: block; margin-bottom: 10px; }
+.marketplace-hero-title { font-size: 22px; font-weight: 600; margin-bottom: 6px; }
+.marketplace-hero-desc { font-size: 13px; color: var(--text-secondary); margin-bottom: 4px; }
+.marketplace-hero-hint { font-size: 12px; color: var(--text-muted); }
+
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+
+<h1>添加市场源 · 三形态抉择板
+  <small>两个维度并排比较：<b class="hl">入口位置</b>（设置页 vs 市场页）× <b class="warn">添加交互</b>（行内直添 vs 点按钮弹浮层）。<br>实现基座同一套：<b>新建 StringListEditor（数组编辑器）</b>，ObjectEditor（files.exclude 那个键值对编辑器）<b>一字不改</b>——壳渲染管线（renderControl <code>array</code> 分支 + 设置页自动分组）继续用，零新机制。<br>①② 同一入口（设置页「插件市场」组），只差添加交互；③ 是市场页内入口。逐帧看，告诉我你要哪个（可混搭，如 ③入口 + ①行内）。</small>
+  <div style="margin-top:12px; padding:10px 14px; border:1px solid var(--status-connected); border-radius:6px; background:rgba(78,201,176,0.08); font-size:13px; line-height:1.8; color:var(--text-secondary);">
+    ✅ <b style="color:var(--status-connected);">2026-08-30 定案</b>（E6#30c 锚点）：设置页「市场源」= <b>① 行内直添</b>（主管理——官方源「内置」徽标+锁不可删 / 作者源可删 / 底部 URL 输入+按钮）；市场页侧栏「市场源」按钮 = <b>③ 弹窗快捷入口</b>（marketplace 插件自绘 = 壳 OverlayPortal+Button+输入框拼）。两处写同一 <code>marketplaceSources</code> 数组（入口可多处，数据源唯一）。实现基座：<b>新建壳共享 StringListEditor（数组编辑器）</b>，ObjectEditor 与 files.exclude 一字不动。
+  </div>
+</h1>
+
+<!-- ════════════════════════════════════════════════════
+     形态 ①：设置页 + 行内直添（推荐）
+     ════════════════════════════════════════════════════ -->
+<div class="frame">
+  <div class="frame-caption">
+    <span class="tag a">① 推荐</span>
+    <b>设置页「插件市场」组 · 源列表编辑器（行内直添）</b>
+    <span>入口 = 设置页 · 添加 = 行内 URL 输入框 + 按钮</span>
+  </div>
+
+  <div class="app">
+    <div class="titlebar">
+      <svg class="logo" viewBox="0 0 16 16"><rect x="2" y="2" width="12" height="12" rx="2.5" fill="#0078D4"/><rect x="5" y="5" width="6" height="6" rx="1" fill="#fff"/></svg>
+      <span class="app-name">LinkDesk</span><span class="drag"></span>
+      <div class="win-btns"><button class="win-btn">─</button><button class="win-btn">□</button><button class="win-btn close">✕</button></div>
+    </div>
+    <div class="mid">
+      <div class="icon-bar">
+        <button class="icon-btn active" title="文件树"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg></button>
+        <button class="icon-btn" title="搜索"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg></button>
+        <div class="ib-sep"></div>
+        <button class="icon-btn" title="设置"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.6M12 18.6v2.6M2.8 12h2.6M18.6 12h2.6M5.5 5.5l1.8 1.8M16.7 16.7l1.8 1.8M18.5 5.5l-1.8 1.8M7.3 16.7l-1.8 1.8"/></svg></button>
+      </div>
+      <div class="sidebar">
+        <div class="sidebar-header">资源管理器</div>
+        <div class="tree-row"><span class="arrow">▾</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg>linkdesk</div>
+        <div class="tree-row selected"><span class="arrow">&nbsp;</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 5h16M4 12h16M4 19h10"/></svg>settings.tsx</div>
+      </div>
+      <div class="main">
+        <div class="tabbar"><div class="tab active">设置<span class="tab-close">✕</span></div><div class="tab">插件市场<span class="tab-close">✕</span></div></div>
+        <div class="set-wrap">
+          <div class="search-bar">
+            <span class="search-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="13" height="13"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg></span>
+            <input class="search-input" placeholder="搜索设置"><button class="json-btn">JSON</button>
+          </div>
+          <div class="set-body">
+            <nav class="nav">
+              <div class="nav-group has-kids"><div class="nav-group-header"><span class="lbl"><span class="arrow">▶</span>通用</span></div></div>
+              <div class="nav-group flat"><div class="nav-group-header" aria-current="page"><span class="lbl">插件市场<span class="nav-badge">没有才新建</span></span></div></div>
+              <div class="nav-group flat"><div class="nav-group-header"><span class="lbl">串口监视器</span></div></div>
+            </nav>
+            <div class="form">
+              <div class="main-title">插件市场</div>
+              <div class="section-title">marketplace 插件（<code>factoryRole:"marketplace"</code>）· 配置组自动新建<br>「市场源」= 商店拉取哪些目录（<code>marketplace.marketplaceSources</code>）。官方源内置；添加作者仓库 URL → 几秒后该作者插件出现在商店（卡片标来源）。</div>
+              <div class="set-row modified">
+                <div class="set-row-info">
+                  <span class="set-row-label">市场源</span>
+                  <span class="set-row-desc">商店拉取哪些目录。官方目录内置；添加作者仓库 URL 即可发现该作者的插件（该仓库根目录需有 marketplace.json）。</span>
+                </div>
+                <div class="set-row-ctrl"><div class="src-editor" id="editorA"><!-- JS --></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="frame-note">
+    <b>① 特点：</b>官方源 = 虚线行 + 「内置」徽标 + 锁（<span class="ok">不可删——默认源恒在</span>）；作者源 = 图标 + URL + 🗑（可删）。添加 = <b>行内</b>：输入框 + 「添加」按钮就在列表底部，回车即加。<b>可交互：</b>粘 URL（如 <code>https://github.com/agentB/plugins</code>）回车 → 新行；点 🗑 → 删除；空/非法/重复 → 红描边 + 就近红字。<b>优点：</b>所见即所得，一个配置行看全所有源，零跳层；<b>代价：</b>配置行占纵向空间略大（列表 + 添加区一行）。
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════
+     形态 ②：设置页 + 点「添加市场源」弹浮层
+     ════════════════════════════════════════════════════ -->
+<div class="frame">
+  <div class="frame-caption">
+    <span class="tag b">②</span>
+    <b>设置页「插件市场」组 · 列表 + 添加浮层</b>
+    <span>入口 = 设置页 · 添加 = 列表底部「+ 添加市场源」按钮 → 浮层填 URL</span>
+  </div>
+
+  <div class="app">
+    <div class="titlebar">
+      <svg class="logo" viewBox="0 0 16 16"><rect x="2" y="2" width="12" height="12" rx="2.5" fill="#0078D4"/><rect x="5" y="5" width="6" height="6" rx="1" fill="#fff"/></svg>
+      <span class="app-name">LinkDesk</span><span class="drag"></span>
+      <div class="win-btns"><button class="win-btn">─</button><button class="win-btn">□</button><button class="win-btn close">✕</button></div>
+    </div>
+    <div class="mid">
+      <div class="icon-bar">
+        <button class="icon-btn active" title="文件树"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg></button>
+        <button class="icon-btn" title="搜索"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg></button>
+        <div class="ib-sep"></div>
+        <button class="icon-btn" title="设置"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.6M12 18.6v2.6M2.8 12h2.6M18.6 12h2.6M5.5 5.5l1.8 1.8M16.7 16.7l1.8 1.8M18.5 5.5l-1.8 1.8M7.3 16.7l-1.8 1.8"/></svg></button>
+      </div>
+      <div class="sidebar">
+        <div class="sidebar-header">资源管理器</div>
+        <div class="tree-row"><span class="arrow">▾</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg>linkdesk</div>
+        <div class="tree-row selected"><span class="arrow">&nbsp;</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 5h16M4 12h16M4 19h10"/></svg>settings.tsx</div>
+      </div>
+      <div class="main">
+        <div class="tabbar"><div class="tab active">设置<span class="tab-close">✕</span></div><div class="tab">插件市场<span class="tab-close">✕</span></div></div>
+        <div class="set-wrap">
+          <div class="search-bar">
+            <span class="search-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="13" height="13"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg></span>
+            <input class="search-input" placeholder="搜索设置"><button class="json-btn">JSON</button>
+          </div>
+          <div class="set-body">
+            <nav class="nav">
+              <div class="nav-group has-kids"><div class="nav-group-header"><span class="lbl"><span class="arrow">▶</span>通用</span></div></div>
+              <div class="nav-group flat"><div class="nav-group-header" aria-current="page"><span class="lbl">插件市场<span class="nav-badge">没有才新建</span></span></div></div>
+              <div class="nav-group flat"><div class="nav-group-header"><span class="lbl">串口监视器</span></div></div>
+            </nav>
+            <div class="form">
+              <div class="main-title">插件市场</div>
+              <div class="section-title">同一「市场源」配置 · 添加交互改：列表只放已加源，点底部按钮弹浮层填 URL</div>
+              <div class="set-row modified">
+                <div class="set-row-info">
+                  <span class="set-row-label">市场源</span>
+                  <span class="set-row-desc">商店拉取哪些目录。官方目录内置；添加作者仓库 URL 即可发现该作者的插件。</span>
+                </div>
+                <div class="set-row-ctrl">
+                  <div class="src-editor" id="editorB"><!-- JS --></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- 添加浮层：由按钮打开 -->
+    <div class="addsrc-pop" id="popB" style="top:330px; right:300px; display:none;">
+      <span class="addsrc-pop-title">添加市场源</span>
+      <input class="addsrc-pop-input" type="url" id="popBInput" placeholder="https://github.com/用户名/仓库名" autocomplete="off">
+      <span class="addsrc-pop-hint" id="popBHint">该仓库根目录需有 marketplace.json</span>
+      <div class="addsrc-pop-actions">
+        <button class="addsrc-pop-btn" id="popBCancel">取消</button>
+        <button class="addsrc-pop-btn addsrc-pop-btn--primary" id="popBAdd">添加</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="frame-note">
+    <b>② 特点：</b>列表只显示已加的源（官方锁定 + 作者源可删），底部是<b>「+ 添加市场源」按钮</b>（不是输入框）——点它 → 小浮层浮在设置行旁（<span class="ok">可交互：点「+ 添加市场源」开浮层</span>），浮层内填 URL + 就近校验 + 添加/取消。<b>优点：</b>配置行更紧凑（没有常驻输入框行）；添加动作有「打开一个小面板」的仪式感，多源场景输入区不挤列表。<b>代价：</b>多一次点击；浮层需定位（对标壳浮层系统，无 titlebar 拖拽区问题）。
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════
+     形态 ③：市场页内入口
+     ════════════════════════════════════════════════════ -->
+<div class="frame">
+  <div class="frame-caption">
+    <span class="tag c">③</span>
+    <b>市场页内「添加市场源」入口（侧栏头部）+ 浮层</b>
+    <span>入口 = 市场页侧栏（与「安装」按钮并排）· 添加 = 浮层 · 数据真相源仍在设置页</span>
+  </div>
+
+  <div class="app">
+    <div class="titlebar">
+      <svg class="logo" viewBox="0 0 16 16"><rect x="2" y="2" width="12" height="12" rx="2.5" fill="#0078D4"/><rect x="5" y="5" width="6" height="6" rx="1" fill="#fff"/></svg>
+      <span class="app-name">LinkDesk</span><span class="drag"></span>
+      <div class="win-btns"><button class="win-btn">─</button><button class="win-btn">□</button><button class="win-btn close">✕</button></div>
+    </div>
+    <div class="mid">
+      <div class="icon-bar">
+        <button class="icon-btn" title="文件树"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg></button>
+        <button class="icon-btn" title="搜索"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg></button>
+        <div class="ib-sep"></div>
+        <button class="icon-btn active" title="插件市场"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg></button>
+      </div>
+      <!-- 市场页侧栏（真实结构：SearchView + 分组列表） -->
+      <div class="ms-side">
+        <div class="ms-header">
+          <div class="ms-header-top">
+            <button class="ms-install-btn"><span class="codicon">＋</span> 安装</button>
+            <button class="addsrc-trigger" id="triggerC" title="添加一个作者仓库为市场源">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 5v14M5 12h14"/></svg>
+              市场源
+            </button>
+          </div>
+          <div class="ms-search-container">
+            <input class="ms-search-box" type="text" placeholder="搜索插件...">
+            <button class="ms-search-clear">✕</button>
+          </div>
+        </div>
+        <div class="ms-group">
+          <div class="ms-group-head">已安装</div>
+          <div class="ms-item selected"><span class="ic">🖥</span><span class="nm">终端</span><span class="ver">1.0.0</span></div>
+          <div class="ms-item"><span class="ic">🔧</span><span class="nm">设置</span><span class="ver">1.0.0</span></div>
+          <div class="ms-item"><span class="ic">🧩</span><span class="nm">插件市场</span><span class="ver">1.0.0</span></div>
+        </div>
+        <div class="ms-group">
+          <div class="ms-group-head">内置</div>
+          <div class="ms-item"><span class="ic">🌊</span><span class="nm">数据演示器</span><span class="ver">1.0.0</span></div>
+          <div class="ms-item"><span class="ic">🎠</span><span class="nm">主题轮播</span><span class="ver">1.0.0</span></div>
+        </div>
+      </div>
+      <div class="main">
+        <div class="tabbar"><div class="tab active">插件市场<span class="tab-close">✕</span></div></div>
+        <div class="marketplace-view">
+          <div class="marketplace-hero">
+            <span class="marketplace-hero-icon">🧩</span>
+            <div class="marketplace-hero-title">插件管理</div>
+            <div class="marketplace-hero-desc">已安装 3 个插件</div>
+            <div class="marketplace-hero-hint">在左侧侧栏中浏览和管理插件。点击插件可查看详情。</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- 添加浮层：由「市场源」按钮打开 -->
+    <div class="addsrc-pop" id="popC" style="top:120px; left:56px; display:none;">
+      <span class="addsrc-pop-title">添加市场源</span>
+      <input class="addsrc-pop-input" type="url" id="popCInput" placeholder="https://github.com/用户名/仓库名" autocomplete="off">
+      <span class="addsrc-pop-hint" id="popCHint">该仓库根目录需有 marketplace.json；添加后几秒内，该源的所有插件出现在商店。</span>
+      <div class="addsrc-pop-actions">
+        <button class="addsrc-pop-btn" id="popCCancel">取消</button>
+        <button class="addsrc-pop-btn addsrc-pop-btn--primary" id="popCAdd">添加</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="frame-note">
+    <b>③ 特点：</b>入口搬到<b>市场页侧栏头部</b>——「安装」按钮旁并排一个「市场源」按钮（<span class="ok">可交互：点它弹浮层</span>）。场景驱动：用户逛商店找不到想要插件 → 当场「添加市场源」补货架，不用跳去设置页。<b>关键：</b>这只是<b>入口</b>，数据真相源仍是设置页「市场源」配置组（同一 <code>marketplaceSources</code>，加了在哪看都一样）——<b>入口可多处，数据源唯一</b>。③ 可与 ① 或 ② 并存（③=快捷入口，①/②=设置页完整管理）。
+  </div>
+</div>
+
+<script>
+/* ══════════════ 共享：源列表行渲染 ══════════════ */
+var GH = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="4"/><path d="M3 9h18M9 3v18" opacity=".45"/></svg>';
+var TRASH = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 11v6M14 11v6"/></svg>';
+var LOCK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>';
+var PLUS = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 5v14M5 12h14"/></svg>';
+var BUILTIN = 'https://raw.githubusercontent.com/encaron/linkdesk-marketplace/main/marketplace.json';
+
+function builtinRow() {
+  return '<div class="src-row src-row--builtin">' +
+    '<span class="src-icon">' + GH + '</span>' +
+    '<span class="src-url" title="' + BUILTIN + '">' + BUILTIN + '</span>' +
+    '<span class="src-badge">内置</span>' +
+    '<span class="src-lock">' + LOCK + '</span></div>';
+}
+function srcRow(url) {
+  return '<div class="src-row" data-url="' + url + '">' +
+    '<span class="src-icon">' + GH + '</span>' +
+    '<span class="src-url" title="' + url + '">' + url + '</span>' +
+    '<button class="src-del" title="移除该源">' + TRASH + '</button></div>';
+}
+
+/* ══════════════ 形态①：行内直添（交互） ══════════════ */
+(function () {
+  var box = document.getElementById('editorA');
+  var list = [
+    'https://raw.githubusercontent.com/agentA/linkdesk-marketplace/main/marketplace.json',
+    'https://raw.githubusercontent.com/agentB/plugins/main/marketplace.json'
+  ];
+  function render() {
+    box.innerHTML = builtinRow() + list.map(srcRow).join('') +
+      '<div class="src-add-row">' +
+        '<input class="src-add-input" type="url" placeholder="粘贴作者仓库 URL… 例：https://github.com/agentB/plugins">' +
+        '<button class="src-add-btn" type="button">' + PLUS + '添加</button>' +
+      '</div>' +
+      '<span class="src-msg src-msg--hint" id="hintA">该仓库根目录需有 marketplace.json；添加后几秒内，该源的所有插件出现在商店（卡片标注来源）。</span>';
+    var input = box.querySelector('.src-add-input');
+    var addBtn = box.querySelector('.src-add-btn');
+    var hint = box.querySelector('#hintA');
+    box.querySelectorAll('.src-del').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        list = list.filter(function (s) { return s !== btn.closest('.src-row').dataset.url; });
+        render();
+      });
+    });
+    function add() {
+      var raw = input.value.trim();
+      if (!raw) { input.classList.add('err'); hint.className = 'src-msg src-msg--error'; hint.textContent = '请输入仓库 URL。'; return; }
+      if (!/^https?:\/\/.+/.test(raw)) { input.classList.add('err'); hint.className = 'src-msg src-msg--error'; hint.textContent = 'URL 格式不对——以 http(s):// 开头。示例：https://github.com/用户名/仓库名'; return; }
+      if (raw === BUILTIN || list.indexOf(raw) >= 0) { input.classList.add('err'); hint.className = 'src-msg src-msg--error'; hint.textContent = '这个源已经在列表里了（官方源内置，无需重复添加）。'; return; }
+      list.push(raw); input.value = '';
+      hint.className = 'src-msg src-msg--hint';
+      hint.textContent = '该仓库根目录需有 marketplace.json；添加后几秒内，该源的所有插件出现在商店（卡片标注来源）。';
+      render();
+    }
+    addBtn.addEventListener('click', add);
+    input.addEventListener('keydown', function (e) { if (e.key === 'Enter') add(); });
+    input.addEventListener('input', function () { input.classList.remove('err'); hint.className = 'src-msg src-msg--hint'; hint.textContent = '该仓库根目录需有 marketplace.json；添加后几秒内，该源的所有插件出现在商店（卡片标注来源）。'; });
+  }
+  render();
+})();
+
+/* ══════════════ 形态②：设置页 + 浮层（交互） ══════════════ */
+(function () {
+  var box = document.getElementById('editorB');
+  var pop = document.getElementById('popB');
+  var input = document.getElementById('popBInput');
+  var hint = document.getElementById('popBHint');
+  var list = [
+    'https://raw.githubusercontent.com/agentA/linkdesk-marketplace/main/marketplace.json'
+  ];
+  function renderList() {
+    box.innerHTML = builtinRow() + list.map(srcRow).join('') +
+      '<button class="addsrc-trigger" id="addBtnB" style="align-self:flex-start; margin-top:2px;">' + PLUS + ' 添加市场源</button>';
+    document.getElementById('addBtnB').addEventListener('click', openPop);
+    box.querySelectorAll('.src-del').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        list = list.filter(function (s) { return s !== btn.closest('.src-row').dataset.url; });
+        renderList();
+      });
+    });
+  }
+  function openPop() {
+    pop.style.display = 'flex';
+    input.value = '';
+    input.classList.remove('err');
+    hint.className = 'addsrc-pop-hint';
+    hint.textContent = '该仓库根目录需有 marketplace.json';
+    setTimeout(function () { input.focus(); }, 0);
+  }
+  document.getElementById('popBCancel').addEventListener('click', function () { pop.style.display = 'none'; });
+  document.getElementById('popBAdd').addEventListener('click', function () {
+    var raw = input.value.trim();
+    if (!raw) { input.classList.add('err'); hint.className = 'addsrc-pop-err'; hint.textContent = '请输入仓库 URL。'; return; }
+    if (!/^https?:\/\/.+/.test(raw)) { input.classList.add('err'); hint.className = 'addsrc-pop-err'; hint.textContent = 'URL 格式不对——以 http(s):// 开头。'; return; }
+    if (raw === BUILTIN || list.indexOf(raw) >= 0) { input.classList.add('err'); hint.className = 'addsrc-pop-err'; hint.textContent = '这个源已经在列表里了。'; return; }
+    list.push(raw);
+    pop.style.display = 'none';
+    renderList();
+  });
+  input.addEventListener('input', function () { input.classList.remove('err'); hint.className = 'addsrc-pop-hint'; hint.textContent = '该仓库根目录需有 marketplace.json'; });
+  input.addEventListener('keydown', function (e) { if (e.key === 'Enter') document.getElementById('popBAdd').click(); });
+  renderList();
+})();
+
+/* ══════════════ 形态③：市场页入口 + 浮层（交互） ══════════════ */
+(function () {
+  var trigger = document.getElementById('triggerC');
+  var pop = document.getElementById('popC');
+  var input = document.getElementById('popCInput');
+  var hint = document.getElementById('popCHint');
+  trigger.addEventListener('click', function () {
+    pop.style.display = 'flex';
+    input.value = '';
+    input.classList.remove('err');
+    hint.className = 'addsrc-pop-hint';
+    hint.textContent = '该仓库根目录需有 marketplace.json；添加后几秒内，该源的所有插件出现在商店。';
+    setTimeout(function () { input.focus(); }, 0);
+  });
+  document.getElementById('popCCancel').addEventListener('click', function () { pop.style.display = 'none'; });
+  document.getElementById('popCAdd').addEventListener('click', function () {
+    var raw = input.value.trim();
+    if (!raw) { input.classList.add('err'); hint.className = 'addsrc-pop-err'; hint.textContent = '请输入仓库 URL。'; return; }
+    if (!/^https?:\/\/.+/.test(raw)) { input.classList.add('err'); hint.className = 'addsrc-pop-err'; hint.textContent = 'URL 格式不对——以 http(s):// 开头。'; return; }
+    pop.style.display = 'none';
+    alert('（演示）已添加源：\n' + raw + '\n\n真实实现：写入 marketplace.marketplaceSources，商店立即拉取该源。');
+  });
+  input.addEventListener('input', function () { input.classList.remove('err'); hint.className = 'addsrc-pop-hint'; hint.textContent = '该仓库根目录需有 marketplace.json；添加后几秒内，该源的所有插件出现在商店。'; });
+  input.addEventListener('keydown', function (e) { if (e.key === 'Enter') document.getElementById('popCAdd').click(); });
+})();
+</script>
+
+</body>
+</html>
