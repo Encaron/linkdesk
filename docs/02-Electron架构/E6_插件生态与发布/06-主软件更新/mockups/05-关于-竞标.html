@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>主软件更新 · 关于 LinkDesk 标签页竞标（多 skill）</title>
+<style>
+  /* ═══════════ 设计系统——LinkDesk 真实 token（index.css 同值）+ skill 竞标 ═══════════ */
+  :root[data-theme="dark"] {
+    --bg-window: #1E1E1E; --bg-card: #2D2D2D; --bg-input: #3C3C3C;
+    --bg-titlebar: #252526; --bg-icon-bar: #18181B; --bg-side-panel: #1E1E22;
+    --text-primary: #D4D4D4; --text-secondary: #9D9D9D; --text-muted: #8A8A8A;
+    --accent: #0078D4; --accent-hover: #1A8CE8; --text-on-accent: #FFFFFF;
+    --border: #3C3C3C; --separator: #474747; --icon-inactive: #858585;
+    --hover-overlay: rgba(255,255,255,0.06); --shadow-soft: 0 2px 8px rgba(0,0,0,0.35);
+    --status-connected: #4EC9B0; --page-bg: #141414; --note-bg: #262626;
+    --hairline: rgba(255,255,255,0.10);
+  }
+  :root[data-theme="light"] {
+    --bg-window: #FFFFFF; --bg-card: #F5F5F5; --bg-input: #EFEFEF;
+    --bg-titlebar: #F3F3F3; --bg-icon-bar: #F0F0F2; --bg-side-panel: #F0F0F3;
+    --text-primary: #2D2D2D; --text-secondary: #5A5A5A; --text-muted: #767676;
+    --accent: #0078D4; --accent-hover: #106EBE; --text-on-accent: #FFFFFF;
+    --border: #D4D4D4; --separator: #E8E8E8; --icon-inactive: #8A8A8A;
+    --hover-overlay: rgba(0,0,0,0.06); --shadow-soft: 0 2px 8px rgba(0,0,0,0.08);
+    --status-connected: #00893B; --page-bg: #ECECEC; --note-bg: #F7F7F7;
+    --hairline: rgba(0,0,0,0.12);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: "Segoe UI", "Microsoft YaHei", system-ui, sans-serif; font-size: 13px; background: var(--page-bg); color: var(--text-primary); padding: 40px 48px 80px; transition: background 200ms, color 200ms; }
+  .page-head { max-width: 1080px; margin: 0 auto 30px; }
+  .page-head h1 { font-size: 20px; font-weight: 600; margin-bottom: 8px; }
+  .page-head p { color: var(--text-secondary); line-height: 1.7; max-width: 980px; }
+  .page-head p code { background: var(--note-bg); padding: 1px 6px; border-radius: 4px; font-size: 11.5px; font-family: "JetBrains Mono", Consolas, monospace; }
+  .page-head .tags { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+  .tag { padding: 3px 10px; border-radius: 999px; font-size: 12px; background: var(--note-bg); border: 1px solid var(--separator); color: var(--text-secondary); }
+  .theme-toggle { position: fixed; top: 20px; right: 24px; z-index: 50; display: flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 8px; cursor: pointer; background: var(--bg-card); border: 1px solid var(--separator); color: var(--text-primary); font-size: 13px; box-shadow: var(--shadow-soft); transition: background 150ms; }
+  .theme-toggle:hover { background: var(--bg-input); }
+
+  /* 竞标卡 */
+  .bid { max-width: 1080px; margin: 0 auto 30px; background: var(--bg-card); border: 1px solid var(--separator); border-radius: 12px; padding: 24px 28px 26px; box-shadow: var(--shadow-soft); position: relative; overflow: hidden; }
+  .bid-head { display: flex; align-items: center; gap: 12px; margin-bottom: 4px; flex-wrap: wrap; }
+  .bid-head .bid-no { font-size: 11px; font-weight: 700; letter-spacing: 0.06em; padding: 3px 9px; border-radius: 6px; background: var(--note-bg); border: 1px solid var(--separator); color: var(--text-secondary); }
+  .bid-head h2 { font-size: 15px; font-weight: 600; }
+  .bid-head .skill { font-size: 11px; padding: 2px 9px; border-radius: 999px; background: var(--note-bg); border: 1px solid var(--separator); color: var(--text-secondary); }
+  .bid-head .skill.one { border-color: var(--accent); color: var(--accent); }
+  .bid-desc { color: var(--text-secondary); font-size: 12.5px; line-height: 1.65; margin: 6px 0 16px; max-width: 980px; }
+  .bid-desc code { background: var(--note-bg); padding: 1px 6px; border-radius: 4px; font-size: 11.5px; font-family: "JetBrains Mono", Consolas, monospace; }
+  .bid-pros { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+  .bid-pros span { font-size: 11.5px; padding: 2px 9px; border-radius: 999px; background: var(--note-bg); border: 1px solid var(--separator); color: var(--text-secondary); }
+  .bid-pros span.pro { border-color: rgba(0,180,120,0.5); color: #00A86B; }
+  .bid-pros span.con { border-color: rgba(220,60,60,0.5); color: #D43A3A; }
+
+  /* ── 应用窗口骨架 ── */
+  .app { display: flex; flex-direction: column; min-height: 460px; background: var(--bg-window); font-size: 12px; overflow: hidden; margin-top: 8px; border-radius: 8px; border: 1px solid var(--border); position: relative; }
+  .titlebar { height: 30px; flex: none; background: var(--bg-titlebar); display: flex; align-items: center; padding: 0 8px 0 12px; gap: 6px; user-select: none; }
+  .titlebar .logo { width: 14px; height: 14px; flex: none; }
+  .titlebar .app-name { font-size: 12px; color: var(--text-secondary); margin-right: 10px; }
+  .menu-btn { height: 22px; padding: 0 8px; background: transparent; border: none; color: var(--text-secondary); font-size: 12px; font-family: inherit; border-radius: 4px; cursor: pointer; }
+  .menu-btn:hover { background: var(--hover-overlay); color: var(--text-primary); }
+  .titlebar .drag { flex: 1; }
+  .win-btn { width: 34px; height: 22px; border: none; background: transparent; color: var(--text-secondary); cursor: pointer; }
+  .win-btn:hover { background: var(--hover-overlay); color: var(--text-primary); }
+  .tabbar { height: 32px; flex: none; background: var(--bg-titlebar); display: flex; align-items: stretch; border-bottom: 1px solid var(--border); }
+  .tab { display: flex; align-items: center; gap: 6px; padding: 0 12px; color: var(--text-secondary); border-right: 1px solid var(--border); border-top: 2px solid transparent; font-size: 12px; }
+  .tab.active { background: var(--bg-window); color: var(--text-primary); border-top-color: var(--accent); }
+  .tab .tab-close { display: flex; align-items: center; justify-content: center; width: 16px; height: 16px; border-radius: 3px; color: var(--text-muted); font-size: 10px; flex: none; }
+  .about-area { flex: 1; display: flex; align-items: center; justify-content: center; min-height: 0; overflow-y: auto; padding: 24px; }
+
+  /* 共享控件：按钮（壳 Button.css .button 语义——主题普通按钮） */
+  .btn { display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 14px; border: 1px solid var(--separator); background: transparent; color: var(--text-primary); border-radius: 5px; font-size: 12px; font-family: inherit; cursor: pointer; transition: background 150ms, border-color 150ms; }
+  .btn:hover { background: var(--hover-overlay); }
+  .btn.primary { background: var(--accent); color: var(--text-on-accent); border-color: transparent; }
+  .btn.primary:hover { opacity: 0.9; }
+
+  /* ═══════ 竞标 A：VS Code 对标（ui-ux-pro-max） ═══════ */
+  .aba-card { width: 420px; max-width: 100%; }
+  .aba-brand { display: flex; flex-direction: column; align-items: center; padding-bottom: 20px; border-bottom: 1px solid var(--separator); }
+  .aba-logo { width: 52px; height: 52px; border-radius: 12px; background: var(--accent); display: flex; align-items: center; justify-content: center; }
+  .aba-logo svg { width: 30px; height: 30px; }
+  .aba-name { margin-top: 12px; font-size: 17px; font-weight: 600; }
+  .aba-verline { margin-top: 3px; font-size: 12px; color: var(--text-muted); }
+  .aba-fields { margin-top: 6px; }
+  .aba-row { display: flex; align-items: baseline; gap: 14px; padding: 7px 4px; border-bottom: 1px solid var(--hairline); }
+  .aba-row .k { width: 78px; flex: none; font-size: 12px; color: var(--text-muted); text-align: right; }
+  .aba-row .v { font-family: "JetBrains Mono", Consolas, monospace; font-size: 12px; color: var(--text-primary); word-break: break-all; }
+  .aba-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; }
+
+  /* ═══════ 竞标 B：液态玻璃（high-end-visual-design） ═══════ */
+  .bid.b { background: linear-gradient(135deg, #1a1d2e 0%, #1e2436 40%, #16212e 100%); }
+  :root[data-theme="light"] .bid.b { background: linear-gradient(135deg, #E8ECF5 0%, #DCE6F2 40%, #E6ECF2 100%); }
+  .bid.b .bid-desc, .bid.b .bid-pros span, .bid.b .bid-head .bid-no, .bid.b .bid-head .skill { color: rgba(255,255,255,0.65); background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.16); }
+  .bid.b .bid-head h2 { color: #fff; }
+  .abb-stage { position: relative; border-radius: 10px; padding: 26px 14px; overflow: hidden; }
+  .abb-stage .orb { position: absolute; border-radius: 50%; filter: blur(52px); opacity: 0.5; pointer-events: none; }
+  .abb-stage .orb.o1 { width: 200px; height: 200px; background: rgba(0,120,212,0.55); top: -80px; left: 25%; }
+  .abb-stage .orb.o2 { width: 150px; height: 150px; background: rgba(124,58,237,0.4); bottom: -60px; right: 25%; }
+  .abb-shell { /* double-bezel 外层 shell */
+    position: relative; z-index: 1; width: 440px; max-width: 100%; margin: 0 auto;
+    padding: 2px; border-radius: 18px;
+    background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.14);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.10), var(--shadow-soft);
+  }
+  :root[data-theme="light"] .abb-shell { background: rgba(255,255,255,0.4); border-color: rgba(255,255,255,0.8); }
+  .abb-core { /* 内层 core */
+    border-radius: 16px; padding: 30px 34px;
+    background: rgba(255,255,255,0.09);
+    border: 1px solid rgba(255,255,255,0.10);
+    box-shadow: inset 0 1px 1px rgba(255,255,255,0.12);
+    backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+  }
+  :root[data-theme="light"] .abb-core { background: rgba(255,255,255,0.82); border-color: rgba(255,255,255,0.95); }
+  .abb-brand { display: flex; flex-direction: column; align-items: center; }
+  .abb-logo { width: 58px; height: 58px; border-radius: 16px; background: linear-gradient(135deg, #0078D4, #6B4DF2); display: flex; align-items: center; justify-content: center; box-shadow: 0 6px 18px rgba(0,120,212,0.35); }
+  .abb-logo svg { width: 32px; height: 32px; }
+  .abb-name { margin-top: 14px; font-size: 18px; font-weight: 650; color: #fff; }
+  :root[data-theme="light"] .abb-name { color: #1a1a2e; }
+  .abb-tag { margin-top: 3px; font-size: 11.5px; color: rgba(255,255,255,0.5); }
+  :root[data-theme="light"] .abb-tag { color: rgba(0,0,0,0.4); }
+  .abb-rule { border: none; border-top: 1px solid rgba(255,255,255,0.14); margin: 20px 0; }
+  :root[data-theme="light"] .abb-rule { border-top-color: rgba(0,0,0,0.10); }
+  .abb-grid { display: grid; grid-template-columns: auto 1fr; gap: 10px 18px; align-items: baseline; }
+  .abb-grid .k { font-size: 11.5px; color: rgba(255,255,255,0.5); text-align: right; }
+  :root[data-theme="light"] .abb-grid .k { color: rgba(0,0,0,0.45); }
+  .abb-grid .v { font-family: "JetBrains Mono", Consolas, monospace; font-size: 12px; color: rgba(255,255,255,0.9); word-break: break-all; }
+  :root[data-theme="light"] .abb-grid .v { color: rgba(0,0,0,0.75); }
+  .abb-actions { display: flex; justify-content: center; gap: 10px; margin-top: 22px; }
+  .abb-btn { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 18px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.85); font-size: 12px; font-family: inherit; cursor: pointer; transition: transform 200ms, box-shadow 200ms, background 200ms; }
+  :root[data-theme="light"] .abb-btn { background: rgba(255,255,255,0.6); border-color: rgba(0,0,0,0.12); color: rgba(0,0,0,0.7); }
+  .abb-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 14px rgba(0,0,0,0.3); }
+  .abb-btn.primary { background: linear-gradient(135deg, #0078D4, #2B7DE9); border-color: transparent; color: #fff; box-shadow: 0 4px 16px rgba(0,120,212,0.4); }
+  :root[data-theme="light"] .abb-btn.primary { color: #fff; }
+
+  /* ═══════ 竞标 C：精修极简（impeccable） ═══════ */
+  .abc-card { width: 420px; max-width: 100%; }
+  .abc-brand { display: flex; align-items: center; gap: 12px; padding-bottom: 18px; border-bottom: 1px solid var(--hairline); }
+  .abc-logo { width: 34px; height: 34px; border-radius: 8px; background: var(--accent); display: flex; align-items: center; justify-content: center; flex: none; }
+  .abc-logo svg { width: 20px; height: 20px; }
+  .abc-name { font-size: 15px; font-weight: 650; }
+  .abc-verline { font-size: 11.5px; color: var(--text-muted); margin-top: 1px; }
+  .abc-fields { margin-top: 8px; }
+  .abc-row { display: flex; align-items: baseline; gap: 14px; padding: 8px 2px; border-bottom: 1px solid var(--hairline); transition: background 120ms; }
+  .abc-row .k { width: 84px; flex: none; font-size: 12px; color: var(--text-muted); }
+  .abc-row .v { font-family: "JetBrains Mono", Consolas, monospace; font-size: 12px; color: var(--text-primary); word-break: break-all; flex: 1; }
+  .abc-row .cp { width: 18px; height: 18px; flex: none; border-radius: 4px; display: flex; align-items: center; justify-content: center; color: var(--text-muted); opacity: 0; cursor: pointer; font-size: 11px; }
+  .abc-row:hover .cp { opacity: 1; }
+  .abc-row .cp:hover { background: var(--hover-overlay); color: var(--text-primary); }
+  .abc-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; }
+
+  /* 对照表 */
+  .compare { max-width: 1080px; margin: 10px auto 0; border-collapse: collapse; font-size: 12.5px; }
+  .compare th, .compare td { padding: 9px 14px; text-align: left; border-bottom: 1px solid var(--separator); }
+  .compare th { color: var(--text-secondary); font-weight: 600; font-size: 12px; }
+  .compare td:first-child { font-weight: 600; white-space: nowrap; }
+  .compare .ok { color: #00A86B; }
+  .compare .no { color: #D43A3A; }
+  .hint { max-width: 1080px; margin: 22px auto 0; padding: 14px 18px; border-radius: 10px; background: var(--note-bg); border: 1px dashed var(--separator); color: var(--text-secondary); font-size: 12.5px; line-height: 1.7; }
+  .hint b { color: var(--text-primary); }
+  .foot { max-width: 1080px; margin: 24px auto 0; color: var(--text-muted); font-size: 12px; line-height: 1.6; }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body data-theme="dark">
+
+<div class="theme-toggle" id="themeToggle">🌓 切换主题</div>
+
+<div class="page-head">
+  <h1>主软件更新 · 关于 LinkDesk 标签页竞标（多 skill）</h1>
+  <p>同一个机制底座（壳内标签页 <code>tabBehavior.singleton</code>，字段 = product.json 三件套 + <code>process.versions</code> 运行时，数据来源见 02/06 档案）——由不同设计 skill 各出一个视觉风格，竞标谁的整体观感最贴合 LinkDesk。两个动作按钮恒在：<b>检查更新…</b>（调 <code>update.checkForUpdates</code>）+ <b>复制</b>（全字段 <code>key: value</code> 多行复制到剪贴板 + toast「已复制」）。顶部切换主题，悬停每行可体验 hover 态。</p>
+  <div class="tags">
+    <span class="tag">A · ui-ux-pro-max（VS Code 对标）</span>
+    <span class="tag">B · high-end（液态玻璃）</span>
+    <span class="tag">C · impeccable（编辑排版精修）</span>
+    <span class="tag best" style="background:var(--accent);color:#fff;border-color:transparent;">2026-08-30 开放竞标</span>
+  </div>
+</div>
+
+<!-- ═══════ 竞标 A：VS Code 对标 ═══════ -->
+<div class="bid">
+  <div class="bid-head">
+    <span class="bid-no">竞标 A</span>
+    <h2>VS Code 对标（品牌区 + 字段表 + 按钮行）</h2>
+    <span class="skill one">skill：ui-ux-pro-max</span>
+  </div>
+  <div class="bid-desc">
+    直接对标 VS Code「帮助→关于」——顶部品牌区（Logo + 名字 + 版本小字，<b>居中</b>），中部 <b>key:value 字段表</b>（key 列右对齐 muted + 值列等宽 mono + 发丝线分隔），底部右对齐按钮行（检查更新 次级 + 复制 accent 主按钮）。最「识别度高」：用户一眼认出「这是 LinkDesk 的关于」，和 VS Code 心智同构。
+  </div>
+  <div class="app">
+    <div class="titlebar">
+      <svg class="logo" viewBox="0 0 16 16"><rect x="2" y="2" width="12" height="12" rx="2.5" fill="#0078D4"/><rect x="5" y="5" width="6" height="6" rx="1" fill="#fff"/></svg>
+      <span class="app-name">LinkDesk</span>
+      <button class="menu-btn">文件</button><button class="menu-btn">查看</button><button class="menu-btn">帮助</button>
+      <span class="drag"></span>
+      <span class="win-btn">─</span><span class="win-btn">□</span><span class="win-btn">✕</span>
+    </div>
+    <div class="tabbar"><div class="tab active">关于 LinkDesk <span class="tab-close">✕</span></div></div>
+    <div class="about-area">
+      <div class="aba-card">
+        <div class="aba-brand">
+          <div class="aba-logo"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="4" fill="#fff"/><rect x="8" y="8" width="8" height="8" rx="2" fill="#0078D4"/></svg></div>
+          <div class="aba-name">LinkDesk</div>
+          <div class="aba-verline">版本 0.1.0</div>
+        </div>
+        <div class="aba-fields">
+          <div class="aba-row"><span class="k">版本</span><span class="v">0.1.0</span></div>
+          <div class="aba-row"><span class="k">提交</span><span class="v">91e6aa36…</span></div>
+          <div class="aba-row"><span class="k">日期</span><span class="v">2026-08-30T00:00:00Z</span></div>
+          <div class="aba-row"><span class="k">Electron</span><span class="v">42.8.1</span></div>
+          <div class="aba-row"><span class="k">Chromium</span><span class="v">148.0.7778.280</span></div>
+          <div class="aba-row"><span class="k">Node.js</span><span class="v">24.18.1</span></div>
+          <div class="aba-row"><span class="k">V8</span><span class="v">14.8.178.38-electron.0</span></div>
+          <div class="aba-row"><span class="k">OS</span><span class="v">Windows 11 Home China (10.0.26200)</span></div>
+        </div>
+        <div class="aba-actions">
+          <button class="btn">检查更新…</button>
+          <button class="btn primary" onclick="copyDemo(this)">复制</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="bid-pros">
+    <span class="pro">✓ 对标 VS Code 关于，识别度最高</span>
+    <span class="pro">✓ 字段表发丝线 = 干净可扫读</span>
+    <span class="pro">✓ 双主题天然兼容</span>
+    <span class="con">✗ 偏「工具型」表格观感</span>
+  </div>
+</div>
+
+<!-- ═══════ 竞标 B：液态玻璃 ═══════ -->
+<div class="bid b">
+  <div class="bid-head">
+    <span class="bid-no" style="background:rgba(255,255,255,0.1);border-color:rgba(255,255,255,0.2);color:rgba(255,255,255,0.7);">竞标 B</span>
+    <h2 style="color:#fff;">液态玻璃（双贝塞尔品牌卡）</h2>
+    <span class="skill">skill：high-end-visual-design</span>
+  </div>
+  <div class="bid-desc">
+    悬浮玻璃卡——<b>双贝塞尔嵌套</b>（外层 shell 槽 + 内层 core，concentric 圆角）+ <code>backdrop-filter: blur(16px)</code>，Logo 渐变方块带投影，字段两列网格，按钮 = pill + hover 浮起。背景两块光斑。最「品牌感」的一档——关于页 = 一张「LinkDesk 名片」，直连 #50.5 玻璃态。
+  </div>
+  <div class="abb-stage">
+    <div class="orb o1"></div><div class="orb o2"></div>
+    <div class="abb-shell">
+      <div class="abb-core">
+        <div class="abb-brand">
+          <div class="abb-logo"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="4" fill="#fff"/><rect x="8" y="8" width="8" height="8" rx="2" fill="#0078D4"/></svg></div>
+          <div class="abb-name">LinkDesk</div>
+          <div class="abb-tag">通用容器 · 万物皆插件</div>
+        </div>
+        <hr class="abb-rule">
+        <div class="abb-grid">
+          <span class="k">版本</span><span class="v">0.1.0</span>
+          <span class="k">提交</span><span class="v">91e6aa36…</span>
+          <span class="k">日期</span><span class="v">2026-08-30</span>
+          <span class="k">Electron</span><span class="v">42.8.1</span>
+          <span class="k">Chromium</span><span class="v">148.0.7778.280</span>
+          <span class="k">Node.js</span><span class="v">24.18.1</span>
+          <span class="k">V8</span><span class="v">14.8.178.38-electron.0</span>
+          <span class="k">OS</span><span class="v">Windows 11 (10.0.26200)</span>
+        </div>
+        <div class="abb-actions">
+          <button class="abb-btn" onclick="copyDemo(this)">检查更新…</button>
+          <button class="abb-btn primary" onclick="copyDemo(this)">复制</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="bid-pros">
+    <span class="pro" style="border-color:rgba(0,200,140,0.5);color:#00D68F;">✓ 对标 #50.5 玻璃态，风格连续</span>
+    <span class="pro" style="border-color:rgba(0,200,140,0.5);color:#00D68F;">✓ 品牌感最强（LinkDesk 名片）</span>
+    <span class="con" style="border-color:rgba(255,100,100,0.5);color:#FF8A8A;">✗ 无玻璃主题时观感平淡</span>
+    <span class="con" style="border-color:rgba(255,100,100,0.5);color:#FF8A8A;">✗ 双贝塞尔包裹感偏重</span>
+  </div>
+</div>
+
+<!-- ═══════ 竞标 C：精修极简 ═══════ -->
+<div class="bid">
+  <div class="bid-head">
+    <span class="bid-no">竞标 C</span>
+    <h2>编辑排版精修（行内复制 + 单栏字段）</h2>
+    <span class="skill">skill：impeccable</span>
+  </div>
+  <div class="bid-desc">
+    编辑出版语感——无居中品牌大图，顶部品牌行（Logo + 名字 + 版本一行排开），下方<b>单栏字段 list</b>（key 左 value 右 + 每行 hover 浮出复制小按钮——复制操作就在字段旁，最顺手），底部按钮行。最「克制日常」的一档：关于页是你偶尔看一眼的页面，不该有表演感，信息即内容。
+  </div>
+  <div class="app">
+    <div class="titlebar">
+      <svg class="logo" viewBox="0 0 16 16"><rect x="2" y="2" width="12" height="12" rx="2.5" fill="#0078D4"/><rect x="5" y="5" width="6" height="6" rx="1" fill="#fff"/></svg>
+      <span class="app-name">LinkDesk</span>
+      <button class="menu-btn">文件</button><button class="menu-btn">查看</button><button class="menu-btn">帮助</button>
+      <span class="drag"></span>
+      <span class="win-btn">─</span><span class="win-btn">□</span><span class="win-btn">✕</span>
+    </div>
+    <div class="tabbar"><div class="tab active">关于 LinkDesk <span class="tab-close">✕</span></div></div>
+    <div class="about-area">
+      <div class="abc-card">
+        <div class="abc-brand">
+          <div class="abc-logo"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="4" fill="#fff"/><rect x="8" y="8" width="8" height="8" rx="2" fill="#0078D4"/></svg></div>
+          <div>
+            <div class="abc-name">LinkDesk</div>
+            <div class="abc-verline">通用容器 · 万物皆插件 · v0.1.0</div>
+          </div>
+        </div>
+        <div class="abc-fields">
+          <div class="abc-row"><span class="k">版本</span><span class="v">0.1.0</span><span class="cp" title="复制该行">⧉</span></div>
+          <div class="abc-row"><span class="k">提交</span><span class="v">91e6aa36…</span><span class="cp" title="复制该行">⧉</span></div>
+          <div class="abc-row"><span class="k">日期</span><span class="v">2026-08-30T00:00:00Z</span><span class="cp" title="复制该行">⧉</span></div>
+          <div class="abc-row"><span class="k">Electron</span><span class="v">42.8.1</span><span class="cp" title="复制该行">⧉</span></div>
+          <div class="abc-row"><span class="k">Chromium</span><span class="v">148.0.7778.280</span><span class="cp" title="复制该行">⧉</span></div>
+          <div class="abc-row"><span class="k">Node.js</span><span class="v">24.18.1</span><span class="cp" title="复制该行">⧉</span></div>
+          <div class="abc-row"><span class="k">V8</span><span class="v">14.8.178.38-electron.0</span><span class="cp" title="复制该行">⧉</span></div>
+          <div class="abc-row"><span class="k">OS</span><span class="v">Windows 11 Home China (10.0.26200)</span><span class="cp" title="复制该行">⧉</span></div>
+        </div>
+        <div class="abc-actions">
+          <button class="btn">检查更新…</button>
+          <button class="btn primary" onclick="copyDemo(this)">复制全部</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="bid-pros">
+    <span class="pro">✓ 行内复制 = 复制操作最近，最顺手</span>
+    <span class="pro">✓ 无表演感，克制日常</span>
+    <span class="pro">✓ 单栏 list 扫读效率最高</span>
+    <span class="con">✗ 缺品牌大图，仪式感弱</span>
+    <span class="con">✗ 行内复制按钮是新增交互细节</span>
+  </div>
+</div>
+
+<!-- ═══════ 对照表 ═══════ -->
+<table class="compare">
+  <tr><th></th><th>A VS Code 对标</th><th>B 液态玻璃</th><th>C 精修极简</th></tr>
+  <tr><td>观感</td><td>工具·识别度高</td><td>悬浮·品牌感</td><td>克制·日常</td></tr>
+  <tr><td>品牌区</td><td>居中 Logo+名字</td><td>双贝塞尔玻璃卡</td><td>顶行品牌行</td></tr>
+  <tr><td>字段形态</td><td>key右对齐字段表</td><td>两列网格</td><td>单栏 list</td></tr>
+  <tr><td>复制操作</td><td>底部「复制」按钮</td><td>底部「复制」按钮</td><td class="ok">底部 + 每行行内 ⧉</td></tr>
+  <tr><td>主题系统兼容</td><td class="ok">强</td><td class="no">弱（玻璃专用）</td><td class="ok">强（单色）</td></tr>
+  <tr><td>与 #50.5 玻璃态衔接</td><td class="no">弱</td><td class="ok">直接</td><td class="no">弱</td></tr>
+  <tr><td>GPU 开销</td><td class="ok">零</td><td class="no">blur 卡片</td><td class="ok">零</td></tr>
+</table>
+
+<div class="hint">
+  <b>竞标逻辑：</b>三方案共用同一机制底座（壳内标签页 + 8 字段 + 两动作按钮）。A 是「对标 VS Code 稳妥线」（识别度最高）；B 是「设计风格线」（直连玻璃态，品牌名片）；C 是「编辑排版线」（行内复制最顺手，最克制）。<b>也可以混搭</b>——比如 C 的行内复制 × A 的居中品牌区。
+</div>
+
+<div class="foot">
+  所有颜色走项目 token（暗/亮主题同值），非硬编码。B 的玻璃变量对应 #50.5 的 --glass-blur/--glass-tint 方向。选中后写回 06 档案定案（§四 布局即实现稿）再实现。
+</div>
+
+<script>
+  const toggle = document.getElementById('themeToggle');
+  toggle.addEventListener('click', () => {
+    const root = document.documentElement;
+    const next = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+    root.setAttribute('data-theme', next);
+    toggle.textContent = next === 'dark' ? '🌓 切换主题' : '☀️ 切换主题';
+  });
+  function copyDemo(el) {
+    const label = el.textContent.trim();
+    el.textContent = '已复制 ✓';
+    el.style.background = 'var(--status-connected)';
+    el.style.color = '#fff';
+    setTimeout(() => {
+      el.textContent = label;
+      el.style.background = '';
+      el.style.color = '';
+    }, 1200);
+  }
+  // C 版行内复制
+  document.querySelectorAll('.abc-row .cp').forEach(cp => cp.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const v = cp.previousElementSibling.textContent.trim();
+    cp.textContent = '✓';
+    cp.style.color = 'var(--status-connected)';
+    setTimeout(() => { cp.textContent = '⧉'; cp.style.color = ''; }, 1000);
+  }));
+</script>
+
+</body>
+</html>
