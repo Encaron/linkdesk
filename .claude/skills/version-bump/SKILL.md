@@ -93,9 +93,11 @@ description: >
 ## 四、更新落点（类别判定后，改这些文件）
 
 1. **`package.json`** `version` —— 唯一真值，改这里
-2. **`electron/product.json`** `version` —— 开发期可留占位；发布期由 `npm run publish`（E6#26d）写入，**不手写第二份**（02 §2.3：任何地方不手写第二份版本号；`app.getVersion()` = 唯一运行时来源）
-3. **发布脚本断言** —— product.json version 与 `app.getVersion()` 一致性断言
+2. **`electron/product.json`** `version` —— 开发期可留占位；发布期由壳发布脚本（E6#57.15a）写入，**不手写第二份**（02 §2.3：任何地方不手写第二份版本号；`app.getVersion()` = 唯一运行时来源）
+3. **CHANGELOG.md** —— 每次 bump 写一条：`## v0.1.1（YYYY-MM-DD）` + 类别清单（feat/fix/breaking）（02 §2.6，对标 VS Code）
 4. **Git tag** —— `vX.Y.Z`（无 v 前缀的版本号比较，02 §2.4），Release body = 该版发行说明（05 数据源）
+
+> **🔴 发布门禁（02 §2.6，E6#57.15d 机械校验）**：发布时 `npm run publish` 自动断言——① 当前版本号 > 最近 release tag ② `package.json` = `product.json` = Git tag `v{version}` 三处一致；任一不符 → 拒绝发布。**本 skill 负责决策层（判定类别 + 算版本号 + 用户拍板），门禁脚本负责校验层（机械卡死）——两层共同防「更新上去了版本号没更」。**
 
 > 发版 = 生成 GitHub Release 必须 bump（tag 需要）。不对外发版的内部迭代不 bump，但不要为此跳过发版仪式——完成一轮用户可见变更就 bump，保持「发布即 tag」节奏。
 
