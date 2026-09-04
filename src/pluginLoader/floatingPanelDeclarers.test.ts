@@ -17,7 +17,7 @@ import { registerViewPlugin, getFloatingPanelViewId } from "./viewRegistry";
 import { normalizePath } from "../core/utils/path/pathUtils";
 import type { PluginManifest } from "../core/api/types";
 
-/** 测试运行 cwd = 项目根（E:/linkdesk/linkdesk）——相对路径直指插件目录 */
+/** 测试运行 cwd = 项目根（E:/linkdesk）——相对路径直指插件目录 */
 const PROJECT_ROOT = resolve(__dirname, "../..");
 
 /** 声明者清单——[描述, pluginId, plugin.json 相对项目根] */

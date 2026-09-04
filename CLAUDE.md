@@ -4,6 +4,7 @@
 >
 > **Tauri 时代 P1-P6 🎉。E3 🎉。E4 🎉（2026-08-03）。E5 🎉（2026-08-04）。** 壳通信骨架 + 三通信机制 + linkdesk.* 20 命名空间 API + ESLint 防线。Per-Tab WebView 已废弃（E5.5#9，O(N) 进程→E5.7 极简Pool O(1) 取代）。
 > **当前进度：** 🚀 E6 插件生态与发布（E4✅→E5✅→E5.6 封存→E5.7 极简Pool✅→**E5.8 归一化基建收官**→E6 开战）。进度唯一真相源：`docs/02-Electron架构/E6_插件生态与发布/E6-执行清单.md`。工作分支 = `e6`；主线 `electron`（e5.8 已并回追平）。E5.7/E5.8 执行清单已封存。
+> **仓库结构（2026-09-04 第 0.15/0.16 轮完成）：** git 根 / npm 根 / VS Code 打开根已**合一于 `E:/linkdesk` 单根**（`src/` `electron/` `docs/` `package.json` 直接可见，无 `linkdesk/` 套娃）；`Serial_C_Language/` 已永久删除；历史经 filter-repo 抽子树（3119 commits，hash 全变、内容全保），远端 `origin` 强推时机由用户拍板。
 
 ## 架构——圆形大厅模型
 

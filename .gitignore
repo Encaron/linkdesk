@@ -1,8 +1,26 @@
-__pycache__/
+# === 产物 / 依赖（容器版 + 工程版并集，2026-09-04 仓库结构上移后归并为一份） ===
+node_modules/
+dist/
 dist-electron/
+target/
+release/
+__pycache__/
+tsconfig.tsbuildinfo
+*.log
+.DS_Store
+Thumbs.db
+
 # E5.7#81：插件卸载坟场——运行时产物，不入库
 plugins/.disabled/
 # E5.8#22.6：@linkdesk/contracts 验收示例——本地安装产物，不入库
 contracts-example/node_modules/
 contracts-example/package-lock.json
 contracts/*.tgz
+
+# === agent / 本机工具文件（保留在磁盘但不入库） ===
+.claude/
+# Codex CLI persona/profile（Codex 用）
+SOUL.md
+USER.md
+# AI 会话记忆工具产物（本机工具状态）
+memory/

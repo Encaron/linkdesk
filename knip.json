@@ -73,7 +73,11 @@
     //   第三段）——从 ignore 移除，knip 纳入静态分析（脚本仅用 fs/path，零悬挂依赖）。
     // E5.8#22.5：契约运行期校验——生成器 AST 输入（scripts/generate-contract.mjs 读入发射
     //   contracts/runtime-shapes.ts），非运行时消费面。产物 runtime-shapes.ts 在 contracts/ 不在 knip project 域。
-    "electron/ipc/runtime-dto-registry.ts"
+    "electron/ipc/runtime-dto-registry.ts",
+    // E6#57.15e：version-bump 机械兜底——被 .claude/settings.json PreToolUse hook（Bash git commit*）
+    //   以字符串命令调用，knip 静态图（import 面）不覆盖 hook 配置引用 → 整文件豁免（2026-09-04
+    //   仓库结构上移 6.9 验证补录：2026-08-31 引入后 knip 即报，属既存卫生债随手清）。
+    "scripts/check-version-bump.mjs"
   ],
   "ignoreDependencies": [
     // E5.8#2：monaco-languageclient 被 plugins/builtin/editor 直引（排除域——插件共用根 node_modules，独立 vite 构建时解析）
@@ -82,7 +86,11 @@
     //   （"node_modules/pyright/dist/pyright-langserver.js"，非 import 引用）——knip 静态图只认 import，
     //   看不到字符串 spawn → #2b 误删导致 .py LSP 跳转回归（node_modules/pyright 物理消失 → spawn ENOENT）。
     //   装回 + 此处豁免防复发；打包态 electron-builder.yml extraResources 同源拷贝 node_modules/pyright。
-    "pyright"
+    "pyright",
+    // E6#57.15e：lefthook 只在 lefthook.yml 命令面使用（postinstall install-lefthook.mjs 同源），
+    //   knip 不解析 yml 配置 → 报 unused devDep。与 pyright 同构的配置引用豁免
+    //   （2026-09-04 结构上移 6.9 验证补录：E5.8#3 引入后 knip 即报，属既存卫生债随手清）。
+    "lefthook"
   ],
   "ignoreBinaries": [
     // E5.8#2：Linux 分支的真实外部命令（electron/main.ts openInTerminal 平台分支，xdg-open 是 Linux 版 exec 字符串）
