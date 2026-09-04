@@ -16,6 +16,13 @@ plugins/.disabled/
 contracts-example/node_modules/
 contracts-example/package-lock.json
 contracts/*.tgz
+# E6#6：@linkdesk/plugin-sdk——npm pack 本地 tarball 不入库
+packages/plugin-sdk/*.tgz
+# E6#4b/#5b：@linkdesk/plugin-sdk 作者形态验收工程——本地安装产物与构建产物不入库
+plugin-sdk-example/node_modules/
+plugin-sdk-example/package-lock.json
+plugin-sdk-example/*.linkdesk-plugin
+plugin-sdk-example/dist/
 
 # === agent / 本机工具文件（保留在磁盘但不入库） ===
 .claude/

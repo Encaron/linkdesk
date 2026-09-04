@@ -1,0 +1,9 @@
+{
+  // @linkdesk/plugin-sdk 作者形态——可注释/尾逗号（发布向 jsonc 解析；dev 预览走严格 JSON，见 README 限制）
+  "name": "Plugin SDK Example",
+  "version": "1.0.0",
+  "entry": "src/index.tsx", // 视图型插件入口——壳以 { isActive } 渲染 default 导出组件
+  "contributes": {
+    "i18n": { "en": "i18n/en.json" },
+  },
+}

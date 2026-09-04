@@ -1,0 +1,46 @@
+{
+  "name": "@linkdesk/plugin-sdk",
+  "version": "0.1.0",
+  "description": "@linkdesk/plugin-sdk——LinkDesk 插件作者 SDK（对标 @types/vscode）：window.linkdesk.* 类型 + 一键 build(.linkdesk-plugin) + plugin.json 验证。作者 npm i 后零壳源码依赖。",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "schemas"
+  ],
+  "sideEffects": false,
+  "bin": {
+    "linkdesk-plugin-sdk": "./dist/bin.js"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "prepack": "tsc"
+  },
+  "dependencies": {
+    "@linkdesk/contracts": "file:../../contracts",
+    "@vitejs/plugin-react": "^4.3.4",
+    "ajv": "^8.17.1",
+    "jsonc-parser": "^3.3.1",
+    "jszip": "^3.10.1",
+    "vite": "^6.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "^5.9.0"
+  },
+  "keywords": [
+    "linkdesk",
+    "plugin",
+    "sdk",
+    "vite"
+  ],
+  "license": "MIT"
+}

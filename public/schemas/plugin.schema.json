@@ -72,6 +72,10 @@
       "type": "string",
       "description": "作者名"
     },
+    "readme": {
+      "type": "string",
+      "description": "附带说明文档路径——相对插件目录（如 \"./README.md\"），可选；.linkdesk-plugin 详情/市场展示数据源（E6#4a K2 缝隙：作者包里有 README.md 就随包，本字段作者填指向包内文件）"
+    },
     "entry": {
       "type": "string",
       "description": "入口文件路径，相对插件目录。view/card/protocol 必需"
@@ -651,7 +655,9 @@
   },
   "allOf": [
     {
+      "$comment": "entry 条件（废弃 type 系）——if 必须带 required:[\"type\"]，否则对缺 type 的 theme/language 等数据插件空真（properties 只验在场属性）→ 误强 entry（E6#5 SDK validate 冒烟实证 2026-09-04）。type 在场且命中 const 才强制 entry。",
       "if": {
+        "required": ["type"],
         "properties": { "type": { "const": "view" } }
       },
       "then": {
@@ -660,6 +666,7 @@
     },
     {
       "if": {
+        "required": ["type"],
         "properties": { "type": { "const": "card" } }
       },
       "then": {
@@ -668,6 +675,7 @@
     },
     {
       "if": {
+        "required": ["type"],
         "properties": { "type": { "const": "protocol" } }
       },
       "then": {

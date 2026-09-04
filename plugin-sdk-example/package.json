@@ -1,0 +1,16 @@
+{
+  "name": "plugin-sdk-example",
+  "version": "0.0.0",
+  "private": true,
+  "description": "@linkdesk/plugin-sdk 消费形态验收示例——作者 npx tsc --noEmit（#2b 类型验收）+ npm run build（#4b 一键 .linkdesk-plugin 验收）。源码入库；node_modules/package-lock.json/产物不入库（.gitignore）。",
+  "type": "module",
+  "scripts": {
+    "build": "linkdesk-plugin-sdk build",
+    "validate": "linkdesk-plugin-sdk validate ./plugin.json"
+  },
+  "devDependencies": {
+    "@linkdesk/plugin-sdk": "file:../packages/plugin-sdk",
+    "@types/react": "^18.3.12",
+    "typescript": "^5.9.0"
+  }
+}
