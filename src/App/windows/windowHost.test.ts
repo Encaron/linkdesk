@@ -6,8 +6,8 @@
 
 import { describe, it, expect, vi } from "vitest";
 import { mapResourceAcrossWindows } from "./windowHost";
-import type { TabState } from "../hooks/useTabManager";
-import type { WindowShellState, WindowMode } from "./windows";
+import type { TabState } from "../../hooks/useTabManager";
+import type { WindowShellState, WindowMode } from "./index";
 
 function makeState(tabId: string, label = "Alpha", sourceId = "E:/demo/a.txt"): TabState {
   return {

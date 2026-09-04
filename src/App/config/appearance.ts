@@ -36,7 +36,7 @@ import {
   readAppearanceOverrideUserValues,
   reseedAppearanceOnThemeSwitch,
   MIX_RESET_DISABLED_WHEN,
-} from "../appearanceApplier";
+} from "./appearanceApplier";
 
 /** t() 类型——仅声明组取 key（原 startup useTranslation t） */
 type ConfigT = (key: string) => string;

@@ -9,16 +9,16 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { renderHook } from "@testing-library/react";
 import { useWindowRelocation, type UseWindowRelocationDeps } from "./windowRelocation";
-import type { TabState, Tab } from "../hooks/useTabManager";
-import type { WindowShellState } from "./windows";
-import type { ShellTabDragPosition, TabBarRectsPayload, AdsorbIndexPayload } from "../core/types/ipc/poolActions";
-import type { LinkDeskAPI } from "../core/api/linkdesk-api";
+import type { TabState, Tab } from "../../hooks/useTabManager";
+import type { WindowShellState } from "./index";
+import type { ShellTabDragPosition, TabBarRectsPayload, AdsorbIndexPayload } from "../../core/types/ipc/poolActions";
+import type { LinkDeskAPI } from "../../core/api/linkdesk-api";
 
 /* ── E5.8#46.1 合并去重——mock 插件声明（虚构类型 demo-editor/demo-term/demo-tool，硬约束 21）──
  * tabIdentity.getMeta 经 getViewPlugin 读 manifest.tabBehavior.identityField/singleton。
  * identityField="filePath" → 资源身份匹配；demo-term 无 identityField → 多实例不去重；
  * demo-tool singleton → 类型级唯一。未知类型（现有测试 "view"）返回 undefined → 与真实一致（null → 不去重）。 */
-vi.mock("../pluginLoader/viewRegistry", () => ({
+vi.mock("../../pluginLoader/viewRegistry", () => ({
   getViewPlugin: (type: string) => {
     switch (type) {
       case "demo-editor":

@@ -8,7 +8,7 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { WINDOW_MODE_STRATEGIES, type WindowMode } from "./windows";
+import { WINDOW_MODE_STRATEGIES, type WindowMode } from "./index";
 
 describe("WINDOW_MODE_STRATEGIES 窗口模式策略表", () => {
   it("每个窗口模式都有策略且声明齐全", () => {

@@ -16,7 +16,7 @@ import { useHeartbeat } from "./hooks/useHeartbeat"; // E2a #5 心跳看门狗
 import { useMemoryMonitor } from "./hooks/useMemoryMonitor"; // E2a #6 内存监控
 import { useTabManager } from "./hooks/useTabManager";
 import { usePoolSync } from "./hooks/usePoolSync";
-import { useWindowHost, type MainResourceActions } from "./App/windowHost"; // E5.8#43-2：壳窗口注册表（多窗口 tabState + 窗口模式策略）；#46.2：主窗资源联动动作集
+import { useWindowHost, type MainResourceActions } from "./App/windows/windowHost"; // E5.8#43-2：壳窗口注册表（多窗口 tabState + 窗口模式策略）；#46.2：主窗资源联动动作集
 
 // Phase 5b：核心命令注册（右键菜单归一化）+ E5#5e-ii-f：核心回调（壳快捷键执行标签页操作）
 import { updateCoreCallbacks, type CoreCallbacks } from "./core/commands/shell/coreCommands";
@@ -30,7 +30,7 @@ import { usePanelReveal } from "./App/panelReveal"; // E5.8#34.5：panel.reveal 
 import { useFloatingPanelReveal } from "./App/floatingPanelReveal"; // E5.8#39.5：panel.revealFloating 悬浮面板声明制
 import { useLayoutPersistence } from "./App/persistence";
 import { useTabActions } from "./App/tabActions";
-import { useWindowRelocation } from "./App/windowRelocation"; // E5.8#44：壳侧窗口间标签页搬迁（detach/merge）
+import { useWindowRelocation } from "./App/windows/windowRelocation"; // E5.8#44：壳侧窗口间标签页搬迁（detach/merge）
 import { usePanelDrift } from "./App/panelDrift"; // E5.8#45：面板脱出到独立窗口（drift 窗）
 import "./App.css";
 

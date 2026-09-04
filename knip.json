@@ -45,6 +45,9 @@
     "src/core/registry/ProtocolRegistry.ts",
     "src/core/services/configuration/ConfigurationApplier.ts",
     "src/core/services/configuration/ConfigurationService.ts",
+    // E5.8#0.4a：ConfigurationService 拆 feature-folder——子模块豁免对齐 KeybindingRegistry/*.ts 同型
+    //   （聚合器 re-export 面向插件域/window.linkdesk 契约，同核心 API 面；上移原 47 行聚合器豁免继承）
+    "src/core/services/configuration/ConfigurationService/*.ts",
     // E5.8#12：FileAssociationService/StatusBarService 移出 ignore——#12 删了其 unreachable 的
     //   unregisterFileAssociations/unregisterStatusBarPlugin，剩余 exports 全部可达，knip 不再需要豁免。
     "src/core/services/files/FileService.ts",

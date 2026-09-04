@@ -13,11 +13,11 @@
  */
 
 import { useCallback, useEffect, useRef } from "react";
-import { allTabs, createGroup, reduceRemoveTab, reduceInsertTab } from "../hooks/useTabManager";
-import type { Tab, TabState } from "../hooks/useTabManager";
-import { tabsShareIdentity } from "../core/utils/tabIdentity";
-import type { WindowShellState, WindowMode } from "./windows";
-import type { PoolWindowBoundsPayload, TabBarRectsPayload, TabBarViewportRect, ShellTabDragPosition, AdsorbHintPayload, AdsorbIndexPayload } from "../core/types/ipc/poolActions";
+import { allTabs, createGroup, reduceRemoveTab, reduceInsertTab } from "../../hooks/useTabManager";
+import type { Tab, TabState } from "../../hooks/useTabManager";
+import { tabsShareIdentity } from "../../core/utils/tabIdentity";
+import type { WindowShellState, WindowMode } from "./index";
+import type { PoolWindowBoundsPayload, TabBarRectsPayload, TabBarViewportRect, ShellTabDragPosition, AdsorbHintPayload, AdsorbIndexPayload } from "../../core/types/ipc/poolActions";
 
 export interface UseWindowRelocationDeps {
   /** 壳窗口注册表（useWindowHost）——G6 ref 桥读最新，拖拽期间免重渲 */

@@ -15,14 +15,14 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { TabState } from "../hooks/useTabManager";
-import type { WindowShellState, WindowMode } from "./windows";
-import { getDetachedWindows } from "../core/services/layout/LayoutService";
-import type { PoolWindowBoundsPayload } from "../core/types/ipc/poolActions";
-import { purgePoolCommandWindows } from "../core/registry/commands/CommandRegistry"; // E5.8#43-4：窗口关闭 → 归属表清该窗命令
+import type { TabState } from "../../hooks/useTabManager";
+import type { WindowShellState, WindowMode } from "./index";
+import { getDetachedWindows } from "../../core/services/layout/LayoutService";
+import type { PoolWindowBoundsPayload } from "../../core/types/ipc/poolActions";
+import { purgePoolCommandWindows } from "../../core/registry/commands/CommandRegistry"; // E5.8#43-4：窗口关闭 → 归属表清该窗命令
 // E5.8#46.2：资源事件跨窗广播——windowHost 是壳侧唯一订阅点（全窗事实来源）
-import { shellEvents } from "../core/react/events/ShellEvents";
-import { normalizePath } from "../core/utils/path/pathUtils"; // file:renamed label 派生（basename——壳桥只做路径语义，不派生资源概念）
+import { shellEvents } from "../../core/react/events/ShellEvents";
+import { normalizePath } from "../../core/utils/path/pathUtils"; // file:renamed label 派生（basename——壳桥只做路径语义，不派生资源概念）
 import {
   reduceUpdateTabLabelBySourceId,
   reduceResourceRenamed,
@@ -30,7 +30,7 @@ import {
   reduceCloseBySourceId,
   reduceRemoveTabsByPlugin,
   reduceRemoveTabsUnderFolder,
-} from "../hooks/useTabManager/reducers-tab"; // 脱出窗广播 reducer（与主窗 useTabManager 同源，语义归一）
+} from "../../hooks/useTabManager/reducers-tab"; // 脱出窗广播 reducer（与主窗 useTabManager 同源，语义归一）
 
 /** E5.8#46.2：主窗资源联动动作集——windowHost 广播 effect 主窗分支经 ref 调用。
  *  命名与 useTabManager 稳定方法一一对应（useCallback [] 恒等）——主窗副作用归 useTabManager 真相源。 */

@@ -28,13 +28,13 @@ import {
   APPEARANCE_OVERRIDE_KEYS,
   MIX_FOLLOW_THEME,
   MIX_SOURCE_KEYS, // E5.8#90：混搭来源 key 全集——单一来源 ThemeEngine
-} from "../core/services/ui/ThemeEngine";
-import { ThemeRegistry } from "../core/registry/appearance/ThemeRegistry";
-import type { ThemeRecipe } from "../core/types/theme";
+} from "../../core/services/ui/ThemeEngine";
+import { ThemeRegistry } from "../../core/registry/appearance/ThemeRegistry";
+import type { ThemeRecipe } from "../../core/types/theme";
 import {
   getConfigurationValue, setConfigurationValueBatch, inspectConfiguration,
-} from "../core/services/configuration/ConfigurationService";
-import { registerConfigMigration } from "../core/services/configuration/schemaMigrations";
+} from "../../core/services/configuration/ConfigurationService";
+import { registerConfigMigration } from "../../core/services/configuration/schemaMigrations";
 
 /** E5.8#89 E1：外观 onApply 防抖窗口——与 settings.json watcher 去抖（ConfigurationService 80ms）同哲学 */
 const APPEARANCE_APPLY_DEBOUNCE_MS = 80;

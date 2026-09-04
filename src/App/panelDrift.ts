@@ -18,7 +18,7 @@ import { useCallback, useRef } from "react";
 import type { TabState } from "../hooks/useTabManager";
 import type { WindowShellState, WindowMode } from "./windows";
 import type { PoolWindowBoundsPayload } from "../core/types/ipc/poolActions";
-import { emptyTabState } from "./windowHost";
+import { emptyTabState } from "./windows/windowHost";
 
 export interface UsePanelDriftDeps {
   /** 壳窗口注册表（useWindowHost）——G6 ref 桥读最新（detach 幂等判定 + 级联 bounds），免重渲 */

@@ -2,6 +2,11 @@
  * 壳侧窗口模式声明层——E5.8#43-2。纯数据（零 React 零副作用），useWindowHost hook 与
  * usePoolSync 布局组装共享同一策略表（单一真相源）。
  *
+ * E5.8#0.4a：本文件 = `windows/` 窗口域夹的声明层入口（原 `src/App/windows.ts` 移入成 index——
+ * 消费方 `./windows` specifier 经 src/ bundler 文件夹→index 解析，零变更）。同夹成员：
+ * windowHost.ts（useWindowHost 注册表 hook）/ windowRelocation.ts（useWindowRelocation 搬迁 hook，
+ * App.tsx 按名直引）——共享词汇簇（策略表 ↔ 注册表 ↔ 搬迁）+ 未来窗口类型增长位（目录守则 §七判据①/②）。
+ *
  * 三层架构（#43 定稿）：
  *   窗口层哑（主进程只登记/枚举窗口——#43-1 A2 poolWindows 注册表）；
  *   壳层策略（本模块——mode 声明层 → 初始布局组装/空窗行为/关窗×语义）；
@@ -11,11 +16,11 @@
  * 加一行，零改他处（#43 架构内核「改一处不全身」的机制保证）。
  */
 
-import type { TabState } from "../hooks/useTabManager";
-import type { PoolWindowBoundsPayload } from "../core/types/ipc/poolActions";
+import type { TabState } from "../../hooks/useTabManager";
+import type { PoolWindowBoundsPayload } from "../../core/types/ipc/poolActions";
 // E5.8#45：WindowMode 下沉 core/types/windows.ts——core 回调契约（CoreCallbacks.findTabWindow）
 // 与壳策略层共享单一真相源（core 不 import App）。re-export 保既有消费方 `./windows` 零改动。
-import type { WindowMode } from "../core/types/windows";
+import type { WindowMode } from "../../core/types/windows";
 export type { WindowMode };
 
 /** PoolLayout 顶层 zone 字段——策略表 zones 声明用（布局组装按此表决定推哪些 zone） */
