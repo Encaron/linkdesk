@@ -40,6 +40,7 @@ import {
   getManifestById,
 } from "./state";
 import { normalizeManifest, hasSidebarContainers, type OldFormatManifest } from "../discovery/manifest";
+import { effectiveActivationEvents } from "./activation"; // #9g：延迟匹配按「显式 ?? 推断」生效事件
 import {
   parseContributions,
   resolveRuntimePluginRoot,
@@ -247,7 +248,9 @@ async function loadPlugin(
       console.warn(`[pluginLoader] 运行时插件 "${pluginId}" 根目录解析失败:`, e);
       // pluginRoot 保持 undefined——views 注册走 ❌ 分支诚实降级
     }
-    const entryPath = runtimeEntryPath(manifest, pluginId, import.meta.env.DEV);
+    // #9g 按需激活：延迟加载（skipView）时跳过 JS import——只解析根（Step5 pluginRoot 依赖），
+    // entry 在 activatePlugin 首次触发事件时才 import（启动注册-only，对标 VS Code 延迟激活）。
+    const entryPath = opts?.skipView ? undefined : runtimeEntryPath(manifest, pluginId, import.meta.env.DEV);
     if (entryPath) {
       try {
         if (!runtimePluginRoot) throw new Error("根目录解析失败");
@@ -307,6 +310,14 @@ async function loadPlugin(
     // 运行时与 glob 两路共用此分支（entryless 运行时插件同样能渲染 views）。
     registerViewPlugin({ pluginId, manifest });
     log.appendLine(`[OK] entryless 视图插件 "${manifest.name}" (${pluginId}) 已注册（图标栏入口）`);
+  } else if (opts?.skipView && manifest.entry) {
+    // #9g 按需激活：延迟 entry 插件注册 component-less 占位（component 可选项——渲染不读本字段，
+    // 池 PluginComponent 独立 glob 解析）。保图标栏/侧栏容器/标签身份（tabBehavior/identityField）等
+    // 声明驱动的 UI 表面在启动期照常可见；JS 首用（onView/onFileOpen/onCommand 等）再激活升级成
+    // componentful（registerViewPlugin 同版本 stub→实 升级）。对标 VS Code：manifest 贡献启动可见，
+    // extension 代码激活才跑。
+    registerViewPlugin({ pluginId, manifest });
+    log.appendLine(`[OK] 延迟激活插件 "${manifest.name}" (${pluginId}) 注册元数据——JS 首用再 import`);
   }
 
   // ═══ Step 5: 解析 contributes → 分发各 Registry ═══
@@ -382,21 +393,54 @@ function applyPostLoadSteps(pluginId: string, manifest: PluginManifest, reason: 
   PluginLifecycle.onDidInstall.fire({ pluginId, manifest, reason });
 }
 
-/* ── #44：延迟激活——activationEvents 插件按需 import ── */
+/* ── #44 + #9g：延迟激活——activationEvents 插件按需 import ── */
 
 /**
- * 激活之前延迟加载的插件——import JS → registerViewPlugin → fire onDidInstall。
- * 调用时机：onCommand 执行前 / onFileOpen / onPortOpen 等触发源。
+ * 激活之前延迟加载的插件——import JS → 注册表占位升级 componentful。
+ * glob 内 = loadPluginComponent（含 statusBar glob）；glob 外（运行时/市场安装）=
+ * resolvePluginRoot + import entry + statusBar 探路径（镜像 loadPlugin Step3 加载语义）。
+ * 激活即注册表升级（同版本 component-less 占位 → 实组件——registerViewPlugin 允许 stub 升级）。
+ * 不调 applyPostLoadSteps——loadedPluginIds 已有、onDidInstall 已发过（startup 静默），只通知 UI 刷新。
  */
+/** 激活中插件集——并发事件防双跑（await import 完成前 delete 未发生，两次背靠背命中会双 import）。
+ *  #9g 验证「激活过不重载」：首跑成功出 _deferredPlugins + 出 _activating；次跑见 manifest 空即 no-op。 */
+const _activating = new Set<string>();
+
 async function activatePlugin(pluginId: string): Promise<boolean> {
   const manifest = _deferredPlugins.get(pluginId);
   if (!manifest) return false; // 不是延迟插件——可能已激活或不存在
+  if (_activating.has(pluginId)) return false; // 已在激活中——并发事件让首跑完成，语义一致
 
+  _activating.add(pluginId);
   try {
-    await loadPluginComponent(pluginId, manifest);
+    if (Object.keys(pluginManifests).some((k) => extractPluginId(k) === pluginId)) {
+      // glob 内（dev/源码内置）——loadPluginComponent 内 registerViewPlugin 升级占位
+      await loadPluginComponent(pluginId, manifest);
+    } else {
+      // 运行时（打包/市场安装）——glob 模块表无此插件，走根解析 + 动态 import。
+      // 与 Step3 运行时分支加载语义一致；差异 = 激活失败即抛上报（用户触发的激活不应静默降级）。
+      const runtimePluginRoot = await resolveRuntimePluginRoot(pluginId);
+      const entryPath = runtimeEntryPath(manifest, pluginId, import.meta.env.DEV);
+      let viewComponent: React.ComponentType<{ isActive: boolean }> | undefined;
+      let statusBarComponent: React.ComponentType | undefined;
+      if (entryPath && runtimePluginRoot) {
+        const module = await resolveViewModule(pluginId, entryPath, runtimePluginRoot);
+        viewComponent = module?.default;
+        if (module && !viewComponent) {
+          console.warn(`[pluginLoader] 运行时插件 "${pluginId}" 未导出 default 组件`);
+        }
+        for (const p of ["statusBar.tsx", "src/statusBar.tsx", "src/components/statusBar.tsx"]) {
+          try {
+            const sbm = await import(/* @vite-ignore */ `${runtimePluginRoot}/${p}`);
+            statusBarComponent = sbm.default;
+            break;
+          } catch { /* 路径不存在——继续试下一条 */ }
+        }
+      }
+      registerViewPlugin({ pluginId, manifest, component: viewComponent, statusBarComponent });
+    }
     _deferredPlugins.delete(pluginId);
-    // 不调 applyPostLoadSteps——loadedPluginIds 已有、onDidInstall 已发过（startup 静默）、
-    // 图标排序已正确。只需通知 UI 刷新（例如图标从灰变亮）
+    // 图标/枚举刷新（startup 已静默，此刻才需通知 UI 拾起激活态）
     syncAppThemeEnum();
     syncAppLanguageEnum();
     syncIconThemeEnum();
@@ -407,18 +451,24 @@ async function activatePlugin(pluginId: string): Promise<boolean> {
   } catch (e) {
     reportError({ message: `插件 "${manifest.name ?? pluginId}" 激活失败: ${errMsg(e)}`, source: pluginId, error: e });
     return false;
+  } finally {
+    _activating.delete(pluginId);
   }
 }
 
-/** 根据 commandId 查找所属的延迟插件——executeCommand 预激活用 */
-function findDeferredByCommand(commandId: string): string | undefined {
-  for (const [pluginId, manifest] of _deferredPlugins) {
-    const events = manifest.activationEvents ?? [];
-    for (const ev of events) {
-      if (ev === `onCommand:${commandId}` || ev === "*") return pluginId;
+/**
+ * #9g ② 事件路由器——发火事件命中任一延迟插件的生效事件（显式 ?? 推断）即激活。
+ * 触发源统一经 activation.fireActivationEvent 发火；loader 初始化把本函数挂成总线常驻处理器。
+ * 幂等：#44 语义——激活成功即出 _deferredPlugins，二次命中为 no-op（激活过不重载）。
+ * 遍历用快照——activatePlugin 会 delete 当前键（边遍历边删安全）。
+ */
+async function activateDeferredByEvent(event: string): Promise<void> {
+  for (const [pluginId, manifest] of [..._deferredPlugins]) {
+    const events = effectiveActivationEvents(manifest);
+    if (events.some((ev) => ev === event || ev === "*")) {
+      await activatePlugin(pluginId);
     }
   }
-  return undefined;
 }
 
-export { loadPlugin, activatePlugin, findDeferredByCommand };
+export { loadPlugin, activateDeferredByEvent };

@@ -163,7 +163,10 @@ export interface PluginManifest {
   screenshots?: string[];
   minAppVersion?: string;
   /** 激活事件——对标 VS Code activationEvents。空或含 "*" = 启动时立即加载。
-   *  具体事件：onCommand:id / onFileOpen:.ext / onPortOpen / onLanguage:id / onView:id */
+   *  具体事件（canonical 无前导点——与 fileAssociations.extension 一致）：
+   *  onCommand:id / onFileOpen:ext / onLanguage:ext / onPortOpen / onView:containerId。
+   *  未写此字段 → 壳按 contributes 自动推断（#9g：fileAssociations→onLanguage / views→onView / commands→onCommand），
+   *  写了则显式优先（精确控制）。延迟插件启动注册-only，首用事件才 import JS。 */
   activationEvents?: string[];
   /** @deprecated E5.8#14——归并到 requires（插件级激活依赖统一由 requires 声明）。
    *  零插件使用；loader 兼容读取直到 #14 落地迁移。 */

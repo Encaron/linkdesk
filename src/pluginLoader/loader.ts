@@ -45,7 +45,9 @@ import {
 } from "./resolution/state";
 export { validateInstallManifest, resolveVersionConflict } from "./discovery/manifest";
 export { runtimeEntryPath, parseContributions } from "./contributions/contributions";
-import { loadPlugin, activatePlugin, findDeferredByCommand } from "./resolution/runtime";
+import { loadPlugin, activateDeferredByEvent } from "./resolution/runtime";
+// #9g 按需激活：延迟判定纯函数（shouldDeferActivation）+ 触发总线（App 层触发源只认总线，不 import runtime）
+import { shouldDeferActivation, fireActivationEvent, setActivationEventHandler } from "./resolution/activation";
 import {
   disablePlugin,
   enablePlugin,
@@ -84,13 +86,16 @@ export async function initPluginLoader(): Promise<void> {
   // Phase 5h 行为归一化：注册 lifecycle 消费端（iconOrder/toast/config/tab——只注册一次）
   initLifecycleConsumers();
 
-  // #44：注册命令预激活钩子——CommandRegistry 执行命令前检查是否需要先激活延迟插件
-  // 🔥 必须 await——否则钩子在 initPluginLoader 返回后才挂上，用户首次命令执行时钩子未就绪
+  // #44/#9g：命令预激活——CommandRegistry 执行命令前经触发总线发 `onCommand:<id>`（激活延迟插件）。
+  // 🔥 必须 await——否则钩子在 initPluginLoader 返回后才挂上，用户首次命令执行时钩子未就绪。
   const { setPreActivateHook } = await import("../core/registry/commands/CommandRegistry");
   setPreActivateHook(async (commandId: string) => {
-    const pluginId = findDeferredByCommand(commandId);
-    if (pluginId) await activatePlugin(pluginId);
+    await fireActivationEvent(`onCommand:${commandId}`);
   });
+  // #9g ②：激活事件总线常驻处理器 = runtime 路由器（扫 _deferredPlugins 命中即激活）。
+  // App 层触发源（sidebarHost icon:selected / tabActions tab:create / 命令钩子）只认 fireActivationEvent，
+  // 经此单点转 runtime——触发源不 import 重型 runtime 模块（防环 + 防启动拉全图）。
+  setActivationEventHandler((event) => activateDeferredByEvent(event));
 
   const errors: string[] = [];
   const disabled = getDisabledList();
@@ -113,11 +118,13 @@ export async function initPluginLoader(): Promise<void> {
       continue;
     }
     try {
-      // #44/#9g：activationEvents——非 "*" 时延迟 JS import，只注册 manifest（entryless 纯贡献插件无 JS 可延迟）
-      const defer = manifest.activationEvents?.length
-        && !manifest.activationEvents.includes("*");
-      await loadPlugin(pluginId, "startup", { skipView: !!defer });
-      if (defer && manifest) _deferredPlugins.set(pluginId, manifest);
+      // #44/#9g：无 activationEvents → 壳按 contributes 自动推断触发事件（fileAssociations→onLanguage /
+      // views→onView / commands→onCommand）→ 有 entry 且生效事件非空且无 "*" 时延迟 JS import
+      // （启动注册-only，元数据占位注册在 loadPlugin Step4；首用事件 activatePlugin 升级实组件）。
+      // entryless 纯贡献插件无 JS 可延迟、data 角色（python langDefs 等）安装即用恒立即——两者不 defer。
+      const defer = shouldDeferActivation(manifest);
+      await loadPlugin(pluginId, "startup", { skipView: defer });
+      if (defer) _deferredPlugins.set(pluginId, manifest);
     } catch (e) {
       errors.push(`${pluginId}: ${errMsg(e)}`);
     }

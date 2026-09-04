@@ -10,6 +10,8 @@
 
 import { useEffect } from "react";
 import { getViewPlugin } from "../pluginLoader/contributions/viewRegistry";
+// #9g：文件打开 = 触发源——tabs.create 携带 filePath 时经总线发 onFileOpen/onLanguage（延迟插件首用激活）
+import { fireActivationEvent } from "../pluginLoader/resolution/activation";
 import { shellEvents } from "../core/react/events/ShellEvents";
 import { getTabLayout, getPanelLayout, getSidebarLayout } from "../core/services/layout/LayoutService";
 import { layoutEngine } from "../core/services/layout/LayoutEngine";
@@ -27,6 +29,16 @@ export interface TabActionsDeps {
   focusTabBySourceId: (sourceId: string, sourceWindowId?: string) => void;
   restoreLayout: (saved: LayoutData) => { pluginId: string; tabId: string } | null;
   setPanelActiveViewId: (v: string | null) => void;
+}
+
+/** #9g：文件打开触发源——filePath 存在时按扩展名（无点小写，对齐 fileAssociations.extension / 事件语法）发火。
+ *  onFileOpen 与 onLanguage 双事件都发——推断只产 onLanguage，显式作者两种写法都能命中。扩展名无 → 不发。 */
+function fireFileOpenActivation(filePath?: string): void {
+  if (!filePath) return;
+  const ext = (/\.([^./\\]+)$/.exec(filePath)?.[1] ?? "").toLowerCase();
+  if (!ext) return;
+  void fireActivationEvent(`onFileOpen:${ext}`);
+  void fireActivationEvent(`onLanguage:${ext}`);
 }
 
 /** 标签页动作订阅 + 启动恢复——四个独立 effect。setPanelActiveViewId 是 useState 稳定 setter（deps 恒不变） */
@@ -59,11 +71,14 @@ export function useTabActions({
     // 池自动激活的新标签页不会触发 pool→focusTab IPC（那是用户点击才发的），
     // 导致 activeEditor context key 永远不更新 → when:"activeEditor == 'xxx'" 过滤掉所有菜单项。
     const u1 = shellEvents.on("tab:create", ({ type, opts }) => {
+      // #9g：开文件即发激活事件——editor 等延迟插件（启动只注册元数据）此刻才 import JS
+      fireFileOpenActivation((opts as CreateTabOptions | undefined)?.filePath);
       // E5.7#98：wire 载荷 opts 是 Record<string, unknown>——窄化为 CreateTabOptions 契约（全可选字段）
       const tabId = createTab(type, opts as CreateTabOptions | undefined);
       if (tabId) shellEvents.emit("tab:focused", { pluginId: type, tabId });
     });
     const u2 = shellEvents.on("tab:openOrFocus", ({ type, opts }) => {
+      fireFileOpenActivation((opts as CreateTabOptions | undefined)?.filePath);
       const tabId = openOrFocusTab(type, opts as CreateTabOptions | undefined);
       if (tabId) shellEvents.emit("tab:focused", { pluginId: type, tabId });
     });

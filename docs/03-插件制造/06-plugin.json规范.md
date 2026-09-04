@@ -245,6 +245,7 @@ LinkDesk 通过 `distribution` 字段 + 物理目录区分两种插件：
 | `changelog` | `array` | 更新日志 `[{ version: string, date: string, changes: string[] }]` |
 | `screenshots` | `string[]` | 截图 URL 数组（Phase 5+ 启用） |
 | `minAppVersion` | `string` | 最低软件版本要求 |
+| `activationEvents` | `string[]` | 激活事件（对标 VS Code）。空或含 `"*"` = 启动时立即加载。事件语法（canonical 无前导点）：`onCommand:id` / `onFileOpen:ext` / `onLanguage:ext` / `onPortOpen` / `onView:containerId`。**未写此字段 → 壳按 contributes 自动推断**（`fileAssociations`→`onLanguage:ext` / `views`→`onView:容器` / `commands`→`onCommand:id`）后走延迟加载；写了则显式优先精确控制。详见「`activationEvents` 字段详解」 |
 | `docs` | `string` | 附带文档路径（资源插件联动） |
 | `cardDocMap` | `object` | 卡片 ID → 文档锚点映射 |
 | `i18n` | `object` | 插件自带翻译 `{ "en": "i18n/en.json", "ja": "i18n/ja.json" }`——key=插件 UI 原文（建议作者母语）。放在 `contributes.i18n` 下，非顶层 |
@@ -282,6 +283,32 @@ LinkDesk 通过 `distribution` 字段 + 物理目录区分两种插件：
 | `requires` | 插件级（plugin.json 顶层） | 激活顺序依赖——先依赖后本插件（E5.8#13） |
 | `dependsOn` | 配置项级（`contributes.configuration` 项内） | 某配置项依赖另一配置项的值 |
 | `extensionDependencies` | 插件级（历史字段） | 已废弃——归并到 `requires`（E5.8#14 落地） |
+
+### `activationEvents` 字段详解——按需激活（E6#9g）
+
+**对标 VS Code `activationEvents`（1.74+ 版本后 VS Code 也支持从 contributes 自动推断）。** 让插件「启动注册-only，首用再加载 JS」——不写本字段的插件由壳按 contributes 自动推断触发事件（见下），写了则显式优先作精确控制。
+
+**推断规则（未写字段时，按 contributes 自动派生）：**
+
+| contributes | 推断事件 | 含义 |
+|---|---|---|
+| `fileAssociations[].extension` | `onLanguage:<ext>` | 打开该扩展名文件时激活 |
+| `views` 的容器键 | `onView:<containerId>` | 该视图容器变活动（点图标/恢复侧栏）时激活 |
+| `commands[].id` | `onCommand:<id>` | 执行该命令前激活 |
+
+**语义要点：**
+- 推断事件非空且不含 `"*"` 且声明了 `entry`（有 JS 可延迟）→ 启动只注册元数据（图标/侧栏/标签身份照常可见），JS 在首次触发事件时才 import
+- `entry` 缺失（纯贡献数据插件）或 `pluginRole: "data"`（如 Python 语言支持）→ 恒立即加载，不延迟
+- 显式写了 `activationEvents` → 完全按声明，不推断。`[]` 或 `["*"]` = 启动立即加载（对标 VS Code 空 = eager）
+- 显式事件语法与推断一致、canonical 无前导点：`onCommand:id` / `onFileOpen:ext` / `onLanguage:ext` / `onPortOpen` / `onView:containerId`
+
+**触发源（壳发火时机）：**
+- `onView`：侧栏图标选中切换容器（含启动恢复上次容器重放）
+- `onLanguage` / `onFileOpen`：`tabs.create` / `openOrFocus` 携带 `filePath`（编辑器打开文件）
+- `onCommand`：命令面板/菜单执行命令前
+- `onPortOpen`：串口等端口打开（当前无壳侧触发源——数据源在池，路由已支持待端口事件桥）
+
+**激活幂等：** 激活成功即从延迟队列移除，二次命中不重载（不重复 import）。
 
 ### `factoryRole` 字段详解——形态一（并存）vs 形态二（替换）
 

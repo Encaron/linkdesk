@@ -31,9 +31,17 @@ export function registerViewPlugin(entry: ViewPluginEntry): () => void {
   if (existing) {
     const newVer = entry.manifest.version;
     const oldVer = existing.manifest.version;
-    if (compareVersions(newVer, oldVer) > 0) {
+    const higherVer = compareVersions(newVer, oldVer) > 0;
+    // #9g 延迟激活升级：component-less 占位（启动注册-only）被 componentful 首用激活替代——
+    // 同版本也允许升级（占位是"尚未导入"，非旧版本）。高版本覆盖保留原语义；其余保留首注册者。
+    const stubUpgrade = !existing.component && !!entry.component;
+    if (higherVer) {
       console.warn(
         `[viewRegistry] 插件 "${entry.pluginId}" 重复——使用高版本 v${newVer} 替代 v${oldVer}`
+      );
+    } else if (stubUpgrade) {
+      console.warn(
+        `[viewRegistry] 插件 "${entry.pluginId}" 延迟激活——component-less 占位升级为实组件`
       );
     } else {
       console.warn(
