@@ -4,13 +4,13 @@
  * 设计依据：[[phase4-design-decisions]] 第 4 条。
  */
 
-import type { ViewPluginEntry, TabBehavior, StatusBarItem, ContributesFloatingPanel } from "../core/api/types";
-import { getBuiltinTabBehavior } from "../core/utils/tabIdentity";
-import { Emitter } from "../core/react/events/CoreEvents";
-import { compareVersions } from "../core/utils/plugin/semverUtils";
-import { FALLBACK_PLUGIN_ID } from "../core/utils/plugin/fallbackPluginId";
-import { showConfirm } from "../core/services/ui/DialogService";
-import { trackRegistration } from "../core/registry/registrationTracker";
+import type { ViewPluginEntry, TabBehavior, StatusBarItem, ContributesFloatingPanel } from "../../core/api/types";
+import { getBuiltinTabBehavior } from "../../core/utils/tabIdentity";
+import { Emitter } from "../../core/react/events/CoreEvents";
+import { compareVersions } from "../../core/utils/plugin/semverUtils";
+import { FALLBACK_PLUGIN_ID } from "../../core/utils/plugin/fallbackPluginId";
+import { showConfirm } from "../../core/services/ui/DialogService";
+import { trackRegistration } from "../../core/registry/registrationTracker";
 
 
 const registry = new Map<string, ViewPluginEntry>();

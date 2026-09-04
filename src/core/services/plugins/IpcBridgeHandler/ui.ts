@@ -16,7 +16,7 @@ import { getCommands } from "../../../registry/commands/CommandRegistry";
 import { findKeybindingForCommand } from "../../../registry/commands/KeybindingRegistry";
 import { resolvePanelChecked } from "../../../commands/shell/panelCommands"; // E5.8#37.7：面板位置/对齐当前项 √ 解析
 import { ViewContainerService } from "../../../services/layout/ViewContainerService"; // E5.8#37.7.1：面板视图显隐清单数据源（壳布局真相，Path B 池只读）
-import { getFloatingPanelViewId } from "../../../../pluginLoader/viewRegistry"; // E5.8#39.5 子项 C：标签页右键「在悬浮面板中打开」声明读取（tabIdentity 同源 core→pluginLoader）
+import { getFloatingPanelViewId } from "../../../../pluginLoader/contributions/viewRegistry"; // E5.8#39.5 子项 C：标签页右键「在悬浮面板中打开」声明读取（tabIdentity 同源 core→pluginLoader）
 import { getCallbacks } from "../../../commands/infra/CoreCallbacks"; // E5.8#44：tab 所在窗口判定——「并回主窗口」可见性（detached 才注入）
 import { onRequestSettingsGroup, onRequestScrollToSetting, onRequestOpenKeybindings, consumeSettingsGroup, consumeScrollToSetting, consumeOpenKeybindings } from "../../../registry/ConfigurationRegistry";
 import { getAvailableThemes, getCurrentTheme } from "../../ui/ThemeEngine";

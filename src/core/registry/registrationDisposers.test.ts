@@ -8,7 +8,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { PluginLifecycle } from "../../pluginLoader/lifecycle-events";
+import { PluginLifecycle } from "../../pluginLoader/lifecycle/lifecycle-events";
 import { clearRegistrationLayers } from "./registrationTracker";
 import { ThemeRegistry } from "./appearance/ThemeRegistry";
 import { IconRegistry } from "./appearance/IconRegistry";
@@ -23,8 +23,8 @@ import { createStatusBarItem, getDynamicStatusBarItems, clearStatusBarItems } fr
 import { registerFileAssociation, getPluginsFor, getAssociationsForPlugin, clearFileAssociations } from "../services/files/FileAssociationService";
 import { registerDialogRenderers, confirm } from "../services/ui/DialogService";
 import { ContextKeyService } from "./commands/ContextKeyService";
-import { registerViewPlugin, getViewPlugin, clearRegistry, getIconLocation, getTabCreatableViews, findFallbackPlugin } from "../../pluginLoader/viewRegistry";
-import { registerPluginLanguageBundle } from "../../pluginLoader/i18nResources";
+import { registerViewPlugin, getViewPlugin, clearRegistry, getIconLocation, getTabCreatableViews, findFallbackPlugin } from "../../pluginLoader/contributions/viewRegistry";
+import { registerPluginLanguageBundle } from "../../pluginLoader/contributions/i18nResources";
 import i18n from "../../i18n";
 import type { ViewPluginEntry } from "../api/types";
 

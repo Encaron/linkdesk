@@ -22,13 +22,13 @@
 
 import { pushToast, TOAST_TTL_ERROR } from "../core/services/ui/NotificationService";
 import { setPluginStateValue, APP_PLUGIN_ID } from "../core/services/plugins/PluginStateService";
-import { initLifecycleConsumers } from "./lifecycle";
+import { initLifecycleConsumers } from "./lifecycle/lifecycle";
 // E5.8#11：状态机——watcher 卸载走 unloadPlugin（唯一卸载路径）+ 启动收尾失败诊断日志
 // E5.8#24 回归：watcher 跳过已失败/已挂起插件需要 getLoadDiagnostics 读状态机
-import { unloadPlugin, getLoadDiagnosticsSummary, getLoadDiagnostics } from "./loadState";
+import { unloadPlugin, getLoadDiagnosticsSummary, getLoadDiagnostics } from "./resolution/loadState";
 // E5.8#61 审计#2：watcher 手动删目录卸载路径补 revert（原只有 lifecycle-ops 正规卸载走）——
 // lifecycle-ops 不 import loader（无环），此处反向 import 安全
-import { revertThemeIfCurrent, revertLanguageIfCurrent, reapplyThemeAfterUnload } from "./lifecycle-ops";
+import { revertThemeIfCurrent, revertLanguageIfCurrent, reapplyThemeAfterUnload } from "./lifecycle/lifecycle-ops";
 import {
   pluginsApi,
   log,
@@ -41,10 +41,10 @@ import {
   cachePluginMetadata,
   getDisabledList,
   type CachedPluginMeta,
-} from "./state";
-export { validateInstallManifest, resolveVersionConflict } from "./manifest";
-export { runtimeEntryPath, parseContributions } from "./contributions";
-import { loadPlugin, activatePlugin, findDeferredByCommand } from "./runtime";
+} from "./resolution/state";
+export { validateInstallManifest, resolveVersionConflict } from "./discovery/manifest";
+export { runtimeEntryPath, parseContributions } from "./contributions/contributions";
+import { loadPlugin, activatePlugin, findDeferredByCommand } from "./resolution/runtime";
 import {
   disablePlugin,
   enablePlugin,
@@ -55,7 +55,7 @@ import {
   getUninstalledPluginInfo,
   isPluginDisabled,
   getListPluginManifests,
-} from "./lifecycle-ops";
+} from "./lifecycle/lifecycle-ops";
 export {
   disablePlugin,
   enablePlugin,
@@ -66,7 +66,7 @@ export {
   getLoadedPluginManifests,
   getDisabledPluginInfo,
   getUninstalledPluginInfo,
-} from "./lifecycle-ops";
+} from "./lifecycle/lifecycle-ops";
 
 /* ── 初始化 ── */
 
@@ -361,4 +361,4 @@ export function stopPluginWatcher(): void {
 }
 
 // 导出供 vitest——防止新增贡献类型时漏加 revert（主题/语言/图标主题…）
-export { revertThemeIfCurrent, revertLanguageIfCurrent, reapplyThemeAfterUnload } from "./lifecycle-ops";
+export { revertThemeIfCurrent, revertLanguageIfCurrent, reapplyThemeAfterUnload } from "./lifecycle/lifecycle-ops";

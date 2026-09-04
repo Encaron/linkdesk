@@ -5,7 +5,7 @@
  */
 
 import type { IconBarLayout, IconBarItem } from "../../core/types/pool/poolLayout";
-import { getViewPlugins, getViewPlugin, getIconLocation } from "../../pluginLoader/viewRegistry";
+import { getViewPlugins, getViewPlugin, getIconLocation } from "../../pluginLoader/contributions/viewRegistry";
 import { getConfigurationValue } from "../../core/services/configuration/ConfigurationService"; // E5.7#1：titleBar.menuBarVisible
 import { resolvePluginIcon } from "../../core/utils/plugin/iconUtils";
 import { getPluginStateValue, APP_PLUGIN_ID } from "../../core/services/plugins/PluginStateService"; // E5.7#6：图标顺序（iconOrder）

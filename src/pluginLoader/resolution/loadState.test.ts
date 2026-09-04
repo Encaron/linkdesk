@@ -22,13 +22,13 @@ import {
   getLoadDiagnosticsSummary,
   clearLoadStates,
 } from "./loadState";
-import { PluginLifecycle, onPluginLifecycleChange } from "./lifecycle-events";
-import { CUSTOM_EVENTS } from "../core/react/events/CoreEvents";
+import { PluginLifecycle, onPluginLifecycleChange } from "../lifecycle/lifecycle-events";
+import { CUSTOM_EVENTS } from "../../core/react/events/CoreEvents";
 import {
   trackRegistration,
   clearRegistrationLayers,
   registrationCount,
-} from "../core/registry/registrationTracker";
+} from "../../core/registry/registrationTracker";
 import { loadPlugin } from "./runtime";
 
 // E5.7#95：测试夹具插件 ID——大写常量（linkdesk/no-plugin-id-hardcode 批准的常量通道）

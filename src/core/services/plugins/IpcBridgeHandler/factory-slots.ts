@@ -11,7 +11,7 @@
 
 import { factorySlots } from "../../bootstrap/FactorySlots";
 import { getLoadedPluginManifests } from "../../../../pluginLoader/loader";
-import { getFloatingPanelViewId } from "../../../../pluginLoader/viewRegistry";
+import { getFloatingPanelViewId } from "../../../../pluginLoader/contributions/viewRegistry";
 
 /** 条目解析——插件显示名 = manifest.name 原文（消费方自做 i18n）；清单缺失回退 pluginId（不裸崩）。
  *  E5.8#41.18：viewId = 该插件 contributes.floatingPanel.viewId（切换/打开候选悬浮面板用；无声明 = undefined） */

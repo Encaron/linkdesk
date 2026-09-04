@@ -6,7 +6,7 @@
  */
 
 import type { CreateTabOptions } from "../../core/api/types";
-import { findFallbackPlugin } from "../../pluginLoader/viewRegistry";
+import { findFallbackPlugin } from "../../pluginLoader/contributions/viewRegistry";
 import { FALLBACK_PLUGIN_ID } from "../../core/utils/plugin/fallbackPluginId";
 import { getDefaultLabel, resolveLegacyPluginId, getMeta, isPluginDetailView } from "../../core/utils/tabIdentity";
 import { allTabs } from "./types";

@@ -6,7 +6,7 @@
 
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { registerViewPlugin, getFloatingPanelViewId } from "./viewRegistry";
-import type { PluginManifest } from "../core/api/types";
+import type { PluginManifest } from "../../core/api/types";
 
 /** 注册最小视图插件条目——floatingPanelViewId 提供时给 manifest 附 contributes.floatingPanel。返回 disposer。 */
 function registerPlugin(pluginId: string, floatingPanelViewId?: string): () => void {

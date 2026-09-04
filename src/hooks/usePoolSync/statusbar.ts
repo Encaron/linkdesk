@@ -8,7 +8,7 @@ import type { TFunction } from "i18next";
 import type { PoolStatusBarItem } from "../../core/types/pool/poolLayout";
 import type { StatusBarEntry } from "../../core/react/events/ShellEvents";
 import type { StatusBarItem as ApiStatusBarItem } from "../../core/api/types"; // E5.7#98：状态栏三源条目共型
-import { getStatusBarContributions, getViewPlugin } from "../../pluginLoader/viewRegistry";
+import { getStatusBarContributions, getViewPlugin } from "../../pluginLoader/contributions/viewRegistry";
 import { getDynamicStatusBarItems } from "../../core/services/ui/StatusBarService"; // E5.7#8：状态栏三源合并——动态项 + 变化订阅
 import { getConfigurationValue } from "../../core/services/configuration/ConfigurationService";
 

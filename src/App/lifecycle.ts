@@ -8,7 +8,7 @@
 
 import { useCallback, useEffect, useRef } from "react";
 import { reportError } from "../core/services/bootstrap/ErrorService";
-import { getViewPlugin } from "../pluginLoader/viewRegistry";
+import { getViewPlugin } from "../pluginLoader/contributions/viewRegistry";
 import { CUSTOM_EVENTS } from "../core/react/events/CoreEvents";
 import { shellEvents } from "../core/react/events/ShellEvents";
 import { layoutEngine } from "../core/services/layout/LayoutEngine";

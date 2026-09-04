@@ -13,9 +13,9 @@
  * @see loader.ts —— 5 个函数只管触发此总线的事件
  */
 
-import { CUSTOM_EVENTS } from "../core/react/events/CoreEvents";
-import { pushToast, TOAST_TTL_ERROR, TOAST_TTL_INFO } from "../core/services/ui/NotificationService";
-import { getPluginStateValue, setPluginStateValueSync, APP_PLUGIN_ID } from "../core/services/plugins/PluginStateService";
+import { CUSTOM_EVENTS } from "../../core/react/events/CoreEvents";
+import { pushToast, TOAST_TTL_ERROR, TOAST_TTL_INFO } from "../../core/services/ui/NotificationService";
+import { getPluginStateValue, setPluginStateValueSync, APP_PLUGIN_ID } from "../../core/services/plugins/PluginStateService";
 
 // E5.8#9：事件定义抽到轻模块 lifecycle-events.ts——registrationTracker 直接 import 它，
 // 避免 CommandRegistry → tracker → lifecycle → CommandRegistry 循环依赖。
@@ -88,11 +88,11 @@ export function initLifecycleConsumers(): void {
       actions: reason === "uninstall"
         ? [{ label: "撤销", isPrimary: true, onClick: () => {
             // 动态 import 避免循环依赖
-            import("./loader").then((m) => m.reinstallPlugin(pluginId))
+            import("../loader").then((m) => m.reinstallPlugin(pluginId))
               .catch((e) => console.error("[lifecycle] 撤销卸载——模块加载失败:", e));
           }}]
         : [{ label: "撤销", isPrimary: true, onClick: () => {
-            import("./loader").then((m) => m.enablePlugin(pluginId))
+            import("../loader").then((m) => m.enablePlugin(pluginId))
               .catch((e) => console.error("[lifecycle] 撤销禁用——模块加载失败:", e));
           }}],
     });
@@ -151,7 +151,7 @@ function updateIconOrder(pluginId: string, mode: "append" | "remove"): void {
     if (mode === "append") filtered.push(pluginId);
     setPluginStateValueSync(APP_PLUGIN_ID, "iconOrder", filtered);
     // 异步落盘——不阻塞
-    import("../core/services/plugins/PluginStateService").then(({ setPluginStateValue }) => {
+    import("../../core/services/plugins/PluginStateService").then(({ setPluginStateValue }) => {
       setPluginStateValue(APP_PLUGIN_ID, "iconOrder", filtered).catch((e) => { console.error("[lifecycle] 保存图标排序失败:", e); });
     });
   } catch { /* 非关键路径 */ }

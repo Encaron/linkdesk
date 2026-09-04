@@ -6,7 +6,7 @@
  */
 
 import { describe, it, expect, beforeEach } from "vitest";
-import { PluginLifecycle } from "../../../pluginLoader/lifecycle-events";
+import { PluginLifecycle } from "../../../pluginLoader/lifecycle/lifecycle-events";
 import { clearRegistrationLayers } from "../registrationTracker";
 import { registerCommand, getCommand, getCommands, clearCommands } from "./CommandRegistry";
 import { registerKeybinding, getKeybindings, clearKeybindings } from "./KeybindingRegistry";

@@ -5,7 +5,7 @@
  */
 
 import type { CreateTabOptions } from "../../core/api/types";
-import { getTabBehavior, findFallbackPlugin } from "../../pluginLoader/viewRegistry";
+import { getTabBehavior, findFallbackPlugin } from "../../pluginLoader/contributions/viewRegistry";
 import { FALLBACK_PLUGIN_ID } from "../../core/utils/plugin/fallbackPluginId";
 import { findTabByIdentity, isSameTabIdentity } from "../../core/utils/tabIdentity";
 import { getAllLeafGroupIds, removeLeafFromTree } from "../../core/utils/splitTree";

@@ -12,8 +12,8 @@
  *
  * 独立模块（非 loader.ts 内嵌）——lifecycle 消费端 2b 静态 import 零循环依赖；单测可独立覆盖。
  */
-import i18n from "../i18n";
-import { trackRegistration } from "../core/registry/registrationTracker";
+import i18n from "../../i18n";
+import { trackRegistration } from "../../core/registry/registrationTracker";
 
 /** 每插件语言数据留存——{ pluginId → [{ lang, data }] }，注册序即合并序 */
 const _pluginI18nData = new Map<string, Array<{ lang: string; data: Record<string, unknown> }>>();

@@ -5,17 +5,17 @@
  * 壳 IpcBridgeHandler 的 setPluginAPI 注册在 loader.ts（聚合器），此处只定义操作。
  */
 
-import i18n from "../i18n"; // E5.8#37.9：toast 动作标签壳 t() 解析（显示文本铁律——ToastHost 哑渲染零自产文本）
-import type { PluginManifest } from "../core/api/types";
-import { getAvailableThemes, normalizeThemeValue, isMixSourceOwner } from "../core/services/ui/ThemeEngine";
-import { ThemeRegistry } from "../core/registry/appearance/ThemeRegistry";
-import { LanguageRegistry } from "../core/registry/languages/LanguageRegistry";
-import { pushToast, TOAST_TTL_SUCCESS } from "../core/services/ui/NotificationService";
-import { reportError } from "../core/services/bootstrap/ErrorService";
+import i18n from "../../i18n"; // E5.8#37.9：toast 动作标签壳 t() 解析（显示文本铁律——ToastHost 哑渲染零自产文本）
+import type { PluginManifest } from "../../core/api/types";
+import { getAvailableThemes, normalizeThemeValue, isMixSourceOwner } from "../../core/services/ui/ThemeEngine";
+import { ThemeRegistry } from "../../core/registry/appearance/ThemeRegistry";
+import { LanguageRegistry } from "../../core/registry/languages/LanguageRegistry";
+import { pushToast, TOAST_TTL_SUCCESS } from "../../core/services/ui/NotificationService";
+import { reportError } from "../../core/services/bootstrap/ErrorService";
 // E5.8#11：卸载路径全部收口到状态机 unloadPlugin——lifecycle 事件顺序由迁移图机械保障（L6b）
 // E5.8#15.5：getLoadDiagnostics——挂起插件的 pendingReason（list() 数据源合并读取）
-import { unloadPlugin, getLoadDiagnostics } from "./loadState";
-import { getConfigurationValue, setConfigurationValue } from "../core/services/configuration/ConfigurationService";
+import { unloadPlugin, getLoadDiagnostics } from "../resolution/loadState";
+import { getConfigurationValue, setConfigurationValue } from "../../core/services/configuration/ConfigurationService";
 import {
   linkdesk,
   pluginsApi,
@@ -30,10 +30,10 @@ import {
   saveDisabledList,
   getLoadedManifest,
   _pendingPlugins,
-} from "./state";
-import { validateInstallManifest, resolveVersionConflict } from "./manifest";
-import { syncAppThemeEnum, syncAppLanguageEnum, syncIconThemeEnum } from "./contributions";
-import { loadPlugin } from "./runtime";
+} from "../resolution/state";
+import { validateInstallManifest, resolveVersionConflict } from "../discovery/manifest";
+import { syncAppThemeEnum, syncAppLanguageEnum, syncIconThemeEnum } from "../contributions/contributions";
+import { loadPlugin } from "../resolution/runtime";
 
 /* ═══════════════════════════════════════════════════════════
    Phase 4.3 生命周期 API——安装/卸载/禁用/启用

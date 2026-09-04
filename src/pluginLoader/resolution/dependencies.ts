@@ -15,7 +15,7 @@
  *   - 连带卸载（#15）：依赖消失 → 消费方连带降级 PENDING——findActiveConsumers 是发现源。
  */
 
-import type { PluginManifest } from "../core/api/types";
+import type { PluginManifest } from "../../core/api/types";
 import { loadedPluginIds, getLoadedManifest } from "./state";
 
 /** 依赖声明——requires 为主，extensionDependencies 向后兼容（@deprecated #13，归并 requires）。

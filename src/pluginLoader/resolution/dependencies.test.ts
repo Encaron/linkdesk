@@ -30,19 +30,19 @@ import {
 } from "./dependencies";
 import { loadedPluginIds, _deferredPlugins, _pendingPlugins, _loadingPromises } from "./state";
 import { clearLoadStates, getLoadDiagnostics, getLoadDiagnosticsSummary, unloadPlugin } from "./loadState";
-import { clearRegistrationLayers } from "../core/registry/registrationTracker";
+import { clearRegistrationLayers } from "../../core/registry/registrationTracker";
 import { loadPlugin } from "./runtime";
-import { shouldWatcherSkip } from "./loader";  // E5.8#24 回归：watcher 跳过已失败/已挂起插件
-import { disablePlugin, getLoadedPluginManifests, getListPluginManifests } from "./lifecycle-ops";
-import { PluginLifecycle, onPluginLifecycleChange } from "./lifecycle-events";
-import { clearPluginStates } from "../core/services/plugins/PluginStateService";
-import type { PluginManifest } from "../core/api/types";
+import { shouldWatcherSkip } from "../loader";  // E5.8#24 回归：watcher 跳过已失败/已挂起插件
+import { disablePlugin, getLoadedPluginManifests, getListPluginManifests } from "../lifecycle/lifecycle-ops";
+import { PluginLifecycle, onPluginLifecycleChange } from "../lifecycle/lifecycle-events";
+import { clearPluginStates } from "../../core/services/plugins/PluginStateService";
+import type { PluginManifest } from "../../core/api/types";
 
 // E5.8#15.5：连带后果 toast——mock pushToast 观察连带通知（loadState.unloadPlugin 直接 import，
 // vi.mock 模块级替换才能拦截）。vi.hoisted 保证 mock 工厂引用同一实例。
 const { pushToast } = vi.hoisted(() => ({ pushToast: vi.fn() }));
-vi.mock("../core/services/ui/NotificationService", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("../core/services/ui/NotificationService")>();
+vi.mock("../../core/services/ui/NotificationService", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../core/services/ui/NotificationService")>();
   return { ...actual, pushToast };
 });
 

@@ -18,7 +18,7 @@ import type { LinkDeskAPI } from "../../core/api/linkdesk-api";
  * tabIdentity.getMeta 经 getViewPlugin 读 manifest.tabBehavior.identityField/singleton。
  * identityField="filePath" → 资源身份匹配；demo-term 无 identityField → 多实例不去重；
  * demo-tool singleton → 类型级唯一。未知类型（现有测试 "view"）返回 undefined → 与真实一致（null → 不去重）。 */
-vi.mock("../../pluginLoader/viewRegistry", () => ({
+vi.mock("../../pluginLoader/contributions/viewRegistry", () => ({
   getViewPlugin: (type: string) => {
     switch (type) {
       case "demo-editor":

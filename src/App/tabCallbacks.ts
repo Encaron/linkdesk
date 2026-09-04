@@ -6,7 +6,7 @@
  */
 
 import { shellEvents } from "../core/react/events/ShellEvents";
-import { invokeBeforeCloseTab } from "../pluginLoader/viewRegistry";
+import { invokeBeforeCloseTab } from "../pluginLoader/contributions/viewRegistry";
 import { getAllLeafGroupIds } from "../core/utils/splitTree";
 import {
   allTabs,

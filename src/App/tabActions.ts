@@ -9,7 +9,7 @@
  */
 
 import { useEffect } from "react";
-import { getViewPlugin } from "../pluginLoader/viewRegistry";
+import { getViewPlugin } from "../pluginLoader/contributions/viewRegistry";
 import { shellEvents } from "../core/react/events/ShellEvents";
 import { getTabLayout, getPanelLayout, getSidebarLayout } from "../core/services/layout/LayoutService";
 import { layoutEngine } from "../core/services/layout/LayoutEngine";

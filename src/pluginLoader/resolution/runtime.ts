@@ -7,15 +7,15 @@
  * 生命周期操作（disable/enable/uninstall/install）不在此——见 lifecycle-ops.ts。
  */
 
-import i18n from "../i18n"; // E5.8#37.9：markLoadFailed 失败原因壳 t() 解析（诊断文案也是用户可见文本）
-import type { PluginManifest } from "../core/api/types";
-import { registerViewPlugin } from "./viewRegistry";
-import { registerTheme, findTheme } from "../core/services/ui/ThemeEngine";
-import type { ThemeContribution } from "../core/api/types";
-import { pushToast, TOAST_TTL_ERROR } from "../core/services/ui/NotificationService";
-import { reportError } from "../core/services/bootstrap/ErrorService";
+import i18n from "../../i18n"; // E5.8#37.9：markLoadFailed 失败原因壳 t() 解析（诊断文案也是用户可见文本）
+import type { PluginManifest } from "../../core/api/types";
+import { registerViewPlugin } from "../contributions/viewRegistry";
+import { registerTheme, findTheme } from "../../core/services/ui/ThemeEngine";
+import type { ThemeContribution } from "../../core/api/types";
+import { pushToast, TOAST_TTL_ERROR } from "../../core/services/ui/NotificationService";
+import { reportError } from "../../core/services/bootstrap/ErrorService";
 // Phase 5h 行为归一化：副作用（iconOrder/toast/config/tab）集中到 lifecycle.ts 消费端
-import { PluginLifecycle, onPluginLifecycleChange, type PluginInstallEvent } from "./lifecycle";
+import { PluginLifecycle, onPluginLifecycleChange, type PluginInstallEvent } from "../lifecycle/lifecycle";
 // E5.8#11：状态机——loading/failed/active 迁移 + 失败原因记录（诊断面）
 // E5.8#14：parkPending——缺依赖挂起（loading→pending + pendingReason）
 // E5.8#15：orphanPlugin——依赖消失连带卸载（加载完成复核用）
@@ -23,7 +23,7 @@ import { markLoadStarted, markLoadSuccess, markLoadFailed, parkPending, orphanPl
 // E5.8#14：#14 依赖编排纯函数（requires 解析 / 缺失判定 / 图级环检测）
 // E5.8#15：formatPendingReason——挂起原因文案单源（park + orphan 共用）
 import { findMissingDeps, detectDependencyCycle, formatPendingReason } from "./dependencies";
-import { versionGte } from "../core/utils/plugin/semverUtils";
+import { versionGte } from "../../core/utils/plugin/semverUtils";
 import {
   pluginsApi,
   log,
@@ -38,7 +38,7 @@ import {
   getDisabledList,
   getLoadedManifest,
 } from "./state";
-import { normalizeManifest, hasSidebarContainers, type OldFormatManifest } from "./manifest";
+import { normalizeManifest, hasSidebarContainers, type OldFormatManifest } from "../discovery/manifest";
 import {
   parseContributions,
   resolveRuntimePluginRoot,
@@ -54,7 +54,7 @@ import {
   syncAppThemeEnum,
   syncAppLanguageEnum,
   syncIconThemeEnum,
-} from "./contributions";
+} from "../contributions/contributions";
 
 /* ── 当前应用版本（从 package.json 读取） ── */
 

@@ -15,7 +15,7 @@ import {
   buildDefaultFloatingPanelActions,
   useFloatingPanelReveal,
 } from "./floatingPanelReveal";
-import { registerViewPlugin, clearRegistry } from "../pluginLoader/viewRegistry";
+import { registerViewPlugin, clearRegistry } from "../pluginLoader/contributions/viewRegistry";
 import { pushPanel, closePanel, registerFloatingPanelRenderer } from "../core/services/ui/FloatingPanelService";
 
 // E5.8#40 显示文本铁律判别——标题/动作文案壳侧 t() 解析（池零自产文本）。mock i18n.t 返回 "T:<key>"

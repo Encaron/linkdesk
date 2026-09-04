@@ -1,7 +1,7 @@
 import { describe, it, expect, afterEach } from "vitest";
-import i18n from "../i18n";
+import i18n from "../../i18n";
 import { registerPluginLanguageBundle } from "./i18nResources";
-import { rollback } from "../core/registry/registrationTracker";
+import { rollback } from "../../core/registry/registrationTracker";
 
 /**
  * 重装契约——卸载时 translation 命名空间按剩余插件整份重建。

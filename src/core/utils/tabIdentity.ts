@@ -20,7 +20,7 @@
  */
 
 import i18n from "../../i18n";
-import { getViewPlugin } from "../../pluginLoader/viewRegistry";
+import { getViewPlugin } from "../../pluginLoader/contributions/viewRegistry";
 import type { Tab } from "../../hooks/useTabManager";
 import type { CreateTabOptions } from "../api/types";
 import { normalizePath } from "./path/pathUtils";

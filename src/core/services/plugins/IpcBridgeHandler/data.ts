@@ -10,7 +10,7 @@ import { getPluginStateValue, setPluginStateValue } from "../PluginStateService"
 import { searchFiles } from "../../files/FileSearcher"; // E5.6#11.5g5
 import { EncodingService } from "../../files/EncodingService"; // E5.6#11.5g5
 // E5.5#7：插件生命周期广播——设置页等保姆插件依赖此事件刷新配置分组
-import { onPluginLifecycleChange } from "../../../../pluginLoader/lifecycle";
+import { onPluginLifecycleChange } from "../../../../pluginLoader/lifecycle/lifecycle";
 import type { LinkDeskAPI } from "../../../api/linkdesk-api";
 
 let _lifecycleUnsub: (() => void) | null = null;

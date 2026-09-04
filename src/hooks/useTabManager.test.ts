@@ -32,7 +32,7 @@ import {
 } from "./useTabManager";
 import { getAllLeafGroupIds, type SplitNode } from "../core/utils/splitTree";
 import { detectDropZone } from "../pool/hooks/tabDragTypes";
-import { registerViewPlugin, clearRegistry } from "../pluginLoader/viewRegistry";
+import { registerViewPlugin, clearRegistry } from "../pluginLoader/contributions/viewRegistry";
 import { resolvePoolTabTitle } from "../core/utils/tabIdentity";
 import type { ViewPluginEntry } from "../core/api/types";
 

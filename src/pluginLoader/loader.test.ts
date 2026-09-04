@@ -9,9 +9,9 @@
 
 import { describe, it, expect, beforeEach } from "vitest";
 import { parseContributions, validateInstallManifest, resolveVersionConflict, runtimeEntryPath, pruneUninstalledCache } from "./loader";
-import type { CachedPluginMeta } from "./state"; // E5.8#156：差集清理纯函数签名
-import { hasSidebarContainers } from "./manifest"; // E5.8#37.9.2.3：纯函数真源导入
-import { extractThemeColors } from "./contributions"; // E5.8#1c：真源导入，替代本地等价重实现
+import type { CachedPluginMeta } from "./resolution/state"; // E5.8#156：差集清理纯函数签名
+import { hasSidebarContainers } from "./discovery/manifest"; // E5.8#37.9.2.3：纯函数真源导入
+import { extractThemeColors } from "./contributions/contributions"; // E5.8#1c：真源导入，替代本地等价重实现
 import type { PluginManifest } from "../core/api/types";
 import { ThemeRegistry } from "../core/registry/appearance/ThemeRegistry";
 import { LanguageRegistry } from "../core/registry/languages/LanguageRegistry";

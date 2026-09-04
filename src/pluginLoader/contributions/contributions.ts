@@ -10,23 +10,23 @@
  * lifecycle-ops 双端消费，放此处防 runtime↔lifecycle-ops 成环）。
  */
 
-import type { PluginManifest, ViewPluginEntry, ThemeContribution, IconThemeContribution, IconContribution, LanguageContribution, ContributesViews, IconThemeMappings, IconThemeMapping } from "../core/api/types";
-import type { FontFaceSpec } from "../core/types/ipc/events";
-import { getPluginAssetPath } from "../core/utils/path/pluginAssetPath";
+import type { PluginManifest, ViewPluginEntry, ThemeContribution, IconThemeContribution, IconContribution, LanguageContribution, ContributesViews, IconThemeMappings, IconThemeMapping } from "../../core/api/types";
+import type { FontFaceSpec } from "../../core/types/ipc/events";
+import { getPluginAssetPath } from "../../core/utils/path/pluginAssetPath";
 import { registerViewPlugin } from "./viewRegistry";
-import { registerTheme, getAvailableThemes, ensurePluginFontFacesCleanup, normalizeThemeValue, syncThemeColorEnum, fontFormatOf } from "../core/services/ui/ThemeEngine";
-import { ThemeRegistry, parseThemeRecipe } from "../core/registry/appearance/ThemeRegistry";
-import { IconRegistry } from "../core/registry/appearance/IconRegistry";
-import { LanguageRegistry } from "../core/registry/languages/LanguageRegistry";
-import { pushToast, TOAST_TTL_INFO } from "../core/services/ui/NotificationService";
-import { registerConfiguration, registerConfigurationDefaults, updateConfigurationEnum } from "../core/registry/ConfigurationRegistry";
-import type { ManifestMenuItem, TitleBarContribution } from "../core/registry/commands/MenuRegistry";
-import { registerMenuItems, registerTitleBarContribution } from "../core/registry/commands/MenuRegistry";
-import { registerCommand } from "../core/registry/commands/CommandRegistry";
-import { registerKeybinding } from "../core/registry/commands/KeybindingRegistry";
+import { registerTheme, getAvailableThemes, ensurePluginFontFacesCleanup, normalizeThemeValue, syncThemeColorEnum, fontFormatOf } from "../../core/services/ui/ThemeEngine";
+import { ThemeRegistry, parseThemeRecipe } from "../../core/registry/appearance/ThemeRegistry";
+import { IconRegistry } from "../../core/registry/appearance/IconRegistry";
+import { LanguageRegistry } from "../../core/registry/languages/LanguageRegistry";
+import { pushToast, TOAST_TTL_INFO } from "../../core/services/ui/NotificationService";
+import { registerConfiguration, registerConfigurationDefaults, updateConfigurationEnum } from "../../core/registry/ConfigurationRegistry";
+import type { ManifestMenuItem, TitleBarContribution } from "../../core/registry/commands/MenuRegistry";
+import { registerMenuItems, registerTitleBarContribution } from "../../core/registry/commands/MenuRegistry";
+import { registerCommand } from "../../core/registry/commands/CommandRegistry";
+import { registerKeybinding } from "../../core/registry/commands/KeybindingRegistry";
 import { registerPluginLanguageBundle } from "./i18nResources";
-import i18n from "../i18n";
-import { pluginModules, pluginStatusBarModules, viewRenderModules, pluginManifests, extractPluginId, errMsg, log } from "./state";
+import i18n from "../../i18n";
+import { pluginModules, pluginStatusBarModules, viewRenderModules, pluginManifests, extractPluginId, errMsg, log } from "../resolution/state";
 
 /** 从主题 JSON 数据中提取扁平化 colors——归一化 #36j2。消两处重复。 */
 function extractThemeColors(data: Record<string, unknown>): Record<string, string> {
@@ -52,7 +52,7 @@ export async function parseContributions(pluginId: string, c: Record<string, unk
     const config = c.configuration as { title: string; properties: Record<string, unknown> };
     registerConfiguration(pluginId, {
       title: config.title,
-      properties: config.properties as Record<string, import("../core/registry/ConfigurationRegistry").ConfigurationProperty>,
+      properties: config.properties as Record<string, import("../../core/registry/ConfigurationRegistry").ConfigurationProperty>,
     });
   }
 
@@ -149,7 +149,7 @@ export async function parseContributions(pluginId: string, c: Record<string, unk
   if (c.viewsContainers) {
     const containers = c.viewsContainers as Record<string, { title: string; icon?: string; location?: string; hideIfEmpty?: boolean; order?: number; mergeHeaderWhenSingle?: boolean }>;
     try {
-      const { ViewContainerService } = await import("../core/services/layout/ViewContainerService");
+      const { ViewContainerService } = await import("../../core/services/layout/ViewContainerService");
       for (const [containerId, desc] of Object.entries(containers)) {
         ViewContainerService.registerViewContainer(pluginId, {
           id: containerId,
@@ -169,7 +169,7 @@ export async function parseContributions(pluginId: string, c: Record<string, unk
     // E5.8#1c：schema 归口 ContributesViews（types.ts 权威定义）——替代手写内联类型
     const views = c.views as ContributesViews;
     try {
-      const { ViewContainerService } = await import("../core/services/layout/ViewContainerService");
+      const { ViewContainerService } = await import("../../core/services/layout/ViewContainerService");
       for (const [containerId, viewDefs] of Object.entries(views)) {
         for (const viewDef of viewDefs) {
           // E5#34b: render 路径相对于插件根目录。

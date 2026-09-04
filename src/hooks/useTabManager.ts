@@ -13,7 +13,7 @@ import i18n from "../i18n";
 import { showConfirm } from "../core/services/ui/DialogService";
 import { shellEvents } from "../core/react/events/ShellEvents";
 import type { CreateTabOptions } from "../core/api/types";
-import { getTabBehavior } from "../pluginLoader/viewRegistry";
+import { getTabBehavior } from "../pluginLoader/contributions/viewRegistry";
 import { CoreEvents } from "../core/react/events/CoreEvents";
 
 import { findGroup } from "./useTabManager/types";

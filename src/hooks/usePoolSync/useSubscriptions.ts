@@ -18,7 +18,7 @@ import { layoutEngine } from "../../core/services/layout/LayoutEngine"; // E5.6#
 import { ContextKeyService } from "../../core/registry/commands/ContextKeyService"; // E5.7#5：槽位按钮 when 过滤 + context 变化重推
 import { onDidChangeConfiguration } from "../../core/services/configuration/ConfigurationService"; // E5.8#55.1：app.menuStyle 配置变化重推布局
 import { isStatusBarConfigKey } from "./statusbar"; // E5.8#55.2：configurable 状态栏条目开关重推布局
-import { getViewPlugin, onDidRegister, onDidUnregister } from "../../pluginLoader/viewRegistry";
+import { getViewPlugin, onDidRegister, onDidUnregister } from "../../pluginLoader/contributions/viewRegistry";
 import { onDidChangeStatusBar } from "../../core/services/ui/StatusBarService"; // E5.7#8：状态栏动态项变化订阅
 import { CUSTOM_EVENTS } from "../../core/react/events/CoreEvents"; // E5.7#8：Chord 提示
 import { shellEvents, type StatusBarEntry } from "../../core/react/events/ShellEvents";

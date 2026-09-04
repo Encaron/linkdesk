@@ -7,7 +7,7 @@
  *   <PluginIcon pluginId="terminal" className="my-icon-class" />
  *   组件自动查 viewRegistry → resolvePluginIcon → 渲染 Lucide / codicon / img / emoji
  */
-import { getViewPlugin } from "../../../pluginLoader/viewRegistry";
+import { getViewPlugin } from "../../../pluginLoader/contributions/viewRegistry";
 import { resolvePluginIcon } from "../../../core/utils/plugin/iconUtils";
 import { ComponentType } from "react";
 import {

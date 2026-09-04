@@ -36,13 +36,13 @@
  *   非法迁移 console.warn 不 throw——状态机是诊断面不是看门狗，禁止把加载流程带崩。
  */
 
-import { PluginLifecycle, notifyPluginRemoved, onPluginLifecycleChange } from "./lifecycle";
-import type { PluginUninstallEvent } from "./lifecycle-events";
+import { PluginLifecycle, notifyPluginRemoved, onPluginLifecycleChange } from "../lifecycle/lifecycle";
+import type { PluginUninstallEvent } from "../lifecycle/lifecycle-events";
 import { loadedPluginIds, _deferredPlugins, _pendingPlugins, getLoadedManifest } from "./state";
-import { registrationCount } from "../core/registry/registrationTracker";
+import { registrationCount } from "../../core/registry/registrationTracker";
 import { findActiveConsumers, formatPendingReason } from "./dependencies";
 // E5.8#15.5：连带挂起后果 toast（对标 lifecycle 消费端 3 的 pushToast 机制——用户主动卸载依赖时知道后果）
-import { pushToast, TOAST_TTL_ERROR } from "../core/services/ui/NotificationService";
+import { pushToast, TOAST_TTL_ERROR } from "../../core/services/ui/NotificationService";
 
 /** 加载状态——三方边界之"LoadState"，见模块头注释。
  *  不 export——零外部消费方（knip 实锤）；消费方（dev 面板等）出现时再开。 */

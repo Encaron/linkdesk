@@ -13,7 +13,7 @@ import { CoreEvents } from "../core/react/events/CoreEvents"; // E5.8#46.9：断
 import { shellEvents } from "../core/react/events/ShellEvents"; // E5.8#46.9：断言 tab:focused 发射
 
 // E5.8#46.8：closeActiveTab 的 dirty 确认走 viewRegistry.invokeBeforeCloseTab——mock 隔离插件层
-vi.mock("../pluginLoader/viewRegistry", () => ({
+vi.mock("../pluginLoader/contributions/viewRegistry", () => ({
   invokeBeforeCloseTab: vi.fn(async () => true),
 }));
 // E5.8#46.12 Step3：脱出窗 close 路径的 dirty 确认走 DialogService.showConfirm——mock 隔离真实弹窗
@@ -333,7 +333,7 @@ describe("createCoreCallbacks.closeActiveTab —— E5.8#46.8 按聚焦窗路由
   });
 
   it("脱出窗 Ctrl+W 被 dirty 确认否决 → 不关", async () => {
-    const { invokeBeforeCloseTab } = await import("../pluginLoader/viewRegistry");
+    const { invokeBeforeCloseTab } = await import("../pluginLoader/contributions/viewRegistry");
     vi.mocked(invokeBeforeCloseTab).mockResolvedValueOnce(false);
     const { callbacks, updateTabState, closeWindow } = makeCoreCallbacks();
     await callbacks.closeActiveTab("det-1");

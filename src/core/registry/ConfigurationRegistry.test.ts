@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect, beforeEach } from "vitest";
-import { PluginLifecycle } from "../../pluginLoader/lifecycle-events";
+import { PluginLifecycle } from "../../pluginLoader/lifecycle/lifecycle-events";
 import { clearRegistrationLayers } from "./registrationTracker";
 import {
   registerConfiguration,

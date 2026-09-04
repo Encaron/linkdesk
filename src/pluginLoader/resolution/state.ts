@@ -5,10 +5,10 @@
  * 不互相持有——状态单一真源，防各模块各自 new Set/Map 失同步。
  */
 
-import type { PluginManifest } from "../core/api/types";
-import { getViewPlugin } from "./viewRegistry";
-import { getPluginStateValue, setPluginStateValue, APP_PLUGIN_ID } from "../core/services/plugins/PluginStateService";
-import { createLogChannel } from "../core/services/ui/LogChannel";
+import type { PluginManifest } from "../../core/api/types";
+import { getViewPlugin } from "../contributions/viewRegistry";
+import { getPluginStateValue, setPluginStateValue, APP_PLUGIN_ID } from "../../core/services/plugins/PluginStateService";
+import { createLogChannel } from "../../core/services/ui/LogChannel";
 
 // Electron IPC——window.linkdesk 由 preload-shell.ts 注入
 const linkdesk = () => window.linkdesk;
@@ -47,46 +47,46 @@ function errMsg(e: unknown): string {
 // Vite import.meta.glob 需字符串字面量做静态分析，工厂函数不兼容——保持 spread 写法。
 const pluginModules = {
   ...import.meta.glob<{ default: React.ComponentType<{ isActive: boolean }> }>(
-    "../../plugins/builtin/*/index.tsx",
+    "../../../plugins/builtin/*/index.tsx",
     { eager: false }
   ),
   ...import.meta.glob<{ default: React.ComponentType<{ isActive: boolean }> }>(
-    "../../plugins/builtin/*/src/index.tsx",
+    "../../../plugins/builtin/*/src/index.tsx",
     { eager: false }
   ),
   ...import.meta.glob<{ default: React.ComponentType<{ isActive: boolean }> }>(
-    "../../plugins/user/*/index.tsx",
+    "../../../plugins/user/*/index.tsx",
     { eager: false }
   ),
   ...import.meta.glob<{ default: React.ComponentType<{ isActive: boolean }> }>(
-    "../../plugins/user/*/src/index.tsx",
+    "../../../plugins/user/*/src/index.tsx",
     { eager: false }
   ),
 };
 
 const pluginStatusBarModules = {
   ...import.meta.glob<{ default: React.ComponentType }>(
-    "../../plugins/builtin/*/statusBar.tsx",
+    "../../../plugins/builtin/*/statusBar.tsx",
     { eager: false }
   ),
   ...import.meta.glob<{ default: React.ComponentType }>(
-    "../../plugins/builtin/*/src/statusBar.tsx",
+    "../../../plugins/builtin/*/src/statusBar.tsx",
     { eager: false }
   ),
   ...import.meta.glob<{ default: React.ComponentType }>(
-    "../../plugins/user/*/statusBar.tsx",
+    "../../../plugins/user/*/statusBar.tsx",
     { eager: false }
   ),
   ...import.meta.glob<{ default: React.ComponentType }>(
-    "../../plugins/user/*/src/statusBar.tsx",
+    "../../../plugins/user/*/src/statusBar.tsx",
     { eager: false }
   ),
   ...import.meta.glob<{ default: React.ComponentType }>(
-    "../../plugins/builtin/*/src/components/statusBar.tsx",
+    "../../../plugins/builtin/*/src/components/statusBar.tsx",
     { eager: false }
   ),
   ...import.meta.glob<{ default: React.ComponentType }>(
-    "../../plugins/user/*/src/components/statusBar.tsx",
+    "../../../plugins/user/*/src/components/statusBar.tsx",
     { eager: false }
   ),
 };
@@ -96,22 +96,22 @@ const pluginStatusBarModules = {
 // 但打包后源码路径不存在于 ASAR 中。用 import.meta.glob 让 Vite 构建时映射到正确 chunk。
 const viewRenderModules = {
   ...import.meta.glob<{ default: React.ComponentType }>(
-    "../../plugins/builtin/*/src/views/**/*.tsx",
+    "../../../plugins/builtin/*/src/views/**/*.tsx",
     { eager: false }
   ),
   ...import.meta.glob<{ default: React.ComponentType }>(
-    "../../plugins/user/*/src/views/**/*.tsx",
+    "../../../plugins/user/*/src/views/**/*.tsx",
     { eager: false }
   ),
 };
 
 const pluginManifests = {
   ...import.meta.glob<PluginManifest>(
-    "../../plugins/builtin/*/plugin.json",
+    "../../../plugins/builtin/*/plugin.json",
     { eager: true }
   ),
   ...import.meta.glob<PluginManifest>(
-    "../../plugins/user/*/plugin.json",
+    "../../../plugins/user/*/plugin.json",
     { eager: true }
   ),
 };
@@ -130,7 +130,7 @@ const _pendingPlugins = new Map<string, PluginManifest>();
 
 /* ── 辅助：从路径提取 pluginId ── */
 
-/** 从 glob key 提取插件 ID——"../../plugins/<builtin|user>/<id>/..." → "<id>" */
+/** 从 glob key 提取插件 ID——"../../../plugins/<builtin|user>/<id>/..." → "<id>" */
 function extractPluginId(path: string): string {
   // 找到 "plugins" 目录，后面可能是 builtin/user 子目录 → 再跳一段才是 pluginId
   const parts = path.split("/");

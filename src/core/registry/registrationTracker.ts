@@ -16,7 +16,7 @@
  * @see docs/02-Electron架构/E5.8_归一化基建/可逆注册/02-可逆注册设计.md §1
  */
 
-import { PluginLifecycle } from "../../pluginLoader/lifecycle-events";
+import { PluginLifecycle } from "../../pluginLoader/lifecycle/lifecycle-events";
 import { reportError } from "../services/bootstrap/ErrorService";
 
 /** pluginId → LIFO disposer 栈（后注册的排后面 → 回滚时先滚） */

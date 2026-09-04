@@ -30,7 +30,7 @@ import { layoutEngine, narrowPanelEdge, narrowSidebarEdge } from "../core/servic
 import { getConfigurationValue } from "../core/services/configuration/ConfigurationService"; // E5.7#1：titleBar.menuBarVisible
 import { ContextKeyService } from "../core/registry/commands/ContextKeyService"; // E5.8#37.6：sidebarPosition 当开关 context key
 import { getAssetPath } from "../core/utils/path/assetPath"; // E5.7#5：logoUrl——池不 import core，壳解析推送
-import { getTabCreatableViews } from "../pluginLoader/viewRegistry";
+import { getTabCreatableViews } from "../pluginLoader/contributions/viewRegistry";
 // ── E5.8#0d.10-5：6 子模块聚合——序列化器 + 订阅组；E5.8#43-2：+ windowLayout（按窗口组装）──
 import { buildSidebarViewMetas, buildPanelViewMetas, buildPanelSwitcherGroups } from "./usePoolSync/sidebar-panel";
 import { buildTitleBarMenuGroups, buildTitleBarSlots, MENU_STYLE_MENUBAR_VISIBLE } from "./usePoolSync/titlebar";

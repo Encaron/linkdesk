@@ -11,7 +11,7 @@
 import { useEffect, useRef } from "react";
 import { layoutEngine } from "../core/services/layout/LayoutEngine";
 import { shellEvents } from "../core/react/events/ShellEvents";
-import { getViewPlugin, getViewPlugins } from "../pluginLoader/viewRegistry";
+import { getViewPlugin, getViewPlugins } from "../pluginLoader/contributions/viewRegistry";
 import { setPluginStateValue, getPluginStateValue, APP_PLUGIN_ID } from "../core/services/plugins/PluginStateService";
 import { ViewContainerService } from "../core/services/layout/ViewContainerService";
 

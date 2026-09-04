@@ -14,7 +14,7 @@ import { openKeybindingsSettings } from "../../registry/commands/KeybindingRegis
 import { requestSettingsGroup, requestScrollToSetting } from "../../registry/ConfigurationRegistry";
 import { APP_PLUGIN_ID } from "../../services/plugins/PluginStateService";
 import { shellEvents } from "../../react/events/ShellEvents";
-import { getFloatingPanelViewId } from "../../../pluginLoader/viewRegistry";
+import { getFloatingPanelViewId } from "../../../pluginLoader/contributions/viewRegistry";
 
 export function registerSettingsCommands(): void {
   const commands = [

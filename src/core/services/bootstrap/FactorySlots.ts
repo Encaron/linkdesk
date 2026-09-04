@@ -21,7 +21,7 @@
  */
 
 import type { PluginManifest } from "../../api/types";
-import { PluginLifecycle } from "../../../pluginLoader/lifecycle";
+import { PluginLifecycle } from "../../../pluginLoader/lifecycle/lifecycle";
 import { getLoadedPluginManifests } from "../../../pluginLoader/loader";
 // E5.8#41.12：活动套落盘——持久化「用户选了哪套设置」，重启保持
 import { getPluginStateValue, setPluginStateValue, APP_PLUGIN_ID } from "../plugins/PluginStateService";

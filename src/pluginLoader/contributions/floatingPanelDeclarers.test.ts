@@ -14,11 +14,11 @@ import { describe, it, expect } from "vitest";
 import { readFileSync, existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { registerViewPlugin, getFloatingPanelViewId } from "./viewRegistry";
-import { normalizePath } from "../core/utils/path/pathUtils";
-import type { PluginManifest } from "../core/api/types";
+import { normalizePath } from "../../core/utils/path/pathUtils";
+import type { PluginManifest } from "../../core/api/types";
 
 /** 测试运行 cwd = 项目根（E:/linkdesk）——相对路径直指插件目录 */
-const PROJECT_ROOT = resolve(__dirname, "../..");
+const PROJECT_ROOT = resolve(__dirname, "../../..");
 
 /** 声明者清单——[描述, pluginId, plugin.json 相对项目根] */
 const DECLARERS: Array<{ label: string; pluginId: string; jsonPath: string }> = [

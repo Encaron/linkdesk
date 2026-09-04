@@ -28,7 +28,7 @@ import {
   refreshPanelText,
 } from "../core/services/ui/FloatingPanelService";
 import { getCallbacks } from "../core/commands/infra/CoreCallbacks";
-import { getTabCreatableViews } from "../pluginLoader/viewRegistry";
+import { getTabCreatableViews } from "../pluginLoader/contributions/viewRegistry";
 import type { PoolFloatingPanelButton } from "../core/types/pool/poolFloatingPanel";
 import i18n from "../i18n";
 

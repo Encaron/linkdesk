@@ -11,8 +11,8 @@
  *   重导出——既有 `import { PluginLifecycle } from "./lifecycle"` 调用面零改动。
  */
 
-import { Emitter } from "../core/react/events/CoreEvents";
-import type { PluginManifest } from "../core/api/types";
+import { Emitter } from "../../core/react/events/CoreEvents";
+import type { PluginManifest } from "../../core/api/types";
 
 /* ── 事件类型 ── */
 

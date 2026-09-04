@@ -24,7 +24,7 @@ import type {
 } from "../../core/types/pool/poolLayout";
 import type { WindowShellState, PoolZone } from "../../App/windows";
 import { WINDOW_MODE_STRATEGIES } from "../../App/windows";
-import { getViewPlugin, getTabBehavior } from "../../pluginLoader/viewRegistry";
+import { getViewPlugin, getTabBehavior } from "../../pluginLoader/contributions/viewRegistry";
 import { resolvePluginIcon } from "../../core/utils/plugin/iconUtils";
 import { isShellRenderedTab, resolvePoolTabTitle } from "../../core/utils/tabIdentity";
 import { computeGroupFlexes } from "./sidebar-panel"; // E5.6#16：SplitNode 树 → group flex 比例

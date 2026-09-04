@@ -7,9 +7,9 @@
  * 缺 key 时返回插值后的中文原文，测试断言（toContain 版本号 / 子串）天然兼容。
  */
 
-import i18n from "../i18n";
-import type { PluginManifest } from "../core/api/types";
-import { compareVersions } from "../core/utils/plugin/semverUtils";
+import i18n from "../../i18n";
+import type { PluginManifest } from "../../core/api/types";
+import { compareVersions } from "../../core/utils/plugin/semverUtils";
 
 /* ── E5#12：旧格式归一化——纯函数，不 mutate 只读 glob manifest ── */
 
