@@ -19,6 +19,8 @@ contracts/*.tgz
 
 # === agent / 本机工具文件（保留在磁盘但不入库） ===
 .claude/
+# impeccable 设计 hook 本地运行时（ignore 决策存储 + 扫描缓存）
+.impeccable/
 # Codex CLI persona/profile（Codex 用）
 SOUL.md
 USER.md
