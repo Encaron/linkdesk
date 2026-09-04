@@ -40,6 +40,9 @@ export function buildPluginManager() {
 export function buildPlugins() {
   return {
     resolvePath: (id: string) => ipcRenderer.invoke(IPC.plugins.resolvePath, id),
+    // E6#7（1.2-4）：resolvePath 的兄弟——{ root, entry, bundle }（bundle 入口恒 index.bundle.js；
+    // PluginComponent 默认主 tab 入口据此拼 URL，不再硬编码 src/index.tsx）
+    resolveEntry: (id: string) => ipcRenderer.invoke(IPC.plugins.resolveEntry, id),
   };
 }
 

@@ -15,7 +15,9 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { APP_SCHEME, APPEARANCE_SCHEME } from '../constants';
 import { scanPluginSubdirs } from '../services/plugin-file-service.js';
-import { resolveLinkdeskPath } from '../../src/core/utils/path/linkdeskProtocolPath.js';
+import { envService } from '../services/env-service.js';
+// E6#7（1.2-4）：多根解析——resolveLinkdeskPath 单根版保留（7 单测不动），protocol 走 multi
+import { resolveLinkdeskPathMulti } from '../../src/core/utils/path/linkdeskProtocolPath.js';
 import { APPEARANCE_SUBDIR } from '../../src/core/utils/path/userDataImagePath.js';
 
 /** E5#114d 诊断：写入文件而非 console.log（生产环境 stdout 不可见） */
@@ -32,12 +34,9 @@ function diag(msg: string): void {
  * 必须在 app.whenReady() 之后调用。
  */
 export function registerProtocol(): void {
-  // 插件目录基准路径
-  // dev 模式：<project>/plugins/
-  // prod 模式：<resources>/plugins/（不打进 ASAR）
-  const pluginsDir = app.isPackaged
-    ? path.join(process.resourcesPath, 'plugins')
-    : path.join(app.getAppPath(), 'plugins');
+  // E6#7（1.2-4）：有序双根——[app 只读根, userData 用户安装家]；app 在前同名遮蔽。
+  // app 根：dev <project>/plugins、prod <resources>/plugins（不打 ASAR）；userData 根：envService.userPluginsDir。
+  const roots = [envService.appPluginsDir(), envService.userPluginsDir()];
 
   // 🔥 E5#114d：CORS 安全网——file:// 页面 fetch linkdesk:// 是跨域，
   // Origin 为 null，部分 Chromium 版本 Access-Control-Allow-Origin: * 不匹配 null。
@@ -50,7 +49,7 @@ export function registerProtocol(): void {
     return h;
   }
 
-  diag(`PROTOCOL REGISTERED — pluginsDir=${pluginsDir}  userData=${app.getPath('userData')}`);
+  diag(`PROTOCOL REGISTERED — roots=${roots.join(' | ')}  userData=${app.getPath('userData')}`);
 
   protocol.handle(APP_SCHEME, async (request) => {
     // OPTIONS preflight——CORS 预检直接返回 204
@@ -64,7 +63,9 @@ export function registerProtocol(): void {
 
     // 路径解析——E5.7#82：抽到 src/core/utils/path/linkdeskProtocolPath.ts 纯函数
     // （穿越检查 + 子目录扫描 + 存在检查，vitest 实证 E6 打包格式的 chunk 命中）
-    const resolved = resolveLinkdeskPath(pluginsDir, scanPluginSubdirs(pluginsDir), urlPath);
+    // E6#7：双根有序扫描（app 在前）——userData 包的贡献数据/资产 URL 恒 linkdesk://<id>/... 即可达
+    const rootsForProtocol = roots.map((root) => ({ root, subdirs: scanPluginSubdirs(root) }));
+    const resolved = resolveLinkdeskPathMulti(rootsForProtocol, urlPath);
     if (!resolved.ok) {
       if (resolved.status === 403) {
         diag(`403 FORBIDDEN — ${urlPath}`);

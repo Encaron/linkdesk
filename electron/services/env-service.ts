@@ -20,14 +20,23 @@ class EnvService {
     return app.getPath('userData');
   }
 
-  /** App 插件源码目录——plugins/builtin/ + plugins/user/ + .disabled/ 所在 */
+  /** App 插件源码目录——plugins/builtin/ + plugins/user/ + .disabled/ 所在（只读：dev 项目树 / prod resources，绝不写用户安装） */
   appPluginsDir(): string {
     return app.isPackaged
       ? path.join(process.resourcesPath, 'plugins')
       : path.join(app.getAppPath(), 'plugins');
   }
 
-  /** 插件根目录 */
+  /**
+   * 用户安装包代码根——E6#7b 新建：{userData}/plugins/{builtin,user}/<id>/。
+   * .linkdesk-plugin 解压目标（市场只写 user/）；与只读 appPluginsDir 分离（AI执行守则 陷阱 1「不要混」），
+   * 也与下面 pluginsRootDir（linkdesk/plugins/<id>/data 插件私有数据根）不同——代码根 vs 数据根勿混淆。
+   */
+  userPluginsDir(): string {
+    return path.join(this.appDataDir(), 'plugins');
+  }
+
+  /** 插件数据根——<appDataDir>/linkdesk/plugins/<id>/data/...（插件私有可写数据，非代码） */
   pluginsRootDir(): string {
     return path.join(this.appDataDir(), 'linkdesk', 'plugins');
   }

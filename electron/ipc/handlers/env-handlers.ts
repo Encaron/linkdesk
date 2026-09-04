@@ -18,6 +18,8 @@ export function registerEnvHandlers(): void {
       appDataDir: envService.appDataDir(),
       pluginsRootDir: envService.pluginsRootDir(),
       appPluginsDir: envService.appPluginsDir(),
+      // E6#7（1.2-4）：用户安装包代码根——.linkdesk-plugin 解压家（loader/PluginInstallService 读家）
+      userPluginsDir: envService.userPluginsDir(),
       pluginDataDir: pluginId ? envService.pluginDataDir(pluginId) : undefined,
       pluginCacheDir: pluginId ? envService.pluginCacheDir(pluginId) : undefined,
       pluginExportsDir: pluginId ? envService.pluginExportsDir(pluginId) : undefined,

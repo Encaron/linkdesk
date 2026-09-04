@@ -109,6 +109,23 @@ export interface PluginDiscoveryEntry {
   entry?: string;
   /** 完整 plugin.json */
   manifest: PluginManifest;
+  /** E6#7（1.2-4）：目录含 index.bundle.js = SDK 打包的 .linkdesk-plugin 解压产物。
+   *  磁盘格式事实（非插件身份——硬约束 11）；bundle 插件 JS 入口恒 index.bundle.js（runtime 分支依据）。 */
+  bundle?: boolean;
+  /** E6#7（1.2-4）：磁盘位置事实——home = 代码根（app = 只读 app 插件根 / userData = {userData}/plugins 用户安装家），
+   *  subdir = 所在插件子目录（builtin/user/…，root-direct 遗留 = null）。账本 reconcile 依据（只收 userData）。 */
+  origin?: { home: "app" | "userData"; subdir: string | null };
+}
+
+/** E6#7（1.2-4）：plugins.resolveEntry() 返回——resolvePath 的兄弟（discovery 族，非安装 handler）。
+ *  pool/运行时按 { root, entry } 拼 dev /@fs 与 prod linkdesk:// 两种 URL。 */
+export interface PluginEntryInfo {
+  /** 插件目录绝对路径（正斜杠）；插件不存在 = null */
+  root: string | null;
+  /** 入口文件名——bundle → "index.bundle.js"；源码 → manifest.entry（缺省 "src/index.tsx"）；无 = null */
+  entry: string | null;
+  /** 目录是否含 index.bundle.js（bundle 格式事实） */
+  bundle: boolean;
 }
 
 /** 插件列表条目——pluginManager.list() 返回（主进程序列化后的 manifest 子集）。
@@ -161,6 +178,8 @@ export interface EnvInfo {
   appDataDir: string;
   pluginsRootDir: string;
   appPluginsDir: string;
+  /** E6#7（1.2-4）：用户安装包代码根 {userData}/plugins——.linkdesk-plugin 解压家（与 appPluginsDir 只读根分开） */
+  userPluginsDir: string;
   pluginDataDir?: string;
   pluginCacheDir?: string;
   pluginExportsDir?: string;

@@ -35,6 +35,7 @@ import { validateInstallManifest, resolveVersionConflict } from "../discovery/ma
 import { syncAppThemeEnum, syncAppLanguageEnum, syncIconThemeEnum } from "../contributions/contributions";
 import { loadPlugin } from "../resolution/runtime";
 import { parseManifestJson } from "../jsonc"; // E6#55：作者 plugin.json JSONC——唯一解析入口
+import { normalizePath } from "../../core/utils/path/pathUtils"; // 跨 IPC 路径归一化唯一正源（no-raw-path-replace）
 
 /* ═══════════════════════════════════════════════════════════
    Phase 4.3 生命周期 API——安装/卸载/禁用/启用
@@ -146,17 +147,48 @@ export async function uninstallPlugin(pluginId: string): Promise<{ success: bool
     // E5#32：文件操作走 linkdesk.filesystem——bridge 为唯一入口，不再走 plugins:uninstall 直接 IPC
     const src = await pluginsApi().resolvePath(pluginId);
     const env = await linkdesk().env.get();
-    const disabledDir = `${env.appPluginsDir}/.disabled`;
-    const dest = `${disabledDir}/${pluginId}`;
-    await linkdesk().filesystem.createDir(disabledDir);
-    if (await linkdesk().filesystem.exists(dest)) {
-      await linkdesk().filesystem.remove(dest);
-    }
-    await linkdesk().filesystem.copy(src, dest);
-    await linkdesk().filesystem.remove(src);
 
-    // Rust 成功 → 前端更新
-    cachePluginMetadata(pluginId, manifest, "uninstalled");
+    // E6#12（1.2-4）双代码根分支：resolvePath 落在 userData 家（{userData}/plugins，.linkdesk-plugin
+    // 解压处）→ 真删（无 .disabled 坟场——重装需重新装包）；否则 app 树（dev 源码/内置）→ 移 .disabled
+    // （现语义，可 reinstall）。磁盘位置是事实（硬约束 11），env 双根同源前缀比对。
+    //
+    // 🔴 前缀比对必须走 normalizePath 归一化：resolvePath（IPC 回传）是正斜杠
+    // （"C:/Users/.../plugins/user/<id>"），而 env.userPluginsDir（主进程 path.join）是反斜杠
+    // （"C:\Users\...\plugins"）——直接 startsWith 恒 false，userData 卸载误走 .disabled 坟场
+    // （2026-09-05 实机门禁实证：demo-pill/plugin-sdk-example 卸载进了项目 plugins/.disabled/）。
+    const userHome = env.userPluginsDir;
+    const isUserDataHome =
+      !!userHome &&
+      (() => {
+        const srcNorm = normalizePath(src);
+        const homeNorm = normalizePath(userHome);
+        return srcNorm === homeNorm || srcNorm.startsWith(`${homeNorm}/`);
+      })();
+
+    if (isUserDataHome) {
+      await linkdesk().filesystem.remove(src);
+      // E6#12：userData 卸载 = 销账——PluginInstallService.remove（账本唯一 owner；动态 import 非致命）
+      try {
+        const { remove: removeLedger } = await import("../../core/services/PluginInstallService");
+        await removeLedger(pluginId);
+      } catch (e) {
+        log.appendLine(`⚠️ 账本销账失败（非致命）: ${errMsg(e)}`);
+      }
+      // 不 cachePluginMetadata("uninstalled")——.disabled 坟场不含该目录，reinstall 找不到源会报错；
+      // 僵尸 "installed" 缓存由 loader 启动步骤 6 差集清理（loadedPluginIds 已无它）。
+    } else {
+      const disabledDir = `${env.appPluginsDir}/.disabled`;
+      const dest = `${disabledDir}/${pluginId}`;
+      await linkdesk().filesystem.createDir(disabledDir);
+      if (await linkdesk().filesystem.exists(dest)) {
+        await linkdesk().filesystem.remove(dest);
+      }
+      await linkdesk().filesystem.copy(src, dest);
+      await linkdesk().filesystem.remove(src);
+
+      // Rust 成功 → 前端更新（仅 app 树移坟场才入 uninstalled 缓存）
+      cachePluginMetadata(pluginId, manifest, "uninstalled");
+    }
     // revert 必须在 onWillUninstall 之前——onWillUninstall 注销主题/语言后 revert 找不到归属
     const needsMixReapply = await revertThemeIfCurrent(pluginId);
     await revertLanguageIfCurrent(pluginId);

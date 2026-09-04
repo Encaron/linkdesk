@@ -19,8 +19,8 @@
 
 import * as fs from "fs";
 import * as path from "path";
-import { app, ipcMain } from "electron";
-import { PLUGINS_DIR, PLUGIN_SUBDIRS } from "../../src/core/utils/plugin/pluginPaths.js"; // E5.8#0d.11：自 core/ 根归位 utils/plugin/
+import { ipcMain } from "electron";
+import { PLUGIN_SUBDIRS } from "../../src/core/utils/plugin/pluginPaths.js"; // E5.8#0d.11：自 core/ 根归位 utils/plugin/
 import type { PluginManifest, LangDefContribution } from "../../src/core/api/types.js";
 import { parseManifestJson } from "../../src/pluginLoader/jsonc.js"; // E6#55：作者 plugin.json JSONC——主进程三表预载同走唯一解析入口
 import { registerLangDef, clearLangDefs } from "../../src/core/registry/languages/LangDefRegistry.js";
@@ -30,12 +30,14 @@ import { ensureBuiltinProtocols } from "../../src/core/commands/infra/registerBu
 import { IPC } from '../ipc/channels.js';
 // E5.8#26 D8 卸载连坐——rescan 时回收孤儿端口（owner 插件已不在扫盘集合 = 被卸载）
 import { serialService } from '../services/serial-service.js';
+import { envService } from "../services/env-service.js";
 
-/** 插件根目录——dev 用项目根，packaged 用 extraResources 落点 */
-function getPluginsRoot(): string {
-  return app.isPackaged
-    ? path.join(process.resourcesPath, PLUGINS_DIR)
-    : path.join(process.cwd(), PLUGINS_DIR);
+/**
+ * 有序代码根表——先 userData 后 app（见 loadAllPluginManifests 注释：register* 后写胜 → app 内置最后注册即胜）。
+ * 与 plugin-file-service.pluginRoots 同源（app 优先发现）但表注册是覆盖语义需反序扫描——双处都写清同一不变式。
+ */
+function getPluginRoots(): string[] {
+  return [envService.userPluginsDir(), envService.appPluginsDir()];
 }
 
 /** 单个 plugin.json 的三表贡献注册——pluginId 采用目录名（与壳 loader 约定一致） */
@@ -70,6 +72,11 @@ const _loadedPluginIds = new Set<string>();
 /**
  * 全量扫盘——启动时 whenReady 调一次；装/卸/重装后经 plugins:rescanManifests 重扫。
  * 错误隔离：单个插件目录缺失 / plugin.json 损坏 → console.error + 跳过该插件，不中断整轮。
+ *
+ * E6#7（1.2-4）双根：app 根（dev 项目 plugins/ / prod resources）∪ userData 根（{userData}/plugins
+ * .linkdesk-plugin 解压家）。userData 插件声明的 langDefs/protocols/fileAssociations 须进主进程三表。
+ * 扫描序 = [userData, app]（后写胜）——app 内置同 id 覆盖用户装，与 plugin-file-service 发现
+ * 的 app 优先一致，dev 源码插件零回归。
  */
 export function loadAllPluginManifests(): void {
   // 内置方括号协议——不在任何 plugin.json 里（全仓无插件协议注册，矩阵实证）。
@@ -79,30 +86,31 @@ export function loadAllPluginManifests(): void {
   ensureBuiltinProtocols();
 
   _loadedPluginIds.clear();
-  const root = getPluginsRoot();
-  for (const sub of PLUGIN_SUBDIRS) {
-    const subDir = path.join(root, sub);
-    if (!fs.existsSync(subDir)) continue;
-    let entries: string[];
-    try {
-      entries = fs.readdirSync(subDir);
-    } catch (e) {
-      console.error(`[plugin-manifest-loader] 读取插件目录失败: ${subDir}`, e);
-      continue;
-    }
-    for (const name of entries) {
-      const manifestPath = path.join(subDir, name, "plugin.json");
-      if (!fs.existsSync(manifestPath)) continue;
-      // E5.8#26 D8：先登记存在性——plugin.json 解析失败（损坏）也算插件存在，防误连坐
-      _loadedPluginIds.add(name);
+  for (const root of getPluginRoots()) {
+    for (const sub of PLUGIN_SUBDIRS) {
+      const subDir = path.join(root, sub);
+      if (!fs.existsSync(subDir)) continue;
+      let entries: string[];
       try {
-        const raw = fs.readFileSync(manifestPath, "utf-8");
-        registerManifestTables(name, parseManifestJson(raw));
+        entries = fs.readdirSync(subDir);
       } catch (e) {
-        console.error(
-          `[plugin-manifest-loader] 跳过插件 ${sub}/${name}——plugin.json 解析失败`,
-          e
-        );
+        console.error(`[plugin-manifest-loader] 读取插件目录失败: ${subDir}`, e);
+        continue;
+      }
+      for (const name of entries) {
+        const manifestPath = path.join(subDir, name, "plugin.json");
+        if (!fs.existsSync(manifestPath)) continue;
+        // E5.8#26 D8：先登记存在性——plugin.json 解析失败（损坏）也算插件存在，防误连坐
+        _loadedPluginIds.add(name);
+        try {
+          const raw = fs.readFileSync(manifestPath, "utf-8");
+          registerManifestTables(name, parseManifestJson(raw));
+        } catch (e) {
+          console.error(
+            `[plugin-manifest-loader] 跳过插件 ${sub}/${name}——plugin.json 解析失败`,
+            e
+          );
+        }
       }
     }
   }

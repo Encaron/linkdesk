@@ -280,12 +280,18 @@ async function resolveRuntimePluginRoot(pluginId: string): Promise<string> {
  * prod（E6 打包格式）：一律返回预构建 chunk 名 `<pluginId>.js`——
  *   vite.config 多入口产物名 = 插件目录名（dist/plugins/<sub>/<id>.js），
  *   entry 字段是源码路径，在打包格式中不参与入口解析。
+ *
+ * E6#7（1.2-4）：可选 4 参 opts.bundle——目录含 index.bundle.js 的 .linkdesk-plugin 解压产物
+ *   （磁盘格式事实）入口恒 "index.bundle.js"，不随 dev/prod 与 manifest.entry 变（SDK 打包时
+ *   把作者 entry 源码路径原样拷进 plugin.json，不可当入口判据——检测走 state.isBundlePlugin）。
  */
 export function runtimeEntryPath(
   manifest: PluginManifest,
   pluginId: string,
   isDev: boolean,
+  opts?: { bundle?: boolean },
 ): string | null {
+  if (opts?.bundle) return "index.bundle.js";
   if (isDev) return manifest.entry || null;
   return `${pluginId}.js`;
 }

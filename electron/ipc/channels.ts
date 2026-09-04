@@ -128,6 +128,8 @@ export const IPC = {
     // E6#9c：全量 manifest——Record<pluginId, PluginManifest>（pluginManifests glob 的 IPC 替代）
     readAllManifests: 'plugins:readAllManifests',
     resolvePath: 'plugins:resolvePath',
+    // E6#7（1.2-4）：resolvePath 的兄弟（discovery 族，非安装 handler）——{ root, entry, bundle }
+    resolveEntry: 'plugins:resolveEntry',
     rescanManifests: 'plugins:rescanManifests',
   },
   pool: {

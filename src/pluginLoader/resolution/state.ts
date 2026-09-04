@@ -172,6 +172,7 @@ export async function discoverInstalled(): Promise<PluginDiscoveryEntry[]> {
     const api = pluginsApi();
     const [entries, records] = await Promise.all([api.listAll(), api.readAllManifests()]);
     hydrateManifestIndex(records);
+    syncBundlePluginIds(entries);
     return entries;
   } catch {
     seedManifestIndexFromGlob();
@@ -186,6 +187,27 @@ export async function discoverInstalled(): Promise<PluginDiscoveryEntry[]> {
 
 /** 已成功加载的插件 ID 集合（用于文件监听检测新插件） */
 const loadedPluginIds = new Set<string>();
+
+/* ── E6#7（1.2-4）：bundle 插件标记集 ── */
+
+/**
+ * 磁盘格式事实（非插件身份——硬约束 11）：目录含 index.bundle.js = SDK 打包的 .linkdesk-plugin 解压产物。
+ * 启动发现（discoverInstalled）从 listAll 条目的 bundle 标志水合；幂等（每次发现先清后填）。
+ * 运行时才新装的 bundle（未来 1.2-5 #13 安装流）由该流在落盘后补标——本轮启动覆盖已含全部 userData 包。
+ */
+const _bundlePluginIds = new Set<string>();
+
+/** 启动发现时同步——先清后填（插件可能随装卸在 bundle/源码 间迁移）。仅 discoverInstalled 内部调。 */
+function syncBundlePluginIds(entries: readonly PluginDiscoveryEntry[]): void {
+  _bundlePluginIds.clear();
+  for (const e of entries) if (e.bundle) _bundlePluginIds.add(e.pluginId);
+}
+
+/** 消费方判 bundle——runtime/contributions 据此选入口（bundle → index.bundle.js）。 */
+export function isBundlePlugin(pluginId: string): boolean {
+  return _bundlePluginIds.has(pluginId);
+}
+
 /** 🔥 硬约束 13：async init 竞态守卫——loadPlugin concurrent 调用时第二次返回第一次的 Promise */
 const _loadingPromises = new Map<string, Promise<void>>();
 /** 延迟激活的插件——有 activationEvents（非 "*"），manifest 已注册但 JS 未 import */

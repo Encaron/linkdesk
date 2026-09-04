@@ -44,4 +44,9 @@ export function registerPluginHandlers(): void {
   ipcMain.handle(IPC.plugins.resolvePath, (_event, pluginId: string) => {
     return pluginFileService.resolvePath(pluginId);
   });
+
+  // E6#7（1.2-4）：解析插件入口（resolvePath 的兄弟，discovery 族）——{ root, entry, bundle }
+  ipcMain.handle(IPC.plugins.resolveEntry, async (_event, pluginId: string) => {
+    return pluginFileService.resolveEntry(pluginId);
+  });
 }

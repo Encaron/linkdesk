@@ -132,6 +132,21 @@ export async function initPluginLoader(): Promise<void> {
     }
   }
 
+  // E6#12（1.2-4）：账本 reconcile——发现条目（含 origin）→ 账本与实际文件系统对齐。
+  //   .linkdesk-plugin 包经 ingest 解压出现 → 目录有 → 加账本记录；userData 目录被真删 → 删记录
+  //   （差集逻辑在 PluginInstallService.reconcileDiff，纯函数可测）。只收 origin.home="userData" 的插件；
+  //   dev 项目源码插件（app 根）永不入账本。动态 import + try/catch 非致命——浏览器预览
+  //   （无 filesystem IPC）静默跳过，账本缺席不影响启动（getInstalled 兜底 {}）。
+  try {
+    const { reconcileInstalledLedger } = await import("../core/services/PluginInstallService");
+    const { added, removed } = await reconcileInstalledLedger(discovered);
+    if (added.length > 0 || removed.length > 0) {
+      log.appendLine(`📒 账本 reconcile：+${added.length}（${added.join(", ")}）−${removed.length}（${removed.join(", ")}）`);
+    }
+  } catch (e) {
+    log.appendLine(`⚠️ 账本 reconcile 跳过（非致命）: ${errMsg(e)}`);
+  }
+
   // 3. 源码树里 glob 有、但磁盘已不在（目录被手动删除）的插件——种子 uninstalled 缓存（F5 后详情仍可浏览）。
   //    listAll 以磁盘为准不含它们；此差集只增不删（删僵尸缓存是步骤 7 pruneUninstalledCache 的职责）。
   //    E6#55：glob 值是 ?raw 原文——先 jsonc 解析（坏文件跳过，dev 手工改坏 plugin.json 不拖垮启动）。

@@ -38,6 +38,7 @@ import {
   getDisabledList,
   getLoadedManifest,
   getManifestById,
+  isBundlePlugin, // E6#7（1.2-4）：目录含 index.bundle.js → runtimeEntryPath 传 bundle 分支
 } from "./state";
 import { normalizeManifest, hasSidebarContainers, type OldFormatManifest } from "../discovery/manifest";
 import { effectiveActivationEvents } from "./activation"; // #9g：延迟匹配按「显式 ?? 推断」生效事件
@@ -251,7 +252,8 @@ async function loadPlugin(
     }
     // #9g 按需激活：延迟加载（skipView）时跳过 JS import——只解析根（Step5 pluginRoot 依赖），
     // entry 在 activatePlugin 首次触发事件时才 import（启动注册-only，对标 VS Code 延迟激活）。
-    const entryPath = opts?.skipView ? undefined : runtimeEntryPath(manifest, pluginId, import.meta.env.DEV);
+    // E6#7：bundle 插件入口恒 index.bundle.js（isBundlePlugin 从启动发现水合）
+    const entryPath = opts?.skipView ? undefined : runtimeEntryPath(manifest, pluginId, import.meta.env.DEV, { bundle: isBundlePlugin(pluginId) });
     if (entryPath) {
       try {
         if (!runtimePluginRoot) throw new Error("根目录解析失败");
@@ -421,7 +423,8 @@ async function activatePlugin(pluginId: string): Promise<boolean> {
       // 运行时（打包/市场安装）——glob 模块表无此插件，走根解析 + 动态 import。
       // 与 Step3 运行时分支加载语义一致；差异 = 激活失败即抛上报（用户触发的激活不应静默降级）。
       const runtimePluginRoot = await resolveRuntimePluginRoot(pluginId);
-      const entryPath = runtimeEntryPath(manifest, pluginId, import.meta.env.DEV);
+      // E6#7：bundle 插件入口恒 index.bundle.js（同 Step3 分支）
+      const entryPath = runtimeEntryPath(manifest, pluginId, import.meta.env.DEV, { bundle: isBundlePlugin(pluginId) });
       let viewComponent: React.ComponentType<{ isActive: boolean }> | undefined;
       let statusBarComponent: React.ComponentType | undefined;
       if (entryPath && runtimePluginRoot) {

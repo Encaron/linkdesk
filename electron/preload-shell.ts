@@ -214,6 +214,8 @@ try {
       // E6#9c：全量 manifest——Record<pluginId, PluginManifest>
       readAllManifests: () => ipcRenderer.invoke(IPC.plugins.readAllManifests),
       resolvePath:      (id: string) => ipcRenderer.invoke(IPC.plugins.resolvePath, id),
+      // E6#7（1.2-4）：resolvePath 的兄弟——{ root, entry, bundle }（bundle 入口恒 index.bundle.js）
+      resolveEntry:     (id: string) => ipcRenderer.invoke(IPC.plugins.resolveEntry, id),
     },
 
     // ── 文件关联——扩展名→插件 ID（主进程 FileAssociationService 直答）──

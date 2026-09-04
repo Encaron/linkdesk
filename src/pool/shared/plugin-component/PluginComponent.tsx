@@ -103,7 +103,21 @@ export default function PluginComponent({ pluginId, isActive, tabId, sourceId, r
               const mod = await import(/* @vite-ignore */ url);
               return mod;
             } else {
-              // 主区 tab：默认入口 src/index.tsx
+              // 主区 tab：默认入口。E6#7：.linkdesk-plugin 解压包 JS 入口恒 index.bundle.js
+              // （磁盘格式事实），源码/运行时插件 = manifest.entry（缺省 src/index.tsx）——
+              // 经 resolveEntry 拿 { root, entry } 拼 URL，不写死 src/index.tsx（index.bundle.js
+              // 才是打包入口）。resolveEntry 缺失/无入口（纯贡献插件不该走到组件加载）→
+              // 落回 resolvePath + src/index.tsx legacy 兜底。
+              if (lk?.plugins?.resolveEntry) {
+                const info = await lk.plugins.resolveEntry(pluginId);
+                if (info?.root && info?.entry) {
+                  const url = isDev
+                    ? `/@fs/${info.root}/${info.entry}`
+                    : `linkdesk://${pluginId}/${info.entry}`;
+                  const mod = await import(/* @vite-ignore */ url);
+                  return mod;
+                }
+              }
               const url = isDev ? `/@fs/${absPath}/src/index.tsx` : `linkdesk://${pluginId}/src/index.tsx`;
               const mod = await import(/* @vite-ignore */ url);
               return mod;

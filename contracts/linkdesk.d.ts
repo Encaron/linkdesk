@@ -736,6 +736,8 @@ export interface EnvInfo {
     appDataDir: string;
     pluginsRootDir: string;
     appPluginsDir: string;
+    /** E6#7（1.2-4）：用户安装包代码根 {userData}/plugins——.linkdesk-plugin 解压家（与 appPluginsDir 只读根分开） */
+    userPluginsDir: string;
     pluginDataDir?: string;
     pluginCacheDir?: string;
     pluginExportsDir?: string;
@@ -882,6 +884,16 @@ export interface EditorAPI {
         registerView(pluginId: string, containerId: string, descriptor: Record<string, unknown>): Promise<void>;
     };
 }
+/** E6#7（1.2-4）：plugins.resolveEntry() 返回——resolvePath 的兄弟（discovery 族，非安装 handler）。
+ *  pool/运行时按 { root, entry } 拼 dev /@fs 与 prod linkdesk:// 两种 URL。 */
+export interface PluginEntryInfo {
+    /** 插件目录绝对路径（正斜杠）；插件不存在 = null */
+    root: string | null;
+    /** 入口文件名——bundle → "index.bundle.js"；源码 → manifest.entry（缺省 "src/index.tsx"）；无 = null */
+    entry: string | null;
+    /** 目录是否含 index.bundle.js（bundle 格式事实） */
+    bundle: boolean;
+}
 /**
  * Phase 4 核心类型定义。
  * 插件元数据、标签页扩展字段、视图注册表条目。
@@ -1023,6 +1035,15 @@ export interface PluginDiscoveryEntry {
     entry?: string;
     /** 完整 plugin.json */
     manifest: PluginManifest;
+    /** E6#7（1.2-4）：目录含 index.bundle.js = SDK 打包的 .linkdesk-plugin 解压产物。
+     *  磁盘格式事实（非插件身份——硬约束 11）；bundle 插件 JS 入口恒 index.bundle.js（runtime 分支依据）。 */
+    bundle?: boolean;
+    /** E6#7（1.2-4）：磁盘位置事实——home = 代码根（app = 只读 app 插件根 / userData = {userData}/plugins 用户安装家），
+     *  subdir = 所在插件子目录（builtin/user/…，root-direct 遗留 = null）。账本 reconcile 依据（只收 userData）。 */
+    origin?: {
+        home: "app" | "userData";
+        subdir: string | null;
+    };
 }
 /** list() 的 manifest 序列化子集——与 handlePluginsCall "list" 7 字段对齐 */
 export interface PluginListSubset {
@@ -1070,6 +1091,9 @@ export interface PluginsAPI {
     /** 插件发现——双端注入：resolvePath 双端同面；读面（listDirs/listAll/readAllManifests/listDisabledDirs/readManifest）壳 preload 独有（loader 只在壳跑） */
     plugins: {
         resolvePath(id: string): Promise<string>;
+        /** E6#7（1.2-4）：resolvePath 的兄弟（discovery 族）——返回 { root, entry, bundle }（bundle 入口恒 index.bundle.js）。
+         *  可选——保 state.ts 守卫与两 preload 面（壳/池）编译不裂；调用方先判存在再调用。 */
+        resolveEntry?(id: string): Promise<PluginEntryInfo>;
         listDirs?(): Promise<string[]>;
         /** E6#9a：全量发现——[{ pluginId, entry, manifest }]（替代 import.meta.glob；打包插件不在源码树，主进程读盘唯一真源） */
         listAll?(): Promise<PluginDiscoveryEntry[]>;

@@ -37,3 +37,27 @@ export function resolveLinkdeskPath(
   if (!fs.existsSync(fullPath)) return { ok: false, status: 404 };
   return { ok: true, fullPath };
 }
+
+/** E6#7（1.2-4）：双根解析的一个根——root = 代码根，subdirs = 该根下插件子目录（scanPluginSubdirs 产物，含优先序） */
+export interface LinkdeskPathRoot {
+  root: string;
+  subdirs: string[];
+}
+
+/**
+ * E6#7（1.2-4）：多根 linkdesk:// 路径解析——单根 resolveLinkdeskPath 的有序叠加。
+ * 逐根调用单根逻辑（root-direct → subdir 扫描，行为字节一致），先命中先赢（app 根在前 →
+ * userData 同名遮蔽语义与 plugin-file-service 一致）。".." 穿越仍在最外层拒绝（403）。
+ * 纯函数——供 vitest 实证 + protocol.ts 双根接线（旧 resolveLinkdeskPath 与其 7 个单测保留不动）。
+ */
+export function resolveLinkdeskPathMulti(
+  roots: LinkdeskPathRoot[],
+  urlPath: string,
+): LinkdeskPathResult {
+  if (urlPath.includes("..")) return { ok: false, status: 403 };
+  for (const { root, subdirs } of roots) {
+    const res = resolveLinkdeskPath(root, subdirs, urlPath);
+    if (res.ok) return res;
+  }
+  return { ok: false, status: 404 };
+}
