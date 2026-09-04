@@ -25,7 +25,7 @@
     "prepack": "tsc"
   },
   "dependencies": {
-    "@linkdesk/contracts": "file:../../contracts",
+    "@linkdesk/contracts": "^0.1.0",
     "@vitejs/plugin-react": "^4.3.4",
     "ajv": "^8.17.1",
     "jsonc-parser": "^3.3.1",
