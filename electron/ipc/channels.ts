@@ -121,8 +121,12 @@ export const IPC = {
   plugins: {
     call: 'plugins:call',
     listDirs: 'plugins:listDirs',
+    // E6#9a：全量发现——[{ pluginId, entry, manifest }]（替代渲染进程 import.meta.glob，打包插件不在源码树）
+    listAll: 'plugins:listAll',
     listDisabledDirs: 'plugins:listDisabledDirs',
     readManifest: 'plugins:readManifest',
+    // E6#9c：全量 manifest——Record<pluginId, PluginManifest>（pluginManifests glob 的 IPC 替代）
+    readAllManifests: 'plugins:readAllManifests',
     resolvePath: 'plugins:resolvePath',
     rescanManifests: 'plugins:rescanManifests',
   },

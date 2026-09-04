@@ -99,6 +99,18 @@ export interface LinkDeskConfigSchema {
  * 与壳 ConfigurationRegistry 组装的 [pluginId, { title, properties }] 对齐——第三方设置 UI 不再 need cast */
 export type LinkDeskConfigurationContribution = [string, { title: string; properties: Record<string, unknown> }];
 
+/** 发现条目——plugins.listAll() 返回（E6#9a：主进程直扫 plugins/ 全子目录，替代渲染进程 import.meta.glob）。
+ *  打包/市场安装的插件不在源码树——glob 发现不了；listAll 以磁盘为唯一真源，dev/prod 同一面。
+ *  完整 manifest 为纯 JSON 数据（IPC 可序列化），statusBar/contributes 等随 manifest 携带
+ *  （#9b：statusBar 入口由消费方从 manifest.statusBar 派生，无需单独通道）。 */
+export interface PluginDiscoveryEntry {
+  pluginId: string;
+  /** manifest.entry——插件 JS 入口（无 = 纯贡献插件，只有 manifest 无组件） */
+  entry?: string;
+  /** 完整 plugin.json */
+  manifest: PluginManifest;
+}
+
 /** 插件列表条目——pluginManager.list() 返回（主进程序列化后的 manifest 子集）。
  *  E5.7#98：Partial<PluginManifest> 过宽（component 等字段 IPC 不可达）——收窄为
  *  IpcBridgeHandler.handlePluginsCall "list" 分支实际序列化的 7 字段，marketplace 消费。

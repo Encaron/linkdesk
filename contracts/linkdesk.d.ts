@@ -1010,6 +1010,17 @@ export interface PluginManifest {
      */
     contributes?: Record<string, unknown>;
 }
+/** 发现条目——plugins.listAll() 返回（E6#9a：主进程直扫 plugins/ 全子目录，替代渲染进程 import.meta.glob）。
+ *  打包/市场安装的插件不在源码树——glob 发现不了；listAll 以磁盘为唯一真源，dev/prod 同一面。
+ *  完整 manifest 为纯 JSON 数据（IPC 可序列化），statusBar/contributes 等随 manifest 携带
+ *  （#9b：statusBar 入口由消费方从 manifest.statusBar 派生，无需单独通道）。 */
+export interface PluginDiscoveryEntry {
+    pluginId: string;
+    /** manifest.entry——插件 JS 入口（无 = 纯贡献插件，只有 manifest 无组件） */
+    entry?: string;
+    /** 完整 plugin.json */
+    manifest: PluginManifest;
+}
 /** list() 的 manifest 序列化子集——与 handlePluginsCall "list" 7 字段对齐 */
 export interface PluginListSubset {
     name?: string;
@@ -1053,13 +1064,17 @@ export interface PluginInfoEntry {
 }
 /** 插件发现/管理命名空间面——桥接 IpcBridgeHandler → loader 函数 */
 export interface PluginsAPI {
-    /** 插件发现——双端注入：resolvePath 双端同面；读面（listDirs/listDisabledDirs/readManifest）壳 preload 独有（loader 只在壳跑） */
+    /** 插件发现——双端注入：resolvePath 双端同面；读面（listDirs/listAll/readAllManifests/listDisabledDirs/readManifest）壳 preload 独有（loader 只在壳跑） */
     plugins: {
         resolvePath(id: string): Promise<string>;
         listDirs?(): Promise<string[]>;
+        /** E6#9a：全量发现——[{ pluginId, entry, manifest }]（替代 import.meta.glob；打包插件不在源码树，主进程读盘唯一真源） */
+        listAll?(): Promise<PluginDiscoveryEntry[]>;
         listDisabledDirs?(): Promise<string[]>;
         /** 返回 plugin.json 原始 JSON 文本——消费方自行 JSON.parse */
         readManifest?(id: string): Promise<string>;
+        /** E6#9c：全量 manifest——Record<pluginId, PluginManifest>（pluginManifests eager glob 的 IPC 替代） */
+        readAllManifests?(): Promise<Record<string, PluginManifest>>;
     };
     /** 插件管理——桥接 IpcBridgeHandler → loader 函数。池权威（marketplace 插件消费），必选 */
     pluginManager: {

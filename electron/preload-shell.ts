@@ -207,8 +207,12 @@ try {
     // ── 插件管理（步 3 接入——对标 Rust plugins.rs）──
     plugins: {
       listDirs:         () => ipcRenderer.invoke(IPC.plugins.listDirs),
+      // E6#9a：全量发现——[{ pluginId, entry, manifest }]（替代 import.meta.glob）
+      listAll:          () => ipcRenderer.invoke(IPC.plugins.listAll),
       listDisabledDirs: () => ipcRenderer.invoke(IPC.plugins.listDisabledDirs),
       readManifest:     (id: string) => ipcRenderer.invoke(IPC.plugins.readManifest, id),
+      // E6#9c：全量 manifest——Record<pluginId, PluginManifest>
+      readAllManifests: () => ipcRenderer.invoke(IPC.plugins.readAllManifests),
       resolvePath:      (id: string) => ipcRenderer.invoke(IPC.plugins.resolvePath, id),
     },
 

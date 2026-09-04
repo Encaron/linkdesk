@@ -13,6 +13,9 @@ import * as fs from 'fs/promises';
 import { existsSync, readdirSync } from 'fs';
 import * as path from 'path';
 import { fileService } from './file-service.js';
+// E6#9a/c：IPC 返回形状共享 src 契约类型（主进程 type-only import——编译期擦除，无运行时依赖）
+import type { PluginManifest } from '../../src/core/api/types.js';
+import type { PluginDiscoveryEntry } from '../../src/core/api/linkdesk-api/types.js';
 
 /**
  * E5.7#69：插件子目录白名单消灭——运行时扫描全部子目录，不再写死 ['builtin', 'user']。
@@ -79,6 +82,30 @@ class PluginFileService {
 
     names.sort();
     return names;
+  }
+
+  // ── 全量发现（E6#9a：listAll——替代渲染进程 import.meta.glob）──
+  // 打包/市场安装的插件不在源码树（glob 发现不了）——主进程读盘为唯一真源，dev/prod 同一面。
+  // 复用 listPluginDirs（扫描策略单源：SUBDIR_PRIORITY + 排除 .disabled/隐藏）+ readManifest（查找策略单源）。
+  async listAllPlugins(): Promise<PluginDiscoveryEntry[]> {
+    const out: PluginDiscoveryEntry[] = [];
+    for (const pluginId of await this.listPluginDirs()) {
+      try {
+        const manifest = JSON.parse(await this.readManifest(pluginId)) as PluginManifest;
+        out.push({ pluginId, entry: manifest.entry, manifest });
+      } catch {
+        // 单个插件 plugin.json 损坏不阻断全量发现——loader 启动诊断会报具体插件
+      }
+    }
+    return out;
+  }
+
+  // ── 全量 manifest（E6#9c：readAllManifests——pluginManifests glob 的 IPC 替代）──
+  // 从 listAllPlugins 投影（manifest 已在条目内）——两端点共用一份读盘逻辑，不各写一遍。
+  async readAllPluginManifests(): Promise<Record<string, PluginManifest>> {
+    const out: Record<string, PluginManifest> = {};
+    for (const entry of await this.listAllPlugins()) out[entry.pluginId] = entry.manifest;
+    return out;
   }
 
   // ── 列出已卸载插件（对标 Rust list_disabled_plugin_dirs）──

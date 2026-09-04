@@ -25,6 +25,16 @@ export function registerPluginHandlers(): void {
     return pluginFileService.readManifest(pluginId);
   });
 
+  // E6#9a：全量发现——[{ pluginId, entry, manifest }]（替代渲染进程 import.meta.glob）
+  ipcMain.handle(IPC.plugins.listAll, async () => {
+    return pluginFileService.listAllPlugins();
+  });
+
+  // E6#9c：全量 manifest——Record<pluginId, PluginManifest>（pluginManifests glob 的 IPC 替代）
+  ipcMain.handle(IPC.plugins.readAllManifests, async () => {
+    return pluginFileService.readAllPluginManifests();
+  });
+
   // 列出 .disabled/ 目录中的已卸载插件（E5.6#16.7k——启动时扫描并缓存元数据）
   ipcMain.handle(IPC.plugins.listDisabledDirs, async () => {
     return pluginFileService.listDisabledPluginDirs();
