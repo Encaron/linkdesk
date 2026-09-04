@@ -37,6 +37,7 @@ import {
   cachePluginMetadata,
   getDisabledList,
   getLoadedManifest,
+  getManifestById,
 } from "./state";
 import { normalizeManifest, hasSidebarContainers, type OldFormatManifest } from "../discovery/manifest";
 import {
@@ -112,12 +113,11 @@ async function loadPluginLifecycle(
 
 /* ── E5.8#14：依赖编排——环 fail / 缺 park / 就绪 sweep（拓扑序激活） ── */
 
-/** 已知 manifest 面——环检测走闭包的数据源（glob + 延迟 + 挂起）。
- *  runtime 插件已加载的（不在以上三面）不可能在环中（环 = 相互依赖未就绪，必有挂起方），#14 分析成文。 */
+/** 已知 manifest 面——环检测走闭包的数据源（发现索引 + 延迟 + 挂起）。
+ *  E6#9c：manifestIndex（readAllManifests 水合，glob + 运行时全覆盖）单一真源；
+ *  延迟/挂起留兜底（环 = 相互依赖未就绪，必有挂起方，#14 分析成文）。 */
 function getKnownManifest(pluginId: string): PluginManifest | undefined {
-  const key = Object.keys(pluginManifests).find((k) => extractPluginId(k) === pluginId);
-  if (key) return pluginManifests[key];
-  return _deferredPlugins.get(pluginId) ?? _pendingPlugins.get(pluginId);
+  return getManifestById(pluginId) ?? _deferredPlugins.get(pluginId) ?? _pendingPlugins.get(pluginId);
 }
 
 /** 缺依赖挂起——PENDING + pendingReason + 挂起注册表（manifest 留存供 sweep 重查）。
@@ -188,8 +188,10 @@ async function loadPlugin(
       return;
     }
   } else {
+    // E6#9c：manifest 内容走 manifestIndex（plugins:readAllManifests 水合——listAll 已同扫一致）；
+    // glob 内容仅作未水合兜底（独立单测/极端时序），两源同盘同内容。
     try {
-      manifest = pluginManifests[manifestKey];
+      manifest = getManifestById(pluginId) ?? pluginManifests[manifestKey];
     } catch {
       pushToast({ message: `插件 "${pluginId}" 的 plugin.json 格式错误，已跳过` });
       console.warn(`[pluginLoader] plugin.json 格式错误 — "${pluginId}"`);

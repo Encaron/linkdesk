@@ -21,14 +21,14 @@ import {
   pluginsApi,
   log,
   errMsg,
-  pluginManifests,
   loadedPluginIds,
-  extractPluginId,
   getMetadataCache,
   cachePluginMetadata,
   getDisabledList,
   saveDisabledList,
   getLoadedManifest,
+  getManifestById,
+  getAllManifestEntries,
   _pendingPlugins,
 } from "../resolution/state";
 import { validateInstallManifest, resolveVersionConflict } from "../discovery/manifest";
@@ -106,15 +106,12 @@ export async function enablePlugin(pluginId: string): Promise<{ success: boolean
       await saveDisabledList(list);
     }
 
-    // 尝试重新加载——对于 .json 插件（theme/language）即时生效
-    // 对于 .tsx 视图插件，import.meta.glob 是构建时解析的，无法运行时动态注入
-    // 此时返回 needRestart: true
-    const manifestKey = Object.keys(pluginManifests).find(
-      (k) => extractPluginId(k) === pluginId
-    );
+    // 尝试重新加载——.json 插件（theme/language）即时生效；.tsx 视图插件走 glob chunk 或运行时 URL 导入。
+    // E6#9c：manifest 查 manifestIndex（readAllManifests 水合——已发现即已知，无需重启）；
+    // 仅索引与 glob 双无（既不在盘也不在源码树）才 needRestart 兜底。
+    const manifest = getManifestById(pluginId);
 
-    if (manifestKey) {
-      const manifest = pluginManifests[manifestKey];
+    if (manifest) {
       // .json 插件（theme/language/file）——即时生效
       if ((manifest.themes || manifest.languages || (!manifest.entry && manifest.file))) {
         await loadPlugin(pluginId, "enable");
@@ -297,9 +294,8 @@ export function getLoadedPluginManifests(): Array<{ pluginId: string; manifest: 
   const result: Array<{ pluginId: string; manifest: PluginManifest }> = [];
   const seen = new Set<string>();
 
-  // 1. Vite glob 中的插件（构建时扫描）
-  for (const [path, manifest] of Object.entries(pluginManifests)) {
-    const pluginId = extractPluginId(path);
+  // 1. manifestIndex 中的插件（E6#9c：readAllManifests IPC 水合——glob 源码树 + 运行时/打包全覆盖）
+  for (const [pluginId, manifest] of getAllManifestEntries()) {
     if (loadedPluginIds.has(pluginId)) {
       result.push({ pluginId, manifest });
       seen.add(pluginId);
@@ -405,12 +401,9 @@ export function getDisabledPluginInfo(): Array<{ pluginId: string; name: string;
       result.push({ pluginId, name: cached.name, description: cached.description, version: cached.version });
       continue;
     }
-    // 兜底：glob 中的插件从 glob 读（initPluginLoader 已将种子写入缓存，此分支仅用于缓存未就绪的极端情况）
-    const manifestKey = Object.keys(pluginManifests).find(
-      (k) => extractPluginId(k) === pluginId
-    );
-    if (manifestKey) {
-      const m = pluginManifests[manifestKey];
+    // 兜底：manifestIndex 中读（E6#9c——readAllManifests 水合 + glob 种子双源；此分支仅用于缓存未就绪的极端情况）
+    const m = getManifestById(pluginId);
+    if (m) {
       result.push({
         pluginId,
         name: m.name || pluginId,

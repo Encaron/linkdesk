@@ -40,6 +40,7 @@ import {
   getMetadataCache,
   cachePluginMetadata,
   getDisabledList,
+  discoverInstalled,
   type CachedPluginMeta,
 } from "./resolution/state";
 export { validateInstallManifest, resolveVersionConflict } from "./discovery/manifest";
@@ -94,49 +95,26 @@ export async function initPluginLoader(): Promise<void> {
   const errors: string[] = [];
   const disabled = getDisabledList();
 
-  // 1. 收集所有已安装插件（从 import.meta.glob 的 plugin.json 键）
-  const installed = new Set<string>();
-  for (const path of Object.keys(pluginManifests)) {
-    installed.add(extractPluginId(path));
-  }
+  // 1. E6#9a：启动发现单源——plugins:listAll（主进程直扫 plugins/ 全子目录）→ [{ pluginId, entry, manifest }]。
+  //    import.meta.glob 是构建时扫描——打包/市场安装的插件不在源码树，glob 看不到（仅 dev/源码内置覆盖）。
+  //    对标 VS Code 启动 scan extensions 目录——listAll 同构，装/卸后重启即增删。
+  //    纯浏览器预览（无 pluginsApi）discoverInstalled 内回退 glob 种子，行为同旧。
+  const discovered = await discoverInstalled();
+  const discoveredIds = new Set(discovered.map((e) => e.pluginId));
 
-  // 2. 对标 VS Code：运行时扫描文件系统，过滤掉已卸载的插件
-  //    import.meta.glob 是构建时打包的——文件被 Rust 移走后 glob 仍保留旧路径。
-  //    VS Code 的做法是启动时 scan extensions 目录，目录里没有的自然不加载。
-  let fsInstalled = new Set<string>();
-  try {
-    const dirs = await pluginsApi().listDirs();
-    fsInstalled = new Set(dirs);
-  } catch {
-    // 非 Tauri 环境（npm run dev 浏览器模式）——无 invoke，回退到 glob 全量加载
-  }
-
-  // 3. 加载每个插件（跳过禁用 + 跳过文件系统不存在的）
-  console.log(`[pluginLoader] pluginManifests keys: ${Object.keys(pluginManifests).length}, installed: ${[...installed].join(', ')}`);
-  for (const pluginId of installed) {
+  // 2. 加载每个已发现插件（跳过禁用；激活延迟见 #44/#9g）
+  for (const entry of discovered) {
+    const pluginId = entry.pluginId;
+    const manifest = entry.manifest;
     if (disabled.includes(pluginId)) {
       log.appendLine(`插件 "${pluginId}" 已禁用——跳过`);
-      // B2 fix: 种子缓存——禁用插件元数据从 glob 入缓存，marketplace 不依赖文件系统
-      const dKey = Object.keys(pluginManifests).find((k) => extractPluginId(k) === pluginId);
-      if (dKey) {
-        cachePluginMetadata(pluginId, pluginManifests[dKey], "disabled");
-      }
-      continue;
-    }
-    if (fsInstalled.size > 0 && !fsInstalled.has(pluginId)) {
-      log.appendLine(`插件 "${pluginId}" 已卸载（文件系统不存在）——跳过`);
-      // B2 fix: 种子缓存——已卸载的glob 中的插件元数据入缓存（F5 后仍可浏览详情）
-      const uKey = Object.keys(pluginManifests).find((k) => extractPluginId(k) === pluginId);
-      if (uKey) {
-        cachePluginMetadata(pluginId, pluginManifests[uKey], "uninstalled");
-      }
+      // B2 fix: 种子缓存——禁用插件元数据入缓存，marketplace 不依赖文件系统（manifest 已在 listAll 结果中）
+      cachePluginMetadata(pluginId, manifest, "disabled");
       continue;
     }
     try {
-      // #44：activationEvents——非 "*" 时延迟 JS import，只注册 manifest
-      const mKey = Object.keys(pluginManifests).find((k) => extractPluginId(k) === pluginId);
-      const manifest = mKey ? pluginManifests[mKey] : null;
-      const defer = manifest && manifest.activationEvents?.length
+      // #44/#9g：activationEvents——非 "*" 时延迟 JS import，只注册 manifest（entryless 纯贡献插件无 JS 可延迟）
+      const defer = manifest.activationEvents?.length
         && !manifest.activationEvents.includes("*");
       await loadPlugin(pluginId, "startup", { skipView: !!defer });
       if (defer && manifest) _deferredPlugins.set(pluginId, manifest);
@@ -145,15 +123,18 @@ export async function initPluginLoader(): Promise<void> {
     }
   }
 
-  // 4. Phase 5h：加载glob 外的插件（文件系统存在但不在 glob 中的）
-  for (const pluginId of fsInstalled) {
-    if (installed.has(pluginId)) continue;  // 已在 glob 中加载
-    if (disabled.includes(pluginId)) continue;
-    try {
-      await loadPlugin(pluginId, "startup");
-    } catch (e) {
-      errors.push(`${pluginId} (runtime): ${errMsg(e)}`);
+  // 3. 源码树里 glob 有、但磁盘已不在（目录被手动删除）的插件——种子 uninstalled 缓存（F5 后详情仍可浏览）。
+  //    listAll 以磁盘为准不含它们；此差集只增不删（删僵尸缓存是步骤 7 pruneUninstalledCache 的职责）。
+  for (const [path, manifest] of Object.entries(pluginManifests)) {
+    const pluginId = extractPluginId(path);
+    if (discoveredIds.has(pluginId)) continue;
+    if (loadedPluginIds.has(pluginId)) continue;
+    if (disabled.includes(pluginId)) {
+      cachePluginMetadata(pluginId, manifest, "disabled");
+    } else {
+      cachePluginMetadata(pluginId, manifest, "uninstalled");
     }
+    log.appendLine(`插件 "${pluginId}" 不在磁盘——缓存为 ${disabled.includes(pluginId) ? "已禁用" : "待安装"}`);
   }
 
   // 5. 错误汇总
@@ -210,7 +191,7 @@ export async function initPluginLoader(): Promise<void> {
     for (const pluginId of disabledDirs) {
       // 不覆盖已安装插件的缓存
       if (loadedPluginIds.has(pluginId)) continue;
-      if (installed.has(pluginId)) continue;
+      if (discoveredIds.has(pluginId)) continue;
       try {
         const raw = await pluginsApi().readManifest(pluginId);
         const manifest = JSON.parse(raw);

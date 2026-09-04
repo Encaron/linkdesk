@@ -177,8 +177,12 @@ describe("dependencies 集成——loadPlugin 依赖编排", () => {
       plugins: {
         resolvePath: async () => `/plugins/test`,
         listDirs: async () => [],
+        // E6#9a/c：pluginsApi 守卫要求壳面六法齐全（1.2-2a 新契约）——测试直呼 loadPlugin 不走
+        // discoverInstalled，listAll/readAllManifests 只需存在通过守卫；manifest 走 readManifest mock。
+        listAll: async () => [],
         listDisabledDirs: async () => [],
         readManifest: async (id: string) => JSON.stringify(manifests.get(id) ?? {}),
+        readAllManifests: async () => ({}),
       },
     };
   }

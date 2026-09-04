@@ -6,6 +6,7 @@
  */
 
 import type { PluginManifest } from "../../core/api/types";
+import type { PluginDiscoveryEntry } from "../../core/api/linkdesk-api/types";
 import { getViewPlugin } from "../contributions/viewRegistry";
 import { getPluginStateValue, setPluginStateValue, APP_PLUGIN_ID } from "../../core/services/plugins/PluginStateService";
 import { createLogChannel } from "../../core/services/ui/LogChannel";
@@ -18,15 +19,18 @@ const linkdesk = () => window.linkdesk;
 // 此处一处守卫断言替代全文件 6 处 ?. 噪音（运行时失败 = loader 跑错了进程，响亮报错正确）。
 const pluginsApi = () => {
   const plugins = window.linkdesk.plugins;
-  if (!plugins?.listDirs || !plugins?.listDisabledDirs || !plugins?.readManifest) {
+  if (!plugins?.listDirs || !plugins?.listDisabledDirs || !plugins?.readManifest ||
+      !plugins?.listAll || !plugins?.readAllManifests) {
     throw new Error("[pluginLoader] 壳 preload plugins 面缺失——loader 只能在壳进程运行");
   }
   // 守卫后逐成员重建——窄化进返回值类型（plugins 对象上的 ? 成员不随局部守卫传播）
   return {
     resolvePath: plugins.resolvePath,
     listDirs: plugins.listDirs,
+    listAll: plugins.listAll,
     listDisabledDirs: plugins.listDisabledDirs,
     readManifest: plugins.readManifest,
+    readAllManifests: plugins.readAllManifests,
   };
 };
 
@@ -115,6 +119,64 @@ const pluginManifests = {
     { eager: true }
   ),
 };
+
+/* ── E6#9：权威 manifest 索引 + 启动发现（pluginId → PluginManifest）── */
+
+/**
+ * E6#9c：plugin.json 权威 manifest 索引——键 pluginId（替代旧「glob path 键 + extractPluginId 推导」）。
+ *
+ * 数据源两路（同一批 plugin.json，按运行环境二选一）：
+ *   ① Electron：initPluginLoader 经 discoverInstalled() → plugins:readAllManifests IPC 全量水合
+ *      （主进程直扫 plugins/ 全子目录——打包/市场安装插件 glob 看不到；单一真源，幂等覆盖）。
+ *   ② 纯浏览器预览（无 pluginsApi）：seedManifestIndexFromGlob()——上方 eager glob 兜底，行为同旧。
+ *
+ * 上方 pluginManifests glob 对象保留双职：Vite 源码树成员判据（isRuntime = 不在源码树，
+ * #9e：dev 保留 glob 作即时代码分割）+ 纯浏览器预览种子；manifest 内容一律走本索引。
+ */
+const manifestIndex = new Map<string, PluginManifest>();
+
+/** readAllManifests 全量水合（Electron 主发现；幂等——同 id 覆盖）。仅 discoverInstalled 内部调，不外发。 */
+function hydrateManifestIndex(records: Record<string, PluginManifest>): void {
+  for (const [id, manifest] of Object.entries(records)) manifestIndex.set(id, manifest);
+}
+
+/** 纯浏览器预览兜底——从 DEV eager glob 种子填充（loader 无 pluginsApi 时调）。仅 discoverInstalled 内部调，不外发。 */
+function seedManifestIndexFromGlob(): void {
+  for (const [path, manifest] of Object.entries(pluginManifests)) {
+    manifestIndex.set(extractPluginId(path), manifest);
+  }
+}
+
+/** 索引直查——消费方一律 getManifestById(id)，不再 Object.keys(pluginManifests)+extractPluginId 推导。 */
+export function getManifestById(pluginId: string): PluginManifest | undefined {
+  return manifestIndex.get(pluginId);
+}
+
+/** 全量遍历——消费方需扫索引时经此导出（勿另持索引副本，防双源漂移；E6#9c）。 */
+export function getAllManifestEntries(): Array<[string, PluginManifest]> {
+  return [...manifestIndex.entries()];
+}
+
+/**
+ * E6#9a：启动发现单源——plugins:listAll（主进程直扫 plugins/ 全子目录，含打包/市场安装插件，
+ * 返回 [{ pluginId, entry, manifest }]）∪ plugins:readAllManifests 水合索引。
+ * 纯浏览器预览（无 pluginsApi）回退 eager glob，行为同旧。
+ */
+export async function discoverInstalled(): Promise<PluginDiscoveryEntry[]> {
+  try {
+    const api = pluginsApi();
+    const [entries, records] = await Promise.all([api.listAll(), api.readAllManifests()]);
+    hydrateManifestIndex(records);
+    return entries;
+  } catch {
+    seedManifestIndexFromGlob();
+    return Object.entries(pluginManifests).map(([path, manifest]) => ({
+      pluginId: extractPluginId(path),
+      entry: manifest.entry,
+      manifest,
+    }));
+  }
+}
 
 /* ── 已加载插件集合 + 并发/延迟状态 ── */
 
@@ -224,13 +286,12 @@ function getLoadedManifest(pluginId: string): PluginManifest | undefined {
   // 1. 先查视图插件
   const viewEntry = getViewPlugin(pluginId);
   if (viewEntry) return viewEntry.manifest;
-  // 2. 再查 glob 中的非视图插件（loadedPluginIds 中有但不属于视图注册表）
-  for (const [path, manifest] of Object.entries(pluginManifests)) {
-    if (extractPluginId(path) === pluginId && loadedPluginIds.has(pluginId)) {
-      return manifest;
-    }
+  // 2. E6#9c：再查 manifestIndex（单一真源——覆盖 glob + 运行时/打包插件；loadedPluginIds 中有但不属于视图注册表）
+  const indexed = manifestIndex.get(pluginId);
+  if (indexed && loadedPluginIds.has(pluginId)) {
+    return indexed;
   }
-  // 3. 运行时加载的插件（loadPlugin 缓存了完整 manifest）
+  // 3. 元数据缓存兜底（禁用/已卸载等未入索引的条目）
   const meta = getMetadataCache()[pluginId];
   if (meta?.status === "installed" && meta.manifest && loadedPluginIds.has(pluginId)) {
     return meta.manifest;

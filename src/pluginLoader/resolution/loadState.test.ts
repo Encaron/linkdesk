@@ -405,8 +405,11 @@ describe("loadState 坏插件验收——runtime 读盘失败", () => {
       plugins: {
         resolvePath: async () => `/plugins/${BAD_PLUGIN_ID}`,
         listDirs: async () => [],
+        // E6#9a/c：pluginsApi 守卫要求壳面六法齐全——测试直呼 loadPlugin 走 runtime 读盘路径
+        listAll: async () => [],
         listDisabledDirs: async () => [],
         readManifest: async () => { throw new Error("JSON parse 失败: Unexpected token }"); },
+        readAllManifests: async () => ({}),
       },
     };
   });
