@@ -1,0 +1,1789 @@
+<!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <title>E6 &#x6267;&#x884c;&#x6e05;&#x5355;&mdash;&mdash;&#x63d2;&#x4ef6;&#x751f;&#x6001;&#x4e0e;&#x53d1;&#x5e03;</title>
+            <style>
+/* From extension vscode.github */
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
+.vscode-dark img[src$=\#gh-light-mode-only],
+.vscode-light img[src$=\#gh-dark-mode-only],
+.vscode-high-contrast:not(.vscode-high-contrast-light) img[src$=\#gh-light-mode-only],
+.vscode-high-contrast-light img[src$=\#gh-dark-mode-only] {
+	display: none;
+}
+
+</style>
+            <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex/dist/katex.min.css">
+<link href="https://cdn.jsdelivr.net/npm/katex-copytex@latest/dist/katex-copytex.min.css" rel="stylesheet" type="text/css">
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Microsoft/vscode/extensions/markdown-language-features/media/markdown.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Microsoft/vscode/extensions/markdown-language-features/media/highlight.css">
+<style>
+            body {
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe WPC', 'Segoe UI', system-ui, 'Ubuntu', 'Droid Sans', sans-serif;
+                font-size: 14px;
+                line-height: 1.6;
+            }
+        </style>
+        <style>
+.task-list-item {
+    list-style-type: none;
+}
+
+.task-list-item-checkbox {
+    margin-left: -20px;
+    vertical-align: middle;
+    pointer-events: none;
+}
+</style>
+<style>
+:root {
+  --color-note: #0969da;
+  --color-tip: #1a7f37;
+  --color-warning: #9a6700;
+  --color-severe: #bc4c00;
+  --color-caution: #d1242f;
+  --color-important: #8250df;
+}
+
+</style>
+<style>
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-note: #2f81f7;
+    --color-tip: #3fb950;
+    --color-warning: #d29922;
+    --color-severe: #db6d28;
+    --color-caution: #f85149;
+    --color-important: #a371f7;
+  }
+}
+
+</style>
+<style>
+.markdown-alert {
+  padding: 0.5rem 1rem;
+  margin-bottom: 16px;
+  color: inherit;
+  border-left: .25em solid #888;
+}
+
+.markdown-alert>:first-child {
+  margin-top: 0
+}
+
+.markdown-alert>:last-child {
+  margin-bottom: 0
+}
+
+.markdown-alert .markdown-alert-title {
+  display: flex;
+  font-weight: 500;
+  align-items: center;
+  line-height: 1
+}
+
+.markdown-alert .markdown-alert-title .octicon {
+  margin-right: 0.5rem;
+  display: inline-block;
+  overflow: visible !important;
+  vertical-align: text-bottom;
+  fill: currentColor;
+}
+
+.markdown-alert.markdown-alert-note {
+  border-left-color: var(--color-note);
+}
+
+.markdown-alert.markdown-alert-note .markdown-alert-title {
+  color: var(--color-note);
+}
+
+.markdown-alert.markdown-alert-important {
+  border-left-color: var(--color-important);
+}
+
+.markdown-alert.markdown-alert-important .markdown-alert-title {
+  color: var(--color-important);
+}
+
+.markdown-alert.markdown-alert-warning {
+  border-left-color: var(--color-warning);
+}
+
+.markdown-alert.markdown-alert-warning .markdown-alert-title {
+  color: var(--color-warning);
+}
+
+.markdown-alert.markdown-alert-tip {
+  border-left-color: var(--color-tip);
+}
+
+.markdown-alert.markdown-alert-tip .markdown-alert-title {
+  color: var(--color-tip);
+}
+
+.markdown-alert.markdown-alert-caution {
+  border-left-color: var(--color-caution);
+}
+
+.markdown-alert.markdown-alert-caution .markdown-alert-title {
+  color: var(--color-caution);
+}
+
+</style>
+        
+        </head>
+        <body class="vscode-body vscode-light">
+            <span id="markdown-mermaid" aria-hidden="true" data-config="{&quot;darkModeTheme&quot;:&quot;vscode&quot;,&quot;lightModeTheme&quot;:&quot;vscode&quot;,&quot;maxTextSize&quot;:50000,&quot;clickDrag&quot;:&quot;alt&quot;,&quot;showControls&quot;:&quot;onHoverOrFocus&quot;,&quot;resizable&quot;:true,&quot;maxHeight&quot;:&quot;&quot;}"></span>
+				<h1 id="e6-执行清单插件生态与发布">E6 执行清单——插件生态与发布</h1>
+<blockquote>
+<p>2026-08-07。<strong>E5 全部完成（E5-收尾已封站）。</strong> 🔥 <strong>E5.8 已收官（2026-08-29，332 任务全勾）——E6 正式开战。</strong>
+<strong>🔥 进度唯一真相源。</strong> 做完一个勾一个。
+<strong>E6 目标：</strong> 三个角色各自有一条完整链路——插件作者开发→发布、普通用户下载→安装插件、你自己 build→发布软件。安装后支持 Windows 右键菜单 + 文件关联 + 多窗口（对标 VS Code）。</p>
+<p><strong>当前进度：0/91。</strong>（2026-08-30 审计同步——91 活任务含小数，剔 #3/#14 划线删除，+6 第 0 层 #0.1-#0.6 +1 #9.1 pluginLoader 拆分 +1 #55 plugin.json JSONC 化 +1 #56 自指插件工具集 +1 #57 主软件更新研究设计 +16 #57.1-#57.16 主软件更新实现立案——产品身份地基 #57.1-#57.3 第 3.0 轮 + 机制本体 #57.4-#57.16 第 5.4 轮）7 层（第 0-6 层）+ 展望。第 0 层 = E6 前置（目录卫生 + 壳树 feature-folder 审计 + 防膨胀门禁）；第 1 层 = 地基必须先做。含 SDK 类型对接（E5.8 契约）+ 动态加载改造 + glob 替换 + IPC handler + 共享组件分发 + 内置插件独立化 + PluginInstallService + 路径解析归一化 + 市场第一站体验（探索/详情三态/README/更新/信任/安装细节）+ Windows Shell 集成 + 多窗口。
+🔴 <strong>2026-08-16 E5.8 衔接审计</strong>：#3 删（E5.8 Phase 4 吸收）/ #14 搬（E5.8 Phase 1.5）/ #23.5 补（dev 宿主重设计——plugin-shell 已删）/ #48-#52 补（dsh 第二梯队安全加固立案）。任务号留空不补位。
+🔵 <strong>2026-08-27 移入 #53</strong>：装配清单 profile 设计（自 E5.8#50——用户确认要做，E6 生态地基展望）。
+🔵 <strong>2026-08-29 立案 #54</strong>：共享组件独立分发 + token 契约（方向 A——@linkdesk/ui 包 + SDK eslint 门禁）。E6#15 硬前置：内置插件独立 build 后失去 @src，共享组件必须先打包分发。候选方案讨论后用户拍板 A。
+🔵 <strong>2026-08-29 清单结构定案</strong>：<strong>第 N 层 ≈ E5.8 的 Phase 容器；第 N.M 轮 ≈ E5.8 的一个 Phase 批次</strong>（一个执行批次，做完等检查）。<strong>编号 ≠ 执行序</strong>——编号是稳定 ID（插入序），执行序一律看底部「执行顺序与依赖」段（30.10→30.14 搬迁系列已全覆盖）。
+🔵 <strong>2026-08-30 立案 #55</strong>：plugin.json JSONC 化（壳侧解析统一 jsonc-parser，作者声明文件可写注释/尾逗号，对标 VS Code package.json）。三个落点 = 壳侧 #55（第 1.2 轮，跟 #9/#9.1 同批——loader 重写动同一批文件）+ SDK validate jsonc（#5，第 1.1 轮）+ 模板 jsonc 关联（#22，第 2.1 轮）——<strong>两侧都有对应任务，不「连带」</strong>。
+🔵 <strong>2026-08-30 立案 #57.1-#57.16</strong>：06-主软件更新实现拆 16 任务插入执行区（研究/设计 #57a/#57b 已 ✅，展望区仅留指针）——<strong>产品身份地基 #57.1-#57.3 放第 3.0 轮</strong>（壳通用 API 先行 + 市场 #30.8c minAppVersion 前置：product.json+product.ts+compareVersions / <code>app.getVersion</code> 契约四齐全 / <code>app:getProductInfo</code> IPC）；<strong>机制本体 + UI + 发布 + 实机验证 #57.4-#57.16 放第 5.4 轮</strong>（发布生命周期主题，与 #37/#42/#44 同链：UpdateService 状态机 / 更新源 / 下载校验 / 重启安装 / IPC.update.* / 配置+hook / 菜单 / TitleBar 按钮 / toast / 发行说明 / 关于 / 发布脚本 / 实机验证）。颗粒度判据 = 一事一义 + 每任务可独立验证（单测 / CDP / mock）。📖 设计：<a href="06-%E4%B8%BB%E8%BD%AF%E4%BB%B6%E6%9B%B4%E6%96%B0/00-README.html">06-主软件更新/00-README.md</a>。</p>
+</blockquote>
+<hr>
+<h2 id="-关键路径">🔥 关键路径</h2>
+<pre><code>第 0 层：E6 前置——代码库卫生（#0.1-#0.2）+ 壳树 feature-folder 审计（#0.3-#0.5）+ 防膨胀门禁（#0.6，L1 开工前收口）
+
+第 1 层：插件独立构建（地基——必须先做，E5.8 完成后再开始）
+  第 1.1 轮：plugin-sdk + 类型对接 E5.8 生成契约（linkdesk.d.ts 派生）
+  第 1.2 轮：plugin-shell 动态加载 + loader glob 替换 + .linkdesk-plugin + IPC handler 新建
+            + handler 审计走 IpcBridge + PluginInstallService
+  第 1.3 轮：共享组件分发（@linkdesk/ui）→ 内置插件独立化 → 壳瘦身 → 协议重构
+
+第 2 层：插件开发工具链（第 1 层后——依赖 SDK）
+  第 2.1 轮：create-linkdesk-plugin 脚手架
+  第 2.2 轮：dev + build 命令
+  第 2.3 轮：Mock 自动生成 + dev 可选 Electron 弥合生产差距
+
+第 3 层：插件市场（第一站体验）
+  第 3.0 轮前置：主软件更新·产品身份地基（E6#57.1-#57.3——product.json/app.getVersion/app:getProductInfo，壳通用 API 先行，市场 #30.8c 消费）
+  GitHub Releases 后端 + 壳内下载安装 + 探索/详情三态/README/更新/信任/安装细节
+  交互设计 → [03-市场交互设计.md](03-插件市场/03-市场交互设计.md)（总览 + 04-09 分维度文档）
+
+第 4 层：端到端验证（第 1-3 层后——全链路）
+  测试插件 + 开发版验证 + 生产安装版验证 + 内置插件独立验证
+
+第 5 层：文档与发布（全程穿插）
+  开发者指南 + CI + 官网上线 + 内置插件迁移指南 + Shell 集成 + 多窗口
+  第 5.4 轮：主软件更新实现（E6#57.4-#57.16——壳自研更新机制，发布生命周期主题，实机验证依赖 #37）
+
+第 6 层：安全加固（第 1-3 层后——dsh 第二梯队，2026-08-16 立案）
+  E6#48-#52：子进程沙箱缝 / 审批层审计对 / 崩溃补闭环 / 凭据隔离 / 用户 patch 层
+</code></pre>
+<hr>
+<h2 id="第-0-层e6-前置代码库卫生与收官衔接">第 0 层：E6 前置——代码库卫生与收官衔接</h2>
+<blockquote>
+<p>🔵 <strong>2026-08-29 立项。</strong> E5.8 已收官（332 任务全勾）、git 分支已到 e6，补 E6 前置层装「必须在 E6 壳层改造前收干净」的目录卫生。<strong>E6 完成前全部收口</strong>：L0（#0.1-#0.6）在 L1 开工前做完；pluginLoader 拆分 = <strong>新增 E6#9.1</strong>（随 #9 loader 重写同批做，一次到位不双份 churn）；preload-pool 核对 = <strong>E6#15g</strong>（已每命名空间一文件，不拆）；ThemeEngine 明确排除（2026-08-29 收官，等独立归一化专项）。背景：2026-08-29 目录审计——结论是七功能核心 = E5.8#0d.10-3（2026-08-19 拍板）定案结构不动，只有 0d.10-3 之后长出的增量平铺文件要过 feature-folder 判据。<strong>2026-08-30 扩为全树审计</strong>——判据对齐 codex 回应（单文件 &gt;500-800 行，或同时管理多种生命周期/领域职责 → 拆模块；大但单职责 → 拆=返工），审计维度 = src/App 增量（#0.3）+ 全树大文件（#0.4）+ 目录核对（#0.5）。<strong>同日再拍板 #0.6 防膨胀机械门禁</strong>（V2 教训——MainWindow.xaml 2738 行无门禁涨成巨兽；阈值 800 行非测试源文件亮红灯；allowlist 例外须用户拍板）。</p>
+</blockquote>
+<hr>
+<h3 id="第-01-轮代码库卫生">第 0.1 轮：代码库卫生</h3>
+<h4 id="e601--死-git-空壳清理">E6#0.1 🟢 死 <code>.git/</code> 空壳清理</h4>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#0.1a</strong> <code>rm -rf linkdesk/.git</code>——该目录仅存空 <code>hooks/</code>（无 HEAD/objects/refs，2026-08-29 实测确认死壳，git 从未把它当独立仓库，真根一直是 E:/linkdesk）
+<strong>验证：</strong> <code>git -C linkdesk rev-parse --show-toplevel</code> 仍返 <code>E:/linkdesk</code>，git status 零变化。</li>
+</ul>
+<h4 id="e602--构建产物浏览排除">E6#0.2 🟢 构建产物浏览排除</h4>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#0.2a</strong> <code>dist / dist-electron / release / node_modules</code> 进工作区 <code>files.exclude</code>（<code>.vscode/settings.json</code>）——产物不参与源码浏览
+<strong>验证：</strong> VS Code 资源管理器不再显示四个产物目录。</li>
+</ul>
+<h3 id="第-02-轮壳树-feature-folder-判据审计srcapp-增量--大文件--目录三维度">第 0.2 轮：壳树 feature-folder 判据审计（src/App 增量 / 大文件 / 目录三维度）</h3>
+<h4 id="e603--srcapp-增量文件审计主要工作">E6#0.3 🟡 src/App 增量文件审计（主要工作）</h4>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#0.3a</strong> 对象：0d.10-3（2026-08-19 定案）后长出的 ~10 平铺文件——window 族（windowHost/windows/windowRelocation）+ panel/floating 族（panelHost/panelReveal/panelDrift/panelCreatePicker/floatingPanelReveal）+ appearance 族（<strong>appearanceApplier——<code>config/appearance.ts</code> 归 #0.4c 达标不拆（schema 单职责），0.4 已定案，0.3 不重审</strong>）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#0.3b</strong> 判据（照 0d.10-3 定案，壳目录规范 §2.5）：只被聚合器消费 → 留平铺与七功能同型；多处消费 → 下沉 <code>hooks/</code> 或 <code>core/</code>；同功能域簇且满足「功能域=文件夹」→ 分组成簇</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#0.3c</strong> 产出审计报告（每文件：消费方 + 判据命中）→ 与 #0.4/#0.5 结论<strong>合并为一份审计报告，一次拍板</strong>（三审计是同一审计的三切面，结论交织，一次拍板避免报告改三次前后矛盾）→ 执行（若动 = 改壳，纯代码组织非加业务，壳改动边界原则）
+<strong>验证：</strong> 合并审计报告经用户一次拍板；改动的 <code>npm run check</code> 全绿 + 外部消费方 import 零变更。</li>
+</ul>
+<h4 id="e604--全树大文件多职责复核codex-判据">E6#0.4 🟡 全树大文件多职责复核（codex 判据）</h4>
+<blockquote>
+<p>📖 <strong>2026-08-30 扩 scope。</strong> 判据对齐 codex 回应：单文件 &gt;500-800 行，或同时管理多种生命周期/领域职责 → 拆模块；大但单职责 → 拆=返工。300 行一刀切作废。</p>
+</blockquote>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#0.4a</strong> 真候选（判据命中，<strong>预判拆法草案</strong>——执行时按草案对照，不凭空再定路径）：<code>electron/windows/window-manager.ts</code>(585——pool 生命周期 / IPC push / bounds 同步 / 内存监控 4 职责 → feature-folder <code>window-manager/</code> = index 聚合器 + pool-lifecycle / ipc-push / bounds-sync / memory-monitor 子模块) + <code>src/core/services/configuration/ConfigurationService.ts</code>(572——applier 注册 / 值读取检查 / 变更监听 / settings 读写 / 缓存 4+ 职责 → feature-folder <code>ConfigurationService/</code> = index 聚合器 + applier-registry / value-access / change-listener / settings-io / cache 子模块)</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#0.4a.2</strong> <strong>preload-shell.ts(526) 折叠进第 1 层，第 0 层只记结论不拆</strong>——判据命中（多域聚合一文件，与 preload-pool 每命名空间一文件不对称），但 L1 的 SDK 类型对接 + IPC handler 必动 preload，0 层拆完 L1 又改 = 双份 churn（仿 contributions→#9.1 先例折叠）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#0.4b</strong> 弱候选：<code>src/core/commands/shell/coreCommands.ts</code>(444——聚合 6 命令组) ——<strong>倾向不拆</strong>（&lt;500 行，门禁不拦非人工审区；6 命令组聚合 = 大但单职责，按 codex 判据拆=返工），审计确认即闭环</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#0.4c</strong> 达标确认不拆（大但单职责）：<code>pluginLoader/contributions.ts</code>(715，#9.1 覆盖) + <code>src/App/config/appearance.ts</code>(521，schema 单职责) + <code>tabCallbacks.ts</code>(510，纯工厂) + <code>ViewContainerService.ts</code>(492，单类) + <code>useTabManager/</code>(478，已 folder 结构)</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#0.4d</strong> 拆法铁律：拆完必须 feature-folder（聚合器 + 子模块），参照 preload-pool/linkdesk-api 先例——不许拆成更平铺
+<strong>验证：</strong> 复核结论并入 #0.3 合并审计报告（一次拍板）；真候选拆法草案经用户拍板；改动的 <code>npm run check</code> 全绿 + 外部消费方 import 零变更。</li>
+</ul>
+<h4 id="e605--壳目录全树核对目录维度">E6#0.5 🟢 壳目录全树核对（目录维度）</h4>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#0.5a</strong> 对象：壳树 ≥8 文件热点目录——<code>src/core/api/linkdesk-api</code> / <code>src/hooks/usePoolSync</code> / <code>electron/preload-pool</code> / <code>src/core/services/plugins/IpcBridgeHandler</code> / <code>electron/ipc/handlers</code> / <code>electron/services</code> / <code>src/core/services/ui</code> / <code>src/core/registry</code> / <code>src/pool/hooks</code></li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#0.5b</strong> 判据三态逐一核对（照 0d.10-3）：已「每命名空间/能力/服务一文件」= 达标确认（预期多数）；真混装 = 分组成簇；多消费者 = 下沉 hooks/core
+<strong>验证：</strong> 核对结论并入 #0.3 合并审计报告（一次拍板）；纯核对即闭环则 0.5 无手术。</li>
+</ul>
+<h3 id="第-03-轮防膨胀机械门禁">第 0.3 轮：防膨胀机械门禁</h3>
+<h4 id="e606--防膨胀机械门禁check-file-size">E6#0.6 🟡 防膨胀机械门禁（check-file-size）</h4>
+<blockquote>
+<p>📖 <strong>2026-08-30 立项（用户拍板）。</strong> V2 教训：MainWindow.xaml 2738 行 / code-behind 3866 / Display 3775 / Sensors 3569——无门禁持续膨胀成巨兽。一次性审计治标，机械门禁治本。判据对齐 codex：单文件 &gt;800 行（单职责亦然）= 机械拦区；500-800 多职责 = #0.4 人工审区。</p>
+</blockquote>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#0.6a</strong> 新建 <code>scripts/check-file-size.mjs</code>——扫 <code>src/</code> + <code>electron/</code> 非测试源文件（跳过 <code>*.test.*</code> / <code>*.spec.*</code> / 生成物），&gt;800 行 → exit 1；<strong>阈值内建一份常量（注释指向 <a href="03-%E6%8F%92%E4%BB%B6%E5%B8%82%E5%9C%BA/12-%E6%8F%92%E4%BB%B6%E7%9B%AE%E5%BD%95%E4%B8%8EUI%E7%BB%86%E8%8A%82.html">12 档 §一·二</a>——门禁=执行方、12 档=规范方，软链可接受，不造 md 解析器）；接进 <code>npm run check</code> 固定位置：audit-i18n 之后、eslint 之前</strong>（文件尺寸是最廉价检查，放最前最快拦；现有 13 个 check 脚本同款）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#0.6b</strong> 例外 allowlist 拍板制：合法单职责巨兽（概率极低）→ allowlist + 文件头注释注明理由，<strong>须用户拍板</strong>才放行（对齐 directory-flat-exception 拍板制，非「共识」）；放行例外仍须 feature-folder 不拆平铺（继承 #0.4d）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#0.6c</strong> 市场插件门禁——check-file-size.mjs 支持 per-scope 阈值：<code>src/</code>+<code>electron/</code> = 800；<code>plugins/builtin/marketplace/</code> = <a href="03-%E6%8F%92%E4%BB%B6%E5%B8%82%E5%9C%BA/12-%E6%8F%92%E4%BB%B6%E7%9B%AE%E5%BD%95%E4%B8%8EUI%E7%BB%86%E8%8A%82.html">12 档 §一·二</a>（views 150 / services 200 / components 150 / styles 300 / index 120）；12 档 §一·〇 对齐拆法铁律（删「不引入子目录层级」，超限走 feature-folder 聚合器+子模块——2026-08-30 用户拍板，纸面一票否决升级真门禁）；市场 scope 随 #30.11 激活（拆分 MarketplaceSidebar.css 377 后绿灯，L0-L2 不扫市场插件）
+<strong>验证：</strong> <code>npm run check</code> 全绿（当前全树最大 737 index.css / 715 contributions，即日绿灯）；<strong>#0.4 拆完后重跑确认仍绿灯</strong>（拆出聚合器超 800 = 0.4 拆坏，门禁立即抓）；临时造一个 &gt;800 文件验证红灯；marketplace scope 激活后 12 档各行超限亮红灯；allowlist 例外经用户拍板。</li>
+</ul>
+<hr>
+<h2 id="第-1-层插件独立构建每个插件独立出-linkdesk-plugin">第 1 层：插件独立构建——每个插件独立出 .linkdesk-plugin</h2>
+<blockquote>
+<p>🔥 <strong>地基。</strong> 没有独立 build，脚手架没东西调，市场没东西发。</p>
+</blockquote>
+<hr>
+<h3 id="第-11-轮linkdeskplugin-sdk--plugin-sdk-npm-包">第 1.1 轮：@linkdesk/plugin-sdk —— plugin-sdk npm 包</h3>
+<h4 id="e61--创建-plugin-sdk-目录与-packagejson">E6#1 🔴 创建 plugin-sdk 目录与 package.json</h4>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#1a</strong> 新建 <code>packages/plugin-sdk/</code> 目录 | 结构如下：<pre><code>packages/plugin-sdk/
+  ├── package.json           # name: &quot;@linkdesk/plugin-sdk&quot;, main: &quot;./dist/index.js&quot;
+  ├── src/
+  │   ├── index.ts           # barrel 导出
+  │   ├── types.ts           # window.linkdesk.* 完整类型定义
+  │   ├── vite-config.ts      # 插件 Vite build 配置（一键 build）
+  │   └── validate.ts        # plugin.json 格式验证
+  ├── tsconfig.json
+  └── README.md
+</code></pre>
+</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#1b</strong> <code>package.json</code>——name/version/main/types/scripts/files
+<ul>
+<li><code>&quot;name&quot;: &quot;@linkdesk/plugin-sdk&quot;</code></li>
+<li><code>&quot;main&quot;: &quot;./dist/index.js&quot;</code></li>
+<li><code>&quot;types&quot;: &quot;./dist/index.d.ts&quot;</code></li>
+<li><code>&quot;scripts&quot;: { &quot;build&quot;: &quot;tsc&quot; }</code>
+<strong>验证：</strong> <code>cd packages/plugin-sdk &amp;&amp; npm install &amp;&amp; npm run build</code> 成功。</li>
+</ul>
+</li>
+</ul>
+<h4 id="e62--windowlinkdesk-类型从-e58-生成契约派生">E6#2 🔴 window.linkdesk.* 类型——从 E5.8 生成契约派生</h4>
+<blockquote>
+<p>📖 <strong>2026-08-16 E5.8 衔接改写。</strong> 原方案&quot;从 linkdesk-api.ts 手写一份干净类型&quot;已废止——E5.8 Phase 4 生成 <code>linkdesk.d.ts</code>（编译期契约，漂移即编译错，含 sync/fire-and-forget/async 精确标注 + JSDoc）。本任务只做派生，不手写第二份真相源。<strong>前置：E5.8 Phase 4 完成。</strong></p>
+</blockquote>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#2a</strong> <code>packages/plugin-sdk/src/types.ts</code>——<code>export * from &quot;linkdesk.d.ts&quot;</code>（或复制生成物）
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 只暴露公开 API——生成器已收敛公开面</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> JSDoc 缺失处补在 E5.8 生成器标注侧（不回写生成物）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 命名空间真实数以 E5.8#17 摸底为准（原&quot;26&quot;为立项估计）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>2026-08-20 提示：</strong> 现成 npm 包 <code>@linkdesk/contracts</code>（E5.8#22.6）已建好且 <code>types</code> 直指生成契约——plugin-sdk 可直接 <code>dependencies: &quot;@linkdesk/contracts&quot;</code> 转发，不必复制生成物（发布态见 E6#2.5）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>dev 过渡态（2026-08-30 审视补）</strong>：#1-#2 期间 contracts 尚未真发布（#2.5 才发）——<code>package.json</code> 依赖先写 <code>&quot;@linkdesk/contracts&quot;: &quot;file:../../contracts&quot;</code> 本地引用；#2.5 发布后改 <code>^0.1.0</code>（registry）。<strong>防「dev 装不到包」踩空。</strong></li>
+</ul>
+</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#2b</strong> <code>declare global { interface Window { linkdesk: LinkDeskAPI } }</code>——生成物自带，本任务只验证插件项目 tsc 提示
+<strong>验证：</strong> 插件项目 <code>npm install @linkdesk/plugin-sdk</code> 后，<code>window.linkdesk.</code> 有智能提示。</li>
+</ul>
+<h4 id="e625--linkdeskcontracts-真实-npm-publishe58226-立案">E6#2.5 🟢 @linkdesk/contracts 真实 npm publish（E5.8#22.6 立案）</h4>
+<blockquote>
+<p>📖 <strong>2026-08-20 E5.8#22.6 立案。</strong> E5.8 Phase 4 已建独立 npm 包 <code>@linkdesk/contracts</code>（<code>types</code> 入口直指生成契约 <code>linkdesk.d.ts</code>，零构建，<code>files</code> 白名单只 d.ts）——本地 <code>npm pack</code> 出 tarball + 示例插件 tsc 验收已在 E5.8#22.6 闭环。<strong>本任务 = 真实发布上 npm registry</strong>（当时用户拍板：可以只 pack 不真发，发布到本任务点再做）。</p>
+</blockquote>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#2.5a</strong> 发布前检查——<code>npm run check</code> 全绿 + <code>contracts:check</code> 契约产物最新 + <code>npm pack --dry-run</code> 确认 tarball 只含 <code>README.md</code>/<code>linkdesk.d.ts</code>/<code>package.json</code></li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#2.5b</strong> <code>cd contracts &amp;&amp; npm publish --access public</code>（@linkdesk/contracts——需 npm 账号 + 命名空间权限）
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>🔥 必须显式 <code>--registry=https://registry.npmjs.org</code></strong>——2026-08-20 npm login + <code>--dry-run</code> 实测发现：本机全局 npm registry 配的是 <a href="http://npmmirror.com">npmmirror.com</a> 镜像，<code>npm publish</code> 不带 registry 参数会去发镜像（登录态不匹配 → 认证失败/静默失败）。先 <code>npm whoami --registry=https://registry.npmjs.org</code> 确认 fengyili，再 <code>npm publish --registry=https://registry.npmjs.org --access public</code></li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>🔥 前置：npm 登录态（2026-08-30 审视实测——当前 401 Unauthorized）</strong>：<code>npm whoami --registry=https://registry.npmjs.org</code> 实测返回 <strong>401</strong>——本地登录态已失效。执行本任务前<strong>必须先 <code>npm login --registry=https://registry.npmjs.org</code> 重新登录 fengyili</strong>（用户名 fengyili，见 memory e5.8-contracts-npm-publish-ready），登录确认后再发布</li>
+</ul>
+</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#2.5c</strong> 发布后验收——示例工程 <code>npm i -D @linkdesk/contracts@&lt;ver&gt;</code>（registry 真包）<code>npx tsc --noEmit</code> 零错误；壳内 tsconfig <code>paths</code> 别名改指 node_modules 版本（可选）
+<strong>前置：</strong> E6#2（SDK 类型派生，决定对外命名/范围口径）。<strong>版本联动：</strong> 包版本 = 壳版本——生成器自动同步写入 <code>contracts/package.json</code>，漂移即 <code>contracts:check</code> 红。</li>
+</ul>
+<h4 id="e63--sdk-类型从-preload-plugints-自动生成不手抄">E6#3 🔴 <s>SDK 类型从 preload-plugin.ts 自动生成——不手抄</s></h4>
+<blockquote>
+<p>🔴 <strong>2026-08-16 已删——E5.8 Phase 4 吸收。</strong> 原任务实质（preload 面类型审计 sync/fire-and-forget/async + 自动生成 + CI 门禁）= E5.8#17 摸底审计 + #19 生成器 + #21 contracts-ready 门禁（编译失败，强于原&quot;CI warn&quot;）。锚文件 preload-plugin.ts 已随 E5.7 清理删除（现为 preload-pool.ts / preload-shell.ts）。任务号留空不补位。</p>
+</blockquote>
+<h4 id="e64--vite-插件构建配置">E6#4 🔴 Vite 插件构建配置</h4>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#4a</strong> <code>packages/plugin-sdk/src/vite-config.ts</code>——<code>defineLinkdeskPluginConfig()</code>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 输入：插件入口文件路径（默认 <code>src/index.tsx</code>）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 输出：<code>dist/&lt;pluginId&gt;.linkdesk-plugin/</code> 目录</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 内容：<pre><code>&lt;pluginId&gt;.linkdesk-plugin/
+  ├── plugin.json          ← 原样复制
+  ├── icon.svg             ← 原样复制（如果有）
+  ├── i18n/
+  │   └── en.json          ← 原样复制
+  ├── index.bundle.js       ← Vite build——React+依赖+插件代码全打包
+  └── assets/               ← Vite emit 静态资源——字体/精灵图/音效（import 即自动 emit）
+</code></pre>
+</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> React / react-dom / react-i18next / i18next 标记为 external（壳提供——插件不重复打包；<strong>i18next 必须 external：插件自打 i18next 实例 → 翻译全空</strong>，2026-08-29 审计 B3 补）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 其他依赖全部 inline——插件自包含</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>静态资源随包（审计补 2026-08-29——目录→zip 回归风险）</strong>：Vite build 的 assets/ 整目录进 zip；兜底 assetsInlineLimit 抬高可全部 base64 内联进 bundle（单文件自包含，音效稍大）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong><a href="http://README.html">README.md</a> + <a href="http://CHANGELOG.html">CHANGELOG.md</a> 原样复制（缝隙 K2，2026-08-29 审计补）</strong>：作者包里有这两个文件就随包（详情页已装态数据源）；格式规范 <code>02-linkdesk-plugin格式规范.md</code> 补文件位 + <code>plugin.schema.json</code> 补 <code>readme</code> 字段（可选，作者填指向包内 <a href="http://README.html">README.md</a>）</li>
+</ul>
+</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#4b</strong> 自动读 <code>plugin.json</code> 获取 pluginId → 调 Vite build → zip
+<strong>验证：</strong> 插件作者 <code>npm run build</code> → 产出 <code>.linkdesk-plugin</code> 文件。</li>
+</ul>
+<h4 id="e65--pluginjson-验证工具">E6#5 🟡 plugin.json 验证工具</h4>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#5a</strong> <code>packages/plugin-sdk/src/validate.ts</code>——<code>validatePluginJson(path)</code>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>解析用 jsonc-parser（对齐壳 #55，2026-08-30 立案）</strong>——作者 plugin.json 可写注释/尾逗号（对标 VS Code package.json），validate 读原文走 jsonc 解析，非严格 JSON.parse（注释不参与校验）；SDK package.json 加 <code>jsonc-parser</code> 依赖</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 检查必填字段：name, version, entry</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 检查 contributes 格式——<strong>以 <code>plugin.schema.json</code> 为唯一真源</strong>（读 schema 校验，不手写第二份字段清单——schema 一改 validate 即自动跟上，判据⑧归一性）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 检查 i18n 声明一致性</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 输出友好的错误信息</li>
+</ul>
+</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#5b</strong> 集成到 build 流程——<code>npm run build</code> 前自动跑 validate
+<strong>验证：</strong> 故意写错 plugin.json → build 报清晰错误。</li>
+</ul>
+<h4 id="e66--plugin-sdk-发布到-npm">E6#6 🟢 plugin-sdk 发布到 npm</h4>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#6a</strong> <code>&quot;publishConfig&quot;: { &quot;access&quot;: &quot;public&quot; }</code></li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#6b</strong> <code>npm publish</code>——发布到 npm registry（<strong>🔥 显式 <code>--registry=https://registry.npmjs.org</code>，对齐 #2.5b——npmmirror 镜像陷阱同款；发布前 <code>npm whoami --registry=https://registry.npmjs.org</code> 确认 fengyili 已登录</strong>）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#6c</strong> plugin-sdk 独立 typecheck 进 <code>npm run check</code>（check 链加 <code>tsc -p packages/plugin-sdk --noEmit</code>——plugin-sdk 是仓库唯一不在门禁范围的代码区，坏了要等第三方装才知道，进 check 链及时拦；<strong>2026-08-30 审视补</strong>）
+<strong>验证：</strong> <code>npm install @linkdesk/plugin-sdk</code> 从任意电脑可装。</li>
+</ul>
+<hr>
+<h3 id="第-12-轮壳侧支持加载-linkdesk-plugin-文件">第 1.2 轮：壳侧——支持加载 .linkdesk-plugin 文件</h3>
+<h4 id="e67--loaderts-改造支持加载-linkdesk-plugin-打包格式">E6#7 🔴 loader.ts 改造——支持加载 .linkdesk-plugin 打包格式</h4>
+<blockquote>
+<p>📖 <strong>承接 E5.6#84——</strong> E5.6#84 已在 loader.ts 建立 dev/installed 双分支结构（源码 glob vs 已安装 plugin.js <code>import()</code>；原引 #81 系任务号误标，实锤见 <a href="01-%E6%8F%92%E4%BB%B6%E7%8B%AC%E7%AB%8B%E6%9E%84%E5%BB%BA/03-loader%E6%94%B9%E9%80%A0%E6%96%B9%E6%A1%88.html#%E5%85%AB%E5%AE%A1%E8%A7%86%E5%AE%9E%E9%94%A4">03-loader改造方案.md §八</a>）。本任务在 installed 分支上扩展 <code>.linkdesk-plugin</code> zip 格式支持（解压→加载）。
+📖 <strong>2026-08-16 E5.8 衔接</strong>：loader 生命周期状态机已在 E5.8#11 建立（PENDING→ACTIVE→DISPOSED）——本任务在其上扩展 zip 分支，不重造生命周期。</p>
+</blockquote>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#7a</strong> <code>loader.ts</code>——<code>loadPlugin()</code> 加 zip 格式分支
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 检测：插件来源是源码目录（<code>plugins/builtin/</code> / <code>plugins/user/</code>）还是 <code>.linkdesk-plugin</code> 解压目录（<code>{userData}/plugins/&lt;id&gt;/</code>）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 打包文件：读 <code>plugin.json</code> → 读 <code>index.bundle.js</code> → 动态 import（基于 E5.6#81 的 installed 分支扩展）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>assets/ 整目录静态服务（审计补 2026-08-29）</strong>：解压目录 assets/ 按相对路径静态服务——bundle 内相对 URL（字体/精灵图/音效）正确解析，不可只服务 index.bundle.js（否则 404）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 源码目录：保持 E5.6#81 的 dev glob 分支</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 统一走 <code>loadPluginLifecycle</code>——不管来源，后续步骤完全相同</li>
+</ul>
+</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#7b</strong> 打包格式解压——<code>.linkdesk-plugin</code> = zip 文件
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 安装时：解压到 <code>{userData}/plugins/&lt;pluginId&gt;/</code></li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 加载时：从解压目录读 <code>plugin.json</code> + <code>index.bundle.js</code>
+<strong>验证：</strong> 手动放一个 <code>.linkdesk-plugin</code> → 重启 → 插件出现。</li>
+</ul>
+</li>
+</ul>
+<h4 id="e68--运行时动态加载替代-importmetaglob-折叠进-e692026-08-30-第三批审视">E6#8 🔴 运行时动态加载——替代 import.meta.glob（🔁 折叠进 E6#9，2026-08-30 第三批审视）</h4>
+<blockquote>
+<p>📖 <strong>折叠注记（编号保留为稳定 ID，不执行）：</strong> 原方案（<code>?entry=</code> URL 参数 + plugin-view:create）是 E5.6 多 WebView 时代话术，极简 Pool 下无消费点、handler 已消亡、文件指向错。意图 = #9 全部覆盖，折叠不双份 churn。<strong>实锤依据见 <a href="01-%E6%8F%92%E4%BB%B6%E7%8B%AC%E7%AB%8B%E6%9E%84%E5%BB%BA/03-loader%E6%94%B9%E9%80%A0%E6%96%B9%E6%A1%88.html#%E4%B8%83%E5%AE%A1%E8%A7%86%E5%AE%9E%E9%94%A4">03-loader改造方案.md §七</a>。</strong></p>
+</blockquote>
+<h4 id="e69--loaderts--plugincomponentstatets-importmetaglob-全部替换运行时文件系统扫描">E6#9 🔴 loader.ts + PluginComponent/state.ts import.meta.glob 全部替换——运行时文件系统扫描</h4>
+<blockquote>
+<p>📖 <strong>🔥 E5.5 对照审计发现（2026-08-30 第三批审视修正文件指向）。</strong> 打包插件不在源码树中——glob 发现不了。glob 真身分布、#8 折叠缘由、可行性实锤见 <a href="01-%E6%8F%92%E4%BB%B6%E7%8B%AC%E7%AB%8B%E6%9E%84%E5%BB%BA/03-loader%E6%94%B9%E9%80%A0%E6%96%B9%E6%A1%88.html#%E4%B8%83%E5%AE%A1%E8%A7%86%E5%AE%9E%E9%94%A4">03-loader改造方案.md §七</a>。</p>
+</blockquote>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#9a</strong> <code>loader.ts</code>——<code>pluginModules</code> glob → 主进程 IPC <code>plugins:listAll</code>（🔧 新建 IPC 走 audit-api-contracts 四齐全）
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 主进程扫描 <code>{userData}/plugins/builtin/</code> + <code>{userData}/plugins/user/</code> + (dev 模式) <code>plugins/builtin/</code> + <code>plugins/user/</code></li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 返回 <code>[{ pluginId, entry, manifest }]</code>——统一格式</li>
+</ul>
+</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#9b</strong> <code>loader.ts</code>——<code>pluginStatusBarModules</code> / <code>viewRenderModules</code> glob → 合并到 <code>plugins:listAll</code> 返回值（<code>manifest.statusBar</code> + <code>manifest.entry</code> 已含信息）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#9c</strong> <code>loader.ts</code>——<code>pluginManifests</code> glob（eager）→ <code>plugins:readAllManifests</code> IPC（🔧 同样四齐全）——主进程读所有 <code>plugin.json</code></li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#9d</strong> <code>PluginComponent.tsx</code>——<code>pluginModules</code> / <code>viewModules</code> glob → 消费 <code>plugins:listAll</code> 入口 map（升级已有 <code>import(/* @vite-ignore */ url)</code> 兜底）
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <code>React.lazy(() =&gt; import(/* @vite-ignore */ entryPath))</code>——不依赖 glob</li>
+</ul>
+</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#9e</strong> dev 保留 Vite glob（即时代码分割），prod 走 IPC | 分支 ~5 行</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#9f</strong> 验证——dev 全插件加载（glob 路径）；build 内置 + 市场安装全加载（IPC 路径）——含 #8e 折叠的 Pool 渲染验证
+<strong>验证：</strong> loader.ts / PluginComponent.tsx 的 glob 只在 DEV 分支保留；生产 build 零 glob，全走 IPC。</li>
+</ul>
+<h4 id="e691--pluginloader-feature-folder-拆分随-9-loader-重写同批做">E6#9.1 🔴 pluginLoader feature-folder 拆分（随 #9 loader 重写同批做）</h4>
+<blockquote>
+<p>📖 <strong>2026-08-29 目录审计 + 用户拍板。</strong> pluginLoader（21 文件）混装——拆的判据 = feature-folder（聚合器 + 子模块，E5.8#0d.10-3）。<strong>与 #9 同批做</strong>——loader.ts 重写时一起动 import，一次到位不双份 churn。<strong>执行序（2026-08-30 定）：先 #9 改写 glob 落 <code>discovery/</code> 目标夹，再 <code>git mv</code> 建夹，同一文件只改一遍</strong>——详见 <a href="01-%E6%8F%92%E4%BB%B6%E7%8B%AC%E7%AB%8B%E6%9E%84%E5%BB%BA/03-loader%E6%94%B9%E9%80%A0%E6%96%B9%E6%A1%88.html#74-91-%E6%8B%86%E5%88%86%E6%89%A7%E8%A1%8C%E5%BA%8F%E9%81%BF%E5%85%8D%E5%90%8C%E4%B8%80%E6%96%87%E4%BB%B6%E6%94%B9%E4%B8%A4%E9%81%8D">03-loader改造方案.md §七·四</a>。</p>
+</blockquote>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#9.1a</strong> 目标结构<pre><code>pluginLoader/
+  loader.ts              ← 聚合器——编排入口（0d.10-3 同款，零业务逻辑）
+  discovery/             ← 插件发现 + manifest：manifest.ts（+ loader 内 glob→IPC 发现逻辑随 #9 移入）
+  lifecycle/             ← lifecycle.ts / lifecycle-events.ts / lifecycle-ops.ts
+  contributions/         ← contributions.ts / viewRegistry.ts（含 floatingPanelDeclarers 逻辑）/ i18nResources.ts
+  resolution/            ← dependencies.ts / state.ts / loadState.ts / runtime.ts（+ loader 内 revert 逻辑随 #9 移出）
+</code></pre>
+</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#9.1b</strong> 测试同夹跟随（colocated）——floatingPanelDeclarers.test→contributions/（测 viewRegistry）；revert.test→lifecycle/ 或 resolution/（测 loader 内 revert 逻辑，随归位）；activationEvents.test 随目标归位</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#9.1c</strong> <code>git mv</code> 保历史 + import 全量更新（pluginLoader 外部消费方路径同步）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#9.1d</strong> 验证——<code>npm run check</code> 全绿（loader 相关 9 测试全过）；跨子模块 import 零残留
+<strong>验证：</strong> pluginLoader 目录只剩聚合器 loader.ts + 4 功能夹；子模块零跨 import（只 import <code>../core/</code> 等壳依赖）；外部消费方 import 全量更新无残留。</li>
+</ul>
+<h4 id="e610--installed-pluginsjson已安装插件记录-折叠进-e6122026-08-30-第-12-轮审视">E6#10 🟡 installed-plugins.json——已安装插件记录（🔁 折叠进 E6#12，2026-08-30 第 1.2 轮审视）</h4>
+<blockquote>
+<p>📖 <strong>折叠注记（编号保留为稳定 ID，不执行）：</strong> 与 E6#12 PluginInstallService 高度重叠——#10b 读写 == #12a 内部持久化、#10c 市场判断 == #12b isInstalled。格式契约（#10a）并入 #12a，读写实现全归唯一 owner（设计决策#20）；StorageService 仅通用 key-value 通道，不算第二个 owner。实锤见 <a href="01-%E6%8F%92%E4%BB%B6%E7%8B%AC%E7%AB%8B%E6%9E%84%E5%BB%BA/03-loader%E6%94%B9%E9%80%A0%E6%96%B9%E6%A1%88.html#%E5%85%AB%E5%AE%A1%E8%A7%86%E5%AE%9E%E9%94%A4">03-loader改造方案.md §八</a>。</p>
+</blockquote>
+<h4 id="e611--安装卸载更新单一路径">E6#11 🟡 安装/卸载/更新单一路径</h4>
+<blockquote>
+<p>📖 <strong>2026-08-16 E5.8 衔接</strong>：卸载残留由 E5.8#12 机械保障（disposer 逆序回滚）——本任务只管市场侧流程，不再手动验证残留。</p>
+</blockquote>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#11a</strong> 安装流程——下载 → 解压 → 写 installed-plugins.json → loadPlugin → UI 刷新</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#11b</strong> 卸载流程——确认 → 关标签页 → unloadPlugin → 删目录 → 删记录</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#11c</strong> 更新流程——<strong>原子切换：下载 temp → 校验 → 原子 rename 替换 → 重载，失败旧版保留</strong>（05 §二·六 定案；对齐 #33e，非「卸载旧版+装新版」非原子）
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 🔥 <strong>重载走 <code>unloadPlugin</code> 同一机械路径</strong>——fire <code>onWillUninstall</code> → registrationTracker 逆序回滚 → 集合清理 → 再 <code>loadPlugin</code>；<strong>禁止裸 loadPlugin 覆盖旧实例</strong>，否则旧登记 <code>registeredEffects</code> 残留 = 更新后幽灵注册（注册/注销对称铁律；2026-08-30 立案——更新 ≠ 卸载，rollback 只在 onWillUninstall 触发，更新必须显式走它）</li>
+</ul>
+</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#11d</strong> 🔥 路由表验证——装/卸插件后确认规则自动满足
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 规则 1（登记注销对称）：E5.8 Phase 2 已机械保障（disposer 逆序回滚）+ E5.8 回归矩阵场景 2 覆盖——此处只做安装/卸载实机抽查</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 规则 2（路由感知变化）：安装/卸载后 FactorySlots 重扫——<code>Ctrl+,</code> 永远打开当前有效的设置插件</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 规则 3（关联桌子同步）：installed-plugins.json 与实际文件系统一致（删文件=删记录，装文件=加记录）</li>
+</ul>
+</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#11e</strong> 🔥 <code>.disabled/</code> 退役——市场时代真删除
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 市场安装的插件：卸载 = <code>fs.remove()</code> 真删除（市场可重新下载）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> bundled 插件（<code>source: &quot;builtin&quot;</code>）：卸载 = 真删除。壳检测缺失 → 从 <code>bundled-plugins/</code> 自动恢复 + toast 通知（<code>bundled-plugins/</code> 机制与第 1.3 轮 E6#15 内置插件独立 build 的目录衔接待 #15 对齐，2026-08-30 第 1.2 轮审视轻标）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 旧 <code>.disabled/</code> 目录：E6 迁移时清理——已禁用的插件如果市场有 → 提示&quot;从市场重新安装或彻底删除&quot;
+<strong>验证：</strong> 卸载市场插件 → 目录消失。卸载 builtin 插件 → 目录消失 → 重启 → 自动恢复 + toast &quot;已恢复系统插件 settings&quot;。
+<strong>验证：</strong> 安装→卸载→不残留。再安装→正常。路由表不指死 ID。</li>
+</ul>
+</li>
+</ul>
+<h4 id="e612--plugininstallserviceinstalled-pluginsjson-唯一-owner-吸收-e610">E6#12 🔴 PluginInstallService——installed-plugins.json 唯一 owner（🔁 吸收 E6#10）</h4>
+<blockquote>
+<p>📖 <strong>承接 E5.6#83——</strong> E5.6#83 已纸面设计 <code>plugin-install-handlers.ts</code> 基本 install/uninstall/enable/disable IPC 骨架，但<strong>该文件从未落地（E5.6 封存 51% 纸面完成）</strong>——E6#13 从零建。本任务创建 PluginInstallService 作为 <code>installed-plugins.json</code> 的<strong>唯一读写入口</strong>，防止 loader / marketplace / 安装流程三处直读 JSON。
+🔥 <strong>设计决策#20：每个持久化文件只有一个 owner service。</strong> 当前 E6 方案中 loader / marketplace / 安装流程三处读写 <code>installed-plugins.json</code>——没有明确谁拥有这份数据。必须建一个单一 owner。</p>
+</blockquote>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#12a</strong> 新建 <code>src/core/services/PluginInstallService.ts</code>（<strong>吸收 E6#10</strong>——格式契约见下，读写实现全归本 owner）
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <code>getInstalled(): Record&lt;string, InstalledPlugin&gt;</code> ——读取全量</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <code>add(pluginId, info)</code> ——安装时写入</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <code>remove(pluginId)</code> ——卸载时删除</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <code>isInstalled(pluginId): boolean</code></li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <code>getSource(pluginId): &quot;builtin&quot; | &quot;user&quot; | &quot;marketplace&quot;</code></li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 内部走 StorageService 持久化——<code>installed-plugins.json</code>（独立文件，不混入 settings.json；StorageService 按 key 独立文件已支持——<code>_filePath</code> Map + <code>getFilePath</code>；<strong>命名统一——全清单只此一个名</strong>，2026-08-29 审计 B4 修）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 格式契约（E6#10a 原样并入）：<pre><code class="language-json"><span class="hljs-punctuation">{</span>
+  <span class="hljs-attr">&quot;serial-monitor&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-punctuation">{</span>
+    <span class="hljs-attr">&quot;version&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;1.0.0&quot;</span><span class="hljs-punctuation">,</span>
+    <span class="hljs-attr">&quot;installedAt&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;2026-08-07T12:00:00Z&quot;</span><span class="hljs-punctuation">,</span>
+    <span class="hljs-attr">&quot;source&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;marketplace&quot;</span>
+  <span class="hljs-punctuation">}</span>
+<span class="hljs-punctuation">}</span>
+</code></pre>
+</li>
+</ul>
+</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#12b</strong> 所有其他模块改为调 PluginInstallService——不直接读 JSON
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> loader.ts → <code>PluginInstallService.getInstalled()</code></li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> marketplace UI → <code>PluginInstallService.isInstalled(id)</code>（吸收 E6#10c——市场&quot;已安装&quot;判断）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 安装/卸载流程 → <code>PluginInstallService.add()</code> / <code>PluginInstallService.remove()</code>
+<strong>验证：</strong> 安装一个插件 → 记录存在。卸载 → 记录删除。<code>grep -r &quot;installed-plugins&quot; src/ plugins/</code> → 仅 PluginInstallService.ts 一处。</li>
+</ul>
+</li>
+</ul>
+<h4 id="e613--e6-ipc-handler-扩展下载解压更新进度基于-e5683">E6#13 🔴 E6 IPC handler 扩展——下载/解压/更新/进度（基于 E5.6#83）</h4>
+<blockquote>
+<p>📖 <strong>承接 E5.6#83——</strong> E5.6#83 已纸面设计 <code>plugin-install-handlers.ts</code> 基本 install/uninstall/enable/disable IPC 骨架，但<strong>该文件从未落地（纸面完成）</strong>——本任务<strong>从零新建</strong>并直接扩展 download/extract/update/progress handler。
+📖 <strong>🔥 2026-08-07 E5.5 对照审计发现。</strong> 当前 <code>electron/ipc/</code> 下 8 个 handler 文件，没有一个覆盖 E6 需要的核心操作。E6#11 安装流程和 E6#31 下载安装 UI 都假设这些 handler 已存在。</p>
+</blockquote>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#13a</strong> <code>electron/ipc/handlers/plugin-install-handlers.ts</code>——新建（与现有 11 个 handler 同目录）
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <code>plugins:download(url)</code>——<code>fetch</code> + 进度回调 → ArrayBuffer 写入临时目录 | ~20 行</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <code>plugins:extract(pluginId, zipPath)</code>——解压到 <code>{userData}/plugins/user/&lt;pluginId&gt;/</code> | ~15 行</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <code>plugins:install(pluginId)</code>——读 <code>plugin.json</code> → 验证 → <code>PluginInstallService.add</code>（E6#12 已建）→ loadPlugin → IpcBridge.broadcast <code>plugin:installed</code> | ~20 行</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <code>plugins:uninstall(pluginId)</code>——E6#11b 流程 | ~15 行</li>
+</ul>
+</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#13b</strong> <code>plugins:update-check</code>——对比本地版本 vs marketplace.json → 返回更新列表 | ~15 行</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#13c</strong> <code>plugins:update-download(pluginId)</code>——下载 temp → 校验 → <strong>原子 rename 替换</strong>旧目录 → 重新 loadPlugin，失败旧版保留（05 §二·六 原子切换，对齐 #33e） | ~20 行</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#13d</strong> <code>plugins:install-progress</code>——<code>ipcMain.on</code> + 下载进度 <code>event.sender.send</code> 回调 | ~15 行</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#13e</strong> <code>preload-shell.ts</code> + <code>preload-plugin.ts</code>——暴露 <code>window.linkdesk.pluginManager.install/installWithProgress/uninstall/checkUpdates/update</code> | +10 行</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#13f</strong> <code>linkdesk-api.ts</code>——PluginManager API 类型声明 | +15 行</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#13g</strong> invoke 统一日志（2026-08-17 用户拍板立案——记忆欠账&quot;留待 E3 后做&quot;）
+<ul>
+<li><code>electron/ipc/</code> 统一 invoke 包装：warn 日志含 channel + args 摘要 + 耗时；错误带堆栈——<strong>E6 新 handler（13a-13f）从第一天走包装，存量 handler 逐个接入</strong></li>
+<li>与 E5.7 诊断面合并不另起炉灶：主进程 protocol-debug.log 已有 console.error 速查表——统一包装汇入该通道</li>
+<li>验收：故意让 handler 抛错 → protocol-debug.log 可见 channel + 原因；E6#13 新 handler 全走包装
+<strong>验证：</strong> 从壳侧 <code>window.linkdesk.pluginManager.install(url)</code> → 下载 → 解压 → 安装 → 图标栏出现新插件。从插件 WebView 同调同结果。</li>
+</ul>
+</li>
+</ul>
+<h4 id="e6135--notificationsshow-主动作按钮-apitoast-内-重试查看依赖-统一通道缝隙-k12026-08-29-审计定稿">E6#13.5 🟡 notifications.show 主动作按钮 API——toast 内 [重试]/[查看依赖] 统一通道（缝隙 K1，2026-08-29 审计定稿）</h4>
+<blockquote>
+<p>📖 <strong>审计坐实</strong>：mockup 帧 3/7 的 toast 主动作按钮（[重试]/[查看依赖]）当前 <code>notifications.show</code> <strong>无 actions 参数弹不出</strong>；但 ToastHost 渲染面 + IPC 回传已实现（lifecycle.ts:83 [撤销] 走壳侧 pushToast 先例实证）。本任务给<strong>插件面</strong>补同一能力——mockup 验收契约（09 §五「插件自调 notifications.show」）成立。
+📖 <strong>设计前置（8 维度）：</strong></p>
+<ul>
+<li>① 能力边界：<strong>壳能力</strong>（notifications 命名空间扩展，任意插件可用——多消费方）。保底：不传 actions → 现状无按钮零变化。</li>
+<li>② API：<code>notifications.show(msg, { type, progress, actions? })</code>——<code>actions: [{ id, label, isPrimary?, command?, args? }]</code>；点击 → 壳执行 <code>command(args)</code>（命令系统 = 现成跨层动作通道）。契约位置：contracts/linkdesk.d.ts + preload-pool/namespaces-workspace.ts + IpcBridgeHandler/ui.ts + 03-制造文档。</li>
+<li>③ 通信：插件 show（带 actions）→ 壳建 toast（存 actions）；点击 → 壳 <code>runToastAction</code> → <strong>对带 command 的 action 执行 <code>executeCommand(command, args)</code></strong>（复用现成命令执行，壳零新事件通道）；无 command → 现状 closure 兜底。</li>
+<li>④ 壳侧：<code>IpcBridgeHandler/ui.ts</code>（showNotification 透传 actions）+ toast 服务（TTL 按 severity 对齐——插件 error 类 8000，mockup 帧 3）+ <code>runToastAction</code> 分流 command/closure。</li>
+<li>⑤ 插件侧：市场插件失败 toast 传 <code>[重试]</code>（command = 重试安装）、缺依赖 toast 传 <code>[查看依赖]</code>（command = 跳依赖详情页）；命令 handler 插件自注册。</li>
+<li>⑥ 显示：toast 底部 action 按钮（primary/secondary，ToastHost 已具，mockup 帧 3/7）。</li>
+<li>⑦ 配置：无。</li>
+<li>⑧ 验收：<code>npm run check</code> 全绿 + CDP 实机弹 [重试] 点它真的重试、[查看依赖] 真的跳转。</li>
+</ul>
+</blockquote>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#13.5a</strong> 契约 + 类型——<code>contracts/linkdesk.d.ts</code> + <code>linkdesk-api/ui.ts</code> 加 <code>actions?: ToastAction[]</code>（<code>{id,label,isPrimary?,command?,args?}</code>）；<code>NotificationHandle</code> 不变</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#13.5b</strong> preload-pool <code>namespaces-workspace.ts</code>——<code>show()</code> 透传 options.actions（序列化 <code>{id,label,isPrimary,command,args}</code>）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#13.5c</strong> <code>IpcBridgeHandler/ui.ts</code>——showNotification 建 toast 时存 actions（引用壳侧既有 serializeToasts 形态）；<code>runToastAction</code> 分流：action.command → <code>executeCommand(command, args)</code>；无 command → 现状 onClick</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#13.5d</strong> TTL 对齐——插件 error 类 toast 落 <code>TOAST_TTL_ERROR</code>（8000），mockup 帧 3 契约（非 progress 时当前落 6000）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#13.5e</strong> 03-插件制造文档——notifications.show actions 说明 + 契约四齐全审计（audit-api-contracts 入 check）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#13.5f</strong> 市场消费先例——失败 toast [重试] / 缺依赖 toast [查看依赖] 各一实现点（消费 30.9b/30.5e，落迁移后 DetailView）
+<strong>验证：</strong> 插件 <code>notifications.show(&quot;安装失败&quot;, { type:&quot;error&quot;, actions:[{id:&quot;retry&quot;,label:&quot;重试&quot;,isPrimary:true,command:&quot;xxx.retry&quot;}] })</code> → toast 带按钮 → 点击执行命令。不传 actions → 现状无按钮。</li>
+</ul>
+<h4 id="e614--handler-审计统一走-ipcbridgebroadcast-不直发-mainwindow">E6#14 🔴 <s>handler 审计——统一走 IpcBridge.broadcast 不直发 mainWindow</s></h4>
+<blockquote>
+<p>🔴 <strong>2026-08-16 已搬 E5.8 Phase 1.5 #6.5</strong>（IPC 广播归一化——serial/lsp/file 三 handler 改走 IpcBridge.broadcast + ipc-audit 脚本入 check）。任务号留空不补位。</p>
+</blockquote>
+<h4 id="e655--pluginjson-jsonc-化壳侧解析作者声明文件支持注释尾逗号">E6#55 🟡 plugin.json JSONC 化（壳侧解析——作者声明文件支持注释/尾逗号）</h4>
+<blockquote>
+<p>📖 <strong>2026-08-30 用户提出 + 评估拍板。</strong> 复杂插件 plugin.json 会到上千行（对标 VS Code git 扩展 package.json 1200+ 行），纯 JSON 不能写注释/尾逗号 = 千行声明不可导航。<strong>对标 VS Code = JSONC</strong>（其 package.json 实为 JSONC）。壳侧当前 5 处 <code>JSON.parse</code> 读 plugin.json（runtime.ts:184 / loader.ts:216 / lifecycle-ops.ts:224,239,251），严格 JSON 不接受注释。<strong>兼容论证：JSONC ⊃ 严格 JSON</strong>——现有 17 个 user 插件全严格 JSON，换解析器逐字节一致，零改动零回归。<strong>依赖 <code>jsonc-parser</code></strong>（VS Code 同款，monaco-editor 直接依赖——node_modules 已有副本，声明直接依赖零 bundle 增长）。
+📖 <strong>范围纪律（不做什么）</strong>：只换「作者写的 plugin.json」解析；壳自己写的运行时数据文件（settings.json / workspace.json / 布局 / profile / 快捷键绑定）<strong>继续严格 JSON</strong>（机器数据不容忍脏数据）；<strong>不拆多文件</strong>（C 语言式拆分 = 引入合并机制给所有作者加复杂度；内容外置机制已就位——views render / i18n / themes，声明就该单文件看全貌）。</p>
+</blockquote>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#55a</strong> 新建解析 helper——<code>src/pluginLoader/jsonc.ts</code> 导出 <code>parseManifestJson(raw)</code>：包 <code>jsonc-parser</code> <code>parse()</code>，统一错误处理（错误信息含行列位置，作者易定位）；<code>package.json</code> 加 <code>jsonc-parser</code> 直接依赖</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#55b</strong> 替换 5 处 <code>JSON.parse</code> → <code>parseManifestJson</code>：runtime.ts:184 / loader.ts:216 / lifecycle-ops.ts:224（安装前校验）/ :239（消毒读取）/ :251（卸载缓存读取）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#55c</strong> 主进程读取路径同步——#9c <code>plugins:readAllManifests</code> IPC（主进程读全部 plugin.json）落地时直接用 jsonc 解析（对齐 helper）；market 下载包内 plugin.json 校验（lifecycle-ops.ts:224）同走——带注释的包装进来不炸</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#55d</strong> 测试——新增单测：带注释 + 尾逗号的 plugin.json 解析正确；现有 loader/lifecycle 测试全绿 = 严格 JSON 零回归证明</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#55e</strong> 验证——<code>npm run check</code> 全绿 + 实机装一个 plugin.json 带注释的插件（启动加载 + 市场装包两条路）
+<strong>前置：</strong> 与 #9/#9.1 同批做（loader 重写动同一批文件，一次到位不双份 churn）。<strong>SDK 侧落点 = #5a（validate 解析 jsonc）+ #22b（模板 jsonc 关联）——两侧各有对应任务。</strong></li>
+</ul>
+<hr>
+<h3 id="第-13-轮共享组件分发--内置插件独立化打破特权阶级">第 1.3 轮：共享组件分发 + 内置插件独立化——打破特权阶级</h3>
+<blockquote>
+<p>🔥 <strong>核心无知原则。</strong> 当前内置插件（file-tree/editor/settings/marketplace/serial-monitor）和壳一起 Vite build，依赖从全局 node_modules 读。这意味着壳必须带着 monaco-editor、serialport 等&quot;插件专属&quot;依赖——壳被污染了。
+内置插件本质也是插件——<code>core: true</code> 只是不让卸载的 UI 限制，去掉就能卸。它们也应该走 pre-bundle。
+<strong>组件特权（同轮第一桩特权，E6#54）。</strong> 壳共享组件（右键菜单/下拉/开关/取色器）在 <code>src/components/shared/</code>，内置插件靠 Vite <code>@src</code> 别名编译期引用；第三方插件没有 <code>@src</code>——想用壳组件只能来让壳改代码，违反插件独立铁律。E6#15 把内置插件也独立 build 后，连内置插件都失去 <code>@src</code> → 共享组件必须先打包分发（E6#54 是 E6#15 硬前置）。</p>
+</blockquote>
+<h4 id="e654--共享组件独立分发--token-契约方向-a2026-08-29-用户拍板">E6#54 🔴 共享组件独立分发 + token 契约（方向 A——2026-08-29 用户拍板）</h4>
+<blockquote>
+<p>🔥 <strong>方向 A 裁决（候选讨论后拍板）。</strong> 用户三处右键实机证据（文件树右键 / 串口接收区右键 / 设置齿轮右键 引同一个 ContextMenu）证明：共享机制对、分发路径错——只有能 import <code>@src</code> 的特权插件能用。方案 A = 打包 <code>@linkdesk/ui</code> npm 包 + SDK 内置 eslint token 门禁；否决方案 B（命令式 API——盖不住嵌入控件：齿轮/下拉要摆进插件布局的 React 组件；且两套契约违反归一化）；A 是现状延续 = VS Code <code>webview + @vscode/webview-ui-toolkit</code> 模型。
+<strong>设计前置 8 维度 →</strong> <a href="01-%E6%8F%92%E4%BB%B6%E7%8B%AC%E7%AB%8B%E6%9E%84%E5%BB%BA/07-%E5%85%B1%E4%BA%AB%E7%BB%84%E4%BB%B6%E7%8B%AC%E7%AB%8B%E5%88%86%E5%8F%91%E8%AE%BE%E8%AE%A1.html">07-共享组件独立分发设计.md</a>。</p>
+</blockquote>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#54a</strong> 组件解耦审计——全量盘点 <code>src/components/shared/</code> 每组件三依赖轴：① 纯 props 契约（数据经 props 传入）② var(--<em>) token 禁 hex ③ window.linkdesk.</em> API 禁 @src/core import；列出带专属假设的组件（@src/core 依赖 / 非 token 色值 / 非 props 数据源）→ 解耦改造清单
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>type-only import 重定向（审计补 2026-08-29）</strong>：3 处类型 import 出包后 d.ts 挂 @src 别名不可解析——ContextMenu.tsx:26（MenuItemDescriptor）+ DynamicSelect.tsx:16 + ThemePicker.tsx:14（RecipeMeta）→ <code>@src/core/api/linkdesk-api(types)</code> → <strong><code>@linkdesk/contracts</code></strong>（类型已在 :211/:382，一行改）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>组件清单修齐（审计补 2026-08-29）</strong>：实盘 16 个含 ColorPicker/PluginIcon（settings 色板、marketplace 图标），ConfirmDialog/OverlayPortal 标「在范围未消费」</li>
+</ul>
+</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#54b</strong> <code>@linkdesk/ui</code> 包——<code>packages/linkdesk-ui/</code>；<strong>壳 workspace 单一源码防漂移</strong>（组件仍居 <code>src/components/shared/</code>，npm 包是构建产物/引用非拷贝）；React 组件 + 零 @src/core 依赖 + 全 token；npm 发布（账号 fengyili；npmmirror 不能发布 → 显式 <code>--registry=https://registry.npmjs.org</code>）
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>repo 侧接线（#54c 硬前置，审计补 2026-08-29）</strong>——workspaces 或 file: 依赖让内置插件能 <code>import &quot;@linkdesk/ui&quot;</code>（现仓库无 packages/、无 @linkdesk 依赖，29 处切换编不过）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>sideEffects: [&quot;</strong>/*.css&quot;] + ESM 具名导出（审计补 2026-08-29）**——防 tree-shaking 失效（只用 Toggle 的插件不背全部组件）</li>
+</ul>
+</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#54c</strong> 消费方切换——现有 4 插件 13 文件 33 处 import 全量 <code>@src/components/shared/*</code> → <code>@linkdesk/ui</code>（<strong>E6#15 独立化的前置，先切后独立</strong>；2026-08-30 第 1.3 轮审视实测计数 13 文件 33 处）
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> settings（4 文件）——<code>views/SettingsView/SettingRow.tsx</code>（ContextMenu/ColorPicker）+ <code>views/SettingsView/renderControl.tsx</code>（Toggle/SelectBox/DynamicSelect/FontFamilySelect/FilePathInput/NumberInput/Slider/sliderStep/ThemePicker/SegmentedRadio/Button）+ <code>views/SettingsView.tsx</code>（InlineInput）+ <code>index.tsx</code></li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> serial-monitor（9 处）——index.tsx:41,45（SelectBox/ContextMenu）+ ControlPanel.tsx:20,22（SelectBox/Combobox）+ SerialSettingsView.tsx:14-16（Toggle/SelectBox/FormRow）+ SessionListItem.tsx:9-10（InlineInput）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> file-tree（2 处）——FileTreeContextMenu.tsx:10（ContextMenu）+ FileTreeNode.tsx:12（InlineInput）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> marketplace（4 处）——ExtensionItem.tsx:9-10（PluginIcon/ContextMenu）+ UninstalledListView.tsx:8 + DisabledListView.tsx:8（PluginIcon）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 第三方插件直接 <code>npm i @linkdesk/ui</code></li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>白名单定死（审计补 2026-08-29）</strong>：清零后 PLUGIN_IMPORT_WHITELIST 的 @src/components/shared/* <strong>收紧为 error</strong> 防内置插件滑回双入口（第三方零影响——@src 别名只在壳构建，物理不可达）</li>
+</ul>
+</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#54d</strong> 门禁机制定案——plugin-sdk 新增 <code>eslint/</code> 预设 + 知情声明机制（07 设计 §六；<strong>推荐/警告/知情绕行三档</strong>，15 条规则，<strong>永不 fail build / 上传</strong>）：
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 推荐：脚手架模板默认正路（var()/t()/@linkdesk/ui），照抄即对</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 警告·React 通用陷阱 6——no-async-init-guard-only / no-effect-callback-without-active-guard / no-dynamic-import-in-effect-cleanup / no-ref-current-in-jsx / react-hooks/rules-of-hooks / react-hooks/exhaustive-deps（任何 React 插件通用，WARN 自解释）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 警告·视觉统一 5——no-hardcoded-zh（→t()）/ <strong>check-css-hardcode.mjs 移植</strong>（hex+rgb/hsl 全拦——强化版 hex 门禁）/ <strong>check-font-scale-audit.mjs 移植</strong>（字号裸 px，现成脚本直接搬）/ no-hardcoded-radius（border-radius 裸 px，新写）/ import-x/no-unresolved</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 警告·审美 4——no-quickpick-render-item / <strong>check-spacing-grid.mjs 移植</strong>（4px 节奏）/ @typescript-eslint/no-explicit-any / jscpd</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 知情绕行：红灯须<strong>标准 eslint-disable 格式</strong>（<code>// eslint-disable-next-line &lt;rule&gt; -- 理由</code> 或文件级 <code>/* eslint-disable &lt;rule&gt; -- 内容画布 */</code>，非新语法——壳 no-hardcoded-hex 现有报错即此格式）声明；构建/上传不硬拦，无声明=「未处理偏离」、有声明=「知情偏离」</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 市场标签：上传不拒收，偏离统计（N 处知情硬编码）随包可见</li>
+</ul>
+</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#54d.5</strong> 第三方纪律文档——<code>docs/03-插件制造/05-UI写法规约.md</code> 新增「token 契约」节五块（作者知道有哪些变量才写得出动态 + 内容/数据纪律 + 壳纪律转移落点）
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> ① token 目录<strong>六域矩阵</strong>——每域标 var() 键 + 门禁覆盖：颜色（--text/--bg/--accent；fontTone 控 --text-<em>）/ 表面（--surface-</em>）/ 圆角（--radius-<em>）/ 玻璃（--glass-</em>）/ 字号（--font-size-<em>；--ui-scale 缩放轴）/ 字体族（--font-ui）；var(--</em>) = 自动跟随主题 + 玻璃 + 全局缩放</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> ② 诚实边界/知情绕行语义——作者硬写死品牌色壳管不住（任何生态都管不住）；门禁把做对变默认、做错变显式红但可<strong>知情绕行</strong>（标准 eslint-disable 声明带理由 = 浏览器危险网站「仍要访问」）；豁免类别明确：var() 回退 hex / 取色器色板 / canvas 绘图 / 引擎区 / <strong>内容画布视图级豁免</strong>——<strong>内容 vs chrome 边界</strong>（游戏/数据可视化/canvas 主区 = 内容世界非 UI chrome，UI chrome 跟主题走、内容有自己的天空）；视图级一次声明豁免，门禁对内容区不逐条亮灯（愤怒的小鸟考核实证：游戏背景/红心/表扬语全走内容豁免）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> ③ 非 CSS 引擎适配模式——引擎自渲染不走 CSS 变量，用翻译桥：订阅 theme:changed → 翻译成引擎 theme API（theme-sync.ts 先例）；monaco 现状背景不透明 = 过渡态绕开，不落死边界</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> ④ 插件私有数据通道——作者自建设置界面/自管存档（不走壳设置页声明）时数据落地按语义选：<strong>linkdesk.pluginState 首选</strong>（E5#71 正牌 API 集中缓存+文件持久化，审计补 2026-08-29）/ config.set 私有命名空间（跟设置语义走）/ linkdesk.filesystem（大文件/二进制）/ localStorage（补充临时缓存）；铁律：<strong>不声明 contributes.configuration 的私有键不进壳设置页 UI</strong>（无 schema 键照写持久化，作者要壳设置页就声明贡献、要自建界面就私有键直存）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> ⑤ 壳纪律转移清单——按落点沉对应规范文档：插件独立唯一入口 window.linkdesk.* 禁 import 壳 / 配置订阅不读一次 / linkdesk.events 订阅时序（顶层或守卫）/ 不写死其他插件 ID / 配置键必给 default / 只用文档化 API 命名空间（01-API契约 / 03-contributes / 06-plugin.json 各就各位）</li>
+</ul>
+</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#54e</strong> 脚手架示范 + 端到端验证——create-linkdesk-plugin 模板 <code>src/index.tsx</code> 用 var(--<em>) 示范（玻璃/主题自动跟随）；第三方独立构建插件用 @linkdesk/ui 的右键/下拉/开关与内置插件一致 + 玻璃切换自动跟随（@linkdesk/ui 控件层零思考跟随 = 玻璃达标下限）
+<strong>验证：</strong> 内置插件独立 build（E6#15）后共享组件仍工作（走 @linkdesk/ui）；第三方插件不用 <code>@src</code>、<code>npm i @linkdesk/ui</code> 写出与内置同款右键/下拉/开关，玻璃切换自动跟随（var(--</em>) 天然继承）；门禁 15 条 WARN 级自解释——硬编码（hex/中文字面量/字号裸 px/圆角裸 px）即红但可知情绕行（标准 eslint-disable 声明），var(--*)/t() 零警告，永不 fail build / 上传。</li>
+</ul>
+<h4 id="e615--内置插件迁移为-pre-bundle">E6#15 🔴 内置插件迁移为 pre-bundle</h4>
+<blockquote>
+<p>✅ <strong>serialport 定性方案①（2026-08-30 第 1.3 轮审视拍板）</strong>：serialport 留壳里——electron-builder npmRebuild 自动保证 ABI，serial-monitor 走 <code>window.linkdesk.serial.*</code> 通道（数据源后门通道语义：UI 独立 build + 原生设备层壳托管），<strong>package.json 不列 serialport</strong>。否决方案②（native .node 绑 Electron ABI，每次升级 Electron 大版本都要插件侧 rebuild，永久维护债）。实锤见 <a href="01-%E6%8F%92%E4%BB%B6%E7%8B%AC%E7%AB%8B%E6%9E%84%E5%BB%BA/03-loader%E6%94%B9%E9%80%A0%E6%96%B9%E6%A1%88.html#%E4%B9%9D%E5%AE%A1%E8%A7%86%E5%AE%9E%E9%94%A4">03-loader改造方案.md §九</a>。</p>
+</blockquote>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#15a</strong> 插件清单全量盘点（2026-08-30 第 1.3 轮审视补全——现状 user/ 17 个，原列 6 个严重过时，实锤见 <a href="01-%E6%8F%92%E4%BB%B6%E7%8B%AC%E7%AB%8B%E6%9E%84%E5%BB%BA/03-loader%E6%94%B9%E9%80%A0%E6%96%B9%E6%A1%88.html#%E4%B9%9D%E5%AE%A1%E8%A7%86%E5%AE%9E%E9%94%A4">03-loader改造方案.md §九</a>）
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>React 独立 build（8 个，加 package.json + <code>npm run build</code> 产 index.bundle.js）</strong>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <code>plugins/builtin/</code>：file-tree / editor / settings / marketplace——依赖 <code>@linkdesk/plugin-sdk</code> + <code>@linkdesk/ui</code></li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <code>plugins/user/</code>：serial-monitor（<strong>不列 serialport</strong>——方案①留壳，走 <code>window.linkdesk.serial.*</code>）/ python / floating-panel-demo / panel-demo（demo 不例外——#15f「壳零插件代码」要求全量分发，dev/prod 一致）</li>
+</ul>
+</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>JSON 纯打包（12 个，无 build 步骤——zip 含 plugin.json + JSON 资源，无 index.bundle.js；loader 只注册贡献不加载入口 → #7 路径 C 需支持无 entry 分支，实现时补）</strong>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <code>plugins/user/</code>：lang-defaults / lang-test-ja / theme-aurora-glass / theme-defaults / theme-iconset-pastel / theme-mint-soda / theme-panorama / theme-pill / theme-songti / theme-terminal / theme-twilight-forest / theme-zones</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#15b</strong> 每个内置插件独立 <code>npm run build</code>（React 8 build + JSON 12 纯打包）
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 产出 <code>builtin/</code> 下：file-tree / editor / settings / marketplace 各一个 <code>.linkdesk-plugin</code></li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 产出 <code>user/</code> 下：React 插件（serial-monitor / python / floating-panel-demo / panel-demo）各一个 <code>.linkdesk-plugin</code></li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 产出 <code>user/</code> 下：JSON 插件（lang-defaults / lang-test-ja / theme×10）各一个 <code>.linkdesk-plugin</code>（纯打包无 build）</li>
+</ul>
+</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#15c</strong> <code>electron-builder.yml</code>——插件文件放到 <code>extraResources/bundled-plugins/</code>，<strong>保留 <code>builtin/</code>/<code>user/</code> 双层结构</strong>（builtin/user/core 语义 → <a href="01-%E6%8F%92%E4%BB%B6%E7%8B%AC%E7%AB%8B%E6%9E%84%E5%BB%BA/06-builtin-user-%E8%AF%AD%E4%B9%89%E8%A7%84%E8%8C%83.html">01-插件独立构建/06-builtin-user-语义规范.md</a>，2026-08-29 审计补引用）
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <code>bundled-plugins/builtin/</code>——file-tree / editor / settings / marketplace 的 <code>.linkdesk-plugin</code></li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <code>bundled-plugins/user/</code>——serial-monitor / lang-defaults / theme-* / python 的 <code>.linkdesk-plugin</code></li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 壳首次启动时自动安装 <code>bundled-plugins/</code> 下所有文件 → 解压到 <code>{userData}/plugins/builtin/</code> 和 <code>{userData}/plugins/user/</code>（保持子目录）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 🔥 自动恢复通知——如果检测到 bundled 插件被删后重新恢复，给 toast：&quot;已恢复系统插件 <name>&quot;（Opt-IN 原则——用户删了又被恢复，必须告知）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 🔥 <strong>故意删除不恢复</strong>——读取 <code>installed-plugins.json</code> 的 <code>removed</code> 标记。用户通过卸载 API 删除的 <code>core:true</code> 插件 → 写 <code>removed: true</code> → 重启时跳过自动恢复。手动删文件夹（无标记）→ 壳认为是意外丢失 → 自动恢复。防止：高手卸载旧 settings 装自己的 → 壳悄悄恢复老的 → FactorySlots 还是老的</li>
+</ul>
+</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#15d</strong> 验证——<code>npm run electron:build</code> → 安装 → 启动 → 内置插件从 bundled-plugins 自动安装 → 全功能正常</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#15e</strong> 🔴 LSP 路径解析——插件自带的 LSP 二进制，壳能正确定位
+<blockquote>
+<p><strong>根因：</strong> E5#114d 的 pyright 放 <code>extraResources</code> 是临时方案。E6 插件自包含后，pyright 在 <code>{userData}/plugins/user/python/node_modules/pyright/</code>，不在 <code>resources/</code>。<code>lsp-handlers.ts</code> 的 <code>resolveLspArg</code> 需要知道去插件目录找。
+<strong>同样的 bug 会发生在每个自带 LSP 的插件：</strong> C 语言（clangd）、Java（jdtls）、Rust（rust-analyzer）……每个插件的 LSP 二进制路径都不一样。</p>
+</blockquote>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <code>lsp-handlers.ts</code> <code>resolveLspArg</code> 加 fallback——<code>process.resourcesPath</code> 找不到 → 去插件目录查：<code>{userData}/plugins/{pluginId}/</code> + 相对路径</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <code>plugin.json</code> 的 <code>lsp.args</code> 中相对路径的基准明确为<strong>插件根目录</strong>（文档化）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> C 语言插件带 <code>clangd</code> 验证——<code>lsp.args: [&quot;node_modules/.bin/clangd&quot;, &quot;--stdio&quot;]</code> → 壳正确解析到 <code>{userData}/plugins/user/c/node_modules/.bin/clangd</code></li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 从 <code>electron-builder.yml</code> 删除 <code>- from: node_modules/pyright</code>（临时方案的清理——见 [[lsp-packages-in-extraresources-temporary]]）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 验证——python 插件独立构建后 Ctrl+Click 跳转仍工作</li>
+</ul>
+</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#15f</strong> vite.config.ts <code>scanPluginEntries</code> 清理——插件 entries 不再作为 rollup input（壳 build 不再包含任何插件代码；E6#9（#8 折叠）只覆盖 loader/PluginComponent/state glob，rollup input 是漏网——2026-08-29 审计 C2 补）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#15g</strong> preload-pool 结构核对（2026-08-29 目录审计结论）——<strong>不随 #15 做目录手术</strong>：preload-pool 已是「每命名空间一文件」feature 粒度（commands/configuration/contextkey/decorations/events/factory-slots/language/layout/panel/quickpick/settings/surface-zones/toast-dialog/viewcontainer 单 namespace 桥 + namespaces-data/plugin/workspace 三聚合文件），对齐 feature-folder 理想态；安全敏感 preload + 纯外观移动零收益。<strong>内置插件迁出后 API 面不收缩</strong>——第三方插件仍需全 <code>window.linkdesk.*</code>，只核对 namespaces-* 聚合文件是否覆盖迁出插件所需
+<strong>验证：</strong> 内置插件和第三方插件走同一条加载路径（<code>loadPlugin({ source: &quot;bundled&quot; })</code>）。壳 Vite build 不再包含任何插件代码。LSP 路径解析与插件目录无关——每个插件自带 LSP，壳只知道去插件目录找。</li>
+</ul>
+<h4 id="e616--壳-node_modules-瘦身">E6#16 🔴 壳 node_modules 瘦身</h4>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#16a</strong> 审计——壳自己真正需要哪些依赖？（2026-08-30 第 1.3 轮审视实测：@codingame 已不在 deps/devDeps 删；serialport/iconv-lite 方案①留壳，删移出项）
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 壳需要：react / react-dom / react-i18next / i18next / electron / vite / typescript / eslint / vitest / lucide-react / @vscode/codicons + <strong>serialport + iconv-lite（方案①留壳，串口通道壳托管）</strong></li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 插件需要（应移除）：monaco-editor / monaco-languageclient / @codemirror/* / canvas</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 待确认：<strong>@codemirror/*（editor 还是 serial-monitor 的依赖？确认归谁后 16b 才移——2026-08-29 审计 C4 补）</strong> + canvas（FontFamilySelect 字体检测？壳功能→保留 / 插件功能→移出）</li>
+</ul>
+</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#16b</strong> 从壳的 <code>package.json</code> 移除插件专属依赖
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 移出 <code>monaco-editor</code>、<code>monaco-languageclient</code>（→ editor 插件）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 移出 <code>@codemirror/*</code>（<strong>待确认归谁后移，见 16a</strong>）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 移出 <code>canvas</code>（如果确认只有插件在用）</li>
+</ul>
+</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#16c</strong> 这些依赖移到各自插件的 <code>package.json</code> 中
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> editor 插件 → monaco-editor + monaco-languageclient（+ @codemirror 如归 editor）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> serial-monitor 插件 → <strong>不迁依赖</strong>（serialport/iconv-lite 方案①留壳）</li>
+</ul>
+</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#16d</strong> <code>npm install</code>——验证壳自己的依赖完整，能启动
+<strong>验证：</strong> 壳 <code>package.json</code> 的 <code>dependencies</code> 只包含壳自己需要的包（含留壳的 serialport/iconv-lite）。插件依赖在各自插件的 <code>package.json</code> 中。</li>
+</ul>
+<h4 id="e617--electron-builderyml-改造">E6#17 🔴 electron-builder.yml 改造</h4>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#17a</strong> <code>files</code> 字段——不再打包 <code>plugins/</code> 源码目录（内置插件已 pre-bundle）
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 移除或缩小 <code>extraResources: plugins</code>——只保留必要的 JSON 文件（如 lang-defaults 的语言包 JSON）</li>
+</ul>
+</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#17b</strong> <code>node_modules</code> 过滤——只打包壳真正需要的依赖
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 移除 monaco-editor、@codingame、serialport 等插件专属包的 shipping</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 安装包体积显著缩小</li>
+</ul>
+</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#17c</strong> 验证——<code>npm run electron:build</code> 成功 → 安装 → 启动 → 内置插件自动安装 → 全功能正常
+<strong>验证：</strong> 安装包体积明显变小。所有功能正常。</li>
+</ul>
+<h4 id="e618--coretrue-可卸载化--重新安装路径">E6#18 🟡 core:true 可卸载化 + 重新安装路径</h4>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#18a</strong> <code>lifecycle-ops.ts</code>（E5.8#1c 去重后的卸载守卫位置，非 loader.ts；<a href="src/pluginLoader/lifecycle-ops.ts#L252">lifecycle-ops.ts:252</a>）——<code>core: true</code> 插件允许卸载（去掉 API 硬阻止）
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 卸载时给警告 toast：&quot;这是系统插件，卸载可能影响基本功能&quot;</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 不阻止——高手可以换掉</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 🔥 <strong>故意删除标记</strong>——卸载 API 删除时在 <code>installed-plugins.json</code> 写 <code>removed: true</code>。重启时 E6#15c 自动恢复读此标记 → 跳过恢复。手动删文件夹（无标记）→ 视为意外丢失 → 照常自动恢复 + toast</li>
+</ul>
+</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#18b</strong> 重新安装来源
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 从 <code>bundled-plugins/builtin/</code> 恢复——壳自带备份，秒恢复（前提：无 <code>removed</code> 标记）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 从插件市场重新下载——下载到 <code>user/</code> 目录（市场和 builtin/ 无关）。下载时清除 <code>removed</code> 标记</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 手动丢 <code>.linkdesk-plugin</code> 到 <code>builtin/</code> 文件夹</li>
+</ul>
+</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#18c</strong> 场景验证——替换 builtin settings 为自己的
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 通过卸载 API 删 <code>{userData}/plugins/builtin/settings/</code> → <code>removed: true</code> 写入 → 设置消失</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 装自己的 settings 插件（声明 <code>factoryRole: &quot;settings&quot;</code>）→ FactorySlots 自动接管</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 重启 → 壳检测 bundled settings 缺失但 <code>removed: true</code> → <strong>不恢复</strong> ✅</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <code>Ctrl+,</code> → 打开的是新 settings ✅</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 从市场搜 &quot;settings&quot; → 下载 → 清除 <code>removed</code> 标记 → 恢复正常
+<strong>验证：</strong> 卸载 file-tree → 警告 → 消失 → 重启不自动恢复。从市场重新安装 → 进 user/ → 重启仍在。</li>
+</ul>
+</li>
+</ul>
+<h4 id="e619--内置插件独立构建文档">E6#19 🟢 内置插件独立构建文档</h4>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#19a</strong> 新建 <code>01-插件独立构建/05-内置插件迁移指南.md</code>——记录迁移步骤、原理、验证清单
+<strong>验证：</strong> 新 AI 按文档能把一个内置插件从&quot;和壳一起 build&quot;迁移到&quot;独立 pre-bundle&quot;。</li>
+</ul>
+<h4 id="e620--协议统一路径解析扫描--map-直查2026-08-30-第-13-轮审视现状重写实锤见-03-loader改造方案md-九四">E6#20 🟡 协议统一路径解析——扫描 → Map 直查（2026-08-30 第 1.3 轮审视现状重写，实锤见 <a href="01-%E6%8F%92%E4%BB%B6%E7%8B%AC%E7%AB%8B%E6%9E%84%E5%BB%BA/03-loader%E6%94%B9%E9%80%A0%E6%96%B9%E6%A1%88.html#94-20-%E7%8E%B0%E7%8A%B6%E9%87%8D%E5%86%99%E4%BE%9D%E6%8D%AE">03-loader改造方案.md §九·四</a>）</h4>
+<blockquote>
+<p>🔥 <strong>硬约束#18 + 大厅模型 规则 2。</strong> 现状（E5.7#82 已抽纯函数）：<code>electron/plugins/protocol.ts</code> 调 <code>resolveLinkdeskPath(pluginsDir, scanPluginSubdirs(pluginsDir), urlPath)</code>（<code>src/core/utils/path/linkdeskProtocolPath.ts</code>）——每次请求动态扫描子目录（builtin &gt; user &gt; 字母序），已非硬编码回退链。E6 加 <code>{userData}/plugins/</code> 后扫描面更大。<strong>改为 Map 直查</strong>（插件位置由 #9 <code>plugins:listAll</code> 一次性构建，不每次扫目录）——消位置推断，对齐硬约束#11。</p>
+</blockquote>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#20a</strong> 新建 <code>src/core/services/PluginPathResolver.ts</code>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 维护 <code>Map&lt;pluginId, resolvedPath&gt;</code>——<strong>吃 #9 <code>plugins:listAll</code> 返回值</strong>构建（含 builtin/user/bundled 全部来源）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <code>resolve(pluginId): string | null</code>——返回插件根目录路径</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 订阅 PluginInstallService 变化（安装/卸载）→ 增量更新映射</li>
+</ul>
+</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#20b</strong> <code>electron/plugins/protocol.ts</code> 改为调 <code>PluginPathResolver.resolve(pluginId)</code>——不再扫描子目录</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#20c</strong> 验证——<code>linkdesk://</code> 协议在 dev 和 production 下都能正确解析内置插件、用户安装插件、市场下载插件
+<strong>验证：</strong> <code>src/core/utils/path/linkdeskProtocolPath.ts</code> 无 <code>builtin &gt; user</code> 硬编码排序；协议命中全走 Map。</li>
+</ul>
+<hr>
+<h2 id="第-2-层插件开发工具链脚手架--预览--build--发布">第 2 层：插件开发工具链——脚手架 + 预览 + build + 发布</h2>
+<blockquote>
+<p>🔥 第 1 层 SDK 就绪后才能做——脚手架生成的模板依赖 <code>@linkdesk/plugin-sdk</code>。
+第 3 层（市场）可与本层并行。</p>
+</blockquote>
+<hr>
+<h3 id="第-21-轮create-linkdesk-plugin-脚手架">第 2.1 轮：create-linkdesk-plugin 脚手架</h3>
+<h4 id="e621--脚手架目录与-packagejson">E6#21 🔴 脚手架目录与 package.json</h4>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#21a</strong> 脚手架设计稿——<strong>吸收 <a href="02-%E6%8F%92%E4%BB%B6%E5%BC%80%E5%8F%91%E5%B7%A5%E5%85%B7%E9%93%BE/01-create-linkdesk-plugin%E8%84%9A%E6%89%8B%E6%9E%B6.html">02-插件开发工具链/01-create-linkdesk-plugin脚手架.md</a>（已是设计稿，不重复新建）</strong>；缺失处（插件作者工作流/模板结构/CLI 行为）就地补进该档案。<strong>模板 plugin.json 按 E5.8 schema 重写（第 2.1 轮审视实锤：原设计稿模板是 E5.6 schema——<code>views</code> 对象无 render / <code>viewsContainers.sidePanel</code> 无 location / <code>pluginRole</code> 应为 <code>factoryRole</code>，照原样生成的插件 E5.8 加载不了，见档案 §八）</strong> | ~80 行（2026-08-29 审计 C6）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#21b</strong> 新建 <code>packages/create-linkdesk-plugin/</code> | 结构：<pre><code>packages/create-linkdesk-plugin/
+  ├── package.json       # name: &quot;create-linkdesk-plugin&quot;, bin: &quot;./index.js&quot;
+  ├── index.js           # CLI 入口（纯 Node.js）
+  └── template/          # 模板文件
+      ├── plugin.json
+      ├── package.json
+      ├── tsconfig.json   # jsx: &quot;react-jsx&quot; + types 引 @linkdesk/plugin-sdk
+      ├── src/index.tsx
+      └── i18n/en.json
+</code></pre>
+</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#21c</strong> <code>package.json</code>——<code>&quot;bin&quot;: { &quot;create-linkdesk-plugin&quot;: &quot;./index.js&quot; }</code>
+<strong>验证：</strong> <code>node packages/create-linkdesk-plugin/index.js my-plugin</code> → 生成目录。</li>
+</ul>
+<h4 id="e622--cli-入口生成模板">E6#22 🔴 CLI 入口——生成模板</h4>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#22a</strong> <code>index.js</code>——命令行参数读取
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 插件名作为参数，未提供 → 交互式询问</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 创建目录、复制模板、替换占位符</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 输出成功信息</li>
+</ul>
+</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#22b</strong> 模板 <code>plugin.json</code>——最小可用，所有字段有注释（注释分节示范，对标 VS Code package.json）；<strong>按 E5.8 schema</strong>：<code>$schema</code>+<code>factoryRole</code>+<code>appearsIn</code>+<code>viewsContainers(location)</code>+<code>views</code> 数组含 <code>render</code>+<code>entry</code>+<code>contributes.i18n</code>（参照 <code>plugins/user/panel-demo</code>——第 2.1 轮审视 E5.6→E5.8 换代）
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>模板 <code>.vscode/settings.json</code> 补 <code>&quot;files.associations&quot;: { &quot;plugin.json&quot;: &quot;jsonc&quot; }</code>（对齐 #5 jsonc + 壳 #55，2026-08-30 立案）</strong>——作者在 VS Code 编辑带注释的 plugin.json 不标红 + <code>$schema</code> 校验照常（依赖 #5 能解析注释，模板才敢带注释）</li>
+</ul>
+</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#22c</strong> 模板 <code>src/index.tsx</code>——最小可渲染组件；<strong>契约对齐 E5.8 <code>{ isActive?, tabId?, sourceId? }</code></strong>（editor/index.tsx 实锤）+ 样式示范 CSS 变量（禁内联硬编码 padding）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#22d</strong> 模板 <code>package.json</code>——依赖 <code>@linkdesk/plugin-sdk</code>；devDependencies 补 <code>@types/react</code> + <code>typescript</code>（模板 tsx import React 需类型，第 2.1 轮审视补）
+<strong>验证：</strong> <code>npm create linkdesk-plugin hello-world</code> → 生成项目 → <code>npm install</code> → <code>npm run dev</code>。</li>
+</ul>
+<h4 id="e623--脚手架发布到-npm">E6#23 🟢 脚手架发布到 npm</h4>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#23a</strong> <code>npm publish</code>——发布 create-linkdesk-plugin（<strong>显式 <code>--registry=https://registry.npmjs.org</code>——npmmirror 不能发布，同 E6#2.5b</strong>，2026-08-29 审计 C7 补；<strong>🔥 发布前 <code>npm whoami --registry=https://registry.npmjs.org</code> 确认 fengyili——2026-08-30 实测 401，401 则先 <code>npm login</code>，同 #2.5b 前置</strong>）
+<strong>验证：</strong> 在空目录 <code>npm create linkdesk-plugin test123</code> → 生成项目。</li>
+</ul>
+<h4 id="e6235--dev-宿主重设计plugin-shell-已删e58-衔接补充">E6#23.5 🔴 dev 宿主重设计——plugin-shell 已删（E5.8 衔接补充）</h4>
+<blockquote>
+<p>📖 <strong>2026-08-16 补充。</strong> E5.7 清理已整删 plugin-shell.html / plugin-shell-main.tsx（原 E6#24/#27/#28 的 dev 宿主 + 手动 mock 载体）。第 2.2/2.3 轮 dev 命令需在极简Pool 架构（1 BrowserWindow + 1 WCV）下重设计宿主。</p>
+</blockquote>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#23.5a</strong> 设计 dev 宿主新形态——<strong>SDK 自带独立宿主页（dev-host.html + 宿主入口，SDK 发布随包）</strong>，最小壳只加载开发中的插件（第 2.2 轮审视拍板：否决 Pool 内临时 zone / 独立轻量窗口候选——dev 宿主不进壳，纯浏览器 tab + <code>/@fs/</code> 加载，极简 Pool 只约束产品壳）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#23.5b</strong> 本地插件入口经 <code>/@fs/</code> 加载 + HMR 通道</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#23.5c</strong> mock 注入位置随宿主重定（mock 内容由 E6#27 生成——E5.8 生成器第二输出目标）
+<strong>验证：</strong> 插件项目 <code>npm run dev</code> → 宿主打开 → 改代码 → 热更新。</li>
+</ul>
+<hr>
+<h3 id="第-22-轮dev--build-命令">第 2.2 轮：dev + build 命令</h3>
+<h4 id="e624--dev-命令最小壳只加载开发中的插件">E6#24 🟡 dev 命令——最小壳只加载开发中的插件</h4>
+<blockquote>
+<p>E5#110 已做初版——<code>plugin-shell.html</code> + <code>?pluginId=</code> mock。现在加强：支持本地插件项目路径。</p>
+</blockquote>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#24a</strong> <code>plugin-sdk</code> 加 <code>dev</code> CLI 命令——<code>linkdesk-plugin-sdk dev</code>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 读当前目录 <code>plugin.json</code> 获取 pluginId</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 启动 Vite dev server</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 自动打开 dev 宿主（形态见 #23.5——plugin-shell.html 已删）</li>
+</ul>
+</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#24b</strong> #23.5 宿主——<code>dev=true</code> 模式
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 本地插件入口通过 <code>/@fs/</code> 加载</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> HMR 热更新
+<strong>验证：</strong> 在插件项目目录 <code>npm run dev</code> → 浏览器打开 → 改代码 → 热更新。</li>
+</ul>
+</li>
+</ul>
+<h4 id="e625--build-命令linkdesk-plugin-sdk-build">E6#25 🟡 build 命令——<code>linkdesk-plugin-sdk build</code></h4>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#25a</strong> CLI <code>build</code> 命令
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 调 validate → E6#4 Vite build → zip → <code>.linkdesk-plugin</code></li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 输出文件大小 + &quot;Ready to publish!&quot;
+<strong>验证：</strong> <code>npm run build</code> → 产出 <code>.linkdesk-plugin</code>。</li>
+</ul>
+</li>
+</ul>
+<h4 id="e626--插件发布入口cli-主路--市场-ui-备路2026-08-30-定案见-00-第三方作者旅程md-五">E6#26 🟡 插件发布入口——CLI 主路 + 市场 UI 备路（2026-08-30 定案，见 <a href="05-%E6%96%87%E6%A1%A3%E4%B8%8E%E5%8F%91%E5%B8%83/00-%E7%AC%AC%E4%B8%89%E6%96%B9%E4%BD%9C%E8%80%85%E6%97%85%E7%A8%8B.html">00-第三方作者旅程.md</a> §五）</h4>
+<blockquote>
+<p>📖 <strong>2026-08-17 多市场源（用户拍板）：发布到作者自己的仓库</strong>——Releases + 根目录 marketplace.json，别人添加该仓库为市场源即可被发现，无需进入中心目录。设计 → <a href="03-%E6%8F%92%E4%BB%B6%E5%B8%82%E5%9C%BA/01-GitHub-Releases%E6%96%B9%E6%A1%88.html">01-GitHub-Releases方案.md §六 多市场源</a>。</p>
+</blockquote>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#26d</strong> 🔥 <strong>CLI 主路</strong>——<code>linkdesk-plugin-sdk publish</code>（作者 git bash 一键发布，同一自动链路：创建 Release + 上传 asset + 更新自己仓库 marketplace.json；第一次填一次 PAT 存配置）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#26a</strong> 插件市场 UI——&quot;发布插件&quot;按钮（<strong>备路</strong>：可选图形入口，走同一自动链路）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#26b</strong> 选择本地 <code>.linkdesk-plugin</code> → <strong>发布前预览+确认（解压读 plugin.json → 预览作者/版本/图标 → 确认）</strong> → <strong>GitHub REST API 自动发布</strong>：创建 Release + 上传 asset + 更新<strong>自己仓库的</strong> marketplace.json（CLI 与 UI 共用底座；2026-08-29 审计 C5 补；<strong>2026-08-30 第 2.2 轮审视拍板：自动链路当下做全，否决&quot;手动网页上传 v1.0&quot;deferral 方案</strong>）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#26c</strong> <strong>GitHub token 链路</strong>——市场&quot;发布插件&quot;UI 内填 GitHub Personal Access Token → 存配置（新增 <code>app.*</code> 配置项，走 audit-config-baseline 保底）→ 发布时带 token 调 GitHub API（第 2.2 轮审视补——自动化的前置，当下做完整）
+<strong>验证：</strong> 作者 <code>npm run publish</code> → 自己仓库 Release + marketplace.json 更新（CLI 主路）；打开 LinkDesk 市场 → 发布 → 文件上传成功（UI 备路）；别人添加该仓库为市场源 → 插件被发现可安装。</li>
+</ul>
+<hr>
+<h3 id="第-23-轮dev-体验与生产对齐">第 2.3 轮：Dev 体验与生产对齐</h3>
+<h4 id="e627--mock-api-从真实-preload-自动生成不做两份维护">E6#27 🔴 Mock API 从真实 preload 自动生成——不做两份维护</h4>
+<blockquote>
+<p>📖 <strong>2026-08-16 E5.8 衔接 + 2026-08-30 第 2.3 轮审视</strong>：宿主 plugin-shell-main.tsx 已删（见 #23.5）；生成脚本复用 E5.8 契约生成器——mock 与 linkdesk.d.ts <strong>同一标注源 <code>src/core/api/linkdesk-api.ts</code>（聚合器 + linkdesk-api/ 13 域接口），第二输出目标</strong>（见 #27a 改写，实锤见 <a href="http://xn--02--lq6ep4dl25bw6t9m4b6y1a.html">02-本地预览环境.md</a> §十）。
+📖 <strong>🔥 2026-08-07 E5.5 对照审计发现 + 2026-08-09 E5.6 更新。</strong> 原 [plugin-shell-main.tsx:48-171] 手动维护 ~120 行 mock <code>window.linkdesk</code>。E5.5#16-#24 + E5.6 Phase 10 API 补全后，mock 和真实 preload 的差距进一步拉大——mock 缺 ~24 个新方法（E5.5 14 + E5.6 10），但凭空多出 <code>pluginManager.install</code> 等 preload 根本没暴露的方法。
+<strong>后果：</strong> 插件作者 dev 下调 <code>window.linkdesk.workspace.openFolder()</code> → mock 无此方法 → <code>TypeError</code>。或 mock 有但生产 preload 没有 → dev 正常、用户装完炸。</p>
+</blockquote>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#27a</strong> E5.8 契约生成器加第二输出目标 mock（同一标注源 <code>linkdesk-api.ts</code>，非 preload——preload 只是消费方）
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 生成 <code>injectMockApi()</code> 内容——每个方法按返回类型决定 mock 行为（sync/async 从返回类型推断：返回 Promise = async、返回 void = fire-and-forget）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 类型驱动默认值：Promise → <code>Promise.resolve(undefined)</code>（如 <code>configuration.get</code>）、void → 空函数 <code>() =&gt; {}</code>、其余 → <code>undefined</code></li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 个性化默认值 override 表按需追加（如 <code>path.join</code> → <code>&quot;&quot;</code>）——保底 = 类型驱动，够 UI 骨架开发；不承诺逐方法手写默认值</li>
+</ul>
+</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#27b</strong> mock 在调用不存在的方法时 <strong>抛错</strong> &quot;该 API 仅在生产环境可用&quot;——不静默返回 <code>undefined</code>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 使用 Proxy 拦截未定义的方法 → <code>throw new Error(...)</code> | +10 行</li>
+</ul>
+</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#27c</strong> #23.5 新宿主（SDK 自带 dev-host）——<code>injectMockApi()</code> 改为 import 生成的 mock 文件（plugin-shell-main.tsx 已删）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#27d</strong> linkdesk-api.ts 标注源改了 → CI 跑生成脚本（<code>contracts:gen</code> 扩 mock 输出）→ mock 自动更新 | 挂进 <code>npm run check</code>（<code>contracts:check</code> 链）
+<strong>验证：</strong> <code>npm run check</code> 后 mock 与 <strong>linkdesk-api.ts 标注源</strong>方法列表一致（preload 对齐已由 <code>check-api-contracts.mjs</code> 保证）。插件作者 dev 下调 <code>linkdesk.workspace.openFolder()</code> → 抛 &quot;该 API 仅在生产环境可用&quot; 而非 <code>undefined is not a function</code>。</li>
+</ul>
+<h4 id="e628--dev-模式可选-electron弥合浏览器-vs-生产的鸿沟">E6#28 🟡 Dev 模式可选 Electron——弥合浏览器 vs 生产的鸿沟</h4>
+<blockquote>
+<p>📖 <strong>🔥 2026-08-07 E5.5 对照审计发现 + 2026-08-30 第 2.3 轮审视。</strong> E6#24 dev 命令在<strong>纯浏览器宿主页</strong>跑（SDK 自带 dev-host，端口 1421），没有 Electron、没有 IPC。<strong>范围界定（第 2.3 轮拍板）</strong>：Electron 模式 = <strong>壳侧 dev</strong>（自研/出厂插件作者 + 壳开发者）；第三方插件作者的真实 IPC 验证 = <strong>build → 装进 LinkDesk</strong>（生产真环境 = 完整路径，不 deferral）。不造「第三方独立启动壳」机制（实锤见 <a href="02-%E6%8F%92%E4%BB%B6%E5%BC%80%E5%8F%91%E5%B7%A5%E5%85%B7%E9%93%BE/02-%E6%9C%AC%E5%9C%B0%E9%A2%84%E8%A7%88%E7%8E%AF%E5%A2%83.html">02-本地预览环境.md §十</a>）。</p>
+</blockquote>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#28a</strong> <code>npm run dev:plugin</code>——保留纯浏览器模式（轻量 HMR，不改）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#28b</strong> <code>npm run dev:plugin -- --electron</code>——可选 Electron 模式（<strong>壳侧 dev</strong>）
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 启动完整 Electron → 壳 dev 模式加载开发中的插件：主进程把 cwd 插件临时并入 <code>plugins:listAll</code> 发现集（E6#9 动态加载 + PluginComponent <code>/@fs/</code> 兜底）→ 真实 preload-pool IPC（<code>?path=</code> URL 路由已废弃——极简 Pool 无 URL 路由）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 仍支持 HMR——插件代码改动 → Vite dev server 推送 → 插件热更新</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> dev 门控：壳只加载 cwd 开发中的插件（对标 E6#24 &quot;最小壳只加载开发中的插件&quot;）</li>
+</ul>
+</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#28c</strong> 文档——沉档 <a href="02-%E6%8F%92%E4%BB%B6%E5%BC%80%E5%8F%91%E5%B7%A5%E5%85%B7%E9%93%BE/02-%E6%9C%AC%E5%9C%B0%E9%A2%84%E8%A7%88%E7%8E%AF%E5%A2%83.html">02-本地预览环境.md</a> 明确两种模式的使用场景（<code>03-插件制造/11-插件开发指南.md</code> 不存在——最末为 <a href="http://xn--11--j88dr5ce8hup0n.html">11-主题制作.md</a>，实锤见 §十）
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 纯浏览器：UI/布局/组件快速迭代（10 秒启动）——<strong>第三方作者主路径</strong></li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> Electron：IPC/文件系统真实环境验证（发布前必跑）——<strong>壳侧作者 + 出厂插件作者</strong>
+<strong>验证：</strong> <code>npm run dev:plugin -- --electron</code> → Electron 窗口打开 → 只有开发中的插件 → 调 <code>linkdesk.configuration.get()</code> 走真实 IPC → 返回真实值。</li>
+</ul>
+</li>
+</ul>
+<hr>
+<h2 id="第-3-层插件市场存储--分发--安装--第一站体验">第 3 层：插件市场——存储 + 分发 + 安装 + 第一站体验</h2>
+<blockquote>
+<p>和第 2 层可并行。<strong>第一站交互设计</strong> → <a href="03-%E6%8F%92%E4%BB%B6%E5%B8%82%E5%9C%BA/03-%E5%B8%82%E5%9C%BA%E4%BA%A4%E4%BA%92%E8%AE%BE%E8%AE%A1.html">03-市场交互设计.md</a>。</p>
+</blockquote>
+<hr>
+<h3 id="第-30-轮主软件更新产品身份地基壳通用-api-先行市场-308c-前置">第 3.0 轮：主软件更新——产品身份地基（壳通用 API 先行，市场 #30.8c 前置）</h3>
+<blockquote>
+<p>📖 <strong>2026-08-30 立案（E6#57 实现系列——研究/设计 #57a/#57b 已 ✅，展望区仅留指针）。</strong> 产品身份三件套（product.json / <code>app.getVersion</code> / <code>app:getProductInfo</code> / <code>compareVersions</code>）是<strong>更新机制本体 + 市场 minAppVersion（#30.8c）+ 关于页（#57.14）三方共用</strong>的地基。<strong>通用 API 优先 + 壳先行建设不等消费方</strong>——放市场前，市场 #30.8c（第 3.2.2 轮）minAppVersion 校验消费 <code>app.getVersion</code>。本轮任务 = 可执行指针，设计细节沉档案。
+📐 设计：<a href="06-%E4%B8%BB%E8%BD%AF%E4%BB%B6%E6%9B%B4%E6%96%B0/02-%E4%BA%A7%E5%93%81%E8%BA%AB%E4%BB%BD%E4%B8%8E%E7%89%88%E6%9C%AC.html">06-主软件更新/02-产品身份与版本.md</a> + <a href="06-%E4%B8%BB%E8%BD%AF%E4%BB%B6%E6%9B%B4%E6%96%B0/07-%E6%95%B0%E6%8D%AE%E6%B5%81%E9%80%9A%E6%A0%BC%E5%BC%8F.html">06-主软件更新/07-数据流通格式.md</a> §三/§四。</p>
+</blockquote>
+<h4 id="e6571--产品身份真相源productjson--productts--compareversions">E6#57.1 🔴 产品身份真相源——product.json + product.ts + compareVersions</h4>
+<blockquote>
+<p>📖 02 §二（schema / loadProduct + ProductRuntime / 单一真相源）+ §2.5（版本比较）。<strong>版本号唯一运行时来源 = <code>app.getVersion()</code>（package.json 单点）；product.json 由发布脚本写，不手写两份。</strong></p>
+</blockquote>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#57.1a</strong> 新建 <code>electron/product.json</code>——<code>{nameLong, nameShort, version, commit, date, quality, updateUrl}</code>（02 §2.3 schema）；dev 期 version 留 <code>0.1.0</code> 占位</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#57.1b</strong> 新建 <code>electron/product.ts</code>——<code>loadProduct(): Product</code>（读 product.json，一次读取缓存）+ <code>ProductRuntime</code>（process.versions.electron/chrome/node/v8 + os 动态增强，不落盘，02 §2.2）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#57.1c</strong> 新建 <code>compareVersions(a,b)</code>（02 §2.5 零依赖算法：忽略 v 前缀 / 预发布 / 缺位补 0）——<strong>更新比对（#57.5）+ 市场 minAppVersion（#30.8c）双消费方共用</strong>，落点实现时定（两工程可共享位置）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#57.1d</strong> 单测——compareVersions 覆盖 v 前缀 / 预发布（0.2.0-beta.1）/ 缺位补 0（0.2 vs 0.2.0）/ 相等（fixture 用虚构版本，硬约束 21）
+<strong>验证：</strong> <code>npm run check</code> 全绿（新单测全过）；product.ts 加载 + runtime 增强就位（#57.3 数据源）。</li>
+</ul>
+<h4 id="e6572--appgetversion-暴露第三方契约四齐全市场-308c-前置">E6#57.2 🟡 <code>app.getVersion</code> 暴露第三方（契约四齐全——市场 #30.8c 前置）</h4>
+<blockquote>
+<p>📖 00 README §三②（2026-08-30 已拍板暴露，只读不写）+ 02 §2.3。<strong>Electron <code>app.getVersion()</code>（读 package.json version，单点）</strong>；市场 minAppVersion 校验（#30.8c，第 3.2.2 轮）消费。</p>
+</blockquote>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#57.2a</strong> 契约——contracts/linkdesk.d.ts + <code>linkdesk-api</code>（app 命名空间）加 <code>getVersion(): string</code></li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#57.2b</strong> preload 桥——preload-shell/preload-pool 暴露 <code>window.linkdesk.app.getVersion</code>（走契约四齐全）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#57.2c</strong> IpcBridgeHandler 分发——主进程 <code>app.getVersion()</code> 回传；03-插件制造文档补 app 命名空间说明</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#57.2d</strong> 验证——第三方插件 <code>window.linkdesk.app.getVersion()</code> 返回版本；audit-api-contracts 过
+<strong>验证：</strong> <code>npm run check</code> 全绿（audit-api-contracts 含新 API）；CDP 插件调 getVersion 返回正确版本。</li>
+</ul>
+<h4 id="e6573--appgetproductinfo-ipc-通道关于页-8-字段唯一来源">E6#57.3 🟡 <code>app:getProductInfo</code> IPC 通道（关于页 8 字段唯一来源）</h4>
+<blockquote>
+<p>📖 07 §一/§二（<strong>独立域，非 <code>update.*</code></strong>）+ §三（Product/ProductRuntime/ProductInfo 类型）+ §四（dev 无 product.json → commit/date 降级 <code>—</code> 不崩）。消费方 = 关于标签页（#57.14，第 5.4 轮）。</p>
+</blockquote>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#57.3a</strong> channels.ts 加 <code>app.getProductInfo: 'app:getProductInfo'</code>（独立域命名空间）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#57.3b</strong> 新建 <code>electron/ipc/handlers/product-handlers.ts</code>——<code>registerProductHandlers()</code>：handle <code>app:getProductInfo</code> → <code>loadProduct()</code> + ProductRuntime → <code>{product, runtime}</code>；永不抛（dev 降级）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#57.3c</strong> ipc-bridge.ts——PROXY_CHANNELS 加 <code>app.getProductInfo</code>（只读，壳渲染消费）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#57.3d</strong> 验证——invoke 返回 <code>{product, runtime}</code> 8 字段；删 product.json → commit/date <code>—</code> 不崩
+<strong>验证：</strong> <code>npm run check</code> 全绿；CDP invoke 返回全量字段（AboutView 消费在 #57.14，此处验 IPC 层）。</li>
+</ul>
+<hr>
+<h3 id="第-31-轮github-releases-后端">第 3.1 轮：GitHub Releases 后端</h3>
+<h4 id="e629--marketplacejson-设计">E6#29 🔴 marketplace.json 设计</h4>
+<blockquote>
+<p>📖 <strong>2026-08-30 混合模型定案（官方目录收录 + 多源并存）：</strong> 官方 marketplace.json = 出厂制造 + 已收录第三方（作者提交条目到官方仓库 → 所有用户默认可见）；不收录 = 只发自己仓库、加源可见。两路无感合一，来源标注区分。→ <a href="03-%E6%8F%92%E4%BB%B6%E5%B8%82%E5%9C%BA/01-GitHub-Releases%E6%96%B9%E6%A1%88.html">01-GitHub-Releases方案.md §6.7</a></p>
+</blockquote>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#29a</strong> 格式——插件列表 JSON，含 id/name/version/description/author/icon/downloadUrl/size/publishedAt</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#29b</strong> 存放位置——GitHub 仓库 <code>linkdesk-marketplace</code> 根目录</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#29c</strong> 格式扩展（2026-08-29 第一站数据前提——纯增量，旧插件不填不崩）→ <a href="03-%E6%8F%92%E4%BB%B6%E5%B8%82%E5%9C%BA/03-%E5%B8%82%E5%9C%BA%E4%BA%A4%E4%BA%92%E8%AE%BE%E8%AE%A1.html">03-市场交互设计.md</a> §三
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <code>versions[]</code>（版本历史 <code>{version,downloadUrl,publishedAt,changelog?}</code> 最新在前——版本下拉源）+ <code>readmeUrl</code> + <code>screenshots[]</code> + <code>license</code> + <code>categories[]</code></li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <code>icon</code> 支持 url 形态（作者自制彩色图标）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 配套：E6#4a 打包结构补 <code>README.md</code> 原样复制（已装插件详情数据源）
+<strong>验证：</strong> 壳请求 <code>https://raw.githubusercontent.com/.../marketplace.json</code> → 返回 JSON。</li>
+</ul>
+</li>
+</ul>
+<h4 id="e630--壳侧-marketplace-插件改造读-marketplacejson多源">E6#30 🟡 壳侧 marketplace 插件改造——读 marketplace.json（多源）</h4>
+<blockquote>
+<p>📖 <strong>2026-08-17 用户拍板：单中心目录 → 多市场源。</strong> 第三方作者发布到自己的仓库，用户/AI 添加任意 GitHub 仓库为市场源即可发现安装——对标 VS Code 多 marketplace / npm 多 registry。设计 → <a href="03-%E6%8F%92%E4%BB%B6%E5%B8%82%E5%9C%BA/01-GitHub-Releases%E6%96%B9%E6%A1%88.html">01-GitHub-Releases方案.md §六 多市场源</a>。</p>
+</blockquote>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#30a</strong> marketplace 插件启动时 fetch <code>marketplace.json</code>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 从 GitHub raw URL 拉取</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 缓存到本地——5 分钟过期</li>
+</ul>
+</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#30b</strong> 交叉比对 <code>pluginManager.list()</code> 结果（E5.8 无 installed-plugins.json——第 3.1 轮实锤）
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> catalog pluginId ∈ list() 集合 → &quot;已安装&quot;；catalog version &gt; list().manifest.version → &quot;更新&quot;</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 不在 list() → &quot;安装&quot;</li>
+</ul>
+</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#30c</strong> 多市场源（2026-08-17 用户拍板）
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 源列表配置化——<code>marketplace.marketplaceSources</code>：<code>{ id, url, default? }</code>（默认源 = encaron/linkdesk-marketplace）——<strong>归 marketplace 插件命名空间配置</strong>（plugin.json contributes.configuration 声明，壳零改动，第 3.1 轮定死）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 设置里「添加市场源」——填 GitHub 仓库 URL → 校验根目录存在 marketplace.json → 加入源列表</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>UI 定案（2026-08-30 拍板）</strong>——设置页「市场源」= <strong>行内直添</strong> StringListEditor（官方源「内置」徽标+锁不可删 / 作者源行可删 / 底部 URL 输入+按钮）；市场页侧栏「市场源」按钮 = 快捷入口弹窗（marketplace 插件自绘 = 壳 OverlayPortal+Button+输入框拼）；两处写同一 marketplaceSources 数组（入口可多处，数据源唯一）；<strong>新建壳共享 StringListEditor（数组编辑器），ObjectEditor 与 files.exclude 一字不动</strong>（数据流同 files.exclude 一条轨道）→ <a href="03-%E6%8F%92%E4%BB%B6%E5%B8%82%E5%9C%BA/mockups/03-%E6%B7%BB%E5%8A%A0%E5%B8%82%E5%9C%BA%E6%BA%90-mockup.html">03-添加市场源-mockup.html</a></li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 启动 fetch 全部源 → 合并去重（同 id 取 semver 高者）→ 统一展示</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 单源失败 → 跳过不阻塞其他源，用该源缓存兜底</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 来源标注——商店卡片/列表显示来源仓库名（用户知道装的是谁的）</li>
+</ul>
+</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#30d</strong> 探索插件视图——「待安装」改名「探索插件」+ 目录驱动（点1）→ <a href="03-%E6%8F%92%E4%BB%B6%E5%B8%82%E5%9C%BA/03-%E5%B8%82%E5%9C%BA%E4%BA%A4%E4%BA%92%E8%AE%BE%E8%AE%A1.html">03-市场交互设计.md</a> §一
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <code>UninstalledListView</code> 数据源从 <code>getUninstalledPluginInfo()</code>（E5.8 卸载缓存，非 getUninstalled）改为 market catalog，未装条目绿色「安装」按钮（安装动作 = E6#31 下载安装链路）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> i18n 标题 + badge 语义同步（改名归本任务；顺序对齐归 #32a M8——第 3.1 轮理顺）</li>
+</ul>
+</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#30e</strong> 目录图标接线（点5）→ §六
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> PluginIcon 支持显式 icon descriptor 入参（不走 viewRegistry——未装无 registry 条目）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 探索行/详情页图标 = catalog icon（url 直接 <code>&lt;img&gt;</code>）；作者改图标 → 重新 fetch（5min 缓存）即新</li>
+</ul>
+</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#30f</strong> 目录防御（缝隙 G12/G8——01 档 §四）→ <a href="03-%E6%8F%92%E4%BB%B6%E5%B8%82%E5%9C%BA/01-GitHub-Releases%E6%96%B9%E6%A1%88.html">01 §四</a>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> catalog parse 失败 → 用缓存；无缓存 → 空态「目录损坏」+ [重试]</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 全源不可达 + 无缓存（首次离线）→ 探索组空态「无法加载市场，请联网重试」+ [重试]</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 语言切换 UI 即时刷新 = react-i18next 自动（零订阅——E5.8 无语言变更事件，第 3.1 轮实锤；F3）
+<strong>验证：</strong> 市场列表显示正确安装状态；添加第二源 → 两源插件合并展示；删源 → 只剩默认源；断网无缓存 → 空态可重试；坏 catalog → 用缓存不崩。</li>
+</ul>
+</li>
+</ul>
+<hr>
+<h3 id="第-32-轮详情页体验第一站核心">第 3.2 轮：详情页体验（第一站核心）</h3>
+<blockquote>
+<p>交互设计 → <a href="03-%E6%8F%92%E4%BB%B6%E5%B8%82%E5%9C%BA/03-%E5%B8%82%E5%9C%BA%E4%BA%A4%E4%BA%92%E8%AE%BE%E8%AE%A1.html">03-市场交互设计.md</a> 总览 + <a href="03-%E6%8F%92%E4%BB%B6%E5%B8%82%E5%9C%BA/04-%E8%AF%A6%E6%83%85%E9%A1%B5%E8%AE%BE%E8%AE%A1.html">04-详情页设计.md</a>（详情页）/ <a href="03-%E6%8F%92%E4%BB%B6%E5%B8%82%E5%9C%BA/05-%E6%9B%B4%E6%96%B0%E4%B8%8E%E7%89%88%E6%9C%AC.html">05-更新与版本.md</a>（更新）/ <a href="03-%E6%8F%92%E4%BB%B6%E5%B8%82%E5%9C%BA/07-%E6%A0%87%E7%AD%BE%E9%A1%B5%E6%A0%87%E9%A2%98.html">07-标签页标题.md</a>（标签）/ <a href="03-%E6%8F%92%E4%BB%B6%E5%B8%82%E5%9C%BA/08-%E4%BF%A1%E4%BB%BB%E4%B8%8E%E5%AE%89%E5%85%A8.html">08-信任与安全.md</a>（信任）/ <a href="03-%E6%8F%92%E4%BB%B6%E5%B8%82%E5%9C%BA/09-%E5%AE%89%E8%A3%85%E7%BB%86%E8%8A%82.html">09-安装细节.md</a>（安装细节）/ <a href="03-%E6%8F%92%E4%BB%B6%E5%B8%82%E5%9C%BA/11-API%E4%B8%8E%E5%8F%8D%E9%A6%88.html">11-API与反馈.md</a>（API 契约 + 反馈闭环）/ <a href="03-%E6%8F%92%E4%BB%B6%E5%B8%82%E5%9C%BA/12-%E6%8F%92%E4%BB%B6%E7%9B%AE%E5%BD%95%E4%B8%8EUI%E7%BB%86%E8%8A%82.html">12-插件目录与UI细节.md</a>（目录树 + UI 交互 + 变量化）。
+🔧 <strong>详情页渲染载体 = 市场插件主区详情视图</strong>——两系列前置先行：<strong>系列一·市场搬迁</strong>（<a href="#">第 3.2.0 轮</a> E6#30.10 机制 / E6#30.11 迁移）→ <strong>系列二·UI 组件</strong>（<a href="#">第 3.2.1 轮</a> E6#30.12 token / E6#30.14 Button+Badge）→ <strong>E6#30.13 联合验收</strong>。壳 PluginDetailPoolView 降级保底宿主。内容任务（E6#30.5-#30.9）统一落在搬迁后的市场插件 DetailView 上做（2026-08-29 用户定方向「换市场=换样式」）。</p>
+</blockquote>
+<hr>
+<h3 id="第-320-轮市场搬迁详情页渲染面归市场插件系列一前置">第 3.2.0 轮：市场搬迁——详情页渲染面归市场插件（系列一·前置）</h3>
+<blockquote>
+<p>📖 <strong>2026-08-29 用户定方向「换市场插件 = 换全新样式」。</strong> 壳 = 宿主面 + 基础件 + 数据；市场插件 = 业务组合 + 皮肤。当前唯一违背 = 详情页五层全在壳（git 时间线实锤：E3.6 只搬侧栏，详情页归属悬置四代）。设计 → <a href="03-%E6%8F%92%E4%BB%B6%E5%B8%82%E5%9C%BA/10-%E5%B8%82%E5%9C%BAUI%E6%8B%A5%E6%9C%89%E6%9D%83.html">10-市场UI拥有权.md</a>。
+🔗 <strong>两个任务系列（2026-08-29 用户指出）</strong>：本轮 = <strong>系列一·市场搬迁</strong>（结构性——UI 住哪）；下一轮 <a href="#">3.2.1</a> = <strong>系列二·UI 组件</strong>（组件化——UI 用什么）。<strong>系列一是系列二的前置</strong>——谁画 UI 由「UI 住哪」决定，搬迁先到位，组件消费才落对 owner（先做组件消费在壳 → 搬迁后重做 = 双份工）。
+📐 <strong>搬迁操作细则</strong>（搬什么/怎么搬/动哪些代码/归一化·死代码·硬编码·AI 友好四问）→ <a href="03-%E6%8F%92%E4%BB%B6%E5%B8%82%E5%9C%BA/10-%E5%B8%82%E5%9C%BAUI%E6%8B%A5%E6%9C%89%E6%9D%83.html">10-市场UI拥有权.md</a> §六·五。本轮任务条目 = 可执行指针，细节沉档案。</p>
+</blockquote>
+<h4 id="e63010--详情页渲染面贡献机制contributesviews-主区-location--tab-解析路由">E6#30.10 🔴 详情页渲染面贡献机制——contributes.views 主区 location + tab 解析路由</h4>
+<blockquote>
+<p>📖 设计前置（8 维度）+ 机制图 + 多 id 可扩展 → <a href="03-%E6%8F%92%E4%BB%B6%E5%B8%82%E5%9C%BA/10-%E5%B8%82%E5%9C%BAUI%E6%8B%A5%E6%9C%89%E6%9D%83.html">10-市场UI拥有权.md §三</a>。<strong>零新 API</strong>（props 传参 = 契约扩展记录，30.10c 审计闭环；无新配置）。</p>
+</blockquote>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#30.10a</strong> schema——<code>contributes.views</code> 支持主区 location（&quot;main&quot;）：plugin.schema.json + 03-插件制造 contributes 文档（审计-contributes 三件套）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#30.10b</strong> 壳 tab 解析路由——ShellViewRenderer 渲染 &quot;plugin-detail&quot;：<code>getActive(&quot;marketplace&quot;)</code> → 主区视图含 id=&quot;plugin-detail&quot; → 动态 import；缺 → PluginDetailPoolView 保底（动哪些代码 → §六·五）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#30.10c</strong> 零新 API 审计——props 契约扩展记录：详情视图接收 <code>{ pluginId, marketEntry, pinned }</code>（超出 E5.8 视图契约，props 传参非 API——显式记录；有缺 → 按契约四齐全补）
+<strong>验证：</strong> 内置市场插件声明详情贡献 → 详情页走插件渲染；删贡献 → 壳保底不崩。</li>
+</ul>
+<h4 id="e63011--内置市场插件提供详情渲染面详情页-ui-归市场插件搬迁操作">E6#30.11 🟡 内置市场插件提供详情渲染面——详情页 UI 归市场插件（搬迁操作）</h4>
+<blockquote>
+<p>📖 搬什么/怎么搬/终态目录树/四问核查 → <a href="03-%E6%8F%92%E4%BB%B6%E5%B8%82%E5%9C%BA/10-%E5%B8%82%E5%9C%BAUI%E6%8B%A5%E6%9C%89%E6%9D%83.html">10-市场UI拥有权.md §六·五</a>（文件级执行手册）+ <a href="03-%E6%8F%92%E4%BB%B6%E5%B8%82%E5%9C%BA/12-%E6%8F%92%E4%BB%B6%E7%9B%AE%E5%BD%95%E4%B8%8EUI%E7%BB%86%E8%8A%82.html">12-插件目录与UI细节.md §一</a>。<strong>UI 目标 = E6#30.5/#30.6</strong>（README/画廊/侧栏扩展在搬迁后视图上续做）。</p>
+</blockquote>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#30.11a</strong> DetailView 布局迁入——现壳详情页结构复制进插件视图，<code>@src/core</code> 依赖逐处换 <code>window.linkdesk.*</code>（对照 plugin-import-exceptions 例外表）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#30.11b</strong> CSS 迁入——<code>PluginDetailView.css</code> → <code>MarketplaceDetail.css</code>（本地类前缀 + token 化，mockup 死色消除）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#30.11c</strong> 数据源切换——list()（已装）→ marketEntry（catalog，未装可显示）+ list() 实时状态合并；<code>tabs.create</code> 传 marketEntry 完整条目</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#30.11d</strong> 动作走 linkdesk.*——enable/disable/uninstall 调 <code>window.linkdesk.pluginManager.*</code> / 复用 market 命令，三态 action bar 基础落插件视图（消费 E6#30.5b/c 目标）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#30.11e</strong> 壳 PluginDetailPoolView → 保底宿主（无详情贡献时兜底，注释「保底宿主」，现状已装管理面不崩）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#30.11f</strong> 清理 + 验证——壳侧零残留死代码 grep + <code>npm run check</code> 全绿 + 实机未装/已装/禁用三态
+<strong>验证：</strong> 详情页从市场插件渲染；未装显示 catalog 信息；三态 action 正常；删市场插件 → 壳保底不崩。README/截图 = E6#30.6 续做。</li>
+</ul>
+<hr>
+<h3 id="第-321-轮ui-组件壳基础件就位--市场插件消费系列二依赖搬迁">第 3.2.1 轮：UI 组件——壳基础件就位 + 市场插件消费（系列二·依赖搬迁）</h3>
+<blockquote>
+<p>🔗 <strong>依赖：系列一（E6#30.10/#30.11 搬迁）为前置</strong>（用户 2026-08-29 定：两任务系列，搬迁必为前置）。壳侧基础件（<code>--success</code> / Button variant / Badge）本身可并行就位，但<strong>消费</strong>必须等搬迁落定——谁画 UI 由「UI 住哪」决定，消费落对 owner 才不做双份工。
+📐 按钮/胶囊/弹窗归属细则 → <a href="03-%E6%8F%92%E4%BB%B6%E5%B8%82%E5%9C%BA/10-%E5%B8%82%E5%9C%BAUI%E6%8B%A5%E6%9C%89%E6%9D%83.html">10-市场UI拥有权.md</a> §四。实机缺口已坐实：壳 Button 无 variant 体系（仅 ghost 轨 = SegmentedRadio 注释）、无 Badge/Capsule 基础件（市场用自家 ms-item-badge CSS）。</p>
+</blockquote>
+<h4 id="e63012--壳补---success-语义-token安装绿主题语义化">E6#30.12 🟢 壳补 <code>--success</code> 语义 token——安装绿主题语义化</h4>
+<blockquote>
+<p>📖 实机缺口：壳有 --error/--warning/--danger/--warning-text，grep 不到 --success——安装绿无对应 token。<strong>语义色进主题配色域</strong>（主题 colorway.colors 可覆盖——mergeDomains/commitTokens 已透传任意键，零新引擎机制），index.css 只留暗/亮兜底；市场插件代码不写死绿（10 档 §四·一）。审视实锤 → <a href="03-%E6%8F%92%E4%BB%B6%E5%B8%82%E5%9C%BA/10-%E5%B8%82%E5%9C%BAUI%E6%8B%A5%E6%9C%89%E6%9D%83.html">10-市场UI拥有权.md §四·一</a>。</p>
+</blockquote>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#30.12a</strong> 语义色 5 枚进主题配色域（error/warning/danger/warning-text/success，主题 colorway.colors 可覆盖任意组合）+ index.css 兜底补 <code>--success</code> 暗/亮两套 + <strong>顺带补 light 下缺失的 <code>--error</code>/<code>--warning</code> 亮色值</strong>（现亮兜底只覆写 warning-text/bg/danger，亮主题下 error 用暗红、warning 用暗金——未对齐）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#30.12b</strong> 内置市场插件侧栏安装按钮 <code>ms-item-install-btn</code> 从 <code>var(--accent)</code> 改 <code>var(--success)</code>（对齐 mockup 02 安装绿 --ok-green）；详情页按钮 = 30.14 走 Button variant（不重复改）
+<strong>验证：</strong> 侧栏安装按钮走 var(--success)；换主题 → 语义色随整套换；亮主题下 error/warning 色值正确。</li>
+</ul>
+<h4 id="e63014--壳-button-variant-体系--badgecapsule-基础件市场按钮胶囊组件化">E6#30.14 🟡 壳 Button variant 体系 + Badge/Capsule 基础件——市场按钮/胶囊组件化</h4>
+<blockquote>
+<p>📖 设计前置（8 维度）+ 归属定案 → <a href="03-%E6%8F%92%E4%BB%B6%E5%B8%82%E5%9C%BA/10-%E5%B8%82%E5%9C%BAUI%E6%8B%A5%E6%9C%89%E6%9D%83.html">10-市场UI拥有权.md §四·一/§四·二</a>（variant 枚举 success/danger/ghost 缺省=现状 + 语义 token 消费 / Badge 归属——壳只给基础件，业务数据自 catalog）。<strong>零新 API</strong>（组件 = 壳共享 <code>@src/components/shared</code>，插件经例外表消费）+ <strong>无新配置</strong>（variant = props 非配置项）；<strong>归一化：variant = 组件级单一枚举，市场只声明 variant 不碰色值（不选「全部透明」——丢主操作可发现性）</strong>。UI 实现走设计 skill（硬约束 16）。</p>
+</blockquote>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#30.14a</strong> Button variant 体系——<code>Button.tsx</code> 加 <code>variant</code> prop（success/danger/ghost，缺省=现状）+ 语义 token 消费 + 测试（fixture 用虚构名，硬约束 21）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#30.14b</strong> Badge/Capsule 基础件——新建共享 Badge（圆角/内边距/文字走 <code>var(--radius-*)</code>/<code>var(--space-*)</code>/<code>var(--text-*)</code>，色走既有 <code>--badge-background</code>/<code>--badge-text</code>——index.css 93-96 已存在，复用非新建），marketplace 胶囊改走 Badge（数据仍自 catalog）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#30.14c</strong> 市场消费——详情视图按钮走 Button variant（安装=success / 卸载=danger / 禁用=ghost），壳共享组件经例外表消费（plugin-import-exceptions 补记录）
+<strong>验证：</strong> 安装=绿 success / 卸载=danger / 禁用=ghost；胶囊 = 壳 Badge 渲染；换主题形状随变。</li>
+</ul>
+<h4 id="e63013--换市场插件验收契约两系列联合验收实机换样式--数据继承">E6#30.13 🟢 换市场插件验收契约——两系列联合验收（实机换样式 + 数据继承）</h4>
+<blockquote>
+<p>📖 <strong>联合验收（依赖系列一 + 系列二全就位）</strong>：第三方市场插件声明 <code>factoryRole:&quot;marketplace&quot;</code> + 主区详情贡献 → 实机验证「换市场=换样式 + 继承旧的」——已装标记/来源配置/下载数缓存不丢（数据继承契约 = <a href="03-%E6%8F%92%E4%BB%B6%E5%B8%82%E5%9C%BA/10-%E5%B8%82%E5%9C%BAUI%E6%8B%A5%E6%9C%89%E6%9D%83.html">10-市场UI拥有权.md</a> §五）。fixture 用虚构 id（demo-marketplace，硬约束 21），对标 settings-demo 先例。</p>
+</blockquote>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#30.13a</strong> 造一个第三方市场插件 fixture（虚构 id demo-marketplace，声明 factoryRole + 主区详情贡献 + 不同样式/按钮 variant 组合）→ 实机切换验收（侧栏 + 详情全换新样式）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#30.13b</strong> 数据继承核对——切换后已装标记/禁用列表/来源配置/下载数缓存仍一致（数据走壳 API 验证）
+<strong>验证：</strong> 切市场插件 → 侧栏+详情全新样式；已装/禁用/来源数据原样继承；回切内置市场 → 同样成立。</li>
+</ul>
+<hr>
+<h3 id="第-322-轮详情页内容三态富展示标签信任安装细节搬迁后的插件视图上做">第 3.2.2 轮：详情页内容——三态/富展示/标签/信任/安装细节（搬迁后的插件视图上做）</h3>
+<blockquote>
+<p>🔗 <strong>依赖：两系列前置已就位</strong>（系列一搬迁 E6#30.10/#30.11 + 系列二组件 E6#30.12/#30.14）+ <strong>E6#31 下载安装机制（先于本轮执行——底部依赖段 A3 审计：三态按钮/下载进度吃它，2026-08-30 第 3.2.2 轮审视补）</strong>。以下原 3.2 轮内容任务，统一落在市场插件 <code>DetailView.tsx</code> 上做——数据走 marketEntry + <code>linkdesk.*</code>，UI 走壳基础件 + 语义 token。
+🧭 <strong>制作顺序逻辑：</strong> 谁画 UI 先定（系列一·搬迁）→ 用什么画后定（系列二·组件）→ 画什么最后做（本段·内容）。每步消费方已就位，无回头路、无双份工。</p>
+</blockquote>
+<h4 id="e6305--详情页目录数据源--三态-action-bar点23">E6#30.5 🔴 详情页目录数据源 + 三态 action bar（点2/3）</h4>
+<blockquote>
+<p>📖 详情页现读 <code>pluginManager.list()</code>（仅已装）→ 未装 = 空态。改为：市场视图开详情传 catalog 条目（marketEntry tab 参数），详情页合并目录信息 + 实时安装状态。壳侧零新 API。设计 → <a href="03-%E6%8F%92%E4%BB%B6%E5%B8%82%E5%9C%BA/04-%E8%AF%A6%E6%83%85%E9%A1%B5%E8%AE%BE%E8%AE%A1.html">04-详情页设计.md</a> §二。</p>
+</blockquote>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#30.5a</strong> 目录/状态合并展示——marketEntry（catalog 信息）+ <code>pluginManager.list()</code>（实时状态）合并（tabs.create 传 marketEntry 已由 30.11c 就位），未装不再空态；<strong>本地插件（无 marketEntry）显示本地 plugin.json 信息 + 市场数据区隐藏</strong>（A2，04 档 §二）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#30.5b</strong> 三态 action bar——未装→🟢安装（带进度）/ 已装→禁用+卸载 / 禁用→启用+卸载；marketEntry 缺失兜底走现有 installed 逻辑；<strong>内置插件（core:true）卸载灰 + tooltip「内置插件不可卸载」</strong>（C3，04 档 §二）；<strong>卸载二次确认走 <code>window.linkdesk.ui.confirm</code>（M7，mockup 帧 4 备注「复用现有 confirm」，DialogService 现成）</strong>；侧栏该行「已安装」徽标（M4 一）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#30.5c</strong> lifecycle 订阅自动切换——安装完成自动变「禁用/卸载」，卸载完成变「安装」</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#30.5d</strong> catalog 字段渲染 sanitize——插件名/描述/分类走纯文本转义（E1，04 档 §三，与 README 同机制）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#30.5e</strong> 挂起·缺依赖拦截态（缝隙 M1，mockup 帧 7 三通道）——依赖缺失（dependencies.ts pendingReason）→ action bar 显示「🚫 安装不可用（缺依赖）」（非禁用/卸载，<strong>不拦不装</strong>）+ 主区「依赖未满足」块列出缺失依赖 + 依赖行缺失标黄 ✕ 点击跳其详情页；侧栏「等待依赖」徽标已由 E5.8#15.5 实现（不重复）；缺依赖 toast [查看依赖] 消费 E6#13.5（09 §五）
+<strong>验证：</strong> 未装插件详情页看目录信息 + 绿色安装 → 进度 → 完成自动切「禁用/卸载」；内置插件卸载灰 + 提示；本地插件详情无市场数据区不崩；缺依赖插件详情显示拦截态 + 点缺失依赖跳详情。</li>
+</ul>
+<h4 id="e6306--详情页富展示readme-markdown--截图画廊点6">E6#30.6 🟡 详情页富展示——README markdown + 截图画廊（点6）</h4>
+<blockquote>
+<p>📖 VS Code 对标：详情 = 渲染插件包内 <a href="http://README.html">README.md</a>（就是 md 文档）。已装读包内 README / 未装 fetch <code>readmeUrl</code>；markdown 渲染 = 壳共享 MarkdownView（E6#54 分发，@linkdesk/ui 可复用）。设计 → <a href="03-%E6%8F%92%E4%BB%B6%E5%B8%82%E5%9C%BA/04-%E8%AF%A6%E6%83%85%E9%A1%B5%E8%AE%BE%E8%AE%A1.html">04-详情页设计.md</a> §三。</p>
+</blockquote>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#30.6a</strong> 壳共享 MarkdownView 组件——<strong>渲染库定案：react-markdown + remark-gfm + DOMPurify sanitize（对标 VS Code marked 系；package.json 零依赖已坐实，当下定型非「开工拍板」）</strong>，打包分发走 E6#54 @linkdesk/ui</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#30.6b</strong> <code>pd-readme</code> 升级 MarkdownView——已装读包内 README / 未装 fetch readmeUrl / 无 → 降级 description；<strong>已装读包通道定案（K2）</strong>：包内 <a href="http://README.html">README.md</a> 经 <code>workspace.readTextFile</code>（已装插件目录路径——plugins 面 listDirs/readManifest 可派生），<strong>复用既有 API，零新 API</strong></li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#30.6c1</strong> 截图画廊（<code>screenshots[]</code> 横向滚动）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#30.6c2</strong> 元数据侧栏 + 侧栏追加（2026-08-29 对标 VS Code 拍板）：大小 = catalog <code>size</code>（已装另显安装目录）；仓库/问题 = 来源 URL 派生（<code>/issues</code> 约定，零新字段零服务器，来源目录保留）；首次发布 = <code>versions[最后].publishedAt</code>；更新时间 = <code>versions[0].publishedAt</code>（最近发布）；分类/许可证/发布时间一并；评分/评论/趋势/Star 不做（无服务器不伪造，04 §三）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#30.6c3</strong> 依赖/被依赖行（M5，mockup 帧 1/7——requires 数据在 dependencies.ts，缺失标黄 ✕ 点击跳详情）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#30.6d</strong> 功能 tab 渲染面（M2，mockup 帧 9）——contributes 四组自动列出（commands/configuration/keybindings/menus，数据 = <code>list().manifest.contributes</code> 现成，壳零新 API）；点击命令复制命令 ID、点击配置项跳设置页（04 §三）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#30.6e</strong> 更改日志 tab 渲染面（M3，mockup 帧 10）——版本倒序最新在前 + 「已安装/最新」徽标；数据源分装态：未装 = catalog <code>versions[].changelog</code>，已装 = 包内 <a href="http://CHANGELOG.html">CHANGELOG.md</a>（E6#4a 打包补）；有更新时合并并排两版 = E6#33b（不重复）
+<strong>验证：</strong> 详情页显示 README markdown（代码块/图片正常）+ 截图；无 README 插件不崩；功能 tab 列 contributes；更改日志 tab 显示版本历史；元数据侧栏含依赖/被依赖。</li>
+</ul>
+<h4 id="e6307--标签页标题修复市场图标--插件名点7">E6#30.7 🟢 标签页标题修复——市场图标 + 插件名（点7）</h4>
+<blockquote>
+<p>📖 根因已定位：<code>getDefaultLabel</code>（tabIdentity.ts:280）只读 <code>detailPluginId</code>，调用方全传 <code>pluginId</code> → 全部兜底「插件详情」。设计 → <a href="03-%E6%8F%92%E4%BB%B6%E5%B8%82%E5%9C%BA/07-%E6%A0%87%E7%AD%BE%E9%A1%B5%E6%A0%87%E9%A2%98.html">07-标签页标题.md</a>。</p>
+</blockquote>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#30.7a</strong> <code>getDefaultLabel</code> pluginId 兜底——<code>opts?.detailPluginId ?? opts?.pluginId</code>（对齐 :187/:255）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#30.7b</strong> 标签形态——市场视图开详情传自己图标（tabs.create <code>icon</code> → Tab.icon）+ 标签文本 = 插件名（不带「介绍」后缀）
+<strong>验证：</strong> 点任何插件 → 标签 [市场图标] + 插件名，不再是「插件详情」。</li>
+</ul>
+<h4 id="e6308--信任与安全第一站敢不敢装安装确认--下载数">E6#30.8 🟡 信任与安全——第一站敢不敢装（安装确认 + 下载数）</h4>
+<blockquote>
+<p>📖 多源市场 = 谁都能发布，第一站必须回答「凭什么信」。来源标注（列表/详情仓库名）+ 许可证已由 E6#30c + E6#30.6c 覆盖；本任务补<strong>安装确认</strong> + <strong>下载数</strong>。设计 → <a href="03-%E6%8F%92%E4%BB%B6%E5%B8%82%E5%9C%BA/08-%E4%BF%A1%E4%BB%BB%E4%B8%8E%E5%AE%89%E5%85%A8.html">08-信任与安全.md</a>。</p>
+</blockquote>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#30.8a</strong> 安装确认——点🟢安装先弹轻量确认（来源仓库 + 一句话描述 + 许可证 + 版本）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#30.8b</strong> 下载数——GitHub Releases API <code>download_count</code>（启动拉 + 缓存；Gitee/无 API 源不显示不伪造）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#30.8c</strong> minAppVersion 校验（缝隙 G1 🔴——字段设计了零消费）——<strong>前置：新增通用壳版本 API <code>app.getVersion()</code></strong>（E5.8 全仓零 getVersion/appVersion，设置「关于」也拿不到——无完成路径；新 API 走设计 8 维度 + 契约四齐全，沉 08 §审视实锤）；装/更新前 semver 比对 <code>marketEntry.minAppVersion</code> vs 壳版本，不足 → 拒绝 + error toast「需升级 LinkDesk 至 x.x.x」+ 详情元数据「需 LinkDesk x.x.x」；已装插件版本高于本地壳不崩（08 §五）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#30.8d</strong> 恶意 id 抢占（缝隙 G11/A3）——同 id 多源冲突维持「取版本高者」；来源标注做显眼（详情页完整仓库 URL 可点 + 列表卡片来源名可见），安装确认含来源仓库（08 §六）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#30.8e</strong> 更新后权限变化（缝隙 E3）——插件更新新增权限 → 重新走审批（E6#49），<strong>不清已有 remember 授权，只补新授权询问</strong>（08 §七）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#30.8f</strong> 「官方发布」徽标（缝隙 G1，2026-08-29 定稿——mockup 全帧 header + 确认弹窗发布者行 + 侧栏「内置·官方」）——判定 = <strong>来源是默认源（<a href="http://source.id">source.id</a> === 'official'）派生</strong>（08 §八），零新 catalog 字段；侧栏「内置」= core:true 已有；第三方源无官方徽标
+<strong>验证：</strong> 详情页显示来源/下载数/许可证；点安装先确认；无下载数的源不崩；旧版壳装新插件提示需升级；同 id 假插件来源可见可点；官方源条目带「官方发布」、第三方源不带。</li>
+</ul>
+<h4 id="e6309--安装细节体验绿色按钮背后进度失败多窗一致">E6#30.9 🟡 安装细节体验——绿色按钮背后（进度/失败/多窗一致）</h4>
+<blockquote>
+<p>📖 安装不只在成功时是按钮——进度、失败、断网、多窗一致都是第一站体验。设计 → <a href="03-%E6%8F%92%E4%BB%B6%E5%B8%82%E5%9C%BA/09-%E5%AE%89%E8%A3%85%E7%BB%86%E8%8A%82.html">09-安装细节.md</a>（粗粒度）+ <a href="03-%E6%8F%92%E4%BB%B6%E5%B8%82%E5%9C%BA/11-API%E4%B8%8E%E5%8F%8D%E9%A6%88.html">11-API与反馈.md</a>（<strong>反馈提示映射表——情况→API→toast 文案全量</strong>，§三；进度/失败/断网/缺依赖 toast 文案 + i18n key 逐条定稿）。</p>
+</blockquote>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#30.9a</strong> 下载进度——详情页安装按钮内进度（依赖 E6#13 进度事件 + E6#31 下载）；<strong>安装中版本下拉 + 自动更新勾选置灰</strong>（M6，mockup 帧 2）；<strong>侧栏该行「安装中 62%」瞬时徽标</strong>（M4 二，09 §一）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#30.9b</strong> 失败态全览（缝隙 G2/B2/D1/D2/D3）——七种失败逐一归因 + toast 文案（网络/超时→网络、checksum 不符→校验、size 异常→大小、磁盘不足→环境、包损坏、未知）+ [重试]（消费 E6#13.5 actions）；<strong>重试=手动触发无自动风暴</strong>；断网/超时统一归「网络」；checksum 旧条目无字段跳过（09 §二 失败表）；<strong>侧栏该行「安装失败」+ 重试按钮</strong>（M4 三）；<strong>断网离线态</strong>（G3）——<code>navigator.onLine === false</code> 归「离线」非「失败」：按钮置灰 + 提示「联网后重试」，无 [重试]（09 §二）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#30.9c</strong> 多窗口即时一致——安装/卸载/更新后所有窗口侧栏/详情同步（E5.8 跨窗事件联动现成，零新 API，验收项）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#30.9d</strong> 覆盖安装（缝隙 G3）——已装同版本/再装 → 确认或提示，不静默覆盖（11 §三·五 定案）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#30.9e</strong> 卸载使用中 + 挂起中（缝隙 G4/B4）——有标签页卸载/禁用 → <strong>静默关标签页 + 执行 + toast 照常（不弹窗，用户拍板）</strong>；依赖缺失挂起的插件可卸载，连带清依赖引用无孤儿残留（09 §三·五）
+<strong>验证：</strong> 安装 → 按钮进度 → 完成 toast + 状态切「禁用/卸载」；断网 → 明确失败态可重试不风暴；多窗口同步；卸载在用插件标签页静默关闭；挂起插件卸载无残留。</li>
+</ul>
+<hr>
+<h3 id="第-33-轮下载与安装-ui">第 3.3 轮：下载与安装 UI</h3>
+<h4 id="e631--壳侧下载与安装">E6#31 🔴 壳侧下载与安装</h4>
+<blockquote>
+<p>📐 <strong>市场消费侧 API 契约</strong>（installWithProgress 回调形状 + 进度通道 plugins:install-progress）→ <a href="03-%E6%8F%92%E4%BB%B6%E5%B8%82%E5%9C%BA/11-API%E4%B8%8E%E5%8F%8D%E9%A6%88.html">11-API与反馈.md</a> §一·一；进度/失败 toast 文案 → §三 映射表。</p>
+</blockquote>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#31a</strong> 壳侧下载服务——<strong><code>.part</code> 临时文件生命周期</strong>（写 <code>{userData}/tmp/*.part</code> 半截标记 → 完成 rename 正式包 + 启动扫描清理残留，缝隙 B1「下载中关软件」不留垃圾，01 §四·五落地）——<strong>#13a <code>plugins:download</code> 下载 handler 引用本服务，不重写 fetch/进度</strong></li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#31b</strong> 安装接线（端到端验收）——市场点「安装」→ <code>pluginManager.installWithProgress(url)</code>（#13e）→ 进度通道（#13d install-progress）→ 按钮进度条（09 §一 M6 置灰 + M4 二 侧栏徽标）→ 装完图标栏新图标；<code>.part</code> rename 完成后触发安装（#11a 流程，解压落 <code>{userData}/plugins/user/&lt;pluginId&gt;/</code>——市场下载只放 user/，<a href="01-%E6%8F%92%E4%BB%B6%E7%8B%AC%E7%AB%8B%E6%9E%84%E5%BB%BA/06-builtin-user-%E8%AF%AD%E4%B9%89%E8%A7%84%E8%8C%83.html">06-builtin-user-语义规范</a>）——<strong>机制全指 #13a/#11a，本子行 = 接线不重写</strong></li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#31c</strong> 卸载——调 E6#11b 卸载流程（纯委托，验收走 round 验证线）
+<strong>验证：</strong> 市场点&quot;安装&quot; → 进度条 → 图标栏出现新图标。点&quot;卸载&quot; → 消失。</li>
+</ul>
+<h4 id="e632--搜索与分类vscode式2026-08-17-用户拍板">E6#32 🟡 搜索与分类——vscode式（2026-08-17 用户拍板）</h4>
+<blockquote>
+<p>📖 <strong>用户拍板「vscode式」。</strong> 搜索框 → 单一搜索结果列表，不是各组各自过滤。改动只在 marketplace 插件内部，不改壳。行为定义 → <a href="../../04-%E5%87%BA%E5%8E%82%E5%88%B6%E9%80%A0/05-Marketplace-Store-%E6%8F%92%E4%BB%B6%E5%B8%82%E5%9C%BA/02-Marketplace%E5%A2%9E%E5%BC%BA.html">出厂制造 05 档案 §搜索行为</a>。</p>
+</blockquote>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#32a</strong> 搜索——本地过滤 marketplace.json 缓存，<strong>vscode式</strong>：
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 搜索非空 → 隐藏「已安装/内置/已禁用/探索插件」四组 section 头，合并为<strong>单一搜索结果列表</strong>——所有匹配项（无论本地状态）平铺一处</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 已安装的匹配项<strong>仍然出现</strong>（带 [卸载]/[禁用] 按钮）——不是只显示未下载的（对标 VS Code：搜到已装的直接给卸载入口）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 清空搜索 → 恢复四组正常显示</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 匹配规则不变：按 name / pluginId / description（现有 <code>matchSearch</code> 逻辑）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>侧栏组名/顺序对齐 mockup（M8，2026-08-29 审计补）</strong>——顺序对齐 已安装/探索插件/已禁用/内置（现 内置/已禁用 互换），group 顺序随 i18n + plugin.json 声明改（改名已由 E6#30d 承担——第 3.1 轮理顺，不重复）</li>
+</ul>
+</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#32b</strong> 分类定界——catalog 条目 <code>category</code> 字段<strong>显示 + 翻译 key 落地</strong>（卡片/详情侧栏显示已含 #30.6c2；翻译 = 11-API §四·4 <code>category.*</code> i18n 键）；<strong>不做分类导航/筛选侧栏</strong>（筛选/导航/浏览面 2026-08-29 E6 范围决策已暂缓）
+<strong>验证：</strong> 搜索 &quot;hello&quot; → 四组标题消失，只剩单一搜索结果；已安装的 hello 匹配项仍出现带 [已安装]。清空 → 四组恢复。分类显示 + 翻译正确；无分类导航/筛选侧栏（暂缓）。</li>
+</ul>
+<h4 id="e633--更新通知--版本管理点4">E6#33 🟡 更新通知 + 版本管理（点4）</h4>
+<blockquote>
+<p>📖 交互设计 → <a href="03-%E6%8F%92%E4%BB%B6%E5%B8%82%E5%9C%BA/05-%E6%9B%B4%E6%96%B0%E4%B8%8E%E7%89%88%E6%9C%AC.html">05-更新与版本.md</a>。<strong>发现机制</strong>（拉目录+比版本/触发时机/幂等 lastNotifiedVersion/多源取高/内置不参与/beta 忽略）→ §一/§二。</p>
+</blockquote>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#33a</strong> 启动时检查已安装插件是否有更新
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 比较本地版本 vs marketplace.json 版本（唯一判定 <code>semver.gt</code>）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 有更新 → 状态栏铃铛 + 市场内&quot;更新&quot;按钮</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 幂等 <code>lastNotifiedVersion</code>——已提醒过该版本不重复响铃，更新成功清（05 §二·一）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 多源冲突取高者；源变化导致 remoteLatest 回退 → 按现 catalog 比，不制造额外提示（05 §二·二）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 内置（core:true）不参与更新提示；beta 默认忽略只看稳定版（05 §二·三/二·四）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 条目消失/下架 → 不提示不动本地：未装从探索消失、已装保留、详情页「已下架」历史标识（缝隙 A1/G9，05 §二·五）</li>
+</ul>
+</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#33b</strong> 更新徽标——「禁用/卸载」旁升级入口（点4 第一段，E6#33a 检测结果消费）；<strong>禁用插件点更新 → 完成后保持禁用态</strong>（缝隙 F1，05 §二·十）
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 有更新时详情页按<strong>第四维展示规则</strong>（04 §二·五 / mockup 帧 6）——header 显本地版本 + 「有新版本可用」块 + 更改日志 tab 亮 dot + 合并并排两版 changelog（v1.3.0 最新/远程 + v1.2.0 已安装/本地）</li>
+</ul>
+</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#33c</strong> 版本下拉——<code>versions.length &gt; 1</code> 时可选历史版本（点4 第二段，装到 user/）；<strong>选中哪条拉哪条的 <code>downloadUrl</code></strong>（05 §四）；<strong>选旧版（目标 &lt; 当前）→ 确认弹窗「配置可能不兼容」，不拦只提示</strong>（缝隙 F2，05 §二·十一）；beta 手动可选（05 §二·四）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#33d</strong> 自动更新勾选——插件级 Opt-IN 默认关（点4 第三段）
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <code>installed-plugins.json</code> 条目 <code>autoUpdate: boolean</code>（PluginInstallService owner）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>勾选只在已装态显示（G2，2026-08-29 定稿）</strong>——未装/挂起态不显示（autoUpdate 是已装条目属性），装完进入已装态才显示且默认不勾；mockup 帧 1「未安装」行同步修订</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 开启后更新检查自动下载替换 + toast；只看稳定版不自动装 beta（05 §二·四）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 插件有标签页开着 → 本次跳过自动更新，下次启动补做（缝隙 G6，05 §二·七）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 版本下拉手动选非最新 → 记 <code>pinnedVersion</code> 暂停自动更新；选最新/点更新清除（缝隙 B3，05 §二·九）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 配置/用户数据由壳管天然不丢，更新替换目录不碰配置（缝隙 G7 契约，05 §二·八）</li>
+</ul>
+</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#33e</strong> 更新执行原子切换（缝隙 G5）——下载 temp → 校验 → 原子 rename 替换 → 失败旧版保留 + error toast [重试]，不存在「替换到一半崩了插件损坏」（05 §二·六；执行落 E6#13 update）
+<strong>验证：</strong> 已装 v1.0.0，市场有 v1.1.0 → 显示更新；提醒过一次不重复响铃；禁用插件更新后仍禁用；自动更新开着但标签页开着 → 跳过；更新失败 → 旧版还在；选旧版弹确认。</li>
+</ul>
+<hr>
+<h2 id="第-4-层端到端验证造一个真插件在安装版里跑通">第 4 层：端到端验证——造一个真插件，在安装版里跑通</h2>
+<blockquote>
+<p>🔥 <strong>Encaron 的最终需求。</strong> 自己造插件 → 直接用到安装版软件中。
+第 1-3 层全部完成后才能做。</p>
+</blockquote>
+<hr>
+<h3 id="第-41-轮hello-world-测试插件">第 4.1 轮：hello-world 测试插件</h3>
+<h4 id="e634--插件设计与实现">E6#34 🔴 插件设计与实现</h4>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#34a</strong> <code>plugin.json</code>——覆盖全部交互型 contributes 字段（主题/图标主题/语言走 E5.8 既有体系已验，不重复）
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> viewsContainers.sidePanel——侧栏视图</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> contributes.views main——主区标签页视图（E6#30.10 已把 location:&quot;main&quot; 扶正，测试插件应覆盖——2026-08-29 审计 C3 补）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> contributes.commands——hello.sayHi + hello.openTab</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> contributes.menus.EditorContext——右键菜单</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> contributes.keybindings——Ctrl+Shift+H</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> contributes.configuration——greeting 配置项</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> contributes.i18n——英文翻译</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> manifest.statusBar——状态栏条目（问候语；根字段非 contributes，#34b 消费必须声明）</li>
+</ul>
+</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#34b</strong> <code>src/index.tsx</code>——React 组件
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 侧栏视图——欢迎语 + 配置值 + &quot;打开新标签页&quot;按钮</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 标签页视图——随机数证明每次新建不同</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 读配置 / 响应命令 / 打开标签页 / 状态栏显示问候语</li>
+</ul>
+</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#34c</strong> <code>i18n/en.json</code>——英文翻译
+<strong>验证：</strong> <code>npm run dev</code> → 浏览器看到 hello-world 插件。</li>
+</ul>
+<h4 id="e635--开发模式下全功能验证宿主--electron-壳侧-dev28-electron-模式插件并入发现集走真实-preload-pool-ipc纯浏览器-dev-host-无图标栏右键快捷键-surface">E6#35 🔴 开发模式下全功能验证（宿主 = Electron 壳侧 dev——#28 Electron 模式，插件并入发现集走真实 preload-pool IPC；纯浏览器 dev-host 无图标栏/右键/快捷键 surface）</h4>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#35a</strong> 图标栏——Hello 图标出现（Lucide Smile）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#35b</strong> 侧栏——点击图标 → 侧栏展开 → 显示欢迎语 + 配置值</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#35c</strong> 标签页——&quot;打开新标签页&quot; → 新标签出现 → 内容不同</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#35d</strong> 右键菜单——编辑器右键 → 打招呼命令 → 点击 → toast（英文界面下显示 'Hello: Say Hi'，配合 #35g）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#35e</strong> 快捷键——<code>Ctrl+Shift+H</code> → toast</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#35f</strong> 配置——设置 → 修改 greeting → 侧栏文字变化</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#35g</strong> 语言切换——切英文 → 所有 UI 文字变英文</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#35h</strong> 状态栏——问候语显示（#34a statusBar 声明 → #34b 实现闭环）
+<strong>验证：</strong> 全部 8 项通过。npm run check 零错误。</li>
+</ul>
+<hr>
+<h3 id="第-42-轮独立构建--生产安装验证">第 4.2 轮：独立构建 + 生产安装验证</h3>
+<h4 id="e636--用-sdk-构建-hello-world">E6#36 🔴 用 SDK 构建 hello-world</h4>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#36a</strong> 在 hello-world 项目目录 <code>npm run build</code></li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#36b</strong> 验证产出——<code>hello-world.linkdesk-plugin</code> 存在</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#36c</strong> 解压验证——plugin.json / index.bundle.js / i18n/en.json 齐全
+<strong>验证：</strong> 产出文件可解压，内容齐全。</li>
+</ul>
+<h4 id="e637--构建安装包含市场后端就绪">E6#37 🔴 构建安装包——含市场后端就绪</h4>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#37a</strong> <code>npm run electron:build</code>——构建安装包成功</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#37b</strong> 安装到 Windows——桌面快捷方式 / 开始菜单 / 卸载程序</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#37c</strong> 启动验证——无白屏 / 任务栏图标正确 / E5.8 回归矩阵场景正常（<code>../E5.8_归一化基建/回归验证/全量回归矩阵.md</code>）</li>
+</ul>
+<h4 id="e638--从市场安装-hello-world-到安装版">E6#38 🔴 从市场安装 hello-world 到安装版</h4>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#38a</strong> 走 E6#26b 自动发布链路——REST API 创建 Release + 上传 hello-world.linkdesk-plugin asset</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#38b</strong> 更新 marketplace.json</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#38c</strong> 启动安装版 LinkDesk → 打开插件市场 → 看到 hello-world</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#38d</strong> 点&quot;安装&quot; → 下载进度条 → 安装完成 → 图标栏出现 Smile</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#38e</strong> 完整功能回归——E6#35 八项验证全部在安装版中通过</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#38f</strong> 关掉重开 → hello-world 仍在（持久化）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#38g</strong> 卸载 → 图标消失 → 记录清除</li>
+</ul>
+<h4 id="e639--encaron-的终极验证">E6#39 🔴 Encaron 的终极验证</h4>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#39a</strong> 你自己打开安装版 LinkDesk</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#39b</strong> 打开插件市场 → 安装 hello-world</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#39c</strong> 使用它——侧栏/标签页/右键/快捷键/配置/语言切换</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#39d</strong> <strong>不用任何命令行、不看任何代码——纯用户操作。</strong>
+<strong>验证：</strong> Encaron 亲口说&quot;行了&quot;。E6 封站。</li>
+</ul>
+<hr>
+<h2 id="第-5-层文档与发布">第 5 层：文档与发布</h2>
+<blockquote>
+<p>全程穿插——不阻塞前 4 层。</p>
+</blockquote>
+<hr>
+<h3 id="第-51-轮插件开发文档">第 5.1 轮：插件开发文档</h3>
+<h4 id="e640--插件开发指南">E6#40 🟢 插件开发指南</h4>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#40a</strong> 新建 <code>docs/03-插件制造/11-插件开发指南.md</code>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 快速开始——<code>npm create linkdesk-plugin</code> → <code>npm run dev</code> → 10 分钟上手</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 项目结构——plugin.json / src / i18n / 每个文件的角色</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> plugin.json 字段详解——每个字段的含义、类型、示例</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 视图插件——<code>isActive</code> + React 组件约定</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> @linkdesk/ui 共享组件——<code>npm i @linkdesk/ui</code> 用右键/下拉/开关，玻璃自动跟随（E6#54）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 命令/菜单/快捷键/配置/标签页/i18n——完整示例</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 发布——<code>npm run build</code> 产出 .linkdesk-plugin → 走 E6#26b 自动发布（REST API 传 Release + 更新 marketplace.json）</li>
+</ul>
+</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#40b</strong> API 参考——指向 E5.8 生成的 linkdesk.d.ts（2026-08-16 衔接：文档面已收敛，不手写第二份）
+<strong>验证：</strong> 新 AI 读此文档能独立开发一个插件。</li>
+</ul>
+<h4 id="e641--api-类型文档">E6#41 🟢 API 类型文档</h4>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#41a</strong> <code>@linkdesk/plugin-sdk</code> README——安装 + 使用 + API 速查表（速查表指向生成 d.ts）
+<strong>验证：</strong> npm 页面上文档清晰。</li>
+</ul>
+<hr>
+<h3 id="第-52-轮发布流水线">第 5.2 轮：发布流水线</h3>
+<h4 id="e642--ci-自动构建github-actions">E6#42 🟡 CI 自动构建（GitHub Actions）</h4>
+<blockquote>
+<p>📖 档案：<a href="05-%E6%96%87%E6%A1%A3%E4%B8%8E%E5%8F%91%E5%B8%83/02-%E5%8F%91%E5%B8%83%E6%B5%81%E6%B0%B4%E7%BA%BF.html">05-文档与发布/02-发布流水线.md</a> §一（yaml 完整稿 + 签名三方案）</p>
+</blockquote>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#42a</strong> 逐项审计——auto-update / crash report / CI / E2E / 代码签名 / NSIS 升级测试——每项写结论：&quot;已做 / 不需要 / v1.1做&quot; | 记录</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#42b</strong> <code>.github/workflows/build.yml</code>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> push 到 <code>electron</code> 分支 → 触发</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <code>npm ci</code> → <code>npm run check</code> → <code>npm run electron:build</code></li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 🔴 代码签名坑位（TODO 注释，v1.0 发布前启用）——Azure Trusted Signing / SignPath / 正规证书三种方案</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 上传安装包到 GitHub Releases</li>
+</ul>
+</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#42c</strong> 版本号自动打 tag → Release
+<strong>验证：</strong> push 代码 → Actions 跑 → Release 页面出现安装包。</li>
+</ul>
+<h4 id="e643--官网下载页">E6#43 🟡 官网下载页</h4>
+<blockquote>
+<p>📖 档案：<a href="05-%E6%96%87%E6%A1%A3%E4%B8%8E%E5%8F%91%E5%B8%83/02-%E5%8F%91%E5%B8%83%E6%B5%81%E6%B0%B4%E7%BA%BF.html">05-文档与发布/02-发布流水线.md</a> §二（GitHub Pages + 域名 + DNS 前置）</p>
+</blockquote>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#43a</strong> <code>linkdesk.io/download</code>——下载页（<strong>域名购买 + GitHub Pages 自定义域名部署前置</strong>，档案 §二 完整路径）
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> Windows 下载按钮——指向最新 GitHub Release</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 版本号 + 发布日期 + 系统需求
+<strong>验证：</strong> 浏览器打开 → 看到下载按钮 → 点击下载 <code>.exe</code>。</li>
+</ul>
+</li>
+</ul>
+<h4 id="e644--发布清单">E6#44 🟢 发布清单</h4>
+<blockquote>
+<p>📖 档案：<a href="05-%E6%96%87%E6%A1%A3%E4%B8%8E%E5%8F%91%E5%B8%83/02-%E5%8F%91%E5%B8%83%E6%B5%81%E6%B0%B4%E7%BA%BF.html">05-文档与发布/02-发布流水线.md</a> §三（三阶段） + §四（版本号策略）</p>
+</blockquote>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#44a</strong> 新建 <code>docs/06-发布管理/v1.0-发布清单.md</code>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 发布前检查（<code>npm run check</code> 零错误 / E5.8 全量回归矩阵场景 / 安装包验证）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 发布步骤（打 tag → CI → 检查 Release → 更新官网）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 发布后检查（下载安装包 → 安装 → 跑一遍）
+<strong>验证：</strong> 每次发布照着清单勾。</li>
+</ul>
+</li>
+</ul>
+<hr>
+<h3 id="第-53-轮windows-shell-集成与多窗口">第 5.3 轮：Windows Shell 集成与多窗口</h3>
+<blockquote>
+<p>📖 <strong>2026-08-07 Encaron 提出。</strong> 对标 VS Code——安装后右键文件/文件夹能直接&quot;以 LinkDesk 打开&quot;、右键菜单有固定位、不同文件夹各自开独立窗口。</p>
+</blockquote>
+<h4 id="e645--文件关联与右键菜单">E6#45 🔴 文件关联与右键菜单</h4>
+<p><strong>目标：</strong> 安装 LinkDesk 后，任意文本文件（<code>.txt</code>/<code>.py</code>/<code>.js</code>/<code>.json</code>/<code>.md</code>/<code>.html</code>/<code>.css</code>/<code>.ts</code>/<code>.tsx</code> 等）右键菜单出现&quot;Open with LinkDesk&quot;，且出现在根级（不展开&quot;打开方式&quot;子菜单）。文件夹和文件夹空白处同样。</p>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#45a</strong> <code>electron-builder.yml</code>——注册文件类型关联
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <code>fileAssociations</code> 数组——<code>.txt</code> <code>.py</code> <code>.js</code> <code>.json</code> <code>.md</code> <code>.html</code> <code>.css</code> <code>.ts</code> <code>.tsx</code> <code>.yaml</code> <code>.xml</code> <code>.csv</code> <code>.log</code></li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <code>ext</code> + <code>name</code> + <code>description</code> + <code>role: &quot;Editor&quot;</code> | +15 行</li>
+</ul>
+</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#45b</strong> NSIS 安装脚本——右键根级菜单项
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 新建 <code>build/installer.nsh</code>——写注册表</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <code>HKCR\*\shell\LinkDesk</code>——任意文件右键 → &quot;Open with LinkDesk&quot;</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <code>HKCR\Directory\shell\LinkDesk</code>——文件夹右键</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <code>HKCR\Directory\Background\shell\LinkDesk</code>——文件夹空白处右键</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> icon 指向安装目录下的 <code>icon.ico</code></li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <code>electron-builder.yml</code> → <code>nsis.include: build/installer.nsh</code> | +25 行</li>
+</ul>
+</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#45c</strong> 验证——安装后右键 <code>.txt</code> → 看到 &quot;Open with LinkDesk&quot; → 点击启动</li>
+</ul>
+<h4 id="e646--命令行文件文件夹-intake接收并路由">E6#46 🔴 命令行文件/文件夹 intake——接收并路由</h4>
+<p><strong>目标：</strong> 应用收到文件路径后（来自右键打开 / 命令行 / 双击关联文件），正确路由：文件 → editor 插件打开，文件夹 → workspace 添加。</p>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#46a</strong> <code>electron/main.ts</code>——<code>app.on('open-file', ...)</code> 事件处理器
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> macOS: <code>open-file</code> 事件在 <code>app.whenReady()</code> 前可能触发——需要缓存</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> Windows: 第二个实例通过 <code>second-instance</code> 事件 + <code>process.argv</code> 获取路径</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>文件</strong>路径 → 传给已有窗口（IPC <code>shell:openPath</code>）；<strong>文件夹</strong>路径 → 由 E6#47 开新窗口</li>
+</ul>
+</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#46b</strong> 渲染进程——<code>shell:openPath</code> IPC handler
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <code>fs.statSync</code> 判断文件 vs 文件夹</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 文件 → 从路径提取扩展名 → <code>window.linkdesk.fileAssociation.getPluginFor(ext)</code> 查注册的插件（<strong>E5.7#50 Registry 主进程化——主进程直答，渲染进程走 IPC，勿直接 import FileAssociationService</strong>）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 如果无匹配 → fallback 到 editor 插件（E5#99 未知文件路由）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 文件夹 → <code>workspaceService.addFolder(folderPath)</code> + 如果已存在则 <code>setActiveWorkspace</code></li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 🔥 <strong>留口子：不硬编码 <code>pluginId: &quot;editor&quot;</code>。</strong> 未来第二编辑器注册 <code>contributes.fileAssociations</code> 后，<code>getPluginFor()</code> 自动命中。FileAssociationService 已有 <code>getPluginsFor()</code>（多编辑器列表）和 &quot;默认用第一个注册的&quot; 语义——多编辑器并存时只需加用户偏好层，不返工路由代码。</li>
+</ul>
+</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#46c</strong> 验证——<code>linkdesk.exe C:\some\file.txt</code> → editor 打开；<code>linkdesk.exe C:\some\folder</code> → workspace 添加</li>
+</ul>
+<h4 id="e647--多窗口支持不同文件夹各自开独立窗口">E6#47 🔴 多窗口支持——不同文件夹各自开独立窗口</h4>
+<p><strong>目标：</strong> 对标 VS Code——右键两个不同文件夹各选&quot;Open with LinkDesk&quot;→ 出现两个 LinkDesk 窗口，各自独立 workspace，各自编译/运行。关键技术决策：一个 Electron 进程 + 多个 BrowserWindow（非多个 app 实例）。</p>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#47a</strong> <code>electron/main.ts</code>——移除 <code>!gotLock → app.quit()</code> 杀死逻辑
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <code>second-instance</code> 解析 <code>process.argv</code>，提取<strong>文件夹</strong>路径 → 创建新 BrowserWindow（<strong>文件路径走 E6#46a 已有窗口</strong>）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 创建新 BrowserWindow——调 <code>createWindow(workspacePath?)</code>，同进程新窗口</li>
+</ul>
+</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#47b</strong> <code>electron/window-manager.ts</code>——多窗口管理
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <code>createMainWindow(workspacePath?: string)</code> 方法</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 每窗口维护独立的 workspace 状态</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 窗口关闭时清理对应 workspace</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 所有窗口关闭 ≠ app quit（macOS 惯例；Windows 最后一个窗口关闭 = quit）</li>
+</ul>
+</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#47c</strong> WorkspaceService——多 workspace 隔离
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <code>createMainWindow(workspacePath?)</code> → 窗口 URL 参数带 workspacePath；每窗口独立渲染进程 = WorkspaceService 天然隔离，<strong>无需 IPC 共享</strong></li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 不同窗口的 <code>workspace.getFolders()</code> 返回各自 workspace，不串扰</li>
+</ul>
+</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#47d</strong> 验证
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 右键文件夹 A → &quot;Open with LinkDesk&quot;→ 窗口 1 打开 projectA</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 右键文件夹 B → &quot;Open with LinkDesk&quot;→ 窗口 2 打开 projectB（不替换窗口 1）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 两个窗口各自独立——文件树/编辑器/终端互不干扰</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 关闭窗口 2 → 窗口 1 不受影响</li>
+</ul>
+</li>
+</ul>
+<p><strong>验证：</strong> 行为对标 <code>code C:\projectA</code> + <code>code C:\projectB</code>——两个窗口各自独立。</p>
+<hr>
+<h3 id="第-54-轮主软件更新壳侧自研更新机制实现">第 5.4 轮：主软件更新——壳侧自研更新机制（实现）</h3>
+<blockquote>
+<p>📖 <strong>2026-08-30 立案（E6#57 实现系列——研究/设计 #57a/#57b 已 ✅，产品身份地基 #57.1-#57.3 在第 3.0 轮）。</strong> 壳自研更新机制本体：主进程 UpdateService 状态机 + IPC <code>update.*</code> 通道 + 配置 + 壳渲染消费（菜单/TitleBar/toast）+ 发行说明 + 关于 + 发布脚本 + 实机验证。<strong>发布生命周期主题</strong>——与 #42 CI 上传 Releases / #44 发布清单 / #37 安装包同链。
+🔗 <strong>依赖：</strong> <strong>#57.16 实机验证依赖 E6#37（安装包构建完成）</strong>——没有安装包就没有「重启安装」可测；发行说明渲染依赖 #30.6a MarkdownView（第 3.2.2 轮，已就位）；全部依赖 #57.1-#57.3（产品身份地基，第 3.0 轮）。
+📐 设计：<a href="06-%E4%B8%BB%E8%BD%AF%E4%BB%B6%E6%9B%B4%E6%96%B0/01-%E6%9B%B4%E6%96%B0%E6%9C%BA%E5%88%B6%E8%AE%BE%E8%AE%A1.html">06-主软件更新/01-更新机制设计.md</a>（状态机/检查/下载/重启）+ <a href="06-%E4%B8%BB%E8%BD%AF%E4%BB%B6%E6%9B%B4%E6%96%B0/03-%E8%8F%9C%E5%8D%95%E4%B8%8E%E5%85%A5%E5%8F%A3%E8%AE%BE%E8%AE%A1.html">03-菜单与入口设计.md</a>（帮助/齿轮/TitleBar 三态文字 + label 字段）+ <a href="06-%E4%B8%BB%E8%BD%AF%E4%BB%B6%E6%9B%B4%E6%96%B0/04-%E6%9B%B4%E6%96%B0%E9%80%9A%E7%9F%A5%E4%B8%8E%E4%BA%A4%E4%BA%92.html">04-更新通知与交互.md</a>（全 toast）+ <a href="06-%E4%B8%BB%E8%BD%AF%E4%BB%B6%E6%9B%B4%E6%96%B0/05-%E5%8F%91%E8%A1%8C%E8%AF%B4%E6%98%8E.html">05-发行说明.md</a> + <a href="06-%E4%B8%BB%E8%BD%AF%E4%BB%B6%E6%9B%B4%E6%96%B0/06-%E5%85%B3%E4%BA%8E%E5%AF%B9%E8%AF%9D%E6%A1%86.html">06-关于对话框.md</a> + <a href="06-%E4%B8%BB%E8%BD%AF%E4%BB%B6%E6%9B%B4%E6%96%B0/07-%E6%95%B0%E6%8D%AE%E6%B5%81%E9%80%9A%E6%A0%BC%E5%BC%8F.html">07-数据流通格式.md</a>（IPC 通道/TS 类型/状态迁移）。mockups 见 <a href="06-%E4%B8%BB%E8%BD%AF%E4%BB%B6%E6%9B%B4%E6%96%B0/mockups/">06-主软件更新/mockups/</a>。</p>
+</blockquote>
+<h4 id="e6574--updateservice-状态机--检查频率">E6#57.4 🔴 UpdateService 状态机 + 检查频率</h4>
+<blockquote>
+<p>📖 01 §2.1（9 态判别联合）/ §2.2（检查频率内置常量：启动 30s + 每 4h，仅 auto；无网静默跳过）。对标 serial-service.ts 主进程服务先例。</p>
+</blockquote>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#57.4a</strong> 新建 <code>electron/services/update-service.ts</code>——UpdateState 判别联合（uninitialized/disabled/idle/checking/available/downloading/downloaded/updating/ready）+ <code>checkForUpdates()</code> / <code>downloadUpdate()</code> / <code>quitAndInstall()</code> / <code>getState()</code>；broadcast 回调注入（对标 serial 推送模式）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#57.4b</strong> 检查频率定时器——启动后延迟 30s 首查 + 每 4h 周期查（仅 auto 档）；无网静默跳过，下次周期自动再试</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#57.4c</strong> 状态迁移广播——每次迁移 emit stateChanged（payload = UpdateState 全量）
+<strong>验证：</strong> 单测状态机迁移（Idle→Checking→Available/Idle）；CDP 首帧状态正确；定时器就位（mode=auto）。</li>
+</ul>
+<h4 id="e6575--更新源拉取--版本比对">E6#57.5 🟡 更新源拉取 + 版本比对</h4>
+<blockquote>
+<p>📖 01 §2.3（GitHub Releases latest + asset 约定：linkdesk-setup-{version}.exe + checksum）。<strong>只认 stable（忽略 prerelease）</strong>——第一版只 stable 通道。</p>
+</blockquote>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#57.5a</strong> fetch <code>api.github.com/repos/encaron/linkdesk/releases/latest</code> → 提取 tag_name（SemVer）+ published_at + body + html_url + asset（browser_download_url/size/checksum）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#57.5b</strong> <code>compareVersions(latest, current)</code>（#57.1c）比对——latest &gt; current → available（UpdateInfo 全量）；latest &lt;= current → idle；prerelease → 忽略视为无更新</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#57.5c</strong> 失败处理——网络/仓库不存在/超限 → idle + lastError（code: 'network'/'invalid-response'）；手动检查 toast 错误
+<strong>验证：</strong> mock Releases 响应 → available/idle 正确；断网 → lastError 不崩；prerelease 忽略。</li>
+</ul>
+<h4 id="e6576--下载器--sha256-校验--残留清理">E6#57.6 🟡 下载器 + sha256 校验 + 残留清理</h4>
+<blockquote>
+<p>📖 01 §2.4（.part 临时文件 + 进度节流 ≤500ms + sha256 校验 + rename）。对标 01-GitHub-Releases方案 §四·五 插件下载 .part 惯例。</p>
+</blockquote>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#57.6a</strong> 流式下载——主进程 <code>net</code>/<code>http</code> → <code>{userData}/update/linkdesk-update-{version}.exe.part</code>；进度上报（transferred/total/percent，节流 ≤500ms emit）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#57.6b</strong> sha256 校验——下载完成按 Release asset checksum 校验，不符 → 删除 .part + idle + lastError（code: 'checksum-mismatch'）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#57.6c</strong> 完成 rename——<code>.part</code> → 正式 <code>linkdesk-update-{version}.exe</code> → downloaded 态</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#57.6d</strong> 启动残留清理——启动扫 <code>{userData}/update/*.part</code> 删除（下载中退出不留垃圾）
+<strong>验证：</strong> mock 下载 → progress 节流 → rename 成功；篡改包 → checksum-mismatch 删除不装；退出残留清理。</li>
+</ul>
+<h4 id="e6577--重启安装windows-首个平台">E6#57.7 🟡 重启安装（Windows 首个平台）</h4>
+<blockquote>
+<p>📖 01 §2.5（app.relaunch + app.quit / spawn 解耦安装进程二选一实测）。<strong>🔗 依赖 E6#37 安装包（实机全链验证在 #57.16）；本任务先接线 + relaunch 参数验证。</strong></p>
+</blockquote>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#57.7a</strong> <code>ready</code> 态 → <code>app.relaunch({ args: ['--update-install', installer], execPath: installer })</code> + <code>app.quit()</code>；NSIS <code>--updated</code> 静默覆盖 → 重启 LinkDesk（spawn 解耦 vs relaunch 二选一，实测定）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#57.7b</strong> 无安装器/校验失败 → 抛错（toast 错误）；<code>updating</code> 态过渡 → broadcast</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#57.7c</strong> 验证——CDP 点「重启并更新」→ relaunch 参数正确 + 进程退出（实机全链依赖 #37）
+<strong>验证：</strong> relaunch 参数与设计一致；进程退出干净；实机全链在 #57.16。</li>
+</ul>
+<h4 id="e6578--ipc-通道-update数据流通">E6#57.8 🟡 IPC 通道 update.*（数据流通）</h4>
+<blockquote>
+<p>📖 07 §一/§二（channels.ts 唯一真相源）+ §四（命令/事件 payload 逐字段）。<strong>PROXY_CHANNELS 白名单：第三方只读 getState，写命令不开放</strong>（更新是壳私事）。</p>
+</blockquote>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#57.8a</strong> channels.ts 加 <code>update.*</code> 命名空间——getState/checkForUpdates/downloadUpdate/quitAndInstall（命令）+ stateChanged/progress（事件）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#57.8b</strong> 新建 <code>electron/ipc/handlers/update-handlers.ts</code>——<code>registerUpdateHandlers()</code>：ipcMain.handle 各命令（检查/下载错误 → 态内 lastError，不抛；quitAndInstall 抛错）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#57.8c</strong> ipc-bridge.ts——PROXY_CHANNELS 加 <code>update.getState</code>（只读白名单）；broadcast 加 <code>update.stateChanged</code> + <code>update.progress</code>（壳→池推送）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#57.8d</strong> 验证——全通道 channels.ts 唯一登记 + audit-api-contracts 过；CDP 完整一局状态广播；第三方只读 getState、写命令 invoke 被拒
+<strong>验证：</strong> <code>npm run check</code> 全绿（audit-api-contracts）；CDP 状态机全广播；第三方写命令被拒。</li>
+</ul>
+<h4 id="e6579--配置-appupdate--useupdatestate-hook">E6#57.9 🟡 配置 app.update.* + useUpdateState hook</h4>
+<blockquote>
+<p>📖 00 README §三⑦（app.update.mode auto/manual 默认 auto + showReleaseNotes 默认 true）+ 07 §五（useUpdateState 对标 usePoolSync 只监听关心 key 铁律 + 无模块级监听，硬约束 19/20）。</p>
+</blockquote>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#57.9a</strong> 新建 <code>src/App/config/update.ts</code>——<code>registerConfiguration(&quot;update&quot;, ...)</code>：<code>app.update.mode</code>（string enum auto/manual，默认 auto）+ <code>app.update.showReleaseNotes</code>（boolean 默认 true）；check-config-baseline 保底</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#57.9b</strong> 设置页「更新」组——update.mode 下拉（auto/manual）+ showReleaseNotes 开关（组内二级标题，对标 E5.8#78 group 机制）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#57.9c</strong> 新建 <code>src/App/hooks/useUpdateState.ts</code>——mount 拉初值（invoke getState）+ 订阅 stateChanged；unmount 清理（引用计数）；竞态回放（preload 缓冲，硬约束 20）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#57.9d</strong> 验证——<code>npm run check</code>（check-config-baseline 过）；CDP 设置页「更新」组显示两配置项；mode 切换即时生效
+<strong>验证：</strong> <code>npm run check</code> 全绿；CDP 切 mode 生效；订阅无泄漏（切多标签不重复监听）。</li>
+</ul>
+<h4 id="e65710--帮助菜单帮助组--命令注册入口面">E6#57.10 🟡 帮助菜单「帮助」组 + 命令注册（入口面）</h4>
+<blockquote>
+<p>📖 03 §二（菜单结构逐项取舍——保留产品性项、去营销性项）+ §三（齿轮菜单两入口同命令源）。<strong>恒显原则（2026-08-30 拍板）：检查更新永不消失，与 mode 无关；点击永远反馈。</strong></p>
+</blockquote>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#57.10a</strong> 命令注册——coreCommands.ts：<code>update.checkForUpdates</code>（恒显）/ <code>update.openUpdateFlow</code>（按态分支：available→下载 / downloaded→重启）/ <code>update.showReleaseNotes</code> / <code>app.about</code> / <code>app.shortcutsReference</code> / <code>app.openHelp</code> / <code>app.viewLicense</code> / <code>app.privacyPolicy</code> / <code>app.toggleDevTools</code>（dev 恒显，打包隐藏）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#57.10b</strong> shellMenus.ts MENU_SLOTS.MenuBar 新增「帮助」组——显示发行说明 / 分隔 / 快捷键列表 / 打开帮助 / 分隔 / 查看许可证 / 隐私政策 / 分隔 / 切换开发人员工具 / 检查更新… / 关于 LinkDesk（03 §2.1 逐项取舍）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#57.10c</strong> settingsCommands.ts 齿轮菜单加「检查更新…」「关于 LinkDesk」（与帮助菜单同命令源——入口可多处，命令源唯一）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#57.10d</strong> 验证——帮助/齿轮全项显示 + 文案与 03 §2.2 一致；任何 mode 下两入口恒显；<code>npm run check</code>（i18n key 全绿）
+<strong>验证：</strong> CDP 帮助菜单 9 项 + 齿轮 2 项新增显示正确；两处「检查更新」恒显；点「检查更新」有反馈。</li>
+</ul>
+<h4 id="e65711--titlebar-更新按钮label-字段一次通用壳扩展">E6#57.11 🟡 TitleBar 更新按钮（label 字段一次通用壳扩展）</h4>
+<blockquote>
+<p>📖 03 §四（三态文字全文字 + 主题按钮色；label = 通用字段非更新专用）+ 07 §四（context key updateActionable/updateButtonLabel）。<strong>audit-contributes 三件套（schema + 加载器 + 文档）</strong>。</p>
+</blockquote>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#57.11a</strong> MenuRegistry.ts <code>TitleBarContribution</code> 接口加 <code>label?: string</code>（静态字符串或 context key 引用）；plugin.schema.json 加 <code>label</code> 字段 + 03-插件制造文档（audit-contributes 三件套）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#57.11b</strong> TitleBarZone.tsx renderSlotButton 渲染 label——有 label 渲染文字（全文字 + 主题按钮色：复用壳共享 Button 组件，height 22px + padding 0 10px）；context key 引用解析动态文字</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#57.11c</strong> 壳推动态 context key——<code>updateActionable</code>（available/downloading/downloaded/ready 任一为真）+ <code>updateButtonLabel</code>（三态文字：下载更新/更新中/重新启动）；UpdateService 状态 → context key（对标 sidebarPosition 推送先例）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#57.11d</strong> 按钮声明——<code>registerTitleBarContribution(APP_PLUGIN_ID, &quot;right&quot;, { command: &quot;update.openUpdateFlow&quot;, label: &quot;updateButtonLabel&quot;, when: &quot;updateActionable&quot; })</code>；三态映射（03 §4.3）：available→下载更新 / downloading→更新中 / downloaded·ready→重新启动 / idle·checking→隐藏</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#57.11e</strong> 验证——CDP 有更新 → 右侧出现全文字「下载更新」按钮（主题按钮色跟随主题）；无更新不出现不占位；按钮随状态变「更新中」→「重新启动」；第三方插件声明 label 按钮也渲染（通用扩展验证）
+<strong>验证：</strong> <code>npm run check</code> 全绿（audit-contributes 三件套）；CDP 三态显隐 + 文字 + 主题切换跟随。</li>
+</ul>
+<h4 id="e65712--toast-交互全流程发现进度完成失败手动">E6#57.12 🟡 toast 交互全流程（发现/进度/完成/失败/手动）</h4>
+<blockquote>
+<p>📖 04 §二-§五（全 toast 承载——复用 pushToast/updateToast/isCloseAffordance/ToastAction，<strong>零新 UI 表面</strong>）+ §六（自动进通知中心）。「稍后」语义 = 用户有权不更新的实现。</p>
+</blockquote>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#57.12a</strong> 发现更新 toast——<code>pushToast({message: &quot;LinkDesk 有可用的更新 {{version}}&quot;, source: &quot;主软件更新&quot;, isCloseAffordance: true, actions: [查看更新内容][立即更新], ttl: 0})</code>；× 关闭 → isCloseAffordance 持久化 → 该版本不再自动弹（手动入口永在）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#57.12b</strong> 下载进度——<code>updateToast</code> 循环改文字「正在下载更新 {{percent}}%」（节流 ≤500ms，消费 progress 事件）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#57.12c</strong> 下载完成/重启 toast——「更新已下载，重启后生效」[稍后][重启并更新]；点「稍后」→ 关 toast + 状态回 idle（保留 update 不重下）；点「重启并更新」→ quitAndInstall</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#57.12d</strong> 手动检查反馈——已最新「当前已是最新版本」/ 失败「检查更新失败：{{error}}」/ 有更新同发现；失败 toast + [重试]</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#57.12e</strong> 验证——CDP 完整一局（发现→进度→完成→重启）；× 关闭后该版本不再自动弹 + 手动可查；toast 自动进通知中心
+<strong>验证：</strong> CDP 全流程一局走通（04 §七 1-8）；<code>npm run check</code>（i18n key 全绿）。</li>
+</ul>
+<h4 id="e65713--发行说明标签页查看器数据源缓存首启自动弹">E6#57.13 🟡 发行说明标签页（查看器/数据源/缓存/首启自动弹）</h4>
+<blockquote>
+<p>📖 05 §2.1-§2.6（壳内标签页 + 左窄栏 220px 版本历史配角 + 右主区 Release body 主角 + 缓存 24h + 首启自动弹）。<strong>渲染 = 壳共享 MarkdownView（#30.6a 第 3.2.2 轮已就位）</strong>——2026-08-30 拍板「md 渲染唯一组件」。</p>
+</blockquote>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#57.13a</strong> 新建 <code>src/pool/views/release-notes/ReleaseNotesView.tsx</code>——壳直渲染 view（appearsIn.tabBar + tabBehavior.singleton，对标欢迎页先例）；布局 = 头部版本区（v0.2.0 + 发布日期 + 通道 + 「在 GitHub 查看全部」）+ 主体左窄栏 220px 版本历史列表（配角导航，选中渲染该版 body）+ 右主区 Release body（MarkdownView）+ 尾部「所有版本 → GitHub Releases」（mockup 03）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#57.13b</strong> 数据源——fetch <code>api.github.com/repos/encaron/linkdesk/releases?per_page=30</code>（tag_name/published_at/body/html_url）+ 缓存 <code>{userData}/updates/releases-cache.json</code>（键 = 版本列表 hash，24h 过期刷新）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#57.13c</strong> 失败降级——拉取失败 → 缓存兜底 → 无缓存空态「无法加载发行说明」+ [重试] + 「在 GitHub 上查看」链接</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#57.13d</strong> 首启自动弹——<code>app.getVersion() !== lastSeenVersion</code>（lastSeenVersion 存壳存储，随启动写入当前版本）→ 自动打开发行说明标签页（只开一次）；<code>app.update.showReleaseNotes</code> 关闭不弹（菜单恒可用）；失败不打扰下次再试</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#57.13e</strong> 打开方式——帮助菜单「显示发行说明」/ toast「查看更新内容」滚动定位到该版本 / 首启自动弹（05 §2.2）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#57.13f</strong> 验证——CDP 六验收点（05 §四 1-6）逐条过：渲染 Markdown 正常 / 历史选择器切换 / 缓存二次不重复拉（断网可看历史）/ 单例不叠 tab / showReleaseNotes=false 不自动弹 / 断网空态
+<strong>验证：</strong> CDP 05 §四 六项逐条过；断网可看历史（缓存兜底）。</li>
+</ul>
+<h4 id="e65714--关于标签页字段表--复制--检查更新">E6#57.14 🟡 关于标签页（字段表 + 复制 + 检查更新）</h4>
+<blockquote>
+<p>📖 06 §四（布局：居中品牌区 + 8 字段表 + 两动作按钮）+ §4.2（数据通道 <code>app:getProductInfo</code> 一次拉全量——#57.3 已建）+ §4.4（dev 无 product.json 降级 <code>—</code>）。<strong>组件位置 src/pool/views/about/AboutView.tsx（对标欢迎页/发行说明先例）</strong>。</p>
+</blockquote>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#57.14a</strong> 新建 <code>src/pool/views/about/AboutView.tsx</code>——壳内标签页（tabBehavior.singleton）；布局 = 居中品牌区（LinkDesk 标识 + 名）+ key:value 字段表（版本/提交/日期/Electron/Chromium/Node.js/V8/OS）+ 动作按钮行（mockups/05 关于竞标 A）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#57.14b</strong> 数据——mount 时 <code>invoke(app:getProductInfo)</code> 拉全量（#57.3）；版本 = <code>app.getVersion()</code> 同源；commit/date = product.json；Electron/Chromium/Node/V8/OS = ProductRuntime；dev 无 product.json → commit/date <code>—</code> 不崩</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#57.14c</strong> 「复制」——全字段纯文本（key: value 每行 <code>\n</code> 连接，UTF-8）→ 壳 ClipboardService → toast「已复制」</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#57.14d</strong> 「检查更新…」——调 <code>update.checkForUpdates</code> 命令 → 结果 toast（最新/有更新/错误）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#57.14e</strong> 打开入口——帮助菜单「关于 LinkDesk」+ 齿轮菜单 + 命令面板</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#57.14f</strong> 验证——CDP 六验收点（06 §五 1-5）逐条过：两入口打开 singleton / 字段不漂移 / 复制剪贴板 / 检查更新出结果 toast / dev 降级
+<strong>验证：</strong> CDP 06 §五 五项逐条过；字段与 <code>app.getVersion()</code> + <code>process.versions</code> 一致不漂移。</li>
+</ul>
+<h4 id="e65715--发布脚本写-productjson--release-asset-约定">E6#57.15 🟢 发布脚本写 product.json + Release asset 约定</h4>
+<blockquote>
+<p>📖 02 §2.3（发布期读 package.json version → 写 product.json version/commit/date/quality + <strong>断言一致——单一真相源，不手写两份</strong>）+ 01 §2.3（asset 约定）。<strong>与 #42 CI（上传安装包到 Releases）/ #44 发布清单 衔接</strong>——主软件更新发布源 = GitHub Releases。</p>
+</blockquote>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#57.15a</strong> 壳发布脚本——读 package.json version → 写 product.json <code>version/commit(git HEAD 短哈希)/date(构建时间 ISO)/quality(stable)</code> → electron-builder 打包（app 内嵌 product.json）；断言 product.json version === package.json version</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#57.15b</strong> Release asset 约定沉档——tag = <code>v{version}</code>；asset = <code>linkdesk-setup-{version}.exe</code>（NSIS 安装器）；Release body = 该版发行说明（05 数据源）；checksum sha256 附 Release（#57.6 更新校验用）；发布动作复用 E6#26d 的 GitHub REST 自动发布底座（创建 Release + 上传 asset）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#57.15c</strong> 验证——发布流程实测 product.json 自证一致（02 §三 验收 3）；打包产物内嵌正确；<code>npm run check</code> 全绿
+<strong>验证：</strong> 发布脚本跑 → product.json 写入正确 + 断言通过；asset 命名符合约定。</li>
+</ul>
+<h4 id="e65716--实机验证更新链路依赖-e637-安装包构建完成">E6#57.16 🔴 实机验证更新链路（依赖 E6#37 安装包构建完成）</h4>
+<blockquote>
+<p>📖 01 §四 验收点 1-10 全量 + 03 §六 + 04 §七 + 05 §四 + 06 §五 + 07 §七。<strong>🔗 前置：E6#37（第 4.2 轮安装包构建完成）——没有安装包就没有「重启安装」可测。</strong></p>
+</blockquote>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#57.16a</strong> 完整一局——安装版（旧版）→ 发布新版（GitHub Release + asset）→ 启动 30s 后台检查到 → 发现 toast + TitleBar「下载更新」→ 下载进度 → 完成「重启并更新」→ 重启安装 → 首启自动弹发行说明</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#57.16b</strong> 边界路径——断网静默跳过 / 手动检查最新「当前已是最新版本」/ 下载中断报错 + 重试 / 校验失败不装坏包 / 下载中退出清理残留 / mode=manual 不自动检查</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#57.16c</strong> 全验收点——01 §四 1-10 + 03 §六 1-6 + 04 §七 1-8 + 05 §四 1-6 + 06 §五 1-5 + 07 §七 1-6 逐条过
+<strong>验证：</strong> 实机全链路 + 边界路径；用户视觉验收（对标 VS Code 界面）。</li>
+</ul>
+<h2 id="第-6-层安全加固dsh-第二梯队e58-借鉴产生2026-08-16-立案">第 6 层：安全加固——dsh 第二梯队（E5.8 借鉴产生，2026-08-16 立案）</h2>
+<blockquote>
+<p>📖 来源 → <a href="../E5.8_%E5%BD%92%E4%B8%80%E5%8C%96%E5%9F%BA%E5%BB%BA/00-dsh%E5%80%9F%E9%89%B4%E6%A1%A3%E6%A1%88.html">../E5.8_归一化基建/00-dsh借鉴档案.md</a> 第二梯队 + memory <code>deepseek-harness-reference</code> B 档。用户拍板立案。
+前置：第 1-3 层完成后。</p>
+</blockquote>
+<h4 id="e648--子进程沙箱缝confineargv-policy">E6#48 🔴 子进程沙箱缝——confine(argv, policy)</h4>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#48a</strong> 子进程启动统一走 <code>confine(argv, policy) → 替换 argv</code> 沙箱缝（dsh：Linux bwrap/Landlock、Windows WRITE_RESTRICTED token）（<strong>现状对接点</strong>：lsp-handlers.ts:157 <code>spawn</code> <code>shell:true</code> + main.ts:224 <code>openInTerminal</code> <code>exec</code> 两处子进程——confine 包住现有 spawn 点，非另起炉灶）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#48b</strong> 无沙箱退化路径 = 显式抛错 SANDBOX_UNAVAILABLE（fail-closed）
+<strong>验证：</strong> 插件子进程被限制在声明 policy 内；无沙箱环境启动子进程 = 报错而非裸奔。</li>
+</ul>
+<h4 id="e649--审批层审计对保留-remember-模式">E6#49 🟡 审批层审计对——保留 remember 模式</h4>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#49a</strong> 审批结果闭集 + approval/asked+decided 审计对（先审批后执行 escalation）——保留 LinkDesk 自己的 remember 权限模式（dsh 没有，是身份）（<strong>现状</strong>：filesystem-guard.ts:91/166 写侧审批 + guard-grants.json remember 已有——任务 = 补读侧 env.get 越权弹窗 + 结构化审计流）
+<strong>验证：</strong> 审批记录可审计；remember 模式行为不回归。</li>
+</ul>
+<h4 id="e650--崩溃补闭环append-only-日志">E6#50 🟡 崩溃补闭环——append-only 日志</h4>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#50a</strong> 关键日志 JSONL append-only + 崩溃补闭环不截断（dsh：synthetic closers + Windows MoveFileExW write-through）（<strong>现状</strong>：protocol-debug.log append-only 已有 + LogChannel 内存 500 条环——任务 = 归一 JSONL + 崩溃瞬间环形转储落盘）
+<strong>验证：</strong> 崩溃瞬间日志完整可回放，无截断尾。</li>
+</ul>
+<h4 id="e651--凭据隔离四件套">E6#51 🟡 凭据隔离四件套</h4>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#51a</strong> 配置只存引用不存秘密 / 每操作解析 / describe 不返回值 / env scrub（<code>*KEY*</code> / <code>*TOKEN*</code>）（<strong>现状</strong>：全域 grep apiKey/token/secret 零命中——干净白板，从零建四件套）
+<strong>验证：</strong> 配置导出无秘密；凭据按操作解析；环境变量清理由壳统一。</li>
+</ul>
+<h4 id="e652--用户-patch-层按稳定-id-覆盖插件配置">E6#52 🟢 用户 patch 层——按稳定 id 覆盖插件配置</h4>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#52a</strong> <code>linkdesk.patch.yml</code>——用户按稳定 id 覆盖任何插件配置（dsh cordis.patch.yml 缩水版：后写覆盖，不写死字段）（<strong>现状形态参照</strong>：seeds.ts:31 APPEARANCE_OVERRIDE_KEYS 13 键 + 播种物质化已成型——但只盖壳外观 app.*，patch 扩展任意插件命名空间配置）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#52b</strong> <code>dumpPluginTree</code>——整棵运行插件树可读面（#52 读端孪生：patch 写前先 dump 看行）——枚举「运行中插件 × 贡献（view/command/theme/config 行 by 稳定 id）× 当前配置值」，纯数据产出（AI 可读三层）；数据源全现成（<strong>不依赖 #12</strong>）：loadState getLoadDiagnostics/Summary + registrationTracker + <code>#9c plugins:readAllManifests</code>（贡献声明）+ ConfigurationRegistry（当前值）——通用读面，dev 面板/市场详情/AI 排查皆可消费；暴露 = <code>linkdesk.dumpPluginTree</code> 命令（进命令面板）+ window.linkdesk 一接口（2026-08-30 用户拍板立案）
+<strong>验证：</strong> 用户 patch 不改插件源码即可改行为；重装后 patch 仍生效；#52b 闭环——patch 前 dump 看行 → 按 id 覆盖 → 再 dump 确认生效。</li>
+</ul>
+<hr>
+<h2 id="展望装配清单-profile-设计自-e5850-移入2026-08-27-用户确认要做">展望：装配清单 profile 设计（自 E5.8#50 移入，2026-08-27 用户确认要做）</h2>
+<blockquote>
+<p>2026-08-27 从 E5.8 Phase 10.5 移入。<strong>不是清残留，是 E6 生态的地基展望</strong>——「一台 LinkDesk 装什么」声明化。拍板记录/移入依据 → <a href="../../02-Electron%E6%9E%B6%E6%9E%84/E5.8_%E5%BD%92%E4%B8%80%E5%8C%96%E5%9F%BA%E5%BB%BA/E5.8-%E6%89%A7%E8%A1%8C%E6%B8%85%E5%8D%95.html">E5.8#50 条目</a> + <a href="../../02-Electron%E6%9E%B6%E6%9E%84/E5.8_%E5%BD%92%E4%B8%80%E5%8C%96%E5%9F%BA%E5%BB%BA/%E5%A3%B3%E5%8D%8A%E4%B8%9A%E5%8A%A1%E5%A4%96%E6%8E%A8/03-%E5%A4%96%E8%A7%82factoryRole-%E6%8B%8D%E6%9D%BF%E8%AE%B0%E5%BD%95.html">03-外观factoryRole-拍板记录.md</a>。</p>
+</blockquote>
+<h4 id="e653--装配清单-profile-设计">E6#53 🟢 装配清单 profile 设计</h4>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#53a</strong> profile 概念设计——「这台机器装了什么」声明化，对标 dsh cordis.yml：差距（已实锤）= LinkDesk 无「组合声明」——壳固定装配 zones，插件靠 contributes 挤入；workspace.json 是<strong>状态快照</strong>非<strong>组合声明</strong>；dsh 应用 = cordis.yml 插件组合列表</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#53b</strong> 设计文档——「这套环境 = base + serial + terminal + 主题 X」按声明组装；含与 workspace.json / plugin.json contributes 边界 + 排期建议；服务 AI 一站式（agent 按声明组装环境）
+<strong>验证：</strong> 用户过目拍板；排期建议明确（E6 插件生态落地点）。</li>
+</ul>
+<h4 id="e656--自指插件工具集会话内现场定义运行停止插件">E6#56 🟢 自指插件工具集——会话内现场定义/运行/停止插件</h4>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#56a</strong> 概念设计——「代码片段 → 运行时加载」通道（对标 dsh cordis_define/run/stop——AI 会话里现场 define 插件包 → run → stop，session-scoped 不落盘不污染装配）；前提已就位 = SDK build（#4a）+ loader 动态加载（#9）+ PluginInstallService（#12），缺口 = 不落盘的会话级加载 + 沙箱执行器；服务 AI 一站式「作者连编辑器都不开就试插件」（2026-08-30 用户拍板立案）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>E6#56b</strong> 设计文档——与 .linkdesk-plugin 打包装的边界（会话级 vs 持久级）+ 排期建议（依赖市场/下载/安装落地后价值最大，与 #53 同性质）
+<strong>验证：</strong> 用户过目拍板；排期建议明确。</li>
+</ul>
+<h4 id="e657--主软件更新壳侧自研更新机制2026-08-30-用户拍板自研专研文件夹见-06-主软件更新00-readmemd">E6#57 🟢 主软件更新——壳侧自研更新机制（2026-08-30 用户拍板自研，专研文件夹见 <a href="06-%E4%B8%BB%E8%BD%AF%E4%BB%B6%E6%9B%B4%E6%96%B0/00-README.html">06-主软件更新/00-README.md</a>）</h4>
+<blockquote>
+<p>📖 <strong>研究 + 设计已完成（#57a/#57b ✅ 2026-08-30）——本条目 = 研究设计指针（已闭环）。实现已移入执行区：</strong> 产品身份地基 <strong>#57.1-#57.3（第 3.0 轮，壳通用 API 先行，市场 #30.8c 前置）</strong> + 机制本体/UI/发布/实机验证 <strong>#57.4-#57.16（第 5.4 轮，依赖 E6#37 安装包）</strong>。</p>
+</blockquote>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E6#57a</strong> 摸底研究——VS Code 更新机制源码深挖（updateService 状态机 / update.mode / product.json 身份 / 发行说明自动弹 / 关于对话框）+ LinkDesk 现状清单（NSIS 打包现状 / v0.1.0 / 零更新痕迹）；产出 = 对标表 → ✅ 已沉 <a href="06-%E4%B8%BB%E8%BD%AF%E4%BB%B6%E6%9B%B4%E6%96%B0/01-%E6%9B%B4%E6%96%B0%E6%9C%BA%E5%88%B6%E8%AE%BE%E8%AE%A1.html">06-主软件更新/01-更新机制设计.md</a> §一 + <a href="06-%E4%B8%BB%E8%BD%AF%E4%BB%B6%E6%9B%B4%E6%96%B0/00-README.html">00-README.md</a> §二</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox" checked=""type="checkbox"> <strong>E6#57b</strong> 设计文档——自研更新服务（后台检查/下载/重启安装）+ <code>update.mode</code> 两档（auto/manual，拍板砍 none/start）+ 发行说明壳内标签页 + 关于对话框 + product.json 身份；✅ 已按 8 维度设计前置成档（先档案后清单）：
+<ul>
+<li><a href="06-%E4%B8%BB%E8%BD%AF%E4%BB%B6%E6%9B%B4%E6%96%B0/01-%E6%9B%B4%E6%96%B0%E6%9C%BA%E5%88%B6%E8%AE%BE%E8%AE%A1.html">06-主软件更新/01-更新机制设计.md</a>（状态机/检查频率/更新源/下载校验/重启安装/通道）</li>
+<li><a href="06-%E4%B8%BB%E8%BD%AF%E4%BB%B6%E6%9B%B4%E6%96%B0/02-%E4%BA%A7%E5%93%81%E8%BA%AB%E4%BB%BD%E4%B8%8E%E7%89%88%E6%9C%AC.html">02-产品身份与版本.md</a>（product.json schema/semver 规范/历史版本表示）</li>
+<li><a href="06-%E4%B8%BB%E8%BD%AF%E4%BB%B6%E6%9B%B4%E6%96%B0/03-%E8%8F%9C%E5%8D%95%E4%B8%8E%E5%85%A5%E5%8F%A3%E8%AE%BE%E8%AE%A1.html">03-菜单与入口设计.md</a>（帮助菜单逐项/齿轮/更新按钮三态文字 + label 字段）</li>
+<li><a href="06-%E4%B8%BB%E8%BD%AF%E4%BB%B6%E6%9B%B4%E6%96%B0/04-%E6%9B%B4%E6%96%B0%E9%80%9A%E7%9F%A5%E4%B8%8E%E4%BA%A4%E4%BA%92.html">04-更新通知与交互.md</a>（全 toast 承载：发现/进度/完成/失败/手动结果）</li>
+<li><a href="06-%E4%B8%BB%E8%BD%AF%E4%BB%B6%E6%9B%B4%E6%96%B0/05-%E5%8F%91%E8%A1%8C%E8%AF%B4%E6%98%8E.html">05-发行说明.md</a>（标签页载体/数据源缓存/首启自动弹/可关）</li>
+<li><a href="06-%E4%B8%BB%E8%BD%AF%E4%BB%B6%E6%9B%B4%E6%96%B0/06-%E5%85%B3%E4%BA%8E%E5%AF%B9%E8%AF%9D%E6%A1%86.html">06-关于对话框.md</a>（字段/复制/数据来源）</li>
+<li><a href="06-%E4%B8%BB%E8%BD%AF%E4%BB%B6%E6%9B%B4%E6%96%B0/07-%E6%95%B0%E6%8D%AE%E6%B5%81%E9%80%9A%E6%A0%BC%E5%BC%8F.html">07-数据流通格式.md</a>（IPC.update.* 通道/TS 类型/状态迁移时序）</li>
+<li>mockups：01-帮助菜单与更新按钮 / 02-更新通知toast与关于 / 03-发行说明标签页 / <strong>04-发行说明竞标 / 05-关于竞标</strong>（见 <a href="06-%E4%B8%BB%E8%BD%AF%E4%BB%B6%E6%9B%B4%E6%96%B0/mockups/">mockups/</a>；2026-08-30 竞标均拍板 A——发行说明=VS Code基准、关于=VS Code对标）
+<strong>验证：</strong> ✅ 2026-08-30 README 待拍板点全部拍板（更新通道只 stable / 关于=标签页 / 检查频率启动30s+每4h / <code>app.getVersion</code> 暴露）；<strong>实现 = #57.1-#57.3（第 3.0 轮）+ #57.4-#57.16（第 5.4 轮），实机验证依赖 E6#37 安装包构建完成。</strong></li>
+</ul>
+</li>
+</ul>
+<hr>
+<h2 id="执行顺序与依赖">执行顺序与依赖</h2>
+<pre><code>第 0 层（E6 前置——#0.1-#0.6 目录卫生 + 壳树 feature-folder 审计 + 防膨胀门禁，L1 开工前先做）
+
+第 1 层（E5.8 完成后开始——串行）
+  第 1.1 轮：E6#1-#2、#2.5、#4-#6   plugin-sdk + 类型对接 E5.8 契约 + contracts 真发布 ← 依赖 E5.8 Phase 4（linkdesk.d.ts 生成；#2.5 并入此轮，2026-08-29 审计 A2 补）
+  第 1.2 轮：E6#9、#9.1（#8 折叠）   动态加载 + glob 替换 + pluginLoader 拆分 ← 依赖 E6#1-#6；#8 已折叠进 #9（2026-08-30）；#9.1 随 #9 同批做
+  第 1.2 轮：E6#55                plugin.json JSONC 化（壳侧解析 jsonc-parser） ← 跟 #9/#9.1 同批（loader 重写动同一批文件，一次到位不双份 churn）；SDK 侧 #5a validate jsonc（第 1.1 轮就位——作者 build 前校验能吃注释）+ #22b 模板 jsonc 关联（第 2.1 轮）
+  第 1.2 轮：E6#7                  loader 改造（.linkdesk-plugin 打包格式） ← 依赖 E6#9（#8 折叠；plugin-shell 已支持动态入口）
+  第 1.2 轮：E6#12（吸收 #10）      PluginInstallService 唯一 owner ← 依赖 E6#7（loader 支持打包格式后记录才有意义）；#10 折叠进 #12（2026-08-30 第 1.2 轮审视，实锤见 03 §八）
+  第 1.2 轮：E6#11                  安装/卸载/更新单一路径 ← 依赖 E6#12（数据 owner 已建）
+  第 1.2 轮：E6#13                  新 IPC handler（下载/解压/更新/进度） ← 依赖 E6#12 + E6#11（install 消费 #12.add、uninstall 走 #11b）；广播审计已在 E5.8#6.5
+  第 1.2 轮：E6#13.5               toast 主动作按钮 API（notifications.show actions，缝隙 K1） ← 无前置（基于 E3j#76 现有桥）；消费在 L3（30.5e 缺依赖 [查看依赖] / 30.9b 失败 [重试]）
+  第 1.3 轮：E6#54、#15-#20        共享组件分发 + 内置插件 + 壳瘦身 + 路径解析 ← 依赖 E6#12 + E6#9（#8 折叠）；#54 是 #15 硬前置（内置插件独立 build 前先切 @linkdesk/ui）
+
+第 2 层（第 1 层后——串行）
+  第 2.1 轮：E6#21-#23             脚手架                       ← 依赖 E6#1-#2、#4-#6
+  第 2.2 轮：E6#23.5、#24-#26      dev 宿主重设计（SDK 自带宿主页）+ dev/build/发布入口（自动链路含 #26c token） ← 依赖 E6#21-#23
+  第 2.3 轮：E6#27-#28             Mock 自动生成 + dev Electron（限壳侧；第三方走装进 LinkDesk） ← 依赖 E5.8 Phase 4 生成器 + #23.5
+
+第 3 层（第 1-2 层后）
+  第 3.0 轮：E6#57.1-#57.3  主软件更新·产品身份地基（product.json / app.getVersion / app:getProductInfo / compareVersions） ← 壳通用 API 先行（api-preference-existing-first）；#57.2 `app.getVersion` 是市场 #30.8c（第 3.2.2 轮 minAppVersion 校验）前置
+  E6#29-#30: marketplace.json（含扩展）+ 改造 + 探索插件 + 图标    ← 依赖 E6#26
+  E6#30.10-#30.11: 系列一·市场搬迁（详情页渲染面归市场插件——机制 + 迁移，壳保底降级） ← 依赖 E6#30 + E5.8#41.12（factorySlots active）
+  E6#30.12/#30.14: 系列二·UI 组件（--success token + Button variant + Badge） ← 依赖系列一搬迁（消费落点）
+  E6#30.13: 换市场插件联合验收（实机换样式 + 数据继承） ← 依赖系列一 + 系列二全就位
+  E6#31: 壳侧下载与安装（下载/安装/卸载机制——详情页三态按钮与安装细节的地基） ← 依赖 E6#12 + E6#13 + E6#29（2026-08-29 审计 A3：先于 30.5-9，三态/下载进度吃它）
+  E6#30.5-#30.9: 详情页内容（三态 + README + 标签标题 + 信任 + 安装细节，落在搬迁后 DetailView 上做） ← 依赖两系列前置 + E6#31（安装机制）+ E6#13 + E6#30
+  E6#32-#33: 搜索 + 更新（徽标/版本/自动更新）       ← 依赖 E6#12 + E6#13 + E6#29
+
+第 4 层（第 1-3 层后）
+  E6#34-#35: 测试插件设计+开发版验证                             ← 依赖 E6#6 + E6#23 + E6#24 + E6#28 + E5.8 Phase 4（#35 宿主 = #28 壳侧 dev）
+  E6#36: 独立构建                                               ← 依赖 E6#34（源）+ E6#25（build CLI）
+  E6#37-#39: 生产安装全链路                                      ← 依赖 E6#36 + E6#31 + E6#13 + E6#26b（#38a 发布走自动链路）
+
+第 5 层（全程穿插）
+  E6#40-#41: 文档（随时）
+  E6#42-#44: CI + 官网 + 发布清单                               ← 第 1 层后
+  第 5.3 轮：E6#45-#47             Shell 集成 + 多窗口           ← 依赖 E6#37（安装包构建完成）
+  第 5.4 轮：E6#57.4-#57.16        主软件更新（壳侧自研更新机制实现） ← 依赖 E6#37（#57.16 实机验证）+ #30.6a（#57.13 发行说明渲染 MarkdownView）+ #57.1-#57.3（产品身份地基）；发布脚本与 #42/#44 衔接
+
+第 6 层（第 1-3 层后）
+  E6#48-#52: 安全加固——沙箱缝 / 审批审计对 / 崩溃补闭环 / 凭据隔离 / 用户 patch 层+dump 读端 ← 依赖 E6#12（#52a patch 写插件配置）+ #9c readAllManifests（#52b dump 贡献声明——读端数据源现成，不依赖 #12）；#52 两半同批验证（先 dump 看行 → patch 覆盖 → dump 确认）+ E5.8 现状（#48 spawn 点 / #49 filesystem-guard / #50 protocol-debug.log）
+
+展望（E6 生态地基——排期建议设计时定）
+  E6#53: 装配清单 profile 设计（自 E5.8#50 移入）   ← 依赖 E6 生态成熟（市场/下载/安装落地后价值最大）
+  E6#56: 自指插件工具集（会话内 define/run/stop）  ← 依赖 E6 生态成熟（SDK build + 动态加载 + 安装服务落地后价值最大）
+  E6#57: 主软件更新（壳侧自研更新机制——研究/设计 #57a/#57b 已✅ 2026-08-30）← 实现 = 第 3.0 轮 #57.1-#57.3（产品身份地基）+ 第 5.4 轮 #57.4-#57.16（机制/UI/发布/验证）；实机验证依赖 E6#37（安装包构建完成）
+</code></pre>
+<p><strong>最长串行链：</strong> E5.8 完成 → 第 0 层（#0.1-#0.6 卫生）→ SDK 类型对接 → 动态加载 + glob 替换 → loader 改造 → IPC handler 新建 → PluginInstallService → 共享组件分发 → 内置插件独立化 → 壳瘦身 → 协议重构 → 脚手架 → dev + build（宿主重设计）→ Mock 自动生成 → marketplace（搬迁 + UI 组件）→ <strong>产品身份地基（第 3.0 轮 #57.1-#57.3，市场 #30.8c 前置）</strong> → marketplace 内容（#30.5-#30.9 消费 app.getVersion）→ 测试插件 → 生产验证 → Shell 集成 + 多窗口 → <strong>主软件更新（第 5.4 轮 #57.4-#57.16，实机验证依赖 E6#37）</strong> = 21 步。</p>
+<h2 id="总结">总结</h2>
+<table>
+<thead>
+<tr>
+<th style="text-align:left">层</th>
+<th>内容</th>
+<th style="text-align:center">任务数</th>
+<th style="text-align:left">估时</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left">L0</td>
+<td>E6 前置——目录卫生（死 .git 清理 / 产物排除）+ 壳树 feature-folder 审计（src/App 增量 / 大文件 / 目录）+ 防膨胀门禁</td>
+<td style="text-align:center">6</td>
+<td style="text-align:left">0.5-1 天</td>
+</tr>
+<tr>
+<td style="text-align:left">L1</td>
+<td>插件独立构建——SDK + 类型对接 + 动态加载 + glob 替换 + pluginLoader 拆分 + IPC handler + PluginInstallService + 共享组件分发 + 内置插件 + 壳瘦身 + 路径解析 + plugin.json JSONC 化</td>
+<td style="text-align:center">23</td>
+<td style="text-align:left">5.5-8 天</td>
+</tr>
+<tr>
+<td style="text-align:left">L2</td>
+<td>插件开发工具链——脚手架 + dev 宿主重设计 + dev + build + Mock 自动生成 + dev Electron 弥合</td>
+<td style="text-align:center">9</td>
+<td style="text-align:left">2-3 天</td>
+</tr>
+<tr>
+<td style="text-align:left">L3</td>
+<td>插件市场——GitHub Releases + 安装管理 + 第一站体验（探索/详情三态/README/更新/信任/安装细节/标签页）+ 市场搬迁（系列一）+ UI 组件（系列二）+ <strong>主软件更新·产品身份地基（第 3.0 轮 #57.1-#57.3）</strong></td>
+<td style="text-align:center">18</td>
+<td style="text-align:left">2.5-4 天</td>
+</tr>
+<tr>
+<td style="text-align:left">L4</td>
+<td>端到端验证——测试插件 + 生产安装全链路</td>
+<td style="text-align:center">6</td>
+<td style="text-align:left">1-2 天</td>
+</tr>
+<tr>
+<td style="text-align:left">L5</td>
+<td>文档与发布——开发指南 + CI + 官网 + Shell 集成 + 多窗口 + <strong>主软件更新实现（第 5.4 轮 #57.4-#57.16，壳自研更新机制，实机验证依赖 #37）</strong></td>
+<td style="text-align:center">21</td>
+<td style="text-align:left">4-6 天</td>
+</tr>
+<tr>
+<td style="text-align:left">L6</td>
+<td>安全加固——dsh 第二梯队（沙箱缝 / 审批审计对 / 崩溃补闭环 / 凭据隔离 / 用户 patch 层）</td>
+<td style="text-align:center">5</td>
+<td style="text-align:left">3-5 天</td>
+</tr>
+<tr>
+<td style="text-align:left">展望</td>
+<td>装配清单 profile 设计（E6#53）+ 自指插件工具集（E6#56）+ 主软件更新研究设计（E6#57 ✅ 已闭环，实现 = 第 3.0 轮 + 第 5.4 轮）</td>
+<td style="text-align:center">3</td>
+<td style="text-align:left">排期建议设计时定</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>合计</strong></td>
+<td></td>
+<td style="text-align:center"><strong>91</strong></td>
+<td style="text-align:left"><strong>20-27 天</strong></td>
+</tr>
+</tbody>
+</table>
+<hr>
+<blockquote>
+<p><strong>→ 下一文档：</strong> <code>00-AI执行守则-必读.md</code>
+<strong>← 上一 Phase：</strong> <code>../E5_核心归一化与壳重构_待执行/</code></p>
+</blockquote>
+
+            <script async src="https://cdn.jsdelivr.net/npm/katex-copytex@latest/dist/katex-copytex.min.js"></script>
+            
+        </body>
+        </html>
