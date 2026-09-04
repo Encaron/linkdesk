@@ -1,0 +1,17 @@
+{
+  "_comment": "npm 发布基线——发布完成或知情绕行后由 `npm run release:mark` 更新（勿手改）",
+  "packages": [
+    {
+      "name": "@linkdesk/contracts",
+      "version": "0.1.0",
+      "contentHash": "aae03c56b6997d0a909bd412d8379eaea685ec22c3d0e77ae8608e13c1247325",
+      "files": 2
+    },
+    {
+      "name": "@linkdesk/plugin-sdk",
+      "version": "0.1.0",
+      "contentHash": "fa2e52f2d57e5df7e35e827219de61b0e440a9d4a25b99d17ddc246d89e88b42",
+      "files": 7
+    }
+  ]
+}
