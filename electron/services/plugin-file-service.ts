@@ -16,6 +16,8 @@ import { fileService } from './file-service.js';
 // E6#9a/c：IPC 返回形状共享 src 契约类型（主进程 type-only import——编译期擦除，无运行时依赖）
 import type { PluginManifest } from '../../src/core/api/types.js';
 import type { PluginDiscoveryEntry } from '../../src/core/api/linkdesk-api/types.js';
+// E6#55：作者 plugin.json JSONC——全仓唯一解析入口，主进程发现读盘同走（壳 helper 对齐，不另写解析）
+import { parseManifestJson } from '../../src/pluginLoader/jsonc.js';
 
 /**
  * E5.7#69：插件子目录白名单消灭——运行时扫描全部子目录，不再写死 ['builtin', 'user']。
@@ -91,7 +93,7 @@ class PluginFileService {
     const out: PluginDiscoveryEntry[] = [];
     for (const pluginId of await this.listPluginDirs()) {
       try {
-        const manifest = JSON.parse(await this.readManifest(pluginId)) as PluginManifest;
+        const manifest = parseManifestJson(await this.readManifest(pluginId));
         out.push({ pluginId, entry: manifest.entry, manifest });
       } catch {
         // 单个插件 plugin.json 损坏不阻断全量发现——loader 启动诊断会报具体插件

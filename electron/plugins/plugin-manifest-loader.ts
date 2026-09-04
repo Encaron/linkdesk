@@ -22,6 +22,7 @@ import * as path from "path";
 import { app, ipcMain } from "electron";
 import { PLUGINS_DIR, PLUGIN_SUBDIRS } from "../../src/core/utils/plugin/pluginPaths.js"; // E5.8#0d.11：自 core/ 根归位 utils/plugin/
 import type { PluginManifest, LangDefContribution } from "../../src/core/api/types.js";
+import { parseManifestJson } from "../../src/pluginLoader/jsonc.js"; // E6#55：作者 plugin.json JSONC——主进程三表预载同走唯一解析入口
 import { registerLangDef, clearLangDefs } from "../../src/core/registry/languages/LangDefRegistry.js";
 import { clearProtocols } from "../../src/core/registry/ProtocolRegistry.js";
 import { registerFileAssociation, clearFileAssociations } from "../../src/core/services/files/FileAssociationService.js";
@@ -96,7 +97,7 @@ export function loadAllPluginManifests(): void {
       _loadedPluginIds.add(name);
       try {
         const raw = fs.readFileSync(manifestPath, "utf-8");
-        registerManifestTables(name, JSON.parse(raw) as PluginManifest);
+        registerManifestTables(name, parseManifestJson(raw));
       } catch (e) {
         console.error(
           `[plugin-manifest-loader] 跳过插件 ${sub}/${name}——plugin.json 解析失败`,

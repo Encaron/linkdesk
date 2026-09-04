@@ -20,6 +20,7 @@
  *   主进程自动排队，loader 代码无需感知队列存在。
  */
 
+import type { PluginManifest } from "../core/api/types";
 import { pushToast, TOAST_TTL_ERROR } from "../core/services/ui/NotificationService";
 import { setPluginStateValue, APP_PLUGIN_ID } from "../core/services/plugins/PluginStateService";
 import { initLifecycleConsumers } from "./lifecycle/lifecycle";
@@ -33,7 +34,7 @@ import {
   pluginsApi,
   log,
   errMsg,
-  pluginManifests,
+  pluginManifestRaw,
   loadedPluginIds,
   _deferredPlugins,
   extractPluginId,
@@ -48,6 +49,7 @@ export { runtimeEntryPath, parseContributions } from "./contributions/contributi
 import { loadPlugin, activateDeferredByEvent } from "./resolution/runtime";
 // #9g 按需激活：延迟判定纯函数（shouldDeferActivation）+ 触发总线（App 层触发源只认总线，不 import runtime）
 import { shouldDeferActivation, fireActivationEvent, setActivationEventHandler } from "./resolution/activation";
+import { parseManifestJson } from "./jsonc"; // E6#55：作者 plugin.json JSONC——唯一解析入口
 import {
   disablePlugin,
   enablePlugin,
@@ -132,10 +134,18 @@ export async function initPluginLoader(): Promise<void> {
 
   // 3. 源码树里 glob 有、但磁盘已不在（目录被手动删除）的插件——种子 uninstalled 缓存（F5 后详情仍可浏览）。
   //    listAll 以磁盘为准不含它们；此差集只增不删（删僵尸缓存是步骤 7 pruneUninstalledCache 的职责）。
-  for (const [path, manifest] of Object.entries(pluginManifests)) {
+  //    E6#55：glob 值是 ?raw 原文——先 jsonc 解析（坏文件跳过，dev 手工改坏 plugin.json 不拖垮启动）。
+  for (const [path, raw] of Object.entries(pluginManifestRaw)) {
     const pluginId = extractPluginId(path);
     if (discoveredIds.has(pluginId)) continue;
     if (loadedPluginIds.has(pluginId)) continue;
+    let manifest: PluginManifest;
+    try {
+      manifest = parseManifestJson(raw);
+    } catch (e) {
+      log.appendLine(`⚠️ glob 插件 "${pluginId}" plugin.json 解析失败——跳过缓存种子: ${errMsg(e)}`);
+      continue;
+    }
     if (disabled.includes(pluginId)) {
       cachePluginMetadata(pluginId, manifest, "disabled");
     } else {
@@ -201,7 +211,7 @@ export async function initPluginLoader(): Promise<void> {
       if (discoveredIds.has(pluginId)) continue;
       try {
         const raw = await pluginsApi().readManifest(pluginId);
-        const manifest = JSON.parse(raw);
+        const manifest = parseManifestJson(raw);
         cachePluginMetadata(pluginId, manifest, "uninstalled");
         log.appendLine(`📦 已卸载插件入缓存: ${pluginId}`);
       } catch (e) {
@@ -303,7 +313,7 @@ export function startPluginWatcher(): void {
         if (getDisabledList().includes(dir)) continue;
         if (shouldWatcherSkip(dir)) continue;
 
-        const manifestKey = Object.keys(pluginManifests).find(
+        const manifestKey = Object.keys(pluginManifestRaw).find(
           (k) => extractPluginId(k) === dir
         );
         if (manifestKey) {

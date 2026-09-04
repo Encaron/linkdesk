@@ -34,6 +34,7 @@ import {
 import { validateInstallManifest, resolveVersionConflict } from "../discovery/manifest";
 import { syncAppThemeEnum, syncAppLanguageEnum, syncIconThemeEnum } from "../contributions/contributions";
 import { loadPlugin } from "../resolution/runtime";
+import { parseManifestJson } from "../jsonc"; // E6#55：作者 plugin.json JSONC——唯一解析入口
 
 /* ═══════════════════════════════════════════════════════════
    Phase 4.3 生命周期 API——安装/卸载/禁用/启用
@@ -218,7 +219,7 @@ export async function installPlugin(sourcePath: string): Promise<{ success: bool
     }
     let parsedManifest: unknown;
     try {
-      parsedManifest = JSON.parse(await linkdesk().filesystem.readTextFile(manifestPath));
+      parsedManifest = parseManifestJson(await linkdesk().filesystem.readTextFile(manifestPath));
     } catch (e) {
       throw new Error(`plugin.json 格式错误: ${errMsg(e)}`);
     }
@@ -233,7 +234,7 @@ export async function installPlugin(sourcePath: string): Promise<{ success: bool
     if (await linkdesk().filesystem.exists(destDir)) {
       installed = { version: null };
       try {
-        const iv = JSON.parse(await linkdesk().filesystem.readTextFile(`${destDir}/plugin.json`));
+        const iv = parseManifestJson(await linkdesk().filesystem.readTextFile(`${destDir}/plugin.json`));
         if (typeof iv?.version === "string") installed = { version: iv.version };
       } catch { /* 读不到版本信息 → 保守拒绝（见 resolveVersionConflict null 分支） */ }
       const conflict = resolveVersionConflict(installed, version);
@@ -245,7 +246,8 @@ export async function installPlugin(sourcePath: string): Promise<{ success: bool
     // 消毒 manifest——安装后强制 distribution=user, core=false
     const destManifest = `${destDir}/plugin.json`;
     const raw = await linkdesk().filesystem.readTextFile(destManifest);
-    const manifest = JSON.parse(raw);
+    // E6#55：JSONC 读入；distribution 是遗留字段（schema 契约外）——局部宽口视图承接，非 PluginManifest 契约面
+    const manifest = parseManifestJson(raw) as PluginManifest & { distribution?: string };
     if (manifest.distribution !== "user" || manifest.core === true) {
       manifest.distribution = "user";
       manifest.core = false;

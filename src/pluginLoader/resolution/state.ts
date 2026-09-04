@@ -10,6 +10,7 @@ import type { PluginDiscoveryEntry } from "../../core/api/linkdesk-api/types";
 import { getViewPlugin } from "../contributions/viewRegistry";
 import { getPluginStateValue, setPluginStateValue, APP_PLUGIN_ID } from "../../core/services/plugins/PluginStateService";
 import { createLogChannel } from "../../core/services/ui/LogChannel";
+import { parseManifestJson } from "../jsonc"; // E6#55：glob 原文统一走唯一解析入口
 
 // Electron IPC——window.linkdesk 由 preload-shell.ts 注入
 const linkdesk = () => window.linkdesk;
@@ -109,14 +110,18 @@ const viewRenderModules = {
   ),
 };
 
-const pluginManifests = {
-  ...import.meta.glob<PluginManifest>(
+// E6#55：plugin.json glob 改读原文（?raw）——不再让 Vite 把作者 plugin.json 当严格 JSON 模块处理
+// （vite:json 拒绝注释/尾逗号 → 带注释的 plugin.json 在 dev/build 的模块图里直接炸，壳侧 jsonc 解析根本轮不到）。
+// 原文内容一律走 parseManifestJson 统一解析（唯一入口）；本对象保留 #9e 双职：源码树成员判据
+// （键存在性——runtime/contributions 只 Object.keys 判 isRuntime 不读值）+ 浏览器预览种子原文。
+const pluginManifestRaw = {
+  ...import.meta.glob<string>(
     "../../../plugins/builtin/*/plugin.json",
-    { eager: true }
+    { query: "?raw", import: "default", eager: true }
   ),
-  ...import.meta.glob<PluginManifest>(
+  ...import.meta.glob<string>(
     "../../../plugins/user/*/plugin.json",
-    { eager: true }
+    { query: "?raw", import: "default", eager: true }
   ),
 };
 
@@ -130,8 +135,8 @@ const pluginManifests = {
  *      （主进程直扫 plugins/ 全子目录——打包/市场安装插件 glob 看不到；单一真源，幂等覆盖）。
  *   ② 纯浏览器预览（无 pluginsApi）：seedManifestIndexFromGlob()——上方 eager glob 兜底，行为同旧。
  *
- * 上方 pluginManifests glob 对象保留双职：Vite 源码树成员判据（isRuntime = 不在源码树，
- * #9e：dev 保留 glob 作即时代码分割）+ 纯浏览器预览种子；manifest 内容一律走本索引。
+ * 上方 pluginManifestRaw glob（E6#55 改 ?raw 原文）保留双职：Vite 源码树成员判据（isRuntime = 不在源码树，
+ * #9e：dev 保留 glob 作即时代码分割）+ 纯浏览器预览种子原文；manifest 内容一律走本索引（jsonc 单入口解析）。
  */
 const manifestIndex = new Map<string, PluginManifest>();
 
@@ -140,10 +145,10 @@ function hydrateManifestIndex(records: Record<string, PluginManifest>): void {
   for (const [id, manifest] of Object.entries(records)) manifestIndex.set(id, manifest);
 }
 
-/** 纯浏览器预览兜底——从 DEV eager glob 种子填充（loader 无 pluginsApi 时调）。仅 discoverInstalled 内部调，不外发。 */
+/** 纯浏览器预览兜底——从 DEV ?raw glob 原文种子填充（loader 无 pluginsApi 时调）。仅 discoverInstalled 内部调，不外发。 */
 function seedManifestIndexFromGlob(): void {
-  for (const [path, manifest] of Object.entries(pluginManifests)) {
-    manifestIndex.set(extractPluginId(path), manifest);
+  for (const [path, raw] of Object.entries(pluginManifestRaw)) {
+    manifestIndex.set(extractPluginId(path), parseManifestJson(raw));
   }
 }
 
@@ -170,11 +175,10 @@ export async function discoverInstalled(): Promise<PluginDiscoveryEntry[]> {
     return entries;
   } catch {
     seedManifestIndexFromGlob();
-    return Object.entries(pluginManifests).map(([path, manifest]) => ({
-      pluginId: extractPluginId(path),
-      entry: manifest.entry,
-      manifest,
-    }));
+    return Object.entries(pluginManifestRaw).map(([path, raw]) => {
+      const manifest = parseManifestJson(raw);
+      return { pluginId: extractPluginId(path), entry: manifest.entry, manifest };
+    });
   }
 }
 
@@ -307,7 +311,7 @@ export {
   pluginModules,
   pluginStatusBarModules,
   viewRenderModules,
-  pluginManifests,
+  pluginManifestRaw,
   loadedPluginIds,
   _loadingPromises,
   _deferredPlugins,

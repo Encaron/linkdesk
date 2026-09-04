@@ -28,7 +28,7 @@ import {
   pluginsApi,
   log,
   errMsg,
-  pluginManifests,
+  pluginManifestRaw,
   loadedPluginIds,
   _loadingPromises,
   _deferredPlugins,
@@ -41,6 +41,7 @@ import {
 } from "./state";
 import { normalizeManifest, hasSidebarContainers, type OldFormatManifest } from "../discovery/manifest";
 import { effectiveActivationEvents } from "./activation"; // #9g：延迟匹配按「显式 ?? 推断」生效事件
+import { parseManifestJson } from "../jsonc"; // E6#55：作者 plugin.json JSONC——唯一解析入口
 import {
   parseContributions,
   resolveRuntimePluginRoot,
@@ -169,7 +170,7 @@ async function loadPlugin(
   // 🔥 硬约束 13：竞态守卫——两次 concurrent 调用 → 第二次等第一次的 Promise
   if (_loadingPromises.has(pluginId)) { await _loadingPromises.get(pluginId)!; return; }
 
-  const manifestKey = Object.keys(pluginManifests).find(
+  const manifestKey = Object.keys(pluginManifestRaw).find(
     (k) => extractPluginId(k) === pluginId
   );
   const isRuntime = !manifestKey;
@@ -182,7 +183,7 @@ async function loadPlugin(
   if (isRuntime) {
     try {
       const raw = await pluginsApi().readManifest(pluginId);
-      manifest = JSON.parse(raw);
+      manifest = parseManifestJson(raw);
     } catch (e) {
       console.warn(`[pluginLoader] 运行时插件 "${pluginId}" 读取 plugin.json 失败: ${errMsg(e)}`);
       markLoadFailed(pluginId, `plugin.json 读取失败: ${errMsg(e)}`);
@@ -192,7 +193,7 @@ async function loadPlugin(
     // E6#9c：manifest 内容走 manifestIndex（plugins:readAllManifests 水合——listAll 已同扫一致）；
     // glob 内容仅作未水合兜底（独立单测/极端时序），两源同盘同内容。
     try {
-      manifest = getManifestById(pluginId) ?? pluginManifests[manifestKey];
+      manifest = getManifestById(pluginId) ?? parseManifestJson(pluginManifestRaw[manifestKey]);
     } catch {
       pushToast({ message: `插件 "${pluginId}" 的 plugin.json 格式错误，已跳过` });
       console.warn(`[pluginLoader] plugin.json 格式错误 — "${pluginId}"`);
@@ -413,7 +414,7 @@ async function activatePlugin(pluginId: string): Promise<boolean> {
 
   _activating.add(pluginId);
   try {
-    if (Object.keys(pluginManifests).some((k) => extractPluginId(k) === pluginId)) {
+    if (Object.keys(pluginManifestRaw).some((k) => extractPluginId(k) === pluginId)) {
       // glob 内（dev/源码内置）——loadPluginComponent 内 registerViewPlugin 升级占位
       await loadPluginComponent(pluginId, manifest);
     } else {

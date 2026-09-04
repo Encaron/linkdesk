@@ -26,7 +26,7 @@ import { registerCommand } from "../../core/registry/commands/CommandRegistry";
 import { registerKeybinding } from "../../core/registry/commands/KeybindingRegistry";
 import { registerPluginLanguageBundle } from "./i18nResources";
 import i18n from "../../i18n";
-import { pluginModules, pluginStatusBarModules, viewRenderModules, pluginManifests, extractPluginId, errMsg, log } from "../resolution/state";
+import { pluginModules, pluginStatusBarModules, viewRenderModules, pluginManifestRaw, extractPluginId, errMsg, log } from "../resolution/state";
 
 /** 从主题 JSON 数据中提取扁平化 colors——归一化 #36j2。消两处重复。 */
 function extractThemeColors(data: Record<string, unknown>): Record<string, string> {
@@ -175,7 +175,7 @@ export async function parseContributions(pluginId: string, c: Record<string, unk
           // E5#34b: render 路径相对于插件根目录。
           // 优先级：1) 调用方传入 pluginRoot  2) import.meta.glob 推导  3) IPC resolvePath（glob 外插件兜底）
           const resolvedRoot = pluginRoot ?? (() => {
-            const mk = Object.keys(pluginManifests).find(k => extractPluginId(k) === pluginId);
+            const mk = Object.keys(pluginManifestRaw).find(k => extractPluginId(k) === pluginId);
             return mk ? mk.replace(/\/plugin\.json$/, "") : "";
           })();
           let renderPath: string;
