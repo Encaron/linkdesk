@@ -255,7 +255,21 @@ async function loadPlugin(
     // #9g 按需激活：延迟加载（skipView）时跳过 JS import——只解析根（Step5 pluginRoot 依赖），
     // entry 在 activatePlugin 首次触发事件时才 import（启动注册-only，对标 VS Code 延迟激活）。
     // E6#7：bundle 插件入口恒 index.bundle.js（isBundlePlugin 从启动发现水合）
-    const entryPath = opts?.skipView ? undefined : runtimeEntryPath(manifest, pluginId, import.meta.env.DEV, { bundle: isBundlePlugin(pluginId) });
+    // 🔥 2026-09-06 根因修复（接 #15i 兜底——删错误动作，不删报错）：「可能未构建」toast 是假阳性——
+    // 打包版壳窗对 glob 外 runtime **bundle** 的入口 import 是**确定性死执行**：G2/拍点② 铁律 = 插件代码
+    // 唯一执行者 = 池，壳窗按设计不配 react import-map；SDK bundle 又恒外部化 react（DEFAULT_EXTERNAL）
+    // → 壳 import 必崩 → 旧逻辑把每启动必现的崩溃标成「插件没构建」（插件是好的，壳只是按设计不该执行它）。
+    // 真修复 = 壳**不尝试**这次 import（dev 保真：dev 下 vite shim react → import 有效 → 照旧实组件注册）。
+    // viewComponent 保持 undefined → Step4 第三分支（#15i）注册 stub → 插件进 [+] / 欢迎页，打开交池
+    // PluginComponent 执行（池有 map，实证渲染）。真坏 bundle 的报错**不丢**：打开时池 import 失败 → 池
+    // 错误边界/console 浮现；deferred 插件激活失败照旧抛（activatePlugin 非静默）——真实错误留在真实执行位。
+    // 遗留审计（#17d 显式跟踪）：壳 loader 入口 import 是否架构必需 + bundle 纯贡献插件（无视图可开）
+    // 的壳侧贡献注册缺口——本修复只堵 bundle 视图插件的假阳性，不宣称解决整条残留死执行。
+    const isBundle = isBundlePlugin(pluginId);
+    const shellCantExecBundle = !import.meta.env.DEV && isBundle;
+    const entryPath = opts?.skipView || shellCantExecBundle
+      ? undefined
+      : runtimeEntryPath(manifest, pluginId, import.meta.env.DEV, { bundle: isBundle });
     if (entryPath) {
       try {
         if (!runtimePluginRoot) throw new Error("根目录解析失败");
