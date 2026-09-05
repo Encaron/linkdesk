@@ -315,14 +315,19 @@ async function loadPlugin(
     // 运行时与 glob 两路共用此分支（entryless 运行时插件同样能渲染 views）。
     registerViewPlugin({ pluginId, manifest });
     log.appendLine(`[OK] entryless 视图插件 "${manifest.name}" (${pluginId}) 已注册（图标栏入口）`);
-  } else if (opts?.skipView && manifest.entry) {
+  } else if (manifest.entry && (opts?.skipView || (isRuntime && !viewComponent))) {
     // #9g 按需激活：延迟 entry 插件注册 component-less 占位（component 可选项——渲染不读本字段，
     // 池 PluginComponent 独立 glob 解析）。保图标栏/侧栏容器/标签身份（tabBehavior/identityField）等
     // 声明驱动的 UI 表面在启动期照常可见；JS 首用（onView/onFileOpen/onCommand 等）再激活升级成
     // componentful（registerViewPlugin 同版本 stub→实 升级）。对标 VS Code：manifest 贡献启动可见，
     // extension 代码激活才跑。
+    // 🔥 2026-09-06 兜底扩展：opts.skipView（延迟激活）之外的第二个落点 = 运行时 entry import **失败**
+    // 也注册元数据占位——「声明了可开成标签页/进图标栏 = 就该可开」，不因壳侧暂时 load 不动 JS 而隐身
+    // （实证：打包版 shell 缺 react import map → bundle 插件裸 import 崩 → viewComponent undefined →
+    // 旧逻辑 Step4 三分支全落空 → 装好却不在 [+] / 欢迎页可开列表；stub 照常列出，打开交给池渲染——池有 map）。
+    // 真实坏插件同样兜住：列出来、打开时池 error boundary 兜底——对标 VS Code 列出但激活失败可看错误。
     registerViewPlugin({ pluginId, manifest });
-    log.appendLine(`[OK] 延迟激活插件 "${manifest.name}" (${pluginId}) 注册元数据——JS 首用再 import`);
+    log.appendLine(`[OK] 元数据注册 "${manifest.name}" (${pluginId})（延迟激活或 JS 加载失败占位）`);
   }
 
   // ═══ Step 5: 解析 contributes → 分发各 Registry ═══

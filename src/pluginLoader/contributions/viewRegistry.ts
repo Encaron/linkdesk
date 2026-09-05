@@ -141,10 +141,14 @@ export function getIconLocation(pluginId: string): "top" | "bottom" | undefined 
 }
 
 /**
- * 获取可创建为标签页的视图插件——appearsIn.tabBar === true 且有 entry 组件。
+ * 获取可创建为标签页的视图插件——appearsIn.tabBar === true 且有 entry 声明。
  * 消费端：WelcomeView 快捷卡片、TabBar [+] 菜单、命令面板"打开视图"等。
- * E5.8#37.9.2.3：标签页渲染靠 entry（PluginComponent glob src/index.tsx）——component-less
- * 注册只服务图标栏，即使误声明 appearsIn.tabBar 也不得成为标签页（防御性守卫）。
+ * 🔥 2026-09-06 契约纠偏：可创建 ≠ 已注册组件——壳 registry 的 component 是可选元数据，
+ * 标签页实际渲染走池 PluginComponent 独立解析（E5.7 架构：shell 持 loader、池渲染）。
+ * 故 #9g 延迟激活 stub 与 runtime JS 加载失败占位（loader Step4 兜底）的 component-less
+ * 注册同样在此列出——点击交给池渲染（成不成由池的 import-map/错误边界决定）。
+ * 过滤只查 appearsIn.tabBar + entry 声明，不查 component（旧"防御性守卫"注释已随
+ * #9g + JS 失败兜底两项真实化而撤销——component-less 现在是正当的可创建成员）。
  */
 export function getTabCreatableViews(): ViewPluginEntry[] {
   return Array.from(registry.values()).filter(

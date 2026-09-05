@@ -6,7 +6,7 @@
 
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import type { ComponentType } from "react";
-import { registerViewPlugin, getViewPlugin, getFloatingPanelViewId } from "./viewRegistry";
+import { registerViewPlugin, getViewPlugin, getFloatingPanelViewId, getTabCreatableViews } from "./viewRegistry";
 import type { PluginManifest } from "../../core/api/types";
 
 /** 注册最小视图插件条目——floatingPanelViewId 提供时给 manifest 附 contributes.floatingPanel。返回 disposer。 */
@@ -95,5 +95,55 @@ describe("registerViewPlugin——延迟激活占位升级（E6#9g）", () => {
     expect(getViewPlugin("demo-gamma")).toBeUndefined();
     stubDisposer(); // 旧占位 disposer no-op——不把条目复活
     expect(getViewPlugin("demo-gamma")).toBeUndefined();
+  });
+});
+
+/* ── 2026-09-06 loader Step4 JS 加载失败兜底：component-less stub 可创建（可创建 ≠ 已注册组件） ── */
+
+describe("getTabCreatableViews——component-less stub 可创建性（loader Step4 兜底消费端不变量）", () => {
+  // 独立清场
+  let disposers: Array<() => void> = [];
+  beforeEach(() => {
+    disposers = [];
+  });
+  afterEach(() => {
+    for (const d of disposers) d();
+  });
+
+  // 虚构夹具 id（硬约束 21）——大写常量通道（linkdesk/no-plugin-id-hardcode 批准的常量用法）
+  const CREATABLE_STUB_ID = "demo-delta";
+  const NON_TABBAR_ID = "demo-echo";
+  const NO_COMPONENT_ID = "demo-foxtrot";
+
+  function registerView(pluginId: string, extra: Partial<PluginManifest> = {}) {
+    const manifest: PluginManifest = {
+      name: pluginId,
+      version: "1.0.0",
+      entry: "src/index.tsx",
+      appearsIn: { tabBar: true },
+      ...extra,
+    };
+    disposers.push(registerViewPlugin({ pluginId, manifest }));
+    return manifest;
+  }
+
+  it("runtime JS 加载失败占位（component-less + appearsIn.tabBar + entry）→ 仍可创建（[+] 菜单/欢迎卡列出）", () => {
+    // loader Step4 兜底只注册元数据 stub（component 空）——registry 必须把它列为可开：
+    // 打包版 shell 缺 react import map → bundle import 崩 → 此 stub 是插件唯一身份面。
+    registerView(CREATABLE_STUB_ID);
+    expect(getViewPlugin(CREATABLE_STUB_ID)?.component).toBeUndefined();
+    expect(getTabCreatableViews().some((e) => e.pluginId === CREATABLE_STUB_ID)).toBe(true);
+  });
+
+  it("声明 appearsIn.tabBar=false 的 entry 插件 → 不可创建（不进 [+] 列表）", () => {
+    registerView(NON_TABBAR_ID, { appearsIn: { tabBar: false } });
+    expect(getTabCreatableViews().some((e) => e.pluginId === NON_TABBAR_ID)).toBe(false);
+  });
+
+  it("component-less 注册不要求组件即可创建——可创建列表对 component 字段零依赖", () => {
+    registerView(NO_COMPONENT_ID);
+    const entry = getTabCreatableViews().find((e) => e.pluginId === NO_COMPONENT_ID);
+    expect(entry).toBeDefined();
+    expect(entry?.manifest.entry).toBe("src/index.tsx");
   });
 });
