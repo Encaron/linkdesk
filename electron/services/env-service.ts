@@ -20,8 +20,10 @@ class EnvService {
     return app.getPath('userData');
   }
 
-  /** App 插件源码目录——plugins/<id>/ + .disabled/ 所在（只读：dev 项目树 / prod resources，绝不写用户安装）。
-   *  2026-09-05 塌平单根：平铺树直接含插件目录，无 builtin/user 子目录层。 */
+  /** App 插件代码根槽位——dev 独存（<repo>/plugins/ 源码树），prod 缺位 = 正常态（E6#17a 消费切换相摘除源拷贝）。
+   *  ⚠️ 打包版 resources/ 不含任何插件：此槽仅供双根发现/协议保持「app 根在前 → userData 在后」的遮蔽序形状，
+   *  消费方对不存在的根一律空目录容错（listPluginDirs/_findPluginDir/resolveLinkdeskPathMulti 全查 existsSync）。
+   *  prod 实际运行根 = envService.userPluginsDir()（boot 解压 bundled-plugins 发货 zip 落点）。 */
   appPluginsDir(): string {
     return app.isPackaged
       ? path.join(process.resourcesPath, 'plugins')

@@ -4,7 +4,8 @@
 # 生成 NSIS 安装器（Windows .exe）。
 #
 # 关键设计：
-#   - plugins/ 不打进 ASAR（extraResources）——安装/卸载需要动态文件系统操作
+#   - 插件源码不进包（extraResources = 只读 bundled-plugins 发货夹 + icon + pyright）；
+#     安装/卸载/运行根全在 userData（E6#15d 消费切换相 #17a）
 #   - linkdesk:// 协议根据 app.isPackaged 切换路径前缀
 #   - npmRebuild 自动处理 serialport 原生模块
 
@@ -22,17 +23,12 @@ files:
   - package.json
   - node_modules/**/*
 
-# 🔥 plugins/ 不打进 ASAR——保持为独立目录以支持动态安装/卸载
-# 开发模式：PLUGINS_DIR = <project>/plugins/
-# 打包模式：PLUGINS_DIR = <resources>/plugins/
+# 🔥 E6#17a（#15d 消费切换相）：plugins/ 源码目录不再打包——resources/ 不含任何插件源码。
+# 打包版插件唯一运行根 = userData（bundled-plugins 发货 zip → boot 自动装解压落 userData）。
+# 语义收敛：resources = 只读发货夹；userData = 唯一可写运行根。dev 不变（app 根 = repo plugins/ 源码树）。
 asar: true
 
 extraResources:
-  - from: plugins
-    to: plugins
-    filter:
-      - "**/*"
-      - "!.disabled/**"
   # E6#15c：内置插件 pre-bundle 独立化——随壳发货夹（boot 首启自动装 → userData；保留备份可恢复）。
   # dev 同夹（<repo>/bundled-plugins）——dev/prod 一致，boot 自动装同走 envService.bundledPluginsDir()。
   - from: bundled-plugins

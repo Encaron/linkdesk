@@ -27,13 +27,6 @@ class FileService {
     return path.join(...parts);
   }
 
-  /** 插件目录——打包后 plugins 在 extraResources，不在 ASAR 内 */
-  pluginsDir(): string {
-    return app.isPackaged
-      ? path.join(process.resourcesPath, 'plugins')
-      : path.join(app.getAppPath(), 'plugins');
-  }
-
   // ── 文件操作（对标 @tauri-apps/plugin-fs）──
 
   async readTextFile(filePath: string): Promise<string> {

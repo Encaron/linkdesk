@@ -6,10 +6,11 @@
  * docs/02-Electron架构/E5.7_极简Pool/Registry主进程化/Registry主进程化设计.md §2）。
  * 壳渲染进程不写不读这三张表（壳侧注册随 #49/#50 删除）。
  *
- * 扫描路径（electron-builder.yml 实证：plugins/ 走 extraResources、不进 ASAR）：
- *   dev       → <项目根>/plugins/<pluginId>/plugin.json
- *   packaged  → <resources>/plugins/<pluginId>/plugin.json
- * 2026-09-05 塌平：builtin/user 双目录废除——每个根（app / userData）直接含插件目录（目录名 = pluginId）。
+ * 扫描路径 = envService 双根（覆盖语义反序：userData 先扫、app 后扫 = app 注册胜出，见 getPluginRoots）：
+ *   dev   → {userData}/plugins/ + <项目根>/plugins/（各含 <pluginId>/plugin.json）
+ *   prod  → {userData}/plugins/ 单根（E6#17a 消费切换相：resources/ 无源码拷贝、app 根缺位 = 正常，
+ *           getPluginRoots 后 line 90 空目录容错 continue——勿按 prod 特例加 if）
+ * 2026-09-05 塌平：builtin/user 双目录废除——每个存在的根直接含插件目录（目录名 = pluginId）。
  * 目录名常量见 src/core/utils/plugin/pluginPaths.ts（PLUGINS_DIR，硬约束 12——改一处全生效）；本模块
  * 用 fs.readdir 直扫各根（渲染进程的 import.meta.glob 工厂已随塌平删除——零消费者）。
  *
