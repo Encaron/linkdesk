@@ -6,7 +6,7 @@
  * 异步 onApply 时态时序错乱。自定义组件走 React 状态，完全可控。
  *
  * 归一化：全局一个 SelectBox——不同页面/插件传不同的 options/value/onChange。
- * 新插件用下拉 → import SelectBox from "@src/components/shared/select-box/SelectBox"。
+ * 壳内部引用 @src 源码；插件作者（含内置插件 E6#54c）→ `import { SelectBox } from "@linkdesk/ui"`。
  */
 
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";

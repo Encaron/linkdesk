@@ -1,14 +1,17 @@
 /**
- * 插件图标解析 —— 单一真相来源。
- * IconBar / PluginDetailPoolView / PluginIcon / TabBar / WelcomeView 全部引用此文件。
+ * 插件图标解析 —— 纯函数（manifest → ResolvedIcon），@linkdesk/ui 图标渲染唯一真相源。
+ * E6#54b：自 src/core/utils/plugin/iconUtils.ts 搬入 shared（随包分发）——解耦审计 §三 项 1：
+ * 原居 core 时是 PluginIcon（共享组件）的 @src/core import 违规点；函数本体纯（只读 manifest
+ * 的 icon/iconSource，零运行时依赖、零 window.linkdesk 调用），搬包零行为变化。
  *
- * E2c #19j-icon：图标路径相对插件目录（对标 VS Code），通过 linkdesk:// 协议访问。
- * 插件作者只需把 icon 文件放在自己插件目录下，plugin.json 声明文件名即可。
+ * 消费方：
+ *  - shared PluginIcon.tsx（组件内 resolvePluginIcon(pluginId, manifest)）
+ *  - 壳 usePoolSync（iconbar/windowLayout 序列化进 pool 布局前先解析）——两处壳消费维持同源，
+ *    pool/PluginIcon 不 import pluginLoader/viewRegistry（特权假设已除）。
  *
  * 设计依据：[[phase4-design-decisions]] §16 + VS Code extension icon 解析（manifest.icon + galleryBanner）
  */
-
-import type { PluginManifest } from "../../api/types";
+import type { PluginManifest } from "@linkdesk/contracts"; // 仅类型引用；参数按最小结构收缩（函数只读 icon/iconSource）
 
 export interface ResolvedIcon {
   /** Lucide 图标名——iconSource: "lucide" 时返回 "Package" / "Folder" 等 */
@@ -21,8 +24,13 @@ export interface ResolvedIcon {
   emoji?: string;
 }
 
+/** manifest 中图标相关的最小结构——函数只消费这两字段，任何 manifest 形状（完整 PluginManifest /
+ *  IPC 序列化子集 / 插件列表条目）结构兼容均可直接传入，零跨包类型漂移。 */
+export type ManifestIconShape = Pick<PluginManifest, "icon" | "iconSource">;
+
 /**
  * 从 manifest 解析图标。
+ * - iconSource: "lucide" → { lucide: icon }
  * - iconSource: "codicon" → { codicon: "codicon-{icon}" }
  * - iconSource: "svg" | "url" → { src: icon（直接当 URL 用）}
  * - 无 iconSource → { src: "linkdesk://{pluginId}/{icon}" }
@@ -30,9 +38,9 @@ export interface ResolvedIcon {
  *   - icon 不含 "." → 自动加 .png（如 "icon" → "icon.png"）
  * - 全无 → { emoji: "📄" }
  */
-export function resolvePluginIcon(pluginId: string, manifest: PluginManifest | { icon?: string; iconSource?: string }): ResolvedIcon {
+export function resolvePluginIcon(pluginId: string, manifest: ManifestIconShape): ResolvedIcon {
   const icon = manifest.icon;
-  const source = (manifest as PluginManifest).iconSource;
+  const source = manifest.iconSource;
 
   // E5#100: Lucide 图标优先
   if (source === "lucide" && icon) {

@@ -25,7 +25,7 @@ import type {
 import type { WindowShellState, PoolZone } from "../../App/windows";
 import { WINDOW_MODE_STRATEGIES } from "../../App/windows";
 import { getViewPlugin, getTabBehavior } from "../../pluginLoader/contributions/viewRegistry";
-import { resolvePluginIcon } from "../../core/utils/plugin/iconUtils";
+import { resolvePluginIcon } from "../../components/shared/plugin-icon/iconUtils"; // E6#54b：随 @linkdesk/ui 迁至 shared（纯函数）
 import { isShellRenderedTab, resolvePoolTabTitle } from "../../core/utils/tabIdentity";
 import { computeGroupFlexes } from "./sidebar-panel"; // E5.6#16：SplitNode 树 → group flex 比例
 

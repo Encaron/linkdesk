@@ -16,7 +16,7 @@ export const Z_INDEX = {
   // E5.8#142：通用 surface 根层——overlay-root 内容（下拉/取色器/dropdown-card/notif）盖悬浮面板 1500、被 contextMenu 3000 盖
   overlayRoot: 2000,
   toast: 2000,               // Toast 通知（#142：同级 2000，DOM 序 toast-root 在 overlay-root 后 → toast 盖 overlay）
-  contextMenu: 3000,         // 右键菜单
+  contextMenu: 3000,         // 右键菜单（E6#54b：@linkdesk/ui 包内同名携带——ContextMenu.tsx CONTEXT_MENU_Z_INDEX 3000 互指，改此处须同步）
   quickPick: 4000,           // 命令面板 / QuickPick
   dialog: 5000,              // 对话框 / Modal
   tooltip: 6000,             // 工具提示

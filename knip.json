@@ -83,6 +83,9 @@
     "scripts/check-version-bump.mjs"
   ],
   "ignoreDependencies": [
+    // E6#54b：@linkdesk/ui 已 repo 接线（file: 依赖 + node_modules symlink），但消费方切换在 54c——
+    //   内置插件 import @linkdesk/ui 后 knip 静态图即覆盖，届时移除本豁免。
+    "@linkdesk/ui",
     // E5.8#2：monaco-languageclient 被 plugins/builtin/editor 直引（排除域——插件共用根 node_modules，独立 vite 构建时解析）
     "monaco-languageclient",
     // E5.8#24 回归修复：pyright 被 electron/ipc/handlers/lsp-handlers.ts 以 spawn 字符串路径运行时调用

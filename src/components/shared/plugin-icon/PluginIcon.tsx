@@ -1,14 +1,18 @@
 /**
- * PluginIcon — 统一插件图标渲染组件。
+ * PluginIcon — 统一插件图标渲染组件（@linkdesk/ui）。
  * E2c #19j：图标栏 / 标签栏 / 欢迎页 / [+] 菜单 共用同一个图标来源（plugin.json icon 字段）。
  * E5#100：Lucide 优先 → codicon → img → emoji（@deprecated）。
  *
- * 消费端用法：
- *   <PluginIcon pluginId="terminal" className="my-icon-class" />
- *   组件自动查 viewRegistry → resolvePluginIcon → 渲染 Lucide / codicon / img / emoji
+ * E6#54b 解耦（审计 §三 项 1）：manifest 数据注入取代 viewRegistry 特权查询——
+ * 原实现 import getViewPlugin（壳 viewRegistry 查询 = 特权假设，池内空 loader → 恒 emoji）+
+ * resolvePluginIcon（core）。现在纯 props 契约：图标只由 `manifest` 声明字段裁决
+ * （硬约束 11 插件身份 = manifest 声明字段），谁有 manifest 谁传，无 manifest → emoji 兜底。
+ *
+ * 消费端用法（作者持 manifest 时传 manifest，如插件列表/详情条目）：
+ *   <PluginIcon pluginId="terminal" manifest={plugin.manifest} className="my-icon-class" />
+ *   manifest 缺省 → emoji 兜底（池内无 manifest 的历史条目沿用现状）。
  */
-import { getViewPlugin } from "../../../pluginLoader/contributions/viewRegistry";
-import { resolvePluginIcon } from "../../../core/utils/plugin/iconUtils";
+import { resolvePluginIcon, type ManifestIconShape } from "./iconUtils";
 import { ComponentType } from "react";
 import {
   File, Folder, FolderOpen, FolderTree, Package, ShoppingBag,
@@ -17,6 +21,8 @@ import {
 
 interface PluginIconProps {
   pluginId: string;
+  /** 插件 manifest（或其含 icon/iconSource 的子集）——图标唯一裁决来源；缺省 → emoji 兜底 */
+  manifest?: ManifestIconShape;
   className?: string;
   alt?: string;
 }
@@ -41,9 +47,8 @@ const LUCIDE_MAP: Record<string, ComponentType<any>> = {
 /** 无 pluginId 或未注册插件时的回退 emoji（@deprecated E5#100——Lucide 优先） */
 const FALLBACK = "📄";
 
-export function PluginIcon({ pluginId, className, alt = "" }: PluginIconProps) {
-  const plugin = getViewPlugin(pluginId);
-  const resolved = plugin ? resolvePluginIcon(pluginId, plugin.manifest) : { emoji: FALLBACK };
+export function PluginIcon({ pluginId, manifest, className, alt = "" }: PluginIconProps) {
+  const resolved = manifest ? resolvePluginIcon(pluginId, manifest) : { emoji: FALLBACK };
 
   // E5#100: Lucide 优先
   if (resolved.lucide) {

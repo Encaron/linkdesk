@@ -1,0 +1,28 @@
+/* Toggle——开关（@linkdesk/ui）。E6#54b：自全局 index.css 抽入组件自 import（包自包含，
+ * 消费方不依赖壳 index.css）。规则逐字节同源；.toggle 全仓仅 Toggle 组件渲染 → 抽取零行为变化。 */
+.toggle {
+  width: 36px; height: 20px; border-radius: var(--radius-pill);
+  background: var(--border);
+  transition: background 150ms;
+  cursor: pointer;
+  position: relative;
+  flex-shrink: 0;
+}
+.toggle.on { background: var(--accent); }
+.toggle::after {
+  content: '';
+  position: absolute; top: 2px; left: 2px;
+  width: 16px; height: 16px; border-radius: var(--radius-pill);
+  background: var(--toggle-knob);
+  transition: transform 150ms;
+}
+.toggle.on::after {
+  transform: translateX(16px);
+  /* E5.8#144：ON 态旋钮色 fallback 语义 = text-on-accent（accent 上的可读色），不再回落 OFF 态
+     toggle-knob（那是为 border 轨道可见设计的，accent 轨道下可能同色糊——4 主题实测）。
+     链路：toggle-knob-on（主题显式）→ text-on-accent（accent 可读色）。
+     E5.8#128.9：#FFFFFF 内层 fallback 是死路径（text-on-accent :root 恒定义）→ 删除。
+     防回潮：scripts/check-theme-audit.mjs 校验 toggle-knob-on ≠ accent。 */
+  background: var(--toggle-knob-on, var(--text-on-accent));
+}
+.toggle.disabled { opacity: 0.4; cursor: not-allowed; }

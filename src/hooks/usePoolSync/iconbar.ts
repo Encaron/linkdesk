@@ -1,13 +1,14 @@
 /**
  * usePoolSync 图标栏序列化——buildIconBar。E5.8#0d.10-5a：自 usePoolSync.ts 拆出——纯函数：
  * 图标栏 DTO（iconOrder 优先 + 剩余按注册序 + 汉堡内嵌）。零 hook 依赖。
- * 依赖方向：iconbar → viewRegistry/PluginState/iconUtils + titlebar（汉堡）；无反向。
+ * 依赖方向：iconbar → viewRegistry/PluginState + titlebar（汉堡）；无反向。
+ * E6#54b：resolvePluginIcon 已随 @linkdesk/ui 迁至 components/shared/plugin-icon/iconUtils（纯函数，壳/包同源）。
  */
 
 import type { IconBarLayout, IconBarItem } from "../../core/types/pool/poolLayout";
 import { getViewPlugins, getViewPlugin, getIconLocation } from "../../pluginLoader/contributions/viewRegistry";
 import { getConfigurationValue } from "../../core/services/configuration/ConfigurationService"; // E5.7#1：titleBar.menuBarVisible
-import { resolvePluginIcon } from "../../core/utils/plugin/iconUtils";
+import { resolvePluginIcon } from "../../components/shared/plugin-icon/iconUtils";
 import { getPluginStateValue, APP_PLUGIN_ID } from "../../core/services/plugins/PluginStateService"; // E5.7#6：图标顺序（iconOrder）
 import { factorySlots } from "../../core/services/bootstrap/FactorySlots"; // E5.8#41.11：槽位感知——每 factoryRole 只渲染激活套图标
 import { MENU_STYLE_HAMBURGER_VISIBLE, buildHamburgerMenuGroups } from "./titlebar";

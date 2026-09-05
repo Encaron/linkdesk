@@ -230,32 +230,8 @@ html, body, #root, #pool-root {
   margin-bottom: 12px;
 }
 
-.toggle {
-  width: 36px; height: 20px; border-radius: var(--radius-pill);
-  background: var(--border);
-  transition: background 150ms;
-  cursor: pointer;
-  position: relative;
-  flex-shrink: 0;
-}
-.toggle.on { background: var(--accent); }
-.toggle::after {
-  content: '';
-  position: absolute; top: 2px; left: 2px;
-  width: 16px; height: 16px; border-radius: var(--radius-pill);
-  background: var(--toggle-knob);
-  transition: transform 150ms;
-}
-.toggle.on::after {
-  transform: translateX(16px);
-  /* E5.8#144：ON 态旋钮色 fallback 语义 = text-on-accent（accent 上的可读色），不再回落 OFF 态
-     toggle-knob（那是为 border 轨道可见设计的，accent 轨道下可能同色糊——4 主题实测）。
-     链路：toggle-knob-on（主题显式）→ text-on-accent（accent 可读色）。
-     E5.8#128.9：#FFFFFF 内层 fallback 是死路径（text-on-accent :root 恒定义）→ 删除。
-     防回潮：scripts/check-theme-audit.mjs 校验 toggle-knob-on ≠ accent。 */
-  background: var(--toggle-knob-on, var(--text-on-accent));
-}
-.toggle.disabled { opacity: 0.4; cursor: not-allowed; }
+/* E6#54b：`.toggle` 规则已抽入 components/shared/toggle/Toggle.css（组件自 import）——
+   @linkdesk/ui 包自包含；index.css 不再持有共享组件样式。 */
 
 .input {
   background: var(--bg-input);
@@ -309,46 +285,9 @@ html, body, #root, #pool-root {
 
 /* === 归一化布局 class（防止控件错位） === */
 
-/*
-  所有"标签 + 控件"并排的行统一用 .form-row。
-  约束：
-  - 标签自适应宽度，溢出打省略号
-  - 控件固定宽度，不随内容变化
-  - 无论标签长短，所有行控件对齐到同一右边缘
-
-  修正记录：SidePanel 初始用 space-between 导致"消息回显"和"系统消息独立显示"
-  的 toggle 位置不一致。归一化 class 从根源消除此类问题。
-*/
-.setting-row,
-.form-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 6px;
-  font-size: var(--font-size-sm); /* E5.8 Phase 12 #164：12→sm */
-  color: var(--text-primary);
-}
-
-.setting-row > label,
-.setting-row > .form-label,
-.form-row > label,
-.form-row > .form-label {
-  flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.setting-row > .toggle,
-.setting-row > .input,
-.setting-row > select,
-.setting-row > .form-control,
-.form-row > .toggle,
-.form-row > .input,
-.form-row > select,
-.form-row > .form-control {
-  flex-shrink: 0;
-}
+/* E6#54b：`.form-row` 规则已抽入 components/shared/form-row/FormRow.css（组件自 import）。
+   原组合选择器 `.setting-row`（单数）为死选择器——设置插件渲染用 `settings-row`（复数）
+   自有 SettingsView.css 管辖；随抽取一并清除。 */
 
 /*
   固定宽度的交互控件——防止不同内容撑出不同宽度。

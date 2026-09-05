@@ -13,7 +13,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import SelectBox from "./SelectBox";
-import type { RecipeMeta } from "@src/core/api/linkdesk-api/types";
+import type { RecipeMeta } from "@linkdesk/contracts"; // E6#54a：出包类型重定向（@src 别名包内不可解析）
 
 interface DynamicSelectProps {
   /** 当前配置值（受控） */

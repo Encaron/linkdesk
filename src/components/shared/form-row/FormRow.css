@@ -1,0 +1,27 @@
+/* FormRow——"标签 + 控件"并排行（@linkdesk/ui）。E6#54b：自全局 index.css 抽入组件自 import。
+ * 原 index.css 组合选择器 `.setting-row, .form-row`——`.setting-row`（单数）全仓无渲染点
+ * （设置插件用 `settings-row` 复数 + 自身 SettingsView.css），死选择器随抽取一并清除。
+ * 约束：标签自适应宽溢出省略号；控件固定宽不随内容变；各行控件对齐同一右边缘。 */
+.form-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+  font-size: var(--font-size-sm); /* E5.8 Phase 12 #164：12→sm */
+  color: var(--text-primary);
+}
+
+.form-row > label,
+.form-row > .form-label {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.form-row > .toggle,
+.form-row > .input,
+.form-row > select,
+.form-row > .form-control {
+  flex-shrink: 0;
+}

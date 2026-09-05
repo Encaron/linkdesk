@@ -11,7 +11,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import type { RecipeMeta } from "@src/core/api/linkdesk-api/types";
+import type { RecipeMeta } from "@linkdesk/contracts"; // E6#54a：出包类型重定向（@src 别名包内不可解析）
 import "./ThemePicker.css";
 
 interface ThemePickerProps {

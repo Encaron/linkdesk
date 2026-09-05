@@ -1,0 +1,43 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "emitDeclarationOnly": true,
+    "declaration": true,
+    "rootDir": "../../src/components/shared",
+    "outDir": "dist"
+  },
+  "include": [
+    "../../src/components/shared/context-menu/**/*.ts",
+    "../../src/components/shared/context-menu/**/*.tsx",
+    "../../src/components/shared/color-picker/**/*.ts",
+    "../../src/components/shared/color-picker/**/*.tsx",
+    "../../src/components/shared/select-box/**/*.ts",
+    "../../src/components/shared/select-box/**/*.tsx",
+    "../../src/components/shared/slider/**/*.ts",
+    "../../src/components/shared/slider/**/*.tsx",
+    "../../src/components/shared/toggle/**/*.ts",
+    "../../src/components/shared/toggle/**/*.tsx",
+    "../../src/components/shared/number-input/**/*.ts",
+    "../../src/components/shared/number-input/**/*.tsx",
+    "../../src/components/shared/button/**/*.ts",
+    "../../src/components/shared/button/**/*.tsx",
+    "../../src/components/shared/font-family-select/**/*.ts",
+    "../../src/components/shared/font-family-select/**/*.tsx",
+    "../../src/components/shared/file-path-input/**/*.ts",
+    "../../src/components/shared/file-path-input/**/*.tsx",
+    "../../src/components/shared/theme-picker/**/*.ts",
+    "../../src/components/shared/theme-picker/**/*.tsx",
+    "../../src/components/shared/segmented-radio/**/*.ts",
+    "../../src/components/shared/segmented-radio/**/*.tsx",
+    "../../src/components/shared/inline-input/**/*.ts",
+    "../../src/components/shared/inline-input/**/*.tsx",
+    "../../src/components/shared/combobox/**/*.ts",
+    "../../src/components/shared/combobox/**/*.tsx",
+    "../../src/components/shared/form-row/**/*.ts",
+    "../../src/components/shared/form-row/**/*.tsx",
+    "../../src/components/shared/plugin-icon/**/*.ts",
+    "../../src/components/shared/plugin-icon/**/*.tsx"
+  ],
+  "exclude": ["../../src/components/shared/**/*.test.ts", "../../src/components/shared/**/*.test.tsx"]
+}

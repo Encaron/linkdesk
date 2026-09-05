@@ -23,10 +23,15 @@
  */
 import { useEffect, useMemo, useRef, useCallback, useState, useLayoutEffect } from "react";
 import { createPortal } from "react-dom";
-import type { MenuItemDescriptor } from "@src/core/api/linkdesk-api";
-import { Z_INDEX } from "../../../constants";
+import type { MenuItemDescriptor } from "@linkdesk/contracts"; // E6#54a：出包类型重定向（@src 别名包内不可解析）
 import OverlayPortal, { getScrimTarget } from "../overlay-portal/OverlayPortal";
 import "./ContextMenu.css";
+
+/* ── E6#54b：浮层层级包内携带（解耦审计 §三 项 2）──
+ * src/constants.ts 的 Z_INDEX 是壳层叠表（含壳专属层级），@linkdesk/ui 包不能 import 壳模块。
+ * contextMenu 层数值 = 壳/插件 UI 共用叠层契约：此处携带与壳常量表同值（3000），
+ * 两边互指注释（见 src/constants.ts Z_INDEX.contextMenu）——单层数值漂移风险可控。 */
+const CONTEXT_MENU_Z_INDEX = 3000;
 
 /* ── 辅助函数 ── */
 
@@ -328,7 +333,7 @@ export default function ContextMenu({ menuId, anchor, context, onClose, resolveC
   let clickableIdx = 0;
 
   return (
-    <OverlayPortal rootId="context-menu-root" zIndex={String(Z_INDEX.contextMenu)}>
+    <OverlayPortal rootId="context-menu-root" zIndex={String(CONTEXT_MENU_Z_INDEX)}>
       {/* E5.7#14：透明 backdrop——吞掉第一击（VS Code 行为）：点击即关且不激活下层内容。
           层级 = contextMenu-1，与菜单本体同 wrapper stacking context 内比较。
           窗口级 mousedown 监听（下方"统一失焦"）已处理 backdrop 点击关闭。
@@ -346,7 +351,7 @@ export default function ContextMenu({ menuId, anchor, context, onClose, resolveC
           style={{
             position: "fixed",
             inset: 0,
-            zIndex: Z_INDEX.contextMenu - 1,
+            zIndex: CONTEXT_MENU_Z_INDEX - 1,
           }}
         />,
         getScrimTarget()
@@ -360,7 +365,7 @@ export default function ContextMenu({ menuId, anchor, context, onClose, resolveC
         style={{
           left: menuPos.left,
           top: menuPos.top,
-          zIndex: Z_INDEX.contextMenu,
+          zIndex: CONTEXT_MENU_Z_INDEX,
           visibility: menuReady ? undefined : "hidden",
         }}
       >
@@ -405,7 +410,7 @@ export default function ContextMenu({ menuId, anchor, context, onClose, resolveC
           key={level}
           ref={(el) => { if (el) panelRefs.current.set(level, el); else panelRefs.current.delete(level); }}
           className="ctx-menu show"
-          style={{ left: panel.x, top: panel.y, zIndex: Z_INDEX.contextMenu }}
+          style={{ left: panel.x, top: panel.y, zIndex: CONTEXT_MENU_Z_INDEX }}
           onMouseEnter={cancelClose}
           onMouseLeave={() => scheduleCloseFrom(level + 1)}
         >

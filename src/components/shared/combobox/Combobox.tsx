@@ -9,7 +9,7 @@
  *   选择下拉项 / Enter / 失焦（文本有变更）→ onChange(新值)；文本无变更 → 不触发。
  *
  * 归一化：壳组件库范畴（components/shared/）——壳视图 + 插件共用。
- * 新插件用可输入下拉 → import Combobox from "@src/components/shared/combobox/Combobox"。
+ * 壳内部引用 @src 源码；插件作者（含内置插件 E6#54c）→ `import { Combobox } from "@linkdesk/ui"`。
  * 下拉面板视觉复用 SelectBox（.selectbox-dropdown/list/item/empty 类）——一个视觉语言
  * 一处写，jscpd 0 克隆门禁：Combobox.css 只定义 field/input/arrow，下拉视觉零重写。
  */

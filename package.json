@@ -30,6 +30,7 @@
     "icons:convert": "node scripts/convert-material-icons.mjs"
   },
   "dependencies": {
+    "@linkdesk/ui": "file:./packages/linkdesk-ui",
     "@codemirror/search": "^6.7.1",
     "@codemirror/state": "^6.7.1",
     "@codemirror/view": "^6.43.6",
@@ -50,6 +51,7 @@
     "wait-on": "^9.1.0"
   },
   "devDependencies": {
+    "@linkdesk/contracts": "^0.1.0",
     "@testing-library/react": "^16.3.2",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
