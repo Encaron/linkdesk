@@ -10,7 +10,7 @@
  * 间距为 4px 节奏倍数、UI 文案无中文字面量——`linkdesk-plugin-sdk lint` 应零偏离
  * （门禁 15 项全 WARN：做对 = 零警告，做错 = 显红可知情绕行）。
  */
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Button,
   Combobox,
@@ -54,7 +54,12 @@ export default function DemoWidgets({ isActive }: { isActive: boolean }) {
   const [retries, setRetries] = useState(3);
   const [ctxAnchor, setCtxAnchor] = useState<{ x: number; y: number } | null>(null);
 
-  if (!isActive) return null;
+  // 🔴 isActive = 单聚焦（E5.8#30.15）≠「是否可见」——分屏下非聚焦 pane 仍显示。
+  // 视图必须始终渲染内容（可见性由壳 display 控制，keep-alive 保状态）；isActive 只 gate 焦点敏感副作用。
+  // 正例用法 ↓：右键菜单是 transient 浮层，失焦即关（防止菜单悬在另一 pane 上）。
+  useEffect(() => {
+    if (!isActive) setCtxAnchor(null);
+  }, [isActive]);
 
   return (
     <div

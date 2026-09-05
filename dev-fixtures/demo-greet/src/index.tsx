@@ -5,9 +5,9 @@
  * （1.2-5 实机走通 v1.0.0 → v2.0.0 → v3.0.0：check/stage/commit + 失败保旧版 + 重启稳定）。
  */
 
-export default function DemoGreet({ isActive }: { isActive: boolean }) {
-  if (!isActive) return null;
-
+export default function DemoGreet({ isActive: _isActive }: { isActive: boolean }) {
+  // isActive = 单聚焦（E5.8#30.15），≠「是否可见」——分屏下非聚焦 pane 仍显示，视图必须始终渲染内容
+  // （可见性由壳 display 控制，keep-alive）；isActive 只用于 gate 焦点敏感副作用，禁止整块 blank。
   return (
     <div style={{ padding: 24, fontFamily: "system-ui, sans-serif" }}>
       <h2 style={{ color: "var(--text)" }}>Demo Greet — bundle view mounted</h2>
