@@ -30,6 +30,7 @@ import {
   getManifestById,
   getAllManifestEntries,
   _pendingPlugins,
+  markBundlePlugin, // E6#13（1.2-5）：运行时新装 bundle 补标——loadPlugin 选 index.bundle.js 依赖
 } from "../resolution/state";
 import { validateInstallManifest, resolveVersionConflict } from "../discovery/manifest";
 import { syncAppThemeEnum, syncAppLanguageEnum, syncIconThemeEnum } from "../contributions/contributions";
@@ -223,8 +224,170 @@ export async function uninstallPlugin(pluginId: string): Promise<{ success: bool
   }
 }
 
+/* ═══════════════════════════════════════════════════════════
+   E6#11/#13（1.2-5）：包安装流——url/.linkdesk-plugin 真安装（单一路径，主进程只做 fs/net）
+   ═══════════════════════════════════════════════════════════ */
+
+/** 进度广播单点（#13d 壳段）——壳 events.emit → 主进程 onPluginEmit → broadcast → 池 events.on；
+ *  与主进程 download/extract 段（plugin-install-handlers.ts 同通道广播）并流一个 plugin:installProgress。
+ *  同一事件循环内 installPlugin 多处 emit——节流交给广播层，调用方逐阶段直呼。 */
+function emitInstallProgress(stage: string, pluginId?: string, message?: string): void {
+  try {
+    window.linkdesk?.events?.emit("plugin:installProgress", { stage, pluginId, message });
+  } catch { /* 广播失败不阻断安装 */ }
+}
+
+/** 是否包来源（vs 目录）：http(s) 下载源 / .linkdesk-plugin 结尾（磁盘 zip）→ 走包安装流；
+ *  其余（既有 SearchView 目录选择等）走下方 installPluginFromDirectory 零回归复制流。 */
+function isPackageSource(source: string): boolean {
+  const s = source.trim();
+  return /^https?:\/\//i.test(s) || /\.linkdesk-plugin$/i.test(s);
+}
+
+/** 包面直答主进程（#13a 主进程真 fs/net 段）——壳 plugins 命名空间独有（download/extract handler 只对壳暴露）。 */
+function packageOps(): { packageDownload: (url: string) => Promise<{ zipPath: string; sizeBytes?: number }>; packageExtract: (zipPath: string, expectedPluginId?: string) => Promise<{ pluginId: string; version: string; targetDir: string }> } {
+  const api = pluginsApi();
+  if (!api.packageDownload || !api.packageExtract) {
+    throw new Error("[pluginLoader] 壳 plugins 面缺少 packageDownload/packageExtract——loader 只能在壳进程运行");
+  }
+  return { packageDownload: api.packageDownload, packageExtract: api.packageExtract };
+}
+
 /**
- * 安装插件：Electron 端复制到 plugins/user/ → 热加载。
+ * 安装插件（路由入口，E6#11/#13）：目录源 → 既有复制流零回归；url/.linkdesk-plugin 包源 →
+ * 主进程 download→extract 落 {userData}/plugins/user/<id>/ → 账本 → loadPlugin → 广播。
+ */
+export async function installPlugin(
+  sourcePath: string,
+  opts?: { ledgerSource?: "user" | "marketplace" },
+): Promise<{ success: boolean; pluginId?: string; version?: string; needRestart?: boolean; error?: string }> {
+  if (isPackageSource(sourcePath)) {
+    return installPackageFromSource(sourcePath, opts);
+  }
+  return installPluginFromDirectory(sourcePath);
+}
+
+/** 包安装流显式名（#13e 壳面）——同一流水线同一进度广播（installPlugin 已全程 emit stage，等价别名）。 */
+export function installWithProgress(
+  sourcePath: string,
+  opts?: { ledgerSource?: "user" | "marketplace" },
+): Promise<{ success: boolean; pluginId?: string; version?: string; needRestart?: boolean; error?: string }> {
+  return installPlugin(sourcePath, opts);
+}
+
+/**
+ * 安装落账后的加载收尾——loadPlugin("install") 成败两分支 + toast + 进度收尾。
+ * 目录源/包源两条安装流共用（duplication 门禁）——版本/提示文案差异由调用方喂全文。
+ * 失败不 throw：文件已落盘，toast 提示 reload 生效并返回 needRestart（原语义保留，loadPlugin 不决定安装成败）。
+ */
+async function loadInstalledPlugin(
+  pluginId: string,
+  version: string,
+  msgs: { success: string; needRestart: string },
+): Promise<{ success: true; pluginId: string; version: string; needRestart?: boolean }> {
+  emitInstallProgress("loading", pluginId);
+  try {
+    await loadPlugin(pluginId, "install");
+    pushToast({ message: msgs.success, source: pluginId, ttl: TOAST_TTL_SUCCESS, severity: "info" });
+    emitInstallProgress("done", pluginId);
+    return { success: true, pluginId, version };
+  } catch {
+    pushToast({
+      message: msgs.needRestart,
+      source: pluginId,
+      severity: "info",
+      ttl: 0,
+      actions: [
+        { label: i18n.t("立即重启"), isPrimary: true, onClick: () => window.location.reload() },
+      ],
+    });
+    emitInstallProgress("done", pluginId);
+    return { success: true, pluginId, version, needRestart: true };
+  }
+}
+
+/**
+ * url / 磁盘 .linkdesk-plugin 包安装流——主进程真 fs/net 段（download→extract）做落盘，
+ * 壳只编排：清 tmp 下载包 → bundle 补标 → 账本 add（#12b 市场安装流消费 add 欠账此刻还清）→
+ * loadPlugin → notifyManifestChanged（三表重扫）。目标已存在由 extract handler 拒绝（不静默覆盖，
+ * 对齐 #30.9d 确认/通知非静默；更新是 #11c 段 B 职责）。
+ */
+async function installPackageFromSource(
+  sourcePath: string,
+  opts?: { ledgerSource?: "user" | "marketplace" },
+): Promise<{ success: boolean; pluginId?: string; version?: string; needRestart?: boolean; error?: string }> {
+  const source = sourcePath.trim();
+  emitInstallProgress("validating");
+  try {
+    const ops = packageOps();
+    // 1) 包定位：http(s) → 主进程 download 到 {userData}/tmp/<原包名>；磁盘 zip → 原路径直读
+    let zipPath: string;
+    let downloaded = false;
+    if (/^https?:\/\//i.test(source)) {
+      emitInstallProgress("downloading", undefined, "下载插件包");
+      const r = await ops.packageDownload(source);
+      zipPath = r.zipPath;
+      downloaded = true;
+    } else {
+      zipPath = source;
+      if (!(await linkdesk().filesystem.exists(zipPath))) {
+        throw new Error(`找不到插件安装包: ${zipPath}`);
+      }
+    }
+
+    // 2) 主进程解压到 {userData}/plugins/user/<id>/（zip-slip/pluginId 互验同 boot ingest；已存在拒绝）
+    emitInstallProgress("extracting", undefined, "解压插件包");
+    let extracted: { pluginId: string; version: string; targetDir: string };
+    try {
+      extracted = await ops.packageExtract(zipPath);
+    } finally {
+      // 下载包落 tmp——解压完（成败皆）清理；磁盘 zip 是用户自有文件，不删
+      if (downloaded) {
+        try { await linkdesk().filesystem.remove(zipPath); } catch { /* 清理失败非致命 */ }
+      }
+    }
+    const { pluginId, version, targetDir } = extracted;
+
+    // 3) bundle 补标——须在 loadPlugin 前（runtimeEntryPath 选 index.bundle.js 依赖 isBundlePlugin）
+    markBundlePlugin(pluginId);
+    // 4) 账本 add（#12b 欠账还清——安装流消费 add；磁盘事实在 user/ 子目录 → 源默认 user；
+    //    market UI 未来可传 marketplace）
+    try {
+      const { add: addLedger } = await import("../../core/services/PluginInstallService");
+      await addLedger(pluginId, version, opts?.ledgerSource ?? "user");
+    } catch (e) {
+      log.appendLine(`⚠️ 账本写入失败（非致命）: ${errMsg(e)}`);
+    }
+
+    // 5) E5.7#48：文件已落盘——通知主进程重扫三表（无论 loadPlugin 是否成功）
+    window.linkdesk?.pluginManager?.notifyManifestChanged?.();
+    const displayName = await manifestNameOf(targetDir, pluginId);
+
+    // 6) loadPlugin（安装 reason——onDidInstall 消费端 toast + 图标顺序 + plugin:installed 广播）——收尾块与目录源共用 loadInstalledPlugin
+    return loadInstalledPlugin(pluginId, version, {
+      success: `已安装：${displayName} v${version}`,
+      needRestart: `已安装：${displayName} v${version}。视图刷新后生效。`,
+    });
+  } catch (e) {
+    const msg = errMsg(e);
+    emitInstallProgress("error", undefined, msg);
+    return { success: false, error: msg };
+  }
+}
+
+/** 包内显示名——读已解压 plugin.json（失败回退 pluginId） */
+async function manifestNameOf(targetDir: string, pluginId: string): Promise<string> {
+  try {
+    const raw = await linkdesk().filesystem.readTextFile(`${targetDir}/plugin.json`);
+    const m = parseManifestJson(raw);
+    return typeof m?.name === "string" && m.name.trim() !== "" ? m.name : pluginId;
+  } catch {
+    return pluginId;
+  }
+}
+
+/**
+ * 安装插件（目录源）：Electron 端复制到 plugins/user/ → 热加载。
  * 仅对 theme/language 插件即时生效；view 插件提示重启。
  *
  * E5.7#81 包装（校验 / 版本处理 / 进度）：
@@ -235,14 +398,10 @@ export async function uninstallPlugin(pluginId: string): Promise<{ success: bool
  *     先卸载再装（不覆盖：Windows 文件锁，卸载 cp+rm 教训；真升级流程归 E6 PluginUpdateService）；
  *   - 进度事件：plugin:installProgress { stage: validating/copying/loading/done/error } 广播到池
  *     （marketplace 安装按钮实时阶段文案）。
+ * E6#13（1.2-5）：保留为目录源内部实现——SearchView 目录安装唯一真调用方零回归；包源走上方路由。
  */
-export async function installPlugin(sourcePath: string): Promise<{ success: boolean; pluginId?: string; version?: string; needRestart?: boolean; error?: string }> {
-  // 进度广播——壳 events.emit → 主进程 → 池（见 IpcBridge.onPluginEmit 广播）
-  const emitProgress = (stage: string, pluginId?: string, message?: string) => {
-    window.linkdesk?.events?.emit("plugin:installProgress", { stage, pluginId, message });
-  };
-
-  emitProgress("validating");
+async function installPluginFromDirectory(sourcePath: string): Promise<{ success: boolean; pluginId?: string; version?: string; needRestart?: boolean; error?: string }> {
+  emitInstallProgress("validating");
   try {
     // E5#32：文件操作走 linkdesk.filesystem——bridge 为唯一入口
     const manifestPath = `${sourcePath}/plugin.json`;
@@ -273,7 +432,7 @@ export async function installPlugin(sourcePath: string): Promise<{ success: bool
       if (conflict) throw new Error(`${name}: ${conflict}`);
     }
 
-    emitProgress("copying", pluginId);
+    emitInstallProgress("copying", pluginId);
     await linkdesk().filesystem.copy(sourcePath, destDir);
     // 消毒 manifest——安装后强制 distribution=user, core=false
     const destManifest = `${destDir}/plugin.json`;
@@ -289,31 +448,16 @@ export async function installPlugin(sourcePath: string): Promise<{ success: bool
     // E5.7#48：文件已落盘——通知主进程重扫三表（无论下方 loadPlugin 是否成功）
     window.linkdesk?.pluginManager?.notifyManifestChanged?.();
 
-    // E5 归一化：loadPlugin 统一处理 glob 内/外——不再分支判断
-    emitProgress("loading", pluginId);
-    try {
-      await loadPlugin(pluginId, "install");
-      pushToast({ message: `已安装：${name} v${version}`, source: pluginId, ttl: TOAST_TTL_SUCCESS, severity: "info" });
-      emitProgress("done", pluginId);
-      return { success: true, pluginId, version };
-    } catch {
-      pushToast({
-        // E5.8#24.8.7：原「npm run build:plugins」指向空跑死脚本（build-plugins.mjs E6 前不运行）——
-        // 改指准确主构建命令 npm run build（主 vite.config 多入口产出 dist/plugins/<sub>/<id>.js）
-        message: `已安装：${name}。运行 npm run build 后生效。`,
-        source: pluginId,
-        severity: "info",
-        ttl: 0,
-        actions: [
-          { label: i18n.t("立即重启"), isPrimary: true, onClick: () => window.location.reload() },
-        ],
-      });
-      emitProgress("done", pluginId);
-      return { success: true, pluginId, version, needRestart: true };
-    }
+    // E5 归一化：loadPlugin 统一处理 glob 内/外——不再分支判断；加载收尾块与包源共用 loadInstalledPlugin
+    return loadInstalledPlugin(pluginId, version, {
+      success: `已安装：${name} v${version}`,
+      // E5.8#24.8.7：原「npm run build:plugins」指向空跑死脚本（build-plugins.mjs E6 前不运行）——
+      // 改指准确主构建命令 npm run build（主 vite.config 多入口产出 dist/plugins/<sub>/<id>.js）
+      needRestart: `已安装：${name}。运行 npm run build 后生效。`,
+    });
   } catch (e) {
     const msg = errMsg(e);
-    emitProgress("error", undefined, msg);
+    emitInstallProgress("error", undefined, msg);
     return { success: false, error: msg };
   }
 }

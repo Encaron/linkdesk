@@ -23,6 +23,7 @@ import { registerHotExitHandlers } from './ipc/handlers/hot-exit-handlers.js'; /
 import { registerAppearanceHandlers } from './ipc/handlers/appearance-handlers.js'; // E5.8#50.11：外观资产
 import { registerPoolHandlers } from './ipc/handlers/plugin-view-handlers.js'; // E5.6#8d
 import { registerLspHandlers } from './ipc/handlers/lsp-handlers.js'; // E4V#40s1
+import { registerPluginInstallHandlers } from './ipc/handlers/plugin-install-handlers.js'; // E6#11/#13（1.2-5）：装卸更主进程 fs/net 段
 import { registerProtocol } from './plugins/protocol.js';
 import { ingestPluginBundles } from './plugins/bundle-ingest.js'; // E6#7（1.2-4）：启动解压 .linkdesk-plugin
 import { fileService } from './services/file-service.js';
@@ -112,6 +113,7 @@ function createWindow(): void {
   registerLspHandlers();   // E5#74c
   registerSerialHandlers(); // E5#74b
   registerFileHandlers(windowManager);              // E5#80
+  registerPluginInstallHandlers();                  // E6#11/#13（1.2-5）：装卸更 fs/net 段——无窗引用（进度走 IpcBridge.active）
   registerDialogHandlers(windowManager);            // E5.8#62 审计#4：对话框 parent 反查宿主窗——须在 windowManager 创建后注入
   registerPoolHandlers(windowManager, win);  // E5.6#8e
 

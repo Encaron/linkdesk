@@ -54,6 +54,7 @@ import {
   disablePlugin,
   enablePlugin,
   installPlugin,
+  installWithProgress, // E6#13（1.2-5）：显式包安装流名（installPlugin 路由别名——#13e 壳面注册）
   uninstallPlugin,
   reinstallPlugin,
   getDisabledPluginInfo,
@@ -278,6 +279,7 @@ setPluginAPI({
   enablePlugin,
   disablePlugin,
   installPlugin,
+  installWithProgress, // E6#13（1.2-5）：显式包安装流名——桥 'installWithProgress' case 路由到这里
   uninstallPlugin,
   reinstallPlugin,
   getDisabledPluginInfo,

@@ -1,0 +1,10 @@
+{
+  "name": "demo-greet",
+  "version": "1.0.0",
+  "private": true,
+  "description": "E6 装卸更演示 fixture（虚构插件）——构建经 plugin-sdk-example 的本地 node_modules 起 bin，无需独立 npm install",
+  "type": "module",
+  "scripts": {
+    "build": "node ../../plugin-sdk-example/node_modules/@linkdesk/plugin-sdk/dist/bin.js build"
+  }
+}

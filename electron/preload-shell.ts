@@ -216,6 +216,9 @@ try {
       resolvePath:      (id: string) => ipcRenderer.invoke(IPC.plugins.resolvePath, id),
       // E6#7（1.2-4）：resolvePath 的兄弟——{ root, entry, bundle }（bundle 入口恒 index.bundle.js）
       resolveEntry:     (id: string) => ipcRenderer.invoke(IPC.plugins.resolveEntry, id),
+      // E6#11/#13（1.2-5）：包安装流主进程 fs/net 段——壳 preload 独有（loader 在壳跑；download/extract handler 不对池暴露）
+      packageDownload:  (url: string) => ipcRenderer.invoke(IPC.plugins.download, url),
+      packageExtract:   (zipPath: string, expectedPluginId?: string) => ipcRenderer.invoke(IPC.plugins.extract, zipPath, expectedPluginId),
     },
 
     // ── 文件关联——扩展名→插件 ID（主进程 FileAssociationService 直答）──
@@ -232,6 +235,7 @@ try {
       disable:        (id: string) => ipcRenderer.invoke(IPC.plugins.call, 'disable', id),
       uninstall:      (id: string) => ipcRenderer.invoke(IPC.plugins.call, 'uninstall', id),
       install:        (path: string) => ipcRenderer.invoke(IPC.plugins.call, 'install', path),
+      installWithProgress: (path: string) => ipcRenderer.invoke(IPC.plugins.call, 'installWithProgress', path),
       reinstall:      (id: string) => ipcRenderer.invoke(IPC.plugins.call, 'reinstall', id),
       getDisabled:    () => ipcRenderer.invoke(IPC.plugins.call, 'getDisabled'),
       getUninstalled: () => ipcRenderer.invoke(IPC.plugins.call, 'getUninstalled'),

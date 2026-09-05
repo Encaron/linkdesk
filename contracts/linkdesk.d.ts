@@ -1102,6 +1102,17 @@ export interface PluginsAPI {
         readManifest?(id: string): Promise<string>;
         /** E6#9c：全量 manifest——Record<pluginId, PluginManifest>（pluginManifests eager glob 的 IPC 替代） */
         readAllManifests?(): Promise<Record<string, PluginManifest>>;
+        /** E6#11/#13（1.2-5）：主进程真下载段——fetch .linkdesk-plugin 包 → {userData}/tmp/<原包名>（壳 preload 独有；loader 包安装流 packageOps 调） */
+        packageDownload?(url: string): Promise<{
+            zipPath: string;
+            sizeBytes?: number;
+        }>;
+        /** E6#11/#13（1.2-5）：主进程真解压段——共享 bundle-zip 语义 → {userData}/plugins/user/<id>/（壳 preload 独有；目标已存在拒绝） */
+        packageExtract?(zipPath: string, expectedPluginId?: string): Promise<{
+            pluginId: string;
+            version: string;
+            targetDir: string;
+        }>;
     };
     /** 插件管理——桥接 IpcBridgeHandler → loader 函数。池权威（marketplace 插件消费），必选 */
     pluginManager: {
@@ -1110,6 +1121,8 @@ export interface PluginsAPI {
         disable(id: string): Promise<unknown>;
         uninstall(id: string): Promise<unknown>;
         install(path: string): Promise<PluginInstallResult>;
+        /** E6#13（1.2-5）：url/.linkdesk-plugin 包安装流显式名（installPlugin 路由别名；壳与池 preload 双面同款——池经 plugins:call 代理）。进度走 plugin:installProgress 通道 */
+        installWithProgress?(path: string): Promise<PluginInstallResult>;
         reinstall(id: string): Promise<unknown>;
         getDisabled(): Promise<PluginInfoEntry[]>;
         getUninstalled(): Promise<PluginInfoEntry[]>;

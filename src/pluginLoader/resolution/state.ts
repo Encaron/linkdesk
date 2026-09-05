@@ -32,6 +32,10 @@ const pluginsApi = () => {
     listDisabledDirs: plugins.listDisabledDirs,
     readManifest: plugins.readManifest,
     readAllManifests: plugins.readAllManifests,
+    // E6#11/#13（1.2-5）：包安装流主进程 fs/net 段——壳 preload 独有（download/extract handler 只对壳暴露），
+    // 选填随 preload 注入；lifecycle installPackageFromSource 的 packageOps 判存在再调（loader 只在壳跑，运行时恒在）。
+    packageDownload: plugins.packageDownload,
+    packageExtract: plugins.packageExtract,
   };
 };
 
@@ -193,7 +197,8 @@ const loadedPluginIds = new Set<string>();
 /**
  * 磁盘格式事实（非插件身份——硬约束 11）：目录含 index.bundle.js = SDK 打包的 .linkdesk-plugin 解压产物。
  * 启动发现（discoverInstalled）从 listAll 条目的 bundle 标志水合；幂等（每次发现先清后填）。
- * 运行时才新装的 bundle（未来 1.2-5 #13 安装流）由该流在落盘后补标——本轮启动覆盖已含全部 userData 包。
+ * 运行时新装的 bundle（E6#13 1.2-5 安装流）在 extract 落盘后由 installPlugin 补标（markBundlePlugin）——
+ * loadPlugin 的 runtimeEntryPath 选 index.bundle.js 依赖本集先就位。
  */
 const _bundlePluginIds = new Set<string>();
 
@@ -201,6 +206,11 @@ const _bundlePluginIds = new Set<string>();
 function syncBundlePluginIds(entries: readonly PluginDiscoveryEntry[]): void {
   _bundlePluginIds.clear();
   for (const e of entries) if (e.bundle) _bundlePluginIds.add(e.pluginId);
+}
+
+/** 运行时新装 bundle 补标（E6#13 安装流：extract 落盘后、loadPlugin 前调）——幂等（Set）。 */
+export function markBundlePlugin(pluginId: string): void {
+  _bundlePluginIds.add(pluginId);
 }
 
 /** 消费方判 bundle——runtime/contributions 据此选入口（bundle → index.bundle.js）。 */

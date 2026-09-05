@@ -24,6 +24,8 @@ export function buildPluginManager() {
     disable: (id: string) => ipcRenderer.invoke(IPC.plugins.call, 'disable', id),
     uninstall: (id: string) => ipcRenderer.invoke(IPC.plugins.call, 'uninstall', id),
     install: (path: string) => ipcRenderer.invoke(IPC.plugins.call, 'install', path),
+    // E6#13（1.2-5）：显式包安装流名——url/.linkdesk-plugin → 下载解压装；marketplace 安装按钮消费（进度 plugin:installProgress）
+    installWithProgress: (path: string) => ipcRenderer.invoke(IPC.plugins.call, 'installWithProgress', path),
     reinstall: (id: string) => ipcRenderer.invoke(IPC.plugins.call, 'reinstall', id),
     getDisabled: () => ipcRenderer.invoke(IPC.plugins.call, 'getDisabled'),
     getUninstalled: () => ipcRenderer.invoke(IPC.plugins.call, 'getUninstalled'),

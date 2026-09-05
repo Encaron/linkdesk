@@ -1,0 +1,12 @@
+{
+  "name": "Demo Greet",
+  "version": "1.0.0",
+  "description": "E6 装卸更演示 fixture——虚构视图插件（非真实运行时插件）",
+  "author": "fixture",
+  "distribution": "user",
+  "entry": "src/index.tsx",
+  "appearsIn": { "tabBar": true },
+  "tabBehavior": {
+    "singleton": true
+  }
+}

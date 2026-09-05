@@ -12,6 +12,8 @@ export interface PluginManagementAPI {
   enablePlugin(id: string): Promise<{ success: boolean; error?: string }>;
   disablePlugin(id: string): Promise<{ success: boolean; error?: string }>;
   installPlugin(id: string): Promise<{ success: boolean; error?: string }>;
+  // E6#13（1.2-5）：url/.linkdesk-plugin 包安装流显式名（installPlugin 路由别名——同一流水线同一进度广播）
+  installWithProgress(sourcePath: string): Promise<{ success: boolean; error?: string }>;
   uninstallPlugin(id: string): Promise<{ success: boolean; error?: string }>;
   reinstallPlugin(id: string): Promise<{ success: boolean; error?: string }>;
   getDisabledPluginInfo(): unknown;
@@ -54,6 +56,9 @@ export async function handlePluginManagerMethod(method: string, args: unknown[])
       return _pluginAPI!.uninstallPlugin(args[0] as string);
     case "install":
       return _pluginAPI!.installPlugin(args[0] as string);
+    case "installWithProgress":
+      // E6#13（1.2-5）：显式包安装流名——同 installPlugin 路由（目录源/包源自适应）；选调用方喂 url/zip
+      return _pluginAPI!.installWithProgress(args[0] as string);
     case "reinstall":
       return _pluginAPI!.reinstallPlugin(args[0] as string);
     case "getDisabled":

@@ -201,6 +201,7 @@ async function handlePluginsCall(method: string, args: unknown[]): Promise<unkno
     case "disable":
     case "uninstall":
     case "install":
+    case "installWithProgress": // E6#13（1.2-5）：显式包安装流名（同 installPlugin 路由——url/zip 自适应）
     case "reinstall":
     case "getDisabled":
     case "getUninstalled":
