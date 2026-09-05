@@ -4,5 +4,11 @@
         "dist": true,
         "dist-electron": true,
         "release": true
+    },
+    "files.watcherExclude": {
+        "**/node_modules/**": true,
+        "dist/**": true,
+        "dist-electron/**": true,
+        "release/**": true
     }
 }
