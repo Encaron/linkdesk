@@ -28,6 +28,10 @@ export { default as ThemePicker } from "@shared/theme-picker/ThemePicker";
 export { default as Toggle } from "@shared/toggle/Toggle";
 export { InlineInput } from "@shared/inline-input/InlineInput";
 export { PluginIcon } from "@shared/plugin-icon/PluginIcon";
+// E6#15h：零件包扩到 UI 交互 hook（08-共享hook归位.md）——源码壳 src/components/shared/hooks/ 单一副本
+export { useClickPreview } from "@shared/hooks/useClickPreview";
+export { useClipboardKeys } from "@shared/hooks/useClipboardKeys";
+export { useDebouncedInput } from "@shared/hooks/useDebouncedInput";
 export { inferSliderStep } from "@shared/slider/sliderStep";
 export type { InlineInputHandle } from "@shared/inline-input/InlineInput";
 export type { ContextMenuProps } from "@shared/context-menu/ContextMenu";

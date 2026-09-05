@@ -29,6 +29,12 @@
     "src/components/shared/form-row/FormRow.tsx",
     "src/components/shared/number-input/NumberInput.tsx",
     "src/components/shared/toggle/Toggle.tsx",
+    // E6#15h：同上——src/components/shared/hooks/ 交互 hook（useClickPreview/useClipboardKeys/
+    //   useDebouncedInput）的唯一消费方 = @linkdesk/ui lib 构建（packages/ 域）+ 插件 dist 消费——knip
+    //   壳 scope 断边误报 unused。仍活：@linkdesk/ui dist 即由它们构建。详见 08-共享hook归位.md。
+    "src/components/shared/hooks/useClickPreview.ts",
+    "src/components/shared/hooks/useClipboardKeys.ts",
+    "src/components/shared/hooks/useDebouncedInput.ts",
     // E5.8#2：core 聚合器 + 其 re-export 面（@src/core 插件 API 入口，壳内按需直引具体文件——
     //   桶导出面向 plugins/ 排除域与 window.linkdesk 契约，knip 静态图不覆盖 IPC 字符串分发。
     //   ProtocolParser/ConfigurationRegistry/ThemeEngine/api-types/IpcBridgeHandler
@@ -75,11 +81,8 @@
     "src/core/services/ui/ThemeEngine.ts",
     "src/core/utils/CancellationToken.ts",
     "src/core/utils/plugin/pluginPaths.ts",
-    // E5.8#2：池侧 dev/插件共享面——mockLinkdesk（dev 预览 side-effect 安装 window.linkdesk）+
-    //   useClickPreview / useClipboardKeys（file-tree 插件直引 @src/pool）+ useTabManager 聚合器门面（E5.8#0d.10-2e 全量 re-export）
+    // E5.8#2：池侧 dev/插件共享面——mockLinkdesk（dev 预览 side-effect 安装 window.linkdesk）+ useTabManager 聚合器门面（E5.8#0d.10-2e 全量 re-export）
     "src/pool/dev/mockLinkdesk.ts",
-    "src/pool/hooks/useClipboardKeys.ts",
-    "src/pool/hooks/useClickPreview.ts",
     "src/hooks/useTabManager.ts",
     // E5.8#37.9：audit-i18n.mjs 已从手动工具升格为 npm run check 门禁成员（package.json check 链
     //   第三段）——从 ignore 移除，knip 纳入静态分析（脚本仅用 fs/path，零悬挂依赖）。

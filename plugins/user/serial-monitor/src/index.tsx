@@ -19,7 +19,7 @@ import {
 } from "@codemirror/view";
 import { EditorState, StateField, StateEffect, type Extension, RangeSet, Compartment } from "@codemirror/state";
 import { search, RegExpCursor } from "@codemirror/search";
-import { useIpcEvent } from "@src/hooks/useIpcEvent";
+import { useIpcEvent } from "./hooks/useIpcEvent"; // E6#15h：serial 域内订阅（08-共享hook归位.md §三）——非泛用零件不回 @linkdesk/ui
 // E5.8#28：serial 推流载荷契约化（@linkdesk/contracts，零 @src/core）——useIpcEvent 泛型窄化用
 // E5.8#30.16（P8）：PoolTab——beforeClose handler 接收的标签页快照类型（契约导出，第三方插件同路径）
 import type { SerialDataPayload, SerialSystemPayload, PoolTab } from "@linkdesk/contracts";

@@ -8,6 +8,7 @@
     "outDir": "dist"
   },
   "include": [
+    "../../src/components/shared/hooks/**/*.ts",
     "../../src/components/shared/context-menu/**/*.ts",
     "../../src/components/shared/context-menu/**/*.tsx",
     "../../src/components/shared/color-picker/**/*.ts",

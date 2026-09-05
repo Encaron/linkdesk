@@ -13,7 +13,7 @@
  */
 
 import { useRef, useCallback } from "react";
-import { useClipboardKeys } from "@src/pool/hooks/useClipboardKeys";
+import { useClipboardKeys } from "@linkdesk/ui"; // E6#15h：useClipboardKeys 收 @linkdesk/ui 零件（08-共享hook归位.md）
 import type { ExplorerItem } from "./FileTreeModel";
 import type { FileTreeModel } from "./FileTreeModel";
 import { getScaledTreeItemHeight } from "../utils/layoutTokens";

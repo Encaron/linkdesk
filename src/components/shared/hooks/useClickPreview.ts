@@ -1,6 +1,8 @@
 /**
  * useClickPreview — 单击预览 / 双击锁定归一化 hook。
- * E4V#28e：从 FileTreeNode 提取——未来 sidebar 任何树/列表组件复用同一交互。
+ * E4V#28e：从 FileTreeNode 提取——任何树/列表组件复用同一交互。
+ * E6#15h 归位：@linkdesk/ui 零件（本文件 = 壳单一源码副本；任何插件含第三方 `import { useClickPreview } from "@linkdesk/ui"`）。
+ * 详见 08-共享hook归位.md。
  *
  * 对标 VS Code explorer 的文件点击行为：
  * - 单击（mousedown 启动 250ms 定时器）→ 预览标签页（斜体，可替换）

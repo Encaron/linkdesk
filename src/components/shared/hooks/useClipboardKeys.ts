@@ -1,6 +1,8 @@
 /**
  * useClipboardKeys — 池侧 Ctrl/Cmd+C / X / V 剪贴板键归一化 hook。
  * E5.8#24.8.3 定案（用户拍板路径 2）：共享 hook 消除每插件重复的剪贴板键处理。
+ * E6#15h 归位：@linkdesk/ui 零件（本文件 = 壳单一源码副本；任何插件含第三方 `import { useClipboardKeys } from "@linkdesk/ui"`）。
+ * 详见 08-共享hook归位.md。
  *
  * 背景（教训链——看 memory keyboard-router-before-input-event）：
  *   壳级剪贴板键已删（E5.8#24.8.1）——主进程 keyCache 命中 = 无条件 preventDefault，

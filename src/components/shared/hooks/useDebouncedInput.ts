@@ -1,6 +1,8 @@
 /**
  * useDebouncedInput — 防抖输入归一化 hook。
  * E3.6 E36#7.3c 提取：本地 state 即时响应 + 模块级/外部 state 防抖同步。
+ * E6#15h 归位：@linkdesk/ui 零件（本文件 = 壳单一源码副本；任何插件含第三方 `import { useDebouncedInput } from "@linkdesk/ui"`）。
+ * 详见 08-共享hook归位.md。
  *
  * 使用场景：输入框值需要即时反馈（不卡打字），但下游过滤/搜索走防抖（不每键重渲染）。
  * 命令面板流畅就是因为输入是本地 state——这个 hook 把同样的模式归一化。

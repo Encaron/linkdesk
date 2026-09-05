@@ -179,6 +179,13 @@ export default [
               group: ["@src/components/shared/**"],
               message: "🚫 禁止插件 import @src/components/shared/*——E6#54c 已切 @linkdesk/ui 分发（第三方作者同路径）。请 `import { X } from \"@linkdesk/ui\"`。",
             },
+            // E6#15h：共享交互 hook 断焊防滑回——@src/pool/hooks + @src/hooks 对插件不再是合法入口：
+            //   useClickPreview/useClipboardKeys/useDebouncedInput 已收 @linkdesk/ui 零件；useIpcEvent 已迁
+            //   serial-monitor 本地。详 08-共享hook归位.md。
+            {
+              group: ["@src/pool/hooks/**", "@src/hooks/**"],
+              message: "🚫 禁止插件 import @src/pool/hooks/* 或 @src/hooks/*——E6#15h 已收 @linkdesk/ui 零件或迁插件本地。请 `import { X } from \"@linkdesk/ui\"`。",
+            },
           ],
         },
       ],

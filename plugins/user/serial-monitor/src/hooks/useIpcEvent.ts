@@ -1,5 +1,8 @@
 /**
- * 安全订阅 Electron IPC 推送事件（对标 useTauriEvent）。
+ * serial 域内安全订阅 hook——serial 后门推流（onData/onStats/onSystem）的 React 订阅封装。
+ * E6#15h 归位（08-共享hook归位.md §三）：serial 后门是"知道对方是谁"的紧耦合专线、只有本插件消费
+ * → 非 @linkdesk/ui 泛用零件，从壳 src/hooks 迁回本插件（域内代码归域）。泛用 IPC 订阅另有
+ * usePluginIpcEvent（src/core/react，走通用 window.linkdesk.events.on）——两传输不同，勿混。
  *
  * 内部封装 generation counter 模式——防 React StrictMode 双重注册 + 防闭包过期。
  * callbackRef 始终持有最新回调，避免 deps 变更导致重注册。
