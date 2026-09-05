@@ -96,13 +96,8 @@
   "ignoreDependencies": [
     // E5.8#2：monaco-languageclient 被 plugins/editor 直引（排除域——插件共用根 node_modules，独立 vite 构建时解析；2026-09-05 塌平单根）
     "monaco-languageclient",
-    // E5.8#24 回归修复：pyright 被 electron/ipc/handlers/lsp-handlers.ts 以 spawn 字符串路径运行时调用
-    //   （"node_modules/pyright/dist/pyright-langserver.js"，非 import 引用）——knip 静态图只认 import，
-    //   看不到字符串 spawn → #2b 误删导致 .py LSP 跳转回归（node_modules/pyright 物理消失 → spawn ENOENT）。
-    //   装回 + 此处豁免防复发；打包态 electron-builder.yml extraResources 同源拷贝 node_modules/pyright。
-    "pyright",
     // E6#57.15e：lefthook 只在 lefthook.yml 命令面使用（postinstall install-lefthook.mjs 同源），
-    //   knip 不解析 yml 配置 → 报 unused devDep。与 pyright 同构的配置引用豁免
+    //   knip 不解析 yml 配置 → 报 unused devDep。配置引用豁免
     //   （2026-09-04 结构上移 6.9 验证补录：E5.8#3 引入后 knip 即报，属既存卫生债随手清）。
     "lefthook"
   ],

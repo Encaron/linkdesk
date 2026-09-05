@@ -543,11 +543,14 @@ useEffect(() => {
   "contributes": {
     "langDefs": [
       {
-        "id": "cpp",
-        "extensions": [".cpp", ".cxx", ".h"],
-        "aliases": ["C++", "C"],
+        "id": "python",
+        "extensions": [".py", ".pyi"],
+        "aliases": ["Python"],
         "monarch": { "tokenizer": { } },
-        "lsp": { "command": "node_modules/pyright/dist/pyright-langserver.js --stdio", "args": [] }
+        "lsp": {
+          "command": "node",
+          "args": ["node_modules/pyright/dist/pyright-langserver.js", "--stdio"]
+        }
       }
     ]
   }
@@ -561,6 +564,9 @@ useEffect(() => {
 | `aliases` | ❌ | 别名——如 `['C++', 'C']` |
 | `monarch` | ❌ | Monarch tokenizer 定义（Monaco 内建语法高亮） |
 | `lsp` | ❌ | LSP 语言服务器配置（command/args） |
+
+> **`command` = 解释器或可执行名**（如 `node` / `clangd` / 绝对路径），不是脚本路径——脚本路径放 `args` 首位。
+> **E6#15e：`args` 相对路径式参数以插件根目录为基准解析**（注册处一次绝对化）——上例 `node_modules/pyright/dist/pyright-langserver.js` → `<插件根>/node_modules/pyright/dist/pyright-langserver.js`；`--stdio` 等 flag 原样透传。**LSP 二进制随插件自带**：先在插件根 `npm install` 装依赖，SDK 打包时按 args 引用把对应 `node_modules` 包自动打进 `.linkdesk-plugin`（壳不再发货 LSP，python 插件即真示例）。
 
 ### 3.13 `contributes.fileAssociations`——文件关联（主进程）
 

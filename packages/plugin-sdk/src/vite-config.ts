@@ -165,6 +165,55 @@ function zipTree(zip: JSZip, dir: string, prefix: string): void {
   }
 }
 
+/** E6#15e：langDef.lsp 引用的 node_modules 包随 zip——只带真正 spawn 的二进制（见 closeBundle 调用注）。
+ * 从 lsp.args 解析 `node_modules/<pkg>/…` 的顶层包名 → 整树拷入 pkgDir/node_modules/<pkg>。
+ * `.bin/` shim 归属需解析依赖 bin 字段——当前不解析（warn 提示作者改指真实包路径），无插件命中。 */
+function includeLspRuntimePackages(
+  root: string,
+  pkgDir: string,
+  manifest: unknown,
+  warn: (msg: string) => void,
+): void {
+  const langDefs = (manifest as { contributes?: { langDefs?: Array<{ lsp?: { args?: unknown } }> } } | undefined)
+    ?.contributes?.langDefs;
+  if (!Array.isArray(langDefs)) return;
+  const wanted = new Set<string>();
+  for (const ld of langDefs) {
+    const args = ld?.lsp?.args;
+    if (!Array.isArray(args)) continue;
+    for (const arg of args) {
+      if (typeof arg !== "string") continue;
+      const norm = arg.replace(/\\/g, "/");
+      if (!norm.includes("node_modules/")) continue;
+      const seg = norm.split("node_modules/")[1];
+      if (!seg) continue;
+      const top = seg.split("/")[0];
+      if (!top) continue;
+      if (top === ".bin") {
+        warn(
+          `[linkdesk-plugin-packager] lsp.args "${arg}" 经 node_modules/.bin shim——归属包需解析依赖 bin 字段，` +
+            "暂不随包；请作者改指真实包路径（node_modules/<pkg>/bin/…）",
+        );
+        continue;
+      }
+      if (top.startsWith(".")) continue; // 隐藏目录非包
+      wanted.add(top);
+    }
+  }
+  for (const name of wanted) {
+    const src = join(root, "node_modules", name);
+    if (!existsSync(src)) {
+      warn(
+        `[linkdesk-plugin-packager] lsp.args 引用依赖 "${name}" 不在插件根 node_modules——未随包（插件根须先 npm install）`,
+      );
+      continue;
+    }
+    const dest = join(pkgDir, "node_modules", name);
+    mkdirSync(dest, { recursive: true });
+    copyTree(src, dest);
+  }
+}
+
 export function defineLinkdeskPluginConfig(options: LinkdeskPluginOptions = {}): UserConfig {
   const root = process.cwd();
   const manifestPath = join(root, "plugin.json");
@@ -301,6 +350,13 @@ export function defineLinkdeskPluginConfig(options: LinkdeskPluginOptions = {}):
         }
 
         await assemblePkgDir();
+
+        // E6#15e：插件自带的 LSP 二进制随包——扫本插件 plugin.json 的 langDefs[].lsp.args，
+        // 凡路径式 arg 指向 `node_modules/<pkg>/…` 的，把 <pkg> 整树从插件根 node_modules 拷进 zip。
+        // pyright 等是 spawn 二进制（不经 bundle import——knip/rollup 图外），只能显式随包。
+        // 按 lsp.args 引用驱动而非全量 dependencies：react/@linkdesk/ui 等构建期被 external/内联，
+        // 不需要也不该进包（全量拷 = 纯增重）；无 langDef.lsp 的插件（既有 19 zip）零影响。
+        includeLspRuntimePackages(root, pkgDir, manifest, (m) => this.warn(m));
 
         // 静态清单从源码 pluginRoot 拷入（缺省忽略）
         // plugin.json 例外——jsonc 归一为严格 JSON + E6#15 render 改写（dist 视角：render 指编译表面路径）

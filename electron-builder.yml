@@ -4,7 +4,7 @@
 # 生成 NSIS 安装器（Windows .exe）。
 #
 # 关键设计：
-#   - 插件源码不进包（extraResources = 只读 bundled-plugins 发货夹 + icon + pyright）；
+#   - 插件源码不进包（extraResources = 只读 bundled-plugins 发货夹 + icon）；
 #     安装/卸载/运行根全在 userData（E6#15d 消费切换相 #17a）
 #   - linkdesk:// 协议根据 app.isPackaged 切换路径前缀
 #   - npmRebuild 自动处理 serialport 原生模块
@@ -14,7 +14,9 @@ productName: LinkDesk
 copyright: Copyright © 2026 LinkDesk
 
 directories:
-  output: release
+  # E6#15e 后定案（2026-09-06 用户拍板）：打包输出统一落仓库外 E:\linkdesk-build（相对父目录），
+  # 消灭 E:\linkdesk 下 release/release2/release-15e 等散落产物 + 避开 Defender 深扫锁 default_app.asar。
+  output: ../linkdesk-build
   buildResources: build
 
 files:
@@ -35,9 +37,9 @@ extraResources:
     to: bundled-plugins
   - from: build/icon.ico
     to: icon.ico
-  # E5#114d：LSP 语言服务器——需在 ASAR 外（外部 child_process.spawn 读不了 ASAR）
-  - from: node_modules/pyright
-    to: node_modules/pyright
+  # E6#15e：LSP 语言服务器不再壳发货——pyright 随 python 插件自带（.linkdesk-plugin zip 内 node_modules/pyright，
+  # boot 自动装落 userData）。壳注册处按插件根把 langDef.lsp.args 一次绝对化（electron/plugins/lsp-arg-resolve.ts）→
+  # spawn 命中 userData 路径，无需 ASAR 外拷贝。E5#114d 临时 hack 删除（核心无知：壳不背语言工具）。
 
 win:
   target:

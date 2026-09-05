@@ -13,11 +13,12 @@
  * 全部解析后 `fs.existsSync`——任一缺失 → exit 1（红门禁）。OS shell 命令（`start powershell` /
  * `open -a Terminal` / `xdg-open` 等）无二进制扩展名，天然豁免。
  *
- * 检查基准可配置（E6 联动）：`--base <dir>` 或环境变量 `LSP_DEP_BASE`。
- *   - dev：默认项目根——相对引用（`node_modules/pyright/...`）对根 resolve（与 lsp-handlers.ts
- *     哨兵 `path.resolve(app.getAppPath(), arg)` 同语义）。
- *   - E6：搬迁后 args 变绝对路径（`{userData}/plugins/<id>/node_modules/`）→ 绝对引用直接命中；
- *     相对引用对 `--base` 指定目录 resolve——改基准不换机制。
+ * 检查基准（E6#15e 后按源决定，`--base` / `LSP_DEP_BASE` 可显式覆盖）：
+ *   - plugin.json langDefs.lsp args：以「该 plugin.json 所在目录」为基（= 插件根）——镜像主进程
+ *     注册处一次绝对化（electron/plugins/lsp-arg-resolve.ts）：作者相对路径基准就是插件目录，
+ *     pyright 随 python 插件自走，落 plugins/python/node_modules/。
+ *   - electron/ 下 *.ts spawn 字面量：以项目根为基（主进程 spawn cwd = app.getAppPath()）。
+ *   - 显式 `--base <dir>`：两源通吃覆盖（冒烟脚本等外部调用场景保留）。
  *
  * 用法：node scripts/check-lsp-deps.mjs [--base <dir>]（已挂 npm run check）
  * 退出码 0 = 全部就位，1 = 有缺失（打印到 stderr）。
@@ -30,15 +31,15 @@ import { fileURLToPath } from "url";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, "..");
 
-/** 检查基准（E6 可配置）——CLI --base 优先，其次 LSP_DEP_BASE 环境变量，默认项目根 */
-let base = ROOT;
+/** 显式检查基准（E6 可配置）——CLI --base 优先，其次 LSP_DEP_BASE。缺省按源决定（plugin.json 插件根 / electron 项目根） */
+let cliBase = null;
 {
   const argv = process.argv.slice(2);
   for (let i = 0; i < argv.length; i++) {
-    if (argv[i] === "--base" && argv[i + 1]) base = resolve(argv[i + 1]);
-    if (argv[i].startsWith("--base=")) base = resolve(argv[i].slice("--base=".length));
+    if (argv[i] === "--base" && argv[i + 1]) cliBase = resolve(argv[i + 1]);
+    if (argv[i].startsWith("--base=")) cliBase = resolve(argv[i].slice("--base=".length));
   }
-  if (process.env.LSP_DEP_BASE) base = resolve(process.env.LSP_DEP_BASE);
+  if (process.env.LSP_DEP_BASE) cliBase = resolve(process.env.LSP_DEP_BASE);
 }
 
 /** spawn 引用的脚本/二进制扩展名白名单——哨兵只查这些（与 electron/ipc/lsp-dependency.ts 同语义） */
@@ -58,9 +59,9 @@ function collectFiles(dir, extSet, out) {
   return out;
 }
 
-/** 解析引用为绝对路径——绝对原样，相对对检查基准 resolve */
-function resolveRef(ref) {
-  return isAbsolute(ref) ? ref : resolve(base, ref);
+/** 解析引用为绝对路径——绝对原样，相对对给定基准 resolve（调用方传入按源决定的 baseDir） */
+function resolveRef(ref, baseDir) {
+  return isAbsolute(ref) ? ref : resolve(baseDir, ref);
 }
 
 /** 是否路径式引用（含路径分隔符 = 相对/绝对文件，不是 PATH 二进制） */
@@ -105,18 +106,18 @@ function extractSpawnStrings(text) {
 const missing = [];
 let checked = 0;
 
-function checkRef(ref, source) {
+function checkRef(ref, source, baseDir) {
   if (typeof ref !== "string" || !ref) return;
   if (!isPathLike(ref)) return;          // 内建/PATH 二进制（clangd 等）——同步无法验证，跳过
   if (!BINARY_EXT.test(ref) && !isAbsolute(ref)) return; // 非二进制扩展名的相对 ref 不查
-  const abs = resolveRef(ref);
+  const abs = resolveRef(ref, baseDir);
   checked++;
   if (!existsSync(abs)) {
     missing.push({ ref, abs, source });
   }
 }
 
-/** 扫描 plugin.json 的 langDefs.lsp 声明 */
+/** 扫描 plugin.json 的 langDefs.lsp 声明——E6#15e：基准 = 该 plugin.json 所在目录（作者相对路径的插件根） */
 function scanPluginJson(file) {
   let json;
   try {
@@ -126,24 +127,26 @@ function scanPluginJson(file) {
   }
   const langDefs = json?.contributes?.langDefs;
   if (!Array.isArray(langDefs)) return;
+  const baseDir = cliBase ?? dirname(file);
   for (const langDef of langDefs) {
     const lsp = langDef?.lsp;
     if (!lsp) continue;
     if (typeof lsp.command === "string" && !SHELL_BUILTINS.has(lsp.command)) {
-      checkRef(lsp.command, file);
+      checkRef(lsp.command, file, baseDir);
     }
     if (Array.isArray(lsp.args)) {
-      for (const arg of lsp.args) checkRef(arg, file);
+      for (const arg of lsp.args) checkRef(arg, file, baseDir);
     }
   }
 }
 
-/** 扫描 electron/**\/*.ts 中 spawn 调用参数字符串字面量 */
+/** 扫描 electron/**\/*.ts 中 spawn 调用参数字符串字面量——基准 = 项目根（主进程 spawn cwd = app.getAppPath()） */
 function scanElectronTs(file) {
   const text = readFileSync(file, "utf-8");
+  const baseDir = cliBase ?? ROOT;
   for (const ref of extractSpawnStrings(text)) {
     if (SHELL_BUILTINS.has(ref)) continue;
-    checkRef(ref, file);
+    checkRef(ref, file, baseDir);
   }
 }
 
@@ -155,7 +158,7 @@ const electronTsFiles = collectFiles(resolve(ROOT, "electron"), new Set([".ts"])
 for (const f of pluginJsonFiles) scanPluginJson(f);
 for (const f of electronTsFiles) scanElectronTs(f);
 
-console.log(`[lsp-deps] 哨兵检查 spawn 运行时依赖（基准 ${base}）：${checked} 个二进制引用，${missing.length} 缺失`);
+console.log(`[lsp-deps] 哨兵检查 spawn 运行时依赖：${checked} 个二进制引用，${missing.length} 缺失（plugin.json 按插件目录基准，electron .ts 按项目根${cliBase ? `，--base=${cliBase}` : ""}）`);
 
 if (missing.length > 0) {
   for (const { ref, abs, source } of missing) {

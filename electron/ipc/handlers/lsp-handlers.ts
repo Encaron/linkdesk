@@ -137,6 +137,20 @@ function copyDirFromAsar(src: string, dest: string): void {
   }
 }
 
+/**
+ * E6#15e：spawn cwd 必须是真实目录。dev 态 app.getAppPath() = 项目根（真实目录）；打包态
+ * app.getAppPath() = resources/app.asar——Electron 虚拟 fs 把 .asar 归档整体报告为目录
+ * （fs.statSync(app.getAppPath()).isDirectory() === true，实机实证：v1 用 statSync 判据在
+ * 打包态取到 app.asar 当 cwd → CreateProcess lpCurrentDirectory = 文件路径 → cmd.exe ENOENT）。
+ * 判据改用 app.isPackaged（唯一可靠，statSync 在 asar 虚拟 fs 下不可信）：打包态恒退
+ * userData——真实目录，且插件正落此处（#15e 注册处绝对化已指向它），绝对 args 自足。
+ */
+function getSpawnCwd(): string {
+  const cwd = app.isPackaged ? app.getPath("userData") : app.getAppPath();
+  appendLspLog("lsp:debug", `getSpawnCwd=${cwd} isPackaged=${app.isPackaged}`);
+  return cwd;
+}
+
 // E5.7#36 + E5.8#6.5：壳崩重建复用本函数——lsp:data 推送走 IpcBridge.active（恒指最新实例），
 // IPC 通道只注册一次
 let _registered = false;
@@ -168,7 +182,7 @@ export function registerLspHandlers(): void {
     // E5.8#24.6：spawn 前哨兵——运行时依赖物理存在检查。缺失 → 抛错（invoke reject），
     // 渲染进程 lsp.spawn() 即抛 → startLspClient 显性报错 → 编辑器 toast。
     // 修复回归 #24 静默链：pyright 被删 → spawn ENOENT → invoke 仍返 channelId → client.start() 挂死。
-    const missing = checkLspDependency(command, resolvedArgs, app.getAppPath());
+    const missing = checkLspDependency(command, resolvedArgs, getSpawnCwd());
     if (missing) {
       const msg = `LSP 运行时依赖缺失: "${missing}"（命令 "${command}" 无法启动）——检查插件 langDef.lsp 配置与 node_modules 完整性`;
       console.error(`[lsp:${channelId}] ${msg}`);
@@ -179,9 +193,10 @@ export function registerLspHandlers(): void {
     const child = spawn(command, resolvedArgs, {
       stdio: ["pipe", "pipe", "pipe"],
       shell: true,
-      // E5.8#24.6：显式 cwd = app 根——dev 态相对 args（node_modules/pyright/...）确定性解析，
-      // 与 checkLspDependency 的 path.resolve(app.getAppPath(), arg) 基准一致
-      cwd: app.getAppPath(),
+      // E5.8#24.6 + E6#15e：显式 cwd = spawn 基准（getSpawnCwd）——dev 态 app 根，打包态
+      // userData 真实目录（app.getAppPath() 指向 app.asar 文件，非目录 → cmd.exe ENOENT）。
+      // 与 checkLspDependency 的 resolve 基准同源，保证哨兵所见 = spawn 实际所用。
+      cwd: getSpawnCwd(),
     });
 
     // stdout → renderer（E5.8#6.5：唯一路径 = IpcBridge.broadcast——plugin:push 发壳+发池；

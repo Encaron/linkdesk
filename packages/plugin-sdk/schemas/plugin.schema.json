@@ -448,8 +448,8 @@
                 "type": "object",
                 "description": "可选——LSP 语言服务器配置",
                 "properties": {
-                  "command": { "type": "string", "description": "启动命令——如 node_modules/pyright/dist/pyright-langserver.js --stdio" },
-                  "args": { "type": "array", "items": { "type": "string" }, "description": "启动参数" }
+                  "command": { "type": "string", "description": "启动命令——解释器或可执行名（解释器如 node；PATH 二进制如 clangd；或绝对路径）。python 插件即 command='node' + args 带脚本路径" },
+                  "args": { "type": "array", "items": { "type": "string" }, "description": "启动参数。E6#15e：相对路径式参数以插件根目录为基准解析（注册处一次绝对化）——如 'node_modules/pyright/dist/pyright-langserver.js' → <插件根>/node_modules/pyright/dist/pyright-langserver.js；'--stdio' 等 flag 原样透传。LSP 二进制随插件自带：SDK 打包按 args 引用把对应 node_modules 包打进 .linkdesk-plugin（壳不再发货 LSP，E5#114d extraResources 临时方案已删）" }
                 }
               }
             },

@@ -32,6 +32,7 @@ import { IPC } from '../ipc/channels.js';
 // E5.8#26 D8 卸载连坐——rescan 时回收孤儿端口（owner 插件已不在扫盘集合 = 被卸载）
 import { serialService } from '../services/serial-service.js';
 import { envService } from "../services/env-service.js";
+import { resolveLspArgsToPluginRoot } from "./lsp-arg-resolve.js";
 
 /**
  * 有序代码根表——先 userData 后 app（见 loadAllPluginManifests 注释：register* 后写胜 → app 内置最后注册即胜）。
@@ -42,13 +43,25 @@ function getPluginRoots(): string[] {
 }
 
 /** 单个 plugin.json 的三表贡献注册——pluginId 采用目录名（与壳 loader 约定一致） */
-function registerManifestTables(pluginId: string, manifest: PluginManifest): void {
+function registerManifestTables(pluginId: string, manifest: PluginManifest, pluginDir: string): void {
   const contributes = manifest.contributes;
 
   // contributes.langDefs → LangDefRegistry（E4V#40s5b）
+  // E6#15e：注册前把 lsp.args 相对插件根的路径换算为绝对路径（一次绝对化，纯函数语义见 lsp-arg-resolve.ts）。
+  // 换算后 registry / IPC / spawn 全程持绝对路径——lsp-handlers.resolveLspArg 的 absolute 分支直接命中，
+  // spawn 路径零改动、无需知道插件目录。args 无相对路径 → 原 def 原样注册（零分配）；有 → 浅克隆后注册
+  // （LangDefRegistry 存克隆，manifest 解析产物不被改写）。契约：plugin.json lsp.args 相对基准 = 插件根。
   const langDefs = contributes?.langDefs as LangDefContribution[] | undefined;
   if (Array.isArray(langDefs)) {
-    for (const def of langDefs) registerLangDef(pluginId, def);
+    for (const def of langDefs) {
+      const lsp = def.lsp;
+      const args = lsp && resolveLspArgsToPluginRoot(lsp.args, pluginDir);
+      if (lsp && args !== lsp.args) {
+        registerLangDef(pluginId, { ...def, lsp: { ...lsp, args } });
+      } else {
+        registerLangDef(pluginId, def);
+      }
+    }
   }
 
   // contributes.fileAssociations → FileAssociationService（E2c #13a）
@@ -103,7 +116,9 @@ export function loadAllPluginManifests(): void {
       _loadedPluginIds.add(name);
       try {
         const raw = fs.readFileSync(manifestPath, "utf-8");
-        registerManifestTables(name, parseManifestJson(raw));
+        // E6#15e：pluginDir = 插件根目录（= plugin.json 所在目录，dev 仓库 plugins/<id> / prod userData）——
+        // lsp.args 相对路径以它为基准绝对化（sub-1 fallback 落地形态：注册处一次绝对化）。
+        registerManifestTables(name, parseManifestJson(raw), path.join(root, name));
       } catch (e) {
         console.error(
           `[plugin-manifest-loader] 跳过插件 ${name}——plugin.json 解析失败`,

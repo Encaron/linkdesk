@@ -5,7 +5,10 @@
   "type": "module",
   "description": "Python 语言支持——E6#15 内置插件独立化试点（零 @src 耦合，独立 build 产 .linkdesk-plugin）",
   "scripts": {
-    "build": "node ../../../packages/plugin-sdk/dist/bin.js build",
-    "lint": "node ../../../packages/plugin-sdk/dist/bin.js lint ."
+    "build": "node ../../packages/plugin-sdk/dist/bin.js build",
+    "lint": "node ../../packages/plugin-sdk/dist/bin.js lint ."
+  },
+  "dependencies": {
+    "pyright": "^1.1.413"
   }
 }
