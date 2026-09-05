@@ -1,7 +1,8 @@
 /**
  * PoolStatusBarComponent——E5.7#8。池侧插件状态栏组件懒加载。
  *
- * 壳侧等价物：loader.ts pluginStatusBarModules glob（6 路径）——serial-monitor 等插件
+ * 壳侧等价物：src/pluginLoader/resolution/state.ts pluginStatusBarModules glob（3 路径，
+ * 2026-09-05 塌平后同收单根 plugins/<id>/）——serial-monitor 等插件
  * 提供 statusBar.tsx 自定义组件（TX/RX 计数 + 连接灯，组件内部走 linkdesk.events/
  * configuration/useTranslation，无需壳数据 → 可在池内按原样运行）。
  *
@@ -15,14 +16,11 @@ import React, { Suspense, useMemo } from "react";
 import ErrorBoundary from "../error-boundary/ErrorBoundary"; // E5.7#20：池侧版（不 import 壳 components 目录）
 
 // ── import.meta.glob：Vite 预扫描插件状态栏组件 ──
-// 壳 loader.ts:81-106 pluginStatusBarModules 同款 6 路径（builtin/user × 3 位置）
+// 壳 loader.ts pluginStatusBarModules 同款 3 路径（2026-09-05 塌平单根：plugins/<id>/，目录名 = pluginId）
 const statusBarModules = {
-  ...import.meta.glob("../../plugins/builtin/*/statusBar.tsx"),
-  ...import.meta.glob("../../plugins/builtin/*/src/statusBar.tsx"),
-  ...import.meta.glob("../../plugins/builtin/*/src/components/statusBar.tsx"),
-  ...import.meta.glob("../../plugins/user/*/statusBar.tsx"),
-  ...import.meta.glob("../../plugins/user/*/src/statusBar.tsx"),
-  ...import.meta.glob("../../plugins/user/*/src/components/statusBar.tsx"),
+  ...import.meta.glob("../../plugins/*/statusBar.tsx"),
+  ...import.meta.glob("../../plugins/*/src/statusBar.tsx"),
+  ...import.meta.glob("../../plugins/*/src/components/statusBar.tsx"),
 };
 
 /** 运行时动态 import 试错路径——与 glob 三位置对应 */

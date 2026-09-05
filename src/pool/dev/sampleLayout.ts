@@ -269,7 +269,7 @@ export function buildSampleFloatingPanel(): PoolFloatingPanelData {
     viewId: "settings", // 身份仅用于 I8-10 单实例裁决——预览展示用（#38 Settings 真接线）
     title: "设置",
     pluginId: "file-tree",
-    renderPath: "../../plugins/builtin/file-tree/src/views/FoldersView.tsx",
+    renderPath: "../../plugins/file-tree/src/views/FoldersView.tsx",
     actions: [
       { id: "open-in", label: "在主窗口中打开", icon: "open-in", expandOnHover: true },
       { id: "maximize", label: "最大化", icon: "maximize", toggledIcon: "restore", toggledLabel: "还原" },

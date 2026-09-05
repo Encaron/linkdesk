@@ -54,11 +54,11 @@ const EXEMPT_FILES = [
     reason: "initialColor 默认值——插件调用 color-picker.pick 不带初始色时的兜底（同 accent 默认）",
   },
   {
-    path: "plugins/builtin/settings/src/views/SettingsView/SettingRow.tsx",
+    path: "plugins/settings/src/views/SettingsView/SettingRow.tsx", // 2026-09-05 塌平单根（原 plugins/builtin/settings）
     reason: "强调色预设 swatches 配置数据（COLOR_PICKER_PRESETS）",
   },
   {
-    path: "plugins/user/serial-monitor/src/hooks/useSerialSessions.ts",
+    path: "plugins/serial-monitor/src/hooks/useSerialSessions.ts", // 2026-09-05 塌平单根（原 plugins/user/serial-monitor）
     reason: "串口 session 色板配置数据（SESSION_COLORS 预设）",
   },
 ];

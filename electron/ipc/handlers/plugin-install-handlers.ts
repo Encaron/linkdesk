@@ -6,7 +6,7 @@
  * 主进程无 loader。主进程只做「真网络 + 真磁盘」里 renderer 做不了/不该做的：
  *   - plugins:download  —— fetch 包 → {userData}/tmp/<原包名>（保留原名——pluginId 无 manifest 字段时
  *                         回退 zip 基名裁决，改名会破坏裁决；见 bundle-zip deriveBundlePluginId）
- *   - plugins:extract   —— 共享 bundle-zip 语义解压 → {userData}/plugins/user/<id>/（zip-slip/wrapper/
+ *   - plugins:extract   —— 共享 bundle-zip 语义解压 → {userData}/plugins/<id>/（zip-slip/wrapper/
  *                         pluginId 双源互验同 boot ingest）；目标已存在拒绝（更新走 update-* 段 B）
  *   - plugins:update-check / stage-update / commit-update —— 段 B（#13b/c，已落地）：fetch catalog 版本
  *                         对比 + tmp 暂存新版 + 原子 rename 替换（失败旧版保留，05 §二·六）；见本函数尾部
@@ -42,7 +42,7 @@ function tmpDir(): string {
   return path.join(app.getPath("userData"), "tmp");
 }
 
-/** 用户安装代码根——{userData}/plugins（解压目标 = <root>/user/<id>，market 只写 user/） */
+/** 用户安装代码根——{userData}/plugins（2026-09-05 塌平单根：直接含插件目录，解压目标 = <root>/<id>） */
 function userPluginsRoot(): string {
   return path.join(app.getPath("userData"), "plugins");
 }
@@ -142,7 +142,7 @@ export function registerPluginInstallHandlers(): void {
   });
 
   // ── plugins:extract(zipPath, expectedPluginId?) → { pluginId, version, targetDir } ──
-  // 真磁盘段：共享 bundle-zip 语义解压到 {userData}/plugins/user/<id>/；纯新建契约（目标已存在拒绝——
+  // 真磁盘段：共享 bundle-zip 语义解压到 {userData}/plugins/<id>/（2026-09-05 塌平单根）；纯新建契约（目标已存在拒绝——
   // 更新/覆盖走 update 流或先卸）；包内 id 与 expectedPluginId 不符拒绝（防伪装）。
   loggedHandle(IPC.plugins.extract, async (_event, zipPath: string, expectedPluginId?: string) => {
     if (typeof zipPath !== "string" || !zipPath) throw new Error("缺少包路径");
@@ -163,7 +163,7 @@ export function registerPluginInstallHandlers(): void {
     if (expectedPluginId && expectedPluginId !== pluginId) {
       throw new Error(`包内 pluginId 与预期不符（${pluginId} ≠ ${expectedPluginId}）——拒绝解压`);
     }
-    const target = path.join(userPluginsRoot(), "user", pluginId);
+    const target = path.join(userPluginsRoot(), pluginId); // 2026-09-05 塌平单根（原 userPluginsRoot()/user/<id>）
     if (existsSync(target)) {
       // E6#12 幂等语义：不静默覆盖（对齐 #30.9d 确认/通知非静默）；同/异版本均报——先卸或走更新流
       throw new Error(`插件 "${pluginId}" 已存在安装目录——如需覆盖请先卸载，版本升级请走更新流程`);
@@ -256,11 +256,11 @@ export function registerPluginInstallHandlers(): void {
 
   // ── plugins:commit-update(pluginId, stagedDir) → { pluginId, version } ──
   // 原子替换（05 §二·六）：target → .bak → staged 入位 → rm .bak。rename 中途失败 → .bak 复原（失败旧版保留）。
-  // 两个 rename 同卷（tmp 与 plugins/user 同在 {userData}）→ 原子。stagedDir 必须落本进程 tmp 内（防任意路径替换）。
+  // 两个 rename 同卷（tmp 与 plugins 同在 {userData}）→ 原子。stagedDir 必须落本进程 tmp 内（防任意路径替换）。
   loggedHandle(IPC.plugins.commitUpdate, async (_event, pluginId: string, stagedDir: string) => {
     if (typeof pluginId !== "string" || !pluginId) throw new Error("缺少 pluginId");
     if (typeof stagedDir !== "string" || !stagedDir) throw new Error("缺少暂存目录");
-    const target = path.join(userPluginsRoot(), "user", pluginId);
+    const target = path.join(userPluginsRoot(), pluginId); // 2026-09-05 塌平单根
     if (!existsSync(target)) throw new Error(`插件 "${pluginId}" 未安装——无旧目录可替换`);
     const stageRoot = path.resolve(tmpDir());
     const stageAbs = path.resolve(stagedDir);

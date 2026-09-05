@@ -15,8 +15,8 @@
  * 不变量/边界：
  *   - 只收 origin.home === "userData" 的插件（{userData}/plugins 家——.linkdesk-plugin 解压处）；
  *     dev 项目源码插件（app 根）永不入账本。
- *   - source 派生自磁盘位置事实 origin.subdir（builtin 子目录 → "builtin"，其余 → "user"）——
- *     磁盘格式/位置是事实，不替代插件身份（硬约束 11）。
+ *   - source 派生自磁盘位置事实 origin.subdir——2026-09-05 塌平单根后 subdir 恒 null → 磁盘事实全映射
+ *     "user"；"builtin" 仅保留为联合成员兼容旧账本条目（不再从磁盘派生）。磁盘位置是事实，不替代插件身份（硬约束 11）。
  *   - marketplace 源（未来安装流写入）不在 reconcile 自动删除范围——只按目录事实增删 builtin/user。
  *   - 纯函数（selectUserDataPlugins / reconcileDiff）不碰 I/O——单测可证，不依赖 window.linkdesk。
  */
@@ -33,7 +33,7 @@ export interface InstalledPluginEntry {
   version: string;
   /** 首次安装时间 ISO——重装/升级保留原值（安装日期语义） */
   installedAt: string;
-  /** 来源：builtin=出厂内置目录 / user=用户安装目录 / marketplace=市场安装 */
+  /** 来源：user=用户安装（塌平后磁盘事实全落此）/ marketplace=市场安装（add 显式写）/ builtin=旧版账本兼容（不再派生，保留成员） */
   source: "builtin" | "user" | "marketplace";
 }
 
@@ -42,7 +42,8 @@ export type InstalledLedger = Record<string, InstalledPluginEntry>;
 
 /* ── 磁盘位置 → 账本来源（纯映射） ── */
 
-/** origin.subdir 位置事实 → source 语义：builtin 子目录 → "builtin"，其余（user/其他）→ "user" */
+/** origin.subdir 位置事实 → source 语义。2026-09-05 塌平单根：subdir 恒 null → 全落 "user"；
+ *  "builtin" 分支保留仅为旧账本兼容（若现存量 subdir 意外非 null 仍按旧规则兜底）。 */
 function sourceFromSubdir(subdir: string | null): "builtin" | "user" {
   return subdir === "builtin" ? "builtin" : "user";
 }

@@ -7,12 +7,12 @@ import { mergeDomains } from "../ThemeEngine";
 import { loadRealRecipe } from "./testFixtures.mock";
 
 /* ── E5.8#50.27：真实极限壳主题端到端裁决——gallery ①⑨⑩ 壳真实落地。
-   读取 plugins/user/theme-{songti,terminal,pill} 真实主题 JSON（#50.27 验收「制作真实主题插件做端到端最终裁决」）。
+   读取 plugins/theme-{songti,terminal,pill} 真实主题 JSON（#50.27 验收「制作真实主题插件做端到端最终裁决」）。
    例外依据：验证真实接线而必须用真 id/真数据（硬约束 21 豁免区）——虚构 fixture 无法裁决「gallery 配方 ↔ 引擎」契约。 */
 describe("ThemeEngine — 真实极限壳主题（E5.8#50.27，gallery 端到端裁决）", () => {
   it("songti-print — 宋体印刷体 font 域（ui=SimSun 全 UI 宋体；形制现状直角 isolate 字族轴）", () => {
     const { recipe } = loadRealRecipe(
-      "plugins/user/theme-songti/themes/songti-print.json",
+      "plugins/theme-songti/themes/songti-print.json",
       "songti-print", "宋体印刷体 Songti Print", "light",
     );
     expect(recipe).not.toBeNull();
@@ -28,7 +28,7 @@ describe("ThemeEngine — 真实极限壳主题（E5.8#50.27，gallery 端到端
 
   it("terminal-monofont — 终端机 font 域（ui+mono 全 Cascadia Mono 等宽族；形制现状直角）", () => {
     const { recipe } = loadRealRecipe(
-      "plugins/user/theme-terminal/themes/terminal-monofont.json",
+      "plugins/theme-terminal/themes/terminal-monofont.json",
       "terminal-monofont", "终端机 Terminal Mono", "dark",
     );
     expect(recipe).not.toBeNull();
@@ -44,7 +44,7 @@ describe("ThemeEngine — 真实极限壳主题（E5.8#50.27，gallery 端到端
 
   it("pill-bubble — 全胶囊 radius 域（七档 999px 配方声明 + radius-full 去键继承 :root 50% + 悬浮形态 radius999/shadow + 泡泡糖；E5.8#104 配方圆角 clamp 进标尺 [0,32]）", () => {
     const { recipe } = loadRealRecipe(
-      "plugins/user/theme-pill/themes/pill-bubble.json",
+      "plugins/theme-pill/themes/pill-bubble.json",
       "pill-bubble", "全胶囊 Pill Bubble", "light",
     );
     expect(recipe).not.toBeNull();
@@ -67,7 +67,7 @@ describe("ThemeEngine — 真实极限壳主题（E5.8#50.27，gallery 端到端
 
   it("panorama — 整窗主视觉 background 域（mode:panorama 全窗铺图 + 低遮罩 0.15 + zone 半透明让位，chrome 让位给影像）", () => {
     const { recipe } = loadRealRecipe(
-      "plugins/user/theme-panorama/themes/panorama.json",
+      "plugins/theme-panorama/themes/panorama.json",
       "panorama", "整窗主视觉 Main Visual", "dark",
     );
     expect(recipe).not.toBeNull();
@@ -96,7 +96,7 @@ describe("ThemeEngine — 真实极限壳主题（E5.8#50.27，gallery 端到端
 describe("ThemeEngine — 旧格式主题迁移新格式（E5.8#74，决策 F）", () => {
   it("aurora-glass — 极光玻璃（appearance.glass 全玻璃+悬浮形态 + background 全窗图，colorway 单配色）", () => {
     const { recipe } = loadRealRecipe(
-      "plugins/user/theme-aurora-glass/aurora-glass.json",
+      "plugins/theme-aurora-glass/aurora-glass.json",
       "aurora-glass", "极光玻璃 Aurora Glass", "dark",
     );
     expect(recipe).not.toBeNull();
@@ -133,7 +133,7 @@ describe("ThemeEngine — 旧格式主题迁移新格式（E5.8#74，决策 F）
 
   it("image-zones — 影像分区（appearance.glass 悬浮形态 + background.mode:zones 连续切片）", () => {
     const { recipe } = loadRealRecipe(
-      "plugins/user/theme-zones/image-zones.json",
+      "plugins/theme-zones/image-zones.json",
       "image-zones", "影像分区 Image Zones", "dark",
     );
     expect(recipe).not.toBeNull();
@@ -162,7 +162,7 @@ describe("ThemeEngine — 旧格式主题迁移新格式（E5.8#74，决策 F）
 
   it("paper-zones — 纸纹分区（appearance.glass texture 平铺纹理 + 悬浮形态，无 background）", () => {
     const { recipe } = loadRealRecipe(
-      "plugins/user/theme-zones/paper-zones.json",
+      "plugins/theme-zones/paper-zones.json",
       "paper-zones", "纸纹分区 Paper Zones", "light",
     );
     expect(recipe).not.toBeNull();

@@ -27,7 +27,8 @@ export const MOCK_THEME2: Theme = {
 };
 
 /* 真实主题 JSON 读取 helper（模块级单份，避免 jscpd 同款复制）——
- * 读 plugins/user/theme-* 真实 recipe 文件 → parseThemeRecipe → 返回 { raw, recipe }。 */
+ * 读 plugins/theme-* 真实 recipe 文件 → parseThemeRecipe → 返回 { raw, recipe }。
+ * 2026-09-05 塌平单根（原 plugins/user/theme-*）。 */
 const ROOT = process.cwd();
 export function loadRealRecipe(rel: string, id: string, label: string, uiTheme: "light" | "dark") {
   const raw = fs.readFileSync(path.join(ROOT, rel), "utf8");

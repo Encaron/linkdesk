@@ -22,8 +22,9 @@ const PROJECT_ROOT = resolve(__dirname, "../../..");
 
 /** 声明者清单——[描述, pluginId, plugin.json 相对项目根] */
 const DECLARERS: Array<{ label: string; pluginId: string; jsonPath: string }> = [
-  { label: "settings（首批声明者——#38 Ctrl+, 弹面板）", pluginId: "settings", jsonPath: "plugins/builtin/settings/plugin.json" },
-  { label: "floating-panel-demo（第二声明者验证载体）", pluginId: "floating-panel-demo", jsonPath: "plugins/user/floating-panel-demo/plugin.json" },
+  // 2026-09-05 塌平单根：settings 原 plugins/builtin/settings、floating-panel-demo 原 plugins/user/floating-panel-demo
+  { label: "settings（首批声明者——#38 Ctrl+, 弹面板）", pluginId: "settings", jsonPath: "plugins/settings/plugin.json" },
+  { label: "floating-panel-demo（第二声明者验证载体）", pluginId: "floating-panel-demo", jsonPath: "plugins/floating-panel-demo/plugin.json" },
 ];
 
 interface DeclarerContributes {

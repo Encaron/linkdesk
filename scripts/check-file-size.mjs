@@ -19,7 +19,7 @@
  *      （过期豁免）都报错强制移除——豁免纪律不靠自觉。allowlist 只作用于 800 生产源码档，
  *      市场档无豁免通道（拆分是 #30.11 正解）；allowlist 放行不豁免 #0.4d（仍禁止平铺拆）。
  *   4. per-scope（E6#0.6c）：SCAN_MARKETPLACE=false，仅 #30.11 拆完 MarketplaceSidebar.css
- *      （377>300）后翻 true。只扫 plugins/builtin/marketplace/src/**（根级 css/js/svg/json
+ *      （377>300）后翻 true。只扫 plugins/marketplace/src/**（根级 css/js/svg/json
  *      天然不扫；editor/file-tree/settings 等插件同界不扩域）。role 夹 + 扩展名按 12 档
  *      ROLE_LIMITS 上档取阈值；未知 role 夹 / 越界扩展名组合 → 报错逼显式上档，非兜底 800
  *      （防 per-scope 意图被静默瓦解）。嵌套 index 语义：根 entry index.tsx → 120；role 夹内
@@ -51,8 +51,8 @@ const EXT_RE = /\.(ts|tsx|css)$/;
  * 失败自解释）；翻晚 = 该档休眠。编辑器/file-tree/settings 等插件同界不扩域（清单未授权）。
  */
 const SCAN_MARKETPLACE = false;
-/** marketplace 插件域根——只扫 src/**，根级 css/js/svg/json 天然不扫 */
-const MARKETPLACE_SRC = "plugins/builtin/marketplace/src";
+/** marketplace 插件域根——只扫 src/**，根级 css/js/svg/json 天然不扫（2026-09-05 塌平单根） */
+const MARKETPLACE_SRC = "plugins/marketplace/src";
 
 /** E6#0.6c 12 档 §一·二 阈值表——role 夹 → 扩展名 → 行数上限。嵌套 index 按 role 档落 */
 const ROLE_LIMITS = {
@@ -113,7 +113,7 @@ function verifyAllowlist() {
 }
 
 /**
- * E6#0.6c per-scope 档解析——rel 如 plugins/builtin/marketplace/src/views/X.tsx。
+ * E6#0.6c per-scope 档解析——rel 如 plugins/marketplace/src/views/X.tsx（2026-09-05 塌平单根）。
  * 根 entry 仅 index.tsx（→120）；role 夹取 ROLE_LIMITS[首段 dir][扩展名]，未知组合 throw（R3）。
  */
 function marketLimit(relPath) {

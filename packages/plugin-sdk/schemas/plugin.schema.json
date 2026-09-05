@@ -42,7 +42,7 @@
       "type": "string",
       "enum": ["builtin", "user"],
       "default": "user",
-      "description": "分发渠道——builtin=内置（随安装包分发，放 plugins/builtin/），user=用户安装（放 plugins/user/）。第三方插件不填即可，默认 user。"
+      "description": "⚠️ 遗留字段（2026-09-05 塌平单根后已无 plugins/builtin、plugins/user 之分——本字段不再对应任何目录，安装侧恒归一化为 user）。内置随带与否由 `core` 声明，与分发字段无关。第三方插件请勿填写。"
     },
     "name": {
       "type": "string",

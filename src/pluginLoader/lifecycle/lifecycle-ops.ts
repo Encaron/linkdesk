@@ -156,7 +156,7 @@ export async function uninstallPlugin(pluginId: string): Promise<{ success: bool
     // （现语义，可 reinstall）。磁盘位置是事实（硬约束 11），env 双根同源前缀比对。
     //
     // 🔴 前缀比对必须走 normalizePath 归一化：resolvePath（IPC 回传）是正斜杠
-    // （"C:/Users/.../plugins/user/<id>"），而 env.userPluginsDir（主进程 path.join）是反斜杠
+    // （"C:/Users/.../plugins/<id>"），而 env.userPluginsDir（主进程 path.join）是反斜杠
     // （"C:\Users\...\plugins"）——直接 startsWith 恒 false，userData 卸载误走 .disabled 坟场
     // （2026-09-05 实机门禁实证：demo-pill/plugin-sdk-example 卸载进了项目 plugins/.disabled/）。
     const userHome = env.userPluginsDir;
@@ -275,7 +275,7 @@ export function packageOps(): {
 
 /**
  * 安装插件（路由入口，E6#11/#13）：目录源 → 既有复制流零回归；url/.linkdesk-plugin 包源 →
- * 主进程 download→extract 落 {userData}/plugins/user/<id>/ → 账本 → loadPlugin → 广播。
+ * 主进程 download→extract 落 {userData}/plugins/<id>/（2026-09-05 塌平单根）→ 账本 → loadPlugin → 广播。
  */
 export async function installPlugin(
   sourcePath: string,
@@ -355,7 +355,7 @@ async function installPackageFromSource(
       }
     }
 
-    // 2) 主进程解压到 {userData}/plugins/user/<id>/（zip-slip/pluginId 互验同 boot ingest；已存在拒绝）
+    // 2) 主进程解压到 {userData}/plugins/<id>/（2026-09-05 塌平单根；zip-slip/pluginId 互验同 boot ingest；已存在拒绝）
     emitInstallProgress("extracting", undefined, "解压插件包");
     let extracted: { pluginId: string; version: string; targetDir: string };
     try {
@@ -407,8 +407,9 @@ async function manifestNameOf(targetDir: string, pluginId: string): Promise<stri
 }
 
 /**
- * 安装插件（目录源）：Electron 端复制到 plugins/user/ → 热加载。
+ * 安装插件（目录源）：Electron 端复制到 app 插件树 plugins/ → 热加载。
  * 仅对 theme/language 插件即时生效；view 插件提示重启。
+ * 2026-09-05 塌平单根：目标 = <appPluginsDir>/<id>（原 plugins/user/<id> 的 user/ 段取消——平铺树直落）。
  *
  * E5.7#81 包装（校验 / 版本处理 / 进度）：
  *   - 校验前置：manifest 先读先验，不合法在复制前失败（原实现只在消毒时 parse——
@@ -438,7 +439,7 @@ async function installPluginFromDirectory(sourcePath: string): Promise<{ success
     const { pluginId, version, name } = validateInstallManifest(parsedManifest, sourceDirName);
 
     const env = await linkdesk().env.get();
-    const destDir = `${env.appPluginsDir}/user/${pluginId}`;
+    const destDir = `${env.appPluginsDir}/${pluginId}`; // 2026-09-05 塌平单根（原 appPluginsDir/user/<id>——目录源 dev 安装落 app 树平铺位）
 
     // E5.7#81 版本处理：目标已存在 → 读盘比对（未安装则跳过）
     let installed: { version: string | null } | null = null;
@@ -636,7 +637,7 @@ export async function reinstallPlugin(pluginId: string): Promise<{ success: bool
     // E5#32：文件操作走 linkdesk.filesystem——bridge 为唯一入口
     const env = await linkdesk().env.get();
     const src = `${env.appPluginsDir}/.disabled/${pluginId}`;
-    const dest = `${env.appPluginsDir}/user/${pluginId}`;
+    const dest = `${env.appPluginsDir}/${pluginId}`; // 2026-09-05 塌平单根（原 appPluginsDir/user/<id>）
     if (!(await linkdesk().filesystem.exists(src))) {
       throw new Error(`已卸载的插件 "${pluginId}" 未找到`);
     }

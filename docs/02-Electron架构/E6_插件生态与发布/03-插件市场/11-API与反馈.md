@@ -1,5 +1,7 @@
 # 市场插件 API 契约与反馈闭环——市场联络图（点4/7.1/7.3/7.4）
 
+> 🔵 **非新能力（2026-09-05 塌平收编）**：本次改动仅插件目录塌平单根（`plugins/builtin|user` → `plugins/<id>`）解压落点文本同步，零新增 `window.linkdesk.*` / `contributes.*` 面。塌平决策见 [../01-插件独立构建/09-插件目录塌平决策.md](../01-插件独立构建/09-插件目录塌平决策.md)。
+
 > 对应任务：E6#13（下载安装 API）+ #30.5-#30.9（详情页/信任/安装细节）+ #31（壳侧下载安装）+ #33（更新）。
 > 文档归属：市场设计文档族（[03-市场交互设计.md](03-市场交互设计.md) = 总览索引）。本档 = **API 全景 + 反馈闭环**维度。
 > 相邻维度：[09-安装细节.md](09-安装细节.md)（安装 toast 粗粒度）· [08-信任与安全.md](08-信任与安全.md)（确认弹窗）· [10-市场UI拥有权.md](10-市场UI拥有权.md)（壳/插件 API 边界）。
@@ -102,7 +104,7 @@ namespace pluginManager {
   │     │  └─ plugins:install-progress 推 { percent, stage:"download" }
   │     │        └─ 市场插件 onProgress → notifications.show("正在安装 xxx…", { progress:true })
   │     │             └─ handle.update("正在安装 xxx… 62%")  ← 进度闭环
-  ├─ [主进程] plugins:extract    解压到 {userData}/plugins/user/<pluginId>/
+  ├─ [主进程] plugins:extract    解压到 {userData}/plugins/<pluginId>/（2026-09-05 塌平单根，无 user/ 层）
   │     │  └─ 进度推 stage:"extract"
   ├─ [主进程] plugins:install    PluginInstallService.add → loadPlugin → IpcBridge.broadcast("plugin:installed")
   │     │

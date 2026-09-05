@@ -112,8 +112,8 @@ export interface PluginDiscoveryEntry {
   /** E6#7（1.2-4）：目录含 index.bundle.js = SDK 打包的 .linkdesk-plugin 解压产物。
    *  磁盘格式事实（非插件身份——硬约束 11）；bundle 插件 JS 入口恒 index.bundle.js（runtime 分支依据）。 */
   bundle?: boolean;
-  /** E6#7（1.2-4）：磁盘位置事实——home = 代码根（app = 只读 app 插件根 / userData = {userData}/plugins 用户安装家），
-   *  subdir = 所在插件子目录（builtin/user/…，root-direct 遗留 = null）。账本 reconcile 依据（只收 userData）。 */
+  /** E6#7（1.2-4）：磁盘位置事实——home = 代码根（app = 只读 app 插件根 / userData = {userData}/plugins 用户安装家）。
+   *  subdir = 2026-09-05 塌平单根后恒 null（平铺树 root-direct 扫描不产出子目录；类型保留 null 供下游空安全）。 */
   origin?: { home: "app" | "userData"; subdir: string | null };
 }
 

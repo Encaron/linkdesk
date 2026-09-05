@@ -21,7 +21,7 @@ Encaron 在 2026-08-07 发现了一个根本问题：
 ```
 
 **对话核心发现：**
-- 插件源码在 `plugins/builtin/` 和 `plugins/user/` 里，依赖全局 `node_modules/`——第三方作者不能 `npm install` 自己的依赖
+- 插件源码在 `plugins/<id>/` 平铺根里（2026-09-05 塌平前为 builtin/user 双目录），依赖全局 `node_modules/`——第三方作者不能 `npm install` 自己的依赖
 - 插件和壳在同一个 Vite build 里——第三方插件要源码放进仓库才能跑
 - `window.linkdesk.*` API 存在但没有类型定义文件——作者写代码无智能提示
 - 没有 `npm create linkdesk-plugin` 脚手架——作者手动创建目录结构

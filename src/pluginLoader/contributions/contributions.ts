@@ -302,8 +302,8 @@ export function runtimeEntryPath(
  * dev：构建时 glob（pluginModules，Vite 展开）∪ 运行时 /@fs 源码（Vite 即时编译）
  * E6 打包（prod）：构建时插件仍走同一张 glob 表（chunk 随池 bundle 分发）；
  *   运行时安装的插件 = 预构建 chunk `<pluginId>.js`，经 linkdesk:// 动态 import——
- *   协议对子目录透明扫描（electron/protocol.ts scanPluginSubdirs），
- *   解析方无需知道 builtin/user。pluginId → 模块的语义全局唯一，只有 URL 形状随环境变。
+ *   协议平铺 root-direct 直解析（electron/plugins/protocol.ts，双根 app→userData）。
+ *   2026-09-05 塌平：无 builtin/user 子目录层，代码根直接含插件目录。pluginId → 模块语义全局唯一。
  */
 async function resolveViewModule(
   pluginId: string,
@@ -390,8 +390,9 @@ async function loadPluginComponent(pluginId: string, manifest: PluginManifest): 
  *    （#133.4 重构把 .json() 校验移出探测循环后引入的回归：user 插件先探 builtin 拿到 HTML → 数据全加载失败）；
  * 2. dev 下 fetch() 一个 .css 返回 Vite HMR 的 JS 模块包装（text/javascript），非原始 CSS——
  *    图标主题 glyph CSS 注入必炸。
- * linkdesk:// 协议（electron/plugins/protocol.ts）在请求时读盘 + scanPluginSubdirs 实时扫描：
- * 正确 MIME（.json/.css/.ttf…）、builtin/user 回退、缺失 404 而非 HTML、运行时发现天然支持
+ * linkdesk:// 协议（electron/plugins/protocol.ts）在请求时读盘 root-direct 直解析（2026-09-05 塌平：
+ * 双根 app→userData 各自直接含插件目录，无子目录回退层）：
+ * 正确 MIME（.json/.css/.ttf…）、缺失 404 而非 HTML、运行时发现天然支持
  * （#39a 原目标——绕开 Vite glob 缓存）。探测不必要，且是两处回归的根源。
  */
 export function resolvePluginDataUrl(pluginId: string, filePath: string): string {

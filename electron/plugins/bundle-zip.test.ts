@@ -6,7 +6,7 @@
  *   - bundled 语义（发货保留）：deleteSource=false——源 zip 永久保留；损坏已装 → 视为缺失重装（recoverCorrupt=true）；
  *     removed 豁免集命中 → 永不自动恢复（残留目录也复活不了）。
  * 本测试逐 case 对拍上述两套，真实建 zip + 真实临时目录（集成式单测），fixture 全虚构 id/文案（硬约束 21）。
- * sub 名对共享函数是任意标签（行为不随子目录名变）——统一走 "user" 一处 setup，消 before/after 重复。
+ * 2026-09-05 塌平单根：homeDir = 平铺插件家，直接含 <id>/（无 sub 参数无子目录层）——zip 与解压目标都直落家根。
  */
 
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
@@ -37,22 +37,22 @@ async function makeHome(): Promise<{ home: string; cleanup: () => Promise<void> 
   return { home, cleanup: () => fs.promises.rm(home, { recursive: true, force: true }) };
 }
 
-/** 在 {home}/user/ 下写一个 zip，返回 zipPath */
+/** 在家根下写一个 zip，返回 zipPath */
 async function seedZip(
   home: string,
   file = `demo-bundle${BUNDLE_EXT}`,
   entries: Record<string, string> = flatEntries(),
 ): Promise<string> {
-  const zipPath = path.join(home, "user", file);
+  const zipPath = path.join(home, file);
   await fs.promises.mkdir(path.dirname(zipPath), { recursive: true });
   await fs.promises.writeFile(zipPath, await makeBundle(entries));
   return zipPath;
 }
 
-/** 预造 {home}/user/<id>/plugin.json 内容（simulate 已装态） */
+/** 预造 {home}/<id>/plugin.json 内容（simulate 已装态） */
 async function preseedTarget(home: string, content: string, id = "demo-bundle"): Promise<void> {
-  await fs.promises.mkdir(path.join(home, "user", id), { recursive: true });
-  await fs.promises.writeFile(path.join(home, "user", id, "plugin.json"), content);
+  await fs.promises.mkdir(path.join(home, id), { recursive: true });
+  await fs.promises.writeFile(path.join(home, id, "plugin.json"), content);
 }
 
 /** 断言路径存在/不存在 */
@@ -61,9 +61,9 @@ async function expectPath(p: string, exists: boolean): Promise<void> {
   expect(hit).toBe(exists);
 }
 
-/** 读 {home}/user/<id>/plugin.json 的 version——断言已装态 */
+/** 读 {home}/<id>/plugin.json 的 version——断言已装态 */
 async function readInstalledVersion(home: string, id = "demo-bundle"): Promise<string> {
-  const raw = await fs.promises.readFile(path.join(home, "user", id, "plugin.json"), "utf-8");
+  const raw = await fs.promises.readFile(path.join(home, id, "plugin.json"), "utf-8");
   return (JSON.parse(raw) as { version: string }).version;
 }
 
@@ -81,12 +81,11 @@ describe("installBundleCandidate——ingest 消费 vs bundled 保留两套语�
 
   /** ingest 消费语义参数（home 当前用例临时家） */
   const ingest = (zipPath: string) =>
-    ({ zipPath, sub: "user", homeDir: home, tag: "test-ingest", deleteSource: true, recoverCorrupt: false }) as const;
+    ({ zipPath, homeDir: home, tag: "test-ingest", deleteSource: true, recoverCorrupt: false }) as const;
   /** bundled 发货保留语义参数 */
   const bundled = (zipPath: string, skipIfRemoved?: Set<string>) =>
     ({
       zipPath,
-      sub: "user",
       homeDir: home,
       tag: "test-bundled",
       deleteSource: false,
@@ -95,7 +94,7 @@ describe("installBundleCandidate——ingest 消费 vs bundled 保留两套语�
     }) as const;
 
   describe("ingest 消费语义（装好/同版本/损坏已装删源；损坏不重装）", () => {
-    it("全新：解压到 user/demo-bundle/ + 删源 zip（已消费）", async () => {
+    it("全新：解压到 demo-bundle/ + 删源 zip（已消费）", async () => {
       const zip = await seedZip(home);
       const outcome = await installBundleCandidate(ingest(zip));
       expect(outcome).toBe("installed");
@@ -123,7 +122,7 @@ describe("installBundleCandidate——ingest 消费 vs bundled 保留两套语�
       const zip = await seedZip(home);
       expect(await installBundleCandidate(ingest(zip))).toBe("same-version");
       await expectPath(zip, false); // 重复包消费掉
-      expect(await fs.promises.readFile(path.join(home, "user", "demo-bundle", "plugin.json"), "utf-8")).toBe("not json {{{");
+      expect(await fs.promises.readFile(path.join(home, "demo-bundle", "plugin.json"), "utf-8")).toBe("not json {{{");
     });
 
     it("removed 豁免（ingest 无此语义——不传集）：照常安装", async () => {
@@ -133,7 +132,7 @@ describe("installBundleCandidate——ingest 消费 vs bundled 保留两套语�
   });
 
   describe("bundled 发货保留语义（源 zip 不删；损坏重装；removed 豁免）", () => {
-    it("全新恢复：解压到 user/demo-bundle/ + 源 zip 保留（永久备份可再恢复）", async () => {
+    it("全新恢复：解压到 demo-bundle/ + 源 zip 保留（永久备份可再恢复）", async () => {
       const zip = await seedZip(home);
       expect(await installBundleCandidate(bundled(zip))).toBe("installed");
       expect(await readInstalledVersion(home)).toBe("1.0.0");
@@ -144,7 +143,7 @@ describe("installBundleCandidate——ingest 消费 vs bundled 保留两套语�
       const zip = await seedZip(home);
       const outcome = await installBundleCandidate(bundled(zip, new Set(["demo-bundle"])));
       expect(outcome).toBe("removed-skipped");
-      await expectPath(path.join(home, "user", "demo-bundle"), false); // 目录没建
+      await expectPath(path.join(home, "demo-bundle"), false); // 目录没建
       await expectPath(zip, true);
     });
 
@@ -153,7 +152,7 @@ describe("installBundleCandidate——ingest 消费 vs bundled 保留两套语�
       const zip = await seedZip(home);
       const outcome = await installBundleCandidate(bundled(zip, new Set(["demo-bundle"])));
       expect(outcome).toBe("removed-skipped");
-      expect(await fs.promises.readFile(path.join(home, "user", "demo-bundle", "plugin.json"), "utf-8")).toBe("corrupt");
+      expect(await fs.promises.readFile(path.join(home, "demo-bundle", "plugin.json"), "utf-8")).toBe("corrupt");
     });
 
     it("已装目录损坏 + recoverCorrupt：视为缺失重装覆盖（bundled 恢复主干）", async () => {
@@ -178,7 +177,7 @@ describe("installBundleCandidate——ingest 消费 vs bundled 保留两套语�
       for (const [name, content] of Object.entries(flatEntries())) wrapperEntries[`demo-wrap/${name}`] = content;
       const zip = await seedZip(home, `demo-bundle${BUNDLE_EXT}`, wrapperEntries);
       expect(await installBundleCandidate(ingest(zip))).toBe("installed");
-      const root = path.join(home, "user", "demo-bundle");
+      const root = path.join(home, "demo-bundle");
       expect(await readInstalledVersion(home)).toBe("1.0.0"); // wrapper 剥离，plugin.json 在插件根
       expect(await fs.promises.readFile(path.join(root, "README.md"), "utf-8")).toBe("demo readme");
       await expectPath(path.join(root, "demo-wrap"), false); // wrapper 名不落盘

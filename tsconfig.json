@@ -22,6 +22,9 @@
       "@linkdesk/contracts": ["./contracts/linkdesk.d.ts"]
     }
   },
-  "include": ["src", "plugins/builtin"],
+  // 2026-09-05 塌平过渡式：include 由 plugins/builtin（双目录整体）→ 4 个仍在壳编译图内的 core:true 插件。
+  // 不枚举全部 plugins/（serial-monitor 等 11 个潜伏类型错属 #16 各自独立 tsc 职责，塌平不扩覆盖）；
+  // #15f scanPluginEntries 移除后壳不再编译任何插件代码 → 收为 ["src"]。
+  "include": ["src", "plugins/editor", "plugins/file-tree", "plugins/marketplace", "plugins/settings"],
   "exclude": []
 }

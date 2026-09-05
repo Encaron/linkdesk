@@ -80,7 +80,6 @@
     "src/core/services/ui/NotificationService.ts",
     "src/core/services/ui/ThemeEngine.ts",
     "src/core/utils/CancellationToken.ts",
-    "src/core/utils/plugin/pluginPaths.ts",
     // E5.8#2：池侧 dev/插件共享面——mockLinkdesk（dev 预览 side-effect 安装 window.linkdesk）+ useTabManager 聚合器门面（E5.8#0d.10-2e 全量 re-export）
     "src/pool/dev/mockLinkdesk.ts",
     "src/hooks/useTabManager.ts",
@@ -95,7 +94,7 @@
     "scripts/check-version-bump.mjs"
   ],
   "ignoreDependencies": [
-    // E5.8#2：monaco-languageclient 被 plugins/builtin/editor 直引（排除域——插件共用根 node_modules，独立 vite 构建时解析）
+    // E5.8#2：monaco-languageclient 被 plugins/editor 直引（排除域——插件共用根 node_modules，独立 vite 构建时解析；2026-09-05 塌平单根）
     "monaco-languageclient",
     // E5.8#24 回归修复：pyright 被 electron/ipc/handlers/lsp-handlers.ts 以 spawn 字符串路径运行时调用
     //   （"node_modules/pyright/dist/pyright-langserver.js"，非 import 引用）——knip 静态图只认 import，

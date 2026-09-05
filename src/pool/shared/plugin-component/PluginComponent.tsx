@@ -20,17 +20,15 @@ import i18n from "../../../i18n";
 import ErrorBoundary from "../error-boundary/ErrorBoundary"; // E5.7#20：池侧版（不 import 壳 components 目录）
 
 // ── import.meta.glob：Vite 预扫描插件入口 ──
-// src/pool/ → ../../ = 项目根 → plugins/
+// src/pool/ → ../../ = 项目根 → plugins/（2026-09-05 塌平单根：目录名 = pluginId）
 const pluginModules = {
-  ...import.meta.glob("../../plugins/builtin/*/src/index.tsx"),
-  ...import.meta.glob("../../plugins/user/*/src/index.tsx"),
+  ...import.meta.glob("../../plugins/*/src/index.tsx"),
 };
 
 // E5.6#11e：view 文件 glob——按 renderPath O(1) 查找侧栏 view 组件。
 // loader.ts 用完全相同格式的 key（../../plugins/.../src/views/Xxx.tsx）。
 const viewModules = {
-  ...import.meta.glob("../../plugins/builtin/*/src/views/**/*.tsx"),
-  ...import.meta.glob("../../plugins/user/*/src/views/**/*.tsx"),
+  ...import.meta.glob("../../plugins/*/src/views/**/*.tsx"),
 };
 
 // E5.6#11-fix7：模块级 lazy 缓存——React.lazy 内部 _payload._status 持久化在组件类型上。
@@ -82,8 +80,8 @@ export default function PluginComponent({ pluginId, isActive, tabId, sourceId, r
     // 🔥 E5.6#11.5-fix：import.meta.glob 是构建时扫描——运行时安装的插件不在 glob 中。
     // fallback 到动态 import()。
     // renderPath 可能有两种格式：
-    //   1. glob key: "../../plugins/user/<id>/src/views/Xxx.tsx"
-    //   2. /@fs/ URL（runtime 插件无 pluginRoot 时）: "/@fs/E:/.../plugins/user/<id>/src/views/Xxx.tsx"
+    //   1. glob key: "../../plugins/<id>/src/views/Xxx.tsx"（2026-09-05 塌平单根：目录名 = pluginId）
+    //   2. /@fs/ URL（runtime 插件无 pluginRoot 时）: "/@fs/E:/.../plugins/<id>/src/views/Xxx.tsx"
     if (!loader) {
       const lk = window.linkdesk;
       const isDev = import.meta.env.DEV;

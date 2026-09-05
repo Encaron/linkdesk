@@ -400,12 +400,13 @@ protocol.registerSchemesAsPrivileged([
 // ── 应用生命周期 ──
 app.whenReady().then(async () => {
   registerProtocol();
-  // E6#7（1.2-4）：启动解压 userData/plugins 下待安装的 *.linkdesk-plugin → <sub>/<id>/。
+  // E6#7（1.2-4）+ 2026-09-05 塌平单根：启动解压 userData/plugins 顶层待安装的 *.linkdesk-plugin → <id>/。
   // 必须抢在 loadAllPluginManifests + createWindow 之前——落盘后三表扫描、壳发现、协议解析、
   // 账本 reconcile 才能同见这批包（"放 zip → 重启 → 出现"的启动语义）。失败不阻断（内部吞错）。
   await ingestPluginBundles();
-  // E6#15c：首启自动装 bundled-plugins 发货夹 → userData/plugins/<sub>/<id>/（内置 pre-bundle 随壳分发）。
-  // 与 ingest 同批（registerProtocol 后、三表扫描前）——同见、同幂等；发货源保留为恢复备份。
+  // E6#15c：首启自动装 bundled-plugins 发货夹 → userData/plugins/<id>/（内置 pre-bundle 随壳分发，
+  // 与第三方插件同一棵树——差异只剩 manifest.core:true）。与 ingest 同批（registerProtocol 后、
+  // 三表扫描前）——同见、同幂等；发货源保留为恢复备份。
   await installBundledPlugins();
   // E5.7#48：Registry 主进程化——静态声明三表（LangDef/Protocol/FileAssociation）预加载，
   // 必须在 createWindow（池 WCV 创建于其内）之前——首个 IPC 查询到达时表已填好，无竞态窗口。

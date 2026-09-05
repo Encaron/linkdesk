@@ -152,11 +152,12 @@ function main() {
     if (f.endsWith(".css")) auditCss(f, violations);
     else auditTsx(f, violations);
   }
-  // 仓库内插件：plugins/builtin + plugins/user 的 src CSS（dist 构建产物跳过）
-  for (const area of ["builtin", "user"]) {
-    const dir = resolve(ROOT, "plugins", area);
-    if (!readdirSync(dir, { withFileTypes: true }).some((e) => e.isDirectory())) continue;
-    for (const f of collectFiles(dir, [".css"], ["node_modules", "dist"])) {
+  // 仓库内插件：plugins/<id> 的 src CSS（2026-09-05 塌平单根——原 builtin/user 双目录废除；
+  // dist 构建产物跳过；.disabled 等点目录跳过，同旧双目录不扫墓地语义）
+  const pluginsDir = resolve(ROOT, "plugins");
+  for (const dir of readdirSync(pluginsDir, { withFileTypes: true })) {
+    if (!dir.isDirectory() || dir.name.startsWith(".")) continue;
+    for (const f of collectFiles(resolve(pluginsDir, dir.name), [".css"], ["node_modules", "dist"])) {
       auditCss(f, violations);
     }
   }

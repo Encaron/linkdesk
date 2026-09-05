@@ -7,11 +7,11 @@
  * 壳渲染进程不写不读这三张表（壳侧注册随 #49/#50 删除）。
  *
  * 扫描路径（electron-builder.yml 实证：plugins/ 走 extraResources、不进 ASAR）：
- *   dev       → <项目根>/plugins/{builtin,user}/<pluginId>/plugin.json
- *   packaged  → <resources>/plugins/{builtin,user}/<pluginId>/plugin.json
- * 目录常量共享 src/core/utils/plugin/pluginPaths.ts 的 PLUGINS_DIR / PLUGIN_SUBDIRS（硬约束 12——
- * 改一处全生效，E5.8#0d.11 自 core/ 根归位 utils/plugin/）；该文件的 glob 工厂是渲染进程
- * import.meta.glob 产物，主进程用 fs.readdir 直扫。
+ *   dev       → <项目根>/plugins/<pluginId>/plugin.json
+ *   packaged  → <resources>/plugins/<pluginId>/plugin.json
+ * 2026-09-05 塌平：builtin/user 双目录废除——每个根（app / userData）直接含插件目录（目录名 = pluginId）。
+ * 目录名常量见 src/core/utils/plugin/pluginPaths.ts（PLUGINS_DIR，硬约束 12——改一处全生效）；本模块
+ * 用 fs.readdir 直扫各根（渲染进程的 import.meta.glob 工厂已随塌平删除——零消费者）。
  *
  * 注册幂等：register* 函数内建去重/覆盖（LangDef 覆盖 / FileAssociation 同插件去重 /
  * Protocol 覆盖）——启动预加载与装/卸重扫双路径天然安全，重复调用覆盖不叠加。
@@ -20,7 +20,7 @@
 import * as fs from "fs";
 import * as path from "path";
 import { ipcMain } from "electron";
-import { PLUGIN_SUBDIRS } from "../../src/core/utils/plugin/pluginPaths.js"; // E5.8#0d.11：自 core/ 根归位 utils/plugin/
+// 2026-09-05 塌平：builtin/user 双目录废除，根直扫无需 PLUGIN_SUBDIRS——目录名 = pluginId
 import type { PluginManifest, LangDefContribution } from "../../src/core/api/types.js";
 import { parseManifestJson } from "../../src/pluginLoader/jsonc.js"; // E6#55：作者 plugin.json JSONC——主进程三表预载同走唯一解析入口
 import { registerLangDef, clearLangDefs } from "../../src/core/registry/languages/LangDefRegistry.js";
@@ -87,30 +87,27 @@ export function loadAllPluginManifests(): void {
 
   _loadedPluginIds.clear();
   for (const root of getPluginRoots()) {
-    for (const sub of PLUGIN_SUBDIRS) {
-      const subDir = path.join(root, sub);
-      if (!fs.existsSync(subDir)) continue;
-      let entries: string[];
+    if (!fs.existsSync(root)) continue;
+    let entries: string[];
+    try {
+      entries = fs.readdirSync(root);
+    } catch (e) {
+      console.error(`[plugin-manifest-loader] 读取插件目录失败: ${root}`, e);
+      continue;
+    }
+    for (const name of entries) {
+      const manifestPath = path.join(root, name, "plugin.json");
+      if (!fs.existsSync(manifestPath)) continue;
+      // E5.8#26 D8：先登记存在性——plugin.json 解析失败（损坏）也算插件存在，防误连坐
+      _loadedPluginIds.add(name);
       try {
-        entries = fs.readdirSync(subDir);
+        const raw = fs.readFileSync(manifestPath, "utf-8");
+        registerManifestTables(name, parseManifestJson(raw));
       } catch (e) {
-        console.error(`[plugin-manifest-loader] 读取插件目录失败: ${subDir}`, e);
-        continue;
-      }
-      for (const name of entries) {
-        const manifestPath = path.join(subDir, name, "plugin.json");
-        if (!fs.existsSync(manifestPath)) continue;
-        // E5.8#26 D8：先登记存在性——plugin.json 解析失败（损坏）也算插件存在，防误连坐
-        _loadedPluginIds.add(name);
-        try {
-          const raw = fs.readFileSync(manifestPath, "utf-8");
-          registerManifestTables(name, parseManifestJson(raw));
-        } catch (e) {
-          console.error(
-            `[plugin-manifest-loader] 跳过插件 ${sub}/${name}——plugin.json 解析失败`,
-            e
-          );
-        }
+        console.error(
+          `[plugin-manifest-loader] 跳过插件 ${name}——plugin.json 解析失败`,
+          e
+        );
       }
     }
   }

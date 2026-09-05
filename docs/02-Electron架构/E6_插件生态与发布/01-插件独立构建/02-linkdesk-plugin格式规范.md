@@ -109,15 +109,17 @@ loader.ts loadPlugin():
   3. 正常走 loadPluginLifecycle（注册命令/菜单/视图/配置...）
 ```
 
-## 六、与现有插件目录的区别
+## 六、与开发源码形态的区别（2026-09-05 塌平单根——无 builtin/user 双目录）
 
-| | 源码目录（builtin/user） | 打包格式（.linkdesk-plugin） |
+| | 源码形态（dev 源树） | 打包格式（.linkdesk-plugin） |
 |:--|:--|:--|
-| 存放位置 | `plugins/builtin/` / `plugins/user/` | `{userData}/plugins/<id>/` |
+| 存放位置 | `plugins/<id>/`（repo 平铺根） | `{userData}/plugins/<id>/`（安装）或 `bundled-plugins/<id>.linkdesk-plugin`（发货夹，同样平铺） |
 | 加载方式 | Vite import.meta.glob + /@fs/ | import() ES module |
-| 谁构建 | 壳的 Vite build | 插件作者自己的 Vite build |
+| 谁构建 | 壳的 Vite build（dev 期，`#15f` 后移出） | 插件作者自己的 Vite build |
 | 依赖来源 | 全局 node_modules | inline 打包在 index.bundle.js |
-| 何时用 | 开发 + 内置插件 | 第三方分发 |
+| 何时用 | 开发 + 壳随带插件 | 分发安装 |
+
+> 两种形态是同一批插件的两种呈现——**不是两类插件**。core:true 与否（plugin.json 声明）与形态、目录都无关（见 `06-builtin-user-语义规范.md`）。
 
 ---
 

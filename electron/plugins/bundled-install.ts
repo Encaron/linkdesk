@@ -1,15 +1,14 @@
 /**
- * bundled-install——E6#15c 首启自动装：把随壳发货的 `bundled-plugins/{builtin,user}/*.linkdesk-plugin`
- * 解压成 `{userData}/plugins/<sub>/<id>/`（保持 builtin/user 双层），供 loader 双根从 userData 统一发现。
- * 内置插件 pre-bundle 独立化（E6#15）后 = 与第三方插件同一条加载路（破特权阶级）。
+ * bundled-install——E6#15c 首启自动装：把随壳发货的 `bundled-plugins/*.linkdesk-plugin`
+ * （2026-09-05 塌平单根：发货夹直接放 zip，无 builtin/user 子目录层）解压成
+ * `{userData}/plugins/<id>/`，供 loader 单根从 userData 统一发现。core:true 插件与第三方
+ * 插件同一条加载路（破特权阶级）——发货 zip 里的插件与手动装的插件在 {userData}/plugins
+ * 同一棵树里并列，差异只剩 manifest.core:true（卸载按钮隐藏 + removed 标记豁免恢复）。
  *
  * 与 bundle-ingest 的关系：同 zip 语义、不同来源——
  *   ingest 读 userData 手动丢的 zip（消费后删 zip）；
  *   bundled-install 读发货夹（dev repo bundled-plugins / prod resources/bundled-plugins），
  *   它是随壳的永久备份，**不删源**——删了还能再恢复（#15c 恢复主干；removed 标记豁免见下）。
- *
- * builtin/ vs user/ 语义（01-插件独立构建/06-builtin-user-语义规范.md）：子目录名原样保留为
- * `{userData}/plugins/<sub>/`；`core: true` 才决定卸载按钮隐藏，与子目录无关。市场只写 user/。
  *
  * 版本幂等：目标已装同版本 → 跳过（不动）；异版本 → 保留发货源（升级是安装流/市场轮职责，boot 不覆盖）。
  * 成功解压不写账本——installed-plugins.json 唯一 owner 是 renderer PluginInstallService，
@@ -32,7 +31,6 @@ import * as fs from "fs/promises";
 import { existsSync, readdirSync } from "fs";
 import * as path from "path";
 import { envService } from "../services/env-service.js";
-import { scanPluginSubdirs } from "../services/plugin-file-service.js";
 import { BUNDLE_EXT, installBundleCandidate } from "./bundle-zip.js";
 
 /** 账本文件（StorageService 独立文件路径的磁盘实位）——boot 只读 removed 标记 */
@@ -59,6 +57,7 @@ async function readRemovedMarkers(): Promise<Set<string>> {
 /**
  * 首启自动装全部 bundled 插件——main whenReady 调一次（registerProtocol 之后、loadAllPluginManifests 之前，
  * 与 ingestPluginBundles 同批，先于三表扫描/壳发现/协议解析——落盘后这批插件同见）。
+ * 2026-09-05 塌平单根：直扫 bundledDir 顶层 *.linkdesk-plugin → {userData}/plugins/<id>/。
  * 发货保留语义（deleteSource=false + 损坏重装 recoverCorrupt=true + removed 豁免集）——逐字节对齐原 restoreOne：
  * 单包失败不抛出（共享函数自记日志）——发货夹任何单包问题都不该拖垮启动。
  */
@@ -68,21 +67,15 @@ export async function installBundledPlugins(): Promise<void> {
 
   const removed = await readRemovedMarkers();
   const userData = envService.userPluginsDir();
-  const subDirs = scanPluginSubdirs(bundledDir); // builtin/ + user/（语义双层原样保留）
-
-  for (const sub of subDirs) {
-    const dir = path.join(bundledDir, sub);
-    for (const name of readdirSync(dir)) {
-      if (!name.endsWith(BUNDLE_EXT)) continue;
-      await installBundleCandidate({
-        zipPath: path.join(dir, name),
-        sub,
-        homeDir: userData,
-        tag: "bundled-install",
-        deleteSource: false,
-        recoverCorrupt: true,
-        skipIfRemoved: removed,
-      });
-    }
+  for (const name of readdirSync(bundledDir)) {
+    if (!name.endsWith(BUNDLE_EXT)) continue;
+    await installBundleCandidate({
+      zipPath: path.join(bundledDir, name),
+      homeDir: userData,
+      tag: "bundled-install",
+      deleteSource: false,
+      recoverCorrupt: true,
+      skipIfRemoved: removed,
+    });
   }
 }

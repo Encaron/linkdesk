@@ -38,12 +38,13 @@ const EXCLUDE_FILES = [
 const EXCLUDE_RANGES = {
   // DemoOutputView 日志池 + 初始 useState：作者注释 :30 明示"text 是演示数据
   // （输出面板的内容 = 数据，不属 UI 文字铁律范围）"——设计裁决跳过，非漏翻。
-  "plugins/user/panel-demo/src/views/DemoOutputView.tsx": [[42, 57]],
+  // 2026-09-05 塌平单根：plugins/panel-demo（原 plugins/user/panel-demo）
+  "plugins/panel-demo/src/views/DemoOutputView.tsx": [[42, 57]],
   // DemoSidebarView SIDEBAR_POOL / DemoTodoView SEED_TODOS：演示日志池/种子待办——
   // 与 DemoOutputView:42-57 同类（演示数据 = 日志/内容，非 UI 文字）。作者注释明示
   // "内容 = 数据，不属 UI 文字铁律范围"。设计裁决跳过，非漏翻。
-  "plugins/user/panel-demo/src/views/DemoSidebarView.tsx": [[29, 35]],
-  "plugins/user/panel-demo/src/views/DemoTodoView.tsx": [[24, 28]],
+  "plugins/panel-demo/src/views/DemoSidebarView.tsx": [[29, 35]],
+  "plugins/panel-demo/src/views/DemoTodoView.tsx": [[24, 28]],
   // registerBuiltinProtocols 方括号协议 name：主进程注册的**协议元数据**（id="bracket"
   // 才是身份，name 仅描述）。当前 listProtocols() 零显示消费方——纯注册表数据，非渲染文本。
   // 且本文件运行于主进程（E5.7#49），不能 import 渲染进程 i18n（react-i18next）。补译归
@@ -52,15 +53,16 @@ const EXCLUDE_RANGES = {
 };
 
 // ── 1. 加载所有翻译 key ──
+// 2026-09-05 塌平单根：plugins/<id>（builtin/user 前缀全删）
 const I18N_FILES = [
-  "plugins/user/lang-defaults/en.json",
-  "plugins/builtin/file-tree/i18n/en.json",
-  "plugins/builtin/editor/i18n/en.json",
-  "plugins/user/serial-monitor/i18n/en.json",
-  "plugins/builtin/marketplace/i18n/en.json",
-  "plugins/user/panel-demo/i18n/en.json", // E5.8#37.9：演示插件 UI 串归插件自持
-  "plugins/user/floating-panel-demo/i18n/en.json", // E5.8#39.5：第二声明者验证载体 UI 串归插件自持
-  "plugins/user/settings-demo/i18n/en.json", // E5.8#41.17：漂亮设置卡片分区 UI 串归插件自持
+  "plugins/lang-defaults/en.json",
+  "plugins/file-tree/i18n/en.json",
+  "plugins/editor/i18n/en.json",
+  "plugins/serial-monitor/i18n/en.json",
+  "plugins/marketplace/i18n/en.json",
+  "plugins/panel-demo/i18n/en.json", // E5.8#37.9：演示插件 UI 串归插件自持
+  "plugins/floating-panel-demo/i18n/en.json", // E5.8#39.5：第二声明者验证载体 UI 串归插件自持
+  // E5.8#41.17 settings-demo（漂亮设置卡片分区）条目已删——插件被用户自删（eef2d31c2），残留死路径
 ];
 
 const translated = new Set();

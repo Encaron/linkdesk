@@ -56,51 +56,32 @@ function errMsg(e: unknown): string {
 
 // Vite 在构建时展开 glob，生成所有插件的入口映射。
 // E2c #19j-structure-a：同时支持平铺结构和 src/ 子目录结构——过渡期内两种都匹配。
-// E4 #86：插件分离到 builtin/ 和 user/ 两个子目录——每个 glob 拆为两份。
-// E5#35b: 子目录/入口文件约定见 utils/plugin/pluginPaths.ts（PLUGIN_SUBDIRS / PLUGIN_ENTRY_FILES，E5.8#0d.11 自 core/ 根归位）。
-// Vite import.meta.glob 需字符串字面量做静态分析，工厂函数不兼容——保持 spread 写法。
+// 2026-09-05 塌平：plugins/builtin|user 双目录废除（用户拍板，见 01-插件独立构建/09）——
+// 每 glob 收单根 plugins/*（目录名 = pluginId）。此前 E4#86 因双目录把每 glob 拆两份的历史注释已删。
+// 目录名常量见 utils/plugin/pluginPaths.ts（PLUGINS_DIR）；import.meta.glob 需字符串字面量做
+// 静态分析，工厂函数不兼容——保持 spread 写法。
 const pluginModules = {
   ...import.meta.glob<{ default: React.ComponentType<{ isActive: boolean }> }>(
-    "../../../plugins/builtin/*/index.tsx",
+    "../../../plugins/*/index.tsx",
     { eager: false }
   ),
   ...import.meta.glob<{ default: React.ComponentType<{ isActive: boolean }> }>(
-    "../../../plugins/builtin/*/src/index.tsx",
-    { eager: false }
-  ),
-  ...import.meta.glob<{ default: React.ComponentType<{ isActive: boolean }> }>(
-    "../../../plugins/user/*/index.tsx",
-    { eager: false }
-  ),
-  ...import.meta.glob<{ default: React.ComponentType<{ isActive: boolean }> }>(
-    "../../../plugins/user/*/src/index.tsx",
+    "../../../plugins/*/src/index.tsx",
     { eager: false }
   ),
 };
 
 const pluginStatusBarModules = {
   ...import.meta.glob<{ default: React.ComponentType }>(
-    "../../../plugins/builtin/*/statusBar.tsx",
+    "../../../plugins/*/statusBar.tsx",
     { eager: false }
   ),
   ...import.meta.glob<{ default: React.ComponentType }>(
-    "../../../plugins/builtin/*/src/statusBar.tsx",
+    "../../../plugins/*/src/statusBar.tsx",
     { eager: false }
   ),
   ...import.meta.glob<{ default: React.ComponentType }>(
-    "../../../plugins/user/*/statusBar.tsx",
-    { eager: false }
-  ),
-  ...import.meta.glob<{ default: React.ComponentType }>(
-    "../../../plugins/user/*/src/statusBar.tsx",
-    { eager: false }
-  ),
-  ...import.meta.glob<{ default: React.ComponentType }>(
-    "../../../plugins/builtin/*/src/components/statusBar.tsx",
-    { eager: false }
-  ),
-  ...import.meta.glob<{ default: React.ComponentType }>(
-    "../../../plugins/user/*/src/components/statusBar.tsx",
+    "../../../plugins/*/src/components/statusBar.tsx",
     { eager: false }
   ),
 };
@@ -110,11 +91,7 @@ const pluginStatusBarModules = {
 // 但打包后源码路径不存在于 ASAR 中。用 import.meta.glob 让 Vite 构建时映射到正确 chunk。
 const viewRenderModules = {
   ...import.meta.glob<{ default: React.ComponentType }>(
-    "../../../plugins/builtin/*/src/views/**/*.tsx",
-    { eager: false }
-  ),
-  ...import.meta.glob<{ default: React.ComponentType }>(
-    "../../../plugins/user/*/src/views/**/*.tsx",
+    "../../../plugins/*/src/views/**/*.tsx",
     { eager: false }
   ),
 };
@@ -125,11 +102,7 @@ const viewRenderModules = {
 // （键存在性——runtime/contributions 只 Object.keys 判 isRuntime 不读值）+ 浏览器预览种子原文。
 const pluginManifestRaw = {
   ...import.meta.glob<string>(
-    "../../../plugins/builtin/*/plugin.json",
-    { query: "?raw", import: "default", eager: true }
-  ),
-  ...import.meta.glob<string>(
-    "../../../plugins/user/*/plugin.json",
+    "../../../plugins/*/plugin.json",
     { query: "?raw", import: "default", eager: true }
   ),
 };
@@ -233,16 +206,12 @@ const _pendingPlugins = new Map<string, PluginManifest>();
 
 /* ── 辅助：从路径提取 pluginId ── */
 
-/** 从 glob key 提取插件 ID——"../../../plugins/<builtin|user>/<id>/..." → "<id>" */
+/** 从 glob key 提取插件 ID——"../../../plugins/<id>/..." → "<id>"（2026-09-05 塌平单根：plugins 后直接是插件目录） */
 function extractPluginId(path: string): string {
-  // 找到 "plugins" 目录，后面可能是 builtin/user 子目录 → 再跳一段才是 pluginId
+  // 找到 "plugins" 目录，后面直接就是 pluginId（无 builtin/user 子目录层）
   const parts = path.split("/");
   const idx = parts.indexOf("plugins");
   if (idx < 0) return parts[parts.length - 2];
-  const next = parts[idx + 1];
-  if (next === "builtin" || next === "user") {
-    return idx + 2 < parts.length ? parts[idx + 2] : parts[parts.length - 2];
-  }
   return idx + 1 < parts.length ? parts[idx + 1] : parts[parts.length - 2];
 }
 

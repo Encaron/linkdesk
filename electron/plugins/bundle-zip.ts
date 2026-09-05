@@ -121,9 +121,9 @@ export async function extractZip(zip: JSZip, target: string, wrapperPrefix: stri
 }
 
 /**
- * 单个 `.linkdesk-plugin` → `{homeDir}/<sub>/<pluginId>/` 安装决策——boot 两源共用（1.2-5 P1 抽共享）：
- * manual ingest（userData 丢包消费）与 bundled 发货（resources/repo bundled-plugins，源保留可恢复）。
- * 差异全走参数，行为各归各：ingest = deleteSource + 损坏已装即消费；bundled = 源保留 + 损坏重装 + removed 豁免。
+ * 单个 `.linkdesk-plugin` → `{homeDir}/<pluginId>/` 安装决策——boot 两源共用（1.2-5 P1 抽共享）。
+ * 2026-09-05 塌平单根：homeDir = 用户安装家（envService.userPluginsDir = {userData}/plugins），直接含插件目录，
+ * 无 builtin/user 子目录层。差异全走参数：manual ingest（userData 丢包消费）vs bundled 发货（源保留可恢复）。
  * 幂等：已装同版本 → （deleteSource 时）消费源 zip；异版本 → 不动源（升级归安装流）。
  * 单包失败不抛出（记日志）——任何单包问题不拖垮启动。
  * 返回 outcome 供调用方/测试断言。
@@ -137,9 +137,7 @@ export type BundleInstallOutcome =
 
 export interface BundleInstallParams {
   zipPath: string;
-  /** userData 插件家子目录：builtin | user（语义双层原样保留） */
-  sub: string;
-  /** 安装目标家 = {userData}/plugins（envService.userPluginsDir） */
+  /** 安装目标家 = {userData}/plugins（envService.userPluginsDir）——直接含插件目录，无子目录层 */
   homeDir: string;
   /** 日志前缀（方括号内，如 "bundle-ingest"）——调用方身份 */
   tag: string;
@@ -152,7 +150,7 @@ export interface BundleInstallParams {
 }
 
 export async function installBundleCandidate(p: BundleInstallParams): Promise<BundleInstallOutcome> {
-  const { zipPath, sub, homeDir, tag } = p;
+  const { zipPath, homeDir, tag } = p;
   const base = path.basename(zipPath);
   try {
     const buffer = await fs.readFile(zipPath);
@@ -177,7 +175,7 @@ export async function installBundleCandidate(p: BundleInstallParams): Promise<Bu
       return "removed-skipped";
     }
 
-    const target = path.join(homeDir, sub, pluginId);
+    const target = path.join(homeDir, pluginId);
     const targetManifest = path.join(target, "plugin.json");
 
     if (await fs.stat(targetManifest).then(() => true, () => false)) {
@@ -185,7 +183,7 @@ export async function installBundleCandidate(p: BundleInstallParams): Promise<Bu
         const existing = parseManifestJson(await fs.readFile(targetManifest, "utf-8"));
         if (existing.version === manifest.version) {
           if (p.deleteSource) await fs.unlink(zipPath).catch(() => {});
-          console.log(`[${tag}] ${pluginId}@${manifest.version} 已在 ${sub}/${pluginId}——${p.deleteSource ? "删除重复 zip" : "跳过（源保留）"}`);
+          console.log(`[${tag}] ${pluginId}@${manifest.version} 已在 ${pluginId}——${p.deleteSource ? "删除重复 zip" : "跳过（源保留）"}`);
           return "same-version";
         }
         console.warn(`[${tag}] ${pluginId} 已装 ${existing.version}，包为 ${manifest.version}——异版本不动（升级归安装流）`);
@@ -206,7 +204,7 @@ export async function installBundleCandidate(p: BundleInstallParams): Promise<Bu
       return "invalid";
     }
     if (p.deleteSource) await fs.unlink(zipPath).catch(() => {});
-    console.log(`[${tag}] ✅ ${p.deleteSource ? "解压安装" : "自动装"} ${pluginId}@${manifest.version} → ${sub}/${pluginId}${p.deleteSource ? "（删 zip）" : "（源保留）"}`);
+    console.log(`[${tag}] ✅ ${p.deleteSource ? "解压安装" : "自动装"} ${pluginId}@${manifest.version} → ${pluginId}${p.deleteSource ? "（删 zip）" : "（源保留）"}`);
     return "installed";
   } catch (e) {
     console.error(`[${tag}] ${base} 处理失败: ${e instanceof Error ? e.message : String(e)}`);

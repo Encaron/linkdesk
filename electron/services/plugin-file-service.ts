@@ -8,14 +8,13 @@
  *   壳侧统一处理注册/热加载/toast）。本文件只保留主进程直答面：
  *   目录扫描 / manifest 读取 / 路径解析（正斜杠——Windows 反斜杠在 Vite /@fs/ URL 中不兼容）。
  *
- * E6#7（1.2-4）：单根 → 有序双根。用户安装的 .linkdesk-plugin 解压家 = {userData}/plugins
- *   （env-service.userPluginsDir），与只读 app 插件根（dev 项目 plugins/、prod resources/plugins）
- *   分开（AI执行守则 陷阱 1「不要混」）。根表 = [appPluginsDir, userPluginsDir]——
- *   app 在前 → 同名插件 app 遮蔽 userData（dev 项目源码零回归；市场更新覆盖旧版本留 #11→#13 后续轮）。
+ * 2026-09-05 塌平单根（用户拍板「全面塌平」）：builtin/user 双目录废除——每个代码根（app /
+ *   userData）**直接**含插件目录（目录名 = pluginId），无子目录层。根表 = [appPluginsDir,
+ *   userPluginsDir]——app 在前 → 同名插件 app 遮蔽 userData（dev 项目源码零回归）。
  */
 
 import * as fs from 'fs/promises';
-import { existsSync, readdirSync } from 'fs';
+import { existsSync } from 'fs';
 import * as path from 'path';
 import { envService } from './env-service.js';
 // E6#9a/c：IPC 返回形状共享 src 契约类型（主进程 type-only import——编译期擦除，无运行时依赖）
@@ -25,63 +24,36 @@ import type { PluginDiscoveryEntry, PluginEntryInfo } from '../../src/core/api/l
 import { parseManifestJson } from '../../src/pluginLoader/jsonc.js';
 
 /**
- * E5.7#69：插件子目录白名单消灭——运行时扫描全部子目录，不再写死 ['builtin', 'user']。
- * 唯一保留的政策常量（政策 ≠ 能力限制）：
- *   - SUBDIR_PRIORITY：同名插件冲突时的优先级——builtin > user > 其他（字母序）
+ * 2026-09-05 塌平单根：无 builtin/user 子目录层——每个代码根直接含插件目录（目录名 = pluginId）。
+ * .disabled 卸载坟场仍属 app 根（listDisabledPluginDirs 单独处理）。
  */
-const SUBDIR_PRIORITY = ['builtin', 'user'] as const;
-
-/**
- * 扫描 plugins/ 下所有插件子目录。
- * 排除 . 开头（.disabled 卸载坟场等）；顺序 = SUBDIR_PRIORITY 在前 + 其余字母序。
- * protocol.ts 同源复用——协议解析与文件服务一致（新子目录插件两端同时可见）。
- */
-export function scanPluginSubdirs(pluginsDir: string): string[] {
-  if (!existsSync(pluginsDir)) return [];
-  const priority: string[] = [];
-  const others: string[] = [];
-  for (const entry of readdirSync(pluginsDir, { withFileTypes: true })) {
-    if (!entry.isDirectory() || entry.name.startsWith('.')) continue;
-    if ((SUBDIR_PRIORITY as readonly string[]).includes(entry.name)) priority.push(entry.name);
-    else others.push(entry.name);
-  }
-  others.sort();
-  return [...priority, ...others];
-}
-
-/** E6#7（1.2-4）：插件所在位置——root = 代码根（第几根）、sub = 插件子目录（'' = root-direct 遗留） */
+/** 插件所在位置——root = 代码根（第几根）；根内直接含插件目录，无 sub 层 */
 interface PluginDirLocation {
   rootIndex: number;
-  sub: string;
 }
 
 class PluginFileService {
   // ── 工具 ──
 
-  /** E6#7：有序代码根表——app 只读根在前（与旧单根字节一致），userData 用户安装家在后。 */
+  /** 有序代码根表——app 只读根在前（同名遮蔽），userData 用户安装家在后。 */
   private pluginRoots(): string[] {
     return [envService.appPluginsDir(), envService.userPluginsDir()];
   }
 
   /**
-   * 查找插件所在位置——E5.7#69 扫描全部子目录；E6#7 逐根（app 先命中先赢）。
-   * 每个根内先 SUBDIR_PRIORITY 子目录、再 root-direct 遗留（旧 readManifest/resolvePath
-   * 的 root-direct fallback 并入此处，语义不变）。未找到返回 null。
+   * 查找插件所在位置——逐根检查 `根/<pluginId>`（2026-09-05 塌平单根：无子目录层，app 先命中先赢）。
+   * 未找到返回 null。
    */
   private _findPluginDir(pluginId: string): PluginDirLocation | null {
     for (let i = 0; i < this.pluginRoots().length; i++) {
-      const root = this.pluginRoots()[i];
-      for (const sub of scanPluginSubdirs(root)) {
-        if (existsSync(path.join(root, sub, pluginId))) return { rootIndex: i, sub };
-      }
-      if (existsSync(path.join(root, pluginId))) return { rootIndex: i, sub: '' };
+      if (existsSync(path.join(this.pluginRoots()[i], pluginId))) return { rootIndex: i };
     }
     return null;
   }
 
-  /** 插件目录绝对路径（未转正斜杠）——found 时 join 实际位置；未找到回退首根 root-direct（旧语义）。 */
+  /** 插件目录绝对路径（未转正斜杠）——found 时 join 实际位置；未找到回退首根（旧语义）。 */
   private _pluginDirAbs(loc: PluginDirLocation | null, pluginId: string): string {
-    if (loc) return path.join(this.pluginRoots()[loc.rootIndex], loc.sub, pluginId);
+    if (loc) return path.join(this.pluginRoots()[loc.rootIndex], pluginId);
     return path.join(this.pluginRoots()[0], pluginId);
   }
 
@@ -90,21 +62,17 @@ class PluginFileService {
   async listPluginDirs(): Promise<string[]> {
     const names: string[] = [];
     const seen = new Set<string>();
-    // E5.7#69：扫描全部子目录（新子目录插件自动可见，无需改代码）
-    // E6#7：逐根收集 + app 先 dedupe（同名插件 app 遮蔽 userData）
+    // 2026-09-05 塌平单根：逐根直扫 `根/<id>`（含 plugin.json 才算插件）；app 先 dedupe（同名遮蔽）
     for (const root of this.pluginRoots()) {
       if (!existsSync(root)) continue;
-      for (const sub of scanPluginSubdirs(root)) {
-        const subDir = path.join(root, sub);
-        const entries = await fs.readdir(subDir, { withFileTypes: true });
-        for (const entry of entries) {
-          if (!entry.isDirectory()) continue;
-          if (entry.name.startsWith('.')) continue;
-          if (seen.has(entry.name)) continue;
-          if (existsSync(path.join(subDir, entry.name, 'plugin.json'))) {
-            seen.add(entry.name);
-            names.push(entry.name);
-          }
+      const entries = await fs.readdir(root, { withFileTypes: true });
+      for (const entry of entries) {
+        if (!entry.isDirectory()) continue;
+        if (entry.name.startsWith('.')) continue; // .disabled 坟场等
+        if (seen.has(entry.name)) continue;
+        if (existsSync(path.join(root, entry.name, 'plugin.json'))) {
+          seen.add(entry.name);
+          names.push(entry.name);
         }
       }
     }
@@ -114,7 +82,7 @@ class PluginFileService {
 
   // ── 全量发现（E6#9a：listAll——替代渲染进程 import.meta.glob）──
   // 打包/市场安装的插件不在源码树（glob 发现不了）——主进程读盘为唯一真源，dev/prod 同一面。
-  // 复用 listPluginDirs（扫描策略单源：SUBDIR_PRIORITY + 排除 .disabled/隐藏）+ readManifest（查找策略单源）。
+  // 复用 listPluginDirs（扫描策略单源：根直扫 + 排除 .disabled/隐藏）+ readManifest（查找策略单源）。
   async listAllPlugins(): Promise<PluginDiscoveryEntry[]> {
     const roots = this.pluginRoots();
     const userDataRoot = roots[1];
@@ -130,7 +98,8 @@ class PluginFileService {
           manifest,
           // E6#7：index.bundle.js 存在 = SDK 打包产物（磁盘格式事实；非 manifest.entry——SDK 原样拷作者源码入口）
           bundle: existsSync(path.join(dir, 'index.bundle.js')),
-          origin: loc ? { home: roots[loc.rootIndex] === userDataRoot ? 'userData' : 'app', subdir: loc.sub || null } : undefined,
+          // 2026-09-05 塌平单根：subdir 恒 null（无 builtin/user 子目录层——字段保留供账本 source 派生统一映射）
+          origin: loc ? { home: roots[loc.rootIndex] === userDataRoot ? 'userData' : 'app', subdir: null } : undefined,
         };
         out.push(entry);
       } catch {

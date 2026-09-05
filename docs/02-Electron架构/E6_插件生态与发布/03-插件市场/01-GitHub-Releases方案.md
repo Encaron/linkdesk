@@ -1,5 +1,7 @@
 # GitHub Releases——插件市场后端
 
+> 🔵 **非新能力（2026-09-05 塌平收编）**：本次改动仅插件目录塌平单根（`plugins/builtin|user` → `plugins/<id>`）现状路径文本同步，零新增 `window.linkdesk.*` / `contributes.*` 面。塌平决策见 [../01-插件独立构建/09-插件目录塌平决策.md](../01-插件独立构建/09-插件目录塌平决策.md)。
+
 > 对应任务：E6#15-#16。用 GitHub Releases 作为免费文件存储 + marketplace.json 作为插件目录。
 
 ---
@@ -227,7 +229,7 @@ const data = await response.json();
 
 ### 7.1 marketplace 插件现状（E5.8 实测）
 
-- `plugins/builtin/marketplace/` 已存在，E5.8 schema（`factoryRole: "marketplace"`，core:true），5 视图 search/installed/builtin/disabled/uninstalled，全读 `pluginManager.list()`（IPC 子集 `PluginListEntry`，types.ts:107）。**无 fetch、无多源、无探索视图**。
+- `plugins/marketplace/` 已存在（2026-09-05 塌平单根前在 `plugins/builtin/marketplace/`），E5.8 schema（`factoryRole: "marketplace"`，core:true），5 视图 search/installed/builtin/disabled/uninstalled，全读 `pluginManager.list()`（IPC 子集 `PluginListEntry`，types.ts:107）。**无 fetch、无多源、无探索视图**。
 - 卸载缓存函数名 = `getUninstalledPluginInfo`（lifecycle-ops.ts:68），非「getUninstalled」。
 
 ### 7.2 #30b 交叉比对 = list() 集合（非 installed-plugins.json）

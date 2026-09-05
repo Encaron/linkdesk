@@ -5,10 +5,11 @@
  * bundledPluginsDir（dev 分支 = getAppPath()/bundled-plugins）与 userPluginsDir（userData/plugins）指向
  * 真实临时目录，zip 真建真解压。逐场景验证 boot 模块独有的编排（共享单包决策 installBundleCandidate
  * 已由其自身测试对拍）：
- *   1. 无账本 + 无已装 → builtin/user 双 sub 都自动装；发货源 zip 保留（永久备份）
+ *   1. 无账本 + 无已装 → 平铺单根全自动装；发货源 zip 保留（永久备份）
  *   2. 已装同版本 → 跳过（源保留，不重解压）
  *   3. 账本 removed 标记 → 该插件跳过自动恢复（用户故意删除）；其余照装
- * fixture 全虚构 id/文案（硬约束 21）。
+ * fixture 全虚构 id/文案（硬约束 21）。2026-09-05 塌平单根：发货夹无 builtin/user 子目录层，
+ * 直扫 bundled-plugins/*.linkdesk-plugin → userData/plugins/<id>/。
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
@@ -45,13 +46,13 @@ async function writeZip(dir: string, pluginId: string, version: string): Promise
   await fs.promises.writeFile(path.join(dir, `${pluginId}.linkdesk-plugin`), buf);
 }
 
-/** 断言 <userData>/plugins/<sub>/<id>/plugin.json 存在（已自动装） */
-async function expectInstalled(userData: string, sub: string, pluginId: string, version: string): Promise<void> {
-  const raw = await fs.promises.readFile(path.join(userData, "plugins", sub, pluginId, "plugin.json"), "utf-8");
+/** 断言 <userData>/plugins/<id>/plugin.json 存在（已自动装）——2026-09-05 塌平单根（无 sub 层） */
+async function expectInstalled(userData: string, pluginId: string, version: string): Promise<void> {
+  const raw = await fs.promises.readFile(path.join(userData, "plugins", pluginId, "plugin.json"), "utf-8");
   expect((JSON.parse(raw) as { version: string }).version).toBe(version);
 }
 
-describe("installBundledPlugins——首启自动装（builtin/user 双层 + removed 豁免 + 幂等）", () => {
+describe("installBundledPlugins——首启自动装（平铺单根 + removed 豁免 + 幂等）", () => {
   let appRoot: string; // dev getAppPath()——bundled-plugins 发货夹所在
   let userData: string; // dev getPath('userData')——解压家 userData/plugins
 
@@ -60,9 +61,9 @@ describe("installBundledPlugins——首启自动装（builtin/user 双层 + rem
     userData = await fs.promises.mkdtemp(path.join(os.tmpdir(), "bundled-install-ud-"));
     electronMock.paths.appRoot = appRoot;
     electronMock.paths.userData = userData;
-    // 发货夹 builtin/ + user/（语义双层）
-    await writeZip(path.join(appRoot, "bundled-plugins", "builtin"), "demo-a", "1.0.0");
-    await writeZip(path.join(appRoot, "bundled-plugins", "user"), "demo-b", "1.0.0");
+    // 发货夹平铺单根（无 builtin/user 子目录层）
+    await writeZip(path.join(appRoot, "bundled-plugins"), "demo-a", "1.0.0");
+    await writeZip(path.join(appRoot, "bundled-plugins"), "demo-b", "1.0.0");
   });
 
   afterEach(async () => {
@@ -70,29 +71,29 @@ describe("installBundledPlugins——首启自动装（builtin/user 双层 + rem
     await fs.promises.rm(userData, { recursive: true, force: true });
   });
 
-  it("无账本 + 无已装：builtin/user 双 sub 全自动装；发货源 zip 保留（永久备份）", async () => {
+  it("无账本 + 无已装：发货夹全自动装；发货源 zip 保留（永久备份）", async () => {
     await installBundledPlugins();
-    await expectInstalled(userData, "builtin", "demo-a", "1.0.0");
-    await expectInstalled(userData, "user", "demo-b", "1.0.0");
+    await expectInstalled(userData, "demo-a", "1.0.0");
+    await expectInstalled(userData, "demo-b", "1.0.0");
     // 发货源没被消费
-    await expect(fs.promises.stat(path.join(appRoot, "bundled-plugins", "builtin", "demo-a.linkdesk-plugin"))).resolves.toBeTruthy();
-    await expect(fs.promises.stat(path.join(appRoot, "bundled-plugins", "user", "demo-b.linkdesk-plugin"))).resolves.toBeTruthy();
+    await expect(fs.promises.stat(path.join(appRoot, "bundled-plugins", "demo-a.linkdesk-plugin"))).resolves.toBeTruthy();
+    await expect(fs.promises.stat(path.join(appRoot, "bundled-plugins", "demo-b.linkdesk-plugin"))).resolves.toBeTruthy();
   });
 
   it("已装同版本：跳过不重解压，发货源保留（幂等）", async () => {
     // 预装 demo-a 同版本到 userData
-    await fs.promises.mkdir(path.join(userData, "plugins", "builtin", "demo-a"), { recursive: true });
+    await fs.promises.mkdir(path.join(userData, "plugins", "demo-a"), { recursive: true });
     await fs.promises.writeFile(
-      path.join(userData, "plugins", "builtin", "demo-a", "plugin.json"),
+      path.join(userData, "plugins", "demo-a", "plugin.json"),
       manifestJson("demo-a", "1.0.0"),
     );
-    await fs.promises.writeFile(path.join(userData, "plugins", "builtin", "demo-a", "keep-me.txt"), "untouched");
+    await fs.promises.writeFile(path.join(userData, "plugins", "demo-a", "keep-me.txt"), "untouched");
     await installBundledPlugins();
-    await expectInstalled(userData, "builtin", "demo-a", "1.0.0");
+    await expectInstalled(userData, "demo-a", "1.0.0");
     // 未重解压——已装目录未被发货 zip 覆盖（keep-me.txt 还在）
-    expect(await fs.promises.readFile(path.join(userData, "plugins", "builtin", "demo-a", "keep-me.txt"), "utf-8")).toBe("untouched");
+    expect(await fs.promises.readFile(path.join(userData, "plugins", "demo-a", "keep-me.txt"), "utf-8")).toBe("untouched");
     // 无已装的 demo-b 照常自动装
-    await expectInstalled(userData, "user", "demo-b", "1.0.0");
+    await expectInstalled(userData, "demo-b", "1.0.0");
   });
 
   it("账本 removed 标记：该插件跳过自动恢复（用户故意删除），其余照装", async () => {
@@ -103,10 +104,10 @@ describe("installBundledPlugins——首启自动装（builtin/user 双层 + rem
     );
     await installBundledPlugins();
     // demo-a 被豁免——不复活
-    await expect(fs.promises.stat(path.join(userData, "plugins", "builtin", "demo-a"))).rejects.toThrow();
+    await expect(fs.promises.stat(path.join(userData, "plugins", "demo-a"))).rejects.toThrow();
     // demo-b removed:false → 正常装
-    await expectInstalled(userData, "user", "demo-b", "1.0.0");
+    await expectInstalled(userData, "demo-b", "1.0.0");
     // 发货源都保留
-    await expect(fs.promises.stat(path.join(appRoot, "bundled-plugins", "builtin", "demo-a.linkdesk-plugin"))).resolves.toBeTruthy();
+    await expect(fs.promises.stat(path.join(appRoot, "bundled-plugins", "demo-a.linkdesk-plugin"))).resolves.toBeTruthy();
   });
 });

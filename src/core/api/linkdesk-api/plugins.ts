@@ -33,7 +33,7 @@ export interface PluginsAPI {
     readAllManifests?(): Promise<Record<string, PluginManifest>>;
     /** E6#11/#13（1.2-5）：主进程真下载段——fetch .linkdesk-plugin 包 → {userData}/tmp/<原包名>（壳 preload 独有；loader 包安装流 packageOps 调） */
     packageDownload?(url: string): Promise<{ zipPath: string; sizeBytes?: number }>;
-    /** E6#11/#13（1.2-5）：主进程真解压段——共享 bundle-zip 语义 → {userData}/plugins/user/<id>/（壳 preload 独有；目标已存在拒绝） */
+    /** E6#11/#13（1.2-5）：主进程真解压段——共享 bundle-zip 语义 → {userData}/plugins/<id>/（2026-09-05 塌平单根；壳 preload 独有；目标已存在拒绝） */
     packageExtract?(zipPath: string, expectedPluginId?: string): Promise<{ pluginId: string; version: string; targetDir: string }>;
     /** E6#13b（段 B）：主进程真网络段——fetch marketplace.json → 版本对比（不碰账本——current 由壳传）。prerelease 默认忽略。 */
     packageUpdateCheck?(pluginId: string, catalogUrl: string, currentVersion?: string): Promise<PluginUpdateCheckResult>;

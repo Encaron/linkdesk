@@ -14,7 +14,6 @@ import { protocol, app } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
 import { APP_SCHEME, APPEARANCE_SCHEME } from '../constants';
-import { scanPluginSubdirs } from '../services/plugin-file-service.js';
 import { envService } from '../services/env-service.js';
 // E6#7（1.2-4）：多根解析——resolveLinkdeskPath 单根版保留（7 单测不动），protocol 走 multi
 import { resolveLinkdeskPathMulti } from '../../src/core/utils/path/linkdeskProtocolPath.js';
@@ -62,9 +61,10 @@ export function registerProtocol(): void {
     const urlPath = request.url.replace(new RegExp(`^${APP_SCHEME}://`), "");
 
     // 路径解析——E5.7#82：抽到 src/core/utils/path/linkdeskProtocolPath.ts 纯函数
-    // （穿越检查 + 子目录扫描 + 存在检查，vitest 实证 E6 打包格式的 chunk 命中）
+    // （穿越检查 + 存在检查，vitest 实证）
+    // 2026-09-05 塌平单根：根直接含插件目录（root-direct——subdirs 层已随 builtin/user 双目录废除）
     // E6#7：双根有序扫描（app 在前）——userData 包的贡献数据/资产 URL 恒 linkdesk://<id>/... 即可达
-    const rootsForProtocol = roots.map((root) => ({ root, subdirs: scanPluginSubdirs(root) }));
+    const rootsForProtocol = roots.map((root) => ({ root }));
     const resolved = resolveLinkdeskPathMulti(rootsForProtocol, urlPath);
     if (!resolved.ok) {
       if (resolved.status === 403) {
