@@ -9,7 +9,7 @@
   },
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "tsc -b && vite build && vite build --config vite.pool.config.ts && node scripts/build-pool-vendor.mjs",
     "preview": "vite preview",
     "lint": "eslint src/ plugins/ electron/",
     "fix": "eslint src/ plugins/ electron/ --fix",
@@ -60,6 +60,7 @@
     "@vitejs/plugin-react": "^4.3.4",
     "electron": "^43.2.0",
     "electron-builder": "^26.15.3",
+    "esbuild": "^0.25.12",
     "eslint": "^9.0.0",
     "eslint-import-resolver-typescript": "^4.4.5",
     "eslint-plugin-import-x": "^4.17.1",

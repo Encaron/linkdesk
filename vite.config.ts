@@ -125,7 +125,9 @@ export default defineConfig(async ({ command }) => {
       rollupOptions: {
         input: {
           main: resolve(__dirname, "index.html"),
-          pool: resolve(__dirname, "pool.html"),
+          // E6#15d 消费切换相 G2：池窗走独立构建 pass（vite.pool.config.ts，external react 系 + import-map）。
+          // 不在主 build 内 —— 一个 rollup pass 无法只对池 external（壳与池共享组件图）。
+          // dev 无碍：pool.html 由 vite dev server 按需服务，不是 build input。
           ...devEntries,
           ...pluginEntries,
         },
