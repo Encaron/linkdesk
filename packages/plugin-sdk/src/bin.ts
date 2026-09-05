@@ -13,6 +13,7 @@ import { join } from "node:path";
 import { build } from "vite";
 import { validatePluginJson } from "./validate.js";
 import { defineLinkdeskPluginConfig } from "./vite-config.js";
+import { runPluginLint, renderPluginLintReport } from "./eslint/lint.js";
 
 const VITE_CONFIG_FILES = [
   "vite.config.ts",
@@ -28,7 +29,16 @@ const USAGE = `linkdesk-plugin-sdk <command>
 命令：
   build       在插件工程根构建 .linkdesk-plugin（读 plugin.json → Vite build → zip）
   validate    校验 plugin.json（参数 = 路径，默认 ./plugin.json）
+  lint        E6#54d 门禁（eslint 12 规则 + 三 check 双轨，全 WARN 永不 fail；知情绕行 =
+              eslint-disable 注释）。参数 = 工程根，默认 process.cwd()
 `;
+
+async function cmdLint(root: string): Promise<number> {
+  const report = await runPluginLint(root);
+  // WARN 永不 fail（门禁哲学）——退出码只反映真 error（语法致命 / 作者自配 error 规则）
+  process.stdout.write(renderPluginLintReport(report) + "\n");
+  return report.eslintRows.some((r) => r.severity === 2) ? 1 : 0;
+}
 
 async function cmdBuild(): Promise<number> {
   const root = process.cwd();
@@ -61,6 +71,9 @@ async function main(): Promise<void> {
       break;
     case "validate":
       code = cmdValidate(arg ?? "plugin.json");
+      break;
+    case "lint":
+      code = await cmdLint(arg ?? process.cwd());
       break;
     default:
       console.error(USAGE);
