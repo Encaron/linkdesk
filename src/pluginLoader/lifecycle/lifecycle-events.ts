@@ -19,14 +19,14 @@ import type { PluginManifest } from "../../core/api/types";
 export interface PluginInstallEvent {
   pluginId: string;
   manifest: PluginManifest;
-  /** 'install' | 'reinstall' = 新装/重装 → 追加到图标末尾；'enable' = 恢复 → 保持原位；'startup' = 启动加载 → 保持原位 */
-  reason: "install" | "reinstall" | "enable" | "startup";
+  /** 'install' | 'reinstall' = 新装/重装 → 追加到图标末尾；'enable' = 恢复 → 保持原位；'startup' = 启动加载 → 保持原位；'update' = 更新（E6#11c）→ 保持原位 */
+  reason: "install" | "reinstall" | "enable" | "startup" | "update";
 }
 
 export interface PluginUninstallEvent {
   pluginId: string;
-  /** 'uninstall' = 卸载 → 从 iconOrder 移除；'disable' = 禁用 → 保留 iconOrder 位置 */
-  reason: "uninstall" | "disable";
+  /** 'uninstall' = 卸载 → 从 iconOrder 移除；'disable' = 禁用 → 保留 iconOrder 位置；'update' = 更新前退旧实例（E6#11c，原子替换前 unload 同一机械路径）→ 保留 iconOrder 位置 */
+  reason: "uninstall" | "disable" | "update";
   /** 显示名称——onDidUninstall 触发时 viewRegistry 已注销，提前传入避免 toast 显示 pluginId */
   displayName?: string;
 }

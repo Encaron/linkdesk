@@ -154,6 +154,24 @@ export interface PluginInstallResult {
   error?: string;
 }
 
+/** E6#11c/#13b（段 B）：更新结果——PluginInstallResult 的更新扩展。
+ *  upToDate = catalog 直答已是最新（success:true 但非"更新发生"——UI 显示"已是最新"非红错误）；
+ *  currentVersion 随行供 toast/日志显示 v旧→v新。needRestart 恒 true（bundle 模块缓存需重启激活）。 */
+export interface PluginUpdateResult extends PluginInstallResult {
+  /** 更新前磁盘版本 */
+  currentVersion?: string;
+  /** 查目录后已是最新（本次无替换发生） */
+  upToDate?: boolean;
+}
+
+/** E6#13b（段 B）：pluginManager.checkUpdates 返回——主进程 fetch catalog + semver 对比（壳传 current，壳是账本/磁盘 owner） */
+export interface PluginUpdateCheckResult {
+  current: string;
+  latestVersion: string;
+  downloadUrl?: string;
+  update: boolean;
+}
+
 /** 禁用/卸载列表条目——loader getDisabledPluginInfo/getUninstalledPluginInfo 序列化形状（PluginListSubset 的再子集） */
 export interface PluginInfoEntry {
   pluginId: string;

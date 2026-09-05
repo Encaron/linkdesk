@@ -219,6 +219,10 @@ try {
       // E6#11/#13（1.2-5）：包安装流主进程 fs/net 段——壳 preload 独有（loader 在壳跑；download/extract handler 不对池暴露）
       packageDownload:  (url: string) => ipcRenderer.invoke(IPC.plugins.download, url),
       packageExtract:   (zipPath: string, expectedPluginId?: string) => ipcRenderer.invoke(IPC.plugins.extract, zipPath, expectedPluginId),
+      // E6#11c/#13b/c（段 B）：安全更新三段主进程 handler——updatePlugin/checkPluginUpdates 编排（壳 preload 独有）
+      packageUpdateCheck:  (pluginId: string, catalogUrl: string, currentVersion?: string) => ipcRenderer.invoke(IPC.plugins.updateCheck, pluginId, catalogUrl, currentVersion),
+      packageStageUpdate:  (pluginId: string, source: string, currentVersion?: string) => ipcRenderer.invoke(IPC.plugins.stageUpdate, pluginId, source, currentVersion),
+      packageCommitUpdate: (pluginId: string, stagedDir: string) => ipcRenderer.invoke(IPC.plugins.commitUpdate, pluginId, stagedDir),
     },
 
     // ── 文件关联——扩展名→插件 ID（主进程 FileAssociationService 直答）──
@@ -237,6 +241,9 @@ try {
       install:        (path: string) => ipcRenderer.invoke(IPC.plugins.call, 'install', path),
       installWithProgress: (path: string) => ipcRenderer.invoke(IPC.plugins.call, 'installWithProgress', path),
       reinstall:      (id: string) => ipcRenderer.invoke(IPC.plugins.call, 'reinstall', id),
+      // E6#11c/#13b（段 B）：安全更新 + 只读查更新（pluginManager 路由 → 壳 loader updatePlugin/checkPluginUpdates）
+      update:         (id: string, opts?: { catalogUrl?: string; url?: string }) => ipcRenderer.invoke(IPC.plugins.call, 'update', id, opts),
+      checkUpdates:   (id: string, catalogUrl: string) => ipcRenderer.invoke(IPC.plugins.call, 'checkUpdates', id, catalogUrl),
       getDisabled:    () => ipcRenderer.invoke(IPC.plugins.call, 'getDisabled'),
       getUninstalled: () => ipcRenderer.invoke(IPC.plugins.call, 'getUninstalled'),
       isDisabled:     (id: string) => ipcRenderer.invoke(IPC.plugins.call, 'isDisabled', id),

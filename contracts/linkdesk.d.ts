@@ -1045,6 +1045,13 @@ export interface PluginDiscoveryEntry {
         subdir: string | null;
     };
 }
+/** E6#13b（段 B）：pluginManager.checkUpdates 返回——主进程 fetch catalog + semver 对比（壳传 current，壳是账本/磁盘 owner） */
+export interface PluginUpdateCheckResult {
+    current: string;
+    latestVersion: string;
+    downloadUrl?: string;
+    update: boolean;
+}
 /** list() 的 manifest 序列化子集——与 handlePluginsCall "list" 7 字段对齐 */
 export interface PluginListSubset {
     name?: string;
@@ -1086,6 +1093,15 @@ export interface PluginInfoEntry {
     description?: string;
     version?: string;
 }
+/** E6#11c/#13b（段 B）：更新结果——PluginInstallResult 的更新扩展。
+ *  upToDate = catalog 直答已是最新（success:true 但非"更新发生"——UI 显示"已是最新"非红错误）；
+ *  currentVersion 随行供 toast/日志显示 v旧→v新。needRestart 恒 true（bundle 模块缓存需重启激活）。 */
+export interface PluginUpdateResult extends PluginInstallResult {
+    /** 更新前磁盘版本 */
+    currentVersion?: string;
+    /** 查目录后已是最新（本次无替换发生） */
+    upToDate?: boolean;
+}
 /** 插件发现/管理命名空间面——桥接 IpcBridgeHandler → loader 函数 */
 export interface PluginsAPI {
     /** 插件发现——双端注入：resolvePath 双端同面；读面（listDirs/listAll/readAllManifests/listDisabledDirs/readManifest）壳 preload 独有（loader 只在壳跑） */
@@ -1113,6 +1129,19 @@ export interface PluginsAPI {
             version: string;
             targetDir: string;
         }>;
+        /** E6#13b（段 B）：主进程真网络段——fetch marketplace.json → 版本对比（不碰账本——current 由壳传）。prerelease 默认忽略。 */
+        packageUpdateCheck?(pluginId: string, catalogUrl: string, currentVersion?: string): Promise<PluginUpdateCheckResult>;
+        /** E6#13b/c（段 B）：主进程真下载+解压段——下载到 tmp → 解压到 {userData}/tmp/.stage-<id>（id 一致 + 新版>旧版校验，不碰旧目录） */
+        packageStageUpdate?(pluginId: string, source: string, currentVersion?: string): Promise<{
+            pluginId: string;
+            newVersion: string;
+            stagedDir: string;
+        }>;
+        /** E6#13c（段 B）：主进程原子替换段——同卷 rename：target→.bak→staged→target→rm .bak（失败复原旧版） */
+        packageCommitUpdate?(pluginId: string, stagedDir: string): Promise<{
+            pluginId: string;
+            version: string;
+        }>;
     };
     /** 插件管理——桥接 IpcBridgeHandler → loader 函数。池权威（marketplace 插件消费），必选 */
     pluginManager: {
@@ -1127,6 +1156,13 @@ export interface PluginsAPI {
         getDisabled(): Promise<PluginInfoEntry[]>;
         getUninstalled(): Promise<PluginInfoEntry[]>;
         isDisabled(id: string): Promise<boolean>;
+        /** E6#11c（段 B）：安全更新（#11c 原子 + unload 机械路径）——opts: { catalogUrl?（走 check 选最新） | url?（直给更新包） } */
+        update?(pluginId: string, opts?: {
+            catalogUrl?: string;
+            url?: string;
+        }): Promise<PluginUpdateResult>;
+        /** E6#13b（段 B）：只读查更新——有新版返回 downloadUrl（UI 徽标数据源；更新动作走 update） */
+        checkUpdates?(pluginId: string, catalogUrl: string): Promise<PluginUpdateCheckResult>;
         /** E5.7#48：装/卸/重装成功 → 通知主进程全量重扫三表 */
         notifyManifestChanged?(): void;
     };

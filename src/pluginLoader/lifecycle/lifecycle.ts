@@ -68,6 +68,9 @@ export function initLifecycleConsumers(): void {
   PluginLifecycle.onDidInstall.event(({ pluginId, manifest, reason }) => {
     const name = manifest?.name ?? pluginId;
     if (reason === "startup") return; // 启动加载不弹 toast
+    // 'update'（E6#11c）→ 更新专属 toast 由 updatePlugin 走 loadInstalledPlugin 发（带 v旧→v新）——
+    // 此处跳过防双 toast（且「已安装」措辞对更新是误导）
+    if (reason === "update") return;
     const msg = reason === "enable" ? `已启用：${name}` : `已安装：${name}`;
     pushToast({
       message: `${msg}（即时生效）`,
@@ -78,6 +81,9 @@ export function initLifecycleConsumers(): void {
   });
 
   PluginLifecycle.onDidUninstall.event(({ pluginId, reason, displayName }) => {
+    // 'update'（E6#11c）→ 旧实例退场不发「已禁用」toast、不给「撤销→启用」动作——更新完成由
+    // onDidInstall 侧接报；同插件的卸载/禁用才有 撤销 语义
+    if (reason === "update") return;
     const name = displayName ?? pluginId;
     const msg = reason === "uninstall" ? `已卸载：${name}` : `已禁用：${name}`;
     pushToast({
@@ -108,9 +114,10 @@ export function initLifecycleConsumers(): void {
   // plugin:installed / plugin:uninstalled 带 pluginId 载荷——池侧按插件精确反应
   // （全量刷新走泛化 nudge plugin-lifecycle:changed；本通道供按插件消费方）。
   // 链：壳 events.emit → 主进程 onPluginEmit → broadcast → 池 events.on（同 plugin:installProgress）。
-  // 只在 install/reinstall/uninstall 触发——enable/disable/startup 是状态切换非装卸，不进。
+  // 只在 install/reinstall/uninstall/update 触发——enable/disable/startup 是状态切换非装卸，不进。
   PluginLifecycle.onDidInstall.event(({ pluginId, manifest, reason }) => {
-    if (reason !== "install" && reason !== "reinstall") return;
+    // 'update'（E6#11c）= 新版替换落盘完成——也是"装上"，并入 plugin:installed 让消费方刷新版本
+    if (reason !== "install" && reason !== "reinstall" && reason !== "update") return;
     try {
       window.linkdesk?.events?.emit("plugin:installed", {
         pluginId,

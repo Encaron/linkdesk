@@ -1,0 +1,18 @@
+{
+  "plugins": [
+    {
+      "id": "demo-greet",
+      "name": "Demo Greet",
+      "publisher": "fixture",
+      "description": "E6 装卸更演示 fixture——虚构视图插件（非真实运行时插件）；catalog 供段 B 更新验收（主进程 fetch 版本对比源）",
+      "versions": [
+        {
+          "version": "3.0.0",
+          "downloadUrl": "http://127.0.0.1:1420/@fs/E:/linkdesk/dev-fixtures/demo-greet/demo-greet.linkdesk-plugin",
+          "publishedAt": "2026-09-05",
+          "changelog": "E6 段 B 更新演示——v2.0.0 → v3.0.0（视图文案迭代；v1.0.0 → v2.0.0 见上轮）"
+        }
+      ]
+    }
+  ]
+}

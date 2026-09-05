@@ -1,6 +1,7 @@
 {
+  "pluginId": "demo-greet",
   "name": "Demo Greet",
-  "version": "1.0.0",
+  "version": "3.0.0",
   "description": "E6 装卸更演示 fixture——虚构视图插件（非真实运行时插件）",
   "author": "fixture",
   "distribution": "user",

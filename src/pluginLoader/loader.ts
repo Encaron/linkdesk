@@ -62,6 +62,8 @@ import {
   isPluginDisabled,
   getListPluginManifests,
 } from "./lifecycle/lifecycle-ops";
+// E6#0.6b 拆夹：安全更新流独立模块（updatePlugin/checkPluginUpdates 迁 self lifecycle-ops.ts——800 行体积门禁 E6#0.6a）
+import { updatePlugin, checkPluginUpdates } from "./lifecycle/update";
 export {
   disablePlugin,
   enablePlugin,
@@ -282,6 +284,8 @@ setPluginAPI({
   installWithProgress, // E6#13（1.2-5）：显式包安装流名——桥 'installWithProgress' case 路由到这里
   uninstallPlugin,
   reinstallPlugin,
+  updatePlugin, // E6#11c（段 B）：安全更新——桥 'update' case 路由到这里
+  checkPluginUpdates, // E6#13b（段 B）：只读查更新——桥 'checkUpdates' case 路由到这里
   getDisabledPluginInfo,
   getUninstalledPluginInfo,
   isPluginDisabled,

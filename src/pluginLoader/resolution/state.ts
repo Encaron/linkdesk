@@ -36,6 +36,11 @@ const pluginsApi = () => {
     // 选填随 preload 注入；lifecycle installPackageFromSource 的 packageOps 判存在再调（loader 只在壳跑，运行时恒在）。
     packageDownload: plugins.packageDownload,
     packageExtract: plugins.packageExtract,
+    // E6#11c/#13b/c（段 B）：安全更新三段主进程 handler——选填随 preload 注入；updatePlugin/checkPluginUpdates
+    // 的 packageOps 判存在再调（loader 只在壳跑，运行时恒在；缺 = 壳 preload 面版本不匹配 → 响亮报错）。
+    packageUpdateCheck: plugins.packageUpdateCheck,
+    packageStageUpdate: plugins.packageStageUpdate,
+    packageCommitUpdate: plugins.packageCommitUpdate,
   };
 };
 

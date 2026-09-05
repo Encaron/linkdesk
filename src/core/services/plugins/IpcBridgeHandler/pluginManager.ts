@@ -5,6 +5,7 @@
  */
 
 import { getCommands } from "../../../registry/commands/CommandRegistry";
+import type { PluginUpdateResult, PluginUpdateCheckResult } from "../../../api/linkdesk-api/types";
 
 // E5#43：接口反转——核心定义 PluginManagementAPI，loader 注册自己。
 // 桥不知道加载器的存在，只知道"有人注册了这些能力"。
@@ -16,6 +17,10 @@ export interface PluginManagementAPI {
   installWithProgress(sourcePath: string): Promise<{ success: boolean; error?: string }>;
   uninstallPlugin(id: string): Promise<{ success: boolean; error?: string }>;
   reinstallPlugin(id: string): Promise<{ success: boolean; error?: string }>;
+  // E6#11c（段 B）：安全更新（#11c 原子 + unloadPlugin 机械路径）——opts: { catalogUrl? | url? }
+  updatePlugin(pluginId: string, opts?: { catalogUrl?: string; url?: string }): Promise<PluginUpdateResult>;
+  // E6#13b（段 B）：只读查更新（fetch catalog + 版本对比；有新版返回 downloadUrl）
+  checkPluginUpdates(pluginId: string, catalogUrl: string): Promise<PluginUpdateCheckResult>;
   getDisabledPluginInfo(): unknown;
   getUninstalledPluginInfo(): unknown;
   isPluginDisabled(id: string): boolean;
@@ -61,6 +66,12 @@ export async function handlePluginManagerMethod(method: string, args: unknown[])
       return _pluginAPI!.installWithProgress(args[0] as string);
     case "reinstall":
       return _pluginAPI!.reinstallPlugin(args[0] as string);
+    case "update":
+      // E6#11c（段 B）：安全更新——pluginId + opts { catalogUrl? | url? }（壳 loader 编排 check→stage→unload→commit→load）
+      return _pluginAPI!.updatePlugin(args[0] as string, args[1] as { catalogUrl?: string; url?: string } | undefined);
+    case "checkUpdates":
+      // E6#13b（段 B）：只读查更新——pluginId + catalogUrl
+      return _pluginAPI!.checkPluginUpdates(args[0] as string, args[1] as string);
     case "getDisabled":
       return _pluginAPI!.getDisabledPluginInfo();
     case "getUninstalled":

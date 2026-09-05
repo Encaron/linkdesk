@@ -7,6 +7,8 @@
 import type {
   PluginListEntry,
   PluginInstallResult,
+  PluginUpdateResult,
+  PluginUpdateCheckResult,
   PluginInfoEntry,
   PluginDiscoveryEntry,
   PluginEntryInfo,
@@ -33,6 +35,12 @@ export interface PluginsAPI {
     packageDownload?(url: string): Promise<{ zipPath: string; sizeBytes?: number }>;
     /** E6#11/#13（1.2-5）：主进程真解压段——共享 bundle-zip 语义 → {userData}/plugins/user/<id>/（壳 preload 独有；目标已存在拒绝） */
     packageExtract?(zipPath: string, expectedPluginId?: string): Promise<{ pluginId: string; version: string; targetDir: string }>;
+    /** E6#13b（段 B）：主进程真网络段——fetch marketplace.json → 版本对比（不碰账本——current 由壳传）。prerelease 默认忽略。 */
+    packageUpdateCheck?(pluginId: string, catalogUrl: string, currentVersion?: string): Promise<PluginUpdateCheckResult>;
+    /** E6#13b/c（段 B）：主进程真下载+解压段——下载到 tmp → 解压到 {userData}/tmp/.stage-<id>（id 一致 + 新版>旧版校验，不碰旧目录） */
+    packageStageUpdate?(pluginId: string, source: string, currentVersion?: string): Promise<{ pluginId: string; newVersion: string; stagedDir: string }>;
+    /** E6#13c（段 B）：主进程原子替换段——同卷 rename：target→.bak→staged→target→rm .bak（失败复原旧版） */
+    packageCommitUpdate?(pluginId: string, stagedDir: string): Promise<{ pluginId: string; version: string }>;
   };
 
   /** 插件管理——桥接 IpcBridgeHandler → loader 函数。池权威（marketplace 插件消费），必选 */
@@ -48,6 +56,10 @@ export interface PluginsAPI {
     getDisabled(): Promise<PluginInfoEntry[]>;
     getUninstalled(): Promise<PluginInfoEntry[]>;
     isDisabled(id: string): Promise<boolean>;
+    /** E6#11c（段 B）：安全更新（#11c 原子 + unload 机械路径）——opts: { catalogUrl?（走 check 选最新） | url?（直给更新包） } */
+    update?(pluginId: string, opts?: { catalogUrl?: string; url?: string }): Promise<PluginUpdateResult>;
+    /** E6#13b（段 B）：只读查更新——有新版返回 downloadUrl（UI 徽标数据源；更新动作走 update） */
+    checkUpdates?(pluginId: string, catalogUrl: string): Promise<PluginUpdateCheckResult>;
     /** E5.7#48：装/卸/重装成功 → 通知主进程全量重扫三表 */
     notifyManifestChanged?(): void;
   };

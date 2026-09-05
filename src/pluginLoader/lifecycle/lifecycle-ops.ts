@@ -37,6 +37,8 @@ import { syncAppThemeEnum, syncAppLanguageEnum, syncIconThemeEnum } from "../con
 import { loadPlugin } from "../resolution/runtime";
 import { parseManifestJson } from "../jsonc"; // E6#55：作者 plugin.json JSONC——唯一解析入口
 import { normalizePath } from "../../core/utils/path/pathUtils"; // 跨 IPC 路径归一化唯一正源（no-raw-path-replace）
+// E6#13b/c（段 B）：packageOps 签名引用 PluginUpdateCheckResult——types.ts 契约面
+import type { PluginUpdateCheckResult } from "../../core/api/linkdesk-api/types";
 
 /* ═══════════════════════════════════════════════════════════
    Phase 4.3 生命周期 API——安装/卸载/禁用/启用
@@ -158,13 +160,7 @@ export async function uninstallPlugin(pluginId: string): Promise<{ success: bool
     // （"C:\Users\...\plugins"）——直接 startsWith 恒 false，userData 卸载误走 .disabled 坟场
     // （2026-09-05 实机门禁实证：demo-pill/plugin-sdk-example 卸载进了项目 plugins/.disabled/）。
     const userHome = env.userPluginsDir;
-    const isUserDataHome =
-      !!userHome &&
-      (() => {
-        const srcNorm = normalizePath(src);
-        const homeNorm = normalizePath(userHome);
-        return srcNorm === homeNorm || srcNorm.startsWith(`${homeNorm}/`);
-      })();
+    const isUserDataHome = isUnderHome(src, userHome);
 
     if (isUserDataHome) {
       await linkdesk().filesystem.remove(src);
@@ -231,10 +227,20 @@ export async function uninstallPlugin(pluginId: string): Promise<{ success: bool
 /** 进度广播单点（#13d 壳段）——壳 events.emit → 主进程 onPluginEmit → broadcast → 池 events.on；
  *  与主进程 download/extract 段（plugin-install-handlers.ts 同通道广播）并流一个 plugin:installProgress。
  *  同一事件循环内 installPlugin 多处 emit——节流交给广播层，调用方逐阶段直呼。 */
-function emitInstallProgress(stage: string, pluginId?: string, message?: string): void {
+export function emitInstallProgress(stage: string, pluginId?: string, message?: string): void {
   try {
     window.linkdesk?.events?.emit("plugin:installProgress", { stage, pluginId, message });
   } catch { /* 广播失败不阻断安装 */ }
+}
+
+/** 磁盘落点判定——src（resolvePath 回传）是否在 home（env.userPluginsDir 等）内。
+ *  🔴 前缀比对必须走 normalizePath：resolvePath（IPC 回传）是正斜杠，home（主进程 path.join）是反斜杠——
+ *  直接 startsWith 恒 false，userData 卸载误走 .disabled 坟场（2026-09-05 实机门禁实证）。uninstall/update 共用。 */
+export function isUnderHome(src: string, home: string | undefined): boolean {
+  if (!home) return false;
+  const s = normalizePath(src);
+  const h = normalizePath(home);
+  return s === h || s.startsWith(`${h}/`);
 }
 
 /** 是否包来源（vs 目录）：http(s) 下载源 / .linkdesk-plugin 结尾（磁盘 zip）→ 走包安装流；
@@ -244,13 +250,27 @@ function isPackageSource(source: string): boolean {
   return /^https?:\/\//i.test(s) || /\.linkdesk-plugin$/i.test(s);
 }
 
-/** 包面直答主进程（#13a 主进程真 fs/net 段）——壳 plugins 命名空间独有（download/extract handler 只对壳暴露）。 */
-function packageOps(): { packageDownload: (url: string) => Promise<{ zipPath: string; sizeBytes?: number }>; packageExtract: (zipPath: string, expectedPluginId?: string) => Promise<{ pluginId: string; version: string; targetDir: string }> } {
+/** 包面直答主进程（#13a 主进程真 fs/net 段）——壳 plugins 命名空间独有（download/extract handler 只对壳暴露）。
+ *  update 三段（#13b/c：packageUpdateCheck/Stage/Commit）选填随 preload 注入——安装流只要 download/extract，
+ *  更新流各自判存在再调（段 B 落法）。 */
+export function packageOps(): {
+  packageDownload: (url: string) => Promise<{ zipPath: string; sizeBytes?: number }>;
+  packageExtract: (zipPath: string, expectedPluginId?: string) => Promise<{ pluginId: string; version: string; targetDir: string }>;
+  packageUpdateCheck?: (pluginId: string, catalogUrl: string, currentVersion?: string) => Promise<PluginUpdateCheckResult>;
+  packageStageUpdate?: (pluginId: string, source: string, currentVersion?: string) => Promise<{ pluginId: string; newVersion: string; stagedDir: string }>;
+  packageCommitUpdate?: (pluginId: string, stagedDir: string) => Promise<{ pluginId: string; version: string }>;
+} {
   const api = pluginsApi();
   if (!api.packageDownload || !api.packageExtract) {
     throw new Error("[pluginLoader] 壳 plugins 面缺少 packageDownload/packageExtract——loader 只能在壳进程运行");
   }
-  return { packageDownload: api.packageDownload, packageExtract: api.packageExtract };
+  return {
+    packageDownload: api.packageDownload,
+    packageExtract: api.packageExtract,
+    packageUpdateCheck: api.packageUpdateCheck,
+    packageStageUpdate: api.packageStageUpdate,
+    packageCommitUpdate: api.packageCommitUpdate,
+  };
 }
 
 /**
