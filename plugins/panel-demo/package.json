@@ -3,9 +3,9 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "面板 demo（出厂预装，可卸载）——E6#15 独立化：独立 build 产 .linkdesk-plugin（demo 不例外，全量分发 dev/prod 一致），零 @src",
+  "description": "面板 demo——E6#15 独立化：独立 build 产 .linkdesk-plugin（零 @src）。🔴 安装版不内置（2026-09-06 用户拍板：demo 不进发货集）——zip 留 dev-fixtures 作「第三方直接安装」回归验证件",
   "scripts": {
-    "build": "node ../../../packages/plugin-sdk/dist/bin.js build",
-    "lint": "node ../../../packages/plugin-sdk/dist/bin.js lint ."
+    "build": "node ../../packages/plugin-sdk/dist/bin.js build",
+    "lint": "node ../../packages/plugin-sdk/dist/bin.js lint ."
   }
 }
