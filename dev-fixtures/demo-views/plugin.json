@@ -1,0 +1,28 @@
+{
+  "pluginId": "demo-views",
+  "name": "Demo Views",
+  "version": "1.0.0",
+  "description": "E6#15 spike fixture——多表面 zip：entry 主标签 + location:sidebar 容器视图 + 共享 css（虚构插件，非真实运行时插件）",
+  "author": "fixture",
+  "distribution": "user",
+  "entry": "src/index.tsx",
+  "appearsIn": { "tabBar": true },
+  "tabBehavior": {
+    "singleton": true
+  },
+  "contributes": {
+    "viewsContainers": {
+      "demo-views-sidebar": { "title": "Demo Views", "location": "sidebar" }
+    },
+    "views": {
+      "demo-views-sidebar": [
+        {
+          "id": "demo-views-panel",
+          "title": "Demo Views Sidebar",
+          "render": "src/views/DemoSidebarView.tsx",
+          "order": 0
+        }
+      ]
+    }
+  }
+}

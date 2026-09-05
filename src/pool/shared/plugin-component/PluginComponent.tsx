@@ -13,7 +13,8 @@
  *    （E5.8#24.8 护栏统一——取 monaco 只能走 getMonaco()）。
  */
 
-import React, { Suspense, useMemo } from "react";
+import React, { Suspense, useEffect, useMemo, useRef } from "react";
+import { cssUrlForRenderPath, retainPluginCss, releasePluginCss } from "./bundleCss"; // E6#15：bundle 插件 css <link>（池=视图挂载文档）
 import { useTranslation } from "react-i18next";
 import i18n from "../../../i18n";
 import ErrorBoundary from "../error-boundary/ErrorBoundary"; // E5.7#20：池侧版（不 import 壳 components 目录）
@@ -147,6 +148,38 @@ export default function PluginComponent({ pluginId, isActive, tabId, sourceId, r
     _lazyCache.set(cacheKey, component);
     return component;
   }, [cacheKey, renderPath, pluginId]);
+
+  // E6#15：bundle 插件 css <link> 生命周期（引用计数，pool 文档）——
+  // 视图面 renderPath 同步可判编译表面（*.bundle.js → 派生根 index.bundle.css）；主区 entry
+  // 无 renderPath——resolveEntry 异步判 bundle（{bundle, root}）。retain 在首次挂载前注入（本组件
+  // effect 先于 Suspense 子视图解析提交——样式就位才首帧），release 在末实例卸载归零移除。
+  const retainedCss = useRef(false);
+  useEffect(() => {
+    let cancelled = false;
+    const release = () => {
+      if (retainedCss.current) {
+        retainedCss.current = false;
+        releasePluginCss(pluginId);
+      }
+    };
+    const syncUrl = cssUrlForRenderPath(renderPath);
+    if (syncUrl) {
+      retainedCss.current = true;
+      retainPluginCss(pluginId, syncUrl);
+      return release;
+    }
+    if (!renderPath) {
+      void (async () => {
+        const lk = window.linkdesk;
+        const info = await lk?.plugins?.resolveEntry?.(pluginId);
+        if (cancelled || !info?.bundle || !info?.root) return;
+        retainedCss.current = true;
+        const rootUrl = import.meta.env.DEV ? `/@fs/${info.root}` : `linkdesk://${pluginId}`;
+        retainPluginCss(pluginId, `${rootUrl}/index.bundle.css`);
+      })();
+    }
+    return release;
+  }, [pluginId, renderPath]);
 
   if (!LazyComponent) {
     return (

@@ -250,6 +250,8 @@ async function loadPlugin(
       console.warn(`[pluginLoader] 运行时插件 "${pluginId}" 根目录解析失败:`, e);
       // pluginRoot 保持 undefined——views 注册走 ❌ 分支诚实降级
     }
+    // E6#15：bundle 插件 css 注入点已在 pool PluginComponent（视图唯一挂载文档）——shell 侧不注入
+    // （loader 宿主 shell、视图渲 pool，双文档；壳注入的 <link> 到不了 pool，E5.7 架构实证）。
     // #9g 按需激活：延迟加载（skipView）时跳过 JS import——只解析根（Step5 pluginRoot 依赖），
     // entry 在 activatePlugin 首次触发事件时才 import（启动注册-only，对标 VS Code 延迟激活）。
     // E6#7：bundle 插件入口恒 index.bundle.js（isBundlePlugin 从启动发现水合）

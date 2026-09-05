@@ -202,6 +202,7 @@ export function unloadPlugin(
   const orphans = cascadeDependents(pluginId);
   _pendingPlugins.delete(pluginId);
   transition(pluginId, "unloading");
+  // E6#15：bundle css <link> 移除归 pool PluginComponent 引用计数（视图挂载文档）——shell 侧无视图不处理
   notifyPluginRemoved(pluginId);
   PluginLifecycle.onWillUninstall.fire({ pluginId, reason, displayName });
   loadedPluginIds.delete(pluginId);

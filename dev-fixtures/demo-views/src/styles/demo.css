@@ -1,0 +1,19 @@
+/* demo-views fixture 共享样式——E6#15 spike：loader bundle css 注入实证载体。
+   断言锚（CDP 实机）：
+     - 入口 `<link id="__linkdesk_bundle_css__demo-views">` 指向 {root}/index.bundle.css（有 css 才注入）
+     - .demo-views-pill computed outline = 3px dashed var(--accent)——css 文件规则真正生效（非内联）
+     - 卸载后 <link> 移除 → 规则消失
+   落地原则：颜色全 var(--*) token（硬约束 1）、字号走 --font-size-*、间距 4px 节奏。 */
+
+.demo-views-pill {
+  display: inline-block;
+  margin-top: 12px;
+  padding: 8px 12px;
+  background: var(--bg-card);
+  color: var(--text-primary);
+  font-size: var(--font-size-sm);
+  border-radius: var(--surface-radius);
+  outline: 3px dashed var(--accent);
+  outline-offset: 2px;
+  user-select: none;
+}

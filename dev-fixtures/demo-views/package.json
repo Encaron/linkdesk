@@ -1,0 +1,11 @@
+{
+  "name": "demo-views",
+  "version": "1.0.0",
+  "private": true,
+  "description": "E6#15 spike fixture（虚构插件）——多表面打包 + loader bundle css 注入实证：entry 主标签页 + location:sidebar 容器视图 + 共享 css。构建复用 plugin-sdk（packages 现编 bin），零独立 npm install",
+  "type": "module",
+  "scripts": {
+    "build": "node ../../packages/plugin-sdk/dist/bin.js build",
+    "lint": "node ../../packages/plugin-sdk/dist/bin.js lint ."
+  }
+}
