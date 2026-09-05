@@ -132,16 +132,25 @@ export default function PluginComponent({ pluginId, isActive, tabId, sourceId, r
     if (!loader) return null;
 
     const component = React.lazy<React.ComponentType<PluginViewProps>>(() =>
-      loader!().then((mod) => {
-        // glob/动态 import 模块命名空间——按 PluginModule 形状窄化（E5.7#98 替代 mod: any）
-        const m = mod as PluginModule | null;
-        if (!m) throw new Error(i18n.t("插件 {{id}} 加载失败", { id: pluginId }));
-        return {
-          default: m.default || (() => {
-            throw new Error(i18n.t("插件 {{id}} 未导出 default 组件", { id: pluginId }));
-          }),
-        };
-      }),
+      loader!()
+        .then((mod) => {
+          // glob/动态 import 模块命名空间——按 PluginModule 形状窄化（E5.7#98 替代 mod: any）
+          const m = mod as PluginModule | null;
+          if (!m) throw new Error(i18n.t("插件 {{id}} 加载失败", { id: pluginId }));
+          return {
+            default: m.default || (() => {
+              throw new Error(i18n.t("插件 {{id}} 未导出 default 组件", { id: pluginId }));
+            }),
+          };
+        })
+        // 🔴 失败不永久缓存 rejected：剔除缓存条目，让下次挂载重试（loader 首错可能是瞬态——
+        // 运行时安装插件在安装广播/registry 落定窗口内被点开即 404；永久缓存=插件砖到重启）。
+        // 成功才进缓存复用；rejected 只影响当前挂载实例（ErrorBoundary 兜底），下次全新挂载
+        // useMemo 重跑 → _lazyCache 已空 → 重建 lazy 重试。
+        .catch((err) => {
+          _lazyCache.delete(cacheKey);
+          throw err;
+        }),
     );
     _lazyCache.set(cacheKey, component);
     return component;
