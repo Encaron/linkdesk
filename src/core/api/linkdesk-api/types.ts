@@ -2,7 +2,7 @@
  * linkdesk-api 类型域——自 linkdesk-api.ts 拆出（E5.8#0d.10-9a）。
  * 独立类型接口（非 LinkDeskAPI 成员）：LinkDeskCommand/LinkDeskTheme/LinkDeskLanguage/LinkDeskConfigSchema/
  * PluginListEntry/PluginInstallResult/PluginInfoEntry/PluginListSubset/EnvInfo/FileDecoration/
- * FileDecorationProvider/MenuItemDescriptor/NotificationHandle 13 接口 verbatim。
+ * FileDecorationProvider/MenuItemDescriptor/NotificationHandle/PluginToastAction 14 接口 verbatim。
  * DialogOpenOptions 保路径 re-export 留在聚合器（../../types/ipc/dialogs）。
  * 依赖方向：types → ../types（PluginManifest）；被 10 个命名空间域文件 import（依赖基座，无反向）。
  */
@@ -249,4 +249,21 @@ export interface NotificationHandle {
   finish(message?: string): Promise<void>;
   /** 取消——直接关闭，不弹完成 toast */
   cancel(): Promise<void>;
+}
+
+/** 通知主动作按钮描述（E6#13.5 缝隙 K1）——插件 notifications.show 传 actions，
+ *  经 IPC 序列化到壳；点击时壳 executeCommand(command, args) 真执行。
+ *  对标 VS Code `INotificationAction`（命令面）。按钮文案 = 最终显示文本，壳不二次翻译。 */
+export interface PluginToastAction {
+  /** 动作 id——插件侧标识（同一通知内唯一）；点击回执按位置序号，id 仅供调试/日志 */
+  id?: string;
+  /** 按钮文案（最终显示文本） */
+  label: string;
+  /** true → 主按钮（accent 色）；false/未设 → 次级文本按钮 */
+  isPrimary?: boolean;
+  /** 点击执行的命令 id——壳 executeCommand(command, args)。命令 handler 由插件自注册
+   *  （window.linkdesk.commands.registerCommand）。无 command → 按钮点击仅关闭 toast（无副作用） */
+  command?: string;
+  /** 透传给命令 handler 的 ...args */
+  args?: unknown[];
 }

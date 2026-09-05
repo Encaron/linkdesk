@@ -68,6 +68,7 @@ export type {
   FileDecorationProvider,
   MenuItemDescriptor,
   NotificationHandle,
+  PluginToastAction,
 } from "./linkdesk-api/types";
 
 export type { DialogOpenOptions } from "../types/ipc/dialogs"; // E5.7#97：归口 src/core/types/ipc/dialogs.ts——此 re-export 保持既有插件 import 路径

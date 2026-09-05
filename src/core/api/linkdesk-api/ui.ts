@@ -4,7 +4,7 @@
  * 依赖方向：ui → ./types（MenuItemDescriptor/NotificationHandle）+ types/ipc|pool + MenuRegistry；被聚合器交叉组装。
  */
 
-import type { MenuItemDescriptor, NotificationHandle } from "./types";
+import type { MenuItemDescriptor, NotificationHandle, PluginToastAction } from "./types";
 import type { DialogOpenOptions } from "../../types/ipc/dialogs";
 import type { ManifestMenuItem } from "../../registry/commands/MenuRegistry";
 import type { PoolToastData } from "../../types/pool/poolToast";
@@ -16,8 +16,14 @@ import type { PoolFloatingPanelData } from "../../types/pool/poolFloatingPanel";
 export interface UiAPI {
   /** 通知——插件弹出壳侧 toast，对标 VS Code vscode.window.showInformationMessage */
   notifications: {
-    /** 弹出通知。progress=true 时返回 ProgressHandle（含 update/finish/cancel） */
-    show(message: string, options?: { type?: "info" | "warning" | "error"; progress?: boolean }): Promise<NotificationHandle | undefined>;
+    /** 弹出通知。progress=true 时返回 ProgressHandle（含 update/finish/cancel）。
+     *  E6#13.5：options.actions 带主动作按钮——点击走壳 executeCommand(action.command, action.args)，
+     *  命令 handler 插件自注册。不传 actions → 无按钮（现状）。error 类自动停留 8s。 */
+    show(message: string, options?: {
+      type?: "info" | "warning" | "error";
+      progress?: boolean;
+      actions?: PluginToastAction[];
+    }): Promise<NotificationHandle | undefined>;
   };
 
   /** E5#69：菜单——插件声明式读写 */

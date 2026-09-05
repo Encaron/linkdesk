@@ -9,10 +9,10 @@
  */
 
 import { confirm, alert } from "../../ui/DialogService"; // E5#67
-import { pushToast, dismissToast, updateToast, type ToastSeverity } from "../../ui/toast";
+import { pushToast, dismissToast, updateToast, TOAST_TTL_ERROR, type ToastSeverity } from "../../ui/toast";
 import { registerMenuItems, getMenuItems, MENU_SLOTS, type ManifestMenuItem } from "../../../registry/commands/MenuRegistry"; // E5#69
 import { ContextKeyService } from "../../../registry/commands/ContextKeyService"; // E5#70
-import { getCommands } from "../../../registry/commands/CommandRegistry";
+import { getCommands, executeCommand } from "../../../registry/commands/CommandRegistry";
 import { findKeybindingForCommand } from "../../../registry/commands/KeybindingRegistry";
 import { resolvePanelChecked } from "../../../commands/shell/panelCommands"; // E5.8#37.7：面板位置/对齐当前项 √ 解析
 import { ViewContainerService } from "../../../services/layout/ViewContainerService"; // E5.8#37.7.1：面板视图显隐清单数据源（壳布局真相，Path B 池只读）
@@ -22,7 +22,7 @@ import { onRequestSettingsGroup, onRequestScrollToSetting, onRequestOpenKeybindi
 import { getAvailableThemes, getCurrentTheme } from "../../ui/ThemeEngine";
 import { LanguageRegistry } from "../../../registry/languages/LanguageRegistry";
 import i18n from "../../../../i18n";
-import type { LinkDeskAPI, MenuItemDescriptor } from "../../../api/linkdesk-api";
+import type { LinkDeskAPI, MenuItemDescriptor, PluginToastAction } from "../../../api/linkdesk-api";
 
 let _settingsGroupUnsub: (() => void) | null = null;
 let _scrollToUnsub: (() => void) | null = null;
@@ -218,16 +218,28 @@ export async function handleSettingsMethod(method: string, args: unknown[]): Pro
 export async function handleUiMethod(method: string, args: unknown[]): Promise<unknown> {
   switch (method) {
     // E3j #76：插件通知——跨进程触发壳侧 toast
+    // E6#13.5c：options.actions（插件序列化 {command,args}，无闭包）→ 壳 toast action closure
+    // （点击 executeCommand 真执行）。建 toast 时包好 onClick——与壳内 pushToast（闭包 onClick）
+    // 同形态，serializeToasts/runToastAction/ToastHost 零改动；无 command 的 action 仅关闭（点击后 dismiss）。
     case "showNotification": {
-      const [message, options] = args as [string, { type?: string; progress?: boolean } | undefined];
+      const [message, options] = args as
+        | [string, { type?: string; progress?: boolean; actions?: PluginToastAction[] } | undefined];
       const severity: ToastSeverity =
         options?.type === "error" ? "error" :
         options?.type === "warning" ? "warning" : "info";
-      const id = pushToast({
-        message,
-        severity,
-        ttl: options?.progress ? 0 : undefined, // 进度条：不自动消失
-      });
+      const actions = options?.actions?.map((a) => ({
+        label: a.label,
+        isPrimary: a.isPrimary,
+        onClick: () => {
+          // executeCommand(id, _token?, ...args)——token 槽位显式 undefined 占位（E5.7#63.8 全仓惯例），
+          // a.args 从第三位起才进 handler ...args；漏占位会让 args[0] 落进 token 被剥（实机/单测双证）。
+          if (a.command) void executeCommand(a.command, undefined, ...(a.args ?? []));
+        },
+      }));
+      // E6#13.5d：插件 error 类 toast 对齐 TOAST_TTL_ERROR（8000，mockup 帧 3——诊断需要时间读）；
+      // info/warning 沿用默认 6000；progress 进度条不自动消失。
+      const ttl = options?.progress ? 0 : severity === "error" ? TOAST_TTL_ERROR : undefined;
+      const id = pushToast({ message, severity, actions, ttl });
       return options?.progress ? id : undefined;
     }
     case "updateNotification": {

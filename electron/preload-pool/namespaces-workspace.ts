@@ -32,7 +32,13 @@ export function buildWorkspace(events: EventSystemApi) {
 /** notifications 命名空间 */
 export function buildNotifications() {
   return {
-    show: (message: string, options?: { type?: string; progress?: boolean }) => {
+    // E6#13.5b：show() 透传 options.actions（{id,label,isPrimary,command,args} 结构化克隆过 IPC，
+    // 壳 showNotification 重建 closure 执行）。签名对齐 linkdesk-api/ui.ts notifications.show。
+    show: (message: string, options?: {
+      type?: "info" | "warning" | "error";
+      progress?: boolean;
+      actions?: Array<{ id?: string; label: string; isPrimary?: boolean; command?: string; args?: unknown[] }>;
+    }) => {
       return ipcRenderer.invoke(IPC.plugins.call, 'showNotification', message, options)
         .then((handleId: string | undefined) => {
           if (!handleId) return undefined;

@@ -358,6 +358,22 @@ export interface KeybindingsAPI {
         onForwardedEvent?(cb: (input: ForwardedKeyboardInput) => void): () => void;
     };
 }
+/** 通知主动作按钮描述（E6#13.5 缝隙 K1）——插件 notifications.show 传 actions，
+ *  经 IPC 序列化到壳；点击时壳 executeCommand(command, args) 真执行。
+ *  对标 VS Code `INotificationAction`（命令面）。按钮文案 = 最终显示文本，壳不二次翻译。 */
+export interface PluginToastAction {
+    /** 动作 id——插件侧标识（同一通知内唯一）；点击回执按位置序号，id 仅供调试/日志 */
+    id?: string;
+    /** 按钮文案（最终显示文本） */
+    label: string;
+    /** true → 主按钮（accent 色）；false/未设 → 次级文本按钮 */
+    isPrimary?: boolean;
+    /** 点击执行的命令 id——壳 executeCommand(command, args)。命令 handler 由插件自注册
+     *  （window.linkdesk.commands.registerCommand）。无 command → 按钮点击仅关闭 toast（无副作用） */
+    command?: string;
+    /** 透传给命令 handler 的 ...args */
+    args?: unknown[];
+}
 /** 进度通知句柄——progress=true 时 show() 返回 */
 export interface NotificationHandle {
     /** 更新进度消息 */
@@ -550,10 +566,13 @@ export type PoolFloatingPanelData = {
 export interface UiAPI {
     /** 通知——插件弹出壳侧 toast，对标 VS Code vscode.window.showInformationMessage */
     notifications: {
-        /** 弹出通知。progress=true 时返回 ProgressHandle（含 update/finish/cancel） */
+        /** 弹出通知。progress=true 时返回 ProgressHandle（含 update/finish/cancel）。
+         *  E6#13.5：options.actions 带主动作按钮——点击走壳 executeCommand(action.command, action.args)，
+         *  命令 handler 插件自注册。不传 actions → 无按钮（现状）。error 类自动停留 8s。 */
         show(message: string, options?: {
             type?: "info" | "warning" | "error";
             progress?: boolean;
+            actions?: PluginToastAction[];
         }): Promise<NotificationHandle | undefined>;
     };
     /** E5#69：菜单——插件声明式读写 */
