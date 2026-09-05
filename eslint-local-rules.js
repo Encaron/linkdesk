@@ -805,14 +805,6 @@ const PLUGIN_IMPORT_WHITELIST = new Set([
   "@src/core/utils/CancellationToken",
   "@src/core/services/EncodingService",
   "@src/core/services/FileSearcher",
-  // 壳内 React 组件（跨 WebView 渲染 DOM——暂无法 IPC 化，火种保留）
-  "@src/components/shared/ContextMenu",
-  "@src/components/shared/MenuRenderer",
-  "@src/components/shared/InlineInput",
-  "@src/components/shared/SelectBox",
-  "@src/components/shared/ConfirmDialog",
-  "@src/components/shared/OverlayPortal",
-  "@src/components/views/PluginDetailView",
   // React hooks / context（纯渲染逻辑，无服务端状态）
   "@src/core/react/CoreEvents",
   "@src/core/react/useSendData",

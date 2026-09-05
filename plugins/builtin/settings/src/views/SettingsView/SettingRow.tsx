@@ -2,14 +2,13 @@
  * SettingRow——单个设置行（IPC 读写 + 声明式显隐 + 齿轮菜单 + 色块取色）。
  * 自壳迁入（E5.8#41.14）：@src/core 三依赖全消除——useConfigurationValueIpc → 插件本地 hook；
  * MENU_SLOTS.SettingItemGear → 本地常量（菜单槽 id 是壳稳定契约面，壳 coreCommands 已注册该槽菜单项）。
- * 共享组件（ContextMenu/ColorPicker）走 @src/components/shared 例外表白名单。
- * 依赖方向：SettingRow → renderControl + shared + hooks/helpers/types；被聚合器 SettingsView 消费。
+ * E6#54c：共享组件（ContextMenu/ColorPicker）走 @linkdesk/ui。
+ * 依赖方向：SettingRow → renderControl + @linkdesk/ui + hooks/helpers/types；被聚合器 SettingsView 消费。
  */
 
 import { useState, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import ContextMenu from "@src/components/shared/context-menu/ContextMenu";
-import ColorPicker from "@src/components/shared/color-picker/ColorPicker";
+import { ColorPicker, ContextMenu } from "@linkdesk/ui";
 import { useConfigurationValueIpc, useConfigurationValuesIpc } from "../hooks/useConfigurationValueIpc";
 import renderControl from "./renderControl";
 import { lk } from "./helpers";

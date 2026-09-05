@@ -17,9 +17,8 @@
 import { useTranslation } from "react-i18next";
 import { useCallback, useEffect, useMemo } from "react";
 import { useSerialContext, getOpenPorts, type SerialFrame, type HandshakeState } from "../services/SerialContext";
-import SelectBox from "@src/components/shared/select-box/SelectBox";
-// E5.8#30.17（审视 ④）：壳通用可输入下拉——候选快捷 + 手输非标波特率
-import Combobox from "@src/components/shared/combobox/Combobox";
+// E6#54c：共享控件走 @linkdesk/ui（SelectBox 下拉 + Combobox 可输入下拉 E5.8#30.17 候选快捷 + 手输非标波特率）
+import { Combobox, SelectBox } from "@linkdesk/ui";
 import { useSession } from "../hooks/useSerialSessions";
 import "../styles/ControlPanel.css";
 

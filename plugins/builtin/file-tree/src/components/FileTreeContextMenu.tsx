@@ -7,7 +7,7 @@
  */
 
 import React, { useEffect, type MutableRefObject } from "react";
-import ContextMenu from "@src/components/shared/context-menu/ContextMenu";
+import { ContextMenu } from "@linkdesk/ui"; // E6#54c：共享控件走 @linkdesk/ui
 import type { ExplorerItem } from "../services/FileTreeModel";
 import type { FileTreeHandle } from "./FileTree";
 import { dirname, normalizePath, joinPath } from "../utils/pathUtils";

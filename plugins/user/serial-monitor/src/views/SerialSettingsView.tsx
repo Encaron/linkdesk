@@ -11,9 +11,7 @@ import { useSerialSessions } from "../hooks/useSerialSessions";
 import type { SerialSession } from "../hooks/useSerialSessions";
 // E5.8#30.18：DTR/RTS 运行中切换直发（带端口）+ 口开判断——侧栏开关不只看会话，还驱动硬件电平
 import { useSerialContext, getOpenPorts } from "../services/SerialContext";
-import Toggle from "@src/components/shared/toggle/Toggle";
-import SelectBox from "@src/components/shared/select-box/SelectBox";
-import FormRow from "@src/components/shared/form-row/FormRow";
+import { FormRow, SelectBox, Toggle } from "@linkdesk/ui"; // E6#54c：共享控件走 @linkdesk/ui
 import "../styles/SerialMonitorSidebar.css";
 
 const RAW_TIME_FORMATS = ["HH:mm:ss", "HH:mm:ss:fff", "无"];

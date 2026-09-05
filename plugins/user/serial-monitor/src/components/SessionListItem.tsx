@@ -6,8 +6,7 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import type { SerialSession } from "../hooks/useSerialSessions";
-import { InlineInput } from "@src/components/shared/inline-input/InlineInput";
-import type { InlineInputHandle } from "@src/components/shared/inline-input/InlineInput";
+import { InlineInput, type InlineInputHandle } from "@linkdesk/ui";
 
 interface SessionListItemProps {
   session: SerialSession;

@@ -5,7 +5,7 @@
 
 import { useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { PluginIcon } from "@src/components/shared/plugin-icon/PluginIcon";
+import { PluginIcon } from "@linkdesk/ui";
 
 import { useMarketplacePlugins } from "../services/marketplaceShared";
 import "../styles/MarketplaceSidebar.css";

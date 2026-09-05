@@ -4,7 +4,7 @@
  * 至设置插件 src/views，成为 plugin.json contributes.views[].render 直指的真实组件。
  *
  * @src 依赖处置（#41.14）：
- *   - 共享控件（InlineInput/ContextMenu/ColorPicker/Toggle/...）走 @src/components/shared 例外表白名单
+ *   - 共享控件（InlineInput/ContextMenu/ColorPicker/Toggle/...）走 @linkdesk/ui（E6#54c）
  *   - getFilePath（壳 StorageService）→ linkdesk.path.appDataDir + join("settings.json")（零 @src/core）
  *   - getConfigurationContributions cast 已删——契约补全 LinkDeskConfigurationContribution 命名类型
  * 设计依据：docs/phase5_应用基础设施/V3-Phase5-设计.md §柱子2
@@ -18,7 +18,7 @@
 
 import { useState, useMemo, useCallback, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { InlineInput } from "@src/components/shared/inline-input/InlineInput";
+import { InlineInput } from "@linkdesk/ui";
 import KeybindingSettingsView from "./keybinding-settings/KeybindingSettingsView";
 import SettingRow from "./SettingsView/SettingRow";
 import useSettingsEvents from "./SettingsView/useSettingsEvents";

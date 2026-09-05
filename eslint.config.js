@@ -173,6 +173,12 @@ export default [
               group: ["@src/core/services/ConfigurationService", "@src/core/utils/path/pathUtils"],
               message: "🚫 禁止 import ConfigurationService/pathUtils——请使用 linkdesk.configuration/linkdesk.path API。",
             },
+            // E6#54c：插件共享控件双入口防滑回——@src/components/shared/* 已改由 @linkdesk/ui 分发。
+            // 壳 src/ + src/pool 仍直用源码单一副本（非插件域，本禁令不覆盖）；第三方经 @src 别名物理不可达。
+            {
+              group: ["@src/components/shared/**"],
+              message: "🚫 禁止插件 import @src/components/shared/*——E6#54c 已切 @linkdesk/ui 分发（第三方作者同路径）。请 `import { X } from \"@linkdesk/ui\"`。",
+            },
           ],
         },
       ],

@@ -20,6 +20,15 @@
     "scripts/**/*.{mjs,cjs}"
   ],
   "ignore": [
+    // E6#54c：src/components/shared 单一源码中被插件消费、壳内零消费者的组件——54c 前插件直引
+    //   @src/components/shared/*（knip 将插件 import 边计为 usage，故不报）；54c 后插件改走编译产物
+    //   @linkdesk/ui，这些组件的唯一消费方变成 @linkdesk/ui 的 vite lib 构建（packages/ 域，非本
+    //   工程 scope）→ knip 静态图断边误报 unused。组件仍活：@linkdesk/ui dist 即由它们构建而来。
+    //   豁免语义同下方 src/core/index.ts「桶导出面向插件/独立构建域」——不是死代码。
+    "src/components/shared/file-path-input/FilePathInput.tsx",
+    "src/components/shared/form-row/FormRow.tsx",
+    "src/components/shared/number-input/NumberInput.tsx",
+    "src/components/shared/toggle/Toggle.tsx",
     // E5.8#2：core 聚合器 + 其 re-export 面（@src/core 插件 API 入口，壳内按需直引具体文件——
     //   桶导出面向 plugins/ 排除域与 window.linkdesk 契约，knip 静态图不覆盖 IPC 字符串分发。
     //   ProtocolParser/ConfigurationRegistry/ThemeEngine/api-types/IpcBridgeHandler
@@ -83,9 +92,6 @@
     "scripts/check-version-bump.mjs"
   ],
   "ignoreDependencies": [
-    // E6#54b：@linkdesk/ui 已 repo 接线（file: 依赖 + node_modules symlink），但消费方切换在 54c——
-    //   内置插件 import @linkdesk/ui 后 knip 静态图即覆盖，届时移除本豁免。
-    "@linkdesk/ui",
     // E5.8#2：monaco-languageclient 被 plugins/builtin/editor 直引（排除域——插件共用根 node_modules，独立 vite 构建时解析）
     "monaco-languageclient",
     // E5.8#24 回归修复：pyright 被 electron/ipc/handlers/lsp-handlers.ts 以 spawn 字符串路径运行时调用

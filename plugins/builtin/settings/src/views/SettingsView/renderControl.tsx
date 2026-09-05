@@ -1,22 +1,25 @@
 /**
  * renderControl——根据 property type/uiHint 渲染对应控件。
- * 自壳迁入（E5.8#41.14）：控件 import 全走 @src/components/shared 例外表白名单（零 @src/core）。
- * 依赖方向：renderControl → shared 控件（Toggle/SelectBox/FontFamilySelect/FilePathInput/NumberInput）
+ * 自壳迁入（E5.8#41.14）；E6#54c：控件 import 全走 @linkdesk/ui（零 @src/core）。
+ * 依赖方向：renderControl → @linkdesk/ui 控件（Toggle/SelectBox/FontFamilySelect/FilePathInput/NumberInput）
  *   + ObjectEditor + types；被 SettingRow 消费。
  */
 
 import { useState } from "react"; // E5.8#50.11：背景图导入 busy 态
-import Toggle from "@src/components/shared/toggle/Toggle";
-import SelectBox from "@src/components/shared/select-box/SelectBox";
-import DynamicSelect from "@src/components/shared/select-box/DynamicSelect"; // E5.8#50.23：动态下拉（optionsFrom 渲染时调 listRecipes）
-import FontFamilySelect from "@src/components/shared/font-family-select/FontFamilySelect";
-import FilePathInput from "@src/components/shared/file-path-input/FilePathInput";
-import NumberInput from "@src/components/shared/number-input/NumberInput";
-import Slider from "@src/components/shared/slider/Slider"; // E5.8#50.9：滑杆控件（shared 白名单惯例，非 @src/core 零警告）
-import { inferSliderStep } from "@src/components/shared/slider/sliderStep"; // E5.8#65：滑杆 step 推导（浮点区间连续可调）
-import ThemePicker from "@src/components/shared/theme-picker/ThemePicker"; // E5.8#50.22：主题配方卡片（数据走 window.linkdesk.theme）
-import SegmentedRadio from "@src/components/shared/segmented-radio/SegmentedRadio"; // E5.8#99：分段单选（ghost 双轨制——#91 fontTone/#98 accentSource 收敛共用）
-import Button from "@src/components/shared/button/Button"; // E5.8#99：实心动作按钮（双轨制实心轨——原 settings-action-btn 收编壳共享）
+// E6#54c：共享控件走 @linkdesk/ui（@src/components/shared 双入口已禁——见 eslint 插件块）
+import {
+  Button, // E5.8#99：实心动作按钮（双轨制实心轨——原 settings-action-btn 收编壳共享）
+  DynamicSelect, // E5.8#50.23：动态下拉（optionsFrom 渲染时调 listRecipes）
+  FilePathInput,
+  FontFamilySelect,
+  NumberInput,
+  SegmentedRadio, // E5.8#99：分段单选（ghost 双轨制——#91 fontTone/#98 accentSource 收敛共用）
+  SelectBox,
+  Slider, // E5.8#50.9：滑杆控件
+  ThemePicker, // E5.8#50.22：主题配方卡片（数据走 window.linkdesk.theme）
+  Toggle,
+  inferSliderStep, // E5.8#65：滑杆 step 推导（浮点区间连续可调）
+} from "@linkdesk/ui";
 import { formatSliderValue } from "./sliderValueLabel"; // E5.8#77：滑杆值标签格式化（unit 声明 → ×倍数/px）
 import ObjectEditor from "./ObjectEditor";
 import { mapSegmentedOptions } from "./mapSegmentedOptions"; // E5.8#99：分段单选选项映射（通用 segmented + fontTone/accentSource 预览覆盖共用）

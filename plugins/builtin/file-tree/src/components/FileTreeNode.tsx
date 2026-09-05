@@ -9,7 +9,7 @@ import React from "react";
 import type { ExplorerItem, FileDecoration } from "../services/FileTreeModel";
 import { getIconResolver } from "../services/FileIconResolver";
 import { useClickPreview } from "@src/pool/hooks/useClickPreview";
-import { InlineInput } from "@src/components/shared/inline-input/InlineInput";
+import { InlineInput } from "@linkdesk/ui";
 
 interface FileTreeNodeProps {
   item: ExplorerItem;

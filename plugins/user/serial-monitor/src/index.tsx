@@ -38,11 +38,7 @@ import i18n from "i18next";
 import ControlPanel from "./components/ControlPanel";
 import { useSendData, formatTimestamp, type SendContext, type SendCallbacks } from "./utils/useSendData";
 import SearchBar from "./components/SearchBar";
-import SelectBox from "@src/components/shared/select-box/SelectBox";
-
-// Phase 5b：统一右键菜单——串口监视器命令注册 + 共享 ContextMenu
-// E5.6#11.5h：命令注册走 lk.commands（池侧 registerCommand API），MenuId 用字符串字面量
-import ContextMenu from "@src/components/shared/context-menu/ContextMenu";
+import { ContextMenu, SelectBox } from "@linkdesk/ui"; // E6#54c：共享控件走 @linkdesk/ui（右键 Phase 5b；命令注册走 lk.commands）
 import "./styles/SerialMonitorView.css";
 
 // E5.7#98：浏览器原生 File System Access API 最小面定型（TS DOM lib 未收录，实验性）——

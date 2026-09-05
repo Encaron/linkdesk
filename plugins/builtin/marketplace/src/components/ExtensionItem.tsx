@@ -6,8 +6,7 @@
 
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { PluginIcon } from "@src/components/shared/plugin-icon/PluginIcon";
-import ContextMenu from "@src/components/shared/context-menu/ContextMenu";
+import { ContextMenu, PluginIcon } from "@linkdesk/ui";
 // E5.8#20-c：契约化——插件列表类型走 @linkdesk/contracts（零 @src/core）
 import type { PluginListEntry, PluginListSubset } from "@linkdesk/contracts";
 
