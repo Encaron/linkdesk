@@ -33,6 +33,10 @@ extraResources:
     filter:
       - "**/*"
       - "!.disabled/**"
+  # E6#15c：内置插件 pre-bundle 独立化——随壳发货夹（boot 首启自动装 → userData；保留备份可恢复）。
+  # dev 同夹（<repo>/bundled-plugins）——dev/prod 一致，boot 自动装同走 envService.bundledPluginsDir()。
+  - from: bundled-plugins
+    to: bundled-plugins
   - from: build/icon.ico
     to: icon.ico
   # E5#114d：LSP 语言服务器——需在 ASAR 外（外部 child_process.spawn 读不了 ASAR）

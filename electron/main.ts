@@ -26,6 +26,7 @@ import { registerLspHandlers } from './ipc/handlers/lsp-handlers.js'; // E4V#40s
 import { registerPluginInstallHandlers } from './ipc/handlers/plugin-install-handlers.js'; // E6#11/#13（1.2-5）：装卸更主进程 fs/net 段
 import { registerProtocol } from './plugins/protocol.js';
 import { ingestPluginBundles } from './plugins/bundle-ingest.js'; // E6#7（1.2-4）：启动解压 .linkdesk-plugin
+import { installBundledPlugins } from './plugins/bundled-install.js'; // E6#15c：首启自动装 bundled-plugins（发货夹）
 import { fileService } from './services/file-service.js';
 import { WindowManager } from './windows/window-manager.js';
 import { syncKeybindings } from './windows/keyboard-router.js'; // E5.5#7-p6
@@ -403,6 +404,9 @@ app.whenReady().then(async () => {
   // 必须抢在 loadAllPluginManifests + createWindow 之前——落盘后三表扫描、壳发现、协议解析、
   // 账本 reconcile 才能同见这批包（"放 zip → 重启 → 出现"的启动语义）。失败不阻断（内部吞错）。
   await ingestPluginBundles();
+  // E6#15c：首启自动装 bundled-plugins 发货夹 → userData/plugins/<sub>/<id>/（内置 pre-bundle 随壳分发）。
+  // 与 ingest 同批（registerProtocol 后、三表扫描前）——同见、同幂等；发货源保留为恢复备份。
+  await installBundledPlugins();
   // E5.7#48：Registry 主进程化——静态声明三表（LangDef/Protocol/FileAssociation）预加载，
   // 必须在 createWindow（池 WCV 创建于其内）之前——首个 IPC 查询到达时表已填好，无竞态窗口。
   // 装/卸/重装重扫通道注册一次；壳崩重建走 rebuildShell→createWindow，不经过 whenReady，

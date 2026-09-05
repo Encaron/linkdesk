@@ -47,7 +47,7 @@ export function deriveBundlePluginId(rawManifest: Record<string, unknown>, zipBa
 }
 
 /** 从 zip 顶层（容忍单层 wrapper 目录）定位 plugin.json，返回 { manifestRel, wrapperPrefix } */
-export function locateManifest(zip: JSZip): { manifestRel: string; wrapperPrefix: string } | null {
+function locateManifest(zip: JSZip): { manifestRel: string; wrapperPrefix: string } | null {
   const entries = Object.keys(zip.files);
   // zip 规范路径分隔符恒 '/'——仍容 '\\'（个别打包器）。
   // 🔴 匹配「basename === plugin.json」而非 endsWith("/plugin.json")——顶层平铺包（SDK 默认，
@@ -118,4 +118,98 @@ export async function extractZip(zip: JSZip, target: string, wrapperPrefix: stri
     await fs.writeFile(dest, buf);
   }
   return true;
+}
+
+/**
+ * 单个 `.linkdesk-plugin` → `{homeDir}/<sub>/<pluginId>/` 安装决策——boot 两源共用（1.2-5 P1 抽共享）：
+ * manual ingest（userData 丢包消费）与 bundled 发货（resources/repo bundled-plugins，源保留可恢复）。
+ * 差异全走参数，行为各归各：ingest = deleteSource + 损坏已装即消费；bundled = 源保留 + 损坏重装 + removed 豁免。
+ * 幂等：已装同版本 → （deleteSource 时）消费源 zip；异版本 → 不动源（升级归安装流）。
+ * 单包失败不抛出（记日志）——任何单包问题不拖垮启动。
+ * 返回 outcome 供调用方/测试断言。
+ */
+export type BundleInstallOutcome =
+  | "installed"
+  | "same-version"
+  | "version-kept"
+  | "removed-skipped"
+  | "invalid";
+
+export interface BundleInstallParams {
+  zipPath: string;
+  /** userData 插件家子目录：builtin | user（语义双层原样保留） */
+  sub: string;
+  /** 安装目标家 = {userData}/plugins（envService.userPluginsDir） */
+  homeDir: string;
+  /** 日志前缀（方括号内，如 "bundle-ingest"）——调用方身份 */
+  tag: string;
+  /** 消费语义：装好/同版本后是否删源 zip——manual ingest=true；bundled 发货夹=false（永久备份） */
+  deleteSource: boolean;
+  /** 已装目录 plugin.json 损坏时：true=视为缺失重装恢复（bundled）；false=消费源 zip 跳过（ingest 原语义） */
+  recoverCorrupt: boolean;
+  /** 豁免集（pluginId 命中 → 跳过，不恢复不消费）——bundled removed 标记；ingest 无此语义不传 */
+  skipIfRemoved?: Set<string>;
+}
+
+export async function installBundleCandidate(p: BundleInstallParams): Promise<BundleInstallOutcome> {
+  const { zipPath, sub, homeDir, tag } = p;
+  const base = path.basename(zipPath);
+  try {
+    const buffer = await fs.readFile(zipPath);
+    const opened = await openPluginZip(buffer);
+    if (!opened) {
+      console.warn(`[${tag}] ${base} 顶层无 plugin.json 或解析失败——跳过（zip 保留待查）`);
+      return "invalid";
+    }
+    const { zip, manifest, wrapperPrefix } = opened;
+    const zipBase = base.replace(BUNDLE_EXT + "$", "").replace(/\.linkdesk-plugin$/i, "");
+    const pluginId = deriveBundlePluginId(manifest as unknown as Record<string, unknown>, zipBase);
+    if (!pluginId || !isSafePluginId(pluginId)) {
+      console.warn(`[${tag}] ${base} pluginId 非法（${pluginId ?? "空"}）——跳过（zip 保留）`);
+      return "invalid";
+    }
+
+    // removed 豁免最前：用户故意删除（账本 removed:true）→ 目标目录无论存在/缺失/损坏都不复活。
+    // ingest 无此语义（空集）——位置放这里对 ingest 零影响；对 bundled 是唯一自洽语义
+    // （残留目录 + removed 并存 → removed 胜，永不自动恢复）。
+    if (p.skipIfRemoved?.has(pluginId)) {
+      console.log(`[${tag}] ${pluginId} 在账本标记 removed——跳过自动恢复（用户故意删除）`);
+      return "removed-skipped";
+    }
+
+    const target = path.join(homeDir, sub, pluginId);
+    const targetManifest = path.join(target, "plugin.json");
+
+    if (await fs.stat(targetManifest).then(() => true, () => false)) {
+      try {
+        const existing = parseManifestJson(await fs.readFile(targetManifest, "utf-8"));
+        if (existing.version === manifest.version) {
+          if (p.deleteSource) await fs.unlink(zipPath).catch(() => {});
+          console.log(`[${tag}] ${pluginId}@${manifest.version} 已在 ${sub}/${pluginId}——${p.deleteSource ? "删除重复 zip" : "跳过（源保留）"}`);
+          return "same-version";
+        }
+        console.warn(`[${tag}] ${pluginId} 已装 ${existing.version}，包为 ${manifest.version}——异版本不动（升级归安装流）`);
+        return "version-kept";
+      } catch {
+        if (!p.recoverCorrupt) {
+          await fs.unlink(zipPath).catch(() => {});
+          console.log(`[${tag}] ${pluginId} 已装目录 plugin.json 损坏——消费重复 zip，跳过`);
+          return "same-version";
+        }
+        // recoverCorrupt（bundled）：视为缺失，落下方恢复
+      }
+    }
+
+    const ok = await extractZip(zip, target, wrapperPrefix);
+    if (!ok) {
+      console.warn(`[${tag}] ${pluginId} zip-slip 等安全拒绝——跳过（zip 保留）`);
+      return "invalid";
+    }
+    if (p.deleteSource) await fs.unlink(zipPath).catch(() => {});
+    console.log(`[${tag}] ✅ ${p.deleteSource ? "解压安装" : "自动装"} ${pluginId}@${manifest.version} → ${sub}/${pluginId}${p.deleteSource ? "（删 zip）" : "（源保留）"}`);
+    return "installed";
+  } catch (e) {
+    console.error(`[${tag}] ${base} 处理失败: ${e instanceof Error ? e.message : String(e)}`);
+    return "invalid";
+  }
 }

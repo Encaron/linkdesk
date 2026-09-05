@@ -23,6 +23,8 @@ plugin-sdk-example/node_modules/
 plugin-sdk-example/package-lock.json
 plugin-sdk-example/*.linkdesk-plugin
 plugin-sdk-example/dist/
+# E6#15：插件工作区独立 build 的本地 zip——canonical 发货件收 bundled-plugins/（要提交），本地副本忽略防双份
+plugins/*/*/*.linkdesk-plugin
 
 # === agent / 本机工具文件（保留在磁盘但不入库） ===
 .claude/

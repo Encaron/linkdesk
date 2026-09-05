@@ -20,8 +20,9 @@
  *   - JSON/纯贡献包（theme/lang——无 index.bundle.js）允许落盘：data-role 消费（loader 只注册
  *     贡献，数据走 linkdesk://），不需要 JS 入口。
  *
- * E6#11/#13（1.2-5）：zip 语义（定位/裁决/解压/pluginId 校验）抽共享至 ./bundle-zip.ts——
- * 本模块（boot）与插件安装流（主进程 extract handler）同源同一套规则，boot 行为不变。
+ * E6#11/#13（1.2-5）：单包安装决策抽共享至 ./bundle-zip.ts 的 installBundleCandidate——
+ * 本模块（消费语义 deleteSource）与 bundled-install（发货保留语义）、插件安装流（主进程
+ * extract handler）同源同一套规则。本模块只剩候选扫描 + 共享函数薄调用，boot 行为不变。
  *
  * 铁律 19/20：本模块是启动 boot 调用（main whenReady 一次），非 IPC 监听器——无 ipcRenderer/on。
  */
@@ -29,14 +30,10 @@
 import * as fs from "fs/promises";
 import { existsSync, readdirSync } from "fs";
 import * as path from "path";
-import JSZip from "jszip";
 import { envService } from "../services/env-service.js";
 import { scanPluginSubdirs } from "../services/plugin-file-service.js";
-// E6#55：作者 plugin.json JSONC——全仓唯一解析入口，主进程解压读包同走（与三表预载同源）
-import { parseManifestJson } from "../../src/pluginLoader/jsonc.js";
-import type { PluginManifest } from "../../src/core/api/types.js";
-// 1.2-5 共享 zip 语义（boot 与 install/extract handler 同源）
-import { BUNDLE_EXT, deriveBundlePluginId, extractZip, isSafePluginId, locateManifest } from "./bundle-zip.js";
+// 1.2-5 共享单包安装决策（boot 与 install/extract handler 同源）
+import { BUNDLE_EXT, installBundleCandidate } from "./bundle-zip.js";
 
 /** 顶层直接丢包的默认 sub（最常见手动姿势） */
 const DEFAULT_SUB = "user";
@@ -63,53 +60,16 @@ export async function ingestPluginBundles(): Promise<void> {
   }
   if (candidates.length === 0) return;
 
+  // 消费语义（deleteSource=true）：装好/同版本/损坏已装都删源 zip；损坏已装不重装（recoverCorrupt=false）。
+  // 与 bundled-install 的差异全走 installBundleCandidate 参数，无 removed 豁免集。
   for (const { zipPath, sub } of candidates) {
-    try {
-      const buffer = await fs.readFile(zipPath);
-      const zip = await JSZip.loadAsync(buffer);
-      const located = locateManifest(zip);
-      if (!located) {
-        console.warn(`[bundle-ingest] ${path.basename(zipPath)} 顶层无 plugin.json——跳过（zip 保留待查）`);
-        continue;
-      }
-      const manifestRaw = await zip.files[located.manifestRel].async("string");
-      let manifest: PluginManifest;
-      try {
-        manifest = parseManifestJson(manifestRaw);
-      } catch {
-        console.warn(`[bundle-ingest] ${path.basename(zipPath)} plugin.json 解析失败——跳过（zip 保留）`);
-        continue;
-      }
-      const zipBase = path.basename(zipPath).replace(/\.linkdesk-plugin$/i, "");
-      const pluginId = deriveBundlePluginId(manifest as unknown as Record<string, unknown>, zipBase);
-      if (!pluginId || !isSafePluginId(pluginId)) {
-        console.warn(`[bundle-ingest] ${path.basename(zipPath)} pluginId 非法（${pluginId ?? "空"}）——跳过（zip 保留）`);
-        continue;
-      }
-      const target = path.join(userData, sub, pluginId);
-      const targetManifest = path.join(target, "plugin.json");
-      if (existsSync(targetManifest)) {
-        // 幂等判定：已装同版本 → 删 zip（消费）；异版本 → 保留 zip（更新是 #11→#13 职责）
-        try {
-          const existing = parseManifestJson(await fs.readFile(targetManifest, "utf-8"));
-          if (existing.version === manifest.version) {
-            await fs.unlink(zipPath);
-            console.log(`[bundle-ingest] ${pluginId}@${manifest.version} 已安装——删除重复 zip`);
-          } else {
-            console.warn(`[bundle-ingest] ${pluginId} 已装 ${existing.version}，包为 ${manifest.version}——保留 zip（更新留给安装流）`);
-          }
-        } catch {
-          await fs.unlink(zipPath); // 已装目录 plugin.json 损坏——重复包消费掉，避免每启报错
-        }
-        continue;
-      }
-      const ok = await extractZip(zip, target, located.wrapperPrefix);
-      if (!ok) continue; // zip-slip 等——保留 zip
-      await fs.unlink(zipPath);
-      console.log(`[bundle-ingest] ✅ 解压安装 ${pluginId}@${manifest.version} → ${sub}/${pluginId}（删 zip）`);
-    } catch (e) {
-      // 非致命——单包失败不影响启动与其他包
-      console.error(`[bundle-ingest] ${path.basename(zipPath)} 处理失败: ${e instanceof Error ? e.message : String(e)}`);
-    }
+    await installBundleCandidate({
+      zipPath,
+      sub,
+      homeDir: userData,
+      tag: "bundle-ingest",
+      deleteSource: true,
+      recoverCorrupt: false,
+    });
   }
 }
