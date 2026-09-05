@@ -173,69 +173,82 @@ export async function parseContributions(pluginId: string, c: Record<string, unk
       for (const [containerId, viewDefs] of Object.entries(views)) {
         for (const viewDef of viewDefs) {
           // E5#34b: render 路径相对于插件根目录。
-          // 优先级：1) 调用方传入 pluginRoot  2) import.meta.glob 推导  3) IPC resolvePath（glob 外插件兜底）
-          const resolvedRoot = pluginRoot ?? (() => {
-            const mk = Object.keys(pluginManifestRaw).find(k => extractPluginId(k) === pluginId);
-            return mk ? mk.replace(/\/plugin\.json$/, "") : "";
-          })();
+          // E6#15d 根裁决 = 插件实际数据源（消费切换关键分支）：
+          //   dev 源码树内置 → 构建时 glob 根（render 源码形态 src/views/X.tsx → glob key 直取）；
+          //   prod/运行时 → resolveRuntimePluginRoot = linkdesk://{id}——manifest 已 dist 形态、
+          //   render = views/X.bundle.js（打包改写），构建时 glob 键是源码形态永远匹配不上；
+          //   池 PluginComponent 对 linkdesk:// renderPath 直动态 import（实证可用）——壳侧同款裁决。
+          //   优先级：1) 调用方传入 pluginRoot  2) dev 源码 glob 推导  3) resolveRuntimePluginRoot
+          let resolvedRoot = pluginRoot;
           let renderPath: string;
-          if (resolvedRoot) {
-            renderPath = `${resolvedRoot}/${viewDef.render}`;
-          } else {
-            // glob 外插件（热安装/重装）——根 URL 归一化兜底（resolveRuntimePluginRoot），不依赖调用方传参
+          if (!resolvedRoot && import.meta.env.DEV) {
+            const mk = Object.keys(pluginManifestRaw).find(k => extractPluginId(k) === pluginId);
+            resolvedRoot = mk ? mk.replace(/\/plugin\.json$/, "") : undefined;
+          }
+          if (!resolvedRoot) {
+            // glob 外插件（热安装/重装）/ prod 全量——根 URL 归一化（resolveRuntimePluginRoot），不依赖调用方传参
             try {
-              renderPath = `${await resolveRuntimePluginRoot(pluginId)}/${viewDef.render}`;
+              resolvedRoot = await resolveRuntimePluginRoot(pluginId);
             } catch {
               console.warn(`[loader] ⚠️ 无法解析插件 "${pluginId}" 的根目录——view "${viewDef.id}" 加载失败`);
               continue;
             }
           }
+          renderPath = `${resolvedRoot}/${viewDef.render}`;
+          // E5#114d: 用 viewRenderModules glob 替代 /* @vite-ignore */——
+          // 打包后 Vite 已将 glob key→构建 chunk 映射，不用源码路径。
+          // E5.6#2-fix: glob 外插件（runtime/reinstall）renderPath 是 /@fs/ 绝对路径，
+          // viewRenderModules key 是相对 glob 路径 → 不匹配 → 回退到 /* @vite-ignore */。
+          // E5.7#98：glob loader 已带类型（{ default: ComponentType }）；动态 import 回退按 TS 内建 any（非源码）——声明收窄
+          // E6#15d 消费切换相 🔥：壳侧组件加载 = 装饰用——desc.render 不进池（池按 _renderPath 自 import
+          //   + 注入 index.bundle.css，实证 PluginComponent/bundleCss），且壳页 index.html 无 vendor import-map，
+          //   linkdesk:// dist 视图的 react/jsx-runtime 等裸 specifier 壳侧必然解析失败。**加载失败绝不阻断注册**
+          //   ——旧实现把 registerView 包在同一 try，壳侧 import 抛错 → 视图永不登记 → 容器空（出厂侧栏消失回归）。
+          let renderModule: { default?: React.ComponentType } | undefined;
           try {
-            // E5#114d: 用 viewRenderModules glob 替代 /* @vite-ignore */——
-            // 打包后 Vite 已将 glob key→构建 chunk 映射，不用源码路径。
-            // E5.6#2-fix: glob 外插件（runtime/reinstall）renderPath 是 /@fs/ 绝对路径，
-            // viewRenderModules key 是相对 glob 路径 → 不匹配 → 回退到 /* @vite-ignore */。
-            // E5.7#98：glob loader 已带类型（{ default: ComponentType }）；动态 import 回退按 TS 内建 any（非源码）——声明收窄
-            let renderModule: { default?: React.ComponentType } | undefined;
             const viewLoader = viewRenderModules[renderPath];
             if (viewLoader) {
               renderModule = await viewLoader();
-            } else if (pluginRoot) {
-              // 运行时插件：view 文件不在构建时 glob 中，走动态 import 直读文件
-              renderModule = await import(/* @vite-ignore */ renderPath);
             } else {
-              console.error(
-                `[loader] ❌ view 未找到匹配模块: plugin="${pluginId}" container="${containerId}" render="${renderPath}"`
-              );
-              continue;
+              // E6#15d：非构建时 glob 键 → 运行时 URL 直动态 import（dev /@fs 源码 / prod linkdesk:// dist 视图）。
+              // 旧实现此支路 gate 在从未传入的 pluginRoot（loadPlugin 不传 opts.pluginRoot）→ glob 外/打包插件
+              // 的 contributes.views 恒静默 skip（容器空、出厂侧栏视图不可达）。对齐 resolveViewModule + 池 PluginComponent 同款裁决。
+              renderModule = await import(/* @vite-ignore */ renderPath);
             }
-            const RenderComponent = renderModule?.default ?? renderModule;
-            // E5.6#11b：_renderPath 存 glob key——池 PluginComponent 按此 key O(1) 查找组件。
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const desc: any = {
-              id: viewDef.id,
-              title: viewDef.title ?? "",
-              render: RenderComponent,
-              role: viewDef.role,
-              order: viewDef.order,
-              collapsed: viewDef.collapsed,
-              when: viewDef.when,
-              canToggleVisibility: viewDef.canToggleVisibility,
-              canMoveView: viewDef.canMoveView,
-              hideByDefault: viewDef.hideByDefault,
-              singleViewPaneContainerTitle: viewDef.singleViewPaneContainerTitle,
-              titleDescription: viewDef.titleDescription,
-              showActions: viewDef.showActions as "always" | "whenExpanded" | "default" | undefined,
-              titleTooltip: viewDef.titleTooltip,
-              minHeight: viewDef.minHeight,
-              // E5.8#36.5：titleActions 声明透传——ViewDescriptor 原样存（JSON 可序列化，壳→池直传零加工）
-              titleActions: viewDef.titleActions,
-            };
-            desc._renderPath = renderPath;
+          } catch (e) {
+            console.warn(
+              `[loader] 壳侧 view 组件加载失败（不阻断注册——池按 _renderPath 自载）: plugin="${pluginId}" container="${containerId}" render="${renderPath}"`,
+              errMsg(e)
+            );
+          }
+          const RenderComponent = renderModule?.default ?? renderModule;
+          // E5.6#11b：_renderPath 存 glob key——池 PluginComponent 按此 key O(1) 查找组件。
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const desc: any = {
+            id: viewDef.id,
+            title: viewDef.title ?? "",
+            render: RenderComponent,
+            role: viewDef.role,
+            order: viewDef.order,
+            collapsed: viewDef.collapsed,
+            when: viewDef.when,
+            canToggleVisibility: viewDef.canToggleVisibility,
+            canMoveView: viewDef.canMoveView,
+            hideByDefault: viewDef.hideByDefault,
+            singleViewPaneContainerTitle: viewDef.singleViewPaneContainerTitle,
+            titleDescription: viewDef.titleDescription,
+            showActions: viewDef.showActions as "always" | "whenExpanded" | "default" | undefined,
+            titleTooltip: viewDef.titleTooltip,
+            minHeight: viewDef.minHeight,
+            // E5.8#36.5：titleActions 声明透传——ViewDescriptor 原样存（JSON 可序列化，壳→池直传零加工）
+            titleActions: viewDef.titleActions,
+          };
+          desc._renderPath = renderPath;
+          try {
             ViewContainerService.registerView(pluginId, containerId, desc);
           } catch (e) {
             console.error(
-              `[loader] ❌ 加载 view 失败: plugin="${pluginId}" container="${containerId}" render="${renderPath}"`,
+              `[loader] ❌ view 注册失败: plugin="${pluginId}" container="${containerId}" render="${renderPath}"`,
               e
             );
           }

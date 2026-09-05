@@ -50,8 +50,11 @@ import {
   validatePluginJson,
 } from "./validate.js";
 
-/** 壳提供、插件不得重复打包的依赖——i18next 必须 external（B3：自打实例 → 翻译全空） */
-export const DEFAULT_EXTERNAL = ["react", "react-dom", "react/jsx-runtime", "react-i18next", "i18next"];
+/** 壳提供、插件不得重复打包的依赖——i18next 必须 external（B3：自打实例 → 翻译全空）。
+ *  E6#15d 消费切换实证：`react-dom/client` 必须同列 external——池 import-map 已提供 clean 副本，
+ *  否则作者 import react-dom/client 时其 dev wrapper（createRoot 解析读 `process.env.NODE_ENV`，
+ *  顶层执行）被内联进 bundle → 池运行态 ReferenceError: process is not defined → 视图全崩。 */
+export const DEFAULT_EXTERNAL = ["react", "react-dom", "react-dom/client", "react/jsx-runtime", "react-i18next", "i18next"];
 
 export interface LinkdeskPluginOptions {
   /** 入口文件，默认 plugin.json 的 entry，再缺省 "src/index.tsx"。无 entry（纯 contributes 插件）→ 仅 views 表面 */
@@ -203,6 +206,11 @@ export function defineLinkdeskPluginConfig(options: LinkdeskPluginOptions = {}):
       root,
       configFile: false, // 内层不重载作者 vite.config——避免递归
       plugins: [react()],
+      define: {
+        // E6#15d：生产 define——任何仍被内联的 CJS/dev 模块（react-dom 等）的 process.env.NODE_ENV
+        //   guard 都静态替换为 "production"，池运行态零 process 依赖（防御层；external 已挡主路）。
+        "process.env.NODE_ENV": JSON.stringify("production"),
+      },
       worker: { format: "es" }, // monaco 等真 worker：es 允许动态 import（lib 默认 iife 撞 code-split）
       build: {
         lib: {
