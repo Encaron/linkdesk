@@ -5,7 +5,7 @@
   "type": "module",
   "description": "插件市场（内置）——E6#15 独立化：独立 build 产 .linkdesk-plugin，插件代码零 @src（消费 @linkdesk/ui 零件 + window.linkdesk.*）",
   "scripts": {
-    "build": "node ../../../packages/plugin-sdk/dist/bin.js build",
-    "lint": "node ../../../packages/plugin-sdk/dist/bin.js lint ."
+    "build": "node ../../packages/plugin-sdk/dist/bin.js build",
+    "lint": "node ../../packages/plugin-sdk/dist/bin.js lint ."
   }
 }

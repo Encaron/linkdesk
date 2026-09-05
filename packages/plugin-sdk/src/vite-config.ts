@@ -254,6 +254,12 @@ export function defineLinkdeskPluginConfig(options: LinkdeskPluginOptions = {}):
     await viteBuild({
       root,
       configFile: false, // 内层不重载作者 vite.config——避免递归
+      // E6#15o（2026-09-06）：base "./"——插件独立构建产物自锚定 import.meta.url。
+      //   Vite 默认 base "/" 把 worker/资产引用烤成宿主绝对路径（/assets/x），运行时按宿主 document
+      //   基址解析（打包态池页 = file:// app.asar）→ Monaco web worker 全灭（.ts 跳转挂，实机实证）。
+      //   base "./" 才走 customRelativeUrlMechanisms.es = new URL(rel, import.meta.url)——锚到插件自身
+      //   服务根（prod linkdesk://<id>/、dev dev-server origin），worker/图片/字体引用全对。
+      base: "./",
       plugins: [react()],
       define: {
         // E6#15d：生产 define——任何仍被内联的 CJS/dev 模块（react-dom 等）的 process.env.NODE_ENV

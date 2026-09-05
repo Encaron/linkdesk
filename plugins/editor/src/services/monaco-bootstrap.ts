@@ -79,18 +79,22 @@ function importMonaco() {
  * 此处补充 VS Code 集成层需要的 editorWorkerService / extensionHostWorkerMain / TextMateWorker。
  */
 function setupWorkerFactory(_logger?: unknown): void {
+  // E6#15o（2026-09-06）：?url 产物（SDK base "./" 后为相对串）经 monaco-languageclient
+  // workerFactory 的 new Worker(url) 走——那处按宿主 document 解析（打包池页 = file:// app.asar）
+  // → 必须先在本装配点用 new URL(…, import.meta.url) 锚到插件自身服务根
+  //   （prod linkdesk://<id>/、dev dev-server origin），再交 workerFactory。
   configureWorkerFactory({
     workerLoaders: {
       editorWorkerService: () => ({
-        url: editorWorkerUrl,
+        url: new URL(editorWorkerUrl, import.meta.url).href,
         options: { type: 'module' as const },
       }),
       extensionHostWorkerMain: () => ({
-        url: extensionHostUrl,
+        url: new URL(extensionHostUrl, import.meta.url).href,
         options: { type: 'module' as const },
       }),
       TextMateWorker: () => ({
-        url: textMateUrl,
+        url: new URL(textMateUrl, import.meta.url).href,
         options: { type: 'module' as const },
       }),
     },

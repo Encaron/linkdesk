@@ -5,7 +5,7 @@
   "type": "module",
   "description": "Monaco 编辑器（内置）——E6#15 独立化：独立 build 产 .linkdesk-plugin。monaco-editor + @codingame/* 全 inline 打包，零 @src",
   "scripts": {
-    "build": "node ../../../packages/plugin-sdk/dist/bin.js build",
-    "lint": "node ../../../packages/plugin-sdk/dist/bin.js lint ."
+    "build": "node ../../packages/plugin-sdk/dist/bin.js build",
+    "lint": "node ../../packages/plugin-sdk/dist/bin.js lint ."
   }
 }
