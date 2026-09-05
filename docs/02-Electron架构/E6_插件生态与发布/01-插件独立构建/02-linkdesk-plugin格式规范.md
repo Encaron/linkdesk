@@ -2,6 +2,8 @@
 
 > 对应任务：E6#3、E6#6。定义插件分发文件的标准格式。
 
+> **非新能力声明（设计流程 §8.4 ③）**：零新增 `window.linkdesk.*` API / `app.*` 配置键 / contributes 贡献点字段（minHeight 补录在 schema 副本，非本文引入）。多表面模型 / `render` 改写 / css 聚合 = **既有契约的打包实现扩展**——`contributes.views[].render` 字段与 schema 原样，作者视角源码 plugin.json 不变，`render` 改写是分发态内部表示（指向编译 chunk），loader 走既有 glob 外回退分支零新分支。文中 `contributes.` 提及均为既有契约描述引用。
+
 ---
 
 ## 一、这是什么
@@ -17,17 +19,30 @@
 ```
 hello-world.linkdesk-plugin          ← zip 文件，后缀 .linkdesk-plugin
   ├── plugin.json                    ← 插件声明（必需；分发态为严格 JSON——源可注释/尾逗号，SDK 构建时 jsonc 归一）
+  │                                    🔥 render 字段已改写指向编译表面路径（见 §四）
   ├── icon.svg                       ← 插件图标（可选）
   ├── i18n/                          ← 翻译文件（可选）
   │   ├── en.json
   │   └── zh-CN.json
-  ├── index.bundle.js                ← 编译后的插件代码（必需）
-  │                                    React + 第三方依赖 + 插件代码全打包
-  │                                    不包括 React/react-dom/i18next→壳提供
-  ├── assets/                        ← Vite emit 静态资源（可选；字体/精灵图/音效，import 即自动 emit）
+  ├── index.bundle.js                ← 主入口编译产物（有 entry 才带；见 §四「入口约定」）
+  ├── views/                         ← 每个 contributes.views[].render 一个独立编译表面（有视图才带）
+  │   ├── SearchView.bundle.js
+  │   └── InstalledListView.bundle.js
+  ├── index.bundle.css               ← 全插件聚合 CSS（有 css 才带；loader `<link>` 注入，对标 VS Code 扩展 css）
+  ├── assets/                        ← Vite emit 静态资源（可选；字体/精灵图/音效/worker chunk，import 即自动 emit）
   ├── README.md                      ← 附带说明文档（可选；插件详情/市场数据源，K2）
   └── CHANGELOG.md                   ← 更改日志（可选；详情页已装态变更数据源，K2）
 ```
+
+> 🔥 **多表面模型（E6#15 实证定案）**：一个插件 = 主入口 + 每 `contributes.views[].render` 一个编译表面。
+> 单入口单 bundle 会把贡献的侧栏/面板视图静默丢掉（壳对源码树视图靠 glob 解析，zip 内无源码树——单入口 zip 装进
+> userData 后那些视图无从渲染，E6#15 实证）；**每表面一次独立 vite lib build**（loop-build，closeBundle 编排），
+> 各表面单文件自包含、入口 default 导出零失真。副作用代价 = 各表面共享模块重复打包（react 等壳 external 除外），
+> zip 大一点换正确性。不赌 vite 单 build 多 JS 入口（rollup 把共享图并进首个入口却丢其余入口 default 导出——空 facade，实证）。
+>
+> **无 entry 插件**（纯 contributes.views 的 view-only）→ zip 无 `index.bundle.js`，只 `views/*.bundle.js`。
+> **纯 JSON 插件**（theme/lang，无 React）→ zip 无任何 bundle.js，只有 `plugin.json` + JSON 资源（语言包/主题）→
+> 无需 build（无编译表面），loader 只注册贡献不加载入口（#15b JSON 12）。
 
 ## 三、如何生成
 
@@ -38,28 +53,41 @@ my-plugin/
   plugin.json ─────────┐
   icon.svg ────────────┤
   i18n/en.json ────────┤──→ Vite build ──→ my-plugin.linkdesk-plugin
-  src/index.tsx ───────┘                     (zip)
+  src/index.tsx ───────┤                     (zip)
+  src/views/*.tsx ─────┘
   node_modules/xxx/ ───┘
 ```
 
 Vite 配置（`defineLinkdeskPluginConfig`）：
 1. `plugin.json` → jsonc 解析后以严格 JSON 归一写入（源文件可注释/尾逗号，产物干净供壳加载）；`icon.svg` / `i18n/*.json` / `README.md` / `CHANGELOG.md` → 源码原样复制（存在才带）
-2. `src/index.tsx` → Vite 打包为 `index.bundle.js`
+2. 收集可编译表面 = [主入口?] + 每唯一 `contributes.views[].render`（去重；同名去 `.tsx` 基名 + `_2` 防撞）
+3. **每个表面一次独立 vite lib build**（各自 outDir `.s/<key>`，产物 `surface.bundle.js`）：
    - `react` / `react-dom` / `react-i18next` / `i18next` → external（壳提供）
    - 其他依赖 → inline（自包含）
-   - Vite emit 的 `assets/` 整目录随包
-3. 整个输出目录 → zip → `.linkdesk-plugin`（zip 条目顶层 = plugin.json，无外层目录）
+   - `worker: { format: "es" }`——monaco 等真 worker 需 code-split，lib 默认 iife 撞「worker 不支持 code-split」报错
+   - 单表面 css → 聚合写 `index.bundle.css`；其余 emit（`assets/`/worker chunk）随表面进包
+4. 主入口表面 → `index.bundle.js`；视图表面 → `views/<key>.bundle.js`；dist 内 `plugin.json` 的每 `render`
+   改写指向 `views/<key>.bundle.js`（**源码 plugin.json 保持作者视角 `src/views/X.tsx`**）
+5. 整个输出目录 → zip → `.linkdesk-plugin`（zip 条目顶层 = plugin.json，无外层目录）
 
-## 四、index.bundle.js 约定
+## 四、入口与视图表面约定
+
+**主入口**（有 `plugin.json.entry` 才产出）：导出一个 React 组件作为 default export——
 
 ```javascript
-// index.bundle.js 导出一个 React 组件作为 default export
-export default function HelloWorldView({ isActive }: { isActive: boolean }) {
-  // ...
-}
+// index.bundle.js
+export default function HelloWorldView({ isActive }: { isActive: boolean }) { /* ... */ }
 ```
 
-壳加载时：
+**视图表面**（每 `contributes.views[].render` 一个）：同样 default 导出组件，壳按 dist manifest 的 `render`
+路径 dynamic-import——编译后 `render` 值是 `views/SearchView.bundle.js`，不再是源码 `src/views/SearchView.tsx`。
+壳既有 glob 外回退分支（`dynamic-import ${pluginRoot}/${render}`）读 dist manifest 即命中，无新代码。
+
+**CSS**：`index.bundle.css` 由壳 loader 在激活 bundle 插件时 `<link rel=stylesheet>` 注入、卸载时移除（对标 VS Code
+扩展 css 由宿主 link 的架构模型；chunk 无 html 消费方，vite 不会 style-inject，入口 css 只能等宿主注入）。⚠️
+loader 注入实现随消费切换相（#15d/后续 loader 消费 dist）落地——当前 zip 内 css 已正确聚合，运行时注入待接。
+
+壳加载主入口时：
 ```typescript
 const module = await import("./index.bundle.js");
 const Component = module.default;

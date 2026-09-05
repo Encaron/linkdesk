@@ -1,0 +1,11 @@
+{
+  "name": "linkdesk-plugin-serial-monitor",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "串口监视器（出厂预装，可卸载）——E6#15 独立化：独立 build 产 .linkdesk-plugin。不列 serialport（方案①留壳，走 window.linkdesk.serial.* 数据源后门通道），零 @src",
+  "scripts": {
+    "build": "node ../../../packages/plugin-sdk/dist/bin.js build",
+    "lint": "node ../../../packages/plugin-sdk/dist/bin.js lint ."
+  }
+}

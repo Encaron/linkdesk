@@ -1,5 +1,7 @@
 # loader.ts 改造——支持加载 .linkdesk-plugin 打包格式
 
+> **非新能力声明（设计流程 §8.4 ③）**：本文 = 路径 C（打包格式加载）**实现方案**——`loadPluginFromBundle` 已随 #7/#12 落地（`src/pluginLoader/resolution/runtime.ts` isRuntime 分支 + 既有 glob 外回退 dynamic-import render），非新能力提案，文中 `window.linkdesk.*` / `contributes.` 提及均为既有契约与已落地路径描述。本次修改（§3.2 `render` 改写语义修正 + §3.4 bundle css 注记）零新增契约；§3.4 标注的 css `<link>` 注入为**待实现**注记（消费切换相 #15d 另立案走设计前置）。
+
 > 对应任务：E6#6、#9（#8 已折叠进 #9，2026-08-30 第三批审视）。loader.ts 的 `loadPlugin()` 是插件加载唯一入口——改造需高度谨慎。
 > 改动性质：增量添加，不改现有路径。
 
@@ -92,9 +94,12 @@ async function loadPluginFromBundle(pluginId: string, pluginRoot?: string) {
 验证：npm run dev → 所有现有插件正常加载 ＝ 路径 A/B 没被破坏
 ```
 
-### 3.2 打包格式的 plugin.json 和现有格式完全一样
+### 3.2 打包格式的 plugin.json 和现有格式完全一样（结构同源，render 例外改写）
 
-不需要新字段、不需要新 schema。`.linkdesk-plugin` 里的 `plugin.json` 和源码目录里的 `plugin.json` 是同一份——打包时原样复制。
+schema 同源（同 `plugin.schema.json`）、`contributes` 声明结构同源——**唯一例外是 `contributes.views[].render`**：
+源码 plugin.json 是作者视角 `src/views/X.tsx`；SDK 多表面打包（E6#15，见 [02-linkdesk-plugin格式规范.md §二](02-linkdesk-plugin格式规范.md)）后，dist 内 plugin.json 的
+render 改写指向编译产物 `views/X.bundle.js`。壳 runtime 读 dist manifest → 走既有「glob 外回退」
+dynamic-import `${pluginRoot}/${render}` 即命中编译 chunk——**无需新分支**（E5.7#98 回退现成）。
 
 ### 3.3 index.bundle.js 加载方式
 
@@ -105,6 +110,14 @@ async function loadPluginFromBundle(pluginId: string, pluginRoot?: string) {
 ⚠️ 在单 WebView 下，import() 动态加载是同步 JS 堆内的——和 import.meta.glob 一样。
 多 WebView 恢复后，bundle 加载走 WebView 的 <script> 标签——不影响现在。
 ```
+
+### 3.4 🔥 bundle 插件的 CSS（多表面模型副产物，随消费切换相接）
+
+多表面打包把全插件 css 聚合为 `index.bundle.css`（zip 根，有才带）。**当前壳未消费**——bundle 插件在 dev 下
+还没真正从 dist 加载，css 文件是打包正确性产物。消费切换相（#15d/loader 消费 dist）须补：激活 bundle 插件时
+`<link rel=stylesheet>` 注入 `${pluginRoot}/index.bundle.css`、卸载时移除（对标 VS Code 扩展 css 宿主 link 架构；
+vite 不 style-inject，chunk 无 html 消费方）。实机门禁 = 装多表面 zip → 视图渲染 + 样式在。
+纯 JSON 插件（theme/lang）无 css 无 js——loader 只注册贡献，天然无此问题。
 
 ---
 

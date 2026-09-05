@@ -573,7 +573,11 @@
                   "role": { "type": "string", "enum": ["toolbar", "section"], "default": "section", "description": "容器角色——toolbar 粘顶不被覆盖，section 有折叠头同级替换" },
                   "collapsed": { "type": "boolean", "default": false, "description": "初始折叠状态" },
                   "canToggleVisibility": { "type": "boolean", "default": true, "description": "用户可通过 Views 子菜单切换可见性" },
-                  "canMoveView": { "type": "boolean", "default": true, "description": "用户可将此 view 移到其他容器" },
+                  "canMoveView": { "type": "boolean", "default": true, "description": "用户可将此 view 移到其他容器" },      "minHeight": {
+        "type": "number",
+        "description": "声明视图最小高度——侧栏分区 PaneSash effectiveMinHeight（对标 VS Code view 的 view size）"
+      },
+
                   "hideByDefault": { "type": "boolean", "default": false, "description": "默认隐藏——用户需手动从 Views 菜单开启" },
                   "singleViewPaneContainerTitle": { "type": "string", "description": "单 view 且容器 mergeHeaderWhenSingle 时替代容器 title" },
                   "titleDescription": { "type": "string", "description": "标题旁的副文字——如 (5 files)" },

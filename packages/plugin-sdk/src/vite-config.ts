@@ -10,20 +10,36 @@
  * 构建裁决：
  *   - React/react-dom/react-i18next/**i18next** external（壳提供——插件自打 i18next 实例 → 翻译全空，
  *     B3 教训）；其他依赖 inline 完全自包含。
- *   - 打包 = 内嵌私有插件 `linkdesk-plugin-packager` 的 Vite hook 序列（closeBundle 时机 zip，归属唯一，
- *     bin 只编排不重复 zip）：
- *       configResolved → buildStart 跑 validatePluginJson（build 前校验，失败即 abort，#5b）
- *       → buildEnd 记 failed → closeBundle（failed 或 bundle 缺失则跳过）拷静态清单 + jszip。
+ *   - 🔥 E6#15（多表面打包）：一个插件 = 主入口 + 每 contributes.views[].render 一个编译表面。
+ *     **每个表面一次独立 vite lib build**（closeBundle 编排 N 次内层 `build()`）→ 每表面单文件自包含。
+ *     不赌 vite 单 build 多 JS 入口（实测 entry facade 空 chunk——rollup 把共享图并进首个入口却丢
+ *     其余入口 default 导出；E6#15 实证）。各表面共享模块在表面间重复打包（react 等 external 除外，
+ *     css 内联进各表面再合并去重）——zip 大一点，换来入口导出零失真 + 逐表面失败隔离。
+ *     zip 内布局：
+ *         index.bundle.js            主入口（entry default 组件 + 模块级贡献副作用）
+ *         views/<View>.bundle.js     每 contributes.views[].render 的独立表面（独立 lib build 产物）
+ *         index.bundle.css           全插件聚合 css（有则 loader <link> 注入，与 js 并列）
+ *     dist/ 内 plugin.json 的 render 字段改写指向 `views/<View>.bundle.js`（编译产物路径）——
+ *     源码 plugin.json 保持作者视角 `src/views/X.tsx`；壳 loader 读 dist manifest 后
+ *     dynamic-import `${root}/views/X.bundle.js`（既有 glob 外回退分支，E5.7#98）即命中。
+ *   - CSS：每表面 lib build cssCodeSplit 强制 false → 各产单 css → packager 合并为 `index.bundle.css`
+ *     （各表面 css 规则全局性，合并 = 源码模式壳 build 全插件 css 合一语义）。壳 loader 激活 bundle
+ *     插件时 `<link rel=stylesheet>` 注入、卸载移除（对标 VS Code extension css 由宿主 link 的架构模型；
+ *     入口同步 css 不会被 vite style-inject，entry css 期待 html <link>，插件 chunk 无 html 消费方）。
+ *   - Worker（monaco 等）：`worker.format:"es"`——lib 模式 worker 默认 iife 撞 code-split 报错
+ *     （Invalid value "iife" for worker.format），es 允许 worker 内动态 import。
+ *   - 打包 = 内嵌私有插件 `linkdesk-plugin-packager` 的 Vite hook 序列。外层 build 只做哑入口
+ *     （虚拟模块）承载 closeBundle——真实工作全在 closeBundle：逐表面 lib build → 汇总 pkgDir →
+ *     静态清单 + jszip。归属唯一（packager），bin 只编排不重复 zip。
  *   - 静态清单从**源码 pluginRoot** 拷贝（非 outDir——outDir 每次 emptyOutDir 清空），含 plugin.json/
- *     icon/README.md/CHANGELOG.md（K2 缝隙）/ i18n 声明文件；build 产物 index.bundle.js + assets/ 从
- *     outDir 深拷贝进 pkgDir。
+ *     icon/README.md/CHANGELOG.md（K2 缝隙）/ i18n 声明文件。
  *   - zip 条目相对 pkgDir、正斜杠、无外层目录（loader 解压期待 plugin.json 在顶，E6#7 契约）。
  *   - dev/serve 不触发 build 系 hook → packager 天然只在 build 跑。
  */
 
 import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { basename, dirname, join, relative, resolve } from "node:path";
-import type { Plugin, UserConfig } from "vite";
+import { basename, dirname, extname, join, relative, resolve } from "node:path";
+import { build as viteBuild, type Plugin, type UserConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import JSZip from "jszip";
 import {
@@ -35,10 +51,10 @@ import {
 } from "./validate.js";
 
 /** 壳提供、插件不得重复打包的依赖——i18next 必须 external（B3：自打实例 → 翻译全空） */
-const DEFAULT_EXTERNAL = ["react", "react-dom", "react/jsx-runtime", "react-i18next", "i18next"];
+export const DEFAULT_EXTERNAL = ["react", "react-dom", "react/jsx-runtime", "react-i18next", "i18next"];
 
 export interface LinkdeskPluginOptions {
-  /** 入口文件，默认 plugin.json 的 entry，再缺省 "src/index.tsx" */
+  /** 入口文件，默认 plugin.json 的 entry，再缺省 "src/index.tsx"。无 entry（纯 contributes 插件）→ 仅 views 表面 */
   entry?: string;
   /** 输出目录，默认 "dist" */
   outDir?: string;
@@ -46,18 +62,83 @@ export interface LinkdeskPluginOptions {
   external?: string[];
 }
 
-/**
- * 从 srcDir 深拷贝到 destDir，跳过顶层 skip 名——packager 把 Vite build 产物移入 pkgDir 用。
- * pkgDir 建在 outDir 内，靠 skip 自身名避免递归进 zip 目录。
- */
-function copyTree(srcDir: string, destDir: string, skipNames: Set<string>): void {
+/* ── 多表面收集（E6#15） ─────────────────────────────────────────────── */
+
+interface Surface {
+  /** 唯一键——entry="index"，视图 = 去重文件名（可含 `_2` 后缀防撞） */
+  key: string;
+  /** 最终相对 zip 根路径（index.bundle.js / views/<key>.bundle.js） */
+  finalName: string;
+  /** 绝对入口文件 */
+  abs: string;
+}
+
+/** 收集可编译表面 = [entry?] + 每唯一 contributes.views[].render */
+function collectSurfaces(root: string, manifest: unknown, options: LinkdeskPluginOptions): Surface[] {
+  const entry = options.entry ?? (manifest as { entry?: unknown })?.entry;
+  const entryAbs = typeof entry === "string" ? resolve(root, entry) : undefined;
+  if (entryAbs && !existsSync(entryAbs)) {
+    throw new Error(
+      `入口不存在：${relative(root, entryAbs)}——在 plugin.json 声明 entry 或传 defineLinkdeskPluginConfig({ entry })`,
+    );
+  }
+
+  const surfaces: Surface[] = [];
+  const usedKeys = new Set<string>();
+  if (entryAbs) {
+    surfaces.push({ key: "index", finalName: "index.bundle.js", abs: entryAbs });
+    usedKeys.add("index");
+  }
+
+  const contributes = (manifest as { contributes?: unknown })?.contributes as
+    | { views?: Record<string, Array<{ render?: unknown }>> }
+    | undefined;
+  const views = contributes?.views ?? {};
+  const seenRel = new Set<string>();
+  for (const viewDefs of Object.values(views)) {
+    if (!Array.isArray(viewDefs)) continue;
+    for (const vd of viewDefs) {
+      const rel = typeof vd?.render === "string" ? vd.render : undefined;
+      if (!rel || !rel.endsWith(".tsx") || seenRel.has(rel)) continue;
+      const abs = resolve(root, rel);
+      if (!existsSync(abs)) continue; // render 指向缺失文件——validate 已报，build 不 abort
+      seenRel.add(rel);
+      let key = basename(rel, extname(rel)).replace(/[^A-Za-z0-9_.-]/g, "_");
+      while (usedKeys.has(key)) key += "_";
+      usedKeys.add(key);
+      surfaces.push({ key, finalName: `views/${key}.bundle.js`, abs });
+    }
+  }
+  return surfaces;
+}
+
+/** dist plugin.json 深变换——把每 render 改写为编译 chunk 相对路径（按 rel → finalName 映射） */
+function rewriteDistManifest(manifest: unknown, surfaceByRel: Map<string, string>): unknown {
+  const clone: unknown = JSON.parse(JSON.stringify(manifest));
+  const contributes = (clone as { contributes?: unknown })?.contributes as
+    | { views?: Record<string, Array<{ render?: unknown }>> }
+    | undefined;
+  const views = contributes?.views;
+  if (!views) return clone;
+  for (const viewDefs of Object.values(views)) {
+    if (!Array.isArray(viewDefs)) continue;
+    for (const vd of viewDefs) {
+      const rel = typeof vd?.render === "string" ? vd.render : undefined;
+      if (rel && surfaceByRel.has(rel)) vd.render = surfaceByRel.get(rel);
+    }
+  }
+  return clone;
+}
+
+/** 从 srcDir 深拷贝到 destDir——packager 把内层 build 的 assets/ 等子夹汇总进 pkgDir。
+ * 同名冲突 = 同内容同哈希的重复文件（多表面共享同一资产），跳过即对（逐字节一致）。 */
+function copyTree(srcDir: string, destDir: string): void {
   mkdirSync(destDir, { recursive: true });
   for (const e of readdirSync(srcDir, { withFileTypes: true })) {
-    if (skipNames.has(e.name)) continue;
     const s = join(srcDir, e.name);
     const d = join(destDir, e.name);
-    if (e.isDirectory()) copyTree(s, d, new Set());
-    else copyFileSync(s, d);
+    if (e.isDirectory()) copyTree(s, d);
+    else if (!existsSync(d)) copyFileSync(s, d);
   }
 }
 
@@ -94,20 +175,83 @@ export function defineLinkdeskPluginConfig(options: LinkdeskPluginOptions = {}):
     );
   }
 
-  const declaredEntry = typeof (manifest as { entry?: unknown })?.entry === "string"
-    ? (manifest as { entry: string }).entry
-    : "src/index.tsx";
-  const entry = resolve(root, options.entry ?? declaredEntry);
-  if (!existsSync(entry)) {
+  const surfaces = collectSurfaces(root, manifest, options);
+  if (surfaces.length === 0) {
     throw new Error(
-      `入口不存在：${relative(root, entry)}——在 plugin.json 声明 entry 或传 defineLinkdeskPluginConfig({ entry })`,
+      `无可编译表面——plugin.json 需声明 entry 或 contributes.views[].render（当前两者皆缺）`,
     );
+  }
+  const relToFinal = new Map<string, string>();
+  for (const s of surfaces) {
+    if (s.key !== "index") {
+      const rel = relative(root, s.abs).replace(/\\/g, "/");
+      relToFinal.set(rel, s.finalName);
+      relToFinal.set(s.abs, s.finalName);
+    }
   }
 
   const id = derivePluginId(manifest, basename(root));
   const outDir = resolve(root, options.outDir ?? "dist");
   const pkgName = `${id}.linkdesk-plugin`;
   const pkgDir = join(outDir, pkgName);
+  const external = [...DEFAULT_EXTERNAL, ...(options.external ?? [])];
+
+  /** 单表面 lib build——独立 outDir 子夹（.s/<key>），产物 surface.bundle.js（+ css/assets/worker） */
+  async function buildSurface(surface: Surface): Promise<void> {
+    const surfaceOut = join(outDir, ".s", surface.key);
+    await viteBuild({
+      root,
+      configFile: false, // 内层不重载作者 vite.config——避免递归
+      plugins: [react()],
+      worker: { format: "es" }, // monaco 等真 worker：es 允许动态 import（lib 默认 iife 撞 code-split）
+      build: {
+        lib: {
+          entry: surface.abs,
+          formats: ["es"],
+          // 全名含 .js——fileName 不带后缀时 Rollup 不自动补
+          fileName: () => "surface.bundle.js",
+        },
+        outDir: surfaceOut,
+        emptyOutDir: true,
+        cssCodeSplit: false, // 单 css/表面 → 汇总 index.bundle.css
+        rollupOptions: { external },
+        sourcemap: false,
+        minify: "esbuild",
+      },
+    });
+  }
+
+  /** 汇总：逐表面 surface.bundle.js → 终名；css 合并；assets/ 同深拷贝 */
+  async function assemblePkgDir(): Promise<void> {
+    rmSync(pkgDir, { recursive: true, force: true });
+    mkdirSync(pkgDir, { recursive: true });
+
+    let cssBuffer = Buffer.alloc(0);
+
+    for (const s of surfaces) {
+      const surfaceOut = join(outDir, ".s", s.key);
+      const mainJs = join(surfaceOut, "surface.bundle.js");
+      if (!existsSync(mainJs)) continue; // 该表面 build 失败/无产物——跳过（失败隔离）
+      const dest = join(pkgDir, s.finalName);
+      mkdirSync(dirname(dest), { recursive: true });
+      copyFileSync(mainJs, dest);
+
+      // css + 其余（assets/ worker 等）：排除 surface.bundle.js 后整夹同深拷入，css 汇聚暂存
+      for (const e of readdirSync(surfaceOut, { withFileTypes: true })) {
+        if (e.name === "surface.bundle.js") continue;
+        const sPath = join(surfaceOut, e.name);
+        if (e.isFile() && e.name.endsWith(".css")) {
+          cssBuffer = Buffer.concat([cssBuffer, readFileSync(sPath)]);
+          continue;
+        }
+        if (e.isDirectory()) copyTree(sPath, join(pkgDir, e.name));
+        else copyFileSync(sPath, join(pkgDir, e.name));
+      }
+    }
+    if (cssBuffer.length > 0) {
+      writeFileSync(join(pkgDir, "index.bundle.css"), cssBuffer);
+    }
+  }
 
   /** 打包器——zip/校验的唯一归属点 */
   let failed = false;
@@ -120,67 +264,88 @@ export function defineLinkdeskPluginConfig(options: LinkdeskPluginOptions = {}):
       }
     },
     buildEnd(err) {
-      // Rollup 在 build 失败（含 buildStart 抛错）时也调 buildEnd(err) + closeBundle——
-      // failed 是权威闸门，防残留 outDir 产物被陈旧 zip（emptyOutDir 只在正常 generate 清 outDir）
       if (err) {
         failed = true;
-        this.warn(`[linkdesk-plugin-packager] build 失败（${err.message}），跳过打包`);
+        this.warn(`[linkdesk-plugin-packager] 校验/哑 build 失败（${err.message}），跳过打包`);
       }
     },
     async closeBundle() {
       if (failed) return;
-      if (!existsSync(join(outDir, "index.bundle.js"))) return;
-      let latest: unknown;
       try {
-        latest = readPluginManifest(manifestPath);
-      } catch {
-        return;
+        rmSync(join(outDir, ".s"), { recursive: true, force: true });
+        // 逐表面独立 lib build（fail 隔离：某一表面炸不阻断其他表面）
+        const results: Array<{ key: string; ok: boolean }> = [];
+        for (const s of surfaces) {
+          try {
+            await buildSurface(s);
+            results.push({ key: s.key, ok: true });
+          } catch (e) {
+            results.push({ key: s.key, ok: false });
+            this.warn(
+              `[linkdesk-plugin-packager] 表面 "${s.key}" build 失败：${e instanceof Error ? e.message : String(e)}`,
+            );
+          }
+        }
+        const ok = results.filter((r) => r.ok);
+        if (ok.length === 0) {
+          this.warn("[linkdesk-plugin-packager] 全部表面 build 失败，跳过打包");
+          return;
+        }
+
+        await assemblePkgDir();
+
+        // 静态清单从源码 pluginRoot 拷入（缺省忽略）
+        // plugin.json 例外——jsonc 归一为严格 JSON + E6#15 render 改写（dist 视角：render 指编译表面路径）
+        const distManifest = rewriteDistManifest(manifest, relToFinal);
+        writeFileSync(join(pkgDir, "plugin.json"), `${JSON.stringify(distManifest, null, 2)}\n`, "utf8");
+        for (const decl of collectI18nDecls(manifest)) copyFileInto(root, pkgDir, decl.rel);
+        copyFileInto(root, pkgDir, "icon.svg");
+        copyFileInto(root, pkgDir, "README.md");
+        copyFileInto(root, pkgDir, "CHANGELOG.md");
+        const iconRel = (manifest as { icon?: unknown })?.icon;
+        if (typeof iconRel === "string" && !iconRel.includes("\\")) copyFileInto(root, pkgDir, iconRel);
+
+        // jszip 打包 → 项目根单文件
+        const zip = new JSZip();
+        zipTree(zip, pkgDir, "");
+        const buf = await zip.generateAsync({ type: "nodebuffer", compression: "DEFLATE" });
+        const zipPath = join(root, pkgName);
+        writeFileSync(zipPath, buf);
+        const kb = (buf.byteLength / 1024).toFixed(1);
+        const failedKeys = results.filter((r) => !r.ok).map((r) => r.key);
+        const warnSuffix = failedKeys.length > 0 ? `（⚠ 失败表面: ${failedKeys.join(", ")}）` : "";
+        console.log(
+          `[linkdesk-plugin-sdk] ✔ ${pkgName}（${kb} KB, ${ok.length}/${surfaces.length} 表面）→ ${relative(process.cwd(), zipPath)}${warnSuffix}`,
+        );
+        rmSync(join(outDir, ".s"), { recursive: true, force: true });
+      } catch (e) {
+        this.warn(`[linkdesk-plugin-packager] 打包失败：${e instanceof Error ? e.message : String(e)}`);
       }
+    },
+  };
 
-      // 1) 重建 pkgDir（#4a 目录产物保留；下次 build 由 emptyOutDir 清旧）
-      rmSync(pkgDir, { recursive: true, force: true });
-      mkdirSync(pkgDir, { recursive: true });
-
-      // 2) Vite build 产物（index.bundle.js + assets/**）→ pkgDir（skip 自身防递归）
-      copyTree(outDir, pkgDir, new Set([pkgName]));
-
-      // 3) 静态清单从源码 pluginRoot 拷入（缺省忽略）
-      //    plugin.json 例外——jsonc 归一为严格 JSON 再落 pkgDir：作者源文件可注释/尾逗号（发布向 jsonc 解析），
-      //    但分发态清单须干净（壳加载走严格 JSON，H12；source 里注释是作者便利，不该进产物）
-      writeFileSync(join(pkgDir, "plugin.json"), `${JSON.stringify(latest, null, 2)}\n`, "utf8");
-      for (const decl of collectI18nDecls(latest)) copyFileInto(root, pkgDir, decl.rel);
-      copyFileInto(root, pkgDir, "icon.svg");
-      copyFileInto(root, pkgDir, "README.md");
-      copyFileInto(root, pkgDir, "CHANGELOG.md");
-      const iconRel = (latest as { icon?: unknown })?.icon;
-      if (typeof iconRel === "string" && !iconRel.includes("\\")) copyFileInto(root, pkgDir, iconRel);
-
-      // 4) jszip 打包 → 项目根单文件
-      const zip = new JSZip();
-      zipTree(zip, pkgDir, "");
-      const buf = await zip.generateAsync({ type: "nodebuffer", compression: "DEFLATE" });
-      const zipPath = join(root, pkgName);
-      writeFileSync(zipPath, buf);
-      const kb = (buf.byteLength / 1024).toFixed(1);
-      console.log(`[linkdesk-plugin-sdk] ✔ ${pkgName}（${kb} KB）→ ${relative(process.cwd(), zipPath)}`);
+  /** 哑虚拟入口——外层 build 只为承载 closeBundle（真实构建在 closeBundle 内逐表面执行） */
+  const dummyEntry = "__linkdesk_dummy__";
+  const virtualDummy: Plugin = {
+    name: "linkdesk-plugin-dummy-entry",
+    resolveId(source) {
+      if (source === dummyEntry) return "\0" + dummyEntry;
+    },
+    load(id) {
+      if (id === "\0" + dummyEntry) return "export {};";
     },
   };
 
   return {
     root,
-    plugins: [react(), packager],
+    plugins: [react(), virtualDummy, packager],
     build: {
-      lib: {
-        entry,
-        formats: ["es"],
-        // 全名含 .js——fileName 不带后缀时 Rollup 不自动补，closeBundle 的 index.bundle.js 断言会扑空
-        fileName: () => "index.bundle.js",
+      rollupOptions: {
+        input: dummyEntry,
+        output: { format: "es" },
       },
       outDir,
       emptyOutDir: true,
-      rollupOptions: {
-        external: [...DEFAULT_EXTERNAL, ...(options.external ?? [])],
-      },
       sourcemap: false,
       minify: "esbuild",
     },
