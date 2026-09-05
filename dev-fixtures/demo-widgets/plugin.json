@@ -1,0 +1,13 @@
+{
+  "pluginId": "demo-widgets",
+  "name": "Demo Widgets",
+  "version": "1.0.0",
+  "description": "E6#54e 第三方独立构建 UI 演示 fixture（虚构插件，非真实运行时插件）——@linkdesk/ui 控件 + token 契约正例",
+  "author": "fixture",
+  "distribution": "user",
+  "entry": "src/index.tsx",
+  "appearsIn": { "tabBar": true },
+  "tabBehavior": {
+    "singleton": true
+  }
+}

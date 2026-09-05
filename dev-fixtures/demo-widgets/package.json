@@ -1,0 +1,11 @@
+{
+  "name": "demo-widgets",
+  "version": "1.0.0",
+  "private": true,
+  "description": "E6#54e 第三方独立构建 UI 演示 fixture（虚构插件）——构建复用 plugin-sdk（packages 现编 bin），零独立 npm install",
+  "type": "module",
+  "scripts": {
+    "build": "node ../../packages/plugin-sdk/dist/bin.js build",
+    "lint": "node ../../packages/plugin-sdk/dist/bin.js lint ."
+  }
+}
