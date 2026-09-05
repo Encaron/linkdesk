@@ -21,6 +21,7 @@
     "electron:build": "npm run build && tsc -p electron/tsconfig.json && node scripts/electron-commonjs-fix.cjs && electron-builder",
     "build:plugins": "node scripts/build-plugins.mjs",
     "dev:plugins": "node scripts/build-plugins.mjs --watch",
+    "toast": "node dev-fixtures/toast.mjs",
     "contracts:gen": "node scripts/generate-contract.mjs",
     "contracts:check": "node scripts/generate-contract.mjs --check",
     "release:mark": "node scripts/check-npm-release.mjs --mark",
