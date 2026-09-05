@@ -29,6 +29,10 @@ interface PoolToastApi {
 
 /** VS Code 默认通知行高——对标壳 ToastContainer */
 const ROW_HEIGHT = 42;
+/** 退场过渡时长（ms）——必须与 ToastHost.css `.toast-item.toast-exiting { transition-duration: 200ms }` 对齐 */
+const EXIT_ANIM_MS = 200;
+/** 兜底移除余量（ms）——退场期后若 transitionend 仍未触发，强制清理（幂等 handleExited） */
+const EXIT_CLEANUP_MARGIN_MS = 80;
 
 /** MouseEvent.button 中键——用标识符比较绕开 no-restricted-syntax 字面量误报 */
 const MIDDLE_BUTTON = 1;
@@ -128,6 +132,13 @@ function ToastItemView({ item, exiting, onDismiss, onAction, onExited }: {
   const [visible, setVisible] = useState(false);
   const [mounted, setMounted] = useState(false);
 
+  // onExited 每次渲染新建（ToastHost 内联箭头）——进 effect deps 会让退场 effect 随父重渲染重跑、重置计时。
+  // 用 ref 存最新引用，effect 只在 [exiting, visible] 变化时跑。
+  const onExitedRef = useRef(onExited);
+  onExitedRef.current = onExited;
+  // 退场双 rAF 句柄——cleanup 时取消未触发的 rAF
+  const exitRafRef = useRef<number | null>(null);
+
   // 首次渲染后触发入场动画（对标壳 NotificationItem 双 rAF）
   useEffect(() => {
     const id = requestAnimationFrame(() => {
@@ -139,10 +150,25 @@ function ToastItemView({ item, exiting, onDismiss, onAction, onExited }: {
   }, []);
 
   // 退出动画——exiting 时去掉 toast-fade-in 触发 CSS 反向动画（对标壳 E3.5 #TO03）
+  // 🔥 2026-09-05 残骸 bug 修复：原 `if (exiting && visible) setVisible(false)` 直接跑时，React 常把
+  //    「加 toast-exiting」与「去 toast-fade-in」提交在同一帧（无中间 painted 态）→ opacity 1→0 同帧瞬跳、
+  //    不发 transitionend → onTransitionEnd 永不满足 → 退场节点永不从 DOM 移除（实测堆积 33 条 opacity 0 残骸）。
+  //    修法：退场对齐入场双 rAF 跨帧——先让「toast-fade-in + toast-exiting」被 paint，下一帧再去 fade-in，
+  //    过渡真跑、transitionend 真触发（onExited 照常由 onTransitionEnd 精确触发）。
+  //    另加兜底：退场期（EXIT_ANIM_MS + 余量）后强制 onExited——即便 transitionend 因故丢失也不留残骸
+  //    （handleExited 幂等，transitionend 先到先移、兜底后到无害；`!visible` 的从未显示 toast 也走此路径被清）。
   useEffect(() => {
-    if (exiting && visible) {
-      setVisible(false);
+    if (!exiting) return;
+    if (visible) {
+      exitRafRef.current = requestAnimationFrame(() => {
+        exitRafRef.current = requestAnimationFrame(() => setVisible(false));
+      });
     }
+    const fallback = window.setTimeout(() => onExitedRef.current(), EXIT_ANIM_MS + EXIT_CLEANUP_MARGIN_MS);
+    return () => {
+      if (exitRafRef.current !== null) window.cancelAnimationFrame(exitRafRef.current);
+      window.clearTimeout(fallback);
+    };
   }, [exiting, visible]);
 
   return (
