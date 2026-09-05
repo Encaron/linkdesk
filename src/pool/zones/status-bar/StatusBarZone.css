@@ -181,8 +181,11 @@
 }
 
 .notif-panel-item {
+  /* 🔥 2026-09-05：DOM 详情行先、主行后（StatusBarZone.tsx 已对齐 VS Code）。column-reverse 把先入 DOM
+     的详情行排到视觉底部 → 视觉 = 消息在上/按钮在下；DOM 序决定键盘 Tab 序 → 按钮仍先到（VS Code 同款，
+     notificationsViewer.ts「the details row appears first ... for better keyboard access」）。别改回主行先。 */
   display: flex;
-  flex-direction: column-reverse; /* VS Code: details first for keyboard access */
+  flex-direction: column-reverse;
   padding: 8px;
   border-bottom: 1px solid var(--separator);
 }

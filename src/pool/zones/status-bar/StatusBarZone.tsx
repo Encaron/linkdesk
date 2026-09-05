@@ -135,20 +135,10 @@ function StatusBarZone({ statusBar }: { statusBar: StatusBarLayout }) {
                     </div>
                     {group.items.map((item) => (
                       <div key={item.id} className="notif-panel-item">
-                        <div className="notif-main-row">
-                          <span className={`codicon ${item.iconClass} notif-icon`} />
-                          <span className="notif-panel-msg">{item.message}</span>
-                          {item.timeLabel && (
-                            <span className="notif-panel-time">{item.timeLabel}</span>
-                          )}
-                          <button
-                            className="notif-panel-dismiss"
-                            onClick={() => emitNotif("notif:dismiss", item.id)}
-                            title={notif.dismissTitle}
-                          >
-                            <span className="codicon codicon-close" />
-                          </button>
-                        </div>
+                        {/* 🔥 2026-09-05 对齐 VS Code：详情行先放 DOM（details-first）。与 .notif-panel-item
+                            column-reverse 组合后 = 视觉消息行在上、按钮在下；键盘 Tab 序仍按钮先到（DOM 序决定
+                            焦点序，与 column-reverse 视觉无关）——VS Code notificationsViewer.ts renderTemplate 同款
+                            （原实现主行先放 + column-reverse = 视觉按钮跑消息上面，与 VS Code 正好相反）。 */}
                         {(item.sourceLabel || item.actions.length > 0) && (
                           <div className="notif-details-row">
                             {item.sourceLabel && <span className="notif-source">{item.sourceLabel}</span>}
@@ -167,6 +157,20 @@ function StatusBarZone({ statusBar }: { statusBar: StatusBarLayout }) {
                             )}
                           </div>
                         )}
+                        <div className="notif-main-row">
+                          <span className={`codicon ${item.iconClass} notif-icon`} />
+                          <span className="notif-panel-msg">{item.message}</span>
+                          {item.timeLabel && (
+                            <span className="notif-panel-time">{item.timeLabel}</span>
+                          )}
+                          <button
+                            className="notif-panel-dismiss"
+                            onClick={() => emitNotif("notif:dismiss", item.id)}
+                            title={notif.dismissTitle}
+                          >
+                            <span className="codicon codicon-close" />
+                          </button>
+                        </div>
                       </div>
                     ))}
                   </div>
