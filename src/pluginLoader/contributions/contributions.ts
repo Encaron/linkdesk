@@ -277,13 +277,21 @@ async function resolveRuntimePluginRoot(pluginId: string): Promise<string> {
  *
  * dev：manifest.entry 源码路径（/@fs 下由 Vite 即时编译）；entryless 插件返回 null
  *   （纯 views/commands 贡献——生命周期契约不绑 entry）。
- * prod（E6 打包格式）：一律返回预构建 chunk 名 `<pluginId>.js`——
+ * prod（E6 打包格式）：manifest.entry 返回预构建 chunk 名 `<pluginId>.js`——
  *   vite.config 多入口产物名 = 插件目录名（dist/plugins/<sub>/<id>.js），
  *   entry 字段是源码路径，在打包格式中不参与入口解析。
  *
  * E6#7（1.2-4）：可选 4 参 opts.bundle——目录含 index.bundle.js 的 .linkdesk-plugin 解压产物
  *   （磁盘格式事实）入口恒 "index.bundle.js"，不随 dev/prod 与 manifest.entry 变（SDK 打包时
  *   把作者 entry 源码路径原样拷进 plugin.json，不可当入口判据——检测走 state.isBundlePlugin）。
+ *
+ * E6#15d G3a（纯数据包对称跳过）：prod 非 bundle 且 **无 manifest.entry** → 返回 null——
+ *   theme×10/lang×2 这类纯贡献包（contributes.themes/languages，无 JS 产物）与 entryless-view
+ *   插件（视图走 contributes.views[].render 由 ViewContainerService 加载）都不存在主 JS。
+ *   旧实现 prod 一律返 `${pluginId}.js` → 解压产物目录里没有这文件 → linkdesk:// 404 →
+ *   「加载失败——可能未构建」误报 toast（不阻断但每次首启弹 12 个）。dev `manifest.entry || null`
+ *   与 glob 分支 `role==="data"`（runtime.ts:294）早已对称跳过入口 import——此处补 prod 侧同一缺口。
+ *   跳过只豁免主入口 import：loadPluginLifecycle 贡献注册 + 主题/语言数据加载照走，loadState 照常 active。
  */
 export function runtimeEntryPath(
   manifest: PluginManifest,
@@ -293,6 +301,7 @@ export function runtimeEntryPath(
 ): string | null {
   if (opts?.bundle) return "index.bundle.js";
   if (isDev) return manifest.entry || null;
+  if (!manifest.entry) return null;
   return `${pluginId}.js`;
 }
 

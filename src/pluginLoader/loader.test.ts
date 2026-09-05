@@ -265,8 +265,8 @@ describe("E5.7#81 安装包装", () => {
         .toBe("test-plugin.js");
     });
 
-    it("prod + entryless → 仍按 chunk 约定（打包格式不看 entry 字段）", () => {
-      expect(runtimeEntryPath(manifestWith(), TEST_PLUGIN_ID, false)).toBe("test-plugin.js");
+    it("prod + entryless + 非 bundle → null（E6#15d G3a：纯数据包无主 JS，跳过幻影 import 防误报）", () => {
+      expect(runtimeEntryPath(manifestWith(), TEST_PLUGIN_ID, false)).toBeNull();
     });
   });
 

@@ -20,6 +20,7 @@
     "electron:dev": "concurrently -k -n vite,electron \"vite\" \"wait-on http://localhost:1420 && tsc -p electron/tsconfig.json && node scripts/electron-commonjs-fix.cjs && electron . --remote-debugging-port=9222\"",
     "electron:build": "npm run build && tsc -p electron/tsconfig.json && node scripts/electron-commonjs-fix.cjs && electron-builder",
     "build:plugins": "node scripts/build-plugins.mjs",
+    "pack:bundled-json": "node scripts/pack-bundled-plugins.mjs",
     "dev:plugins": "node scripts/build-plugins.mjs --watch",
     "toast": "node dev-fixtures/toast.mjs",
     "contracts:gen": "node scripts/generate-contract.mjs",
