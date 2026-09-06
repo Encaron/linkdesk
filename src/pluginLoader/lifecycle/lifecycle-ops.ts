@@ -473,7 +473,8 @@ async function installPluginFromDirectory(sourcePath: string): Promise<{ success
     return loadInstalledPlugin(pluginId, version, {
       success: `已安装：${name} v${version}`,
       // E5.8#24.8.7：原「npm run build:plugins」指向空跑死脚本（build-plugins.mjs E6 前不运行）——
-      // 改指准确主构建命令 npm run build（主 vite.config 多入口产出 dist/plugins/<sub>/<id>.js）
+      // 改指准确主构建命令 npm run build（E6#15f 后主 vite.config 不再为插件打 dist/plugins 命名 chunk，
+      // 插件产物由各自独立 build 产出；此提示仅为「壳侧源码树安装需重跑构建才生效」语义保留）
       needRestart: `已安装：${name}。运行 npm run build 后生效。`,
     });
   } catch (e) {

@@ -26,7 +26,6 @@ export * from "./registry/appearance/ThemeRegistry";
 
 // ── 基础设施 ──
 export { reportError } from "./services/bootstrap/ErrorService";
-export { PLUGINS_DIR } from "./utils/plugin/pluginPaths"; // E5.8#0d.11：自 core/ 根归位 utils/plugin/（塌平后仅 PLUGINS_DIR 单根常量留存，余符号随 builtin/user 双目录删除）
 
 // ── 服务 ──
 export * from "./services/configuration/ConfigurationApplier";

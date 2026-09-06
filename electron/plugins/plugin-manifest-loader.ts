@@ -11,8 +11,9 @@
  *   prod  → {userData}/plugins/ 单根（E6#17a 消费切换相：resources/ 无源码拷贝、app 根缺位 = 正常，
  *           getPluginRoots 后 line 90 空目录容错 continue——勿按 prod 特例加 if）
  * 2026-09-05 塌平：builtin/user 双目录废除——每个存在的根直接含插件目录（目录名 = pluginId）。
- * 目录名常量见 src/core/utils/plugin/pluginPaths.ts（PLUGINS_DIR，硬约束 12——改一处全生效）；本模块
- * 用 fs.readdir 直扫各根（渲染进程的 import.meta.glob 工厂已随塌平删除——零消费者）。
+ * 目录名 = 局部字符串字面量约定（pluginPaths.ts 的 PLUGINS_DIR 常量已随 E6#15f 删除——末位消费者
+ * vite.config scanPluginEntries 清掉后成孤儿）；本模块用 fs.readdir 直扫各根（渲染进程的
+ * import.meta.glob 工厂已随塌平删除——零消费者）。
  *
  * 注册幂等：register* 函数内建去重/覆盖（LangDef 覆盖 / FileAssociation 同插件去重 /
  * Protocol 覆盖）——启动预加载与装/卸重扫双路径天然安全，重复调用覆盖不叠加。

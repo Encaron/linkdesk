@@ -12,8 +12,9 @@
 //
 // 🔥 E5.8#24.8.7 定位声明（用户拍板：保守处置——保留 E6 改造资产，勿删除）：
 //   E6#3 独立插件构建（defineLinkdeskPluginConfig）基于本脚本改造——E6 文档 00-AI执行守则 +
-//   01-plugin-sdk设计 共 7 处定位。当前生产 builtin 走主 vite.config scanPluginEntries
-//   （dist/plugins/<sub>/<id>.js，electron 实际加载路径），本脚本 E6 前不运行。
+//   01-plugin-sdk设计 共 7 处定位。⚠️ 史实修正：主 vite.config 的 scanPluginEntries（dist/plugins/<sub>/<id>.js）
+//   已在 E6#15f 删除（loader 走 import.meta.glob 异步 chunk；消费切换相 #15d 后 prod 插件从 userData 物化
+//   dist 加载，壳 dist/plugins 无消费者）——本脚本 E6 前不运行，仅留作历史改造资产。
 //   ⚠️ 过时清单（E6#3 整体改造时一并处理，勿单独修——修好扫描会让 @src/core 被 inline
 //   打包 = 静默双实例 bug，比空跑更危险）：
 //     1. scanPlugins 只扫 plugins/ 单层——builtin/ + user/ 双层（E5.7 目录演化）扫不到 → 空跑

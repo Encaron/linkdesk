@@ -58,8 +58,9 @@ function errMsg(e: unknown): string {
 // E2c #19j-structure-a：同时支持平铺结构和 src/ 子目录结构——过渡期内两种都匹配。
 // 2026-09-05 塌平：plugins/builtin|user 双目录废除（用户拍板，见 01-插件独立构建/09）——
 // 每 glob 收单根 plugins/*（目录名 = pluginId）。此前 E4#86 因双目录把每 glob 拆两份的历史注释已删。
-// 目录名常量见 utils/plugin/pluginPaths.ts（PLUGINS_DIR）；import.meta.glob 需字符串字面量做
-// 静态分析，工厂函数不兼容——保持 spread 写法。
+// 目录名 = 字符串字面量直写（pluginPaths.ts 的 PLUGINS_DIR 常量已随 E6#15f 删除——末位消费者
+// vite.config scanPluginEntries 清掉后成孤儿）；import.meta.glob 本就需字符串字面量做静态分析，
+// 工厂函数不兼容——保持 spread 写法。
 const pluginModules = {
   ...import.meta.glob<{ default: React.ComponentType<{ isActive: boolean }> }>(
     "../../../plugins/*/index.tsx",

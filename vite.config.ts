@@ -1,11 +1,9 @@
 import { defineConfig, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
-import { resolve, relative, dirname, join } from "path";
+import { resolve, dirname, join } from "path";
 import { fileURLToPath } from "url";
-import { existsSync, readdirSync, readFileSync } from "fs";
 import { createRequire } from "module";
 import { DEV_SERVER_PORT } from "./electron/constants"; // E5.7#45.5：shared/ 并入 electron/constants.ts
-import { PLUGINS_DIR } from "./src/core/utils/plugin/pluginPaths"; // E5.8#0d.11：自 core/ 根归位 utils/plugin/（2026-09-05 塌平后仅单根常量）
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const host = process.env.TAURI_DEV_HOST;
@@ -16,41 +14,6 @@ const host = process.env.TAURI_DEV_HOST;
  * Windows appData = %APPDATA%；非 Windows（无 APPDATA）不匹配任何 importer → 插件零效果。
  */
 const userPluginsHome = process.env.APPDATA ? join(process.env.APPDATA, "linkdesk", "plugins") : "";
-
-/**
- * Phase 4：扫描 plugins/ 目录，收集所有视图插件的入口文件。
- * 构建时为每个插件生成独立 chunk（dist/plugins/<pluginId>.js）。
- */
-function scanPluginEntries(): Record<string, string> {
-  const pluginsDir = resolve(__dirname, PLUGINS_DIR);
-  if (!existsSync(pluginsDir)) return {};
-
-  const entries: Record<string, string> = {};
-  try {
-    // 2026-09-05 塌平：plugins/<id>/ 单根直扫（builtin/user 双目录废除；.disabled/ 无 plugin.json 天然跳过）
-    for (const dir of readdirSync(pluginsDir, { withFileTypes: true })) {
-      if (!dir.isDirectory()) continue;
-      const pluginJsonPath = resolve(pluginsDir, dir.name, "plugin.json");
-      if (!existsSync(pluginJsonPath)) continue;
-
-      try {
-        const manifest = JSON.parse(readFileSync(pluginJsonPath, "utf-8"));
-        if (!manifest.entry) continue;  // 检测 entry（不再依赖 type 字段）
-
-        const entryPath = resolve(pluginsDir, dir.name, manifest.entry);
-        if (existsSync(entryPath)) {
-          // key = "plugins/editor" → output = dist/plugins/editor.js
-          entries[`plugins/${dir.name}`] = entryPath;
-        }
-      } catch {
-        // plugin.json 解析失败，跳过
-      }
-    }
-  } catch {
-    // plugins/ 目录读取失败，跳过
-  }
-  return entries;
-}
 
 /**
  * E6#7（1.2-4）：dev-only 解析兜底——SDK 预构建的 index.bundle.js 把 react 系 externalize 成裸 import；
@@ -83,7 +46,6 @@ function resolveUserDataBundles(): Plugin {
 }
 
 export default defineConfig(async ({ command }) => {
-  const pluginEntries = scanPluginEntries();
   // E5.7#31.7：池开发预览入口——仅 vite dev（浏览器 mock 模式，Codex UI 设计通道）。
   // 生产构建（npm run build）零污染：preview.html + mock fixture 不进 dist。
   const devEntries = command === "serve"
@@ -128,17 +90,10 @@ export default defineConfig(async ({ command }) => {
           // E6#15d 消费切换相 G2：池窗走独立构建 pass（vite.pool.config.ts，external react 系 + import-map）。
           // 不在主 build 内 —— 一个 rollup pass 无法只对池 external（壳与池共享组件图）。
           // dev 无碍：pool.html 由 vite dev server 按需服务，不是 build input。
+          // E6#15f：插件 entries 不再作为 rollup input——壳 build 不再产出 dist/plugins/*.js 死产物
+          //   （E5.7 起 loader 走 import.meta.glob 异步 chunk，消费切换相 #15d 后 prod 全走 userData 物化
+          //   dist + linkdesk://，壳 dist/plugins 无消费者）；output 无插件命名 chunk 特例，恢复默认 hashed。
           ...devEntries,
-          ...pluginEntries,
-        },
-        output: {
-          // Phase 4：插件输出到 dist/plugins/<pluginId>.js
-          entryFileNames: (chunkInfo) => {
-            if (chunkInfo.name.startsWith("plugins/")) {
-              return `${chunkInfo.name}.js`;
-            }
-            return "assets/[name]-[hash].js";
-          },
         },
       },
     },
