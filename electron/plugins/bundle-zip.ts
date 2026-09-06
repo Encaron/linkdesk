@@ -147,6 +147,10 @@ export interface BundleInstallParams {
   recoverCorrupt: boolean;
   /** 豁免集（pluginId 命中 → 跳过，不恢复不消费）——bundled removed 标记；ingest 无此语义不传 */
   skipIfRemoved?: Set<string>;
+  /** dev/test 强制重物化（E6#15n 落点④）：跳过版本幂等，删旧目录整树重解压 zip 当前内容——
+   *  **非生产 boot 语义**（替「删 userData 插件目录」手工作业验新包，同版异版都刷）。
+   *  仍尊重 skipIfRemoved——不复活用户故意删的插件（#18 removed 意图不被 dev 开关推翻）。 */
+  force?: boolean;
 }
 
 export async function installBundleCandidate(p: BundleInstallParams): Promise<BundleInstallOutcome> {
@@ -178,7 +182,13 @@ export async function installBundleCandidate(p: BundleInstallParams): Promise<Bu
     const target = path.join(homeDir, pluginId);
     const targetManifest = path.join(target, "plugin.json");
 
-    if (await fs.stat(targetManifest).then(() => true, () => false)) {
+    // 🔥 dev/test 强制重物化（E6#15n 落点④）：force=true 跳过上方版本幂等——删旧目录整树，
+    // 落 zip 当前内容。非生产 boot 语义（boot 默认永不刷新已装）。removed 豁免已在上面先行
+    // return——force 不复活用户故意删的插件。目录不存在 → rm no-op → 走下方 extract 照常装。
+    if (p.force) {
+      await fs.rm(target, { recursive: true, force: true });
+      console.log(`[${tag}] ${pluginId}@${manifest.version} 强制重物化——删旧目录整树重解压（E6#15n dev 开关，非生产语义）`);
+    } else if (await fs.stat(targetManifest).then(() => true, () => false)) {
       try {
         const existing = parseManifestJson(await fs.readFile(targetManifest, "utf-8"));
         if (existing.version === manifest.version) {

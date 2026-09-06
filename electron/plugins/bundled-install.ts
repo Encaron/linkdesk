@@ -54,16 +54,35 @@ async function readRemovedMarkers(): Promise<Set<string>> {
   return removed;
 }
 
+/** dev/test 强制重物化开关（E6#15n 落点④）——CLI `--force-rematerialize-bundled` 或环境变量
+ *  `LINKDESK_FORCE_REMATERIALIZE=1` 任一即开。给打包版/编译版测试者替「删 %APPDATA%/linkdesk/plugins/<id>」
+ *  手工作业（重打 bundled zip 后同版/异版都不刷新——boot 默认语义，本开关显式覆盖）。
+ *  非生产 boot 语义：end-user 不会设此开关；removed 标记仍豁免（不复活用户故意删的插件）。 */
+function forceRematerializeEnabled(): boolean {
+  return (
+    process.argv.includes("--force-rematerialize-bundled") ||
+    process.env.LINKDESK_FORCE_REMATERIALIZE === "1"
+  );
+}
+
 /**
  * 首启自动装全部 bundled 插件——main whenReady 调一次（registerProtocol 之后、loadAllPluginManifests 之前，
  * 与 ingestPluginBundles 同批，先于三表扫描/壳发现/协议解析——落盘后这批插件同见）。
  * 2026-09-05 塌平单根：直扫 bundledDir 顶层 *.linkdesk-plugin → {userData}/plugins/<id>/。
  * 发货保留语义（deleteSource=false + 损坏重装 recoverCorrupt=true + removed 豁免集）——逐字节对齐原 restoreOne：
  * 单包失败不抛出（共享函数自记日志）——发货夹任何单包问题都不该拖垮启动。
+ * E6#15n 落点④：forceRematerializeEnabled() 时给每包传 force——删旧目录整树重解压 zip 当前内容。
  */
 export async function installBundledPlugins(): Promise<void> {
   const bundledDir = envService.bundledPluginsDir();
   if (!existsSync(bundledDir)) return; // dev 尚未暂存 / prod 无发货夹——无事可做
+
+  const force = forceRematerializeEnabled();
+  if (force) {
+    console.warn(
+      "[bundled-install] 🔥 dev/test 强制重物化开关开启（--force-rematerialize-bundled / LINKDESK_FORCE_REMATERIALIZE=1）——同版异版 bundled 都重解压覆盖已装目录。非生产 boot 语义，removed 标记仍豁免。",
+    );
+  }
 
   const removed = await readRemovedMarkers();
   const userData = envService.userPluginsDir();
@@ -76,6 +95,7 @@ export async function installBundledPlugins(): Promise<void> {
       deleteSource: false,
       recoverCorrupt: true,
       skipIfRemoved: removed,
+      ...(force ? { force: true } : {}),
     });
   }
 }

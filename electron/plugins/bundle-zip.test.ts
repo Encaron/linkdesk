@@ -171,6 +171,64 @@ describe("installBundleCandidate——ingest 消费 vs bundled 保留两套语�
     });
   });
 
+  describe("force 强制重物化（E6#15n dev/test 开关——非生产 boot 语义，同版异版都刷，removed 仍豁免）", () => {
+    /** bundled 语义 + force:true */
+    const forceBundled = (zipPath: string, skipIfRemoved?: Set<string>) =>
+      ({
+        zipPath,
+        homeDir: home,
+        tag: "test-force",
+        deleteSource: false,
+        recoverCorrupt: true,
+        ...(skipIfRemoved ? { skipIfRemoved } : {}),
+        force: true,
+      }) as const;
+
+    /** 读 {home}/<id>/README.md——断言解压后的当前内容 */
+    async function readInstalledReadme(home: string, id = "demo-bundle"): Promise<string> {
+      return fs.promises.readFile(path.join(home, id, "README.md"), "utf-8");
+    }
+
+    it("同版本内容变更 + force：删旧目录重解压，目标刷成 zip 当前内容（正是 #15n 实证痛点的解药）", async () => {
+      await preseedTarget(home, JSON.stringify(MANIFEST_100));
+      await fs.promises.writeFile(path.join(home, "demo-bundle", "README.md"), "old readme");
+      const zip = await seedZip(home, `demo-bundle${BUNDLE_EXT}`, {
+        "plugin.json": JSON.stringify(MANIFEST_100),
+        "README.md": "fixed readme",
+      });
+      expect(await installBundleCandidate(forceBundled(zip))).toBe("installed");
+      expect(await readInstalledReadme(home)).toBe("fixed readme"); // 内容已刷新
+      await expectPath(zip, true); // 源保留
+    });
+
+    it("异版本已装 + force：不再 version-kept，刷成 zip 版本（boot 默认不动异版本，force 覆盖）", async () => {
+      await preseedTarget(home, JSON.stringify({ ...MANIFEST_100, version: "0.9.0" }));
+      const zip = await seedZip(home);
+      expect(await installBundleCandidate(forceBundled(zip))).toBe("installed");
+      expect(await readInstalledVersion(home)).toBe("1.0.0"); // 已刷成 zip 版本
+    });
+
+    it("removed 豁免 + force：仍 removed-skipped，不复活（#18 用户意图不被 dev 开关推翻）", async () => {
+      await preseedTarget(home, "corrupt-residue");
+      const zip = await seedZip(home);
+      const outcome = await installBundleCandidate(forceBundled(zip, new Set(["demo-bundle"])));
+      expect(outcome).toBe("removed-skipped");
+      expect(await fs.promises.readFile(path.join(home, "demo-bundle", "plugin.json"), "utf-8")).toBe("corrupt-residue");
+    });
+
+    it("force 删整树：zip 里没有的旧残留文件也被清掉（rm 整树非覆盖写）", async () => {
+      await preseedTarget(home, JSON.stringify(MANIFEST_100));
+      await fs.promises.writeFile(path.join(home, "demo-bundle", "stale.bin"), "old stale file not in new zip");
+      const zip = await seedZip(home, `demo-bundle${BUNDLE_EXT}`, {
+        "plugin.json": JSON.stringify(MANIFEST_100),
+        "README.md": "fresh",
+      });
+      expect(await installBundleCandidate(forceBundled(zip))).toBe("installed");
+      await expectPath(path.join(home, "demo-bundle", "stale.bin"), false); // 残留已清
+      expect(await readInstalledReadme(home)).toBe("fresh");
+    });
+  });
+
   describe("zip 形态（wrapper 目录 / 无 plugin.json）", () => {
     it("单层 wrapper 目录包：wrapper 剥离后 plugin.json 落插件根（容忍手包/旧工具）", async () => {
       const wrapperEntries: Record<string, string> = {};
