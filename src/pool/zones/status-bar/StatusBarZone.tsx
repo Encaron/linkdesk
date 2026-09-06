@@ -5,7 +5,7 @@
  * 池 = 哑渲染器：
  *   - 左区：插件条目（分隔线壳侧算好）+ Chord 提示字符串（壳构建）
  *   - 右区：插件条目 + 通知中心（铃铛 + 面板）
- *   - 插件 statusBarComponent（serial-monitor TX/RX 计数）——PoolStatusBarComponent 懒加载
+ *   - 插件自绘状态栏组件（E6#17d：manifest appearsIn.statusBar 声明发 component marker）——PoolStatusBarComponent 懒加载（serial-monitor 连接灯）
  *   - 通知操作回传（events 往返）：面板开闭/单条关闭/全部清除/动作点击——壳侧执行
  *     （ToastAction.onClick 是壳侧闭包，不可序列化——usePoolSync 订阅 notif:* 通道）
  *

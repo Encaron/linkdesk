@@ -305,7 +305,7 @@ export interface PoolStatusBarItem {
   align: "left" | "right";
   /** 点击执行的命令 ID */
   onClick?: string;
-  /** 插件有 statusBarComponent——池侧懒加载渲染（serial-monitor TX/RX 实时计数） */
+  /** component:true marker——插件声明 appearsIn.statusBar（E6#17d：壳读 manifest 声明发此 marker）→ 池侧懒加载渲染自绘状态栏组件（serial-monitor 连接灯） */
   component?: boolean;
   /** 前导分隔线——壳 StatusBar 渲染语义（左区每项除首个；右区组内除首个） */
   dividerBefore?: boolean;

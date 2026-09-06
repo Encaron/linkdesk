@@ -1,12 +1,12 @@
 {
   "$schema": "../../public/schemas/plugin.schema.json",
   "name": "串口监视器",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "icon": "resources/icon.png",
   "description": "串口数据监视器——接收区（CM6）+ 发送栏（Monaco）+ 侧栏设置。LinkDesk 第一个视图插件，通用容器基础设施在此验证。不绑定任何特定用途。",
   "author": "官方",
   "entry": "src/index.tsx",
-  "appearsIn": { "iconBar": "top", "sidePanel": true, "tabBar": true },
+  "appearsIn": { "iconBar": "top", "sidePanel": true, "tabBar": true, "statusBar": true },
   "tabBehavior": {
     "invokeBeforeClose": "close_port",
     "identityField": "sourceId"
@@ -104,6 +104,7 @@
     { "plugin": "protocol-bracket", "reason": "协议解析——不装则只能查看原始数据" }
   ],
   "changelog": [
+    { "version": "1.0.1", "date": "2026-09-07", "changes": ["状态栏组件存在性改声明式（appearsIn.statusBar）——打包版修复连接灯/口数实时渲染"] },
     { "version": "1.0.0", "date": "2026-07-19", "changes": ["初始发布", "串口工具栏", "CM6 接收区 + Monaco 发送栏", "侧栏设置（时间戳/编码/换行符）"] }
   ]
 }

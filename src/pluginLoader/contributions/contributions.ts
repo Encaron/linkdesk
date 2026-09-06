@@ -26,7 +26,7 @@ import { registerCommand } from "../../core/registry/commands/CommandRegistry";
 import { registerKeybinding } from "../../core/registry/commands/KeybindingRegistry";
 import { registerPluginLanguageBundle } from "./i18nResources";
 import i18n from "../../i18n";
-import { pluginModules, pluginStatusBarModules, viewRenderModules, pluginManifestRaw, extractPluginId, errMsg, log } from "../resolution/state";
+import { pluginModules, pluginManifestRaw, extractPluginId, errMsg, log } from "../resolution/state";
 
 /** 从主题 JSON 数据中提取扁平化 colors——归一化 #36j2。消两处重复。 */
 function extractThemeColors(data: Record<string, unknown>): Record<string, string> {
@@ -195,39 +195,15 @@ export async function parseContributions(pluginId: string, c: Record<string, unk
             }
           }
           renderPath = `${resolvedRoot}/${viewDef.render}`;
-          // E5#114d: 用 viewRenderModules glob 替代 /* @vite-ignore */——
-          // 打包后 Vite 已将 glob key→构建 chunk 映射，不用源码路径。
-          // E5.6#2-fix: glob 外插件（runtime/reinstall）renderPath 是 /@fs/ 绝对路径，
-          // viewRenderModules key 是相对 glob 路径 → 不匹配 → 回退到 /* @vite-ignore */。
-          // E5.7#98：glob loader 已带类型（{ default: ComponentType }）；动态 import 回退按 TS 内建 any（非源码）——声明收窄
-          // E6#15d 消费切换相 🔥：壳侧组件加载 = 装饰用——desc.render 不进池（池按 _renderPath 自 import
-          //   + 注入 index.bundle.css，实证 PluginComponent/bundleCss），且壳页 index.html 无 vendor import-map，
-          //   linkdesk:// dist 视图的 react/jsx-runtime 等裸 specifier 壳侧必然解析失败。**加载失败绝不阻断注册**
-          //   ——旧实现把 registerView 包在同一 try，壳侧 import 抛错 → 视图永不登记 → 容器空（出厂侧栏消失回归）。
-          let renderModule: { default?: React.ComponentType } | undefined;
-          try {
-            const viewLoader = viewRenderModules[renderPath];
-            if (viewLoader) {
-              renderModule = await viewLoader();
-            } else {
-              // E6#15d：非构建时 glob 键 → 运行时 URL 直动态 import（dev /@fs 源码 / prod linkdesk:// dist 视图）。
-              // 旧实现此支路 gate 在从未传入的 pluginRoot（loadPlugin 不传 opts.pluginRoot）→ glob 外/打包插件
-              // 的 contributes.views 恒静默 skip（容器空、出厂侧栏视图不可达）。对齐 resolveViewModule + 池 PluginComponent 同款裁决。
-              renderModule = await import(/* @vite-ignore */ renderPath);
-            }
-          } catch (e) {
-            console.warn(
-              `[loader] 壳侧 view 组件加载失败（不阻断注册——池按 _renderPath 自载）: plugin="${pluginId}" container="${containerId}" render="${renderPath}"`,
-              errMsg(e)
-            );
-          }
-          const RenderComponent = renderModule?.default ?? renderModule;
-          // E5.6#11b：_renderPath 存 glob key——池 PluginComponent 按此 key O(1) 查找组件。
+          // E6#17d：壳侧 view 组件 import 整删——#15d/#17d 审计实证 desc.render 是装饰死执行（下游零消费，
+          // toViewDto/toViewMetaDto 在 IPC 前显式剥离 workspace.ts；池按 _renderPath 自 import + 注入
+          // index.bundle.css 渲染，壳页 index.html 也无 vendor import-map——裸 specifier 壳侧必解析失败）。
+          // 旧史：E6#15d 曾把 import 失败从「阻断注册」降为「不阻断」；此处连尝试都不做——壳零插件 JS import。
+          // _renderPath 存 renderPath（dev 源码 glob 根 / prod linkdesk:// dist URL）——池 PluginComponent 按此渲染。
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const desc: any = {
             id: viewDef.id,
             title: viewDef.title ?? "",
-            render: RenderComponent,
             role: viewDef.role,
             order: viewDef.order,
             collapsed: viewDef.collapsed,
@@ -353,20 +329,13 @@ async function loadPluginComponent(pluginId: string, manifest: PluginManifest): 
     throw new Error("入口文件未导出 default 组件");
   }
 
-  let statusBarComponent: React.ComponentType | undefined;
-  const statusBarKey = Object.keys(pluginStatusBarModules).find(
-    (k) => extractPluginId(k) === pluginId
-  );
-  if (statusBarKey) {
-    const statusBarModule = await pluginStatusBarModules[statusBarKey]();
-    statusBarComponent = statusBarModule.default;
-  }
+  // E6#17d：statusBar 存在性改声明式（manifest appearsIn.statusBar）——壳不再 import statusBar JS，
+  // pluginStatusBarModules glob 已删（state.ts）；存在性布尔由 statusbar.ts 读 manifest 声明，池渲染。
 
   const entry: ViewPluginEntry = {
     pluginId,
     manifest,
     component: Component,
-    statusBarComponent,
   };
 
   registerViewPlugin(entry);

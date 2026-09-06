@@ -34,7 +34,7 @@ export function isStatusBarConfigKey(key: string): boolean {
  * 分隔线壳侧算好（dividerBefore）：
  *   - 左区：组间 + 组内——每项除整区首个都有前导分隔线；
  *   - 右区：仅组内除首个——组间无分隔线（壳 StatusBar 渲染语义）。
- * component=true 时池懒加载插件 statusBarComponent（serial-monitor TX/RX 实时计数）。
+ * component=true 时池懒加载渲染自绘状态栏组件（serial-monitor 连接灯——manifest appearsIn.statusBar 声明驱动，E6#17d）。
  * 壳 StatusBar 固定项 title 硬编码中文——迁移时改 t()（硬约束 #2 顺带修正）。
  */
 // E5.7#98：三源条目共型——api StatusBarItem + pluginId + title（贡献项/动态项/event 条目/壳固定项均满足）
@@ -81,8 +81,10 @@ export function buildStatusBarItems(t: TFunction, eventEntries: StatusBarEntry[]
     let firstInSide = true;
     for (const pid of ids) {
       const plugin = pid.startsWith("__shell_") ? undefined : getViewPlugin(pid);
-      // 插件有 statusBarComponent——取代该插件全部静态项（壳 renderPluginStatusBar 同款）
-      if (plugin?.statusBarComponent) {
+      // E6#17d：插件声明 appearsIn.statusBar（自绘状态栏组件）——取代该插件全部静态项，发 component marker
+      // 让池 PoolStatusBarComponent 懒加载渲染（壳不再 import 插件 statusBar JS——存在性信号声明式，硬约束 11）。
+      // 静态贡献项仍须保留一条作本插件的 statusbar ordering 资格锚点（被 marker 分支替换前先进入序列表）。
+      if (plugin?.manifest.appearsIn?.statusBar === true) {
         result.push({
           id: `${pid}:component`, pluginId: pid, label: "", align,
           component: true,

@@ -310,8 +310,6 @@ export interface ViewPluginEntry {
    *  （图标栏数据源），其组件由 ViewContainerService 经 contributes.views[].render 加载，
    *  本注册表只作元数据/图标入口，component 为零。渲染路径不读本字段（池 PluginComponent 直扫 glob）。 */
   component?: React.ComponentType<{ isActive: boolean; sourceId?: string }>;
-  /** 可选状态栏组件——插件自己渲染动态状态项，对标 VS Code StatusBarItem */
-  statusBarComponent?: React.ComponentType;
 }
 
 /* ── Tab 类型扩展（Phase 4） ── */

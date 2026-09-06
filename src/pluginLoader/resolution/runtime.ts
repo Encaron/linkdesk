@@ -235,73 +235,28 @@ async function loadPlugin(
   // B2 fix: 缓存元数据——glob 外的插件也入缓存，卸载后仍可浏览详情
   cachePluginMetadata(pluginId, manifest, "installed");
 
-  // ═══ Step 3: 加载 JS 入口 + statusBar ═══
-  let viewComponent: React.ComponentType<{ isActive: boolean }> | undefined;
-  let statusBarComponent: React.ComponentType | undefined;
+  // ═══ Step 3: glob 外解析根目录（不 import entry JS——E6#17d 注册纯声明化）═══
+  // glob 内（dev 源码常驻）组件加载在下方 loadPluginComponent 分支完成；glob 外注册一律 component-less
+  // stub（Step4），渲染唯一执行者 = 池 PluginComponent / PoolStatusBarComponent（壳零插件 JS import）。
+  // runtimePluginRoot 供 Step5/6 的 contributes views / theme 数据 fetch 用——entryless 插件重装后
+  // views 注册兜底（parseContributions）同样依赖它做动态 import（pluginRoot 不绑 entry）。
   let runtimePluginRoot: string | undefined;
 
   if (isRuntime) {
-    // ── 运行时：动态 import（/fs/ 或 linkdesk://）──
-    // E5.7 生命周期契约：pluginRoot 不绑 entry——entryless 插件（纯 views/commands 贡献）
-    // 重装后 views 注册兜底（parseContributions）同样依赖它做动态 import。
+    // ── glob 外（打包/市场/源码安装 runtime）──
+    // E6#17d（接 #15i/#15j）：壳侧 glob 外 entry import 是确定性死执行——G2/拍点② 铁律 = 插件代码唯一
+    // 执行者 = 池，壳窗按设计不配 react import-map。旧逻辑把每启动必现的崩溃标成「插件没构建」（假阳性
+    // toast）。#15j 的 shellCantExecBundle 特例（仅 prod bundle 跳过）在此**推广为常轨**：glob 外一律
+    // 不 import → Step4 注册 stub → 插件照常进 [+] / 欢迎页，打开交池 PluginComponent 执行（池有 map）。
+    // 启动期零 glob 外 import → 假阳性根除；真坏 bundle 报错保留在真实执行位（打开时池 import 失败 → 池
+    // 错误边界/console 浮现）。#9g 延迟激活的按需 import（用户首用触发）仍在 activatePlugin——那是②
+    // （并 #9g 轮）的拆除对象，此处不重蹈。glob 外存在性一律声明式（manifest appearsIn.statusBar 等），
+    // 不靠壳 import 探测（硬约束 11：插件身份唯一来源 = plugin.json 声明字段）。
     try {
       runtimePluginRoot = await resolveRuntimePluginRoot(pluginId);
     } catch (e) {
       console.warn(`[pluginLoader] 运行时插件 "${pluginId}" 根目录解析失败:`, e);
       // pluginRoot 保持 undefined——views 注册走 ❌ 分支诚实降级
-    }
-    // E6#15：bundle 插件 css 注入点已在 pool PluginComponent（视图唯一挂载文档）——shell 侧不注入
-    // （loader 宿主 shell、视图渲 pool，双文档；壳注入的 <link> 到不了 pool，E5.7 架构实证）。
-    // #9g 按需激活：延迟加载（skipView）时跳过 JS import——只解析根（Step5 pluginRoot 依赖），
-    // entry 在 activatePlugin 首次触发事件时才 import（启动注册-only，对标 VS Code 延迟激活）。
-    // E6#7：bundle 插件入口恒 index.bundle.js（isBundlePlugin 从启动发现水合）
-    // 🔥 2026-09-06 根因修复（接 #15i 兜底——删错误动作，不删报错）：「可能未构建」toast 是假阳性——
-    // 打包版壳窗对 glob 外 runtime **bundle** 的入口 import 是**确定性死执行**：G2/拍点② 铁律 = 插件代码
-    // 唯一执行者 = 池，壳窗按设计不配 react import-map；SDK bundle 又恒外部化 react（DEFAULT_EXTERNAL）
-    // → 壳 import 必崩 → 旧逻辑把每启动必现的崩溃标成「插件没构建」（插件是好的，壳只是按设计不该执行它）。
-    // 真修复 = 壳**不尝试**这次 import（dev 保真：dev 下 vite shim react → import 有效 → 照旧实组件注册）。
-    // viewComponent 保持 undefined → Step4 第三分支（#15i）注册 stub → 插件进 [+] / 欢迎页，打开交池
-    // PluginComponent 执行（池有 map，实证渲染）。真坏 bundle 的报错**不丢**：打开时池 import 失败 → 池
-    // 错误边界/console 浮现；deferred 插件激活失败照旧抛（activatePlugin 非静默）——真实错误留在真实执行位。
-    // 遗留审计（#17d 显式跟踪）：壳 loader 入口 import 是否架构必需 + bundle 纯贡献插件（无视图可开）
-    // 的壳侧贡献注册缺口——本修复只堵 bundle 视图插件的假阳性，不宣称解决整条残留死执行。
-    const isBundle = isBundlePlugin(pluginId);
-    const shellCantExecBundle = !import.meta.env.DEV && isBundle;
-    const entryPath = opts?.skipView || shellCantExecBundle
-      ? undefined
-      : runtimeEntryPath(manifest, pluginId, import.meta.env.DEV, { bundle: isBundle });
-    if (entryPath) {
-      try {
-        if (!runtimePluginRoot) throw new Error("根目录解析失败");
-        const module = await resolveViewModule(pluginId, entryPath, runtimePluginRoot);
-        viewComponent = module?.default;
-        if (!viewComponent) {
-          console.warn(`[pluginLoader] 运行时插件 "${pluginId}" 未导出 default 组件`);
-        }
-
-        // statusBar——尝试多条路径
-        const statusBarPaths = [
-          "statusBar.tsx",
-          "src/statusBar.tsx",
-          "src/components/statusBar.tsx",
-        ];
-        for (const p of statusBarPaths) {
-          try {
-            const sbm = await import(/* @vite-ignore */ `${runtimePluginRoot}/${p}`);
-            statusBarComponent = sbm.default;
-            break;
-          } catch { /* 路径不存在——继续试下一条 */ }
-        }
-      } catch (e) {
-        console.warn(`[pluginLoader] 运行时插件 "${pluginId}" 加载 JS 失败: ${errMsg(e)}`);
-        pushToast({
-          message: `插件 "${manifest.name}" 加载失败——可能未构建。运行 npm run build:plugins`,
-          source: pluginId,
-          severity: "warning",
-          ttl: TOAST_TTL_ERROR,
-        });
-        // 不阻断——没有视图组件仍可贡献 commands/menus/configuration
-      }
     }
   } else {
     // ── glob 内：走 loadPluginComponent ──
@@ -312,16 +267,8 @@ async function loadPlugin(
     }
   }
 
-  // ═══ Step 4: 注册视图（运行时）/ loadPluginComponent 已注册（glob） ═══
-  if (isRuntime && viewComponent) {
-    registerViewPlugin({
-      pluginId,
-      manifest,
-      component: viewComponent,
-      statusBarComponent,
-    });
-    log.appendLine(`[OK] 运行时视图插件 "${manifest.name}" (${pluginId}) 已注册`);
-  } else if (!manifest.entry && hasSidebarContainers(manifest)) {
+  // ═══ Step 4: 注册视图（glob 外一律 stub）/ loadPluginComponent 已注册（glob 内非延迟） ═══
+  if (!manifest.entry && hasSidebarContainers(manifest)) {
     // 🔥 E5.8#37.9.2.3：entryless 视图插件也进 viewRegistry——修复图标栏数据源缺口。
     // 此前 getViewPlugins() 只含 entry 插件 → entryless 插件声明 appearsIn.iconBar 被静默丢弃
     // （panel-demo/demo-en 未加 entry 前的真实现象）。组件由 ViewContainerService 经
@@ -329,19 +276,16 @@ async function loadPlugin(
     // 运行时与 glob 两路共用此分支（entryless 运行时插件同样能渲染 views）。
     registerViewPlugin({ pluginId, manifest });
     log.appendLine(`[OK] entryless 视图插件 "${manifest.name}" (${pluginId}) 已注册（图标栏入口）`);
-  } else if (manifest.entry && (opts?.skipView || (isRuntime && !viewComponent))) {
-    // #9g 按需激活：延迟 entry 插件注册 component-less 占位（component 可选项——渲染不读本字段，
-    // 池 PluginComponent 独立 glob 解析）。保图标栏/侧栏容器/标签身份（tabBehavior/identityField）等
-    // 声明驱动的 UI 表面在启动期照常可见；JS 首用（onView/onFileOpen/onCommand 等）再激活升级成
-    // componentful（registerViewPlugin 同版本 stub→实 升级）。对标 VS Code：manifest 贡献启动可见，
-    // extension 代码激活才跑。
-    // 🔥 2026-09-06 兜底扩展：opts.skipView（延迟激活）之外的第二个落点 = 运行时 entry import **失败**
-    // 也注册元数据占位——「声明了可开成标签页/进图标栏 = 就该可开」，不因壳侧暂时 load 不动 JS 而隐身
-    // （实证：打包版 shell 缺 react import map → bundle 插件裸 import 崩 → viewComponent undefined →
-    // 旧逻辑 Step4 三分支全落空 → 装好却不在 [+] / 欢迎页可开列表；stub 照常列出，打开交给池渲染——池有 map）。
-    // 真实坏插件同样兜住：列出来、打开时池 error boundary 兜底——对标 VS Code 列出但激活失败可看错误。
+  } else if (manifest.entry && (opts?.skipView || isRuntime)) {
+    // E6#17d 常轨（#15i/#15j 兜底升格）：glob 外（isRuntime）视图插件注册 component-less stub 是**常态**
+    // 不是兜底——壳侧不再 import entry（Step3），组件可选项，渲染不读本字段（池 PluginComponent 独立解析）。
+    // glob 内 opts.skipView（#9g 延迟激活）同样在此占位（Step3 glob 分支因 skipView 未 loadPluginComponent）。
+    // 保图标栏/侧栏容器/标签身份（tabBehavior/identityField）等声明驱动的 UI 表面启动期照常可见；
+    // glob 内首用激活升级 componentful（loadPluginComponent，registerViewPlugin stub→实）；glob 外升级走
+    // activatePlugin（② 并 #9g 轮）。对标 VS Code：manifest 贡献启动可见、组件懒载。真实坏插件照常列出、
+    // 打开时池 error boundary 兜底。
     registerViewPlugin({ pluginId, manifest });
-    log.appendLine(`[OK] 元数据注册 "${manifest.name}" (${pluginId})（延迟激活或 JS 加载失败占位）`);
+    log.appendLine(`[OK] 元数据注册 "${manifest.name}" (${pluginId})（glob 外 / 延迟激活占位）`);
   }
 
   // ═══ Step 5: 解析 contributes → 分发各 Registry ═══
@@ -421,8 +365,8 @@ function applyPostLoadSteps(pluginId: string, manifest: PluginManifest, reason: 
 
 /**
  * 激活之前延迟加载的插件——import JS → 注册表占位升级 componentful。
- * glob 内 = loadPluginComponent（含 statusBar glob）；glob 外（运行时/市场安装）=
- * resolvePluginRoot + import entry + statusBar 探路径（镜像 loadPlugin Step3 加载语义）。
+ * glob 内 = loadPluginComponent；glob 外（运行时/市场安装）= resolvePluginRoot + import entry
+ * （镜像 loadPlugin Step3 语义；statusBar 存在性已声明式——E6#17d）。
  * 激活即注册表升级（同版本 component-less 占位 → 实组件——registerViewPlugin 允许 stub 升级）。
  * 不调 applyPostLoadSteps——loadedPluginIds 已有、onDidInstall 已发过（startup 静默），只通知 UI 刷新。
  */
@@ -441,28 +385,22 @@ async function activatePlugin(pluginId: string): Promise<boolean> {
       // glob 内（dev/源码内置）——loadPluginComponent 内 registerViewPlugin 升级占位
       await loadPluginComponent(pluginId, manifest);
     } else {
-      // 运行时（打包/市场安装）——glob 模块表无此插件，走根解析 + 动态 import。
-      // 与 Step3 运行时分支加载语义一致；差异 = 激活失败即抛上报（用户触发的激活不应静默降级）。
+      // 运行时（打包/市场安装）——glob 模块表无此插件，走根解析 + entry import 升级占位。
+      // 差异 = 激活失败即抛上报（用户触发的激活不应静默降级）。E6#17d：statusBar 存在性已声明式
+      // （manifest appearsIn.statusBar）——壳不再 import statusBar JS。② 并 #9g 轮：本分支整段
+      // （壳侧 glob 外 entry import）折叠为池侧激活——此处保留 entry import 是过渡态。
       const runtimePluginRoot = await resolveRuntimePluginRoot(pluginId);
       // E6#7：bundle 插件入口恒 index.bundle.js（同 Step3 分支）
       const entryPath = runtimeEntryPath(manifest, pluginId, import.meta.env.DEV, { bundle: isBundlePlugin(pluginId) });
       let viewComponent: React.ComponentType<{ isActive: boolean }> | undefined;
-      let statusBarComponent: React.ComponentType | undefined;
       if (entryPath && runtimePluginRoot) {
         const module = await resolveViewModule(pluginId, entryPath, runtimePluginRoot);
         viewComponent = module?.default;
         if (module && !viewComponent) {
           console.warn(`[pluginLoader] 运行时插件 "${pluginId}" 未导出 default 组件`);
         }
-        for (const p of ["statusBar.tsx", "src/statusBar.tsx", "src/components/statusBar.tsx"]) {
-          try {
-            const sbm = await import(/* @vite-ignore */ `${runtimePluginRoot}/${p}`);
-            statusBarComponent = sbm.default;
-            break;
-          } catch { /* 路径不存在——继续试下一条 */ }
-        }
       }
-      registerViewPlugin({ pluginId, manifest, component: viewComponent, statusBarComponent });
+      registerViewPlugin({ pluginId, manifest, component: viewComponent });
     }
     _deferredPlugins.delete(pluginId);
     // 图标/枚举刷新（startup 已静默，此刻才需通知 UI 拾起激活态）

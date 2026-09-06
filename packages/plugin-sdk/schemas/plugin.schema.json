@@ -35,7 +35,7 @@
         "iconBar": { "type": "string", "enum": ["top", "bottom"], "description": "图标栏位置，不填=不显示图标" },
         "sidePanel": { "type": "boolean", "description": "有侧栏视图容器，默认 false" },
         "tabBar": { "type": "boolean", "description": "可作为标签页打开，默认 false" },
-        "statusBar": { "type": "boolean", "description": "有状态栏条目，默认 false" }
+        "statusBar": { "type": "boolean", "description": "有自绘（代码）状态栏组件——池侧渲染，取代 statusBar 静态贡献项；仅贡献静态条目则不必填，默认 false" }
       }
     },
     "distribution": {

@@ -1,10 +1,11 @@
 /**
  * PoolStatusBarComponent——E5.7#8。池侧插件状态栏组件懒加载。
  *
- * 壳侧等价物：src/pluginLoader/resolution/state.ts pluginStatusBarModules glob（3 路径，
- * 2026-09-05 塌平后同收单根 plugins/<id>/）——serial-monitor 等插件
- * 提供 statusBar.tsx 自定义组件（TX/RX 计数 + 连接灯，组件内部走 linkdesk.events/
- * configuration/useTranslation，无需壳数据 → 可在池内按原样运行）。
+ * 存在性信号 = 壳 statusbar.ts 读 manifest appearsIn.statusBar 声明发 component:true marker（E6#17d，
+ * 壳不再 import statusBar JS——pluginStatusBarModules glob 已删 state.ts）。本组件是**唯一渲染执行者**：
+ * 构建时 3 路径 glob（2026-09-05 塌平后同收单根 plugins/<id>/）+ 运行时 resolvePath 动态 import fallback。
+ * serial-monitor 提供 src/components/statusBar.tsx 自定义组件（连接灯 + 打开口数，E5.8#30.12 后 TX/RX 已
+ * 归位接收区工具栏；组件内部走 linkdesk.events/configuration/useTranslation，无需壳数据 → 可在池内原样运行）。
  *
  * 与 PluginComponent 同模式：import.meta.glob 构建时扫描 + 运行时 resolvePath 动态 import
  * fallback（3 路径试错），模块级 _lazyCache 保持 React.lazy 组件类型稳定。
@@ -15,8 +16,8 @@
 import React, { Suspense, useMemo } from "react";
 import ErrorBoundary from "../error-boundary/ErrorBoundary"; // E5.7#20：池侧版（不 import 壳 components 目录）
 
-// ── import.meta.glob：Vite 预扫描插件状态栏组件 ──
-// 壳 loader.ts pluginStatusBarModules 同款 3 路径（2026-09-05 塌平单根：plugins/<id>/，目录名 = pluginId）
+// ── import.meta.glob：Vite 预扫描插件状态栏组件（池构建时——唯一渲染执行者）──
+// 3 路径（2026-09-05 塌平单根：plugins/<id>/，目录名 = pluginId）；壳侧等价 glob 已随 E6#17d 删
 const statusBarModules = {
   ...import.meta.glob("../../plugins/*/statusBar.tsx"),
   ...import.meta.glob("../../plugins/*/src/statusBar.tsx"),

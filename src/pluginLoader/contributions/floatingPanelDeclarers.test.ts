@@ -3,8 +3,8 @@
  * 覆盖两插件（settings 首批 + floating-panel-demo 第二）：
  *   ① 声明形状（floatingPanel.viewId 非空字符串）
  *   ② viewId ↔ contributes.views 关联（必须引用已声明视图——声明寻址前提）
- *   ③ render 文件物理存在（viewRenderModules glob 是构建时扫描——render 必须落在 src/views/**，
- *      文件缺失则 parseContributions 静默跳过 → 声明失效，实机无右键入口）
+ *   ③ render 文件物理存在（E6#17d 后壳侧不 import render——池 PluginComponent glob 构建时扫描，
+ *      render 必须落在 src/views/**，文件缺失则池打开 import 失败）
  *   ④ 容器 location=auxiliarybar（LinkDesk 无此区域渲染——真不可见 + _viewIndex 可寻址）
  *   ⑤ 端到端：真实 manifest registerViewPlugin → getFloatingPanelViewId 返回声明 viewId
  *     （子项 C 注入条件 = 此函数非 null——声明制落地验证）
@@ -52,10 +52,10 @@ describe("floatingPanel 声明者完整性（E5.8#39.5 子项 D）", () => {
         expect(allViewIds).toContain(viewId);
       });
 
-      it("该视图 render 文件物理存在且落在 src/views/**（glob 构建时扫描——缺失则声明失效）", () => {
+      it("该视图 render 文件物理存在且落在 src/views/**（池 PluginComponent glob 构建时扫描）", () => {
         expect(viewDef?.render, `视图 "${String(viewId)}" 必须声明 render`).toBeTruthy();
         const renderFile = resolve(PROJECT_ROOT, jsonPath.replace(/\/plugin\.json$/, ""), viewDef?.render as string);
-        // normalizePath 归一化后断言 glob 路径形态（src/views 子目录）——池/loader 双 glob 均按此扫描
+        // normalizePath 归一化后断言 glob 路径形态（src/views 子目录）——池 glob 按此扫描（壳侧 glob 已删 E6#17d）
         expect(normalizePath(renderFile).includes("src" + "/views" + "/")).toBe(true);
         expect(existsSync(renderFile), `render 文件缺失：${renderFile}`).toBe(true);
       });

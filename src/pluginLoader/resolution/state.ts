@@ -72,30 +72,9 @@ const pluginModules = {
   ),
 };
 
-const pluginStatusBarModules = {
-  ...import.meta.glob<{ default: React.ComponentType }>(
-    "../../../plugins/*/statusBar.tsx",
-    { eager: false }
-  ),
-  ...import.meta.glob<{ default: React.ComponentType }>(
-    "../../../plugins/*/src/statusBar.tsx",
-    { eager: false }
-  ),
-  ...import.meta.glob<{ default: React.ComponentType }>(
-    "../../../plugins/*/src/components/statusBar.tsx",
-    { eager: false }
-  ),
-};
-
-// E5#114d: 视图 render 文件 glob——替代 /* @vite-ignore */ 动态 import。
-// contributes.views 的 render 路径（如 src/views/FoldersView.tsx）在 dev 模式靠 Vite 服务端解析，
-// 但打包后源码路径不存在于 ASAR 中。用 import.meta.glob 让 Vite 构建时映射到正确 chunk。
-const viewRenderModules = {
-  ...import.meta.glob<{ default: React.ComponentType }>(
-    "../../../plugins/*/src/views/**/*.tsx",
-    { eager: false }
-  ),
-};
+// E6#17d：pluginStatusBarModules + viewRenderModules 两张壳侧 glob 已删——壳侧 statusBar/视图组件
+// import 是装饰死执行（存在性改 manifest appearsIn.statusBar 声明；视图渲染池按 _renderPath 自 import）。
+// 组件加载唯一执行者 = 池（PluginComponent / PoolStatusBarComponent 各自的构建时 glob）。
 
 // E6#55：plugin.json glob 改读原文（?raw）——不再让 Vite 把作者 plugin.json 当严格 JSON 模块处理
 // （vite:json 拒绝注释/尾逗号 → 带注释的 plugin.json 在 dev/build 的模块图里直接炸，壳侧 jsonc 解析根本轮不到）。
@@ -316,8 +295,6 @@ export {
   log,
   errMsg,
   pluginModules,
-  pluginStatusBarModules,
-  viewRenderModules,
   pluginManifestRaw,
   loadedPluginIds,
   _loadingPromises,
