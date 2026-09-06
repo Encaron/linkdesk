@@ -9,9 +9,9 @@
     },
     {
       "name": "@linkdesk/plugin-sdk",
-      "version": "0.1.1",
-      "contentHash": "974ce2217da08e519201165020b8bbad03f8a4059dea9d7e3d8505de7d0bee66",
-      "files": 16
+      "version": "0.1.2",
+      "contentHash": "c3a824eda65576658afd3f9ebe46e041dc84e9b6fa076eb6ddec32236c3e1c4c",
+      "files": 18
     }
   ]
 }

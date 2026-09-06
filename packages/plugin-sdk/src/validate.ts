@@ -1,6 +1,9 @@
 /**
- * plugin.json 验证工具（E6#5）——jsonc 解析 + JSON Schema（ajv-2020）+ i18n 文件存在性。
- * 纯逻辑、无 vite import——`validatePluginJson` 与 bin / defineLinkdeskPluginConfig 三方共用。
+ * 作者面 schema 验证工具（E6#5 立 plugin.json；E6#60 扩 theme/icon 数据文件）。
+ * - validatePluginJson（plugin.schema.json，2020-12）——jsonc 解析 + JSON Schema + i18n 文件存在性。
+ * - validateThemeJson / validateIconThemeJson（theme.schema.json draft-07 / icon-theme.schema.json 2020-12）——
+ *   E6#60 主题/图标作者数据文件校验，镜像 scripts/check-theme-schema.mjs 同规则（同一 schema 文件编译，永不漂移）。
+ * 纯逻辑、无 vite import——validatePluginJson 与 bin / defineLinkdeskPluginConfig 三方共用。
  *
  * 设计裁决：
  *   - **解析走 jsonc-parser**（对齐壳 E6#55）——作者 plugin.json 可写注释/尾逗号（对标 VS Code
@@ -21,11 +24,16 @@ import { existsSync, readFileSync } from "node:fs";
 import { basename, dirname, isAbsolute, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import * as jsonc from "jsonc-parser";
-import Ajv2020 from "ajv/dist/2020.js"; // ajv 无 exports 映射——Node ESM 需显式 .js（bundler 态才可去后缀）
+import Ajv2020 from "ajv/dist/2020.js"; // 2020-12（plugin.schema / icon-theme.schema）——ajv 无 exports 映射，Node ESM 需显式 .js
+import Ajv from "ajv"; // 默认构造 = draft-07——theme.schema（E5.8#129）是 draft-07，draft 自动判定见 compileDataValidator
 import type { ErrorObject } from "ajv";
 
-/** 包内 schema 副本定位——dist/validate.js → ../schemas = 包根/schemas；src 直跑同样上溯一级命中 */
-const SCHEMA_URL = new URL("../schemas/plugin.schema.json", import.meta.url);
+/**
+ * 包内 schema 副本定位——dist/validate.js → ../schemas = 包根/schemas；src 直跑同样上溯一级命中。
+ * 三份 author 面 schema（plugin/theme/icon-theme）包内副本字节同步由 scripts/check-plugin-schema-sync.mjs 守卫
+ * （E6#60：theme/icon-theme 收编——live public/schemas + 包内拷贝，作者 npm i @linkdesk/plugin-sdk 即达）。
+ */
+const SCHEMAS_DIR = new URL("../schemas/", import.meta.url);
 
 /**
  * pluginId 形状约束——复制自壳 src/pluginLoader/manifest.ts:64（独立 npm 包不能 import @src 壳源码；
@@ -119,24 +127,54 @@ function offsetToLineCol(text: string, offset: number): { line: number; col: num
   return { line, col };
 }
 
-let cachedValidate: ((data: unknown) => boolean) | null = null;
-let cachedAjvErrors: ErrorObject[] = [];
+/** 已编译 schema 条目——check(data) 后读 errors（反映最近一次调用） */
+interface CompiledSchema {
+  /** 校验 data——先 check 再读 errors（ajv validate.errors 是上次调用状态，顺序反了会拿到旧/空） */
+  check(data: unknown): boolean;
+  errors: ErrorObject[];
+}
 
-/** ajv-2020 单例——schema 读一次 compile 一次（同一 schema 全进程复用） */
-function getValidator(): (data: unknown) => boolean {
-  if (cachedValidate) return cachedValidate;
-  const raw = readFileSync(fileURLToPath(SCHEMA_URL), "utf8");
-  const schema = JSON.parse(raw) as object;
+/**
+ * ajv 编译 schema 单例——schema 读一次 compile 一次（同一 schema 全进程复用）。按 schema 文件内 $schema
+ * 自动选构造（$schema 是权威，防手选 Ctor 与文件漂移）：2020-12 → ajv/dist/2020；draft-07 → ajv 默认。
+ */
+const compiledCache = new Map<string, CompiledSchema>();
+function getSchemaValidator(schemaFileName: string): CompiledSchema {
+  const cached = compiledCache.get(schemaFileName);
+  if (cached) return cached;
+  const raw = readFileSync(fileURLToPath(new URL(schemaFileName, SCHEMAS_DIR)), "utf8");
+  const parsed = JSON.parse(raw) as { $schema?: string };
+  const is2020 = typeof parsed.$schema === "string" && parsed.$schema.includes("2020-12");
+  // 同一构造器签名（allErrors/strict + compile）——类型面以 Ajv 为准，运行期仍是 Ajv2020 实例
+  const Ctor = (is2020 ? Ajv2020 : Ajv) as typeof Ajv;
   // eslint-disable-next-line new-cap
-  const ajv = new Ajv2020({ allErrors: true, strict: false });
-  const validate = ajv.compile(schema);
-  cachedValidate = (data: unknown) => {
-    const ok = validate(data) as boolean;
-    // 先 validate 再取 errors——validate.errors 是上次调用的状态，顺序反了会拿到旧/空 errors
-    cachedAjvErrors = validate.errors ?? [];
-    return ok;
+  const ajv = new Ctor({ allErrors: true, strict: false });
+  const validate = ajv.compile(parsed as object);
+  const entry: CompiledSchema = {
+    check(data: unknown): boolean {
+      const ok = validate(data) as boolean;
+      entry.errors = validate.errors ?? [];
+      return ok;
+    },
+    errors: [],
   };
-  return cachedValidate;
+  compiledCache.set(schemaFileName, entry);
+  return entry;
+}
+
+/** plugin.json 校验器（plugin.schema.json，2020-12） */
+function getPluginValidator(): CompiledSchema {
+  return getSchemaValidator("plugin.schema.json");
+}
+
+/** 主题数据文件校验器（theme.schema.json，draft-07）——E6#60 sdk 侧作者校验（对照 check-theme-schema.mjs 同规则） */
+function getThemeValidator(): CompiledSchema {
+  return getSchemaValidator("theme.schema.json");
+}
+
+/** 图标主题 mappings 数据文件校验器（icon-theme.schema.json，2020-12）——E6#60（现无 icon-theme 校验器，一并立） */
+function getIconThemeValidator(): CompiledSchema {
+  return getSchemaValidator("icon-theme.schema.json");
 }
 
 /** instancePath → 可读路径：/contributes/commands/0 → contributes.commands[0]；空 = 顶部 */
@@ -188,10 +226,10 @@ export function validatePluginJson(path: string): ValidationResult {
   }
 
   // 1) JSON Schema（唯一真源）
-  const validate = getValidator();
-  const ok = validate(manifest);
+  const validator = getPluginValidator();
+  const ok = validator.check(manifest);
   if (!ok) {
-    for (const e of cachedAjvErrors) errors.push(`${base}:${formatSchemaError(e)}`);
+    for (const e of validator.errors) errors.push(`${base}:${formatSchemaError(e)}`);
     return { valid: false, errors };
   }
 
@@ -209,4 +247,42 @@ export function validatePluginJson(path: string): ValidationResult {
   }
 
   return { valid: errors.length === 0, errors };
+}
+
+/* ── 数据文件校验器（E6#60：主题/图标主题 authors 面，镜像 check-theme-schema.mjs 同规则） ── */
+
+/**
+ * 数据文件严格 JSON 读取——主题/图标 mappings 数据文件**非 JSONC**（引擎 fetchPluginDataFile JSON.parse，
+ * repo check-theme-schema.mjs JSON.parse——两者一致；plugin.json 才走 jsonc，勿混）。
+ */
+function readDataFileStrict(path: string): { data: unknown } | { error: string } {
+  try {
+    return { data: JSON.parse(readFileSync(path, "utf8")) };
+  } catch (err) {
+    return { error: `${basename(path)}: JSON 解析失败（${err instanceof Error ? err.message : String(err)}）——数据文件非 JSONC，须严格 JSON` };
+  }
+}
+
+/**
+ * 校验主题/图标数据文件——schema 违规/JSON 错，格式同 validatePluginJson（{ valid, errors }，不抛）。
+ * schema 文件 = 唯一真源（与 repo check-theme-schema.mjs 同一份，字节同步由 check-plugin-schema-sync 守卫），
+ * 规则永不漂移；本函数跑在 schema 上，作者侧拦格式错 = repo 机械闸的第一道镜像。
+ */
+function validateDataFile(path: string, validator: CompiledSchema): ValidationResult {
+  const read = readDataFileStrict(path);
+  if ("error" in read) return { valid: false, errors: [read.error] };
+  if (!validator.check(read.data)) {
+    return { valid: false, errors: validator.errors.map((e) => `${basename(path)}:${formatSchemaError(e)}`) };
+  }
+  return { valid: true, errors: [] };
+}
+
+/** 校验主题数据 JSON 文件（对照 theme.schema.json draft-07——E5.8#129，引擎 parseThemeRecipe 消费格式） */
+export function validateThemeJson(path: string): ValidationResult {
+  return validateDataFile(path, getThemeValidator());
+}
+
+/** 校验图标主题 mappings JSON 文件（对照 icon-theme.schema.json 2020-12——E5.8#133 / E6#60 实收格式，引擎 normalizeIconThemeMappings 消费） */
+export function validateIconThemeJson(path: string): ValidationResult {
+  return validateDataFile(path, getIconThemeValidator());
 }

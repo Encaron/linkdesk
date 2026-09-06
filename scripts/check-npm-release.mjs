@@ -18,7 +18,8 @@
  *
  * 作者面定义（tarball 内容的仓库侧代理）：
  *   @linkdesk/contracts    → contracts/linkdesk.d.ts + README.md（files 白名单成品；d.ts=作者消费的类型本体）
- *   @linkdesk/plugin-sdk   → src/** + schemas/plugin.schema.json + README.md（dist 不入库=tsc(src) 派生物，src 为权威面）
+ *   @linkdesk/plugin-sdk   → src/** + schemas/**（plugin.schema + E6#60 收编 theme/icon-theme——schema 演进有 npm 黄灯盯）
+ *                           + README.md（dist 不入库=tsc(src) 派生物，src 为权威面）
  */
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
@@ -40,7 +41,7 @@ const PACKAGES = [
     dir: "packages/plugin-sdk",
     surface: [
       "packages/plugin-sdk/src/**",
-      "packages/plugin-sdk/schemas/plugin.schema.json",
+      "packages/plugin-sdk/schemas/**",
       "packages/plugin-sdk/README.md",
     ],
   },

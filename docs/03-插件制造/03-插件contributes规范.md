@@ -299,7 +299,7 @@ useEffect(() => {
 
 声明是 metadata-only；主题颜色数据在加载时异步 fetch。旧格式顶层 `themes` 字段自动归一化（见 `02 §二.1`）。
 
-> **🔥 配方 JSON 契约（E5.8#129 立）**：`path` 指向的配方文件按 `public/schemas/theme.schema.json` 机械校验（`npm run check` 链 `check-theme-schema.mjs`），格式错当场红灯 exit 1 不静默——运行时 `parseThemeRecipe` toast 是第二道防线。主题文件建议首行 `"$schema"` 引 schema 拿编辑器 IntelliSense（相对路径见 [11-主题制作](11-主题制作.md) §②）。
+> **🔥 配方 JSON 契约（E5.8#129 立；E6#60 收编 plugin-sdk）**：`path` 指向的配方文件按 `theme.schema.json` 校验——repo 内 = `public/schemas/theme.schema.json`（`npm run check` 链 `check-theme-schema.mjs`，格式错当场红灯 exit 1 不静默）；npm 作者 = 随 `@linkdesk/plugin-sdk` 分发的 `schemas/theme.schema.json` + SDK `validateThemeJson`（同一 schema 文件，规则永不漂移）。运行时 `parseThemeRecipe` toast 是第二道防线。主题文件建议首行 `"$schema"` 引 schema 拿编辑器 IntelliSense（npm 路径见 [11-主题制作](11-主题制作.md) §②）。
 
 ### 3.7 `contributes.iconThemes`——图标主题
 
@@ -355,6 +355,20 @@ useEffect(() => {
 | `glyphs` | string（选） | glyph 类 CSS 文件相对路径（`@font-face` **不要**写在里面——壳已生成；只写 `.my-icons-x::before{content:"…"}`） |
 
 无 `font` 段 → 零自定义字体（codicon 保底 / 纯图像资产主题）。字体注入对消费方透明（preload 机械层处理），无需手动订阅。
+
+**顶层默认图标五键（E5.8#133.6，对齐 VS Code iconTheme 顶层键）**——匹配表（files/extensions/folders/foldersExpanded）未命中时用主题默认而非 codicon 保底；条目同双形态：
+
+```json
+{
+  "file": { "imagePath": "icons/material/file.svg" },
+  "folder": { "imagePath": "icons/material/folder.svg" },
+  "folderExpanded": { "imagePath": "icons/material/folder-open.svg" },
+  "rootFolder": { "imagePath": "icons/material/folder-root.svg" },
+  "rootFolderExpanded": { "imagePath": "icons/material/folder-root-open.svg" }
+}
+```
+
+> **🔥 mappings JSON 契约（E6#60 立——icon-theme.schema.json 重写对齐引擎 normalizeIconThemeMappings）**：`path` 指向的 mappings 文件按 `icon-theme.schema.json` 校验——repo 内 = `public/schemas/icon-theme.schema.json`（`npm run check` 链 `check-theme-schema.mjs` 兼扫 `contributes.iconThemes`）；npm 作者 = 随 `@linkdesk/plugin-sdk` 分发的 `schemas/icon-theme.schema.json` + SDK `validateIconThemeJson`（同一 schema 文件，规则永不漂移）。运行时解析失败 warn/toast 是第二道防线。文件建议首行 `"$schema"` 引 schema 拿编辑器 IntelliSense。
 
 ### 3.8 `contributes.icons`——共享图标
 
@@ -767,5 +781,5 @@ useEffect(() => {
 > **← 上一份：** `02-插件生命周期.md`
 > **→ 下一份：** `04-插件分发格式.md`
 > **→ 相关：** `08-ViewContainer-视图容器API.md`（views 完整语义）
-> **→ 真相源：** `src/pluginLoader/contributions.ts` / `public/schemas/plugin.schema.json`
+> **→ 真相源：** `src/pluginLoader/contributions.ts` / `public/schemas/plugin.schema.json`（contributes 形状）；主题配方数据 = `public/schemas/theme.schema.json`、图标主题 mappings 数据 = `public/schemas/icon-theme.schema.json`（theme/icon-theme 同随 `@linkdesk/plugin-sdk` 分发，E6#60）
 > **全部文档索引：** `00-README.md`
