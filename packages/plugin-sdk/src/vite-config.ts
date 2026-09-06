@@ -56,6 +56,10 @@ import {
  *  顶层执行）被内联进 bundle → 池运行态 ReferenceError: process is not defined → 视图全崩。 */
 export const DEFAULT_EXTERNAL = ["react", "react-dom", "react-dom/client", "react/jsx-runtime", "react-i18next", "i18next"];
 
+/** E6#15m：打包红标记——includeLspRuntimePackages 对不可解 .bin 抛带此前缀的错，
+ * closeBundle 据此把它**重新抛出**（真红拦 build），其余一般打包错仍走 warn（失败隔离）。 */
+const PACKAGER_RED = "[linkdesk-plugin-packager:red]";
+
 export interface LinkdeskPluginOptions {
   /** 入口文件，默认 plugin.json 的 entry，再缺省 "src/index.tsx"。无 entry（纯 contributes 插件）→ 仅 views 表面 */
   entry?: string;
@@ -165,21 +169,73 @@ function zipTree(zip: JSZip, dir: string, prefix: string): void {
   }
 }
 
-/** E6#15e：langDef.lsp 引用的 node_modules 包随 zip——只带真正 spawn 的二进制（见 closeBundle 调用注）。
+/** E6#15m：node_modules 各包 package.json `bin` 声明反查表——name（.bin shim 名）→ 归属包 + 真入口相对路径。
+ * 扫插件根 node_modules 顶层包 + @scope 子包；`bin` 为 string（bin 名 = 包名末段）或 object（键即 bin 名）。
+ * 真入口须在包内（resolve 后仍处 node_modules 下）且物理存在——npm 单根安装禁止同名 bin 冲突，重复取首。
+ * 惰性构建（首个 .bin arg 才扫；pyright 等直路 node_modules/<pkg> 零扫描成本）。 */
+function buildBinIndex(root: string): Map<string, { pkg: string; rel: string }> {
+  const bins = new Map<string, { pkg: string; rel: string }>();
+  const nmDir = join(root, "node_modules");
+  if (!existsSync(nmDir)) return bins;
+  const record = (pkgRel: string, binName: string, rel: string): void => {
+    if (!rel || rel.startsWith("..") || rel.startsWith("/") || /^[a-zA-Z]:[\\/]/.test(rel)) return; // 逸出/绝对 → 忽略
+    const targetAbs = resolve(nmDir, pkgRel, rel);
+    if (relative(nmDir, targetAbs).startsWith("..")) return; // 真入口必须落在 node_modules 内
+    if (!existsSync(targetAbs)) return;
+    if (!bins.has(binName)) bins.set(binName, { pkg: pkgRel, rel: rel.replace(/\\/g, "/") });
+  };
+  const readBin = (pkgJsonPath: string, pkgRel: string): void => {
+    let pkg: { bin?: unknown };
+    try {
+      pkg = JSON.parse(readFileSync(pkgJsonPath, "utf-8"));
+    } catch {
+      return;
+    }
+    const bin = pkg?.bin;
+    if (typeof bin === "string") {
+      record(pkgRel, pkgRel.split("/").pop() ?? "", bin); // string bin：bin 名 = 包名末段（@scope/pkg → pkg）
+    } else if (bin && typeof bin === "object") {
+      for (const [name, rel] of Object.entries(bin)) {
+        if (typeof rel === "string") record(pkgRel, name, rel);
+      }
+    }
+  };
+  for (const top of readdirSync(nmDir)) {
+    if (top.startsWith(".")) continue;
+    if (top.startsWith("@")) {
+      for (const sub of readdirSync(join(nmDir, top))) {
+        readBin(join(nmDir, top, sub, "package.json"), `${top}/${sub}`);
+      }
+    } else {
+      readBin(join(nmDir, top, "package.json"), top);
+    }
+  }
+  return bins;
+}
+
+/** E6#15e：langDef.lsp 引用的 node_modules 运行时依赖随 zip——只带真正 spawn 的二进制（见 closeBundle 调用注）。
  * lsp.args 相对路径**以插件根目录为基准解析**（E6#15l 锚词「插件根目录为基准」，与 schema 描述同源，
- * 门禁 scripts/check-lsp-args-base.mjs 钉本文件）——从 args 解析 `node_modules/<pkg>/…` 的顶层包名 →
+ * 门禁 scripts/check-lsp-args-base.mjs 钉本文件）——从 args 解析 `node_modules/<pkg>/…` 顶层包名 →
  * 整树拷入 pkgDir/node_modules/<pkg>。
- * `.bin/` shim 归属需解析依赖 bin 字段——当前不解析（warn 提示作者改指真实包路径），无插件命中。 */
+ * E6#15m：`node_modules/.bin/<name>` shim 形态（clangd/jdtls/rust-analyzer 等 npm 包二进制的作者最自然写法）
+ * 解引用——buildBinIndex 反查 <name> 归属包，把**归属包整树**拷入 pkgDir（真入口在包里），并把本函数收到的
+ * manifest（= dist plugin.json，closeBundle 传入改写副本）arg 从 `.bin/<name>` 改写成 `node_modules/<pkg>/<rel>`：
+ * `.bin/<name>` 是 npm 转发 shim（shell/.cmd 脚本），zip 无 node_modules/.bin 且 node 直接跑 shim 必崩——
+ * 打包即改写，让安装后注册绝对化（electron lsp-arg-resolve.ts）直接指向 zip 内真 js 入口。解不出归属
+ * （未 npm install / bin 名错 / 多层路径）→ 抛 PACKAGER_RED 错真红拦 build——宁打包时红脸，不把转发壳带进
+ * zip 让装上才炸。manifest 只改路径式 arg 串；flag 类（--stdio）与 .bin 之外的 node_modules 直路行为零变。 */
 function includeLspRuntimePackages(
   root: string,
   pkgDir: string,
   manifest: unknown,
   warn: (msg: string) => void,
 ): void {
-  const langDefs = (manifest as { contributes?: { langDefs?: Array<{ lsp?: { args?: unknown } }> } } | undefined)
+  const langDefs = (manifest as { contributes?: { langDefs?: Array<{ lsp?: { args?: string[] } }> } } | undefined)
     ?.contributes?.langDefs;
   if (!Array.isArray(langDefs)) return;
-  const wanted = new Set<string>();
+  const wanted = new Set<string>(); // node_modules/<pkg>（可含 @scope/）整树待拷
+  const binRewrites = new Map<string, string>(); // 原 arg → 改写后相对 arg
+  let binIndex: Map<string, { pkg: string; rel: string }> | null = null;
   for (const ld of langDefs) {
     const args = ld?.lsp?.args;
     if (!Array.isArray(args)) continue;
@@ -192,10 +248,24 @@ function includeLspRuntimePackages(
       const top = seg.split("/")[0];
       if (!top) continue;
       if (top === ".bin") {
-        warn(
-          `[linkdesk-plugin-packager] lsp.args "${arg}" 经 node_modules/.bin shim——归属包需解析依赖 bin 字段，` +
-            "暂不随包；请作者改指真实包路径（node_modules/<pkg>/bin/…）",
-        );
+        const rest = seg.split("/");
+        const name = rest[1];
+        if (!name || rest.length > 2) {
+          throw new Error(
+            `${PACKAGER_RED} lsp.args "${arg}" 的 .bin 形态只支持单层 bin 名（node_modules/.bin/<name>）`,
+          );
+        }
+        binIndex ??= buildBinIndex(root);
+        const owner = binIndex.get(name);
+        if (!owner) {
+          throw new Error(
+            `${PACKAGER_RED} lsp.args "${arg}" 经 node_modules/.bin shim，但插件根 node_modules 无包声明 bin ` +
+              `"${name}"——SDK 无法把 LSP 服务器真入口随包。请确认插件根已 npm install 且 bin 名拼写正确，` +
+              "或改指真实包路径（node_modules/<pkg>/…）。",
+          );
+        }
+        wanted.add(owner.pkg);
+        binRewrites.set(arg, `node_modules/${owner.pkg}/${owner.rel}`);
         continue;
       }
       if (top.startsWith(".")) continue; // 隐藏目录非包
@@ -203,16 +273,28 @@ function includeLspRuntimePackages(
     }
   }
   for (const name of wanted) {
-    const src = join(root, "node_modules", name);
+    const segs = name.split("/");
+    const src = join(root, "node_modules", ...segs);
     if (!existsSync(src)) {
       warn(
         `[linkdesk-plugin-packager] lsp.args 引用依赖 "${name}" 不在插件根 node_modules——未随包（插件根须先 npm install）`,
       );
       continue;
     }
-    const dest = join(pkgDir, "node_modules", name);
+    const dest = join(pkgDir, "node_modules", ...segs);
     mkdirSync(dest, { recursive: true });
     copyTree(src, dest);
+  }
+  // E6#15m：dist plugin.json arg 改写 .bin → 真入口（安装注册绝对化即指向 zip 内真 js）
+  if (binRewrites.size > 0) {
+    for (const ld of langDefs) {
+      const args = ld?.lsp?.args;
+      if (!Array.isArray(args)) continue;
+      for (let i = 0; i < args.length; i++) {
+        const rewritten = binRewrites.get(args[i]);
+        if (rewritten) args[i] = rewritten;
+      }
+    }
   }
 }
 
@@ -359,16 +441,18 @@ export function defineLinkdeskPluginConfig(options: LinkdeskPluginOptions = {}):
 
         await assemblePkgDir();
 
-        // E6#15e：插件自带的 LSP 二进制随包——扫本插件 plugin.json 的 langDefs[].lsp.args，
-        // 凡路径式 arg 指向 `node_modules/<pkg>/…` 的，把 <pkg> 整树从插件根 node_modules 拷进 zip。
-        // pyright 等是 spawn 二进制（不经 bundle import——knip/rollup 图外），只能显式随包。
-        // 按 lsp.args 引用驱动而非全量 dependencies：react/@linkdesk/ui 等构建期被 external/内联，
-        // 不需要也不该进包（全量拷 = 纯增重）；无 langDef.lsp 的插件（既有 19 zip）零影响。
-        includeLspRuntimePackages(root, pkgDir, manifest, (m) => this.warn(m));
-
-        // 静态清单从源码 pluginRoot 拷入（缺省忽略）
-        // plugin.json 例外——jsonc 归一为严格 JSON + E6#15 render 改写（dist 视角：render 指编译表面路径）
+        // 静态清单（jsonc 归一 + E6#15 render 改写）先算——includeLspRuntimePackages 需对改写副本动
+        // .bin args（E6#15m 解引用改写进 dist plugin.json，源码 plugin.json 保持作者视角 .bin 形态）
         const distManifest = rewriteDistManifest(manifest, relToFinal);
+
+        // E6#15e/#15m：插件自带的 LSP 二进制随包——扫本插件 langDefs[].lsp.args，凡路径式 arg 指向
+        // `node_modules/<pkg>/…` 的，把 <pkg> 整树从插件根 node_modules 拷进 zip（pyright 等是 spawn 二进制，
+        // 不经 bundle import——knip/rollup 图外，只能显式随包）；`node_modules/.bin/<name>` shim 形态解引用
+        // 归属包拷入 + args 改写真路径（见函数 docblock）。按 lsp.args 引用驱动而非全量 dependencies：
+        // react/@linkdesk/ui 等构建期被 external/内联，不需要也不该进包（全量拷 = 纯增重）；无 langDef.lsp
+        // 的插件（既有 zip）零影响。不可解 .bin → PACKAGER_RED 抛错（catch 见下：真红拦 build）。
+        includeLspRuntimePackages(root, pkgDir, distManifest, (m) => this.warn(m));
+
         writeFileSync(join(pkgDir, "plugin.json"), `${JSON.stringify(distManifest, null, 2)}\n`, "utf8");
         for (const decl of collectI18nDecls(manifest)) copyFileInto(root, pkgDir, decl.rel);
         copyFileInto(root, pkgDir, "icon.svg");
@@ -391,7 +475,9 @@ export function defineLinkdeskPluginConfig(options: LinkdeskPluginOptions = {}):
         );
         rmSync(join(outDir, ".s"), { recursive: true, force: true });
       } catch (e) {
-        this.warn(`[linkdesk-plugin-packager] 打包失败：${e instanceof Error ? e.message : String(e)}`);
+        const msg = e instanceof Error ? e.message : String(e);
+        if (msg.startsWith(PACKAGER_RED)) throw e; // E6#15m：.bin 不可解 = 作者配置错——真红拦 build，不吞（失败隔离只护表面级错误）
+        this.warn(`[linkdesk-plugin-packager] 打包失败：${msg}`);
       }
     },
   };

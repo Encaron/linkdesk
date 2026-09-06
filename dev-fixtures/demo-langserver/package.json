@@ -1,0 +1,10 @@
+{
+  "name": "demo-langserver",
+  "version": "1.0.0",
+  "private": true,
+  "description": "E6#15m 第二形态演示 LSP 服务器（虚构 demo-* 命名，硬约束 21）——经 node_modules/.bin/demo-langserver shim 暴露的 JS 服务器。目的不是实现真语言服务，而是让打包态验证走通 spawn → initialize → didOpen → definition 全握手，证明 SDK 打包器把 .bin shim 背后真入口随了包",
+  "license": "UNLICENSED",
+  "bin": {
+    "demo-langserver": "server.js"
+  }
+}

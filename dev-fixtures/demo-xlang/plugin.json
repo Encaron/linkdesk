@@ -1,0 +1,22 @@
+{
+  "$schema": "../../public/schemas/plugin.schema.json",
+  "name": "Demo XLang",
+  "version": "1.0.0",
+  "description": "第二形态 LSP 演示（虚构）——demo 语言 + 经 node_modules/.bin/demo-langserver shim 启动的语言服务器。验证 .bin 解引用随包（E6#15m）",
+  "author": "demo",
+  "distribution": "user",
+  "pluginRole": "data",
+  "entry": "src/index.tsx",
+  "contributes": {
+    "langDefs": [
+      {
+        "id": "demo-xlang",
+        "extensions": [".dxl"],
+        "lsp": {
+          "command": "node",
+          "args": ["node_modules/.bin/demo-langserver", "--stdio"]
+        }
+      }
+    ]
+  }
+}

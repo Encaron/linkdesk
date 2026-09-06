@@ -1,0 +1,14 @@
+{
+  "name": "demo-xlang",
+  "version": "1.0.0",
+  "private": true,
+  "description": "E6#15m 第二形态演示语言插件（虚构 demo-* 命名，硬约束 21）——langDef.lsp.args 走 node_modules/.bin/demo-langserver shim，验 SDK 打包器解引用真入口随包 + args 改写真路径。demo-langserver 经 file: 依赖进 node_modules（npm install 物化真 shim）",
+  "license": "UNLICENSED",
+  "type": "module",
+  "scripts": {
+    "build": "node ../../plugin-sdk-example/node_modules/@linkdesk/plugin-sdk/dist/bin.js build"
+  },
+  "dependencies": {
+    "demo-langserver": "file:../demo-langserver"
+  }
+}
