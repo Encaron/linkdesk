@@ -242,7 +242,7 @@ E5.6 双 Pool:                              E5.7 极简 Pool:
 
 **认知跃迁——契约先行，接缝可枚举。** E5.7 收官后的下一站不是加功能，是"第三方作者真的能写插件"的地基——对标 VS Code 的 `@types/vscode` + `contributes` 体系。E5.8 借鉴 DeepSeek Harness 的工程纪律（**抄纪律不抄形态**），四根支柱：
 
-- **契约生成——插件契约第一次有了「唯一真相源」。** 生成器读 `src/core/api/linkdesk-api.ts` → 产出 `contracts/linkdesk.d.ts`（86 类型声明）+ `contracts/runtime-shapes.ts`（39 个运行期校验函数）+ 独立 npm 包 `@linkdesk/contracts`（版本号 = 壳版本，升级壳即换契约）。preload 暴露面 `poolExposed satisfies PoolExposed` 编译期钉死——缺一个命名空间 = 编译红。运行期 DTO 形状断言——dev 报错可诊断，生产不崩。**插件类型不再靠 README 手抄——漂移即编译错误。**
+- **契约生成——插件契约第一次有了「唯一真相源」。** 生成器读 `src/core/api/linkdesk-api.ts` → 产出 `contracts/linkdesk.d.ts`（86 类型声明）+ `contracts/runtime-shapes.ts`（39 个运行期校验函数）+ 独立 npm 包 `@linkdesk/contracts`（版本号 2026-09-06 拆焊后独立于壳——软件升级≠契约升级，包版本只随 API 面变）。preload 暴露面 `poolExposed satisfies PoolExposed` 编译期钉死——缺一个命名空间 = 编译红。运行期 DTO 形状断言——dev 报错可诊断，生产不崩。**插件类型不再靠 README 手抄——漂移即编译错误。**
 - **可逆注册——装上的都能卸干净。** registrationTracker 管住"注册了就要能注销"——可卸载 ⇒ 可重装是插件性的定义本身。
 - **依赖编排——dependsOn 显式声明。** 插件依赖从隐式时序变显式声明。
 - **工程纪律门禁——`npm run check` 一键全绿。** tsc×2 零错误 + ESLint `--max-warnings 0` + vitest（612）+ 网格/pool-css/ipc-audit/jscpd/knip/契约 `--check`。
@@ -573,7 +573,7 @@ E5.8 不是加功能，是「让第三方作者真的能写插件」的工程基
 
 | 支柱 | 落地 | 状态 |
 |------|------|:--:|
-| 契约生成 | `linkdesk-api.ts`（真相源）→ 生成器 → `linkdesk.d.ts`（86 类型）+ `runtime-shapes.ts`（39 校验函数）+ `@linkdesk/contracts` npm 包；版本 = 壳版本联动；preload 暴露面 `satisfies PoolExposed` 编译期钉死；运行期 DTO 校验 | ✅ Phase 4（#19–#22.6） |
+| 契约生成 | `linkdesk-api.ts`（真相源）→ 生成器 → `linkdesk.d.ts`（86 类型）+ `runtime-shapes.ts`（39 校验函数）+ `@linkdesk/contracts` npm 包；版本轴独立（2026-09-06 拆焊——壳升级≠契约升级，不随壳动）；preload 暴露面 `satisfies PoolExposed` 编译期钉死；运行期 DTO 校验 | ✅ Phase 4（#19–#22.6） |
 | 可逆注册 | registrationTracker——注册必可注销，「可卸载 ⇒ 可重装」 | ✅ Phase 2 |
 | 依赖编排 | dependsOn 显式声明插件依赖 | ✅ Phase 3 |
 | 工程纪律门禁 | `npm run check` 一键：tsc×2 + ESLint `--max-warnings 0` + vitest 612 + 网格/pool-css/ipc-audit/jscpd/knip/契约 `--check` | ✅ Phase 0–3 贯穿 |
@@ -589,7 +589,7 @@ src/core/api/linkdesk-api.ts（唯一真相源）
    └─ 生成器 scripts/generate-contract.mjs
        ├─ contracts/linkdesk.d.ts      ← 插件侧类型（86 声明），npm 包 @linkdesk/contracts 分发
        ├─ contracts/runtime-shapes.ts  ← 运行期 DTO 校验（39 函数），dev 报错可诊断，生产不崩
-       └─ 版本号 = 壳版本（升级壳即换契约）
+       └─ 版本号独立轴（2026-09-06 拆焊：不再随壳 / 不再「升级壳即换契约」）
 preload 暴露面 poolExposed satisfies PoolExposed  ← 编译期钉死，缺命名空间即红
 ```
 
@@ -933,6 +933,6 @@ E4 做文件树和 Monaco 编辑器。E5 铺铁轨——归一化、消灭硬编
 - *从"多 WebView 堆叠"到"PoolLayout 声明式推送——壳不碰插件 React 树"（2026-08-09）*
 - *从"双 Pool"到"极简 Pool——壳退化为不可见状态持有者，安全靠沙箱不靠进程数"（2026-08-12）*
 - *从"E5.7 收官"到"E5.8 归一化基建——可逆注册 / 依赖编排 / 工程纪律门禁"（2026-08-16）*
-- *从"手写文档同步契约"到"契约生成——linkdesk.d.ts 编译期钉死 + 运行期校验 + 版本联动"（2026-08-16，E5.8）*
+- *从"手写文档同步契约"到"契约生成——linkdesk.d.ts 编译期钉死 + 运行期校验 + 版本联动（2026-09-06 拆焊：版本轴独立，不随壳）"（2026-08-16，E5.8）*
 
 *LinkDesk = Link（连接）+ Desk（桌子）。名字在起名时就写好了，理解到今天还在继续追上。*

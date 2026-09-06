@@ -23,7 +23,7 @@ window.linkdesk.configuration.get("editor.fontSize"); // 智能提示 + 类型�
 
 - **纯类型**：不含 `getLinkDesk`/`linkdesk` 值导出——运行时走 `window.linkdesk`（preload 注入）。
 - **自包含**：无任何 `@src/core` 依赖，拷一个 d.ts 进项目即完整类型。
-- **版本联动**：包版本 = 壳版本（同版本发布）。升级壳即换契约——插件 `npm update @linkdesk/contracts` 拿到新类型。
+- **版本轴独立（2026-09-06 拆焊，反向 E5.8#22.6）**：包版本不再随壳——壳升级 ≠ 契约升级（软件升级是用户轴，与本包无关）。只有当 `window.linkdesk.*` API 面变了、作者要拿新类型时才升版发布。**内容仍与壳源码逐字节同步**（生成器比对，漂移即 `contracts:check` 红）——类型永远描述当前壳，只是版本号不绑壳。`npm update @linkdesk/contracts` 在版本升后拿新类型。
 
 ## 与仓库产物双轨
 

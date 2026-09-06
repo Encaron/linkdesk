@@ -1,6 +1,6 @@
 {
   "name": "@linkdesk/plugin-sdk",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "@linkdesk/plugin-sdk——LinkDesk 插件作者 SDK（对标 @types/vscode）：window.linkdesk.* 类型 + 一键 build(.linkdesk-plugin) + plugin.json 验证 + eslint 门禁（E6#54d）。作者 npm i 后零壳源码依赖。",
   "type": "module",
   "main": "./dist/index.js",
@@ -36,7 +36,7 @@
     "prepack": "tsc"
   },
   "dependencies": {
-    "@linkdesk/contracts": "^0.1.0",
+    "@linkdesk/contracts": "^0.1.1",
     "@typescript-eslint/eslint-plugin": "^8.0.0",
     "@typescript-eslint/parser": "^8.0.0",
     "@vitejs/plugin-react": "^4.3.4",

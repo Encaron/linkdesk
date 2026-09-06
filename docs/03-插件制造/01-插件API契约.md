@@ -63,7 +63,7 @@ async function list(): Promise<FileEntry[]> {
 
 **路径 B——独立 npm 包（第三方插件，#22.6）：** `npm i -D @linkdesk/contracts` 后同款 `import type { ... } from "@linkdesk/contracts"`。
 
-> **包形态（E5.8#22.6 建）：** `contracts/` 即 npm 包根（`@linkdesk/contracts`，`types` 入口直指 `linkdesk.d.ts`，零构建，`files` 白名单只 d.ts）。**版本联动：** 包版本 = 壳版本——生成器自动同步写入 `contracts/package.json`，漂移即 `contracts:check` 红。**消费形态验收：** 仓库根 `contracts-example/`——独立 tsconfig + `file:../contracts` 本地引用，`npx tsc --noEmit` 零错误，全程零 `@src/core`（`npm pack` 出 tarball → 装真实 npm 包路径同样通过）。**发布态：** ✅ 已真发 `@linkdesk/contracts@0.1.0`（2026-09-04，官方 registry，E6#2.5b，0c434bdb1）——第三方 `npm i -D @linkdesk/contracts` 直装 registry 真包；真实包 tsc 验收见 E6#2.5c。plugin-sdk（E6#6b）与 `@linkdesk/ui`（E6#54b）同期已真发 0.1.0。
+> **包形态（E5.8#22.6 建）：** `contracts/` 即 npm 包根（`@linkdesk/contracts`，`types` 入口直指 `linkdesk.d.ts`，零构建，`files` 白名单只 d.ts）。**版本轴独立（2026-09-06 拆焊，反向 22.6 版本联动）：** 包版本**不再随壳**——软件升级（用户轴）≠ 契约升级（作者轴）；只有当 `window.linkdesk.*` API 面变了才升版发布。**内容检测不撤**：d.ts/runtime-shapes 逐字节比对壳源码，漂移即 `contracts:check` 红（改 API 忘重生成 = commit 卡死）；**货架节奏 = check-npm-release 黄灯闸**（作者面内容变 + 版本没动 → 提醒 bump+publish）。**消费形态验收：** 仓库根 `contracts-example/`——独立 tsconfig + `file:../contracts` 本地引用，`npx tsc --noEmit` 零错误，全程零 `@src/core`（`npm pack` 出 tarball → 装真实 npm 包路径同样通过）。**发布态：** ✅ 已真发 `@linkdesk/contracts@0.1.0`（2026-09-04）+ `@linkdesk/contracts@0.1.1`（2026-09-06，拆焊后首个独立轴版本，含 #13.5/#13/#15 新增类型）+ `@linkdesk/contracts@0.1.2`（2026-09-06 同日，0.1.1 带旧「版本联动」README 出包 → README 修正重发，d.ts 未变）——第三方 `npm i -D @linkdesk/contracts` 直装 registry 真包；真实包 tsc 验收见 E6#2.5c。plugin-sdk（E6#6b / 0.1.1 同批真发）与 `@linkdesk/ui`（E6#54b）同期已真发。
 
 **路径 C——拷贝文件：** 直接把 `contracts/linkdesk.d.ts` 拷进插件项目 + tsconfig 引用。契约文件单文件自包含（94 声明，零 import 依赖），拷贝即用。
 
