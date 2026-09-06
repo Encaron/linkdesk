@@ -18,6 +18,7 @@
  * packages/plugin-sdk/src/vite-config.ts includeLspRuntimePackages）。
  */
 
+import { existsSync } from "node:fs";
 import * as path from "path";
 
 /** 路径式判定——相对路径含分隔符 / 绝对路径 / 脚本扩展名（与 scripts/check-lsp-deps.mjs isPathLike 同语义） */
@@ -32,11 +33,13 @@ export function isPathLikeArg(arg: string): boolean {
  * 把 lsp.args 里相对插件根的路径式参数解析为插件目录下绝对路径。
  * @param args      langDef.lsp.args（作者视角相对路径）
  * @param pluginDir 插件根目录（发现层 dirname(plugin.json)，dev = 仓库 plugins/<id>，prod = {userData}/plugins/<id>）
+ * @param exists    存在性判定（默认 fs.existsSync）——可注入以便单测 hermetic（不依赖磁盘 hoist 布局）
  * @returns 换算后的 args；无路径式相对参数 / 全绝对 / args 缺失 → 原样返回（无新分配）
  */
 export function resolveLspArgsToPluginRoot(
   args: string[] | undefined,
   pluginDir: string,
+  exists: (p: string) => boolean = existsSync,
 ): string[] | undefined {
   if (!args) return undefined;
   let changed = false;
@@ -44,7 +47,24 @@ export function resolveLspArgsToPluginRoot(
     if (typeof arg !== "string" || !isPathLikeArg(arg)) return arg;
     if (path.isAbsolute(arg)) return arg;
     changed = true;
-    return path.resolve(pluginDir, arg);
+    // node_modules/ 前缀相对 arg：本地存在 → 本地；缺 → 向上 Node 解析找 hoist/父级/仓库根首命中
+    // （E6#16 workspaces 化——python 的 pyright 可被提升到仓库根 node_modules，dev 下插件根不再物理持有）。
+    // 非 node_modules 前缀相对 arg（作者本地 bin/…）保持插件根基准原样。
+    if (!/^node_modules[\\/]/.test(arg)) return path.resolve(pluginDir, arg);
+    const local = path.resolve(pluginDir, arg);
+    if (exists(local)) return local;
+    const seg = arg.replace(/\\/g, "/").split("node_modules/")[1];
+    if (seg) {
+      let dir = path.dirname(pluginDir); // 插件根本身已由 local 查过——从上一级 node_modules 起找
+      for (;;) {
+        const up = path.resolve(dir, "node_modules", ...seg.split("/"));
+        if (exists(up)) return up;
+        const parent = path.dirname(dir);
+        if (parent === dir) break;
+        dir = parent;
+      }
+    }
+    return local; // 上下皆无 → 回落插件根基准位（spawn ENOENT 指向期望路径，不静默换成别处）
   });
   return changed ? out : args;
 }

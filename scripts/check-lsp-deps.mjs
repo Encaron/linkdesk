@@ -61,9 +61,34 @@ function collectFiles(dir, extSet, out) {
   return out;
 }
 
-/** 解析引用为绝对路径——绝对原样，相对对给定基准 resolve（调用方传入按源决定的 baseDir） */
+/** 向上找 `<ancestor>/node_modules/<seg>` 首个命中（Node 模块解析语义）——找不到 null。
+ *  E6#16：workspaces 化后插件依赖可 hoist 到仓库根 node_modules（python 的 pyright 实证），
+ *  插件根本地无 node_modules/… 物理文件 ≠ 依赖缺失（只是被提升）——先本地（嵌套布局）后向上（hoist 布局）。 */
+function resolveNodeModulesUpward(startDir, seg) {
+  let dir = startDir;
+  for (;;) {
+    const candidate = resolve(dir, "node_modules", ...seg.split("/"));
+    if (existsSync(candidate)) return candidate;
+    const parent = dirname(dir);
+    if (parent === dir) return null;
+    dir = parent;
+  }
+}
+
+/** 解析引用为绝对路径——绝对原样；相对对给定基准 resolve（调用方传入按源决定的 baseDir）。
+ *  node_modules/ 前缀相对引用走向上解析（本地命中优先，hoist 在父级/仓库根命中）；都无 → 回落基准位
+ *  （错误信息仍指向基准期望位，不静默）。 */
 function resolveRef(ref, baseDir) {
-  return isAbsolute(ref) ? ref : resolve(baseDir, ref);
+  if (isAbsolute(ref)) return ref;
+  const norm = ref.replace(/\\/g, "/");
+  if (norm.startsWith("node_modules/")) {
+    const seg = norm.split("node_modules/")[1];
+    if (seg) {
+      const up = resolveNodeModulesUpward(baseDir, seg);
+      if (up) return up;
+    }
+  }
+  return resolve(baseDir, ref);
 }
 
 /** 是否路径式引用（含路径分隔符 = 相对/绝对文件，不是 PATH 二进制） */

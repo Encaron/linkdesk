@@ -169,45 +169,77 @@ function zipTree(zip: JSZip, dir: string, prefix: string): void {
   }
 }
 
+/** Node 标准向上 node_modules 链（E6#16）——workspaces 化后插件依赖可被 hoist 提升到仓库根 node_modules，
+ * 仍须能随包。逐级收集存在的 node_modules 目录（插件根本地 → 父级 → … → fs 根），最近层在数组前（先查 = 本地优先）。 */
+function collectNodeModulesDirs(startDir: string): string[] {
+  const out: string[] = [];
+  let dir = startDir;
+  for (;;) {
+    const nm = join(dir, "node_modules");
+    if (existsSync(nm)) out.push(nm);
+    const parent = dirname(dir);
+    if (parent === dir) break;
+    dir = parent;
+  }
+  return out;
+}
+
+/** 向上找 `<ancestor>/node_modules/<pkgRel>` 首个命中（Node 模块解析语义——本地命中优先于 hoist/父级）。找不到 → null */
+function findNodeModules(startDir: string, pkgRel: string[]): string | null {
+  let dir = startDir;
+  for (;;) {
+    const candidate = join(dir, "node_modules", ...pkgRel);
+    if (existsSync(candidate)) return candidate;
+    const parent = dirname(dir);
+    if (parent === dir) return null;
+    dir = parent;
+  }
+}
+
 /** E6#15m：node_modules 各包 package.json `bin` 声明反查表——name（.bin shim 名）→ 归属包 + 真入口相对路径。
  * 扫插件根 node_modules 顶层包 + @scope 子包；`bin` 为 string（bin 名 = 包名末段）或 object（键即 bin 名）。
  * 真入口须在包内（resolve 后仍处 node_modules 下）且物理存在——npm 单根安装禁止同名 bin 冲突，重复取首。
  * 惰性构建（首个 .bin arg 才扫；pyright 等直路 node_modules/<pkg> 零扫描成本）。 */
 function buildBinIndex(root: string): Map<string, { pkg: string; rel: string }> {
   const bins = new Map<string, { pkg: string; rel: string }>();
-  const nmDir = join(root, "node_modules");
-  if (!existsSync(nmDir)) return bins;
-  const record = (pkgRel: string, binName: string, rel: string): void => {
-    if (!rel || rel.startsWith("..") || rel.startsWith("/") || /^[a-zA-Z]:[\\/]/.test(rel)) return; // 逸出/绝对 → 忽略
-    const targetAbs = resolve(nmDir, pkgRel, rel);
-    if (relative(nmDir, targetAbs).startsWith("..")) return; // 真入口必须落在 node_modules 内
-    if (!existsSync(targetAbs)) return;
-    if (!bins.has(binName)) bins.set(binName, { pkg: pkgRel, rel: rel.replace(/\\/g, "/") });
-  };
-  const readBin = (pkgJsonPath: string, pkgRel: string): void => {
-    let pkg: { bin?: unknown };
-    try {
-      pkg = JSON.parse(readFileSync(pkgJsonPath, "utf-8"));
-    } catch {
-      return;
-    }
-    const bin = pkg?.bin;
-    if (typeof bin === "string") {
-      record(pkgRel, pkgRel.split("/").pop() ?? "", bin); // string bin：bin 名 = 包名末段（@scope/pkg → pkg）
-    } else if (bin && typeof bin === "object") {
-      for (const [name, rel] of Object.entries(bin)) {
-        if (typeof rel === "string") record(pkgRel, name, rel);
+  const nmDirs = collectNodeModulesDirs(root); // 本地 → 父级 → …（E6#16 hoist 兼容）
+  const record =
+    (nmDir: string) =>
+    (pkgRel: string, binName: string, rel: string): void => {
+      if (!rel || rel.startsWith("..") || rel.startsWith("/") || /^[a-zA-Z]:[\\/]/.test(rel)) return; // 逸出/绝对 → 忽略
+      const targetAbs = resolve(nmDir, pkgRel, rel);
+      if (relative(nmDir, targetAbs).startsWith("..")) return; // 真入口必须落在 node_modules 内
+      if (!existsSync(targetAbs)) return;
+      if (!bins.has(binName)) bins.set(binName, { pkg: pkgRel, rel: rel.replace(/\\/g, "/") }); // 最近层优先
+    };
+  const readBin =
+    (nmDir: string) =>
+    (pkgJsonPath: string, pkgRel: string): void => {
+      let pkg: { bin?: unknown };
+      try {
+        pkg = JSON.parse(readFileSync(pkgJsonPath, "utf-8"));
+      } catch {
+        return;
       }
-    }
-  };
-  for (const top of readdirSync(nmDir)) {
-    if (top.startsWith(".")) continue;
-    if (top.startsWith("@")) {
-      for (const sub of readdirSync(join(nmDir, top))) {
-        readBin(join(nmDir, top, sub, "package.json"), `${top}/${sub}`);
+      const bin = pkg?.bin;
+      if (typeof bin === "string") {
+        record(nmDir)(pkgRel, pkgRel.split("/").pop() ?? "", bin); // string bin：bin 名 = 包名末段（@scope/pkg → pkg）
+      } else if (bin && typeof bin === "object") {
+        for (const [name, rel] of Object.entries(bin)) {
+          if (typeof rel === "string") record(nmDir)(pkgRel, name, rel);
+        }
       }
-    } else {
-      readBin(join(nmDir, top, "package.json"), top);
+    };
+  for (const nmDir of nmDirs) {
+    for (const top of readdirSync(nmDir)) {
+      if (top.startsWith(".")) continue;
+      if (top.startsWith("@")) {
+        for (const sub of readdirSync(join(nmDir, top))) {
+          readBin(nmDir)(join(nmDir, top, sub, "package.json"), `${top}/${sub}`);
+        }
+      } else {
+        readBin(nmDir)(join(nmDir, top, "package.json"), top);
+      }
     }
   }
   return bins;
@@ -274,10 +306,10 @@ function includeLspRuntimePackages(
   }
   for (const name of wanted) {
     const segs = name.split("/");
-    const src = join(root, "node_modules", ...segs);
-    if (!existsSync(src)) {
+    const src = findNodeModules(root, segs); // 本地 node_modules 优先，向上 Node 解析兜底（hoist/monorepo 布局，E6#16）
+    if (!src) {
       warn(
-        `[linkdesk-plugin-packager] lsp.args 引用依赖 "${name}" 不在插件根 node_modules——未随包（插件根须先 npm install）`,
+        `[linkdesk-plugin-packager] lsp.args 引用依赖 "${name}" 不在插件根 node_modules（含向上解析）——未随包（插件工程须先 npm install）`,
       );
       continue;
     }

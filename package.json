@@ -4,6 +4,9 @@
   "version": "0.1.0",
   "type": "module",
   "main": "dist-electron/electron/main.js",
+  "workspaces": [
+    "plugins/*"
+  ],
   "engines": {
     "node": ">=24.0.0"
   },
@@ -27,29 +30,22 @@
     "contracts:check": "node scripts/generate-contract.mjs --check",
     "release:mark": "node scripts/check-npm-release.mjs --mark",
     "lsp:smoke": "node scripts/check-lsp-smoke.mjs --base plugins/python",
-    "postinstall": "node -e \"try{require('fs').rmSync('node_modules/.vite',{recursive:true,force:true})}catch(e){}\" && node scripts/install-lefthook.mjs && node scripts/install-plugin-sdk-deps.mjs && node scripts/install-python-lsp-deps.mjs && node scripts/build-linkdesk-ui.mjs",
+    "postinstall": "node -e \"try{require('fs').rmSync('node_modules/.vite',{recursive:true,force:true})}catch(e){}\" && node scripts/install-lefthook.mjs && node scripts/install-plugin-sdk-deps.mjs && node scripts/build-linkdesk-ui.mjs",
     "icons:convert": "node scripts/convert-material-icons.mjs"
   },
   "dependencies": {
     "@linkdesk/ui": "file:./packages/linkdesk-ui",
-    "@codemirror/search": "^6.7.1",
-    "@codemirror/state": "^6.7.1",
-    "@codemirror/view": "^6.43.6",
     "@vscode/codicons": "^0.0.45",
-    "canvas": "^3.2.3",
-    "concurrently": "^10.0.3",
+    "buffer": "^5.7.1",
     "i18next": "^26.3.6",
     "iconv-lite": "^0.7.3",
     "jsonc-parser": "^3.3.1",
     "jszip": "^3.10.1",
     "lucide-react": "^1.29.0",
-    "monaco-editor": "^0.55.1",
-    "monaco-languageclient": "^10.7.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-i18next": "^17.0.10",
-    "serialport": "^13.0.0",
-    "wait-on": "^9.1.0"
+    "serialport": "^13.0.0"
   },
   "devDependencies": {
     "@linkdesk/contracts": "^0.1.0",
@@ -59,6 +55,7 @@
     "@typescript-eslint/eslint-plugin": "^8.0.0",
     "@typescript-eslint/parser": "^8.0.0",
     "@vitejs/plugin-react": "^4.3.4",
+    "concurrently": "^10.0.3",
     "electron": "^43.2.0",
     "electron-builder": "^26.15.3",
     "esbuild": "^0.25.12",
@@ -73,6 +70,7 @@
     "tsx": "^4.23.1",
     "typescript": "^5.6.3",
     "vite": "^6.0.0",
-    "vitest": "^4.1.10"
+    "vitest": "^4.1.10",
+    "wait-on": "^9.1.0"
   }
 }

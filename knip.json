@@ -1,108 +1,129 @@
 {
   "$schema": "https://unpkg.com/knip@6/schema.json",
-  "entry": [
-    // E5.8#2：src 三页入口（tsx 直列——knip 实测不解析 Vite 风格 HTML 的 <script src="/src/...">，
-    // pool.html 单作 entry 时 pool 树 34 文件全断根报未用；tsx 模块根等价且可靠）。
-    //   index.html  → src/main.tsx（knip 6 自动识别 Vite 默认入口，手动列会报 redundant——不列）
-    //   pool.html   → src/pool/pool-main.tsx
-    //   preview.html→ src/pool/dev/preview-main.tsx（vite dev-only 预览页，仍定 entry 保分析根完整）
-    "src/pool/pool-main.tsx",
-    "src/pool/dev/preview-main.tsx",
-    // E5.8#2：electron 三件套（主进程 + 双 preload——preload-pool 池侧 / preload-shell 壳侧）
-    "electron/main.ts",
-    "electron/preload-pool.ts",
-    "electron/preload-shell.ts"
-  ],
-  "project": [
-    // E5.8#2：plugins/ 排除——插件是独立 vite 构建产物（dist/plugins/*.js 构建自证），knip 只管壳 src/ + electron/
-    "src/**/*.{ts,tsx}",
-    "electron/**/*.ts",
-    "scripts/**/*.{mjs,cjs}"
-  ],
-  "ignore": [
-    // E6#54c：src/components/shared 单一源码中被插件消费、壳内零消费者的组件——54c 前插件直引
-    //   @src/components/shared/*（knip 将插件 import 边计为 usage，故不报）；54c 后插件改走编译产物
-    //   @linkdesk/ui，这些组件的唯一消费方变成 @linkdesk/ui 的 vite lib 构建（packages/ 域，非本
-    //   工程 scope）→ knip 静态图断边误报 unused。组件仍活：@linkdesk/ui dist 即由它们构建而来。
-    //   豁免语义同下方 src/core/index.ts「桶导出面向插件/独立构建域」——不是死代码。
-    "src/components/shared/file-path-input/FilePathInput.tsx",
-    "src/components/shared/form-row/FormRow.tsx",
-    "src/components/shared/number-input/NumberInput.tsx",
-    "src/components/shared/toggle/Toggle.tsx",
-    // E6#15h：同上——src/components/shared/hooks/ 交互 hook（useClickPreview/useClipboardKeys/
-    //   useDebouncedInput）的唯一消费方 = @linkdesk/ui lib 构建（packages/ 域）+ 插件 dist 消费——knip
-    //   壳 scope 断边误报 unused。仍活：@linkdesk/ui dist 即由它们构建。详见 08-共享hook归位.md。
-    "src/components/shared/hooks/useClickPreview.ts",
-    "src/components/shared/hooks/useClipboardKeys.ts",
-    "src/components/shared/hooks/useDebouncedInput.ts",
-    // E5.8#2：core 聚合器 + 其 re-export 面（@src/core 插件 API 入口，壳内按需直引具体文件——
-    //   桶导出面向 plugins/ 排除域与 window.linkdesk 契约，knip 静态图不覆盖 IPC 字符串分发。
-    //   ProtocolParser/ConfigurationRegistry/ThemeEngine/api-types/IpcBridgeHandler
-    //   均被 src/core/index.ts `export *` 透传——整文件豁免（其 exports 全部构成公共 API 面）。
-    //   E5.8#41.11：FactorySlots 移出 ignore——一对多后 factorySlots 有直接消费方（settingsCommands/
-    //   lifecycle/iconbar）+ 测试直引 FactorySlots 类，knip 静态图全覆盖，不再需要豁免。）
-    "src/core/index.ts",
-    "src/core/api/linkdesk-api.ts",
-    "src/core/api/linkdesk-api/types.ts",
-    "src/core/api/types.ts",
-    "src/core/commands/shell/coreCommands.ts",
-    "src/core/commands/input-bindings/shellKeybindings.ts",
-    "src/core/pipeline/ProtocolParser.ts",
-    "src/core/react/useConfiguration.ts",
-    "src/core/react/usePluginIpcEvent.ts",
-    "src/core/react/useSendData.ts",
-    "src/core/registry/ConfigurationRegistry.ts",
-    "src/core/registry/commands/CommandRegistry.ts",
-    "src/core/registry/commands/KeybindingRegistry.ts",
-    "src/core/registry/commands/KeybindingRegistry/*.ts",
-    "src/core/registry/commands/MenuRegistry.ts",
-    "src/core/registry/languages/LangDefRegistry.ts",
-    "src/core/registry/ProtocolRegistry.ts",
-    "src/core/services/configuration/ConfigurationApplier.ts",
-    "src/core/services/configuration/ConfigurationService.ts",
-    // E5.8#0.4a：ConfigurationService 拆 feature-folder——子模块豁免对齐 KeybindingRegistry/*.ts 同型
-    //   （聚合器 re-export 面向插件域/window.linkdesk 契约，同核心 API 面；上移原 47 行聚合器豁免继承）
-    "src/core/services/configuration/ConfigurationService/*.ts",
-    // E5.8#12：FileAssociationService/StatusBarService 移出 ignore——#12 删了其 unreachable 的
-    //   unregisterFileAssociations/unregisterStatusBarPlugin，剩余 exports 全部可达，knip 不再需要豁免。
-    "src/core/services/files/FileService.ts",
-    "src/core/services/layout/LayoutService.ts",
-    "src/core/services/layout/WorkspaceService.ts",
-    "src/core/services/plugins/IpcBridgeHandler.ts",
-    "src/core/services/plugins/IpcBridgeHandler/tabs.ts",
-    "src/core/services/plugins/IpcBridgeHandler/workspace.ts",
-    "src/core/services/plugins/ProfileService.ts",
-    "src/core/services/ui/DialogService.ts",
-    // E5.8#37：FloatingPanelService 整文件豁免已摘除——#39.5 子项 B useFloatingPanelReveal hook
-    //   （src/App/floatingPanelReveal.ts）已消费 pushPanel/closePanel/getCurrentFloatingPanelViewId，
-    //   bridges.ts 消费 registerFloatingPanelRenderer/handleFloatingPanelAction——全部导出有消费方。
-    "src/core/services/ui/LogChannel.ts",
-    "src/core/services/ui/NotificationService.ts",
-    "src/core/services/ui/ThemeEngine.ts",
-    "src/core/utils/CancellationToken.ts",
-    // E5.8#2：池侧 dev/插件共享面——mockLinkdesk（dev 预览 side-effect 安装 window.linkdesk）+ useTabManager 聚合器门面（E5.8#0d.10-2e 全量 re-export）
-    "src/pool/dev/mockLinkdesk.ts",
-    "src/hooks/useTabManager.ts",
-    // E5.8#37.9：audit-i18n.mjs 已从手动工具升格为 npm run check 门禁成员（package.json check 链
-    //   第三段）——从 ignore 移除，knip 纳入静态分析（脚本仅用 fs/path，零悬挂依赖）。
-    // E5.8#22.5：契约运行期校验——生成器 AST 输入（scripts/generate-contract.mjs 读入发射
-    //   contracts/runtime-shapes.ts），非运行时消费面。产物 runtime-shapes.ts 在 contracts/ 不在 knip project 域。
-    "electron/ipc/runtime-dto-registry.ts",
-    // E6#57.15e：version-bump 机械兜底——被 .claude/settings.json PreToolUse hook（Bash git commit*）
-    //   以字符串命令调用，knip 静态图（import 面）不覆盖 hook 配置引用 → 整文件豁免（2026-09-04
-    //   仓库结构上移 6.9 验证补录：2026-08-31 引入后 knip 即报，属既存卫生债随手清）。
-    "scripts/check-version-bump.mjs"
-  ],
-  "ignoreDependencies": [
-    // E5.8#2：monaco-languageclient 被 plugins/editor 直引（排除域——插件共用根 node_modules，独立 vite 构建时解析；2026-09-05 塌平单根）
-    "monaco-languageclient",
-    // E6#57.15e：lefthook 只在 lefthook.yml 命令面使用（postinstall install-lefthook.mjs 同源），
-    //   knip 不解析 yml 配置 → 报 unused devDep。配置引用豁免
-    //   （2026-09-04 结构上移 6.9 验证补录：E5.8#3 引入后 knip 即报，属既存卫生债随手清）。
-    "lefthook"
-  ],
-  "ignoreBinaries": [
-    // E5.8#2：Linux 分支的真实外部命令（electron/main.ts openInTerminal 平台分支，xdg-open 是 Linux 版 exec 字符串）
-    "xdg-open"
-  ]
+  // E6#16：package.json 引入 npm workspaces（plugins/*）后 knip 6 自动把每个插件 workspace 拆成独立
+  //   project 审计 → 插件无 entry 配置 → 「真实使用导出全报未用」假阳性风暴。插件政策不变（见下方
+  //   workspaces["."].project 注释：插件 = 独立 vite 构建产物，dist 自证 + plugin-sdk lint +
+  //   check-lsp-deps 哨兵管 spawn 运行时）→ ignoreWorkspaces 让插件不进 knip 的可用 workspace 列表，
+  //   其文件折回根 scope → 由 workspaces["."].project 只挡 src/electron/scripts（插件文件被 project 排除）。
+  //   若日后插件要 knip 静态审计，另立拍板（本轮不加——插件 import 卫生由其自身 build 解析失败自证）。
+  "ignoreWorkspaces": ["plugins/*"],
+  "workspaces": {
+    ".": {
+      "entry": [
+        // E5.8#2：src 三页入口（tsx 直列——knip 实测不解析 Vite 风格 HTML 的 <script src="/src/...">，
+        // pool.html 单作 entry 时 pool 树 34 文件全断根报未用；tsx 模块根等价且可靠）。
+        //   index.html  → src/main.tsx（knip 6 自动识别 Vite 默认入口，手动列会报 redundant——不列）
+        //   pool.html   → src/pool/pool-main.tsx
+        //   preview.html→ src/pool/dev/preview-main.tsx（vite dev-only 预览页，仍定 entry 保分析根完整）
+        "src/pool/pool-main.tsx",
+        "src/pool/dev/preview-main.tsx",
+        // E5.8#2：electron 三件套（主进程 + 双 preload——preload-pool 池侧 / preload-shell 壳侧）
+        "electron/main.ts",
+        "electron/preload-pool.ts",
+        "electron/preload-shell.ts"
+      ],
+      "project": [
+        // E5.8#2：plugins/ 排除——插件是独立 vite 构建产物（dist/plugins/*.js 构建自证），knip 只管壳 src/ + electron/
+        "src/**/*.{ts,tsx}",
+        "electron/**/*.ts",
+        "scripts/**/*.{mjs,cjs}"
+      ],
+      "ignore": [
+        // E6#54c：src/components/shared 单一源码中被插件消费、壳内零消费者的组件——54c 前插件直引
+        //   @src/components/shared/*（knip 将插件 import 边计为 usage，故不报）；54c 后插件改走编译产物
+        //   @linkdesk/ui，这些组件的唯一消费方变成 @linkdesk/ui 的 vite lib 构建（packages/ 域，非本
+        //   工程 scope）→ knip 静态图断边误报 unused。组件仍活：@linkdesk/ui dist 即由它们构建而来。
+        //   豁免语义同下方 src/core/index.ts「桶导出面向插件/独立构建域」——不是死代码。
+        "src/components/shared/file-path-input/FilePathInput.tsx",
+        "src/components/shared/form-row/FormRow.tsx",
+        "src/components/shared/number-input/NumberInput.tsx",
+        "src/components/shared/toggle/Toggle.tsx",
+        // E6#15h：同上——src/components/shared/hooks/ 交互 hook（useClickPreview/useClipboardKeys/
+        //   useDebouncedInput）的唯一消费方 = @linkdesk/ui lib 构建（packages/ 域）+ 插件 dist 消费——knip
+        //   壳 scope 断边误报 unused。仍活：@linkdesk/ui dist 即由它们构建。详见 08-共享hook归位.md。
+        "src/components/shared/hooks/useClickPreview.ts",
+        "src/components/shared/hooks/useClipboardKeys.ts",
+        "src/components/shared/hooks/useDebouncedInput.ts",
+        // E5.8#2：core 聚合器 + 其 re-export 面（@src/core 插件 API 入口，壳内按需直引具体文件——
+        //   桶导出面向 plugins/ 排除域与 window.linkdesk 契约，knip 静态图不覆盖 IPC 字符串分发。
+        //   ProtocolParser/ConfigurationRegistry/ThemeEngine/api-types/IpcBridgeHandler
+        //   均被 src/core/index.ts `export *` 透传——整文件豁免（其 exports 全部构成公共 API 面）。
+        //   E5.8#41.11：FactorySlots 移出 ignore——一对多后 factorySlots 有直接消费方（settingsCommands/
+        //   lifecycle/iconbar）+ 测试直引 FactorySlots 类，knip 静态图全覆盖，不再需要豁免。）
+        "src/core/index.ts",
+        "src/core/api/linkdesk-api.ts",
+        "src/core/api/linkdesk-api/types.ts",
+        "src/core/api/types.ts",
+        "src/core/commands/shell/coreCommands.ts",
+        "src/core/commands/input-bindings/shellKeybindings.ts",
+        "src/core/pipeline/ProtocolParser.ts",
+        "src/core/react/useConfiguration.ts",
+        "src/core/react/usePluginIpcEvent.ts",
+        "src/core/react/useSendData.ts",
+        "src/core/registry/ConfigurationRegistry.ts",
+        "src/core/registry/commands/CommandRegistry.ts",
+        "src/core/registry/commands/KeybindingRegistry.ts",
+        "src/core/registry/commands/KeybindingRegistry/*.ts",
+        "src/core/registry/commands/MenuRegistry.ts",
+        "src/core/registry/languages/LangDefRegistry.ts",
+        "src/core/registry/ProtocolRegistry.ts",
+        "src/core/services/configuration/ConfigurationApplier.ts",
+        "src/core/services/configuration/ConfigurationService.ts",
+        // E5.8#0.4a：ConfigurationService 拆 feature-folder——子模块豁免对齐 KeybindingRegistry/*.ts 同型
+        //   （聚合器 re-export 面向插件域/window.linkdesk 契约，同核心 API 面；上移原 47 行聚合器豁免继承）
+        "src/core/services/configuration/ConfigurationService/*.ts",
+        // E5.8#12：FileAssociationService/StatusBarService 移出 ignore——#12 删了其 unreachable 的
+        //   unregisterFileAssociations/unregisterStatusBarPlugin，剩余 exports 全部可达，knip 不再需要豁免。
+        "src/core/services/files/FileService.ts",
+        "src/core/services/layout/LayoutService.ts",
+        "src/core/services/layout/WorkspaceService.ts",
+        "src/core/services/plugins/IpcBridgeHandler.ts",
+        "src/core/services/plugins/IpcBridgeHandler/tabs.ts",
+        "src/core/services/plugins/IpcBridgeHandler/workspace.ts",
+        "src/core/services/plugins/ProfileService.ts",
+        "src/core/services/ui/DialogService.ts",
+        // E5.8#37：FloatingPanelService 整文件豁免已摘除——#39.5 子项 B useFloatingPanelReveal hook
+        //   （src/App/floatingPanelReveal.ts）已消费 pushPanel/closePanel/getCurrentFloatingPanelViewId，
+        //   bridges.ts 消费 registerFloatingPanelRenderer/handleFloatingPanelAction——全部导出有消费方。
+        "src/core/services/ui/LogChannel.ts",
+        "src/core/services/ui/NotificationService.ts",
+        "src/core/services/ui/ThemeEngine.ts",
+        "src/core/utils/CancellationToken.ts",
+        // E5.8#2：池侧 dev/插件共享面——mockLinkdesk（dev 预览 side-effect 安装 window.linkdesk）+ useTabManager 聚合器门面（E5.8#0d.10-2e 全量 re-export）
+        "src/pool/dev/mockLinkdesk.ts",
+        "src/hooks/useTabManager.ts",
+        // E5.8#37.9：audit-i18n.mjs 已从手动工具升格为 npm run check 门禁成员（package.json check 链
+        //   第三段）——从 ignore 移除，knip 纳入静态分析（脚本仅用 fs/path，零悬挂依赖）。
+        // E5.8#22.5：契约运行期校验——生成器 AST 输入（scripts/generate-contract.mjs 读入发射
+        //   contracts/runtime-shapes.ts），非运行时消费面。产物 runtime-shapes.ts 在 contracts/ 不在 knip project 域。
+        "electron/ipc/runtime-dto-registry.ts",
+        // E6#57.15e：version-bump 机械兜底——被 .claude/settings.json PreToolUse hook（Bash git commit*）
+        //   以字符串命令调用，knip 静态图（import 面）不覆盖 hook 配置引用 → 整文件豁免（2026-09-04
+        //   仓库结构上移 6.9 验证补录：2026-08-31 引入后 knip 即报，属既存卫生债随手清）。
+        "scripts/check-version-bump.mjs"
+      ],
+      "ignoreDependencies": [
+        // E6#16：pool dev 经 import.meta.glob（PluginComponent/PoolStatusBarComponent）把插件源码直引
+        //   进壳图（dev 渲染捷径）→ 插件文件折 root scope 判依赖。monaco-editor（editor 插件）与
+        //   @codemirror×3（serial-monitor 插件）已在消费插件自己的 package.json 声明（谁消费谁声明，
+        //   #16 净壳后 root 不再持有）——knip 断边误报 unlisted → root 压制。真删某插件声明时该插件
+        //   自身 build（plugin-sdk 解析失败红）+ dev pool 解析错误双兜底，本豁免不掩盖真实缺失。
+        // E6#16（实机实证）：buffer 是壳 renderer iconv-lite（EncodingService，声明 root dep）的
+        //   require('buffer') 浏览器 Buffer 垫片——vite dev optimize 与 prod rollup 把裸 'buffer'
+        //   解析到本包（#16 npm 重装前它由 tar-stream→bl 链作为无关传递依赖静默满足，净壳后暴露
+        //   → 谁消费谁声明显式落 root deps）。纯解析期依赖（源码零 import，壳源码 import 'buffer'
+        //   不存在）→ knip 静态 import 图断边误报 unused → root 压制；dev 实机 boot + EncodingService
+        //   加载即活证。删它 = 复现 iconv-lite/safer-buffer 'prototype of undefined' dev 崩。
+        "buffer",
+        "monaco-editor",
+        "@codemirror/view",
+        "@codemirror/state",
+        "@codemirror/search"
+      ],
+      "ignoreBinaries": [
+        // E5.8#2：Linux 分支的真实外部命令（electron/main.ts openInTerminal 平台分支，xdg-open 是 Linux 版 exec 字符串）
+        "xdg-open"
+      ]
+    }
+  }
 }
