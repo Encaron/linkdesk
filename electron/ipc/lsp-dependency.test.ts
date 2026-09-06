@@ -22,7 +22,7 @@ describe("checkLspDependency（E5.8#24.6 spawn 前哨兵）", () => {
       const script = path.join(root, "node_modules", "pyright", "dist", "pyright-langserver.js");
       fs.mkdirSync(path.dirname(script), { recursive: true });
       fs.writeFileSync(script, "// fake");
-      // 相对 args（dev 态 resolveLspArg 保持原样）——对 appRoot resolve
+      // 相对 args 走 baseDir 回退基准（spawn 实参实际已注册绝对化——此处测哨兵相对回退分支）
       const res = checkLspDependency("node", ["node_modules/pyright/dist/pyright-langserver.js", "--stdio"], root);
       expect(res).toBeNull();
     } finally {
@@ -82,7 +82,7 @@ describe("checkLspDependency（E5.8#24.6 spawn 前哨兵）", () => {
     }
   });
 
-  it("appRoot 下相对脚本 command 存在 → null", () => {
+  it("baseDir 下相对脚本 command 存在 → null", () => {
     const root = makeRoot();
     try {
       const script = path.join(root, "tools", "lsp.js");
@@ -94,7 +94,7 @@ describe("checkLspDependency（E5.8#24.6 spawn 前哨兵）", () => {
     }
   });
 
-  it("非内建 + 非 appRoot 相对文件 = PATH 二进制（clangd 等）→ 同步无法验证返回 null（渲染超时兜底）", () => {
+  it("非内建 + 非 baseDir 相对文件 = PATH 二进制（clangd 等）→ 同步无法验证返回 null（渲染超时兜底）", () => {
     const root = makeRoot();
     try {
       const res = checkLspDependency("clangd", [], root);

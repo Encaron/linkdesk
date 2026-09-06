@@ -166,7 +166,9 @@ function zipTree(zip: JSZip, dir: string, prefix: string): void {
 }
 
 /** E6#15e：langDef.lsp 引用的 node_modules 包随 zip——只带真正 spawn 的二进制（见 closeBundle 调用注）。
- * 从 lsp.args 解析 `node_modules/<pkg>/…` 的顶层包名 → 整树拷入 pkgDir/node_modules/<pkg>。
+ * lsp.args 相对路径**以插件根目录为基准解析**（E6#15l 锚词「插件根目录为基准」，与 schema 描述同源，
+ * 门禁 scripts/check-lsp-args-base.mjs 钉本文件）——从 args 解析 `node_modules/<pkg>/…` 的顶层包名 →
+ * 整树拷入 pkgDir/node_modules/<pkg>。
  * `.bin/` shim 归属需解析依赖 bin 字段——当前不解析（warn 提示作者改指真实包路径），无插件命中。 */
 function includeLspRuntimePackages(
   root: string,

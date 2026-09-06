@@ -35,6 +35,21 @@ import { envService } from "../services/env-service.js";
 import { resolveLspArgsToPluginRoot } from "./lsp-arg-resolve.js";
 
 /**
+ * E6#15k：langDef 注册上下文的路径知识单点——语言 id（langDef.id）→ 该语言所属插件根目录。
+ * 记录时机 = registerManifestTables（pluginDir 在手处），与 lsp.args 绝对化用的是**同一 pluginDir**
+ * （绝对化就是对本条目录做的）。覆盖语义 = 后注册胜，与 LangDefRegistry 的 extension 覆盖同序
+ * （多根同 id：app 根最后扫 → 胜，同 loader 发现优先级）。消费方 = lsp-handlers spawn cwd 基准
+ * （spawn 消息第三参 = langDef.id，EditorView 传它——python 恰与插件 id 同号）。消灭
+ * `isPackaged ? userData : appPath` 双轨猜（壳里「插件根在 userData」的第二处路径知识）。
+ */
+const _langDefPluginDirById = new Map<string, string>();
+
+/** E6#15k：语言 id → 插件根目录（spawn cwd 单点源）。未注册（插件已卸载/未扫盘）→ undefined，调用方退 userData。 */
+export function getLangDefPluginDir(langDefId: string): string | undefined {
+  return _langDefPluginDirById.get(langDefId);
+}
+
+/**
  * 有序代码根表——先 userData 后 app（见 loadAllPluginManifests 注释：register* 后写胜 → app 内置最后注册即胜）。
  * 与 plugin-file-service.pluginRoots 同源（app 优先发现）但表注册是覆盖语义需反序扫描——双处都写清同一不变式。
  */
@@ -48,13 +63,17 @@ function registerManifestTables(pluginId: string, manifest: PluginManifest, plug
 
   // contributes.langDefs → LangDefRegistry（E4V#40s5b）
   // E6#15e：注册前把 lsp.args 相对插件根的路径换算为绝对路径（一次绝对化，纯函数语义见 lsp-arg-resolve.ts）。
-  // 换算后 registry / IPC / spawn 全程持绝对路径——lsp-handlers.resolveLspArg 的 absolute 分支直接命中，
-  // spawn 路径零改动、无需知道插件目录。args 无相对路径 → 原 def 原样注册（零分配）；有 → 浅克隆后注册
-  // （LangDefRegistry 存克隆，manifest 解析产物不被改写）。契约：plugin.json lsp.args 相对基准 = 插件根。
+  // 换算后 registry / IPC / spawn 全程持绝对路径——spawn 侧（lsp-handlers）纯透传绝对 args，无需知道插件目录
+  // （E5#114d resolveLspArg ASAR 搬运已随 #15k 删，args 绝对化后其分支永假）。args 无相对路径 → 原 def 原样
+  // 注册（零分配）；有 → 浅克隆后注册（LangDefRegistry 存克隆，manifest 解析产物不被改写）。契约：plugin.json
+  // lsp.args 相对路径——以插件根目录为基准解析（E6#15l 锚词「插件根目录为基准」，门禁钉 schema/行为一致）。
   const langDefs = contributes?.langDefs as LangDefContribution[] | undefined;
   if (Array.isArray(langDefs)) {
     for (const def of langDefs) {
       const lsp = def.lsp;
+      // E6#15k：记语言所属插件根（与 lsp.args 绝对化同一 pluginDir）——spawn cwd 单点源。仅带 lsp 的 langDef
+      // 会被 spawn（monarch-only 不启动进程），不占 map。
+      if (lsp) _langDefPluginDirById.set(def.id, pluginDir);
       const args = lsp && resolveLspArgsToPluginRoot(lsp.args, pluginDir);
       if (lsp && args !== lsp.args) {
         registerLangDef(pluginId, { ...def, lsp: { ...lsp, args } });
@@ -100,6 +119,7 @@ export function loadAllPluginManifests(): void {
   ensureBuiltinProtocols();
 
   _loadedPluginIds.clear();
+  _langDefPluginDirById.clear();
   for (const root of getPluginRoots()) {
     if (!fs.existsSync(root)) continue;
     let entries: string[];

@@ -1,11 +1,13 @@
 /**
  * E6#15e：lsp-arg-resolve 单测——注册处「插件根 → 绝对路径」换算的语义钉死。
  *
- * 纯路径换算（无 fs、无 electron import）——断言映射规则本身，不碰磁盘：
+ * 纯路径换算（无 fs、无 electron import）——断言映射规则本身，不碰磁盘。
+ * 基准语义单点权威（E6#15l）：相对路径**以插件根目录为基准解析**（锚词「插件根目录为基准」，
+ * 门禁 scripts/check-lsp-args-base.mjs 要求本文件同持该锚词——行为与 schema 描述机械对齐）：
  *   - 相对插件根的路径式 arg → 插件根绝对路径（demo-clang 虚构 fixture = 清单子-3
  *     「C 插件 clangd 验证」的壳侧语义；真实 C 插件不存在，映射规则以虚构 fixture 钉住）
  *   - python 真形：args 相对路径对 plugins/python 根换算 → 插件自带 node_modules/pyright
- *   - 绝对 arg → 原样（命中 lsp-handlers resolveLspArg 既有 absolute 分支，🔴 spawn 路径零改动）
+ *   - 绝对 arg → 原样（spawn 侧纯透传绝对 args——E5#114d ASAR 搬运已随 E6#15k 整删）
  *   - flag / 裸命令 arg（--stdio、node）→ 原样（不误伤命令行开关）
  *   - 无相对路径 → 原数组返回（不新分配）；args 缺失 → undefined
  */
@@ -39,7 +41,7 @@ describe("resolveLspArgsToPluginRoot（注册处插件根一次绝对化）", ()
     ]);
   });
 
-  it("绝对 arg 原样（spawn 侧 resolveLspArg absolute 分支直接命中）", () => {
+  it("绝对 arg 原样（spawn 侧纯透传绝对 args——ASAR 搬运已删）", () => {
     const pluginDir = path.resolve("plugins", "demo-clang");
     const abs = path.join(pluginDir, "bin", "clangd");
     const args = [abs, "--stdio"];

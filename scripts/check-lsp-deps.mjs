@@ -14,10 +14,12 @@
  * `open -a Terminal` / `xdg-open` 等）无二进制扩展名，天然豁免。
  *
  * 检查基准（E6#15e 后按源决定，`--base` / `LSP_DEP_BASE` 可显式覆盖）：
- *   - plugin.json langDefs.lsp args：以「该 plugin.json 所在目录」为基（= 插件根）——镜像主进程
- *     注册处一次绝对化（electron/plugins/lsp-arg-resolve.ts）：作者相对路径基准就是插件目录，
+ *   - plugin.json langDefs.lsp args：以「该 plugin.json 所在目录」为基（= 插件根——lsp.args 相对路径
+ *     以插件根目录为基准解析，E6#15l 锚词「插件根目录为基准」，门禁 scripts/check-lsp-args-base.mjs 钉）——
+ *     镜像主进程注册处一次绝对化（electron/plugins/lsp-arg-resolve.ts）：作者相对路径基准就是插件目录，
  *     pyright 随 python 插件自走，落 plugins/python/node_modules/。
- *   - electron/ 下 *.ts spawn 字面量：以项目根为基（主进程 spawn cwd = app.getAppPath()）。
+ *   - electron/ 下 *.ts spawn 字面量：以项目根为基（主进程硬编码 spawn 字面量的保守基准；lsp-handlers
+ *     运行时 cwd = 该语言插件根，见 E6#15k——这里只拦「有人把 spawn 路径写死进主进程」的未来回归）。
  *   - 显式 `--base <dir>`：两源通吃覆盖（冒烟脚本等外部调用场景保留）。
  *
  * 用法：node scripts/check-lsp-deps.mjs [--base <dir>]（已挂 npm run check）
