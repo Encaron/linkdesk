@@ -2,6 +2,7 @@
 
 > 2026-07-30 · E5.8 全量更新 2026-08-21。**插件如何注册侧栏/面板视图。** 对标 VS Code `contributes.viewsContainers` + `contributes.views`。
 > 所有有侧栏的插件（file-tree/marketplace/serial-monitor）都走此 API。面板视图（`location: "panel"`）同此机制。
+> **E6 核 2026-09-06**（E6#58 对账）：塌平单根（无 plugins/{builtin,user}）· 共享控件走 @linkdesk/ui · 分发 = .linkdesk-plugin zip。本页对应机制引用已清。
 
 ---
 
@@ -341,7 +342,7 @@ export default function MyView() {
 ## 七、完整示例——Git 插件往 Explorer 注册 TIMELINE
 
 ```json
-// plugins/user/git/plugin.json
+// git/plugin.json
 {
   "contributes": {
     "views": {
@@ -360,7 +361,7 @@ export default function MyView() {
 ```
 
 ```typescript
-// plugins/user/git/src/views/TimelineView.tsx
+// git/src/views/TimelineView.tsx
 export default function TimelineView() {
   // ... 读 git log → 渲染列表 ...
   return <div className="git-timeline">...</div>;

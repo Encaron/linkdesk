@@ -262,7 +262,7 @@ function SettingsView({ isActive: _isActive, tabId }: SettingsViewProps) {
     <div className="settings-editor">
       {/* 顶部通用区（E5.8#41.13）——N 套设置插件并存切换：全部入口含自身、激活高亮、
           删除任意一套 → onPluginLifecycleChange → version 重拉 → 按钮自动消失。
-          位置/形态是本套 UI 的选择（内置 = 顶部平铺条，settings-demo = 右下角胶囊），非壳规定 */}
+          位置/形态是本套 UI 的选择（官方套 = 顶部平铺条；第三方套可自选右下角胶囊等），非壳规定 */}
       {settingsCandidates.length >= 2 && (
         <div className="settings-role-switch settings-role-switch--gen">
           <span className="settings-role-switch-label">{t("激活角色套")}</span>

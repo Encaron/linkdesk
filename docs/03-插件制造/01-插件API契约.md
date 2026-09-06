@@ -63,7 +63,7 @@ async function list(): Promise<FileEntry[]> {
 
 **路径 B——独立 npm 包（第三方插件，#22.6）：** `npm i -D @linkdesk/contracts` 后同款 `import type { ... } from "@linkdesk/contracts"`。
 
-> **包形态（E5.8#22.6 建）：** `contracts/` 即 npm 包根（`@linkdesk/contracts`，`types` 入口直指 `linkdesk.d.ts`，零构建，`files` 白名单只 d.ts）。**版本联动：** 包版本 = 壳版本——生成器自动同步写入 `contracts/package.json`，漂移即 `contracts:check` 红。**消费形态验收：** 仓库根 `contracts-example/`——独立 tsconfig + `file:../contracts` 本地引用，`npx tsc --noEmit` 零错误，全程零 `@src/core`（`npm pack` 出 tarball → 装真实 npm 包路径同样通过）。**发布态：** 当前仅 `npm pack` 本地验收闭环；真实 npm publish 已立案 [E6#2.5](../02-Electron架构/E6_插件生态与发布/E6-执行清单.md)。
+> **包形态（E5.8#22.6 建）：** `contracts/` 即 npm 包根（`@linkdesk/contracts`，`types` 入口直指 `linkdesk.d.ts`，零构建，`files` 白名单只 d.ts）。**版本联动：** 包版本 = 壳版本——生成器自动同步写入 `contracts/package.json`，漂移即 `contracts:check` 红。**消费形态验收：** 仓库根 `contracts-example/`——独立 tsconfig + `file:../contracts` 本地引用，`npx tsc --noEmit` 零错误，全程零 `@src/core`（`npm pack` 出 tarball → 装真实 npm 包路径同样通过）。**发布态：** ✅ 已真发 `@linkdesk/contracts@0.1.0`（2026-09-04，官方 registry，E6#2.5b，0c434bdb1）——第三方 `npm i -D @linkdesk/contracts` 直装 registry 真包；真实包 tsc 验收见 E6#2.5c。plugin-sdk（E6#6b）与 `@linkdesk/ui`（E6#54b）同期已真发 0.1.0。
 
 **路径 C——拷贝文件：** 直接把 `contracts/linkdesk.d.ts` 拷进插件项目 + tsconfig 引用。契约文件单文件自包含（94 声明，零 import 依赖），拷贝即用。
 
@@ -130,11 +130,11 @@ async function list(): Promise<FileEntry[]> {
 
 **ESLint `error`（`noCoreImportInPlugin`，#20-d 收紧）：** `import { ... } from "@src/core/..."` **和** `import type { ... } from "@src/core/..."` → 🚫 编译失败。测试文件不再豁免（vitest 单进程理由不成立）。
 
-**允许的 import（白名单全表见 `eslint-local-rules.js` PLUGIN_IMPORT_WHITELIST）：**
-- `@linkdesk/contracts` **类型**（`import type`，零运行时耦合）
-- `@src/components/shared/*` **共享 UI 组件**（ContextMenu / PluginIcon / Toggle / SelectBox / Combobox / InlineInput / FormRow 等）
-- **纯工具白名单**：`@src/core/pipeline/*`（DataConverter / DataDispatch / RingBuffer / ProtocolParser）+ `@src/core/utils/CancellationToken` + `@src/core/registry/commands/MenuRegistry`（仅 MenuId 类型/枚举）
-- **例外记录表**：新例外必须写进 memory `plugin-import-exceptions.md` 再放行（插件独立铁律审计项）
+**允许的 import（共享控件走 `@linkdesk/ui` npm 包；`@src/core` 例外白名单全表见 `eslint-local-rules.js` PLUGIN_IMPORT_WHITELIST）：**
+- `@linkdesk/contracts` **类型**（`import type`，零运行时耦合）——registry 真包（见 §三 3.1）
+- `@linkdesk/ui` **共享控件 / 共享 hooks**（ContextMenu / InlineInput / SelectBox / Toggle / ColorPicker / FormRow / ThemePicker 等，E6#54c 收归）——repo 插件走根 `file:` 依赖，第三方 `npm i @linkdesk/ui`；**不再从 `@src/components/shared/*` import**（E6#54c 后共享控件第二入口已删、仓库插件零引用）
+- **纯工具白名单（repo 源码 import 例外）**：`@src/core/pipeline/*`（DataConverter / DataDispatch / RingBuffer / ProtocolParser）+ `@src/core/utils/CancellationToken` + `@src/core/registry/commands/MenuRegistry`（仅 MenuId 类型/枚举）等——全表只以 eslint-local-rules.js 为准，不在此抄第二份
+- **例外记录表**：白名单外 import 必须写进 memory `plugin-import-exceptions.md` 再放行（插件独立铁律审计项）
 
 > **`useConfiguration` / `useSendData` / `ViewContainerService` 等壳 hooks/服务禁止 import**（有模块级状态 → 调用方的修改壳进程看不到）——插件读配置走 `window.linkdesk.configuration`，状态同步走 `window.linkdesk.events`（订阅广播）/ `serial.onData` 等数据管道（见 `07-插件间通信.md`）。
 

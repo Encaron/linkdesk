@@ -1,5 +1,6 @@
 # plugin.json 规范
 
+> **E6 核 2026-09-06**（E6#58 对账）：塌平单根 `plugins/<id>`（无 builtin/user 双层）· 插件只有一类（core:true = 防误删旗标，非类别）· `distribution` = ⚠️ 遗留字段勿填。
 > 插件元数据的唯一入口。一个插件 = 一个文件夹 + 一份 `plugin.json` + 入口文件。
 > **对标 VS Code：不再需要 `type` 字段——loader 从声明字段自动检测贡献类型。**
 
@@ -7,10 +8,10 @@
 
 ## 插件目录结构
 
-一个插件就是一个文件夹，放在 `plugins/user/<插件ID>/` 下。**目录名 = 插件 ID**（如 `plugins/user/my-plugin/`）。内置插件放 `plugins/builtin/`，由 `distribution` 字段区分。
+一个插件就是一个文件夹（源码目录）。repo 源码树里 = `plugins/<id>/`（塌平单根，目录名 = 插件 ID）；第三方作者在**自己的项目根**开发，构建产出 `.linkdesk-plugin` 分发（见 [04-插件分发格式 §一](04-插件分发格式.md)）。**没有 builtin/user 双层。**
 
 ```
-plugins/user/my-plugin/
+my-plugin/
 ├── plugin.json              # 插件元数据（唯一必需）
 ├── resources/               # 静态资源——图标/图片/字体
 │   └── icon.svg             # 图标（推荐 SVG）
@@ -30,57 +31,47 @@ plugins/user/my-plugin/
 | `i18n/` | 翻译文件——每种语言一个 JSON（`contributes.i18n` 声明路径） |
 | `__tests__/` | 测试文件，推荐放 `src/__tests__/` |
 
-> **插件源码目录不产生 `dist/`**（构建产物在应用根 `dist/plugins/<id>.js`，作者不关心）。完整目录约定见 `09-插件目录规范.md`。
+> **插件源码目录不产生 `dist/`**（分发构建产物由 plugin-sdk 产进 `.linkdesk-plugin`（`index.bundle.js` + `views/*.bundle.js` + 改写 plugin.json），作者不关心）。完整目录约定见 `09-插件目录规范.md`。
 
 ---
 
-## 内置插件 vs 用户插件
+## 插件只有一类——身份差异在声明字段，不在目录
 
-LinkDesk 通过 `distribution` 字段 + 物理目录区分两种插件：
+**塌平单根后（2026-09-05）没有「内置/用户」两类**：repo `plugins/<id>` 与安装态 `{userData}/plugins/<id>` 都是**平铺单根**——随壳发货的插件与第三方装的在同一棵树并列。差异只在 plugin.json 字段：
 
-| | 用户插件（默认） | 内置插件 |
-|------|:--:|:--:|
-| 放哪里 | `plugins/user/` | `plugins/builtin/` |
-| `distribution` 字段 | 不填（默认 `"user"`） | `"builtin"` |
-| 谁做的 | 第三方作者 / 官方市场 | 官方——随安装包分发 |
-| 安装包更新 | 不动 | 覆盖 |
-| 打包后位置 | `%APPDATA%/LinkDesk/plugins/user/` | `安装目录/resources/plugins/builtin/` |
+| 字段 | 语义 | 谁该填 |
+|------|------|:--|
+| `core: true` | **UI 防误删旗标**——卸载按钮不显示/禁用（外壳依赖它提供设置页/插件市场等基础交互）。**无行为特权、非类别** | 官方这几个：`editor` `file-tree` `marketplace` `settings` |
+| `distribution` | ⚠️ **遗留字段**（schema 已标废弃，勿填）——不再对应任何目录，安装侧恒归一化为 `user` | **第三方请勿填写** |
 
-### 创建用户插件（第三方/官方市场）
+### 创建插件（第三方，自己的项目根）
 
 ```jsonc
-// plugins/user/my-plugin/plugin.json
+// my-plugin/plugin.json
 {
   "name": "我的插件",
   "version": "1.0.0",
   "entry": "src/index.tsx"
-  // distribution 不用写——默认就是 "user"
+  // 不填 core —— 普通插件，用户可自由装卸
+  // 不填 distribution —— 遗留字段，装进 app 统一归 user
 }
 ```
 
-丢 `plugins/user/` 下 → 自动加载。
+构建 → `<id>.linkdesk-plugin` → 用户安装 → `{userData}/plugins/<id>/`（见 [04 §二](04-插件分发格式.md)）。
 
-### 创建内置插件（LinkDesk 官方）
+### core:true 的官方插件（随壳发货）
 
 ```jsonc
-// plugins/builtin/file-tree/plugin.json
+// plugins/file-tree/plugin.json（repo 单根实况）
 {
   "name": "文件树",
   "version": "1.0.0",
-  "distribution": "builtin",   // 🔥 告诉打包脚本：跟安装包走
-  "core": true,                // 🔥 告诉 UI：不可卸载
+  "core": true,                // 🔥 防误删——UI 无卸载按钮
   "entry": "src/index.tsx"
 }
 ```
 
-**内置插件的两条规则：**
-
-1. **目录和声明要一致。** 放 `builtin/` → 必须声明 `"distribution": "builtin"`。放 `user/` → 不要声明 `builtin`。
-2. **`distribution` ≠ `core`。** `distribution` 管物理位置（打包时放哪），`core` 管 UI 行为（是否显示卸载按钮）。一个插件可以 `builtin` + `core`（不可卸载的内置设置页），也可以 `builtin` + 非 `core`（可卸载的内置主题）。
-
-### 官方发插件到市场
-
-官方做的插件也可以不进 `builtin/`——如果它不是随安装包分发，而是从插件市场下载的，那就和第三方一样：放 `plugins/user/`，不写 `distribution`。
+> **措辞纪律（硬约束 11）：** 「内置/随壳发货」指的是那份 `bundled-plugins/*.linkdesk-plugin` 与 boot 自动装路径，**不是一类插件**。说「core:true 的插件」「随壳发货的插件」，不说「内置插件是……」作类别定性。官方插件走市场分发时不填 core 也一样是普通插件——随包与否由是否进 bundled-plugins 决定，与字段无关。
 
 ---
 
@@ -226,11 +217,12 @@ LinkDesk 通过 `distribution` 字段 + 物理目录区分两种插件：
 |---|---|---|
 | `$schema` | `string` | JSON Schema 引用路径 |
 | `core` | `boolean` | `true` = 核心控制面，不可卸载。默认 `false` |
-| `distribution` | `string` | `"builtin"` \| `"user"`。默认 `"user"`——第三方插件不填即可 |
+| `distribution` | `string` | ⚠️ **遗留字段**（2026-09-05 塌平单根后不再对应任何目录，安装侧恒归一化为 `user`；schema 已标废弃）。**第三方请勿填写** |
 | `factoryRole` | `string` | 系统插槽角色：`"settings"` \| `"marketplace"`。**填 = 形态二（替换/进槽位切换）；不填 = 形态一（普通视图插件并存）**——详见下方「`factoryRole` 字段详解」 |
 | `iconSource` | `string` | `"codicon"`（默认）/ `"svg"` / `"url"` |
 | `description` | `string` | 一句话描述，插件详情页展示。支持多行 |
 | `author` | `string` | 作者名 |
+| `readme` | `string` | 附带说明文档路径——相对插件目录（如 `"./README.md"`）；`.linkdesk-plugin` 详情/市场展示数据源（E6#4a：作者包里有 README.md 就随包，本字段指向包内文件） |
 | `sidebar` | `string` | 侧栏组件路径，仅 `view` 类型有效 |
 | `tabBehavior` | `object` | 标签页行为声明，见下方 |
 | `statusBar` | `array` | 状态栏贡献条目，见下方。仅 `view` 类型有效 |
@@ -328,7 +320,7 @@ LinkDesk 通过 `distribution` 字段 + 物理目录区分两种插件：
 - **想并存 → 不填。** 例：第三方做全新市场 UI，图标栏官方旁边多一个自己的图标，点进去是自己的 UI，和官方拿同一份数据
 - **想替换 → 填。** 例：声明 `factoryRole:"marketplace"` → 设置页出「插件市场」组 + 切换按钮，切过去后图标/内容换成你的
 
-**形态二实现细节**（E5.8 Phase 8.2 方案A 已落地，#41.11-#41.18；参考实体 `plugins/user/settings-demo/` + `10-如何造一个设置插件.md`）：
+**形态二实现细节**（E5.8 Phase 8.2 方案A 已落地，#41.11-#41.18；参考实体 `plugins/settings`（官方 core:true 设置套）+ `10-如何造一个设置插件.md`）：
 
 - **① 一对多槽位**：同一 `factoryRole` 多插件声明 = **合法并存**，全收进槽位候选（不再"第一个胜出"）。**默认**（用户没切过/打开时）= `core:true` 优先、否则注册序首声明（稳定排序，不靠扫描序巧合）。多候选并存不再静默——壳控制台 fail-loud 点名全部候选 + 默认（每候选集合变化才重喷一次）。
 - **② 活动套 = 用户切换选择，落盘持久化**（重启保持）。公开枚举/切换面 `window.linkdesk.factorySlots.*`（#41.14 ⑤ 通用枚举面，槽位无关收 role 参数；settings 角色另有 `window.linkdesk.settings.*` 兼容别名，内部原样转发）：
@@ -369,8 +361,8 @@ LinkDesk 通过 `distribution` 字段 + 物理目录区分两种插件：
 |------|-----------|-------------|---------|
 | codicon 内置图标 | `"package"` | 不写（默认 `"codicon"`） | 无需文件——系统内置 codicon 字体 |
 | Lucide 内置图标 | `"FolderTree"` | `"lucide"` | 无需文件——壳内置 Lucide 图标集（白名单见 PluginIcon `LUCIDE_MAP`：FolderTree/Folder/File/Package 等） |
-| 自定义 SVG / PNG | `"resources/icon.svg"` | 不写 | `plugins/user/<插件ID>/resources/icon.svg`（推荐 `resources/` 子目录） |
-| 自定义 PNG（无扩展名） | `"resources/icon"` | 不写 | `plugins/user/<插件ID>/resources/icon.png`（自动加 `.png`） |
+| 自定义 SVG / PNG | `"resources/icon.svg"` | 不写 | `<插件目录>/resources/icon.svg`（推荐 `resources/` 子目录） |
+| 自定义 PNG（无扩展名） | `"resources/icon"` | 不写 | `<插件目录>/resources/icon.png`（自动加 `.png`） |
 | 外部 URL | `"https://..."` | `"url"` | 任意可访问的 URL |
 
 **示例：**
@@ -381,11 +373,11 @@ LinkDesk 通过 `distribution` 字段 + 物理目录区分两种插件：
 
 // 自定义 SVG——推荐，矢量不模糊，fill="currentColor" 跟随主题
 { "icon": "resources/icon.svg" }
-// 文件放在插件目录下：plugins/user/my-plugin/resources/icon.svg
+// 文件放在插件目录下：my-plugin/resources/icon.svg
 
 // 自定义 PNG——位图，多尺寸可能模糊
 { "icon": "resources/icon.png" }
-// 文件放在插件目录下：plugins/user/my-plugin/resources/icon.png
+// 文件放在插件目录下：my-plugin/resources/icon.png
 
 // 外部 URL
 { "icon": "https://example.com/icon.svg", "iconSource": "url" }
@@ -429,7 +421,7 @@ LinkDesk 通过 `distribution` 字段 + 物理目录区分两种插件：
 }
 ```
 
-视图由 ViewContainerService 按 `contributes.views[].render` 加载，图标走壳的 component-less 注册路径。**官方示范：`plugins/user/demo-en`（Hello World）**——侧栏专用插件要图标 = `appearsIn.iconBar` + sidebar `viewsContainers`，不需要 `entry`、不需要 `src/index.tsx`；**有标签页需求的插件才需要 `entry`**。
+视图由 ViewContainerService 按 `contributes.views[].render` 加载，图标走壳的 component-less 注册路径。**侧栏专用插件要图标 = `appearsIn.iconBar` + sidebar `viewsContainers`，不需要 `entry`、不需要 `src/index.tsx`**；**有标签页需求的插件才需要 `entry`**。
 
 ### `contributes` 字段（Phase 5+）——对标 VS Code
 
@@ -616,11 +608,11 @@ function CadView() {
 ## 目录结构约定
 
 ```
-plugins/user/<pluginId>/    ← 第三方插件放这里
-plugins/builtin/<pluginId>/ ← 内置插件（随安装包分发）放这里
+plugins/<pluginId>/            ← repo 源码树（塌平单根；目录名 = 插件 ID）
+{userData}/plugins/<pluginId>/ ← 安装态（.linkdesk-plugin zip 解压处）
 ```
 
-`<pluginId>` = 文件夹名 = 插件唯一标识。`distribution` 字段声明归属（默认 `"user"`，不填即可）。命名规则：
+`<pluginId>` = 文件夹名 = 插件唯一标识（身份唯一来源——loader 以目录名定 pluginId，schema 无顶层 pluginId 字段）。命名规则：
 - 小写英文 + 连字符：`gps-map`、`protocol-sbq`、`theme-dracula`
 - 不带软件名、不带版本号：`terminal` 不是 `v3-terminal`
 
@@ -632,7 +624,7 @@ plugins/builtin/<pluginId>/ ← 内置插件（随安装包分发）放这里
 
 加载器校验 `plugin.json`（`type` 字段不参与校验——已废弃，loader 从声明字段自动检测）：
 
-**安装期（复制到 `plugins/user/` 前拦截，E5.7#81）：**
+**安装期（解压到 `{userData}/plugins/<id>/` 前拦截）：**
 1. **缺 `plugin.json`** → 安装失败（不是有效插件）
 2. **JSON 格式错误** → 安装失败，给出错误信息
 3. **`validateInstallManifest` 校验**（pluginId/version/name 可解析）→ 不合法在复制前失败
@@ -650,7 +642,8 @@ plugins/builtin/<pluginId>/ ← 内置插件（随安装包分发）放这里
 
 ## 相关
 
-- `docs/插件开发/视图插件开发.md` — 视图插件完整开发指南
-- `docs/插件开发/协议插件开发.md` — 协议插件完整开发指南
-- `public/schemas/plugin.schema.json` — JSON Schema 文件（权威版本）
+- `04-插件分发格式.md` — 分发/安装/版本兼容
+- `09-插件目录规范.md` — 源码目录结构与命名约定
+- [E6 第三方作者旅程](../02-Electron架构/E6_插件生态与发布/05-文档与发布/00-第三方作者旅程.md) — 从零到发布的完整路径
+- `plugin.schema.json` — 同目录 JSON Schema 文件（权威版本，三拷贝 gate 之一）
 - memory `plugin-system.md` — 插件系统完整设计

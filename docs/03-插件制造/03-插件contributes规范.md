@@ -1,6 +1,6 @@
 # 03 — 插件 contributes 规范
 
-> 2026-07-24 · E5.8 全量重写 2026-08-21。**plugin.json `contributes` 字段——插件声明"我能做什么"。** 对标 VS Code `package.json` contributes。壳自动接线——不改任何核心代码。
+> 2026-07-24 · E5.8 全量重写 2026-08-21 · **E6 核 2026-09-06**（E6#58：contributes 面无目录/分发语义，逐段核零塌平残留，原样保留）。**plugin.json `contributes` 字段——插件声明"我能做什么"。** 对标 VS Code `package.json` contributes。壳自动接线——不改任何核心代码。
 > 真相源：`src/pluginLoader/contributions.ts`（parseContributions——壳侧 13 个消费点）+ `electron/plugins/plugin-manifest-loader.ts`（主进程 2 个消费点）+ `public/schemas/plugin.schema.json`（IDE 校验）。
 
 ---

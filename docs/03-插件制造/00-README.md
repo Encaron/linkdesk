@@ -1,6 +1,6 @@
 # 插件开发——契约文档
 
-> 2026-07-24。**写给第三方插件开发者。** LinkDesk 核心是空壳，万物皆插件。这份文档回答"我能写什么插件、怎么开始"。
+> 2026-07-24 · **E6 核 2026-09-06**（E6#58 对账：塌平单根 `plugins/<id>` · 分发 = `.linkdesk-plugin` zip · 插件只有一类）。**写给第三方插件开发者。** LinkDesk 核心是空壳，万物皆插件。这份文档回答"我能写什么插件、怎么开始"。
 
 ---
 
@@ -43,18 +43,18 @@
 | 能力 | 声明方式 | 壳如何加载 | 例子 |
 |------|------|------|------|
 | **视图**（标签页/侧栏/面板） | `contributes.viewsContainers` + `contributes.views`（`render` 指向组件）；有标签页需求另加 `entry` | 池内 React 渲染 | 终端/地图/CAD/编辑器 |
-| **设置 UI**（整套设置界面替代品） | `factoryRole: "settings"` + `contributes.views`（+ 可选 `floatingPanel`） | 池内 React 渲染；多套并存，激活套由用户切换、持久化 | 内置设置 / settings-demo（→ `10-如何造一个设置插件.md`） |
+| **设置 UI**（整套设置界面替代品） | `factoryRole: "settings"` + `contributes.views`（+ 可选 `floatingPanel`） | 池内 React 渲染；多套并存，激活套由用户切换、持久化 | 官方设置（repo `plugins/settings`，core:true）/ 第三方可换套（→ `10-如何造一个设置插件.md`） |
 | **主题** | `contributes.themes`（`{id,label,uiTheme,path}`） | 壳注册主题 → CSS 变量 | Dracula/Solarized |
 | **语言包**（UI 翻译） | `contributes.languages`（`{id,label,path}`） | 注册到 i18next → UI 文字切换 | 日本語/English |
 | **协议解析** | `mode` 字段 + `window.linkdesk.protocol.*` | 主进程协议注册表（E5.7#49） | SBQ 心率协议 |
-| **静态资源** | 插件目录 `resources/`（`getAssetPath()` 读取） | 随插件分发 | STM32 参考手册 HTML |
+| **静态资源** | 插件目录 `resources/` 声明相对路径 → 壳解析（见 [09 §静态资源](09-插件目录规范.md)） | 随插件分发 | STM32 参考手册 HTML |
 
 ---
 
 ## 从零到上线——最短路径
 
 ```
-1. 创建文件夹 plugins/user/my-plugin/
+1. 创建文件夹 plugins/my-plugin/（repo 塌平单根；第三方在自己的项目根同样结构）
      ├── plugin.json
      └── src/index.tsx
 
@@ -73,6 +73,8 @@
      }
 
 4. 重启 LinkDesk（dev 模式 `npm run electron:dev`）→ 图标栏出现 → 点击 → 标签页渲染
+
+> **要给别人装：** 用 plugin-sdk 构建成 `.linkdesk-plugin` zip（见 [04 §一](04-插件分发格式.md) + [E6 第三方作者旅程](../02-Electron架构/E6_插件生态与发布/05-文档与发布/00-第三方作者旅程.md)）——repo 源码树里的目录只是开发态。
 ```
 
 ---
