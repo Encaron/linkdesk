@@ -17,11 +17,17 @@ import React, { Suspense, useMemo } from "react";
 import ErrorBoundary from "../error-boundary/ErrorBoundary"; // E5.7#20：池侧版（不 import 壳 components 目录）
 
 // ── import.meta.glob：Vite 预扫描插件状态栏组件（池构建时——唯一渲染执行者）──
-// 3 路径（2026-09-05 塌平单根：plugins/<id>/，目录名 = pluginId）；壳侧等价 glob 已随 E6#17d 删
+// 3 路径（2026-09-05 塌平单根：plugins/<id>/，目录名 = pluginId）；壳侧等价 glob 已随 E6#17d 删。
+// 🔥 glob 基 = 本文件目录上 4 级 → 项目根 plugins/（src/pool/shared/pool-status-bar/ → ../../../../）。
+// 曾 mis-root 为 ../../（= src/pool/plugins，不存在 → glob 恒空 → 构建时静态兜底从未生效——打包版
+// serial LED 降级即由此，E6#17d 修复轮打包态实机证暴露）。修根后 glob-内 内置插件 statusBar 源静态编入
+// 池 chunk（react 等 external → importmap 取 pool-vendor 单实例），打包版无需发行插件源文件即可渲染；
+// glob-外/dist 插件自绘状态栏仍走下方运行时 resolvePath fallback（第三方正式通道 = ①a 立案 dist
+// statusBar export 约定，此处 fallback 只探 .tsx 源 → 打包态对未发行源的 dist 插件本就无目标）。
 const statusBarModules = {
-  ...import.meta.glob("../../plugins/*/statusBar.tsx"),
-  ...import.meta.glob("../../plugins/*/src/statusBar.tsx"),
-  ...import.meta.glob("../../plugins/*/src/components/statusBar.tsx"),
+  ...import.meta.glob("../../../../plugins/*/statusBar.tsx"),
+  ...import.meta.glob("../../../../plugins/*/src/statusBar.tsx"),
+  ...import.meta.glob("../../../../plugins/*/src/components/statusBar.tsx"),
 };
 
 /** 运行时动态 import 试错路径——与 glob 三位置对应 */
