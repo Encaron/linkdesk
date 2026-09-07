@@ -51,7 +51,35 @@
 
 ---
 
+## npm 生态——作者工具链四包
+
+> 2026-09-07 落定（E6#21-#25）：脚手架与 SDK 已发公开 npm。**第三方作者在自己的工程根写插件，不碰壳仓库**——从零到 `.linkdesk-plugin` 全走 npm。四包各司其职：
+
+| 包 | 版本 | 干什么 | 作者何时装 |
+|:--|:--:|:--|:--|
+| `create-linkdesk-plugin` | 0.1.0 | 一行生成插件工程骨架（对标 yo code） | 建新插件时 `npm create`，一次性、不进项目 |
+| `@linkdesk/plugin-sdk` | 0.1.3 | 作者工具链四命令：`dev`（dev 宿主+HMR）/ `build`（→ `.linkdesk-plugin`）/ `validate` / `lint`；随包 `plugin.schema.json` + dev 宿主页 | 每个插件工程 devDependencies |
+| `@linkdesk/contracts` | 0.1.2 | `window.linkdesk.*` 全量 TS 类型（契约生成产物——单一真相源） | **不用主动装**——SDK 依赖它并全量转发，装 SDK 即达 |
+| `@linkdesk/ui` | 0.1.0 | 共享 UI 零件：右键/下拉/开关/取色器（壳 `src/components/shared` 编译产物） | 可选——想让界面跟内置同款（自动跟随主题/玻璃）时装 |
+
+**关系一句话**：`create` 生成工程 → 工程装 `sdk` → `sdk` 带 `contracts`（类型随来；dev 预览还要 react，但构建仍 external、不进 `.linkdesk-plugin`）；`ui` 独立、按需装。
+
+**作者真正敲的命令**：
+
+```bash
+npm create linkdesk-plugin my-plugin   # ① 建工程（每建一个用一次）
+cd my-plugin && npm install            # ② 装 SDK（devDependencies，window.linkdesk 类型自动进 TS program）
+npm run dev                            # 预览：浏览器 dev 宿主 → 改码 HMR
+npm run build                          # 交活：my-plugin.linkdesk-plugin（装进 LinkDesk / 日后发布）
+```
+
+> 机制细节：[02-本地预览环境.md](../02-Electron架构/E6_插件生态与发布/02-插件开发工具链/02-本地预览环境.md)（dev 宿主）· [01-create-linkdesk-plugin脚手架.md](../02-Electron架构/E6_插件生态与发布/02-插件开发工具链/01-create-linkdesk-plugin脚手架.md)（生成物契约）· [00-第三方作者旅程.md](../02-Electron架构/E6_插件生态与发布/05-文档与发布/00-第三方作者旅程.md)（发布主路）
+
+---
+
 ## 从零到上线——最短路径
+
+> 🔥 **第三方作者先走 npm 生态（上节）**——`npm create linkdesk-plugin` 生成的工程即下述结构（工程根 = 下述 `plugins/my-plugin/` 的对应物）。下面的步骤是文件长什么样的对照；「重启 LinkDesk dev」是 repo 内开发态路径。
 
 ```
 1. 创建文件夹 plugins/my-plugin/（repo 塌平单根；第三方在自己的项目根同样结构）
