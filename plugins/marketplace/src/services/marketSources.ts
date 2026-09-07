@@ -16,7 +16,8 @@
  * 重拉 + 重写缓存）。网络失败/坏 parse 时有缓存原文 → 降级用 stale（usedStale=true，展示「可能过期」提示用）。
  */
 
-import { OFFICIAL_SOURCE_URL, normalizeSourceUrl, sourceKeyOfUrl, parseCatalog, mergeCatalogs, sourceNameOfUrl } from "./marketCatalog";
+import { OFFICIAL_SOURCE_URL, normalizeSourceUrl, parseCatalog, mergeCatalogs, sourceNameOfUrl } from "./marketCatalog";
+import { urlSourceKey } from "@linkdesk/ui"; // E6#30c：URL 源身份（owner/repo、分支无关）——@linkdesk/ui 共享单一实现（设置行内判重同此钥匙）
 import type { CatalogEntry } from "./marketCatalog";
 
 /* ═══ 类型 ═══ */
@@ -55,10 +56,10 @@ const CACHE_PREFIX = "ldk-market-catalog:v1:";
 /* ═══ 配置读源 ═══ */
 
 /** 官方源恒在 + 配置 marketplace.marketplaceSources 作者源（URL-string 或 {url} 形态兼容归一）——去重，官方排前。
- *  官方/去重判别走 sourceKeyOfUrl（owner/repo 身份、分支无关）——仓库主页形态的官方（归一成 HEAD）与官方
+ *  官方/去重判别走 urlSourceKey（owner/repo 身份、分支无关）——仓库主页形态的官方（归一成 HEAD）与官方
  *  main 直链是同一源，精确串比较会漏判导致官方被二次拉取（E6#30c 实测）。 */
 export async function getSourceUrls(): Promise<string[]> {
-  const officialKey = sourceKeyOfUrl(OFFICIAL_SOURCE_URL);
+  const officialKey = urlSourceKey(OFFICIAL_SOURCE_URL);
   const urls: string[] = [OFFICIAL_SOURCE_URL];
   const seen = new Set<string>(officialKey ? [officialKey] : []);
   try {
@@ -69,7 +70,7 @@ export async function getSourceUrls(): Promise<string[]> {
     for (const item of list) {
       if (typeof item !== "string") continue;
       const norm = normalizeSourceUrl(item);
-      const key = norm ? sourceKeyOfUrl(norm) : null;
+      const key = norm ? urlSourceKey(norm) : null;
       if (!norm || !key || seen.has(key)) continue;
       seen.add(key);
       urls.push(norm);
@@ -93,12 +94,12 @@ export async function readConfiguredAuthorSources(): Promise<string[]> {
     return [];
   }
   if (!Array.isArray(raw)) return [];
-  const officialKey = sourceKeyOfUrl(OFFICIAL_SOURCE_URL);
+  const officialKey = urlSourceKey(OFFICIAL_SOURCE_URL);
   const seen = new Set<string>();
   const out: string[] = [];
   for (const it of raw) {
     if (typeof it !== "string" || !it) continue;
-    const key = sourceKeyOfUrl(it);
+    const key = urlSourceKey(it);
     if (!key || (officialKey !== null && key === officialKey) || seen.has(key)) continue;
     seen.add(key);
     out.push(it);

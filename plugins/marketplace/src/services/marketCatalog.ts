@@ -74,16 +74,6 @@ export function normalizeSourceUrl(input: string): string | null {
   return repoUrlToRawUrl(raw);
 }
 
-/** GitHub 源身份归一——任何形态（github.com 仓库主页含 tree/blob 尾 / raw.githubusercontent.com
- * 直链含任意分支与路径尾）都归为小写 `owner/repo`。分支无关（main/HEAD 通吃）——URL 精确串比较
- * 会让「官方 main 直链 vs 仓库主页归一 HEAD」永不相等、官方源漏判（E6#30c 实测 bug）。返 null = 非 GitHub 源。
- * 只用于「是否同一源 / 是否官方」身份比较——fetch 仍走 normalizeSourceUrl 产物（形态不可互换）。 */
-export function sourceKeyOfUrl(url: string): string | null {
-  const m = /^https?:\/\/(?:github\.com|raw\.githubusercontent\.com)\/([^/]+)\/([^/?#]+)/i.exec(url.trim());
-  if (!m) return null;
-  return `${m[1].toLowerCase()}/${m[2].toLowerCase()}`;
-}
-
 /** 来源标注名：从 raw URL 抽 owner/repo（无 github raw 形态 → 回退 host+路径前两段） */
 export function sourceNameOfUrl(rawUrl: string): string {
   const m = /^https:\/\/raw\.githubusercontent\.com\/([^/]+)\/([^/]+)/.exec(rawUrl);

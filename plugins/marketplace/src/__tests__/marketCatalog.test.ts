@@ -10,7 +10,6 @@ import {
   isRawMarketplaceUrl,
   normalizeSourceUrl,
   sourceNameOfUrl,
-  sourceKeyOfUrl,
   parseCatalog,
   compareVersions,
   isVersionNewer,
@@ -58,43 +57,6 @@ describe("isRawMarketplaceUrl / normalizeSourceUrl", () => {
     );
     // 官方源（真实仓库名 = 被测常量，非 fixture）
     expect(sourceNameOfUrl(OFFICIAL_SOURCE_URL)).toBe("encaron/linkdesk-marketplace");
-  });
-});
-
-/* ── sourceKeyOfUrl（E6#30c 官方身份——owner/repo 分支无关，修 HEAD/main 漏判 bug） ── */
-
-describe("sourceKeyOfUrl", () => {
-  it("仓库主页 / raw 直链（main/HEAD）不同形态 → 同一 owner/repo 身份", () => {
-    const repoPage = "https://github.com/owner-one/catalog-repo-a";
-    const rawMain = "https://raw.githubusercontent.com/owner-one/catalog-repo-a/main/marketplace.json";
-    const rawHead = "https://raw.githubusercontent.com/owner-one/catalog-repo-a/HEAD/marketplace.json";
-    const k = "owner-one/catalog-repo-a";
-    expect(sourceKeyOfUrl(repoPage)).toBe(k);
-    expect(sourceKeyOfUrl(rawMain)).toBe(k);
-    expect(sourceKeyOfUrl(rawHead)).toBe(k);
-  });
-
-  it("仓库主页带 tree/blob 尾仍归同一身份", () => {
-    expect(sourceKeyOfUrl("https://github.com/owner-two/catalog-repo-b/tree/main")).toBe("owner-two/catalog-repo-b");
-    expect(sourceKeyOfUrl("https://github.com/owner-two/catalog-repo-b/blob/main/README.md")).toBe("owner-two/catalog-repo-b");
-  });
-
-  it("官方源各形态恒归 encaron/linkdesk-marketplace（main 常量 + 仓库主页 + HEAD）", () => {
-    expect(sourceKeyOfUrl(OFFICIAL_SOURCE_URL)).toBe("encaron/linkdesk-marketplace");
-    expect(sourceKeyOfUrl("https://github.com/encaron/linkdesk-marketplace")).toBe("encaron/linkdesk-marketplace");
-    expect(sourceKeyOfUrl("https://raw.githubusercontent.com/encaron/linkdesk-marketplace/HEAD/marketplace.json")).toBe(
-      "encaron/linkdesk-marketplace",
-    );
-  });
-
-  it("大小写无关（GitHub 路由不分大小写）", () => {
-    expect(sourceKeyOfUrl("https://github.com/Encaron/LinkDesk-Marketplace")).toBe("encaron/linkdesk-marketplace");
-  });
-
-  it("非 GitHub 源 / 垃圾输入 → null", () => {
-    expect(sourceKeyOfUrl("https://gitee.com/a/b")).toBeNull();
-    expect(sourceKeyOfUrl("not-a-url")).toBeNull();
-    expect(sourceKeyOfUrl("   ")).toBeNull();
   });
 });
 

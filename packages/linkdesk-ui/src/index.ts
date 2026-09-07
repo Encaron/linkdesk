@@ -35,6 +35,8 @@ export { useClickPreview } from "@shared/hooks/useClickPreview";
 export { useClipboardKeys } from "@shared/hooks/useClipboardKeys";
 export { useDebouncedInput } from "@shared/hooks/useDebouncedInput";
 export { inferSliderStep } from "@shared/slider/sliderStep";
+// E6#30c：URL 源身份（owner/repo、分支无关）——marketplace 加源弹窗 + settings 行内直添共用同一去重键（单一实现）
+export { urlSourceKey } from "@shared/string-list-editor/urlSourceKey";
 export type { InlineInputHandle } from "@shared/inline-input/InlineInput";
 export type { ContextMenuProps } from "@shared/context-menu/ContextMenu";
 export type { ManifestIconShape, ResolvedIcon } from "@shared/plugin-icon/iconUtils";

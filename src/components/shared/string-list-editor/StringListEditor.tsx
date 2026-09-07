@@ -37,6 +37,10 @@ interface StringListEditorProps {
   badUrlMessage?: string;
   /** 重复错误文案（与 value/locked 已有重复） */
   duplicateMessage?: string;
+  /** 身份比较键（可选）——给定字符串 → 身份键，键相同视为重复（如 GitHub 源 URL 跨形态归同一
+   *  owner/repo：仓库主页/main/HEAD 直链同键，E6#30c）。缺省 = 精确字符串比较；itemKey 返回 null
+   *  的输入也回精确比较（无身份的串只能精确判重）。由主叫方从 @linkdesk/ui 引共享 urlSourceKey 传入。 */
+  itemKey?: (s: string) => string | null;
   /** 底部说明（可 ReactNode） */
   hint?: ReactNode;
 }
@@ -53,12 +57,24 @@ export default function StringListEditor({
   emptyMessage,
   badUrlMessage,
   duplicateMessage,
+  itemKey,
   hint,
 }: StringListEditorProps) {
   const [draft, setDraft] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   const clearError = () => setError(null);
+
+  /** 与 value/locked 判重——itemKey 提供时按身份键比较（跨形态同一源视为重复），否则精确串 */
+  const isDuplicate = (candidate: string): boolean => {
+    const sameAs = (existing: string): boolean => {
+      if (!itemKey) return existing === candidate;
+      const key = itemKey(candidate);
+      if (key === null) return existing === candidate; // 无身份的串（非 github 源）只能精确判重
+      return itemKey(existing) === key;
+    };
+    return locked.some(sameAs) || value.some(sameAs);
+  };
 
   const add = () => {
     const raw = draft.trim();
@@ -70,7 +86,7 @@ export default function StringListEditor({
       if (badUrlMessage) setError(badUrlMessage);
       return;
     }
-    if (locked.includes(raw) || value.includes(raw)) {
+    if (isDuplicate(raw)) {
       if (duplicateMessage) setError(duplicateMessage);
       return;
     }

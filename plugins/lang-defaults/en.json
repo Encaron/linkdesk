@@ -393,5 +393,5 @@
   "粘贴作者仓库 URL（例：https://github.com/用户名/仓库名）": "Paste an author repo URL (e.g. https://github.com/user/repo)",
   "请输入仓库 URL。": "Enter a repository URL.",
   "URL 格式不对——以 http(s):// 开头。示例：https://github.com/用户名/仓库名": "URL must start with http(s):// — e.g. https://github.com/user/repo",
-  "这个源已经在列表里了（官方源内置，无需重复添加）。": "This source is already in the list (the official source is built in)."
+  "这个源已经在列表里了。": "This source is already in the list."
 }
