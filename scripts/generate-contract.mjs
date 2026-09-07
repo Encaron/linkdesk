@@ -1,9 +1,11 @@
 #!/usr/bin/env node
 /**
  * E5.8#19 契约生成器——Route C：契约类型文件为源。
- * E5.8#22.5：双产物——
+ * 三产物（E5.8#19/#22.5 + E6#27）：
  *   ① contracts/linkdesk.d.ts     编译期契约（纯类型打包，`import type { ... } from "linkdesk"`）
  *   ② contracts/runtime-shapes.ts 运行期形状断言（never-throw guard，接收边界 validateWire 查表）
+ *   ③ packages/plugin-sdk/dev-host/linkdesk-mock.generated.ts  dev 宿主 mock 树（E6#27 第三产物——
+ *      与 ① 同一标注源 linkdesk-api.ts，杜绝 mock/preload 双份漂移；消费方 dev-host/mock.ts Proxy 包装）
  *
  * 产物①从 src/core/api/linkdesk-api.ts 的类型图打包自包含单文件：
  *   1. 收集 linkdesk-api.ts 全部类型导出 + 传递引用的类型声明（interface / type alias / enum）
@@ -20,8 +22,8 @@
  * 不做语法发明——只做「把接口树打包成可拷走的一份」+「把类型图发射成形状断言」。
  *
  * 用法：
- *   node scripts/generate-contract.mjs           # 重新生成双产物
- *   node scripts/generate-contract.mjs --check   # 与磁盘比对（不一致退出码 1）——#21 门禁
+ *   node scripts/generate-contract.mjs           # 重新生成三产物
+ *   node scripts/generate-contract.mjs --check   # 与磁盘比对（三产物，不一致退出码 1）——#21/#27d 门禁
  */
 import ts from 'typescript';
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
@@ -34,6 +36,7 @@ const ENTRY = resolve(root, 'src/core/api/linkdesk-api.ts');
 const SRC_ROOT = resolve(root, 'src');
 const OUT_FILE = resolve(root, 'contracts/linkdesk.d.ts');
 const OUT_RUNTIME = resolve(root, 'contracts/runtime-shapes.ts');
+const OUT_MOCK = resolve(root, 'packages/plugin-sdk/dev-host/linkdesk-mock.generated.ts');
 const REGISTRY_FILE = resolve(root, 'electron/ipc/runtime-dto-registry.ts');
 const CHANNELS_FILE = resolve(root, 'electron/ipc/channels.ts');
 const CHECK = process.argv.includes('--check');
@@ -622,7 +625,126 @@ ${channelCases.join('\n')}
 
 const runtimeContent = buildRuntimeShapes();
 
-// ── 5. 写盘 / 比对（双产物——版本号独立，见文件头拆焊注）──────────────
+// ── 4.5 dev 宿主 Mock 树产物（E6#27 第三产物）───────────────────────────
+// 同一标注源 linkdesk-api.ts → 完整方法树（每方法类型驱动中性默认 + 调用日志），dev-host/mock.ts 消费。
+// 遍历 = per-path 发射，**不做跨路径去重**——config 与 configuration 是同型不同访问路径，都要发射。
+// （命名类型同名键去重是 d.ts/形状断言的图收集需求；mock 是逐真实访问路径发射，走错路会漏 namespace。）
+// 方法类型解析用 checker.getTypeOfSymbol（对象字面量 method shorthand 正确返回函数类型——
+// getTypeOfSymbolAtLocation/decl.type node 路径会误返返回类型 Promise<T>，无调用签名）。
+// 默认值策略（类型驱动 + "不崩"，详见 02-本地预览环境.md §10.2 + 本产物 banner）：
+//   Promise<void/unknown/object/union…> → async 返 undefined（查询/动作静默落空，靠调用日志可感知）
+//   Promise<array/tuple>                → async 返 []   （防 await 后 .map/.length 崩）
+//   Promise<string/boolean/number>      → async 返 ""/false/0
+//   void（fire-and-forget）             → 空函数——registerCommand 等每插件激活必调，绝不抛
+//   fn-ret（订阅返退订句柄，如 onChange）→ 返 noop 函数（防 author 拿返回值退订调用崩——49 方法）
+//   其余同步（string/unknown/…）        → ""/undefined
+// 个性化 override 表（§10.2）按需追加——现为空，机制在位。
+
+function buildMockContent() {
+  const LOGCALL = "console.info";
+  // 个性化默认值 override：dotted path → TS 返回表达式（需要时在此追加，如 "path.join": '""'）
+  const OVERRIDE_RET = {};
+
+  // LinkDeskAPI 交集根类型（本文件 top 收集阶段未持有类型变量，这里现取）
+  const apiSf = program.getSourceFile(ENTRY);
+  const apiModule = checker.getSymbolAtLocation(apiSf);
+  const apiSym = checker.getExportsOfModule(apiModule).find((e) => e.name === 'LinkDeskAPI');
+  const rootType = apiSym.declarations
+    ? checker.getDeclaredTypeOfSymbol(apiSym)
+    : checker.getDeclaredTypeOfSymbol(checker.getAliasedSymbol(apiSym));
+
+  const stripOpt = (t) => {
+    if (t.isUnion()) {
+      const m = t.types.filter((x) => !(x.flags & (ts.TypeFlags.Undefined | ts.TypeFlags.Null)));
+      if (m.length === 1) return m[0];
+    }
+    return t;
+  };
+  const isPromiseRet = (t) =>
+    (t.symbol?.name === 'Promise' || t.aliasSymbol?.name === 'Promise') &&
+    Array.isArray(t.typeArguments) && t.typeArguments.length === 1;
+  /** 中性默认返回表达式（返回 undefined 的用 null——方法体不写 return） */
+  const neutralExpr = (t) => {
+    if (checker.isArrayType(t) || checker.isTupleType(t)) return '[]';
+    if (t.flags & ts.TypeFlags.String) return '""';
+    if (t.flags & ts.TypeFlags.Boolean) return 'false';
+    if (t.flags & ts.TypeFlags.Number) return '0';
+    if (t.flags & ts.TypeFlags.Null) return 'null';
+    return null;
+  };
+  /** 由返回类型定 mock 行为（async 与否 + 返回表达式） */
+  const bucketOf = (ret) => {
+    if (isPromiseRet(ret)) return { async: true, ret: neutralExpr(ret.typeArguments[0]) };
+    if (ret.flags & ts.TypeFlags.Void) return { async: false, ret: null };
+    if (checker.getSignaturesOfType(ret, ts.SignatureKind.Call).length) return { async: false, ret: '() => {}' };
+    return { async: false, ret: neutralExpr(ret) };
+  };
+
+  const lines = [];
+  const emitNs = (type, dotted, indent) => {
+    for (const p of checker.getPropertiesOfType(type)) {
+      const name = p.name;
+      const sub = dotted ? `${dotted}.${name}` : name;
+      let pt = checker.getTypeOfSymbol(p);
+      pt = stripOpt(pt);
+      const sigs = checker.getSignaturesOfType(pt, ts.SignatureKind.Call);
+      if (sigs.length > 0) {
+        // 方法叶子——单行发射（日志 + 按返回类别的默认体）
+        const b = bucketOf(sigs[0].getReturnType());
+        const ov = Object.prototype.hasOwnProperty.call(OVERRIDE_RET, sub) ? OVERRIDE_RET[sub] : undefined;
+        const retExpr = ov !== undefined ? ov : b.ret;
+        const msg = JSON.stringify(`[linkdesk-mock] ${sub}`);
+        lines.push(
+          `${indent}${name}: ${b.async ? 'async ' : ''}(..._args: unknown[]) => ` +
+            `{ ${LOGCALL}(${msg}, ..._args);${retExpr ? ` return ${retExpr};` : ''} },`,
+        );
+      } else {
+        const isObj =
+          (pt.flags & ts.TypeFlags.Object) !== 0 &&
+          !checker.isArrayType(pt) && !checker.isTupleType(pt) && !pt.isUnion();
+        if (isObj) {
+          lines.push(`${indent}${name}: {`);
+          emitNs(pt, sub, indent + '  ');
+          lines.push(`${indent}},`);
+        } else {
+          // 非对象非函数的纯值属性（经 strip 后应不存在）——undefined 兜底
+          lines.push(`${indent}${name}: undefined,`);
+        }
+      }
+    }
+  };
+  emitNs(rootType, '', '  ');
+
+  const banner = `/**
+ * 🔥 linkdesk-mock.generated.ts——dev 宿主 window.linkdesk mock 树（自动生成，勿手改）
+ *
+ * 生成源：src/core/api/linkdesk-api.ts + linkdesk-api/（LinkDeskAPI 交集——与 linkdesk.d.ts 同一标注源）
+ * 生成器：scripts/generate-contract.mjs（E6#27 第三产物，杜绝 mock/preload 双份漂移）
+ * 改契约源 → 跑 \`node scripts/generate-contract.mjs\`（npm run check 里 contracts:check 三产物逐字节强制）
+ *
+ * 消费方：packages/plugin-sdk/dev-host/mock.ts——injectDevMockApi() 用 Proxy 包本树：
+ *   树内方法 = 类型驱动中性默认 + 调用即打 [linkdesk-mock] 日志（mock vs 真 IPC 可感知）；
+ *   树外路径（契约里不存在的方法名） = Proxy 抛「不在 linkdesk API 契约」。
+ * 默认值策略（"不崩 + 可感知"，详见 02-本地预览环境.md §10.2）：
+ *   Promise<void/…数据对象> → async 返 undefined；Promise<数组> → []；Promise<string/boolean> → ""/false；
+ *   void → noop（registerCommand 等每插件必调，绝不抛）；返回退订句柄（onChange 等）→ noop 函数；
+ *   其余同步 → ""/undefined。真数据/真行为走真实 IPC / linkdesk-plugin-sdk dev --real（E6#28.5）。
+ */
+export const linkdeskMock: Record<string, unknown> = {`;
+
+  const tail = `};
+`;
+  return [banner, ...lines, tail]
+    .join('\n')
+    .replace(/\r\n/g, '\n')
+    .split('\n')
+    .map((line) => line.replace(/[ \t]+$/, ''))
+    .join('\n');
+}
+
+const mockContent = buildMockContent();
+
+// ── 5. 写盘 / 比对（三产物——版本号独立，见文件头拆焊注）──────────────
 
 if (CHECK) {
   let fail = false;
@@ -640,15 +762,26 @@ if (CHECK) {
   } else {
     console.log('[contracts] ✓ runtime-shapes.ts 最新');
   }
+  const diskMock = existsSync(OUT_MOCK) ? readFileSync(OUT_MOCK, 'utf8') : null;
+  if (diskMock !== mockContent) {
+    console.error('[contracts] ✗ linkdesk-mock.generated.ts 过期或缺失——请运行 node scripts/generate-contract.mjs');
+    fail = true;
+  } else {
+    console.log('[contracts] ✓ linkdesk-mock.generated.ts 最新');
+  }
   // 2026-09-06 拆焊：contracts 版本不再与壳比对——版本轴独立，货架节奏由 check-npm-release 黄灯闸盯。
-  // 内容检测（上方 d.ts/runtime-shapes 逐字节比对）不撤——内容过期仍红。
+  // 内容检测（上方三产物逐字节比对）不撤——内容过期仍红。
   process.exit(fail ? 1 : 0);
 }
 
 mkdirSync(dirname(OUT_FILE), { recursive: true });
+mkdirSync(dirname(OUT_MOCK), { recursive: true });
 writeFileSync(OUT_FILE, content, 'utf8');
 writeFileSync(OUT_RUNTIME, runtimeContent, 'utf8');
+writeFileSync(OUT_MOCK, mockContent, 'utf8');
 console.log(`[contracts] 已生成 ${OUT_FILE}（${blocks.length} 个类型声明，${content.length} 字符）`);
 const helperCount = (runtimeContent.match(/^function chk/gm) || []).length;
 console.log(`[contracts] 已生成 ${OUT_RUNTIME}（${helperCount} 个校验函数，${runtimeContent.length} 字符）`);
+const mockMethodCount = (mockContent.match(/\(\.\.\._args: unknown\[\]\) =>/g) || []).length;
+console.log(`[contracts] 已生成 ${OUT_MOCK}（${mockMethodCount} 个方法桩，${mockContent.length} 字符）`);
 console.log(`[contracts] @linkdesk/contracts 版本轴独立——version 由发布者手工维护（2026-09-06 拆焊，不随壳动）`);
