@@ -5,7 +5,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { loadCatalog, forceRefreshCatalog, getSourceUrls, __setCatalogIO } from "../services/marketSources";
+import { loadCatalog, forceRefreshCatalog, getSourceUrls, readConfiguredAuthorSources, __setCatalogIO } from "../services/marketSources";
 import { OFFICIAL_SOURCE_URL } from "../services/marketCatalog";
 import type { FetchFn, StorageLike } from "../services/marketSources";
 
@@ -83,6 +83,42 @@ describe("marketSources (E6#30a/30c/30f)", () => {
     stubConfig([OFFICIAL_SOURCE_URL, "", "  ", "not-a-url"]);
     const urls = await getSourceUrls();
     expect(urls).toEqual([OFFICIAL_SOURCE_URL]);
+  });
+
+  /* ── 官方身份回归（E6#30c——owner/repo 分支无关，修仓库主页形态官方漏判） ── */
+
+  it("getSourceUrls：配置官方仓库主页形态 → 不二次拉取（只官方 main 一次）", async () => {
+    stubConfig(["https://github.com/encaron/linkdesk-marketplace"]);
+    const urls = await getSourceUrls();
+    expect(urls).toEqual([OFFICIAL_SOURCE_URL]); // 仓库主页官方身份与 main 直链同一源 → 滤除
+  });
+
+  it("getSourceUrls：配置官方 HEAD 直链形态 → 不二次拉取", async () => {
+    stubConfig(["https://raw.githubusercontent.com/encaron/linkdesk-marketplace/HEAD/marketplace.json"]);
+    const urls = await getSourceUrls();
+    expect(urls).toEqual([OFFICIAL_SOURCE_URL]);
+  });
+
+  it("getSourceUrls：官方其他形态 + 真作者源并存 → 只官方 main + 作者源", async () => {
+    stubConfig(["https://github.com/encaron/linkdesk-marketplace", AUTHOR_URL]);
+    const urls = await getSourceUrls();
+    expect(urls).toEqual([OFFICIAL_SOURCE_URL, AUTHOR_URL]);
+  });
+
+  it("readConfiguredAuthorSources：官方仓库主页形态不入作者列表（残留滤除）", async () => {
+    stubConfig(["https://github.com/encaron/linkdesk-marketplace", AUTHOR_URL]);
+    const authors = await readConfiguredAuthorSources();
+    expect(authors).toEqual([AUTHOR_URL]);
+  });
+
+  it("readConfiguredAuthorSources：纯官方残留 → 空作者列表", async () => {
+    stubConfig(["https://github.com/encaron/linkdesk-marketplace"]);
+    expect(await readConfiguredAuthorSources()).toEqual([]);
+  });
+
+  it("readConfiguredAuthorSources：作者源同仓库多形态按身份去重、保留首个原始形态", async () => {
+    stubConfig(["https://github.com/owner-two/catalog-repo-b", AUTHOR_URL]);
+    expect(await readConfiguredAuthorSources()).toEqual(["https://github.com/owner-two/catalog-repo-b"]);
   });
 
   /* ── 拉取 + 5min 缓存（#30a） ── */

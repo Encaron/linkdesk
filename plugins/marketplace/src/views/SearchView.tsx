@@ -9,8 +9,9 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { setMarketplaceSearch } from "../services/marketplaceShared";
 import { OverlayPortal, useDebouncedInput } from "@linkdesk/ui"; // E6#15h：共享件全走 @linkdesk/ui 零件
-// E6#30c：官方源常量 + URL 归一——弹窗加源校验/去重用（官方恒内置不入册，见 marketCatalog 头注）
-import { OFFICIAL_SOURCE_URL, normalizeSourceUrl } from "../services/marketCatalog";
+// E6#30c：官方源常量 + URL 归一 + 源身份（owner/repo）——弹窗加源校验/去重用（官方恒内置不入册，见 marketCatalog 头注）。
+// 官方/重复判别走 sourceKeyOfUrl：分支无关——仓库主页形态官方归一成 HEAD、官方常量是 main，精确串比较会漏判放行（E6#30c 实测 bug）。
+import { OFFICIAL_SOURCE_URL, normalizeSourceUrl, sourceKeyOfUrl } from "../services/marketCatalog";
 import { readConfiguredAuthorSources } from "../services/marketSources";
 import "../styles/MarketplaceSidebar.css";
 
@@ -65,14 +66,19 @@ function AddSourcePopup({
     setBusy(true);
     try {
       const current = await readConfiguredAuthorSources(); // 排除官方后的现有作者源（原始形态）
-      const officialNorm = normalizeSourceUrl(OFFICIAL_SOURCE_URL) ?? OFFICIAL_SOURCE_URL;
-      if (norm === officialNorm) {
+      // 官方/重复按 owner/repo 身份判别（sourceKeyOfUrl）——仓库主页与 main/HEAD 直链同一身份视为重复
+      const key = sourceKeyOfUrl(raw);
+      if (!key) {
+        // norm 已过 → key 必非 null——纯防御（解析域理论不可达）
+        setErr(t("URL 格式不对——以 http(s):// 开头。"));
+        return;
+      }
+      if (sourceKeyOfUrl(OFFICIAL_SOURCE_URL) === key) {
         setErr(t("这个源已经在列表里了。"));
         return;
       }
       for (const s of current) {
-        const n = normalizeSourceUrl(s);
-        if (n && n === norm) {
+        if (sourceKeyOfUrl(s) === key) {
           setErr(t("这个源已经在列表里了。"));
           return;
         }

@@ -16,7 +16,7 @@
  * 重拉 + 重写缓存）。网络失败/坏 parse 时有缓存原文 → 降级用 stale（usedStale=true，展示「可能过期」提示用）。
  */
 
-import { OFFICIAL_SOURCE_URL, normalizeSourceUrl, parseCatalog, mergeCatalogs, sourceNameOfUrl } from "./marketCatalog";
+import { OFFICIAL_SOURCE_URL, normalizeSourceUrl, sourceKeyOfUrl, parseCatalog, mergeCatalogs, sourceNameOfUrl } from "./marketCatalog";
 import type { CatalogEntry } from "./marketCatalog";
 
 /* ═══ 类型 ═══ */
@@ -54,9 +54,13 @@ const CACHE_PREFIX = "ldk-market-catalog:v1:";
 
 /* ═══ 配置读源 ═══ */
 
-/** 官方源恒在 + 配置 marketplace.marketplaceSources 作者源（URL-string 或 {url} 形态兼容归一）——去重，官方排前 */
+/** 官方源恒在 + 配置 marketplace.marketplaceSources 作者源（URL-string 或 {url} 形态兼容归一）——去重，官方排前。
+ *  官方/去重判别走 sourceKeyOfUrl（owner/repo 身份、分支无关）——仓库主页形态的官方（归一成 HEAD）与官方
+ *  main 直链是同一源，精确串比较会漏判导致官方被二次拉取（E6#30c 实测）。 */
 export async function getSourceUrls(): Promise<string[]> {
+  const officialKey = sourceKeyOfUrl(OFFICIAL_SOURCE_URL);
   const urls: string[] = [OFFICIAL_SOURCE_URL];
+  const seen = new Set<string>(officialKey ? [officialKey] : []);
   try {
     const raw = await window.linkdesk?.configuration?.get<unknown>("marketplace.marketplaceSources");
     const list = Array.isArray(raw)
@@ -65,7 +69,10 @@ export async function getSourceUrls(): Promise<string[]> {
     for (const item of list) {
       if (typeof item !== "string") continue;
       const norm = normalizeSourceUrl(item);
-      if (norm && !urls.includes(norm)) urls.push(norm);
+      const key = norm ? sourceKeyOfUrl(norm) : null;
+      if (!norm || !key || seen.has(key)) continue;
+      seen.add(key);
+      urls.push(norm);
     }
   } catch {
     /* 配置面不可用/未知键 → 仅官方源（不崩） */
@@ -73,9 +80,11 @@ export async function getSourceUrls(): Promise<string[]> {
   return urls;
 }
 
-/** 读配置作者源（原始 URL 串、排除官方 default 项、按归一去重）——marketplace 弹窗/设置行读当前列表用。
+/** 读配置作者源（原始 URL 串、排除官方项、按身份去重）——marketplace 弹窗/设置行读当前列表用。
  *  config.get 返回 effective（无 override 时 = default [官方源]）——官方恒不入存盘（读侧 getSourceUrls 前置），
- *  故此处滤官方；返回用户粘的原始形态（仓库主页 URL 保持原样），新增时原样回写、只此一份落盘。 */
+ *  故此处按 owner/repo 身份滤官方（任何形态：main/HEAD 直链、仓库主页）；残留（历史污染）在此滤除，
+ *  且 SearchView 下次弹窗添加时 current 不带残留 → 重写配置自动清污。返回用户粘的原始形态（仓库主页 URL
+ *  保持原样），新增时原样回写、只此一份落盘。 */
 export async function readConfiguredAuthorSources(): Promise<string[]> {
   let raw: unknown;
   try {
@@ -84,14 +93,14 @@ export async function readConfiguredAuthorSources(): Promise<string[]> {
     return [];
   }
   if (!Array.isArray(raw)) return [];
-  const officialNorm = normalizeSourceUrl(OFFICIAL_SOURCE_URL) ?? OFFICIAL_SOURCE_URL;
+  const officialKey = sourceKeyOfUrl(OFFICIAL_SOURCE_URL);
   const seen = new Set<string>();
   const out: string[] = [];
   for (const it of raw) {
     if (typeof it !== "string" || !it) continue;
-    const norm = normalizeSourceUrl(it);
-    if (!norm || norm === officialNorm || seen.has(norm)) continue;
-    seen.add(norm);
+    const key = sourceKeyOfUrl(it);
+    if (!key || (officialKey !== null && key === officialKey) || seen.has(key)) continue;
+    seen.add(key);
     out.push(it);
   }
   return out;

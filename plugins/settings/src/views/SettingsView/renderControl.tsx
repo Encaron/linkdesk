@@ -138,6 +138,10 @@ function renderControl(
       // default 数组 = locked 固定行（官方源「内置」徽标 + 锁——不可删、不入 onChange 值、永不落盘，
       // 读时由 getSourceUrls 恒前置去重）；effective 值（含 default）减 locked 后 = 作者源（可删）。
       // 存盘只写作者源数组（onChange 收 StringListEditor 的 value = 已滤 locked 的剩余）。UI 文案走 t()。
+      // 🔒 边界（E6#30c）：locked/editable 按 default 精确串相减——官方源「其他形态」（仓库主页/HEAD 直链）
+      //   的排除是 marketplace 域规则（sourceKeyOfUrl owner/repo 身份、分支无关），收口在 marketplace 读边界
+      //   （readConfiguredAuthorSources/getSourceUrls）——本通用渲染器不 import 插件域（设置/市场独立插件）。
+      //   官方凭受支持入口（弹窗加源）永落不了盘；历史污染残留此处显示为可删作者行 = 手动清理通道。
       const locked = Array.isArray(prop.default)
         ? prop.default.filter((s): s is string => typeof s === "string")
         : [];
