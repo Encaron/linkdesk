@@ -80,27 +80,33 @@ export function initLifecycleConsumers(): void {
     });
   });
 
-  PluginLifecycle.onDidUninstall.event(({ pluginId, reason, displayName }) => {
+  PluginLifecycle.onDidUninstall.event(({ pluginId, reason, displayName, restorable }) => {
     // 'update'（E6#11c）→ 旧实例退场不发「已禁用」toast、不给「撤销→启用」动作——更新完成由
     // onDidInstall 侧接报；同插件的卸载/禁用才有 撤销 语义
     if (reason === "update") return;
     const name = displayName ?? pluginId;
     const msg = reason === "uninstall" ? `已卸载：${name}` : `已禁用：${name}`;
+    // E6#18c：卸载的 撤销 只在保留可恢复副本（restorable，app 树 .disabled 坟场）时给——userData 家
+    // 卸载 = 目录真删 + removed 墓碑，无副本可撤销（死钮）；真恢复 = 市场/手装 zip（#18 拍板 ④）。
+    // 禁用恒可撤销（enable 恢复状态即可）。consumer 端 3 是本处 toast 唯一源（uninstallPlugin 不再自弹）。
     pushToast({
       message: msg,
       source: pluginId,
       severity: "info",
       ttl: TOAST_TTL_ERROR,
-      actions: reason === "uninstall"
-        ? [{ label: "撤销", isPrimary: true, onClick: () => {
-            // 动态 import 避免循环依赖
-            import("../loader").then((m) => m.reinstallPlugin(pluginId))
-              .catch((e) => console.error("[lifecycle] 撤销卸载——模块加载失败:", e));
-          }}]
-        : [{ label: "撤销", isPrimary: true, onClick: () => {
-            import("../loader").then((m) => m.enablePlugin(pluginId))
-              .catch((e) => console.error("[lifecycle] 撤销禁用——模块加载失败:", e));
-          }}],
+      actions:
+        reason === "uninstall"
+          ? restorable
+            ? [{ label: "撤销", isPrimary: true, onClick: () => {
+                // 动态 import 避免循环依赖
+                import("../loader").then((m) => m.reinstallPlugin(pluginId))
+                  .catch((e) => console.error("[lifecycle] 撤销卸载——模块加载失败:", e));
+              }}]
+            : undefined
+          : [{ label: "撤销", isPrimary: true, onClick: () => {
+              import("../loader").then((m) => m.enablePlugin(pluginId))
+                .catch((e) => console.error("[lifecycle] 撤销禁用——模块加载失败:", e));
+            }}],
     });
   });
 

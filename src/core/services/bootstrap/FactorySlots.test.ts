@@ -2,9 +2,9 @@
  * FactorySlots 单元测试——E5.8#41.11 一槽多插件：initialize/getPluginIds/getDefaultPluginId/hasSlot
  * + 重复 factoryRole fail-loud + 卸载后槽位刷新 + E5.8#41.12 活动套 getActive/setActive（落盘持久化）。
  *
- * 覆盖：单槽 / 多角色多槽 / 多候选 core 优先排序（默认=内置）/ 无 core 首声明 / 重复声明 fail-loud
- * 点名两 pluginId（每候选集合只喷一次）/ 卸载后 refreshFromPlugins 槽位刷新 / 活动套四场景
- * （无记录回退默认 / setActive 落盘重启保持 / 非候选 fail-loud 拒绝 / 激活套卸载候选漂移回退）。
+ * 覆盖：单槽 / 多角色多槽 / 多候选按注册序落槽（E6#18b：core:true 不优先，默认=首声明）/
+ * 重复声明 fail-loud 点名两 pluginId（每候选集合只喷一次）/ 卸载后 refreshFromPlugins 槽位刷新 /
+ * 活动套四场景（无记录回退默认 / setActive 落盘重启保持 / 非候选 fail-loud 拒绝 / 激活套卸载候选漂移回退）。
  *
  * 测试替身：插件身份用明显虚构值（demo-settings-a/b、demo-market、demo-plain）——硬约束 #21。
  * getLoadedPluginManifests 走 vi.mock（卸载刷新场景喂可控清单）。
@@ -73,21 +73,25 @@ describe("FactorySlots — 一对多（E5.8#41.11）", () => {
     expect(slots.getDefaultPluginId("marketplace")).toBe("demo-market");
   });
 
-  it("多候选 core 优先——后声明的 core:true 仍当选默认（排序保证，非扫描序巧合）", () => {
+  it("多候选按注册序落槽——后声明的 core:true 不再优先当选默认（E6#18b：core:true 无行为特权）", () => {
     const slots = new FactorySlots();
     slots.initialize([
       entry("demo-settings-b", "settings"), // 非 core，先声明
       entry("demo-settings-a", "settings", true), // core:true，后声明
     ]);
-    expect(slots.getPluginIds("settings")).toEqual(["demo-settings-a", "demo-settings-b"]);
-    expect(slots.getDefaultPluginId("settings")).toBe("demo-settings-a"); // core 优先
+    // 注册序直落（不排序）——默认 = 首声明（非 core 的 b），core 的 a 排后
+    expect(slots.getPluginIds("settings")).toEqual(["demo-settings-b", "demo-settings-a"]);
+    expect(slots.getDefaultPluginId("settings")).toBe("demo-settings-b"); // 注册序首声明，core 不优先
   });
 
-  it("多候选无 core——首声明当选默认", () => {
+  it("多候选 core 先声明——首声明（恰为 core）仍当选默认（顺序与 core 无关）", () => {
     const slots = new FactorySlots();
-    slots.initialize([entry("demo-settings-x", "settings"), entry("demo-settings-y", "settings")]);
+    slots.initialize([
+      entry("demo-settings-x", "settings", true), // core:true，先声明
+      entry("demo-settings-y", "settings"), // 非 core，后声明
+    ]);
     expect(slots.getPluginIds("settings")).toEqual(["demo-settings-x", "demo-settings-y"]);
-    expect(slots.getDefaultPluginId("settings")).toBe("demo-settings-x"); // 首声明
+    expect(slots.getDefaultPluginId("settings")).toBe("demo-settings-x"); // 首声明（非 core 优先）
   });
 
   it("重复声明 fail-loud——多候选 console.error 点名全部候选 + 默认（对标 #24.6 失败必出声，不静默抢椅）", () => {
@@ -178,10 +182,10 @@ describe("FactorySlots — 活动套（E5.8#41.12）", () => {
     for (const k of Object.keys(pluginStateMock.store)) delete pluginStateMock.store[k];
   });
 
-  it("无持久化记录——getActive 回退默认（内置 core 优先）", () => {
+  it("无持久化记录——getActive 回退注册序首声明（E6#18b：不 core 优先；此例首声明恰为 core）", () => {
     const slots = new FactorySlots();
     slots.initialize([entry("demo-settings-a", "settings", true), entry("demo-settings-b", "settings")]);
-    expect(slots.getActive("settings")).toBe("demo-settings-a");
+    expect(slots.getActive("settings")).toBe("demo-settings-a"); // 首声明（非 core 偏袒）
   });
 
   it("setActive 落盘——getActive 返回激活套（重启保持语义：新实例读同一 store 仍命中）", async () => {

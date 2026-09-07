@@ -322,14 +322,14 @@ my-plugin/
 
 **形态二实现细节**（E5.8 Phase 8.2 方案A 已落地，#41.11-#41.18；参考实体 `plugins/settings`（官方 core:true 设置套）+ `10-如何造一个设置插件.md`）：
 
-- **① 一对多槽位**：同一 `factoryRole` 多插件声明 = **合法并存**，全收进槽位候选（不再"第一个胜出"）。**默认**（用户没切过/打开时）= `core:true` 优先、否则注册序首声明（稳定排序，不靠扫描序巧合）。多候选并存不再静默——壳控制台 fail-loud 点名全部候选 + 默认（每候选集合变化才重喷一次）。
+- **① 一对多槽位**：同一 `factoryRole` 多插件声明 = **合法并存**，全收进槽位候选（不再"第一个胜出"）。**默认**（用户没切过/打开时）= 首注册稳定序（E6#18b：core:true 无行为特权，不抢默认——注册序不靠扫描序巧合）。多候选并存不再静默——壳控制台 fail-loud 点名全部候选 + 默认（每候选集合变化才重喷一次）。
 - **② 活动套 = 用户切换选择，落盘持久化**（重启保持）。公开枚举/切换面 `window.linkdesk.factorySlots.*`（#41.14 ⑤ 通用枚举面，槽位无关收 role 参数；settings 角色另有 `window.linkdesk.settings.*` 兼容别名，内部原样转发）：
 
   | 方法 | 作用 |
   |------|------|
   | `factorySlots.listRoles()` | 全部已填充角色名（注册序）——设置页先枚举角色再 list(role) 判候选数 |
   | `factorySlots.list(role)` | 该角色全部候选 `[{ pluginId, title, viewId? }]`——title=显示名原文，viewId=该套 `contributes.floatingPanel.viewId`（无声明 = undefined） |
-  | `factorySlots.getActive(role)` | 活动套插件 ID——读持久化，无记录/已卸载回退默认（内置） |
+  | `factorySlots.getActive(role)` | 活动套插件 ID——读持久化，无记录/已卸载回退默认（首注册候选，E6#18b 无 core 优先） |
   | `factorySlots.setActive(role, pluginId)` | 切换活动套——校验候选后落盘；**非候选 fail-loud 抛错** |
 
 - **③ 切换入口 = 设置页角色分组（动态出现）**：设置 UI 打开时枚举 `listRoles()` → 对每个**非设置插件角色** `list(role)` → **候选 ≥2 才建组**（单候选无切换意义）。组形态 = 切换按钮在顶（列出该角色全部候选，激活高亮）+ 激活套自己的配置在下方；复用同名组优先（按 pluginId 找激活候选自己的配置组）、没有才新建；激活套无配置项 → 空状态。切换 = `setActive` → 重拉数据 → 配置随激活套换。你的设置插件**自身角色**（settings）的切换 = 顶部通用区按钮（见 `10-如何造一个设置插件.md`）。
@@ -342,7 +342,7 @@ my-plugin/
 | | 形态一（并存） | 形态二（替换） |
 |---|---|---|
 | 第三方声明 | 不填 `factoryRole`——普通视图插件（`appearsIn.iconBar` + 自己的 view + `pluginManager.*` 数据） | 填 `factoryRole: "marketplace"` |
-| 图标栏 | 官方 Marketplace 旁并排你自己的图标，两个市场各自独立 | 只显示**激活套**图标（默认=内置 core:true 优先），非激活套隐藏 |
+| 图标栏 | 官方 Marketplace 旁并排你自己的图标，两个市场各自独立 | 只显示**激活套**图标（默认=首注册候选，E6#18b 无 core 优先），非激活套隐藏 |
 | 设置页 | 无槽位概念 | 出「插件市场」角色组（候选 2）+ 切换按钮 |
 | 用户切换 | 无——自己点哪个进哪个 | 切到你的 Map Store → 图标/打开行为全换成你的，持久化重启保持 |
 | 数据 | 同一份 `pluginManager.*` API，各做各的 UI | 同一份数据，UI 换成激活套 |

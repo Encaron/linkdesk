@@ -17,12 +17,12 @@
     },
     "core": {
       "type": "boolean",
-      "description": "核心控制面插件——不可卸载，卸载按钮在 UI 中不显示或禁用。外壳依赖此插件提供基础交互能力（如设置页、插件市场）。无此声明 = 普通插件，用户可自由装卸。默认 false。",
+      "description": "纯 UI 防误删旗标——声明此插件重要，卸载入口在插件详情 UI 不显示（藏钮，新手误删不了）。无任何行为特权：禁用/卸载经 API/命令层照常生效（卸后写 removed 墓碑，boot 不复活）。设置页/市场等基础能力靠的是 factoryRole 槽位（可替换），与 core 声明无关。无此声明 = 普通插件，UI 可自由装卸。默认 false。",
       "default": false
     },
     "factoryRole": {
       "type": "string",
-      "description": "系统插槽角色——声明此插件填充哪个系统级功能。settings=设置页（Ctrl+, 打开），marketplace=插件市场。多个插件声明同一 role → 第一个 core: true 的胜出。"
+      "description": "系统插槽角色——声明此插件填充哪个系统级功能。settings=设置页（Ctrl+, 打开），marketplace=插件市场。同一 role 多插件合法并存（全收进槽位候选，一对多）；默认 = 首注册稳定序（core:true 无行为特权，不抢默认），用户切换的活动套持久化保持。"
     },
     "pluginRole": {
       "type": "string",

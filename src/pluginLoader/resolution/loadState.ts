@@ -192,6 +192,7 @@ export function unloadPlugin(
   pluginId: string,
   reason: PluginUninstallEvent["reason"],
   displayName?: string,
+  restorable?: boolean,
 ): void {
   const entry = _states.get(pluginId);
   const current = entry?.state ?? "pending";
@@ -204,11 +205,11 @@ export function unloadPlugin(
   transition(pluginId, "unloading");
   // E6#15：bundle css <link> 移除归 pool PluginComponent 引用计数（视图挂载文档）——shell 侧无视图不处理
   notifyPluginRemoved(pluginId);
-  PluginLifecycle.onWillUninstall.fire({ pluginId, reason, displayName });
+  PluginLifecycle.onWillUninstall.fire({ pluginId, reason, displayName, restorable });
   loadedPluginIds.delete(pluginId);
   _deferredPlugins.delete(pluginId);
   transition(pluginId, "disposed");
-  PluginLifecycle.onDidUninstall.fire({ pluginId, reason, displayName });
+  PluginLifecycle.onDidUninstall.fire({ pluginId, reason, displayName, restorable });
   // E5.8#15.5：连带后果 toast——一次连带一次通知（有连带才弹）。用户主动卸载/禁用依赖时知道
   // 哪些消费插件转入等待；目录删除（watcher）无既有 toast，此通知独立承担告知。依赖恢复后 sweep 自动补载。
   if (orphans.length > 0) {

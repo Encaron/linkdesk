@@ -29,6 +29,10 @@ export interface PluginUninstallEvent {
   reason: "uninstall" | "disable" | "update";
   /** 显示名称——onDidUninstall 触发时 viewRegistry 已注销，提前传入避免 toast 显示 pluginId */
   displayName?: string;
+  /** E6#18c：卸载后是否保留可恢复副本（app 树分支移 .disabled/ 坟场 → reinstall 可撤销恢复）。
+   *  userData 家卸载 = 目录真删 + removed 墓碑（真恢复走市场/手装 zip，#18 拍板 ④）——无副本可撤销，
+   *  toast 消费端据此不画死「撤销」钮。undefined = 不可恢复（含 watcher 目录外删）。仅 reason 卸载有意义。 */
+  restorable?: boolean;
 }
 
 /* ── 事件定义 ── */

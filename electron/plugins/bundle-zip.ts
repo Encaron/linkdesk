@@ -133,6 +133,7 @@ export type BundleInstallOutcome =
   | "same-version"
   | "version-kept"
   | "removed-skipped"
+  | "recorded-skipped"
   | "invalid";
 
 export interface BundleInstallParams {
@@ -147,6 +148,10 @@ export interface BundleInstallParams {
   recoverCorrupt: boolean;
   /** 豁免集（pluginId 命中 → 跳过，不恢复不消费）——bundled removed 标记；ingest 无此语义不传 */
   skipIfRemoved?: Set<string>;
+  /** E6#18g ④：目录干净缺失但账本有活性记录 → 跳过不铺种子（respect——墓碑化归 renderer reconcile 唯一 owner）。
+   *  bundled 种子腿传全账本 id；ingest 无此语义不传（手动丢包照装）。只约束「目录缺失」的铺种子路径，
+   *  不拦已装目录同/异版本、不拦 recoverCorrupt 完整性修复、不拦 force dev 开关。 */
+  skipIfRecorded?: Set<string>;
   /** dev/test 强制重物化（E6#15n 落点④）：跳过版本幂等，删旧目录整树重解压 zip 当前内容——
    *  **非生产 boot 语义**（替「删 userData 插件目录」手工作业验新包，同版异版都刷）。
    *  仍尊重 skipIfRemoved——不复活用户故意删的插件（#18 removed 意图不被 dev 开关推翻）。 */
@@ -173,40 +178,57 @@ export async function installBundleCandidate(p: BundleInstallParams): Promise<Bu
 
     // removed 豁免最前：用户故意删除（账本 removed:true）→ 目标目录无论存在/缺失/损坏都不复活。
     // ingest 无此语义（空集）——位置放这里对 ingest 零影响；对 bundled 是唯一自洽语义
-    // （残留目录 + removed 并存 → removed 胜，永不自动恢复）。
+    // （残留目录 + removed 并存 → removed 胜，永不重播种）。
     if (p.skipIfRemoved?.has(pluginId)) {
-      console.log(`[${tag}] ${pluginId} 在账本标记 removed——跳过自动恢复（用户故意删除）`);
+      console.log(`[${tag}] ${pluginId} 在账本标记 removed——跳过播种（用户已卸载，永不复活）`);
       return "removed-skipped";
     }
 
     const target = path.join(homeDir, pluginId);
     const targetManifest = path.join(target, "plugin.json");
+    // E6#18g 决策分叉以「目录是否存在」为界：④ 只约束目录干净缺失；目录在（哪怕 plugin.json 坏）不属「被删」。
+    const targetDirExists = await fs.stat(target).then(() => true, () => false);
 
     // 🔥 dev/test 强制重物化（E6#15n 落点④）：force=true 跳过上方版本幂等——删旧目录整树，
     // 落 zip 当前内容。非生产 boot 语义（boot 默认永不刷新已装）。removed 豁免已在上面先行
     // return——force 不复活用户故意删的插件。目录不存在 → rm no-op → 走下方 extract 照常装。
+    // force 位在 ④ 之上：dev 想重刷「记录活性但目录缺」的插件 = 重新种子，属合法 dev 意图。
     if (p.force) {
       await fs.rm(target, { recursive: true, force: true });
       console.log(`[${tag}] ${pluginId}@${manifest.version} 强制重物化——删旧目录整树重解压（E6#15n dev 开关，非生产语义）`);
-    } else if (await fs.stat(targetManifest).then(() => true, () => false)) {
-      try {
-        const existing = parseManifestJson(await fs.readFile(targetManifest, "utf-8"));
-        if (existing.version === manifest.version) {
-          if (p.deleteSource) await fs.unlink(zipPath).catch(() => {});
-          console.log(`[${tag}] ${pluginId}@${manifest.version} 已在 ${pluginId}——${p.deleteSource ? "删除重复 zip" : "跳过（源保留）"}`);
-          return "same-version";
+    } else if (targetDirExists) {
+      // ① 目录在：已装 plugin.json 存在 → 版本比对（同版不覆盖 / 异版不升级——升级归安装流）；
+      //    损坏 → recoverCorrupt 才修复。plugin.json 缺失/损坏 + recoverCorrupt（bundled）=
+      //    完整性修复重解压——目录在 ≠「目录被删」，修复≠复活，与 ④ 不混。
+      const manifestExists = await fs.stat(targetManifest).then(() => true, () => false);
+      if (manifestExists) {
+        try {
+          const existing = parseManifestJson(await fs.readFile(targetManifest, "utf-8"));
+          if (existing.version === manifest.version) {
+            if (p.deleteSource) await fs.unlink(zipPath).catch(() => {});
+            console.log(`[${tag}] ${pluginId}@${manifest.version} 已在 ${pluginId}——${p.deleteSource ? "删除重复 zip" : "跳过（源保留）"}`);
+            return "same-version";
+          }
+          console.warn(`[${tag}] ${pluginId} 已装 ${existing.version}，包为 ${manifest.version}——异版本不动（升级归安装流）`);
+          return "version-kept";
+        } catch {
+          if (!p.recoverCorrupt) {
+            await fs.unlink(zipPath).catch(() => {});
+            console.log(`[${tag}] ${pluginId} 已装目录 plugin.json 损坏——消费重复 zip，跳过`);
+            return "same-version";
+          }
+          // recoverCorrupt（bundled）：plugin.json 损坏 → 修复重解压（落下方 extract）
         }
-        console.warn(`[${tag}] ${pluginId} 已装 ${existing.version}，包为 ${manifest.version}——异版本不动（升级归安装流）`);
-        return "version-kept";
-      } catch {
-        if (!p.recoverCorrupt) {
-          await fs.unlink(zipPath).catch(() => {});
-          console.log(`[${tag}] ${pluginId} 已装目录 plugin.json 损坏——消费重复 zip，跳过`);
-          return "same-version";
-        }
-        // recoverCorrupt（bundled）：视为缺失，落下方恢复
       }
+      // 目录在但 plugin.json 缺失：ingest 原语义照装（recoverCorrupt=false 亦 extract）；
+      // bundled（recoverCorrupt=true）= 完整性修复重解压——都汇于下方 extract。
+    } else if (p.skipIfRecorded?.has(pluginId)) {
+      // ④ 目录干净缺失 + 账本有记录（removed 已在最上方 return，此处只命中「记录且非 removed」）→
+      //    respect 不铺种子：用户手动删目录的意志交给 renderer reconcile 落 removed 墓碑（#18d），boot 不复活。
+      console.log(`[${tag}] ${pluginId} 账本有记录但目录缺失——跳过不铺种子（不复活；等 renderer reconcile 置墓碑）`);
+      return "recorded-skipped";
     }
+    // ③ 目录缺 + 账本无任何记录 → 铺种子；force / recoverCorrupt / ingest 照装 → 汇于 extract。
 
     const ok = await extractZip(zip, target, wrapperPrefix);
     if (!ok) {

@@ -7,7 +7,9 @@
  * 已由其自身测试对拍）：
  *   1. 无账本 + 无已装 → 平铺单根全自动装；发货源 zip 保留（永久备份）
  *   2. 已装同版本 → 跳过（源保留，不重解压）
- *   3. 账本 removed 标记 → 该插件跳过自动恢复（用户故意删除）；其余照装
+ *   3. E6#18g 决策序②③：账本 removed 标记 → 该插件跳过自动恢复（用户故意删除）；无任何记录者照装（③ 铺种子）
+ *   4. E6#18g 决策序④：账本有活性记录（removed:false）+ 目录缺 → 跳过不铺种子（不复活——墓碑化交 renderer）；
+ *      无记录者照装（③）
  * fixture 全虚构 id/文案（硬约束 21）。2026-09-05 塌平单根：发货夹无 builtin/user 子目录层，
  * 直扫 bundled-plugins/*.linkdesk-plugin → userData/plugins/<id>/。
  */
@@ -96,18 +98,36 @@ describe("installBundledPlugins——首启自动装（平铺单根 + removed �
     await expectInstalled(userData, "demo-b", "1.0.0");
   });
 
-  it("账本 removed 标记：该插件跳过自动恢复（用户故意删除），其余照装", async () => {
-    // 账本（userData/installed-plugins.json——与 readRemovedMarkers 读的路径一致）
+  it("决策序②③：账本 removed 标记跳过恢复；无任何记录者照装（③ 铺种子）", async () => {
+    // 账本（userData/installed-plugins.json——与 readLedgerState 读的路径一致）
     await fs.promises.writeFile(
       path.join(userData, "installed-plugins.json"),
-      JSON.stringify({ "demo-a": { removed: true }, "demo-b": { removed: false } }),
+      JSON.stringify({ "demo-a": { version: "1.0.0", installedAt: "x", source: "user", removed: true } }),
     );
     await installBundledPlugins();
-    // demo-a 被豁免——不复活
+    // demo-a removed → ② 豁免——不复活
     await expect(fs.promises.stat(path.join(userData, "plugins", "demo-a"))).rejects.toThrow();
-    // demo-b removed:false → 正常装
+    // demo-b 无任何账本记录 + 目录缺 → ③ 铺种子
     await expectInstalled(userData, "demo-b", "1.0.0");
     // 发货源都保留
     await expect(fs.promises.stat(path.join(appRoot, "bundled-plugins", "demo-a.linkdesk-plugin"))).resolves.toBeTruthy();
+  });
+
+  it("决策序④：活性记录（removed:false）+ 目录缺 → 跳过不铺种子（不复活）；无记录者照装（③）", async () => {
+    // demo-b 有活性记录但目录已被删（removed:false = 非故意删的墓碑，纯记录）——E6#18g ④ respect 不复活，
+    // 墓碑化交 renderer reconcile 唯一 owner（boot 层只尊重不补种，防「删了重启自己回来」复活缝）。
+    await fs.promises.writeFile(
+      path.join(userData, "installed-plugins.json"),
+      JSON.stringify({
+        "demo-b": { version: "1.0.0", installedAt: "x", source: "user", removed: false },
+      }),
+    );
+    await installBundledPlugins();
+    // demo-b 目录缺失不铺种子
+    await expect(fs.promises.stat(path.join(userData, "plugins", "demo-b"))).rejects.toThrow();
+    // demo-a 无账本记录 + 目录缺 → ③ 照常铺种子
+    await expectInstalled(userData, "demo-a", "1.0.0");
+    // 发货源都保留
+    await expect(fs.promises.stat(path.join(appRoot, "bundled-plugins", "demo-b.linkdesk-plugin"))).resolves.toBeTruthy();
   });
 });

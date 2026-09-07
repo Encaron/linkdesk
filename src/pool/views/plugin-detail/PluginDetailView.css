@@ -207,18 +207,6 @@
   flex-basis: 100%;
 }
 
-.pd-core-notice {
-  font-size: var(--font-size-sm); /* E5.8 Phase 12 #171：12→sm */
-  color: var(--text-muted);
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.pd-core-notice .codicon {
-  font-size: var(--font-size-lg); /* E5.8 Phase 12 #171：14→lg */
-}
-
 /* E5.8#15.5：缺依赖挂起（PENDING）提示条——琥珀信息态（等待非错误，ui-ux-pro-max muted chip） */
 .pd-pending-notice {
   font-size: var(--font-size-sm); /* E5.8 Phase 12 #171：12→sm */

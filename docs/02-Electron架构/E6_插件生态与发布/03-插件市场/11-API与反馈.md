@@ -26,7 +26,7 @@
 | 2 | `pluginManager.getDisabled()` / `getUninstalled()` | d.ts | 禁用列表 / 卸载缓存（侧栏分组数据源） | ✅ 已实现（现用） |
 | 3 | `pluginManager.isDisabled(id)` | d.ts | 按钮态判定（已装+禁用 → 显示启用） | ✅ 已实现（现用） |
 | 4 | `pluginManager.enable(id)` / `disable(id)` | d.ts | 侧栏/详情 启用/禁用动作 | ✅ 已实现（现用） |
-| 5 | `pluginManager.uninstall(id)` | d.ts | 卸载动作（内置 `core:true` 不可卸） | ✅ 已实现（现用） |
+| 5 | `pluginManager.uninstall(id)` | d.ts | 卸载动作 = **目录真删 + 账本 `removed:true` 墓碑（boot 不复活，E6#18a）**；`core:true` 无 API 硬拦——可卸可禁，仅详情 UI 藏钮防误删 | ✅ 已实现（现用） |
 | 6 | `pluginManager.install(path)` | d.ts | 本地路径安装（已装插件管理面） | ✅ 已实现（**无进度**） |
 | 7 | **`pluginManager.installWithProgress(url)`** | E6#13e 新增 | **目录安装 = 远程下载 + 进度回调 + 解压落 `user/`** | 🔧 E6#13 设计对象 |
 | 8 | **`pluginManager.checkUpdates()`** / **`update(id)`** | E6#13e 新增 | 更新检查 / 更新安装 | 🔧 E6#13 设计对象 |

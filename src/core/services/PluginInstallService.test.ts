@@ -29,7 +29,7 @@ import {
   selectUserDataPlugins,
   reconcileDiff,
   add,
-  remove,
+  markRemoved,
   isInstalled,
   getSource,
   getInstalled,
@@ -100,7 +100,7 @@ describe("selectUserDataPlugins（纯函数）", () => {
   });
 });
 
-describe("reconcileDiff（纯函数——目录有则加、builtin/user 目录无则删、marketplace 不动）", () => {
+describe("reconcileDiff（纯函数——E6#18③ 墓碑语义：目录有则加/清章，目录缺则置章，永不整条删）", () => {
   it("空账本 + 有目录 → 全部 added；不 mutate 入参", () => {
     const current: InstalledLedger = {};
     const disc = [
@@ -138,27 +138,55 @@ describe("reconcileDiff（纯函数——目录有则加、builtin/user 目录�
     expect(next["demo-alpha"]).toMatchObject({ version: "2.0.0", installedAt: "2026-01-01T00:00:00.000Z" });
   });
 
-  it("builtin/user 记录但目录已无 → removed（删文件=删记录）", () => {
+  it("活性记录但目录已无 → 置 removed 墓碑（E6#18d——永不整条删，条目存活成历史）", () => {
     const current: InstalledLedger = {
       "demo-gone": { version: "1.0.0", installedAt: "2026-01-01T00:00:00.000Z", source: "user" },
       "demo-here": { version: "1.0.0", installedAt: "2026-01-01T00:00:00.000Z", source: "user" },
     };
     const disc = [{ pluginId: "demo-here", version: "1.0.0", source: "user" as const }];
-    const { removed } = reconcileDiff(current, disc);
+    const { removed, next } = reconcileDiff(current, disc);
     expect(removed).toEqual(["demo-gone"]);
+    // 墓碑化而非删除——demo-gone 存活，removed:true；demo-here 不受影响（无 removed）
+    expect(next["demo-gone"]).toMatchObject({ version: "1.0.0", removed: true });
+    expect(next["demo-here"].removed).toBeUndefined();
+    expect(Object.keys(next).sort()).toEqual(["demo-gone", "demo-here"]);
   });
 
-  it("marketplace 源记录不被目录差集自动删（市场记录语义独立）", () => {
+  it("目录重现 + removed 墓碑 → 清章（restored——装回语义），保留原 installedAt", () => {
+    const current: InstalledLedger = {
+      "demo-back": { version: "1.0.0", installedAt: "2026-01-01T00:00:00.000Z", source: "user", removed: true },
+    };
+    const disc = [{ pluginId: "demo-back", version: "1.0.0", source: "user" as const }];
+    const { restored, added, removed, next } = reconcileDiff(current, disc);
+    expect(restored).toEqual(["demo-back"]);
+    expect(next["demo-back"].removed).toBeUndefined(); // 章已清
+    expect(next["demo-back"].installedAt).toBe("2026-01-01T00:00:00.000Z");
+    expect(added).toEqual([]);
+    expect(removed).toEqual([]);
+  });
+
+  it("目录缺 + 已是墓碑 → 保留不重计（removed[] 不含墓碑条目）", () => {
+    const current: InstalledLedger = {
+      "demo-dead": { version: "1.0.0", installedAt: "2026-01-01T00:00:00.000Z", source: "user", removed: true },
+    };
+    const disc: Array<{ pluginId: string; version: string; source: "user" | "builtin" }> = [];
+    const { removed, next } = reconcileDiff(current, disc);
+    expect(removed).toEqual([]); // 已是墓碑——不重计
+    expect(next["demo-dead"]).toMatchObject({ removed: true }); // 墓碑原样保留
+  });
+
+  it("marketplace 记录目录缺 → 同样置章（零来源分支——source 是出身记录非行为开关）", () => {
     const current: InstalledLedger = {
       "demo-market": { version: "1.0.0", installedAt: "2026-01-01T00:00:00.000Z", source: "marketplace" },
     };
     const disc: Array<{ pluginId: string; version: string; source: "user" | "builtin" }> = [];
-    const { removed } = reconcileDiff(current, disc);
-    expect(removed).toEqual([]);
+    const { removed, next } = reconcileDiff(current, disc);
+    expect(removed).toEqual(["demo-market"]);
+    expect(next["demo-market"]).toMatchObject({ removed: true }); // 置章非删条
   });
 });
 
-describe("I/O——add/remove/isInstalled/getSource（经 StorageService 内存桩）", () => {
+describe("I/O——add/markRemoved/isInstalled/getSource（经 StorageService 内存桩）", () => {
   it("add 首次装记 installedAt + source；重装保 installedAt、更 version", async () => {
     await add("demo-alpha", "1.0.0", "user");
     const afterFirst = (storage.write.mock.calls[0][1] as InstalledLedger);
@@ -178,13 +206,33 @@ describe("I/O——add/remove/isInstalled/getSource（经 StorageService 内存�
     expect(Object.keys(all)).toEqual(["demo-alpha"]);
   });
 
-  it("remove 删记录；isInstalled/getSource 反映状态", async () => {
+  it("add 装回销章（E6#18e）：removed 墓碑 → 新条目不带 removed，isInstalled 复 true", async () => {
+    await add("demo-alpha", "1.0.0", "user");
+    await markRemoved("demo-alpha"); // 先卸载墓碑化
+    expect(await isInstalled("demo-alpha")).toBe(false);
+    await add("demo-alpha", "1.0.0", "user"); // 装回（市场/手装 zip/update 同走 add）
+    const calls = storage.write.mock.calls;
+    const after = (calls[calls.length - 1][1] as InstalledLedger);
+    expect(after["demo-alpha"]).toMatchObject({ version: "1.0.0", source: "user" });
+    expect(after["demo-alpha"].removed).toBeUndefined(); // 章清 = 用户改主意 = 解除豁免
+    expect(await isInstalled("demo-alpha")).toBe(true);
+  });
+
+  it("markRemoved 墓碑化：保留版本/来源历史，isInstalled=false、getSource 仍返回出身（E6#18f 不动 getSource）", async () => {
     await add("demo-alpha", "1.0.0", "user");
     expect(await isInstalled("demo-alpha")).toBe(true);
-    expect(await getSource("demo-alpha")).toBe("user");
-    await remove("demo-alpha");
-    expect(await isInstalled("demo-alpha")).toBe(false);
-    expect(await getSource("demo-alpha")).toBeNull();
+    await markRemoved("demo-alpha");
+    expect(await isInstalled("demo-alpha")).toBe(false); // 墓碑不显「已装」
+    expect(await getSource("demo-alpha")).toBe("user"); // source 是出身记录，读墓碑也返回（update.ts 保源重装依赖）
+    const ledger = await getInstalled();
+    expect(ledger["demo-alpha"]).toMatchObject({ version: "1.0.0", removed: true });
+  });
+
+  it("markRemoved 无既有条目 → upsert 占位墓碑（0.0.0）——堵 crash 窗口种子腿复活缝", async () => {
+    await markRemoved("demo-ghost");
+    const ledger = await getInstalled();
+    expect(ledger["demo-ghost"]).toMatchObject({ version: "0.0.0", source: "user", removed: true });
+    expect(await isInstalled("demo-ghost")).toBe(false);
   });
 });
 
@@ -205,7 +253,21 @@ describe("reconcileInstalledLedger（loader 启动接线：userData 家 → 账�
   it("app 根插件永不写账本", async () => {
     const entries = [entry("demo-src", { originHome: "app" })];
     const res = await reconcileInstalledLedger(entries);
-    expect(res).toEqual({ added: [], updated: [], removed: [] });
+    expect(res).toEqual({ added: [], updated: [], restored: [], removed: [] });
+    expect(storage.write).not.toHaveBeenCalled();
+  });
+
+  it("接线 restored——墓碑 + 目录重现 → 清章落盘 + 幂等", async () => {
+    await markRemoved("demo-alpha"); // 模拟卸载墓碑
+    expect(await isInstalled("demo-alpha")).toBe(false);
+    const entries = [entry("demo-alpha", { originHome: "userData" })]; // 目录又回来了（装回/重铺）
+    const first = await reconcileInstalledLedger(entries);
+    expect(first.restored).toEqual(["demo-alpha"]);
+    expect(await isInstalled("demo-alpha")).toBe(true); // 章已清
+    // 幂等——章清后同状态再跑不写盘
+    vi.clearAllMocks();
+    const second = await reconcileInstalledLedger(entries);
+    expect(second.restored).toEqual([]);
     expect(storage.write).not.toHaveBeenCalled();
   });
 });

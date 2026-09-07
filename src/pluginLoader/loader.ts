@@ -135,9 +135,9 @@ export async function initPluginLoader(): Promise<void> {
     }
   }
 
-  // E6#12（1.2-4）：账本 reconcile——发现条目（含 origin）→ 账本与实际文件系统对齐。
-  //   .linkdesk-plugin 包经 ingest 解压出现 → 目录有 → 加账本记录；userData 目录被真删 → 删记录
-  //   （差集逻辑在 PluginInstallService.reconcileDiff，纯函数可测）。只收 origin.home="userData" 的插件；
+  // E6#12（1.2-4）+ #18d：账本 reconcile——发现条目（含 origin）→ 账本与实际文件系统对齐。
+  //   差集双向墓碑、永不整条删（目录缺+活性 → 置 removed 章；目录重现+章 → 清章），逻辑全在
+  //   PluginInstallService.reconcileDiff（纯函数可测）。只收 origin.home="userData" 的插件；
   //   dev 项目源码插件（app 根）永不入账本。动态 import + try/catch 非致命——浏览器预览
   //   （无 filesystem IPC）静默跳过，账本缺席不影响启动（getInstalled 兜底 {}）。
   try {

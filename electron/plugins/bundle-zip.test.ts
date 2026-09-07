@@ -169,6 +169,28 @@ describe("installBundleCandidate——ingest 消费 vs bundled 保留两套语�
       expect(await installBundleCandidate(bundled(zip))).toBe("same-version");
       await expectPath(zip, true);
     });
+
+    it("E6#18g ④：目录缺 + 活性记录（skipIfRecorded）→ recorded-skipped 不铺种子（不复活）", async () => {
+      const zip = await seedZip(home);
+      const outcome = await installBundleCandidate({
+        ...bundled(zip),
+        skipIfRecorded: new Set(["demo-bundle"]),
+      });
+      expect(outcome).toBe("recorded-skipped");
+      await expectPath(path.join(home, "demo-bundle"), false); // 没铺
+      await expectPath(zip, true); // 源保留
+    });
+
+    it("E6#18g ④ 不拦 recoverCorrupt：目录在但 plugin.json 坏 + 活性记录 → 仍修复重装（完整性修复 ≠ 复活）", async () => {
+      await preseedTarget(home, "corrupt");
+      const zip = await seedZip(home);
+      const outcome = await installBundleCandidate({
+        ...bundled(zip),
+        skipIfRecorded: new Set(["demo-bundle"]),
+      });
+      expect(outcome).toBe("installed");
+      expect(await readInstalledVersion(home)).toBe("1.0.0"); // 损坏文件已被发货源修复
+    });
   });
 
   describe("force 强制重物化（E6#15n dev/test 开关——非生产 boot 语义，同版异版都刷，removed 仍豁免）", () => {
@@ -226,6 +248,16 @@ describe("installBundleCandidate——ingest 消费 vs bundled 保留两套语�
       expect(await installBundleCandidate(forceBundled(zip))).toBe("installed");
       await expectPath(path.join(home, "demo-bundle", "stale.bin"), false); // 残留已清
       expect(await readInstalledReadme(home)).toBe("fresh");
+    });
+
+    it("E6#18g force 在 ④ 之上：记录活性但目录缺 + force → 重铺（dev 想重刷 = 合法意图，removed 才豁免）", async () => {
+      const zip = await seedZip(home);
+      const outcome = await installBundleCandidate({
+        ...forceBundled(zip),
+        skipIfRecorded: new Set(["demo-bundle"]),
+      });
+      expect(outcome).toBe("installed");
+      expect(await readInstalledVersion(home)).toBe("1.0.0"); // force 覆盖 ④——重新种子
     });
   });
 

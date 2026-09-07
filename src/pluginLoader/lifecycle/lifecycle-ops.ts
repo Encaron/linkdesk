@@ -45,18 +45,18 @@ import type { PluginUpdateCheckResult } from "../../core/api/linkdesk-api/types"
    ═══════════════════════════════════════════════════════════ */
 
 /**
- * 取可变更插件 manifest——未找到/core 插件抛错（disable/uninstall 共用前置守卫，E5.8#1c 去重）。
+ * 取可变更插件 manifest——未找到抛错（disable/uninstall 共用前置守卫，E5.8#1c 去重）。
  * action 用于错误文案（"禁用"/"卸载"）。
+ * E6#18a：**不再因 manifest.core 拒绝**——core:true = 纯 UI 防误删旗标（详情页藏钮），无行为特权，
+ * API/命令层可卸可禁（卸完写 removed 墓碑，见 uninstallPlugin userData 分支）。UI 藏钮在
+ * PluginDetailPoolView（isCore 不画卸载钮）。
  * E5.8#15：回退 _pendingPlugins——缺依赖挂起（连带卸载等依赖回归）的插件也可禁用/卸载
  * （禁用优先语义在操作层闭环：连带的消费方被显式禁用 → 不被依赖出现事件自动激活）。
  */
-function getMutableManifest(pluginId: string, action: string): PluginManifest {
+function getMutableManifest(pluginId: string): PluginManifest {
   const manifest = getLoadedManifest(pluginId) ?? _pendingPlugins.get(pluginId);
   if (!manifest) {
     throw new Error(`插件 "${pluginId}" 未找到`);
-  }
-  if (manifest.core) {
-    throw new Error(`核心插件 "${pluginId}" 不可${action}`);
   }
   return manifest;
 }
@@ -68,7 +68,7 @@ function getMutableManifest(pluginId: string, action: string): PluginManifest {
  */
 export async function disablePlugin(pluginId: string): Promise<{ success: boolean; error?: string }> {
   try {
-    const manifest = getMutableManifest(pluginId, "禁用");
+    const manifest = getMutableManifest(pluginId);
 
     const list = getDisabledList();
     if (!list.includes(pluginId)) {
@@ -136,13 +136,13 @@ export async function enablePlugin(pluginId: string): Promise<{ success: boolean
 }
 
 /**
- * 卸载插件：Rust 端移到 .disabled/ → 从 viewRegistry 移除 → 持久化。
- * 如果插件之前被禁用，从禁用列表清理（卸载优先级高于禁用）。
- * core 插件不可卸载。
+ * 卸载插件：userData 家 = 目录真删 + 账本 removed 墓碑（E6#18c）；app 树 = 移 .disabled/ →
+ * 从 viewRegistry 移除 → 持久化。如果插件之前被禁用，从禁用列表清理（卸载优先级高于禁用）。
+ * E6#18a：core:true 不再被硬闸拦（可卸可禁）——UI 藏钮防误删，命令/接口层放行。
  */
 export async function uninstallPlugin(pluginId: string): Promise<{ success: boolean; error?: string }> {
   try {
-    const manifest = getMutableManifest(pluginId, "卸载");
+    const manifest = getMutableManifest(pluginId);
 
     // Phase 5h 行为归一化：lifecycle 消费端处理 config 清理 + iconOrder(移除) + tab 关闭
     const displayName = manifest.name;
@@ -164,12 +164,14 @@ export async function uninstallPlugin(pluginId: string): Promise<{ success: bool
 
     if (isUserDataHome) {
       await linkdesk().filesystem.remove(src);
-      // E6#12：userData 卸载 = 销账——PluginInstallService.remove（账本唯一 owner；动态 import 非致命）
+      // E6#18c：userData 卸载 = 墓碑化——目录已真删，账本保留条目置 removed:true（markRemoved，
+      // 保 version/installedAt/source 成历史）。随车/市场/手动卸载同款墓碑，零来源分支。永不整条删
+      // 账本条目——墓碑被删 = 种子腿把发货插件当「从未装过」重铺 = 二启复活缝。动态 import 非致命。
       try {
-        const { remove: removeLedger } = await import("../../core/services/PluginInstallService");
-        await removeLedger(pluginId);
+        const { markRemoved } = await import("../../core/services/PluginInstallService");
+        await markRemoved(pluginId);
       } catch (e) {
-        log.appendLine(`⚠️ 账本销账失败（非致命）: ${errMsg(e)}`);
+        log.appendLine(`⚠️ 账本墓碑写入失败（非致命）: ${errMsg(e)}`);
       }
       // 不 cachePluginMetadata("uninstalled")——.disabled 坟场不含该目录，reinstall 找不到源会报错；
       // 僵尸 "installed" 缓存由 loader 启动步骤 6 差集清理（loadedPluginIds 已无它）。
@@ -186,12 +188,15 @@ export async function uninstallPlugin(pluginId: string): Promise<{ success: bool
       // Rust 成功 → 前端更新（仅 app 树移坟场才入 uninstalled 缓存）
       cachePluginMetadata(pluginId, manifest, "uninstalled");
     }
+    // E6#18c：卸载后是否可「撤销」恢复——只有 app 树分支保留了 .disabled/ 坟场副本（reinstall 移回）；
+    // userData 家 = 目录真删 + removed 墓碑，真恢复走市场/手装 zip（拍板④）——不可 in-app 撤销。
+    const restorable = !isUserDataHome;
     // revert 必须在 onWillUninstall 之前——onWillUninstall 注销主题/语言后 revert 找不到归属
     const needsMixReapply = await revertThemeIfCurrent(pluginId);
     await revertLanguageIfCurrent(pluginId);
     // E5.8#11：唯一卸载路径——unloadPlugin 状态机（unloading → notifyPluginRemoved → fire →
     // 集合清理 → disposed → onDidUninstall），L6b 顺序由迁移图机械保障（设计文档 §3.1）
-    unloadPlugin(pluginId, "uninstall", displayName);
+    unloadPlugin(pluginId, "uninstall", displayName, restorable);
     // E5.8#61 审计#1：混搭来源已摘后才重合并（unload 前源配方仍注册——早合并找不到回退）
     if (needsMixReapply) await reapplyThemeAfterUnload();
 
@@ -208,7 +213,9 @@ export async function uninstallPlugin(pluginId: string): Promise<{ success: bool
     syncAppLanguageEnum();
     syncIconThemeEnum();
     log.appendLine(`🗑 已卸载 "${pluginId}"`);
-    pushToast({ message: `已卸载：${displayName}`, source: pluginId, ttl: TOAST_TTL_SUCCESS, severity: "info" });
+    // 「已卸载」toast（含 restorable 时的 撤销 动作）归 lifecycle 消费端 3（initLifecycleConsumers
+    // onDidUninstall 单一源）——此处不再自弹（E6#18c 修死「撤销」同时消双 toast：consumer 端已弹
+    // 已卸载+撤销，原此处第二颗「已卸载」是收口前遗留）。
     // E5.7#48：主进程静态声明三表（LangDef/Protocol/FileAssociation）重扫——唯一写入方在主进程
     window.linkdesk?.pluginManager?.notifyManifestChanged?.();
     return { success: true };
@@ -455,7 +462,8 @@ async function installPluginFromDirectory(sourcePath: string): Promise<{ success
 
     emitInstallProgress("copying", pluginId);
     await linkdesk().filesystem.copy(sourcePath, destDir);
-    // 消毒 manifest——安装后强制 distribution=user, core=false
+    // 消毒 manifest——目录源（dev 树安装）强制 distribution=user, core=false（E6#18a：core:true 无行为特权，
+    // 只剩 UI 藏钮语义——目录/开发安装不冒充发货件；随车 zip 走包安装流真传 core，见 plugin.json 声明）
     const destManifest = `${destDir}/plugin.json`;
     const raw = await linkdesk().filesystem.readTextFile(destManifest);
     // E6#55：JSONC 读入；distribution 是遗留字段（schema 契约外）——局部宽口视图承接，非 PluginManifest 契约面
@@ -629,8 +637,10 @@ export async function getUninstalledPluginInfo(): Promise<Array<{ pluginId: stri
 }
 
 /**
- * 重新安装已卸载的插件：从 .disabled/ 移回 plugins/。
- * 对标 VS Code：扩展卸载后文件仍在本地，可一键重新安装。
+ * 从 .disabled/ 坟场移回重新安装——仅 app 树分支卸载（保留副本）可撤销恢复。
+ * E6#18c：userData 家卸载 = 目录真删 + removed 墓碑，**无坟场副本**——真恢复走市场/手装 zip
+ * （拍板④），本函数对 userData 已卸载插件必然「未找到」失败。卸载 toast 的「撤销」只在
+ * restorable（app 树）时展示（lifecycle consumer 端3），与本函数能力对齐。
  * 移回后需全页刷新——Vite dev server 的 import.meta.glob 在启动时扫描，需重扫才能识别移回的插件。
  */
 export async function reinstallPlugin(pluginId: string): Promise<{ success: boolean; error?: string }> {

@@ -51,7 +51,7 @@
 | `tabBehavior` | 标签页行为（singleton/isFallback/confirmOnClose/identityField）——见 `02 §六` |
 | `appearsIn` | 插件 UI 出现位置（iconBar/sidePanel/tabBar/statusBar）——替代旧 iconLocation/viewRole |
 | `requires` | 插件级激活顺序依赖（string 数组）——见 `02 §四` |
-| `factoryRole` | 系统插槽（settings=设置页 / marketplace=插件市场）——**填 = 形态二（替换/进槽位切换）；不填 = 形态一（普通视图插件并存）**，详见 `06 §factoryRole 字段详解`。**E5.8 方案A 已落地（#41.11-#41.18）**：同角色多插件合法并存（一对多），默认 core:true 优先，设置页角色分组 + 切换按钮 + 图标激活套占槽，活动套持久化重启保持 |
+| `factoryRole` | 系统插槽（settings=设置页 / marketplace=插件市场）——**填 = 形态二（替换/进槽位切换）；不填 = 形态一（普通视图插件并存）**，详见 `06 §factoryRole 字段详解`。**E5.8 方案A 已落地（#41.11-#41.18）**：同角色多插件合法并存（一对多），默认 = 首注册稳定序（E6#18b：core:true 无行为特权，不抢默认），设置页角色分组 + 切换按钮 + 图标激活套占槽，活动套持久化重启保持 |
 | `pluginRole` | 加载策略（view/data）——不填自动推导，见 `02 §二.1` |
 
 ### ❌ 不存在 / 已删的假点

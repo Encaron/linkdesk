@@ -86,6 +86,7 @@ export default function PluginDetailPoolView({ pluginId }: PluginDetailPoolViewP
   }
 
   const m = plugin.manifest ?? {};
+  // E6#18a：core:true = 纯 UI 防误删旗标——只用于「不画卸载按钮」+「内置」分组徽标，无行为特权
   const isCore = !!m.core;
 
   return (
@@ -121,27 +122,22 @@ export default function PluginDetailPoolView({ pluginId }: PluginDetailPoolViewP
         </div>
       )}
 
-      {/* ═══ Action Bar ═══ */}
+      {/* ═══ Action Bar — E6#18a：core:true 只藏「卸载」钮（防误删旗标），禁用/启用照常（可禁）；
+          「不可卸载」不再是诚实文案（命令/接口层可卸）——藏钮即防误删机制，不画锁死声明 ═══ */}
       <div className="pd-action-bar">
-        {isCore ? (
-          <span className="pd-core-notice">
-            <span className="codicon codicon-lock" /> {t("核心控制面——不可卸载")}
-          </span>
+        {disabled ? (
+          <button className="pd-btn pd-btn-enable" onClick={handleEnable} disabled={busy}>
+            <span className="codicon codicon-play" /> {t("启用")}
+          </button>
         ) : (
           <>
-            {disabled ? (
-              <button className="pd-btn pd-btn-enable" onClick={handleEnable} disabled={busy}>
-                <span className="codicon codicon-play" /> {t("启用")}
+            <button className="pd-btn pd-btn-disable" onClick={handleDisable} disabled={busy}>
+              <span className="codicon codicon-circle-slash" /> {t("禁用")}
+            </button>
+            {!isCore && (
+              <button className="pd-btn pd-btn-uninstall" onClick={handleUninstall} disabled={busy}>
+                <span className="codicon codicon-trash" /> {t("卸载")}
               </button>
-            ) : (
-              <>
-                <button className="pd-btn pd-btn-disable" onClick={handleDisable} disabled={busy}>
-                  <span className="codicon codicon-circle-slash" /> {t("禁用")}
-                </button>
-                <button className="pd-btn pd-btn-uninstall" onClick={handleUninstall} disabled={busy}>
-                  <span className="codicon codicon-trash" /> {t("卸载")}
-                </button>
-              </>
             )}
           </>
         )}
