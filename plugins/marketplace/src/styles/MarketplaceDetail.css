@@ -16,8 +16,7 @@
   user-select: text;
 }
 
-.mpd-detail .mpd-btn,
-.mpd-detail .mpd-navtab,
+.mpd-detail button, /* 壳 Button variant（30.14c）+ navbar tab——按钮文本不可选 */
 .mpd-detail .mpd-icon,
 .mpd-detail .codicon {
   user-select: none;
@@ -121,18 +120,7 @@
   white-space: nowrap;
 }
 
-.mpd-badge {
-  font-size: var(--font-size-2xs);
-  padding: 1px 6px;
-  border-radius: var(--radius-sm);
-  font-weight: 500;
-  white-space: nowrap;
-}
-
-.mpd-badge-core {
-  background: var(--accent);
-  color: var(--badge-text);
-}
+/* 内置 chip = 壳 Badge 基础件（E6#30.14b）——色/形状全走壳 token，本文件零样式 */
 
 .mpd-subtitle {
   font-size: var(--font-size-md);
@@ -167,7 +155,7 @@
   flex-shrink: 0;
 }
 
-/* ═══ Action Bar（30.11d——三态基础动作落插件视图；安装绿/卸载红 = E6#30.12 token 就位后换语义色） ═══ */
+/* ═══ Action Bar（30.11d 落插件视图；30.14c 按钮已走壳 Button variant——启用=success/禁用=ghost/卸载=danger） ═══ */
 
 .mpd-action-bar {
   display: flex;
@@ -177,48 +165,8 @@
   flex-wrap: wrap;
 }
 
-.mpd-btn {
-  font-size: var(--font-size-sm);
-  padding: 4px 12px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--separator);
-  background: transparent;
-  color: var(--text-primary);
-  cursor: pointer;
-  font-family: inherit;
-}
-
-.mpd-btn:hover:not(:disabled) {
-  background: var(--tab-hover-bg);
-}
-
-.mpd-btn:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-.mpd-btn-uninstall {
-  /* E5.8#130：rgba → error token 50% 合成（color-mix 先例） */
-  border-color: color-mix(in srgb, var(--error) 50%, transparent);
-  color: var(--error);
-}
-
-.mpd-btn-disable {
-  border-color: var(--separator);
-  color: var(--text-secondary);
-}
-
-.mpd-btn-disable:hover:not(:disabled) {
-  color: var(--warning);
-  border-color: color-mix(in srgb, var(--warning) 50%, transparent);
-}
-
-.mpd-btn-enable {
-  border-color: color-mix(in srgb, var(--status-connected) 50%, transparent);
-  color: var(--status-connected);
-}
-
-.mpd-btn .codicon {
+/* action bar 内内容图标（壳 Button 不归内容——图标尺寸/对齐归消费方本件） */
+.mpd-action-bar .codicon {
   font-size: var(--font-size-sm);
   vertical-align: middle;
 }

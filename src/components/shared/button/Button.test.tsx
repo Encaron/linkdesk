@@ -39,4 +39,14 @@ describe("Button", () => {
     const { getByRole } = render(<Button>Alpha</Button>);
     expect(getByRole("button").getAttribute("type")).toBe("button");
   });
+
+  it("缺省 variant = 无修饰类（现状不变）", () => {
+    const { getByRole } = render(<Button>Alpha</Button>);
+    expect(getByRole("button").className).toBe("button");
+  });
+
+  it.each(["success", "danger", "ghost"] as const)("variant=%s → button--%s 修饰类", (v) => {
+    const { getByRole } = render(<Button variant={v}>Alpha</Button>);
+    expect(getByRole("button").className).toBe(`button button--${v}`);
+  });
 });

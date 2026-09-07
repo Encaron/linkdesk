@@ -1,10 +1,9 @@
 /* MarketplaceSidebar — 对标 VS Code extensionsViewlet.css */
 
-/* E5.8#128.8：插件本地状态 token——主题作者可覆盖（对齐 serial-monitor --serial-monitor-ok 先例）。
-   定义处 = token 定义豁免；消费全走 var，零硬编码 rgba。 */
-:root {
-  --status-connected: #4caf50;
-}
+/* E6#30.12：安装/启用语义绿统一走壳主题域 --success（index.css 暗 #4CAF50 / 亮 #388A34；主题
+   colorway.colors 写 "success" 可整套覆盖）。E5.8#128.8 本地 :root --status-connected 定义删除——
+   document 级 :root 覆写会连带污染壳 PluginDetailPoolView .pd-btn-enable（现回归壳 teal 正解），
+   且「连接」语义与安装绿混源；本插件启用/安装/已装徽标全消费 var(--success)。 */
 
 .marketplace-sidebar {
   display: flex;
@@ -432,7 +431,7 @@
   background: none;
   border: 1px solid var(--separator);
   border-radius: 4px;
-  color: var(--status-connected); /* E5.8#128.8：幽灵 + #4caf50 fallback → 本地 token */
+  color: var(--success); /* E6#30.12：启用钮语义 success（theme 域可覆盖） */
   cursor: pointer;
   padding: 3px 8px;
   font-size: var(--font-size-lg); /* E5.8 Phase 12 #175：▶ codicon 内容图标（基类 16px）→lg */
@@ -440,20 +439,20 @@
 }
 
 .ms-item-enable-btn:hover {
-  background: color-mix(in srgb, var(--status-connected) 10%, transparent); /* E5.8#128.8：rgba 硬编码 → 状态绿 10% 合成 */
-  border-color: color-mix(in srgb, var(--status-connected) 40%, transparent);
+  background: color-mix(in srgb, var(--success) 10%, transparent); /* E6#30.12：语义绿 10% 合成 */
+  border-color: color-mix(in srgb, var(--success) 40%, transparent);
 }
 
 /* ── Install button (green, VS Code extensionButton) ──
-   E6#30d：安装钮绿实心——mockup 02 .mi-install = ok-green #4CAF50 底 + #fff 字。
-   复用本地 token --status-connected（#4caf50 == mockup ok-green，E5.8#128.8 token 豁免，theme 可覆盖）+
-   --badge-text（= --text-on-accent，两主题皆白字）——不新增 success token（防双源漂移），值即 mockup。 */
+   E6#30.12：安装钮实心——mockup 02 .mi-install = ok-green #4CAF50 底 + #fff 字。
+   消费壳语义 token --success（暗 #4CAF50 == mockup ok-green / 亮 #388A34，主题 colorway 可覆盖）+
+   --badge-text（= --text-on-accent，两主题皆白字）。 */
 
 .ms-item-install-btn {
   flex-shrink: 0;
   align-self: center;
-  background: var(--status-connected);
-  border: 1px solid var(--status-connected);
+  background: var(--success);
+  border: 1px solid var(--success);
   border-radius: 4px;
   color: var(--badge-text);
   cursor: pointer;
@@ -494,7 +493,7 @@
   gap: 3px;
   margin-left: 8px;
   font-size: var(--font-size-xs); /* E5.8 Phase 12 #175：11→xs */
-  color: var(--status-connected);
+  color: var(--success); /* E6#30.12：已装徽标语义 success */
   white-space: nowrap;
 }
 

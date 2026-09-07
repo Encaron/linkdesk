@@ -25,7 +25,7 @@
 
 import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { PluginIcon } from "@linkdesk/ui";
+import { PluginIcon, Button, Badge } from "@linkdesk/ui";
 import { useMarketplacePlugins, useMarketplaceCatalog } from "../services/marketplaceShared";
 import type { CatalogEntry } from "../services/marketCatalog";
 import "../styles/MarketplaceDetail.css";
@@ -176,7 +176,7 @@ export default function DetailView({ pluginId }: DetailContributedProps) {
           <div className="mpd-title-row">
             <h1 className="mpd-name">{nameText}</h1>
             {versionText && <span className="mpd-version">v{versionText}</span>}
-            {isCore && <span className="mpd-badge mpd-badge-core">{t("内置")}</span>}
+            {isCore && <Badge>{t("内置")}</Badge>}
           </div>
           {authorText && <p className="mpd-subtitle">{authorText}</p>}
           {showDesc && <p className="mpd-short-desc">{descText}</p>}
@@ -195,18 +195,18 @@ export default function DetailView({ pluginId }: DetailContributedProps) {
       {info && (
         <div className="mpd-action-bar">
           {disabled ? (
-            <button className="mpd-btn mpd-btn-enable" onClick={handleEnable} disabled={busy}>
+            <Button variant="success" onClick={handleEnable} disabled={busy}>
               <span className="codicon codicon-play" /> {t("启用")}
-            </button>
+            </Button>
           ) : (
             <>
-              <button className="mpd-btn mpd-btn-disable" onClick={handleDisable} disabled={busy}>
+              <Button variant="ghost" onClick={handleDisable} disabled={busy}>
                 <span className="codicon codicon-circle-slash" /> {t("禁用")}
-              </button>
+              </Button>
               {!isCore && (
-                <button className="mpd-btn mpd-btn-uninstall" onClick={handleUninstall} disabled={busy}>
+                <Button variant="danger" onClick={handleUninstall} disabled={busy}>
                   <span className="codicon codicon-trash" /> {t("卸载")}
-                </button>
+                </Button>
               )}
             </>
           )}

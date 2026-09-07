@@ -1,15 +1,47 @@
 /* E5.8#99：实心 accent 动作按钮（按钮双轨制实心轨，对标 VS Code 动作按钮）——动作/提交。
    ghost 轨 = SegmentedRadio（选择/分组）。样式自持（原 settings .settings-action-btn 收编）。
-   全部走 CSS 变量，半径 var(--radius-sm)（硬约束 1/6），零硬编码 hex。 */
+   全部走 CSS 变量，半径 var(--radius-sm)（硬约束 1/6），零硬编码 hex。
+
+   E6#30.14 variant——语义动作层级（视觉源 mockup 02 st-*，全走主题 token）：
+     border 基 1px transparent（border-box 全局 → 尺寸零跳变）——实心钮边框同底，变体钮换 border-color。 */
 .button {
   background: var(--accent);
   color: var(--text-on-accent);
-  border: none;
+  border: 1px solid transparent;
   border-radius: var(--radius-sm);
   padding: 4px 12px;
   font-size: var(--font-size-sm); /* E5.8 Phase 12 #170：12→sm（自动增高，安全） */
   cursor: pointer;
   white-space: nowrap;
 }
-.button:hover { opacity: 0.85; }
+.button:hover:not(:disabled) { opacity: 0.85; }
 .button:disabled { opacity: 0.5; cursor: default; }
+
+/* ── 变体（marketplace 安装/启用 = 实心 success；禁用 = ghost；卸载 = danger 破坏性次级） ── */
+.button--success {
+  background: var(--success);
+  border-color: var(--success);
+  color: var(--badge-text); /* = text-on-accent 别名（两主题皆白字），同 mockup 安装钮 #fff */
+}
+
+.button--ghost {
+  background: transparent;
+  border-color: var(--separator);
+  color: var(--text-secondary);
+}
+.button--ghost:hover:not(:disabled) {
+  background: var(--hover-overlay);
+  color: var(--text-primary);
+  opacity: 1;
+}
+
+.button--danger {
+  background: transparent;
+  border-color: color-mix(in srgb, var(--danger) 45%, transparent);
+  color: var(--danger); /* 破坏性红 = 壳既有 --danger（ContextMenu 删除项同源） */
+}
+.button--danger:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--danger) 10%, transparent);
+  border-color: color-mix(in srgb, var(--danger) 75%, transparent);
+  opacity: 1;
+}

@@ -1,0 +1,16 @@
+/* E6#30.14b 壳 Badge/Capsule 基础件——小圆角徽标。收编自 marketplace .mpd-badge（详情「内置」chip，
+   视觉原样）。色 = --badge-background/--badge-foreground（index.css 98-99：默认 accent/on-accent，
+   主题可覆盖）；半径/字号走 token，零硬编码 hex。inline-flex 让行内垂直居中对齐邻接文本。 */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  background: var(--badge-background);
+  color: var(--badge-foreground);
+  border-radius: var(--radius-sm);
+  padding: 1px 6px;
+  font-size: var(--font-size-2xs);
+  font-weight: 500;
+  line-height: 1.4;
+  white-space: nowrap;
+  flex-shrink: 0;
+}

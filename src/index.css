@@ -88,6 +88,9 @@
   /* Phase 4 新增 —— 通知/错误/徽章 */
   --error: #E06C75;
   --warning: #CCA700;
+  /* E6#30.12 语义 success——安装/成功绿（值 = mockup 02 --ok-green #4CAF50 安装钮设计源；
+     主题 colorway.colors 写 "success" 即可整套覆盖——recipe 透传任意键，零引擎改动） */
+  --success: #4CAF50;
   /* badge-text = text-on-accent 别名 —— 归一化：所有 accent 底上的文字走同一 token。
      主题覆盖 text-on-accent 即可同时覆盖 badge-text；单独覆盖 badge-text 也生效。 */
   --badge-text: var(--text-on-accent);
@@ -176,6 +179,12 @@
   --warning-bg: rgba(200, 150, 0, 0.08);
   --text-on-accent: #FFFFFF;
   --danger: #D32F2F;
+  /* E6#30.12 补 light 缺失语义色——亮底「同 hue 暗档」惯例：
+     error #B3261E = M3 error（songti-print 亮主题实证）/ warning #B45309 = amber-700 深金（songti-print 实证）/
+     success #388A34 = #4CAF50 暗档（同 light --status-connected 值，token 独立） */
+  --error: #B3261E;
+  --warning: #B45309;
+  --success: #388A34;
 }
 
 *,
