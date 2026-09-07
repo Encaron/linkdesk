@@ -1156,6 +1156,104 @@ const noPluginIdHardcode = {
   },
 };
 
+// ═══════════════════════════════════════════════════════════
+// 规则 13：插件禁止 import 另一个插件的源码——万物皆可插件机械门禁
+// ═══════════════════════════════════════════════════════════
+//
+// 万物皆可插件（2026-09-08 用户拍板）：换/卸任一插件不得影响其他插件。
+// 插件间任何 import（源码/产物/i18n/manifest）都是耦合——本规则机械拦截。
+// 插件树无 alias（tsconfig 仅 @src/* + contracts），互引唯一现实路径 = 相对 import：
+// 把相对 specifier 对当前文件目录解析（posix 归一折叠 ../），若落进
+// /plugins/<其他id>/ 即 error；落在自身插件 / @src / 包名 / node_modules → 放行。
+//
+// 共享代码唯一合法通道 = @linkdesk/ui 分发件（E6#54c）；插件间数据/命令交流
+// 走 window.linkdesk.*（configuration 键 / commands / events），不 import。
+// （E6 第 1.3 轮独立构建后此类 import 物理不可达——本规则在 dev 同图期提前封死）
+//
+// 错误示例（settings import marketplace 源码）：
+//   import { parseCatalog } from "../../marketplace/src/services/marketCatalog";
+//
+// 正确示例：
+//   // 代码共享 → 收 @linkdesk/ui 分发；数据/命令 → window.linkdesk.*
+//   import { urlSourceKey } from "@linkdesk/ui";
+
+/** posix 归一（折叠 ./ ../）——自包含，不引 node:path 保持规则零依赖 */
+function normalizePosix(p) {
+  const out = [];
+  for (const seg of p.split("/")) {
+    if (seg === "" || seg === ".") continue;
+    if (seg === "..") out.pop();
+    else out.push(seg);
+  }
+  return out.join("/");
+}
+
+/** 从路径取插件 id——/plugins/<id>/ 的 <id>；不在插件树返 null */
+function pluginIdOf(p) {
+  const marker = "/plugins/";
+  const i = p.indexOf(marker);
+  if (i === -1) return null;
+  return p.slice(i + marker.length).split("/")[0] || null;
+}
+
+const noCrossPluginImport = {
+  meta: {
+    type: "problem",
+    docs: {
+      description:
+        "插件禁止 import 另一个插件的源码——万物皆可插件（换/卸一插件不影响其他）",
+      recommended: true,
+    },
+    messages: {
+      crossPlugin:
+        "🚫 插件 {{fromId}} import 了另一个插件 {{toId}} 的代码 \"{{source}}\"。万物皆可插件——插件间不得互相 import（换/卸任一插件不能影响其他）。" +
+        " 共享代码只经 @linkdesk/ui 分发；插件间数据/命令走 window.linkdesk.*（configuration/commands/events）。",
+    },
+  },
+
+  create(context) {
+    const filename = (context.filename || context.getFilename?.() || "").replace(/\\/g, "/");
+    const fromId = pluginIdOf(filename);
+    if (!fromId) return {}; // 非插件文件（src/electron/eslint-local-rules 自身）
+
+    const reportCross = (source, node) => {
+      if (typeof source !== "string") return;
+      if (!source.startsWith(".")) return; // bare = 包/@linkdesk/ui/别名——插件树无别名，非互引路径
+      const dir = filename.slice(0, filename.lastIndexOf("/"));
+      const resolved = normalizePosix(`${dir}/${source}`);
+      const toId = pluginIdOf(resolved);
+      if (toId && toId !== fromId) {
+        context.report({ node, messageId: "crossPlugin", data: { fromId, toId, source } });
+      }
+    };
+
+    return {
+      ImportDeclaration(node) {
+        reportCross(node.source.value, node);
+      },
+      ImportExpression(node) {
+        if (node.source && node.source.type === "Literal") reportCross(node.source.value, node);
+      },
+      ExportNamedDeclaration(node) {
+        if (node.source) reportCross(node.source.value, node);
+      },
+      ExportAllDeclaration(node) {
+        if (node.source) reportCross(node.source.value, node);
+      },
+      CallExpression(node) {
+        if (
+          node.callee.type === "Identifier" &&
+          node.callee.name === "require" &&
+          node.arguments[0] &&
+          node.arguments[0].type === "Literal"
+        ) {
+          reportCross(node.arguments[0].value, node);
+        }
+      },
+    };
+  },
+};
+
 export default {
   "no-async-init-guard-only": noAsyncInitGuardOnly,
   "no-effect-callback-without-active-guard": noEffectCallbackWithoutActiveGuard,
@@ -1171,4 +1269,5 @@ export default {
   "no-hardcoded-hex": noHardcodedHex,
   "no-deleted-e5.7-concepts": noDeletedE57Concepts,
   "no-plugin-id-hardcode": noPluginIdHardcode,
+  "no-cross-plugin-import": noCrossPluginImport,
 };

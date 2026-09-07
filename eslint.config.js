@@ -195,6 +195,10 @@ export default [
       // + 纯类型 import 豁免（类型擦除后零运行时耦合）——豁免后现存违规清零。
       // whitelist 在 eslint-local-rules.js PLUGIN_IMPORT_WHITELIST
       "linkdesk/no-core-import-in-plugin": "error",
+      // 🔥 2026-09-08 用户拍板「万物皆可插件」：插件禁止 import 另一插件源码——机械门禁。
+      // 相对 import 解析进 /plugins/<其他id>/ 即 error；共享代码只经 @linkdesk/ui 分发（E6#54c），
+      // 插件间数据/命令走 window.linkdesk.*（configuration/commands/events）。详见 eslint-local-rules.js noCrossPluginImport。
+      "linkdesk/no-cross-plugin-import": "error",
       // E5#106 → E5.8#6.6 升级 error：JSX 中文必须走 t()（硬约束 2；覆盖 plugins/**）
       "linkdesk/no-hardcoded-chinese": "error",
     },
