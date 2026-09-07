@@ -165,7 +165,10 @@ export function useMarketplacePlugins() {
     all: _allPlugins,
     installed,
     builtin,
+    // disabled = 搜索过滤后；disabledRaw = 未过滤原组（详情视图 E6#30.11c 需按 pluginId 精确判禁用——
+    //   list() 排除禁用插件，禁用已装 = getDisabled 才可见，不能吃搜索词过滤串扰）
     disabled,
+    disabledRaw: _disabledPlugins,
     refresh: () => refreshData().then(() => notifyDataListeners()),
   };
 }

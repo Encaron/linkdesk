@@ -1,11 +1,11 @@
 /**
- * PluginDetailPoolView——E5.6#16.7k-1 临时方案。
+ * PluginDetailPoolView——E5.6#16.7k-1 起为 Pool 侧插件详情页；E6#30.11e 降级为「保底宿主」。
  *
- * Pool 侧插件详情页。对标壳 PluginDetailView.tsx，布局复用同一套 CSS。
- * 数据走 window.linkdesk.* IPC（不 import @src/core——Path B 合规）。
+ * 详情页 UI 已归市场插件拥有（E6#30.11 搬迁，布局/CSS/数据/动作迁入 marketplace DetailView）——
+ * 本视图只作保底：活跃 marketplace 插件缺主区详情贡献 / 贡献加载失败 / 无市场插件时，
+ * ShellViewRenderer → PluginDetailViewHost 兜底渲染本组件（已装插件管理面不崩，对标「默认=内置」）。
  *
- * ⚠️ 临时方案——未来联网后会有完整插件市场预览（未下载也能看详情/评分/截图）。
- *   当前仅覆盖已安装插件的元数据查看 + 启用/禁用/卸载操作。
+ * 数据走 window.linkdesk.* IPC（不 import @src/core——type-only 契约导入除外）。
  */
 
 import { useState, useEffect, useCallback } from "react";
