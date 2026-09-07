@@ -9,16 +9,19 @@
 ## 一、铁律
 
 ```
-core: true → 声明在 plugin.json。这是插件唯一「内置」维度：
-            隐藏卸载按钮（普通用户）+ 自动恢复账本保护（删文件夹→从发货夹恢复）。
+core: true → 声明在 plugin.json。这是插件唯一「UI 防误删」维度：
+            详情页不画卸载按钮（新手点不到删不了）——纯 UI 旗标，无行为特权。
 
 内置插件不是特殊插件——只是声明了 core:true 的插件，任何插件都可声明。
 当初分 builtin/ + user/ 文件夹只为一个目的：怕用户把 settings/插件市场等
 从文件夹直接删掉。文件夹从未真正挡住删除（高手删哪层一样易），
-真保护 = core:true + 自动恢复账本，二者都与文件夹无关 → 文件夹是纯冗余副本，塌平删除。
+真保护 = core:true 藏钮（纯 UI），与文件夹无关 → 文件夹是纯冗余副本，塌平删除。
+自动装回腿已退役（2026-09-07 #18 重塑）：手删文件夹/卸载一律 respect → 对账置 removed 墓碑，
+永不自动复活；API/命令层可卸可禁（硬闸拆，#18a）；默认槽不 core 抢座（#18b）。
+真恢复通道 = 网络市场（E6#26b）+ 手装随车 zip（add 销章，#18e）。
 ```
 
-出处：[[factory-vs-marketplace-plugins]]「core:true 唯一语义 = 跟着发行版打包不可卸载，不是种族隔离」。**禁止给 core:true 插件搞特殊**——它们与任何插件同一条加载/安装/卸载路径，只多「卸载按钮隐藏 + 崩溃恢复优先」。
+出处：[[factory-vs-marketplace-plugins]]——「不是种族隔离」半句仍立；「跟着发行版打包**不可卸载**」已随 2026-09-07 #18 重塑作废（core:true = 纯 UI 藏钮，API/命令可卸可禁）。**禁止给 core:true 插件搞特殊**——它们与任何插件同一条加载/安装/卸载路径，只多「卸载按钮隐藏」这一 UI 差异（无「崩溃恢复优先」——FactorySlots 默认槽不 core 抢座，#18b）。
 
 ## 二、安装落点（塌平后单一目的地，无子目录）
 
@@ -63,7 +66,8 @@ core:true → 不声明
 位置：bundled-plugins/settings.linkdesk-plugin → {userData}/plugins/settings/
 core:true → 声明
 卸载按钮 → 隐藏（普通用户点不到；高手走卸载 API 可换自己的——#18 不硬拦）
-误删文件夹 → 壳检测 bundled-plugins/ 有备份 → 自动恢复（installed-plugins.json 无 removed 标记时）
+随车件手删/卸载 → respect：目录缺 + 活性记录 → 对账置 removed 墓碑（#18d），永不自动复活；
+装回（市场/手装随车 zip）→ add 销章恢复（#18e）——不再「从发货夹自动恢复」
 ```
 
 ### 场景 C：第三方 hello-world（市场下载）

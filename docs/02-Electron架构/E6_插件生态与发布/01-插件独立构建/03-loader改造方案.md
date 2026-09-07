@@ -288,7 +288,7 @@ serialport 留壳——electron-builder npmRebuild 自动保证 ABI；serial-mon
 
 #### 9.4 #20 现状重写依据
 
-`electron/protocol.ts` **不存在**——实际 `electron/plugins/protocol.ts`（55 行 `protocol.handle`）+ 解析已抽 `src/core/utils/path/linkdeskProtocolPath.ts`（E5.7#82 纯函数 `resolveLinkdeskPath(pluginsDir, scanPluginSubdirs, urlPath)`，内部 builtin>user>字母序扫描，非硬编码回退链）。任务改「扫描 → Map 直查」，**吃 #9 plugins:listAll 一次性构建**。
+`electron/protocol.ts` **不存在**——实际 `electron/plugins/protocol.ts`（55 行 `protocol.handle`）+ 解析已抽 `src/core/utils/path/linkdeskProtocolPath.ts`（E5.7#82 纯函数 `resolveLinkdeskPath(pluginsDir, scanPluginSubdirs, urlPath)`，内部 builtin>user>字母序扫描，非硬编码回退链）。任务改「扫描 → Map 直查」，**吃 #9 plugins:listAll 一次性构建**。 ⚠️ **2026-09-07 取消：** 本段所服务的「扫描→Map」任务 [E6#20](../E6-执行清单.md) 已取消折 E6#62f——塌平后 `linkdeskProtocolPath` 为双根 existsSync 直查（无 readdir 子目录扫描），本节属 2026-08-30 审视实锤的历史档（勿按活跃任务读）。
 
 #### 9.5 #18 落点依据
 
