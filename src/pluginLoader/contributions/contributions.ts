@@ -26,7 +26,14 @@ import { registerCommand } from "../../core/registry/commands/CommandRegistry";
 import { registerKeybinding } from "../../core/registry/commands/KeybindingRegistry";
 import { registerPluginLanguageBundle } from "./i18nResources";
 import i18n from "../../i18n";
-import { pluginModules, pluginManifestRaw, extractPluginId, errMsg, log } from "../resolution/state";
+import {
+  pluginModules,
+  pluginManifestRaw,
+  extractPluginId,
+  isBundlePlugin, // E6#62c：resolveViewModule 的 glob 先查仅对非 bundle（防 dev 目标被陈旧源码 chunk 抢先）
+  errMsg,
+  log,
+} from "../resolution/state";
 
 /** 从主题 JSON 数据中提取扁平化 colors——归一化 #36j2。消两处重复。 */
 function extractThemeColors(data: Record<string, unknown>): Record<string, string> {
@@ -308,9 +315,13 @@ async function resolveViewModule(
   entryPath: string,
   runtimePluginRoot?: string,
 ): Promise<{ default: React.ComponentType<{ isActive: boolean }> } | null> {
-  // 1) 构建时映射（dev 与打包产物同一张表）
-  const entryKey = Object.keys(pluginModules).find((k) => extractPluginId(k) === pluginId);
-  if (entryKey) return pluginModules[entryKey]();
+  // 1) 构建时映射（dev 与打包产物同一张表）——bundle 插件跳过 glob 先查：glob chunk 是 dev 源码
+  //    形态（陈旧），磁盘 index.bundle.js 才是重建产物（E6#62c dev 目标 = glob+bundle 双成员，
+  //    先取 glob 会拿到未重建的旧 build）
+  if (!isBundlePlugin(pluginId)) {
+    const entryKey = Object.keys(pluginModules).find((k) => extractPluginId(k) === pluginId);
+    if (entryKey) return pluginModules[entryKey]();
+  }
   // 2) 运行时映射——dev /@fs 源码，prod linkdesk:// 预构建 chunk
   if (!runtimePluginRoot) return null;
   return import(/* @vite-ignore */ `${runtimePluginRoot}/${entryPath}`);

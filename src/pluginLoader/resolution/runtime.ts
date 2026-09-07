@@ -39,6 +39,7 @@ import {
   getLoadedManifest,
   getManifestById,
   isBundlePlugin, // E6#7（1.2-4）：目录含 index.bundle.js → runtimeEntryPath 传 bundle 分支
+  usesSourceGlobTrack, // E6#62c：源码 glob 轨消费判据（glob 成员 + 非 bundle 才走源码轨）
 } from "./state";
 import { normalizeManifest, hasSidebarContainers, type OldFormatManifest } from "../discovery/manifest";
 import { effectiveActivationEvents } from "./activation"; // #9g：延迟匹配按「显式 ?? 推断」生效事件
@@ -174,7 +175,10 @@ async function loadPlugin(
   const manifestKey = Object.keys(pluginManifestRaw).find(
     (k) => extractPluginId(k) === pluginId
   );
-  const isRuntime = !manifestKey;
+  // E6#62c：isRuntime = 走 dist/运行时消费轨——非源码 glob 轨（!usesSourceGlobTrack）。
+  // 普通 electron:dev 恒等价旧 `!manifestKey`（glob 成员且非 bundle 才源码轨）；dev-plugin 门控下
+  // 在开发内置 = glob 成员 + bundle:true → 翻 false → 走运行时轨（/@fs 物化 index.bundle.js）。
+  const isRuntime = !usesSourceGlobTrack(pluginId);
 
   const promise = (async () => {
   // E5.8#11：状态机——loading（加载开始）
@@ -194,7 +198,8 @@ async function loadPlugin(
     // E6#9c：manifest 内容走 manifestIndex（plugins:readAllManifests 水合——listAll 已同扫一致）；
     // glob 内容仅作未水合兜底（独立单测/极端时序），两源同盘同内容。
     try {
-      manifest = getManifestById(pluginId) ?? parseManifestJson(pluginManifestRaw[manifestKey]);
+      // 本分支 = usesSourceGlobTrack 真（源码 glob 轨）→ glob 成员即 manifestKey 必在（! 仅破 TS 收窄盲区）
+      manifest = getManifestById(pluginId) ?? parseManifestJson(pluginManifestRaw[manifestKey!]);
     } catch {
       pushToast({ message: `插件 "${pluginId}" 的 plugin.json 格式错误，已跳过` });
       console.warn(`[pluginLoader] plugin.json 格式错误 — "${pluginId}"`);
@@ -381,8 +386,8 @@ async function activatePlugin(pluginId: string): Promise<boolean> {
 
   _activating.add(pluginId);
   try {
-    if (Object.keys(pluginManifestRaw).some((k) => extractPluginId(k) === pluginId)) {
-      // glob 内（dev/源码内置）——loadPluginComponent 内 registerViewPlugin 升级占位
+    if (usesSourceGlobTrack(pluginId)) {
+      // 源码 glob 轨（dev/源码内置非 bundle）——loadPluginComponent 内 registerViewPlugin 升级占位
       await loadPluginComponent(pluginId, manifest);
     } else {
       // 运行时（打包/市场安装）——glob 模块表无此插件，走根解析 + entry import 升级占位。

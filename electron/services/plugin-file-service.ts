@@ -17,6 +17,8 @@ import * as fs from 'fs/promises';
 import { existsSync } from 'fs';
 import * as path from 'path';
 import { envService } from './env-service.js';
+// E6#28b：dev 插件门控（LINKDESK_DEV_PLUGIN_ID/DIR env）——active 时发现门控到单插件物化目录
+import { devPluginMode } from './dev-plugin-mode.js';
 // E6#9a/c：IPC 返回形状共享 src 契约类型（主进程 type-only import——编译期擦除，无运行时依赖）
 import type { PluginManifest } from '../../src/core/api/types.js';
 import type { PluginDiscoveryEntry, PluginEntryInfo } from '../../src/core/api/linkdesk-api/types.js';
@@ -32,6 +34,9 @@ interface PluginDirLocation {
   rootIndex: number;
 }
 
+/** dev 门控哨兵（E6#28b）——rootIndex = -1 表示位置 = 物化 dist 目录（不在任何代码根下） */
+const DEV_OVERRIDE_INDEX = -1;
+
 class PluginFileService {
   // ── 工具 ──
 
@@ -41,18 +46,32 @@ class PluginFileService {
   }
 
   /**
+   * dev 门控覆盖目录（E6#28b）——正在开发的插件 → 物化 dist 目录（含根级 index.bundle.js）。
+   * 门控只对单个 pluginId 生效；其余 id 恒 null（dev 会话内壳只加载在开发插件）。
+   */
+  private devOverrideDir(pluginId: string): string | null {
+    const mode = devPluginMode.active();
+    return mode && pluginId === mode.pluginId ? mode.dir : null;
+  }
+
+  /**
    * 查找插件所在位置——逐根检查 `根/<pluginId>`（2026-09-05 塌平单根：无子目录层，app 先命中先赢）。
+   * dev 门控目标（rootIndex = DEV_OVERRIDE_INDEX 哨兵）不在任何代码根下——_pluginDirAbs 先查覆盖。
    * 未找到返回 null。
    */
   private _findPluginDir(pluginId: string): PluginDirLocation | null {
+    // E6#28b：物化目录覆盖（跳过 roots 扫描——override 不在代码根下，origin 落 'app' 使账本天然不入录）
+    if (this.devOverrideDir(pluginId)) return { rootIndex: DEV_OVERRIDE_INDEX };
     for (let i = 0; i < this.pluginRoots().length; i++) {
       if (existsSync(path.join(this.pluginRoots()[i], pluginId))) return { rootIndex: i };
     }
     return null;
   }
 
-  /** 插件目录绝对路径（未转正斜杠）——found 时 join 实际位置；未找到回退首根（旧语义）。 */
+  /** 插件目录绝对路径（未转正斜杠）——dev override 命中返物化目录；否则 found 时 join 实际位置；未找到回退首根（旧语义）。 */
   private _pluginDirAbs(loc: PluginDirLocation | null, pluginId: string): string {
+    const ov = this.devOverrideDir(pluginId);
+    if (ov) return ov;
     if (loc) return path.join(this.pluginRoots()[loc.rootIndex], pluginId);
     return path.join(this.pluginRoots()[0], pluginId);
   }
@@ -60,6 +79,10 @@ class PluginFileService {
   // ── 列出插件（对标 Rust list_plugin_dirs）──
 
   async listPluginDirs(): Promise<string[]> {
+    // E6#28b dev 门控——只发现正在开发的插件（含 plugin.json 已在 devOverrideDir 判定层保证）
+    const mode = devPluginMode.active();
+    if (mode) return [mode.pluginId];
+
     const names: string[] = [];
     const seen = new Set<string>();
     // 2026-09-05 塌平单根：逐根直扫 `根/<id>`（含 plugin.json 才算插件）；app 先 dedupe（同名遮蔽）
@@ -99,6 +122,7 @@ class PluginFileService {
           // E6#7：index.bundle.js 存在 = SDK 打包产物（磁盘格式事实；非 manifest.entry——SDK 原样拷作者源码入口）
           bundle: existsSync(path.join(dir, 'index.bundle.js')),
           // 2026-09-05 塌平单根：subdir 恒 null（无 builtin/user 子目录层——字段保留供账本 source 派生统一映射）
+          // E6#28b：dev override rootIndex=-1 → roots[-1]=undefined ≠ userDataRoot → home 'app'（账本不入录）
           origin: loc ? { home: roots[loc.rootIndex] === userDataRoot ? 'userData' : 'app', subdir: null } : undefined,
         };
         out.push(entry);
@@ -120,6 +144,8 @@ class PluginFileService {
   // ── 列出已卸载插件（对标 Rust list_disabled_plugin_dirs）──
 
   async listDisabledPluginDirs(): Promise<string[]> {
+    // E6#28b dev 门控——dev 会话内不展示已卸载插件（坟场与在开发插件无关）
+    if (devPluginMode.active()) return [];
     // E6#7：.disabled 坟场只属 app 根（卸载=移动进 appPluginsDir/.disabled 的旧语义）；
     // userData 插件卸载 = 真删（1.2-4 P7），不进坟场。
     const dir = path.join(this.pluginRoots()[0], '.disabled');

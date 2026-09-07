@@ -176,6 +176,23 @@ export function isBundlePlugin(pluginId: string): boolean {
   return _bundlePluginIds.has(pluginId);
 }
 
+/**
+ * E6#62c/#28b：源码 glob 轨道消费判据（惰性「磁盘 bundle 优先」位）。
+ * = 源码树成员（pluginManifestRaw glob 收得到）**且非** bundle——即真正该走 dev 源码即时代码分割轨
+ * 的插件（glob 收不到的非成员 = 运行时轨消费 dist，两判据等价）。
+ *
+ * 与旧 `!globMember 判 isRuntime` 的关系（零回归依据）：新判据只在「glob 成员 **且** listAll 报
+ * bundle:true」时与旧相反——该组合无 dev 覆盖时不存在（app 根内置目录根级无 index.bundle.js，
+ * bundle 在 dist/<id>.linkdesk-plugin/ 子目录，listAll 判根级 → 恒 false）。
+ * E6#28b dev 门控把在开发插件的发现目录覆盖为物化 dist 目录 → listAll 报 bundle:true →
+ * 本判据翻 false → 消费翻到运行时轨（/@fs 物化 index.bundle.js，与第三方同一条 loadPlugin 路径）。
+ * #62a 把判据迁 IPC 直查的承接点 = 本函数（删 glob 判据时只改这里 + 消费点不散）。
+ */
+export function usesSourceGlobTrack(pluginId: string): boolean {
+  if (isBundlePlugin(pluginId)) return false;
+  return Object.keys(pluginManifestRaw).some((k) => extractPluginId(k) === pluginId);
+}
+
 /** 🔥 硬约束 13：async init 竞态守卫——loadPlugin concurrent 调用时第二次返回第一次的 Promise */
 const _loadingPromises = new Map<string, Promise<void>>();
 /** 延迟激活的插件——有 activationEvents（非 "*"），manifest 已注册但 JS 未 import */

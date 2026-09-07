@@ -1,7 +1,7 @@
 {
   "name": "linkdesk",
   "private": true,
-  "version": "0.1.3",
+  "version": "0.1.4",
   "type": "module",
   "main": "dist-electron/electron/main.js",
   "workspaces": [
@@ -12,6 +12,7 @@
   },
   "scripts": {
     "dev": "vite",
+    "dev:plugin": "node scripts/dev-plugin.mjs",
     "build": "tsc -b && vite build && vite build --config vite.pool.config.ts && node scripts/build-pool-vendor.mjs",
     "preview": "vite preview",
     "lint": "eslint src/ plugins/ electron/",

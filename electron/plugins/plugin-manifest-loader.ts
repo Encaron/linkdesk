@@ -33,6 +33,8 @@ import { IPC } from '../ipc/channels.js';
 // E5.8#26 D8 卸载连坐——rescan 时回收孤儿端口（owner 插件已不在扫盘集合 = 被卸载）
 import { serialService } from '../services/serial-service.js';
 import { envService } from "../services/env-service.js";
+// E6#28b：dev 插件门控——active 时只对在开发插件注册三表（发现/三表同读一门控）
+import { devPluginMode } from "../services/dev-plugin-mode.js";
 import { resolveLspArgsToPluginRoot } from "./lsp-arg-resolve.js";
 
 /**
@@ -107,6 +109,7 @@ const _loadedPluginIds = new Set<string>();
  * 全量扫盘——启动时 whenReady 调一次；装/卸/重装后经 plugins:rescanManifests 重扫。
  * 错误隔离：单个插件目录缺失 / plugin.json 损坏 → console.error + 跳过该插件，不中断整轮。
  *
+ * E6#28b dev 门控——active 时只对在开发插件注册（跳过双根扫描循环）；否则全量扫：
  * E6#7（1.2-4）双根：app 根（dev 项目 plugins/ / prod resources）∪ userData 根（{userData}/plugins
  * .linkdesk-plugin 解压家）。userData 插件声明的 langDefs/protocols/fileAssociations 须进主进程三表。
  * 扫描序 = [userData, app]（后写胜）——app 内置同 id 覆盖用户装，与 plugin-file-service 发现
@@ -121,6 +124,15 @@ export function loadAllPluginManifests(): void {
 
   _loadedPluginIds.clear();
   _langDefPluginDirById.clear();
+
+  // E6#28b dev 门控——只对在开发插件注册（三表贡献在物化目录 plugin.json）。_loadedPluginIds
+  // 只含 dev id：防 rescan 时 closeOrphanSerialPorts 把其他已装插件的真端口当孤儿连坐。
+  const mode = devPluginMode.active();
+  if (mode) {
+    registerTablesFromPluginDir(mode.pluginId, mode.dir);
+    return;
+  }
+
   for (const root of getPluginRoots()) {
     if (!fs.existsSync(root)) continue;
     let entries: string[];
@@ -131,22 +143,29 @@ export function loadAllPluginManifests(): void {
       continue;
     }
     for (const name of entries) {
-      const manifestPath = path.join(root, name, "plugin.json");
-      if (!fs.existsSync(manifestPath)) continue;
-      // E5.8#26 D8：先登记存在性——plugin.json 解析失败（损坏）也算插件存在，防误连坐
-      _loadedPluginIds.add(name);
-      try {
-        const raw = fs.readFileSync(manifestPath, "utf-8");
-        // E6#15e：pluginDir = 插件根目录（= plugin.json 所在目录，dev 仓库 plugins/<id> / prod userData）——
-        // lsp.args 相对路径以它为基准绝对化（sub-1 fallback 落地形态：注册处一次绝对化）。
-        registerManifestTables(name, parseManifestJson(raw), path.join(root, name));
-      } catch (e) {
-        console.error(
-          `[plugin-manifest-loader] 跳过插件 ${name}——plugin.json 解析失败`,
-          e
-        );
-      }
+      // pluginDir = 插件根目录（= plugin.json 所在目录，dev 仓库 plugins/<id> / prod userData）
+      registerTablesFromPluginDir(name, path.join(root, name));
     }
+  }
+}
+
+/**
+ * 读单个插件目录的 plugin.json 并注册三表（全量扫描循环 + dev 门控单插件共用）。
+ * plugin.json 缺失/损坏 → 记存在性 + error 跳过不中断（错误隔离）；调用方保证目录含 plugin.json
+ * 才调用（门控目录在 dev-plugin-mode 判定层保证）。
+ */
+function registerTablesFromPluginDir(pluginId: string, pluginDir: string): void {
+  const manifestPath = path.join(pluginDir, "plugin.json");
+  // 缺失 = 非插件目录（发现层同判据）→ 不登记存在性，与旧全量扫行为一致
+  if (!fs.existsSync(manifestPath)) return;
+  // E5.8#26 D8：登记存在性——plugin.json 存在但解析失败（损坏）也算插件存在，防误连坐
+  _loadedPluginIds.add(pluginId);
+  try {
+    const raw = fs.readFileSync(manifestPath, "utf-8");
+    // E6#15e：lsp.args 相对插件根的路径以 pluginDir 为基准绝对化（sub-1 fallback 落地形态：注册处一次绝对化）
+    registerManifestTables(pluginId, parseManifestJson(raw), pluginDir);
+  } catch (e) {
+    console.error(`[plugin-manifest-loader] 跳过插件 ${pluginId}——plugin.json 解析失败`, e);
   }
 }
 
