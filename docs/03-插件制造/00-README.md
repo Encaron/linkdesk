@@ -70,10 +70,11 @@
 npm create linkdesk-plugin my-plugin   # ① 建工程（每建一个用一次）
 cd my-plugin && npm install            # ② 装 SDK（devDependencies，window.linkdesk 类型自动进 TS program）
 npm run dev                            # 预览：浏览器 dev 宿主 → 改码 HMR
+npm run dev -- --real                  # 真机环（E6#28.5）：在已装 LinkDesk 里秒级真机调试（真 IPC 插件用）
 npm run build                          # 交活：my-plugin.linkdesk-plugin（装进 LinkDesk / 日后发布）
 ```
 
-> 机制细节：[02-本地预览环境.md](../02-Electron架构/E6_插件生态与发布/02-插件开发工具链/02-本地预览环境.md)（dev 宿主）· [01-create-linkdesk-plugin脚手架.md](../02-Electron架构/E6_插件生态与发布/02-插件开发工具链/01-create-linkdesk-plugin脚手架.md)（生成物契约）· [00-第三方作者旅程.md](../02-Electron架构/E6_插件生态与发布/05-文档与发布/00-第三方作者旅程.md)（发布主路）· [04-作者真机调试环.md](../02-Electron架构/E6_插件生态与发布/02-插件开发工具链/04-作者真机调试环.md)（真机环 E6#28.5——需真 IPC 的插件类在已装 LinkDesk 里的秒级真机调试，E6 第 2.3 轮落地后公开命令形态）
+> 机制细节：[02-本地预览环境.md](../02-Electron架构/E6_插件生态与发布/02-插件开发工具链/02-本地预览环境.md)（dev 宿主）· [01-create-linkdesk-plugin脚手架.md](../02-Electron架构/E6_插件生态与发布/02-插件开发工具链/01-create-linkdesk-plugin脚手架.md)（生成物契约）· [00-第三方作者旅程.md](../02-Electron架构/E6_插件生态与发布/05-文档与发布/00-第三方作者旅程.md)（发布主路）· [04-作者真机调试环.md](../02-Electron架构/E6_插件生态与发布/02-插件开发工具链/04-作者真机调试环.md)（真机环 E6#28.5——已实装 `npm run dev -- --real`：需真 IPC 的插件类在已装 LinkDesk 里秒级「重建→直写→刷新」，改码即真机可见，见 E6#28.5 验证）
 
 ---
 

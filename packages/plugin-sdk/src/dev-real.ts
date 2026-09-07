@@ -7,9 +7,11 @@
  *      assets/ + i18n/ + icon…），与 .linkdesk-plugin zip 解包布局一致（壳 loader 发现 = 目录含 plugin.json）。
  *   2. 物化目录**直写** {userData}/plugins/<id>（平台标准 %APPDATA% 等；LINKDESK_USER_PLUGINS_DIR 覆盖）
  *      ——不经 plugins:extract「存在即拒」、不碰 E6#15n boot 门禁：直写磁盘 + reload = dev 覆盖语义
- *      （生产 linkdesk:// 逐请求 readFileSync + reload 重 import = 覆盖即生效，机制实锤见 04-作者真机调试环.md）。
+ *      （生产 linkdesk:// 逐请求 readFileSync；但 protocol.handle 响应无 Cache-Control → 会被 Chromium 缓存，
+ *      reload 前须清缓存才落盘生效——机制实锤 + 修正见 04-作者真机调试环.md §二/§六）。
  *   3. watch 作者源码 → 变更自动 重建→直写→reload。作者以 `--remote-debugging-port=9222` 启动 LinkDesk
- *      （Chromium 原生 switch，壳零代码）→ SDK 经 CDP Page.reload 刷「LinkDesk Pool」窗口（renderer 重 import 生效）；
+ *      （Chromium 原生 switch，壳零代码）→ SDK 经 CDP Network.clearBrowserCache + Page.reload 刷「LinkDesk Pool」窗口
+ *      （清缓存后 reload 重 import 落到磁盘逐请求 readFileSync = 真机生效）；
  *      9222 同时是 CDP/AI 全自动调试入口（沿用 dev-fixtures/toast.mjs 连法）。
  *
  * 边界（04 档案 §六）：作用域 = 作者自研 dev 插件——目标目录若已有同 id 安装（市场装发布版）会被**覆盖且不备份**；
@@ -114,7 +116,14 @@ function cdpListTargets(port: number): Promise<CdpTarget[]> {
   });
 }
 
-/** 经 CDP 刷新「LinkDesk Pool」窗口——renderer 重 import = 直写产物生效。返回是否找到并刷新成功。 */
+/**
+ * 经 CDP 刷新「LinkDesk Pool」窗口——renderer 重 import = 直写产物生效。返回是否找到并刷新成功。
+ *
+ * E6#28.5 真机自验实证（2026-09-07）：单发 Page.reload 不足——`protocol.handle` 的 linkdesk:// 响应
+ * 无 Cache-Control 头 → Chromium 同 URL 二次请求命中缓存，index.bundle.js 陈旧副本永远被喂（直写磁盘
+ * 被遮蔽，protocol-debug.log 无新 200 行可证）。修复 = reload 前 Network.enable + Network.clearBrowserCache，
+ * 清掉缓存让 reload 后重 import 落到磁盘逐请求 readFileSync（纯 CDP，壳零代码）。
+ */
 export async function cdpReloadPool(port = CDP_PORT): Promise<boolean> {
   let targets: CdpTarget[];
   try {
@@ -134,13 +143,16 @@ export async function cdpReloadPool(port = CDP_PORT): Promise<boolean> {
     ws.onopen = () => res();
     ws.onerror = () => rej(new Error("CDP WebSocket 连接失败"));
   });
+  // 顺序发：enable → clearBrowserCache → reload；等 reload（id 3）的回复即代表前两步已完成。
   const reply = new Promise<unknown>((res) => {
     ws.onmessage = (ev) => {
       const m = JSON.parse(String(ev.data)) as { id: number };
-      if (m.id === 1) res(m);
+      if (m.id === 3) res(m);
     };
   });
-  ws.send(JSON.stringify({ id: 1, method: "Page.reload", params: { ignoreCache: true } }));
+  ws.send(JSON.stringify({ id: 1, method: "Network.enable" }));
+  ws.send(JSON.stringify({ id: 2, method: "Network.clearBrowserCache" }));
+  ws.send(JSON.stringify({ id: 3, method: "Page.reload", params: { ignoreCache: true } }));
   await reply;
   ws.close();
   return true;
