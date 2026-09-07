@@ -31,6 +31,11 @@
         "title": "插件市场",
         "location": "sidebar",
         "hideIfEmpty": false
+      },
+      "main": {
+        "title": "插件详情",
+        "location": "main",
+        "hideIfEmpty": true
       }
     },
     "views": {
@@ -40,6 +45,9 @@
         { "id": "builtin",     "title": "内置",   "render": "src/views/BuiltinListView.tsx",     "order": 1, "collapsed": true },
         { "id": "disabled",    "title": "已禁用", "render": "src/views/DisabledListView.tsx",    "order": 2, "collapsed": true },
         { "id": "explore", "title": "探索插件", "render": "src/views/ExploreView.tsx", "order": 3, "collapsed": true }
+      ],
+      "main": [
+        { "id": "plugin-detail", "title": "插件详情", "render": "src/views/DetailView.tsx" }
       ]
     }
   }

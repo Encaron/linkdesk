@@ -77,7 +77,7 @@
 | 字段 | 必需 | 类型 | 说明 |
 |------|:--:|------|------|
 | `title` | ✅ | string | 侧栏 header 显示的名称。如 "资源管理器" |
-| `location` | ❌ | `"sidebar"` \| `"panel"` \| `"auxiliarybar"` | 容器位置。默认 `"sidebar"`（见 §一渲染区） |
+| `location` | ❌ | `"sidebar"` \| `"panel"` \| `"auxiliarybar"` \| `"main"` | 容器位置。默认 `"sidebar"`（见 §一渲染区）。`"main"`=主区标签页渲染面——仅活跃 factoryRole 插件（市场）声明，壳 ShellViewRenderer 消费（E6#30.10） |
 | `hideIfEmpty` | ❌ | boolean | 无活跃 view 时自动隐藏。默认 `false` |
 | `order` | ❌ | number | 同位置容器排序。小值靠前 |
 | `icon` | ❌ | string | 容器图标——覆盖插件自身图标 |

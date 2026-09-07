@@ -162,7 +162,7 @@ export async function parseContributions(pluginId: string, c: Record<string, unk
           id: containerId,
           title: desc.title,
           icon: desc.icon,
-          location: (desc.location as "sidebar" | "panel" | "auxiliarybar") ?? "sidebar",
+          location: (desc.location as "sidebar" | "panel" | "auxiliarybar" | "main") ?? "sidebar",
           hideIfEmpty: desc.hideIfEmpty,
           order: desc.order,
           mergeHeaderWhenSingle: desc.mergeHeaderWhenSingle,

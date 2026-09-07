@@ -27,6 +27,9 @@ import { WINDOW_MODE_STRATEGIES } from "../../App/windows";
 import { getViewPlugin, getTabBehavior } from "../../pluginLoader/contributions/viewRegistry";
 import { resolvePluginIcon } from "../../components/shared/plugin-icon/iconUtils"; // E6#54b：随 @linkdesk/ui 迁至 shared（纯函数）
 import { isShellRenderedTab, resolvePoolTabTitle } from "../../core/utils/tabIdentity";
+import { factorySlots } from "../../core/services/bootstrap/FactorySlots"; // E6#30.10b：活跃 marketplace 插件定位（iconbar 同源导入路径）
+import { ViewContainerService } from "../../core/services/layout/ViewContainerService"; // E6#30.10b：main 容器详情贡献寻址
+import type { ViewDescriptor } from "../../core/services/layout/ViewContainerService/types"; // E6#30.10b：_pluginId/_renderPath 内部标记字段读型
 import { computeGroupFlexes } from "./sidebar-panel"; // E5.6#16：SplitNode 树 → group flex 比例
 
 /** 主窗 zone 数据包——usePoolSync 一次性组装（侧栏/面板/图标栏/状态栏全是壳主窗状态），
@@ -59,9 +62,26 @@ export function windowTitleFor(win: WindowShellState, t: TFunction): string {
   return t("LinkDesk");
 }
 
+/** E6#30.10b：活跃 marketplace 插件的主区详情贡献寻址——工厂槽活跃插件在容器 "main" 注册的
+ *  view id "plugin-detail"（contributes.views.main[].render）。返回 { 贡献插件 id, renderPath }；
+ *  市场插件禁用/卸载/未激活 → undefined = 壳保底 PluginDetailPoolView。零插件 id 硬编码（#10）——
+ *  role "marketplace" + 容器 "main" + view id "plugin-detail" 是贡献面契约（10-市场UI拥有权.md §三·一），
+ *  谁填充槽位谁就是贡献者。每次 pushLayout 现场解析——渲染期判定天然覆盖「删市场插件→保底」。 */
+function resolveActiveMarketDetailContribution(): { contributorId: string; renderPath: string } | undefined {
+  const marketId = factorySlots.getActive("marketplace");
+  if (!marketId) return undefined;
+  // 注册表内部标记字段（_pluginId/_renderPath 不在 ViewDescriptor 声明面）——显式联合类型读型，不用 any
+  const registered = ViewContainerService.getViews("main") as Array<ViewDescriptor & { _pluginId?: string; _renderPath?: string }>;
+  const view = registered.find((v) => v._pluginId === marketId && v.id === "plugin-detail");
+  const renderPath = view?._renderPath;
+  return renderPath ? { contributorId: marketId, renderPath } : undefined;
+}
+
 /** 序列化某窗口的 tabState → PoolGroup[]——flex 树 + 标签元数据（图标/tabBehavior/壳内部视图标记） */
 export function serializeGroups(tabState: TabState, t: TFunction): PoolGroup[] {
   const flexMap = computeGroupFlexes(tabState.root);
+  // E6#30.10b：主区详情贡献一次解析、盖章所有 plugin-detail tab（同一窗口内活跃 marketplace 唯一）
+  const detailContribution = resolveActiveMarketDetailContribution();
   return tabState.groups.map((g) => ({
     id: g.id,
     flex: flexMap.get(g.id) ?? 1,
@@ -71,6 +91,7 @@ export function serializeGroups(tabState: TabState, t: TFunction): PoolGroup[] {
       const entry = getViewPlugin(pid);
       const resolved = entry?.manifest ? resolvePluginIcon(pid, entry.manifest) : null;
       const behavior = getTabBehavior(pid);
+      const isDetailTab = tab.type === "plugin-detail";
       return {
         id: tab.id,
         pluginId: pid,
@@ -85,6 +106,8 @@ export function serializeGroups(tabState: TabState, t: TFunction): PoolGroup[] {
         shellRendered: isShellRenderedTab(tab.type),
         shellType: isShellRenderedTab(tab.type) ? tab.type : undefined,
         detailPluginId: tab.detailPluginId,
+        detailContributorId: isDetailTab ? detailContribution?.contributorId : undefined,
+        detailViewRenderPath: isDetailTab ? detailContribution?.renderPath : undefined,
       };
     }),
   }));

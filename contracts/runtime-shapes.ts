@@ -587,6 +587,12 @@ function chkPoolTab(v: unknown, p: string, errs: string[]): void {
     if (_t76.detailPluginId !== undefined) {
     if (typeof _t76.detailPluginId !== "string") errs.push(((p) + ".detailPluginId") + ": 期望 string，实收 " + typeof _t76.detailPluginId);
     }
+    if (_t76.detailContributorId !== undefined) {
+    if (typeof _t76.detailContributorId !== "string") errs.push(((p) + ".detailContributorId") + ": 期望 string，实收 " + typeof _t76.detailContributorId);
+    }
+    if (_t76.detailViewRenderPath !== undefined) {
+    if (typeof _t76.detailViewRenderPath !== "string") errs.push(((p) + ".detailViewRenderPath") + ": 期望 string，实收 " + typeof _t76.detailViewRenderPath);
+    }
   }
 }
 function chkPoolGroup(v: unknown, p: string, errs: string[]): void {

@@ -124,6 +124,14 @@ export interface PoolTab {
   shellType?: string;
   /** plugin-detail 视图的目标插件 ID（哪个插件的详情页） */
   detailPluginId?: string;
+  /** E6#30.10b：plugin-detail 主区贡献视图的宿主插件 ID（factorySlots 活跃 marketplace 插件——贡献
+   *  渲染面的是它，≠ detailPluginId）。壳 serializeGroups 现场解析盖章，池宿主加载贡献模块用（resolvePath
+   *  要贡献插件根）；无活跃市场插件 → undefined = 无贡献。 */
+  detailContributorId?: string;
+  /** E6#30.10b：plugin-detail 主区贡献视图 renderPath——活跃 marketplace 插件 contributes.views.main[]
+   *  "plugin-detail" 声明的 _renderPath。壳 serializeGroups 现场解析盖章；池 ShellViewRenderer 消费：
+   *  有 → 动态 import 市场 DetailView，缺/加载失败 → 壳 PluginDetailPoolView 保底。 */
+  detailViewRenderPath?: string;
 }
 
 /** 分屏组——每个 group 占一个 flex 区域，内含 N 个 keep-alive 标签页 */

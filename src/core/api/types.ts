@@ -263,7 +263,7 @@ export interface ContributesViewsContainers {
   [containerId: string]: {
     title: string;
     icon?: string;
-    location?: "sidebar" | "panel" | "auxiliarybar";
+    location?: "sidebar" | "panel" | "auxiliarybar" | "main";
     hideIfEmpty?: boolean;
     order?: number;
     mergeHeaderWhenSingle?: boolean;

@@ -8,7 +8,7 @@
 import type { TitleActionWidget } from "../../../api/types"; // E5.8#36.5：titleActions 声明面——JSON 可序列化，壳↔池直传
 
 /** 容器所在位置。对标 VS Code ViewContainerLocation。 */
-export type ViewContainerLocation = "sidebar" | "panel" | "auxiliarybar";
+export type ViewContainerLocation = "sidebar" | "panel" | "auxiliarybar" | "main";
 
 /** 容器描述符——对标 VS Code IViewContainerDescriptor */
 export interface ViewContainerDescriptor {

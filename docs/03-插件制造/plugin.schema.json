@@ -531,9 +531,9 @@
                 "icon": { "type": "string", "description": "容器图标——覆盖插件自身的图标" },
                 "location": {
                   "type": "string",
-                  "enum": ["sidebar", "panel", "auxiliarybar"],
+                  "enum": ["sidebar", "panel", "auxiliarybar", "main"],
                   "default": "sidebar",
-                  "description": "容器位置——sidebar=侧栏, panel=底部面板, auxiliarybar=辅助侧栏（⚠ 壳当前未接线，声明 auxiliarybar 容器/视图不渲染——第三方交付插件请用 sidebar/panel）"
+                  "description": "容器位置——sidebar=侧栏, panel=底部面板, auxiliarybar=辅助侧栏（⚠ 壳当前未接线，声明 auxiliarybar 容器/视图不渲染）, main=主区标签页渲染面（E6#30.10：活跃 factoryRole 插件经 views.main[] 贡献，壳 ShellViewRenderer 解析 plugin-detail tab 时消费；第三方交付插件非市场类请用 sidebar/panel）"
                 },
                 "hideIfEmpty": {
                   "type": "boolean",

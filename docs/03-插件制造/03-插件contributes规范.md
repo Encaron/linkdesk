@@ -438,7 +438,7 @@ useEffect(() => {
 
 > **完整 API 文档：`08-ViewContainer-视图容器API.md`**（含 titleActions 声明制、panel.reveal、运行时元数据更新）。这里只给字段总表。
 
-**viewsContainers——声明侧栏/面板频道：**
+**viewsContainers——声明侧栏/面板/主区频道：**
 
 ```json
 {
@@ -457,7 +457,7 @@ useEffect(() => {
 | 字段 | 必需 | 说明 |
 |------|:--:|------|
 | `title` | ✅ | 侧栏 header 显示的名称 |
-| `location` | ❌ | `"sidebar"` \| `"panel"` \| `"auxiliarybar"`。默认 `"sidebar"`（sidebar=左/auxiliarybar=右/panel=底部面板标签栏） |
+| `location` | ❌ | `"sidebar"` \| `"panel"` \| `"auxiliarybar"` \| `"main"`。默认 `"sidebar"`（sidebar=左/auxiliarybar=右/panel=底部面板标签栏/main=主区标签页渲染面——仅活跃 factoryRole 插件（市场）经 `views."main"[]` 贡献，壳 ShellViewRenderer 解析 plugin-detail 类 tab 时消费；需配套 `viewsContainers."main"` 声明，见 E6#30.10） |
 | `hideIfEmpty` | ❌ | 无活跃 view 时自动隐藏容器 |
 | `order` | ❌ | 同位置排序。小值靠前 |
 | `icon` | ❌ | 覆盖插件自身图标 |

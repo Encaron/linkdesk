@@ -38,6 +38,91 @@ type PluginViewProps = { isActive: boolean; tabId?: string; sourceId?: string };
 type PluginModule = { default?: React.ComponentType<PluginViewProps> };
 const _lazyCache = new Map<string, React.ComponentType<PluginViewProps>>();
 
+/**
+ * E6#30.10b：池侧插件视图 loader 解析单实现——PluginComponent（主区/侧栏视图）与 plugin-detail 主区贡献宿主
+ * （PluginDetailViewHost）共用同一条加载链。抽自原 useMemo body，两侧行为必须一致（不同 glob key /
+ *  URL 形态判定会静默 404）：
+ *   ① view/主区入口 glob key O(1) 查找
+ *   ② renderPath 完整 URL（/@fs | linkdesk://）直动态 import（runtime/编译插件）
+ *   ③ lk.plugins.resolvePath/resolveEntry 拼 URL（运行时安装插件不在 glob——构建时扫描漏网兜底）
+ *  pluginId = 待加载模块的归属插件（贡献/宿主插件本身）。⚠️ plugin-detail 详情页里它 ≠ detailPluginId
+ *  （被展示的插件）——贡献视图由活跃 marketplace 插件渲染，resolvePath 要的是贡献插件根。
+ */
+export function resolvePluginViewLoader(pluginId: string, renderPath?: string): (() => Promise<unknown>) | null {
+  let loader: (() => Promise<unknown>) | undefined;
+
+  if (renderPath) {
+    // 侧栏/主区 view 面：按 loader.ts 存的 glob key O(1) 查找
+    loader = viewModules[renderPath];
+  }
+
+  if (!loader) {
+    // 主区 tab / fallback：按 pluginId 匹配 index.tsx
+    let modulePath: string | undefined;
+    for (const path of Object.keys(pluginModules)) {
+      if (path.includes(`/${pluginId}/`)) {
+        modulePath = path;
+        break;
+      }
+    }
+    loader = modulePath ? pluginModules[modulePath] : undefined;
+  }
+
+  // 🔥 E5.6#11.5-fix：import.meta.glob 是构建时扫描——运行时安装的插件不在 glob 中。
+  // fallback 到动态 import()。
+  // renderPath 可能有两种格式：
+  //   1. glob key: "../../plugins/<id>/src/views/Xxx.tsx"（2026-09-05 塌平单根：目录名 = pluginId）
+  //   2. /@fs/ URL（runtime 插件无 pluginRoot 时）: "/@fs/E:/.../plugins/<id>/src/views/Xxx.tsx"
+  if (!loader) {
+    const lk = window.linkdesk;
+    const isDev = import.meta.env.DEV;
+    if (renderPath && (renderPath.startsWith("/@fs/") || renderPath.startsWith("linkdesk://"))) {
+      // runtime 插件——renderPath 已是完整 URL，直接用
+      loader = () => import(/* @vite-ignore */ renderPath);
+    } else if (lk?.plugins?.resolvePath) {
+      loader = (async () => {
+        try {
+          const absPath: string = await lk.plugins.resolvePath(pluginId);
+          if (renderPath) {
+            // glob key 格式：../../plugins/<type>/<id>/<rest> → 提取插件内相对路径
+            const idx = renderPath.indexOf(`/${pluginId}/`);
+            const rel = idx !== -1
+              ? renderPath.slice(idx + pluginId.length + 2)
+              : renderPath.split("/").slice(3).join("/");
+            const url = isDev ? `/@fs/${absPath}/${rel}` : `linkdesk://${pluginId}/${rel}`;
+            const mod = await import(/* @vite-ignore */ url);
+            return mod;
+          } else {
+            // 主区 tab：默认入口。E6#7：.linkdesk-plugin 解压包 JS 入口恒 index.bundle.js
+            // （磁盘格式事实），源码/运行时插件 = manifest.entry（缺省 src/index.tsx）——
+            // 经 resolveEntry 拿 { root, entry } 拼 URL，不写死 src/index.tsx（index.bundle.js
+            // 才是打包入口）。resolveEntry 缺失/无入口（纯贡献插件不该走到组件加载）→
+            // 落回 resolvePath + src/index.tsx legacy 兜底。
+            if (lk?.plugins?.resolveEntry) {
+              const info = await lk.plugins.resolveEntry(pluginId);
+              if (info?.root && info?.entry) {
+                const url = isDev
+                  ? `/@fs/${info.root}/${info.entry}`
+                  : `linkdesk://${pluginId}/${info.entry}`;
+                const mod = await import(/* @vite-ignore */ url);
+                return mod;
+              }
+            }
+            const url = isDev ? `/@fs/${absPath}/src/index.tsx` : `linkdesk://${pluginId}/src/index.tsx`;
+            const mod = await import(/* @vite-ignore */ url);
+            return mod;
+          }
+        } catch (e) {
+          console.error(`[PluginComponent] 动态加载插件 "${pluginId}" 失败:`, e);
+          return null;
+        }
+      });
+    }
+  }
+
+  return loader ?? null;
+}
+
 interface PluginComponentProps {
   pluginId: string;
   isActive: boolean;
@@ -58,81 +143,12 @@ export default function PluginComponent({ pluginId, isActive, tabId, sourceId, r
     const cached = _lazyCache.get(cacheKey);
     if (cached) return cached;
 
-    let loader: (() => Promise<unknown>) | undefined;
-
-    if (renderPath) {
-      // 侧栏 view：按 loader.ts 存的 glob key O(1) 查找
-      loader = viewModules[renderPath];
-    }
-
-    if (!loader) {
-      // 主区 tab / fallback：按 pluginId 匹配 index.tsx
-      let modulePath: string | undefined;
-      for (const path of Object.keys(pluginModules)) {
-        if (path.includes(`/${pluginId}/`)) {
-          modulePath = path;
-          break;
-        }
-      }
-      loader = modulePath ? pluginModules[modulePath] : undefined;
-    }
-
-    // 🔥 E5.6#11.5-fix：import.meta.glob 是构建时扫描——运行时安装的插件不在 glob 中。
-    // fallback 到动态 import()。
-    // renderPath 可能有两种格式：
-    //   1. glob key: "../../plugins/<id>/src/views/Xxx.tsx"（2026-09-05 塌平单根：目录名 = pluginId）
-    //   2. /@fs/ URL（runtime 插件无 pluginRoot 时）: "/@fs/E:/.../plugins/<id>/src/views/Xxx.tsx"
-    if (!loader) {
-      const lk = window.linkdesk;
-      const isDev = import.meta.env.DEV;
-      if (renderPath && (renderPath.startsWith("/@fs/") || renderPath.startsWith("linkdesk://"))) {
-        // runtime 插件——renderPath 已是完整 URL，直接用
-        loader = () => import(/* @vite-ignore */ renderPath);
-      } else if (lk?.plugins?.resolvePath) {
-        loader = (async () => {
-          try {
-            const absPath: string = await lk.plugins.resolvePath(pluginId);
-            if (renderPath) {
-              // glob key 格式：../../plugins/<type>/<id>/<rest> → 提取插件内相对路径
-              const idx = renderPath.indexOf(`/${pluginId}/`);
-              const rel = idx !== -1
-                ? renderPath.slice(idx + pluginId.length + 2)
-                : renderPath.split("/").slice(3).join("/");
-              const url = isDev ? `/@fs/${absPath}/${rel}` : `linkdesk://${pluginId}/${rel}`;
-              const mod = await import(/* @vite-ignore */ url);
-              return mod;
-            } else {
-              // 主区 tab：默认入口。E6#7：.linkdesk-plugin 解压包 JS 入口恒 index.bundle.js
-              // （磁盘格式事实），源码/运行时插件 = manifest.entry（缺省 src/index.tsx）——
-              // 经 resolveEntry 拿 { root, entry } 拼 URL，不写死 src/index.tsx（index.bundle.js
-              // 才是打包入口）。resolveEntry 缺失/无入口（纯贡献插件不该走到组件加载）→
-              // 落回 resolvePath + src/index.tsx legacy 兜底。
-              if (lk?.plugins?.resolveEntry) {
-                const info = await lk.plugins.resolveEntry(pluginId);
-                if (info?.root && info?.entry) {
-                  const url = isDev
-                    ? `/@fs/${info.root}/${info.entry}`
-                    : `linkdesk://${pluginId}/${info.entry}`;
-                  const mod = await import(/* @vite-ignore */ url);
-                  return mod;
-                }
-              }
-              const url = isDev ? `/@fs/${absPath}/src/index.tsx` : `linkdesk://${pluginId}/src/index.tsx`;
-              const mod = await import(/* @vite-ignore */ url);
-              return mod;
-            }
-          } catch (e) {
-            console.error(`[PluginComponent] 动态加载插件 "${pluginId}" 失败:`, e);
-            return null;
-          }
-        });
-      }
-    }
-
+    // E6#30.10b：loader 单实现提取 resolvePluginViewLoader——与 PluginDetailViewHost 共用同一条加载链。
+    const loader = resolvePluginViewLoader(pluginId, renderPath);
     if (!loader) return null;
 
     const component = React.lazy<React.ComponentType<PluginViewProps>>(() =>
-      loader!()
+      loader()
         .then((mod) => {
           // glob/动态 import 模块命名空间——按 PluginModule 形状窄化（E5.7#98 替代 mod: any）
           const m = mod as PluginModule | null;
