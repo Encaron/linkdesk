@@ -8,12 +8,9 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { setMarketplaceSearch } from "../services/marketplaceShared";
-import { OverlayPortal, useDebouncedInput, urlSourceKey } from "@linkdesk/ui"; // E6#15h：共享件全走 @linkdesk/ui 零件；#30c：源身份 urlSourceKey 单一实现（设置行内判重同此钥匙）
-// E6#30c：官方源常量 + URL 归一——弹窗加源校验/去重用（官方恒内置不入册，见 marketCatalog 头注）。
-// 官方/重复判别走 urlSourceKey（owner/repo 身份、分支无关）——仓库主页形态官方归一成 HEAD、官方常量是 main，
-// 精确串比较会漏判放行（E6#30c 实测 bug）；与设置行内直添同规则，两扇门收敛（mockup ①③ 对齐）。
-import { OFFICIAL_SOURCE_URL, normalizeSourceUrl } from "../services/marketCatalog";
+import { OverlayPortal, useDebouncedInput } from "@linkdesk/ui"; // E6#15h：共享件全走 @linkdesk/ui 零件
 import { readConfiguredAuthorSources } from "../services/marketSources";
+import { decideAddSource } from "../services/marketSourceAdd"; // E6#30c：加源决策抽纯（官方恒不入册判重见该模块头注）
 import "../styles/MarketplaceSidebar.css";
 
 const lk = () => window.linkdesk;
@@ -52,39 +49,24 @@ function AddSourcePopup({
     if (err) setErr(null);
   }, [err]);
 
-  /** 添加——校验 + 归一去重 + 写回配置（写同一 marketplaceSources；watch 自动刷新，无需本组件触发拉取） */
+  /** 添加——读现作者源 → 纯决策（decideAddSource，官方恒不入册/同身份判重）→ 仅 ok 落盘。
+   *  写同一 marketplaceSources；watch 自动刷新，无需本组件触发拉取。settings 缺席亦照常——本弹窗即
+   *  marketplace 自有写门（读/决策全走自身代码 + 通用 configuration API，替换冒烟见 marketSourceAdd.ts 头注）。 */
   const submit = useCallback(async () => {
-    const raw = value.trim();
-    if (!raw) {
-      setErr(t("请输入仓库 URL。"));
-      return;
-    }
-    const norm = normalizeSourceUrl(raw);
-    if (!norm) {
-      setErr(t("URL 格式不对——以 http(s):// 开头。"));
+    const decision = decideAddSource(value, await readConfiguredAuthorSources());
+    if (!decision.ok) {
+      setErr(
+        decision.reason === "empty"
+          ? t("请输入仓库 URL。")
+          : decision.reason === "bad-url"
+            ? t("URL 格式不对——以 http(s):// 开头。")
+            : t("这个源已经在列表里了。"), // official / duplicate——官方任何形态拒加（官方恒不入册）
+      );
       return;
     }
     setBusy(true);
     try {
-      const current = await readConfiguredAuthorSources(); // 排除官方后的现有作者源（原始形态）
-      // 官方/重复按 owner/repo 身份判别（urlSourceKey）——仓库主页与 main/HEAD 直链同一身份视为重复
-      const key = urlSourceKey(raw);
-      if (!key) {
-        // norm 已过 → key 必非 null——纯防御（解析域理论不可达）
-        setErr(t("URL 格式不对——以 http(s):// 开头。"));
-        return;
-      }
-      if (urlSourceKey(OFFICIAL_SOURCE_URL) === key) {
-        setErr(t("这个源已经在列表里了。"));
-        return;
-      }
-      for (const s of current) {
-        if (urlSourceKey(s) === key) {
-          setErr(t("这个源已经在列表里了。"));
-          return;
-        }
-      }
-      await lk()?.configuration?.set("marketplace.marketplaceSources", [...current, raw]);
+      await lk()?.configuration?.set("marketplace.marketplaceSources", decision.next);
       onClose();
     } catch (e) {
       setErr(e instanceof Error ? e.message : String(e));
