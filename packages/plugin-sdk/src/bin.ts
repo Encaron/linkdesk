@@ -13,6 +13,7 @@ import { join } from "node:path";
 import { build } from "vite";
 import { validatePluginJson } from "./validate.js";
 import { defineLinkdeskPluginConfig } from "./vite-config.js";
+import { runPluginDev } from "./dev-server.js";
 import { runPluginLint, renderPluginLintReport } from "./eslint/lint.js";
 
 const VITE_CONFIG_FILES = [
@@ -27,6 +28,8 @@ const VITE_CONFIG_FILES = [
 const USAGE = `linkdesk-plugin-sdk <command>
 
 命令：
+  dev         在插件工程根起 dev 宿主（E6#24）——读 plugin.json → Vite dev server（端口 1421）
+              → 浏览器打开纯前端预览 + HMR。只支持带 entry 的视图插件（脚手架 tab 形态）
   build       在插件工程根构建 .linkdesk-plugin（读 plugin.json → Vite build → zip）
   validate    校验 plugin.json（参数 = 路径，默认 ./plugin.json）
   lint        E6#54d 门禁（eslint 12 规则 + 三 check 双轨，全 WARN 永不 fail；知情绕行 =
@@ -66,6 +69,11 @@ async function main(): Promise<void> {
   const [, , command, arg] = process.argv;
   let code: number;
   switch (command) {
+    case "dev":
+      // 挂起直到 Ctrl+C（server.close 后 resolve）——dev 无退出码语义，正常退出 = 0
+      await runPluginDev(process.cwd());
+      code = 0;
+      break;
     case "build":
       code = await cmdBuild();
       break;

@@ -505,6 +505,12 @@ export function defineLinkdeskPluginConfig(options: LinkdeskPluginOptions = {}):
         console.log(
           `[linkdesk-plugin-sdk] ✔ ${pkgName}（${kb} KB, ${ok.length}/${surfaces.length} 表面）→ ${relative(process.cwd(), zipPath)}${warnSuffix}`,
         );
+        if (failedKeys.length === 0) {
+          // E6#25a：全表面干净才宣称可发布（部分表面失败 = warnSuffix 已示警，不发 banner）
+          console.log(
+            `[linkdesk-plugin-sdk] 🚀 Ready to publish! ${pkgName}——分发文件已就绪：装进 LinkDesk（插件详情 → 从本地 .linkdesk-plugin 安装）即可分发使用`,
+          );
+        }
         rmSync(join(outDir, ".s"), { recursive: true, force: true });
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);

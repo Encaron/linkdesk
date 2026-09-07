@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>LinkDesk dev 宿主</title>
+    <style>
+      /* dev 宿主页 = SDK 工具 UI（非壳/非产品），中性配色 + 兜底主题变量让插件 var(--xxx) 不至全黑。
+         固定值允许——不违反壳硬约束 16（那约束壳 UI；此页不属于壳渲染树）。 */
+      :root {
+        --text: #e8e8ea;
+        --text-muted: #9a9aa2;
+        --border: #2c2c33;
+        --bg: #16161a;
+        --bg-alt: #1f1f25;
+        --accent: #4cc38a;
+      }
+      * { box-sizing: border-box; }
+      html, body { margin: 0; height: 100%; }
+      body {
+        background: var(--bg);
+        color: var(--text);
+        font-family: system-ui, -apple-system, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif;
+      }
+      #ld-topbar {
+        position: sticky; top: 0; z-index: 10;
+        display: flex; align-items: center; gap: 8px;
+        padding: 5px 12px; font-size: 12px;
+        background: var(--bg-alt); border-bottom: 1px solid var(--border);
+        user-select: none;
+      }
+      #ld-topbar .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
+      #ld-topbar .sep { opacity: 0.4; }
+      #ld-topbar code { color: #9fd0ff; font-family: ui-monospace, "Cascadia Code", Consolas, monospace; }
+      #ld-topbar .hint { color: var(--text-muted); margin-left: auto; }
+      #ld-root { padding: 0; }
+    </style>
+  </head>
+  <body>
+    <div id="ld-topbar">
+      <span class="dot"></span>
+      <span>LinkDesk dev 宿主</span>
+      <span class="sep">·</span>
+      <code id="ld-plugin-id"></code>
+      <span class="hint">本地预览 · 无 Electron/IPC · 改码 HMR</span>
+    </div>
+    <div id="ld-root"></div>
+    <script type="module" src="/dev-main.tsx"></script>
+  </body>
+</html>
