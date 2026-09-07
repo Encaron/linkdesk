@@ -390,8 +390,10 @@
   "粉彩图标集 Pastel Icons": "Pastel Icons",
   "下载插件包": "Downloading plugin package",
   "解压插件包": "Extracting plugin package",
-  "粘贴作者仓库 URL（例：https://github.com/用户名/仓库名）": "Paste an author repo URL (e.g. https://github.com/user/repo)",
+  "粘贴 URL…": "Paste a URL…",
+  "请输入 URL。": "Enter a URL.",
+  "URL 格式不对——以 http(s):// 开头。": "URL must start with http(s)://.",
+  "这个 URL 已经在列表里了。": "This URL is already in the list.",
   "请输入仓库 URL。": "Enter a repository URL.",
-  "URL 格式不对——以 http(s):// 开头。示例：https://github.com/用户名/仓库名": "URL must start with http(s):// — e.g. https://github.com/user/repo",
   "这个源已经在列表里了。": "This source is already in the list."
 }

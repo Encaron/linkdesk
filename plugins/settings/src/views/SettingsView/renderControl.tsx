@@ -144,6 +144,9 @@ function renderControl(
       //   「其他形态」（仓库主页/HEAD 直链）在此一并滤除：不显示为可删作者行、行内直添即报重复——
       //   官方凭任何入口都落不了盘；历史污染残留随下次存盘自动清理（渲染即滤，不落盘）。urlSourceKey
       //   非 github 输入返 null → 回精确比较（无身份的串不受影响），渲染器本身保持零插件域依赖。
+      //   文案 = 宿主中性（2026-09-08）：placeholder/消息只留通用措辞（粘贴 URL/格式/已在列表），不写
+      //   marketplace 专属句子（作者仓库/示例 URL）——该 property 的专属引导由 marketplace 自己 plugin.json
+      //   的 description 承担（SettingRow 已渲染在编辑器上方）。本 case 对任何 uiHint:"stringList" 配置通用。
       const locked = Array.isArray(prop.default)
         ? prop.default.filter((s): s is string => typeof s === "string")
         : [];
@@ -173,10 +176,10 @@ function renderControl(
           removeTitle={t("删除")}
           urlOnly
           itemKey={urlSourceKey}
-          placeholder={t("粘贴作者仓库 URL（例：https://github.com/用户名/仓库名）")}
-          emptyMessage={t("请输入仓库 URL。")}
-          badUrlMessage={t("URL 格式不对——以 http(s):// 开头。示例：https://github.com/用户名/仓库名")}
-          duplicateMessage={t("这个源已经在列表里了。")}
+          placeholder={t("粘贴 URL…")}
+          emptyMessage={t("请输入 URL。")}
+          badUrlMessage={t("URL 格式不对——以 http(s):// 开头。")}
+          duplicateMessage={t("这个 URL 已经在列表里了。")}
         />
       );
     }
