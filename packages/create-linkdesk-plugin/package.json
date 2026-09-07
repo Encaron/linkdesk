@@ -1,0 +1,24 @@
+{
+  "name": "create-linkdesk-plugin",
+  "version": "0.1.0",
+  "description": "LinkDesk 插件脚手架——`npm create linkdesk-plugin my-cool-plugin` 一行生成你的第一个插件项目（对标 yo code）。",
+  "type": "module",
+  "bin": {
+    "create-linkdesk-plugin": "./index.js"
+  },
+  "files": [
+    "index.js",
+    "template",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "linkdesk",
+    "plugin",
+    "scaffold",
+    "create"
+  ],
+  "license": "MIT"
+}

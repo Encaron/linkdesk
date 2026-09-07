@@ -1,0 +1,38 @@
+{
+  // ─────────────────────────────────────────────────────────────────────────
+  //  LinkDesk 插件清单 plugin.json（由 create-linkdesk-plugin 生成）
+  //
+  //  · 本文件是 JSONC：可写注释、可尾逗号（LinkDesk 与 SDK 都按 jsonc 解析，对标 VS Code package.json）。
+  //  · 完整字段以 plugin.schema.json 为准——VS Code 读 $schema 自动补全 + 校验。
+  //  · $schema 指向本工程 node_modules/@linkdesk/plugin-sdk 随包拷贝（npm install 后生效）。
+  // ─────────────────────────────────────────────────────────────────────────
+  "$schema": "./node_modules/@linkdesk/plugin-sdk/schemas/plugin.schema.json",
+
+  // ── 插件身份 ──
+  "pluginId": "{{pluginName}}", // 全局唯一 ID（kebab-case）——安装目录 / 寻址 / 命令前缀都按它
+  "name": "{{displayName}}", // 显示名——标签页 / 插件详情等 UI 出现处
+  "version": "0.1.0", // 语义化版本 x.y.z——发布更新比较靠它，改了要 +1
+  "description": "{{displayName}}——我的第一个 LinkDesk 插件", // 一句话描述（插件详情页展示）
+  "author": "{{author}}", // 作者名
+
+  // ── 入口（视图插件 = 此文件 default 导出一个 React 组件）──
+  "entry": "src/index.tsx",
+
+  // ── 出现位置：可作为主区标签页打开 ──
+  "appearsIn": { "tabBar": true },
+  "tabBehavior": { "singleton": true }, // 全局只开一个实例，避免重复标签
+
+  // ── 贡献点（contributes：全部可选，按需增删）──
+  "contributes": {
+    // 自带翻译：key=语言码, value=相对插件根的 JSON 文件。UI 文案用 t() 读这里；无需 zh.json——中文 key 原文自带兜底。
+    "i18n": { "en": "i18n/en.json" },
+    // ── 需要「侧栏 / 底部面板 / 辅助侧栏」分区视图时：取消注释，在 src/views/ 放对应组件，
+    //    容器 key 与 view id 用你的 pluginId 做前缀防撞（对标 plugins/panel-demo）──
+    // "viewsContainers": { "{{pluginName}}-sidebar": { "title": "{{displayName}}", "location": "sidebar" } },
+    // "views": {
+    //   "{{pluginName}}-sidebar": [
+    //     { "id": "main", "title": "{{displayName}}", "render": "src/views/MainView.tsx", "order": 0 }
+    //   ]
+    // }
+  },
+}

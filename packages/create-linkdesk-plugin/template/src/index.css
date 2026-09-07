@@ -1,0 +1,23 @@
+/* {{displayName}} 样式示例——LinkDesk 主题色一律走 var(--xxx)，禁硬编码 hex。
+   布局/字号这类结构值用普通 px（不违反）；颜色/语义类才必须走主题变量。 */
+
+.starter {
+  padding: 24px;
+  font-family: inherit;
+}
+
+.starter__title {
+  margin: 0 0 8px;
+  color: var(--text);
+}
+
+.starter__text {
+  margin: 0 0 4px;
+  color: var(--text-muted);
+}
+
+.starter__hint {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 12px;
+}
