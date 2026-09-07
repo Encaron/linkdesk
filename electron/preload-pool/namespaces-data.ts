@@ -1,7 +1,8 @@
 /**
- * Pool preload 数据域命名空间集合——serial/filesystem/clipboard/path/env/encoding/search/fileAssociation。
+ * Pool preload 数据域命名空间集合——serial/filesystem/clipboard/path/env/app/encoding/search/fileAssociation。
  * E5.8#0d.10-4d：自 preload-pool.ts 拆出——无模块级状态的纯 IPC 薄转发面（invoke/send/listenDirect）。
  * 依赖方向：namespaces-data → electron/ipc（channels/event-system）+ src/core/types（type）；无反向。
+ * E6#57.2b：app 域（buildApp）加此——只读产品身份 main 直答通道（env 同款薄转发）。
  */
 
 import { ipcRenderer } from 'electron';
@@ -94,6 +95,14 @@ export function buildEnv() {
     // E5.8#20 D1 修复：补 pluginId 转发（对齐壳侧 preload-shell + 主进程 env-handlers 正确消费）——
     // 缺它池插件 env.get("my-plugin") 恒拿不到 pluginDataDir/cacheDir/exportsDir（契约承诺与池行为不一致）
     get: (pluginId?: string) => ipcRenderer.invoke(IPC.env.get, pluginId),
+  };
+}
+
+/** app 命名空间——产品身份只读（E6#57.2b）。只暴露契约面 getVersion（池插件读宿主版本号——市场 minAppVersion 比对 E6#30.8c）；
+ *  getProductInfo 壳内私有扩展，不在契约 → 池侧不暴露（E6#27：池侧与契约零漂移）。main 直答通道（env 同形）。 */
+export function buildApp() {
+  return {
+    getVersion: () => ipcRenderer.invoke(IPC.app.getVersion),
   };
 }
 

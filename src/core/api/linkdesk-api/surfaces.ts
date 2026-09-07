@@ -19,9 +19,9 @@
  */
 import type { LinkDeskAPI } from "../linkdesk-api";
 
-/** 池 preload 必暴露面（44 = 43 唯一 + config 别名；唯一缺 bridge）——E5.8#34.5 加 panel（插件调 reveal 的池侧通道）；E5.8#37 加 floatingPanelHost（壳内悬浮面板哑渲染桥）；E5.8#41.12 加 settings（设置套枚举/切换，设置 UI 在池内渲染）；E5.8#41.14 加 factorySlots（任意 role 候选枚举/切换，设置 UI 通用区数据源）；E5.8#50.11 加 appearance（外观资产——选择图片拷贝入库） */
+/** 池 preload 必暴露面（45 = 44 唯一 + config 别名；唯一缺 bridge）——E5.8#34.5 加 panel（插件调 reveal 的池侧通道）；E5.8#37 加 floatingPanelHost（壳内悬浮面板哑渲染桥）；E5.8#41.12 加 settings（设置套枚举/切换，设置 UI 在池内渲染）；E5.8#41.14 加 factorySlots（任意 role 候选枚举/切换，设置 UI 通用区数据源）；E5.8#50.11 加 appearance（外观资产——选择图片拷贝入库）；E6#57.2a 加 app（只读产品身份——市场 minAppVersion E6#30.8c 消费） */
 export type PoolExposed = Pick<LinkDeskAPI,
-  | "commands" | "configuration" | "config" | "theme" | "language" | "appearance"
+  | "commands" | "configuration" | "config" | "theme" | "language" | "app" | "appearance"
   | "tabs" | "keybindings" | "notifications" | "menu" | "contextKey"
   | "dialog" | "quickPick" | "quickPickHost" | "toast" | "dialogHost" | "floatingPanelHost"
   | "serial" | "clipboard" | "p2p" | "events" | "pluginState"
@@ -38,17 +38,21 @@ export type PoolExposed = Pick<LinkDeskAPI,
   pool: Pick<LinkDeskAPI["pool"], "onLayout" | "ready" | "sidebarAction" | "tabAction" | "tabBarRects" | "dragPosition" | "onAdsorbHint" | "adsorbIndex" | "registerBeforeClose" | "unregisterBeforeClose" | "beforeClose">;
 };
 
-/** 壳 preload 必暴露面（23；bridge 真壳独有）。commands/tabs/pool/appearance 命名空间方法级子集：
+/** 壳 preload 必暴露面（24；bridge 真壳独有）。commands/tabs/pool/appearance 命名空间方法级子集：
  *  commands 壳 = 注册面（execute/executeCommand/unregisterCommands/getCommands 为池侧执行面，壳不实现）
  *  tabs 壳缺 onDidChangeActiveTab（池侧订阅面——壳是标签权威自身，无订阅需求）
  *  pool 壳 = 推送面（onLayout/ready/sidebarAction/tabAction 为池侧发送面，壳不实现）
  *  appearance 壳 = 仅 revealStorage（E5.8#153：齿轮命令 handler 在壳进程执行，需壳侧触发主进程 openPath；
- *    importImage 池独有——选图拷贝入库只在池设置 UI 发生） */
+ *    importImage 池独有——选图拷贝入库只在池设置 UI 发生）
+ *  app 壳 = getVersion 契约面（E6#57.2b 双 preload 同步暴露）+ getProductInfo 壳内私有扩展（关于页
+ *    E6#57.14 数据源，不在契约）。⚠️ 超额暴露实现要点：satisfies 的 excess-property 检查达字面量每层，
+ *    内联 getProductInfo 会编译红——preload-shell 用 buildShellApp() 工厂构造（返回值结构兼容：目标需的
+ *    都有 + 多余的容忍），池侧 buildApp() 只暴露契约面 getVersion */
 export type ShellExposed = Pick<LinkDeskAPI,
   | "getFilePath" | "serial" | "filesystem" | "path" | "plugins"
   | "fileAssociation" | "pluginManager" | "dialog" | "pluginState" | "menu"
   | "contextKey" | "keybindings" | "p2p"
-  | "clipboard" | "shell" | "env" | "events" | "bridge" | "window"> & {
+  | "clipboard" | "shell" | "app" | "env" | "events" | "bridge" | "window"> & {
   commands: Pick<LinkDeskAPI["commands"], "registerCommand" | "_executeShellLocal">;
   tabs: Omit<LinkDeskAPI["tabs"], "onDidChangeActiveTab">;
   pool: Omit<LinkDeskAPI["pool"], "onLayout" | "ready" | "sidebarAction" | "tabAction" | "tabBarRects" | "dragPosition" | "onAdsorbHint" | "adsorbIndex" | "registerBeforeClose" | "unregisterBeforeClose" | "beforeClose">;

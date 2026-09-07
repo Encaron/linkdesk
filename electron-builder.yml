@@ -24,6 +24,8 @@ files:
   - dist-electron/**/*
   - package.json
   - node_modules/**/*
+  # E6#57.1a：产品身份三件套之 product.json——随包进 asar（product.ts 经 app.getAppPath() 读，
+  # 07 更新 §四.1）。发布时由壳发布脚本写入版本/commit/date（E6#57.15a），dev 留占位。
 
 # 🔥 E6#17a（#15d 消费切换相）：plugins/ 源码目录不再打包——resources/ 不含任何插件源码。
 # 打包版插件唯一运行根 = userData（bundled-plugins 发货 zip → boot 自动装解压落 userData）。

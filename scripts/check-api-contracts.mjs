@@ -38,7 +38,7 @@ function collectNamespaceKeys(file) {
   return keys;
 }
 
-/** 契约命名空间全集：主文件 + 13 子域接口（LinkDeskAPI = 13 接口交叉） */
+/** 契约命名空间全集：主文件 + 14 子域接口（LinkDeskAPI = 14 接口交叉，E6#57.2a 加 App 域） */
 function loadContractNamespaces() {
   const names = new Set();
   for (const file of readdirSync(resolve(ROOT, API_DIR))) {

@@ -172,7 +172,7 @@ if (dups.length > 0) {
 const banner = `/**
  * 🔥 linkdesk.d.ts——window.linkdesk 插件 API 契约（自动生成，勿手改）
  *
- * 生成源：src/core/api/linkdesk-api.ts + linkdesk-api/（13 域接口 + types.ts）
+ * 生成源：src/core/api/linkdesk-api.ts + linkdesk-api/（14 域接口 + types.ts）
  *         + src/core/types/ipc/* + src/core/types/pool/*（wire 载荷类型）
  * 生成器：scripts/generate-contract.mjs（Route C——契约类型文件为源，纯类型打包）
  * 改契约源 → 跑 \`node scripts/generate-contract.mjs\`（npm run check 里 check-contracts 强制）

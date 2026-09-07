@@ -18,12 +18,13 @@
  *
  * 运行时实现：window.linkdesk（由 preload-pool.ts / preload-shell.ts 通过 contextBridge 注入）。
  *
- * E5.8#0d.10-9e：拆 linkdesk-api/ 子模块后，本文件 = 聚合器——13 个命名空间域接口交叉组装
+ * E5.8#0d.10-9e：拆 linkdesk-api/ 子模块后，本文件 = 聚合器——14 个命名空间域接口交叉组装
  * LinkDeskAPI + 独立接口 re-export + DialogOpenOptions 保路径 + getLinkDesk/linkdesk 运行时导出。
  * E5.8#41.12：settings 域加入（第 12 个，设置套枚举/切换）；E5.8#41.14：factorySlots 域（第 13 个，
- * 槽位无关通用枚举面）——头注释与 generate-contract.mjs 同源，勿单改。
- * 分层依赖：types（独立接口基座）→ 13 域接口（Commands/Appearance/Tabs/Keybindings/Ui/Data/
- * Workspace/Editor/Plugins/Shell/Panel/Settings/FactorySlots）→ 本聚合器交叉组装；域接口间零互依赖，单向无环。
+ * 槽位无关通用枚举面）；E6#57.2a：app 域（第 14 个，主软件产品身份只读）——头注释与
+ * generate-contract.mjs 同源，勿单改。
+ * 分层依赖：types（独立接口基座）→ 14 域接口（Commands/Appearance/Tabs/Keybindings/Ui/Data/
+ * Workspace/Editor/Plugins/Shell/Panel/Settings/FactorySlots/App）→ 本聚合器交叉组装；域接口间零互依赖，单向无环。
  * 外部消费方 import 路径零变更（"./linkdesk-api" 命中文件，"./linkdesk-api/types" 命中子模块）。
  */
 
@@ -40,6 +41,7 @@ import type { ShellAPI } from "./linkdesk-api/shell";
 import type { PanelAPI } from "./linkdesk-api/panel"; // E5.8#34.5：底部面板命名空间
 import type { SettingsAPI } from "./linkdesk-api/settings"; // E5.8#41.12：设置套命名空间（枚举/切换）
 import type { FactorySlotsAPI } from "./linkdesk-api/factory-slots"; // E5.8#41.14：系统插槽通用枚举面（槽位无关）
+import type { AppAPI } from "./linkdesk-api/app"; // E6#57.2a：app 域（主软件产品身份——只读 getVersion）
 
 /**
  * linkdesk API——插件代码的类型安全入口。
@@ -50,7 +52,7 @@ import type { FactorySlotsAPI } from "./linkdesk-api/factory-slots"; // E5.8#41.
  * E5.8#0d.10-9e：由 12 个命名空间域接口交叉组装（interface→type intersection，
  * 索引访问 LinkDeskAPI["pool"]/["configuration"] 等消费方契约不变）。
  */
-export type LinkDeskAPI = CommandsAPI & AppearanceAPI & TabsAPI & KeybindingsAPI & UiAPI & DataAPI & WorkspaceAPI & EditorAPI & PluginsAPI & ShellAPI & PanelAPI & SettingsAPI & FactorySlotsAPI;
+export type LinkDeskAPI = CommandsAPI & AppearanceAPI & TabsAPI & KeybindingsAPI & UiAPI & DataAPI & WorkspaceAPI & EditorAPI & PluginsAPI & ShellAPI & PanelAPI & SettingsAPI & FactorySlotsAPI & AppAPI;
 
 // ── 独立类型接口 re-export（types.ts 基座）──
 

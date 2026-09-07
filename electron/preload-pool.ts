@@ -98,6 +98,7 @@ import {
   buildClipboard,
   buildPath,
   buildEnv,
+  buildApp, // E6#57.2b：产品身份只读面（池侧 = getVersion，契约精确——市场 minAppVersion 比对）
   buildEncoding,
   buildSearch,
   buildFileAssociation,
@@ -134,6 +135,7 @@ try {
     clipboard: buildClipboard(),
     path: buildPath(),
     env: buildEnv(),
+    app: buildApp(), // E6#57.2b：产品身份只读面（getVersion）
     encoding: buildEncoding(),
     search: buildSearch(),
     fileAssociation: buildFileAssociation(),

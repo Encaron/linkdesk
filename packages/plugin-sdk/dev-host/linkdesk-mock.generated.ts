@@ -360,4 +360,7 @@ export const linkdeskMock: Record<string, unknown> = {
     getActive: async (..._args: unknown[]) => { console.info("[linkdesk-mock] factorySlots.getActive", ..._args); },
     setActive: async (..._args: unknown[]) => { console.info("[linkdesk-mock] factorySlots.setActive", ..._args); },
   },
+  app: {
+    getVersion: async (..._args: unknown[]) => { console.info("[linkdesk-mock] app.getVersion", ..._args); return ""; },
+  },
 };

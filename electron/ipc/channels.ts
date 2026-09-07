@@ -23,6 +23,10 @@ export const IPC = {
   app: {
     preloadReady: 'app:preloadReady',
     heartbeat: 'app:heartbeat',
+    // E6#57（06-主软件更新 07 §二）：主软件产品身份命令通道——app 独立域（非 update.*）。
+    // main 直答（env 先例）：不进 PROXY_CHANNELS（PROXY 预留给 update.getState，见 07 §一）。
+    getVersion: 'app:getVersion', // 只读：Electron app.getVersion()（package.json 单点，02 §2.3）
+    getProductInfo: 'app:getProductInfo', // 只读：{ product, runtime } 全量身份（product.ts，关于页 8 字段）
   },
   bridge: {
     response: 'bridge:response',

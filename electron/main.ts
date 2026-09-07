@@ -17,6 +17,7 @@ import { loadAllPluginManifests, registerManifestRescanHandler } from './plugins
 import { registerPluginHandlers } from './ipc/handlers/plugin-handlers.js';
 import { registerDialogHandlers } from './ipc/handlers/dialog-handlers.js';
 import { registerEnvHandlers } from './ipc/handlers/env-handlers.js';
+import { registerProductHandlers } from './ipc/handlers/product-handlers.js'; // E6#57.3b：产品身份（app:getVersion/getProductInfo）
 import { registerClipboardHandlers } from './ipc/handlers/clipboard-handlers.js';
 import { registerRegistryHandlers } from './ipc/handlers/registry-handlers.js'; // E5.7#49：主进程三表直连 IPC
 import { registerHotExitHandlers } from './ipc/handlers/hot-exit-handlers.js'; // E5.7#38
@@ -90,6 +91,7 @@ function createWindow(): void {
   // ── 注册 IPC 处理器（E5.7#36：全部幂等——首次注册 + 重建时刷新引用；无状态 handler 重复调用直接跳过）──
   registerPluginHandlers();
   registerEnvHandlers();
+  registerProductHandlers(); // E6#57.3b：产品身份 main 直答（app:getVersion / app:getProductInfo）
   registerClipboardHandlers();
   registerRegistryHandlers();  // E5.7#49：三表直连（数据由 plugin-manifest-loader 预加载）
   registerHotExitHandlers();   // E5.7#38

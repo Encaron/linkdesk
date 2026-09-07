@@ -42,7 +42,7 @@
 
 **`window.linkdesk.*` 的全部方法签名、入参、返回、载荷类型 = [contracts/linkdesk.d.ts](../../contracts/linkdesk.d.ts)**（自动生成，勿手改）。
 
-- **生成源：** `src/core/api/linkdesk-api.ts` + `linkdesk-api/`（11 域接口）+ `src/core/types/ipc/*` + `src/core/types/pool/*`（wire 载荷类型）
+- **生成源：** `src/core/api/linkdesk-api.ts` + `linkdesk-api/`（14 域接口）+ `src/core/types/ipc/*` + `src/core/types/pool/*`（wire 载荷类型）
 - **生成器：** `scripts/generate-contract.mjs`（Route C——契约类型文件为源，纯类型打包单文件）
 - **机械门禁：** preload 双端 `satisfies` 契约面类型 → tsc 漂移门禁；`npm run check` 内 `contracts:check` hash 字节比对（#21）
 - **覆盖矩阵：** 每个命名空间 × 池/壳/mock 四面覆盖 → [命名空间矩阵 §2](../02-Electron架构/E5.8_归一化基建/契约生成/命名空间矩阵.md#2-命名空间--四面覆盖矩阵)
@@ -85,6 +85,7 @@ async function list(): Promise<FileEntry[]> {
 | **panel** | **E5.8#34.5：** `panel.reveal(viewId)` 声明寻址聚焦底部面板视图——面板隐藏 → 展开并切到该视图（Ctrl+J 同机制）；已显示 → 切换聚焦；**viewId 不在 panel 容器 → no-op**（不报错）。**#36.10 已移除 `panel.moveToEditor`**（用户拍板弃内容迁移——zone 位置移动是 #37.6/#37.7 布局命令的事）。**E5.8#39.5：** `panel.revealFloating(viewId)` 壳内悬浮面板（类型 B）——按声明弹出某视图为悬浮面板。声明寻址 = ViewContainerService 全局视图索引（`contributes.views` 已注册**任意容器**视图，不限 panel——插件声明 `contributes.floatingPanel.viewId` 引用之）。**身份开关键（I8-2）**：无面板 → 开；同视图 → 关（toggle）；他面板 → 替换；**viewId 未声明/声明插件未装 → no-op**（不崩）。面板默认动作 =「在主窗口中打开」（仅声明插件可开成标签页时出现）+ 最大化 toggle + 关闭 |
 | **hotExit** | 崩溃恢复专用——脏内容落盘 `%APPDATA%/linkdesk/hot-exit/`（主进程路径约定单源，插件零直写）；保存/关闭标签页后调 `clear` 删备份 |
 | **appearance** | **E5.8#153：** `revealStorage()` 打开外观存储目录（`userData/appearance`）——主进程解析路径并 `shell.openPath` 开资源管理器**内容**（非 `showItemInFolder` 高亮单文件）；目录缺省也建（打开即见存储位置，空目录合法），`openPath` 失败抛错 fail-loud。返回 `Promise<void>` |
+| **app** | **E6#57：** `app.getVersion()` = 宿主软件版本号（`Promise<string>`，只读）——唯一运行时来源 = Electron `app.getVersion()`（`package.json` 单点，02 §2.3）；**主软件版本比对入口**（市场 minAppVersion E6#30.8c、更新检查 #57.5 消费）。壳内另有 `getProductInfo` 私有扩展（关于页 8 字段数据源 #57.14，不在契约——池插件不可调） |
 | **tabs** | **E5.8#46.2 跨窗资源事件联动：** `updateLabelBySourceId(sourceId, label)` / `closeBySourceId(sourceId)` = **全窗广播语义**——资源持有者在主窗与全部脱出窗的标签页同步更新/关闭；`sourceId` 为全局唯一资源身份（文件路径/会话 id），变更即全局事实（联动**不依赖调用方与标签页同窗**——脱出窗标签随侧栏改名/删除即时联动，对标 VS Code）。`focusBySourceId(sourceId)` = **按来源窗路由**（视图动作，聚焦到具体某窗，非全局事实）。**无新 API**——复用既有面，此行为契约由 E5.8#46.2 全窗广播保证 |
 
 **壳广播事件（插件可订阅，走 `events.on`）：**

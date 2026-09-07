@@ -140,8 +140,20 @@ const events = createEventSystem(ipcRenderer, {
   logPrefix: 'preload-shell',
 });
 
+// E6#57.2b：壳侧产品身份面——函数构造（非内联字面量）。satisfies 的 excess-property 检查达对象字面量
+// 每一层——getProductInfo 超额暴露若内联进 app 字面量会编译红（上下文类型 = 契约 app 面只有 getVersion）；
+// 工厂返回的对象走结构兼容（目标需的都有 + 多余的容忍），超额暴露才成立。
+function buildShellApp() {
+  return {
+    // getVersion = 契约必选面（壳/池双端同步暴露——第三方插件读宿主版本号，市场 minAppVersion E6#30.8c）
+    getVersion: () => ipcRenderer.invoke(IPC.app.getVersion),
+    // getProductInfo = 壳内私有扩展（关于标签页 E6#57.14 数据源；不在契约——池插件不可调）
+    getProductInfo: () => ipcRenderer.invoke(IPC.app.getProductInfo),
+  };
+}
+
 try {
-  // E5.8#20：契约面机械对齐——expose 对象 satisfies ShellExposed（23 命名空间，缺面/形状失配即编译红）
+  // E5.8#20：契约面机械对齐——expose 对象 satisfies ShellExposed（24 命名空间，缺面/形状失配即编译红）
   const shellExposed = {
     /** OS 拖入——从 File 对象取真实路径。Electron 43 contextIsolation 下 File.path 为空，必须走 webUtils。 */
     getFilePath: (file: File) => webUtils.getPathForFile(file),
@@ -403,6 +415,8 @@ try {
     env: {
       get: (pluginId?: string) => ipcRenderer.invoke(IPC.env.get, pluginId),
     },
+    // ── 产品身份（E6#57.2b——壳侧读宿主版本号/产品信息；关于页 E6#57.14 数据源）──
+    app: buildShellApp(),
 
     // ── 事件（E2a #5 心跳 + E3j #77a on/emit 归一化）──
     events: {
