@@ -15,6 +15,7 @@ import { validatePluginJson } from "./validate.js";
 import { defineLinkdeskPluginConfig } from "./vite-config.js";
 import { runPluginDev } from "./dev-server.js";
 import { runPluginDevReal } from "./dev-real.js";
+import { runPluginPublish } from "./publish.js";
 import { runPluginLint, renderPluginLintReport } from "./eslint/lint.js";
 
 const VITE_CONFIG_FILES = [
@@ -36,6 +37,9 @@ const USAGE = `linkdesk-plugin-sdk <command>
               真 IPC/串口/LSP 类插件的秒级真机调试（壳零新代码；LINKDESK_USER_PLUGINS_DIR /
               LINKDESK_CDP_PORT 可覆盖）
   build       在插件工程根构建 .linkdesk-plugin（读 plugin.json → Vite build → zip）
+  publish     一键发布（E6#26）——自动链路：建 GitHub Release → 上传 .linkdesk-plugin → 更新工程
+              origin 仓库根 marketplace.json（多市场源模型）。发前预览确认；--yes 跳过（CI）；
+              --dry-run 只预览不碰网络。token：env LINKDESK_GITHUB_TOKEN，或首跑交互输入存入本机
   validate    校验 plugin.json（参数 = 路径，默认 ./plugin.json）
   lint        E6#54d 门禁（eslint 12 规则 + 三 check 双轨，全 WARN 永不 fail；知情绕行 =
               eslint-disable 注释）。参数 = 工程根，默认 process.cwd()
@@ -93,6 +97,18 @@ async function main(): Promise<void> {
     case "build":
       code = await cmdBuild();
       break;
+    case "publish": {
+      // publish [--yes|--dry-run]——E6#26 自动发布链路（发前预览确认）
+      const flags = rest.filter((a) => a.startsWith("-"));
+      const unknown = flags.filter((a) => a !== "--yes" && a !== "--dry-run");
+      if (unknown.length > 0 || rest.some((a) => !a.startsWith("-"))) {
+        console.error(USAGE);
+        code = 1;
+        break;
+      }
+      code = await runPluginPublish(process.cwd(), { yes: rest.includes("--yes"), dryRun: rest.includes("--dry-run") });
+      break;
+    }
     case "validate":
       code = cmdValidate(rest[0] ?? "plugin.json");
       break;
