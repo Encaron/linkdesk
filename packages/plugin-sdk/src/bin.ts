@@ -14,6 +14,7 @@ import { build } from "vite";
 import { validatePluginJson } from "./validate.js";
 import { defineLinkdeskPluginConfig } from "./vite-config.js";
 import { runPluginDev } from "./dev-server.js";
+import { runPluginDevReal } from "./dev-real.js";
 import { runPluginLint, renderPluginLintReport } from "./eslint/lint.js";
 
 const VITE_CONFIG_FILES = [
@@ -30,6 +31,10 @@ const USAGE = `linkdesk-plugin-sdk <command>
 命令：
   dev         在插件工程根起 dev 宿主（E6#24）——读 plugin.json → Vite dev server（端口 1421）
               → 浏览器打开纯前端预览 + HMR。只支持带 entry 的视图插件（脚手架 tab 形态）
+  dev --real  E6#28.5 真机环——watch 作者源码 → 隔离单插件 build → 直写 {userData}/plugins/<id>
+              → CDP reload「LinkDesk Pool」（LinkDesk 须以 --remote-debugging-port=9222 启动）。
+              真 IPC/串口/LSP 类插件的秒级真机调试（壳零新代码；LINKDESK_USER_PLUGINS_DIR /
+              LINKDESK_CDP_PORT 可覆盖）
   build       在插件工程根构建 .linkdesk-plugin（读 plugin.json → Vite build → zip）
   validate    校验 plugin.json（参数 = 路径，默认 ./plugin.json）
   lint        E6#54d 门禁（eslint 12 规则 + 三 check 双轨，全 WARN 永不 fail；知情绕行 =
@@ -66,22 +71,33 @@ function cmdValidate(target: string): number {
 }
 
 async function main(): Promise<void> {
-  const [, , command, arg] = process.argv;
+  const [, , command] = process.argv;
+  const rest = process.argv.slice(3); // 参数：dev --real / validate <path> / lint <root>
   let code: number;
   switch (command) {
-    case "dev":
-      // 挂起直到 Ctrl+C（server.close 后 resolve）——dev 无退出码语义，正常退出 = 0
-      await runPluginDev(process.cwd());
+    case "dev": {
+      // dev [--real]——真机环（E6#28.5）：build→直写 userData/plugins→CDP reload；挂起直到 Ctrl+C
+      if (rest.includes("--real")) {
+        await runPluginDevReal(process.cwd());
+      } else if (rest.some((a) => a.startsWith("-") && a !== "--real")) {
+        console.error(USAGE);
+        code = 1;
+        break;
+      } else {
+        // 挂起直到 Ctrl+C（server.close 后 resolve）——dev 无退出码语义，正常退出 = 0
+        await runPluginDev(process.cwd());
+      }
       code = 0;
       break;
+    }
     case "build":
       code = await cmdBuild();
       break;
     case "validate":
-      code = cmdValidate(arg ?? "plugin.json");
+      code = cmdValidate(rest[0] ?? "plugin.json");
       break;
     case "lint":
-      code = await cmdLint(arg ?? process.cwd());
+      code = await cmdLint(rest[0] ?? process.cwd());
       break;
     default:
       console.error(USAGE);

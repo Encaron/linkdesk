@@ -67,6 +67,8 @@ export interface LinkdeskPluginOptions {
   outDir?: string;
   /** 额外 external 依赖（壳还可能提供别的共享件） */
   external?: string[];
+  /** E6#28.5 真机环：跳过 zip 分发件与「Ready to publish」banner——只产 dist/<id>.linkdesk-plugin/ 物化目录供 dev --real 直写 */
+  real?: boolean;
 }
 
 /* ── 多表面收集（E6#15） ─────────────────────────────────────────────── */
@@ -363,6 +365,7 @@ export function defineLinkdeskPluginConfig(options: LinkdeskPluginOptions = {}):
   const pkgName = `${id}.linkdesk-plugin`;
   const pkgDir = join(outDir, pkgName);
   const external = [...DEFAULT_EXTERNAL, ...(options.external ?? [])];
+  const real = options.real ?? false; // E6#28.5 dev --real：跳过 zip 分发件与发布 banner，只产物化目录
 
   /** 单表面 lib build——独立 outDir 子夹（.s/<key>），产物 surface.bundle.js（+ css/assets/worker） */
   async function buildSurface(surface: Surface): Promise<void> {
@@ -493,23 +496,25 @@ export function defineLinkdeskPluginConfig(options: LinkdeskPluginOptions = {}):
         const iconRel = (manifest as { icon?: unknown })?.icon;
         if (typeof iconRel === "string" && !iconRel.includes("\\")) copyFileInto(root, pkgDir, iconRel);
 
-        // jszip 打包 → 项目根单文件
-        const zip = new JSZip();
-        zipTree(zip, pkgDir, "");
-        const buf = await zip.generateAsync({ type: "nodebuffer", compression: "DEFLATE" });
-        const zipPath = join(root, pkgName);
-        writeFileSync(zipPath, buf);
-        const kb = (buf.byteLength / 1024).toFixed(1);
-        const failedKeys = results.filter((r) => !r.ok).map((r) => r.key);
-        const warnSuffix = failedKeys.length > 0 ? `（⚠ 失败表面: ${failedKeys.join(", ")}）` : "";
-        console.log(
-          `[linkdesk-plugin-sdk] ✔ ${pkgName}（${kb} KB, ${ok.length}/${surfaces.length} 表面）→ ${relative(process.cwd(), zipPath)}${warnSuffix}`,
-        );
-        if (failedKeys.length === 0) {
-          // E6#25a：全表面干净才宣称可发布（部分表面失败 = warnSuffix 已示警，不发 banner）
+        // jszip 打包 → 项目根单文件（real = dev --real：不产分发件，仅物化目录——直写面自取 dist/<id>.linkdesk-plugin）
+        if (!real) {
+          const zip = new JSZip();
+          zipTree(zip, pkgDir, "");
+          const buf = await zip.generateAsync({ type: "nodebuffer", compression: "DEFLATE" });
+          const zipPath = join(root, pkgName);
+          writeFileSync(zipPath, buf);
+          const kb = (buf.byteLength / 1024).toFixed(1);
+          const failedKeys = results.filter((r) => !r.ok).map((r) => r.key);
+          const warnSuffix = failedKeys.length > 0 ? `（⚠ 失败表面: ${failedKeys.join(", ")}）` : "";
           console.log(
-            `[linkdesk-plugin-sdk] 🚀 Ready to publish! ${pkgName}——分发文件已就绪：装进 LinkDesk（插件详情 → 从本地 .linkdesk-plugin 安装）即可分发使用`,
+            `[linkdesk-plugin-sdk] ✔ ${pkgName}（${kb} KB, ${ok.length}/${surfaces.length} 表面）→ ${relative(process.cwd(), zipPath)}${warnSuffix}`,
           );
+          if (failedKeys.length === 0) {
+            // E6#25a：全表面干净才宣称可发布（部分表面失败 = warnSuffix 已示警，不发 banner）
+            console.log(
+              `[linkdesk-plugin-sdk] 🚀 Ready to publish! ${pkgName}——分发文件已就绪：装进 LinkDesk（插件详情 → 从本地 .linkdesk-plugin 安装）即可分发使用`,
+            );
+          }
         }
         rmSync(join(outDir, ".s"), { recursive: true, force: true });
       } catch (e) {
