@@ -533,7 +533,7 @@
                   "type": "string",
                   "enum": ["sidebar", "panel", "auxiliarybar"],
                   "default": "sidebar",
-                  "description": "容器位置——sidebar=侧栏, panel=底部面板, auxiliarybar=辅助侧栏"
+                  "description": "容器位置——sidebar=侧栏, panel=底部面板, auxiliarybar=辅助侧栏（⚠ 壳当前未接线，声明 auxiliarybar 容器/视图不渲染——第三方交付插件请用 sidebar/panel）"
                 },
                 "hideIfEmpty": {
                   "type": "boolean",

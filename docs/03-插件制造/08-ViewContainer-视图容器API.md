@@ -37,7 +37,7 @@
 - **ViewContainer** = 侧栏/面板的一个"频道"。点图标栏切换。如 `explorer` / `marketplace` / `serial-monitor` / `panel-demo`。
 - **View** = 容器里的一个可折叠 section。如 `folders` / `sessions` / `settings`。
 - **任何插件** 都可以往别人的容器里注册 view。容器的主人不知道、不关心。
-- **渲染位置由 `location` 决定**：`"sidebar"` → 左侧栏 SidebarZone；`"panel"` → 底部面板 PanelZone（标签栏切换视图）；`"auxiliarybar"` → 右侧辅助侧栏 RightSidebarZone（类型已声明，壳侧接线归 Phase 12）。所有区都用同一个 `PoolSectionStack` 渲染 view（SidebarSection 自动包裹）。
+- **渲染位置由 `location` 决定**：`"sidebar"` → 左侧栏 SidebarZone；`"panel"` → 底部面板 PanelZone（标签栏切换视图）；`"auxiliarybar"` → 右侧辅助侧栏 RightSidebarZone——⚠ **壳当前未接线（E6 拍板不渲染，区域 dormant，见 [E6 清单 #61](../02-Electron架构/E6_插件生态与发布/E6-执行清单.md)）**：声明 auxiliarybar 容器/视图 = 无表面不可见。第三方侧栏/面板需求请用 `"sidebar"`/`"panel"`。所有区都用同一个 `PoolSectionStack` 渲染 view（SidebarSection 自动包裹）。
 
 ---
 
