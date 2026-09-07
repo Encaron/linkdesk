@@ -24,6 +24,7 @@
 .ms-header-actions {
   display: flex;
   justify-content: flex-end;
+  gap: 6px; /* E6#30c ③：「安装」+「市场源」并排（mockup frame ③ .ms-header-top） */
   margin-bottom: 4px;
 }
 
@@ -52,6 +53,134 @@
 
 .ms-install-btn .codicon {
   font-size: var(--font-size-lg); /* E5.8 Phase 12 #175：下载 codicon 内容图标 14→lg */
+}
+
+/* ── 市场源按钮（E6#30c ③——mockup frame ③ .addsrc-trigger，设计唯一源）──
+   与「安装」钮并排（.ms-header-actions gap）；ghost 小钮：separator 描边 + text-secondary 字，
+   hover → 字提亮 + accent 描边 + tab-hover 底（mockup 语义）。点开 .ms-addsrc-pop。 */
+
+.ms-addsrc-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border: 1px solid var(--separator);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: var(--font-size-xs); /* E5.8 Phase 12 #175：11→xs */
+  transition: color 150ms, border-color 150ms, background 150ms;
+}
+
+.ms-addsrc-trigger:hover {
+  color: var(--text-primary);
+  border-color: var(--accent);
+  background: var(--tab-hover-bg);
+}
+
+.ms-addsrc-trigger .codicon {
+  font-size: var(--font-size-sm); /* plus 内容图标（基类 16px）→sm（≈mockup svg 12） */
+}
+
+/* ── 添加市场源浮层（E6#30c ③——mockup frame ③ .addsrc-pop）──
+   fixed 定位于按钮锚下缘（anchor top/left inline 传入，ViewTitleActions 下拉同款）；
+   320px 卡片自左缘向右伸入主区（mockup popC 语义）。色全走 var()；容器圆角 --radius-md
+   （≈mockup 6px）；浮层阴影 --shadow-pop。输入 err 态 = 红描边 + 就近红字（mockup 就近校验）。 */
+
+.ms-addsrc-pop {
+  position: fixed;
+  z-index: var(--z-dropdown); /* E5.8#111：wrapper 无 stacking context——卡片自身 z 用 dropdown 层（scrim 遮罩之上） */
+  width: 320px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  background: var(--bg-card);
+  border: 1px solid var(--separator);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-pop);
+}
+
+.ms-addsrc-pop-title {
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.ms-addsrc-pop-input {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 5px 8px;
+  border: 1px solid var(--separator);
+  border-radius: var(--radius-sm);
+  background: var(--bg-input);
+  color: var(--text-primary);
+  font-family: var(--font-mono); /* mono URL——mockup mono 输入 */
+  font-size: var(--font-size-sm);
+  outline: none;
+}
+
+.ms-addsrc-pop-input:focus {
+  border-color: var(--accent);
+}
+
+.ms-addsrc-pop-input.err {
+  border-color: var(--error);
+}
+
+.ms-addsrc-pop-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.ms-addsrc-pop-btn {
+  padding: 3px 10px;
+  border: 1px solid var(--separator);
+  border-radius: var(--radius-sm);
+  background: var(--bg-input);
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: var(--font-size-xs); /* E5.8 Phase 12 #175：11→xs */
+}
+
+.ms-addsrc-pop-btn:hover:not(:disabled) {
+  background: var(--tab-hover-bg);
+  color: var(--text-primary);
+}
+
+.ms-addsrc-pop-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ms-addsrc-pop-btn--primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--badge-text);
+}
+
+.ms-addsrc-pop-btn--primary:hover:not(:disabled) {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+  color: var(--badge-text);
+}
+
+.ms-addsrc-pop-hint {
+  font-size: var(--font-size-2xs); /* E5.8 Phase 12 #175：10→2xs */
+  line-height: 1.6;
+  color: var(--text-muted);
+}
+
+.ms-addsrc-pop-err {
+  font-size: var(--font-size-2xs); /* E5.8 Phase 12 #175：10→2xs */
+  line-height: 1.6;
+  color: var(--error);
 }
 
 .ms-search-container {
@@ -269,6 +398,10 @@
   background: var(--bg-window);
   padding: 1px 4px;
   border-radius: 3px;
+  max-width: 140px; /* E6#30d：来源仓库名（owner/repo）超长截断——完整值走 title */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* E5.8#15.5：缺依赖挂起（PENDING）徽标——琥珀信息态（等待非错误，ui-ux-pro-max dark/muted chip） */
@@ -311,13 +444,16 @@
   border-color: color-mix(in srgb, var(--status-connected) 40%, transparent);
 }
 
-/* ── Install button (green, VS Code extensionButton) ── */
+/* ── Install button (green, VS Code extensionButton) ──
+   E6#30d：安装钮绿实心——mockup 02 .mi-install = ok-green #4CAF50 底 + #fff 字。
+   复用本地 token --status-connected（#4caf50 == mockup ok-green，E5.8#128.8 token 豁免，theme 可覆盖）+
+   --badge-text（= --text-on-accent，两主题皆白字）——不新增 success token（防双源漂移），值即 mockup。 */
 
 .ms-item-install-btn {
   flex-shrink: 0;
   align-self: center;
-  background: var(--accent);
-  border: 1px solid var(--accent);
+  background: var(--status-connected);
+  border: 1px solid var(--status-connected);
   border-radius: 4px;
   color: var(--badge-text);
   cursor: pointer;
@@ -328,8 +464,13 @@
   margin-left: 8px;
 }
 
-.ms-item-install-btn:hover {
-  opacity: 0.9;
+.ms-item-install-btn:hover:not(:disabled) {
+  opacity: 0.88;
+}
+
+.ms-item-install-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .ms-item-install-btn .codicon {
@@ -337,14 +478,78 @@
   vertical-align: middle;
 }
 
-/* ── Uninstalled extension item ── */
+/* ── 探索插件（catalog）extension item ──
+   E6#30d：行非点击（详情/主区画廊归 3.2 轮）——cursor 覆盖 pointer；hover 高亮保留（列表可读性）。
+   右缘状态区 = 已安装/可更新徽标（绿 / accent），无动作——升级入口归更新轮。 */
 
-.ms-extension-item.uninstalled {
-  opacity: 0.6;
+.ms-extension-item.catalog {
+  cursor: default;
 }
 
-.ms-extension-item.uninstalled:hover {
-  opacity: 0.85;
+.ms-catalog-status {
+  flex-shrink: 0;
+  align-self: center;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-left: 8px;
+  font-size: var(--font-size-xs); /* E5.8 Phase 12 #175：11→xs */
+  color: var(--status-connected);
+  white-space: nowrap;
+}
+
+.ms-catalog-status.update {
+  color: var(--accent);
+}
+
+.ms-catalog-status .codicon {
+  font-size: var(--font-size-sm); /* E5.8 Phase 12 #175：内容图标 12→sm */
+}
+
+/* ── 目录空态 + 重试（#30f：offline / corrupt 各自文案 + [重试]） ── */
+
+.ms-empty-icon {
+  font-size: var(--font-size-xl); /* E5.8 Phase 12 #175：错误 icon 内容图标（基类 16px）→xl */
+  color: var(--warning-text);
+}
+
+.ms-empty p {
+  margin: 6px 0 0;
+  line-height: 1.5;
+}
+
+.ms-empty-action {
+  margin-top: 10px;
+  padding: 3px 12px;
+  border: 1px solid var(--separator);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-primary);
+  cursor: pointer;
+  font-size: var(--font-size-xs); /* E5.8 Phase 12 #175：retry 11→xs */
+  font-family: inherit;
+}
+
+.ms-empty-action:hover {
+  background: var(--tab-hover-bg);
+}
+
+/* ── 列表顶注（#30c/#30f：单源失败 / 离线缓存兜底——不整体降级） ── */
+
+.ms-catalog-note {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 12px;
+  font-size: var(--font-size-2xs); /* E5.8 Phase 12 #175：note 10→2xs */
+  color: var(--warning-text);
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.ms-catalog-note .codicon {
+  font-size: var(--font-size-xs); /* E5.8 Phase 12 #175：warning 内容图标（基类 16px）→xs */
+  flex-shrink: 0;
 }
 
 /* ── ⚙ 齿轮按钮 —— Phase 5f 归一化：菜单走 <ContextMenu>，此文件只保留按钮样式 ── */

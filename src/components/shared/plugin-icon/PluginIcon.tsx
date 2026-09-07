@@ -17,6 +17,10 @@ import { ComponentType } from "react";
 import {
   File, Folder, FolderOpen, FolderTree, Package, ShoppingBag,
   Monitor, Settings, BookOpen, BarChart3, Lightbulb, Lock,
+  // E6#30e：目录/市场图标接线——catalog icon 走显式 descriptor，lucide 名须在此白名单内才渲染
+  // （fixture/设计档引用的 puzzle/Smile + 市场常见品类图标；未列入的 lucide 名静默 emoji 兜底；
+  //   想保证渲染的目录作者用 codicon（@vscode/codicons 全字集）或 url <img>——见 06-图标.md）
+  Download, Globe, Plug, Puzzle, Rocket, Smile, Sparkles, Star, Zap,
 } from "lucide-react";
 
 interface PluginIconProps {
@@ -42,6 +46,15 @@ const LUCIDE_MAP: Record<string, ComponentType<any>> = {
   BarChart3,
   Lightbulb,
   Lock,
+  Download,
+  Globe,
+  Plug,
+  Puzzle,
+  Rocket,
+  Smile,
+  Sparkles,
+  Star,
+  Zap,
 };
 
 /** 无 pluginId 或未注册插件时的回退 emoji（@deprecated E5#100——Lucide 优先） */

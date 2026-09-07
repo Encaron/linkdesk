@@ -9,6 +9,10 @@
   },
   "include": [
     "../../src/components/shared/hooks/**/*.ts",
+    "../../src/components/shared/overlay-portal/**/*.ts",
+    "../../src/components/shared/overlay-portal/**/*.tsx",
+    "../../src/components/shared/string-list-editor/**/*.ts",
+    "../../src/components/shared/string-list-editor/**/*.tsx",
     "../../src/components/shared/context-menu/**/*.ts",
     "../../src/components/shared/context-menu/**/*.tsx",
     "../../src/components/shared/color-picker/**/*.ts",

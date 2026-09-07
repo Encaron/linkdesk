@@ -225,9 +225,11 @@ function extractPluginId(path: string): string {
  *
  * 缓存键：app.pluginMetadataCache → Record<pluginId, CachedPluginMeta>
  *
- * E5.8#156：export——loader.pruneUninstalledCache 纯函数签名需引用该类型（差集清理）。
+ * 形状仅本模块内部使用——loader/lifecycle-ops 消费 cachePluginMetadata/getMetadataCache（函数），
+ * marketplace 经 PluginStateService 读 app.pluginMetadataCache（IPC 形状 = Record<pluginId, CachedPluginMeta>，
+ * 序列化子集），均不 import 本类型 → 非 export（knip：无外部类型消费者）。
  */
-export interface CachedPluginMeta {
+interface CachedPluginMeta {
   pluginId: string;
   name: string;
   description?: string;

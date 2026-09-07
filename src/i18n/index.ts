@@ -4,6 +4,15 @@ import { initReactI18next } from "react-i18next";
 i18n.use(initReactI18next).init({
   lng: "zh",
   fallbackLng: "zh",
+  // 🔴 E6#30c：key = 中文原文，可含 ASCII ":" 与 "."（URL 示例「https://github.com/用户名/仓库名」、
+  //   时间格式「HH:mm:ss」等）。i18next 默认 nsSeparator ":" / keySeparator "." 会把 key 当
+  //   「ns:key」/嵌套路径解析——首段被剥（https:// → //）+ 资源按字面键存的译名也找不到 →
+  //   parseMissingKeyHandler 收到剥后残缺键，URL 占位/带点文案静默截断（本轮实机证：placeholder
+  //   渲染成 //github.com/...）。全仓翻译资源统一并入 "translation" 命名空间 + 平铺键（无嵌套 JSON、
+  //   无调用侧 "ns:key" 语法——grep 实证仅 .emit("icon:selected") 类事件通道假阳性）→ 双分隔符关闭
+  //   是 i18next 文档推荐的「键含冒号/点」配置，零回归且修复潜藏截断。
+  nsSeparator: false,
+  keySeparator: false,
   interpolation: {
     escapeValue: false, // React already escapes
   },

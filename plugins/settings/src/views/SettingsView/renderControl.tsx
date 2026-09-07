@@ -16,6 +16,7 @@ import {
   SegmentedRadio, // E5.8#99：分段单选（ghost 双轨制——#91 fontTone/#98 accentSource 收敛共用）
   SelectBox,
   Slider, // E5.8#50.9：滑杆控件
+  StringListEditor, // E6#30c：字符串数组编辑器（uiHint "stringList"——marketplaceSources 源列表）
   ThemePicker, // E5.8#50.22：主题配方卡片（数据走 window.linkdesk.theme）
   Toggle,
   inferSliderStep, // E5.8#65：滑杆 step 推导（浮点区间连续可调）
@@ -132,6 +133,36 @@ function renderControl(
           domain={prop.optionsFromDomain}
         />
       );
+    case "stringList": {
+      // E6#30c（03-添加市场源-mockup.html ① 行内形态——设计唯一源）：字符串数组（URL 源列表）编辑器。
+      // default 数组 = locked 固定行（官方源「内置」徽标 + 锁——不可删、不入 onChange 值、永不落盘，
+      // 读时由 getSourceUrls 恒前置去重）；effective 值（含 default）减 locked 后 = 作者源（可删）。
+      // 存盘只写作者源数组（onChange 收 StringListEditor 的 value = 已滤 locked 的剩余）。UI 文案走 t()。
+      const locked = Array.isArray(prop.default)
+        ? prop.default.filter((s): s is string => typeof s === "string")
+        : [];
+      const base = Array.isArray(value)
+        ? (value as unknown[])
+        : Array.isArray(prop.default)
+          ? (prop.default as unknown[])
+          : [];
+      const editable = base.filter((s): s is string => typeof s === "string" && !locked.includes(s));
+      return (
+        <StringListEditor
+          value={editable}
+          onChange={(next) => onChange(next)}
+          locked={locked}
+          lockedBadge={t("内置")}
+          addLabel={t("添加")}
+          removeTitle={t("删除")}
+          urlOnly
+          placeholder={t("粘贴作者仓库 URL（例：https://github.com/用户名/仓库名）")}
+          emptyMessage={t("请输入仓库 URL。")}
+          badUrlMessage={t("URL 格式不对——以 http(s):// 开头。示例：https://github.com/用户名/仓库名")}
+          duplicateMessage={t("这个源已经在列表里了（官方源内置，无需重复添加）。")}
+        />
+      );
+    }
     default:
       break;
   }

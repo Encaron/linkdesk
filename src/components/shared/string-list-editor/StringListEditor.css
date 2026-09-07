@@ -1,0 +1,144 @@
+/* StringListEditor — 通用字符串数组编辑器（@linkdesk/ui 自包含样式，随组件分发）。
+   E6#30c 新建——03-添加市场源-mockup.html ① 行内直添形态。
+   颜色/字体全走 CSS 变量（硬约束 1）；token 对齐 settings `.object-editor-*` / 壳 `.input` 惯例，
+   零新语义色（删除悬停红 = var(--error)、锁/幽灵钮 = var(--text-muted)，与 settings 原生控件同源）。 */
+
+.sle {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+}
+
+/* ── 行——URL 语义下 url 走等宽；locked 行与可编辑行同构（只差末位元素） ── */
+
+.sle-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: calc(24px * var(--ui-scale, 1)); /* 对齐 object-editor 输入行高度（§三.3） */
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.sle-glyph {
+  font-size: var(--font-size-sm); /* 内容图标 12→sm（对齐 settings codicon 惯例） */
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.sle-url {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs); /* url 11→xs */
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sle-badge {
+  flex-shrink: 0;
+  font-size: var(--font-size-2xs); /* 徽标 10→2xs */
+  color: var(--text-muted);
+  background: var(--bg-window);
+  padding: 1px 4px;
+  border-radius: 3px;
+  white-space: nowrap;
+}
+
+.sle-lock {
+  font-size: var(--font-size-sm); /* 锁 codicon 内容图标（基类 16px）→sm */
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.sle-del {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: calc(24px * var(--ui-scale, 1));
+  height: calc(24px * var(--ui-scale, 1));
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 3px;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: var(--font-size-sm); /* 内容图标（基类 16px）→sm（对齐 object-editor-delete） */
+  flex-shrink: 0;
+  transition: color 150ms ease, background 150ms ease;
+}
+
+.sle-del:hover {
+  color: var(--error);
+  background: var(--hover-overlay);
+}
+
+/* ── 行内直添——输入框 + 按钮 ── */
+
+.sle-add-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+}
+
+.sle-input {
+  flex: 1;
+  min-width: 0;
+  box-sizing: border-box;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 4px 8px;
+  color: var(--text-primary);
+  font-family: var(--font-mono); /* 源 URL 编辑走等宽——所见即所存 */
+  font-size: var(--font-size-xs); /* 输入 11→xs（对齐行 url 高度） */
+  transition: border-color 150ms;
+  outline: none;
+}
+
+.sle-input:focus {
+  border-color: var(--accent);
+}
+
+.sle-add-btn {
+  flex-shrink: 0;
+  padding: 3px 8px; /* 4px 节奏（间距网格） */
+  border: 1px solid var(--separator);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-primary);
+  cursor: pointer;
+  font-size: var(--font-size-xs); /* 11→xs */
+  font-family: inherit;
+  white-space: nowrap;
+}
+
+.sle-add-btn:hover:not(:disabled) {
+  background: var(--tab-hover-bg);
+}
+
+.sle-add-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ── 就近消息——错误（红）/ 提示（muted）二选一 ── */
+
+.sle-msg {
+  display: block;
+  font-size: var(--font-size-2xs); /* 提示 10→2xs */
+  line-height: 1.5;
+  padding: 0 2px;
+}
+
+.sle-msg--error {
+  color: var(--error);
+}
+
+.sle-msg--hint {
+  color: var(--text-muted);
+}

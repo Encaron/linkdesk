@@ -38,6 +38,9 @@
         "src/components/shared/form-row/FormRow.tsx",
         "src/components/shared/number-input/NumberInput.tsx",
         "src/components/shared/toggle/Toggle.tsx",
+        // E6#30c：同上——StringListEditor（E6#54b 零件集新成员）唯一消费方 = @linkdesk/ui lib 构建
+        //   （settings renderControl uiHint "stringList" 经 barrel 消费）+ 插件 dist——壳 scope 断边误报。
+        "src/components/shared/string-list-editor/StringListEditor.tsx",
         // E6#15h：同上——src/components/shared/hooks/ 交互 hook（useClickPreview/useClipboardKeys/
         //   useDebouncedInput）的唯一消费方 = @linkdesk/ui lib 构建（packages/ 域）+ 插件 dist 消费——knip
         //   壳 scope 断边误报 unused。仍活：@linkdesk/ui dist 即由它们构建。详见 08-共享hook归位.md。

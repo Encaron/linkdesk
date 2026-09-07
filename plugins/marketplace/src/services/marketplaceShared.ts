@@ -1,10 +1,14 @@
 /**
- * marketplaceShared — 模块级搜索状态 + 共享数据 hook。
- * E3.6 E36#7.1：4 个 view 各自独立渲染，不共享 React Context，
+ * marketplaceShared — 模块级搜索状态 + 共享数据 hook + 市场目录 store。
+ * E3.6 E36#7.1：多个 view 各自独立渲染，不共享 React Context，
  * 搜索状态必须是模块级的——setSearch 后所有 view 同步过滤。
  *
  * 🛡️ _loadingPromise 确保多个 view 同时 mount 时只发一次 IPC。
  * 对标 initPluginLoader 的 _loadingPromise 模式（#59c Bug 1 教训）。
+ *
+ * E6#30d：本地插件「待安装（.disabled 文件扫描）」站退役——探索插件改市场目录驱动，
+ * getUninstalled 不再被本插件消费（loader.ts 第 7 步已退役）；目录数据经 marketSources
+ * （fetch/5min 缓存/多源合并）拉取，store 落本模块供 useMarketplaceCatalog 消费。
  */
 
 import { useState, useCallback, useEffect } from "react";
@@ -12,6 +16,8 @@ import { useState, useCallback, useEffect } from "react";
 // 非 ViewPluginEntry（后者带 component 字段，IPC 不可达）
 // E5.8#20-c：契约化——插件列表类型走 @linkdesk/contracts（零 @src/core）
 import type { PluginListEntry } from "@linkdesk/contracts";
+import { loadCatalog, forceRefreshCatalog } from "./marketSources";
+import type { CatalogLoadResult } from "./marketSources";
 // E5.6#11.5e：@src/core 清零——onPluginLifecycleChange/ViewContainerService → lk.events.on
 const lk = () => window.linkdesk;
 
@@ -38,17 +44,11 @@ export function onMarketplaceSearchChange(fn: () => void): () => void {
   };
 }
 
-/* ═══ 共享数据 hook ═══ */
+/* ═══ 本地插件共享数据 hook（已安装/内置/已禁用） ═══ */
 
 let _loadingPromise: Promise<void> | null = null;
 let _allPlugins: PluginListEntry[] = [];
 let _disabledPlugins: Array<{
-  pluginId: string;
-  name: string;
-  description?: string;
-  version?: string;
-}> = [];
-let _uninstalledPlugins: Array<{
   pluginId: string;
   name: string;
   description?: string;
@@ -62,14 +62,9 @@ function notifyDataListeners(): void {
 
 async function refreshData(): Promise<void> {
   try {
-    const [plugins, disabled, uninstalled] = await Promise.all([
-      pm().list(),
-      pm().getDisabled(),
-      pm().getUninstalled(),
-    ]);
+    const [plugins, disabled] = await Promise.all([pm().list(), pm().getDisabled()]);
     _allPlugins = plugins;
     _disabledPlugins = disabled;
-    _uninstalledPlugins = uninstalled;
   } catch (e) {
     console.error("[marketplace] refreshData IPC 失败——插件列表数据可能为空:", e);
   }
@@ -87,7 +82,7 @@ function updateAllBadges(): void {
   emit("marketplace:updateBadge", { ...self, viewId: "installed", count: _allPlugins.filter((p) => !p.manifest.core).length });
   emit("marketplace:updateBadge", { ...self, viewId: "builtin", count: _allPlugins.filter((p) => p.manifest.core).length });
   emit("marketplace:updateBadge", { ...self, viewId: "disabled", count: _disabledPlugins.length });
-  emit("marketplace:updateBadge", { ...self, viewId: "uninstalled", count: _uninstalledPlugins.length });
+  // E6#30d：viewId "explore"（探索插件）无 badge——目录浏览是橱窗不是计数列表，语义同 VS Code 无徽标
 }
 
 export function useMarketplacePlugins() {
@@ -146,7 +141,7 @@ export function useMarketplacePlugins() {
 
   const search = getMarketplaceSearch().toLowerCase();
 
-  /* 过滤辅助——两套数据形状不同：ViewPluginEntry.manifest.name vs { name } */
+  /* 过滤辅助 */
   const matchSearch = (name: string | undefined, pluginId: string, description?: string): boolean => {
     if (!search) return true;
     return (
@@ -162,19 +157,106 @@ export function useMarketplacePlugins() {
   const builtin = _allPlugins.filter(
     (p) => p.manifest.core && matchSearch(p.manifest.name, p.pluginId, p.manifest.description),
   );
-  const disabled = _disabledPlugins.filter(
-    (p) => matchSearch(p.name, p.pluginId, p.description),
-  );
-  const uninstalled = _uninstalledPlugins.filter(
-    (p) => matchSearch(p.name, p.pluginId, p.description),
-  );
+  const disabled = _disabledPlugins.filter((p) => matchSearch(p.name, p.pluginId, p.description));
 
   return {
     loading: _loadingPromise === null,
+    // 全量未过滤列表——探索视图交叉比对（#30b catalog↔list）须与搜索词无关，不能用下方 filter 后的数组
+    all: _allPlugins,
     installed,
     builtin,
     disabled,
-    uninstalled,
     refresh: () => refreshData().then(() => notifyDataListeners()),
+  };
+}
+
+/* ═══ 市场目录共享 store（E6#30a/30c/30f） ═══
+ * 探索插件视图驱动源——marketSources.loadCatalog（官方 + 配置作者源，5min 缓存，多源合并）。
+ * 首次 useMarketplaceCatalog mount 触发加载（_catalogPromise 防并发），refresh 走 forceRefreshCatalog。
+ * result 暴露 state/errors/usedStale/sourceNames——空态防御 + 来源标注 + 失败诊断展示。 */
+
+let _catalogPromise: Promise<void> | null = null;
+/** 是否至少完成过一趟加载——初始默认结果（offline 空目录）只在「从未加载」时是占位；
+ *  resolved 后即便 offline 也是真实空态（ExploreView 据此区分加载中 vs 真离线，防闪一帧「无法加载」） */
+let _catalogResolvedOnce = false;
+let _catalogResult: CatalogLoadResult = {
+  entries: [],
+  state: "offline",
+  errors: [],
+  sourceNames: [],
+  usedStale: false,
+  fetchedAt: 0,
+};
+const _catalogListeners = new Set<() => void>();
+
+function notifyCatalogListeners(): void {
+  _catalogListeners.forEach((fn) => fn());
+}
+
+/* E6#30c：配置变更自动刷新——marketplaceSources 增删源后目录即时重拉（免等 5min 缓存/免手动）。
+ * 模块级常驻订阅（单一注册守卫）：目录 store 是模块单例——订阅随模块活，不回随组件卸载。
+ * 组件级订阅会漏「源列表变更时 ExploreView 未挂载」→ 商店页打开仍旧目录。故本订阅模块级、永不拆。
+ * 回调走 forceRefreshCatalog（清缓存 + 强拉全部当前源——getSourceUrls 每次重读配置，新源即在列）。 */
+let _configWatchStarted = false;
+
+function ensureCatalogConfigWatch(): void {
+  if (_configWatchStarted) return;
+  _configWatchStarted = true;
+  const cfg = lk()?.configuration;
+  const sub = cfg?.onChange?.("marketplace.marketplaceSources", () => {
+    forceRefreshCatalog()
+      .then((r) => {
+        _catalogResult = r;
+        notifyCatalogListeners();
+      })
+      .catch(() => {
+        /* 刷新失败保持旧结果——目录防御已降级 */
+      });
+  });
+  if (!sub) _configWatchStarted = false; // onChange 不可用（预览环境）→ 下次 mount 再试
+}
+
+export function useMarketplaceCatalog() {
+  const [, setTick] = useState(0);
+  const rerender = useCallback(() => setTick((t) => t + 1), []);
+
+  useEffect(() => {
+    let active = true;
+
+    // E6#30c：源配置变更自动刷新——挂首个目录消费者即注册模块级 watch（回随模块活，不回随本组件）
+    ensureCatalogConfigWatch();
+
+    const init = async () => {
+      if (!_catalogPromise) {
+        _catalogPromise = loadCatalog().then((r) => {
+          _catalogResult = r;
+          _catalogResolvedOnce = true;
+        });
+      }
+      await _catalogPromise;
+      if (!active) return;
+      rerender();
+    };
+
+    init();
+    _catalogListeners.add(rerender);
+    return () => {
+      _catalogListeners.delete(rerender);
+      active = false;
+    };
+  }, [rerender]);
+
+  return {
+    ..._catalogResult,
+    loading: !_catalogResolvedOnce,
+    refresh: () =>
+      forceRefreshCatalog()
+        .then((r) => {
+          _catalogResult = r;
+          notifyCatalogListeners();
+        })
+        .catch(() => {
+          /* 刷新失败保持旧结果——目录防御已降级 */
+        }),
   };
 }

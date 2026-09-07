@@ -15,6 +15,17 @@
   },
   "contributes": {
     "i18n": { "en": "i18n/en.json" },
+    "configuration": {
+      "title": "插件市场",
+      "properties": {
+        "marketplace.marketplaceSources": {
+          "type": "array",
+          "default": ["https://raw.githubusercontent.com/encaron/linkdesk-marketplace/main/marketplace.json"],
+          "description": "商店拉取哪些目录。官方目录内置；添加作者仓库 URL 即可发现该作者的插件（该仓库根目录需有 marketplace.json）。",
+          "uiHint": "stringList"
+        }
+      }
+    },
     "viewsContainers": {
       "marketplace": {
         "title": "插件市场",
@@ -28,7 +39,7 @@
         { "id": "installed",   "title": "已安装", "render": "src/views/InstalledListView.tsx",   "order": 0 },
         { "id": "builtin",     "title": "内置",   "render": "src/views/BuiltinListView.tsx",     "order": 1, "collapsed": true },
         { "id": "disabled",    "title": "已禁用", "render": "src/views/DisabledListView.tsx",    "order": 2, "collapsed": true },
-        { "id": "uninstalled", "title": "待安装", "render": "src/views/UninstalledListView.tsx",  "order": 3, "collapsed": true }
+        { "id": "explore", "title": "探索插件", "render": "src/views/ExploreView.tsx", "order": 3, "collapsed": true }
       ]
     }
   }

@@ -24,10 +24,12 @@ export { default as NumberInput } from "@shared/number-input/NumberInput";
 export { default as SegmentedRadio } from "@shared/segmented-radio/SegmentedRadio";
 export { default as SelectBox } from "@shared/select-box/SelectBox";
 export { default as Slider } from "@shared/slider/Slider";
+export { default as StringListEditor } from "@shared/string-list-editor/StringListEditor";
 export { default as ThemePicker } from "@shared/theme-picker/ThemePicker";
 export { default as Toggle } from "@shared/toggle/Toggle";
 export { InlineInput } from "@shared/inline-input/InlineInput";
 export { PluginIcon } from "@shared/plugin-icon/PluginIcon";
+export { default as OverlayPortal } from "@shared/overlay-portal/OverlayPortal";
 // E6#15h：零件包扩到 UI 交互 hook（08-共享hook归位.md）——源码壳 src/components/shared/hooks/ 单一副本
 export { useClickPreview } from "@shared/hooks/useClickPreview";
 export { useClipboardKeys } from "@shared/hooks/useClipboardKeys";
