@@ -160,6 +160,8 @@ const data = await response.json();
   → marketplace 插件 fetch 全部源 → 合并去重（同 id 取版本高者）→ 商店统一展示
 ```
 
+> 🔵 **「添加市场源」UI 反向注明（2026-09-08）**：本界面设计只存在于 mockup——[mockups/03-添加市场源-mockup.html](mockups/03-添加市场源-mockup.html)（三形态抉择板）+ E6-执行清单 #30c 行定案文字，**无独立设计 .md（有意为之，界面小、mockup 即唯一设计源）**。本档只定概念与数据流，实现以该 mockup + #30c 行为准。
+
 ### 6.3 源列表数据结构（marketplace.json 格式零改动——纯增量）
 
 源列表独立存（settings.json 或 marketplace 插件专用配置）：
