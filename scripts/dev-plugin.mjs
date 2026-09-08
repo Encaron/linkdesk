@@ -221,6 +221,9 @@ async function cdpReloadPool(port, alsoShell) {
 /* ── watch 忽略（镜像 dev-real.ts isIgnoredRel——build 输出/dist 自激重建挡掉） ── */
 
 function isIgnoredRel(abs, root) {
+  // 纵深防御：root 自身 / 非 root 子树路径（null 回退的残留形态）恒忽略——「根自身」绝不作变更源。
+  // 正常子路径恒 root + "/" + 尾段 → abs.length > root.length；等长只可能是 abs === root。
+  if (abs === root || abs.length < root.length) return true;
   const rel = abs.slice(root.length).split(/[\\/]/).filter(Boolean);
   for (const seg of rel) {
     if (seg === "node_modules" || seg === ".git" || seg === "dist" || seg === ".linkdesk-real") return true;
@@ -433,9 +436,15 @@ const schedule = (why, alsoShell) => {
 
 try {
   watch(pluginRoot, { recursive: true }, (_ev, filename) => {
-    const abs = filename ? resolve(pluginRoot, String(filename)) : pluginRoot;
+    // ⚠ Windows recursive fs.watch：目录树大量 churn（本工具自身 build 清空/重写 dist/ 的输出）时，
+    // Node 发 filename=null 聚合事件（无法枚举具体文件，无路径可滤）。若按 pluginRoot 处理必自激重建
+    // ——上轮真机实测 26 轮死循环、build 互相打断把物化目录清到一半。真实源码保存必带 filename，
+    // null 一律丢弃（唯一代价：源码树极端批量 churn 溢出时漏一次重建，作者重存一次即补）。
+    // 镜像 dev-real.ts 同款处理（镜像源同步修，两处保持同构）。
+    if (!filename) return;
+    const abs = resolve(pluginRoot, String(filename));
     if (isIgnoredRel(abs, pluginRoot)) return;
-    const alsoShell = /(^|[\\/])plugin\.json$/.test(String(filename ?? ""));
+    const alsoShell = /(^|[\\/])plugin\.json$/.test(String(filename));
     schedule(`文件变更 → 重建（${String(filename)}）`, alsoShell);
   });
 } catch {

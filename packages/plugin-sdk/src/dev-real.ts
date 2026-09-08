@@ -162,6 +162,9 @@ export async function cdpReloadPool(port = CDP_PORT): Promise<boolean> {
 
 /** 该路径是否不该触发重建（build 输出/依赖/元目录）——任一目录段命中即忽略 */
 function isIgnoredRel(abs: string, root: string): boolean {
+  // 纵深防御：root 自身 / 非 root 子树路径（null 回退的残留形态）恒忽略——「根自身」绝不作变更源。
+  // 正常子路径恒 root + "/" + 尾段 → abs.length > root.length；等长只可能是 abs === root。
+  if (abs === root || abs.length < root.length) return true;
   const rel = abs.slice(root.length).split(/[\\/]/).filter(Boolean);
   for (const seg of rel) {
     if (seg === "node_modules" || seg === ".git" || seg === "dist" || seg === ".linkdesk-real") return true;
@@ -282,7 +285,12 @@ export async function runPluginDevReal(root: string): Promise<void> {
   // 源码 watch（root 递归；node_modules/.git/dist 等事件按路径忽略——不触发自激重建）
   try {
     const w = watch(root, { recursive: true }, (_event, filename) => {
-      const abs = filename ? resolve(root, String(filename)) : root;
+      // ⚠ Windows recursive fs.watch：目录树大量 churn（本工具自身 build 清空/重写 dist/ 的输出）时，
+      // Node 发 filename=null 聚合事件（无法枚举具体文件，无路径可滤）。若按 root 处理必自激重建
+      // ——dev-plugin.mjs 上轮真机实测 26 轮死循环同源。真实源码保存必带 filename，null 一律丢弃
+      // （唯一代价：源码树极端批量 churn 溢出时漏一次重建，作者重存一次即补）。
+      if (!filename) return;
+      const abs = resolve(root, String(filename));
       if (isIgnoredRel(abs, root)) return;
       schedule(`文件变更 → 重建（${String(filename)}）`);
     });
