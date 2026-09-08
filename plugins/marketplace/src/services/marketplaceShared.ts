@@ -21,6 +21,9 @@ import type { PluginListEntry } from "@linkdesk/contracts";
 import i18n from "i18next";
 import { loadCatalog, forceRefreshCatalog } from "./marketSources";
 import type { CatalogLoadResult } from "./marketSources";
+// E6#33a 发现调度（2026-09-08 锚② 重裁：市场池首载调度——本模块被全部市场池面 import，任意面首挂载即触发一趟
+// 延迟发现；scheduleStartupDiscovery 内置池门控，壳进程 import 本模块不调度不跑）——见 updateDiscovery 头注
+import { scheduleStartupDiscovery } from "./updateDiscovery";
 // E5.6#11.5e：@src/core 清零——onPluginLifecycleChange/ViewContainerService → lk.events.on
 const lk = () => window.linkdesk;
 
@@ -516,3 +519,10 @@ export function useOnlineStatus(): boolean {
   }, []);
   return online;
 }
+
+/* ═══ E6#33a 启动发现调度（模块级每进程一次；池门控见 scheduleStartupDiscovery） ═══
+ * 任意市场池面首次 import 本模块（侧栏已装/禁用/内置、详情、主区 tab 首挂载都经 marketplaceShared）→
+ * 调度一趟 ~10s 延迟发现（05 §一·四）：拉目录比版本 → 有新版推铃铛（每版一次幂等）+ 落 store（#33b 徽标/升级入口
+ * + #33d 自动更新数据源）。壳进程也 import 本模块（marketplace entry 双进程执行）→ 无 notifications.show →
+ * 调度内置门控返回，壳零改动零新面。 */
+scheduleStartupDiscovery();

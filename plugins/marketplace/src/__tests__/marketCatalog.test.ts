@@ -14,8 +14,11 @@ import {
   compareVersions,
   isVersionNewer,
   mergeCatalogs,
+  isPrereleaseVersion,
+  stableLatestVersion,
   OFFICIAL_SOURCE_URL,
 } from "../services/marketCatalog";
+import type { CatalogEntry } from "../services/marketCatalog";
 
 /* ── 源 URL 归一（#29b GitHub repo 根 → marketplace.json 直链） ── */
 
@@ -206,5 +209,44 @@ describe("mergeCatalogs", () => {
   it("来源记录未标 official → 条目无官方身份（旧调用面兼容）", () => {
     const merged = mergeCatalogs([{ sourceName: "owner-two/catalog-repo-b", entries: [entry("demo-g", "1.0.0")] }]);
     expect(merged[0].official).toBeUndefined();
+  });
+});
+
+/* ── E6#33a 稳定版判定（05 §二·四——发现/自动更新默认只看稳定版，beta 不提示） ── */
+
+describe("isPrereleaseVersion / stableLatestVersion", () => {
+  it("isPrereleaseVersion：含 - 预发布标识为 true；v 前缀与 +build 截断不影响判", () => {
+    expect(isPrereleaseVersion("1.1.0")).toBe(false);
+    expect(isPrereleaseVersion("v1.1.0")).toBe(false);
+    expect(isPrereleaseVersion("1.1.0+build5")).toBe(false);
+    expect(isPrereleaseVersion("1.1.0-beta.1")).toBe(true);
+    expect(isPrereleaseVersion("v1.1.0-rc.2")).toBe(true);
+    expect(isPrereleaseVersion("1.1.0-beta.1+build7")).toBe(true);
+  });
+
+  it("stableLatestVersion：versions[] 最新在前取首个非 prerelease", () => {
+    const e: CatalogEntry = { id: "demo-alpha", name: "Demo Alpha", version: "1.2.0", versions: [{ version: "1.2.0" }, { version: "1.1.0" }] };
+    expect(stableLatestVersion(e)).toBe("1.2.0");
+  });
+
+  it("stableLatestVersion：最新是 beta → 回落前一个稳定版（不提示 beta）", () => {
+    const e: CatalogEntry = {
+      id: "demo-alpha", name: "Demo Alpha", version: "1.3.0-beta.1",
+      versions: [{ version: "1.3.0-beta.1" }, { version: "1.2.0" }, { version: "1.1.0" }],
+    };
+    expect(stableLatestVersion(e)).toBe("1.2.0");
+  });
+
+  it("stableLatestVersion：全 prerelease → undefined（beta 走手动安装 #33c）", () => {
+    const e: CatalogEntry = {
+      id: "demo-alpha", name: "Demo Alpha", version: "1.3.0-beta.1",
+      versions: [{ version: "1.3.0-beta.1" }, { version: "1.3.0-beta.0" }],
+    };
+    expect(stableLatestVersion(e)).toBeUndefined();
+  });
+
+  it("stableLatestVersion：旧格式无 versions[] → 顶层 version；顶层本身 prerelease → undefined", () => {
+    expect(stableLatestVersion({ id: "demo-alpha", name: "A", version: "1.1.0" })).toBe("1.1.0");
+    expect(stableLatestVersion({ id: "demo-alpha", name: "A", version: "1.1.0-beta" })).toBeUndefined();
   });
 });

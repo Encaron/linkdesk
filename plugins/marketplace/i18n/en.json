@@ -33,6 +33,7 @@
   "选择插件目录": "Select Plugin Directory",
   "安装失败": "Install Failed",
   "可更新": "Update Available",
+  "「{{name}}」有新版本 {{version}}": "“{{name}}” has a new version: {{version}}",
   "重试": "Retry",
   "该插件缺少下载地址": "This plugin has no download URL",
   "无法加载市场，请检查网络后重试": "Can't reach the marketplace. Check your network and retry.",

@@ -171,6 +171,23 @@ export function isVersionNewer(a: string, b: string): boolean {
   return compareVersions(a, b) > 0;
 }
 
+/* ═══ E6#33a 稳定版判定（05 §二·四——发现/自动更新默认只看稳定版，beta 不提示） ═══ */
+
+/** 是否 prerelease（含 "-" 预发布标识；build metadata "+" 截断后判） */
+export function isPrereleaseVersion(v: string): boolean {
+  return v.trim().replace(/^[vV]/, "").split("+")[0].includes("-");
+}
+
+/** 条目稳定版最新——versions[] 最新在前取首个非 prerelease；旧格式无 versions[] → 顶层 version（本身非 prerelease 才返回）。
+ *  undefined = 条目无稳定版可提示（§二·四：全 prerelease 不提示，beta 只走手动安装 #33c 版本下拉）。 */
+export function stableLatestVersion(entry: CatalogEntry): string | undefined {
+  const list = entry.versions && entry.versions.length > 0 ? entry.versions.map((x) => x.version) : [entry.version];
+  for (const v of list) {
+    if (!isPrereleaseVersion(v)) return v;
+  }
+  return undefined;
+}
+
 /** 多源合并去重——同 id 取 semver 高者；版本平手用先出现的源（官方排前 → 官方胜出）。
  *  E6#30.8f：来源记录可带 official 标记，胜出条目的来源身份（sourceName + official）随条目携带——UI 读
  *  单一字段即可显示「官方发布」徽标，不把官方身份跟"源 URL 长啥样"耦合回视图层。 */
