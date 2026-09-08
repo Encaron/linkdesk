@@ -3,6 +3,13 @@
 > 每版一条，对标 VS Code changelog。**历史真相源 = [E6 执行清单](docs/02-Electron架构/E6_插件生态与发布/E6-执行清单.md)**（E6 阶段每轮收束细节 + 实机证据全在清单 Batch 注里，此文件只记类别清单）。版本号唯一真值 = `package.json`（不手写第二份，见 [02-产品身份与版本.md](docs/02-Electron架构/E6_插件生态与发布/06-主软件更新/02-产品身份与版本.md) §2.3）。
 > 0.x 阶段（开发期）：一切向后兼容变更走 patch 位；破坏性变更走 minor 位。
 
+## v0.1.14（2026-09-09）
+
+- **feat:E6#62d statusBar 池侧 glob 最后退役 + dist export 约定**
+  - `appearsIn.statusBar` bool → 相对路径字符串（存在 + 文件二合一声明，对标 view render；schema 三副本同步 + contracts 重生成）——serial-monitor 状态栏组件随包自声明，不再编入壳/池 bundle（硬约束 11）
+  - loader 注册时归一 `statusBarRenderPath`（dev `/@fs` 源码 / prod `linkdesk://` dist）→ 池 `PoolStatusBarComponent` 整删构建期 `import.meta.glob` → 按 URL 直动态 import + bundleCss 引用计数
+  - SDK 收 statusBar 面——zip 根 `statusBar.bundle.js` + dist manifest 字段改写；serial-monitor 1.0.2 随批重建进 bundled-plugins
+
 ## v0.1.13（2026-09-08）
 
 - **feat:E6#62a/#62b/#62f dev 源码 glob 快轨退役 + 协议收单根**（#62 家族同批拆）

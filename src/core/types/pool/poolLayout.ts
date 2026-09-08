@@ -313,8 +313,10 @@ export interface PoolStatusBarItem {
   align: "left" | "right";
   /** 点击执行的命令 ID */
   onClick?: string;
-  /** component:true marker——插件声明 appearsIn.statusBar（E6#17d：壳读 manifest 声明发此 marker）→ 池侧懒加载渲染自绘状态栏组件（serial-monitor 连接灯） */
-  component?: boolean;
+  /** 自绘状态栏组件 marker——插件声明 appearsIn.statusBar 的归一化 URL（E6#62d：loader 注册时
+   *  算 ViewPluginEntry.statusBarRenderPath，壳读此发 marker）→ 池按 URL 直动态 import（serial-monitor 连接灯）。
+   *  有值 = 自绘组件取代该插件全部静态项；无 = 普通条目。 */
+  componentRenderPath?: string;
   /** 前导分隔线——壳 StatusBar 渲染语义（左区每项除首个；右区组内除首个） */
   dividerBefore?: boolean;
 }

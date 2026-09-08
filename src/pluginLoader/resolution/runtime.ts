@@ -64,6 +64,20 @@ function getAppVersion(): string {
   return "3.0.0";
 }
 
+/** E6#62d：插件自绘状态栏组件归一 URL——manifest.appearsIn.statusBar 声明路径 + 已解析 runtimePluginRoot 拼。
+ *  dev = /@fs/{abs}/{rel}（resolveRuntimePluginRoot 已拼根，源码 .tsx 由 Vite 即时编译）；prod =
+ *  linkdesk://{id}/{rel}（dist manifest 该字段已被 SDK 打包改写为编译表面 statusBar.bundle.js）。
+ *  镜像 contributes.views renderPath 拼法（同根同拼接）；旧 boolean true 形态 / 根解析失败 → undefined
+ *  （不发 component marker——静态 statusBar 贡献项照常渲染，声明缺失优雅降级）。 */
+function statusBarRenderPathOf(
+  manifest: PluginManifest,
+  runtimePluginRoot: string | undefined,
+): string | undefined {
+  const rel = manifest.appearsIn?.statusBar;
+  if (typeof rel !== "string" || !rel || !runtimePluginRoot) return undefined;
+  return `${runtimePluginRoot}/${rel}`;
+}
+
 /* ── E5#12：加载管线唯一入口——所有插件（view/data/theme/language）走这里 ── */
 
 /**
@@ -229,15 +243,19 @@ async function loadPlugin(
     // pluginRoot 保持 undefined——views 注册走 parseContributions 兜底 resolveRuntimePluginRoot，失败则诚实跳过
   }
 
+  // E6#62d：插件自绘状态栏组件归一 URL——appearsIn.statusBar 声明路径拼根（与 entry/views 同源
+  // resolveRuntimePluginRoot）；随 stub/实注册盖到 ViewPluginEntry.statusBarRenderPath，壳读此发 marker。
+  const statusBarRenderPath = statusBarRenderPathOf(manifest, runtimePluginRoot);
+
   // ═══ Step 4: 注册视图——一律 component-less stub（组件可选项，渲染唯一执行者 = 池 PluginComponent） ═══
   // entry 插件 = 视图 stub；entryless + 有侧栏容器 = 图标栏元数据入口（E5.8#37.9.2.3——此前
   // getViewPlugins() 只含 entry 插件 → entryless 声明 appearsIn.iconBar 被静默丢弃）。deferred（#9g）
   // 首用激活（activatePlugin）时 registerViewPlugin stub→实升级。对标 VS Code：manifest 贡献启动可见、组件懒载。
   if (manifest.entry) {
-    registerViewPlugin({ pluginId, manifest });
+    registerViewPlugin({ pluginId, manifest, statusBarRenderPath });
     log.appendLine(`[OK] 元数据注册 "${manifest.name}" (${pluginId})`);
   } else if (hasSidebarContainers(manifest)) {
-    registerViewPlugin({ pluginId, manifest });
+    registerViewPlugin({ pluginId, manifest, statusBarRenderPath });
     log.appendLine(`[OK] entryless 视图插件 "${manifest.name}" (${pluginId}) 已注册（图标栏入口）`);
   }
 
@@ -334,6 +352,8 @@ async function activatePlugin(pluginId: string): Promise<boolean> {
     // appearsIn.statusBar）——壳不再 import statusBar JS。② 并 #9g 轮：本段（壳侧 entry import）折叠为
     // 池侧激活——此处保留 entry import 是过渡态（随 #62e 收）。
     const runtimePluginRoot = await resolveRuntimePluginRoot(pluginId);
+    // E6#62d：实注册同盖章 statusBarRenderPath（stub→componentful 升级不丢 marker 数据——壳读 entry 字段）
+    const statusBarRenderPath = statusBarRenderPathOf(manifest, runtimePluginRoot);
     // E6#7：bundle 插件入口恒 index.bundle.js（同 Step3 分支）
     const entryPath = runtimeEntryPath(manifest, pluginId, import.meta.env.DEV, { bundle: isBundlePlugin(pluginId) });
     let viewComponent: React.ComponentType<{ isActive: boolean }> | undefined;
@@ -344,7 +364,7 @@ async function activatePlugin(pluginId: string): Promise<boolean> {
         console.warn(`[pluginLoader] 插件 "${pluginId}" 未导出 default 组件`);
       }
     }
-    registerViewPlugin({ pluginId, manifest, component: viewComponent });
+    registerViewPlugin({ pluginId, manifest, component: viewComponent, statusBarRenderPath });
     _deferredPlugins.delete(pluginId);
     // 图标/枚举刷新（startup 已静默，此刻才需通知 UI 拾起激活态）
     syncAppThemeEnum();

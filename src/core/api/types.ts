@@ -190,7 +190,12 @@ export interface PluginManifest {
     iconBar?: "top" | "bottom";
     sidePanel?: boolean;
     tabBar?: boolean;
-    statusBar?: boolean;
+    /** 自绘（代码）状态栏组件文件路径（相对插件根，.tsx）——存在 + 文件二合一声明（对标视图 render）。
+     *  有值 = 插件自绘状态栏组件取代其静态 statusBar 贡献项；loader 注册时 resolveRuntimePluginRoot
+     *  归一 → ViewPluginEntry.statusBarRenderPath（dev /@fs 源码 / prod linkdesk:// dist，SDK 打包后
+     *  此字段改写为 statusBar.bundle.js 编译表面），壳发 component marker → 池直动态 import（E6#62d）。
+     *  缺省 = 无自绘组件（静态贡献项照常）。 */
+    statusBar?: string;
   };
   /** @deprecated E5#14——用 appearsIn.iconBar 替代。仅 viewRegistry.ts 向后兼容兜底。 */
   iconLocation?: "top" | "bottom";
@@ -311,6 +316,11 @@ export interface ViewPluginEntry {
    *  （图标栏数据源），其组件由 ViewContainerService 经 contributes.views[].render 加载，
    *  本注册表只作元数据/图标入口，component 为零。渲染路径不读本字段（池 PluginComponent 直扫 glob）。 */
   component?: React.ComponentType<{ isActive: boolean; sourceId?: string }>;
+  /** E6#62d：插件自绘状态栏组件（manifest.appearsIn.statusBar 声明）的归一化 URL——loader 注册时
+   *  resolveRuntimePluginRoot 拼：dev /@fs 源码 .tsx、prod linkdesk:// dist（SDK 打包后 manifest
+   *  appearsIn.statusBar 改写为 statusBar.bundle.js → URL 直指编译表面）。壳 statusbar.ts 读此发
+   *  component marker（componentRenderPath）→ 池直动态 import。未声明/根解析失败 = 无。 */
+  statusBarRenderPath?: string;
 }
 
 /* ── Tab 类型扩展（Phase 4） ── */

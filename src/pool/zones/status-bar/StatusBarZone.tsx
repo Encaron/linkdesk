@@ -56,8 +56,8 @@ function StatusBarZone({ statusBar }: { statusBar: StatusBarLayout }) {
         {item.label}
       </>
     );
-    const inner = item.component ? (
-      <PoolStatusBarComponent pluginId={item.pluginId} />
+    const inner = item.componentRenderPath ? (
+      <PoolStatusBarComponent pluginId={item.pluginId} renderPath={item.componentRenderPath} />
     ) : item.onClick ? (
       <button
         className="status-bar-btn"

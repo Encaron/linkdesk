@@ -771,8 +771,8 @@ function chkPoolStatusBarItem(v: unknown, p: string, errs: string[]): void {
     if (_t96.onClick !== undefined) {
     if (typeof _t96.onClick !== "string") errs.push(((p) + ".onClick") + ": 期望 string，实收 " + typeof _t96.onClick);
     }
-    if (_t96.component !== undefined) {
-    if (!(_t96.component === false || _t96.component === true)) errs.push(((p) + ".component") + ": 期望 false|true");
+    if (_t96.componentRenderPath !== undefined) {
+    if (typeof _t96.componentRenderPath !== "string") errs.push(((p) + ".componentRenderPath") + ": 期望 string，实收 " + typeof _t96.componentRenderPath);
     }
     if (_t96.dividerBefore !== undefined) {
     if (!(_t96.dividerBefore === false || _t96.dividerBefore === true)) errs.push(((p) + ".dividerBefore") + ": 期望 false|true");

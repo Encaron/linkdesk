@@ -118,16 +118,39 @@ function collectSurfaces(root: string, manifest: unknown, options: LinkdeskPlugi
       surfaces.push({ key, finalName: `views/${key}.bundle.js`, abs });
     }
   }
+
+  // E6#62d：自绘状态栏组件（appearsIn.statusBar 声明 .tsx）——独立编译表面 → 根 statusBar.bundle.js。
+  // 与 entry 同层（非 views/ 子夹）——池按 `${root}/statusBar.bundle.js` 动态 import；cssUrlForRenderPath
+  // 对非 /views/ 表面回根 index.bundle.css（serial LED 样式进插件聚合 css）。key 恒唯一（防撞 .s/ 内层
+  // outDir 子夹名）；finalName 恒定根文件名。rewriteDistManifest 按 rel 映射改 dist plugin.json 该字段。
+  const statusRel = (manifest as { appearsIn?: { statusBar?: unknown } }).appearsIn?.statusBar;
+  if (typeof statusRel === "string" && statusRel.endsWith(".tsx")) {
+    const abs = resolve(root, statusRel);
+    if (existsSync(abs)) {
+      let statusKey = "statusBar";
+      while (usedKeys.has(statusKey)) statusKey += "_";
+      usedKeys.add(statusKey);
+      surfaces.push({ key: statusKey, finalName: "statusBar.bundle.js", abs });
+    }
+  }
   return surfaces;
 }
 
-/** dist plugin.json 深变换——把每 render 改写为编译 chunk 相对路径（按 rel → finalName 映射） */
+/** dist plugin.json 深变换——把源码相对路径改写为编译 chunk 相对路径（按 rel → finalName 映射）：
+ *  contributes.views[].render → views/<Key>.bundle.js；E6#62d appearsIn.statusBar → 根 statusBar.bundle.js。
+ *  源码 plugin.json 保持作者视角 src/...，壳/池按 dist manifest 指向编译表面动态 import。 */
 function rewriteDistManifest(manifest: unknown, surfaceByRel: Map<string, string>): unknown {
   const clone: unknown = JSON.parse(JSON.stringify(manifest));
-  const contributes = (clone as { contributes?: unknown })?.contributes as
-    | { views?: Record<string, Array<{ render?: unknown }>> }
-    | undefined;
-  const views = contributes?.views;
+  const c = clone as {
+    appearsIn?: { statusBar?: unknown };
+    contributes?: { views?: Record<string, Array<{ render?: unknown }>> };
+  };
+  // E6#62d：自绘状态栏组件声明路径 → 编译表面（dist manifest 供 linkdesk:// 协议 root-direct 直解析）
+  const appearsIn = c.appearsIn;
+  if (appearsIn && typeof appearsIn.statusBar === "string" && surfaceByRel.has(appearsIn.statusBar)) {
+    appearsIn.statusBar = surfaceByRel.get(appearsIn.statusBar);
+  }
+  const views = c.contributes?.views;
   if (!views) return clone;
   for (const viewDefs of Object.values(views)) {
     if (!Array.isArray(viewDefs)) continue;

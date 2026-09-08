@@ -1,7 +1,8 @@
 // 串口监视器状态栏组件——E2b #12a + #12b。
 // 连接状态指示灯 + 打开口数 (N)（E5.8#30.12 P6：TX/RX 已删除并归位接收区工具栏 per-tab）。
-// loader.ts Vite glob plugins/* /statusBar.tsx 自动加载，
-// StatusBar.tsx 优先用此组件渲染，替代 plugin.json 中静态文本。
+// E6#62d：manifest appearsIn.statusBar 声明路径（src/components/statusBar.tsx）→ loader 拼归一 URL，
+// 池 PoolStatusBarComponent 动态 import 渲染（取代 plugin.json 静态文本条目）；SDK 打包编成根
+// statusBar.bundle.js 进 .linkdesk-plugin（dist manifest 该字段改写指向编译表面）。
 // #12b：读 serial-monitor.statusBar.connection 配置——Settings Editor 可显隐。
 //
 // E5.5#7 Bug A fix：壳侧渲染走 pluginState IPC（不再依赖 React Context——多 WebView 下 Context 隔离）。

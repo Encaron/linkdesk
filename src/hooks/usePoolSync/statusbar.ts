@@ -81,13 +81,15 @@ export function buildStatusBarItems(t: TFunction, eventEntries: StatusBarEntry[]
     let firstInSide = true;
     for (const pid of ids) {
       const plugin = pid.startsWith("__shell_") ? undefined : getViewPlugin(pid);
-      // E6#17d：插件声明 appearsIn.statusBar（自绘状态栏组件）——取代该插件全部静态项，发 component marker
-      // 让池 PoolStatusBarComponent 懒加载渲染（壳不再 import 插件 statusBar JS——存在性信号声明式，硬约束 11）。
+      // E6#62d：插件声明 appearsIn.statusBar（自绘状态栏组件）→ loader 注册时算 entry.statusBarRenderPath
+      // （归一 URL），读此发 component marker（带 componentRenderPath）取代该插件全部静态项——
+      // 池 PoolStatusBarComponent 按 URL 直动态 import（壳不再 import 插件 statusBar JS，硬约束 11）。
       // 静态贡献项仍须保留一条作本插件的 statusbar ordering 资格锚点（被 marker 分支替换前先进入序列表）。
-      if (plugin?.manifest.appearsIn?.statusBar === true) {
+      const statusBarRenderPath = plugin?.statusBarRenderPath;
+      if (typeof statusBarRenderPath === "string" && statusBarRenderPath) {
         result.push({
           id: `${pid}:component`, pluginId: pid, label: "", align,
-          component: true,
+          componentRenderPath: statusBarRenderPath,
           // 左区：组间有分隔线；右区：组间无（壳渲染语义）
           dividerBefore: isLeft ? !firstInSide : false,
         });

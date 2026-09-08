@@ -1028,7 +1028,12 @@ export interface PluginManifest {
         iconBar?: "top" | "bottom";
         sidePanel?: boolean;
         tabBar?: boolean;
-        statusBar?: boolean;
+        /** 自绘（代码）状态栏组件文件路径（相对插件根，.tsx）——存在 + 文件二合一声明（对标视图 render）。
+         *  有值 = 插件自绘状态栏组件取代其静态 statusBar 贡献项；loader 注册时 resolveRuntimePluginRoot
+         *  归一 → ViewPluginEntry.statusBarRenderPath（dev /@fs 源码 / prod linkdesk:// dist，SDK 打包后
+         *  此字段改写为 statusBar.bundle.js 编译表面），壳发 component marker → 池直动态 import（E6#62d）。
+         *  缺省 = 无自绘组件（静态贡献项照常）。 */
+        statusBar?: string;
     };
     /** @deprecated E5#14——用 appearsIn.iconBar 替代。仅 viewRegistry.ts 向后兼容兜底。 */
     iconLocation?: "top" | "bottom";
@@ -1566,8 +1571,10 @@ export interface PoolStatusBarItem {
     align: "left" | "right";
     /** 点击执行的命令 ID */
     onClick?: string;
-    /** component:true marker——插件声明 appearsIn.statusBar（E6#17d：壳读 manifest 声明发此 marker）→ 池侧懒加载渲染自绘状态栏组件（serial-monitor 连接灯） */
-    component?: boolean;
+    /** 自绘状态栏组件 marker——插件声明 appearsIn.statusBar 的归一化 URL（E6#62d：loader 注册时
+     *  算 ViewPluginEntry.statusBarRenderPath，壳读此发 marker）→ 池按 URL 直动态 import（serial-monitor 连接灯）。
+     *  有值 = 自绘组件取代该插件全部静态项；无 = 普通条目。 */
+    componentRenderPath?: string;
     /** 前导分隔线——壳 StatusBar 渲染语义（左区每项除首个；右区组内除首个） */
     dividerBefore?: boolean;
 }
