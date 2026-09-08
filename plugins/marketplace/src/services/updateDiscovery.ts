@@ -1,5 +1,5 @@
 /**
- * updateDiscovery — E6#33a 发现编排（2026-09-08 锚② 重裁：市场池首载调度）。
+ * updateDiscovery — E6#33a 发现编排（2026-09-08 锚② 重裁：市场池首载调度；Batch F #33d 自动更新接入）。
  *
  * 🔴 重裁依据（代码取证推翻「activationEvents:["*"] 池启动即加载」）：activationEvents 只让「壳」loader
  * 决定是否启动 import 插件 entry，对「池」零影响（池经 PluginComponent import.meta.glob + React.lazy，
@@ -25,18 +25,27 @@
  *   - 自愈清提醒：lastNotifiedVersion ≤ 本地 → 已追上（外部路径更新/重装的兜底），清标记（§二·一「更新成功清」）
  *   - 目录 offline/corrupt（entries 空）→ 静默跳过（无数据不铃不写）；stale 缓存有数据照跑
  *
+ * #33d 自动更新（Batch F 2026-09-08，§五 Opt-IN 默认关）：
+ *   - autoUpdate 候选 = meta.autoUpdate===true 且未钉版本（§二·九 pinnedVersion 停旧版 → auto 跳过，尊重手动意图）
+ *   - auto 候选静默升级（不经用户）→ **不推铃铛**（铃 for 提示人；auto 已代劳）。执行经引擎 update 走同一
+ *     稳定版寻址（versionDownloadUrl——§二·四 auto 只看稳定版，beta 不自动装）；成功 toast 由引擎发（update.ts:
+ *     已更新…重启生效，市场不重复），失败保留作手动候选（「可更新」徽标仍在，下次发现/手动重试）——不因失败
+ *     回铃（§五 不打扰）
+ *   - 勾选开 = DetailView 立即 runAutoUpdateIfDue（针对 store 已有候选即刻跑一趟，免等下趟发现）
+ *   - G6：插件标签页开着也照常 stage+替换+重启生效（引擎 needRestart 恒 true——原子替换已证开着也能成，§二·七）
+ *
  * 输出：本模块同是 #33b 常驻「可更新」徽标/升级入口与 #33d 自动更新的数据源（getDiscoveredUpdates +
  * onDiscoveredUpdatesChange——发现结果落 store，随批消费）。
  *
  * IO 注入沿用兄弟模块惯例（marketSources.__setCatalogIO / installedUpdateMeta.__setMetaStore）——纯计划
- * planDiscovery 可直测；主编排 runUpdateDiscovery 读 pluginManager/notifications 走 window.linkdesk（jsdom
- * 注入同 startMarketInstall 的测试约定），目录经 loadCatalog。
+ * planDiscovery 可直测；主编排 runUpdateDiscovery 读 pluginManager/notifications/update 走 window.linkdesk
+ * （jsdom 注入同 startMarketInstall 的测试约定），目录经 loadCatalog。
  */
 
 import i18n from "i18next";
 import type { PluginListEntry, PluginInfoEntry } from "@linkdesk/contracts";
 import type { CatalogEntry } from "./marketCatalog";
-import { compareVersions, isVersionNewer, stableLatestVersion } from "./marketCatalog";
+import { compareVersions, isVersionNewer, stableLatestVersion, versionDownloadUrl } from "./marketCatalog";
 import { loadCatalog } from "./marketSources";
 import {
   clearNotifiedVersion,
@@ -139,6 +148,19 @@ export function planDiscovery(
   return { candidates, toNotify, toClearNotified };
 }
 
+/** #33d 纯选择：autoUpdate 应自动更新的候选——meta.autoUpdate===true 且**未钉版本**（§二·九 pinnedVersion
+ *  停旧版 → 自动更新跳过，尊重「停在旧版」的手动意图）。入参 = planDiscovery 的 candidates（已是
+ *  stable-only + semver.gt 判定的成员，不重复判）。 */
+export function selectAutoCandidates(
+  candidates: UpdateCandidate[],
+  meta: InstalledUpdateMetaMap,
+): UpdateCandidate[] {
+  return candidates.filter((c) => {
+    const m = meta[c.pluginId];
+    return m?.autoUpdate === true && m?.pinnedVersion === undefined;
+  });
+}
+
 /* ═══ 发现结果 store（#33b 徽标/升级入口 + #33d 自动更新数据源） ═══ */
 
 let _candidates: UpdateCandidate[] = [];
@@ -186,7 +208,25 @@ function commitStore(candidates: UpdateCandidate[]): void {
   _listeners.forEach((f) => f());
 }
 
-/* ═══ 主编排（IO——读已装 → 拉目录 → 计划 → 自愈清 + 铃铛推(幂等) + 落 store） ═══ */
+/* ═══ #33d 单候选自动更新执行（doRunDiscovery 与勾选即跑共用——引擎 update，成功后引擎自 toast，市场不重复） ═══ */
+
+/** 对单候选跑引擎更新——url = versionDownloadUrl 取该稳定版资产（§二·四 auto 只看稳定版；顶层兜底同 #33b 寻址）。
+ *  无 update 能力（预览/非池）/无 url → false（无法自动，保留手动候选）。返回是否成功（success 由引擎判定——
+ *  needRestart 恒 true 也计成功：文件已原子替换，重启生效 §二·七）。失败不抛——结果 bool，编排据此归位。 */
+async function applyEngineAutoUpdate(c: UpdateCandidate): Promise<boolean> {
+  const upd = pm()?.update;
+  if (!upd) return false;
+  const url = versionDownloadUrl(c.entry, c.remoteLatest) ?? c.entry.downloadUrl;
+  if (!url) return false;
+  try {
+    const r = await upd(c.pluginId, { url });
+    return !!(r && r.success);
+  } catch {
+    return false; // 引擎抛/断网 → 失败；候选保留（下次发现/手动重试）
+  }
+}
+
+/* ═══ 主编排（IO——读已装 → 拉目录 → 计划 → 自愈清 + 铃铛推(幂等) + auto 静默跑 + 落 store） ═══ */
 
 /** 读已装快照（IPC 不可用/失败 → 空数组——预览环境不崩） */
 export async function readInstalledSnapshot(): Promise<InstalledSnapshot[]> {
@@ -222,9 +262,15 @@ async function doRunDiscovery(force: boolean): Promise<DiscoveryPlan | null> {
   // 自愈清提醒（幂等——无变化不写盘，installedUpdateMeta 内部保证）
   await Promise.all(plan.toClearNotified.map((id) => clearNotifiedVersion(id)));
 
-  // 铃铛推一条 + 记版本（每版本一次）。推失败 → 不记（下趟补推，宁重勿漏）；全插件独立，单败不阻断。
+  // #33d auto 候选（autoUpdate on + 未钉版本）——静默升级：不铃（铃 for 提示人；auto 已代劳）、
+  //  成功不进常驻 store（已更新无候选）、失败保留作手动候选（可更新徽标在，下次发现/手动重试）。
+  const autoEligible = selectAutoCandidates(plan.candidates, meta);
+  const autoIds = new Set(autoEligible.map((c) => c.pluginId));
+
+  // 铃铛推一条 + 记版本（每版本一次；auto 候选除外）。推失败 → 不记（下趟补推，宁重勿漏）；全插件独立，单败不阻断。
   const show = window.linkdesk?.notifications?.show;
   for (const c of plan.toNotify) {
+    if (autoIds.has(c.pluginId)) continue; // auto 已代劳 → 不铃（§五：auto 走引擎 toast 通知，不重复打扰）
     let pushed = false;
     if (show) {
       try {
@@ -239,8 +285,33 @@ async function doRunDiscovery(force: boolean): Promise<DiscoveryPlan | null> {
     if (pushed) await noteNotifiedVersion(c.pluginId, c.remoteLatest);
   }
 
-  commitStore(plan.candidates);
+  // #33d auto 静默执行（顺序——引擎 update 单通道，多插件串行最稳；单败不阻断其余）。G6：插件标签页开着
+  //  照常 stage+替换+重启生效（引擎 needRestart 恒 true，原子替换开着也能成 §二·七）。
+  const autoDone: string[] = [];
+  for (const c of autoEligible) {
+    if (await applyEngineAutoUpdate(c)) autoDone.push(c.pluginId);
+  }
+
+  const committed = plan.candidates.filter((c) => !autoDone.includes(c.pluginId));
+  commitStore(committed);
   return plan;
+}
+
+/** #33d 勾选即跑（DetailView 勾上 autoUpdate → 立即调）——针对**当前 store 已有候选**（发现已跑过、该插件
+ *  有可更新）跑一趟，免等下趟发现/重启。无候选（无更新/发现未跑过）→ no-op（下趟发现照常 auto 处理）；
+ *  autoUpdate 未开/已钉版本（§二·九）→ no-op（尊重手动意图）。成功 → 驱逐 store 候选（可更新徽标消），
+ *  引擎已 toast「已更新…重启生效」市场不重复。返回是否成功自动更新。
+ *  幂等守卫：发现编排在跑 → 先等收束（编排已含 auto 处理本趟候选，防双跑引擎 update）。 */
+export async function runAutoUpdateIfDue(pluginId: string): Promise<boolean> {
+  if (_running) await _running;
+  const c = _candidates.find((x) => x.pluginId === pluginId);
+  if (!c) return false;
+  const meta = await readUpdateMetaMap();
+  const m = meta[pluginId];
+  if (m?.autoUpdate !== true || m?.pinnedVersion !== undefined) return false;
+  const ok = await applyEngineAutoUpdate(c);
+  if (ok) commitStore(_candidates.filter((x) => x.pluginId !== pluginId));
+  return ok;
 }
 
 /** 铃铛文案——插件名 + 新版（i18n key = 中文原文；en.json 映射英文，zh 回落 key 中文） */

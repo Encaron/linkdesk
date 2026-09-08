@@ -297,6 +297,29 @@
   flex-wrap: wrap;
 }
 
+/* #33d 自动更新勾选（mockup .auto-upd——inline-flex 版本偏好副控制；secondary 文本 + accent 勾选色，
+ *  全走壳语义 token 零硬编码；disabled 态降透明度同 mockup auto-disabled）。动作尾位 → 自身 inline 不独占行 */
+.mpd-auto-upd {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  white-space: nowrap;
+  user-select: none;
+  margin-left: 2px;
+}
+
+.mpd-auto-upd input {
+  accent-color: var(--accent);
+  margin: 0;
+}
+
+.mpd-auto-upd.disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
 /* action bar 内内容图标（壳 Button 不归内容——图标尺寸/对齐归消费方本件） */
 .mpd-action-bar .codicon {
   font-size: var(--font-size-sm);

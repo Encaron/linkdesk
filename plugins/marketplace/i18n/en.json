@@ -107,6 +107,8 @@
   "重试安装": "Retry Install",
   "更新到 {{version}}": "Update to {{version}}",
   "更新中...": "Updating...",
+  "自动更新": "Auto-update",
+  "开启后自动安装稳定版更新（手动选旧版会暂停自动更新）": "Install stable updates automatically (selecting an older version pauses auto-update)",
   "有新版本可用": "New version available",
   "当前安装 {{localVersion}}，市场最新 {{remoteVersion}}": "Installed {{localVersion}}, latest {{remoteVersion}}",
   "更新内容见「更改日志」tab": "See what's new in the Changelog tab",

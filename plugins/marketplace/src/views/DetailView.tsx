@@ -49,8 +49,8 @@ import {
   selectableVersions,
   pinnedAfterApply,
 } from "../services/marketCatalog";
-import { removeDiscoveredCandidate } from "../services/updateDiscovery";
-import { setPinnedVersion } from "../services/installedUpdateMeta";
+import { removeDiscoveredCandidate, runAutoUpdateIfDue } from "../services/updateDiscovery";
+import { readPluginUpdateMeta, setAutoUpdate, setPinnedVersion } from "../services/installedUpdateMeta";
 import { categoryText } from "../services/marketCategories";
 import { useDownloadCount } from "../services/downloadCounts";
 import { readInstalledPackageFile } from "../services/packageFiles";
@@ -160,6 +160,8 @@ export default function DetailView({ pluginId }: DetailContributedProps) {
   const [confirming, setConfirming] = useState(false);
   /* E6#30.8c：读壳版本号一次（app.getVersion）——minAppVersion 门禁比对基准（缺/读失败 = undefined 放行不拦） */
   const [appVersion, setAppVersion] = useState<string | undefined>(undefined);
+  /* E6#33d 自动更新勾选状态——installedUpdateMeta.autoUpdate（Opt-IN 默认关，只存 true；见下方读 effect） */
+  const [autoOn, setAutoOn] = useState(false);
 
   /* 壳版本号拉取（一次性、模块生命周期无关——非 IPC 监听，useEffect 安全） */
   useEffect(() => {
@@ -283,6 +285,25 @@ export default function DetailView({ pluginId }: DetailContributedProps) {
     setPickedVersion(undefined);
   }, [pluginId, entry?.id, installed, updateTarget, localVer]);
 
+  /* #33d 自动更新勾选初值读——切插件/已装态锚变即重读收敛（记账/自动更新兜底）；
+   *  G2 只在已装态渲染（autoUpdateToggle），未装/挂起不渲染但 anchor 变仍复位为 false。 */
+  useEffect(() => {
+    let alive = true;
+    setAutoOn(false);
+    const id = pluginId ?? "";
+    if (!id || !installed) {
+      return () => {
+        alive = false;
+      };
+    }
+    void readPluginUpdateMeta(id).then((m) => {
+      if (alive) setAutoOn(m.autoUpdate === true);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [pluginId, installed]);
+
   useEffect(() => {
     let alive = true;
     setPkgReadme(undefined);
@@ -346,6 +367,24 @@ export default function DetailView({ pluginId }: DetailContributedProps) {
     }
     setBusy(false);
   }, [pluginId, busy]);
+
+  /* ── E6#33d 自动更新开关（mockup 帧 5/6 auto-upd）——setAutoUpdate 记账（开存 true / 关删字段，
+   *  installedUpdateMeta 域）；勾开立即 runAutoUpdateIfDue——store 已有该插件候选即刻跑一趟（免等下趟
+   *  发现/重启），无候选/已钉旧版 → no-op（§二·九 pin 尊重手动意图）；引擎 update 成功自 toast「已更新…
+   *  重启生效」市场不重复（G6：开着标签页照常 stage+替换——引擎 needRestart 恒 true）。成功自动更新 →
+   *  refreshPlugins 收敛本地版本（更新块/可更新徽标消）。 ── */
+  const handleAutoToggle = useCallback(
+    async (on: boolean) => {
+      if (!pluginId || busy || updating) return;
+      setAutoOn(on); // 乐观翻转——读/记账失败的兜底由上方 effect（锚变）重读收敛
+      await setAutoUpdate(pluginId, on);
+      if (on) {
+        const done = await runAutoUpdateIfDue(pluginId);
+        if (done) refreshPlugins();
+      }
+    },
+    [pluginId, busy, updating, refreshPlugins],
+  );
 
   /* ── E6#33b/#33c 版本动作执行（升/降一码——版本动作目标 actTarget 驱动；mockup 帧 6 st-update）。
    *  壳引擎 updatePlugin：下载 temp → 校验 → 原子替换 → needRestart 恒 true + 壳 toast「已更新…重启生效」
@@ -671,6 +710,25 @@ export default function DetailView({ pluginId }: DetailContributedProps) {
       </Button>
     ) : null;
 
+  /* #33d 自动更新勾选（mockup 帧 5/6/7 .auto-upd——版本偏好副控制，置主动作钮之后尾位）。
+   *  G2（05 §五）：autoUpdate 是**已装条目属性**——只在已装且非挂起渲染（下方 disabled/info 两分支同
+   *  为 installed&&!pending，插尾即天然守位）；未装/挂起态不显示。控制 disabled while 动作进行
+   *  （pickerDisabled = busy/updating/installingHere 同栅——替换期间不可改偏好，mockup 帧 2 auto-disabled）。 */
+  const autoUpdateToggle = installed && !pending ? (
+    <label
+      className={"mpd-auto-upd" + (pickerDisabled ? " disabled" : "")}
+      title={t("开启后自动安装稳定版更新（手动选旧版会暂停自动更新）")}
+    >
+      <input
+        type="checkbox"
+        checked={autoOn}
+        disabled={pickerDisabled}
+        onChange={(e) => void handleAutoToggle(e.target.checked)}
+      />
+      {t("自动更新")}
+    </label>
+  ) : null;
+
   return (
     <div className="mpd-detail">
       {/* ═══ Header ═══ */}
@@ -718,6 +776,7 @@ export default function DetailView({ pluginId }: DetailContributedProps) {
                   <span className="codicon codicon-trash" /> {t("卸载")}
                 </Button>
               )}
+              {autoUpdateToggle}
             </>
           ) : pending ? (
             <span className="mpd-blocked-chip" title={enabledEntry?.pendingReason} role="status">
@@ -737,6 +796,7 @@ export default function DetailView({ pluginId }: DetailContributedProps) {
                   <span className="codicon codicon-trash" /> {t("卸载")}
                 </Button>
               )}
+              {autoUpdateToggle}
             </>
           ) : (
             <>
