@@ -13,8 +13,9 @@
  * 安装行态（#30.9）：本行 = 全局单活跃会话 pluginId →「安装中 62%」进度徽标（30.9a M4 二）/「安装失败·归因」
  *   + [重试]（30.9b M4 三）；离线（G3）≠ 失败——钮置灰 + title「联网后重试」，无 [重试]。
  *
- * 目录防御（E6#30f）：offline 空态「无法加载市场」+ [重试]；corrupt 空态「目录损坏」+ [重试]；
- *   单源失败 / 离线缓存兜底 → 列表顶部注记（不整体降级，成功源照常展示）。
+ * 目录防御（E6#30f）：空态三分支——ok 空（源连上但目录空）「暂无插件」（非故障，无重试）；offline 空态
+ *   「无法加载市场」+ [重试]；corrupt 空态「目录损坏」+ [重试]；单源失败 / 离线缓存兜底 → 列表顶部注记
+ *   （不整体降级，成功源照常展示）。
  *
  * 图标（E6#30e 第一站）：PluginIcon 显式 descriptor 入参（manifest={icon, iconSource}）——目录条目
  *   未安装、无 viewRegistry/元数据缓存条目，图标只由 catalog 声明字段裁决（硬约束 11）；iconSource
@@ -127,8 +128,12 @@ export default function ExploreView() {
     return <div className="ms-empty">{t("加载中...")}</div>;
   }
 
-  /* ── #30f 目录空态防御：全源无交付 ── */
+  /* ── #30f 目录空态三分支：ok 空 = 源连上但目录空（官方仓库建好未上架）→ 诚实空态「暂无插件」，非故障，
+   *  无意义重试不给；corrupt / offline 才示故障 + [重试]（修实证 bug：entries 空一律当故障显示「无法加载」） ── */
   if (catalog.entries.length === 0) {
+    if (catalog.state === "ok") {
+      return <div className="ms-empty">{t("市场暂无插件")}</div>;
+    }
     const corrupted = catalog.state === "corrupt";
     return (
       <div className="ms-empty">
@@ -264,8 +269,10 @@ export default function ExploreView() {
     );
   });
 
+  /* 此处 filtered 空 ⟺ 有搜索词且零命中（无搜索词 + entries>0 → 全量非空；entries 空已在顶部 ok/corrupt/offline
+   *  空态三分支返回）→ 只需「未找到」；「暂无插件」由顶部 ok 空态承担 */
   if (filtered.length === 0) {
-    return <div className="ms-empty">{search ? t("未找到匹配的插件") : t("市场暂无插件")}</div>;
+    return <div className="ms-empty">{t("未找到匹配的插件")}</div>;
   }
 
   return (

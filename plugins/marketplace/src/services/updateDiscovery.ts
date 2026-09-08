@@ -255,7 +255,7 @@ async function doRunDiscovery(force: boolean): Promise<DiscoveryPlan | null> {
   const installed = await readInstalledSnapshot();
   if (installed.length === 0) return null; // 无已装 / IPC 不可用 → 无事可发现
   const catalog = await loadCatalog(force);
-  if (catalog.entries.length === 0) return null; // offline/corrupt 空目录 → 静默（无数据不铃）
+  if (catalog.entries.length === 0) return null; // 空目录（ok 空/offline/corrupt 一律）→ 无条目可发现，静默不铃
   const meta = await readUpdateMetaMap();
   const plan = planDiscovery(catalog.entries, installed, meta);
 

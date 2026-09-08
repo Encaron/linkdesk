@@ -204,6 +204,29 @@ describe("marketSources (E6#30a/30c/30f)", () => {
     expect(r.usedStale).toBe(true);
   });
 
+  it("官方目录连上但为空（合法空目录）→ ok 空态，非 offline（实证 bug 修复）", async () => {
+    // 官方仓库建好未上架 = {"plugins":[]}——fetch 成功、parse 通过、零插件
+    const fetchFn = vi.fn(async () => JSON.stringify({ version: "1", plugins: [] }));
+    __setCatalogIO(fetchFn, fakeStorage());
+    const r = await loadCatalog();
+    expect(r.state).toBe("ok"); // 判据 = 有源交付（sources.length>0），非合并条数
+    expect(r.entries).toEqual([]);
+    expect(r.errors).toEqual([]);
+  });
+
+  it("官方空目录 + 作者源不可达 → 仍 ok 空态（有源交付不降级），errors 记作者源", async () => {
+    stubConfig([AUTHOR_URL]);
+    const fetchFn = vi.fn(async (url: string) => {
+      if (url === OFFICIAL_SOURCE_URL) return JSON.stringify({ version: "1", plugins: [] });
+      throw new Error("refused");
+    });
+    __setCatalogIO(fetchFn, fakeStorage());
+    const r = await loadCatalog();
+    expect(r.state).toBe("ok"); // 官方连上（虽空）→ 不整体降级 offline
+    expect(r.entries).toEqual([]);
+    expect(r.errors).toEqual([{ sourceName: AUTHOR_NAME, reason: "network" }]);
+  });
+
   /* ── 多源（#30c） ── */
 
   it("多源合并去重：作者源更高版本胜出 + sourceName 标注作者", async () => {

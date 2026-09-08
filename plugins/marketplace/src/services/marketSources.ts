@@ -7,9 +7,11 @@
  * 本模块只管编排 + IO，IO（fetch/localStorage/window.linkdesk.configuration）经 __setCatalogIO 可注入供 jsdom 直测。
  *
  * 状态机（#30f 目录防御，01 §四）：
- *   ok       至少一源交付目录（fresh 缓存 / stale 缓存兜底 / 实时拉取均可）
- *   corrupt  全源 parse 失败且无缓存可兜 → 空态「目录损坏」+ [重试]
- *   offline  全源不可达（fetch 失败）且无缓存可兜 → 空态「无法加载市场，请联网重试」+ [重试]
+ *   ok       至少一源交付目录（fresh 缓存 / stale 缓存兜底 / 实时拉取均可）。目录可为空：官方目录
+ *            「连上但暂未上架插件」= 合法 ok 空态（空态判据 = 交付源数，非合并条数——修复把「连上但空」
+ *            误判成 offline 的实证 bug）
+ *   corrupt  全源零交付且 parse 失败无缓存可兜 → 空态「目录损坏」+ [重试]
+ *   offline  全源零交付且网络失败无缓存可兜 → 空态「无法加载市场，请联网重试」+ [重试]
  *   单源失败 → 不阻塞其他源：有该源缓存用缓存兜底，无缓存记入 errors 展示原因（不整体降级）
  *
  * 缓存语义（01 §四）：5min 内命中读缓存不拉取；手动刷新 = forceRefreshCatalog（跳过 fresh、
@@ -237,8 +239,10 @@ export async function loadCatalog(force = false): Promise<CatalogLoadResult> {
   const entries = mergeCatalogs(sources);
 
   let state: CatalogLoadState = "ok";
-  if (entries.length === 0) {
-    // 全源无交付：#30f 判空态——有 parse 失败（源可达但在传坏数据）→ corrupt；否则不可达 → offline
+  if (sources.length === 0) {
+    // 全源零交付（无一源 parse 通过/有缓存可兜）：#30f 判空态——有 parse 失败（源可达但在传坏数据）→
+    // corrupt；否则不可达 → offline。判据 = 交付源数非合并条数：源连上但目录为空（如官方仓库建好未上架）
+    // 是合法 ok 空态，不能因 entries 空就误降级成 offline（实证 bug：探索页把「连上但空」显示成「无法加载」）
     const hasParse = errors.some((e) => e.reason === "parse");
     state = hasParse ? "corrupt" : "offline";
   }
