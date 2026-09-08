@@ -1,0 +1,15 @@
+{
+  "category.serial": "串口",
+  "category.editor": "编辑器",
+  "category.file": "文件",
+  "category.terminal": "终端",
+  "category.language": "语言",
+  "category.theme": "主题",
+  "category.dashboard": "仪表",
+  "category.data": "数据",
+  "category.map": "地图",
+  "category.protocol": "协议",
+  "category.collaboration": "协作",
+  "category.tool": "工具",
+  "category.other": "其他"
+}

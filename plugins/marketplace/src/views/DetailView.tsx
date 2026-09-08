@@ -41,6 +41,7 @@ import {
 } from "../services/marketplaceShared";
 import type { CatalogEntry } from "../services/marketCatalog";
 import { compareVersions } from "../services/marketCatalog";
+import { categoryText } from "../services/marketCategories";
 import { useDownloadCount } from "../services/downloadCounts";
 import { readInstalledPackageFile } from "../services/packageFiles";
 import DetailFeaturesTab from "./DetailFeaturesTab";
@@ -436,6 +437,11 @@ export default function DetailView({ pluginId }: DetailContributedProps) {
     : entry?.publishedAt;
   const lastUpdate = entry?.versions?.[0]?.publishedAt ?? entry?.publishedAt;
 
+  /* E6#32b：分类行文本——legacy `category` + `categories[]` 并集去重、逐 slug 走 category.* i18n
+   *  （英文 slug 作身份，zh/en 双值表），多值「 · 」连接；空 → undefined（无分类不显示行）。
+   *  零分类导航/筛选（#32b 边界）。 */
+  const categoryRowText = entry ? categoryText(t, entry.category, entry.categories) : undefined;
+
   const depValues = (deps: string[]): ReactNode =>
     deps.length === 0 ? (
       <Dash />
@@ -701,9 +707,7 @@ export default function DetailView({ pluginId }: DetailContributedProps) {
               />
             )}
             {entry?.license && <InfoItem label={t("许可证")} value={entry.license} />}
-            {(entry?.category || (entry?.categories ?? []).length > 0) && (
-              <InfoItem label={t("分类")} value={entry?.category || (entry?.categories?.[0] ?? "")} />
-            )}
+            {categoryRowText && <InfoItem label={t("分类")} value={categoryRowText} />}
             {lastUpdate && <InfoItem label={t("更新时间")} value={lastUpdate.slice(0, 10)} />}
             {firstRelease && <InfoItem label={t("首次发布")} value={firstRelease.slice(0, 10)} />}
             {(installed || !!entry) && (

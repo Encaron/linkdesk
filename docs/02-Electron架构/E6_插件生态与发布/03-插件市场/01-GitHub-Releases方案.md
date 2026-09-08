@@ -76,7 +76,7 @@ github.com/encaron/linkdesk-marketplace/
 | `checksum` | - | 作者 sha256——下载后校验完整性（09 §二）；旧条目无此字段 → 跳过校验（纯增量兼容） |
 | `icon` | - | 图标名（Lucide 或 codicon） |
 | `iconSource` | - | "lucide" / "codicon" / "url" |
-| `category` | - | 分类 |
+| `category` | - | 分类——英文 slug（E6#32b；规范分类集/翻译映射见 11 §4.4） |
 | `publishedAt` | - | 发布日期 |
 | `minAppVersion` | - | 最低 LinkDesk 壳版本 |
 

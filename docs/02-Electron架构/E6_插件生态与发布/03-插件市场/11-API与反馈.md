@@ -235,15 +235,37 @@ notifications.show(t("无法安装：{{name}}缺少依赖环境，无法下载",
 
 - `entry.title`：catalog 多语言 title（E6#29c 纯增量字段，来自插件 contributes.i18n）——**有翻译显示翻译**。
 - `entry.name`：插件 ID 原文（唯一，无翻译）——**无则显示原文**。
-- 分类 `categories[]`：市场插件自己的 i18n 提供分类翻译 key（`t("category." + c)`），无此 key → 显示分类原文。
+- 分类 `categories[]` / legacy `category`：值为**英文 slug**（E6#32b 2026-09-08 用户拍板，VS Code 式）——翻译映射见 §4.4；无映射 slug → 显示原文。
 
-### 4.4 分类翻译约定
+### 4.4 分类翻译约定（E6#32b——英文 slug 身份 + 双值表）
+
+> 🔥 **全仓首批「英文 key 作身份、双语言做值」试点**（软件英文化方向，见记忆 `english-first-direction`）——category 值 = 英文 slug，zh/en 都只是显示层值表；此形态需 zh.json（schema「不需要 zh.json」只对中文 key 成立）。
 
 ```jsonc
-// marketplace/i18n/en.json（新增分类键，随 E6#32b 分类落地）
-{ "category.tool": "Tool", "category.editor": "Editor", "category.serial": "Serial", "category.theme": "Theme" }
+// marketplace/i18n/en.json —— slug → English（追加在中文 key 之后）
+{ "category.serial": "Serial", "category.editor": "Editor", "category.tool": "Tools", "category.theme": "Theme" }
+// marketplace/i18n/zh.json —— slug → 中文（E6#32b 新增第二资源；plugin.json contributes.i18n 增 "zh"）
+{ "category.serial": "串口", "category.editor": "编辑器", "category.tool": "工具", "category.theme": "主题" }
 ```
-无对应键的分类显示原始 category 字符串（尊重第三方自定义分类，不硬编码白名单）。
+显示 = `services/marketCategories`（`categoryText`）：legacy `category` + `categories[]` 并集去重、逐 slug `t("category."+slug)`、「 · 」连接整行；**无对应键 → 显示原始 slug**（尊重第三方自定义分类，不硬编码白名单）。当前唯一消费点 = 详情页元数据「分类」行；未来主区商店「分类 rail」按同 slug 分组（#32b 只做显示不做导航）。
+
+**规范分类集（2026-09-08 starter，推荐官方目录采用，可调）：**
+
+| slug | zh | en |
+|:--|:--|:--|
+| serial | 串口 | Serial |
+| editor | 编辑器 | Editor |
+| file | 文件 | Files |
+| terminal | 终端 | Terminal |
+| language | 语言 | Language |
+| theme | 主题 | Theme |
+| dashboard | 仪表 | Dashboard |
+| data | 数据 | Data |
+| map | 地图 | Map |
+| protocol | 协议 | Protocol |
+| collaboration | 协作 | Collaboration |
+| tool | 工具 | Tools |
+| other | 其他 | Other |
 
 ### 4.5 翻译完整性验收
 

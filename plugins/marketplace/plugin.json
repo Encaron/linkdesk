@@ -14,7 +14,7 @@
     "singleton": true
   },
   "contributes": {
-    "i18n": { "en": "i18n/en.json" },
+    "i18n": { "en": "i18n/en.json", "zh": "i18n/zh.json" },
     "configuration": {
       "title": "插件市场",
       "properties": {

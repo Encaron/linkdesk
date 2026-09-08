@@ -103,5 +103,18 @@
   "安装失败：该插件已安装，如需覆盖请先卸载": "Install failed: already installed — uninstall first to overwrite",
   "安装失败：未知错误，请重试": "Install failed: unknown error — retry",
   "联网后重试": "Retry when online",
-  "重试安装": "Retry Install"
+  "重试安装": "Retry Install",
+  "category.serial": "Serial",
+  "category.editor": "Editor",
+  "category.file": "Files",
+  "category.terminal": "Terminal",
+  "category.language": "Language",
+  "category.theme": "Theme",
+  "category.dashboard": "Dashboard",
+  "category.data": "Data",
+  "category.map": "Map",
+  "category.protocol": "Protocol",
+  "category.collaboration": "Collaboration",
+  "category.tool": "Tools",
+  "category.other": "Other"
 }
