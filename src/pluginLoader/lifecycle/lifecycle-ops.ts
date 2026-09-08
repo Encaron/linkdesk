@@ -264,7 +264,7 @@ export function packageOps(): {
   packageDownload: (url: string) => Promise<{ zipPath: string; sizeBytes?: number }>;
   packageExtract: (zipPath: string, expectedPluginId?: string) => Promise<{ pluginId: string; version: string; targetDir: string }>;
   packageUpdateCheck?: (pluginId: string, catalogUrl: string, currentVersion?: string) => Promise<PluginUpdateCheckResult>;
-  packageStageUpdate?: (pluginId: string, source: string, currentVersion?: string) => Promise<{ pluginId: string; newVersion: string; stagedDir: string }>;
+  packageStageUpdate?: (pluginId: string, source: string, currentVersion?: string, allowOlder?: boolean) => Promise<{ pluginId: string; newVersion: string; stagedDir: string }>;
   packageCommitUpdate?: (pluginId: string, stagedDir: string) => Promise<{ pluginId: string; version: string }>;
 } {
   const api = pluginsApi();

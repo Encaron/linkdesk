@@ -18,7 +18,8 @@ export interface PluginManagementAPI {
   uninstallPlugin(id: string): Promise<{ success: boolean; error?: string }>;
   reinstallPlugin(id: string): Promise<{ success: boolean; error?: string }>;
   // E6#11c（段 B）：安全更新（#11c 原子 + unloadPlugin 机械路径）——opts: { catalogUrl? | url? }
-  updatePlugin(pluginId: string, opts?: { catalogUrl?: string; url?: string }): Promise<PluginUpdateResult>;
+  // E6#33c（锚①）：allowOlder 显式 true 放行降级（版本下拉选旧版 + F2 确认后传）
+  updatePlugin(pluginId: string, opts?: { catalogUrl?: string; url?: string; allowOlder?: boolean }): Promise<PluginUpdateResult>;
   // E6#13b（段 B）：只读查更新（fetch catalog + 版本对比；有新版返回 downloadUrl）
   checkPluginUpdates(pluginId: string, catalogUrl: string): Promise<PluginUpdateCheckResult>;
   getDisabledPluginInfo(): unknown;
@@ -69,8 +70,8 @@ export async function handlePluginManagerMethod(method: string, args: unknown[])
     case "reinstall":
       return _pluginAPI!.reinstallPlugin(args[0] as string);
     case "update":
-      // E6#11c（段 B）：安全更新——pluginId + opts { catalogUrl? | url? }（壳 loader 编排 check→stage→unload→commit→load）
-      return _pluginAPI!.updatePlugin(args[0] as string, args[1] as { catalogUrl?: string; url?: string } | undefined);
+      // E6#11c（段 B）：安全更新——pluginId + opts { catalogUrl? | url? | allowOlder? }（壳 loader 编排 check→stage→unload→commit→load）
+      return _pluginAPI!.updatePlugin(args[0] as string, args[1] as { catalogUrl?: string; url?: string; allowOlder?: boolean } | undefined);
     case "checkUpdates":
       // E6#13b（段 B）：只读查更新——pluginId + catalogUrl
       return _pluginAPI!.checkPluginUpdates(args[0] as string, args[1] as string);

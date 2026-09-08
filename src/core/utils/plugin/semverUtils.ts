@@ -79,3 +79,13 @@ export function compareVersions(a: string, b: string): number {
 export function versionGte(a: string, b: string): boolean {
   return compareVersions(a, b) >= 0;
 }
+
+/**
+ * 更新目标版本方向判定（E6#33c 降级放行 锚① 语义单复本）——候选包内版本 vs 当前已装。
+ * 返回 "upgrade"（目标更高 → 更新语义默认放行）/ "downgrade"（目标更低 → 默认拒，仅 allowOlder 显式放行）/
+ * "same"（恒拒——无版本变化的重装非更新流职责）。调用方（stage-update handler）据此决定拒/放 + 报错文案。
+ */
+export function updateTargetDirection(packVersion: string, cur: string): "upgrade" | "downgrade" | "same" {
+  const cmp = compareVersions(packVersion, cur);
+  return cmp > 0 ? "upgrade" : cmp < 0 ? "downgrade" : "same";
+}

@@ -35,7 +35,8 @@ import { deriveBundlePluginId, extractZip, isSafePluginId, openPluginZip } from 
 import { downloadPackage, downloadTmpDir } from "../../services/plugin-download.js";
 import type { PluginManifest } from "../../../src/core/api/types.js";
 // E6#13b/c（段B）：主进程与壳共用同一 semver 比较源（单复本——全仓唯一 compareVersions）+ 同一 jsonc 解析源
-import { compareVersions } from "../../../src/core/utils/plugin/semverUtils.js";
+// E6#33c（锚①）：updateTargetDirection——更新目标版本方向判定单复本（upgrade/downgrade/same，降级放行语义）
+import { compareVersions, updateTargetDirection } from "../../../src/core/utils/plugin/semverUtils.js";
 import { parseManifestJson } from "../../../src/pluginLoader/jsonc.js";
 
 let _registered = false;
@@ -161,10 +162,11 @@ export function registerPluginInstallHandlers(): void {
     return { current: cur, latestVersion, downloadUrl: latest.downloadUrl, update };
   });
 
-  // ── plugins:stage-update(pluginId, source, currentVersion?) → { pluginId, newVersion, stagedDir } ──
+  // ── plugins:stage-update(pluginId, source, currentVersion?, allowOlder?) → { pluginId, newVersion, stagedDir } ──
   // 下载（url）/直读（磁盘 zip）→ 解压到 {userData}/tmp/.stage-<id>。校验：包内 id 与 pluginId 一致（防伪装）
-  // + 新版 > 当前（旧>=新拒绝——更新语义不降级）；不碰旧目录（commit 才替换）。
-  loggedHandle(IPC.plugins.stageUpdate, async (_event, pluginId: string, source: string, currentVersion?: string) => {
+  // + 版本方向（E6#33c 降级放行 锚①）：默认拒绝 旧/同于当前（更新语义不降级）；allowOlder 显式 true 才放行
+  //   严格更低的降级（版本下拉选旧版 + F2 确认后由 UI 传），同版恒拒（无版本变化的重装非更新流职责）；不碰旧目录（commit 才替换）。
+  loggedHandle(IPC.plugins.stageUpdate, async (_event, pluginId: string, source: string, currentVersion?: string, allowOlder?: boolean) => {
     if (typeof pluginId !== "string" || !pluginId) throw new Error("缺少 pluginId");
     if (typeof source !== "string" || !source) throw new Error("缺少更新包源（url 或磁盘 zip）");
     emitProgress("staging", { pluginId, message: `准备新版 ${pluginId}` });
@@ -187,8 +189,15 @@ export function registerPluginInstallHandlers(): void {
       const id = deriveIdFromZip(zipBase, manifest);
       if (id !== pluginId) throw new Error(`包内 pluginId 与待更新插件不符（${id} ≠ ${pluginId}）——拒绝暂存`);
       const cur = typeof currentVersion === "string" && currentVersion ? currentVersion : "0.0.0";
-      if (compareVersions(manifest.version, cur) <= 0) {
-        throw new Error(`新版本需高于当前版本 ${cur}（包内 ${manifest.version}）——已拒绝`);
+      // E6#33c 降级放行（锚①）——方向判定单复本 updateTargetDirection（semverUtils）；
+      // allowOlder:true（版本下拉选旧版 + F2 确认）才放行 downgrade；same 恒拒（无版本变化的重装非更新流职责）。
+      const dir = updateTargetDirection(manifest.version, cur);
+      if (dir === "same" || (dir === "downgrade" && allowOlder !== true)) {
+        throw new Error(
+          dir === "same"
+            ? `包内版本与当前版本相同 ${cur}——无需更新`
+            : `新版本需高于当前版本 ${cur}（包内 ${manifest.version}）——降级需在版本下拉显式选择旧版`,
+        );
       }
       const stageDir = path.join(downloadTmpDir(), `.stage-${pluginId}`);
       if (existsSync(stageDir)) await fs.rm(stageDir, { recursive: true, force: true });

@@ -79,7 +79,7 @@ export async function checkPluginUpdates(pluginId: string, catalogUrl: string): 
  */
 export async function updatePlugin(
   pluginId: string,
-  opts?: { catalogUrl?: string; url?: string },
+  opts?: { catalogUrl?: string; url?: string; allowOlder?: boolean },
 ): Promise<PluginUpdateResult> {
   try {
     const ops = packageOps();
@@ -107,9 +107,10 @@ export async function updatePlugin(
         : `缺少更新包来源（需 url 或 catalogUrl）`);
     }
 
-    // ── stage（主进程：下载→解压到 {userData}/tmp/.stage-<id>；校验 id 一致 + 新版>旧版）──
+    // ── stage（主进程：下载→解压到 {userData}/tmp/.stage-<id>；校验 id 一致 + 版本方向：新版>旧版默认，
+    //    降级仅当调用方显式传 allowOlder:true（E6#33c 版本下拉选旧版 + F2 确认）──
     emitInstallProgress("staging", pluginId, `准备新版 ${name}`);
-    const staged = await ops.packageStageUpdate(pluginId, downloadUrl, currentVersion);
+    const staged = await ops.packageStageUpdate(pluginId, downloadUrl, currentVersion, opts?.allowOlder);
 
     // ── unload 旧实例（#11c 机械路径——注册全退场后才允许文件被替换）──
     // revert 必须在 onWillUninstall 之前——注销主题/语言后 revert 找不到归属（同 uninstall/disable 序）

@@ -232,8 +232,9 @@ try {
       packageDownload:  (url: string) => ipcRenderer.invoke(IPC.plugins.download, url),
       packageExtract:   (zipPath: string, expectedPluginId?: string) => ipcRenderer.invoke(IPC.plugins.extract, zipPath, expectedPluginId),
       // E6#11c/#13b/c（段 B）：安全更新三段主进程 handler——updatePlugin/checkPluginUpdates 编排（壳 preload 独有）
+      // E6#33c（锚①）：stage-update allowOlder——降级放行（版本下拉选旧版 + F2 确认后传），默认拒 <=
       packageUpdateCheck:  (pluginId: string, catalogUrl: string, currentVersion?: string) => ipcRenderer.invoke(IPC.plugins.updateCheck, pluginId, catalogUrl, currentVersion),
-      packageStageUpdate:  (pluginId: string, source: string, currentVersion?: string) => ipcRenderer.invoke(IPC.plugins.stageUpdate, pluginId, source, currentVersion),
+      packageStageUpdate:  (pluginId: string, source: string, currentVersion?: string, allowOlder?: boolean) => ipcRenderer.invoke(IPC.plugins.stageUpdate, pluginId, source, currentVersion, allowOlder),
       packageCommitUpdate: (pluginId: string, stagedDir: string) => ipcRenderer.invoke(IPC.plugins.commitUpdate, pluginId, stagedDir),
     },
 
@@ -254,7 +255,8 @@ try {
       installWithProgress: (path: string) => ipcRenderer.invoke(IPC.plugins.call, 'installWithProgress', path),
       reinstall:      (id: string) => ipcRenderer.invoke(IPC.plugins.call, 'reinstall', id),
       // E6#11c/#13b（段 B）：安全更新 + 只读查更新（pluginManager 路由 → 壳 loader updatePlugin/checkPluginUpdates）
-      update:         (id: string, opts?: { catalogUrl?: string; url?: string }) => ipcRenderer.invoke(IPC.plugins.call, 'update', id, opts),
+      // E6#33c（锚①）：opts.allowOlder——降级放行（版本下拉选旧版 + F2 确认后传），默认拒 <=
+      update:         (id: string, opts?: { catalogUrl?: string; url?: string; allowOlder?: boolean }) => ipcRenderer.invoke(IPC.plugins.call, 'update', id, opts),
       checkUpdates:   (id: string, catalogUrl: string) => ipcRenderer.invoke(IPC.plugins.call, 'checkUpdates', id, catalogUrl),
       getDisabled:    () => ipcRenderer.invoke(IPC.plugins.call, 'getDisabled'),
       getUninstalled: () => ipcRenderer.invoke(IPC.plugins.call, 'getUninstalled'),

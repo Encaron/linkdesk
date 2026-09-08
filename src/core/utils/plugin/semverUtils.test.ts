@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { compareVersions, versionGte } from "./semverUtils";
+import { compareVersions, versionGte, updateTargetDirection } from "./semverUtils";
 
 describe("compareVersions 基础", () => {
   it("相等返回 0", () => {
@@ -87,5 +87,23 @@ describe("versionGte", () => {
     expect(versionGte("2.0.0", "1.9.9")).toBe(true);
     expect(versionGte("1.0.0", "1.0.0-beta")).toBe(true);
     expect(versionGte("1.0.0-beta", "1.0.0")).toBe(false);
+  });
+});
+
+describe("updateTargetDirection（E6#33c 锚① 版本方向——包内版本 vs 当前已装）", () => {
+  it("目标更高 = upgrade（默认更新语义放行）", () => {
+    expect(updateTargetDirection("1.2.0", "1.1.0")).toBe("upgrade");
+    expect(updateTargetDirection("2.0.0", "1.99.99")).toBe("upgrade");
+    expect(updateTargetDirection("1.1.0-beta", "1.0.0")).toBe("upgrade"); // prerelease 仍按 semver 高
+  });
+
+  it("目标更低 = downgrade（默认拒，仅 allowOlder 放行）", () => {
+    expect(updateTargetDirection("1.0.0", "1.1.0")).toBe("downgrade");
+    expect(updateTargetDirection("1.0.0-beta", "1.0.0")).toBe("downgrade");
+  });
+
+  it("同版本 = same（恒拒——重装非更新流职责）", () => {
+    expect(updateTargetDirection("1.1.0", "1.1.0")).toBe("same");
+    expect(updateTargetDirection("1.1.0", "v1.1.0")).toBe("same"); // v 前缀归一
   });
 });

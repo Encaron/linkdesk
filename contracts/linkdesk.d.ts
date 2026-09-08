@@ -1157,8 +1157,9 @@ export interface PluginsAPI {
         }>;
         /** E6#13b（段 B）：主进程真网络段——fetch marketplace.json → 版本对比（不碰账本——current 由壳传）。prerelease 默认忽略。 */
         packageUpdateCheck?(pluginId: string, catalogUrl: string, currentVersion?: string): Promise<PluginUpdateCheckResult>;
-        /** E6#13b/c（段 B）：主进程真下载+解压段——下载到 tmp → 解压到 {userData}/tmp/.stage-<id>（id 一致 + 新版>旧版校验，不碰旧目录） */
-        packageStageUpdate?(pluginId: string, source: string, currentVersion?: string): Promise<{
+        /** E6#13b/c（段 B）：主进程真下载+解压段——下载到 tmp → 解压到 {userData}/tmp/.stage-<id>（id 一致 + 版本方向校验，不碰旧目录）。
+         *  E6#33c（锚①）：allowOlder 显式 true 放行「包内版本 < 当前」的降级（版本下拉选旧版 + F2 确认后传）；默认仍拒 <=；同版恒拒。 */
+        packageStageUpdate?(pluginId: string, source: string, currentVersion?: string, allowOlder?: boolean): Promise<{
             pluginId: string;
             newVersion: string;
             stagedDir: string;
@@ -1182,10 +1183,12 @@ export interface PluginsAPI {
         getDisabled(): Promise<PluginInfoEntry[]>;
         getUninstalled(): Promise<PluginInfoEntry[]>;
         isDisabled(id: string): Promise<boolean>;
-        /** E6#11c（段 B）：安全更新（#11c 原子 + unload 机械路径）——opts: { catalogUrl?（走 check 选最新） | url?（直给更新包） } */
+        /** E6#11c（段 B）：安全更新（#11c 原子 + unload 机械路径）——opts: { catalogUrl?（走 check 选最新） | url?（直给更新包） }。
+         *  E6#33c（锚①）：allowOlder 显式 true 放行降级（版本下拉选旧版 + F2 确认后传）；默认拒 <=。 */
         update?(pluginId: string, opts?: {
             catalogUrl?: string;
             url?: string;
+            allowOlder?: boolean;
         }): Promise<PluginUpdateResult>;
         /** E6#13b（段 B）：只读查更新——有新版返回 downloadUrl（UI 徽标数据源；更新动作走 update） */
         checkUpdates?(pluginId: string, catalogUrl: string): Promise<PluginUpdateCheckResult>;
