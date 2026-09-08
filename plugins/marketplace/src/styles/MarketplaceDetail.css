@@ -344,39 +344,6 @@
   cursor: default;
 }
 
-/* 动作列内错误/提示（离线 non-blocking + 失败行）——右对齐驻列底（#64 A2 事件反馈迁移 toast 前过渡驻留） */
-.mpd-acts .mpd-action-error {
-  max-width: 100%;
-  text-align: right;
-}
-
-.mpd-action-error {
-  font-size: var(--font-size-sm);
-  color: var(--error);
-}
-
-/* #30.9b 失败态行（M4 三）：归因文案 + [重试] + ✕ 同行——flex 排布，列窄则 wrap */
-.mpd-action-error-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-}
-
-.mpd-action-error-row .mpd-action-error-text {
-  /* 归因文案可截断不折行撑爆——error 原文在 title 悬停 */
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  min-width: 0;
-}
-
-/* 离线提示图标对齐（置灰钮旁 inline 提示图标） */
-.mpd-action-error > .codicon {
-  vertical-align: -2px;
-}
-
 /* ═══ NavBar ═══ */
 
 .mpd-navbar {
@@ -854,7 +821,7 @@
 
 /* ═══ E6#30.8：元数据 warn 值 + title-row 徽标图标 + 安装确认弹窗 ═══ */
 
-/* 值需强调——minApp 不足标红（30.8c 门禁视觉侧，与 .mpd-action-error 同 --error 语义） */
+/* 值需强调——minApp 不足标红（30.8c 门禁视觉侧，--error 语义） */
 .mpd-info-value.warn {
   color: var(--error);
 }

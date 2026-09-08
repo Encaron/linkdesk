@@ -38,6 +38,7 @@ import {
   retryMarketInstall,
   installFailLabelKey,
   marketInstallStageLabel,
+  notifyError,
 } from "../services/marketplaceShared";
 import type { CatalogEntry } from "../services/marketCatalog";
 import { updateToVersion } from "../services/marketCatalog";
@@ -106,12 +107,13 @@ export default function ExploreView() {
     async (entry: CatalogEntry) => {
       if (!online) return; // 离线钮置灰（G3）——此处防御不发起（title 已提示「联网后重试」）
       if (!entry.downloadUrl) {
-        await lk()?.dialog?.alert(t("该插件缺少下载地址"));
+        // #64 A1：阻塞式弹窗 → 事件型 error toast（定案 5——toast 报一次即可，零页面占位）
+        notifyError(t("该插件缺少下载地址"));
         return;
       }
       // installWithProgress 契约上选填（老 preload 面无此法）——缺 = 安装链路不可用，别静默
       if (!lk()?.pluginManager?.installWithProgress) {
-        await lk()?.dialog?.alert(t("安装失败"));
+        notifyError(t("安装失败"));
         return;
       }
       // 进度/失败/重试全走 startMarketInstall（占会话 → settle 归因 + toast[重试]，幂等单发）

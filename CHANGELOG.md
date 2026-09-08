@@ -3,6 +3,16 @@
 > 每版一条，对标 VS Code changelog。**历史真相源 = [E6 执行清单](docs/02-Electron架构/E6_插件生态与发布/E6-执行清单.md)**（E6 阶段每轮收束细节 + 实机证据全在清单 Batch 注里，此文件只记类别清单）。版本号唯一真值 = `package.json`（不手写第二份，见 [02-产品身份与版本.md](docs/02-Electron架构/E6_插件生态与发布/06-主软件更新/02-产品身份与版本.md) §2.3）。
 > 0.x 阶段（开发期）：一切向后兼容变更走 patch 位；破坏性变更走 minor 位。
 
+## v0.1.17（2026-09-09）
+
+- **fix:E6#64 L3.5.2 事件反馈归一（档案 13 §一 A1-A3，2026-09-09 定案 1-5）**——市场安装/启停/更新的「出事方式」统一成右下角小通知（toast=操作回执），去阻塞弹窗 + 行内长红字推 UI
+  - A1 探索/搜索视图 4 处阻塞式 `dialog.alert` → 事件型 error toast（缺下载地址 / 无安装通道 / 本地目录安装失败 / 抛错）——`notifyError()` 统一入口（11-API §三 事件通道）
+  - A2 详情页事件型失败（装门/升级/启用/禁用/卸载抛错）全走 error toast；离线/已装冲突类静默（按钮置灰 + title「联网后重试」/「已装」已表达）；`setError` 行内红字字段 + `.mpd-action-error` 独占行 CSS/JSX 整删
+  - A3 装失败收敛成一处重试口（mockup 02 帧 3）——toast [重试]（settle 既有）+ 详情页安装钮原位变红「↻ 重试安装」（danger + refresh，走 retryMarketInstall 同单活跃会话）；页中「失败+重试+✕」行删；`dismissMarketInstallError` 死导出连删
+  - 定案 2 缺失件补上：主动点装即弹**角落常驻进度条**「正在安装 xxx…」（跨标签页仍挂角落；随进度更新百分比；成功终局 = lifecycle「已安装」toast 补句、进度条 cancel 收不双 toast；失败 = settle error toast 接续）——全走既有 #13.5 通知中心零新壳 API
+  - i18n：en.json 补「正在安装 {{name}}…({{percent}}%)」两条进度键
+  - 实机 CDP：详情页已装态零回归（禁用/卸载 render、无残留错误行）；壳 toast 宿主 progress 开/文案推进/cancel 收 + error 展示实证；残余 = 真装下载流程未实机（官方目录源 404 无缓存，既有 #30.5 残余）
+
 ## v0.1.16（2026-09-09）
 
 - **fix:E6#63 L3.5.1 详情页版式对账（档案 13 B1-B5）**——插件详情页纯 CSS + DetailView 结构一次成型

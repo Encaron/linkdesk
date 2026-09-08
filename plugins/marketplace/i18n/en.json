@@ -109,6 +109,8 @@
   "安装失败：未知错误，请重试": "Install failed: unknown error — retry",
   "联网后重试": "Retry when online",
   "重试安装": "Retry Install",
+  "正在安装 {{name}}…": "Installing {{name}}…",
+  "正在安装 {{name}}… {{percent}}%": "Installing {{name}}… {{percent}}%",
   "更新到 {{version}}": "Update to {{version}}",
   "更新中...": "Updating...",
   "自动更新": "Auto-update",

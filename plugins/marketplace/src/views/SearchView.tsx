@@ -7,7 +7,7 @@
 
 import { useState, useCallback, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { setMarketplaceSearch } from "../services/marketplaceShared";
+import { setMarketplaceSearch, notifyError } from "../services/marketplaceShared";
 import { OverlayPortal, useDebouncedInput } from "@linkdesk/ui"; // E6#15h：共享件全走 @linkdesk/ui 零件
 import { readConfiguredAuthorSources } from "../services/marketSources";
 import { decideAddSource } from "../services/marketSourceAdd"; // E6#30c：加源决策抽纯（官方恒不入册判重见该模块头注）
@@ -154,14 +154,14 @@ export default function SearchView() {
     try {
       const selected = await lk().dialog.open({ directory: true, title: t("选择插件目录") }); // E5.8#37.9：原生对话框标题壳侧 t() 解析后走 IPC
       if (selected) {
-        // E5.7#81：校验/版本冲突失败要可见——不再静默吞错
+        // E5.7#81：校验/版本冲突失败要可见——不再静默吞错；#64 A1：阻塞式弹窗 → 事件型 error toast
         const r = await lk().pluginManager.install(selected as string);
         if (r && !r.success) {
-          await lk().dialog.alert(r.error || t("安装失败"));
+          notifyError(r.error || t("安装失败"));
         }
       }
     } catch (e) {
-      await lk().dialog.alert(e instanceof Error ? e.message : String(e));
+      notifyError(e instanceof Error ? e.message : String(e));
     } finally {
       setInstalling(false);
       setStage(null);

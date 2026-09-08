@@ -15,7 +15,7 @@ import { useState, useCallback, useEffect, useMemo } from "react";
 // E5.7#98：_allPlugins 数据源是 pluginManager.list()（IPC 序列化子集）——消费 PluginListEntry，
 // 非 ViewPluginEntry（后者带 component 字段，IPC 不可达）
 // E5.8#20-c：契约化——插件列表类型走 @linkdesk/contracts（零 @src/core）
-import type { PluginListEntry } from "@linkdesk/contracts";
+import type { PluginListEntry, NotificationHandle } from "@linkdesk/contracts";
 // #30.9b 失败 toast 文案走 i18n.t——非组件模块 import i18next 默认实例（serial-monitor 先例；
 // 插件 i18n 资源已按 ns="translation" 合并进全局实例，t(key) 直取中英）
 import i18n from "i18next";
@@ -49,6 +49,16 @@ export function onMarketplaceSearchChange(fn: () => void): () => void {
   return () => {
     _searchListeners.delete(fn);
   };
+}
+
+/* ═══ #64 A1/A2 事件型失败统一入口（2026-09-09 定案——toast = 操作回执；禁弹大框、禁页面长红字推 UI） ═══
+ * marketplace 全视图共用一个失败通道：右下角 error toast（E6#13.5 notifications.show，settle 同源）。
+ * 显示文本由调用方 t() 解析成当前语言传入（组件本地译）——与 settle 侧模块 i18n.t 同汇壳层单渲染。 */
+
+/** 发一条 error toast——进程不可用（预览环境/壳进程）静默 no-op，不影响调用方流程 */
+export function notifyError(message: string): void {
+  const show = lk()?.notifications?.show;
+  if (show) void show(message, { type: "error" });
 }
 
 /* ═══ 本地插件共享数据 hook（已安装/内置/已禁用） ═══ */
@@ -408,14 +418,76 @@ function notifyMarketInstall(): void {
   _installListeners.forEach((fn) => fn());
 }
 
+/* ═══ #64d 安装进度 corner toast（2026-09-09 定案 2/3/4——主动点装即弹「正在安装 xxx…」挂壳层，
+ *  跨界面常驻；成功终局 = lifecycle 消费端 3「已安装」toast（本条 cancel 收，不双 toast）；失败终局 =
+ *  settle error toast 接续（本条先收）。文案 = 11-API §三 安装开始/进度行。单活跃会话 = 单进度条，
+ *  事件 done/error 与 settle 双写均幂等 close——toast 不依赖消费方挂载自给自足（#64 A3 语义）。 ═══ */
+
+type ProgressToastState = { pluginId: string; name: string; handle: NotificationHandle };
+let _progressToast: ProgressToastState | null = null;
+let _progressLastMsg = "";
+
+/** 安装进度条文案——下载带 % 才附进度（11-API §三「正在安装 {{name}}… 62%」行）；其余阶段/无 % 恒基文 */
+function progressToastMsg(name: string, stage: string | undefined, percent: number | undefined): string {
+  if (stage === "downloading" && percent != null) {
+    return i18n.t("正在安装 {{name}}… {{percent}}%", { name, percent });
+  }
+  return i18n.t("正在安装 {{name}}…", { name });
+}
+
+/** 开进度条——show 异步返 handle；await 落地时若已终局（超快装完/settle 已接管）→ 立刻 cancel 防孤儿条 */
+async function openProgressToast(pluginId: string, name: string): Promise<void> {
+  const show = lk()?.notifications?.show;
+  if (!show) return;
+  try {
+    const handle = await show(i18n.t("正在安装 {{name}}…", { name }), { progress: true });
+    const s = _installSession;
+    if (!handle || !s || s.pluginId !== pluginId || s.phase !== "installing") {
+      void handle?.cancel()?.catch?.(() => {});
+      return;
+    }
+    _progressToast = { pluginId, name, handle };
+    _progressLastMsg = i18n.t("正在安装 {{name}}…", { name });
+  } catch {
+    /* show 不可用/抛错（预览环境）——无进度条不影响安装会话 */
+  }
+}
+
+/** 终局收条（success/done/error/settle 幂等）——cancel 直关；终局文案由对应通道补（lifecycle 已安装 / settle error） */
+function closeProgressToast(): void {
+  const p = _progressToast;
+  _progressToast = null;
+  if (p) void p.handle.cancel()?.catch?.(() => {});
+}
+
+/** 进度条文案推进——随 ingest 阶段/百分比（仅消息变更才 update，节 IPC）；消费方全卸载后事件停发 = 文案定格，
+ *  终局仍由 await 中的 startMarketInstall 续体收（诚实边界：进度文字定格不影响装完/失败的终局收条） */
+function syncProgressToast(): void {
+  const p = _progressToast;
+  if (!p) return;
+  const s = _installSession;
+  if (!s || s.pluginId !== p.pluginId || s.phase !== "installing") return;
+  const msg = progressToastMsg(p.name, s.stage, s.percent);
+  if (msg === _progressLastMsg) return;
+  _progressLastMsg = msg;
+  void p.handle.update(msg)?.catch?.(() => {});
+}
+
+/** 显示名解析——目录条目名兜底 pluginId（#64d 进度条文案用；目录未加载/不在目录 = 裸 id 诚实显示） */
+function pluginDisplayNameOf(pluginId: string): string {
+  return _catalogResult.entries.find((e) => e.id === pluginId)?.name ?? pluginId;
+}
+
 /** installProgress 事件摄入——done 清会话 / error 转失败态 / 其余并入阶段。事件无 pluginId 归活跃会话。 */
 function ingestInstallProgress(p: InstallProgressPayload): void {
   if (!_installSession) return;
   const { stage, message, percent, pluginId } = p ?? {};
   if (pluginId && pluginId !== _installSession.pluginId) return; // 他人安装的 loading/done 不干扰本会话
   if (stage === "done") {
+    closeProgressToast(); // 成功终局——lifecycle「已安装」toast 补句，进度条收
     _installSession = null;
   } else if (stage === "error") {
+    closeProgressToast(); // 错误终局——settle error toast 接续（双写幂等）
     const err = message ?? _installSession.error;
     _installSession = { ..._installSession, phase: "error", error: err, reason: classifyInstallError(err) };
   } else if (stage) {
@@ -425,6 +497,7 @@ function ingestInstallProgress(p: InstallProgressPayload): void {
       stage,
       percent: percent ?? (stage === "downloading" ? _installSession.percent : undefined),
     };
+    syncProgressToast(); // 阶段/百分比推进进度条
   }
   notifyMarketInstall();
 }
@@ -466,6 +539,7 @@ export function useMarketInstall(): MarketInstallSession | null {
  *  安装地址保留供重试）。返回 bool。重试 = 手动触发（行内 [重试]/toast [重试]）无自动风暴。
  */
 async function settleInstallFailure(pluginId: string, downloadUrl: string, error: string | undefined): Promise<boolean> {
+  closeProgressToast(); // #64d：进度条先收，错误 toast（下方）接续终局
   const reason = classifyInstallError(error);
   _installSession = { pluginId, phase: "error", error, reason, downloadUrl };
   notifyMarketInstall();
@@ -499,10 +573,13 @@ export async function startMarketInstall(pluginId: string, downloadUrl: string):
   }
   _installSession = { pluginId, phase: "installing", stage: "validating", downloadUrl };
   notifyMarketInstall();
+  // #64d 定案 2：主动点装立即弹角落进度条（跨界面常驻；成功/失败终局分别由 lifecycle 已安装 / settle error 收）
+  void openProgressToast(pluginId, pluginDisplayNameOf(pluginId));
   try {
     // installWithProgress 不 throw——失败 resolve { success:false, error }（lifecycle-ops 实证）
     const r = await inst(downloadUrl);
     if (r && !r.success) return settleInstallFailure(pluginId, downloadUrl, r.error ?? "");
+    closeProgressToast(); // 装好——lifecycle「已安装」toast 补终局句，进度条收（不双 toast）
     _installSession = null;
     notifyMarketInstall();
     scheduleDataRefresh();
@@ -521,14 +598,6 @@ export function retryMarketInstall(pluginId: string, downloadUrl: string): Promi
 /** 读当前会话——command handler 等非组件入口（retry command 无 hook，模块级直读） */
 export function getMarketInstallSession(): MarketInstallSession | null {
   return _installSession;
-}
-
-/** 关掉失败会话（行内错误态关闭后清——#30.9b 手动，无自动清） */
-export function dismissMarketInstallError(): void {
-  if (_installSession?.phase === "error") {
-    _installSession = null;
-    notifyMarketInstall();
-  }
 }
 
 /* ═══ #30.9b 离线态（G3——navigator.onLine；离线 ≠ 失败：按钮置灰 + 提示，无 [重试]）═══ */

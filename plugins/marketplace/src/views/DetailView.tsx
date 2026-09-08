@@ -42,11 +42,10 @@ import {
   useOnlineStatus,
   startMarketInstall,
   retryMarketInstall,
-  dismissMarketInstallError,
-  installFailLabelKey,
   updateFailLabelKey,
   classifyInstallError,
   marketInstallStageLabel,
+  notifyError,
 } from "../services/marketplaceShared";
 import type { CatalogEntry } from "../services/marketCatalog";
 import {
@@ -167,7 +166,6 @@ export default function DetailView({ pluginId }: DetailContributedProps) {
 
   const [tab, setTab] = useState<TabId>("overview");
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   /* E6#33b：更新执行进行中（update 无独立会话——单插件动作，busy 局部即可；引擎只发 installProgress + 壳 toast，
    *  无 lifecycle 事件 → 成功需显式 refreshPlugins 收敛版本/徽标） */
   const [updating, setUpdating] = useState(false);
@@ -362,14 +360,14 @@ export default function DetailView({ pluginId }: DetailContributedProps) {
     };
   }, [pluginId, installed, pkgReadme, remoteReadmeUrl]);
 
+  /* #64 A2：enable/disable 抛错 = 事件型失败 → error toast（定案——事件失败浮右下角，零页面红字零 reflow） */
   const handleEnable = useCallback(async () => {
     if (!pluginId || busy) return;
     setBusy(true);
-    setError(null);
     try {
       await pm().enable(pluginId);
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      notifyError(e instanceof Error ? e.message : String(e));
     }
     setBusy(false);
   }, [pluginId, busy]);
@@ -377,11 +375,10 @@ export default function DetailView({ pluginId }: DetailContributedProps) {
   const handleDisable = useCallback(async () => {
     if (!pluginId || busy) return;
     setBusy(true);
-    setError(null);
     try {
       await pm().disable(pluginId);
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      notifyError(e instanceof Error ? e.message : String(e));
     }
     setBusy(false);
   }, [pluginId, busy]);
@@ -415,21 +412,19 @@ export default function DetailView({ pluginId }: DetailContributedProps) {
   const doVersionAction = useCallback(
     async (ver: string) => {
       if (!pluginId || busy || updating) return;
-      if (!online) {
-        setError(t("联网后重试"));
-        return;
-      }
+      if (!online) return; // 离线：更新钮已置灰 + title「联网后重试」——状态类静默拦（#64 A2），非失败无 toast
       const url = entry ? versionDownloadUrl(entry, ver) : undefined;
       if (!url) {
-        setError(t("该插件缺少下载地址"));
+        // #64 A2：缺下载地址 = 事件型拦阻 → error toast（定案 5——toast 报一次即可）
+        notifyError(t("该插件缺少下载地址"));
         return;
       }
       const upd = pm()?.update;
       if (!upd) {
-        setError(t(updateFailLabelKey("unknown")));
+        // 无更新执行面（老 preload 面）——环境缺面诚实告知
+        notifyError(t(updateFailLabelKey("unknown")));
         return;
       }
-      setError(null);
       setUpdating(true);
       try {
         // 引擎锚①：目标 < 当前（版本下拉选旧版降级）→ 显式 allowOlder:true 放行；升/同级不发（同版恒拒引擎兜底）
@@ -441,12 +436,13 @@ export default function DetailView({ pluginId }: DetailContributedProps) {
           if (pin !== undefined) void setPinnedVersion(pluginId, pin);
           refreshPlugins();
         } else {
+          // #64 A2：更新失败归因 → error toast（原行内红字退役）；重试口 = 原位更新钮仍在，无漂移
           const reason = classifyInstallError(r?.error ?? "");
-          setError(t(updateFailLabelKey(reason)));
+          notifyError(t(updateFailLabelKey(reason)));
         }
       } catch (e) {
         const reason = classifyInstallError(e instanceof Error ? e.message : String(e));
-        setError(t(updateFailLabelKey(reason)));
+        notifyError(t(updateFailLabelKey(reason)));
       } finally {
         setUpdating(false);
       }
@@ -481,11 +477,11 @@ export default function DetailView({ pluginId }: DetailContributedProps) {
     const ok = await confirmApi(t("确定卸载 {{name}} 吗？", { name: displayName }));
     if (!ok) return;
     setBusy(true);
-    setError(null);
     try {
       await pm().uninstall(pluginId);
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      // #64 A2：卸载抛错 = 事件型失败 → error toast（原行内红字退役）
+      notifyError(e instanceof Error ? e.message : String(e));
     }
     setBusy(false);
   }, [pluginId, busy, enabledEntry, disabledHit, t]);
@@ -494,35 +490,31 @@ export default function DetailView({ pluginId }: DetailContributedProps) {
   const installSessionHere =
     installSession !== null && installSession.pluginId === pluginId ? installSession : null;
   const installingHere = installSessionHere?.phase === "installing";
-  /** #30.9b 本插件失败会话（phase:error）——行内「安装失败」+ [重试]（09 §二 M4 三）；离线不产生会话 */
+  /** #30.9b 本插件失败会话（phase:error）——#64 A3 消费：安装钮原位变红「重试安装」（09 §二 M4 三）；离线不产生会话 */
   const installErrHere = installSessionHere?.phase === "error" ? installSessionHere : null;
 
   const installLabel = (): string => marketInstallStageLabel(t, installSession?.stage, installSession?.percent);
 
-  /* E6#30.8a/30.8c 安装门禁：缺下载地址 / 无安装面 / minAppVersion 不足 → setError 拦（确认弹窗前后双拦幂等）。
+  /* E6#30.8a/30.8c 安装门禁（确认弹窗前后双拦幂等）。#64 A2 归因区分：
+   *  - 已装冲突 / 离线 = 状态类（UI 本已翻转/按钮已置灰 + title）→ 静默拦，无 toast 无红字；
+   *  - 缺下载地址 / 无安装面 / minAppVersion = 事件型失败 → error toast（定案 5：toast 报一次即可）。
    *  minAppVersion 比对 = 当前壳版本 < 插件要求 → 拒装（未读到壳版本 = undefined 放行不拦——诚实不缺省拦装）。 */
   const installGateError = useCallback((): boolean => {
-    // #30.9d：已装同版本/再装 → 提示不静默覆盖（正常 UI 已藏安装钮，此处防竞态——列表/catalog 交错
-    //   翻态瞬间点装；禁用态同样已装，装 = 覆盖其目录不可静默）
-    if (installed) {
-      setError(t(installFailLabelKey("conflict")));
-      return true;
-    }
-    // #30.9b 离线（G3）：离线 ≠ 失败——不发起安装，提示「联网后重试」（重试对断网无意义，无 [重试]）
-    if (!online) {
-      setError(t("联网后重试"));
-      return true;
-    }
+    // #30.9d：已装同版本/再装 → 静默拦（防竞态——列表/catalog 交错翻态瞬间点装；禁用态同样已装；
+    //   正常 UI 已藏安装钮、已装 = 本已翻转成禁用/卸载，冲突非用户可见失败，红字/ttoast 均噪音）
+    if (installed) return true;
+    // #30.9b 离线（G3）：离线 ≠ 失败——按钮置灰 + title「联网后重试」已表达，防御路径静默拦（无 [重试]）
+    if (!online) return true;
     if (!installUrl) {
-      setError(t("该插件缺少下载地址"));
+      notifyError(t("该插件缺少下载地址"));
       return true;
     }
     if (!pm()?.installWithProgress) {
-      setError(t("安装失败"));
+      notifyError(t("安装失败"));
       return true;
     }
     if (entry?.minAppVersion && appVersion && compareVersions(appVersion, entry.minAppVersion) < 0) {
-      setError(t("需升级 LinkDesk 至 {{version}} 才能安装", { version: entry.minAppVersion }));
+      notifyError(t("需升级 LinkDesk 至 {{version}} 才能安装", { version: entry.minAppVersion }));
       return true;
     }
     return false;
@@ -533,7 +525,6 @@ export default function DetailView({ pluginId }: DetailContributedProps) {
     if (installGateError()) return;
     const url = installUrl;
     if (!url) return; // gate 已保证有地址——双保险供 TS 收窄（闭包随渲染，不跨依赖漂移）
-    setError(null);
     // E6#33c：手动装旧版（非目录稳定最新）→ 记 pinnedVersion（05 §二·九 尊重「停在旧版」意图，供 #33d autoUpdate 跳过）
     const ver = installVer;
     if (ver) {
@@ -548,7 +539,6 @@ export default function DetailView({ pluginId }: DetailContributedProps) {
   const handleInstallClick = useCallback(() => {
     if (!pluginId || busy || installingHere) return;
     if (installGateError()) return;
-    setError(null);
     setConfirming(true);
   }, [pluginId, busy, installingHere, installGateError]);
 
@@ -875,8 +865,8 @@ export default function DetailView({ pluginId }: DetailContributedProps) {
         </div>
 
         {/* ── 右上动作列 .mpd-acts（#63a：原 header 下方 action-bar 整行收编此列——30.5b 三态 + 30.5e 挂起态；
-         *  版本偏好 autoUpdate 副控制落 row2（mockup 01 .pdva-acts）；离线/失败/安装错误提示驻列底——#64 A2
-         *  事件反馈迁移 toast 前的过渡驻留，非终局） ── */}
+         *  版本偏好 autoUpdate 副控制落 row2（mockup 01 .pdva-acts）。#64 A2/A3 后本列**零行内红字**：
+         *  事件型失败全走右下角 error toast（定案 5 禁 reflow），持久态只剩「安装失败 → 安装钮原位变红重试」 ── */}
         <div className="mpd-acts">
           <div className="mpd-acts-row">
             {disabled ? (
@@ -918,49 +908,40 @@ export default function DetailView({ pluginId }: DetailContributedProps) {
               <>
                 {/* E6#33c：未装版本下拉（versions>1 选装哪个版本——05 §四场景①，选中即目标，默认最新/升级提示则 target） */}
                 {installPicker}
-                <Button
-                  variant="success"
-                  onClick={handleInstallClick}
-                  disabled={busy || installingHere || !online}
-                  title={!online ? t("联网后重试") : undefined}
-                >
-                  <span className="codicon codicon-cloud-download" />
-                  {installingHere ? installLabel() : t("安装")}
-                </Button>
+                {installErrHere ? (
+                  /* #64 A3（mockup 02 帧 3）：同一失败只留一处重试口——安装钮原位变红「↻ 重试安装」
+                   *  （toast [重试] 同 retryMarketInstall + 同会话 downloadUrl = 双口零漂移）；
+                   *  点击重发同一下载，进 installing 会话红钮自然消失回进度 */
+                  <Button
+                    variant="danger"
+                    onClick={() => {
+                      void retryMarketInstall(
+                        pluginId ?? "",
+                        installErrHere.downloadUrl ?? installUrl ?? "",
+                      );
+                    }}
+                    disabled={busy || !online}
+                    title={!online ? t("联网后重试") : undefined}
+                  >
+                    <span className="codicon codicon-refresh" /> {t("重试安装")}
+                  </Button>
+                ) : (
+                  <Button
+                    variant="success"
+                    onClick={handleInstallClick}
+                    disabled={busy || installingHere || !online}
+                    title={!online ? t("联网后重试") : undefined}
+                  >
+                    <span className="codicon codicon-cloud-download" />
+                    {installingHere ? installLabel() : t("安装")}
+                  </Button>
+                )}
               </>
             )}
           </div>
 
           {/* #33d 自动更新勾选（row2 副控制——mockup 01 .pdva-acts row2 L849-851；G2：已装且非挂起才渲染） */}
           {autoUpdateToggle}
-
-          {/* #30.9b 离线态（G3）：置灰钮旁提示「联网后重试」（离线 ≠ 失败——无 [重试]，联网自动恢复） */}
-          {!online && !info && (
-            <span className="mpd-action-error">
-              <span className="codicon codicon-warning" /> {t("联网后重试")}
-            </span>
-          )}
-          {error && <span className="mpd-action-error">{error}</span>}
-          {/* #30.9b 失败态（M4 三 行内错误态）：归因文案 + [重试]（手动触发无自动风暴）+ ✕ 关闭。
-           *   显示归因译文而非错误原文——原文含内部细节，悬停 title 可读原始串。 */}
-          {installErrHere && !error && (
-            <span className="mpd-action-error mpd-action-error-row">
-              <span className="mpd-action-error-text" title={installErrHere.error}>
-                {t(installFailLabelKey(installErrHere.reason ?? "unknown"))}
-              </span>
-              <Button
-                variant="ghost"
-                onClick={() => {
-                  void retryMarketInstall(pluginId ?? "", installErrHere.downloadUrl ?? entry?.downloadUrl ?? "");
-                }}
-              >
-                <span className="codicon codicon-refresh" /> {t("重试")}
-              </Button>
-              <Button variant="ghost" onClick={() => dismissMarketInstallError()} title={t("关闭")}>
-                <span className="codicon codicon-close" />
-              </Button>
-            </span>
-          )}
         </div>
       </header>
 
