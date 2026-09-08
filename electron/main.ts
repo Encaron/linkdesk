@@ -28,6 +28,7 @@ import { registerPluginInstallHandlers } from './ipc/handlers/plugin-install-han
 import { registerProtocol } from './plugins/protocol.js';
 import { ingestPluginBundles } from './plugins/bundle-ingest.js'; // E6#7（1.2-4）：启动解压 .linkdesk-plugin
 import { installBundledPlugins } from './plugins/bundled-install.js'; // E6#15c：首启自动装 bundled-plugins（发货夹）
+import { cleanupStaleDownloads } from './services/plugin-download.js'; // E6#31a：启动清残留下载临时文件（.part/孤立包，01 §四·五 B1）
 import { fileService } from './services/file-service.js';
 import { WindowManager } from './windows/window-manager.js';
 import { syncKeybindings } from './windows/keyboard-router.js'; // E5.5#7-p6
@@ -410,6 +411,9 @@ app.whenReady().then(async () => {
   // 与第三方插件同一棵树——差异只剩 manifest.core:true）。与 ingest 同批（registerProtocol 后、
   // 三表扫描前）——同见、同幂等；发货源保留为恢复备份。
   await installBundledPlugins();
+  // E6#31a：启动清 {userData}/tmp 下载残留（单实例保证启动瞬间无在途下载 = *.part 半截 + 孤立 .linkdesk-plugin
+  // 全孤儿；缝隙 B1「下载中关软件」不留垃圾，01 §四·五）。内部吞错不拖垮启动。
+  await cleanupStaleDownloads();
   // E5.7#48：Registry 主进程化——静态声明三表（LangDef/Protocol/FileAssociation）预加载，
   // 必须在 createWindow（池 WCV 创建于其内）之前——首个 IPC 查询到达时表已填好，无竞态窗口。
   // 装/卸/重装重扫通道注册一次；壳崩重建走 rebuildShell→createWindow，不经过 whenReady，
