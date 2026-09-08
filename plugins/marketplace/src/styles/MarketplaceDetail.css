@@ -3,14 +3,15 @@
  * 布局对标 VS Code extensionEditor.css：header / action bar / navbar / body + info sidebar。
  * 搬迁原则：换市场插件 = 换全新样式——本 CSS 归市场插件，壳保底视图用壳自己那份（两份各属其主）。 */
 
-/* 容器 = 内容页：正文可选中复制（E5.8#186 对标 VS Code 详情页；交互件/装饰保持不可选） */
+/* 容器 = 内容页：正文可选中复制（E5.8#186 对标 VS Code 详情页；交互件/装饰保持不可选）。
+ * #63d B4（2026-09-09 拍板）：去 880 限宽——全宽铺满标签页（CDP 实测 1400 可视详情列仅 880、两侧大空）。
+ * #63e B5 根不设滚动（现架构本已二分头/body，B4 改宽后不回归）：header/navbar flex-shrink:0 钉顶、
+ * .mpd-body 是唯一滚动区——overflow:hidden 确保根永不产生滚动条，长文只正文滚。 */
 .mpd-detail {
   height: 100%;
-  overflow-y: auto;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
-  max-width: 880px;
-  margin: 0 auto;
   padding: 0;
   color: var(--text-primary);
   user-select: text;
@@ -36,55 +37,61 @@
 
 .mpd-header {
   display: flex;
-  padding: 20px 20px 12px 20px;
+  align-items: center;
   gap: 16px;
+  padding: 16px 20px; /* 4px 节奏（壳保底 .pd-header 同值 同构） */
+  flex-shrink: 0; /* #63e B5：头部钉顶——不参与 body 滚动 */
+  border-bottom: 1px solid var(--separator); /* #63b B2：header 面板下分隔线（气泡皮肤可弃、分隔线不可省） */
 }
 
 .mpd-icon {
   position: relative;
-  width: 96px;
-  height: 96px;
+  width: 52px; /* #63b B2：icon 位 96 → 52 收敛（mockup 01 头部三等分——非巨大方形图标） */
+  height: 52px;
   flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-/* 目录 icon descriptor → PluginIcon 渲染的尺寸接管（lucide/codicon/emoji/img 各按其型） */
+/* 目录 icon descriptor → PluginIcon 渲染的尺寸接管（lucide/codicon/emoji/img 各按其型；52 盒内图 ~40） */
 .mpd-icon .plugin-icon--codicon,
 .mpd-icon .plugin-icon--emoji {
-  font-size: 56px !important;
+  font-size: 40px !important;
   line-height: 1;
   width: auto;
   height: auto;
 }
 
 .mpd-icon .plugin-icon--lucide {
-  width: 56px;
-  height: 56px;
+  width: 40px;
+  height: 40px;
 }
 
 .mpd-icon .plugin-icon--img {
+  width: 40px;
+  height: 40px;
   object-fit: contain;
 }
 
 /* 无目录条目/未装时占位 codicon（list() IPC 无 icon 字段——E5.7#98 同况） */
 .mpd-icon-codicon {
-  font-size: 96px !important;
+  font-size: 40px !important;
   color: var(--text-secondary);
 }
 
+/* core:true 星标（#18a UI 旗标——藏卸载钮同旗；52 盒右下角收敛 ~20） */
 .mpd-icon-badge {
   position: absolute;
-  right: -4px;
-  bottom: -4px;
-  width: 28px;
-  height: 28px;
-  line-height: 28px;
+  right: -3px;
+  bottom: -3px;
+  width: 20px;
+  height: 20px;
+  line-height: 20px;
   border-radius: var(--radius-2xl);
   background: var(--accent);
   color: var(--badge-text);
-  font-size: 16px !important;
+  font-size: 12px !important;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -287,18 +294,36 @@
   font-size: var(--font-size-xs);
 }
 
-/* ═══ Action Bar（30.11d 落插件视图；30.14c 按钮已走壳 Button variant——启用=success/禁用=ghost/卸载=danger） ═══ */
+/* ═══ 右上动作列（#63a B1：原 header 下方 .mpd-action-bar 整行迁入 header 图标/名右侧 .mpd-acts——
+ *  对标 01 竞标 A .pdva-acts L829-853；row1 = 版本下拉 + 主/次动作钮（窄则 wrap 换行兜底）、row2 =
+ *  自动更新勾；离线/失败/安装错误提示驻列底。30.14c 按钮已走壳 Button variant——启用=success/禁用=ghost/卸载=danger） ═══ */
 
-.mpd-action-bar {
+.mpd-acts {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.mpd-acts-row {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 8px;
-  padding: 8px 20px 12px;
   flex-wrap: wrap;
 }
 
-/* #33d 自动更新勾选（mockup .auto-upd——inline-flex 版本偏好副控制；secondary 文本 + accent 勾选色，
- *  全走壳语义 token 零硬编码；disabled 态降透明度同 mockup auto-disabled）。动作尾位 → 自身 inline 不独占行 */
+/* 动作列内容图标（壳 Button 不归内容——图标尺寸/对齐归消费方本件） */
+.mpd-acts-row .codicon {
+  font-size: var(--font-size-sm);
+  vertical-align: middle;
+}
+
+/* #33d 自动更新勾选（mockup .auto-upd——版本偏好副控制 row2；secondary 文本 + accent 勾选色，
+ *  全走壳语义 token 零硬编码；disabled 态降透明度同 mockup auto-disabled） */
 .mpd-auto-upd {
   display: inline-flex;
   align-items: center;
@@ -307,7 +332,6 @@
   color: var(--text-secondary);
   white-space: nowrap;
   user-select: none;
-  margin-left: 2px;
 }
 
 .mpd-auto-upd input {
@@ -320,24 +344,24 @@
   cursor: default;
 }
 
-/* action bar 内内容图标（壳 Button 不归内容——图标尺寸/对齐归消费方本件） */
-.mpd-action-bar .codicon {
-  font-size: var(--font-size-sm);
-  vertical-align: middle;
+/* 动作列内错误/提示（离线 non-blocking + 失败行）——右对齐驻列底（#64 A2 事件反馈迁移 toast 前过渡驻留） */
+.mpd-acts .mpd-action-error {
+  max-width: 100%;
+  text-align: right;
 }
 
 .mpd-action-error {
   font-size: var(--font-size-sm);
   color: var(--error);
-  flex-basis: 100%;
 }
 
-/* #30.9b 失败态行（M4 三）：归因文案 + [重试] + ✕ 同行——flex-basis 100 独占一行，内部 flex 排布 */
+/* #30.9b 失败态行（M4 三）：归因文案 + [重试] + ✕ 同行——flex 排布，列窄则 wrap */
 .mpd-action-error-row {
   display: flex;
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .mpd-action-error-row .mpd-action-error-text {
@@ -421,10 +445,10 @@
 
 .mpd-info-sidebar {
   width: 220px;
-  flex-shrink: 0;
+  flex: none; /* #63d B4：右栏定宽——README 全宽吃满可用宽时不被挤走 */
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  padding-bottom: 8px; /* 末项下分隔线留呼吸（base .mpd-info-item 竖叠仅供确认弹窗，见下 #63c 侧栏覆写） */
 }
 
 .mpd-info-item {
@@ -448,6 +472,70 @@
 .mpd-info-value.mono {
   font-family: var(--font-mono);
   font-size: var(--font-size-xs);
+}
+
+/* ═══ #63c B3：侧栏分组 + 行横排（作用域限定 .mpd-info-sidebar——安装确认弹窗 .mpd-confirm-rows 共用
+ *  InfoItem 但保持原竖叠布局不受扰动；mockup 04 定稿：节标题带组上分隔线、label 左 | value 右、项间细分隔） ═══ */
+
+.mpd-info-group {
+  margin-top: 12px;
+}
+
+.mpd-info-sidebar > .mpd-info-group:first-child {
+  margin-top: 0;
+}
+
+/* 分组节标题（无「信息」总词——组内字段自带归属；2xs + secondary + 0.06em 字距 = muted 小号大标题感） */
+.mpd-info-group-title {
+  margin: 0 0 2px;
+  padding-top: 8px;
+  border-top: 1px solid var(--separator);
+  font-size: var(--font-size-2xs); /* E5.8 Phase 12 #180：=11px token */
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--text-secondary);
+}
+
+/* 行 = label 左 ｜ value 右 横排（原 .mpd-info-item 竖叠仅供确认弹窗用；侧栏内覆写为横排 + 项间细分隔） */
+.mpd-info-sidebar .mpd-info-item {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--separator); /* 项间细分隔 */
+}
+
+.mpd-info-sidebar .mpd-info-label {
+  flex: none;
+  white-space: nowrap;
+}
+
+.mpd-info-sidebar .mpd-info-value {
+  flex: 1;
+  min-width: 0;
+  text-align: right;
+  overflow-wrap: anywhere; /* #63d B4：长 token（URL/pluginId/版本）窄列内断行不溢出 */
+}
+
+/* 类别组 = 每分类一枚 chip 并排（VS Code renderCategories 实证；非交互状态件） */
+.mpd-info-cats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 3px 0 4px;
+}
+
+.mpd-info-cat {
+  font-size: var(--font-size-2xs);
+  line-height: 1.6; /* 2xs(11px)×1.6≈18px 芯片高——unitless 免白名单 */
+  color: var(--text-secondary);
+  background: var(--bg-input);
+  border: 1px solid var(--separator);
+  border-radius: var(--radius-sm);
+  padding: 0 8px;
+  user-select: none;
 }
 
 /* ═══ 截图画廊（30.6c1——mockup 帧 1/8：横向滚动截图条；作者自制图以 img 元素直载，同 downloadUrl 信任级） ═══ */
@@ -479,6 +567,7 @@
 
 .mpd-readme {
   margin-top: 4px;
+  overflow-wrap: break-word; /* #63d B4：README 超长 URL 断行不横向溢出（B4 全宽后正文列变宽） */
 }
 
 /* ═══ 元数据侧栏：空值 dash / 仓库·问题外链锚 / 依赖·被依赖 chip 组（30.6c2/c3） ═══ */

@@ -2,13 +2,20 @@
  * DetailView——插件详情主区渲染面（contributes.views.main["plugin-detail"]，容器 "main" 由壳
  * ShellViewRenderer 在 plugin-detail 标签页消费——E6#30.10b）。
  *
- * E6#30.11 搬迁：布局从壳 PluginDetailPoolView 迁入（header / action bar / navbar / body + info 侧栏），
+ * E6#30.11 搬迁：布局从壳 PluginDetailPoolView 迁入（header / navbar / body + info 侧栏），
  * 零 @src/core——数据全走 window.linkdesk.* IPC + 本插件模块级 store。
  * 壳 PluginDetailPoolView 降级为保底宿主（无市场插件/无详情贡献时兜底，不崩）。
  *
+ * E6#63 版式对账（3.5.1 B1-B5）：header = 图标 ｜ 名/副题/简述 ｜ 右上动作列 .mpd-acts（原 header 下方
+ * action bar 整行迁入——01 竞标 A .pdva-head 三段一行 L829-853，动作在图标/名右方同头部）；
+ * icon 52 位 + header 下 --separator 分隔线（B2）；info 侧栏 = mockup 04 分组（顶部 标识符/作者/版本/大小
+ * + 组 市场/类别/资源/依赖·环境、label 左 | value 右 横排 + 项间细分隔、分类每枚 chip 并排）——作者行补齐
+ * （manifest author 缺失回退目录 entry.author，禁用态 header 副标题/侧栏作者行同源回填）；
+ * 去 880 限宽全宽铺满标签页（B4）。
+ *
  * E6#30.6 富展示：navbar 详情/功能/更改日志 三 tab；详情 = 截图画廊 + README（已装读包 / 未装 readmeUrl /
  * 降级 description）；功能 = contributes 四组渲染（DetailFeaturesTab）；更改日志 = 包内 CHANGELOG / 目录
- * versions（DetailChangelogTab）；元数据侧栏追加大小/来源/仓库/问题/许可证/分类/更新时间/首次发布/依赖/被依赖。
+ * versions（DetailChangelogTab）；元数据侧栏分组内字段源同 30.6c2/c3（含 E6#30.8b 下载数 / #30.8c minApp）。
  *
  * 数据源（30.11c）：list()（已装实时状态）→ catalog（marketEntry，未装可显示）+ list() 实时合并。
  *   已装判定 = list()(启用) ∪ getDisabled()(禁用) 两源合并——list() EXCLUDES 禁用插件（实机探针实证），
@@ -51,7 +58,7 @@ import {
 } from "../services/marketCatalog";
 import { removeDiscoveredCandidate, runAutoUpdateIfDue } from "../services/updateDiscovery";
 import { readPluginUpdateMeta, setAutoUpdate, setPinnedVersion } from "../services/installedUpdateMeta";
-import { categoryText } from "../services/marketCategories";
+import { categoryListFromEntry, localizeCategory } from "../services/marketCategories";
 import { useDownloadCount } from "../services/downloadCounts";
 import { readInstalledPackageFile } from "../services/packageFiles";
 import DetailFeaturesTab from "./DetailFeaturesTab";
@@ -134,6 +141,17 @@ function InfoItem({
 /** 元数据侧栏「—」空值占位（依赖/被依赖等无数据的诚实显示） */
 function Dash() {
   return <span className="mpd-info-value mpd-info-dash">—</span>;
+}
+
+/** 元数据侧栏分组（#63c B3——mockup 04 定稿：无「信息」总词；节标题 + 组内字段/内容；空组不渲染不占位） */
+function InfoGroup({ title, items }: { title?: string; items: ReactNode[] }) {
+  if (items.length === 0) return null;
+  return (
+    <div className="mpd-info-group">
+      {title && <h3 className="mpd-info-group-title">{title}</h3>}
+      {items}
+    </div>
+  );
 }
 
 type TabId = "overview" | "features" | "changelog";
@@ -571,7 +589,10 @@ export default function DetailView({ pluginId }: DetailContributedProps) {
   const isCore = !!m.core;
   const nameText = info ? t(m.name ?? pluginId ?? "") : entry?.name ?? pluginId ?? "";
   const versionText = info ? m.version : entry?.version;
-  const authorText = info ? m.author : (entry ? authorLabel(entry.author) : undefined);
+  /* #63c B3：作者行/header 副标题两源归并（禁用态连带坑 2026-09-09——getDisabled 子集无 author/icon：
+   *  已装 manifest author 为准 → 缺失回退目录 entry.author（禁用/已装都可经目录补齐副标题 + 侧栏作者行）；
+   *  目录也没有 = undefined → header 副标题藏、侧栏作者行 Dash 诚实占位（结构固定不缩行）。 */
+  const authorText = (info ? m.author : undefined) || (entry ? authorLabel(entry.author) : undefined);
   const descText = info ? m.description ?? "" : entry?.description ?? "";
   const showDesc = descText.length > 0;
   const iconManifest = entry?.icon || entry?.iconSource ? { icon: entry?.icon, iconSource: entry?.iconSource } : undefined;
@@ -609,10 +630,10 @@ export default function DetailView({ pluginId }: DetailContributedProps) {
     : entry?.publishedAt;
   const lastUpdate = entry?.versions?.[0]?.publishedAt ?? entry?.publishedAt;
 
-  /* E6#32b：分类行文本——legacy `category` + `categories[]` 并集去重、逐 slug 走 category.* i18n
-   *  （英文 slug 作身份，zh/en 双值表），多值「 · 」连接；空 → undefined（无分类不显示行）。
-   *  零分类导航/筛选（#32b 边界）。 */
-  const categoryRowText = entry ? categoryText(t, entry.category, entry.categories) : undefined;
+  /* E6#32b + #63c B3：分类值 = legacy `category` + `categories[]` 并集去重、逐 slug 走 category.* i18n
+   *  （英文 slug 作身份，zh/en 双值表）；渲染改**每分类一枚 chip 并排**（VS Code renderCategories 实证——
+   *  数据 categories[] 本就数组，纯显示改，非「 · 」粘串）。空 → []（无分类不渲染「类别」组）。 */
+  const categoryList = entry ? categoryListFromEntry(entry.category, entry.categories) : [];
 
   const depValues = (deps: string[]): ReactNode =>
     deps.length === 0 ? (
@@ -729,9 +750,105 @@ export default function DetailView({ pluginId }: DetailContributedProps) {
     </label>
   ) : null;
 
+  /* ── #63c B3 元数据侧栏分组内容（mockup 04 定稿——顶部无节题小段 标识符/作者/版本/大小 + 组
+   *  市场/类别/资源/依赖·环境；结构全插件固定——行值无数据给 Dash（—）占位不缩结构、空组不渲染；
+   *  分类 = 每枚 chip 并排；字段集全保留不精简（用户 2026-09-09 拍板）。IIFE 只为局部变量作用域收拢。 ── */
+  const infoGroups = ((): Array<{ title?: string; items: ReactNode[] }> => {
+    const groups: Array<{ title?: string; items: ReactNode[] }> = [];
+
+    /* 顶部无节题小段（mockup 04 开首——不落「信息」总词） */
+    const top: ReactNode[] = [
+      <InfoItem key="id" label={t("标识符")} value={pluginId ?? ""} mono />,
+      /* 作者行（#63c 补——与 header 副标题同源 authorText；manifest 缺失回退目录 entry.author；都没有 → Dash） */
+      <InfoItem key="author" label={t("作者")} value={authorText || <Dash />} />,
+    ];
+    if (versionText) top.push(<InfoItem key="ver" label={t("版本")} value={`v${versionText}`} />);
+    /* 大小行（目录 size 数据——已装态「打开所在位置」替换 = L3.5 挂起项，见 E6 清单 📌，非本批） */
+    if (entry?.size != null) top.push(<InfoItem key="size" label={t("大小")} value={fmtSize(entry.size)} />);
+    groups.push({ items: top });
+
+    /* 组：市场（mockup 04 归组——来源/首次发布/更新时间/下载；「来源」行即目录身份，无外链概念） */
+    const market: ReactNode[] = [];
+    if (sourceName) market.push(<InfoItem key="src" label={t("来源")} value={sourceName} mono />);
+    if (firstRelease)
+      market.push(<InfoItem key="first" label={t("首次发布")} value={firstRelease.slice(0, 10)} />);
+    if (lastUpdate) market.push(<InfoItem key="last" label={t("更新时间")} value={lastUpdate.slice(0, 10)} />);
+    /* E6#30.8b 下载数（read-only GitHub 计数）——仅 ready 显，无数据不造空位 */
+    if (dl.status === "ready" && dl.count !== undefined)
+      market.push(<InfoItem key="dl" label={t("下载")} value={fmtCount(dl.count)} />);
+    groups.push({ title: t("市场"), items: market });
+
+    /* 组：类别——每分类一枚 chip 并排（VS Code renderCategories 实证；空 → 整组不渲染） */
+    const cats: ReactNode[] =
+      categoryList.length > 0
+        ? [
+            <div key="cats" className="mpd-info-cats">
+              {categoryList.map((slug) => (
+                <span key={slug} className="mpd-info-cat">
+                  {localizeCategory(t, slug)}
+                </span>
+              ))}
+            </div>,
+          ]
+        : [];
+    groups.push({ title: t("类别"), items: cats });
+
+    /* 组：资源——逐行条件「有才显」（VS Code renderExtensionResources if 同款；仓库/问题/许可证） */
+    const resources: ReactNode[] = [];
+    if (repoUrl)
+      resources.push(
+        <InfoItem
+          key="repo"
+          label={t("仓库")}
+          value={
+            <a className="mpd-info-link" href={repoUrl} target="_blank" rel="noopener noreferrer">
+              {t("打开仓库")} <span className="codicon codicon-link-external mpd-info-link-icon" />
+            </a>
+          }
+        />,
+      );
+    if (issuesUrl)
+      resources.push(
+        <InfoItem
+          key="issues"
+          label={t("问题")}
+          value={
+            <a className="mpd-info-link" href={issuesUrl} target="_blank" rel="noopener noreferrer">
+              {t("报告问题")} <span className="codicon codicon-link-external mpd-info-link-icon" />
+            </a>
+          }
+        />,
+      );
+    if (entry?.license) resources.push(<InfoItem key="lic" label={t("许可证")} value={entry.license} />);
+    groups.push({ title: t("资源"), items: resources });
+
+    /* 组：依赖·环境（mockup 04 末组定名）——需 LinkDesk(minApp)/依赖/被依赖 */
+    const depEnv: ReactNode[] = [];
+    if (entry?.minAppVersion)
+      depEnv.push(
+        <InfoItem
+          key="minapp"
+          label={t("需 LinkDesk")}
+          mono
+          warn={!!appBelowMin}
+          value={`v${entry.minAppVersion}`}
+        />,
+      );
+    /* 依赖行（30.6c3）：未装 → Dash 诚实空（#64e A4 缺依赖门禁前不猜目录 requires——待用户拍板范围） */
+    if (installed || !!entry)
+      depEnv.push(
+        <InfoItem key="deps" label={t("依赖")} value={installed ? depValues(requiresList) : <Dash />} />,
+      );
+    if (installed) depEnv.push(<InfoItem key="dependents" label={t("被依赖")} value={dependentValues()} />);
+    groups.push({ title: t("依赖 · 环境"), items: depEnv });
+
+    return groups;
+  })();
+
   return (
     <div className="mpd-detail">
-      {/* ═══ Header ═══ */}
+      {/* ═══ Header（#63a B1：三段一行——icon ｜ id/副题/简述列 ｜ 右上动作列 .mpd-acts；mockup 01 竞标 A
+       *  .pdva-head L829-853：动作在图标/名右方同头部，row1 主钮+版本下拉、row2 自动更新勾；窄容器允许换行兜底） ═══ */}
       <header className="mpd-header">
         <div className="mpd-icon">
           {iconManifest ? (
@@ -756,63 +873,67 @@ export default function DetailView({ pluginId }: DetailContributedProps) {
           {authorText && <p className="mpd-subtitle">{authorText}</p>}
           {showDesc && <p className="mpd-short-desc">{descText}</p>}
         </div>
-      </header>
 
-      {/* ═══ Action Bar（30.5b 三态 + 30.5e 挂起态） ═══ */}
-      {(info || entry) && (
-        <div className="mpd-action-bar">
-          {disabled ? (
-            <>
-              {/* E6#33c/#33b 版本动作首槽：版本下拉（versions>1 有历史）+ 升/降钮（降走 requestDowngrade F2 确认 → allowOlder 放行）。
-               *  禁用态也照常——F1（引擎 wasActive=false 换文件不 reload 保持禁用）；accent 语义族零新壳组件 */}
-              {versionPicker}
-              {actButton}
-              <Button variant="success" onClick={handleEnable} disabled={busy || updating}>
-                <span className="codicon codicon-play" /> {t("启用")}
-              </Button>
-              {/* E6#18a：core:true 藏卸载钮——含禁用态（core 经 getDisabled 透传） */}
-              {!isCore && (
-                <Button variant="danger" onClick={handleUninstall} disabled={busy || updating}>
-                  <span className="codicon codicon-trash" /> {t("卸载")}
+        {/* ── 右上动作列 .mpd-acts（#63a：原 header 下方 action-bar 整行收编此列——30.5b 三态 + 30.5e 挂起态；
+         *  版本偏好 autoUpdate 副控制落 row2（mockup 01 .pdva-acts）；离线/失败/安装错误提示驻列底——#64 A2
+         *  事件反馈迁移 toast 前的过渡驻留，非终局） ── */}
+        <div className="mpd-acts">
+          <div className="mpd-acts-row">
+            {disabled ? (
+              <>
+                {/* E6#33c/#33b 版本动作首槽：版本下拉（versions>1 有历史）+ 升/降钮（降走 requestDowngrade F2 确认 → allowOlder 放行）。
+                 *  禁用态也照常——F1（引擎 wasActive=false 换文件不 reload 保持禁用）；accent 语义族零新壳组件 */}
+                {versionPicker}
+                {actButton}
+                <Button variant="success" onClick={handleEnable} disabled={busy || updating}>
+                  <span className="codicon codicon-play" /> {t("启用")}
                 </Button>
-              )}
-              {autoUpdateToggle}
-            </>
-          ) : pending ? (
-            <span className="mpd-blocked-chip" title={enabledEntry?.pendingReason} role="status">
-              <span className="codicon codicon-circle-slash" />
-              {t("安装不可用（缺依赖）")}
-            </span>
-          ) : info ? (
-            <>
-              {/* E6#33c/#33b：版本下拉（有历史）+ 升/降钮首槽（「禁用/卸载」旁——点4 第一段） */}
-              {versionPicker}
-              {actButton}
-              <Button variant="ghost" onClick={handleDisable} disabled={busy || updating}>
-                <span className="codicon codicon-circle-slash" /> {t("禁用")}
-              </Button>
-              {!isCore && (
-                <Button variant="danger" onClick={handleUninstall} disabled={busy || updating}>
-                  <span className="codicon codicon-trash" /> {t("卸载")}
+                {/* E6#18a：core:true 藏卸载钮——含禁用态（core 经 getDisabled 透传） */}
+                {!isCore && (
+                  <Button variant="danger" onClick={handleUninstall} disabled={busy || updating}>
+                    <span className="codicon codicon-trash" /> {t("卸载")}
+                  </Button>
+                )}
+              </>
+            ) : pending ? (
+              <span className="mpd-blocked-chip" title={enabledEntry?.pendingReason} role="status">
+                <span className="codicon codicon-circle-slash" />
+                {t("安装不可用（缺依赖）")}
+              </span>
+            ) : info ? (
+              <>
+                {/* E6#33c/#33b：版本下拉（有历史）+ 升/降钮首槽（「禁用/卸载」旁——点4 第一段） */}
+                {versionPicker}
+                {actButton}
+                <Button variant="ghost" onClick={handleDisable} disabled={busy || updating}>
+                  <span className="codicon codicon-circle-slash" /> {t("禁用")}
                 </Button>
-              )}
-              {autoUpdateToggle}
-            </>
-          ) : (
-            <>
-              {/* E6#33c：未装版本下拉（versions>1 选装哪个版本——05 §四场景①，选中即目标，默认最新/升级提示则 target） */}
-              {installPicker}
-              <Button
-                variant="success"
-                onClick={handleInstallClick}
-                disabled={busy || installingHere || !online}
-                title={!online ? t("联网后重试") : undefined}
-              >
-                <span className="codicon codicon-cloud-download" />
-                {installingHere ? installLabel() : t("安装")}
-              </Button>
-            </>
-          )}
+                {!isCore && (
+                  <Button variant="danger" onClick={handleUninstall} disabled={busy || updating}>
+                    <span className="codicon codicon-trash" /> {t("卸载")}
+                  </Button>
+                )}
+              </>
+            ) : (
+              <>
+                {/* E6#33c：未装版本下拉（versions>1 选装哪个版本——05 §四场景①，选中即目标，默认最新/升级提示则 target） */}
+                {installPicker}
+                <Button
+                  variant="success"
+                  onClick={handleInstallClick}
+                  disabled={busy || installingHere || !online}
+                  title={!online ? t("联网后重试") : undefined}
+                >
+                  <span className="codicon codicon-cloud-download" />
+                  {installingHere ? installLabel() : t("安装")}
+                </Button>
+              </>
+            )}
+          </div>
+
+          {/* #33d 自动更新勾选（row2 副控制——mockup 01 .pdva-acts row2 L849-851；G2：已装且非挂起才渲染） */}
+          {autoUpdateToggle}
+
           {/* #30.9b 离线态（G3）：置灰钮旁提示「联网后重试」（离线 ≠ 失败——无 [重试]，联网自动恢复） */}
           {!online && !info && (
             <span className="mpd-action-error">
@@ -841,7 +962,7 @@ export default function DetailView({ pluginId }: DetailContributedProps) {
             </span>
           )}
         </div>
-      )}
+      </header>
 
       {/* ═══ NavBar——详情/功能/更改日志（30.6 三 tab，本地 state，host 换插件实例重置） ═══ */}
       <nav className="mpd-navbar">
@@ -954,49 +1075,12 @@ export default function DetailView({ pluginId }: DetailContributedProps) {
             )}
           </div>
 
-          {/* ═══ 元数据侧栏（30.6c2/c3——mockup 帧 1/7 字段集） ═══ */}
+          {/* ═══ 元数据侧栏（30.6c2/c3 + #63c B3 分组定稿——mockup 04：顶部无节题小段 + 组 市场/类别/资源/依赖·环境；
+           *  label 左 | value 右 横排 + 项间细分隔；结构全插件固定；字段集全保留——内容组装见上方 infoGroups IIFE） ═══ */}
           <aside className="mpd-info-sidebar">
-            <InfoItem label={t("标识符")} value={pluginId ?? ""} mono />
-            {versionText && <InfoItem label={t("版本")} value={`v${versionText}`} />}
-            {/* E6#30.8c：插件最低要求壳版本——当前壳版本不足 → 值标红 warn + 安装门禁拒装 */}
-            {entry?.minAppVersion && (
-              <InfoItem label={t("需 LinkDesk")} mono warn={!!appBelowMin} value={`v${entry.minAppVersion}`} />
-            )}
-            {entry?.size != null && <InfoItem label={t("大小")} value={fmtSize(entry.size)} />}
-            {sourceName && <InfoItem label={t("来源")} value={sourceName} mono />}
-            {/* E6#30.8b：GitHub Releases 资产下载数（read-only 计数，只读 GitHub 现成数据不伪造）——
-             *  仅 dl.status==="ready" 显示；无 GitHub API 源/拉取失败/本地插件无 marketEntry → 隐藏不造空位 */}
-            {dl.status === "ready" && dl.count !== undefined && (
-              <InfoItem label={t("下载")} value={fmtCount(dl.count)} />
-            )}
-            {repoUrl && (
-              <InfoItem
-                label={t("仓库")}
-                value={
-                  <a className="mpd-info-link" href={repoUrl} target="_blank" rel="noopener noreferrer">
-                    {t("打开仓库")} <span className="codicon codicon-link-external mpd-info-link-icon" />
-                  </a>
-                }
-              />
-            )}
-            {issuesUrl && (
-              <InfoItem
-                label={t("问题")}
-                value={
-                  <a className="mpd-info-link" href={issuesUrl} target="_blank" rel="noopener noreferrer">
-                    {t("报告问题")} <span className="codicon codicon-link-external mpd-info-link-icon" />
-                  </a>
-                }
-              />
-            )}
-            {entry?.license && <InfoItem label={t("许可证")} value={entry.license} />}
-            {categoryRowText && <InfoItem label={t("分类")} value={categoryRowText} />}
-            {lastUpdate && <InfoItem label={t("更新时间")} value={lastUpdate.slice(0, 10)} />}
-            {firstRelease && <InfoItem label={t("首次发布")} value={firstRelease.slice(0, 10)} />}
-            {(installed || !!entry) && (
-              <InfoItem label={t("依赖")} value={installed ? depValues(requiresList) : <Dash />} />
-            )}
-            {installed && <InfoItem label={t("被依赖")} value={dependentValues()} />}
+            {infoGroups.map((g) => (
+              <InfoGroup key={g.title ?? "__top"} title={g.title} items={g.items} />
+            ))}
           </aside>
         </div>
       </div>
