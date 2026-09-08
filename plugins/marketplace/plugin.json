@@ -42,9 +42,9 @@
       "marketplace": [
         { "id": "search",      "role": "toolbar", "title": "搜索", "render": "src/views/SearchView.tsx",             "order": -1 },
         { "id": "installed",   "title": "已安装", "render": "src/views/InstalledListView.tsx",   "order": 0 },
-        { "id": "builtin",     "title": "内置",   "render": "src/views/BuiltinListView.tsx",     "order": 1, "collapsed": true },
+        { "id": "explore",     "title": "探索插件", "render": "src/views/ExploreView.tsx",     "order": 1, "collapsed": true },
         { "id": "disabled",    "title": "已禁用", "render": "src/views/DisabledListView.tsx",    "order": 2, "collapsed": true },
-        { "id": "explore", "title": "探索插件", "render": "src/views/ExploreView.tsx", "order": 3, "collapsed": true }
+        { "id": "builtin",     "title": "内置",   "render": "src/views/BuiltinListView.tsx",     "order": 3, "collapsed": true }
       ],
       "main": [
         { "id": "plugin-detail", "title": "插件详情", "render": "src/views/DetailView.tsx" }
