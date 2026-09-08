@@ -20,7 +20,6 @@
  *   主进程自动排队，loader 代码无需感知队列存在。
  */
 
-import type { PluginManifest } from "../core/api/types";
 import { pushToast, TOAST_TTL_ERROR } from "../core/services/ui/NotificationService";
 import { setPluginStateValue, APP_PLUGIN_ID } from "../core/services/plugins/PluginStateService";
 import { initLifecycleConsumers } from "./lifecycle/lifecycle";
@@ -34,10 +33,8 @@ import {
   pluginsApi,
   log,
   errMsg,
-  pluginManifestRaw,
   loadedPluginIds,
   _deferredPlugins,
-  extractPluginId,
   getMetadataCache,
   cachePluginMetadata,
   getDisabledList,
@@ -48,7 +45,6 @@ export { runtimeEntryPath, parseContributions } from "./contributions/contributi
 import { loadPlugin, activateDeferredByEvent } from "./resolution/runtime";
 // #9g 按需激活：延迟判定纯函数（shouldDeferActivation）+ 触发总线（App 层触发源只认总线，不 import runtime）
 import { shouldDeferActivation, fireActivationEvent, setActivationEventHandler } from "./resolution/activation";
-import { parseManifestJson } from "./jsonc"; // E6#55：作者 plugin.json JSONC——唯一解析入口
 import {
   disablePlugin,
   enablePlugin,
@@ -105,11 +101,9 @@ export async function initPluginLoader(): Promise<void> {
   const disabled = getDisabledList();
 
   // 1. E6#9a：启动发现单源——plugins:listAll（主进程直扫 plugins/ 全子目录）→ [{ pluginId, entry, manifest }]。
-  //    import.meta.glob 是构建时扫描——打包/市场安装的插件不在源码树，glob 看不到（仅 dev/源码内置覆盖）。
   //    对标 VS Code 启动 scan extensions 目录——listAll 同构，装/卸后重启即增删。
-  //    纯浏览器预览（无 pluginsApi）discoverInstalled 内回退 glob 种子，行为同旧。
+  //    纯浏览器预览（无 pluginsApi）discoverInstalled 内回退 eager ?raw glob 种子，行为同旧（仅浏览器，Electron 零消费）。
   const discovered = await discoverInstalled();
-  const discoveredIds = new Set(discovered.map((e) => e.pluginId));
 
   // 2. 加载每个已发现插件（跳过禁用；激活延迟见 #44/#9g）
   for (const entry of discovered) {
@@ -127,7 +121,7 @@ export async function initPluginLoader(): Promise<void> {
       // （启动注册-only，元数据占位注册在 loadPlugin Step4；首用事件 activatePlugin 升级实组件）。
       // entryless 纯贡献插件无 JS 可延迟、data 角色（python langDefs 等）安装即用恒立即——两者不 defer。
       const defer = shouldDeferActivation(manifest);
-      await loadPlugin(pluginId, "startup", { skipView: defer });
+      await loadPlugin(pluginId, "startup");
       if (defer) _deferredPlugins.set(pluginId, manifest);
     } catch (e) {
       errors.push(`${pluginId}: ${errMsg(e)}`);
@@ -149,29 +143,7 @@ export async function initPluginLoader(): Promise<void> {
     log.appendLine(`⚠️ 账本 reconcile 跳过（非致命）: ${errMsg(e)}`);
   }
 
-  // 3. 源码树里 glob 有、但磁盘已不在（目录被手动删除）的插件——种子 uninstalled 缓存（F5 后详情仍可浏览）。
-  //    listAll 以磁盘为准不含它们；此差集只增不删（E6#30d 前由 loader 第 7 步 pruneUninstalledCache 负责删）。
-  //    E6#55：glob 值是 ?raw 原文——先 jsonc 解析（坏文件跳过，dev 手工改坏 plugin.json 不拖垮启动）。
-  for (const [path, raw] of Object.entries(pluginManifestRaw)) {
-    const pluginId = extractPluginId(path);
-    if (discoveredIds.has(pluginId)) continue;
-    if (loadedPluginIds.has(pluginId)) continue;
-    let manifest: PluginManifest;
-    try {
-      manifest = parseManifestJson(raw);
-    } catch (e) {
-      log.appendLine(`⚠️ glob 插件 "${pluginId}" plugin.json 解析失败——跳过缓存种子: ${errMsg(e)}`);
-      continue;
-    }
-    if (disabled.includes(pluginId)) {
-      cachePluginMetadata(pluginId, manifest, "disabled");
-    } else {
-      cachePluginMetadata(pluginId, manifest, "uninstalled");
-    }
-    log.appendLine(`插件 "${pluginId}" 不在磁盘——缓存为 ${disabled.includes(pluginId) ? "已禁用" : "待安装"}`);
-  }
-
-  // 5. 错误汇总
+  // 3. 错误汇总
   if (errors.length > 0) {
     console.warn("[pluginLoader] 以下插件加载失败:", errors);
     pushToast({
@@ -269,8 +241,8 @@ export function shouldWatcherSkip(pluginId: string): boolean {
 /**
  * Phase 5h：文件监听——轮询检测新插件目录。
  * 每 2 秒调用 Rust `list_plugin_dirs`。
- * - glob 中的插件（在 import.meta.glob 中）→ loadPlugin（Vite chunk）
- * - glob 外的插件（不在 glob 中）→ loadPlugin（运行时 IPC 路径）
+ * E6#62b：源码 glob 轨退役——无 glob 成员二分。磁盘新出现的目录 = 新安装（install 语义，含 toast/
+ * iconOrder/plugin:installed——外部拷入插件的旧非 glob 行为），一律 loadPlugin(dir, "install")。
  */
 export function startPluginWatcher(): void {
   if (_watchInterval) return;
@@ -283,16 +255,9 @@ export function startPluginWatcher(): void {
         if (getDisabledList().includes(dir)) continue;
         if (shouldWatcherSkip(dir)) continue;
 
-        const manifestKey = Object.keys(pluginManifestRaw).find(
-          (k) => extractPluginId(k) === dir
-        );
-        if (manifestKey) {
-          // 已在 Vite glob 中——直接 loadPlugin
-          await loadPlugin(dir, "startup");
-          log.appendLine(`文件监听发现新插件 "${dir}"——已即时加载`);
-        } else {
-          await loadPlugin(dir, "install");
-        }
+        // E6#62b：单轨——磁盘新目录 = install 语义（含 toast/iconOrder/plugin:installed 广播）
+        await loadPlugin(dir, "install");
+        log.appendLine(`文件监听发现新插件 "${dir}"——已即时加载`);
       }
 
       // G16：反向检测——已加载但文件系统已删除 → 自动卸载

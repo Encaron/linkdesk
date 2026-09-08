@@ -3,6 +3,13 @@
 > 每版一条，对标 VS Code changelog。**历史真相源 = [E6 执行清单](docs/02-Electron架构/E6_插件生态与发布/E6-执行清单.md)**（E6 阶段每轮收束细节 + 实机证据全在清单 Batch 注里，此文件只记类别清单）。版本号唯一真值 = `package.json`（不手写第二份，见 [02-产品身份与版本.md](docs/02-Electron架构/E6_插件生态与发布/06-主软件更新/02-产品身份与版本.md) §2.3）。
 > 0.x 阶段（开发期）：一切向后兼容变更走 patch 位；破坏性变更走 minor 位。
 
+## v0.1.13（2026-09-08）
+
+- **feat:E6#62a/#62b/#62f dev 源码 glob 快轨退役 + 协议收单根**（#62 家族同批拆）
+  - E6#62a state.ts 拆双 glob——`pluginModules` 入口 glob + `usesSourceGlobTrack` 整删；`pluginManifestRaw` 收单职（浏览器预览种子，Electron 零消费）；源码树成员判据 → IPC 直查（readManifest/resolvePath）
+  - E6#62b glob 内 dev 快轨退役——runtime.ts Step1/3/4 glob 分支 + contributions `loadPluginComponent` + PluginComponent mis-root 恒空双 glob 表整删；全插件收单 URL 轨（dev /@fs 源码 | prod linkdesk:// dist）
+  - E6#62f `linkdesk://` 协议收单一 userData 根——prod（app.isPackaged）单根；dev 保 [app, userData] 双根
+
 ## v0.1.12（2026-09-08）
 
 - **feat:E6#33 更新与版本**（第 3.3.2 轮整轮收束，实机 CDP 全链验收）

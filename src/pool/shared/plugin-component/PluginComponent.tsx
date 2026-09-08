@@ -1,12 +1,10 @@
 /**
  * PluginComponent——E5.6#7d。
  *
- * 给定 pluginId，import.meta.glob 查找插件入口 → React.lazy 动态加载。
+ * 给定 pluginId（主区 tab）+ 可选 renderPath（侧栏/主区 contributes.views），按 URL 动态 import——
+ * React.lazy 懒加载。E6#62b 收单 URL 轨：import.meta.glob 预扫映射表（pluginModules/viewModules）已随
+ * 源码 glob 轨退役整删——renderPath 恒归一化 URL（dev /@fs 源码、prod linkdesk:// dist），无第二张映射表。
  * ErrorBoundary 兜底崩溃，Suspense 显示加载态。
- *
- * 🔴 临时方案——import.meta.glob 在构建时静态展开。
- *    E6#8/#9 替换为运行时动态 import（import(entryPath)）。
- *    当前 glob 在 dev + 内置插件全在源码树时够用。
  *
  * ⚠️ 禁止在此文件静态 import monaco-editor——会在 @codingame 补丁前初始化
  *    原生主题系统（E5.6#2 教训）。Monaco 由编辑器插件的 bootstrapMonaco() 首次加载
@@ -19,17 +17,11 @@ import { useTranslation } from "react-i18next";
 import i18n from "../../../i18n";
 import ErrorBoundary from "../error-boundary/ErrorBoundary"; // E5.7#20：池侧版（不 import 壳 components 目录）
 
-// ── import.meta.glob：Vite 预扫描插件入口 ──
-// src/pool/ → ../../ = 项目根 → plugins/（2026-09-05 塌平单根：目录名 = pluginId）
-const pluginModules = {
-  ...import.meta.glob("../../plugins/*/src/index.tsx"),
-};
-
-// E5.6#11e：view 文件 glob——按 renderPath O(1) 查找侧栏 view 组件。
-// loader.ts 用完全相同格式的 key（../../plugins/.../src/views/Xxx.tsx）。
-const viewModules = {
-  ...import.meta.glob("../../plugins/*/src/views/**/*.tsx"),
-};
+// ── E6#62b：源码 glob 双表（pluginModules/viewModules）已退役整删 ──
+// 池侧两表 mis-root 恒空（../../ 自 src/pool/shared/plugin-component/ 落 src/pool/plugins——不存在），
+// 渲染恒走 URL/IPC 回退轨；#62b 代码取证后再删——壳零 import、构建时静态展开本就看
+// 不到「运行时才出现的目录」（池加载唯一执行者 = 运行时动态 import）。真 glob 消费（PoolStatusBarComponent）
+// 属 #62d 拆——此处只清本文件的空表 + 查找。
 
 // E5.6#11-fix7：模块级 lazy 缓存——React.lazy 内部 _payload._status 持久化在组件类型上。
 // 同 renderPath 返回同一组件类型→第二次挂载直接渲染（_status=Resolved），跳过 Suspense。
@@ -39,52 +31,37 @@ type PluginModule = { default?: React.ComponentType<PluginViewProps> };
 const _lazyCache = new Map<string, React.ComponentType<PluginViewProps>>();
 
 /**
- * E6#30.10b：池侧插件视图 loader 解析单实现——PluginComponent（主区/侧栏视图）与 plugin-detail 主区贡献宿主
- * （PluginDetailViewHost）共用同一条加载链。抽自原 useMemo body，两侧行为必须一致（不同 glob key /
- *  URL 形态判定会静默 404）：
- *   ① view/主区入口 glob key O(1) 查找
- *   ② renderPath 完整 URL（/@fs | linkdesk://）直动态 import（runtime/编译插件）
- *   ③ lk.plugins.resolvePath/resolveEntry 拼 URL（运行时安装插件不在 glob——构建时扫描漏网兜底）
+ * E6#30.10b + #62b：池侧插件视图 loader 解析单实现——PluginComponent（主区/侧栏视图）与 plugin-detail
+ * 主区贡献宿主（PluginDetailViewHost）共用同一条加载链。抽自原 useMemo body，两侧行为必须一致（不同
+ * URL 形态判定会静默 404）：
+ *   ① renderPath 完整 URL（/@fs | linkdesk://，parseContributions 归一化）→ 直动态 import（唯一 URL 轨）
+ *   ② 主区 tab（无 renderPath）：lk.plugins.resolveEntry 拼 URL（index.bundle.js / manifest.entry）兜底
+ *   glob 预扫映射表已随 E6#62b 整删——构建时静态展开对「运行时才出现的目录」本就不可见，URL 轨是唯一可靠路径。
  *  pluginId = 待加载模块的归属插件（贡献/宿主插件本身）。⚠️ plugin-detail 详情页里它 ≠ detailPluginId
  *  （被展示的插件）——贡献视图由活跃 marketplace 插件渲染，resolvePath 要的是贡献插件根。
  */
 export function resolvePluginViewLoader(pluginId: string, renderPath?: string): (() => Promise<unknown>) | null {
   let loader: (() => Promise<unknown>) | undefined;
 
-  if (renderPath) {
-    // 侧栏/主区 view 面：按 loader.ts 存的 glob key O(1) 查找
-    loader = viewModules[renderPath];
+  // 🔥 E6#62b：URL 轨直动态 import——renderPath 恒归一化 URL：
+  //   1. "/@fs/E:/.../plugins/<id>/<render>"（dev 源码——resolveRuntimePluginRoot = resolvePath IPC 拼）
+  //   2. "linkdesk://<id>/<render>"（prod dist——协议 root-direct 直解析）
+  // @vite-ignore：运行时拼的 URL，Vite 静态分析扫不到（/@fs 下 dev 源码仍由 Vite 即时编译）。
+  if (renderPath && (renderPath.startsWith("/@fs/") || renderPath.startsWith("linkdesk://"))) {
+    loader = () => import(/* @vite-ignore */ renderPath);
   }
 
-  if (!loader) {
-    // 主区 tab / fallback：按 pluginId 匹配 index.tsx
-    let modulePath: string | undefined;
-    for (const path of Object.keys(pluginModules)) {
-      if (path.includes(`/${pluginId}/`)) {
-        modulePath = path;
-        break;
-      }
-    }
-    loader = modulePath ? pluginModules[modulePath] : undefined;
-  }
-
-  // 🔥 E5.6#11.5-fix：import.meta.glob 是构建时扫描——运行时安装的插件不在 glob 中。
-  // fallback 到动态 import()。
-  // renderPath 可能有两种格式：
-  //   1. glob key: "../../plugins/<id>/src/views/Xxx.tsx"（2026-09-05 塌平单根：目录名 = pluginId）
-  //   2. /@fs/ URL（runtime 插件无 pluginRoot 时）: "/@fs/E:/.../plugins/<id>/src/views/Xxx.tsx"
   if (!loader) {
     const lk = window.linkdesk;
     const isDev = import.meta.env.DEV;
-    if (renderPath && (renderPath.startsWith("/@fs/") || renderPath.startsWith("linkdesk://"))) {
-      // runtime 插件——renderPath 已是完整 URL，直接用
-      loader = () => import(/* @vite-ignore */ renderPath);
-    } else if (lk?.plugins?.resolvePath) {
+    if (lk?.plugins?.resolvePath) {
       loader = (async () => {
         try {
           const absPath: string = await lk.plugins.resolvePath(pluginId);
           if (renderPath) {
-            // glob key 格式：../../plugins/<type>/<id>/<rest> → 提取插件内相对路径
+            // 非 URL renderPath 兜底 = repo 相对 mock key（仅 pool/dev/sampleLayout.ts 预览假数据形态
+            // "../../plugins/<id>/<rest>"）→ 提取插件内相对路径经 resolvePath 拼 /@fs。真实注册
+            // renderPath（parseContributions）恒 URL 走上方直 import——此支不会命中 Electron 运行时。
             const idx = renderPath.indexOf(`/${pluginId}/`);
             const rel = idx !== -1
               ? renderPath.slice(idx + pluginId.length + 2)
@@ -128,14 +105,14 @@ interface PluginComponentProps {
   isActive: boolean;
   tabId?: string;
   sourceId?: string;
-  /** E5.6#11e：侧栏 view 的 renderPath——loader.ts 存的 glob key。提供时优先此路径加载组件。 */
+  /** E5.6#11e：侧栏/主区 view 的 renderPath——归一化 URL（/@fs | linkdesk://，parseContributions 拼）。提供时直动态 import 此 URL。 */
   renderPath?: string;
 }
 
 export default function PluginComponent({ pluginId, isActive, tabId, sourceId, renderPath }: PluginComponentProps) {
   const { t } = useTranslation();
   // React.lazy 必须稳定引用——useMemo 按 pluginId + renderPath 缓存，防止每次渲染 new → unmount → flicker
-  // E5.6#11e：renderPath 优先——O(1) 直接查找 view 组件；fallback 到 pluginId 匹配 index.tsx（主区用）
+  // E6#62b：renderPath URL 轨直 import（侧栏/主区 contributes.views）；无 renderPath → resolveEntry 拼入口 URL（主区 tab）
   // E5.6#11-fix7：_lazyCache 跨 mount 持久化 lazy 组件类型——React.lazy _payload._status 不随 unmount 丢失。
   // 切容器回来时同 renderPath 的组件类型直接 Resolved→同步渲染→无 Suspense "加载中..." 闪烁。
   const cacheKey = renderPath || pluginId;
@@ -150,7 +127,7 @@ export default function PluginComponent({ pluginId, isActive, tabId, sourceId, r
     const component = React.lazy<React.ComponentType<PluginViewProps>>(() =>
       loader()
         .then((mod) => {
-          // glob/动态 import 模块命名空间——按 PluginModule 形状窄化（E5.7#98 替代 mod: any）
+          // 动态 import 模块命名空间——按 PluginModule 形状窄化（E5.7#98 替代 mod: any）
           const m = mod as PluginModule | null;
           if (!m) throw new Error(i18n.t("插件 {{id}} 加载失败", { id: pluginId }));
           return {

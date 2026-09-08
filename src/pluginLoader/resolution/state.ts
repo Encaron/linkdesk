@@ -52,34 +52,17 @@ function errMsg(e: unknown): string {
   return e instanceof Error ? e.message : String(e);
 }
 
-/* ── 插件入口文件映射（Vite import.meta.glob） ── */
+/* ── 插件 manifest 原文 glob（Vite import.meta.glob ?raw） ── */
 
-// Vite 在构建时展开 glob，生成所有插件的入口映射。
-// E2c #19j-structure-a：同时支持平铺结构和 src/ 子目录结构——过渡期内两种都匹配。
-// 2026-09-05 塌平：plugins/builtin|user 双目录废除（用户拍板，见 01-插件独立构建/09）——
-// 每 glob 收单根 plugins/*（目录名 = pluginId）。此前 E4#86 因双目录把每 glob 拆两份的历史注释已删。
-// 目录名 = 字符串字面量直写（pluginPaths.ts 的 PLUGINS_DIR 常量已随 E6#15f 删除——末位消费者
-// vite.config scanPluginEntries 清掉后成孤儿）；import.meta.glob 本就需字符串字面量做静态分析，
-// 工厂函数不兼容——保持 spread 写法。
-const pluginModules = {
-  ...import.meta.glob<{ default: React.ComponentType<{ isActive: boolean }> }>(
-    "../../../plugins/*/index.tsx",
-    { eager: false }
-  ),
-  ...import.meta.glob<{ default: React.ComponentType<{ isActive: boolean }> }>(
-    "../../../plugins/*/src/index.tsx",
-    { eager: false }
-  ),
-};
-
-// E6#17d：pluginStatusBarModules + viewRenderModules 两张壳侧 glob 已删——壳侧 statusBar/视图组件
-// import 是装饰死执行（存在性改 manifest appearsIn.statusBar 声明；视图渲染池按 _renderPath 自 import）。
-// 组件加载唯一执行者 = 池（PluginComponent / PoolStatusBarComponent 各自的构建时 glob）。
-
-// E6#55：plugin.json glob 改读原文（?raw）——不再让 Vite 把作者 plugin.json 当严格 JSON 模块处理
-// （vite:json 拒绝注释/尾逗号 → 带注释的 plugin.json 在 dev/build 的模块图里直接炸，壳侧 jsonc 解析根本轮不到）。
-// 原文内容一律走 parseManifestJson 统一解析（唯一入口）；本对象保留 #9e 双职：源码树成员判据
-// （键存在性——runtime/contributions 只 Object.keys 判 isRuntime 不读值）+ 浏览器预览种子原文。
+// E6#62a/#62b（2026-09-08）：源码 glob 轨退役——双 glob 双职全拆。
+// ① pluginModules 入口 glob 已删——壳不再 import 任何插件入口 JS（#17d 注册纯声明化后 loadPluginComponent
+//    随 #62b 退役；壳 build 不再 emit 插件入口 chunk = #15f 终态「壳 bundle 零插件 JS 源码」）。
+// ② 组件加载唯一执行者 = 池（PluginComponent 的 mis-root 恒空 glob 已随 #62b 删，见 pool 注；
+//    PoolStatusBarComponent 的真 glob 属 #62d 拆）。
+// ③ pluginManifestRaw 保留**单职** = 纯浏览器预览种子（无 pluginsApi 时 discoverInstalled 回退 enumerate
+//    源码树；Electron 运行时零消费本 glob——isRuntime/源码树成员判据已随 #62b 全删，manifest 单一真源 =
+//    IPC listAll/readManifest）。eager ?raw 使壳 bundle 内嵌各 plugin.json 文本——元数据非 JS 源码，
+//    「预览兜底另行评估」结论 = 保留（唯一消费者 = 本模块内部预览回退）。
 const pluginManifestRaw = {
   ...import.meta.glob<string>(
     "../../../plugins/*/plugin.json",
@@ -97,8 +80,9 @@ const pluginManifestRaw = {
  *      （主进程直扫 plugins/ 全子目录——打包/市场安装插件 glob 看不到；单一真源，幂等覆盖）。
  *   ② 纯浏览器预览（无 pluginsApi）：seedManifestIndexFromGlob()——上方 eager glob 兜底，行为同旧。
  *
- * 上方 pluginManifestRaw glob（E6#55 改 ?raw 原文）保留双职：Vite 源码树成员判据（isRuntime = 不在源码树，
- * #9e：dev 保留 glob 作即时代码分割）+ 纯浏览器预览种子原文；manifest 内容一律走本索引（jsonc 单入口解析）。
+ * pluginManifestRaw glob 仅作**纯浏览器预览种子**（seedManifestIndexFromGlob）——Electron 运行时 manifest
+ * 内容一律走本索引（IPC readAllManifests 水合，jsonc 单入口解析）。源码树成员判据/即时代码分割已随
+ * E6#62a/b 退役（#62b 前 dev 内置源码树也由 readAllManifests 覆盖，glob 判据纯冗余）。
  */
 const manifestIndex = new Map<string, PluginManifest>();
 
@@ -174,23 +158,6 @@ export function markBundlePlugin(pluginId: string): void {
 /** 消费方判 bundle——runtime/contributions 据此选入口（bundle → index.bundle.js）。 */
 export function isBundlePlugin(pluginId: string): boolean {
   return _bundlePluginIds.has(pluginId);
-}
-
-/**
- * E6#62c/#28b：源码 glob 轨道消费判据（惰性「磁盘 bundle 优先」位）。
- * = 源码树成员（pluginManifestRaw glob 收得到）**且非** bundle——即真正该走 dev 源码即时代码分割轨
- * 的插件（glob 收不到的非成员 = 运行时轨消费 dist，两判据等价）。
- *
- * 与旧 `!globMember 判 isRuntime` 的关系（零回归依据）：新判据只在「glob 成员 **且** listAll 报
- * bundle:true」时与旧相反——该组合无 dev 覆盖时不存在（app 根内置目录根级无 index.bundle.js，
- * bundle 在 dist/<id>.linkdesk-plugin/ 子目录，listAll 判根级 → 恒 false）。
- * E6#28b dev 门控把在开发插件的发现目录覆盖为物化 dist 目录 → listAll 报 bundle:true →
- * 本判据翻 false → 消费翻到运行时轨（/@fs 物化 index.bundle.js，与第三方同一条 loadPlugin 路径）。
- * #62a 把判据迁 IPC 直查的承接点 = 本函数（删 glob 判据时只改这里 + 消费点不散）。
- */
-export function usesSourceGlobTrack(pluginId: string): boolean {
-  if (isBundlePlugin(pluginId)) return false;
-  return Object.keys(pluginManifestRaw).some((k) => extractPluginId(k) === pluginId);
 }
 
 /** 🔥 硬约束 13：async init 竞态守卫——loadPlugin concurrent 调用时第二次返回第一次的 Promise */
@@ -313,13 +280,10 @@ export {
   pluginsApi,
   log,
   errMsg,
-  pluginModules,
-  pluginManifestRaw,
   loadedPluginIds,
   _loadingPromises,
   _deferredPlugins,
   _pendingPlugins,
-  extractPluginId,
   getMetadataCache,
   cachePluginMetadata,
   getDisabledList,

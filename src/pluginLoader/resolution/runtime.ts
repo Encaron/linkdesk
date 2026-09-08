@@ -1,13 +1,12 @@
 /**
  * 插件加载运行时层——加载管线 + 依赖编排 + 延迟激活。
- * E5.8#0d.10-1d：自 loader.ts 拆出——loadPlugin 中枢（glob/IPC 统一入口）。
+ * E5.8#0d.10-1d：自 loader.ts 拆出——loadPlugin 中枢（E6#62b 起单 IPC 运行时路——源码 glob 轨退役）。
  * 依赖方向：runtime → contributions/dependencies（纯函数，反向不成立）——防环。
  * E5.8#14：依赖编排——dep-check（环 fail / 缺 park）+ 挂起注册表 + sweep 补载（拓扑序激活）；
  *   纯逻辑在 dependencies.ts，本模块持可变编排（_pendingPlugins 由 state.ts 共享真源）。
  * 生命周期操作（disable/enable/uninstall/install）不在此——见 lifecycle-ops.ts。
  */
 
-import i18n from "../../i18n"; // E5.8#37.9：markLoadFailed 失败原因壳 t() 解析（诊断文案也是用户可见文本）
 import type { PluginManifest } from "../../core/api/types";
 import { registerViewPlugin } from "../contributions/viewRegistry";
 import { registerTheme, findTheme } from "../../core/services/ui/ThemeEngine";
@@ -28,18 +27,15 @@ import {
   pluginsApi,
   log,
   errMsg,
-  pluginManifestRaw,
   loadedPluginIds,
   _loadingPromises,
   _deferredPlugins,
   _pendingPlugins,
-  extractPluginId,
   cachePluginMetadata,
   getDisabledList,
   getLoadedManifest,
   getManifestById,
   isBundlePlugin, // E6#7（1.2-4）：目录含 index.bundle.js → runtimeEntryPath 传 bundle 分支
-  usesSourceGlobTrack, // E6#62c：源码 glob 轨消费判据（glob 成员 + 非 bundle 才走源码轨）
 } from "./state";
 import { normalizeManifest, hasSidebarContainers, type OldFormatManifest } from "../discovery/manifest";
 import { effectiveActivationEvents } from "./activation"; // #9g：延迟匹配按「显式 ?? 推断」生效事件
@@ -49,7 +45,6 @@ import {
   resolveRuntimePluginRoot,
   runtimeEntryPath,
   resolveViewModule,
-  loadPluginComponent,
   fetchPluginDataFile,
   loadThemeContributionData,
   loadIconThemeContributionData,
@@ -72,15 +67,16 @@ function getAppVersion(): string {
 /* ── E5#12：加载管线唯一入口——所有插件（view/data/theme/language）走这里 ── */
 
 /**
- * 插件加载管线——loadPlugin 唯一入口——glob + IPC 统一。
+ * 插件加载管线——loadPlugin 唯一入口（manifest 已由 loadPlugin Step1 IPC 读盘）。
  *
- * 流程：normalizeManifest → parseContributions → 推导 pluginRole → loadPluginComponent
+ * 流程：normalizeManifest → parseContributions → 分发各 Registry。视图组件加载归一在 loadPlugin()
+ * Step4（一律 stub）——本函数只负责 manifest 解析 + contributes 分发。
  * 不 import IconBar/SidePanel/TabBar——加载管线不知道 UI 的存在。
  */
 async function loadPluginLifecycle(
   pluginId: string,
   manifest: PluginManifest,
-  opts?: { skipView?: boolean; pluginRoot?: string },
+  opts?: { pluginRoot?: string },
 ): Promise<void> {
   // Step 1: 旧格式归一化（纯函数，不 mutate）
   const contributes = normalizeManifest(manifest);
@@ -110,9 +106,7 @@ async function loadPluginLifecycle(
     }
   }
 
-  // Step 4: 视图组件加载已归一化到 loadPlugin()——此处不再重复。
-  // loadPlugin 根据 isRuntime 决定走 glob loadPluginComponent 或动态 import，
-  // loadPluginLifecycle 只负责 manifest 解析 + contributes 分发。
+  // 视图组件加载已归一化到 loadPlugin() Step4（一律 stub）——本函数只负责 manifest 解析 + contributes 分发。
 }
 
 /* ── E5.8#14：依赖编排——环 fail / 缺 park / 就绪 sweep（拓扑序激活） ── */
@@ -160,52 +154,32 @@ async function sweepPendingDependencies(): Promise<void> {
 
 /**
  * 插件加载唯一入口。
- * 🔥 E5 归一化：合并运行时路径——glob 内走 Vite 模块，glob 外走 IPC 运行时加载。
- * 调用方不再自己判断"该走哪条路"——一条 loadPlugin 全覆盖。
+ * E6#62a/b：源码 glob 轨退役——全插件一条 IPC 运行时路径（manifest = readManifest 读盘 IPC，
+ * root = resolveRuntimePluginRoot）。调用方不再自己判断"该走哪条路"——一条 loadPlugin 全覆盖。
  */
 async function loadPlugin(
   pluginId: string,
   reason: PluginInstallEvent["reason"] = "startup",
-  opts?: { skipView?: boolean },
 ): Promise<void> {
   if (loadedPluginIds.has(pluginId)) return;
   // 🔥 硬约束 13：竞态守卫——两次 concurrent 调用 → 第二次等第一次的 Promise
   if (_loadingPromises.has(pluginId)) { await _loadingPromises.get(pluginId)!; return; }
 
-  const manifestKey = Object.keys(pluginManifestRaw).find(
-    (k) => extractPluginId(k) === pluginId
-  );
-  // E6#62c：isRuntime = 走 dist/运行时消费轨——非源码 glob 轨（!usesSourceGlobTrack）。
-  // 普通 electron:dev 恒等价旧 `!manifestKey`（glob 成员且非 bundle 才源码轨）；dev-plugin 门控下
-  // 在开发内置 = glob 成员 + bundle:true → 翻 false → 走运行时轨（/@fs 物化 index.bundle.js）。
-  const isRuntime = !usesSourceGlobTrack(pluginId);
-
   const promise = (async () => {
   // E5.8#11：状态机——loading（加载开始）
   markLoadStarted(pluginId);
-  // ═══ Step 1: 加载 manifest ═══
+  // ═══ Step 1: 加载 manifest（E6#62b 收单 IPC 源——源码 glob 轨退役，无 glob 兜底） ═══
+  // manifest 单一真源 = 主进程读盘（readManifest IPC 返原文 raw，jsonc 单入口 parse）——dev 内置（repo
+  // 源码目录）与 prod/userData 全同一条 readManifest 路；装/卸/更新后即读即新，零陈旧 glob 索引风险。
+  // manifestIndex（discoverInstalled 水合）仍供元数据/registry/环检测直查（getManifestById），loadPlugin 不依赖它。
   let manifest: PluginManifest;
-  if (isRuntime) {
-    try {
-      const raw = await pluginsApi().readManifest(pluginId);
-      manifest = parseManifestJson(raw);
-    } catch (e) {
-      console.warn(`[pluginLoader] 运行时插件 "${pluginId}" 读取 plugin.json 失败: ${errMsg(e)}`);
-      markLoadFailed(pluginId, `plugin.json 读取失败: ${errMsg(e)}`);
-      return;
-    }
-  } else {
-    // E6#9c：manifest 内容走 manifestIndex（plugins:readAllManifests 水合——listAll 已同扫一致）；
-    // glob 内容仅作未水合兜底（独立单测/极端时序），两源同盘同内容。
-    try {
-      // 本分支 = usesSourceGlobTrack 真（源码 glob 轨）→ glob 成员即 manifestKey 必在（! 仅破 TS 收窄盲区）
-      manifest = getManifestById(pluginId) ?? parseManifestJson(pluginManifestRaw[manifestKey!]);
-    } catch {
-      pushToast({ message: `插件 "${pluginId}" 的 plugin.json 格式错误，已跳过` });
-      console.warn(`[pluginLoader] plugin.json 格式错误 — "${pluginId}"`);
-      markLoadFailed(pluginId, i18n.t("plugin.json 格式错误"));
-      return;
-    }
+  try {
+    const raw = await pluginsApi().readManifest(pluginId);
+    manifest = parseManifestJson(raw);
+  } catch (e) {
+    console.warn(`[pluginLoader] 插件 "${pluginId}" 读取 plugin.json 失败: ${errMsg(e)}`);
+    markLoadFailed(pluginId, `plugin.json 读取失败: ${errMsg(e)}`);
+    return;
   }
 
   // ═══ Step 2: 版本 + 依赖检查（共享） ═══
@@ -240,83 +214,53 @@ async function loadPlugin(
   // B2 fix: 缓存元数据——glob 外的插件也入缓存，卸载后仍可浏览详情
   cachePluginMetadata(pluginId, manifest, "installed");
 
-  // ═══ Step 3: glob 外解析根目录（不 import entry JS——E6#17d 注册纯声明化）═══
-  // glob 内（dev 源码常驻）组件加载在下方 loadPluginComponent 分支完成；glob 外注册一律 component-less
-  // stub（Step4），渲染唯一执行者 = 池 PluginComponent / PoolStatusBarComponent（壳零插件 JS import）。
-  // runtimePluginRoot 供 Step5/6 的 contributes views / theme 数据 fetch 用——entryless 插件重装后
-  // views 注册兜底（parseContributions）同样依赖它做动态 import（pluginRoot 不绑 entry）。
+  // ═══ Step 3: 解析根目录（不 import entry JS——E6#17d/#62b 注册纯声明化常轨） ═══
+  // #17d 铁律（旧 glob 外专属，随 #62b 推广到全插件）：壳侧 entry import 是确定性死执行——插件代码唯一
+  // 执行者 = 池，壳窗按设计不配 react import-map。一律不 import → Step4 注册 stub → 插件照常进 [+] /
+  // 欢迎页，打开交池 PluginComponent 执行。真坏 bundle 报错保留在真实执行位（打开时池 import 失败 → 池
+  // 错误边界/console 浮现）。存在性一律声明式（appearsIn.statusBar 等），不靠壳 import 探测（硬约束 11）。
+  // runtimePluginRoot 供 Step5/6 的 contributes views / theme 数据 fetch 用——dev = /@fs/{abs} 源码，
+  // prod = linkdesk://{id}（resolveRuntimePluginRoot IPC 解析）。
   let runtimePluginRoot: string | undefined;
-
-  if (isRuntime) {
-    // ── glob 外（打包/市场/源码安装 runtime）──
-    // E6#17d（接 #15i/#15j）：壳侧 glob 外 entry import 是确定性死执行——G2/拍点② 铁律 = 插件代码唯一
-    // 执行者 = 池，壳窗按设计不配 react import-map。旧逻辑把每启动必现的崩溃标成「插件没构建」（假阳性
-    // toast）。#15j 的 shellCantExecBundle 特例（仅 prod bundle 跳过）在此**推广为常轨**：glob 外一律
-    // 不 import → Step4 注册 stub → 插件照常进 [+] / 欢迎页，打开交池 PluginComponent 执行（池有 map）。
-    // 启动期零 glob 外 import → 假阳性根除；真坏 bundle 报错保留在真实执行位（打开时池 import 失败 → 池
-    // 错误边界/console 浮现）。#9g 延迟激活的按需 import（用户首用触发）仍在 activatePlugin——那是②
-    // （并 #9g 轮）的拆除对象，此处不重蹈。glob 外存在性一律声明式（manifest appearsIn.statusBar 等），
-    // 不靠壳 import 探测（硬约束 11：插件身份唯一来源 = plugin.json 声明字段）。
-    try {
-      runtimePluginRoot = await resolveRuntimePluginRoot(pluginId);
-    } catch (e) {
-      console.warn(`[pluginLoader] 运行时插件 "${pluginId}" 根目录解析失败:`, e);
-      // pluginRoot 保持 undefined——views 注册走 ❌ 分支诚实降级
-    }
-  } else {
-    // ── glob 内：走 loadPluginComponent ──
-    const role = manifest.pluginRole ?? (!manifest.entry && (normalizeManifest(manifest) || manifest.contributes) ? "data" : undefined);
-    if (role !== "data" && manifest.entry && !opts?.skipView) {
-      try { await loadPluginComponent(pluginId, manifest); }
-      catch (e) { console.error(`[loader] 加载视图组件失败: ${pluginId}`, e); }
-    }
+  try {
+    runtimePluginRoot = await resolveRuntimePluginRoot(pluginId);
+  } catch (e) {
+    console.warn(`[pluginLoader] 插件 "${pluginId}" 根目录解析失败:`, e);
+    // pluginRoot 保持 undefined——views 注册走 parseContributions 兜底 resolveRuntimePluginRoot，失败则诚实跳过
   }
 
-  // ═══ Step 4: 注册视图（glob 外一律 stub）/ loadPluginComponent 已注册（glob 内非延迟） ═══
-  if (!manifest.entry && hasSidebarContainers(manifest)) {
-    // 🔥 E5.8#37.9.2.3：entryless 视图插件也进 viewRegistry——修复图标栏数据源缺口。
-    // 此前 getViewPlugins() 只含 entry 插件 → entryless 插件声明 appearsIn.iconBar 被静默丢弃
-    // （panel-demo/demo-en 未加 entry 前的真实现象）。组件由 ViewContainerService 经
-    // contributes.views[].render 加载，本注册表只作元数据/图标入口（component 为零，可选项）。
-    // 运行时与 glob 两路共用此分支（entryless 运行时插件同样能渲染 views）。
+  // ═══ Step 4: 注册视图——一律 component-less stub（组件可选项，渲染唯一执行者 = 池 PluginComponent） ═══
+  // entry 插件 = 视图 stub；entryless + 有侧栏容器 = 图标栏元数据入口（E5.8#37.9.2.3——此前
+  // getViewPlugins() 只含 entry 插件 → entryless 声明 appearsIn.iconBar 被静默丢弃）。deferred（#9g）
+  // 首用激活（activatePlugin）时 registerViewPlugin stub→实升级。对标 VS Code：manifest 贡献启动可见、组件懒载。
+  if (manifest.entry) {
+    registerViewPlugin({ pluginId, manifest });
+    log.appendLine(`[OK] 元数据注册 "${manifest.name}" (${pluginId})`);
+  } else if (hasSidebarContainers(manifest)) {
     registerViewPlugin({ pluginId, manifest });
     log.appendLine(`[OK] entryless 视图插件 "${manifest.name}" (${pluginId}) 已注册（图标栏入口）`);
-  } else if (manifest.entry && (opts?.skipView || isRuntime)) {
-    // E6#17d 常轨（#15i/#15j 兜底升格）：glob 外（isRuntime）视图插件注册 component-less stub 是**常态**
-    // 不是兜底——壳侧不再 import entry（Step3），组件可选项，渲染不读本字段（池 PluginComponent 独立解析）。
-    // glob 内 opts.skipView（#9g 延迟激活）同样在此占位（Step3 glob 分支因 skipView 未 loadPluginComponent）。
-    // 保图标栏/侧栏容器/标签身份（tabBehavior/identityField）等声明驱动的 UI 表面启动期照常可见；
-    // glob 内首用激活升级 componentful（loadPluginComponent，registerViewPlugin stub→实）；glob 外升级走
-    // activatePlugin（② 并 #9g 轮）。对标 VS Code：manifest 贡献启动可见、组件懒载。真实坏插件照常列出、
-    // 打开时池 error boundary 兜底。
-    registerViewPlugin({ pluginId, manifest });
-    log.appendLine(`[OK] 元数据注册 "${manifest.name}" (${pluginId})（glob 外 / 延迟激活占位）`);
   }
 
   // ═══ Step 5: 解析 contributes → 分发各 Registry ═══
-  await loadPluginLifecycle(pluginId, manifest, {
-    skipView: isRuntime ? true : opts?.skipView,
-    pluginRoot: runtimePluginRoot,
-  });
+  await loadPluginLifecycle(pluginId, manifest, { pluginRoot: runtimePluginRoot });
 
   // ═══ Step 6: 主题/语言数据异步加载 ═══
   if (manifest.contributes?.themes) {
     await loadThemeContributionData(pluginId, manifest);
-    // 运行时：glob 外的插件需 fetch 主题颜色数据
-    if (isRuntime) {
-      const themeList = manifest.contributes.themes as ThemeContribution[];
-      for (const tc of themeList) {
-        if (findTheme(tc.label)) continue;
-        try {
-          const url = `${await resolveRuntimePluginRoot(pluginId)}/${tc.path}`;
-          const response = await fetch(url);
-          if (!response.ok) continue;
-          const data = await response.json();
-          const themeType = (data.type as "dark" | "light") ?? tc.uiTheme;
-          const colors = extractThemeColors(data);
-          registerTheme({ name: tc.label, type: themeType as "dark" | "light", colors }, pluginId);
-        } catch { /* 静默 */ }
-      }
+    // E6#62b 去 isRuntime 门（全插件单路径）：recipe 桥已 cover 新格式——此块只兜未被 recipe 桥登记的
+    // flat 旧格式主题（recipe 拒绝但 JSON 含平铺 colors 的，仍 fetch 解析补登记；dev/prod 同一条路）。
+    const themeList = manifest.contributes.themes as ThemeContribution[];
+    for (const tc of themeList) {
+      if (findTheme(tc.label)) continue;
+      try {
+        const url = `${await resolveRuntimePluginRoot(pluginId)}/${tc.path}`;
+        const response = await fetch(url);
+        if (!response.ok) continue;
+        const data = await response.json();
+        const themeType = (data.type as "dark" | "light") ?? tc.uiTheme;
+        const colors = extractThemeColors(data);
+        registerTheme({ name: tc.label, type: themeType as "dark" | "light", colors }, pluginId);
+      } catch { /* 静默 */ }
     }
   }
   if (manifest.contributes?.iconThemes) {
@@ -370,8 +314,7 @@ function applyPostLoadSteps(pluginId: string, manifest: PluginManifest, reason: 
 
 /**
  * 激活之前延迟加载的插件——import JS → 注册表占位升级 componentful。
- * glob 内 = loadPluginComponent；glob 外（运行时/市场安装）= resolvePluginRoot + import entry
- * （镜像 loadPlugin Step3 语义；statusBar 存在性已声明式——E6#17d）。
+ * E6#62b 起单条路 = 根解析 + entry import（镜像 loadPlugin Step3 语义；statusBar 存在性已声明式——E6#17d）。
  * 激活即注册表升级（同版本 component-less 占位 → 实组件——registerViewPlugin 允许 stub 升级）。
  * 不调 applyPostLoadSteps——loadedPluginIds 已有、onDidInstall 已发过（startup 静默），只通知 UI 刷新。
  */
@@ -386,27 +329,22 @@ async function activatePlugin(pluginId: string): Promise<boolean> {
 
   _activating.add(pluginId);
   try {
-    if (usesSourceGlobTrack(pluginId)) {
-      // 源码 glob 轨（dev/源码内置非 bundle）——loadPluginComponent 内 registerViewPlugin 升级占位
-      await loadPluginComponent(pluginId, manifest);
-    } else {
-      // 运行时（打包/市场安装）——glob 模块表无此插件，走根解析 + entry import 升级占位。
-      // 差异 = 激活失败即抛上报（用户触发的激活不应静默降级）。E6#17d：statusBar 存在性已声明式
-      // （manifest appearsIn.statusBar）——壳不再 import statusBar JS。② 并 #9g 轮：本分支整段
-      // （壳侧 glob 外 entry import）折叠为池侧激活——此处保留 entry import 是过渡态。
-      const runtimePluginRoot = await resolveRuntimePluginRoot(pluginId);
-      // E6#7：bundle 插件入口恒 index.bundle.js（同 Step3 分支）
-      const entryPath = runtimeEntryPath(manifest, pluginId, import.meta.env.DEV, { bundle: isBundlePlugin(pluginId) });
-      let viewComponent: React.ComponentType<{ isActive: boolean }> | undefined;
-      if (entryPath && runtimePluginRoot) {
-        const module = await resolveViewModule(pluginId, entryPath, runtimePluginRoot);
-        viewComponent = module?.default;
-        if (module && !viewComponent) {
-          console.warn(`[pluginLoader] 运行时插件 "${pluginId}" 未导出 default 组件`);
-        }
+    // E6#62b：源码 glob 轨退役——全插件一条运行时激活轨（根解析 + entry import 升级占位）。
+    // 激活失败即抛上报（用户触发的激活不应静默降级）。E6#17d：statusBar 存在性已声明式（manifest
+    // appearsIn.statusBar）——壳不再 import statusBar JS。② 并 #9g 轮：本段（壳侧 entry import）折叠为
+    // 池侧激活——此处保留 entry import 是过渡态（随 #62e 收）。
+    const runtimePluginRoot = await resolveRuntimePluginRoot(pluginId);
+    // E6#7：bundle 插件入口恒 index.bundle.js（同 Step3 分支）
+    const entryPath = runtimeEntryPath(manifest, pluginId, import.meta.env.DEV, { bundle: isBundlePlugin(pluginId) });
+    let viewComponent: React.ComponentType<{ isActive: boolean }> | undefined;
+    if (entryPath) {
+      const module = await resolveViewModule(entryPath, runtimePluginRoot);
+      viewComponent = module?.default;
+      if (module && !viewComponent) {
+        console.warn(`[pluginLoader] 插件 "${pluginId}" 未导出 default 组件`);
       }
-      registerViewPlugin({ pluginId, manifest, component: viewComponent });
     }
+    registerViewPlugin({ pluginId, manifest, component: viewComponent });
     _deferredPlugins.delete(pluginId);
     // 图标/枚举刷新（startup 已静默，此刻才需通知 UI 拾起激活态）
     syncAppThemeEnum();

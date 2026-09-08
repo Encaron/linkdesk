@@ -1,8 +1,9 @@
 /**
  * 插件加载器——contributes 解析 + 模块解析 + 数据加载 + 枚举同步。
  * E5.8#0d.10-1c：自 loader.ts 拆出——parseContributions（contributes → 各 Registry）
- * + 模块解析三件套（resolveRuntimePluginRoot/runtimeEntryPath/resolveViewModule）
- * + loadPluginComponent + fetchPluginDataFile + 主题/语言/i18n 数据加载 + 枚举同步。
+ * + 模块解析三件套（resolveRuntimePluginRoot/runtimeEntryPath/resolveViewModule——loadPluginComponent
+ *   已随 E6#62b 源码 glob 轨退役整删）
+ * + fetchPluginDataFile + 主题/语言/i18n 数据加载 + 枚举同步。
  *
  * 🔒 环依赖守卫：本文件只依赖 state/manifest/viewRegistry/各 Registry/i18nResources——
  * 不依赖 runtime/lifecycle-ops（parseContributions 的 views 兜底链调 resolveRuntimePluginRoot
@@ -10,10 +11,9 @@
  * lifecycle-ops 双端消费，放此处防 runtime↔lifecycle-ops 成环）。
  */
 
-import type { PluginManifest, ViewPluginEntry, ThemeContribution, IconThemeContribution, IconContribution, LanguageContribution, ContributesViews, IconThemeMappings, IconThemeMapping } from "../../core/api/types";
+import type { PluginManifest, ThemeContribution, IconThemeContribution, IconContribution, LanguageContribution, ContributesViews, IconThemeMappings, IconThemeMapping } from "../../core/api/types";
 import type { FontFaceSpec } from "../../core/types/ipc/events";
 import { getPluginAssetPath } from "../../core/utils/path/pluginAssetPath";
-import { registerViewPlugin } from "./viewRegistry";
 import { registerTheme, getAvailableThemes, ensurePluginFontFacesCleanup, normalizeThemeValue, syncThemeColorEnum, fontFormatOf } from "../../core/services/ui/ThemeEngine";
 import { ThemeRegistry, parseThemeRecipe } from "../../core/registry/appearance/ThemeRegistry";
 import { IconRegistry } from "../../core/registry/appearance/IconRegistry";
@@ -26,14 +26,7 @@ import { registerCommand } from "../../core/registry/commands/CommandRegistry";
 import { registerKeybinding } from "../../core/registry/commands/KeybindingRegistry";
 import { registerPluginLanguageBundle } from "./i18nResources";
 import i18n from "../../i18n";
-import {
-  pluginModules,
-  pluginManifestRaw,
-  extractPluginId,
-  isBundlePlugin, // E6#62c：resolveViewModule 的 glob 先查仅对非 bundle（防 dev 目标被陈旧源码 chunk 抢先）
-  errMsg,
-  log,
-} from "../resolution/state";
+import { errMsg } from "../resolution/state";
 
 /** 从主题 JSON 数据中提取扁平化 colors——归一化 #36j2。消两处重复。 */
 function extractThemeColors(data: Record<string, unknown>): Record<string, string> {
@@ -180,20 +173,14 @@ export async function parseContributions(pluginId: string, c: Record<string, unk
       for (const [containerId, viewDefs] of Object.entries(views)) {
         for (const viewDef of viewDefs) {
           // E5#34b: render 路径相对于插件根目录。
-          // E6#15d 根裁决 = 插件实际数据源（消费切换关键分支）：
-          //   dev 源码树内置 → 构建时 glob 根（render 源码形态 src/views/X.tsx → glob key 直取）；
-          //   prod/运行时 → resolveRuntimePluginRoot = linkdesk://{id}——manifest 已 dist 形态、
-          //   render = views/X.bundle.js（打包改写），构建时 glob 键是源码形态永远匹配不上；
-          //   池 PluginComponent 对 linkdesk:// renderPath 直动态 import（实证可用）——壳侧同款裁决。
-          //   优先级：1) 调用方传入 pluginRoot  2) dev 源码 glob 推导  3) resolveRuntimePluginRoot
+          // E6#62b 收单根裁决（#15d「dev 源码 glob 根」分支随源码轨退役）：resolvedRoot = 调用方
+          //   pluginRoot（loadPlugin Step3 已对全插件 resolveRuntimePluginRoot）/ 缺失则此处现解析——
+          //   dev = /@fs/{abs}（resolvePath IPC，render 源码形态 src/views/X.tsx → 池动态 import 源码）；
+          //   prod = linkdesk://{id}——manifest 已 dist 形态、render = views/X.bundle.js。
+          //   池 PluginComponent 对 URL renderPath 直动态 import（实证可用）——壳侧只算 URL 不 import。
           let resolvedRoot = pluginRoot;
-          let renderPath: string;
-          if (!resolvedRoot && import.meta.env.DEV) {
-            const mk = Object.keys(pluginManifestRaw).find(k => extractPluginId(k) === pluginId);
-            resolvedRoot = mk ? mk.replace(/\/plugin\.json$/, "") : undefined;
-          }
           if (!resolvedRoot) {
-            // glob 外插件（热安装/重装）/ prod 全量——根 URL 归一化（resolveRuntimePluginRoot），不依赖调用方传参
+            // pluginRoot 未传/解析失败兜底——根 URL 归一化（resolveRuntimePluginRoot），不依赖调用方传参
             try {
               resolvedRoot = await resolveRuntimePluginRoot(pluginId);
             } catch {
@@ -201,7 +188,7 @@ export async function parseContributions(pluginId: string, c: Record<string, unk
               continue;
             }
           }
-          renderPath = `${resolvedRoot}/${viewDef.render}`;
+          const renderPath = `${resolvedRoot}/${viewDef.render}`;
           // E6#17d：壳侧 view 组件 import 整删——#15d/#17d 审计实证 desc.render 是装饰死执行（下游零消费，
           // toViewDto/toViewMetaDto 在 IPC 前显式剥离 workspace.ts；池按 _renderPath 自 import + 注入
           // index.bundle.css 渲染，壳页 index.html 也无 vendor import-map——裸 specifier 壳侧必解析失败）。
@@ -302,75 +289,17 @@ export function runtimeEntryPath(
 }
 
 /**
- * 插件视图入口模块解析——E5.7#82：两套入口映射合一。
- *
- * dev：构建时 glob（pluginModules，Vite 展开）∪ 运行时 /@fs 源码（Vite 即时编译）
- * E6 打包（prod）：构建时插件仍走同一张 glob 表（chunk 随池 bundle 分发）；
- *   运行时安装的插件 = 预构建 chunk `<pluginId>.js`，经 linkdesk:// 动态 import——
- *   协议平铺 root-direct 直解析（electron/plugins/protocol.ts，双根 app→userData）。
- *   2026-09-05 塌平：无 builtin/user 子目录层，代码根直接含插件目录。pluginId → 模块语义全局唯一。
+ * 插件视图入口模块解析——E6#62b 收单 URL 轨（glob 轨随源码特快轨退役，无第二张映射表）。
+ * dev：/@fs 源码（resolveRuntimePluginRoot = resolvePath IPC，Vite 即时编译）；
+ * prod：linkdesk:// 预构建 chunk（协议 root-direct 直解析，electron/plugins/protocol.ts）。
+ * 调用点 = runtime.activatePlugin（#9g 延迟激活按需 import——壳侧 deferred 壳 import 的过渡态，
+ * ② 池侧激活闭环后随 E6#62e 收掉）。
  */
 async function resolveViewModule(
-  pluginId: string,
   entryPath: string,
-  runtimePluginRoot?: string,
-): Promise<{ default: React.ComponentType<{ isActive: boolean }> } | null> {
-  // 1) 构建时映射（dev 与打包产物同一张表）——bundle 插件跳过 glob 先查：glob chunk 是 dev 源码
-  //    形态（陈旧），磁盘 index.bundle.js 才是重建产物（E6#62c dev 目标 = glob+bundle 双成员，
-  //    先取 glob 会拿到未重建的旧 build）
-  if (!isBundlePlugin(pluginId)) {
-    const entryKey = Object.keys(pluginModules).find((k) => extractPluginId(k) === pluginId);
-    if (entryKey) return pluginModules[entryKey]();
-  }
-  // 2) 运行时映射——dev /@fs 源码，prod linkdesk:// 预构建 chunk
-  if (!runtimePluginRoot) return null;
+  runtimePluginRoot: string,
+): Promise<{ default: React.ComponentType<{ isActive: boolean }> }> {
   return import(/* @vite-ignore */ `${runtimePluginRoot}/${entryPath}`);
-}
-
-async function loadPluginComponent(pluginId: string, manifest: PluginManifest): Promise<void> {
-  // E5.7#82：入口解析归一到 resolveViewModule——glob 命中 → chunk，否则诚实报缺。
-  const module = await resolveViewModule(pluginId, manifest.entry ?? "index.tsx");
-  if (!module) {
-    pushToast({ message: `插件 "${manifest.name}" 缺少入口文件（${manifest.entry ?? "index.tsx"}）` });
-    throw new Error(`找不到入口文件（${manifest.entry ?? "index.tsx"}）`);
-  }
-  const Component = module.default;
-
-  if (!Component) {
-    throw new Error("入口文件未导出 default 组件");
-  }
-
-  // E6#17d：statusBar 存在性改声明式（manifest appearsIn.statusBar）——壳不再 import statusBar JS，
-  // pluginStatusBarModules glob 已删（state.ts）；存在性布尔由 statusbar.ts 读 manifest 声明，池渲染。
-
-  const entry: ViewPluginEntry = {
-    pluginId,
-    manifest,
-    component: Component,
-  };
-
-  registerViewPlugin(entry);
-
-  // E5.5#9i：移除插件加载时的 eager WebView 创建。Per-tab 模型下 WebView 由
-  // useWebViewSync Effect 3 按需创建（create(instanceId, pluginId)），一 tab 一实例。
-
-  // E2c #19g：statusBar 声明 configurable: true → 自动注册配置项 + 注入 visible prop
-  // 在 registerViewPlugin 之后、parseContributions 之前调用——
-  // registerConfiguration 为 merge 语义，parseContributions 的配置会合并进来不丢失。
-  const configurableItems = (manifest.statusBar ?? []).filter((i) => i.configurable);
-  if (configurableItems.length > 0) {
-    const properties: Record<string, { type: "boolean"; default: boolean; description: string }> = {};
-    const defaults: Record<string, boolean> = {};
-    for (const item of configurableItems) {
-      const key = `${pluginId}.statusBar.${item.id}`;
-      properties[key] = { type: "boolean", default: true, description: `状态栏显示 "${item.label || item.id}"` };
-      defaults[key] = true;
-    }
-    registerConfiguration(pluginId, { title: manifest.name, properties });
-    registerConfigurationDefaults(pluginId, defaults);
-  }
-
-  log.appendLine(`✅ 视图插件 "${manifest.name}" (${pluginId}) 已注册`);
 }
 
 /* ── 插件数据文件 fetch（#39a：全量迁移——绕开 Vite glob 缓存） ── */
@@ -711,7 +640,6 @@ export {
   extractThemeColors,
   resolveRuntimePluginRoot,
   resolveViewModule,
-  loadPluginComponent,
   fetchPluginDataFile,
   loadThemeContributionData,
   normalizeIconThemeMappings,

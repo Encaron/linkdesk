@@ -33,9 +33,14 @@ function diag(msg: string): void {
  * 必须在 app.whenReady() 之后调用。
  */
 export function registerProtocol(): void {
-  // E6#7（1.2-4）：有序双根——[app 只读根, userData 用户安装家]；app 在前同名遮蔽。
-  // app 根：dev <project>/plugins、prod <resources>/plugins（不打 ASAR）；userData 根：envService.userPluginsDir。
-  const roots = [envService.appPluginsDir(), envService.userPluginsDir()];
+  // E6#62f：linkdesk:// 收单 userData 根（承接 #20 取消残余——app 只读根在 prod 已空 per #17a：
+  // 随包内置插件首启经账本种子/安装流物化进 userData，resources/plugins 不再被消费）。
+  //   prod（app.isPackaged）：单一 userData 用户安装家——linkdesk://<id>/… 全部落 userData 目录。
+  //   dev：双根有序——[<project>/plugins 源码, userData]（app 在前同名遮蔽；dev 内置插件经 /@fs
+  //   resolvePath IPC 直读源码目录，本协议双根只服务 dev 侧 linkdesk:// 兜底 + i18n/资产同源读取）。
+  const roots = app.isPackaged
+    ? [envService.userPluginsDir()]
+    : [envService.appPluginsDir(), envService.userPluginsDir()];
 
   // 🔥 E5#114d：CORS 安全网——file:// 页面 fetch linkdesk:// 是跨域，
   // Origin 为 null，部分 Chromium 版本 Access-Control-Allow-Origin: * 不匹配 null。

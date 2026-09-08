@@ -1357,8 +1357,8 @@ export type TitleActionWidget =
 export interface SidebarViewMeta {
     id: string; // view ID（"folders" / "search" / "installed"）
     title: string; // 显示标题
-    pluginId: string; // _pluginId——PluginComponent 用它找 import.meta.glob
-    renderPath: string; // loader.ts 构建的 glob key——池 O(1) 查找 view 组件
+    pluginId: string; // _pluginId——PluginComponent 用它定位插件根（resolvePath IPC）
+    renderPath: string; // _renderPath 归一化 URL（dev /@fs | prod linkdesk://）——池直动态 import（E6#62b）
     role?: "toolbar" | "section"; // 默认 "section"
     order?: number;
     collapsed?: boolean; // 插件声明的初始折叠态（collapsed: true）
