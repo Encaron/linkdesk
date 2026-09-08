@@ -163,12 +163,6 @@ export interface PluginManifest {
   changelog?: { version: string; date: string; changes?: string[] }[];
   screenshots?: string[];
   minAppVersion?: string;
-  /** 激活事件——对标 VS Code activationEvents。空或含 "*" = 启动时立即加载。
-   *  具体事件（canonical 无前导点——与 fileAssociations.extension 一致）：
-   *  onCommand:id / onFileOpen:ext / onLanguage:ext / onPortOpen / onView:containerId。
-   *  未写此字段 → 壳按 contributes 自动推断（#9g：fileAssociations→onLanguage / views→onView / commands→onCommand），
-   *  写了则显式优先（精确控制）。延迟插件启动注册-only，首用事件才 import JS。 */
-  activationEvents?: string[];
   /** @deprecated E5.8#14——归并到 requires（插件级激活依赖统一由 requires 声明）。
    *  零插件使用；loader 兼容读取直到 #14 落地迁移。 */
   extensionDependencies?: string[];
@@ -312,10 +306,6 @@ export interface ContributesFloatingPanel {
 export interface ViewPluginEntry {
   pluginId: string;
   manifest: PluginManifest;
-  /** React 组件（懒加载）——可选：E5.8#37.9.2.3 起 entryless 视图插件也注册进 viewRegistry
-   *  （图标栏数据源），其组件由 ViewContainerService 经 contributes.views[].render 加载，
-   *  本注册表只作元数据/图标入口，component 为零。渲染路径不读本字段（池 PluginComponent 直扫 glob）。 */
-  component?: React.ComponentType<{ isActive: boolean; sourceId?: string }>;
   /** E6#62d：插件自绘状态栏组件（manifest.appearsIn.statusBar 声明）的归一化 URL——loader 注册时
    *  resolveRuntimePluginRoot 拼：dev /@fs 源码 .tsx、prod linkdesk:// dist（SDK 打包后 manifest
    *  appearsIn.statusBar 改写为 statusBar.bundle.js → URL 直指编译表面）。壳 statusbar.ts 读此发

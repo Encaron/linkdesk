@@ -31,17 +31,9 @@ export function registerViewPlugin(entry: ViewPluginEntry): () => void {
   if (existing) {
     const newVer = entry.manifest.version;
     const oldVer = existing.manifest.version;
-    const higherVer = compareVersions(newVer, oldVer) > 0;
-    // #9g 延迟激活升级：component-less 占位（启动注册-only）被 componentful 首用激活替代——
-    // 同版本也允许升级（占位是"尚未导入"，非旧版本）。高版本覆盖保留原语义；其余保留首注册者。
-    const stubUpgrade = !existing.component && !!entry.component;
-    if (higherVer) {
+    if (compareVersions(newVer, oldVer) > 0) {
       console.warn(
         `[viewRegistry] 插件 "${entry.pluginId}" 重复——使用高版本 v${newVer} 替代 v${oldVer}`
-      );
-    } else if (stubUpgrade) {
-      console.warn(
-        `[viewRegistry] 插件 "${entry.pluginId}" 延迟激活——component-less 占位升级为实组件`
       );
     } else {
       console.warn(
@@ -120,7 +112,7 @@ export function getStatusBarContributions(): Array<StatusBarItem & { pluginId: s
 /** 查找保底标签页——先查 viewRegistry，无则返回内置欢迎页 */
 export function findFallbackPlugin(): { pluginId: string } | undefined {
   for (const entry of registry.values()) {
-    // E5.8#37.9.2.3：fallback 须有 entry 组件（标签页渲染靠 entry）——component-less 注册不参与
+    // E5.8#37.9.2.3：fallback 须有 entry（标签页渲染靠 entry）——entryless 纯贡献插件不参与
     if (entry.manifest.tabBehavior?.isFallback && entry.manifest.entry) return { pluginId: entry.pluginId };
   }
   // 内置 fallback：欢迎页
@@ -143,12 +135,10 @@ export function getIconLocation(pluginId: string): "top" | "bottom" | undefined 
 /**
  * 获取可创建为标签页的视图插件——appearsIn.tabBar === true 且有 entry 声明。
  * 消费端：WelcomeView 快捷卡片、TabBar [+] 菜单、命令面板"打开视图"等。
- * 🔥 2026-09-06 契约纠偏：可创建 ≠ 已注册组件——壳 registry 的 component 是可选元数据，
- * 标签页实际渲染走池 PluginComponent 独立解析（E5.7 架构：shell 持 loader、池渲染）。
- * 故 #9g 延迟激活 stub 与 runtime JS 加载失败占位（loader Step4 兜底）的 component-less
- * 注册同样在此列出——点击交给池渲染（成不成由池的 import-map/错误边界决定）。
- * 过滤只查 appearsIn.tabBar + entry 声明，不查 component（旧"防御性守卫"注释已随
- * #9g + JS 失败兜底两项真实化而撤销——component-less 现在是正当的可创建成员）。
+ * 🔥 2026-09-06 契约纠偏 + E6#62e：可创建 ≠ 已注册组件——registry 条目恒为元数据
+ * （壳不 import 任何插件 JS，视图渲染唯一执行者 = 池 PluginComponent 按 renderPath /
+ * resolveEntry URL 独立加载）。故 loader Step4 只注册元数据 stub 照常列出——点击交池渲染
+ * （成不成由池的加载链/错误边界决定）。过滤只查 appearsIn.tabBar + entry 声明。
  */
 export function getTabCreatableViews(): ViewPluginEntry[] {
   return Array.from(registry.values()).filter(

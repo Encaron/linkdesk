@@ -28,11 +28,10 @@ import { registerPluginLanguageBundle } from "../../pluginLoader/contributions/i
 import i18n from "../../i18n";
 import type { ViewPluginEntry } from "../api/types";
 
-/** viewRegistry 测试用最小 entry——component 空组件（无 JSX） */
+/** viewRegistry 测试用最小 entry——元数据 stub（E6#62e：registry 不持组件） */
 const makeViewEntry = (version: string): ViewPluginEntry => ({
   pluginId: PID,
   manifest: { name: "Test View", version },
-  component: () => null,
 });
 
 const PID = "registry-disposer-test";
@@ -440,14 +439,13 @@ describe("viewRegistry — registerViewPlugin() 返 disposer（E5.8#10-4）", ()
     expect(getViewPlugin(PID)).toBeUndefined();
   });
 
-  it("E5.8#37.9.2.3 无组件注册（entryless 视图插件）——component 可省，getIconLocation 生效", () => {
+  it("E5.8#37.9.2.3 entryless 视图插件——纯元数据注册（E6#62e：registry 恒不持组件），getIconLocation 生效", () => {
     registerViewPlugin({
       pluginId: PID,
       manifest: { name: "Hello", version: "1.0.0", appearsIn: { iconBar: "top", sidePanel: true } },
     });
 
     expect(getViewPlugin(PID)).toBeDefined();
-    expect(getViewPlugin(PID)!.component).toBeUndefined();
     expect(getIconLocation(PID)).toBe("top");
 
     // 图标栏数据源 getViewPlugins() 必须包含它——这是本修复的目的

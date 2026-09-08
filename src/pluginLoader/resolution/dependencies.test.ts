@@ -28,7 +28,7 @@ import {
   formatPendingReason,
   findActiveConsumers,
 } from "./dependencies";
-import { loadedPluginIds, _deferredPlugins, _pendingPlugins, _loadingPromises } from "./state";
+import { loadedPluginIds, _pendingPlugins, _loadingPromises } from "./state";
 import { clearLoadStates, getLoadDiagnostics, getLoadDiagnosticsSummary, unloadPlugin } from "./loadState";
 import { clearRegistrationLayers } from "../../core/registry/registrationTracker";
 import { loadPlugin } from "./runtime";
@@ -163,7 +163,6 @@ describe("dependencies 集成——loadPlugin 依赖编排", () => {
 
   function resetAll(): void {
     loadedPluginIds.clear();
-    _deferredPlugins.clear();
     _pendingPlugins.clear();
     _loadingPromises.clear();
     clearLoadStates();

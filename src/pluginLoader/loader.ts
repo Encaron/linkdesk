@@ -34,17 +34,15 @@ import {
   log,
   errMsg,
   loadedPluginIds,
-  _deferredPlugins,
   getMetadataCache,
   cachePluginMetadata,
   getDisabledList,
   discoverInstalled,
+  linkdesk,
 } from "./resolution/state";
 export { validateInstallManifest, resolveVersionConflict } from "./discovery/manifest";
 export { runtimeEntryPath, parseContributions } from "./contributions/contributions";
-import { loadPlugin, activateDeferredByEvent } from "./resolution/runtime";
-// #9g 按需激活：延迟判定纯函数（shouldDeferActivation）+ 触发总线（App 层触发源只认总线，不 import runtime）
-import { shouldDeferActivation, fireActivationEvent, setActivationEventHandler } from "./resolution/activation";
+import { loadPlugin } from "./resolution/runtime";
 import {
   disablePlugin,
   enablePlugin,
@@ -86,17 +84,6 @@ export async function initPluginLoader(): Promise<void> {
   // Phase 5h 行为归一化：注册 lifecycle 消费端（iconOrder/toast/config/tab——只注册一次）
   initLifecycleConsumers();
 
-  // #44/#9g：命令预激活——CommandRegistry 执行命令前经触发总线发 `onCommand:<id>`（激活延迟插件）。
-  // 🔥 必须 await——否则钩子在 initPluginLoader 返回后才挂上，用户首次命令执行时钩子未就绪。
-  const { setPreActivateHook } = await import("../core/registry/commands/CommandRegistry");
-  setPreActivateHook(async (commandId: string) => {
-    await fireActivationEvent(`onCommand:${commandId}`);
-  });
-  // #9g ②：激活事件总线常驻处理器 = runtime 路由器（扫 _deferredPlugins 命中即激活）。
-  // App 层触发源（sidebarHost icon:selected / tabActions tab:create / 命令钩子）只认 fireActivationEvent，
-  // 经此单点转 runtime——触发源不 import 重型 runtime 模块（防环 + 防启动拉全图）。
-  setActivationEventHandler((event) => activateDeferredByEvent(event));
-
   const errors: string[] = [];
   const disabled = getDisabledList();
 
@@ -105,7 +92,7 @@ export async function initPluginLoader(): Promise<void> {
   //    纯浏览器预览（无 pluginsApi）discoverInstalled 内回退 eager ?raw glob 种子，行为同旧（仅浏览器，Electron 零消费）。
   const discovered = await discoverInstalled();
 
-  // 2. 加载每个已发现插件（跳过禁用；激活延迟见 #44/#9g）
+  // 2. 加载每个已发现插件（跳过禁用）
   for (const entry of discovered) {
     const pluginId = entry.pluginId;
     const manifest = entry.manifest;
@@ -116,13 +103,8 @@ export async function initPluginLoader(): Promise<void> {
       continue;
     }
     try {
-      // #44/#9g：无 activationEvents → 壳按 contributes 自动推断触发事件（fileAssociations→onLanguage /
-      // views→onView / commands→onCommand）→ 有 entry 且生效事件非空且无 "*" 时延迟 JS import
-      // （启动注册-only，元数据占位注册在 loadPlugin Step4；首用事件 activatePlugin 升级实组件）。
-      // entryless 纯贡献插件无 JS 可延迟、data 角色（python langDefs 等）安装即用恒立即——两者不 defer。
-      const defer = shouldDeferActivation(manifest);
+      // E6#62e：延迟激活已退役——无 defer 判定，全插件启动即注册元数据（JS 由池按 URL 懒加载/命令 miss 激活）。
       await loadPlugin(pluginId, "startup");
-      if (defer) _deferredPlugins.set(pluginId, manifest);
     } catch (e) {
       errors.push(`${pluginId}: ${errMsg(e)}`);
     }
@@ -192,7 +174,43 @@ export async function initPluginLoader(): Promise<void> {
   //    但 loader 启动不再为其预种 uninstalled 元数据缓存、不再做幽灵差集清理（原 E5.8#156
   //    pruneUninstalledCache 随本步退役）——marketplace 探索插件视图改 fetch marketplace.json
   //    驱动（缓存语义归 marketSources.ts 5min）。卸载恢复入口 = toast「撤销」（lifecycle.ts），
-  //    遗留 `.disabled/` 目录引导 = #11e 342（从市场重新安装或彻底删除，另行收编）。
+  // 8. E6#11e-342（2026-09-09 裁决 = boot 自动清）：扫 `.disabled/` 坟场孤儿并清幽灵 uninstalled 缓存。
+  //    `.disabled/` 仍是 app 树卸载的**同会话**可撤销坟场（reinstallPlugin / 卸载 toast「撤销」读它，
+  //    #30d 后 loader 不再预种 uninstalled 缓存、探索视图已改 catalog 驱动）——跨重启留存即无主孤儿
+  //    （E6 迁移旧遗留 / 卸载后重装的影子副本，隐形占盘）。undo toast 会话级 → 新 boot 无消费方 →
+  //    逐条真删（listDisabledPluginDirs = 主进程扫 appPluginsDir/.disabled 唯一权威面）。目录移除后
+  //    "uninstalled" 态缓存同清（坟场已不在，重装恢复走真源——目录/zip/市场，#18 意图持久语义不破）。
+  //    浏览器预览（无 pluginsApi/env IPC）try/catch 静默跳过，非致命；dev-plugin-mode 会话
+  //    listDisabledDirs 返 [] → 天然跳过（坟场与在开发插件无关）。
+  try {
+    const graveyard = await pluginsApi().listDisabledDirs();
+    if (graveyard.length > 0) {
+      const env = await linkdesk().env.get();
+      for (const id of graveyard) {
+        try {
+          await linkdesk().filesystem.remove(`${env.appPluginsDir}/.disabled/${id}`);
+          log.appendLine(`🧹 清理遗留 .disabled/ 坟场 "${id}"（跨重启孤儿）`);
+        } catch (e) {
+          log.appendLine(`⚠️ 清理 .disabled/ 坟场 "${id}" 失败（非致命）: ${errMsg(e)}`);
+        }
+      }
+    }
+    const cache = getMetadataCache();
+    let ghostCount = 0;
+    for (const [id, meta] of Object.entries(cache)) {
+      if (meta.status === "uninstalled") {
+        delete cache[id];
+        ghostCount++;
+      }
+    }
+    if (ghostCount > 0) {
+      setPluginStateValue(APP_PLUGIN_ID, "pluginMetadataCache", cache)
+        .then(() => log.appendLine(`🧹 清理 ${ghostCount} 条幽灵 uninstalled 缓存`))
+        .catch(() => { /* 非关键路径 */ });
+    }
+  } catch (e) {
+    log.appendLine(`⚠️ .disabled/ 坟场启动清扫跳过（非致命）: ${errMsg(e)}`);
+  }
   })());
 }
 

@@ -233,11 +233,6 @@
       "type": "string",
       "description": "最低软件版本要求"
     },
-    "activationEvents": {
-      "type": "array",
-      "description": "激活事件——对标 VS Code activationEvents。空或含 \"*\" = 启动时立即加载。具体事件（canonical 无前导点）：onCommand:id / onFileOpen:ext / onLanguage:ext / onPortOpen / onView:containerId。未写此字段 → 壳按 contributes 自动推断（fileAssociations→onLanguage / views→onView / commands→onCommand），写了则显式优先。延迟插件启动只注册元数据，首用事件才加载 JS。",
-      "items": { "type": "string" }
-    },
     "docs": {
       "type": "string",
       "description": "附带文档路径（资源插件联动）",

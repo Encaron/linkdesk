@@ -706,7 +706,6 @@ useEffect(() => {
   "statusBar": [
     { "id": "units", "label": "mm", "align": "right" }
   ],
-  "activationEvents": ["*"],
   "contributes": {
     "i18n": { "en": "i18n/en.json" },
     "commands": [
@@ -772,7 +771,7 @@ useEffect(() => {
 | `viewsWelcome` | ⏳ | 欢迎内容——未来 |
 | `fileAssociations` | ✅ | **主进程**——VS Code 由操作系统管理文件关联，LinkDesk 内置 |
 | `extensionDependencies` | ✅ `requires` | string 数组（`02 §四`） |
-| `activationEvents` | ✅ | 顶层字段（`02 §五`） |
+| ~~`activationEvents`~~ | ~~✅~~ | **已删除**（E6#62e 退役，2026-09-09）——加载模型简化：启动全量注册元数据，JS 由池按需加载（`02 §五`） |
 | `snippets` / `problemMatchers` | ❌ 不在规划 | Monaco/LSP 插件自带 |
 | `breakpoints` / `debuggers` | ❌ 不在规划 | 调试器——当前不需要 |
 

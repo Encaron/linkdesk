@@ -12,8 +12,6 @@ import { useEffect, useRef } from "react";
 import { layoutEngine } from "../core/services/layout/LayoutEngine";
 import { shellEvents } from "../core/react/events/ShellEvents";
 import { getViewPlugin, getViewPlugins } from "../pluginLoader/contributions/viewRegistry";
-// #9g：容器变活动 = 视图创建触发源——经总线发 onView:<containerId>（延迟插件首用激活）
-import { fireActivationEvent } from "../pluginLoader/resolution/activation";
 import { setPluginStateValue, getPluginStateValue, APP_PLUGIN_ID } from "../core/services/plugins/PluginStateService";
 import { ViewContainerService } from "../core/services/layout/ViewContainerService";
 
@@ -73,9 +71,6 @@ export function useSidebarHost({ setSidebarView, setIsSidebarExpanded, ready }: 
       if (zoneCollapsed()) doCollapse(false);
       s.containerId = cid;
       s.lastSidebar = cid;
-      // #9g：容器变活动 = onView 触发源——延迟插件（启动只注册元数据）此刻激活 JS。
-      // 放切换支（非同容器 toggle）：切到该插件容器才需激活；启动恢复重放 icon:selected 走同支（同源同路）。
-      void fireActivationEvent(`onView:${cid}`);
       // E5.7#13.5：持久化上次侧栏选择——启动恢复（对标 VS Code 记住 Activity Bar；
       // iconOrder 同款机制 PluginStateService，归一化不新发明）
       setPluginStateValue(APP_PLUGIN_ID, "activeSidebarPlugin", pluginId);

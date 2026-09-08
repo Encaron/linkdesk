@@ -118,7 +118,6 @@ export async function discoverInstalled(): Promise<PluginDiscoveryEntry[]> {
     const api = pluginsApi();
     const [entries, records] = await Promise.all([api.listAll(), api.readAllManifests()]);
     hydrateManifestIndex(records);
-    syncBundlePluginIds(entries);
     return entries;
   } catch {
     seedManifestIndexFromGlob();
@@ -134,36 +133,8 @@ export async function discoverInstalled(): Promise<PluginDiscoveryEntry[]> {
 /** 已成功加载的插件 ID 集合（用于文件监听检测新插件） */
 const loadedPluginIds = new Set<string>();
 
-/* ── E6#7（1.2-4）：bundle 插件标记集 ── */
-
-/**
- * 磁盘格式事实（非插件身份——硬约束 11）：目录含 index.bundle.js = SDK 打包的 .linkdesk-plugin 解压产物。
- * 启动发现（discoverInstalled）从 listAll 条目的 bundle 标志水合；幂等（每次发现先清后填）。
- * 运行时新装的 bundle（E6#13 1.2-5 安装流）在 extract 落盘后由 installPlugin 补标（markBundlePlugin）——
- * loadPlugin 的 runtimeEntryPath 选 index.bundle.js 依赖本集先就位。
- */
-const _bundlePluginIds = new Set<string>();
-
-/** 启动发现时同步——先清后填（插件可能随装卸在 bundle/源码 间迁移）。仅 discoverInstalled 内部调。 */
-function syncBundlePluginIds(entries: readonly PluginDiscoveryEntry[]): void {
-  _bundlePluginIds.clear();
-  for (const e of entries) if (e.bundle) _bundlePluginIds.add(e.pluginId);
-}
-
-/** 运行时新装 bundle 补标（E6#13 安装流：extract 落盘后、loadPlugin 前调）——幂等（Set）。 */
-export function markBundlePlugin(pluginId: string): void {
-  _bundlePluginIds.add(pluginId);
-}
-
-/** 消费方判 bundle——runtime/contributions 据此选入口（bundle → index.bundle.js）。 */
-export function isBundlePlugin(pluginId: string): boolean {
-  return _bundlePluginIds.has(pluginId);
-}
-
 /** 🔥 硬约束 13：async init 竞态守卫——loadPlugin concurrent 调用时第二次返回第一次的 Promise */
 const _loadingPromises = new Map<string, Promise<void>>();
-/** 延迟激活的插件——有 activationEvents（非 "*"），manifest 已注册但 JS 未 import */
-const _deferredPlugins = new Map<string, PluginManifest>();
 /** E5.8#14：缺依赖挂起的插件——pluginId → manifest（依赖就绪后 sweep 补载需要 manifest 重查）。
  *  park 在 runtime.loadPlugin dep-check，sweep 在 runtime.sweepPendingDependencies——共享状态单一真源。 */
 const _pendingPlugins = new Map<string, PluginManifest>();
@@ -282,7 +253,6 @@ export {
   errMsg,
   loadedPluginIds,
   _loadingPromises,
-  _deferredPlugins,
   _pendingPlugins,
   getMetadataCache,
   cachePluginMetadata,

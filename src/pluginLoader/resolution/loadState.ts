@@ -38,7 +38,7 @@
 
 import { PluginLifecycle, notifyPluginRemoved, onPluginLifecycleChange } from "../lifecycle/lifecycle";
 import type { PluginUninstallEvent } from "../lifecycle/lifecycle-events";
-import { loadedPluginIds, _deferredPlugins, _pendingPlugins, getLoadedManifest } from "./state";
+import { loadedPluginIds, _pendingPlugins, getLoadedManifest } from "./state";
 import { registrationCount } from "../../core/registry/registrationTracker";
 import { findActiveConsumers, formatPendingReason } from "./dependencies";
 // E5.8#15.5：连带挂起后果 toast（对标 lifecycle 消费端 3 的 pushToast 机制——用户主动卸载依赖时知道后果）
@@ -170,7 +170,6 @@ export function orphanPlugin(pluginId: string, missing: string[]): OrphanResult[
   notifyPluginRemoved(pluginId);
   PluginLifecycle.onWillUninstall.fire({ pluginId, reason: "disable", displayName });
   loadedPluginIds.delete(pluginId);
-  _deferredPlugins.delete(pluginId);
   if (manifest) _pendingPlugins.set(pluginId, manifest); // sweep 重查依赖需要 manifest 留存
   parkPending(pluginId, formatPendingReason(missing));
   console.warn(`[loadState] 插件 "${pluginId}" 依赖消失连带卸载——${formatPendingReason(missing)}`);
@@ -207,7 +206,6 @@ export function unloadPlugin(
   notifyPluginRemoved(pluginId);
   PluginLifecycle.onWillUninstall.fire({ pluginId, reason, displayName, restorable });
   loadedPluginIds.delete(pluginId);
-  _deferredPlugins.delete(pluginId);
   transition(pluginId, "disposed");
   PluginLifecycle.onDidUninstall.fire({ pluginId, reason, displayName, restorable });
   // E5.8#15.5：连带后果 toast——一次连带一次通知（有连带才弹）。用户主动卸载/禁用依赖时知道

@@ -105,6 +105,9 @@ export interface CommandsAPI {
         getCommands(): Promise<LinkDeskCommand[]>;
         /** 壳侧插件入口模块级注册（双进程执行壳侧半程）——壳 preload 独有 */
         _executeShellLocal?(id: string, ...args: unknown[]): Promise<unknown>;
+        /** E6#62e 池 preload 独有内部钩——池 renderer 注册 on-command 激活回调（命令 miss → import 属主插件入口）。
+         *  underscore 内部面（对标 _executeShellLocal），非插件作者 API——纯命令插件按需激活的接线位。 */
+        _setCommandMissHandler?(handler: (pluginId: string) => Promise<boolean>): void;
     };
     /** 配置—新名——对标 VS Code vscode.workspace.getConfiguration */
     configuration: {
@@ -1000,12 +1003,6 @@ export interface PluginManifest {
     }[];
     screenshots?: string[];
     minAppVersion?: string;
-    /** 激活事件——对标 VS Code activationEvents。空或含 "*" = 启动时立即加载。
-     *  具体事件（canonical 无前导点——与 fileAssociations.extension 一致）：
-     *  onCommand:id / onFileOpen:ext / onLanguage:ext / onPortOpen / onView:containerId。
-     *  未写此字段 → 壳按 contributes 自动推断（#9g：fileAssociations→onLanguage / views→onView / commands→onCommand），
-     *  写了则显式优先（精确控制）。延迟插件启动注册-only，首用事件才 import JS。 */
-    activationEvents?: string[];
     /** @deprecated E5.8#14——归并到 requires（插件级激活依赖统一由 requires 声明）。
      *  零插件使用；loader 兼容读取直到 #14 落地迁移。 */
     extensionDependencies?: string[];

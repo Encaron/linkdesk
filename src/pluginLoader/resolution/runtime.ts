@@ -1,6 +1,8 @@
 /**
- * 插件加载运行时层——加载管线 + 依赖编排 + 延迟激活。
+ * 插件加载运行时层——加载管线 + 依赖编排。
  * E5.8#0d.10-1d：自 loader.ts 拆出——loadPlugin 中枢（E6#62b 起单 IPC 运行时路——源码 glob 轨退役）。
+ * E6#62e：壳侧延迟激活轨（#9g activationEvents）已整体退役——壳不 import 插件 JS（#17d），视图按 URL
+ * 由池懒加载即激活；命令级 on-command 激活迁池侧 preload（electron/preload-pool/commands.ts miss 钩）。
  * 依赖方向：runtime → contributions/dependencies（纯函数，反向不成立）——防环。
  * E5.8#14：依赖编排——dep-check（环 fail / 缺 park）+ 挂起注册表 + sweep 补载（拓扑序激活）；
  *   纯逻辑在 dependencies.ts，本模块持可变编排（_pendingPlugins 由 state.ts 共享真源）。
@@ -12,9 +14,8 @@ import { registerViewPlugin } from "../contributions/viewRegistry";
 import { registerTheme, findTheme } from "../../core/services/ui/ThemeEngine";
 import type { ThemeContribution } from "../../core/api/types";
 import { pushToast, TOAST_TTL_ERROR } from "../../core/services/ui/NotificationService";
-import { reportError } from "../../core/services/bootstrap/ErrorService";
 // Phase 5h 行为归一化：副作用（iconOrder/toast/config/tab）集中到 lifecycle.ts 消费端
-import { PluginLifecycle, onPluginLifecycleChange, type PluginInstallEvent } from "../lifecycle/lifecycle";
+import { PluginLifecycle, type PluginInstallEvent } from "../lifecycle/lifecycle";
 // E5.8#11：状态机——loading/failed/active 迁移 + 失败原因记录（诊断面）
 // E5.8#14：parkPending——缺依赖挂起（loading→pending + pendingReason）
 // E5.8#15：orphanPlugin——依赖消失连带卸载（加载完成复核用）
@@ -29,22 +30,17 @@ import {
   errMsg,
   loadedPluginIds,
   _loadingPromises,
-  _deferredPlugins,
   _pendingPlugins,
   cachePluginMetadata,
   getDisabledList,
   getLoadedManifest,
   getManifestById,
-  isBundlePlugin, // E6#7（1.2-4）：目录含 index.bundle.js → runtimeEntryPath 传 bundle 分支
 } from "./state";
 import { normalizeManifest, hasSidebarContainers, type OldFormatManifest } from "../discovery/manifest";
-import { effectiveActivationEvents } from "./activation"; // #9g：延迟匹配按「显式 ?? 推断」生效事件
 import { parseManifestJson } from "../jsonc"; // E6#55：作者 plugin.json JSONC——唯一解析入口
 import {
   parseContributions,
   resolveRuntimePluginRoot,
-  runtimeEntryPath,
-  resolveViewModule,
   fetchPluginDataFile,
   loadThemeContributionData,
   loadIconThemeContributionData,
@@ -125,11 +121,11 @@ async function loadPluginLifecycle(
 
 /* ── E5.8#14：依赖编排——环 fail / 缺 park / 就绪 sweep（拓扑序激活） ── */
 
-/** 已知 manifest 面——环检测走闭包的数据源（发现索引 + 延迟 + 挂起）。
+/** 已知 manifest 面——环检测走闭包的数据源（发现索引 + 挂起）。
  *  E6#9c：manifestIndex（readAllManifests 水合，glob + 运行时全覆盖）单一真源；
- *  延迟/挂起留兜底（环 = 相互依赖未就绪，必有挂起方，#14 分析成文）。 */
+ *  挂起留兜底（环 = 相互依赖未就绪，必有挂起方，#14 分析成文）。E6#62e：延迟注册表已删。 */
 function getKnownManifest(pluginId: string): PluginManifest | undefined {
-  return getManifestById(pluginId) ?? _deferredPlugins.get(pluginId) ?? _pendingPlugins.get(pluginId);
+  return getManifestById(pluginId) ?? _pendingPlugins.get(pluginId);
 }
 
 /** 缺依赖挂起——PENDING + pendingReason + 挂起注册表（manifest 留存供 sweep 重查）。
@@ -247,10 +243,10 @@ async function loadPlugin(
   // resolveRuntimePluginRoot）；随 stub/实注册盖到 ViewPluginEntry.statusBarRenderPath，壳读此发 marker。
   const statusBarRenderPath = statusBarRenderPathOf(manifest, runtimePluginRoot);
 
-  // ═══ Step 4: 注册视图——一律 component-less stub（组件可选项，渲染唯一执行者 = 池 PluginComponent） ═══
+  // ═══ Step 4: 注册视图——一律元数据 stub（组件壳不 import——渲染唯一执行者 = 池 PluginComponent） ═══
   // entry 插件 = 视图 stub；entryless + 有侧栏容器 = 图标栏元数据入口（E5.8#37.9.2.3——此前
-  // getViewPlugins() 只含 entry 插件 → entryless 声明 appearsIn.iconBar 被静默丢弃）。deferred（#9g）
-  // 首用激活（activatePlugin）时 registerViewPlugin stub→实升级。对标 VS Code：manifest 贡献启动可见、组件懒载。
+  // getViewPlugins() 只含 entry 插件 → entryless 声明 appearsIn.iconBar 被静默丢弃）。
+  // E6#62e：无 component 升级轨——视图/entry JS 由池按 URL 懒加载即激活（对标 VS Code：manifest 贡献启动可见、组件懒载）。
   if (manifest.entry) {
     registerViewPlugin({ pluginId, manifest, statusBarRenderPath });
     log.appendLine(`[OK] 元数据注册 "${manifest.name}" (${pluginId})`);
@@ -328,73 +324,4 @@ function applyPostLoadSteps(pluginId: string, manifest: PluginManifest, reason: 
   PluginLifecycle.onDidInstall.fire({ pluginId, manifest, reason });
 }
 
-/* ── #44 + #9g：延迟激活——activationEvents 插件按需 import ── */
-
-/**
- * 激活之前延迟加载的插件——import JS → 注册表占位升级 componentful。
- * E6#62b 起单条路 = 根解析 + entry import（镜像 loadPlugin Step3 语义；statusBar 存在性已声明式——E6#17d）。
- * 激活即注册表升级（同版本 component-less 占位 → 实组件——registerViewPlugin 允许 stub 升级）。
- * 不调 applyPostLoadSteps——loadedPluginIds 已有、onDidInstall 已发过（startup 静默），只通知 UI 刷新。
- */
-/** 激活中插件集——并发事件防双跑（await import 完成前 delete 未发生，两次背靠背命中会双 import）。
- *  #9g 验证「激活过不重载」：首跑成功出 _deferredPlugins + 出 _activating；次跑见 manifest 空即 no-op。 */
-const _activating = new Set<string>();
-
-async function activatePlugin(pluginId: string): Promise<boolean> {
-  const manifest = _deferredPlugins.get(pluginId);
-  if (!manifest) return false; // 不是延迟插件——可能已激活或不存在
-  if (_activating.has(pluginId)) return false; // 已在激活中——并发事件让首跑完成，语义一致
-
-  _activating.add(pluginId);
-  try {
-    // E6#62b：源码 glob 轨退役——全插件一条运行时激活轨（根解析 + entry import 升级占位）。
-    // 激活失败即抛上报（用户触发的激活不应静默降级）。E6#17d：statusBar 存在性已声明式（manifest
-    // appearsIn.statusBar）——壳不再 import statusBar JS。② 并 #9g 轮：本段（壳侧 entry import）折叠为
-    // 池侧激活——此处保留 entry import 是过渡态（随 #62e 收）。
-    const runtimePluginRoot = await resolveRuntimePluginRoot(pluginId);
-    // E6#62d：实注册同盖章 statusBarRenderPath（stub→componentful 升级不丢 marker 数据——壳读 entry 字段）
-    const statusBarRenderPath = statusBarRenderPathOf(manifest, runtimePluginRoot);
-    // E6#7：bundle 插件入口恒 index.bundle.js（同 Step3 分支）
-    const entryPath = runtimeEntryPath(manifest, pluginId, import.meta.env.DEV, { bundle: isBundlePlugin(pluginId) });
-    let viewComponent: React.ComponentType<{ isActive: boolean }> | undefined;
-    if (entryPath) {
-      const module = await resolveViewModule(entryPath, runtimePluginRoot);
-      viewComponent = module?.default;
-      if (module && !viewComponent) {
-        console.warn(`[pluginLoader] 插件 "${pluginId}" 未导出 default 组件`);
-      }
-    }
-    registerViewPlugin({ pluginId, manifest, component: viewComponent, statusBarRenderPath });
-    _deferredPlugins.delete(pluginId);
-    // 图标/枚举刷新（startup 已静默，此刻才需通知 UI 拾起激活态）
-    syncAppThemeEnum();
-    syncAppLanguageEnum();
-    syncIconThemeEnum();
-    onPluginLifecycleChange.fire();
-    console.log(`[pluginLoader] ⚡ 延迟激活 "${pluginId}"`);
-    log.appendLine(`⚡ 延迟激活 "${pluginId}"`);
-    return true;
-  } catch (e) {
-    reportError({ message: `插件 "${manifest.name ?? pluginId}" 激活失败: ${errMsg(e)}`, source: pluginId, error: e });
-    return false;
-  } finally {
-    _activating.delete(pluginId);
-  }
-}
-
-/**
- * #9g ② 事件路由器——发火事件命中任一延迟插件的生效事件（显式 ?? 推断）即激活。
- * 触发源统一经 activation.fireActivationEvent 发火；loader 初始化把本函数挂成总线常驻处理器。
- * 幂等：#44 语义——激活成功即出 _deferredPlugins，二次命中为 no-op（激活过不重载）。
- * 遍历用快照——activatePlugin 会 delete 当前键（边遍历边删安全）。
- */
-async function activateDeferredByEvent(event: string): Promise<void> {
-  for (const [pluginId, manifest] of [..._deferredPlugins]) {
-    const events = effectiveActivationEvents(manifest);
-    if (events.some((ev) => ev === event || ev === "*")) {
-      await activatePlugin(pluginId);
-    }
-  }
-}
-
-export { loadPlugin, activateDeferredByEvent };
+export { loadPlugin };

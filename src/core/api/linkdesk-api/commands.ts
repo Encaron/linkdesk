@@ -37,6 +37,9 @@ export interface CommandsAPI {
     getCommands(): Promise<LinkDeskCommand[]>;
     /** 壳侧插件入口模块级注册（双进程执行壳侧半程）——壳 preload 独有 */
     _executeShellLocal?(id: string, ...args: unknown[]): Promise<unknown>;
+    /** E6#62e 池 preload 独有内部钩——池 renderer 注册 on-command 激活回调（命令 miss → import 属主插件入口）。
+     *  underscore 内部面（对标 _executeShellLocal），非插件作者 API——纯命令插件按需激活的接线位。 */
+    _setCommandMissHandler?(handler: (pluginId: string) => Promise<boolean>): void;
   };
 
   /** 配置—新名——对标 VS Code vscode.workspace.getConfiguration */

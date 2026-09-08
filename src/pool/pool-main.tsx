@@ -15,6 +15,7 @@
 import { useState, useEffect, useRef, StrictMode, useTransition } from "react";
 import ReactDOM from "react-dom/client";
 import PoolZoneShell from "./PoolZoneShell";
+import { activatePluginEntryForCommands } from "./shared/plugin-component/entryActivation"; // E6#62e：on-command 激活注册
 import type { PoolLayout } from "../core/types/pool/poolLayout";
 // E5.6#11 fix：池独立 WebContentsView——需加载基础 CSS（变量/字体/图标/间距）
 import "@vscode/codicons/dist/codicon.css";
@@ -58,6 +59,17 @@ function PoolApp() {
     poolApi.ready();
 
     return () => { unsub?.(); };
+  }, []);
+
+  // E6#62e：池侧 on-command 激活注册——命令 miss 时 preload 回调本侧 import 属主插件 entry
+  // （resolvePluginViewLoader 入口 URL 轨，模块缓存幂等）。覆盖缺口 = 无视图可开、entry 从未被视图
+  // 挂载 import 的纯命令插件：entry 顶层副作用注册命令 handler → preload 重试一次即命中。
+  // 幂等：同一函数引用覆盖注册；preload 进程级单例，window 生命周期常驻，无需清理。
+  useEffect(() => {
+    const cmds = window.linkdesk?.commands;
+    if (cmds && typeof cmds._setCommandMissHandler === "function") {
+      cmds._setCommandMissHandler(activatePluginEntryForCommands);
+    }
   }, []);
 
   // 首个布局未到达前渲染 null（E5.7#1——v2 无空对象初始值，缓冲回放保证 ready 后立即到达）

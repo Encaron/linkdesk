@@ -3,6 +3,15 @@
 > 每版一条，对标 VS Code changelog。**历史真相源 = [E6 执行清单](docs/02-Electron架构/E6_插件生态与发布/E6-执行清单.md)**（E6 阶段每轮收束细节 + 实机证据全在清单 Batch 注里，此文件只记类别清单）。版本号唯一真值 = `package.json`（不手写第二份，见 [02-产品身份与版本.md](docs/02-Electron架构/E6_插件生态与发布/06-主软件更新/02-产品身份与版本.md) §2.3）。
 > 0.x 阶段（开发期）：一切向后兼容变更走 patch 位；破坏性变更走 minor 位。
 
+## v0.1.15（2026-09-09）
+
+- **feat:E6#62e 纯贡献插件激活机制裁决三件落地**（承接 #579 ③ / #9g——用户三裁决：整体退役 + 建池侧 on-command + boot 自动清）
+  - 壳侧 deferred 激活轨**整体退役删除**——`activationEvents` schema 属性删（×3，`additionalProperties:true` 兜底旧 manifest）+ activation.ts/preActivateHook/defer 接线全撤（零插件声明过，潜伏态无消费方）
+  - 纯命令/纯贡献插件按需激活 = **池侧 on-command**——命令 miss → 池 `resolvePluginViewLoader` 按 URL import 属主入口（underscore 内部面，作者面零新 API；author 契约 = 命令注册在入口顶层）
+  - `plugin.json` 生命周期/contributes 规范文档同步（activationEvents 退役记 + 池按需激活模型）
+- **fix:E6#11e-342 旧 `.disabled/` 坟场引导 = boot 自动清**——跨重启孤儿逐条真删 + 幽灵 uninstalled 缓存清（loader 启动 Step-8；取代「从市场重装」提示引导）
+- 连带死代码清理：write-only bundle 标记集整删（`isBundlePlugin`/`markBundlePlugin`/`syncBundlePluginIds`）
+
 ## v0.1.14（2026-09-09）
 
 - **feat:E6#62d statusBar 池侧 glob 最后退役 + dist export 约定**

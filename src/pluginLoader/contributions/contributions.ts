@@ -1,8 +1,8 @@
 /**
  * 插件加载器——contributes 解析 + 模块解析 + 数据加载 + 枚举同步。
  * E5.8#0d.10-1c：自 loader.ts 拆出——parseContributions（contributes → 各 Registry）
- * + 模块解析三件套（resolveRuntimePluginRoot/runtimeEntryPath/resolveViewModule——loadPluginComponent
- *   已随 E6#62b 源码 glob 轨退役整删）
+ * + 模块解析（resolveRuntimePluginRoot/runtimeEntryPath——loadPluginComponent 已随 E6#62b
+ *   源码 glob 轨退役整删；resolveViewModule 已随 E6#62e 延迟激活轨退役整删）
  * + fetchPluginDataFile + 主题/语言/i18n 数据加载 + 枚举同步。
  *
  * 🔒 环依赖守卫：本文件只依赖 state/manifest/viewRegistry/各 Registry/i18nResources——
@@ -266,7 +266,9 @@ async function resolveRuntimePluginRoot(pluginId: string): Promise<string> {
  *
  * E6#7（1.2-4）：可选 4 参 opts.bundle——目录含 index.bundle.js 的 .linkdesk-plugin 解压产物
  *   （磁盘格式事实）入口恒 "index.bundle.js"，不随 dev/prod 与 manifest.entry 变（SDK 打包时
- *   把作者 entry 源码路径原样拷进 plugin.json，不可当入口判据——检测走 state.isBundlePlugin）。
+ *   把作者 entry 源码路径原样拷进 plugin.json，不可当入口判据——bundle 判定由主进程读盘承担
+ *   （resolveEntry IPC / listAll 报 bundle 标志）；壳侧 E6#62e 后 JS 入口消费归池 resolvePluginViewLoader，
+ *   本函数仅测试锚定的纯函数契约）。
  *
  * E6#15d G3a（纯数据包对称跳过）：prod 非 bundle 且 **无 manifest.entry** → 返回 null——
  *   theme×10/lang×2 这类纯贡献包（contributes.themes/languages，无 JS 产物）与 entryless-view
@@ -286,20 +288,6 @@ export function runtimeEntryPath(
   if (isDev) return manifest.entry || null;
   if (!manifest.entry) return null;
   return `${pluginId}.js`;
-}
-
-/**
- * 插件视图入口模块解析——E6#62b 收单 URL 轨（glob 轨随源码特快轨退役，无第二张映射表）。
- * dev：/@fs 源码（resolveRuntimePluginRoot = resolvePath IPC，Vite 即时编译）；
- * prod：linkdesk:// 预构建 chunk（协议 root-direct 直解析，electron/plugins/protocol.ts）。
- * 调用点 = runtime.activatePlugin（#9g 延迟激活按需 import——壳侧 deferred 壳 import 的过渡态，
- * ② 池侧激活闭环后随 E6#62e 收掉）。
- */
-async function resolveViewModule(
-  entryPath: string,
-  runtimePluginRoot: string,
-): Promise<{ default: React.ComponentType<{ isActive: boolean }> }> {
-  return import(/* @vite-ignore */ `${runtimePluginRoot}/${entryPath}`);
 }
 
 /* ── 插件数据文件 fetch（#39a：全量迁移——绕开 Vite glob 缓存） ── */
@@ -615,8 +603,8 @@ function syncAppThemeEnum(): void {
   if (available.length === 0) return; // 无主题时不更新——保留上次枚举，避免下拉变输入框
   updateConfigurationEnum("app.theme", available, available.includes("dark") ? "dark" : available[0]);
   // E5.8 Phase 11.14：配色全集 enum 随配方集变化折叠同步——主题插件注册/注销后 app.themeColor
-  // 可选配色对齐当前配方集（custom = 全配方配色 / followTheme = 活动配方配色）。四生命周期站点
-  // （applyPostLoadSteps/activatePlugin/disable/uninstall）经本函数单处折叠覆盖。
+  // 可选配色对齐当前配方集（custom = 全配方配色 / followTheme = 活动配方配色）。三生命周期站点
+  // （applyPostLoadSteps/disable/uninstall——E6#62e 后无 activatePlugin）经本函数单处折叠覆盖。
   syncThemeColorEnum();
 }
 
@@ -639,7 +627,6 @@ function syncIconThemeEnum(): void {
 export {
   extractThemeColors,
   resolveRuntimePluginRoot,
-  resolveViewModule,
   fetchPluginDataFile,
   loadThemeContributionData,
   normalizeIconThemeMappings,

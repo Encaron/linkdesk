@@ -34,7 +34,6 @@ import { getAllLeafGroupIds, type SplitNode } from "../core/utils/splitTree";
 import { detectDropZone } from "../pool/hooks/tabDragTypes";
 import { registerViewPlugin, clearRegistry } from "../pluginLoader/contributions/viewRegistry";
 import { resolvePoolTabTitle } from "../core/utils/tabIdentity";
-import type { ViewPluginEntry } from "../core/api/types";
 
 // E5.7#98：分支/叶子窄类型——替代 (x as any) 直取联合专属字段
 type BranchNode = Extract<SplitNode, { type: "branch" }>;
@@ -84,7 +83,6 @@ beforeEach(() => {
       version: "1.0.0",
       tabBehavior: { identityField: "workspaceName" },
     },
-    component: (() => null) as unknown as ViewPluginEntry["component"],
   });
 });
 

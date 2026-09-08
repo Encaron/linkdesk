@@ -21,6 +21,7 @@ export const linkdeskMock: Record<string, unknown> = {
     unregisterCommands: (..._args: unknown[]) => { console.info("[linkdesk-mock] commands.unregisterCommands", ..._args); },
     getCommands: async (..._args: unknown[]) => { console.info("[linkdesk-mock] commands.getCommands", ..._args); return []; },
     _executeShellLocal: async (..._args: unknown[]) => { console.info("[linkdesk-mock] commands._executeShellLocal", ..._args); },
+    _setCommandMissHandler: (..._args: unknown[]) => { console.info("[linkdesk-mock] commands._setCommandMissHandler", ..._args); },
   },
   configuration: {
     get: async (..._args: unknown[]) => { console.info("[linkdesk-mock] configuration.get", ..._args); },

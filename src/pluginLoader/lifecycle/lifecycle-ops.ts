@@ -30,7 +30,6 @@ import {
   getManifestById,
   getAllManifestEntries,
   _pendingPlugins,
-  markBundlePlugin, // E6#13（1.2-5）：运行时新装 bundle 补标——loadPlugin 选 index.bundle.js 依赖
 } from "../resolution/state";
 import { validateInstallManifest, resolveVersionConflict } from "../discovery/manifest";
 import { syncAppThemeEnum, syncAppLanguageEnum, syncIconThemeEnum } from "../contributions/contributions";
@@ -375,9 +374,7 @@ async function installPackageFromSource(
     }
     const { pluginId, version, targetDir } = extracted;
 
-    // 3) bundle 补标——须在 loadPlugin 前（runtimeEntryPath 选 index.bundle.js 依赖 isBundlePlugin）
-    markBundlePlugin(pluginId);
-    // 4) 账本 add（#12b 欠账还清——安装流消费 add；磁盘事实在 user/ 子目录 → 源默认 user；
+    // 3) 账本 add（#12b 欠账还清——安装流消费 add；磁盘事实在 user/ 子目录 → 源默认 user；
     //    market UI 未来可传 marketplace）
     try {
       const { add: addLedger } = await import("../../core/services/PluginInstallService");
@@ -386,11 +383,11 @@ async function installPackageFromSource(
       log.appendLine(`⚠️ 账本写入失败（非致命）: ${errMsg(e)}`);
     }
 
-    // 5) E5.7#48：文件已落盘——通知主进程重扫三表（无论 loadPlugin 是否成功）
+    // 4) E5.7#48：文件已落盘——通知主进程重扫三表（无论 loadPlugin 是否成功）
     window.linkdesk?.pluginManager?.notifyManifestChanged?.();
     const displayName = await manifestNameOf(targetDir, pluginId);
 
-    // 6) loadPlugin（安装 reason——onDidInstall 消费端 toast + 图标顺序 + plugin:installed 广播）——收尾块与目录源共用 loadInstalledPlugin
+    // 5) loadPlugin（安装 reason——onDidInstall 消费端 toast + 图标顺序 + plugin:installed 广播）——收尾块与目录源共用 loadInstalledPlugin
     return loadInstalledPlugin(pluginId, version, {
       success: `已安装：${displayName} v${version}`,
       needRestart: `已安装：${displayName} v${version}。视图刷新后生效。`,
