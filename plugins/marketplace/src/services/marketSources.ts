@@ -158,10 +158,11 @@ function removeCache(url: string): void {
 
 /* ═══ 逐源拉取 ═══ */
 
-/** 单源结果——text = 已通过 parse 校验的交付物（实时或缓存）；reason = 彻底失败原因（无缓存可兜） */
+/** 单源结果——text = 已通过 parse 校验的交付物（实时或缓存）；reason = 彻底失败原因（无缓存可兜）。
+ *  official：该源即官方默认源（E6#30.8f——官方身份与拉取 URL 同源判定，缓存/网络路径一致携带） */
 type SourceResult =
-  | { sourceName: string; text: string; fresh: boolean; staleFallback: boolean }
-  | { sourceName: string; reason: "network" | "parse" };
+  | { sourceName: string; official: boolean; text: string; fresh: boolean; staleFallback: boolean }
+  | { sourceName: string; official: boolean; reason: "network" | "parse" };
 
 async function fetchText(url: string): Promise<string> {
   if (_fetchFn) return _fetchFn(url);
@@ -182,12 +183,13 @@ function isParseable(text: string): boolean {
 
 async function fetchOne(url: string, force: boolean): Promise<SourceResult> {
   const sourceName = sourceNameOfUrl(url);
+  const official = url === OFFICIAL_SOURCE_URL;
   const cached = readCache(url);
   const withinTtl = cached && Date.now() - cached.fetchedAt < CACHE_TTL_MS;
 
   // 5min fresh 命中 → 直接交付缓存（01 §四：先读缓存；手动刷新由 force 显式绕过）
   if (cached && withinTtl && !force) {
-    return { sourceName, text: cached.text, fresh: true, staleFallback: false };
+    return { sourceName, official, text: cached.text, fresh: true, staleFallback: false };
   }
 
   let text: string;
@@ -195,18 +197,18 @@ async function fetchOne(url: string, force: boolean): Promise<SourceResult> {
     text = await fetchText(url);
   } catch {
     // 网络失败 → stale 缓存兜底；无缓存 = 该源不可达
-    if (cached) return { sourceName, text: cached.text, fresh: false, staleFallback: true };
-    return { sourceName, reason: "network" };
+    if (cached) return { sourceName, official, text: cached.text, fresh: false, staleFallback: true };
+    return { sourceName, official, reason: "network" };
   }
 
   if (isParseable(text)) {
     writeCache(url, text); // 实时内容写入缓存（含 force 重写）
-    return { sourceName, text, fresh: true, staleFallback: false };
+    return { sourceName, official, text, fresh: true, staleFallback: false };
   }
 
   // parse 失败 → stale 缓存兜底；无缓存 = 该源目录损坏
-  if (cached) return { sourceName, text: cached.text, fresh: false, staleFallback: true };
-  return { sourceName, reason: "parse" };
+  if (cached) return { sourceName, official, text: cached.text, fresh: false, staleFallback: true };
+  return { sourceName, official, reason: "parse" };
 }
 
 /* ═══ 主编排 ═══ */
@@ -216,7 +218,7 @@ export async function loadCatalog(force = false): Promise<CatalogLoadResult> {
   const urls = await getSourceUrls();
   const fetched = await Promise.all(urls.map((url) => fetchOne(url, force)));
 
-  const sources: Array<{ sourceName: string; entries: CatalogEntry[] }> = [];
+  const sources: Array<{ sourceName: string; official?: boolean; entries: CatalogEntry[] }> = [];
   const errors: Array<{ sourceName: string; reason: string }> = [];
   let usedStale = false;
 
@@ -227,7 +229,7 @@ export async function loadCatalog(force = false): Promise<CatalogLoadResult> {
     }
     usedStale = usedStale || f.staleFallback;
     const parsed = parseCatalog(f.text); // 交付物已预校验——兜底防御仍判一次
-    if (parsed.ok) sources.push({ sourceName: f.sourceName, entries: parsed.catalog.plugins });
+    if (parsed.ok) sources.push({ sourceName: f.sourceName, official: f.official, entries: parsed.catalog.plugins });
     else errors.push({ sourceName: f.sourceName, reason: "parse" });
   }
 

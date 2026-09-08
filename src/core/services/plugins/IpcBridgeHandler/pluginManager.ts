@@ -27,7 +27,7 @@ export interface PluginManagementAPI {
   // E5.8#15.5：list() 数据源 = 已加载 + 缺依赖挂起（pendingReason 随行）——marketplace 可见 PENDING 状态
   getListPluginManifests(): Array<{
     pluginId: string;
-    manifest: { name: string; description?: string; version?: string; core?: boolean; author?: string; statusBar?: unknown; contributes?: unknown };
+    manifest: { name: string; description?: string; version?: string; core?: boolean; author?: string; statusBar?: unknown; contributes?: unknown; requires?: string[] };
     pendingReason?: string;
   }>;
 }
@@ -49,6 +49,8 @@ export async function handlePluginManagerMethod(method: string, args: unknown[])
           author: p.manifest.author,
           statusBar: p.manifest.statusBar,
           contributes: p.manifest.contributes,
+          // E6#30.5e/30.6c3：声明依赖透传——manifest.requires（dependencies.ts 判定缺依赖的消费源）
+          requires: p.manifest.requires,
         },
         // E5.8#15.5：缺依赖挂起原因——marketplace 显示 "等待依赖: xxx"（无挂起 = undefined）
         pendingReason: p.pendingReason,

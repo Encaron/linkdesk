@@ -277,7 +277,9 @@ export function getDefaultLabel(
   type: string,
   opts?: CreateTabOptions,
 ): string {
-  const targetPluginId = isPluginDetailView(type) ? opts?.detailPluginId : opts?.pluginId;
+  // E6#30.7a：plugin-detail 目标插件 = detailPluginId ?? pluginId（调用方全传 pluginId——对齐
+  // findTabByIdentity/isSameTabIdentity 的 detailPluginId pluginId 兜底 :187/:255）
+  const targetPluginId = opts?.detailPluginId ?? opts?.pluginId;
   const plugin = getViewPlugin(targetPluginId ?? type);
   const idField = getMeta(type).identityField;
   const idValue = idField && opts
@@ -285,8 +287,9 @@ export function getDefaultLabel(
     : undefined;
 
   if (plugin) {
-    // 壳内部类型：插件详情页
-    if (type === "plugin-detail") return `${i18n.t(plugin.manifest.name)} (${i18n.t("介绍")})`;
+    // 壳内部类型：插件详情页——E6#30.7b 标签文本 = 插件名（不带「介绍」后缀；name 即 t() key）。
+    // 去后缀同时保证 resolvePoolTabTitle 二次解析幂等（label === manifestName 才能语言切换重解析）
+    if (type === "plugin-detail") return i18n.t(plugin.manifest.name);
 
     // 声明式：identityField 有值 → 用其值作为标签
     if (idValue) {

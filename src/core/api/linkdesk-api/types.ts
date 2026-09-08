@@ -172,15 +172,20 @@ export interface PluginUpdateCheckResult {
   update: boolean;
 }
 
-/** 禁用/卸载列表条目——loader getDisabledPluginInfo/getUninstalledPluginInfo 序列化形状（PluginListSubset 的再子集） */
+/** 禁用/卸载列表条目——loader getDisabledPluginInfo/getUninstalledPluginInfo 序列化形状（PluginListSubset 的再子集）
+ *  E6#30.5b：core 旗标透传——list() EXCLUDES 禁用插件，禁用态详情页卸载钮守 E6#18「core:true 详情页不画」
+ *  只能经此拿到 core（缓存 manifest 内取值，纯新增可选字段零回归）。 */
 export interface PluginInfoEntry {
   pluginId: string;
   name: string;
   description?: string;
   version?: string;
+  core?: boolean;
 }
 
-/** list() 的 manifest 序列化子集——与 handlePluginsCall "list" 7 字段对齐 */
+/** list() 的 manifest 序列化子集——与 handlePluginsCall "list" 7 字段对齐
+ *  E6#30.5e/30.6c3：声明依赖 id 列表（manifest.requires 透传）——marketplace 判缺依赖 + 依赖/被依赖行
+ *  数据源（dependencies.ts 引擎只壳内；消费经 list() 投影）。无 requires = undefined。 */
 export interface PluginListSubset {
   name?: string;
   description?: string;
@@ -189,6 +194,7 @@ export interface PluginListSubset {
   author?: string;
   statusBar?: PluginManifest["statusBar"];
   contributes?: PluginManifest["contributes"];
+  requires?: string[];
 }
 
 /** 环境信息——env.get() 返回（主进程 env-handlers 组装） */

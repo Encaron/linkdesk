@@ -135,23 +135,91 @@
   line-height: 1.4;
 }
 
-/* ═══ 缺依赖挂起（PENDING）提示条——琥珀信息态（E5.8#15.5） ═══ */
+/* ═══ 挂起·缺依赖 三通道（E6#30.5e——取代 E5.8#15.5 旧顶部横幅；mockup 帧 7：头部零横幅 + action chip） ═══ */
 
-.mpd-pending-notice {
-  font-size: var(--font-size-sm);
-  color: var(--warning-text);
-  background: var(--warning-bg);
-  border: 1px solid var(--separator);
-  border-radius: var(--radius-sm);
-  padding: 6px 12px;
-  display: flex;
+/* 🚫 安装不可用（缺依赖）chip——非按钮状态件（禁交互，不抢主操作区） */
+.mpd-blocked-chip {
+  display: inline-flex;
   align-items: center;
   gap: 6px;
-  margin: 8px 0;
+  padding: 4px 10px;
+  border: 1px solid var(--separator);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
+  color: var(--warning-text);
+  cursor: default;
+  user-select: none;
 }
 
-.mpd-pending-notice .codicon {
+.mpd-blocked-chip .codicon {
+  font-size: var(--font-size-md);
+  flex-shrink: 0;
+}
+
+/* 主区「依赖未满足」说明块——标题 + 引导行 + 缺失依赖列表（行缺失标黄 ✕ 可点跳详情） */
+.mpd-deps-block {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 16px;
+}
+
+.mpd-deps-title {
   font-size: var(--font-size-lg);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.mpd-deps-lead {
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  line-height: 1.5;
+  margin: 4px 0 8px;
+}
+
+.mpd-deps-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.mpd-dep-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  background: none;
+  border: 1px solid var(--separator);
+  border-radius: var(--radius-sm);
+  padding: 6px 10px;
+  font-family: inherit;
+  font-size: var(--font-size-sm);
+  color: var(--text-primary);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 120ms;
+}
+
+.mpd-dep-item:hover {
+  border-color: var(--warning-text);
+}
+
+.mpd-dep-x {
+  color: var(--warning-text);
+  font-size: var(--font-size-sm);
+  flex-shrink: 0;
+}
+
+.mpd-dep-name {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  word-break: break-all;
+}
+
+.mpd-dep-state {
+  margin-left: auto;
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
   flex-shrink: 0;
 }
 
@@ -175,6 +243,27 @@
   font-size: var(--font-size-sm);
   color: var(--error);
   flex-basis: 100%;
+}
+
+/* #30.9b 失败态行（M4 三）：归因文案 + [重试] + ✕ 同行——flex-basis 100 独占一行，内部 flex 排布 */
+.mpd-action-error-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.mpd-action-error-row .mpd-action-error-text {
+  /* 归因文案可截断不折行撑爆——error 原文在 title 悬停 */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+/* 离线提示图标对齐（置灰钮旁 inline 提示图标） */
+.mpd-action-error > .codicon {
+  vertical-align: -2px;
 }
 
 /* ═══ NavBar ═══ */
@@ -261,4 +350,398 @@
 .mpd-info-value.mono {
   font-family: var(--font-mono);
   font-size: var(--font-size-xs);
+}
+
+/* ═══ 截图画廊（30.6c1——mockup 帧 1/8：横向滚动截图条；作者自制图以 img 元素直载，同 downloadUrl 信任级） ═══ */
+
+.mpd-gallery {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  padding: 4px 2px 10px;
+  margin-bottom: 8px;
+}
+
+.mpd-gallery-shot {
+  flex: 0 0 auto;
+  max-width: 320px;
+  max-height: 200px;
+  height: auto;
+  border: 1px solid var(--separator);
+  border-radius: var(--radius-md);
+  background: var(--bg-input);
+  object-fit: contain;
+}
+
+.mpd-readme-note {
+  margin: 4px 0;
+  color: var(--text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.mpd-readme {
+  margin-top: 4px;
+}
+
+/* ═══ 元数据侧栏：空值 dash / 仓库·问题外链锚 / 依赖·被依赖 chip 组（30.6c2/c3） ═══ */
+
+.mpd-info-dash {
+  color: var(--text-muted);
+}
+
+.mpd-info-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--accent);
+  font-size: var(--font-size-sm);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.mpd-info-link:hover {
+  text-decoration: underline;
+}
+
+.mpd-info-link-icon {
+  font-size: var(--font-size-xs);
+}
+
+.mpd-info-deps {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.mpd-info-dep {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  align-self: flex-start;
+  max-width: 100%;
+  padding: 1px 6px;
+  border: 1px solid var(--separator);
+  border-radius: var(--radius-xs);
+  background: none;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  cursor: pointer;
+  transition: border-color 120ms, color 120ms;
+}
+
+.mpd-info-dep:hover {
+  border-color: var(--accent);
+  color: var(--text-primary);
+}
+
+/* 缺失依赖 chip 标黄（与主区 deps 块同语义——--warning-text） */
+.mpd-info-dep.warn {
+  color: var(--warning-text);
+  border-color: var(--warning-text);
+}
+
+.mpd-info-dep.warn:hover {
+  background: var(--warning-bg);
+}
+
+.mpd-info-dep .codicon {
+  font-size: var(--font-size-xs);
+  flex-shrink: 0;
+}
+
+/* ═══ 功能 tab（30.6d——mockup 帧 9；组壳 = 底部分隔线卡片，行 hover = --tab-hover-bg 壳惯例） ═══ */
+
+.mpd-fc {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.mpd-fc-sec {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.mpd-fc-sec-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.mpd-fc-count {
+  font-size: var(--font-size-xs);
+  line-height: 1.5;
+  color: var(--text-muted);
+  background: var(--bg-input);
+  border-radius: var(--radius-sm);
+  padding: 0 6px;
+}
+
+.mpd-fc-rows {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--separator);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.mpd-fc-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 6px 12px;
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--separator);
+  font-family: inherit;
+  font-size: var(--font-size-sm);
+  color: var(--text-primary);
+  text-align: left;
+  cursor: pointer;
+  transition: background 120ms;
+}
+
+.mpd-fc-row:last-child {
+  border-bottom: none;
+}
+
+.mpd-fc-row:hover {
+  background: var(--tab-hover-bg);
+}
+
+.mpd-fc-row-readonly {
+  cursor: default;
+}
+
+.mpd-fc-row-readonly:hover {
+  background: none;
+}
+
+.mpd-fc-row-icon {
+  color: var(--text-muted);
+  font-size: var(--font-size-md);
+  flex-shrink: 0;
+}
+
+.mpd-fc-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.mpd-fc-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--font-size-sm);
+}
+
+.mpd-fc-id {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mpd-fc-kbd {
+  display: inline-block;
+  align-self: flex-start;
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  line-height: 1.5;
+  padding: 0 6px;
+  border: 1px solid var(--separator);
+  border-radius: var(--radius-xs);
+  background: var(--bg-input);
+  color: var(--text-secondary);
+}
+
+.mpd-fc-copied {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  color: var(--success);
+  font-size: var(--font-size-xs);
+}
+
+.mpd-fc-arrow {
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+  flex-shrink: 0;
+}
+
+.mpd-fc-empty {
+  padding: 16px 4px;
+  color: var(--text-secondary);
+  font-size: var(--font-size-md);
+  line-height: 1.5;
+}
+
+.mpd-fc-empty p {
+  margin: 0;
+}
+
+/* ═══ 更改日志 tab（30.6e——mockup 帧 10；最新 = 语义 success chip、正文走 MarkdownView mdv） ═══ */
+
+.mpd-chg {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.mpd-chg-ver {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.mpd-chg-ver-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.mpd-chg-ver-tag {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-md);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.mpd-chg-tag {
+  font-size: var(--font-size-xs);
+  line-height: 1.6;
+  padding: 0 8px;
+  border: 1px solid var(--separator);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  user-select: none;
+}
+
+.mpd-chg-tag-latest {
+  color: var(--success);
+  border-color: var(--success);
+  background: color-mix(in srgb, var(--success) 8%, transparent);
+}
+
+.mpd-chg-tag-installed {
+  color: var(--text-secondary);
+  border-color: var(--separator);
+  background: var(--bg-input);
+}
+
+.mpd-chg-date {
+  margin-left: auto;
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.mpd-chg-none {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.mpd-chg-empty {
+  padding: 12px 0;
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.mpd-chg .mdv {
+  margin-top: 2px;
+}
+
+/* ═══ E6#30.8：元数据 warn 值 + title-row 徽标图标 + 安装确认弹窗 ═══ */
+
+/* 值需强调——minApp 不足标红（30.8c 门禁视觉侧，与 .mpd-action-error 同 --error 语义） */
+.mpd-info-value.warn {
+  color: var(--error);
+}
+
+/* title-row 壳 Badge 内 codicon 对齐（30.8f「官方发布」徽标——Badge 只带 children，图标尺寸/基线归消费方） */
+.mpd-title-row .badge .codicon {
+  font-size: var(--font-size-2xs); /* E5.8 Phase 12 #180：=11px，token 化 */
+  vertical-align: -1px;
+  margin-right: 2px;
+}
+
+/* ═══ 30.8a 安装确认弹窗（mockup 帧 8）——市场自绘富内容确认（壳 dialog.confirm 无富内容）；
+ *   OverlayPortal 居中卡片（#overlay-root），色/圆角/阴影全走语义 token（硬约束 1/6） ═══ */
+.mpd-confirm {
+  width: min(440px, 90vw);
+  max-height: 80vh;
+  overflow-y: auto;
+  background: var(--bg-window);
+  border: 1px solid var(--separator);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-pop);
+  padding: 16px 18px;
+}
+
+.mpd-confirm-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mpd-confirm-shield {
+  color: var(--success);
+  font-size: var(--font-size-lg);
+}
+
+.mpd-confirm-title {
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.mpd-confirm-plugin {
+  margin: 6px 0 0;
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  word-break: break-all;
+}
+
+.mpd-confirm-note {
+  margin: 2px 0 8px;
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+}
+
+.mpd-confirm-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.mpd-confirm-rows .mpd-info-item {
+  padding: 3px 0;
+}
+
+.mpd-confirm-publisher {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.mpd-confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 12px;
 }

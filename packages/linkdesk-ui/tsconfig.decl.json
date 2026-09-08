@@ -42,7 +42,9 @@
     "../../src/components/shared/form-row/**/*.ts",
     "../../src/components/shared/form-row/**/*.tsx",
     "../../src/components/shared/plugin-icon/**/*.ts",
-    "../../src/components/shared/plugin-icon/**/*.tsx"
+    "../../src/components/shared/plugin-icon/**/*.tsx",
+    "../../src/components/shared/markdown-view/**/*.ts",
+    "../../src/components/shared/markdown-view/**/*.tsx"
   ],
   "exclude": ["../../src/components/shared/**/*.test.ts", "../../src/components/shared/**/*.test.tsx"]
 }

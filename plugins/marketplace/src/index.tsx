@@ -11,7 +11,7 @@
  */
 
 import { useTranslation } from "react-i18next";
-import { useMarketplacePlugins } from "./services/marketplaceShared";
+import { useMarketplacePlugins, getMarketInstallSession, retryMarketInstall } from "./services/marketplaceShared";
 import "./styles/MarketplaceView.css";
 
 const lk = () => window.linkdesk;
@@ -62,6 +62,21 @@ function ensureMarketplaceCommands(): void {
       if (ctx?.pluginId) await pm().uninstall(ctx.pluginId);
     },
     { title: "卸载" },
+  );
+
+  // E6#30.9b：失败 toast [重试] 主动作落点（消费 E6#13.5f actions）——args 带 pluginId+downloadUrl
+  // （settleInstallFailure 构造），自给自足不依赖会话残留；会话仍挂着则兜底自读。重试 = 手动无风暴
+  // （startMarketInstall 单活跃会话守卫防双发；成功后 lifecycle 事件驱动列表翻态）。
+  reg(
+    "marketplace.retryInstall",
+    async (...args: unknown[]) => {
+      const ctx = (args[0] ?? {}) as { pluginId?: string; downloadUrl?: string } | undefined;
+      const session = getMarketInstallSession();
+      const pluginId = ctx?.pluginId ?? session?.pluginId;
+      const downloadUrl = ctx?.downloadUrl ?? session?.downloadUrl;
+      if (pluginId && downloadUrl) await retryMarketInstall(pluginId, downloadUrl);
+    },
+    { title: "重试安装" },
   );
 
   lk().menu?.registerItems?.("marketplaceItemGear", "marketplace", [

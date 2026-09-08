@@ -258,4 +258,39 @@ describe("marketSources (E6#30a/30c/30f)", () => {
     expect(r.fetchedAt).toBeGreaterThan(0);
     expect(typeof r.fetchedAt).toBe("number");
   });
+
+  /* ── 官方身份随源携带（E6#30.8f 官方徽标数据源） ── */
+
+  it("仅官方源 → 条目 official=true", async () => {
+    const fetchFn = vi.fn(async () => catalogText(entry("demo-alpha", "1.0.0")));
+    __setCatalogIO(fetchFn, fakeStorage());
+    const r = await loadCatalog();
+    expect(r.entries[0].official).toBe(true);
+  });
+
+  it("多源：官方条目 official=true、仅作者源独有条目不带官方身份", async () => {
+    stubConfig([AUTHOR_URL]);
+    const fetchFn = vi.fn(async (url: string) =>
+      url === OFFICIAL_SOURCE_URL
+        ? catalogText(entry("demo-official", "1.0.0"))
+        : catalogText(entry("demo-author-only", "1.0.0")),
+    );
+    __setCatalogIO(fetchFn, fakeStorage());
+    const r = await loadCatalog();
+    const officialEntry = r.entries.find((e) => e.id === "demo-official");
+    const authorEntry = r.entries.find((e) => e.id === "demo-author-only");
+    expect(officialEntry?.official).toBe(true);
+    expect(authorEntry?.official).toBeFalsy();
+    expect(authorEntry?.sourceName).toBe(AUTHOR_NAME);
+  });
+
+  it("官方源走缓存命中 → official 身份不丢（fetchOne 各返回路径一致携带）", async () => {
+    const fetchFn = vi.fn(async () => catalogText(entry("demo-alpha", "1.0.0")));
+    const storage = fakeStorage();
+    __setCatalogIO(fetchFn, storage);
+    await loadCatalog(); // 实时 → 写缓存
+    const r2 = await loadCatalog(); // 5min fresh 命中
+    expect(r2.entries[0].official).toBe(true);
+    expect((fetchFn as ReturnType<typeof vi.fn>).mock.calls.length).toBe(1);
+  });
 });

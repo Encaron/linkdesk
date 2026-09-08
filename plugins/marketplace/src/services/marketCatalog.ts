@@ -21,7 +21,7 @@ export interface CatalogEntry {
   /** author 兼容两种形态：文档形态 {name,url} / 旧平铺 string */
   author?: { name?: string; url?: string } | string;
   icon?: string;
-  /** "lucide" | "codicon" | "url"——url 形态 = 作者自制彩色图直接 <img>（E6#29c/06-图标.md） */
+  /** "lucide" | "codicon" | "url"——url 形态 = 作者自制彩色图以 img 元素直载（E6#29c/06-图标.md） */
   iconSource?: "lucide" | "codicon" | "url";
   category?: string;
   categories?: string[];
@@ -36,6 +36,8 @@ export interface CatalogEntry {
   license?: string;
   /** 合并注入：条目来源仓库名（owner/repo）——用户知道装的是谁的（E6#30c 来源标注） */
   sourceName?: string;
+  /** 合并注入：该胜出条目来自官方默认源（E6#30.8f「官方发布」徽标——官方身份随条目携带，UI 零再判） */
+  official?: boolean;
 }
 
 /** marketplace.json 根结构 */
@@ -125,6 +127,7 @@ function normalizeEntry(raw: unknown): CatalogEntry | null {
     screenshots: Array.isArray(r.screenshots) ? r.screenshots : undefined,
     license: r.license,
     sourceName: undefined, // 合并注入——parse 阶段不填
+    official: undefined, // 同上：来源身份是合并时语义
   };
 }
 
@@ -168,16 +171,22 @@ export function isVersionNewer(a: string, b: string): boolean {
   return compareVersions(a, b) > 0;
 }
 
-/** 多源合并去重——同 id 取 semver 高者；版本平手用先出现的源（官方排前 → 官方胜出） */
-export function mergeCatalogs(sources: Array<{ sourceName: string; entries: CatalogEntry[] }>): CatalogEntry[] {
+/** 多源合并去重——同 id 取 semver 高者；版本平手用先出现的源（官方排前 → 官方胜出）。
+ *  E6#30.8f：来源记录可带 official 标记，胜出条目的来源身份（sourceName + official）随条目携带——UI 读
+ *  单一字段即可显示「官方发布」徽标，不把官方身份跟"源 URL 长啥样"耦合回视图层。 */
+export function mergeCatalogs(
+  sources: Array<{ sourceName: string; official?: boolean; entries: CatalogEntry[] }>,
+): CatalogEntry[] {
   const byId = new Map<string, CatalogEntry>();
   for (const src of sources) {
     for (const e of src.entries) {
       const prev = byId.get(e.id);
+      const carried: CatalogEntry = { ...e, sourceName: src.sourceName };
+      if (src.official) carried.official = true;
       if (!prev) {
-        byId.set(e.id, { ...e, sourceName: src.sourceName });
+        byId.set(e.id, carried);
       } else if (isVersionNewer(e.version, prev.version)) {
-        byId.set(e.id, { ...e, sourceName: src.sourceName });
+        byId.set(e.id, carried);
       }
     }
   }

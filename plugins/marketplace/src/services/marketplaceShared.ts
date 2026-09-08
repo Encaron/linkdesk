@@ -16,6 +16,9 @@ import { useState, useCallback, useEffect } from "react";
 // 非 ViewPluginEntry（后者带 component 字段，IPC 不可达）
 // E5.8#20-c：契约化——插件列表类型走 @linkdesk/contracts（零 @src/core）
 import type { PluginListEntry } from "@linkdesk/contracts";
+// #30.9b 失败 toast 文案走 i18n.t——非组件模块 import i18next 默认实例（serial-monitor 先例；
+// 插件 i18n 资源已按 ns="translation" 合并进全局实例，t(key) 直取中英）
+import i18n from "i18next";
 import { loadCatalog, forceRefreshCatalog } from "./marketSources";
 import type { CatalogLoadResult } from "./marketSources";
 // E5.6#11.5e：@src/core 清零——onPluginLifecycleChange/ViewContainerService → lk.events.on
@@ -53,6 +56,7 @@ let _disabledPlugins: Array<{
   name: string;
   description?: string;
   version?: string;
+  core?: boolean; // E6#30.5b：禁用态 core 透传（守 E6#18 详情页藏卸载钮——禁用分支卸载钮需要它）
 }> = [];
 const _dataListeners = new Set<() => void>();
 
@@ -68,6 +72,26 @@ async function refreshData(): Promise<void> {
   } catch (e) {
     console.error("[marketplace] refreshData IPC 失败——插件列表数据可能为空:", e);
   }
+}
+
+/* ═══ 生命周期刷新节流（30.5c 实机回归） ═══
+ * 两条通道：plugin:installed/plugin:uninstalled = 装卸跨窗广播（壳 loader events.emit → 主进程 → 池，
+ * lifecycle.ts 消费端 6 注释「本通道供按插件消费方」）——实机实证 installWithProgress 装新插件只发此通道、
+ * 不发 plugin-lifecycle:changed；后者 = 池本地状态切换（启用/禁用）nudge（data.ts 本地发非跨窗）。
+ * 一次装卸可能连发多条 plugin:installed（实机 4 条）→ microtask 合并为一次 IPC 重拉。 */
+
+let _refreshQueued = false;
+
+function scheduleDataRefresh(): void {
+  if (_refreshQueued) return;
+  _refreshQueued = true;
+  queueMicrotask(() => {
+    _refreshQueued = false;
+    refreshData().then(() => {
+      notifyDataListeners();
+      updateAllBadges();
+    });
+  });
 }
 
 /* ═══ badge 更新（模块级——数据加载 effect + 生命周期 + onDidChangeViews 三处调用） ═══ */
@@ -104,18 +128,19 @@ export function useMarketplacePlugins() {
       // 🔥 数据到了才更新 badge——不在 mount 时空跑
       updateAllBadges();
 
-      /* 订阅插件生命周期变更——安装/卸载/启用/禁用后自动刷新 */
-      const unsubLifecycle = lk()?.events?.on("plugin-lifecycle:changed", () => {
-        refreshData().then(() => {
-          notifyDataListeners();
-          updateAllBadges();
-        });
-      });
+      /* 订阅插件生命周期变更——安装/卸载/启用/禁用后自动刷新（30.5c auto-flip 数据链）。
+       * plugin:installed/plugin:uninstalled = 装卸广播（池必达，带 pluginId）；plugin-lifecycle:changed =
+       * 池本地状态切换（启用/禁用）nudge。三通道同汇 scheduleDataRefresh（microtask 合并 burst）。 */
+      const unsubs = [
+        lk()?.events?.on("plugin:installed", scheduleDataRefresh),
+        lk()?.events?.on("plugin:uninstalled", scheduleDataRefresh),
+        lk()?.events?.on("plugin-lifecycle:changed", scheduleDataRefresh),
+      ].filter(Boolean);
       _dataListeners.add(rerender);
 
       return () => {
         _dataListeners.delete(rerender);
-        unsubLifecycle();
+        unsubs.forEach((u) => u && u());
       };
     };
 
@@ -262,4 +287,232 @@ export function useMarketplaceCatalog() {
           /* 刷新失败保持旧结果——目录防御已降级 */
         }),
   };
+}
+
+/* ═══ 市场安装会话 store（E6#30.5b 首建——详情页未装行🟢安装带进度；#30.9a 侧栏行徽标消费同源） ═══
+ * 安装进度 = 单活跃会话模型。installProgress 事件两源并流（主进程 download/extract 段 + 池 lifecycle
+ * validating/downloading/loading/done 段）——除 loading/done 外全阶段**不带 pluginId**（lifecycle-ops
+ * installPackageFromSource 实证），无法按插件归因。故发起动作 startMarketInstall(id, url) 先占会话，
+ * 事件无 id 一律归活跃会话；done → 清会话（lifecycle:changed 已驱动列表翻态），error → 会话转失败态
+ * （phase:"error"，消费方画「安装失败」+ [重试]，30.9b 消费）。
+ * 铁律 19：installProgress 是 IPC 通道——订阅走引用计数（≥1 消费方挂载才注册 events.on，0 卸载）。
+ *   events.on 返回退订函数；done/error 由事件或 settle 兜底双写（幂等）。 */
+export type MarketInstallSession = {
+  pluginId: string;
+  phase: "installing" | "error";
+  /** 原始 stage——validating/downloading/extracting/loading/done/error（UI 层映射 i18n 标签） */
+  stage?: string;
+  /** 下载百分比（Content-Length 可得时 downloading 段带） */
+  percent?: number;
+  /** 失败原文（phase:"error"）——来自 installWithProgress settle 或 installProgress error 事件 */
+  error?: string;
+  /** #30.9b：失败原文归因（installFailLabelKey → toast/行文案）；非 error 态无 */
+  reason?: InstallFailReason;
+  /** #30.9b：发起安装的下载地址——失败态保留供 [重试]（command args 或会话自读） */
+  downloadUrl?: string;
+};
+
+/** #30.9b 失败归因——七种失败全览收敛成五类可重试归因 + conflict（09 §二 表） */
+export type InstallFailReason = "network" | "integrity" | "env" | "package" | "conflict" | "unknown";
+
+/* ═══ #30.9b 失败归因纯函数——主进程错误原文是中文/英文混杂自由文本（installWithProgress settle
+ * 契约无 reason 枚举——11-API §一·一 的 reason 字段是设计虚构，实机双证），按子串字典收敛成类别。
+ * 字典匹配顺序重要：网络最宽（HTTP/fetch/超时），完整性（checksum/size）窄，环境（磁盘），包损坏，冲突。 */
+const NET_RE = /下载中断|下载失败|HTTP|超时|网络|fetch|ECONN|ENOTFOUND|ENETUNREACH|socket|net::|Failed to fetch|Network Error/i;
+const INT_RE = /checksum|校验|哈希|digest|sha|大小不符|文件大小|Content-Length/i;
+const ENV_RE = /磁盘|空间不足|ENOSPC|EACCES|EPERM|权限|quota/i;
+const PKG_RE = /解压|zip|不是有效|invalid|plugin\.json|ENOENT|无法读取|损坏|corrupt/i;
+const CON_RE = /已存在安装目录|已存在|请先卸载|覆盖/i;
+
+export function classifyInstallError(msg: string | undefined): InstallFailReason {
+  if (!msg) return "unknown";
+  if (CON_RE.test(msg)) return "conflict";
+  if (NET_RE.test(msg)) return "network";
+  if (INT_RE.test(msg)) return "integrity";
+  if (ENV_RE.test(msg)) return "env";
+  if (PKG_RE.test(msg)) return "package";
+  return "unknown";
+}
+
+/** 归因 → i18n key（= 中文原文，硬约束 2）；UI 层 t(key) 取当前语言译文 */
+export function installFailLabelKey(reason: InstallFailReason): string {
+  switch (reason) {
+    case "network":
+      return "安装失败：网络连接不可用";
+    case "integrity":
+      return "安装失败：文件校验未通过";
+    case "env":
+      return "安装失败：磁盘空间不足";
+    case "package":
+      return "安装失败：插件包损坏";
+    case "conflict":
+      return "安装失败：该插件已安装，如需覆盖请先卸载";
+    default:
+      return "安装失败：未知错误，请重试";
+  }
+}
+
+/** 会话 stage → 安装中进度标签（i18n key + 插值）——详情按钮与探索行共用单实现（归一化） */
+export function marketInstallStageLabel(
+  t: (key: string, opts?: Record<string, unknown>) => string,
+  stage: string | undefined,
+  percent: number | undefined,
+): string {
+  if (stage === "validating") return t("校验中...");
+  if (stage === "downloading") return percent != null ? t("下载中 {{percent}}%", { percent }) : t("下载中...");
+  if (stage === "extracting") return t("解压中...");
+  if (stage === "loading") return t("加载中...");
+  return t("安装中...");
+}
+
+let _installSession: MarketInstallSession | null = null;
+const _installListeners = new Set<() => void>();
+let _installSub: (() => void) | null = null;
+let _installSubUsers = 0;
+
+type InstallProgressPayload = { stage?: string; pluginId?: string; message?: string; percent?: number };
+
+function notifyMarketInstall(): void {
+  _installListeners.forEach((fn) => fn());
+}
+
+/** installProgress 事件摄入——done 清会话 / error 转失败态 / 其余并入阶段。事件无 pluginId 归活跃会话。 */
+function ingestInstallProgress(p: InstallProgressPayload): void {
+  if (!_installSession) return;
+  const { stage, message, percent, pluginId } = p ?? {};
+  if (pluginId && pluginId !== _installSession.pluginId) return; // 他人安装的 loading/done 不干扰本会话
+  if (stage === "done") {
+    _installSession = null;
+  } else if (stage === "error") {
+    const err = message ?? _installSession.error;
+    _installSession = { ..._installSession, phase: "error", error: err, reason: classifyInstallError(err) };
+  } else if (stage) {
+    _installSession = {
+      ..._installSession,
+      phase: "installing",
+      stage,
+      percent: percent ?? (stage === "downloading" ? _installSession.percent : undefined),
+    };
+  }
+  notifyMarketInstall();
+}
+
+function mountInstallProgressSub(): void {
+  _installSubUsers += 1;
+  if (_installSubUsers > 1 || _installSub) return;
+  _installSub = lk()?.events?.on<InstallProgressPayload>("plugin:installProgress", ingestInstallProgress) ?? null;
+}
+
+function unmountInstallProgressSub(): void {
+  _installSubUsers -= 1;
+  if (_installSubUsers > 0) return;
+  _installSub?.();
+  _installSub = null;
+}
+
+/** 订阅当前安装会话——空 = 无进行中/失败安装。mount 即注册 progress 订阅（引用计数，最后一个卸载撤） */
+export function useMarketInstall(): MarketInstallSession | null {
+  const [, setTick] = useState(0);
+  const rerender = useCallback(() => setTick((t) => t + 1), []);
+  useEffect(() => {
+    mountInstallProgressSub();
+    _installListeners.add(rerender);
+    return () => {
+      _installListeners.delete(rerender);
+      unmountInstallProgressSub();
+    };
+  }, [rerender]);
+  return _installSession;
+}
+
+/**
+ * 发起市场安装——占会话 + installWithProgress(downloadUrl)。成功 → 清会话 + 显式 refreshData
+ * （30.5e 实机回归：依赖缺失的挂起安装 parkForDependencies 后不发任何 lifecycle 事件——onDidInstall 只在
+ * 成功激活发，挂起不入——lifecycle 事件驱动翻态对 pending 失效；显式 refresh 统一覆盖 enabled/pending，
+ * 与事件驱动刷新 microtask 合并幂等）。失败 → 会话转 phase:"error" + 归因 + 失败 toast[重试]
+ * （#30.9b：error 文案双源——installProgress error 事件 / settle 兜底，幂等；错误原文归因成 reason，
+ *  安装地址保留供重试）。返回 bool。重试 = 手动触发（行内 [重试]/toast [重试]）无自动风暴。
+ */
+async function settleInstallFailure(pluginId: string, downloadUrl: string, error: string | undefined): Promise<boolean> {
+  const reason = classifyInstallError(error);
+  _installSession = { pluginId, phase: "error", error, reason, downloadUrl };
+  notifyMarketInstall();
+  // 失败 toast = 事件通道（右下角唯一事件反馈，11-API §三）——归因文案 + [重试] 主动作
+  // （消费 E6#13.5f actions；command 走既有命令系统，index.tsx 注册 marketplace.retryInstall，
+  //  args 带 pluginId+downloadUrl 使 [重试] 不依赖会话残留自给自足）。行内错误态由消费方从会话读。
+  const show = lk()?.notifications?.show;
+  if (show) {
+    void show(i18n.t(installFailLabelKey(reason)), {
+      type: "error",
+      actions: [
+        {
+          id: "retry",
+          label: i18n.t("重试"),
+          isPrimary: true,
+          command: "marketplace.retryInstall",
+          args: [{ pluginId, downloadUrl }],
+        },
+      ],
+    });
+  }
+  return false;
+}
+
+export async function startMarketInstall(pluginId: string, downloadUrl: string): Promise<boolean> {
+  const inst = lk()?.pluginManager?.installWithProgress;
+  if (!inst) return false;
+  // 单活跃会话模型（进度事件多段不带 pluginId，无法归因）——另一插件进行中不并发，防进度串扰
+  if (_installSession && _installSession.phase === "installing" && _installSession.pluginId !== pluginId) {
+    return false;
+  }
+  _installSession = { pluginId, phase: "installing", stage: "validating", downloadUrl };
+  notifyMarketInstall();
+  try {
+    // installWithProgress 不 throw——失败 resolve { success:false, error }（lifecycle-ops 实证）
+    const r = await inst(downloadUrl);
+    if (r && !r.success) return settleInstallFailure(pluginId, downloadUrl, r.error ?? "");
+    _installSession = null;
+    notifyMarketInstall();
+    scheduleDataRefresh();
+    return true;
+  } catch (e) {
+    return settleInstallFailure(pluginId, downloadUrl, e instanceof Error ? e.message : String(e));
+  }
+}
+
+/** 重试安装（#30.9b [重试] 入口——toast command / 行内重试钮共用）——重发同一安装，无自动风暴 */
+export function retryMarketInstall(pluginId: string, downloadUrl: string): Promise<boolean> {
+  if (!pluginId || !downloadUrl) return Promise.resolve(false);
+  return startMarketInstall(pluginId, downloadUrl);
+}
+
+/** 读当前会话——command handler 等非组件入口（retry command 无 hook，模块级直读） */
+export function getMarketInstallSession(): MarketInstallSession | null {
+  return _installSession;
+}
+
+/** 关掉失败会话（行内错误态关闭后清——#30.9b 手动，无自动清） */
+export function dismissMarketInstallError(): void {
+  if (_installSession?.phase === "error") {
+    _installSession = null;
+    notifyMarketInstall();
+  }
+}
+
+/* ═══ #30.9b 离线态（G3——navigator.onLine；离线 ≠ 失败：按钮置灰 + 提示，无 [重试]）═══ */
+
+/** 在线状态 hook——online/offline 事件驱动（恢复联网按钮自动回可用，不打扰，09 §二·一） */
+export function useOnlineStatus(): boolean {
+  const [online, setOnline] = useState(() => typeof navigator === "undefined" || navigator.onLine);
+  useEffect(() => {
+    const on = () => setOnline(true);
+    const off = () => setOnline(false);
+    window.addEventListener("online", on);
+    window.addEventListener("offline", off);
+    return () => {
+      window.removeEventListener("online", on);
+      window.removeEventListener("offline", off);
+    };
+  }, []);
+  return online;
 }

@@ -597,16 +597,17 @@ async function reapplyThemeAfterUnload(): Promise<void> {
   } catch { /* 非关键路径 */ }
 }
 
-/** 获取禁用插件的基本信息（在 plugins/.disabled/ 下）*/
-export function getDisabledPluginInfo(): Array<{ pluginId: string; name: string; description?: string; version?: string }> {
+/** 获取禁用插件的基本信息（在 plugins/.disabled/ 下）
+ *  E6#30.5b：带 core 旗标——详情页禁用分支卸载钮守 E6#18「core:true 详情页不画」（缓存 manifest 内含 core） */
+export function getDisabledPluginInfo(): Array<{ pluginId: string; name: string; description?: string; version?: string; core?: boolean }> {
   // B2 fix: 优先从缓存读——支持glob 外的插件（glob 中无清单）
   const cache = getMetadataCache();
   const disabled = getDisabledList();
-  const result: Array<{ pluginId: string; name: string; description?: string; version?: string }> = [];
+  const result: Array<{ pluginId: string; name: string; description?: string; version?: string; core?: boolean }> = [];
   for (const pluginId of disabled) {
     const cached = cache[pluginId];
     if (cached) {
-      result.push({ pluginId, name: cached.name, description: cached.description, version: cached.version });
+      result.push({ pluginId, name: cached.name, description: cached.description, version: cached.version, core: cached.manifest?.core });
       continue;
     }
     // 兜底：manifestIndex 中读（E6#9c——readAllManifests 水合 + glob 种子双源；此分支仅用于缓存未就绪的极端情况）
@@ -617,6 +618,7 @@ export function getDisabledPluginInfo(): Array<{ pluginId: string; name: string;
         name: m.name || pluginId,
         description: m.description,
         version: m.version,
+        core: m.core,
       });
     }
   }

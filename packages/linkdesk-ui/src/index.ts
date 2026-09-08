@@ -13,6 +13,8 @@
  * 🔴 公共导出面的唯一真相源——scripts/build.mjs 据此生成 dist/index.d.ts。
  */
 export { default as Badge } from "@shared/badge/Badge";
+// E6#30.6a：README/markdown 渲染唯一组件（react-markdown 系 + rehype-sanitize）——详情 README/发行说明通用
+export { default as MarkdownView } from "@shared/markdown-view/MarkdownView";
 export { default as Button } from "@shared/button/Button";
 export { default as ColorPicker } from "@shared/color-picker/ColorPicker";
 export { default as Combobox } from "@shared/combobox/Combobox";

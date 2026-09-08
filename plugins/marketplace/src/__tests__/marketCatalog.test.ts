@@ -183,4 +183,28 @@ describe("mergeCatalogs", () => {
     ]);
     expect(merged[0]).toMatchObject({ version: "2.0.0", sourceName: "owner-two/catalog-repo-b" });
   });
+
+  /* ── 官方身份随胜出条目携带（E6#30.8f 官方徽标数据源） ── */
+
+  it("官方源标记 official → 胜出条目带 official=true（平手官方胜）", () => {
+    const merged = mergeCatalogs([
+      { sourceName: "encaron/linkdesk-marketplace", official: true, entries: [entry("demo-e", "1.0.0")] },
+      { sourceName: "owner-two/catalog-repo-b", entries: [entry("demo-e", "1.0.0")] },
+    ]);
+    expect(merged[0]).toMatchObject({ id: "demo-e", sourceName: "encaron/linkdesk-marketplace", official: true });
+  });
+
+  it("作者源版本更高胜出 → 条目不带官方身份（official falsy）", () => {
+    const merged = mergeCatalogs([
+      { sourceName: "encaron/linkdesk-marketplace", official: true, entries: [entry("demo-f", "1.0.0")] },
+      { sourceName: "owner-two/catalog-repo-b", entries: [entry("demo-f", "1.5.0")] },
+    ]);
+    expect(merged[0]).toMatchObject({ version: "1.5.0", sourceName: "owner-two/catalog-repo-b" });
+    expect(merged[0].official).toBeFalsy();
+  });
+
+  it("来源记录未标 official → 条目无官方身份（旧调用面兼容）", () => {
+    const merged = mergeCatalogs([{ sourceName: "owner-two/catalog-repo-b", entries: [entry("demo-g", "1.0.0")] }]);
+    expect(merged[0].official).toBeUndefined();
+  });
 });

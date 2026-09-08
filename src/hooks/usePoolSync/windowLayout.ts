@@ -89,9 +89,13 @@ export function serializeGroups(tabState: TabState, t: TFunction): PoolGroup[] {
     tabs: g.tabs.map((tab) => {
       const pid = tab.pluginId ?? tab.type;
       const entry = getViewPlugin(pid);
-      const resolved = entry?.manifest ? resolvePluginIcon(pid, entry.manifest) : null;
       const behavior = getTabBehavior(pid);
       const isDetailTab = tab.type === "plugin-detail";
+      // E6#30.7b：plugin-detail 标签图标 = 活跃市场贡献插件图标（30.10b detailContribution 同源——
+      //  详情页是市场表面，目标插件可能未装无图标可解析，市场图标恒可辨）。普通标签 = 自身插件图标。
+      const iconPid = isDetailTab && detailContribution ? detailContribution.contributorId : pid;
+      const iconEntry = iconPid === pid ? entry : getViewPlugin(iconPid);
+      const resolved = iconEntry?.manifest ? resolvePluginIcon(iconPid, iconEntry.manifest) : null;
       return {
         id: tab.id,
         pluginId: pid,
