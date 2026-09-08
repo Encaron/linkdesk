@@ -22,6 +22,8 @@ import {
   scheduleStartupDiscovery,
   getDiscoveredUpdates,
   hasDiscoveredUpdates,
+  onDiscoveredUpdatesChange,
+  removeDiscoveredCandidate,
   __resetUpdateDiscovery,
 } from "../services/updateDiscovery";
 import type { DiscoveryPlan, InstalledSnapshot, UpdateCandidate } from "../services/updateDiscovery";
@@ -343,5 +345,67 @@ describe("runUpdateDiscovery（主编排 IO）", () => {
       expect(show).toHaveBeenCalledTimes(1);
       expect(await readUpdateMetaMap()).toEqual({ "demo-alpha": { lastNotifiedVersion: "1.2.0" } });
     });
+  });
+});
+
+describe("removeDiscoveredCandidate（#33b 更新成功候选驱逐）", () => {
+  let fetchSpy: ReturnType<typeof vi.fn>;
+
+  function seedDiscovery(enabledList: PluginListEntry[], catalog: CatalogEntry[]): void {
+    fetchSpy = vi.fn(async (url: string) => {
+      if (url === OFFICIAL_SOURCE_URL) return catalogText(...catalog);
+      throw new Error("unexpected url " + url);
+    });
+    __setCatalogIO(fetchSpy as unknown as FetchFn, memStorage());
+    stubWindow({ enabled: enabledList });
+  }
+
+  beforeEach(() => {
+    __setCatalogIO(null, null);
+    __setMetaStore(null);
+    __resetUpdateDiscovery();
+    Reflect.deleteProperty(window, "linkdesk");
+  });
+  afterEach(() => {
+    __setCatalogIO(null, null);
+    __setMetaStore(null);
+    Reflect.deleteProperty(window, "linkdesk");
+  });
+
+  it("发现落库后驱逐该插件 → store 清空 + 变更监听触发；再驱逐幂等 false 不重复通知", async () => {
+    __setMetaStore(metaStore());
+    seedDiscovery([enabled("demo-alpha", "1.0.0")], [catEntry("demo-alpha", "1.2.0")]);
+    await runUpdateDiscovery();
+    expect(ids(getDiscoveredUpdates())).toEqual(["demo-alpha"]);
+
+    const listener = vi.fn();
+    const unsub = onDiscoveredUpdatesChange(listener);
+    expect(removeDiscoveredCandidate("demo-alpha")).toBe(true);
+    expect(getDiscoveredUpdates()).toEqual([]);
+    expect(listener).toHaveBeenCalledTimes(1);
+    // 已不在 → false，不重复 notify
+    expect(removeDiscoveredCandidate("demo-alpha")).toBe(false);
+    expect(listener).toHaveBeenCalledTimes(1);
+    unsub();
+  });
+
+  it("缺席 id（未发现/未上架）→ false 不改 store", async () => {
+    __setMetaStore(metaStore());
+    seedDiscovery([enabled("demo-alpha", "1.0.0")], [catEntry("demo-alpha", "1.2.0")]);
+    await runUpdateDiscovery();
+    expect(removeDiscoveredCandidate("demo-absent")).toBe(false);
+    expect(ids(getDiscoveredUpdates())).toEqual(["demo-alpha"]);
+  });
+
+  it("多候选只驱逐目标，其余候选保留（同会话更新一个不连带另一个）", async () => {
+    __setMetaStore(metaStore());
+    seedDiscovery(
+      [enabled("demo-alpha", "1.0.0"), enabled("demo-beta", "1.0.0", "Beta")],
+      [catEntry("demo-alpha", "2.0.0"), catEntry("demo-beta", "1.5.0")],
+    );
+    await runUpdateDiscovery();
+    expect(ids(getDiscoveredUpdates())).toEqual(["demo-alpha", "demo-beta"]);
+    expect(removeDiscoveredCandidate("demo-alpha")).toBe(true);
+    expect(ids(getDiscoveredUpdates())).toEqual(["demo-beta"]);
   });
 });

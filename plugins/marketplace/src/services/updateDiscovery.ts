@@ -162,6 +162,15 @@ export function onDiscoveredUpdatesChange(fn: () => void): () => void {
   };
 }
 
+/** 更新成功后的候选驱逐（E6#33b——本会话不自动重跑发现，徽标消费方更新后即时重算消失；
+ *  store 保持诚实 + #33d 自动更新防「同一候选重复更新」。仅存在时驱逐，返回是否驱逐。 */
+export function removeDiscoveredCandidate(pluginId: string): boolean {
+  const next = _candidates.filter((c) => c.pluginId !== pluginId);
+  if (next.length === _candidates.length) return false;
+  commitStore(next);
+  return true;
+}
+
 /** 测试复位 store/调度/并发态（vitest afterEach 用——模块单例跨用例残留；产线不调） */
 export function __resetUpdateDiscovery(): void {
   _candidates = [];

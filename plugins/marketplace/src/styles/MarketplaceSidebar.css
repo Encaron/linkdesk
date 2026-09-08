@@ -415,6 +415,27 @@
   cursor: default;
 }
 
+/* E6#33b：可更新徽标——accent 信息态（只示状态，动作归详情；accent = 更新语义族，正交 install 绿）
+ *  vs pending 琥珀 vs tag 灰——三档信息强度区分（ui-ux-pro-max dark accent info chip） */
+.ms-item-badge-update {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-size: var(--font-size-2xs);
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+  padding: 0 4px;
+  border-radius: 3px;
+  white-space: nowrap;
+  flex-shrink: 0;
+  cursor: default;
+}
+
+.ms-item-badge-update .codicon {
+  font-size: var(--font-size-2xs); /* ⬆ 行内图标随 chip 字号 */
+}
+
 /* ── Disabled extension item ── */
 
 .ms-extension-item.disabled {

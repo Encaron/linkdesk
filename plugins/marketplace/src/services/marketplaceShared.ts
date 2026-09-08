@@ -11,7 +11,7 @@
  * （fetch/5min 缓存/多源合并）拉取，store 落本模块供 useMarketplaceCatalog 消费。
  */
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 // E5.7#98：_allPlugins 数据源是 pluginManager.list()（IPC 序列化子集）——消费 PluginListEntry，
 // 非 ViewPluginEntry（后者带 component 字段，IPC 不可达）
 // E5.8#20-c：契约化——插件列表类型走 @linkdesk/contracts（零 @src/core）
@@ -21,6 +21,7 @@ import type { PluginListEntry } from "@linkdesk/contracts";
 import i18n from "i18next";
 import { loadCatalog, forceRefreshCatalog } from "./marketSources";
 import type { CatalogLoadResult } from "./marketSources";
+import type { CatalogEntry } from "./marketCatalog";
 // E6#33a 发现调度（2026-09-08 锚② 重裁：市场池首载调度——本模块被全部市场池面 import，任意面首挂载即触发一趟
 // 延迟发现；scheduleStartupDiscovery 内置池门控，壳进程 import 本模块不调度不跑）——见 updateDiscovery 头注
 import { scheduleStartupDiscovery } from "./updateDiscovery";
@@ -292,6 +293,17 @@ export function useMarketplaceCatalog() {
   };
 }
 
+/** E6#33b：目录条目 id 索引——已装/内置/禁用列表行「可更新」判定共用（updateToVersion 查目录），
+ *  与详情页/发现同源同一把钥匙（目录条目 id = pluginId）。entries 引用变化即重建（目录重拉后徽标自动翻新）。 */
+export function useCatalogEntryById(): ReadonlyMap<string, CatalogEntry> {
+  const catalog = useMarketplaceCatalog();
+  return useMemo(() => {
+    const m = new Map<string, CatalogEntry>();
+    for (const e of catalog.entries) m.set(e.id, e);
+    return m;
+  }, [catalog.entries]);
+}
+
 /* ═══ 市场安装会话 store（E6#30.5b 首建——详情页未装行🟢安装带进度；#30.9a 侧栏行徽标消费同源） ═══
  * 安装进度 = 单活跃会话模型。installProgress 事件两源并流（主进程 download/extract 段 + 池 lifecycle
  * validating/downloading/loading/done 段）——除 loading/done 外全阶段**不带 pluginId**（lifecycle-ops
@@ -352,6 +364,23 @@ export function installFailLabelKey(reason: InstallFailReason): string {
       return "安装失败：该插件已安装，如需覆盖请先卸载";
     default:
       return "安装失败：未知错误，请重试";
+  }
+}
+
+/** 归因 → 更新失败 i18n key（E6#33b——与安装同分类语义；conflict 对更新不适用 → 归 unknown 兜底）。
+ *  update 失败走行内归因 + 手动 [重试]（同安装 M4 三），原文进 title 悬停。 */
+export function updateFailLabelKey(reason: InstallFailReason): string {
+  switch (reason) {
+    case "network":
+      return "更新失败：网络连接不可用";
+    case "integrity":
+      return "更新失败：文件校验未通过";
+    case "env":
+      return "更新失败：磁盘空间不足";
+    case "package":
+      return "更新失败：插件包损坏";
+    default:
+      return "更新失败：未知错误，请重试";
   }
 }
 

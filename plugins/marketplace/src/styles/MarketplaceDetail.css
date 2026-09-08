@@ -223,6 +223,70 @@
   flex-shrink: 0;
 }
 
+/* ═══ E6#33b 第四维「有新版本可用」块（mockup 帧 6：主区顶部 accent 信息带——只报状态引导 changelog，
+ *  更新动作在 action bar 首槽 ⬆；accent = 更新语义族，与 install 绿/卸载红正交） ═══ */
+
+.mpd-update-block {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 16px;
+  padding: 10px 12px;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+}
+
+.mpd-update-block-icon {
+  color: var(--accent);
+  font-size: var(--font-size-lg);
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.mpd-update-block-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.mpd-update-block-title {
+  font-size: var(--font-size-md);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.mpd-update-block-lead {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.mpd-update-block-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  align-self: flex-start;
+  background: none;
+  border: none;
+  padding: 0;
+  margin-top: 2px;
+  font-family: inherit;
+  font-size: var(--font-size-sm);
+  color: var(--accent);
+  cursor: pointer;
+}
+
+.mpd-update-block-hint:hover {
+  text-decoration: underline;
+}
+
+.mpd-update-block-hint .codicon {
+  font-size: var(--font-size-xs);
+}
+
 /* ═══ Action Bar（30.11d 落插件视图；30.14c 按钮已走壳 Button variant——启用=success/禁用=ghost/卸载=danger） ═══ */
 
 .mpd-action-bar {
@@ -294,6 +358,17 @@
 .mpd-navtab.active {
   color: var(--text-primary);
   border-bottom-color: var(--accent);
+}
+
+/* E6#33b：更改日志 tab「有新版本」亮 dot——同 update-block accent 信息语义（动作进 changelog 看新内容） */
+.mpd-nav-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-left: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  vertical-align: 1px;
 }
 
 /* ═══ Body：details layout = main + info sidebar ═══ */

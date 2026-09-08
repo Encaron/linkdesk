@@ -5,7 +5,8 @@
  */
 
 import { useTranslation } from "react-i18next";
-import { useMarketplacePlugins, getMarketplaceSearch } from "../services/marketplaceShared";
+import { useMarketplacePlugins, getMarketplaceSearch, useCatalogEntryById } from "../services/marketplaceShared";
+import { updateToVersion } from "../services/marketCatalog";
 import { ExtensionItem } from "../components/ExtensionItem";
 import "../styles/MarketplaceSidebar.css";
 
@@ -13,6 +14,7 @@ export default function InstalledListView() {
   const { t } = useTranslation();
   const tabs = window.linkdesk?.tabs;
   const { installed, loading } = useMarketplacePlugins();
+  const catalogById = useCatalogEntryById();
 
   const handleOpenDetail = (pluginId: string) => {
     tabs?.create("plugin-detail", { pluginId, pinned: false });
@@ -39,6 +41,7 @@ export default function InstalledListView() {
         <ExtensionItem
           key={p.pluginId}
           plugin={p}
+          updateTo={updateToVersion(catalogById.get(p.pluginId), p.manifest.version)}
           onClick={() => handleOpenDetail(p.pluginId)}
           onDoubleClick={() => handleOpenDetailPinned(p.pluginId)}
         />

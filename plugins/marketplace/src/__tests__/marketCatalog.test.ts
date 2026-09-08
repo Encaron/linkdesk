@@ -16,6 +16,8 @@ import {
   mergeCatalogs,
   isPrereleaseVersion,
   stableLatestVersion,
+  versionDownloadUrl,
+  updateToVersion,
   OFFICIAL_SOURCE_URL,
 } from "../services/marketCatalog";
 import type { CatalogEntry } from "../services/marketCatalog";
@@ -248,5 +250,83 @@ describe("isPrereleaseVersion / stableLatestVersion", () => {
   it("stableLatestVersion：旧格式无 versions[] → 顶层 version；顶层本身 prerelease → undefined", () => {
     expect(stableLatestVersion({ id: "demo-alpha", name: "A", version: "1.1.0" })).toBe("1.1.0");
     expect(stableLatestVersion({ id: "demo-alpha", name: "A", version: "1.1.0-beta" })).toBeUndefined();
+  });
+});
+
+/* ── E6#33b/c 版本资产寻址（升级动作/版本下拉选哪版取哪版 downloadUrl——不发错包） ── */
+
+describe("versionDownloadUrl", () => {
+  const DL_120 = "https://example.invalid/dl/demo-alpha-1.2.0.linkdesk-plugin";
+  const DL_110 = "https://example.invalid/dl/demo-alpha-1.1.0.linkdesk-plugin";
+
+  it("versions[] 命中该版本且带 downloadUrl → 取该版 URL（非顶层最新盲取）", () => {
+    const e: CatalogEntry = {
+      id: "demo-alpha", name: "Demo Alpha", version: "1.2.0", downloadUrl: DL_120,
+      versions: [{ version: "1.2.0", downloadUrl: DL_120 }, { version: "1.1.0", downloadUrl: DL_110 }],
+    };
+    expect(versionDownloadUrl(e, "1.1.0")).toBe(DL_110);
+  });
+
+  it("versions[] 命中容 v 前缀（semver 等判）", () => {
+    const e: CatalogEntry = {
+      id: "demo-alpha", name: "Demo Alpha", version: "1.2.0", downloadUrl: DL_120,
+      versions: [{ version: "v1.2.0", downloadUrl: DL_120 }],
+    };
+    expect(versionDownloadUrl(e, "1.2.0")).toBe(DL_120);
+  });
+
+  it("versions[] 无该版 downloadUrl → 仅目标 == 顶层 version 借顶层 entry.downloadUrl", () => {
+    const e: CatalogEntry = {
+      id: "demo-alpha", name: "Demo Alpha", version: "1.2.0", downloadUrl: DL_120,
+      versions: [{ version: "1.2.0" }, { version: "1.1.0", downloadUrl: DL_110 }],
+    };
+    expect(versionDownloadUrl(e, "1.2.0")).toBe(DL_120);
+    // 旧版无 URL 且非顶层 → 诚实 undefined（不拿顶层包顶旧版）
+    expect(versionDownloadUrl(e, "1.0.0")).toBeUndefined();
+  });
+
+  it("旧格式无 versions[] → 目标 == 顶层 version 才返回；否则 undefined", () => {
+    const e: CatalogEntry = { id: "demo-alpha", name: "Demo Alpha", version: "1.2.0", downloadUrl: DL_120 };
+    expect(versionDownloadUrl(e, "1.2.0")).toBe(DL_120);
+    expect(versionDownloadUrl(e, "1.1.0")).toBeUndefined();
+  });
+});
+
+/* ── E6#33b 相对本地版本「可更新」判定（UI 徽标/升级入口 + #33d autoUpdate 同源单判据） ── */
+
+describe("updateToVersion", () => {
+  it("条目缺失（未上架/下架）/ 无本地版本 → undefined（§二·五 下架不提示）", () => {
+    expect(updateToVersion(undefined, "1.0.0")).toBeUndefined();
+    expect(updateToVersion({ id: "demo-alpha", name: "A", version: "1.1.0" }, undefined)).toBeUndefined();
+  });
+
+  it("稳定远端 > 本地 → 返回可更新远端稳定版", () => {
+    const e: CatalogEntry = { id: "demo-alpha", name: "Demo Alpha", version: "1.3.0" };
+    expect(updateToVersion(e, "1.2.0")).toBe("1.3.0");
+  });
+
+  it("本地 >= 远端 → undefined（等版不提示；本已最新不提示）", () => {
+    const e: CatalogEntry = { id: "demo-alpha", name: "Demo Alpha", version: "1.3.0" };
+    expect(updateToVersion(e, "1.3.0")).toBeUndefined();
+    expect(updateToVersion(e, "1.4.0")).toBeUndefined();
+  });
+
+  it("顶层是 beta → 回落稳定版比（beta 不提示，§二·四）", () => {
+    const e: CatalogEntry = {
+      id: "demo-alpha", name: "Demo Alpha", version: "2.0.0-beta.1",
+      versions: [{ version: "2.0.0-beta.1" }, { version: "1.5.0" }],
+    };
+    // 稳定版 1.5.0 > 本地 1.4.0 → 提示升到 1.5.0（绝不把 beta 当可更新目标）
+    expect(updateToVersion(e, "1.4.0")).toBe("1.5.0");
+    // 本地已 >= 稳定版（1.6.0 > 1.5.0）→ 无更新（beta 更高也不提示）
+    expect(updateToVersion(e, "1.6.0")).toBeUndefined();
+  });
+
+  it("全 prerelease 无稳定版 → undefined（beta 走手动 #33c）", () => {
+    const e: CatalogEntry = {
+      id: "demo-alpha", name: "Demo Alpha", version: "1.3.0-beta.1",
+      versions: [{ version: "1.3.0-beta.1" }],
+    };
+    expect(updateToVersion(e, "1.0.0")).toBeUndefined();
   });
 });

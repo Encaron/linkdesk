@@ -188,6 +188,30 @@ export function stableLatestVersion(entry: CatalogEntry): string | undefined {
   return undefined;
 }
 
+/** 指定版本的下载地址（E6#33b/c——升级动作/版本下拉选哪版取哪版 downloadUrl，不默认顶层 beta）。
+ *  versions[] 命中该版本（semver 等判，容 v 前缀）且带 downloadUrl → 用之；versions[] 无命中或该版本无
+ *  downloadUrl → 仅当目标 == 顶层 version 借 entry.downloadUrl（顶层即最新）；否则 undefined（诚实——不发错包）。
+ *  旧格式无 versions[] → 目标须 == 顶层 version 才返回。 */
+export function versionDownloadUrl(entry: CatalogEntry, version: string): string | undefined {
+  if (entry.versions && entry.versions.length > 0) {
+    const hit = entry.versions.find((v) => v.downloadUrl && compareVersions(v.version, version) === 0);
+    if (hit) return hit.downloadUrl;
+  }
+  return compareVersions(entry.version, version) === 0 ? entry.downloadUrl : undefined;
+}
+
+/** 相对本地版本判定「可更新」（E6#33b——UI 常驻徽标/升级入口 + #33d autoUpdate 消费同一判据）。
+ *  语义 = planDiscovery 成员判定同源：stable-only（§二·四，beta 不提示）+ semver.gt 唯一判定（§一·三）。
+ *  返回该可更新的远端稳定版；无本地版本 / 不比本地高 / 无稳定版 → undefined（不提示）。
+ *  视图层消费此单函数即与发现/铃铛同判据——杜绝「探索徽标 top-beta 而详情/铃铛 stable 不提示」的判定分裂。
+ *  目录条目缺失/未上架 → undefined（§二·五——下架不提示；调用方可不守卫直传 Map.get 结果）。 */
+export function updateToVersion(entry: CatalogEntry | undefined, localVersion?: string): string | undefined {
+  if (!entry || !localVersion) return undefined;
+  const remote = stableLatestVersion(entry);
+  if (remote === undefined) return undefined;
+  return isVersionNewer(remote, localVersion) ? remote : undefined;
+}
+
 /** 多源合并去重——同 id 取 semver 高者；版本平手用先出现的源（官方排前 → 官方胜出）。
  *  E6#30.8f：来源记录可带 official 标记，胜出条目的来源身份（sourceName + official）随条目携带——UI 读
  *  单一字段即可显示「官方发布」徽标，不把官方身份跟"源 URL 长啥样"耦合回视图层。 */

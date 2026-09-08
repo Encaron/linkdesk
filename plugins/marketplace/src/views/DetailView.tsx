@@ -37,10 +37,13 @@ import {
   retryMarketInstall,
   dismissMarketInstallError,
   installFailLabelKey,
+  updateFailLabelKey,
+  classifyInstallError,
   marketInstallStageLabel,
 } from "../services/marketplaceShared";
 import type { CatalogEntry } from "../services/marketCatalog";
-import { compareVersions } from "../services/marketCatalog";
+import { compareVersions, updateToVersion, versionDownloadUrl } from "../services/marketCatalog";
+import { removeDiscoveredCandidate } from "../services/updateDiscovery";
 import { categoryText } from "../services/marketCategories";
 import { useDownloadCount } from "../services/downloadCounts";
 import { readInstalledPackageFile } from "../services/packageFiles";
@@ -130,13 +133,19 @@ type TabId = "overview" | "features" | "changelog";
 
 export default function DetailView({ pluginId }: DetailContributedProps) {
   const { t } = useTranslation();
-  const { all, disabledRaw, loading: pluginsLoading } = useMarketplacePlugins();
+  const { all, disabledRaw, loading: pluginsLoading, refresh: refreshPlugins } = useMarketplacePlugins();
   const catalog = useMarketplaceCatalog();
   const installSession = useMarketInstall();
+  /* #30.9b 离线态（G3）——navigator.onLine false → 安装/更新钮置灰 + 「联网后重试」（不产生失败会话）；
+   *  提早在顶声明——handleUpdate/installGateError deps 均读它（TDZ 防御：勿下移，下移即渲染即崩） */
+  const online = useOnlineStatus();
 
   const [tab, setTab] = useState<TabId>("overview");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  /* E6#33b：更新执行进行中（update 无独立会话——单插件动作，busy 局部即可；引擎只发 installProgress + 壳 toast，
+   *  无 lifecycle 事件 → 成功需显式 refreshPlugins 收敛版本/徽标） */
+  const [updating, setUpdating] = useState(false);
   /* E6#30.8a：安装前富确认弹窗开关——mockup 帧 8（来源/发布者/许可证/版本/大小 + 安装即信任） */
   const [confirming, setConfirming] = useState(false);
   /* E6#30.8c：读壳版本号一次（app.getVersion）——minAppVersion 门禁比对基准（缺/读失败 = undefined 放行不拦） */
@@ -209,6 +218,19 @@ export default function DetailView({ pluginId }: DetailContributedProps) {
     if (localName) return localName;
     return catalog.entries.find((e) => e.id === dep)?.name ?? dep;
   };
+
+  /* ── E6#33b 第四维：可更新判定（04 §二·五 mockup 帧 6/10）——本地已装版本 vs 目录条目 stable-only
+   *  （updateToVersion = planDiscovery 同判据单函数：semver.gt + beta 回落，杜绝 UI/发现判定分裂）。
+   *  仅 installed 有意义（未装无本地可比）；挂起态（缺依赖）不提示更新（blocked chip 占位，入口让位解除后）。 ── */
+  const localVer = enabledEntry?.manifest.version ?? disabledHit?.version;
+  const updateTarget = updateToVersion(entry, localVer);
+  const hasUpdate = !!updateTarget && !pending;
+  /* changelog 两版并排 overlay：远端「最新」块信息（目录 versions[].changelog 为准——远端新包未下载无法读包内文件） */
+  const remoteChangelog = useMemo(() => {
+    if (!hasUpdate || !updateTarget || !entry) return undefined;
+    const hit = entry.versions?.find((v) => compareVersions(v.version, updateTarget) === 0);
+    return { version: updateTarget, date: hit?.publishedAt, body: hit?.changelog };
+  }, [hasUpdate, updateTarget, entry]);
 
   /* ── 已装读包 + 未装远端 README（30.6b）——pkgReadme/pkgChangelog 只对已装读；remote 兜底 ── */
   const [pkgReadme, setPkgReadme] = useState<string | null | undefined>(undefined); // undefined=读取中
@@ -284,6 +306,47 @@ export default function DetailView({ pluginId }: DetailContributedProps) {
     setBusy(false);
   }, [pluginId, busy]);
 
+  /* ── E6#33b 更新执行（详情 action bar 第一槽 accent ⬆ 更新到 vN——mockup 帧 6 st-update）。
+   *  壳引擎 updatePlugin：下载 temp → 校验 → 原子替换 → needRestart 恒 true + 壳 toast「已更新…重启生效」
+   *  （本视图不重复 toast 成功）；F1（禁用态更新）= 引擎 wasActive=false 换文件不 reload 保持禁用，本入口照常。
+   *  失败（无独立 failure toast 通道）→ 行内归因 + 手动 [重试]（同安装 M4 三，title 悬停原文）；
+   *  成功 → 无 lifecycle 事件（引擎只发 installProgress + 壳 toast）→ 显式 refreshPlugins 收敛版本 + 驱逐
+   *  发现 store 候选（store 诚实 + #33d 防重复更新）。url = versionDownloadUrl 取目标稳定版资产（非顶层 beta）。 ── */
+  const handleUpdate = useCallback(async () => {
+    if (!pluginId || busy || updating || !hasUpdate || !updateTarget) return;
+    if (!online) {
+      setError(t("联网后重试"));
+      return;
+    }
+    const url = entry ? versionDownloadUrl(entry, updateTarget) : undefined;
+    if (!url) {
+      setError(t("该插件缺少下载地址"));
+      return;
+    }
+    const upd = pm()?.update;
+    if (!upd) {
+      setError(t(updateFailLabelKey("unknown")));
+      return;
+    }
+    setError(null);
+    setUpdating(true);
+    try {
+      const r = await upd(pluginId, { url });
+      if (r && r.success) {
+        removeDiscoveredCandidate(pluginId);
+        refreshPlugins();
+      } else {
+        const reason = classifyInstallError(r?.error ?? "");
+        setError(t(updateFailLabelKey(reason)));
+      }
+    } catch (e) {
+      const reason = classifyInstallError(e instanceof Error ? e.message : String(e));
+      setError(t(updateFailLabelKey(reason)));
+    } finally {
+      setUpdating(false);
+    }
+  }, [pluginId, busy, updating, hasUpdate, updateTarget, online, entry, t, refreshPlugins]);
+
   /* 卸载 = 二次确认（dialog.confirm——真实原语，mockup 帧 4「复用现有 confirm」）→ 执行。
    *   core:true 藏钮（#18），但命令层可卸；不确认不卸。 */
   const handleUninstall = useCallback(async () => {
@@ -310,8 +373,6 @@ export default function DetailView({ pluginId }: DetailContributedProps) {
   const installingHere = installSessionHere?.phase === "installing";
   /** #30.9b 本插件失败会话（phase:error）——行内「安装失败」+ [重试]（09 §二 M4 三）；离线不产生会话 */
   const installErrHere = installSessionHere?.phase === "error" ? installSessionHere : null;
-  /* #30.9b 离线态（G3）——navigator.onLine false → 安装钮置灰 + 提示「联网后重试」，无 [重试] */
-  const online = useOnlineStatus();
 
   const installLabel = (): string => marketInstallStageLabel(t, installSession?.stage, installSession?.percent);
 
@@ -516,12 +577,20 @@ export default function DetailView({ pluginId }: DetailContributedProps) {
         <div className="mpd-action-bar">
           {disabled ? (
             <>
-              <Button variant="success" onClick={handleEnable} disabled={busy}>
+              {/* E6#33b 第四维主动作（mockup 帧 6 st-update accent 实心——壳 Button 缺省即 accent，零新壳组件）：
+               *  禁用态也照常更新——F1（更新后保持禁用，引擎 wasActive=false） */}
+              {hasUpdate && updateTarget && (
+                <Button onClick={handleUpdate} disabled={busy || updating || !online} title={!online ? t("联网后重试") : undefined}>
+                  <span className="codicon codicon-arrow-up" />
+                  {updating ? t("更新中...") : t("更新到 {{version}}", { version: `v${updateTarget}` })}
+                </Button>
+              )}
+              <Button variant="success" onClick={handleEnable} disabled={busy || updating}>
                 <span className="codicon codicon-play" /> {t("启用")}
               </Button>
               {/* E6#18a：core:true 藏卸载钮——含禁用态（core 经 getDisabled 透传） */}
               {!isCore && (
-                <Button variant="danger" onClick={handleUninstall} disabled={busy}>
+                <Button variant="danger" onClick={handleUninstall} disabled={busy || updating}>
                   <span className="codicon codicon-trash" /> {t("卸载")}
                 </Button>
               )}
@@ -533,11 +602,18 @@ export default function DetailView({ pluginId }: DetailContributedProps) {
             </span>
           ) : info ? (
             <>
-              <Button variant="ghost" onClick={handleDisable} disabled={busy}>
+              {/* E6#33b：已装可更新 → 首槽 accent 更新入口（「禁用/卸载」旁——点4 第一段） */}
+              {hasUpdate && updateTarget && (
+                <Button onClick={handleUpdate} disabled={busy || updating || !online} title={!online ? t("联网后重试") : undefined}>
+                  <span className="codicon codicon-arrow-up" />
+                  {updating ? t("更新中...") : t("更新到 {{version}}", { version: `v${updateTarget}` })}
+                </Button>
+              )}
+              <Button variant="ghost" onClick={handleDisable} disabled={busy || updating}>
                 <span className="codicon codicon-circle-slash" /> {t("禁用")}
               </Button>
               {!isCore && (
-                <Button variant="danger" onClick={handleUninstall} disabled={busy}>
+                <Button variant="danger" onClick={handleUninstall} disabled={busy || updating}>
                   <span className="codicon codicon-trash" /> {t("卸载")}
                 </Button>
               )}
@@ -593,6 +669,8 @@ export default function DetailView({ pluginId }: DetailContributedProps) {
         </button>
         <button className={tab === "changelog" ? "mpd-navtab active" : "mpd-navtab"} onClick={() => setTab("changelog")}>
           {t("更改日志")}
+          {/* E6#33b：可更新 → 更改日志 tab 亮 dot（04 §二·五——新内容在 changelog） */}
+          {hasUpdate && <span className="mpd-nav-dot" aria-label={t("有新版本可用")} />}
         </button>
       </nav>
 
@@ -602,6 +680,26 @@ export default function DetailView({ pluginId }: DetailContributedProps) {
           <div className="mpd-details-main">
             {tab === "overview" && (
               <>
+                {/* E6#33b 第四维「有新版本可用」块（04 §二·五 mockup 帧 6）——主区顶部 accent 信息带：
+                 *  当前安装/市场最新两版本 + 引导点「更改日志」tab（dot 同语义）。动作在 action bar 首槽。 */}
+                {hasUpdate && updateTarget && (
+                  <div className="mpd-update-block" role="status">
+                    <span className="codicon codicon-arrow-up mpd-update-block-icon" />
+                    <div className="mpd-update-block-body">
+                      <div className="mpd-update-block-title">{t("有新版本可用")}</div>
+                      <p className="mpd-update-block-lead">
+                        {t("当前安装 {{localVersion}}，市场最新 {{remoteVersion}}", {
+                          localVersion: localVer ? `v${localVer}` : "—",
+                          remoteVersion: `v${updateTarget}`,
+                        })}
+                      </p>
+                      <button className="mpd-update-block-hint" onClick={() => setTab("changelog")}>
+                        {t("更新内容见「更改日志」tab")}
+                        <span className="codicon codicon-arrow-right" />
+                      </button>
+                    </div>
+                  </div>
+                )}
                 {/* 30.5e：挂起·缺依赖 → 主区「依赖未满足」块——缺失依赖行标黄 ✕ 点击跳其详情页 */}
                 {missingDeps.length > 0 && (
                   <div className="mpd-deps-block">
@@ -667,6 +765,7 @@ export default function DetailView({ pluginId }: DetailContributedProps) {
                 localVersion={versionText}
                 versions={entry?.versions}
                 latestVersion={entry?.version}
+                remote={remoteChangelog}
               />
             )}
           </div>

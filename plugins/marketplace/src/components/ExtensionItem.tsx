@@ -37,9 +37,11 @@ interface ExtensionItemProps {
   plugin: PluginListEntry;
   onClick: () => void;
   onDoubleClick: () => void;
+  /** E6#33b：远端稳定版可更新版本（有值 = 行内「可更新 vN」accent 徽标——只示状态，动作归详情） */
+  updateTo?: string;
 }
 
-export function ExtensionItem({ plugin, onClick, onDoubleClick }: ExtensionItemProps) {
+export function ExtensionItem({ plugin, onClick, onDoubleClick, updateTo }: ExtensionItemProps) {
   const { t } = useTranslation();
   const m = plugin.manifest;
   const clickTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -84,6 +86,12 @@ export function ExtensionItem({ plugin, onClick, onDoubleClick }: ExtensionItemP
           {/* E5.8#15.5：缺依赖挂起（PENDING）徽标——tooltip 显完整原因（"等待依赖: xxx"） */}
           {plugin.pendingReason && (
             <span className="ms-item-badge-pending" title={plugin.pendingReason}>{t("等待依赖")}</span>
+          )}
+          {/* E6#33b：可更新徽标（accent 信息态——只示状态，点击行开详情即升级入口） */}
+          {updateTo && (
+            <span className="ms-item-badge-update" title={t("可更新")}>
+              <span className="codicon codicon-arrow-up" /> {t("可更新")} v{updateTo}
+            </span>
           )}
           <span className="ms-item-version">v{m.version}</span>
         </div>

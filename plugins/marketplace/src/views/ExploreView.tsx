@@ -40,7 +40,7 @@ import {
   marketInstallStageLabel,
 } from "../services/marketplaceShared";
 import type { CatalogEntry } from "../services/marketCatalog";
-import { isVersionNewer } from "../services/marketCatalog";
+import { updateToVersion } from "../services/marketCatalog";
 import "../styles/MarketplaceSidebar.css";
 
 const lk = () => window.linkdesk;
@@ -93,8 +93,9 @@ export default function ExploreView() {
       if (disabledIds.has(entry.id)) return "disabled";
       const lv = localById.get(entry.id);
       if (lv === undefined) return "install";
-      if (lv && isVersionNewer(entry.version, lv)) return "update";
-      return "installed";
+      // E6#33b：可更新判定与详情/发现/铃铛同源单函数（stable-only + semver.gt，§一·三）——
+      // 不再用顶层 entry.version 裸比（顶层是 beta 时旧逻辑误判可更新，而详情/铃铛 stable 不提示 = 判定分裂）
+      return updateToVersion(entry, lv) ? "update" : "installed";
     },
     [localById, disabledIds],
   );

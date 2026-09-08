@@ -4,13 +4,15 @@
  */
 
 
-import { useMarketplacePlugins } from "../services/marketplaceShared";
+import { useMarketplacePlugins, useCatalogEntryById } from "../services/marketplaceShared";
+import { updateToVersion } from "../services/marketCatalog";
 import { ExtensionItem } from "../components/ExtensionItem";
 import "../styles/MarketplaceSidebar.css";
 
 export default function BuiltinListView() {
   const tabs = window.linkdesk?.tabs;
   const { builtin, loading } = useMarketplacePlugins();
+  const catalogById = useCatalogEntryById();
 
   if (loading || builtin.length === 0) return null;
 
@@ -27,6 +29,7 @@ export default function BuiltinListView() {
         <ExtensionItem
           key={p.pluginId}
           plugin={p}
+          updateTo={updateToVersion(catalogById.get(p.pluginId), p.manifest.version)}
           onClick={() => handleOpenDetail(p.pluginId)}
           onDoubleClick={() => handleOpenDetailPinned(p.pluginId)}
         />

@@ -23,6 +23,9 @@ type Props = {
   versions?: CatalogEntry["versions"];
   /** 目录当前最新版本号（versions 缺失时的单卡数据源） */
   latestVersion?: string;
+  /** E6#33b：更新 overlay——可更新的远端稳定版信息（04 §二·五 mockup 帧 10 两版并排：
+   *  present 时已装分支先渲染远端「最新」块，再接本地「已安装」块；absent = 无更新，现单源行为） */
+  remote?: { version: string; date?: string; body?: string };
 };
 
 /** 日期展示辅助——ISO/UTC 串只留 YYYY-MM-DD（作者多写 2026-09-08T…），非日期原样显示 */
@@ -32,7 +35,14 @@ function fmtDate(iso?: string): string {
   return /^\d{4}-\d{2}-\d{2}/.test(s) ? s.slice(0, 10) : s;
 }
 
-export default function DetailChangelogTab({ installed, localChangelog, localVersion, versions, latestVersion }: Props) {
+export default function DetailChangelogTab({
+  installed,
+  localChangelog,
+  localVersion,
+  versions,
+  latestVersion,
+  remote,
+}: Props) {
   const { t } = useTranslation();
 
   /* 版本块（渲染纯函数——t 来自本组件 hook，非子组件无 hook 规则问题） */
@@ -51,23 +61,30 @@ export default function DetailChangelogTab({ installed, localChangelog, localVer
     </div>
   );
 
-  /* 已装：包内 CHANGELOG.md 单源（无更新不并排——E6#33b 别处） */
+  /* 已装：包内 CHANGELOG.md 本地权威源；有更新（remote）→ 远端「最新」块置顶 + 本地「已安装」块（04 §二·五 mockup 帧 10 两版并排）。
+   *  remote 块内容 = 目录 versions[].changelog（远端新包未下载无法读包内文件——诚实以目录注记为准，缺即显示未提供）。 */
   if (installed) {
     if (localChangelog === undefined) {
       return <p className="mpd-chg-empty">{t("加载中...")}</p>;
     }
-    if (!localChangelog || !localChangelog.trim()) {
+    const hasLocal = !!localChangelog && !!localChangelog.trim();
+    if (!remote && !hasLocal) {
       return <p className="mpd-chg-empty">{t("该插件未附带更改日志")}</p>;
     }
     return (
       <div className="mpd-chg">
-        <div className="mpd-chg-ver">
-          <div className="mpd-chg-ver-head">
-            {localVersion && <span className="mpd-chg-ver-tag">v{localVersion}</span>}
-            <span className="mpd-chg-tag mpd-chg-tag-installed">{t("已安装")}</span>
+        {remote && versionBlock(remote.version, { date: remote.date, isLatest: true, body: remote.body })}
+        {hasLocal ? (
+          <div className="mpd-chg-ver">
+            <div className="mpd-chg-ver-head">
+              {localVersion && <span className="mpd-chg-ver-tag">v{localVersion}</span>}
+              <span className="mpd-chg-tag mpd-chg-tag-installed">{t("已安装")}</span>
+            </div>
+            <MarkdownView markdown={localChangelog} />
           </div>
-          <MarkdownView markdown={localChangelog} />
-        </div>
+        ) : (
+          <p className="mpd-chg-empty">{t("该插件未附带更改日志")}</p>
+        )}
       </div>
     );
   }
