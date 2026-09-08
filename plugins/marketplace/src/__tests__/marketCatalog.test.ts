@@ -18,6 +18,8 @@ import {
   stableLatestVersion,
   versionDownloadUrl,
   updateToVersion,
+  selectableVersions,
+  pinnedAfterApply,
   OFFICIAL_SOURCE_URL,
 } from "../services/marketCatalog";
 import type { CatalogEntry } from "../services/marketCatalog";
@@ -328,5 +330,130 @@ describe("updateToVersion", () => {
       versions: [{ version: "1.3.0-beta.1" }],
     };
     expect(updateToVersion(e, "1.0.0")).toBeUndefined();
+  });
+});
+
+/* ── E6#33c 版本下拉可选集（05 §四——下拉选项源：有 URL 才可装才入列，不发错包） ── */
+
+describe("selectableVersions", () => {
+  const DL_130 = "https://example.invalid/dl/demo-alpha-1.3.0.linkdesk-plugin";
+  const DL_120 = "https://example.invalid/dl/demo-alpha-1.2.0.linkdesk-plugin";
+  const DL_110 = "https://example.invalid/dl/demo-alpha-1.1.0.linkdesk-plugin";
+
+  /* versions[] 全带 URL（最新在前）+ 顶层 = 1.3.0 = 最新——历史下拉全列 */
+  const STABLE = (): CatalogEntry => ({
+    id: "demo-alpha", name: "Demo Alpha", version: "1.3.0", downloadUrl: DL_130,
+    versions: [
+      { version: "1.3.0", downloadUrl: DL_130, publishedAt: "2026-09-02T00:00:00Z", changelog: "Added gamma" },
+      { version: "1.2.0", downloadUrl: DL_120, publishedAt: "2026-08-01T00:00:00Z", changelog: "Fixed beta" },
+      { version: "1.1.0", downloadUrl: DL_110 },
+    ],
+  });
+
+  it("全带 URL 的版本历史 → 逐条入列 + 附带 publishedAt/changelog（下拉每条 = version/downloadUrl/publishedAt?/changelog?）", () => {
+    const rows = selectableVersions(STABLE());
+    expect(rows).toEqual([
+      { version: "1.3.0", downloadUrl: DL_130, publishedAt: "2026-09-02T00:00:00Z", changelog: "Added gamma" },
+      { version: "1.2.0", downloadUrl: DL_120, publishedAt: "2026-08-01T00:00:00Z", changelog: "Fixed beta" },
+      { version: "1.1.0", downloadUrl: DL_110 },
+    ]);
+  });
+
+  it("乱序 versions[] → semver 倒序最新在前（下拉默认 = 最高可选，保序平手）", () => {
+    const e: CatalogEntry = {
+      id: "demo-alpha", name: "Demo Alpha", version: "1.3.0", downloadUrl: DL_130,
+      versions: [{ version: "1.1.0", downloadUrl: DL_110 }, { version: "1.3.0", downloadUrl: DL_130 }],
+    };
+    expect(selectableVersions(e).map((c) => c.version)).toEqual(["1.3.0", "1.1.0"]);
+  });
+
+  it("无 URL 的版本诚实不出现（选了也发不了包）；顶层在列则不入赘", () => {
+    const e: CatalogEntry = {
+      id: "demo-alpha", name: "Demo Alpha", version: "1.3.0", downloadUrl: DL_130,
+      versions: [
+        { version: "1.3.0", downloadUrl: DL_130 },
+        { version: "1.2.0" }, // 无 URL → 不入下拉
+        { version: "1.1.0", downloadUrl: DL_110 },
+      ],
+    };
+    expect(selectableVersions(e).map((c) => c.version)).toEqual(["1.3.0", "1.1.0"]);
+  });
+
+  it("顶层不在 versions[]（作者漏列）→ 补入顶层——下拉恒含当前可装最新", () => {
+    const e: CatalogEntry = {
+      id: "demo-alpha", name: "Demo Alpha", version: "1.2.0", downloadUrl: DL_120,
+      versions: [{ version: "1.1.0", downloadUrl: DL_110 }],
+    };
+    expect(selectableVersions(e).map((c) => c.version)).toEqual(["1.2.0", "1.1.0"]);
+  });
+
+  it("beta 版本带 URL → 手动可选入列（§二·四 beta 不自动提示但 #33c 可手动装）", () => {
+    const e: CatalogEntry = {
+      id: "demo-beta", name: "Demo Beta", version: "1.3.0-beta.1", downloadUrl: DL_130,
+      versions: [
+        { version: "1.3.0-beta.1", downloadUrl: DL_130 },
+        { version: "1.2.0", downloadUrl: DL_120 },
+      ],
+    };
+    expect(selectableVersions(e).map((c) => c.version)).toEqual(["1.3.0-beta.1", "1.2.0"]);
+  });
+
+  it("旧格式无 versions[] → 只顶层一条（length 1 = 调用方不显示下拉）+ 相同 version 行去重", () => {
+    expect(selectableVersions({ id: "demo-alpha", name: "A", version: "1.2.0", downloadUrl: DL_120 })).toEqual([
+      { version: "1.2.0", downloadUrl: DL_120, publishedAt: undefined },
+    ]);
+    const dup: CatalogEntry = {
+      id: "demo-alpha", name: "A", version: "1.2.0", downloadUrl: DL_120,
+      versions: [{ version: "1.2.0", downloadUrl: DL_120 }, { version: "1.2.0", downloadUrl: DL_120 }],
+    };
+    expect(selectableVersions(dup)).toHaveLength(1);
+  });
+
+  it("无条目 / 顶层也无 URL → []", () => {
+    expect(selectableVersions(undefined)).toEqual([]);
+    expect(selectableVersions({ id: "demo-alpha", name: "A", version: "1.0.0" })).toEqual([]);
+  });
+});
+
+/* ── E6#33c pinnedVersion 记账（05 §二·九——落地稳定最新清钉追最新；停旧版/beta 记钉暂停 autoUpdate） ── */
+
+describe("pinnedAfterApply", () => {
+  it("目录有稳定最新且落地到它 → null（清钉——追最新，autoUpdate 恢复）", () => {
+    const e: CatalogEntry = {
+      id: "demo-alpha", name: "Demo Alpha", version: "1.3.0",
+      versions: [{ version: "1.3.0" }, { version: "1.2.0" }],
+    };
+    expect(pinnedAfterApply(e, "1.3.0")).toBeNull();
+  });
+
+  it("停旧版（降级目标 < 稳定最新）→ 记 appliedVersion（暂停 autoUpdate，#33d 消费）", () => {
+    const e: CatalogEntry = {
+      id: "demo-alpha", name: "Demo Alpha", version: "1.3.0",
+      versions: [{ version: "1.3.0" }, { version: "1.2.0" }],
+    };
+    expect(pinnedAfterApply(e, "1.2.0")).toBe("1.2.0");
+  });
+
+  it("停 beta（beta > 稳定最新，非稳定最新）→ 记 appliedVersion", () => {
+    const e: CatalogEntry = {
+      id: "demo-beta", name: "Demo Beta", version: "1.3.0-beta.1",
+      versions: [{ version: "1.3.0-beta.1" }, { version: "1.2.0" }],
+    };
+    expect(pinnedAfterApply(e, "1.3.0-beta.1")).toBe("1.3.0-beta.1");
+    // 但落地到稳定最新 1.2.0 → 清钉
+    expect(pinnedAfterApply(e, "1.2.0")).toBeNull();
+  });
+
+  it("目录无稳定版可比（全 beta）→ undefined（无 auto-update 目标可防，不落盘不写空钉）", () => {
+    const e: CatalogEntry = {
+      id: "demo-beta", name: "Demo Beta", version: "1.3.0-beta.1",
+      versions: [{ version: "1.3.0-beta.1" }, { version: "1.3.0-beta.0" }],
+    };
+    expect(pinnedAfterApply(e, "1.3.0-beta.1")).toBeUndefined();
+    expect(pinnedAfterApply(e, "1.2.0")).toBeUndefined();
+  });
+
+  it("无条目 → undefined", () => {
+    expect(pinnedAfterApply(undefined, "1.0.0")).toBeUndefined();
   });
 });

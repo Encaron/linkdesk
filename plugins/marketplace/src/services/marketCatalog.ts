@@ -212,6 +212,53 @@ export function updateToVersion(entry: CatalogEntry | undefined, localVersion?: 
   return isVersionNewer(remote, localVersion) ? remote : undefined;
 }
 
+/** 版本下拉可选单条（E6#33c——05 §四：下拉每条 {version, downloadUrl, publishedAt?, changelog?}，选中哪条拉哪条） */
+export interface CatalogVersionChoice {
+  version: string;
+  downloadUrl: string;
+  publishedAt?: string;
+  changelog?: string;
+}
+
+/** 版本下拉可选集（E6#33c——UI「装哪个版本/升到哪版」选项源，05 §四）。
+ *  versions[] 全集（含 beta——§二·四 手动可选）过滤出**有可解析 downloadUrl** 的版本（无 URL 旧版诚实
+ *  不出现在下拉——选了也发不了包，不发错包即 versionDownloadUrl 顶层兜底同一语义）；
+ *  semver 倒序最新在前（目录乱序/旧格式也能给对默认值，平手保序）；旧格式无 versions[] → 只顶层一条
+ *  （length 1 = 调用方不显示下拉）；顶层 version 不在 versions[] 时补入（顶层即最新——下拉恒含可装最新）。
+ *  无条目/全无可下版本 → []。 */
+export function selectableVersions(entry: CatalogEntry | undefined): CatalogVersionChoice[] {
+  if (!entry) return [];
+  const rows = entry.versions && entry.versions.length > 0 ? entry.versions : [];
+  const out: CatalogVersionChoice[] = [];
+  const seen = new Set<string>();
+  for (const row of rows) {
+    if (!row?.version || seen.has(row.version)) continue;
+    const url = versionDownloadUrl(entry, row.version);
+    if (!url) continue;
+    seen.add(row.version);
+    out.push({ version: row.version, downloadUrl: url, publishedAt: row.publishedAt, changelog: row.changelog });
+  }
+  // 顶层 version（最新）不在 versions[] 时补入——旧格式/作者漏列时下拉仍含当前可装最新
+  if (entry.version && !seen.has(entry.version)) {
+    const url = versionDownloadUrl(entry, entry.version);
+    if (url) {
+      out.push({ version: entry.version, downloadUrl: url, publishedAt: entry.publishedAt });
+    }
+  }
+  if (out.length < 2) return out;
+  return [...out].sort((a, b) => compareVersions(b.version, a.version)); // 倒序最新在前（相等保序——稳定排序）
+}
+
+/** E6#33c pinnedVersion 记账（05 §二·九——版本动作落地 appliedVersion 后应记的钉）：
+ *  目录有稳定最新（stableLatestVersion 存在）且落地到它 → null（清钉——追最新，autoUpdate 恢复）；
+ *  停在非稳定最新（旧版/beta/中间版）→ 记 appliedVersion（暂停 autoUpdate，#33d 消费）；
+ *  目录无稳定版可比（全 beta）→ undefined（无 auto-update 目标可防，不落盘不写空钉）。 */
+export function pinnedAfterApply(entry: CatalogEntry | undefined, appliedVersion: string): string | null | undefined {
+  const stable = entry ? stableLatestVersion(entry) : undefined;
+  if (stable === undefined) return undefined;
+  return compareVersions(appliedVersion, stable) === 0 ? null : appliedVersion;
+}
+
 /** 多源合并去重——同 id 取 semver 高者；版本平手用先出现的源（官方排前 → 官方胜出）。
  *  E6#30.8f：来源记录可带 official 标记，胜出条目的来源身份（sourceName + official）随条目携带——UI 读
  *  单一字段即可显示「官方发布」徽标，不把官方身份跟"源 URL 长啥样"耦合回视图层。 */

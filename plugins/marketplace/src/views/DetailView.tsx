@@ -27,7 +27,7 @@
 
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { PluginIcon, Button, Badge, MarkdownView, OverlayPortal } from "@linkdesk/ui";
+import { PluginIcon, Button, Badge, SelectBox, MarkdownView, OverlayPortal } from "@linkdesk/ui";
 import {
   useMarketplacePlugins,
   useMarketplaceCatalog,
@@ -42,8 +42,15 @@ import {
   marketInstallStageLabel,
 } from "../services/marketplaceShared";
 import type { CatalogEntry } from "../services/marketCatalog";
-import { compareVersions, updateToVersion, versionDownloadUrl } from "../services/marketCatalog";
+import {
+  compareVersions,
+  updateToVersion,
+  versionDownloadUrl,
+  selectableVersions,
+  pinnedAfterApply,
+} from "../services/marketCatalog";
 import { removeDiscoveredCandidate } from "../services/updateDiscovery";
+import { setPinnedVersion } from "../services/installedUpdateMeta";
 import { categoryText } from "../services/marketCategories";
 import { useDownloadCount } from "../services/downloadCounts";
 import { readInstalledPackageFile } from "../services/packageFiles";
@@ -137,7 +144,7 @@ export default function DetailView({ pluginId }: DetailContributedProps) {
   const catalog = useMarketplaceCatalog();
   const installSession = useMarketInstall();
   /* #30.9b 离线态（G3）——navigator.onLine false → 安装/更新钮置灰 + 「联网后重试」（不产生失败会话）；
-   *  提早在顶声明——handleUpdate/installGateError deps 均读它（TDZ 防御：勿下移，下移即渲染即崩） */
+   *  提早在顶声明——doVersionAction/installGateError deps 均读它（TDZ 防御：勿下移，下移即渲染即崩） */
   const online = useOnlineStatus();
 
   const [tab, setTab] = useState<TabId>("overview");
@@ -146,6 +153,9 @@ export default function DetailView({ pluginId }: DetailContributedProps) {
   /* E6#33b：更新执行进行中（update 无独立会话——单插件动作，busy 局部即可；引擎只发 installProgress + 壳 toast，
    *  无 lifecycle 事件 → 成功需显式 refreshPlugins 收敛版本/徽标） */
   const [updating, setUpdating] = useState(false);
+  /* E6#33c：版本下拉选值（版本动作目标——装哪版/升到哪版/降到哪版）——undefined = 未人工介入，
+   *  渲染取 defaultPickTarget() 兜底（首帧/锚变化无闪）。锚变化（插件/条目/已装态/默认目标）重置见下 effect。 */
+  const [pickedVersion, setPickedVersion] = useState<string | undefined>(undefined);
   /* E6#30.8a：安装前富确认弹窗开关——mockup 帧 8（来源/发布者/许可证/版本/大小 + 安装即信任） */
   const [confirming, setConfirming] = useState(false);
   /* E6#30.8c：读壳版本号一次（app.getVersion）——minAppVersion 门禁比对基准（缺/读失败 = undefined 放行不拦） */
@@ -232,6 +242,31 @@ export default function DetailView({ pluginId }: DetailContributedProps) {
     return { version: updateTarget, date: hit?.publishedAt, body: hit?.changelog };
   }, [hasUpdate, updateTarget, entry]);
 
+  /* ── E6#33c 版本下拉（05 §四——装哪个版本/升到哪版/降到哪版） + pinnedVersion 记账（05 §二·九） ── */
+  const versionChoices = useMemo(() => selectableVersions(entry), [entry]);
+  const hasVersionHistory = versionChoices.length > 1;
+
+  /** 下拉默认选值——未装 → 最新可选；已装有稳定更新 → 该更新目标（#33b 同目标，首帧即现更新钮）；
+   *  停在最新无更新 → 当前版；当前版不在可选历史（目录已删该版行）→ 最高可选（最接近现状可降）。 */
+  const defaultPickTarget = useCallback((): string | undefined => {
+    if (versionChoices.length === 0) return undefined;
+    if (!installed) return versionChoices[0].version;
+    if (updateTarget) return updateTarget;
+    if (localVer) {
+      const hit = versionChoices.find((c) => compareVersions(c.version, localVer) === 0);
+      if (hit) return hit.version;
+    }
+    return versionChoices[0].version;
+  }, [versionChoices, installed, updateTarget, localVer]);
+
+  /** 生效版本目标——人工选了用所选，否则默认兜底（首帧/重置后跟随默认） */
+  const targetVersion = hasVersionHistory && pickedVersion !== undefined ? pickedVersion : defaultPickTarget();
+
+  /* 安装目标版本/URL——有历史 = 下拉所选（默认最新可选）；无历史 = 顶层（#30.5b 原语义 entry.downloadUrl）。
+   *  versionDownloadUrl 选哪版取哪版（05 §四），顶层兜底 entry.downloadUrl（同 #33b 更新寻址）。 */
+  const installVer = !entry ? undefined : hasVersionHistory ? (targetVersion ?? entry.version) : entry.version;
+  const installUrl = installVer && entry ? versionDownloadUrl(entry, installVer) ?? entry.downloadUrl : undefined;
+
   /* ── 已装读包 + 未装远端 README（30.6b）——pkgReadme/pkgChangelog 只对已装读；remote 兜底 ── */
   const [pkgReadme, setPkgReadme] = useState<string | null | undefined>(undefined); // undefined=读取中
   const [pkgChangelog, setPkgChangelog] = useState<string | null | undefined>(undefined);
@@ -241,6 +276,12 @@ export default function DetailView({ pluginId }: DetailContributedProps) {
   useEffect(() => {
     setTab("overview");
   }, [pluginId]);
+
+  /* E6#33c：下拉选值生命周期——锚（插件/条目/已装态/更新目标/已装版本）变化 → 重置回默认（用户未介入时
+   *  跟随最新；更新/降级完成 localVer 变化 → 默认随新版收敛）。用户正选中且锚未动 → effect 不触发，选择保持。 */
+  useEffect(() => {
+    setPickedVersion(undefined);
+  }, [pluginId, entry?.id, installed, updateTarget, localVer]);
 
   useEffect(() => {
     let alive = true;
@@ -306,46 +347,71 @@ export default function DetailView({ pluginId }: DetailContributedProps) {
     setBusy(false);
   }, [pluginId, busy]);
 
-  /* ── E6#33b 更新执行（详情 action bar 第一槽 accent ⬆ 更新到 vN——mockup 帧 6 st-update）。
+  /* ── E6#33b/#33c 版本动作执行（升/降一码——版本动作目标 actTarget 驱动；mockup 帧 6 st-update）。
    *  壳引擎 updatePlugin：下载 temp → 校验 → 原子替换 → needRestart 恒 true + 壳 toast「已更新…重启生效」
-   *  （本视图不重复 toast 成功）；F1（禁用态更新）= 引擎 wasActive=false 换文件不 reload 保持禁用，本入口照常。
+   *  （本视图不重复 toast 成功）；F1（禁用态更新/降级）= 引擎 wasActive=false 换文件不 reload 保持禁用，照常。
    *  失败（无独立 failure toast 通道）→ 行内归因 + 手动 [重试]（同安装 M4 三，title 悬停原文）；
-   *  成功 → 无 lifecycle 事件（引擎只发 installProgress + 壳 toast）→ 显式 refreshPlugins 收敛版本 + 驱逐
-   *  发现 store 候选（store 诚实 + #33d 防重复更新）。url = versionDownloadUrl 取目标稳定版资产（非顶层 beta）。 ── */
-  const handleUpdate = useCallback(async () => {
-    if (!pluginId || busy || updating || !hasUpdate || !updateTarget) return;
-    if (!online) {
-      setError(t("联网后重试"));
-      return;
-    }
-    const url = entry ? versionDownloadUrl(entry, updateTarget) : undefined;
-    if (!url) {
-      setError(t("该插件缺少下载地址"));
-      return;
-    }
-    const upd = pm()?.update;
-    if (!upd) {
-      setError(t(updateFailLabelKey("unknown")));
-      return;
-    }
-    setError(null);
-    setUpdating(true);
-    try {
-      const r = await upd(pluginId, { url });
-      if (r && r.success) {
-        removeDiscoveredCandidate(pluginId);
-        refreshPlugins();
-      } else {
-        const reason = classifyInstallError(r?.error ?? "");
-        setError(t(updateFailLabelKey(reason)));
+   *  成功 → 无 lifecycle 事件（引擎只发 installProgress + 壳 toast）→ 显式 refreshPlugins 收敛版本 +
+   *  驱逐发现 store 候选（仅升到该稳定候选时——中间版/beta 不算追上，候选留存）+ pinnedVersion 记账
+   *  （05 §二·九：落地稳定最新 → 清钉追最新；停旧版/beta/中间版 → 钉住暂停 autoUpdate，供 #33d）。
+   *  url = versionDownloadUrl 取所选版本资产（不默认顶层 beta）。 ── */
+  const doVersionAction = useCallback(
+    async (ver: string) => {
+      if (!pluginId || busy || updating) return;
+      if (!online) {
+        setError(t("联网后重试"));
+        return;
       }
-    } catch (e) {
-      const reason = classifyInstallError(e instanceof Error ? e.message : String(e));
-      setError(t(updateFailLabelKey(reason)));
-    } finally {
-      setUpdating(false);
-    }
-  }, [pluginId, busy, updating, hasUpdate, updateTarget, online, entry, t, refreshPlugins]);
+      const url = entry ? versionDownloadUrl(entry, ver) : undefined;
+      if (!url) {
+        setError(t("该插件缺少下载地址"));
+        return;
+      }
+      const upd = pm()?.update;
+      if (!upd) {
+        setError(t(updateFailLabelKey("unknown")));
+        return;
+      }
+      setError(null);
+      setUpdating(true);
+      try {
+        // 引擎锚①：目标 < 当前（版本下拉选旧版降级）→ 显式 allowOlder:true 放行；升/同级不发（同版恒拒引擎兜底）
+        const isDowngrade = !!localVer && compareVersions(ver, localVer) < 0;
+        const r = await upd(pluginId, { url, allowOlder: isDowngrade ? true : undefined });
+        if (r && r.success) {
+          if (updateTarget && compareVersions(ver, updateTarget) === 0) removeDiscoveredCandidate(pluginId);
+          const pin = pinnedAfterApply(entry, ver);
+          if (pin !== undefined) void setPinnedVersion(pluginId, pin);
+          refreshPlugins();
+        } else {
+          const reason = classifyInstallError(r?.error ?? "");
+          setError(t(updateFailLabelKey(reason)));
+        }
+      } catch (e) {
+        const reason = classifyInstallError(e instanceof Error ? e.message : String(e));
+        setError(t(updateFailLabelKey(reason)));
+      } finally {
+        setUpdating(false);
+      }
+    },
+    [pluginId, busy, updating, online, entry, updateTarget, localVer, t, refreshPlugins],
+  );
+
+  /* ── E6#33c 降级确认（F2，05 §二·十一——「此版本较旧，配置可能不兼容」。不拦只提示：确认后 allowOlder
+   *  放行执行，取消原地不动。短文案确认 = 壳 dialog.confirm（与卸载同款弹层，无需富内容 OverlayPortal）。 ── */
+  const requestDowngrade = useCallback(
+    async (ver: string) => {
+      if (!pluginId || busy || updating) return;
+      const confirmApi = lk()?.dialog?.confirm;
+      if (!confirmApi) return;
+      const ok = await confirmApi(
+        t("此版本较旧，配置可能不兼容。仍要降级到 {{version}} 吗？", { version: `v${ver}` }),
+      );
+      if (!ok) return;
+      await doVersionAction(ver);
+    },
+    [pluginId, busy, updating, t, doVersionAction],
+  );
 
   /* 卸载 = 二次确认（dialog.confirm——真实原语，mockup 帧 4「复用现有 confirm」）→ 执行。
    *   core:true 藏钮（#18），但命令层可卸；不确认不卸。 */
@@ -390,7 +456,7 @@ export default function DetailView({ pluginId }: DetailContributedProps) {
       setError(t("联网后重试"));
       return true;
     }
-    if (!entry?.downloadUrl) {
+    if (!installUrl) {
       setError(t("该插件缺少下载地址"));
       return true;
     }
@@ -403,17 +469,23 @@ export default function DetailView({ pluginId }: DetailContributedProps) {
       return true;
     }
     return false;
-  }, [installed, online, entry, appVersion, t]);
+  }, [installed, online, entry, installUrl, appVersion, t]);
 
   const runInstall = useCallback(async () => {
     if (!pluginId || busy || installingHere) return;
     if (installGateError()) return;
-    const url = entry?.downloadUrl;
+    const url = installUrl;
     if (!url) return; // gate 已保证有地址——双保险供 TS 收窄（闭包随渲染，不跨依赖漂移）
     setError(null);
+    // E6#33c：手动装旧版（非目录稳定最新）→ 记 pinnedVersion（05 §二·九 尊重「停在旧版」意图，供 #33d autoUpdate 跳过）
+    const ver = installVer;
+    if (ver) {
+      const pin = pinnedAfterApply(entry, ver);
+      if (pin !== undefined) void setPinnedVersion(pluginId, pin);
+    }
     // 会话 store 负责归因 + 失败态；成功后 lifecycle 事件驱动列表翻态（30.5c），本视图随 info 收敛
     await startMarketInstall(pluginId, url);
-  }, [pluginId, busy, installingHere, installGateError, entry]);
+  }, [pluginId, busy, installingHere, installGateError, entry, installUrl, installVer]);
 
   /* 安装钮点击 = 弹确认（mockup 帧 8——安装即信任：来源/发布者/许可证/版本/大小），确认后 handleInstallConfirmed 执行 */
   const handleInstallClick = useCallback(() => {
@@ -543,6 +615,62 @@ export default function DetailView({ pluginId }: DetailContributedProps) {
       </span>
     );
 
+  /* ── E6#33c 版本动作（升/降）目标与方向——installed 态（未装走安装分支）：有历史 → 下拉选值驱动
+   *  （可停旧版/进 beta/降级）；无历史 → #33b 单目标 updateTarget（保持原单钮语义）。 ── */
+  const actTarget = installed && !pending ? (hasVersionHistory ? targetVersion : updateTarget) : undefined;
+  const actDir =
+    actTarget && localVer
+      ? compareVersions(actTarget, localVer) > 0
+        ? "up"
+        : compareVersions(actTarget, localVer) < 0
+          ? "down"
+          : "same"
+      : undefined;
+  const pickerOptions = versionChoices.map((c) => ({ value: c.version, label: `v${c.version}` }));
+  /* E6#33c/#30.9a M6：安装/更新进行中 → 版本下拉置灰（M6 锚——装态选择目标无效） */
+  const pickerDisabled = busy || updating || installingHere;
+  /* 版本选择器（装/升/降目标）——versions.length>1 才有历史才显示：installed 态在动作区首槽（05 §四） */
+  const versionPicker = hasVersionHistory && installed && !pending ? (
+    <SelectBox
+      value={targetVersion ?? ""}
+      options={pickerOptions}
+      onChange={(v) => setPickedVersion(v)}
+      disabled={pickerDisabled}
+      title={t("选择版本")}
+      className="mpd-version-select"
+    />
+  ) : null;
+  const installPicker = hasVersionHistory && !installed && !!entry ? (
+    <SelectBox
+      value={targetVersion ?? ""}
+      options={pickerOptions}
+      onChange={(v) => setPickedVersion(v)}
+      disabled={busy || installingHere}
+      title={t("选择版本")}
+      className="mpd-version-select"
+    />
+  ) : null;
+  /* 版本动作钮（升 = doVersionAction 直行；降 = requestDowngrade 先 F2 确认再放行 allowOlder——05 §二·十一） */
+  const actButton =
+    installed && !pending && actTarget && actDir && actDir !== "same" ? (
+      <Button
+        onClick={() =>
+          actDir === "down"
+            ? void requestDowngrade(actTarget as string)
+            : void doVersionAction(actTarget as string)
+        }
+        disabled={busy || updating || !online}
+        title={!online ? t("联网后重试") : undefined}
+      >
+        <span className={"codicon " + (actDir === "down" ? "codicon-arrow-down" : "codicon-arrow-up")} />
+        {updating
+          ? t("更新中...")
+          : actDir === "down"
+            ? t("降级到 {{version}}", { version: `v${actTarget}` })
+            : t("更新到 {{version}}", { version: `v${actTarget}` })}
+      </Button>
+    ) : null;
+
   return (
     <div className="mpd-detail">
       {/* ═══ Header ═══ */}
@@ -577,14 +705,10 @@ export default function DetailView({ pluginId }: DetailContributedProps) {
         <div className="mpd-action-bar">
           {disabled ? (
             <>
-              {/* E6#33b 第四维主动作（mockup 帧 6 st-update accent 实心——壳 Button 缺省即 accent，零新壳组件）：
-               *  禁用态也照常更新——F1（更新后保持禁用，引擎 wasActive=false） */}
-              {hasUpdate && updateTarget && (
-                <Button onClick={handleUpdate} disabled={busy || updating || !online} title={!online ? t("联网后重试") : undefined}>
-                  <span className="codicon codicon-arrow-up" />
-                  {updating ? t("更新中...") : t("更新到 {{version}}", { version: `v${updateTarget}` })}
-                </Button>
-              )}
+              {/* E6#33c/#33b 版本动作首槽：版本下拉（versions>1 有历史）+ 升/降钮（降走 requestDowngrade F2 确认 → allowOlder 放行）。
+               *  禁用态也照常——F1（引擎 wasActive=false 换文件不 reload 保持禁用）；accent 语义族零新壳组件 */}
+              {versionPicker}
+              {actButton}
               <Button variant="success" onClick={handleEnable} disabled={busy || updating}>
                 <span className="codicon codicon-play" /> {t("启用")}
               </Button>
@@ -602,13 +726,9 @@ export default function DetailView({ pluginId }: DetailContributedProps) {
             </span>
           ) : info ? (
             <>
-              {/* E6#33b：已装可更新 → 首槽 accent 更新入口（「禁用/卸载」旁——点4 第一段） */}
-              {hasUpdate && updateTarget && (
-                <Button onClick={handleUpdate} disabled={busy || updating || !online} title={!online ? t("联网后重试") : undefined}>
-                  <span className="codicon codicon-arrow-up" />
-                  {updating ? t("更新中...") : t("更新到 {{version}}", { version: `v${updateTarget}` })}
-                </Button>
-              )}
+              {/* E6#33c/#33b：版本下拉（有历史）+ 升/降钮首槽（「禁用/卸载」旁——点4 第一段） */}
+              {versionPicker}
+              {actButton}
               <Button variant="ghost" onClick={handleDisable} disabled={busy || updating}>
                 <span className="codicon codicon-circle-slash" /> {t("禁用")}
               </Button>
@@ -619,15 +739,19 @@ export default function DetailView({ pluginId }: DetailContributedProps) {
               )}
             </>
           ) : (
-            <Button
-              variant="success"
-              onClick={handleInstallClick}
-              disabled={busy || installingHere || !online}
-              title={!online ? t("联网后重试") : undefined}
-            >
-              <span className="codicon codicon-cloud-download" />
-              {installingHere ? installLabel() : t("安装")}
-            </Button>
+            <>
+              {/* E6#33c：未装版本下拉（versions>1 选装哪个版本——05 §四场景①，选中即目标，默认最新/升级提示则 target） */}
+              {installPicker}
+              <Button
+                variant="success"
+                onClick={handleInstallClick}
+                disabled={busy || installingHere || !online}
+                title={!online ? t("联网后重试") : undefined}
+              >
+                <span className="codicon codicon-cloud-download" />
+                {installingHere ? installLabel() : t("安装")}
+              </Button>
+            </>
           )}
           {/* #30.9b 离线态（G3）：置灰钮旁提示「联网后重试」（离线 ≠ 失败——无 [重试]，联网自动恢复） */}
           {!online && !info && (
@@ -857,7 +981,8 @@ export default function DetailView({ pluginId }: DetailContributedProps) {
                 }
               />
               {descText && <InfoItem label={t("描述")} value={descText} />}
-              <InfoItem label={t("版本")} value={`v${entry.version}`} />
+              {/* E6#33c：确认行显示实际目标版本——版本下拉选了哪个就装哪个（无历史恒顶层最新） */}
+              <InfoItem label={t("版本")} value={`v${installVer ?? entry.version}`} />
               {entry.size != null && <InfoItem label={t("大小")} value={fmtSize(entry.size)} />}
               {entry.license && <InfoItem label={t("许可证")} value={entry.license} />}
             </div>
