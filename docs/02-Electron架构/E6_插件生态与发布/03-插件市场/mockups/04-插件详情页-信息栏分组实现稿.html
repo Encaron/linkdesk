@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>04 插件详情页·信息栏分组实现稿 —— B3 分组信息栏（无「信息」总词）＋ B4 全宽铺满</title>
+<style>
+/* ═══════════════════════════════════════════════════════
+   LinkDesk 设计 token（复制自 mockup 01 同源 :root 暗色值 +
+   壳 src/index.css 暗色主题——mockup 仅示意，真实实现走 var(--xxx)）
+   尺寸铁律照 html-blueprint：icon-bar 42 / tabbar 35 / statusbar 22
+   骨架 = 壳真实结构（标题栏/图标栏/主区标签条/状态栏）。
+   本图回答：信息栏按用户 2026-09-09 三连修正怎么摆——
+   ① 无单一「信息」h4 总标题（VS Code 没有）
+   ② 大标题分组套小条目（用户原话），结构全插件固定
+   ③ 每行 label 左 | value 右 横排（非竖叠）
+   ═══════════════════════════════════════════════════════ */
+:root {
+  --bg-window: #1E1E1E;
+  --bg-card: #2D2D2D;
+  --bg-input: #3C3C3C;
+  --text-primary: #D4D4D4;
+  --text-secondary: #9D9D9D;
+  --text-muted: #8A8A8A;
+  --accent: #0078D4;
+  --accent-hover: #1A8CE8;
+  --border: #3C3C3C;
+  --separator: #474747;
+  --icon-active: #FFFFFF;
+  --icon-inactive: #858585;
+  --bg-titlebar: #252526;
+  --bg-icon-bar: #18181B;
+  --bg-side-panel: #1E1E22;
+  --hover-overlay: rgba(255,255,255,0.06);
+  --tab-hover-bg: #353535;
+  --status-connected: #4EC9B0;
+  --error: #E06C75;
+  --ok-green: #4CAF50;   /* 安装绿（语义 success 占位） */
+  --space-xs: 4px; --space-sm: 8px; --space-md: 12px;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  background: #101013;
+  color: var(--text-primary);
+  font-family: "IBM Plex Sans", "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+  font-size: 13px;
+  padding: 32px;
+  max-width: 1700px;
+  margin: 0 auto;
+}
+
+h1 { font-size: 20px; font-weight: 600; letter-spacing: 0.02em; margin-bottom: 6px; }
+h1 small { font-size: 13px; font-weight: 400; color: var(--text-muted); display: block; margin-top: 6px; line-height: 1.8; max-width: 1200px; }
+h1 code, .mono { font-family: "JetBrains Mono", Consolas, monospace; font-size: 11px; color: var(--accent); }
+h1 .hl { color: var(--status-connected); }
+
+/* ---------- 帧容器 ---------- */
+.frames { display: flex; gap: 16px; align-items: flex-start; margin-top: 18px; flex-wrap: wrap; }
+.frame {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.frame.main { flex: 1 1 900px; min-width: 860px; }
+.frame.ref { flex: 0 0 340px; }
+.frame-caption {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.frame-caption b { font-size: 14px; }
+.frame-caption .tag {
+  font-size: 11px; color: #fff; background: var(--accent);
+  border-radius: 3px; padding: 1px 8px; font-weight: 600;
+}
+.frame-caption .tag.warn { background: var(--error); }
+.frame-caption .tag.ref { background: #5f5f6e; }
+.frame-caption span { color: var(--text-secondary); font-size: 12px; }
+.frame-note {
+  padding: 10px 14px;
+  border-top: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.85;
+  background: #26262a;
+}
+.frame-note b { color: var(--text-secondary); }
+.frame-note .ok { color: var(--status-connected); }
+.frame-note .warn { color: var(--error); }
+.frame-note code { font-family: "JetBrains Mono", Consolas, monospace; font-size: 11px; color: var(--accent); }
+.frame-note .todo { color: #E0AF68; }
+
+/* ---------- 应用窗口骨架（壳真实结构） ---------- */
+.app {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 560px;
+  background: var(--bg-window);
+  font-size: 12px;
+  overflow: hidden;
+}
+.titlebar {
+  height: 30px; flex: none;
+  background: var(--bg-titlebar);
+  display: flex; align-items: center;
+  padding: 0 10px 0 12px;
+  gap: 8px;
+  user-select: none;
+}
+.titlebar .logo { width: 14px; height: 14px; flex: none; }
+.titlebar .app-name { font-size: 12px; color: var(--text-secondary); }
+.titlebar .drag { flex: 1; }
+.win-btns { display: flex; gap: 2px; }
+.win-btn {
+  width: 34px; height: 22px; border: none; background: transparent;
+  color: var(--text-secondary); border-radius: 3px;
+  display: flex; align-items: center; justify-content: center;
+  transition: background 150ms ease;
+}
+.win-btn.close:hover { background: #c42b1c; color: #fff; }
+
+.mid { flex: 1; display: flex; min-height: 0; }
+
+/* 图标栏 42px（html-blueprint 铁律） */
+.icon-bar {
+  width: 42px; flex: none;
+  background: var(--bg-icon-bar);
+  display: flex; flex-direction: column; align-items: center;
+  padding-top: 6px; gap: 2px;
+}
+.icon-btn {
+  width: 42px; height: 40px; border: none; background: transparent;
+  color: var(--icon-inactive);
+  display: flex; align-items: center; justify-content: center;
+  border-left: 2px solid transparent;
+}
+.icon-btn.active { color: var(--icon-active); border-left-color: var(--accent); }
+.icon-btn svg { width: 18px; height: 18px; }
+
+.main { flex: 1; display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+
+/* 标签条 35px（html-blueprint 铁律） */
+.tabbar {
+  height: 35px; flex: none;
+  background: var(--bg-card);
+  display: flex; align-items: stretch;
+  border-bottom: 1px solid var(--separator);
+  padding: 0 6px;
+}
+.tab {
+  display: flex; align-items: center; gap: 6px;
+  padding: 0 14px; font-size: 12px; color: var(--text-secondary);
+  background: var(--bg-window);
+  border-right: 1px solid var(--separator);
+  border-top: 2px solid var(--accent);
+  user-select: none;
+}
+.tab .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); }
+.tab .x { color: var(--text-muted); margin-left: 4px; }
+.tab .x:hover { color: var(--text-primary); }
+
+/* 详情内容区：B4 = 去 880 限宽、铺满主区可用宽 */
+.detail {
+  flex: 1; min-height: 0;
+  display: flex; flex-direction: column;
+  overflow-y: auto;
+}
+
+/* 头部（B1 已定：图标收敛 + 动作右列）；只取最小骨架，焦点在右栏 */
+.dhead {
+  flex: none;
+  display: flex; align-items: center; gap: 14px;
+  padding: 14px 18px 12px;
+  border-bottom: 1px solid var(--separator);   /* B2 分隔线 */
+  background: var(--bg-card);
+}
+.dic {
+  width: 52px; height: 52px; flex: none;          /* B2 收敛 ~52px */
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  background: linear-gradient(160deg, rgba(255,255,255,.12), rgba(255,255,255,.03));
+  border: 1px solid rgba(255,255,255,.12);
+  font-size: 24px; color: var(--text-secondary);
+}
+.dic-id { flex: 1; min-width: 0; }
+.dic-nm { display: flex; align-items: baseline; gap: 8px; font-size: 18px; font-weight: 600; }
+.dic-nm .ver { font-size: 12px; color: var(--text-muted); font-weight: 400; }
+.dic-pub { margin-top: 2px; font-size: 12px; color: var(--text-secondary); }
+.dic-pub .badge { font-size: 10px; color: #fff; background: var(--accent); border-radius: 3px; padding: 1px 6px; font-weight: 600; }
+.dic-acts { flex: none; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+.dic-acts .row { display: flex; align-items: center; gap: 6px; }
+.btn-install {
+  display: inline-flex; align-items: center; gap: 5px;
+  background: var(--ok-green); color: #fff; border: none; border-radius: 4px;
+  font-size: 12px; font-weight: 600; padding: 5px 14px; cursor: pointer; font-family: inherit;
+}
+.btn-ghost {
+  display: inline-flex; align-items: center; gap: 5px;
+  background: transparent; color: var(--text-secondary); border: 1px solid var(--border);
+  font-size: 11px; border-radius: 4px; padding: 4px 9px; cursor: pointer; font-family: inherit;
+}
+
+/* body：README 主区(flex:1 吃满) + 右侧信息栏(定宽 flex:none) */
+.dbody {
+  flex: 1; min-height: 0;
+  display: flex;
+  padding: 14px 18px 18px;
+  gap: 14px;
+  align-items: stretch;
+}
+.dmain {
+  flex: 1; min-width: 0;
+  background: color-mix(in srgb, #222226 72%, transparent);
+  border: 1px solid rgba(255,255,255,.06);
+  border-radius: 8px;
+  padding: 14px 18px;
+  overflow-y: auto;
+}
+.dh2 { font-size: 15px; font-weight: 600; margin: 10px 0 6px; }
+.dp { font-size: 12.5px; line-height: 1.75; color: var(--text-primary); margin-bottom: 7px; }
+.dp .dim { color: var(--text-muted); }
+
+/* ═══════════════════════════════════════════════════════
+   右侧信息栏 = 本图焦点（B3 分组实现稿）
+   结构：最上无节题小段 + 分组节标题(muted 大标题感) + 组内横排 行
+   行 = label 左 | value 右（space-between），组内项间细分隔
+   ═══════════════════════════════════════════════════════ */
+.dinfo {
+  flex: none; width: 232px;
+  background: color-mix(in srgb, #26262a 78%, transparent);
+  border: 1px solid rgba(255,255,255,.06);
+  border-radius: 8px;
+  padding: 12px 13px;
+  overflow-y: auto;
+  align-self: flex-start;
+}
+/* 组节标题（无总「信息」h4 —— 用户 2026-09-09 弃） */
+.dinfo-gt {
+  font-size: 11px;
+  letter-spacing: .06em;
+  color: var(--text-secondary);
+  font-weight: 600;
+  margin: 12px 0 2px;
+  padding-top: 8px;
+  border-top: 1px solid var(--separator);
+  display: flex; align-items: center; gap: 6px;
+}
+.dinfo-gt.first { margin-top: 0; padding-top: 0; border-top: none; }
+.dinfo-gt .tbd { font-weight: 400; color: #E0AF68; font-size: 10px; border: 1px dashed #E0AF68; border-radius: 3px; padding: 0 5px; }
+/* 行：label 左 muted | value 右 可断行 */
+.dinfo-if {
+  display: flex; justify-content: space-between; align-items: baseline; gap: 10px;
+  padding: 3px 0;
+  font-size: 11.5px;
+}
+.dinfo-if .k { color: var(--text-muted); flex: none; }
+.dinfo-if .v { color: var(--text-primary); text-align: right; overflow-wrap: anywhere; min-width: 0; }
+.dinfo-if .v.mono { font-family: "JetBrains Mono", Consolas, monospace; font-size: 10.5px; }
+.dinfo-if .v.link { color: var(--accent); cursor: pointer; }
+.dinfo-if .v.dash { color: var(--text-muted); }
+/* 分类 chips —— 对标 VS Code renderCategories（每分类一枚 span.category，可并排多枚，非粘一根字符串） */
+.dinfo-chips { display: flex; flex-wrap: wrap; gap: 4px; padding: 3px 0; }
+.dinfo-chip {
+  font-size: 10.5px; color: var(--text-secondary);
+  border: 1px solid var(--border); background: var(--bg-input);
+  border-radius: 8px; padding: 0 7px; line-height: 16px;
+}
+
+/* ---------- 状态栏 22px（html-blueprint 铁律） ---------- */
+.statusbar {
+  height: 22px; flex: none;
+  background: var(--bg-window);
+  border-top: 1px solid var(--separator);
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 10px; font-size: 11px; color: var(--text-muted);
+}
+
+/* ---------- VS Code 参照窄帧 ---------- */
+.vsc-col { display: flex; flex-direction: column; min-height: 560px; }
+.vsc-head {
+  display: flex; gap: 10px; align-items: center; padding: 12px 12px 10px;
+  border-bottom: 1px solid var(--border);
+}
+.vsc-head .ic { width: 26px; height: 26px; border-radius: 5px; background: #3a3a3a; flex: none; display: flex; align-items: center; justify-content: center; font-size: 15px; }
+.vsc-head .t1 { font-size: 12.5px; font-weight: 600; }
+.vsc-head .t2 { font-size: 11px; color: var(--text-muted); }
+.vsc-body { flex: 1; padding: 12px; display: flex; flex-direction: column; gap: 2px; }
+.vsc-sec { font-size: 11px; letter-spacing: .05em; color: var(--text-secondary); font-weight: 600; margin: 8px 0 0; }
+.vsc-if { display: flex; justify-content: space-between; gap: 10px; padding: 3px 0; font-size: 11.5px; }
+.vsc-if .k { color: var(--text-muted); }
+.vsc-if .v { color: var(--text-primary); text-align: right; }
+.vsc-if .v.mono { font-family: "JetBrains Mono", Consolas, monospace; font-size: 10.5px; }
+</style>
+</head>
+<body>
+
+<h1>04 · 插件详情页 信息栏分组实现稿<small>
+  信息栏按用户 2026-09-09 修正：<b class="hl">无「信息」总词 + 大标题分组套小条目（VS Code 式）+ 每行 label 左｜value 右横排</b>，
+  结构对全插件固定。主帧（左）= LinkDesk 目标（含 B4 全宽铺满，README 吃满、右栏定宽不挤）；
+  参照帧（右）= 你 09-09 口述的 VS Code 信息栏（markdown-preview-enhanced 逐字复刻），让你一眼对上「完全一样」的地方。
+  mockup 仅示意，真实实现走 <code>var(--xxx)</code>。实现前组名/归组仍可与用户对齐（待定标黄）。</small></h1>
+
+<div class="frames">
+
+  <!-- ═══════════ 主帧：LinkDesk 目标实现稿 ═══════════ -->
+  <div class="frame main">
+    <div class="frame-caption">
+      <b>LinkDesk · 插件详情 实现稿方向</b>
+      <span class="tag a">B3 分组信息栏</span>
+      <span class="tag">B4 全宽</span>
+      <span>snapshot-share 演示数据</span>
+    </div>
+    <div class="app">
+      <div class="titlebar">
+        <svg class="logo" viewBox="0 0 16 16"><rect x="2" y="2" width="12" height="12" rx="2.5" fill="#0078D4"/><rect x="5" y="5" width="6" height="6" rx="1" fill="#fff"/></svg>
+        <span class="app-name">LinkDesk</span><span class="drag"></span>
+        <div class="win-btns"><button class="win-btn">─</button><button class="win-btn">□</button><button class="win-btn close">✕</button></div>
+      </div>
+      <div class="mid">
+        <div class="icon-bar">
+          <button class="icon-btn active" title="插件市场"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 6l2-3h9l1 3M4 6v13a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V6M4 6h16"/><path d="M9 11h6"/></svg></button>
+          <button class="icon-btn" title="设置"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1.2l2-1.5-2-3.5-2.3.9a7 7 0 0 0-2-1.2L14.2 3h-4l-.4 2.5a7 7 0 0 0-2 1.2l-2.3-.9-2 3.5 2 1.5A7 7 0 0 0 5.1 12c0 .4 0 .8.1 1.2l-2 1.5 2 3.5 2.3-.9a7 7 0 0 0 2 1.2l.4 2.5h4l.4-2.5a7 7 0 0 0 2-1.2l2.3.9 2-3.5-2-1.5c.1-.4.1-.8.1-1.2z"/></svg></button>
+        </div>
+        <div class="main">
+          <div class="tabbar">
+            <div class="tab"><span class="dot"></span>插件详情 · 快照分享<span class="x">✕</span></div>
+          </div>
+          <div class="detail">
+            <div class="dhead">
+              <div class="dic">📷</div>
+              <div class="dic-id">
+                <div class="dic-nm">快照分享 <span class="ver">v1.2.0</span></div>
+                <div class="dic-pub">出厂制造 <span class="badge">官方</span></div>
+              </div>
+              <div class="dic-acts">
+                <div class="row">
+                  <button class="btn-install">安装</button>
+                  <button class="btn-ghost">v1.2.0 ▾</button>
+                  <label class="btn-ghost" style="gap:3px"><input type="checkbox" style="accent-color:var(--ok-green)">自动更新</label>
+                </div>
+                <div class="row"><span style="font-size:10.5px;color:var(--text-muted)">动作列 · B1 已定，本图只取最小骨架</span></div>
+              </div>
+            </div>
+            <div class="dbody">
+              <div class="dmain">
+                <div class="dh2">快照分享</div>
+                <p>一键把当前工作区（布局 + 打开的文件）保存为快照，生成分享链接。协作者点链接即可跨窗口恢复同一布局。</p>
+                <div class="dh2">特性</div>
+                <p>· 完整快照——面板布局、分屏、打开的文件与滚动位置<br>· 一键分享——生成短链接，复制即用<br>· 跨窗口恢复——任何窗口粘贴链接即可恢复</p>
+                <div class="dh2">使用</div>
+                <p>1. 点击状态栏「相机」图标，或命令面板搜索「创建快照」<br>2. 复制生成的链接，发送给协作者<br>3. 对方粘贴到「快照分享」输入框，布局即恢复</p>
+                <p class="dim" style="font-size:11px;color:var(--text-muted)">（README 主区 flex:1 吃满 —— 两侧无空带 = B4）</p>
+              </div>
+
+              <!-- 右侧信息栏：分组实现稿 -->
+              <aside class="dinfo">
+                <!-- 最上小段：无节题（对标 VS Code 首组） -->
+                <div class="dinfo-if"><span class="k">标识符</span><span class="v mono">snapshot-share</span></div>
+                <div class="dinfo-if"><span class="k">作者</span><span class="v">出厂制造</span></div>
+                <div class="dinfo-if"><span class="k">版本</span><span class="v mono">v1.2.0</span></div>
+                <div class="dinfo-if"><span class="k">大小</span><span class="v">1.4 MB <span style="color:var(--text-muted);font-size:10px;font-weight:400">（实测下载包 · 已装变链接→开安装目录）</span></span></div>
+
+                <!-- 组：市场 -->
+                <div class="dinfo-gt">市场</div>
+                <div class="dinfo-if"><span class="k">来源</span><span class="v mono">官方</span></div>
+                <div class="dinfo-if"><span class="k">已发布</span><span class="v">2026-08-20</span></div>
+                <div class="dinfo-if"><span class="k">上次发布</span><span class="v">2 天前</span></div>
+                <div class="dinfo-if"><span class="k">下载</span><span class="v">12.4k</span></div>
+
+                <!-- 组：类别 —— 每分类一枚 chip，多分类并排（对标 VS Code renderCategories，非粘一根字符串） -->
+                <div class="dinfo-gt">类别</div>
+                <div class="dinfo-chips"><span class="dinfo-chip">工具</span><span class="dinfo-chip">协作</span></div>
+
+                <!-- 组：资源 -->
+                <div class="dinfo-gt">资源</div>
+                <div class="dinfo-if"><span class="k">仓库</span><span class="v link">打开仓库</span></div>
+                <div class="dinfo-if"><span class="k">问题</span><span class="v link">报告问题</span></div>
+                <div class="dinfo-if"><span class="k">许可证</span><span class="v">MIT</span></div>
+
+                <!-- 加料字段组（组归属 = 待定，开工前与用户对齐） -->
+                <div class="dinfo-gt">依赖 · 环境 <span class="tbd">待定组</span></div>
+                <div class="dinfo-if"><span class="k">需 LinkDesk</span><span class="v mono">v0.1.0+</span></div>
+                <div class="dinfo-if"><span class="k">依赖</span><span class="v">—</span></div>
+                <div class="dinfo-if"><span class="k">被依赖</span><span class="v">—</span></div>
+
+                <!-- 作者脚注已删（2026-09-09 用户拍板：无发布者账号页/站外商品页可指，身份已由顶部作者 + 「来源」行承载） -->
+              </aside>
+            </div>
+          </div>
+          <div class="statusbar">
+            <span>就绪</span>
+            <span class="right">插件市场 · 已安装 2 · 探索 6</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="frame-note">
+      <b>目标信息栏要点（逐条对应你 09-09 三连）</b><br>
+      ① <b>无「信息」h4 总词</b>——最上直接是小段条目（标识符/作者/版本/大小），下面才是节标题，对标 VS Code「没有信息两个字」。<br>
+      ② <b>大标题分组套小条目</b>——节标题 = 市场 / 类别 / 资源（muted 小号大写感 + 组首分隔线），组内横排行；<span class="warn">「依赖 · 环境」是加料字段的临时落位，组名与归组标黄待定</span>（开工前 ui-ux-pro-max + 与你对齐，本图不定死）。<br>
+      ③ <b>每行横排</b>——label 左（muted）｜ value 右，可断行；标识符/版本 mono。现实现是竖叠（label 在上、值在下），B3 改成这样。<br>
+      ④ <b>分类 = 每分类一枚 chip</b>（对标 VS Code extensionEditor.ts `renderCategories`：for 循环每分类一个 span.category）——多个分类并排，不粘一根字符串。数据本就是 categories[] 数组，纯显示改。<br>
+      ⑤ <b>资源组 = 逐行条件</b>（仓库/问题/许可证「有才显」，对标 VS Code `renderExtensionResources` 的 `if (extension.repository)` 等）——本图三行齐全只是演示；条目无公开仓库（如 Anthropic）则少一行，是正常非漏。<br>
+      ⑥ <b>大小行（2026-09-09 拍板）</b>——「大小」= 实测下载包体积（发版 statSync 量，非作者嘴填），装不装都显；已装插件的行值变链接「打开所在位置」→ 资源管理器开实际安装目录（新增主进程解析插件路径 + shell.showItemInFolder 小 API，对照 E5.8#153 revealStorage 先例；renderer 无安装路径知识）。该 API 属壳能力批次，不塞纯版式 B3。<br>
+      <span class="todo">已拍</span>：作者脚注（头像+名+市场↗）<b>删除</b>（2026-09-09 拍板）——无发布者账号页/每插件站外页可指，身份已由顶部作者 + 「来源」行承载。仍待开工对齐：加料字段归组——本图来源+下载进「市场」，需 LinkDesk/依赖/被依赖 暂挂末组。「安装」你说别管 → 本图只留头部动作列最小骨架，栏内未放。<br>
+      任务锚：B3（E6#63c 分组+横排+作者）、B4（E6#63d 全宽：README flex:1 吃满、右栏 width:232 flex:none）、B2 分隔线；禁用态连带坑见档案。数据来源：详情页从目录条目 + 已装 manifest 读取。
+    </div>
+  </div>
+
+  <!-- ═══════════ 参照帧：VS Code 信息栏（用户口述复刻） ═══════════ -->
+  <div class="frame ref">
+    <div class="frame-caption">
+      <b>VS Code 参照</b>
+      <span class="tag ref">你 09-09 口述</span>
+      <span>markdown-preview-enhanced</span>
+    </div>
+    <div class="vsc-col">
+      <div class="vsc-head">
+        <span class="ic">M</span>
+        <span><div class="t1">Markdown Preview Enhanced</div><div class="t2">Yiyi Wang</div></span>
+      </div>
+      <div class="vsc-body">
+        <!-- 逐字复刻用户抄录（标识符起；「安装」你已说别管按钮 → 参照帧顶部以文本保留位置） -->
+        <div style="font-size:10.5px;color:var(--text-muted);margin-bottom:4px">（安装 —— 你口述第 1 项，本图不复刻按钮）</div>
+        <div class="vsc-if"><span class="k">标识符</span><span class="v mono">shd101wyy.markdown-preview-enhanced</span></div>
+        <div class="vsc-if"><span class="k">版本</span><span class="v mono">0.8.34</span></div>
+        <div class="vsc-if"><span class="k">上次更新时间</span><span class="v">2 天前</span></div>
+        <div class="vsc-if"><span class="k">大小</span><span class="v">47.22 MB</span></div>
+        <div class="vsc-sec">市场</div>
+        <div class="vsc-if"><span class="k">已发布</span><span class="v">9 年前</span></div>
+        <div class="vsc-if"><span class="k">上次发布时间</span><span class="v">6 小时前</span></div>
+        <div class="vsc-sec">类别</div>
+        <div class="vsc-if"><span class="k">类别</span><span class="v">Other</span></div>
+        <div class="vsc-sec">资源</div>
+        <div class="vsc-if"><span class="k">仓库</span><span class="v link">打开仓库</span></div>
+        <div class="vsc-if"><span class="k">问题</span><span class="v link">报告问题</span></div>
+        <div class="vsc-if"><span class="k">许可证</span><span class="v">MIT</span></div>
+        <div class="vsc-if"><span class="k">作者</span><span class="v">Yiyi Wang</span></div>
+        <div class="vsc-if"><span class="k">市场</span><span class="v link">查看市场 ↗</span></div>
+      </div>
+    </div>
+    <div class="frame-note">
+      <b>参照帧 = 你 09-09 逐字口述</b>，非编造。用途：确认「LinkDesk 目标信息栏」与你看到的那栏字段/分组/横排形态对得上。差异本就有：VS Code 单市场（无 来源/下载 概念），LinkDesk 多源 → 加料字段按用户拍板保留。<br>
+      <b>claude-code 变体（你 09-09 口述，真源 extensionEditor.ts 核实）</b>：该例资源组<b>无「仓库」行</b>——Anthropic 未公开源码仓库 → 逐行条件不画，只剩 问题 + 发布者 Anthropic + 市场两外链；类别 = <b>AI / Chat 两枚 chip</b>。两规则已上图：④分类 chips + ⑤资源逐行条件。
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>
