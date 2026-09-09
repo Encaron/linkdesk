@@ -46,6 +46,8 @@ import {
 } from "../services/marketplaceShared";
 import type { CatalogEntry } from "../services/marketCatalog";
 import { updateToVersion } from "../services/marketCatalog";
+// E6#71d：行内安装富确认载荷构造（与详情页 installConfirmPayload 同源——单构造双入口零漂移）
+import { installConfirmPayload } from "../services/installConfirmPayload";
 import "../styles/MarketplaceSidebar.css";
 
 const lk = () => window.linkdesk;
@@ -106,7 +108,10 @@ export default function ExploreView() {
   );
 
   /* ── 安装钮 → E6#31 下载安装链路（统一 startMarketInstall 单活跃会话——#30.9a 行进度 + #30.9b
-   *  失败态行/toast[重试] 消费同源；成功 lifecycle 事件驱动列表翻态） ── */
+   *  失败态行/toast[重试] 消费同源；成功 lifecycle 事件驱动列表翻态）。
+   *  E6#71d 归一：行内安装 = 详情页同款富内容确认（installConfirmPayload + ConfirmInstall 视图——
+   *  mockup 02 本意两入口都先确认；71c 前侧栏直装是漏做，71d 补齐）。确认卡显示的版本 = 本行将装的
+   *  entry.downloadUrl 对应 entry.version（installConfirmPayload 缺省 installVer），行显 v{version} 不撒谎。 ── */
   const handleInstall = useCallback(
     async (entry: CatalogEntry) => {
       if (!online) return; // 离线钮置灰（G3）——此处防御不发起（title 已提示「联网后重试」）
@@ -120,6 +125,17 @@ export default function ExploreView() {
         notifyError(t("安装失败"));
         return;
       }
+      // 71d：富内容确认（壳 DialogHost content 槽挂 ConfirmInstall）——取消即停，确认才发起真装
+      const confirmContent = lk()?.dialog?.confirmContent;
+      if (!confirmContent) return; // 老 preload 面缺 confirmContent（71c 新增）——保守 no-op，与详情页同款
+      const ok = await confirmContent({
+        title: t("确认安装"),
+        message: t("安装即信任——确认前请查看来源与发布者。"),
+        pluginId: "marketplace",
+        viewId: "marketplace-install-confirm",
+        payload: installConfirmPayload(entry),
+      });
+      if (!ok) return;
       // 进度/失败/重试全走 startMarketInstall（占会话 → settle 归因 + toast[重试]，幂等单发）
       await startMarketInstall(entry.id, entry.downloadUrl);
     },
