@@ -15,8 +15,29 @@ import { pushToast } from "../core/services/ui/NotificationService";
 import { shellEvents } from "../core/react/events/ShellEvents";
 import { layoutEngine } from "../core/services/layout/LayoutEngine";
 import { ViewContainerService } from "../core/services/layout/ViewContainerService"; // E5.8#34：面板切换器勾选显隐
+import type { ViewDescriptor } from "../core/services/layout/ViewContainerService"; // E6#71c：_pluginId/_renderPath 窄接口读型
 import i18n from "../i18n";
 import { showPanelCreatePicker } from "./panelCreatePicker"; // E5.8#32：面板 [+] 视图选择器
+
+/** E6#71c 富内容确认声明寻址结果——壳构造 PoolDialogData.content 所需字段 */
+export interface DialogContentResolveResult {
+  pluginId: string;
+  renderPath: string;
+}
+
+/** E6#71c 富内容确认声明寻址——壳经 ViewContainerService 全局视图索引（contributes.views 任意容器）
+ *  读 loader 运行时附挂 _pluginId/_renderPath（仿 floatingPanelReveal.resolveFloatingPanelView 基元）。
+ *  null = 视图未注册 / 缺运行时附挂（声明未解析）→ 调用方回落纯文字确认（不静默死）。 */
+export function resolveDialogContentView(
+  pluginId: string,
+  viewId: string,
+): DialogContentResolveResult | null {
+  const view = ViewContainerService.getView(pluginId, viewId) as
+    | (ViewDescriptor & { _pluginId?: string; _renderPath?: string })
+    | undefined;
+  if (!view || !view._pluginId || !view._renderPath) return null;
+  return { pluginId: view._pluginId, renderPath: view._renderPath };
+}
 
 export interface UiBridgesDeps {
   setPanelActiveViewId: (v: string | null) => void;
@@ -247,6 +268,26 @@ export function useUiBridges({ setPanelActiveViewId, panelActiveViewIdRef, detac
     let pending: { settle: (v: boolean) => void } | null = null;
 
     const pushOpen = (options: DialogOptions, isAlert: boolean) => {
+      // E6#71c 富内容槽——content 声明视图解析成功 → DTO 带 content（DialogHost 用 PluginComponent
+      // 挂载插件自绘内容，替代默认标题/正文/按钮）；解析失败（视图未注册/卸载/缺运行时附挂）→
+      // 回落纯文字确认（title/message/默认双钮照旧——弹窗仍出，不静默死）。
+      const resolved = options.content
+        ? resolveDialogContentView(options.content.pluginId, options.content.viewId)
+        : null;
+      if (resolved) {
+        poolApi.pushDialog({
+          open: true,
+          title: options.title,
+          message: options.message,
+          isAlert,
+          content: {
+            pluginId: resolved.pluginId,
+            renderPath: resolved.renderPath,
+            payload: options.content?.payload,
+          },
+        });
+        return;
+      }
       poolApi.pushDialog({
         open: true,
         title: options.title,

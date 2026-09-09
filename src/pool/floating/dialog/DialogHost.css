@@ -37,6 +37,15 @@
   outline: none; /* E5.8#53：显式豁免稳压全局 *:focus-visible（outline:none 同特异性时写不赢） */
 }
 
+/* E6#71c 富内容槽——content 模式：padding 归零（内容视图自带卡片内边距/排版），
+   宽度随内容（fit-content——市场确认卡自定卡宽），max-width 沿用 80vw 防溢出。
+   居中/遮罩/Esc/焦点锁/点遮罩取消仍由 .dialog-host-panel 机制提供。颜色零新增——全走既有 token。 */
+.dialog-host-panel--content {
+  padding: 0;
+  width: fit-content;
+  max-width: 80vw;
+}
+
 .dialog-host-title {
   margin: 0 0 8px 0;
   font-size: var(--font-size-lg); /* E5.8 Phase 12 #171：title 14→lg */

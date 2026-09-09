@@ -1,0 +1,107 @@
+/**
+ * MarketplaceConfirm.css——E6#71c 安装确认卡样式（ConfirmInstall 视图专用）。
+ *
+ * 自 DetailView MarketplaceDetail.css .mpd-confirm 块迁出（原 OverlayPortal 自画弹窗 → 壳 DialogHost
+ * content 槽）。壳 .dialog-host-panel--content 已给容器（居中/遮罩/border/bg/radius/shadow/80vh 滚动），
+ * 本文件只管**卡片内排版**：卡宽/内边距 + 头部/行/动作区。
+ * 色/圆角/字号全走既有语义 token（硬约束 1），零硬编码 hex。
+ */
+
+/* 卡根——宽 440 上限（富内容卡：版本/来源长串有呼吸空间），padding 归卡内（壳 content 槽已归零） */
+.mpd-confirm {
+  width: min(440px, 80vw);
+  padding: 16px 18px;
+  box-sizing: border-box;
+}
+
+.mpd-confirm-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mpd-confirm-shield {
+  color: var(--success);
+  font-size: var(--font-size-lg);
+}
+
+.mpd-confirm-title {
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.mpd-confirm-plugin {
+  margin: 6px 0 0;
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  word-break: break-all;
+}
+
+.mpd-confirm-note {
+  margin: 2px 0 8px;
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+}
+
+.mpd-confirm-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* 行 = label 上（muted 小号）｜ value 下（正文色）——对齐旧 InfoItem 竖叠版式 */
+.mpd-confirm-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 3px 0;
+}
+
+.mpd-confirm-row-label {
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+}
+
+.mpd-confirm-row-value {
+  font-size: var(--font-size-sm);
+  color: var(--text-primary);
+  word-break: break-all;
+}
+
+.mpd-confirm-dash {
+  color: var(--text-muted);
+}
+
+.mpd-confirm-publisher {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+/* 卡内来源外链——accent 色可点（外部系统浏览器——target=_blank 由视图加） */
+.mpd-confirm-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--accent);
+  font-size: var(--font-size-sm);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.mpd-confirm-link:hover {
+  text-decoration: underline;
+}
+
+.mpd-confirm-link-icon {
+  font-size: var(--font-size-xs);
+}
+
+.mpd-confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 12px;
+}

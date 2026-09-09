@@ -58,6 +58,8 @@ export class IpcBridge {
     // E5#67：弹窗归一化——插件调壳的 ConfirmDialog
     IPC.dialog.confirm,
     IPC.dialog.alert,
+    // E6#71c：富内容确认——插件自绘确认内容（同链代理到壳 DialogService.confirmContent）
+    IPC.dialog.confirmContent,
     // E5#68：标签页操作——插件调壳的标签页 API
     IPC.tabs.create,
     IPC.tabs.openOrFocus,

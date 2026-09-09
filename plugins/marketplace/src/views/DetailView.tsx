@@ -34,7 +34,7 @@
 
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { PluginIcon, Button, Badge, SelectBox, MarkdownView, OverlayPortal, pickIdentityArt } from "@linkdesk/ui";
+import { PluginIcon, Button, Badge, SelectBox, MarkdownView, pickIdentityArt } from "@linkdesk/ui";
 import {
   useMarketplacePlugins,
   useMarketplaceCatalog,
@@ -62,6 +62,9 @@ import { readPluginUpdateMeta, setAutoUpdate, setPinnedVersion } from "../servic
 import { categoryListFromEntry, localizeCategory } from "../services/marketCategories";
 import { useDownloadCount } from "../services/downloadCounts";
 import { readInstalledPackageFile } from "../services/packageFiles";
+// E6#71c：安装确认载荷构造——authorLabel/repoHomeUrl/fmtSize 展示派生抽共享模块（ConfirmInstall 视图
+// 独立 surface bundle，不跨引用本文件；侧栏信息行与确认卡同源复用，单一实现零重复）
+import { authorLabel, fmtSize, installConfirmPayload, repoHomeUrl } from "../services/installConfirmPayload";
 import DetailFeaturesTab from "./DetailFeaturesTab";
 import DetailChangelogTab from "./DetailChangelogTab";
 import "../styles/MarketplaceDetail.css";
@@ -88,28 +91,6 @@ const reqOf = (m?: unknown): string[] =>
 
 const lk = () => window.linkdesk;
 const pm = () => window.linkdesk?.pluginManager;
-
-/** 目录条目 author 兼容 {name,url} / string 两种形态——抽展示名 */
-function authorLabel(a: CatalogEntry["author"]): string | undefined {
-  if (typeof a === "string") return a || undefined;
-  return a?.name || undefined;
-}
-
-/** 字节可读化——KB/MB 通用单位零 i18n（诚实：来自目录 size，未装 = 包大小） */
-function fmtSize(n: number): string {
-  if (n < 1024) return `${n} B`;
-  if (n < 1024 * 1024) return `${(n / 1024).toFixed(n < 1024 * 10 ? 1 : 0)} KB`;
-  return `${(n / 1024 / 1024).toFixed(1)} MB`;
-}
-
-/** 来源名（owner/repo 或 host/owner/repo）→ 仓库主页 URL——零新字段零服务器（04 §三） */
-function repoHomeUrl(sourceName?: string): string | undefined {
-  if (!sourceName) return undefined;
-  const parts = sourceName.split("/");
-  if (parts.length === 2) return `https://github.com/${sourceName}`; // github raw 形态 sourceNameOfUrl
-  if (parts.length >= 3) return `https://${sourceName}`; // host/owner/repo（gitee 等）
-  return undefined;
-}
 
 /** 下载数 → 千分位（作者数据 number 直显零 i18n） */
 function fmtCount(n: number): string {
@@ -176,8 +157,6 @@ export default function DetailView({ pluginId }: DetailContributedProps) {
   /* E6#33c：版本下拉选值（版本动作目标——装哪版/升到哪版/降到哪版）——undefined = 未人工介入，
    *  渲染取 defaultPickTarget() 兜底（首帧/锚变化无闪）。锚变化（插件/条目/已装态/默认目标）重置见下 effect。 */
   const [pickedVersion, setPickedVersion] = useState<string | undefined>(undefined);
-  /* E6#30.8a：安装前富确认弹窗开关——mockup 帧 8（来源/发布者/许可证/版本/大小 + 安装即信任） */
-  const [confirming, setConfirming] = useState(false);
   /* E6#30.8c：读壳版本号一次（app.getVersion）——minAppVersion 门禁比对基准（缺/读失败 = undefined 放行不拦） */
   const [appVersion, setAppVersion] = useState<string | undefined>(undefined);
   /* E6#33d 自动更新勾选状态——installedUpdateMeta.autoUpdate（Opt-IN 默认关，只存 true；见下方读 effect） */
@@ -466,7 +445,8 @@ export default function DetailView({ pluginId }: DetailContributedProps) {
   );
 
   /* ── E6#33c 降级确认（F2，05 §二·十一——「此版本较旧，配置可能不兼容」。不拦只提示：确认后 allowOlder
-   *  放行执行，取消原地不动。短文案确认 = 壳 dialog.confirm（与卸载同款弹层，无需富内容 OverlayPortal）。 ── */
+   *  放行执行，取消原地不动。纯文字确认 = 壳 dialog.confirm（与卸载同款文字弹层；E6#71c 装/卸/降级三确认
+   *  已归一——装 = 壳 DialogHost content 槽富内容视图，卸+降级 = 同容器纯文字模式）。 ── */
   const requestDowngrade = useCallback(
     async (ver: string) => {
       if (!pluginId || busy || updating) return;
@@ -550,17 +530,26 @@ export default function DetailView({ pluginId }: DetailContributedProps) {
     await startMarketInstall(pluginId, url);
   }, [pluginId, busy, installingHere, installGateError, entry, installUrl, installVer]);
 
-  /* 安装钮点击 = 弹确认（mockup 帧 8——安装即信任：来源/发布者/许可证/版本/大小），确认后 handleInstallConfirmed 执行 */
-  const handleInstallClick = useCallback(() => {
+  /* 安装钮点击 = 富内容确认（E6#71c 归位壳 Dialog——壳 DialogHost content 槽挂载 ConfirmInstall 视图：
+   *  弹窗机制（居中/遮罩/Esc/trap）壳给，卡片排版/按钮仍市场自绘。装/卸/降级三确认共用壳 Dialog 容器。
+   *  视图声明寻址失败 → 壳回落纯文字 title/message 双钮确认（弹窗仍出不静默死）；confirmContent 面缺失 →
+   *  保守 no-op（老 preload）。确认 true → runInstall（安装执行单一入口仍留本视图）。 */
+  const handleInstallClick = useCallback(async () => {
     if (!pluginId || busy || installingHere) return;
     if (installGateError()) return;
-    setConfirming(true);
-  }, [pluginId, busy, installingHere, installGateError]);
-
-  const handleInstallConfirmed = useCallback(async () => {
-    setConfirming(false);
+    if (!entry) return;
+    const confirmContent = lk()?.dialog?.confirmContent;
+    if (!confirmContent) return;
+    const ok = await confirmContent({
+      title: t("确认安装"),
+      message: t("安装即信任——确认前请查看来源与发布者。"),
+      pluginId: "marketplace",
+      viewId: "marketplace-install-confirm",
+      payload: installConfirmPayload(entry, installVer),
+    });
+    if (!ok) return;
     await runInstall();
-  }, [runInstall]);
+  }, [pluginId, busy, installingHere, installGateError, entry, installVer, t, runInstall]);
 
   /* 依赖行点击 → 跳依赖插件详情页（30.5e/30.6c3「点击跳其详情页」）——E6#30.7b 带 label
    *  （depLabel：已装名/目录名兜底，未装目标壳 viewRegistry 无 manifest 无法自行命名）。
@@ -1094,66 +1083,6 @@ export default function DetailView({ pluginId }: DetailContributedProps) {
         </div>
       </div>
 
-      {/* ═══ E6#30.8a 安装确认弹窗（mockup 帧 8——安装即信任）═══
-       *  市场自绘富内容确认：壳 dialog.confirm 仅 message 无富内容（契约实证），故走 OverlayPortal 居中卡片
-       *  （SearchView AddSourcePopup 同款弹层原语）；来源/发布者/许可证/版本/大小 + 官方徽标（30.8f 同源）。 */}
-      {confirming && entry && (
-        <OverlayPortal onClose={() => setConfirming(false)} trapFocus>
-          <div className="mpd-confirm" role="dialog" aria-modal="true" aria-label={t("确认安装")}>
-            <div className="mpd-confirm-head">
-              <span className="codicon codicon-shield mpd-confirm-shield" />
-              <span className="mpd-confirm-title">{t("确认安装")}</span>
-            </div>
-            <p className="mpd-confirm-plugin">{nameText}</p>
-            <p className="mpd-confirm-note">{t("安装即信任——确认前请查看来源与发布者。")}</p>
-            <div className="mpd-confirm-rows">
-              <InfoItem
-                label={t("发布者")}
-                value={
-                  <span className="mpd-confirm-publisher">
-                    {authorText || <Dash />}
-                    {entry.official && (
-                      <Badge title={t("官方发布")}>
-                        <span className="codicon codicon-verified" /> {t("官方发布")}
-                      </Badge>
-                    )}
-                  </span>
-                }
-              />
-              <InfoItem
-                label={t("来源仓库")}
-                value={
-                  repoUrl ? (
-                    <a className="mpd-info-link" href={repoUrl} target="_blank" rel="noopener noreferrer">
-                      {sourceName ?? ""}
-                      <span className="codicon codicon-link-external mpd-info-link-icon" />
-                    </a>
-                  ) : (
-                    (sourceName ?? <Dash />)
-                  )
-                }
-              />
-              {descText && <InfoItem label={t("描述")} value={descText} />}
-              {/* E6#33c：确认行显示实际目标版本——版本下拉选了哪个就装哪个（无历史恒顶层最新） */}
-              <InfoItem label={t("版本")} value={`v${installVer ?? entry.version}`} />
-              {entry.size != null && <InfoItem label={t("大小")} value={fmtSize(entry.size)} />}
-              {entry.license && <InfoItem label={t("许可证")} value={entry.license} />}
-            </div>
-            <div className="mpd-confirm-actions">
-              <Button variant="ghost" onClick={() => setConfirming(false)} disabled={busy}>
-                {t("取消")}
-              </Button>
-              <Button
-                variant="success"
-                onClick={() => void handleInstallConfirmed()}
-                disabled={busy || installingHere}
-              >
-                <span className="codicon codicon-cloud-download" /> {t("确认安装")}
-              </Button>
-            </div>
-          </div>
-        </OverlayPortal>
-      )}
     </div>
   );
 }

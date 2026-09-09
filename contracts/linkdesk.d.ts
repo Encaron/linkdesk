@@ -436,6 +436,20 @@ export interface DialogOpenOptions {
         extensions: string[];
     }[];
 }
+/** E6#71c 富内容确认打开参数——池插件 → 壳 DialogService（content 视图声明寻址）。
+ *  title/message 兜底——content 视图解析失败时壳回落纯文字确认（弹窗仍出，不静默死）。 */
+export interface DialogContentOpenOptions {
+    /** 兜底标题——content 解析失败回落用；池侧已 t() 解析 */
+    title?: string;
+    /** 兜底正文——同上 */
+    message?: string;
+    /** 内容归属插件（壳经 ViewContainerService.getView 复合寻址） */
+    pluginId: string;
+    /** 内容视图声明 id（contributes.views 注册） */
+    viewId: string;
+    /** 不透明载荷——结构克隆过 IPC，壳不解释，内容视图经 dialogHost.current() 读 */
+    payload?: unknown;
+}
 /** 插件侧条目——对标 VS Code QuickPickItem 三字段（label 第一行左 / description 第一行右 / detail 第二行左） */
 export interface PluginQuickPickItem {
     label: string;
@@ -530,6 +544,17 @@ export type PoolDialogData = {
     cancelLabel?: string;
     /** alert 模式——只有确定按钮，无取消/Escape/backdrop 关闭 */
     isAlert: boolean;
+    /** E6#71c 富内容槽——present 时替代 title/message/默认按钮渲染（弹窗机制不变：
+     *  居中/遮罩/Esc/trap/点遮罩取消仍由 DialogHost 提供）。内容 = 插件视图——
+     *  壳不持渲染器，池经 PluginComponent 挂载（仿 FloatingPanel DTO）。payload 不透明——
+     *  壳不解释、池原样持，内容视图经 window.linkdesk.dialogHost.current() 读。 */
+    content?: {
+        pluginId: string;
+        /** 池视图注册表寻址键——loader 运行时附挂（ViewContainerService._renderPath） */
+        renderPath: string;
+        /** 不透明序列化载荷——随打开参数过壳→回池（结构克隆），内容视图取数用 */
+        payload?: unknown;
+    };
 };
 /** 标题栏动作按钮——池渲染 + 回传壳侧重解析业务语义（池零语义，UI 机械知识除外）。
  *  E5.8#20-c：改名 PoolFloatingPanelButton——与 poolActions.ts PoolFloatingPanelAction（IPC 回传动作）
@@ -596,6 +621,11 @@ export interface UiAPI {
         open(opts?: DialogOpenOptions): Promise<string | null>;
         /** 打开文件选择器——返回用户选中路径，取消 → null。安全由主进程控制 */
         openFile(opts?: DialogOpenOptions): Promise<string | null>;
+        /** E6#71c：富内容确认——确认框内容 = 插件自绘视图（content 视图声明寻址 + 不透明 payload）。
+         *  弹窗机制同 confirm（居中/遮罩/Esc/焦点锁/点遮罩取消）；内容排版与按钮由插件视图自画
+         *  （对标 VS Code「对话框是壳、内容插件定」）。title/message 兜底——content 视图解析
+         *  失败时壳回落纯文字确认（弹窗仍出，不静默死）。返回 true = 确认，false = 取消/关闭。 */
+        confirmContent(options: DialogContentOpenOptions): Promise<boolean>;
     };
     /** E5.7#63：插件 quickPick 选择器——池内本地桥（零 IPC，QuickPickHost 渲染）。结算 null → undefined */
     quickPick: {
@@ -620,6 +650,9 @@ export interface UiAPI {
      * dialog 命名空间已是插件侧 confirm/alert/open API */
     dialogHost: {
         onShow(cb: (data: PoolDialogData) => void): () => void;
+        /** E6#71c：当前打开的 Dialog 数据——富内容视图挂载后经 dialogHost.current()?.content?.payload
+         *  取数（content 模式才可读；无打开/已关闭 → null）。壳 preload 无此面（池内本地读）。 */
+        current(): PoolDialogData | null;
         confirm(): void;
         cancel(): void;
     };

@@ -25,7 +25,7 @@ import type { ShellTabAction } from '../src/core/types/ipc/tabActions';
 import type { SidebarAction } from '../src/core/types/ipc/sidebarActions';
 import type { ForwardedKeyboardInput, KeybindingSyncData } from '../src/core/types/ipc/keyboard';
 import type { OpenPortConfig, SerialDataPayload, SerialStatsPayload, SerialSystemPayload } from '../src/core/types/ipc/serial';
-import type { DialogOpenOptions } from '../src/core/types/ipc/dialogs';
+import type { DialogOpenOptions, DialogContentOpenOptions } from '../src/core/types/ipc/dialogs';
 import type { ConfigurationChangedPayload, PluginStateChangedPayload } from '../src/core/types/ipc/events';
 import type { BridgeRequestPayload } from '../src/core/types/ipc/bridge';
 import type { PoolQuickPickAction, PoolToastAction, PoolDialogAction, PoolFloatingPanelAction, MemoryPressureData, PoolReadyPayload, CreatePoolWindowRequest, PoolWindowClosedPayload, PoolWindowBoundsPayload, TabBarRectsPayload, ShellTabDragPosition, AdsorbHintPayload, AdsorbIndexPayload } from '../src/core/types/ipc/poolActions';
@@ -276,6 +276,9 @@ try {
         ipcRenderer.invoke(IPC.dialog.confirm, message),
       alert: (message: string): Promise<void> =>
         ipcRenderer.invoke(IPC.dialog.alert, message),
+      // E6#71c 富内容确认——同池 buildDialog 契约镜像（双侧对齐防漂移，同链代理到壳 DialogService）
+      confirmContent: (opts: DialogContentOpenOptions): Promise<boolean> =>
+        ipcRenderer.invoke(IPC.dialog.confirmContent, opts),
     },
 
     // ── E5#71：插件持久化存储 ──

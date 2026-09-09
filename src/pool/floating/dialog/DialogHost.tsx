@@ -22,6 +22,7 @@ import { createPortal } from "react-dom";
 import { Z_INDEX } from "../../../constants";
 import { getScrimTarget } from "../../../components/shared/overlay-portal/OverlayPortal"; // E5.8#107 浮层权威：遮罩归 scrim-plane
 import type { PoolDialogData } from "../../../core/types/pool/poolDialog";
+import PluginComponent from "../../shared/plugin-component/PluginComponent"; // E6#71c 富内容槽——内容 = 插件视图（壳不持渲染器）
 import "./DialogHost.css";
 
 /* ── 池 API 形状——global.d.ts 的 window.linkdesk 是宽松类型，此处收窄到精确形状 ── */
@@ -93,8 +94,14 @@ export default function DialogHost() {
 
   if (!data || !data.open) return null;
 
-  // Enter 确认——对标壳 ConfirmDialog handleKeyDown（在面板上监听）
+  // E6#71c 富内容槽——present 时替代 title/message/默认按钮渲染（弹窗机制不变）。
+  const content = data.content;
+
+  // Enter 确认——对标壳 ConfirmDialog handleKeyDown（在面板上监听）。
+  // 🔴 富内容模式不注册 Enter→confirm：内容自带按钮/链接，聚焦其上按 Enter 的 keydown
+  // 冒泡到面板——若面板再 confirm() 会与按钮原生 click 双触发。内容按键交给内容自己。
   const handleKeyDown = (e: ReactKeyboardEvent<HTMLDivElement>) => {
+    if (content) return;
     if (e.key === "Enter") {
       e.preventDefault();
       api?.confirm();
@@ -115,10 +122,11 @@ export default function DialogHost() {
         />,
         getScrimTarget()
       )}
-      {/* Modal——设计 §7.1：居中 50%/50%，minWidth 300，maxWidth 80vw，maxHeight 80vh */}
+      {/* Modal——设计 §7.1：居中 50%/50%，minWidth 300，maxWidth 80vw，maxHeight 80vh。
+          E6#71c：富内容模式加 --content 修饰（padding 归零/内容控制自身边距） */}
       <div
         ref={panelRef}
-        className="dialog-host-panel"
+        className={content ? "dialog-host-panel dialog-host-panel--content" : "dialog-host-panel"}
         style={{ zIndex: Z_INDEX.dialog }}
         tabIndex={-1}
         onClick={(e) => e.stopPropagation()}
@@ -126,18 +134,27 @@ export default function DialogHost() {
         role="dialog"
         aria-modal="true"
       >
-        {data.title && <h3 className="dialog-host-title">{data.title}</h3>}
-        <p className="dialog-host-message">{data.message}</p>
-        <div className="dialog-host-actions">
-          {!data.isAlert && (
-            <button className="dialog-host-btn dialog-host-btn-secondary" onClick={() => api?.cancel()}>
-              {data.cancelLabel}
-            </button>
-          )}
-          <button className="dialog-host-btn dialog-host-btn-primary" onClick={() => api?.confirm()}>
-            {data.confirmLabel}
-          </button>
-        </div>
+        {content ? (
+          // 富内容 = 插件自绘视图（confirmContent DTO content{pluginId, renderPath}）。
+          // 挂载视图经 window.linkdesk.dialogHost.current()?.content?.payload 取数。
+          // isActive=true——打开中即渲染（仿 FloatingPanelHost：内容视图按打开挂载）。
+          <PluginComponent pluginId={content.pluginId} isActive renderPath={content.renderPath} />
+        ) : (
+          <>
+            {data.title && <h3 className="dialog-host-title">{data.title}</h3>}
+            <p className="dialog-host-message">{data.message}</p>
+            <div className="dialog-host-actions">
+              {!data.isAlert && (
+                <button className="dialog-host-btn dialog-host-btn-secondary" onClick={() => api?.cancel()}>
+                  {data.cancelLabel}
+                </button>
+              )}
+              <button className="dialog-host-btn dialog-host-btn-primary" onClick={() => api?.confirm()}>
+                {data.confirmLabel}
+              </button>
+            </div>
+          </>
+        )}
       </div>
     </>
   );

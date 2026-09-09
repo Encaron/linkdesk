@@ -1,7 +1,7 @@
 {
   "$schema": "../../public/schemas/plugin.schema.json",
   "name": "插件市场",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "icon": "resources/icon.svg",
   "marketIcon": "resources/icon-brand.svg",
   "description": "浏览、安装和管理插件",
@@ -48,11 +48,13 @@
         { "id": "builtin",     "title": "内置",   "render": "src/views/BuiltinListView.tsx",     "order": 3, "collapsed": true }
       ],
       "main": [
-        { "id": "plugin-detail", "title": "插件详情", "render": "src/views/DetailView.tsx" }
+        { "id": "plugin-detail", "title": "插件详情", "render": "src/views/DetailView.tsx" },
+        { "id": "marketplace-install-confirm", "title": "确认安装", "render": "src/views/ConfirmInstall.tsx" }
       ]
     }
   },
   "changelog": [
+    { "version": "1.0.4", "date": "2026-09-09", "changes": ["安装确认弹窗归位壳 Dialog（E6#71c）：市场自绘富内容确认卡迁入壳 DialogHost content 槽（居中+全屏遮罩+Esc+焦点锁由壳给，卡片排版/按钮仍市场 ConfirmInstall 视图自画）——装/卸/降级三确认共用一个壳 Dialog 容器"] },
     { "version": "1.0.3", "date": "2026-09-09", "changes": ["更新失败归因补齐 + 原文直显（E6#71b）：分类表认识更新域状态/策略错（conflict 分支补上），认不出时失败 toast 直显引擎原文（如「不在用户安装区」）——终结「更新失败：未知错误」黑洞"] },
     { "version": "1.0.2", "date": "2026-09-09", "changes": ["详情页说明区 README 随包媒体 assetBase 接线（E6#70a 数据链路）"] },
     { "version": "1.0.1", "date": "2026-09-09", "changes": ["新增 marketIcon=resources/icon-brand.svg（E6#69 Type-2 彩色身份图）——icon 保持线稿店招（Type-1）仅图标栏用；市场展示位转用品牌块"] }

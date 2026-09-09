@@ -414,7 +414,7 @@
   flex: none; /* #63d B4：右栏定宽——README 全宽吃满可用宽时不被挤走 */
   display: flex;
   flex-direction: column;
-  padding-bottom: 8px; /* 末项下分隔线留呼吸（base .mpd-info-item 竖叠仅供确认弹窗，见下 #63c 侧栏覆写） */
+  padding-bottom: 8px; /* 末项下分隔线留呼吸（行横排 = 下方 #63c 侧栏覆写） */
 }
 
 .mpd-info-item {
@@ -440,8 +440,8 @@
   font-size: var(--font-size-xs);
 }
 
-/* ═══ #63c B3：侧栏分组 + 行横排（作用域限定 .mpd-info-sidebar——安装确认弹窗 .mpd-confirm-rows 共用
- *  InfoItem 但保持原竖叠布局不受扰动；mockup 04 定稿：节标题带组上分隔线、label 左 | value 右、项间细分隔） ═══ */
+/* ═══ #63c B3：侧栏分组 + 行横排（作用域限定 .mpd-info-sidebar——base .mpd-info-item 竖叠为默认布局；
+ *  mockup 04 定稿：节标题带组上分隔线、label 左 | value 右、项间细分隔） ═══ */
 
 .mpd-info-group {
   margin-top: 12px;
@@ -462,7 +462,7 @@
   color: var(--text-secondary);
 }
 
-/* 行 = label 左 ｜ value 右 横排（原 .mpd-info-item 竖叠仅供确认弹窗用；侧栏内覆写为横排 + 项间细分隔） */
+/* 行 = label 左 ｜ value 右 横排（base .mpd-info-item 竖叠为默认；侧栏内覆写为横排 + 项间细分隔） */
 .mpd-info-sidebar .mpd-info-item {
   display: flex;
   flex-direction: row;
@@ -818,7 +818,7 @@
   margin-top: 2px;
 }
 
-/* ═══ E6#30.8：元数据 warn 值 + title-row 徽标图标 + 安装确认弹窗 ═══ */
+/* ═══ E6#30.8：元数据 warn 值 + title-row 徽标图标（安装确认卡样式已随 E6#71c 迁 ConfirmInstall 视图——MarketplaceConfirm.css） ═══ */
 
 /* 值需强调——minApp 不足标红（30.8c 门禁视觉侧，--error 语义） */
 .mpd-info-value.warn {
@@ -830,71 +830,4 @@
   font-size: var(--font-size-2xs); /* E5.8 Phase 12 #180：=11px，token 化 */
   vertical-align: -1px;
   margin-right: 2px;
-}
-
-/* ═══ 30.8a 安装确认弹窗（mockup 帧 8）——市场自绘富内容确认（壳 dialog.confirm 无富内容）；
- *   OverlayPortal 居中卡片（#overlay-root），色/圆角/阴影全走语义 token（硬约束 1/6） ═══ */
-.mpd-confirm {
-  width: min(440px, 90vw);
-  max-height: 80vh;
-  overflow-y: auto;
-  background: var(--bg-window);
-  border: 1px solid var(--separator);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-pop);
-  padding: 16px 18px;
-}
-
-.mpd-confirm-head {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.mpd-confirm-shield {
-  color: var(--success);
-  font-size: var(--font-size-lg);
-}
-
-.mpd-confirm-title {
-  font-size: var(--font-size-lg);
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-.mpd-confirm-plugin {
-  margin: 6px 0 0;
-  font-size: var(--font-size-sm);
-  color: var(--text-secondary);
-  word-break: break-all;
-}
-
-.mpd-confirm-note {
-  margin: 2px 0 8px;
-  font-size: var(--font-size-xs);
-  color: var(--text-muted);
-}
-
-.mpd-confirm-rows {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.mpd-confirm-rows .mpd-info-item {
-  padding: 3px 0;
-}
-
-.mpd-confirm-publisher {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  flex-wrap: wrap;
-}
-
-.mpd-confirm-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-  margin-top: 12px;
 }

@@ -121,6 +121,7 @@ export const linkdeskMock: Record<string, unknown> = {
     alert: async (..._args: unknown[]) => { console.info("[linkdesk-mock] dialog.alert", ..._args); },
     open: async (..._args: unknown[]) => { console.info("[linkdesk-mock] dialog.open", ..._args); },
     openFile: async (..._args: unknown[]) => { console.info("[linkdesk-mock] dialog.openFile", ..._args); },
+    confirmContent: async (..._args: unknown[]) => { console.info("[linkdesk-mock] dialog.confirmContent", ..._args); return false; },
   },
   quickPick: {
     show: async (..._args: unknown[]) => { console.info("[linkdesk-mock] quickPick.show", ..._args); },
@@ -140,6 +141,7 @@ export const linkdeskMock: Record<string, unknown> = {
   },
   dialogHost: {
     onShow: (..._args: unknown[]) => { console.info("[linkdesk-mock] dialogHost.onShow", ..._args); return () => {}; },
+    current: (..._args: unknown[]) => { console.info("[linkdesk-mock] dialogHost.current", ..._args); },
     confirm: (..._args: unknown[]) => { console.info("[linkdesk-mock] dialogHost.confirm", ..._args); },
     cancel: (..._args: unknown[]) => { console.info("[linkdesk-mock] dialogHost.cancel", ..._args); },
   },

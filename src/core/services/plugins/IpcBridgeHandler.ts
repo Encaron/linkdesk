@@ -145,6 +145,8 @@ export function initIpcBridgeHandler(): void {
         // ── E5#67：弹窗归一化——插件调壳的 ConfirmDialog（IpcBridgeHandler/ui 域委派）──
         case "dialog:confirm":
         case "dialog:alert":
+        // E6#71c：富内容确认——插件自绘确认内容（同域委派）
+        case "dialog:confirmContent":
           result = await handleDialogChannel(req.channel, req.args);
           break;
 

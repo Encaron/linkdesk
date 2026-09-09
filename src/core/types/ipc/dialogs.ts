@@ -12,3 +12,18 @@ export interface DialogOpenOptions {
   directory?: boolean;
   filters?: { name: string; extensions: string[] }[];
 }
+
+/** E6#71c 富内容确认打开参数——池插件 → 壳 DialogService（content 视图声明寻址）。
+ *  title/message 兜底——content 视图解析失败时壳回落纯文字确认（弹窗仍出，不静默死）。 */
+export interface DialogContentOpenOptions {
+  /** 兜底标题——content 解析失败回落用；池侧已 t() 解析 */
+  title?: string;
+  /** 兜底正文——同上 */
+  message?: string;
+  /** 内容归属插件（壳经 ViewContainerService.getView 复合寻址） */
+  pluginId: string;
+  /** 内容视图声明 id（contributes.views 注册） */
+  viewId: string;
+  /** 不透明载荷——结构克隆过 IPC，壳不解释，内容视图经 dialogHost.current() 读 */
+  payload?: unknown;
+}

@@ -9,7 +9,7 @@ import { IPC } from '../ipc/channels';
 import { listenDirect, type EventSystemApi } from '../ipc/event-system';
 import type { WorkspaceFolder } from '../../src/core/services/layout/WorkspaceService';
 import type { WorkspaceActiveChangedPayload, TabActivatedPayload } from '../../src/core/types/ipc/events';
-import type { DialogOpenOptions } from '../../src/core/types/ipc/dialogs';
+import type { DialogOpenOptions, DialogContentOpenOptions } from '../../src/core/types/ipc/dialogs';
 
 /** workspace 命名空间——池插件完整工作区操作（E5.6#11.5a 扩展） */
 export function buildWorkspace(events: EventSystemApi) {
@@ -109,5 +109,9 @@ export function buildDialog() {
       filters?: { name: string; extensions: string[] }[];
       directory?: boolean;
     }): Promise<string | null> => ipcRenderer.invoke(IPC.dialog.open, opts),
+    // E6#71c 富内容确认——内容 = 插件自绘视图（content 视图声明寻址 + 不透明 payload）。
+    // title/message 兜底——content 视图解析失败时壳回落纯文字确认（弹窗仍出，不静默死）。
+    confirmContent: (opts: DialogContentOpenOptions): Promise<boolean> =>
+      ipcRenderer.invoke(IPC.dialog.confirmContent, opts),
   };
 }

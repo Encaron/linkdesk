@@ -3,6 +3,14 @@
 > 每版一条，对标 VS Code changelog。**历史真相源 = [E6 执行清单](docs/02-Electron架构/E6_插件生态与发布/E6-执行清单.md)**（E6 阶段每轮收束细节 + 实机证据全在清单 Batch 注里，此文件只记类别清单）。版本号唯一真值 = `package.json`（不手写第二份，见 [02-产品身份与版本.md](docs/02-Electron架构/E6_插件生态与发布/06-主软件更新/02-产品身份与版本.md) §2.3）。
 > 0.x 阶段（开发期）：一切向后兼容变更走 patch 位；破坏性变更走 minor 位。
 
+## v0.1.25（2026-09-09）
+
+- **feat:E6#71c 安装确认弹窗归位壳 Dialog + 富内容槽 + 三确认归一**（0.1.24 实机 bug：市场自绘安装确认卡左上角贴墙、无全屏遮罩）
+  - 🔥 壳 DialogHost 加可选 `content:{pluginId, renderPath, payload}` 富内容槽（[poolDialog.ts](src/core/types/pool/poolDialog.ts)）——present 时替代 title/message/默认按钮渲染，弹窗机制（居中/遮罩/Esc/Tab 焦点锁/点遮罩取消）不变；内容 = 插件视图经 `PluginComponent` 挂载（仿 FloatingPanel 声明寻址范式，壳零新增基建、核心无知）；payload 不透明序列化载荷随打开参数过壳→回池结构克隆，无跨 bundle 会话 store
+  - 新 API（向后兼容可选）：`linkdesk.dialog.confirmContent({title, message, pluginId, viewId, payload})`（[DialogService.ts](src/core/services/ui/DialogService.ts) 内部走既有 renderer 结算回路，渲染器未注册兜底 window.confirm）`+ dialogHost.current()` 取数口；一条 IPC 通道 `dialog:confirmContent`（channels + PROXY + preload 双侧 + IpcBridgeHandler）
+  - 市场迁移（plugin 1.0.3→1.0.4）：DetailView 自画 OverlayPortal mpd-confirm 整删 → `confirmContent` 富确认；ConfirmInstall.tsx 新视图迁入 content 槽（卡片排版/按钮仍市场自画，对标 VS Code「对话框壳、内容插件定」）；卸载/降级维持纯文字壳 confirm——装/卸/降级三确认共用同一 DialogHost 容器
+  - 实机：CDP 富确认卡居中（`.dialog-host-panel` rect 居中）+ 全屏遮罩 + Tab 循环 + Esc/点遮罩关不误装 + 确认安装真装闭环；`npm run check` EXIT=0（132 文件/1730 测试）
+
 ## v0.1.24（2026-09-09）
 
 - **fix:E6#70d 说明区页内 `<video>` 全屏修复**（0.1.23 回归——点全屏首点无效需二次点、全屏态困死退不出）

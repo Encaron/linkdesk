@@ -59,6 +59,8 @@ export const IPC = {
     confirm: 'dialog:confirm',
     alert: 'dialog:alert',
     open: 'dialog:open',
+    // E6#71c 富内容确认——插件自绘确认内容（content 视图声明寻址 + 不透明 payload）
+    confirmContent: 'dialog:confirmContent',
   },
   encoding: {
     detect: 'encoding:detect',

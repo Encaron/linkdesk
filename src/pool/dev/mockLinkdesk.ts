@@ -118,6 +118,8 @@ export function installMockLinkdesk(): void {
   const quickPickReplay = createReplay<PoolQuickPickData>();
   const dialogReplay = createReplay<PoolDialogData>();
   const floatingPanelReplay = createReplay<PoolFloatingPanelData>(); // E5.8#37：单实例全量快照（open/close 替换）
+  // E6#71c：mock 当前打开 Dialog 态——dialogHost.current() 取数口（富内容视图预览）。open:false → null
+  let mockDialogOpen: PoolDialogData | null = null;
 
   // E5.7#63：插件 quickPick.show 本地桥——preload-pool 同款语义（hostFn 存储 + 缓冲回放 +
   // 结算契约：池侧回传 key → 本侧映射条目，null → undefined——插件收到结构化副本同款约定）。
@@ -246,6 +248,8 @@ export function installMockLinkdesk(): void {
       itemAction: makeLogger("quickPickHost.itemAction"),
     },
     dialogHost: {
+      // E6#71c：当前打开的 Dialog 数据（富内容视图取数口——mock 由 __mockPool.show/hide 追踪）
+      current: () => mockDialogOpen,
       onShow: dialogReplay.subscribe,
       confirm: makeLogger("dialogHost.confirm"),
       cancel: makeLogger("dialogHost.cancel"),
@@ -326,8 +330,15 @@ export function installMockLinkdesk(): void {
   (window as any).__mockPool = {
     showQuickPick: () => quickPickReplay.push(buildSampleQuickPick()),
     hideQuickPick: () => quickPickReplay.push({ open: false, placeholder: "", items: [] }),
-    showDialog: () => dialogReplay.push(buildSampleDialog()),
-    hideDialog: () => dialogReplay.push({ open: false }),
+    showDialog: () => {
+      const d = buildSampleDialog();
+      mockDialogOpen = d.open ? d : null;
+      dialogReplay.push(d);
+    },
+    hideDialog: () => {
+      mockDialogOpen = null;
+      dialogReplay.push({ open: false });
+    },
     showFloatingPanel: () => floatingPanelReplay.push(buildSampleFloatingPanel()),
     hideFloatingPanel: () => floatingPanelReplay.push({ open: false }),
     emit: events.emit,

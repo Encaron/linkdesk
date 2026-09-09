@@ -14,6 +14,17 @@ export interface DialogOptions {
   confirmLabel?: string;
   cancelLabel?: string;
   type?: "info" | "warning" | "error";
+  /** E6#71c 富内容槽——插件自绘确认内容。视图引用（pluginId+viewId 声明寻址 →
+   *  壳解析 renderPath 推池 DialogHost 挂载）+ 不透明 payload（壳不解释）。
+   *  present 时确认框内容 = 插件视图（标题/正文/默认按钮由视图自画），弹窗机制不变。 */
+  content?: {
+    /** 内容归属插件（壳经 ViewContainerService.getView 复合寻址） */
+    pluginId: string;
+    /** 内容视图声明 id（contributes.views 注册） */
+    viewId: string;
+    /** 不透明载荷——结构克隆过 IPC，内容视图经 dialogHost.current() 读 */
+    payload?: unknown;
+  };
 }
 
 export interface QuickPickItem {
@@ -72,6 +83,19 @@ export async function confirm(options: DialogOptions): Promise<boolean> {
   // E5.7#17：渲染器由 App.tsx 桥注册——pushDialog → 池 DialogHost 哑渲染。
   // E5.7#44：E5#84g 的 _hideAllPluginViews（弹窗前隐藏 per-tab 插件 WebView）已删——
   // 插件 WebView 消亡 + 弹窗本身渲染在池内，隐藏逻辑失去对象。
+  if (!_confirmR) {
+    console.warn("[DialogService] Confirm 渲染器未注册——fallback 到 window.confirm()");
+    return window.confirm(`${options.title}\n${options.message}`);
+  }
+  return _confirmR(options);
+}
+
+/**
+ * E6#71c 富内容确认——插件自绘确认内容（content 视图），机制同 confirm()（居中/遮罩/Esc/trap/结算）。
+ * 返回 true = 用户点确认，false = 取消/关闭。渲染器未注册兜底 window.confirm（同 confirm() 同款）。
+ */
+export async function confirmContent(options: DialogOptions): Promise<boolean> {
+  if (!options.content) return confirm(options);
   if (!_confirmR) {
     console.warn("[DialogService] Confirm 渲染器未注册——fallback 到 window.confirm()");
     return window.confirm(`${options.title}\n${options.message}`);

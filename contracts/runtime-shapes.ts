@@ -1027,61 +1027,71 @@ function chkPoolDialogData(v: unknown, p: string, errs: string[]): void {
       if (typeof _t118.cancelLabel !== "string") _t117.push(((p) + ".cancelLabel") + ": 期望 string，实收 " + typeof _t118.cancelLabel);
       }
       if (!(_t118.isAlert === false || _t118.isAlert === true)) _t117.push(((p) + ".isAlert") + ": 期望 false|true");
+      if (_t118.content !== undefined) {
+      if (_t118.content === null || typeof _t118.content !== "object" || Array.isArray(_t118.content)) _t117.push(((p) + ".content") + ": 期望 object");
+      else {
+        const _t119 = _t118.content as Record<string, unknown>;
+        if (typeof _t119.pluginId !== "string") _t117.push((((p) + ".content") + ".pluginId") + ": 期望 string，实收 " + typeof _t119.pluginId);
+        if (typeof _t119.renderPath !== "string") _t117.push((((p) + ".content") + ".renderPath") + ": 期望 string，实收 " + typeof _t119.renderPath);
+        if (_t119.payload !== undefined) {
+        }
+      }
+      }
     }
-  const _t119 = (v !== null && typeof v === "object" && !Array.isArray(v) ? (((v as Record<string, unknown>).open === true ? 1 : 0) + (((v as Record<string, unknown>).isAlert === false) || ((v as Record<string, unknown>).isAlert === true) ? 1 : 0)) : 0);
-  const _t120 = [{ e: _t114, s: _t116 }, { e: _t117, s: _t119 }].sort((a, b) => b.s - a.s || a.e.length - b.e.length)[0].e;
-  if (_t120.length > 0) errs.push(..._t120);
+  const _t120 = (v !== null && typeof v === "object" && !Array.isArray(v) ? (((v as Record<string, unknown>).open === true ? 1 : 0) + (((v as Record<string, unknown>).isAlert === false) || ((v as Record<string, unknown>).isAlert === true) ? 1 : 0)) : 0);
+  const _t121 = [{ e: _t114, s: _t116 }, { e: _t117, s: _t120 }].sort((a, b) => b.s - a.s || a.e.length - b.e.length)[0].e;
+  if (_t121.length > 0) errs.push(..._t121);
   }
 }
 function chkPoolFloatingPanelButton(v: unknown, p: string, errs: string[]): void {
   if (v === null || typeof v !== "object" || Array.isArray(v)) errs.push((p) + ": 期望 object");
   else {
-    const _t127 = v as Record<string, unknown>;
-    if (typeof _t127.id !== "string") errs.push(((p) + ".id") + ": 期望 string，实收 " + typeof _t127.id);
-    if (typeof _t127.label !== "string") errs.push(((p) + ".label") + ": 期望 string，实收 " + typeof _t127.label);
-    if (typeof _t127.icon !== "string") errs.push(((p) + ".icon") + ": 期望 string，实收 " + typeof _t127.icon);
-    if (_t127.toggledIcon !== undefined) {
-    if (typeof _t127.toggledIcon !== "string") errs.push(((p) + ".toggledIcon") + ": 期望 string，实收 " + typeof _t127.toggledIcon);
+    const _t128 = v as Record<string, unknown>;
+    if (typeof _t128.id !== "string") errs.push(((p) + ".id") + ": 期望 string，实收 " + typeof _t128.id);
+    if (typeof _t128.label !== "string") errs.push(((p) + ".label") + ": 期望 string，实收 " + typeof _t128.label);
+    if (typeof _t128.icon !== "string") errs.push(((p) + ".icon") + ": 期望 string，实收 " + typeof _t128.icon);
+    if (_t128.toggledIcon !== undefined) {
+    if (typeof _t128.toggledIcon !== "string") errs.push(((p) + ".toggledIcon") + ": 期望 string，实收 " + typeof _t128.toggledIcon);
     }
-    if (_t127.toggledLabel !== undefined) {
-    if (typeof _t127.toggledLabel !== "string") errs.push(((p) + ".toggledLabel") + ": 期望 string，实收 " + typeof _t127.toggledLabel);
+    if (_t128.toggledLabel !== undefined) {
+    if (typeof _t128.toggledLabel !== "string") errs.push(((p) + ".toggledLabel") + ": 期望 string，实收 " + typeof _t128.toggledLabel);
     }
-    if (_t127.expandOnHover !== undefined) {
-    if (!(_t127.expandOnHover === false || _t127.expandOnHover === true)) errs.push(((p) + ".expandOnHover") + ": 期望 false|true");
+    if (_t128.expandOnHover !== undefined) {
+    if (!(_t128.expandOnHover === false || _t128.expandOnHover === true)) errs.push(((p) + ".expandOnHover") + ": 期望 false|true");
     }
   }
 }
 function chkPoolFloatingPanelData(v: unknown, p: string, errs: string[]): void {
-  const _t121: string[] = [];
-    if (v === null || typeof v !== "object" || Array.isArray(v)) _t121.push((p) + ": 期望 object");
+  const _t122: string[] = [];
+    if (v === null || typeof v !== "object" || Array.isArray(v)) _t122.push((p) + ": 期望 object");
     else {
-      const _t122 = v as Record<string, unknown>;
-      if (_t122.open !== false) _t121.push(((p) + ".open") + ": 期望 false");
+      const _t123 = v as Record<string, unknown>;
+      if (_t123.open !== false) _t122.push(((p) + ".open") + ": 期望 false");
     }
-  const _t123 = (v !== null && typeof v === "object" && !Array.isArray(v) ? (((v as Record<string, unknown>).open === false ? 1 : 0)) : 0);
-  if (_t121.length > 0) {
-  const _t124: string[] = [];
-    if (v === null || typeof v !== "object" || Array.isArray(v)) _t124.push((p) + ": 期望 object");
+  const _t124 = (v !== null && typeof v === "object" && !Array.isArray(v) ? (((v as Record<string, unknown>).open === false ? 1 : 0)) : 0);
+  if (_t122.length > 0) {
+  const _t125: string[] = [];
+    if (v === null || typeof v !== "object" || Array.isArray(v)) _t125.push((p) + ": 期望 object");
     else {
-      const _t125 = v as Record<string, unknown>;
-      if (_t125.open !== true) _t124.push(((p) + ".open") + ": 期望 true");
-      if (typeof _t125.viewId !== "string") _t124.push(((p) + ".viewId") + ": 期望 string，实收 " + typeof _t125.viewId);
-      if (typeof _t125.title !== "string") _t124.push(((p) + ".title") + ": 期望 string，实收 " + typeof _t125.title);
-      if (typeof _t125.pluginId !== "string") _t124.push(((p) + ".pluginId") + ": 期望 string，实收 " + typeof _t125.pluginId);
-      if (typeof _t125.renderPath !== "string") _t124.push(((p) + ".renderPath") + ": 期望 string，实收 " + typeof _t125.renderPath);
-      if (!Array.isArray(_t125.actions)) _t124.push(((p) + ".actions") + ": 期望数组");
+      const _t126 = v as Record<string, unknown>;
+      if (_t126.open !== true) _t125.push(((p) + ".open") + ": 期望 true");
+      if (typeof _t126.viewId !== "string") _t125.push(((p) + ".viewId") + ": 期望 string，实收 " + typeof _t126.viewId);
+      if (typeof _t126.title !== "string") _t125.push(((p) + ".title") + ": 期望 string，实收 " + typeof _t126.title);
+      if (typeof _t126.pluginId !== "string") _t125.push(((p) + ".pluginId") + ": 期望 string，实收 " + typeof _t126.pluginId);
+      if (typeof _t126.renderPath !== "string") _t125.push(((p) + ".renderPath") + ": 期望 string，实收 " + typeof _t126.renderPath);
+      if (!Array.isArray(_t126.actions)) _t125.push(((p) + ".actions") + ": 期望数组");
       else {
-        for (let _t126 = 0; _t126 < _t125.actions.length; _t126++) {
-            chkPoolFloatingPanelButton(_t125.actions[_t126], (((p) + ".actions") + "[" + _t126 + "]"), _t124);
+        for (let _t127 = 0; _t127 < _t126.actions.length; _t127++) {
+            chkPoolFloatingPanelButton(_t126.actions[_t127], (((p) + ".actions") + "[" + _t127 + "]"), _t125);
         }
       }
-      if (_t125.refresh !== undefined) {
-      if (!(_t125.refresh === false || _t125.refresh === true)) _t124.push(((p) + ".refresh") + ": 期望 false|true");
+      if (_t126.refresh !== undefined) {
+      if (!(_t126.refresh === false || _t126.refresh === true)) _t125.push(((p) + ".refresh") + ": 期望 false|true");
       }
     }
-  const _t128 = (v !== null && typeof v === "object" && !Array.isArray(v) ? (((v as Record<string, unknown>).open === true ? 1 : 0) + (((v as Record<string, unknown>).refresh === false) || ((v as Record<string, unknown>).refresh === true) ? 1 : 0)) : 0);
-  const _t129 = [{ e: _t121, s: _t123 }, { e: _t124, s: _t128 }].sort((a, b) => b.s - a.s || a.e.length - b.e.length)[0].e;
-  if (_t129.length > 0) errs.push(..._t129);
+  const _t129 = (v !== null && typeof v === "object" && !Array.isArray(v) ? (((v as Record<string, unknown>).open === true ? 1 : 0) + (((v as Record<string, unknown>).refresh === false) || ((v as Record<string, unknown>).refresh === true) ? 1 : 0)) : 0);
+  const _t130 = [{ e: _t122, s: _t124 }, { e: _t125, s: _t129 }].sort((a, b) => b.s - a.s || a.e.length - b.e.length)[0].e;
+  if (_t130.length > 0) errs.push(..._t130);
   }
 }
 

@@ -21,7 +21,7 @@ import { registerProtocol, listProtocols, getProtocol, setActiveProtocol, getAct
 import { createLogChannel, getLogChannels, clearLogChannels } from "../services/ui/LogChannel";
 import { createStatusBarItem, getDynamicStatusBarItems, clearStatusBarItems } from "../services/ui/StatusBarService";
 import { registerFileAssociation, getPluginsFor, getAssociationsForPlugin, clearFileAssociations } from "../services/files/FileAssociationService";
-import { registerDialogRenderers, confirm } from "../services/ui/DialogService";
+import { registerDialogRenderers, confirm, confirmContent } from "../services/ui/DialogService";
 import { ContextKeyService } from "./commands/ContextKeyService";
 import { registerViewPlugin, getViewPlugin, clearRegistry, getIconLocation, getTabCreatableViews, findFallbackPlugin } from "../../pluginLoader/contributions/viewRegistry";
 import { registerPluginLanguageBundle } from "../../pluginLoader/contributions/i18nResources";
@@ -360,6 +360,43 @@ describe("DialogService — registerDialogRenderers() 返 disposer 不 track（E
     const confirmSpy = vi.spyOn(window, "confirm").mockImplementation(() => true);
     try {
       expect(await confirm({ title: "t", message: "m" })).toBe(true); // 全部撤完——回退
+    } finally {
+      confirmSpy.mockRestore();
+    }
+  });
+
+  // E6#71c 富内容确认——confirmContent(options) content 槽语义（content present → 走渲染器；无 content → 同 confirm；
+  // 渲染器未注册 → window.confirm 兜底不崩）。fixture 全虚构（硬约束 21）。
+  it("content 存在且渲染器已注册 → 走渲染器（options 含 content 透传），返回值直通", async () => {
+    const renderer = vi.fn(async (o: { content?: unknown }) => (o.content ? true : false));
+    const dispose = registerDialogRenderers(renderer, async () => {});
+    try {
+      const opts = { title: "t", message: "m", content: { pluginId: "demo-plugin-a", viewId: "demo-view-a", payload: { name: "Demo" } } };
+      expect(await confirmContent(opts)).toBe(true);
+      expect(renderer).toHaveBeenCalledWith(opts); // content 原样透传给渲染器
+    } finally {
+      dispose();
+    }
+  });
+
+  it("content 缺失 → 回落 confirm（同渲染器/同回退路径，语义不变）", async () => {
+    const renderer = vi.fn(async () => false);
+    const dispose = registerDialogRenderers(renderer, async () => {});
+    try {
+      expect(await confirmContent({ title: "t", message: "m" })).toBe(false);
+      expect(renderer).toHaveBeenCalledTimes(1); // 走 confirm 同款渲染器路径
+    } finally {
+      dispose();
+    }
+  });
+
+  it("content 存在但渲染器未注册 → window.confirm 兜底不崩（同 confirm 同款）", async () => {
+    const confirmSpy = vi.spyOn(window, "confirm").mockImplementation(() => true);
+    try {
+      expect(
+        await confirmContent({ title: "t", message: "m", content: { pluginId: "demo-plugin-a", viewId: "demo-view-a" } })
+      ).toBe(true);
+      expect(confirmSpy).toHaveBeenCalledWith("t\nm"); // title+message 兜底文案
     } finally {
       confirmSpy.mockRestore();
     }

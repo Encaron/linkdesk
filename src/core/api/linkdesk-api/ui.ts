@@ -5,7 +5,7 @@
  */
 
 import type { MenuItemDescriptor, NotificationHandle, PluginToastAction } from "./types";
-import type { DialogOpenOptions } from "../../types/ipc/dialogs";
+import type { DialogOpenOptions, DialogContentOpenOptions } from "../../types/ipc/dialogs"; // E6#71c 富内容确认参数
 import type { ManifestMenuItem } from "../../registry/commands/MenuRegistry";
 import type { PoolToastData } from "../../types/pool/poolToast";
 import type { PoolQuickPickData, PluginQuickPickOptions, PluginQuickPickRequest } from "../../types/pool/poolQuickPick";
@@ -46,6 +46,11 @@ export interface UiAPI {
     open(opts?: DialogOpenOptions): Promise<string | null>;
     /** 打开文件选择器——返回用户选中路径，取消 → null。安全由主进程控制 */
     openFile(opts?: DialogOpenOptions): Promise<string | null>;
+    /** E6#71c：富内容确认——确认框内容 = 插件自绘视图（content 视图声明寻址 + 不透明 payload）。
+     *  弹窗机制同 confirm（居中/遮罩/Esc/焦点锁/点遮罩取消）；内容排版与按钮由插件视图自画
+     *  （对标 VS Code「对话框是壳、内容插件定」）。title/message 兜底——content 视图解析
+     *  失败时壳回落纯文字确认（弹窗仍出，不静默死）。返回 true = 确认，false = 取消/关闭。 */
+    confirmContent(options: DialogContentOpenOptions): Promise<boolean>;
   };
 
   /** E5.7#63：插件 quickPick 选择器——池内本地桥（零 IPC，QuickPickHost 渲染）。结算 null → undefined */
@@ -74,6 +79,9 @@ export interface UiAPI {
    * dialog 命名空间已是插件侧 confirm/alert/open API */
   dialogHost: {
     onShow(cb: (data: PoolDialogData) => void): () => void;
+    /** E6#71c：当前打开的 Dialog 数据——富内容视图挂载后经 dialogHost.current()?.content?.payload
+     *  取数（content 模式才可读；无打开/已关闭 → null）。壳 preload 无此面（池内本地读）。 */
+    current(): PoolDialogData | null;
     confirm(): void;
     cancel(): void;
   };

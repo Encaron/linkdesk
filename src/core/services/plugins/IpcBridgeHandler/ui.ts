@@ -8,7 +8,7 @@
  * ConfigurationRegistry/ThemeEngine/LanguageRegistry/i18n + linkdesk-api（LinkDeskAPI 订阅类型）；被聚合器委派。
  */
 
-import { confirm, alert } from "../../ui/DialogService"; // E5#67
+import { confirm, alert, confirmContent } from "../../ui/DialogService"; // E5#67 + E6#71c 富内容确认
 import { pushToast, dismissToast, updateToast, TOAST_TTL_ERROR, type ToastSeverity } from "../../ui/toast";
 import { registerMenuItems, getMenuItems, MENU_SLOTS, type ManifestMenuItem } from "../../../registry/commands/MenuRegistry"; // E5#69
 import { ContextKeyService } from "../../../registry/commands/ContextKeyService"; // E5#70
@@ -23,6 +23,7 @@ import { getAvailableThemes, getCurrentTheme } from "../../ui/ThemeEngine";
 import { LanguageRegistry } from "../../../registry/languages/LanguageRegistry";
 import i18n from "../../../../i18n";
 import type { LinkDeskAPI, MenuItemDescriptor, PluginToastAction } from "../../../api/linkdesk-api";
+import type { DialogContentOpenOptions } from "../../../types/ipc/dialogs"; // E6#71c 富内容确认打开参数
 
 let _settingsGroupUnsub: (() => void) | null = null;
 let _scrollToUnsub: (() => void) | null = null;
@@ -56,13 +57,27 @@ export function unsubscribeUi(): void {
   _openKeybindingsUnsub = null;
 }
 
-/** dialog:* 二 channel 处理器——插件调壳的 ConfirmDialog */
+/** dialog:* channel 处理器——插件调壳的 ConfirmDialog（E6#71c 富内容确认同域委派） */
 export async function handleDialogChannel(channel: string, args: unknown[]): Promise<unknown> {
   switch (channel) {
     // ── E5#67：弹窗归一化——插件调壳的 ConfirmDialog ──
     case "dialog:confirm": {
       const [message] = args as [string];
       return confirm({ title: "", message });
+    }
+    // ── E6#71c：富内容确认——插件自绘确认内容（content 视图 + 不透明 payload）。
+    //    壳 DialogService.confirmContent → bridges 解析 content 视图 renderPath → 推池 DialogHost；
+    //    视图寻址失败壳回落纯文字 message 确认（弹窗仍出，不静默死）。 ──
+    case "dialog:confirmContent": {
+      const [opts] = args as [DialogContentOpenOptions];
+      if (!opts || !opts.pluginId || !opts.viewId) {
+        throw new Error("dialog:confirmContent 参数缺失（需 pluginId + viewId）");
+      }
+      return confirmContent({
+        title: opts.title ?? "",
+        message: opts.message ?? "",
+        content: { pluginId: opts.pluginId, viewId: opts.viewId, payload: opts.payload },
+      });
     }
     case "dialog:alert": {
       const [message] = args as [string];

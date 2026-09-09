@@ -37,10 +37,15 @@ ipcRenderer.on(IPC.pool.toast, (_event, data: PoolToastData) => {
 const _dialogBuffer: PoolDialogData[] = [];
 let _dialogCallback: ((data: PoolDialogData) => void) | null = null;
 let _dialogActive = false;
+// E6#71c：当前打开 Dialog 态——富内容视图挂载后经 dialogHost.current()?.content?.payload 取数。
+// 模块顶层追踪（非 React state）——内容视图与 DialogHost 无关独立读，硬约束 19 例外（单快照读写，
+// 非 IPC 监听器，无清理需求）。open:false → null（无打开/已关闭）。
+let _dialogOpen: PoolDialogData | null = null;
 
 ipcRenderer.on(IPC.pool.dialog, (_event, data: PoolDialogData) => {
   // E5.8#22.5：pool:dialog 直收点接收边界断言——guard 只记录不阻断，透传缓冲
   guardPush(IPC.pool.dialog, data);
+  _dialogOpen = data.open ? data : null;
   if (!_dialogActive || !_dialogCallback) {
     _dialogBuffer.length = 0;
     _dialogBuffer.push(data);
@@ -78,6 +83,9 @@ export function buildToast() {
 /** Dialog 哑渲染订阅——池 DialogHost 消费（缓冲+回放，只保留最后一份）。命名 dialogHost——dialog 命名空间已是插件侧 API */
 export function buildDialogHost() {
   return {
+    /** E6#71c：当前打开的 Dialog 数据——富内容视图挂载后经 current()?.content?.payload 取数。
+     *  content 模式才可读；无打开/已关闭（open:false）→ null。 */
+    current: () => _dialogOpen,
     /** 订阅壳推送的 Dialog 数据（缓冲+回放，只保留最后一份）。返回 unsubscribe */
     onShow: (cb: (data: PoolDialogData) => void) => {
       _dialogCallback = cb;
