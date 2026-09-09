@@ -3,6 +3,15 @@
 > 每版一条，对标 VS Code changelog。**历史真相源 = [E6 执行清单](docs/02-Electron架构/E6_插件生态与发布/E6-执行清单.md)**（E6 阶段每轮收束细节 + 实机证据全在清单 Batch 注里，此文件只记类别清单）。版本号唯一真值 = `package.json`（不手写第二份，见 [02-产品身份与版本.md](docs/02-Electron架构/E6_插件生态与发布/06-主软件更新/02-产品身份与版本.md) §2.3）。
 > 0.x 阶段（开发期）：一切向后兼容变更走 patch 位；破坏性变更走 minor 位。
 
+## v0.1.22（2026-09-09）
+
+- **feat:E6#70a 详情页说明区媒体画布·静态图链路打通（README 相对图显形）**
+  - MarkdownView 加 `assetBase?` prop：说明渲染注入「当前被查看插件」→ README 里裸/相对路径图解析成 `linkdesk://{插件}/…` 包内资产并真加载（纯数据注入零插件名；仅 https:/linkdesk: 放行、无 assetBase 保旧行为零回归）
+  - DetailView 仅已装读包 README 注入 assetBase；远端 readmeUrl 不带（诚实不显）
+  - SDK 打包器自动扫 README 引用的包内资产随包（`![]()`/`<img>/<video>`，copyFileInto isWithinRoot 守卫）
+  - 6 只已嵌封面插件 bump + 随包 zip 重建（editor 1.0.4 / file-tree 1.0.3 / python 1.0.3 / settings 1.0.3 / serial-monitor 1.0.6 / marketplace 1.0.2）
+  - 实机 CDP：设置 + 串口监视器 详情说明区封面真显（linkdesk://…/cover.svg naturalWidth=640）
+
 ## v0.1.21（2026-09-09）
 
 - **feat:E6#69 图标身份分工·改向批——三图模型（Type-2 身份图 / Type-1 界面剪影 / 文件类型图）落地**

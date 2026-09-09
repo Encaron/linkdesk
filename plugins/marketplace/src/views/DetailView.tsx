@@ -605,10 +605,15 @@ export default function DetailView({ pluginId }: DetailContributedProps) {
 
   /* ── 30.6 展示派生 ── */
   const shots = (entry?.screenshots ?? []).filter((s) => typeof s === "string" && s);
-  const readme: { mode: "loading" | "content" | "none"; content?: string } = (() => {
+  /* E6#70a（15 档案）：已装读包 README 的相对媒体引用解析到「被查看插件包内」→ 注入
+   *  linkdesk://{pluginId}/ 基址（linkdesk:// 与读包 resolvePath 同根，README 引用的随包资产即此可达）。
+   *  远端 readmeUrl 来源（未装态/包内无 README 兜底）无本地副本 → 不传 assetBase（相对图诚实不显，
+   *  纯 https 远程照显——档案 §五.2 定案）。 */
+  const localAssetBase = pluginId ? `linkdesk://${pluginId}/` : undefined;
+  const readme: { mode: "loading" | "content" | "none"; content?: string; assetBase?: string } = (() => {
     if (installed) {
       if (pkgReadme === undefined) return { mode: "loading" };
-      if (pkgReadme && pkgReadme.trim()) return { mode: "content", content: pkgReadme };
+      if (pkgReadme && pkgReadme.trim()) return { mode: "content", content: pkgReadme, assetBase: localAssetBase };
       // 包内无 README → 远端 readmeUrl 兜底（未装态一样）
       if (remoteReadmeUrl) {
         if (remoteReadme === undefined) return { mode: "loading" };
@@ -1046,7 +1051,13 @@ export default function DetailView({ pluginId }: DetailContributedProps) {
 
                 {/* 30.6b：README markdown 渲染（已装读包 / 未装 readmeUrl / 降级 description） */}
                 {readme.mode === "loading" && <p className="mpd-readme-note">{t("加载中...")}</p>}
-                {readme.mode === "content" && readme.content && <MarkdownView markdown={readme.content} className="mpd-readme" />}
+                {readme.mode === "content" && readme.content && (
+                  <MarkdownView
+                    markdown={readme.content}
+                    className="mpd-readme"
+                    assetBase={readme.assetBase}
+                  />
+                )}
                 {readme.mode === "none" && showDesc && <p className="mpd-description">{descText}</p>}
               </>
             )}

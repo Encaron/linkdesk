@@ -1,7 +1,7 @@
 {
   "$schema": "../../public/schemas/plugin.schema.json",
   "name": "Python",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "icon": "resources/icon.svg",
   "description": "Python 语言支持——语法高亮、跨文件跳转、智能补全",
   "author": "官方",

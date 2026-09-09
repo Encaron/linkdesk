@@ -14,6 +14,12 @@
  * 安全双闸：① rehype-sanitize 默认 schema——script/事件属性/iframe 等整枝剥除；② <a href>/<img src>
  *   组件级 scheme 白名单（https/http/mailto/相对——javascript:/data: 一律不落 DOM）。纯文本渲染零
  *   dangerouslySetInnerHTML，markdown 内容绝不经 innerHTML 注入。
+ *
+ * E6#70a（15-详情页说明展示任务档案）：README 媒体相对引用解析到「被查看插件的包内资源」。
+ *   说明文本是调用方（marketplace 详情）读出来的纯文本，渲染器不知「这张图相对谁」→ 调用方注入
+ *   可选 `assetBase`（如 `linkdesk://{pluginId}/`）：提供了则 `cover.svg`/`resources/cover.svg`/`./x`
+ *   等无 scheme 相对引用按基址解析成绝对 URL（详情页说明区显形）；不提供则维持旧行为。基址纯数据
+ *   注入，壳共享组件零插件名（硬约束 10）；绝对 https:/linkdesk: 直通，http/data:/javascript:/file: 拒。
  */
 
 import ReactMarkdown from "react-markdown";
@@ -33,25 +39,43 @@ function isSafeLink(href: string | undefined): boolean {
   return /^https?:\/\//i.test(h) || /^mailto:/i.test(h);
 }
 
-/** 图片 src 白名单（缝隙 E2「限 https」）——https + 相对路径；http/data:/javascript: 拒绝（防外链追踪+注入） */
-function isSafeImage(src: string | undefined): boolean {
-  if (!src) return false;
+/** 媒体 src 解析（E6#70a img/video/source 共用）——返回可落 DOM 的 src 或 null：
+ *  ① 有 scheme：仅 https: / linkdesk:（详情页基址产物）放行；http/data:/javascript:/file: 等拒；
+ *  ② 协议相对 `//`：拒（跟随页面 scheme，不可控）；
+ *  ③ 相对（裸 `cover.svg` / `resources/x.svg` / `./x` / 前导 `/x`）：assetBase 提供 → 按基址 URL 解析
+ *     成绝对 URL——解析结果仍须落 https:/linkdesk:（基址虽来自可信调用方，scheme 白名单不放松）；
+ *     无 assetBase → 维持 30.6a 旧行为：仅 ./ ../ / 前缀相对原样透传（裸相对无基址不知指向何处 → 拒）。 */
+function resolveMediaSrc(src: string | undefined, assetBase?: string): string | null {
+  if (!src) return null;
   const s = src.trim();
-  if (!s) return false;
-  if (/^https:\/\//i.test(s)) return true;
-  // 相对（./ ../ /）允许——已装插件包内 README 相对图（展示时若资源可达则正常，不可达则 broken 兜底）
-  if (/^(\.{0,2}\/)/.test(s)) return true;
-  return false;
+  if (!s || s.startsWith("//")) return null;
+  // ① 绝对 scheme
+  const m = /^([a-zA-Z][a-zA-Z0-9+.-]*):/.exec(s);
+  if (m) return /^(https|linkdesk)$/i.test(m[1]) ? s : null;
+  // ③ 相对——assetBase 存在才解析成绝对（README 相对引用指向被查看插件包内）
+  if (assetBase) {
+    try {
+      const u = new URL(s, assetBase);
+      return /^(https|linkdesk):$/.test(u.protocol) ? u.href : null;
+    } catch {
+      return null;
+    }
+  }
+  if (/^(\.{0,2}\/)/.test(s)) return s;
+  return null;
 }
 
 interface MarkdownViewProps {
   /** markdown 原文；空/undefined 渲染空容器（调用方负责降级文案） */
   markdown?: string | null;
   className?: string;
+  /** 媒体资源基址（E6#70a 可选）——README 相对引用解析基准（详情页注入 `linkdesk://{pluginId}/`，
+   *  被查看插件的包内资源即此可达）；绝对 https 直通不受影响。不提供 = 旧行为（相对仅透传）。 */
+  assetBase?: string;
 }
 
 /** README 渲染唯一组件——壳共享（@linkdesk/ui 分发），不塞进任何业务插件。 */
-export default function MarkdownView({ markdown, className }: MarkdownViewProps) {
+export default function MarkdownView({ markdown, className, assetBase }: MarkdownViewProps) {
   const components: Components = {
     a: ({ href, children, ...rest }) =>
       isSafeLink(href) ? (
@@ -61,11 +85,13 @@ export default function MarkdownView({ markdown, className }: MarkdownViewProps)
       ) : (
         <span {...rest}>{children}</span>
       ),
-    img: ({ src, alt, ...rest }) =>
-      isSafeImage(src) ? (
-        // E2：外链图只走 https；alt 缺失补空串（a11y——装饰图不读屏）
-        <img src={src} alt={alt ?? ""} loading="lazy" {...rest} />
-      ) : null,
+    img: ({ src, alt, ...rest }) => {
+      const resolved = resolveMediaSrc(src, assetBase);
+      return resolved ? (
+        // E2：外链图只走 https（相对经基址解析落 https/linkdesk）；alt 缺失补空串（a11y——装饰图不读屏）
+        <img src={resolved} alt={alt ?? ""} loading="lazy" {...rest} />
+      ) : null;
+    },
   };
 
   return (

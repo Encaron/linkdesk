@@ -1,7 +1,7 @@
 {
   "$schema": "../../public/schemas/plugin.schema.json",
   "name": "文件树",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "icon": "resources/icon-bar.svg",
   "marketIcon": "resources/icon.svg",
   "description": "浏览和管理文件——对标 VS Code 资源管理器",

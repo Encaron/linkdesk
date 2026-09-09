@@ -1,7 +1,7 @@
 {
   "$schema": "../../public/schemas/plugin.schema.json",
   "name": "串口监视器",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "icon": "resources/icon-bar.svg",
   "marketIcon": "resources/icon.svg",
   "description": "串口数据监视器——接收区（CM6）+ 发送栏（Monaco）+ 侧栏设置。LinkDesk 第一个视图插件，通用容器基础设施在此验证。不绑定任何特定用途。",

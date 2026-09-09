@@ -1,7 +1,7 @@
 {
   "$schema": "../../public/schemas/plugin.schema.json",
   "name": "插件市场",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "icon": "resources/icon.svg",
   "marketIcon": "resources/icon-brand.svg",
   "description": "浏览、安装和管理插件",
