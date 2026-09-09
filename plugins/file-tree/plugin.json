@@ -1,9 +1,9 @@
 {
   "$schema": "../../public/schemas/plugin.schema.json",
   "name": "文件树",
-  "version": "1.0.0",
-  "icon": "FolderTree",
-  "iconSource": "lucide",
+  "version": "1.0.1",
+  "icon": "resources/icon.svg",
+  "marketIcon": "resources/cover.svg",
   "description": "浏览和管理文件——对标 VS Code 资源管理器",
   "author": "官方",
   "distribution": "builtin",

@@ -1,3 +1,27 @@
-<svg width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" fill="currentColor">
-  <path d="M1.5 2h4l2 1.5h6.5a1 1 0 0 1 1 1v8.5a1 1 0 0 1-1 1H1.5a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1z"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48">
+  <!-- file-tree 小图标「文件树的窗」品牌块：青蓝渐变块 + 琥珀文件夹 + 探头的白纸文件
+       呼应封面意象（amber 目录 / 白色文件），界面 img 显示用 → 全实色自含 -->
+  <defs>
+    <linearGradient id="fti_bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#06B6D4"/>
+      <stop offset="1" stop-color="#2563EB"/>
+    </linearGradient>
+    <linearGradient id="fti_glass" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.32"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0.03"/>
+    </linearGradient>
+  </defs>
+  <rect x="4" y="4" width="40" height="40" rx="10" fill="url(#fti_bg)"/>
+  <rect x="4" y="4" width="40" height="40" rx="10" fill="url(#fti_glass)"/>
+
+  <!-- 文件夹（lucide folder 轮廓，琥珀） -->
+  <g fill="#FBBF24" transform="translate(11 15) scale(1.05)">
+    <path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/>
+  </g>
+
+  <!-- 纸文件：白色圆角页 + 折角 + 两行内容（覆盖在文件夹右上，呈"文件夹里探出文件"） -->
+  <rect x="26" y="10" width="15" height="20" rx="2.5" fill="#F8FAFC"/>
+  <path d="M34 10h7v6.5z" fill="#93C5FD"/>
+  <rect x="28.5" y="17" width="9.5" height="2" rx="1" fill="#3B82F6" opacity="0.85"/>
+  <rect x="28.5" y="22" width="6.5" height="2" rx="1" fill="#3B82F6" opacity="0.55"/>
 </svg>

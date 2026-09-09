@@ -1,0 +1,142 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="640" viewBox="0 0 640 640" fill="none">
+  <!-- ============================================================
+       lang-defaults 封面「双语的窗」   [skill: ui-ux-pro-max · A 家族]
+       理念：官方语言 = 界面文案的出厂翻译包（中文 / English）。
+       画「语言切换的一瞬」——暗靛台面上一扇窗，窗内两张对开的语言卡：
+       左「中文」收着原文、右「English」带着当前显示的亮框，
+       同一批界面文案在两套话里各就各位（文件/File、保存/Save…），
+       中间 ⇄ 是切换的方向。可卸载 → 卸载后 t(key) 回源原文。
+       资产独立 SVG：颜色自含（封面美术不受壳主题 token 约束）。
+       ============================================================ -->
+  <defs>
+    <radialGradient id="ld_bg" cx="0.5" cy="0.42" r="0.9">
+      <stop offset="0" stop-color="#1b1c2e"/>
+      <stop offset="0.55" stop-color="#12131f"/>
+      <stop offset="1" stop-color="#0a0b12"/>
+    </radialGradient>
+    <radialGradient id="ld_glowTL" cx="0.15" cy="0.07" r="0.8">
+      <stop offset="0" stop-color="#e879f9" stop-opacity="0.11"/>
+      <stop offset="1" stop-color="#e879f9" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="ld_glowBR" cx="0.97" cy="1.05" r="0.85">
+      <stop offset="0" stop-color="#22d3ee" stop-opacity="0.09"/>
+      <stop offset="1" stop-color="#22d3ee" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="ld_win" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0e1019"/>
+      <stop offset="1" stop-color="#0b0c14"/>
+    </linearGradient>
+    <linearGradient id="ld_card" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#151827"/>
+      <stop offset="1" stop-color="#111322"/>
+    </linearGradient>
+    <linearGradient id="ld_cardAct" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#161b30"/>
+      <stop offset="1" stop-color="#111628"/>
+    </linearGradient>
+    <linearGradient id="ld_pill" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#7c8cff"/>
+      <stop offset="1" stop-color="#4f9cf6"/>
+    </linearGradient>
+    <linearGradient id="ld_status" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#7c8cff" stop-opacity="0.08"/>
+      <stop offset="1" stop-color="#7c8cff" stop-opacity="0.015"/>
+    </linearGradient>
+    <filter id="ld_shadow" x="-30%" y="-40%" width="160%" height="200%">
+      <feGaussianBlur stdDeviation="24"/>
+    </filter>
+    <pattern id="ld_grid" width="44" height="44" patternUnits="userSpaceOnUse">
+      <path d="M 44 0 H 0 V 44" stroke="#e7dbff" stroke-opacity="0.02"/>
+    </pattern>
+  </defs>
+
+  <!-- 底：暗靛台面（网格 + 品红左上光 + 一点青色右下光） -->
+  <rect width="640" height="640" fill="url(#ld_bg)"/>
+  <rect width="640" height="640" fill="url(#ld_glowTL)"/>
+  <rect width="640" height="640" fill="url(#ld_glowBR)"/>
+  <rect width="640" height="640" fill="url(#ld_grid)"/>
+
+  <!-- 左下浮标：文 / A 双文标记 -->
+  <g opacity="0.16">
+    <text x="66" y="592" font-family="'Microsoft YaHei UI', sans-serif" font-size="42" font-weight="600" fill="#cdb0ff">文</text>
+    <rect x="140" y="556" width="30" height="30" rx="6" fill="none" stroke="#22d3ee" stroke-width="2.5"/>
+    <text x="150" y="577" font-family="'Segoe UI', sans-serif" font-size="20" font-weight="600" fill="#22d3ee">A</text>
+  </g>
+
+  <!-- 窗口 -->
+  <rect x="44" y="104" width="552" height="428" rx="20" fill="#000" opacity="0.5" filter="url(#ld_shadow)"/>
+  <rect x="44" y="104" width="552" height="428" rx="20" fill="url(#ld_win)"/>
+  <rect x="44" y="104" width="552" height="428" rx="20" stroke="#c0b3ea" stroke-opacity="0.13"/>
+  <rect x="46.5" y="106.5" width="547" height="31" rx="15" fill="#c0b3ea" fill-opacity="0.02"/>
+
+  <!-- 标题栏：窗钮 + 居中「官方语言 · 出厂语言包」 -->
+  <circle cx="70" cy="122" r="5.5" fill="#ff5f57"/>
+  <circle cx="87" cy="122" r="5.5" fill="#febc2e"/>
+  <circle cx="104" cy="122" r="5.5" fill="#28c840"/>
+  <text x="320" y="127" text-anchor="middle" font-family="'Microsoft YaHei UI', sans-serif" font-size="12" fill="#9b91c2" letter-spacing="3">官方语言 · 出厂语言包</text>
+
+  <!-- 说明行 -->
+  <text x="320" y="164" text-anchor="middle" font-family="'Microsoft YaHei UI', sans-serif" font-size="11.5" fill="#8d84b0">同一批界面文案 · 中英各就各位 · 卸载后 t(key) 回源原文</text>
+
+  <!-- 左卡：中文 -->
+  <rect x="70" y="184" width="228" height="258" rx="14" fill="url(#ld_card)"/>
+  <rect x="70" y="184" width="228" height="258" rx="14" stroke="#c0b3ea" stroke-opacity="0.14"/>
+  <!-- 卡头 -->
+  <rect x="86" y="202" width="44" height="20" rx="10" fill="#c0b3ea" fill-opacity="0.1"/>
+  <text x="108" y="216" text-anchor="middle" font-family="'Microsoft YaHei UI', sans-serif" font-size="11" fill="#9b91c2">中文</text>
+  <text x="280" y="216" text-anchor="end" font-family="Consolas, 'JetBrains Mono', monospace" font-size="10" fill="#5f5786">zh.json</text>
+  <line x1="86" y1="232" x2="282" y2="232" stroke="#c0b3ea" stroke-opacity="0.07"/>
+  <!-- zh 行 -->
+  <g font-family="'Microsoft YaHei UI', sans-serif" font-size="15" fill="#e2dcf3">
+    <text x="88" y="262">文件</text>
+    <line x1="88" y1="280" x2="282" y2="280" stroke="#c0b3ea" stroke-opacity="0.06"/>
+    <text x="88" y="302">编辑</text>
+    <line x1="88" y1="320" x2="282" y2="320" stroke="#c0b3ea" stroke-opacity="0.06"/>
+    <text x="88" y="342">打开文件…</text>
+    <line x1="88" y1="360" x2="282" y2="360" stroke="#c0b3ea" stroke-opacity="0.06"/>
+    <text x="88" y="382">保存</text>
+    <line x1="88" y1="400" x2="282" y2="400" stroke="#c0b3ea" stroke-opacity="0.06"/>
+    <text x="88" y="422">设置</text>
+  </g>
+
+  <!-- 右卡：English（当前显示 → 亮框） -->
+  <rect x="342" y="184" width="228" height="258" rx="14" fill="url(#ld_cardAct)"/>
+  <rect x="341" y="183" width="230" height="260" rx="15" fill="none" stroke="#7c8cff" stroke-width="1.8"/>
+  <!-- 当前显示 tag -->
+  <rect x="342" y="222" width="62" height="20" rx="10" fill="url(#ld_pill)"/>
+  <text x="373" y="236" text-anchor="middle" font-family="'Microsoft YaHei UI', sans-serif" font-size="10.5" fill="#ffffff">当前显示</text>
+  <rect x="418" y="202" width="44" height="20" rx="10" fill="#7c8cff" fill-opacity="0.16"/>
+  <text x="440" y="216" text-anchor="middle" font-family="'Segoe UI', sans-serif" font-size="11" font-weight="600" fill="#b7c0ff">EN</text>
+  <text x="556" y="216" text-anchor="end" font-family="Consolas, 'JetBrains Mono', monospace" font-size="10" fill="#5f5786">en.json</text>
+  <line x1="358" y1="232" x2="554" y2="232" stroke="#c0b3ea" stroke-opacity="0.07"/>
+  <!-- en 行 -->
+  <g font-family="'Segoe UI', sans-serif" font-size="14" fill="#efeaff">
+    <text x="360" y="262">File</text>
+    <line x1="358" y1="280" x2="554" y2="280" stroke="#c0b3ea" stroke-opacity="0.05"/>
+    <text x="360" y="302">Edit</text>
+    <line x1="358" y1="320" x2="554" y2="320" stroke="#c0b3ea" stroke-opacity="0.05"/>
+    <text x="360" y="342">Open File…</text>
+    <line x1="358" y1="360" x2="554" y2="360" stroke="#c0b3ea" stroke-opacity="0.05"/>
+    <text x="360" y="382">Save</text>
+    <line x1="358" y1="400" x2="554" y2="400" stroke="#c0b3ea" stroke-opacity="0.05"/>
+    <text x="360" y="422">Settings</text>
+  </g>
+
+  <!-- 中间 ⇄ 切换箭头 -->
+  <g stroke="#7c8cff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M 316 296 h -22 M 294 296 l 6 -6 M 294 296 l 6 6"/>
+    <path d="M 324 340 h 22 M 346 340 l -6 -6 M 346 340 l -6 6" opacity="0.55"/>
+  </g>
+
+  <!-- 底部说明行 -->
+  <text x="320" y="472" text-anchor="middle" font-family="'Microsoft YaHei UI', sans-serif" font-size="11" fill="#5f5786">语言包可卸载 · 卸载后界面回退 t(key) 原文</text>
+
+  <!-- 状态栏 -->
+  <rect x="44" y="484" width="552" height="48" fill="url(#ld_status)"/>
+  <line x1="44" y1="484" x2="596" y2="484" stroke="#c0b3ea" stroke-opacity="0.07"/>
+  <g font-family="'Microsoft YaHei UI', sans-serif" font-size="11" fill="#7b85ab">
+    <text x="66" y="513">界面语言 zh ↔ en · 出厂即用</text>
+    <circle cx="524" cy="508" r="4" fill="#28c840"/>
+    <text x="538" y="513">完整度 100%</text>
+  </g>
+</svg>

@@ -1,8 +1,9 @@
 {
   "$schema": "../../public/schemas/plugin.schema.json",
   "name": "设置",
-  "version": "1.0.0",
-  "icon": "resources/icon.png",
+  "version": "1.0.1",
+  "icon": "resources/icon.svg",
+  "marketIcon": "resources/cover.svg",
   "description": "软件设置——主题、语言、插件管理",
   "author": "官方",
   "distribution": "builtin",

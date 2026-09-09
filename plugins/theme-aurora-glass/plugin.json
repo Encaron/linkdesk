@@ -1,7 +1,8 @@
 {
   "$schema": "../../public/schemas/plugin.schema.json",
   "name": "极光玻璃",
-  "version": "1.0.0",
+  "version": "1.0.1",
+  "marketIcon": "resources/cover.svg",
   "description": "示例玻璃主题——Aurora UI 极光夜空 + 液态玻璃表面 + 全窗极光背景图（#50.6-#50.11 壳机制第一个真实消费者）",
   "author": "LinkDesk",
   "icon": "resources/icon.svg",
