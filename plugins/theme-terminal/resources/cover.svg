@@ -1,0 +1,149 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="640" viewBox="0 0 640 640" fill="none">
+  <!-- ============================================================
+       theme-terminal 封面「磷光的窗」   [skill: ui-ux-pro-max · A 家族]
+       理念：主题 = 换人格。画「换上了终端机主题的 LinkDesk 整机」——
+       窗口钮、图标栏、侧栏、代码、状态栏全被磷光绿涂黑底，
+       界面/代码同一套等宽字族（Cascadia Mono）。窗内一张「正在应用」色板卡点题。
+       资产独立 SVG：颜色自含（封面美术不受壳主题 token 约束）。
+       ============================================================ -->
+  <defs>
+    <radialGradient id="tt_bg" cx="0.5" cy="0.42" r="0.9">
+      <stop offset="0" stop-color="#101611"/>
+      <stop offset="0.55" stop-color="#0a0f0c"/>
+      <stop offset="1" stop-color="#050807"/>
+    </radialGradient>
+    <radialGradient id="tt_glowTL" cx="0.15" cy="0.07" r="0.8">
+      <stop offset="0" stop-color="#00E676" stop-opacity="0.16"/>
+      <stop offset="1" stop-color="#00E676" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="tt_glowBR" cx="0.96" cy="1.04" r="0.85">
+      <stop offset="0" stop-color="#4EC9B0" stop-opacity="0.12"/>
+      <stop offset="1" stop-color="#4EC9B0" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="tt_head" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#111511"/>
+      <stop offset="1" stop-color="#0c100d"/>
+    </linearGradient>
+    <linearGradient id="tt_body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0b0f0c"/>
+      <stop offset="1" stop-color="#070b09"/>
+    </linearGradient>
+    <linearGradient id="tt_row" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#00E676" stop-opacity="0.05"/>
+      <stop offset="0.5" stop-color="#00E676" stop-opacity="0.02"/>
+      <stop offset="1" stop-color="#00E676" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="tt_status" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#00E676" stop-opacity="0.07"/>
+      <stop offset="1" stop-color="#00E676" stop-opacity="0.015"/>
+    </linearGradient>
+    <filter id="tt_shadow" x="-30%" y="-40%" width="160%" height="200%">
+      <feGaussianBlur stdDeviation="24"/>
+    </filter>
+    <pattern id="tt_grid" width="44" height="44" patternUnits="userSpaceOnUse">
+      <path d="M 44 0 H 0 V 44" stroke="#bfffe2" stroke-opacity="0.025"/>
+    </pattern>
+  </defs>
+
+  <!-- 底：暗绿台面（网格 + 磷光绿环境光） -->
+  <rect width="640" height="640" fill="url(#tt_bg)"/>
+  <rect width="640" height="640" fill="url(#tt_glowTL)"/>
+  <rect width="640" height="640" fill="url(#tt_glowBR)"/>
+  <rect width="640" height="640" fill="url(#tt_grid)"/>
+
+  <!-- 左下浮标：躺着的终端 prompt `>_` -->
+  <g font-family="Consolas, 'JetBrains Mono', monospace" fill="#00E676">
+    <text x="70" y="576" font-size="40" font-weight="600" opacity="0.16">&gt;</text>
+    <rect x="104" y="540" width="3.5" height="36" opacity="0.16"/>
+  </g>
+
+  <!-- 窗口 -->
+  <rect x="44" y="104" width="552" height="428" rx="20" fill="#000" opacity="0.5" filter="url(#tt_shadow)"/>
+  <rect x="44" y="104" width="552" height="428" rx="20" fill="#0a0e0b"/>
+  <rect x="44" y="104" width="552" height="428" rx="20" stroke="#00E676" stroke-opacity="0.14"/>
+  <rect x="46.5" y="106.5" width="547" height="31" rx="15" fill="#00E676" fill-opacity="0.03"/>
+
+  <!-- 标题栏：绿系窗钮（主题把红绿灯也染绿）+ 中央「终端机」 -->
+  <circle cx="70" cy="123" r="5.5" fill="#00E676" opacity="0.95"/>
+  <circle cx="87" cy="123" r="5.5" fill="#4EC9B0" opacity="0.6"/>
+  <circle cx="104" cy="123" r="5.5" fill="#3A8A72" opacity="0.85"/>
+  <text x="238" y="127" text-anchor="middle" font-family="Consolas, 'JetBrains Mono', monospace" font-size="13.5" fill="#7CF2A0" letter-spacing="2">TERMINAL MONO</text>
+  <text x="408" y="127" text-anchor="middle" font-family="Consolas, 'JetBrains Mono', monospace" font-size="9.5" fill="#3A8A72" letter-spacing="1">phosphor · dark · Cascadia Mono</text>
+
+  <!-- 图标栏：竖排绿字形，第一枚 active 带左竖条 -->
+  <rect x="44" y="140" width="40" height="350" fill="#080c09"/>
+  <line x1="44" y1="140" x2="596" y2="140" stroke="#00E676" stroke-opacity="0.07"/>
+  <g text-anchor="middle">
+    <rect x="45.5" y="163" width="2.5" height="26" fill="#00E676"/>
+    <text x="64" y="181" font-size="15" fill="#00E676">✦</text>
+    <text x="64" y="235" font-size="15" fill="#3A8A72" opacity="0.8">▤</text>
+    <text x="64" y="289" font-size="15" fill="#3A8A72" opacity="0.8">◆</text>
+    <text x="64" y="343" font-size="15" fill="#3A8A72" opacity="0.8">▲</text>
+    <text x="64" y="397" font-size="15" fill="#3A8A72" opacity="0.55">✦</text>
+    <circle cx="64" cy="452" r="5" fill="#00E676" opacity="0.5"/>
+    <circle cx="64" cy="452" r="1.8" fill="#00E676"/>
+  </g>
+  <line x1="44" y1="490" x2="596" y2="490" stroke="#00E676" stroke-opacity="0.07"/>
+
+  <!-- 侧栏：资源管理器（文件行，当前行高亮） -->
+  <rect x="84" y="140" width="98" height="350" fill="#0a0e0c"/>
+  <text x="98" y="164" font-family="'Microsoft YaHei UI', sans-serif" font-size="10.5" fill="#3A8A72" letter-spacing="1">资源管理器</text>
+  <g font-family="Consolas, 'JetBrains Mono', monospace" font-size="11.5">
+    <rect x="86" y="188" width="94" height="20" rx="4" fill="#00E676" fill-opacity="0.07"/>
+    <circle cx="100" cy="198" r="2" fill="#00E676"/>
+    <text x="109" y="202" fill="#9FEFC9">main.ts</text>
+    <circle cx="100" cy="224" r="2" fill="#3A8A72"/>
+    <text x="109" y="228" fill="#4EC9B0">theme.css</text>
+    <circle cx="100" cy="250" r="2" fill="#3A8A72"/>
+    <text x="109" y="254" fill="#4EC9B0">i18n/en.json</text>
+    <circle cx="100" cy="276" r="2" fill="#2E7D66"/>
+    <text x="109" y="280" fill="#4EC9B0" opacity="0.85">status.tsx</text>
+  </g>
+
+  <!-- 主区：正在应用的主题卡 + 等宽代码演示 -->
+  <rect x="182" y="158" width="354" height="126" rx="12" fill="#0e1310"/>
+  <rect x="182" y="158" width="354" height="126" rx="12" stroke="#1E3A30" stroke-width="1.4"/>
+  <text x="202" y="180" font-family="Consolas, 'JetBrains Mono', monospace" font-size="9.5" fill="#3A8A72" letter-spacing="1.5">正在应用 · 主题</text>
+  <text x="470" y="180" text-anchor="end" font-family="Consolas, 'JetBrains Mono', monospace" font-size="9.5" fill="#2E7D66">theme id terminal-monofont</text>
+  <text x="202" y="214" font-family="Consolas, 'JetBrains Mono', monospace" font-size="21" font-weight="600" fill="#E4FFF0">磷光绿</text>
+  <text x="296" y="214" font-family="Consolas, 'JetBrains Mono', monospace" font-size="13.5" fill="#4EC9B0">phosphor · 黑底 + 绿</text>
+  <!-- 字族标记 -->
+  <rect x="202" y="232" width="118" height="34" rx="8" fill="#00E676" fill-opacity="0.08"/>
+  <text x="212" y="246" font-family="Consolas, 'JetBrains Mono', monospace" font-size="8.5" fill="#3A8A72">UI 字族</text>
+  <text x="212" y="260" font-family="Consolas, 'JetBrains Mono', monospace" font-size="11.5" fill="#7CF2A0">Cascadia Mono</text>
+  <!-- 色板 swatches -->
+  <g>
+    <rect x="338" y="232" width="46" height="34" rx="6" fill="#0C0C0C" stroke="#2E4A40" stroke-width="1.2"/>
+    <text x="361" y="215" text-anchor="middle" font-family="Consolas, 'JetBrains Mono', monospace" font-size="8.5" fill="#2E7D66">bg</text>
+    <rect x="392" y="232" width="46" height="34" rx="6" fill="#1E3A30" stroke="#2E4A40" stroke-width="1"/>
+    <text x="415" y="215" text-anchor="middle" font-family="Consolas, 'JetBrains Mono', monospace" font-size="8.5" fill="#2E7D66">border</text>
+    <rect x="446" y="232" width="46" height="34" rx="6" fill="#4EC9B0" stroke="#2E4A40" stroke-width="1"/>
+    <text x="469" y="215" text-anchor="middle" font-family="Consolas, 'JetBrains Mono', monospace" font-size="8.5" fill="#2E7D66">text</text>
+    <rect x="500" y="232" width="46" height="34" rx="6" fill="#00E676"/>
+    <text x="523" y="215" text-anchor="middle" font-family="Consolas, 'JetBrains Mono', monospace" font-size="8.5" fill="#2E7D66">accent</text>
+  </g>
+
+  <!-- 等宽代码：全界面同字族的两行脚本 -->
+  <g font-family="Consolas, 'JetBrains Mono', monospace">
+    <text x="196" y="324" fill="#2E7D66" font-size="11" text-anchor="end">1</text>
+    <text x="212" y="324"><tspan fill="#7CF2A0">const</tspan><tspan fill="#C8FFE0"> mono </tspan><tspan fill="#3A8A72">=</tspan><tspan fill="#C8FFE0"> theme.appearance.font.mono;</tspan></text>
+    <text x="196" y="346" fill="#2E7D66" font-size="11" text-anchor="end">2</text>
+    <text x="212" y="346"><tspan fill="#3A8A72">// ui 与 mono 双键同指 → 界面/代码同一套等宽</tspan></text>
+    <text x="196" y="368" fill="#2E7D66" font-size="11" text-anchor="end">3</text>
+    <text x="212" y="368"><tspan fill="#5EEAD4">apply</tspan><tspan fill="#C8FFE0">(theme, { </tspan><tspan fill="#9FEFC9">ui</tspan><tspan fill="#C8FFE0">: mono, </tspan><tspan fill="#9FEFC9">mono</tspan><tspan fill="#C8FFE0"> });</tspan></text>
+    <text x="196" y="390" fill="#2E7D66" font-size="11" text-anchor="end">4</text>
+    <text x="212" y="390"><tspan fill="#C8FFE0">statusbar.right = [ </tspan><tspan fill="#5EEAD4">"磷光绿 · phosphor"</tspan><tspan fill="#C8FFE0"> ];</tspan></text>
+    <text x="196" y="416" fill="#2E7D66" font-size="11" text-anchor="end">5</text>
+    <!-- 光标行：末尾竖光标 -->
+    <text x="212" y="416"><tspan fill="#7CF2A0">await</tspan><tspan fill="#C8FFE0"> theme.</tspan><tspan fill="#5EEAD4">reload</tspan><tspan fill="#C8FFE0">();</tspan></text>
+    <line x1="315" y1="401" x2="315" y2="422" stroke="#00E676" stroke-width="2.2" stroke-linecap="round"/>
+  </g>
+
+  <!-- 状态栏：点题 -->
+  <rect x="44" y="484" width="552" height="48" fill="url(#tt_status)"/>
+  <g font-family="Consolas, 'JetBrains Mono', monospace" font-size="12" fill="#4EC9B0">
+    <text x="66" y="513">磷光绿 phosphor</text>
+    <text x="214" y="513" fill="#3A8A72">ui+mono: Cascadia Mono</text>
+    <text x="430" y="513" fill="#7CF2A0">dark · #00E676</text>
+  </g>
+</svg>
