@@ -123,6 +123,7 @@ npm run build                          # 交活：my-plugin.linkdesk-plugin（�
 | 9 | `09-插件目录规范.md` | 插件目录结构——文件放哪、命名约定 |
 | 10 | `10-如何造一个设置插件.md` | 整套设置 UI 替代品——factoryRole:settings 声明 + 数据 API 形状 + 白名单控件 + 切换激活套 |
 | 11 | `11-主题制作.md` | 主题插件作者指南——配方 json（风格域 + 配色变体）+ 资产 + 混搭自动出现（E5.8 外观主题化） |
+| 12 | `12-README说明区媒体契约.md` | README 放图 / 动图 / 封面外链视频 / 页内视频怎么写——媒体源规则 + 渲染契约 + 随包发布纪律 |
 
 **JSON Schema：** `plugin.schema.json`——IDE 自动补全
 
