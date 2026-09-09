@@ -165,8 +165,20 @@ function createWindow(): void {
   if (!_windowIpcRegistered) {
     _windowIpcRegistered = true;
     ipcMain.on(IPC.window.minimize, (event) => hostWindowFor(event)?.minimize());
-    ipcMain.on(IPC.window.maximize, (event) => hostWindowFor(event)?.maximize());
-    ipcMain.on(IPC.window.unmaximize, (event) => hostWindowFor(event)?.unmaximize());
+    // E6#70d 全屏逃生：宿主窗若处原生全屏（页内 video HTML 全屏拉进），□ 按钮在渲染端以为是「最大化」（全屏≠最大化）
+    // → maximize() 对全屏窗是 no-op → 用户被困全屏退不出。这里收成统一逃生口：全屏态点 □ = 还原窗口。
+    ipcMain.on(IPC.window.maximize, (event) => {
+      const win = hostWindowFor(event);
+      if (!win) return;
+      if (win.isFullScreen()) win.setFullScreen(false);
+      else win.maximize();
+    });
+    ipcMain.on(IPC.window.unmaximize, (event) => {
+      const win = hostWindowFor(event);
+      if (!win) return;
+      if (win.isFullScreen()) win.setFullScreen(false);
+      else win.unmaximize();
+    });
     ipcMain.on(IPC.window.close, (event) => hostWindowFor(event)?.close());
     ipcMain.handle(IPC.window.isMaximized, (event) => hostWindowFor(event)?.isMaximized() ?? false);
     // E5.8#46.18：OS 级置顶——setAlwaysOnTop 按 sender 路由宿主窗（脱出窗/漂移窗/主窗各自置顶互不影响）；

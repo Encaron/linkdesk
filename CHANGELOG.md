@@ -3,6 +3,13 @@
 > 每版一条，对标 VS Code changelog。**历史真相源 = [E6 执行清单](docs/02-Electron架构/E6_插件生态与发布/E6-执行清单.md)**（E6 阶段每轮收束细节 + 实机证据全在清单 Batch 注里，此文件只记类别清单）。版本号唯一真值 = `package.json`（不手写第二份，见 [02-产品身份与版本.md](docs/02-Electron架构/E6_插件生态与发布/06-主软件更新/02-产品身份与版本.md) §2.3）。
 > 0.x 阶段（开发期）：一切向后兼容变更走 patch 位；破坏性变更走 minor 位。
 
+## v0.1.24（2026-09-09）
+
+- **fix:E6#70d 说明区页内 `<video>` 全屏修复**（0.1.23 回归——点全屏首点无效需二次点、全屏态困死退不出）
+  - 🔥 根因两层：① MarkdownView 把 components override（video/img/source）字面量写组件体内 → 窗口一变尺寸重渲染即换函数引用 → react-markdown 元素 type 变 → `<video>` 被 React **重挂** → Chromium 即时终结元素全屏 → 首点全屏被踢出（「整窗先全屏、视频没变」）；② 池 WebContentsView 是全屏桥盲区——Electron 默认把宿主窗拉进原生全屏但池 bounds 不随动（视频只盖旧视口）+ 帧窗自绘标题栏只懂最大化、□ 对全屏态是 maximize() no-op → 用户被困
+  - 修复：MarkdownView components 提模块层 `makeComponents(assetBase)` + `useMemo` + 整组件 `memo`（窗口 resize 不再重挂视频，首点即稳定提交全屏——[MarkdownView.tsx](src/components/shared/markdown-view/MarkdownView.tsx)）；window-manager 全屏桥四条监听（enter/leave-full-screen × enter/leave-html-full-screen）——进全屏即时重铺池 bounds + 450ms settle 兜底过渡竞态，元素退出强制还原宿主窗（防被困——[window-manager.ts](electron/windows/window-manager.ts)）；main.ts 逃生口——全屏态点 □ = `setFullScreen(false)` 还原窗口（[main.ts](electron/main.ts)）
+  - 实机：CDP 首点 round-trip fs:true 池铺 1920×1080、退出还原 1400×900；用户手测「一次点铺满 + 退出一次还原 + 有声音」确认无误；`npm run check` EXIT=0（128 文件/1692 测试）
+
 ## v0.1.23（2026-09-09）
 
 - **feat:E6#70c + E6#70d 详情页说明区媒体画布·封面外链视频 + 页内真播视频**（README 外链转系统浏览器、`<video>`/mp4 页内可播）

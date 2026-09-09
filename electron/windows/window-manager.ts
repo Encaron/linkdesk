@@ -232,16 +232,70 @@ export class WindowManager {
     const onAlwaysOnTopChanged = (_e: Electron.Event, isAlwaysOnTop: boolean) =>
       this.sendPoolAlwaysOnTopChange(windowId, isAlwaysOnTop);
     hostWindow.on('always-on-top-changed', onAlwaysOnTopChanged);
+
+    // E6#70d：页内 `<video>` HTML 全屏桥（池 = WebContentsView child，宿主窗 frameless 自绘标题栏只懂最大化）。
+    // 实机根因：元素全屏在池渲染进程提交后，Electron 默认把宿主窗拉进原生全屏但 WCV bounds 不随动 →
+    // 视频 :fullscreen 只盖旧视口（「整窗全屏、视频没变」），且帧窗无原生「退出全屏」入口 + □ 对全屏态是
+    // maximize() no-op → 用户被困。桥 = 四条监听 + 进入侧 settle 重落（全在 verify 实证）：
+    //  · enter/leave-full-screen（宿主窗层，原生全屏进出都发）→ 重铺池 bounds 到 contentBounds
+    //    （全屏态 contentBounds=整屏，元素 :fullscreen 即盖满；退出态随窗缩回）。实测原生全屏切换会重建
+    //    视图 surface，renderer 视口正确跟缩（unmaximize 还原不重建则是另一既有缺陷，非本路径）。
+    //  · pool enter/leave-html-full-screen（webContents 层）→ 兜底把宿主窗带进/带出原生全屏（守卫幂等）：
+    //    Electron 默认已进全屏则跳过；元素退出（Esc/⛶/exitFullscreen）时强制还原宿主窗——逃生口，防被困。
+    //  · 进入侧 = 即时重铺 + settle 兜底：元素全屏请求 → Electron 默认先把宿主窗拉进原生全屏（实测
+    //    enter-full-screen 先于 enter-html-full-screen 到）。池 bounds 须跟到 contentBounds（全屏态=整屏），
+    //    视频 :fullscreen 才盖得满物理屏——即首铺一次（进全屏瞬间把池放大，让元素 :fullscreen 直接提交进
+    //    已放大的视口，避免提交后再 resize 惹出重排），再在 ~450ms 后（晚于 Windows 全屏动画）settle 重落
+    //    一次最终 bounds 兜底过渡竞态。实证（真实点击路径）首点即铺满、保持不回弹。
+    //  · 退出侧（leave-full-screen/leave-html-full-screen）无 promote 竞争，可即时跟缩。
+    const settleFullTimers = new Map<string, ReturnType<typeof setTimeout>>();
+    const settleFullBounds = () => {
+      const t = settleFullTimers.get(windowId);
+      if (t) clearTimeout(t);
+      settleFullTimers.set(
+        windowId,
+        setTimeout(() => {
+          settleFullTimers.delete(windowId);
+          if (!hostWindow.isDestroyed()) this.syncPoolBounds(windowId);
+        }, 450),
+      );
+    };
+    const syncToContentBounds = () => setImmediate(() => this.syncPoolBounds(windowId));
+    const onHostEnterFull = () => {
+      syncToContentBounds();
+      settleFullBounds();
+    };
+    const onHostLeaveFull = () => syncToContentBounds();
+    const onPoolEnterHtmlFull = () => {
+      if (!hostWindow.isDestroyed() && !hostWindow.isFullScreen()) hostWindow.setFullScreen(true);
+      syncToContentBounds();
+      settleFullBounds();
+    };
+    const onPoolLeaveHtmlFull = () => {
+      if (!hostWindow.isDestroyed() && hostWindow.isFullScreen()) hostWindow.setFullScreen(false);
+      syncToContentBounds();
+    };
+    hostWindow.on('enter-full-screen', onHostEnterFull);
+    hostWindow.on('leave-full-screen', onHostLeaveFull);
+    view.webContents.on('enter-html-full-screen', onPoolEnterHtmlFull);
+    view.webContents.on('leave-html-full-screen', onPoolLeaveHtmlFull);
     this.poolWindows.set(windowId, {
       windowId,
       hostWindow,
       view,
       unbindResize: () => {
+        const t = settleFullTimers.get(windowId);
+        if (t) clearTimeout(t);
+        settleFullTimers.delete(windowId);
         hostWindow.removeListener('resize', onHostResize);
         hostWindow.removeListener('moved', reportBounds);
         hostWindow.removeListener('resized', reportBounds);
         hostWindow.removeListener('focus', onFocus);
         hostWindow.removeListener('always-on-top-changed', onAlwaysOnTopChanged);
+        hostWindow.removeListener('enter-full-screen', onHostEnterFull);
+        hostWindow.removeListener('leave-full-screen', onHostLeaveFull);
+        view.webContents.removeListener('enter-html-full-screen', onPoolEnterHtmlFull);
+        view.webContents.removeListener('leave-html-full-screen', onPoolLeaveHtmlFull);
       },
     });
     this.syncPoolBounds(windowId);

@@ -22,7 +22,7 @@
  *   注入，壳共享组件零插件名（硬约束 10）；绝对 https:/linkdesk: 直通，http/data:/javascript:/file: 拒。
  */
 
-import type { ReactNode } from "react";
+import { memo, useMemo, type ReactNode } from "react";
 import ReactMarkdown from "react-markdown";
 import type { Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -104,9 +104,18 @@ interface MarkdownViewProps {
   assetBase?: string;
 }
 
-/** README 渲染唯一组件——壳共享（@linkdesk/ui 分发），不塞进任何业务插件。 */
-export default function MarkdownView({ markdown, className, assetBase }: MarkdownViewProps) {
-  const components: Components = {
+/**
+ * E6#70d 修复：components 必须在模块层构造 + 组件内 useMemo 稳定 + 整体 memo。
+ *   原实现把 components 字面量写组件体内 → 每次重渲染（父级 DetailView 任意一次重渲染，如窗口 resize
+ *   引发布局刷新）都产生新的 video/img/source 等 override **函数引用** → react-markdown 建树时元素 type
+ *   变新 → React 判定类型变了 → 卸载旧节点挂新节点 = 页内 `<video>`/`<img>` 被静默重挂（播放/全屏态全丢；
+ *   全屏首点的视频正是被这次重挂从 :fullscreen 顶出去 → 「先软件全屏、视频没变」根因之一）。
+ *   改为：模块层 makeComponents(assetBase) 单点构造 + useMemo([assetBase]) 缓存 → 父级重渲染不再换函数
+ *   引用（React 按 type 协调为原位更新）；外层 memo 让 markdown/className/assetBase 不变时整组件跳过
+ *   重渲染（react-markdown 不再重解析）。零行为改变，纯稳定性修复。
+ */
+function makeComponents(assetBase: string | undefined): Components {
+  return {
     a: ({ href, children, ...rest }) =>
       isSafeLink(href) ? (
         <a href={href} target="_blank" rel="noopener noreferrer" {...rest}>
@@ -155,6 +164,10 @@ export default function MarkdownView({ markdown, className, assetBase }: Markdow
       return resolved ? <source src={resolved} {...rest} /> : null;
     },
   };
+}
+
+function MarkdownView({ markdown, className, assetBase }: MarkdownViewProps) {
+  const components = useMemo(() => makeComponents(assetBase), [assetBase]);
 
   return (
     <div className={className ? `mdv ${className}` : "mdv"}>
@@ -168,3 +181,5 @@ export default function MarkdownView({ markdown, className, assetBase }: Markdow
     </div>
   );
 }
+
+export default memo(MarkdownView);
