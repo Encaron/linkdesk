@@ -34,6 +34,7 @@ import { WindowManager } from './windows/window-manager.js';
 import { syncKeybindings } from './windows/keyboard-router.js'; // E5.5#7-p6
 import { IpcBridge } from './ipc/ipc-bridge.js';
 import { setupCrashRecovery, replayAfterShellRebuild, type CrashRecoveryDeps } from './windows/crash-recovery.js'; // E5.7#36
+import { setupExternalLinkRouting } from './windows/external-links.js'; // E6#70c：外链 → 系统浏览器
 import { APP_SCHEME, APPEARANCE_SCHEME, DEV_SERVER_URL } from './constants.js'; // E5#102b：DEV_SERVER_URL 定义在 constants.ts
 import { IPC } from './ipc/channels.js';
 // ── 单实例锁 ──
@@ -316,6 +317,8 @@ const crashRecoveryDeps: CrashRecoveryDeps = {
 };
 
 setupCrashRecovery(crashRecoveryDeps);
+
+setupExternalLinkRouting(); // E6#70c：全 wc 外链 window-open → shell.openExternal（deny 裸窗）
 
 // E3f #51：渲染进程主题变更 → 同步标题栏 + 窗口背景色
 ipcMain.on(IPC.theme.changed, (_event, isDark: boolean) => {

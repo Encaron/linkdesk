@@ -22,12 +22,25 @@
  *   注入，壳共享组件零插件名（硬约束 10）；绝对 https:/linkdesk: 直通，http/data:/javascript:/file: 拒。
  */
 
+import type { ReactNode } from "react";
 import ReactMarkdown from "react-markdown";
 import type { Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeRaw from "rehype-raw";
-import rehypeSanitize from "rehype-sanitize";
+import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
 import "./MarkdownView.css";
+
+/** 子 source 里是否有已落 DOM 的媒体（E6#70d `<video><source>` 写法）——video 自身无 src 但子 source 带 src → 不算空壳 */
+function childHasMedia(children: ReactNode): boolean {
+  const list = Array.isArray(children) ? children : [children];
+  return list.some(
+    (c): boolean =>
+      !!c &&
+      typeof c === "object" &&
+      "props" in c &&
+      typeof (c as { props?: { src?: unknown } }).props?.src === "string"
+  );
+}
 
 /** 链接 href 白名单——https/http/mailto + 相对（./ ../ / #）+ 无 scheme 片段；javascript:/data:/其他协议拒绝 */
 function isSafeLink(href: string | undefined): boolean {
@@ -65,6 +78,23 @@ function resolveMediaSrc(src: string | undefined, assetBase?: string): string | 
   return null;
 }
 
+/**
+ * E6#70d：说明区消毒白名单 = 默认 GitHub schema + 页内媒体扩展。
+ *   加 video/figure/figcaption（GitLens `<figure><a><img>` 封面壳 / VS Code 更新页 `<video>`）。
+ *   source 默认已在但仅 srcSet——补 src/type/srcset/sizes 让 `<video><source>` 多格式写法可用。
+ *   🔴 autoplay 刻意不放进白名单 → 消毒层直接剥除（作者写了也无效，页内视频永远手动起播——档案 §五.5）。
+ */
+const mdvSanitizeSchema: typeof defaultSchema = {
+  ...defaultSchema,
+  tagNames: [...(defaultSchema.tagNames ?? []), "video", "figure", "figcaption"],
+  attributes: {
+    ...defaultSchema.attributes,
+    video: ["src", "poster", "controls", "loop", "muted", "playsInline", "width", "height", "title", "preload"],
+    // 全量重写 source（默认仅 srcSet）——src/type 落 DOM，srcSet 拼写双形态兼容
+    source: ["src", "type", "srcset", "srcSet", "sizes"],
+  },
+};
+
 interface MarkdownViewProps {
   /** markdown 原文；空/undefined 渲染空容器（调用方负责降级文案） */
   markdown?: string | null;
@@ -92,13 +122,45 @@ export default function MarkdownView({ markdown, className, assetBase }: Markdow
         <img src={resolved} alt={alt ?? ""} loading="lazy" {...rest} />
       ) : null;
     },
+    // E6#70d：页内视频（VS Code 更新页式）——src/poster 与图同走 resolveMediaSrc（相对经 assetBase 落包内）。
+    // 安全默认：controls 强制给（无播放条则读者无从起播）；autoplay 消毒层已剥，此处再双保险剥两种拼写
+    //   （parse5 会把作者 autoplay 小写化直达 rest——不剥会真透传成 DOM autoplay 属性自动播）；
+    // preload 顶格 metadata——绝不在打开说明时整片预下（带宽/体积现实，档案 §五.4/§五.5）。
+    video: (props) => {
+      const { src, poster, preload, autoPlay, children, ...rest } = props;
+      void autoPlay;
+      // E6#70d: autoplay 小写拼写（parse5 原样直达、非 React 合法 prop 无法解构）运行时剔除——
+      //  消毒层（白名单不含 autoplay）已剥，此处双保险防 {…rest} 透传成 DOM autoplay 属性自动播
+      delete (rest as Record<string, unknown>).autoplay;
+      const resolved = resolveMediaSrc(src, assetBase);
+      // 容器 video 自身无 src（`<video><source>` 多格式写法）→ 只要有子 source 落媒体就不整枝丢
+      // （子 source 各自经 source override 消毒/resolve）；自身与子 source 全无 = 空壳 → 弃
+      if (!resolved && !childHasMedia(children)) return null;
+      const resolvedPoster = poster ? resolveMediaSrc(poster, assetBase) : undefined;
+      return (
+        <video
+          controls
+          preload={preload === "none" ? "none" : "metadata"}
+          src={resolved ?? undefined}
+          poster={resolvedPoster ?? undefined}
+          {...rest}
+        >
+          {children}
+        </video>
+      );
+    },
+    // `<video><source src>` 多格式写法——source 的相对 src 同走 resolveMediaSrc（否则子 source 是裸相对、裂）
+    source: ({ src, ...rest }) => {
+      const resolved = resolveMediaSrc(src, assetBase);
+      return resolved ? <source src={resolved} {...rest} /> : null;
+    },
   };
 
   return (
     <div className={className ? `mdv ${className}` : "mdv"}>
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
-        rehypePlugins={[rehypeRaw, rehypeSanitize]}
+        rehypePlugins={[rehypeRaw, [rehypeSanitize, mdvSanitizeSchema]]}
         components={components}
       >
         {markdown ?? ""}

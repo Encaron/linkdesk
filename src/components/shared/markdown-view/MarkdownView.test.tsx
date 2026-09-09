@@ -83,4 +83,50 @@ describe("MarkdownView", () => {
     const imgs = [...container.querySelectorAll("img")].map((i) => i.getAttribute("src"));
     expect(imgs).toHaveLength(0);
   });
+
+  it("E6#70d 页内 video：相对 src/poster 按 assetBase 落包内，controls 强制给、preload 顶格 metadata", () => {
+    const md = `<video src="resources/demo.mp4" poster="resources/cover.svg" title="demo" width="480"></video>`;
+    const { container } = render(<MarkdownView markdown={md} assetBase="linkdesk://demo-plugin/" />);
+    const v = container.querySelector("video");
+    expect(v?.getAttribute("src")).toBe("linkdesk://demo-plugin/resources/demo.mp4");
+    expect(v?.getAttribute("poster")).toBe("linkdesk://demo-plugin/resources/cover.svg");
+    expect(v?.getAttribute("controls")).not.toBeNull(); // 强制给播放条
+    expect(v?.getAttribute("preload")).toBe("metadata");
+  });
+
+  it("E6#70d autoplay 一律剥除（消毒层 + 组件双保险）——不落 DOM autoplay 属性", () => {
+    const md = `<video src="resources/demo.mp4" autoplay autoloop controls loop></video>`;
+    const { container } = render(<MarkdownView markdown={md} assetBase="linkdesk://demo-plugin/" />);
+    const v = container.querySelector("video");
+    expect(v?.hasAttribute("autoplay")).toBe(false); // sanitize 白名单不含 autoplay → 剥
+    expect(v?.hasAttribute("autoPlay")).toBe(false);
+    expect(v?.hasAttribute("loop")).toBe(true); // 良性属性保留
+    expect(v?.getAttribute("src")).toBe("linkdesk://demo-plugin/resources/demo.mp4");
+  });
+
+  it("E6#70d 危险 video src：http/data: 一律不渲染；<video><source> 子 source 相对同样解析", () => {
+    const mdBad = `<video src="http://x/a.mp4"></video><video src="data:video/mp4;base64,abc"></video>`;
+    const { container } = render(<MarkdownView markdown={mdBad} assetBase="linkdesk://demo-plugin/" />);
+    expect(container.querySelectorAll("video")).toHaveLength(0);
+
+    const { container: c2 } = render(
+      <MarkdownView
+        markdown={`<video controls><source src="resources/a.mp4" type="video/mp4"></video>`}
+        assetBase="linkdesk://demo-plugin/"
+      />
+    );
+    const src = c2.querySelector("video source");
+    expect(src?.getAttribute("src")).toBe("linkdesk://demo-plugin/resources/a.mp4");
+    expect(src?.getAttribute("type")).toBe("video/mp4");
+  });
+
+  it("E6#70c GitLens 式封面外链 <a>包<img>：<a href 外链> 保留 target=_blank、图仍按 assetBase 显形", () => {
+    const md = `<figure><a title="watch demo" href="https://youtube.com/watch?v=demo"><img src="resources/cover.svg" alt="demo"></a></figure>`;
+    const { container } = render(<MarkdownView markdown={md} assetBase="linkdesk://demo-plugin/" />);
+    const a = container.querySelector("a");
+    expect(a?.getAttribute("href")).toBe("https://youtube.com/watch?v=demo");
+    expect(a?.getAttribute("target")).toBe("_blank");
+    const img = container.querySelector("figure img");
+    expect(img?.getAttribute("src")).toBe("linkdesk://demo-plugin/resources/cover.svg");
+  });
 });

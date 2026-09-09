@@ -61,6 +61,28 @@ export function registerProtocol(): void {
       return new Response(null, { status: 204, headers: corsHeaders() });
     }
 
+    // E6#70d：解析单段 Range（bytes=a-b / bytes=a- / bytes=-n）——媒体加载器（<video>）先以
+    // `Range: bytes=0-` 探测并要求 206 + Content-Range + Content-Length，忽略则 MEDIA_ERR_SRC_NOT_SUPPORTED。
+    // 返回 null = 无/不可满足 → 走 200 全长（图片/脚本等不带 Range 的加载不受影响）。
+    function bytesRangeFrom(header: string | null, size: number): { start: number; end: number } | null {
+      if (!header || size <= 0) return null;
+      const m = /^bytes=(\d*)-(\d*)$/.exec(header.trim());
+      if (!m) return null;
+      const [, s, e] = m;
+      if (s === "") {
+        // 后缀式 bytes=-N：末尾 N 字节
+        if (e === "") return null;
+        const suffix = Number(e);
+        if (!Number.isFinite(suffix) || suffix <= 0) return null;
+        const start = Math.max(size - suffix, 0);
+        return { start, end: size - 1 };
+      }
+      const start = Number(s);
+      const end = e === "" ? size - 1 : Number(e);
+      if (!Number.isFinite(start) || !Number.isFinite(end) || start > end || start >= size) return null;
+      return { start, end: Math.min(end, size - 1) };
+    }
+
     // URI: linkdesk://terminal/dist/bundle.js
     // 提取路径部分（去掉 "linkdesk://"）
     const urlPath = request.url.replace(new RegExp(`^${APP_SCHEME}://`), "");
@@ -81,12 +103,36 @@ export function registerProtocol(): void {
     }
     const fullPath = resolved.fullPath;
 
-    // 通过 fs 直接读文件——避免 net.fetch file:// URL 在生产环境可能的权限问题
+    // 通过 fs 读文件——避免 net.fetch file:// URL 在生产环境可能的权限问题。
+    // E6#70d：Range-aware 服务——<video> 等媒体加载器带 Range 探测 → 只读请求区间回 206 + Content-Range
+    //   （Chromium 媒体管线据此建 seekable 数据源，缺失则 MEDIA_ERR_SRC_NOT_SUPPORTED）；
+    //   图片/脚本等不带 Range → 200 全长 + Content-Length/Accept-Ranges（行为不变，仅补齐头部）。
     try {
-      const buf = fs.readFileSync(fullPath);
+      const rangeHeader = request.headers.get('Range');
+      const stat = fs.statSync(fullPath);
       const mimeType = getMimeType(fullPath);
       const headers = corsHeaders();
       headers.set('Content-Type', mimeType);
+      headers.set('Accept-Ranges', 'bytes');
+      const range = bytesRangeFrom(rangeHeader, stat.size);
+      if (range) {
+        const len = range.end - range.start + 1;
+        const fd = fs.openSync(fullPath, 'r');
+        let slice: Buffer;
+        try {
+          slice = Buffer.alloc(len);
+          fs.readSync(fd, slice, 0, len, range.start);
+        } finally {
+          fs.closeSync(fd);
+        }
+        headers.set('Content-Range', `bytes ${range.start}-${range.end}/${stat.size}`);
+        headers.set('Content-Length', String(len));
+        diag(`206 RANGE — ${urlPath} bytes=${range.start}-${range.end}/${stat.size} → ${mimeType}`);
+        // new Uint8Array(slice) 重新装箱成 ArrayBuffer-backed（Buffer<ArrayBufferLike> 不满足 BodyInit 类型）
+        return new Response(new Uint8Array(slice), { status: 206, headers });
+      }
+      const buf = fs.readFileSync(fullPath);
+      headers.set('Content-Length', String(stat.size));
       diag(`200 OK — ${urlPath} → ${mimeType} (${buf.length} bytes)`);
       return new Response(buf, { status: 200, headers });
     } catch (err) {
@@ -144,6 +190,9 @@ function getMimeType(filePath: string): string {
     '.jpg': 'image/jpeg',
     '.jpeg': 'image/jpeg',
     '.gif': 'image/gif',
+    '.mp4': 'video/mp4',
+    '.webm': 'video/webm',
+    '.m4v': 'video/mp4',
     '.ico': 'image/x-icon',
     '.wasm': 'application/wasm',
     '.ttf': 'font/ttf',

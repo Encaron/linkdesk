@@ -3,6 +3,14 @@
 > 每版一条，对标 VS Code changelog。**历史真相源 = [E6 执行清单](docs/02-Electron架构/E6_插件生态与发布/E6-执行清单.md)**（E6 阶段每轮收束细节 + 实机证据全在清单 Batch 注里，此文件只记类别清单）。版本号唯一真值 = `package.json`（不手写第二份，见 [02-产品身份与版本.md](docs/02-Electron架构/E6_插件生态与发布/06-主软件更新/02-产品身份与版本.md) §2.3）。
 > 0.x 阶段（开发期）：一切向后兼容变更走 patch 位；破坏性变更走 minor 位。
 
+## v0.1.23（2026-09-09）
+
+- **feat:E6#70c + E6#70d 详情页说明区媒体画布·封面外链视频 + 页内真播视频**（README 外链转系统浏览器、`<video>`/mp4 页内可播）
+  - #70c 外链 window-open 路由：新建 `setupExternalLinkRouting`（electron/windows/external-links.ts）全局 `web-contents-created` 挂 `setWindowOpenHandler`——https?/mailto → `shell.openExternal` 交系统默认浏览器并 deny、其余协议一律 deny（消灭 Electron 默认「裸 BrowserWindow 载外部页」）；30.6a 既有 `<a target=_blank>`（GitLens 式封面外链）天然吃到此路由，零额外消费点
+  - #70d MarkdownView 页内媒体：消毒 schema 扩 `video/figure/figcaption` + `source`（defaultSchema 加白名单，script/事件属性/javascript: 剥除不受影响）+ video/source override——src/poster 相对路径经 `assetBase` 落「被查看插件包内」、`controls` 强制给、`preload` 顶格 metadata、**`autoplay` 消毒层剥 + 组件双保险**（打开说明绝不自动播）
+  - #70d 协议层 🔥 Range/206 根因修复（electron/plugins/protocol.ts）：Chromium 媒体加载器以 `Range: bytes=0-` 探测，原 handler 忽略 Range 回 200 全长且无 Content-Length/Accept-Ranges → `MEDIA_ERR_SRC_NOT_SUPPORTED` → 补单段 Range 解析 + `206` + Content-Range/Content-Length/Accept-Ranges；非媒体不带 Range 走 200 全长补齐头部（图/脚本零回归）；mime 补 `.mp4/.webm/.m4v`
+  - 实机 CDP：serial-monitor 详情说明区 `<video controls>`（用户临时 mp4 素材）readyState=4、play() 后 currentTime 走 = 页内真播；window.open file:/data:/about:blank 全 deny、无裸 Electron 新窗；验完临时素材撤净
+
 ## v0.1.22（2026-09-09）
 
 - **feat:E6#70a 详情页说明区媒体画布·静态图链路打通（README 相对图显形）**
