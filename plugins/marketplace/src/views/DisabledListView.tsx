@@ -9,6 +9,7 @@ import { PluginIcon } from "@linkdesk/ui";
 
 import { useMarketplacePlugins, useCatalogEntryById } from "../services/marketplaceShared";
 import { updateToVersion } from "../services/marketCatalog";
+import { pickRowArt } from "../services/display";
 import "../styles/MarketplaceSidebar.css";
 
 const pm = () => window.linkdesk?.pluginManager;
@@ -48,7 +49,10 @@ export default function DisabledListView() {
         return (
           <div key={p.pluginId} className="ms-extension-item disabled">
             <div className="ms-item-icon">
-              <PluginIcon pluginId={p.pluginId} />
+              {/* E6#66：禁用子集无 icon 字段（PluginInfoEntry 形状）——行图取目录官方条目兜底
+               *  （catalogById 上文已查，顺带复用），目录也没有 → 默认封面顶替历史 📄（硬约束 11：
+               *  图标只由声明字段/目录条目裁决，不凭空猜）。 */}
+              <PluginIcon pluginId={p.pluginId} manifest={pickRowArt(catalogById.get(p.pluginId))} />
             </div>
             <div
               className="ms-item-details"

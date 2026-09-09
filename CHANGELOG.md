@@ -3,6 +3,16 @@
 > 每版一条，对标 VS Code changelog。**历史真相源 = [E6 执行清单](docs/02-Electron架构/E6_插件生态与发布/E6-执行清单.md)**（E6 阶段每轮收束细节 + 实机证据全在清单 Batch 注里，此文件只记类别清单）。版本号唯一真值 = `package.json`（不手写第二份，见 [02-产品身份与版本.md](docs/02-Electron架构/E6_插件生态与发布/06-主软件更新/02-产品身份与版本.md) §2.3）。
 > 0.x 阶段（开发期）：一切向后兼容变更走 patch 位；破坏性变更走 minor 位。
 
+## v0.1.20（2026-09-09）
+
+- **feat:E6#66 + E6#67 市场图标系统收尾——默认展示图规定 + 双图标字段**——市场展示位显「展示图/封面」大框、无配图插件落统一默认封面
+  - #67 双图标字段：`PluginManifest` 顶层加可选 `marketIcon`/`marketIconSource`（形状照 icon/iconSource；值 = 包内 svg 资产相对路径、source 省略 → linkdesk:// 路径推断）——`icon` = 界面小图标（壳只读它，**零壳改动**）；`marketIcon` = 市场展示图 cover art（可复杂 640×640）。schema 三源副本 + contracts:gen additive 零漂移 + PluginListSubset/list() 投影带两字段
+  - #66 默认展示图：市场无配图插件由 📄 emoji / codicon-symbol-misc 兜底 → 统一默认封面（A 家族「dock 装入」640×640 自含 SVG，data-URI 内置于市场插件，零构建耦合）——市场层唯一裁决 `display.ts`（展示位 = marketIcon ?? icon ?? 默认封面；行内位 = icon ?? marketIcon ?? 默认封面，28px 不硬压 640 封面；恒返有效 descriptor → 消费点零分支，ExtensionItem/ExploreView/DetailView/DisabledListView 全接）
+  - 详情展示位 52 → 96px 方框（2026-09-09 用户拍板）；`.mpd-icon-codicon` 占位与 DetailView codicon-symbol-misc 分支删除
+  - SDK 打包器随包拷 marketIcon 资产；serial-monitor 验证样本声明 marketIcon=resources/cover.svg + 1.0.2→1.0.3 + 单只 zip 重建（含 cover 落 bundled-plugins）
+  - 实机 CDP 9222：串口监视器 图标栏/行 = icon.png 小图标、市场详情头 96px = cover.svg「串口的窗」——双图标各就各位；Python（无配图）详情头 96px + 列表行显默认封面（非 📄/几何）；theme-aurora-glass 行显 icon.svg；壳回归干净
+  - 版本 0.1.19→0.1.20（0.x 向后兼容新增走 patch 位；#68 铺剩余封面仍暂停待用户点名）
+
 ## v0.1.19（2026-09-09）
 
 - **fix:E6#65 市场图标系统批次一·数据通道修复（14 档案 A/B）**——市场拿到各插件现有图标（serial-monitor/settings 彩 PNG、marketplace/aurora/zones SVG、file-tree lucide 立显）

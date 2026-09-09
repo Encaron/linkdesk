@@ -61,6 +61,10 @@ const EXEMPT_FILES = [
     path: "plugins/serial-monitor/src/hooks/useSerialSessions.ts", // 2026-09-05 塌平单根（原 plugins/user/serial-monitor）
     reason: "串口 session 色板配置数据（SESSION_COLORS 预设）",
   },
+  {
+    path: "plugins/marketplace/src/services/defaultCoverArt.ts", // E6#66 默认展示封面
+    reason: "默认封面 SVG 资产数据（DEFAULT_COVER_SVG data-URI）——外部 <img> 渲染 data-URI，CSS 变量在 img 内不可达，颜色只能字面量内嵌；与画好的 7 只 plugins/*/resources/*.svg 封面同性质（.svg 资产不被本审计扫描，TS 内嵌等价物文档化豁免）。本文件零消费逻辑；裁决逻辑在 sibling display.ts 不含 hex 照常受审",
+  },
 ];
 
 const norm = (p) => p.split(sep).join("/");

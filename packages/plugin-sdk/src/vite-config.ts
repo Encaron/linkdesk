@@ -518,6 +518,10 @@ export function defineLinkdeskPluginConfig(options: LinkdeskPluginOptions = {}):
         copyFileInto(root, pkgDir, "CHANGELOG.md");
         const iconRel = (manifest as { icon?: unknown })?.icon;
         if (typeof iconRel === "string" && !iconRel.includes("\\")) copyFileInto(root, pkgDir, iconRel);
+        // E6#67（双图标资产随包）：marketIcon（市场展示图 cover art）同 icon 待遇——声明路径拷进 zip，
+        //  装进 LinkDesk 后市场才能从包内读到展示图（缺此 = 安装版详情封面 404 → 回退 icon/默认）。
+        const marketIconRel = (manifest as { marketIcon?: unknown })?.marketIcon;
+        if (typeof marketIconRel === "string" && !marketIconRel.includes("\\")) copyFileInto(root, pkgDir, marketIconRel);
 
         // jszip 打包 → 项目根单文件（real = dev --real：不产分发件，仅物化目录——直写面自取 dist/<id>.linkdesk-plugin）
         if (!real) {

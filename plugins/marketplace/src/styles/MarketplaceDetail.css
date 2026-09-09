@@ -46,38 +46,36 @@
 
 .mpd-icon {
   position: relative;
-  width: 52px; /* #63b B2：icon 位 96 → 52 收敛（mockup 01 头部三等分——非巨大方形图标） */
-  height: 52px;
+  /* E6#66/67（2026-09-09 拍板）：展示位 52 → 96 方框——cover art 展示框（定案 6：市场展示图位，
+   *  marketIcon 封面 / icon 图形 / 默认封面都在此框显形；内图按型接管，见下） */
+  width: 96px;
+  height: 96px;
   flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-/* 目录 icon descriptor → PluginIcon 渲染的尺寸接管（lucide/codicon/emoji/img 各按其型；52 盒内图 ~40） */
+/* 展示 descriptor → PluginIcon 渲染的尺寸接管。img 型 = 封面/图片资产（96 框内放大 ~84 显 cover 细节）；
+ * codicon/lucide/emoji 型 = 界面图形（放大到 48 即止，不把细线 glyph 撑成巨型——图形型本不是封面资产） */
 .mpd-icon .plugin-icon--codicon,
 .mpd-icon .plugin-icon--emoji {
-  font-size: 40px !important;
+  font-size: 48px !important;
   line-height: 1;
   width: auto;
   height: auto;
+  color: var(--text-secondary);
 }
 
 .mpd-icon .plugin-icon--lucide {
-  width: 40px;
-  height: 40px;
+  width: 48px;
+  height: 48px;
 }
 
 .mpd-icon .plugin-icon--img {
-  width: 40px;
-  height: 40px;
+  width: 84px;
+  height: 84px;
   object-fit: contain;
-}
-
-/* 无目录条目/未装时占位 codicon（list() IPC 无 icon 字段——E5.7#98 同况） */
-.mpd-icon-codicon {
-  font-size: 40px !important;
-  color: var(--text-secondary);
 }
 
 /* core:true 星标（#18a UI 旗标——藏卸载钮同旗；52 盒右下角收敛 ~20） */

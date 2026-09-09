@@ -135,6 +135,11 @@ export interface PluginManifest {
   version: string;
   icon?: string;
   iconSource?: "codicon" | "svg" | "url" | "lucide";
+  /** 市场展示图（cover art，14 档案双图标模型 E6#67）——svg 资产相对路径，可画得讲究复杂
+   *  （与 icon 的「界面单色小图标」语义分开：壳图标栏/标签栏只读 icon）。缺省 → 市场回退用 icon。
+   *  惯例：值 = 包内资源相对路径（如 "resources/cover.svg"）、iconSource 省略 → linkdesk:// 路径推断。 */
+  marketIcon?: string;
+  marketIconSource?: "codicon" | "svg" | "url" | "lucide";
   description?: string;
   author?: string;
   entry?: string;

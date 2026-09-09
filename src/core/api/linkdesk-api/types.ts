@@ -202,6 +202,11 @@ export interface PluginListSubset {
   // 与 E5.8#37.9.1 同构：list() 子集继续只挑 UI 消费字段，不整 manifest 过 IPC。
   icon?: PluginManifest["icon"];
   iconSource?: PluginManifest["iconSource"];
+  // E6#67（14 档案批次二·五）：marketIcon/marketIconSource 透传——市场展示图（cover art）数据通道。
+  // 市场消费「marketIcon ?? icon」在 marketplace 层 pick（壳界面只读 icon，故 list 一并透传两对）；
+  // 无 marketIcon = undefined → 市场回退 icon，再空 → 默认封面。
+  marketIcon?: PluginManifest["marketIcon"];
+  marketIconSource?: PluginManifest["marketIconSource"];
 }
 
 /** 环境信息——env.get() 返回（主进程 env-handlers 组装） */

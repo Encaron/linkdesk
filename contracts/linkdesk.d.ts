@@ -957,6 +957,11 @@ export interface PluginManifest {
     version: string;
     icon?: string;
     iconSource?: "codicon" | "svg" | "url" | "lucide";
+    /** 市场展示图（cover art，14 档案双图标模型 E6#67）——svg 资产相对路径，可画得讲究复杂
+     *  （与 icon 的「界面单色小图标」语义分开：壳图标栏/标签栏只读 icon）。缺省 → 市场回退用 icon。
+     *  惯例：值 = 包内资源相对路径（如 "resources/cover.svg"）、iconSource 省略 → linkdesk:// 路径推断。 */
+    marketIcon?: string;
+    marketIconSource?: "codicon" | "svg" | "url" | "lucide";
     description?: string;
     author?: string;
     entry?: string;
@@ -1093,6 +1098,11 @@ export interface PluginListSubset {
     // 与 E5.8#37.9.1 同构：list() 子集继续只挑 UI 消费字段，不整 manifest 过 IPC。
     icon?: PluginManifest["icon"];
     iconSource?: PluginManifest["iconSource"];
+    // E6#67（14 档案批次二·五）：marketIcon/marketIconSource 透传——市场展示图（cover art）数据通道。
+    // 市场消费「marketIcon ?? icon」在 marketplace 层 pick（壳界面只读 icon，故 list 一并透传两对）；
+    // 无 marketIcon = undefined → 市场回退 icon，再空 → 默认封面。
+    marketIcon?: PluginManifest["marketIcon"];
+    marketIconSource?: PluginManifest["marketIconSource"];
 }
 /** 插件列表条目——pluginManager.list() 返回（主进程序列化后的 manifest 子集）。
  *  E5.7#98：Partial<PluginManifest> 过宽（component 等字段 IPC 不可达）——收窄为

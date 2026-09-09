@@ -57,6 +57,8 @@ import {
 } from "../services/marketCatalog";
 import { removeDiscoveredCandidate, runAutoUpdateIfDue } from "../services/updateDiscovery";
 import { readPluginUpdateMeta, setAutoUpdate, setPinnedVersion } from "../services/installedUpdateMeta";
+// E6#66/67：详情展示位 = marketIcon ?? icon ?? 默认封面（pickDisplayArt 恒返 descriptor）
+import { pickDisplayArt } from "../services/display";
 import { categoryListFromEntry, localizeCategory } from "../services/marketCategories";
 import { useDownloadCount } from "../services/downloadCounts";
 import { readInstalledPackageFile } from "../services/packageFiles";
@@ -73,9 +75,10 @@ type DetailContributedProps = {
 };
 
 /** 展示合并对象——list() 全 manifest | getDisabled 子集 | null(未装)
- *  E6#65c：manifest 再挑 icon/iconSource（图标回退链第二环——已装 manifest 无目录条目时详情页头图） */
+ *  E6#65c：manifest 再挑 icon/iconSource（图标回退链第二环——已装 manifest 无目录条目时详情页头图）
+ *  E6#67：manifest 再挑 marketIcon/marketIconSource——已装插件详情展示位读它（list() 投影已带，双图标模型） */
 type DetailInfo = {
-  manifest: { name?: string; version?: string; author?: string; description?: string; core?: boolean; icon?: string; iconSource?: "codicon" | "svg" | "url" | "lucide" };
+  manifest: { name?: string; version?: string; author?: string; description?: string; core?: boolean; icon?: string; iconSource?: "codicon" | "svg" | "url" | "lucide"; marketIcon?: string; marketIconSource?: "codicon" | "svg" | "url" | "lucide" };
   pendingReason?: string;
 };
 
@@ -213,6 +216,10 @@ export default function DetailView({ pluginId }: DetailContributedProps) {
           // E6#65c：图标回退链第二环——已装 manifest.icon/iconSource 透传（list() 子集已带，E6#65a）
           icon: enabledEntry.manifest.icon,
           iconSource: enabledEntry.manifest.iconSource,
+          // E6#67：市场展示图（cover art）——list() 投影带 marketIcon/marketIconSource（E6#67a），
+          // 详情展示位 pickDisplayArt 的 marketIcon 优先环读这里（serial-monitor cover 即此路显形）
+          marketIcon: enabledEntry.manifest.marketIcon,
+          marketIconSource: enabledEntry.manifest.marketIconSource,
         },
         pendingReason: enabledEntry.pendingReason,
       }
@@ -589,15 +596,11 @@ export default function DetailView({ pluginId }: DetailContributedProps) {
   const authorText = (info ? m.author : undefined) || (entry ? authorLabel(entry.author) : undefined);
   const descText = info ? m.description ?? "" : entry?.description ?? "";
   const showDesc = descText.length > 0;
-  /* E6#65c（14 档案批次一数据通道）：icon 回退链——entry 目录 icon → 已装 manifest.icon → 兜底。
-   *  此前只读 entry：无目录条目（官方 dev 目录空 / 本地内置插件不在目录）即恒 undefined →
-   *  header codicon-symbol-misc 几何兜底。E6#65a 后已装 manifest 带 icon → 内置插件图标详情页立显。 */
-  const iconManifest =
-    entry?.icon || entry?.iconSource
-      ? { icon: entry?.icon, iconSource: entry?.iconSource }
-      : m.icon || m.iconSource
-        ? { icon: m.icon, iconSource: m.iconSource }
-        : undefined;
+  /* E6#66/67（14 档案批次二/二·五）：展示位 = marketIcon ?? icon ?? 默认封面——pickDisplayArt 恒返
+   *  有效 descriptor（零分支，顶替历史 codicon-symbol-misc 兜底渲染）。candidates 顺序 = 数据源优先级：
+   *  已装 manifest（启用态经上方装配已带 marketIcon → serial 封面即此环显形）→ 目录条目（未装/禁用态
+   *  官方艺术兜底）；两环皆无配图 → 默认封面（E6#66，市场门面）。 */
+  const iconManifest = info ? pickDisplayArt(info.manifest, entry) : pickDisplayArt(entry);
 
   /* ── 30.6 展示派生 ── */
   const shots = (entry?.screenshots ?? []).filter((s) => typeof s === "string" && s);
@@ -853,11 +856,9 @@ export default function DetailView({ pluginId }: DetailContributedProps) {
        *  .pdva-head L829-853：动作在图标/名右方同头部，row1 主钮+版本下拉、row2 自动更新勾；窄容器允许换行兜底） ═══ */}
       <header className="mpd-header">
         <div className="mpd-icon">
-          {iconManifest ? (
-            <PluginIcon pluginId={pluginId ?? ""} manifest={iconManifest} alt={nameText} />
-          ) : (
-            <span className="codicon codicon-symbol-misc mpd-icon-codicon" />
-          )}
+          {/* E6#66/67：iconManifest 恒有值（pickDisplayArt 默认封面兜底）——无条件渲染 PluginIcon，
+           *  codicon-symbol-misc 占位分支已随 #66 删除；96px 展示框内 img 型显封面、codicon/lucide 型显图标 */}
+          <PluginIcon pluginId={pluginId ?? ""} manifest={iconManifest} alt={nameText} />
           {isCore && <span className="mpd-icon-badge codicon codicon-star-full" />}
         </div>
         <div className="mpd-header-details">

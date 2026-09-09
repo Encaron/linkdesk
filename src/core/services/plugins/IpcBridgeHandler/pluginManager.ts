@@ -28,7 +28,7 @@ export interface PluginManagementAPI {
   // E5.8#15.5：list() 数据源 = 已加载 + 缺依赖挂起（pendingReason 随行）——marketplace 可见 PENDING 状态
   getListPluginManifests(): Array<{
     pluginId: string;
-    manifest: { name: string; description?: string; version?: string; core?: boolean; author?: string; statusBar?: unknown; contributes?: unknown; requires?: string[]; icon?: string; iconSource?: "codicon" | "svg" | "url" | "lucide" };
+    manifest: { name: string; description?: string; version?: string; core?: boolean; author?: string; statusBar?: unknown; contributes?: unknown; requires?: string[]; icon?: string; iconSource?: "codicon" | "svg" | "url" | "lucide"; marketIcon?: string; marketIconSource?: "codicon" | "svg" | "url" | "lucide" };
     pendingReason?: string;
   }>;
 }
@@ -56,6 +56,10 @@ export async function handlePluginManagerMethod(method: string, args: unknown[])
           // （resolvePluginIcon 只读这两字段；serial/settings png、marketplace svg、file-tree lucide 即显）
           icon: p.manifest.icon,
           iconSource: p.manifest.iconSource,
+          // E6#67（14 档案批次二·五）：marketIcon/marketIconSource 随行——市场展示图（cover art）数据通道
+          // （市场层 pick「marketIcon ?? icon」；壳仍只读 icon 故不影响图标栏/标签栏）
+          marketIcon: p.manifest.marketIcon,
+          marketIconSource: p.manifest.marketIconSource,
         },
         // E5.8#15.5：缺依赖挂起原因——marketplace 显示 "等待依赖: xxx"（无挂起 = undefined）
         pendingReason: p.pendingReason,

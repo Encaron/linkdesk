@@ -64,6 +64,16 @@
       "enum": ["codicon", "svg", "url", "lucide"],
       "default": "codicon"
     },
+    "marketIcon": {
+      "type": "string",
+      "description": "市场展示图（cover art，E6#67 双图标模型）——svg 资产相对路径，可画得讲究复杂（与 icon 的界面小图标语义分开；壳图标栏只读 icon）。缺省 → 市场回退用 icon"
+    },
+    "marketIconSource": {
+      "type": "string",
+      "description": "市场展示图来源——与 iconSource 同枚举；本字段值走 svg 资产相对路径（如 resources/cover.svg），source 省略则按文件名自动推断",
+      "enum": ["codicon", "svg", "url", "lucide"],
+      "default": "codicon"
+    },
     "description": {
       "type": "string",
       "description": "一句话描述，插件详情页展示。支持多行"

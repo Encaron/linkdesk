@@ -41,9 +41,8 @@ const WHITELIST = [
   { sel: ".pd-icon-badge", prop: "font-size", value: 12, why: "reconcile 插件详情徽标 codicon 12px（#63b B2 收敛 16→12）" },
   { sel: ".pd-icon-badge", prop: "line-height", value: 20, why: "reconcile 插件详情徽标固定盒 20px（#63b B2 收敛 28→20）" },
   // ── marketplace 插件详情主区视图（E6#30.11b 迁自 pd-*，同语义独立显示图标） ──
-  { sel: ".mpd-icon .plugin-icon--codicon", prop: "font-size", value: 40, why: "marketplace 详情目录大图标 codicon 40px（#63b B2 收敛 56→40）" },
-  { sel: ".mpd-icon .plugin-icon--emoji", prop: "font-size", value: 40, why: "marketplace 详情目录大图标 emoji 40px（#63b B2 收敛 56→40）" },
-  { sel: ".mpd-icon-codicon", prop: "font-size", value: 40, why: "marketplace 详情无目录占位大图标 40px（#63b B2 收敛 96→40）" },
+  { sel: ".mpd-icon .plugin-icon--codicon", prop: "font-size", value: 48, why: "marketplace 详情展示位 codicon 48px（E6#66/67 展示框 52→96 后同步放大，图形型不随 96 框等比撑满）" },
+  { sel: ".mpd-icon .plugin-icon--emoji", prop: "font-size", value: 48, why: "marketplace 详情展示位 emoji 48px（同上）" },
   { sel: ".mpd-icon-badge", prop: "font-size", value: 12, why: "marketplace 详情徽标 codicon 12px（#63b B2 收敛 16→12）" },
   { sel: ".mpd-icon-badge", prop: "line-height", value: 20, why: "marketplace 详情徽标固定盒 20px（#63b B2 收敛 28→20）" },
   { sel: ".welcome-card-icon", prop: "font-size", value: 24, why: "reconcile 欢迎页卡片插件图标 24px" },
