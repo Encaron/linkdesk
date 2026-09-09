@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48">
+  <!-- lang-defaults 彩色图标「语言包的块」：玫红渐变块 + 两枚对开语言卡（后卡粉白错位 + 前卡白纸带文字行）
+       意象 = 出厂中文/English 语言包；卡片 = 双语文案卡堆，前卡文字行 = 被 t() 翻译的文案
+       Type-2 身份图 -->
+  <defs>
+    <linearGradient id="ldBg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FB7185"/>
+      <stop offset="1" stop-color="#BE123C"/>
+    </linearGradient>
+    <linearGradient id="ldGlass" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.20"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0.03"/>
+    </linearGradient>
+  </defs>
+  <rect x="4" y="4" width="40" height="40" rx="10" fill="url(#ldBg)"/>
+  <rect x="4" y="4" width="40" height="40" rx="10" fill="url(#ldGlass)"/>
+  <rect x="4" y="4" width="40" height="40" rx="10" fill="none" stroke="#FFE4E6" stroke-opacity="0.30" stroke-width="1"/>
+  <!-- 后语言卡（错位露出，粉白） -->
+  <rect x="12" y="19" width="17" height="17" rx="4" fill="#FFE4E6" opacity="0.96"/>
+  <!-- 前语言卡（白纸 + 玫红文字行，右前叠压） -->
+  <rect x="21" y="12" width="17" height="17" rx="4" fill="#FFF7F7"/>
+  <rect x="24.5" y="16.2" width="8.5" height="1.8" rx="0.9" fill="#FB7185" opacity="0.9"/>
+  <rect x="24.5" y="20.6" width="6" height="1.8" rx="0.9" fill="#F43F5E" opacity="0.75"/>
+</svg>

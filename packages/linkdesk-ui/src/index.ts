@@ -32,11 +32,17 @@ export { default as ThemePicker } from "@shared/theme-picker/ThemePicker";
 export { default as Toggle } from "@shared/toggle/Toggle";
 export { InlineInput } from "@shared/inline-input/InlineInput";
 export { PluginIcon } from "@shared/plugin-icon/PluginIcon";
+// E6#69f：插件身份彩色图裁决（marketIcon ?? icon ?? 默认彩色块）——壳 windowLayout 标签 + 市场 list/detail 同消费（单一实现防漂移）
+export { pickIdentityArt } from "@shared/plugin-icon/iconUtils";
+export { DEFAULT_PLUGIN_IDENTITY_URI } from "@shared/plugin-icon/defaultIdentityArt";
 export { default as OverlayPortal } from "@shared/overlay-portal/OverlayPortal";
 // E6#15h：零件包扩到 UI 交互 hook（08-共享hook归位.md）——源码壳 src/components/shared/hooks/ 单一副本
 export { useClickPreview } from "@shared/hooks/useClickPreview";
 export { useClipboardKeys } from "@shared/hooks/useClipboardKeys";
 export { useDebouncedInput } from "@shared/hooks/useDebouncedInput";
+// E6#69g：文件图标解析服务上移共享——file-tree 树行/搜索行 + 壳 windowLayout 文件标签 同消费单一解析器（禁双源/禁跨插件 import）
+export { FileIconResolver } from "@shared/file-icon/FileIconResolver";
+export type { IconDescriptor } from "@shared/file-icon/FileIconResolver";
 export { inferSliderStep } from "@shared/slider/sliderStep";
 // E6#30c：URL 源身份（owner/repo、分支无关）——marketplace 加源弹窗 + settings 行内直添共用同一去重键（单一实现）
 export { urlSourceKey } from "@shared/string-list-editor/urlSourceKey";

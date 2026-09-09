@@ -12,6 +12,7 @@
  * 设计依据：[[phase4-design-decisions]] §16 + VS Code extension icon 解析（manifest.icon + galleryBanner）
  */
 import type { PluginManifest } from "@linkdesk/contracts"; // 仅类型引用；参数按最小结构收缩（函数只读 icon/iconSource）
+import { DEFAULT_PLUGIN_IDENTITY_URI } from "./defaultIdentityArt"; // E6#69a 统一默认彩色块——单份共享（壳/市场同 URI）
 
 export interface ResolvedIcon {
   /** Lucide 图标名——iconSource: "lucide" 时返回 "Package" / "Folder" 等 */
@@ -66,4 +67,34 @@ export function resolvePluginIcon(pluginId: string, manifest: ManifestIconShape)
   }
 
   return { emoji: "📄" };
+}
+
+/* ═══ E6#69f 插件身份彩色图裁决（三图模型 Type-2）═══
+ * 单一实现：壳 windowLayout（标签栏视图标签）+ 市场 display（list/detail）同消费，禁各写一份（防漂移重演）。
+ * 语义（#69 改向）：marketIcon = 插件身份彩色图（含市场展示 + 标签栏视图标签，Type-2）；icon = 界面小图标
+ * （图标栏 4 只 icon-bar 插件为 Type-1 剪影，壳图标栏只读 icon）。本链取 marketIcon ?? icon → 默认彩色块。 */
+
+/** manifest 中「插件身份彩色图」相关最小结构——marketIcon/icon 任一可裁决（E6#69f） */
+export type PluginIdentityShape = Pick<
+  PluginManifest,
+  "icon" | "iconSource" | "marketIcon" | "marketIconSource"
+>;
+
+/** 挑出的统一 descriptor 形状——与 ManifestIconShape 结构兼容（直接可作 PluginIcon manifest / resolvePluginIcon 入参） */
+export interface IdentityPicked {
+  icon: string;
+  iconSource?: PluginManifest["iconSource"];
+}
+
+/**
+ * 插件身份彩色图裁决——恒返有效 descriptor（顶替历史 📄/640 场景默认）。
+ * - marketIcon 在 → 用之（Type-2 身份图；source 缺省 → linkdesk:// 路径推断）
+ * - 否则 icon 在 → 用之（非图标栏插件 icon 即 Type-2；图标栏插件 icon 是 Type-1 剪影——标签/市场不消费图标栏图）
+ * - 全无 → 统一默认彩色块（E6#69a）
+ * candidates 按序（已装 manifest 优先于目录条目——先到的候选先提供字段）。
+ */
+export function pickIdentityArt(...candidates: Array<PluginIdentityShape | null | undefined>): IdentityPicked {
+  for (const c of candidates) if (c?.marketIcon) return { icon: c.marketIcon, iconSource: c.marketIconSource };
+  for (const c of candidates) if (c?.icon) return { icon: c.icon, iconSource: c.iconSource };
+  return { icon: DEFAULT_PLUGIN_IDENTITY_URI, iconSource: "url" };
 }

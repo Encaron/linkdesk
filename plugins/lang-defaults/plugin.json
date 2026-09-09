@@ -1,8 +1,8 @@
 {
   "$schema": "../../public/schemas/plugin.schema.json",
   "name": "官方语言",
-  "version": "1.0.1",
-  "marketIcon": "resources/cover.svg",
+  "version": "1.0.2",
+  "icon": "resources/icon.svg",
   "description": "出厂中文/English 语言包——可卸载，卸载后 t(key) 返回 key 原文",
   "author": "官方",
   "contributes": {
@@ -18,5 +18,8 @@
         "path": "en.json"
       }
     ]
-  }
+  },
+  "changelog": [
+    { "version": "1.0.2", "date": "2026-09-09", "changes": ["图标身份分工（E6#69 三图模型）：新增 icon=resources/icon.svg（Type-2 彩色身份图），撤 marketIcon=cover.svg——整幅封面迁入 README 展示"] }
+  ]
 }

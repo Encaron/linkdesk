@@ -1,4 +1,23 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-  <polyline points="16 18 22 12 16 6"/>
-  <polyline points="8 6 2 12 8 18"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48">
+  <!-- editor 彩色图标「编辑器的块」：靛蓝渐变块 + 白色代码尖括号 < >
+       意象 = Monaco 代码编辑器；Type-2 身份图（市场列表/详情/编辑器插件位同用这张，文件标签类型图走另一套）
+       界面 img 显示用 → 全实色自含 -->
+  <defs>
+    <linearGradient id="edBg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#6366F1"/>
+      <stop offset="1" stop-color="#312E81"/>
+    </linearGradient>
+    <linearGradient id="edGlass" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.20"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0.03"/>
+    </linearGradient>
+  </defs>
+  <rect x="4" y="4" width="40" height="40" rx="10" fill="url(#edBg)"/>
+  <rect x="4" y="4" width="40" height="40" rx="10" fill="url(#edGlass)"/>
+  <rect x="4" y="4" width="40" height="40" rx="10" fill="none" stroke="#E0E7FF" stroke-opacity="0.30" stroke-width="1"/>
+  <!-- 代码尖括号 < >（apex 朝外、中间留缝，读作 code bracket） -->
+  <g fill="none" stroke="#EEF2FF" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M22 16.5 L16 24 L22 31.5"/>
+    <path d="M26 16.5 L32 24 L26 31.5"/>
+  </g>
 </svg>

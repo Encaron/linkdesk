@@ -55,7 +55,13 @@ function PoolPluginIcon({ icon, className = "", alt = "" }: PoolPluginIconProps)
       return <span className={`plugin-icon plugin-icon--emoji ${className}`}>📄</span>;
     }
     case "codicon":
-      return <span className={`codicon ${icon.name} plugin-icon plugin-icon--codicon ${className}`} />;
+      // E6#69g：codicon 成员可带每图标 color（文件图标主题数据）——消费方（标签栏）样式覆盖时照用
+      return (
+        <span
+          className={`codicon ${icon.name} plugin-icon plugin-icon--codicon ${className}`}
+          style={icon.color ? { color: icon.color } : undefined}
+        />
+      );
     case "img":
       // E5.8#46.6：draggable=false 禁原生拖拽——图标栏指针拖拽重排时 img 默认可拖会抢手势（同 GroupTabBar 修）
       return <img src={icon.src} alt={alt} className={`plugin-icon plugin-icon--img ${className}`} draggable={false} />;

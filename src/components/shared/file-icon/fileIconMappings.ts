@@ -1,8 +1,10 @@
 /**
- * 文件图标映射表——数据驱动，声明式。
- * E4a #93：加新图标只改此文件不改解析器。
+ * 文件图标默认映射表——数据驱动，声明式。
+ * E4a #93：加新图标只改此文件不改解析器。对标 VS Code seti/vscode-icons 图标主题。
  *
- * 对标 VS Code seti/vscode-icons 图标主题。
+ * E6#69g（14 档案批次三·归一化铁律）：自 plugins/file-tree/src/utils/icon-mappings.ts 上移共享——
+ * 文件图标默认数据单一副本：壳 windowLayout（文件标签图标）+ file-tree（树行/搜索行）同消费。
+ * 图标主题插件经 IconRegistry 贡献的 IconThemeMappings 整体替换本默认表（theme 在 → theme 优先）。
  */
 
 /** 文件名精确匹配（优先级最高） */
@@ -51,7 +53,7 @@ export const FOLDER_ICON_MAP: Record<string, string> = {
   "utils": "codicon-folder-library",
 };
 
-/** 默认图标 */
+/** 默认图标（未命中任意映射/主题）——与 VS Code 默认文件图标同位 */
 export const DEFAULT_FILE_ICON = "codicon-file";
 export const DEFAULT_FOLDER_ICON = "codicon-folder";
 export const DEFAULT_FOLDER_OPEN_ICON = "codicon-folder-opened";

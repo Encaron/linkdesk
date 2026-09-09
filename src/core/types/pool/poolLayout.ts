@@ -110,8 +110,9 @@ export interface PoolTab {
   sourceId?: string;
   dirty?: boolean;
   // 🆕 E5.6#16.5：TabBar 渲染所需元数据
-  /** 插件图标 URL——getAssetPath() 解析后的路径 */
-  icon?: string;
+  /** 标签图标——IconBarIcon 判别联合（E6#69f/#69g：视图标签 = Type-2 身份图 img；文件标签 = 文件类型图标
+   *  codicon/img。壳 serializeGroups 现场解析，池哑渲染——此前仅 emoji/img string，codicon/lucide 标签落空） */
+  icon?: IconBarIcon;
   /** 固定标签页（对标 VS Code pinned tabs） */
   pinned?: boolean;
   /** 标签页关闭行为——from plugin.json tabBehavior.closeBehavior */
@@ -197,12 +198,13 @@ export interface TitleBarLayout {
   windowControls: { minimize: string; maximize: string; restore: string; close: string; pin: string; unpin: string };
 }
 
-/** 图标栏图标——壳 resolvePluginIcon 序列化（池不 import pluginLoader，Lucide 名由池映射组件渲染） */
+/** 池侧图标——壳序列化（池不 import pluginLoader，Lucide 名由池映射组件渲染）。
+ *  图标栏 + 标签栏共用（E6#69f 标签栏视图标签 / #69g 文件标签走同一联合） */
 export type IconBarIcon =
-  | { kind: "lucide"; name: string }   // E5#100 Lucide 优先
-  | { kind: "codicon"; name: string }  // codicon CSS 类
-  | { kind: "img"; src: string }       // linkdesk:// 协议 URL
-  | { kind: "emoji"; text: string };   // 回退 emoji
+  | { kind: "lucide"; name: string }              // E5#100 Lucide 优先
+  | { kind: "codicon"; name: string; color?: string } // codicon CSS 类（可选每图标色——文件图标主题数据，E6#69g）
+  | { kind: "img"; src: string }                  // linkdesk:// 协议 URL / data URI
+  | { kind: "emoji"; text: string };              // 回退 emoji
 
 /** 图标栏条目——序列化自壳 viewRegistry（pluginId + 图标 + 名称 + 位置） */
 export interface IconBarItem {

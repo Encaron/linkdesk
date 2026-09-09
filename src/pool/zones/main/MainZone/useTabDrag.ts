@@ -276,13 +276,15 @@ export function useTabDrag({ containerRef, tabAction, groups, tabBarRects, dragP
     onReleaseOutside: (tabId, screenX, screenY) => tabAction({ action: "releaseOutsideWindow", tabId, screenX, screenY }),
     // E5.8#44-C：拎起后全程上报拖拽位置（壳排除源窗命中——窗内自然清提示，窗外命中目标窗 TabBar 高亮）
     // E5.8#46.19：附带被拖标签标题——主进程幽灵窗渲染文字（主进程不持 tabState，标题由池上报）
-    // E5.8#46.19 进化：附带幽灵外观——主题三色（拖拽启动缓存）+ 图标（复用 DragOverlays 同款 emoji/img 判定）。
-    // iconKind：len≤2 且命中 emoji → "emoji"（文本直渲）；其余 → "img"（URL）；无 icon → null。
+    // E5.8#46.19 进化：附带幽灵外观——主题三色（拖拽启动缓存）+ 图标（E6#69g 判别联合 → 幽灵窗 emoji/img）。
     onDragPosition: (pos) => {
       const srcGroup = groupsRef.current.find((g) => g.tabs.some((t) => t.id === pos.tabId));
       const tab = srcGroup?.tabs.find((t) => t.id === pos.tabId);
-      const icon = tab?.icon ?? null;
-      const iconKind = icon && icon.length <= 2 && /[\p{Emoji}]/u.test(icon) ? "emoji" : icon ? "img" : null;
+      // E6#69g：tab.icon 已扩 IconBarIcon 判别联合——幽灵窗（主进程独立小窗）只能渲 emoji 文本/img URL，
+      // 无 codicon/lucide 字形字体：codicon/lucide 拖出 = 无图标（对标旧行为——codicon 标签 tab.icon 恒 undefined）。
+      const srcIcon = tab?.icon;
+      const icon = srcIcon && srcIcon.kind === "img" ? srcIcon.src : srcIcon && srcIcon.kind === "emoji" ? srcIcon.text : null;
+      const iconKind: "img" | "emoji" | null = srcIcon && srcIcon.kind === "img" ? "img" : srcIcon && srcIcon.kind === "emoji" ? "emoji" : null;
       const theme = ghostAppearanceRef.current ?? readGhostAppearance();
       dragPosition?.({
         ...pos,

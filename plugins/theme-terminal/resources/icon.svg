@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48">
+  <!-- theme-terminal 彩色图标「终端机的块」：磷光绿提示符 >_ 于暗绿块——呼应终端机主题整机黑底绿字
+       （2026-09-09 样张板 §⑦ 点头样本，落位本插件资源）Type-2 身份图 -->
+  <defs>
+    <linearGradient id="termBg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#166534"/>
+      <stop offset="1" stop-color="#04180c"/>
+    </linearGradient>
+    <linearGradient id="termGlass" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.16"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0.02"/>
+    </linearGradient>
+  </defs>
+  <rect x="4" y="4" width="40" height="40" rx="10" fill="url(#termBg)"/>
+  <rect x="4" y="4" width="40" height="40" rx="10" fill="url(#termGlass)"/>
+  <rect x="4" y="4" width="40" height="40" rx="10" fill="none" stroke="#86EFAC" stroke-opacity="0.35" stroke-width="1"/>
+  <!-- 磷光提示符 >_ -->
+  <g fill="none" stroke="#4ADE80" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M15 20.5 L20.5 24.5 L15 28.5"/>
+    <path d="M23 27.8 L32 27.8"/>
+  </g>
+  <!-- 辉光 -->
+  <g fill="none" stroke="#86EFAC" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" opacity="0.18">
+    <path d="M15 20.5 L20.5 24.5 L15 28.5"/>
+    <path d="M23 27.8 L32 27.8"/>
+  </g>
+</svg>

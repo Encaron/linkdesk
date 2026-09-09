@@ -253,6 +253,9 @@ function chkIconBarIcon(v: unknown, p: string, errs: string[]): void {
       const _t37 = v as Record<string, unknown>;
       if (_t37.kind !== "codicon") _t36.push(((p) + ".kind") + ": 期望 codicon");
       if (typeof _t37.name !== "string") _t36.push(((p) + ".name") + ": 期望 string，实收 " + typeof _t37.name);
+      if (_t37.color !== undefined) {
+      if (typeof _t37.color !== "string") _t36.push(((p) + ".color") + ": 期望 string，实收 " + typeof _t37.color);
+      }
     }
   const _t38 = (v !== null && typeof v === "object" && !Array.isArray(v) ? (((v as Record<string, unknown>).kind === "codicon" ? 1 : 0)) : 0);
   if (_t36.length > 0) {
@@ -567,7 +570,7 @@ function chkPoolTab(v: unknown, p: string, errs: string[]): void {
     if (!(_t76.dirty === false || _t76.dirty === true)) errs.push(((p) + ".dirty") + ": 期望 false|true");
     }
     if (_t76.icon !== undefined) {
-    if (typeof _t76.icon !== "string") errs.push(((p) + ".icon") + ": 期望 string，实收 " + typeof _t76.icon);
+    chkIconBarIcon(_t76.icon, ((p) + ".icon"), errs);
     }
     if (_t76.pinned !== undefined) {
     if (!(_t76.pinned === false || _t76.pinned === true)) errs.push(((p) + ".pinned") + ": 期望 false|true");

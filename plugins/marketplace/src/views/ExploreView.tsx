@@ -20,8 +20,9 @@
  * 图标（E6#30e 第一站）：PluginIcon 显式 descriptor 入参（manifest={icon, iconSource}）——目录条目
  *   未安装、无 viewRegistry/元数据缓存条目，图标只由 catalog 声明字段裁决（硬约束 11）；iconSource
  *   "url" → resolvePluginIcon 返 src → 以 img 元素直接加载作者彩色图标。
- *   E6#67：目录行也走 pickRowArt（icon ?? 默认封面）——目录无 marketIcon 字段时 = icon 有则显、无则落
- *   默认封面（顶替 📄）；将来目录条目加 marketIcon 时此处自动生效（行内位仍是 icon 优先，见 display.ts）。
+ *   E6#69c/#69f：目录行 = 详情同裁决走共享 pickIdentityArt（marketIcon ?? icon ?? 默认彩色块）——
+ *   目录条目本无 marketIcon 字段（架构三图模型：目录只存 icon；marketIcon 只在已装 plugin.json 内），
+ *   pickIdentityArt 在 icon 有则显、无则落默认彩色块（顶替 📄/#66 640 场景默认）。
  *
  * 目录条目标题/作者/来源仓库名是作者数据——不走 t()（i18n 只翻壳文案）。
  */
@@ -29,7 +30,7 @@
 import { useCallback, useMemo } from "react";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { PluginIcon } from "@linkdesk/ui";
+import { PluginIcon, pickIdentityArt } from "@linkdesk/ui";
 
 import {
   useMarketplaceCatalog,
@@ -45,7 +46,6 @@ import {
 } from "../services/marketplaceShared";
 import type { CatalogEntry } from "../services/marketCatalog";
 import { updateToVersion } from "../services/marketCatalog";
-import { pickRowArt } from "../services/display";
 import "../styles/MarketplaceSidebar.css";
 
 const lk = () => window.linkdesk;
@@ -235,10 +235,10 @@ export default function ExploreView() {
       >
         <div className="ms-item-icon">
           {/* E6#30e：目录 icon descriptor——manifest 只供 icon/iconSource 裁决（未装无 registry 条目）；
-           *  E6#67：pickRowArt 恒返 descriptor——目录无 icon 落默认封面（顶替 📄，非目录空态） */}
+           *  E6#69c/#69f：行 = 详情同裁决，走共享 pickIdentityArt = marketIcon ?? icon ?? 默认彩色块（顶替 📄/640 场景默认） */}
           <PluginIcon
             pluginId={entry.id}
-            manifest={pickRowArt(entry)}
+            manifest={pickIdentityArt(entry)}
             alt={entry.name}
           />
         </div>

@@ -56,7 +56,7 @@
     },
     "icon": {
       "type": "string",
-      "description": "图标标识——codicon 名称或文件路径"
+      "description": "图标（E6#69 三图模型分工）——图标栏位插件填 Type-1 单色剪影 glyph（壳图标栏只读本字段）；非图标栏插件此位即 Type-2 身份彩色图，标签栏/市场经「marketIcon ?? icon ?? 默认彩色块」复用本图。codicon 名或包内 svg/png 资产相对路径（iconSource 省略按值推断）"
     },
     "iconSource": {
       "type": "string",
@@ -66,11 +66,11 @@
     },
     "marketIcon": {
       "type": "string",
-      "description": "市场展示图（cover art，E6#67 双图标模型）——svg 资产相对路径，可画得讲究复杂（与 icon 的界面小图标语义分开；壳图标栏只读 icon）。缺省 → 市场回退用 icon"
+      "description": "Type-2 插件身份彩色图（E6#69 改向——#67「cover art 场景封面」语义废止，场景封面如需展示嵌 README 而非本字段）——市场侧栏行/详情头与标签栏视图标签显同一张图。svg 资产相对路径；缺省 → 回退 icon → 统一默认彩色块。可选：零图插件全链路自动兜底，分工对第三方不可见"
     },
     "marketIconSource": {
       "type": "string",
-      "description": "市场展示图来源——与 iconSource 同枚举；本字段值走 svg 资产相对路径（如 resources/cover.svg），source 省略则按文件名自动推断",
+      "description": "身份图来源——与 iconSource 同枚举；值走 svg 资产相对路径，source 省略按路径推断（显式 svg 会把路径当裸 URL，已装插件会裂）",
       "enum": ["codicon", "svg", "url", "lucide"],
       "default": "codicon"
     },

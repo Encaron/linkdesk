@@ -8,11 +8,38 @@
  */
 
 import { createPortal } from "react-dom";
-import type { CSSProperties } from "react";
-import type { PoolGroup } from "../../../../core/types/pool/poolLayout";
+import type { CSSProperties, ReactNode } from "react";
+import type { IconBarIcon, PoolGroup } from "../../../../core/types/pool/poolLayout";
 import type { DropZone } from "../../../hooks/tabDragTypes";
 import type { PanelRect, HandleRect } from "./layout";
 import { Z_INDEX } from "../../../../constants"; // E5.7#26：浮层层级常量表（替代 9999/99999 裸数字）
+
+/** 拖拽预览图标——IconBarIcon 判别联合（E6#69g：文件标签 codicon 进拖拽浮块预览）。
+ *  img/codicon/emoji 内联 14px；lucide 无内联字形映射 → 跳过（拖拽瞬间，可接受）。 */
+function renderDragIcon(icon: IconBarIcon): ReactNode | null {
+  switch (icon.kind) {
+    case "img":
+      return (
+        <img
+          style={{ width: 14, height: 14, flexShrink: 0, opacity: 0.8 }}
+          src={icon.src}
+          alt=""
+          draggable={false}
+        />
+      );
+    case "codicon":
+      return (
+        <span
+          className={`codicon ${icon.name}`}
+          style={{ fontSize: "var(--font-size-md)", lineHeight: 1, opacity: 0.8, ...(icon.color ? { color: icon.color } : {}) }}
+        />
+      );
+    case "emoji":
+      return <span style={{ fontSize: "var(--font-size-md)", lineHeight: 1, opacity: 0.8 }}>{icon.text}</span>;
+    default:
+      return null; // lucide
+  }
+}
 
 interface DragOverlaysProps {
   dropZoneState: { zone: DropZone; targetGroupId: string | null } | null;
@@ -101,16 +128,7 @@ export default function DragOverlays({
                   zIndex: Z_INDEX.dragPreview,
                 }}
               >
-                {tab.icon &&
-                  (tab.icon.length <= 2 && /[\p{Emoji}]/u.test(tab.icon) ? (
-                    <span>{tab.icon}</span>
-                  ) : (
-                    <img
-                      style={{ width: 14, height: 14, flexShrink: 0, opacity: 0.8 }}
-                      src={tab.icon}
-                      alt=""
-                    />
-                  ))}
+                {tab.icon && renderDragIcon(tab.icon)}
                 <span>{tab.title}</span>
               </div>
             );

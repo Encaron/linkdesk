@@ -13,7 +13,7 @@ import type { FlatItem } from "../services/FileTreeKeyboard";
 import { useFileTreeDnD } from "../services/FileTreeDnD";
 
 import { fileTreeClipboard } from "../services/FileTreeClipboard";
-import { updateIconResolver } from "../services/FileIconResolver";
+import { updateIconResolver } from "../services/fileIconRuntime"; // E6#69g：解析器已上移共享，本文件只持插件实例态
 import type { IconThemeMappings } from "@linkdesk/contracts";
 
 const lk = window.linkdesk;

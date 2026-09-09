@@ -1,9 +1,9 @@
 {
   "$schema": "../../public/schemas/plugin.schema.json",
   "name": "文件树",
-  "version": "1.0.1",
-  "icon": "resources/icon.svg",
-  "marketIcon": "resources/cover.svg",
+  "version": "1.0.2",
+  "icon": "resources/icon-bar.svg",
+  "marketIcon": "resources/icon.svg",
   "description": "浏览和管理文件——对标 VS Code 资源管理器",
   "author": "官方",
   "distribution": "builtin",
@@ -181,5 +181,8 @@
         }
       }
     }
-  }
+  },
+  "changelog": [
+    { "version": "1.0.2", "date": "2026-09-09", "changes": ["图标身份分工（E6#69 三图模型）：icon → resources/icon-bar.svg（Type-1 files 剪影，仅图标栏用）；marketIcon → resources/icon.svg（Type-2 彩色身份图）；整幅封面迁入 README"] }
+  ]
 }

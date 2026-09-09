@@ -34,7 +34,7 @@
 
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { PluginIcon, Button, Badge, SelectBox, MarkdownView, OverlayPortal } from "@linkdesk/ui";
+import { PluginIcon, Button, Badge, SelectBox, MarkdownView, OverlayPortal, pickIdentityArt } from "@linkdesk/ui";
 import {
   useMarketplacePlugins,
   useMarketplaceCatalog,
@@ -57,8 +57,8 @@ import {
 } from "../services/marketCatalog";
 import { removeDiscoveredCandidate, runAutoUpdateIfDue } from "../services/updateDiscovery";
 import { readPluginUpdateMeta, setAutoUpdate, setPinnedVersion } from "../services/installedUpdateMeta";
-// E6#66/67：详情展示位 = marketIcon ?? icon ?? 默认封面（pickDisplayArt 恒返 descriptor）
-import { pickDisplayArt } from "../services/display";
+// E6#69c/#69f：详情展示位 = marketIcon ?? icon ?? 默认彩色块——走共享 pickIdentityArt（@linkdesk/ui 单一实现，
+// 列表/详情同裁决，顶替旧 display.ts pickDisplayArt + #66 640 场景默认；恒返有效 descriptor 零分支）
 import { categoryListFromEntry, localizeCategory } from "../services/marketCategories";
 import { useDownloadCount } from "../services/downloadCounts";
 import { readInstalledPackageFile } from "../services/packageFiles";
@@ -216,8 +216,9 @@ export default function DetailView({ pluginId }: DetailContributedProps) {
           // E6#65c：图标回退链第二环——已装 manifest.icon/iconSource 透传（list() 子集已带，E6#65a）
           icon: enabledEntry.manifest.icon,
           iconSource: enabledEntry.manifest.iconSource,
-          // E6#67：市场展示图（cover art）——list() 投影带 marketIcon/marketIconSource（E6#67a），
-          // 详情展示位 pickDisplayArt 的 marketIcon 优先环读这里（serial-monitor cover 即此路显形）
+          // E6#69b：marketIcon = Type-2 身份图（原 #67「封面 art」语义随 #69 改向）——list() 投影带
+          // marketIcon/marketIconSource（E6#65a 后），详情展示位 pickIdentityArt 的 marketIcon 优先环读这里
+          // （icon-bar 四插件 serial 等的 Type-2 图即此路显形）
           marketIcon: enabledEntry.manifest.marketIcon,
           marketIconSource: enabledEntry.manifest.marketIconSource,
         },
@@ -596,11 +597,11 @@ export default function DetailView({ pluginId }: DetailContributedProps) {
   const authorText = (info ? m.author : undefined) || (entry ? authorLabel(entry.author) : undefined);
   const descText = info ? m.description ?? "" : entry?.description ?? "";
   const showDesc = descText.length > 0;
-  /* E6#66/67（14 档案批次二/二·五）：展示位 = marketIcon ?? icon ?? 默认封面——pickDisplayArt 恒返
-   *  有效 descriptor（零分支，顶替历史 codicon-symbol-misc 兜底渲染）。candidates 顺序 = 数据源优先级：
-   *  已装 manifest（启用态经上方装配已带 marketIcon → serial 封面即此环显形）→ 目录条目（未装/禁用态
-   *  官方艺术兜底）；两环皆无配图 → 默认封面（E6#66，市场门面）。 */
-  const iconManifest = info ? pickDisplayArt(info.manifest, entry) : pickDisplayArt(entry);
+  /* E6#69c/#69f（14 档案批次三）：展示位 = marketIcon ?? icon ?? 默认彩色块——pickIdentityArt 恒返有效
+   *  descriptor（零分支，顶替旧 codicon-symbol-misc 兜底 + #66 640 场景默认）。candidates 顺序 =
+   *  数据源优先级：已装 manifest（启用态经装配可带 marketIcon → serial Type-2 身份图即此环显形）→
+   *  目录条目（未装/禁用态官方艺术兜底）；两环皆无配图 → 统一默认彩色块（市场门面）。 */
+  const iconManifest = info ? pickIdentityArt(info.manifest, entry) : pickIdentityArt(entry);
 
   /* ── 30.6 展示派生 ── */
   const shots = (entry?.screenshots ?? []).filter((s) => typeof s === "string" && s);
@@ -856,8 +857,8 @@ export default function DetailView({ pluginId }: DetailContributedProps) {
        *  .pdva-head L829-853：动作在图标/名右方同头部，row1 主钮+版本下拉、row2 自动更新勾；窄容器允许换行兜底） ═══ */}
       <header className="mpd-header">
         <div className="mpd-icon">
-          {/* E6#66/67：iconManifest 恒有值（pickDisplayArt 默认封面兜底）——无条件渲染 PluginIcon，
-           *  codicon-symbol-misc 占位分支已随 #66 删除；96px 展示框内 img 型显封面、codicon/lucide 型显图标 */}
+          {/* E6#69c/#69f：iconManifest 恒有值（pickIdentityArt 默认彩色块兜底）——无条件渲染 PluginIcon，
+           *  codicon-symbol-misc 占位分支已删；96px 展示框内 img 型显 Type-2 身份图、codicon/lucide 型显图标 */}
           <PluginIcon pluginId={pluginId ?? ""} manifest={iconManifest} alt={nameText} />
           {isCore && <span className="mpd-icon-badge codicon codicon-star-full" />}
         </div>

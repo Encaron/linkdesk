@@ -1,19 +1,20 @@
 /**
- * FileIconResolver——数据驱动文件图标解析器。
- * E4a #93：按扩展名/文件名解析图标，消费 icon-mappings.ts 数据。
+ * FileIconResolver——数据驱动文件图标解析器（共享服务单一副本）。E6#69g 归一化铁律。
+ * E4a #93：按扩展名/文件名解析图标，消费 fileIconMappings.ts 默认数据。
  *
- * 🔥 v2 扩展点：customMappings 注入——图标主题插件替换全部映射。
- * 🔥 R19：响应 IconRegistry——主题切换时自动重建。
+ * 🔥 自 plugins/file-tree/src/services/FileIconResolver.ts 上移共享（#69g：禁 file-tree 私有双源 /
+ *  禁 editor 跨插件 import file-tree / 禁复制一份）。消费方：
+ *   - 壳 windowLayout.serializeGroups——文件标签图标（随 app.iconTheme mappings 即时重算）
+ *   - file-tree 插件——树行 + 搜索行（经 @linkdesk/ui 同源 import）
+ *  三方同消费同一解析器 + 同一默认表 + 同一 theme mappings → 同文件同图。
  *
- * E5.8#133.3：双形态对齐——插件侧 IconMappings 删除，映射形状 = core IconThemeMappings
- * （@linkdesk/contracts 类型 import，零 @src/core 运行时耦合）；resolve 统一出渲染描述符：
- *   { kind: "class" } → `<span className={`codicon ${class}`} />`（含可选每图标 color）
- *   { kind: "image" } → `<img src={linkdesk:// 绝对 URL} />`（壳已解析，消费方零解析负担）
+ * v2 扩展点：customMappings 注入——图标主题插件（IconRegistry 贡献）替换全部映射。
+ * E5.8#133.3 双形态：class → codicon span / imagePath → linkdesk:// img（消费方按边界各自转渲染）。
  *
- * 对标 VS Code seti 图标主题 + getIconClasses()。
+ * 形状 = core IconThemeMappings（@linkdesk/contracts 类型，零 @src/core 运行时耦合）；
+ * 方法签名取元数据基元（文件名/是否根目录）——零插件类型耦合，任何消费方传路径基名即可解析。
  */
 
-import type { ExplorerItem } from "./FileTreeModel";
 import type { IconThemeMappings, IconThemeMapping } from "@linkdesk/contracts";
 import {
   FILE_ICON_MAP,
@@ -23,7 +24,7 @@ import {
   DEFAULT_FOLDER_ICON,
   DEFAULT_FOLDER_OPEN_ICON,
   DEFAULT_ROOT_ICON,
-} from "../utils/icon-mappings";
+} from "./fileIconMappings";
 
 /** 解析结果渲染描述符——双形态（E5.8#133 ④ 拍板：class → span / imagePath → img） */
 export type IconDescriptor =
@@ -72,26 +73,25 @@ export class FileIconResolver {
     return { kind: "class", className: mapping.class, color: mapping.color };
   }
 
-  /** 获取文件/文件夹的图标描述符 */
-  getIcon(item: ExplorerItem): IconDescriptor {
-    if (item.isDirectory) return this.getFolderIcon(item);
+  /** 文件图标——按文件名解析（E6#69g：tab 传路径基名即可） */
+  getFileIcon(name: string): IconDescriptor {
     return this.resolve(
-      this._fileMap[item.name] ?? this._extMap[this._getExt(item.name)] ?? this._defaultFile,
+      this._fileMap[name] ?? this._extMap[this._getExt(name)] ?? this._defaultFile,
       DEFAULT_FILE_ICON,
     );
   }
 
-  /** 获取文件夹图标 */
-  getFolderIcon(item: ExplorerItem): IconDescriptor {
-    if (item.parent === null) return this.resolve(this._defaultRoot, DEFAULT_ROOT_ICON);
-    return this.resolve(this._folderMap[item.name] ?? this._defaultFolder, DEFAULT_FOLDER_ICON);
+  /** 文件夹图标 */
+  getFolderIcon(name: string, isRoot: boolean): IconDescriptor {
+    if (isRoot) return this.resolve(this._defaultRoot, DEFAULT_ROOT_ICON);
+    return this.resolve(this._folderMap[name] ?? this._defaultFolder, DEFAULT_FOLDER_ICON);
   }
 
   /** 获取展开状态的文件夹图标 */
-  getFolderIconOpened(item: ExplorerItem): IconDescriptor {
-    if (item.parent === null) return this.resolve(this._defaultRootOpen ?? this._defaultRoot, DEFAULT_ROOT_ICON);
+  getFolderIconOpened(name: string, isRoot: boolean): IconDescriptor {
+    if (isRoot) return this.resolve(this._defaultRootOpen ?? this._defaultRoot, DEFAULT_ROOT_ICON);
     return this.resolve(
-      this._folderOpenMap[item.name] ?? this._folderMap[item.name] ?? this._defaultFolderOpen ?? this._defaultFolder,
+      this._folderOpenMap[name] ?? this._folderMap[name] ?? this._defaultFolderOpen ?? this._defaultFolder,
       DEFAULT_FOLDER_OPEN_ICON,
     );
   }
@@ -100,17 +100,4 @@ export class FileIconResolver {
     const dot = filename.lastIndexOf(".");
     return dot > 0 ? filename.slice(dot) : "";
   }
-}
-
-/** 全局默认实例 */
-let _resolver = new FileIconResolver();
-
-/** 更新图标解析器——图标主题切换时调用（E5.8#133.3 订阅 iconTheme:changed 接线）；undefined → codicon 保底 */
-export function updateIconResolver(mappings?: IconThemeMappings): void {
-  _resolver = new FileIconResolver(mappings);
-}
-
-/** 获取当前生效的图标解析器 */
-export function getIconResolver(): FileIconResolver {
-  return _resolver;
 }

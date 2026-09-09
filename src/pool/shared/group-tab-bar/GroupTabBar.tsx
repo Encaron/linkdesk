@@ -34,6 +34,7 @@ import { normalizePath } from "../../../core/utils/path/pathUtils";
 import ContextMenu from "@src/components/shared/context-menu/ContextMenu";
 import OverlayPortal from "../../../components/shared/overlay-portal/OverlayPortal"; // E5.8#107 浮层权威：PlusMenu 进 #overlay-root
 import { Z_INDEX } from "../../../constants"; // E5.8#107：裸 1001 → Z_INDEX 常量（禁裸数字）
+import PoolPluginIcon from "../pool-plugin-icon/PoolPluginIcon"; // E6#69g：标签图标哑渲染判别联合（codicon/img/emoji/lucide）
 import "./GroupTabBar.css";
 
 // ═══════════════════════════════════════════════════════════════════
@@ -301,12 +302,9 @@ export default function GroupTabBar({ groupId, tabs, activeTabId, draggingId, dr
                 {/* dirty dot */}
                 {tab.dirty && <span className="group-tab-dirty-dot" />}
 
-                {/* 图标——emoji 或 img */}
-                {tab.icon && (
-                  tab.icon.length <= 2 && /[\p{Emoji}]/u.test(tab.icon)
-                    ? <span className="group-tab-icon-emoji">{tab.icon}</span>
-                    : <img className="group-tab-icon" src={tab.icon} alt="" draggable={false} />
-                )}
+                {/* 图标——IconBarIcon 判别联合（E6#69g：文件标签 codicon/img、视图标签 Type-2 img 等）
+                    池侧哑渲染；img 禁原生拖拽（PoolPluginIcon draggable=false） */}
+                {tab.icon && <PoolPluginIcon icon={tab.icon} className="group-tab-icon" />}
 
                 {/* 标签文字 */}
                 <span className="group-tab-label">{labels.get(tab.id) ?? tab.title}</span>

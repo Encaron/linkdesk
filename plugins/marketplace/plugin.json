@@ -1,8 +1,9 @@
 {
   "$schema": "../../public/schemas/plugin.schema.json",
   "name": "插件市场",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "icon": "resources/icon.svg",
+  "marketIcon": "resources/icon-brand.svg",
   "description": "浏览、安装和管理插件",
   "author": "官方",
   "distribution": "builtin",
@@ -50,5 +51,8 @@
         { "id": "plugin-detail", "title": "插件详情", "render": "src/views/DetailView.tsx" }
       ]
     }
-  }
+  },
+  "changelog": [
+    { "version": "1.0.1", "date": "2026-09-09", "changes": ["新增 marketIcon=resources/icon-brand.svg（E6#69 Type-2 彩色身份图）——icon 保持线稿店招（Type-1）仅图标栏用；市场展示位转用品牌块"] }
+  ]
 }

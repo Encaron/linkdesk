@@ -9,6 +9,7 @@ import type { IconBarLayout, IconBarItem } from "../../core/types/pool/poolLayou
 import { getViewPlugins, getViewPlugin, getIconLocation } from "../../pluginLoader/contributions/viewRegistry";
 import { getConfigurationValue } from "../../core/services/configuration/ConfigurationService"; // E5.7#1：titleBar.menuBarVisible
 import { resolvePluginIcon } from "../../components/shared/plugin-icon/iconUtils";
+import { resolvedToIconBarIcon } from "./resolvedIcon"; // E6#69f：#69g ResolvedIcon→IconBarIcon 单源转换（iconbar/windowLayout 同消费）
 import { getPluginStateValue, APP_PLUGIN_ID } from "../../core/services/plugins/PluginStateService"; // E5.7#6：图标顺序（iconOrder）
 import { factorySlots } from "../../core/services/bootstrap/FactorySlots"; // E5.8#41.11：槽位感知——每 factoryRole 只渲染激活套图标
 import { MENU_STYLE_HAMBURGER_VISIBLE, buildHamburgerMenuGroups } from "./titlebar";
@@ -53,13 +54,7 @@ export function buildIconBar(t: (key: string) => string, sidebarView: string | n
     const resolved = resolvePluginIcon(p.pluginId, p.manifest);
     icons.push({
       pluginId: p.pluginId,
-      icon: resolved.lucide
-        ? { kind: "lucide", name: resolved.lucide }
-        : resolved.codicon
-          ? { kind: "codicon", name: resolved.codicon }
-          : resolved.src
-            ? { kind: "img", src: resolved.src }
-            : { kind: "emoji", text: resolved.emoji ?? "📄" },
+      icon: resolvedToIconBarIcon(resolved),
       label: t(p.manifest.name),
       location,
     });

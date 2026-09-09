@@ -3,7 +3,15 @@
 > 每版一条，对标 VS Code changelog。**历史真相源 = [E6 执行清单](docs/02-Electron架构/E6_插件生态与发布/E6-执行清单.md)**（E6 阶段每轮收束细节 + 实机证据全在清单 Batch 注里，此文件只记类别清单）。版本号唯一真值 = `package.json`（不手写第二份，见 [02-产品身份与版本.md](docs/02-Electron架构/E6_插件生态与发布/06-主软件更新/02-产品身份与版本.md) §2.3）。
 > 0.x 阶段（开发期）：一切向后兼容变更走 patch 位；破坏性变更走 minor 位。
 
-## v0.1.20（2026-09-09）
+## v0.1.21（2026-09-09）
+
+- **feat:E6#69 图标身份分工·改向批——三图模型（Type-2 身份图 / Type-1 界面剪影 / 文件类型图）落地**
+  - #69a/#69c 插件身份 Type-2 彩色图：editor/python/lang-defaults/theme-aurora-glass/theme-terminal 单 `icon`（回退自动）、serial-monitor/settings/file-tree/marketplace 双字段（Type-1 剪影 icon-bar.svg / Type-2 icon.svg）——市场侧栏行/详情头与标签栏视图标签同图；#68 封面 marketIcon 语义废止（cover 移 README，零市场消费）
+  - #69d Type-1 剪影：图标栏插件 icon 字段 = 单色线稿（壳只读 icon 不变）
+  - #69f/#69g 共享身份/文件类型裁决：`pickIdentityArt`（marketIcon ?? icon ?? 默认彩色块）+ 共享 `FileIconResolver` 上移 @linkdesk/ui 单源码——文件标签与文件树同源文件类型图、随 `app.iconTheme` 即时重算（config listener → layoutVersion）
+  - 市场行≈32 / 详情 128px 双位同图；schema 三副本 icon/marketIcon 描述改向 + 图标文档 06-图标.md 重写（三图模型 + 第三方最小契约）
+  - 9 只插件随包 zip 重建（SDK 6 + pack 3）+ 插件版本 bump；文件/标签/市场双位同图实机 CDP 验证
+
 
 - **feat:E6#66 + E6#67 市场图标系统收尾——默认展示图规定 + 双图标字段**——市场展示位显「展示图/封面」大框、无配图插件落统一默认封面
   - #67 双图标字段：`PluginManifest` 顶层加可选 `marketIcon`/`marketIconSource`（形状照 icon/iconSource；值 = 包内 svg 资产相对路径、source 省略 → linkdesk:// 路径推断）——`icon` = 界面小图标（壳只读它，**零壳改动**）；`marketIcon` = 市场展示图 cover art（可复杂 640×640）。schema 三源副本 + contracts:gen additive 零漂移 + PluginListSubset/list() 投影带两字段

@@ -1286,7 +1286,8 @@ export interface TitleBarLayout {
         unpin: string;
     };
 }
-/** 图标栏图标——壳 resolvePluginIcon 序列化（池不 import pluginLoader，Lucide 名由池映射组件渲染） */
+/** 池侧图标——壳序列化（池不 import pluginLoader，Lucide 名由池映射组件渲染）。
+ *  图标栏 + 标签栏共用（E6#69f 标签栏视图标签 / #69g 文件标签走同一联合） */
 export type IconBarIcon = {
     kind: "lucide";
     name: string;
@@ -1294,11 +1295,12 @@ export type IconBarIcon = {
  | {
     kind: "codicon";
     name: string;
-} // codicon CSS 类
+    color?: string;
+} // codicon CSS 类（可选每图标色——文件图标主题数据，E6#69g）
  | {
     kind: "img";
     src: string;
-} // linkdesk:// 协议 URL
+} // linkdesk:// 协议 URL / data URI
  | {
     kind: "emoji";
     text: string;
@@ -1456,8 +1458,9 @@ export interface PoolTab {
     sourceId?: string;
     dirty?: boolean;
     // 🆕 E5.6#16.5：TabBar 渲染所需元数据
-    /** 插件图标 URL——getAssetPath() 解析后的路径 */
-    icon?: string;
+    /** 标签图标——IconBarIcon 判别联合（E6#69f/#69g：视图标签 = Type-2 身份图 img；文件标签 = 文件类型图标
+     *  codicon/img。壳 serializeGroups 现场解析，池哑渲染——此前仅 emoji/img string，codicon/lucide 标签落空） */
+    icon?: IconBarIcon;
     /** 固定标签页（对标 VS Code pinned tabs） */
     pinned?: boolean;
     /** 标签页关闭行为——from plugin.json tabBehavior.closeBehavior */
@@ -1797,9 +1800,10 @@ export interface TabDragPositionPayload {
      *  窗外 → 主进程 OS 幽灵显示（DOM 浮块出窗被裁剪）；窗内 → OS 幽灵隐藏（DOM 浮块可见）。壳/吸附忽略此字段 */
     outside?: boolean;
     /** E5.8#46.19 进化：拖拽幽灵外观——主题三色（源池 getComputedStyle 读 --bg-card/--border/--text-primary，
-     *  均为纯 hex 值）+ 被拖标签图标（tab.icon：emoji 字符或 getAssetPath 解析的图片 URL，iconKind 区分渲染）。
+     *  均为纯 hex 值）+ 被拖标签图标（E6#69g：池把 tab.icon 判别联合裁成幽灵窗可渲染形态——emoji 文本或 img
+     *  URL；codicon/lucide 无字形字体注入 → null，iconKind 区分渲染）。
      *  仅 outside=true（窗外）时主进程消费；壳/吸附忽略此字段。可选用——旧池不带上限。
-     *  iconKind 判定与 DragOverlays 浮块同款（emoji：len≤2 且命中 emoji 正则；img：其余一律当图片 URL）。 */
+     *  iconKind 判定与 DragOverlays 浮块同款（emoji：直渲文本；img：图片 URL）。 */
     ghost?: {
         theme: {
             bg: string;

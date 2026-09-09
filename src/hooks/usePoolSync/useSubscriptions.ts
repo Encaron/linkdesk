@@ -84,9 +84,12 @@ export function useSyncSubscriptions({
   // 条件渲染的等价物没迁进序列化层（git 实证 from E5.7 起从无 onDidChangeConfiguration）。
   // 对标 VS Code 分布式订阅：只监听本订阅关心的 key（menuStyle 静态 + statusBar 动态契约），
   // 其他配置变化不 bump（避免无关重推）。
+  // E6#69g：app.iconTheme 也进重推集——文件标签图标随图标主题切换实时重算（windowLayout 序列化读
+  //   app.iconTheme → IconRegistry.getMappings 现场解析；图标栏/树行不受影响，池自收 iconTheme:changed）。
   useEffect(() => {
     return onDidChangeConfiguration((key) => {
-      if (key === "app.menuStyle" || isStatusBarConfigKey(key)) setLayoutVersion((v) => v + 1);
+      if (key === "app.menuStyle" || key === "app.iconTheme" || isStatusBarConfigKey(key))
+        setLayoutVersion((v) => v + 1);
     });
   }, [setLayoutVersion]);
 

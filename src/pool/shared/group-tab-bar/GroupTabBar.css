@@ -92,23 +92,29 @@
   flex-shrink: 0;
 }
 
-/* ── 图标 ── */
+/* ── 图标 ──（E6#69g：标签图标 = PoolPluginIcon 判别联合——img 走盒、codicon/emoji 走字形、lucide 走 svg） */
 
 .group-tab-icon {
-  width: calc(14px * var(--ui-scale)); /* E5.8 Phase 12 #169：tab 图标盒随 scale（文本相邻图标轨道） */
-  height: calc(14px * var(--ui-scale));
   flex-shrink: 0;
   opacity: 0.8;
+}
+.group-tab-icon.plugin-icon--img {
+  width: calc(14px * var(--ui-scale)); /* E5.8 Phase 12 #169：tab 图标盒随 scale（文本相邻图标轨道） */
+  height: calc(14px * var(--ui-scale));
   /* E5.8#46.6：禁原生 HTML5 拖拽——img 默认可拖，会与标签页指针拖拽抢手势（拖 tab 出原生图标拖影） */
   -webkit-user-drag: none;
 }
+.group-tab-icon.plugin-icon--lucide svg {
+  width: calc(14px * var(--ui-scale));
+  height: calc(14px * var(--ui-scale));
+}
+.group-tab-icon.plugin-icon--codicon,
+.group-tab-icon.plugin-icon--emoji {
+  font-size: var(--font-size-lg); /* 14→lg */
+  line-height: 1;
+}
 .group-tab-item.active .group-tab-icon {
   opacity: 1;
-}
-.group-tab-icon-emoji {
-  font-size: var(--font-size-lg); /* 14→lg */
-  flex-shrink: 0;
-  opacity: 0.8;
 }
 
 /* ── 标签文字 ── */

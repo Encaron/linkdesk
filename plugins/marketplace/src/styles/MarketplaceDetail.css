@@ -46,21 +46,22 @@
 
 .mpd-icon {
   position: relative;
-  /* E6#66/67（2026-09-09 拍板）：展示位 52 → 96 方框——cover art 展示框（定案 6：市场展示图位，
-   *  marketIcon 封面 / icon 图形 / 默认封面都在此框显形；内图按型接管，见下） */
-  width: 96px;
-  height: 96px;
+  /* E6#66/67（2026-09-09 拍板）：展示位 52 → 96 方框；E6#69c 再放大档 96 → 128——Type-2 身份图框
+   *（marketIcon/icon/默认彩色块同在此框显形，内图按型接管，见下；#69c 档位已点头） */
+  width: 128px;
+  height: 128px;
   flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-/* 展示 descriptor → PluginIcon 渲染的尺寸接管。img 型 = 封面/图片资产（96 框内放大 ~84 显 cover 细节）；
- * codicon/lucide/emoji 型 = 界面图形（放大到 48 即止，不把细线 glyph 撑成巨型——图形型本不是封面资产） */
+/* 展示 descriptor → PluginIcon 渲染的尺寸接管。img 型 = Type-2 身份图（128 框内显 ~120 画幅，48 留白比例
+ * 使色块 ≈100）；codicon/lucide/emoji 型 = 界面图形（放大到 56 即止，不把细线 glyph 撑成巨型——图形型本不是
+ * 身份资产） */
 .mpd-icon .plugin-icon--codicon,
 .mpd-icon .plugin-icon--emoji {
-  font-size: 48px !important;
+  font-size: 56px !important;
   line-height: 1;
   width: auto;
   height: auto;
@@ -68,13 +69,13 @@
 }
 
 .mpd-icon .plugin-icon--lucide {
-  width: 48px;
-  height: 48px;
+  width: 56px;
+  height: 56px;
 }
 
 .mpd-icon .plugin-icon--img {
-  width: 84px;
-  height: 84px;
+  width: 120px;
+  height: 120px;
   object-fit: contain;
 }
 

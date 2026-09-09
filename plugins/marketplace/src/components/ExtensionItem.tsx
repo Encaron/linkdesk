@@ -6,11 +6,9 @@
 
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ContextMenu, PluginIcon } from "@linkdesk/ui";
+import { ContextMenu, PluginIcon, pickIdentityArt } from "@linkdesk/ui";
 // E5.8#20-c：契约化——插件列表类型走 @linkdesk/contracts（零 @src/core）
 import type { PluginListEntry, PluginListSubset } from "@linkdesk/contracts";
-// E6#67：行内位 = icon ?? marketIcon ?? 默认封面（pickRowArt 恒返 descriptor——市场层裁决，零 @src/core）
-import { pickRowArt } from "../services/display";
 
 const pm = () => window.linkdesk?.pluginManager;
 
@@ -77,10 +75,10 @@ export function ExtensionItem({ plugin, onClick, onDoubleClick, updateTo }: Exte
     <div className="ms-extension-item" onClick={handleClick}>
       {/* icon: 从 manifest 动态读取（E6#65b：manifest 传入 PluginIcon——resolvePluginIcon 只读
        *  manifest.icon/iconSource 裁决；此前不传 = PluginIcon 无 manifest → 恒 📄 emoji 兜底。
-       *  E6#67：行内位走 pickRowArt = icon ?? marketIcon ?? 默认封面——list() 子集带 icon+marketIcon
-       *  （E6#65a/#67a 通道），有界面小图标显小图标（28px 不硬压 640 封面），无图落默认封面顶 📄） */}
+       *  E6#69c/#69f：行 = 详情同裁决，走共享 pickIdentityArt = marketIcon ?? icon ?? 默认彩色块——
+       *  （marketIcon 现为 Type-2 身份图，列表/详情同一张；无图落默认彩色块顶 📄/640 场景默认） */}
       <div className="ms-item-icon">
-        <PluginIcon pluginId={plugin.pluginId} manifest={pickRowArt(plugin.manifest)} />
+        <PluginIcon pluginId={plugin.pluginId} manifest={pickIdentityArt(plugin.manifest)} />
         {m.core && <span className="ms-item-badge codicon codicon-star-full" />}
       </div>
 

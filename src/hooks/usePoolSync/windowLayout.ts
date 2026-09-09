@@ -21,11 +21,16 @@ import type {
   StatusBarLayout,
   TitleBarLayout,
   CreatableViewMeta,
+  IconBarIcon,
 } from "../../core/types/pool/poolLayout";
 import type { WindowShellState, PoolZone } from "../../App/windows";
 import { WINDOW_MODE_STRATEGIES } from "../../App/windows";
 import { getViewPlugin, getTabBehavior } from "../../pluginLoader/contributions/viewRegistry";
-import { resolvePluginIcon } from "../../components/shared/plugin-icon/iconUtils"; // E6#54b：随 @linkdesk/ui 迁至 shared（纯函数）
+import { resolvePluginIcon, pickIdentityArt } from "../../components/shared/plugin-icon/iconUtils"; // E6#54b：随 @linkdesk/ui 迁至 shared（纯函数）；#69f：标签栏 Type-2 身份图裁决同源
+import { resolvedToIconBarIcon } from "./resolvedIcon"; // E6#69f：ResolvedIcon→IconBarIcon 单源转换（iconbar/windowLayout 同消费）
+import { FileIconResolver } from "../../components/shared/file-icon/FileIconResolver"; // E6#69g：文件图标共享解析器（file-tree 同源，禁插件内双源/禁跨插件 import）
+import { IconRegistry } from "../../core/registry/appearance/IconRegistry"; // E6#69g：当前图标主题 mappings（app.iconTheme 变更 → layoutVersion 重算）
+import { getConfigurationValue } from "../../core/services/configuration/ConfigurationService"; // E6#69g：同步读 app.iconTheme（iconbar 读 menuStyle 同款）
 import { isShellRenderedTab, resolvePoolTabTitle } from "../../core/utils/tabIdentity";
 import { factorySlots } from "../../core/services/bootstrap/FactorySlots"; // E6#30.10b：活跃 marketplace 插件定位（iconbar 同源导入路径）
 import { ViewContainerService } from "../../core/services/layout/ViewContainerService"; // E6#30.10b：main 容器详情贡献寻址
@@ -77,6 +82,23 @@ function resolveActiveMarketDetailContribution(): { contributorId: string; rende
   return renderPath ? { contributorId: marketId, renderPath } : undefined;
 }
 
+/** E6#69g：文件标签图标——tab.filePath 在（身份 = 文件路径的标签）→ 共享 FileIconResolver 出文件类型图标。
+ *  与 file-tree 树行/搜索行同解析器同默认表同 theme mappings（同文件同图）。判定走数据字段 filePath
+ *  （禁 pluginId 硬编码——任何以文件为标签的插件都吃此链，editor 只是首个消费方）。
+ *  当前图标主题 = 同步读 app.iconTheme 配置（"default" → undefined → codicon 保底）；主题切换经
+ *  useSubscriptions 的 app.iconTheme → layoutVersion bump 触发本函数重算。 */
+function resolveFileTabIcon(filePath: string): IconBarIcon {
+  const iconThemeId = getConfigurationValue<string>("app.iconTheme") ?? "default";
+  const mappings = iconThemeId === "default" ? undefined : IconRegistry.getMappings(iconThemeId);
+  const resolver = new FileIconResolver(mappings);
+  // 路径 → 基名（兼容 / 与 \ 分隔）——解析器契约取文件名元数据（传路径会漏命中 ext/文件名表）
+  const base = filePath.slice(Math.max(filePath.lastIndexOf("/"), filePath.lastIndexOf("\\")) + 1);
+  const desc = resolver.getFileIcon(base);
+  return desc.kind === "image"
+    ? { kind: "img", src: desc.url }
+    : { kind: "codicon", name: desc.className, ...(desc.color ? { color: desc.color } : {}) };
+}
+
 /** 序列化某窗口的 tabState → PoolGroup[]——flex 树 + 标签元数据（图标/tabBehavior/壳内部视图标记） */
 export function serializeGroups(tabState: TabState, t: TFunction): PoolGroup[] {
   const flexMap = computeGroupFlexes(tabState.root);
@@ -95,7 +117,16 @@ export function serializeGroups(tabState: TabState, t: TFunction): PoolGroup[] {
       //  详情页是市场表面，目标插件可能未装无图标可解析，市场图标恒可辨）。普通标签 = 自身插件图标。
       const iconPid = isDetailTab && detailContribution ? detailContribution.contributorId : pid;
       const iconEntry = iconPid === pid ? entry : getViewPlugin(iconPid);
-      const resolved = iconEntry?.manifest ? resolvePluginIcon(iconPid, iconEntry.manifest) : null;
+      // E6#69f/#69g：标签图标判别联合——
+      //  文件标签（tab.filePath 数据字段在，身份=文件路径）→ 文件类型图标（resolveFileTabIcon，与 file-tree 同图）；
+      //  普通视图标签 → Type-2 身份图 pickIdentityArt(marketIcon ?? icon ?? 默认彩色块)（#69f：图标栏 Type-1
+      //  不进标签栏；图标栏 4 只插件的 marketIcon = Type-2，其视图标签显彩色身份图）；
+      //  无 manifest（未注册/壳内部欢迎等非插件视图）→ undefined（保持旧行为：无图标标签）。
+      const icon = tab.filePath
+        ? resolveFileTabIcon(tab.filePath)
+        : iconEntry?.manifest
+          ? resolvedToIconBarIcon(resolvePluginIcon(iconPid, pickIdentityArt(iconEntry.manifest)))
+          : undefined;
       return {
         id: tab.id,
         pluginId: pid,
@@ -103,7 +134,7 @@ export function serializeGroups(tabState: TabState, t: TFunction): PoolGroup[] {
         title: resolvePoolTabTitle(tab.label, entry?.manifest.name, t),
         sourceId: tab.sourceId,
         dirty: tab.dirty,
-        icon: resolved?.src ?? resolved?.emoji,
+        icon,
         pinned: tab.pinned,
         closeBehavior: behavior.confirmOnClose ? "confirm" : "normal",
         singleton: behavior.singleton,

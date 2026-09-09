@@ -323,9 +323,12 @@
 }
 
 .ms-item-icon .plugin-icon--img {
-  width: 28px;
-  height: 28px;
-  opacity: 0.65;
+  /* E6#69c（2026-09-09 拍板「侧栏彩色小框放大一档」）：28 → 32——Type-2 身份图 48 画幅含 4px 透明
+   * 留白，32 内显色块 ≈27；框 36 仍容（36 系 E5.8 Phase 12 #175 网格值不动）。opacity 0.65 → 0.9：
+   * 行位 = 身份彩图本体（非远 640 场景封面），叠灰遮色与「列表=详情同一张彩图」意图冲突 */
+  width: 32px;
+  height: 32px;
+  opacity: 0.9;
 }
 
 .ms-item-icon .plugin-icon--emoji {

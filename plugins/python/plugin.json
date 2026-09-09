@@ -1,8 +1,8 @@
 {
   "$schema": "../../public/schemas/plugin.schema.json",
   "name": "Python",
-  "version": "1.0.1",
-  "marketIcon": "resources/cover.svg",
+  "version": "1.0.2",
+  "icon": "resources/icon.svg",
   "description": "Python 语言支持——语法高亮、跨文件跳转、智能补全",
   "author": "官方",
   "distribution": "user",
@@ -19,5 +19,8 @@
         }
       }
     ]
-  }
+  },
+  "changelog": [
+    { "version": "1.0.2", "date": "2026-09-09", "changes": ["图标身份分工（E6#69 三图模型）：新增 icon=resources/icon.svg（Type-2 彩色身份图），撤 marketIcon=cover.svg——整幅封面迁入 README 展示"] }
+  ]
 }
