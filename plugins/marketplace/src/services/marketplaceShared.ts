@@ -377,8 +377,9 @@ export function installFailLabelKey(reason: InstallFailReason): string {
   }
 }
 
-/** 归因 → 更新失败 i18n key（E6#33b——与安装同分类语义；conflict 对更新不适用 → 归 unknown 兜底）。
- *  update 失败走行内归因 + 手动 [重试]（同安装 M4 三），原文进 title 悬停。 */
+/** 归因 → 更新失败 i18n key（E6#33b——与安装同分类语义；conflict 分支 E6#71b 补上——CON_RE 触发词
+ *  已存在/覆盖/请先卸载在更新域罕见但非不可能，防御性给句不落 unknown）。E6#71b：default 撤「未知错误」谎
+ *  → 通用重试语（真因由 updateFailText 原文直显，不靠归类猜）。 */
 export function updateFailLabelKey(reason: InstallFailReason): string {
   switch (reason) {
     case "network":
@@ -389,9 +390,21 @@ export function updateFailLabelKey(reason: InstallFailReason): string {
       return "更新失败：磁盘空间不足";
     case "package":
       return "更新失败：插件包损坏";
+    case "conflict":
+      return "更新失败：该插件已安装，如需覆盖请先卸载";
     default:
-      return "更新失败：未知错误，请重试";
+      return "更新失败，请重试";
   }
+}
+
+/** E6#71b：更新失败终局文案——归因可认 → 归因短语（t 译当前语言）；认不出（unknown）→ 引擎原文直显
+ *  （更新域报错 update.ts/install-handlers stage 校验本就是完整可读句：「不在用户安装区」「无需更新」
+ *  「未找到安装目录」…——原文比「未知错误」诚实且免误导归类：安装域五个类目词对更新域状态/策略错不成立，
+ *  硬塞会让「不在用户安装区」显示成「插件包损坏」）。空原文兜底通用重试语。 */
+export function updateFailText(t: (key: string) => string, reason: InstallFailReason, raw?: string): string {
+  if (reason !== "unknown") return t(updateFailLabelKey(reason));
+  const s = (raw ?? "").trim();
+  return s ? s : t(updateFailLabelKey("unknown"));
 }
 
 /** 会话 stage → 安装中进度标签（i18n key + 插值）——详情按钮与探索行共用单实现（归一化） */

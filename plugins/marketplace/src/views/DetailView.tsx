@@ -42,7 +42,7 @@ import {
   useOnlineStatus,
   startMarketInstall,
   retryMarketInstall,
-  updateFailLabelKey,
+  updateFailText,
   classifyInstallError,
   marketInstallStageLabel,
   notifyError,
@@ -433,8 +433,8 @@ export default function DetailView({ pluginId }: DetailContributedProps) {
       }
       const upd = pm()?.update;
       if (!upd) {
-        // 无更新执行面（老 preload 面）——环境缺面诚实告知
-        notifyError(t(updateFailLabelKey("unknown")));
+        // 无更新执行面（老 preload 面）——环境缺面诚实告知（无原文可显 → updateFailText 通用兜底）
+        notifyError(updateFailText(t, "unknown", ""));
         return;
       }
       setUpdating(true);
@@ -448,13 +448,16 @@ export default function DetailView({ pluginId }: DetailContributedProps) {
           if (pin !== undefined) void setPinnedVersion(pluginId, pin);
           refreshPlugins();
         } else {
-          // #64 A2：更新失败归因 → error toast（原行内红字退役）；重试口 = 原位更新钮仍在，无漂移
+          // #64 A2：更新失败 → error toast（原行内红字退役）；重试口 = 原位更新钮仍在，无漂移。
+          // E6#71b：归因可认 → 归因短语；unknown → updateFailText 直显引擎原文（终结「未知错误」黑洞）
           const reason = classifyInstallError(r?.error ?? "");
-          notifyError(t(updateFailLabelKey(reason)));
+          notifyError(updateFailText(t, reason, r?.error));
         }
       } catch (e) {
-        const reason = classifyInstallError(e instanceof Error ? e.message : String(e));
-        notifyError(t(updateFailLabelKey(reason)));
+        // E6#71b：catch 兜 rejection（如 10s 桥超时 reject）——原文带进 updateFailText，unknown 时可见
+        const raw = e instanceof Error ? e.message : String(e);
+        const reason = classifyInstallError(raw);
+        notifyError(updateFailText(t, reason, raw));
       } finally {
         setUpdating(false);
       }
