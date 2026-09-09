@@ -3,6 +3,14 @@
 > 每版一条，对标 VS Code changelog。**历史真相源 = [E6 执行清单](docs/02-Electron架构/E6_插件生态与发布/E6-执行清单.md)**（E6 阶段每轮收束细节 + 实机证据全在清单 Batch 注里，此文件只记类别清单）。版本号唯一真值 = `package.json`（不手写第二份，见 [02-产品身份与版本.md](docs/02-Electron架构/E6_插件生态与发布/06-主软件更新/02-产品身份与版本.md) §2.3）。
 > 0.x 阶段（开发期）：一切向后兼容变更走 patch 位；破坏性变更走 minor 位。
 
+## v0.1.19（2026-09-09）
+
+- **fix:E6#65 市场图标系统批次一·数据通道修复（14 档案 A/B）**——市场拿到各插件现有图标（serial-monitor/settings 彩 PNG、marketplace/aurora/zones SVG、file-tree lucide 立显）
+  - 根因：`list()` IPC 序列化子集（PluginListSubset）当初收窄为 8 字段时把 `icon`/`iconSource` 删了（types.ts 注释自认「与 list 7 字段对齐」）→ 行组件想传也没得传 → 市场恒 📄 emoji；详情页 `iconManifest` 又只读市场目录 `entry`，无目录条目即 `codicon-symbol-misc` 几何兜底
+  - 修三处：① 数据通道——`PluginListSubset` + `IpcBridgeHandler/pluginManager.ts` list() 投影补 `icon?`/`iconSource?`（contracts 重生成）；② 行组件——ExtensionItem 把 `manifest` 传入 `PluginIcon`（此前恒无 manifest）；③ 详情回退链——DetailView `iconManifest` 补「已装 manifest.icon → 兜底」第二环
+  - 实机 CDP 9222：list() 22 插件 icon/iconSource 随行实证（serial/settings/marketplace/aurora/zones/file-tree）；已装行 串口监视器→IMG、悬浮面板→codicon、极光玻璃/分区纹理→IMG（修复前全 📄）；详情头串口监视器走 manifest 回退显 IMG 而非几何符号
+  - 版本 0.1.18→0.1.19（0.x 向后兼容修复走 patch 位）
+
 ## v0.1.18（2026-09-09）
 
 - **fix:E6#30f 目录空态语义修复（官方仓库实装后实机发现的空态误报 bug）**——官方目录源从「404 无缓存」变「200 空目录」后，探索页把「市场连上了但还没插件」误显示成「无法加载市场，请检查网络后重试」

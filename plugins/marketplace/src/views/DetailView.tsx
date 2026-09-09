@@ -72,9 +72,10 @@ type DetailContributedProps = {
   marketEntry?: unknown;
 };
 
-/** 展示合并对象——list() 全 manifest | getDisabled 子集 | null(未装) */
+/** 展示合并对象——list() 全 manifest | getDisabled 子集 | null(未装)
+ *  E6#65c：manifest 再挑 icon/iconSource（图标回退链第二环——已装 manifest 无目录条目时详情页头图） */
 type DetailInfo = {
-  manifest: { name?: string; version?: string; author?: string; description?: string; core?: boolean };
+  manifest: { name?: string; version?: string; author?: string; description?: string; core?: boolean; icon?: string; iconSource?: "codicon" | "svg" | "url" | "lucide" };
   pendingReason?: string;
 };
 
@@ -209,6 +210,9 @@ export default function DetailView({ pluginId }: DetailContributedProps) {
           author: enabledEntry.manifest.author,
           description: enabledEntry.manifest.description,
           core: enabledEntry.manifest.core,
+          // E6#65c：图标回退链第二环——已装 manifest.icon/iconSource 透传（list() 子集已带，E6#65a）
+          icon: enabledEntry.manifest.icon,
+          iconSource: enabledEntry.manifest.iconSource,
         },
         pendingReason: enabledEntry.pendingReason,
       }
@@ -585,7 +589,15 @@ export default function DetailView({ pluginId }: DetailContributedProps) {
   const authorText = (info ? m.author : undefined) || (entry ? authorLabel(entry.author) : undefined);
   const descText = info ? m.description ?? "" : entry?.description ?? "";
   const showDesc = descText.length > 0;
-  const iconManifest = entry?.icon || entry?.iconSource ? { icon: entry?.icon, iconSource: entry?.iconSource } : undefined;
+  /* E6#65c（14 档案批次一数据通道）：icon 回退链——entry 目录 icon → 已装 manifest.icon → 兜底。
+   *  此前只读 entry：无目录条目（官方 dev 目录空 / 本地内置插件不在目录）即恒 undefined →
+   *  header codicon-symbol-misc 几何兜底。E6#65a 后已装 manifest 带 icon → 内置插件图标详情页立显。 */
+  const iconManifest =
+    entry?.icon || entry?.iconSource
+      ? { icon: entry?.icon, iconSource: entry?.iconSource }
+      : m.icon || m.iconSource
+        ? { icon: m.icon, iconSource: m.iconSource }
+        : undefined;
 
   /* ── 30.6 展示派生 ── */
   const shots = (entry?.screenshots ?? []).filter((s) => typeof s === "string" && s);

@@ -1074,9 +1074,11 @@ export interface PluginUpdateCheckResult {
     downloadUrl?: string;
     update: boolean;
 }
-/** list() 的 manifest 序列化子集——与 handlePluginsCall "list" 7 字段对齐
+/** list() 的 manifest 序列化子集——与 handlePluginsCall "list" 投影字段对齐
  *  E6#30.5e/30.6c3：声明依赖 id 列表（manifest.requires 透传）——marketplace 判缺依赖 + 依赖/被依赖行
- *  数据源（dependencies.ts 引擎只壳内；消费经 list() 投影）。无 requires = undefined。 */
+ *  数据源（dependencies.ts 引擎只壳内；消费经 list() 投影）。无 requires = undefined。
+ *  E6#65a（14 档案批次一）：+ icon/iconSource——市场行/详情图标的数据通道（注释自认的"7 字段对齐"
+ *  原取舍现在市场要图标，属同通道需扩，见 IpcBridgeHandler/pluginManager.ts list 投影同步）。 */
 export interface PluginListSubset {
     name?: string;
     description?: string;
@@ -1086,6 +1088,11 @@ export interface PluginListSubset {
     statusBar?: PluginManifest["statusBar"];
     contributes?: PluginManifest["contributes"];
     requires?: string[];
+    // E6#65a（14 档案批次一数据通道）：icon/iconSource 透传——市场拿到插件图标
+    // （行/详情 PluginIcon 渲染的唯一 manifest 数据源；无图标 = undefined → 消费端默认图兜底）。
+    // 与 E5.8#37.9.1 同构：list() 子集继续只挑 UI 消费字段，不整 manifest 过 IPC。
+    icon?: PluginManifest["icon"];
+    iconSource?: PluginManifest["iconSource"];
 }
 /** 插件列表条目——pluginManager.list() 返回（主进程序列化后的 manifest 子集）。
  *  E5.7#98：Partial<PluginManifest> 过宽（component 等字段 IPC 不可达）——收窄为

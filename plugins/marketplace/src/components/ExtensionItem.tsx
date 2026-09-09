@@ -73,9 +73,11 @@ export function ExtensionItem({ plugin, onClick, onDoubleClick, updateTo }: Exte
 
   return (
     <div className="ms-extension-item" onClick={handleClick}>
-      {/* icon: 从 manifest 动态读取 */}
+      {/* icon: 从 manifest 动态读取（E6#65b：manifest 传入 PluginIcon——resolvePluginIcon 只读
+       *  manifest.icon/iconSource 裁决；此前不传 = PluginIcon 无 manifest → 恒 📄 emoji 兜底，
+       *  现在 list() 子集带 icon（E6#65a）→ 各插件现有图标立显） */}
       <div className="ms-item-icon">
-        <PluginIcon pluginId={plugin.pluginId} />
+        <PluginIcon pluginId={plugin.pluginId} manifest={plugin.manifest} />
         {m.core && <span className="ms-item-badge codicon codicon-star-full" />}
       </div>
 
