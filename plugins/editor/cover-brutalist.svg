@@ -1,0 +1,75 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="640" viewBox="0 0 640 640" fill="none">
+  <!-- ============================================================
+       editor 封面 · 候选 B「纸张·FILE EDIT」 [skill: industrial-brutalist-ui]
+       血统：Swiss Industrial Print（亮）——米色纸底 + 碳墨 + 唯一
+       危险红 accent；零圆角、可见结构线、巨型重无衬线、等宽遥测表。
+       理念：编辑器是一台「把文件吃进去变成可编辑标签」的机械。
+       ============================================================ -->
+  <defs>
+    <pattern id="edB_grid" width="160" height="160" patternUnits="userSpaceOnUse">
+      <path d="M 160 0 H 0 V 160" stroke="#111111" stroke-opacity="0.05"/>
+    </pattern>
+  </defs>
+
+  <!-- 纸底 -->
+  <rect width="640" height="640" fill="#f1efe9"/>
+  <rect width="640" height="640" fill="url(#edB_grid)" opacity="0.5"/>
+
+  <!-- 顶危险红结构条 -->
+  <rect x="0" y="0" width="640" height="6" fill="#e61919"/>
+
+  <!-- 顶部遥测行 -->
+  <g font-family="'JetBrains Mono','IBM Plex Mono',Consolas,monospace" font-size="15" letter-spacing="1.5">
+    <text x="32" y="54" fill="#111111">LINKDESK_EDITOR — OFFICIAL BUILT-IN</text>
+    <text x="608" y="54" fill="#111111" text-anchor="end">[ MONACO CORE ]</text>
+  </g>
+
+  <!-- 巨型标题 FILE / EDIT + 危险红块光标 -->
+  <g font-family="'Arial Black','Archivo Black','Arial',sans-serif" font-weight="900">
+    <text x="30" y="176" font-size="104" letter-spacing="-2" fill="#111111">FILE</text>
+    <text x="30" y="340" font-size="196" letter-spacing="-8" fill="#111111">EDIT</text>
+  </g>
+  <rect x="556" y="182" width="52" height="158" fill="#e61919"/>
+
+  <!-- 宏标题下危险红规 -->
+  <rect x="30" y="372" width="578" height="6" fill="#e61919"/>
+
+  <!-- 中结构竖线（左遥测 | 右代码板） -->
+  <line x1="320" y1="404" x2="320" y2="600" stroke="#111111" stroke-opacity="0.35" stroke-width="1"/>
+
+  <!-- 左：等宽遥测表 -->
+  <g font-family="'JetBrains Mono','IBM Plex Mono',Consolas,monospace" font-size="16" fill="#111111">
+    <text x="32" y="448">MONACO CORE ......... V1.0</text>
+    <text x="32" y="484">FILE ASSOC .......... 45</text>
+    <text x="32" y="520">DIFF / COMPARE ...... YES</text>
+    <text x="32" y="556">AUTO-SAVE ........... CFG</text>
+    <text x="32" y="592">LANG DETECT ......... ON</text>
+  </g>
+
+  <!-- 右：碳墨反白代码板 -->
+  <rect x="340" y="412" width="268" height="190" fill="#111111"/>
+  <g font-family="Consolas,'JetBrains Mono',monospace" font-size="15" fill="#edeae0">
+    <text x="356" y="442">import { open } from</text>
+    <text x="356" y="466">  "@linkdesk/editor";</text>
+    <text x="356" y="490"></text>
+    <text x="356" y="514">export async function</text>
+    <text x="356" y="538">  open(file: FileRef) {</text>
+    <text x="356" y="562">  const ed = await</text>
+    <text x="356" y="586">    openEditor(file);</text>
+  </g>
+  <rect x="340" y="548" width="5" height="34" fill="#e61919"/>
+
+  <!-- 底栏：页脚 + 条形码 -->
+  <line x1="30" y1="604" x2="610" y2="604" stroke="#111111" stroke-opacity="0.35"/>
+  <g font-family="'JetBrains Mono','IBM Plex Mono',Consolas,monospace" font-size="13" letter-spacing="1">
+    <text x="32" y="628" fill="#111111">© 2026 LINKDESK — OFFICIAL BUILT-IN</text>
+    <text x="608" y="628" fill="#111111" text-anchor="end">UNIT/EDIT-001 · REV 2.6</text>
+  </g>
+  <g fill="#111111">
+    <rect x="430" y="612" width="3" height="16"/>
+    <rect x="437" y="612" width="1.5" height="16"/>
+    <rect x="442" y="612" width="4" height="16"/>
+    <rect x="450" y="612" width="2" height="16"/>
+    <rect x="456" y="612" width="3" height="16"/>
+  </g>
+</svg>

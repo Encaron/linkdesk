@@ -1,0 +1,148 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="640" viewBox="0 0 640 640" fill="none">
+  <!-- ============================================================
+       serial-monitor 封面 ·「串口的窗」   [skill: ui-ux-pro-max · 延续 editor A 家族]
+       理念：LinkDesk 第一个视图插件 = 一台「设备 ↔ 电脑」之间的透明窗口，
+       不绑任何特定用途。画一个正在接收的串口会话窗——COM/波特率/连接灯
+       状态栏、→ 接收 / ← 发送回显、hex 与 ASCII 混排、实时计数、底部发送栏。
+       资产独立 SVG：颜色自含。
+       ============================================================ -->
+  <defs>
+    <radialGradient id="sm_bg" cx="0.5" cy="0.42" r="0.9">
+      <stop offset="0" stop-color="#12202b"/>
+      <stop offset="0.55" stop-color="#0b151d"/>
+      <stop offset="1" stop-color="#060d13"/>
+    </radialGradient>
+    <radialGradient id="sm_glowTL" cx="0.12" cy="0.05" r="0.8">
+      <stop offset="0" stop-color="#2dd4bf" stop-opacity="0.22"/>
+      <stop offset="1" stop-color="#2dd4bf" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="sm_glowBR" cx="0.96" cy="1.02" r="0.85">
+      <stop offset="0" stop-color="#6366f1" stop-opacity="0.16"/>
+      <stop offset="1" stop-color="#6366f1" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="sm_body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0e1a22"/>
+      <stop offset="1" stop-color="#0a131a"/>
+    </linearGradient>
+    <linearGradient id="sm_row" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.05"/>
+      <stop offset="0.5" stop-color="#ffffff" stop-opacity="0.02"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="sm_sendbar" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.05"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0.015"/>
+    </linearGradient>
+    <linearGradient id="sm_sendbtn" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2dd4bf"/>
+      <stop offset="1" stop-color="#0d9488"/>
+    </linearGradient>
+    <filter id="sm_shadow" x="-30%" y="-40%" width="160%" height="200%">
+      <feGaussianBlur stdDeviation="24"/>
+    </filter>
+    <filter id="sm_ledglow" x="-300%" y="-300%" width="700%" height="700%">
+      <feGaussianBlur stdDeviation="4"/>
+    </filter>
+    <pattern id="sm_grid" width="44" height="44" patternUnits="userSpaceOnUse">
+      <path d="M 44 0 H 0 V 44" stroke="#ffffff" stroke-opacity="0.03"/>
+    </pattern>
+  </defs>
+
+  <!-- 底：暗色工程台面（靛→青双环境光 + 极淡网格） -->
+  <rect width="640" height="640" fill="url(#sm_bg)"/>
+  <rect width="640" height="640" fill="url(#sm_glowTL)"/>
+  <rect width="640" height="640" fill="url(#sm_glowBR)"/>
+  <rect width="640" height="640" fill="url(#sm_grid)"/>
+
+  <!-- 右下角硬件暗示：极淡的连接器双环 -->
+  <g opacity="0.14" fill="none" stroke="#2dd4bf">
+    <circle cx="588" cy="612" r="30" stroke-width="1.6"/>
+    <circle cx="588" cy="612" r="18" stroke-width="1.2" stroke-dasharray="2 3"/>
+  </g>
+
+  <!-- 串口窗口 -->
+  <rect x="36" y="100" width="568" height="448" rx="18" fill="#000" opacity="0.45" filter="url(#sm_shadow)"/>
+  <rect x="36" y="100" width="568" height="448" rx="18" fill="#0c161e"/>
+  <rect x="36" y="100" width="568" height="448" rx="18" stroke="#ffffff" stroke-opacity="0.10"/>
+
+  <!-- 标题条：连接灯 + 会话 + 计数 -->
+  <circle cx="64" cy="126" r="12" fill="#2dd4bf" opacity="0.22" filter="url(#sm_ledglow)"/>
+  <circle cx="64" cy="126" r="5.5" fill="#2dd4bf"/>
+  <text x="84" y="131" font-family="Consolas,'JetBrains Mono',monospace" font-size="15" fill="#e7edfb">COM3 · 115200 · 8N1</text>
+  <g font-family="Consolas,'JetBrains Mono',monospace" font-size="12.5">
+    <text x="470" y="131" text-anchor="end" fill="#55638a">RX</text>
+    <text x="480" y="131" text-anchor="start" fill="#6ee7cf">1.24 KB</text>
+    <text x="556" y="131" text-anchor="end" fill="#55638a">TX</text>
+    <text x="566" y="131" text-anchor="start" fill="#b9a1f2">47 B</text>
+  </g>
+  <line x1="36" y1="144" x2="604" y2="144" stroke="#ffffff" stroke-opacity="0.06"/>
+
+  <!-- 接收区（CM6）：时间戳 + 方向 + 数据，方向同列对齐 -->
+  <g font-family="Consolas,'JetBrains Mono',monospace" font-size="13.5">
+    <!-- 行 0 → hex -->
+    <text x="58" y="178" fill="#4d5b7d">00:00.021</text>
+    <text x="158" y="178" fill="#5eead4">→</text>
+    <text x="176" y="178"><tspan fill="#7fd0f0">55 AA 01 41 0D 0A</tspan></text>
+    <!-- 行 1 → ascii -->
+    <text x="58" y="200" fill="#4d5b7d">00:00.023</text>
+    <text x="158" y="200" fill="#5eead4">→</text>
+    <text x="176" y="200" fill="#e7edfb">temp=23.4  hum=61.2  bat=92%</text>
+    <!-- 行 2 → OK -->
+    <text x="58" y="222" fill="#4d5b7d">00:00.024</text>
+    <text x="158" y="222" fill="#5eead4">→</text>
+    <text x="176" y="222" fill="#e7edfb">OK</text>
+    <!-- 行 3 ← sent -->
+    <text x="58" y="244" fill="#4d5b7d">00:00.410</text>
+    <text x="158" y="244" fill="#c4b5fd">←</text>
+    <text x="176" y="244" fill="#d9ccfb">AT+RST</text>
+    <!-- 行 4 → OK -->
+    <text x="58" y="266" fill="#4d5b7d">00:00.412</text>
+    <text x="158" y="266" fill="#5eead4">→</text>
+    <text x="176" y="266" fill="#e7edfb">OK</text>
+    <!-- 行 5 → system -->
+    <text x="58" y="288" fill="#4d5b7d">00:00.415</text>
+    <text x="158" y="288" fill="#5eead4">→</text>
+    <text x="176" y="288"><tspan fill="#f6c37f">[BOOT]</tspan><tspan fill="#e7edfb"> ready · ver 2.3.1</tspan></text>
+    <!-- 行 6 -->
+    <text x="58" y="310" fill="#4d5b7d">00:00.416</text>
+    <text x="158" y="310" fill="#5eead4">→</text>
+    <text x="176" y="310" fill="#e7edfb">status=idle</text>
+    <!-- 行 7 → hex -->
+    <text x="58" y="332" fill="#4d5b7d">00:01.008</text>
+    <text x="158" y="332" fill="#5eead4">→</text>
+    <text x="176" y="332"><tspan fill="#7fd0f0">00 0A 5F 7C FF</tspan></text>
+    <!-- 行 8 -->
+    <text x="58" y="354" fill="#4d5b7d">00:01.009</text>
+    <text x="158" y="354" fill="#5eead4">→</text>
+    <text x="176" y="354"><tspan fill="#f6c37f">+CFG</tspan><tspan fill="#e7edfb"> baud=115200 n 8 1</tspan></text>
+    <!-- 行 9 ← -->
+    <text x="58" y="376" fill="#4d5b7d">00:02.103</text>
+    <text x="158" y="376" fill="#c4b5fd">←</text>
+    <text x="176" y="376" fill="#d9ccfb">AT+STAT?</text>
+    <!-- 行 10 -->
+    <text x="58" y="398" fill="#4d5b7d">00:02.104</text>
+    <text x="158" y="398" fill="#5eead4">→</text>
+    <text x="176" y="398" fill="#e7edfb">OK</text>
+    <!-- 行 11（高亮为当前接收行） -->
+  </g>
+  <rect x="36" y="402" width="568" height="22" fill="url(#sm_row)"/>
+  <g font-family="Consolas,'JetBrains Mono',monospace" font-size="13.5">
+    <text x="58" y="420" fill="#6b7aa2">00:02.106</text>
+    <text x="158" y="420" fill="#5eead4">→</text>
+    <text x="176" y="420" fill="#e7edfb">uptime 09:12:33 · rx 1.24 KB</text>
+  </g>
+
+  <!-- 滚动条 -->
+  <rect x="590" y="156" width="4" height="270" rx="2" fill="#ffffff" fill-opacity="0.05"/>
+  <rect x="590" y="196" width="4" height="96" rx="2" fill="#ffffff" fill-opacity="0.18"/>
+
+  <!-- 发送栏（底部） -->
+  <rect x="36" y="474" width="568" height="74" fill="url(#sm_sendbar)"/>
+  <line x1="36" y1="474" x2="604" y2="474" stroke="#ffffff" stroke-opacity="0.06"/>
+  <rect x="58" y="494" width="330" height="34" rx="17" fill="#0b1620" stroke="#ffffff" stroke-opacity="0.14"/>
+  <text x="80" y="517" font-family="Consolas,'JetBrains Mono',monospace" font-size="14" fill="#dbe4f7">AT+RST</text>
+  <rect x="402" y="494" width="118" height="34" rx="17" fill="url(#sm_sendbtn)"/>
+  <text x="461" y="516.5" text-anchor="middle" font-family="Consolas,'JetBrains Mono',monospace" font-size="13" font-weight="700" fill="#04120f">SEND</text>
+  <circle cx="548" cy="511" r="3.4" fill="#2dd4bf"/>
+  <text x="556" y="515" font-family="Consolas,'JetBrains Mono',monospace" font-size="11.5" fill="#4d5b7d">on</text>
+</svg>
