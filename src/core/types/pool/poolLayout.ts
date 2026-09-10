@@ -340,6 +340,12 @@ interface NotifItem {
   /** 壳 t("来源: {{source}}")——无 source 则缺省 */
   sourceLabel?: string;
   actions: NotifAction[];
+  /** E6#72c：进度类通知——池据此画 3px 进度行（缺省 = 非进度通知，不画）。
+   *  progress 由壳 toast 存储直通（pushToast/updateToast 的 progress 旗标）。 */
+  progress?: boolean;
+  /** E6#72c：确定态百分比 0-100——有值画定宽填充，无值画不定态扫动（对标 E3e 原版语义）。
+   *  池侧渲染时自行钳位（壳不作保证——契约宽容，畸形值不撑破布局）。 */
+  percent?: number;
 }
 
 /** 通知分组——壳 NotificationCenter buildSourceGroups（source 第一段归类 + 未读排序） */
@@ -361,6 +367,10 @@ export interface NotifLayout {
   emptyLabel: string;
   dismissTitle: string;
   groups: NotifGroup[];
+  /** E6#72d：自动展开请求——壳判定「存在重要且未读的通知，且面板当前是关着的」时为 true。
+   *  池侧只做 **false→true 边沿触发**（置面板为开），true 持续期间不反复动作；
+   *  缺省 = 不自动展开（契约宽容——旧快照/测试替身不填此字段时行为不变）。 */
+  autoOpen?: boolean;
 }
 
 /** 状态栏布局——Phase 2 #8 StatusBarZone 消费 */

@@ -3,6 +3,16 @@
 > 每版一条，对标 VS Code changelog。**历史真相源 = [E6 执行清单](docs/02-Electron架构/E6_插件生态与发布/E6-执行清单.md)**（E6 阶段每轮收束细节 + 实机证据全在清单 Batch 注里，此文件只记类别清单）。版本号唯一真值 = `package.json`（不手写第二份，见 [02-产品身份与版本.md](docs/02-Electron架构/E6_插件生态与发布/06-主软件更新/02-产品身份与版本.md) §2.3）。
 > 0.x 阶段（开发期）：一切向后兼容变更走 patch 位；破坏性变更走 minor 位。
 
+## v0.1.27（2026-09-10）
+
+- **feat:E6#72 通知面归一——删右下窄小卡，铃铛宽面板成唯一通知面并补齐三件事**
+  - **72a 右下窄卡端到端删除**：池 `ToastHost.tsx/css/test` + `poolToast.ts` 类型整删、FloatingLayerHost 去 `#toast-root`；壳 `bridges.ts` #16 推流桥 + `toast.ts` 序列化面删；主进程链路删（channels 三通道 / plugin-view-handlers 两 handler / runtime-dto-registry / preload-pool `toast-dialog.ts`→`dialog-floating-panel.ts` 更名 / preload-shell poolApi / window-manager `pushToast`）；`linkdesk-api` 的 `toast` 宿主桥命名空间与 PoolExposed 面同步删。**通知数据一字未动**——两浮层本就同读一个 store，删的是窄卡那条渲染喂食链路
+  - **72b 宽面板可复制 + 整句换行**：消息/来源去单行 ellipsis 截断改整句换行（`white-space:normal` + `overflow-wrap:anywhere` + `word-break:break-word` + `min-width:0` 四件套）；整条通知 `user-select:text` 可拖选复制（按钮排除），消息/来源给 `cursor:text` 视觉暗示
+  - **72c 宽面板真进度条**：`NotifItem` DTO 加 `progress?/percent?` 透传 → 面板画 3px 进度行（确定态条宽 = 钳 0-100 的 percent，不定态强调色块扫动，复刻 E3e 原版 `ec88c40ec` 语义）；进度类通知图标换 `codicon-sync` + 转圈；`prefers-reduced-motion` 下停动画保静态呈现
+  - **72d 重要通知自动展开**：壳 `buildNotif` 产 `autoOpen`（存在「重要（失败/警告/带按钮/长驻/进度）且未读」的通知，且面板当前关着）→ 池 `StatusBarZone` **false→true 边沿触发**开面板（持续 true 不反复、手动关掉不会被同一条弹回）；`setToastsSuppressed` 语义改「面板开合镜像」并更名 `setNotifPanelOpen`（原「隐藏窄卡」语义随小卡删除失效）；成功/普通 info 照旧安静自消
+  - 新增单测 `notif.test.ts`（16 例：进度透传/percent:0 边界/图标替换/autoOpen 五类重要 + 已读 + 面板已开 + 回落）
+  - 实机：CDP 验收（无小卡 / 无重叠 / 重要自动展开 / 可复制 / 进度真动）；`npm run check` EXIT=0
+
 ## v0.1.26（2026-09-10）
 
 - **feat:E6#71g-j 安装失败反馈收尾——toast 主动作真触发 + 恒全显 + 真进度条 + 失败通知长驻**

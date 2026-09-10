@@ -28,7 +28,7 @@ import type { OpenPortConfig, SerialDataPayload, SerialStatsPayload, SerialSyste
 import type { DialogOpenOptions, DialogContentOpenOptions } from '../src/core/types/ipc/dialogs';
 import type { ConfigurationChangedPayload, PluginStateChangedPayload } from '../src/core/types/ipc/events';
 import type { BridgeRequestPayload } from '../src/core/types/ipc/bridge';
-import type { PoolQuickPickAction, PoolToastAction, PoolDialogAction, PoolFloatingPanelAction, MemoryPressureData, PoolReadyPayload, CreatePoolWindowRequest, PoolWindowClosedPayload, PoolWindowBoundsPayload, TabBarRectsPayload, ShellTabDragPosition, AdsorbHintPayload, AdsorbIndexPayload } from '../src/core/types/ipc/poolActions';
+import type { PoolQuickPickAction, PoolDialogAction, PoolFloatingPanelAction, MemoryPressureData, PoolReadyPayload, CreatePoolWindowRequest, PoolWindowClosedPayload, PoolWindowBoundsPayload, TabBarRectsPayload, ShellTabDragPosition, AdsorbHintPayload, AdsorbIndexPayload } from '../src/core/types/ipc/poolActions';
 import type { FileChangeEvent } from '../src/core/services/files/FileService';
 import type { MenuItemDescriptor } from '../src/core/api/linkdesk-api/types'; // E5.8#20：契约语义类型——menu.getItems 返回面
 // E5.8#1b：keybinding 归一化集中——主进程/壳/池三端共用单一权威源（防 E5.7#79 漂移复发）
@@ -109,12 +109,6 @@ ipcRenderer.on(IPC.pool.adsorbIndex, (_event, payload: AdsorbIndexPayload) => {
 let _quickPickActionHandler: ((action: PoolQuickPickAction) => void) | null = null;
 ipcRenderer.on(IPC.pool.quickpickAction, (_event, action: PoolQuickPickAction) => {
   if (_quickPickActionHandler) _quickPickActionHandler(action);
-});
-
-// E5.7#16：Toast 动作回调——池→主进程→壳，壳侧 React 注册 handler 调 toast 服务
-let _toastActionHandler: ((action: PoolToastAction) => void) | null = null;
-ipcRenderer.on(IPC.pool.toastAction, (_event, action: PoolToastAction) => {
-  if (_toastActionHandler) _toastActionHandler(action);
 });
 
 // E5.7#17：Dialog 动作回调——池→主进程→壳，壳侧 React 注册 handler 调 DialogService 桥
@@ -498,13 +492,6 @@ try {
       onQuickPickAction: (cb: (action: PoolQuickPickAction) => void) => {
         _quickPickActionHandler = cb;
         return () => { _quickPickActionHandler = null; };
-      },
-      /** E5.7#16：推送 Toast 哑渲染数据到池——壳 toast 服务序列化后直推（聪慧→哑） */
-      pushToast: (data: unknown) => ipcRenderer.send(IPC.pool.toastShow, data),
-      /** E5.7#16：注册 Toast 动作回调——池→壳→toast 服务。返回 unsubscribe */
-      onToastAction: (cb: (action: PoolToastAction) => void) => {
-        _toastActionHandler = cb;
-        return () => { _toastActionHandler = null; };
       },
       /** E5.7#17：推送 Dialog 哑渲染数据到池——壳 DialogService 桥序列化后直推（聪慧→哑） */
       pushDialog: (data: unknown) => ipcRenderer.send(IPC.pool.dialogShow, data),

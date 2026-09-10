@@ -134,11 +134,6 @@ export const linkdeskMock: Record<string, unknown> = {
     close: (..._args: unknown[]) => { console.info("[linkdesk-mock] quickPickHost.close", ..._args); },
     itemAction: (..._args: unknown[]) => { console.info("[linkdesk-mock] quickPickHost.itemAction", ..._args); },
   },
-  toast: {
-    onShow: (..._args: unknown[]) => { console.info("[linkdesk-mock] toast.onShow", ..._args); return () => {}; },
-    dismiss: (..._args: unknown[]) => { console.info("[linkdesk-mock] toast.dismiss", ..._args); },
-    action: (..._args: unknown[]) => { console.info("[linkdesk-mock] toast.action", ..._args); },
-  },
   dialogHost: {
     onShow: (..._args: unknown[]) => { console.info("[linkdesk-mock] dialogHost.onShow", ..._args); return () => {}; },
     current: (..._args: unknown[]) => { console.info("[linkdesk-mock] dialogHost.current", ..._args); },
@@ -301,8 +296,6 @@ export const linkdeskMock: Record<string, unknown> = {
     onAdsorbIndex: (..._args: unknown[]) => { console.info("[linkdesk-mock] pool.onAdsorbIndex", ..._args); return () => {}; },
     pushQuickPick: (..._args: unknown[]) => { console.info("[linkdesk-mock] pool.pushQuickPick", ..._args); },
     onQuickPickAction: (..._args: unknown[]) => { console.info("[linkdesk-mock] pool.onQuickPickAction", ..._args); return () => {}; },
-    pushToast: (..._args: unknown[]) => { console.info("[linkdesk-mock] pool.pushToast", ..._args); },
-    onToastAction: (..._args: unknown[]) => { console.info("[linkdesk-mock] pool.onToastAction", ..._args); return () => {}; },
     pushDialog: (..._args: unknown[]) => { console.info("[linkdesk-mock] pool.pushDialog", ..._args); },
     onDialogAction: (..._args: unknown[]) => { console.info("[linkdesk-mock] pool.onDialogAction", ..._args); return () => {}; },
     pushFloatingPanel: (..._args: unknown[]) => { console.info("[linkdesk-mock] pool.pushFloatingPanel", ..._args); },

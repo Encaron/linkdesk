@@ -3,21 +3,15 @@
  *
  * 原为 preload-shell.ts 模块级本地 type（E5.7#15/#16/#17/#39），
  * 但同样是跨堆 wire 载荷——归口本目录，壳 preload 与 API 类型层 import type。
- * 注意与 poolQuickPick.ts / poolToast.ts 区分：那些是壳→池的渲染数据 DTO，
+ * 注意与 poolQuickPick.ts / poolDialog.ts / poolFloatingPanel.ts 区分：那些是壳→池的渲染数据 DTO，
  * 这些是池→壳的动作回传（actionId 由壳侧重解析原始 item）。
+ * E6#72：Toast 动作回传整删——右下窄卡链路移除，通知动作归一走 layout.statusBar.notif 的面板按钮。
  */
 
 /** QuickPick 动作——select/highlight/close/itemAction 按 key 回传 */
 export interface PoolQuickPickAction {
   type: string;
   key?: string;
-  actionId?: string;
-}
-
-/** Toast 动作——dismiss/action 按 id + actionId 回传 */
-export interface PoolToastAction {
-  type: string;
-  id: string;
   actionId?: string;
 }
 

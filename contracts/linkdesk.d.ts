@@ -503,33 +503,6 @@ export interface PoolQuickPickData {
     prefix?: string;
     items: PoolQuickPickItem[];
 }
-/** 行内操作按钮——onClick 闭包留在壳，池只回传 actionId（位置序号）。
- *  E5.8#20-c：改名 PoolToastButton——与 poolActions.ts PoolToastAction（IPC 回传动作）同名，
- *  契约平铺进单文件会声明合并成幽灵复合型；按钮描述型用 Button 后缀消歧。 */
-export interface PoolToastButton {
-    /** 位置序号字符串——壳按 actions[Number(actionId)] 重解析 onClick */
-    actionId: string;
-    label: string;
-    isPrimary?: boolean;
-}
-export interface PoolToastItem {
-    id: string;
-    message: string;
-    /** 壳侧已解析的图标类（codicon + severity 类）——池原样渲染 */
-    iconClass: string;
-    /** 壳侧已 t() 解析的 "来源: xxx"——池原样渲染 */
-    sourceText?: string;
-    /** E6#71i：进度 toast——true 时渲染进度条 */
-    progress?: boolean;
-    /** E6#71i：当前进度 0-100——有值 = 确定条宽（下载段真值）；无值 = 不定态动画 */
-    percent?: number;
-    actions?: PoolToastButton[];
-}
-export interface PoolToastData {
-    toasts: PoolToastItem[];
-    /** NotificationCenter 打开时壳推 true——池整体隐藏（对标壳 ToastContainer） */
-    suppressed: boolean;
-}
 /**
  * Pool Dialog 哑渲染数据——E5.7#17（浮层归一化设计.md §7）。
  *
@@ -562,7 +535,7 @@ export type PoolDialogData = {
 };
 /** 标题栏动作按钮——池渲染 + 回传壳侧重解析业务语义（池零语义，UI 机械知识除外）。
  *  E5.8#20-c：改名 PoolFloatingPanelButton——与 poolActions.ts PoolFloatingPanelAction（IPC 回传动作）
- *  同名，契约平铺进单文件会声明合并成幽灵复合型；按钮描述型用 Button 后缀消歧（poolToast 同款）。 */
+ *  同名，契约平铺进单文件会声明合并成幽灵复合型；按钮描述型用 Button 后缀消歧（契约族命名消歧惯例）。 */
 export interface PoolFloatingPanelButton {
     /** 动作 id——open-in（在主窗口中打开）/ maximize（最大化）/ close（关闭），壳侧重解析 */
     id: string;
@@ -594,9 +567,9 @@ export type PoolFloatingPanelData = {
     /** 语言切换文案重推标记（refreshPanelText）——池仅更新标题/动作渲染，跳过焦点获取（I8-8 首次打开才入焦点） */
     refresh?: boolean;
 };
-/** UI 浮层/菜单/通知命名空间面——对标 VS Code vscode.window + ContextKey + 池内 QuickPick/Toast/Dialog 宿主桥 */
+/** UI 浮层/菜单/通知命名空间面——对标 VS Code vscode.window + ContextKey + 池内 QuickPick/Dialog/FloatingPanel 宿主桥 */
 export interface UiAPI {
-    /** 通知——插件弹出壳侧 toast，对标 VS Code vscode.window.showInformationMessage */
+    /** 通知——插件弹通知（E6#72：唯一通知面 = 铃铛宽通知面板，右下窄卡链路已整删），对标 VS Code vscode.window.showInformationMessage */
     notifications: {
         /** 弹出通知。progress=true 时返回 ProgressHandle（含 update/finish/cancel）。
          *  E6#13.5：options.actions 带主动作按钮——点击走壳 executeCommand(action.command, action.args)，
@@ -648,12 +621,6 @@ export interface UiAPI {
         highlight(key: string): void;
         close(): void;
         itemAction(key: string, actionId: string): void;
-    };
-    /** E5.7#16：Toast 哑渲染订阅——池 ToastHost 消费（壳 preload 无此面） */
-    toast: {
-        onShow(cb: (data: PoolToastData) => void): () => void;
-        dismiss(id: string): void;
-        action(id: string, actionId: string): void;
     };
     /** E5.7#17：Dialog 哑渲染订阅——池 DialogHost 消费（壳 preload 无此面）。命名 dialogHost——
      * dialog 命名空间已是插件侧 confirm/alert/open API */
@@ -1653,6 +1620,12 @@ export interface NotifItem {
     /** 壳 t("来源: {{source}}")——无 source 则缺省 */
     sourceLabel?: string;
     actions: NotifAction[];
+    /** E6#72c：进度类通知——池据此画 3px 进度行（缺省 = 非进度通知，不画）。
+     *  progress 由壳 toast 存储直通（pushToast/updateToast 的 progress 旗标）。 */
+    progress?: boolean;
+    /** E6#72c：确定态百分比 0-100——有值画定宽填充，无值画不定态扫动（对标 E3e 原版语义）。
+     *  池侧渲染时自行钳位（壳不作保证——契约宽容，畸形值不撑破布局）。 */
+    percent?: number;
 }
 /** 通知分组——壳 NotificationCenter buildSourceGroups（source 第一段归类 + 未读排序） */
 export interface NotifGroup {
@@ -1672,6 +1645,10 @@ export interface NotifLayout {
     emptyLabel: string;
     dismissTitle: string;
     groups: NotifGroup[];
+    /** E6#72d：自动展开请求——壳判定「存在重要且未读的通知，且面板当前是关着的」时为 true。
+     *  池侧只做 **false→true 边沿触发**（置面板为开），true 持续期间不反复动作；
+     *  缺省 = 不自动展开（契约宽容——旧快照/测试替身不填此字段时行为不变）。 */
+    autoOpen?: boolean;
 }
 /** 状态栏布局——Phase 2 #8 StatusBarZone 消费 */
 export interface StatusBarLayout {
@@ -1882,12 +1859,6 @@ export interface PoolQuickPickAction {
     key?: string;
     actionId?: string;
 }
-/** Toast 动作——dismiss/action 按 id + actionId 回传 */
-export interface PoolToastAction {
-    type: string;
-    id: string;
-    actionId?: string;
-}
 /** Dialog 动作——confirm/cancel 回传，壳侧 settle Promise */
 export interface PoolDialogAction {
     type: string;
@@ -1953,8 +1924,6 @@ export interface ShellAPI {
         onAdsorbIndex(cb: (payload: AdsorbIndexPayload) => void): () => void;
         pushQuickPick(data: unknown): void;
         onQuickPickAction(cb: (action: PoolQuickPickAction) => void): () => void;
-        pushToast(data: unknown): void;
-        onToastAction(cb: (action: PoolToastAction) => void): () => void;
         pushDialog(data: unknown): void;
         onDialogAction(cb: (action: PoolDialogAction) => void): () => void;
         // E5.8#37（Phase 8 类型 B）：壳内悬浮面板——pushPanel 哑渲染数据 + 动作回传

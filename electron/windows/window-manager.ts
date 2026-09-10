@@ -89,7 +89,8 @@ export class WindowManager {
    * app.getAppMetrics() + PID 匹配——Electron 43 的 getProcessMemoryInfo()
    * 在 Process 上（Node 进程自身），不在 WebContents 上。
    *
-   * Working Set > 1GB → 通知壳渲染进程 → toast 服务 → 池 ToastHost 哑渲染（#16 桥）。
+   * Working Set > 1GB → 通知壳渲染进程 → 通知服务 pushToast → 铃铛宽通知面板
+   * （E6#72：右下窄卡链路已整删，通知统一走 store → 宽面板）。
    */
   checkMemoryPressure(): void {
     const poolView = this.getPoolView();
@@ -223,7 +224,7 @@ export class WindowManager {
     hostWindow.on('moved', reportBounds);
     hostWindow.on('resized', reportBounds);
     // E5.8#46.12 Step2：聚焦窗跟踪——主/脱出池共用创建路径统一挂载，用户聚焦哪个窗，
-    // 壳 UI 推流（pushQuickPick/pushToast/pushDialog/pushFloatingPanel）默认落该窗。
+    // 壳 UI 推流（pushQuickPick/pushDialog/pushFloatingPanel）默认落该窗。
     const onFocus = () => { this._focusedWindowId = windowId; };
     hostWindow.on('focus', onFocus);
     // E5.8#46.18：宿主窗 OS 置顶状态 → 该窗池 WCV 推 alwaysOnTopChange（TitleBarZone pin 按钮两态跟随）。
@@ -522,16 +523,6 @@ export class WindowManager {
     const entry = this.getPoolEntry(windowId, 'pushQuickPick');
     if (!entry) return;
     entry.view.webContents.send(IPC.pool.quickpick, data);
-  }
-
-  /**
-   * E5.7#16：推送 Toast 哑渲染数据——壳 toast 服务序列化 DTO，池 ToastHost 纯渲染。
-   * E5.8#46.12 Step2：windowId 默认聚焦窗——toast 出现在用户当前所在窗。
-   */
-  pushToast(data: unknown, windowId = this.getFocusedWindowId()): void {
-    const entry = this.getPoolEntry(windowId, 'pushToast');
-    if (!entry) return;
-    entry.view.webContents.send(IPC.pool.toast, data);
   }
 
   /**

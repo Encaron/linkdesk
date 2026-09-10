@@ -1,20 +1,19 @@
 /**
  * linkdesk-api UI 域——自 linkdesk-api.ts 拆出（E5.8#0d.10-9c）。
- * notifications/menu/contextKey/dialog/quickPick/quickPickHost/toast/dialogHost 八命名空间面 verbatim。
+ * notifications/menu/contextKey/dialog/quickPick/quickPickHost/dialogHost/floatingPanelHost 八命名空间面 verbatim。
  * 依赖方向：ui → ./types（MenuItemDescriptor/NotificationHandle）+ types/ipc|pool + MenuRegistry；被聚合器交叉组装。
  */
 
 import type { MenuItemDescriptor, NotificationHandle, PluginToastAction } from "./types";
 import type { DialogOpenOptions, DialogContentOpenOptions } from "../../types/ipc/dialogs"; // E6#71c 富内容确认参数
 import type { ManifestMenuItem } from "../../registry/commands/MenuRegistry";
-import type { PoolToastData } from "../../types/pool/poolToast";
 import type { PoolQuickPickData, PluginQuickPickOptions, PluginQuickPickRequest } from "../../types/pool/poolQuickPick";
 import type { PoolDialogData } from "../../types/pool/poolDialog";
 import type { PoolFloatingPanelData } from "../../types/pool/poolFloatingPanel";
 
-/** UI 浮层/菜单/通知命名空间面——对标 VS Code vscode.window + ContextKey + 池内 QuickPick/Toast/Dialog 宿主桥 */
+/** UI 浮层/菜单/通知命名空间面——对标 VS Code vscode.window + ContextKey + 池内 QuickPick/Dialog/FloatingPanel 宿主桥 */
 export interface UiAPI {
-  /** 通知——插件弹出壳侧 toast，对标 VS Code vscode.window.showInformationMessage */
+  /** 通知——插件弹通知（E6#72：唯一通知面 = 铃铛宽通知面板，右下窄卡链路已整删），对标 VS Code vscode.window.showInformationMessage */
   notifications: {
     /** 弹出通知。progress=true 时返回 ProgressHandle（含 update/finish/cancel）。
      *  E6#13.5：options.actions 带主动作按钮——点击走壳 executeCommand(action.command, action.args)，
@@ -71,13 +70,6 @@ export interface UiAPI {
     highlight(key: string): void;
     close(): void;
     itemAction(key: string, actionId: string): void;
-  };
-
-  /** E5.7#16：Toast 哑渲染订阅——池 ToastHost 消费（壳 preload 无此面） */
-  toast: {
-    onShow(cb: (data: PoolToastData) => void): () => void;
-    dismiss(id: string): void;
-    action(id: string, actionId: string): void;
   };
 
   /** E5.7#17：Dialog 哑渲染订阅——池 DialogHost 消费（壳 preload 无此面）。命名 dialogHost——

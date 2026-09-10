@@ -9,11 +9,15 @@
  *   - 通知操作回传（events 往返）：面板开闭/单条关闭/全部清除/动作点击——壳侧执行
  *     （ToastAction.onClick 是壳侧闭包，不可序列化——usePoolSync 订阅 notif:* 通道）
  *
+ * E6#72 通知面归一：右下窄小卡（ToastHost）整删后，本面板是**唯一通知面**。
+ *   - 消息/来源可拖选复制、长句整句换行（#72b）；进度类通知画 3px 进度条（#72c）；
+ *     重要通知（失败/警告/带按钮/长驻/进度）由壳请求自动展开（#72d）。
+ *   - 壳侧 `setNotifPanelOpen` 只是「面板开合镜像」（原「隐藏 toast」语义随小卡删除失效），
+ *     autoOpen 门禁消费它——面板已开就不再重复请求展开。
+ *
  * 与壳行为差异（诚实注记）：
- *   ① E5.8#107 浮层权威：面板已收敛为壳同款 OverlayPortal（进 #overlay-root，外部点击/Escape
- *      由 OverlayPortal 统一处理）——原「fixed + document mousedown」手动实现删除。
- *   ② 通知面板关闭期间 toast 继续出现在右下角——setToastsSuppressed 由壳在 notif:panel
- *      事件里执行（面板打开 → 隐藏 toast），语义与壳一致。
+ *   E5.8#107 浮层权威：面板已收敛为壳同款 OverlayPortal（进 #overlay-root，外部点击/Escape
+ *   由 OverlayPortal 统一处理）——原「fixed + document mousedown」手动实现删除。
  */
 
 import { Fragment, useState, useRef, useEffect } from "react";
@@ -23,7 +27,7 @@ import { executePoolCommand } from "../../commands/executePoolCommand";
 import OverlayPortal from "../../../components/shared/overlay-portal/OverlayPortal";
 import "./StatusBarZone.css";
 
-/** 池 → 壳通知事件——usePoolSync 订阅（壳侧 dismissToast/setToastsSuppressed/action.onClick） */
+/** 池 → 壳通知事件——usePoolSync 订阅（壳侧 dismissToast/setNotifPanelOpen/action.onClick） */
 function emitNotif(channel: string, payload?: unknown) {
   window.linkdesk?.events?.emit(channel, payload);
 }
@@ -32,12 +36,22 @@ function StatusBarZone({ statusBar }: { statusBar: StatusBarLayout }) {
   const [panelOpen, setPanelOpen] = useState(false);
   const bellRef = useRef<HTMLButtonElement>(null);
 
-  // 面板开闭 → 壳（setToastsSuppressed + 标记已读）。首帧跳过——避免 mount 即发 false。
+  // 面板开闭 → 壳（面板开合镜像 setNotifPanelOpen + 标记已读）。首帧跳过——避免 mount 即发 false。
   const firstRenderRef = useRef(true);
   useEffect(() => {
     if (firstRenderRef.current) { firstRenderRef.current = false; return; }
     emitNotif("notif:panel", panelOpen);
   }, [panelOpen]);
+
+  // E6#72d：重要通知自动展开——壳在 notif.autoOpen 里请求，此处只认 **false→true 边沿**
+  // （持续 true 不反复动作，用户手动关掉后也不会被同一条通知立刻弹回来）。
+  // 壳侧在面板打开的同时标记全部已读 → autoOpen 随即回落 false → 边沿复位，下一条新的重要通知再触发。
+  const prevAutoOpenRef = useRef(false);
+  const wantAutoOpen = statusBar.notif.autoOpen === true;
+  useEffect(() => {
+    if (wantAutoOpen && !prevAutoOpenRef.current) setPanelOpen(true);
+    prevAutoOpenRef.current = wantAutoOpen;
+  }, [wantAutoOpen]);
 
   // 左/右分列——switch 判别（eslint E5.5#10 规则拦 `=== "小写字面量"`，tag 判别用 switch 不误报）
   const leftItems: PoolStatusBarItem[] = [];
@@ -154,6 +168,22 @@ function StatusBarZone({ statusBar }: { statusBar: StatusBarLayout }) {
                                   </button>
                                 ))}
                               </div>
+                            )}
+                          </div>
+                        )}
+                        {/* E6#72c：进度行——DOM 位置在详情行之后、主行之前；配合 column-reverse
+                            视觉落点 = 主行下方、详情行上方（原 71i 画在窄卡上，窄卡删后落点改这里）。
+                            确定态（percent 有值）= 定宽填充；不定态 = 强调色块扫动。 */}
+                        {item.progress === true && (
+                          <div className="notif-progress">
+                            {typeof item.percent === "number" ? (
+                              <div
+                                className="notif-progress-fill"
+                                // 钳 0-100——DTO 契约宽容，畸形 percent（负/超 100/NaN 后段）不撑破布局
+                                style={{ width: `${Math.max(0, Math.min(100, item.percent))}%` }}
+                              />
+                            ) : (
+                              <div className="notif-progress-indeterminate" />
                             )}
                           </div>
                         )}

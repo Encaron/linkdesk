@@ -188,6 +188,13 @@
   flex-direction: column-reverse;
   padding: 8px;
   border-bottom: 1px solid var(--separator);
+  /* E6#72b：整条可拖选——跨「消息→来源→时间」一次划选能连起来（单给 .notif-panel-msg 设 text 时
+     跨元素选择会中断）。按钮排除在下（按钮文字被选中是纯噪音，且会干扰点击）。 */
+  user-select: text;
+}
+
+.notif-panel-item button {
+  user-select: none;
 }
 
 .notif-panel-item:last-child {
@@ -217,15 +224,90 @@
 .notif-panel-item .notif-icon.warning { color: var(--warning); }
 .notif-panel-item .notif-icon.error { color: var(--error); }
 
-/* VS Code: message flex:1, line-height 22px, text-overflow ellipsis */
+/* 消息行——E6#72b：从单行 ellipsis 改整句换行 + 可拖选复制（对应用户 P5「宽面板文字不能复制」）。
+   行高/字号不变（面板密度节奏不动）；只把截断换成换行。
+   ⚠️ 换行链三件套缺一不可：white-space 放行换行 / overflow-wrap 长 token（URL、无空格长串）强断 /
+   min-width:0 让 flex 子项允许收缩到内容宽以下——少 min-width 则长串把面板撑宽。 */
 .notif-panel-msg {
   flex: 1;
   font-size: var(--font-size-sm); /* 12→sm */
   color: var(--text-primary);
   line-height: calc(22px * var(--ui-scale)); /* E5.8 Phase 12 #166：22px 行高链乘 scale */
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
   min-width: 0;
+  /* 可拖选复制——消息是用户最常要复制的东西（错误原文/路径/日志行） */
+  user-select: text;
+  cursor: text;
+}
+
+/* ═══════════════════════════════════════════════
+   E6#72c 进度条——进度类通知的内容区细条。
+   对标 E3e 原版进度卡（git ec88c40ec `progress-card-track`，被 E5.7#27.5 删）+
+   E6#71i 窄卡实现（窄卡随 72a 删除，落点迁至宽面板）。
+   语义：轨道 + 强调色填充——确定态条宽 = percent%，不定态色块扫过。
+   ⚠️ 数字（百分比）不进这里：百分比由发起方写进消息文案（如 marketplace progressToastMsg 带 % 段），
+     条只做视觉化——数字 + 条双呈现，避免壳猜单位/舍入。
+   ═══════════════════════════════════════════════ */
+
+.notif-progress {
+  position: relative;
+  height: 3px;                    /* E3e 原版厚度（窄卡曾用 2px，归一到 E3e 3px） */
+  margin: 6px 0 2px;              /* 上留与消息行的呼吸、下贴详情行 */
+  border-radius: var(--radius-pill);
+  background: var(--separator);   /* 轨道 = 分隔线色（弱背景，不参与前景对比计算） */
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+/* 确定态——条宽由 percent 驱动，分段到达平滑过渡不跳帧 */
+.notif-progress-fill {
+  position: absolute;
+  inset: 0 auto 0 0;             /* top/right/bottom/left：左贴齐，宽由内联 style 给 */
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+  transition: width 200ms ease-out;
+}
+
+/* 不定态——无百分数段（校验/解压/加载）：强调色块扫过轨道 */
+.notif-progress-indeterminate {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 40%;
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+  animation: notif-progress-scan 1.2s linear infinite;
+}
+
+@keyframes notif-progress-scan {
+  /* transform % 相对自身宽（轨道 40%）——从完全出左到完全出右连续扫过 */
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(350%); }
+}
+
+/* 进度图标转圈——与进度条同源语义（「正在跑」）。非进度图标不套此类 */
+.notif-icon-spin {
+  animation: notif-icon-spin 1.4s linear infinite;
+}
+
+@keyframes notif-icon-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* E6#72：尊重系统「减少动态效果」——停掉扫动与转圈，只留静态呈现（轨道 + 40% 色块恒位）。
+   无障碍要求（设计 skill 交付清单），也避免低配机关不掉帧。 */
+@media (prefers-reduced-motion: reduce) {
+  .notif-progress-indeterminate {
+    animation: none;
+    transform: translateX(0);
+  }
+  .notif-icon-spin {
+    animation: none;
+  }
+  .notif-progress-fill {
+    transition: none;
+  }
 }
 
 /* VS Code: toolbar hidden until hover/focus */
@@ -269,6 +351,9 @@
 .notif-source {
   color: var(--text-muted);
   white-space: nowrap;
+  /* E6#72b：来源串（"来源: serial-monitor.portErrors"）也常要复制——同消息行放行拖选 */
+  user-select: text;
+  cursor: text;
 }
 
 .notif-actions-row {

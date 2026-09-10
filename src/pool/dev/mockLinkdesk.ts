@@ -28,7 +28,6 @@
  * hideDialog() / emit(channel, payload)。
  */
 
-import type { PoolToastData } from "../../core/types/pool/poolToast";
 import type { PoolQuickPickData, PluginQuickPickOptions } from "../../core/types/pool/poolQuickPick";
 import type { PoolDialogData } from "../../core/types/pool/poolDialog";
 import type { PoolFloatingPanelData } from "../../core/types/pool/poolFloatingPanel";
@@ -36,7 +35,6 @@ import type { PoolLayout } from "../../core/types/pool/poolLayout";
 import type { LinkDeskAPI } from "../../core/api/linkdesk-api";
 import {
   buildSampleLayout,
-  buildSampleToasts,
   buildSampleQuickPick,
   buildSampleDialog,
   buildSampleFloatingPanel,
@@ -114,7 +112,6 @@ export function installMockLinkdesk(): void {
 
   const events = createMiniBus();
   const layoutReplay = createReplay<PoolLayout>();
-  const toastReplay = createReplay<PoolToastData>();
   const quickPickReplay = createReplay<PoolQuickPickData>();
   const dialogReplay = createReplay<PoolDialogData>();
   const floatingPanelReplay = createReplay<PoolFloatingPanelData>(); // E5.8#37：单实例全量快照（open/close 替换）
@@ -129,7 +126,6 @@ export function installMockLinkdesk(): void {
 
   // 初始数据先入缓冲——池 onLayout/onShow 订阅时回放（preload-pool 缓冲语义）
   layoutReplay.push(buildSampleLayout());
-  toastReplay.push({ toasts: buildSampleToasts(), suppressed: false });
 
   // 池侧命令注册表——preload-pool 同款语义（池注册优先，壳侧 fallback 无壳 → 日志）
   const poolCommands = new Map<string, (...args: unknown[]) => unknown>();
@@ -182,8 +178,6 @@ export function installMockLinkdesk(): void {
       adsorbIndex: makeLogger("pool.adsorbIndex"),
       pushQuickPick: makeLogger("pool.pushQuickPick"),
       onQuickPickAction: () => () => {},
-      pushToast: makeLogger("pool.pushToast"),
-      onToastAction: () => () => {},
       pushDialog: makeLogger("pool.pushDialog"),
       onDialogAction: () => () => {},
       // E5.8#37（Phase 8 类型 B）：悬浮面板——pushPanel 哑渲染数据 + 动作回传（preview 无壳侧消费）
@@ -210,11 +204,6 @@ export function installMockLinkdesk(): void {
       setAlwaysOnTop: makeLogger("window.setAlwaysOnTop"),
       isAlwaysOnTop: async () => false,
       onAlwaysOnTopChange: () => () => {},
-    },
-    toast: {
-      onShow: toastReplay.subscribe,
-      dismiss: makeLogger("toast.dismiss"),
-      action: makeLogger("toast.action"),
     },
     // E5.7#63：插件 API（quickPick）与池渲染桥（quickPickHost）分命名空间——dialog/dialogHost 同款归一
     quickPick: {

@@ -22,7 +22,7 @@ import { getViewPlugin, onDidRegister, onDidUnregister } from "../../pluginLoade
 import { onDidChangeStatusBar } from "../../core/services/ui/StatusBarService"; // E5.7#8：状态栏动态项变化订阅
 import { CUSTOM_EVENTS } from "../../core/react/events/CoreEvents"; // E5.7#8：Chord 提示
 import { shellEvents, type StatusBarEntry } from "../../core/react/events/ShellEvents";
-import { subscribeToasts, dismissToast, getToasts, setToastsSuppressed } from "../../core/services/ui/toast";
+import { subscribeToasts, dismissToast, getToasts, setNotifPanelOpen } from "../../core/services/ui/toast";
 import { _seenIds } from "./notif"; // 通知未读追踪——事件回传共享序列化侧同一实例
 
 interface UseSyncSubscriptionsInput {
@@ -225,14 +225,14 @@ export function useSyncSubscriptions({
   }, [setEventEntries]);
 
   // E5.7#8：池通知面板操作回传（events 往返）——壳 NotificationCenter 语义迁入：
-  // 面板开闭 → setToastsSuppressed + 标记已读；单条关闭/全部清除 → dismissToast；
+  // 面板开闭 → setNotifPanelOpen（面板开合镜像，供 autoOpen 门禁）+ 标记已读；单条关闭/全部清除 → dismissToast；
   // 动作点击 → 壳侧执行 onClick 闭包 + 关闭（闭包不可序列化，只能壳侧跑）。
   useEffect(() => {
     const events = window.linkdesk?.events;
     const offPanel = events?.on("notif:panel", (payload) => {
       // E5.7#97：通道契约——池 emit 只传 boolean（面板开闭态）
       if (typeof payload !== "boolean") return;
-      setToastsSuppressed(payload);
+      setNotifPanelOpen(payload);
       if (payload) {
         for (const n of getToasts()) _seenIds.add(n.id);
         setLayoutVersion((v) => v + 1);  // 标记已读不 fire toast 事件——手动重推

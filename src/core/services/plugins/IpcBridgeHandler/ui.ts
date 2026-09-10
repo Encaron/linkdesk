@@ -235,7 +235,8 @@ export async function handleUiMethod(method: string, args: unknown[]): Promise<u
     // E3j #76：插件通知——跨进程触发壳侧 toast
     // E6#13.5c：options.actions（插件序列化 {command,args}，无闭包）→ 壳 toast action closure
     // （点击 executeCommand 真执行）。建 toast 时包好 onClick——与壳内 pushToast（闭包 onClick）
-    // 同形态，serializeToasts/runToastAction/ToastHost 零改动；无 command 的 action 仅关闭（点击后 dismiss）。
+    // 同形态；无 command 的 action 仅关闭（点击后 dismiss）。E6#72：动作按钮渲染在铃铛宽面板，
+    // onClick 闭包留壳，面板回传位置序号经 runToastAction 重解析执行。
     case "showNotification": {
       const [message, options] = args as
         | [string, { type?: string; progress?: boolean; persistent?: boolean; actions?: PluginToastAction[] } | undefined];

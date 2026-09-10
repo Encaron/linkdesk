@@ -475,7 +475,7 @@ function closeProgressToast(): void {
 
 /** 进度条文案推进——随 ingest 阶段/百分比（仅消息变更才 update，节 IPC）；消费方全卸载后事件停发 = 文案定格，
  *  终局仍由 await 中的 startMarketInstall 续体收（诚实边界：进度文字定格不影响装完/失败的终局收条）
- *  E6#71i：update 第三参带 s.percent——下载段有真值 → 池 ToastHost 确定进度条；消息含 % 时 msg 每段变更，
+ *  E6#71i：update 第三参带 s.percent——下载段有真值 → 铃铛宽通知面板确定进度条；消息含 % 时 msg 每段变更，
  *  与 percent 同批到达（同一条 update 推消息+条），不额外多发 IPC。 */
 function syncProgressToast(): void {
   const p = _progressToast;

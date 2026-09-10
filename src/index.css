@@ -548,12 +548,10 @@ select {
        ContextMenu 主菜单 / ColorPicker / dropdown-card / selectbox / status-bar-notif-panel。
        ⚠️ E5.8#109：深度 2 必须排除 wrapper（:not([data-overlay-wrapper])）——包装盒是结构容器
        （ref/zIndex 载体）不是表面：若它也吃 backdrop-filter 会成 backdrop root，把内部深度 3 表面的
-       采样掐断（#103 地板因此对右键/toast 从未生效；#109 实证关掉包装盒 blur 后表面立即渲染）。
-       .toast-container（深度 2）display:contents 无盒同样无害。
+       采样掐断（#103 地板因此对右键从未生效；#109 实证关掉包装盒 blur 后表面立即渲染）。
    ⚠️ E5.8#187：选择器2 只磨砂 wrapper 内表面——裸深度 3 内容（dialog-host-message/actions、
      quick-pick 输入/列表、floating-panel 标题/正文）坐在父面板单层磨砂上，**不再**二次加厚
-     （#187 色环根治：双层磨砂 → 文字/按钮行边缘「加厚磨砂框」）。toast-item 是裸深度 3 表面
-     （无 wrapper 且无父面板承接磨砂）→ 补显式 backdrop-filter（ToastHost.css，同 tooltip 例外先例）。
+     （#187 色环根治：双层磨砂 → 文字/按钮行边缘「加厚磨砂框」）。
    scrim-plane 排除（:not(#ld-scrim-plane)）——遮罩满屏无磨砂（与 surface 分离后天然不碰）。
    GroupTabBar .drop-glass-zone 同类规则留在其文件内（drop 目标专属含 drop 属性，不并入）。
    拖拽幽灵排除裁决（#107）：icon-drag-preview + MainZone 拖拽预览**不进层**——瞬态 mimetic

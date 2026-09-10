@@ -5,7 +5,7 @@
  * 壳 IpcBridgeHandler 的 setPluginAPI 注册在 loader.ts（聚合器），此处只定义操作。
  */
 
-import i18n from "../../i18n"; // E5.8#37.9：toast 动作标签壳 t() 解析（显示文本铁律——ToastHost 哑渲染零自产文本）
+import i18n from "../../i18n"; // E5.8#37.9：通知动作标签壳 t() 解析（显示文本铁律——池哑渲染零自产文本）
 import type { PluginManifest } from "../../core/api/types";
 import { getAvailableThemes, normalizeThemeValue, isMixSourceOwner } from "../../core/services/ui/ThemeEngine";
 import { ThemeRegistry } from "../../core/registry/appearance/ThemeRegistry";

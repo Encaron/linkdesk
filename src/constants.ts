@@ -10,12 +10,13 @@ export const Z_INDEX = {
   panelResizeHandle: 200,    // 面板拖拽尺寸手柄
   dragPreview: 500,          // 标签页拖拽预览
   dropZone: 1000,            // 分屏拖拽预览（Glassmorphism 内发光）
-  // E5.8#37（Phase 8 类型 B）：壳内悬浮面板——右键 3000/QuickPick 4000/Dialog 5000/Toast 2000 全盖面板；
+  // E5.8#37（Phase 8 类型 B）：壳内悬浮面板——右键 3000/QuickPick 4000/Dialog 5000/floatLayer 2000 全盖面板；
   // 面板盖池内容 + 拖拽预览（dropZone 1000）。I8-12。
   floatingPanel: 1500,
   // E5.8#142：通用 surface 根层——overlay-root 内容（下拉/取色器/dropdown-card/notif）盖悬浮面板 1500、被 contextMenu 3000 盖
   overlayRoot: 2000,
-  toast: 2000,               // Toast 通知（#142：同级 2000，DOM 序 toast-root 在 overlay-root 后 → toast 盖 overlay）
+  // E6#72：浮层容器基准层——#ld-float-layer 自身 z（原借 Toast 2000 命名；Toast 通知面整删后改名 floatLayer）
+  floatLayer: 2000,
   contextMenu: 3000,         // 右键菜单（E6#54b：@linkdesk/ui 包内同名携带——ContextMenu.tsx CONTEXT_MENU_Z_INDEX 3000 互指，改此处须同步）
   quickPick: 4000,           // 命令面板 / QuickPick
   dialog: 5000,              // 对话框 / Modal

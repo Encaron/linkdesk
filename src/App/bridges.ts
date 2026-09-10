@@ -1,14 +1,15 @@
 /**
  * App 壳↔池 UI 桥 hook——useUiBridges：聪慧→哑 桥接器集合。
  * E5.8#0d.10-3d：自 App.tsx 拆出——池 events 转发（icon:selected/reordered + panel:viewSelected/resize）+
- * QuickPick/Toast/Dialog 三哑桥 + 内存压力通知。
- * 依赖方向：bridges → core/services/ui（QuickPick/toast/Dialog/Notification）+ shellEvents + layoutEngine + i18n；
+ * QuickPick/Dialog/FloatingPanel 三哑桥 + 内存压力通知。E6#72：Toast 哑桥整删（右下窄卡链路移除，
+ * 通知归一 = 铃铛宽面板，NotificationService.pushToast 喂同一 store 即可，无 #16 池桥）。
+ * 依赖方向：bridges → core/services/ui（QuickPick/toast/Dialog/FloatingPanel/Notification）+ shellEvents + layoutEngine + i18n；
  * App 消费：useUiBridges({ setPanelActiveViewId })。无反向依赖。
  */
 
 import { useEffect } from "react";
 import { QuickPickService } from "../core/services/ui/QuickPickService";
-import { serializeToasts, runToastAction, subscribeToasts, subscribeToastSuppressed, dismissToast, TOAST_TTL_INFO } from "../core/services/ui/toast";
+import { TOAST_TTL_INFO } from "../core/services/ui/toast";
 import { registerDialogRenderers, type DialogOptions } from "../core/services/ui/DialogService";
 import { registerFloatingPanelRenderer, handleFloatingPanelAction } from "../core/services/ui/FloatingPanelService"; // E5.8#37（Phase 8 类型 B）
 import { pushToast } from "../core/services/ui/NotificationService";
@@ -208,40 +209,8 @@ export function useUiBridges({ setPanelActiveViewId, panelActiveViewIdRef, detac
     };
   }, []);
 
-  // E5.7#16：Toast 聪慧→哑桥——壳 toast 服务序列化全量快照推池 ToastHost 哑渲染，
-  // 池动作（dismiss/action）按 id + actionId 回传，壳重解析 onClick 闭包执行。
-  useEffect(() => {
-    const poolApi = window.linkdesk?.pool;
-    if (!poolApi?.pushToast || !poolApi?.onToastAction) return;
-
-    const push = () => poolApi.pushToast(serializeToasts());
-
-    const unsubToasts = subscribeToasts(push);
-    const unsubSuppressed = subscribeToastSuppressed(push);
-
-    // 池动作回传——按 id + actionId 重解析（onClick 闭包不过 IPC，壳侧执行）。
-    // 动作用查表分发——避免 lowercase 字面量比较（no-restricted-syntax 误报规则）
-    const unsubAction = poolApi.onToastAction((action: { type: string; id: string; actionId?: string }) => {
-      const handlers: Record<string, () => void> = {
-        dismiss: () => dismissToast(action.id),
-        action: () => {
-          if (action.actionId !== undefined) runToastAction(action.id, action.actionId);
-        },
-      };
-      handlers[action.type]?.();
-    });
-
-    // 挂载时同步当前状态——防桥接前已弹出的 toast
-    push();
-
-    return () => {
-      unsubToasts();
-      unsubSuppressed();
-      unsubAction();
-    };
-  }, []);
-
-  // E5.7#39：内存压力通知——主进程单 Pool 采样超 1GB → toast 服务 → 池 ToastHost 哑渲染（#16 桥）。
+  // E5.7#39：内存压力通知——主进程单 Pool 采样超 1GB → 通知服务 pushToast → 铃铛宽面板
+  // （E6#72：小卡链路已删，通知统一走 store → 宽面板；#16 Toast 哑桥整删）。
   // 注册/清理（硬约束 19）——壳崩重建后新窗口重新注册。
   useEffect(() => {
     const poolApi = window.linkdesk?.pool;

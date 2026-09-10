@@ -9,8 +9,7 @@
  * DOM 拓扑（#ld-float-layer 固定 inset:0 z:2000 pointer-events:none，唯一权威）：
  *   ├── #ld-scrim-plane（pointer-events:auto）  ← 全部遮罩归位，无磨砂
  *   ├── #context-menu-root / #quick-pick-root / #dialog-root / #floating-panel-root（auto）
- *   ├── #toast-root（auto，toast 从「直挂容器」改根级）
- *   └── #overlay-root（auto，新增通用 surface 根；OverlayPortal 默认目标）
+ *   └── #overlay-root（auto，通用 surface 根；OverlayPortal 默认目标）
  *
  * 隔离地板（index.css）：#ld-float-layer > *:not(#ld-scrim-plane) > * 深度2 / > * > * 深度3
  *   backdrop-filter 统一磨砂——结构事实非类名知识，新浮层（含第三方）进层即隔离，零枚举零壳改动。
@@ -33,15 +32,13 @@
  *   - portal 渲染：ReactDOM.createPortal——浮层逻辑和调用方解耦
  *   - 单宿主：一个 FloatingLayerHost——不分散到多个组件
  *
- * Toast 根级归位（#107）：#toast-root 承担布局（ToastHost.css 内）——position:fixed 右下角 +
- *   pointer-events:none，.toast-item 由 CSS 恢复 auto。容器#toast-root 零 inline 穿透设置——
- *   穿透链由 ToastHost.css 承担（避免容器 none 下渗 toast-item）。
+ * E6#72：Toast 通知面整删（右下窄卡链路移除，唯一通知面 = 铃铛宽面板走 overlay-root）——
+ *   #toast-root / ToastHost import / 穿透链注记全清；容器基准层更名 Z_INDEX.floatLayer。
  *
- * 容器 z-index = Z_INDEX.toast（浮层层级基准）——#26 常量表。
+ * 容器 z-index = Z_INDEX.floatLayer（浮层层级基准）——#26 常量表。
  */
 import { Z_INDEX } from "../../../constants";
 import QuickPickHost from "../../floating/quick-pick/QuickPickHost";
-import ToastHost from "../../floating/toast/ToastHost";
 import DialogHost from "../../floating/dialog/DialogHost";
 import FloatingPanelHost from "../../floating/floating-panel/FloatingPanelHost"; // E5.8#37（Phase 8 类型 B）：壳内悬浮面板哑渲染
 
@@ -52,7 +49,7 @@ function FloatingLayerHost() {
       style={{
         position: "fixed",
         inset: 0,
-        zIndex: Z_INDEX.toast,
+        zIndex: Z_INDEX.floatLayer,
         pointerEvents: "none", // 默认穿透——交互由各 portal root 根级 opt-in（见头注释）
       }}
     >
@@ -90,13 +87,6 @@ function FloatingLayerHost() {
           E5.8#142：position:relative（z-index 对 static 无效，实机确诊）+ zIndex 2000 建 stacking context——
           root 收纳内容 z600/650，整 root 以 2000 参与自分层盖面板 1500。 */}
       <div id="overlay-root" style={{ pointerEvents: "auto", position: "relative", zIndex: Z_INDEX.overlayRoot }} />
-
-      {/* ToastHost——#16 接入（设计 §2：Toast 始终在此，按需显示——空栈/null 自隐藏）。
-          #107 根级归位：#toast-root 布局/穿透由 ToastHost.css 提供（.toast-container display:contents）。
-          E5.8#142：配 zIndex 同级 2000，DOM 序本 root 在 overlay-root 后 → toast 盖 overlay。 */}
-      <div id="toast-root" style={{ zIndex: Z_INDEX.toast }}>
-        <ToastHost />
-      </div>
     </div>
   );
 }

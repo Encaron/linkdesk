@@ -4,7 +4,7 @@
  * 原 1014 行单文件拆为 13 子模块 + 本聚合器（feature-folder 模式，壳目录规范 §4）：
  *   preload-pool/layout.ts          pool 命名空间 + pool:layout 缓冲（4a）
  *   preload-pool/quickpick.ts       quickPick + quickPickHost（4a）
- *   preload-pool/toast-dialog.ts    toast + dialogHost（4a）
+ *   preload-pool/dialog-floating-panel.ts    dialogHost + floatingPanelHost（4a；E6#72 原 toast-dialog.ts 更名）
  *   preload-pool/commands.ts        命令注册表 + commands + 壳→池执行桥（4b）
  *   preload-pool/configuration.ts   configuration/config + 配置缓存（4b）
  *   preload-pool/language.ts        language + onLangChanged（4b）
@@ -81,7 +81,7 @@ import type { PoolExposed } from '../src/core/api/linkdesk-api/surfaces';
 // ── E5.8#0d.10-4：13 子模块聚合——import 即触发模块级 IPC 注册（硬约束 20：先于 expose）──
 import { buildPool } from './preload-pool/layout';
 import { buildQuickPick, buildQuickPickHost } from './preload-pool/quickpick';
-import { buildToast, buildDialogHost, buildFloatingPanelHost } from './preload-pool/toast-dialog';
+import { buildDialogHost, buildFloatingPanelHost } from './preload-pool/dialog-floating-panel';
 import { buildCommands } from './preload-pool/commands';
 import { buildConfiguration } from './preload-pool/configuration';
 import { buildLanguage } from './preload-pool/language';
@@ -174,7 +174,6 @@ try {
     pool: buildPool(),
     quickPick: buildQuickPick(),
     quickPickHost: buildQuickPickHost(),
-    toast: buildToast(),
     dialogHost: buildDialogHost(),
     // E5.8#37（Phase 8 类型 B）：壳内悬浮面板哑渲染桥
     floatingPanelHost: buildFloatingPanelHost(),

@@ -9,7 +9,7 @@ import type { BridgeRequestPayload } from "../../types/ipc/bridge";
 import type { PoolLayout, PoolTab } from "../../types/pool/poolLayout";
 import type { PoolTabAction, ShellTabAction } from "../../types/ipc/tabActions";
 import type { SidebarAction } from "../../types/ipc/sidebarActions";
-import type { PoolQuickPickAction, PoolToastAction, PoolDialogAction, PoolFloatingPanelAction, MemoryPressureData, CreatePoolWindowRequest, PoolWindowBoundsPayload, TabBarRectsPayload, TabBarViewportRect, TabDragPositionPayload, ShellTabDragPosition, AdsorbHintPayload, AdsorbIndexPayload } from "../../types/ipc/poolActions";
+import type { PoolQuickPickAction, PoolDialogAction, PoolFloatingPanelAction, MemoryPressureData, CreatePoolWindowRequest, PoolWindowBoundsPayload, TabBarRectsPayload, TabBarViewportRect, TabDragPositionPayload, ShellTabDragPosition, AdsorbHintPayload, AdsorbIndexPayload } from "../../types/ipc/poolActions";
 
 /** 壳↔插件中继/池控制/窗口/壳级命令/热退出暂存命名空间面——双端注入面（bridge 真壳独有 / hotExit 池侧独有） */
 export interface ShellAPI {
@@ -42,8 +42,6 @@ export interface ShellAPI {
     onAdsorbIndex(cb: (payload: AdsorbIndexPayload) => void): () => void;
     pushQuickPick(data: unknown): void;
     onQuickPickAction(cb: (action: PoolQuickPickAction) => void): () => void;
-    pushToast(data: unknown): void;
-    onToastAction(cb: (action: PoolToastAction) => void): () => void;
     pushDialog(data: unknown): void;
     onDialogAction(cb: (action: PoolDialogAction) => void): () => void;
     // E5.8#37（Phase 8 类型 B）：壳内悬浮面板——pushPanel 哑渲染数据 + 动作回传

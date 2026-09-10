@@ -148,18 +148,6 @@ export function registerPoolHandlers(windowManager: WindowManager, mainWindow: B
     }
   });
 
-  // E5.7#16：壳→Pool——Toast 哑渲染数据（聪慧→哑：壳序列化 DTO，池纯渲染）
-  ipcMain.on(IPC.pool.toastShow, (_event, data: unknown) => {
-    _windowManager?.pushToast(data);
-  });
-
-  // E5.7#16：Pool→壳——Toast 动作（dismiss/action），按 id + actionId 回传
-  ipcMain.on(IPC.pool.toastAction, (_event, action: unknown) => {
-    if (_mainWindow && !_mainWindow.isDestroyed()) {
-      _mainWindow.webContents.send(IPC.pool.toastAction, action);
-    }
-  });
-
   // E5.7#17：壳→Pool——Dialog 哑渲染数据（聪慧→哑：壳序列化 DTO，池纯渲染）
   ipcMain.on(IPC.pool.dialogShow, (_event, data: unknown) => {
     _windowManager?.pushDialog(data);
@@ -199,5 +187,5 @@ export function registerPoolHandlers(windowManager: WindowManager, mainWindow: B
   });
 
   // E5.7#12.5：pool:set-bounds 已死链删除——bounds 换主进程（window-manager syncPoolBounds）
-  console.log('[pool-handlers] 已注册 18 个 pool IPC handler（pool:push-layout / pool:ready / pool:toggleDevTools / pool:sidebar-action / pool:tab-action / pool:tabbar-rects / pool:drag-position / pool:adsorb-hint / pool:quickpick-show / pool:quickpick-action / pool:toast-show / pool:toast-action / pool:dialog-show / pool:dialog-action / pool:floating-panel-show / pool:floating-panel-action / pool:create-window / pool:close-window）');
+  console.log('[pool-handlers] 已注册 16 个 pool IPC handler（pool:push-layout / pool:ready / pool:toggleDevTools / pool:sidebar-action / pool:tab-action / pool:tabbar-rects / pool:drag-position / pool:adsorb-hint / pool:quickpick-show / pool:quickpick-action / pool:dialog-show / pool:dialog-action / pool:floating-panel-show / pool:floating-panel-action / pool:create-window / pool:close-window）');
 }

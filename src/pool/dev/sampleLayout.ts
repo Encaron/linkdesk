@@ -16,7 +16,6 @@
  */
 
 import type { PoolLayout } from "../../core/types/pool/poolLayout";
-import type { PoolToastItem } from "../../core/types/pool/poolToast";
 import type { PoolQuickPickData } from "../../core/types/pool/poolQuickPick";
 import type { PoolDialogData } from "../../core/types/pool/poolDialog";
 import type { PoolFloatingPanelData } from "../../core/types/pool/poolFloatingPanel";
@@ -210,26 +209,6 @@ export function buildSampleLayout(): PoolLayout {
       },
     },
   };
-}
-
-/** Toast 全量快照——install 时 push，ToastHost 订阅时回放可见 */
-export function buildSampleToasts(): PoolToastItem[] {
-  return [
-    {
-      id: "mock-toast-1",
-      iconClass: "codicon codicon-info",
-      message: "串口 COM3 已连接",
-      sourceText: "来源: 串口监视器",
-      actions: [{ actionId: "0", label: "断开" }],
-    },
-    {
-      id: "mock-toast-2",
-      iconClass: "codicon codicon-error notif-severity-error",
-      message: "插件安装失败：网络不可达",
-      sourceText: "来源: 插件市场",
-      actions: [{ actionId: "0", label: "重试", isPrimary: true }],
-    },
-  ];
 }
 
 /** QuickPick 样例——__mockPool.showQuickPick() 推浮层（调样式用） */

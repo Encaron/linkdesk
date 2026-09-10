@@ -84,9 +84,6 @@ describe("validateWire——正确载荷返回空数组", () => {
   it("pool:quickpick 正确", () => {
     expect(validateWire("pool:quickpick", { open: true, placeholder: "选择", items: [{ key: "0", searchText: "a", label: "A" }] })).toEqual([]);
   });
-  it("pool:toast 正确", () => {
-    expect(validateWire("pool:toast", { toasts: [{ id: "n1", message: "hi", iconClass: "codicon-error" }], suppressed: false })).toEqual([]);
-  });
   it("pool:dialog 正确（open:true + alert 分支）", () => {
     expect(validateWire("pool:dialog", { open: true, title: "确认", message: "确定？", isAlert: false })).toEqual([]);
   });
@@ -134,7 +131,7 @@ describe("validateWire——垃圾输入 never-throw（生产不崩）", () => {
   const channels = [
     "config:changed", "theme:changed", "accent:changed", "plugin-state:changed",
     "tab:activated", "workspace:activeChanged", "settings:requestGroup", "settings:scrollTo",
-    "serial:stats", "pool:layout", "pool:quickpick", "pool:toast", "pool:dialog",
+    "serial:stats", "pool:layout", "pool:quickpick", "pool:dialog",
   ];
   const garbage = [null, undefined, 42, "str", true, [], [1, 2], { a: 1 }, { x: () => 1 }, NaN, Symbol("s")];
 
