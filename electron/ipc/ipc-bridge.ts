@@ -22,7 +22,8 @@ import { IPC } from './channels.js';
 interface PendingRequest {
   resolve: (value: unknown) => void;
   reject: (reason: Error) => void;
-  timer: ReturnType<typeof setTimeout>;
+  /** 请求超时定时器——**用户阻塞通道为 null**（见 USER_BLOCKING_CHANNELS，E6#74） */
+  timer: ReturnType<typeof setTimeout> | null;
   channel: string;
   args: unknown[];
 }
@@ -42,6 +43,16 @@ export class IpcBridge {
 
   private pendingRequests = new Map<string, PendingRequest>();
   private requestCounter = 0;
+
+  /** 用户阻塞通道——壳侧 handler 的语义就是「**等用户回答**」，回答耗时天生无期（思考 / 走开 / 接电话）。
+   *  这些通道**不设请求超时**：超时 = 池侧 Promise 先 reject、而对话框还在屏幕上，用户之后点按钮
+   *  结算的是一个**死请求** → 静默不装（E6#74，E6#71k 实机验证抓到：卡停 >10s 再点「确认安装」毫无反应）。
+   *  未决请求的兜底不靠超时，靠既有 `dispose()` 两处调用点（应用退出 main.ts / 壳崩重建 rebuildShell）。 */
+  private static USER_BLOCKING_CHANNELS = new Set<string>([
+    IPC.dialog.confirm,
+    IPC.dialog.alert,
+    IPC.dialog.confirmContent,
+  ]);
 
   /** 需要从插件 WebView 代理到壳渲染进程的 channel（#26） */
   private static PROXY_CHANNELS = [
@@ -194,10 +205,13 @@ export class IpcBridge {
 
         const doRequest = (): Promise<unknown> => {
           return new Promise<unknown>((resolve, reject) => {
-            const timer = setTimeout(() => {
-              this.pendingRequests.delete(requestId);
-              reject(new Error(`[IpcBridge] 请求超时: ${channel} (requestId=${requestId})`));
-            }, 10_000);
+            // E6#74：用户阻塞通道不设超时（见 USER_BLOCKING_CHANNELS）——其余通道维持 10s 防壳无应答
+            const timer = IpcBridge.USER_BLOCKING_CHANNELS.has(channel)
+              ? null
+              : setTimeout(() => {
+                  this.pendingRequests.delete(requestId);
+                  reject(new Error(`[IpcBridge] 请求超时: ${channel} (requestId=${requestId})`));
+                }, 10_000);
 
             this.pendingRequests.set(requestId, { resolve, reject, timer, channel, args: forwardedArgs });
 
@@ -232,7 +246,7 @@ export class IpcBridge {
     const pending = this.pendingRequests.get(requestId);
     if (!pending) return;
 
-    clearTimeout(pending.timer);
+    if (pending.timer) clearTimeout(pending.timer);
     this.pendingRequests.delete(requestId);
 
     if (error) {
@@ -342,8 +356,8 @@ export class IpcBridge {
 
   /** 清理所有待处理请求——应用退出时调用（E5.7#43：推送/请求队列随 per-tab 集群删除） */
   dispose(): void {
-    for (const [id, pending] of this.pendingRequests) {
-      clearTimeout(pending.timer);
+    for (const [, pending] of this.pendingRequests) {
+      if (pending.timer) clearTimeout(pending.timer);
       pending.reject(new Error('[IpcBridge] 应用退出，请求取消'));
     }
     this.pendingRequests.clear();
