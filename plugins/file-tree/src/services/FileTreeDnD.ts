@@ -10,6 +10,9 @@ import type { ExplorerItem } from "./FileTreeModel";
 import type { FileTreeModel } from "./FileTreeModel";
 import { getScaledTreeItemHeight } from "../utils/layoutTokens";
 import { dirname, joinPath, normalizePath } from "../utils/pathUtils";
+// E6#73m K2：失败出口——写操作的异常必须有用户可见的那一头（本插件唯一出口，别处别再开第二条）
+import i18n from "i18next";
+import { notifyFailure, errText, nameOf, type FailureItem } from "./FileTreeNotify";
 
 const lk = window.linkdesk;
 import type { FlatItem } from "../utils/pathUtils";
@@ -87,15 +90,24 @@ export async function executeSafeDrop(
     if (!confirmed) return;
   }
   const t = normalizePath(targetDir);
+  // E6#73m K2：**逐项**兜住——老写法首项抛错即整批中止（后面的源连试都没试），而异常还会沿
+  // `onDrop`（React 不 await）悬空成静默失败。现在失败收进 failures、循环继续，收尾一次报清。
+  const failures: FailureItem[] = [];
   for (const src of sources) {
     const s = normalizePath(src.path);
     const dest = joinPath(t, src.name);
     if (t.startsWith(s + "/")) continue;  // 祖先→后代——防递归嵌套
     if (s === t) continue;                // 自己→自己——防 sub→sub/sub
     if (s === dest) continue;             // 同路径——无操作
-    await lk.filesystem.copy(src.path, dest);
-    if (operation === "move") await lk.filesystem.remove(src.path);
+    try {
+      await lk.filesystem.copy(src.path, dest);
+      if (operation === "move") await lk.filesystem.remove(src.path);
+    } catch (e) {
+      // 复制成了、删原件没成 = 移动没完成，但目标处已有一份——照实报失败，不粉饰
+      failures.push({ name: src.name, detail: errText(e) });
+    }
   }
+  notifyFailure(i18n.t(operation === "move" ? "移动" : "复制"), failures);
 }
 
 /* ── Drag 事件类型 ── */
@@ -185,6 +197,16 @@ export function useFileTreeDnD(callbacks: DnDCallbacks): {
           if (item) await callbacks.model.getChildren(item);
         }
       };
+      // E6#73m K2：`getChildren` 是读磁盘——目录刚被移走 / 权限没了都会抛。它同样挂在
+      // 不 await 的 `onDrop` 下，抛了就是「树停在旧内容 + 一声不吭」。写操作成了却刷不出来
+      // 同样是坏结果（用户以为没成），照实报。
+      const refreshDirSafe = async (dir: string) => {
+        try {
+          await refreshDir(dir);
+        } catch (e) {
+          notifyFailure(i18n.t("刷新"), [{ name: nameOf(dir), detail: errText(e) }]);
+        }
+      };
 
       // OS 拖入——e.dataTransfer.files
       if (e.dataTransfer.files.length > 0) {
@@ -197,7 +219,7 @@ export function useFileTreeDnD(callbacks: DnDCallbacks): {
           if (srcPath) sources.push({ path: srcPath, name: file.name });
         }
         await executeSafeDrop(sources, target.targetDir, "copy");
-        await refreshDir(target.targetDir);
+        await refreshDirSafe(target.targetDir);
         // E4V#34h2: explorer.autoOpenDroppedFile——拖入后自动打开
         if (await lk.configuration.get("explorer.autoOpenDroppedFile") ?? false) {
           for (const src of sources) {
@@ -216,8 +238,8 @@ export function useFileTreeDnD(callbacks: DnDCallbacks): {
       if (dirname(uri) === target.targetDir) return;
 
       await executeSafeDrop([{ path: uri, name: sourceItem.name }], target.targetDir, "move");
-      await refreshDir(dirname(uri));
-      await refreshDir(target.targetDir);
+      await refreshDirSafe(dirname(uri));
+      await refreshDirSafe(target.targetDir);
       callbacks.rerender();
     },
     [dndState.hoverIndex, callbacks],

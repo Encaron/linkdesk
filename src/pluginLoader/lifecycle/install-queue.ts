@@ -54,6 +54,17 @@ const SLOT_IDLE_BUDGET_MS = 10 * 60_000;
 /** job 出身——行 = 一次**用户动作**（user）；插件自己拖来的依赖（dependency）藏在那一行里面 */
 type InstallJobOrigin = "user" | "dependency";
 
+/**
+ * 这条活儿是**装**还是**卸**（E6#73m K1）——两者共用本表与面板同一段「进行中」，但两条腿的能力**不同**：
+ *
+ * - `install`（含更新）：下载段可中止 ⇒ 挂真中止钩子 ⇒ 行上有 [取消安装]；
+ * - `uninstall`：**没挂中止钩子**（`fs` 的删除/改名停不下来，假装能停 = 按钮一点行没了、活还在干，
+ *   是最坏的假动作）⇒ 本表**不给**取消能力（`canCancel` 是唯一裁决处）。
+ *
+ * 也是**跨类去重**的判据：装 X 跑到一半点卸载 X，不能拿安装的结果当卸载的答案（反之亦然）。
+ */
+type InstallJobKind = "install" | "uninstall";
+
 /** 排队 / 在跑 / 已出结果 */
 type InstallJobState = "queued" | "running" | "settled";
 
@@ -65,8 +76,15 @@ interface InstallJob {
   jobId: string;
   pluginId: string;
   origin: InstallJobOrigin;
+  /** E6#73m K1：装 / 卸——行语义 + 跨类去重判据（见 `InstallJobKind`） */
+  kind: InstallJobKind;
   displayName: string;
   state: InstallJobState;
+  /**
+   * E6#73m K1：这条 job 现在能不能被用户真取消——**由本表裁决**（`canCancel`），面板照抄不自行推断。
+   * 面板若自己按 `kind` 推，就把「谁停得下来」这条队列知识复制到了视图层，两处迟早说不到一块。
+   */
+  cancellable: boolean;
   terminal?: InstallJobTerminal;
   error?: string;
   /**
@@ -82,6 +100,13 @@ interface InstallJob {
 
 /** 内部记录——公共 DTO 之外挂队列私有字段（槽位唤醒器 / 终态唤醒器 / 看门狗 / 终态结果），出表前剥掉 */
 interface JobRecord extends InstallJob {
+  /**
+   * E6#73m K1：**它占着并发槽吗**——安装腿占（`startJob` / `releaseSlot` 交接时置位），
+   * 卸载腿不占（`startInstallJobDirect` 直开）。`settleInstallJob` 据此决定还不还槽：
+   * 卸载腿从没加过 `_running`，无条件 `releaseSlot()` 会让它**替别人还槽**——`_running` 少计，
+   * 并发上限被静默抬高（比排队更糟：闸门自己漏了）。
+   */
+  holdSlot?: boolean;
   /** 排队态的槽位唤醒器——槽位释放时直接交接（FIFO 队首） */
   grant?: () => void;
   /** 终态唤醒器表——去重命中的第二个调用方在等它（同插件二次点击 = 等第一次装完，同一件事同一个答案） */
@@ -111,12 +136,27 @@ let _running = 0;
 
 /* ── 身份 / 广播 / 落盘 ── */
 
+/**
+ * 能不能真取消（E6#73m K1）——**唯一裁决处**，`snapshot()`（喂面板）与 `cancelInstallJob`（干实事）
+ * 共用同一个答案：两处各判一次 = 面板给了钮、点击却被拒（或反过来），用户看到的就是「按钮是假的」。
+ *
+ * 三态：已出结果 → 没得取消；排队中 → 能（从 FIFO 摘掉即可，没有在途工作）；进行中 → 看有没有
+ * 真中止钩子（安装腿在抢槽**之前**就挂好了，所以不存在「刚开跑还没钩子」的空窗）。
+ */
+function canCancel(job: JobRecord): boolean {
+  if (job.state === "settled") return false;
+  if (job.state === "queued") return true;
+  return typeof job.abort === "function";
+}
+
 /** 公共 DTO 投影——剥掉 grant/settledWaiters/watchdog/outcome/abort/cancelled 等队列私有字段 */
 function snapshot(): InstallJob[] {
   return [..._jobs.values()].map((j) => ({
     jobId: j.jobId,
     pluginId: j.pluginId,
     origin: j.origin,
+    kind: j.kind,
+    cancellable: canCancel(j),
     displayName: j.displayName,
     state: j.state,
     terminal: j.terminal,
@@ -185,10 +225,13 @@ export function beginInstallJob(spec: {
   pluginId?: string;
   displayName?: string;
   origin?: InstallJobOrigin;
+  kind?: InstallJobKind;
 }): { jobId: string; duplicate: boolean } {
   const pluginId = spec.pluginId?.trim() ?? "";
   if (pluginId) {
     for (const job of _jobs.values()) {
+      // 去重键是 pluginId，**不看 kind**（E6#73m K1）：同一个插件同时只该有一件活儿在飞——
+      // 装一半去卸、卸一半去装，两段操作同一批文件，谁先谁后都说不清。
       if (job.state !== "settled" && job.pluginId === pluginId) {
         return { jobId: job.jobId, duplicate: true };
       }
@@ -200,11 +243,33 @@ export function beginInstallJob(spec: {
     pluginId,
     displayName: spec.displayName?.trim() || pluginId,
     origin: spec.origin ?? "user",
+    kind: spec.kind ?? "install",
+    cancellable: false, // 由 snapshot() 实时投影（canCancel），此处只是占位初值
     state: "queued",
   });
   persist();
   broadcast();
   return { jobId, duplicate: false };
+}
+
+/**
+ * 无槽直开（E6#73m K1）——卸载腿专用：**不占并发槽、不进 FIFO**，建了就跑。
+ *
+ * 为什么卸载不该排队：① 它没有下载段，`INSTALL_CONCURRENCY = 3` 限的是下载/解压这类重活，
+ * 卸载不跟它们抢同一种资源；② 排队的行在面板上写「等待安装中」——卸载等安装，话说反了；
+ * ③ 卸载是用户**收尾**的动作（卸掉不想要的东西），把它压在一串安装后面没有任何好处。
+ *
+ * 返回 false = 记录已不在 / 已非 queued（取消竞态），调用方**别跑**（同 `acquireInstallSlot` 语义）。
+ */
+export function startInstallJobDirect(jobId: string): boolean {
+  const job = _jobs.get(jobId);
+  if (!job || job.state !== "queued") return false;
+  job.state = "running";
+  job.holdSlot = false; // 从没加过 _running ⇒ 结算时不许还槽（见 JobRecord.holdSlot）
+  armWatchdog(job); // 看门狗照挂：空闲 10 分钟没动静同样判死（判据是「还在动吗」，与占不占槽无关）
+  persist();
+  broadcast();
+  return true;
 }
 
 /** 回填身份（解压出真 pluginId 后）——显示名今天只存在于池侧目录 store，壳拿不到，故随请求带入或回填 */
@@ -245,13 +310,18 @@ export function settleInstallJob(jobId: string, terminal: InstallJobTerminal, ou
   const job = _jobs.get(jobId);
   if (!job || job.state === "settled") return;
   const wasRunning = job.state === "running";
+  const heldSlot = job.holdSlot === true;
   job.state = "settled";
   job.terminal = terminal;
+  job.cancellable = false;
   job.outcome = outcome;
   if (outcome?.error) job.error = outcome.error;
   clearWatchdog(job);
-  if (wasRunning) {
+  if (wasRunning && heldSlot) {
     releaseSlot();
+  } else if (wasRunning) {
+    // 无槽腿（卸载，E6#73m K1）：它从没加过 _running，这里**不能**还槽——还了等于替别人还，
+    // 并发上限被静默抬高。看门狗已清、等待方已唤醒，收尾动作一条不漏。
   } else {
     // 排队态被结算——从 FIFO 里摘掉，别让 releaseSlot 捞到僵尸
     const idx = _waiters.indexOf(jobId);
@@ -325,11 +395,16 @@ export function setInstallJobCanceller(jobId: string, abort: () => void): void {
  * - **进行中**：调真中止钩子（主进程 AbortController）并打 `cancelled` 标——在途的
  *   `installPlugin` 收尾调 `settleInstallJob` 时**吸收**掉（见该函数），不留红行。
  *
- * 返回 false = 这个 job 不存在 / 已出结果（面板上的行早没了，属竞态，静默）。
+ * 返回 false = 停不下来 / 这个 job 不存在 / 已出结果。**「停不下来的不能假装停下来了」**（E6#73m K1）：
+ * 面板靠同一个 `canCancel` 决定给不给钮，所以这条 false 是竞态兜底（钮按下去的瞬间结算了），
+ * 不是用户会撞上的常态。
  */
 export function cancelInstallJob(jobId: string): boolean {
   const job = _jobs.get(jobId);
   if (!job || job.state === "settled") return false;
+  // 卸载腿没挂中止钩子——`fs` 的删除/改名停不下来。只标 cancelled 会让行当场消失而活照旧在干，
+  // 那是本批次要消灭的假动作，故直接拒收。
+  if (job.state === "running" && !canCancel(job)) return false;
   if (job.state === "queued") {
     const idx = _waiters.indexOf(jobId);
     if (idx !== -1) _waiters.splice(idx, 1);
@@ -406,9 +481,11 @@ function cancelledResult(): PluginInstallResult {
  * `cancelHook` 由调用方给而不是本模块自己摸：真中止要调 `packageOps()` 的壳面 API，本模块**不依赖它**
  * （install-queue 是纯队列，import 反了会成环）。
  *
- * 三态返回，**每一态都必须被调用方区别对待**：
+ * 四态返回，**每一态都必须被调用方区别对待**：
  * - `run`：槽到手，往下干真活；
- * - `duplicate`：同插件已有 job 在跑/在排——已替调用方等出结果（「点两下」不是两件事）；
+ * - `duplicate`：同插件已有**同类** job 在跑/在排——已替调用方等出结果（「点两下」不是两件事）；
+ * - `busy`：同插件那件活儿是**另一类**（`kind` 不同，E6#73m K1）——**绝不等它的结果**：等到了也是
+ *   别人的答案（拿着「卸载成功」当「安装成功」报给用户，是这条腿能出的最大的假话）。调用方回绝用户；
  * - `cancelled`：排队期间被取消/判死——**收手**，不能假装没取消继续往下跑。
  */
 export async function openInstallJob(
@@ -417,10 +494,14 @@ export async function openInstallJob(
 ): Promise<
   | { kind: "run"; jobId: string }
   | { kind: "duplicate"; jobId: string; outcome: PluginInstallResult | undefined }
+  | { kind: "busy"; jobId: string }
   | { kind: "cancelled"; jobId: string }
 > {
   const job = beginInstallJob(spec);
-  if (job.duplicate) return { kind: "duplicate", jobId: job.jobId, outcome: await waitInstallJob(job.jobId) };
+  if (job.duplicate) {
+    if (_jobs.get(job.jobId)?.kind !== "install") return { kind: "busy", jobId: job.jobId };
+    return { kind: "duplicate", jobId: job.jobId, outcome: await waitInstallJob(job.jobId) };
+  }
   setInstallJobCanceller(job.jobId, () => cancelHook(job.jobId));
   // ⚠️ 抢槽失败 = 排队期间被用户取消（或极端竞态下已被判死）——调用方必须收手。
   // 这里的 jobId 仍要带出去：记录多半已不在表里（排队取消 = 直接出队），调用方 settle 是空操作，
@@ -434,6 +515,7 @@ export async function openInstallJob(
 function startJob(job: JobRecord): void {
   _running += 1;
   job.state = "running";
+  job.holdSlot = true; // 占着槽 ⇒ 结算时必须还（`settleInstallJob`）
   armWatchdog(job);
   persist();
   broadcast();
@@ -455,6 +537,7 @@ function releaseSlot(): void {
     return;
   }
   next.state = "running";
+  next.holdSlot = true; // 槽位直接交接 ⇒ 接手方仍占着那一个槽（`_running` 不减）
   armWatchdog(next);
   const grant = next.grant;
   next.grant = undefined;
@@ -468,7 +551,10 @@ function armWatchdog(job: JobRecord): void {
   job.watchdog = setTimeout(() => {
     settleInstallJob(job.jobId, "failed", {
       success: false,
-      error: i18n.t("安装超时——{{n}} 分钟无进展，已释放队列位", { n: SLOT_IDLE_BUDGET_MS / 60_000 }),
+      // 卸载腿不占槽，说「已释放队列位」是假话（E6#73m K1）——两句都是真话，按 kind 挑
+      error: job.kind === "uninstall"
+        ? i18n.t("卸载超时——{{n}} 分钟无进展", { n: SLOT_IDLE_BUDGET_MS / 60_000 })
+        : i18n.t("安装超时——{{n}} 分钟无进展，已释放队列位", { n: SLOT_IDLE_BUDGET_MS / 60_000 }),
     });
   }, SLOT_IDLE_BUDGET_MS);
 }

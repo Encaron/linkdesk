@@ -1,30 +1,44 @@
 {
   "$schema": "../../../public/schemas/plugin.schema.json",
   "name": "编辑器",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "icon": "icon.svg",
   "description": "Monaco 代码编辑器——语法高亮、智能提示、Diff 对比",
   "author": "官方",
   "distribution": "builtin",
   "core": true,
   "entry": "src/index.tsx",
-  "appearsIn": { "tabBar": true },
+  "appearsIn": {
+    "tabBar": true
+  },
   "tabBehavior": {
     "singleton": false,
     "identityField": "filePath"
   },
   "contributes": {
-    "i18n": { "en": "i18n/en.json" },
+    "i18n": {
+      "en": "i18n/en.json"
+    },
     "commands": [
-      { "id": "editor.reopenClosedEditor", "title": "重新打开已关闭的编辑器" },
-      { "id": "editor.compareFiles", "title": "比较文件" }
+      {
+        "id": "editor.reopenClosedEditor",
+        "title": "重新打开已关闭的编辑器"
+      },
+      {
+        "id": "editor.compareFiles",
+        "title": "比较文件"
+      }
     ],
     "configuration": {
       "title": "编辑器",
       "properties": {
         "files.autoSave": {
           "type": "string",
-          "enum": ["off", "afterDelay", "onFocusChange"],
+          "enum": [
+            "off",
+            "afterDelay",
+            "onFocusChange"
+          ],
           "default": "off",
           "description": "自动保存——off 手动保存 / afterDelay 1秒空闲后自动保存 / onFocusChange 切换标签页时自动保存",
           "group": "文件"
@@ -45,7 +59,19 @@
         },
         "editor.fontWeight": {
           "type": "string",
-          "enum": ["normal", "bold", "100", "200", "300", "400", "500", "600", "700", "800", "900"],
+          "enum": [
+            "normal",
+            "bold",
+            "100",
+            "200",
+            "300",
+            "400",
+            "500",
+            "600",
+            "700",
+            "800",
+            "900"
+          ],
           "default": "normal",
           "description": "编辑器字重",
           "group": "字体"
@@ -80,14 +106,24 @@
         },
         "editor.wordWrap": {
           "type": "string",
-          "enum": ["off", "on", "wordWrapColumn", "bounded"],
+          "enum": [
+            "off",
+            "on",
+            "wordWrapColumn",
+            "bounded"
+          ],
           "default": "off",
           "description": "自动换行模式",
           "group": "显示"
         },
         "editor.lineNumbers": {
           "type": "string",
-          "enum": ["on", "off", "relative", "interval"],
+          "enum": [
+            "on",
+            "off",
+            "relative",
+            "interval"
+          ],
           "default": "on",
           "description": "行号显示",
           "group": "显示"
@@ -100,7 +136,13 @@
         },
         "editor.renderWhitespace": {
           "type": "string",
-          "enum": ["none", "boundary", "selection", "trailing", "all"],
+          "enum": [
+            "none",
+            "boundary",
+            "selection",
+            "trailing",
+            "all"
+          ],
           "default": "selection",
           "description": "空白符渲染",
           "group": "显示"
@@ -113,14 +155,27 @@
         },
         "editor.cursorStyle": {
           "type": "string",
-          "enum": ["line", "block", "underline", "line-thin", "block-outline", "underline-thin"],
+          "enum": [
+            "line",
+            "block",
+            "underline",
+            "line-thin",
+            "block-outline",
+            "underline-thin"
+          ],
           "default": "line",
           "description": "光标样式",
           "group": "光标与滚动"
         },
         "editor.cursorBlinking": {
           "type": "string",
-          "enum": ["blink", "smooth", "phase", "expand", "solid"],
+          "enum": [
+            "blink",
+            "smooth",
+            "phase",
+            "expand",
+            "solid"
+          ],
           "default": "blink",
           "description": "光标闪烁方式",
           "group": "光标与滚动"
@@ -133,7 +188,12 @@
         },
         "editor.autoClosingBrackets": {
           "type": "string",
-          "enum": ["always", "languageDefined", "beforeWhitespace", "never"],
+          "enum": [
+            "always",
+            "languageDefined",
+            "beforeWhitespace",
+            "never"
+          ],
           "default": "always",
           "description": "自动闭合括号",
           "group": "编辑"
@@ -195,51 +255,186 @@
       }
     },
     "fileAssociations": [
-      { "extension": "ts", "displayName": "TypeScript" },
-      { "extension": "tsx", "displayName": "TypeScript React" },
-      { "extension": "js", "displayName": "JavaScript" },
-      { "extension": "jsx", "displayName": "JavaScript React" },
-      { "extension": "mjs", "displayName": "JavaScript ES Module" },
-      { "extension": "cjs", "displayName": "JavaScript CommonJS" },
-      { "extension": "json", "displayName": "JSON" },
-      { "extension": "jsonc", "displayName": "JSON with Comments" },
-      { "extension": "html", "displayName": "HTML" },
-      { "extension": "htm", "displayName": "HTML" },
-      { "extension": "css", "displayName": "CSS" },
-      { "extension": "scss", "displayName": "SCSS" },
-      { "extension": "less", "displayName": "Less" },
-      { "extension": "md", "displayName": "Markdown" },
-      { "extension": "mdx", "displayName": "MDX" },
-      { "extension": "py", "displayName": "Python" },
-      { "extension": "rs", "displayName": "Rust" },
-      { "extension": "c", "displayName": "C" },
-      { "extension": "h", "displayName": "C Header" },
-      { "extension": "cpp", "displayName": "C++" },
-      { "extension": "hpp", "displayName": "C++ Header" },
-      { "extension": "go", "displayName": "Go" },
-      { "extension": "java", "displayName": "Java" },
-      { "extension": "xml", "displayName": "XML" },
-      { "extension": "svg", "displayName": "SVG" },
-      { "extension": "yaml", "displayName": "YAML" },
-      { "extension": "yml", "displayName": "YAML" },
-      { "extension": "toml", "displayName": "TOML" },
-      { "extension": "sh", "displayName": "Shell" },
-      { "extension": "bash", "displayName": "Bash" },
-      { "extension": "sql", "displayName": "SQL" },
-      { "extension": "lua", "displayName": "Lua" },
-      { "extension": "php", "displayName": "PHP" },
-      { "extension": "rb", "displayName": "Ruby" },
-      { "extension": "swift", "displayName": "Swift" },
-      { "extension": "kt", "displayName": "Kotlin" },
-      { "extension": "dart", "displayName": "Dart" },
-      { "extension": "diff", "displayName": "Diff" },
-      { "extension": "patch", "displayName": "Patch" },
-      { "extension": "bat", "displayName": "Batch" },
-      { "extension": "cmd", "displayName": "Batch" },
-      { "extension": "ini", "displayName": "INI" },
-      { "extension": "cfg", "displayName": "Config" },
-      { "extension": "txt", "displayName": "Text" },
-      { "extension": "log", "displayName": "Log" }
+      {
+        "extension": "ts",
+        "displayName": "TypeScript"
+      },
+      {
+        "extension": "tsx",
+        "displayName": "TypeScript React"
+      },
+      {
+        "extension": "js",
+        "displayName": "JavaScript"
+      },
+      {
+        "extension": "jsx",
+        "displayName": "JavaScript React"
+      },
+      {
+        "extension": "mjs",
+        "displayName": "JavaScript ES Module"
+      },
+      {
+        "extension": "cjs",
+        "displayName": "JavaScript CommonJS"
+      },
+      {
+        "extension": "json",
+        "displayName": "JSON"
+      },
+      {
+        "extension": "jsonc",
+        "displayName": "JSON with Comments"
+      },
+      {
+        "extension": "html",
+        "displayName": "HTML"
+      },
+      {
+        "extension": "htm",
+        "displayName": "HTML"
+      },
+      {
+        "extension": "css",
+        "displayName": "CSS"
+      },
+      {
+        "extension": "scss",
+        "displayName": "SCSS"
+      },
+      {
+        "extension": "less",
+        "displayName": "Less"
+      },
+      {
+        "extension": "md",
+        "displayName": "Markdown"
+      },
+      {
+        "extension": "mdx",
+        "displayName": "MDX"
+      },
+      {
+        "extension": "py",
+        "displayName": "Python"
+      },
+      {
+        "extension": "rs",
+        "displayName": "Rust"
+      },
+      {
+        "extension": "c",
+        "displayName": "C"
+      },
+      {
+        "extension": "h",
+        "displayName": "C Header"
+      },
+      {
+        "extension": "cpp",
+        "displayName": "C++"
+      },
+      {
+        "extension": "hpp",
+        "displayName": "C++ Header"
+      },
+      {
+        "extension": "go",
+        "displayName": "Go"
+      },
+      {
+        "extension": "java",
+        "displayName": "Java"
+      },
+      {
+        "extension": "xml",
+        "displayName": "XML"
+      },
+      {
+        "extension": "svg",
+        "displayName": "SVG"
+      },
+      {
+        "extension": "yaml",
+        "displayName": "YAML"
+      },
+      {
+        "extension": "yml",
+        "displayName": "YAML"
+      },
+      {
+        "extension": "toml",
+        "displayName": "TOML"
+      },
+      {
+        "extension": "sh",
+        "displayName": "Shell"
+      },
+      {
+        "extension": "bash",
+        "displayName": "Bash"
+      },
+      {
+        "extension": "sql",
+        "displayName": "SQL"
+      },
+      {
+        "extension": "lua",
+        "displayName": "Lua"
+      },
+      {
+        "extension": "php",
+        "displayName": "PHP"
+      },
+      {
+        "extension": "rb",
+        "displayName": "Ruby"
+      },
+      {
+        "extension": "swift",
+        "displayName": "Swift"
+      },
+      {
+        "extension": "kt",
+        "displayName": "Kotlin"
+      },
+      {
+        "extension": "dart",
+        "displayName": "Dart"
+      },
+      {
+        "extension": "diff",
+        "displayName": "Diff"
+      },
+      {
+        "extension": "patch",
+        "displayName": "Patch"
+      },
+      {
+        "extension": "bat",
+        "displayName": "Batch"
+      },
+      {
+        "extension": "cmd",
+        "displayName": "Batch"
+      },
+      {
+        "extension": "ini",
+        "displayName": "INI"
+      },
+      {
+        "extension": "cfg",
+        "displayName": "Config"
+      },
+      {
+        "extension": "txt",
+        "displayName": "Text"
+      },
+      {
+        "extension": "log",
+        "displayName": "Log"
+      }
     ]
   }
 }

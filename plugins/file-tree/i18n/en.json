@@ -66,5 +66,9 @@
   "行为": "Behavior",
   "删除与确认": "Delete & Confirm",
   "排除与嵌套": "Exclude & Nesting",
-  "外部终端": "External Terminal"
+  "外部终端": "External Terminal",
+  "移动": "Move",
+  "{{op}}「{{name}}」失败：{{detail}}": "{{op}} \"{{name}}\" failed: {{detail}}",
+  "{{op}} {{count}} 项失败：{{names}}": "{{op}} failed for {{count}} items: {{names}}",
+  "替换中… {{done}}/{{total}}": "Replacing... {{done}}/{{total}}"
 }

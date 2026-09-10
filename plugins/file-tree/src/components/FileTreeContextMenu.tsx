@@ -8,13 +8,16 @@
 
 import React, { useEffect, type MutableRefObject } from "react";
 import { ContextMenu } from "@linkdesk/ui"; // E6#54c：共享控件走 @linkdesk/ui
-import type { ExplorerItem } from "../services/FileTreeModel";
+import type { ExplorerItem, FileTreeModel } from "../services/FileTreeModel";
 import type { FileTreeHandle } from "./FileTree";
 import { dirname, normalizePath, joinPath } from "../utils/pathUtils";
 
 const lk = window.linkdesk;
 import { fileTreeClipboard } from "../services/FileTreeClipboard";
 import { executeSafeDrop } from "../services/FileTreeDnD";
+// E6#73m K2：删除腿的失败出口 + 文案（非组件位置取 i18next 默认实例，同 FileTreeDnD）
+import i18n from "i18next";
+import { notifyFailure, errText, nameOf, type FailureItem } from "../services/FileTreeNotify";
 
 /** 菜单传入的 command args */
 interface FileMenuContext {
@@ -57,6 +60,21 @@ async function writeSystemClipboard(uris: string[]): Promise<void> {
     await window.linkdesk?.clipboard?.writeText?.(uris.join("\n"));
   } catch (e) {
     console.error("[file-tree] 写系统剪贴板失败:", e);
+  }
+}
+
+/**
+ * E6#73m K2：刷新目录——`getChildren` 读磁盘，目录刚被移走 / 权限没了都会抛。
+ * 老写法 `.catch(console.error)` 对用户等于没有（池渲染进程零全局拒绝兜底）。
+ * 统一走 FileTreeNotify 那一个出口，措辞与 FileTreeDnD 的 refreshDirSafe 一致。
+ */
+async function refreshDirSafe(model: FileTreeModel, dir: string): Promise<void> {
+  try {
+    model.refresh(dir);
+    const item = model.findClosest(dir);
+    if (item && model.isExpanded(item.uri)) await model.getChildren(item);
+  } catch (e) {
+    notifyFailure(i18n.t("刷新"), [{ name: nameOf(dir), detail: errText(e) }]);
   }
 }
 
@@ -214,9 +232,7 @@ export function activateFileTreeContextMenu(): void {
     const sources = uris.map((u) => ({ path: u, name: u.split("/").pop() ?? "unnamed" }));
     await executeSafeDrop(sources, targetDir, isCut ? "move" : "copy");
     hd.rerender();
-    await model.refresh(targetDir);
-    const parent = model.findClosest(targetDir);
-    if (parent && model.isExpanded(parent.uri)) await model.getChildren(parent).catch((e) => { console.error("[file-tree] 刷新目录失败:", e); });
+    await refreshDirSafe(model, targetDir);
   });
   // ── E4V#27: F2 行内重命名 ──
   lk.commands.registerCommand("explorer.rename", async () => {
@@ -238,15 +254,22 @@ export function activateFileTreeContextMenu(): void {
       if (!confirmed) return;
     }
     const parentUris = new Set<string>();
+    // E6#73m K2：逐项兜住——删整个目录是长任务且**会失败**（占用/只读/权限），老写法首项抛错
+    // 就整批中止、且异常沿命令 handler 悬空 ⇒ 用户看到「树没刷新，也没报错」。
+    const failures: FailureItem[] = [];
     for (const uri of uris) {
-      await lk.filesystem.remove(uri);
-      lk.events.emit("file:deleted", { filePath: uri });
-      parentUris.add(dirname(uri));
+      try {
+        await lk.filesystem.remove(uri);
+        lk.events.emit("file:deleted", { filePath: uri });
+        parentUris.add(dirname(uri));
+      } catch (e) {
+        failures.push({ name: nameOf(uri), detail: errText(e) });
+      }
     }
+    // 失败项**不进 parentUris**——它们还在盘上，刷新那层只会白跑（真删掉的照常刷）
+    notifyFailure(i18n.t("删除"), failures);
     for (const parentUri of parentUris) {
-      await model.refresh(parentUri);
-      const parent = model.findClosest(parentUri);
-      if (parent && model.isExpanded(parent.uri)) await model.getChildren(parent).catch((e) => { console.error("[file-tree] 刷新目录失败:", e); });
+      await refreshDirSafe(model, parentUri);
     }
   });
   lk.commands.registerCommand("explorer.findInFolder", placeholder("explorer.findInFolder"));

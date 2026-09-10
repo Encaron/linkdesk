@@ -132,7 +132,7 @@ const SECTION_DETAIL_CAP = 5;
  * 代价（诚实边界）：主进程的「下载失败，正在重试（1/2）」在行上不可见——重试期间表现为进度条停住。
  * 要让它可见得先给重试通知一条**已 t() 的结构化通道**，那属 73i/73n 的范围，不在本档硬塞。
  *
- * 只覆盖安装流真实会发的阶段码（`lifecycle-ops.ts` 的 jobProgress 五处 + 主进程 download/extract 段）。
+ * 只覆盖安装流真实会发的阶段码（`lifecycle-ops.ts` 的 jobProgress 六处 + 主进程 download/extract 段）。
  */
 function installRowStatusLabel(t: TFunction, stage: string | undefined, percent: number | undefined): string {
   switch (stage) {
@@ -141,6 +141,8 @@ function installRowStatusLabel(t: TFunction, stage: string | undefined, percent:
     case "copying": return t("复制中...");
     case "loading": return t("加载中...");
     case "validating": return t("校验中...");
+    // E6#73m K1：卸载腿唯一阶段——没有可量化的段（不预扫文件数），故只有短语、不画进度条
+    case "uninstalling": return t("卸载中...");
     default: return t("安装中...");
   }
 }
@@ -175,7 +177,9 @@ function buildInstallSections(
           state === "running" ? installRowStatusLabel(t, j.stage, j.percent) : t("等待安装中"),
         // 进度条只在**进行中**且有真值时才画：排队行没有在途工作，画条是撒谎
         ...(state === "running" && typeof j.percent === "number" ? { percent: j.percent } : {}),
-        cancellable: true,
+        // E6#73m K1：能不能取消**问 job 表**，不在这里推——卸载腿没有真中止钩子（`fs` 停不下来），
+        // 给它一颗 [取消安装] 就是「按钮一点行没了、活还在干」的假动作。
+        cancellable: j.cancellable,
         cancelLabel: t("取消安装"),
       }));
 

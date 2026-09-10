@@ -7,6 +7,8 @@
  * 数据来源：encoding/language 从 EditorModel，光标/缩进/EOL 从 Monaco editor。
  */
 import React from "react";
+import { useTranslation } from "react-i18next";
+import type { LspState } from "../services/lsp-bridge";
 
 export interface EditorStatus {
   lineNumber: number;
@@ -16,6 +18,8 @@ export interface EditorStatus {
   tabSize: number;
   insertSpaces: boolean;
   eol: "LF" | "CRLF";
+  /** E6#73m K4——语言服务器状态。null/undefined = 本语言没有 LSP，这一格不显示。 */
+  lspState?: LspState | null;
 }
 
 const EditorStatusBar: React.FC<EditorStatus> = ({
@@ -26,7 +30,9 @@ const EditorStatusBar: React.FC<EditorStatus> = ({
   tabSize,
   insertSpaces,
   eol,
+  lspState,
 }) => {
+  const { t } = useTranslation();
   const indentLabel = insertSpaces ? `Spaces: ${tabSize}` : `Tab Size: ${tabSize}`;
 
   return (
@@ -37,6 +43,16 @@ const EditorStatusBar: React.FC<EditorStatus> = ({
         </span>
       </div>
       <div className="editor-status-bar-right">
+        {/* E6#73m K4：语言服务器状态——只在「启动中 / 起不来」时占位。ready 不显示
+            （一切都好就别占地方），无 LSP 的语言也不显示（null，不是故障）。 */}
+        {lspState && lspState !== "ready" && (
+          <>
+            <span className="editor-status-item">
+              {lspState === "starting" ? t("语言服务器启动中…") : t("语言支持不可用")}
+            </span>
+            <span className="editor-status-sep">│</span>
+          </>
+        )}
         <span className="editor-status-item">{indentLabel}</span>
         <span className="editor-status-sep">│</span>
         <span className="editor-status-item">{encoding.toUpperCase()}</span>

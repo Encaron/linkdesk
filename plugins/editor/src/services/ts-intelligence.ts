@@ -11,8 +11,13 @@
  *
  * E4V#40i（诊断+快捷修复）也在此文件——`setDiagnosticsOptions` 打开红波浪线。
  */
+// E6#73m K5：非组件模块取 i18n 默认实例（同 lsp-bridge）
+import i18n from "i18next";
 // E5.6#11.5i：EncodingService → lk.encoding.*（async IPC）
 const lk = window.linkdesk;
+
+/** 影子 model 计数 + 是否触顶截断（K5：截断必须说出来） */
+interface ScanCount { n: number; truncated: boolean }
 
 // E5.7#98：Monaco 命名空间具体类型——替代 monaco: any。
 // TS 语言服务正源 = 顶层 monaco.typescript（languages.typescript 是 deprecated 类型墓碑，
@@ -74,9 +79,11 @@ export function setupTypeScriptEnv(monaco: MonacoNs): void {
 async function scanDir(
   monaco: MonacoNs,
   dirPath: string,
-  count: { n: number },
+  count: ScanCount,
 ): Promise<void> {
-  if (count.n >= MAX_SHADOW_MODELS) return;
+  // E6#73m K5：走到这里说明**还有一个目录要进**（唯一调用点 = entry.isDirectory 分支 /
+  // 工作区文件夹循环）——到了上限就是「有活没干完」，如实标记，别静默。
+  if (count.n >= MAX_SHADOW_MODELS) { count.truncated = true; return; }
 
   let entries;
   try {
@@ -86,7 +93,13 @@ async function scanDir(
   }
 
   for (const entry of entries) {
-    if (count.n >= MAX_SHADOW_MODELS) break;
+    // E6#73m K5：同目录里还有没走到的条目——剩下的是目录（可能含 TS）或 TS 文件才算截断，
+    // 尾随的 README/图片之类不算（少报好过狼来了）。
+    if (count.n >= MAX_SHADOW_MODELS) {
+      const rest = lk.path.normalize(entry.path);
+      if (entry.isDirectory || rest.endsWith(".ts") || rest.endsWith(".tsx")) count.truncated = true;
+      break;
+    }
     const fullPath = lk.path.normalize(entry.path);
 
     if (entry.isDirectory) {
@@ -137,14 +150,30 @@ export function scanWorkspaceForTypeScript(monaco: MonacoNs): Promise<void> {
   // console.log("[ts-intel] 开始扫描工作区...");
   _scanPromise = (async () => {
     const folders = await lk.workspace.getFolders();
-    const count = { n: 0 };
+    const count: ScanCount = { n: 0, truncated: false };
     for (const folder of folders) {
-      if (count.n >= MAX_SHADOW_MODELS) break;
+      if (count.n >= MAX_SHADOW_MODELS) { count.truncated = true; break; }
       await scanDir(monaco, lk.path.normalize(folder.uri), count);
     }
     // console.log("[ts-intel] 扫描完成——影子 model 总数:", count.n);
+
+    // E6#73m K5：截断此前是**完全静默**的——用户只会遇到「某些文件的 Ctrl+点击不灵」，
+    // 却没有任何地方说得出为什么。超上限 = 能力降级，要出声（一次扫描一条，不按文件刷屏）。
+    if (count.truncated) {
+      void lk.notifications.show(
+        i18n.t("工作区 TypeScript 文件超过 {{max}} 个——只加载了前 {{max}} 个，其余文件的跳转与补全可能不完整", { max: MAX_SHADOW_MODELS }),
+        { type: "warning", source: "editor" },
+      ).catch(() => {});
+    }
   })().catch((err) => {
+    // E6#73m K5：整轮扫描失败 = 跨文件能力全无，旧写法只写 console（用户看不到）
     console.warn("[ts-intel] 工作区扫描失败:", err);
+    void lk.notifications.show(
+      i18n.t("工作区扫描失败——跨文件跳转与补全可能不完整：{{detail}}", {
+        detail: (err as Error).message ?? String(err),
+      }),
+      { type: "warning", source: "editor" },
+    ).catch(() => {});
   });
   return _scanPromise;
 }

@@ -125,6 +125,10 @@ export async function updatePlugin(
       cancelled: outcome?.cancelled,
     };
   }
+  if (opened.kind === "busy") {
+    // E6#73m K1：同插件正在**卸载**——它的结果（卸载成功）不是本次更新的答案，绝不能拿它当结果报上去。
+    return { success: false, pluginId, error: i18n.t("该插件正在卸载中") };
+  }
   if (opened.kind === "cancelled") {
     const cancelled: PluginUpdateResult = { success: false, cancelled: true, pluginId, error: i18n.t("已取消更新") };
     settleInstallJob(opened.jobId, "failed", cancelled);

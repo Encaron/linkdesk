@@ -45,6 +45,11 @@ function stateOf(events: Array<{ name: string; payload: unknown }>, jobId: strin
   return lastJobs(events).find((j) => j.jobId === jobId)?.state as string | undefined;
 }
 
+/** 最新一次广播里该 job 的可取消裁决（E6#73m K1：面板照抄这个值，不自行推断） */
+function cancellableOf(events: Array<{ name: string; payload: unknown }>, jobId: string): boolean | undefined {
+  return lastJobs(events).find((j) => j.jobId === jobId)?.cancellable as boolean | undefined;
+}
+
 /** 起队列 + 建 n 个 job + **同步**发起 n 次抢槽——前 3 个的开跑在同步序里发生，其余进 FIFO 挂起。
  *  返回的 `waiting` 逐个 await 即代表「该 job 拿到槽了」（替换测试里反复出现的同一段起手式）。 */
 async function bootWithJobs(n: number): Promise<{
@@ -167,9 +172,11 @@ describe("install-queue——N 槽限流与严格 FIFO（E6#73q）", () => {
     const { jobId } = mod.beginInstallJob({ pluginId: "demo-shape", displayName: "Demo Shape", origin: "dependency" });
     await mod.acquireInstallSlot(jobId);
     const job = lastJobs(events).find((j) => j.jobId === jobId)!;
-    // E6#73d 扩了三个展示字段（stage/percent/message）——登记形状随之更新（18 档 §五 I.6⑤）
+    // E6#73d 扩了三个展示字段（stage/percent/message）、E6#73m K1 再扩两个（kind/cancellable）
+    // ——登记形状随之更新（18 档 §五 I.6⑤）
     expect(Object.keys(job).sort()).toEqual([
-      "displayName", "error", "jobId", "message", "origin", "percent", "pluginId", "stage", "state", "terminal",
+      "cancellable", "displayName", "error", "jobId", "kind", "message", "origin", "percent", "pluginId",
+      "stage", "state", "terminal",
     ]);
     expect(job.origin).toBe("dependency");
     expect(job.displayName).toBe("Demo Shape");
@@ -196,6 +203,73 @@ describe("install-queue——N 槽限流与严格 FIFO（E6#73q）", () => {
     }
     // 保留最近 50 条——最老 5 条（ids[0..4]）按入队序淘汰
     expect(lastJobs(events).map((j) => j.pluginId)).toEqual(ids.slice(5));
+  });
+
+  /* ── E6#73m K1：卸载腿（无槽直开 / 不可取消 / 跨类去重） ── */
+
+  it("K1 无槽直开：卸载腿不占并发槽——它开跑后另外 3 个安装仍能同时抢到槽", async () => {
+    const { mod } = await bootQueue();
+    const un = mod.beginInstallJob({ pluginId: "demo-un", kind: "uninstall" });
+    expect(mod.startInstallJobDirect(un.jobId)).toBe(true);
+    const fresh = Array.from({ length: 3 }, (_, i) => mod.beginInstallJob({ pluginId: `demo-after-${i}` }).jobId);
+    await expect(Promise.all(fresh.map((id) => mod.acquireInstallSlot(id)))).resolves.toEqual([true, true, true]);
+  });
+
+  it("K1 无槽直开的 job 结算时**不还槽**——还了等于替别人还，并发上限被静默抬高", async () => {
+    const { mod, events } = await bootQueue();
+    const un = mod.beginInstallJob({ pluginId: "demo-un-slot", kind: "uninstall" });
+    mod.startInstallJobDirect(un.jobId);
+    const three = Array.from({ length: 3 }, (_, i) => mod.beginInstallJob({ pluginId: `demo-slot-${i}` }).jobId);
+    await Promise.all(three.map((id) => mod.acquireInstallSlot(id))); // 3 个槽占满
+    const fourth = mod.beginInstallJob({ pluginId: "demo-slot-4" }).jobId;
+    const p4 = mod.acquireInstallSlot(fourth); // 排在队里
+    await Promise.resolve();
+    expect(stateOf(events, fourth)).toBe("queued");
+    mod.settleInstallJob(un.jobId, "success", { success: true });
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(stateOf(events, fourth)).toBe("queued"); // 卸载没还过槽 ⇒ 第四名仍在等
+    mod.settleInstallJob(three[0], "success", { success: true }); // 真还一个安装槽
+    await expect(p4).resolves.toBe(true);
+    expect(stateOf(events, fourth)).toBe("running");
+  });
+
+  it("K1 cancellable 由队列裁决：排队 true / 挂了钩子的进行中 true / 卸载 false", async () => {
+    const { mod, events } = await bootQueue();
+    const queued = mod.beginInstallJob({ pluginId: "demo-can-q" });
+    expect(cancellableOf(events, queued.jobId)).toBe(true);
+    const running = mod.beginInstallJob({ pluginId: "demo-can-r" });
+    mod.setInstallJobCanceller(running.jobId, () => { /* 真中止钩子的替身 */ });
+    await mod.acquireInstallSlot(running.jobId);
+    expect(cancellableOf(events, running.jobId)).toBe(true);
+    const un = mod.beginInstallJob({ pluginId: "demo-can-u", kind: "uninstall" });
+    mod.startInstallJobDirect(un.jobId);
+    expect(cancellableOf(events, un.jobId)).toBe(false);
+  });
+
+  it("K1 停不下来的 job 拒绝取消——不许「行没了、活还在干」的假动作", async () => {
+    const { mod } = await bootQueue();
+    const un = mod.beginInstallJob({ pluginId: "demo-nocancel", kind: "uninstall" });
+    mod.startInstallJobDirect(un.jobId);
+    expect(mod.cancelInstallJob(un.jobId)).toBe(false);
+    expect(mod.cancelInstallJobByPlugin("demo-nocancel")).toBe(false);
+    expect(mod.listInstallJobs().find((j) => j.jobId === un.jobId)?.state).toBe("running");
+  });
+
+  it("K1 跨类去重：同插件那件活儿是**另一类** → openInstallJob 回 busy，绝不等它的答案", async () => {
+    const { mod } = await bootQueue();
+    const un = mod.beginInstallJob({ pluginId: "demo-busy", kind: "uninstall" });
+    mod.startInstallJobDirect(un.jobId);
+    const opened = await mod.openInstallJob({ pluginId: "demo-busy" }, () => { /* 不挂钩子 */ });
+    expect(opened.kind).toBe("busy");
+    expect(opened.jobId).toBe(un.jobId);
+    // 同类照旧去重等待（回归钉子：busy 这条岔路不许把原有的 duplicate 吃掉）
+    const first = await mod.openInstallJob({ pluginId: "demo-same" }, () => { /* 不挂钩子 */ });
+    expect(first.kind).toBe("run");
+    const secondP = mod.openInstallJob({ pluginId: "demo-same" }, () => { /* 不挂钩子 */ }); // 第二方挂起等答案
+    await Promise.resolve();
+    mod.settleInstallJob(first.jobId, "success", { success: true, pluginId: "demo-same" });
+    expect((await secondP).kind).toBe("duplicate");
   });
 });
 

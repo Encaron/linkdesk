@@ -1,7 +1,7 @@
 {
   "$schema": "../../public/schemas/plugin.schema.json",
   "name": "文件树",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "icon": "resources/icon-bar.svg",
   "marketIcon": "resources/icon.svg",
   "description": "浏览和管理文件——对标 VS Code 资源管理器",
@@ -9,58 +9,168 @@
   "distribution": "builtin",
   "core": true,
   "entry": "src/index.tsx",
-  "appearsIn": { "iconBar": "top", "sidePanel": true },
+  "appearsIn": {
+    "iconBar": "top",
+    "sidePanel": true
+  },
   "tabBehavior": {
     "singleton": true
   },
   "contributes": {
-    "i18n": { "en": "i18n/en.json" },
+    "i18n": {
+      "en": "i18n/en.json"
+    },
     "viewsContainers": {
-      "explorer": { "title": "资源管理器", "location": "sidebar" }
+      "explorer": {
+        "title": "资源管理器",
+        "location": "sidebar"
+      }
     },
     "views": {
       "explorer": [
-        { "id": "folders", "title": "", "render": "src/views/FoldersView.tsx", "order": 0 },
-        { "id": "search", "title": "搜索", "render": "src/views/SearchView.tsx", "order": 1 }
+        {
+          "id": "folders",
+          "title": "",
+          "render": "src/views/FoldersView.tsx",
+          "order": 0
+        },
+        {
+          "id": "search",
+          "title": "搜索",
+          "render": "src/views/SearchView.tsx",
+          "order": 1
+        }
       ]
     },
     "commands": [
-      { "id": "revealInExplorer", "title": "在文件树中显示" },
-      { "id": "explorer.newFile", "title": "新建文件" },
-      { "id": "explorer.newFolder", "title": "新建文件夹" },
-      { "id": "explorer.openFile", "title": "打开" },
-      { "id": "explorer.openToSide", "title": "在侧边打开" },
-      { "id": "explorer.openWith", "title": "打开方式…" },
-      { "id": "explorer.openFocused", "title": "打开聚焦项" },
-      { "id": "explorer.openInTerminal", "title": "在终端中打开" },
-      { "id": "explorer.revealInOS", "title": "在文件管理器中显示" },
-      { "id": "explorer.copyPath", "title": "复制路径" },
-      { "id": "explorer.copyRelativePath", "title": "复制相对路径" },
-      { "id": "explorer.cut", "title": "剪切" },
-      { "id": "explorer.copy", "title": "复制" },
-      { "id": "explorer.paste", "title": "粘贴" },
-      { "id": "explorer.rename", "title": "重命名" },
-      { "id": "explorer.delete", "title": "删除" },
-      { "id": "explorer.findInFolder", "title": "在文件夹中查找…" },
-      { "id": "explorer.refresh", "title": "刷新资源管理器" },
-      { "id": "explorer.collapseAll", "title": "收起所有文件夹" },
-      { "id": "explorer.openFolder", "title": "打开文件夹…" },
-      { "id": "explorer.search", "title": "搜索" }
+      {
+        "id": "revealInExplorer",
+        "title": "在文件树中显示"
+      },
+      {
+        "id": "explorer.newFile",
+        "title": "新建文件"
+      },
+      {
+        "id": "explorer.newFolder",
+        "title": "新建文件夹"
+      },
+      {
+        "id": "explorer.openFile",
+        "title": "打开"
+      },
+      {
+        "id": "explorer.openToSide",
+        "title": "在侧边打开"
+      },
+      {
+        "id": "explorer.openWith",
+        "title": "打开方式…"
+      },
+      {
+        "id": "explorer.openFocused",
+        "title": "打开聚焦项"
+      },
+      {
+        "id": "explorer.openInTerminal",
+        "title": "在终端中打开"
+      },
+      {
+        "id": "explorer.revealInOS",
+        "title": "在文件管理器中显示"
+      },
+      {
+        "id": "explorer.copyPath",
+        "title": "复制路径"
+      },
+      {
+        "id": "explorer.copyRelativePath",
+        "title": "复制相对路径"
+      },
+      {
+        "id": "explorer.cut",
+        "title": "剪切"
+      },
+      {
+        "id": "explorer.copy",
+        "title": "复制"
+      },
+      {
+        "id": "explorer.paste",
+        "title": "粘贴"
+      },
+      {
+        "id": "explorer.rename",
+        "title": "重命名"
+      },
+      {
+        "id": "explorer.delete",
+        "title": "删除"
+      },
+      {
+        "id": "explorer.findInFolder",
+        "title": "在文件夹中查找…"
+      },
+      {
+        "id": "explorer.refresh",
+        "title": "刷新资源管理器"
+      },
+      {
+        "id": "explorer.collapseAll",
+        "title": "收起所有文件夹"
+      },
+      {
+        "id": "explorer.openFolder",
+        "title": "打开文件夹…"
+      },
+      {
+        "id": "explorer.search",
+        "title": "搜索"
+      }
     ],
     "keybindings": [
-      { "key": "Ctrl+Shift+E",   "command": "workbench.view.explorer" },
-      { "key": "Ctrl+N",        "command": "explorer.newFile",        "when": "explorerFocus" },
-      { "key": "Ctrl+Shift+N",  "command": "explorer.newFolder",      "when": "explorerFocus" },
-      { "key": "Enter",          "command": "explorer.openFocused",    "when": "explorerFocus && !inputFocus" },
-      { "key": "Ctrl+Enter",    "command": "explorer.openToSide",     "when": "explorerFocus && explorerItemIsFile" },
-      { "key": "Ctrl+Shift+F", "command": "explorer.search" }
+      {
+        "key": "Ctrl+Shift+E",
+        "command": "workbench.view.explorer"
+      },
+      {
+        "key": "Ctrl+N",
+        "command": "explorer.newFile",
+        "when": "explorerFocus"
+      },
+      {
+        "key": "Ctrl+Shift+N",
+        "command": "explorer.newFolder",
+        "when": "explorerFocus"
+      },
+      {
+        "key": "Enter",
+        "command": "explorer.openFocused",
+        "when": "explorerFocus && !inputFocus"
+      },
+      {
+        "key": "Ctrl+Enter",
+        "command": "explorer.openToSide",
+        "when": "explorerFocus && explorerItemIsFile"
+      },
+      {
+        "key": "Ctrl+Shift+F",
+        "command": "explorer.search"
+      }
     ],
     "configuration": {
       "title": "资源管理器",
       "properties": {
         "explorer.sortOrder": {
           "type": "string",
-          "enum": ["default", "mixed", "filesFirst", "type", "modified", "foldersNestsFiles"],
+          "enum": [
+            "default",
+            "mixed",
+            "filesFirst",
+            "type",
+            "modified",
+            "foldersNestsFiles"
+          ],
           "default": "default",
           "description": "文件树排序方式",
           "group": "显示"
@@ -109,7 +219,10 @@
         },
         "explorer.incrementalNaming": {
           "type": "string",
-          "enum": ["smart", "disabled"],
+          "enum": [
+            "smart",
+            "disabled"
+          ],
           "default": "smart",
           "description": "重名文件自动加数字后缀（如 test-1.txt）",
           "group": "行为"
@@ -161,7 +274,13 @@
         },
         "terminal.external.windowsExec": {
           "type": "string",
-          "enum": ["powershell", "cmd", "wt", "git-bash", "custom"],
+          "enum": [
+            "powershell",
+            "cmd",
+            "wt",
+            "git-bash",
+            "custom"
+          ],
           "default": "powershell",
           "enumDescriptions": {
             "powershell": "PowerShell（Windows 默认）",
@@ -183,6 +302,19 @@
     }
   },
   "changelog": [
-    { "version": "1.0.2", "date": "2026-09-09", "changes": ["图标身份分工（E6#69 三图模型）：icon → resources/icon-bar.svg（Type-1 files 剪影，仅图标栏用）；marketIcon → resources/icon.svg（Type-2 彩色身份图）；整幅封面迁入 README"] }
+    {
+      "version": "1.0.4",
+      "date": "2026-09-11",
+      "changes": [
+        "长任务失败不再一声不吭（E6#73m）：①拖放、粘贴、删除整个目录失败时——源文件被占用、没有权限、跨盘符——此前界面上什么都没有，树没刷新也没报错，看起来就像操作成功了；现在会明确告诉你是哪个文件、什么原因，一次操作只报一条、不刷屏；②「全部替换」进行期间按钮不能再点（此前连点两次会让同一批文件互相覆盖），按钮上会显示「到第几个了」；部分文件没替换成功时结果里会点名是哪几个（此前只写进开发者日志，用户看不到）"
+      ]
+    },
+    {
+      "version": "1.0.2",
+      "date": "2026-09-09",
+      "changes": [
+        "图标身份分工（E6#69 三图模型）：icon → resources/icon-bar.svg（Type-1 files 剪影，仅图标栏用）；marketIcon → resources/icon.svg（Type-2 彩色身份图）；整幅封面迁入 README"
+      ]
+    }
   ]
 }

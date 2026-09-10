@@ -20,7 +20,9 @@ const lk = window.linkdesk;
 // E5.8#24.8：初始化护栏统一——bootstrapMonaco（@codingame 补丁）+ getMonaco（补丁后才加载）
 import { bootstrapMonaco, getMonaco } from "../services/monaco-bootstrap";
 import { fileUriToPath, setPendingReveal, consumePendingReveal } from "../services/navigation-bridge";
-import { getLspClient, startLspClient } from "../services/lsp-bridge";
+// 注：`onLspStateChange` 同名于本组件的 prop——订阅函数取别名，避免遮蔽
+import { getLspClient, getLspState, onLspStateChange as subscribeLspState, startLspClient, takeBlockedNotice } from "../services/lsp-bridge";
+import type { LspState } from "../services/lsp-bridge";
 import { syncMonacoTheme, subscribeThemeSync } from "../services/theme-sync";
 import { setupTypeScriptEnv, scanWorkspaceForTypeScript } from "../services/ts-intelligence";
 
@@ -38,6 +40,8 @@ export interface EditorViewProps {
   onCursorChange?: (lineNumber: number, column: number) => void;
   /** E4V#40j——editor 创建完成后回传缩进/EOL 设置 */
   onEditorMount?: (opts: { tabSize: number; insertSpaces: boolean; eol: string }) => void;
+  /** E6#73m K4——语言服务器状态（null = 本语言无 LSP）。EditorStatusBar 消费。 */
+  onLspStateChange?: (state: LspState | null) => void;
 }
 
 export interface EditorViewHandle {
@@ -53,7 +57,7 @@ export interface EditorViewHandle {
 }
 
 const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function EditorView(
-  { value, language: _language, filePath, isActive, onChange, onSave, readOnly, onCursorChange, onEditorMount, options },
+  { value, language: _language, filePath, isActive, onChange, onSave, readOnly, onCursorChange, onEditorMount, onLspStateChange, options },
   ref,
 ) {
   const editorRef = useRef<MonacoEditorApi.IStandaloneCodeEditor | null>(null);
@@ -66,6 +70,9 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
   onCursorChangeRef.current = onCursorChange;
   const onEditorMountRef = useRef(onEditorMount);
   onEditorMountRef.current = onEditorMount;
+  // E6#73m K4：LSP 状态回调同样走 ref 桥——init effect per filePath 只跑一次，回调身份变化不重建
+  const onLspStateRef = useRef(onLspStateChange);
+  onLspStateRef.current = onLspStateChange;
   // E5.7#99：onChange ref 桥——init effect per filePath 只建一次编辑器，
   // 入 deps 会在回调身份变化时重建编辑器（丢 undo/光标）
   const onChangeRef = useRef(onChange);
@@ -92,6 +99,8 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
     if (!containerRef.current) return;
     let disposed = false;
     const container = containerRef.current;
+    // E6#73m K4：状态订阅的退订句柄——订阅发生在异步段，只能由 effect 体的清理函数收
+    let unsubLspState: (() => void) | null = null;
 
     (async () => {
       // E5#11i：WebView 初始 0×0→等 bounds（resize event 触发 layout）
@@ -130,6 +139,19 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
       const ext = "." + (lk.path.normalize(filePath).split(".").pop() ?? "");
       const langDef = await lk.langDef.get(ext);
       console.error(`[editor:debug] filePath=${filePath} ext=${ext} langDef=${langDef?.id ?? "null"} hasLsp=${!!langDef?.lsp} hasClient=${!!getLspClient(langDef?.id ?? "")}`);
+      // E6#73m K4：语言服务器状态订阅——「启动中 / 不可用」要有一处看得见的地方。
+      // 订阅在调用 start 之前挂上：start 内部是**同步**置 starting 的，晚了这一档就漏了。
+      onLspStateRef.current?.(getLspState(langDef?.id ?? "") ?? null);
+      if (langDef?.lsp) {
+        const langId = langDef.id;
+        unsubLspState = subscribeLspState((id, st) => {
+          if (id === langId) onLspStateRef.current?.(st);
+        });
+        // 已经订阅好了（可能 start 早已完成）——补一次当前档位
+        onLspStateRef.current?.(getLspState(langId) ?? null);
+        // 订阅晚于 unmount（异步段中途被 dispose）→ 立刻退订，别留悬挂回调
+        if (disposed) { unsubLspState?.(); unsubLspState = null; return; }
+      }
       if (langDef?.lsp && !getLspClient(langDef.id)) {
         const workspaceRoot = (await lk.workspace.getFolders())[0]?.uri || lk.path.normalize(filePath).replace(/\/[^/]+$/, "");
         startLspClient(langDef.id, langDef.lsp.command, langDef.lsp.args, workspaceRoot)
@@ -261,6 +283,20 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
                 position: { line: pos.lineNumber - 1, character: pos.column - 1 },
               });
               defs = result ? ((Array.isArray(result) ? result : [result]) as LspDef[]) : undefined;
+            } else {
+              // E6#73m K4：老写法这里**什么都不做**——启动期（1~15 秒）按 F12 或 Ctrl+点击
+              // 完全静默，用户只会以为「跳转坏了」。现在出声；每轮启动只响一次（连按不刷屏）。
+              // 无 LSP 的语言（该语言本来就没配语言服务器）不开腔——那不是故障。
+              const blocked = takeBlockedNotice(langId);
+              if (blocked) {
+                void lk.notifications.show(
+                  blocked === "starting"
+                    ? i18n.t("语言服务器正在启动——请稍候再试")
+                    : i18n.t("语言支持不可用——无法跳转到定义"),
+                  { type: blocked === "starting" ? "info" : "warning", source: "editor" },
+                ).catch(() => {});
+              }
+              return;
             }
           }
 
@@ -330,6 +366,7 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
     return () => {
       disposed = true;
       themeSyncUnsubRef.current?.();
+      unsubLspState?.();
       editorRef.current?.dispose();
     };
     // E5.7#99：编辑器创建即定型——value/readOnly 仅初始创建读取；options 走 optionsRef+updateOptions

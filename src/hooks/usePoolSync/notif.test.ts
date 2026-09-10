@@ -37,7 +37,7 @@ vi.mock("../../pluginLoader/resolution/state", () => ({
 function job(over: Record<string, unknown>): Record<string, unknown> {
   return {
     jobId: "job-demo-1", pluginId: "demo-plugin", origin: "user", displayName: "演示插件",
-    state: "running", ...over,
+    state: "running", kind: "install", cancellable: true, ...over,
   };
 }
 
@@ -227,6 +227,14 @@ describe("buildNotif——安装 job 两段（E6#73d）", () => {
     expect(row.iconClass).toBe("codicon codicon-sync notif-icon-spin");
     expect(row.cancellable).toBe(true);
     expect(row.cancelLabel).toBe("取消安装");
+  });
+
+  it("E6#73m K1：卸载行 → 状态短语「卸载中...」，且**不给**取消钮（停不下来的东西不许有假按钮）", () => {
+    mockJobs.push(job({ jobId: "job-demo-u", kind: "uninstall", stage: "uninstalling", cancellable: false }));
+    const row = buildNotif(t).sections![0].items[0];
+    expect(row.statusLabel).toBe("卸载中...");
+    expect(row.cancellable).toBe(false);
+    expect(row.percent).toBeUndefined(); // 卸载没有可量化的段——画条就是编数字
   });
 
   it("进行中无百分比 → 「下载中...」，且不带 percent（不定态，别拿 0 冒充真值）", () => {

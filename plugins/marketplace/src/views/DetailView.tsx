@@ -504,6 +504,9 @@ export default function DetailView({ pluginId }: DetailContributedProps) {
   const installErrHere = installJob?.state === "settled" && installJob.terminal === "failed" ? installJob : null;
   /** E6#73c：本插件排在队列里（不在跑）——安装钮原位画「等待安装中」。 */
   const queuedHere = installJob?.state === "queued";
+  /** E6#73m K1：本插件的**卸载腿**在跑——卸载钮原位画「卸载中...」。此前只有一个被 `busy` 哑掉的
+   *  「卸载」：点了以后按钮灰着、字不变，一个几万文件的插件卸起来界面看不出在动。 */
+  const uninstallingHere = installJob?.kind === "uninstall" && installJob.state === "running";
 
   const installLabel = (): string => installJobLabel(t, installJob);
 
@@ -902,7 +905,7 @@ export default function DetailView({ pluginId }: DetailContributedProps) {
                 {/* E6#18a：core:true 藏卸载钮——含禁用态（core 经 getDisabled 透传） */}
                 {!isCore && (
                   <Button variant="danger" onClick={handleUninstall} disabled={busy || updating}>
-                    <span className="codicon codicon-trash" /> {t("卸载")}
+                    <span className="codicon codicon-trash" /> {uninstallingHere ? t("卸载中...") : t("卸载")}
                   </Button>
                 )}
               </>
@@ -921,7 +924,7 @@ export default function DetailView({ pluginId }: DetailContributedProps) {
                 </Button>
                 {!isCore && (
                   <Button variant="danger" onClick={handleUninstall} disabled={busy || updating}>
-                    <span className="codicon codicon-trash" /> {t("卸载")}
+                    <span className="codicon codicon-trash" /> {uninstallingHere ? t("卸载中...") : t("卸载")}
                   </Button>
                 )}
               </>

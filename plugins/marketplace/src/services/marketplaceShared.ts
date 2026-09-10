@@ -448,6 +448,8 @@ export function marketInstallStageLabel(
   if (stage === "checking") return t("检查更新中...");
   if (stage === "staging") return percent != null ? t("下载中 {{percent}}%", { percent }) : t("准备新版...");
   if (stage === "committing") return t("替换旧版...");
+  // 卸载域（E6#73m K1）——不落到「安装中...」，那是把活说反了
+  if (stage === "uninstalling") return t("卸载中...");
   return t("安装中...");
 }
 

@@ -38,20 +38,23 @@ import { validateInstallManifest, resolveVersionConflict } from "../discovery/ma
 import { syncAppThemeEnum, syncAppLanguageEnum, syncIconThemeEnum } from "../contributions/contributions";
 import { loadPlugin } from "../resolution/runtime";
 import { parseManifestJson } from "../jsonc"; // E6#55：作者 plugin.json JSONC——唯一解析入口
-import { normalizePath } from "../../core/utils/path/pathUtils"; // 跨 IPC 路径归一化唯一正源（no-raw-path-replace）
 // E6#13b/c（段 B）：packageOps 签名引用 PluginUpdateCheckResult——types.ts 契约面
 // E6#73q：PluginInstallRequestOpts——安装请求侧身份（pluginId/displayName/origin）
 // E6#73c：PluginInstallJobRef——主进程 fs/net 段的进度事件回填 job 身份（jobId 只在壳侧生成）
 import type { PluginInstallRequestOpts, PluginInstallResult, PluginInstallJobRef, PluginUpdateCheckResult } from "../../core/api/linkdesk-api/types";
 // E6#73q（18 档 §五 I.2）：壳侧 job 表 + N 槽限流 + FIFO——槽锁下沉到 installPlugin（两条腿共用）
 import {
+  beginInstallJob,
   openInstallJob,
+  startInstallJobDirect,
   updateInstallJobProgress,
   identifyInstallJob,
   isInstallJobCancelled,
   settleInstallJob,
   touchInstallJob,
 } from "./install-queue";
+// E6#73m K1：卸载磁盘腿（双根判定 + 搬离）——单独成文件，见该文件头注
+import { relocateForUninstall } from "./plugin-disk-location";
 
 /* ═══════════════════════════════════════════════════════════
    Phase 4.3 生命周期 API——安装/卸载/禁用/启用
@@ -152,55 +155,37 @@ export async function enablePlugin(pluginId: string): Promise<{ success: boolean
  * 卸载插件：userData 家 = 目录真删 + 账本 removed 墓碑（E6#18c）；app 树 = 移 .disabled/ →
  * 从 viewRegistry 移除 → 持久化。如果插件之前被禁用，从禁用列表清理（卸载优先级高于禁用）。
  * E6#18a：core:true 不再被硬闸拦（可卸可禁）——UI 藏钮防误删，命令/接口层放行。
+ *
+ * E6#73m K1：**进 job 表**（18 档 §三 K 第 1 行）——此前卸载全程零输出，一个几万文件的插件卸起来
+ * 界面一个字都没有，用户只能猜是不是卡死了。现在与安装共用同一张表、面板同一段「进行中」，
+ * 但走 `startInstallJobDirect`（**不占并发槽**，见该函数）且**不挂中止钩子**（`fs` 停不下来，
+ * 面板照 `canCancel` 不给 [取消安装] 钮）。
  */
 export async function uninstallPlugin(pluginId: string): Promise<{ success: boolean; error?: string }> {
+  // 去重：同插件正在装/更新/卸载——同一个插件同时只该有一件活儿在飞（两段操作同一批文件）。
+  const job = beginInstallJob({ pluginId, displayName: pluginId, origin: "user", kind: "uninstall" });
+  if (job.duplicate) {
+    // 拒收也要出声（同下方 catch 的出口）——池侧只看成功与否、不读这条 error 字段，
+    // 光 return 就是「按钮弹回来、什么都没发生」的静默失败，正是本批次要消灭的那一类。
+    const busyMsg = i18n.t("该插件正在安装或更新中");
+    reportError({ message: `插件 "${pluginId}" ${busyMsg}`, source: pluginId });
+    return { success: false, error: busyMsg };
+  }
+  startInstallJobDirect(job.jobId);
   try {
     const manifest = getMutableManifest(pluginId);
 
     // Phase 5h 行为归一化：lifecycle 消费端处理 config 清理 + iconOrder(移除) + tab 关闭
     const displayName = manifest.name;
+    // 真名到手才画得对（建 job 时只有 id）——同 update.ts 的 identifyInstallJob
+    identifyInstallJob(job.jobId, { pluginId, displayName });
+    // 唯一阶段：卸载没有可量化的段（文件数不预扫，扫一遍本身就是它要干的活），
+    // 故只报「在干」不报百分比——不编假进度条（同 §五「排队行不画条」的判据）
+    jobProgress(job.jobId, "uninstalling", pluginId);
 
-    // E5#32：文件操作走 linkdesk.filesystem——bridge 为唯一入口，不再走 plugins:uninstall 直接 IPC
-    const src = await pluginsApi().resolvePath(pluginId);
-    const env = await linkdesk().env.get();
-
-    // E6#12（1.2-4）双代码根分支：resolvePath 落在 userData 家（{userData}/plugins，.linkdesk-plugin
-    // 解压处）→ 真删（无 .disabled 坟场——重装需重新装包）；否则 app 树（dev 源码/内置）→ 移 .disabled
-    // （现语义，可 reinstall）。磁盘位置是事实（硬约束 11），env 双根同源前缀比对。
-    //
-    // 🔴 前缀比对必须走 normalizePath 归一化：resolvePath（IPC 回传）是正斜杠
-    // （"C:/Users/.../plugins/<id>"），而 env.userPluginsDir（主进程 path.join）是反斜杠
-    // （"C:\Users\...\plugins"）——直接 startsWith 恒 false，userData 卸载误走 .disabled 坟场
-    // （2026-09-05 实机门禁实证：demo-pill/plugin-sdk-example 卸载进了项目 plugins/.disabled/）。
-    const userHome = env.userPluginsDir;
-    const isUserDataHome = isUnderHome(src, userHome);
-
-    if (isUserDataHome) {
-      await linkdesk().filesystem.remove(src);
-      // E6#18c：userData 卸载 = 墓碑化——目录已真删，账本保留条目置 removed:true（markRemoved，
-      // 保 version/installedAt/source 成历史）。随车/市场/手动卸载同款墓碑，零来源分支。永不整条删
-      // 账本条目——墓碑被删 = 种子腿把发货插件当「从未装过」重铺 = 二启复活缝。动态 import 非致命。
-      try {
-        const { markRemoved } = await import("../../core/services/PluginInstallService");
-        await markRemoved(pluginId);
-      } catch (e) {
-        log.appendLine(`⚠️ 账本墓碑写入失败（非致命）: ${errMsg(e)}`);
-      }
-      // 不 cachePluginMetadata("uninstalled")——.disabled 坟场不含该目录，reinstall 找不到源会报错；
-      // 僵尸 "installed" 缓存由 loader 启动步骤 6 差集清理（loadedPluginIds 已无它）。
-    } else {
-      const disabledDir = `${env.appPluginsDir}/.disabled`;
-      const dest = `${disabledDir}/${pluginId}`;
-      await linkdesk().filesystem.createDir(disabledDir);
-      if (await linkdesk().filesystem.exists(dest)) {
-        await linkdesk().filesystem.remove(dest);
-      }
-      await linkdesk().filesystem.copy(src, dest);
-      await linkdesk().filesystem.remove(src);
-
-      // Rust 成功 → 前端更新（仅 app 树移坟场才入 uninstalled 缓存）
-      cachePluginMetadata(pluginId, manifest, "uninstalled");
-    }
+    // E6#73m K1：磁盘腿（双根判定 + 搬离 + rename/copy 回退）抽到 plugin-disk-location.ts
+    // ——本文件体积门禁 800 行，抽的是自成一体的一条腿（输入插件 id、输出「原来在哪根」）。
+    const { userDataHome: isUserDataHome } = await relocateForUninstall(pluginId, manifest);
     // E6#18c：卸载后是否可「撤销」恢复——只有 app 树分支保留了 .disabled/ 坟场副本（reinstall 移回）；
     // userData 家 = 目录真删 + removed 墓碑，真恢复走市场/手装 zip（拍板④）——不可 in-app 撤销。
     const restorable = !isUserDataHome;
@@ -231,10 +216,14 @@ export async function uninstallPlugin(pluginId: string): Promise<{ success: bool
     // 已卸载+撤销，原此处第二颗「已卸载」是收口前遗留）。
     // E5.7#48：主进程静态声明三表（LangDef/Protocol/FileAssociation）重扫——唯一写入方在主进程
     window.linkdesk?.pluginManager?.notifyManifestChanged?.();
+    // E6#73m K1：出结果——行从「进行中」落进面板第三段（计数），成功与否照实报
+    settleInstallJob(job.jobId, "success", { success: true, pluginId });
     return { success: true };
   } catch (e) {
     const msg = errMsg(e);
     console.error(`[pluginLoader] 卸载 "${pluginId}" 失败:`, msg);
+    // 失败同样要落地：不 settle = 面板那行永远转圈（看门狗 10 分钟后才收），比不显示更坏
+    settleInstallJob(job.jobId, "failed", { success: false, pluginId, error: msg });
     reportError({ message: `插件 "${pluginId}" 卸载失败: ${msg}`, source: pluginId, error: e });
     return { success: false, error: msg };
   }
@@ -269,15 +258,9 @@ export function jobProgress(jobId: string, stage: string, pluginId?: string, mes
   emitInstallProgress(stage, pluginId, message, jobId);
 }
 
-/** 磁盘落点判定——src（resolvePath 回传）是否在 home（env.userPluginsDir 等）内。
- *  🔴 前缀比对必须走 normalizePath：resolvePath（IPC 回传）是正斜杠，home（主进程 path.join）是反斜杠——
- *  直接 startsWith 恒 false，userData 卸载误走 .disabled 坟场（2026-09-05 实机门禁实证）。uninstall/update 共用。 */
-export function isUnderHome(src: string, home: string | undefined): boolean {
-  if (!home) return false;
-  const s = normalizePath(src);
-  const h = normalizePath(home);
-  return s === h || s.startsWith(`${h}/`);
-}
+/** 磁盘落点判定——本体已随卸载磁盘腿搬去 `plugin-disk-location.ts`（E6#73m K1）。
+ *  此处原样再导出：`update.ts` 等既有消费方零改动（依赖方向仍是 ops → disk-location，不成环）。 */
+export { isUnderHome } from "./plugin-disk-location";
 
 /** 是否包来源（vs 目录）：http(s) 下载源 / .linkdesk-plugin 结尾（磁盘 zip）→ 走包安装流；
  *  其余（既有 SearchView 目录选择等）走下方 installPluginFromDirectory 零回归复制流。 */
@@ -335,6 +318,11 @@ export async function installPlugin(
   );
   if (opened.kind === "duplicate") {
     return opened.outcome ?? { success: false, error: `插件 "${opts?.pluginId ?? sourcePath}" 正在安装中` };
+  }
+  if (opened.kind === "busy") {
+    // E6#73m K1：同插件正在卸载——去重命中的是**另一类**活儿。等它只会拿到「卸载成功」，
+    // 拿它当安装结果报上去 = 用户看到「安装成功」而盘上什么都没有。
+    return { success: false, error: i18n.t("该插件正在卸载中") };
   }
   if (opened.kind === "cancelled") {
     // 记录多半已不在表里（排队取消 = 直接出队）；settle 对已消失的 job 是空操作，调它只是兜底防僵尸。

@@ -39,5 +39,11 @@
   "无法连接语言服务器（{{lang}}）：{{detail}}": "Could not connect to the language server for {{lang}}: {{detail}}",
   "启动后 {{sec}} 秒没有响应——请检查它是否已正确安装": "It did not respond within {{sec}} seconds of starting — please check that it is installed correctly.",
   "{{lang}} 语言支持启动失败：{{detail}}": "Could not start language support for {{lang}}: {{detail}}",
-  "跳转到定义失败：{{detail}}": "Go to Definition failed: {{detail}}"
+  "跳转到定义失败：{{detail}}": "Go to Definition failed: {{detail}}",
+  "语言服务器启动中…": "Language server starting…",
+  "语言支持不可用": "Language support unavailable",
+  "语言服务器正在启动——请稍候再试": "Language server is starting — please try again shortly",
+  "语言支持不可用——无法跳转到定义": "Language support unavailable — cannot go to definition",
+  "工作区 TypeScript 文件超过 {{max}} 个——只加载了前 {{max}} 个，其余文件的跳转与补全可能不完整": "Workspace has more than {{max}} TypeScript files — only the first {{max}} were loaded; go-to-definition and completion may be incomplete for the rest",
+  "工作区扫描失败——跨文件跳转与补全可能不完整：{{detail}}": "Workspace scan failed — cross-file go-to-definition and completion may be incomplete: {{detail}}"
 }

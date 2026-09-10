@@ -46,6 +46,13 @@ export type InstallJob = {
   pluginId: string;
   /** 行 = 一次**用户动作**（user）；插件自己拖来的依赖（dependency）藏在那一行里 */
   origin: "user" | "dependency";
+  /**
+   * E6#73m K1：装 / 卸——两者共用同一张表与同一段「进行中」。选填：老壳（无此字段）照旧当安装处理，
+   * 本视图只拿它把**卸载腿**的按钮文案与安装腿分开（`undefined` 一律按 install 走）。
+   */
+  kind?: "install" | "uninstall";
+  /** E6#73m K1：这条 job 能不能被真取消（壳侧裁决）——卸载腿恒 false（`fs` 停不下来） */
+  cancellable?: boolean;
   displayName: string;
   state: InstallJobState;
   terminal?: InstallJobTerminal;

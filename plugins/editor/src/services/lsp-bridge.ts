@@ -20,13 +20,81 @@ export function getLspClient(languageId: string): MonacoLanguageClient | undefin
   return _clients.get(languageId);
 }
 
+/* ── E6#73m K4：语言服务器的可见状态 ── */
+
+/**
+ * 语言服务器这一刻处在哪一档。`undefined` = 这个语言压根没配 LSP（TS/JS 走 worker，正常）。
+ *
+ * 病根：启动要 1~15 秒（取决于服务器本身，15s 只是防挂护栏上限，不是每次都等 15 秒），
+ * 而这期间**界面上没有任何一处说得出「正在起来」**——用户按 F12 得到的是一片安静，
+ * 只会得出「跳转坏了」的结论，甚至会去重启软件。
+ */
+export type LspState = "starting" | "ready" | "failed";
+
+const _states = new Map<string, LspState>();
+const _stateSubs = new Set<(languageId: string, state: LspState) => void>();
+
+/** 同语言的启动中 promise——**两个编辑器不得各起一个进程**。
+ *  老判据只挡 `_clients`（要 start 成功才有值），快速连开两个 .py = 两次 spawn。 */
+const _pending = new Map<string, Promise<MonacoLanguageClient>>();
+/** 「启动中点了跳转」的一次性发言权——每轮启动只出声一次，F12 连按不刷屏 */
+const _blockedNoticed = new Set<string>();
+
+export function getLspState(languageId: string): LspState | undefined {
+  return _states.get(languageId);
+}
+
+/** 订阅状态变化——返回退订函数（EditorView 在 mount/unmount 里配对调用） */
+export function onLspStateChange(cb: (languageId: string, state: LspState) => void): () => void {
+  _stateSubs.add(cb);
+  return () => { _stateSubs.delete(cb); };
+}
+
+function setLspState(languageId: string, state: LspState): void {
+  _states.set(languageId, state);
+  for (const cb of _stateSubs) cb(languageId, state);
+}
+
+/**
+ * 取一次「现在点跳转也没用」的发言权——返回要说的那一档，或 null（不该出声 / 本轮已说过）。
+ * 只有 `starting` / `failed` 该出声：`ready` 时走的是正常跳转，`undefined` 是这个语言本来就没 LSP。
+ */
+export function takeBlockedNotice(languageId: string): LspState | null {
+  const st = _states.get(languageId);
+  if (st !== "starting" && st !== "failed") return null;
+  if (_blockedNoticed.has(languageId)) return null;
+  _blockedNoticed.add(languageId);
+  return st;
+}
+
 /**
  * 为指定语言启动 LSP 客户端。
  * 语言服务器通过主进程 child_process.spawn 启动，stdin/stdout 经 IPC 桥接。
  *
  * @returns MonacoLanguageClient——调用方可存引用、dispose 或注册 provider
  */
-export async function startLspClient(
+export function startLspClient(
+  languageId: string,
+  command: string,
+  args?: string[],
+  workspaceRoot?: string,
+): Promise<MonacoLanguageClient> {
+  // E6#73m K4：同语言已在起 → 复用同一个 promise（并发两个编辑器只起一个进程）。
+  // `setLspState` 必须**同步**跑在第一个 await 之前——调用方订阅完立刻就能拿到
+  // 「启动中」，否则订阅者会错过这一档（状态直接从 undefined 跳到 ready）。
+  const inflight = _pending.get(languageId);
+  if (inflight) return inflight;
+  setLspState(languageId, "starting");
+  _blockedNoticed.delete(languageId); // 新一轮启动——「启动中」的提示权重新发放
+  const p = doStartLspClient(languageId, command, args, workspaceRoot)
+    .then((client) => { setLspState(languageId, "ready"); return client; })
+    .catch((err) => { setLspState(languageId, "failed"); throw err; })
+    .finally(() => { _pending.delete(languageId); });
+  _pending.set(languageId, p);
+  return p;
+}
+
+async function doStartLspClient(
   languageId: string,
   command: string,
   args?: string[],

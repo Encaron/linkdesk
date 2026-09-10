@@ -18,6 +18,7 @@ import EditorView from "../views/EditorView";
 import type { EditorViewHandle } from "../views/EditorView";
 import EditorStatusBar from "./EditorStatusBar";
 import type { EditorStatus } from "./EditorStatusBar";
+import type { LspState } from "../services/lsp-bridge";
 import EditorBreadcrumb from "./EditorBreadcrumb";
 import { trackDirtyFile, clearDirtyFile, loadBackup, scheduleClearOnUnmount, cancelPendingClear } from "../services/hot-exit";
 
@@ -130,6 +131,11 @@ const EditorTab: React.FC<EditorTabProps> = ({ filePath, isActive, tabId }) => {
 
   const handleCursorChange = useCallback((lineNumber: number, column: number) => {
     setEditorStatus((prev) => ({ ...prev, lineNumber, column }));
+  }, []);
+
+  // E6#73m K4——语言服务器状态（null = 本语言无 LSP，状态栏不显示这一格）
+  const handleLspStateChange = useCallback((lspState: LspState | null) => {
+    setEditorStatus((prev) => ({ ...prev, lspState }));
   }, []);
 
   const handleEditorMount = useCallback(
@@ -425,6 +431,7 @@ const EditorTab: React.FC<EditorTabProps> = ({ filePath, isActive, tabId }) => {
           onSave={handleSave}
           onCursorChange={handleCursorChange}
           onEditorMount={handleEditorMount}
+          onLspStateChange={handleLspStateChange}
           options={editorOptions}
         />
       </div>
