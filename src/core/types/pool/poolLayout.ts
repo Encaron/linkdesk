@@ -361,6 +361,43 @@ interface NotifGroup {
   foldedLabel?: string;
 }
 
+/**
+ * E6#73d：安装 job 的行——面板「进行中 / 等待安装中」两段的**唯一**行形状（18 档 §五 I.4）。
+ *
+ * **为什么结果区不在这里**：安装终态（成功 / 失败 / 已安装但缺依赖）由既有的 toast 发声
+ * （成功 = lifecycle 消费端唯一口，失败 = settle 失败 toast 带 [重试]，见 73h/73e），
+ * 结果区仍按来源分组（`NotifGroup`）。job 行只在「还没有结果」的两段里出现——
+ * 一条安装永远只在一处可见，不会「装了两遍」。
+ */
+interface NotifJobRow {
+  /** 行 key——jobId（**不是**显示名：同名不同插件要能区分，18 档 §七 73d 行）。 */
+  id: string;
+  pluginId: string;
+  /** 显示名（壳侧解析：调用方带入，或解压后从包内 manifest 回填） */
+  name: string;
+  /** 状态字形 codicon 类串（⟳ 进行中 / ○ 等待中） */
+  iconClass: string;
+  /** 右端状态短语（壳 t() 已解析，如「下载中 62%」「等待安装中」）——池哑渲染 */
+  statusLabel: string;
+  /** 下载段有真值才有 → 池画 3px 确定态进度条；缺省不画（同 NotifItem.percent 语义）。 */
+  percent?: number;
+  /** 本行能不能取消——true 时池渲染 [取消安装] 按钮 */
+  cancellable?: boolean;
+  /** [取消安装] 按钮文案（壳 t()） */
+  cancelLabel?: string;
+}
+
+/** E6#73d：安装 job 段——面板固定三段里前两段的容器（顺序永不重排，§五 I.4） */
+export interface NotifSection {
+  /** "running" | "queued"——段身份（池不做判别，只当 key 用） */
+  key: string;
+  /** 段标题（壳 t()，如「3 项进行中」「另有 4 项等待安装中」） */
+  label: string;
+  items: NotifJobRow[];
+  /** 段内超出「每段 5 条」被折叠的说明（壳 t()）——缺省 = 没折叠过 */
+  foldedLabel?: string;
+}
+
 /** 通知中心数据——壳侧序列化（未读计数/文案/分组全壳侧完成） */
 export interface NotifLayout {
   unread: number;
@@ -373,6 +410,20 @@ export interface NotifLayout {
   minimizeLabel: string;
   emptyLabel: string;
   dismissTitle: string;
+  /** E6#73d：头部摘要（「3 项进行中 · 另有 4 项等待安装中」）——**没有安装 job 时缺省不渲染**。
+   *  ⚠️ 只报**进行中 / 等待中**两个数：不写「已完成 N/M」——装了没有不由进度条消失来判定
+   *  （18 档 §七 73d 行明令）。 */
+  summaryLabel?: string;
+  /** E6#73d：安装 job 两段（进行中 → 等待安装中），固定序排在结果区之前。
+   *  缺省 = 没有在途安装（契约宽容——旧快照/测试替身不填此字段时行为不变，不渲染这两段）。 */
+  sections?: NotifSection[];
+  /** E6#73d：第三段固定标题「已有结果」（§五 I.4 三段永不重排）。
+   *  结果**行**不在这里——它们是既有的按来源分组的 toast（见 NotifJobRow 注释）；
+   *  本字段只提供那一区上方的固定标题。缺省 = 没有安装活动（不渲染该标题，避免纯通知场景凭空多一行）。 */
+  resultLabel?: string;
+  /** 第三段标题右端的计数（「1 项失败 · 3 项已完成」）——数**安装 job 的终态**，不是数面板上的行：
+   *  行会被 TTL 收走/被来源折叠，用它计数会让摘要随无关动作跳变（18 档 §五 I.4 的样例即此计数）。 */
+  resultSummary?: string;
   groups: NotifGroup[];
   /** E6#72d：自动展开请求——壳判定「存在重要且未读的通知，且面板当前是关着的」时为 true。
    *  池侧只做 **false→true 边沿触发**（置面板为开），true 持续期间不反复动作；

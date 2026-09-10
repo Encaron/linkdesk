@@ -147,9 +147,32 @@
   color: var(--text-secondary);
 }
 
+.notif-panel-header .notif-panel-heading {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0; /* 摘要可收缩——防长句把工具栏挤出面板 */
+}
+
+/* E6#73d：安装摘要——头部标题右侧的计数说明（「3 项进行中 · 另有 4 项等待安装中」）。
+   形状依据（ui-ux-pro-max：层级靠位置与字色，不靠乱加字号；正文级文字对比需可读）：
+   · 字号 = 面板最下一档 2xs（与折叠脚注/时间标签同档），常规字重、非大写（对比标题的 600+uppercase）；
+   · 字色 --text-secondary 而**不是** --text-muted——这行是「还有几件事在跑」的实信息，
+     不是装饰；压到 muted 会在 10px 上掉破可读线；
+   · nowrap + 省略——摘要可以长（「3 项进行中 · 另有 4 项等待安装中」），但不许换行撑高头部。 */
+.notif-panel-header .notif-panel-summary {
+  font-size: var(--font-size-2xs);
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
 .notif-panel-header .notif-panel-toolbar {
   display: flex;
   gap: 2px;
+  flex-shrink: 0;
 }
 
 /*
@@ -188,11 +211,13 @@
 }
 
 .notif-panel-item {
-  /* 🔥 2026-09-05：DOM 详情行先、主行后（StatusBarZone.tsx 已对齐 VS Code）。column-reverse 把先入 DOM
-     的详情行排到视觉底部 → 视觉 = 消息在上/按钮在下；DOM 序决定键盘 Tab 序 → 按钮仍先到（VS Code 同款，
-     notificationsViewer.ts「the details row appears first ... for better keyboard access」）。别改回主行先。 */
+  /* 🔥 E6#73d（C4）：DOM 序 = 视觉序，`column-reverse` 已撤。
+     2026-09-05 曾照抄 VS Code（DOM 详情行先 + column-reverse 翻回来），但那样**拖选复制**出来的
+     文本顺序与屏幕从上到下相反——复制一条失败通知得到的是按钮文字打头的乱序串。
+     视觉结果不变（消息在上 / 进度条居中 / 按钮在下），只是 DOM 不再倒着写。
+     ⚠️ 别改回 column-reverse：改回即恢复「复制顺序相反」（偏离理由见 StatusBarZone.tsx 注释）。 */
   display: flex;
-  flex-direction: column-reverse;
+  flex-direction: column;
   padding: 8px;
   border-bottom: 1px solid var(--separator);
   /* E6#72b：整条可拖选——跨「消息→来源→时间」一次划选能连起来（单给 .notif-panel-msg 设 text 时
@@ -431,6 +456,62 @@
   height: calc(14px * var(--ui-scale));
   line-height: calc(14px * var(--ui-scale));
   text-align: center;
+}
+
+/* ═══════════════════════════════════════════════
+   E6#73d 安装任务段——「进行中 / 另有 N 项等待安装中」两段的标题与行。
+   与来源分组标题（.notif-panel-section-header）的**层级区分靠结构不靠字号**：
+   任务段 = 「标签 + 贯穿到右端的细线」（结构性分隔，表示这是任务分区）；
+   来源分组 = 纯标签无分隔线。两者同字号档，不引出新字号（避免 type-scale 乱档）。
+   ═══════════════════════════════════════════════ */
+
+.notif-task-section-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px 2px;
+}
+
+.notif-task-section-label {
+  /* 与 .notif-source-group-label 同档（xs / 600）——层级由右侧细线给，不由加重字色给。
+     不加 uppercase：标签是整句短语（「另有 4 项等待安装中」），大写化对 CJK 无效、对混排只会更乱。 */
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.notif-task-section-rule {
+  flex: 1;
+  height: 1px;
+  background: var(--separator);
+  min-width: 8px;
+}
+
+/* E6#73d：第三段标题右端的计数（「1 项失败 · 3 项已完成」）——**在细线之后**，故细线要能被挤窄。
+   2xs 档 + tabular-nums（计数随安装推进跳动，数字同宽不抖）；颜色 secondary 而非 muted——
+   这是真信息不是脚注。 */
+.notif-task-section-count {
+  font-size: var(--font-size-2xs);
+  color: var(--text-secondary);
+  flex-shrink: 0;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 任务行右端状态短语（「下载中 62%」「等待安装中」）——消息行右侧，不占主行视觉权重。
+   tabular-nums：百分比逐帧跳动时数字同宽，避免整行随字数抖动（进度条已在动，文字别再动）。 */
+.notif-job-status {
+  font-size: var(--font-size-2xs);
+  color: var(--text-secondary);
+  flex-shrink: 0;
+  margin-left: 8px;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 等待行的字形（○）比进行中的 ⟳ 弱一档——「还没轮到」不该和「正在跑」一样显眼 */
+.notif-panel-item .notif-icon.codicon-circle-outline {
+  color: var(--text-muted);
 }
 
 /* E6#73f（S3/A6）：折叠汇总脚注——「本组另有 N 条较早的已折叠」。

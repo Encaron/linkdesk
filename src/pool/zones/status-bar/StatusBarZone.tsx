@@ -158,7 +158,13 @@ function StatusBarZone({ statusBar }: { statusBar: StatusBarLayout }) {
           >
             <div className="status-bar-notif-panel">
             <div className="notif-panel-header">
-              <span className="notif-panel-title">{notif.panelTitle}</span>
+              <div className="notif-panel-heading">
+                <span className="notif-panel-title">{notif.panelTitle}</span>
+                {/* E6#73d：安装摘要（「3 项进行中 · 另有 4 项等待安装中」）——没有在途安装时壳不带此字段 */}
+                {notif.summaryLabel && (
+                  <span className="notif-panel-summary">{notif.summaryLabel}</span>
+                )}
+              </div>
               <div className="notif-panel-toolbar">
                 {/* 一个管**内容**（清消息，面板不关），一个管**面板**（收起，什么都不丢）。
                     「最小化」不加 codicon：用户前两轮反复说「没有最小化这个东西」，那就把字写出来，
@@ -173,10 +179,74 @@ function StatusBarZone({ statusBar }: { statusBar: StatusBarLayout }) {
                 </button>
               </div>
             </div>
-            {notif.groups.length === 0 ? (
+            {notif.groups.length === 0 && (notif.sections?.length ?? 0) === 0 && !notif.resultLabel ? (
               <div className="notif-panel-empty">{notif.emptyLabel}</div>
             ) : (
               <div className="notif-panel-list">
+                {/* E6#73d：在途安装两段（进行中 → 等待安装中），固定序排在结果区之前（18 档 §五 I.4）。
+                    段内按入队先后 —— 壳侧 job 表原序透传，池**不排序**：排队位次跳变会让用户
+                    刚瞄到的行"跑"到别处，比不排序更糟。 */}
+                {(notif.sections ?? []).map((section) => (
+                  <div key={section.key}>
+                    <div className="notif-task-section-header">
+                      <span className="notif-task-section-label">{section.label}</span>
+                      {/* 贯穿到右端的细线——任务段靠**结构**分隔，不靠加大字号/加重字色
+                          （来源分组标题是纯标签、无分隔线，两者一眼可分，且不引出新字号档）。 */}
+                      <span className="notif-task-section-rule" />
+                    </div>
+                    {section.items.map((row) => (
+                      <div key={row.id} className="notif-panel-item">
+                        {/* E6#73d（C4）：DOM 序 = 视觉序（主行 → 进度 → 详情动作）。此前靠
+                            `column-reverse` 翻转视觉，拖选复制出来的文本与屏幕从上到下相反。 */}
+                        <div className="notif-main-row">
+                          <span className={`codicon ${row.iconClass} notif-icon`} />
+                          <span className="notif-panel-msg">{row.name}</span>
+                          <span className="notif-job-status">{row.statusLabel}</span>
+                        </div>
+                        {/* 进度条只在有真值时画——排队行没有在途工作，画条是撒谎（壳已保证不带 percent）。 */}
+                        {typeof row.percent === "number" && (
+                          <div className="notif-progress">
+                            <div
+                              className="notif-progress-fill"
+                              style={{ width: `${Math.max(0, Math.min(100, row.percent))}%` }}
+                            />
+                          </div>
+                        )}
+                        {row.cancellable && row.cancelLabel && (
+                          <div className="notif-details-row">
+                            <div className="notif-actions-row">
+                              {/* E6#73d：任务行**唯一**的显式动作。用 secondary 而非 primary——
+                                  失败行的 [重试] 才是要用户立刻做的那个，取消不能抢它的视线。
+                                  ⚠️ 常显不挂 hover：藏起来的取消 = 找不到的取消（挂死的安装要让用户救得回来）。 */}
+                              <button
+                                className="notif-action-btn secondary"
+                                onClick={() => emitNotif("notif:cancelJob", { jobId: row.id })}
+                              >
+                                {row.cancelLabel}
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                    {section.foldedLabel && (
+                      <div className="notif-panel-folded">{section.foldedLabel}</div>
+                    )}
+                  </div>
+                ))}
+                {/* E6#73d：第三段固定标题「已有结果」——三段（进行中 → 等待安装中 → 已有结果）永不重排
+                    （18 档 §五 I.4）。结果**行**就是下面按来源分组的那批（同一批 toast），故此处只出头，
+                    不再多一层容器：`groups` 之上多包一个 div 会把来源分组的间距语义整个挪位。
+                    右端计数由壳算（数 job 终态，不数面板行——见 NotifLayout.resultSummary 注释）。 */}
+                {notif.resultLabel && (
+                  <div className="notif-task-section-header">
+                    <span className="notif-task-section-label">{notif.resultLabel}</span>
+                    <span className="notif-task-section-rule" />
+                    {notif.resultSummary && (
+                      <span className="notif-task-section-count">{notif.resultSummary}</span>
+                    )}
+                  </div>
+                )}
                 {notif.groups.map((group) => (
                   <div key={group.key}>
                     <div className="notif-panel-section-header">
@@ -187,10 +257,48 @@ function StatusBarZone({ statusBar }: { statusBar: StatusBarLayout }) {
                     </div>
                     {group.items.map((item) => (
                       <div key={item.id} className="notif-panel-item">
-                        {/* 🔥 2026-09-05 对齐 VS Code：详情行先放 DOM（details-first）。与 .notif-panel-item
-                            column-reverse 组合后 = 视觉消息行在上、按钮在下；键盘 Tab 序仍按钮先到（DOM 序决定
-                            焦点序，与 column-reverse 视觉无关）——VS Code notificationsViewer.ts renderTemplate 同款
-                            （原实现主行先放 + column-reverse = 视觉按钮跑消息上面，与 VS Code 正好相反）。 */}
+                        {/* E6#73d（C4）：DOM 序 = 视觉序（主行 → 进度 → 详情动作）。
+                            ⚠️ **这是对 VS Code 的一次有意偏离**（notificationsViewer.ts renderTemplate
+                            是 details-first + `flex-direction: column-reverse` 把视觉翻回来，2026-09-05 曾照抄）。
+                            偏离理由（2026-09-10 拍板：主动偏离必须写明理由）：column-reverse 让**拖选复制**
+                            出来的文本顺序与屏幕从上到下相反，用户复制一条安装失败通知会得到按钮文字在前的乱序串；
+                            照抄 VS Code ≠ 逐字节复刻 DOM，视觉结果一致（消息在上、按钮在下）而复制行为正确才是目的。 */}
+                        <div className="notif-main-row">
+                          <span className={`codicon ${item.iconClass} notif-icon`} />
+                          <span className="notif-panel-msg">{item.message}</span>
+                          {item.timeLabel && (
+                            <span className="notif-panel-time">{item.timeLabel}</span>
+                          )}
+                          {/* E6#73a：**进行中的行不渲染 ×**——任务不许被随手一点就消失（§五 C）。
+                              它只能由创建它的句柄收掉（壳侧 `notif:dismiss` 已同判据兜底，两条路径都拦得住）。
+                              ⚠️ E6#73d 已把「尚无结果」的入口整个挪走：进行中/等待安装中的行现在由
+                              上方 job 段渲染（那里根本没有 ×，只有显式 [取消安装]）——本判据此后只需
+                              覆盖 toast 侧的进度类通知（插件自己发的 `progress:true`）。 */}
+                          {item.progress !== true && (
+                            <button
+                              className="notif-panel-dismiss"
+                              onClick={() => emitNotif("notif:dismiss", item.id)}
+                              title={notif.dismissTitle}
+                            >
+                              <span className="codicon codicon-close" />
+                            </button>
+                          )}
+                        </div>
+                        {/* E6#72c：进度行——视觉落点 = 主行**下方**（原 71i 画在窄卡上，窄卡删后落点改这里）。
+                            确定态（percent 有值）= 定宽填充；不定态 = 强调色块扫动。 */}
+                        {item.progress === true && (
+                          <div className="notif-progress">
+                            {typeof item.percent === "number" ? (
+                              <div
+                                className="notif-progress-fill"
+                                // 钳 0-100——DTO 契约宽容，畸形 percent（负/超 100/NaN 后段）不撑破布局
+                                style={{ width: `${Math.max(0, Math.min(100, item.percent))}%` }}
+                              />
+                            ) : (
+                              <div className="notif-progress-indeterminate" />
+                            )}
+                          </div>
+                        )}
                         {(item.sourceLabel || item.actions.length > 0) && (
                           <div className="notif-details-row">
                             {item.sourceLabel && <span className="notif-source">{item.sourceLabel}</span>}
@@ -209,41 +317,6 @@ function StatusBarZone({ statusBar }: { statusBar: StatusBarLayout }) {
                             )}
                           </div>
                         )}
-                        {/* E6#72c：进度行——DOM 位置在详情行之后、主行之前；配合 column-reverse
-                            视觉落点 = 主行下方、详情行上方（原 71i 画在窄卡上，窄卡删后落点改这里）。
-                            确定态（percent 有值）= 定宽填充；不定态 = 强调色块扫动。 */}
-                        {item.progress === true && (
-                          <div className="notif-progress">
-                            {typeof item.percent === "number" ? (
-                              <div
-                                className="notif-progress-fill"
-                                // 钳 0-100——DTO 契约宽容，畸形 percent（负/超 100/NaN 后段）不撑破布局
-                                style={{ width: `${Math.max(0, Math.min(100, item.percent))}%` }}
-                              />
-                            ) : (
-                              <div className="notif-progress-indeterminate" />
-                            )}
-                          </div>
-                        )}
-                        <div className="notif-main-row">
-                          <span className={`codicon ${item.iconClass} notif-icon`} />
-                          <span className="notif-panel-msg">{item.message}</span>
-                          {item.timeLabel && (
-                            <span className="notif-panel-time">{item.timeLabel}</span>
-                          )}
-                          {/* E6#73a：**进行中的行不渲染 ×**——任务不许被随手一点就消失（§五 C）。
-                              它只能由创建它的句柄收掉（壳侧 `notif:dismiss` 已同判据兜底，两条路径都拦得住）。
-                              ⚠️ 73d 加「等待安装中」分段后，排队行同样属于「尚无结果」，此处判据要一并放宽。 */}
-                          {item.progress !== true && (
-                            <button
-                              className="notif-panel-dismiss"
-                              onClick={() => emitNotif("notif:dismiss", item.id)}
-                              title={notif.dismissTitle}
-                            >
-                              <span className="codicon codicon-close" />
-                            </button>
-                          )}
-                        </div>
                       </div>
                     ))}
                     {/* E6#73f（S3/A6）：本组被「每来源 5 条」上限折叠掉的条数——**说明性脚注，不可点**

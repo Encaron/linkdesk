@@ -22,7 +22,8 @@ import { getViewPlugin, onDidRegister, onDidUnregister } from "../../pluginLoade
 import { onDidChangeStatusBar } from "../../core/services/ui/StatusBarService"; // E5.7#8：状态栏动态项变化订阅
 import { CUSTOM_EVENTS } from "../../core/react/events/CoreEvents"; // E5.7#8：Chord 提示
 import { shellEvents, type StatusBarEntry } from "../../core/react/events/ShellEvents";
-import { subscribeToasts, dismissToast, getToasts, isPending, setNotifPanelOpen } from "../../core/services/ui/toast";
+import { subscribeToasts, subscribeNotifPanelOpen, dismissToast, getToasts, isPending, setNotifPanelOpen } from "../../core/services/ui/toast";
+import { cancelInstallJob, onDidChangeInstallJobs, updateInstallJobProgress } from "../../pluginLoader/lifecycle/install-queue"; // E6#73d：安装 job 表变化重推 + 取消 + 主进程进度回填
 import { _seenIds } from "./notif"; // 通知未读追踪——事件回传共享序列化侧同一实例
 
 interface UseSyncSubscriptionsInput {
@@ -217,6 +218,45 @@ export function useSyncSubscriptions({
   // 池 localIcons 对齐（真相源在壳；IconBarZone 拖拽期间忽略推送防闪跳）。
   useEffect(() => shellEvents.on("icon:reordered", () => setLayoutVersion((v) => v + 1)), [setLayoutVersion]);
   useEffect(() => subscribeToasts(() => setLayoutVersion((v) => v + 1)), [setLayoutVersion]);
+  // E6#73d：安装 job 表变化（入队 / 抢到槽 / 阶段推进 / 出结果 / 被取消）→ 重推布局。
+  // job 表与壳渲染进程同处一地，走**进程内回调**而非 IPC 往返（与池侧那条 `plugin:installJobs`
+  // 广播同源同形，只是池读广播、壳直读）。进度心跳是高频事件——静默同值由 install-queue 内部拦住。
+  useEffect(() => onDidChangeInstallJobs(() => setLayoutVersion((v) => v + 1)), [setLayoutVersion]);
+  // E6#73d：主进程段的进度（**下载百分比**主进程才拿得到）回到 job 表——阶段短语与 3px 进度条的实值。
+  // 壳自己发的段进度不走这条（`lifecycle-ops.jobProgress` 同进程直呼），但主进程会把壳的 emit 也广播
+  // 回来（IPC 管道两侧同源）——同值落表是幂等 no-op，不必过滤来源。
+  // ⚠️ 引用计数不适用：这里没有池侧消费者，订阅方只有壳本进程；handler 只认带 jobId 的载荷
+  // （无 job 身份的进度是插件自发的，不属安装队列）。硬约束 19 合规——IPC 监听器在 effect 里注册、
+  // 在清理函数里注销，不落模块级。
+  useEffect(() => {
+    const unsub = window.linkdesk?.events?.on("plugin:installProgress", (payload) => {
+      const p = payload as { jobId?: unknown; stage?: unknown; percent?: unknown; message?: unknown } | null | undefined;
+      if (!p || typeof p.jobId !== "string" || !p.jobId) return;
+      updateInstallJobProgress(p.jobId, {
+        ...(typeof p.stage === "string" ? { stage: p.stage } : {}),
+        ...(typeof p.percent === "number" ? { percent: p.percent } : {}),
+        ...(typeof p.message === "string" ? { message: p.message } : {}),
+      });
+    });
+    return () => { unsub?.(); };
+  }, []);
+  // E6#73d：面板开着时按拍子重算相对时间（「刚刚 / N 分钟前」）与在途耗时。
+  // 面板收起时不跑——没人看，白烧 CPU。拍子取 30s：文案粒度最细是「刚刚→1 分钟前」，
+  // 30s 最坏滞后半格，肉眼不可察；再密没有收益。
+  // ⚠️ 面板开合的唯一真源是 toast store 的开合镜像（`subscribeNotifPanelOpen`）——池侧回传的
+  // `notif:panel` 已经在上面那条 effect 里写进镜像，此处订阅它，**不再另立一份镜像**（否则两处
+  // 各记各的，必有失同步）。订阅时立即回放当前值，保证「面板已开着时才挂载」也起得来。
+  useEffect(() => {
+    let timer: ReturnType<typeof setInterval> | undefined;
+    const stop = () => { if (timer !== undefined) { clearInterval(timer); timer = undefined; } };
+    const off = subscribeNotifPanelOpen((open) => {
+      stop();
+      if (!open) return;
+      setLayoutVersion((v) => v + 1); // 打开瞬间先重算一次——打开前的标签可能是几十分钟前的陈旧值
+      timer = setInterval(() => setLayoutVersion((v) => v + 1), 30_000);
+    });
+    return () => { off(); stop(); };
+  }, [setLayoutVersion]);
   useEffect(() => {
     const unsub = shellEvents.on("statusbar:update", (entries) => {
       setEventEntries(entries);
@@ -274,7 +314,16 @@ export function useSyncSubscriptions({
       const action = toast?.actions?.[data.index];
       if (action) { action.onClick(); dismissToast(data.id); }
     });
-    return () => { offPanel?.(); offDismiss?.(); offClearAll?.(); offAction?.(); };
+    // E6#73d：面板「进行中 / 等待安装中」行的 [取消安装]——唯一落点是壳侧 job 表（同进程直接调）。
+    // 排队行 = 直接出队（无在途工作）；进行中 = 打标 + 真中止下载钩子。两种都由 job 表吸收：
+    // 行整条消失、**不**变红（取消不是失败，见 install-queue 的 `cancelled` 注释）。
+    // 重推不在这里手动做——job 表变化本就走 `onDidChangeInstallJobs` 订阅。
+    const offCancelJob = events?.on("notif:cancelJob", (payload) => {
+      const data = payload as { jobId?: unknown } | null | undefined;
+      if (!data || typeof data.jobId !== "string" || !data.jobId) return;
+      cancelInstallJob(data.jobId);
+    });
+    return () => { offPanel?.(); offDismiss?.(); offClearAll?.(); offAction?.(); offCancelJob?.(); };
   }, [setLayoutVersion]);
 
   // E5.7#10：E4V#48 视图跨容器拖放 commit——池 IconBarZone drop → 壳 moveView。

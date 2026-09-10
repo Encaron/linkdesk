@@ -782,56 +782,93 @@ function chkPoolStatusBarItem(v: unknown, p: string, errs: string[]): void {
     }
   }
 }
+function chkNotifJobRow(v: unknown, p: string, errs: string[]): void {
+  if (v === null || typeof v !== "object" || Array.isArray(v)) errs.push((p) + ": 期望 object");
+  else {
+    const _t101 = v as Record<string, unknown>;
+    if (typeof _t101.id !== "string") errs.push(((p) + ".id") + ": 期望 string，实收 " + typeof _t101.id);
+    if (typeof _t101.pluginId !== "string") errs.push(((p) + ".pluginId") + ": 期望 string，实收 " + typeof _t101.pluginId);
+    if (typeof _t101.name !== "string") errs.push(((p) + ".name") + ": 期望 string，实收 " + typeof _t101.name);
+    if (typeof _t101.iconClass !== "string") errs.push(((p) + ".iconClass") + ": 期望 string，实收 " + typeof _t101.iconClass);
+    if (typeof _t101.statusLabel !== "string") errs.push(((p) + ".statusLabel") + ": 期望 string，实收 " + typeof _t101.statusLabel);
+    if (_t101.percent !== undefined) {
+    if (typeof _t101.percent !== "number") errs.push(((p) + ".percent") + ": 期望 number，实收 " + typeof _t101.percent);
+    }
+    if (_t101.cancellable !== undefined) {
+    if (!(_t101.cancellable === false || _t101.cancellable === true)) errs.push(((p) + ".cancellable") + ": 期望 false|true");
+    }
+    if (_t101.cancelLabel !== undefined) {
+    if (typeof _t101.cancelLabel !== "string") errs.push(((p) + ".cancelLabel") + ": 期望 string，实收 " + typeof _t101.cancelLabel);
+    }
+  }
+}
+function chkNotifSection(v: unknown, p: string, errs: string[]): void {
+  if (v === null || typeof v !== "object" || Array.isArray(v)) errs.push((p) + ": 期望 object");
+  else {
+    const _t99 = v as Record<string, unknown>;
+    if (typeof _t99.key !== "string") errs.push(((p) + ".key") + ": 期望 string，实收 " + typeof _t99.key);
+    if (typeof _t99.label !== "string") errs.push(((p) + ".label") + ": 期望 string，实收 " + typeof _t99.label);
+    if (!Array.isArray(_t99.items)) errs.push(((p) + ".items") + ": 期望数组");
+    else {
+      for (let _t100 = 0; _t100 < _t99.items.length; _t100++) {
+          chkNotifJobRow(_t99.items[_t100], (((p) + ".items") + "[" + _t100 + "]"), errs);
+      }
+    }
+    if (_t99.foldedLabel !== undefined) {
+    if (typeof _t99.foldedLabel !== "string") errs.push(((p) + ".foldedLabel") + ": 期望 string，实收 " + typeof _t99.foldedLabel);
+    }
+  }
+}
 function chkNotifAction(v: unknown, p: string, errs: string[]): void {
   if (v === null || typeof v !== "object" || Array.isArray(v)) errs.push((p) + ": 期望 object");
   else {
-    const _t103 = v as Record<string, unknown>;
-    if (typeof _t103.label !== "string") errs.push(((p) + ".label") + ": 期望 string，实收 " + typeof _t103.label);
-    if (_t103.isPrimary !== undefined) {
-    if (!(_t103.isPrimary === false || _t103.isPrimary === true)) errs.push(((p) + ".isPrimary") + ": 期望 false|true");
+    const _t107 = v as Record<string, unknown>;
+    if (typeof _t107.label !== "string") errs.push(((p) + ".label") + ": 期望 string，实收 " + typeof _t107.label);
+    if (_t107.isPrimary !== undefined) {
+    if (!(_t107.isPrimary === false || _t107.isPrimary === true)) errs.push(((p) + ".isPrimary") + ": 期望 false|true");
     }
   }
 }
 function chkNotifItem(v: unknown, p: string, errs: string[]): void {
   if (v === null || typeof v !== "object" || Array.isArray(v)) errs.push((p) + ": 期望 object");
   else {
-    const _t101 = v as Record<string, unknown>;
-    if (typeof _t101.id !== "string") errs.push(((p) + ".id") + ": 期望 string，实收 " + typeof _t101.id);
-    if (typeof _t101.iconClass !== "string") errs.push(((p) + ".iconClass") + ": 期望 string，实收 " + typeof _t101.iconClass);
-    if (typeof _t101.message !== "string") errs.push(((p) + ".message") + ": 期望 string，实收 " + typeof _t101.message);
-    if (typeof _t101.timeLabel !== "string") errs.push(((p) + ".timeLabel") + ": 期望 string，实收 " + typeof _t101.timeLabel);
-    if (_t101.sourceLabel !== undefined) {
-    if (typeof _t101.sourceLabel !== "string") errs.push(((p) + ".sourceLabel") + ": 期望 string，实收 " + typeof _t101.sourceLabel);
+    const _t105 = v as Record<string, unknown>;
+    if (typeof _t105.id !== "string") errs.push(((p) + ".id") + ": 期望 string，实收 " + typeof _t105.id);
+    if (typeof _t105.iconClass !== "string") errs.push(((p) + ".iconClass") + ": 期望 string，实收 " + typeof _t105.iconClass);
+    if (typeof _t105.message !== "string") errs.push(((p) + ".message") + ": 期望 string，实收 " + typeof _t105.message);
+    if (typeof _t105.timeLabel !== "string") errs.push(((p) + ".timeLabel") + ": 期望 string，实收 " + typeof _t105.timeLabel);
+    if (_t105.sourceLabel !== undefined) {
+    if (typeof _t105.sourceLabel !== "string") errs.push(((p) + ".sourceLabel") + ": 期望 string，实收 " + typeof _t105.sourceLabel);
     }
-    if (!Array.isArray(_t101.actions)) errs.push(((p) + ".actions") + ": 期望数组");
+    if (!Array.isArray(_t105.actions)) errs.push(((p) + ".actions") + ": 期望数组");
     else {
-      for (let _t102 = 0; _t102 < _t101.actions.length; _t102++) {
-          chkNotifAction(_t101.actions[_t102], (((p) + ".actions") + "[" + _t102 + "]"), errs);
+      for (let _t106 = 0; _t106 < _t105.actions.length; _t106++) {
+          chkNotifAction(_t105.actions[_t106], (((p) + ".actions") + "[" + _t106 + "]"), errs);
       }
     }
-    if (_t101.progress !== undefined) {
-    if (!(_t101.progress === false || _t101.progress === true)) errs.push(((p) + ".progress") + ": 期望 false|true");
+    if (_t105.progress !== undefined) {
+    if (!(_t105.progress === false || _t105.progress === true)) errs.push(((p) + ".progress") + ": 期望 false|true");
     }
-    if (_t101.percent !== undefined) {
-    if (typeof _t101.percent !== "number") errs.push(((p) + ".percent") + ": 期望 number，实收 " + typeof _t101.percent);
+    if (_t105.percent !== undefined) {
+    if (typeof _t105.percent !== "number") errs.push(((p) + ".percent") + ": 期望 number，实收 " + typeof _t105.percent);
     }
   }
 }
 function chkNotifGroup(v: unknown, p: string, errs: string[]): void {
   if (v === null || typeof v !== "object" || Array.isArray(v)) errs.push((p) + ": 期望 object");
   else {
-    const _t99 = v as Record<string, unknown>;
-    if (typeof _t99.key !== "string") errs.push(((p) + ".key") + ": 期望 string，实收 " + typeof _t99.key);
-    if (typeof _t99.label !== "string") errs.push(((p) + ".label") + ": 期望 string，实收 " + typeof _t99.label);
-    if (typeof _t99.unread !== "number") errs.push(((p) + ".unread") + ": 期望 number，实收 " + typeof _t99.unread);
-    if (!Array.isArray(_t99.items)) errs.push(((p) + ".items") + ": 期望数组");
+    const _t103 = v as Record<string, unknown>;
+    if (typeof _t103.key !== "string") errs.push(((p) + ".key") + ": 期望 string，实收 " + typeof _t103.key);
+    if (typeof _t103.label !== "string") errs.push(((p) + ".label") + ": 期望 string，实收 " + typeof _t103.label);
+    if (typeof _t103.unread !== "number") errs.push(((p) + ".unread") + ": 期望 number，实收 " + typeof _t103.unread);
+    if (!Array.isArray(_t103.items)) errs.push(((p) + ".items") + ": 期望数组");
     else {
-      for (let _t100 = 0; _t100 < _t99.items.length; _t100++) {
-          chkNotifItem(_t99.items[_t100], (((p) + ".items") + "[" + _t100 + "]"), errs);
+      for (let _t104 = 0; _t104 < _t103.items.length; _t104++) {
+          chkNotifItem(_t103.items[_t104], (((p) + ".items") + "[" + _t104 + "]"), errs);
       }
     }
-    if (_t99.foldedLabel !== undefined) {
-    if (typeof _t99.foldedLabel !== "string") errs.push(((p) + ".foldedLabel") + ": 期望 string，实收 " + typeof _t99.foldedLabel);
+    if (_t103.foldedLabel !== undefined) {
+    if (typeof _t103.foldedLabel !== "string") errs.push(((p) + ".foldedLabel") + ": 期望 string，实收 " + typeof _t103.foldedLabel);
     }
   }
 }
@@ -846,10 +883,27 @@ function chkNotifLayout(v: unknown, p: string, errs: string[]): void {
     if (typeof _t97.minimizeLabel !== "string") errs.push(((p) + ".minimizeLabel") + ": 期望 string，实收 " + typeof _t97.minimizeLabel);
     if (typeof _t97.emptyLabel !== "string") errs.push(((p) + ".emptyLabel") + ": 期望 string，实收 " + typeof _t97.emptyLabel);
     if (typeof _t97.dismissTitle !== "string") errs.push(((p) + ".dismissTitle") + ": 期望 string，实收 " + typeof _t97.dismissTitle);
+    if (_t97.summaryLabel !== undefined) {
+    if (typeof _t97.summaryLabel !== "string") errs.push(((p) + ".summaryLabel") + ": 期望 string，实收 " + typeof _t97.summaryLabel);
+    }
+    if (_t97.sections !== undefined) {
+    if (!Array.isArray(_t97.sections)) errs.push(((p) + ".sections") + ": 期望数组");
+    else {
+      for (let _t98 = 0; _t98 < _t97.sections.length; _t98++) {
+          chkNotifSection(_t97.sections[_t98], (((p) + ".sections") + "[" + _t98 + "]"), errs);
+      }
+    }
+    }
+    if (_t97.resultLabel !== undefined) {
+    if (typeof _t97.resultLabel !== "string") errs.push(((p) + ".resultLabel") + ": 期望 string，实收 " + typeof _t97.resultLabel);
+    }
+    if (_t97.resultSummary !== undefined) {
+    if (typeof _t97.resultSummary !== "string") errs.push(((p) + ".resultSummary") + ": 期望 string，实收 " + typeof _t97.resultSummary);
+    }
     if (!Array.isArray(_t97.groups)) errs.push(((p) + ".groups") + ": 期望数组");
     else {
-      for (let _t98 = 0; _t98 < _t97.groups.length; _t98++) {
-          chkNotifGroup(_t97.groups[_t98], (((p) + ".groups") + "[" + _t98 + "]"), errs);
+      for (let _t102 = 0; _t102 < _t97.groups.length; _t102++) {
+          chkNotifGroup(_t97.groups[_t102], (((p) + ".groups") + "[" + _t102 + "]"), errs);
       }
     }
     if (_t97.autoOpen !== undefined) {
@@ -919,38 +973,38 @@ function chkPoolLayout(v: unknown, p: string, errs: string[]): void {
 function chkPoolQuickPickButton(v: unknown, p: string, errs: string[]): void {
   if (v === null || typeof v !== "object" || Array.isArray(v)) errs.push((p) + ": 期望 object");
   else {
-    const _t108 = v as Record<string, unknown>;
-    if (typeof _t108.actionId !== "string") errs.push(((p) + ".actionId") + ": 期望 string，实收 " + typeof _t108.actionId);
-    if (typeof _t108.icon !== "string") errs.push(((p) + ".icon") + ": 期望 string，实收 " + typeof _t108.icon);
-    if (_t108.tooltip !== undefined) {
-    if (typeof _t108.tooltip !== "string") errs.push(((p) + ".tooltip") + ": 期望 string，实收 " + typeof _t108.tooltip);
+    const _t112 = v as Record<string, unknown>;
+    if (typeof _t112.actionId !== "string") errs.push(((p) + ".actionId") + ": 期望 string，实收 " + typeof _t112.actionId);
+    if (typeof _t112.icon !== "string") errs.push(((p) + ".icon") + ": 期望 string，实收 " + typeof _t112.icon);
+    if (_t112.tooltip !== undefined) {
+    if (typeof _t112.tooltip !== "string") errs.push(((p) + ".tooltip") + ": 期望 string，实收 " + typeof _t112.tooltip);
     }
   }
 }
 function chkPoolQuickPickItem(v: unknown, p: string, errs: string[]): void {
   if (v === null || typeof v !== "object" || Array.isArray(v)) errs.push((p) + ": 期望 object");
   else {
-    const _t106 = v as Record<string, unknown>;
-    if (typeof _t106.key !== "string") errs.push(((p) + ".key") + ": 期望 string，实收 " + typeof _t106.key);
-    if (typeof _t106.searchText !== "string") errs.push(((p) + ".searchText") + ": 期望 string，实收 " + typeof _t106.searchText);
-    if (_t106.checked !== undefined) {
-    if (!(_t106.checked === false || _t106.checked === true)) errs.push(((p) + ".checked") + ": 期望 false|true");
+    const _t110 = v as Record<string, unknown>;
+    if (typeof _t110.key !== "string") errs.push(((p) + ".key") + ": 期望 string，实收 " + typeof _t110.key);
+    if (typeof _t110.searchText !== "string") errs.push(((p) + ".searchText") + ": 期望 string，实收 " + typeof _t110.searchText);
+    if (_t110.checked !== undefined) {
+    if (!(_t110.checked === false || _t110.checked === true)) errs.push(((p) + ".checked") + ": 期望 false|true");
     }
-    if (typeof _t106.label !== "string") errs.push(((p) + ".label") + ": 期望 string，实收 " + typeof _t106.label);
-    if (_t106.category !== undefined) {
-    if (typeof _t106.category !== "string") errs.push(((p) + ".category") + ": 期望 string，实收 " + typeof _t106.category);
+    if (typeof _t110.label !== "string") errs.push(((p) + ".label") + ": 期望 string，实收 " + typeof _t110.label);
+    if (_t110.category !== undefined) {
+    if (typeof _t110.category !== "string") errs.push(((p) + ".category") + ": 期望 string，实收 " + typeof _t110.category);
     }
-    if (_t106.detail !== undefined) {
-    if (typeof _t106.detail !== "string") errs.push(((p) + ".detail") + ": 期望 string，实收 " + typeof _t106.detail);
+    if (_t110.detail !== undefined) {
+    if (typeof _t110.detail !== "string") errs.push(((p) + ".detail") + ": 期望 string，实收 " + typeof _t110.detail);
     }
-    if (_t106.keybinding !== undefined) {
-    if (typeof _t106.keybinding !== "string") errs.push(((p) + ".keybinding") + ": 期望 string，实收 " + typeof _t106.keybinding);
+    if (_t110.keybinding !== undefined) {
+    if (typeof _t110.keybinding !== "string") errs.push(((p) + ".keybinding") + ": 期望 string，实收 " + typeof _t110.keybinding);
     }
-    if (_t106.buttons !== undefined) {
-    if (!Array.isArray(_t106.buttons)) errs.push(((p) + ".buttons") + ": 期望数组");
+    if (_t110.buttons !== undefined) {
+    if (!Array.isArray(_t110.buttons)) errs.push(((p) + ".buttons") + ": 期望数组");
     else {
-      for (let _t107 = 0; _t107 < _t106.buttons.length; _t107++) {
-          chkPoolQuickPickButton(_t106.buttons[_t107], (((p) + ".buttons") + "[" + _t107 + "]"), errs);
+      for (let _t111 = 0; _t111 < _t110.buttons.length; _t111++) {
+          chkPoolQuickPickButton(_t110.buttons[_t111], (((p) + ".buttons") + "[" + _t111 + "]"), errs);
       }
     }
     }
@@ -959,108 +1013,108 @@ function chkPoolQuickPickItem(v: unknown, p: string, errs: string[]): void {
 function chkPoolQuickPickData(v: unknown, p: string, errs: string[]): void {
   if (v === null || typeof v !== "object" || Array.isArray(v)) errs.push((p) + ": 期望 object");
   else {
-    const _t104 = v as Record<string, unknown>;
-    if (!(_t104.open === false || _t104.open === true)) errs.push(((p) + ".open") + ": 期望 false|true");
-    if (typeof _t104.placeholder !== "string") errs.push(((p) + ".placeholder") + ": 期望 string，实收 " + typeof _t104.placeholder);
-    if (_t104.prefix !== undefined) {
-    if (typeof _t104.prefix !== "string") errs.push(((p) + ".prefix") + ": 期望 string，实收 " + typeof _t104.prefix);
+    const _t108 = v as Record<string, unknown>;
+    if (!(_t108.open === false || _t108.open === true)) errs.push(((p) + ".open") + ": 期望 false|true");
+    if (typeof _t108.placeholder !== "string") errs.push(((p) + ".placeholder") + ": 期望 string，实收 " + typeof _t108.placeholder);
+    if (_t108.prefix !== undefined) {
+    if (typeof _t108.prefix !== "string") errs.push(((p) + ".prefix") + ": 期望 string，实收 " + typeof _t108.prefix);
     }
-    if (!Array.isArray(_t104.items)) errs.push(((p) + ".items") + ": 期望数组");
+    if (!Array.isArray(_t108.items)) errs.push(((p) + ".items") + ": 期望数组");
     else {
-      for (let _t105 = 0; _t105 < _t104.items.length; _t105++) {
-          chkPoolQuickPickItem(_t104.items[_t105], (((p) + ".items") + "[" + _t105 + "]"), errs);
+      for (let _t109 = 0; _t109 < _t108.items.length; _t109++) {
+          chkPoolQuickPickItem(_t108.items[_t109], (((p) + ".items") + "[" + _t109 + "]"), errs);
       }
     }
   }
 }
 function chkPoolDialogData(v: unknown, p: string, errs: string[]): void {
-  const _t109: string[] = [];
-    if (v === null || typeof v !== "object" || Array.isArray(v)) _t109.push((p) + ": 期望 object");
+  const _t113: string[] = [];
+    if (v === null || typeof v !== "object" || Array.isArray(v)) _t113.push((p) + ": 期望 object");
     else {
-      const _t110 = v as Record<string, unknown>;
-      if (_t110.open !== false) _t109.push(((p) + ".open") + ": 期望 false");
+      const _t114 = v as Record<string, unknown>;
+      if (_t114.open !== false) _t113.push(((p) + ".open") + ": 期望 false");
     }
-  const _t111 = (v !== null && typeof v === "object" && !Array.isArray(v) ? (((v as Record<string, unknown>).open === false ? 1 : 0)) : 0);
-  if (_t109.length > 0) {
-  const _t112: string[] = [];
-    if (v === null || typeof v !== "object" || Array.isArray(v)) _t112.push((p) + ": 期望 object");
+  const _t115 = (v !== null && typeof v === "object" && !Array.isArray(v) ? (((v as Record<string, unknown>).open === false ? 1 : 0)) : 0);
+  if (_t113.length > 0) {
+  const _t116: string[] = [];
+    if (v === null || typeof v !== "object" || Array.isArray(v)) _t116.push((p) + ": 期望 object");
     else {
-      const _t113 = v as Record<string, unknown>;
-      if (_t113.open !== true) _t112.push(((p) + ".open") + ": 期望 true");
-      if (typeof _t113.title !== "string") _t112.push(((p) + ".title") + ": 期望 string，实收 " + typeof _t113.title);
-      if (typeof _t113.message !== "string") _t112.push(((p) + ".message") + ": 期望 string，实收 " + typeof _t113.message);
-      if (_t113.confirmLabel !== undefined) {
-      if (typeof _t113.confirmLabel !== "string") _t112.push(((p) + ".confirmLabel") + ": 期望 string，实收 " + typeof _t113.confirmLabel);
+      const _t117 = v as Record<string, unknown>;
+      if (_t117.open !== true) _t116.push(((p) + ".open") + ": 期望 true");
+      if (typeof _t117.title !== "string") _t116.push(((p) + ".title") + ": 期望 string，实收 " + typeof _t117.title);
+      if (typeof _t117.message !== "string") _t116.push(((p) + ".message") + ": 期望 string，实收 " + typeof _t117.message);
+      if (_t117.confirmLabel !== undefined) {
+      if (typeof _t117.confirmLabel !== "string") _t116.push(((p) + ".confirmLabel") + ": 期望 string，实收 " + typeof _t117.confirmLabel);
       }
-      if (_t113.cancelLabel !== undefined) {
-      if (typeof _t113.cancelLabel !== "string") _t112.push(((p) + ".cancelLabel") + ": 期望 string，实收 " + typeof _t113.cancelLabel);
+      if (_t117.cancelLabel !== undefined) {
+      if (typeof _t117.cancelLabel !== "string") _t116.push(((p) + ".cancelLabel") + ": 期望 string，实收 " + typeof _t117.cancelLabel);
       }
-      if (!(_t113.isAlert === false || _t113.isAlert === true)) _t112.push(((p) + ".isAlert") + ": 期望 false|true");
-      if (_t113.content !== undefined) {
-      if (_t113.content === null || typeof _t113.content !== "object" || Array.isArray(_t113.content)) _t112.push(((p) + ".content") + ": 期望 object");
+      if (!(_t117.isAlert === false || _t117.isAlert === true)) _t116.push(((p) + ".isAlert") + ": 期望 false|true");
+      if (_t117.content !== undefined) {
+      if (_t117.content === null || typeof _t117.content !== "object" || Array.isArray(_t117.content)) _t116.push(((p) + ".content") + ": 期望 object");
       else {
-        const _t114 = _t113.content as Record<string, unknown>;
-        if (typeof _t114.pluginId !== "string") _t112.push((((p) + ".content") + ".pluginId") + ": 期望 string，实收 " + typeof _t114.pluginId);
-        if (typeof _t114.renderPath !== "string") _t112.push((((p) + ".content") + ".renderPath") + ": 期望 string，实收 " + typeof _t114.renderPath);
-        if (_t114.payload !== undefined) {
+        const _t118 = _t117.content as Record<string, unknown>;
+        if (typeof _t118.pluginId !== "string") _t116.push((((p) + ".content") + ".pluginId") + ": 期望 string，实收 " + typeof _t118.pluginId);
+        if (typeof _t118.renderPath !== "string") _t116.push((((p) + ".content") + ".renderPath") + ": 期望 string，实收 " + typeof _t118.renderPath);
+        if (_t118.payload !== undefined) {
         }
       }
       }
     }
-  const _t115 = (v !== null && typeof v === "object" && !Array.isArray(v) ? (((v as Record<string, unknown>).open === true ? 1 : 0) + (((v as Record<string, unknown>).isAlert === false) || ((v as Record<string, unknown>).isAlert === true) ? 1 : 0)) : 0);
-  const _t116 = [{ e: _t109, s: _t111 }, { e: _t112, s: _t115 }].sort((a, b) => b.s - a.s || a.e.length - b.e.length)[0].e;
-  if (_t116.length > 0) errs.push(..._t116);
+  const _t119 = (v !== null && typeof v === "object" && !Array.isArray(v) ? (((v as Record<string, unknown>).open === true ? 1 : 0) + (((v as Record<string, unknown>).isAlert === false) || ((v as Record<string, unknown>).isAlert === true) ? 1 : 0)) : 0);
+  const _t120 = [{ e: _t113, s: _t115 }, { e: _t116, s: _t119 }].sort((a, b) => b.s - a.s || a.e.length - b.e.length)[0].e;
+  if (_t120.length > 0) errs.push(..._t120);
   }
 }
 function chkPoolFloatingPanelButton(v: unknown, p: string, errs: string[]): void {
   if (v === null || typeof v !== "object" || Array.isArray(v)) errs.push((p) + ": 期望 object");
   else {
-    const _t123 = v as Record<string, unknown>;
-    if (typeof _t123.id !== "string") errs.push(((p) + ".id") + ": 期望 string，实收 " + typeof _t123.id);
-    if (typeof _t123.label !== "string") errs.push(((p) + ".label") + ": 期望 string，实收 " + typeof _t123.label);
-    if (typeof _t123.icon !== "string") errs.push(((p) + ".icon") + ": 期望 string，实收 " + typeof _t123.icon);
-    if (_t123.toggledIcon !== undefined) {
-    if (typeof _t123.toggledIcon !== "string") errs.push(((p) + ".toggledIcon") + ": 期望 string，实收 " + typeof _t123.toggledIcon);
+    const _t127 = v as Record<string, unknown>;
+    if (typeof _t127.id !== "string") errs.push(((p) + ".id") + ": 期望 string，实收 " + typeof _t127.id);
+    if (typeof _t127.label !== "string") errs.push(((p) + ".label") + ": 期望 string，实收 " + typeof _t127.label);
+    if (typeof _t127.icon !== "string") errs.push(((p) + ".icon") + ": 期望 string，实收 " + typeof _t127.icon);
+    if (_t127.toggledIcon !== undefined) {
+    if (typeof _t127.toggledIcon !== "string") errs.push(((p) + ".toggledIcon") + ": 期望 string，实收 " + typeof _t127.toggledIcon);
     }
-    if (_t123.toggledLabel !== undefined) {
-    if (typeof _t123.toggledLabel !== "string") errs.push(((p) + ".toggledLabel") + ": 期望 string，实收 " + typeof _t123.toggledLabel);
+    if (_t127.toggledLabel !== undefined) {
+    if (typeof _t127.toggledLabel !== "string") errs.push(((p) + ".toggledLabel") + ": 期望 string，实收 " + typeof _t127.toggledLabel);
     }
-    if (_t123.expandOnHover !== undefined) {
-    if (!(_t123.expandOnHover === false || _t123.expandOnHover === true)) errs.push(((p) + ".expandOnHover") + ": 期望 false|true");
+    if (_t127.expandOnHover !== undefined) {
+    if (!(_t127.expandOnHover === false || _t127.expandOnHover === true)) errs.push(((p) + ".expandOnHover") + ": 期望 false|true");
     }
   }
 }
 function chkPoolFloatingPanelData(v: unknown, p: string, errs: string[]): void {
-  const _t117: string[] = [];
-    if (v === null || typeof v !== "object" || Array.isArray(v)) _t117.push((p) + ": 期望 object");
+  const _t121: string[] = [];
+    if (v === null || typeof v !== "object" || Array.isArray(v)) _t121.push((p) + ": 期望 object");
     else {
-      const _t118 = v as Record<string, unknown>;
-      if (_t118.open !== false) _t117.push(((p) + ".open") + ": 期望 false");
+      const _t122 = v as Record<string, unknown>;
+      if (_t122.open !== false) _t121.push(((p) + ".open") + ": 期望 false");
     }
-  const _t119 = (v !== null && typeof v === "object" && !Array.isArray(v) ? (((v as Record<string, unknown>).open === false ? 1 : 0)) : 0);
-  if (_t117.length > 0) {
-  const _t120: string[] = [];
-    if (v === null || typeof v !== "object" || Array.isArray(v)) _t120.push((p) + ": 期望 object");
+  const _t123 = (v !== null && typeof v === "object" && !Array.isArray(v) ? (((v as Record<string, unknown>).open === false ? 1 : 0)) : 0);
+  if (_t121.length > 0) {
+  const _t124: string[] = [];
+    if (v === null || typeof v !== "object" || Array.isArray(v)) _t124.push((p) + ": 期望 object");
     else {
-      const _t121 = v as Record<string, unknown>;
-      if (_t121.open !== true) _t120.push(((p) + ".open") + ": 期望 true");
-      if (typeof _t121.viewId !== "string") _t120.push(((p) + ".viewId") + ": 期望 string，实收 " + typeof _t121.viewId);
-      if (typeof _t121.title !== "string") _t120.push(((p) + ".title") + ": 期望 string，实收 " + typeof _t121.title);
-      if (typeof _t121.pluginId !== "string") _t120.push(((p) + ".pluginId") + ": 期望 string，实收 " + typeof _t121.pluginId);
-      if (typeof _t121.renderPath !== "string") _t120.push(((p) + ".renderPath") + ": 期望 string，实收 " + typeof _t121.renderPath);
-      if (!Array.isArray(_t121.actions)) _t120.push(((p) + ".actions") + ": 期望数组");
+      const _t125 = v as Record<string, unknown>;
+      if (_t125.open !== true) _t124.push(((p) + ".open") + ": 期望 true");
+      if (typeof _t125.viewId !== "string") _t124.push(((p) + ".viewId") + ": 期望 string，实收 " + typeof _t125.viewId);
+      if (typeof _t125.title !== "string") _t124.push(((p) + ".title") + ": 期望 string，实收 " + typeof _t125.title);
+      if (typeof _t125.pluginId !== "string") _t124.push(((p) + ".pluginId") + ": 期望 string，实收 " + typeof _t125.pluginId);
+      if (typeof _t125.renderPath !== "string") _t124.push(((p) + ".renderPath") + ": 期望 string，实收 " + typeof _t125.renderPath);
+      if (!Array.isArray(_t125.actions)) _t124.push(((p) + ".actions") + ": 期望数组");
       else {
-        for (let _t122 = 0; _t122 < _t121.actions.length; _t122++) {
-            chkPoolFloatingPanelButton(_t121.actions[_t122], (((p) + ".actions") + "[" + _t122 + "]"), _t120);
+        for (let _t126 = 0; _t126 < _t125.actions.length; _t126++) {
+            chkPoolFloatingPanelButton(_t125.actions[_t126], (((p) + ".actions") + "[" + _t126 + "]"), _t124);
         }
       }
-      if (_t121.refresh !== undefined) {
-      if (!(_t121.refresh === false || _t121.refresh === true)) _t120.push(((p) + ".refresh") + ": 期望 false|true");
+      if (_t125.refresh !== undefined) {
+      if (!(_t125.refresh === false || _t125.refresh === true)) _t124.push(((p) + ".refresh") + ": 期望 false|true");
       }
     }
-  const _t124 = (v !== null && typeof v === "object" && !Array.isArray(v) ? (((v as Record<string, unknown>).open === true ? 1 : 0) + (((v as Record<string, unknown>).refresh === false) || ((v as Record<string, unknown>).refresh === true) ? 1 : 0)) : 0);
-  const _t125 = [{ e: _t117, s: _t119 }, { e: _t120, s: _t124 }].sort((a, b) => b.s - a.s || a.e.length - b.e.length)[0].e;
-  if (_t125.length > 0) errs.push(..._t125);
+  const _t128 = (v !== null && typeof v === "object" && !Array.isArray(v) ? (((v as Record<string, unknown>).open === true ? 1 : 0) + (((v as Record<string, unknown>).refresh === false) || ((v as Record<string, unknown>).refresh === true) ? 1 : 0)) : 0);
+  const _t129 = [{ e: _t121, s: _t123 }, { e: _t124, s: _t128 }].sort((a, b) => b.s - a.s || a.e.length - b.e.length)[0].e;
+  if (_t129.length > 0) errs.push(..._t129);
   }
 }
 

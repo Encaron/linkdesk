@@ -141,12 +141,15 @@ describe("showNotification E6#71i 进度 + E6#71j 长驻（updateNotification pe
     expect(t2.ttl).toBe(TOAST_TTL_ERROR);
   });
 
+  // ⚠️ E6#73d：本用例的常驻条目**不能用 error 级**——§八⑲ 定案「失败行豁免常驻配额淘汰」，
+  // 用 error 级推会得到「一条都不淘汰」的新正确行为（那个面归 toast.test.ts 的 73d 用例守）。
+  // 这里守的是 S3 本身：**非失败**的常驻条目照旧按来源 5 条淘汰。
   it("73f S3：常驻上限淘汰——超 TOAST_SOURCE_CAP 条后顶掉最老的 persistent，不碰自动消失 toast", async () => {
     // 先埋一条自动消失（error 8000，非 persistent）——上限淘汰不该动它
     await handleUiMethod("showNotification", ["Auto error", { type: "error" }]);
     // 连续推 CAP+1 条长驻（本路径无 source ⇒ 全落 __other__ 同一桶）
     for (let i = 0; i <= TOAST_SOURCE_CAP; i++) {
-      await handleUiMethod("showNotification", [`Persistent ${i}`, { type: "error", persistent: true }]);
+      await handleUiMethod("showNotification", [`Persistent ${i}`, { type: "info", persistent: true }]);
     }
     const all = activeToasts();
     const persistent = all.filter((x) => x.persistent);

@@ -15,7 +15,7 @@ import { useState, useCallback, useEffect, useMemo } from "react";
 // E5.7#98：_allPlugins 数据源是 pluginManager.list()（IPC 序列化子集）——消费 PluginListEntry，
 // 非 ViewPluginEntry（后者带 component 字段，IPC 不可达）
 // E5.8#20-c：契约化——插件列表类型走 @linkdesk/contracts（零 @src/core）
-import type { PluginListEntry, NotificationHandle } from "@linkdesk/contracts";
+import type { PluginListEntry } from "@linkdesk/contracts";
 // #30.9b 失败 toast 文案走 i18n.t——非组件模块 import i18next 默认实例（serial-monitor 先例；
 // 插件 i18n 资源已按 ns="translation" 合并进全局实例，t(key) 直取中英）
 import i18n from "i18next";
@@ -469,62 +469,14 @@ function notifyMarketInstall(): void {
   _installListeners.forEach((fn) => fn());
 }
 
-/* ═══ #64d 安装进度 corner toast（2026-09-09 定案 2/3/4——主动点装即弹「正在安装 xxx…」挂壳层，
- *  跨界面常驻；成功终局 = lifecycle 消费端 3「已安装」toast（本条 cancel 收，不双 toast）；失败终局 =
- *  settle error toast 接续（本条先收）。文案 = 11-API §三 安装开始/进度行。单活跃会话 = 单进度条，
- *  事件 done/error 与 settle 双写均幂等 close——toast 不依赖消费方挂载自给自足（#64 A3 语义）。 ═══ */
-
-type ProgressToastState = { pluginId: string; name: string; handle: NotificationHandle };
-let _progressToast: ProgressToastState | null = null;
-let _progressLastMsg = "";
-
-/** 安装进度条文案——下载带 % 才附进度（11-API §三「正在安装 {{name}}… 62%」行）；其余阶段/无 % 恒基文 */
-function progressToastMsg(name: string, stage: string | undefined, percent: number | undefined): string {
-  if (stage === "downloading" && percent != null) {
-    return i18n.t("正在安装 {{name}}… {{percent}}%", { name, percent });
-  }
-  return i18n.t("正在安装 {{name}}…", { name });
-}
-
-/** 开进度条——show 异步返 handle；await 落地时若已终局（超快装完/settle 已接管）→ 立刻 cancel 防孤儿条 */
-async function openProgressToast(pluginId: string, name: string): Promise<void> {
-  const show = lk()?.notifications?.show;
-  if (!show) return;
-  try {
-    const handle = await show(i18n.t("正在安装 {{name}}…", { name }), { progress: true });
-    const s = _installSession;
-    if (!handle || !s || s.pluginId !== pluginId || s.phase !== "installing") {
-      void handle?.cancel()?.catch?.(() => {});
-      return;
-    }
-    _progressToast = { pluginId, name, handle };
-    _progressLastMsg = i18n.t("正在安装 {{name}}…", { name });
-  } catch {
-    /* show 不可用/抛错（预览环境）——无进度条不影响安装会话 */
-  }
-}
-
-/** 终局收条（success/done/error/settle 幂等）——cancel 直关；终局文案由对应通道补（lifecycle 已安装 / settle error） */
-function closeProgressToast(): void {
-  const p = _progressToast;
-  _progressToast = null;
-  if (p) void p.handle.cancel()?.catch?.(() => {});
-}
-
-/** 进度条文案推进——随 ingest 阶段/百分比（仅消息变更才 update，节 IPC）；消费方全卸载后事件停发 = 文案定格，
- *  终局仍由 await 中的 startMarketInstall 续体收（诚实边界：进度文字定格不影响装完/失败的终局收条）
- *  E6#71i：update 第三参带 s.percent——下载段有真值 → 铃铛宽通知面板确定进度条；消息含 % 时 msg 每段变更，
- *  与 percent 同批到达（同一条 update 推消息+条），不额外多发 IPC。 */
-function syncProgressToast(): void {
-  const p = _progressToast;
-  if (!p) return;
-  const s = _installSession;
-  if (!s || s.pluginId !== p.pluginId || s.phase !== "installing") return;
-  const msg = progressToastMsg(p.name, s.stage, s.percent);
-  if (msg === _progressLastMsg) return;
-  _progressLastMsg = msg;
-  void p.handle.update(msg, s.percent)?.catch?.(() => {});
-}
+/* ═══ E6#73d：本模块**不再自建安装进度 toast**（#64d 的 corner 进度条整段拆除）。
+ *
+ *  原因：73d 起「进行中 / 等待安装中 / 已有结果」三段由**壳侧 job 表**统一表达（18 档 §五 I.4），
+ *  同一个通知面板里再挂一条本模块的进度条 = 同一次安装两行，用户看到的是「装了两遍」。
+ *  进度文案的唯一出处已是 job 行（壳侧 t() 解析、池哑渲染）。
+ *
+ *  由此**不再需要** NotificationHandle 句柄管理——本模块只剩「终局 toast」（成功由 lifecycle 消费端、
+ *  失败由 settleInstallFailure），两条都是单发不更新，句柄用完即弃。 ═══ */
 
 /** 显示名解析——目录条目名兜底 pluginId（#64d 进度条文案用；目录未加载/不在目录 = 裸 id 诚实显示） */
 function pluginDisplayNameOf(pluginId: string): string {
@@ -537,10 +489,8 @@ function ingestInstallProgress(p: InstallProgressPayload): void {
   const { stage, message, percent, pluginId } = p ?? {};
   if (pluginId && pluginId !== _installSession.pluginId) return; // 他人安装的 loading/done 不干扰本会话
   if (stage === "done") {
-    closeProgressToast(); // 成功终局——lifecycle「已安装」toast 补句，进度条收
-    _installSession = null;
+    _installSession = null; // 成功终局——lifecycle「已安装」toast 补句（73d 起无本模块进度条要收）
   } else if (stage === "error") {
-    closeProgressToast(); // 错误终局——settle error toast 接续（双写幂等）
     const err = message ?? _installSession.error;
     _installSession = { ..._installSession, phase: "error", error: err, reason: classifyInstallError(err) };
   } else if (stage) {
@@ -550,7 +500,6 @@ function ingestInstallProgress(p: InstallProgressPayload): void {
       stage,
       percent: percent ?? (stage === "downloading" ? _installSession.percent : undefined),
     };
-    syncProgressToast(); // 阶段/百分比推进进度条
   }
   notifyMarketInstall();
 }
@@ -621,7 +570,6 @@ export function getPendingInstalls(): readonly string[] {
 /** 失败终局——会话转 phase:"error" + 归因 + 失败 toast[重试]（#30.9b：error 文案双源，与 installProgress
  *  error 事件幂等；错误原文归因成 reason，安装地址保留供重试）。返回 false 供调用方直接当结果用。 */
 async function settleInstallFailure(pluginId: string, downloadUrl: string, error: string | undefined): Promise<boolean> {
-  closeProgressToast(); // #64d：进度条先收，错误 toast（下方）接续终局
   const reason = classifyInstallError(error);
   _installSession = { pluginId, phase: "error", error, reason, downloadUrl };
   notifyMarketInstall();
@@ -686,15 +634,19 @@ async function runInstallSession(pluginId: string, name: string, downloadUrl: st
   if (!inst) return false;
   _installSession = { pluginId, phase: "installing", stage: "validating", downloadUrl };
   notifyMarketInstall();
-  // #64d 定案 2：主动点装立即弹角落进度条（跨界面常驻；成功/失败终局分别由 lifecycle 已安装 / settle error 收）
-  void openProgressToast(pluginId, name);
   try {
     // E6#73c 第 1 步：请求侧身份随行——壳侧 job 表按 pluginId 去重、job 行取显示名，而两者只有池侧知道
     // （第三个参数见 types.ts PluginInstallRequestOpts；jobId 不在此——它是壳侧 job 表的产物）。
     // installWithProgress 不 throw——失败 resolve { success:false, error }（lifecycle-ops 实证）
     const r = await inst(downloadUrl, { pluginId, displayName: name, origin: "user" });
+    // E6#73d：用户点「取消安装」——**不是失败**。清会话收摊，绝不走 settleInstallFailure
+    // （那会推一条带 [重试] 的错误 toast：用户刚亲口说不要，再问一遍要不要重试 = 拿他的决定去烦他）。
+    if (r?.cancelled) {
+      _installSession = null;
+      notifyMarketInstall();
+      return false;
+    }
     if (r && !r.success) return settleInstallFailure(pluginId, downloadUrl, r.error ?? "");
-    closeProgressToast(); // 装好——lifecycle「已安装」toast 补终局句，进度条收（不双 toast）
     _installSession = null;
     notifyMarketInstall();
     scheduleDataRefresh();

@@ -6,8 +6,9 @@
  */
 
 import type { TFunction } from "i18next";
-import type { NotifLayout } from "../../core/types/pool/poolLayout";
+import type { NotifLayout, NotifSection } from "../../core/types/pool/poolLayout";
 import { getToasts, getFoldedCount, isNotifPanelOpen, OTHER_SOURCE_KEY, sourceKeyOf, type Toast } from "../../core/services/ui/toast";
+import { listInstallJobs } from "../../pluginLoader/lifecycle/install-queue";
 
 /** 未读追踪——跨渲染保留，面板关闭期间到来的通知标记为未读 */
 export const _seenIds = new Set<string>();
@@ -60,6 +61,116 @@ function shouldWake(n: Toast): boolean {
   return n.wake === true;
 }
 
+/** 每段明细上限——超出折成「另有 N 项」（18 档 §五 I.4：第 6 条起折） */
+const SECTION_DETAIL_CAP = 5;
+
+/**
+ * 进行中行的状态短语（壳 t() 解析，池哑渲染）——**按阶段码派生**。
+ *
+ * ⚠️ **不用 job.message**：它是各段吐出的**原始串**——主进程那几条是开发者中文（「开始下载 https://…」
+ * 「下载完成（1234 字节）」），壳侧那几条是未过 t() 的字面量。把它们直接画进面板 = 绕过 i18n 硬约束 2，
+ * 换了语言也不变。面板文字的唯一来源是 t()（阶段码 + 百分比都是**值**，不是文案）。
+ * 代价（诚实边界）：主进程的「下载失败，正在重试（1/2）」在行上不可见——重试期间表现为进度条停住。
+ * 要让它可见得先给重试通知一条**已 t() 的结构化通道**，那属 73i/73n 的范围，不在本档硬塞。
+ *
+ * 只覆盖安装流真实会发的阶段码（`lifecycle-ops.ts` 的 jobProgress 五处 + 主进程 download/extract 段）。
+ */
+function installRowStatusLabel(t: TFunction, stage: string | undefined, percent: number | undefined): string {
+  switch (stage) {
+    case "downloading": return percent != null ? t("下载中 {{percent}}%", { percent }) : t("下载中...");
+    case "extracting": return t("解压中...");
+    case "copying": return t("复制中...");
+    case "loading": return t("加载中...");
+    case "validating": return t("校验中...");
+    default: return t("安装中...");
+  }
+}
+
+/**
+ * E6#73d：安装 job 两段（进行中 → 等待安装中）——数据源是**壳侧 job 表**（`install-queue.ts`），
+ * 与本渲染进程同处一地，直接函数调用读取，不走 IPC 往返。
+ *
+ * **段序固定、段内按入队先后**（job 表本身是 Map 的插入序 = 入队序）——永不重排：
+ * 排队位次跳变会让用户刚瞄到的行"跑"到别处，比不排序更糟。
+ * **失败行不折叠**：失败行是**待办**（[重试] 必须始终可达），而它属终态、在结果区的 toast 里，
+ * 本函数根本不碰——这里的折叠只作用于「还没有结果」的行。
+ */
+function buildInstallSections(
+  t: TFunction,
+): { sections: NotifSection[]; summaryLabel?: string; resultLabel?: string; resultSummary?: string } {
+  // 行 = 一次**用户动作**（18 档 §五 I.4 / §七 73d 行）——插件自己拖来的依赖不单独占行。
+  // ⚠️ 诚实边界：软件今天**没有**「装 A 自动装依赖」这条腿（唯一生产者在 marketplace，恒传 user），
+  // 故本过滤零行为变化，只是把裁决写进代码。E6#73o 落 `⤷` 子行时，依赖 job 必须挂到父行下面 ——
+  // 若那时忘了挂，它们会**整批隐形**（这条过滤是那个前提的配套，不是可选项）。
+  const jobs = listInstallJobs().filter((j) => j.origin === "user");
+  const rowsOf = (state: "running" | "queued") =>
+    jobs
+      .filter((j) => j.state === state)
+      .map((j) => ({
+        id: j.jobId,
+        pluginId: j.pluginId,
+        name: j.displayName || j.pluginId,
+        iconClass:
+          state === "running" ? "codicon codicon-sync notif-icon-spin" : "codicon codicon-circle-outline",
+        statusLabel:
+          state === "running" ? installRowStatusLabel(t, j.stage, j.percent) : t("等待安装中"),
+        // 进度条只在**进行中**且有真值时才画：排队行没有在途工作，画条是撒谎
+        ...(state === "running" && typeof j.percent === "number" ? { percent: j.percent } : {}),
+        cancellable: true,
+        cancelLabel: t("取消安装"),
+      }));
+
+  const running = rowsOf("running");
+  const queued = rowsOf("queued");
+  const sections: NotifSection[] = [];
+  for (const [key, label, items] of [
+    ["running", t("{{count}} 项进行中", { count: running.length }), running],
+    ["queued", t("另有 {{count}} 项等待安装中", { count: queued.length }), queued],
+  ] as const) {
+    if (items.length === 0) continue;
+    sections.push({
+      key,
+      label,
+      items: items.slice(0, SECTION_DETAIL_CAP),
+      ...(items.length > SECTION_DETAIL_CAP
+        ? { foldedLabel: t("本段另有 {{count}} 项未列出", { count: items.length - SECTION_DETAIL_CAP }) }
+        : {}),
+    });
+  }
+  // 第三段固定标题「已有结果」——数**job 的终态**，不数面板上的行：行会被 TTL 收走、
+  // 会被来源折叠，拿它计数摘要会随无关动作乱跳。结果**行**是下方按来源分组的 toast（见 NotifJobRow 注释）。
+  // `success` 才行；`parked`（已装但缺依赖）单独一档，**不许并进「已完成」**（§五 I.6⑦）。
+  // ⚠️ 在早退**之前**算：装完之后在途两段会消失，但结果区还在 —— 标题必须跟着结果区留下。
+  const settled = jobs.filter((j) => j.state === "settled");
+  const countOf = (terminal: string) => settled.filter((j) => j.terminal === terminal).length;
+  const parts = [
+    [countOf("failed"), "{{count}} 项失败"],
+    [countOf("parked"), "{{count}} 项缺依赖"],
+    [countOf("success"), "{{count}} 项已完成"],
+  ] as const;
+  const resultSummary = parts
+    .filter(([n]) => n > 0)
+    .map(([n, key]) => t(key, { count: n })) // 一次 t()：键是原文，别先 t() 再 t()（重复查表 + 复数解析打在插值串上）
+    .join(" · ");
+  // **固定三段**的第一层含义就是「第三段恒在」——在途但还没出结果时它写「0 项」而不是消失
+  // （18 档 §五 I.4 样张同款）。有安装活动（在途或已出结果）才带，纯插件通知的面板不凭空多一行。
+  const result = sections.length > 0 || settled.length > 0
+    ? { resultLabel: t("已有结果"), resultSummary: resultSummary || t("0 项") }
+    : {};
+
+  if (sections.length === 0) return { sections: [], ...result };
+
+  // 头部摘要——两个数合起来说一句话（只报在途的，见 NotifLayout.summaryLabel 注释）
+  const summaryLabel =
+    running.length > 0 && queued.length > 0
+      ? t("{{running}} 项进行中 · 另有 {{queued}} 项等待安装中", { running: running.length, queued: queued.length })
+      : running.length > 0
+        ? t("{{count}} 项进行中", { count: running.length })
+        : t("{{count}} 项等待安装中", { count: queued.length });
+
+  return { sections, summaryLabel, ...result };
+}
+
 /** 通知面板数据——壳 NotificationCenter（source 分组/未读排序/时间文案）序列化为纯数据 */
 export function buildNotif(t: TFunction): NotifLayout {
   const notifications = getToasts();
@@ -103,6 +214,9 @@ export function buildNotif(t: TFunction): NotifLayout {
   // 有未读的组排前面
   groups.sort((a, b) => b.unread - a.unread);
 
+  // E6#73d：在途安装两段——排在结果区之前（§五 I.4 固定序）
+  const install = buildInstallSections(t);
+
   return {
     unread,
     bellTitle: unread > 0 ? t("{{count}} 条通知", { count: unread }) : t("通知"),
@@ -113,6 +227,11 @@ export function buildNotif(t: TFunction): NotifLayout {
     minimizeLabel: t("最小化"),
     emptyLabel: t("暂无通知"),
     dismissTitle: t("关闭"),
+    ...(install.summaryLabel ? { summaryLabel: install.summaryLabel } : {}),
+    ...(install.sections.length > 0 ? { sections: install.sections } : {}),
+    // 第三段标题只随**安装活动**出现——纯插件通知的面板不该凭空多一行「已有结果」（那时下面
+    // 根本没有安装 job，标题会指向一堆无关的插件消息）。在途两段或已有终态，二者居一即带标题。
+    ...(install.resultLabel ? { resultLabel: install.resultLabel, resultSummary: install.resultSummary } : {}),
     groups,
     // E6#72d：该弹的未读通知 + 面板当前收着 → 请求池自动展开。
     // 「面板已开」时不再请求（不二次打扰正在看的人）；池打开面板会回传开合镜像 →

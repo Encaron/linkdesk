@@ -141,6 +141,10 @@ export const IPC = {
     //    loader 在壳 renderer，主进程只做 download/extract/update 真网络与磁盘）──
     download: 'plugins:download',
     extract: 'plugins:extract',
+    // E6#73d：真中止在途下载——面板「取消安装」的唯一落点。**按 jobId 定向**（不是按 channel
+    // 一锅端）：取消必须命中**具体哪一个 job**（18 档 §八 主动偏离注——桥计时器只知道 channel，
+    // 故取消不挂在它上）。主进程只持 jobId → AbortController 的登记表，不解释语义。
+    cancel: 'plugins:cancel',
     updateCheck: 'plugins:update-check',
     stageUpdate: 'plugins:stage-update',
     commitUpdate: 'plugins:commit-update',

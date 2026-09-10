@@ -39,6 +39,11 @@ export interface PluginsAPI {
     /** E6#11/#13（1.2-5）：主进程真解压段——共享 bundle-zip 语义 → {userData}/plugins/<id>/（2026-09-05 塌平单根；壳 preload 独有；目标已存在拒绝）。
      *  E6#73c：job 同 packageDownload——解压段进度事件回填身份 */
     packageExtract?(zipPath: string, expectedPluginId?: string, job?: PluginInstallJobRef): Promise<{ pluginId: string; version: string; targetDir: string }>;
+    /** E6#73d：按 jobId 中止在途下载——面板「取消安装」的唯一落点。
+     *  AbortSignal 不可跨 IPC（结构化克隆拒绝），只能发这条**定向消息**；主进程只持
+     *  jobId → AbortController 登记表，不解释语义。返回 false = 该 job 当前没有在途下载
+     *  （已下完/未开始/非下载段）——调用方按「取消已受理，等终态」理解，不当失败。 */
+    packageCancel?(jobId: string): Promise<boolean>;
     /** E6#13b（段 B）：主进程真网络段——fetch marketplace.json → 版本对比（不碰账本——current 由壳传）。prerelease 默认忽略。 */
     packageUpdateCheck?(pluginId: string, catalogUrl: string, currentVersion?: string): Promise<PluginUpdateCheckResult>;
     /** E6#13b/c（段 B）：主进程真下载+解压段——下载到 tmp → 解压到 {userData}/tmp/.stage-<id>（id 一致 + 版本方向校验，不碰旧目录）。

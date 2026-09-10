@@ -156,6 +156,10 @@ export interface PluginInstallResult {
    *  为真时 success 也是 true（文件真落盘了），但消费方**不得渲染成「✓ 已安装」**——那是撒谎。
    *  job 行显示「已安装但缺依赖：{名}」。 */
   parked?: boolean;
+  /** E6#73d：用户在面板上点了「取消安装」——**不是失败**（`success` 为 false 只是「没装成」）。
+   *  消费方据此**不得**走失败分支（不弹错误 toast、不推 [重试]、不打红行）——用户主动叫停已表明意图，
+   *  再报一次错等于拿用户自己的决定去吓他。job 行由队列侧**整条撤掉**（不渲染 ✗）。 */
+  cancelled?: boolean;
 }
 
 /** E6#73q：安装请求侧身份——job 表按 pluginId 去重、job 行要显示名，而两者都只有池侧知道

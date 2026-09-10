@@ -28,12 +28,13 @@ afterEach(() => {
 });
 
 describe("E6#73f 死代码簇已删（零调用方；留着是陷阱）", () => {
-  it("runToastAction / getUnreadCount / subscribeNotifPanelOpen 不再导出", () => {
+  it("runToastAction / getUnreadCount 不再导出", () => {
     // getUnreadCount 的实现是 `return _toasts.length`（名字说是未读、实为总数）——留着迟早被误用。
-    // 面板开合的订阅无人订阅；runToastAction 的真派发路径在 useSubscriptions `notif:action` 内联。
+    // runToastAction 的真派发路径在 useSubscriptions `notif:action` 内联。
+    // ⚠️ `subscribeNotifPanelOpen` 曾是本簇第三条，E6#73d 已**带真载体回归**（壳侧「相对时间定时重算」
+    // 的定时器），故不再断言其缺席——见本文件尾部的订阅用例。删了它面板开着时时间标签会停在打开瞬间。
     expect("runToastAction" in toast).toBe(false);
     expect("getUnreadCount" in toast).toBe(false);
-    expect("subscribeNotifPanelOpen" in toast).toBe(false);
   });
 
   it("Toast.icon 字段不再存在（契约无 icon 形参 ⇒ 生产者恒零）", () => {
@@ -184,5 +185,89 @@ describe("E6#73f/#73b：Toast.wake 唤醒旗标——显式优先，缺省由 de
     pushToast({ message: "演示消息 内存压力", source: "demo-plugin", severity: "warning", ttl: 0 });
     pushToast({ message: "演示消息 长驻", source: "demo-plugin", persistent: true, ttl: 0 });
     expect(getToasts().map((x) => x.wake)).toEqual([false, false, false]);
+  });
+});
+
+/**
+ * E6#73d（18 档 §八⑲）：失败行**豁免按来源配额淘汰**——失败行本身就是待办，[重试] 必须始终可达。
+ * 豁免不等于无界：另有 TOAST_ERROR_BACKSTOP 兜内存。成功/信息行照常折叠。
+ */
+describe("E6#73d：失败行豁免常驻配额淘汰（§八⑲）", () => {
+  it(`同来源 ${TOAST_SOURCE_CAP} 条以上失败 → 一条不淘汰、折叠计数为 0（7 条红字并列是裁决原话场景）`, () => {
+    for (let i = 0; i < 7; i++) {
+      pushToast({ message: `演示消息 失败 ${i}`, source: "demo-plugin", severity: "error", persistent: true, ttl: 0 });
+    }
+    expect(getToasts()).toHaveLength(7);
+    expect(getFoldedCount("demo-plugin")).toBe(0);
+  });
+
+  it("失败行不占配额名额——同来源「5 条成功 + 2 条失败」→ 成功折叠 2 条，失败两条都在", () => {
+    for (let i = 0; i < 5 + 2; i++) {
+      pushToast({ message: `演示消息 成功 ${i}`, source: "demo-plugin", persistent: true, ttl: 0 });
+    }
+    pushToast({ message: "演示消息 失败 甲", source: "demo-plugin", severity: "error", persistent: true, ttl: 0 });
+    pushToast({ message: "演示消息 失败 乙", source: "demo-plugin", severity: "error", persistent: true, ttl: 0 });
+    const msgs = getToasts().map((t) => t.message);
+    expect(getFoldedCount("demo-plugin")).toBe(2);
+    expect(msgs).toContain("演示消息 失败 甲");
+    expect(msgs).toContain("演示消息 失败 乙");
+    // 成功行仍受 5 条上限——最老的先被折叠掉
+    expect(msgs).not.toContain("演示消息 成功 0");
+    expect(msgs).not.toContain("演示消息 成功 1");
+  });
+
+  it("进行中的失败行同样豁免（isPending 判据不变——只能由创建它的句柄收掉）", () => {
+    for (let i = 0; i < TOAST_SOURCE_CAP + 3; i++) {
+      pushToast({ message: `演示消息 失败 ${i}`, source: "demo-plugin", severity: "error", progress: true, ttl: 0 });
+    }
+    expect(getToasts()).toHaveLength(TOAST_SOURCE_CAP + 3);
+    expect(getFoldedCount("demo-plugin")).toBe(0);
+  });
+
+  it("内存兜底：失败条目超 TOAST_ERROR_BACKSTOP → 最老的先淘汰，折叠计数按各自来源记账", () => {
+    const cap = toast.TOAST_ERROR_BACKSTOP;
+    for (let i = 0; i < cap + 1; i++) {
+      pushToast({ message: `演示消息 失败 ${i}`, source: "demo-plugin", severity: "error", persistent: true, ttl: 0 });
+    }
+    // 另一来源补一条，验证折叠计数不会算到它头上
+    pushToast({ message: "演示消息 别的来源", source: "demo-other", persistent: true, ttl: 0 });
+    expect(getToasts()).toHaveLength(cap + 1); // 上限 + 那条别的来源
+    expect(getFoldedCount("demo-plugin")).toBe(1);
+    expect(getFoldedCount("demo-other")).toBe(0);
+    expect(getToasts().some((t) => t.message === "演示消息 失败 0")).toBe(false);
+  });
+});
+
+/**
+ * E6#73d：面板开合订阅——唯一消费者是壳侧「相对时间定时重算」的定时器。
+ * ⚠️ 与 73f 删掉的那个同名函数不是一回事：那个无消费者，这个带真载体。
+ */
+describe("E6#73d：subscribeNotifPanelOpen", () => {
+  it("订阅时立即回放当前值（面板已开着时才挂载也要起得来）", () => {
+    toast.setNotifPanelOpen(true);
+    const seen: boolean[] = [];
+    const off = toast.subscribeNotifPanelOpen((o) => seen.push(o));
+    expect(seen).toEqual([true]);
+    off();
+  });
+
+  it("开合变化逐个通知；同值不重复通知（幂等——定时器不会被反复重建）", () => {
+    toast.setNotifPanelOpen(false);
+    const seen: boolean[] = [];
+    const off = toast.subscribeNotifPanelOpen((o) => seen.push(o));
+    toast.setNotifPanelOpen(true);
+    toast.setNotifPanelOpen(true);   // 同值
+    toast.setNotifPanelOpen(false);
+    expect(seen).toEqual([false, true, false]);
+    off();
+  });
+
+  it("退订后不再收到通知", () => {
+    toast.setNotifPanelOpen(false);
+    const seen: boolean[] = [];
+    const off = toast.subscribeNotifPanelOpen((o) => seen.push(o));
+    off();
+    toast.setNotifPanelOpen(true);
+    expect(seen).toEqual([false]);
   });
 });

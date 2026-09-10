@@ -259,6 +259,7 @@ export const linkdeskMock: Record<string, unknown> = {
     readAllManifests: async (..._args: unknown[]) => { console.info("[linkdesk-mock] plugins.readAllManifests", ..._args); },
     packageDownload: async (..._args: unknown[]) => { console.info("[linkdesk-mock] plugins.packageDownload", ..._args); },
     packageExtract: async (..._args: unknown[]) => { console.info("[linkdesk-mock] plugins.packageExtract", ..._args); },
+    packageCancel: async (..._args: unknown[]) => { console.info("[linkdesk-mock] plugins.packageCancel", ..._args); return false; },
     packageUpdateCheck: async (..._args: unknown[]) => { console.info("[linkdesk-mock] plugins.packageUpdateCheck", ..._args); },
     packageStageUpdate: async (..._args: unknown[]) => { console.info("[linkdesk-mock] plugins.packageStageUpdate", ..._args); },
     packageCommitUpdate: async (..._args: unknown[]) => { console.info("[linkdesk-mock] plugins.packageCommitUpdate", ..._args); },

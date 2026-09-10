@@ -44,6 +44,8 @@ import type { PluginInstallRequestOpts, PluginInstallResult, PluginInstallJobRef
 import {
   acquireInstallSlot,
   beginInstallJob,
+  setInstallJobCanceller,
+  updateInstallJobProgress,
   identifyInstallJob,
   settleInstallJob,
   touchInstallJob,
@@ -244,17 +246,21 @@ export async function uninstallPlugin(pluginId: string): Promise<{ success: bool
 /** 进度广播单点（#13d 壳段）——壳 events.emit → 主进程 onPluginEmit → broadcast → 池 events.on；
  *  与主进程 download/extract 段（plugin-install-handlers.ts 同通道广播）并流一个 plugin:installProgress。
  *  同一事件循环内 installPlugin 多处 emit——节流交给广播层，调用方逐阶段直呼。 */
-export function emitInstallProgress(stage: string, pluginId?: string, message?: string): void {
+export function emitInstallProgress(stage: string, pluginId?: string, message?: string, jobId?: string): void {
   try {
-    window.linkdesk?.events?.emit("plugin:installProgress", { stage, pluginId, message });
+    window.linkdesk?.events?.emit("plugin:installProgress", { stage, pluginId, message, jobId });
   } catch { /* 广播失败不阻断安装 */ }
 }
 
 /** job 内进度广播——E6#73q：同一帧顺带重置该 job 的槽级空闲看门狗（进度即「还活着」的唯一证据）。
- *  两条安装流（包源/目录源）共用，故抽此一处；漏调用 = 慢而健康的安装在 10 分钟后被误判楔死。 */
+ *  两条安装流（包源/目录源）共用，故抽此一处；漏调用 = 慢而健康的安装在 10 分钟后被误判楔死。
+ *
+ *  E6#73d：**顺带把阶段落进 job 表**（同进程直呼，不走 IPC 往返）——面板「进行中」行的阶段短语由它派生。
+ *  带 jobId 进广播载荷是给**池**消费方（市场视图的状态徽标）认领身份用。 */
 function jobProgress(jobId: string, stage: string, pluginId?: string, message?: string): void {
   touchInstallJob(jobId);
-  emitInstallProgress(stage, pluginId, message);
+  updateInstallJobProgress(jobId, { stage, message });
+  emitInstallProgress(stage, pluginId, message, jobId);
 }
 
 /** 磁盘落点判定——src（resolvePath 回传）是否在 home（env.userPluginsDir 等）内。
@@ -280,6 +286,7 @@ function isPackageSource(source: string): boolean {
 export function packageOps(): {
   packageDownload: (url: string, job?: PluginInstallJobRef) => Promise<{ zipPath: string; sizeBytes?: number }>;
   packageExtract: (zipPath: string, expectedPluginId?: string, job?: PluginInstallJobRef) => Promise<{ pluginId: string; version: string; targetDir: string }>;
+  packageCancel?: (jobId: string) => Promise<boolean>;
   packageUpdateCheck?: (pluginId: string, catalogUrl: string, currentVersion?: string) => Promise<PluginUpdateCheckResult>;
   packageStageUpdate?: (pluginId: string, source: string, currentVersion?: string, allowOlder?: boolean) => Promise<{ pluginId: string; newVersion: string; stagedDir: string }>;
   packageCommitUpdate?: (pluginId: string, stagedDir: string) => Promise<{ pluginId: string; version: string }>;
@@ -291,6 +298,7 @@ export function packageOps(): {
   return {
     packageDownload: api.packageDownload,
     packageExtract: api.packageExtract,
+    packageCancel: api.packageCancel,
     packageUpdateCheck: api.packageUpdateCheck,
     packageStageUpdate: api.packageStageUpdate,
     packageCommitUpdate: api.packageCommitUpdate,
@@ -319,7 +327,21 @@ export async function installPlugin(
     return outcome ?? { success: false, error: `插件 "${opts?.pluginId ?? sourcePath}" 正在安装中` };
   }
 
-  await acquireInstallSlot(job.jobId);
+  // E6#73d：挂真中止钩子（面板「取消安装」→ 主进程 AbortController）。**只有下载段能被真中止**，
+  // 其余段（解压/落盘/加载）已经是本地不可中断的原子动作——取消它们只是「不装完」，不能假装停了。
+  // 钩子按需解析 packageOps（目录源安装不该因为壳 API 缺 download/extract 而在注册时就炸）。
+  setInstallJobCanceller(job.jobId, () => {
+    try { void packageOps().packageCancel?.(job.jobId).catch(() => { /* 主进程无在途下载 */ }); } catch { /* 壳面缺 package 段 */ }
+  });
+
+  // ⚠️ 抢槽失败 = 排队期间被用户取消（或极端竞态下已被判死）——**必须收手**，不能往下跑。
+  if (!(await acquireInstallSlot(job.jobId))) {
+    // 记录多半已不在表里（排队取消 = 直接出队）；settle 对已消失的 job 是空操作，调它只是兜底防僵尸。
+    const cancelled: PluginInstallResult = { success: false, cancelled: true, error: i18n.t("已取消安装") };
+    settleInstallJob(job.jobId, "failed", cancelled);
+    return cancelled;
+  }
+
   let result: PluginInstallResult;
   try {
     result = isPackageSource(sourcePath)

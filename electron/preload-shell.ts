@@ -226,6 +226,9 @@ try {
       // E6#73c：job 身份随行——主进程段进度事件据此回填 jobId/pluginId（缺省 = 事件不带身份）
       packageDownload:  (url: string, job?: PluginInstallJobRef) => ipcRenderer.invoke(IPC.plugins.download, url, job),
       packageExtract:   (zipPath: string, expectedPluginId?: string, job?: PluginInstallJobRef) => ipcRenderer.invoke(IPC.plugins.extract, zipPath, expectedPluginId, job),
+      // E6#73d：按 jobId 中止在途下载（面板「取消安装」）——AbortSignal 不可序列化，只能发定向消息。
+      // 返回 false = 该 job 没有在途下载（未开跑 / 已收尾）——非错误，壳侧照常撤行。
+      packageCancel:    (jobId: string) => ipcRenderer.invoke(IPC.plugins.cancel, jobId),
       // E6#11c/#13b/c（段 B）：安全更新三段主进程 handler——updatePlugin/checkPluginUpdates 编排（壳 preload 独有）
       // E6#33c（锚①）：stage-update allowOlder——降级放行（版本下拉选旧版 + F2 确认后传），默认拒 <=
       packageUpdateCheck:  (pluginId: string, catalogUrl: string, currentVersion?: string) => ipcRenderer.invoke(IPC.plugins.updateCheck, pluginId, catalogUrl, currentVersion),

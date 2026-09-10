@@ -421,5 +421,18 @@
   "无法删除：{{path}}": "Could not delete: {{path}}",
   "无法检查路径是否存在：{{path}}": "Could not check whether the path exists: {{path}}",
   "无法复制：{{src}} → {{dest}}": "Could not copy: {{src}} → {{dest}}",
-  "无法新建文件夹：{{path}}": "Could not create the folder: {{path}}"
+  "无法新建文件夹：{{path}}": "Could not create the folder: {{path}}",
+  "{{count}} 项进行中": "{{count}} in progress",
+  "另有 {{count}} 项等待安装中": "{{count}} more waiting to install",
+  "{{count}} 项等待安装中": "{{count}} waiting to install",
+  "{{running}} 项进行中 · 另有 {{queued}} 项等待安装中": "{{running}} in progress · {{queued}} more waiting to install",
+  "本段另有 {{count}} 项未列出": "{{count}} more items in this section are not listed",
+  "已有结果": "Results",
+  "0 项": "0 items",
+  "{{count}} 项失败": "{{count}} failed",
+  "{{count}} 项缺依赖": "{{count}} missing dependencies",
+  "{{count}} 项已完成": "{{count}} completed",
+  "取消安装": "Cancel install",
+  "已取消安装": "Install cancelled",
+  "安装超时——{{n}} 分钟无进展，已释放队列位": "Install timed out — no progress for {{n}} minutes, queue slot released"
 }

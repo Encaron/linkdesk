@@ -83,12 +83,34 @@ function deriveIdFromZip(zipBase: string, manifest: PluginManifest): string {
   return id;
 }
 
+/**
+ * 在途下载的中止登记表（E6#73d）——`jobId → AbortController`。
+ *
+ * **为什么必须落在主进程**：`AbortSignal` 不能过 IPC（不可序列化），壳侧持有的 signal 传到主进程就没了；
+ * 而真中止下载的那段网络代码在主进程（`plugin-download` 早已接受 `opts.signal`，只是从没人喂给它）。
+ * 壳侧要中止时只能发一条**按 jobId 定向**的消息（`IPC.plugins.cancel`），主进程据此查表 abort。
+ *
+ * ⚠️ **只登记带 jobId 的下载**——更新流（stage-update）没有 jobId，登记不了也就取消不了（本档不加：
+ * 更新域的取消归 73j，见 18 档 §三 G 域）。表项在下载收尾的 `finally` 里删，不泄漏。
+ */
+const _downloadAborts = new Map<string, AbortController>();
+
 /** 真网络段下载（download 与 update stage 两 handler 共用）——E6#31a：fetch/进度 = plugin-download 服务单复本，
- *  本层只把服务 onProgress 回调映射到 #13d install-progress 广播（handler 引用服务，不重写下载逻辑）。 */
+ *  本层只把服务 onProgress 回调映射到 #13d install-progress 广播（handler 引用服务，不重写下载逻辑）。
+ *  E6#73d：带 jobId 的下载登记 AbortController，供 `plugins:cancel` 定向中止。 */
 async function downloadWithProgress(url: string, job?: PluginInstallJobRef): Promise<{ zipPath: string; total: number }> {
-  return downloadPackage(url, (message, percent) =>
-    emitProgress("downloading", percent === undefined ? { message } : { message, percent }, job),
-  );
+  const jobId = job?.jobId;
+  const ac = jobId ? new AbortController() : undefined;
+  if (jobId && ac) _downloadAborts.set(jobId, ac);
+  try {
+    return await downloadPackage(
+      url,
+      (message, percent) => emitProgress("downloading", percent === undefined ? { message } : { message, percent }, job),
+      ac ? { signal: ac.signal } : undefined,
+    );
+  } finally {
+    if (jobId) _downloadAborts.delete(jobId);
+  }
 }
 
 /**
@@ -113,6 +135,18 @@ export function registerPluginInstallHandlers(): void {
   // ── plugins:extract(zipPath, expectedPluginId?) → { pluginId, version, targetDir } ──
   // 真磁盘段：共享 bundle-zip 语义解压到 {userData}/plugins/<id>/（2026-09-05 塌平单根）；纯新建契约（目标已存在拒绝——
   // 更新/覆盖走 update 流或先卸）；包内 id 与 expectedPluginId 不符拒绝（防伪装）。
+  // ── plugins:cancel(jobId) → boolean ──
+  // E6#73d：面板「取消安装」的唯一落点——按 jobId 定向中止在途下载。
+  // 返回 false = 这个 job 没有在途下载（还没开跑 / 已收尾 / 走的是解压段）——**不是错误**：
+  // 壳侧取消仍会撤掉那一行（排队态直接出队、后续段该短路就短路），此处只负责「能中止的那个中止掉」。
+  loggedHandle(IPC.plugins.cancel, async (_event, jobId: string) => {
+    if (typeof jobId !== "string" || !jobId) return false;
+    const ac = _downloadAborts.get(jobId);
+    if (!ac) return false;
+    ac.abort();
+    return true;
+  });
+
   loggedHandle(IPC.plugins.extract, async (_event, zipPath: string, expectedPluginId?: string, job?: PluginInstallJobRef) => {
     if (typeof zipPath !== "string" || !zipPath) throw new Error("缺少包路径");
     emitProgress("extracting", { message: "开始解压" }, job);

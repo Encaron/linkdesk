@@ -5,10 +5,28 @@
  * 桩数据一律虚构（硬约束 21：fixture 禁用真实插件名/真实 UI 文案）——`demo-plugin` / `演示消息`。
  * 存储隔离：toast 存储是模块单例，每个用例前后清空（ttl:0 避免 setTimeout 挂住 suite）。
  */
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import type { TFunction } from "i18next";
 import { buildNotif, _seenIds } from "./notif";
 import { pushToast, dismissToast, getToasts, setNotifPanelOpen, TOAST_SOURCE_CAP } from "../../core/services/ui/toast";
+
+/**
+ * E6#73d：安装 job 表的桩——壳侧 job 表与通知序列化同处一个渲染进程，`buildNotif` 直接函数调用读它。
+ * 桩掉模块而不是驱动真队列：真队列有并发槽位/看门狗/落盘，测「三段怎么排」不需要那一整套。
+ * `vi.hoisted` 是必需的——`vi.mock` 的工厂被提升到文件顶部，普通 const 那时还没初始化。
+ */
+const { mockJobs } = vi.hoisted(() => ({ mockJobs: [] as Array<Record<string, unknown>> }));
+vi.mock("../../pluginLoader/lifecycle/install-queue", () => ({
+  listInstallJobs: () => mockJobs,
+}));
+
+/** job 桩行——只填被测代码真读的字段（硬约束 21：虚构 id/名，不指向真实插件） */
+function job(over: Record<string, unknown>): Record<string, unknown> {
+  return {
+    jobId: "job-demo-1", pluginId: "demo-plugin", origin: "user", displayName: "演示插件",
+    state: "running", ...over,
+  };
+}
 
 /** i18n 桩——key 原样返回 + 做 {{x}} 插值（断言只看 DTO 结构/参数带没带对，不看译文；真实译文归 i18n 审计） */
 const t = ((key: string, opts?: Record<string, unknown>) =>
@@ -160,5 +178,139 @@ describe("buildNotif——autoOpen 唤醒白名单（E6#73b，18 档 §五 B）"
     setNotifPanelOpen(false); // = 最小化在壳侧镜像里的取值（同一派生位）
     pushToast({ message: "演示消息 装完了", source: "demo-plugin", severity: "info", wake: true, ttl: 0 });
     expect(buildNotif(t).autoOpen).toBe(true);
+  });
+});
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   E6#73d：面板三段式（进行中 → 等待安装中 → 已有结果）+ job 行投影
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+describe("buildNotif——安装 job 两段（E6#73d）", () => {
+  beforeEach(() => { mockJobs.length = 0; });
+  afterEach(() => { mockJobs.length = 0; });
+
+  it("进行中 + 等待中 → 两段按固定序（running 在 queued 前），头部摘要合并两个数", () => {
+    mockJobs.push(
+      job({ jobId: "job-a", stage: "downloading", percent: 62 }),
+      job({ jobId: "job-b", stage: "extracting" }),
+      job({ jobId: "job-c", state: "queued" }),
+    );
+    const n = buildNotif(t);
+    expect(n.sections?.map((s) => s.key)).toEqual(["running", "queued"]);
+    expect(n.sections?.[0].label).toBe("2 项进行中");
+    expect(n.sections?.[1].label).toBe("另有 1 项等待安装中");
+    expect(n.summaryLabel).toBe("2 项进行中 · 另有 1 项等待安装中");
+  });
+
+  it("行投影：进行中带真百分比 → 状态短语「下载中 62%」+ percent 透传 + 可取消", () => {
+    mockJobs.push(job({ jobId: "job-a", stage: "downloading", percent: 62 }));
+    const row = buildNotif(t).sections![0].items[0];
+    // 行 key 用 jobId，名字用 displayName（同名不同插件要能区分——§七 73d 行）
+    expect(row.id).toBe("job-a");
+    expect(row.name).toBe("演示插件");
+    expect(row.statusLabel).toBe("下载中 62%");
+    expect(row.percent).toBe(62);
+    expect(row.iconClass).toBe("codicon codicon-sync notif-icon-spin");
+    expect(row.cancellable).toBe(true);
+    expect(row.cancelLabel).toBe("取消安装");
+  });
+
+  it("进行中无百分比 → 「下载中...」，且不带 percent（不定态，别拿 0 冒充真值）", () => {
+    mockJobs.push(job({ jobId: "job-a", stage: "downloading" }));
+    const row = buildNotif(t).sections![0].items[0];
+    expect(row.statusLabel).toBe("下载中...");
+    expect(row.percent).toBeUndefined();
+  });
+
+  it("排队行：无进度条、状态短语「等待安装中」、字形弱一档（○）", () => {
+    mockJobs.push(job({ jobId: "job-a", state: "queued" }));
+    const row = buildNotif(t).sections![0].items[0];
+    expect(row.statusLabel).toBe("等待安装中");
+    expect(row.percent).toBeUndefined();
+    expect(row.iconClass).toBe("codicon codicon-circle-outline");
+  });
+
+  it("非安装阶段码 → 落「安装中...」兜底（状态短语只由阶段码派生，不读 job.message 原文）", () => {
+    mockJobs.push(job({ jobId: "job-a", stage: "copying" }));
+    expect(buildNotif(t).sections![0].items[0].statusLabel).toBe("复制中...");
+    mockJobs.length = 0;
+    mockJobs.push(job({ jobId: "job-b", stage: "某个未登记阶段", message: "开发者原文不许上屏" }));
+    expect(buildNotif(t).sections![0].items[0].statusLabel).toBe("安装中...");
+  });
+
+  it("行 = 一次用户动作：origin:'dependency' 的 job 不占行（依赖腿随 73o 挂父行下）", () => {
+    mockJobs.push(job({ jobId: "job-a" }), job({ jobId: "job-dep", origin: "dependency" }));
+    const n = buildNotif(t);
+    expect(n.sections?.[0].label).toBe("1 项进行中");
+    expect(n.sections?.[0].items.map((r) => r.id)).toEqual(["job-a"]);
+  });
+
+  it("段内超过 5 条 → 前 5 条上屏 + 「本段另有 N 项未列出」", () => {
+    for (let i = 0; i < 7; i++) mockJobs.push(job({ jobId: `job-${i}` }));
+    const sec = buildNotif(t).sections![0];
+    expect(sec.items).toHaveLength(5);
+    expect(sec.items.map((r) => r.id)).toEqual(["job-0", "job-1", "job-2", "job-3", "job-4"]);
+    expect(sec.foldedLabel).toBe("本段另有 2 项未列出");
+  });
+
+  it("无在途安装 → 不带 sections、不带 summaryLabel（契约宽容：不渲染这两段）", () => {
+    const n = buildNotif(t);
+    expect(n.sections).toBeUndefined();
+    expect(n.summaryLabel).toBeUndefined();
+  });
+});
+
+describe("buildNotif——第三段「已有结果」（E6#73d）", () => {
+  beforeEach(() => { mockJobs.length = 0; });
+  afterEach(() => { mockJobs.length = 0; });
+
+  it("终态三档分别计数：失败 / 缺依赖 / 已完成（parked 不许并进「已完成」）", () => {
+    mockJobs.push(
+      job({ jobId: "job-1", state: "settled", terminal: "failed" }),
+      job({ jobId: "job-2", state: "settled", terminal: "parked" }),
+      job({ jobId: "job-3", state: "settled", terminal: "success" }),
+      job({ jobId: "job-4", state: "settled", terminal: "success" }),
+    );
+    const n = buildNotif(t);
+    expect(n.resultLabel).toBe("已有结果");
+    expect(n.resultSummary).toBe("1 项失败 · 1 项缺依赖 · 2 项已完成");
+    expect(n.sections).toBeUndefined(); // 全出结果 = 前两段空
+  });
+
+  it("只有成功 → 只报「已完成」，不把 0 写进摘要", () => {
+    mockJobs.push(job({ jobId: "job-1", state: "settled", terminal: "success" }));
+    expect(buildNotif(t).resultSummary).toBe("1 项已完成");
+  });
+
+  it("在途与结果并存 → 三段齐全且序固定（进行中 → 等待中 → 已有结果）", () => {
+    mockJobs.push(
+      job({ jobId: "job-1", stage: "downloading", percent: 10 }),
+      job({ jobId: "job-2", state: "queued" }),
+      job({ jobId: "job-3", state: "settled", terminal: "failed" }),
+    );
+    const n = buildNotif(t);
+    expect(n.sections?.map((s) => s.key)).toEqual(["running", "queued"]);
+    expect(n.resultLabel).toBe("已有结果");
+    expect(n.resultSummary).toBe("1 项失败");
+  });
+
+  it("依赖 job 的终态也不进计数（与行同一条「一次用户动作」判据）", () => {
+    mockJobs.push(job({ jobId: "job-dep", origin: "dependency", state: "settled", terminal: "success" }));
+    expect(buildNotif(t).resultLabel).toBeUndefined();
+  });
+
+  it("固定三段：只在途、还没有结果 → 第三段标题仍在，写「0 项」（不是消失）", () => {
+    mockJobs.push(job({ jobId: "job-1", stage: "downloading", percent: 10 }));
+    const n = buildNotif(t);
+    expect(n.sections?.[0].key).toBe("running");
+    expect(n.resultLabel).toBe("已有结果");
+    expect(n.resultSummary).toBe("0 项");
+  });
+
+  it("一次安装都没跑过 → 不带标题（纯插件通知的面板不凭空多一行）", () => {
+    pushToast({ message: "演示消息", source: "demo-plugin", ttl: 0 });
+    const n = buildNotif(t);
+    expect(n.resultLabel).toBeUndefined();
+    expect(n.resultSummary).toBeUndefined();
   });
 });

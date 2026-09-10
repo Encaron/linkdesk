@@ -51,7 +51,7 @@ async function bootWithJobs(n: number): Promise<{
   mod: QueueMod;
   events: Array<{ name: string; payload: unknown }>;
   ids: string[];
-  waiting: Array<Promise<void>>;
+  waiting: Array<Promise<boolean>>;
 }> {
   const { mod, events } = await bootQueue();
   const ids = Array.from({ length: n }, (_, i) => mod.beginInstallJob({ pluginId: `demo-${i + 1}` }).jobId);
@@ -162,12 +162,15 @@ describe("install-queue——N 槽限流与严格 FIFO（E6#73q）", () => {
     expect(stateOf(events, ids[4])).toBe("settled");
   });
 
-  it("广播载荷 = 登记形状（grant/settledWaiters/watchdog/outcome 四个私有字段不外泄）", async () => {
+  it("广播载荷 = 登记形状（grant/settledWaiters/watchdog/outcome/abort/cancelled 私有字段不外泄）", async () => {
     const { mod, events } = await bootQueue();
     const { jobId } = mod.beginInstallJob({ pluginId: "demo-shape", displayName: "Demo Shape", origin: "dependency" });
     await mod.acquireInstallSlot(jobId);
     const job = lastJobs(events).find((j) => j.jobId === jobId)!;
-    expect(Object.keys(job).sort()).toEqual(["displayName", "error", "jobId", "origin", "pluginId", "state", "terminal"]);
+    // E6#73d 扩了三个展示字段（stage/percent/message）——登记形状随之更新（18 档 §五 I.6⑤）
+    expect(Object.keys(job).sort()).toEqual([
+      "displayName", "error", "jobId", "message", "origin", "percent", "pluginId", "stage", "state", "terminal",
+    ]);
     expect(job.origin).toBe("dependency");
     expect(job.displayName).toBe("Demo Shape");
   });
@@ -193,6 +196,103 @@ describe("install-queue——N 槽限流与严格 FIFO（E6#73q）", () => {
     }
     // 保留最近 50 条——最老 5 条（ids[0..4]）按入队序淘汰
     expect(lastJobs(events).map((j) => j.pluginId)).toEqual(ids.slice(5));
+  });
+});
+
+describe("install-queue——取消安装与进度回填（E6#73d）", () => {
+  it("排队态取消：记录整条出队 + 抢槽返回 false（用户点了取消就**不许**照样装上）", async () => {
+    const { mod, events, ids, waiting } = await bootWithJobs(4);
+    expect(mod.cancelInstallJob(ids[3])).toBe(true);
+
+    // 行整条撤掉——不留「已取消」红行（四类行里没有第五类）
+    expect(lastJobs(events).find((j) => j.jobId === ids[3])).toBeUndefined();
+    // 拿不到槽 = 调用方必须收手（否则取消是假动作）
+    await expect(waiting[3]).resolves.toBe(false);
+
+    // 还一槽不会唤醒僵尸（队首已被摘掉，槽位是真空出来的——在跑 3→2）
+    mod.settleInstallJob(ids[0], "success", { success: true });
+    expect(lastJobs(events).filter((j) => j.state === "running")).toHaveLength(2);
+  });
+
+  it("排队态取消：去重命中的第二调用方拿到「已取消」而不是 undefined(演绎「正在安装中」)", async () => {
+    const { mod } = await bootQueue();
+    const first = mod.beginInstallJob({ pluginId: "demo-cancel-dup" });
+    const second = mod.beginInstallJob({ pluginId: "demo-cancel-dup" });
+    expect(second.duplicate).toBe(true);
+
+    const waiting = mod.waitInstallJob(second.jobId);
+    mod.cancelInstallJob(first.jobId);
+    const outcome = await waiting;
+    expect(outcome?.cancelled).toBe(true);
+    expect(outcome?.error).toBeTruthy();
+  });
+
+  it("进行中取消：调真中止钩子 + 终态结算时吸收（记录撤掉、槽位归还）", async () => {
+    const { mod, events, ids } = await bootWithJobs(3);
+    const abort = vi.fn();
+    mod.setInstallJobCanceller(ids[0], abort);
+
+    expect(mod.cancelInstallJob(ids[0])).toBe(true);
+    expect(abort).toHaveBeenCalledTimes(1);
+    // 中止钩子跑了但还没出终态——行**仍在**（不许提前消失，否则用户看不到自己在等什么）
+    expect(stateOf(events, ids[0])).toBe("running");
+
+    mod.settleInstallJob(ids[0], "failed", { success: false, error: "下载已取消" });
+    expect(lastJobs(events).find((j) => j.jobId === ids[0])).toBeUndefined();
+    // 槽位已归还——后两个仍在跑，且新 job 能立刻开跑
+    mod.settleInstallJob(ids[1], "success", { success: true });
+    mod.settleInstallJob(ids[2], "success", { success: true });
+    const fresh = mod.beginInstallJob({ pluginId: "demo-after-cancel" });
+    await expect(mod.acquireInstallSlot(fresh.jobId)).resolves.toBe(true);
+  });
+
+  it("取消已 settle / 不存在的 job → false（面板行早没了，属竞态，静默）", async () => {
+    const { mod } = await bootQueue();
+    const { jobId } = mod.beginInstallJob({ pluginId: "demo-gone" });
+    mod.settleInstallJob(jobId, "success", { success: true });
+    expect(mod.cancelInstallJob(jobId)).toBe(false);
+    expect(mod.cancelInstallJob("job-nope")).toBe(false);
+  });
+
+  it("cancelInstallJobByPlugin：按 pluginId 命中未结算的那条（面板行只拿得到 pluginId）", async () => {
+    const { mod, events } = await bootQueue();
+    const { jobId } = mod.beginInstallJob({ pluginId: "demo-by-plugin" });
+    expect(mod.cancelInstallJobByPlugin("demo-by-plugin")).toBe(true);
+    expect(lastJobs(events).find((j) => j.jobId === jobId)).toBeUndefined();
+    expect(mod.cancelInstallJobByPlugin("demo-by-plugin")).toBe(false); // 已出队，不重复
+  });
+
+  it("updateInstallJobProgress：阶段/百分比落进广播；值未变不重推（进度是高频事件）", async () => {
+    const { mod, events } = await bootQueue();
+    const { jobId } = mod.beginInstallJob({ pluginId: "demo-progress" });
+    await mod.acquireInstallSlot(jobId);
+
+    mod.updateInstallJobProgress(jobId, { stage: "downloading", percent: 42 });
+    const job = lastJobs(events).find((j) => j.jobId === jobId)!;
+    expect(job.stage).toBe("downloading");
+    expect(job.percent).toBe(42);
+
+    const before = events.length;
+    mod.updateInstallJobProgress(jobId, { stage: "downloading", percent: 42 });
+    expect(events.length).toBe(before); // 同值静默
+
+    // 换阶段 → 百分比自动清掉（新阶段还没报进度，留着旧数字是撒谎）
+    mod.updateInstallJobProgress(jobId, { stage: "extracting" });
+    const next = lastJobs(events).find((j) => j.jobId === jobId)!;
+    expect(next.stage).toBe("extracting");
+    expect(next.percent).toBeUndefined();
+  });
+
+  it("progress 不写盘：只写状态的落盘快照不含阶段/百分比", async () => {
+    const { mod } = await bootQueue();
+    const { jobId } = mod.beginInstallJob({ pluginId: "demo-nopersist" });
+    await mod.acquireInstallSlot(jobId);
+    mod.updateInstallJobProgress(jobId, { stage: "downloading", percent: 7 });
+
+    const raw = JSON.parse(localStorage.getItem("install-jobs")!) as { jobs: Array<Record<string, unknown>> };
+    expect(raw.jobs[0].pluginId).toBe("demo-nopersist");
+    expect(raw.jobs[0].stage).toBeUndefined();
+    expect(raw.jobs[0].percent).toBeUndefined();
   });
 });
 

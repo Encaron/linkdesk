@@ -70,6 +70,19 @@ export const TOAST_TTL_INFO = 6000;
  */
 export const TOAST_SOURCE_CAP = 5;
 
+/**
+ * 失败条目的**内存兜底**上限（E6#73d）——**不是显示配额**。
+ *
+ * 18 档 §八⑲ 定案：失败行本身就是待办，`[重试]` 必须始终可达，故**豁免**上方的按来源配额淘汰
+ * （否则最早的 [重试] 被静默顶掉）。但「豁免」不等于「无界」：某个坏插件循环 `show({type:'error'})`
+ * 会让 store 无限增长直到 OOM。
+ *
+ * 故设一条**远高于裁决讨论场景**（7 条红字并列）的绝对上限，只当内存护栏用：
+ * 到顶后仍从最老的失败条目开始淘汰（照常记进折叠计数，用户看得见有东西被吞）。
+ * 上方的按来源配额管「显示不淹没」，本常量管「内存不失控」——两件事，两个数。
+ */
+export const TOAST_ERROR_BACKSTOP = 50;
+
 /** 无来源条目的分桶键——面板分组「其他」同款键（E6#72） */
 export const OTHER_SOURCE_KEY = "__other__";
 
@@ -185,9 +198,17 @@ function expireToast(id: string): void {
  */
 function evictOverflow(added: Toast): void {
   const key = sourceKeyOf(added.source);
-  const bucket = _toasts.filter((x) => x.persistent && !isPending(x) && sourceKeyOf(x.source) === key);
+  // 失败条目豁免按来源配额（§八⑲）——从桶里剔除 ⇒ 既不占 5 条名额、也不被当淘汰候选
+  const bucket = _toasts.filter(
+    (x) => x.persistent && !isPending(x) && x.severity !== "error" && sourceKeyOf(x.source) === key,
+  );
   let overflow = bucket.length - TOAST_SOURCE_CAP;
-  if (overflow <= 0) return;
+
+  // 内存兜底：失败条目全库计数超上限时，从最老的失败条目淘汰（见 TOAST_ERROR_BACKSTOP）
+  const errors = _toasts.filter((x) => x.persistent && !isPending(x) && x.severity === "error");
+  let errorOverflow = errors.length - TOAST_ERROR_BACKSTOP;
+
+  if (overflow <= 0 && errorOverflow <= 0) return;
 
   const doomed = new Set<string>();
   for (const x of bucket) {          // bucket 保持插入序（_toasts 原序）→ 先入先淘汰
@@ -195,9 +216,23 @@ function evictOverflow(added: Toast): void {
     doomed.add(x.id);
     overflow -= 1;
   }
+  for (const x of errors) {          // 同上：errors 也保持插入序
+    if (errorOverflow <= 0) break;
+    doomed.add(x.id);
+    errorOverflow -= 1;
+  }
+
+  // 折叠计数按**各自来源**记账——兜底淘汰可能跨来源，不能一律记到 added 的桶上
+  const foldedByKey = new Map<string, number>();
+  for (const x of _toasts) {
+    if (!doomed.has(x.id)) continue;
+    const k = sourceKeyOf(x.source);
+    foldedByKey.set(k, (foldedByKey.get(k) ?? 0) + 1);
+  }
+
   for (const id of doomed) clearTimer(id);
   _toasts = _toasts.filter((x) => !doomed.has(x.id));
-  _folded.set(key, (_folded.get(key) ?? 0) + doomed.size);
+  for (const [k, n] of foldedByKey) _folded.set(k, (_folded.get(k) ?? 0) + n);
 }
 
 /**
@@ -299,13 +334,30 @@ export function getFoldedCount(sourceKey: string): number {
  *  供 buildNotif 计算 autoOpen（重要通知只在面板关着时自动展开，开着的面板不二次打扰）。 */
 
 let _panelOpen = false;
+const _panelOpenListeners = new Set<(open: boolean) => void>();
 
 /** 宽面板打开/关闭时调用——同步面板开合状态到壳侧 */
 export function setNotifPanelOpen(open: boolean): void {
+  if (_panelOpen === open) return;
   _panelOpen = open;
+  for (const cb of _panelOpenListeners) cb(open);
 }
 
 /** 当前面板开合镜像状态——buildNotif autoOpen 门禁消费 */
 export function isNotifPanelOpen(): boolean {
   return _panelOpen;
+}
+
+/**
+ * 订阅面板开合（E6#73d）——唯一消费者是壳侧的「相对时间定时重算」定时器。
+ * ⚠️ 与 E6#73f 删掉的那个同名函数**不是一回事**：73f 删的是**无消费者的死代码**（当时面板里
+ * 没有任何随时间变化的文案，重算无人需要）。73d 起面板有事态行与「刚刚 / N 分钟前」标签——
+ * 面板开着不动时标签会一直停在打开瞬间的值，必须有人按拍子重算。这次带真载体回归。
+ *
+ * 订阅时**立即回放**当前值：定时器要能在「订阅发生时面板已经开着」的情况下照样起来。
+ */
+export function subscribeNotifPanelOpen(cb: (open: boolean) => void): () => void {
+  _panelOpenListeners.add(cb);
+  cb(_panelOpen);
+  return () => { _panelOpenListeners.delete(cb); };
 }
