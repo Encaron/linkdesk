@@ -245,7 +245,9 @@ export async function uninstallPlugin(pluginId: string): Promise<{ success: bool
 
 /** 进度广播单点（#13d 壳段）——壳 events.emit → 主进程 onPluginEmit → broadcast → 池 events.on；
  *  与主进程 download/extract 段（plugin-install-handlers.ts 同通道广播）并流一个 plugin:installProgress。
- *  同一事件循环内 installPlugin 多处 emit——节流交给广播层，调用方逐阶段直呼。 */
+ *  同一事件循环内 installPlugin 多处 emit——本层只发**低频状态跃迁**（阶段切换一次一条），逐次直呼即可；
+ *  E6#73i 更正：唯一的高频生产点（下载分片）的节流归**源头**（`plugin-download.ts` 的
+ *  `PROGRESS_THROTTLE_MS`），广播层从来没有节流——旧注释「节流交给广播层」是假的。 */
 export function emitInstallProgress(stage: string, pluginId?: string, message?: string, jobId?: string): void {
   try {
     window.linkdesk?.events?.emit("plugin:installProgress", { stage, pluginId, message, jobId });

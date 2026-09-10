@@ -34,6 +34,20 @@ const DOWNLOAD_IDLE_TIMEOUT_MS = 30_000;
 /** 可重试失败的自动重试预算（网络中断 / 5xx / 空闲超时）。4xx 是确定性拒绝——重试只会同样失败，不消耗预算。 */
 const DOWNLOAD_RETRY_LIMIT = 2;
 
+/**
+ * 进度回调的最小间隔（E6#73i 机器四·F4）——网络分片来得极密（大包 + 快网 = 每个分片一条跨进程消息），
+ * 节流归**洪峰的源头**（本函数），不是广播层：下载段是唯一的高频生产点，其余阶段都是低频状态跃迁。
+ * 100ms ≈ 10 条/秒，肉眼追不上更快的刷新，多出来的只是白烧 IPC。
+ */
+const PROGRESS_THROTTLE_MS = 100;
+
+/** 字节数 → 人类可读（F1 专用：服务器不给长度时，把「已经下了多少」如实报出来） */
+function formatBytes(n: number): string {
+  if (n < 1024) return `${n} 字节`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+  return `${(n / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 /** 下载失败——`retryable` 决定是否消耗重试预算（4xx 与用户取消恒 false）。消息文案是归因字典的输入，保持原格式。 */
 class DownloadError extends Error {
   constructor(message: string, readonly retryable: boolean) {
@@ -185,6 +199,15 @@ async function downloadOnce(
     }
     const total = Number(resp.headers.get("content-length")) || 0;
 
+    // E6#73i（F4）：分片进度节流——见 PROGRESS_THROTTLE_MS。收尾的「下载完成」在循环外单发、不受节流。
+    let lastEmitAt = 0;
+    const emitTick = (message: string, percent?: number): void => {
+      const now = Date.now();
+      if (now - lastEmitAt < PROGRESS_THROTTLE_MS) return;
+      lastEmitAt = now;
+      onProgress?.(message, percent);
+    };
+
     try {
       const handle = await fs.open(partPath, "w");
       try {
@@ -206,13 +229,26 @@ async function downloadOnce(
             bumpIdle();
             if (total > 0) {
               const pct = Math.round((received / total) * 100);
-              onProgress?.(`下载中 ${pct}%`, pct);
+              emitTick(`下载中 ${pct}%`, pct);
+            } else {
+              // E6#73i（F1）：服务器不给包大小（chunked / CDN 代理）时**改显已下载字节数**。
+              // 此前 total=0 一个 percent 都不发 → 面板只能落不定态扫动条来回滚，这正是用户
+              // Q6「像来回滚的加载条，不像真百分比」的真机制——不是「装得太快」，是响应头没长度。
+              emitTick(`下载中（已下载 ${formatBytes(received)}）`);
             }
           }
         }
-        if (total > 0 && received !== total) {
+        // E6#73i（F3）：判据 `received !== total` → `received < total`。服务器压缩传输（gzip/br）时
+        // content-length 是**压缩后**字节数、received 统计的是**解压后**字节数 ⇒ 二者恒不相等，
+        // 完整下载被误判「下载中断」；该文案又命中 NET_RE 的「下载中断」→ 归 network →
+        // 「安装失败：网络连接不可用」⇒ 重试多少次都是同一个失败，这个包**永远装不上**。
+        // 代价（如实登记）：压缩传输下的真截断可能漏检——用「收够压缩长度」当完成信号是当前能拿到的最强证据。
+        if (total > 0 && received < total) {
           throw new DownloadError(`下载中断——已收 ${received}/${total} 字节`, true);
         }
+        // 节流不得吞掉**终态**：最后一格恒发 100%（不受 PROGRESS_THROTTLE_MS 约束）。
+        // 否则进度条会停在 87% 之类的中间值上，直到下一个阶段事件才收走——那是新的谎。
+        if (total > 0 && received === total) onProgress?.(`下载中 100%`, 100);
       } finally {
         await handle.close().catch(() => {});
       }

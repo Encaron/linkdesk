@@ -111,6 +111,29 @@ describe('pool theme:changed 陈旧键差集清理（E5.8#72）', () => {
     expect(root.style.getPropertyValue('--surface-main-zone-bg-position')).toBe('-120px -340px');
   });
 
+  it('E6#73i·F6：订阅回放表泛化后 iconTheme:changed 行为不变（E5.8#133.3 回归）', () => {
+    const events = createPoolEvents();
+    const snap = { iconThemeId: 'demo-icons', mappings: { a: 'b' } };
+    ipcMock.emit(IPC.plugin.push, { channel: 'iconTheme:changed', payload: snap });
+    const seen: unknown[] = [];
+    events.on('iconTheme:changed', (p) => seen.push(p));
+    expect(seen).toEqual([snap]);
+  });
+
+  it('E6#73i·F6：plugin:installJobs 晚订阅者拿到最新整表快照（视图重挂不再停在旧快照）', () => {
+    // 病根：市场侧 job 镜像订阅挂在视图生命周期上——关掉详情页 + 折叠探索侧栏 ⇒ 引用计数归零退订，
+    // 中间广播无补发 ⇒ 视图重挂后镜像停在旧快照（徽标卡在「安装中」不再更新）。
+    const events = createPoolEvents();
+    const stale = { jobs: [{ jobId: 'demo-job-1', pluginId: 'demo-a', state: 'running' }] };
+    const fresh = { jobs: [{ jobId: 'demo-job-1', pluginId: 'demo-a', state: 'settled' }] };
+    ipcMock.emit(IPC.plugin.push, { channel: 'plugin:installJobs', payload: stale });
+    ipcMock.emit(IPC.plugin.push, { channel: 'plugin:installJobs', payload: fresh });
+
+    const seen: unknown[] = [];
+    events.on('plugin:installJobs', (p) => seen.push(p));
+    expect(seen).toEqual([fresh]); // 回放的是**最新**那张，不是第一次那张
+  });
+
   it('data-theme 属性跟随 themeType', () => {
     const root = document.documentElement;
     broadcastTheme({ 'bg-window': '#fff' }, 'light');

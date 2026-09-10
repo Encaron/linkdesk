@@ -19,6 +19,11 @@
  *
  * 铁律 19：`events.on` 是 IPC 通道——订阅走**引用计数**（≥1 消费方挂载才注册，归零即撤），
  * 绝不在模块顶层注册（模块级监听器 = 永不清理的僵尸回调）。
+ *
+ * E6#73i（F6）：引用计数保留，但**重挂不丢真相**——本通道的载荷是全量快照，池 preload
+ * （`electron/preload-pool/events.ts`）对它做**会话级缓存 + 订阅时回放**。此前两个消费方
+ * （详情标签页 / 探索侧栏区块）**同时**卸载（关详情页 + 折叠侧栏）会退订，中间广播无补发
+ * ⇒ 视图重挂后镜像停在旧快照（徽标卡在「安装中」不再更新）。回放落地后重挂即拿最新整表。
  */
 
 import { useState, useCallback, useEffect } from "react";
@@ -84,11 +89,13 @@ function useInstallJobs<T>(pick: () => T): T {
   const [, setTick] = useState(0);
   const rerender = useCallback(() => setTick((t) => t + 1), []);
   useEffect(() => {
-    mountJobSub();
+    // E6#73i（F6）：**先挂监听、再订阅**——订阅那一刻的回放（池 preload 的会话级缓存）会同步触发
+    // ingest → notify；此时监听器还没进表的话，回放把 _jobs 更新了却没人重渲染，界面仍是旧快照。
     _listeners.add(rerender);
+    mountJobSub();
     return () => {
-      _listeners.delete(rerender);
       unmountJobSub();
+      _listeners.delete(rerender);
     };
   }, [rerender]);
   return pick();

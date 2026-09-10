@@ -27,7 +27,18 @@ interface IconThemeChangedPayload {
   /** E5.8#133.4：glyph 类 CSS 原文——池注入 `<style>`（作者自写 .myfont-x::before{content:...}） */
   glyphCss?: string;
 }
-let _cachedIconTheme: IconThemeChangedPayload | undefined;
+
+/**
+ * 订阅时回放表——`通道 → 最新载荷`。模块顶层捕获（extraHandlers 恒挂）+ `events.on` 订阅时先回放一次。
+ *
+ * 为什么需要：`IpcBridge.broadcast` 的 `lastBroadcasts` 只在**新池创建**时 `replayToPool`，
+ * 池内有消费者**晚订阅**（视图 mount 晚于事件、卸载后重挂）时不会补发，那段窗口的事件静默丢失。
+ *
+ * 硬约束 20 的池侧落点——preload 顶层注册是**要求**（不是违规）：React `useEffect` 内注册太晚。
+ * E5.8#133.3 先为 `iconTheme:changed` 单开过一个 `_cachedIconTheme`；E6#73i 泛化成表并接入
+ * `plugin:installJobs`。
+ */
+const _replayCache = new Map<string, unknown>();
 
 // ── E5.8#133.4：图标主题自定义字体——@font-face + glyph 类 CSS 注入 ──
 // 与主题字体分属不同 style 标签（theme:changed 的 applyFontFaces 整表替换——共用会互相清掉）：
@@ -165,7 +176,7 @@ export function createPoolEvents(): EventSystemApi {
       'iconTheme:changed': (payload) => {
         // E5.8#133.3：缓存最新图标主题——events.on 订阅时回放（启动 replay 早于 React 挂载）
         const p = payload as IconThemeChangedPayload;
-        _cachedIconTheme = p;
+        _replayCache.set('iconTheme:changed', p);
         // E5.8#133.4：自定义图标字体 @font-face + glyph CSS 注入池文档——与 React 订阅解耦，
         // 广播即生效（FileTree 只消费 mappings，字体注入归 preload 机械层）
         try {
@@ -174,16 +185,25 @@ export function createPoolEvents(): EventSystemApi {
           console.error('[preload-pool] iconTheme:changed 字体注入失败:', e);
         }
       },
+      // E6#73i（F6）：安装 job 表快照——只做**缓存**，回放归下面的 on 包装。
+      // 病根：市场侧的 job 镜像订阅挂在视图生命周期上（关掉「插件详情」标签页 + 折叠「探索插件」
+      // 侧栏区块 → 引用计数归零即退订）；等到视图重挂再订阅时，中间那段广播已经过去、无补发
+      // ⇒ 镜像永远停在旧快照（徽标卡在「安装中」不再更新）。preload 顶层缓存 = **会话级**的一份，
+      // 视图重挂即回放最新整表（本通道载荷本就是全量快照，回放零合并代价）。
+      'plugin:installJobs': (payload) => {
+        _replayCache.set('plugin:installJobs', payload);
+      },
     },
   });
 
-  // E5.8#133.3：iconTheme:changed 订阅回放——订阅时若缓存已有最新载荷先同步回放一次
+  // E5.8#133.3：订阅回放——订阅时若该通道已有最新载荷，先同步回放一次
   // （对标 configuration.onChange 的 _configCache 回放；其余通道行为与 createEventSystem 原样一致）。
   return {
     ...system,
     on: <T = unknown>(channel: string, cb: (payload: T) => void): (() => void) => {
-      if (channel === 'iconTheme:changed' && _cachedIconTheme) {
-        try { cb(_cachedIconTheme as T); } catch { /* contextBridge 回调静默失败 */ }
+      const cached = _replayCache.get(channel);
+      if (cached !== undefined) {
+        try { cb(cached as T); } catch { /* contextBridge 回调静默失败 */ }
       }
       return system.on(channel, cb);
     },
