@@ -180,17 +180,24 @@
  * 两者是**同一个视觉族**（同级、同形、同权重），区别只在语义职责：一个管内容、一个管面板。
  * 刻意**不给「最小化」加图标**：用户反复说过「没有最小化这个东西」，那就把字写出来，
  * 别让人猜图标含义（蓝图 05 §三 注 1）；两钮都无图标 → 也不会靠形状暗示「谁更强」。
- * ⚠️ `--text-muted` 的对比度是否达标 4.5:1 归 E6#73k 一并收口（本档不引入新偏离、只沿用既有 token）。
+ * E6#73k：`--text-muted` 收口已做——面板内文字**整层**换 `--text-secondary`
+ * （实测 muted 在深色卡片上 3.99:1、浅色 4.17:1，均低于正文级 4.5:1；secondary 为 5.08:1 / 6.33:1）。
+ * 点按目标同时撑到 WCAG 2.2 SC 2.5.8 的 24×24px——此前 2px 竖向内边距下只有 ~19px 高。
  */
 .notif-panel-action {
   background: none;
   border: none;
-  color: var(--text-muted);
+  color: var(--text-secondary);
   font-size: var(--font-size-xs); /* 11→xs */
   cursor: pointer;
   font-family: inherit;
   padding: 2px 6px;
   border-radius: var(--radius-sm);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: calc(24px * var(--ui-scale));
+  min-height: calc(24px * var(--ui-scale));
 }
 
 .notif-panel-action:hover {
@@ -202,7 +209,7 @@
   padding: 32px 16px;
   text-align: center;
   font-size: var(--font-size-sm); /* 12→sm */
-  color: var(--text-muted);
+  color: var(--text-secondary); /* E6#73k：面板内文字整层收口 4.5:1 */
 }
 
 .notif-panel-list {
@@ -283,12 +290,27 @@
      条只做视觉化——数字 + 条双呈现，避免壳猜单位/舍入。
    ═══════════════════════════════════════════════ */
 
+/*
+ * E6#73k（J7）：轨道与厚度收口。
+ *
+ * 原状两处不达标：① 厚度 3px——WCAG 2.2 SC 2.5.8 之外，3px 的条在实机上几乎不可见；
+ * ② 轨道 `--separator`（#474747）压在 `--bg-card`（#2D2D2D）上只有 **1.48:1**，
+ *    填充 `--accent` 压轨道只有 **2.05:1**——SC 1.4.11 要求图形对象 ≥3:1，两条都不够。
+ *
+ * 🔴 **一处算术上做不到的地方，如实登记**：强调色**自己**距离面板就只有 3.04:1（深色）/ 4.15:1（浅色），
+ * 因此**不存在**一个轨道色能同时满足「与面板 ≥3:1」和「与强调色 ≥3:1」——比强调色暗的轨道
+ * 永远到不了与面板的 3:1（需要负亮度）；够亮到与面板 3:1 的轨道（约 #757575）与强调色只差 1.02:1，
+ * 等于没画。故此处**不追求轨道达标**，改把轨道降格为**凹槽**：取 `--bg-window`
+ * （深色 #1E1E1E / 浅色 #FFFFFF），强调色压上去变成 **3.68:1 / 4.53:1**——达标的是**填充**
+ * （承载信息的那个元素），轨道自己有意不承载信息。
+ * 判据：SC 1.4.11 管的是「理解内容所必需的图形对象」，空轨道不属于此列。
+ */
 .notif-progress {
   position: relative;
-  height: 3px;                    /* E3e 原版厚度（窄卡曾用 2px，归一到 E3e 3px） */
+  height: 4px;                    /* E6#73k：3px → 4px（可见性） */
   margin: 6px 0 2px;              /* 上留与消息行的呼吸、下贴详情行 */
   border-radius: var(--radius-pill);
-  background: var(--separator);   /* 轨道 = 分隔线色（弱背景，不参与前景对比计算） */
+  background: var(--bg-window);   /* 凹槽——见上方 J7 注（不是「弱背景」，是刻意不承载信息） */
   overflow: hidden;
   flex-shrink: 0;
 }
@@ -327,12 +349,23 @@
   to { transform: rotate(360deg); }
 }
 
-/* E6#72：尊重系统「减少动态效果」——停掉扫动与转圈，只留静态呈现（轨道 + 40% 色块恒位）。
-   无障碍要求（设计 skill 交付清单），也避免低配机关不掉帧。 */
+/* E6#72：尊重系统「减少动态效果」——停掉扫动与转圈，只留静态呈现。
+   E6#73k（C7）：不定态**不能只停成一根 40% 的实心块**——那与「确定态走到 40% 就卡住」
+   在屏幕上完全同形，不只读屏用户，任何人都可能把它读成卡死。
+   改「整宽 + 斜纹」：整宽 = 铺满（不是走到一半），斜纹 = 通行的「进度未知」静态惯例，
+   与确定态的实心填充一眼可分。**语义不靠这条杠承担**——紧邻的状态短语
+   （「解压中…」/「下载中 62%」）本来就把阶段说清楚了，条纹只负责不撒谎。
+   条纹周期取 2px/4px：4px 高的条上比细密斜纹更容易在实机上看出「这是纹理不是纯色块」。 */
 @media (prefers-reduced-motion: reduce) {
   .notif-progress-indeterminate {
     animation: none;
-    transform: translateX(0);
+    transform: none;
+    width: 100%;
+    background: repeating-linear-gradient(
+      45deg,
+      var(--accent) 0 2px,
+      transparent 2px 6px
+    );
   }
   .notif-icon-spin {
     animation: none;
@@ -342,23 +375,35 @@
   }
 }
 
-/* VS Code: toolbar hidden until hover/focus */
+/*
+ * VS Code: toolbar hidden until hover/focus
+ *
+ * 🔴 E6#73k（J4）：此前**只有 `:hover` 显形**，注释里那句 "until hover/focus" 是假的——
+ * 键盘 Tab 会落在一个 `opacity: 0` 的按钮上：全局焦点环（`*:focus-visible`）被透明度一起抹掉，
+ * 用户看不见焦点在哪，随手一个 Enter 就**真把那条通知删了**。补 `:focus-visible` 分支。
+ * 用 `:focus-visible` 而非 `:focus`：鼠标点过的按钮不该因为「还focus着」就常驻显形。
+ */
 .notif-panel-dismiss {
   background: none;
   border: none;
-  color: var(--text-muted);
+  color: var(--text-secondary); /* E6#73k（J6）：muted 3.99:1 → secondary 5.08:1 */
   cursor: pointer;
   font-size: var(--font-size-sm); /* 12→sm */
   flex-shrink: 0;
   padding: 0 4px;
-  height: calc(22px * var(--ui-scale)); /* E5.8 Phase 12 #166：22px 行高链乘 scale */
+  /* E6#73k（J8）：22px → 24×24 点按目标（WCAG 2.2 SC 2.5.8）。高度用 min- 不用定高——
+     字体放大（--ui-scale / 主题字号）时它是**撑开**而不是被裁。 */
+  min-height: calc(24px * var(--ui-scale));
+  min-width: calc(24px * var(--ui-scale));
   display: flex;
   align-items: center;
+  justify-content: center;
   opacity: 0;
   transition: opacity 100ms;
 }
 
-.notif-panel-item:hover .notif-panel-dismiss {
+.notif-panel-item:hover .notif-panel-dismiss,
+.notif-panel-dismiss:focus-visible {
   opacity: 1;
 }
 
@@ -376,12 +421,12 @@
   padding-left: 24px; /* align with message after icon */
   margin-top: 4px;
   font-size: var(--font-size-xs); /* 11→xs */
-  color: var(--text-muted);
+  color: var(--text-secondary); /* E6#73k（J6）：面板内文字整层收口 4.5:1 */
   flex-wrap: wrap;
 }
 
 .notif-source {
-  color: var(--text-muted);
+  color: var(--text-secondary); /* E6#73k（J6）：同上层——来源串是实信息（可复制、要能读清） */
   white-space: nowrap;
   /* E6#72b：来源串（"来源: serial-monitor.portErrors"）也常要复制——同消息行放行拖选 */
   user-select: text;
@@ -402,6 +447,14 @@
   padding: 2px 8px;
   border-radius: var(--radius-sm);
   white-space: nowrap;
+  /* E6#73k（J8）：此前 ~19px 高 → 24×24 点按目标（WCAG 2.2 SC 2.5.8）。
+     ⚠️ 只加 `min-*` 不加定高：这两颗钮（[取消安装] / 失败行的 [重试]）可能出现在窄面板里，
+     定高会在字放大时把文字裁掉，`min-` 则让它撑开。 */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: calc(24px * var(--ui-scale));
+  min-width: calc(24px * var(--ui-scale));
 }
 
 .notif-action-btn.primary {
@@ -414,7 +467,7 @@
 }
 
 .notif-action-btn.secondary {
-  color: var(--text-muted);
+  color: var(--text-secondary); /* E6#73k（J6）：按钮文字是实信息，muted 3.99:1 不达标 */
   border: 1px solid var(--separator);
 }
 
@@ -531,7 +584,23 @@
 /* 时间标签 */
 .notif-panel-time {
   font-size: var(--font-size-2xs); /* 10→2xs */
-  color: var(--text-muted);
+  color: var(--text-secondary); /* E6#73k（J6）：10px 小字 + muted = 双重不可读，收口到 5.08:1 */
   flex-shrink: 0;
   margin-left: 8px;
+}
+
+/* ═══════════════════════════════════════════════
+   E6#73k（J2）可听状态行——活区本体，**视觉上不可见**。
+   通行的 sr-only 配方：1px 盒 + `clip-path` 抠掉画面（`clip-path` 而非已废弃的 `clip`；
+   不用 `display:none`/`visibility:hidden`——那两者会把节点从无障碍树里一起摘掉，活区就成了哑巴）。
+   绝对定位 → 不参与 `.status-bar` 的 flex 布局，不占位、不撑高状态栏。
+   ⚠️ 别顺手给它加背景/边框「方便调试」——一旦可见就是状态栏里的一个灵异白框。
+   ═══════════════════════════════════════════════ */
+.notif-sr-live {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }

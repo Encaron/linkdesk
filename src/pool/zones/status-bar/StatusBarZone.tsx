@@ -33,11 +33,20 @@ import {
   type NotifPanelEvent,
   type NotifPanelTransition,
 } from "./notifPanelState";
+import { scanNotifLive, NOTIF_LIVE_THROTTLE_MS, type NotifLiveSeen } from "./notifLiveRegion";
 import "./StatusBarZone.css";
 
 /** 池 → 壳通知事件——usePoolSync 订阅（壳侧 dismissToast/setNotifPanelOpen/action.onClick） */
 function emitNotif(channel: string, payload?: unknown) {
   window.linkdesk?.events?.emit(channel, payload);
+}
+
+/** 面板 id——铃铛 `aria-controls` 指过来的目标（E6#73k J1）。**不是可翻译文案**，故用常量不占 i18n key */
+const NOTIF_PANEL_ID = "status-bar-notif-panel";
+
+/** DTO 契约宽容：畸形 percent（负 / 超 100 / 非有限）不撑破布局，也不喂给读屏器 */
+function clampPercent(percent: number): number {
+  return Number.isFinite(percent) ? Math.max(0, Math.min(100, percent)) : 0;
 }
 
 function StatusBarZone({ statusBar }: { statusBar: StatusBarLayout }) {
@@ -48,6 +57,86 @@ function StatusBarZone({ statusBar }: { statusBar: StatusBarLayout }) {
   // 不能由状态本身推出来；放进同一个 state 值 = 状态与它是原子的，不会错配。
   const [panel, setPanel] = useState<NotifPanelTransition>({ state: "idle", markSeen: false });
   const bellRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const { notif } = statusBar;
+
+  // E6#73k（J5）：面板是否**由用户亲手打开**——铃铛点击（`markSeen:true`）为真，唤醒（`wake`）为假。
+  //
+  // 这一个表达式同时决定两件事，两件都要求「唤醒开的不算」：
+  //   ① 焦点进面板——唤醒是**程序化**打开，用户此刻可能正在文本框里打字，
+  //      抢焦点即打断输入（设计 skill `toast-accessibility`：toasts must not steal focus）；
+  //   ② 关闭时归还焦点——只有「进去过」才谈得上「还回来」，否则关面板会凭空把焦点拽到铃铛上。
+  //
+  // ⚠️ 不新开一个 `openedByUser` state：`markSeen` 本就是「本次迁移是否由用户在看」的既有载体
+  //   （`notifPanelState.ts` 第 1/3 行 ✅ vs 第 2/4 行 ❌），再存一份就多了一个会与它脱节的真值源。
+  const expanded = isPanelExpanded(panel.state);
+  const openedByUser = expanded && panel.markSeen;
+
+  // E6#73k（J5）：焦点进面板 / 关闭归还铃铛。
+  //
+  // **焦点落在面板容器上，不落在第一个按钮上**（容器 `tabIndex={-1}`）：面板里第一个可聚焦元素是
+  // 「清除已完成」——把焦点停在它上面，用户一进来随手一个 Enter 就把通知清了。
+  // 落在容器上则 Enter 无副作用，读屏器还会先把 `role="dialog"` 的名字念出来。
+  //
+  // **不做 Tab 焦点陷阱**：本面板是非模态的（点外面不关、无遮罩、`closeOnOutsideClick={false}`），
+  // 非模态浮层圈住 Tab 会把用户关在里面。Esc 与「最小化」两个出口照旧（§五 A 第 5/6 行）。
+  //
+  // 归还的守卫 `activeElement` 判空：清理函数跑在**面板已卸载之后**，若用户早已用鼠标点去了别处，
+  // 此刻焦点就是 `body`——只在「焦点真的没了」时才还，绝不把用户从别处拽回来。
+  // （这个守卫还挡掉了 StrictMode 的开发期双跑：那是容器自己拿着焦点，不走归还分支。）
+  useEffect(() => {
+    if (!openedByUser) return;
+    panelRef.current?.focus();
+    // 铃铛节点在 effect 跑的那一刻就已挂载且此后不再重挂（它不随面板开合卸载），
+    // 故在这里取出节点交给清理用——不在清理里现读 `bellRef.current`（那是 lint 明确拦的写法，
+    // 且清理跑在面板卸载之后，届时再读谁都不知道 ref 指向哪一版）
+    const bell = bellRef.current;
+    return () => {
+      const active = document.activeElement;
+      if (active && active !== document.body) return;
+      bell?.focus();
+    };
+  }, [openedByUser]);
+
+  // E6#73k（J2）：动作播报活区的内容——**常挂载**（见下方 JSX：活区在状态栏里，不在面板里）。
+  // 面板关着时面板内的任何东西都不在 DOM 上，活区若挂在面板里，就变成「开了面板才听得见通知」——
+  // 恰恰把最需要播报的场景（面板没开、后台装完了）排除在外。
+  const [announcement, setAnnouncement] = useState("");
+  const liveSeenRef = useRef<NotifLiveSeen | null>(null); // 台账；null = 首次扫描只建基线
+  const liveLastRef = useRef(0); // 上次真播的时刻（前值对比，不参与渲染——硬约束 17 允许用途）
+  const livePendingRef = useRef(""); // 节流窗口内被压住的最新一句（拖尾播出，见下）
+  const liveTimerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    const scan = scanNotifLive(liveSeenRef.current, notif);
+    liveSeenRef.current = scan.seen;
+    if (!scan.announce) return;
+
+    // 节流策略：窗口内**不丢终态，只丢中间帧**——把最新一句存起来，窗口一到就播。
+    // 因此「装完了」这类终态不会因为恰好撞上进度跳动而被吃掉。
+    const now = Date.now();
+    const elapsed = now - liveLastRef.current;
+    if (elapsed >= NOTIF_LIVE_THROTTLE_MS) {
+      liveLastRef.current = now;
+      setAnnouncement(scan.announce);
+      return;
+    }
+    livePendingRef.current = scan.announce;
+    if (liveTimerRef.current !== null) return;
+    liveTimerRef.current = window.setTimeout(() => {
+      liveTimerRef.current = null;
+      liveLastRef.current = Date.now();
+      setAnnouncement(livePendingRef.current);
+    }, NOTIF_LIVE_THROTTLE_MS - elapsed);
+  }, [notif]);
+
+  // 卸载清定时器——池崩溃重建/应用关闭时不许留一个会对已卸载组件 setState 的回调
+  useEffect(
+    () => () => {
+      if (liveTimerRef.current !== null) window.clearTimeout(liveTimerRef.current);
+    },
+    [],
+  );
 
   // **唯一迁移入口**——组件内任何地方不得绕过它改面板状态。
   // updater 保持纯函数（硬约束 6：不在 setState 函数式更新器里写副作用），发给壳的动作放下方 effect。
@@ -120,8 +209,6 @@ function StatusBarZone({ statusBar }: { statusBar: StatusBarLayout }) {
     );
   };
 
-  const { notif } = statusBar;
-
   return (
     <div className="status-bar">
       {/* 左区：插件贡献项 + Chord 提示（壳 StatusBar 同款结构） */}
@@ -141,11 +228,20 @@ function StatusBarZone({ statusBar }: { statusBar: StatusBarLayout }) {
         {/* E6#73a：铃铛是**进**面板的入口——已展开时点它**无迁移**（§五 A 七条表里没有
             `OPEN →(铃铛)→ …`）。出面板的唯一动作是头部「最小化」。原来这里是 `!panelOpen` 开关，
             那样等于又加了一条「点一下关掉」的路——正是 R3-1 抱怨的「所有按钮都在管关掉」。 */}
+        {/* E6#73k（J1）：铃铛此前只有 `title`——读屏器拿到的是一个装饰性字形加一个裸数字
+            （「3」），既不知道这是个按钮、也不知道按下去会开什么。四件补齐，与 `PanelZone`
+            的现成写法同款：可读名 / 有弹出层 / 展开态 / 指向谁。
+            `aria-label` 直接取 `bellTitle`（未读时壳已算成「3 条通知」）——**不新增契约字段**：
+            同一句话当 tooltip 是它、当可读名也是它，两处各写一份才会漂移。 */}
         <button
           ref={bellRef}
           className={`status-bar-btn status-bar-notif-btn${notif.unread > 0 ? " has-notifications" : ""}`}
           onClick={() => dispatch({ type: "bell" })}
           title={notif.bellTitle}
+          aria-label={notif.bellTitle}
+          aria-haspopup="dialog"
+          aria-expanded={expanded}
+          aria-controls={expanded ? NOTIF_PANEL_ID : undefined}
         >
           <span className="codicon codicon-bell" />
           {notif.unread > 0 && (
@@ -161,7 +257,18 @@ function StatusBarZone({ statusBar }: { statusBar: StatusBarLayout }) {
             closeOnOutsideClick={false}
             triggerRef={bellRef}
           >
-            <div className="status-bar-notif-panel">
+            {/* E6#73k（J1/J5）：面板此前是个裸 `div`——读屏器读不出「这是一个浮层、叫什么名字」。
+                `role="dialog"` + `aria-label`（取面板标题）补上语义；`tabIndex={-1}` 让 J5 能把
+                焦点**落在容器上**（而不是落在「清除已完成」按钮上）。**不带 `aria-modal`**：
+                本面板非模态——不遮罩、点外面不关、Tab 不被圈住，标成 modal 是撒谎。 */}
+            <div
+              id={NOTIF_PANEL_ID}
+              ref={panelRef}
+              className="status-bar-notif-panel"
+              role="dialog"
+              aria-label={notif.panelTitle}
+              tabIndex={-1}
+            >
             <div className="notif-panel-header">
               <div className="notif-panel-heading">
                 <span className="notif-panel-title">{notif.panelTitle}</span>
@@ -208,12 +315,23 @@ function StatusBarZone({ statusBar }: { statusBar: StatusBarLayout }) {
                           <span className="notif-panel-msg">{row.name}</span>
                           <span className="notif-job-status">{row.statusLabel}</span>
                         </div>
-                        {/* 进度条只在有真值时画——排队行没有在途工作，画条是撒谎（壳已保证不带 percent）。 */}
+                        {/* 进度条只在有真值时画——排队行没有在途工作，画条是撒谎（壳已保证不带 percent）。
+                            E6#73k（J3）：补 `role="progressbar"` ——此前是个裸 div，读屏器完全读不到
+                            「这里有一条正在走的进度」。可读名取插件名（哪件事在跑），值文案取壳算好的
+                            状态短语（「下载中 62%」，含阶段 + 百分数，比单念一个数字有用）。 */}
                         {typeof row.percent === "number" && (
-                          <div className="notif-progress">
+                          <div
+                            className="notif-progress"
+                            role="progressbar"
+                            aria-label={row.name}
+                            aria-valuemin={0}
+                            aria-valuemax={100}
+                            aria-valuenow={clampPercent(row.percent)}
+                            aria-valuetext={row.statusLabel}
+                          >
                             <div
                               className="notif-progress-fill"
-                              style={{ width: `${Math.max(0, Math.min(100, row.percent))}%` }}
+                              style={{ width: `${clampPercent(row.percent)}%` }}
                             />
                           </div>
                         )}
@@ -284,6 +402,9 @@ function StatusBarZone({ statusBar }: { statusBar: StatusBarLayout }) {
                               className="notif-panel-dismiss"
                               onClick={() => emitNotif("notif:dismiss", item.id)}
                               title={notif.dismissTitle}
+                              // E6#73k（J1）：按钮里只有一枚 codicon 字形（私有区码位，读屏器念不出名），
+                              // 无 `aria-label` 时它就是个没名字的「按钮」——用户不知道按下去会删什么。
+                              aria-label={notif.dismissTitle}
                             >
                               <span className="codicon codicon-close" />
                             </button>
@@ -292,12 +413,24 @@ function StatusBarZone({ statusBar }: { statusBar: StatusBarLayout }) {
                         {/* E6#72c：进度行——视觉落点 = 主行**下方**（原 71i 画在窄卡上，窄卡删后落点改这里）。
                             确定态（percent 有值）= 定宽填充；不定态 = 强调色块扫动。 */}
                         {item.progress === true && (
-                          <div className="notif-progress">
+                          <div
+                            className="notif-progress"
+                            role="progressbar"
+                            aria-label={item.message}
+                            aria-valuemin={0}
+                            aria-valuemax={100}
+                            // E6#73k（J3）：`percent` 有值才给 `aria-valuenow`——**不给即是「不定态」**，
+                            // 这是 ARIA 判定的不确定进度表达（读屏器念「忙碌」而非编一个百分比出来）。
+                            // 插件自己发的 progress 通知多半不带 percent，此前读屏器连条都听不见。
+                            {...(typeof item.percent === "number"
+                              ? { "aria-valuenow": clampPercent(item.percent) }
+                              : {})}
+                          >
                             {typeof item.percent === "number" ? (
                               <div
                                 className="notif-progress-fill"
                                 // 钳 0-100——DTO 契约宽容，畸形 percent（负/超 100/NaN 后段）不撑破布局
-                                style={{ width: `${Math.max(0, Math.min(100, item.percent))}%` }}
+                                style={{ width: `${clampPercent(item.percent)}%` }}
                               />
                             ) : (
                               <div className="notif-progress-indeterminate" />
@@ -337,6 +470,15 @@ function StatusBarZone({ statusBar }: { statusBar: StatusBarLayout }) {
             </div>
           </OverlayPortal>
         )}
+      </div>
+
+      {/* E6#73k（J2）：动作播报活区——**常驻**，不是面板的一部分。
+          放在面板里就成了「开了面板才听得见通知」，恰好把最该播的场景（面板没开、后台装完了）排除掉。
+          `role="status"` + `aria-live="polite"`：排队等当前朗读结束，不打断用户（对比 `assertive` 会抢话）。
+          内容由 `scanNotifLive` 判变化 + 节流按 2s 上（见 `notifLiveRegion.ts`）。
+          ⚠️ 视觉上不可见（`.notif-sr-live`）——它是耳朵的通道，不是眼睛的。 */}
+      <div className="notif-sr-live" role="status" aria-live="polite" aria-atomic="true">
+        {announcement}
       </div>
     </div>
   );
