@@ -21,6 +21,7 @@ import { useState, useRef, useEffect, type KeyboardEvent as ReactKeyboardEvent }
 import { createPortal } from "react-dom";
 import { Z_INDEX } from "../../../constants";
 import { getScrimTarget } from "../../../components/shared/overlay-portal/OverlayPortal"; // E5.8#107 浮层权威：遮罩归 scrim-plane
+import { OVERLAY_LAYER_ATTR, isTopmostOverlay } from "../../../components/shared/overlay-portal/overlayLayer"; // E6#73b ④ Esc 分层
 import type { PoolDialogData } from "../../../core/types/pool/poolDialog";
 import PluginComponent from "../../shared/plugin-component/PluginComponent"; // E6#71c 富内容槽——内容 = 插件视图（壳不持渲染器）
 import "./DialogHost.css";
@@ -66,7 +67,8 @@ export default function DialogHost() {
     /* jscpd:ignore-start */
     const handler = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
-        if (!data.isAlert) api?.cancel();
+        // E6#73b ④：只关最上层浮层——对话框底下压着通知面板时，一发 Esc 不该关掉两个
+        if (isTopmostOverlay(panelRef.current) && !data.isAlert) api?.cancel();
         return;
       }
       if (e.key !== "Tab") return;
@@ -127,6 +129,7 @@ export default function DialogHost() {
       <div
         ref={panelRef}
         className={content ? "dialog-host-panel dialog-host-panel--content" : "dialog-host-panel"}
+        {...{ [OVERLAY_LAYER_ATTR]: "" }}
         style={{ zIndex: Z_INDEX.dialog }}
         tabIndex={-1}
         onClick={(e) => e.stopPropagation()}

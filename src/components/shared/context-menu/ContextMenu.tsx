@@ -25,6 +25,7 @@ import { useEffect, useMemo, useRef, useCallback, useState, useLayoutEffect } fr
 import { createPortal } from "react-dom";
 import type { MenuItemDescriptor } from "@linkdesk/contracts"; // E6#54a：出包类型重定向（@src 别名包内不可解析）
 import OverlayPortal, { getScrimTarget } from "../overlay-portal/OverlayPortal";
+import { isTopmostOverlayFrom } from "../overlay-portal/overlayLayer";
 import "./ContextMenu.css";
 
 /* ── E6#54b：浮层层级包内携带（解耦审计 §三 项 2）──
@@ -220,6 +221,10 @@ export default function ContextMenu({ menuId, anchor, context, onClose, resolveC
     if (!visible) return; // 活跃守卫——菜单未显示时不挂失焦监听
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== "Escape") return;
+      // E6#73b ④：只关最上层浮层——菜单底下还压着通知面板时，一发 Esc 不该把两个都关掉。
+      // 判据走包装盒（本组件的 OverlayPortal，z=CONTEXT_MENU_Z_INDEX 3000）——比面板的 2000 高，
+      // 故菜单开着时它恒为顶层，Esc 逐级收子面板的行为不受影响（E5.8#148 保持）。
+      if (!isTopmostOverlayFrom(menuRef.current)) return;
       // E5.8#148：Escape 逐级收——先收最深子面板，全收起再关菜单
       if (subPanels.length > 0) setSubPanels((p) => p.slice(0, p.length - 1));
       else onClose();

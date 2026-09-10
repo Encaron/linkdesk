@@ -16,8 +16,10 @@
  *     autoOpen 门禁消费它——面板已开就不再重复请求展开。
  *
  * 与壳行为差异（诚实注记）：
- *   E5.8#107 浮层权威：面板已收敛为壳同款 OverlayPortal（进 #overlay-root，外部点击/Escape
- *   由 OverlayPortal 统一处理）——原「fixed + document mousedown」手动实现删除。
+ *   E5.8#107 浮层权威：面板已收敛为壳同款 OverlayPortal（进 #overlay-root）——原
+ *   「fixed + document mousedown」手动实现删除。
+ *   E6#73b：关法只剩两个——面板内「最小化」与 Esc（`closeOnOutsideClick={false}`，
+ *   点别处不关，R5-3）；Esc 还受「只关最上层浮层」约束（`overlayLayer.ts`）。
  */
 
 import { Fragment, useState, useRef, useEffect, useCallback } from "react";
@@ -146,8 +148,14 @@ function StatusBarZone({ statusBar }: { statusBar: StatusBarLayout }) {
           )}
         </button>
 
+        {/* E6#73b ①：点面板外面**不关**（18 档 §五 A / R5-3 用户原话）——`closeOnOutsideClick={false}`
+            只摘掉外部点击这一条；Esc 照旧（发 `minimize`，语义 = 最小化不是关闭，§五 A 第 6 行）。 */}
         {isPanelExpanded(panel.state) && (
-          <OverlayPortal onClose={() => dispatch({ type: "minimize" })} triggerRef={bellRef}>
+          <OverlayPortal
+            onClose={() => dispatch({ type: "minimize" })}
+            closeOnOutsideClick={false}
+            triggerRef={bellRef}
+          >
             <div className="status-bar-notif-panel">
             <div className="notif-panel-header">
               <span className="notif-panel-title">{notif.panelTitle}</span>

@@ -32,6 +32,7 @@ import {
 import { createPortal } from "react-dom";
 import { Z_INDEX } from "../../../constants";
 import { getScrimTarget } from "../../../components/shared/overlay-portal/OverlayPortal"; // E5.8#107 浮层权威：遮罩归 scrim-plane
+import { OVERLAY_LAYER_ATTR, isTopmostOverlay } from "../../../components/shared/overlay-portal/overlayLayer"; // E6#73b ④ Esc 分层
 import type { PoolFloatingPanelButton, PoolFloatingPanelData } from "../../../core/types/pool/poolFloatingPanel";
 import PluginComponent from "../../shared/plugin-component/PluginComponent";
 import "./FloatingPanel.css";
@@ -125,7 +126,8 @@ export default function FloatingPanelHost() {
   useEffect(() => {
     if (!data?.open) return;
     const handler = (e: KeyboardEvent) => {
-      if (e.key === "Escape") api?.action("close");
+      // E6#73b ④：只关最上层浮层（对话框 / QuickPick 盖在面板上时，一发 Esc 不该关掉两个）
+      if (e.key === "Escape" && isTopmostOverlay(panelRef.current)) api?.action("close");
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
@@ -243,6 +245,7 @@ export default function FloatingPanelHost() {
       <div
         ref={panelRef}
         className={`floating-panel${dragging ? " dragging" : ""}${maximized ? " maximized" : ""}`}
+        {...{ [OVERLAY_LAYER_ATTR]: "" }}
         style={{ ...panelStyle, zIndex: Z_INDEX.floatingPanel }}
         tabIndex={-1}
         role="dialog"

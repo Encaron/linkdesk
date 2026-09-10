@@ -13,6 +13,7 @@
  */
 import { useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
+import { OVERLAY_LAYER_ATTR, isTopmostOverlay } from "./overlayLayer";
 
 /** E5.8#107：通用 surface 根 id——FloatingLayerHost 浮层权威（OverlayPortal 默认 portal 目标）。
  *  模块私有常量（单一权威 id——不导出；需 root id 的消费方用 getScrimTarget/getRootTarget 语义访问）。 */
@@ -34,6 +35,11 @@ interface OverlayPortalProps {
   open?: boolean;
   /** 外部点击 / Escape → 关闭回调。不传则无外部关闭行为（如 ToastContainer） */
   onClose?: () => void;
+  /** E6#73b：点浮层外面**关不关**——默认 `true`（既有全部消费方行为不变）。
+   *  通知面板传 `false`（18 档 §五 A / 用户 R5-3 原话：「我在干别的事情的时候鼠标在点击别的地方
+   *  的时候 toast 不会消失，除非等我点击旁边那个最小化」）——它只认 Esc 与面板内「最小化」两个关法。
+   *  ⚠️ 只关外部点击这一条：Esc 不受影响（`onClose` 仍要传）。 */
+  closeOnOutsideClick?: boolean;
   /** 点击此 ref 指向的元素不算"外部"（如触发按钮）。每次事件回调内实时读，不缓存 */
   triggerRef?: React.RefObject<HTMLElement>;
   /** Tab/Shift+Tab 在 overlay 内循环。首次渲染自动 focus 第一个可聚焦元素 */
@@ -53,13 +59,14 @@ interface OverlayPortalProps {
 /** 可聚焦元素选择器——对标 VS Code focusable selectors */
 const FOCUSABLE = 'a[href],button:not([disabled]),input:not([disabled]),textarea:not([disabled]),select:not([disabled]),[tabindex]:not([tabindex="-1"])';
 
-export default function OverlayPortal({ children, onClose, triggerRef, trapFocus, zIndex, rootId, open = true }: OverlayPortalProps) {
+export default function OverlayPortal({ children, onClose, closeOnOutsideClick = true, triggerRef, trapFocus, zIndex, rootId, open = true }: OverlayPortalProps) {
   const contentRef = useRef<HTMLDivElement>(null);
 
   /* ── E5#96i: mousedown 外部点击检测（捕获阶段——早于 React 合成事件）── */
   useEffect(() => {
     if (!open) return; // 活跃守卫——overlay 关闭态不挂监听（硬约束 14）
     if (!onClose) return;
+    if (!closeOnOutsideClick) return; // E6#73b：opt-in——不挂监听（不是挂上再判空）
     const handler = (e: MouseEvent) => {
       const target = e.target as Node;
       const insideContent = contentRef.current?.contains(target);
@@ -68,14 +75,17 @@ export default function OverlayPortal({ children, onClose, triggerRef, trapFocus
     };
     window.addEventListener("mousedown", handler, true);
     return () => window.removeEventListener("mousedown", handler, true);
-  }, [open, onClose, triggerRef]);
+  }, [open, onClose, closeOnOutsideClick, triggerRef]);
 
-  /* ── E5#96j: keydown Escape ── */
+  /* ── E5#96j: keydown Escape ──
+     E6#73b ④：**只关最上层浮层**——N 个浮层同时开着时，各自窗口级监听器都会被叫到；
+     非最上层者直接放行，否则一次 Esc 关掉一整摞（通知面板 + 右键菜单一起没）。
+     判据见 `overlayLayer.ts`（DOM + z 表，跨 bundle 不变）。 */
   useEffect(() => {
     if (!open) return; // 活跃守卫——overlay 关闭态不挂监听（硬约束 14）
     if (!onClose) return;
     const handler = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape" && isTopmostOverlay(contentRef.current)) onClose();
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
@@ -111,6 +121,11 @@ export default function OverlayPortal({ children, onClose, triggerRef, trapFocus
     return () => window.removeEventListener("keydown", handler);
   }, [open, trapFocus]);
 
+  /* ── E6#73b ④: 浮层表面标记 —— 只在 `open` 时带。
+     挂载但关闭（`open={false}`）的浮层不是「最上层」：它会以所属 root 的 z 冒充顶层，
+     把真顶层该收的那一发 Esc 抢走。 ── */
+  const layerAttr = open ? { [OVERLAY_LAYER_ATTR]: "" } : {};
+
   /* ── E5#96l: wrapper inline style ── */
   const style: React.CSSProperties = {
     position: "relative",
@@ -126,7 +141,7 @@ export default function OverlayPortal({ children, onClose, triggerRef, trapFocus
     //   对外只算包装盒 z-auto(0)，被 scrim 遮罩 z500 盖住 → 点在预期位置实中遮罩 onClose =「点一下自己退」。
     //   故包装盒必须保持零 stacking-context 属性（backdrop-filter/filter/transform/z-index 均禁；
     //   zIndex 例外见 prop 契约——需 z-index 时必须 > scrim 遮罩 500）。
-    <div ref={contentRef} data-overlay-wrapper style={Object.keys(style).length > 1 ? style : {}}>
+    <div ref={contentRef} data-overlay-wrapper {...layerAttr} style={Object.keys(style).length > 1 ? style : {}}>
       {children}
     </div>,
     // E5.8#107 单一门：默认 → #overlay-root（浮层权威 surface 根）；显式 rootId 优先；根缺失回退 body

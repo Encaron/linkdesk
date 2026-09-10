@@ -94,34 +94,48 @@ describe("buildNotif——折叠汇总（E6#73f S3/A6）", () => {
   });
 });
 
-describe("buildNotif——autoOpen 门禁（E6#72d）", () => {
+/**
+ * E6#73b：判据从「重要」（`isImportantNotif`）换成**唤醒白名单**（`Toast.wake`）。
+ * 这里既要验「该弹的弹」，也要把「不该弹的」钉成反向测试——它们是 R5-4/R5-6 的机械保证。
+ */
+describe("buildNotif——autoOpen 唤醒白名单（E6#73b，18 档 §五 B）", () => {
   it("无通知 → autoOpen false", () => {
     expect(buildNotif(t).autoOpen).toBe(false);
   });
 
-  it("普通 info 未读 → autoOpen false（成功/普通照旧安静自消，Q1 定案）", () => {
-    pushToast({ message: "演示消息", source: "demo-plugin", severity: "info", ttl: 0 });
+  it.each([
+    ["普通 info", { severity: "info" as const }],
+    // 🔴 反向：进度增量永不唤醒（R5-6「从 10% 到 50% 这个间断期间他不叫新状态」）
+    ["进度", { progress: true }],
+    // 🔴 反向：内存墙 / 主题数据坏 / 工作区丢文件夹 / 孤儿依赖**全是 warning 级**（§五 B 明确不唤醒）
+    ["警告", { severity: "warning" as const }],
+    ["长驻", { persistent: true }],
+  ])("不该弹（%s）未读 → autoOpen false", (_label, extra) => {
+    pushToast({ message: "演示消息", source: "demo-plugin", ttl: 0, ...extra });
     expect(buildNotif(t).autoOpen).toBe(false);
   });
 
   it.each([
-    ["失败", { severity: "error" as const }],
-    ["警告", { severity: "warning" as const }],
-    ["带动作按钮", { actions: [{ label: "演示动作", onClick: () => {} }] }],
-    ["长驻", { persistent: true }],
-    ["进度", { progress: true }],
-  ])("重要类（%s）未读 → autoOpen true", (_label, extra) => {
+    ["失败（缺省 error 级）", { severity: "error" as const }],
+    ["带动作按钮（缺省）", { actions: [{ label: "演示动作", onClick: () => {} }] }],
+    ["job 终态显式置位", { severity: "info" as const, wake: true }],
+  ])("该弹（%s）未读 → autoOpen true", (_label, extra) => {
     pushToast({ message: "演示消息", source: "demo-plugin", ttl: 0, ...extra });
     expect(buildNotif(t).autoOpen).toBe(true);
   });
 
-  it("重要但已读（面板开过一次）→ autoOpen false", () => {
+  it("显式 wake:false 压过缺省——error 级也能被生产者按住", () => {
+    pushToast({ message: "演示消息", source: "demo-plugin", severity: "error", wake: false, ttl: 0 });
+    expect(buildNotif(t).autoOpen).toBe(false);
+  });
+
+  it("该弹但已读（面板开过一次）→ autoOpen false", () => {
     const id = pushToast({ message: "演示消息", source: "demo-plugin", severity: "error", ttl: 0 });
     _seenIds.add(id);
     expect(buildNotif(t).autoOpen).toBe(false);
   });
 
-  it("重要未读但面板已开 → autoOpen false（不二次打扰正在看的人）", () => {
+  it("该弹未读但面板已开 → autoOpen false（不二次打扰正在看的人）", () => {
     pushToast({ message: "演示消息", source: "demo-plugin", severity: "error", ttl: 0 });
     setNotifPanelOpen(true);
     expect(buildNotif(t).autoOpen).toBe(false);
@@ -134,5 +148,17 @@ describe("buildNotif——autoOpen 门禁（E6#72d）", () => {
     setNotifPanelOpen(true);
     _seenIds.add(id);
     expect(buildNotif(t).autoOpen).toBe(false);
+  });
+
+  /**
+   * 🔴 「最小化」不带静音权力（18 档 §五 A 第 4 行 + §五 B 计数表 + R5-4/R5-5）。
+   * minimized 与 idle 在壳侧镜像里**同值**（useSubscriptions：`state === "open"` 一个派生位），
+   * 所以此处只需断言「面板收着 + 该弹的新条目 → 唤醒」——这正是最小化后终态能冒出来的原因。
+   * ⚠️ 反过来说：**本表达式不得出现 `!isNotifMinimized()`**——加了就等于终态唤不回。
+   */
+  it("面板收着（含最小化）时新到的该弹条目 → autoOpen true（R5-5「出结果必冒出来」）", () => {
+    setNotifPanelOpen(false); // = 最小化在壳侧镜像里的取值（同一派生位）
+    pushToast({ message: "演示消息 装完了", source: "demo-plugin", severity: "info", wake: true, ttl: 0 });
+    expect(buildNotif(t).autoOpen).toBe(true);
   });
 });

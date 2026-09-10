@@ -43,10 +43,10 @@ export interface Toast {
   /** 创建时间戳——Notification Center 按时间排序/分组用。pushToast 自动填。 */
   createdAt?: number;
   /**
-   * 唤醒旗标（E6#73f 新增，18 档 §五 B）——本条通知是否允许把**最小化**的通知面板弹回来。
-   * 取值归 §五 G 的分级（E6#73g 给「该弹」级条目置位）；**判据表达式归 E6#73b 的独立白名单**。
-   * ⚠️ 不得并进 isImportantNotif（18 档 ㉓：复用会把每 30 秒一条的内存墙也判成「重要」，
-   * 最小化面板被反复弹开，直接违反 R5-4）。
+   * 唤醒旗标（E6#73f 载体，E6#73b 消费）——本条通知是否允许把通知面板弹出来（18 档 §五 B 白名单）。
+   * 缺省由 `defaultWake` 定（error ∨ 带按钮），生产者可显式覆盖；§五 G 的分级（E6#73g）落在本字段。
+   * ⚠️ 判据表达式**只有 `notif.ts` 的 `shouldWake` 一处**——不得退回复用 `isImportantNotif` 一把梭：
+   * 那会把 `progress` 与一切 warning 算「重要」，面板被每 30 秒一条的内存墙反复弹开（违反 R5-4）。
    */
   wake?: boolean;
 }
@@ -200,6 +200,19 @@ function evictOverflow(added: Toast): void {
   _folded.set(key, (_folded.get(key) ?? 0) + doomed.size);
 }
 
+/**
+ * 唤醒旗标缺省（E6#73b，18 档 §五 B ④「该弹级」的两条静态特征）。
+ *
+ * ⚠️ **这不是 `isImportantNotif`**——比它窄两档，正是这两档构成「最小化」不被反复弹开的机械保证：
+ *   - **不含 `progress`** ⇒ 进度增量永不唤醒（R5-6「10% 到 50% 不叫新状态」）；
+ *   - **不含 `warning`** ⇒ 内存压力 / 主题数据坏 / 工作区丢文件夹 / 孤儿依赖**全是 warning 级**，
+ *     从此不再把面板弹开（§四 机器四不复现）。
+ * 显式 `wake` 优先（生产者可覆盖，§五 G 分级落在此）。
+ */
+function defaultWake(t: Omit<Toast, "id">): boolean {
+  return t.severity === "error" || (t.actions?.length ?? 0) > 0;
+}
+
 /** 推送 toast。对标 VS Code `INotificationService.notify()` */
 export function pushToast(toast: Omit<Toast, "id"> & { id?: string }): string {
   // "Don't show again" 检查——用户之前点 × 关过同款通知
@@ -208,7 +221,13 @@ export function pushToast(toast: Omit<Toast, "id"> & { id?: string }): string {
   }
 
   const id = toast.id ?? `toast-${++_counter}`;
-  const t: Toast = { ...toast, id, ttl: toast.ttl ?? DEFAULT_TTL, createdAt: toast.createdAt ?? Date.now() };
+  const t: Toast = {
+    ...toast,
+    id,
+    ttl: toast.ttl ?? DEFAULT_TTL,
+    createdAt: toast.createdAt ?? Date.now(),
+    wake: toast.wake ?? defaultWake(toast),
+  };
 
   _toasts.push(t);
   evictOverflow(t);

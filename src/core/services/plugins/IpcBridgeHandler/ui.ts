@@ -258,7 +258,17 @@ export async function handleUiMethod(method: string, args: unknown[]): Promise<u
       // E6#71j：persistent 长驻——与 progress 同 ttl:0（不自动消失等手动 ×），叠加常驻上限淘汰。
       const persistent = options?.persistent === true;
       const ttl = options?.progress || persistent ? 0 : severity === "error" ? TOAST_TTL_ERROR : undefined;
-      const id = pushToast({ message, severity, actions, progress: !!options?.progress, persistent, ttl });
+      // E6#73b（18 档 §五 B ③）：**插件自己发出的非进度通知**进唤醒白名单——它是「另一个来源的
+      // 另一条新状态」（R5-17/R5-18，不许被市场那一路掩盖）。
+      // ⚠️ `progress: true` 强制 `wake: false`（挂旗标**不能**吃缺省）：进度类通知此后还会被
+      // `updateNotification` 一路改写，若它算唤醒，「10% 跳到 11% 就弹」（R5-6 明令否决）。
+      const id = pushToast({
+        message, severity, actions,
+        progress: !!options?.progress,
+        persistent,
+        ttl,
+        wake: !options?.progress,
+      });
       // E6#73f（S6）句柄隔离：**一律**返回句柄 id（原来只在 progress:true 时返回）。
       // 否则 persistent 的失败通知（带 [重试]）拿不到句柄 ⇒ 用户手动重试成功后那条「安装失败」
       // 撤不下来，一直长驻在面板里跟成功互相打脸，攒成一面失败墙（18 档 A3/E4）。
@@ -278,7 +288,10 @@ export async function handleUiMethod(method: string, args: unknown[]): Promise<u
       //    prev.source 恒 undefined、行为与从前等价——这是**先把丢来源的洞焊死**，S5 一落即自动生效。
       const prev = getToasts().find((toast) => toast.id === handleId);
       dismissToast(handleId);
-      if (message) pushToast({ message, severity: "info", source: prev?.source });
+      // E6#73b（18 档 §五 B ②）：**job 终态必冒出来**——这是新建条目（新 id），且是进度句柄的收尾，
+      // 等于「这件事出结果了」，所以显式进白名单。缺省判据（error ∨ 带按钮）够不着它：装成功是
+      // info、无按钮，靠缺省就是静默——而 R5-5 要的正是「装成功也要冒出来」。
+      if (message) pushToast({ message, severity: "info", source: prev?.source, wake: true });
       break;
     }
     case "cancelNotification": {

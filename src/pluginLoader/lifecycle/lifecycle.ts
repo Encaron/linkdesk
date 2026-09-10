@@ -90,6 +90,11 @@ export function initLifecycleConsumers(): void {
       source: pluginId,
       severity: "info",
       ttl: TOAST_TTL_SUCCESS,
+      // E6#73b（18 档 §五 B ②）：安装终态进唤醒白名单——这是新建条目（「新状态」），
+      // 且 R5-5 明确要求「装成功也要冒出来」。缺省判据（error ∨ 带按钮）够不着它：
+      // 装成功是 info、无按钮，靠缺省就是静默。
+      // ⚠️ `enable`（启用）不是 job、不在 §五 B ② 的四类里——照旧不唤醒，别顺手放宽。
+      wake: reason !== "enable",
     });
   });
 

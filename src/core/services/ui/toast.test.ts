@@ -163,11 +163,26 @@ describe("E6#73f 新增能力②：replaceToast 原子替换（单次 notify、�
   });
 });
 
-describe("E6#73f 新增能力①：Toast.wake 唤醒旗标可透传（判据表达式归 E6#73b，此处只验载体）", () => {
-  it("pushToast 带 wake → 存下来；不带 → 不落字段", () => {
+describe("E6#73f/#73b：Toast.wake 唤醒旗标——显式优先，缺省由 defaultWake 定", () => {
+  it("显式 wake 原样存下（true / false 都能覆盖缺省）", () => {
     pushToast({ message: "演示消息 装了", source: "demo-plugin", wake: true, ttl: 0 });
-    pushToast({ message: "演示消息 普通", source: "demo-plugin", ttl: 0 });
+    // 显式 false 必须压过缺省——error 级缺省本是 true，生产者说「这条别弹」就得别弹
+    pushToast({ message: "演示消息 别弹", source: "demo-plugin", severity: "error", wake: false, ttl: 0 });
     expect(getToasts()[0]!.wake).toBe(true);
-    expect(getToasts()[1]!.wake).toBeUndefined();
+    expect(getToasts()[1]!.wake).toBe(false);
+  });
+
+  it("缺省①：error 级 ∨ 带动作按钮 → true（18 档 §五 B ④「该弹」级的两条静态特征）", () => {
+    pushToast({ message: "演示消息 失败", source: "demo-plugin", severity: "error", ttl: 0 });
+    pushToast({ message: "演示消息 等你动手", source: "demo-plugin", actions: [{ label: "演示动作", onClick: () => {} }], ttl: 0 });
+    expect(getToasts()[0]!.wake).toBe(true);
+    expect(getToasts()[1]!.wake).toBe(true);
+  });
+
+  it("缺省②：progress 与 warning 恒不唤醒（R5-6「10%→50% 不叫新状态」+「内存墙不弹」的机械保证）", () => {
+    pushToast({ message: "演示消息 进度", source: "demo-plugin", progress: true, ttl: 0 });
+    pushToast({ message: "演示消息 内存压力", source: "demo-plugin", severity: "warning", ttl: 0 });
+    pushToast({ message: "演示消息 长驻", source: "demo-plugin", persistent: true, ttl: 0 });
+    expect(getToasts().map((x) => x.wake)).toEqual([false, false, false]);
   });
 });

@@ -40,17 +40,24 @@ function getNotifIconClass(n: Toast): string {
   }
 }
 
-/** 重要通知判定——E6#72d（用户 Q2 定案的「重要」= 需要用户看见的那几类）：
- *  失败/警告（severity error|warning）∨ 带动作按钮（等用户点）∨ 长驻（等用户手动关）
- *  ∨ 进度类（进行中，用户要看着它跑完）。成功/普通 info 不算重要——照旧几秒自消（Q1 定案）。 */
-function isImportantNotif(n: Toast): boolean {
-  return (
-    n.severity === "error" ||
-    n.severity === "warning" ||
-    (n.actions?.length ?? 0) > 0 ||
-    n.persistent === true ||
-    n.progress === true
-  );
+/**
+ * 唤醒白名单（E6#73b，18 档 §五 B）——本文件里**唯一**决定「这条通知能不能把面板弹出来」的判据。
+ *
+ * 判据压到最短：**「新状态」= 一条新的通知诞生**（`pushToast`）——对已有通知的任何更新
+ * （`updateToast`：百分比 / 阶段名 / 排队位次）永不唤醒，因为它不新建条目、拿不到新的 `wake` 值。
+ * 于是 R5-6 的三条同时成立：点击弹 / 进度不弹 / 结果弹。
+ *
+ * 穷举四类（旗标由生产者置位，缺省见 `toast.ts` 的 `defaultWake`）：
+ *   ① 用户点击发起安装建的 job 行 ② job 终态（成功 / 部分失败 / 失败）
+ *   ③ 插件自己发出的非进度通知 ④ 壳自产「该弹」级条目（error ∨ 带按钮）
+ *
+ * ⚠️ **不得回退成 `isImportantNotif` 一把梭**（18 档 ㉓）——那个判据把 `progress` 与一切
+ * warning/error 都算「重要」，面板会被每 30 秒一条的内存墙弹开，直接违反 R5-4。
+ * **「最小化」不带静音权力**（18 档 §五 A 第 4 行 + §五 B 计数表）：本表达式**不得**再加
+ * 「且未最小化」——加了等于终态唤不回，R5-5「成功和失败都要冒出来」当场失效。
+ */
+function shouldWake(n: Toast): boolean {
+  return n.wake === true;
 }
 
 /** 通知面板数据——壳 NotificationCenter（source 分组/未读排序/时间文案）序列化为纯数据 */
@@ -107,13 +114,15 @@ export function buildNotif(t: TFunction): NotifLayout {
     emptyLabel: t("暂无通知"),
     dismissTitle: t("关闭"),
     groups,
-    // E6#72d：重要且未读、且面板当前关着 → 请求池自动展开。
+    // E6#72d：该弹的未读通知 + 面板当前收着 → 请求池自动展开。
     // 「面板已开」时不再请求（不二次打扰正在看的人）；池打开面板会回传开合镜像 →
     // 本值回落 false，故不存在「关掉又被弹开」的反复。
     // E6#73a：回落**只**靠开合镜像，不再依赖 unread 归零——唤醒开面板不认账（§五 B），
-    // 未读会照常留着。⚠️ 已知边界：**最小化**态同样让本式为 false（isNotifPanelOpen 只看「开着没」），
-    // 而最小化**不是永久静音**（§五 A 第 4 行）——两者语义的分离归 **E6#73b**。**73b 前不得回退本式。**
+    // 未读会照常留着。
+    // E6#73b：判据换成唤醒白名单（`shouldWake`）。**门禁只有 `!isNotifPanelOpen()` 一项**——
+    // 最小化态在镜像里同样「不是开着的」，于是白名单条目照常把它弹回来，这正是 R5-4/R5-5 要的
+    // 「最小化不是永久静音、出结果必冒出来」；`!isNotifMinimized()` 这一项**故意不写**（见 shouldWake）。
     autoOpen:
-      !isNotifPanelOpen() && notifications.some((n) => !_seenIds.has(n.id) && isImportantNotif(n)),
+      !isNotifPanelOpen() && notifications.some((n) => !_seenIds.has(n.id) && shouldWake(n)),
   };
 }

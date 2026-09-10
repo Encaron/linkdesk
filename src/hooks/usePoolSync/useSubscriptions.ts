@@ -238,8 +238,10 @@ export function useSyncSubscriptions({
       const data = payload as { state?: unknown; markSeen?: unknown } | null | undefined;
       if (!data || typeof data.state !== "string") return;
       setNotifPanelOpen(data.state === "open");
-      // ⚠️ `state === "minimized"` 的镜像（`!isNotifMinimized()` 进 autoOpen 表达式）归 **E6#73b**，
-      // 本处只消费「展开了没有」这一面——本档交付时 minimized 与 idle 对壳仍是同一个假值。
+      // E6#73b：壳侧只落「展开了没有」这一个派生位——**不存三态、也不存第二个布尔**。
+      // 依据：`autoOpen` 的门禁只有这一项（见 `notif.ts`），多存的位没有读者；
+      // 而「最小化 ≠ 永久静音」（R5-4/R5-5）= minimized 与 idle 在壳侧**必须同值**，
+      // 所以这里恰是「都落 false」，不是漏了 minimized。
       if (data.markSeen === true) {
         for (const n of getToasts()) _seenIds.add(n.id);
         setLayoutVersion((v) => v + 1);  // 标记已读不 fire toast 事件——手动重推

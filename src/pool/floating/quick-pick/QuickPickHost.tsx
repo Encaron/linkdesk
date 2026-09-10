@@ -26,6 +26,7 @@ import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { Z_INDEX } from "../../../constants";
 import { getScrimTarget } from "../../../components/shared/overlay-portal/OverlayPortal"; // E5.8#107 浮层权威：遮罩归 scrim-plane
+import { OVERLAY_LAYER_ATTR, isTopmostOverlay } from "../../../components/shared/overlay-portal/overlayLayer"; // E6#73b ④ Esc 分层
 import type { PoolQuickPickData, PoolQuickPickItem, PluginQuickPickItem, PluginQuickPickRequest } from "../../../core/types/pool/poolQuickPick";
 import "./QuickPickHost.css";
 
@@ -116,6 +117,8 @@ export default function QuickPickHost() {
   const [show, setShow] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
+  /** E6#73b ④：面板本体——浮层表面标记 + Esc 分层判据的载体 */
+  const panelRef = useRef<HTMLDivElement>(null);
   // 退场竞态守卫——退场计时器内若已重新打开则跳过卸载（对标 E3 缝 bug 教训）
   const closingRef = useRef(false);
   // E5.7#63：插件请求 ref 镜像——事件回调（keydown/blur/backdrop）读最新值，免 effect 重订阅。
@@ -285,7 +288,9 @@ export default function QuickPickHost() {
 
   const handleKeyDown = (e: ReactKeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Escape") {
-      closeCurrent();
+      // E6#73b ④：只关最上层浮层（输入框自己收键盘事件，但面板底下压着的通知面板
+      // 会走窗口级监听器一起被关掉——非顶层就放行，不吞这一发）
+      if (isTopmostOverlay(panelRef.current)) closeCurrent();
       return;
     }
     if (e.key === "Enter" && filtered.length > 0) {
@@ -324,7 +329,9 @@ export default function QuickPickHost() {
       )}
       {/* Panel——设计 §5.1：top 15vh 居中，400px 宽，max 60vh 高 */}
       <div
+        ref={panelRef}
         className={`quick-pick-panel${show && !closing ? " show" : ""}${closing ? " closing" : ""}`}
+        {...{ [OVERLAY_LAYER_ATTR]: "" }}
         style={{ zIndex: Z_INDEX.quickPick }}
         role="dialog"
         aria-modal="true"
