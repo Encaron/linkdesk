@@ -44,12 +44,6 @@
   flex-shrink: 0;
 }
 
-.pd-icon-img {
-  width: 52px; /* E6#63e B5② 保底同构：96→52（对标市场面 .mpd-icon） */
-  height: 52px;
-  display: block;
-}
-
 .pd-icon-codicon {
   font-size: 40px !important; /* E6#63e B5② 保底同构：96→40 */
   color: var(--text-secondary);
@@ -113,11 +107,6 @@
 .pd-badge-core {
   background: var(--accent);
   color: var(--badge-text);
-}
-
-.pd-badge-singleton {
-  border: 1px solid var(--separator);
-  color: var(--text-muted);
 }
 
 .pd-subtitle {
@@ -187,17 +176,6 @@
   color: var(--status-connected);
 }
 
-/* 对标 VS Code extensionButton 绿色安装按钮 */
-.pd-btn-install {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: var(--badge-text);
-}
-
-.pd-btn-install:hover:not(:disabled) {
-  opacity: 0.9;
-}
-
 .pd-btn .codicon {
   font-size: var(--font-size-sm); /* E5.8 Phase 12 #171：12→sm */
   vertical-align: middle;
@@ -226,15 +204,6 @@
 .pd-pending-notice .codicon {
   font-size: var(--font-size-lg); /* E5.8 Phase 12 #171：14→lg */
   flex-shrink: 0;
-}
-
-.pd-reverse-warn {
-  font-size: var(--font-size-xs); /* E5.8 Phase 12 #171：11→xs */
-  color: var(--warning);
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  margin-left: auto;
 }
 
 /* ═══ NavBar — VS Code .navbar tabs ═══ */
@@ -287,81 +256,6 @@
   min-width: 0;
 }
 
-.pd-description {
-  font-size: var(--font-size-md); /* E5.8 Phase 12 #171：13→md */
-  color: var(--text-secondary);
-  line-height: 1.6;
-  margin: 0 0 20px;
-}
-
-/* 推荐 / 可选 / 依赖 */
-
-.pd-recommend-section {
-  margin-bottom: 16px;
-}
-
-.pd-recommend-section h4 {
-  font-size: var(--font-size-sm); /* E5.8 Phase 12 #171：12→sm */
-  font-weight: 600;
-  margin: 0 0 6px;
-  color: var(--text-primary);
-}
-
-.pd-recommend-section ul {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
-
-.pd-recommend-section li {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 8px;
-  border-radius: var(--radius-sm);
-  font-size: var(--font-size-md); /* E5.8 Phase 12 #171：13→md */
-  color: var(--text-secondary);
-}
-
-.pd-recommend-section li:hover {
-  background: var(--bg-card);
-}
-
-.pd-recommend-section li.installed {
-  opacity: 0.6;
-}
-
-.pd-recommend-section li .codicon {
-  font-size: var(--font-size-sm); /* E5.8 Phase 12 #171：12→sm */
-  flex-shrink: 0;
-}
-
-.pd-rec-name {
-  font-weight: 500;
-  font-family: var(--font-mono);
-  font-size: var(--font-size-sm); /* E5.8 Phase 12 #171：12→sm */
-  color: var(--text-primary);
-}
-
-.pd-rec-reason {
-  flex: 1;
-  font-size: var(--font-size-sm); /* E5.8 Phase 12 #171：12→sm */
-}
-
-.pd-rec-ver {
-  font-size: var(--font-size-xs); /* E5.8 Phase 12 #171：11→xs */
-  color: var(--text-muted);
-}
-
-.pd-rec-status {
-  font-size: var(--font-size-xs); /* E5.8 Phase 12 #171：11→xs */
-  flex-shrink: 0;
-}
-
-.pd-rec-status.missing {
-  color: var(--error);
-}
-
 /* 信息侧栏 */
 
 .pd-info-sidebar {
@@ -393,39 +287,4 @@
 .pd-info-value.mono {
   font-family: var(--font-mono);
   font-size: var(--font-size-xs); /* E5.8 Phase 12 #171：11→xs */
-}
-
-/* ═══ Changelog ═══ */
-
-.pd-changelog {
-  max-width: 640px;
-}
-
-.pd-changelog-entry {
-  margin-bottom: 16px;
-}
-
-.pd-changelog-header {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-  margin-bottom: 4px;
-}
-
-.pd-changelog-ver {
-  font-size: var(--font-size-lg); /* E5.8 Phase 12 #171：14→lg */
-  font-weight: 600;
-}
-
-.pd-changelog-date {
-  font-size: var(--font-size-xs); /* E5.8 Phase 12 #171：11→xs */
-  color: var(--text-muted);
-}
-
-.pd-changelog ul {
-  padding-left: 16px;
-  margin: 4px 0;
-  font-size: var(--font-size-md); /* E5.8 Phase 12 #171：13→md */
-  color: var(--text-secondary);
-  line-height: 1.6;
 }
