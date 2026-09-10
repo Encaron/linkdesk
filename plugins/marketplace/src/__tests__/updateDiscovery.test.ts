@@ -678,3 +678,117 @@ describe("runAutoUpdateIfDue（#33d DetailView 勾选即跑）", () => {
     expect(ids(getDiscoveredUpdates())).toEqual(["demo-alpha"]); // 失败不驱逐
   });
 });
+
+/* ═══ E6#71k 信任门 × 自动更新（用户 2026-09-10 拍板：后台自动**不过门**——跳过 + 告知） ═══ */
+
+describe("auto × 信任门（#71k——未信任来源跳过而非弹卡）", () => {
+  let fetchSpy: ReturnType<typeof vi.fn>;
+
+  /** 第三方源 URL 的目录 fetch——官方源给**空目录**（否则同版条目会经 mergeCatalogs 落到官方、
+   *  被 official 短路，测的就不是第三方了）；非官方 URL 给被测条目。 */
+  function thirdPartyCatalogFetch(plugins: CatalogEntry[]): void {
+    fetchSpy = vi.fn(async (url: string) =>
+      url === OFFICIAL_SOURCE_URL ? catalogText() : catalogText(...plugins),
+    );
+    __setCatalogIO(fetchSpy as unknown as FetchFn, memStorage());
+  }
+
+  /** stubWindow 只给 pluginManager/notifications；信任门另需 configuration 面（信任表 + 作者源）——
+   *  在其后补装。作者源用 github 仓库主页形态（归一后 owner/repo = demo-owner/demo-repo）。 */
+  function withConfiguration(seed: Record<string, unknown> = {}): void {
+    const map = new Map<string, unknown>([
+      ["marketplace.marketplaceSources", ["https://github.com/demo-owner/demo-repo"]],
+      ...Object.entries(seed),
+    ]);
+    const cur = (window as unknown as { linkdesk: Record<string, unknown> }).linkdesk;
+    Object.defineProperty(window, "linkdesk", {
+      value: {
+        ...cur,
+        configuration: {
+          get: async (k: string) => map.get(k),
+          set: async (k: string, v: unknown) => {
+            map.set(k, v);
+          },
+        },
+      },
+      configurable: true,
+    });
+  }
+
+  beforeEach(() => {
+    __setCatalogIO(null, null);
+    __setMetaStore(null);
+    __resetUpdateDiscovery();
+    Reflect.deleteProperty(window, "linkdesk");
+  });
+  afterEach(() => {
+    __setCatalogIO(null, null);
+    __setMetaStore(null);
+    Reflect.deleteProperty(window, "linkdesk");
+  });
+
+  it("未信任第三方来源的 auto 候选 → 不调引擎、候选留守、发一条 warning 告知", async () => {
+    __setMetaStore(metaStore({ "demo-alpha": { autoUpdate: true } }));
+    const update = vi.fn<EngineUpdate>(async () => ({ success: true }));
+    const { show } = stubWindow({ enabled: [enabled("demo-alpha", "1.0.0", "Alpha")], update });
+    withConfiguration(); // 信任表空 → 首次 → 弹卡 → 自动路径跳过
+    thirdPartyCatalogFetch([catEntry("demo-alpha", "2.0.0")]);
+
+    const plan = await runUpdateDiscovery();
+    expect(plan).not.toBeNull();
+    expect(update).not.toHaveBeenCalled(); // 不过门 = 不静默装
+    expect(ids(getDiscoveredUpdates())).toEqual(["demo-alpha"]); // 候选留守 → 详情页手动可更新
+    expect(show).toHaveBeenCalledTimes(1);
+    expect(show).toHaveBeenCalledWith(expect.any(String), { type: "warning" });
+  });
+
+  it("已信任来源（信任表 + 台账一致）→ 照常自动更新，无跳过告知", async () => {
+    __setMetaStore(metaStore({ "demo-alpha": { autoUpdate: true } }));
+    const update = vi.fn<EngineUpdate>(async () => ({ success: true }));
+    const { show } = stubWindow({ enabled: [enabled("demo-alpha", "1.0.0", "Alpha")], update });
+    withConfiguration({
+      "marketplace.trustedSources": ["demo-owner/demo-repo"],
+      "marketplace.installedFrom": { "demo-alpha": "demo-owner/demo-repo" },
+    });
+    thirdPartyCatalogFetch([catEntry("demo-alpha", "2.0.0")]);
+
+    await runUpdateDiscovery();
+    expect(update).toHaveBeenCalledTimes(1);
+    expect(update.mock.calls[0][0]).toBe("demo-alpha");
+    expect(getDiscoveredUpdates()).toEqual([]); // 已更新
+    expect(show).not.toHaveBeenCalled();
+  });
+
+  it("同 id 换了来源（台账不符）→ 跳过并告知，压过「已信任」（§五 J.2②）", async () => {
+    __setMetaStore(metaStore({ "demo-alpha": { autoUpdate: true } }));
+    const update = vi.fn<EngineUpdate>(async () => ({ success: true }));
+    const { show } = stubWindow({ enabled: [enabled("demo-alpha", "1.0.0", "Alpha")], update });
+    withConfiguration({
+      "marketplace.trustedSources": ["demo-owner/demo-repo"],
+      "marketplace.installedFrom": { "demo-alpha": "demo-other/old-repo" }, // 上次是别人发的
+    });
+    thirdPartyCatalogFetch([catEntry("demo-alpha", "2.0.0")]);
+
+    await runUpdateDiscovery();
+    expect(update).not.toHaveBeenCalled();
+    expect(show).toHaveBeenCalledWith(expect.any(String), { type: "warning" });
+  });
+
+  it("勾选即跑（runAutoUpdateIfDue）被信任门挡住 → 告知（用户刚勾的必须说）", async () => {
+    __setMetaStore(metaStore());
+    const update = vi.fn<EngineUpdate>(async () => ({ success: true }));
+    const { show } = stubWindow({ enabled: [enabled("demo-alpha", "1.0.0", "Alpha")], update });
+    withConfiguration();
+    thirdPartyCatalogFetch([catEntry("demo-alpha", "2.0.0")]);
+    await runUpdateDiscovery(); // auto 未开 → 候选留守
+    expect(ids(getDiscoveredUpdates())).toEqual(["demo-alpha"]);
+    show?.mockClear(); // 本趟发现已推过一条「有新版本」铃——清掉才能断言「跳过告知」那一条
+
+    await setAutoUpdate("demo-alpha", true); // DetailView 勾开 → 即刻跑
+    expect(await runAutoUpdateIfDue("demo-alpha")).toBe(false);
+    expect(update).not.toHaveBeenCalled();
+    expect(show).toHaveBeenCalledTimes(1);
+    expect(show).toHaveBeenCalledWith(expect.any(String), { type: "warning" });
+    expect(ids(getDiscoveredUpdates())).toEqual(["demo-alpha"]); // 候选不驱逐
+  });
+});

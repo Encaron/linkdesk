@@ -8,6 +8,9 @@
  *
  * 载荷只带原始数据（结构克隆过 IPC——不透明，壳不解释）；展示串（大小 KB/MB、v 前缀、官方徽标）
  * 在视图内本地派生——富内容排版仍在市场 bundle 内（§四·三「排版/按钮市场自由画」）。
+ *
+ * E6#71k：卡片不再「每插件一张」而是「每来源一张」——`trustGrant` 携带本次确认的信任语义
+ * （remember / never），卡片语义 = 「安装来自 <来源> 的插件，并信任此来源？」。卡本身不删（见 18 §五 J）。
  */
 
 import type { CatalogEntry } from "./marketCatalog";
@@ -52,6 +55,12 @@ export interface InstallConfirmPayload {
   /** 包大小字节——视图本地 fmtSize 派生 */
   size?: number;
   license?: string;
+  /**
+   * E6#71k 信任语义（仅「信任门判定要弹卡」时携带；官方源 / 已信任来源不弹卡 → 恒无此字段）。
+   * `"remember"` = 确认后记住该来源、此后同源不再询问；`"never"` = http 明文源不可记忆，
+   * 每次安装都会询问（08-信任与安全 §四.2）。视图据此选一句告知文案——不接收成品文本（硬约束 2）。
+   */
+  trustGrant?: "remember" | "never";
 }
 
 /**
@@ -59,7 +68,11 @@ export interface InstallConfirmPayload {
  * 安装门禁只对未装放行 → name/publisher/desc/repoUrl 取未装 catalog 原数据即可
  * （与确认卡旧 JSX authorText/nameText 未装分支同源：authorLabel(entry.author) / entry.name）。
  */
-export function installConfirmPayload(entry: CatalogEntry, installVer?: string): InstallConfirmPayload {
+export function installConfirmPayload(
+  entry: CatalogEntry,
+  installVer?: string,
+  trustGrant?: "remember" | "never",
+): InstallConfirmPayload {
   const sourceName = entry.sourceName;
   return {
     name: entry.name,
@@ -71,5 +84,6 @@ export function installConfirmPayload(entry: CatalogEntry, installVer?: string):
     version: installVer ?? entry.version,
     size: entry.size,
     license: entry.license,
+    trustGrant,
   };
 }

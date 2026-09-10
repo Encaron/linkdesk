@@ -65,6 +65,8 @@ import { readInstalledPackageFile } from "../services/packageFiles";
 // E6#71c：安装确认载荷构造——authorLabel/repoHomeUrl/fmtSize 展示派生抽共享模块（ConfirmInstall 视图
 // 独立 surface bundle，不跨引用本文件；侧栏信息行与确认卡同源复用，单一实现零重复）
 import { authorLabel, fmtSize, installConfirmPayload, repoHomeUrl } from "../services/installConfirmPayload";
+// E6#71k：安装信任门（「每来源一张卡」）——判定/写信任表/记台账全走该模块，视图只消费判定结果
+import { rememberInstalledFrom, rememberSource, trustDecisionFor } from "../services/installTrust";
 import DetailFeaturesTab from "./DetailFeaturesTab";
 import DetailChangelogTab from "./DetailChangelogTab";
 import "../styles/MarketplaceDetail.css";
@@ -416,6 +418,25 @@ export default function DetailView({ pluginId }: DetailContributedProps) {
         notifyError(updateFailText(t, "unknown", ""));
         return;
       }
+      /* E6#71k ⓑ：**更新走同一个信任门**（08 §四.2 现行规则表最后一行）——未信任来源 / http 明文源 /
+       *  同一 id 换了来源，都弹同一张卡。不补这条，「信任可撤销」只拦得住新装、拦不住变码（撤销形同空话）。
+       *  ⚠️ 只有**用户在场点更新**走这里；后台自动更新不过门，而是跳过 + 告知（updateDiscovery）。 */
+      if (entry) {
+        const verdict = await trustDecisionFor(entry);
+        if (verdict.prompt) {
+          const confirmContent = lk()?.dialog?.confirmContent;
+          if (!confirmContent) return;
+          const ok = await confirmContent({
+            title: t("确认更新"),
+            message: t("安装即信任——确认前请查看来源与发布者。"),
+            pluginId: "marketplace",
+            viewId: "marketplace-install-confirm",
+            payload: installConfirmPayload(entry, ver, verdict.remember ? "remember" : "never"),
+          });
+          if (!ok) return;
+          await rememberSource(entry.sourceName);
+        }
+      }
       setUpdating(true);
       try {
         // 引擎锚①：目标 < 当前（版本下拉选旧版降级）→ 显式 allowOlder:true 放行；升/同级不发（同版恒拒引擎兜底）
@@ -425,6 +446,8 @@ export default function DetailView({ pluginId }: DetailContributedProps) {
           if (updateTarget && compareVersions(ver, updateTarget) === 0) removeDiscoveredCandidate(pluginId);
           const pin = pinnedAfterApply(entry, ver);
           if (pin !== undefined) void setPinnedVersion(pluginId, pin);
+          // E6#71k §五 J.2②：更新成后记台账——同 id 下次换来源即强制重问（与安装同一条判据）
+          void rememberInstalledFrom(pluginId, entry?.sourceName);
           refreshPlugins();
         } else {
           // #64 A2：更新失败 → error toast（原行内红字退役）；重试口 = 原位更新钮仍在，无漂移。
@@ -527,27 +550,36 @@ export default function DetailView({ pluginId }: DetailContributedProps) {
       if (pin !== undefined) void setPinnedVersion(pluginId, pin);
     }
     // 会话 store 负责归因 + 失败态；成功后 lifecycle 事件驱动列表翻态（30.5c），本视图随 info 收敛
-    await startMarketInstall(pluginId, url);
+    const ok = await startMarketInstall(pluginId, url);
+    // E6#71k §五 J.2②：装成后记「该 id 上次装自哪个来源」——下次同 id 换来源即强制重问。
+    // 失败不记（未落地的安装不该污染判据）；台账写失败不影响安装结果，故不 await。
+    if (ok) void rememberInstalledFrom(pluginId, entry?.sourceName);
   }, [pluginId, busy, installingHere, installGateError, entry, installUrl, installVer]);
 
-  /* 安装钮点击 = 富内容确认（E6#71c 归位壳 Dialog——壳 DialogHost content 槽挂载 ConfirmInstall 视图：
-   *  弹窗机制（居中/遮罩/Esc/trap）壳给，卡片排版/按钮仍市场自绘。装/卸/降级三确认共用壳 Dialog 容器。
-   *  视图声明寻址失败 → 壳回落纯文字 title/message 双钮确认（弹窗仍出不静默死）；confirmContent 面缺失 →
-   *  保守 no-op（老 preload）。确认 true → runInstall（安装执行单一入口仍留本视图）。 */
+  /* 安装钮点击 = E6#71k 信任门 →（要问才弹）富内容确认 → runInstall（安装执行单一入口仍留本视图）。
+   *  门（installTrust）：官方源 / 已信任来源 → **不弹卡直接装**；未信任第三方来源首次 → 弹一张；
+   *  http 明文源 → 恒弹（不可记忆）；同一 id 换了来源 → 强制重问（判序上压过「已信任」）。
+   *  弹卡机制 = E6#71c 壳 Dialog（DialogHost content 槽挂 ConfirmInstall 视图）——机制一点没动，
+   *  只改「什么时候弹」；视图声明寻址失败 → 壳回落纯文字双钮确认（弹窗仍出不静默死）。
+   *  §五 J.2⑥：点确认即写信任表，安装随后失败**不回滚**（信任对象是「来源」不是「这一次安装」）。 */
   const handleInstallClick = useCallback(async () => {
     if (!pluginId || busy || installingHere) return;
     if (installGateError()) return;
     if (!entry) return;
-    const confirmContent = lk()?.dialog?.confirmContent;
-    if (!confirmContent) return;
-    const ok = await confirmContent({
-      title: t("确认安装"),
-      message: t("安装即信任——确认前请查看来源与发布者。"),
-      pluginId: "marketplace",
-      viewId: "marketplace-install-confirm",
-      payload: installConfirmPayload(entry, installVer),
-    });
-    if (!ok) return;
+    const verdict = await trustDecisionFor(entry);
+    if (verdict.prompt) {
+      const confirmContent = lk()?.dialog?.confirmContent;
+      if (!confirmContent) return; // 老 preload 面缺 confirmContent——保守 no-op（与 71c 同款）
+      const ok = await confirmContent({
+        title: t("确认安装"),
+        message: t("安装即信任——确认前请查看来源与发布者。"),
+        pluginId: "marketplace",
+        viewId: "marketplace-install-confirm",
+        payload: installConfirmPayload(entry, installVer, verdict.remember ? "remember" : "never"),
+      });
+      if (!ok) return;
+      await rememberSource(entry.sourceName);
+    }
     await runInstall();
   }, [pluginId, busy, installingHere, installGateError, entry, installVer, t, runInstall]);
 

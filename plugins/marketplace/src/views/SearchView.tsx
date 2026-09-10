@@ -7,11 +7,14 @@
 
 import { useState, useCallback, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { setMarketplaceSearch, notifyError } from "../services/marketplaceShared";
+import { setMarketplaceSearch, notifyError, notifyInfo } from "../services/marketplaceShared";
 import { OverlayPortal, useDebouncedInput } from "@linkdesk/ui"; // E6#15h：共享件全走 @linkdesk/ui 零件
 import { readConfiguredAuthorSources } from "../services/marketSources";
 import { decideAddSource } from "../services/marketSourceAdd"; // E6#30c：加源决策抽纯（官方恒不入册判重见该模块头注）
+// E6#71k：撤销入口——「同意可否收回」本就是同意的一部分（18 §五 J.2①）；本仓零撤销 UI 先例，故必须自带
+import { forgetSource, readTrustedSources } from "../services/installTrust";
 import "../styles/MarketplaceSidebar.css";
+import "../styles/MarketplaceTrust.css";
 
 const lk = () => window.linkdesk;
 
@@ -43,11 +46,35 @@ function AddSourcePopup({
   const [value, setValue] = useState("");
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  /* E6#71k 撤销入口：null = 未读到（首帧静默，不闪「还没有」再跳列表） */
+  const [trusted, setTrusted] = useState<string[] | null>(null);
 
   /** 输入即清错——mockup 帧 ③ 就近校验语义（err 红字 + input.err 红描边） */
   const clearErr = useCallback(() => {
     if (err) setErr(null);
   }, [err]);
+
+  /* 开弹窗即读信任表（读失败 → installTrust 内部已兜空表，永不让弹窗挂掉） */
+  useEffect(() => {
+    let alive = true;
+    void readTrustedSources().then((list) => {
+      if (alive) setTrusted(list);
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  /** 撤销——删表项后重读回显（写串行化在 installTrust 内），并给一条回执：
+   *  撤销是主动动作，不留「静默成功」；它不是失败，故走 info 不染红。 */
+  const remove = useCallback(
+    async (name: string) => {
+      await forgetSource(name);
+      setTrusted(await readTrustedSources());
+      notifyInfo(t("已取消信任：{{name}}", { name }));
+    },
+    [t],
+  );
 
   /** 添加——读现作者源 → 纯决策（decideAddSource，官方恒不入册/同身份判重）→ 仅 ok 落盘。
    *  写同一 marketplaceSources；watch 自动刷新，无需本组件触发拉取。settings 缺席亦照常——本弹窗即
@@ -98,6 +125,32 @@ function AddSourcePopup({
           {err ??
             t("该仓库根目录需有 marketplace.json；添加后几秒内，该源的所有插件出现在商店。")}
         </span>
+        {/* E6#71k 撤销入口（18 §五 J.2①·必办）：信任表可读可撤——撤销后该源下次安装重新询问。
+            非空才渲染整块（空态只留一句说明），避免弹窗被一段永空的标题撑高。 */}
+        <div className="ms-trust-block">
+          <span className="ms-trust-title">{t("已信任的来源")}</span>
+          {trusted && trusted.length > 0 ? (
+            <ul className="ms-trust-list">
+              {trusted.map((name) => (
+                <li className="ms-trust-row" key={name}>
+                  <span className="ms-trust-name" title={name}>
+                    {name}
+                  </span>
+                  <button
+                    className="ms-trust-remove"
+                    aria-label={t("移除信任")}
+                    title={t("移除信任")}
+                    onClick={() => void remove(name)}
+                  >
+                    <span className="codicon codicon-trash" aria-hidden="true" />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <span className="ms-trust-empty">{t("还没有信任任何第三方来源。")}</span>
+          )}
+        </div>
         <div className="ms-addsrc-pop-actions">
           <button className="ms-addsrc-pop-btn" onClick={onClose} disabled={busy}>
             {t("取消")}

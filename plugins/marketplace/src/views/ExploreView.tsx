@@ -48,6 +48,8 @@ import type { CatalogEntry } from "../services/marketCatalog";
 import { updateToVersion } from "../services/marketCatalog";
 // E6#71d：行内安装富确认载荷构造（与详情页 installConfirmPayload 同源——单构造双入口零漂移）
 import { installConfirmPayload } from "../services/installConfirmPayload";
+// E6#71k：安装信任门——行内安装与详情页走同一判定（双入口单门，零漂移）
+import { rememberInstalledFrom, rememberSource, trustDecisionFor } from "../services/installTrust";
 import "../styles/MarketplaceSidebar.css";
 
 const lk = () => window.linkdesk;
@@ -125,19 +127,26 @@ export default function ExploreView() {
         notifyError(t("安装失败"));
         return;
       }
-      // 71d：富内容确认（壳 DialogHost content 槽挂 ConfirmInstall）——取消即停，确认才发起真装
-      const confirmContent = lk()?.dialog?.confirmContent;
-      if (!confirmContent) return; // 老 preload 面缺 confirmContent（71c 新增）——保守 no-op，与详情页同款
-      const ok = await confirmContent({
-        title: t("确认安装"),
-        message: t("安装即信任——确认前请查看来源与发布者。"),
-        pluginId: "marketplace",
-        viewId: "marketplace-install-confirm",
-        payload: installConfirmPayload(entry),
-      });
-      if (!ok) return;
+      // E6#71k 信任门（与详情页同一判定）：官方源 / 已信任来源 → 不弹卡直接装；
+      // 未信任第三方来源首次 / http 明文源 / 同 id 换了来源 → 弹一张（卡 = 71d 的 ConfirmInstall 富内容）
+      const verdict = await trustDecisionFor(entry);
+      if (verdict.prompt) {
+        const confirmContent = lk()?.dialog?.confirmContent;
+        if (!confirmContent) return; // 老 preload 面缺 confirmContent（71c 新增）——保守 no-op，与详情页同款
+        const confirmed = await confirmContent({
+          title: t("确认安装"),
+          message: t("安装即信任——确认前请查看来源与发布者。"),
+          pluginId: "marketplace",
+          viewId: "marketplace-install-confirm",
+          payload: installConfirmPayload(entry, undefined, verdict.remember ? "remember" : "never"),
+        });
+        if (!confirmed) return;
+        await rememberSource(entry.sourceName); // §五 J.2⑥：点确认即写，安装失败不回滚
+      }
       // 进度/失败/重试全走 startMarketInstall（占会话 → settle 归因 + toast[重试]，幂等单发）
-      await startMarketInstall(entry.id, entry.downloadUrl);
+      const ok = await startMarketInstall(entry.id, entry.downloadUrl);
+      // E6#71k §五 J.2②：装成后记台账（同 id 换来源强制重问的判据）；失败不记
+      if (ok) void rememberInstalledFrom(entry.id, entry.sourceName);
     },
     [online, t],
   );

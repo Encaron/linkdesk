@@ -61,6 +61,13 @@ export function notifyError(message: string): void {
   if (show) void show(message, { type: "error" });
 }
 
+/** 发一条 info toast（E6#71k 撤销信任回执用）——同 notifyError 的进程守卫。
+ *  存在理由：撤销是实现动作，按 UX 指引不留「静默成功」；且它不是失败，不该走 error 通道染红。 */
+export function notifyInfo(message: string): void {
+  const show = lk()?.notifications?.show;
+  if (show) void show(message, { type: "info" });
+}
+
 /* ═══ 本地插件共享数据 hook（已安装/内置/已禁用） ═══ */
 
 let _loadingPromise: Promise<void> | null = null;

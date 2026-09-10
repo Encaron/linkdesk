@@ -38,6 +38,9 @@ export interface CatalogEntry {
   sourceName?: string;
   /** 合并注入：该胜出条目来自官方默认源（E6#30.8f「官方发布」徽标——官方身份随条目携带，UI 零再判） */
   official?: boolean;
+  /** 合并注入：该胜出条目来源的可 fetch URL——判 http 明文源用（E6#71k：http 源信任不可记忆，
+   *  见 08-信任与安全 §四.2。sourceName 对 http/https 同形，判不出明文，故恒带 URL） */
+  sourceUrl?: string;
 }
 
 /** marketplace.json 根结构 */
@@ -261,15 +264,17 @@ export function pinnedAfterApply(entry: CatalogEntry | undefined, appliedVersion
 
 /** 多源合并去重——同 id 取 semver 高者；版本平手用先出现的源（官方排前 → 官方胜出）。
  *  E6#30.8f：来源记录可带 official 标记，胜出条目的来源身份（sourceName + official）随条目携带——UI 读
- *  单一字段即可显示「官方发布」徽标，不把官方身份跟"源 URL 长啥样"耦合回视图层。 */
+ *  单一字段即可显示「官方发布」徽标，不把官方身份跟"源 URL 长啥样"耦合回视图层。
+ *  E6#71k：连带携带 sourceUrl（同时注入，同一条记录的两个面）——信任门判 http 明文源需要它，
+ *  sourceName 对 http/https 同形判不出。 */
 export function mergeCatalogs(
-  sources: Array<{ sourceName: string; official?: boolean; entries: CatalogEntry[] }>,
+  sources: Array<{ sourceName: string; sourceUrl?: string; official?: boolean; entries: CatalogEntry[] }>,
 ): CatalogEntry[] {
   const byId = new Map<string, CatalogEntry>();
   for (const src of sources) {
     for (const e of src.entries) {
       const prev = byId.get(e.id);
-      const carried: CatalogEntry = { ...e, sourceName: src.sourceName };
+      const carried: CatalogEntry = { ...e, sourceName: src.sourceName, sourceUrl: src.sourceUrl };
       if (src.official) carried.official = true;
       if (!prev) {
         byId.set(e.id, carried);

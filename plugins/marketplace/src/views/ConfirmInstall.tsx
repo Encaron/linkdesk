@@ -9,6 +9,10 @@
  * 过壳→回池结构克隆，无跨 bundle 会话 store）。空 → 返回 null 防御（不白屏）。
  * 结算 = dialogHost.cancel()/confirm() → 池 dialog-action → 壳 settle（先推 open:false 再 settle）
  * → DetailView 接 true 执行 runInstall（安装执行单一入口仍留在 DetailView，本视图只表态）。
+ *
+ * E6#71k：本卡不再「每插件一张」而是「每来源一张」——只有信任门（installTrust）判定要问时才弹。
+ * 卡片语义随之从「确认安装此插件」变为「安装来自 <来源> 的插件，并信任此来源？」——由 payload.trustGrant
+ * 驱动告知句；卡不删、机制不变（只改触发频率与那一句话）。
  */
 
 import { useState, type ReactNode } from "react";
@@ -56,6 +60,16 @@ export default function ConfirmInstall() {
     confirmApi();
   };
 
+  /* E6#71k：卡片语义 = 「安装来自 <来源> 的插件，并信任此来源？」——trustGrant 决定告知句。
+   * 无 trustGrant（老调用方/异常路径）落回 71c 原句，不空着（诚实兜底不撒谎）。 */
+  const sourceLabel = payload.sourceName ?? "";
+  const note =
+    payload.trustGrant === "remember" && sourceLabel
+      ? t("安装来自「{{source}}」的插件，并信任此来源——确认后此来源不再询问。", { source: sourceLabel })
+      : payload.trustGrant === "never" && sourceLabel
+        ? t("安装来自「{{source}}」的插件——此来源使用 http 连接，无法安全记住，每次都会询问。", { source: sourceLabel })
+        : t("安装即信任——确认前请查看来源与发布者。");
+
   return (
     <div className="mpd-confirm" role="dialog" aria-modal="true" aria-label={t("确认安装")}>
       <div className="mpd-confirm-head">
@@ -63,7 +77,7 @@ export default function ConfirmInstall() {
         <span className="mpd-confirm-title">{t("确认安装")}</span>
       </div>
       <p className="mpd-confirm-plugin">{payload.name}</p>
-      <p className="mpd-confirm-note">{t("安装即信任——确认前请查看来源与发布者。")}</p>
+      <p className="mpd-confirm-note">{note}</p>
       <div className="mpd-confirm-rows">
         <Row label={t("发布者")}>
           <span className="mpd-confirm-publisher">

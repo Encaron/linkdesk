@@ -47,6 +47,8 @@ import type { PluginListEntry, PluginInfoEntry } from "@linkdesk/contracts";
 import type { CatalogEntry } from "./marketCatalog";
 import { compareVersions, isVersionNewer, stableLatestVersion, versionDownloadUrl } from "./marketCatalog";
 import { loadCatalog } from "./marketSources";
+// E6#71k ⓑ：自动更新不过信任门——未信任来源跳过并告知（手动更新才弹卡，见 DetailView.doVersionAction）
+import { trustDecisionFor } from "./installTrust";
 import {
   clearNotifiedVersion,
   noteNotifiedVersion,
@@ -210,20 +212,44 @@ function commitStore(candidates: UpdateCandidate[]): void {
 
 /* ═══ #33d 单候选自动更新执行（doRunDiscovery 与勾选即跑共用——引擎 update，成功后引擎自 toast，市场不重复） ═══ */
 
+/** 自动更新执行结果——`skipped-untrusted` = 该来源未信任 / http 明文源（E6#71k：自动路径**不过门**，
+ *  跳过并告知；候选保留为手动可更新，用户去详情页点「更新」时才弹卡） */
+type AutoUpdateOutcome = "updated" | "failed" | "skipped-untrusted";
+
 /** 对单候选跑引擎更新——url = versionDownloadUrl 取该稳定版资产（§二·四 auto 只看稳定版；顶层兜底同 #33b 寻址）。
- *  无 update 能力（预览/非池）/无 url → false（无法自动，保留手动候选）。返回是否成功（success 由引擎判定——
- *  needRestart 恒 true 也计成功：文件已原子替换，重启生效 §二·七）。失败不抛——结果 bool，编排据此归位。 */
-async function applyEngineAutoUpdate(c: UpdateCandidate): Promise<boolean> {
+ *  无 update 能力（预览/非池）/无 url → "failed"（无法自动，保留手动候选）。success 由引擎判定——
+ *  needRestart 恒 true 也计成功：文件已原子替换，重启生效 §二·七。失败不抛——结果三态，编排据此归位。 */
+async function applyEngineAutoUpdate(c: UpdateCandidate): Promise<AutoUpdateOutcome> {
   const upd = pm()?.update;
-  if (!upd) return false;
+  if (!upd) return "failed";
   const url = versionDownloadUrl(c.entry, c.remoteLatest) ?? c.entry.downloadUrl;
-  if (!url) return false;
+  if (!url) return "failed";
+  /* E6#71k ⓑ（2026-09-10 用户拍板）：**后台自动更新不过信任门**——用户不在场、没有点击，弹卡既打断又
+   *  违背「自动」本身的意义。未信任来源 → 跳过并告知（notifyUntrustedSkipped），候选保留。
+   *  用户去详情页点「更新」→ 那次是手动路径、会弹卡；确认后来源入信任表，此后自动更新才走得通。 */
+  if ((await trustDecisionFor(c.entry)).prompt) return "skipped-untrusted";
   try {
     const r = await upd(c.pluginId, { url });
-    return !!(r && r.success);
+    return r && r.success ? "updated" : "failed";
   } catch {
-    return false; // 引擎抛/断网 → 失败；候选保留（下次发现/手动重试）
+    return "failed"; // 引擎抛/断网 → 失败；候选保留（下次发现/手动重试）
   }
+}
+
+/** 跳过告知（E6#71k）——**一次发现只发一条**（多个未信任来源不刷屏）；来源名去重列出。
+ *  直调 notifications（不经 marketplaceShared——那是本模块的**下游**，import 会成环）。壳进程无
+ *  notifications.show → 静默 no-op（同本模块既有池门控）。 */
+function notifyUntrustedSkipped(cands: UpdateCandidate[]): void {
+  const show = window.linkdesk?.notifications?.show;
+  if (!show || cands.length === 0) return;
+  const sources = [...new Set(cands.map((c) => c.entry.sourceName ?? c.pluginId))].join("、");
+  void show(
+    i18n.t("已跳过 {{count}} 个自动更新：来源「{{sources}}」尚未信任——打开插件详情点「更新」可确认来源。", {
+      count: cands.length,
+      sources,
+    }),
+    { type: "warning" },
+  );
 }
 
 /* ═══ 主编排（IO——读已装 → 拉目录 → 计划 → 自愈清 + 铃铛推(幂等) + auto 静默跑 + 落 store） ═══ */
@@ -288,9 +314,13 @@ async function doRunDiscovery(force: boolean): Promise<DiscoveryPlan | null> {
   // #33d auto 静默执行（顺序——引擎 update 单通道，多插件串行最稳；单败不阻断其余）。G6：插件标签页开着
   //  照常 stage+替换+重启生效（引擎 needRestart 恒 true，原子替换开着也能成 §二·七）。
   const autoDone: string[] = [];
+  const skippedUntrusted: UpdateCandidate[] = [];
   for (const c of autoEligible) {
-    if (await applyEngineAutoUpdate(c)) autoDone.push(c.pluginId);
+    const r = await applyEngineAutoUpdate(c);
+    if (r === "updated") autoDone.push(c.pluginId);
+    else if (r === "skipped-untrusted") skippedUntrusted.push(c);
   }
+  notifyUntrustedSkipped(skippedUntrusted); // 一条汇总，不逐插件刷屏
 
   const committed = plan.candidates.filter((c) => !autoDone.includes(c.pluginId));
   commitStore(committed);
@@ -309,7 +339,9 @@ export async function runAutoUpdateIfDue(pluginId: string): Promise<boolean> {
   const meta = await readUpdateMetaMap();
   const m = meta[pluginId];
   if (m?.autoUpdate !== true || m?.pinnedVersion !== undefined) return false;
-  const ok = await applyEngineAutoUpdate(c);
+  const r = await applyEngineAutoUpdate(c);
+  if (r === "skipped-untrusted") notifyUntrustedSkipped([c]); // 用户刚勾的自动更新被信任门挡住——必须说
+  const ok = r === "updated";
   if (ok) commitStore(_candidates.filter((x) => x.pluginId !== pluginId));
   return ok;
 }

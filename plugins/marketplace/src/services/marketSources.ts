@@ -220,18 +220,20 @@ export async function loadCatalog(force = false): Promise<CatalogLoadResult> {
   const urls = await getSourceUrls();
   const fetched = await Promise.all(urls.map((url) => fetchOne(url, force)));
 
-  const sources: Array<{ sourceName: string; official?: boolean; entries: CatalogEntry[] }> = [];
+  const sources: Array<{ sourceName: string; sourceUrl?: string; official?: boolean; entries: CatalogEntry[] }> = [];
   const errors: Array<{ sourceName: string; reason: string }> = [];
   let usedStale = false;
 
-  for (const f of fetched) {
+  // 下标对齐 fetched ⇄ urls（上一行是直 map——一一对应）；sourceUrl 随条目携带供 E6#71k 判 http 明文源
+  for (let i = 0; i < fetched.length; i++) {
+    const f = fetched[i];
     if ("reason" in f) {
       errors.push({ sourceName: f.sourceName, reason: f.reason });
       continue;
     }
     usedStale = usedStale || f.staleFallback;
     const parsed = parseCatalog(f.text); // 交付物已预校验——兜底防御仍判一次
-    if (parsed.ok) sources.push({ sourceName: f.sourceName, official: f.official, entries: parsed.catalog.plugins });
+    if (parsed.ok) sources.push({ sourceName: f.sourceName, sourceUrl: urls[i], official: f.official, entries: parsed.catalog.plugins });
     else errors.push({ sourceName: f.sourceName, reason: "parse" });
   }
 
