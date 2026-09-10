@@ -257,6 +257,28 @@ describe("E6#73k：通知面 aria 语义", () => {
     expect(document.getElementById(panelId)).not.toBeNull();
   });
 
+  it("E6#75 铃铛＝收/开双通开关——第二次点收起面板，第三次点还能开回来", () => {
+    const { container, baseElement } = render(<StatusBarZone statusBar={{ items: [], notif: NOTIF }} />);
+    const bell = container.querySelector(".status-bar-notif-btn")!;
+    const panelId = "status-bar-notif-panel";
+
+    fireEvent.click(bell);
+    expect(bell.getAttribute("aria-expanded")).toBe("true");
+    expect(baseElement.querySelector(`#${panelId}`)).not.toBeNull();
+
+    // 第二次点：**不再是无操作，而是收起**（三态表第 8 行 OPEN → MINIMIZED）。
+    // 这条与被推翻的旧行为（73a「铃铛只进不出」）互为反向，删了它 = 悄悄改回旧行为。
+    fireEvent.click(bell);
+    expect(bell.getAttribute("aria-expanded")).toBe("false");
+    expect(baseElement.querySelector(`#${panelId}`)).toBeNull();
+    expect(bell.getAttribute("aria-controls")).toBeNull();
+
+    // 第三次点：还能开回来——它是**开关**，不是「第二颗关闭按钮」
+    fireEvent.click(bell);
+    expect(bell.getAttribute("aria-expanded")).toBe("true");
+    expect(baseElement.querySelector(`#${panelId}`)).not.toBeNull();
+  });
+
   it("J1 铃铛的可读名随未读走（「3 条通知」）——同一句话当 tooltip 也当可读名，不写第二份", () => {
     const { container } = renderBar({
       items: [],

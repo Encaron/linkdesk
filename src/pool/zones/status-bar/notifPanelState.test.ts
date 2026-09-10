@@ -1,8 +1,11 @@
 /**
  * 通知面板三态状态机单测——E6#73a（18 档 §五 A「视觉两态，语义三态」）。
  *
- * 断言面 = 那张**七行迁移表**逐行 + 「明确不存在的行为」逐条反向。
+ * 断言面 = 那张**八行迁移表**逐行 + 「明确不存在的行为」逐条反向。
  * 表体是**唯一**权威：这里每多写一条迁移，都是往设计里偷偷加行为。
+ *
+ * ⚠️ 第 8 行（OPEN → MINIMIZED，再点一次铃铛）是 **2026-09-11 用户要求加回的开合开关**，
+ * 推翻了 73a 的「铃铛只进不出」——原因见 `notifPanelState.ts` 文件头注，别当回退再删掉。
  */
 
 import { describe, it, expect } from "vitest";
@@ -40,13 +43,22 @@ describe("E6#73a 三态迁移表——逐行真值", () => {
   it("⑤ open + 点最小化 → minimized 且认账（关时就认账）", () => {
     expect(notifPanelTransition("open", { type: "minimize" })).toEqual({ state: "minimized", markSeen: true });
   });
+
+  // 第 8 行（2026-09-11 用户要求加回）：OPEN → MINIMIZED（再点一次铃铛）→ 认账
+  // ⚠️ 两条断言缺一不可：`minimized` 是「铃铛真的收起了面板」；`markSeen:true` 是「它收得住」——
+  //    不认账 ⇒ 未读仍非零 ⇒ 壳侧 autoOpen 立刻为真 ⇒ 面板当场弹回来，开关看起来就是坏的。
+  it("⑧ open + 再点一次铃铛 → minimized 且认账（铃铛＝收/开双通开关）", () => {
+    expect(notifPanelTransition("open", { type: "bell" })).toEqual({ state: "minimized", markSeen: true });
+  });
+
+  it("⑧ 铃铛在三种状态下都有迁移，且 open 是唯一「点下去是收起」的起点（真·开关）", () => {
+    expect(notifPanelTransition("idle", { type: "bell" }).state).toBe("open");
+    expect(notifPanelTransition("minimized", { type: "bell" }).state).toBe("open");
+    expect(notifPanelTransition("open", { type: "bell" }).state).toBe("minimized");
+  });
 });
 
 describe("E6#73a 反向测试——「明确不存在的行为」防回退", () => {
-  it("OPEN 时点铃铛**无迁移**（表里没有 OPEN→铃铛 这条；铃铛只进不出）", () => {
-    expect(notifPanelTransition("open", { type: "bell" })).toEqual({ state: "open", markSeen: false });
-  });
-
   it("minimize 已经最小化 / 还没开时是空操作（不认账）", () => {
     expect(notifPanelTransition("minimized", { type: "minimize" })).toEqual({ state: "minimized", markSeen: false });
     expect(notifPanelTransition("idle", { type: "minimize" })).toEqual({ state: "idle", markSeen: false });
@@ -66,7 +78,7 @@ describe("E6#73a 反向测试——「明确不存在的行为」防回退", () 
     }
   });
 
-  it("认账只出现在两条路径：点铃铛开 / 最小化关——唤醒来的一律不认账", () => {
+  it("认账只出现在用户亲自动手的路径：点铃铛（开或收）/ 最小化关——唤醒来的一律不认账", () => {
     const seen = ALL_STATES.flatMap((s) =>
       ([{ type: "bell" }, { type: "wake" }, { type: "minimize" }] as NotifPanelEvent[]).map(
         (e) => `${s}+${e.type}=${notifPanelTransition(s, e).markSeen}`,
@@ -75,6 +87,7 @@ describe("E6#73a 反向测试——「明确不存在的行为」防回退", () 
     expect(seen.filter((x) => x.endsWith("=true")).sort()).toEqual([
       "idle+bell=true",
       "minimized+bell=true",
+      "open+bell=true",
       "open+minimize=true",
     ]);
   });

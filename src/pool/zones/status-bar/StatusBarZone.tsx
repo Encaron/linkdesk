@@ -51,7 +51,7 @@ function clampPercent(percent: number): number {
 
 function StatusBarZone({ statusBar }: { statusBar: StatusBarLayout }) {
   // E6#73a：面板三态（idle/open/minimized）**唯一状态表示**——见 `notifPanelState.ts` 头注。
-  // 初值 idle = 「七条迁移」第 7 行（池重建 / 重启 → 强制复位）——池重建 = 本组件重新挂载，
+  // 初值 idle = 「八条迁移」第 7 行（池重建 / 重启 → 强制复位）——池重建 = 本组件重新挂载，
   // 复位是结构性成立的，不需要额外的 reset 事件。
   // ⚠️ `markSeen` 随状态一起存：它是**本次迁移**的属性（同一个 open，点铃铛来要认账、唤醒来不认账），
   // 不能由状态本身推出来；放进同一个 state 值 = 状态与它是原子的，不会错配。
@@ -151,7 +151,7 @@ function StatusBarZone({ statusBar }: { statusBar: StatusBarLayout }) {
   // 门禁（「面板已开就不再请求展开」）就**恒为假** ⇒ 此后任何重要通知都不再自动弹，而界面上
   // 完全看不出哪里坏了。这一发就是把镜像拉回 idle。
   //
-  // 🔴 **这不是给状态机加第 8 条迁移**（`notifPanelState.ts` 第 7 行「池重建 → 复位」仍然无事件）：
+  // 🔴 **这不是一条迁移**（`notifPanelState.ts` 第 7 行「池重建 → 复位」仍然无事件）：
   // 池侧状态本就是 `useState` 初值、复位结构性成立；本行只是把**池侧的当前真值**播给壳侧镜像
   // ——是「同步」不是「迁移」，故不进迁移表，也不产生认账。首启时壳侧镜像初值已是 idle，幂等空操作。
   useEffect(() => {
@@ -225,9 +225,11 @@ function StatusBarZone({ statusBar }: { statusBar: StatusBarLayout }) {
       {/* 右区：插件贡献项 + 通知中心（壳 NotificationCenter 迁入） */}
       <div className="status-bar-right">
         {rightItems.map(renderItem)}
-        {/* E6#73a：铃铛是**进**面板的入口——已展开时点它**无迁移**（§五 A 七条表里没有
-            `OPEN →(铃铛)→ …`）。出面板的唯一动作是头部「最小化」。原来这里是 `!panelOpen` 开关，
-            那样等于又加了一条「点一下关掉」的路——正是 R3-1 抱怨的「所有按钮都在管关掉」。 */}
+        {/* E6#73a / E6#75：铃铛是**收/开双通开关**——收起时点它开、已展开时点它收起（§五 A 第 8 行
+            `OPEN →(铃铛)→ MINIMIZED`，与头部「最小化」逐字同义：收起、什么都不丢）。
+            ⚠️ 73a 一度把它改成「只进不出」（理由是「又一条『关掉』的路 = R3-1 抱怨的所有按钮都在管关掉」），
+            **2026-09-11 用户亲口推翻**——R3-1 抱怨的是清除/× 把通知**毁掉**，收起不毁任何东西。
+            这里本就是 `dispatch({type:"bell"})` 一条线，双通全靠状态机那张表，本组件不参与判态。 */}
         {/* E6#73k（J1）：铃铛此前只有 `title`——读屏器拿到的是一个装饰性字形加一个裸数字
             （「3」），既不知道这是个按钮、也不知道按下去会开什么。四件补齐，与 `PanelZone`
             的现成写法同款：可读名 / 有弹出层 / 展开态 / 指向谁。
