@@ -31,6 +31,8 @@ import { installBundledPlugins } from './plugins/bundled-install.js'; // E6#15c�
 import { recoverInterruptedUpdates } from './plugins/plugin-tree-recovery.js'; // E6#73j（G8）：复原被中断的更新替换（<id>.bak）
 import { cleanupStaleDownloads } from './services/plugin-download.js'; // E6#31a：启动清残留下载临时文件（.part/孤立包，01 §四·五 B1）
 import { fileService } from './services/file-service.js';
+import { pluginFileService } from './services/plugin-file-service.js'; // E6#78：插件目录位置解析
+import { envService } from './services/env-service.js'; // E6#78：插件数据目录
 import { WindowManager } from './windows/window-manager.js';
 import { syncKeybindings } from './windows/keyboard-router.js'; // E5.5#7-p6
 import { IpcBridge } from './ipc/ipc-bridge.js';
@@ -224,6 +226,32 @@ function createWindow(): void {
 
     // E4V#18: Shell IPC——revealInOS
     ipcMain.handle(IPC.shell.showItemInFolder, async (_e, p: string) => shell.showItemInFolder(p));
+
+    // E6#78：已装插件的磁盘位置——市场详情页「打开所在位置 / 数据位置」两行的数据源。
+    // 主进程解析路径（池内零安装路径知识，渲染侧只拿结果，不自己拼）；盘上找不到该插件 → null。
+    // dataDir 只在**真有数据**时才给（目录不存在或空 → null）——与 VS Code 详情页「缓存」行同判据
+    // （空则整行不画，不造一行点开是空文件夹的假信息）。
+    ipcMain.handle(IPC.shell.pluginLocation, async (_e, pluginId: string) => {
+      const installDir = pluginFileService.locateDir(pluginId);
+      if (!installDir) return null;
+      return { installDir, dataDir: envService.pluginDataDirIfAny(pluginId) };
+    });
+
+    // E6#78：资源管理器打开插件的安装目录 / 数据目录——开的是目录**内容**（与 E5.8#153
+    // appearance.revealStorage「打开存储位置」同一手感），不是 showItemInFolder 的「父目录 + 选中它」。
+    // install：插件不在盘上 → fail-loud 抛错（不假装打开成功）；data：先建空目录再开
+    // （打开即见存储位置，空目录同样合法——同 revealStorage）。
+    ipcMain.handle(
+      IPC.shell.openPluginFolder,
+      async (_e, pluginId: string, kind: 'install' | 'data') => {
+        const dir =
+          kind === 'data' ? envService.pluginDataDir(pluginId) : pluginFileService.locateDir(pluginId);
+        if (!dir) throw new Error(`插件目录不存在: ${pluginId}`);
+        await fileService.createDir(dir);
+        const err = await shell.openPath(dir);
+        if (err) throw new Error(`打开插件目录失败: ${err}`);
+      },
+    );
 
     // E6#73j（G4）：真重启应用——「点击重启以应用新版」。
     // 与 window.location.reload() 的本质差别：池是独立 WebContentsView，壳 reload 不重建它

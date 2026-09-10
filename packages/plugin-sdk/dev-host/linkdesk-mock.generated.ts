@@ -334,6 +334,8 @@ export const linkdeskMock: Record<string, unknown> = {
   shell: {
     showItemInFolder: async (..._args: unknown[]) => { console.info("[linkdesk-mock] shell.showItemInFolder", ..._args); },
     openInTerminal: async (..._args: unknown[]) => { console.info("[linkdesk-mock] shell.openInTerminal", ..._args); },
+    pluginLocation: async (..._args: unknown[]) => { console.info("[linkdesk-mock] shell.pluginLocation", ..._args); },
+    openPluginFolder: async (..._args: unknown[]) => { console.info("[linkdesk-mock] shell.openPluginFolder", ..._args); },
     startDrag: (..._args: unknown[]) => { console.info("[linkdesk-mock] shell.startDrag", ..._args); },
     relaunch: async (..._args: unknown[]) => { console.info("[linkdesk-mock] shell.relaunch", ..._args); },
   },

@@ -249,6 +249,20 @@ export interface PluginListSubset {
   marketIconSource?: PluginManifest["marketIconSource"];
 }
 
+/** E6#78：插件磁盘位置——市场详情页「打开所在位置 / 数据位置」两行的数据源。
+ *  主进程解析（池内**零**安装路径知识——渲染侧只拿结果，不拼路径）。 */
+export interface PluginDiskLocation {
+  /** 插件目录绝对路径（正斜杠——与 `plugins.resolvePath` 同规；消费端用作链接 tooltip，不自行拼接） */
+  installDir: string;
+  /** 插件数据目录——**只有该插件真有数据时才非空**（目录不存在或空 → null）。
+   *  与 VS Code 详情页「缓存」行同判据（`computeSize` 后 `if (!cacheSize) return`——空则整行不显示）：
+   *  纯 UI 插件恒 null，**不是人人都有**，故不造空行。 */
+  dataDir: string | null;
+}
+
+/** E6#78：`shell.openPluginFolder` 的两枚落点——安装目录 / 数据目录 */
+export type PluginFolderKind = "install" | "data";
+
 /** 环境信息——env.get() 返回（主进程 env-handlers 组装） */
 export interface EnvInfo {
   appDataDir: string;

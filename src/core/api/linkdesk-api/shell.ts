@@ -7,6 +7,7 @@
 
 import type { BridgeRequestPayload } from "../../types/ipc/bridge";
 import type { PoolLayout, PoolTab } from "../../types/pool/poolLayout";
+import type { PluginDiskLocation, PluginFolderKind } from "./types";
 import type { PoolTabAction, ShellTabAction } from "../../types/ipc/tabActions";
 import type { SidebarAction } from "../../types/ipc/sidebarActions";
 import type { PoolQuickPickAction, PoolDialogAction, PoolFloatingPanelAction, MemoryPressureData, CreatePoolWindowRequest, PoolWindowBoundsPayload, TabBarRectsPayload, TabBarViewportRect, TabDragPositionPayload, ShellTabDragPosition, AdsorbHintPayload, AdsorbIndexPayload } from "../../types/ipc/poolActions";
@@ -96,6 +97,15 @@ export interface ShellAPI {
   shell: {
     showItemInFolder(p: string): Promise<void>;
     openInTerminal(dirPath: string, terminalExe?: string, customCommand?: string): Promise<void>;
+    /** E6#78：已装插件的磁盘位置——市场详情页「打开所在位置 / 数据位置」的**判据**数据源
+     *  （是否有数据目录决定那行画不画）。主进程解析（池内零安装路径知识）；盘上找不到该插件 → null。
+     *  ⚠️ 与 `shell.showItemInFolder(p)` 的分工：**那个要路径、这个给身份**——调用方（市场）拿不到也不该拼绝对路径。 */
+    pluginLocation(pluginId: string): Promise<PluginDiskLocation | null>;
+    /** E6#78：资源管理器打开插件的安装目录 / 数据目录——主进程解析路径后 `shell.openPath`。
+     *  开的是目录**内容**（与 E5.8#153 `appearance.revealStorage`「打开存储位置」同一手感），
+     *  **不是** `showItemInFolder` 的「父目录 + 选中它」。目录不存在时：`install` 抛错（插件不在盘上，
+     *  不假装打开成功）；`data` 先建空目录再开（同 revealStorage——打开即见存储位置，空目录同样合法）。 */
+    openPluginFolder(pluginId: string, kind: PluginFolderKind): Promise<void>;
     startDrag(filePath: string, iconPath?: string): void;
     /** E6#73j（G4）：**真重启应用**（退出并重新启动进程）。
      *  与 `window.location.reload()` 的区别是「池在不在」——池是独立的 WebContentsView，壳 reload 不重建它，

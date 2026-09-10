@@ -10,7 +10,7 @@ import { ipcRenderer, webUtils } from 'electron';
 import { IPC } from '../ipc/channels';
 import { type EventSystemApi } from '../ipc/event-system';
 import type { PluginStateChangedPayload } from '../../src/core/types/ipc/events';
-import type { MenuItemDescriptor, PluginInstallRequestOpts } from '../../src/core/api/linkdesk-api/types'; // E5.8#20：契约语义类型——menu.getItems 返回面
+import type { MenuItemDescriptor, PluginInstallRequestOpts, PluginFolderKind } from '../../src/core/api/linkdesk-api/types'; // E5.8#20：契约语义类型——menu.getItems 返回面；E6#78：+ 插件目录落点
 // E5.8#1b：keybinding 归一化集中——主进程/壳/池三端共用单一权威源（防 E5.7#79 漂移复发）
 import { keyboardInputToKeyString } from '../../src/core/utils/keybindingNormalization.js';
 
@@ -221,6 +221,10 @@ export function buildShell() {
       ipcRenderer.invoke(IPC.shell.openInTerminal, dirPath, terminalExe, customCommand),
     startDrag: (filePath: string, iconPath?: string) =>
       ipcRenderer.send(IPC.shell.startDrag, filePath, iconPath),
+    // E6#78：插件磁盘位置 / 打开插件目录（主进程解析路径——池内零安装路径知识）
+    pluginLocation: (pluginId: string) => ipcRenderer.invoke(IPC.shell.pluginLocation, pluginId),
+    openPluginFolder: (pluginId: string, kind: PluginFolderKind) =>
+      ipcRenderer.invoke(IPC.shell.openPluginFolder, pluginId, kind),
   };
   /* jscpd:ignore-end */
 }

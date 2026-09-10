@@ -12,6 +12,7 @@
 
 import * as path from 'path';
 import * as fs from 'fs/promises';
+import { readdirSync } from 'fs';
 import { app } from 'electron';
 
 class EnvService {
@@ -62,6 +63,22 @@ class EnvService {
   /** 插件数据目录——<appDataDir>/linkdesk/plugins/<id>/data/ */
   pluginDataDir(pluginId: string): string {
     return path.join(this.pluginsRootDir(), pluginId, 'data');
+  }
+
+  /**
+   * 数据目录——**只在插件真落过盘时**给路径，否则 null（E6#78）。
+   * 判据同 VS Code 详情页「缓存」行（`computeSize` 非零才画那一行）：目录不存在（该插件从没写过数据）
+   * 或存在但空 → 整行不画，不造一个点开是空文件夹的入口。纯 UI 插件恒 null——**不是人人都有**。
+   * 返回正斜杠路径（与 `pluginFileService.resolvePath` 同规——Windows 反斜杠在 URL 里不兼容）。
+   */
+  pluginDataDirIfAny(pluginId: string): string | null {
+    const dir = this.pluginDataDir(pluginId);
+    try {
+      if (readdirSync(dir).length === 0) return null;
+    } catch {
+      return null; // ENOENT = 从未落盘 = 正常态，不是错误
+    }
+    return dir.replace(/\\/g, '/');
   }
 
   /** 插件缓存目录 */

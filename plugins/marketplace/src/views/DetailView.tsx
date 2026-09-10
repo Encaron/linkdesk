@@ -62,6 +62,8 @@ import { readPluginUpdateMeta, setAutoUpdate, setPinnedVersion } from "../servic
 import { categoryListFromEntry, localizeCategory } from "../services/marketCategories";
 import { useDownloadCount } from "../services/downloadCounts";
 import { readInstalledPackageFile } from "../services/packageFiles";
+// E6#78：插件磁盘位置——「大小」行值变链接 + 「数据位置」行的契约类型（池内零路径知识，只吃主进程结果）
+import type { PluginDiskLocation, PluginFolderKind } from "@linkdesk/contracts";
 // E6#71c：安装确认载荷构造——authorLabel/fmtSize 展示派生抽共享模块（ConfirmInstall 视图
 // 独立 surface bundle，不跨引用本文件；侧栏信息行与确认卡同源复用，单一实现零重复）
 import { authorLabel, fmtSize } from "../services/installConfirmPayload";
@@ -188,6 +190,48 @@ export default function DetailView({ pluginId }: DetailContributedProps) {
   const disabledHit = disabledRaw.find((p) => p.pluginId === pluginId) ?? null;
   const disabled = !!disabledHit;
   const installed = !!enabledEntry || !!disabledHit;
+
+  /* ── E6#78：已装插件的磁盘位置（「大小」行值变链接 → 开安装目录；「数据位置」行 → 开插件数据目录）──
+   *  路径由**主进程**解析（池内零安装路径知识，这里只吃结果）；未装 / 盘上找不到 → null → 值退纯文本，
+   *  不画一个点下去必然报错的假链接。dataDir 只在插件真有数据时非 null（判据在主进程，同 VS Code 详情页
+   *  「缓存」行「空则整行不显」）。 */
+  const [diskLoc, setDiskLoc] = useState<PluginDiskLocation | null>(null);
+  useEffect(() => {
+    let alive = true;
+    setDiskLoc(null);
+    const id = pluginId ?? "";
+    const read = lk()?.shell?.pluginLocation;
+    if (!id || !installed || !read) {
+      return () => {
+        alive = false;
+      };
+    }
+    void read(id)
+      .then((r) => {
+        if (alive) setDiskLoc(r ?? null);
+      })
+      .catch(() => {
+        if (alive) setDiskLoc(null); // 读失败 = 不给入口（诚实，不塞一个点了必错的链接）
+      });
+    return () => {
+      alive = false;
+    };
+  }, [pluginId, installed]);
+
+  /* E6#78：打开插件目录——install / data 两落点同一条链路（主进程解析路径 + shell.openPath 开目录内容）。
+   *  失败 fail-loud 发通知：目录被删/权限不足时用户看得见，不静默吞。 */
+  const openPluginDir = useCallback(
+    (kind: PluginFolderKind) => {
+      const id = pluginId ?? "";
+      const open = lk()?.shell?.openPluginFolder;
+      if (!id || !open) return;
+      void open(id, kind).catch((e: unknown) => {
+        notifyError(`${t("打开插件目录失败")}：${e instanceof Error ? e.message : String(e)}`);
+      });
+    },
+    [pluginId, t],
+  );
+
   const info: DetailInfo | null = enabledEntry
     ? {
         manifest: {
@@ -783,8 +827,54 @@ export default function DetailView({ pluginId }: DetailContributedProps) {
       <InfoItem key="author" label={t("作者")} value={authorText || <Dash />} />,
     ];
     if (versionText) top.push(<InfoItem key="ver" label={t("版本")} value={`v${versionText}`} />);
-    /* 大小行（目录 size 数据——已装态「打开所在位置」替换 = L3.5 挂起项，见 E6 清单 📌，非本批） */
-    if (entry?.size != null) top.push(<InfoItem key="size" label={t("大小")} value={fmtSize(entry.size)} />);
+    /* 大小行（B3 拍板「下载体积常显」保持——装不装都显，值 = 实测下载包字节）。
+     *  E6#78：已装态该值变**链接**（点开安装目录）——照 VS Code 详情页 Size 行「值可点、class 'link'、
+     *  onClick 开 extension.location」；未装 / 盘上找不到 = 纯文本，不画假链接。
+     *  纯加字色与光标、文字一字不变 ⇒ 装/未装切换**零布局跳动**（不是多一行、不是换文案）。 */
+    if (entry?.size != null) {
+      const sizeText = fmtSize(entry.size);
+      top.push(
+        <InfoItem
+          key="size"
+          label={t("大小")}
+          value={
+            diskLoc ? (
+              <button
+                type="button"
+                className="mpd-info-link mpd-info-link-btn"
+                title={t("在资源管理器里打开 {{path}}", { path: diskLoc.installDir })}
+                onClick={() => openPluginDir("install")}
+              >
+                {sizeText}
+              </button>
+            ) : (
+              sizeText
+            )
+          }
+        />,
+      );
+    }
+    /* E6#78 数据位置行——插件真写过数据才有主进程给的 dataDir，空/无 = 整行不画（同 VS Code「缓存」行）；
+     *  值 = 动作链接（与「资源」组「仓库 → 打开仓库」同一手感：label 说是什么、value 说做什么）。 */
+    if (diskLoc?.dataDir) {
+      top.push(
+        <InfoItem
+          key="data"
+          label={t("数据位置")}
+          value={
+            <button
+              type="button"
+              className="mpd-info-link mpd-info-link-btn"
+              title={t("在资源管理器里打开 {{path}}", { path: diskLoc.dataDir })}
+              onClick={() => openPluginDir("data")}
+            >
+              {t("打开数据位置")}
+              <span className="codicon codicon-link-external mpd-info-link-icon" />
+            </button>
+          }
+        />,
+      );
+    }
     groups.push({ items: top });
 
     /* 组：市场（mockup 04 归组——来源/首次发布/更新时间/下载；「来源」行即目录身份，无外链概念） */

@@ -191,6 +191,19 @@ class PluginFileService {
     return this._pluginDirAbs(loc, pluginId).replace(/\\/g, '/');
   }
 
+  /**
+   * 插件目录绝对路径（正斜杠）——**盘上找不到返 null**（E6#78）。
+   * 与 resolvePath 的分工：resolvePath 是「入口解析」语义——未命中回退首根拼一个未必存在的路径
+   * （调用方拿去拼 URL，失败由加载器兜）。本方法回答的是另一个问题：「这插件在不在盘上」，
+   * 供市场详情页「打开所在位置」当判据——不在盘上就不该画一个点下去必然报错的链接。
+   */
+  locateDir(pluginId: string): string | null {
+    if (!pluginId) return null;
+    const loc = this._findPluginDir(pluginId);
+    if (!loc) return null;
+    return this._pluginDirAbs(loc, pluginId).replace(/\\/g, '/');
+  }
+
   // ── 解析入口（E6#7 resolveEntry——resolvePath 的兄弟）──
 
   /**

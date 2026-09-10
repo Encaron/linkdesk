@@ -210,6 +210,9 @@ export const IPC = {
     showItemInFolder: 'shell:showItemInFolder',
     startDrag: 'shell:startDrag',
     openInTerminal: 'shell:openInTerminal',
+    // E6#78：插件磁盘位置 / 打开插件目录——主进程解析路径（池内零安装路径知识）
+    pluginLocation: 'shell:plugin-location',
+    openPluginFolder: 'shell:open-plugin-folder',
     // E6#73j（G4）：真重启应用（退出并重新启动进程）——更新视图插件后壳 reload 不重建池
     relaunch: 'shell:relaunch',
   },

@@ -560,6 +560,20 @@
   font-size: var(--font-size-xs);
 }
 
+/* E6#78：动作型链接 = <button> 扮 <a>。`.mpd-info-link` 原为 <a href> 而设，「打开所在位置 / 打开数据位置」
+ *  是**动作**不是导航——用 button 才有正确的键盘（Enter/Space）与读屏语义，故补按钮 reset。
+ *  纵向 padding 2px 是**加点击靶不加宽**：文字基线不动、右对齐列宽不变（零布局跳动）；
+ *  刻意不见方加高——「大小」与「数据位置」两行相邻，靶再高两行热区会并成一片（误点邻行）。
+ *  焦点环走全局 `*:focus-visible`（src/index.css:268），此处不覆写。 */
+.mpd-info-link-btn {
+  background: none;
+  border: 0;
+  padding: 2px 0;
+  font-family: inherit;
+  font-size: var(--font-size-sm);
+  line-height: inherit;
+}
+
 .mpd-info-deps {
   display: flex;
   flex-direction: column;

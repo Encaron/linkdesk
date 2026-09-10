@@ -30,7 +30,7 @@ import type { ConfigurationChangedPayload, PluginStateChangedPayload } from '../
 import type { BridgeRequestPayload } from '../src/core/types/ipc/bridge';
 import type { PoolQuickPickAction, PoolDialogAction, PoolFloatingPanelAction, MemoryPressureData, PoolReadyPayload, CreatePoolWindowRequest, PoolWindowClosedPayload, PoolWindowBoundsPayload, TabBarRectsPayload, ShellTabDragPosition, AdsorbHintPayload, AdsorbIndexPayload } from '../src/core/types/ipc/poolActions';
 import type { FileChangeEvent } from '../src/core/services/files/FileService';
-import type { MenuItemDescriptor, PluginInstallRequestOpts, PluginInstallJobRef } from '../src/core/api/linkdesk-api/types'; // E5.8#20：契约语义类型——menu.getItems 返回面；E6#73c：+ 安装 job 身份
+import type { MenuItemDescriptor, PluginInstallRequestOpts, PluginInstallJobRef, PluginFolderKind } from '../src/core/api/linkdesk-api/types'; // E5.8#20：契约语义类型——menu.getItems 返回面；E6#73c：+ 安装 job 身份；E6#78：+ 插件目录落点
 // E5.8#1b：keybinding 归一化集中——主进程/壳/池三端共用单一权威源（防 E5.7#79 漂移复发）
 import { keyboardInputToKeyString } from '../src/core/utils/keybindingNormalization.js';
 
@@ -410,6 +410,9 @@ try {
       openInTerminal:  (dirPath: string, terminalExe?: string, customCommand?: string) => ipcRenderer.invoke(IPC.shell.openInTerminal, dirPath, terminalExe, customCommand),
       // E5#108c：拖出到桌面
       startDrag: (filePath: string, iconPath?: string) => ipcRenderer.send(IPC.shell.startDrag, filePath, iconPath),
+      // E6#78：插件磁盘位置 / 打开插件目录（主进程解析路径）
+      pluginLocation: (pluginId: string) => ipcRenderer.invoke(IPC.shell.pluginLocation, pluginId),
+      openPluginFolder: (pluginId: string, kind: PluginFolderKind) => ipcRenderer.invoke(IPC.shell.openPluginFolder, pluginId, kind),
       // E6#73j（G4）：真重启应用——壳 preload 独有（池不需要自己重启宿主，见 linkdesk-api/shell.ts 注释）
       relaunch: () => ipcRenderer.invoke(IPC.shell.relaunch),
     },
