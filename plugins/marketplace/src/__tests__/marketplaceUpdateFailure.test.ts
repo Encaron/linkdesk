@@ -1,6 +1,8 @@
 import { describe, it, expect } from "vitest";
 import {
   classifyInstallError,
+  failText,
+  installFailLabelKey,
   updateFailLabelKey,
   updateFailText,
 } from "../services/marketplaceShared";
@@ -57,5 +59,69 @@ describe("更新失败归因与原文直显（E6#71b）", () => {
   it("updateFailLabelKey：conflict 分支就位 + default 不再谎称未知错误", () => {
     expect(updateFailLabelKey("conflict")).toBe("更新失败：该插件已安装，如需覆盖请先卸载");
     expect(updateFailLabelKey("unknown")).not.toContain("未知错误");
+  });
+});
+
+/**
+ * E6#73e 机器二：HTTP 状态码单列 + 「归因短语 + 原文」组合规则参数化共用。
+ * 此前裸 `HTTP` 子串把所有 404/403/500 吃进网络桶——下载链接失效被报成「网络连接不可用」，
+ * 用户于是反复查网络反复重试（而重试的其实是另一个插件）；4xx（确定性拒绝）与 5xx（服务端瞬时）
+ * 的可重试性相反，必须分开。
+ */
+describe("失败归因：HTTP 状态码单列 + 组合规则共用（E6#73e）", () => {
+  it("4xx / 5xx 单列一类——不再落 network", () => {
+    expect(classifyInstallError("下载失败 HTTP 404: Not Found")).toBe("http4xx");
+    expect(classifyInstallError("下载失败 HTTP 403")).toBe("http4xx");
+    expect(classifyInstallError("下载失败 HTTP 500: Internal Server Error")).toBe("http5xx");
+    expect(classifyInstallError("HTTP 503")).toBe("http5xx");
+  });
+
+  it("必须是三位状态码——`HTTP 30` 之类的裸数字不误判成状态码族", () => {
+    expect(classifyInstallError("下载失败 HTTP 30")).toBe("network");
+  });
+
+  it("裸 `HTTP` 已摘出网络正则——无状态码的 HTTP 文本不再谎称网络问题", () => {
+    expect(classifyInstallError("HTTP 请求失败")).toBe("unknown");
+  });
+
+  it("空闲超时（下载挂死）归 network——可重试桶", () => {
+    expect(classifyInstallError("下载超时——30 秒无响应")).toBe("network");
+  });
+
+  it("两域字典都补齐 http4xx/http5xx，且 default 诚实（不含「未知错误」）", () => {
+    expect(installFailLabelKey("http4xx")).toBe("安装失败：下载地址无效或已被服务器拒绝");
+    expect(installFailLabelKey("http5xx")).toBe("安装失败：服务器暂时不可用，请稍后重试");
+    expect(updateFailLabelKey("http4xx")).toBe("更新失败：下载地址无效或已被服务器拒绝");
+    expect(updateFailLabelKey("http5xx")).toBe("更新失败：服务器暂时不可用，请稍后重试");
+    for (const fn of [installFailLabelKey, updateFailLabelKey]) {
+      expect(fn("unknown")).not.toContain("未知错误");
+      expect(fn("unknown")).toContain("请重试");
+    }
+  });
+
+  it("两域短语不串味（安装域调用绝不印出更新域措辞）", () => {
+    for (const r of ["network", "integrity", "env", "package", "conflict", "http4xx", "http5xx", "unknown"] as const) {
+      expect(installFailLabelKey(r)).not.toContain("更新失败");
+      expect(updateFailLabelKey(r)).not.toContain("安装失败");
+    }
+  });
+
+  it("failText：归因可认 → 该域归因短语（经 t 译当前语言）", () => {
+    const en: Record<string, string> = { "安装失败：服务器暂时不可用，请稍后重试": "Install failed: server temporarily unavailable" };
+    const t = (k: string) => en[k] ?? k;
+    expect(failText(t, installFailLabelKey, "http5xx", "下载失败 HTTP 500")).toBe("Install failed: server temporarily unavailable");
+  });
+
+  it("failText：认不出 → 引擎原文直显；原文为空 → 该域兜底通用重试语", () => {
+    const t = (k: string) => k;
+    expect(failText(t, installFailLabelKey, "unknown", "引擎原文 alpha-demo")).toBe("引擎原文 alpha-demo");
+    expect(failText(t, installFailLabelKey, "unknown", "   ")).toBe("安装失败，请重试");
+  });
+
+  it("updateFailText 是同一份实现的薄包装（不得落第二份同构拷贝）", () => {
+    const t = (k: string) => k;
+    for (const r of ["network", "http4xx", "http5xx", "unknown"] as const) {
+      expect(updateFailText(t, r, "raw")).toBe(failText(t, updateFailLabelKey, r, "raw"));
+    }
   });
 });

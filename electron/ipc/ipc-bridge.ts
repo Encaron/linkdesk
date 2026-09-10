@@ -54,6 +54,31 @@ export class IpcBridge {
     IPC.dialog.confirmContent,
   ]);
 
+  /** 长任务调用——`plugins:call` 是单通道多方法（args[0] = 方法名），安装/更新族一次调用要跑
+   *  下载→解压→加载，**耗时时长由网络与包大小决定**，10 秒墙钟与它毫无关系。
+   *
+   *  E6#73e 机器一：此前它们吃 10s 桥超时 ⇒ **装插件超 10 秒必判失败，而它其实还在装**（池侧 reject、
+   *  壳侧继续跑完）——用户「试五六次才成功一次」的根，且 404 与超时被归成同一句「网络不可用」。
+   *  修法 = 判据落回操作自身：下载已有**空闲超时 + 重试预算**（`plugin-download.ts`），
+   *  job 级 `AbortController` 与槽级看门狗随后（E6#73q）。**取消走 job 句柄，不走这条计时器**。
+   *
+   *  ⚠️ 与设计原话「桥超时后取消安装」的差异（主动偏离，理由在此）：保留一个有限阈值再在它上面挂取消，
+   *  只是把同一类误判换个门槛复活（E6#74 已立此论）；且真正的取消必须能命中**具体哪一个 job**，
+   *  而这条计时器只知道 channel、不知道 job。⇒ 超时职责下沉到下载层，取消职责下沉到 job（73q）。
+   *  未决请求的兜底仍靠既有两处 `dispose()`（应用退出 / 壳崩重建），行为同 USER_BLOCKING_CHANNELS。 */
+  private static LONG_RUNNING_PLUGIN_CALLS = new Set<string>([
+    "install",
+    "installWithProgress",
+    "reinstall",
+    "update",
+  ]);
+
+  /** 该请求是否不设超时——用户阻塞通道（等用户回答）∨ 长任务安装调用（等网络/磁盘） */
+  private static hasNoRequestTimeout(channel: string, args: unknown[]): boolean {
+    if (IpcBridge.USER_BLOCKING_CHANNELS.has(channel)) return true;
+    return channel === IPC.plugins.call && IpcBridge.LONG_RUNNING_PLUGIN_CALLS.has(String(args[0]));
+  }
+
   /** 需要从插件 WebView 代理到壳渲染进程的 channel（#26） */
   private static PROXY_CHANNELS = [
     IPC.config.get,
@@ -205,8 +230,8 @@ export class IpcBridge {
 
         const doRequest = (): Promise<unknown> => {
           return new Promise<unknown>((resolve, reject) => {
-            // E6#74：用户阻塞通道不设超时（见 USER_BLOCKING_CHANNELS）——其余通道维持 10s 防壳无应答
-            const timer = IpcBridge.USER_BLOCKING_CHANNELS.has(channel)
+            // E6#74 / E6#73e：用户阻塞通道与长任务安装调用不设超时（见 hasNoRequestTimeout）——其余维持 10s 防壳无应答
+            const timer = IpcBridge.hasNoRequestTimeout(channel, forwardedArgs)
               ? null
               : setTimeout(() => {
                   this.pendingRequests.delete(requestId);

@@ -339,13 +339,22 @@ export type MarketInstallSession = {
   downloadUrl?: string;
 };
 
-/** #30.9b 失败归因——七种失败全览收敛成五类可重试归因 + conflict（09 §二 表） */
-export type InstallFailReason = "network" | "integrity" | "env" | "package" | "conflict" | "unknown";
+/** #30.9b 失败归因——七种失败全览收敛成五类可重试归因 + conflict（09 §二 表）
+ *  E6#73e：+ `http4xx` / `http5xx`（HTTP 状态码族单列，见下方字典注释） */
+export type InstallFailReason =
+  | "network" | "integrity" | "env" | "package" | "conflict"
+  | "http4xx" | "http5xx"
+  | "unknown";
 
 /* ═══ #30.9b 失败归因纯函数——主进程错误原文是中文/英文混杂自由文本（installWithProgress settle
  * 契约无 reason 枚举——11-API §一·一 的 reason 字段是设计虚构，实机双证），按子串字典收敛成类别。
- * 字典匹配顺序重要：网络最宽（HTTP/fetch/超时），完整性（checksum/size）窄，环境（磁盘），包损坏，冲突。 */
-const NET_RE = /下载中断|下载失败|HTTP|超时|网络|fetch|ECONN|ENOTFOUND|ENETUNREACH|socket|net::|Failed to fetch|Network Error/i;
+ * 字典匹配顺序重要：完整性（checksum/size）窄，环境（磁盘），包损坏，冲突。
+ * E6#73e（机器二）：**HTTP 状态码优先于网络桶**，且裸 `HTTP` 已从 NET_RE 摘掉——此前一条 `HTTP`
+ *   子串吃掉所有 404/403/500，下载链接失效被报成「网络连接不可用」，用户于是反复查网络反复重试
+ *   （真相 = 那个地址已经没了，而重试的其实是另一个插件）。分组判据 = 「可重试 / 需人工」：
+ *   5xx（含 408/429）服务端瞬时状态 → 可重试；4xx → 确定性拒绝，重试无用。 */
+const HTTP_STATUS_RE = /HTTP[ /]?(\d{3})/i;
+const NET_RE = /下载中断|下载失败|下载超时|超时|网络|fetch|ECONN|ENOTFOUND|ENETUNREACH|socket|net::|Failed to fetch|Network Error/i;
 const INT_RE = /checksum|校验|哈希|digest|sha|大小不符|文件大小|Content-Length/i;
 const ENV_RE = /磁盘|空间不足|ENOSPC|EACCES|EPERM|权限|quota/i;
 const PKG_RE = /解压|zip|不是有效|invalid|plugin\.json|ENOENT|无法读取|损坏|corrupt/i;
@@ -354,6 +363,12 @@ const CON_RE = /已存在安装目录|已存在|请先卸载|覆盖/i;
 export function classifyInstallError(msg: string | undefined): InstallFailReason {
   if (!msg) return "unknown";
   if (CON_RE.test(msg)) return "conflict";
+  const http = HTTP_STATUS_RE.exec(msg);
+  if (http) {
+    const code = Number(http[1]);
+    if (code >= 400 && code < 500) return "http4xx";
+    if (code >= 500) return "http5xx";
+  }
   if (NET_RE.test(msg)) return "network";
   if (INT_RE.test(msg)) return "integrity";
   if (ENV_RE.test(msg)) return "env";
@@ -374,8 +389,13 @@ export function installFailLabelKey(reason: InstallFailReason): string {
       return "安装失败：插件包损坏";
     case "conflict":
       return "安装失败：该插件已安装，如需覆盖请先卸载";
+    case "http4xx":
+      return "安装失败：下载地址无效或已被服务器拒绝";
+    case "http5xx":
+      return "安装失败：服务器暂时不可用，请稍后重试";
     default:
-      return "安装失败：未知错误，请重试";
+      // E6#73e：撤「未知错误」谎——认不出时真因由 failText 直显引擎原文（同 E6#71b 更新域先例）
+      return "安装失败，请重试";
   }
 }
 
@@ -394,19 +414,35 @@ export function updateFailLabelKey(reason: InstallFailReason): string {
       return "更新失败：插件包损坏";
     case "conflict":
       return "更新失败：该插件已安装，如需覆盖请先卸载";
+    case "http4xx":
+      return "更新失败：下载地址无效或已被服务器拒绝";
+    case "http5xx":
+      return "更新失败：服务器暂时不可用，请稍后重试";
     default:
       return "更新失败，请重试";
   }
 }
 
-/** E6#71b：更新失败终局文案——归因可认 → 归因短语（t 译当前语言）；认不出（unknown）→ 引擎原文直显
- *  （更新域报错 update.ts/install-handlers stage 校验本就是完整可读句：「不在用户安装区」「无需更新」
- *  「未找到安装目录」…——原文比「未知错误」诚实且免误导归类：安装域五个类目词对更新域状态/策略错不成立，
- *  硬塞会让「不在用户安装区」显示成「插件包损坏」）。空原文兜底通用重试语。 */
-export function updateFailText(t: (key: string) => string, reason: InstallFailReason, raw?: string): string {
-  if (reason !== "unknown") return t(updateFailLabelKey(reason));
+/** 失败终局文案的**组合规则**（E6#73e 机器二：参数化抽出，安装/更新两域共用**同一份**实现）。
+ *  归因可认 → 归因短语（t 译当前语言）；认不出（unknown）→ **引擎原文直显**（引擎报错本就是完整可读句
+ *  ——「不在用户安装区」「无需更新」「未找到安装目录」…——原文比「未知错误」诚实，且免误导归类：
+ *  安装域五个类目词对更新域状态/策略错不成立，硬塞会让「不在用户安装区」显示成「插件包损坏」）；
+ *  原文为空 → 兜底通用重试语。
+ *  `labelKeyFn` 由域决定（安装域 `installFailLabelKey` / 更新域 `updateFailLabelKey`）——**不得再落第二份同构拷贝**。 */
+export function failText(
+  t: (key: string) => string,
+  labelKeyFn: (reason: InstallFailReason) => string,
+  reason: InstallFailReason,
+  raw?: string,
+): string {
+  if (reason !== "unknown") return t(labelKeyFn(reason));
   const s = (raw ?? "").trim();
-  return s ? s : t(updateFailLabelKey("unknown"));
+  return s ? s : t(labelKeyFn("unknown"));
+}
+
+/** E6#71b：更新失败终局文案——`failText` 的更新域薄包装（零自有逻辑） */
+export function updateFailText(t: (key: string) => string, reason: InstallFailReason, raw?: string): string {
+  return failText(t, updateFailLabelKey, reason, raw);
 }
 
 /** 会话 stage → 安装中进度标签（i18n key + 插值）——详情按钮与探索行共用单实现（归一化） */
@@ -569,7 +605,12 @@ async function settleInstallFailure(pluginId: string, downloadUrl: string, error
   //  还是放弃，不该 8s 静默溜走；常驻类互相淘汰（壳 TOAST_PERSISTENT_CAP 内顶掉最老），不越摞越多。
   const show = lk()?.notifications?.show;
   if (show) {
-    void show(i18n.t(installFailLabelKey(reason)), {
+    // E6#73e：① **带插件名**——此前只报「安装失败：网络连接不可用」，连点几个时用户不知道是哪一个；
+    //         ② 归因认不出时**直显引擎原文**（failText，同 E6#71b 更新域先例）——「未知错误」是谎，
+    //            用户得拿真因去判断该重试还是该放弃。
+    const failName = pluginDisplayNameOf(pluginId);
+    const failReasonText = failText((k) => i18n.t(k), installFailLabelKey, reason, error);
+    void show(i18n.t("{{name}}：{{reason}}", { name: failName, reason: failReasonText }), {
       type: "error",
       persistent: true,
       actions: [

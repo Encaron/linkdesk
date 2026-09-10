@@ -5,6 +5,9 @@
  * 统一 10s 请求超时打在 `dialog:confirmContent` 上，而该通道的语义就是「等用户回答」。
  * 修法 = 立「用户阻塞通道」名单，名单内不设超时；未决请求兜底靠既有 dispose()。
  *
+ * E6#73e 追加同类第二名单：`plugins:call` 的安装/更新族长任务方法（单通道多方法，args[0] = 方法名）
+ * ——同一误判的另一个受害者（装插件超 10 秒必判失败，而它其实还在装）。
+ *
  * 纯桥测：vi.mock("electron") 捕 ipcMain.handle/on（不透真 Electron）；mainWindow/windowManager
  * 用最小桩。fixture 全虚构值（硬约束 21）。
  */
@@ -66,6 +69,29 @@ function makeBridge(): { bridge: IpcBridge; handlerFor: (channel: string) => (..
   };
 }
 
+/**
+ * 「不设超时的通道」共用断言——半小时后仍未结算，且迟到的壳回答能把它正常结算。
+ * 用户阻塞通道与长任务安装调用期望完全一致，故只有这一份实现（两处共用）。
+ */
+async function expectNoTimeoutThenAnswered(p: Promise<unknown>, label: string): Promise<void> {
+  const t = track(p);
+  await vi.advanceTimersByTimeAsync(30 * 60_000); // 半小时
+  expect(t.state(), `${label} 不应超时`).toBe("pending");
+  responseListener?.({}, { requestId: sentRequests.at(-1)!.requestId, result: true });
+  await vi.advanceTimersByTimeAsync(0);
+  expect(t.state(), `${label} 应被迟到回答结算`).toBe("resolved");
+}
+
+/** 「10s 墙钟兜底仍在」共用断言——9999ms 仍未结算，第 10000ms 拒绝（防壳无应答的兜底不丢） */
+async function expectTimesOutAt10s(p: Promise<unknown>, channel: string): Promise<void> {
+  const t = track(p);
+  await vi.advanceTimersByTimeAsync(9_999);
+  expect(t.state(), `${channel} 10s 内不应结算`).toBe("pending");
+  await vi.advanceTimersByTimeAsync(1);
+  expect(t.state(), `${channel} 应超时`).toBe("rejected");
+  await expect(p).rejects.toThrow(new RegExp(`请求超时: ${channel}`));
+}
+
 /** 跟踪 Promise 的结算状态（不 await——超时断言要求「仍未结算」） */
 function track<T>(p: Promise<T>): { state: () => string } {
   let state = "pending";
@@ -115,27 +141,29 @@ describe("IpcBridge 请求超时策略（E6#74）", () => {
   it("用户阻塞通道三成员全覆盖（confirm / alert / confirmContent）", async () => {
     const { handlerFor } = makeBridge();
     for (const channel of [IPC.dialog.confirm, IPC.dialog.alert, IPC.dialog.confirmContent]) {
-      const p = handlerFor(channel)({}, "示例文案");
-      const t = track(p);
-      await vi.advanceTimersByTimeAsync(30 * 60_000); // 半小时
-      expect(t.state(), `${channel} 不应超时`).toBe("pending");
-      responseListener?.({}, { requestId: sentRequests.at(-1)!.requestId, result: true });
-      await vi.advanceTimersByTimeAsync(0);
-      expect(t.state(), `${channel} 应被迟到回答结算`).toBe("resolved");
+      await expectNoTimeoutThenAnswered(handlerFor(channel)({}, "示例文案"), channel);
     }
+  });
+
+  it("安装/更新族长任务调用不设超时（E6#73e）——装了 10 秒还在装，不该判失败", async () => {
+    const { handlerFor } = makeBridge();
+    for (const method of ["install", "installWithProgress", "reinstall", "update"]) {
+      const call = handlerFor(IPC.plugins.call)({}, method, {
+        pluginId: "demo-plugin",
+        url: "https://example.invalid/demo-a.linkdesk-plugin",
+      });
+      await expectNoTimeoutThenAnswered(call, `plugins:call(${method})`);
+    }
+  });
+
+  it("plugins:call 的非安装方法仍 10s 超时（豁免只在安装/更新族，不整条通道开口子）", async () => {
+    const { handlerFor } = makeBridge();
+    await expectTimesOutAt10s(handlerFor(IPC.plugins.call)({}, "list", {}), IPC.plugins.call);
   });
 
   it("普通通道仍 10s 超时（防壳无应答的兜底不丢）", async () => {
     const { handlerFor } = makeBridge();
-    const p = handlerFor(IPC.config.get)({}, "app.uiFontScale");
-    const t = track(p);
-
-    await vi.advanceTimersByTimeAsync(9_999);
-    expect(t.state()).toBe("pending");
-
-    await vi.advanceTimersByTimeAsync(1);
-    expect(t.state()).toBe("rejected");
-    await expect(p).rejects.toThrow(/请求超时: config:get/);
+    await expectTimesOutAt10s(handlerFor(IPC.config.get)({}, "app.uiFontScale"), IPC.config.get);
   });
 
   it("dispose() 仍拒绝未决请求——用户阻塞通道的兜底路径", async () => {
