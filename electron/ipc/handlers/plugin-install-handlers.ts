@@ -34,6 +34,8 @@ import { deriveBundlePluginId, extractZip, isSafePluginId, openPluginZip } from 
 // E6#31a：真网络段下载 = plugin-download 服务（.part 生命周期单复本——handler 只引用，不重写 fetch/进度）
 // E6#73q：下载落盘名带唯一化后缀（并发 N=3 防同名互截）——zipBase 裁决前先剥后缀拿回原包名
 import { downloadPackage, downloadTmpDir, stripDownloadUniq, STAGE_PREFIX } from "../../services/plugin-download.js";
+// E6#76：主进程出网唯一出口（走 Chromium 网络栈 ⇒ 读系统代理）——目录拉取腿不再直呼全局 fetch
+import { mainFetch } from "../../services/main-fetch.js";
 import type { PluginManifest } from "../../../src/core/api/types.js";
 // E6#73c：安装 job 身份——壳侧随请求带进来（jobId 是壳侧 job 表的产物，主进程只透传）
 import type { PluginInstallJobRef } from "../../../src/core/api/linkdesk-api/types.js";
@@ -197,7 +199,7 @@ export function registerPluginInstallHandlers(): void {
     if (typeof pluginId !== "string" || !pluginId) throw new Error("缺少 pluginId");
     if (typeof catalogUrl !== "string" || !isHttpSource(catalogUrl)) throw new Error("catalog 需为 http(s) URL");
     const cur = typeof currentVersion === "string" && currentVersion ? currentVersion : "0.0.0";
-    const resp = await fetch(catalogUrl, { redirect: "follow" });
+    const resp = await mainFetch(catalogUrl, { redirect: "follow" });
     if (!resp.ok) throw new Error(`读取市场目录失败 HTTP ${resp.status}`);
     const catalog = await resp.json().catch(() => null) as { plugins?: Array<{ id: string; versions?: Array<{ version?: string; downloadUrl?: string }> }> } | null;
     const entry = catalog?.plugins?.find((p) => p.id === pluginId);

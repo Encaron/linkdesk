@@ -32,7 +32,19 @@ const electronMock = vi.hoisted(() => {
     getAppPath: () => "",
     getPath: (key: string) => (key === "userData" ? paths.userData : ""),
   };
-  return { app, paths };
+  // E6#76：下载腿改走 `net.fetch`（Chromium 网络栈 ⇒ 读系统代理）。替身照契约转调**hoist 时抓下的**
+  // 原始 fetch（不是调用时的 `globalThis.fetch`——否则下方「出口锁定」把它打断时替身一起断，断言失效），
+  // 本地 http 测试服务照常真发包。**出网出口被换掉这件事由「出口锁定」断言守住**——替身跟着实现一起
+  // 错 = 全绿而真机崩（memory 替身照契约非照实现）。
+  const nodeFetch = globalThis.fetch;
+  const netFetchCalls: string[] = [];
+  const net = {
+    fetch: (url: string, init?: RequestInit) => {
+      netFetchCalls.push(url);
+      return nodeFetch(url, init);
+    },
+  };
+  return { app, net, netFetchCalls, paths };
 });
 vi.mock("electron", () => electronMock);
 
@@ -538,5 +550,41 @@ describe("cleanupStaleDownloads——启动扫描清理", () => {
 
   it("tmp 缺失/空：无碍返回", async () => {
     await expect(cleanupStaleDownloads()).resolves.toBeUndefined();
+  });
+});
+
+/**
+ * E6#76——出口锁定。真机实证：主进程全局 fetch（undici）不读系统代理、渲染进程 Chromium 读，
+ * 用户开着代理时「商店看得见、插件装不上」（同一 URL 渲染进程 200 / 主进程 fetch failed）。
+ * 本组把**出口**本身钉死：全局 fetch 被打断也必须照常下完 ⇒ 出网确实没走它。
+ */
+describe("主进程出网走 Chromium 网络栈（E6#76）", () => {
+  let userData: string;
+
+  beforeEach(async () => {
+    userData = await fs.promises.mkdtemp(path.join(os.tmpdir(), "plugin-download-net-"));
+    electronMock.paths.userData = userData;
+    electronMock.netFetchCalls.length = 0;
+  });
+
+  afterEach(async () => {
+    await fs.promises.rm(userData, { recursive: true, force: true });
+  });
+
+  it("全局 fetch 被打断时下载照常完成，且确实经 net.fetch 出门", async () => {
+    const payload = await packageBytes("demo-net");
+    const srv = await serveOnce(payload);
+    const original = globalThis.fetch;
+    globalThis.fetch = (() => {
+      throw new Error("主进程出网腿不该直呼全局 fetch（E6#76）");
+    }) as typeof fetch;
+    try {
+      const { total } = await downloadPackage(srv.url);
+      expect(total).toBe(payload.length);
+    } finally {
+      globalThis.fetch = original;
+      await srv.close();
+    }
+    expect(electronMock.netFetchCalls).toEqual([srv.url]);
   });
 });

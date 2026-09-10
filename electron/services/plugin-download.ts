@@ -18,6 +18,7 @@
 import * as fs from "fs/promises";
 import * as path from "path";
 import { envService } from "./env-service.js";
+import { mainFetch } from "./main-fetch.js";
 import { BUNDLE_EXT } from "../plugins/bundle-zip.js";
 
 /** 半截标记后缀——下载进行中的落盘名（写满才 rename 去掉本后缀成正式包）。模块私有——消费方只见 rename 后正式包。 */
@@ -195,7 +196,7 @@ async function downloadOnce(
   try {
     let resp: Response;
     try {
-      resp = await fetch(url, { redirect: "follow", signal: ac.signal });
+      resp = await mainFetch(url, { redirect: "follow", signal: ac.signal });
     } catch (e) {
       if (ac.signal.aborted) throw abortReason();
       // 非主动 abort 的 fetch 失败（ECONNRESET / ENOTFOUND …）——瞬时网络问题，可重试
