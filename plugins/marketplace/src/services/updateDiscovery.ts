@@ -25,17 +25,22 @@
  *   - 自愈清提醒：lastNotifiedVersion ≤ 本地 → 已追上（外部路径更新/重装的兜底），清标记（§二·一「更新成功清」）
  *   - 目录 offline/corrupt（entries 空）→ 静默跳过（无数据不铃不写）；stale 缓存有数据照跑
  *
- * #33d 自动更新——**E6#71k「都问」后整体停摆（2026-09-10 用户拍板）**：
- *   - 停摆原因：自动更新发生在**用户不在场**时，而新的确认规则是**每次更新都要用户看一眼**——弹不出卡就
- *     不能装。二者不可兼得，用户已知悉并接受（原话：「暂时都问吧……关于这个点不能被卡住」）。
- *   - 因此本模块**不再执行任何 auto 升级**：不跑引擎 update、不动文件。全部候选一律留作手动候选。
- *   - ⚠️ 连带撤销：原先「auto 候选不推铃铛」（auto 已代劳，不必打扰）随之作废——**没人代劳了，就必须告知**，
- *     否则开着自动更新的插件会变成「更新无人做、也不通知」的黑洞。见 doRunDiscovery 铃铛环。
- *   - 用户勾开自动更新的那一刻（runAutoUpdateIfDue）会收到一条停摆说明——勾了却没动静是最不能忍的静默。
- *   - `selectAutoCandidates` / `pinnedVersion` 语义保留，供未来安全版本恢复自动更新时复用。
- *
- *   旧行为存档（供日后恢复参考）：auto 候选静默升级、不推铃铛；执行经引擎 update 走稳定版寻址
- *   （versionDownloadUrl，§二·四 auto 只看稳定版）；成功 toast 由引擎发；失败保留作手动候选。
+ * #33d 自动更新——**E6#79 恢复运转（2026-09-11 用户拍板）**：
+ *   🔴 **推翻经过（动这里之前务必读完）**：#71k（2026-09-10）曾把自动更新**整体停摆**，理由写成「自动更新在你
+ *     不在场时弹不出确认卡，与『每次都问』不可兼得」。**那条推论不是用户的意思**——用户 2026-09-11 当面更正：
+ *     「暂时都问吧，我当时指的是那个确认安装的弹窗呀，和这个自动更新有半毛钱关系？」。
+ *     确认卡管的是**手动路径**（用户点「安装」/「更新」时问一次）；自动更新是**另一条路**——勾选本身就是那次
+ *     授权，不经确认卡。两条路各走各的，互不冲突。
+ *     **教训：把一条规则从 A 外推到 B，不等于用户同意了 B。**（同类错误本项目已犯两次：铃铛开关、本次；两次都是
+ *      AI 自洽性论证盖过用户原话。）停摆期间的产物（notifyAutoPaused + 勾选框「暂不生效」文案）已随本次删除。
+ *   - auto 候选 = `selectAutoCandidates`（meta.autoUpdate===true 且未钉版本；§二·九 pinnedVersion 停旧版
+ *     → 跳过，尊重手动意图）。**不推「有新版本」铃铛**——auto 已代劳，再推 = 同一件事说两遍。
+ *   - 执行 = 串行跑引擎 update，url 走稳定版寻址（versionDownloadUrl——§二·四 auto 只看稳定版，beta 不自动装）。
+ *   - **成功 → 发一条汇总通知**（E6#79 用户拍板「装完发一条通知告诉我」）：单个点名到版本，多个给条数 + 头几个
+ *     名字（同 updateBellMessage 结构）。静默装完会让用户回来发现「版本变了、但不知道是谁动的手」。
+ *   - **失败 → 候选保留**（「可更新」徽标仍在，下次发现 / 手动重试）+ 发一条汇总告知：失败比成功更需要用户知道。
+ *   - 勾选开 = DetailView 立即 `runAutoUpdateIfDue`（针对 store 已有候选即刻跑一趟，免等下趟发现 / 重启）。
+ *   - G6：插件标签页开着也照常 stage + 替换 + 重启生效（引擎 needRestart 恒 true——原子替换已证开着也能成，§二·七）。
  *
  * 输出：本模块同是 #33b 常驻「可更新」徽标/升级入口与 #33d 自动更新的数据源（getDiscoveredUpdates +
  * onDiscoveredUpdatesChange——发现结果落 store，随批消费）。
@@ -48,7 +53,7 @@
 import i18n from "i18next";
 import type { PluginListEntry, PluginInfoEntry } from "@linkdesk/contracts";
 import type { CatalogEntry } from "./marketCatalog";
-import { compareVersions, isVersionNewer, stableLatestVersion } from "./marketCatalog";
+import { compareVersions, isVersionNewer, stableLatestVersion, versionDownloadUrl } from "./marketCatalog";
 import { loadCatalog } from "./marketSources";
 import {
   clearNotifiedVersion,
@@ -219,22 +224,23 @@ function commitStore(candidates: UpdateCandidate[]): void {
   _listeners.forEach((f) => f());
 }
 
-/* ═══ #33d 自动更新——E6#71k「都问」后整体停摆（2026-09-10 用户拍板） ═══ */
+/* ═══ #33d 单候选自动更新执行（doRunDiscovery 与勾选即跑共用——引擎 update，结果由 market 侧告知） ═══ */
 
-/** 自动更新停摆告知——用户**当场**勾开自动更新时发一条，讲清「为什么勾了也没动静」。
- *  直调 notifications（不经 marketplaceShared——那是本模块的**下游**，import 会成环）。壳进程无
- *  notifications.show → 静默 no-op（同本模块既有池门控）。
- *
- *  ⚠️ 只在「用户主动勾选」这一刻发。发现编排**不发**——那会每趟发现刷一次（每趟都白弹一条，用户要的
- *  是「有新版本」这条信息本身）；改由铃铛照常逐插件告知（见 doRunDiscovery 已撤 auto 抑制）。 */
-function notifyAutoPaused(): void {
-  const show = window.linkdesk?.notifications?.show;
-  if (!show) return;
-  void show(
-    i18n.t("自动更新已暂停——现在每次更新都要你确认，自动更新无法在你不在场时询问。可在插件详情点「更新」手动确认。"),
-    // E6#73g（S5）：市场自报身份（**只给 source，不 import marketplaceShared**——那是本模块下游，会成环）
-    { type: "info", source: "marketplace" },
-  );
+/** 对单候选跑引擎更新——url = versionDownloadUrl 取该稳定版资产（§二·四 auto 只看稳定版；顶层兜底同 #33b 寻址）。
+ *  无 update 能力（预览 / 非池）/ 无 url / 引擎抛错 → false（无法自动，候选保留作手动可更新）。
+ *  needRestart 恒 true 也计成功：文件已原子替换，重启生效（§二·七）。
+ *  ⚠️ **不过确认门**——这是自动路径，勾选本身就是授权；确认卡只管手动路径（见文件头 E6#79 推翻经过）。 */
+async function applyEngineAutoUpdate(c: UpdateCandidate): Promise<boolean> {
+  const upd = pm()?.update;
+  if (!upd) return false;
+  const url = versionDownloadUrl(c.entry, c.remoteLatest) ?? c.entry.downloadUrl;
+  if (!url) return false;
+  try {
+    const r = await upd(c.pluginId, { url });
+    return !!r && r.success;
+  } catch {
+    return false; // 引擎抛 / 断网 → 失败；候选保留（下次发现 / 手动重试）
+  }
 }
 
 /* ═══ 主编排（IO——读已装 → 拉目录 → 计划 → 自愈清 + 铃铛推(幂等) + auto 静默跑 + 落 store） ═══ */
@@ -273,20 +279,24 @@ async function doRunDiscovery(force: boolean): Promise<DiscoveryPlan | null> {
   // 自愈清提醒（幂等——无变化不写盘，installedUpdateMeta 内部保证）
   await Promise.all(plan.toClearNotified.map((id) => clearNotifiedVersion(id)));
 
+  // #33d auto 候选（autoUpdate on + 未钉版本）——这些插件由下方执行环**代劳**，故不推「有新版本」铃铛
+  //  （同一件事说两遍）；改由代劳后的结果通知告知（见 notifyAutoResult）。见文件头 E6#79。
+  const autoEligible = selectAutoCandidates(plan.candidates, meta);
+  const autoIds = new Set(autoEligible.map((c) => c.pluginId));
+  const toNotify = plan.toNotify.filter((c) => !autoIds.has(c.pluginId));
+
   // 铃铛推一条 + 记版本（每版本一次）。推失败 → 不记（下趟补推，宁重勿漏）。
-  // E6#71k「都问」：**撤掉原先「auto 候选不铃」的抑制**——自动更新已停摆，不再有人代劳，这些插件
-  //  必须和别的插件一样收到铃铛，否则「更新无人做、也不告知」= 用户彻底不知道有新版本。
   // E6#73j（G7）：**整批一条汇总，不是逐插件 N 条**。此前 10 个待更新 = 10 条 info 挤满通知面板；
   //  而 info 级不触发 autoOpen（18 档 §五 B）⇒ 该看的时候没弹出来，只是静静堆了一屏——
   //  「该通知时不弹、该收敛时刷屏」两头错。汇总后：一条说清几件事，面板看得到，铃铛也不淹。
   //  记账仍**逐条做**（幂等键是 per-plugin per-version，不是 per-批次）——整批一次推送成功即整批记账。
   const show = window.linkdesk?.notifications?.show;
-  if (plan.toNotify.length > 0) {
+  if (toNotify.length > 0) {
     let pushed = false;
     if (show) {
       try {
         // E6#73g（S5）：版本提醒归市场来源桶（组标题解析成市场显示名，不显示内部 id）
-        await show(updateBellMessage(plan.toNotify), { type: "info", source: "marketplace" });
+        await show(updateBellMessage(toNotify), { type: "info", source: "marketplace" });
         pushed = true;
       } catch {
         pushed = false; // 推送失败 → 不记账（下次发现重推）
@@ -295,31 +305,43 @@ async function doRunDiscovery(force: boolean): Promise<DiscoveryPlan | null> {
       pushed = true; // 无铃铛能力（预览/非池）——仍记账防循环重试；发现编排本已池门控，此为兜底
     }
     if (pushed) {
-      for (const c of plan.toNotify) await noteNotifiedVersion(c.pluginId, c.remoteLatest);
+      for (const c of toNotify) await noteNotifiedVersion(c.pluginId, c.remoteLatest);
     }
   }
 
-  // #33d auto 执行环已删（E6#71k「都问」）——见文件头「自动更新停摆」。此处不跑引擎 update、不动文件：
-  //  全部候选一律留作手动候选（可更新徽标 + 铃铛告知），用户去详情页点「更新」时过确认门。
-  commitStore(plan.candidates);
+  // #33d auto 执行（串行——引擎 update 单通道，多插件串行最稳；单败不阻断其余）。G6：插件标签页开着照常
+  //  stage + 替换 + 重启生效（引擎 needRestart 恒 true——原子替换开着也能成，§二·七）。成功者从常驻 store
+  //  驱逐（徽标消、不重复更新）；**失败者保留作手动候选**（「可更新」徽标仍在，下次发现 / 手动重试）。
+  const autoDone: UpdateCandidate[] = [];
+  const autoFailed: UpdateCandidate[] = [];
+  for (const c of autoEligible) {
+    (await applyEngineAutoUpdate(c) ? autoDone : autoFailed).push(c);
+  }
+  notifyAutoResult(autoDone, autoFailed);
+
+  const doneIds = new Set(autoDone.map((c) => c.pluginId));
+  commitStore(plan.candidates.filter((c) => !doneIds.has(c.pluginId)));
   return plan;
 }
 
-/** #33d 勾选即跑 —— E6#71k「都问」后**恒返回 false**：自动更新停摆，本函数只剩「把停摆讲清楚」这一件事。
- *
- *  存在理由：用户勾上「自动更新」的那一刻，是唯一能当面解释的时机（其余时刻用户不在场）。勾了却什么都不
- *  发生 = 静默的谎；故此处对**确实表达过自动更新意图的插件**发一条停摆说明。恒 false 不驱逐候选——
- *  候选照常保留（可更新徽标 + 铃铛），用户手动去详情页点「更新」。
- *  幂等守卫保留（发现编排在跑 → 先等收束），与既有编排不打架。 */
+/** #33d 勾选即跑（DetailView 勾上 autoUpdate → 立即调）——针对**当前 store 已有候选**（发现已跑过、该插件
+ *  有可更新）跑一趟，免等下趟发现 / 重启。无候选（无更新 / 发现未跑过）→ no-op（下趟发现照常 auto 处理）；
+ *  autoUpdate 未开 / 已钉版本（§二·九）→ no-op（尊重「停在旧版」的手动意图）。
+ *  成功 → 驱逐 store 候选（可更新徽标消）**并告知**；失败 → 候选保留（下次发现 / 手动重试）**也告知**。
+ *  返回是否成功自动更新。
+ *  幂等守卫：发现编排在跑 → 先等收束（编排已含 auto 处理本趟候选，防双跑引擎 update）。 */
 export async function runAutoUpdateIfDue(pluginId: string): Promise<boolean> {
   if (_running) await _running;
   const c = _candidates.find((x) => x.pluginId === pluginId);
   if (!c) return false;
   const meta = await readUpdateMetaMap();
   // 复用纯选择函数判定「这个插件本来该被自动更新吗」（autoUpdate on + 未钉版本）——不是 → 用户没表达过
-  // 该意图，没必要解释；是 → 他关心的事停了，必须说。
-  if (selectAutoCandidates([c], meta).length > 0) notifyAutoPaused();
-  return false;
+  //  该意图，不该替他动文件。
+  if (selectAutoCandidates([c], meta).length === 0) return false;
+  const ok = await applyEngineAutoUpdate(c);
+  notifyAutoResult(ok ? [c] : [], ok ? [] : [c]);
+  if (ok) commitStore(_candidates.filter((x) => x.pluginId !== pluginId));
+  return ok;
 }
 
 /** 汇总里最多点几个名字——多了只留条数（面板一行读得完；完整名单在各列表页的可更新徽标上） */
@@ -336,6 +358,43 @@ function updateBellMessage(cs: UpdateCandidate[]): string {
   const heads = cs.slice(0, BELL_NAME_LIMIT).map((c) => c.name).join("、");
   const names = cs.length > BELL_NAME_LIMIT ? i18n.t("{{names}} 等", { names: heads }) : heads;
   return i18n.t("{{num}} 个插件有新版本：{{names}}", { num: cs.length, names });
+}
+
+/** 自动更新**成功**文案（E6#79）——结构同 updateBellMessage：单个点名到版本，多个给条数 + 头几个名字 */
+function autoUpdatedMessage(cs: UpdateCandidate[]): string {
+  if (cs.length === 1) {
+    return i18n.t("「{{name}}」已自动更新到 {{version}}", { name: cs[0].name, version: cs[0].remoteLatest });
+  }
+  const heads = cs.slice(0, BELL_NAME_LIMIT).map((c) => c.name).join("、");
+  const names = cs.length > BELL_NAME_LIMIT ? i18n.t("{{names}} 等", { names: heads }) : heads;
+  return i18n.t("{{num}} 个插件已自动更新：{{names}}", { num: cs.length, names });
+}
+
+/** 自动更新**失败**文案（E6#79）——同上结构；结尾统一指向手动重试口（详情页「更新」）。
+ *  失败没有「已自动重试 N 次」这类自动兜底：候选保留，下次发现会再试一次，也再告知一次。 */
+function autoFailedMessage(cs: UpdateCandidate[]): string {
+  if (cs.length === 1) {
+    return i18n.t("「{{name}}」自动更新失败——可在插件详情点「更新」重试。", { name: cs[0].name });
+  }
+  const heads = cs.slice(0, BELL_NAME_LIMIT).map((c) => c.name).join("、");
+  const names = cs.length > BELL_NAME_LIMIT ? i18n.t("{{names}} 等", { names: heads }) : heads;
+  return i18n.t("{{num}} 个插件自动更新失败：{{names}}——可在插件详情点「更新」重试。", { num: cs.length, names });
+}
+
+/** 自动更新结果告知（E6#79 用户拍板「装完发一条通知告诉我」）——成功 / 失败各一条**汇总**（多个插件不逐条
+ *  刷屏，同 updateBellMessage 整批一条的做法）。静默装完会让用户回来发现「版本变了、但不知道谁动的手」。
+ *  直调 notifications（不经 marketplaceShared——那是本模块的**下游**，import 会成环）。壳进程无
+ *  notifications.show → 静默 no-op（同本模块既有池门控）。两边都空 → 一条不发（无结果不打扰）。 */
+function notifyAutoResult(updated: UpdateCandidate[], failed: UpdateCandidate[]): void {
+  const show = window.linkdesk?.notifications?.show;
+  if (!show) return;
+  // E6#73g（S5）：市场自报身份（只给 source，不 import marketplaceShared——那是本模块下游，会成环）
+  if (updated.length > 0) {
+    void show(autoUpdatedMessage(updated), { type: "info", source: "marketplace" });
+  }
+  if (failed.length > 0) {
+    void show(autoFailedMessage(failed), { type: "warning", source: "marketplace" });
+  }
 }
 
 /* ═══ 启动调度（2026-09-08 锚② 重裁——市场池首载触发，模块级每进程一次） ═══ */

@@ -432,15 +432,16 @@ export default function DetailView({ pluginId }: DetailContributedProps) {
   }, [pluginId, busy, t, displayName]);
 
   /* ── E6#33d 自动更新开关（mockup 帧 5/6 auto-upd）——setAutoUpdate 记账（开存 true / 关删字段，
-   *  installedUpdateMeta 域）。**E6#71k「都问」后这个开关不再真的自动更新**（自动更新停摆，见
-   *  updateDiscovery 头注）——但它不是死开关：意图照样记账，勾开时当面讲清为什么没动静
-   *  （runAutoUpdateIfDue 恒 false + 一条停摆说明）。开关留着 = 用户的选择不丢，未来安全版本恢复时即生效。 ── */
+   *  installedUpdateMeta 域）。**E6#79 起这个开关是真的**：勾开即立刻跑一趟（runAutoUpdateIfDue
+   *  真执行，装完/失败各发一条通知）。⚠️ 自动路径**不过确认卡**——确认卡管的是手动路径（用户点
+   *  「安装」/「更新」时问一次）；勾选本身就是自动路径的那次授权。两条路各走各的（E6#79 用户更正
+   *  了 #71k 把两者混为一谈的推论，见 updateDiscovery 头注）。 ── */
   const handleAutoToggle = useCallback(
     async (on: boolean) => {
       if (!pluginId || busy || updating) return;
       setAutoOn(on); // 乐观翻转——读/记账失败的兜底由上方 effect（锚变）重读收敛
       await setAutoUpdate(pluginId, on);
-      if (on) await runAutoUpdateIfDue(pluginId); // 恒 false；作用是发那条「已暂停」说明
+      if (on) await runAutoUpdateIfDue(pluginId); // 勾开即跑一趟（真执行；结果由该模块发通知）
     },
     [pluginId, busy, updating],
   );
@@ -472,7 +473,8 @@ export default function DetailView({ pluginId }: DetailContributedProps) {
       /* E6#71k「都问」：**更新同样每次都弹卡**（官方来源不豁免）——不补这条，「看过来源」只对新装成立，
        *  一次点头之后的每次变码都是静默的。此处 entry 必然存在（url 由 entry 派生，缺 entry 已于上一步
        *  以「缺少下载地址」返回——不会静默跳过本门）。
-       *  ⚠️ 只有**用户在场点更新**走这里；后台自动更新不能弹卡（用户不在场），整体暂停——见 updateDiscovery。 */
+       *  ⚠️ 这道门只管**手动路径**（用户在场点更新）；自动更新走另一条路、不过门——勾选本身即那次授权
+       *  （E6#79 用户更正了 #71k 把两者混为一谈的推论，见 updateDiscovery 头注）。 */
       if (entry) {
         const ok = await confirmMarketInstall(entry, "update", ver);
         if (!ok) return;
@@ -802,7 +804,7 @@ export default function DetailView({ pluginId }: DetailContributedProps) {
   const autoUpdateToggle = installed && !pending ? (
     <label
       className={"mpd-auto-upd" + (pickerDisabled ? " disabled" : "")}
-      title={t("记录自动更新意愿——当前每次更新都需你确认，自动更新暂不生效，勾选会说明原因")}
+      title={t("勾选后自动更新——有新版本就自动装上，装完发通知告诉你")}
     >
       <input
         type="checkbox"
