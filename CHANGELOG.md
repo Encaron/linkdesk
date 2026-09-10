@@ -3,6 +3,19 @@
 > 每版一条，对标 VS Code changelog。**历史真相源 = [E6 执行清单](docs/02-Electron架构/E6_插件生态与发布/E6-执行清单.md)**（E6 阶段每轮收束细节 + 实机证据全在清单 Batch 注里，此文件只记类别清单）。版本号唯一真值 = `package.json`（不手写第二份，见 [02-产品身份与版本.md](docs/02-Electron架构/E6_插件生态与发布/06-主软件更新/02-产品身份与版本.md) §2.3）。
 > 0.x 阶段（开发期）：一切向后兼容变更走 patch 位；破坏性变更走 minor 位。
 
+## v0.1.31（2026-09-10）
+
+- **feat:E6#73c 第 1 步——「点了等于没点」换成看得见的「等待安装中」（仍是 N=1）**
+  - **病根**：E6#73q 把闸换成了队列，但闸**还在市场层**——`startMarketInstall` 命中「另一单在跑」就**静默 `return false`**（不打日志、不弹 toast、不改 UI），两个调用方（探索行 / 详情页）都把返回值丢了。连点 7 个 = **装 1 丢 6**，用户以为没点中，再点一次还是没反应
+  - **市场层真排队**（`plugins/marketplace/src/services/marketplaceShared.ts`）：`_installQueue` 严格 FIFO + **单泵**（`pumpInstallQueue`：队首跑完 → 出队 → 交棒 → 下一单接手）+ **同 pluginId 去重**（点两下 = 一次安装，两个调用方等同一结果，不是两条行）。**第 2 单起真排着**，不是被拒也不是并发
+  - **可见回执**（`ExploreView` 行内徽标 / `DetailView` 安装钮原位改字）：排队中的插件显示「等待安装中」——复用既有 `ms-catalog-status installing` 样式 + `codicon-clock`，**零新 CSS**；文案与设计 §五 I.4 排队行同词（en：`Waiting to install`）
+    - ⚠️ **不做「每排队一单弹一个 toast」**：连点 7 个就是 6 条同时炸 —— 那正是本轮要修的「不该弹的猛弹」（噪声分级属 E6#73g）。回执做在**用户正盯着的那一行/那个钮**上
+  - **请求侧身份随行**（`marketplaceShared` → `PluginInstallRequestOpts`）：池侧把 `{ pluginId, displayName, origin: "user" }` 交给壳——job 表去重要 `pluginId`、job 行要显示名，而两者**只有池侧目录 store 知道**（壳拿不到）。显示名缺省退化为 pluginId（诚实兜底，不留空标题）
+  - **进度事件带身份**（设计硬前置 ③，`PluginInstallJobRef`）：壳侧 `installPlugin` 调主进程 fs/net 段（`packageDownload`/`packageExtract`）时随行 `{ jobId, pluginId? }`，`emitProgress` 各段回填进 `plugin:installProgress` 广播——**此前下载/解压段的事件不带任何身份，多单并行时百分比会互相灌进同一行**；N=1 时靠「归活跃会话」侥幸正确。`jobId` **只在壳侧生成、主进程只透传**（单一生产者，不持久化）；两个方法都是**选填参数**（旧调用零影响）
+  - 🔴 **本档结束仍是 N=1**：`_installSession` / `_progressToast` **未拆**——拆闸属 E6#73c **第 2 步**（开工硬约束「顺序不许反」：先把静默闸换成可见回执，再放开并发）。市场层这条队列是**第一步的过渡载体**，第 2 步整体删除、把等待交给壳侧 job 表
+  - 面板侧的「等待安装中」分段属 **E6#73d**（本档不碰面板）
+  - 新增单测 `marketplaceInstallQueue.test.ts` 5 例（第 2 单不再被丢 + FIFO 交棒 + 等待快照不含队首 / 同 pluginId 去重且两个调用方同结果 / 请求侧身份三字段含显示名退化 / 单次失败不淤死队列 / 装完回归空闲）。`npm run check` EXIT=0（135 文件 / 1791 测试）
+
 ## v0.1.30（2026-09-10）
 
 - **feat:E6#73q 安装队列基建——「连点 7 个装 1 丢 6」的闸换成队列（第一批第一步）**

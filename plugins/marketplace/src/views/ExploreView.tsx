@@ -36,6 +36,7 @@ import {
   useMarketplaceCatalog,
   useMarketplacePlugins,
   useMarketInstall,
+  useMarketPendingInstalls,
   useOnlineStatus,
   getMarketplaceSearch,
   startMarketInstall,
@@ -78,6 +79,8 @@ export default function ExploreView() {
    *  startMarketInstall 占会话 → installProgress 事件归因）；#30.9b 离线态——离线 ≠ 失败：
    *  钮置灰 + title「联网后重试」，无 [重试]（G3） */
   const installSession = useMarketInstall();
+  /* E6#73c 第 1 步：等待安装中的请求不再被静默丢弃——行内画「等待安装中」回执（N=1 串行队列） */
+  const pendingInstalls = useMarketPendingInstalls();
   const online = useOnlineStatus();
 
   /* 行点击开详情（E6#30.5b——详情页三态 action bar 的未装验证入口）——与已装列表同款 plugin-detail 标签。
@@ -129,8 +132,9 @@ export default function ExploreView() {
       // 门在模块里统一弹 ConfirmInstall 富内容卡，本视图只消费布尔结果（零判定逻辑在此）。
       const confirmed = await confirmMarketInstall(entry, "install");
       if (!confirmed) return;
-      // 进度/失败/重试全走 startMarketInstall（占会话 → settle 归因 + toast[重试]，幂等单发）
-      await startMarketInstall(entry.id, entry.downloadUrl);
+      // 进度/失败/重试全走 startMarketInstall（进等待队列 → settle 归因 + toast[重试]，幂等单发）
+      // E6#73c 第 1 步：带显示名——壳侧 job 行需要它（目录未加载时进程内也能兜底解析，不传则退化为 id）
+      await startMarketInstall(entry.id, entry.downloadUrl, entry.name);
     },
     [online, t],
   );
@@ -166,12 +170,13 @@ export default function ExploreView() {
   /* 行渲染 ── 目录条目标题走原文（作者数据不 t()） */
   const renderRow = (entry: CatalogEntry, status: RowStatus) => {
     let action: ReactNode;
-    /* #30.9 行态：本行归因会话（进度/失败由全局单活跃会话匹配 pluginId 而来——详情页起装的进度也同步到目录行）；
-     *  另一插件安装中 → 本行安装钮置灰（单活跃会话，防静默点不生效） */
+    /* #30.9 行态：本行归因会话（进度/失败由全局单活跃会话匹配 pluginId 而来——详情页起装的进度也同步到目录行）。
+     *  E6#73c 第 1 步：另一插件安装中不再置灰本行（那样只是把「静默丢」画成「点不动」）——请求照收、进等待
+     *  队列，本行画「等待安装中」回执。 */
     const sessHere = installSession && installSession.pluginId === entry.id ? installSession : null;
     const installingHere = sessHere?.phase === "installing";
     const errHere = sessHere?.phase === "error" ? sessHere : null;
-    const busyOther = installSession?.phase === "installing" && !sessHere;
+    const queuedHere = pendingInstalls.includes(entry.id);
 
     if (status === "install") {
       if (installingHere) {
@@ -180,6 +185,15 @@ export default function ExploreView() {
           <span className="ms-catalog-status installing" title={t("安装插件")}>
             <span className="codicon codicon-cloud-download" />
             {marketInstallStageLabel(t, installSession?.stage, installSession?.percent)}
+          </span>
+        );
+      } else if (queuedHere) {
+        /* E6#73c 第 1 步：等待安装中——回执（此前这里是一条静默 return false：点了等于没点）。
+         *  复用 installing 徽标样式（零新 CSS）；文案与 §五 I.4 排队行同词。 */
+        action = (
+          <span className="ms-catalog-status installing" title={t("等待安装中")}>
+            <span className="codicon codicon-clock" />
+            {t("等待安装中")}
           </span>
         );
       } else if (errHere) {
@@ -214,8 +228,8 @@ export default function ExploreView() {
               e.stopPropagation();
               void handleInstall(entry);
             }}
-            disabled={!online || busyOther} // #30.9b 离线态（G3）：置灰不发请求，联网自动回可用
-            title={!online ? t("联网后重试") : busyOther ? marketInstallStageLabel(t, installSession?.stage, installSession?.percent) : t("安装插件")}
+            disabled={!online} // #30.9b 离线态（G3）：置灰不发请求，联网自动回可用
+            title={!online ? t("联网后重试") : t("安装插件")}
           >
             <span className="codicon codicon-cloud-download" /> {t("安装")}
           </button>

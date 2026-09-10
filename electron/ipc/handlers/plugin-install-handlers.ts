@@ -35,6 +35,8 @@ import { deriveBundlePluginId, extractZip, isSafePluginId, openPluginZip } from 
 // E6#73q：下载落盘名带唯一化后缀（并发 N=3 防同名互截）——zipBase 裁决前先剥后缀拿回原包名
 import { downloadPackage, downloadTmpDir, stripDownloadUniq } from "../../services/plugin-download.js";
 import type { PluginManifest } from "../../../src/core/api/types.js";
+// E6#73c：安装 job 身份——壳侧随请求带进来（jobId 是壳侧 job 表的产物，主进程只透传）
+import type { PluginInstallJobRef } from "../../../src/core/api/linkdesk-api/types.js";
 // E6#13b/c（段B）：主进程与壳共用同一 semver 比较源（单复本——全仓唯一 compareVersions）+ 同一 jsonc 解析源
 // E6#33c（锚①）：updateTargetDirection——更新目标版本方向判定单复本（upgrade/downgrade/same，降级放行语义）
 import { compareVersions, updateTargetDirection } from "../../../src/core/utils/plugin/semverUtils.js";
@@ -47,10 +49,21 @@ function userPluginsRoot(): string {
   return path.join(app.getPath("userData"), "plugins");
 }
 
-/** 进度广播——#13d：主进程段经 IpcBridge.active 发既有 plugin:installProgress（同壳 lifecycle 通道同形状） */
-function emitProgress(stage: string, payload: { pluginId?: string; message?: string; percent?: number } = {}): void {
+/** 进度广播——#13d：主进程段经 IpcBridge.active 发既有 plugin:installProgress（同壳 lifecycle 通道同形状）。
+ *  E6#73c：`job` 是壳侧随请求带进来的 job 身份（见 PluginInstallJobRef）——此前本段事件**不带任何身份**，
+ *  多单并行时百分比互相灌进同一行；N=1 时靠消费方「归活跃会话」侥幸正确。 */
+function emitProgress(
+  stage: string,
+  payload: { pluginId?: string; message?: string; percent?: number },
+  job?: PluginInstallJobRef,
+): void {
   try {
-    IpcBridge.active?.broadcast("plugin:installProgress", { stage, ...payload }, "shell", false);
+    IpcBridge.active?.broadcast(
+      "plugin:installProgress",
+      { stage, ...payload, jobId: job?.jobId, pluginId: payload.pluginId ?? job?.pluginId },
+      "shell",
+      false,
+    );
   } catch {
     /* 广播失败不阻断安装 */
   }
@@ -72,9 +85,9 @@ function deriveIdFromZip(zipBase: string, manifest: PluginManifest): string {
 
 /** 真网络段下载（download 与 update stage 两 handler 共用）——E6#31a：fetch/进度 = plugin-download 服务单复本，
  *  本层只把服务 onProgress 回调映射到 #13d install-progress 广播（handler 引用服务，不重写下载逻辑）。 */
-async function downloadWithProgress(url: string): Promise<{ zipPath: string; total: number }> {
+async function downloadWithProgress(url: string, job?: PluginInstallJobRef): Promise<{ zipPath: string; total: number }> {
   return downloadPackage(url, (message, percent) =>
-    emitProgress("downloading", percent === undefined ? { message } : { message, percent }),
+    emitProgress("downloading", percent === undefined ? { message } : { message, percent }, job),
   );
 }
 
@@ -89,20 +102,20 @@ export function registerPluginInstallHandlers(): void {
   // ── plugins:download(url) → { zipPath, sizeBytes } ──
   // 真网络段：fetch 包 → {userData}/tmp/<原包名>。流式写盘 + Content-Length 可得时推 percent。
   // 下载逻辑 = plugin-download 服务单复本——update stage（段 B）同段复用（下载非 update 专属，无单复本）。
-  loggedHandle(IPC.plugins.download, async (_event, url: string) => {
+  loggedHandle(IPC.plugins.download, async (_event, url: string, job?: PluginInstallJobRef) => {
     if (typeof url !== "string" || !isHttpSource(url)) {
       throw new Error("仅支持 http(s) 下载源（.linkdesk-plugin 包 URL）");
     }
-    const { zipPath, total } = await downloadWithProgress(url);
+    const { zipPath, total } = await downloadWithProgress(url, job);
     return { zipPath, sizeBytes: total || undefined };
   });
 
   // ── plugins:extract(zipPath, expectedPluginId?) → { pluginId, version, targetDir } ──
   // 真磁盘段：共享 bundle-zip 语义解压到 {userData}/plugins/<id>/（2026-09-05 塌平单根）；纯新建契约（目标已存在拒绝——
   // 更新/覆盖走 update 流或先卸）；包内 id 与 expectedPluginId 不符拒绝（防伪装）。
-  loggedHandle(IPC.plugins.extract, async (_event, zipPath: string, expectedPluginId?: string) => {
+  loggedHandle(IPC.plugins.extract, async (_event, zipPath: string, expectedPluginId?: string, job?: PluginInstallJobRef) => {
     if (typeof zipPath !== "string" || !zipPath) throw new Error("缺少包路径");
-    emitProgress("extracting", { message: "开始解压" });
+    emitProgress("extracting", { message: "开始解压" }, job);
     let buffer: Buffer;
     try {
       buffer = await fs.readFile(zipPath);
@@ -132,7 +145,7 @@ export function registerPluginInstallHandlers(): void {
       await fs.rm(target, { recursive: true, force: true });
       throw new Error(`包内含非法条目（zip-slip）——已拒绝并清理`);
     }
-    emitProgress("extracting", { pluginId, message: `解压完成 ${pluginId}@${manifest.version}` });
+    emitProgress("extracting", { pluginId, message: `解压完成 ${pluginId}@${manifest.version}` }, job);
     return { pluginId, version: manifest.version, targetDir: target };
   });
 

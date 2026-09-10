@@ -172,6 +172,16 @@ export interface PluginInstallRequestOpts {
   origin?: "user" | "dependency";
 }
 
+/** E6#73c：安装进度的 job 身份——壳侧 `installPlugin` 调主进程 fs/net 段（download/extract）时随行，
+ *  主进程段据此把 `plugin:installProgress` 事件回填到**具体的 job/插件**（18 档 §五 I.6③ 的「事件侧回填」）。
+ *  此前下载/解压段的事件**不带任何身份**，多单并行时百分比互相灌进同一行；N=1 时靠「归活跃会话」侥幸正确。
+ *  `jobId` 是壳侧 job 表的产物（单一生产者，见 install-queue.ts）——主进程只透传，不生成、不持久化。 */
+export interface PluginInstallJobRef {
+  jobId: string;
+  /** 池侧请求已带 id 时同带——下载段靠它把进度归到具体插件（待解压才知 id 的包流只有 jobId） */
+  pluginId?: string;
+}
+
 /** E6#11c/#13b（段 B）：更新结果——PluginInstallResult 的更新扩展。
  *  upToDate = catalog 直答已是最新（success:true 但非"更新发生"——UI 显示"已是最新"非红错误）；
  *  currentVersion 随行供 toast/日志显示 v旧→v新。needRestart 恒 true（bundle 模块缓存需重启激活）。 */

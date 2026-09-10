@@ -568,8 +568,9 @@ function unmountInstallProgressSub(): void {
   _installSub = null;
 }
 
-/** 订阅当前安装会话——空 = 无进行中/失败安装。mount 即注册 progress 订阅（引用计数，最后一个卸载撤） */
-export function useMarketInstall(): MarketInstallSession | null {
+/** 会话/等待队列共用的订阅底座——mount 即注册 progress 订阅（引用计数，最后一个卸载撤）。
+ *  `pick` 渲染期读当前值：notify → 重渲染 → 重读（两个 store 同一份通知集，不各造一套）。 */
+function useMarketInstallStore<T>(pick: () => T): T {
   const [, setTick] = useState(0);
   const rerender = useCallback(() => setTick((t) => t + 1), []);
   useEffect(() => {
@@ -580,17 +581,45 @@ export function useMarketInstall(): MarketInstallSession | null {
       unmountInstallProgressSub();
     };
   }, [rerender]);
-  return _installSession;
+  return pick();
 }
 
-/**
- * 发起市场安装——占会话 + installWithProgress(downloadUrl)。成功 → 清会话 + 显式 refreshData
- * （30.5e 实机回归：依赖缺失的挂起安装 parkForDependencies 后不发任何 lifecycle 事件——onDidInstall 只在
- * 成功激活发，挂起不入——lifecycle 事件驱动翻态对 pending 失效；显式 refresh 统一覆盖 enabled/pending，
- * 与事件驱动刷新 microtask 合并幂等）。失败 → 会话转 phase:"error" + 归因 + 失败 toast[重试]
- * （#30.9b：error 文案双源——installProgress error 事件 / settle 兜底，幂等；错误原文归因成 reason，
- *  安装地址保留供重试）。返回 bool。重试 = 手动触发（行内 [重试]/toast [重试]）无自动风暴。
- */
+/** 订阅当前安装会话——空 = 无进行中/失败安装 */
+export function useMarketInstall(): MarketInstallSession | null {
+  return useMarketInstallStore(() => _installSession);
+}
+
+/** 订阅「等待安装中」队列——市场入口据此把安装钮改成「等待安装中」回执（E6#73c 第 1 步） */
+export function useMarketPendingInstalls(): readonly string[] {
+  return useMarketInstallStore(getPendingInstalls);
+}
+
+/* ═══ E6#73c 第 1 步（18 档 §五 I.7）：安装请求不再被静默丢掉 ═══
+ * 病根：此前「另一插件安装中」→ `return false` 静默丢弃（不打日志、不弹 toast、不改 UI），
+ * 而两个调用方都把返回值丢了 ⇒ 连点 7 个 = 装 1 丢 6，且用户以为没点中。
+ * 现在：请求进等待队列，前一单装完按序接手，入口画「等待安装中」回执。
+ * 🔴 **仍是 N=1**——队列串行，同一时刻只有一单在跑；放开并发属**第 2 步**，届时本段整删、
+ *    由壳侧 `install-queue` 的 N 槽队列接管（槽锁已在 `installPlugin` 落地）。 */
+
+/** 一次「用户动作」的安装请求；`_installQueue[0]` 恒为正在跑的那一条 */
+type QueuedInstall = {
+  pluginId: string;
+  name: string;
+  downloadUrl: string;
+  promise: Promise<boolean>;
+  resolve: (ok: boolean) => void;
+};
+
+const _installQueue: QueuedInstall[] = [];
+let _installPumping = false;
+
+/** 等待安装中的 pluginId（**不含队首**——正在跑的那条由 `useMarketInstall` 会话表达） */
+export function getPendingInstalls(): readonly string[] {
+  return _installQueue.slice(1).map((q) => q.pluginId);
+}
+
+/** 失败终局——会话转 phase:"error" + 归因 + 失败 toast[重试]（#30.9b：error 文案双源，与 installProgress
+ *  error 事件幂等；错误原文归因成 reason，安装地址保留供重试）。返回 false 供调用方直接当结果用。 */
 async function settleInstallFailure(pluginId: string, downloadUrl: string, error: string | undefined): Promise<boolean> {
   closeProgressToast(); // #64d：进度条先收，错误 toast（下方）接续终局
   const reason = classifyInstallError(error);
@@ -627,20 +656,42 @@ async function settleInstallFailure(pluginId: string, downloadUrl: string, error
   return false;
 }
 
-export async function startMarketInstall(pluginId: string, downloadUrl: string): Promise<boolean> {
+/** 串行泵——同一时刻只有一单在跑（第 1 步 N=1）；每单终局后立刻把队首交给下一单。
+ *  单次会话绝不 throw（`runInstallSession` 自兜底）——但仍加一层 catch：泵断 = 队列里全部 promise 永不 settle。 */
+async function pumpInstallQueue(): Promise<void> {
+  if (_installPumping) return;
+  _installPumping = true;
+  try {
+    while (_installQueue.length > 0) {
+      const item = _installQueue[0];
+      let ok = false;
+      try {
+        ok = await runInstallSession(item.pluginId, item.name, item.downloadUrl);
+      } catch {
+        ok = false;
+      }
+      _installQueue.shift();
+      notifyMarketInstall(); // 交棒——等待区少一条（全空则整段清空）
+      item.resolve(ok);
+    }
+  } finally {
+    _installPumping = false;
+  }
+}
+
+/** 单次安装会话——占会话 + `installWithProgress(downloadUrl, 身份)`（幂等单发，不 throw）。 */
+async function runInstallSession(pluginId: string, name: string, downloadUrl: string): Promise<boolean> {
   const inst = lk()?.pluginManager?.installWithProgress;
   if (!inst) return false;
-  // 单活跃会话模型（进度事件多段不带 pluginId，无法归因）——另一插件进行中不并发，防进度串扰
-  if (_installSession && _installSession.phase === "installing" && _installSession.pluginId !== pluginId) {
-    return false;
-  }
   _installSession = { pluginId, phase: "installing", stage: "validating", downloadUrl };
   notifyMarketInstall();
   // #64d 定案 2：主动点装立即弹角落进度条（跨界面常驻；成功/失败终局分别由 lifecycle 已安装 / settle error 收）
-  void openProgressToast(pluginId, pluginDisplayNameOf(pluginId));
+  void openProgressToast(pluginId, name);
   try {
+    // E6#73c 第 1 步：请求侧身份随行——壳侧 job 表按 pluginId 去重、job 行取显示名，而两者只有池侧知道
+    // （第三个参数见 types.ts PluginInstallRequestOpts；jobId 不在此——它是壳侧 job 表的产物）。
     // installWithProgress 不 throw——失败 resolve { success:false, error }（lifecycle-ops 实证）
-    const r = await inst(downloadUrl);
+    const r = await inst(downloadUrl, { pluginId, displayName: name, origin: "user" });
     if (r && !r.success) return settleInstallFailure(pluginId, downloadUrl, r.error ?? "");
     closeProgressToast(); // 装好——lifecycle「已安装」toast 补终局句，进度条收（不双 toast）
     _installSession = null;
@@ -650,6 +701,33 @@ export async function startMarketInstall(pluginId: string, downloadUrl: string):
   } catch (e) {
     return settleInstallFailure(pluginId, downloadUrl, e instanceof Error ? e.message : String(e));
   }
+}
+
+/**
+ * 发起市场安装——进等待队列（同 pluginId 去重 + 严格 FIFO），队首同帧开跑。返回**本单自己的**结果。
+ *
+ * 成功 → 清会话 + 显式 refreshData（30.5e 实机回归：依赖缺失的挂起安装 parkForDependencies 后不发任何
+ * lifecycle 事件——onDidInstall 只在成功激活发，挂起不入——lifecycle 事件驱动翻态对 pending 失效；
+ * 显式 refresh 统一覆盖 enabled/pending，与事件驱动刷新 microtask 合并幂等）。
+ * 重试 = 手动触发（行内 [重试]/toast [重试]）无自动风暴。
+ */
+export function startMarketInstall(
+  pluginId: string,
+  downloadUrl: string,
+  displayName?: string,
+): Promise<boolean> {
+  if (!lk()?.pluginManager?.installWithProgress) return Promise.resolve(false);
+  // 同一插件已在跑/在等 → 不建第二条（点两下不是两件事），第二调用方等同一结果
+  const existing = _installQueue.find((q) => q.pluginId === pluginId);
+  if (existing) return existing.promise;
+  let resolve!: (ok: boolean) => void;
+  const promise = new Promise<boolean>((r) => {
+    resolve = r;
+  });
+  _installQueue.push({ pluginId, name: displayName ?? pluginDisplayNameOf(pluginId), downloadUrl, promise, resolve });
+  notifyMarketInstall(); // 回执：入口立刻画「等待安装中」（队首同帧转「安装中」，不闪）
+  void pumpInstallQueue();
+  return promise;
 }
 
 /**
@@ -668,7 +746,7 @@ export async function retryMarketInstall(
 ): Promise<boolean> {
   if (!pluginId || !downloadUrl) return false;
   if (!(await confirmMarketInstallById(pluginId, displayName))) return false;
-  return startMarketInstall(pluginId, downloadUrl);
+  return startMarketInstall(pluginId, downloadUrl, displayName);
 }
 
 /** 读当前会话——command handler 等非组件入口（retry command 无 hook，模块级直读） */

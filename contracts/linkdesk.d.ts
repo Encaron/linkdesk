@@ -1081,6 +1081,15 @@ export interface PluginDiscoveryEntry {
         subdir: string | null;
     };
 }
+/** E6#73c：安装进度的 job 身份——壳侧 `installPlugin` 调主进程 fs/net 段（download/extract）时随行，
+ *  主进程段据此把 `plugin:installProgress` 事件回填到**具体的 job/插件**（18 档 §五 I.6③ 的「事件侧回填」）。
+ *  此前下载/解压段的事件**不带任何身份**，多单并行时百分比互相灌进同一行；N=1 时靠「归活跃会话」侥幸正确。
+ *  `jobId` 是壳侧 job 表的产物（单一生产者，见 install-queue.ts）——主进程只透传，不生成、不持久化。 */
+export interface PluginInstallJobRef {
+    jobId: string;
+    /** 池侧请求已带 id 时同带——下载段靠它把进度归到具体插件（待解压才知 id 的包流只有 jobId） */
+    pluginId?: string;
+}
 /** E6#13b（段 B）：pluginManager.checkUpdates 返回——主进程 fetch catalog + semver 对比（壳传 current，壳是账本/磁盘 owner） */
 export interface PluginUpdateCheckResult {
     current: string;
@@ -1189,13 +1198,15 @@ export interface PluginsAPI {
         readManifest?(id: string): Promise<string>;
         /** E6#9c：全量 manifest——Record<pluginId, PluginManifest>（pluginManifests eager glob 的 IPC 替代） */
         readAllManifests?(): Promise<Record<string, PluginManifest>>;
-        /** E6#11/#13（1.2-5）：主进程真下载段——fetch .linkdesk-plugin 包 → {userData}/tmp/<原包名>（壳 preload 独有；loader 包安装流 packageOps 调） */
-        packageDownload?(url: string): Promise<{
+        /** E6#11/#13（1.2-5）：主进程真下载段——fetch .linkdesk-plugin 包 → {userData}/tmp/<原包名>（壳 preload 独有；loader 包安装流 packageOps 调）。
+         *  E6#73c：可带 job 身份——主进程段的进度事件据此回填 jobId/pluginId（缺省 = 事件不带身份，N=1 时归活跃会话） */
+        packageDownload?(url: string, job?: PluginInstallJobRef): Promise<{
             zipPath: string;
             sizeBytes?: number;
         }>;
-        /** E6#11/#13（1.2-5）：主进程真解压段——共享 bundle-zip 语义 → {userData}/plugins/<id>/（2026-09-05 塌平单根；壳 preload 独有；目标已存在拒绝） */
-        packageExtract?(zipPath: string, expectedPluginId?: string): Promise<{
+        /** E6#11/#13（1.2-5）：主进程真解压段——共享 bundle-zip 语义 → {userData}/plugins/<id>/（2026-09-05 塌平单根；壳 preload 独有；目标已存在拒绝）。
+         *  E6#73c：job 同 packageDownload——解压段进度事件回填身份 */
+        packageExtract?(zipPath: string, expectedPluginId?: string, job?: PluginInstallJobRef): Promise<{
             pluginId: string;
             version: string;
             targetDir: string;

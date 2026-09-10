@@ -8,6 +8,7 @@ import type {
   PluginListEntry,
   PluginInstallResult,
   PluginInstallRequestOpts,
+  PluginInstallJobRef,
   PluginUpdateResult,
   PluginUpdateCheckResult,
   PluginInfoEntry,
@@ -32,10 +33,12 @@ export interface PluginsAPI {
     readManifest?(id: string): Promise<string>;
     /** E6#9c：全量 manifest——Record<pluginId, PluginManifest>（pluginManifests eager glob 的 IPC 替代） */
     readAllManifests?(): Promise<Record<string, PluginManifest>>;
-    /** E6#11/#13（1.2-5）：主进程真下载段——fetch .linkdesk-plugin 包 → {userData}/tmp/<原包名>（壳 preload 独有；loader 包安装流 packageOps 调） */
-    packageDownload?(url: string): Promise<{ zipPath: string; sizeBytes?: number }>;
-    /** E6#11/#13（1.2-5）：主进程真解压段——共享 bundle-zip 语义 → {userData}/plugins/<id>/（2026-09-05 塌平单根；壳 preload 独有；目标已存在拒绝） */
-    packageExtract?(zipPath: string, expectedPluginId?: string): Promise<{ pluginId: string; version: string; targetDir: string }>;
+    /** E6#11/#13（1.2-5）：主进程真下载段——fetch .linkdesk-plugin 包 → {userData}/tmp/<原包名>（壳 preload 独有；loader 包安装流 packageOps 调）。
+     *  E6#73c：可带 job 身份——主进程段的进度事件据此回填 jobId/pluginId（缺省 = 事件不带身份，N=1 时归活跃会话） */
+    packageDownload?(url: string, job?: PluginInstallJobRef): Promise<{ zipPath: string; sizeBytes?: number }>;
+    /** E6#11/#13（1.2-5）：主进程真解压段——共享 bundle-zip 语义 → {userData}/plugins/<id>/（2026-09-05 塌平单根；壳 preload 独有；目标已存在拒绝）。
+     *  E6#73c：job 同 packageDownload——解压段进度事件回填身份 */
+    packageExtract?(zipPath: string, expectedPluginId?: string, job?: PluginInstallJobRef): Promise<{ pluginId: string; version: string; targetDir: string }>;
     /** E6#13b（段 B）：主进程真网络段——fetch marketplace.json → 版本对比（不碰账本——current 由壳传）。prerelease 默认忽略。 */
     packageUpdateCheck?(pluginId: string, catalogUrl: string, currentVersion?: string): Promise<PluginUpdateCheckResult>;
     /** E6#13b/c（段 B）：主进程真下载+解压段——下载到 tmp → 解压到 {userData}/tmp/.stage-<id>（id 一致 + 版本方向校验，不碰旧目录）。

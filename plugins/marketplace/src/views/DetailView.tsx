@@ -39,6 +39,7 @@ import {
   useMarketplacePlugins,
   useMarketplaceCatalog,
   useMarketInstall,
+  useMarketPendingInstalls,
   useOnlineStatus,
   startMarketInstall,
   retryMarketInstall,
@@ -147,6 +148,8 @@ export default function DetailView({ pluginId }: DetailContributedProps) {
   const { all, disabledRaw, loading: pluginsLoading, refresh: refreshPlugins } = useMarketplacePlugins();
   const catalog = useMarketplaceCatalog();
   const installSession = useMarketInstall();
+  /* E6#73c 第 1 步：等待安装中的请求不再被静默丢弃——安装钮原位画「等待安装中」回执（N=1 串行队列） */
+  const pendingInstalls = useMarketPendingInstalls();
   /* #30.9b 离线态（G3）——navigator.onLine false → 安装/更新钮置灰 + 「联网后重试」（不产生失败会话）；
    *  提早在顶声明——doVersionAction/installGateError deps 均读它（TDZ 防御：勿下移，下移即渲染即崩） */
   const online = useOnlineStatus();
@@ -493,6 +496,8 @@ export default function DetailView({ pluginId }: DetailContributedProps) {
   const installingHere = installSessionHere?.phase === "installing";
   /** #30.9b 本插件失败会话（phase:error）——#64 A3 消费：安装钮原位变红「重试安装」（09 §二 M4 三）；离线不产生会话 */
   const installErrHere = installSessionHere?.phase === "error" ? installSessionHere : null;
+  /** E6#73c 第 1 步：本插件排在等待队列里（不在跑）——安装钮原位画「等待安装中」（此前是静默丢点） */
+  const queuedHere = pluginId !== undefined && pendingInstalls.includes(pluginId);
 
   const installLabel = (): string => marketInstallStageLabel(t, installSession?.stage, installSession?.percent);
 
@@ -533,7 +538,8 @@ export default function DetailView({ pluginId }: DetailContributedProps) {
       if (pin !== undefined) void setPinnedVersion(pluginId, pin);
     }
     // 会话 store 负责归因 + 失败态；成功后 lifecycle 事件驱动列表翻态（30.5c），本视图随 info 收敛
-    await startMarketInstall(pluginId, url);
+    // E6#73c 第 1 步：带显示名——壳侧 job 行需要它（不传则退化为 id，标题会变成裸 id）
+    await startMarketInstall(pluginId, url, entry?.name);
   }, [pluginId, busy, installingHere, installGateError, entry, installUrl, installVer]);
 
   /* 安装钮点击 = E6#71k 确认门（**恒弹**）→ 富内容确认 → runInstall（安装执行单一入口仍留本视图）。
@@ -939,11 +945,11 @@ export default function DetailView({ pluginId }: DetailContributedProps) {
                   <Button
                     variant="success"
                     onClick={handleInstallClick}
-                    disabled={busy || installingHere || !online}
-                    title={!online ? t("联网后重试") : undefined}
+                    disabled={busy || installingHere || queuedHere || !online}
+                    title={!online ? t("联网后重试") : queuedHere ? t("等待安装中") : undefined}
                   >
                     <span className="codicon codicon-cloud-download" />
-                    {installingHere ? installLabel() : t("安装")}
+                    {installingHere ? installLabel() : queuedHere ? t("等待安装中") : t("安装")}
                   </Button>
                 )}
               </>

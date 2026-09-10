@@ -22,6 +22,7 @@
   "从本地安装插件": "Install from Local",
   "安装": "Install",
   "安装中...": "Installing...",
+  "等待安装中": "Waiting to install",
   "搜索插件...": "Search plugins...",
   "加载中...": "Loading...",
   "未找到匹配的插件": "No matching plugins found",

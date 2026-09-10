@@ -38,7 +38,8 @@ import { parseManifestJson } from "../jsonc"; // E6#55：作者 plugin.json JSON
 import { normalizePath } from "../../core/utils/path/pathUtils"; // 跨 IPC 路径归一化唯一正源（no-raw-path-replace）
 // E6#13b/c（段 B）：packageOps 签名引用 PluginUpdateCheckResult——types.ts 契约面
 // E6#73q：PluginInstallRequestOpts——安装请求侧身份（pluginId/displayName/origin）
-import type { PluginInstallRequestOpts, PluginInstallResult, PluginUpdateCheckResult } from "../../core/api/linkdesk-api/types";
+// E6#73c：PluginInstallJobRef——主进程 fs/net 段的进度事件回填 job 身份（jobId 只在壳侧生成）
+import type { PluginInstallRequestOpts, PluginInstallResult, PluginInstallJobRef, PluginUpdateCheckResult } from "../../core/api/linkdesk-api/types";
 // E6#73q（18 档 §五 I.2）：壳侧 job 表 + N 槽限流 + FIFO——槽锁下沉到 installPlugin（两条腿共用）
 import {
   acquireInstallSlot,
@@ -277,8 +278,8 @@ function isPackageSource(source: string): boolean {
  *  update 三段（#13b/c：packageUpdateCheck/Stage/Commit）选填随 preload 注入——安装流只要 download/extract，
  *  更新流各自判存在再调（段 B 落法）。 */
 export function packageOps(): {
-  packageDownload: (url: string) => Promise<{ zipPath: string; sizeBytes?: number }>;
-  packageExtract: (zipPath: string, expectedPluginId?: string) => Promise<{ pluginId: string; version: string; targetDir: string }>;
+  packageDownload: (url: string, job?: PluginInstallJobRef) => Promise<{ zipPath: string; sizeBytes?: number }>;
+  packageExtract: (zipPath: string, expectedPluginId?: string, job?: PluginInstallJobRef) => Promise<{ pluginId: string; version: string; targetDir: string }>;
   packageUpdateCheck?: (pluginId: string, catalogUrl: string, currentVersion?: string) => Promise<PluginUpdateCheckResult>;
   packageStageUpdate?: (pluginId: string, source: string, currentVersion?: string, allowOlder?: boolean) => Promise<{ pluginId: string; newVersion: string; stagedDir: string }>;
   packageCommitUpdate?: (pluginId: string, stagedDir: string) => Promise<{ pluginId: string; version: string }>;
@@ -396,6 +397,9 @@ async function installPackageFromSource(
 ): Promise<PluginInstallResult> {
   const source = sourcePath.trim();
   jobProgress(jobId, "validating");
+  // E6#73c：主进程 fs/net 段的进度事件随行身份——主进程只知道 jobId（自己按请求透传），
+  // pluginId 池侧请求已知时同带（下载段靠它归到具体插件；待解压才知 id 的包流只有 jobId）。
+  const jobRef: PluginInstallJobRef = { jobId, pluginId: opts?.pluginId };
   try {
     const ops = packageOps();
     // 1) 包定位：http(s) → 主进程 download 到 {userData}/tmp/<原包名>.<唯一后缀>（E6#73q 并发不撞名）；
@@ -404,7 +408,7 @@ async function installPackageFromSource(
     let downloaded = false;
     if (/^https?:\/\//i.test(source)) {
       jobProgress(jobId, "downloading", opts?.pluginId, "下载插件包");
-      const r = await ops.packageDownload(source);
+      const r = await ops.packageDownload(source, jobRef);
       zipPath = r.zipPath;
       downloaded = true;
     } else {
@@ -418,7 +422,7 @@ async function installPackageFromSource(
     jobProgress(jobId, "extracting", opts?.pluginId, "解压插件包");
     let extracted: { pluginId: string; version: string; targetDir: string };
     try {
-      extracted = await ops.packageExtract(zipPath);
+      extracted = await ops.packageExtract(zipPath, undefined, jobRef);
     } finally {
       // 下载包落 tmp——解压完（成败皆）清理；磁盘 zip 是用户自有文件，不删
       if (downloaded) {
