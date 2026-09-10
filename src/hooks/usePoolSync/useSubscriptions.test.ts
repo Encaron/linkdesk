@@ -1,8 +1,11 @@
 /**
- * useSubscriptions——通知面板回传 handler 单测（E6#73f S4）。
- * 覆盖：池面板「全部清除」/ 单条 × 回传 → **跳过尚无结果（progress）的条目**，
- * 它们只能由创建它们的句柄收掉（18 档 A2：安装跑到 10% 时点「全部清除」，
- * 若连进度条一起清掉，此后整个安装期屏幕上零反馈、装完才突然冒一条）。
+ * useSubscriptions——通知面板回传 handler 单测（E6#73f S4 / E6#73a）。
+ * 覆盖：
+ * - 「清除已完成」/ 单条 × 回传 → **跳过尚无结果（progress）的条目**，它们只能由创建它们的句柄收掉
+ *   （18 档 A2：安装跑到 10% 时点「清除已完成」，若连进度条一起清掉，此后整个安装期屏幕上零反馈、
+ *   装完才突然冒一条）；
+ * - 「清除已完成」的**第二条判据**（E6#73a）：未读的也不清——用户没见过的消息不许替他删；
+ * - `notif:panel` 三态载荷（E6#73a）：`{state, markSeen}` → 镜像 + 按需认账。
  *
  * 被测面只是 12 个订阅里的通知那一组；其余订阅靠 window.linkdesk / registry 桩空转（不触发即 no-op）。
  * fixture 全虚构（硬约束 21：demo-plugin / 演示消息）。
@@ -73,7 +76,10 @@ describe("E6#73f S4：用户移除跳过进行中条目", () => {
   it("notif:clearAll 只清已有结果的，进度条留下（等句柄收）", () => {
     mount();
     const running = pushToast({ message: "演示消息 装到一半", source: "demo-plugin", progress: true, ttl: 0 });
-    pushToast({ message: "演示消息 一条结果", source: "demo-plugin", ttl: 0 });
+    const done = pushToast({ message: "演示消息 一条结果", source: "demo-plugin", ttl: 0 });
+    // E6#73a：已读是第二条判据——先让用户「看过」（面板开着到达的那条即可）
+    _seenIds.add(running);
+    _seenIds.add(done);
 
     fire("notif:clearAll", undefined);
 
@@ -109,5 +115,61 @@ describe("E6#73f S4：用户移除跳过进行中条目", () => {
     fire("notif:dismiss", 123);
     fire("notif:dismiss", "toast-not-exist");
     expect(getToasts()).toHaveLength(1);
+  });
+});
+
+describe("E6#73a：「清除已完成」的第二条判据——未读的不清", () => {
+  it("已出结果但**未读** → 不删（面板关着到达的失败通知，用户还没见过）", () => {
+    mount();
+    // 场景：面板关着，一条失败通知到了 —— 已出结果，但用户没看过
+    pushToast({ message: "演示消息 装失败", source: "demo-plugin", severity: "error", ttl: 0 });
+    expect(_seenIds.size).toBe(0);
+
+    fire("notif:clearAll", undefined);
+
+    expect(getToasts()).toHaveLength(1);
+  });
+
+  it("已出结果且已读 → 删（这才是按钮承诺的「已完成」）", () => {
+    mount();
+    const read = pushToast({ message: "演示消息 装好了", source: "demo-plugin", ttl: 0 });
+    _seenIds.add(read);
+
+    fire("notif:clearAll", undefined);
+
+    expect(getToasts()).toHaveLength(0);
+  });
+});
+
+describe("E6#73a：notif:panel 三态载荷 → 镜像 + 按需认账", () => {
+  it("state 为 open 时镜像为「展开」；idle / minimized 都是假值（视觉都收起）", () => {
+    mount();
+    pushToast({ message: "演示消息", source: "demo-plugin", ttl: 0 });
+
+    fire("notif:panel", { state: "open", markSeen: true });
+    expect(_seenIds.size).toBe(1);
+
+    fire("notif:panel", { state: "minimized", markSeen: false });
+    // 不重推、不清空——镜像只影响 autoOpen 门禁，未读集不受影响
+    expect(_seenIds.size).toBe(1);
+  });
+
+  it("markSeen:false 时**不**认账——唤醒开的面板不该替用户清红点", () => {
+    mount();
+    pushToast({ message: "演示消息", source: "demo-plugin", ttl: 0 });
+
+    fire("notif:panel", { state: "open", markSeen: false });
+
+    expect(_seenIds.size).toBe(0);
+  });
+
+  it("坏载荷（非对象 / state 不是字符串）→ 静默 no-op（通道契约宽容）", () => {
+    mount();
+    const t = pushToast({ message: "演示消息", source: "demo-plugin", ttl: 0 });
+    fire("notif:panel", true); // 旧 boolean 契约——不再被接受
+    fire("notif:panel", { markSeen: true });
+    fire("notif:panel", null);
+    expect(_seenIds.size).toBe(0);
+    expect(getToasts().map((x) => x.id)).toEqual([t]);
   });
 });

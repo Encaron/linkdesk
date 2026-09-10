@@ -171,7 +171,8 @@ export function buildSampleLayout(): PoolLayout {
         unread: 2,
         bellTitle: "2 条通知",
         panelTitle: "通知",
-        clearLabel: "清除全部",
+        clearLabel: "清除已完成",
+        minimizeLabel: "最小化",
         emptyLabel: "没有新通知",
         dismissTitle: "关闭",
         groups: [

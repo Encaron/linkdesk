@@ -38,7 +38,7 @@ const validPoolLayout = {
   groups: [{ id: "g1", flex: 1, activeTabId: "t1", tabs: [{ id: "t1", pluginId: "terminal", title: "终端" }] }],
   statusBar: {
     items: [],
-    notif: { unread: 0, bellTitle: "通知", panelTitle: "通知中心", clearLabel: "清除", emptyLabel: "暂无通知", dismissTitle: "关闭", groups: [] },
+    notif: { unread: 0, bellTitle: "通知", panelTitle: "通知中心", clearLabel: "清除已完成", minimizeLabel: "最小化", emptyLabel: "暂无通知", dismissTitle: "关闭", groups: [] },
   },
 };
 

@@ -225,15 +225,22 @@ export function useSyncSubscriptions({
   }, [setEventEntries]);
 
   // E5.7#8：池通知面板操作回传（events 往返）——壳 NotificationCenter 语义迁入：
-  // 面板开闭 → setNotifPanelOpen（面板开合镜像，供 autoOpen 门禁）+ 标记已读；单条关闭/全部清除 → dismissToast；
-  // 动作点击 → 壳侧执行 onClick 闭包 + 关闭（闭包不可序列化，只能壳侧跑）。
+  // 面板三态迁移 → setNotifPanelOpen（面板开合镜像，供 autoOpen 门禁）+ 认账（标记已读）；
+  // 单条关闭 / 清除已完成 → dismissToast；动作点击 → 壳侧执行 onClick 闭包 + 关闭（闭包不可序列化，只能壳侧跑）。
   useEffect(() => {
     const events = window.linkdesk?.events;
     const offPanel = events?.on("notif:panel", (payload) => {
-      // E5.7#97：通道契约——池 emit 只传 boolean（面板开闭态）
-      if (typeof payload !== "boolean") return;
-      setNotifPanelOpen(payload);
-      if (payload) {
+      // E6#73a：通道契约——池 emit `{ state, markSeen }`。
+      // **为什么不再是 boolean**：池侧三态（idle/open/minimized）是本仓**唯一**的面板状态表示
+      // （见 `src/pool/zones/status-bar/notifPanelState.ts`），壳侧持它的镜像、不自己派生第二份。
+      // **为什么认账不能由「state === "open"」推出来**：点铃铛开要认账、收到唤醒开**不认账**
+      // （§五 B：用户还没看，不替他清红点），同一个终态两种来源 ⇒ 必须由池侧随行告知。
+      const data = payload as { state?: unknown; markSeen?: unknown } | null | undefined;
+      if (!data || typeof data.state !== "string") return;
+      setNotifPanelOpen(data.state === "open");
+      // ⚠️ `state === "minimized"` 的镜像（`!isNotifMinimized()` 进 autoOpen 表达式）归 **E6#73b**，
+      // 本处只消费「展开了没有」这一面——本档交付时 minimized 与 idle 对壳仍是同一个假值。
+      if (data.markSeen === true) {
         for (const n of getToasts()) _seenIds.add(n.id);
         setLayoutVersion((v) => v + 1);  // 标记已读不 fire toast 事件——手动重推
       }
@@ -248,8 +255,15 @@ export function useSyncSubscriptions({
       if (!target || isPending(target)) return;
       dismissToast(payload);
     });
+    // E6#73a：「清除全部」→「清除已完成」——两道判据，缺一不可：
+    //   ① `!isPending` = **已出结果**（进行中的一条不碰，E6#73f 已落）；
+    //   ② `_seenIds.has` = **已读**（用户见过）。
+    // 为什么要第二条：一条失败通知在面板关着的时候到达，用户**没见过**它——点「清除已完成」把它
+    // 一起清掉 = 帮用户把没看见的消息删了。按钮的名字承诺的是「已完成」，不是「全部」。
     const offClearAll = events?.on("notif:clearAll", () => {
-      getToasts().filter((n) => !isPending(n)).forEach((n) => dismissToast(n.id));
+      getToasts()
+        .filter((n) => !isPending(n) && _seenIds.has(n.id))
+        .forEach((n) => dismissToast(n.id));
     });
     const offAction = events?.on("notif:action", (payload) => {
       const data = payload as { id?: unknown; index?: unknown } | null | undefined;

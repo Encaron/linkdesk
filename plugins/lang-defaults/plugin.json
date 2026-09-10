@@ -1,7 +1,7 @@
 {
   "$schema": "../../public/schemas/plugin.schema.json",
   "name": "官方语言",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "icon": "resources/icon.svg",
   "description": "出厂中文/English 语言包——可卸载，卸载后 t(key) 返回 key 原文",
   "author": "官方",
@@ -20,6 +20,6 @@
     ]
   },
   "changelog": [
-    { "version": "1.0.3", "date": "2026-09-09", "changes": ["图标身份分工（E6#69 三图模型）：新增 icon=resources/icon.svg（Type-2 彩色身份图），撤 marketIcon=cover.svg——整幅封面迁入 README 展示"] }
+    { "version": "1.0.4", "date": "2026-09-10", "changes": ["通知面板头部文案换血（E6#73a）：新增「清除已完成」（Clear Completed）/「最小化」（Minimize）两键，撤「全部清除」"] }
   ]
 }

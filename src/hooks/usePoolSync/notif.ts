@@ -100,13 +100,19 @@ export function buildNotif(t: TFunction): NotifLayout {
     unread,
     bellTitle: unread > 0 ? t("{{count}} 条通知", { count: unread }) : t("通知"),
     panelTitle: t("通知"),
-    clearLabel: t("全部清除"),
+    // E6#73a：头部两钮分工——一个管**内容**（清消息，面板不关），一个管**面板**（收起）。
+    // 原「全部清除」删所有通知（含进行中）⇒ 此后进度静默失效、永不再现（18 档 A2/M5）。
+    clearLabel: t("清除已完成"),
+    minimizeLabel: t("最小化"),
     emptyLabel: t("暂无通知"),
     dismissTitle: t("关闭"),
     groups,
     // E6#72d：重要且未读、且面板当前关着 → 请求池自动展开。
-    // 「面板已开」时不再请求（不二次打扰正在看的人）；面板打开会即时标记已读 →
-    // unread 归零 → 本值自然回落 false，故不存在「关掉又被弹开」的反复。
+    // 「面板已开」时不再请求（不二次打扰正在看的人）；池打开面板会回传开合镜像 →
+    // 本值回落 false，故不存在「关掉又被弹开」的反复。
+    // E6#73a：回落**只**靠开合镜像，不再依赖 unread 归零——唤醒开面板不认账（§五 B），
+    // 未读会照常留着。⚠️ 已知边界：**最小化**态同样让本式为 false（isNotifPanelOpen 只看「开着没」），
+    // 而最小化**不是永久静音**（§五 A 第 4 行）——两者语义的分离归 **E6#73b**。**73b 前不得回退本式。**
     autoOpen:
       !isNotifPanelOpen() && notifications.some((n) => !_seenIds.has(n.id) && isImportantNotif(n)),
   };

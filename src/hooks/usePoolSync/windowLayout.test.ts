@@ -58,7 +58,7 @@ function makeCtx(): WindowLayoutContext {
     sidebar: { visible: false, width: 0, containerId: null, containerTitle: "", views: [] },
     rightSidebar: { visible: false, width: 300, containerId: null, containerTitle: "", views: [] },
     panel: { visible: true, height: 220, activeViewId: "", views: [] },
-    statusBar: { items: [], notif: { unread: 0, bellTitle: "", panelTitle: "", clearLabel: "", emptyLabel: "", dismissTitle: "", groups: [] } },
+    statusBar: { items: [], notif: { unread: 0, bellTitle: "", panelTitle: "", clearLabel: "", minimizeLabel: "", emptyLabel: "", dismissTitle: "", groups: [] } },
     creatableViews: [{ pluginId: "demo-plugin", label: "Demo View" }],
     // E5.8#45：面板已脱出（存在 drift 窗）→ true；测试各场景显式覆盖
     panelDetached: false,

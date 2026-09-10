@@ -843,6 +843,7 @@ function chkNotifLayout(v: unknown, p: string, errs: string[]): void {
     if (typeof _t97.bellTitle !== "string") errs.push(((p) + ".bellTitle") + ": 期望 string，实收 " + typeof _t97.bellTitle);
     if (typeof _t97.panelTitle !== "string") errs.push(((p) + ".panelTitle") + ": 期望 string，实收 " + typeof _t97.panelTitle);
     if (typeof _t97.clearLabel !== "string") errs.push(((p) + ".clearLabel") + ": 期望 string，实收 " + typeof _t97.clearLabel);
+    if (typeof _t97.minimizeLabel !== "string") errs.push(((p) + ".minimizeLabel") + ": 期望 string，实收 " + typeof _t97.minimizeLabel);
     if (typeof _t97.emptyLabel !== "string") errs.push(((p) + ".emptyLabel") + ": 期望 string，实收 " + typeof _t97.emptyLabel);
     if (typeof _t97.dismissTitle !== "string") errs.push(((p) + ".dismissTitle") + ": 期望 string，实收 " + typeof _t97.dismissTitle);
     if (!Array.isArray(_t97.groups)) errs.push(((p) + ".groups") + ": 期望数组");

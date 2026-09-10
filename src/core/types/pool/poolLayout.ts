@@ -367,7 +367,10 @@ export interface NotifLayout {
   /** 铃铛 tooltip——t("{{count}} 条通知") / t("通知") */
   bellTitle: string;
   panelTitle: string;
+  /** E6#73a：头部「清除已完成」按钮文案——只清**已出结果且已读**的旧消息，面板不关、进行中的一条不碰。 */
   clearLabel: string;
+  /** E6#73a：头部「最小化」按钮文案——关闭面板的**唯一**动作（语义 = 收起，什么都不丢）。 */
+  minimizeLabel: string;
   emptyLabel: string;
   dismissTitle: string;
   groups: NotifGroup[];

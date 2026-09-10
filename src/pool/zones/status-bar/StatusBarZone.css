@@ -152,7 +152,14 @@
   gap: 2px;
 }
 
-.notif-panel-clear {
+/*
+ * 头部动作钮（E6#73a）——「清除已完成」与「最小化」共用一条规则。
+ * 两者是**同一个视觉族**（同级、同形、同权重），区别只在语义职责：一个管内容、一个管面板。
+ * 刻意**不给「最小化」加图标**：用户反复说过「没有最小化这个东西」，那就把字写出来，
+ * 别让人猜图标含义（蓝图 05 §三 注 1）；两钮都无图标 → 也不会靠形状暗示「谁更强」。
+ * ⚠️ `--text-muted` 的对比度是否达标 4.5:1 归 E6#73k 一并收口（本档不引入新偏离、只沿用既有 token）。
+ */
+.notif-panel-action {
   background: none;
   border: none;
   color: var(--text-muted);
@@ -163,7 +170,7 @@
   border-radius: var(--radius-sm);
 }
 
-.notif-panel-clear:hover {
+.notif-panel-action:hover {
   background: var(--tab-hover-bg);
   color: var(--text-primary);
 }
