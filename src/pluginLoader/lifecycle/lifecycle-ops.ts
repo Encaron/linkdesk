@@ -33,6 +33,8 @@ import {
   // E6#73j（G6）：住所判据唯一源——市场「可更新」徽标/更新钮据此遮蔽死钮
   isPluginUpdatable,
   setPluginResidence,
+  // E6#80：卸载销账——索引 + 住所一并划掉（不销账 = 重装后仍按启动快照说话）
+  forgetPluginIndex,
 } from "../resolution/state";
 import { validateInstallManifest, resolveVersionConflict } from "../discovery/manifest";
 import { syncAppThemeEnum, syncAppLanguageEnum, syncIconThemeEnum } from "../contributions/contributions";
@@ -197,6 +199,12 @@ export async function uninstallPlugin(pluginId: string): Promise<{ success: bool
     unloadPlugin(pluginId, "uninstall", displayName, restorable);
     // E5.8#61 审计#1：混搭来源已摘后才重合并（unload 前源配方仍注册——早合并找不到回退）
     if (needsMixReapply) await reapplyThemeAfterUnload();
+
+    // 🔴 E6#80：卸载销账——索引 + 住所两条跨会话记账一并划掉。此前两者都不清：索引留着卸载前的
+    // manifest 当「旧快照」用（重装后读取侧仍可能按它说话），住所留着 userData 让 `isPluginUpdatable`
+    // 对一个盘上已不存在的插件判「可更新」。**只划索引与住所**——metadataCache 是故意留的
+    // （B2 fix：卸载后市场仍要能浏览详情，状态已改写 uninstalled），别一起删。
+    forgetPluginIndex(pluginId);
 
     // 如果插件之前被禁用过，清理禁用列表——卸载优先级高于禁用。
     // onDidUninstall 消费端不读 disabledPlugins——移到 unloadPlugin 之后顺序安全
@@ -587,21 +595,25 @@ export function isPluginDisabled(pluginId: string): boolean {
 /** 获取所有已加载插件的 manifest（含非视图插件 + 运行时加载的插件） */
 export function getLoadedPluginManifests(): Array<{ pluginId: string; manifest: PluginManifest }> {
   const result: Array<{ pluginId: string; manifest: PluginManifest }> = [];
-  const seen = new Set<string>();
 
-  // 1. manifestIndex 中的插件（E6#9c：readAllManifests IPC 水合——glob 源码树 + 运行时/打包全覆盖）
-  for (const [pluginId, manifest] of getAllManifestEntries()) {
-    if (loadedPluginIds.has(pluginId)) {
-      result.push({ pluginId, manifest });
+  // 1. 🔴 E6#80：**运行时加载的插件优先**——「本次会话读到的」排在「启动快照」前面（顺序原为
+  //    index→cache，2026-09-11 反转）。不变式：status==="installed" 的缓存条目只可能由 fresh 读盘写入
+  //    （loadPlugin Step1 / refreshManifestFromDisk），manifestIndex 却只在启动期水合一次。旧顺序下
+  //    **旧快照把新数据遮蔽**（seen 已记 → 第 2 段跳过），实机表现 = 卸载后重装、盘上已是新版本而市场
+  //    详情页仍报旧版本、徽标不收敛。（仅 loadedPluginIds 中有的，防僵尸缓存）
+  const cache = getMetadataCache();
+  const seen = new Set<string>();
+  for (const [pluginId, meta] of Object.entries(cache)) {
+    if (meta.status === "installed" && meta.manifest && loadedPluginIds.has(pluginId)) {
+      result.push({ pluginId, manifest: meta.manifest });
       seen.add(pluginId);
     }
   }
 
-  // 2. 运行时加载的插件（loadPlugin 缓存了完整 manifest——仅 loadedPluginIds 中有的，防僵尸缓存）
-  const cache = getMetadataCache();
-  for (const [pluginId, meta] of Object.entries(cache)) {
-    if (meta.status === "installed" && meta.manifest && !seen.has(pluginId) && loadedPluginIds.has(pluginId)) {
-      result.push({ pluginId, manifest: meta.manifest });
+  // 2. 索引兜底（E6#9c：readAllManifests 水合 + loadPlugin/refresh 回写——缓存未就绪时的查表）
+  for (const [pluginId, manifest] of getAllManifestEntries()) {
+    if (loadedPluginIds.has(pluginId) && !seen.has(pluginId)) {
+      result.push({ pluginId, manifest });
     }
   }
 

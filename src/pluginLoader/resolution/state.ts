@@ -110,6 +110,37 @@ export function getAllManifestEntries(): Array<[string, PluginManifest]> {
   return [...manifestIndex.entries()];
 }
 
+/**
+ * 索引写入点（E6#80）——**凡从盘上读到一份真 manifest，当场记回索引**。
+ *
+ * 唯一调用方 = `loadPlugin` Step1（读完 `readManifest` 即调，见 runtime.ts）。为什么需要：索引此前
+ * 只在启动期水合，装/卸/重装一律不碰它 ⇒ 「卸载 0.1.1 → 重装 0.1.0」之后索引仍是启动那一刻的版本，
+ * 而读取侧信索引（见 `getLoadedPluginManifests` 旧注释）⇒ 市场详情页显示旧版本、徽标不收敛，再点更新
+ * 撞主进程「包内版本与当前版本相同」（用户 2026-09-11 实机复现：降级 → 卸载 → 重装）。
+ *
+ * 为什么挂在 loadPlugin 而不是各生命周期操作各自补一句：装 / 卸 / 启 / 禁 / 更新**最终都收敛到
+ * `loadPlugin`**（load 是唯一「读盘」动作），挂这里 = 四条路一次覆盖，各写各的写不出来了。
+ * 零额外 IPC——读盘那一次本来就要发生，本函数只是把结果**记下来**。
+ */
+export function setManifestInIndex(pluginId: string, manifest: PluginManifest): void {
+  manifestIndex.set(pluginId, manifest);
+}
+
+/**
+ * 索引销账（E6#80）——卸载时把该插件从**跨会话记账**里一并划掉（manifestIndex + residenceIndex）。
+ *
+ * 不销账的后果（都是同一次实机复现的组成部分）：① 索引留着旧 manifest → 重装后的读取侧仍可能按旧快照
+ * 说话；② 住所索引留着 `userData` → 已卸载插件仍被判「可被包更新」（`isPluginUpdatable`）⇒ 市场里对
+ * 一个盘上不存在的插件画更新钮。
+ *
+ * **不碰 metadataCache**：那份是**故意**留的（B2 fix——卸载后市场仍要能浏览详情，状态改写为
+ * `uninstalled`，见 plugin-disk-location.ts），与「索引该不该留」是两件事，别一起删。
+ */
+export function forgetPluginIndex(pluginId: string): void {
+  manifestIndex.delete(pluginId);
+  residenceIndex.delete(pluginId);
+}
+
 /* ── E6#73j（G6）：插件住所索引——「这块地盘上的插件能不能被下载来的包换掉」 ── */
 
 /**
@@ -291,18 +322,21 @@ async function saveDisabledList(list: string[]): Promise<void> {
 
 /** 查找已加载插件的 manifest——含视图和非视图插件（主题/语言等）+ 运行时加载的插件 */
 function getLoadedManifest(pluginId: string): PluginManifest | undefined {
-  // 1. 先查视图插件
+  // 1. 先查视图插件（loadPlugin 注册时写入 = 本次会话真实读到的那份）
   const viewEntry = getViewPlugin(pluginId);
   if (viewEntry) return viewEntry.manifest;
-  // 2. E6#9c：再查 manifestIndex（单一真源——覆盖 glob + 运行时/打包插件；loadedPluginIds 中有但不属于视图注册表）
-  const indexed = manifestIndex.get(pluginId);
-  if (indexed && loadedPluginIds.has(pluginId)) {
-    return indexed;
-  }
-  // 3. 元数据缓存兜底（禁用/已卸载等未入索引的条目）
+  // 2. 🔴 E6#80：再查元数据缓存——**「本次会话读到的」优先于「启动快照」**（顺序原为 index→cache，
+  //    2026-09-11 反转）。不变式：status==="installed" 的缓存条目**只可能由 fresh 读盘写入**
+  //    （runtime.ts 的 loadPlugin Step1 / 本模块 refreshManifestFromDisk 两处，均当场 readManifest）；
+  //    而 manifestIndex 只在启动期水合一次 ⇒ 前者恒新于后者。旧顺序下缓存被索引遮蔽，就是实机 bug 的根。
   const meta = getMetadataCache()[pluginId];
   if (meta?.status === "installed" && meta.manifest && loadedPluginIds.has(pluginId)) {
     return meta.manifest;
+  }
+  // 3. E6#9c 索引兜底（启动水合 + loadPlugin/refresh 回写——未入缓存时的查表）
+  const indexed = manifestIndex.get(pluginId);
+  if (indexed && loadedPluginIds.has(pluginId)) {
+    return indexed;
   }
   return undefined;
 }
@@ -320,4 +354,5 @@ export {
   getDisabledList,
   saveDisabledList,
   getLoadedManifest,
+  // setManifestInIndex / forgetPluginIndex 走各自声明处的 export function——不在此重复列出
 };

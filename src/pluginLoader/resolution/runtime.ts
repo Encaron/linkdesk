@@ -37,6 +37,7 @@ import {
   getDisabledList,
   getLoadedManifest,
   getManifestById,
+  setManifestInIndex,
 } from "./state";
 import { normalizeManifest, hasSidebarContainers, type OldFormatManifest } from "../discovery/manifest";
 import { parseManifestJson } from "../jsonc"; // E6#55：作者 plugin.json JSONC——唯一解析入口
@@ -188,6 +189,9 @@ async function loadPlugin(
   try {
     const raw = await pluginsApi().readManifest(pluginId);
     manifest = parseManifestJson(raw);
+    // 🔴 E6#80：读到即回写索引——装 / 卸 / 启 / 禁 / 更新最终都收敛到 loadPlugin（唯一「读盘」动作），
+    // 挂这一处 = 四条路一次覆盖（此前索引只在启动期水合，重装后仍报旧版本，见 setManifestInIndex 头注）。
+    setManifestInIndex(pluginId, manifest);
   } catch (e) {
     console.warn(`[pluginLoader] 插件 "${pluginId}" 读取 plugin.json 失败: ${errMsg(e)}`);
     markLoadFailed(pluginId, `plugin.json 读取失败: ${errMsg(e)}`);
