@@ -767,10 +767,52 @@ describe("runAutoUpdateIfDue（#33d DetailView 勾选即跑）", () => {
     expect((await readUpdateMetaMap())["demo-alpha"]?.autoUpdate).toBe(true); // 偏好保留
   });
 
-  it("store 无候选（发现未跑过/无更新）→ false 不动引擎、不说（没表达过该意图）", async () => {
-    __setMetaStore(metaStore());
+  it("盘上已是最新版（无候选）→ false 不动引擎、不说（没得可更新）", async () => {
+    __setMetaStore(metaStore({ "demo-alpha": { autoUpdate: true } }));
     const update = vi.fn<EngineUpdate>(async () => ({ success: true }));
     const { show } = stubWindow({ enabled: [enabled("demo-alpha", "1.0.0", "Alpha")], update });
+    okCatalogFetch([catEntry("demo-alpha", "1.0.0")]);
+    expect(await runAutoUpdateIfDue("demo-alpha")).toBe(false);
+    expect(update).not.toHaveBeenCalled();
+    expect(show).not.toHaveBeenCalled();
+  });
+
+  it("目录拉不到（离线 / 坏 parse）→ false 不动引擎、不说（判不出有没有新版就不猜）", async () => {
+    __setMetaStore(metaStore({ "demo-alpha": { autoUpdate: true } }));
+    const update = vi.fn<EngineUpdate>(async () => ({ success: true }));
+    const { show } = stubWindow({ enabled: [enabled("demo-alpha", "1.0.0", "Alpha")], update });
+    const deadFetch = vi.fn(async () => {
+      throw new Error("offline");
+    });
+    __setCatalogIO(deadFetch as unknown as FetchFn, memStorage());
+    expect(await runAutoUpdateIfDue("demo-alpha")).toBe(false);
+    expect(update).not.toHaveBeenCalled();
+    expect(show).not.toHaveBeenCalled();
+  });
+
+  it("🔥 回归（E6#81）：发现一趟都没跑过（store 从未落过）+ 目录有新版 + 已勾自动 → 照样真装 + 告知", async () => {
+    // 旧实现读 store（`_candidates.find`）——store 空即在第一行静默 `return false`，**勾了等于没勾**。
+    // 用户实机路径：打开详情页 → 勾「自动更新」→ 什么也没发生（发现要市场池首载后 ~10s 才跑，且离线/无源
+    // 时整趟早退不落 store）。此处断言「不依赖发现跑过」。
+    __setMetaStore(metaStore({ "demo-alpha": { autoUpdate: true } }));
+    const update = vi.fn<EngineUpdate>(async () => ({ success: true }));
+    const { show } = stubWindow({ enabled: [enabled("demo-alpha", "1.0.0", "Alpha")], update });
+    okCatalogFetch([catEntry("demo-alpha", "2.0.0")]);
+    expect(getDiscoveredUpdates()).toEqual([]); // 发现未跑过
+    expect(await runAutoUpdateIfDue("demo-alpha")).toBe(true);
+    expect(update).toHaveBeenCalledTimes(1);
+    expect(update.mock.calls[0][0]).toBe("demo-alpha");
+    expect(typeof update.mock.calls[0][1]?.url).toBe("string"); // URL 走稳定版寻址，非空跑
+    expect(show).toHaveBeenCalledTimes(1);
+    expect(show).toHaveBeenCalledWith(expect.stringContaining("Alpha"), { type: "info", source: "marketplace" });
+    expect(getDiscoveredUpdates()).toEqual([]); // 空 store 上驱逐是 no-op（不炸）
+  });
+
+  it("🔥 回归（E6#81）：发现没跑过 + 已钉旧版 → 仍不动引擎、不说（pin 是唯一闸，不许被现算绕开）", async () => {
+    __setMetaStore(metaStore({ "demo-alpha": { autoUpdate: true, pinnedVersion: "1.0.0" } }));
+    const update = vi.fn<EngineUpdate>(async () => ({ success: true }));
+    const { show } = stubWindow({ enabled: [enabled("demo-alpha", "1.0.0", "Alpha")], update });
+    okCatalogFetch([catEntry("demo-alpha", "2.0.0")]);
     expect(await runAutoUpdateIfDue("demo-alpha")).toBe(false);
     expect(update).not.toHaveBeenCalled();
     expect(show).not.toHaveBeenCalled();

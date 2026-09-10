@@ -39,11 +39,14 @@
  *   - **成功 → 发一条汇总通知**（E6#79 用户拍板「装完发一条通知告诉我」）：单个点名到版本，多个给条数 + 头几个
  *     名字（同 updateBellMessage 结构）。静默装完会让用户回来发现「版本变了、但不知道是谁动的手」。
  *   - **失败 → 候选保留**（「可更新」徽标仍在，下次发现 / 手动重试）+ 发一条汇总告知：失败比成功更需要用户知道。
- *   - 勾选开 = DetailView 立即 `runAutoUpdateIfDue`（针对 store 已有候选即刻跑一趟，免等下趟发现 / 重启）。
+ *   - 勾选开 = DetailView 立即 `runAutoUpdateIfDue`（**候选就地现算，不读 store**——见该函数头注 E6#81）。
  *   - G6：插件标签页开着也照常 stage + 替换 + 重启生效（引擎 needRestart 恒 true——原子替换已证开着也能成，§二·七）。
  *
- * 输出：本模块同是 #33b 常驻「可更新」徽标/升级入口与 #33d 自动更新的数据源（getDiscoveredUpdates +
- * onDiscoveredUpdatesChange——发现结果落 store，随批消费）。
+ * 输出：⚠️ E6#81 审视更正——**#33b 常驻「可更新」徽标不读本模块 store**（徽标由 DetailView / 列表页经
+ * `updateTargetFor` 现算，是同一判定的另一处消费）。本模块 store（getDiscoveredUpdates /
+ * onDiscoveredUpdatesChange / hasDiscoveredUpdates）**产线已无读者**，仅剩 vitest 断言与
+ * `removeDiscoveredCandidate` 的两处调用（DetailView 手动更新成功、marketplaceShared 手动重试成功）——
+ * 后者在 store 本就为空时是 no-op。是否连同测试断言一并拆除待用户拍板；在那之前保持原状，不得据其做判断。
  *
  * IO 注入沿用兄弟模块惯例（marketSources.__setCatalogIO / installedUpdateMeta.__setMetaStore）——纯计划
  * planDiscovery 可直测；主编排 runUpdateDiscovery 读 pluginManager/notifications/update 走 window.linkdesk
@@ -377,23 +380,40 @@ async function doRunDiscovery(force: boolean): Promise<DiscoveryPlan | null> {
   return plan;
 }
 
-/** #33d 勾选即跑（DetailView 勾上 autoUpdate → 立即调）——针对**当前 store 已有候选**（发现已跑过、该插件
- *  有可更新）跑一趟，免等下趟发现 / 重启。无候选（无更新 / 发现未跑过）→ no-op（下趟发现照常 auto 处理）；
- *  autoUpdate 未开 / 已钉版本（§二·九）→ no-op（尊重「停在旧版」的手动意图）。
- *  成功 → 驱逐 store 候选（可更新徽标消）**并告知**；失败 → 候选保留（下次发现 / 手动重试）**也告知**。
- *  返回是否成功自动更新。
+/** #33d 勾选即跑（DetailView 勾上 autoUpdate → 立即调）——**候选就地现算，不读 store**。
+ *
+ *  🔴 E6#81（2026-09-11）：此前的判据是「store 里有没有这个插件的候选」，而 store **只由 `doRunDiscovery`
+ *  落**——它每会话最多跑一趟，且是市场池首载后 ~10s（DISCOVERY_DELAY_MS）；目录为空（离线 / 未配源 / 坏
+ *  parse）时更是在 `commitStore` 之前就早退。⇒ 用户打开详情页勾上开关的那一刻 store 往往是空的，函数在
+ *  `!c` 处**静默 `return false`**——**勾了等于没勾**，界面上一个字不说。这与 1.0.20 changelog 的承诺
+ *  （「勾上开关那一刻如果正好有可更新的版本，立刻装，不用等下一轮检查」）直接冲突，也说明「把判定挂在
+ *  别人的一次性产物上」是这次 bug 的形状。
+ *
+ *  修法 = 不赌「发现跑过了」，勾选那一下**自己现算**：读盘上现状 + 拉目录（5min fresh 缓存命中则零网络
+ *  开销）→ 复用**同一个** `planDiscovery` 判定（不另写第二份「这算不算有更新」的逻辑）→ auto 门 → 跑引擎。
+ *  该不该自动更新（autoUpdate on + 未钉版本，§二·九）仍由 `selectAutoCandidates` 判——用户没表达过该
+ *  意图就不替他动文件。
+ *  成功 → 驱逐 store 候选（发现跑过则撤徽标；没跑过是 no-op）**并告知**；失败 → 候选保留（手动可重试）
+ *  **也告知**。返回是否成功自动更新。
  *  幂等守卫：发现编排在跑 → 先等收束（编排已含 auto 处理本趟候选，防双跑引擎 update）。 */
 export async function runAutoUpdateIfDue(pluginId: string): Promise<boolean> {
   if (_running) await _running;
-  const c = _candidates.find((x) => x.pluginId === pluginId);
-  if (!c) return false;
   const meta = await readUpdateMetaMap();
+  const { snapshot, available } = await readInstalledSnapshot();
+  if (!available) return false; // 读不到盘上现状（IPC 不可用/失败）→ 判不了，不动文件
+  const inst = snapshot.find((x) => x.pluginId === pluginId);
+  if (!inst) return false; // 没装 / 盘上没有它 → 无事可做（下趟发现照常处理）
+  const catalog = await loadCatalog(false);
+  if (catalog.entries.length === 0) return false; // 无目录数据 → 判不出有没有新版，不猜
+  // 复用发现编排的**同一份**判定（stable-only + semver.gt + updatable 闸 + 下架跳过）——单插件喂进去取首位。
+  const c = planDiscovery(catalog.entries, [inst], meta).candidates[0];
+  if (!c) return false; // 没有比本地新的稳定版 → 无候选可跑
   // 复用纯选择函数判定「这个插件本来该被自动更新吗」（autoUpdate on + 未钉版本）——不是 → 用户没表达过
   //  该意图，不该替他动文件。
   if (selectAutoCandidates([c], meta).length === 0) return false;
   const ok = await applyEngineAutoUpdate(c);
   notifyAutoResult(ok ? [c] : [], ok ? [] : [c]);
-  if (ok) commitStore(_candidates.filter((x) => x.pluginId !== pluginId));
+  if (ok) removeDiscoveredCandidate(pluginId);
   return ok;
 }
 
