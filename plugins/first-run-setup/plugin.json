@@ -1,0 +1,34 @@
+{
+  "$schema": "../../public/schemas/plugin.schema.json",
+  "name": "首次配置",
+  "version": "1.0.0",
+  "icon": "resources/icon.svg",
+  "description": "官方样板——装到本机后做一次性配置（把本机路径落成自己的配置档案），配完发一条带自己来源的通知。示范「装好了」与「配好了」是两条互不掩盖的通知（E6#73p）",
+  "author": "官方",
+  "entry": "src/index.tsx",
+  "appearsIn": {
+    "tabBar": true,
+    "statusBar": "src/components/statusBar.tsx"
+  },
+  "tabBehavior": { "singleton": true },
+  "statusBar": [
+    { "id": "setup", "icon": "circle-outline", "label": "", "align": "left" }
+  ],
+  "contributes": {
+    "i18n": { "en": "i18n/en.json" },
+    "commands": [
+      {
+        "id": "first-run-setup.reconfigure",
+        "title": "首次配置：重新配置本机",
+        "category": "首次配置"
+      }
+    ]
+  },
+  "changelog": [
+    {
+      "version": "1.0.0",
+      "date": "2026-09-11",
+      "changes": ["首个版本——E6#73p：全仓第一只真正发「配置成功」通知的插件（此前该通道零生产者，设计只能靠嘴说）"]
+    }
+  ]
+}

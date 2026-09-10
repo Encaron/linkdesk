@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48">
+  <!-- first-run-setup 彩色图标「本机就绪的块」：青碧渐变块 + 白色对勾 + 落盘基线。
+       意象 = 装到本机后把本机路径落成一份配置档案——对勾=配好了，基线=写在本机上的那一条。
+       Type-2 身份图（E6#69 三图模型：市场列表/详情/标签栏同用这张）；界面 img 显示用 → 全实色自含。
+       青碧色系与 editor（靛蓝）/ terminal（磷光绿）分开，一眼能认出是谁。 -->
+  <defs>
+    <linearGradient id="frsBg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#14B8A6"/>
+      <stop offset="1" stop-color="#0F4C4A"/>
+    </linearGradient>
+    <linearGradient id="frsGlass" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.20"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0.03"/>
+    </linearGradient>
+  </defs>
+  <rect x="4" y="4" width="40" height="40" rx="10" fill="url(#frsBg)"/>
+  <rect x="4" y="4" width="40" height="40" rx="10" fill="url(#frsGlass)"/>
+  <rect x="4" y="4" width="40" height="40" rx="10" fill="none" stroke="#CCFBF1" stroke-opacity="0.32" stroke-width="1"/>
+  <!-- 对勾：本机配置完成 -->
+  <path d="M15 24 L21 30 L33 17" fill="none" stroke="#F0FDFA" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- 落盘基线：写在本机上的那一条档案 -->
+  <path d="M16 35.5 L32 35.5" fill="none" stroke="#5EEAD4" stroke-width="3" stroke-linecap="round" opacity="0.85"/>
+</svg>

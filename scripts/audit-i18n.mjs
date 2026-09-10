@@ -65,6 +65,7 @@ const I18N_FILES = [
   "plugins/marketplace/i18n/en.json",
   "plugins/panel-demo/i18n/en.json", // E5.8#37.9：演示插件 UI 串归插件自持
   "plugins/floating-panel-demo/i18n/en.json", // E5.8#39.5：第二声明者验证载体 UI 串归插件自持
+  "plugins/first-run-setup/i18n/en.json", // E6#73p：官方样板「首次配置」——UI 串归插件自持
   // E5.8#41.17 settings-demo（漂亮设置卡片分区）条目已删——插件被用户自删（eef2d31c2），残留死路径
 ];
 
