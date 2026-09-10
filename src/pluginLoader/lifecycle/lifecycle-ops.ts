@@ -10,7 +10,7 @@ import type { PluginManifest } from "../../core/api/types";
 import { getAvailableThemes, normalizeThemeValue, isMixSourceOwner } from "../../core/services/ui/ThemeEngine";
 import { ThemeRegistry } from "../../core/registry/appearance/ThemeRegistry";
 import { LanguageRegistry } from "../../core/registry/languages/LanguageRegistry";
-import { pushToast, TOAST_TTL_SUCCESS } from "../../core/services/ui/NotificationService";
+import { pushToast } from "../../core/services/ui/NotificationService";
 import { reportError } from "../../core/services/bootstrap/ErrorService";
 // E5.8#11：卸载路径全部收口到状态机 unloadPlugin——lifecycle 事件顺序由迁移图机械保障（L6b）
 // E5.8#15.5：getLoadDiagnostics——挂起插件的 pendingReason（list() 数据源合并读取）
@@ -346,32 +346,34 @@ export function installWithProgress(
 }
 
 /**
- * 安装落账后的加载收尾——loadPlugin("install") 成败两分支 + toast + 进度收尾。
- * 目录源/包源两条安装流共用（duplication 门禁）——版本/提示文案差异由调用方喂全文。
+ * 安装落账后的加载收尾——loadPlugin("install") 成败两分支 + 进度收尾。
+ * 目录源/包源两条安装流共用（duplication 门禁）——重启提示文案差异由调用方喂全文。
  * 失败不 throw：文件已落盘，toast 提示 reload 生效并返回 needRestart（原语义保留，loadPlugin 不决定安装成败）。
+ *
+ * E6#73h（D2）：**成功分支不再自弹 toast**——成功 toast 由 lifecycle 消费端 3 统一发声（install 族唯一口）。
+ * 此前这里「已安装：X v1.0」+ 消费端「已安装：X（即时生效）」= 一次安装两条，用户以为装了两遍。
  */
 async function loadInstalledPlugin(
   pluginId: string,
   version: string,
-  msgs: { success: string; needRestart: string },
+  needRestartMsg: string,
   jobId: string,
 ): Promise<PluginInstallResult> {
   jobProgress(jobId, "loading", pluginId);
   try {
     await loadPlugin(pluginId, "install");
     // E6#73q（§五 I.6⑦）：终态第三类「已安装但缺依赖」——loadPlugin 走 parkForDependencies 提前返回
-    // （不发 onDidInstall），文件真落盘但插件**不可用**。这里无条件报「已安装：X v1.0」是撒谎
-    // （装了但不可用会渲染成绿色成功行）⇒ 不弹成功 toast，结果带 parked 交队列落第三类终态。
+    // （不发 onDidInstall），文件真落盘但插件**不可用**。此时**连成功 toast 都没有**（消费端不 fire）
+    // ⇒ 结果带 parked 交队列落第三类终态，由 job 行说「已安装但缺依赖」。
     if (getLoadDiagnostics(pluginId).pendingReason) {
       emitInstallProgress("done", pluginId);
       return { success: true, pluginId, version, parked: true };
     }
-    pushToast({ message: msgs.success, source: pluginId, ttl: TOAST_TTL_SUCCESS, severity: "info" });
     emitInstallProgress("done", pluginId);
     return { success: true, pluginId, version };
   } catch {
     pushToast({
-      message: msgs.needRestart,
+      message: needRestartMsg,
       source: pluginId,
       severity: "info",
       ttl: 0,
@@ -449,10 +451,10 @@ async function installPackageFromSource(
     window.linkdesk?.pluginManager?.notifyManifestChanged?.();
 
     // 5) loadPlugin（安装 reason——onDidInstall 消费端 toast + 图标顺序 + plugin:installed 广播）——收尾块与目录源共用 loadInstalledPlugin
-    return loadInstalledPlugin(pluginId, version, {
-      success: `已安装：${displayName} v${version}`,
-      needRestart: `已安装：${displayName} v${version}。视图刷新后生效。`,
-    }, jobId);
+    return loadInstalledPlugin(pluginId, version, i18n.t("已安装：{{name}} v{{version}}。视图刷新后生效。", {
+      name: displayName,
+      version,
+    }), jobId);
   } catch (e) {
     const msg = errMsg(e);
     jobProgress(jobId, "error", undefined, msg);
@@ -538,13 +540,13 @@ async function installPluginFromDirectory(sourcePath: string, jobId: string): Pr
     window.linkdesk?.pluginManager?.notifyManifestChanged?.();
 
     // E5 归一化：loadPlugin 统一处理 glob 内/外——不再分支判断；加载收尾块与包源共用 loadInstalledPlugin
-    return loadInstalledPlugin(pluginId, version, {
-      success: `已安装：${name} v${version}`,
-      // E5.8#24.8.7：原「npm run build:plugins」指向空跑死脚本（build-plugins.mjs E6 前不运行）——
-      // 改指准确主构建命令 npm run build（E6#15f 后主 vite.config 不再为插件打 dist/plugins 命名 chunk，
-      // 插件产物由各自独立 build 产出；此提示仅为「壳侧源码树安装需重跑构建才生效」语义保留）
-      needRestart: `已安装：${name}。运行 npm run build 后生效。`,
-    }, jobId);
+    // E5.8#24.8.7：原「npm run build:plugins」指向空跑死脚本（build-plugins.mjs E6 前不运行）——
+    // 改指准确主构建命令 npm run build（E6#15f 后主 vite.config 不再为插件打 dist/plugins 命名 chunk，
+    // 插件产物由各自独立 build 产出；此提示仅为「壳侧源码树安装需重跑构建才生效」语义保留）
+    return loadInstalledPlugin(pluginId, version, i18n.t("已安装：{{name}} v{{version}}。运行 npm run build 后生效。", {
+      name,
+      version,
+    }), jobId);
   } catch (e) {
     const msg = errMsg(e);
     jobProgress(jobId, "error", undefined, msg);

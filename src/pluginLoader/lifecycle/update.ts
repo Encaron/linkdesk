@@ -157,7 +157,12 @@ export async function updatePlugin(
     emitInstallProgress("done", pluginId, `已更新 ${name} ${currentVersion} → ${committed.version}`);
     // 🔥 恒 needRestart：bundle 模块缓存（壳+池双 realm）无法 in-session 破除——视图激活走重启（reinstall 同款）
     pushToast({
-      message: `已更新：${name} ${currentVersion} → ${committed.version}。点击重启以应用新版。`,
+      // E6#73h（D3）：走 i18n（此前硬编码中文——英文界面下与本段按钮标签「立即重启」中英混排）
+      message: i18n.t("已更新：{{name}} {{from}} → {{to}}。点击重启以应用新版。", {
+        name,
+        from: currentVersion,
+        to: committed.version,
+      }),
       source: pluginId,
       severity: "info",
       ttl: 0,

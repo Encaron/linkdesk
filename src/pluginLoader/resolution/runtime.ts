@@ -14,6 +14,8 @@ import { registerViewPlugin } from "../contributions/viewRegistry";
 import { registerTheme, findTheme } from "../../core/services/ui/ThemeEngine";
 import type { ThemeContribution } from "../../core/api/types";
 import { pushToast, TOAST_TTL_ERROR } from "../../core/services/ui/NotificationService";
+// E6#73h（D3/D4）：通知文案走 i18n + 内部黑话换结论句
+import i18n from "../../i18n";
 // Phase 5h 行为归一化：副作用（iconOrder/toast/config/tab）集中到 lifecycle.ts 消费端
 import { PluginLifecycle, type PluginInstallEvent } from "../lifecycle/lifecycle";
 // E5.8#11：状态机——loading/failed/active 迁移 + 失败原因记录（诊断面）
@@ -197,7 +199,14 @@ async function loadPlugin(
     const appVer = getAppVersion();
     if (!versionGte(appVer, manifest.minAppVersion)) {
       pushToast({
-        message: `插件 "${manifest.name}" 需要应用版本 ≥${manifest.minAppVersion}（当前 ${appVer}），已跳过`,
+        // E6#73h（D3/D4/D6）：i18n + 结论句（原「需要应用版本 ≥1.2」是内部黑话，也没说要用户做什么）
+        // + 带来源（此前无 source → 全落通知面板「其他」组，30 连装时看不出是哪条插件的）
+        message: i18n.t("插件「{{name}}」需要新版主软件才能用（它要 {{need}} 或更高，当前 {{have}}）——已跳过，请先更新 LinkDesk", {
+          name: manifest.name,
+          need: manifest.minAppVersion,
+          have: appVer,
+        }),
+        source: pluginId,
         ttl: TOAST_TTL_ERROR,
       });
       markLoadFailed(pluginId, `需要应用版本 ≥${manifest.minAppVersion}（当前 ${appVer}）`);
@@ -208,7 +217,12 @@ async function loadPlugin(
   const cycle = detectDependencyCycle(pluginId, manifest, getKnownManifest);
   if (cycle !== null) {
     pushToast({
-      message: `插件 "${manifest.name}" 依赖环: ${cycle}——已跳过`,
+      // E6#73h（D3/D4/D6）：同上——「依赖环」是内部黑话，换结论句；依赖链作为细节留在句内
+      message: i18n.t("插件「{{name}}」声明的插件依赖绕成了死循环（{{chain}}）——已跳过，请联系插件作者", {
+        name: manifest.name,
+        chain: cycle,
+      }),
+      source: pluginId,
       ttl: TOAST_TTL_ERROR,
     });
     console.warn(`[pluginLoader] 依赖环 — "${pluginId}" ${cycle}`);

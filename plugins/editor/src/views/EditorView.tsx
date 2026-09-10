@@ -10,6 +10,9 @@
  * 🔥 bootstrapMonaco() 覆盖 IEditorService.openEditor() → F12/Ctrl+Click 自动走壳标签页。
  */
 import { useRef, useEffect, useImperativeHandle, forwardRef } from "react";
+// E6#73h（D3）：非组件模块/组件内非 React 上下文——LSP 报错链路走 i18next 默认实例
+// （本组件无 useTranslation 调用点：Monaco 命令回调和 effect 内取不到 hook 的 t，用默认实例最直接）
+import i18n from "i18next";
 // E5.7#98：编辑器/monaco ref 具体类型——替代 useRef<any>
 import type { editor as MonacoEditorApi } from "monaco-editor";
 // E5.6#11.5i：getLangDef → lk.langDef.get，shellEvents → lk.events
@@ -133,7 +136,11 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
           .catch((err) => {
             // E5.8#24.6：LSP 启动失败不再静默 console.warn——用户可见 toast
             // （回归 #24：pyright 被删 → 跳转静默消失，用户无感。现在打开 .py 即报错，F12 不灵有因可循）
-            const msg = `${langDef.id} 语言支持启动失败: ${(err as Error).message ?? String(err)}`;
+            // E6#73h（D3）：整句走 i18n（此前硬编码中文——英文界面下这条链路全中文）
+            const msg = i18n.t("{{lang}} 语言支持启动失败：{{detail}}", {
+              lang: langDef.id,
+              detail: (err as Error).message ?? String(err),
+            });
             console.error(`[editor] ${msg}`);
             lk.notifications.show(msg, { type: "error" }).catch(() => {});
           });
@@ -295,7 +302,8 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
           // E5.8#24.6：不再静默吞错（原 `catch {}`）——跳转链路任何异常显性报错：
           // 协议诊断面 console.error + 用户可见 toast。杜绝「跳转没了却毫无动静」。
           // 无定义路径在 defs 空时正常 return（行 253），不落此 catch——此分支只接真异常。
-          const msg = `跳转到定义失败: ${(err as Error).message ?? String(err)}`;
+          // E6#73h（D3）：同上——i18n（冒号也统一成全角，与其余通知一致）
+          const msg = i18n.t("跳转到定义失败：{{detail}}", { detail: (err as Error).message ?? String(err) });
           console.error(`[editor] ${msg}`);
           lk.notifications.show(msg, { type: "error" }).catch(() => {});
         }

@@ -29,8 +29,11 @@ import { join } from "path";
 
 // ── 0. 设计裁决排除——非 UI 数据/诊断（每项有出处注释，不得随意增删） ──
 const EXCLUDE_FILES = [
-  // ProfileService 校验消息：走 errors.push/pushToast 但**不经 t()**（模板 `${}` 拼接）——
-  // 补译须重构该文件为 t() 调用（含 {{var}}），属单独质量任务，非"漏加 key"。E5.8#37.9 记录。
+  // ProfileService 校验明细：E6#73h（D4）后该文件的**用户可见文案已全部走 i18n.t()**（pushToast 那句
+  // 结论句 + 成功句）；残留中文一律是 `errors.push` 里的**内部诊断明细**（「插件 "x"（未加载）」
+  // 「[维度2] 设置 … 期望=… 实际=…」「主题 CSS 变量 --bg 未设置」）——它们只流向 console.warn
+  // 调试日志（18 档 D4 明文：**细节进 console / 调试日志**），不属 UI 文字，故不补译也不进词典。
+  // ⚠️ 排除范围仅限这些诊断串：若将来该文件重新产出用户可见文案，必须走 t() 并撤销本排除。
   "src/core/services/plugins/ProfileService.ts",
 ];
 

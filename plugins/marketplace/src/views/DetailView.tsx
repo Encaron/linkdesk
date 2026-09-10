@@ -356,6 +356,12 @@ export default function DetailView({ pluginId }: DetailContributedProps) {
     };
   }, [pluginId, installed, pkgReadme, remoteReadmeUrl]);
 
+  /* 当前插件显示名——启/禁/卸三处失败 toast 共用（enabledEntry/disabledHit 是列表元素稳定引用，
+   *  非每渲染新建对象，可入 deps）。E6#73h（D5）：三处原始报错一律加**结论句**前缀——
+   *  此前 `notifyError(e.message)` 把桥/引擎原文直接当整句甩出去，用户看到的是
+   *  「Error invoking remote method 'plugin:enable'」这类没人话的东西，做的事、成没成、都不在句子里。 */
+  const displayName = enabledEntry?.manifest.name ?? disabledHit?.name ?? pluginId ?? "";
+
   /* #64 A2：enable/disable 抛错 = 事件型失败 → error toast（定案——事件失败浮右下角，零页面红字零 reflow） */
   const handleEnable = useCallback(async () => {
     if (!pluginId || busy) return;
@@ -363,10 +369,10 @@ export default function DetailView({ pluginId }: DetailContributedProps) {
     try {
       await pm().enable(pluginId);
     } catch (e) {
-      notifyError(e instanceof Error ? e.message : String(e));
+      notifyError(t("启用「{{name}}」失败：{{detail}}", { name: displayName, detail: e instanceof Error ? e.message : String(e) }));
     }
     setBusy(false);
-  }, [pluginId, busy]);
+  }, [pluginId, busy, t, displayName]);
 
   const handleDisable = useCallback(async () => {
     if (!pluginId || busy) return;
@@ -374,10 +380,10 @@ export default function DetailView({ pluginId }: DetailContributedProps) {
     try {
       await pm().disable(pluginId);
     } catch (e) {
-      notifyError(e instanceof Error ? e.message : String(e));
+      notifyError(t("禁用「{{name}}」失败：{{detail}}", { name: displayName, detail: e instanceof Error ? e.message : String(e) }));
     }
     setBusy(false);
-  }, [pluginId, busy]);
+  }, [pluginId, busy, t, displayName]);
 
   /* ── E6#33d 自动更新开关（mockup 帧 5/6 auto-upd）——setAutoUpdate 记账（开存 true / 关删字段，
    *  installedUpdateMeta 域）。**E6#71k「都问」后这个开关不再真的自动更新**（自动更新停摆，见
@@ -438,19 +444,21 @@ export default function DetailView({ pluginId }: DetailContributedProps) {
         } else {
           // #64 A2：更新失败 → error toast（原行内红字退役）；重试口 = 原位更新钮仍在，无漂移。
           // E6#71b：归因可认 → 归因短语；unknown → updateFailText 直显引擎原文（终结「未知错误」黑洞）
+          // E6#73h（D6）：套 `{{name}}：{{reason}}`（73e 装失败同款 key）——一句「更新失败：服务器暂时不可用」
+          // 不说是哪个插件，多单并发时用户对着通知面板认不出是谁。
           const reason = classifyInstallError(r?.error ?? "");
-          notifyError(updateFailText(t, reason, r?.error));
+          notifyError(t("{{name}}：{{reason}}", { name: displayName, reason: updateFailText(t, reason, r?.error) }));
         }
       } catch (e) {
         // E6#71b：catch 兜 rejection（如 10s 桥超时 reject）——原文带进 updateFailText，unknown 时可见
         const raw = e instanceof Error ? e.message : String(e);
         const reason = classifyInstallError(raw);
-        notifyError(updateFailText(t, reason, raw));
+        notifyError(t("{{name}}：{{reason}}", { name: displayName, reason: updateFailText(t, reason, raw) }));
       } finally {
         setUpdating(false);
       }
     },
-    [pluginId, busy, updating, online, entry, updateTarget, localVer, t, refreshPlugins],
+    [pluginId, busy, updating, online, entry, updateTarget, localVer, t, refreshPlugins, displayName],
   );
 
   /* ── E6#33c 降级确认（F2，05 §二·十一——「此版本较旧，配置可能不兼容」。不拦只提示：确认后 allowOlder
@@ -476,8 +484,7 @@ export default function DetailView({ pluginId }: DetailContributedProps) {
     if (!pluginId || busy) return;
     const confirmApi = lk()?.dialog?.confirm;
     if (!confirmApi) return;
-    // 确认文案用当前插件显示名——enabledEntry/disabledHit 是列表元素稳定引用（非每渲染新建对象），可入 deps
-    const displayName = enabledEntry?.manifest.name ?? disabledHit?.name ?? pluginId ?? "";
+    // 确认文案用当前插件显示名（displayName 已提到上方——启/禁/卸三处共用）
     const ok = await confirmApi(t("确定卸载 {{name}} 吗？", { name: displayName }));
     if (!ok) return;
     setBusy(true);
@@ -485,10 +492,11 @@ export default function DetailView({ pluginId }: DetailContributedProps) {
       await pm().uninstall(pluginId);
     } catch (e) {
       // #64 A2：卸载抛错 = 事件型失败 → error toast（原行内红字退役）
-      notifyError(e instanceof Error ? e.message : String(e));
+      // E6#73h（D5）：同启/禁——结论句前缀，原文退居冒号后作细节
+      notifyError(t("卸载「{{name}}」失败：{{detail}}", { name: displayName, detail: e instanceof Error ? e.message : String(e) }));
     }
     setBusy(false);
-  }, [pluginId, busy, enabledEntry, disabledHit, t]);
+  }, [pluginId, busy, displayName, t]);
 
   /* ── 30.5b 未装行 🟢安装（带进度）+ #30.9 失败/离线 ——单活跃会话 store（marketplaceShared）归因 ── */
   const installSessionHere =

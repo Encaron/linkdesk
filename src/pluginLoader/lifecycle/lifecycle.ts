@@ -14,7 +14,8 @@
  */
 
 import { CUSTOM_EVENTS } from "../../core/react/events/CoreEvents";
-import { pushToast, TOAST_TTL_ERROR, TOAST_TTL_INFO } from "../../core/services/ui/NotificationService";
+import i18n from "../../i18n";
+import { pushToast, TOAST_TTL_ERROR, TOAST_TTL_SUCCESS } from "../../core/services/ui/NotificationService";
 import { getPluginStateValue, setPluginStateValueSync, APP_PLUGIN_ID } from "../../core/services/plugins/PluginStateService";
 
 // E5.8#9：事件定义抽到轻模块 lifecycle-events.ts——registrationTracker 直接 import 它，
@@ -65,18 +66,30 @@ export function initLifecycleConsumers(): void {
 
   /* ─── 消费端 3：toast 通知 ─── */
 
+  // E6#73h（D2）：本处是 **install 族唯一发声口**——`loadInstalledPlugin` 成功分支那条「已安装：X v1.0」
+  // 已删（一次安装弹两条「已安装」，措辞还不一样，用户以为装了两遍）。选本处而非那条的理由：
+  // ① install reason 还有第二条腿（`loader.ts:277` 外部拷入源码树的 watcher 路径）**不经过**
+  //    loadInstalledPlugin——删本处会让那条腿彻底静默；
+  // ② 版本号这里也拿得到（事件带 manifest）⇒ 选本处信息量不减。
+  // E6#73h（D3）：全句走 i18n（硬约束 2——通知链此前系统性硬编码中文，英文界面下中英混排）。
   PluginLifecycle.onDidInstall.event(({ pluginId, manifest, reason }) => {
     const name = manifest?.name ?? pluginId;
     if (reason === "startup") return; // 启动加载不弹 toast
-    // 'update'（E6#11c）→ 更新专属 toast 由 updatePlugin 走 loadInstalledPlugin 发（带 v旧→v新）——
-    // 此处跳过防双 toast（且「已安装」措辞对更新是误导）
+    // 'update'（E6#11c）→ 更新专属 toast 由 updatePlugin 发（带 v旧→v新）——此处跳过防双 toast
+    // （且「已安装」措辞对更新是误导）
     if (reason === "update") return;
-    const msg = reason === "enable" ? `已启用：${name}` : `已安装：${name}`;
+    // 版本号缺失（watcher 腿的 manifest 可能没有 version）→ 退回不带版本的说法，
+    // 不落成尾巴光秃秃的「已安装：X v」。
+    const msg = reason === "enable"
+      ? i18n.t("已启用：{{name}}", { name })
+      : manifest?.version
+        ? i18n.t("已安装：{{name}} v{{version}}", { name, version: manifest.version })
+        : i18n.t("已安装：{{name}}", { name });
     pushToast({
-      message: `${msg}（即时生效）`,
+      message: `${msg}${i18n.t("（即时生效）")}`,
       source: pluginId,
       severity: "info",
-      ttl: TOAST_TTL_INFO,
+      ttl: TOAST_TTL_SUCCESS,
     });
   });
 
@@ -85,7 +98,10 @@ export function initLifecycleConsumers(): void {
     // onDidInstall 侧接报；同插件的卸载/禁用才有 撤销 语义
     if (reason === "update") return;
     const name = displayName ?? pluginId;
-    const msg = reason === "uninstall" ? `已卸载：${name}` : `已禁用：${name}`;
+    // E6#73h（D3）：全句 + 动作标签走 i18n（此前整段硬编码中文——英文界面下中英混排）
+    const msg = reason === "uninstall"
+      ? i18n.t("已卸载：{{name}}", { name })
+      : i18n.t("已禁用：{{name}}", { name });
     // E6#18c：卸载的 撤销 只在保留可恢复副本（restorable，app 树 .disabled 坟场）时给——userData 家
     // 卸载 = 目录真删 + removed 墓碑，无副本可撤销（死钮）；真恢复 = 市场/手装 zip（#18 拍板 ④）。
     // 禁用恒可撤销（enable 恢复状态即可）。consumer 端 3 是本处 toast 唯一源（uninstallPlugin 不再自弹）。
@@ -97,13 +113,13 @@ export function initLifecycleConsumers(): void {
       actions:
         reason === "uninstall"
           ? restorable
-            ? [{ label: "撤销", isPrimary: true, onClick: () => {
+            ? [{ label: i18n.t("撤销"), isPrimary: true, onClick: () => {
                 // 动态 import 避免循环依赖
                 import("../loader").then((m) => m.reinstallPlugin(pluginId))
                   .catch((e) => console.error("[lifecycle] 撤销卸载——模块加载失败:", e));
               }}]
             : undefined
-          : [{ label: "撤销", isPrimary: true, onClick: () => {
+          : [{ label: i18n.t("撤销"), isPrimary: true, onClick: () => {
               import("../loader").then((m) => m.enablePlugin(pluginId))
                 .catch((e) => console.error("[lifecycle] 撤销禁用——模块加载失败:", e));
             }}],

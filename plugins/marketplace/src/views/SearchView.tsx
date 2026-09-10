@@ -69,7 +69,8 @@ function AddSourcePopup({
       await lk()?.configuration?.set("marketplace.marketplaceSources", decision.next);
       onClose();
     } catch (e) {
-      setErr(e instanceof Error ? e.message : String(e));
+      // E6#73h（D5）：加结论句——原文单独出现时用户不知道"哪一步失败了"（IP 层原文连中文都没有）
+      setErr(t("保存市场源失败：{{detail}}", { detail: e instanceof Error ? e.message : String(e) }));
     } finally {
       setBusy(false);
     }
@@ -161,7 +162,8 @@ export default function SearchView() {
         }
       }
     } catch (e) {
-      notifyError(e instanceof Error ? e.message : String(e));
+      // E6#73h（D5）：同上——「安装失败」+ 原文，别再让用户对着裸报错猜发生了什么
+      notifyError(t("安装失败：{{detail}}", { detail: e instanceof Error ? e.message : String(e) }));
     } finally {
       setInstalling(false);
       setStage(null);

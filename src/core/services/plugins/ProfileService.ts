@@ -17,6 +17,7 @@ import {
   enablePlugin,
   isPluginDisabled,
 } from "../../../pluginLoader/loader";
+import i18n from "../../../i18n"; // E6#73h（D3）：用户可见文案走 i18n（硬约束 2）
 import { setConfigurationValue, getConfigurationValue, getUserSettings } from "../configuration/ConfigurationService";
 import { pushToast, TOAST_TTL_ERROR } from "../ui/NotificationService";
 import { deepEqual } from "../../utils/deepEqual"; // E5.8 归一化：JSON.stringify 深比较捷径统一走共享工具
@@ -284,8 +285,10 @@ async function _validateSwitch(expected: Profile): Promise<ValidationError[]> {
 export async function switchProfile(name: string): Promise<boolean> {
   const profile = await loadProfile(name);
   if (!profile) {
+    // E6#73h（D3/D4）：原文案 `Profile "x" 未找到`——「Profile」是内部词，用户看不到这个名字。
+    // 与下面两条失败句统一口径，改称「配置方案」；整句走 i18n。
     pushToast({
-      message: `Profile "${name}" 未找到`,
+      message: i18n.t("找不到配置方案「{{name}}」", { name }),
       severity: "error",
       ttl: TOAST_TTL_ERROR,
     });
@@ -345,13 +348,15 @@ export async function switchProfile(name: string): Promise<boolean> {
   // 7. 失败 → 回退到切换前状态
   if (errors.length > 0) {
     const rollbackErrors = await _restoreSnapshot(snapshot);
-    const summary = errors.slice(0, 3).join("; ");
-    const tail = errors.length > 3 ? ` ...等${errors.length}项` : "";
-    const rbMsg = rollbackErrors.length === 0
-      ? "（已回退）"
-      : "（回退部分失败——请手动检查）";
+    // E6#73h（D3/D4）：技术细节（哪一项、期望值/实际值）只进 console——用户看的是**结论句 + 下一步**。
+    // 原样甩出去是一串「[维度2] 设置 "app.theme" 期望="dark" 实际="light"」，不读代码的人既看不懂
+    // 也不知道该干什么（18 档 D4）。「Profile」这个内部词也从用户可见文案里去掉，改说「配置方案」。
+    console.warn("[Profile] 切换失败详情:", errors);
+    if (rollbackErrors.length > 0) console.warn("[Profile] 回退失败详情:", rollbackErrors);
     pushToast({
-      message: `Profile 切换失败: ${summary}${tail} ${rbMsg}`,
+      message: rollbackErrors.length === 0
+        ? i18n.t("配置方案切换失败——已退回原来的设置")
+        : i18n.t("配置方案切换失败——已退回原来的设置，但有部分没能还原，请手动检查"),
       severity: "warning",
       ttl: TOAST_TTL_ERROR,
     });
@@ -362,6 +367,6 @@ export async function switchProfile(name: string): Promise<boolean> {
   await _setCurrentProfileName(name);
   onDidChangeProfile.fire({ name });
 
-  pushToast({ message: `已切换到 Profile "${name}"`, severity: "info" });
+  pushToast({ message: i18n.t("已切换到配置方案「{{name}}」", { name }), severity: "info" });
   return true;
 }

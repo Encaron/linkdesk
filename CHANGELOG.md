@@ -3,6 +3,24 @@
 > 每版一条，对标 VS Code changelog。**历史真相源 = [E6 执行清单](docs/02-Electron架构/E6_插件生态与发布/E6-执行清单.md)**（E6 阶段每轮收束细节 + 实机证据全在清单 Batch 注里，此文件只记类别清单）。版本号唯一真值 = `package.json`（不手写第二份，见 [02-产品身份与版本.md](docs/02-Electron架构/E6_插件生态与发布/06-主软件更新/02-产品身份与版本.md) §2.3）。
 > 0.x 阶段（开发期）：一切向后兼容变更走 patch 位；破坏性变更走 minor 位。
 
+## v0.1.32（2026-09-10）
+
+- **fix:E6#73h 通知文案归一 + 消灭「装一次弹两条」**（D2/D3/D4/D5/D6/D7）
+  - **D2 双 toast 删除**：一次安装弹两条「已安装」——`loadInstalledPlugin` 成功分支一条（`已安装：X v1.0`）+ lifecycle 消费端一条（`已安装：X（即时生效）`），措辞还不一样，用户以为装了两遍。**保留 lifecycle 消费端为 install 族唯一发声口**（不是删它）：① `install` reason 还有第二条腿（`loader.ts` 外部拷入源码树的 watcher 路径）**不经过** `loadInstalledPlugin`，删消费端会让那条腿彻底静默；② 版本号在消费端也拿得到（事件带 manifest）⇒ 信息量不减
+  - **D3 通知链走 i18n**：`lifecycle.ts` / `update.ts` / `runtime.ts` / `ProfileService.ts` / `FileService.ts` / marketplace / editor 七处的用户可见文案此前**硬编码中文**（英文界面下中英混排，且含 `${}` 插值的模板串连 i18n 审计都扫不到）。现全部走 `t()`，22+ 键入 `lang-defaults/en.json`（壳侧）+ 各插件 `i18n/en.json`（插件侧）
+  - **D4 黑话换结论句**：通知正文不再甩内部标识符——
+    - `Profile` → **配置方案**；`Profile "x" 未找到` → `找不到配置方案「x」`
+    - 五维校验失败原样甩 `[维度2] 设置 "app.theme" 期望="dark" 实际="light"`（不读代码的人既看不懂也不知道该干什么）→ 用户看到**结论句**（`配置方案切换失败——已退回原来的设置` / `…但有部分没能还原，请手动检查`），技术明细改走 `console.warn`
+    - `需要应用版本 ≥1.2` → `插件「X」需要新版主软件才能用（它要 1.2 或更高，当前 1.0）——已跳过，请先更新 LinkDesk`
+    - `依赖环` → `插件「X」声明的插件依赖绕成了死循环（链）——已跳过，请联系插件作者`
+    - `FileService` 九处 `listDir 失败` / `readFile 失败` 一类**内部函数名**→ 大白话（`无法读取文件夹：路径`）
+    - 编辑器 LSP：`LSP initialize 超时（15s 无响应）` → `启动后 15 秒没有响应——请检查它是否已正确安装`（并去掉与外层结论句的重复叠加）
+  - **D5 原始报错不再裸奔**：`notifyError(e.message)` 直接甩桥/引擎原文（`Error invoking remote method 'plugin:enable'` 这类）→ 一律**结论句 + 原文**（`启用「X」失败：<原文>`），详情退居冒号后
+  - **D6 失败通知带插件名**：更新失败此前只说「更新失败：服务器暂时不可用」，不说**是哪个插件**（多单并发时在通知面板认不出是谁）→ 复用 73e 装失败同款 `{{name}}：{{reason}}` key
+  - **D7 `finishNotification` 继承来源**：换条时必须**继承被替换那条的 source**，否则同一次安装「开始」有来源、「完成」没有，两条被分进通知面板两个分组（来源缺失全落「其他」）。今天 `showNotification` 尚无 `source` 形参（属 E6#73g 的 S5），此处是**先把丢来源的洞焊死**，S5 一落即自动生效
+  - **审计豁免撤销**：`scripts/audit-i18n.mjs` 的 `ProfileService.ts` 整文件排除**重新收窄为「仅诊断明细」**并写明理由——该文件的用户可见文案已全部走 `t()`，残留中文只流向 `console.warn`；排除范围若被误用回用户可见文案，须撤销
+  - 插件版本：editor 1.0.4→**1.0.5** / marketplace 1.0.10→**1.0.11** / lang-defaults 1.0.2→**1.0.3**（三个 bundled zip 已重建，`check-bundled-version-bump` 全过）。`npm run check` EXIT=0（135 文件 / 1791 测试）
+
 ## v0.1.31（2026-09-10）
 
 - **feat:E6#73c 第 1 步——「点了等于没点」换成看得见的「等待安装中」（仍是 N=1）**

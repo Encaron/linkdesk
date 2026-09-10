@@ -34,5 +34,10 @@
   "字体": "Fonts",
   "缩进": "Indentation",
   "光标与滚动": "Cursor & Scrolling",
-  "智能提示": "Suggestions"
+  "智能提示": "Suggestions",
+  "无法启动语言服务器（{{command}}）：{{detail}}": "Could not start the language server ({{command}}): {{detail}}",
+  "无法连接语言服务器（{{lang}}）：{{detail}}": "Could not connect to the language server for {{lang}}: {{detail}}",
+  "启动后 {{sec}} 秒没有响应——请检查它是否已正确安装": "It did not respond within {{sec}} seconds of starting — please check that it is installed correctly.",
+  "{{lang}} 语言支持启动失败：{{detail}}": "Could not start language support for {{lang}}: {{detail}}",
+  "跳转到定义失败：{{detail}}": "Go to Definition failed: {{detail}}"
 }

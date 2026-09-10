@@ -6,6 +6,10 @@
  */
 import { MonacoLanguageClient } from "monaco-languageclient";
 import type { MessageReader, MessageWriter } from "vscode-jsonrpc";
+// E6#73h（D3）：非组件模块走 i18next 默认实例（marketplace marketShared 先例）——本文件的报错
+// 会经 EditorView catch 直接成为用户可见 toast，此前是硬编码中文模板串（审计因含 ${} 插值跳过，
+// 英文界面下这条链路全中文）。
+import i18n from "i18next";
 const lsp = window.linkdesk?.lsp;
 const lk = window.linkdesk;
 
@@ -38,7 +42,11 @@ export async function startLspClient(
   } catch (err) {
     // E5.8#24.6：spawn 失败（缺依赖/命令不可用）→ 显性抛错——调用方 catch 弹 toast，杜绝静默
     // （回归 #24：pyright 被删 → spawn ENOENT → invoke 仍返 channelId → client.start() 挂死）
-    const msg = `${languageId} LSP 启动失败（spawn）: ${(err as Error).message ?? String(err)}`;
+    // E6#73h（D3/D5）：结论句 + 细节（命令名让用户知道是哪个程序没起来）——整句走 i18n
+    const msg = i18n.t("无法启动语言服务器（{{command}}）：{{detail}}", {
+      command,
+      detail: (err as Error).message ?? String(err),
+    });
     console.error(`[lsp-bridge] ${msg}`);
     throw new Error(msg);
   }
@@ -82,12 +90,20 @@ export async function startLspClient(
       startPromise,
       new Promise((_resolve, reject) => {
         timeoutHandle = setTimeout(() => {
-          reject(new Error(`${languageId} LSP initialize 超时（${LSP_INIT_TIMEOUT_MS / 1000}s 无响应）——语言服务器未就绪，请检查依赖与配置`));
+          // E6#73h（D3）：原文「${languageId} LSP initialize 超时（15s 无响应）——…」是完整句，但它会
+          // **再套一层**下方 catch 的「无法连接语言服务器」→ 变成两句结论叠着。改成细节短语，让外层
+          // 那句当结论、这句当细节。顺带去掉「initialize」黑话（用户不知道握手阶段叫什么）。
+          reject(new Error(i18n.t("启动后 {{sec}} 秒没有响应——请检查它是否已正确安装", {
+            sec: LSP_INIT_TIMEOUT_MS / 1000,
+          })));
         }, LSP_INIT_TIMEOUT_MS);
       }),
     ]);
   } catch (err) {
-    const msg = `${languageId} LSP 启动失败（initialize）: ${(err as Error).message ?? String(err)}`;
+    const msg = i18n.t("无法连接语言服务器（{{lang}}）：{{detail}}", {
+      lang: languageId,
+      detail: (err as Error).message ?? String(err),
+    });
     console.error(`[lsp-bridge] ${msg}`);
     client.stop().catch(() => {});
     lsp.dispose(channelId).catch(() => {});

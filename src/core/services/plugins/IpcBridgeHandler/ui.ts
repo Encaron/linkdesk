@@ -9,7 +9,7 @@
  */
 
 import { confirm, alert, confirmContent } from "../../ui/DialogService"; // E5#67 + E6#71c 富内容确认
-import { pushToast, dismissToast, updateToast, TOAST_TTL_ERROR, type ToastSeverity } from "../../ui/toast";
+import { pushToast, dismissToast, getToasts, updateToast, TOAST_TTL_ERROR, type ToastSeverity } from "../../ui/toast";
 import { registerMenuItems, getMenuItems, MENU_SLOTS, type ManifestMenuItem } from "../../../registry/commands/MenuRegistry"; // E5#69
 import { ContextKeyService } from "../../../registry/commands/ContextKeyService"; // E5#70
 import { getCommands, executeCommand } from "../../../registry/commands/CommandRegistry";
@@ -268,8 +268,13 @@ export async function handleUiMethod(method: string, args: unknown[]): Promise<u
     }
     case "finishNotification": {
       const [handleId, message] = args as [string, string | undefined];
+      // E6#73h（D7）：换条时必须**继承被替换那条的来源**——否则同一次安装的「开始」有来源、
+      // 「完成」没有，两条会被分进通知面板的两个分组（来源缺失全落 __other__）。
+      // ⚠️ 今天 showNotification 还没有 source 形参（D1，归 E6#73g 的 S5 落），所以此处
+      //    prev.source 恒 undefined、行为与从前等价——这是**先把丢来源的洞焊死**，S5 一落即自动生效。
+      const prev = getToasts().find((toast) => toast.id === handleId);
       dismissToast(handleId);
-      if (message) pushToast({ message, severity: "info" });
+      if (message) pushToast({ message, severity: "info", source: prev?.source });
       break;
     }
     case "cancelNotification": {

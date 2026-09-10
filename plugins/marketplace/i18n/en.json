@@ -150,5 +150,10 @@
   "category.protocol": "Protocol",
   "category.collaboration": "Collaboration",
   "category.tool": "Tools",
-  "category.other": "Other"
+  "category.other": "Other",
+  "启用「{{name}}」失败：{{detail}}": "Could not enable \"{{name}}\": {{detail}}",
+  "禁用「{{name}}」失败：{{detail}}": "Could not disable \"{{name}}\": {{detail}}",
+  "卸载「{{name}}」失败：{{detail}}": "Could not uninstall \"{{name}}\": {{detail}}",
+  "保存市场源失败：{{detail}}": "Could not save the marketplace source: {{detail}}",
+  "安装失败：{{detail}}": "Installation failed: {{detail}}"
 }
