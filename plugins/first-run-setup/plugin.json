@@ -1,9 +1,10 @@
 {
   "$schema": "../../public/schemas/plugin.schema.json",
+  "pluginId": "first-run-setup",
   "name": "首次配置",
   "version": "1.0.0",
   "icon": "resources/icon.svg",
-  "description": "官方样板——装到本机后做一次性配置（把本机路径落成自己的配置档案），配完发一条带自己来源的通知。示范「装好了」与「配好了」是两条互不掩盖的通知（E6#73p）",
+  "description": "官方样板——装到本机后做一次性配置（把本机路径落成自己的配置档案），配完发一条带自己来源的通知。示范「装好了」与「配好了」是两条互不掩盖的通知。",
   "author": "官方",
   "entry": "src/index.tsx",
   "appearsIn": {
