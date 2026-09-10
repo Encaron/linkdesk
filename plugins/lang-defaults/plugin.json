@@ -1,7 +1,7 @@
 {
   "$schema": "../../public/schemas/plugin.schema.json",
   "name": "官方语言",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "icon": "resources/icon.svg",
   "description": "出厂中文/English 语言包——可卸载，卸载后 t(key) 返回 key 原文",
   "author": "官方",
@@ -20,6 +20,8 @@
     ]
   },
   "changelog": [
+    { "version": "1.0.6", "date": "2026-09-10", "changes": ["通知来源名英文补译（E6#73g）：新增「主软件」（LinkDesk）/「主软件更新」（LinkDesk updates）两键——通知面板按来源分组后，主软件自己的消息组标题此前无英译会直接显示中文"] },
+    { "version": "1.0.5", "date": "2026-09-10", "changes": ["通知面板安装任务段文案（E6#73d）：新增 13 键（「进行中」/「等待安装中」/「本段另有 {{count}} 项未列出」/「下载中 {{percent}}%」/「取消安装」等），供面板三段式与 job 行显示"] },
     { "version": "1.0.4", "date": "2026-09-10", "changes": ["通知面板头部文案换血（E6#73a）：新增「清除已完成」（Clear Completed）/「最小化」（Minimize）两键，撤「全部清除」"] }
   ]
 }

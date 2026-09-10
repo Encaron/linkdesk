@@ -173,3 +173,39 @@ describe("E6#73a：notif:panel 三态载荷 → 镜像 + 按需认账", () => {
     expect(getToasts().map((x) => x.id)).toEqual([t]);
   });
 });
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   E6#73g（B1）：面板开着时新到的条目即时标已读 + 已读集合修剪
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+describe("E6#73g B1：面板开着时新到的条目即时标已读", () => {
+  it("面板已展开 → 新通知到达即标已读（此前它就在眼皮底下、铃铛数字却往上跳）", () => {
+    mount();
+    fire("notif:panel", { state: "open", markSeen: false }); // 展开镜子（唤醒开的不认账，见上）
+    expect(_seenIds.size).toBe(0);
+
+    const id = pushToast({ message: "演示消息 刚到", source: "demo-plugin", severity: "error", ttl: 0 });
+
+    expect(_seenIds.has(id)).toBe(true);
+  });
+
+  it("🔴 反向：面板收着 → 新通知保持未读（别把 B1 修成「一律已读」）", () => {
+    mount();
+    fire("notif:panel", { state: "idle", markSeen: false });
+
+    const id = pushToast({ message: "演示消息 刚到", source: "demo-plugin", severity: "error", ttl: 0 });
+
+    expect(_seenIds.has(id)).toBe(false);
+  });
+
+  it("已读集合随条目消失自动修剪——长跑会话不再只增不减", () => {
+    mount();
+    fire("notif:panel", { state: "open", markSeen: false });
+    const id = pushToast({ message: "演示消息 刚到", source: "demo-plugin", ttl: 0 });
+    expect(_seenIds.has(id)).toBe(true);
+
+    dismissToast(id);
+
+    expect(_seenIds.has(id)).toBe(false);
+  });
+});

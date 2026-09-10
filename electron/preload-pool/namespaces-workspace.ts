@@ -39,6 +39,9 @@ export function buildNotifications() {
       progress?: boolean;
       persistent?: boolean;
       actions?: Array<{ id?: string; label: string; isPrimary?: boolean; command?: string; args?: unknown[] }>;
+      // E6#73g（S5）：生产者身份 id——面板按它分组、常驻配额按它分桶；不传 → 「其他」组。
+      // 透传即可，壳 handler 侧取值（本层不解释、不校验——契约类型才是判据）。
+      source?: string;
     }) => {
       return ipcRenderer.invoke(IPC.plugins.call, 'showNotification', message, options)
         // E6#73f（S6）句柄隔离：壳 showNotification 已**一律**返回句柄 id（不再只在 progress 时返回）

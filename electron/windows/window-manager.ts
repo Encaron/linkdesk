@@ -18,8 +18,10 @@ import type { IpcBridge } from '../ipc/ipc-bridge.js'; // 类型引用——无�
 import { IPC } from '../ipc/channels.js';
 import type { CreatePoolWindowRequest } from '../../src/core/types/ipc/poolActions'; // E5.8#43-1（A4）多窗口底座 wire 契约
 
-/** RSS 超过 1GB 时触发内存压力警告（MemoryInfo.workingSetSize 单位是 KB） */
-const MEMORY_PRESSURE_THRESHOLD = 1024 * 1024; // 1GB = 1,048,576 KB
+// E6#73g（18 档 §五 G 配套 / B2）：阈值 + 回落水位 + 上升沿判据整段抽到纯函数模块
+// （`memory-pressure-latch.ts`）——状态机在边界上最容易写反，抽出去才能穷举单测。
+import { MEMORY_PRESSURE_THRESHOLD, memoryPressureLatch } from './memory-pressure-latch.js';
+
 const MEMORY_CHECK_INTERVAL = 30_000; // 每 30s 采样一次
 
 /**
@@ -63,6 +65,8 @@ function clampToWorkArea(bounds: { x: number; y: number; width: number; height: 
 
 export class WindowManager {
   private memoryTimer: ReturnType<typeof setInterval> | null = null;
+  /** E6#73g：内存压力的上升沿闩——true = 已发过、还没回落到 MEMORY_PRESSURE_RESET 以下 */
+  private memoryPressureLatched = false;
   private ipcBridge: IpcBridge | null = null;
 
   // ── E5.8#43-1（A2）：多窗口注册表——通用登记/枚举（主池='main'；脱出窗口由壳生成 id 传入）──
@@ -106,7 +110,11 @@ export class WindowManager {
     if (!metric) return;
 
     const totalRSS = metric.memory.workingSetSize;
-    if (totalRSS > MEMORY_PRESSURE_THRESHOLD) {
+    // E6#73g：上升沿单发（判据见 memory-pressure-latch.ts）——越过阈值发一次，
+    // 回落到 0.9×阈值以下才解锁下一发。此前每轮都发 ⇒ 面板每 30 秒被弹一次。
+    const next = memoryPressureLatch(this.memoryPressureLatched, totalRSS);
+    this.memoryPressureLatched = next.latched;
+    if (next.emit) {
       console.warn(`[WindowManager] 内存压力——Pool 渲染进程 Working Set: ${(totalRSS / 1024).toFixed(0)} MB`);
       // 通知壳渲染进程显示 toast
       this.mainWindow.webContents.send(IPC.system.memoryPressure, {

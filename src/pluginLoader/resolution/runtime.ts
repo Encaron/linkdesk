@@ -207,6 +207,8 @@ async function loadPlugin(
           have: appVer,
         }),
         source: pluginId,
+        // E6#73g（18 档 §五 G「弹」级 ③）：本插件**已被跳过**——功能是断的，必须弹出来。
+        severity: "error",
         ttl: TOAST_TTL_ERROR,
       });
       markLoadFailed(pluginId, `需要应用版本 ≥${manifest.minAppVersion}（当前 ${appVer}）`);
@@ -223,6 +225,8 @@ async function loadPlugin(
         chain: cycle,
       }),
       source: pluginId,
+      // E6#73g（18 档 §五 G「弹」级 ③）：同上——依赖绕成死循环 = 这个插件永远起不来。
+      severity: "error",
       ttl: TOAST_TTL_ERROR,
     });
     console.warn(`[pluginLoader] 依赖环 — "${pluginId}" ${cycle}`);

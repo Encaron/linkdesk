@@ -224,7 +224,8 @@ function notifyAutoPaused(): void {
   if (!show) return;
   void show(
     i18n.t("自动更新已暂停——现在每次更新都要你确认，自动更新无法在你不在场时询问。可在插件详情点「更新」手动确认。"),
-    { type: "info" },
+    // E6#73g（S5）：市场自报身份（**只给 source，不 import marketplaceShared**——那是本模块下游，会成环）
+    { type: "info", source: "marketplace" },
   );
 }
 
@@ -272,7 +273,8 @@ async function doRunDiscovery(force: boolean): Promise<DiscoveryPlan | null> {
     let pushed = false;
     if (show) {
       try {
-        await show(updateBellMessage(c), { type: "info" });
+        // E6#73g（S5）：版本提醒归市场来源桶（组标题解析成市场显示名，不显示内部 id）
+        await show(updateBellMessage(c), { type: "info", source: "marketplace" });
         pushed = true;
       } catch {
         pushed = false; // 推送失败 → 不记账（下次发现重推）

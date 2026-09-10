@@ -58,9 +58,15 @@ export function onMarketplaceSearchChange(fn: () => void): () => void {
  * 显示文本由调用方 t() 解析成当前语言传入（组件本地译）——与 settle 侧模块 i18n.t 同汇壳层单渲染。 */
 
 /** 发一条 error toast——进程不可用（预览环境/壳进程）静默 no-op，不影响调用方流程 */
+/** E6#73g（S5）：市场自己的 source id——机器读的归属键，人类可读名由壳解析（见壳 `notif.ts`）。
+ *  **一处定义、全部市场通知引用**：分组键必须同一个字面量，写散 = 同一次操作被劈成两组。 */
+export const MARKET_SOURCE = "marketplace";
+
+/** 发一条 error toast——进程不可用（预览环境/壳进程）静默 no-op，不影响调用方流程 */
 export function notifyError(message: string): void {
   const show = lk()?.notifications?.show;
-  if (show) void show(message, { type: "error" });
+  // E6#73g（S5）：市场自报身份——本条与全部安装回执同属一个来源桶（面板一组、常驻配额一份）
+  if (show) void show(message, { type: "error", source: MARKET_SOURCE });
 }
 
 /* ═══ 本地插件共享数据 hook（已安装/内置/已禁用） ═══ */
@@ -478,6 +484,9 @@ async function settleInstallFailure(pluginId: string, downloadUrl: string, error
     const failReasonText = failText((k) => i18n.t(k), installFailLabelKey, reason, error);
     void show(i18n.t("{{name}}：{{reason}}", { name: failName, reason: failReasonText }), {
       type: "error",
+      // E6#73g（S5）：归市场来源桶——连装 N 个的失败条同组、共享那 5 条常驻配额（73f S3），
+      // 且不会因「来源缺失」被劈进「其他」组跟无关通知混在一起。
+      source: MARKET_SOURCE,
       persistent: true,
       actions: [
         {

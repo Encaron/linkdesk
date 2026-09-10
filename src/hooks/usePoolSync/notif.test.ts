@@ -7,8 +7,9 @@
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import type { TFunction } from "i18next";
-import { buildNotif, _seenIds } from "./notif";
+import { buildNotif, _seenIds, markAllSeen, pruneSeen } from "./notif";
 import { pushToast, dismissToast, getToasts, setNotifPanelOpen, TOAST_SOURCE_CAP } from "../../core/services/ui/toast";
+import { APP_PLUGIN_ID } from "../../core/services/plugins/PluginStateService";
 
 /**
  * E6#73d：安装 job 表的桩——壳侧 job 表与通知序列化同处一个渲染进程，`buildNotif` 直接函数调用读它。
@@ -18,6 +19,18 @@ import { pushToast, dismissToast, getToasts, setNotifPanelOpen, TOAST_SOURCE_CAP
 const { mockJobs } = vi.hoisted(() => ({ mockJobs: [] as Array<Record<string, unknown>> }));
 vi.mock("../../pluginLoader/lifecycle/install-queue", () => ({
   listInstallJobs: () => mockJobs,
+}));
+
+/**
+ * E6#73g（S5）：来源名解析的数据源——壳侧已装插件 manifest 索引。
+ * 桩掉模块而非驱动真发现流程：本条要测的是「组标题 / 来源行有没有去查显示名、查不到怎么回落」，
+ * 不是发现管线本身（那是别处的覆盖面）。桩全集为空 = 每个用例自己往里放。
+ */
+const { mockManifests } = vi.hoisted(() => ({
+  mockManifests: new Map<string, { name?: string }>(),
+}));
+vi.mock("../../pluginLoader/resolution/state", () => ({
+  getManifestById: (id: string) => mockManifests.get(id),
 }));
 
 /** job 桩行——只填被测代码真读的字段（硬约束 21：虚构 id/名，不指向真实插件） */
@@ -35,6 +48,7 @@ const t = ((key: string, opts?: Record<string, unknown>) =>
 function clearStore(): void {
   for (const n of getToasts()) dismissToast(n.id);
   _seenIds.clear();
+  mockManifests.clear();
   setNotifPanelOpen(false);
 }
 
@@ -312,5 +326,107 @@ describe("buildNotif——第三段「已有结果」（E6#73d）", () => {
     const n = buildNotif(t);
     expect(n.resultLabel).toBeUndefined();
     expect(n.resultSummary).toBeUndefined();
+  });
+});
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   E6#73g：角标只数有结果的 + 来源名人类可读 + 未读集合维护
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+describe("buildNotif——角标只数有结果的（E6#73g，18 档 §八㉙）", () => {
+  it("纯进行中条目 → unread 0（照旧进面板，只是不占铃铛数字）", () => {
+    pushToast({ message: "演示消息 搬家", source: "demo-plugin", progress: true, ttl: 0 });
+    const n = buildNotif(t);
+    expect(n.unread).toBe(0);
+    expect(n.bellTitle).toBe("通知");           // 回落「通知」——不是「1 条通知」
+    expect(n.groups[0].items).toHaveLength(1); // 但条目还在面板里
+  });
+
+  it("组内 unread 同样不计进行中（组标题旁的角标不许跳）", () => {
+    pushToast({ message: "演示消息 甲", source: "demo-plugin", progress: true, ttl: 0 });
+    pushToast({ message: "演示消息 乙", source: "demo-plugin", ttl: 0 });
+    const g = buildNotif(t).groups[0];
+    expect(g.unread).toBe(1);
+  });
+
+  it("🔴 出结果（非进度新条目）→ 计数 +1（「有结果等着你」才亮数字）", () => {
+    pushToast({ message: "演示消息 搬家", source: "demo-plugin", progress: true, ttl: 0 });
+    expect(buildNotif(t).unread).toBe(0);
+    pushToast({ message: "演示消息 装完了", source: "demo-plugin", severity: "info", wake: true, ttl: 0 });
+    expect(buildNotif(t).unread).toBe(1);
+  });
+
+  it("已读的失败条目 → 不计（未读水位与「有结果」两条判据是**与**关系）", () => {
+    const id = pushToast({ message: "演示消息 装失败", source: "demo-plugin", severity: "error", ttl: 0 });
+    _seenIds.add(id);
+    expect(buildNotif(t).unread).toBe(0);
+  });
+});
+
+describe("buildNotif——来源名人类可读（E6#73g / S5）", () => {
+  it("插件 id → manifest 显示名（组标题与来源行走同一路径）", () => {
+    mockManifests.set("demo-plugin", { name: "演示插件" });
+    pushToast({ message: "演示消息", source: "demo-plugin", ttl: 0 });
+    const g = buildNotif(t).groups[0];
+    expect(g.key).toBe("demo-plugin");          // key 仍是机器读的 id（池侧按 key 定位）
+    expect(g.label).toBe("演示插件");            // 标题是人类可读名
+    expect(g.items[0].sourceLabel).toBe("来源: 演示插件");
+  });
+
+  it("查不到 manifest → 回落显示 id 本身（不是空串——空标题最难排查）", () => {
+    pushToast({ message: "演示消息", source: "demo-未安装插件", ttl: 0 });
+    expect(buildNotif(t).groups[0].label).toBe("demo-未安装插件");
+  });
+
+  it("manifest 有 id 无名 → 也回落 id", () => {
+    mockManifests.set("demo-plugin", {});
+    pushToast({ message: "演示消息", source: "demo-plugin", ttl: 0 });
+    expect(buildNotif(t).groups[0].label).toBe("demo-plugin");
+  });
+
+  it(`壳域 id（${APP_PLUGIN_ID}.update）→ 壳域自带可读名，不查 manifest、不显示内部 id`, () => {
+    mockManifests.set(APP_PLUGIN_ID, { name: "不该被查到的假插件" }); // 故意埋一个：壳域不许走 manifest 这条路
+    pushToast({ message: "演示消息", source: `${APP_PLUGIN_ID}.update`, ttl: 0 });
+    const g = buildNotif(t).groups[0];
+    expect(g.key).toBe(APP_PLUGIN_ID);          // 首段 = 「主软件」
+    expect(g.label).toBe("主软件");
+    expect(g.items[0].sourceLabel).toBe("来源: 主软件更新");
+  });
+
+  it("壳域下未登记的子域 → 回落「主软件」（它确实是壳，别显示 app.某个内部词）", () => {
+    pushToast({ message: "演示消息", source: `${APP_PLUGIN_ID}.演示域`, ttl: 0 });
+    expect(buildNotif(t).groups[0].items[0].sourceLabel).toBe("来源: 主软件");
+  });
+
+  it("无来源 → 「其他」组（老插件不填 source 的既有权行为零变化）", () => {
+    pushToast({ message: "演示消息", ttl: 0 });
+    const g = buildNotif(t).groups[0];
+    expect(g.label).toBe("其他");
+    expect(g.items[0].sourceLabel).toBeUndefined(); // 无来源就不画来源行
+  });
+});
+
+describe("未读集合维护（E6#73g）", () => {
+  it("markAllSeen —— 把当前全部条目标已读（面板开着时新到的条目走这条，B1）", () => {
+    pushToast({ message: "演示消息 甲", source: "demo-plugin", severity: "error", ttl: 0 });
+    expect(buildNotif(t).unread).toBe(1);
+    markAllSeen();
+    expect(buildNotif(t).unread).toBe(0);
+    expect(_seenIds.size).toBe(1);
+  });
+
+  it("pruneSeen —— 只留还在面板里的 id（长跑会话不再只增不减）", () => {
+    const gone = pushToast({ message: "演示消息 甲", source: "demo-plugin", ttl: 0 });
+    const live = pushToast({ message: "演示消息 乙", source: "demo-plugin", ttl: 0 });
+    markAllSeen();
+    expect(_seenIds.size).toBe(2);
+    dismissToast(gone);
+    pruneSeen();
+    expect([..._seenIds]).toEqual([live]);
+  });
+
+  it("pruneSeen —— 空集合直接返回，不产生副作用", () => {
+    pruneSeen();
+    expect(_seenIds.size).toBe(0);
   });
 });

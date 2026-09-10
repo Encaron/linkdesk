@@ -586,6 +586,13 @@ export interface UiAPI {
             /** true → 长驻通知：不自动消失（E6#71j）；错误诊断/需用户决定的场景用 */
             persistent?: boolean;
             actions?: PluginToastAction[];
+            /** E6#73g（S5）生产者身份 id——**机器读的归属键，不含人类文案**（人类可读名由壳解析）。
+             *  面板**按来源分组**、每组各 5 条常驻配额都以此为键；不传 → 全落「其他」组。
+             *  插件传自己的插件 id；壳自身域用 `app.<域>`（如 `app.update`）。
+             *  ⚠️ **做不到自动注入**——池是单进程共享 realm，所有插件共用同一个 `window.linkdesk`，
+             *  preload 无从知道「这次 show() 是哪个插件的树发的」⇒ **只能作者显式报**。
+             *  ⚠️ 老插件不填就仍然全落「其他」组：这是**新契约**，要作者重新发布才生效。 */
+            source?: string;
         }): Promise<NotificationHandle>;
     };
     /** E5#69：菜单——插件声明式读写 */

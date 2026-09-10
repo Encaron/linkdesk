@@ -161,3 +161,29 @@ describe("showNotification E6#71i 进度 + E6#71j 长驻（updateNotification pe
     expect(all.some((x) => x.message === "Auto error")).toBe(true);
   });
 });
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   E6#73g（S5）：showNotification 的 source 透传
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+describe("showNotification 来源身份（E6#73g S5）", () => {
+  it("options.source → 落进 toast（面板按它分组、常驻配额按它分桶）", async () => {
+    await handleUiMethod("showNotification", ["Demo message", { source: "demo-market" }]);
+    expect(activeToasts()[0]!.source).toBe("demo-market");
+  });
+
+  it("不传 source → 保持 undefined（老插件不填也照跑，落「其他」组）", async () => {
+    await handleUiMethod("showNotification", ["Demo message", { type: "info" }]);
+    expect(activeToasts()[0]!.source).toBeUndefined();
+  });
+
+  it("🔴 finishNotification 继承 show 时给的 source——同一次操作的「开始」与「完成」不许被分进两组", async () => {
+    const handle = await handleUiMethod("showNotification", [
+      "Demo 开始",
+      { source: "demo-market", progress: true },
+    ]);
+    await handleUiMethod("finishNotification", [handle, "Demo 完成"]);
+    const done = activeToasts().find((t) => t.message === "Demo 完成");
+    expect(done?.source).toBe("demo-market");
+  });
+});

@@ -130,6 +130,10 @@ export async function initPluginLoader(): Promise<void> {
     console.warn("[pluginLoader] 以下插件加载失败:", errors);
     pushToast({
       message: `${errors.length} 个插件加载失败`,
+      // E6#73g（18 档 §五 G「弹」级 ③ / B5）：**加载失败是断了功能的**，此前没写 severity
+      // ⇒ 缺省 info ⇒ 不进唤醒白名单 ⇒ 面板永不自动展开，只有一条 8 秒自灭的提示。
+      // 这与「内存偏高每 30 秒弹一次」正好相反，是本档「该弹的不弹」的正面修复。
+      severity: "error",
       ttl: TOAST_TTL_ERROR,
     });
   }

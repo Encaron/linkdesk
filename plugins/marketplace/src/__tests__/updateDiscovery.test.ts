@@ -339,7 +339,7 @@ describe("runUpdateDiscovery（主编排 IO）", () => {
     expect(ids(first!.candidates)).toEqual(["demo-alpha"]);
     expect(first!.toNotify.map((c) => c.pluginId)).toEqual(["demo-alpha"]);
     expect(show).toHaveBeenCalledTimes(1);
-    expect(show).toHaveBeenCalledWith(expect.any(String), { type: "info" });
+    expect(show).toHaveBeenCalledWith(expect.any(String), { type: "info", source: "marketplace" });
     expect(await readUpdateMetaMap()).toEqual({ "demo-alpha": { lastNotifiedVersion: "1.2.0" } });
     expect(getDiscoveredUpdates().map((c) => c.pluginId)).toEqual(["demo-alpha"]);
     expect(fetchSpy).toHaveBeenCalledTimes(1); // 首跑真实拉取
@@ -601,7 +601,7 @@ describe("runAutoUpdateIfDue（#33d DetailView 勾选即跑）", () => {
     expect(await runAutoUpdateIfDue("demo-alpha")).toBe(false); // 停摆：恒不自动更新
     expect(update).not.toHaveBeenCalled();
     expect(show).toHaveBeenCalledTimes(1); // 勾了却没动静必须说
-    expect(show).toHaveBeenCalledWith(expect.any(String), { type: "info" });
+    expect(show).toHaveBeenCalledWith(expect.any(String), { type: "info", source: "marketplace" });
     expect(ids(getDiscoveredUpdates())).toEqual(["demo-alpha"]); // 候选不驱逐
     expect((await readUpdateMetaMap())["demo-alpha"]?.autoUpdate).toBe(true); // 意愿保留
   });
@@ -708,7 +708,7 @@ describe("auto × 停摆（#71k——第三方来源同样零引擎调用，候�
     expect(update).not.toHaveBeenCalled(); // 停摆对任何来源一视同仁——不存在「这个来源可以静默装」
     expect(ids(getDiscoveredUpdates())).toEqual(["demo-alpha"]); // 候选留守 → 详情页手动可更新
     expect(show).toHaveBeenCalledTimes(1);
-    expect(show).toHaveBeenCalledWith(expect.any(String), { type: "info" }); // 普通「有新版本」铃，非警告
+    expect(show).toHaveBeenCalledWith(expect.any(String), { type: "info", source: "marketplace" }); // 普通「有新版本」铃，非警告
   });
 
   it("勾选即跑（runAutoUpdateIfDue）→ 恒 false + 停摆说明（用户刚勾的必须说）", async () => {
@@ -725,7 +725,7 @@ describe("auto × 停摆（#71k——第三方来源同样零引擎调用，候�
     expect(await runAutoUpdateIfDue("demo-alpha")).toBe(false);
     expect(update).not.toHaveBeenCalled();
     expect(show).toHaveBeenCalledTimes(1);
-    expect(show).toHaveBeenCalledWith(expect.any(String), { type: "info" });
+    expect(show).toHaveBeenCalledWith(expect.any(String), { type: "info", source: "marketplace" });
     expect(ids(getDiscoveredUpdates())).toEqual(["demo-alpha"]); // 候选不驱逐
   });
 });

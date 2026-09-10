@@ -81,12 +81,18 @@ function isSuppressed(eventPath: string): boolean {
 
 /* ── 公开 API ── */
 
+// 🔴 E6#73g（18 档 §五 G 定级）：本文件**全部**失败上报一律 `wake: false` = 「只角标」。
+// 依据：本服务的消费者只有壳内 StorageService（配置 / 存储持久化）——**背景操作**，
+// 用户当场什么也做不了，弹面板只会糊脸（18 档 B3「壳侧文件读写失败太吵」）。
+// ⚠️ 别顺手改成 `醒`：真要让用户动手的失败（插件加载失败 / 安装失败）走各自的通道，
+// 不经这里；插件侧的文件操作（文件树 / 编辑器）走池 preload 裸 IPC，也不经这里。
+
 /** 列出目录内容——返回 FileEntry[]（含 isDirectory/isFile/size/modifiedAt） */
 export async function listDir(dirPath: string): Promise<FileEntry[]> {
   const a = api();
   if (!a) { reportError({ message: "filesystem API 不可用", source: "core", silent: true }); return []; }
   try { return await a.listDir(dirPath); }
-  catch (e) { reportError({ message: i18n.t("无法读取文件夹：{{path}}", { path: dirPath }), source: "core", error: e }); return []; }
+  catch (e) { reportError({ message: i18n.t("无法读取文件夹：{{path}}", { path: dirPath }), source: "core", error: e, wake: false }); return []; }
 }
 
 /**
@@ -97,7 +103,7 @@ export async function readFile(filePath: string): Promise<string> {
   const a = api();
   if (!a) { reportError({ message: "filesystem API 不可用", source: "core", silent: true }); return ""; }
   try { return await a.readTextFile(filePath); }
-  catch (e) { reportError({ message: i18n.t("无法读取文件：{{path}}", { path: filePath }), source: "core", error: e }); return ""; }
+  catch (e) { reportError({ message: i18n.t("无法读取文件：{{path}}", { path: filePath }), source: "core", error: e, wake: false }); return ""; }
 }
 
 /**
@@ -108,7 +114,7 @@ export async function readBinaryFile(filePath: string): Promise<Uint8Array> {
   const a = api();
   if (!a) { reportError({ message: "filesystem API 不可用", source: "core", silent: true }); return new Uint8Array(); }
   try { return await a.readBinaryFile(filePath); }
-  catch (e) { reportError({ message: i18n.t("无法读取文件：{{path}}", { path: filePath }), source: "core", error: e }); return new Uint8Array(); }
+  catch (e) { reportError({ message: i18n.t("无法读取文件：{{path}}", { path: filePath }), source: "core", error: e, wake: false }); return new Uint8Array(); }
 }
 
 /**
@@ -119,7 +125,7 @@ export async function writeBinaryFile(filePath: string, data: Uint8Array): Promi
   const a = api();
   if (!a) { reportError({ message: "filesystem API 不可用", source: "core", silent: true }); return; }
   try { await a.writeBinaryFile(filePath, data); }
-  catch (e) { reportError({ message: i18n.t("无法写入文件：{{path}}", { path: filePath }), source: "core", error: e }); }
+  catch (e) { reportError({ message: i18n.t("无法写入文件：{{path}}", { path: filePath }), source: "core", error: e, wake: false }); }
   suppressPath(filePath);
 }
 
@@ -130,7 +136,7 @@ export async function writeFile(filePath: string, content: string): Promise<void
   const a = api();
   if (!a) { reportError({ message: "filesystem API 不可用", source: "core", silent: true }); return; }
   try { await a.writeTextFile(filePath, content); }
-  catch (e) { reportError({ message: i18n.t("无法写入文件：{{path}}", { path: filePath }), source: "core", error: e }); }
+  catch (e) { reportError({ message: i18n.t("无法写入文件：{{path}}", { path: filePath }), source: "core", error: e, wake: false }); }
   suppressPath(filePath);
 }
 
@@ -139,7 +145,7 @@ export async function remove(filePath: string): Promise<void> {
   const a = api();
   if (!a) { reportError({ message: "filesystem API 不可用", source: "core", silent: true }); return; }
   try { await a.remove(filePath); }
-  catch (e) { reportError({ message: i18n.t("无法删除：{{path}}", { path: filePath }), source: "core", error: e }); }
+  catch (e) { reportError({ message: i18n.t("无法删除：{{path}}", { path: filePath }), source: "core", error: e, wake: false }); }
   suppressPath(filePath);
 }
 
@@ -148,7 +154,7 @@ export async function exists(filePath: string): Promise<boolean> {
   const a = api();
   if (!a) { reportError({ message: "filesystem API 不可用", source: "core", silent: true }); return false; }
   try { return await a.exists(filePath); }
-  catch (e) { reportError({ message: i18n.t("无法检查路径是否存在：{{path}}", { path: filePath }), source: "core", error: e }); return false; }
+  catch (e) { reportError({ message: i18n.t("无法检查路径是否存在：{{path}}", { path: filePath }), source: "core", error: e, wake: false }); return false; }
 }
 
 /** 复制文件或目录（递归） */
@@ -156,7 +162,7 @@ export async function copy(src: string, dest: string): Promise<void> {
   const a = api();
   if (!a) { reportError({ message: "filesystem API 不可用", source: "core", silent: true }); return; }
   try { await a.copy(src, dest); }
-  catch (e) { reportError({ message: i18n.t("无法复制：{{src}} → {{dest}}", { src, dest }), source: "core", error: e }); }
+  catch (e) { reportError({ message: i18n.t("无法复制：{{src}} → {{dest}}", { src, dest }), source: "core", error: e, wake: false }); }
   suppressPath(src); suppressPath(dest);
 }
 
@@ -165,7 +171,7 @@ export async function createDir(dirPath: string): Promise<void> {
   const a = api();
   if (!a) { reportError({ message: "filesystem API 不可用", source: "core", silent: true }); return; }
   try { await a.createDir(dirPath); }
-  catch (e) { reportError({ message: i18n.t("无法新建文件夹：{{path}}", { path: dirPath }), source: "core", error: e }); }
+  catch (e) { reportError({ message: i18n.t("无法新建文件夹：{{path}}", { path: dirPath }), source: "core", error: e, wake: false }); }
   suppressPath(dirPath);
 }
 

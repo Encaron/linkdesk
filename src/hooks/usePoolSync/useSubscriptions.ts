@@ -22,9 +22,9 @@ import { getViewPlugin, onDidRegister, onDidUnregister } from "../../pluginLoade
 import { onDidChangeStatusBar } from "../../core/services/ui/StatusBarService"; // E5.7#8：状态栏动态项变化订阅
 import { CUSTOM_EVENTS } from "../../core/react/events/CoreEvents"; // E5.7#8：Chord 提示
 import { shellEvents, type StatusBarEntry } from "../../core/react/events/ShellEvents";
-import { subscribeToasts, subscribeNotifPanelOpen, dismissToast, getToasts, isPending, setNotifPanelOpen } from "../../core/services/ui/toast";
+import { subscribeToasts, subscribeNotifPanelOpen, dismissToast, getToasts, isPending, isNotifPanelOpen, setNotifPanelOpen } from "../../core/services/ui/toast";
 import { cancelInstallJob, onDidChangeInstallJobs, updateInstallJobProgress } from "../../pluginLoader/lifecycle/install-queue"; // E6#73d：安装 job 表变化重推 + 取消 + 主进程进度回填
-import { _seenIds } from "./notif"; // 通知未读追踪——事件回传共享序列化侧同一实例
+import { _seenIds, markAllSeen, pruneSeen } from "./notif"; // 通知未读追踪——事件回传共享序列化侧同一实例
 
 interface UseSyncSubscriptionsInput {
   poolApiRef: MutableRefObject<NonNullable<LinkDeskAPI["pool"]> | null>;
@@ -217,7 +217,15 @@ export function useSyncSubscriptions({
   // E5.7#6 补丁：图标拖拽换位 commit 回环——壳收到 icon:reordered 持久化后重推权威序，
   // 池 localIcons 对齐（真相源在壳；IconBarZone 拖拽期间忽略推送防闪跳）。
   useEffect(() => shellEvents.on("icon:reordered", () => setLayoutVersion((v) => v + 1)), [setLayoutVersion]);
-  useEffect(() => subscribeToasts(() => setLayoutVersion((v) => v + 1)), [setLayoutVersion]);
+  // E6#73g（B1）：**面板开着时新到的条目即时标已读**——此前只在「点铃铛打开」那一刻批量标，
+  // 于是用户正开着面板看安装，又到一条新通知：它就在眼皮底下，铃铛数字却往上跳；
+  // 关掉面板后数字还挂着，得再点开一次才清零（18 档 B1）。
+  // E6#73g：顺手修剪已读集合——只保留还在面板里的 id，长跑会话不再只增不减。
+  useEffect(() => subscribeToasts(() => {
+    if (isNotifPanelOpen()) markAllSeen();
+    pruneSeen();
+    setLayoutVersion((v) => v + 1);
+  }), [setLayoutVersion]);
   // E6#73d：安装 job 表变化（入队 / 抢到槽 / 阶段推进 / 出结果 / 被取消）→ 重推布局。
   // job 表与壳渲染进程同处一地，走**进程内回调**而非 IPC 往返（与池侧那条 `plugin:installJobs`
   // 广播同源同形，只是池读广播、壳直读）。进度心跳是高频事件——静默同值由 install-queue 内部拦住。
@@ -283,7 +291,7 @@ export function useSyncSubscriptions({
       // 而「最小化 ≠ 永久静音」（R5-4/R5-5）= minimized 与 idle 在壳侧**必须同值**，
       // 所以这里恰是「都落 false」，不是漏了 minimized。
       if (data.markSeen === true) {
-        for (const n of getToasts()) _seenIds.add(n.id);
+        markAllSeen();
         setLayoutVersion((v) => v + 1);  // 标记已读不 fire toast 事件——手动重推
       }
     });

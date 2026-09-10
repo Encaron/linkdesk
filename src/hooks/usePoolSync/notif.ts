@@ -7,11 +7,70 @@
 
 import type { TFunction } from "i18next";
 import type { NotifLayout, NotifSection } from "../../core/types/pool/poolLayout";
-import { getToasts, getFoldedCount, isNotifPanelOpen, OTHER_SOURCE_KEY, sourceKeyOf, type Toast } from "../../core/services/ui/toast";
+import { getToasts, getFoldedCount, isNotifPanelOpen, isPending, OTHER_SOURCE_KEY, sourceKeyOf, type Toast } from "../../core/services/ui/toast";
 import { listInstallJobs } from "../../pluginLoader/lifecycle/install-queue";
+import { getManifestById } from "../../pluginLoader/resolution/state";
+import { APP_PLUGIN_ID } from "../../core/services/plugins/PluginStateService";
 
 /** 未读追踪——跨渲染保留，面板关闭期间到来的通知标记为未读 */
 export const _seenIds = new Set<string>();
+
+/** 把当前**全部**条目标已读（面板开着时新到的条目走这条，E6#73g B1） */
+export function markAllSeen(): void {
+  for (const n of getToasts()) _seenIds.add(n.id);
+}
+
+/**
+ * 已读集合修剪（E6#73g）——`_seenIds` 此前是**只增不减**的模块级 Set：通知 TTL 到点、
+ * 被 × 掉、被限额折叠收走之后，它们的 id 永远留在集合里，长跑会话（几百条通知）白占内存。
+ * 条目的未读语义只对**还在面板里的条目**有意义 ⇒ 每次列表变化后按当前存活 id 收一遍。
+ */
+export function pruneSeen(): void {
+  if (_seenIds.size === 0) return;
+  const live = new Set(getToasts().map((n) => n.id));
+  for (const id of [..._seenIds]) if (!live.has(id)) _seenIds.delete(id);
+}
+
+/**
+ * 角标计数判据（18 档 §八㉙，2026-09-10 用户定案「只数有结果的」）——**已读**且**不是进行中**。
+ *
+ * 角标语义 = 「**有结果等着你**」（完成 / 失败）。进行中 / 排队中的条目照旧进面板、照旧可弹，
+ * **只是不占铃铛数字**：还在跑的没有动作可做，数字亮着只会乱跳（18 档 B1 反面约束）。
+ * ⚠️ 这条只改**计数**，不改唤醒——`autoOpen` 表达式归 73b，本函数不是它的判据。
+ */
+function isUnread(n: Toast): boolean {
+  return !_seenIds.has(n.id) && !isPending(n);
+}
+
+/**
+ * 壳域自带可读名（E6#73g / S5）——`app` 是**壳自己的域**（`APP_PLUGIN_ID`），不是插件：
+ * 壳天然知道自己有哪些域，故这张表**不违反硬约束 10**（禁的是「插件 id → 名」映射表）。
+ * ⚠️ 键只许是壳域 id（`app` / `app.<域>`）——**禁止**往这里塞插件 id。
+ * 加新壳域在这里加一行；不加也不致命（回落「主软件」，见 resolveSourceName 的降级链）。
+ */
+function shellSourceName(t: TFunction, id: string): string | undefined {
+  switch (id) {
+    case APP_PLUGIN_ID: return t("主软件");
+    case `${APP_PLUGIN_ID}.update`: return t("主软件更新");
+    default: return undefined;
+  }
+}
+
+/**
+ * 来源 id → 人类可读名（E6#73g / 18 档 §五 E S5）——**组标题（首段）与条目来源行同一路径解析**，
+ * 不拿内部 id 当标题 / 正文。降级链：
+ *   ① 壳域（`app` 或 `app.*`）→ 壳域自带可读名；不认识的具体域回落「主软件」（它确实是壳）
+ *   ② 已装插件 → `manifest.name`（**不查任何「插件 id → 名」映射表**，硬约束 10）
+ *   ③ 查不到 → 回落**显示 id 本身**
+ * 一路有输出：宁可显示 id（能拿去搜、能对上其他日志），也不能是空串（空标题最难排查）。
+ */
+function resolveSourceName(t: TFunction, id: string): string {
+  if (id === OTHER_SOURCE_KEY) return t("其他");
+  if (id === APP_PLUGIN_ID || id.startsWith(`${APP_PLUGIN_ID}.`)) {
+    return shellSourceName(t, id) ?? t("主软件");
+  }
+  return getManifestById(id)?.name || id;
+}
 
 /** 时间格式化——中文友好，零外部依赖（壳 NotificationCenter 同款） */
 function formatTimeAgo(t: TFunction, ts: number): string {
@@ -174,7 +233,7 @@ function buildInstallSections(
 /** 通知面板数据——壳 NotificationCenter（source 分组/未读排序/时间文案）序列化为纯数据 */
 export function buildNotif(t: TFunction): NotifLayout {
   const notifications = getToasts();
-  const unread = notifications.filter((n) => !_seenIds.has(n.id)).length;
+  const unread = notifications.filter(isUnread).length;
 
   // E3e #50：source 第一段归类（"terminal.portErrors" → "terminal"）。
   // E6#73f 归一：分桶键走 toast 的 sourceKeyOf——与常驻上限淘汰分桶**同一个键函数**，
@@ -188,11 +247,13 @@ export function buildNotif(t: TFunction): NotifLayout {
   const groups: NotifLayout["groups"] = [];
   for (const [key, items] of map) {
     items.sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0));
-    const groupUnread = items.filter((n) => !_seenIds.has(n.id)).length;
+    const groupUnread = items.filter(isUnread).length;
     const folded = getFoldedCount(key);
     groups.push({
       key,
-      label: key === OTHER_SOURCE_KEY ? t("其他") : key,
+      // E6#73g（S5）：组标题与条目来源行走**同一个**解析函数——此前直接把首段 id 当标题，
+      // 面板上顶着一行 `terminal` / `app` / `marketplace` 这种内部黑话。
+      label: resolveSourceName(t, key),
       unread: groupUnread,
       // E6#73f（S3/A6）：本组被上限折叠掉的条数——只在 >0 时带字段（缺省不渲染汇总行）。
       // 文案壳侧解析（池哑渲染），与 timeLabel/sourceLabel 同一「显示文本铁律」。
@@ -202,7 +263,8 @@ export function buildNotif(t: TFunction): NotifLayout {
         iconClass: getNotifIconClass(n),
         message: n.message,
         timeLabel: n.createdAt ? formatTimeAgo(t, n.createdAt) : "",
-        ...(n.source ? { sourceLabel: t("来源: {{source}}", { source: n.source }) } : {}),
+        // E6#73g（S5）：来源行给**人类可读名**（完整 id 走同一解析路径）——此前甩的是原始 id
+        ...(n.source ? { sourceLabel: t("来源: {{source}}", { source: resolveSourceName(t, n.source) }) } : {}),
         actions: (n.actions ?? []).map((a) => ({ label: a.label, ...(a.isPrimary ? { isPrimary: true } : {}) })),
         // E6#72c：进度旗标 + 百分比透传（原 71i 画在窄卡上，窄卡删后落点改宽面板）。
         // 只在 true 时带字段——非进度通知 DTO 形状不变（省略即缺省，池按 undefined 处理）。

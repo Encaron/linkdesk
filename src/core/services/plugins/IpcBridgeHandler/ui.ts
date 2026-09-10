@@ -240,7 +240,7 @@ export async function handleUiMethod(method: string, args: unknown[]): Promise<u
     // 内联重解析执行（E6#73f：原先注释指向的 toast.runToastAction 无人调用，已随死代码簇删除）。
     case "showNotification": {
       const [message, options] = args as
-        | [string, { type?: string; progress?: boolean; persistent?: boolean; actions?: PluginToastAction[] } | undefined];
+        | [string, { type?: string; progress?: boolean; persistent?: boolean; actions?: PluginToastAction[]; source?: string } | undefined];
       const severity: ToastSeverity =
         options?.type === "error" ? "error" :
         options?.type === "warning" ? "warning" : "info";
@@ -263,6 +263,9 @@ export async function handleUiMethod(method: string, args: unknown[]): Promise<u
       // ⚠️ `progress: true` 强制 `wake: false`（挂旗标**不能**吃缺省）：进度类通知此后还会被
       // `updateNotification` 一路改写，若它算唤醒，「10% 跳到 11% 就弹」（R5-6 明令否决）。
       const id = pushToast({
+        // E6#73g（S5）：生产者身份随行——面板按它分组、常驻配额按它分桶。
+        // 不传 → source 缺省 undefined → 归入「其他」组（故意留这个缺省：老插件不填也照跑）。
+        source: options?.source,
         message, severity, actions,
         progress: !!options?.progress,
         persistent,
@@ -284,8 +287,9 @@ export async function handleUiMethod(method: string, args: unknown[]): Promise<u
       const [handleId, message] = args as [string, string | undefined];
       // E6#73h（D7）：换条时必须**继承被替换那条的来源**——否则同一次安装的「开始」有来源、
       // 「完成」没有，两条会被分进通知面板的两个分组（来源缺失全落 __other__）。
-      // ⚠️ 今天 showNotification 还没有 source 形参（D1，归 E6#73g 的 S5 落），所以此处
-      //    prev.source 恒 undefined、行为与从前等价——这是**先把丢来源的洞焊死**，S5 一落即自动生效。
+      // ⚠️ E6#73h 落地时 showNotification 还没有 source 形参，此处是**先把丢来源的洞焊死**；
+      //    E6#73g（S5）已给 showNotification 补上 `source`，本继承即刻生效——同一次安装的
+      //    「开始」（showNotification 带 source）与「完成」（本处继承 prev.source）落同一分组。
       const prev = getToasts().find((toast) => toast.id === handleId);
       dismissToast(handleId);
       // E6#73b（18 档 §五 B ②）：**job 终态必冒出来**——这是新建条目（新 id），且是进度句柄的收尾，
