@@ -64,9 +64,9 @@ import { useDownloadCount } from "../services/downloadCounts";
 import { readInstalledPackageFile } from "../services/packageFiles";
 // E6#71c：安装确认载荷构造——authorLabel/repoHomeUrl/fmtSize 展示派生抽共享模块（ConfirmInstall 视图
 // 独立 surface bundle，不跨引用本文件；侧栏信息行与确认卡同源复用，单一实现零重复）
-import { authorLabel, fmtSize, installConfirmPayload, repoHomeUrl } from "../services/installConfirmPayload";
-// E6#71k：安装信任门（「每来源一张卡」）——判定/写信任表/记台账全走该模块，视图只消费判定结果
-import { rememberInstalledFrom, rememberSource, trustDecisionFor } from "../services/installTrust";
+import { authorLabel, fmtSize, repoHomeUrl } from "../services/installConfirmPayload";
+// E6#71k「都问」：安装/更新确认门（恒弹）——载荷构造与弹卡全在该模块，视图只调一次拿 true/false
+import { confirmMarketInstall } from "../services/installGate";
 import DetailFeaturesTab from "./DetailFeaturesTab";
 import DetailChangelogTab from "./DetailChangelogTab";
 import "../styles/MarketplaceDetail.css";
@@ -377,21 +377,17 @@ export default function DetailView({ pluginId }: DetailContributedProps) {
   }, [pluginId, busy]);
 
   /* ── E6#33d 自动更新开关（mockup 帧 5/6 auto-upd）——setAutoUpdate 记账（开存 true / 关删字段，
-   *  installedUpdateMeta 域）；勾开立即 runAutoUpdateIfDue——store 已有该插件候选即刻跑一趟（免等下趟
-   *  发现/重启），无候选/已钉旧版 → no-op（§二·九 pin 尊重手动意图）；引擎 update 成功自 toast「已更新…
-   *  重启生效」市场不重复（G6：开着标签页照常 stage+替换——引擎 needRestart 恒 true）。成功自动更新 →
-   *  refreshPlugins 收敛本地版本（更新块/可更新徽标消）。 ── */
+   *  installedUpdateMeta 域）。**E6#71k「都问」后这个开关不再真的自动更新**（自动更新停摆，见
+   *  updateDiscovery 头注）——但它不是死开关：意图照样记账，勾开时当面讲清为什么没动静
+   *  （runAutoUpdateIfDue 恒 false + 一条停摆说明）。开关留着 = 用户的选择不丢，未来安全版本恢复时即生效。 ── */
   const handleAutoToggle = useCallback(
     async (on: boolean) => {
       if (!pluginId || busy || updating) return;
       setAutoOn(on); // 乐观翻转——读/记账失败的兜底由上方 effect（锚变）重读收敛
       await setAutoUpdate(pluginId, on);
-      if (on) {
-        const done = await runAutoUpdateIfDue(pluginId);
-        if (done) refreshPlugins();
-      }
+      if (on) await runAutoUpdateIfDue(pluginId); // 恒 false；作用是发那条「已暂停」说明
     },
-    [pluginId, busy, updating, refreshPlugins],
+    [pluginId, busy, updating],
   );
 
   /* ── E6#33b/#33c 版本动作执行（升/降一码——版本动作目标 actTarget 驱动；mockup 帧 6 st-update）。
@@ -418,24 +414,13 @@ export default function DetailView({ pluginId }: DetailContributedProps) {
         notifyError(updateFailText(t, "unknown", ""));
         return;
       }
-      /* E6#71k ⓑ：**更新走同一个信任门**（08 §四.2 现行规则表最后一行）——未信任来源 / http 明文源 /
-       *  同一 id 换了来源，都弹同一张卡。不补这条，「信任可撤销」只拦得住新装、拦不住变码（撤销形同空话）。
-       *  ⚠️ 只有**用户在场点更新**走这里；后台自动更新不过门，而是跳过 + 告知（updateDiscovery）。 */
+      /* E6#71k「都问」：**更新同样每次都弹卡**（官方来源不豁免）——不补这条，「看过来源」只对新装成立，
+       *  一次点头之后的每次变码都是静默的。此处 entry 必然存在（url 由 entry 派生，缺 entry 已于上一步
+       *  以「缺少下载地址」返回——不会静默跳过本门）。
+       *  ⚠️ 只有**用户在场点更新**走这里；后台自动更新不能弹卡（用户不在场），整体暂停——见 updateDiscovery。 */
       if (entry) {
-        const verdict = await trustDecisionFor(entry);
-        if (verdict.prompt) {
-          const confirmContent = lk()?.dialog?.confirmContent;
-          if (!confirmContent) return;
-          const ok = await confirmContent({
-            title: t("确认更新"),
-            message: t("安装即信任——确认前请查看来源与发布者。"),
-            pluginId: "marketplace",
-            viewId: "marketplace-install-confirm",
-            payload: installConfirmPayload(entry, ver, verdict.remember ? "remember" : "never"),
-          });
-          if (!ok) return;
-          await rememberSource(entry.sourceName);
-        }
+        const ok = await confirmMarketInstall(entry, "update", ver);
+        if (!ok) return;
       }
       setUpdating(true);
       try {
@@ -446,8 +431,6 @@ export default function DetailView({ pluginId }: DetailContributedProps) {
           if (updateTarget && compareVersions(ver, updateTarget) === 0) removeDiscoveredCandidate(pluginId);
           const pin = pinnedAfterApply(entry, ver);
           if (pin !== undefined) void setPinnedVersion(pluginId, pin);
-          // E6#71k §五 J.2②：更新成后记台账——同 id 下次换来源即强制重问（与安装同一条判据）
-          void rememberInstalledFrom(pluginId, entry?.sourceName);
           refreshPlugins();
         } else {
           // #64 A2：更新失败 → error toast（原行内红字退役）；重试口 = 原位更新钮仍在，无漂移。
@@ -550,38 +533,21 @@ export default function DetailView({ pluginId }: DetailContributedProps) {
       if (pin !== undefined) void setPinnedVersion(pluginId, pin);
     }
     // 会话 store 负责归因 + 失败态；成功后 lifecycle 事件驱动列表翻态（30.5c），本视图随 info 收敛
-    const ok = await startMarketInstall(pluginId, url);
-    // E6#71k §五 J.2②：装成后记「该 id 上次装自哪个来源」——下次同 id 换来源即强制重问。
-    // 失败不记（未落地的安装不该污染判据）；台账写失败不影响安装结果，故不 await。
-    if (ok) void rememberInstalledFrom(pluginId, entry?.sourceName);
+    await startMarketInstall(pluginId, url);
   }, [pluginId, busy, installingHere, installGateError, entry, installUrl, installVer]);
 
-  /* 安装钮点击 = E6#71k 信任门 →（要问才弹）富内容确认 → runInstall（安装执行单一入口仍留本视图）。
-   *  门（installTrust）：官方源 / 已信任来源 → **不弹卡直接装**；未信任第三方来源首次 → 弹一张；
-   *  http 明文源 → 恒弹（不可记忆）；同一 id 换了来源 → 强制重问（判序上压过「已信任」）。
+  /* 安装钮点击 = E6#71k 确认门（**恒弹**）→ 富内容确认 → runInstall（安装执行单一入口仍留本视图）。
+   *  门（installGate）：没有判序表、没有豁免、没有记忆——一次确认只对这一次安装有效。
    *  弹卡机制 = E6#71c 壳 Dialog（DialogHost content 槽挂 ConfirmInstall 视图）——机制一点没动，
-   *  只改「什么时候弹」；视图声明寻址失败 → 壳回落纯文字双钮确认（弹窗仍出不静默死）。
-   *  §五 J.2⑥：点确认即写信任表，安装随后失败**不回滚**（信任对象是「来源」不是「这一次安装」）。 */
+   *  只改「什么时候弹」；视图声明寻址失败 → 壳回落纯文字双钮确认（弹窗仍出不静默死）。 */
   const handleInstallClick = useCallback(async () => {
     if (!pluginId || busy || installingHere) return;
     if (installGateError()) return;
     if (!entry) return;
-    const verdict = await trustDecisionFor(entry);
-    if (verdict.prompt) {
-      const confirmContent = lk()?.dialog?.confirmContent;
-      if (!confirmContent) return; // 老 preload 面缺 confirmContent——保守 no-op（与 71c 同款）
-      const ok = await confirmContent({
-        title: t("确认安装"),
-        message: t("安装即信任——确认前请查看来源与发布者。"),
-        pluginId: "marketplace",
-        viewId: "marketplace-install-confirm",
-        payload: installConfirmPayload(entry, installVer, verdict.remember ? "remember" : "never"),
-      });
-      if (!ok) return;
-      await rememberSource(entry.sourceName);
-    }
+    const ok = await confirmMarketInstall(entry, "install", installVer);
+    if (!ok) return;
     await runInstall();
-  }, [pluginId, busy, installingHere, installGateError, entry, installVer, t, runInstall]);
+  }, [pluginId, busy, installingHere, installGateError, entry, installVer, runInstall]);
 
   /* 依赖行点击 → 跳依赖插件详情页（30.5e/30.6c3「点击跳其详情页」）——E6#30.7b 带 label
    *  （depLabel：已装名/目录名兜底，未装目标壳 viewRegistry 无 manifest 无法自行命名）。
@@ -773,7 +739,7 @@ export default function DetailView({ pluginId }: DetailContributedProps) {
   const autoUpdateToggle = installed && !pending ? (
     <label
       className={"mpd-auto-upd" + (pickerDisabled ? " disabled" : "")}
-      title={t("开启后自动安装稳定版更新（手动选旧版会暂停自动更新）")}
+      title={t("记录自动更新意愿——当前每次更新都需你确认，自动更新暂不生效，勾选会说明原因")}
     >
       <input
         type="checkbox"
@@ -961,6 +927,7 @@ export default function DetailView({ pluginId }: DetailContributedProps) {
                       void retryMarketInstall(
                         pluginId ?? "",
                         installErrHere.downloadUrl ?? installUrl ?? "",
+                        entry?.name,
                       );
                     }}
                     disabled={busy || !online}

@@ -25,14 +25,17 @@
  *   - 自愈清提醒：lastNotifiedVersion ≤ 本地 → 已追上（外部路径更新/重装的兜底），清标记（§二·一「更新成功清」）
  *   - 目录 offline/corrupt（entries 空）→ 静默跳过（无数据不铃不写）；stale 缓存有数据照跑
  *
- * #33d 自动更新（Batch F 2026-09-08，§五 Opt-IN 默认关）：
- *   - autoUpdate 候选 = meta.autoUpdate===true 且未钉版本（§二·九 pinnedVersion 停旧版 → auto 跳过，尊重手动意图）
- *   - auto 候选静默升级（不经用户）→ **不推铃铛**（铃 for 提示人；auto 已代劳）。执行经引擎 update 走同一
- *     稳定版寻址（versionDownloadUrl——§二·四 auto 只看稳定版，beta 不自动装）；成功 toast 由引擎发（update.ts:
- *     已更新…重启生效，市场不重复），失败保留作手动候选（「可更新」徽标仍在，下次发现/手动重试）——不因失败
- *     回铃（§五 不打扰）
- *   - 勾选开 = DetailView 立即 runAutoUpdateIfDue（针对 store 已有候选即刻跑一趟，免等下趟发现）
- *   - G6：插件标签页开着也照常 stage+替换+重启生效（引擎 needRestart 恒 true——原子替换已证开着也能成，§二·七）
+ * #33d 自动更新——**E6#71k「都问」后整体停摆（2026-09-10 用户拍板）**：
+ *   - 停摆原因：自动更新发生在**用户不在场**时，而新的确认规则是**每次更新都要用户看一眼**——弹不出卡就
+ *     不能装。二者不可兼得，用户已知悉并接受（原话：「暂时都问吧……关于这个点不能被卡住」）。
+ *   - 因此本模块**不再执行任何 auto 升级**：不跑引擎 update、不动文件。全部候选一律留作手动候选。
+ *   - ⚠️ 连带撤销：原先「auto 候选不推铃铛」（auto 已代劳，不必打扰）随之作废——**没人代劳了，就必须告知**，
+ *     否则开着自动更新的插件会变成「更新无人做、也不通知」的黑洞。见 doRunDiscovery 铃铛环。
+ *   - 用户勾开自动更新的那一刻（runAutoUpdateIfDue）会收到一条停摆说明——勾了却没动静是最不能忍的静默。
+ *   - `selectAutoCandidates` / `pinnedVersion` 语义保留，供未来安全版本恢复自动更新时复用。
+ *
+ *   旧行为存档（供日后恢复参考）：auto 候选静默升级、不推铃铛；执行经引擎 update 走稳定版寻址
+ *   （versionDownloadUrl，§二·四 auto 只看稳定版）；成功 toast 由引擎发；失败保留作手动候选。
  *
  * 输出：本模块同是 #33b 常驻「可更新」徽标/升级入口与 #33d 自动更新的数据源（getDiscoveredUpdates +
  * onDiscoveredUpdatesChange——发现结果落 store，随批消费）。
@@ -45,10 +48,8 @@
 import i18n from "i18next";
 import type { PluginListEntry, PluginInfoEntry } from "@linkdesk/contracts";
 import type { CatalogEntry } from "./marketCatalog";
-import { compareVersions, isVersionNewer, stableLatestVersion, versionDownloadUrl } from "./marketCatalog";
+import { compareVersions, isVersionNewer, stableLatestVersion } from "./marketCatalog";
 import { loadCatalog } from "./marketSources";
-// E6#71k ⓑ：自动更新不过信任门——未信任来源跳过并告知（手动更新才弹卡，见 DetailView.doVersionAction）
-import { trustDecisionFor } from "./installTrust";
 import {
   clearNotifiedVersion,
   noteNotifiedVersion,
@@ -210,45 +211,20 @@ function commitStore(candidates: UpdateCandidate[]): void {
   _listeners.forEach((f) => f());
 }
 
-/* ═══ #33d 单候选自动更新执行（doRunDiscovery 与勾选即跑共用——引擎 update，成功后引擎自 toast，市场不重复） ═══ */
+/* ═══ #33d 自动更新——E6#71k「都问」后整体停摆（2026-09-10 用户拍板） ═══ */
 
-/** 自动更新执行结果——`skipped-untrusted` = 该来源未信任 / http 明文源（E6#71k：自动路径**不过门**，
- *  跳过并告知；候选保留为手动可更新，用户去详情页点「更新」时才弹卡） */
-type AutoUpdateOutcome = "updated" | "failed" | "skipped-untrusted";
-
-/** 对单候选跑引擎更新——url = versionDownloadUrl 取该稳定版资产（§二·四 auto 只看稳定版；顶层兜底同 #33b 寻址）。
- *  无 update 能力（预览/非池）/无 url → "failed"（无法自动，保留手动候选）。success 由引擎判定——
- *  needRestart 恒 true 也计成功：文件已原子替换，重启生效 §二·七。失败不抛——结果三态，编排据此归位。 */
-async function applyEngineAutoUpdate(c: UpdateCandidate): Promise<AutoUpdateOutcome> {
-  const upd = pm()?.update;
-  if (!upd) return "failed";
-  const url = versionDownloadUrl(c.entry, c.remoteLatest) ?? c.entry.downloadUrl;
-  if (!url) return "failed";
-  /* E6#71k ⓑ（2026-09-10 用户拍板）：**后台自动更新不过信任门**——用户不在场、没有点击，弹卡既打断又
-   *  违背「自动」本身的意义。未信任来源 → 跳过并告知（notifyUntrustedSkipped），候选保留。
-   *  用户去详情页点「更新」→ 那次是手动路径、会弹卡；确认后来源入信任表，此后自动更新才走得通。 */
-  if ((await trustDecisionFor(c.entry)).prompt) return "skipped-untrusted";
-  try {
-    const r = await upd(c.pluginId, { url });
-    return r && r.success ? "updated" : "failed";
-  } catch {
-    return "failed"; // 引擎抛/断网 → 失败；候选保留（下次发现/手动重试）
-  }
-}
-
-/** 跳过告知（E6#71k）——**一次发现只发一条**（多个未信任来源不刷屏）；来源名去重列出。
+/** 自动更新停摆告知——用户**当场**勾开自动更新时发一条，讲清「为什么勾了也没动静」。
  *  直调 notifications（不经 marketplaceShared——那是本模块的**下游**，import 会成环）。壳进程无
- *  notifications.show → 静默 no-op（同本模块既有池门控）。 */
-function notifyUntrustedSkipped(cands: UpdateCandidate[]): void {
+ *  notifications.show → 静默 no-op（同本模块既有池门控）。
+ *
+ *  ⚠️ 只在「用户主动勾选」这一刻发。发现编排**不发**——那会每趟发现刷一次（每趟都白弹一条，用户要的
+ *  是「有新版本」这条信息本身）；改由铃铛照常逐插件告知（见 doRunDiscovery 已撤 auto 抑制）。 */
+function notifyAutoPaused(): void {
   const show = window.linkdesk?.notifications?.show;
-  if (!show || cands.length === 0) return;
-  const sources = [...new Set(cands.map((c) => c.entry.sourceName ?? c.pluginId))].join("、");
+  if (!show) return;
   void show(
-    i18n.t("已跳过 {{count}} 个自动更新：来源「{{sources}}」尚未信任——打开插件详情点「更新」可确认来源。", {
-      count: cands.length,
-      sources,
-    }),
-    { type: "warning" },
+    i18n.t("自动更新已暂停——现在每次更新都要你确认，自动更新无法在你不在场时询问。可在插件详情点「更新」手动确认。"),
+    { type: "info" },
   );
 }
 
@@ -288,15 +264,11 @@ async function doRunDiscovery(force: boolean): Promise<DiscoveryPlan | null> {
   // 自愈清提醒（幂等——无变化不写盘，installedUpdateMeta 内部保证）
   await Promise.all(plan.toClearNotified.map((id) => clearNotifiedVersion(id)));
 
-  // #33d auto 候选（autoUpdate on + 未钉版本）——静默升级：不铃（铃 for 提示人；auto 已代劳）、
-  //  成功不进常驻 store（已更新无候选）、失败保留作手动候选（可更新徽标在，下次发现/手动重试）。
-  const autoEligible = selectAutoCandidates(plan.candidates, meta);
-  const autoIds = new Set(autoEligible.map((c) => c.pluginId));
-
-  // 铃铛推一条 + 记版本（每版本一次；auto 候选除外）。推失败 → 不记（下趟补推，宁重勿漏）；全插件独立，单败不阻断。
+  // 铃铛推一条 + 记版本（每版本一次）。推失败 → 不记（下趟补推，宁重勿漏）；全插件独立，单败不阻断。
+  // E6#71k「都问」：**撤掉原先「auto 候选不铃」的抑制**——自动更新已停摆，不再有人代劳，这些插件
+  //  必须和别的插件一样收到铃铛，否则「更新无人做、也不告知」= 用户彻底不知道有新版本。
   const show = window.linkdesk?.notifications?.show;
   for (const c of plan.toNotify) {
-    if (autoIds.has(c.pluginId)) continue; // auto 已代劳 → 不铃（§五：auto 走引擎 toast 通知，不重复打扰）
     let pushed = false;
     if (show) {
       try {
@@ -311,39 +283,27 @@ async function doRunDiscovery(force: boolean): Promise<DiscoveryPlan | null> {
     if (pushed) await noteNotifiedVersion(c.pluginId, c.remoteLatest);
   }
 
-  // #33d auto 静默执行（顺序——引擎 update 单通道，多插件串行最稳；单败不阻断其余）。G6：插件标签页开着
-  //  照常 stage+替换+重启生效（引擎 needRestart 恒 true，原子替换开着也能成 §二·七）。
-  const autoDone: string[] = [];
-  const skippedUntrusted: UpdateCandidate[] = [];
-  for (const c of autoEligible) {
-    const r = await applyEngineAutoUpdate(c);
-    if (r === "updated") autoDone.push(c.pluginId);
-    else if (r === "skipped-untrusted") skippedUntrusted.push(c);
-  }
-  notifyUntrustedSkipped(skippedUntrusted); // 一条汇总，不逐插件刷屏
-
-  const committed = plan.candidates.filter((c) => !autoDone.includes(c.pluginId));
-  commitStore(committed);
+  // #33d auto 执行环已删（E6#71k「都问」）——见文件头「自动更新停摆」。此处不跑引擎 update、不动文件：
+  //  全部候选一律留作手动候选（可更新徽标 + 铃铛告知），用户去详情页点「更新」时过确认门。
+  commitStore(plan.candidates);
   return plan;
 }
 
-/** #33d 勾选即跑（DetailView 勾上 autoUpdate → 立即调）——针对**当前 store 已有候选**（发现已跑过、该插件
- *  有可更新）跑一趟，免等下趟发现/重启。无候选（无更新/发现未跑过）→ no-op（下趟发现照常 auto 处理）；
- *  autoUpdate 未开/已钉版本（§二·九）→ no-op（尊重手动意图）。成功 → 驱逐 store 候选（可更新徽标消），
- *  引擎已 toast「已更新…重启生效」市场不重复。返回是否成功自动更新。
- *  幂等守卫：发现编排在跑 → 先等收束（编排已含 auto 处理本趟候选，防双跑引擎 update）。 */
+/** #33d 勾选即跑 —— E6#71k「都问」后**恒返回 false**：自动更新停摆，本函数只剩「把停摆讲清楚」这一件事。
+ *
+ *  存在理由：用户勾上「自动更新」的那一刻，是唯一能当面解释的时机（其余时刻用户不在场）。勾了却什么都不
+ *  发生 = 静默的谎；故此处对**确实表达过自动更新意图的插件**发一条停摆说明。恒 false 不驱逐候选——
+ *  候选照常保留（可更新徽标 + 铃铛），用户手动去详情页点「更新」。
+ *  幂等守卫保留（发现编排在跑 → 先等收束），与既有编排不打架。 */
 export async function runAutoUpdateIfDue(pluginId: string): Promise<boolean> {
   if (_running) await _running;
   const c = _candidates.find((x) => x.pluginId === pluginId);
   if (!c) return false;
   const meta = await readUpdateMetaMap();
-  const m = meta[pluginId];
-  if (m?.autoUpdate !== true || m?.pinnedVersion !== undefined) return false;
-  const r = await applyEngineAutoUpdate(c);
-  if (r === "skipped-untrusted") notifyUntrustedSkipped([c]); // 用户刚勾的自动更新被信任门挡住——必须说
-  const ok = r === "updated";
-  if (ok) commitStore(_candidates.filter((x) => x.pluginId !== pluginId));
-  return ok;
+  // 复用纯选择函数判定「这个插件本来该被自动更新吗」（autoUpdate on + 未钉版本）——不是 → 用户没表达过
+  // 该意图，没必要解释；是 → 他关心的事停了，必须说。
+  if (selectAutoCandidates([c], meta).length > 0) notifyAutoPaused();
+  return false;
 }
 
 /** 铃铛文案——插件名 + 新版（i18n key = 中文原文；en.json 映射英文，zh 回落 key 中文） */

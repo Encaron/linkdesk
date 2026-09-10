@@ -6,7 +6,13 @@
 
 import { describe, it, expect } from "vitest";
 import type { CatalogEntry } from "../services/marketCatalog";
-import { authorLabel, repoHomeUrl, fmtSize, installConfirmPayload } from "../services/installConfirmPayload";
+import {
+  authorLabel,
+  repoHomeUrl,
+  fmtSize,
+  installConfirmPayload,
+  isHttpSourceUrl,
+} from "../services/installConfirmPayload";
 
 /** 最小目录条目 fixture——字段只填被测面需要，其余按类型缺省（结构可选）。虚构值恒明显非真实。 */
 function entryFixture(overrides: Partial<CatalogEntry> = {}): CatalogEntry {
@@ -68,9 +74,24 @@ describe("fmtSize（字节可读化——KB/MB 通用单位零 i18n）", () => {
   });
 });
 
-describe("installConfirmPayload（载荷构造——目录字段子集 + 实际目标版本）", () => {
-  it("基础映射：name/description/publisher/official/sourceName/repoUrl/size/license + 目录默认版本", () => {
-    const p = installConfirmPayload(entryFixture({ sourceName: "example-owner/demo-gizmo" }));
+describe("isHttpSourceUrl（来源明文判定——卡片据此加一句如实提示）", () => {
+  it("http:// → true（含大小写/前后空白容错）", () => {
+    expect(isHttpSourceUrl("http://example.dev/marketplace.json")).toBe(true);
+    expect(isHttpSourceUrl("HTTP://example.dev/marketplace.json")).toBe(true);
+    expect(isHttpSourceUrl("  http://example.dev/x  ")).toBe(true);
+  });
+
+  it("https:// / 无值 / 非串 → false（目录源归一到 https，正常恒 false）", () => {
+    expect(isHttpSourceUrl("https://example.dev/marketplace.json")).toBe(false);
+    expect(isHttpSourceUrl(undefined)).toBe(false);
+    expect(isHttpSourceUrl("")).toBe(false);
+    expect(isHttpSourceUrl("ftp://example.dev/x")).toBe(false);
+  });
+});
+
+describe("installConfirmPayload（载荷构造——目录字段子集 + 动作类别 + 实际目标版本）", () => {
+  it("基础映射：name/description/publisher/official/sourceName/repoUrl/size/license + mode + 目录默认版本", () => {
+    const p = installConfirmPayload(entryFixture({ sourceName: "example-owner/demo-gizmo" }), "install");
     expect(p).toEqual({
       name: "Demo Gizmo",
       description: "A fictitious demonstration widget",
@@ -81,32 +102,47 @@ describe("installConfirmPayload（载荷构造——目录字段子集 + 实际�
       version: "2.1.0",
       size: 2048,
       license: "MIT",
+      mode: "install",
+      plaintext: false,
     });
   });
 
   it("installVer 覆盖 → 载荷 version 取实际目标版本（不默认目录最新）", () => {
-    const p = installConfirmPayload(entryFixture(), "1.4.0");
+    const p = installConfirmPayload(entryFixture(), "install", "1.4.0");
     expect(p.version).toBe("1.4.0");
   });
 
+  it("mode 透传——视图据此选「确认安装」/「确认更新」文案（不接收成品文本）", () => {
+    expect(installConfirmPayload(entryFixture(), "update").mode).toBe("update");
+  });
+
+  it("plaintext 由 sourceUrl 派生——http 源 true，https/无 sourceUrl false", () => {
+    expect(installConfirmPayload(entryFixture({ sourceUrl: "http://example.dev/m.json" }), "install").plaintext).toBe(true);
+    expect(installConfirmPayload(entryFixture({ sourceUrl: "https://example.dev/m.json" }), "install").plaintext).toBe(false);
+    expect(installConfirmPayload(entryFixture({ sourceUrl: undefined }), "install").plaintext).toBe(false);
+  });
+
   it("official 透传——UI 零再判", () => {
-    const p = installConfirmPayload(entryFixture({ official: true }));
+    const p = installConfirmPayload(entryFixture({ official: true }), "install");
     expect(p.official).toBe(true);
   });
 
   it("无 sourceName → sourceName/repoUrl 均 undefined（诚实无源行）", () => {
-    const p = installConfirmPayload(entryFixture({ sourceName: undefined }));
+    const p = installConfirmPayload(entryFixture({ sourceName: undefined }), "install");
     expect(p.sourceName).toBeUndefined();
     expect(p.repoUrl).toBeUndefined();
   });
 
   it("可选字段缺省 → 载荷不硬造（description/license/size 缺省态）", () => {
-    const p = installConfirmPayload({
-      id: "demo-gizmo",
-      name: "Demo Gizmo",
-      version: "1.0.0",
-      author: "Example Author",
-    });
+    const p = installConfirmPayload(
+      {
+        id: "demo-gizmo",
+        name: "Demo Gizmo",
+        version: "1.0.0",
+        author: "Example Author",
+      },
+      "install",
+    );
     expect(p.description).toBeUndefined();
     expect(p.license).toBeUndefined();
     expect(p.size).toBeUndefined();

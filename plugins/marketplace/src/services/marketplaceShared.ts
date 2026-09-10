@@ -22,6 +22,8 @@ import i18n from "i18next";
 import { loadCatalog, forceRefreshCatalog } from "./marketSources";
 import type { CatalogLoadResult } from "./marketSources";
 import type { CatalogEntry } from "./marketCatalog";
+// E6#71k「都问」：重试也要过确认门——门位在本模块 retryMarketInstall（三入口单点），"不 import 门" 无从豁免
+import { confirmMarketInstallById } from "./installGate";
 // E6#33a 发现调度（2026-09-08 锚② 重裁：市场池首载调度——本模块被全部市场池面 import，任意面首挂载即触发一趟
 // 延迟发现；scheduleStartupDiscovery 内置池门控，壳进程 import 本模块不调度不跑）——见 updateDiscovery 头注
 import { scheduleStartupDiscovery } from "./updateDiscovery";
@@ -59,13 +61,6 @@ export function onMarketplaceSearchChange(fn: () => void): () => void {
 export function notifyError(message: string): void {
   const show = lk()?.notifications?.show;
   if (show) void show(message, { type: "error" });
-}
-
-/** 发一条 info toast（E6#71k 撤销信任回执用）——同 notifyError 的进程守卫。
- *  存在理由：撤销是实现动作，按 UX 指引不留「静默成功」；且它不是失败，不该走 error 通道染红。 */
-export function notifyInfo(message: string): void {
-  const show = lk()?.notifications?.show;
-  if (show) void show(message, { type: "info" });
 }
 
 /* ═══ 本地插件共享数据 hook（已安装/内置/已禁用） ═══ */
@@ -616,9 +611,22 @@ export async function startMarketInstall(pluginId: string, downloadUrl: string):
   }
 }
 
-/** 重试安装（#30.9b [重试] 入口——toast command / 行内重试钮共用）——重发同一安装，无自动风暴 */
-export function retryMarketInstall(pluginId: string, downloadUrl: string): Promise<boolean> {
-  if (!pluginId || !downloadUrl) return Promise.resolve(false);
+/**
+ * 重试安装（#30.9b [重试] 入口——toast 命令 / 详情页行内钮 / 侧栏行内钮，三入口共用）。
+ * 重发同一安装，无自动风暴。
+ *
+ * E6#71k「都问」：**重试也要过一次确认门**——重试不是「用户刚点过所以免问」的豁免券：失败可能隔了很久、
+ * 期间用户早忘了装的什么、从哪来。此处是**单点门位**（三个重试入口全部经本函数，无第二条路），
+ * 门内按 pluginId 现查目录条目构造富内容卡；条目查不到（离线/下架）→ 回落纯文字确认，仍要问。
+ * `displayName` 只用于回落确认的显示名（有目录条目时忽略）。
+ */
+export async function retryMarketInstall(
+  pluginId: string,
+  downloadUrl: string,
+  displayName?: string,
+): Promise<boolean> {
+  if (!pluginId || !downloadUrl) return false;
+  if (!(await confirmMarketInstallById(pluginId, displayName))) return false;
   return startMarketInstall(pluginId, downloadUrl);
 }
 

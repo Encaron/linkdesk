@@ -10,9 +10,9 @@
  * 结算 = dialogHost.cancel()/confirm() → 池 dialog-action → 壳 settle（先推 open:false 再 settle）
  * → DetailView 接 true 执行 runInstall（安装执行单一入口仍留在 DetailView，本视图只表态）。
  *
- * E6#71k：本卡不再「每插件一张」而是「每来源一张」——只有信任门（installTrust）判定要问时才弹。
- * 卡片语义随之从「确认安装此插件」变为「安装来自 <来源> 的插件，并信任此来源？」——由 payload.trustGrant
- * 驱动告知句；卡不删、机制不变（只改触发频率与那一句话）。
+ * E6#71k（2026-09-10 用户拍板「都问」）：本卡**每次安装 / 每次更新都弹**，官方目录不豁免、来源不记忆
+ * ——旧的 `trustGrant` 告知句（「并信任此来源」「每次都会询问」）随信任表整套删除。卡片语义退回最朴素
+ * 的一句：把要装的东西摆出来，让用户看一眼。`payload.mode` 决定标题/按钮写「安装」还是「更新」。
  */
 
 import { useState, type ReactNode } from "react";
@@ -60,21 +60,18 @@ export default function ConfirmInstall() {
     confirmApi();
   };
 
-  /* E6#71k：卡片语义 = 「安装来自 <来源> 的插件，并信任此来源？」——trustGrant 决定告知句。
-   * 无 trustGrant（老调用方/异常路径）落回 71c 原句，不空着（诚实兜底不撒谎）。 */
-  const sourceLabel = payload.sourceName ?? "";
-  const note =
-    payload.trustGrant === "remember" && sourceLabel
-      ? t("安装来自「{{source}}」的插件，并信任此来源——确认后此来源不再询问。", { source: sourceLabel })
-      : payload.trustGrant === "never" && sourceLabel
-        ? t("安装来自「{{source}}」的插件——此来源使用 http 连接，无法安全记住，每次都会询问。", { source: sourceLabel })
-        : t("安装即信任——确认前请查看来源与发布者。");
+  /* E6#71k「都问」：卡片只讲事实，不讲信任——每次都是同一句话，不让用户以为「点过就不再问」。
+   * http 明文来源（目录源已归一到 https，正常恒 false）另加一句如实提示，不静默少说。 */
+  const actionLabel = payload.mode === "update" ? t("确认更新") : t("确认安装");
+  const note = payload.plaintext
+    ? t("此来源使用 http 连接，内容未经加密，请自行核对发布者。")
+    : t("确认前请查看来源与发布者。");
 
   return (
-    <div className="mpd-confirm" role="dialog" aria-modal="true" aria-label={t("确认安装")}>
+    <div className="mpd-confirm" role="dialog" aria-modal="true" aria-label={actionLabel}>
       <div className="mpd-confirm-head">
         <span className="codicon codicon-shield mpd-confirm-shield" />
-        <span className="mpd-confirm-title">{t("确认安装")}</span>
+        <span className="mpd-confirm-title">{actionLabel}</span>
       </div>
       <p className="mpd-confirm-plugin">{payload.name}</p>
       <p className="mpd-confirm-note">{note}</p>
@@ -115,7 +112,7 @@ export default function ConfirmInstall() {
           {t("取消")}
         </Button>
         <Button variant="success" onClick={handleConfirm} disabled={submitting}>
-          <span className="codicon codicon-cloud-download" /> {t("确认安装")}
+          <span className="codicon codicon-cloud-download" /> {actionLabel}
         </Button>
       </div>
     </div>
