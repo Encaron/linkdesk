@@ -47,13 +47,13 @@ TitleBar「下载更新」按钮自动出现（主题按钮色）              �
 
 | 事实 | 实证 |
 |:--|:--|
-| 版本号 | `package.json:4` `"version": "0.1.0"`，无 product.json、无 `app.getVersion()` 消费 |
+| 版本号 | ~~`package.json:4` `"version": "0.1.0"`，无 product.json、无 `app.getVersion()` 消费~~ **⚠️ 2026-09-10 校正（上句为侦察当日快照，已过期）：** `package.json:4` = `"version": "0.1.27"`；`electron/product.json` **已存在**（开发期 `version` 留占位 `"0.1.0"`，发布期由壳发布脚本写，§2.3 禁手写第二份）；`app.getVersion()` **已通车**（E6#57.2a/2b/3b：`electron/ipc/handlers/product-handlers.ts:26` 主进程直答 + 壳/池双 preload 同暴露 `linkdesk.app.getVersion`） |
 | 打包 | `electron-builder.yml` 只有 NSIS 安装器，无 update 配置、未接 electron-updater |
 | 原生菜单 | `main.ts:60` `Menu.setApplicationMenu(null)` + `:71` `frame:false`——无 Electron 原生菜单栏，壳自己画 TitleBar |
 | 主菜单 | `src/core/commands/input-bindings/shellMenus.ts:11-117` 只注册「文件」「查看」两组——**无帮助/关于组** |
 | 齿轮菜单 | `src/core/commands/shell/settingsCommands.ts:92-97` ExtensionGear slot——设置/主题/语言/快捷键，无「检查更新/关于」 |
 | TitleBar 插槽 | `src/core/registry/commands/MenuRegistry.ts:188` `registerTitleBarContribution(pluginId, slot, {command, icon, when, order})` 现成——左右槽 + when 门控，插件侧 `contributes.titleBar` 已接线 |
-| 更新痕迹 | 全 `src/`+`electron/` grep 零命中 `checkForUpdates`/`autoUpdater`/`getVersion`（仅 node_modules） |
+| 更新痕迹 | 全 `src/`+`electron/` grep 零命中 `checkForUpdates`/`autoUpdater`（仅 node_modules）——**此半句 2026-09-10 复核仍成立**；~~`getVersion`~~ **已通车**（同上「版本号」行校正，不再是零命中） |
 
 **结论：壳侧更新 = 全新领域，但声明插槽/toast/context key 等承载机制全现成。**
 
@@ -95,7 +95,7 @@ TitleBar「下载更新」按钮自动出现（主题按钮色）              �
 | 帮助菜单 | TitleBar 菜单栏「帮助」组（`MENU_SLOTS.MenuBar`） | 文本按钮 → ContextMenu | 命令注册 |
 | 检查更新/关于 | 齿轮菜单（`MENU_SLOTS.ExtensionGear`） | ContextMenu 项（**恒显**） | 命令注册 |
 | TitleBar 更新按钮 | TitleBar 右槽（`contributes.titleBar.right` 声明制） | **全文字按钮**（有更新才现，`when: updateActionable` + `label: updateButtonLabel` 三态文字；**主题按钮色**——复用壳共享 Button 组件，跟随主题） | 状态机 → context key |
-| 更新通知/进度 | `#toast-root`（右下角） | **toast**（发现/进度/完成/失败/手动结果全走） | 状态机 → `pushToast`/`updateToast` |
+| 更新通知/进度 | ~~`#toast-root`（右下角）~~ **⚠️ 2026-09-10 校正：** `#toast-root` 容器已由 **E6#72a 整删**（仓库仅剩 `FloatingLayerHost.tsx:36` 一行删除注记）；显示面 = **状态栏铃铛宽面板**（E6#72 通知面归一，`StatusBarZone.css:111` 对标 VS Code `.notifications-center`）。服务层 API 名 `pushToast`/`updateToast` **未变**（`NotificationService` 喂同一 store）——故右两列仍成立 | **通知**（发现/进度/完成/失败/手动结果全走，铃铛宽面板显示） | 状态机 → `pushToast`/`updateToast` |
 | 发行说明 | **标签页**（复刻欢迎页模式） | 壳直渲染 view + tabBehavior 声明 | GitHub Releases body |
 | 关于页 | **标签页**（已拍板，对标发行说明）——DialogService 现实能力承载不了复制按钮 | 字段表 + 复制 + 检查更新 | product.json + process.versions |
 | 设置项 | 设置页「更新」组 | update.mode 下拉（auto/manual） | `app.update.mode` |

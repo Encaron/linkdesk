@@ -276,7 +276,7 @@ notifications.show(t("无法安装：{{name}}缺少依赖环境，无法下载",
 
 ## 五、暂缓 / 待定
 
-- **图形进度条（toast 内进度 UI）**——API 面已现成（progress + update 改文字），图形条留未来（09 已定）。
+- ~~**图形进度条（toast 内进度 UI）**——API 面已现成（progress + update 改文字），图形条留未来（09 已定）。~~ **✅ 已交付（2026-09-10 校正）：** E6#71i 打通 percent 全链（池 preload `update` 第三参 → 壳 `updateToast` → 池定态百分比 `fill` / 不定态扫动），E6#72c 在铃铛宽面板落地 3px 进度条——本条「留未来」已不成立。
 - **评分 / 评论**——零服务器做不了真实评级，v1 不做（08 §四）。
 - ~~toast 主动作按钮机制~~ **已定案（E6#13.5 缝隙 K1，第 1.2 轮审）**——`notifications.show(msg, { actions: [{ id, label, isPrimary?, command?, args? }] })` 已全量设计（8 维度 + 契约四齐全）；[重试]/[查看依赖] 走 actions 参数，**不再二次 toast**。本条为定案前旧话术，已废。
 
