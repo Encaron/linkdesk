@@ -86,7 +86,10 @@ export default function ConfirmInstall() {
             )}
           </span>
         </Row>
-        <Row label={t("来源仓库")}>
+        {/* E6#77：本行值是**目录货架**（entry.sourceName）——标签随之改「来源」，与详情页同义。
+            旧标签「来源仓库」在详情页「仓库」改指插件自己主页后会同词异义（同一张卡上两个「仓库」
+            含义不同），故对齐。插件自己的主页不在这张卡上。 */}
+        <Row label={t("来源")}>
           {payload.repoUrl ? (
             <a
               className="mpd-confirm-link"

@@ -100,6 +100,7 @@ github.com/encaron/linkdesk-marketplace/
 | `license` | - | 许可证标识——详情页侧栏 |
 | `categories[]` | - | 多分类（替代单 `category`） |
 | `icon` url 形态 | - | 作者自制彩色图标（SVG/PNG 直接 `<img>`；`iconSource: "url"` 既有兜底） |
+| `repository` | - | **插件自己的**主页 URL（E6#77）——详情页资源组「仓库 / 问题」的跳转目标。**完整 http(s) URL**；缺省则由条目自身推（`downloadUrl`/`readmeUrl` 里的 github `owner/repo`），推不出则**整行不渲染**（不指错路）。⚠️ 与「来源」不是一回事——「来源」= 列出这条的**市场源**（合并注入的 `sourceName`），官方汇总目录里全体插件共用同一个货架 |
 
 交互设计 → [03-市场交互设计.md](03-市场交互设计.md)。配套：`.linkdesk-plugin` 包内带 `README.md`（E6#4a 打包补）。
 

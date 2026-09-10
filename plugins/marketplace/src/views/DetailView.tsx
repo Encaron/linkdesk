@@ -53,6 +53,7 @@ import {
   versionDownloadUrl,
   selectableVersions,
   pinnedAfterApply,
+  pluginRepoUrl,
 } from "../services/marketCatalog";
 import { removeDiscoveredCandidate, runAutoUpdateIfDue } from "../services/updateDiscovery";
 import { readPluginUpdateMeta, setAutoUpdate, setPinnedVersion } from "../services/installedUpdateMeta";
@@ -61,9 +62,9 @@ import { readPluginUpdateMeta, setAutoUpdate, setPinnedVersion } from "../servic
 import { categoryListFromEntry, localizeCategory } from "../services/marketCategories";
 import { useDownloadCount } from "../services/downloadCounts";
 import { readInstalledPackageFile } from "../services/packageFiles";
-// E6#71c：安装确认载荷构造——authorLabel/repoHomeUrl/fmtSize 展示派生抽共享模块（ConfirmInstall 视图
+// E6#71c：安装确认载荷构造——authorLabel/fmtSize 展示派生抽共享模块（ConfirmInstall 视图
 // 独立 surface bundle，不跨引用本文件；侧栏信息行与确认卡同源复用，单一实现零重复）
-import { authorLabel, fmtSize, repoHomeUrl } from "../services/installConfirmPayload";
+import { authorLabel, fmtSize } from "../services/installConfirmPayload";
 // E6#71k「都问」：安装/更新确认门（恒弹）——载荷构造与弹卡全在该模块，视图只调一次拿 true/false
 import { confirmMarketInstall } from "../services/installGate";
 import DetailFeaturesTab from "./DetailFeaturesTab";
@@ -639,7 +640,10 @@ export default function DetailView({ pluginId }: DetailContributedProps) {
     (p) => p.pluginId !== pluginId && reqOf(p.manifest).includes(pluginId ?? ""),
   );
   const sourceName = entry?.sourceName;
-  const repoUrl = repoHomeUrl(sourceName);
+  /* E6#77：资源组「仓库 / 问题」指向**插件自己的**主页——此前拿 sourceName（目录货架名）拼 URL，
+     官方目录里的插件全体跳同一个货架仓库。派生规则见 marketCatalog.pluginRepoUrl：
+     乙（作者声明 repository）优先 → 甲（downloadUrl / readmeUrl 推 github owner/repo）→ 推不出不渲染。 */
+  const repoUrl = pluginRepoUrl(entry);
   const issuesUrl = repoUrl ? `${repoUrl}/issues` : undefined;
   const firstRelease = entry?.versions && entry.versions.length > 0
     ? entry.versions[entry.versions.length - 1].publishedAt

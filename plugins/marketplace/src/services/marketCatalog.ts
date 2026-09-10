@@ -41,6 +41,9 @@ export interface CatalogEntry {
   /** 合并注入：该胜出条目来源的可 fetch URL——判 http 明文源用（E6#71k：http 源信任不可记忆，
    *  见 08-信任与安全 §四.2。sourceName 对 http/https 同形，判不出明文，故恒带 URL） */
   sourceUrl?: string;
+  /** 作者显式声明的**插件自己的**主页（E6#77 乙）——完整 URL。非 GitHub 托管 / CDN / 自有官网的
+   *  唯一出口；缺省则由 downloadUrl / readmeUrl 推（见 pluginRepoUrl），推不出 → 详情页不渲染该行 */
+  repository?: string;
 }
 
 /** marketplace.json 根结构 */
@@ -77,6 +80,51 @@ export function normalizeSourceUrl(input: string): string | null {
   if (!raw) return null;
   if (isRawMarketplaceUrl(raw)) return raw;
   return repoUrlToRawUrl(raw);
+}
+
+/** 从 URL 里认 github.com `owner/repo` 主页——只认两个已知形态：`github.com/…`（downloadUrl 的
+ *  releases/download 段、作者填的主页）与 `raw.githubusercontent.com/…`（readmeUrl）。
+ *  其余主机一律不猜（推不出 = 调用方不渲染，诚实不伪链——E6#77 甲）。 */
+function githubRepoHome(url?: string): string | undefined {
+  if (!url) return undefined;
+  const s = url.trim();
+  const m =
+    /^https?:\/\/(?:www\.)?github\.com\/([^/?#]+)\/([^/?#]+)/i.exec(s) ??
+    /^https?:\/\/raw\.githubusercontent\.com\/([^/?#]+)\/([^/?#]+)/i.exec(s);
+  if (!m) return undefined;
+  const repo = m[2].replace(/\.git$/i, "");
+  if (!repo) return undefined;
+  return `https://github.com/${m[1]}/${repo}`;
+}
+
+/** 作者声明的 repository → 主页 URL——完整 http(s) URL 才收（不猜相对/简写形态）；github.com 形态
+ *  归一为主页 URL，其余主机原样留（自有官网 / Gitee / CDN 分发页都是合法答案，见 E6#77 乙） */
+function declaredRepoHome(raw?: string): string | undefined {
+  if (!raw) return undefined;
+  const s = raw.trim();
+  if (!/^https?:\/\//i.test(s)) return undefined;
+  return githubRepoHome(s) ?? s.replace(/\/+$/, "");
+}
+
+/**
+ * 插件**自己的**仓库主页（E6#77）——用于详情页资源组「仓库 / 问题」。
+ *
+ * 🔴 与 `entry.sourceName` 不是一回事：`sourceName` 是「这条是从哪个**市场源**列出来的」（合并注入），
+ * 官方汇总目录里所有插件共用同一个货架名。此前详情页拿 sourceName 拼「仓库」链接 ⇒ 全体插件跳到
+ * 商店自己那个仓库（用户 2026-09-11 实机发现：hello-linkdesk 的「仓库」跳到 linkdesk-marketplace）。
+ *
+ * 判序：**乙**（作者显式 `repository`）优先 → **甲**（`downloadUrl` / `readmeUrl` 里推 github owner/repo）
+ * → 都推不出返回 undefined（调用方**不渲染该行**——宁可不显示，不指错路）。
+ */
+export function pluginRepoUrl(
+  entry?: Pick<CatalogEntry, "repository" | "downloadUrl" | "readmeUrl">,
+): string | undefined {
+  if (!entry) return undefined;
+  return (
+    declaredRepoHome(entry.repository) ??
+    githubRepoHome(entry.downloadUrl) ??
+    githubRepoHome(entry.readmeUrl)
+  );
 }
 
 /** 来源标注名：从 raw URL 抽 owner/repo（无 github raw 形态 → 回退 host+路径前两段） */
@@ -129,6 +177,7 @@ function normalizeEntry(raw: unknown): CatalogEntry | null {
     readmeUrl: r.readmeUrl,
     screenshots: Array.isArray(r.screenshots) ? r.screenshots : undefined,
     license: r.license,
+    repository: r.repository, // E6#77 乙：作者声明的插件主页（本 whitelist 漏字段 = 静默丢，务必同步）
     sourceName: undefined, // 合并注入——parse 阶段不填
     official: undefined, // 同上：来源身份是合并时语义
   };

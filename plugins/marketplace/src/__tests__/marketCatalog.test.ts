@@ -20,6 +20,7 @@ import {
   updateToVersion,
   selectableVersions,
   pinnedAfterApply,
+  pluginRepoUrl,
   OFFICIAL_SOURCE_URL,
 } from "../services/marketCatalog";
 import type { CatalogEntry } from "../services/marketCatalog";
@@ -455,5 +456,90 @@ describe("pinnedAfterApply", () => {
 
   it("无条目 → undefined", () => {
     expect(pinnedAfterApply(undefined, "1.0.0")).toBeUndefined();
+  });
+});
+
+/* ── E6#77：插件自己的主页（≠ 目录来源 sourceName） ── */
+
+describe("pluginRepoUrl", () => {
+  it("🔥 回归：官方货架名不得当作插件主页——downloadUrl 指作者仓库 → 返回作者仓库", () => {
+    const e: CatalogEntry = {
+      id: "demo-plugin", name: "Demo Plugin", version: "1.0.0",
+      /* 合并注入的货架名（官方目录里全体共用） */
+      sourceName: "shelf-owner/shelf-repo",
+      downloadUrl: "https://github.com/owner-one/demo-plugin/releases/download/v1.0.0/demo-plugin.linkdesk-plugin",
+    };
+    const url = pluginRepoUrl(e);
+    expect(url).toBe("https://github.com/owner-one/demo-plugin");
+    expect(url).not.toContain("shelf-owner");
+  });
+
+  it("甲：downloadUrl 推不出（CDN）→ 回落 readmeUrl 的 raw github 形态", () => {
+    const e: CatalogEntry = {
+      id: "demo-plugin", name: "Demo Plugin", version: "1.0.0",
+      downloadUrl: "https://cdn.example.dev/demo-plugin.linkdesk-plugin",
+      readmeUrl: "https://raw.githubusercontent.com/owner-two/demo-thing/main/README.md",
+    };
+    expect(pluginRepoUrl(e)).toBe("https://github.com/owner-two/demo-thing");
+  });
+
+  it("乙优先：作者声明 repository 时不再看 downloadUrl / readmeUrl", () => {
+    const e: CatalogEntry = {
+      id: "demo-plugin", name: "Demo Plugin", version: "1.0.0",
+      repository: "https://demo-plugin.example.dev/",
+      downloadUrl: "https://github.com/owner-one/demo-plugin/releases/download/v1.0.0/x.linkdesk-plugin",
+    };
+    /* 非 github 主机原样留（自有官网合法）——尾斜杠归一 */
+    expect(pluginRepoUrl(e)).toBe("https://demo-plugin.example.dev");
+  });
+
+  it("乙：github.com 形态归一为主页 URL（去 .git / 去多余路径与尾斜杠）", () => {
+    const e: CatalogEntry = {
+      id: "demo-plugin", name: "Demo Plugin", version: "1.0.0",
+      repository: "https://github.com/owner-one/demo-plugin.git/",
+    };
+    expect(pluginRepoUrl(e)).toBe("https://github.com/owner-one/demo-plugin");
+  });
+
+  it("乙非法（无 scheme / 简写 owner/repo / 空串）→ 回落甲，不静默采信", () => {
+    const base = {
+      id: "demo-plugin", name: "Demo Plugin", version: "1.0.0",
+      downloadUrl: "https://github.com/owner-one/demo-plugin/releases/download/v1.0.0/x.linkdesk-plugin",
+    };
+    expect(pluginRepoUrl({ ...base, repository: "owner-one/demo-plugin" })).toBe(
+      "https://github.com/owner-one/demo-plugin",
+    );
+    expect(pluginRepoUrl({ ...base, repository: "   " })).toBe(
+      "https://github.com/owner-one/demo-plugin",
+    );
+  });
+
+  it("甲乙都推不出 → undefined（调用方不渲染该行，诚实不伪链）", () => {
+    expect(
+      pluginRepoUrl({
+        downloadUrl: "https://cdn.example.dev/x.linkdesk-plugin",
+        readmeUrl: "https://cdn.example.dev/README.md",
+      }),
+    ).toBeUndefined();
+    /* github 主机但缺 owner/repo 第二段——不猜 */
+    expect(pluginRepoUrl({ downloadUrl: "https://github.com/owner-one" })).toBeUndefined();
+    /* 无条目 */
+    expect(pluginRepoUrl(undefined)).toBeUndefined();
+  });
+
+  it("parse → pluginRepoUrl 全链路：repository 不被字段白名单吞掉（回归防线）", () => {
+    const text = JSON.stringify({
+      plugins: [
+        {
+          id: "demo-plugin", name: "Demo Plugin", version: "1.0.0",
+          downloadUrl: "https://github.com/owner-one/demo-plugin/releases/download/v1.0.0/x.linkdesk-plugin",
+          repository: "https://github.com/owner-one/demo-plugin-site",
+        },
+      ],
+    });
+    const parsed = parseCatalog(text);
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) return;
+    expect(pluginRepoUrl(parsed.catalog.plugins[0])).toBe("https://github.com/owner-one/demo-plugin-site");
   });
 });

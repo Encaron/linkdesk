@@ -103,7 +103,6 @@
   "确认更新「{{name}}」？": "Update \"{{name}}\"?",
   "确认更新": "Confirm Update",
   "发布者": "Publisher",
-  "来源仓库": "Source repository",
   "描述": "Description",
   "需升级 LinkDesk 至 {{version}} 才能安装": "LinkDesk {{version}} or newer is required to install",
   "安装失败：网络连接不可用": "Install failed: network unavailable",

@@ -1,7 +1,7 @@
 {
   "$schema": "../../public/schemas/plugin.schema.json",
   "name": "插件市场",
-  "version": "1.0.17",
+  "version": "1.0.18",
   "icon": "resources/icon.svg",
   "marketIcon": "resources/icon-brand.svg",
   "description": "浏览、安装和管理插件",
@@ -99,6 +99,13 @@
     }
   },
   "changelog": [
+    {
+      "version": "1.0.18",
+      "date": "2026-09-11",
+      "changes": [
+        "插件详情页的「仓库 / 打开仓库」不再指错地方（E6#77）：以前这一行点开的是**商店自己的仓库**，不是插件作者的家——因为软件把「这条是从哪个市场源列出来的」当成了插件主页，官方目录里所有插件都指向同一个仓库（比如 hello-linkdesk 点「仓库」跳去了 linkdesk-marketplace）。现在改成认插件自己的地址；认不出来（比如托管在 CDN 上）就**不显示这一行**——不给一个指错路的链接。作者也可以在目录里显式写一条 `repository` 指定自己的主页。「来源」这一行不变，它说的是「从哪个商店货架看到这条」，跟插件主页是两回事——两边并排出现时各说各的，不再打架"
+      ]
+    },
     {
       "version": "1.0.17",
       "date": "2026-09-11",
