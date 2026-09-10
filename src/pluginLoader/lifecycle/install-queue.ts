@@ -23,7 +23,7 @@
  * 铁律：零颜色 / 零文案 / 零插件 ID 硬编码（pluginId 是运行时值，非字面量）/ 零路径字面量。
  */
 
-import { write as storageWrite } from "../../core/services/configuration/StorageService";
+import { read as storageRead, write as storageWrite } from "../../core/services/configuration/StorageService";
 import i18n from "../../i18n"; // 显示文本铁律：壳侧 t() 解析，池哑渲染零自产文本
 import type { PluginInstallResult } from "../../core/api/linkdesk-api/types";
 
@@ -201,6 +201,50 @@ function broadcast(): void {
 function persist(): void {
   const open = snapshot().filter((j) => j.state !== "settled");
   void storageWrite(SNAPSHOT_KEY, { updatedAt: new Date().toISOString(), jobs: open }).catch(() => {});
+}
+
+/**
+ * 启动消费残留快照（E6#73l，18 档 §八⑮）——返回**上次没干完的 job 数**，并把快照清空。
+ *
+ * 覆盖两条来路，机制是同一条：**壳渲染进程换了一个**。① 壳崩 → crash-recovery 分支 2 全窗口重建；
+ * ② 用户直接关掉软件再打开。本表住在壳渲染进程里（§五 I.2 定案：槽锁归壳才能扛过池崩），进程一没
+ * 表就没了 ⇒ 新壳的 `_jobs` 必然是空的。
+ *
+ * 🔴 **只报数，不恢复条目**——那些任务早已随进程结束，重启后画一条停在 45% 的进度条是把死人当活的。
+ * 如实说一句「上次有 N 项安装未完成」才是不撒谎（§八⑮ 原话：不假装还在跑）。
+ *
+ * **读一次即消费**（读完写回空表）：不消费的话每次启动都重播同一条，那就不是「一条回执」是闹钟了。
+ *
+ * ⚠️ `_consume` 去重**不是优化**：本函数由壳启动管线调用，StrictMode/HMR 下那条 effect 会跑两次，
+ * 第二次若另起一次读就会**弹两条**（第一次大概率还没读完）。故第二次必须拿到**同一个** Promise
+ * ——同硬约束 13 的「进行中 Promise 复用」模式。
+ */
+export function consumeUnfinishedInstallJobs(): Promise<number> {
+  _consume ??= doConsumeUnfinishedInstallJobs();
+  return _consume;
+}
+
+let _consume: Promise<number> | null = null;
+
+async function doConsumeUnfinishedInstallJobs(): Promise<number> {
+  let raw: { jobs?: unknown } | null = null;
+  try {
+    raw = await storageRead<{ jobs?: unknown }>(SNAPSHOT_KEY);
+  } catch {
+    // 读不出来 = 没有信息，不是「0 项」。此时**什么都不说**（既不报 0，也不编一个 N）。
+    return 0;
+  }
+  const jobs = Array.isArray(raw?.jobs) ? raw.jobs : [];
+  // 形状守卫：`persist` 只写未结算的 job 对象（见该函数），所以「是对象且 state 非 settled」= 未完成。
+  // 非对象一律**不数**——磁盘上那份可能是旧版本写的、也可能被改坏过；从坏数据里数出一个数，
+  // 就是拿编出来的数字当事实（与上面「读不出来就不说」同一条纪律：说不准就闭嘴）。
+  const unfinished = jobs.filter((j) => {
+    const rec = j as InstallJob | null;
+    return typeof rec === "object" && rec !== null && rec.state !== "settled";
+  }).length;
+  if (unfinished === 0) return 0;
+  void storageWrite(SNAPSHOT_KEY, { updatedAt: new Date().toISOString(), jobs: [] }).catch(() => {});
+  return unfinished;
 }
 
 /** 已出结果的 job 保留上限——超出按入队序淘汰最老的（内存上界，与展示配额无关） */

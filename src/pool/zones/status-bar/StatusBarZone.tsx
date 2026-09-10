@@ -55,12 +55,17 @@ function StatusBarZone({ statusBar }: { statusBar: StatusBarLayout }) {
     setPanel((prev) => notifPanelTransition(prev.state, event));
   }, []);
 
-  // 迁移 → 壳（三态镜像 + 本次是否认账）。首帧跳过——避免 mount 即发 idle。
-  // ⚠️ 已知边界：跳过首帧 ⇒ 池崩溃重建后壳侧镜像**不会**被本组件的重新挂载刷新（镜像卡住，
-  // 卡在 minimized 时重要通知不再自动弹）。复位归第三批 E6#73l——见 `notifPanelState.ts` 头注。
-  const firstRenderRef = useRef(true);
+  // 迁移 → 壳（三态镜像 + 本次是否认账）——**含 mount 那一帧**（E6#73l 崩溃复位）。
+  //
+  // 为什么 mount 也要发：本组件重新挂载 = **池渲染进程是新的**（crash-recovery 分支 1）⇒ `panel`
+  // 初值回到 idle，可壳侧那份镜像还停在上一个池留下的值上。它若停在 `open`，壳侧 `autoOpen` 的
+  // 门禁（「面板已开就不再请求展开」）就**恒为假** ⇒ 此后任何重要通知都不再自动弹，而界面上
+  // 完全看不出哪里坏了。这一发就是把镜像拉回 idle。
+  //
+  // 🔴 **这不是给状态机加第 8 条迁移**（`notifPanelState.ts` 第 7 行「池重建 → 复位」仍然无事件）：
+  // 池侧状态本就是 `useState` 初值、复位结构性成立；本行只是把**池侧的当前真值**播给壳侧镜像
+  // ——是「同步」不是「迁移」，故不进迁移表，也不产生认账。首启时壳侧镜像初值已是 idle，幂等空操作。
   useEffect(() => {
-    if (firstRenderRef.current) { firstRenderRef.current = false; return; }
     emitNotif("notif:panel", { state: panel.state, markSeen: panel.markSeen });
   }, [panel]);
 

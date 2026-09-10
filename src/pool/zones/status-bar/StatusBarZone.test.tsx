@@ -40,6 +40,22 @@ function sectionLabels(container: HTMLElement): string[] {
   return [...container.querySelectorAll(".notif-task-section-label")].map((e) => e.textContent ?? "");
 }
 
+/**
+ * 装一个只捕获 `events.emit` 的窄 stub 跑 `fn`，收工后把 `window.linkdesk` 摘干净。
+ * 回传的 `emitted` 按发生序累积——**别按通道名过滤再断言**：多一条少一条都该被看见。
+ */
+function withEmit(fn: (emitted: Array<[string, unknown]>) => void): void {
+  const emitted: Array<[string, unknown]> = [];
+  (window as unknown as { linkdesk: unknown }).linkdesk = {
+    events: { emit: (ch: string, p: unknown) => emitted.push([ch, p]) },
+  };
+  try {
+    fn(emitted);
+  } finally {
+    delete (window as unknown as { linkdesk?: unknown }).linkdesk;
+  }
+}
+
 describe("E6#73d：面板三段式结构", () => {
   it("进行中 → 等待安装中 → 已有结果，段序即 DOM 序（永不重排）", () => {
     const container = openPanel({
@@ -92,11 +108,7 @@ describe("E6#73d：面板三段式结构", () => {
   });
 
   it("[取消安装] 走 secondary（不抢失败行 [重试] 的视线），点击回传 notif:cancelJob + jobId", () => {
-    const emitted: Array<[string, unknown]> = [];
-    (window as unknown as { linkdesk: unknown }).linkdesk = {
-      events: { emit: (ch: string, p: unknown) => emitted.push([ch, p]) },
-    };
-    try {
+    withEmit((emitted) => {
       const container = openPanel({
         items: [],
         notif: {
@@ -118,9 +130,7 @@ describe("E6#73d：面板三段式结构", () => {
       // 行 key 就是 jobId——回传它才能定向中止（不是插件名，同名不同插件要能区分）
       // 只挑 cancelJob 那条：开面板本身也会发 notif:panel（三态镜像），不是本用例的被测面
       expect(emitted.filter(([ch]) => ch === "notif:cancelJob")).toEqual([["notif:cancelJob", { jobId: "job-a" }]]);
-    } finally {
-      delete (window as unknown as { linkdesk?: unknown }).linkdesk;
-    }
+    });
   });
 });
 
@@ -187,5 +197,33 @@ describe("E6#73d（C4）：行内 DOM 序 = 视觉序", () => {
     before(childClasses(item), "notif-main-row", "notif-details-row");
     // 文本顺序 = 屏幕顺序（拖选复制的顺序）：消息在前、来源与按钮在后
     expect(item.textContent).toMatch(/演示消息[\s\S]*来源: demo-plugin[\s\S]*演示动作/);
+  });
+});
+
+/**
+ * E6#73l：池挂载即播当前状态——**壳侧镜像的崩溃复位**。
+ *
+ * 池崩（crash-recovery 分支 1）= 整个渲染进程重来 = 本组件全新挂载、三态初值 `idle`；可壳侧那份
+ * 镜像还停在上一个池留下的值上。旧写法「首帧跳过不发」⇒ 镜像卡在 `open` ⇒ 壳侧 `autoOpen` 的
+ * 「面板已开」门禁恒为假 ⇒ 此后重要通知再也不自动弹，界面上完全看不出哪里坏了。
+ * 断言只能落在「挂载那一帧到底发没发」上——这正是修的那一行。
+ */
+describe("E6#73l：挂载即播状态（壳侧镜像崩溃复位）", () => {
+  it("mount 就发 notif:panel { idle, 不认账 }——不跳过首帧", () => {
+    withEmit((emitted) => {
+      render(<StatusBarZone statusBar={{ items: [], notif: NOTIF }} />);
+      expect(emitted).toEqual([["notif:panel", { state: "idle", markSeen: false }]]);
+    });
+  });
+
+  it("点铃铛开面板 → 镜像跟着走到 open（且认账）——挂载那一发不是终点", () => {
+    withEmit((emitted) => {
+      const { container } = render(<StatusBarZone statusBar={{ items: [], notif: NOTIF }} />);
+      fireEvent.click(container.querySelector(".status-bar-notif-btn")!);
+      expect(emitted).toEqual([
+        ["notif:panel", { state: "idle", markSeen: false }],
+        ["notif:panel", { state: "open", markSeen: true }],
+      ]);
+    });
   });
 });

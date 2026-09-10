@@ -441,5 +441,6 @@
   "安装超时——{{n}} 分钟无进展，已释放队列位": "Install timed out — no progress for {{n}} minutes, queue slot released",
   "卸载中...": "Uninstalling...",
   "该插件正在卸载中": "This plugin is currently being uninstalled",
-  "卸载超时——{{n}} 分钟无进展": "Uninstall timed out — no progress for {{n}} minutes"
+  "卸载超时——{{n}} 分钟无进展": "Uninstall timed out — no progress for {{n}} minutes",
+  "上次有 {{count}} 项安装未完成": "{{count}} install(s) from last time weren't finished"
 }

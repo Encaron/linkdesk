@@ -12,6 +12,7 @@ import { useTranslation } from "react-i18next";
 import { pushToast, clearDismissedState } from "../core/services/ui/NotificationService";
 import { registerFallbackThemes, normalizeThemeValue } from "../core/services/ui/ThemeEngine";
 import { initPluginLoader, startPluginWatcher, stopPluginWatcher, getLoadedPluginManifests } from "../pluginLoader/loader";
+import { consumeUnfinishedInstallJobs } from "../pluginLoader/lifecycle/install-queue";
 import { factorySlots } from "../core/services/bootstrap/FactorySlots";
 import {
   getConfigurationValue, setConfigurationValue, resetConfigurationValue, inspectConfiguration,
@@ -232,6 +233,24 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
       };
       debugWindow.__pushToast = pushToast;
       debugWindow.__clearDismissed = clearDismissedState;
+
+      // E6#73l（18 档 §八⑮）：上次没收尾的安装——**不恢复进度条目**（那些任务早随进程结束），
+      // 只如实落一条回执。两条来路一个机制：壳崩全窗口重建（crash-recovery 分支 2）与用户直接
+      // 关掉软件——两者的共同点是「壳渲染进程换了一个」，job 表（住在壳里）随之清零。
+      // 位置选在 initAll 之后：插件已加载、通知 store 已就绪，且此时残留快照不会再被新 job 覆写。
+      // 常驻（`ttl: 0`）：TTL 到点的条目是**整条出表**不是转成已读，6 秒后没人看见就等于没说。
+      try {
+        const unfinished = await consumeUnfinishedInstallJobs();
+        if (unfinished > 0) {
+          pushToast({
+            message: i18n.t("上次有 {{count}} 项安装未完成", { count: unfinished }),
+            severity: "warning",
+            ttl: 0,
+          });
+        }
+      } catch (e) {
+        console.error("[startup] 读取未完成的安装任务失败:", e);
+      }
 
       setReady(true);
     })();

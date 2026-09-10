@@ -428,3 +428,72 @@ describe("install-queue——槽级看门狗（E6#73q）", () => {
     expect(stateOf(events, ids[3])).toBe("running");
   });
 });
+
+/**
+ * E6#73l：启动消费残留快照——「上次有 N 项安装未完成」。
+ *
+ * 病根：job 表住在壳渲染进程里（§五 I.2 定案——槽锁归壳才能扛过池崩）。Shell 崩（crash-recovery
+ * 分支 2 全窗口重建）或用户直接关软件 ⇒ 表随进程消失，重启后那些条目**无影无踪**，用户不知道
+ * 自己有几件事没干完。本档的契约是「只报数、不恢复条目」——画一条停在 45% 的僵尸进度条是把
+ * 死人当活的（§八⑮）。下面钉三件事：报得准 / 读一次即消费 / 不炸。
+ */
+describe("E6#73l：未完成安装的残留快照", () => {
+  /** 按真实 StorageService 写快照（键名由它派生，测试不手写键——手写就等于把契约抄第二份） */
+  async function seed(jobs: unknown): Promise<void> {
+    const { write } = await import("../../core/services/configuration/StorageService");
+    await write("install-jobs", { updatedAt: "2026-01-01T00:00:00.000Z", jobs });
+  }
+
+  it("报出未结算的条数——已结算的不算（快照本就只写未结算的，这条守形状）", async () => {
+    await seed([
+      { jobId: "job-a", pluginId: "demo-a", state: "running" },
+      { jobId: "job-b", pluginId: "demo-b", state: "queued" },
+      { jobId: "job-c", pluginId: "demo-c", state: "settled" },
+    ]);
+    const { mod } = await bootQueue();
+    await expect(mod.consumeUnfinishedInstallJobs()).resolves.toBe(2);
+  });
+
+  it("读一次即消费——第二次启动不再重播同一条（快照被清空）", async () => {
+    await seed([{ jobId: "job-a", pluginId: "demo-a", state: "running" }]);
+    const first = await bootQueue();
+    await expect(first.mod.consumeUnfinishedInstallJobs()).resolves.toBe(1);
+
+    // 模拟「再启一次」——全新模块实例（job 表与去重 Promise 都归零），快照已被上一轮清空
+    const second = await bootQueue();
+    await expect(second.mod.consumeUnfinishedInstallJobs()).resolves.toBe(0);
+  });
+
+  it("已结算的条目 / 空快照 / 快照不存在 → 0（一条都不该冒出来）", async () => {
+    const { mod } = await bootQueue();
+    await expect(mod.consumeUnfinishedInstallJobs()).resolves.toBe(0); // 从没写过
+
+    await seed([]);
+    const empty = await bootQueue();
+    await expect(empty.mod.consumeUnfinishedInstallJobs()).resolves.toBe(0);
+
+    await seed([{ jobId: "job-a", state: "settled" }]);
+    const settled = await bootQueue();
+    await expect(settled.mod.consumeUnfinishedInstallJobs()).resolves.toBe(0);
+  });
+
+  it("快照被写坏（不是数组 / 元素是垃圾）→ 一条都不报，也不炸（磁盘上那份可能是旧版本写的或被改坏过）", async () => {
+    await seed("不是数组");
+    const bad = await bootQueue();
+    await expect(bad.mod.consumeUnfinishedInstallJobs()).resolves.toBe(0);
+
+    // 从坏数据里数出一个数 = 拿编出来的数字当事实。纪律同「读不出来就不说」：说不准就闭嘴。
+    await seed([null, 42, "demo"]);
+    const junk = await bootQueue();
+    await expect(junk.mod.consumeUnfinishedInstallJobs()).resolves.toBe(0);
+  });
+
+  it("StrictMode 双调（同一实例）返回**同一个** Promise——否则读两次、弹两条", async () => {
+    await seed([{ jobId: "job-a", pluginId: "demo-a", state: "running" }]);
+    const { mod } = await bootQueue();
+    const p1 = mod.consumeUnfinishedInstallJobs();
+    const p2 = mod.consumeUnfinishedInstallJobs();
+    expect(p1).toBe(p2);
+    await expect(p1).resolves.toBe(1);
+  });
+});
