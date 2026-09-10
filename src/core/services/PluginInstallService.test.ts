@@ -271,3 +271,48 @@ describe("reconcileInstalledLedger（loader 启动接线：userData 家 → 账�
     expect(storage.write).not.toHaveBeenCalled();
   });
 });
+
+/**
+ * E6#73q：账本写串行化——`add`/`markRemoved`/`reconcile*` 都是读-改-写。
+ * 病根：7 路安装并发（N=3 槽放开后更是常态）时各自读到同一份旧账本、各自写回，
+ * **后者覆盖前者 → 最多丢 6 条账本**（插件装了但「已安装」判定说没有）。修法 = 一条 Promise 链。
+ */
+describe("账本写串行化（E6#73q 并发不丢条目）", () => {
+  it("7 路并发 add（含慢读）——全部落账，无丢失更新", async () => {
+    // 让 read 慢一拍：不串行化时 7 个 add 会全部读到同一份空账本，只有最后一个的写生效
+    const realRead = storage.read.getMockImplementation()!;
+    storage.read.mockImplementation(async (key: string) => {
+      await new Promise((r) => setTimeout(r, 1));
+      return realRead(key);
+    });
+
+    const ids = [1, 2, 3, 4, 5, 6, 7].map((i) => `demo-install-${i}`);
+    await Promise.all(ids.map((id) => add(id, "1.0.0", "marketplace")));
+
+    const ledger = await getInstalled();
+    expect(Object.keys(ledger).sort()).toEqual([...ids].sort());
+    for (const id of ids) expect(await isInstalled(id)).toBe(true);
+  });
+
+  it("并发 add + markRemoved 交错——两者都生效（不互相覆盖）", async () => {
+    await add("demo-target", "1.0.0", "user");
+    const other = [1, 2, 3].map((i) => `demo-other-${i}`);
+    await Promise.all([...other.map((id) => add(id, "1.0.0", "marketplace")), markRemoved("demo-target")]);
+
+    const ledger = await getInstalled();
+    expect(ledger["demo-target"].removed).toBe(true);
+    for (const id of other) expect(ledger[id]).toBeDefined();
+  });
+
+  it("单次写失败不毒化写链——本次如实 reject，后续写照常成功", async () => {
+    const realWrite = storage.write.getMockImplementation()!;
+    storage.write.mockImplementationOnce(async () => { throw new Error("磁盘满了"); });
+    // 失败如实上报（调用方该知道这次没写进去），但链尾已吞异常——不能让后续写全部连坐
+    await expect(add("demo-boom", "1.0.0", "user")).rejects.toThrow("磁盘满了");
+    storage.write.mockImplementation(realWrite as never);
+
+    await add("demo-after", "1.0.0", "user");
+    expect(await isInstalled("demo-after")).toBe(true);
+    expect(await isInstalled("demo-boom")).toBe(false);
+  });
+});

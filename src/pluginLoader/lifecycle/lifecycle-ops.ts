@@ -37,7 +37,17 @@ import { loadPlugin } from "../resolution/runtime";
 import { parseManifestJson } from "../jsonc"; // E6#55：作者 plugin.json JSONC——唯一解析入口
 import { normalizePath } from "../../core/utils/path/pathUtils"; // 跨 IPC 路径归一化唯一正源（no-raw-path-replace）
 // E6#13b/c（段 B）：packageOps 签名引用 PluginUpdateCheckResult——types.ts 契约面
-import type { PluginUpdateCheckResult } from "../../core/api/linkdesk-api/types";
+// E6#73q：PluginInstallRequestOpts——安装请求侧身份（pluginId/displayName/origin）
+import type { PluginInstallRequestOpts, PluginInstallResult, PluginUpdateCheckResult } from "../../core/api/linkdesk-api/types";
+// E6#73q（18 档 §五 I.2）：壳侧 job 表 + N 槽限流 + FIFO——槽锁下沉到 installPlugin（两条腿共用）
+import {
+  acquireInstallSlot,
+  beginInstallJob,
+  identifyInstallJob,
+  settleInstallJob,
+  touchInstallJob,
+  waitInstallJob,
+} from "./install-queue";
 
 /* ═══════════════════════════════════════════════════════════
    Phase 4.3 生命周期 API——安装/卸载/禁用/启用
@@ -239,6 +249,13 @@ export function emitInstallProgress(stage: string, pluginId?: string, message?: 
   } catch { /* 广播失败不阻断安装 */ }
 }
 
+/** job 内进度广播——E6#73q：同一帧顺带重置该 job 的槽级空闲看门狗（进度即「还活着」的唯一证据）。
+ *  两条安装流（包源/目录源）共用，故抽此一处；漏调用 = 慢而健康的安装在 10 分钟后被误判楔死。 */
+function jobProgress(jobId: string, stage: string, pluginId?: string, message?: string): void {
+  touchInstallJob(jobId);
+  emitInstallProgress(stage, pluginId, message);
+}
+
 /** 磁盘落点判定——src（resolvePath 回传）是否在 home（env.userPluginsDir 等）内。
  *  🔴 前缀比对必须走 normalizePath：resolvePath（IPC 回传）是正斜杠，home（主进程 path.join）是反斜杠——
  *  直接 startsWith 恒 false，userData 卸载误走 .disabled 坟场（2026-09-05 实机门禁实证）。uninstall/update 共用。 */
@@ -282,22 +299,48 @@ export function packageOps(): {
 /**
  * 安装插件（路由入口，E6#11/#13）：目录源 → 既有复制流零回归；url/.linkdesk-plugin 包源 →
  * 主进程 download→extract 落 {userData}/plugins/<id>/（2026-09-05 塌平单根）→ 账本 → loadPlugin → 广播。
+ *
+ * E6#73q（18 档 §五 I.2）：**全队列唯一入口**——槽锁在本层（不是 installWithProgress 别名上：
+ * 目录源走的是 install 这一条腿，只挂别名会漏）。两条腿同一条队列、同一把信号量、同一个数。
+ * 同插件已在队列/在跑 → 去重（不建第二行），本调用等它装完返回同一个结果——「点两下」不是两件事。
  */
 export async function installPlugin(
   sourcePath: string,
-  opts?: { ledgerSource?: "user" | "marketplace" },
-): Promise<{ success: boolean; pluginId?: string; version?: string; needRestart?: boolean; error?: string }> {
-  if (isPackageSource(sourcePath)) {
-    return installPackageFromSource(sourcePath, opts);
+  opts?: PluginInstallRequestOpts,
+): Promise<PluginInstallResult> {
+  const job = beginInstallJob({
+    pluginId: opts?.pluginId,
+    displayName: opts?.displayName,
+    origin: opts?.origin,
+  });
+  if (job.duplicate) {
+    const outcome = await waitInstallJob(job.jobId);
+    return outcome ?? { success: false, error: `插件 "${opts?.pluginId ?? sourcePath}" 正在安装中` };
   }
-  return installPluginFromDirectory(sourcePath);
+
+  await acquireInstallSlot(job.jobId);
+  let result: PluginInstallResult;
+  try {
+    result = isPackageSource(sourcePath)
+      ? await installPackageFromSource(sourcePath, opts, job.jobId)
+      : await installPluginFromDirectory(sourcePath, job.jobId);
+  } catch (e) {
+    // 两条流各自 catch（错误文案更具体）；此处是兜底——绝不让 job 停在「在跑」永不出终态
+    result = { success: false, error: errMsg(e) };
+  }
+  settleInstallJob(
+    job.jobId,
+    !result.success ? "failed" : result.parked ? "parked" : "success",
+    result,
+  );
+  return result;
 }
 
 /** 包安装流显式名（#13e 壳面）——同一流水线同一进度广播（installPlugin 已全程 emit stage，等价别名）。 */
 export function installWithProgress(
   sourcePath: string,
-  opts?: { ledgerSource?: "user" | "marketplace" },
-): Promise<{ success: boolean; pluginId?: string; version?: string; needRestart?: boolean; error?: string }> {
+  opts?: PluginInstallRequestOpts,
+): Promise<PluginInstallResult> {
   return installPlugin(sourcePath, opts);
 }
 
@@ -310,10 +353,18 @@ async function loadInstalledPlugin(
   pluginId: string,
   version: string,
   msgs: { success: string; needRestart: string },
-): Promise<{ success: true; pluginId: string; version: string; needRestart?: boolean }> {
-  emitInstallProgress("loading", pluginId);
+  jobId: string,
+): Promise<PluginInstallResult> {
+  jobProgress(jobId, "loading", pluginId);
   try {
     await loadPlugin(pluginId, "install");
+    // E6#73q（§五 I.6⑦）：终态第三类「已安装但缺依赖」——loadPlugin 走 parkForDependencies 提前返回
+    // （不发 onDidInstall），文件真落盘但插件**不可用**。这里无条件报「已安装：X v1.0」是撒谎
+    // （装了但不可用会渲染成绿色成功行）⇒ 不弹成功 toast，结果带 parked 交队列落第三类终态。
+    if (getLoadDiagnostics(pluginId).pendingReason) {
+      emitInstallProgress("done", pluginId);
+      return { success: true, pluginId, version, parked: true };
+    }
     pushToast({ message: msgs.success, source: pluginId, ttl: TOAST_TTL_SUCCESS, severity: "info" });
     emitInstallProgress("done", pluginId);
     return { success: true, pluginId, version };
@@ -340,17 +391,19 @@ async function loadInstalledPlugin(
  */
 async function installPackageFromSource(
   sourcePath: string,
-  opts?: { ledgerSource?: "user" | "marketplace" },
-): Promise<{ success: boolean; pluginId?: string; version?: string; needRestart?: boolean; error?: string }> {
+  opts: PluginInstallRequestOpts | undefined,
+  jobId: string,
+): Promise<PluginInstallResult> {
   const source = sourcePath.trim();
-  emitInstallProgress("validating");
+  jobProgress(jobId, "validating");
   try {
     const ops = packageOps();
-    // 1) 包定位：http(s) → 主进程 download 到 {userData}/tmp/<原包名>；磁盘 zip → 原路径直读
+    // 1) 包定位：http(s) → 主进程 download 到 {userData}/tmp/<原包名>.<唯一后缀>（E6#73q 并发不撞名）；
+    //    磁盘 zip → 原路径直读
     let zipPath: string;
     let downloaded = false;
     if (/^https?:\/\//i.test(source)) {
-      emitInstallProgress("downloading", undefined, "下载插件包");
+      jobProgress(jobId, "downloading", opts?.pluginId, "下载插件包");
       const r = await ops.packageDownload(source);
       zipPath = r.zipPath;
       downloaded = true;
@@ -362,7 +415,7 @@ async function installPackageFromSource(
     }
 
     // 2) 主进程解压到 {userData}/plugins/<id>/（2026-09-05 塌平单根；zip-slip/pluginId 互验同 boot ingest；已存在拒绝）
-    emitInstallProgress("extracting", undefined, "解压插件包");
+    jobProgress(jobId, "extracting", opts?.pluginId, "解压插件包");
     let extracted: { pluginId: string; version: string; targetDir: string };
     try {
       extracted = await ops.packageExtract(zipPath);
@@ -373,6 +426,11 @@ async function installPackageFromSource(
       }
     }
     const { pluginId, version, targetDir } = extracted;
+    const displayName = await manifestNameOf(targetDir, pluginId);
+
+    // E6#73q：真 id 此刻才从包内 manifest 裁决出来——回填 job 身份，池侧行才从「未知」变成真名
+    // （调用方传了 pluginId 则此处是同一值的幂等刷新；显示名只有壳读过包才知道）
+    identifyInstallJob(jobId, { pluginId, displayName });
 
     // 3) 账本 add（#12b 欠账还清——安装流消费 add；磁盘事实在 user/ 子目录 → 源默认 user；
     //    market UI 未来可传 marketplace）
@@ -385,16 +443,15 @@ async function installPackageFromSource(
 
     // 4) E5.7#48：文件已落盘——通知主进程重扫三表（无论 loadPlugin 是否成功）
     window.linkdesk?.pluginManager?.notifyManifestChanged?.();
-    const displayName = await manifestNameOf(targetDir, pluginId);
 
     // 5) loadPlugin（安装 reason——onDidInstall 消费端 toast + 图标顺序 + plugin:installed 广播）——收尾块与目录源共用 loadInstalledPlugin
     return loadInstalledPlugin(pluginId, version, {
       success: `已安装：${displayName} v${version}`,
       needRestart: `已安装：${displayName} v${version}。视图刷新后生效。`,
-    });
+    }, jobId);
   } catch (e) {
     const msg = errMsg(e);
-    emitInstallProgress("error", undefined, msg);
+    jobProgress(jobId, "error", undefined, msg);
     return { success: false, error: msg };
   }
 }
@@ -425,8 +482,8 @@ async function manifestNameOf(targetDir: string, pluginId: string): Promise<stri
  *     （marketplace 安装按钮实时阶段文案）。
  * E6#13（1.2-5）：保留为目录源内部实现——SearchView 目录安装唯一真调用方零回归；包源走上方路由。
  */
-async function installPluginFromDirectory(sourcePath: string): Promise<{ success: boolean; pluginId?: string; version?: string; needRestart?: boolean; error?: string }> {
-  emitInstallProgress("validating");
+async function installPluginFromDirectory(sourcePath: string, jobId: string): Promise<PluginInstallResult> {
+  jobProgress(jobId, "validating");
   try {
     // E5#32：文件操作走 linkdesk.filesystem——bridge 为唯一入口
     const manifestPath = `${sourcePath}/plugin.json`;
@@ -441,6 +498,8 @@ async function installPluginFromDirectory(sourcePath: string): Promise<{ success
     }
     const sourceDirName = sourcePath.split(/[\\/]/).pop() || sourcePath;
     const { pluginId, version, name } = validateInstallManifest(parsedManifest, sourceDirName);
+    // E6#73q：目录源在复制**之前**就知道真名（manifest 已解析）——job 身份此刻落定
+    identifyInstallJob(jobId, { pluginId, displayName: name });
 
     const env = await linkdesk().env.get();
     const destDir = `${env.appPluginsDir}/${pluginId}`; // 2026-09-05 塌平单根（原 appPluginsDir/user/<id>——目录源 dev 安装落 app 树平铺位）
@@ -457,7 +516,7 @@ async function installPluginFromDirectory(sourcePath: string): Promise<{ success
       if (conflict) throw new Error(`${name}: ${conflict}`);
     }
 
-    emitInstallProgress("copying", pluginId);
+    jobProgress(jobId, "copying", pluginId);
     await linkdesk().filesystem.copy(sourcePath, destDir);
     // 消毒 manifest——目录源（dev 树安装）强制 distribution=user, core=false（E6#18a：core:true 无行为特权，
     // 只剩 UI 藏钮语义——目录/开发安装不冒充发货件；随车 zip 走包安装流真传 core，见 plugin.json 声明）
@@ -481,10 +540,10 @@ async function installPluginFromDirectory(sourcePath: string): Promise<{ success
       // 改指准确主构建命令 npm run build（E6#15f 后主 vite.config 不再为插件打 dist/plugins 命名 chunk，
       // 插件产物由各自独立 build 产出；此提示仅为「壳侧源码树安装需重跑构建才生效」语义保留）
       needRestart: `已安装：${name}。运行 npm run build 后生效。`,
-    });
+    }, jobId);
   } catch (e) {
     const msg = errMsg(e);
-    emitInstallProgress("error", undefined, msg);
+    jobProgress(jobId, "error", undefined, msg);
     return { success: false, error: msg };
   }
 }

@@ -30,7 +30,7 @@ import type { ConfigurationChangedPayload, PluginStateChangedPayload } from '../
 import type { BridgeRequestPayload } from '../src/core/types/ipc/bridge';
 import type { PoolQuickPickAction, PoolDialogAction, PoolFloatingPanelAction, MemoryPressureData, PoolReadyPayload, CreatePoolWindowRequest, PoolWindowClosedPayload, PoolWindowBoundsPayload, TabBarRectsPayload, ShellTabDragPosition, AdsorbHintPayload, AdsorbIndexPayload } from '../src/core/types/ipc/poolActions';
 import type { FileChangeEvent } from '../src/core/services/files/FileService';
-import type { MenuItemDescriptor } from '../src/core/api/linkdesk-api/types'; // E5.8#20：契约语义类型——menu.getItems 返回面
+import type { MenuItemDescriptor, PluginInstallRequestOpts } from '../src/core/api/linkdesk-api/types'; // E5.8#20：契约语义类型——menu.getItems 返回面
 // E5.8#1b：keybinding 归一化集中——主进程/壳/池三端共用单一权威源（防 E5.7#79 漂移复发）
 import { keyboardInputToKeyString } from '../src/core/utils/keybindingNormalization.js';
 
@@ -245,8 +245,9 @@ try {
       enable:         (id: string) => ipcRenderer.invoke(IPC.plugins.call, 'enable', id),
       disable:        (id: string) => ipcRenderer.invoke(IPC.plugins.call, 'disable', id),
       uninstall:      (id: string) => ipcRenderer.invoke(IPC.plugins.call, 'uninstall', id),
-      install:        (path: string) => ipcRenderer.invoke(IPC.plugins.call, 'install', path),
-      installWithProgress: (path: string) => ipcRenderer.invoke(IPC.plugins.call, 'installWithProgress', path),
+      // E6#73q：opts = 请求侧身份（pluginId/displayName/origin）——壳侧 job 表按 pluginId 去重 + job 行显示名
+      install:        (path: string, opts?: PluginInstallRequestOpts) => ipcRenderer.invoke(IPC.plugins.call, 'install', path, opts),
+      installWithProgress: (path: string, opts?: PluginInstallRequestOpts) => ipcRenderer.invoke(IPC.plugins.call, 'installWithProgress', path, opts),
       reinstall:      (id: string) => ipcRenderer.invoke(IPC.plugins.call, 'reinstall', id),
       // E6#11c/#13b（段 B）：安全更新 + 只读查更新（pluginManager 路由 → 壳 loader updatePlugin/checkPluginUpdates）
       // E6#33c（锚①）：opts.allowOlder——降级放行（版本下拉选旧版 + F2 确认后传），默认拒 <=

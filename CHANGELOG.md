@@ -3,6 +3,24 @@
 > 每版一条，对标 VS Code changelog。**历史真相源 = [E6 执行清单](docs/02-Electron架构/E6_插件生态与发布/E6-执行清单.md)**（E6 阶段每轮收束细节 + 实机证据全在清单 Batch 注里，此文件只记类别清单）。版本号唯一真值 = `package.json`（不手写第二份，见 [02-产品身份与版本.md](docs/02-Electron架构/E6_插件生态与发布/06-主软件更新/02-产品身份与版本.md) §2.3）。
 > 0.x 阶段（开发期）：一切向后兼容变更走 patch 位；破坏性变更走 minor 位。
 
+## v0.1.30（2026-09-10）
+
+- **feat:E6#73q 安装队列基建——「连点 7 个装 1 丢 6」的闸换成队列（第一批第一步）**
+  - **病根**：今天唯一的闸是 marketplace 的模块级单例 `_installSession`，命中即静默 `return false`——不打日志、不弹 toast、不改 UI。连点 7 个插件 = **装 1 丢 6**，且**详情页那条路完全没闸**（四处「N=1 恒安全」的单例全靠它）
+  - **新增壳侧安装队列**（`src/pluginLoader/lifecycle/install-queue.ts`）：job 表（`jobId` 为全链唯一身份）+ **N=3 槽限流 + 严格 FIFO**（还槽时队首**直接接手**——不先减再加，防两个调用方双计）+ **同 pluginId 去重**（连点两次 = 一次安装，第二调用方等同一个结果）+ **10 分钟空闲槽级看门狗**（挂死的 job 不许永久占 1/3 槽；判据「还在动吗」不是「够快吗」，同 73e 下载层）
+  - **槽锁下沉到 `installPlugin`**：包安装流与目录安装流**共用同一层**（只挂 `installWithProgress` 别名会漏掉目录源那条腿）
+  - **池可达的 job 状态面**：新增公开事件 `plugin:installJobs`（走既有 `window.linkdesk.events` 广播管道，同族先例 `plugin:installProgress`）——插件禁 import 核心，状态只能走公开面；载荷 = 全量快照（不做增量，消费方整表替换）
+  - **落盘快照**：未出结果的 job 写 `{userData}/install-jobs.json`——**这是「上次有 N 项安装未完成」那个 N 的唯一生产者**（E6#73l 读它）
+  - **账本写串行化**（`src/core/services/PluginInstallService.ts`）：`add`/`markRemoved`/`reconcile*` 都是读-改-写，7 路并发各自读到同一份旧账本、各自写回 = **后者覆盖前者，最多丢 6 条账本**（插件装了但「已安装」判定说没有）。修法 = 一条 Promise 链，读-改-写三步入临界区
+  - **下载临时名唯一化**（`electron/services/plugin-download.ts`）：并发后不许两条下载共用同一个临时名——**共用正式名会在 rename→extract 的窗口里把 A 的包换成 B 的（装错插件，静默）**。落盘名 = `<原包名>.dl-<seq>-<ts>` + `stripDownloadUniq` 在 extract / stage-update 两处 `zipBase` 剥回原包名
+    - ⚠️ **不许改纯 `${pluginId}`** 的红线守住：包名本身一个字符没动，只在外层挂可剥后缀（`zipBase` 是 `deriveIdFromZip` 的 pluginId 回退来源）
+    - ⚠️ **主动偏离设计原话（理由留档）**：设计写 `<name>.<jobId>.part`，实际用**下载层自有序号**——`downloadPackage` 被安装流与更新流共用，更新腿没有 jobId，挂在 jobId 上会让更新那条腿失去唯一化；且本服务在主进程、拿不到壳侧 jobId（跨进程）
+  - **契约新增（向后兼容）**：`PluginInstallRequestOpts`（`pluginId`/`displayName`/`origin`）+ `PluginInstallResult.parked`（终态第三类「已安装，等待依赖」——**装上了但不可用，消费方不得渲染成「✓ 已安装」**）
+    - ⚠️ **第二处主动偏离**：请求侧**不带 `jobId`**（设计列了 4 个字段，这里传 3 个）——job 表的单一生产者在壳，让池侧也传 jobId = 一个身份两个生产者；池侧从广播里**认领** jobId
+  - 🔴 **本档结束时仍是 N=1**：`_installSession` **未拆**——拆闸属 E6#73c 第 2 步（开工硬约束「顺序不许反」：先把静默闸换成可见的「等待安装中」回执，再放开并发）。本档只把闸换成队列，**没有造出任何无上限并发窗口**
+  - 未做（随 E6#73o，本档不产出无载体的空壳）：子包占槽 + 反饿死护栏
+  - 新增单测 `install-queue.test.ts` 13 例（FIFO 与槽释放 / 槽位直接交接无超发 / 去重与等待方 / identifyInstallJob 回填后可去重 / 已结算不参与去重 / settle 幂等 / 排队态被结算不留僵尸 / 广播载荷无私有字段外泄 / 落盘快照只写未出结果 / 已完成 job 50 条内存上界 / 看门狗判死并归还槽位 / 心跳重置预算 / 排队态无看门狗）+ 下载唯一化 2 例 + 账本并发串行化 3 例。`npm run check` EXIT=0（134 文件 / 1786 测试）
+
 ## v0.1.29（2026-09-10）
 
 - **fix:E6#73e 安装失败归因与超时——「一次慢网络 = 一次假失败」拆掉**

@@ -7,6 +7,7 @@
 import type {
   PluginListEntry,
   PluginInstallResult,
+  PluginInstallRequestOpts,
   PluginUpdateResult,
   PluginUpdateCheckResult,
   PluginInfoEntry,
@@ -50,9 +51,10 @@ export interface PluginsAPI {
     enable(id: string): Promise<unknown>;
     disable(id: string): Promise<unknown>;
     uninstall(id: string): Promise<unknown>;
-    install(path: string): Promise<PluginInstallResult>;
+    /** E6#73q：opts 携带请求侧身份（pluginId/displayName/origin）——job 表去重 + job 行显示名 */
+    install(path: string, opts?: PluginInstallRequestOpts): Promise<PluginInstallResult>;
     /** E6#13（1.2-5）：url/.linkdesk-plugin 包安装流显式名（installPlugin 路由别名；壳与池 preload 双面同款——池经 plugins:call 代理）。进度走 plugin:installProgress 通道 */
-    installWithProgress?(path: string): Promise<PluginInstallResult>;
+    installWithProgress?(path: string, opts?: PluginInstallRequestOpts): Promise<PluginInstallResult>;
     reinstall(id: string): Promise<unknown>;
     getDisabled(): Promise<PluginInfoEntry[]>;
     getUninstalled(): Promise<PluginInfoEntry[]>;

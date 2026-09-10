@@ -65,9 +65,33 @@ export function downloadNameFromUrl(url: string): string {
   return `pkg-${Date.now()}${BUNDLE_EXT}`;
 }
 
+/** 唯一化后缀标记——`<原包名>.dl-<序号36>-<时间36>`（E6#73q） */
+const UNIQ_SUFFIX_RE = /\.dl-[0-9a-z]+-[0-9a-z]+$/i;
+let _dlSeq = 0;
+
+/** 落盘名唯一化——并发下载（E6#73q 放开 N=3 后）不许共用同一个临时名：两个不同插件的下载 URL
+ *  末段同名（第三方仓库常把包名固定成 `<插件名>.linkdesk-plugin` 之外的通用名）时，共用 `.part`
+ *  会互相截断、共用正式名会在 rename→extract 的窗口里**把 A 的包换成 B 的**（装错插件）。
+ *
+ *  ⚠️ 唯一化**不加在插件 id 上、也不改包名本身**——`zipBase` 是 `deriveBundlePluginId` 的 pluginId
+ *  回退来源（改名破坏裁决），故只是**在外层挂一个可剥的后缀**，剥法由本模块单一拥有
+ *  （`stripDownloadUniq`）。后缀用下载服务自己的序号而非壳侧 jobId：下载腿被安装流与更新流共用，
+ *  更新流没有 install jobId，挂在 jobId 上会让更新那条腿失去唯一化；且本服务在主进程、拿不到壳侧
+ *  jobId（跨进程），自带序号零契约代价。 */
+function uniqueDownloadStem(name: string): string {
+  const base = name.replace(/\.linkdesk-plugin$/i, "");
+  return `${base}.dl-${(++_dlSeq).toString(36)}-${Date.now().toString(36)}`;
+}
+
+/** 剥掉唯一化后缀——`zipBase` 裁决必须拿到**原包名**（消费方：plugin-install-handlers 的
+ *  extract / stage-update 两处 `path.basename(zipPath)`）。非本服务产出的名字原样返回。 */
+export function stripDownloadUniq(basenameNoExt: string): string {
+  return basenameNoExt.replace(UNIQ_SUFFIX_RE, "");
+}
+
 /**
- * 真网络段共享下载：fetch .linkdesk-plugin → {userData}/tmp/<原包名>.part（半截标记）→ 流式写完
- * rename 正式包（01 §四·五：完成才暴露正式名——下载中杀进程只留 .part 半截标记，不冒充完整包）。
+ * 真网络段共享下载：fetch .linkdesk-plugin → {userData}/tmp/<原包名>.<唯一后缀>.part（半截标记）→
+ * 流式写完 rename 正式包（01 §四·五：完成才暴露正式名——下载中杀进程只留 .part 半截标记，不冒充完整包）。
  * 失败/中断 → 自清 .part（缝隙 B1：不留半截垃圾），rethrow。Content-Length 可得时经 onProgress 推 percent。
  * 返回 rename 后正式包路径——zipBase（pluginId 回退裁决）与原包名一致，extract 直读。
  *
@@ -113,8 +137,11 @@ async function downloadOnce(
   const name = downloadNameFromUrl(url);
   const tmp = downloadTmpDir();
   await fs.mkdir(tmp, { recursive: true });
-  const partPath = path.join(tmp, `${name}${PART_SUFFIX}`);
-  const zipPath = path.join(tmp, name);
+  // E6#73q：并发下载各持唯一落盘名——`<原包名>.dl-<seq>-<ts>`（见 uniqueDownloadStem 注释）。
+  // 剥离归 stripDownloadUniq，消费方（extract/stage-update）的 zipBase 裁决不受影响。
+  const stem = uniqueDownloadStem(name);
+  const partPath = path.join(tmp, `${stem}${PART_SUFFIX}`);
+  const zipPath = path.join(tmp, `${stem}${BUNDLE_EXT}`);
 
   onProgress?.(`开始下载 ${url}`);
 

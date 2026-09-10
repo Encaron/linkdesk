@@ -5,16 +5,21 @@
  */
 
 import { getCommands } from "../../../registry/commands/CommandRegistry";
-import type { PluginUpdateResult, PluginUpdateCheckResult } from "../../../api/linkdesk-api/types";
+import type {
+  PluginInstallRequestOpts,
+  PluginUpdateResult,
+  PluginUpdateCheckResult,
+} from "../../../api/linkdesk-api/types";
 
 // E5#43：接口反转——核心定义 PluginManagementAPI，loader 注册自己。
 // 桥不知道加载器的存在，只知道"有人注册了这些能力"。
 export interface PluginManagementAPI {
   enablePlugin(id: string): Promise<{ success: boolean; error?: string }>;
   disablePlugin(id: string): Promise<{ success: boolean; error?: string }>;
-  installPlugin(id: string): Promise<{ success: boolean; error?: string }>;
+  // E6#73q：opts = 请求侧身份（pluginId/displayName/origin）——job 表去重 + job 行显示名
+  installPlugin(id: string, opts?: PluginInstallRequestOpts): Promise<{ success: boolean; error?: string }>;
   // E6#13（1.2-5）：url/.linkdesk-plugin 包安装流显式名（installPlugin 路由别名——同一流水线同一进度广播）
-  installWithProgress(sourcePath: string): Promise<{ success: boolean; error?: string }>;
+  installWithProgress(sourcePath: string, opts?: PluginInstallRequestOpts): Promise<{ success: boolean; error?: string }>;
   uninstallPlugin(id: string): Promise<{ success: boolean; error?: string }>;
   reinstallPlugin(id: string): Promise<{ success: boolean; error?: string }>;
   // E6#11c（段 B）：安全更新（#11c 原子 + unloadPlugin 机械路径）——opts: { catalogUrl? | url? }
@@ -71,10 +76,11 @@ export async function handlePluginManagerMethod(method: string, args: unknown[])
     case "uninstall":
       return _pluginAPI!.uninstallPlugin(args[0] as string);
     case "install":
-      return _pluginAPI!.installPlugin(args[0] as string);
+      return _pluginAPI!.installPlugin(args[0] as string, args[1] as PluginInstallRequestOpts | undefined);
     case "installWithProgress":
       // E6#13（1.2-5）：显式包安装流名——同 installPlugin 路由（目录源/包源自适应）；选调用方喂 url/zip
-      return _pluginAPI!.installWithProgress(args[0] as string);
+      // E6#73q：args[1] = 请求侧身份（pluginId/displayName/origin）
+      return _pluginAPI!.installWithProgress(args[0] as string, args[1] as PluginInstallRequestOpts | undefined);
     case "reinstall":
       return _pluginAPI!.reinstallPlugin(args[0] as string);
     case "update":

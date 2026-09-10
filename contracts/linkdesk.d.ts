@@ -1124,6 +1124,19 @@ export interface PluginListEntry {
     /** 缺依赖挂起原因——marketplace 显示 PENDING 徽标 + 详情提示条（E5.8#15.5） */
     pendingReason?: string;
 }
+/** E6#73q：安装请求侧身份——job 表按 pluginId 去重、job 行要显示名，而两者都只有池侧知道
+ *  （显示名今天只存在于池侧目录 store，壳拿不到）。
+ *  jobId **不在这里**：它是壳侧 job 表的产物（单一生产者），池侧从 `plugin:installJobs` 广播里认领。 */
+export interface PluginInstallRequestOpts {
+    /** 账本来源（add 的 source）；缺省 user */
+    ledgerSource?: "user" | "marketplace";
+    /** 插件 id——job 表去重键 + 广播载荷的 pluginId；池侧目录条目已知者传入 */
+    pluginId?: string;
+    /** 显示名——job 行文案；不传则退化为 pluginId */
+    displayName?: string;
+    /** job 出身——行 = 一次用户动作（user，缺省）；插件拖来的依赖（dependency）藏在那一行里 */
+    origin?: "user" | "dependency";
+}
 /** E5.7#81：安装结果——success:false 时 error 为中文失败原因（校验 / 版本冲突 / 复制失败）。
  *  安装进度事件：events.on("plugin:installProgress", ({ stage, pluginId, message }) => ...)
  *  stage: validating | copying | loading | done | error
@@ -1136,6 +1149,10 @@ export interface PluginInstallResult {
     version?: string;
     needRestart?: boolean;
     error?: string;
+    /** E6#73q（18 档 §五 I.6⑦）：第三类终态——**已安装但缺依赖**（装上去了，插件在列表里，但不可用）。
+     *  为真时 success 也是 true（文件真落盘了），但消费方**不得渲染成「✓ 已安装」**——那是撒谎。
+     *  job 行显示「已安装但缺依赖：{名}」。 */
+    parked?: boolean;
 }
 /** 禁用/卸载列表条目——loader getDisabledPluginInfo/getUninstalledPluginInfo 序列化形状（PluginListSubset 的再子集）
  *  E6#30.5b：core 旗标透传——list() EXCLUDES 禁用插件，禁用态详情页卸载钮守 E6#18「core:true 详情页不画」
@@ -1204,9 +1221,10 @@ export interface PluginsAPI {
         enable(id: string): Promise<unknown>;
         disable(id: string): Promise<unknown>;
         uninstall(id: string): Promise<unknown>;
-        install(path: string): Promise<PluginInstallResult>;
+        /** E6#73q：opts 携带请求侧身份（pluginId/displayName/origin）——job 表去重 + job 行显示名 */
+        install(path: string, opts?: PluginInstallRequestOpts): Promise<PluginInstallResult>;
         /** E6#13（1.2-5）：url/.linkdesk-plugin 包安装流显式名（installPlugin 路由别名；壳与池 preload 双面同款——池经 plugins:call 代理）。进度走 plugin:installProgress 通道 */
-        installWithProgress?(path: string): Promise<PluginInstallResult>;
+        installWithProgress?(path: string, opts?: PluginInstallRequestOpts): Promise<PluginInstallResult>;
         reinstall(id: string): Promise<unknown>;
         getDisabled(): Promise<PluginInfoEntry[]>;
         getUninstalled(): Promise<PluginInfoEntry[]>;

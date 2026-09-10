@@ -135,6 +135,22 @@ export function reconcileDiff(
 
 /* ── I/O 面（owner 唯一读写；走 StorageService 通用 key→${key}.json fallback 落 {userData}） ── */
 
+/**
+ * 写串行化（E6#73q，18 档 §五 I.6⑥）——`add`/`markRemoved`/`reconcileInstalledLedger` 都是
+ * **读-改-写**：7 路安装并发时各自读到同一份旧账本、各自写回，**后者覆盖前者 → 最多丢 6 条账本**。
+ * 修法 = 一条 Promise 链：每次写操作挂在上一次之后，读-改-写三步入临界区，不再交错。
+ *
+ * 不加锁对象、不引依赖、不排队到下一 tick——链尾吞掉异常（前一次失败不能让后续写全部连坐）。
+ * 单实例（壳渲染进程）内的串行化足够：账本 owner 只有本模块，主进程不碰。
+ */
+let _writeChain: Promise<unknown> = Promise.resolve();
+
+function serialized<T>(op: () => Promise<T>): Promise<T> {
+  const run = _writeChain.then(op, op);
+  _writeChain = run.catch(() => { /* 单次失败不阻塞后续写 */ });
+  return run;
+}
+
 async function readLedger(): Promise<InstalledLedger> {
   try {
     const data = await storageRead<InstalledLedger>(LEDGER_KEY);
@@ -162,31 +178,35 @@ export async function add(
   version: string,
   source: InstalledPluginEntry["source"],
 ): Promise<InstalledLedger> {
-  const ledger = await readLedger();
-  const existing = ledger[pluginId];
-  ledger[pluginId] = {
-    version,
-    installedAt: existing?.installedAt ?? new Date().toISOString(),
-    source,
-  };
-  await writeLedger(ledger);
-  return ledger;
+  return serialized(async () => {
+    const ledger = await readLedger();
+    const existing = ledger[pluginId];
+    ledger[pluginId] = {
+      version,
+      installedAt: existing?.installedAt ?? new Date().toISOString(),
+      source,
+    };
+    await writeLedger(ledger);
+    return ledger;
+  });
 }
 
 /** 卸载墓碑化（E6#18c）——任意来源卸载：目录删由调用方做，账本保条目 + removed:true（历史不销）。
  *  无既有条目（极端：crash 窗口期未及 reconcile）→ upsert 占位墓碑（0.0.0 版）——否则种子腿
  *  把该 id 当「从未装过」首启重铺 = 复活缝。 */
 export async function markRemoved(pluginId: string): Promise<InstalledLedger> {
-  const ledger = await readLedger();
-  const existing = ledger[pluginId];
-  ledger[pluginId] = {
-    version: existing?.version ?? "0.0.0",
-    installedAt: existing?.installedAt ?? new Date().toISOString(),
-    source: existing?.source ?? "user",
-    removed: true,
-  };
-  await writeLedger(ledger);
-  return ledger;
+  return serialized(async () => {
+    const ledger = await readLedger();
+    const existing = ledger[pluginId];
+    ledger[pluginId] = {
+      version: existing?.version ?? "0.0.0",
+      installedAt: existing?.installedAt ?? new Date().toISOString(),
+      source: existing?.source ?? "user",
+      removed: true,
+    };
+    await writeLedger(ledger);
+    return ledger;
+  });
 }
 
 /** 市场「已安装」判断（吸收 E6#10c）——E6#18f：在账本 && !removed（墓碑不显「已装」） */
@@ -207,11 +227,13 @@ export async function getSource(pluginId: string): Promise<InstalledPluginEntry[
 export async function reconcileInstalledLedger(
   entries: readonly PluginDiscoveryEntry[],
 ): Promise<{ added: string[]; updated: string[]; restored: string[]; removed: string[] }> {
-  const current = await readLedger();
-  const discovered = selectUserDataPlugins(entries);
-  const { next, added, updated, restored, removed } = reconcileDiff(current, discovered);
-  if (added.length > 0 || updated.length > 0 || restored.length > 0 || removed.length > 0) {
-    await writeLedger(next);
-  }
-  return { added, updated, restored, removed };
+  return serialized(async () => {
+    const current = await readLedger();
+    const discovered = selectUserDataPlugins(entries);
+    const { next, added, updated, restored, removed } = reconcileDiff(current, discovered);
+    if (added.length > 0 || updated.length > 0 || restored.length > 0 || removed.length > 0) {
+      await writeLedger(next);
+    }
+    return { added, updated, restored, removed };
+  });
 }

@@ -32,7 +32,8 @@ import { IpcBridge } from "../ipc-bridge.js";
 import { loggedHandle } from "../invoke-log.js";
 import { deriveBundlePluginId, extractZip, isSafePluginId, openPluginZip } from "../../plugins/bundle-zip.js";
 // E6#31a：真网络段下载 = plugin-download 服务（.part 生命周期单复本——handler 只引用，不重写 fetch/进度）
-import { downloadPackage, downloadTmpDir } from "../../services/plugin-download.js";
+// E6#73q：下载落盘名带唯一化后缀（并发 N=3 防同名互截）——zipBase 裁决前先剥后缀拿回原包名
+import { downloadPackage, downloadTmpDir, stripDownloadUniq } from "../../services/plugin-download.js";
 import type { PluginManifest } from "../../../src/core/api/types.js";
 // E6#13b/c（段B）：主进程与壳共用同一 semver 比较源（单复本——全仓唯一 compareVersions）+ 同一 jsonc 解析源
 // E6#33c（锚①）：updateTargetDirection——更新目标版本方向判定单复本（upgrade/downgrade/same，降级放行语义）
@@ -113,7 +114,8 @@ export function registerPluginInstallHandlers(): void {
       throw new Error("不是有效的 .linkdesk-plugin 包——顶层需含可解析的 plugin.json");
     }
     const { manifest, wrapperPrefix } = opened;
-    const zipBase = path.basename(zipPath).replace(/\.linkdesk-plugin$/i, "");
+    // E6#73q：先剥下载唯一化后缀（非本服务产出的名字原样）——zipBase 必须是**原包名**，改名破坏裁决
+    const zipBase = stripDownloadUniq(path.basename(zipPath).replace(/\.linkdesk-plugin$/i, ""));
     const pluginId = deriveIdFromZip(zipBase, manifest);
     if (expectedPluginId && expectedPluginId !== pluginId) {
       throw new Error(`包内 pluginId 与预期不符（${pluginId} ≠ ${expectedPluginId}）——拒绝解压`);
@@ -185,7 +187,8 @@ export function registerPluginInstallHandlers(): void {
       const opened = await openPluginZip(buffer);
       if (!opened) throw new Error("不是有效的 .linkdesk-plugin 包——顶层需含可解析的 plugin.json");
       const { manifest, wrapperPrefix } = opened;
-      const zipBase = path.basename(zipPath).replace(/\.linkdesk-plugin$/i, "");
+      // E6#73q：同 extract——剥下载唯一化后缀后再裁决（url 腿带后缀，磁盘直读腿原样透传）
+      const zipBase = stripDownloadUniq(path.basename(zipPath).replace(/\.linkdesk-plugin$/i, ""));
       const id = deriveIdFromZip(zipBase, manifest);
       if (id !== pluginId) throw new Error(`包内 pluginId 与待更新插件不符（${id} ≠ ${pluginId}）——拒绝暂存`);
       const cur = typeof currentVersion === "string" && currentVersion ? currentVersion : "0.0.0";

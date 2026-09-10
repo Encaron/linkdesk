@@ -7,6 +7,7 @@
  *   2. 下载中断（content-length 虚高 + 提前断流）→ reject + 自清 .part + 无正式包残留（不留垃圾）
  *   3. HTTP 失败（404）→ reject + 无 .part
  *   4. downloadNameFromUrl 消毒：保留原名 / 去查询 / 消毒非法字符 / 空 URL 兜底 pkg-<ts>
+ *   4b. E6#73q 落盘名唯一化：stripDownloadUniq 剥回原包名 + 同名并发两条下载各持独立文件不互截
  *   5. cleanupStaleDownloads：清顶层 *.part + 孤立 *.linkdesk-plugin，留 .stage-*（段 B 域不越界）；tmp 缺失无碍
  *   6. E6#73e 空闲超时（挂死不再永远挂着）+ 重试预算（5xx 可重试 / 4xx 不重试 / 用户取消不重试）
  * fixture 全虚构 id/文案（硬约束 21）。
@@ -31,7 +32,13 @@ const electronMock = vi.hoisted(() => {
 });
 vi.mock("electron", () => electronMock);
 
-import { downloadPackage, cleanupStaleDownloads, downloadNameFromUrl, downloadTmpDir } from "./plugin-download.js";
+import {
+  downloadPackage,
+  cleanupStaleDownloads,
+  downloadNameFromUrl,
+  downloadTmpDir,
+  stripDownloadUniq,
+} from "./plugin-download.js";
 
 /** 虚构包字节——jszip 真造（顶层 plugin.json + 一文件） */
 async function packageBytes(pluginId: string): Promise<Buffer> {
@@ -90,11 +97,15 @@ describe("downloadPackage——.part 生命周期（01 §四·五 B1）", () => 
       expect(total).toBe(payload.length);
       // rename 后返回正式包路径（非 .part）
       expect(zipPath.endsWith(".part")).toBe(false);
-      expect(path.basename(zipPath)).toBe("demo-a.linkdesk-plugin");
+      // E6#73q：落盘名 = 原包名 + 唯一化后缀；剥后缀拿回原包名（zipBase 裁决的依据）
+      expect(path.basename(zipPath)).toMatch(/^demo-a\.dl-[0-9a-z]+-[0-9a-z]+\.linkdesk-plugin$/);
+      expect(stripDownloadUniq(path.basename(zipPath).replace(/\.linkdesk-plugin$/, ""))).toBe("demo-a");
       // 正式包字节与源一致
       expect(await fs.promises.readFile(zipPath)).toEqual(payload);
       // tmp 顶层无 .part 残留
-      expect(await fs.promises.readdir(downloadTmpDir())).toEqual(["demo-a.linkdesk-plugin"]);
+      const left = await fs.promises.readdir(downloadTmpDir());
+      expect(left).toHaveLength(1);
+      expect(left[0]).toMatch(/^demo-a\.dl-[0-9a-z]+-[0-9a-z]+\.linkdesk-plugin$/);
       // 进度回调：见过带 percent 的下载中 + 100%（或完成文案）
       const pct = msgs.filter((m) => m.percent !== undefined).map((m) => m.percent);
       expect(pct.length).toBeGreaterThan(0);
@@ -278,6 +289,55 @@ describe("downloadNameFromUrl——落盘名消毒", () => {
   });
   it("空 URL 兜底 pkg-<ts>", () => {
     expect(downloadNameFromUrl("not-a-url")).toMatch(/^pkg-\d+\.linkdesk-plugin$/);
+  });
+});
+
+/**
+ * E6#73q：下载落盘名唯一化——并发 N=3 后不许两条下载共用同一个临时名。
+ * 病根：两个不同插件的 downloadUrl 末段同名（第三方仓库把包名取成通用名是常见做法）时，共用 `.part`
+ * 会互相截断；共用正式名则更糟——rename→extract 的窗口里 **A 的包被 B 覆盖**（装错插件，静默）。
+ * 修法：落盘名挂 `.dl-<seq>-<ts>` 后缀，`zipBase` 裁决前由 stripDownloadUniq 剥回原包名。
+ */
+describe("下载落盘名唯一化（E6#73q）", () => {
+  let userData: string;
+
+  beforeEach(async () => {
+    userData = await fs.promises.mkdtemp(path.join(os.tmpdir(), "plugin-download-uniq-"));
+    electronMock.paths.userData = userData;
+  });
+
+  afterEach(async () => {
+    await fs.promises.rm(userData, { recursive: true, force: true });
+  });
+
+  it("stripDownloadUniq：剥唯一化后缀；非本服务产出的名字原样返回", () => {
+    expect(stripDownloadUniq("demo-a.dl-1-abc123")).toBe("demo-a");
+    expect(stripDownloadUniq("demo-a.dl-z9-zzzzzz")).toBe("demo-a");
+    // 原包名本身就在用的点段不许误剥（后缀形状严格 = .dl-<36>-<36>）
+    expect(stripDownloadUniq("demo-a")).toBe("demo-a");
+    expect(stripDownloadUniq("demo-a.v1.2.0")).toBe("demo-a.v1.2.0");
+    expect(stripDownloadUniq("demo-a.dl-")).toBe("demo-a.dl-");
+    expect(stripDownloadUniq("demo-a.dl-1")).toBe("demo-a.dl-1");
+  });
+
+  it("两条同名并发下载各持独立落盘名——互不截断、字节各自完整", async () => {
+    const payloadA = await packageBytes("demo-a");
+    const payloadB = await packageBytes("demo-b-with-longer-name");
+    const srvA = await serveOnce(payloadA);
+    const srvB = await serveOnce(payloadB);
+    try {
+      const [a, b] = await Promise.all([downloadPackage(srvA.url), downloadPackage(srvB.url)]);
+      expect(a.zipPath).not.toBe(b.zipPath);
+      expect(await fs.promises.readFile(a.zipPath)).toEqual(payloadA);
+      expect(await fs.promises.readFile(b.zipPath)).toEqual(payloadB);
+      // 两条都剥回同一个原包名（同名 URL），但落盘互不干扰
+      const base = (p: string) => stripDownloadUniq(path.basename(p).replace(/\.linkdesk-plugin$/, ""));
+      expect(base(a.zipPath)).toBe("demo-a");
+      expect(base(b.zipPath)).toBe("demo-a");
+    } finally {
+      await srvA.close();
+      await srvB.close();
+    }
   });
 });
 
