@@ -21,9 +21,11 @@ import {
   selectableVersions,
   pinnedAfterApply,
   pluginRepoUrl,
+  defaultVersionPick,
+  versionActionTarget,
   OFFICIAL_SOURCE_URL,
 } from "../services/marketCatalog";
-import type { CatalogEntry } from "../services/marketCatalog";
+import type { CatalogEntry, CatalogVersionChoice } from "../services/marketCatalog";
 
 /* ── 源 URL 归一（#29b GitHub repo 根 → marketplace.json 直链） ── */
 
@@ -413,6 +415,64 @@ describe("selectableVersions", () => {
   it("无条目 / 顶层也无 URL → []", () => {
     expect(selectableVersions(undefined)).toEqual([]);
     expect(selectableVersions({ id: "demo-alpha", name: "A", version: "1.0.0" })).toEqual([]);
+  });
+});
+
+/* ── E6#81 版本控件两个值（下拉显示值 ≠ 动作目标——「控件在说下一步、用户在读当前」的教训） ── */
+
+describe("defaultVersionPick / versionActionTarget", () => {
+  const DL_110 = "https://example.invalid/dl/demo-alpha-1.1.0.linkdesk-plugin";
+  const DL_100 = "https://example.invalid/dl/demo-alpha-1.0.0.linkdesk-plugin";
+  /* 倒序最新在前（selectableVersions 的输出形态） */
+  const CHOICES = (): CatalogVersionChoice[] => [
+    { version: "1.1.0", downloadUrl: DL_110 },
+    { version: "1.0.0", downloadUrl: DL_100 },
+  ];
+
+  it("🔥 回归：已装 1.0.0 而可选集最新 1.1.0 → 下拉显示 1.0.0（不是 1.1.0）", () => {
+    expect(defaultVersionPick(CHOICES(), true, "1.0.0")).toBe("1.0.0");
+    expect(defaultVersionPick(CHOICES(), true, "1.0.0")).not.toBe("1.1.0");
+  });
+
+  it("已装版本容 v 前缀（semver 等判）", () => {
+    expect(defaultVersionPick(CHOICES(), true, "v1.0.0")).toBe("1.0.0");
+  });
+
+  it("已装但该版不在可选集（目录已删该版行）→ 回落最高可选", () => {
+    expect(defaultVersionPick(CHOICES(), true, "0.9.0")).toBe("1.1.0");
+  });
+
+  it("未装 → 最新可选（与已装态分支不同源）", () => {
+    expect(defaultVersionPick(CHOICES(), false, undefined)).toBe("1.1.0");
+    /* 未装时即便带着旧 localVersion 也不走「已装」分支 */
+    expect(defaultVersionPick(CHOICES(), false, "1.0.0")).toBe("1.1.0");
+  });
+
+  it("无可选集 / 无本地版本 → 最高可选 / undefined", () => {
+    expect(defaultVersionPick([], true, "1.0.0")).toBeUndefined();
+    expect(defaultVersionPick([], false, undefined)).toBeUndefined();
+    expect(defaultVersionPick(CHOICES(), true, undefined)).toBe("1.1.0");
+  });
+
+  it("动作目标：用户未介入（picked undefined）→ 取 updateTarget（#33b 一键更新不因下拉改显示而消失）", () => {
+    expect(versionActionTarget({ hasHistory: true, updateTarget: "1.1.0" })).toBe("1.1.0");
+    /* 下拉此时显示 1.0.0（已装）而按钮目标是 1.1.0——两个值必须能同时正确，这是本函数的全部理由 */
+    expect(defaultVersionPick(CHOICES(), true, "1.0.0")).toBe("1.0.0");
+  });
+
+  it("动作目标：用户手动选值 → 跟随所选（升/降同式）", () => {
+    expect(versionActionTarget({ hasHistory: true, updateTarget: "1.1.0", picked: "1.0.0" })).toBe("1.0.0");
+    expect(versionActionTarget({ hasHistory: true, updateTarget: undefined, picked: "1.0.0" })).toBe("1.0.0");
+  });
+
+  it("动作目标：无历史（无下拉）→ 恒 updateTarget（保持 #33b 原单钮语义）", () => {
+    expect(versionActionTarget({ hasHistory: false, updateTarget: "1.1.0" })).toBe("1.1.0");
+    /* 无历史时调用方不会传 picked；即便传了也不采信（无控件可介入） */
+    expect(versionActionTarget({ hasHistory: false, updateTarget: "1.1.0", picked: "1.0.0" })).toBe("1.1.0");
+  });
+
+  it("动作目标：已最新无 updateTarget 且用户未介入 → undefined（无按钮可画，诚实不出错钮）", () => {
+    expect(versionActionTarget({ hasHistory: true, updateTarget: undefined })).toBeUndefined();
   });
 });
 

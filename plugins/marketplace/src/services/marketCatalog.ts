@@ -290,6 +290,42 @@ export interface CatalogVersionChoice {
   changelog?: string;
 }
 
+/* ── E6#81 版本控件的两个值（2026-09-11 用户拍板）────────────────────────────────────────────
+ * 一个控件出两个值，且**必须成对正确**——「下拉显示什么」与「按钮点下去变成什么」是两件事：
+ *   · `defaultVersionPick`  = **下拉显示值**（回答「我手上是哪个版本」）
+ *   · `versionActionTarget` = **动作目标**（回答「点下去变成哪个版本」）
+ * 抽到这里而非留在 DetailView 内联：与 `updateTargetFor` 同例（版本判据不散在 UI 里，可 vitest 直测）。
+ * 🔴 教训（实机）：改前下拉默认取 `updateTarget` ⇒ 用户装着 0.1.0 而控件写着 v0.1.1，被读成「我装的是
+ * 0.1.1」。两个值混用的代价就是这种「控件在说下一步、用户在读当前」。 */
+
+/** 下拉显示值——未装 → 最新可选（choices 已倒序）；已装 → **已装版本**（不再取 updateTarget）；
+ *  已装版本不在可选集（目录已删该版行）→ 最高可选（最接近现状，用户仍可降级）。空集 → undefined。 */
+export function defaultVersionPick(
+  choices: CatalogVersionChoice[],
+  installed: boolean,
+  localVersion?: string,
+): string | undefined {
+  if (choices.length === 0) return undefined;
+  if (!installed) return choices[0].version;
+  if (localVersion) {
+    const hit = choices.find((c) => compareVersions(c.version, localVersion) === 0);
+    if (hit) return hit.version;
+  }
+  return choices[0].version;
+}
+
+/** 动作目标——用户**未介入**（picked 为 undefined）→ 更新目标 `updateTarget`（#33b：更新钮首帧即现，
+ *  **不因「下拉改显示已装版本」而消失**）；用户**手动选值** → 跟随所选（升/降/同级由调用方 compareVersions 判）。
+ *  未装态由调用方走安装分支，不经本函数。无历史（无下拉）时恒 updateTarget（保持原单钮语义）。 */
+export function versionActionTarget(args: {
+  hasHistory: boolean;
+  updateTarget?: string;
+  picked?: string;
+}): string | undefined {
+  const { hasHistory, updateTarget, picked } = args;
+  return hasHistory && picked !== undefined ? picked : updateTarget;
+}
+
 /** 版本下拉可选集（E6#33c——UI「装哪个版本/升到哪版」选项源，05 §四）。
  *  versions[] 全集（含 beta——§二·四 手动可选）过滤出**有可解析 downloadUrl** 的版本（无 URL 旧版诚实
  *  不出现在下拉——选了也发不了包，不发错包即 versionDownloadUrl 顶层兜底同一语义）；

@@ -54,6 +54,9 @@ import {
   selectableVersions,
   pinnedAfterApply,
   pluginRepoUrl,
+  // E6#81：版本控件两个值（下拉显示「我手上是哪版」/ 动作目标「点下去变哪版」）——判据在 marketCatalog 单源
+  defaultVersionPick,
+  versionActionTarget,
 } from "../services/marketCatalog";
 import { removeDiscoveredCandidate, runAutoUpdateIfDue } from "../services/updateDiscovery";
 import { readPluginUpdateMeta, setAutoUpdate, setPinnedVersion } from "../services/installedUpdateMeta";
@@ -306,21 +309,21 @@ export default function DetailView({ pluginId }: DetailContributedProps) {
   const versionChoices = useMemo(() => selectableVersions(entry), [entry]);
   const hasVersionHistory = versionChoices.length > 1;
 
-  /** 下拉默认选值——未装 → 最新可选；已装有稳定更新 → 该更新目标（#33b 同目标，首帧即现更新钮）；
-   *  停在最新无更新 → 当前版；当前版不在可选历史（目录已删该版行）→ 最高可选（最接近现状可降）。 */
-  const defaultPickTarget = useCallback((): string | undefined => {
-    if (versionChoices.length === 0) return undefined;
-    if (!installed) return versionChoices[0].version;
-    if (updateTarget) return updateTarget;
-    if (localVer) {
-      const hit = versionChoices.find((c) => compareVersions(c.version, localVer) === 0);
-      if (hit) return hit.version;
-    }
-    return versionChoices[0].version;
-  }, [versionChoices, installed, updateTarget, localVer]);
+  /* 🔴 **E6#81 审视找到的第二处（G6 同类漏网）。** G6（E6#73j）只遮住了「自动冒出来的更新钮」，
+   *  **下拉这条手动路径漏了**：随包发货件（住所 = 只读 app 根，`updatable === false`）若目录里有
+   *  多版本历史，下拉照样画；用户一旦挑一版 → `pickedVersion` 顶起动作目标 ⇒ 又长出一个点下去必失败
+   *  （引擎抛「不在用户安装区」）的死钮。判据与 G6 同一处：`updatable`（住所事实，非插件身份——硬约束 11）。
+   *  不可切换版本的插件 = 下拉与版本动作钮**都不画**（不是画了置灰——没有可选的下一步，置灰亦是骗）。 */
+  const canSwitchVersion = installed && updatable === true;
+
+  /** 下拉默认显示值（**E6#81，2026-09-11 用户拍板**）——判据在 `defaultVersionPick`（marketCatalog 单源，
+   *  vitest 直测）：**已装 → 「我手上是哪个版本」**；未装 → 最新可选。改前的默认取 `updateTarget`（= 可更新
+   *  到的版本）⇒ 用户装了 0.1.0 而下拉显示 v0.1.1，**读成「我装的是 0.1.1」**（实机原话：「我明明安装的是
+   *  0.1.0，结果那个下拉框就显示的是 0.1.1」）。 */
+  const shownFallback = defaultVersionPick(versionChoices, installed, localVer);
 
   /** 生效版本目标——人工选了用所选，否则默认兜底（首帧/重置后跟随默认） */
-  const targetVersion = hasVersionHistory && pickedVersion !== undefined ? pickedVersion : defaultPickTarget();
+  const targetVersion = hasVersionHistory && pickedVersion !== undefined ? pickedVersion : shownFallback;
 
   /* 安装目标版本/URL——有历史 = 下拉所选（默认最新可选）；无历史 = 顶层（#30.5b 原语义 entry.downloadUrl）。
    *  versionDownloadUrl 选哪版取哪版（05 §四），顶层兜底 entry.downloadUrl（同 #33b 更新寻址）。 */
@@ -742,8 +745,17 @@ export default function DetailView({ pluginId }: DetailContributedProps) {
     );
 
   /* ── E6#33c 版本动作（升/降）目标与方向——installed 态（未装走安装分支）：有历史 → 下拉选值驱动
-   *  （可停旧版/进 beta/降级）；无历史 → #33b 单目标 updateTarget（保持原单钮语义）。 ── */
-  const actTarget = installed && !pending ? (hasVersionHistory ? targetVersion : updateTarget) : undefined;
+   *  （可停旧版/进 beta/降级）；无历史 → #33b 单目标 updateTarget（保持原单钮语义）。
+   *  E6#81 起「未介入」也算一个态：下拉停在**已装版**（那是它现在的职责——显示你手上是什么），
+   *  动作目标则回落 updateTarget，否则一键更新会消失。 ── */
+  /* 🔴 **E6#81：动作目标与下拉显示值已解耦。** 下拉回答「我现在是哪个版本」（= targetVersion，已装即
+   *  localVer）；本变量回答「点下去会变成哪个版本」。用户**未介入**（pickedVersion === undefined）→ 取
+   *  updateTarget（#33b 原意保住：更新钮首帧即现）；用户一旦手动选值 → 按钮就跟着所选走。不这么分的话，
+   *  下拉显示 localVer 会让 actDir 恒为 "same" ⇒ 更新钮消失 = 把 #33b 的一键更新弄丢。
+   *  判据在 `versionActionTarget`（marketCatalog 单源，vitest 直测）。 */
+  const actTarget = canSwitchVersion && !pending
+    ? versionActionTarget({ hasHistory: hasVersionHistory, updateTarget, picked: pickedVersion })
+    : undefined;
   const actDir =
     actTarget && localVer
       ? compareVersions(actTarget, localVer) > 0
@@ -755,8 +767,9 @@ export default function DetailView({ pluginId }: DetailContributedProps) {
   const pickerOptions = versionChoices.map((c) => ({ value: c.version, label: `v${c.version}` }));
   /* E6#33c/#30.9a M6：安装/更新进行中 → 版本下拉置灰（M6 锚——装态选择目标无效） */
   const pickerDisabled = busy || updating || installingHere;
-  /* 版本选择器（装/升/降目标）——versions.length>1 才有历史才显示：installed 态在动作区首槽（05 §四） */
-  const versionPicker = hasVersionHistory && installed && !pending ? (
+  /* 版本选择器（装/升/降目标）——versions.length>1 才有历史才显示：installed 态在动作区首槽（05 §四）。
+   * E6#81：`canSwitchVersion`（住所可写）——不可切换版本的插件不画下拉（见其头注）。 */
+  const versionPicker = hasVersionHistory && canSwitchVersion && !pending ? (
     <SelectBox
       value={targetVersion ?? ""}
       options={pickerOptions}
@@ -778,7 +791,7 @@ export default function DetailView({ pluginId }: DetailContributedProps) {
   ) : null;
   /* 版本动作钮（升 = doVersionAction 直行；降 = requestDowngrade 先 F2 确认再放行 allowOlder——05 §二·十一） */
   const actButton =
-    installed && !pending && actTarget && actDir && actDir !== "same" ? (
+    canSwitchVersion && !pending && actTarget && actDir && actDir !== "same" ? (
       <Button
         onClick={() =>
           actDir === "down"
