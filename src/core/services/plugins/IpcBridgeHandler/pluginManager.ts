@@ -27,14 +27,18 @@ export interface PluginManagementAPI {
   updatePlugin(pluginId: string, opts?: { catalogUrl?: string; url?: string; allowOlder?: boolean }): Promise<PluginUpdateResult>;
   // E6#13b（段 B）：只读查更新（fetch catalog + 版本对比；有新版返回 downloadUrl）
   checkPluginUpdates(pluginId: string, catalogUrl: string): Promise<PluginUpdateCheckResult>;
-  getDisabledPluginInfo(): unknown;
+  // E6#73j（G6）：getDisabledPluginInfo 由 unknown 收窄——禁用列表条目随行 updatable
+  // （禁用不改住所：userData 家的禁用插件照样可更新，app 树的则否），市场详情页据此判死钮
+  getDisabledPluginInfo(): Array<{ pluginId: string; name: string; description?: string; version?: string; core?: boolean; updatable: boolean }>;
   getUninstalledPluginInfo(): unknown;
   isPluginDisabled(id: string): boolean;
   // E5.8#15.5：list() 数据源 = 已加载 + 缺依赖挂起（pendingReason 随行）——marketplace 可见 PENDING 状态
+  // E6#73j（G6）：updatable 随行——住所判据（userData 安装家才可被包更新），市场据此遮蔽死钮
   getListPluginManifests(): Array<{
     pluginId: string;
     manifest: { name: string; description?: string; version?: string; core?: boolean; author?: string; statusBar?: unknown; contributes?: unknown; requires?: string[]; icon?: string; iconSource?: "codicon" | "svg" | "url" | "lucide"; marketIcon?: string; marketIconSource?: "codicon" | "svg" | "url" | "lucide" };
     pendingReason?: string;
+    updatable: boolean;
   }>;
 }
 
@@ -68,6 +72,8 @@ export async function handlePluginManagerMethod(method: string, args: unknown[])
         },
         // E5.8#15.5：缺依赖挂起原因——marketplace 显示 "等待依赖: xxx"（无挂起 = undefined）
         pendingReason: p.pendingReason,
+        // E6#73j（G6）：住所判据透传——市场据此不画「更新到 vX」死钮（app 树/随包发货件更新必失败）
+        updatable: p.updatable,
       }));
     case "enable":
       return _pluginAPI!.enablePlugin(args[0] as string);

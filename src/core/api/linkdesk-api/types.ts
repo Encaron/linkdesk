@@ -138,6 +138,11 @@ export interface PluginListEntry {
   manifest: PluginListSubset;
   /** 缺依赖挂起原因——marketplace 显示 PENDING 徽标 + 详情提示条（E5.8#15.5） */
   pendingReason?: string;
+  /** E6#73j（G6）：该插件**住哪**——`true` = 在用户安装家（`{userData}/plugins`），可被下载来的新包替换。
+   *  `false` = 只读 app 根（随包发货件 / 目录源安装的插件）——更新流对它必然抛「不在用户安装区」，
+   *  市场**不得**渲染「更新到 vX」（那是点下去必失败的死钮，含 8 只官方随包插件在内）。
+   *  判据唯一源 = `isPluginUpdatable`（磁盘住所事实，非插件身份——硬约束 11）。 */
+  updatable?: boolean;
 }
 
 /** E5.7#81：安装结果——success:false 时 error 为中文失败原因（校验 / 版本冲突 / 复制失败）。
@@ -213,6 +218,9 @@ export interface PluginInfoEntry {
   description?: string;
   version?: string;
   core?: boolean;
+  /** E6#73j（G6）：同 `PluginListEntry.updatable` 的住所判据——禁用**不改住所**（disable 只记名单，
+   *  目录原地不动）⇒ userData 家的禁用插件照样可更新，app 树的则否。 */
+  updatable?: boolean;
 }
 
 /** list() 的 manifest 序列化子集——与 handlePluginsCall "list" 投影字段对齐

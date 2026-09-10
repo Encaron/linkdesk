@@ -110,6 +110,64 @@ export function getAllManifestEntries(): Array<[string, PluginManifest]> {
   return [...manifestIndex.entries()];
 }
 
+/* ── E6#73j（G6）：插件住所索引——「这块地盘上的插件能不能被下载来的包换掉」 ── */
+
+/**
+ * pluginId → 代码根（app 只读根 / userData 用户安装家）。
+ *
+ * 为什么需要：市场详情页此前只比目录版本就渲染「更新到 vX」，**不问插件住在哪**；而引擎的更新流
+ * （`update.ts` 的 `installedContext`）只接受 userData 家（`isUnderHome(src, env.userPluginsDir)`），
+ * 其余一律抛「插件不在用户安装区」。⇒ 含 8 只随包发货的官方插件在内，详情页出现**点下去必然失败的死钮**。
+ *
+ * 数据免费：`plugins:listAll` 的载荷里本来就有 `origin.home`（主进程 `listAllPlugins` 逐条算好的），
+ * 水合时顺手记下即可——零额外 IPC。`origin` 缺省（不该发生）时不记 ⇒ 该插件判为不可更新（保守：
+ * 宁可少显示一个按钮，不显示一个死按钮）。
+ */
+const residenceIndex = new Map<string, "app" | "userData">();
+
+/** discoverInstalled 顺带水合——与 manifestIndex 同一趟、同一载荷。仅内部调，不外发。 */
+function hydrateResidence(entries: PluginDiscoveryEntry[]): void {
+  for (const e of entries) {
+    if (e.origin?.home) residenceIndex.set(e.pluginId, e.origin.home);
+  }
+}
+
+/** 该插件能否被「下载新版 → 替换目录」更新——**唯一判据**（硬约束 11：住所是磁盘事实，非插件身份）。
+ *  消费方：市场「可更新」徽标/更新钮（G6 死钮闸）+ 发现编排候选过滤。 */
+export function isPluginUpdatable(pluginId: string): boolean {
+  return residenceIndex.get(pluginId) === "userData";
+}
+
+/** 安装流落账后登记住所——安装当时就知道落在哪根，不必等下次启动重新发现。
+ *  🔴 两处写法相反、都别省：包安装（`{userData}/plugins/<id>`，可更新）与目录源安装
+ *  （`<appPluginsDir>/<id>`，只读根，不可更新）——写反 = 死钮在下一个会话复活。 */
+export function setPluginResidence(pluginId: string, home: "app" | "userData"): void {
+  residenceIndex.set(pluginId, home);
+}
+
+/**
+ * 单条 manifest 增量刷新（E6#73j G9）——把盘上**现在**的 plugin.json 读回索引。
+ *
+ * 为什么需要：`manifestIndex` 只在启动期 `discoverInstalled()` 水合一次，此后永不更新。
+ * 更新插件换掉了盘上的 plugin.json，索引仍是进程启动那一刻的版本快照 ⇒ `pluginManager.list()`
+ * 报旧版本 ⇒ 市场的「有新版本」徽标/横幅不收敛，再点更新撞主进程「包内版本与当前版本相同」报内部黑话。
+ * `notifyManifestChanged()` 只重扫**主进程**三表（LangDef/Protocol/FileAssociation），不碰本索引。
+ *
+ * 同时刷新 metadataCache 里那一份（同一事实存两处，只更一处 = 双源漂移——正是本模块开头禁止的）。
+ * 读不到（插件已被移走 / plugin.json 损坏）→ 静默返回，调用方不是磁盘的权威。
+ */
+export async function refreshManifestFromDisk(pluginId: string): Promise<PluginManifest | undefined> {
+  let manifest: PluginManifest;
+  try {
+    manifest = parseManifestJson(await pluginsApi().readManifest(pluginId));
+  } catch {
+    return undefined; // 读不到/解析失败 → 保持旧值，不把索引清空
+  }
+  manifestIndex.set(pluginId, manifest);
+  if (getMetadataCache()[pluginId]) cachePluginMetadata(pluginId, manifest, "installed");
+  return manifest;
+}
+
 /**
  * E6#9a：启动发现单源——plugins:listAll（主进程直扫 plugins/ 全子目录，含打包/市场安装插件，
  * 返回 [{ pluginId, entry, manifest }]）∪ plugins:readAllManifests 水合索引。
@@ -120,6 +178,7 @@ export async function discoverInstalled(): Promise<PluginDiscoveryEntry[]> {
     const api = pluginsApi();
     const [entries, records] = await Promise.all([api.listAll(), api.readAllManifests()]);
     hydrateManifestIndex(records);
+    hydrateResidence(entries); // E6#73j（G6）：住所同一趟水合（origin.home 已在载荷里）
     return entries;
   } catch {
     seedManifestIndexFromGlob();

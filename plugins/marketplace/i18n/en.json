@@ -121,6 +121,10 @@
   "正在安装 {{name}}… {{percent}}%": "Installing {{name}}… {{percent}}%",
   "更新到 {{version}}": "Update to {{version}}",
   "更新中...": "Updating...",
+  "检查更新中...": "Checking for updates...",
+  "准备新版...": "Preparing new version...",
+  "替换旧版...": "Replacing old version...",
+  "重试更新": "Retry Update",
   "自动更新": "Auto-update",
   "记录自动更新意愿——当前每次更新都需你确认，自动更新暂不生效，勾选会说明原因": "Records your auto-update preference — every update currently needs your confirmation, so auto-update is paused; ticking it explains why",
   "自动更新已暂停——现在每次更新都要你确认，自动更新无法在你不在场时询问。可在插件详情点「更新」手动确认。": "Auto-update is paused — every update now needs your confirmation, and auto-update can't ask while you're away. Open a plugin's details and click Update to confirm it manually.",
@@ -155,5 +159,7 @@
   "禁用「{{name}}」失败：{{detail}}": "Could not disable \"{{name}}\": {{detail}}",
   "卸载「{{name}}」失败：{{detail}}": "Could not uninstall \"{{name}}\": {{detail}}",
   "保存市场源失败：{{detail}}": "Could not save the marketplace source: {{detail}}",
-  "安装失败：{{detail}}": "Installation failed: {{detail}}"
+  "安装失败：{{detail}}": "Installation failed: {{detail}}",
+  "{{names}} 等": "{{names}} and others",
+  "{{num}} 个插件有新版本：{{names}}": "{{num}} plugins have new versions: {{names}}"
 }

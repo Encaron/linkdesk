@@ -335,6 +335,7 @@ export const linkdeskMock: Record<string, unknown> = {
     showItemInFolder: async (..._args: unknown[]) => { console.info("[linkdesk-mock] shell.showItemInFolder", ..._args); },
     openInTerminal: async (..._args: unknown[]) => { console.info("[linkdesk-mock] shell.openInTerminal", ..._args); },
     startDrag: (..._args: unknown[]) => { console.info("[linkdesk-mock] shell.startDrag", ..._args); },
+    relaunch: async (..._args: unknown[]) => { console.info("[linkdesk-mock] shell.relaunch", ..._args); },
   },
   hotExit: {
     save: async (..._args: unknown[]) => { console.info("[linkdesk-mock] hotExit.save", ..._args); },

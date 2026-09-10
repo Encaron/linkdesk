@@ -5,7 +5,7 @@
 
 
 import { useMarketplacePlugins, useCatalogEntryById } from "../services/marketplaceShared";
-import { updateToVersion } from "../services/marketCatalog";
+import { updateTargetFor } from "../services/marketCatalog";
 import { ExtensionItem } from "../components/ExtensionItem";
 import "../styles/MarketplaceSidebar.css";
 
@@ -29,7 +29,7 @@ export default function BuiltinListView() {
         <ExtensionItem
           key={p.pluginId}
           plugin={p}
-          updateTo={updateToVersion(catalogById.get(p.pluginId), p.manifest.version)}
+          updateTo={updateTargetFor(catalogById.get(p.pluginId), p.manifest.version, p.updatable)}
           onClick={() => handleOpenDetail(p.pluginId)}
           onDoubleClick={() => handleOpenDetailPinned(p.pluginId)}
         />

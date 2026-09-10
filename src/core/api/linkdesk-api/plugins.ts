@@ -47,8 +47,9 @@ export interface PluginsAPI {
     /** E6#13b（段 B）：主进程真网络段——fetch marketplace.json → 版本对比（不碰账本——current 由壳传）。prerelease 默认忽略。 */
     packageUpdateCheck?(pluginId: string, catalogUrl: string, currentVersion?: string): Promise<PluginUpdateCheckResult>;
     /** E6#13b/c（段 B）：主进程真下载+解压段——下载到 tmp → 解压到 {userData}/tmp/.stage-<id>（id 一致 + 版本方向校验，不碰旧目录）。
-     *  E6#33c（锚①）：allowOlder 显式 true 放行「包内版本 < 当前」的降级（版本下拉选旧版 + F2 确认后传）；默认仍拒 <=；同版恒拒。 */
-    packageStageUpdate?(pluginId: string, source: string, currentVersion?: string, allowOlder?: boolean): Promise<{ pluginId: string; newVersion: string; stagedDir: string }>;
+     *  E6#33c（锚①）：allowOlder 显式 true 放行「包内版本 < 当前」的降级（版本下拉选旧版 + F2 确认后传）；默认仍拒 <=；同版恒拒。
+     *  E6#73j（G1）：job 同 packageDownload——更新下载段的进度按 jobId 归行，并按 jobId 可真中止。 */
+    packageStageUpdate?(pluginId: string, source: string, currentVersion?: string, allowOlder?: boolean, job?: PluginInstallJobRef): Promise<{ pluginId: string; newVersion: string; stagedDir: string }>;
     /** E6#13c（段 B）：主进程原子替换段——同卷 rename：target→.bak→staged→target→rm .bak（失败复原旧版） */
     packageCommitUpdate?(pluginId: string, stagedDir: string): Promise<{ pluginId: string; version: string }>;
   };

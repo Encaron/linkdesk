@@ -28,6 +28,7 @@ import { registerPluginInstallHandlers } from './ipc/handlers/plugin-install-han
 import { registerProtocol } from './plugins/protocol.js';
 import { ingestPluginBundles } from './plugins/bundle-ingest.js'; // E6#7（1.2-4）：启动解压 .linkdesk-plugin
 import { installBundledPlugins } from './plugins/bundled-install.js'; // E6#15c：首启自动装 bundled-plugins（发货夹）
+import { recoverInterruptedUpdates } from './plugins/plugin-tree-recovery.js'; // E6#73j（G8）：复原被中断的更新替换（<id>.bak）
 import { cleanupStaleDownloads } from './services/plugin-download.js'; // E6#31a：启动清残留下载临时文件（.part/孤立包，01 §四·五 B1）
 import { fileService } from './services/file-service.js';
 import { WindowManager } from './windows/window-manager.js';
@@ -224,6 +225,17 @@ function createWindow(): void {
     // E4V#18: Shell IPC——revealInOS
     ipcMain.handle(IPC.shell.showItemInFolder, async (_e, p: string) => shell.showItemInFolder(p));
 
+    // E6#73j（G4）：真重启应用——「点击重启以应用新版」。
+    // 与 window.location.reload() 的本质差别：池是独立 WebContentsView，壳 reload 不重建它
+    // ⇒ 更新视图类插件后界面仍是旧 bundle（E6#73j G4 实测症状：点了像没点）。
+    // 用 app.exit(0) 而非 app.quit()：与主进程心跳兜底处同一写法，且此处语义是「立刻重来」，
+    // 不应被任何 beforeunload/close 拦截。窗口与 watcher 的清理由 OS 随进程回收，
+    // 未保存内容由热退出（hotExit）在编辑期已落盘，不依赖退出钩子。
+    ipcMain.handle(IPC.shell.relaunch, () => {
+      app.relaunch();
+      app.exit(0);
+    });
+
     // E5#108b：文件拖出到桌面——Electron 原生 API。低版本无 startDrag 则静默
     ipcMain.on(IPC.shell.startDrag, (event, filePath: string, iconPath?: string) => {
       if (!filePath) return;
@@ -418,6 +430,9 @@ protocol.registerSchemesAsPrivileged([
 // ── 应用生命周期 ──
 app.whenReady().then(async () => {
   registerProtocol();
+  // E6#73j（G8）：先把「进程死在两次 rename 之间」留下的 <id>.bak 放回原位，再谈 ingest/发货/扫表。
+  // 必须抢在这三步之前——否则发货夹会把内置版补进「看起来没装」的位置，覆盖掉本该复原的用户版。
+  await recoverInterruptedUpdates();
   // E6#7（1.2-4）+ 2026-09-05 塌平单根：启动解压 userData/plugins 顶层待安装的 *.linkdesk-plugin → <id>/。
   // 必须抢在 loadAllPluginManifests + createWindow 之前——落盘后三表扫描、壳发现、协议解析、
   // 账本 reconcile 才能同见这批包（"放 zip → 重启 → 出现"的启动语义）。失败不阻断（内部吞错）。

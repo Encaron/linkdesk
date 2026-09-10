@@ -210,6 +210,8 @@ export const IPC = {
     showItemInFolder: 'shell:showItemInFolder',
     startDrag: 'shell:startDrag',
     openInTerminal: 'shell:openInTerminal',
+    // E6#73j（G4）：真重启应用（退出并重新启动进程）——更新视图插件后壳 reload 不重建池
+    relaunch: 'shell:relaunch',
   },
   system: { memoryPressure: 'system:memory-pressure' },
   tabs: {

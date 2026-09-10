@@ -26,7 +26,7 @@ import type { CatalogEntry } from "./marketCatalog";
 import { confirmMarketInstallById } from "./installGate";
 // E6#33a 发现调度（2026-09-08 锚② 重裁：市场池首载调度——本模块被全部市场池面 import，任意面首挂载即触发一趟
 // 延迟发现；scheduleStartupDiscovery 内置池门控，壳进程 import 本模块不调度不跑）——见 updateDiscovery 头注
-import { scheduleStartupDiscovery } from "./updateDiscovery";
+import { scheduleStartupDiscovery, removeDiscoveredCandidate } from "./updateDiscovery";
 // E5.6#11.5e：@src/core 清零——onPluginLifecycleChange/ViewContainerService → lk.events.on
 const lk = () => window.linkdesk;
 
@@ -79,6 +79,7 @@ let _disabledPlugins: Array<{
   description?: string;
   version?: string;
   core?: boolean; // E6#30.5b：禁用态 core 透传（守 E6#18 详情页藏卸载钮——禁用分支卸载钮需要它）
+  updatable?: boolean; // E6#73j（G6）：住所透传——随包发货件（只读 app 根）不画「更新到 vX」死钮
 }> = [];
 const _dataListeners = new Set<() => void>();
 
@@ -104,7 +105,9 @@ async function refreshData(): Promise<void> {
 
 let _refreshQueued = false;
 
-function scheduleDataRefresh(): void {
+/** 重拉已装列表（microtask 合并）——`useMarketplacePlugins.refresh` 是 React 绑定的同名动作，
+ *  E6#73j 起也供**非组件上下文**调用（toast [重试] 命令的成功收敛），故导出。 */
+export function scheduleDataRefresh(): void {
   if (_refreshQueued) return;
   _refreshQueued = true;
   queueMicrotask(() => {
@@ -428,7 +431,10 @@ export function updateFailText(t: (key: string) => string, reason: InstallFailRe
   return failText(t, updateFailLabelKey, reason, raw);
 }
 
-/** 会话 stage → 安装中进度标签（i18n key + 插值）——详情按钮与探索行共用单实现（归一化） */
+/** 阶段 → job 行进度标签（i18n key + 插值）——详情按钮与探索行共用单实现（归一化）。
+ *
+ *  E6#73j（G1）：更新流进了同一张 job 表，它自己的阶段码（checking/staging/committing）此前落进
+ *  兜底「安装中...」——用户点的是「更新到 v1.4」，行上写「安装中」是另一件事的名字。补齐三档。 */
 export function marketInstallStageLabel(
   t: (key: string, opts?: Record<string, unknown>) => string,
   stage: string | undefined,
@@ -438,6 +444,10 @@ export function marketInstallStageLabel(
   if (stage === "downloading") return percent != null ? t("下载中 {{percent}}%", { percent }) : t("下载中...");
   if (stage === "extracting") return t("解压中...");
   if (stage === "loading") return t("加载中...");
+  // 更新域（E6#73j）
+  if (stage === "checking") return t("检查更新中...");
+  if (stage === "staging") return percent != null ? t("下载中 {{percent}}%", { percent }) : t("准备新版...");
+  if (stage === "committing") return t("替换旧版...");
   return t("安装中...");
 }
 
@@ -584,6 +594,73 @@ export async function retryMarketInstall(
   return startMarketInstall(pluginId, downloadUrl, displayName);
 }
 
+/* ═══ E6#73j（G2）：更新失败 = 安装失败同等待遇（常驻 + [重试]） ═══
+ *
+ * 改前：更新失败走 `notifyError`（8 秒自灭、无按钮），而同一类失败在安装域是常驻 + [重试]。
+ * 同一种事两套待遇，用户在更新上永远只能「再手动点一次详情页的更新钮」——还得先想起来去哪点。 */
+
+/**
+ * 更新失败终局——与 `settleInstallFailure` 同款（常驻 error + 归因 + 原文兜底 + [重试]）。
+ * 归因文案走更新域字典（`updateFailText`），不与安装域混用。
+ */
+export function settleUpdateFailure(
+  pluginId: string,
+  displayName: string,
+  downloadUrl: string,
+  error: string | undefined,
+): void {
+  const show = lk()?.notifications?.show;
+  if (!show) return;
+  const reason = classifyInstallError(error);
+  const reasonText = updateFailText((k) => i18n.t(k), reason, error);
+  void show(i18n.t("{{name}}：{{reason}}", { name: displayName, reason: reasonText }), {
+    type: "error",
+    source: MARKET_SOURCE,
+    // E6#71j / E6#73j：常驻——归因诊断需要时间读，重试与否是用户的决定，不该 8 秒静默溜走
+    persistent: true,
+    actions: [
+      {
+        id: "retry",
+        label: i18n.t("重试"),
+        isPrimary: true,
+        command: "marketplace.retryUpdate",
+        args: [{ pluginId, downloadUrl, displayName }],
+      },
+    ],
+  });
+}
+
+/**
+ * 重试更新——[重试] 的落点（命令 `marketplace.retryUpdate`）。
+ *
+ * E6#71k「都问」：与重试安装同一条规矩——**重试不是免问券**，仍过一次确认门（单点门位：
+ * `confirmMarketInstallById` 现查目录条目构造富内容卡；条目查不到 → 回落纯文字确认，仍要问）。
+ *
+ * 成功后做两件收敛（与详情页 `doVersionAction` 成功分支同款，否则重试成功却看不到变化）：
+ *   ① `removeDiscoveredCandidate` 撤「可更新」徽标；② `scheduleDataRefresh` 重拉已装列表版本号。
+ * ⚠️ 失败**不再递归推新 toast**：失败本身就是用户点这条 [重试] 的答案，再挂一条 [重试] 等于
+ * 无限自助餐（常驻条已被 G3 纳入按来源上限，但那是护栏不是设计）。失败结果由 job 行 + 详情页表达。
+ */
+export async function retryMarketUpdate(
+  pluginId: string,
+  downloadUrl: string,
+  displayName?: string,
+): Promise<boolean> {
+  if (!pluginId || !downloadUrl) return false;
+  if (!(await confirmMarketInstallById(pluginId, displayName))) return false;
+  const upd = pm()?.update;
+  if (!upd) return false;
+  try {
+    const r = await upd(pluginId, { url: downloadUrl });
+    if (!r?.success) return false;
+    removeDiscoveredCandidate(pluginId);
+    scheduleDataRefresh();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /* ═══ #30.9b 离线态（G3——navigator.onLine；离线 ≠ 失败：按钮置灰 + 提示，无 [重试]）═══ */
 
 /** 在线状态 hook——online/offline 事件驱动（恢复联网按钮自动回可用，不打扰，09 §二·一） */
@@ -665,6 +742,17 @@ function ensureMarketplaceCommands(): void {
       if (ctx?.pluginId && ctx.downloadUrl) await retryMarketInstall(ctx.pluginId, ctx.downloadUrl);
     },
     { title: "重试安装" },
+  );
+
+  // E6#73j：更新失败 toast [重试] 的落点（settleUpdateFailure 构造，args 自带 pluginId+downloadUrl+
+  // displayName，自给自足）。与安装同款：仍过一次确认门（E6#71k）。
+  reg(
+    "marketplace.retryUpdate",
+    async (...args: unknown[]) => {
+      const ctx = (args[0] ?? {}) as { pluginId?: string; downloadUrl?: string; displayName?: string } | undefined;
+      if (ctx?.pluginId && ctx.downloadUrl) await retryMarketUpdate(ctx.pluginId, ctx.downloadUrl, ctx.displayName);
+    },
+    { title: "重试更新" },
   );
 
   lk().menu?.registerItems?.("marketplaceItemGear", "marketplace", [

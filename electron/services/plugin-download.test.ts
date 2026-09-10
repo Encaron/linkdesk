@@ -8,7 +8,8 @@
  *   3. HTTP 失败（404）→ reject + 无 .part
  *   4. downloadNameFromUrl 消毒：保留原名 / 去查询 / 消毒非法字符 / 空 URL 兜底 pkg-<ts>
  *   4b. E6#73q 落盘名唯一化：stripDownloadUniq 剥回原包名 + 同名并发两条下载各持独立文件不互截
- *   5. cleanupStaleDownloads：清顶层 *.part + 孤立 *.linkdesk-plugin，留 .stage-*（段 B 域不越界）；tmp 缺失无碍
+ *   5. cleanupStaleDownloads：清顶层 *.part + 孤立 *.linkdesk-plugin + .stage-* 暂存目录（E6#73j G8
+ *      ——目录要 recursive，且不碰插件树的 .bak）；tmp 缺失无碍
  *   6. E6#73e 空闲超时（挂死不再永远挂着）+ 重试预算（5xx 可重试 / 4xx 不重试 / 用户取消不重试）
  *   7. E6#73i 下载链健康：F1 无 content-length 改显已下载字节数 / F3 压缩传输不再误判「下载中断」
  *      / F4 分片进度节流（冻结时钟 ⇒ 分片数 ≠ 消息数）
@@ -496,7 +497,7 @@ describe("cleanupStaleDownloads——启动扫描清理", () => {
     await fs.promises.rm(userData, { recursive: true, force: true });
   });
 
-  it("清顶层 *.part + 孤立 *.linkdesk-plugin；留 .stage-*（段 B update 域不越界）", async () => {
+  it("清顶层 *.part + 孤立 *.linkdesk-plugin + .stage-* 暂存目录；留无关文件", async () => {
     const tmp = downloadTmpDir();
     await fs.promises.mkdir(tmp, { recursive: true });
     await fs.promises.writeFile(path.join(tmp, "demo-a.linkdesk-plugin.part"), "half");
@@ -508,7 +509,31 @@ describe("cleanupStaleDownloads——启动扫描清理", () => {
     await cleanupStaleDownloads();
 
     const left = await fs.promises.readdir(tmp);
-    expect(left.sort()).toEqual([".stage-demo-a", "unrelated.tmp"]);
+    expect(left.sort()).toEqual(["unrelated.tmp"]);
+  });
+
+  // E6#73j（G8）后半：暂存目录是**目录**——只 force 不 recursive 会 ENOTEMPTY/EISDIR，清理形同虚设
+  it("暂存目录非空也整棵清掉（不是象征性删一个空目录）", async () => {
+    const tmp = downloadTmpDir();
+    const stage = path.join(tmp, ".stage-demo-b");
+    await fs.promises.mkdir(path.join(stage, "dist"), { recursive: true });
+    await fs.promises.writeFile(path.join(stage, "dist", "index.js"), "x");
+    await fs.promises.writeFile(path.join(stage, "plugin.json"), "{}");
+
+    await cleanupStaleDownloads();
+
+    await expect(fs.promises.readdir(stage)).rejects.toThrow();
+  });
+
+  // `.bak` 落在插件树里、可能是旧版唯一副本——boot 的下载清理绝不能顺手删它
+  it("不碰插件树里的 .bak（归 plugin-tree-recovery 按目录在不在复原）", async () => {
+    const tmp = downloadTmpDir();
+    await fs.promises.mkdir(tmp, { recursive: true });
+    await fs.promises.writeFile(path.join(tmp, "demo-c.bak"), "keep");
+
+    await cleanupStaleDownloads();
+
+    expect(await fs.promises.readdir(tmp)).toEqual(["demo-c.bak"]);
   });
 
   it("tmp 缺失/空：无碍返回", async () => {

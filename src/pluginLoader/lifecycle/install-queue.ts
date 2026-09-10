@@ -354,6 +354,19 @@ export function cancelInstallJob(jobId: string): boolean {
   return true;
 }
 
+/**
+ * 该 job 是否已被用户取消（E6#73j）——**记账的查询面**，不是新状态。
+ *
+ * 取消的真账在 `JobRecord.cancelled`（`cancelInstallJob` 写、`settleInstallJob` 消费后连记录一起删）。
+ * 但**调用方**（`installPlugin` / `updatePlugin` 的收尾）也要知道这件事，才能把 `cancelled: true`
+ * 放进返回结果里——否则运行中被取消的那条腿只能从下载中止推出一个通用错误，市场侧照 `success:false`
+ * 走失败分支：用户刚亲口点了「取消安装」，屏幕立刻回敬一条红字 + [重试]。
+ * 记录已删（已结算）→ 返回 false——那时结果早已产出，问它没有意义。
+ */
+export function isInstallJobCancelled(jobId: string): boolean {
+  return _jobs.get(jobId)?.cancelled === true;
+}
+
 /** 按 pluginId 取消（面板行只拿得到 pluginId）——去重保证一个插件至多一条未结算 job */
 export function cancelInstallJobByPlugin(pluginId: string): boolean {
   for (const job of _jobs.values()) {
@@ -382,6 +395,38 @@ export async function waitInstallJob(jobId: string): Promise<PluginInstallResult
 /** 取消的统一结果对象——队列侧唯一生产者（`cancelled` 标 + 壳侧 t() 文案） */
 function cancelledResult(): PluginInstallResult {
   return { success: false, cancelled: true, error: i18n.t("已取消安装") };
+}
+
+/**
+ * 起手式（E6#73j 抽出）——**安装与更新两条腿共用的开场四步**：建 job → 去重等待 → 挂取消钩子 → 抢槽。
+ *
+ * 为什么要抽：更新并入同一队列后，这段与 `installPlugin` 的开场逐字同款，**两份拷贝迟早漂移**
+ * （还真会——更新那条本就是照抄来的）。jscpd 也把它判成了克隆。
+ *
+ * `cancelHook` 由调用方给而不是本模块自己摸：真中止要调 `packageOps()` 的壳面 API，本模块**不依赖它**
+ * （install-queue 是纯队列，import 反了会成环）。
+ *
+ * 三态返回，**每一态都必须被调用方区别对待**：
+ * - `run`：槽到手，往下干真活；
+ * - `duplicate`：同插件已有 job 在跑/在排——已替调用方等出结果（「点两下」不是两件事）；
+ * - `cancelled`：排队期间被取消/判死——**收手**，不能假装没取消继续往下跑。
+ */
+export async function openInstallJob(
+  spec: { pluginId?: string; displayName?: string; origin?: InstallJobOrigin },
+  cancelHook: (jobId: string) => void,
+): Promise<
+  | { kind: "run"; jobId: string }
+  | { kind: "duplicate"; jobId: string; outcome: PluginInstallResult | undefined }
+  | { kind: "cancelled"; jobId: string }
+> {
+  const job = beginInstallJob(spec);
+  if (job.duplicate) return { kind: "duplicate", jobId: job.jobId, outcome: await waitInstallJob(job.jobId) };
+  setInstallJobCanceller(job.jobId, () => cancelHook(job.jobId));
+  // ⚠️ 抢槽失败 = 排队期间被用户取消（或极端竞态下已被判死）——调用方必须收手。
+  // 这里的 jobId 仍要带出去：记录多半已不在表里（排队取消 = 直接出队），调用方 settle 是空操作，
+  // 但那是对「记录还在但已非 queued」那一支的兜底——漏了就会留个永不结算的僵尸行。
+  if (!(await acquireInstallSlot(job.jobId))) return { kind: "cancelled", jobId: job.jobId };
+  return { kind: "run", jobId: job.jobId };
 }
 
 /* ── 槽位与看门狗（内部） ── */

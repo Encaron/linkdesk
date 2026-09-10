@@ -1142,6 +1142,11 @@ export interface PluginListEntry {
     manifest: PluginListSubset;
     /** 缺依赖挂起原因——marketplace 显示 PENDING 徽标 + 详情提示条（E5.8#15.5） */
     pendingReason?: string;
+    /** E6#73j（G6）：该插件**住哪**——`true` = 在用户安装家（`{userData}/plugins`），可被下载来的新包替换。
+     *  `false` = 只读 app 根（随包发货件 / 目录源安装的插件）——更新流对它必然抛「不在用户安装区」，
+     *  市场**不得**渲染「更新到 vX」（那是点下去必失败的死钮，含 8 只官方随包插件在内）。
+     *  判据唯一源 = `isPluginUpdatable`（磁盘住所事实，非插件身份——硬约束 11）。 */
+    updatable?: boolean;
 }
 /** E6#73q：安装请求侧身份——job 表按 pluginId 去重、job 行要显示名，而两者都只有池侧知道
  *  （显示名今天只存在于池侧目录 store，壳拿不到）。
@@ -1186,6 +1191,9 @@ export interface PluginInfoEntry {
     description?: string;
     version?: string;
     core?: boolean;
+    /** E6#73j（G6）：同 `PluginListEntry.updatable` 的住所判据——禁用**不改住所**（disable 只记名单，
+     *  目录原地不动）⇒ userData 家的禁用插件照样可更新，app 树的则否。 */
+    updatable?: boolean;
 }
 /** E6#11c/#13b（段 B）：更新结果——PluginInstallResult 的更新扩展。
  *  upToDate = catalog 直答已是最新（success:true 但非"更新发生"——UI 显示"已是最新"非红错误）；
@@ -1233,8 +1241,9 @@ export interface PluginsAPI {
         /** E6#13b（段 B）：主进程真网络段——fetch marketplace.json → 版本对比（不碰账本——current 由壳传）。prerelease 默认忽略。 */
         packageUpdateCheck?(pluginId: string, catalogUrl: string, currentVersion?: string): Promise<PluginUpdateCheckResult>;
         /** E6#13b/c（段 B）：主进程真下载+解压段——下载到 tmp → 解压到 {userData}/tmp/.stage-<id>（id 一致 + 版本方向校验，不碰旧目录）。
-         *  E6#33c（锚①）：allowOlder 显式 true 放行「包内版本 < 当前」的降级（版本下拉选旧版 + F2 确认后传）；默认仍拒 <=；同版恒拒。 */
-        packageStageUpdate?(pluginId: string, source: string, currentVersion?: string, allowOlder?: boolean): Promise<{
+         *  E6#33c（锚①）：allowOlder 显式 true 放行「包内版本 < 当前」的降级（版本下拉选旧版 + F2 确认后传）；默认仍拒 <=；同版恒拒。
+         *  E6#73j（G1）：job 同 packageDownload——更新下载段的进度按 jobId 归行，并按 jobId 可真中止。 */
+        packageStageUpdate?(pluginId: string, source: string, currentVersion?: string, allowOlder?: boolean, job?: PluginInstallJobRef): Promise<{
             pluginId: string;
             newVersion: string;
             stagedDir: string;
@@ -2079,11 +2088,17 @@ export interface ShellAPI {
         isAlwaysOnTop(): Promise<boolean>;
         onAlwaysOnTopChange(cb: (pinned: boolean) => void): () => void;
     };
-    /** 壳级命令——revealInOS / openInTerminal / startDrag，双端注入 */
+    /** 壳级命令——revealInOS / openInTerminal / startDrag / relaunch，双端注入 */
     shell: {
         showItemInFolder(p: string): Promise<void>;
         openInTerminal(dirPath: string, terminalExe?: string, customCommand?: string): Promise<void>;
         startDrag(filePath: string, iconPath?: string): void;
+        /** E6#73j（G4）：**真重启应用**（退出并重新启动进程）。
+         *  与 `window.location.reload()` 的区别是「池在不在」——池是独立的 WebContentsView，壳 reload 不重建它，
+         *  更新视图类插件后池里跑的仍是旧 bundle（界面看起来毫无变化）。
+         *  诚实边界：整个应用会退出再起——未保存的编辑器内容由热退出（hotExit）负责，工作区布局走持久化恢复。
+         *  壳 preload 独有（池不需要自己重启宿主）；调用后本进程随即终止，不要再依赖它的返回。 */
+        relaunch?(): Promise<void>;
     };
     /** 热退出暂存——编辑器未保存内容落盘（E5.7#53）。`?`：池侧独有（壳 preload 不注入） */
     hotExit?: {

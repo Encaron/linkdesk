@@ -271,3 +271,50 @@ describe("E6#73d：subscribeNotifPanelOpen", () => {
     expect(seen).toEqual([false]);
   });
 });
+
+/**
+ * E6#73j（G3）：`ttl: 0` 单独出现时必须等同于「常驻」——不再需要调用方记得同时写 persistent。
+ * 真案例：更新成功那条只写了 `ttl: 0`，于是永不消失、又绕过按来源配额 ⇒ 更新 30 个插件叠 30 条。
+ */
+describe("E6#73j G3：常驻判据由 ttl 派生（ttl<=0 ⇒ persistent）", () => {
+  it("只写 ttl: 0 → 自动常驻", () => {
+    pushToast({ message: "演示消息 只写 ttl", source: "demo-plugin", ttl: 0 });
+    expect(getToasts()[0]!.persistent).toBe(true);
+  });
+
+  it("只写 ttl: 0 也纳入按来源配额（不再无限堆积）", () => {
+    for (let i = 0; i < TOAST_SOURCE_CAP + 3; i++) {
+      pushToast({ message: `演示消息 只写 ttl ${i}`, source: "demo-plugin", ttl: 0 });
+    }
+    expect(getToasts()).toHaveLength(TOAST_SOURCE_CAP);
+    expect(getFoldedCount("demo-plugin")).toBe(3);
+  });
+
+  it("普通 ttl（>0）→ 非常驻，不占配额", () => {
+    pushToast({ message: "演示消息 限时", source: "demo-plugin", ttl: 3000 });
+    expect(getToasts()[0]!.persistent).toBe(false);
+  });
+
+  it("显式 persistent 优先于 ttl 派生（可强行给限时条目挂常驻旗标）", () => {
+    pushToast({ message: "演示消息 显式", source: "demo-plugin", ttl: 3000, persistent: true });
+    expect(getToasts()[0]!.persistent).toBe(true);
+  });
+
+  it("replaceToast 改 ttl → 重派生；显式给 persistent 则以显式为准", () => {
+    const id = pushToast({ message: "演示消息 起手限时", source: "demo-plugin", ttl: 3000 });
+    expect(getToasts()[0]!.persistent).toBe(false);
+
+    replaceToast(id, { ttl: 0 });
+    expect(getToasts()[0]!.persistent).toBe(true);
+
+    replaceToast(id, { ttl: 0, persistent: false });
+    expect(getToasts()[0]!.persistent).toBe(false);
+  });
+
+  it("replaceToast 不动 ttl → persistent 保持不变（updateToast 进度改写不误伤）", () => {
+    pushToast({ message: "演示消息 进行中", source: "demo-plugin", progress: true, ttl: 0 });
+    const id = getToasts()[0]!.id;
+    updateToast(id, "演示消息 进行中 62%", 62);
+    expect(getToasts()[0]!.persistent).toBe(true);
+  });
+});

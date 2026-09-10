@@ -92,11 +92,17 @@ export interface ShellAPI {
     onAlwaysOnTopChange(cb: (pinned: boolean) => void): () => void;
   };
 
-  /** 壳级命令——revealInOS / openInTerminal / startDrag，双端注入 */
+  /** 壳级命令——revealInOS / openInTerminal / startDrag / relaunch，双端注入 */
   shell: {
     showItemInFolder(p: string): Promise<void>;
     openInTerminal(dirPath: string, terminalExe?: string, customCommand?: string): Promise<void>;
     startDrag(filePath: string, iconPath?: string): void;
+    /** E6#73j（G4）：**真重启应用**（退出并重新启动进程）。
+     *  与 `window.location.reload()` 的区别是「池在不在」——池是独立的 WebContentsView，壳 reload 不重建它，
+     *  更新视图类插件后池里跑的仍是旧 bundle（界面看起来毫无变化）。
+     *  诚实边界：整个应用会退出再起——未保存的编辑器内容由热退出（hotExit）负责，工作区布局走持久化恢复。
+     *  壳 preload 独有（池不需要自己重启宿主）；调用后本进程随即终止，不要再依赖它的返回。 */
+    relaunch?(): Promise<void>;
   };
 
   /** 热退出暂存——编辑器未保存内容落盘（E5.7#53）。`?`：池侧独有（壳 preload 不注入） */

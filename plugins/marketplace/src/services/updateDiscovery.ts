@@ -70,10 +70,14 @@ export interface InstalledSnapshot {
   name: string;
   /** 禁用态——更新不改变禁用状态（§二·十 F1，组装保留供 #33b/update 后翻态） */
   disabled: boolean;
+  /** E6#73j（G6）：住所——`false` = 住只读 app 根（随包发货件 / 目录源安装），**不可能被包更新**。
+   *  发现编排不得为它产候选（引擎对它会抛「不在用户安装区」）——否则铃铛年年提醒一件永远做不成的事。 */
+  updatable?: boolean;
 }
 
 /** 两源合并为本地版本快照——list() 排除禁用故与 getDisabled() 不重叠；无版本（无法比较）丢弃。
- *  禁用条目覆盖启用条目仅防御（不发生）。缺名回退 pluginId。 */
+ *  禁用条目覆盖启用条目仅防御（不发生）。缺名回退 pluginId。
+ *  E6#73j（G6）：updatable 随行（两源都带——禁用不改住所）。 */
 export function assembleInstalled(enabled: PluginListEntry[], disabled: PluginInfoEntry[]): InstalledSnapshot[] {
   const byId = new Map<string, InstalledSnapshot>();
   for (const p of enabled) {
@@ -84,11 +88,12 @@ export function assembleInstalled(enabled: PluginListEntry[], disabled: PluginIn
       localVersion: v,
       name: p.manifest.name || p.pluginId,
       disabled: false,
+      updatable: p.updatable,
     });
   }
   for (const p of disabled) {
     if (!p.version) continue;
-    byId.set(p.pluginId, { pluginId: p.pluginId, localVersion: p.version, name: p.name || p.pluginId, disabled: true });
+    byId.set(p.pluginId, { pluginId: p.pluginId, localVersion: p.version, name: p.name || p.pluginId, disabled: true, updatable: p.updatable });
   }
   return [...byId.values()];
 }
@@ -136,6 +141,9 @@ export function planDiscovery(
     if (notified && compareVersions(inst.localVersion, notified) >= 0) {
       toClearNotified.push(inst.pluginId);
     }
+    // E6#73j（G6）：住只读 app 根的插件不是候选——引擎对它必抛「不在用户安装区」，
+    // 推进候选 = 徽标挂着一个点不动的入口 + 铃铛年年提醒一件永远做不成的事。自愈清照跑（上方）。
+    if (inst.updatable === false) continue;
     if (!isVersionNewer(remote, inst.localVersion)) continue; // §一·三 唯一判定——不比本地高 → 无更新
     const c: UpdateCandidate = {
       pluginId: inst.pluginId,
@@ -265,16 +273,20 @@ async function doRunDiscovery(force: boolean): Promise<DiscoveryPlan | null> {
   // 自愈清提醒（幂等——无变化不写盘，installedUpdateMeta 内部保证）
   await Promise.all(plan.toClearNotified.map((id) => clearNotifiedVersion(id)));
 
-  // 铃铛推一条 + 记版本（每版本一次）。推失败 → 不记（下趟补推，宁重勿漏）；全插件独立，单败不阻断。
+  // 铃铛推一条 + 记版本（每版本一次）。推失败 → 不记（下趟补推，宁重勿漏）。
   // E6#71k「都问」：**撤掉原先「auto 候选不铃」的抑制**——自动更新已停摆，不再有人代劳，这些插件
   //  必须和别的插件一样收到铃铛，否则「更新无人做、也不告知」= 用户彻底不知道有新版本。
+  // E6#73j（G7）：**整批一条汇总，不是逐插件 N 条**。此前 10 个待更新 = 10 条 info 挤满通知面板；
+  //  而 info 级不触发 autoOpen（18 档 §五 B）⇒ 该看的时候没弹出来，只是静静堆了一屏——
+  //  「该通知时不弹、该收敛时刷屏」两头错。汇总后：一条说清几件事，面板看得到，铃铛也不淹。
+  //  记账仍**逐条做**（幂等键是 per-plugin per-version，不是 per-批次）——整批一次推送成功即整批记账。
   const show = window.linkdesk?.notifications?.show;
-  for (const c of plan.toNotify) {
+  if (plan.toNotify.length > 0) {
     let pushed = false;
     if (show) {
       try {
         // E6#73g（S5）：版本提醒归市场来源桶（组标题解析成市场显示名，不显示内部 id）
-        await show(updateBellMessage(c), { type: "info", source: "marketplace" });
+        await show(updateBellMessage(plan.toNotify), { type: "info", source: "marketplace" });
         pushed = true;
       } catch {
         pushed = false; // 推送失败 → 不记账（下次发现重推）
@@ -282,7 +294,9 @@ async function doRunDiscovery(force: boolean): Promise<DiscoveryPlan | null> {
     } else {
       pushed = true; // 无铃铛能力（预览/非池）——仍记账防循环重试；发现编排本已池门控，此为兜底
     }
-    if (pushed) await noteNotifiedVersion(c.pluginId, c.remoteLatest);
+    if (pushed) {
+      for (const c of plan.toNotify) await noteNotifiedVersion(c.pluginId, c.remoteLatest);
+    }
   }
 
   // #33d auto 执行环已删（E6#71k「都问」）——见文件头「自动更新停摆」。此处不跑引擎 update、不动文件：
@@ -308,9 +322,20 @@ export async function runAutoUpdateIfDue(pluginId: string): Promise<boolean> {
   return false;
 }
 
-/** 铃铛文案——插件名 + 新版（i18n key = 中文原文；en.json 映射英文，zh 回落 key 中文） */
-function updateBellMessage(c: UpdateCandidate): string {
-  return i18n.t("「{{name}}」有新版本 {{version}}", { name: c.name, version: c.remoteLatest });
+/** 汇总里最多点几个名字——多了只留条数（面板一行读得完；完整名单在各列表页的可更新徽标上） */
+const BELL_NAME_LIMIT = 3;
+
+/** 铃铛文案（i18n key = 中文原文；en.json 映射英文，zh 回落 key 中文）。
+ *  E6#73j（G7）：一批一条——单个时才点名到版本（原逐插件文案原样保留，信息量最足）；多个时给条数 +
+ *  头几个名字。⚠️ 不用 i18next 的 `count` 复数变量——那会去找 `key_one`/`key_other` 变体，
+ *  而本项目词典是「中文原文 → 译文」平表，没有复数形态。 */
+function updateBellMessage(cs: UpdateCandidate[]): string {
+  if (cs.length === 1) {
+    return i18n.t("「{{name}}」有新版本 {{version}}", { name: cs[0].name, version: cs[0].remoteLatest });
+  }
+  const heads = cs.slice(0, BELL_NAME_LIMIT).map((c) => c.name).join("、");
+  const names = cs.length > BELL_NAME_LIMIT ? i18n.t("{{names}} 等", { names: heads }) : heads;
+  return i18n.t("{{num}} 个插件有新版本：{{names}}", { num: cs.length, names });
 }
 
 /* ═══ 启动调度（2026-09-08 锚② 重裁——市场池首载触发，模块级每进程一次） ═══ */

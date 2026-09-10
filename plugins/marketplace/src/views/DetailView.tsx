@@ -41,15 +41,15 @@ import {
   useOnlineStatus,
   startMarketInstall,
   retryMarketInstall,
+  settleUpdateFailure,
   updateFailText,
-  classifyInstallError,
   notifyError,
 } from "../services/marketplaceShared";
 import { useInstallJob, installJobLabel } from "../services/installJobs";
 import type { CatalogEntry } from "../services/marketCatalog";
 import {
   compareVersions,
-  updateToVersion,
+  updateTargetFor,
   versionDownloadUrl,
   selectableVersions,
   pinnedAfterApply,
@@ -242,10 +242,13 @@ export default function DetailView({ pluginId }: DetailContributedProps) {
   };
 
   /* ── E6#33b 第四维：可更新判定（04 §二·五 mockup 帧 6/10）——本地已装版本 vs 目录条目 stable-only
-   *  （updateToVersion = planDiscovery 同判据单函数：semver.gt + beta 回落，杜绝 UI/发现判定分裂）。
-   *  仅 installed 有意义（未装无本地可比）；挂起态（缺依赖）不提示更新（blocked chip 占位，入口让位解除后）。 ── */
+   *  （updateTargetFor = planDiscovery 同判据单函数：semver.gt + beta 回落 + 住所闸，杜绝 UI/发现判定分裂）。
+   *  仅 installed 有意义（未装无本地可比）；挂起态（缺依赖）不提示更新（blocked chip 占位，入口让位解除后）。
+   *  E6#73j（G6）：住所闸——随包发货件 / 目录源安装的插件住只读 app 根，更新流对它必然抛「不在用户安装区」，
+   *  故此处根本不渲染「更新到 vX」（此前渲染 = 点下去必失败的死钮）。 */
   const localVer = enabledEntry?.manifest.version ?? disabledHit?.version;
-  const updateTarget = updateToVersion(entry, localVer);
+  const updatable = enabledEntry?.updatable ?? disabledHit?.updatable;
+  const updateTarget = updateTargetFor(entry, localVer, updatable);
   const hasUpdate = !!updateTarget && !pending;
   /* changelog 两版并排 overlay：远端「最新」块信息（目录 versions[].changelog 为准——远端新包未下载无法读包内文件） */
   const remoteChangelog = useMemo(() => {
@@ -439,19 +442,16 @@ export default function DetailView({ pluginId }: DetailContributedProps) {
           const pin = pinnedAfterApply(entry, ver);
           if (pin !== undefined) void setPinnedVersion(pluginId, pin);
           refreshPlugins();
-        } else {
+        } else if (!r?.cancelled) {
           // #64 A2：更新失败 → error toast（原行内红字退役）；重试口 = 原位更新钮仍在，无漂移。
-          // E6#71b：归因可认 → 归因短语；unknown → updateFailText 直显引擎原文（终结「未知错误」黑洞）
-          // E6#73h（D6）：套 `{{name}}：{{reason}}`（73e 装失败同款 key）——一句「更新失败：服务器暂时不可用」
-          // 不说是哪个插件，多单并发时用户对着通知面板认不出是谁。
-          const reason = classifyInstallError(r?.error ?? "");
-          notifyError(t("{{name}}：{{reason}}", { name: displayName, reason: updateFailText(t, reason, r?.error) }));
+          // E6#73j（G2）：改用更新域失败终局——常驻 + [重试]（此前 8 秒自灭、无按钮，与安装域两套待遇）。
+          // E6#73j：用户点「取消安装」叫停的**不是失败**——走 cancelled 分支静默，别拿他自己的决定去吓他。
+          settleUpdateFailure(pluginId, displayName, url, r?.error ?? "");
         }
       } catch (e) {
         // E6#71b：catch 兜 rejection（如 10s 桥超时 reject）——原文带进 updateFailText，unknown 时可见
         const raw = e instanceof Error ? e.message : String(e);
-        const reason = classifyInstallError(raw);
-        notifyError(t("{{name}}：{{reason}}", { name: displayName, reason: updateFailText(t, reason, raw) }));
+        settleUpdateFailure(pluginId, displayName, url, raw);
       } finally {
         setUpdating(false);
       }

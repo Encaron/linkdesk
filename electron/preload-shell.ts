@@ -232,7 +232,7 @@ try {
       // E6#11c/#13b/c（段 B）：安全更新三段主进程 handler——updatePlugin/checkPluginUpdates 编排（壳 preload 独有）
       // E6#33c（锚①）：stage-update allowOlder——降级放行（版本下拉选旧版 + F2 确认后传），默认拒 <=
       packageUpdateCheck:  (pluginId: string, catalogUrl: string, currentVersion?: string) => ipcRenderer.invoke(IPC.plugins.updateCheck, pluginId, catalogUrl, currentVersion),
-      packageStageUpdate:  (pluginId: string, source: string, currentVersion?: string, allowOlder?: boolean) => ipcRenderer.invoke(IPC.plugins.stageUpdate, pluginId, source, currentVersion, allowOlder),
+      packageStageUpdate:  (pluginId: string, source: string, currentVersion?: string, allowOlder?: boolean, job?: PluginInstallJobRef) => ipcRenderer.invoke(IPC.plugins.stageUpdate, pluginId, source, currentVersion, allowOlder, job),
       packageCommitUpdate: (pluginId: string, stagedDir: string) => ipcRenderer.invoke(IPC.plugins.commitUpdate, pluginId, stagedDir),
     },
 
@@ -403,13 +403,15 @@ try {
       writeText: (text: string) => ipcRenderer.invoke(IPC.clipboard.writeText, text),
       writeFileList: (paths: string[]) => ipcRenderer.invoke(IPC.clipboard.writeFileList, paths),
     },
-    // ── Shell（E4V#18-#19——revealInOS / openInTerminal / startDrag）──
+    // ── Shell（E4V#18-#19——revealInOS / openInTerminal / startDrag / E6#73j relaunch）──
     shell: {
       showItemInFolder:(p: string) => ipcRenderer.invoke(IPC.shell.showItemInFolder, p),
       // E5#22: 第二参数 terminalExe + 第三参数 customCommand 由调用方从 ConfigurationService 读取后传入
       openInTerminal:  (dirPath: string, terminalExe?: string, customCommand?: string) => ipcRenderer.invoke(IPC.shell.openInTerminal, dirPath, terminalExe, customCommand),
       // E5#108c：拖出到桌面
       startDrag: (filePath: string, iconPath?: string) => ipcRenderer.send(IPC.shell.startDrag, filePath, iconPath),
+      // E6#73j（G4）：真重启应用——壳 preload 独有（池不需要自己重启宿主，见 linkdesk-api/shell.ts 注释）
+      relaunch: () => ipcRenderer.invoke(IPC.shell.relaunch),
     },
     // ── 外观资产（E5.8#153：壳侧命令执行用——齿轮命令 handler 跑在壳进程，池 appearance 面不注入壳）──
     appearance: {

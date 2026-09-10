@@ -32,7 +32,11 @@ export interface Toast {
   progress?: boolean;
   /** 当前进度百分比 0-100——下载段带真值（确定条宽度）；无 percent = 不定态动画 */
   percent?: number;
-  /** 长驻通知——不自动消失、等用户手动点 ×（E6#71j）。与 ttl:0 叠加；参与常驻上限淘汰 */
+  /**
+   * 长驻通知——不自动消失、等用户手动点 ×（E6#71j）；参与常驻上限淘汰。
+   * E6#73j（G3）归一：**缺省由 ttl 派生**（`ttl <= 0` ⇒ 常驻，与 `armTimer` 同一判据），
+   * 显式值仍可覆盖。此前「设了 ttl:0 却没设 persistent」= 永不消失但绕过上限 ⇒ 无限堆积。
+   */
   persistent?: boolean;
   /**
    * 关闭后不再显示——对标 VS Code `isCloseAffordance`。
@@ -248,6 +252,16 @@ function defaultWake(t: Omit<Toast, "id">): boolean {
   return t.severity === "error" || (t.actions?.length ?? 0) > 0;
 }
 
+/**
+ * 常驻判据单复本（E6#73j G3）——「不自动消失」= 常驻。
+ * `armTimer` 早已只认 `ttl <= 0` 就不挂定时器，本函数把 `persistent` 拉齐到同一判据：
+ * 此前两者是两个独立输入，生产者只写 `ttl: 0`（更新成功那条就是这么写的）⇒ 条目永不消失、
+ * 却因为 `persistent !== true` 而绕过 `evictOverflow` 的按来源配额 ⇒ 无限堆积。
+ */
+function derivePersistent(ttl: number): boolean {
+  return ttl <= 0;
+}
+
 /** 推送 toast。对标 VS Code `INotificationService.notify()` */
 export function pushToast(toast: Omit<Toast, "id"> & { id?: string }): string {
   // "Don't show again" 检查——用户之前点 × 关过同款通知
@@ -256,12 +270,14 @@ export function pushToast(toast: Omit<Toast, "id"> & { id?: string }): string {
   }
 
   const id = toast.id ?? `toast-${++_counter}`;
+  const ttl = toast.ttl ?? DEFAULT_TTL;
   const t: Toast = {
     ...toast,
     id,
-    ttl: toast.ttl ?? DEFAULT_TTL,
+    ttl,
     createdAt: toast.createdAt ?? Date.now(),
     wake: toast.wake ?? defaultWake(toast),
+    persistent: toast.persistent ?? derivePersistent(ttl),
   };
 
   _toasts.push(t);
@@ -295,6 +311,10 @@ export function replaceToast(id: string, patch: Partial<Omit<Toast, "id">>): boo
   if (idx < 0) return false;
   const prev = _toasts[idx];
   const next: Toast = { ...prev, ...patch, id, createdAt: prev.createdAt };
+  // E6#73j（G3）：改了 ttl 就同 pushToast 一样重派生 persistent（除非本次显式给了 persistent）
+  if (patch.ttl !== undefined && patch.persistent === undefined) {
+    next.persistent = derivePersistent(patch.ttl);
+  }
   _toasts[idx] = next;
   if (patch.ttl !== undefined) armTimer(next);
   evictOverflow(next);

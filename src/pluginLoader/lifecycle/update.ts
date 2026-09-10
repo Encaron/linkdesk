@@ -2,7 +2,7 @@
  * 安全更新流（E6#11c/#13b/c，段 B）——check → stage → unload → commit → 账本 → 重载。
  * E6#0.6b 拆夹：self lifecycle-ops.ts 抽出（816 行超 800 体积门禁 E6#0.6a）——feature-folder 聚合器
  * lifecycle-ops 保留安装/卸载/禁用/启用；checkPluginUpdates/updatePlugin 归本文件。
- * 依赖方向：update → lifecycle-ops（emitInstallProgress/packageOps/isUnderHome/revert 族）+ runtime/loadState，
+ * 依赖方向：update → lifecycle-ops（jobProgress/packageOps/isUnderHome/revert 族）+ runtime/loadState，
  *   lifecycle-ops 不反向 import 本文件——无环。
  */
 
@@ -10,18 +10,43 @@ import i18n from "../../i18n"; // toast 动作标签壳 t() 解析（显示文�
 import { pushToast } from "../../core/services/ui/NotificationService";
 import { unloadPlugin } from "../resolution/loadState"; // E5.8#11：唯一卸载路径状态机（#11c 机械路径）
 import { loadPlugin } from "../resolution/runtime"; // 更新后尽力即时重载（失败不阻断——启动发现兜底）
-import { linkdesk, pluginsApi, log, errMsg, loadedPluginIds } from "../resolution/state";
+import { linkdesk, pluginsApi, log, errMsg, loadedPluginIds, refreshManifestFromDisk } from "../resolution/state";
 import { parseManifestJson } from "../jsonc"; // 作者 plugin.json JSONC——唯一解析入口
 // E6#11c/#13b/c（段 B）：更新流结果类型——types.ts 契约面（PluginUpdateResult / PluginUpdateCheckResult）
-import type { PluginUpdateResult, PluginUpdateCheckResult } from "../../core/api/linkdesk-api/types";
+import type { PluginUpdateResult, PluginUpdateCheckResult, PluginInstallJobRef } from "../../core/api/linkdesk-api/types";
 import {
-  emitInstallProgress,
+  jobProgress,
   packageOps,
   isUnderHome,
   revertThemeIfCurrent,
   revertLanguageIfCurrent,
   reapplyThemeAfterUnload,
 } from "./lifecycle-ops";
+// E6#73j（G1）：更新与安装同一条 job 队列——进度行 / 并发上限 / 取消 三样一起继承，不再「同是长任务两套待遇」。
+// 同插件去重使「一边装一边点更新」合并成一件事（一个插件一次只该有一个 job 在跑）。
+import {
+  identifyInstallJob,
+  isInstallJobCancelled,
+  openInstallJob,
+  settleInstallJob,
+} from "./install-queue";
+
+/**
+ * 更新后申请一次**真重启**（E6#73j G4）。
+ *
+ * 此前这里是 `window.location.reload()`——只重载壳渲染进程，而池是独立的 WebContentsView
+ * （`window-manager.ts` 注明「壳 reload 不重建它」）⇒ 更新视图类插件后点 [立即重启]，池里跑的
+ * **仍是旧 bundle**：界面上什么都没变，用户以为按钮坏了。文案承诺的是「点击重启以应用新版」，
+ * 那就得真重启。
+ * 面缺失（老 preload / 纯浏览器预览）→ 退回 reload——聊胜于无，至少不静默。
+ */
+function relaunchApp(): void {
+  const relaunch = window.linkdesk?.shell?.relaunch;
+  if (relaunch) {
+    try { void relaunch(); return; } catch { /* 落到 reload 兜底 */ }
+  }
+  window.location.reload();
+}
 
 /** 读已安装目录 plugin.json 全 manifest（更新流当前版本/显示名源；读失败 → null——保守按未读到处理） */
 async function readInstalledManifest(dir: string): Promise<{ name?: string; version?: string } | null> {
@@ -76,11 +101,37 @@ export async function checkPluginUpdates(pluginId: string, catalogUrl: string): 
  * 🔥 needRestart 恒 true：入口/视图 bundle 同 URL 已被旧版加载（壳+池双 realm module map）——
  *  模块缓存无法 in-session 破除（照 reinstall「移回后需全页刷新」现成机制；无 cache-bust 查询参数）。
  *  文件 + 账本已原子换新，重启后启动发现加载 v2；loadPlugin 尽力即时注册（失败不阻断）。
+ *
+ * E6#73j（G1）：本函数**进壳侧安装 job 队列**（此前只在 job 表之外散着发进度事件，市场侧没有会话 →
+ *  一条不落地全丢，界面上只剩按钮上的「更新中...」三个字）。现在与安装共用同一张 job 表、同一把
+ *  并发槽、同一套取消钩子——更新也有了行、有了阶段短语、有了百分比、有了「取消安装」。
  */
 export async function updatePlugin(
   pluginId: string,
   opts?: { catalogUrl?: string; url?: string; allowOlder?: boolean },
 ): Promise<PluginUpdateResult> {
+  // 开场四步与 installPlugin 同款（收在 `openInstallJob` 一处）——更新下载段现在也带 jobId，
+  // 主进程能按 jobId 真中止，故取消钩子照挂。
+  const opened = await openInstallJob({ pluginId, origin: "user" }, (jobId) => {
+    try { void packageOps().packageCancel?.(jobId).catch(() => { /* 主进程无在途下载 */ }); } catch { /* 壳面缺 package 段 */ }
+  });
+  if (opened.kind === "duplicate") {
+    // 同一插件已有 job 在跑/排队（正在装，或用户连点了两次更新）——不建第二行，等它出结果。
+    const outcome = opened.outcome;
+    return {
+      success: !!outcome?.success,
+      pluginId,
+      error: outcome?.error ?? i18n.t("该插件正在安装或更新中"),
+      cancelled: outcome?.cancelled,
+    };
+  }
+  if (opened.kind === "cancelled") {
+    const cancelled: PluginUpdateResult = { success: false, cancelled: true, pluginId, error: i18n.t("已取消更新") };
+    settleInstallJob(opened.jobId, "failed", cancelled);
+    return cancelled;
+  }
+  const { jobId } = opened;
+
   try {
     const ops = packageOps();
     if (!ops.packageUpdateCheck || !ops.packageStageUpdate || !ops.packageCommitUpdate) {
@@ -89,15 +140,19 @@ export async function updatePlugin(
 
     // ── 前置：插件须在 userData 安装家（包安装可更新）──
     const { currentVersion, name } = await installedContext(pluginId);
+    // E6#73q：真名到手才认得出来——job 行显示名（进入本函数时只有 pluginId）
+    identifyInstallJob(jobId, { pluginId, displayName: name });
+    const jobRef: PluginInstallJobRef = { jobId, pluginId };
 
     // ── 更新源：catalogUrl → check 选最新正式版；url 直给（跳过目录）；二者皆无 → 拒 ──
     let downloadUrl = opts?.url;
     if (opts?.catalogUrl) {
-      emitInstallProgress("checking", pluginId, `检查 ${name} 更新`);
+      jobProgress(jobId, "checking", pluginId, `检查 ${name} 更新`);
       const check = await ops.packageUpdateCheck(pluginId, opts.catalogUrl, currentVersion);
       if (!check.update) {
-        emitInstallProgress("done", pluginId, `${name} 已是最新（v${currentVersion}）`);
-        return { success: true, pluginId, currentVersion, version: currentVersion, upToDate: true };
+        const upToDate: PluginUpdateResult = { success: true, pluginId, currentVersion, version: currentVersion, upToDate: true };
+        settleInstallJob(jobId, "success", upToDate);
+        return upToDate;
       }
       downloadUrl = check.downloadUrl ?? downloadUrl;
     }
@@ -108,9 +163,10 @@ export async function updatePlugin(
     }
 
     // ── stage（主进程：下载→解压到 {userData}/tmp/.stage-<id>；校验 id 一致 + 版本方向：新版>旧版默认，
-    //    降级仅当调用方显式传 allowOlder:true（E6#33c 版本下拉选旧版 + F2 确认）──
-    emitInstallProgress("staging", pluginId, `准备新版 ${name}`);
-    const staged = await ops.packageStageUpdate(pluginId, downloadUrl, currentVersion, opts?.allowOlder);
+    //    降级仅当调用方显式传 allowOlder:true（E6#33c 版本下拉选旧版 + F2 确认）；
+    //    jobRef 随行 → 下载段的百分比归到本行 + 按 jobId 可真中止（E6#73j G1）──
+    jobProgress(jobId, "staging", pluginId, `准备新版 ${name}`);
+    const staged = await ops.packageStageUpdate(pluginId, downloadUrl, currentVersion, opts?.allowOlder, jobRef);
 
     // ── unload 旧实例（#11c 机械路径——注册全退场后才允许文件被替换）──
     // revert 必须在 onWillUninstall 之前——注销主题/语言后 revert 找不到归属（同 uninstall/disable 序）
@@ -120,7 +176,7 @@ export async function updatePlugin(
     if (wasActive) unloadPlugin(pluginId, "update", name);
 
     // ── commit（主进程同卷原子 rename：target→.bak→staged→target→rm .bak；失败复原旧版→抛）──
-    emitInstallProgress("committing", pluginId, `替换旧版 ${name}@${currentVersion}`);
+    jobProgress(jobId, "committing", pluginId, `替换旧版 ${name}@${currentVersion}`);
     let committed: { pluginId: string; version: string };
     try {
       committed = await ops.packageCommitUpdate(pluginId, staged.stagedDir);
@@ -145,6 +201,13 @@ export async function updatePlugin(
     // ── 文件已换——通知主进程三表重扫（无论 loadPlugin 成败）──
     window.linkdesk?.pluginManager?.notifyManifestChanged?.();
 
+    // ── E6#73j（G9）：壳侧 manifestIndex 增量刷新（不是同一件事）──
+    // notifyManifestChanged 只重扫**主进程**三表（LangDef/Protocol/FileAssociation）；壳的 manifestIndex
+    // 是启动期一次性水合、此后永不更新 ⇒ `pluginManager.list()` 在本次会话里永远报旧版本 ⇒ 市场的
+    // 「有新版本」徽标不收敛、再点更新撞主进程「包内版本与当前版本相同——无需更新」报内部黑话。
+    // 失败不阻断（下一次重启照样收敛）。
+    try { await refreshManifestFromDisk(pluginId); } catch { /* 读盘失败非致命 */ }
+
     // ── loadPlugin 重载新实例（#11c 收尾）——之前 active 才 load（禁用的更新不自动启用）；失败不阻断 ──
     if (wasActive) {
       try {
@@ -154,7 +217,7 @@ export async function updatePlugin(
       }
     }
 
-    emitInstallProgress("done", pluginId, `已更新 ${name} ${currentVersion} → ${committed.version}`);
+    jobProgress(jobId, "done", pluginId, `已更新 ${name} ${currentVersion} → ${committed.version}`);
     // 🔥 恒 needRestart：bundle 模块缓存（壳+池双 realm）无法 in-session 破除——视图激活走重启（reinstall 同款）
     pushToast({
       // E6#73h（D3）：走 i18n（此前硬编码中文——英文界面下与本段按钮标签「立即重启」中英混排）
@@ -165,15 +228,23 @@ export async function updatePlugin(
       }),
       source: pluginId,
       severity: "info",
+      // ttl:0 即常驻（E6#73j G3 归一——此前只写 ttl 不写 persistent，绕过了按来源常驻上限）
       ttl: 0,
       actions: [
-        { label: i18n.t("立即重启"), isPrimary: true, onClick: () => window.location.reload() },
+        { label: i18n.t("立即重启"), isPrimary: true, onClick: relaunchApp },
       ],
     });
-    return { success: true, pluginId, currentVersion, version: committed.version, needRestart: true };
+    const result: PluginUpdateResult = { success: true, pluginId, currentVersion, version: committed.version, needRestart: true };
+    settleInstallJob(jobId, "success", result);
+    return result;
   } catch (e) {
-    const msg = errMsg(e);
-    emitInstallProgress("error", pluginId, msg);
-    return { success: false, error: msg };
+    let msg = errMsg(e);
+    // E6#73j：运行中被取消（下载段真中止）——取消不是失败，市场侧据此不推红字 [重试]（用户刚亲口叫停）。
+    const cancelled = isInstallJobCancelled(jobId);
+    if (cancelled) msg = i18n.t("已取消更新");
+    jobProgress(jobId, "error", pluginId, msg);
+    const result: PluginUpdateResult = { success: false, pluginId, error: msg, cancelled };
+    settleInstallJob(jobId, "failed", result);
+    return result;
   }
 }

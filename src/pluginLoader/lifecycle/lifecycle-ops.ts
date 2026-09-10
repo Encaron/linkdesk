@@ -30,6 +30,9 @@ import {
   getManifestById,
   getAllManifestEntries,
   _pendingPlugins,
+  // E6#73j（G6）：住所判据唯一源——市场「可更新」徽标/更新钮据此遮蔽死钮
+  isPluginUpdatable,
+  setPluginResidence,
 } from "../resolution/state";
 import { validateInstallManifest, resolveVersionConflict } from "../discovery/manifest";
 import { syncAppThemeEnum, syncAppLanguageEnum, syncIconThemeEnum } from "../contributions/contributions";
@@ -42,14 +45,12 @@ import { normalizePath } from "../../core/utils/path/pathUtils"; // 跨 IPC 路�
 import type { PluginInstallRequestOpts, PluginInstallResult, PluginInstallJobRef, PluginUpdateCheckResult } from "../../core/api/linkdesk-api/types";
 // E6#73q（18 档 §五 I.2）：壳侧 job 表 + N 槽限流 + FIFO——槽锁下沉到 installPlugin（两条腿共用）
 import {
-  acquireInstallSlot,
-  beginInstallJob,
-  setInstallJobCanceller,
+  openInstallJob,
   updateInstallJobProgress,
   identifyInstallJob,
+  isInstallJobCancelled,
   settleInstallJob,
   touchInstallJob,
-  waitInstallJob,
 } from "./install-queue";
 
 /* ═══════════════════════════════════════════════════════════
@@ -247,8 +248,11 @@ export async function uninstallPlugin(pluginId: string): Promise<{ success: bool
  *  与主进程 download/extract 段（plugin-install-handlers.ts 同通道广播）并流一个 plugin:installProgress。
  *  同一事件循环内 installPlugin 多处 emit——本层只发**低频状态跃迁**（阶段切换一次一条），逐次直呼即可；
  *  E6#73i 更正：唯一的高频生产点（下载分片）的节流归**源头**（`plugin-download.ts` 的
- *  `PROGRESS_THROTTLE_MS`），广播层从来没有节流——旧注释「节流交给广播层」是假的。 */
-export function emitInstallProgress(stage: string, pluginId?: string, message?: string, jobId?: string): void {
+ *  `PROGRESS_THROTTLE_MS`），广播层从来没有节流——旧注释「节流交给广播层」是假的。
+ *
+ *  E6#73j：**不再 export**——更新腿原有的一处外部调用已改走 `jobProgress`（那才是带 jobId 的正路），
+ *  剩下的调用方全在本文件（unload/reinstall 三条收尾腿只发裸进度、无 job）。knip 判过头，收口。 */
+function emitInstallProgress(stage: string, pluginId?: string, message?: string, jobId?: string): void {
   try {
     window.linkdesk?.events?.emit("plugin:installProgress", { stage, pluginId, message, jobId });
   } catch { /* 广播失败不阻断安装 */ }
@@ -259,7 +263,7 @@ export function emitInstallProgress(stage: string, pluginId?: string, message?: 
  *
  *  E6#73d：**顺带把阶段落进 job 表**（同进程直呼，不走 IPC 往返）——面板「进行中」行的阶段短语由它派生。
  *  带 jobId 进广播载荷是给**池**消费方（市场视图的状态徽标）认领身份用。 */
-function jobProgress(jobId: string, stage: string, pluginId?: string, message?: string): void {
+export function jobProgress(jobId: string, stage: string, pluginId?: string, message?: string): void {
   touchInstallJob(jobId);
   updateInstallJobProgress(jobId, { stage, message });
   emitInstallProgress(stage, pluginId, message, jobId);
@@ -290,7 +294,7 @@ export function packageOps(): {
   packageExtract: (zipPath: string, expectedPluginId?: string, job?: PluginInstallJobRef) => Promise<{ pluginId: string; version: string; targetDir: string }>;
   packageCancel?: (jobId: string) => Promise<boolean>;
   packageUpdateCheck?: (pluginId: string, catalogUrl: string, currentVersion?: string) => Promise<PluginUpdateCheckResult>;
-  packageStageUpdate?: (pluginId: string, source: string, currentVersion?: string, allowOlder?: boolean) => Promise<{ pluginId: string; newVersion: string; stagedDir: string }>;
+  packageStageUpdate?: (pluginId: string, source: string, currentVersion?: string, allowOlder?: boolean, job?: PluginInstallJobRef) => Promise<{ pluginId: string; newVersion: string; stagedDir: string }>;
   packageCommitUpdate?: (pluginId: string, stagedDir: string) => Promise<{ pluginId: string; version: string }>;
 } {
   const api = pluginsApi();
@@ -319,42 +323,44 @@ export async function installPlugin(
   sourcePath: string,
   opts?: PluginInstallRequestOpts,
 ): Promise<PluginInstallResult> {
-  const job = beginInstallJob({
-    pluginId: opts?.pluginId,
-    displayName: opts?.displayName,
-    origin: opts?.origin,
-  });
-  if (job.duplicate) {
-    const outcome = await waitInstallJob(job.jobId);
-    return outcome ?? { success: false, error: `插件 "${opts?.pluginId ?? sourcePath}" 正在安装中` };
+  // 开场四步（建 job / 去重等待 / 挂取消钩子 / 抢槽）与更新腿同款——收在 `openInstallJob` 一处，
+  // 免得两份拷贝各自漂移。E6#73d 的真中止钩子（面板「取消安装」→ 主进程 AbortController）由本处提供：
+  // **只有下载段能被真中止**，其余段（解压/落盘/加载）已是本地不可中断的原子动作——取消它们只是
+  // 「不装完」，不能假装停了。钩子按需解析 packageOps（目录源安装不该因为壳 API 缺 download/extract 而在注册时炸）。
+  const opened = await openInstallJob(
+    { pluginId: opts?.pluginId, displayName: opts?.displayName, origin: opts?.origin },
+    (jobId) => {
+      try { void packageOps().packageCancel?.(jobId).catch(() => { /* 主进程无在途下载 */ }); } catch { /* 壳面缺 package 段 */ }
+    },
+  );
+  if (opened.kind === "duplicate") {
+    return opened.outcome ?? { success: false, error: `插件 "${opts?.pluginId ?? sourcePath}" 正在安装中` };
   }
-
-  // E6#73d：挂真中止钩子（面板「取消安装」→ 主进程 AbortController）。**只有下载段能被真中止**，
-  // 其余段（解压/落盘/加载）已经是本地不可中断的原子动作——取消它们只是「不装完」，不能假装停了。
-  // 钩子按需解析 packageOps（目录源安装不该因为壳 API 缺 download/extract 而在注册时就炸）。
-  setInstallJobCanceller(job.jobId, () => {
-    try { void packageOps().packageCancel?.(job.jobId).catch(() => { /* 主进程无在途下载 */ }); } catch { /* 壳面缺 package 段 */ }
-  });
-
-  // ⚠️ 抢槽失败 = 排队期间被用户取消（或极端竞态下已被判死）——**必须收手**，不能往下跑。
-  if (!(await acquireInstallSlot(job.jobId))) {
+  if (opened.kind === "cancelled") {
     // 记录多半已不在表里（排队取消 = 直接出队）；settle 对已消失的 job 是空操作，调它只是兜底防僵尸。
     const cancelled: PluginInstallResult = { success: false, cancelled: true, error: i18n.t("已取消安装") };
-    settleInstallJob(job.jobId, "failed", cancelled);
+    settleInstallJob(opened.jobId, "failed", cancelled);
     return cancelled;
   }
+  const { jobId } = opened;
 
   let result: PluginInstallResult;
   try {
     result = isPackageSource(sourcePath)
-      ? await installPackageFromSource(sourcePath, opts, job.jobId)
-      : await installPluginFromDirectory(sourcePath, job.jobId);
+      ? await installPackageFromSource(sourcePath, opts, jobId)
+      : await installPluginFromDirectory(sourcePath, jobId);
   } catch (e) {
     // 两条流各自 catch（错误文案更具体）；此处是兜底——绝不让 job 停在「在跑」永不出终态
     result = { success: false, error: errMsg(e) };
   }
+  // E6#73j：运行中被取消（下载段真中止）时把取消标补进结果——上面那条腿只能从中止推出通用错误，
+  // 不补这一笔市场侧就照 `success:false` 走失败分支，对刚刚亲手叫停的用户回敬一条红字 + [重试]。
+  // job 记录此刻还在（本函数下方才 settle），故取消标可查。
+  if (!result.success && !result.cancelled && isInstallJobCancelled(jobId)) {
+    result = { ...result, cancelled: true, error: i18n.t("已取消安装") };
+  }
   settleInstallJob(
-    job.jobId,
+    jobId,
     !result.success ? "failed" : result.parked ? "parked" : "success",
     result,
   );
@@ -457,6 +463,9 @@ async function installPackageFromSource(
     }
     const { pluginId, version, targetDir } = extracted;
     const displayName = await manifestNameOf(targetDir, pluginId);
+    // E6#73j（G6）：包安装落在 {userData}/plugins/<id> = 用户安装家 ⇒ 此后可被新包更新
+    // （不等下次启动重新发现——本会话装完立刻开详情页就该看见更新能力）
+    setPluginResidence(pluginId, "userData");
 
     // E6#73q：真 id 此刻才从包内 manifest 裁决出来——回填 job 身份，池侧行才从「未知」变成真名
     // （调用方传了 pluginId 则此处是同一值的幂等刷新；显示名只有壳读过包才知道）
@@ -560,6 +569,10 @@ async function installPluginFromDirectory(sourcePath: string, jobId: string): Pr
       await linkdesk().filesystem.writeTextFile(destManifest, JSON.stringify(manifest, null, 2));
     }
 
+    // E6#73j（G6）：目录源安装落在 **app 只读根**（上方 destDir = appPluginsDir）——不是用户安装家，
+    // 更新流对它必然抛「不在用户安装区」。此处显式记「不可更新」，让市场详情页别画一个点下去必失败的死钮。
+    setPluginResidence(pluginId, "app");
+
     // E5.7#48：文件已落盘——通知主进程重扫三表（无论下方 loadPlugin 是否成功）
     window.linkdesk?.pluginManager?.notifyManifestChanged?.();
 
@@ -615,13 +628,16 @@ export function getLoadedPluginManifests(): Array<{ pluginId: string; manifest: 
  *   pendingReason（"等待依赖: xxx"，读状态机诊断面），marketplace 列表/详情可见。
  *   禁用/未安装插件不进本函数——走 getDisabledPluginInfo / getUninstalledPluginInfo 各自 API。
  *   不变式：_pendingPlugins ∩ loadedPluginIds = ∅（sweep 清僵尸）——防御性 skip 保留。
+ *
+ *   E6#73j（G6）：逐条随行 `updatable`（住所 = userData 安装家才可被包更新）——市场详情页据此
+ *   遮蔽「更新到 vX」死钮。判据只在 `isPluginUpdatable` 一处，本函数只做透传。
  */
-export function getListPluginManifests(): Array<{ pluginId: string; manifest: PluginManifest; pendingReason?: string }> {
-  const result: Array<{ pluginId: string; manifest: PluginManifest; pendingReason?: string }> =
-    getLoadedPluginManifests().map((p) => ({ ...p }));
+export function getListPluginManifests(): Array<{ pluginId: string; manifest: PluginManifest; pendingReason?: string; updatable: boolean }> {
+  const result: Array<{ pluginId: string; manifest: PluginManifest; pendingReason?: string; updatable: boolean }> =
+    getLoadedPluginManifests().map((p) => ({ ...p, updatable: isPluginUpdatable(p.pluginId) }));
   for (const [pluginId, manifest] of _pendingPlugins) {
     if (loadedPluginIds.has(pluginId)) continue; // 僵尸挂起登记——防御（sweep 已清）
-    result.push({ pluginId, manifest, pendingReason: getLoadDiagnostics(pluginId).pendingReason });
+    result.push({ pluginId, manifest, pendingReason: getLoadDiagnostics(pluginId).pendingReason, updatable: isPluginUpdatable(pluginId) });
   }
   return result;
 }
@@ -685,15 +701,17 @@ async function reapplyThemeAfterUnload(): Promise<void> {
 
 /** 获取禁用插件的基本信息（在 plugins/.disabled/ 下）
  *  E6#30.5b：带 core 旗标——详情页禁用分支卸载钮守 E6#18「core:true 详情页不画」（缓存 manifest 内含 core） */
-export function getDisabledPluginInfo(): Array<{ pluginId: string; name: string; description?: string; version?: string; core?: boolean }> {
+export function getDisabledPluginInfo(): Array<{ pluginId: string; name: string; description?: string; version?: string; core?: boolean; updatable: boolean }> {
   // B2 fix: 优先从缓存读——支持glob 外的插件（glob 中无清单）
   const cache = getMetadataCache();
   const disabled = getDisabledList();
-  const result: Array<{ pluginId: string; name: string; description?: string; version?: string; core?: boolean }> = [];
+  const result: Array<{ pluginId: string; name: string; description?: string; version?: string; core?: boolean; updatable: boolean }> = [];
   for (const pluginId of disabled) {
+    // E6#73j（G6）：禁用**不改住所**（disable 只记名单，目录原地不动）——userData 家的禁用插件照样可更新
+    const updatable = isPluginUpdatable(pluginId);
     const cached = cache[pluginId];
     if (cached) {
-      result.push({ pluginId, name: cached.name, description: cached.description, version: cached.version, core: cached.manifest?.core });
+      result.push({ pluginId, name: cached.name, description: cached.description, version: cached.version, core: cached.manifest?.core, updatable });
       continue;
     }
     // 兜底：manifestIndex 中读（E6#9c——readAllManifests 水合 + glob 种子双源；此分支仅用于缓存未就绪的极端情况）
@@ -705,6 +723,7 @@ export function getDisabledPluginInfo(): Array<{ pluginId: string; name: string;
         description: m.description,
         version: m.version,
         core: m.core,
+        updatable,
       });
     }
   }

@@ -7,7 +7,9 @@
  *   写 `{userData}/tmp/<原包名>.linkdesk-plugin.part`（半截标记）→ 流式写完 rename 正式包 → 调用方消费。
  *   失败/中断 → 自清 .part（不留半截）；启动 cleanupStaleDownloads 扫 tmp/ 残留（单实例保证启动瞬间
  *   无在途下载 = 顶层 *.part / *.linkdesk-plugin 全是孤儿，可整批清）。
- *   `.stage-<id>`（段 B update 暂存目录）不在本服务生命周期内——update 流自有清理（#13b/c），boot 不越界。
+ *   `.stage-<id>`（段 B update 暂存目录）不在本服务生命周期内——update 流自有清理（#13b/c）；
+ *   E6#73j（G8）补 boot 兜底：插件不再走一次更新时那份 stage 目录无人清（永远占磁盘），
+ *   故 `cleanupStaleDownloads` 一并扫掉（STAGE_PREFIX 单复本 = 本文件的常量，handler 引用它，不另写字面量）。
  *
  * 纯服务零 IPC（进度经 onProgress 回调吐出，广播归调用方 #13d 通道）——可单测（fs + 注入 tmp 根）。
  * 铁律 19/20：本模块是启动 boot / handler 服务调用，无模块级 IPC 监听器。
@@ -20,6 +22,13 @@ import { BUNDLE_EXT } from "../plugins/bundle-zip.js";
 
 /** 半截标记后缀——下载进行中的落盘名（写满才 rename 去掉本后缀成正式包）。模块私有——消费方只见 rename 后正式包。 */
 const PART_SUFFIX = ".part";
+
+/**
+ * 更新暂存目录前缀（段 B）——tmp/ 下 `<STAGE_PREFIX><pluginId>`。
+ * E6#73j 单复本导出：`plugin-install-handlers` 的 stage-update 与 boot 清理共用同一个字面量，
+ * 防两处各写一份 `.stage-` 后悄悄漂移（清理扫的不再是产出的那批）。
+ */
+export const STAGE_PREFIX = ".stage-";
 
 /**
  * 下载**空闲**超时（E6#73e 机器一）：连续 N ms 没有任何新字节到达即判挂死。09-安装细节 承诺
@@ -272,7 +281,10 @@ async function downloadOnce(
 /**
  * 启动扫描清理下载残留——main whenReady 调一次（单实例：启动瞬间 tmp/ 无在途下载 = 全孤儿）。
  * 清 tmp/ 顶层 `*.part`（中断下载半截）+ 孤立 `*.linkdesk-plugin`（下载完成 rename 后、调用方消费
- * remove 前的窗口被杀进程留下）。`.stage-*`/`.bak` 属段 B（#13b/c update 流）自清理域——boot 不越界。
+ * remove 前的窗口被杀进程留下）+ `STAGE_PREFIX*` 暂存目录（E6#73j G8：段 B 只在**同一插件下次
+ * stage 时**清自己那份，插件不再走一次更新就永远占磁盘——boot 是唯一的兜底时机）。
+ * `.bak` 不在此处——它落在插件树里（`{userData}/plugins/<id>.bak`），且**不能盲删**
+ * （可能是旧版唯一副本）；归 `plugin-tree-recovery` 按「目录在不在」复原或清理。
  * tmp 不存在/不可读 → 无可清理直接返回；单条清理失败不抛出（残留不拖垮启动，console.warn 留痕）。
  */
 export async function cleanupStaleDownloads(): Promise<void> {
@@ -285,9 +297,11 @@ export async function cleanupStaleDownloads(): Promise<void> {
   }
   const removed: string[] = [];
   for (const name of names) {
-    if (!name.endsWith(PART_SUFFIX) && !name.endsWith(BUNDLE_EXT)) continue;
+    const isStageDir = name.startsWith(STAGE_PREFIX);
+    if (!isStageDir && !name.endsWith(PART_SUFFIX) && !name.endsWith(BUNDLE_EXT)) continue;
     try {
-      await fs.rm(path.join(tmp, name), { force: true });
+      // stage 是目录（递归删）；.part / 包是文件——recursive 对文件同样成立，统一一个分支
+      await fs.rm(path.join(tmp, name), { recursive: isStageDir, force: true });
       removed.push(name);
     } catch (e) {
       console.warn(`[plugin-download] 清理残留失败（非致命）: ${name} — ${e instanceof Error ? e.message : String(e)}`);

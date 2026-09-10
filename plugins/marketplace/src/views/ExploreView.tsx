@@ -45,7 +45,7 @@ import {
 } from "../services/marketplaceShared";
 import { useInstallJobsSubscription, pickInstallJob, installJobLabel } from "../services/installJobs";
 import type { CatalogEntry } from "../services/marketCatalog";
-import { updateToVersion } from "../services/marketCatalog";
+import { updateTargetFor } from "../services/marketCatalog";
 // E6#71k「都问」：安装确认门——行内安装与详情页走同一门（双入口单门，零漂移）
 import { confirmMarketInstall } from "../services/installGate";
 import "../styles/MarketplaceSidebar.css";
@@ -88,9 +88,10 @@ export default function ExploreView() {
     lk()?.tabs?.create("plugin-detail", { pluginId: id, pinned: false, label: name });
   }, []);
 
-  /* ── #30b 状态推导：list()(启用) ∪ getDisabled()(禁用) 两源 → 本地版本表/禁用集，每行 O(1) ── */
+  /* ── #30b 状态推导：list()(启用) ∪ getDisabled()(禁用) 两源 → 本地版本表/禁用集，每行 O(1) ──
+   *  E6#73j（G6）：表里同时带 updatable（住所）——可更新徽标须过 updateTargetFor 的住所闸 */
   const localById = useMemo(
-    () => new Map(all.map((p) => [p.pluginId, p.manifest.version])),
+    () => new Map(all.map((p) => [p.pluginId, { version: p.manifest.version, updatable: p.updatable }])),
     [all],
   );
   const disabledIds = useMemo(() => new Set(disabledRaw.map((p) => p.pluginId)), [disabledRaw]);
@@ -103,7 +104,8 @@ export default function ExploreView() {
       if (lv === undefined) return "install";
       // E6#33b：可更新判定与详情/发现/铃铛同源单函数（stable-only + semver.gt，§一·三）——
       // 不再用顶层 entry.version 裸比（顶层是 beta 时旧逻辑误判可更新，而详情/铃铛 stable 不提示 = 判定分裂）
-      return updateToVersion(entry, lv) ? "update" : "installed";
+      // E6#73j（G6）：住所闸——随包发货件不显「更新」徽标（点了必失败）
+      return updateTargetFor(entry, lv.version, lv.updatable) ? "update" : "installed";
     },
     [localById, disabledIds],
   );

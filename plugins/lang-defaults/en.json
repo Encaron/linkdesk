@@ -331,6 +331,8 @@
   "新建面板视图": "New Panel View",
   "面板独立窗口": "Detach Panel to Window",
   "立即重启": "Restart Now",
+  "已取消更新": "Update cancelled",
+  "该插件正在安装或更新中": "This plugin is already installing or updating",
   "已安装版本信息读取失败——请先卸载旧版本再安装。": "Failed to read the installed version info — please uninstall the old version first, then reinstall.",
   "已安装版本 {{iv}} 与本次提供的 {{sourceVersion}} 相同——无需重复安装。": "Installed version {{iv}} is the same as provided {{sourceVersion}} — no need to reinstall.",
   "本次提供的 {{sourceVersion}} 低于已安装的 {{iv}}——已跳过（如需降级请先卸载旧版本）。": "Provided {{sourceVersion}} is lower than installed {{iv}} — skipped (uninstall the old version first to downgrade).",

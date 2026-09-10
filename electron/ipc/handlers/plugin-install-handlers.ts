@@ -33,7 +33,7 @@ import { loggedHandle } from "../invoke-log.js";
 import { deriveBundlePluginId, extractZip, isSafePluginId, openPluginZip } from "../../plugins/bundle-zip.js";
 // E6#31a：真网络段下载 = plugin-download 服务（.part 生命周期单复本——handler 只引用，不重写 fetch/进度）
 // E6#73q：下载落盘名带唯一化后缀（并发 N=3 防同名互截）——zipBase 裁决前先剥后缀拿回原包名
-import { downloadPackage, downloadTmpDir, stripDownloadUniq } from "../../services/plugin-download.js";
+import { downloadPackage, downloadTmpDir, stripDownloadUniq, STAGE_PREFIX } from "../../services/plugin-download.js";
 import type { PluginManifest } from "../../../src/core/api/types.js";
 // E6#73c：安装 job 身份——壳侧随请求带进来（jobId 是壳侧 job 表的产物，主进程只透传）
 import type { PluginInstallJobRef } from "../../../src/core/api/linkdesk-api/types.js";
@@ -215,14 +215,14 @@ export function registerPluginInstallHandlers(): void {
   // 下载（url）/直读（磁盘 zip）→ 解压到 {userData}/tmp/.stage-<id>。校验：包内 id 与 pluginId 一致（防伪装）
   // + 版本方向（E6#33c 降级放行 锚①）：默认拒绝 旧/同于当前（更新语义不降级）；allowOlder 显式 true 才放行
   //   严格更低的降级（版本下拉选旧版 + F2 确认后由 UI 传），同版恒拒（无版本变化的重装非更新流职责）；不碰旧目录（commit 才替换）。
-  loggedHandle(IPC.plugins.stageUpdate, async (_event, pluginId: string, source: string, currentVersion?: string, allowOlder?: boolean) => {
+  loggedHandle(IPC.plugins.stageUpdate, async (_event, pluginId: string, source: string, currentVersion?: string, allowOlder?: boolean, job?: PluginInstallJobRef) => {
     if (typeof pluginId !== "string" || !pluginId) throw new Error("缺少 pluginId");
     if (typeof source !== "string" || !source) throw new Error("缺少更新包源（url 或磁盘 zip）");
-    emitProgress("staging", { pluginId, message: `准备新版 ${pluginId}` });
+    emitProgress("staging", { pluginId, message: `准备新版 ${pluginId}` }, job);
     let zipPath: string;
     let downloaded = false;
     if (isHttpSource(source)) {
-      const r = await downloadWithProgress(source);
+      const r = await downloadWithProgress(source, job);
       zipPath = r.zipPath;
       downloaded = true;
     } else {
@@ -249,7 +249,7 @@ export function registerPluginInstallHandlers(): void {
             : `新版本需高于当前版本 ${cur}（包内 ${manifest.version}）——降级需在版本下拉显式选择旧版`,
         );
       }
-      const stageDir = path.join(downloadTmpDir(), `.stage-${pluginId}`);
+      const stageDir = path.join(downloadTmpDir(), `${STAGE_PREFIX}${pluginId}`);
       if (existsSync(stageDir)) await fs.rm(stageDir, { recursive: true, force: true });
       await fs.mkdir(stageDir, { recursive: true });
       const ok = await extractZip(opened.zip, stageDir, wrapperPrefix);
@@ -257,7 +257,7 @@ export function registerPluginInstallHandlers(): void {
         await fs.rm(stageDir, { recursive: true, force: true });
         throw new Error(`包内含非法条目（zip-slip）——已拒绝暂存`);
       }
-      emitProgress("staging", { pluginId, message: `新版就绪 ${pluginId}@${manifest.version}` });
+      emitProgress("staging", { pluginId, message: `新版就绪 ${pluginId}@${manifest.version}` }, job);
       return { pluginId, newVersion: manifest.version, stagedDir: stageDir };
     } finally {
       // 网络下载包落 tmp——stage 完（成败皆）清理；磁盘 zip 是用户自有文件，不删
@@ -274,6 +274,13 @@ export function registerPluginInstallHandlers(): void {
     if (typeof pluginId !== "string" || !pluginId) throw new Error("缺少 pluginId");
     if (typeof stagedDir !== "string" || !stagedDir) throw new Error("缺少暂存目录");
     const target = path.join(userPluginsRoot(), pluginId); // 2026-09-05 塌平单根
+    // E6#73j（G8）：同会话内重试——上轮 commit 死在两次 rename 之间时，磁盘上只剩 target.bak。
+    // 此处若不先把 .bak 放回，下方「清遗留 .bak」会删掉旧版**唯一副本**，随后 rename 又因 target 不存在而抛错
+    // ⇒ 插件永久丢失。判据与 boot 复原同一套：目录在不在。（boot 已在启动时扫过，本分支只覆盖不重启的重试。）
+    const bak = `${target}.bak`;
+    if (!existsSync(target) && existsSync(bak)) {
+      await fs.rename(bak, target);
+    }
     if (!existsSync(target)) throw new Error(`插件 "${pluginId}" 未安装——无旧目录可替换`);
     const stageRoot = path.resolve(downloadTmpDir());
     const stageAbs = path.resolve(stagedDir);
@@ -281,8 +288,7 @@ export function registerPluginInstallHandlers(): void {
       throw new Error(`暂存目录不在受控 tmp 内（${stagedDir}）——拒绝提交`);
     }
     if (!existsSync(stageAbs)) throw new Error(`暂存目录不存在: ${stagedDir}`);
-    const bak = `${target}.bak`;
-    if (existsSync(bak)) await fs.rm(bak, { recursive: true, force: true }); // 上轮遗留 .bak 清理
+    if (existsSync(bak)) await fs.rm(bak, { recursive: true, force: true }); // 上轮遗留 .bak 清理（此刻新版必已在位）
     emitProgress("committing", { pluginId, message: `替换旧版 ${pluginId}` });
     await fs.rename(target, bak); // 旧目录先挪走（本步失败 → 旧版原样未动）
     try {

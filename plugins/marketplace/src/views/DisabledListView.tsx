@@ -8,7 +8,7 @@ import { useTranslation } from "react-i18next";
 import { PluginIcon, pickIdentityArt } from "@linkdesk/ui";
 
 import { useMarketplacePlugins, useCatalogEntryById } from "../services/marketplaceShared";
-import { updateToVersion } from "../services/marketCatalog";
+import { updateTargetFor } from "../services/marketCatalog";
 import "../styles/MarketplaceSidebar.css";
 
 const pm = () => window.linkdesk?.pluginManager;
@@ -44,7 +44,7 @@ export default function DisabledListView() {
   return (
     <div className="ms-section-items">
       {disabled.map((p) => {
-        const updateTo = updateToVersion(catalogById.get(p.pluginId), p.version);
+        const updateTo = updateTargetFor(catalogById.get(p.pluginId), p.version, p.updatable);
         return (
           <div key={p.pluginId} className="ms-extension-item disabled">
             <div className="ms-item-icon">

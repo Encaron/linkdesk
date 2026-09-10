@@ -215,6 +215,24 @@ export function updateToVersion(entry: CatalogEntry | undefined, localVersion?: 
   return isVersionNewer(remote, localVersion) ? remote : undefined;
 }
 
+/** 可更新判定**全站单点**（E6#73j G6）——`updateToVersion` 再加一道住所闸。
+ *
+ *  为什么要有这道闸：`updateToVersion` 只问「目录里有没有更高版本」，**不问这个插件住在哪**。而引擎的
+ *  更新流只接受用户安装家（`{userData}/plugins`）——其余一律抛「插件不在用户安装区」。⇒ 随包发货的官方
+ *  插件（含 8 只）、目录源安装的插件，详情页都挂着一个**点下去必然失败**的「更新到 vX」。
+ *
+ *  `updatable === false` 才拦，`undefined`（旧上游/未上报）放行——住所是**新增**信息，缺它时保持原行为；
+ *  反过来（缺它就一律不显示更新）会把「有新版」这件事整体藏掉，那是比死钮更糟的错。
+ *  住所判据唯一源 = 壳 `isPluginUpdatable`（磁盘事实）；本函数只消费。 */
+export function updateTargetFor(
+  entry: CatalogEntry | undefined,
+  localVersion?: string,
+  updatable?: boolean,
+): string | undefined {
+  if (updatable === false) return undefined;
+  return updateToVersion(entry, localVersion);
+}
+
 /** 版本下拉可选单条（E6#33c——05 §四：下拉每条 {version, downloadUrl, publishedAt?, changelog?}，选中哪条拉哪条） */
 export interface CatalogVersionChoice {
   version: string;

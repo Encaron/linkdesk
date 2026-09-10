@@ -47,14 +47,14 @@ function catEntry(id: string, version: string, versions?: Array<{ version: strin
   };
 }
 
-function enabled(id: string, version: string, name?: string, core = false): PluginListEntry {
-  return { pluginId: id, manifest: { name: name ?? `Demo ${id}`, version, core } } as PluginListEntry;
+function enabled(id: string, version: string, name?: string, core = false, updatable = true): PluginListEntry {
+  return { pluginId: id, manifest: { name: name ?? `Demo ${id}`, version, core }, updatable } as PluginListEntry;
 }
-function disabled(id: string, version: string, name?: string): PluginInfoEntry {
-  return { pluginId: id, name: name ?? id, version };
+function disabled(id: string, version: string, name?: string, updatable = true): PluginInfoEntry {
+  return { pluginId: id, name: name ?? id, version, updatable };
 }
-function inst(id: string, localVersion: string, name = `Demo ${id}`, isDisabled = false): InstalledSnapshot {
-  return { pluginId: id, localVersion, name, disabled: isDisabled };
+function inst(id: string, localVersion: string, name = `Demo ${id}`, isDisabled = false, updatable = true): InstalledSnapshot {
+  return { pluginId: id, localVersion, name, disabled: isDisabled, updatable };
 }
 
 function catalogText(...plugins: CatalogEntry[]): string {
@@ -127,7 +127,14 @@ beforeAll(async () => {
     keySeparator: false,
     interpolation: { escapeValue: false },
     resources: {
-      en: { translation: { "「{{name}}」有新版本 {{version}}": "“{{name}}” has a new version: {{version}}" } },
+      en: {
+        translation: {
+          "「{{name}}」有新版本 {{version}}": "“{{name}}” has a new version: {{version}}",
+          // E6#73j（G7）汇总文案——与 i18n/en.json 同字面（生产靠插件入口 init 并入）
+          "{{names}} 等": "{{names}} and others",
+          "{{num}} 个插件有新版本：{{names}}": "{{num}} plugins have new versions: {{names}}",
+        },
+      },
     },
   });
 });
@@ -143,8 +150,8 @@ describe("assembleInstalled（两源归一）", () => {
   it("启用 ∪ 禁用两源 → 快照带禁用标记（F1 禁用插件也要发现）", () => {
     const snap = assembleInstalled([enabled("demo-alpha", "1.0.0")], [disabled("demo-beta", "2.0.0", "Beta")]);
     expect(snap).toEqual([
-      { pluginId: "demo-alpha", localVersion: "1.0.0", name: "Demo demo-alpha", disabled: false },
-      { pluginId: "demo-beta", localVersion: "2.0.0", name: "Beta", disabled: true },
+      { pluginId: "demo-alpha", localVersion: "1.0.0", name: "Demo demo-alpha", disabled: false, updatable: true },
+      { pluginId: "demo-beta", localVersion: "2.0.0", name: "Beta", disabled: true, updatable: true },
     ]);
   });
 
@@ -160,7 +167,25 @@ describe("assembleInstalled（两源归一）", () => {
 
   it("同 id 出现在两源（防御）→ 禁用条目覆盖", () => {
     const snap = assembleInstalled([enabled("demo-alpha", "1.0.0")], [disabled("demo-alpha", "0.9.0")]);
-    expect(snap).toEqual([{ pluginId: "demo-alpha", localVersion: "0.9.0", name: "demo-alpha", disabled: true }]);
+    expect(snap).toEqual([
+      { pluginId: "demo-alpha", localVersion: "0.9.0", name: "demo-alpha", disabled: true, updatable: true },
+    ]);
+  });
+
+  it("E6#73j（G6）：住所透传——app 只读根（updatable:false）随快照带出，两源都带", () => {
+    const snap = assembleInstalled(
+      [enabled("demo-alpha", "1.0.0", undefined, false, false)],
+      [disabled("demo-beta", "2.0.0", "Beta", false)],
+    );
+    expect(snap.map((s) => s.updatable)).toEqual([false, false]);
+  });
+
+  it("E6#73j（G6）：住所未知（旧载荷缺字段）→ undefined 原样带出，不臆造 true/false", () => {
+    const snap = assembleInstalled(
+      [{ pluginId: "demo-alpha", manifest: { name: "Alpha", version: "1.0.0" } } as PluginListEntry],
+      [],
+    );
+    expect(snap[0].updatable).toBeUndefined();
   });
 });
 
@@ -256,6 +281,38 @@ describe("planDiscovery（纯计划）", () => {
     const installed = [inst("demo-alpha", "1.0.0"), inst("demo-beta", "1.0.0"), inst("demo-gamma", "1.6.0")];
     const plan = planDiscovery(catalog, installed, {});
     expect(discover(plan)).toEqual({ toNotify: ["demo-alpha"], toClear: [], candidates: ["demo-alpha"] });
+  });
+
+  it("E6#73j（G6）：住只读 app 根（updatable:false）→ 非候选、不推铃（点了必失败的死钮不该存在）", () => {
+    const plan = planDiscovery([catEntry("demo-app", "2.0.0")], [inst("demo-app", "1.0.0", "App Demo", false, false)], {});
+    expect(discover(plan)).toEqual({ toNotify: [], toClear: [], candidates: [] });
+  });
+
+  it("E6#73j（G6）：住所未知（undefined）→ 照常候选（fail-open——隐藏「有新版」比一个失败按钮更糟）", () => {
+    const plan = planDiscovery(
+      [catEntry("demo-alpha", "2.0.0")],
+      [{ pluginId: "demo-alpha", localVersion: "1.0.0", name: "Alpha", disabled: false }],
+      {},
+    );
+    expect(discover(plan)).toEqual({ toNotify: ["demo-alpha"], toClear: [], candidates: ["demo-alpha"] });
+  });
+
+  it("E6#73j（G6）：不可更新 + 同批可更新混跑 → 只让可更新的过关", () => {
+    const catalog = [catEntry("demo-app", "2.0.0"), catEntry("demo-beta", "2.0.0"), catEntry("demo-gamma", "2.0.0")];
+    const installed = [
+      inst("demo-app", "1.0.0", "App Demo", false, false),
+      inst("demo-beta", "1.0.0", "Beta Demo"),
+      inst("demo-gamma", "1.0.0", "Gamma Demo", false, false),
+    ];
+    const plan = planDiscovery(catalog, installed, {});
+    expect(discover(plan)).toEqual({ toNotify: ["demo-beta"], toClear: [], candidates: ["demo-beta"] });
+  });
+
+  it("E6#73j（G6）：本地已追上曾提醒版 + 不可更新 → 自愈清照跑（跳过候选不等于跳过清账）", () => {
+    const plan = planDiscovery([catEntry("demo-app", "3.0.0")], [inst("demo-app", "2.0.0", "App Demo", false, false)], {
+      "demo-app": { lastNotifiedVersion: "1.0.0" },
+    });
+    expect(discover(plan)).toEqual({ toNotify: [], toClear: ["demo-app"], candidates: [] });
   });
 });
 
@@ -359,6 +416,71 @@ describe("runUpdateDiscovery（主编排 IO）", () => {
     expect(ids(plan!.candidates)).toEqual(["demo-beta"]);
     expect(plan!.toNotify.map((c) => c.pluginId)).toEqual(["demo-beta"]);
     expect(show).toHaveBeenCalledTimes(1);
+  });
+
+  it("E6#73j（G6）：住只读 app 根有新版 → 不推铃不候选（点必死的钮与空铃一起消失）", async () => {
+    const { show } = stubWindow({ enabled: [enabled("demo-app", "1.0.0", "App Demo", false, false)] });
+    okCatalogFetch([catEntry("demo-app", "2.0.0")]);
+    const plan = await runUpdateDiscovery();
+    expect(plan!.candidates).toEqual([]);
+    expect(show).not.toHaveBeenCalled();
+  });
+
+  it("E6#73j（G7）：多插件同批有新版 → 只推一条汇总；记账仍逐插件（幂等不失效）", async () => {
+    __setMetaStore(metaStore());
+    const { show } = stubWindow({
+      enabled: [
+        enabled("demo-alpha", "1.0.0", "Alpha"),
+        enabled("demo-beta", "1.0.0", "Beta"),
+        enabled("demo-gamma", "1.0.0", "Gamma"),
+      ],
+    });
+    okCatalogFetch([
+      catEntry("demo-alpha", "2.0.0"),
+      catEntry("demo-beta", "2.0.0"),
+      catEntry("demo-gamma", "2.0.0"),
+    ]);
+    const plan = await runUpdateDiscovery();
+    expect(plan!.toNotify.map((c) => c.pluginId).sort()).toEqual(["demo-alpha", "demo-beta", "demo-gamma"]);
+    expect(show).toHaveBeenCalledTimes(1);
+    expect(show).toHaveBeenCalledWith("3 plugins have new versions: Alpha、Beta、Gamma", {
+      type: "info",
+      source: "marketplace",
+    });
+    expect(await readUpdateMetaMap()).toEqual({
+      "demo-alpha": { lastNotifiedVersion: "2.0.0" },
+      "demo-beta": { lastNotifiedVersion: "2.0.0" },
+      "demo-gamma": { lastNotifiedVersion: "2.0.0" },
+    });
+    // 二跑：三个都已记账 → 一条都不重推（汇总不破坏逐插件幂等）
+    await runUpdateDiscovery();
+    expect(show).toHaveBeenCalledTimes(1);
+  });
+
+  it("E6#73j（G7）：候选超 3 个 → 只列前三 + 「等」（不让通知胀成一屏名单）", async () => {
+    const mk = (id: string) => enabled(id, "1.0.0", `Demo-${id}`);
+    const { show } = stubWindow({
+      enabled: [mk("demo-alpha"), mk("demo-beta"), mk("demo-gamma"), mk("demo-delta")],
+    });
+    okCatalogFetch([catEntry("demo-alpha", "2.0.0"), catEntry("demo-beta", "2.0.0"), catEntry("demo-gamma", "2.0.0"), catEntry("demo-delta", "2.0.0")]);
+    await runUpdateDiscovery();
+    expect(show).toHaveBeenCalledTimes(1);
+    expect(show).toHaveBeenCalledWith(
+      "4 plugins have new versions: Demo-demo-alpha、Demo-demo-beta、Demo-demo-gamma and others",
+      { type: "info", source: "marketplace" },
+    );
+  });
+
+  it("E6#73j（G7）：汇总推送失败 → 一个都不记账（下趟原样重推，不漏不重）", async () => {
+    __setMetaStore(metaStore());
+    const { show } = stubWindow({
+      enabled: [enabled("demo-alpha", "1.0.0", "Alpha"), enabled("demo-beta", "1.0.0", "Beta")],
+    });
+    show!.mockRejectedValue(new Error("no panel"));
+    okCatalogFetch([catEntry("demo-alpha", "2.0.0"), catEntry("demo-beta", "2.0.0")]);
+    const plan = await runUpdateDiscovery();
+    expect(plan!.toNotify).toHaveLength(2); // 计划仍算推送过——失败只在记账上体现
+    expect(await readUpdateMetaMap()).toEqual({});
   });
 
   it("目录 offline（拉取抛）→ null 静默，不铃不记不落 store", async () => {
@@ -559,7 +681,8 @@ describe("runUpdateDiscovery #33d auto（静默自动更新编排）", () => {
 
     const plan = await runUpdateDiscovery();
     expect(update).not.toHaveBeenCalled();
-    expect(show).toHaveBeenCalledTimes(2); // 两条都铃（旧行为下 alpha 会被 autoIds 跳过）
+    // E6#73j（G7）：**一条汇总**——两个候选合推一条（旧行为：逐插件两条，10 个待更新就刷 10 条）
+    expect(show).toHaveBeenCalledTimes(1);
     expect(ids(plan!.toNotify)).toEqual(["demo-alpha", "demo-beta"]);
     expect(ids(getDiscoveredUpdates())).toEqual(["demo-alpha", "demo-beta"]);
   });
