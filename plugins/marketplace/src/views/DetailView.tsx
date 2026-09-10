@@ -591,10 +591,14 @@ export default function DetailView({ pluginId }: DetailContributedProps) {
     const url = installUrl;
     if (!url) return; // gate 已保证有地址——双保险供 TS 收窄（闭包随渲染，不跨依赖漂移）
     // E6#33c：手动装旧版（非目录稳定最新）→ 记 pinnedVersion（05 §二·九 尊重「停在旧版」意图，供 #33d autoUpdate 跳过）
+    // 🔴 E6#81：**装 = 一次新的落地，压过以前那次**——故 `pin === undefined`（目录无稳定版可比，`pinnedAfterApply`
+    //   的「不写空钉」语义）在这里要写成 **清钉**（`?? null`），不能「不写」。不写的后果：上一轮安装留下的
+    //   钉继续生效 ⇒ 用户刚装的这一版被一个他早就不记得的旧版本钉着，自动更新静默不跑。
+    //   （「不写空钉」的原始理由是「没有可防的目标就别造一条记录」——那是**不新建**，不是**不清旧**。）
     const ver = installVer;
     if (ver) {
       const pin = pinnedAfterApply(entry, ver);
-      if (pin !== undefined) void setPinnedVersion(pluginId, pin);
+      void setPinnedVersion(pluginId, pin ?? null);
     }
     // 会话 store 负责归因 + 失败态；成功后 lifecycle 事件驱动列表翻态（30.5c），本视图随 info 收敛
     // E6#73c 第 1 步：带显示名——壳侧 job 行需要它（不传则退化为 id，标题会变成裸 id）

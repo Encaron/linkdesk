@@ -30,6 +30,7 @@ import {
   onDiscoveredUpdatesChange,
   removeDiscoveredCandidate,
   selectAutoCandidates,
+  selectMetaEvictions,
   runAutoUpdateIfDue,
   __resetUpdateDiscovery,
 } from "../services/updateDiscovery";
@@ -902,5 +903,106 @@ describe("auto × 确认门（E6#79——第三方来源同样不过门，勾选
     expect(show).toHaveBeenCalledTimes(1);
     expect(show).toHaveBeenCalledWith(expect.any(String), { type: "info", source: "marketplace" });
     expect(ids(getDiscoveredUpdates())).toEqual([]); // 候选驱逐
+  });
+});
+
+/* ── E6#81 记账销账（同一处 bug 类的第二处：meta 图有、盘上已无 ⇒ 谁销账？此前没人销账） ── */
+
+describe("selectMetaEvictions（纯选择）", () => {
+  it("盘上已无此插件 → 它的 pin / 已提醒记账进销账名单", () => {
+    const meta = {
+      "demo-gone": { pinnedVersion: "0.1.0", lastNotifiedVersion: "0.1.2" },
+      "demo-alive": { pinnedVersion: "0.1.0" },
+    };
+    expect(selectMetaEvictions(meta, ["demo-alive"])).toEqual(["demo-gone"]);
+  });
+
+  it("只挑记账类字段——只有 autoUpdate 的幽灵条目不写盘（意愿不随卸载消失）", () => {
+    const meta = { "demo-gone": { autoUpdate: true } };
+    expect(selectMetaEvictions(meta, [])).toEqual([]);
+  });
+
+  it("autoUpdate 与记账并存 → 条目进名单，但调用方只清记账两字段（autoUpdate 留下）", () => {
+    const meta = { "demo-gone": { autoUpdate: true, pinnedVersion: "0.1.0" } };
+    expect(selectMetaEvictions(meta, [])).toEqual(["demo-gone"]);
+  });
+
+  it("全部健在 / 空图 → 无销账", () => {
+    expect(selectMetaEvictions({ "demo-a": { pinnedVersion: "1.0.0" } }, ["demo-a"])).toEqual([]);
+    expect(selectMetaEvictions({}, ["demo-a"])).toEqual([]);
+    expect(selectMetaEvictions({ "demo-a": { pinnedVersion: "1.0.0" } }, [])).toEqual(["demo-a"]);
+  });
+});
+
+describe("runUpdateDiscovery 销账（🔴 用户实机路径：装旧版停钉 → 卸载 → 重装 ⇒ 残留钉让自动更新静默失效）", () => {
+  const ghostCatalog = (plugins: CatalogEntry[]) => {
+    const fetchSpy = vi.fn(async (url: string) => {
+      if (url === OFFICIAL_SOURCE_URL) return catalogText(...plugins);
+      throw new Error("unexpected url " + url);
+    });
+    __setCatalogIO(fetchSpy as unknown as FetchFn, memStorage());
+  };
+
+  beforeEach(() => {
+    __setCatalogIO(null, null);
+    __setMetaStore(null);
+    __resetUpdateDiscovery();
+    Reflect.deleteProperty(window, "linkdesk");
+  });
+  afterEach(() => {
+    __setCatalogIO(null, null);
+    __setMetaStore(null);
+    Reflect.deleteProperty(window, "linkdesk");
+  });
+
+  it("🔥 回归：插件已不在盘上 + 目录里也没有它 → 钉与已提醒被清（无人销账 = 幽灵永远在）", async () => {
+    const store = metaStore({ "demo-gone": { pinnedVersion: "0.1.0", lastNotifiedVersion: "0.1.2" } });
+    __setMetaStore(store);
+    stubWindow({ enabled: [enabled("demo-alive", "1.0.0")] });
+    ghostCatalog([catEntry("demo-alive", "1.0.0")]);
+
+    await runUpdateDiscovery();
+
+    expect(await readUpdateMetaMap()).toEqual({});
+  });
+
+  it("插件全卸光（installed.length === 0 早退）→ 销账仍要发生", async () => {
+    __setMetaStore(metaStore({ "demo-gone": { pinnedVersion: "0.1.0" } }));
+    stubWindow({ enabled: [] });
+    ghostCatalog([]);
+
+    await runUpdateDiscovery();
+
+    expect(await readUpdateMetaMap()).toEqual({});
+  });
+
+  it("🔴 读盘不可信（IPC 缺面）→ 一律不销账（一次瞬时故障不得清光全机记账）", async () => {
+    __setMetaStore(metaStore({ "demo-gone": { pinnedVersion: "0.1.0" } }));
+    Reflect.deleteProperty(window, "linkdesk"); // pluginManager 无面 → available:false
+    ghostCatalog([]);
+
+    await runUpdateDiscovery();
+
+    expect(await readUpdateMetaMap()).toEqual({ "demo-gone": { pinnedVersion: "0.1.0" } });
+  });
+
+  it("禁用插件不算卸载 → 记账保住（禁用不改住所，也不改记账）", async () => {
+    __setMetaStore(metaStore({ "demo-off": { pinnedVersion: "0.1.0" } }));
+    stubWindow({ disabled: [disabled("demo-off", "0.1.0")] });
+    ghostCatalog([]);
+
+    await runUpdateDiscovery();
+
+    expect(await readUpdateMetaMap()).toEqual({ "demo-off": { pinnedVersion: "0.1.0" } });
+  });
+
+  it("autoUpdate 不随卸载清除——意愿类字段留下（与记账类分开处置）", async () => {
+    __setMetaStore(metaStore({ "demo-gone": { autoUpdate: true, pinnedVersion: "0.1.0" } }));
+    stubWindow({ enabled: [enabled("demo-alive", "1.0.0")] });
+    ghostCatalog([catEntry("demo-alive", "1.0.0")]);
+
+    await runUpdateDiscovery();
+
+    expect(await readUpdateMetaMap()).toEqual({ "demo-gone": { autoUpdate: true } });
   });
 });

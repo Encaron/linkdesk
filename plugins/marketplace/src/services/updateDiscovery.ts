@@ -58,6 +58,7 @@ import { loadCatalog } from "./marketSources";
 import {
   clearNotifiedVersion,
   noteNotifiedVersion,
+  patchUpdateMeta,
   readUpdateMetaMap,
 } from "./installedUpdateMeta";
 import type { InstalledUpdateMetaMap } from "./installedUpdateMeta";
@@ -177,6 +178,30 @@ export function selectAutoCandidates(
   });
 }
 
+/* ═══ E6#81 审视：记账销账（谁销账？——此前没人销账） ═══ */
+
+/** 销账选择（纯）：meta 图里**有**、但盘上**已无**此插件的 id——只挑**记账类**字段（pinnedVersion /
+ *  lastNotifiedVersion）非空的（无记账可清的不写盘，省一次 IO）。
+ *
+ *  🔴 **为什么不连 `autoUpdate` 一起清**——两类字段的依附对象不同：
+ *    · `pinnedVersion`（停旧版）/ `lastNotifiedVersion`（已就哪版提醒过）依附于**某一次安装事实**。
+ *      卸载 = 那次事实结束 ⇒ **必须清**。不清的实机路径：装 0.1.0 停旧版（记 pin）→ 卸载 → 重装最新
+ *      0.1.2 ⇒ 残留 pin 让 `selectAutoCandidates` **永远跳过它**——自动更新静默失效，界面上一个字都不说。
+ *    · `autoUpdate` 依附于**用户对这个插件的意愿**（「它更新了就自动装」）。卸载不改变意愿 ⇒ **留**。
+ *  「该不该留」是两件不同的事——同 E6#80 对 `metadataCache` 的处置（卸载不删，因市场仍要能浏览详情）。 */
+export function selectMetaEvictions(
+  meta: InstalledUpdateMetaMap,
+  installedIds: Iterable<string>,
+): string[] {
+  const alive = installedIds instanceof Set ? installedIds : new Set(installedIds);
+  const out: string[] = [];
+  for (const [pluginId, m] of Object.entries(meta)) {
+    if (alive.has(pluginId)) continue;
+    if (m.pinnedVersion !== undefined || m.lastNotifiedVersion !== undefined) out.push(pluginId);
+  }
+  return out;
+}
+
 /* ═══ 发现结果 store（#33b 徽标/升级入口 + #33d 自动更新数据源） ═══ */
 
 let _candidates: UpdateCandidate[] = [];
@@ -245,14 +270,29 @@ async function applyEngineAutoUpdate(c: UpdateCandidate): Promise<boolean> {
 
 /* ═══ 主编排（IO——读已装 → 拉目录 → 计划 → 自愈清 + 铃铛推(幂等) + auto 静默跑 + 落 store） ═══ */
 
-/** 读已装快照（IPC 不可用/失败 → 空数组——预览环境不崩） */
-export async function readInstalledSnapshot(): Promise<InstalledSnapshot[]> {
-  if (!pm()?.list || !pm()?.getDisabled) return [];
+/** 读已装快照 + 盘上 id 全集 + 「这次读盘可不可信」（IPC 不可用/失败 → 空 + `available:false`——预览环境不崩）。
+ *
+ *  🔴 E6#81：**id 全集单独回传，不经 `assembleInstalled` 的「无版本条目丢弃」过滤**——销账判据是
+ *  「这个插件还在不在盘上」，不是「它有没有可比较的版本」。拿过滤后的快照当判据 ⇒ 一个版本字段缺失的
+ *  插件会被误判成「已卸载」而清掉它的记账。
+ *
+ *  🔴 `available` 是**销账的安全闸**：读盘失败也返回空数组，若调用方拿空数组当「什么都没装」⇒
+ *  一次瞬时 IPC 故障就把全机的 pin / 已提醒记账**清光**。故必须区分「真的一台没装」与「没读到」。 */
+export async function readInstalledSnapshot(): Promise<{
+  snapshot: InstalledSnapshot[];
+  installedIds: string[];
+  available: boolean;
+}> {
+  if (!pm()?.list || !pm()?.getDisabled) return { snapshot: [], installedIds: [], available: false };
   try {
     const [enabled, disabled] = await Promise.all([pm()!.list(), pm()!.getDisabled()]);
-    return assembleInstalled(enabled, disabled);
+    return {
+      snapshot: assembleInstalled(enabled, disabled),
+      installedIds: [...enabled.map((p) => p.pluginId), ...disabled.map((p) => p.pluginId)],
+      available: true,
+    };
   } catch {
-    return [];
+    return { snapshot: [], installedIds: [], available: false };
   }
 }
 
@@ -269,11 +309,24 @@ export async function runUpdateDiscovery(force = false): Promise<DiscoveryPlan |
 }
 
 async function doRunDiscovery(force: boolean): Promise<DiscoveryPlan | null> {
-  const installed = await readInstalledSnapshot();
+  const { snapshot: installed, installedIds, available } = await readInstalledSnapshot();
+  const meta = await readUpdateMetaMap();
+
+  // 🔴 E6#81：**销账先于一切**，包括下面两个「无事可发现」的早退。理由有二：
+  //   ① 销账判的是「盘上还在不在」，与「有没有目录可比」无关——用户把插件全卸光时 `installed.length === 0`
+  //      若直接 return，残留记账**永远没有机会被清**（发现循环是唯一的销账机会）。
+  //   ② `available === false`（IPC 不可用/读失败）绝不销账——空数组此时不代表「什么都没装」，
+  //      拿它当判据 = 一次瞬时故障清光全机记账（见 readInstalledSnapshot 头注）。
+  if (available) {
+    const evictions = selectMetaEvictions(meta, installedIds);
+    await Promise.all(
+      evictions.map((id) => patchUpdateMeta(id, { pinnedVersion: undefined, lastNotifiedVersion: undefined })),
+    );
+  }
+
   if (installed.length === 0) return null; // 无已装 / IPC 不可用 → 无事可发现
   const catalog = await loadCatalog(force);
   if (catalog.entries.length === 0) return null; // 空目录（ok 空/offline/corrupt 一律）→ 无条目可发现，静默不铃
-  const meta = await readUpdateMetaMap();
   const plan = planDiscovery(catalog.entries, installed, meta);
 
   // 自愈清提醒（幂等——无变化不写盘，installedUpdateMeta 内部保证）
