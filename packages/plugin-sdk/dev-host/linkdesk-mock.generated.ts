@@ -106,7 +106,7 @@ export const linkdeskMock: Record<string, unknown> = {
     onForwardedEvent: (..._args: unknown[]) => { console.info("[linkdesk-mock] keybindings.onForwardedEvent", ..._args); return () => {}; },
   },
   notifications: {
-    show: async (..._args: unknown[]) => { console.info("[linkdesk-mock] notifications.show", ..._args); },
+    show: async (..._args: unknown[]) => { console.info("[linkdesk-mock] notifications.show", ..._args); return { update: async () => {}, finish: async () => {}, cancel: async () => {} }; },
   },
   menu: {
     registerItems: async (..._args: unknown[]) => { console.info("[linkdesk-mock] menu.registerItems", ..._args); },

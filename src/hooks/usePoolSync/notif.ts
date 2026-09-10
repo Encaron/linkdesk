@@ -7,7 +7,7 @@
 
 import type { TFunction } from "i18next";
 import type { NotifLayout } from "../../core/types/pool/poolLayout";
-import { getToasts, isNotifPanelOpen, type Toast } from "../../core/services/ui/toast";
+import { getToasts, getFoldedCount, isNotifPanelOpen, OTHER_SOURCE_KEY, sourceKeyOf, type Toast } from "../../core/services/ui/toast";
 
 /** 未读追踪——跨渲染保留，面板关闭期间到来的通知标记为未读 */
 export const _seenIds = new Set<string>();
@@ -24,11 +24,13 @@ function formatTimeAgo(t: TFunction, ts: number): string {
   return t("{{d}} 天前", { d });
 }
 
-/** 通知图标类——壳 getNotifIconClass 同款。
- *  E6#72c：进度类通知（progress:true 且作者未自定图标）换 codicon-sync + spin 类——
- *  与下方进度条同源语义（「这件事正在跑」）。作者显式给 icon 则尊重作者（不自作主张覆盖）。 */
+/** 通知图标类——按 severity（+ 进度类）定图标。
+ *  E6#72c：进度类通知换 codicon-sync + spin 类——与下方进度条同源语义（「这件事正在跑」）。
+ *  E6#73f：删掉「作者显式给 icon 则尊重作者」那条分支——插件面 `notifications.show` 的
+ *  options 从来没有 icon 形参（契约只有 type/progress/persistent/actions），`Toast.icon`
+ *  全员零生产者 ⇒ 该分支恒假。要开「作者自定义图标」是**新能力**，得走 8 维设计 + 契约生成，
+ *  不在本行整肃范围内，故删分支而非补契约。 */
 function getNotifIconClass(n: Toast): string {
-  if (n.icon) return n.icon.startsWith("codicon") ? n.icon : `codicon codicon-${n.icon}`;
   if (n.progress) return "codicon codicon-sync notif-icon-spin";
   switch (n.severity) {
     case "error": return "codicon codicon-error notif-severity-error";
@@ -56,11 +58,12 @@ export function buildNotif(t: TFunction): NotifLayout {
   const notifications = getToasts();
   const unread = notifications.filter((n) => !_seenIds.has(n.id)).length;
 
-  // E3e #50：source 第一段归类（"terminal.portErrors" → "terminal"）
+  // E3e #50：source 第一段归类（"terminal.portErrors" → "terminal"）。
+  // E6#73f 归一：分桶键走 toast 的 sourceKeyOf——与常驻上限淘汰分桶**同一个键函数**，
+  // 面板分组与淘汰分桶不会各算各的（此前两处各写一遍 split(".")[0] || "__other__"）。
   const map = new Map<string, Toast[]>();
   for (const n of notifications) {
-    const src = n.source?.split(".")[0] || "";
-    const key = src || "__other__";
+    const key = sourceKeyOf(n.source);
     if (!map.has(key)) map.set(key, []);
     map.get(key)!.push(n);
   }
@@ -68,10 +71,14 @@ export function buildNotif(t: TFunction): NotifLayout {
   for (const [key, items] of map) {
     items.sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0));
     const groupUnread = items.filter((n) => !_seenIds.has(n.id)).length;
+    const folded = getFoldedCount(key);
     groups.push({
       key,
-      label: key === "__other__" ? t("其他") : key,
+      label: key === OTHER_SOURCE_KEY ? t("其他") : key,
       unread: groupUnread,
+      // E6#73f（S3/A6）：本组被上限折叠掉的条数——只在 >0 时带字段（缺省不渲染汇总行）。
+      // 文案壳侧解析（池哑渲染），与 timeLabel/sourceLabel 同一「显示文本铁律」。
+      ...(folded > 0 ? { foldedLabel: t("本组另有 {{count}} 条较早的已折叠", { count: folded }) } : {}),
       items: items.map((n) => ({
         id: n.id,
         iconClass: getNotifIconClass(n),

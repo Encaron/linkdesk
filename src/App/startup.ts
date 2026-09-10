@@ -9,7 +9,7 @@
 
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { pushToast } from "../core/services/ui/NotificationService";
+import { pushToast, clearDismissedState } from "../core/services/ui/NotificationService";
 import { registerFallbackThemes, normalizeThemeValue } from "../core/services/ui/ThemeEngine";
 import { initPluginLoader, startPluginWatcher, stopPluginWatcher, getLoadedPluginManifests } from "../pluginLoader/loader";
 import { factorySlots } from "../core/services/bootstrap/FactorySlots";
@@ -223,12 +223,15 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
       // （__showProgress/__setDoNotDisturb/__setSourceFilter 已随 E5.7#27.5 死链整删——
       //   进度条/DND/来源过滤零消费者，Debug 钩子也是死链）
       // E5.7#98：E3e debug 钩子——窄 window 接口声明替代 as any
+      // E6#73f：__clearDismissed 原来手写 localStorage 键名且**写错了**（`linkdesk_dismissed_toasts`，
+      // 真实键是 StorageService 的 `toast-dismissed`）⇒ 钩子点了没反应、永久空转。
+      // 归一：键名只在 toast.ts 出现一次，外部一律走 clearDismissedState()。
       const debugWindow = window as Window & {
         __pushToast?: typeof pushToast;
         __clearDismissed?: () => void;
       };
       debugWindow.__pushToast = pushToast;
-      debugWindow.__clearDismissed = () => localStorage.removeItem("linkdesk_dismissed_toasts");
+      debugWindow.__clearDismissed = clearDismissedState;
 
       setReady(true);
     })();

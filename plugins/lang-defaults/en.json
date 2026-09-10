@@ -405,6 +405,8 @@
   "已卸载：{{name}}": "Uninstalled: {{name}}",
   "已禁用：{{name}}": "Disabled: {{name}}",
   "撤销": "Undo",
+  "未能恢复「{{name}}」：{{detail}}": "Could not restore \"{{name}}\": {{detail}}",
+  "本组另有 {{count}} 条较早的已折叠": "{{count}} older notification(s) in this group were folded away",
   "已更新：{{name}} {{from}} → {{to}}。点击重启以应用新版。": "Updated: {{name}} {{from}} → {{to}}. Restart to apply the new version.",
   "插件「{{name}}」需要新版主软件才能用（它要 {{need}} 或更高，当前 {{have}}）——已跳过，请先更新 LinkDesk": "The plugin \"{{name}}\" needs a newer version of LinkDesk (it requires {{need}} or later; you have {{have}}). Skipped — please update LinkDesk first.",
   "插件「{{name}}」声明的插件依赖绕成了死循环（{{chain}}）——已跳过，请联系插件作者": "The plugin \"{{name}}\" declares a circular plugin dependency ({{chain}}). Skipped — please contact the plugin author.",

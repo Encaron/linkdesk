@@ -1,10 +1,11 @@
 /**
  * IpcBridgeHandler UI 域单测——E6#13.5 toast 主动作按钮（缝隙 K1 补齐）。
- * 覆盖：notifications.show 带 actions → 壳 toast 存按钮，点击 runToastAction → executeCommand
- * 真执行（含 args 透传——token 槽位显式 undefined，args 从第三位进 handler）/ 不带 actions →
- * 现状无按钮；error 类 TTL 对齐 TOAST_TTL_ERROR（8000，mockup 帧 3）。
+ * 覆盖：notifications.show 带 actions → 壳 toast 存按钮，点击执行命令（含 args 透传——
+ * token 槽位显式 undefined，args 从第三位进 handler）/ 不带 actions → 现状无按钮；
+ * error 类 TTL 对齐 TOAST_TTL_ERROR（8000，mockup 帧 3）。
  * E6#71i：#71j 延伸——progress handle 经 updateNotification 第三参 percent 写入进度；
- * persistent:true → ttl:0 长驻 + persistent 旗标 + 常驻上限淘汰（TOAST_PERSISTENT_CAP）。
+ * persistent:true → ttl:0 长驻 + persistent 旗标 + 常驻上限淘汰（E6#73f 起**按来源分桶** TOAST_SOURCE_CAP）。
+ * E6#73f（S6）：show 一律返回句柄（非 progress 也是）。
  * fixture 用虚构值（硬约束 21：demo-plugin / demo-plugin.retryInstall / Demo plugin）。
  * @vitest-environment jsdom
  */
@@ -12,7 +13,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { handleUiMethod } from "./ui";
 import { registerCommand, clearCommands } from "../../../registry/commands/CommandRegistry";
-import { getToasts, runToastAction, dismissToast, TOAST_TTL_ERROR, TOAST_PERSISTENT_CAP } from "../../ui/toast";
+import { getToasts, dismissToast, TOAST_TTL_ERROR, TOAST_SOURCE_CAP } from "../../ui/toast";
 
 const PLUGIN = "demo-plugin";
 
@@ -58,11 +59,15 @@ describe("showNotification 主动作按钮（E6#13.5）", () => {
       },
     ]);
 
-    // 非 progress → 无 handle
-    expect(handle).toBeUndefined();
+    // E6#73f（S6）：**非 progress 也返回句柄 id**（此前恒 undefined）。壳这层交出 id，
+    // 池 preload 拿 id 包成 {update,finish,cancel} 三家。否则 persistent 的失败通知（带 [重试]）
+    // 撤不下来，重试成功后面板里那条「安装失败」跟成功互相打脸，攒成失败墙（18 档 A3/E4）。
+    expect(typeof handle).toBe("string");
+    expect(handle).not.toBe("");
     const toasts = activeToasts();
     expect(toasts).toHaveLength(1);
     const t = toasts[0]!;
+    expect(handle).toBe(t.id);
     // 13.5d：error 类对齐 8000（mockup 帧 3）
     expect(t.severity).toBe("error");
     expect(t.ttl).toBe(TOAST_TTL_ERROR);
@@ -71,8 +76,11 @@ describe("showNotification 主动作按钮（E6#13.5）", () => {
     expect(t.actions?.[0]).toMatchObject({ label: "Retry", isPrimary: true });
     expect(typeof t.actions?.[0]?.onClick).toBe("function");
 
-    // 点击 [Retry]（主按钮）→ 壳 runToastAction 按位置序号重解析 → 执行命令
-    runToastAction(t.id, "0");
+    // 点击 [Retry]（主按钮）——生产派发路径是 useSubscriptions `notif:action` 处理器：
+    // 按回传的**位置序号**取 actions[index].onClick() 执行，随后关闭该条（此处照同一语义调用；
+    // E6#73f 删掉的 toast.runToastAction 从没有真实调用方，闭包执行体本身就在 ui.ts 这里）。
+    t.actions?.[0]?.onClick();
+    dismissToast(t.id);
     expect(ran).toBe(1);
     // args 从 token 槽位之后进 handler（token 显式 undefined 占位）——漏占位 args[0] 会被剥掉
     expect(received[0]).toEqual(["http://demo.test/pkg"]);
@@ -133,19 +141,19 @@ describe("showNotification E6#71i 进度 + E6#71j 长驻（updateNotification pe
     expect(t2.ttl).toBe(TOAST_TTL_ERROR);
   });
 
-  it("71j ④：长驻上限淘汰——超 TOAST_PERSISTENT_CAP 条后顶掉最老的 persistent，不碰自动消失 toast", async () => {
+  it("73f S3：常驻上限淘汰——超 TOAST_SOURCE_CAP 条后顶掉最老的 persistent，不碰自动消失 toast", async () => {
     // 先埋一条自动消失（error 8000，非 persistent）——上限淘汰不该动它
     await handleUiMethod("showNotification", ["Auto error", { type: "error" }]);
-    // 连续推 CAP+1 条长驻
-    for (let i = 0; i <= TOAST_PERSISTENT_CAP; i++) {
+    // 连续推 CAP+1 条长驻（本路径无 source ⇒ 全落 __other__ 同一桶）
+    for (let i = 0; i <= TOAST_SOURCE_CAP; i++) {
       await handleUiMethod("showNotification", [`Persistent ${i}`, { type: "error", persistent: true }]);
     }
     const all = activeToasts();
     const persistent = all.filter((x) => x.persistent);
-    expect(persistent).toHaveLength(TOAST_PERSISTENT_CAP);
+    expect(persistent).toHaveLength(TOAST_SOURCE_CAP);
     // 最老一条被顶掉（Persistent 0 不在），最新的还在
     expect(all.some((x) => x.message === "Persistent 0")).toBe(false);
-    expect(all.some((x) => x.message === `Persistent ${TOAST_PERSISTENT_CAP}`)).toBe(true);
+    expect(all.some((x) => x.message === `Persistent ${TOAST_SOURCE_CAP}`)).toBe(true);
     // 自动消失 toast 未被动
     expect(all.some((x) => x.message === "Auto error")).toBe(true);
   });

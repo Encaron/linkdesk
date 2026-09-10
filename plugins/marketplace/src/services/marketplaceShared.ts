@@ -631,7 +631,8 @@ async function settleInstallFailure(pluginId: string, downloadUrl: string, error
   //  依赖市场落地页 index.tsx 加载；args 带 pluginId+downloadUrl 使 [重试] 不依赖会话残留自给自足）。
   //  行内错误态由消费方从会话读。
   // E6#71j：失败 toast 长驻（persistent:true → 壳 ttl:0 不自动消失）——归因诊断需要时间读、用户决定重试
-  //  还是放弃，不该 8s 静默溜走；常驻类互相淘汰（壳 TOAST_PERSISTENT_CAP 内顶掉最老），不越摞越多。
+  //  还是放弃，不该 8s 静默溜走；常驻类互相淘汰（壳侧**按来源分桶各 5 条**，E6#73f S3 起，
+  //  超出顶掉同来源最老的并在该组给「另有 N 条已折叠」汇总），不越摞越多。
   const show = lk()?.notifications?.show;
   if (show) {
     // E6#73e：① **带插件名**——此前只报「安装失败：网络连接不可用」，连点几个时用户不知道是哪一个；

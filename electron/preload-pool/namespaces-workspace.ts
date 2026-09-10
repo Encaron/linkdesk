@@ -41,8 +41,10 @@ export function buildNotifications() {
       actions?: Array<{ id?: string; label: string; isPrimary?: boolean; command?: string; args?: unknown[] }>;
     }) => {
       return ipcRenderer.invoke(IPC.plugins.call, 'showNotification', message, options)
-        .then((handleId: string | undefined) => {
-          if (!handleId) return undefined;
+        // E6#73f（S6）句柄隔离：壳 showNotification 已**一律**返回句柄 id（不再只在 progress 时返回）
+        // ⇒ 这里不再有 `if (!handleId) return undefined` 分支，契约收窄为 Promise<NotificationHandle>
+        // （非可选）。旧调用方 `(await show(...))?.update()` 的 `?.` 仍合法，零破坏。
+        .then((handleId: string) => {
           return {
             // E6#71i：update 第三参 percent（0-100）——下载段带真值驱动确定进度条；不传 = 不定态
             update: (msg: string, percent?: number) =>

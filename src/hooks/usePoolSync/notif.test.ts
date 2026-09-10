@@ -8,10 +8,11 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import type { TFunction } from "i18next";
 import { buildNotif, _seenIds } from "./notif";
-import { pushToast, dismissToast, getToasts, setNotifPanelOpen } from "../../core/services/ui/toast";
+import { pushToast, dismissToast, getToasts, setNotifPanelOpen, TOAST_SOURCE_CAP } from "../../core/services/ui/toast";
 
-/** i18n 桩——key 原样返回（断言只看 DTO 结构，不看译文；真实文案归 i18n 审计） */
-const t = ((key: string) => key) as unknown as TFunction;
+/** i18n 桩——key 原样返回 + 做 {{x}} 插值（断言只看 DTO 结构/参数带没带对，不看译文；真实译文归 i18n 审计） */
+const t = ((key: string, opts?: Record<string, unknown>) =>
+  opts ? key.replace(/\{\{(\w+)\}\}/g, (_m, k: string) => String(opts[k] ?? "")) : key) as unknown as TFunction;
 
 function clearStore(): void {
   for (const n of getToasts()) dismissToast(n.id);
@@ -49,14 +50,47 @@ describe("buildNotif——进度字段透传（E6#72c）", () => {
     expect(item.percent).toBeUndefined();
   });
 
-  it("进度图标换 sync + spin 类（作者未自定图标时）", () => {
+  it("进度图标换 sync + spin 类", () => {
     pushToast({ message: "演示消息", source: "demo-plugin", progress: true, ttl: 0 });
     expect(buildNotif(t).groups[0].items[0].iconClass).toBe("codicon codicon-sync notif-icon-spin");
   });
 
-  it("作者显式给 icon → 尊重作者，不覆盖成 sync", () => {
-    pushToast({ message: "演示消息", source: "demo-plugin", progress: true, icon: "rocket", ttl: 0 });
-    expect(buildNotif(t).groups[0].items[0].iconClass).toBe("codicon codicon-rocket");
+  // E6#73f：原「作者显式给 icon → 尊重作者」用例已删——`notifications.show` 契约里根本没有
+  // icon 形参（只有 type/progress/persistent/actions），壳 handler 也从不填 ⇒ 那条分支恒假。
+  // 图标类的完整对照（error/warning/info 三档）见下。
+  it("非进度通知按 severity 定图标（error/warning/info 三档）", () => {
+    pushToast({ message: "演示消息 甲", source: "demo-plugin", severity: "error", ttl: 0 });
+    pushToast({ message: "演示消息 乙", source: "demo-plugin", severity: "warning", ttl: 0 });
+    pushToast({ message: "演示消息 丙", source: "demo-plugin", severity: "info", ttl: 0 });
+    // 按消息取图标——不依赖组内时间排序（同毫秒时间戳下顺序不稳）
+    const byMsg = new Map(buildNotif(t).groups[0].items.map((i) => [i.message, i.iconClass]));
+    expect(byMsg.get("演示消息 甲")).toBe("codicon codicon-error notif-severity-error");
+    expect(byMsg.get("演示消息 乙")).toBe("codicon codicon-warning notif-severity-warning");
+    expect(byMsg.get("演示消息 丙")).toBe("codicon codicon-info");
+  });
+});
+
+describe("buildNotif——折叠汇总（E6#73f S3/A6）", () => {
+  it("本组有折叠 → DTO 带壳侧解析好的 foldedLabel（面板哑渲染，不再无声消失）", () => {
+    for (let i = 0; i < TOAST_SOURCE_CAP + 3; i++) {
+      pushToast({ message: `演示消息 ${i}`, source: "demo-plugin", persistent: true, ttl: 0 });
+    }
+    expect(buildNotif(t).groups[0].foldedLabel).toBe("本组另有 3 条较早的已折叠");
+  });
+
+  it("没折叠过 → 不带 foldedLabel 字段（形状零变化，不渲染汇总行）", () => {
+    pushToast({ message: "演示消息", source: "demo-plugin", ttl: 0 });
+    expect(buildNotif(t).groups[0].foldedLabel).toBeUndefined();
+  });
+
+  it("折叠计数归到本组——别的来源不受影响", () => {
+    pushToast({ message: "演示消息 别的来源", source: "demo-other", ttl: 0 });
+    for (let i = 0; i < TOAST_SOURCE_CAP + 1; i++) {
+      pushToast({ message: `演示消息 ${i}`, source: "demo-plugin", persistent: true, ttl: 0 });
+    }
+    const groups = new Map(buildNotif(t).groups.map((g) => [g.key, g]));
+    expect(groups.get("demo-plugin")?.foldedLabel).toBe("本组另有 1 条较早的已折叠");
+    expect(groups.get("demo-other")?.foldedLabel).toBeUndefined();
   });
 });
 

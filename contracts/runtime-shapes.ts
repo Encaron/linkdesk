@@ -830,6 +830,9 @@ function chkNotifGroup(v: unknown, p: string, errs: string[]): void {
           chkNotifItem(_t99.items[_t100], (((p) + ".items") + "[" + _t100 + "]"), errs);
       }
     }
+    if (_t99.foldedLabel !== undefined) {
+    if (typeof _t99.foldedLabel !== "string") errs.push(((p) + ".foldedLabel") + ": 期望 string，实收 " + typeof _t99.foldedLabel);
+    }
   }
 }
 function chkNotifLayout(v: unknown, p: string, errs: string[]): void {

@@ -3,6 +3,21 @@
 > 每版一条，对标 VS Code changelog。**历史真相源 = [E6 执行清单](docs/02-Electron架构/E6_插件生态与发布/E6-执行清单.md)**（E6 阶段每轮收束细节 + 实机证据全在清单 Batch 注里，此文件只记类别清单）。版本号唯一真值 = `package.json`（不手写第二份，见 [02-产品身份与版本.md](docs/02-Electron架构/E6_插件生态与发布/06-主软件更新/02-产品身份与版本.md) §2.3）。
 > 0.x 阶段（开发期）：一切向后兼容变更走 patch 位；破坏性变更走 minor 位。
 
+## v0.1.33（2026-09-10）
+
+- **feat:E6#73f toast 数据层整肃 + 隔离（S1/S3/S4/S6）+ 两项 store 新增能力**（第二批首档，**因是 73b 的机械前置而提前**）
+  - **S1 死代码簇删除**：`runToastAction`（面板回传点击动作已改由 `useSubscriptions` 内联执行）、`getUnreadCount` + `subscribeNotifPanelOpen` + `_suppressListeners`（无人订阅的影子通道）、`Toast.icon`（`notifications.show` 契约里根本没有 `icon` 形参 ⇒ 恒假分支，`getNotifIconClass` 那条 if 一并删）。🔴 **`isCloseAffordance` 机制保留**——E6#57.12a 依赖它；但修掉一条真 bug：TTL 到点自灭**不再写持久化屏蔽记录**（只有用户真去关闭才算「别再显示」），并补 `clearDismissedState()` 给调试用
+  - **S3 容量隔离——常驻上限从「全局面值 5」改为「按来源分桶各 5 条」**：新增 `sourceKeyOf()`（取 source 首段，无来源归 `__other__`）为**唯一**分桶键（淘汰与面板分组共用一份，不再两处各写 `split(".")[0] || "__other__"`）。**某来源刷屏不再挤掉别的来源**；被淘汰的记进 `_folded` 折叠计数
+  - **S3 折叠可见（不再无声消失）**：`NotifGroup.foldedLabel?`（壳侧 `t()` 已解析，池哑渲染——同 timeLabel 的「显示文本铁律」）+ 面板分组尾部一行小字「本组另有 N 条较早的已折叠」。**契约字段选填** ⇒ 旧快照/测试替身不填时形状零变化
+  - **S4 生命周期隔离**：`isPending(t)`（`progress === true`）——面板「清除全部」与单条关闭**一律跳过进行中的条目**（此前会把正在跑的进度条从面板上抹掉，而它还在跑）；同理 `dismissToast` 直调仍可用（程序化路径不受限）
+  - **S6 句柄隔离**：`show()` **一律返回句柄**（此前只在 `progress:true` 时才返回 id）——persistent 的失败通知带 `[重试]`，用户手动重试成功后那条「安装失败」撤不下来，会跟成功条互相打脸攒成失败墙。池侧 `if (!handleId) return undefined` 删除 ⇒ 契约 `Promise<NotificationHandle>` 从「看情况」变「恒有」
+  - **① `Toast.wake?: boolean` 唤醒旗标**（§五 B「本设计唯一要求 toast store 新增的能力之一」）——**本档只放载体，表达式归 73b**（㉓ 明令不得复用 `isImportantNotif`，否则最小化面板会被 30s 内存墙弹开）
+  - **② 原子替换 API `replaceToast(id, patch)`**（§五 I.6⑧ 硬前置）——保留 `id`/`createdAt`、**单次 notify**，缺它则 73d 的行会闪、会换位；`updateToast` 改为它的薄封装（percent 缺省=清空，解掉「上一条的百分比留在新文案上」）
+  - **K7 撤销失败要出声**：`lifecycle.ts` 两条「撤销」`onClick` 此前只 `console.error`——而点动作时已经**先无条件关掉那条提示**，撤销失败 = 提示没了 + 插件没恢复，用户以为撤销成功。现补 error toast（结论句 + 插件名 + 原因），落回该插件所在的分组
+  - **SDK dev 宿主真缺口**：`notifications.show` 在生成的 mock 里解析成 `undefined`，作者照文档写 `(await show(m)).update(...)` 在 dev 宿主必崩 → 走生成器自带的 `OVERRIDE_RET` 机制补上（**未手改生成物**）
+  - 新增单测 4 个文件（toast store 分桶/折叠/原子替换/TTL 不落屏蔽、面板 clearAll·dismiss 跳过进行中、撤销失败、池侧句柄），改动 6 个测试文件。`npm run check` EXIT=0（139 文件 / 1818 测试）
+  - ⚠️ **一处刻意不动**：marketplace 源码里只改了**一句注释**，**随包 zip 未重建**——纯注释无用户可见变更，bump 版本号是错的；且注释被 Vite 剥掉、产物逐字节不变（`check-bundled-version-bump` 判 `identical`）
+
 ## v0.1.32（2026-09-10）
 
 - **fix:E6#73h 通知文案归一 + 消灭「装一次弹两条」**（D2/D3/D4/D5/D6/D7）

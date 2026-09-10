@@ -643,7 +643,13 @@ const runtimeContent = buildRuntimeShapes();
 function buildMockContent() {
   const LOGCALL = "console.info";
   // 个性化默认值 override：dotted path → TS 返回表达式（需要时在此追加，如 "path.join": '""'）
-  const OVERRIDE_RET = {};
+  const OVERRIDE_RET = {
+    // E6#73f（S6）：notifications.show 契约 = Promise<NotificationHandle>（**非可选**，一律返回句柄）。
+    // 中性默认对「返回对象」的 Promise 是**不 return**（resolve undefined）⇒ dev 宿主里插件写
+    // `(await show(m)).update(...)` 直接崩 Cannot read properties of undefined。给个空操作句柄，
+    // 与「不崩 + 可感知」策略一致（真行为走 linkdesk-plugin-sdk dev --real）。
+    "notifications.show": "{ update: async () => {}, finish: async () => {}, cancel: async () => {} }",
+  };
 
   // LinkDeskAPI 交集根类型（本文件 top 收集阶段未持有类型变量，这里现取）
   const apiSf = program.getSourceFile(ENTRY);

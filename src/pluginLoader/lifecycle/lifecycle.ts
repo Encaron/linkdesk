@@ -93,6 +93,26 @@ export function initLifecycleConsumers(): void {
     });
   });
 
+  /**
+   * E6#73f（K7）：撤销动作失败**必须出声**。
+   * 此前两条 撤销 onClick 只 `console.error` —— 而点击动作时 useSubscriptions 已经**先无条件
+   * dismissToast**（先删提示再执行动作）⇒ 撤销失败 = 提示消失 + 插件没恢复 ⇒ **用户以为撤销成功了**
+   * （18 档 K7）。错误走 error toast，写明插件名（同 73h D5 的「结论句带名」口径）。
+   */
+  function notifyUndoFailed(pluginId: string, name: string, e: unknown): void {
+    console.error("[lifecycle] 撤销失败:", e);
+    pushToast({
+      message: i18n.t("未能恢复「{{name}}」：{{detail}}", {
+        name,
+        detail: e instanceof Error ? e.message : String(e),
+      }),
+      // source 归插件 id——失败条落回那条「已禁用/已卸载」所在的同一个面板分组，用户正看着的地方
+      source: pluginId,
+      severity: "error",
+      ttl: TOAST_TTL_ERROR,
+    });
+  }
+
   PluginLifecycle.onDidUninstall.event(({ pluginId, reason, displayName, restorable }) => {
     // 'update'（E6#11c）→ 旧实例退场不发「已禁用」toast、不给「撤销→启用」动作——更新完成由
     // onDidInstall 侧接报；同插件的卸载/禁用才有 撤销 语义
@@ -116,12 +136,12 @@ export function initLifecycleConsumers(): void {
             ? [{ label: i18n.t("撤销"), isPrimary: true, onClick: () => {
                 // 动态 import 避免循环依赖
                 import("../loader").then((m) => m.reinstallPlugin(pluginId))
-                  .catch((e) => console.error("[lifecycle] 撤销卸载——模块加载失败:", e));
+                  .catch((e) => notifyUndoFailed(pluginId, name, e));
               }}]
             : undefined
           : [{ label: i18n.t("撤销"), isPrimary: true, onClick: () => {
               import("../loader").then((m) => m.enablePlugin(pluginId))
-                .catch((e) => console.error("[lifecycle] 撤销禁用——模块加载失败:", e));
+                .catch((e) => notifyUndoFailed(pluginId, name, e));
             }}],
     });
   });

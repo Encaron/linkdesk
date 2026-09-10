@@ -426,6 +426,20 @@
   text-align: center;
 }
 
+/* E6#73f（S3/A6）：折叠汇总脚注——「本组另有 N 条较早的已折叠」。
+   形状依据（ui-ux-pro-max：正文级文字对比 ≥4.5:1、禁 gray-on-gray）：
+   · 字号 = 面板最下一档 2xs（与时间标签同档），非大写、常规字重（对比分组标题 600 + uppercase）；
+   · 颜色用 --text-secondary 而**不是** --text-muted——这行带真信息（有失败被折叠了），
+     10px 小字再压到 muted 会掉到可读性线下；
+   · 不加 codicon、无 hover/不可点——一加图标就长得像通知行，会引导用户去点，而折叠掉的条目
+     已不在库中，点了无事可做（死钮）；顶部 2px 留白把它与最后一条通知分开。 */
+.notif-panel-folded {
+  padding: 2px 12px 8px;
+  font-size: var(--font-size-2xs);
+  color: var(--text-secondary);
+  user-select: text;
+}
+
 /* 时间标签 */
 .notif-panel-time {
   font-size: var(--font-size-2xs); /* 10→2xs */

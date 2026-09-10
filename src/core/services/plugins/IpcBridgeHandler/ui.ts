@@ -236,7 +236,8 @@ export async function handleUiMethod(method: string, args: unknown[]): Promise<u
     // E6#13.5c：options.actions（插件序列化 {command,args}，无闭包）→ 壳 toast action closure
     // （点击 executeCommand 真执行）。建 toast 时包好 onClick——与壳内 pushToast（闭包 onClick）
     // 同形态；无 command 的 action 仅关闭（点击后 dismiss）。E6#72：动作按钮渲染在铃铛宽面板，
-    // onClick 闭包留壳，面板回传位置序号经 runToastAction 重解析执行。
+    // onClick 闭包留壳，面板回传**位置序号**，由 useSubscriptions 的 `notif:action` 处理器
+    // 内联重解析执行（E6#73f：原先注释指向的 toast.runToastAction 无人调用，已随死代码簇删除）。
     case "showNotification": {
       const [message, options] = args as
         | [string, { type?: string; progress?: boolean; persistent?: boolean; actions?: PluginToastAction[] } | undefined];
@@ -258,7 +259,10 @@ export async function handleUiMethod(method: string, args: unknown[]): Promise<u
       const persistent = options?.persistent === true;
       const ttl = options?.progress || persistent ? 0 : severity === "error" ? TOAST_TTL_ERROR : undefined;
       const id = pushToast({ message, severity, actions, progress: !!options?.progress, persistent, ttl });
-      return options?.progress ? id : undefined;
+      // E6#73f（S6）句柄隔离：**一律**返回句柄 id（原来只在 progress:true 时返回）。
+      // 否则 persistent 的失败通知（带 [重试]）拿不到句柄 ⇒ 用户手动重试成功后那条「安装失败」
+      // 撤不下来，一直长驻在面板里跟成功互相打脸，攒成一面失败墙（18 档 A3/E4）。
+      return id;
     }
     case "updateNotification": {
       // E6#71i：第三参 percent（0-100）驱动确定进度条；不传 = 不定态动画照常推消息

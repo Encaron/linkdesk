@@ -16,15 +16,14 @@
 
 /* ── 导出 toast 功能（E3e 的超集面——进度条/DND/来源过滤——已随 E5.7#27.5 整删） ── */
 
-import {
-  pushToast,
-  dismissToast,
-  getToasts,
-  subscribeToasts,
-  getUnreadCount,
-} from "./toast";
+/* E6#73f 死代码簇整删（零调用方，惟一的引用就是本文件的再导出）：
+ * `getUnreadCount`（名字说是未读，实现 `return _toasts.length` 是总数——名实不符的陷阱）、
+ * `subscribeNotifPanelOpen` + `_suppressListeners`（面板开合订阅，无人订阅）、
+ * `runToastAction`（真派发路径是 useSubscriptions `notif:action` 内联，此函数只有单测在调）。
+ * 面板开合镜像只留读写两个函数。 */
+
 export type { Toast, ToastSeverity, ToastAction } from "./toast";
-export { dismissToast, getToasts, subscribeToasts, getUnreadCount };
-export { setNotifPanelOpen, isNotifPanelOpen, subscribeNotifPanelOpen } from "./toast";
+export { dismissToast, getToasts, subscribeToasts } from "./toast";
+export { setNotifPanelOpen, isNotifPanelOpen } from "./toast";
 export { TOAST_TTL_ERROR, TOAST_TTL_INFO, TOAST_TTL_SUCCESS } from "./toast";
-export { pushToast };
+export { pushToast, clearDismissedState } from "./toast";

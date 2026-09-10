@@ -22,7 +22,7 @@ import { getViewPlugin, onDidRegister, onDidUnregister } from "../../pluginLoade
 import { onDidChangeStatusBar } from "../../core/services/ui/StatusBarService"; // E5.7#8：状态栏动态项变化订阅
 import { CUSTOM_EVENTS } from "../../core/react/events/CoreEvents"; // E5.7#8：Chord 提示
 import { shellEvents, type StatusBarEntry } from "../../core/react/events/ShellEvents";
-import { subscribeToasts, dismissToast, getToasts, setNotifPanelOpen } from "../../core/services/ui/toast";
+import { subscribeToasts, dismissToast, getToasts, isPending, setNotifPanelOpen } from "../../core/services/ui/toast";
 import { _seenIds } from "./notif"; // 通知未读追踪——事件回传共享序列化侧同一实例
 
 interface UseSyncSubscriptionsInput {
@@ -238,11 +238,18 @@ export function useSyncSubscriptions({
         setLayoutVersion((v) => v + 1);  // 标记已读不 fire toast 事件——手动重推
       }
     });
+    // E6#73f（S4）：**用户发起的移除一律跳过「尚无结果」的条目**——它们只能由创建它们的句柄收掉。
+    // 不修则安装跑到 10% 时点「全部清除」，进度条被清掉且市场侧不会重建（只在有句柄时 update）
+    // ⇒ 此后整个安装期屏幕上零反馈，装完才突然冒一条（18 档 A2 实证）。
+    // 面板侧同一判据隐藏进行中行的 ×（E6#73a），此处是壳侧兜底——两条路径都拦得住。
     const offDismiss = events?.on("notif:dismiss", (payload) => {
-      if (typeof payload === "string") dismissToast(payload);
+      if (typeof payload !== "string") return;
+      const target = getToasts().find((n) => n.id === payload);
+      if (!target || isPending(target)) return;
+      dismissToast(payload);
     });
     const offClearAll = events?.on("notif:clearAll", () => {
-      getToasts().forEach((n) => dismissToast(n.id));
+      getToasts().filter((n) => !isPending(n)).forEach((n) => dismissToast(n.id));
     });
     const offAction = events?.on("notif:action", (payload) => {
       const data = payload as { id?: unknown; index?: unknown } | null | undefined;

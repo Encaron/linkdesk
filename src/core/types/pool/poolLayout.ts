@@ -355,6 +355,10 @@ interface NotifGroup {
   label: string;
   unread: number;
   items: NotifItem[];
+  /** E6#73f（S3/A6）：本组因超过「每来源 5 条」上限被淘汰折叠掉的**说明文案**（壳侧 t() 已解析，
+   *  池哑渲染——同 timeLabel/sourceLabel/clearLabel 的「显示文本铁律」）。
+   *  缺省 = 没折叠过（契约宽容——旧快照/测试替身不填此字段时行为不变，不渲染该行）。 */
+  foldedLabel?: string;
 }
 
 /** 通知中心数据——壳侧序列化（未读计数/文案/分组全壳侧完成） */

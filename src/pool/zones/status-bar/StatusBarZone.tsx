@@ -203,6 +203,12 @@ function StatusBarZone({ statusBar }: { statusBar: StatusBarLayout }) {
                         </div>
                       </div>
                     ))}
+                    {/* E6#73f（S3/A6）：本组被「每来源 5 条」上限折叠掉的条数——**说明性脚注，不可点**
+                        （折叠掉的条目已不在 toast 库里，点了无事可做；不加 codicon 以免长得像通知行）。
+                        放组尾而非组头：组内按时间倒序，尾 = 最老那端，「较早的」在拓扑上诚实。 */}
+                    {group.foldedLabel && (
+                      <div className="notif-panel-folded">{group.foldedLabel}</div>
+                    )}
                   </div>
                 ))}
               </div>

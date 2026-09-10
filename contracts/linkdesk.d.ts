@@ -571,19 +571,22 @@ export type PoolFloatingPanelData = {
 export interface UiAPI {
     /** 通知——插件弹通知（E6#72：唯一通知面 = 铃铛宽通知面板，右下窄卡链路已整删），对标 VS Code vscode.window.showInformationMessage */
     notifications: {
-        /** 弹出通知。progress=true 时返回 ProgressHandle（含 update/finish/cancel）。
+        /** 弹出通知，**一律返回句柄**（含 update/finish/cancel）——E6#73f（S6）句柄隔离：
+         *  此前只在 progress:true 时返回句柄 ⇒ persistent 的失败通知（带 [重试]）撤不下来，
+         *  用户手动重试成功后那条「安装失败」仍长驻，面板变成失败墙（18 档 A3/E4）。
+         *  ⇒ 一条通知只能被**创建它的那个句柄**更新/删除，不管它是不是进度条。
          *  E6#13.5：options.actions 带主动作按钮——点击走壳 executeCommand(action.command, action.args)，
          *  命令 handler 插件自注册。不传 actions → 无按钮（现状）。error 类自动停留 8s。
          *  E6#71j：options.persistent=true 长驻通知——不自动消失、等用户手动点 ×（错误诊断类用）;
-         *  常驻类互相淘汰（壳侧上限内顶掉最老的），不参与自动消失 */
+         *  常驻上限**按来源分桶**各 5 条（E6#73f S3），超出顶掉同来源最老的并给汇总提示 */
         show(message: string, options?: {
             type?: "info" | "warning" | "error";
-            /** true → 进度通知：返回 handle，update 可带 0-100 百分比驱动真进度条（E6#71i） */
+            /** true → 进度通知：update 可带 0-100 百分比驱动真进度条（E6#71i） */
             progress?: boolean;
             /** true → 长驻通知：不自动消失（E6#71j）；错误诊断/需用户决定的场景用 */
             persistent?: boolean;
             actions?: PluginToastAction[];
-        }): Promise<NotificationHandle | undefined>;
+        }): Promise<NotificationHandle>;
     };
     /** E5#69：菜单——插件声明式读写 */
     menu: {
@@ -1663,6 +1666,10 @@ export interface NotifGroup {
     label: string;
     unread: number;
     items: NotifItem[];
+    /** E6#73f（S3/A6）：本组因超过「每来源 5 条」上限被淘汰折叠掉的**说明文案**（壳侧 t() 已解析，
+     *  池哑渲染——同 timeLabel/sourceLabel/clearLabel 的「显示文本铁律」）。
+     *  缺省 = 没折叠过（契约宽容——旧快照/测试替身不填此字段时行为不变，不渲染该行）。 */
+    foldedLabel?: string;
 }
 /** 通知中心数据——壳侧序列化（未读计数/文案/分组全壳侧完成） */
 export interface NotifLayout {
