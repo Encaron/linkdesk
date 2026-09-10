@@ -14,7 +14,7 @@
  * 于是那套设计只能交付容器、交付不了实机可见的效果，等于只能靠嘴说。本模块把那半补上，
  * 并且写成**可以照着抄的样板**：
  *
- *   ① `workspace.env.get(自己的 id)` 拿到本机给的插件数据目录（安装时壳已建好）
+ *   ① `env.get(自己的 id)` 拿到本机给的插件数据目录（安装时壳已建好）
  *   ② 把本机相关路径落成自己的 `config.json`——**这是"配置"的最朴素形态**，也是任何真插件
  *      装完第一件要做的事（本插件自己的目录、自己的缓存位、自己的导出口）
  *   ③ 真写了盘才出声：`notifications.show(..., { source: 自己的 id })`
@@ -82,7 +82,7 @@ async function runSetup(force: boolean): Promise<SetupResult> {
   const dataDir = await resolveDataDir();
   if (typeof dataDir !== "string") return dataDir; // 已是失败结果
 
-  const configPath = lk.workspace.path.join(dataDir, CONFIG_FILE);
+  const configPath = lk.path.join(dataDir, CONFIG_FILE);
 
   if (!force) {
     const existing = await readSetupConfig(configPath);
@@ -90,15 +90,15 @@ async function runSetup(force: boolean): Promise<SetupResult> {
     if (existing) return { ok: true, already: true, config: existing, configPath };
   }
 
-  const env = await lk.workspace.env.get(FIRST_RUN_SETUP_PLUGIN_ID);
+  const env = await lk.env.get(FIRST_RUN_SETUP_PLUGIN_ID);
   const config: SetupConfig = {
     schema: 1,
     pluginId: FIRST_RUN_SETUP_PLUGIN_ID,
     configuredAt: new Date().toISOString(),
     dirs: {
       data: dataDir,
-      cache: env.pluginCacheDir ?? lk.workspace.path.join(dataDir, "cache"),
-      exports: env.pluginExportsDir ?? lk.workspace.path.join(dataDir, "exports"),
+      cache: env.pluginCacheDir ?? lk.path.join(dataDir, "cache"),
+      exports: env.pluginExportsDir ?? lk.path.join(dataDir, "exports"),
     },
   };
 
@@ -125,7 +125,7 @@ async function runSetup(force: boolean): Promise<SetupResult> {
 /** 取本机给的插件数据目录——拿不到时返回失败结果（调用方直接把它当结果用） */
 async function resolveDataDir(): Promise<string | SetupResult> {
   try {
-    const env = await window.linkdesk.workspace.env.get(FIRST_RUN_SETUP_PLUGIN_ID);
+    const env = await window.linkdesk.env.get(FIRST_RUN_SETUP_PLUGIN_ID);
     if (!env.pluginDataDir) {
       return { ok: false, error: i18n.t("本机未提供插件数据目录——无法完成首次配置"), configPath: "" };
     }

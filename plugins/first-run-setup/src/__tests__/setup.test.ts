@@ -30,26 +30,37 @@ function installLinkdesk(opts: { dataDir?: string | null; fs?: FakeFs } = {}) {
   const dataDir = opts.dataDir === undefined ? "/fake-userdata/plugins/demo-setup/data" : opts.dataDir;
 
   window.linkdesk = {
+    // 🔴 2026-09-11 实机 CDP 教训的机械兜底：`env` / `path` 是 window.linkdesk 的**顶层**命名空间，
+    // 不是 `workspace` 的子键。替身若照错层级搭（env/path 塞进 workspace），单测会全绿而真机上
+    // `workspace.env.get()` 抛错——本插件整套配置在真机永远失败，第一条通知永远不发。
+    // 这里给正确层级之外的读法埋一枚抛错钩子：谁再写成 lk.workspace.env / lk.workspace.path，
+    // 本文件立刻红，不用等真机。
     workspace: {
-      env: {
-        get: () =>
-          Promise.resolve({
-            appDataDir: "/fake-userdata",
-            pluginsRootDir: "/fake-userdata/plugins",
-            appPluginsDir: "/fake-app-plugins",
-            userPluginsDir: "/fake-userdata/plugins",
-            pluginDataDir: dataDir ?? undefined,
-            pluginCacheDir: dataDir ? `${dataDir}/../cache` : undefined,
-            pluginExportsDir: dataDir ? `${dataDir}/../exports` : undefined,
-          }),
+      get env(): never {
+        throw new Error("workspace.env 不存在——env 是 window.linkdesk 顶层命名空间");
       },
-      path: {
-        normalize: (p: string) => p,
-        join: (...parts: string[]) => parts.join("/"),
-        basename: (p: string) => p.split("/").pop() ?? p,
-        dirname: (p: string) => p.split("/").slice(0, -1).join("/"),
-        extname: () => ".json",
+      get path(): never {
+        throw new Error("workspace.path 不存在——path 是 window.linkdesk 顶层命名空间");
       },
+    },
+    env: {
+      get: () =>
+        Promise.resolve({
+          appDataDir: "/fake-userdata",
+          pluginsRootDir: "/fake-userdata/plugins",
+          appPluginsDir: "/fake-app-plugins",
+          userPluginsDir: "/fake-userdata/plugins",
+          pluginDataDir: dataDir ?? undefined,
+          pluginCacheDir: dataDir ? `${dataDir}/../cache` : undefined,
+          pluginExportsDir: dataDir ? `${dataDir}/../exports` : undefined,
+        }),
+    },
+    path: {
+      normalize: (p: string) => p,
+      join: (...parts: string[]) => parts.join("/"),
+      basename: (p: string) => p.split("/").pop() ?? p,
+      dirname: (p: string) => p.split("/").slice(0, -1).join("/"),
+      extname: () => ".json",
     },
     filesystem: {
       exists: (p: string) => Promise.resolve(fs.files.has(p)),
