@@ -38,16 +38,14 @@ import { PluginIcon, Button, Badge, SelectBox, MarkdownView, pickIdentityArt } f
 import {
   useMarketplacePlugins,
   useMarketplaceCatalog,
-  useMarketInstall,
-  useMarketPendingInstalls,
   useOnlineStatus,
   startMarketInstall,
   retryMarketInstall,
   updateFailText,
   classifyInstallError,
-  marketInstallStageLabel,
   notifyError,
 } from "../services/marketplaceShared";
+import { useInstallJob, installJobLabel } from "../services/installJobs";
 import type { CatalogEntry } from "../services/marketCatalog";
 import {
   compareVersions,
@@ -147,9 +145,9 @@ export default function DetailView({ pluginId }: DetailContributedProps) {
   const { t } = useTranslation();
   const { all, disabledRaw, loading: pluginsLoading, refresh: refreshPlugins } = useMarketplacePlugins();
   const catalog = useMarketplaceCatalog();
-  const installSession = useMarketInstall();
-  /* E6#73c 第 1 步：等待安装中的请求不再被静默丢弃——安装钮原位画「等待安装中」回执（N=1 串行队列） */
-  const pendingInstalls = useMarketPendingInstalls();
+  /* E6#73c 第 2 步：本插件的安装 job（壳侧 job 表的只读镜像，经 plugin:installJobs 广播回流）。
+   *  排队/在跑/已出结果三态与通知面板同源同一份数据——市场不再自持会话或队列。 */
+  const installJob = useInstallJob(pluginId);
   /* #30.9b 离线态（G3）——navigator.onLine false → 安装/更新钮置灰 + 「联网后重试」（不产生失败会话）；
    *  提早在顶声明——doVersionAction/installGateError deps 均读它（TDZ 防御：勿下移，下移即渲染即崩） */
   const online = useOnlineStatus();
@@ -498,16 +496,16 @@ export default function DetailView({ pluginId }: DetailContributedProps) {
     setBusy(false);
   }, [pluginId, busy, displayName, t]);
 
-  /* ── 30.5b 未装行 🟢安装（带进度）+ #30.9 失败/离线 ——单活跃会话 store（marketplaceShared）归因 ── */
-  const installSessionHere =
-    installSession !== null && installSession.pluginId === pluginId ? installSession : null;
-  const installingHere = installSessionHere?.phase === "installing";
-  /** #30.9b 本插件失败会话（phase:error）——#64 A3 消费：安装钮原位变红「重试安装」（09 §二 M4 三）；离线不产生会话 */
-  const installErrHere = installSessionHere?.phase === "error" ? installSessionHere : null;
-  /** E6#73c 第 1 步：本插件排在等待队列里（不在跑）——安装钮原位画「等待安装中」（此前是静默丢点） */
-  const queuedHere = pluginId !== undefined && pendingInstalls.includes(pluginId);
+  /* ── 30.5b 未装行 🟢安装（带进度）+ #30.9 失败/离线 —— E6#73c 第 2 步起读壳侧 job 行（同通知面板同源） ──
+   *  installJob 已按「在跑 > 排队 > 最新一条已出结果」为**本插件**挑好，故这里不再按 pluginId 过滤。 */
+  const installingHere = installJob?.state === "running";
+  /** #30.9b 本插件失败 job（terminal:"failed"）——#64 A3 消费：安装钮原位变红「重试安装」（09 §二 M4 三）；
+   *  离线不发起 ⇒ 不产生 job。用户取消的 job 壳侧整条撤掉（不是失败，不留红行）。 */
+  const installErrHere = installJob?.state === "settled" && installJob.terminal === "failed" ? installJob : null;
+  /** E6#73c：本插件排在队列里（不在跑）——安装钮原位画「等待安装中」。 */
+  const queuedHere = installJob?.state === "queued";
 
-  const installLabel = (): string => marketInstallStageLabel(t, installSession?.stage, installSession?.percent);
+  const installLabel = (): string => installJobLabel(t, installJob);
 
   /* E6#30.8a/30.8c 安装门禁（确认弹窗前后双拦幂等）。#64 A2 归因区分：
    *  - 已装冲突 / 离线 = 状态类（UI 本已翻转/按钮已置灰 + title）→ 静默拦，无 toast 无红字；
@@ -933,16 +931,12 @@ export default function DetailView({ pluginId }: DetailContributedProps) {
                 {installPicker}
                 {installErrHere ? (
                   /* #64 A3（mockup 02 帧 3）：同一失败只留一处重试口——安装钮原位变红「↻ 重试安装」
-                   *  （toast [重试] 同 retryMarketInstall + 同会话 downloadUrl = 双口零漂移）；
-                   *  点击重发同一下载，进 installing 会话红钮自然消失回进度 */
+                   *  （toast [重试] 同 retryMarketInstall、同目录 downloadUrl = 双口零漂移）；
+                   *  点击重发同一下载 → 新 job 转在跑，红钮自然消失回进度 */
                   <Button
                     variant="danger"
                     onClick={() => {
-                      void retryMarketInstall(
-                        pluginId ?? "",
-                        installErrHere.downloadUrl ?? installUrl ?? "",
-                        entry?.name,
-                      );
+                      void retryMarketInstall(pluginId ?? "", installUrl ?? "", entry?.name);
                     }}
                     disabled={busy || !online}
                     title={!online ? t("联网后重试") : undefined}

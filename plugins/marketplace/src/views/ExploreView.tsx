@@ -35,16 +35,15 @@ import { PluginIcon, pickIdentityArt } from "@linkdesk/ui";
 import {
   useMarketplaceCatalog,
   useMarketplacePlugins,
-  useMarketInstall,
-  useMarketPendingInstalls,
   useOnlineStatus,
   getMarketplaceSearch,
   startMarketInstall,
   retryMarketInstall,
   installFailLabelKey,
-  marketInstallStageLabel,
+  classifyInstallError,
   notifyError,
 } from "../services/marketplaceShared";
+import { useInstallJobsSubscription, pickInstallJob, installJobLabel } from "../services/installJobs";
 import type { CatalogEntry } from "../services/marketCatalog";
 import { updateToVersion } from "../services/marketCatalog";
 // E6#71k「都问」：安装确认门——行内安装与详情页走同一门（双入口单门，零漂移）
@@ -75,12 +74,11 @@ export default function ExploreView() {
   // list() EXCLUDES 禁用插件（30.11c 实机回归）——禁用已装另经 disabledRaw 双源合并，防禁用行误显「安装」
   const { all, disabledRaw, loading: localLoading } = useMarketplacePlugins();
   const catalog = useMarketplaceCatalog();
-  /* #30.9：全局单活跃安装会话（30.5b store）——行进度/失败态跨视图同源（详情 action bar + 探索行共用，
-   *  startMarketInstall 占会话 → installProgress 事件归因）；#30.9b 离线态——离线 ≠ 失败：
-   *  钮置灰 + title「联网后重试」，无 [重试]（G3） */
-  const installSession = useMarketInstall();
-  /* E6#73c 第 1 步：等待安装中的请求不再被静默丢弃——行内画「等待安装中」回执（N=1 串行队列） */
-  const pendingInstalls = useMarketPendingInstalls();
+  /* E6#73c 第 2 步：安装状态读壳侧 job 表广播（`plugin:installJobs`）——本视图只订阅**一次**拿到全表，
+   *  行内按 entry.id 现查（每行的 job 由 `pickInstallJob` 挑：在跑 > 排队 > 最新一条已出结果）。
+   *  同一份数据也是通知面板 job 行的来源 ⇒ 行徽标与面板永不打架。
+   *  #30.9b 离线态——离线 ≠ 失败：钮置灰 + title「联网后重试」，无 [重试]（G3） */
+  useInstallJobsSubscription();
   const online = useOnlineStatus();
 
   /* 行点击开详情（E6#30.5b——详情页三态 action bar 的未装验证入口）——与已装列表同款 plugin-detail 标签。
@@ -170,13 +168,13 @@ export default function ExploreView() {
   /* 行渲染 ── 目录条目标题走原文（作者数据不 t()） */
   const renderRow = (entry: CatalogEntry, status: RowStatus) => {
     let action: ReactNode;
-    /* #30.9 行态：本行归因会话（进度/失败由全局单活跃会话匹配 pluginId 而来——详情页起装的进度也同步到目录行）。
-     *  E6#73c 第 1 步：另一插件安装中不再置灰本行（那样只是把「静默丢」画成「点不动」）——请求照收、进等待
-     *  队列，本行画「等待安装中」回执。 */
-    const sessHere = installSession && installSession.pluginId === entry.id ? installSession : null;
-    const installingHere = sessHere?.phase === "installing";
-    const errHere = sessHere?.phase === "error" ? sessHere : null;
-    const queuedHere = pendingInstalls.includes(entry.id);
+    /* #30.9 行态：本行 job（进度/失败由壳侧 job 表按 pluginId 匹配而来——详情页起装的 job 也同步到目录行）。
+     *  E6#73c 第 2 步：并发上限在壳（N=3），另一插件安装中不再影响本行——点得动、进得去、画得出来。 */
+    const jobHere = pickInstallJob(entry.id);
+    const installingHere = jobHere?.state === "running";
+    const errHere =
+      jobHere?.state === "settled" && jobHere.terminal === "failed" ? jobHere : null;
+    const queuedHere = jobHere?.state === "queued";
 
     if (status === "install") {
       if (installingHere) {
@@ -184,7 +182,7 @@ export default function ExploreView() {
         action = (
           <span className="ms-catalog-status installing" title={t("安装插件")}>
             <span className="codicon codicon-cloud-download" />
-            {marketInstallStageLabel(t, installSession?.stage, installSession?.percent)}
+            {installJobLabel(t, jobHere)}
           </span>
         );
       } else if (queuedHere) {
@@ -202,16 +200,14 @@ export default function ExploreView() {
         action = (
           <span className="ms-item-fail" title={errHere.error}>
             <span className="codicon codicon-error" />
-            <span className="ms-item-fail-text">{t(installFailLabelKey(errHere.reason ?? "unknown"))}</span>
+            <span className="ms-item-fail-text">
+              {t(installFailLabelKey(classifyInstallError(errHere.error)))}
+            </span>
             <button
               className="ms-item-fail-act"
               onClick={(e) => {
                 e.stopPropagation();
-                void retryMarketInstall(
-                  entry.id,
-                  errHere.downloadUrl ?? entry.downloadUrl ?? "",
-                  entry.name,
-                );
+                void retryMarketInstall(entry.id, entry.downloadUrl ?? "", entry.name);
               }}
               title={t("重试")}
             >

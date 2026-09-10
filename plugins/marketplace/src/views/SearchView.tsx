@@ -5,7 +5,7 @@
  * SidePanel 对 title 为空串的 view 不包 SidebarSection，直接渲染。
  */
 
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { setMarketplaceSearch, notifyError } from "../services/marketplaceShared";
 import { OverlayPortal, useDebouncedInput } from "@linkdesk/ui"; // E6#15h：共享件全走 @linkdesk/ui 零件
@@ -14,13 +14,6 @@ import { decideAddSource } from "../services/marketSourceAdd"; // E6#30c：加�
 import "../styles/MarketplaceSidebar.css";
 
 const lk = () => window.linkdesk;
-
-// E5.7#81：安装阶段 → 按钮文案（stage 经 plugin:installProgress 从壳 loader 广播而来）
-const STAGE_LABELS: Record<string, string> = {
-  validating: "校验中...",
-  copying: "复制中...",
-  loading: "加载中...",
-};
 
 /**
  * 市场源弹窗（E6#30c ③——mockup「03-添加市场源」frame ③ 是设计唯一源）。
@@ -119,21 +112,12 @@ function AddSourcePopup({
 export default function SearchView() {
   const { t } = useTranslation();
   const [installing, setInstalling] = useState(false);
-  const [stage, setStage] = useState<string | null>(null);
   const { value, onChange, onClear } = useDebouncedInput(setMarketplaceSearch);
 
   // E6#30c ③：市场源弹窗开关 + 锚点——mockup frame ③（「市场源」按钮并排安装钮，点弹浮层）
   const [srcOpen, setSrcOpen] = useState(false);
   const [srcAnchor, setSrcAnchor] = useState<{ top: number; left: number } | null>(null);
   const srcBtnRef = useRef<HTMLButtonElement>(null);
-
-  // E5.7#81：订阅安装进度——壳 loader 事件经主进程广播到池（marketplaceShared 同款模式）
-  useEffect(() => {
-    const sub = lk()?.events?.on<{ stage?: string }>("plugin:installProgress", (p) => {
-      setStage(p?.stage ?? null);
-    });
-    return () => sub?.();
-  }, []);
 
   /** 开/关弹窗——按按钮几何定锚。320px 弹窗左缘 = clamp(按钮右缘 − 320, 8, …)（窄侧栏右侧即窗左缘，
    *  减 320 常负 → 弹窗从左缘 8px 向右展开入主区，同 mockup frame ③ popC）；上缘 = 按钮下缘 + 4。 */
@@ -166,11 +150,8 @@ export default function SearchView() {
       notifyError(t("安装失败：{{detail}}", { detail: e instanceof Error ? e.message : String(e) }));
     } finally {
       setInstalling(false);
-      setStage(null);
     }
   }, [t]);
-
-  const stageText = installing && stage ? STAGE_LABELS[stage] : null;
 
   return (
     <div className="ms-header">
@@ -182,7 +163,11 @@ export default function SearchView() {
           title={t("从本地安装插件")}
         >
           <span className="codicon codicon-add" />
-          {installing ? (stageText ? t(stageText) : t("安装中...")) : t("安装")}
+          {/* E6#73c 第 2 步：这里**只说实话**——目录源安装在请求侧不带身份（选目录前不知道 pluginId），
+           *  认领不到自己的 job，从前那句「校验中/复制中」是读**无主**的 plugin:installProgress 广播来的，
+           *  N=1 时侥幸正确、并发放开后会显示别的安装的阶段词（撒谎）⇒ 只留本地布尔驱动的「安装中...」。
+           *  真正的阶段进度归通知面板的 job 行（壳侧 job 表按 jobId 归因，不会串台）。 */}
+          {installing ? t("安装中...") : t("安装")}
         </button>
         <button
           ref={srcBtnRef}
