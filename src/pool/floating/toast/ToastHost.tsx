@@ -8,7 +8,10 @@
  *   2. 退出动画检测——快照对比发现消失的 id → 退场动画结束后移除
  *   3. 动作回传（dismiss/action——壳按 id + actionId 重解析后执行原始回调）
  *
- * 展开/收起是纯本地视觉状态（壳不关心）。suppressed → 整体隐藏（NotificationCenter 打开时）。
+ * E6#71h：恒全显（删除折叠两态）——消息整句换行全可见、详情行（来源/动作钮）恒展开、
+ * 消息与来源均可选中复制（user-select: text 见 CSS）。浮层归一化仍哑——显示文本全壳侧解析。
+ * E6#71i：progress 快照项 → 进度条（percent 有值 = 确定宽 / 无 = 不定态扫动）。
+ * suppressed → 整体隐藏（NotificationCenter 打开时）。
  * 状态闭环：壳推送快照驱动一切——池不本地关闭（哑）。
  * 容器层级由 FloatingLayerHost 统一持有（Z_INDEX.toast 基准）——组件不自设 z-index。
  * Path B：不 import @src/core 运行时模块——类型 import type OK。
@@ -38,10 +41,9 @@ const EXIT_CLEANUP_MARGIN_MS = 80;
 const MIDDLE_BUTTON = 1;
 /** transitionend propertyName 过滤——同上，标识符比较绕开误报 */
 const OPACITY_PROPERTY = "opacity";
-
-function hasPrimaryActions(item: PoolToastItem): boolean {
-  return item.actions?.some((a) => a.isPrimary) ?? false;
-}
+/** 进度百分比钳制 [0,100]——下游数据脏值防御（下载段 Content-Length 真值理论上 0-100） */
+const CLAMP_MAX = 100;
+const CLAMP_MIN = 0;
 
 export default function ToastHost() {
   // ── 池 API 引用（E5#89 约定：window.linkdesk 直接访问，不做 (window as any) 断言） ──
@@ -128,9 +130,7 @@ function ToastItemView({ item, exiting, onDismiss, onAction, onExited }: {
   onExited: () => void;
 }) {
   const { t } = useTranslation();
-  const [expanded, setExpanded] = useState(false);
   const [visible, setVisible] = useState(false);
-  const [mounted, setMounted] = useState(false);
 
   // onExited 每次渲染新建（ToastHost 内联箭头）——进 effect deps 会让退场 effect 随父重渲染重跑、重置计时。
   // 用 ref 存最新引用，effect 只在 [exiting, visible] 变化时跑。
@@ -139,14 +139,17 @@ function ToastItemView({ item, exiting, onDismiss, onAction, onExited }: {
   // 退场双 rAF 句柄——cleanup 时取消未触发的 rAF
   const exitRafRef = useRef<number | null>(null);
 
-  // 首次渲染后触发入场动画（对标壳 NotificationItem 双 rAF）
+  // 首次渲染后触发入场动画（对标壳 NotificationItem 双 rAF——先渲染未含 toast-fade-in 的初帧，
+  // 下一帧再补类，CSS 过渡真跑：opacity 0→1 跨帧，不发 transitionend 的瞬跳会让退场兜底逻辑踩空）
   useEffect(() => {
+    let innerId: number | null = null;
     const id = requestAnimationFrame(() => {
-      setMounted(true);
-      const id2 = requestAnimationFrame(() => setVisible(true));
-      return () => cancelAnimationFrame(id2);
+      innerId = requestAnimationFrame(() => setVisible(true));
     });
-    return () => cancelAnimationFrame(id);
+    return () => {
+      cancelAnimationFrame(id);
+      if (innerId !== null) cancelAnimationFrame(innerId);
+    };
   }, []);
 
   // 退出动画——exiting 时去掉 toast-fade-in 触发 CSS 反向动画（对标壳 E3.5 #TO03）
@@ -171,10 +174,12 @@ function ToastItemView({ item, exiting, onDismiss, onAction, onExited }: {
     };
   }, [exiting, visible]);
 
+  // E6#71h：恒全显——详情行（来源 + 动作钮）有内容即渲染，无折叠两态
+  const hasDetails = !!item.sourceText || (item.actions?.length ?? 0) > 0;
+
   return (
     <div
-      className={`toast-item${visible ? " toast-fade-in" : ""}${expanded ? " toast-expanded" : ""}${exiting ? " toast-exiting" : ""}`}
-      onDoubleClick={() => setExpanded(!expanded)}
+      className={`toast-item${visible ? " toast-fade-in" : ""}${exiting ? " toast-exiting" : ""}`}
       onMouseUp={(e) => {
         // VS Code：中键关闭
         if (e.button === MIDDLE_BUTTON) {
@@ -194,22 +199,13 @@ function ToastItemView({ item, exiting, onDismiss, onAction, onExited }: {
         {/* 图标——iconClass 壳侧已解析（codicon + severity 类），原样渲染 */}
         <div className={`toast-icon ${item.iconClass}`} />
 
-        {/* 消息——壳侧原文，原样渲染 */}
+        {/* 消息——壳侧原文，原样渲染。71h：整句换行全可见（CSS 无单行截断），可选中复制 */}
         <div className="toast-message" title={item.message}>
           {item.message}
         </div>
 
         {/* 工具栏——hover 时显示（对标壳） */}
         <div className="toast-toolbar">
-          {hasPrimaryActions(item) && (
-            <button
-              className="toast-chevron-btn"
-              onClick={() => setExpanded(!expanded)}
-              title={expanded ? t("收起") : t("展开")}
-            >
-              <span className={`codicon ${expanded ? "codicon-chevron-down" : "codicon-chevron-up"}`} />
-            </button>
-          )}
           <button
             className="toast-close-btn"
             onClick={onDismiss}
@@ -220,8 +216,23 @@ function ToastItemView({ item, exiting, onDismiss, onAction, onExited }: {
         </div>
       </div>
 
-      {/* ── 详情行：source + 按钮 ── */}
-      {(expanded || mounted) && (
+      {/* ── E6#71i：进度条——progress toast 专属行。percent 有值 = 确定条宽（下载段真值）；
+         无 percent = 不定态扫动动画（校验/解压/加载段） ── */}
+      {item.progress === true && (
+        <div className="toast-progress">
+          {item.percent != null ? (
+            <div
+              className="toast-progress-fill"
+              style={{ width: `${Math.min(CLAMP_MAX, Math.max(CLAMP_MIN, item.percent))}%` }}
+            />
+          ) : (
+            <div className="toast-progress-indeterminate" />
+          )}
+        </div>
+      )}
+
+      {/* ── 详情行：source + 按钮（71h：有内容恒显，无折叠） ── */}
+      {hasDetails && (
         <div className="toast-details-row">
           {item.sourceText && (
             <span className="toast-source">{item.sourceText}</span>

@@ -1,7 +1,7 @@
 {
   "$schema": "../../public/schemas/plugin.schema.json",
   "name": "插件市场",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "icon": "resources/icon.svg",
   "marketIcon": "resources/icon-brand.svg",
   "description": "浏览、安装和管理插件",
@@ -54,6 +54,7 @@
     }
   },
   "changelog": [
+    { "version": "1.0.6", "date": "2026-09-10", "changes": ["安装反馈收尾（E6#71g/71i/71j）：①失败 toast [重试] 不再依赖市场落地页打开——marketplace 命令组注册自 index.tsx 迁 marketplaceShared 模块顶（任意市场视图/详情激活即注册，此前详情页触发失败时壳命令占位缺失致 [重试] 无反应）；②安装进度条成真（71i）——进度 toast 更新携 0-100 真百分比驱动确定进度条（下载段），其余阶段不定态扫动；③安装失败通知长驻不自动消失（71j）——归因诊断 + [重试] 等用户决定，手动点 ×（壳上限内常驻互汰）"] },
     { "version": "1.0.5", "date": "2026-09-10", "changes": ["安装入口行为归一（E6#71d）：侧栏「探索插件」行内安装补富内容确认——与详情页同款先弹确认卡（installConfirmPayload + ConfirmInstall 视图，壳 DialogHost 容器），确认才装、取消不装——两安装入口从「一处直装一处确认」的不一致清零（mockup 02 两入口都先确认本意落地）"] },
     { "version": "1.0.4", "date": "2026-09-09", "changes": ["安装确认弹窗归位壳 Dialog（E6#71c）：市场自绘富内容确认卡迁入壳 DialogHost content 槽（居中+全屏遮罩+Esc+焦点锁由壳给，卡片排版/按钮仍市场 ConfirmInstall 视图自画）——装/卸/降级三确认共用一个壳 Dialog 容器"] },
     { "version": "1.0.3", "date": "2026-09-09", "changes": ["更新失败归因补齐 + 原文直显（E6#71b）：分类表认识更新域状态/策略错（conflict 分支补上），认不出时失败 toast 直显引擎原文（如「不在用户安装区」）——终结「更新失败：未知错误」黑洞"] },

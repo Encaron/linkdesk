@@ -238,7 +238,7 @@ export async function handleUiMethod(method: string, args: unknown[]): Promise<u
     // 同形态，serializeToasts/runToastAction/ToastHost 零改动；无 command 的 action 仅关闭（点击后 dismiss）。
     case "showNotification": {
       const [message, options] = args as
-        | [string, { type?: string; progress?: boolean; actions?: PluginToastAction[] } | undefined];
+        | [string, { type?: string; progress?: boolean; persistent?: boolean; actions?: PluginToastAction[] } | undefined];
       const severity: ToastSeverity =
         options?.type === "error" ? "error" :
         options?.type === "warning" ? "warning" : "info";
@@ -253,13 +253,16 @@ export async function handleUiMethod(method: string, args: unknown[]): Promise<u
       }));
       // E6#13.5d：插件 error 类 toast 对齐 TOAST_TTL_ERROR（8000，mockup 帧 3——诊断需要时间读）；
       // info/warning 沿用默认 6000；progress 进度条不自动消失。
-      const ttl = options?.progress ? 0 : severity === "error" ? TOAST_TTL_ERROR : undefined;
-      const id = pushToast({ message, severity, actions, ttl });
+      // E6#71j：persistent 长驻——与 progress 同 ttl:0（不自动消失等手动 ×），叠加常驻上限淘汰。
+      const persistent = options?.persistent === true;
+      const ttl = options?.progress || persistent ? 0 : severity === "error" ? TOAST_TTL_ERROR : undefined;
+      const id = pushToast({ message, severity, actions, progress: !!options?.progress, persistent, ttl });
       return options?.progress ? id : undefined;
     }
     case "updateNotification": {
-      const [handleId, message] = args as [string, string];
-      updateToast(handleId, message);
+      // E6#71i：第三参 percent（0-100）驱动确定进度条；不传 = 不定态动画照常推消息
+      const [handleId, message, percent] = args as [string, string, number | undefined];
+      updateToast(handleId, message, percent);
       break;
     }
     case "finishNotification": {

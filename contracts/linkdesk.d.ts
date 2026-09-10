@@ -379,8 +379,8 @@ export interface PluginToastAction {
 }
 /** 进度通知句柄——progress=true 时 show() 返回 */
 export interface NotificationHandle {
-    /** 更新进度消息 */
-    update(message: string): Promise<void>;
+    /** 更新进度消息 + 可选进度百分比（E6#71i：0-100 确定条；不传 = 不定态动画照常推消息） */
+    update(message: string, percent?: number): Promise<void>;
     /** 完成——关闭进度通知，可选弹完成 toast */
     finish(message?: string): Promise<void>;
     /** 取消——直接关闭，不弹完成 toast */
@@ -519,6 +519,10 @@ export interface PoolToastItem {
     iconClass: string;
     /** 壳侧已 t() 解析的 "来源: xxx"——池原样渲染 */
     sourceText?: string;
+    /** E6#71i：进度 toast——true 时渲染进度条 */
+    progress?: boolean;
+    /** E6#71i：当前进度 0-100——有值 = 确定条宽（下载段真值）；无值 = 不定态动画 */
+    percent?: number;
     actions?: PoolToastButton[];
 }
 export interface PoolToastData {
@@ -596,10 +600,15 @@ export interface UiAPI {
     notifications: {
         /** 弹出通知。progress=true 时返回 ProgressHandle（含 update/finish/cancel）。
          *  E6#13.5：options.actions 带主动作按钮——点击走壳 executeCommand(action.command, action.args)，
-         *  命令 handler 插件自注册。不传 actions → 无按钮（现状）。error 类自动停留 8s。 */
+         *  命令 handler 插件自注册。不传 actions → 无按钮（现状）。error 类自动停留 8s。
+         *  E6#71j：options.persistent=true 长驻通知——不自动消失、等用户手动点 ×（错误诊断类用）;
+         *  常驻类互相淘汰（壳侧上限内顶掉最老的），不参与自动消失 */
         show(message: string, options?: {
             type?: "info" | "warning" | "error";
+            /** true → 进度通知：返回 handle，update 可带 0-100 百分比驱动真进度条（E6#71i） */
             progress?: boolean;
+            /** true → 长驻通知：不自动消失（E6#71j）；错误诊断/需用户决定的场景用 */
+            persistent?: boolean;
             actions?: PluginToastAction[];
         }): Promise<NotificationHandle | undefined>;
     };

@@ -18,10 +18,15 @@ export interface UiAPI {
   notifications: {
     /** 弹出通知。progress=true 时返回 ProgressHandle（含 update/finish/cancel）。
      *  E6#13.5：options.actions 带主动作按钮——点击走壳 executeCommand(action.command, action.args)，
-     *  命令 handler 插件自注册。不传 actions → 无按钮（现状）。error 类自动停留 8s。 */
+     *  命令 handler 插件自注册。不传 actions → 无按钮（现状）。error 类自动停留 8s。
+     *  E6#71j：options.persistent=true 长驻通知——不自动消失、等用户手动点 ×（错误诊断类用）;
+     *  常驻类互相淘汰（壳侧上限内顶掉最老的），不参与自动消失 */
     show(message: string, options?: {
       type?: "info" | "warning" | "error";
+      /** true → 进度通知：返回 handle，update 可带 0-100 百分比驱动真进度条（E6#71i） */
       progress?: boolean;
+      /** true → 长驻通知：不自动消失（E6#71j）；错误诊断/需用户决定的场景用 */
+      persistent?: boolean;
       actions?: PluginToastAction[];
     }): Promise<NotificationHandle | undefined>;
   };

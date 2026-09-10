@@ -474,7 +474,9 @@ function closeProgressToast(): void {
 }
 
 /** 进度条文案推进——随 ingest 阶段/百分比（仅消息变更才 update，节 IPC）；消费方全卸载后事件停发 = 文案定格，
- *  终局仍由 await 中的 startMarketInstall 续体收（诚实边界：进度文字定格不影响装完/失败的终局收条） */
+ *  终局仍由 await 中的 startMarketInstall 续体收（诚实边界：进度文字定格不影响装完/失败的终局收条）
+ *  E6#71i：update 第三参带 s.percent——下载段有真值 → 池 ToastHost 确定进度条；消息含 % 时 msg 每段变更，
+ *  与 percent 同批到达（同一条 update 推消息+条），不额外多发 IPC。 */
 function syncProgressToast(): void {
   const p = _progressToast;
   if (!p) return;
@@ -483,7 +485,7 @@ function syncProgressToast(): void {
   const msg = progressToastMsg(p.name, s.stage, s.percent);
   if (msg === _progressLastMsg) return;
   _progressLastMsg = msg;
-  void p.handle.update(msg)?.catch?.(() => {});
+  void p.handle.update(msg, s.percent)?.catch?.(() => {});
 }
 
 /** 显示名解析——目录条目名兜底 pluginId（#64d 进度条文案用；目录未加载/不在目录 = 裸 id 诚实显示） */
@@ -557,12 +559,17 @@ async function settleInstallFailure(pluginId: string, downloadUrl: string, error
   _installSession = { pluginId, phase: "error", error, reason, downloadUrl };
   notifyMarketInstall();
   // 失败 toast = 事件通道（右下角唯一事件反馈，11-API §三）——归因文案 + [重试] 主动作
-  // （消费 E6#13.5f actions；command 走既有命令系统，index.tsx 注册 marketplace.retryInstall，
-  //  args 带 pluginId+downloadUrl 使 [重试] 不依赖会话残留自给自足）。行内错误态由消费方从会话读。
+  // （消费 E6#13.5f actions；command 走既有命令系统，marketplace.retryInstall 注册在 marketplaceShared
+  //  模块顶 ensureMarketplaceCommands——本模块被全部市场池面 import，任意视图激活即注册，toast 落点不再
+  //  依赖市场落地页 index.tsx 加载；args 带 pluginId+downloadUrl 使 [重试] 不依赖会话残留自给自足）。
+  //  行内错误态由消费方从会话读。
+  // E6#71j：失败 toast 长驻（persistent:true → 壳 ttl:0 不自动消失）——归因诊断需要时间读、用户决定重试
+  //  还是放弃，不该 8s 静默溜走；常驻类互相淘汰（壳 TOAST_PERSISTENT_CAP 内顶掉最老），不越摞越多。
   const show = lk()?.notifications?.show;
   if (show) {
     void show(i18n.t(installFailLabelKey(reason)), {
       type: "error",
+      persistent: true,
       actions: [
         {
           id: "retry",
@@ -631,9 +638,91 @@ export function useOnlineStatus(): boolean {
   return online;
 }
 
+/* ═══ E6#71g marketplace 命令组注册（模块级——原 index.tsx 迁入，注册随任一市场视图激活） ═══
+ * 背景：marketplace.enable/disable/uninstall/retryInstall + gear 菜单原只在 index.tsx 模块顶注册
+ * （市场落地页标签打开才执行）。但安装/卸载失败 toast 在 DetailView/ExploreView 触发（import 本模块，
+ * 不经 index.tsx）→ 壳 executeCommand 需壳 CommandRegistry 占位（池 commands:register 同步元数据）——
+ * 落地页未打开 = 未注册 = console.warn no-op → toast [重试] 点击无反应（71g 实机 bug 根因）。
+ * 本模块被全部市场池面 import（侧栏已装/禁用/内置、探索、详情、落地页）——迁移后注册随任一视图
+ * 激活即生效，池侧 handler 进 _poolCommands；壳进程经 glob loader 执行 marketplace entry（index →
+ * marketplaceShared）启动即注册 → toast 落点自给自足，不再依赖落地页打开。 */
+let _marketplaceCommandsRegistered = false;
+
+function ensureMarketplaceCommands(): void {
+  if (_marketplaceCommandsRegistered) return;
+  _marketplaceCommandsRegistered = true;
+
+  // E5.7#56：零 @src/core import——插件入口模块双进程执行（壳 glob loader + 池视图渲染）。
+  // 注册走 window.linkdesk.commands：壳侧半程 → commands:registerShell → 壳注册表真实条目
+  // （handler 存壳 preload 页面世界代理，执行 _executeShellLocal 桥回）；池侧半程 →
+  // commands:register → 元数据同步 + 池 _poolCommands 存 handler。两半程幂等汇合
+  // （registerShellLocalCommand / registerPoolCommandMetadata 各有已有条目分支）。
+  // 菜单 slot ID 用字符串字面量（serial-monitor E5.6#11.5h 同款——MenuId 不再 import）。
+  const reg = lk().commands?.registerCommand;
+  if (!reg) return; // 双进程执行——壳/池 preload 均含 commands 命名空间（#56 后），守卫防旧环境
+
+  // handler 不声明 _token——两半程 infra 均已剥离 token 占位后才调 handler：
+  // 池侧 executeCommand 剥 undefined 占位；壳侧 registerShellLocalCommand 桥剥 _token。
+  // handler 直接收 realArgs（file-tree E5.6 池侧注册同款约定）。
+  reg(
+    "marketplace.enable",
+    async (...args: unknown[]) => {
+      const ctx = args[0] as { pluginId?: string } | undefined;
+      if (ctx?.pluginId) await pm().enable(ctx.pluginId);
+    },
+    { title: "启用" },
+  );
+
+  reg(
+    "marketplace.disable",
+    async (...args: unknown[]) => {
+      const ctx = args[0] as { pluginId?: string } | undefined;
+      if (ctx?.pluginId) await pm().disable(ctx.pluginId);
+    },
+    { title: "禁用" },
+  );
+
+  reg(
+    "marketplace.uninstall",
+    async (...args: unknown[]) => {
+      const ctx = args[0] as { pluginId?: string } | undefined;
+      if (ctx?.pluginId) await pm().uninstall(ctx.pluginId);
+    },
+    { title: "卸载" },
+  );
+
+  // E6#30.9b：失败 toast [重试] 主动作落点（消费 E6#13.5f actions）——args 带 pluginId+downloadUrl
+  // （settleInstallFailure 构造），自给自足不依赖会话残留；会话仍挂着则兜底自读。重试 = 手动无风暴
+  // （startMarketInstall 单活跃会话守卫防双发；成功后 lifecycle 事件驱动列表翻态）。
+  reg(
+    "marketplace.retryInstall",
+    async (...args: unknown[]) => {
+      const ctx = (args[0] ?? {}) as { pluginId?: string; downloadUrl?: string } | undefined;
+      const session = getMarketInstallSession();
+      const pluginId = ctx?.pluginId ?? session?.pluginId;
+      const downloadUrl = ctx?.downloadUrl ?? session?.downloadUrl;
+      if (pluginId && downloadUrl) await retryMarketInstall(pluginId, downloadUrl);
+    },
+    { title: "重试安装" },
+  );
+
+  lk().menu?.registerItems?.("marketplaceItemGear", "marketplace", [
+    { command: "core.openSettings", group: "navigation", when: "extensionHasConfiguration" },
+    { command: "theme.pick", group: "navigation", when: "extensionHasThemes" }, // E5.8#50.24：theme.pick 归一化命令 id
+    { command: "workbench.action.selectLanguage", group: "navigation", when: "extensionHasLanguages" },
+    { command: "workbench.action.selectIconTheme", group: "navigation", when: "extensionHasIconThemes" },
+    { command: "workbench.action.openExtensionKeybindings", group: "navigation", when: "extensionHasKeybindings" },
+    { command: "marketplace.enable", group: "navigation", when: "pluginDisabled" },
+    { command: "marketplace.disable", group: "navigation", when: "!pluginDisabled" },
+    { command: "marketplace.uninstall", group: "delete" },
+  ]);
+}
+
 /* ═══ E6#33a 启动发现调度（模块级每进程一次；池门控见 scheduleStartupDiscovery） ═══
  * 任意市场池面首次 import 本模块（侧栏已装/禁用/内置、详情、主区 tab 首挂载都经 marketplaceShared）→
  * 调度一趟 ~10s 延迟发现（05 §一·四）：拉目录比版本 → 有新版推铃铛（每版一次幂等）+ 落 store（#33b 徽标/升级入口
  * + #33d 自动更新数据源）。壳进程也 import 本模块（marketplace entry 双进程执行）→ 无 notifications.show →
  * 调度内置门控返回，壳零改动零新面。 */
+/* E6#71g：命令注册随模块加载执行（幂等 guard）——任意市场池面 import 本模块即注册（含壳进程 startup） */
+ensureMarketplaceCommands();
 scheduleStartupDiscovery();

@@ -31,6 +31,12 @@ export interface Toast {
   actions?: ToastAction[];
   /** 自动消失时间（ms），默认 6000，0 = 不自动消失 */
   ttl?: number;
+  /** 进度通知（progress toast）——池渲染进度条（E6#71i）。由 notifications.show options.progress 置位 */
+  progress?: boolean;
+  /** 当前进度百分比 0-100——下载段带真值（确定条宽度）；无 percent = 不定态动画 */
+  percent?: number;
+  /** 长驻通知——不自动消失、等用户手动点 ×（E6#71j）。与 ttl:0 叠加；参与常驻上限淘汰 */
+  persistent?: boolean;
   /**
    * 关闭后不再显示——对标 VS Code `isCloseAffordance`。
    * 设为 true 后，用户点 × 关闭此通知 → localStorage 持久化 → 下次同 source+message 的通知不弹。
@@ -51,6 +57,9 @@ export const TOAST_TTL_ERROR = 8000;
 export const TOAST_TTL_SUCCESS = 5000;
 /** 信息 toast 中等——不紧急但有用 */
 export const TOAST_TTL_INFO = 6000;
+
+/** 长驻 toast 堆积上限（E6#71j 定案 ④——防失败通知一直不点 × 越摞越多）：最多保留 N 条，再来顶掉最老的 */
+export const TOAST_PERSISTENT_CAP = 5;
 
 let _toasts: Toast[] = [];
 let _listeners: Set<ToastListener> = new Set();
@@ -98,6 +107,22 @@ export function pushToast(toast: Omit<Toast, "id"> & { id?: string }): string {
 
   _toasts.push(t);
 
+  // E6#71j ④：常驻上限——常驻类互相淘汰（顶掉最老的），不碰自动消失 toast。手动移除不落 persistDismiss
+  if (t.persistent) {
+    const overflow = _toasts.filter((x) => x.persistent).length - TOAST_PERSISTENT_CAP;
+    if (overflow > 0) {
+      let dropped = 0;
+      _toasts = _toasts.filter((x) => {
+        if (dropped >= overflow) return true;
+        if (x.persistent) {
+          dropped += 1;
+          return false;
+        }
+        return true;
+      });
+    }
+  }
+
   // 自动消失
   if (t.ttl && t.ttl > 0) {
     setTimeout(() => {
@@ -119,11 +144,15 @@ export function dismissToast(id: string): void {
   notify();
 }
 
-/** 更新 toast 消息——进度条模式用。不改变其他属性（ttl/severity 等） */
-export function updateToast(id: string, message: string): void {
+/** 更新 toast 消息 + 进度——进度条模式用。不改变其他属性（ttl/severity 等）。
+ *  E6#71i：percent 是「当前阶段」状态，逐次 update 全量同步——有值（0-100）→ 确定条宽；
+ *  undefined → 清确定态回不定态动画（阶段离开下载段后旧百分比若残留会冻结成「停滞条」误导，
+ *  故清空让扫动动画诚实表达仍在进行）。消费方仅在真拿到百分比时才传，不传 = 该阶段无百分比。 */
+export function updateToast(id: string, message: string, percent?: number): void {
   const toast = _toasts.find((t) => t.id === id);
   if (toast) {
     toast.message = message;
+    toast.percent = percent;
     notify();
   }
 }
@@ -197,6 +226,9 @@ export function serializeToasts(): PoolToastData {
     message: toast.message,
     iconClass: getToastIconClass(toast),
     sourceText: toast.source ? i18n.t("来源: {{source}}", { source: toast.source }) : undefined,
+    // E6#71i：进度类 toast 透传 progress + percent——池据此渲染进度条（有 percent = 确定条宽，无 = 不定态）
+    progress: toast.progress ?? false,
+    percent: toast.percent,
     actions: toast.actions?.map((a, idx) => ({
       actionId: String(idx),
       label: a.label,

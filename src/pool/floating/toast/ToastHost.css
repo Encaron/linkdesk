@@ -105,15 +105,17 @@
   color: var(--text-muted);
 }
 
-/* 消息——对标 .notification-list-item-message */
+/* 消息——对标 .notification-list-item-message。
+   E6#71h：恒全显——单行截断（nowrap+ellipsis）拆除，整句换行全可见；长诊断/更新原文不吞字。
+   min-width:0 = flex 子项允许收缩到内容以下（配合换行，防撑破 450px 上限）；user-select 可选中复制。 */
 .toast-message {
   flex: 1;
+  min-width: 0;
   line-height: 1.6; /* E5.8 Phase 12 #171：line-height 22px → unitless */
   font-size: var(--font-size-sm); /* 12→sm */
   color: var(--text-primary);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  white-space: normal;
+  overflow-wrap: break-word; /* 长 URL/插件 id 超行软换行，不溢出撑破卡片 */
   user-select: text;
 }
 
@@ -130,12 +132,10 @@
   margin-right: 2px;
 }
 
-.toast-item:hover .toast-toolbar,
-.toast-item.toast-expanded .toast-toolbar {
+.toast-item:hover .toast-toolbar {
   display: flex;
 }
 
-.toast-chevron-btn,
 .toast-close-btn {
   background: none;
   border: none;
@@ -151,7 +151,6 @@
   font-size: var(--font-size-sm); /* 12→sm */
 }
 
-.toast-chevron-btn:hover,
 .toast-close-btn:hover {
   color: var(--text-primary);
   background: var(--hover-overlay); /* E5.8#128.6：幽灵 --bg-hover → --hover-overlay（原无效值现恢复 hover 反馈） */
@@ -161,8 +160,10 @@
    详情行——对标 .notification-list-item-details-row
    ═══════════════════════════════════════════════ */
 
+/* E6#71h：恒全显——详情行有内容即 flex 展示（无折叠态，display 不再 none 兜底）。
+   行渲染与否由组件侧 hasDetails 决定（source 或动作钮存在才渲染） */
 .toast-details-row {
-  display: none;             /* VS Code: collapsed by default */
+  display: flex;             /* VS Code: collapsed by default——71h 弃折叠 */
   align-items: center;
   padding-left: 28px;       /* 对齐消息文字：16px icon + 8px margin + 4px */
   margin-top: 6px;
@@ -170,11 +171,8 @@
   min-height: calc(22px * var(--ui-scale)); /* E5.8 Phase 12 #171：22px 行高链乘 scale */
 }
 
-.toast-item.toast-expanded .toast-details-row {
-  display: flex;
-}
-
-/* Source——对标 VS Code "Source: terminal"（文本壳侧已 t() 解析） */
+/* Source——对标 VS Code "Source: terminal"（文本壳侧已 t() 解析）。
+   user-select:text——71h 来源可选中复制（长来源仍视觉省略，拖选全文可取） */
 .toast-source {
   font-size: var(--font-size-xs); /* E5.8 Phase 12 #171：11→xs */
   color: var(--text-muted);
@@ -182,6 +180,7 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  user-select: text;
 }
 
 /* ═══════════════════════════════════════════════
@@ -224,4 +223,49 @@
 .toast-action-btn.secondary:hover {
   color: var(--text-primary);
   border-color: var(--text-muted);
+}
+
+/* ═══════════════════════════════════════════════
+   E6#71i 进度条——progress toast 内容区细条
+   对标 VS Code 通知进度：轨道 + 强调色填充（__monaco-progress 同构语义）。
+   数字（百分比）已进消息文案（marketplace progressToastMsg 带 % 段），条做视觉化——数字+条双呈现。
+   ═══════════════════════════════════════════════ */
+
+.toast-progress {
+  position: relative;
+  height: 2px;
+  margin: 6px 4px 2px;      /* 与主行 4px 侧 padding 对齐，上留行距下贴详情行 */
+  border-radius: 999px;
+  background: var(--hover-overlay); /* 轨道 = 弱反馈底色（非装饰性前景，不影响阅读对比） */
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+/* 确定态——下载段 Content-Length 真值：条宽 = percent%，跳变平滑过渡 */
+.toast-progress-fill {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  border-radius: 999px;
+  background: var(--accent);
+  transition: width 180ms ease-out; /* percent 分段到达平滑——不跳帧 */
+}
+
+/* 不定态——校验/解压/加载段无百分数：强调色块扫过轨道（VS Code indeterminate 语义） */
+.toast-progress-indeterminate {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 40%;
+  border-radius: 999px;
+  background: var(--accent);
+  animation: toast-progress-scan 1.1s linear infinite;
+}
+
+@keyframes toast-progress-scan {
+  /* transform % 相对自身宽（40% 轨道）——从完全出左到完全出右连续扫过 */
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(250%); }
 }

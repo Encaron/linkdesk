@@ -261,8 +261,8 @@ export interface MenuItemDescriptor {
 
 /** 进度通知句柄——progress=true 时 show() 返回 */
 export interface NotificationHandle {
-  /** 更新进度消息 */
-  update(message: string): Promise<void>;
+  /** 更新进度消息 + 可选进度百分比（E6#71i：0-100 确定条；不传 = 不定态动画照常推消息） */
+  update(message: string, percent?: number): Promise<void>;
   /** 完成——关闭进度通知，可选弹完成 toast */
   finish(message?: string): Promise<void>;
   /** 取消——直接关闭，不弹完成 toast */

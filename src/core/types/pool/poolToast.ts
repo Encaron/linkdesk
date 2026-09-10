@@ -23,6 +23,10 @@ export interface PoolToastItem {
   iconClass: string;
   /** 壳侧已 t() 解析的 "来源: xxx"——池原样渲染 */
   sourceText?: string;
+  /** E6#71i：进度 toast——true 时渲染进度条 */
+  progress?: boolean;
+  /** E6#71i：当前进度 0-100——有值 = 确定条宽（下载段真值）；无值 = 不定态动画 */
+  percent?: number;
   actions?: PoolToastButton[];
 }
 

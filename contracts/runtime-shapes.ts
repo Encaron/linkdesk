@@ -981,6 +981,12 @@ function chkPoolToastItem(v: unknown, p: string, errs: string[]): void {
     if (_t111.sourceText !== undefined) {
     if (typeof _t111.sourceText !== "string") errs.push(((p) + ".sourceText") + ": 期望 string，实收 " + typeof _t111.sourceText);
     }
+    if (_t111.progress !== undefined) {
+    if (!(_t111.progress === false || _t111.progress === true)) errs.push(((p) + ".progress") + ": 期望 false|true");
+    }
+    if (_t111.percent !== undefined) {
+    if (typeof _t111.percent !== "number") errs.push(((p) + ".percent") + ": 期望 number，实收 " + typeof _t111.percent);
+    }
     if (_t111.actions !== undefined) {
     if (!Array.isArray(_t111.actions)) errs.push(((p) + ".actions") + ": 期望数组");
     else {

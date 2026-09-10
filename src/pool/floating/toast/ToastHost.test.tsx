@@ -140,6 +140,90 @@ describe("ToastHost 哑渲染 + 动作回传", () => {
   });
 });
 
+/* ── E6#71h 恒全显 / E6#71i 进度条 ── */
+
+describe("ToastHost E6#71h 恒全显 + E6#71i 进度条", () => {
+  it("71h：纯消息 toast 无详情行；带 source 的恒显来源行（无折叠两态、无需交互展开）", () => {
+    render(<ToastHost />);
+    push({ toasts: [demoItem("plain-a")], suppressed: false });
+    flushAllFrames();
+    flushAllFrames();
+    expect(document.querySelector(".toast-details-row")).toBeNull();
+
+    // 再推带 source 的——来源行应现成可见（不等展开动作）
+    push({
+      toasts: [{
+        id: "src-a",
+        message: "演示消息 src-a",
+        iconClass: "codicon-info",
+        sourceText: "来源: Demo Plugin",
+      }],
+      suppressed: false,
+    });
+    flushAllFrames();
+    flushAllFrames();
+    const row = document.querySelector(".toast-details-row");
+    expect(row).not.toBeNull();
+    const src = row!.querySelector(".toast-source");
+    expect(src).not.toBeNull();
+    expect(src!.textContent).toBe("来源: Demo Plugin");
+  });
+
+  it("71i：progress 带 percent → 确定条宽 = percent%（钳制防脏值越界）", () => {
+    render(<ToastHost />);
+    push({
+      toasts: [{
+        id: "dl-a",
+        message: "正在安装 Demo… 62%",
+        iconClass: "codicon-info",
+        progress: true,
+        percent: 62,
+      }],
+      suppressed: false,
+    });
+    flushAllFrames();
+    flushAllFrames();
+    const fill = document.querySelector(".toast-progress-fill") as HTMLElement | null;
+    expect(fill).not.toBeNull();
+    expect(fill!.style.width).toBe("62%");
+    expect(document.querySelector(".toast-progress-indeterminate")).toBeNull();
+  });
+
+  it("71i：progress 无 percent → 不定态扫动条（indeterminate），无确定宽 fill", () => {
+    render(<ToastHost />);
+    push({
+      toasts: [{
+        id: "ind-a",
+        message: "正在安装 Demo…",
+        iconClass: "codicon-info",
+        progress: true,
+      }],
+      suppressed: false,
+    });
+    flushAllFrames();
+    flushAllFrames();
+    expect(document.querySelector(".toast-progress-indeterminate")).not.toBeNull();
+    expect(document.querySelector(".toast-progress-fill")).toBeNull();
+  });
+
+  it("71i：progress=false（普通/长驻 error toast）不渲染进度条", () => {
+    render(<ToastHost />);
+    push({
+      toasts: [{
+        id: "err-a",
+        message: "演示消息 err-a",
+        iconClass: "codicon-error",
+        actions: [{ actionId: "0", label: "重试", isPrimary: true }],
+      }],
+      suppressed: false,
+    });
+    flushAllFrames();
+    flushAllFrames();
+    expect(document.querySelector(".toast-progress")).toBeNull();
+    expect(document.querySelector(".toast-action-btn.primary")).not.toBeNull();
+  });
+});
+
 /* ── 🔥 2026-09-05 退场残骸回归 ── */
 
 describe("退场残骸回归（jsdom 无 CSS 过渡 → transitionend 永不触发）", () => {

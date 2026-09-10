@@ -37,13 +37,16 @@ export function buildNotifications() {
     show: (message: string, options?: {
       type?: "info" | "warning" | "error";
       progress?: boolean;
+      persistent?: boolean;
       actions?: Array<{ id?: string; label: string; isPrimary?: boolean; command?: string; args?: unknown[] }>;
     }) => {
       return ipcRenderer.invoke(IPC.plugins.call, 'showNotification', message, options)
         .then((handleId: string | undefined) => {
           if (!handleId) return undefined;
           return {
-            update: (msg: string) => ipcRenderer.invoke(IPC.plugins.call, 'updateNotification', handleId, msg),
+            // E6#71i：update 第三参 percent（0-100）——下载段带真值驱动确定进度条；不传 = 不定态
+            update: (msg: string, percent?: number) =>
+              ipcRenderer.invoke(IPC.plugins.call, 'updateNotification', handleId, msg, percent),
             finish: (msg?: string) => ipcRenderer.invoke(IPC.plugins.call, 'finishNotification', handleId, msg),
             cancel: () => ipcRenderer.invoke(IPC.plugins.call, 'cancelNotification', handleId),
           };

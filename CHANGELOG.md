@@ -3,6 +3,15 @@
 > 每版一条，对标 VS Code changelog。**历史真相源 = [E6 执行清单](docs/02-Electron架构/E6_插件生态与发布/E6-执行清单.md)**（E6 阶段每轮收束细节 + 实机证据全在清单 Batch 注里，此文件只记类别清单）。版本号唯一真值 = `package.json`（不手写第二份，见 [02-产品身份与版本.md](docs/02-Electron架构/E6_插件生态与发布/06-主软件更新/02-产品身份与版本.md) §2.3）。
 > 0.x 阶段（开发期）：一切向后兼容变更走 patch 位；破坏性变更走 minor 位。
 
+## v0.1.26（2026-09-10）
+
+- **feat:E6#71g-j 安装失败反馈收尾——toast 主动作真触发 + 恒全显 + 真进度条 + 失败通知长驻**
+  - **71g [重试]不再失效**：marketplace 命令组（enable/disable/uninstall/retryInstall + gear 菜单）注册自 index.tsx 模块顶迁 **marketplaceShared 模块底 `ensureMarketplaceCommands()`**（幂等 guard）——本模块被全部市场池面 import（侧栏已装/禁用/内置、探索、详情、落地页）+ 壳 glob loader 执行 marketplace entry 时也 import → 注册随**任一市场视图激活**即生效，安装失败 toast [重试] 落点自给自足，不再依赖落地页标签打开（此前详情页触发失败时壳 CommandRegistry 占位缺失 → console.warn no-op → 点 [重试] 无反应——实机 bug 根因）
+  - **71h toast 恒全显 + 可复制**：删除折叠两态（chevron/expanded）——详情行（来源 + 动作钮）有内容即渲染；消息/来源 `user-select: text` 可拖选复制；长诊断整句换行全可见（`.toast-message` white-space:normal + overflow-wrap:break-word，单行截断拆除——长错误原文不再吞字）
+  - **71i 安装进度条成真**：进度 toast 更新携 0-100 **真百分比**驱动确定进度条（下载段 Content-Length 真值）——percent 链 `pool preload update(msg, percent)` → `updateNotification` 第三参 → `toast.percent` → 池 fill 宽（钳 0-100）；不传 percent = 回不定态扫动动画（校验/解压段），数字仍在消息文案；update/cancel/finish 三方法 handle 契约
+  - **71j 安装失败通知长驻**：toast `persistent` 旗标 → ttl:0 不自动消失（等用户决定/手动 ×），仅市场安装失败 error 落 persistent；常驻上限 `TOAST_PERSISTENT_CAP=5` 顶掉最老常驻（不碰自动消失 toast）；成功/info 自动消失不变
+  - 实机：CDP 32/32 DOM 断言全绿（确定条 62% style+实际宽、去 percent 回扫动画名、越界钳 100、详情行动作钮恒显无 chevron、长文换行无溢出可选中、error 8s 自消 vs persistent 长驻、info 6s 自消、6 推只留 5 顶 #0 保 #5 含淘汰旧长驻）+ 5 张截图存档；`npm run check` EXIT=0（132 文件/1737 测试）
+
 ## v0.1.25（2026-09-09）
 
 - **feat:E6#71c 安装确认弹窗归位壳 Dialog + 富内容槽 + 三确认归一**（0.1.24 实机 bug：市场自绘安装确认卡左上角贴墙、无全屏遮罩）
