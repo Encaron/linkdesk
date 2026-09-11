@@ -5,7 +5,7 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { compareKeybindingRows, KeybindingSortRow } from "./keybindingRowSort";
+import { compareKeybindingRows, KeybindingSortRow } from "../../../views/keybinding-settings/keybindingRowSort";
 
 describe("E5.8#184 compareKeybindingRows", () => {
   it("有绑定的行浮在无绑定之上", () => {

@@ -1,0 +1,113 @@
+/**
+ * ObjectEditor——object/array 配置项键值对编辑器样式。
+ * E6#87d 自 SettingsView.css 按现有分节整段搬出（只搬家，零样式变更）。
+ */
+
+/* ── ObjectEditor——object/array 配置项键值对编辑器 ── */
+
+.object-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+}
+
+.object-editor-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.object-editor-key {
+  flex: 1;
+  min-width: 80px;
+  font-size: var(--font-size-sm); /* E5.8 Phase 12 #174：key 12→sm */
+  padding: 2px 6px;
+  height: calc(24px * var(--ui-scale)); /* E5.8 Phase 12 #174：输入行容器乘 scale（§三.3） */
+}
+
+.object-editor-colon {
+  font-size: var(--font-size-sm); /* E5.8 Phase 12 #174：colon 12→sm */
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.object-editor-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: calc(24px * var(--ui-scale)); /* E5.8 Phase 12 #174：toggle 按钮盒乘 scale */
+  height: calc(24px * var(--ui-scale));
+  padding: 0;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: var(--font-size-lg); /* E5.8 Phase 12 #174：toggle codicon 内容图标（基类 16px）→lg */
+  flex-shrink: 0;
+  transition: background 150ms ease, color 150ms ease, border-color 150ms ease;
+}
+
+.object-editor-toggle:hover {
+  background: var(--hover-overlay);
+  color: var(--text-primary);
+}
+
+.object-editor-toggle--on {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.object-editor-toggle--on:hover {
+  color: var(--accent);
+}
+
+.object-editor-value {
+  flex: 1;
+  min-width: 60px;
+  font-size: var(--font-size-sm); /* E5.8 Phase 12 #174：value 12→sm */
+  padding: 2px 6px;
+  height: calc(24px * var(--ui-scale)); /* E5.8 Phase 12 #174：输入行容器乘 scale */
+}
+
+.object-editor-delete {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: calc(24px * var(--ui-scale)); /* E5.8 Phase 12 #174：delete 按钮盒乘 scale */
+  height: calc(24px * var(--ui-scale));
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 3px;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: var(--font-size-lg); /* E5.8 Phase 12 #174：delete codicon 内容图标 →lg */
+  flex-shrink: 0;
+  transition: color 150ms ease, background 150ms ease;
+}
+
+.object-editor-delete:hover {
+  color: var(--error);
+  background: var(--hover-overlay);
+}
+
+.object-editor-add {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  background: transparent;
+  border: 1px dashed var(--border);
+  border-radius: 3px;
+  color: var(--text-muted);
+  font-size: var(--font-size-sm); /* E5.8 Phase 12 #174：add 12→sm */
+  cursor: pointer;
+  transition: color 150ms ease, border-color 150ms ease;
+}
+
+.object-editor-add:hover {
+  color: var(--text-primary);
+  border-color: var(--accent);
+}

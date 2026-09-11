@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { formatSliderValue } from "./sliderValueLabel";
+import { formatSliderValue } from "../../../views/SettingsView/sliderValueLabel";
 
 describe("formatSliderValue — E5.8#77 slider 数值标签", () => {
   it("× 倍数——前置 + 1 位小数（mockup ×1.0）", () => {

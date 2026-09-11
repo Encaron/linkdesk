@@ -9,7 +9,7 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { deriveSourceBadge, MIX_FOLLOW_THEME_SENTINEL } from "./deriveSourceBadge";
+import { deriveSourceBadge, MIX_FOLLOW_THEME_SENTINEL } from "../../../views/SettingsView/deriveSourceBadge";
 
 describe("deriveSourceBadge", () => {
   it("无 sourceKey（非徽标槽）→ null——第三方配置键零侵入", () => {

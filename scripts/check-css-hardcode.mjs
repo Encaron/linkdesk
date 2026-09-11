@@ -54,7 +54,7 @@ const EXEMPT_FILES = [
     reason: "initialColor 默认值——插件调用 color-picker.pick 不带初始色时的兜底（同 accent 默认）",
   },
   {
-    path: "plugins/settings/src/views/SettingsView/SettingRow.tsx", // 2026-09-05 塌平单根（原 plugins/builtin/settings）
+    path: "plugins/settings/src/views/SettingsView/SettingRow/constants.ts", // E6#87d 随文件搬家改路径（原 .../SettingRow.tsx，2026-09-05 塌平单根前为 plugins/builtin/settings）
     reason: "强调色预设 swatches 配置数据（COLOR_PICKER_PRESETS）",
   },
   {

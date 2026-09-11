@@ -2,7 +2,7 @@
  * E5.8#99：mapSegmentedOptions 单元测试——分段单选选项映射（短标签/全句 tooltip/缺省回退）。
  */
 import { describe, it, expect } from "vitest";
-import { mapSegmentedOptions } from "./mapSegmentedOptions";
+import { mapSegmentedOptions } from "../../../views/SettingsView/mapSegmentedOptions";
 
 const t = (k: string) => `TR:${k}`;
 

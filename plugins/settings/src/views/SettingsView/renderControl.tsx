@@ -1,11 +1,12 @@
 /**
- * renderControl——根据 property type/uiHint 渲染对应控件。
+ * renderControl——根据 property type/uiHint 渲染对应控件（分发器门面）。
  * 自壳迁入（E5.8#41.14）；E6#54c：控件 import 全走 @linkdesk/ui（零 @src/core）。
  * 依赖方向：renderControl → @linkdesk/ui 控件（Toggle/SelectBox/FontFamilySelect/FilePathInput/NumberInput）
- *   + ObjectEditor + types；被 SettingRow 消费。
+ *   + ObjectEditor + types + 同名夹子件；被 SettingRow 消费。
+ * E6#87d：四个自定义控件移入同名夹（`renderControl/imagePicker.tsx` / `renderControl/toneControls.tsx`），
+ *   stringList 的 locked/editable 前置计算移入 `renderControl/stringList.ts`（纯函数）。
  */
 
-import { useState } from "react"; // E5.8#50.11：背景图导入 busy 态
 // E6#54c：共享控件走 @linkdesk/ui（@src/components/shared 双入口已禁——见 eslint 插件块）
 import {
   Button, // E5.8#99：实心动作按钮（双轨制实心轨——原 settings-action-btn 收编壳共享）
@@ -20,12 +21,15 @@ import {
   ThemePicker, // E5.8#50.22：主题配方卡片（数据走 window.linkdesk.theme）
   Toggle,
   inferSliderStep, // E5.8#65：滑杆 step 推导（浮点区间连续可调）
-  urlSourceKey, // E6#30c：URL 源身份（owner/repo、分支无关）——stringList 加源判重/滤官方共享同一规则
+  urlSourceKey, // E6#30c：URL 源身份（owner/repo、分支无关）——stringList 的 itemKey（判重规则见 renderControl/stringList.ts）
 } from "@linkdesk/ui";
 import { formatSliderValue } from "./sliderValueLabel"; // E5.8#77：滑杆值标签格式化（unit 声明 → ×倍数/px）
 import ObjectEditor from "./ObjectEditor";
 import { mapSegmentedOptions } from "./mapSegmentedOptions"; // E5.8#99：分段单选选项映射（通用 segmented + fontTone/accentSource 预览覆盖共用）
 import type { ConfigProperty } from "./types";
+import { BackgroundImagePicker } from "./renderControl/imagePicker";
+import { AccentSourceControl, FontToneControl } from "./renderControl/toneControls";
+import { splitStringList } from "./renderControl/stringList";
 
 /** 根据 property type 渲染对应控件 */
 function renderControl(
@@ -135,37 +139,9 @@ function renderControl(
         />
       );
     case "stringList": {
-      // E6#30c（03-添加市场源-mockup.html ① 行内形态——设计唯一源）：字符串数组（URL 源列表）编辑器。
-      // default 数组 = locked 固定行（官方源「内置」徽标 + 锁——不可删、不入 onChange 值、永不落盘，
-      // 读时由 getSourceUrls 恒前置去重）；effective 值（含 default）减 locked 后 = 作者源（可删）。
-      // 存盘只写作者源数组（onChange 收 StringListEditor 的 value = 已滤 locked 的剩余）。UI 文案走 t()。
-      // 🔒 身份规则（E6#30c）：locked/editable 相减与行内判重用同一把钥匙 urlSourceKey（@linkdesk/ui
-      //   共享纯函数——github 源归 owner/repo、分支无关，市场弹窗加源同此规则，两扇门收敛）。官方源
-      //   「其他形态」（仓库主页/HEAD 直链）在此一并滤除：不显示为可删作者行、行内直添即报重复——
-      //   官方凭任何入口都落不了盘；历史污染残留随下次存盘自动清理（渲染即滤，不落盘）。urlSourceKey
-      //   非 github 输入返 null → 回精确比较（无身份的串不受影响），渲染器本身保持零插件域依赖。
-      //   文案 = 宿主中性（2026-09-08）：placeholder/消息只留通用措辞（粘贴 URL/格式/已在列表），不写
-      //   marketplace 专属句子（作者仓库/示例 URL）——该 property 的专属引导由 marketplace 自己 plugin.json
-      //   的 description 承担（SettingRow 已渲染在编辑器上方）。本 case 对任何 uiHint:"stringList" 配置通用。
-      const locked = Array.isArray(prop.default)
-        ? prop.default.filter((s): s is string => typeof s === "string")
-        : [];
-      const base = Array.isArray(value)
-        ? (value as unknown[])
-        : Array.isArray(prop.default)
-          ? (prop.default as unknown[])
-          : [];
-      const lockedKeys = new Set<string>();
-      for (const s of locked) {
-        const k = urlSourceKey(s);
-        if (k !== null) lockedKeys.add(k);
-      }
-      const editable = base.filter((s): s is string => {
-        if (typeof s !== "string") return false;
-        if (locked.includes(s)) return false; // default 精确形态恒锁
-        const k = urlSourceKey(s);
-        return k === null || !lockedKeys.has(k); // 官方其他形态（仓库主页/HEAD）按身份滤除
-      });
+      // E6#30c：锁定行/作者行的切分（身份规则见 renderControl/stringList.ts 头注）。存盘只写作者源数组
+      //（onChange 收 StringListEditor 的 value = 已滤 locked 的剩余）。文案走 t()，对任何该 uiHint 配置通用。
+      const { locked, editable } = splitStringList(prop, value);
       return (
         <StringListEditor
           value={editable}
@@ -287,152 +263,6 @@ function renderControl(
     default:
       return <span className="text-muted">{String(val)}</span>;
   }
-}
-
-/**
- * E5.8#50.11：背景图选择——对话框选图（图像扩展名过滤）→ appearance.importImage 拷贝入库
- * （受控来源——用户任选路径不能 file:// 直读）→ 受控路径持久化。
- * E5.8#87 清除语义定案：三态并存——「清除图片」= 回主题（空，presence 门控回落主题图）；
- * 「无背景」= 绝对无图（显式 __none__，盖掉主题/mix 图）。路径区显示友好态文案（跟随主题/无背景）。
- */
-// E5.8#87：显式「无」哨兵——字符串契约（__none__ 与壳 ThemeEngine.CONFIG_NONE_SENTINEL 同字面量，
-// 插件不能 import @src/core，对标 "followTheme" 哨兵契约）
-const CONFIG_NONE_SENTINEL = "__none__";
-
-function BackgroundImagePicker({
-  value,
-  onChange,
-  t,
-}: {
-  value: string;
-  onChange: (v: unknown) => void;
-  t: (key: string) => string;
-}) {
-  const [busy, setBusy] = useState(false);
-  const handlePick = async () => {
-    setBusy(true);
-    try {
-      const picked = await window.linkdesk?.dialog?.open({
-        title: t("选择图片…"),
-        filters: [{ name: t("图片"), extensions: ["png", "jpg", "jpeg", "webp"] }],
-      });
-      if (!picked) return; // 取消——不动值
-      const controlled = await window.linkdesk?.appearance?.importImage(picked);
-      if (controlled) onChange(controlled);
-    } catch (e) {
-      console.error("[settings] 导入背景图失败:", e);
-    } finally {
-      setBusy(false);
-    }
-  };
-  // E5.8#87：路径区友好态——空 = 跟随主题；__none__ = 无背景；否则显示受控路径
-  const display = value === CONFIG_NONE_SENTINEL ? t("无背景") : value === "" ? t("跟随主题") : value;
-  return (
-    <div className="settings-image-picker">
-      <Button onClick={handlePick} disabled={busy}>
-        {t("选择图片…")}
-      </Button>
-      {value !== CONFIG_NONE_SENTINEL && (
-        <Button onClick={() => onChange(CONFIG_NONE_SENTINEL)}>
-          {t("无背景")}
-        </Button>
-      )}
-      {value !== "" && (
-        <Button onClick={() => onChange("")}>
-          {t("清除图片")}
-        </Button>
-      )}
-      <span className="settings-image-path" title={display}>
-        {display}
-      </span>
-    </div>
-  );
-}
-
-/** E5.8#91 文字极性预览半区映射——每态 = 系统双字系标尺两极性取样（深/浅），
- *  CSS 类消费 shell --tone-* 标尺 token（SettingsView.css，色值定义在 index.css :root）——TS 零 hex 零破例。 */
-const FONT_TONE_POLARITY_HALVES: Record<string, readonly string[]> = {
-  followTheme: ["deep", "light"], // 分半深/浅——主题明暗决定极性（深半亮字 + 浅半暗字并置）
-  light: ["deep"], // 亮字（深底用）——深底白字
-  dark: ["light"], // 暗字（浅底用）——浅底深字
-};
-
-/** 分段控件段内预览 swatch——单一几何（52×30 + var(--radius-sm)，SettingsView.css .settings-segmented-swatch），
- *  fontTone（Aa 分半）+ accentSource（色块）共用（#3 归一化——不再各自造 swatch 变体）。 */
-function FontTonePreview({ value }: { value: string }): React.ReactNode {
-  const halves = FONT_TONE_POLARITY_HALVES[value];
-  if (!halves) return null;
-  return (
-    <span className="settings-segmented-swatch" aria-hidden="true">
-      {halves.map((polarity, j) => (
-        <span key={j} className={`settings-font-tone-half settings-font-tone-half--${polarity}`}>
-          Aa
-        </span>
-      ))}
-    </span>
-  );
-}
-
-/**
- * E5.8#98+#99：强调色来源分段控件——两态（跟随主题配方/自定义）+ 段内预览（#3 归一化，对标 #91 每态预览）。
- * 跟随主题配方段 = 中性分半示意「主题决定强调色」（themeable 变量，非运行值——真实主题强调色遍布壳 UI）；
- * 自定义段 = 实时生效强调色——applyAccentColor 恒把 effective accent 写 --accent（自定义色 / 清除回主题 /
- *   跟随主题 三态全对），声明式读 CSS 变量（.settings-segmented-swatch--accent），零 IPC 零 DOM 读。
- * 选项映射（短标签/tooltip）走 mapSegmentedOptions 通用函数（#99 三消费方共用）。无线电语义 + roving tabindex 在壳 SegmentedRadio。
- * （#98 曾用段外生效 swatch——第三 swatch 变体，本号按归一化改为段内预览；E5.8 Phase 11.13 去命令式读数。）
- */
-function AccentSourceControl({
-  value,
-  options,
-  onChange,
-  t,
-}: {
-  value: string;
-  options: { value: string; label: string; title: string }[];
-  onChange: (v: unknown) => void;
-  t: (key: string) => string;
-}) {
-  return (
-    <SegmentedRadio
-      value={value}
-      ariaLabel={t("强调色来源")}
-      options={options.map((opt) => ({
-        ...opt,
-        preview: opt.value === "custom" ? (
-          <span className="settings-segmented-swatch settings-segmented-swatch--accent" aria-hidden="true" />
-        ) : (
-          <span className="settings-segmented-swatch settings-segmented-swatch--split" aria-hidden="true" />
-        ),
-      }))}
-      onChange={(v) => onChange(v)}
-    />
-  );
-}
-
-/**
- * E5.8#91+#99：文字极性分段控件——三态（跟随主题/亮字/暗字）+ 每态预览方块。
- * 选项映射（短标签/tooltip）走 mapSegmentedOptions 通用函数（#99 三消费方共用）。
- * 预览块取样系统双字系标尺；跟随主题 = 分半深/浅示意「主题明暗决定极性」。
- */
-function FontToneControl({
-  value,
-  options,
-  onChange,
-  t,
-}: {
-  value: string;
-  options: { value: string; label: string; title: string }[];
-  onChange: (v: unknown) => void;
-  t: (key: string) => string;
-}) {
-  return (
-    <SegmentedRadio
-      value={value}
-      ariaLabel={t("文字极性")}
-      options={options.map((opt) => ({ ...opt, preview: <FontTonePreview value={opt.value} /> }))}
-      onChange={(v) => onChange(v)}
-    />
-  );
 }
 
 export default renderControl;

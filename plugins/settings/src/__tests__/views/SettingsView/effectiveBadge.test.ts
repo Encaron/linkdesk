@@ -12,7 +12,7 @@ import {
   isFollowingThemeValue,
   resolveEffectiveBadge,
   formatEffectiveValue,
-} from "./effectiveBadge";
+} from "../../../views/SettingsView/effectiveBadge";
 
 describe("E5.8#155 生效值徽标纯函数", () => {
   it("isFollowingThemeValue——未修改（无覆盖/清除空/播种=基准）为真；显式偏离为假", () => {

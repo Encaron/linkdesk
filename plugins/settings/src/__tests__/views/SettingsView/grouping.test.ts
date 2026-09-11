@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { groupSettingsKeys } from "./grouping";
+import { groupSettingsKeys } from "../../../views/SettingsView/grouping";
 
 /** 模拟 prop.group 查找——undefined（无 group）归平铺 */
 const mkProps = (groups: Record<string, string | undefined>) => (key: string) => groups[key] ?? "";
