@@ -176,7 +176,12 @@ h1 .warn { color: var(--danger); }
   position: absolute; inset: 0 auto 0 0;
   border-radius: var(--radius-pill);
   background: var(--accent);
-  transition: width 200ms ease-out;
+  /* 🔴 本行**不写** transition（2026-09-11 订正）。
+     实机在 src/pool/zones/status-bar/StatusBarZone.css:324 有 `transition: width 200ms ease-out`
+     ——那是真在干活的（percent 逐段推进，平滑不跳帧，刻意设计）。
+     但**本 mockup 是静态帧**：无 JS、无 :hover 改宽、无 @keyframes ⇒ 宽度从头到尾不变，
+     写了也永不触发 = 死规则。静态图就该是静态的，别让看图的人以为这里在指定动效。
+     **要动效照实机抄**；本文件的既有惯例同此（见 .notif-dismiss 上方那条「本 mockup 为可读性常显」）。 */
 }
 
 /* ── 详情行：来源 + 动作按钮（恒全显，随条目一起出现）── */
