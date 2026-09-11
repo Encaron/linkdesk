@@ -233,9 +233,11 @@ function main() {
   const violations = [];
   const sizes = []; // { rel, lines } —— pass log Top-N（把逼近簇提前暴露，零额外告警噪音）
   let exemptCount = 0;
+  let checked = 0; // 真正过了体积判定的文件数（scanned 里还混着 test 文件，报数不诚实）
 
   for (const f of scanned) {
     if (isTestFile(f.rel)) continue;
+    checked++;
     if (EXEMPT_FILES.some((e) => e.path === f.rel && !f.plugin)) {
       exemptCount++;
       continue;
@@ -277,7 +279,11 @@ function main() {
   }
 
   const exemptNote = EXEMPT_FILES.length ? `（豁免 ${exemptCount} 条 @E6#0.6b）` : "";
-  console.log(`✅ 文件体积门禁通过——${scanned.length - exemptCount} 个生产文件零超限${exemptNote}（档 A 红线 >${DEFAULT_MAX_LINES} 行；插件域按角色表，E6#88）`);
+  // 🔔 休眠可见（[05 §六]）——任一刀位被关掉，这行就少一段/多一句警告，休眠不再是隐形的
+  const pluginTier = SCAN_PLUGINS
+    ? "档 B plugins/<id>/src 按角色表 · 档 C entry ≤120"
+    : "⚠️ 插件档已关闭（SCAN_PLUGINS=false）——插件域当前无人看管";
+  console.log(`✅ 文件体积门禁通过——${checked - exemptCount} 个生产文件零超限${exemptNote}（档 A src/+electron/ >${DEFAULT_MAX_LINES} 行；${pluginTier}）`);
   const top = sizes.sort((a, b) => b.lines - a.lines).slice(0, 5);
   if (top.length) console.log(`   当前最大 ${top.length} 文件（逼近红线预警）：${top.map((t) => `${t.rel} ${t.lines}`).join("  /  ")}`);
   if (widthWarns.length) {
