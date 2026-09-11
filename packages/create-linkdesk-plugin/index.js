@@ -13,7 +13,7 @@
  *
  * 生成产物契约：见 docs/02-Electron架构/E6_插件生态与发布/02-插件开发工具链/01-create-linkdesk-plugin脚手架.md。
  */
-import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { createInterface } from "node:readline";
 import { dirname, join } from "node:path";
@@ -97,6 +97,15 @@ async function main() {
 
   mkdirSync(target, { recursive: true });
   cpSync(TEMPLATE_DIR, target, { recursive: true });
+
+  // 🔥 模板里存的是 `gitignore`（无点），生成时才改名为 `.gitignore`。
+  // 原因：**npm 打包恒定丢弃名为 `.gitignore` 的文件**（npm-packlist 排除表；实测
+  // `template/.gitignoreprobe` 与 `template/probe.txt` 都能进 tarball，唯独 `.gitignore` 不能）。
+  // 若模板里直接放 `.gitignore`，仓内生成（读模板目录）一切正常，**但发布后的
+  // `npm create linkdesk-plugin` 生成的工程会没有 .gitignore**——作者第一次 `git add .`
+  // 就把 node_modules/ 和 dist/ 全提交了。生成物契约见 check-scaffold.mjs 断言 8。
+  const tplGitignore = join(target, "gitignore");
+  if (existsSync(tplGitignore)) renameSync(tplGitignore, join(target, ".gitignore"));
 
   const values = {
     pluginName: name,

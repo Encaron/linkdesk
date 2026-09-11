@@ -7,13 +7,21 @@
  * 纯英文/纯法文插件的 key 即原文，缺译文时 parseMissingKeyHandler 静默回退
  * 显示 key 本身 = 设计意图，不是漏翻。审计扫不到非中文 key 属预期，勿误报。
  *
+ * 🔥 E6#95b（G2）第二职责——**标识符形态的 `t()` key 黄灯**：
+ * `t("newPattern")` 这类「数据键名走了翻译」本脚本**原来扫不到**（它只扫中文）。现在同一趟扫描
+ * 顺带收集 `t("…")` 调用，凡是「标识符形态（无空格无中文）且不在任何字典里」的 key 就提示。
+ * **永不 exit 1**（哪怕 --strict）——实测有误报（产品专名 `t("LinkDesk")` / 动态前缀 `t("category.")`），
+ * 按三档哲学只能配黄灯。白名单与既有 contributes.languages/themes 专名跳过**同一处**，不开第二份名单。
+ *
  * 用法：
  *   node scripts/audit-i18n.mjs          # 只报告
- *   node scripts/audit-i18n.mjs --strict # 门禁：缺翻译时 exit 1（已接入 npm run check）
+ *   node scripts/audit-i18n.mjs --strict # 门禁：**只对「缺翻译」** exit 1（已接入 npm run check）
+ *                                        # 「可疑 key」是黄灯，strict 也不 fail
  *
  * 输出：
  *   - 已翻译数 / 缺翻译数
  *   - 每个缺翻译字符串的原文 + 出现位置
+ *   - ⚠ 可疑 t() key（黄灯，永不 fail）
  *
  * 非 UI 上下文排除（E5.8#37.9 强化——非 UI 字符串不得当作"缺翻译"）：
  *   - *.test.* / *.spec.* 文件整跳过（测试断言的是 t() 键透传，不是 UI 字符串）
@@ -65,7 +73,9 @@ const I18N_FILES = [
   "plugins/marketplace/i18n/en.json",
   "plugins/panel-demo/i18n/en.json", // E5.8#37.9：演示插件 UI 串归插件自持
   "plugins/floating-panel-demo/i18n/en.json", // E5.8#39.5：第二声明者验证载体 UI 串归插件自持
-  "plugins/first-run-setup/i18n/en.json", // E6#73p：官方样板「首次配置」——UI 串归插件自持
+  // 🔥 E6#95d：`plugins/first-run-setup/i18n/en.json` 已删——该插件**源码在仓外**（用户 2026-09-11
+  //   拍板「不搬」，见插件规范化层/00 §五②），此路径在本仓**永远够不着** ⇒ 每次 npm run check
+  //   都白打一行 `⚠ 缺失:` 假警告。**门禁自己腐烂的实例**（06 §〇 闸 3），删掉不留待复活。
   // E5.8#41.17 settings-demo（漂亮设置卡片分区）条目已删——插件被用户自删（eef2d31c2），残留死路径
 ];
 
@@ -93,6 +103,14 @@ function walkDir(dir, cb) {
 /** 带转义引号感知的字符串提取——`"a\"b"` / `"含"引号"` 一整个捕获，防内嵌引号截断 */
 const STR_RE = /(['"`])((?:\\.|(?!\1)[^\\\r\n])*)\1/g;
 
+// ── 1b. G2（E6#95b）：可疑 t() key——标识符形态且不在任何字典里 ──
+/** 标识符形态：ASCII 字母开头，无空格无中文（`newPattern` / `category.` / `LinkDesk` 都命中） */
+const SUSPICIOUS_RE = /^[A-Za-z][A-Za-z0-9_.-]*$/;
+/** t("…") 调用点——只认直接字面量；t(someVar) / t("a" + b) 不在此列 */
+const T_CALL_RE = /\bt\(\s*(["'])((?:\\.|(?!\1)[^\\\r\n])*)\1/g;
+/** 产品专名——永不翻译（与下方 walkManifests 的 contributes.languages/themes 跳过**同源**，不开第二份名单） */
+const PROPER_NOUNS = new Set(["LinkDesk"]);
+
 /**
  * 🔥 E5.8#37.9 修复：提取的原始串含转义序列（`\"`），而 JSON key 用真实引号——
  * `"插件声明 location:\"panel\""` 源码串 ≠ `插件声明 location:"panel"` key → 误报缺翻译。
@@ -118,6 +136,7 @@ function parenDelta(line) {
 let logDepth = 0;
 
 const found = new Map(); // text → [file:line, ...]
+const tCallKeys = new Map(); // G2：t("…") 的字面量 key → [file:line, ...]
 
 function processFile(filePath, relPath) {
   // 🔥 E5.8#37.9 修复：EXCLUDE_FILES 此前定义了但从未应用——ProfileService 等设计裁决
@@ -174,6 +193,16 @@ function processFile(filePath, relPath) {
         if (text.includes("${")) continue; // 插值模板——数据拼接非纯 UI 标签
         if (!found.has(text)) found.set(text, []);
         found.get(text).push(relPath + ":" + lineNo);
+      }
+
+      // G2：同一趟顺带收 t("…") 字面量 key（注释已剥离、console/throw 行已跳过——白捡的净化）
+      T_CALL_RE.lastIndex = 0;
+      let t;
+      while ((t = T_CALL_RE.exec(eff)) !== null) {
+        const key = unescapeStr(t[2]);
+        if (!SUSPICIOUS_RE.test(key)) continue;
+        if (!tCallKeys.has(key)) tCallKeys.set(key, []);
+        tCallKeys.get(key).push(relPath + ":" + lineNo);
       }
     }
   } catch { /* skip unreadable */ }
@@ -251,6 +280,19 @@ for (const [text, files] of found) {
 
 missing.sort((a, b) => b.count - a.count);
 
+// ── 3b. G2：可疑 t() key（黄灯，永不 fail） ──
+// 判据 = 「标识符形态（无空格无中文）且不在任何字典里」。两条白名单（各有真实来源，非拍脑袋放宽）：
+//   ① PROPER_NOUNS——产品专名，永不翻译；
+//   ② 动态前缀——key 以 `.` 结尾（t("category." + id)），或是另一个更长 key 的前缀（运行时才拼全）。
+const allTKeys = [...tCallKeys.keys()];
+const suspicious = allTKeys.filter((k) => {
+  if (translated.has(k)) return false;
+  if (PROPER_NOUNS.has(k)) return false;
+  if (k.endsWith(".")) return false;
+  if (allTKeys.some((o) => o !== k && o.startsWith(k))) return false;
+  return true;
+});
+
 // ── 4. 输出 ──
 const totalFound = found.size;
 const totalTranslated = found.size - missing.length;
@@ -267,6 +309,17 @@ if (missing.length === 0) {
     console.log(`  ${m.text}  [${m.count}x, e.g. ${m.first}]`);
   }
   console.log(`\n修复：将以上字符串添加到对应插件的 i18n/en.json 或 lang-defaults/en.json\n`);
+}
+
+// ── 4b. G2 输出（黄灯） ──
+if (suspicious.length > 0) {
+  console.log(`⚠ 可疑 t() key（${suspicious.length} 条）——症状：标识符形态且不在任何字典里。`);
+  console.log(`  自己判断是哪一种：数据标识符（不该走 t()，改成字面量）/ 漏翻（补进字典）/ 动态前缀（合法）。\n`);
+  for (const k of suspicious) {
+    const at = tCallKeys.get(k);
+    console.log(`  ${at[0]}  t(${JSON.stringify(k)})${at.length > 1 ? `  [+${at.length - 1} 处]` : ""}`);
+  }
+  console.log("");
 }
 
 // ── 5. 门禁（--strict：缺翻译即失败——npm run check 机械拦截） ──

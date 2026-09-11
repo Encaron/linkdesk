@@ -17,9 +17,17 @@
  *   基线即当下 → 全静默（exit 0）。
  *
  * 作者面定义（tarball 内容的仓库侧代理）：
- *   @linkdesk/contracts    → contracts/linkdesk.d.ts + README.md（files 白名单成品；d.ts=作者消费的类型本体）
- *   @linkdesk/plugin-sdk   → src/** + schemas/**（plugin.schema + E6#60 收编 theme/icon-theme——schema 演进有 npm 黄灯盯）
- *                           + README.md（dist 不入库=tsc(src) 派生物，src 为权威面）
+ *   @linkdesk/contracts         → contracts/linkdesk.d.ts + README.md（files 白名单成品；d.ts=作者消费的类型本体）
+ *   @linkdesk/plugin-sdk        → src/** + schemas/**（plugin.schema + E6#60 收编 theme/icon-theme——schema 演进有 npm 黄灯盯）
+ *                                 + README.md（dist 不入库=tsc(src) 派生物，src 为权威面）
+ *   create-linkdesk-plugin      → index.js + template/** + README.md（E6#95e 纳入）
+ *                                 🔴 index.js 必须进面——它是 CLI 文案/占位符表；模板改了它常一起漂
+ *   @linkdesk/ui                → src/** + README.md（E6#95e 纳入）
+ *
+ * 🔴 **为什么 2026-09-11 补了后两个包**（06 §三·五）：它们同样发在 npm、同样是作者面，但基线里没有 ⇒
+ * **模板改了不发版，不会有任何灯会亮**。实证 `@linkdesk/ui@0.1.2` 已落后仓内 6 次改动（含 `assetBase`，
+ * 插件 README 的图片靠它才显示）**一个月无声**。**「脚手架」这个漏最要命**——它正是 L3.7 3.7.5 整轮要改的东西：
+ * **改完骨架却不发版 = 那一轮的全部劳动第三方作者看不到。**
  */
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
@@ -44,6 +52,21 @@ const PACKAGES = [
       "packages/plugin-sdk/schemas/**",
       "packages/plugin-sdk/README.md",
     ],
+  },
+  {
+    name: "create-linkdesk-plugin",
+    dir: "packages/create-linkdesk-plugin",
+    // README.md 与另两包同口径纳入（它是 npm 页面的内容，改了对作者就是变了）
+    surface: [
+      "packages/create-linkdesk-plugin/index.js",
+      "packages/create-linkdesk-plugin/template/**",
+      "packages/create-linkdesk-plugin/README.md",
+    ],
+  },
+  {
+    name: "@linkdesk/ui",
+    dir: "packages/linkdesk-ui",
+    surface: ["packages/linkdesk-ui/src/**", "packages/linkdesk-ui/README.md"],
   },
 ];
 
@@ -146,7 +169,7 @@ for (const pkg of PACKAGES) {
   } else if (versionBumped) {
     // B. 版本动过但基线没 mark——bump 了 ≠ 发布了
     warnings.push(
-      `${pkg.name}: 版本已从 ${state.version} 升到 ${currentVersion}，但 release 基线仍记 ${state.version}。\n` +
+      `${pkg.name}: 版本已从 ${state.version} 变为 ${currentVersion}，但 release 基线仍记 ${state.version}。\n` +
         `   ├ 已 \`npm publish\` 完成？→ 跑 \`npm run release:mark\` 收尾（记录新版本为基线）\n` +
         `   └ 没打算发却改了版本号？→ 把 ${pkg.dir}/package.json 版本改回去，别让版本号空转`,
     );
