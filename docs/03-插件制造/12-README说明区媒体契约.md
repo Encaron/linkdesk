@@ -34,9 +34,12 @@
 
 ## 三、图 / 视频文件放哪、src 怎么写（源规则）
 
-1. **优先「相对路径 + 随包」**：文件放进插件目录（惯例 `resources/`），README 里写相对路径——`resources/cover.svg`、`cover.svg`、`./resources/x.mp4` 都行。**SDK 构建自动把这些被 README 引用的资产打进 zip**（零声明，见 [04-插件分发格式.md](04-插件分发格式.md)）→ 已装态必然显示。
+1. **写「相对路径 + 随包」**：媒体文件放**插件根目录的 `resources/`**，README 里写相对路径 `resources/cover.svg`。**SDK 构建自动把这些被 README 引用的资产打进 zip**（零声明，见 [04-插件分发格式.md](04-插件分发格式.md)）→ 已装态必然显示。
+   🔴 **媒体一律住 `resources/`**——图标同理（`plugin.json` 的 `icon` / `marketIcon` 也写 `resources/…`）。**插件根目录不放散图。**
 2. **远程 URL**：`https://…` 绝对地址直接可用（适合市场预览也显）。
 3. **别碰的**：`http:` / `data:` / `javascript:` / `file:` 图源**一律不显示**（安全白名单拒绝）；`//` 开头的协议相对 URL 也不显示；**别引用包外**（`../` 上层目录、绝对盘路径）——既不随包也不显示。
+
+> ℹ️ **技术上放插件根目录也能工作**（SDK 只看 README 里写了什么路径，不看目录）。**收口到 `resources/` 是规整性要求，不是正确性要求**——新插件跟齐官方范本的 `resources/` 写法即可。
 
 ---
 
@@ -59,7 +62,7 @@
 
 ## 六、活的样板（照抄不会错）
 
-- 官方 8 只已嵌场景封面的插件 README = 现成范本：`editor` / `file-tree` / `serial-monitor` / `settings` / `python` / `theme-terminal` / `theme-aurora-glass` / `lang-defaults`（另有首个第三方真插件 `hello-linkdesk`）。看它们 README 顶部那张 `![…](resources/cover.svg)`（或 `cover.svg`）就是封面标准写法。
+- 官方 8 只已嵌场景封面的插件 README = 现成范本：`editor` / `file-tree` / `serial-monitor` / `settings` / `python` / `theme-terminal` / `theme-aurora-glass` / `lang-defaults`（另有首个第三方真插件 `hello-linkdesk`）。看它们 README 顶部那张 `![…](resources/cover.svg)` 就是封面标准写法。
 - 页内 `<video>` / 封面外链写法：串口监视器 README 的 git 历史 commit `2f9a52c6b`（页内真播）与 `8c9d71551`（全屏修复）各带一段当时手测用的完整 `<video>` / `<a><img></a>` 示例，验完即撤——要抄完整写法可看那两次提交。
 
 ---

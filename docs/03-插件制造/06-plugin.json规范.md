@@ -13,6 +13,8 @@
 ```
 my-plugin/
 ├── plugin.json              # 插件元数据（唯一必需）
+├── README.md                # 插件说明——详情页「详情」页签的数据源
+├── CHANGELOG.md             # 更新日志——详情页「更改日志」页签的唯一真源
 ├── resources/               # 静态资源——图标/图片/字体
 │   └── icon.svg             # 图标（推荐 SVG）
 ├── src/                     # 源代码
@@ -25,6 +27,8 @@ my-plugin/
 | 文件 | 说明 |
 |------|------|
 | `plugin.json` | **唯一必需文件。** 文件名固定，不可改名 |
+| `README.md` | 插件说明——详情页「详情」页签的数据源。**文件名固定，不写进 `plugin.json`**（见 [09-插件目录规范](09-插件目录规范.md)） |
+| `CHANGELOG.md` | 更新日志——详情页「更改日志」页签的**唯一真源**。**文件名固定，不写进 `plugin.json`**；段标题格式见 [09-插件目录规范](09-插件目录规范.md) |
 | `src/` | **推荐**源码放在 `src/` 子目录下，避免平铺。`entry`/`sidebar` 路径相对于 `plugin.json`，如 `"entry": "src/index.tsx"` |
 | `resources/` | 图标等静态资源。对标 VS Code 插件常见的 `resources/` / `assets/` 目录 |
 | `icon` 字段 | 相对于 `plugin.json` 的路径。如 `"icon": "resources/icon.svg"` |
@@ -222,7 +226,6 @@ my-plugin/
 | `iconSource` | `string` | `"codicon"`（默认）/ `"svg"` / `"url"` |
 | `description` | `string` | 一句话描述，插件详情页展示。支持多行 |
 | `author` | `string` | 作者名 |
-| `readme` | `string` | 附带说明文档路径——相对插件目录（如 `"./README.md"`）；`.linkdesk-plugin` 详情/市场展示数据源（E6#4a：作者包里有 README.md 就随包，本字段指向包内文件） |
 | `sidebar` | `string` | 侧栏组件路径，仅 `view` 类型有效 |
 | `tabBehavior` | `object` | 标签页行为声明，见下方 |
 | `statusBar` | `array` | 状态栏贡献条目，见下方。仅 `view` 类型有效 |
@@ -234,7 +237,6 @@ my-plugin/
 | `recommends` | `array` | 推荐同时安装的插件 `[{ plugin: string, reason: string }]` |
 | `suggests` | `array` | 可选相关插件 `[{ plugin: string, reason: string }]` |
 | `requires` | `string[]` | 插件级激活依赖——按 pluginId 声明，加载时先加载依赖再加载本插件（E5.8#13）。无版本约束。详见下方「`requires` 字段详解」 |
-| `changelog` | `array` | 更新日志 `[{ version: string, date: string, changes: string[] }]` |
 | `screenshots` | `string[]` | 截图 URL 数组（Phase 5+ 启用） |
 | `minAppVersion` | `string` | 最低软件版本要求 |
 | `docs` | `string` | 附带文档路径（资源插件联动） |
@@ -242,6 +244,14 @@ my-plugin/
 | `i18n` | `object` | 插件自带翻译 `{ "en": "i18n/en.json", "ja": "i18n/ja.json" }`——key=插件 UI 原文（建议作者母语）。放在 `contributes.i18n` 下，非顶层 |
 | `cssVars` | `object` | 插件自定义 CSS 变量 `{ "--name": { "dark": "#fff", "light": "#000" } }` |
 | `permissions` | `string[]` | 权限声明 `["serial", "filesystem", "network"]`（Phase 5+ 启用） |
+
+### 为什么这里没有 `readme` / `changelog` 字段？
+
+说明与更新日志**以文件为准**——插件根目录的 `README.md` / `CHANGELOG.md`（位置、格式、与详情页的对应关系见 [09-插件目录规范](09-插件目录规范.md)）。
+
+这两个字段在 E6 开发期曾存在，但**从无读取方**（读取方按**固定文件名**读包内文件，不看任何声明字段），**2026-09-11 已删除**。
+
+> **写进 `plugin.json` 不会生效，只会被忽略**（顶层是宽松校验，写了不报错——所以它骗人）。**若你从旧教程 / 旧提交抄到了这两个字段 → 删掉，改写成文件。**
 
 ### `requires` 字段详解
 
