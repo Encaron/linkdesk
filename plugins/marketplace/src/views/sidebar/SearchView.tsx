@@ -6,21 +6,24 @@
  *
  * E6#86b（第 3.6.3 轮）feature-folder 化：**本文件是门面**——原 203 行里的私有弹窗组件
  * `AddSourcePopup` 搬进同名夹 `SearchView/`（非 contributes.views 面，私有件）。**零行为变更、零消费方改动**
- * （视图路径 `views/SearchView.tsx` 不变，SDK bundle key = basename 亦不变）。
+ * （SDK bundle key = basename，不随目录移动而变）。
+ * E6#86e（第 3.6.6 轮）views 分组：本文件随「侧栏容器」整体移入 `views/sidebar/`（视图源码路径由
+ * `views/SearchView.tsx` 变为 `views/sidebar/SearchView.tsx`；SDK bundle 名 `views/SearchView.bundle.js`
+ * 不变——surface key = render basename，故已装插件的引用零影响）。
  * 拆法逐段对照见 docs/02-Electron架构/E6_插件生态与发布/文件整理层/03-市场插件整理.md §二。
  */
 
 import { useState, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { setMarketplaceSearch, notifyError } from "../services/marketplaceShared";
+import { setMarketplaceSearch, notifyError } from "../../services/marketplaceShared";
 import { useDebouncedInput } from "@linkdesk/ui"; // E6#15h：共享件全走 @linkdesk/ui 零件
 import AddSourcePopup from "./SearchView/AddSourcePopup";
 /* E6#86d：侧栏样式已按实测分节拆为 3 件（原 MarketplaceSidebar.css 680 行）——**本处按原文档顺序
  *  全量 import**：5 个侧栏 surface 共用同一套样式，且各 surface 吃样式的类分散在自身 JSX 与其子件
  *  （如 ExtensionItem）里，逐件 import 要算传递闭包、收益为零。判据见 styles/detail-shell.css 头注。 */
-import "../styles/sidebar-shell.css";
-import "../styles/sidebar-list.css";
-import "../styles/sidebar-explore.css";
+import "../../styles/sidebar-shell.css";
+import "../../styles/sidebar-list.css";
+import "../../styles/sidebar-explore.css";
 
 const lk = () => window.linkdesk;
 

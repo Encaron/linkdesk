@@ -5,7 +5,10 @@
  * E6#86a（第 3.6.3 轮）feature-folder 化：**本文件是门面**——原 1258 行按职责拆进同名夹 `DetailView/`
  * （身份/版本/数据/包文件/动作/安装腿六个 hook + 头/动作列/侧栏/概览/功能/更改日志六个展示件 +
  *  `info-bits` / `info-groups` 两组原子件 + `actionBits` 五枚小件构造器）。
- * **零行为变更、零消费方改动**（视图路径 `views/DetailView.tsx` 不变，SDK bundle key = basename 亦不变）。
+ * **零行为变更、零消费方改动**（SDK bundle key = basename，不随目录移动而变）。
+ * E6#86e（第 3.6.6 轮）views 分组：本文件随「详情容器」整体移入 `views/detail/`（视图源码路径由
+ * `views/DetailView.tsx` 变为 `views/detail/DetailView.tsx`；SDK bundle 名 `views/DetailView.bundle.js`
+ * 不变——surface key = render basename，故已装插件的引用零影响）。
  * 拆法逐段对照见 docs/02-Electron架构/E6_插件生态与发布/文件整理层/03-市场插件整理.md §二。
  *
  * E6#30.11 搬迁：布局从壳 PluginDetailPoolView 迁入（header / navbar / body + info 侧栏），
@@ -41,8 +44,8 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { pickIdentityArt } from "@linkdesk/ui";
-import { useOnlineStatus } from "../services/marketplaceShared";
-import { authorLabel } from "../services/installConfirmPayload";
+import { useOnlineStatus } from "../../services/marketplaceShared";
+import { authorLabel } from "../../services/installConfirmPayload";
 import type { DetailContributedProps, TabId } from "./DetailView/types";
 import { useDetailIdentity } from "./DetailView/useDetailIdentity";
 import { useDetailVersions } from "./DetailView/useDetailVersions";
@@ -60,12 +63,12 @@ import FeaturesTab from "./DetailView/FeaturesTab";
 import ChangelogTab from "./DetailView/ChangelogTab";
 /* E6#86d：详情样式已按实测分节拆为 6 件（原 MarketplaceDetail.css 861 行）——**本处按原文档顺序
  *  全量 import**，理由与「不用谁用谁 import」的判据见 detail-shell.css 头注。 */
-import "../styles/detail-shell.css";
-import "../styles/detail-header.css";
-import "../styles/detail-actions.css";
-import "../styles/detail-body.css";
-import "../styles/detail-features.css";
-import "../styles/detail-changelog.css";
+import "../../styles/detail-shell.css";
+import "../../styles/detail-header.css";
+import "../../styles/detail-actions.css";
+import "../../styles/detail-body.css";
+import "../../styles/detail-features.css";
+import "../../styles/detail-changelog.css";
 
 const lk = () => window.linkdesk;
 

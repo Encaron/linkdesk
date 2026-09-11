@@ -14,10 +14,10 @@
 
 import { useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { notifyError, startMarketInstall } from "../../services/marketplaceShared";
+import { notifyError, startMarketInstall } from "../../../services/marketplaceShared";
 // E6#71k「都问」：安装确认门——行内安装与详情页走同一门（双入口单门，零漂移）
-import { confirmMarketInstall } from "../../services/installGate";
-import type { CatalogEntry } from "../../services/marketCatalog";
+import { confirmMarketInstall } from "../../../services/installGate";
+import type { CatalogEntry } from "../../../services/marketCatalog";
 
 const lk = () => window.linkdesk;
 

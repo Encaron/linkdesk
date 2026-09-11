@@ -13,7 +13,7 @@
 
 import { useTranslation } from "react-i18next";
 import { MarkdownView } from "@linkdesk/ui";
-import type { CatalogEntry } from "../../services/marketCatalog";
+import type { CatalogEntry } from "../../../services/marketCatalog";
 
 type Props = {
   /** 已装（读包 CHANGELOG.md）还是未装（目录 versions[].changelog） */

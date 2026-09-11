@@ -4,8 +4,8 @@
  */
 
 import { useMemo } from "react";
-import { categoryListFromEntry } from "../../services/marketCategories";
-import { pluginRepoUrl } from "../../services/marketCatalog";
+import { categoryListFromEntry } from "../../../services/marketCategories";
+import { pluginRepoUrl } from "../../../services/marketCatalog";
 import type { DetailIdentity } from "./useDetailIdentity";
 import { reqOf } from "./types";
 

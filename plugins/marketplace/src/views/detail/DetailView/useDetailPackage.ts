@@ -7,7 +7,7 @@
  */
 
 import { useEffect, useState } from "react";
-import { readInstalledPackageFile } from "../../services/packageFiles";
+import { readInstalledPackageFile } from "../../../services/packageFiles";
 import type { DetailIdentity } from "./useDetailIdentity";
 
 export function useDetailPackage(id: DetailIdentity) {

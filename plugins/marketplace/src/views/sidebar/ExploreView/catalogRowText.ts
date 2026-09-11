@@ -10,7 +10,7 @@
  *      故留待单独立案，不夹带进整理轮。
  */
 
-import type { CatalogEntry } from "../../services/marketCatalog";
+import type { CatalogEntry } from "../../../services/marketCatalog";
 
 /** 目录条目 author 兼容 {name,url} / string 两种形态——抽展示名 */
 export function authorLabel(a: CatalogEntry["author"]): string | undefined {

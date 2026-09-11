@@ -9,10 +9,10 @@
 
 import { useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { compareVersions, pinnedAfterApply, versionDownloadUrl } from "../../services/marketCatalog";
-import { notifyError, settleUpdateFailure, updateFailText } from "../../services/marketplaceShared";
-import { confirmMarketInstall } from "../../services/installGate";
-import { setPinnedVersion } from "../../services/installedUpdateMeta";
+import { compareVersions, pinnedAfterApply, versionDownloadUrl } from "../../../services/marketCatalog";
+import { notifyError, settleUpdateFailure, updateFailText } from "../../../services/marketplaceShared";
+import { confirmMarketInstall } from "../../../services/installGate";
+import { setPinnedVersion } from "../../../services/installedUpdateMeta";
 import type { DetailIdentity } from "./useDetailIdentity";
 
 const lk = () => window.linkdesk;

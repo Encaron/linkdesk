@@ -12,8 +12,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { PluginDiskLocation, PluginFolderKind } from "@linkdesk/contracts";
-import type { CatalogEntry } from "../../services/marketCatalog";
-import { notifyError, useMarketplaceCatalog, useMarketplacePlugins } from "../../services/marketplaceShared";
+import type { CatalogEntry } from "../../../services/marketCatalog";
+import { notifyError, useMarketplaceCatalog, useMarketplacePlugins } from "../../../services/marketplaceShared";
 import type { DetailInfo } from "./types";
 
 const lk = () => window.linkdesk;

@@ -14,8 +14,8 @@ import {
   updateTargetFor,
   versionActionTarget,
   versionDownloadUrl,
-} from "../../services/marketCatalog";
-import { useDownloadCount } from "../../services/downloadCounts";
+} from "../../../services/marketCatalog";
+import { useDownloadCount } from "../../../services/downloadCounts";
 import type { DetailIdentity } from "./useDetailIdentity";
 
 const lk = () => window.linkdesk;

@@ -12,8 +12,8 @@
 import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { OverlayPortal } from "@linkdesk/ui";
-import { readConfiguredAuthorSources } from "../../services/marketSources";
-import { decideAddSource } from "../../services/marketSourceAdd"; // E6#30c：加源决策抽纯（官方恒不入册判重见该模块头注）
+import { readConfiguredAuthorSources } from "../../../services/marketSources";
+import { decideAddSource } from "../../../services/marketSourceAdd"; // E6#30c：加源决策抽纯（官方恒不入册判重见该模块头注）
 
 const lk = () => window.linkdesk;
 

@@ -8,11 +8,11 @@
 
 import { useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { compareVersions, pinnedAfterApply } from "../../services/marketCatalog";
-import { notifyError, startMarketInstall, retryMarketInstall } from "../../services/marketplaceShared";
-import { confirmMarketInstall } from "../../services/installGate";
-import { installJobLabel, useInstallJob } from "../../services/installJobs";
-import { setPinnedVersion } from "../../services/installedUpdateMeta";
+import { compareVersions, pinnedAfterApply } from "../../../services/marketCatalog";
+import { notifyError, startMarketInstall, retryMarketInstall } from "../../../services/marketplaceShared";
+import { confirmMarketInstall } from "../../../services/installGate";
+import { installJobLabel, useInstallJob } from "../../../services/installJobs";
+import { setPinnedVersion } from "../../../services/installedUpdateMeta";
 import type { DetailIdentity } from "./useDetailIdentity";
 
 const pm = () => window.linkdesk?.pluginManager;

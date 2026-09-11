@@ -18,8 +18,8 @@
 import { useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Button, Badge } from "@linkdesk/ui";
-import { fmtSize, type InstallConfirmPayload } from "../services/installConfirmPayload";
-import "../styles/MarketplaceConfirm.css";
+import { fmtSize, type InstallConfirmPayload } from "../../services/installConfirmPayload";
+import "../../styles/MarketplaceConfirm.css";
 
 /** 行——label 上 / value 下竖叠（对齐原 InfoItem 在确认卡的版式） */
 function Row({ label, children }: { label: string; children?: ReactNode }) {

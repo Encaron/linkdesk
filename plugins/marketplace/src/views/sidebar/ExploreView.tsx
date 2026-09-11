@@ -5,8 +5,11 @@
  *
  * E6#86b（第 3.6.3 轮）feature-folder 化：**本文件是门面**——原 325 行按职责拆进同名夹 `ExploreView/`
  * （行状态推导 `useCatalogStatus` / 行取字 `catalogRowText` / 行骨架 `CatalogRow` / 行态动作槽
- *  `CatalogRowAction` / 四种空态 `CatalogEmpty`）。**零行为变更、零消费方改动**（视图路径
- * `views/ExploreView.tsx` 不变，SDK bundle key = basename 亦不变）。
+ *  `CatalogRowAction` / 四种空态 `CatalogEmpty`）。**零行为变更、零消费方改动**（SDK bundle key = basename，
+ * 不随目录移动而变）。
+ * E6#86e（第 3.6.6 轮）views 分组：本文件随「侧栏容器」整体移入 `views/sidebar/`（视图源码路径由
+ * `views/ExploreView.tsx` 变为 `views/sidebar/ExploreView.tsx`；SDK bundle 名 `views/ExploreView.bundle.js`
+ * 不变——surface key = render basename，故已装插件的引用零影响）。
  * 拆法逐段对照见 docs/02-Electron架构/E6_插件生态与发布/文件整理层/03-市场插件整理.md §二。
  *
  * 安装行态（#30.9）：本行 = 全局单活跃会话 pluginId →「安装中 62%」进度徽标（30.9a M4 二）/「安装失败·归因」
@@ -27,8 +30,8 @@ import {
   useMarketplaceCatalog,
   useOnlineStatus,
   getMarketplaceSearch,
-} from "../services/marketplaceShared";
-import { useInstallJobsSubscription } from "../services/installJobs";
+} from "../../services/marketplaceShared";
+import { useInstallJobsSubscription } from "../../services/installJobs";
 import { useCatalogStatus } from "./ExploreView/useCatalogStatus";
 import { useCatalogInstall } from "./ExploreView/useCatalogInstall";
 import CatalogRow from "./ExploreView/CatalogRow";
@@ -36,9 +39,9 @@ import { CatalogErrorState, CatalogLoading, CatalogNoMatch, CatalogNone } from "
 /* E6#86d：侧栏样式已按实测分节拆为 3 件（原 MarketplaceSidebar.css 680 行）——**本处按原文档顺序
  *  全量 import**：5 个侧栏 surface 共用同一套样式，且各 surface 吃样式的类分散在自身 JSX 与其子件
  *  （如 ExtensionItem）里，逐件 import 要算传递闭包、收益为零。判据见 styles/detail-shell.css 头注。 */
-import "../styles/sidebar-shell.css";
-import "../styles/sidebar-list.css";
-import "../styles/sidebar-explore.css";
+import "../../styles/sidebar-shell.css";
+import "../../styles/sidebar-list.css";
+import "../../styles/sidebar-explore.css";
 
 const lk = () => window.linkdesk;
 

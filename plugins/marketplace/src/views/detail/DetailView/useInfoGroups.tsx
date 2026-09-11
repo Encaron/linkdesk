@@ -12,8 +12,8 @@
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import type { PluginDiskLocation, PluginFolderKind } from "@linkdesk/contracts";
-import type { CatalogEntry } from "../../services/marketCatalog";
-import { localizeCategory } from "../../services/marketCategories";
+import type { CatalogEntry } from "../../../services/marketCatalog";
+import { localizeCategory } from "../../../services/marketCategories";
 import { Dash, fmtCount, InfoItem } from "./info-bits";
 import { DependentValues, DepValues, depEnvGroupOf, resourcesGroupOf } from "./info-groups";
 import { topGroupOf } from "./info-top";

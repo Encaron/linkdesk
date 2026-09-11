@@ -13,9 +13,9 @@ import {
   classifyInstallError,
   installFailLabelKey,
   retryMarketInstall,
-} from "../../services/marketplaceShared";
-import { installJobLabel, pickInstallJob } from "../../services/installJobs";
-import type { CatalogEntry } from "../../services/marketCatalog";
+} from "../../../services/marketplaceShared";
+import { installJobLabel, pickInstallJob } from "../../../services/installJobs";
+import type { CatalogEntry } from "../../../services/marketCatalog";
 import type { RowStatus } from "./useCatalogStatus";
 
 export default function CatalogRowAction({

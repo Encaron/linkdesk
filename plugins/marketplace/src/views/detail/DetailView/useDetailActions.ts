@@ -8,9 +8,9 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { notifyError } from "../../services/marketplaceShared";
-import { enableAutoUpdateAndRun } from "../../services/updateDiscovery";
-import { readPluginUpdateMeta, setAutoUpdate } from "../../services/installedUpdateMeta";
+import { notifyError } from "../../../services/marketplaceShared";
+import { enableAutoUpdateAndRun } from "../../../services/updateDiscovery";
+import { readPluginUpdateMeta, setAutoUpdate } from "../../../services/installedUpdateMeta";
 import type { DetailIdentity } from "./useDetailIdentity";
 
 const lk = () => window.linkdesk;

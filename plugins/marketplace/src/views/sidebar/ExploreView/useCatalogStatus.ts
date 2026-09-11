@@ -14,8 +14,8 @@
  */
 
 import { useCallback, useMemo } from "react";
-import { updateTargetFor, type CatalogEntry } from "../../services/marketCatalog";
-import { useMarketplacePlugins } from "../../services/marketplaceShared";
+import { updateTargetFor, type CatalogEntry } from "../../../services/marketCatalog";
+import { useMarketplacePlugins } from "../../../services/marketplaceShared";
 
 export type RowStatus = "install" | "installed" | "update" | "disabled";
 

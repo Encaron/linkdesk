@@ -9,8 +9,8 @@
 
 import type { ReactNode } from "react";
 import type { PluginDiskLocation, PluginFolderKind } from "@linkdesk/contracts";
-import type { CatalogEntry } from "../../services/marketCatalog";
-import { fmtSize } from "../../services/installConfirmPayload";
+import type { CatalogEntry } from "../../../services/marketCatalog";
+import { fmtSize } from "../../../services/installConfirmPayload";
 import { Dash, DirLink, InfoItem } from "./info-bits";
 
 type T = (key: string, opts?: Record<string, unknown>) => string;
