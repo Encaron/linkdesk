@@ -1,7 +1,7 @@
 {
   "$schema": "../../public/schemas/plugin.schema.json",
   "name": "设置",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "icon": "resources/icon-bar.svg",
   "marketIcon": "resources/icon.svg",
   "description": "软件设置——主题、语言、插件管理",
@@ -32,9 +32,5 @@
       ]
     },
     "floatingPanel": { "viewId": "settings" }
-  },
-  "changelog": [
-    { "version": "1.0.4", "date": "2026-09-11", "changes": ["内部整理（E6#87d 文件整理层）：630 行样式表按现有分节一切三（壳/设置行/对象编辑器）+ SettingRow 拆同名夹四件 + 快捷键页拆三件 + 6 个测试迁 __tests__/——零行为变更，**功能与界面零变化**"] },
-    { "version": "1.0.2", "date": "2026-09-09", "changes": ["图标身份分工（E6#69 三图模型）：icon → resources/icon-bar.svg（Type-1 齿轮剪影，仅图标栏用）；marketIcon → resources/icon.svg（Type-2 彩色身份图）；整幅封面迁入 README"] }
-  ]
+  }
 }

@@ -1,7 +1,7 @@
 {
   "$schema": "../../public/schemas/plugin.schema.json",
   "name": "终端机",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "icon": "resources/icon.svg",
   "description": "极限壳主题——font 域·字族轴：ui/mono 双键全指 Cascadia Mono 等宽族 + 绿字黑底终端配色（#50.27 效果验收端到端裁决，gallery ⑨ 壳真实落地）",
   "author": "LinkDesk",
@@ -14,8 +14,5 @@
         "path": "themes/terminal-monofont.json"
       }
     ]
-  },
-  "changelog": [
-    { "version": "1.0.2", "date": "2026-09-09", "changes": ["图标身份分工（E6#69 三图模型）：新增 icon=resources/icon.svg（Type-2 彩色身份图），撤 marketIcon=cover.svg——整幅封面迁入 README 展示"] }
-  ]
+  }
 }

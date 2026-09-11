@@ -1,7 +1,7 @@
 {
   "$schema": "../../public/schemas/plugin.schema.json",
   "name": "宋体印刷体",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "极限壳主题——font 域·字族轴：全 UI 宋体 SimSun + 纸白墨黑文档感（#50.27 效果验收端到端裁决，gallery ⑩ 壳真实落地）",
   "author": "LinkDesk",
   "contributes": {

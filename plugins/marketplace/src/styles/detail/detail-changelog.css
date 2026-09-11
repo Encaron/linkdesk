@@ -31,6 +31,16 @@
   color: var(--text-primary);
 }
 
+/* E6#92f：已装分支的块头——底下铺的是包内 CHANGELOG.md **全文**（全部历史），
+ * 所以不再冒充「单版块头」。字号/字重沿用 ver-tag 以保持两分支层级一致
+ * （承 ui-ux-pro-max ux-guidelines「Heading Clarity」：标题须与正文有明确大小/字重差），
+ * 但**不取 --font-mono**——那是版本号形态，中文走等宽会变形。 */
+.mpd-chg-ver-scope {
+  font-size: var(--font-size-md);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
 .mpd-chg-tag {
   font-size: var(--font-size-xs);
   line-height: 1.6;

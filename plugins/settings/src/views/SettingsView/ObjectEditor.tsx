@@ -36,7 +36,9 @@ function ObjectEditor({ value, onChange }: {
   };
 
   const handleAdd = () => {
-    const baseKey = t("newPattern");
+    // 这是写进用户配置的**数据键名**，不是 UI 文案——不过 t()（B-i18n-1：
+    // 一旦有人补上 "newPattern" 译文，新增行的键名就会被写成译文，损坏用户配置）。
+    const baseKey = "newPattern";
     let candidate = baseKey;
     let i = 1;
     while (candidate in value) {

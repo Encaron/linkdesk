@@ -1,7 +1,7 @@
 {
   "$schema": "../../public/schemas/plugin.schema.json",
   "name": "面板演示",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "E5.7#63.7 验证用演示插件——声明 location:\"panel\" 视图容器：输出 + 待办。可安全卸载。",
   "author": "官方",
   "contributes": {

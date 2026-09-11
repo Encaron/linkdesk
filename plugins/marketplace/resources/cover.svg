@@ -1,0 +1,187 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="640" viewBox="0 0 640 640" fill="none">
+  <!-- ============================================================
+       marketplace 封面「货架的窗」   [skill: ui-ux-pro-max · A 家族]
+       理念：市场 = 一扇「左边货架、右边说明书」的窗。**左右分栏不是装饰**——
+       市场插件真的分成两块：侧栏（搜索 + 已安装 / 探索插件 / 已禁用 / 内置
+       四段折叠区）与主区（插件详情标签页）。所以左列画的是侧栏本身，
+       不是窗口级页签；主区顶部那条「插件详情 ×」才是真标签。
+       详情页画了封面缩略图 / 名称 / 版本 / 已安装·卸载动作条，
+       以及 详情 · 更改日志 两个页签——本层刚把更新记录接通的正是后者，
+       正文即 README：一行标题 + 两行正文 + 随包封面图。
+       左下浮标 = 市场的包裹图（与插件身份图同源）。
+       资产独立 SVG：颜色自含（封面美术不受壳主题 token 约束）。
+       设计依据：ui-ux-pro-max —— Dark Mode (OLED) / 搜索即 CTA /
+       高对比文字 / 极简辉光，落地色沿用 A 家族靛蓝 #7c8cff。
+       ============================================================ -->
+  <defs>
+    <radialGradient id="mk_bg" cx="0.5" cy="0.42" r="0.9">
+      <stop offset="0" stop-color="#171a28"/>
+      <stop offset="0.55" stop-color="#0f111c"/>
+      <stop offset="1" stop-color="#08090f"/>
+    </radialGradient>
+    <radialGradient id="mk_glowTL" cx="0.15" cy="0.07" r="0.8">
+      <stop offset="0" stop-color="#7c8cff" stop-opacity="0.16"/>
+      <stop offset="1" stop-color="#7c8cff" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="mk_glowBR" cx="0.97" cy="1.05" r="0.85">
+      <stop offset="0" stop-color="#22d3ee" stop-opacity="0.09"/>
+      <stop offset="1" stop-color="#22d3ee" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="mk_rowsel" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#7c8cff" stop-opacity="0.14"/>
+      <stop offset="1" stop-color="#7c8cff" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="mk_action" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#8b9aff"/>
+      <stop offset="1" stop-color="#6d7cf5"/>
+    </linearGradient>
+    <linearGradient id="mk_thumb" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#2b3358"/>
+      <stop offset="1" stop-color="#151a2e"/>
+    </linearGradient>
+    <linearGradient id="mk_img" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#131829"/>
+      <stop offset="1" stop-color="#0d1120"/>
+    </linearGradient>
+    <linearGradient id="mk_status" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#7c8cff" stop-opacity="0.07"/>
+      <stop offset="1" stop-color="#7c8cff" stop-opacity="0.015"/>
+    </linearGradient>
+    <filter id="mk_shadow" x="-30%" y="-40%" width="160%" height="200%">
+      <feGaussianBlur stdDeviation="24"/>
+    </filter>
+    <pattern id="mk_grid" width="44" height="44" patternUnits="userSpaceOnUse">
+      <path d="M 44 0 H 0 V 44" stroke="#cdd5ff" stroke-opacity="0.02"/>
+    </pattern>
+  </defs>
+
+  <!-- 底：暗靛台面（网格 + 双环境光） -->
+  <rect width="640" height="640" fill="url(#mk_bg)"/>
+  <rect width="640" height="640" fill="url(#mk_glowTL)"/>
+  <rect width="640" height="640" fill="url(#mk_glowBR)"/>
+  <rect width="640" height="640" fill="url(#mk_grid)"/>
+
+  <!-- 左下浮标：包裹（与插件身份图同源，放大压暗当水印） -->
+  <g transform="translate(92 582) scale(2.6) translate(-8 -8)" fill="#8ca3d8" fill-opacity="0.2">
+    <path d="M15 4.95703C15 4.58711 14.8563 4.24054 14.5949 3.97992L12.0096 1.39234C11.4879 0.86922 10.5788 0.86922 10.0571 1.39234L8 3.45119V3.32321C8 2.55068 7.37187 1.922 6.6 1.922H2.4C1.62813 1.922 1 2.55068 1 3.32321V13.5988C1 14.3713 1.62813 15 2.4 15H12.6667C13.4385 15 14.0667 14.3713 14.0667 13.5988V9.39514C14.0667 8.62261 13.4385 7.99393 12.6667 7.99393H12.5379L14.5949 5.93508C14.8553 5.67445 15 5.32602 15 4.95703ZM2.4 2.85521H6.6C6.85667 2.85521 7.06667 3.06446 7.06667 3.32228V7.99299H1.93333V3.32228C1.93333 3.06446 2.14333 2.85521 2.4 2.85521ZM1.93333 13.5979V8.92714H7.06667V14.0649H2.4C2.14333 14.0649 1.93333 13.8547 1.93333 13.5979ZM13.1333 9.39421V13.5979C13.1333 13.8547 12.9233 14.0649 12.6667 14.0649H8V8.92714H12.6667C12.9233 8.92714 13.1333 9.13638 13.1333 9.39421ZM8 7.99299V6.46287L9.5288 7.99299H8ZM13.9351 5.2737L11.3488 7.86221C11.1789 8.03223 10.8859 8.03223 10.716 7.86221L8.12973 5.2737C8.0448 5.18963 7.99813 5.07753 7.99813 4.95796C7.99813 4.83839 8.0448 4.7263 8.12973 4.64129L10.716 2.05278C10.8009 1.96777 10.9129 1.92106 11.0324 1.92106C11.1519 1.92106 11.2639 1.96777 11.3488 2.05278L13.9351 4.64129C14.02 4.72536 14.0667 4.83746 14.0667 4.95703C14.0667 5.0766 14.02 5.1887 13.9351 5.2737Z"/>
+  </g>
+
+  <!-- 窗口 -->
+  <rect x="44" y="104" width="552" height="428" rx="20" fill="#000" opacity="0.5" filter="url(#mk_shadow)"/>
+  <rect x="44" y="104" width="552" height="428" rx="20" fill="#0d101b"/>
+  <rect x="44" y="104" width="552" height="428" rx="20" stroke="#aeb9f5" stroke-opacity="0.13"/>
+  <rect x="46.5" y="106.5" width="547" height="31" rx="15" fill="#aeb9f5" fill-opacity="0.02"/>
+
+  <!-- 标题栏：窗钮 + 居中「插件市场 · 货架」 -->
+  <circle cx="70" cy="122" r="5.5" fill="#ff5f57"/>
+  <circle cx="87" cy="122" r="5.5" fill="#febc2e"/>
+  <circle cx="104" cy="122" r="5.5" fill="#28c840"/>
+  <text x="320" y="127" text-anchor="middle" font-family="'Microsoft YaHei UI', sans-serif" font-size="11.5" fill="#8a95bd" letter-spacing="4">插件市场 · 货架</text>
+  <line x1="44" y1="138" x2="596" y2="138" stroke="#aeb9f5" stroke-opacity="0.06"/>
+
+  <!-- ===================== 左列 = 侧栏本体 ===================== -->
+  <!-- 搜索（侧栏顶部的 toolbar 视图，输入即过滤） -->
+  <rect x="56" y="150" width="164" height="26" rx="8" fill="#0f1422"/>
+  <rect x="56" y="150" width="164" height="26" rx="8" stroke="#ffffff" stroke-opacity="0.09"/>
+  <circle cx="72" cy="163" r="5" stroke="#8a95bd" stroke-width="1.5" fill="none"/>
+  <line x1="75.5" y1="166.5" x2="79" y2="170" stroke="#8a95bd" stroke-width="1.5" stroke-linecap="round"/>
+  <text x="88" y="167" font-family="'Microsoft YaHei UI', sans-serif" font-size="11" fill="#5d678e">搜索插件…</text>
+
+  <!-- 折叠区①：已安装（展开） -->
+  <text x="58" y="200" font-family="'Microsoft YaHei UI', sans-serif" font-size="11" fill="#aab4d6">已安装</text>
+  <path d="M 200 195 l 4 4 l -4 4" stroke="#7b85ab" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round" transform="rotate(-90 202 199)"/>
+  <g font-family="'Microsoft YaHei UI', sans-serif" font-size="11.5">
+    <rect x="56" y="208" width="164" height="26" rx="6" fill="url(#mk_rowsel)"/>
+    <rect x="56" y="208" width="2.5" height="26" rx="1.25" fill="#7c8cff"/>
+    <rect x="68" y="216" width="11" height="11" rx="3" fill="#7c8cff" fill-opacity="0.8"/>
+    <text x="87" y="224.5" fill="#e6ecfb">编辑器</text>
+    <text x="212" y="224.5" text-anchor="end" fill="#8a95bd" font-family="Consolas, 'JetBrains Mono', monospace" font-size="9">v1.0.8</text>
+
+    <rect x="68" y="242" width="11" height="11" rx="3" fill="#22d3ee" fill-opacity="0.75"/>
+    <text x="87" y="250.5" fill="#c3ccdf">文件树</text>
+    <text x="212" y="250.5" text-anchor="end" fill="#8a95bd" font-family="Consolas, 'JetBrains Mono', monospace" font-size="9">v1.0.6</text>
+
+    <rect x="68" y="268" width="11" height="11" rx="3" fill="#f0a020" fill-opacity="0.75"/>
+    <text x="87" y="276.5" fill="#c3ccdf">串口监视器</text>
+    <rect x="152" y="264" width="60" height="15" rx="7.5" fill="#7c8cff" fill-opacity="0.16"/>
+    <text x="182" y="275" text-anchor="middle" fill="#a8b4f0" font-size="9">可更新 v1.0.8</text>
+  </g>
+
+  <!-- 折叠区②：探索插件（展开）——货架本体 -->
+  <text x="58" y="308" font-family="'Microsoft YaHei UI', sans-serif" font-size="11" fill="#aab4d6">探索插件</text>
+  <path d="M 200 303 l 4 4 l -4 4" stroke="#7b85ab" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round" transform="rotate(-90 202 307)"/>
+  <g font-family="'Microsoft YaHei UI', sans-serif" font-size="11.5">
+    <rect x="68" y="316" width="11" height="11" rx="3" fill="#a78bfa" fill-opacity="0.8"/>
+    <text x="87" y="324.5" fill="#c3ccdf">主题 · 极光玻璃</text>
+    <text x="212" y="324.5" text-anchor="end" fill="#5d678e" font-size="9.5">官方</text>
+
+    <rect x="68" y="346" width="11" height="11" rx="3" fill="#34d399" fill-opacity="0.8"/>
+    <text x="87" y="354.5" fill="#c3ccdf">语言 · 默认语言包</text>
+    <text x="212" y="354.5" text-anchor="end" fill="#5d678e" font-size="9.5">官方</text>
+
+    <rect x="68" y="376" width="11" height="11" rx="3" fill="#f472b6" fill-opacity="0.8"/>
+    <text x="87" y="384.5" fill="#c3ccdf">工具 · Python</text>
+    <text x="212" y="384.5" text-anchor="end" fill="#5d678e" font-size="9.5">官方</text>
+  </g>
+
+  <!-- 折叠区③④：已禁用 / 内置（折叠态） -->
+  <text x="58" y="422" font-family="'Microsoft YaHei UI', sans-serif" font-size="11" fill="#66719a">已禁用</text>
+  <path d="M 200 417 l 4 4 l -4 4" stroke="#5d678e" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="58" y="452" font-family="'Microsoft YaHei UI', sans-serif" font-size="11" fill="#66719a">内置</text>
+  <path d="M 200 447 l 4 4 l -4 4" stroke="#5d678e" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- 侧栏 / 主区 分界 -->
+  <line x1="240" y1="146" x2="240" y2="484" stroke="#aeb9f5" stroke-opacity="0.07"/>
+
+  <!-- ===================== 右列 = 主区（插件详情标签页） ===================== -->
+  <!-- 真·主区标签：插件详情 × -->
+  <text x="256" y="167" font-family="'Microsoft YaHei UI', sans-serif" font-size="11.5" fill="#e6ecfb">插件详情</text>
+  <path d="M 313 160 l 7 7 M 320 160 l -7 7" stroke="#7b85ab" stroke-width="1.4" stroke-linecap="round"/>
+  <line x1="240" y1="178" x2="596" y2="178" stroke="#aeb9f5" stroke-opacity="0.06"/>
+
+  <!-- 详情页头：封面缩略图 + 名称 + 副题 + 版本 + 动作条 -->
+  <rect x="256" y="194" width="64" height="64" rx="11" fill="url(#mk_thumb)"/>
+  <rect x="256" y="194" width="64" height="64" rx="11" stroke="#aeb9f5" stroke-opacity="0.14"/>
+  <g transform="translate(272 210) scale(1.33)" stroke="#cdd5ff" stroke-opacity="0.55" stroke-width="1.2" fill="none" stroke-linejoin="round">
+    <path d="M8 1.6 L14.4 4.8 L8 8 L1.6 4.8 Z"/>
+    <path d="M1.6 4.8 V 11 L 8 14.4 V 8"/>
+    <path d="M14.4 4.8 V 11 L 8 14.4"/>
+  </g>
+
+  <text x="334" y="215" font-family="'Microsoft YaHei UI', sans-serif" font-size="15" fill="#e6ecfb">编辑器</text>
+  <text x="334" y="234" font-family="'Microsoft YaHei UI', sans-serif" font-size="11" fill="#7b85ab">官方 · Monaco 代码编辑器</text>
+  <text x="334" y="252" font-family="Consolas, 'JetBrains Mono', monospace" font-size="10.5" fill="#6f7aa4">v1.0.8</text>
+
+  <rect x="472" y="196" width="110" height="28" rx="9" fill="url(#mk_action)"/>
+  <path d="M 486 210 l 3 3 l 5.5 -6" stroke="#fff" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="540" y="214" text-anchor="middle" font-family="'Microsoft YaHei UI', sans-serif" font-size="11.5" fill="#ffffff">已安装</text>
+  <rect x="472" y="232" width="110" height="26" rx="9" fill="#ffffff" fill-opacity="0.05"/>
+  <text x="527" y="249" text-anchor="middle" font-family="'Microsoft YaHei UI', sans-serif" font-size="11" fill="#9aa5c4">卸载</text>
+
+  <!-- 详情页签：详情（active）｜更改日志 -->
+  <line x1="256" y1="276" x2="580" y2="276" stroke="#aeb9f5" stroke-opacity="0.06"/>
+  <text x="256" y="296" font-family="'Microsoft YaHei UI', sans-serif" font-size="12.5" fill="#e6ecfb">详情</text>
+  <rect x="256" y="302" width="26" height="2.2" fill="#7c8cff"/>
+  <text x="312" y="296" font-family="'Microsoft YaHei UI', sans-serif" font-size="12" fill="#66719a">更改日志</text>
+
+  <!-- README 正文：标题 + 两行 + 随包封面图 -->
+  <text x="256" y="330" font-family="'Microsoft YaHei UI', sans-serif" font-size="13" fill="#e6ecfb"># 编辑器</text>
+  <text x="256" y="352" font-family="'Microsoft YaHei UI', sans-serif" font-size="11.5" fill="#9aa5c4">读的是插件包内的 README.md——装之前也能看，不必先装上。</text>
+  <text x="256" y="370" font-family="'Microsoft YaHei UI', sans-serif" font-size="11.5" fill="#7b85ab">封面图按 README 里的相对路径自动随包，详情页真加载。</text>
+
+  <rect x="256" y="384" width="324" height="62" rx="9" fill="url(#mk_img)"/>
+  <rect x="256" y="384" width="324" height="62" rx="9" stroke="#aeb9f5" stroke-opacity="0.1"/>
+  <rect x="270" y="396" width="70" height="38" rx="5" fill="#ffffff" fill-opacity="0.05"/>
+  <text x="305" y="419" text-anchor="middle" font-family="'Microsoft YaHei UI', sans-serif" font-size="9" fill="#5d678e">封面图</text>
+  <rect x="352" y="398" width="140" height="6" rx="3" fill="#ffffff" fill-opacity="0.1"/>
+  <rect x="352" y="412" width="206" height="5" rx="2.5" fill="#ffffff" fill-opacity="0.06"/>
+  <rect x="352" y="424" width="172" height="5" rx="2.5" fill="#ffffff" fill-opacity="0.06"/>
+
+  <!-- 状态栏 -->
+  <rect x="44" y="484" width="552" height="48" fill="url(#mk_status)"/>
+  <line x1="44" y1="484" x2="596" y2="484" stroke="#aeb9f5" stroke-opacity="0.07"/>
+  <g font-family="'Microsoft YaHei UI', sans-serif" font-size="11" fill="#7b85ab">
+    <text x="66" y="513">装之前能看说明与更新记录 · 装之后能看装的是哪一版</text>
+    <text x="470" y="513" font-family="Consolas, 'JetBrains Mono', monospace" font-size="10.5" fill="#8a95bd">Ctrl Shift X</text>
+  </g>
+</svg>

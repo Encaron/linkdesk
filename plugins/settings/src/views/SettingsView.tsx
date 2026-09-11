@@ -190,9 +190,12 @@ function SettingsView({ isActive: _isActive, tabId }: SettingsViewProps) {
 
           <div className="settings-body">
             {/* 左侧分组树 */}
+            {/* 🔴 本组「加载中…」的省略号必须是 U+2026（单字符 …）——三点写法只存在于
+                marketplace 的字典里，靠它活着等于「卸载 marketplace 后本句在英文模式露中文」
+                （E6#92d B-i18n-2）。改任何一句加载文案前先确认字符是 U+2026。 */}
             <nav className="settings-nav">
               {!dataLoaded && groupsRaw.length === 0 ? (
-                <div className="settings-nav-empty">{t("加载中...")}</div>
+                <div className="settings-nav-empty">{t("加载中…")}</div>
               ) : (
                 <>
                   {filteredGroups.map((g) => (
