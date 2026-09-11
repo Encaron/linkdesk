@@ -1,36 +1,20 @@
 /**
- * 串口监视器控制面板——一行命令条。
- * Phase 5.5c Step C3：toolbar.tsx → ControlPanel.tsx（COM/波特率/帧格式 + 连接操作）。
+ * 控制面板接线——E6#87b 从 components/ControlPanel.tsx 搬出（只搬不改）。
  *
- * 对标 VS Code 串口监视器面板的 shell 选择器——每标签页自包含。
- *
- * E5.8#30.17（mockup 终态命令条 = 状态点 + COM + 波特率✎ + 8N1 + 校验 + spacer + 断开）：
- *   协议下拉已删；波特率改壳通用 Combobox（候选快捷 + 手输任意非标值）；
- *   8N1（数据位/停止位组合）+ 校验独立选择器——openPort 时透传 dataBits/stopBits/parity。
+ * 覆盖：per-tab 连接派生 / 帧格式·握手信号派生 / 四个改口动作 + 开关动作 / 显示值回退。
  *
  * 硬规则（§3.12）：
- *   port/baudRate/帧格式（8N1/校验） → 本文件
+ *   port/baudRate/帧格式（8N1/校验） → 本 hook
  *   connected → SerialContext 派生（不独立 set）
- *   ❌ 不碰编码/时间戳/回显等 12 项设置——那些的唯一入口在 sidebar.tsx
+ *   ❌ 不碰编码/时间戳/回显等 12 项设置——那些的唯一入口在 sidebar
  */
 
-import { useTranslation } from "react-i18next";
 import { useCallback, useEffect, useMemo } from "react";
-import { useSerialContext, getOpenPorts, type SerialFrame, type HandshakeState } from "../services/SerialContext";
-// E6#54c：共享控件走 @linkdesk/ui（SelectBox 下拉 + Combobox 可输入下拉 E5.8#30.17 候选快捷 + 手输非标波特率）
-import { Combobox, SelectBox } from "@linkdesk/ui";
-import { useSession } from "../hooks/useSerialSessions";
-import "../styles/ControlPanel.css";
+import { useTranslation } from "react-i18next";
+import { useSerialContext, getOpenPorts, type SerialFrame, type HandshakeState } from "../../services/SerialContext";
+import { useSession } from "../../hooks/useSerialSessions";
 
-const BAUD_RATES = [
-  "9600", "19200", "38400", "57600", "115200",
-  "230400", "460800", "921600",
-];
-
-// E5.8#30.17：8N1 = 数据位/停止位组合选择器（常见组合 8/7 数据位 × 1/2 停止位）
-const FRAME_FORMATS = ["8N1", "8N2", "7N1", "7N2"];
-
-function ControlPanel({ sourceId }: { sourceId?: string }) {
+export function useControlPanel(sourceId?: string) {
   const { t } = useTranslation();
   const { state, actions } = useSerialContext();
   const { ports } = state;
@@ -146,65 +130,9 @@ function ControlPanel({ sourceId }: { sourceId?: string }) {
     : "";
   const baudRate = activeSession?.baudRate ?? "115200";
 
-  return (
-    <div className="control-bar">
-      {/* 连接状态点 */}
-      <span className={`control-dot${connected ? " on" : ""}`} />
-
-      {/* COM 口下拉框——打开时自动刷新端口列表（USB 热插拔即时更新） */}
-      {/* E5.8#29（S14）：disabled={connected} 而非 isOpen——isOpen 是共享投影口状态，另一标签页
-          开口会禁用本标签页换口；本会话口已开才禁用（per-tab 精确） */}
-      <SelectBox
-        value={portName}
-        options={ports.map((p) => ({ value: p.name, label: p.name }))}
-        onChange={handlePortChange}
-        onOpen={refreshPorts}
-        disabled={connected}
-        placeholder={t("无可用串口")}
-      />
-
-      <span className="control-sep" />
-
-      {/* 波特率——E5.8#30.17（审视 ④）壳通用 Combobox：候选快捷 + 手输任意非标值 */}
-      <Combobox
-        value={baudRate}
-        options={BAUD_RATES}
-        onChange={handleBaudChange}
-        title={t("波特率")}
-        inputMode="numeric"
-      />
-
-      <span className="control-sep" />
-
-      {/* 8N1——数据位/停止位组合选择器（E5.8#30.17） */}
-      <SelectBox
-        value={frameFormat}
-        options={FRAME_FORMATS}
-        onChange={handleFrameChange}
-        title={`${t("数据位")}/${t("停止位")}`}
-        className="control-select-narrow"
-      />
-
-      {/* 校验位——独立选择器（E5.8#30.17）：无/奇/偶 */}
-      <SelectBox
-        value={frame.parity}
-        options={parityOptions}
-        onChange={handleParityChange}
-        title={t("校验")}
-      />
-
-      <span className="control-spacer" />
-
-      {/* 连接/断开按钮 */}
-      <button
-        className={`control-connect-btn${connected ? " connected" : ""}`}
-        onClick={handleToggleOpen}
-        disabled={!activeSession}
-      >
-        {connected ? t("断开") : t("打开")}
-      </button>
-    </div>
-  );
+  return {
+    t, ports, refreshPorts, connected, hasSession: activeSession !== null,
+    frame, frameFormat, parityOptions, portName, baudRate,
+    handlePortChange, handleBaudChange, handleFrameChange, handleParityChange, handleToggleOpen,
+  };
 }
-
-export default ControlPanel;

@@ -58,7 +58,7 @@ const EXEMPT_FILES = [
     reason: "强调色预设 swatches 配置数据（COLOR_PICKER_PRESETS）",
   },
   {
-    path: "plugins/serial-monitor/src/hooks/useSerialSessions.ts", // 2026-09-05 塌平单根（原 plugins/user/serial-monitor）
+    path: "plugins/serial-monitor/src/hooks/useSerialSessions/types.ts", // E6#87b 随文件搬家改路径（原 plugins/serial-monitor/src/hooks/useSerialSessions.ts，2026-09-05 塌平单根前为 plugins/user/serial-monitor）
     reason: "串口 session 色板配置数据（SESSION_COLORS 预设）",
   },
   {
