@@ -37,11 +37,14 @@
  *      AI 自洽性论证盖过用户原话。）停摆期间的产物（notifyAutoPaused + 勾选框「暂不生效」文案）已随本次删除。
  *   - auto 候选 = `selectAutoCandidates`（meta.autoUpdate===true 且未钉版本；§二·九 pinnedVersion 停旧版
  *     → 跳过，尊重手动意图）。**不推「有新版本」铃铛**——auto 已代劳，再推 = 同一件事说两遍。
+ *     🔴 E6#83（2026-09-11 用户拍板）：**钉与开关互斥**——勾开关那一下先撤钉（`enableAutoUpdateAndRun`）。
+ *     故本闸此后只拦「钉还在、开关从没勾过」这一类（= 用户就是要停在旧版，正确拦）；不会拦到刚勾完的插件。
  *   - 执行 = 串行跑引擎 update，url 走稳定版寻址（versionDownloadUrl——§二·四 auto 只看稳定版，beta 不自动装）。
  *   - **成功 → 发一条汇总通知**（E6#79 用户拍板「装完发一条通知告诉我」）：单个点名到版本，多个给条数 + 头几个
  *     名字（同 updateBellMessage 结构）。静默装完会让用户回来发现「版本变了、但不知道是谁动的手」。
  *   - **失败 → 候选保留**（「可更新」徽标仍在，下次发现 / 手动重试）+ 发一条汇总告知：失败比成功更需要用户知道。
- *   - 勾选开 = DetailView 立即 `runAutoUpdateIfDue`（**候选就地现算，不读 store**——见该函数头注 E6#81）。
+ *   - 勾选开 = DetailView 立即 `enableAutoUpdateAndRun`（**先清钉、再跑**——E6#83，见该函数头注；其内部
+ *     候选**就地现算，不读 store**——见 `runAutoUpdateIfDue` 头注 E6#81）。
  *   - G6：插件标签页开着也照常 stage + 替换 + 重启生效（引擎 needRestart 恒 true——原子替换已证开着也能成，§二·七）。
  *
  * 输出：**本模块不存发现结果**（E6#81 第④处，2026-09-11 拆除）。
@@ -69,6 +72,7 @@ import {
   noteNotifiedVersion,
   patchUpdateMeta,
   readUpdateMetaMap,
+  setPinnedVersion,
 } from "./installedUpdateMeta";
 import type { InstalledUpdateMetaMap } from "./installedUpdateMeta";
 
@@ -396,6 +400,25 @@ export async function runAutoUpdateIfDue(pluginId: string): Promise<boolean> {
   const ok = await applyEngineAutoUpdate(c);
   notifyAutoResult(ok ? [c] : [], ok ? [] : [c]);
   return ok;
+}
+
+/** 🔴 E6#83（2026-09-11 用户拍板）——勾上「自动更新」的**完整落地动作**：**先清钉，再跑**。
+ *
+ *  为什么清钉（两条意愿互斥，判给开关赢）：`pinnedVersion`（版本下拉挑旧版时记下）= 「别给我升」，
+ *  `autoUpdate`（勾选框）= 「有新版本就自动装上」——**同一条意愿的两个方向，不可能同时为真**。此前只记开关
+ *  不动钉 ⇒ 钉**静默**压过开关：用户降级 → 勾上 → 关软件重开 → 什么都没发生，界面一个字不解释
+ *  （2026-09-11 用户实机报障；E6#82 修的是「那趟检查只跑一次」，本条是「检查跑到了却被一条看不见的记录拦住」，
+ *  两码事——同一个症状，两个病根）。判给开关赢：它**更晚、更直白**，且**它自己的说明文字就是这么承诺的**
+ *  （勾选框 title：「勾选后自动更新——有新版本就自动装上，装完发通知告诉你」）——软件得说到做到。
+ *
+ *  ⚠️ **只清钉，不给 auto 门开后门**：清完仍走原样的 `runAutoUpdateIfDue` → `selectAutoCandidates`
+ *  （autoUpdate on + **未钉版本**）。先把「未钉」这一半做真，再让判定照原样跑——判定规则一条没改。
+ *
+ *  （反过来的方向**不成立**：挑旧版**不**去关开关。挑版本是「这一版我要装」，关开关才是「以后都别自动升」——
+ *  两件事，且降级时把用户显式勾的意愿悄悄抹掉是同一类错。） */
+export async function enableAutoUpdateAndRun(pluginId: string): Promise<boolean> {
+  await setPinnedVersion(pluginId, null);
+  return runAutoUpdateIfDue(pluginId);
 }
 
 /** 汇总里最多点几个名字——多了只留条数（面板一行读得完；完整名单在各列表页的可更新徽标上） */

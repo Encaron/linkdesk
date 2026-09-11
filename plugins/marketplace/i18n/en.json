@@ -130,6 +130,8 @@
   "重试更新": "Retry Update",
   "自动更新": "Auto-update",
   "勾选后自动更新——有新版本就自动装上，装完发通知告诉你": "Updates this plugin automatically once ticked — new versions install on their own and you get a notification when it's done",
+  "已停在 {{version}}": "Pinned to {{version}}",
+  "你从版本下拉里挑了 {{version}}，自动更新会跳过它——勾上「自动更新」或在下拉里选最新版即可解除": "You picked {{version}} from the version list, so auto-update skips this plugin — tick \"Auto-update\" or pick the latest version from the list to release it",
   "「{{name}}」已自动更新到 {{version}}": "\"{{name}}\" was updated automatically to {{version}}",
   "{{num}} 个插件已自动更新：{{names}}": "{{num}} plugins were updated automatically: {{names}}",
   "「{{name}}」自动更新失败——可在插件详情点「更新」重试。": "Auto-update failed for \"{{name}}\" — open its details and click Update to retry.",

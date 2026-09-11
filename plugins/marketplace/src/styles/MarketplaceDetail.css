@@ -343,6 +343,20 @@
   cursor: default;
 }
 
+/* 🔴 E6#83：「已停在 vX」说明件——`pinnedVersion` 的唯一可见面。与 .mpd-auto-upd 同排尾随（两条会打架的
+ *  意愿并排），故视觉取同一族 token（--font-size-sm + --text-secondary），**零新色零新尺**。
+ *  非按钮状态件：纯说明不可点（解钉走勾开关 / 下拉选最新版），不给一个按不动的按钮（同 .mpd-blocked-chip 判据）。 */
+.mpd-pinned-note {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  white-space: nowrap;
+  user-select: none;
+  cursor: default;
+}
+
 /* ═══ NavBar ═══ */
 
 .mpd-navbar {

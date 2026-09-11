@@ -28,6 +28,7 @@ import {
   selectAutoCandidates,
   selectMetaEvictions,
   runAutoUpdateIfDue,
+  enableAutoUpdateAndRun,
   __resetUpdateDiscovery,
 } from "../services/updateDiscovery";
 import type { DiscoveryPlan, InstalledSnapshot, UpdateCandidate } from "../services/updateDiscovery";
@@ -805,6 +806,73 @@ describe("runAutoUpdateIfDue（#33d DetailView 勾选即跑）", () => {
     expect(update).toHaveBeenCalledTimes(1);
     expect(show).toHaveBeenCalledTimes(1);
     expect(show).toHaveBeenCalledWith(expect.any(String), { type: "warning", source: "marketplace" });
+  });
+});
+
+/* ═══ E6#83（2026-09-11 用户拍板）：勾「自动更新」= 同时撤掉「停在旧版」 ═══ */
+
+describe("enableAutoUpdateAndRun（E6#83 勾开即清钉）", () => {
+  let fetchSpy: ReturnType<typeof vi.fn>;
+
+  function okCatalogFetch(plugins: CatalogEntry[]): void {
+    fetchSpy = vi.fn(async (url: string) => {
+      if (url === OFFICIAL_SOURCE_URL) return catalogText(...plugins);
+      throw new Error("unexpected url " + url);
+    });
+    __setCatalogIO(fetchSpy as unknown as FetchFn, memStorage());
+  }
+
+  beforeEach(() => {
+    __setCatalogIO(null, null);
+    __setMetaStore(null);
+    __resetUpdateDiscovery();
+    Reflect.deleteProperty(window, "linkdesk");
+  });
+  afterEach(() => {
+    __setCatalogIO(null, null);
+    __setMetaStore(null);
+    Reflect.deleteProperty(window, "linkdesk");
+  });
+
+  it("🔥 回归（E6#83）：已钉旧版 + 勾开自动 → 撤钉并当场真装 + 告知（旧行为必红：钉仍在 ⇒ 只记账不装）", async () => {
+    // 用户实机路径（2026-09-11）：下拉挑着装 0.1.0（记 pin）→ 勾「自动更新」→ 关软件重开 → **什么都没发生**，
+    //   而勾选框自己的 title 写的是「勾选后自动更新——有新版本就自动装上，装完发通知告诉你」。
+    //   本用例断言的就是勾那一下**真的装上**——两条意愿打架时开关赢（用户拍板），且钉必须**真的被撤掉**
+    //   （不是这一次绕过它：绕过 = 下次发现循环照旧被拦，症状换个地方复发）。
+    __setMetaStore(metaStore({ "demo-alpha": { autoUpdate: true, pinnedVersion: "1.0.0" } }));
+    const update = vi.fn<EngineUpdate>(async () => ({ success: true }));
+    const { show } = stubWindow({ enabled: [enabled("demo-alpha", "1.0.0", "Alpha")], update });
+    okCatalogFetch([catEntry("demo-alpha", "2.0.0")]);
+
+    expect(await enableAutoUpdateAndRun("demo-alpha")).toBe(true);
+    expect(update).toHaveBeenCalledTimes(1);
+    expect(update.mock.calls[0][0]).toBe("demo-alpha");
+    const m = (await readUpdateMetaMap())["demo-alpha"];
+    expect(m?.pinnedVersion).toBeUndefined(); // 钉已撤——不是「这次绕过」，是记录本身没了
+    expect(m?.autoUpdate).toBe(true); // 用户勾的意愿照留
+    expect(show).toHaveBeenCalledTimes(1); // 装完了必须说
+  });
+
+  it("清钉之后**仍走原样的 auto 门**（E6#83）：开关没勾 ⇒ 清钉也不装（不替用户动文件）", async () => {
+    // 防后来者把本函数当成「绕过 selectAutoCandidates 的后门」——它只把「未钉」这一半做真，判定规则一条没改。
+    __setMetaStore(metaStore({ "demo-alpha": { pinnedVersion: "1.0.0" } })); // 钉在、开关**没**勾
+    const update = vi.fn<EngineUpdate>(async () => ({ success: true }));
+    const { show } = stubWindow({ enabled: [enabled("demo-alpha", "1.0.0", "Alpha")], update });
+    okCatalogFetch([catEntry("demo-alpha", "2.0.0")]);
+
+    expect(await enableAutoUpdateAndRun("demo-alpha")).toBe(false);
+    expect(update).not.toHaveBeenCalled();
+    expect(show).not.toHaveBeenCalled();
+  });
+
+  it("方向不对称（E6#83）：挑旧版只记钉，**不**去动用户的「自动更新」开关", async () => {
+    // 挑版本 = 「这一版我要装」；关开关 = 「以后都别自动升」。两件事——降级时把用户显式勾的意愿悄悄抹掉，
+    //   与「钉静默压过开关」是同一类错，只是方向反过来。
+    __setMetaStore(metaStore({ "demo-alpha": { autoUpdate: true } }));
+    await setPinnedVersion("demo-alpha", "1.0.0"); // 降级落地（DetailView 版本动作同款记账）
+    const m = (await readUpdateMetaMap())["demo-alpha"];
+    expect(m?.pinnedVersion).toBe("1.0.0");
+    expect(m?.autoUpdate).toBe(true);
   });
 });
 

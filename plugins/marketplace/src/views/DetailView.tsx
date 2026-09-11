@@ -58,7 +58,7 @@ import {
   defaultVersionPick,
   versionActionTarget,
 } from "../services/marketCatalog";
-import { runAutoUpdateIfDue } from "../services/updateDiscovery";
+import { enableAutoUpdateAndRun } from "../services/updateDiscovery";
 import { readPluginUpdateMeta, setAutoUpdate, setPinnedVersion } from "../services/installedUpdateMeta";
 // E6#69c/#69f：详情展示位 = marketIcon ?? icon ?? 默认彩色块——走共享 pickIdentityArt（@linkdesk/ui 单一实现，
 // 列表/详情同裁决，顶替旧 display.ts pickDisplayArt + #66 640 场景默认；恒返有效 descriptor 零分支）
@@ -170,6 +170,11 @@ export default function DetailView({ pluginId }: DetailContributedProps) {
   const [appVersion, setAppVersion] = useState<string | undefined>(undefined);
   /* E6#33d 自动更新勾选状态——installedUpdateMeta.autoUpdate（Opt-IN 默认关，只存 true；见下方读 effect） */
   const [autoOn, setAutoOn] = useState(false);
+  /* 🔴 E6#83：installedUpdateMeta.pinnedVersion——「停在旧版」这条记录**此前界面零可见面**。2026-09-11
+   *  实机报障：用户手动降级（下拉挑旧版）记下这条钉 → 勾「自动更新」→ 关软件重开 → **什么都没发生**，
+   *  而勾选框 tooltip 明明写着「勾选后自动更新——有新版本就自动装上」。两条自己下的指令打架、后者静默获胜
+   *  且不留痕 ⇒ 本条 state 只为一件事：**把它显示出来**（不知情就不可能有选择）。 */
+  const [pinnedVer, setPinnedVer] = useState<string | undefined>(undefined);
 
   /* 壳版本号拉取（一次性、模块生命周期无关——非 IPC 监听，useEffect 安全） */
   useEffect(() => {
@@ -347,10 +352,14 @@ export default function DetailView({ pluginId }: DetailContributedProps) {
   }, [pluginId, entry?.id, installed, updateTarget, localVer]);
 
   /* #33d 自动更新勾选初值读——切插件/已装态锚变即重读收敛（记账/自动更新兜底）；
-   *  G2 只在已装态渲染（autoUpdateToggle），未装/挂起不渲染但 anchor 变仍复位为 false。 */
+   *  G2 只在已装态渲染（autoUpdateToggle），未装/挂起不渲染但 anchor 变仍复位为 false。
+   *  🔴 E6#83：同一趟**顺手读 pinnedVersion**（同一条 meta 记录的两个字段，不另开一次 IPC）——它决定
+   *  「已停在 vX」那枚说明件显不显示。deps 补 `localVer`：钉随版本动作落地而变（升到最新清钉 / 降级记钉），
+   *  版本一动就该重读，否则说明件停在旧值上又是一个「快照遮蔽真值」（[[snapshot-shadows-truth-bug-class]]）。 */
   useEffect(() => {
     let alive = true;
     setAutoOn(false);
+    setPinnedVer(undefined);
     const id = pluginId ?? "";
     if (!id || !installed) {
       return () => {
@@ -358,12 +367,14 @@ export default function DetailView({ pluginId }: DetailContributedProps) {
       };
     }
     void readPluginUpdateMeta(id).then((m) => {
-      if (alive) setAutoOn(m.autoUpdate === true);
+      if (!alive) return;
+      setAutoOn(m.autoUpdate === true);
+      setPinnedVer(m.pinnedVersion);
     });
     return () => {
       alive = false;
     };
-  }, [pluginId, installed]);
+  }, [pluginId, installed, localVer]);
 
   useEffect(() => {
     let alive = true;
@@ -444,7 +455,19 @@ export default function DetailView({ pluginId }: DetailContributedProps) {
       if (!pluginId || busy || updating) return;
       setAutoOn(on); // 乐观翻转——读/记账失败的兜底由上方 effect（锚变）重读收敛
       await setAutoUpdate(pluginId, on);
-      if (on) await runAutoUpdateIfDue(pluginId); // 勾开即跑一趟（真执行；结果由该模块发通知）
+      if (!on) return;
+      /* 🔴 E6#83（2026-09-11 用户拍板）——**勾上「自动更新」= 同时撤掉「停在旧版」**。
+       *
+       *  这两条是**同一条意愿的两个方向**，不可能同时为真：钉 =「别给我升」，开关 =「有新版本就自动装上」
+       *  （勾选框自己的 title 原话）。此前只记开关、不动钉 ⇒ 钉**静默**压过开关：用户降级 → 勾上 → 关软件
+       *  重开 → 什么都没发生，界面一个字不解释（实机报障，E6#82 修完仍原样复现——那次修的是「检查只跑一趟」，
+       *  这次是「检查跑到了却被一条看不见的记录拦住」，两码事）。
+       *  判给开关赢的理由：① 它是**更晚、更直白**的那次表态；② 它自己的说明文字就是这么承诺的——软件得说到
+       *  做到；③ 钉此前**零可见面**（本轮补上），用户不知道它存在，不该由一条看不见的记录替用户做主。
+       *  ⚠️ 只清钉、不绕过 auto 门——`runAutoUpdateIfDue` 仍走 `selectAutoCandidates`（autoUpdate on +
+       *  未钉版本）：先把「未钉」这一半做真，再让判定照原样跑，不给现算开第二条后门。 */
+      setPinnedVer(undefined); // 乐观——说明件立刻消失（不够时的兜底 = 上面 effect 锚变重读）
+      await enableAutoUpdateAndRun(pluginId); // 清钉 + 勾开即跑一趟（真执行；结果由该模块发通知）
     },
     [pluginId, busy, updating],
   );
@@ -832,6 +855,24 @@ export default function DetailView({ pluginId }: DetailContributedProps) {
     </label>
   ) : null;
 
+  /* 🔴 E6#83：「已停在 vX」说明件——`pinnedVersion` 的**唯一可见面**（此前零显示，见 state 处注释）。
+   *  同 row2 与自动更新勾并排：那两条正是会打架的两条意愿，摆在一起用户一眼能看出彼此关系；勾上开关即清钉、
+   *  这枚件随之消失（可见的因果反馈）。
+   *  设计（硬约束 16 已走 design skill）：**非按钮状态件**——纯说明、不可点，解钉的两条正路是勾开关或在下拉里
+   *  选最新版，不给一个按不动的按钮（同 `.mpd-blocked-chip` 判据）。视觉复用 `.mpd-auto-upd` 同族 token
+   *  （`--font-size-sm` + `--text-secondary`），零新色零新尺零新字号。挂起/未装不渲染（钉是已装条目属性）。 */
+  const pinnedNote = installed && !pending && pinnedVer !== undefined ? (
+    <span
+      className="mpd-pinned-note"
+      title={t("你从版本下拉里挑了 {{version}}，自动更新会跳过它——勾上「自动更新」或在下拉里选最新版即可解除", {
+        version: `v${pinnedVer}`,
+      })}
+    >
+      <span className="codicon codicon-pin" />
+      {t("已停在 {{version}}", { version: `v${pinnedVer}` })}
+    </span>
+  ) : null;
+
   /* ── #63c B3 元数据侧栏分组内容（mockup 04 定稿——顶部无节题小段 标识符/作者/版本/大小 + 组
    *  市场/类别/资源/依赖·环境；结构全插件固定——行值无数据给 Dash（—）占位不缩结构、空组不渲染；
    *  分类 = 每枚 chip 并排；字段集全保留不精简（用户 2026-09-09 拍板）。IIFE 只为局部变量作用域收拢。 ── */
@@ -1073,8 +1114,15 @@ export default function DetailView({ pluginId }: DetailContributedProps) {
             )}
           </div>
 
-          {/* #33d 自动更新勾选（row2 副控制——mockup 01 .pdva-acts row2 L849-851；G2：已装且非挂起才渲染） */}
-          {autoUpdateToggle}
+          {/* #33d 自动更新勾选（row2 副控制——mockup 01 .pdva-acts row2 L849-851；G2：已装且非挂起才渲染）
+           *  E6#83：同 row 尾随「已停在 vX」说明件——两条会打架的意愿并排（`.mpd-acts-row` 自带 wrap 兜底，
+           *  窄栏换行不掉版式）。两者皆空则整行不渲染，不留空行。 */}
+          {autoUpdateToggle || pinnedNote ? (
+            <div className="mpd-acts-row">
+              {autoUpdateToggle}
+              {pinnedNote}
+            </div>
+          ) : null}
         </div>
       </header>
 
