@@ -209,7 +209,7 @@ npm run build                  索引所有插件                 点"安装"
 | Extension Host 独立进程 | 单 WebView pre-bundle（多 WebView 零改动复用） |
 | `package.nls.json` 本地化 | `i18n/en.json`——每插件自带翻译 |
 | `package.json` contributes | `plugin.json` contributes——已有 ✅ |
-| VS Code 官网下载页 | linkdesk.io/download |
+| VS Code 官网下载页 | GitHub Releases 下载入口（🔴 2026-09-11 用户拍板：不做独立官网/不买域名，见 [05-文档与发布/02-发布流水线.md](05-文档与发布/02-发布流水线.md) §二） |
 
 ---
 
@@ -241,7 +241,7 @@ npm run build                  索引所有插件                 点"安装"
 ❌ installed-plugins.json——已安装插件记录
 ❌ 生产构建验证——npm run electron:build → 可安装 .exe → 全功能正常
 ❌ CI 自动构建发布——GitHub Actions
-❌ 官网下载页——linkdesk.io/download
+❌ 下载入口——GitHub Releases（🔴 2026-09-11 改向：不自建官网/不买域名）
 ❌ 插件开发完整文档
 ❌ 测试插件（覆盖侧栏/标签栏/右键/快捷键/i18n）
 ❌ E5#111, E5#114, E5#118, E5#119, E5#120（E5 收尾剩余 6 项——E5#112-#113 已移至 E6）

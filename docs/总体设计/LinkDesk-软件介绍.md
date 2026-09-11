@@ -653,6 +653,11 @@ preload 暴露面 poolExposed satisfies PoolExposed  ← 编译期钉死，缺�
   开发者指南 + CI + 官网上线 + Shell 集成 + 多窗口       E6#40-#47（8 任务）
 ```
 
+> 🔴 **2026-09-11 订正（上图写于 2026-08-20，两处已不成立——数别照抄）**：
+> ① **「官网上线」整条作废**——用户拍板「**不要自己的官网了，GitHub 暂时用着**」⇒ 下载入口落在 GitHub Releases（详见 §第 5 层 #43）。
+> ② **第 4 层 6 → 5 任务、第 5 层 8 → 23 任务**（口径见 `E6-执行清单.md` 表底注）——**E6#37（构建安装包）自第 4 层迁入第 5 层**，用户拍板「所有做完之后统一再新建一个插件」+「把第四、五层耦合的那个任务放在第五层做」⇒ **第 4 层改到最后做**。
+> ③ 上图其余编号（第 2/3 层）**也是当时的旧号**，与现行清单对不上；**现行层结构以 [E6-执行清单.md](../02-Electron架构/E6_插件生态与发布/E6-执行清单.md) 为准**（本档是 2026-08-20 快照，不逐条追改）。
+
 ### 各层关键任务
 
 **第 1.1 轮——@linkdesk/plugin-sdk（对标 `@types/vscode`）：**
@@ -702,7 +707,7 @@ preload 暴露面 poolExposed satisfies PoolExposed  ← 编译期钉死，缺�
 **第 5 层——文档与发布：**
 - E6#39-#40：插件开发指南 + API 类型文档——从零到发布的完整文档
 - E6#41：CI 自动构建——GitHub Actions → push `electron` 分支 → `npm ci` → `npm run check` → `npm run electron:build` → 上传 GitHub Releases
-- E6#42：官网下载页——linkdesk.io/download
+- ~~E6#42：官网下载页——linkdesk.io/download~~ → 🔴 **2026-09-11 用户拍板改向：不做独立官网、不买域名，下载入口落在 GitHub Releases**（本行原写于 2026-08-20，编号为当时的旧号，现状见 `E6-执行清单.md` §第 5 层 #43）
 - E6#43：发布清单——每版照着勾
 - E6#44-#46：Windows Shell 集成 + 多窗口。文件关联（`.txt/.py/.js/.json/.md/.html/.css/.ts/.tsx`）、右键菜单（文件夹 + 文件夹空白处）、命令行 intake、同进程多 BrowserWindow + 独立 workspace
 
@@ -719,7 +724,7 @@ preload 暴露面 poolExposed satisfies PoolExposed  ← 编译期钉死，缺�
 | `package.json` contributes | `plugin.json` contributes——已有 ✅ |
 | Shell 集成（右键菜单 + 文件关联） | NSIS 注册表 + `electron-builder.yml` fileAssociations |
 | 多窗口 | 同进程多 BrowserWindow + 独立 workspace |
-| VS Code 官网下载页 | linkdesk.io/download |
+| VS Code 官网下载页 | GitHub Releases 下载入口（🔴 2026-09-11 拍板：不做独立官网/不买域名，原写 `linkdesk.io/download`） |
 
 ---
 
