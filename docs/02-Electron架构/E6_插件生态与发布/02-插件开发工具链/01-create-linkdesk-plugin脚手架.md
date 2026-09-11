@@ -3,6 +3,9 @@
 > 🔵 **非新能力（2026-09-05 塌平收编）**：本次改动仅插件目录塌平单根（`plugins/builtin|user` → `plugins/<id>`）参照路径文本同步，零新增 `window.linkdesk.*` / `contributes.*` 面。塌平决策见 [09-插件目录塌平决策.md](../01-插件独立构建/09-插件目录塌平决策.md)。
 > 🔵 **非新能力（2026-09-11，E6#94 template v2）**：本轮只改**模板形状**（多几个文件、少一行字段、文案换写法），**不新增任何壳 API / 不新增 contribute 贡献点**——文中出现的 `contributes.*` 全是「引用既有贡献点做对照」。判据见 [插件规范化层/05-脚手架换代](../插件规范化层/05-脚手架换代.md)。
 
+> 🔵 **非新能力（2026-09-11，E6#95c/#95e 门禁与发布）**：模板形状**由 `scripts/check-scaffold.mjs` 8 条断言守**（§七·五），
+> 本包**进了 npm 发布基线**（§七）——**同样零新增壳 API / 零新增贡献点**。执行期实测发现并修掉两件真事故：**模板 `gitignore` 改名防 npm 丢弃**（§九.5）、**补本包 `.npmrc` 防发布落镜像源**（§七 坑①）。
+
 > 对应任务：E6#21-#23，**template v2 = E6#94（2026-09-11）**。对标 `yo code`（VS Code Extension Generator）。
 > ⚠️ 2026-08-30 第 2.1 轮审视：§四 模板 plugin.json 原为 E5.6 schema，已按 E5.8 实测换代（见 §八）。
 > 插件作者打一行命令 → 获得完整的插件项目骨架。
@@ -43,11 +46,12 @@ packages/create-linkdesk-plugin/
   ├── package.json         # name: "create-linkdesk-plugin", "bin": { "create-linkdesk-plugin": "./index.js" }
   ├── index.js             # CLI 入口（ESM，纯 Node.js 零依赖）
   ├── README.md            # 用法 + 生成物说明
+  ├── .npmrc               # 🔴 **无作用域的包必须直改默认源**（见 §七），不能照抄 scoped 那三份
   └── template/            # 模板文件（{{pluginName}} / {{displayName}} / {{author}} / {{date}} 占位符）
       ├── plugin.json            # JSONC 清单——E5.8 schema，逐字段注释分节（**不写 pluginId**，见 §九.1）
       ├── package.json           # scripts: dev / dev:real / build / publish / validate / lint
       ├── tsconfig.json          # jsx: react-jsx + types 引 @linkdesk/plugin-sdk + strict
-      ├── .gitignore             # node_modules / dist / *.linkdesk-plugin
+      ├── gitignore              # 🔴 **无点**——CLI 生成时改名成 .gitignore（npm 会丢 .gitignore，见 §九.5）
       ├── README.md              # 说明——市场「详情」页签数据源 + **目录契约表**
       ├── CHANGELOG.md           # 更新日志——市场「更改日志」页签数据源（段标题 `## v<版本>（日期）`）
       ├── .vscode/settings.json  # files.associations: plugin.json → jsonc（**带三行注释说明为什么**）
@@ -241,13 +245,16 @@ export default function HelloPlugin(_props: { isActive?: boolean; tabId?: string
 }
 ```
 
-**.gitignore**（v2 新增——官方插件 0/20 有这文件，因为它们是 monorepo 构建、走仓根 `.gitignore`；**第三方作者是独立仓，必须自带**）：
+**gitignore → 生成物 `.gitignore`**（v2 新增——官方插件 0/20 有这文件，因为它们是 monorepo 构建、走仓根 `.gitignore`；**第三方作者是独立仓，必须自带**）：
 
 ```gitignore
 node_modules/
 dist/
 *.linkdesk-plugin
 ```
+
+> 🔴 **模板里这份文件必须叫 `gitignore`（不带点）**——npm 打包会**恒定丢弃**名为 `.gitignore` 的文件，
+> 作者从货架装脚手架就会拿到一个**没有 `.gitignore` 的工程**。详见 **§九.5**（含实测取证）。
 
 **.vscode/settings.json**（v2：**保留配置 + 补三行注释说明为什么**——v1 一句话都没写，作者看不懂会顺手删掉，然后被红波浪线折磨一天）：
 
@@ -288,7 +295,8 @@ dist/
 ```bash
 cd packages/create-linkdesk-plugin
 npm whoami --registry=https://registry.npmjs.org   # = fengyili（不带 --registry 会假报未登录）
-npm publish                                        # 走 .npmrc 的 per-scope 路由，无需再传 --registry
+npm config get registry                            # 🔴 必须 = https://registry.npmjs.org/（见下方坑 ①）
+npm publish                                        # 走本目录 .npmrc，无需再传 --registry
 ```
 
 npm 自动识别 `create-*` 前缀包名为 `npm create` 的别名：
@@ -296,9 +304,29 @@ npm 自动识别 `create-*` 前缀包名为 `npm create` 的别名：
 
 无需额外配置。
 
-> ⚠️ **子包发布的两个坑（本仓已踩）**：① npm **只读当前目录的 `.npmrc`、不向上递归** ⇒ 每个可发布子包都要自带一份 per-scope 路由（`plugin-sdk/` 有、`create-linkdesk-plugin/` 无 scoped 依赖故无碍）；② 发布**已改异步**——CLI 打印 `+ pkg@version` 时包可能还没上架，中途重发吃 `E409 …previously staged version`。
+> ⚠️ **子包发布的三个坑（本仓已踩）**：
+> ① 🔴 **npm 只读当前目录的 `.npmrc`、不向上递归** ⇒ 每个可发布子包都要自带一份源路由。
+>    **本包是**无作用域**包——不能用 `@linkdesk:registry=` 那条，必须直改默认源 `registry=https://registry.npmjs.org/`**。
+>    **E6#95e 执行期实测事故**：本目录原先**没有** `.npmrc`（旧记「无 scoped 依赖故无碍」是**错的**——不设它就会落到
+>    用户级默认源 `registry.npmmirror.com`，**镜像只读、发不上去**）。已补 `packages/create-linkdesk-plugin/.npmrc`。
+>    **照抄规则**：有作用域 → `@linkdesk:registry=…`；**无作用域 → `registry=…`**——照抄错那种照样发错。
+>    **判据不是「有没有 `.npmrc`」，是「本目录 `npm config get registry` 是不是官方源」。**
+> ② 发布**已改异步**——CLI 打印 `+ pkg@version` 时包可能还没上架（**实测 plugin-sdk `0.1.10` 约 3.5 分钟后**才查到），中途重发吃 `E409 …previously staged version`。**判据落在 `npm view`，不落在发布命令的输出上。**
+> ③ **npm 恒定丢弃名为 `.gitignore` 的模板文件**（见 §九.5）——模板里那份必须叫 `gitignore`。
 
 > 🔴 **发了才动版本号**（层铁律「不发就别动版本号」）：`0.1.0 → 0.1.1` 的 bump 与发布**同批**完成，`npm run release:mark` 记基线——**前提是它已进 [门禁基线](06-门禁扩域与验收.md)**。
+> ✅ **2026-09-11（E6#95e + #94g）已照此执行**：先把它纳入基线（G4，否则 `release:mark` 也记不到它），再 bump `0.1.1` + 真发 + `release:mark`，`npm view create-linkdesk-plugin version` = `0.1.1` 实测一致。
+
+---
+
+## 七·五、生成物形状**由门禁守着**（E6#95c）
+
+`scripts/check-scaffold.mjs` 已接进 `npm run check`，**每次提交前自动把模板真跑一遍**（生成到仓外一次性目录，不跑 `npm install`），
+再验 **8 条断言**：文件清单契约 / `pluginId` 已删 + `icon` 在位 / `plugin.json` 是合法 JSONC 且 `entry` 存在 /
+`CHANGELOG.md` 段标题能被 SDK 切段且版本号与 `plugin.json` 一致 / `scripts` ⊇ 5 条命令 / `i18n` 零死 key /
+占位符集合与 CLI `values` 相等且生成物无 `{{…}}` 残留 / **`npm pack` 的 tarball 不丢模板文件**。
+
+**八条逐条验过红灯**（表见 [06 §三](06-门禁扩域与验收.md)）——**改模板后不用手动比对，跑 `npm run check` 即可**。
 
 ---
 
@@ -383,6 +411,33 @@ v1 的 `i18n/en.json` = `{"hello": "Hello from LinkDesk!"}`，而 `src/index.tsx
 |:--|:--|
 | **预建 `src/` 子文件夹** | **空文件夹在 git 里根本不存在**（git 不记录目录），除非塞 `.gitkeep` = 为了留一个空夹放一个假文件，成本真、收益假；只做侧栏面板的小插件被塞 6 个空夹，比不预建更劝退。**「该放哪」是知识不是目录** ⇒ 用生成的 `README.md` 里**目录契约表**教。 |
 | **预建 vitest / 测试环境** | 官方插件的 `__tests__` 是**按需长出来的**，不是起步就有；给脚手架塞测试框架 = 给一个还没写业务的人配测试，加重起步负担。契约表里有 `src/__tests__/` 一行，作者要测时自己 `npm i -D vitest`。**若用户日后点名要，再单独立项**——不由本轮顺手加。 |
+
+### 9.5 🔴 为什么模板里叫 `gitignore` 而不是 `.gitignore`（**E6#95c 执行期实测发现**）
+
+**npm 恒定丢弃名为 `.gitignore` 的文件。** 所以模板里直接放 `.gitignore` 时：
+
+- **仓内** `node packages/create-linkdesk-plugin/index.js my-plugin` → 生成正常（读的是模板目录）；
+- **货架上** `npm create linkdesk-plugin my-plugin` → 生成的工程**没有 `.gitignore`** ⇒ 作者第一次 `git add .`
+  就把 `node_modules/` 和 `dist/` 全提交了。**3.7.5 好不容易补上的那件东西，到作者手里是空的。**
+
+**实测取证**（同一目录、三文件对照，`npm pack --dry-run --json`）：
+
+| 模板内文件名 | 进 tarball？ |
+|:--|:--|
+| `template/.gitignore` | ❌ **被丢** |
+| `template/.gitignoreprobe` | ✅ |
+| `template/probe.txt` | ✅ |
+
+⇒ 排除**按文件名精确匹配**，不是「点开头一律排除」——同目录的 `.vscode/settings.json` 照样进包。
+
+**修法**：模板存 `gitignore`（无点），生成时由 CLI `renameSync` 成 `.gitignore`。**`yo code` 一脉的标准做法**
+（那边叫 `_gitignore`），不是自创；生成物契约里作者拿到的仍然是正常的 `.gitignore`。
+
+🔴 **这一条现在由门禁守着**：`scripts/check-scaffold.mjs` **断言 8**——`npm pack --dry-run` 的 tarball 里
+`template/` 下文件集合必须与仓内模板目录**完全一致**。**回归测试已验红**（把文件换回 `.gitignore` → 门禁必红）。
+
+> **教训（M4 级）**：脚手架是**第三方作者抄的第一份样本**——「仓内验过」**不等于**「作者拿得到」。
+> **生成物契约要对着 tarball 验，不是对着源码树验**（memory `snapshot-shadows-truth-bug-class` ①「快照遮蔽真值」）。
 
 ---
 
