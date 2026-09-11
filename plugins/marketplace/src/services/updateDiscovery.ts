@@ -6,7 +6,8 @@
  * 视图挂载才 import 插件代码）；而发现编排要推铃铛（notifications.show）与读作者源（configuration.get）——
  * 两者只在「池」preload（壳没有）。→ 发现必须落池，落点 = 市场插件池代码**首载**：任何市场池面（侧栏
  * 已装/禁用/内置、详情、主区 tab）首次挂载都经 marketplaceShared → 本模块 import →
- * scheduleStartupDiscovery()（延迟 ~10s，05 §一·四）。首载在「侧栏恢复上次选中（通常即市场）」或「用户
+ * scheduleStartupDiscovery()（延迟 ~10s，05 §一·四；**判不了会按梯子再试——E6#82，见该函数头注**）。
+ * 首载在「侧栏恢复上次选中（通常即市场）」或「用户
  * 首次打开市场」时到达——若本会话市场从未加载则顺延到下次加载（重裁拍板接受的代价，零壳零新面）。
  *
  * 幂等两道：本会话只调度一次（模块级 guard）；同版本铃铛只推一次（installedUpdateMeta.lastNotifiedVersion，
@@ -23,7 +24,8 @@
  *   - 无内置排除——core:true 不定义更新行为，覆盖全部已装插件（§二·三）
  *   - 有更新 → 通知中心铃铛推一条（每版本一次：lastNotifiedVersion === remote 不重推）+ 记 lastNotifiedVersion
  *   - 自愈清提醒：lastNotifiedVersion ≤ 本地 → 已追上（外部路径更新/重装的兜底），清标记（§二·一「更新成功清」）
- *   - 目录 offline/corrupt（entries 空）→ 静默跳过（无数据不铃不写）；stale 缓存有数据照跑
+ *   - 目录 offline/corrupt（entries 空）→ 本趟不铃不写，且**返回 null（判不了）由调度器换时间重试**（E6#82；
+ *     合法空态 = 结论，返回空计划）；stale 缓存有数据照跑
  *
  * #33d 自动更新——**E6#79 恢复运转（2026-09-11 用户拍板）**：
  *   🔴 **推翻经过（动这里之前务必读完）**：#71k（2026-09-10）曾把自动更新**整体停摆**，理由写成「自动更新在你
@@ -215,6 +217,10 @@ export function selectMetaEvictions(
 export function __resetUpdateDiscovery(): void {
   _scheduled = false;
   _running = null;
+  if (_retryTimer !== null) {
+    clearTimeout(_retryTimer);
+    _retryTimer = null;
+  }
 }
 
 /* ═══ #33d 单候选自动更新执行（doRunDiscovery 与勾选即跑共用——引擎 update，结果由 market 侧告知） ═══ */
@@ -266,8 +272,16 @@ export async function readInstalledSnapshot(): Promise<{
 
 let _running: Promise<DiscoveryPlan | null> | null = null;
 
+/** 空计划——「读完了，没有可更新」的**结论**（区别于 `null` 的「判不了」）。 */
+const EMPTY_PLAN: DiscoveryPlan = { candidates: [], toNotify: [], toClearNotified: [] };
+
 /** 发现主编排。force=true 手动刷新用（跳过 5min fresh 缓存）。并发一趟（启动调度 + 手动重叠）复用。
- *  目录空（offline/corrupt）→ 返回 null 静默跳过（无数据不铃不写）；stale 缓存有数据照跑。 */
+ *
+ *  🔴 **返回值判据（E6#82，2026-09-11）：`null` 只表示「判不了」，不表示「没事」。**
+ *    · `DiscoveryPlan`（哪怕是空计划）= **结论**——读到盘上现状 + 拿到目录，比过了。
+ *    · `null` = **判不了**——读盘不可信 / 目录拉不到或坏 parse（输入全是**一次性外部状态**：网络、代理、IPC）。
+ *    调度器据这一位决定要不要换时间再试（见 `armDiscoveryAttempt`）。两者曾经混用：开机那十秒若赶上网络
+ *    没热，发现静默跳过且整次开机不再重试 ⇒ 用户勾的自动更新一整天不响（E6#82 实机报障）。 */
 export async function runUpdateDiscovery(force = false): Promise<DiscoveryPlan | null> {
   if (_running) return _running;
   _running = doRunDiscovery(force).finally(() => {
@@ -292,9 +306,13 @@ async function doRunDiscovery(force: boolean): Promise<DiscoveryPlan | null> {
     );
   }
 
-  if (installed.length === 0) return null; // 无已装 / IPC 不可用 → 无事可发现
+  // 「一台没装」是**结论**（读到了、就是空）；「读盘不可信」那条已在上面早退，走不到这里。
+  if (installed.length === 0) return EMPTY_PLAN;
   const catalog = await loadCatalog(force);
-  if (catalog.entries.length === 0) return null; // 空目录（ok 空/offline/corrupt 一律）→ 无条目可发现，静默不铃
+  if (catalog.entries.length === 0) {
+    // 源连上但目录真为空（合法空态）= 结论；拉不到 / 坏 parse = **判不了** → null 交调度器换时间重试。
+    return catalog.state === "ok" ? EMPTY_PLAN : null;
+  }
   const plan = planDiscovery(catalog.entries, installed, meta);
 
   // 自愈清提醒（幂等——无变化不写盘，installedUpdateMeta 内部保证）
@@ -437,17 +455,42 @@ function notifyAutoResult(updated: UpdateCandidate[], failed: UpdateCandidate[])
 
 const DISCOVERY_DELAY_MS = 10_000;
 
+/** 判不了时的重试间隔（首趟之后；E6#82）——梯子走完为止，之后本会话不再试（下次开软件从头来）。 */
+const DISCOVERY_RETRY_DELAYS_MS = [30_000, 60_000, 120_000, 300_000];
+
 let _scheduled = false;
+let _retryTimer: ReturnType<typeof setTimeout> | null = null;
+
+/** 排一趟发现；跑完若是「判不了」（返回 null / 抛错）→ 改长一点再排，直到**拿出结论**或梯子走完。
+ *  只有「判不了」才重试——「判了，没事做」与「已处理」（含 auto 更新，成败各有通知）都是结论，不打扰。 */
+function armDiscoveryAttempt(attempt: number, firstDelayMs: number): void {
+  const delay = attempt === 0 ? firstDelayMs : DISCOVERY_RETRY_DELAYS_MS[attempt - 1];
+  if (delay === undefined) return; // 梯子走完
+  _retryTimer = setTimeout(() => {
+    _retryTimer = null;
+    void runUpdateDiscovery()
+      .then((plan) => {
+        if (plan === null) armDiscoveryAttempt(attempt + 1, firstDelayMs);
+      })
+      .catch(() => armDiscoveryAttempt(attempt + 1, firstDelayMs));
+  }, delay);
+}
 
 /** 调度启动发现——市场插件池代码首载时调用一次（marketplaceShared 模块底触发）。
- *  池门控：壳进程/预览无 notifications.show → 不调度（发现编排需铃铛能力，池独占；壳零改动）。 */
+ *  池门控：壳进程/预览无 notifications.show → 不调度（发现编排需铃铛能力，池独占；壳零改动）。
+ *
+ *  🔴 E6#82（2026-09-11）——**为什么不再是「十秒后跑一趟就完」**：
+ *    此前是单发 `setTimeout(10s)` + `.catch` 吞错。而那一趟的输入**全是外部状态**（目录要走网络/读缓存、
+ *    已装列表要走 IPC）——那一下若恰好判不了（刚开机网络没热、代理没起、IPC 打嗝），`doRunDiscovery` 就
+ *    `return null` **静默跳过，且这一整次开机再无第二次机会**。用户实机症状（2026-09-11 报障）：勾了
+ *    「自动更新」+ 降级到旧版 + 关软件 + 重开 ⇒ 自动更新一整天不响，界面一个字不说。当日实机取证：引擎、
+ *    开关、判定全好（把同一插件降回旧版、手动触发**同一趟**发现，当场自动装回新版）；坏的是「只许一次 +
+ *    失败不出声」。
+ *    ⇒ 判不了就换时间再试（梯子见上），拿出结论就停。**自动更新是用户勾选那一刻给出的承诺，不该赌开机那十秒。**
+ *  代价：每趟读盘 + 读目录（目录有 5min 缓存时零网络），梯子共 5 趟、最长约 8 分钟——可忽略。 */
 export function scheduleStartupDiscovery(delayMs: number = DISCOVERY_DELAY_MS): void {
   if (_scheduled) return;
+  if (!window.linkdesk?.notifications?.show) return; // 池门控（先判后占位——门控别消耗掉这一次调度）
   _scheduled = true;
-  if (!window.linkdesk?.notifications?.show) return; // 池门控（见头注）
-  setTimeout(() => {
-    void runUpdateDiscovery().catch(() => {
-      /* 发现失败静默——后台任务不打扰；下趟（手动/下次首载）再试 */
-    });
-  }, delayMs);
+  armDiscoveryAttempt(0, delayMs);
 }

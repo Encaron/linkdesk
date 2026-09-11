@@ -373,10 +373,11 @@ describe("runUpdateDiscovery（主编排 IO）", () => {
     Reflect.deleteProperty(window, "linkdesk");
   });
 
-  it("无已装 → null（目录不拉、铃铛不推）", async () => {
+  it("无已装 → 空计划（**结论**不是「判不了」；目录不拉、铃铛不推）", async () => {
     const { show } = stubWindow({ enabled: [] });
     okCatalogFetch([catEntry("demo-alpha", "1.2.0")]);
-    expect(await runUpdateDiscovery()).toBeNull();
+    const plan = await runUpdateDiscovery();
+    expect(discover(plan!)).toEqual({ toNotify: [], toClear: [], candidates: [] }); // E6#82：非 null——判了
     expect(fetchSpy).not.toHaveBeenCalled();
     expect(show).not.toHaveBeenCalled();
   });
@@ -478,7 +479,7 @@ describe("runUpdateDiscovery（主编排 IO）", () => {
     expect(await readUpdateMetaMap()).toEqual({});
   });
 
-  it("目录 offline（拉取抛）→ null 静默，不铃不记账", async () => {
+  it("目录 offline（拉取抛）→ null（**判不了**——E6#82 交调度器重试），本趟不铃不记账", async () => {
     __setMetaStore(metaStore());
     const { show } = stubWindow({ enabled: [enabled("demo-alpha", "1.0.0")] });
     fetchSpy = vi.fn(async () => {
@@ -488,6 +489,40 @@ describe("runUpdateDiscovery（主编排 IO）", () => {
     expect(await runUpdateDiscovery()).toBeNull();
     expect(show).not.toHaveBeenCalled();
     expect(await readUpdateMetaMap()).toEqual({});
+  });
+
+  // 🔴 E6#82 回归（2026-09-11 用户实机报障「勾了自动更新，重开软件却不自动装」）：
+  //  旧行为 = 首载后单发一趟，判不了就静默跳过且**整次开机再无第二次机会**（本用例在旧代码上必红：
+  //  30s 后 fetch 只被调过 1 次、铃铛一次不响）。新行为 = 判不了按梯子换时间再试，拿出结论就停。
+  it("E6#82：首趟判不了 → 调度器换时间重试；拿出结论即停（不再有第三趟）", async () => {
+    vi.useFakeTimers();
+    try {
+      __setMetaStore(metaStore());
+      const { show } = stubWindow({ enabled: [enabled("demo-alpha", "1.0.0", "Alpha")] });
+      let down = true; // 首趟：网络不通（刚开机/代理没起）——目录无交付
+      fetchSpy = vi.fn(async (url: string) => {
+        if (down) throw new Error("net down");
+        if (url === OFFICIAL_SOURCE_URL) return catalogText(catEntry("demo-alpha", "1.2.0"));
+        throw new Error("unexpected url " + url);
+      });
+      __setCatalogIO(fetchSpy as unknown as FetchFn, memStorage());
+
+      scheduleStartupDiscovery(0);
+      await vi.advanceTimersByTimeAsync(0);
+      expect(show).not.toHaveBeenCalled();
+      const firstTry = fetchSpy.mock.calls.length;
+      expect(firstTry).toBeGreaterThan(0);
+
+      down = false; // 网络恢复
+      await vi.advanceTimersByTimeAsync(30_000); // 梯子第一级
+      expect(show).toHaveBeenCalledTimes(1);
+
+      await vi.advanceTimersByTimeAsync(600_000); // 结论已出 → 编排不再重排
+      expect(fetchSpy.mock.calls.length).toBe(firstTry + 1);
+    } finally {
+      __resetUpdateDiscovery(); // 先清（假定时器 id 别留给真实现）
+      vi.useRealTimers();
+    }
   });
 
   it("自愈：本地已追上曾提醒版 → 一趟清标记（readUpdateMetaMap 后无 lastNotifiedVersion）", async () => {
