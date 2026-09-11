@@ -752,24 +752,31 @@ const mockContent = buildMockContent();
 
 // ── 5. 写盘 / 比对（三产物——版本号独立，见文件头拆焊注）──────────────
 
+// 2026-09-11 修假红：比对前归一行尾。仓内 `core.autocrlf=true` 且无 .gitattributes——
+// 生成器 writeFileSync 落 **LF**，而检出到 Windows 工作区是 **CRLF** ⇒ 裸串比对必然不等 ⇒
+// **干净检出恒红**（实测：三产物与 HEAD blob 逐字节相同、git diff 空，只因 CRLF 就全报「过期或缺失」）。
+// 恒红的门禁不是门禁——它会把「真过期」淹在假红里（memory [[snapshot-shadows-truth-bug-class]]）。
+// 只归一 **行尾**，内容漂移照常红。
+const normEol = (s) => (s === null ? null : s.replace(/\r\n/g, '\n'));
+
 if (CHECK) {
   let fail = false;
-  const diskMain = existsSync(OUT_FILE) ? readFileSync(OUT_FILE, 'utf8') : null;
-  if (diskMain !== content) {
+  const diskMain = normEol(existsSync(OUT_FILE) ? readFileSync(OUT_FILE, 'utf8') : null);
+  if (diskMain !== normEol(content)) {
     console.error('[contracts] ✗ linkdesk.d.ts 过期或缺失——请运行 node scripts/generate-contract.mjs');
     fail = true;
   } else {
     console.log('[contracts] ✓ linkdesk.d.ts 最新');
   }
-  const diskRuntime = existsSync(OUT_RUNTIME) ? readFileSync(OUT_RUNTIME, 'utf8') : null;
-  if (diskRuntime !== runtimeContent) {
+  const diskRuntime = normEol(existsSync(OUT_RUNTIME) ? readFileSync(OUT_RUNTIME, 'utf8') : null);
+  if (diskRuntime !== normEol(runtimeContent)) {
     console.error('[contracts] ✗ runtime-shapes.ts 过期或缺失——请运行 node scripts/generate-contract.mjs');
     fail = true;
   } else {
     console.log('[contracts] ✓ runtime-shapes.ts 最新');
   }
-  const diskMock = existsSync(OUT_MOCK) ? readFileSync(OUT_MOCK, 'utf8') : null;
-  if (diskMock !== mockContent) {
+  const diskMock = normEol(existsSync(OUT_MOCK) ? readFileSync(OUT_MOCK, 'utf8') : null);
+  if (diskMock !== normEol(mockContent)) {
     console.error('[contracts] ✗ linkdesk-mock.generated.ts 过期或缺失——请运行 node scripts/generate-contract.mjs');
     fail = true;
   } else {
