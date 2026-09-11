@@ -1,7 +1,7 @@
 {
   "$schema": "../../public/schemas/plugin.schema.json",
   "name": "文件树",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "icon": "resources/icon-bar.svg",
   "marketIcon": "resources/icon.svg",
   "description": "浏览和管理文件——对标 VS Code 资源管理器",
@@ -302,6 +302,13 @@
     }
   },
   "changelog": [
+    {
+      "version": "1.0.5",
+      "date": "2026-09-11",
+      "changes": [
+        "内部整理（E6#87a）：源码按体量阈值拆分重排——文件树 / 搜索 / 右键菜单 / 键盘导航 / 拖放各归其位，模块级状态单一属主。**功能与界面零变化**；因重打包后内容已变，按「内容变更必 bump」纪律更新版本号（E6#15n）"
+      ]
+    },
     {
       "version": "1.0.4",
       "date": "2026-09-11",

@@ -2,7 +2,7 @@
  * 布局 Token——CSS/JS 单一真相来源。
  * E4 品质加固：消除 JS 硬编码 22/16 与 CSS var(--tree-*) 之间的隐性耦合。
  *
- * 🔥 修改规则：改值改此文件→CSS 变量同步改（file-tree.css .file-tree-root）。
+ * 🔥 修改规则：改值改此文件→CSS 变量同步改（styles/file-tree-shell.css `.file-tree-root`）。
  * E5.8 Phase 12 #172：行高基准 22→26（⑥ 拍板）+ 运行时桥（F2）——TS 读 `app.uiFontScale`
  * 算 `26×scale`，与 CSS `calc(26px * var(--ui-scale))` 精确一致。CSS 侧行高/盒全走
  * `calc(Npx * var(--ui-scale))`，JS 侧虚拟滚动/DnD/键盘定位全走 getScaledTreeItemHeight()。
