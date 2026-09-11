@@ -13,6 +13,10 @@
  *        d. 更新仓库根 marketplace.json（Contents API：读 sha → 合并条目 → PUT）——
  *           格式 = marketplace.json 规范 §三 + §3.2（versions[] 版本历史最新在前）；更新消费者
  *           electron/ipc/handlers/plugin-install-handlers.ts:198 读 plugins[].versions[] 做版本对比。
+ *           条目里的**两个「未装态」展示字段**（E6#91c 接通，作者零声明、publish 自动写）：
+ *             · `readmeUrl` ← 工程根有 `README.md` 时填 raw.githubusercontent.com/{owner}/{repo}/{tag}/README.md
+ *             · `versions[0].changelog` ← 工程根 `CHANGELOG.md` 切出「版本号 === manifest.version」那一段正文
+ *           **两者缺省即不写键**（无 README / 无 CHANGELOG / 切不到该版本）——写了 404、写空串都是骗人。
  *   4. 发前预览确认（#26b「发布前预览+确认」）：打印 id/name/version/author/文件大小/目标仓库/tag
  *      → [y/N]；`--yes` 跳过（CI）；`--dry-run` 只打印将做动作不碰网络。
  *
@@ -60,6 +64,9 @@ export interface CatalogPluginEntry {
   size?: number;
   publishedAt?: string;
   minAppVersion?: string;
+  /** 未装插件详情页「详情」页签的 README 远端直链（E6#91c 接通）——publish 自动写，作者零声明。
+   *  与打进 zip 的 README 同源（同一 tag），故未装看到的 = 装上后看到的。工程根无 README.md → 不写。 */
+  readmeUrl?: string;
   /** 版本历史，最新在前——更新机制数据源 */
   versions: CatalogVersion[];
 }
@@ -230,7 +237,6 @@ export interface ManifestView {
   author?: string;
   icon?: string;
   iconSource?: string;
-  readme?: string;
 }
 
 export function collectManifestView(manifest: unknown, sourceDirName: string): ManifestView {
@@ -248,12 +254,26 @@ export function collectManifestView(manifest: unknown, sourceDirName: string): M
     author: str(m.author),
     icon: str(m.icon),
     iconSource: str(m.iconSource),
-    readme: str(m.readme),
   };
 }
 
+/** 条目补充字段——**缺省即不写该键**（字段缺省比填空串/空对象诚实，渲染层两条路走同一兜底） */
+export interface CatalogEntryExtras {
+  /** 未装态 README 远端直链——工程根无 README.md 时缺省（写了必 404） */
+  readmeUrl?: string;
+  /** 当前版本正文（`CHANGELOG.md` 切段所得）——无文件 / 切不到时缺省 */
+  changelog?: string;
+}
+
 /** 单条 catalog 条目构造——versions[] 只有当前一版（合并时与既有历史拼接）。author 缺失时回落 owner。 */
-export function buildCatalogEntry(v: ManifestView, downloadUrl: string, size: number, owner: string, publishedAt: string): CatalogPluginEntry {
+export function buildCatalogEntry(
+  v: ManifestView,
+  downloadUrl: string,
+  size: number,
+  owner: string,
+  publishedAt: string,
+  extras: CatalogEntryExtras = {},
+): CatalogPluginEntry {
   return {
     id: v.id,
     name: v.name,
@@ -262,10 +282,18 @@ export function buildCatalogEntry(v: ManifestView, downloadUrl: string, size: nu
     author: { name: v.author ?? owner },
     ...(v.icon !== undefined ? { icon: v.icon } : {}),
     ...(v.iconSource !== undefined ? { iconSource: v.iconSource } : {}),
+    ...(extras.readmeUrl !== undefined ? { readmeUrl: extras.readmeUrl } : {}),
     downloadUrl,
     size,
     publishedAt,
-    versions: [{ version: v.version, downloadUrl, publishedAt }],
+    versions: [
+      {
+        version: v.version,
+        downloadUrl,
+        publishedAt,
+        ...(extras.changelog !== undefined ? { changelog: extras.changelog } : {}),
+      },
+    ],
   };
 }
 
@@ -318,6 +346,69 @@ export function assetNameForId(id: string): string {
 /** Release asset 直链——GitHub 固定形态，无需等上传响应回读 */
 export function releaseDownloadUrl(remote: GitHubRemote, tag: string, assetName: string): string {
   return `https://github.com/${remote.owner}/${remote.repo}/releases/download/${tag}/${assetName}`;
+}
+
+/** 未装插件读 README 的远端直链（E6#91c）——**用 tag 不用 default_branch**：这条 URL 与打进 zip 的
+ *  那份 README 同源（同一 commit）；用 main 会让「未装浏览者看到的」与「装上后看到的」是两份内容。 */
+export function readmeRawUrl(remote: GitHubRemote, tag: string): string {
+  return `https://raw.githubusercontent.com/${remote.owner}/${remote.repo}/${tag}/README.md`;
+}
+
+/** 去版本号前导 `v`——段标题与 plugin.json 两侧同规则，免「v1.0.0 vs 1.0.0」假不等 */
+function stripLeadingV(s: string): string {
+  return /^[vV]/.test(s) ? s.slice(1) : s;
+}
+
+/** 段标题——`## v1.0.0` / `## 1.0.0` / `## [1.0.0] - 2026-09-11`（Keep a Changelog）/ `## v1.0.0-beta.1` 全认。
+ *  ① `#{2,4}`：`##` 常规，容忍 `###`/`####`；**一级 `#` 不算**（那是文档标题「# 更新日志」）。
+ *  ② `\[?…\]?`：容忍一对可选方括号——Keep a Changelog 是最流行的约定，作者不该为适配解析器改习惯。
+ *  ③ 版本段整段捕获（含 prerelease/build 后缀）——只捕 `\d+.\d+.\d+` 会把 `1.0.0-beta.1` 截成 `1.0.0`，与真有的 `1.0.0` 段撞号。
+ *  ④ 尾部否定前瞻 `(?![0-9A-Za-z.-])`：防 `1.0.0` 吃掉 `1.0.01` 的前缀。中文全角括号天然通过（不在否定类里）。 */
+const CHANGELOG_HEADING = /^#{2,4}\s+\[?[vV]?(\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?)\]?(?![0-9A-Za-z.-])/;
+
+/** 围栏代码块起止行（``` / ~~~，允许缩进）。块内的 `## v1.0.0` 是示例文本不是段标题——误判会把它当更新说明 */
+const FENCE_LINE = /^\s*(?:```|~~~)/;
+
+/**
+ * 从 `CHANGELOG.md` 原文切出指定版本的正文（E6#91c）。**纯函数、零 IO**——publish 内可直测。
+ *
+ * 返回**该版本段标题之下、下一个段标题之前**的正文（`trim` 后）；**切不到 / 正文为空 → `undefined`**
+ * （诚实留空，不猜——渲染层已有「此版本未提供变更说明」兜底）。**绝不回落到「取第一段」**：那会把上一版
+ * 的说明挂到新版本上，是**发错信息**（同 marketCatalog/select.ts「不发错包」的既有纪律）。
+ *
+ * 版本相等判据 = 去 `v` 后**字符串严格相等**，不做 semver 松弛匹配（`1.0.0` ≠ `1.0`）——目录条目版本号与
+ * `plugin.json.version` 本就该逐字相同，松弛只会掩盖作者写错。
+ */
+export function sliceChangelogSection(text: string, version: string): string | undefined {
+  const src = text.replace(/^\uFEFF/, ""); // BOM 剥离——记事本存过就带，不剥会让首行匹配位移
+  const lines = src.split(/\r?\n/); // CRLF 兼容（本仓 Windows 开发，多份文档实测 CRLF）
+  const target = stripLeadingV(version);
+
+  let inFence = false;
+  let start = -1; // 正文起始行（段标题的下一行）
+  let end = lines.length;
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i] ?? "";
+    if (FENCE_LINE.test(line)) {
+      inFence = !inFence; // 开/闭同一判定——只关心奇偶
+      continue;
+    }
+    if (inFence) continue; // 围栏块内一律不看
+
+    const m = CHANGELOG_HEADING.exec(line);
+    if (!m) continue;
+    if (start < 0) {
+      // 取第一个匹配段（同版本出现多次 = 取最新那段，「最新在最上」是格式约定）
+      if (stripLeadingV(m[1] ?? "") === target) start = i + 1;
+    } else {
+      end = i; // 正文到下一个段标题为止
+      break;
+    }
+  }
+
+  if (start < 0) return undefined;
+  const body = lines.slice(start, end).join("\n").trim();
+  return body === "" ? undefined : body;
 }
 
 /* ── GitHub REST 操作（github-http.ts 之上的领域调用）────────────────── */
@@ -455,6 +546,10 @@ export interface PublishPreview {
   tag: string;
   releaseName: string;
   prerelease: boolean;
+  /** 未装态 README 远端直链——工程根无 `README.md` → 缺省（不写，写了必 404；见 §三.3 边界表） */
+  readmeUrl?: string;
+  /** 当前版本正文——`CHANGELOG.md` 切段所得；无文件 / 切不到该版本 → 缺省（诚实留空，不猜） */
+  changelog?: string;
 }
 
 function collectPreview(root: string): PublishPreview {
@@ -475,6 +570,11 @@ function collectPreview(root: string): PublishPreview {
     throw new Error(`origin 不是 github.com 仓库（当前：${remoteUrl}）。发布目标 = 工程 origin 的 GitHub Releases + marketplace.json，多市场源模型仅支持 github.com`);
   }
   const tag = releaseTagForVersion(view.version);
+
+  // 未装态两个展示字段——**本层 3.7.2 接通的两处写入方**（此前读取方早已写好、只差这两行）：
+  // `readmeUrl` = 未装详情页 README 远端源；`changelog` = 未装「更改日志」页签的逐版正文。
+  // 两者都**缺省即不写**——不写是本函数要表达的诚实（写了 404 / 写空串都是骗人）。
+  const changelogPath = join(root, "CHANGELOG.md");
   return {
     id: view.id,
     name: view.name,
@@ -487,6 +587,8 @@ function collectPreview(root: string): PublishPreview {
     tag,
     releaseName: `${view.name} v${view.version}`,
     prerelease: view.version.includes("-"),
+    ...(existsSync(join(root, "README.md")) ? { readmeUrl: readmeRawUrl(remote, tag) } : {}),
+    ...(existsSync(changelogPath) ? { changelog: sliceChangelogSection(readFileSync(changelogPath, "utf8"), view.version) } : {}),
   };
 }
 
@@ -499,6 +601,8 @@ function renderPreview(p: PublishPreview): string {
     `  │ 分发件    : ${p.assetName}（${(p.sizeBytes / 1024).toFixed(1)} KB）`,
     `  │ 目标仓库  : github.com/${p.remote.owner}/${p.remote.repo}（来自 git origin）`,
     `  │ 发布号    : ${p.tag}`,
+    `  │ 未装展示  : README ${p.readmeUrl ? "✓ 已随条目（远端直链）" : "✗ 工程根无 README.md → 不写 readmeUrl"}`,
+    `  │             日志 ${p.changelog ? `✓ 已切出 v${p.version} 正文（${p.changelog.split("\n").length} 行）` : `✗ 工程根 CHANGELOG.md 无 v${p.version} 段 → 不写 changelog`}`,
     "  │ 将做      : 创建 GitHub Release → 上传 asset → 更新该仓库根 marketplace.json",
     "  └─────────────────────────────────────────",
   ];
@@ -553,7 +657,10 @@ export async function runPluginPublish(root: string, opts: PublishOptions = {}):
   // 4. 更新 marketplace.json（含新条目 / 既有条目版本历史拼接——描述/图标等回落旧值见 upsertCatalogEntry）
   const read = await apiReadCatalog(token, remote);
   const existing = read ? read.catalog : createEmptyCatalog();
-  const entry = buildCatalogEntry(preview.view, url, preview.sizeBytes, remote.owner, new Date().toISOString());
+  const entry = buildCatalogEntry(preview.view, url, preview.sizeBytes, remote.owner, new Date().toISOString(), {
+    readmeUrl: preview.readmeUrl,
+    changelog: preview.changelog,
+  });
   const merged = upsertCatalogEntry(existing, entry);
   await apiWriteCatalog(token, remote, id, read?.sha ?? null, merged);
 

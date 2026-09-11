@@ -11,6 +11,9 @@
  *   - **必填/contributes 以 plugin.schema.json 为唯一真源**（判据⑧归一性）——读包内 schema 副本做
  *     ajv-2020 全量校验，不手写第二份字段清单。schema 改 → 校验自动跟上。副本漂移由
  *     scripts/check-plugin-schema-sync.mjs 整文件守卫。
+ *   - **墓碑提示（E6#91d）**：schema 顶层 `additionalProperties: true` ⇒ 删掉某个 `properties` 定义**不会**
+ *     让作者收到报错（只静默忽略），作者永远查不出为什么写法不生效。故在 schema 校验之后加一道
+ *     `REMOVED_MANIFEST_FIELDS` 扫描，命中 → **警告不是错误**（见该常量上方注释：它**不是**第二份字段清单）。
  *   - **i18n 文件存在性**是 schema 管不了的第二类检查（schema 只验声明形状，不验文件存在）。
  *   - **entry 语义洞（H2，E6#5a 注记）**：schema 的 entry 条件块只认**废弃 `type`**（const view/card/
  *     protocol，allOf/if/then）；E5.8 后插件走 pluginRole/factoryRole 无 type → schema 拦不住「现代
@@ -21,7 +24,7 @@
  */
 
 import { existsSync, readFileSync } from "node:fs";
-import { basename, dirname, isAbsolute, relative, resolve } from "node:path";
+import { basename, dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import * as jsonc from "jsonc-parser";
 import Ajv2020 from "ajv/dist/2020.js"; // 2020-12（plugin.schema / icon-theme.schema）——ajv 无 exports 映射，Node ESM 需显式 .js
@@ -32,8 +35,14 @@ import type { ErrorObject } from "ajv";
  * 包内 schema 副本定位——dist/validate.js → ../schemas = 包根/schemas；src 直跑同样上溯一级命中。
  * 三份 author 面 schema（plugin/theme/icon-theme）包内副本字节同步由 scripts/check-plugin-schema-sync.mjs 守卫
  * （E6#60：theme/icon-theme 收编——live public/schemas + 包内拷贝，作者 npm i @linkdesk/plugin-sdk 即达）。
+ *
+ * 🔴 **写法必须是「路径式」不能是 `new URL("../schemas/", import.meta.url)`**（E6#91e 实测）：
+ * `new URL(<字面量>, import.meta.url)` 是 **Vite 的资产 URL 惯用式**，本模块一旦被 Vite 处理（作者
+ * `vite.config.ts` 侧 / 本仓 vitest），这行会被重写成 `http://localhost:3000/packages/…`，随后
+ * `fileURLToPath` 抛 "The URL must be of scheme file"。纯 Node（本包真实运行形态）下两者等价，故这是
+ * **零行为变化的写法加固**——把「只在被测时炸」的雷拆掉。
  */
-const SCHEMAS_DIR = new URL("../schemas/", import.meta.url);
+const SCHEMAS_DIR = resolve(dirname(fileURLToPath(import.meta.url)), "../schemas");
 
 /**
  * pluginId 形状约束——复制自壳 src/pluginLoader/manifest.ts:64（独立 npm 包不能 import @src 壳源码；
@@ -44,6 +53,41 @@ export const SAFE_PLUGIN_ID = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
 export interface ValidationResult {
   valid: boolean;
   errors: string[];
+  /** 非阻断提醒（E6#91d 墓碑提示）——**不影响 `valid`**。可选字段：存量调用方（bin / vite-config）零改动。 */
+  warnings?: string[];
+}
+
+/**
+ * 已移除的 manifest 字段墓碑——**这不是「第二份字段清单」**（合法字段的真源仍是 plugin.schema.json，
+ * 不手写第二份是文件头铁律）。它回答的是**另一个问题**：「什么字段曾经合法、现已移除、替代方案是什么」。
+ * 两者语义正交：字段清单会随 schema 漂移（schema 改了名单没跟上 = bug）；墓碑**只增不减**、永不与 schema
+ * 同步——移除了就是移除了，不因 schema 新增字段而变化。
+ *
+ * **为什么必须有这道兜底**：schema 顶层 `additionalProperties: true`（实测），删掉 `properties` 里的定义
+ * **不会**让作者收到任何报错——只会被静默忽略。作者写了 27 条更新日志、市场页签却显示「未附带更改日志」，
+ * 他**永远查不出为什么**。同理不能把 `additionalProperties` 翻成 `false`：那会把第三方插件的任何自定义字段
+ * 一并判错 = 整个生态的破坏性变更（能增量就不许动大版本）。
+ *
+ * 行为 = **警告不是错误**（`valid` 仍为 true）：存量第三方插件的 plugin.json 里可能有这两个字段，判错会让
+ * 他们的 `npm run build` 突然炸——为一个**从无读取方**的字段破坏构建不值。官方插件由仓库门禁红灯兜底
+ * （scripts 侧），作者侧软提醒 + 自有仓库侧硬拦截，两处合起来覆盖完整。
+ */
+const REMOVED_MANIFEST_FIELDS: Record<string, string> = {
+  changelog: "改用插件根目录的 CHANGELOG.md（市场详情页「更改日志」页签的唯一真源）",
+  readme: "改用插件根目录的 README.md（文件名固定，无需声明路径）",
+};
+
+/** 扫顶层已移除字段 → 可读警告。**只扫顶层**（这两个字段从来只在顶层） */
+function collectRemovedFieldWarnings(manifest: unknown, base: string): string[] {
+  if (!manifest || typeof manifest !== "object") return [];
+  const m = manifest as Record<string, unknown>;
+  const out: string[] = [];
+  for (const [field, replacement] of Object.entries(REMOVED_MANIFEST_FIELDS)) {
+    if (Object.prototype.hasOwnProperty.call(m, field)) {
+      out.push(`${base} 的 "${field}" 字段已移除且无任何读取方——写了不生效、只会被静默忽略。${replacement}`);
+    }
+  }
+  return out;
 }
 
 /** i18n 声明（相对插件根路径 + 声明来源）——validate 存在性检查与 packager 拷贝清单共用 */
@@ -142,7 +186,7 @@ const compiledCache = new Map<string, CompiledSchema>();
 function getSchemaValidator(schemaFileName: string): CompiledSchema {
   const cached = compiledCache.get(schemaFileName);
   if (cached) return cached;
-  const raw = readFileSync(fileURLToPath(new URL(schemaFileName, SCHEMAS_DIR)), "utf8");
+  const raw = readFileSync(join(SCHEMAS_DIR, schemaFileName), "utf8");
   const parsed = JSON.parse(raw) as { $schema?: string };
   const is2020 = typeof parsed.$schema === "string" && parsed.$schema.includes("2020-12");
   // 同一构造器签名（allErrors/strict + compile）——类型面以 Ajv 为准，运行期仍是 Ajv2020 实例
@@ -246,7 +290,10 @@ export function validatePluginJson(path: string): ValidationResult {
     }
   }
 
-  return { valid: errors.length === 0, errors };
+  // 3) 已移除字段墓碑提示（E6#91d）——schema 顶层 additionalProperties: true ⇒ 这一步是作者**唯一**能被告知的通道
+  const warnings = collectRemovedFieldWarnings(manifest, base);
+
+  return { valid: errors.length === 0, errors, ...(warnings.length > 0 ? { warnings } : {}) };
 }
 
 /* ── 数据文件校验器（E6#60：主题/图标主题 authors 面，镜像 check-theme-schema.mjs 同规则） ── */

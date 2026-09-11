@@ -82,10 +82,6 @@
       "type": "string",
       "description": "作者名"
     },
-    "readme": {
-      "type": "string",
-      "description": "附带说明文档路径——相对插件目录（如 \"./README.md\"），可选；.linkdesk-plugin 详情/市场展示数据源（E6#4a K2 缝隙：作者包里有 README.md 就随包，本字段作者填指向包内文件）"
-    },
     "entry": {
       "type": "string",
       "description": "入口文件路径，相对插件目录。view/card/protocol 必需"
@@ -215,23 +211,6 @@
       "description": "插件级激活顺序依赖（E5.8#13）——按 pluginId 声明，加载时先加载依赖再加载本插件。无版本约束。缺依赖 → 插件挂起（PENDING），依赖就绪自动加载。",
       "items": { "type": "string" },
       "uniqueItems": true
-    },
-    "changelog": {
-      "type": "array",
-      "description": "更新日志",
-      "items": {
-        "type": "object",
-        "required": ["version", "date"],
-        "properties": {
-          "version": { "type": "string" },
-          "date": { "type": "string" },
-          "changes": {
-            "type": "array",
-            "items": { "type": "string" }
-          }
-        },
-        "additionalProperties": false
-      }
     },
     "screenshots": {
       "type": "array",

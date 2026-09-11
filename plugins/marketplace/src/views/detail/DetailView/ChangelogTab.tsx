@@ -5,8 +5,8 @@
  *
  *   数据源分装态（04-详情页设计 §三）：
  *   - 已装 = 包内 CHANGELOG.md（readInstalledPackageFile——本地权威：装的是哪个版本看哪个版本的说明）；
- *   - 未装 = 目录 versions[].changelog（marketplace.json 扩展字段——SDK publish 暂不写，真数据多为空 →
- *     诚实显示「此版本未提供变更说明」）。
+ *   - 未装 = 目录 versions[].changelog（marketplace.json 扩展字段——**E6#91c 起 SDK publish 自动写**：
+ *     从工程根 `CHANGELOG.md` 切出该版本那一段；切不到/无文件则字段缺省 → 诚实显示「此版本未提供变更说明」）。
  *   版本倒序最新在前 + 「最新/已安装」徽标。有更新时远程「最新」+ 本地「已安装」两版并排 = E6#33b
  *   （主软件更新域，本行不重复实现——无更新态只画本地/目录单源）。
  */

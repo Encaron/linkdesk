@@ -68,9 +68,12 @@ function cmdValidate(target: string): number {
   if (!res.valid) {
     console.error("❌ plugin.json 验证失败：");
     for (const e of res.errors) console.error(`   ${e}`);
+    // 警告照打——错与「写法过期」是两件事，修错时一并看到（E6#91d）
+    for (const w of res.warnings ?? []) console.warn(`   ⚠ ${w}`);
     return 1;
   }
   console.log("✅ plugin.json 验证通过");
+  for (const w of res.warnings ?? []) console.warn(`   ⚠ ${w}`);
   return 0;
 }
 

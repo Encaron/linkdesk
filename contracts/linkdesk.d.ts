@@ -1020,11 +1020,6 @@ export interface PluginManifest {
      *  纯声明：无版本约束（版本语义属 E6 市场范畴，激活顺序不承载）；缺依赖 → loader 状态机挂 PENDING。
      *  与 ConfigurationRegistry 的配置项级 dependsOn（同一 manifest 内某配置项依赖另一配置项）不同域。 */
     requires?: string[];
-    changelog?: {
-        version: string;
-        date: string;
-        changes?: string[];
-    }[];
     screenshots?: string[];
     minAppVersion?: string;
     /** @deprecated E5.8#14——归并到 requires（插件级激活依赖统一由 requires 声明）。
