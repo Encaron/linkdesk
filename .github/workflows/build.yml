@@ -1,0 +1,170 @@
+# 🔥 E6#42b —— CI 自动构建（GitHub Actions）。设计稿：
+# docs/02-Electron架构/E6_插件生态与发布/05-文档与发布/02-发布流水线.md §一
+#
+# 触发：① push 到 electron 分支 → 构建 + 上传 artifact
+#       ② push tag v*          → 构建 + 发 GitHub Release
+#       ③ 手动（workflow_dispatch）——**可在任意分支上跑**，用来在没有 tag、不惊动
+#          线上 Release 的前提下验证本流水线本身（Release 步骤只在 tag 上生效）。
+#
+# ⚠️ 2026-09-11 落笔时对设计稿 §1.1 做了五处**必要订正**——每一处都会让首次运行直接红/出错。
+#    四处是「设计稿写的时候还没验」，一处是「API 名写错」（详见各步骤行内注释）：
+#    ① node-version 22 → 24      ② 补 permissions            ③ Build 加 --publish never
+#    ④ CHANGELOG 门禁脚本不存在   ⑤ generateReleaseNotes 不是 softprops 的入参名
+
+name: Build and Release
+
+on:
+  push:
+    branches: [electron]
+    tags: ["v*"]
+  # 手动触发。⚠️ 这一条是设计稿没有的——**不加它，本流水线在第一次真推 tag 之前
+  # 完全无法验证**（branch 触发只在 electron 上，而 e6 才是开发分支）。
+  # workflow_dispatch 允许在任意分支上手动跑一次：能验到 build 全链，且因为
+  # Release 步骤带 `if: startsWith(github.ref, 'refs/tags/v')`，不会误发 Release。
+  workflow_dispatch:
+
+# 🔴 订正 ②：设计稿没写这一段。GitHub 从 2023 年起新建仓库的默认 GITHUB_TOKEN 是**只读**的，
+# 缺这段 ⇒ Release 步骤 403 失败。只给这一个 job 需要的最小权限。
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          # 🔴 订正 ①：设计稿写 `node-version: 22` —— 装不上。package.json 的
+          # engines 是 ">=24.0.0"，且根 .npmrc 有 `engine-strict=true`（E5.8#4 故意开的），
+          # 于是 `npm ci` 会在 22 上直接 EBADENGINE 拒绝。开发机实测 v24.16.0。
+          node-version: 24
+          cache: npm
+
+      # 🔴 CHANGELOG 段门禁 + Release 正文提取（§1.3）。
+      #
+      # 为什么这两件事是同一步：
+      #   electron-updater 的 github provider 与发行说明页（05 §2.4）读的都是 **Release body**。
+      #   缺 `## v{version}` 段 ⇒ body 空 ⇒ 用户点「查看更新内容」看到一片空白。
+      #   所以「段存不存在」不是文档规矩，是**用户看得见的功能**的前提。
+      #   提取出来顺手就断言了，不必等一个专门的脚本。
+      #
+      # ⚠️ 设计稿 §1.1 在这里写的是 `node scripts/assert-changelog-section.mjs`（E6#57.15d 的产物）。
+      #   **该脚本当前不存在**（5.4 的任务，尚未实现）——照抄进 CI = 每次跑都 "Cannot find module"。
+      #   故此处**不调那个脚本**，改用就地断言；#57.15d 落地后可把它接回这一步之前。
+      - name: Extract Release body from CHANGELOG (and assert the section exists)
+        shell: bash
+        run: |
+          version=$(node -p "require('./package.json').version")
+          # 取 `## v<version>` 那一段正文（到下一个 `## ` 为止）。
+          # `([^0-9.]|$)` 这个尾巴是防前缀误匹配：v0.1.4 不该匹配到 v0.1.47 那一段。
+          awk -v ver="v$version" '
+            $0 ~ "^## " ver "([^0-9.]|$)" { inside = 1; next }
+            inside && /^## / { exit }
+            inside { print }
+          ' CHANGELOG.md > release-body.md
+          if [ ! -s release-body.md ]; then
+            echo "::error::CHANGELOG.md 里没有 '## v$version' 段。"
+            echo "::error::缺段 ⇒ Release 正文为空 ⇒ 用户点「查看更新内容」会看到一片空白。"
+            echo "::error::规矩（3.7.3 立）：bump 版本号必须同笔写 '## v<新版本>' 段。补上再发 tag。"
+            exit 1
+          fi
+          echo "Release 正文 = CHANGELOG.md 的 '## v$version' 段，$(wc -l < release-body.md) 行"
+          echo "首行：$(head -1 release-body.md)"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check
+        run: npm run check
+
+      - name: Build
+        # 🔴 订正 ③：`--publish never` **必须**（已写进 package.json 的 electron:build）。
+        #   不写会出什么事——读 electron-builder 26.15.3 源码实证（PublishManager.js:45-58）：
+        #   在 CI 里且没显式传 --publish 时，它**自己把 publishPolicy 设成 onTagOrDraft**，
+        #   并打一行 warn「Implicit publishing triggered by CI detection」。
+        #   ⇒ 推 tag 时它会**自己去建 Release、自己上传资产**（provider 就是 #42e 那条链
+        #     推定的 github），与本文件下面的 softprops/action-gh-release **抢同一个 tag**，
+        #     且它需要 GH_TOKEN——不提供就直接失败。
+        #   ⇒ 显式 never 之后 isPublish=false，Release 发布权归 softprops 一处。
+        #   ⚠️ 已核实 `--publish never` **不会**弄丢 latest.yml：latest.yml 由
+        #     getPublishConfigsForUpdateInfo 单独走（源码注释原文 "file should be generated
+        #     regardless of publish state"），与 isPublish 无关。#42e 的活不受影响。
+        run: npm run electron:build
+
+      # 🔴 E6#42e —— 安装包文件名断言（防 asset-missing；见发布流水线文档 §〇）。
+      # --print-exe：全过后把安装包**绝对路径**打到 stdout（状态行改走 stderr），后面每一步
+      # 都引用它 ⇒ 目录与文件名都不再手抄。产物在**仓库外**（directories.output = ../linkdesk-build，
+      # windows-latest 上即 D:/a/linkdesk/linkdesk-build），脚本输出正斜杠，故 ${exe%/*} 可直接取目录。
+      # ⚠️ `npm run electron:build` 尾部已经跑过一次同一个门禁（断言部分）——这里是**再取一次真值**，
+      #    只读、幂等，代价是一次数百毫秒的目录扫描，换来的是「路径不手抄」。
+      - name: Assert installer filename and resolve its path
+        id: installer
+        shell: bash
+        run: |
+          exe=$(node scripts/assert-installer-name.mjs --print-exe)
+          echo "path=$exe" >> "$GITHUB_OUTPUT"
+          echo "dir=${exe%/*}" >> "$GITHUB_OUTPUT"
+
+      # TODO: v1.0 发布前启用代码签名
+      # ⚠️ 2026-09-11 订正：以下三条原写 release/*.exe——**本仓从不产出该目录**
+      #    （E6#15e：产物统一落仓库外，见 electron-builder.yml 的 directories.output）。
+      # 方案 A——Azure Trusted Signing（免费预览期）
+      # - name: Sign Windows executable
+      #   uses: azure/azure-trusted-signing-action@v1
+      #   with:
+      #     path: ${{ steps.installer.outputs.path }}
+      #     endpoint: ${{ vars.AZURE_SIGNING_ENDPOINT }}
+      #     account: ${{ vars.AZURE_SIGNING_ACCOUNT }}
+      #     profile: ${{ vars.AZURE_SIGNING_PROFILE }}
+      # 方案 B——开源免费证书（SignPath Foundation）
+      # - name: Sign Windows executable
+      #   uses: signpath/github-action-submit-signing-request@v1
+      #   with:
+      #     artifact-path: ${{ steps.installer.outputs.path }}
+      #     organization-id: ${{ vars.SIGNPATH_ORG_ID }}
+      #     api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+      # 方案 C——正规证书（DigiCert/Sectigo，$200-500/年）
+      # - name: Sign Windows executable
+      #   run: |
+      #     signtool sign /fd SHA256 /a /f certificate.pfx /p ${{ secrets.CERT_PASSWORD }} "${{ steps.installer.outputs.path }}"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: LinkDesk-Setup
+          path: ${{ steps.installer.outputs.path }}
+
+      - name: Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          # 🔴 2026-09-11 订正：原来只有 `<产物>/*.exe` 一项 —— **latest.yml 从没上传过**。
+          #    为什么要带上它和 .blockmap，说准确点（2026-09-11 二次订正，别照旧说法抄）：
+          #      · **本仓的更新器不读 latest.yml** —— `06-主软件更新/00-README.md` 明写
+          #        「自研更新机制，不用 electron-updater」，`01-更新机制设计.md` §2.3 走的是
+          #        GitHub Releases API（`releases/latest` → `tag_name` 比版本 → 按 asset 名精确匹配）。
+          #        ⚠️ 所以**不许**再写「不传 latest.yml ⇒ 更新 404 / 永远没有新版」——那条推论
+          #        假定用了 electron-updater，与本仓设计不符（此处原先就是这么写的，已订正）。
+          #      · 真正该带上它的理由有两条：① `latest.yml` 的 `path` 是 E6#42e 三道门禁里
+          #        **第三条独立证据**（磁盘名 / 配置 / 产物元数据三方对账）——它是暴露
+          #        「安全名翻译」的现场；② 它是 electron-builder 自动生成的发布惯例伴随件，
+          #        将来若真改用 electron-updater 就必须要它。两者都成立，故保留三件。
+          #      · 三件里**唯一功能上必需的是 `.exe`**：自研更新器按 asset 名找的就是它。
+          files: |
+            ${{ steps.installer.outputs.path }}
+            ${{ steps.installer.outputs.dir }}/latest.yml
+            ${{ steps.installer.outputs.dir }}/*.blockmap
+          # 🔴 Release 正文 = CHANGELOG 那段正文（§1.3），不是 GitHub 自动罗列的 commit 列表
+          #    （那是流水，用户看不懂，也不是人写的那份说明）。正文由上面那一步提取。
+          body_path: release-body.md
+          # ⚠️ 订正 ⑤：设计稿写的是 `generateReleaseNotes: true` —— 那是 **electron-builder**
+          #    的选项名，不是 softprops/action-gh-release 的。GitHub Actions 对 with: 里
+          #    不认识的键**静默忽略**，所以照抄不会报错，只是那个开关其实一直没生效
+          #    （「文档看着对、跑起来没有」的又一例）。
+          #    这里**刻意不启用** softprops 的 `generate_release_notes`：§1.3 明确要求正文 =
+          #    CHANGELOG 正文，而自动生成那份是 commit 流水，与 body_path 叠在一起的呈现
+          #    方式取决于 action 版本，**不如只要一份可预期的人写正文**。
+          #    「首次贡献者名单」之类的附加区若日后确实想要，再单独加一步追加，别塞进这里赌行为。
