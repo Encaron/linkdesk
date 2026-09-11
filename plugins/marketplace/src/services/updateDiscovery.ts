@@ -42,11 +42,15 @@
  *   - 勾选开 = DetailView 立即 `runAutoUpdateIfDue`（**候选就地现算，不读 store**——见该函数头注 E6#81）。
  *   - G6：插件标签页开着也照常 stage + 替换 + 重启生效（引擎 needRestart 恒 true——原子替换已证开着也能成，§二·七）。
  *
- * 输出：⚠️ E6#81 审视更正——**#33b 常驻「可更新」徽标不读本模块 store**（徽标由 DetailView / 列表页经
- * `updateTargetFor` 现算，是同一判定的另一处消费）。本模块 store（getDiscoveredUpdates /
- * onDiscoveredUpdatesChange / hasDiscoveredUpdates）**产线已无读者**，仅剩 vitest 断言与
- * `removeDiscoveredCandidate` 的两处调用（DetailView 手动更新成功、marketplaceShared 手动重试成功）——
- * 后者在 store 本就为空时是 no-op。是否连同测试断言一并拆除待用户拍板；在那之前保持原状，不得据其做判断。
+ * 输出：**本模块不存发现结果**（E6#81 第④处，2026-09-11 拆除）。
+ *   🔴 拆掉经过：#33b 时代本模块持有一份常驻 store（`getDiscoveredUpdates` / `hasDiscoveredUpdates` /
+ *      `onDiscoveredUpdatesChange` / `removeDiscoveredCandidate`），供「可更新」徽标与自动更新读。但徽标实际
+ *      由 DetailView / 列表页经 `updateTargetFor` **现算**（同一判定的另一处消费），自动更新也已改为勾选那一下
+ *      **就地现算**（见 `runAutoUpdateIfDue` 头注）——store 遂成只写不读的死状态，只剩 vitest 断言与两处
+ *      「更新成功后撤销」的调用在喂它。**用户 2026-09-11 拍板拆除。**
+ *   ⚠️ 后来者：想再加「发现结果缓存」之前先问——**这份数据有人读吗，还是现算更便宜？** 本模块的教训是
+ *      缓存一份现算量（读盘 + 目录比对，目录还有 5min 缓存）换不来收益，只换来一个会与真值漂移的第二副本
+ *      （见 memory `snapshot-shadows-truth-bug-class` 第一类）。
  *
  * IO 注入沿用兄弟模块惯例（marketSources.__setCatalogIO / installedUpdateMeta.__setMetaStore）——纯计划
  * planDiscovery 可直测；主编排 runUpdateDiscovery 读 pluginManager/notifications/update 走 window.linkdesk
@@ -205,51 +209,12 @@ export function selectMetaEvictions(
   return out;
 }
 
-/* ═══ 发现结果 store（#33b 徽标/升级入口 + #33d 自动更新数据源） ═══ */
+/* ═══ 测试复位（调度/并发态——发现结果不落状态了，见文件头「输出」注） ═══ */
 
-let _candidates: UpdateCandidate[] = [];
-let _discovered = false;
-const _listeners = new Set<() => void>();
-
-/** 最近一趟发现的可更新集合（无候选 = []；未跑过 = [] + discovered:false 区分） */
-export function getDiscoveredUpdates(): UpdateCandidate[] {
-  return _candidates;
-}
-
-/** 是否完成过至少一趟发现（离线跳过返回 null 不算——消费方据此区分「未检过」vs「检过无更新」） */
-export function hasDiscoveredUpdates(): boolean {
-  return _discovered;
-}
-
-export function onDiscoveredUpdatesChange(fn: () => void): () => void {
-  _listeners.add(fn);
-  return () => {
-    _listeners.delete(fn);
-  };
-}
-
-/** 更新成功后的候选驱逐（E6#33b——本会话不自动重跑发现，徽标消费方更新后即时重算消失；
- *  store 保持诚实 + #33d 自动更新防「同一候选重复更新」。仅存在时驱逐，返回是否驱逐。 */
-export function removeDiscoveredCandidate(pluginId: string): boolean {
-  const next = _candidates.filter((c) => c.pluginId !== pluginId);
-  if (next.length === _candidates.length) return false;
-  commitStore(next);
-  return true;
-}
-
-/** 测试复位 store/调度/并发态（vitest afterEach 用——模块单例跨用例残留；产线不调） */
+/** 测试复位调度/并发态（vitest afterEach 用——模块单例跨用例残留；产线不调） */
 export function __resetUpdateDiscovery(): void {
-  _candidates = [];
-  _discovered = false;
-  _listeners.clear();
   _scheduled = false;
   _running = null;
-}
-
-function commitStore(candidates: UpdateCandidate[]): void {
-  _candidates = candidates;
-  _discovered = true;
-  _listeners.forEach((f) => f());
 }
 
 /* ═══ #33d 单候选自动更新执行（doRunDiscovery 与勾选即跑共用——引擎 update，结果由 market 侧告知） ═══ */
@@ -366,8 +331,9 @@ async function doRunDiscovery(force: boolean): Promise<DiscoveryPlan | null> {
   }
 
   // #33d auto 执行（串行——引擎 update 单通道，多插件串行最稳；单败不阻断其余）。G6：插件标签页开着照常
-  //  stage + 替换 + 重启生效（引擎 needRestart 恒 true——原子替换开着也能成，§二·七）。成功者从常驻 store
-  //  驱逐（徽标消、不重复更新）；**失败者保留作手动候选**（「可更新」徽标仍在，下次发现 / 手动重试）。
+  //  stage + 替换 + 重启生效（引擎 needRestart 恒 true——原子替换开着也能成，§二·七）。
+  //  「可更新」徽标不归这里管——它由 `updateTargetFor` 现算：装成了盘上版本就变，徽标自己消失；失败则盘上
+  //  没变，徽标照挂（手动重试的入口因此仍在）。
   const autoDone: UpdateCandidate[] = [];
   const autoFailed: UpdateCandidate[] = [];
   for (const c of autoEligible) {
@@ -375,17 +341,15 @@ async function doRunDiscovery(force: boolean): Promise<DiscoveryPlan | null> {
   }
   notifyAutoResult(autoDone, autoFailed);
 
-  const doneIds = new Set(autoDone.map((c) => c.pluginId));
-  commitStore(plan.candidates.filter((c) => !doneIds.has(c.pluginId)));
   return plan;
 }
 
-/** #33d 勾选即跑（DetailView 勾上 autoUpdate → 立即调）——**候选就地现算，不读 store**。
+/** #33d 勾选即跑（DetailView 勾上 autoUpdate → 立即调）——**候选就地现算，不读任何别处的产物**。
  *
- *  🔴 E6#81（2026-09-11）：此前的判据是「store 里有没有这个插件的候选」，而 store **只由 `doRunDiscovery`
- *  落**——它每会话最多跑一趟，且是市场池首载后 ~10s（DISCOVERY_DELAY_MS）；目录为空（离线 / 未配源 / 坏
- *  parse）时更是在 `commitStore` 之前就早退。⇒ 用户打开详情页勾上开关的那一刻 store 往往是空的，函数在
- *  `!c` 处**静默 `return false`**——**勾了等于没勾**，界面上一个字不说。这与 1.0.20 changelog 的承诺
+ *  🔴 E6#81（2026-09-11）：此前的判据是「发现那趟留下的候选表里有没有这个插件」，而那张表**只由
+ *  `doRunDiscovery` 落**——它每会话最多跑一趟，且是市场池首载后 ~10s（DISCOVERY_DELAY_MS）；目录为空
+ *  （离线 / 未配源 / 坏 parse）时更在落表之前就早退。⇒ 用户打开详情页勾上开关的那一刻那张表往往还是空的，
+ *  函数在 `!c` 处**静默 `return false`**——**勾了等于没勾**，界面上一个字不说。这与 1.0.20 changelog 的承诺
  *  （「勾上开关那一刻如果正好有可更新的版本，立刻装，不用等下一轮检查」）直接冲突，也说明「把判定挂在
  *  别人的一次性产物上」是这次 bug 的形状。
  *
@@ -393,8 +357,8 @@ async function doRunDiscovery(force: boolean): Promise<DiscoveryPlan | null> {
  *  开销）→ 复用**同一个** `planDiscovery` 判定（不另写第二份「这算不算有更新」的逻辑）→ auto 门 → 跑引擎。
  *  该不该自动更新（autoUpdate on + 未钉版本，§二·九）仍由 `selectAutoCandidates` 判——用户没表达过该
  *  意图就不替他动文件。
- *  成功 → 驱逐 store 候选（发现跑过则撤徽标；没跑过是 no-op）**并告知**；失败 → 候选保留（手动可重试）
- *  **也告知**。返回是否成功自动更新。
+ *  成功 / 失败都**告知**（`notifyAutoResult`）；「可更新」徽标不在这里管——现算，装成了自己消失。
+ *  返回是否成功自动更新。
  *  幂等守卫：发现编排在跑 → 先等收束（编排已含 auto 处理本趟候选，防双跑引擎 update）。 */
 export async function runAutoUpdateIfDue(pluginId: string): Promise<boolean> {
   if (_running) await _running;
@@ -413,7 +377,6 @@ export async function runAutoUpdateIfDue(pluginId: string): Promise<boolean> {
   if (selectAutoCandidates([c], meta).length === 0) return false;
   const ok = await applyEngineAutoUpdate(c);
   notifyAutoResult(ok ? [c] : [], ok ? [] : [c]);
-  if (ok) removeDiscoveredCandidate(pluginId);
   return ok;
 }
 

@@ -25,10 +25,6 @@ import {
   planDiscovery,
   runUpdateDiscovery,
   scheduleStartupDiscovery,
-  getDiscoveredUpdates,
-  hasDiscoveredUpdates,
-  onDiscoveredUpdatesChange,
-  removeDiscoveredCandidate,
   selectAutoCandidates,
   selectMetaEvictions,
   runAutoUpdateIfDue,
@@ -383,10 +379,9 @@ describe("runUpdateDiscovery（主编排 IO）", () => {
     expect(await runUpdateDiscovery()).toBeNull();
     expect(fetchSpy).not.toHaveBeenCalled();
     expect(show).not.toHaveBeenCalled();
-    expect(hasDiscoveredUpdates()).toBe(false);
   });
 
-  it("有已装有新版 → 铃铛推一条 + 记 lastNotifiedVersion + 落 store；再跑幂等不重推", async () => {
+  it("有已装有新版 → 铃铛推一条 + 记 lastNotifiedVersion；再跑幂等不重推", async () => {
     const meta = metaStore();
     __setMetaStore(meta);
     const { show } = stubWindow({ enabled: [enabled("demo-alpha", "1.0.0", "Alpha")] });
@@ -399,10 +394,9 @@ describe("runUpdateDiscovery（主编排 IO）", () => {
     expect(show).toHaveBeenCalledTimes(1);
     expect(show).toHaveBeenCalledWith(expect.any(String), { type: "info", source: "marketplace" });
     expect(await readUpdateMetaMap()).toEqual({ "demo-alpha": { lastNotifiedVersion: "1.2.0" } });
-    expect(getDiscoveredUpdates().map((c) => c.pluginId)).toEqual(["demo-alpha"]);
     expect(fetchSpy).toHaveBeenCalledTimes(1); // 首跑真实拉取
 
-    // 二跑：5min 缓存命中 + 已提醒过 → 不重推铃铛、不再拉；徽标常驻
+    // 二跑：5min 缓存命中 + 已提醒过 → 不重推铃铛、不再拉
     const second = await runUpdateDiscovery();
     expect(ids(second!.candidates)).toEqual(["demo-alpha"]);
     expect(second!.toNotify).toEqual([]);
@@ -484,7 +478,7 @@ describe("runUpdateDiscovery（主编排 IO）", () => {
     expect(await readUpdateMetaMap()).toEqual({});
   });
 
-  it("目录 offline（拉取抛）→ null 静默，不铃不记不落 store", async () => {
+  it("目录 offline（拉取抛）→ null 静默，不铃不记账", async () => {
     __setMetaStore(metaStore());
     const { show } = stubWindow({ enabled: [enabled("demo-alpha", "1.0.0")] });
     fetchSpy = vi.fn(async () => {
@@ -494,8 +488,6 @@ describe("runUpdateDiscovery（主编排 IO）", () => {
     expect(await runUpdateDiscovery()).toBeNull();
     expect(show).not.toHaveBeenCalled();
     expect(await readUpdateMetaMap()).toEqual({});
-    expect(hasDiscoveredUpdates()).toBe(false);
-    expect(getDiscoveredUpdates()).toEqual([]);
   });
 
   it("自愈：本地已追上曾提醒版 → 一趟清标记（readUpdateMetaMap 后无 lastNotifiedVersion）", async () => {
@@ -528,68 +520,6 @@ describe("runUpdateDiscovery（主编排 IO）", () => {
       expect(show).toHaveBeenCalledTimes(1);
       expect(await readUpdateMetaMap()).toEqual({ "demo-alpha": { lastNotifiedVersion: "1.2.0" } });
     });
-  });
-});
-
-describe("removeDiscoveredCandidate（#33b 更新成功候选驱逐）", () => {
-  let fetchSpy: ReturnType<typeof vi.fn>;
-
-  function seedDiscovery(enabledList: PluginListEntry[], catalog: CatalogEntry[]): void {
-    fetchSpy = vi.fn(async (url: string) => {
-      if (url === OFFICIAL_SOURCE_URL) return catalogText(...catalog);
-      throw new Error("unexpected url " + url);
-    });
-    __setCatalogIO(fetchSpy as unknown as FetchFn, memStorage());
-    stubWindow({ enabled: enabledList });
-  }
-
-  beforeEach(() => {
-    __setCatalogIO(null, null);
-    __setMetaStore(null);
-    __resetUpdateDiscovery();
-    Reflect.deleteProperty(window, "linkdesk");
-  });
-  afterEach(() => {
-    __setCatalogIO(null, null);
-    __setMetaStore(null);
-    Reflect.deleteProperty(window, "linkdesk");
-  });
-
-  it("发现落库后驱逐该插件 → store 清空 + 变更监听触发；再驱逐幂等 false 不重复通知", async () => {
-    __setMetaStore(metaStore());
-    seedDiscovery([enabled("demo-alpha", "1.0.0")], [catEntry("demo-alpha", "1.2.0")]);
-    await runUpdateDiscovery();
-    expect(ids(getDiscoveredUpdates())).toEqual(["demo-alpha"]);
-
-    const listener = vi.fn();
-    const unsub = onDiscoveredUpdatesChange(listener);
-    expect(removeDiscoveredCandidate("demo-alpha")).toBe(true);
-    expect(getDiscoveredUpdates()).toEqual([]);
-    expect(listener).toHaveBeenCalledTimes(1);
-    // 已不在 → false，不重复 notify
-    expect(removeDiscoveredCandidate("demo-alpha")).toBe(false);
-    expect(listener).toHaveBeenCalledTimes(1);
-    unsub();
-  });
-
-  it("缺席 id（未发现/未上架）→ false 不改 store", async () => {
-    __setMetaStore(metaStore());
-    seedDiscovery([enabled("demo-alpha", "1.0.0")], [catEntry("demo-alpha", "1.2.0")]);
-    await runUpdateDiscovery();
-    expect(removeDiscoveredCandidate("demo-absent")).toBe(false);
-    expect(ids(getDiscoveredUpdates())).toEqual(["demo-alpha"]);
-  });
-
-  it("多候选只驱逐目标，其余候选保留（同会话更新一个不连带另一个）", async () => {
-    __setMetaStore(metaStore());
-    seedDiscovery(
-      [enabled("demo-alpha", "1.0.0"), enabled("demo-beta", "1.0.0", "Beta")],
-      [catEntry("demo-alpha", "2.0.0"), catEntry("demo-beta", "1.5.0")],
-    );
-    await runUpdateDiscovery();
-    expect(ids(getDiscoveredUpdates())).toEqual(["demo-alpha", "demo-beta"]);
-    expect(removeDiscoveredCandidate("demo-alpha")).toBe(true);
-    expect(ids(getDiscoveredUpdates())).toEqual(["demo-beta"]);
   });
 });
 
@@ -631,7 +561,6 @@ describe("runUpdateDiscovery #33d auto（自动更新编排）", () => {
     expect(ids(plan!.toNotify)).toEqual(["demo-alpha"]);
     expect(show).toHaveBeenCalledTimes(1); // 但**结果**必须说（E6#79「装完发一条通知告诉我」）
     expect(show).toHaveBeenCalledWith(expect.stringContaining("Alpha"), { type: "info", source: "marketplace" });
-    expect(getDiscoveredUpdates()).toEqual([]); // 已更新无候选（徽标消）
     expect(await readUpdateMetaMap()).toEqual({ "demo-alpha": { autoUpdate: true } }); // 不铃不记 lastNotified
   });
 
@@ -647,7 +576,6 @@ describe("runUpdateDiscovery #33d auto（自动更新编排）", () => {
     expect(ids(plan!.toNotify)).toEqual(["demo-alpha"]); // plan 纯产物；失败回铃与否看下条 show
     expect(show).toHaveBeenCalledTimes(1);
     expect(show).toHaveBeenCalledWith(expect.stringContaining("Alpha"), { type: "warning", source: "marketplace" });
-    expect(ids(getDiscoveredUpdates())).toEqual(["demo-alpha"]); // 失败留守常驻 store，可手动重试
   });
 
   it("auto 引擎抛异常（断网/引擎炸）→ 不崩不阻断，候选留守 + warning 告知", async () => {
@@ -658,7 +586,6 @@ describe("runUpdateDiscovery #33d auto（自动更新编排）", () => {
     const { show } = stubWindow({ enabled: [enabled("demo-alpha", "1.0.0", "Alpha")], update });
     okCatalogFetch([catEntry("demo-alpha", "2.0.0")]);
     expect(ids((await runUpdateDiscovery())!.candidates)).toEqual(["demo-alpha"]);
-    expect(ids(getDiscoveredUpdates())).toEqual(["demo-alpha"]);
     expect(show).toHaveBeenCalledWith(expect.any(String), { type: "warning", source: "marketplace" });
   });
 
@@ -673,7 +600,6 @@ describe("runUpdateDiscovery #33d auto（自动更新编排）", () => {
     expect(show).toHaveBeenCalledTimes(1);
     expect(show).toHaveBeenCalledWith(expect.any(String), { type: "info", source: "marketplace" }); // 「有新版本」，非 warning
     expect(ids(plan!.toNotify)).toEqual(["demo-alpha"]);
-    expect(ids(getDiscoveredUpdates())).toEqual(["demo-alpha"]); // 停旧版 → 徽标常驻提示手动
   });
 
   it("auto 插件无 update 能力（预览面）→ 不崩，候选留守手动 + warning 告知（勾了却没成必须说）", async () => {
@@ -681,7 +607,6 @@ describe("runUpdateDiscovery #33d auto（自动更新编排）", () => {
     const { show } = stubWindow({ enabled: [enabled("demo-alpha", "1.0.0", "Alpha")], update: null });
     okCatalogFetch([catEntry("demo-alpha", "2.0.0")]);
     expect(ids((await runUpdateDiscovery())!.candidates)).toEqual(["demo-alpha"]);
-    expect(ids(getDiscoveredUpdates())).toEqual(["demo-alpha"]);
     expect(show).toHaveBeenCalledTimes(1);
     expect(show).toHaveBeenCalledWith(expect.any(String), { type: "warning", source: "marketplace" });
   });
@@ -701,7 +626,6 @@ describe("runUpdateDiscovery #33d auto（自动更新编排）", () => {
     expect(typeof update.mock.calls[0][1]?.url).toBe("string");
     expect(ids(plan!.toNotify)).toEqual(["demo-alpha"]); // plan 纯产物；铃那步已滤掉 auto
     expect(show).toHaveBeenCalledWith(expect.stringContaining("2.0.0"), { type: "info", source: "marketplace" }); // 装的是稳定版 2.0.0，不是 beta
-    expect(getDiscoveredUpdates()).toEqual([]);
   });
 
   it("多插件：auto 一个代劳 + 非 auto 一个照常铃——铃只点名非 auto（同一件事不说两遍）", async () => {
@@ -720,7 +644,6 @@ describe("runUpdateDiscovery #33d auto（自动更新编排）", () => {
     expect(show).toHaveBeenCalledTimes(2); // beta 的「有新版本」铃 + alpha 的「已自动更新」结果
     expect(show).toHaveBeenCalledWith(expect.stringContaining("Beta"), { type: "info", source: "marketplace" });
     expect(show).toHaveBeenCalledWith(expect.stringContaining("Alpha"), { type: "info", source: "marketplace" });
-    expect(ids(getDiscoveredUpdates())).toEqual(["demo-beta"]); // alpha 已 auto 掉
   });
 });
 
@@ -747,13 +670,12 @@ describe("runAutoUpdateIfDue（#33d DetailView 勾选即跑）", () => {
     Reflect.deleteProperty(window, "linkdesk");
   });
 
-  it("store 有候选（发现时 auto 未开留守）+ 勾开记账 auto → 立即自动更新成功 + 驱逐候选 + 发一条告知", async () => {
+  it("勾开记账 auto（此前未开）→ 立即自动更新 + 发一条告知（用户刚勾的那一下不能没反应）", async () => {
     __setMetaStore(metaStore());
     const update = vi.fn<EngineUpdate>(async () => ({ success: true }));
     const { show } = stubWindow({ enabled: [enabled("demo-alpha", "1.0.0", "Alpha")], update });
     okCatalogFetch([catEntry("demo-alpha", "2.0.0")]);
-    await runUpdateDiscovery(); // auto 未开 → 候选留守 store（可更新徽标在）
-    expect(ids(getDiscoveredUpdates())).toEqual(["demo-alpha"]);
+    await runUpdateDiscovery(); // auto 未开 → 只推「有新版本」铃，不动引擎
     expect(update).not.toHaveBeenCalled();
     show?.mockClear();
 
@@ -763,7 +685,6 @@ describe("runAutoUpdateIfDue（#33d DetailView 勾选即跑）", () => {
     expect(update.mock.calls[0][0]).toBe("demo-alpha");
     expect(show).toHaveBeenCalledTimes(1); // 装完了必须说
     expect(show).toHaveBeenCalledWith(expect.stringContaining("Alpha"), { type: "info", source: "marketplace" });
-    expect(getDiscoveredUpdates()).toEqual([]); // 已更新徽标消
     expect((await readUpdateMetaMap())["demo-alpha"]?.autoUpdate).toBe(true); // 偏好保留
   });
 
@@ -790,25 +711,23 @@ describe("runAutoUpdateIfDue（#33d DetailView 勾选即跑）", () => {
     expect(show).not.toHaveBeenCalled();
   });
 
-  it("🔥 回归（E6#81）：发现一趟都没跑过（store 从未落过）+ 目录有新版 + 已勾自动 → 照样真装 + 告知", async () => {
-    // 旧实现读 store（`_candidates.find`）——store 空即在第一行静默 `return false`，**勾了等于没勾**。
+  it("🔥 回归（E6#81）：发现一趟都没跑过 + 目录有新版 + 已勾自动 → 照样真装 + 告知", async () => {
+    // 旧实现读「发现那趟留下的候选表」——表空即在第一行静默 `return false`，**勾了等于没勾**。
     // 用户实机路径：打开详情页 → 勾「自动更新」→ 什么也没发生（发现要市场池首载后 ~10s 才跑，且离线/无源
-    // 时整趟早退不落 store）。此处断言「不依赖发现跑过」。
+    // 时整趟早退不落表）。本用例全程不调 runUpdateDiscovery——断言的就是「不依赖发现跑过」。
     __setMetaStore(metaStore({ "demo-alpha": { autoUpdate: true } }));
     const update = vi.fn<EngineUpdate>(async () => ({ success: true }));
     const { show } = stubWindow({ enabled: [enabled("demo-alpha", "1.0.0", "Alpha")], update });
     okCatalogFetch([catEntry("demo-alpha", "2.0.0")]);
-    expect(getDiscoveredUpdates()).toEqual([]); // 发现未跑过
     expect(await runAutoUpdateIfDue("demo-alpha")).toBe(true);
     expect(update).toHaveBeenCalledTimes(1);
     expect(update.mock.calls[0][0]).toBe("demo-alpha");
     expect(typeof update.mock.calls[0][1]?.url).toBe("string"); // URL 走稳定版寻址，非空跑
     expect(show).toHaveBeenCalledTimes(1);
     expect(show).toHaveBeenCalledWith(expect.stringContaining("Alpha"), { type: "info", source: "marketplace" });
-    expect(getDiscoveredUpdates()).toEqual([]); // 空 store 上驱逐是 no-op（不炸）
   });
 
-  it("🔥 回归（E6#81）：发现没跑过 + 已钉旧版 → 仍不动引擎、不说（pin 是唯一闸，不许被现算绕开）", async () => {
+  it("🔥 回归（E6#81）：已勾自动但已钉旧版 → 仍不动引擎、不说（pin 是唯一闸，不许被现算绕开）", async () => {
     __setMetaStore(metaStore({ "demo-alpha": { autoUpdate: true, pinnedVersion: "1.0.0" } }));
     const update = vi.fn<EngineUpdate>(async () => ({ success: true }));
     const { show } = stubWindow({ enabled: [enabled("demo-alpha", "1.0.0", "Alpha")], update });
@@ -818,51 +737,39 @@ describe("runAutoUpdateIfDue（#33d DetailView 勾选即跑）", () => {
     expect(show).not.toHaveBeenCalled();
   });
 
-  it("候选在但 auto 未开（Opt-IN 默认关）→ false 不动引擎、不说（用户没要求过自动更新）", async () => {
+  it("已装旧版但 auto 未开（Opt-IN 默认关）→ false 不动引擎、不说（用户没要求过自动更新）", async () => {
     __setMetaStore(metaStore());
     const update = vi.fn<EngineUpdate>(async () => ({ success: true }));
     const { show } = stubWindow({ enabled: [enabled("demo-alpha", "1.0.0", "Alpha")], update });
     okCatalogFetch([catEntry("demo-alpha", "2.0.0")]);
-    await runUpdateDiscovery();
-    expect(ids(getDiscoveredUpdates())).toEqual(["demo-alpha"]);
-    show?.mockClear();
-
     expect(await runAutoUpdateIfDue("demo-alpha")).toBe(false);
     expect(update).not.toHaveBeenCalled();
     expect(show).not.toHaveBeenCalled();
-    expect(ids(getDiscoveredUpdates())).toEqual(["demo-alpha"]);
   });
 
-  it("候选在 + auto 开但已钉旧版（§二·九）→ false 不动引擎、不说（pin 时就已放弃自动）", async () => {
+  it("已装旧版 + auto 开但已钉旧版（§二·九）→ false 不动引擎、不说（pin 时就已放弃自动）", async () => {
     __setMetaStore(metaStore());
     const update = vi.fn<EngineUpdate>(async () => ({ success: true }));
     const { show } = stubWindow({ enabled: [enabled("demo-alpha", "1.0.0", "Alpha")], update });
     okCatalogFetch([catEntry("demo-alpha", "2.0.0")]);
-    await runUpdateDiscovery();
-    expect(ids(getDiscoveredUpdates())).toEqual(["demo-alpha"]);
 
     await setAutoUpdate("demo-alpha", true);
     await setPinnedVersion("demo-alpha", "1.0.0");
-    show?.mockClear();
     expect(await runAutoUpdateIfDue("demo-alpha")).toBe(false);
     expect(update).not.toHaveBeenCalled();
     expect(show).not.toHaveBeenCalled();
-    expect(ids(getDiscoveredUpdates())).toEqual(["demo-alpha"]);
   });
 
-  it("auto 执行失败 → false 且候选留守（可手动重试，不驱逐）+ warning 告知", async () => {
+  it("auto 执行失败 → false + warning 告知（盘上版本没变 ⇒ 「可更新」徽标照挂，手动重试的口还在）", async () => {
     __setMetaStore(metaStore());
     const update = vi.fn<EngineUpdate>(async () => ({ success: false }));
     const { show } = stubWindow({ enabled: [enabled("demo-alpha", "1.0.0", "Alpha")], update });
     okCatalogFetch([catEntry("demo-alpha", "2.0.0")]);
-    await runUpdateDiscovery();
-    show?.mockClear();
     await setAutoUpdate("demo-alpha", true);
     expect(await runAutoUpdateIfDue("demo-alpha")).toBe(false);
     expect(update).toHaveBeenCalledTimes(1);
     expect(show).toHaveBeenCalledTimes(1);
     expect(show).toHaveBeenCalledWith(expect.any(String), { type: "warning", source: "marketplace" });
-    expect(ids(getDiscoveredUpdates())).toEqual(["demo-alpha"]); // 失败不驱逐
   });
 });
 
@@ -914,7 +821,7 @@ describe("auto × 确认门（E6#79——第三方来源同样不过门，勾选
     Reflect.deleteProperty(window, "linkdesk");
   });
 
-  it("第三方来源的 auto 候选 → 照常自动更新（**零弹卡**）：引擎跑、候选驱逐、结果一条 info", async () => {
+  it("第三方来源的 auto 候选 → 照常自动更新（**零弹卡**）：引擎跑、结果一条 info", async () => {
     __setMetaStore(metaStore({ "demo-alpha": { autoUpdate: true } }));
     const update = vi.fn<EngineUpdate>(async () => ({ success: true }));
     const { show } = stubWindow({ enabled: [enabled("demo-alpha", "1.0.0", "Alpha")], update });
@@ -924,7 +831,6 @@ describe("auto × 确认门（E6#79——第三方来源同样不过门，勾选
     const plan = await runUpdateDiscovery();
     expect(plan).not.toBeNull();
     expect(update).toHaveBeenCalledTimes(1); // 勾选即授权——来源不参与判定
-    expect(ids(getDiscoveredUpdates())).toEqual([]); // 已更新
     expect(show).toHaveBeenCalledTimes(1);
     expect(show).toHaveBeenCalledWith(expect.any(String), { type: "info", source: "marketplace" }); // 结果告知，非警告
   });
@@ -935,16 +841,11 @@ describe("auto × 确认门（E6#79——第三方来源同样不过门，勾选
     const { show } = stubWindow({ enabled: [enabled("demo-alpha", "1.0.0", "Alpha")], update });
     withConfiguration();
     thirdPartyCatalogFetch([catEntry("demo-alpha", "2.0.0")]);
-    await runUpdateDiscovery(); // auto 未开 → 候选留守
-    expect(ids(getDiscoveredUpdates())).toEqual(["demo-alpha"]);
-    show?.mockClear();
-
     await setAutoUpdate("demo-alpha", true); // DetailView 勾开 → 即刻跑
     expect(await runAutoUpdateIfDue("demo-alpha")).toBe(true);
     expect(update).toHaveBeenCalledTimes(1);
     expect(show).toHaveBeenCalledTimes(1);
     expect(show).toHaveBeenCalledWith(expect.any(String), { type: "info", source: "marketplace" });
-    expect(ids(getDiscoveredUpdates())).toEqual([]); // 候选驱逐
   });
 });
 

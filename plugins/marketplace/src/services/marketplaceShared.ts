@@ -26,7 +26,7 @@ import type { CatalogEntry } from "./marketCatalog";
 import { confirmMarketInstallById } from "./installGate";
 // E6#33a 发现调度（2026-09-08 锚② 重裁：市场池首载调度——本模块被全部市场池面 import，任意面首挂载即触发一趟
 // 延迟发现；scheduleStartupDiscovery 内置池门控，壳进程 import 本模块不调度不跑）——见 updateDiscovery 头注
-import { scheduleStartupDiscovery, removeDiscoveredCandidate } from "./updateDiscovery";
+import { scheduleStartupDiscovery } from "./updateDiscovery";
 // E5.6#11.5e：@src/core 清零——onPluginLifecycleChange/ViewContainerService → lk.events.on
 const lk = () => window.linkdesk;
 
@@ -638,8 +638,9 @@ export function settleUpdateFailure(
  * E6#71k「都问」：与重试安装同一条规矩——**重试不是免问券**，仍过一次确认门（单点门位：
  * `confirmMarketInstallById` 现查目录条目构造富内容卡；条目查不到 → 回落纯文字确认，仍要问）。
  *
- * 成功后做两件收敛（与详情页 `doVersionAction` 成功分支同款，否则重试成功却看不到变化）：
- *   ① `removeDiscoveredCandidate` 撤「可更新」徽标；② `scheduleDataRefresh` 重拉已装列表版本号。
+ * 成功后做一件收敛（与详情页 `doVersionAction` 成功分支同款，否则重试成功却看不到变化）：
+ *   `scheduleDataRefresh` 重拉已装列表版本号——徽标/版本号都是现算的，盘上版本一变自己就对了
+ *   （E6#81 第④处：原先还要 `removeDiscoveredCandidate` 去撤一份 store，那份 store 已拆）。
  * ⚠️ 失败**不再递归推新 toast**：失败本身就是用户点这条 [重试] 的答案，再挂一条 [重试] 等于
  * 无限自助餐（常驻条已被 G3 纳入按来源上限，但那是护栏不是设计）。失败结果由 job 行 + 详情页表达。
  */
@@ -655,7 +656,6 @@ export async function retryMarketUpdate(
   try {
     const r = await upd(pluginId, { url: downloadUrl });
     if (!r?.success) return false;
-    removeDiscoveredCandidate(pluginId);
     scheduleDataRefresh();
     return true;
   } catch {

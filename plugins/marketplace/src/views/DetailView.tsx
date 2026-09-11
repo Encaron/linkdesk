@@ -58,7 +58,7 @@ import {
   defaultVersionPick,
   versionActionTarget,
 } from "../services/marketCatalog";
-import { removeDiscoveredCandidate, runAutoUpdateIfDue } from "../services/updateDiscovery";
+import { runAutoUpdateIfDue } from "../services/updateDiscovery";
 import { readPluginUpdateMeta, setAutoUpdate, setPinnedVersion } from "../services/installedUpdateMeta";
 // E6#69c/#69f：详情展示位 = marketIcon ?? icon ?? 默认彩色块——走共享 pickIdentityArt（@linkdesk/ui 单一实现，
 // 列表/详情同裁决，顶替旧 display.ts pickDisplayArt + #66 640 场景默认；恒返有效 descriptor 零分支）
@@ -488,7 +488,6 @@ export default function DetailView({ pluginId }: DetailContributedProps) {
         const isDowngrade = !!localVer && compareVersions(ver, localVer) < 0;
         const r = await upd(pluginId, { url, allowOlder: isDowngrade ? true : undefined });
         if (r && r.success) {
-          if (updateTarget && compareVersions(ver, updateTarget) === 0) removeDiscoveredCandidate(pluginId);
           const pin = pinnedAfterApply(entry, ver);
           if (pin !== undefined) void setPinnedVersion(pluginId, pin);
           refreshPlugins();
@@ -506,7 +505,7 @@ export default function DetailView({ pluginId }: DetailContributedProps) {
         setUpdating(false);
       }
     },
-    [pluginId, busy, updating, online, entry, updateTarget, localVer, t, refreshPlugins, displayName],
+    [pluginId, busy, updating, online, entry, localVer, t, refreshPlugins, displayName],
   );
 
   /* ── E6#33c 降级确认（F2，05 §二·十一——「此版本较旧，配置可能不兼容」。不拦只提示：确认后 allowOlder
