@@ -1,5 +1,8 @@
 /**
- * DetailChangelogTab——详情「更改日志」tab 渲染面（E6#30.6e，mockup 帧 10）。
+ * ChangelogTab——详情「更改日志」tab 渲染面（E6#30.6e，mockup 帧 10）。
+ * E6#86a（第 3.6.3 轮）feature-folder 拆分：自 `views/DetailChangelogTab.tsx` 迁入改名（私有子件归位宿主
+ * 同名字夹），零行为变更；仅相对 import 随层级 +1 调整。
+ *
  *   数据源分装态（04-详情页设计 §三）：
  *   - 已装 = 包内 CHANGELOG.md（readInstalledPackageFile——本地权威：装的是哪个版本看哪个版本的说明）；
  *   - 未装 = 目录 versions[].changelog（marketplace.json 扩展字段——SDK publish 暂不写，真数据多为空 →
@@ -10,7 +13,7 @@
 
 import { useTranslation } from "react-i18next";
 import { MarkdownView } from "@linkdesk/ui";
-import type { CatalogEntry } from "../services/marketCatalog";
+import type { CatalogEntry } from "../../services/marketCatalog";
 
 type Props = {
   /** 已装（读包 CHANGELOG.md）还是未装（目录 versions[].changelog） */
@@ -35,7 +38,7 @@ function fmtDate(iso?: string): string {
   return /^\d{4}-\d{2}-\d{2}/.test(s) ? s.slice(0, 10) : s;
 }
 
-export default function DetailChangelogTab({
+export default function ChangelogTab({
   installed,
   localChangelog,
   localVersion,
