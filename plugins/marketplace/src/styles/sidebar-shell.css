@@ -1,0 +1,249 @@
+/* MarketplaceSidebar — 对标 VS Code extensionsViewlet.css */
+
+/* E6#30.12：安装/启用语义绿统一走壳主题域 --success（index.css 暗 #4CAF50 / 亮 #388A34；主题
+   colorway.colors 写 "success" 可整套覆盖）。E5.8#128.8 本地 :root --status-connected 定义删除——
+   document 级 :root 覆写会连带污染壳 PluginDetailPoolView .pd-btn-enable（现回归壳 teal 正解），
+   且「连接」语义与安装绿混源；本插件启用/安装/已装徽标全消费 var(--success)。 */
+
+.marketplace-sidebar {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+/* ── VS Code: .header 41px, search 28px ── */
+
+.ms-header {
+  height: auto;
+  box-sizing: border-box;
+  padding: 5px 12px 8px 12px;
+  flex-shrink: 0;
+}
+
+.ms-header-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px; /* E6#30c ③：「安装」+「市场源」并排（mockup frame ③ .ms-header-top） */
+  margin-bottom: 4px;
+}
+
+.ms-install-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border: 1px solid var(--separator);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-primary);
+  cursor: pointer;
+  font-size: var(--font-size-xs); /* E5.8 Phase 12 #175：install-btn 11→xs */
+  font-family: inherit;
+}
+
+.ms-install-btn:hover:not(:disabled) {
+  background: var(--tab-hover-bg);
+}
+
+.ms-install-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ms-install-btn .codicon {
+  font-size: var(--font-size-lg); /* E5.8 Phase 12 #175：下载 codicon 内容图标 14→lg */
+}
+
+/* ── 市场源按钮（E6#30c ③——mockup frame ③ .addsrc-trigger，设计唯一源）──
+   与「安装」钮并排（.ms-header-actions gap）；ghost 小钮：separator 描边 + text-secondary 字，
+   hover → 字提亮 + accent 描边 + tab-hover 底（mockup 语义）。点开 .ms-addsrc-pop。 */
+
+.ms-addsrc-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border: 1px solid var(--separator);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: var(--font-size-xs); /* E5.8 Phase 12 #175：11→xs */
+  transition: color 150ms, border-color 150ms, background 150ms;
+}
+
+.ms-addsrc-trigger:hover {
+  color: var(--text-primary);
+  border-color: var(--accent);
+  background: var(--tab-hover-bg);
+}
+
+.ms-addsrc-trigger .codicon {
+  font-size: var(--font-size-sm); /* plus 内容图标（基类 16px）→sm（≈mockup svg 12） */
+}
+
+/* ── 添加市场源浮层（E6#30c ③——mockup frame ③ .addsrc-pop）──
+   fixed 定位于按钮锚下缘（anchor top/left inline 传入，ViewTitleActions 下拉同款）；
+   320px 卡片自左缘向右伸入主区（mockup popC 语义）。色全走 var()；容器圆角 --radius-md
+   （≈mockup 6px）；浮层阴影 --shadow-pop。输入 err 态 = 红描边 + 就近红字（mockup 就近校验）。 */
+
+.ms-addsrc-pop {
+  position: fixed;
+  z-index: var(--z-dropdown); /* E5.8#111：wrapper 无 stacking context——卡片自身 z 用 dropdown 层（scrim 遮罩之上） */
+  width: 320px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  background: var(--bg-card);
+  border: 1px solid var(--separator);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-pop);
+}
+
+.ms-addsrc-pop-title {
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.ms-addsrc-pop-input {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 5px 8px;
+  border: 1px solid var(--separator);
+  border-radius: var(--radius-sm);
+  background: var(--bg-input);
+  color: var(--text-primary);
+  font-family: var(--font-mono); /* mono URL——mockup mono 输入 */
+  font-size: var(--font-size-sm);
+  outline: none;
+}
+
+.ms-addsrc-pop-input:focus {
+  border-color: var(--accent);
+}
+
+.ms-addsrc-pop-input.err {
+  border-color: var(--error);
+}
+
+.ms-addsrc-pop-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.ms-addsrc-pop-btn {
+  padding: 3px 10px;
+  border: 1px solid var(--separator);
+  border-radius: var(--radius-sm);
+  background: var(--bg-input);
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: var(--font-size-xs); /* E5.8 Phase 12 #175：11→xs */
+}
+
+.ms-addsrc-pop-btn:hover:not(:disabled) {
+  background: var(--tab-hover-bg);
+  color: var(--text-primary);
+}
+
+.ms-addsrc-pop-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ms-addsrc-pop-btn--primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--badge-text);
+}
+
+.ms-addsrc-pop-btn--primary:hover:not(:disabled) {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+  color: var(--badge-text);
+}
+
+.ms-addsrc-pop-hint {
+  font-size: var(--font-size-2xs); /* E5.8 Phase 12 #175：10→2xs */
+  line-height: 1.6;
+  color: var(--text-muted);
+}
+
+.ms-addsrc-pop-err {
+  font-size: var(--font-size-2xs); /* E5.8 Phase 12 #175：10→2xs */
+  line-height: 1.6;
+  color: var(--error);
+}
+
+.ms-search-container {
+  position: relative;
+  height: 100%;
+}
+
+.ms-search-box {
+  width: 100%;
+  height: calc(28px * var(--ui-scale)); /* E5.8 Phase 12 #175：search-box 28px 乘 scale（§三.3） */
+  line-height: 1.5; /* E5.8 Phase 12 #175：18px 写死 → 单位 1.5（sm 13px×1.5≈19.5px） */
+  box-sizing: border-box;
+  padding: 4px 28px 4px 8px;
+  border: 1px solid var(--separator);
+  border-radius: 4px;
+  background: var(--bg-card);
+  color: var(--text-primary);
+  font-size: var(--font-size-sm); /* E5.8 Phase 12 #175：search 12→sm */
+  font-family: inherit;
+  outline: none;
+}
+
+.ms-search-box:focus {
+  border-color: var(--accent);
+}
+
+.ms-search-box::placeholder {
+  color: var(--text-muted);
+}
+
+.ms-search-clear {
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: var(--font-size-lg); /* E5.8 Phase 12 #175：✕ codicon 内容图标（基类 16px）→lg */
+  padding: 2px 4px;
+}
+
+.ms-search-clear:hover {
+  color: var(--text-primary);
+}
+
+/* ── VS Code: .extensions (height: calc(100% - 41px)) ── */
+
+.ms-extensions {
+  flex: 1;
+  overflow-y: auto;
+  padding-top: 2px;
+}
+
+.ms-empty {
+  padding: 24px 12px;
+  text-align: center;
+  font-size: var(--font-size-sm); /* E5.8 Phase 12 #175：empty 12→sm */
+  color: var(--text-muted);
+}
+
+/* ── E6#86d（第 3.6.3 轮）拆分说明 ──
+ * 本文件原为 MarketplaceSidebar.css（680 行）的头段。整份样式已按实测分节切为 3 件：
+ *   sidebar-shell（本件·头部/搜索/市场源按钮/添加浮层/.extensions 容器/空态）·
+ *   sidebar-list · sidebar-explore。
+ * **只搬选择器块，未改任何一条声明**；3 件的选择器并集与原文件逐一相等（机械比对）。 */

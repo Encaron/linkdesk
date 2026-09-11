@@ -1,0 +1,264 @@
+/* detail-header.css —— 详情页 Header 区（含 #18a core 星标、#30.14b 内置 chip、
+ * #30.5e 挂起·缺依赖三通道、#33b「有新版本可用」块）。
+ * E6#86d（第 3.6.3 轮）：自 MarketplaceDetail.css **只搬选择器块、零声明改动**切出（原 36–295 行）。
+ * 全量出处与搬迁原则见 detail-shell.css 头注。 */
+
+/* ═══ Header ═══ */
+
+.mpd-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 20px; /* 4px 节奏（壳保底 .pd-header 同值 同构） */
+  flex-shrink: 0; /* #63e B5：头部钉顶——不参与 body 滚动 */
+  border-bottom: 1px solid var(--separator); /* #63b B2：header 面板下分隔线（气泡皮肤可弃、分隔线不可省） */
+}
+
+.mpd-icon {
+  position: relative;
+  /* E6#66/67（2026-09-09 拍板）：展示位 52 → 96 方框；E6#69c 再放大档 96 → 128——Type-2 身份图框
+   *（marketIcon/icon/默认彩色块同在此框显形，内图按型接管，见下；#69c 档位已点头） */
+  width: 128px;
+  height: 128px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 展示 descriptor → PluginIcon 渲染的尺寸接管。img 型 = Type-2 身份图（128 框内显 ~120 画幅，48 留白比例
+ * 使色块 ≈100）；codicon/lucide/emoji 型 = 界面图形（放大到 56 即止，不把细线 glyph 撑成巨型——图形型本不是
+ * 身份资产） */
+.mpd-icon .plugin-icon--codicon,
+.mpd-icon .plugin-icon--emoji {
+  font-size: 56px !important;
+  line-height: 1;
+  width: auto;
+  height: auto;
+  color: var(--text-secondary);
+}
+
+.mpd-icon .plugin-icon--lucide {
+  width: 56px;
+  height: 56px;
+}
+
+.mpd-icon .plugin-icon--img {
+  width: 120px;
+  height: 120px;
+  object-fit: contain;
+}
+
+/* core:true 星标（#18a UI 旗标——藏卸载钮同旗；52 盒右下角收敛 ~20） */
+.mpd-icon-badge {
+  position: absolute;
+  right: -3px;
+  bottom: -3px;
+  width: 20px;
+  height: 20px;
+  line-height: 20px;
+  border-radius: var(--radius-2xl);
+  background: var(--accent);
+  color: var(--badge-text);
+  font-size: 12px !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mpd-header-details {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  justify-content: center;
+}
+
+.mpd-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.mpd-name {
+  font-size: var(--font-size-3xl);
+  line-height: 1.2;
+  font-weight: 600;
+  margin: 0;
+  white-space: nowrap;
+}
+
+.mpd-version {
+  font-size: var(--font-size-lg);
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+/* 内置 chip = 壳 Badge 基础件（E6#30.14b）——色/形状全走壳 token，本文件零样式 */
+
+.mpd-subtitle {
+  font-size: var(--font-size-md);
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.mpd-short-desc {
+  font-size: var(--font-size-md);
+  color: var(--text-secondary);
+  margin: 4px 0 0;
+  line-height: 1.4;
+}
+
+/* ═══ 挂起·缺依赖 三通道（E6#30.5e——取代 E5.8#15.5 旧顶部横幅；mockup 帧 7：头部零横幅 + action chip） ═══ */
+
+/* 🚫 安装不可用（缺依赖）chip——非按钮状态件（禁交互，不抢主操作区） */
+.mpd-blocked-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border: 1px solid var(--separator);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
+  color: var(--warning-text);
+  cursor: default;
+  user-select: none;
+}
+
+.mpd-blocked-chip .codicon {
+  font-size: var(--font-size-md);
+  flex-shrink: 0;
+}
+
+/* 主区「依赖未满足」说明块——标题 + 引导行 + 缺失依赖列表（行缺失标黄 ✕ 可点跳详情） */
+.mpd-deps-block {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 16px;
+}
+
+.mpd-deps-title {
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.mpd-deps-lead {
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  line-height: 1.5;
+  margin: 4px 0 8px;
+}
+
+.mpd-deps-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.mpd-dep-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  background: none;
+  border: 1px solid var(--separator);
+  border-radius: var(--radius-sm);
+  padding: 6px 10px;
+  font-family: inherit;
+  font-size: var(--font-size-sm);
+  color: var(--text-primary);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 120ms;
+}
+
+.mpd-dep-item:hover {
+  border-color: var(--warning-text);
+}
+
+.mpd-dep-x {
+  color: var(--warning-text);
+  font-size: var(--font-size-sm);
+  flex-shrink: 0;
+}
+
+.mpd-dep-name {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  word-break: break-all;
+}
+
+.mpd-dep-state {
+  margin-left: auto;
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+  flex-shrink: 0;
+}
+
+/* ═══ E6#33b 第四维「有新版本可用」块（mockup 帧 6：主区顶部 accent 信息带——只报状态引导 changelog，
+ *  更新动作在 action bar 首槽 ⬆；accent = 更新语义族，与 install 绿/卸载红正交） ═══ */
+
+.mpd-update-block {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 16px;
+  padding: 10px 12px;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+}
+
+.mpd-update-block-icon {
+  color: var(--accent);
+  font-size: var(--font-size-lg);
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.mpd-update-block-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.mpd-update-block-title {
+  font-size: var(--font-size-md);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.mpd-update-block-lead {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.mpd-update-block-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  align-self: flex-start;
+  background: none;
+  border: none;
+  padding: 0;
+  margin-top: 2px;
+  font-family: inherit;
+  font-size: var(--font-size-sm);
+  color: var(--accent);
+  cursor: pointer;
+}
+
+.mpd-update-block-hint:hover {
+  text-decoration: underline;
+}
+
+.mpd-update-block-hint .codicon {
+  font-size: var(--font-size-xs);
+}

@@ -1,0 +1,182 @@
+/* sidebar-explore.css —— 探索（catalog）件：目录行 + 行态变体（#30.9 进度/禁用）+ 安装失败行[重试]
+ * （#30.9b）+ 目录空态与重试（#30f）+ 列表顶注（#30c）+ ⚙ 齿轮按钮。
+ * E6#86d（第 3.6.3 轮）：自 MarketplaceSidebar.css **只搬选择器块、零声明改动**切出（原 504–680 行）。
+ * 全量出处与搬迁原则见 sidebar-shell.css 头注。 */
+
+/* ── 探索插件（catalog）extension item ──
+   E6#30.5b：行点击开详情（主区 plugin-detail 标签页——详情页三态 action bar 的未装验证入口，
+   mockup 01 对标 VS Code 扩展卡片；hover 高亮沿用列表可读性）。安装钮内 onClick stopPropagation 隔离。
+   右缘状态区 = 已安装/可更新徽标（绿 / accent），无动作——升级入口归更新轮。 */
+
+.ms-extension-item.catalog {
+  cursor: pointer;
+}
+
+.ms-catalog-status {
+  flex-shrink: 0;
+  align-self: center;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-left: 8px;
+  font-size: var(--font-size-xs); /* E5.8 Phase 12 #175：11→xs */
+  color: var(--success); /* E6#30.12：已装徽标语义 success */
+  white-space: nowrap;
+}
+
+.ms-catalog-status.update {
+  color: var(--accent);
+}
+
+.ms-catalog-status .codicon {
+  font-size: var(--font-size-sm); /* E5.8 Phase 12 #175：内容图标 12→sm */
+}
+
+/* 目录行态变体（E6#30.9——基色 success 属「已安装」；进度 accent / 禁用 muted） */
+.ms-catalog-status.installing {
+  color: var(--accent);
+}
+
+.ms-catalog-status.installing .codicon {
+  /* 下载中图标微动画 = 内容图标转——示意活动，非装饰（reduced-motion 尊重） */
+  animation: ms-icon-spin 1.2s linear infinite;
+}
+
+.ms-catalog-status.disabled {
+  color: var(--text-muted);
+}
+
+.ms-catalog-status.disabled .codicon {
+  color: var(--text-secondary);
+}
+
+/* 安装失败行（30.9b M4 三）——归因文案截断 + [重试] 图标钮（✕ 归详情行）。整 chip 走语义 token */
+.ms-item-fail {
+  flex-shrink: 0;
+  align-self: center;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 190px;
+  margin-left: 8px;
+  font-size: var(--font-size-xs);
+  color: var(--error);
+  white-space: nowrap;
+}
+
+.ms-item-fail > .codicon {
+  flex-shrink: 0;
+  font-size: var(--font-size-sm);
+}
+
+.ms-item-fail-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.ms-item-fail-act {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  background: none;
+  border: none;
+  border-radius: 4px;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.ms-item-fail-act:hover {
+  color: var(--text-primary);
+  background: var(--tab-hover-bg);
+}
+
+.ms-item-fail-act .codicon {
+  font-size: var(--font-size-sm);
+}
+
+@keyframes ms-icon-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ── 目录空态 + 重试（#30f：offline / corrupt 各自文案 + [重试]） ── */
+
+.ms-empty-icon {
+  font-size: var(--font-size-xl); /* E5.8 Phase 12 #175：错误 icon 内容图标（基类 16px）→xl */
+  color: var(--warning-text);
+}
+
+.ms-empty p {
+  margin: 6px 0 0;
+  line-height: 1.5;
+}
+
+.ms-empty-action {
+  margin-top: 10px;
+  padding: 3px 12px;
+  border: 1px solid var(--separator);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-primary);
+  cursor: pointer;
+  font-size: var(--font-size-xs); /* E5.8 Phase 12 #175：retry 11→xs */
+  font-family: inherit;
+}
+
+.ms-empty-action:hover {
+  background: var(--tab-hover-bg);
+}
+
+/* ── 列表顶注（#30c/#30f：单源失败 / 离线缓存兜底——不整体降级） ── */
+
+.ms-catalog-note {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 12px;
+  font-size: var(--font-size-2xs); /* E5.8 Phase 12 #175：note 10→2xs */
+  color: var(--warning-text);
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.ms-catalog-note .codicon {
+  font-size: var(--font-size-xs); /* E5.8 Phase 12 #175：warning 内容图标（基类 16px）→xs */
+  flex-shrink: 0;
+}
+
+/* ── ⚙ 齿轮按钮 —— Phase 5f 归一化：菜单走 <ContextMenu>，此文件只保留按钮样式 ── */
+
+.ms-item-gear-wrapper {
+  position: relative;
+  flex-shrink: 0;
+  align-self: center;
+}
+
+.ms-item-gear-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px;
+  font-size: var(--font-size-lg); /* E5.8 Phase 12 #175：⚙ codicon 内容图标（基类 16px）→lg */
+  border-radius: 4px;
+  opacity: 0;
+  transition: opacity 120ms;
+}
+
+.ms-extension-item:hover .ms-item-gear-btn {
+  opacity: 1;
+}
+
+.ms-item-gear-btn:hover {
+  color: var(--text-primary);
+  background: var(--tab-hover-bg);
+}

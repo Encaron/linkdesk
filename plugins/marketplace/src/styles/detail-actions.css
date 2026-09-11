@@ -1,0 +1,109 @@
+/* detail-actions.css —— 详情页右上动作列（.mpd-acts 含版本下拉/主动作钮/#33d 自动更新勾选/
+ * 🔴 #83「已停在 vX」说明件）+ NavBar（详情/功能/更改日志三 tab）。
+ * E6#86d（第 3.6.3 轮）：自 MarketplaceDetail.css **只搬选择器块、零声明改动**切出（原 296–400 行）。
+ * 全量出处与搬迁原则见 detail-shell.css 头注。 */
+
+/* ═══ 右上动作列（#63a B1：原 header 下方 .mpd-action-bar 整行迁入 header 图标/名右侧 .mpd-acts——
+ *  对标 01 竞标 A .pdva-acts L829-853；row1 = 版本下拉 + 主/次动作钮（窄则 wrap 换行兜底）、row2 =
+ *  自动更新勾；离线/失败/安装错误提示驻列底。30.14c 按钮已走壳 Button variant——启用=success/禁用=ghost/卸载=danger） ═══ */
+
+.mpd-acts {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.mpd-acts-row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* 动作列内容图标（壳 Button 不归内容——图标尺寸/对齐归消费方本件） */
+.mpd-acts-row .codicon {
+  font-size: var(--font-size-sm);
+  vertical-align: middle;
+}
+
+/* #33d 自动更新勾选（mockup .auto-upd——版本偏好副控制 row2；secondary 文本 + accent 勾选色，
+ *  全走壳语义 token 零硬编码；disabled 态降透明度同 mockup auto-disabled） */
+.mpd-auto-upd {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  white-space: nowrap;
+  user-select: none;
+}
+
+.mpd-auto-upd input {
+  accent-color: var(--accent);
+  margin: 0;
+}
+
+.mpd-auto-upd.disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+/* 🔴 E6#83：「已停在 vX」说明件——`pinnedVersion` 的唯一可见面。与 .mpd-auto-upd 同排尾随（两条会打架的
+ *  意愿并排），故视觉取同一族 token（--font-size-sm + --text-secondary），**零新色零新尺**。
+ *  非按钮状态件：纯说明不可点（解钉走勾开关 / 下拉选最新版），不给一个按不动的按钮（同 .mpd-blocked-chip 判据）。 */
+.mpd-pinned-note {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  white-space: nowrap;
+  user-select: none;
+  cursor: default;
+}
+
+/* ═══ NavBar ═══ */
+
+.mpd-navbar {
+  display: flex;
+  border-bottom: 1px solid var(--separator);
+  padding: 0 20px;
+  flex-shrink: 0;
+}
+
+.mpd-navtab {
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  padding: 8px 12px;
+  font-size: var(--font-size-md);
+  font-family: inherit;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color 120ms, border-color 120ms;
+}
+
+.mpd-navtab:hover {
+  color: var(--text-primary);
+}
+
+.mpd-navtab.active {
+  color: var(--text-primary);
+  border-bottom-color: var(--accent);
+}
+
+/* E6#33b：更改日志 tab「有新版本」亮 dot——同 update-block accent 信息语义（动作进 changelog 看新内容） */
+.mpd-nav-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-left: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  vertical-align: 1px;
+}

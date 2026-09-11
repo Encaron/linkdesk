@@ -33,7 +33,12 @@ import { useCatalogStatus } from "./ExploreView/useCatalogStatus";
 import { useCatalogInstall } from "./ExploreView/useCatalogInstall";
 import CatalogRow from "./ExploreView/CatalogRow";
 import { CatalogErrorState, CatalogLoading, CatalogNoMatch, CatalogNone } from "./ExploreView/CatalogEmpty";
-import "../styles/MarketplaceSidebar.css";
+/* E6#86d：侧栏样式已按实测分节拆为 3 件（原 MarketplaceSidebar.css 680 行）——**本处按原文档顺序
+ *  全量 import**：5 个侧栏 surface 共用同一套样式，且各 surface 吃样式的类分散在自身 JSX 与其子件
+ *  （如 ExtensionItem）里，逐件 import 要算传递闭包、收益为零。判据见 styles/detail-shell.css 头注。 */
+import "../styles/sidebar-shell.css";
+import "../styles/sidebar-list.css";
+import "../styles/sidebar-explore.css";
 
 const lk = () => window.linkdesk;
 

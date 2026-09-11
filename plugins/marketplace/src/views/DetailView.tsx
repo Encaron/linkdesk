@@ -58,7 +58,14 @@ import DetailInfoSidebar from "./DetailView/DetailInfoSidebar";
 import DetailOverviewTab from "./DetailView/DetailOverviewTab";
 import FeaturesTab from "./DetailView/FeaturesTab";
 import ChangelogTab from "./DetailView/ChangelogTab";
-import "../styles/MarketplaceDetail.css";
+/* E6#86d：详情样式已按实测分节拆为 6 件（原 MarketplaceDetail.css 861 行）——**本处按原文档顺序
+ *  全量 import**，理由与「不用谁用谁 import」的判据见 detail-shell.css 头注。 */
+import "../styles/detail-shell.css";
+import "../styles/detail-header.css";
+import "../styles/detail-actions.css";
+import "../styles/detail-body.css";
+import "../styles/detail-features.css";
+import "../styles/detail-changelog.css";
 
 const lk = () => window.linkdesk;
 

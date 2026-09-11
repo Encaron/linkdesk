@@ -1,0 +1,146 @@
+/* detail-features.css —— 详情页「功能」tab（#30.6d：contributes 四组渲染的组壳与行样式）。
+ * E6#86d（第 3.6.3 轮）：自 MarketplaceDetail.css **只搬选择器块、零声明改动**切出（原 634–776 行）。
+ * 全量出处与搬迁原则见 detail-shell.css 头注。 */
+
+/* ═══ 功能 tab（30.6d——mockup 帧 9；组壳 = 底部分隔线卡片，行 hover = --tab-hover-bg 壳惯例） ═══ */
+
+.mpd-fc {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.mpd-fc-sec {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.mpd-fc-sec-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.mpd-fc-count {
+  font-size: var(--font-size-xs);
+  line-height: 1.5;
+  color: var(--text-muted);
+  background: var(--bg-input);
+  border-radius: var(--radius-sm);
+  padding: 0 6px;
+}
+
+.mpd-fc-rows {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--separator);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.mpd-fc-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 6px 12px;
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--separator);
+  font-family: inherit;
+  font-size: var(--font-size-sm);
+  color: var(--text-primary);
+  text-align: left;
+  cursor: pointer;
+  transition: background 120ms;
+}
+
+.mpd-fc-row:last-child {
+  border-bottom: none;
+}
+
+.mpd-fc-row:hover {
+  background: var(--tab-hover-bg);
+}
+
+.mpd-fc-row-readonly {
+  cursor: default;
+}
+
+.mpd-fc-row-readonly:hover {
+  background: none;
+}
+
+.mpd-fc-row-icon {
+  color: var(--text-muted);
+  font-size: var(--font-size-md);
+  flex-shrink: 0;
+}
+
+.mpd-fc-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.mpd-fc-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--font-size-sm);
+}
+
+.mpd-fc-id {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mpd-fc-kbd {
+  display: inline-block;
+  align-self: flex-start;
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  line-height: 1.5;
+  padding: 0 6px;
+  border: 1px solid var(--separator);
+  border-radius: var(--radius-xs);
+  background: var(--bg-input);
+  color: var(--text-secondary);
+}
+
+.mpd-fc-copied {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  color: var(--success);
+  font-size: var(--font-size-xs);
+}
+
+.mpd-fc-arrow {
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+  flex-shrink: 0;
+}
+
+.mpd-fc-empty {
+  padding: 16px 4px;
+  color: var(--text-secondary);
+  font-size: var(--font-size-md);
+  line-height: 1.5;
+}
+
+.mpd-fc-empty p {
+  margin: 0;
+}

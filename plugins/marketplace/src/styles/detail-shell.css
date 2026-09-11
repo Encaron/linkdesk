@@ -1,0 +1,51 @@
+/* MarketplaceDetail.css —— 详情页主区视图样式（市场插件拥有——E6#30.11b）。
+ * 从壳 PluginDetailView.css 迁入，pd-* → mpd-* 本地类前缀 + 全 token 化（零 hex，硬约束 1）。
+ * 布局对标 VS Code extensionEditor.css：header / action bar / navbar / body + info sidebar。
+ * 搬迁原则：换市场插件 = 换全新样式——本 CSS 归市场插件，壳保底视图用壳自己那份（两份各属其主）。 */
+
+/* 容器 = 内容页：正文可选中复制（E5.8#186 对标 VS Code 详情页；交互件/装饰保持不可选）。
+ * #63d B4（2026-09-09 拍板）：去 880 限宽——全宽铺满标签页（CDP 实测 1400 可视详情列仅 880、两侧大空）。
+ * #63e B5 根不设滚动（现架构本已二分头/body，B4 改宽后不回归）：header/navbar flex-shrink:0 钉顶、
+ * .mpd-body 是唯一滚动区——overflow:hidden 确保根永不产生滚动条，长文只正文滚。 */
+.mpd-detail {
+  height: 100%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  color: var(--text-primary);
+  user-select: text;
+}
+
+.mpd-detail button, /* 壳 Button variant（30.14c）+ navbar tab——按钮文本不可选 */
+.mpd-detail .mpd-icon,
+.mpd-detail .codicon {
+  user-select: none;
+}
+
+.mpd-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--text-muted);
+  font-size: var(--font-size-lg);
+  user-select: text; /* 空态提示含插件 ID——可复制 */
+}
+
+/* ── E6#86d（第 3.6.3 轮）拆分说明 ──
+ * 本文件原为 MarketplaceDetail.css（861 行）的头段。整份样式已按实测分节切为 6 件：
+ *   detail-shell（本件·容器/空态）· detail-header · detail-actions · detail-body ·
+ *   detail-features · detail-changelog。
+ * **只搬选择器块，未改任何一条声明**；6 件的选择器并集与原文件逐一相等（机械比对：去注释后
+ * 687 行多重集相等 + 跨文件重复选择器 0 处）。
+ *
+ * 🔴 **import 判据——为什么由门面一处全量 import，而非「谁用谁 import」**（档案 §四 的偏离，2026-09-11）：
+ *   ① 每件样式文件是「一个 surface 的样式集」，不是「一个组件的样式」——按 module 图算需求要算**传递闭包**
+ *      （例：`BuiltinListView` 自己的 JSX 只写 `.ms-section-items`，真正吃样式的 `.ms-item-*` 在它渲染的
+ *      `components/ExtensionItem` 里）⇒ 逐件 import 的收益 = 0，成本 = 每次改渲染树都要重算闭包。
+ *   ② 已机械证明**跨文件零重复选择器**（上）⇒ 级联顺序与本拆分无关，单一 import 点即可完整覆盖。
+ *   ③ bundler 按模块 id 去重，6 件 / 3 件与原来 1 件在产物 CSS 里等价；详情页只有 1 个 surface（`DetailView`），
+ *      侧栏 5 个 surface 各自 import 全 3 件 = 与原单文件逐字节同集。
+ *   ④ 唯一需要守的纪律：**拆出的每一件都必须被某个消费方 import**（漏 import = 静默丢样式，不报错）——
+ *      本处靠「门面全量 import」结构性保证。 */

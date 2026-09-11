@@ -15,7 +15,12 @@ import { useTranslation } from "react-i18next";
 import { setMarketplaceSearch, notifyError } from "../services/marketplaceShared";
 import { useDebouncedInput } from "@linkdesk/ui"; // E6#15h：共享件全走 @linkdesk/ui 零件
 import AddSourcePopup from "./SearchView/AddSourcePopup";
-import "../styles/MarketplaceSidebar.css";
+/* E6#86d：侧栏样式已按实测分节拆为 3 件（原 MarketplaceSidebar.css 680 行）——**本处按原文档顺序
+ *  全量 import**：5 个侧栏 surface 共用同一套样式，且各 surface 吃样式的类分散在自身 JSX 与其子件
+ *  （如 ExtensionItem）里，逐件 import 要算传递闭包、收益为零。判据见 styles/detail-shell.css 头注。 */
+import "../styles/sidebar-shell.css";
+import "../styles/sidebar-list.css";
+import "../styles/sidebar-explore.css";
 
 const lk = () => window.linkdesk;
 

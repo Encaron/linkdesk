@@ -1,6 +1,7 @@
 /**
  * 文件树侧栏——全局样式。
- * E4a #95a：对标 marketplace 的 MarketplaceSidebar.css。
+ * E4a #95a：对标 marketplace 的侧栏样式（原 MarketplaceSidebar.css；E6#86d 后拆为
+ * styles/sidebar-shell.css · sidebar-list.css · sidebar-explore.css，本文件对标的是其中的列表件 sidebar-list.css）。
  *
  * 设计 token 来源：00.5-UI布局规格.md §二 + §十三
  */
