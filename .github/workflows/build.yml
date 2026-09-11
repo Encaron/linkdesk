@@ -10,6 +10,9 @@
 #    四处是「设计稿写的时候还没验」，一处是「API 名写错」（详见各步骤行内注释）：
 #    ① node-version 22 → 24      ② 补 permissions            ③ Build 加 --publish never
 #    ④ CHANGELOG 门禁脚本不存在   ⑤ generateReleaseNotes 不是 softprops 的入参名
+# 🔴 2026-09-12（E6#43a）：Release 正文改为**两段拼**——「下载信息块（文件名/版本号/发布日期/系统需求）＋ CHANGELOG 段正文」
+#    （02 §2.2 的模板，此前只是文档里的设想，没有落地）。三处值全部取真值、零手抄：
+#    文件名 ← 门禁脚本 `--print-exe`；版本号 ← package.json；发布日期 ← CHANGELOG 段头（同段同源）。
 
 name: Build and Release
 
@@ -55,6 +58,7 @@ jobs:
       #   **该脚本当前不存在**（5.4 的任务，尚未实现）——照抄进 CI = 每次跑都 "Cannot find module"。
       #   故此处**不调那个脚本**，改用就地断言；#57.15d 落地后可把它接回这一步之前。
       - name: Extract Release body from CHANGELOG (and assert the section exists)
+        id: changelog
         shell: bash
         run: |
           version=$(node -p "require('./package.json').version")
@@ -64,7 +68,7 @@ jobs:
             $0 ~ "^## " ver "([^0-9.]|$)" { inside = 1; next }
             inside && /^## / { exit }
             inside { print }
-          ' CHANGELOG.md > release-body.md
+          ' CHANGELOG.md | sed '/./,$!d' > release-body.md   # 去掉段头后面那串前导空行
           if [ ! -s release-body.md ]; then
             echo "::error::CHANGELOG.md 里没有 '## v$version' 段。"
             echo "::error::缺段 ⇒ Release 正文为空 ⇒ 用户点「查看更新内容」会看到一片空白。"
@@ -73,6 +77,19 @@ jobs:
           fi
           echo "Release 正文 = CHANGELOG.md 的 '## v$version' 段，$(wc -l < release-body.md) 行"
           echo "首行：$(head -1 release-body.md)"
+
+          # 🔴 E6#43a：发布日期**从段头本身取**，不另造一个真值源。
+          #   段头格式是死规矩：`## v{version}（{date}）`（3.7.3 立的，全角括号）。
+          #   同一个段、同一处提取，所以不存在「段在、日期不在」的漂移——
+          #   唯一可能缺的是有人写段头时没带日期，那时回落构建日并打 warning（**不拦发布**：
+          #   日期只影响正文观感，不该卡住一个已经过了两道门禁的版本）。
+          date=$(grep -m1 "^## v$version（" CHANGELOG.md | sed 's/.*（//; s/）.*//')
+          if [ -z "$date" ]; then
+            date=$(date -u +%F)
+            echo "::warning::段头 '## v$version' 没带（YYYY-MM-DD）日期，发布日期回落到构建日 $date"
+          fi
+          echo "date=$date" >> "$GITHUB_OUTPUT"
+          echo "发布日期 = $date（来自 CHANGELOG 段头）"
 
       - name: Install dependencies
         run: npm ci
@@ -107,6 +124,32 @@ jobs:
           exe=$(node scripts/assert-installer-name.mjs --print-exe)
           echo "path=$exe" >> "$GITHUB_OUTPUT"
           echo "dir=${exe%/*}" >> "$GITHUB_OUTPUT"
+
+      # 🔴 E6#43a —— Release 正文 = **下载信息块 ＋ CHANGELOG 那段正文**（02 §2.2 的模板）。
+      # 为什么拼而不是写进 CHANGELOG：CHANGELOG 是「变更说明」，下载信息是「发布元数据」，
+      #   两者寿命不同（后者每次发版都变，前者是历史）。混在一起 ⇒ 每次发版都要动 CHANGELOG
+      #   里与变更无关的行。故在 CI 里拼，CHANGELOG 保持干净。
+      # 🔴 两处值都**不手抄**（§〇 那条病根的同一形态）：
+      #   · 文件名 ← 上一步从门禁脚本取的真值（`--print-exe` 是安装包名唯一真理源的出口）
+      #   · 版本号 ← package.json（全仓唯一真值）
+      #   · 发布日期 ← CHANGELOG 段头（提取那一步顺手带出来，见 `steps.changelog.outputs.date`）
+      # 手写第二个字符串 = 把 `asset-missing` 重造一遍。
+      - name: Prepend download block to Release body
+        shell: bash
+        run: |
+          version=$(node -p "require('./package.json').version")
+          exe=$(basename "${{ steps.installer.outputs.path }}")
+          {
+            echo "## LinkDesk v$version"
+            echo
+            echo "**下载：** [\`$exe\`](https://github.com/$GITHUB_REPOSITORY/releases/download/v$version/$exe) · **发布日期：** ${{ steps.changelog.outputs.date }} · **系统需求：** Windows 10/11 · 64-bit"
+            echo
+            echo "### 变更"
+            echo
+            cat release-body.md
+          } > release-body-final.md
+          echo "Release 正文已拼好（$(wc -l < release-body-final.md) 行）："
+          head -5 release-body-final.md
 
       # TODO: v1.0 发布前启用代码签名
       # ⚠️ 2026-09-11 订正：以下三条原写 release/*.exe——**本仓从不产出该目录**
@@ -157,9 +200,11 @@ jobs:
             ${{ steps.installer.outputs.path }}
             ${{ steps.installer.outputs.dir }}/latest.yml
             ${{ steps.installer.outputs.dir }}/*.blockmap
-          # 🔴 Release 正文 = CHANGELOG 那段正文（§1.3），不是 GitHub 自动罗列的 commit 列表
-          #    （那是流水，用户看不懂，也不是人写的那份说明）。正文由上面那一步提取。
-          body_path: release-body.md
+          # 🔴 Release 正文 = **下载信息块 ＋ CHANGELOG 那段正文**（§1.3 / §2.2），
+          #    不是 GitHub 自动罗列的 commit 列表（那是流水，用户看不懂，也不是人写的那份说明）。
+          #    ⚠️ E6#43a 起正文不再直接读 `release-body.md`（那只是 CHANGELOG 段），
+          #    改读上面拼好的 `release-body-final.md`。
+          body_path: release-body-final.md
           # ⚠️ 订正 ⑤：设计稿写的是 `generateReleaseNotes: true` —— 那是 **electron-builder**
           #    的选项名，不是 softprops/action-gh-release 的。GitHub Actions 对 with: 里
           #    不认识的键**静默忽略**，所以照抄不会报错，只是那个开关其实一直没生效
