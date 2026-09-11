@@ -13,6 +13,28 @@ appId: com.linkdesk.app
 productName: LinkDesk
 copyright: Copyright © 2026 LinkDesk
 
+# 🔥 E6#42e —— 安装包文件名的唯一真理源。别删、别改 `${name}` 的写法。
+#
+# 为什么不写会出事（2026-09-11 读 electron-builder 26.15.3 源码实证，非推测）：
+#   1. 本仓 git remote = github.com/Encaron/linkdesk ⇒ electron-builder 自动推定
+#      publish provider = github（仓里一个 publish 配置都没写，PublishManager.js:217-222）。
+#   2. 不写 artifactName → NSIS 默认名 = `${productName} Setup ${version}.${ext}` =
+#      "LinkDesk Setup 0.1.47.exe"（含空格）。
+#   3. 空格不在 GitHub 允许的 [0-9A-Za-z._-] 内 ⇒ isSafeGithubName 判假 ⇒ electron-builder
+#      只把空格换成连字符，得到 safeArtifactName = "LinkDesk-Setup-0.1.47.exe"
+#      （platformPackager.js:690），并把它写进 latest.yml 的 path / files[].url
+#      （updateInfoBuilder.js:100）。
+#   4. 🔴 但磁盘上的文件仍叫 "LinkDesk Setup 0.1.47.exe"（不改名）——
+#      ⇒ latest.yml 指着一个从不存在的文件。更新器读 latest.yml 的 path 去找 asset，
+#        检查更新能成功、下载永远 404，报 asset-missing。
+#
+# 写成 ${name} 小写（package.json 的 name = linkdesk）之后，整串字符都落在
+# [0-9A-Za-z._-] 内 ⇒ isSafeGithubName 判真 ⇒ safeArtifactName 返回 null ⇒
+# latest.yml 不再改写 ⇒ 磁盘名 / latest.yml path / Release asset / 下载链接四处同名。
+# ⚠️ 是 ${name} 不是 ${productName}——productName 是大写 L/D 的 LinkDesk，大小写在 URL 场景敏感。
+# 门禁：scripts/assert-installer-name.mjs（已链进 electron:build 与 CI）。
+artifactName: "${name}-setup-${version}.${ext}"
+
 directories:
   # E6#15e 后定案（2026-09-06 用户拍板）：打包输出统一落仓库外 E:\linkdesk-build（相对父目录），
   # 消灭 E:\linkdesk 下 release/release2/release-15e 等散落产物 + 避开 Defender 深扫锁 default_app.asar。
