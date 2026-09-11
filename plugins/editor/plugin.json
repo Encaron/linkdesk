@@ -1,7 +1,16 @@
 {
   "$schema": "../../../public/schemas/plugin.schema.json",
   "name": "编辑器",
-  "version": "1.0.6",
+  "version": "1.0.7",
+  "changelog": [
+    {
+      "version": "1.0.7",
+      "date": "2026-09-11",
+      "changes": [
+        "内部整理（E6#87c 文件整理层）：标签页 / 主视图 / LSP 桥三处超大文件按体积上限拆为同名夹，LSP 的五份模块级容器集中到 registry.ts 单一属主——功能与界面零变化"
+      ]
+    }
+  ],
   "icon": "icon.svg",
   "description": "Monaco 代码编辑器——语法高亮、智能提示、Diff 对比",
   "author": "官方",
