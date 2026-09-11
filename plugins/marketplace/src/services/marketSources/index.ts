@@ -1,10 +1,11 @@
 /**
- * marketSources — 目录运行时拉取域（E6#30a/30c/30f）——**门面**。
+ * marketSources — 目录运行时拉取域（E6#30a/30c/30f）——**夹内入口（聚合门面）**。
  * E6#86（第 3.6.3 轮）feature-folder 化：原 259 行按职责拆进同名夹 `marketSources/`，本文件纯再导出。
+ * E6#86g（第 3.6.3b 轮）门面归位：`marketSources.ts` → `marketSources/index.ts`。
  *
  * 职责 = 读 marketplace.marketplaceSources 配置 + 官方默认源 → 逐源拉取 marketplace.json →
  * localStorage 5min 缓存 → 合并去重（同 id 取 semver 高）→ 返回目录 + 主状态。
- * 纯格式逻辑在 marketCatalog.ts（parse/normalize/merge/compare/sourceName）；
+ * 纯格式逻辑在 marketCatalog/（parse/normalize/merge/compare/sourceName）；
  * 本模块只管编排 + IO，IO（fetch/localStorage/window.linkdesk.configuration）经 __setCatalogIO 可注入供 jsdom 直测。
  *
  * 状态机（#30f 目录防御，01 §四）：
@@ -23,11 +24,11 @@
  * 等消费方的 import 路径一字不改。
  */
 
-export type { CatalogLoadState, CatalogLoadResult, FetchFn, StorageLike } from "./marketSources/types";
+export type { CatalogLoadState, CatalogLoadResult, FetchFn, StorageLike } from "./types";
 
 /** 测试注入点——jsdom 直测替掉 fetch + localStorage（模块级状态的唯一属主见 `marketSources/io.ts`） */
-export { __setCatalogIO } from "./marketSources/io";
+export { __setCatalogIO } from "./io";
 
-export { getSourceUrls, readConfiguredAuthorSources } from "./marketSources/sourceConfig";
+export { getSourceUrls, readConfiguredAuthorSources } from "./sourceConfig";
 
-export { loadCatalog, forceRefreshCatalog } from "./marketSources/load";
+export { loadCatalog, forceRefreshCatalog } from "./load";

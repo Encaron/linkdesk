@@ -1,7 +1,8 @@
 /**
  * updateDiscovery — E6#33a 发现编排（2026-09-08 锚② 重裁：市场池首载调度；Batch F #33d 自动更新接入）
- * ——**门面**。E6#86（第 3.6.3 轮）feature-folder 化：原 519 行按职责拆进同名夹 `updateDiscovery/`，
- * 本文件纯再导出 + 保留原路径（marketplaceShared / DetailView / `__tests__/*` 的 import 一字不改）。
+ * ——**夹内入口（聚合门面）**。E6#86（第 3.6.3 轮）feature-folder 化：原 519 行按职责拆进同名夹 `updateDiscovery/`，
+ * 本文件纯再导出（marketplaceShared / DetailView / `__tests__/*` 的 import 一字不改）。
+ * E6#86g（第 3.6.3b 轮）门面归位：`updateDiscovery.ts` → `updateDiscovery/index.ts`。
  *
  * 🔴 重裁依据（代码取证推翻「activationEvents:["*"] 池启动即加载」）：activationEvents 只让「壳」loader
  * 决定是否启动 import 插件 entry，对「池」零影响（池经 PluginComponent import.meta.glob + React.lazy，
@@ -63,8 +64,8 @@
  * （jsdom 注入同 startMarketInstall 的测试约定），目录经 loadCatalog。
  */
 
-export type { InstalledSnapshot, UpdateCandidate, DiscoveryPlan } from "./updateDiscovery/types";
-export { assembleInstalled, readInstalledSnapshot } from "./updateDiscovery/snapshot";
-export { planDiscovery, selectAutoCandidates, selectMetaEvictions } from "./updateDiscovery/plan";
-export { runUpdateDiscovery, runAutoUpdateIfDue, enableAutoUpdateAndRun } from "./updateDiscovery/run";
-export { scheduleStartupDiscovery, __resetUpdateDiscovery } from "./updateDiscovery/schedule";
+export type { InstalledSnapshot, UpdateCandidate, DiscoveryPlan } from "./types";
+export { assembleInstalled, readInstalledSnapshot } from "./snapshot";
+export { planDiscovery, selectAutoCandidates, selectMetaEvictions } from "./plan";
+export { runUpdateDiscovery, runAutoUpdateIfDue, enableAutoUpdateAndRun } from "./run";
+export { scheduleStartupDiscovery, __resetUpdateDiscovery } from "./schedule";

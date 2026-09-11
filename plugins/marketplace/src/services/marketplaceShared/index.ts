@@ -1,5 +1,6 @@
 /**
- * marketplaceShared — 市场共享层的**门面**（E6#86 第 3.6.3 轮 feature-folder 化）。
+ * marketplaceShared — 市场共享层的**夹内入口（聚合门面）**（E6#86 第 3.6.3 轮 feature-folder 化）。
+ * E6#86g（第 3.6.3b 轮）门面归位：`marketplaceShared.ts` → `marketplaceShared/index.ts`。
  *
  * 本文件是纯再导出 + 模块级启动，**零实现**。原 779 行按职责拆进同名夹 `marketplaceShared/`：
  *   messages.ts      失败归因字典 + 阶段文案（码 → i18n key 的唯一映射处）
@@ -22,22 +23,22 @@
  */
 
 // 命令组注册（模块底自调用生效）——侧效应 import，勿删、勿改成按需引用
-import "./marketplaceShared/commands";
+import "./commands";
 // E6#33a 启动发现调度（模块级每进程一次；池门控见 scheduleStartupDiscovery）——见 updateDiscovery 头注
-import { scheduleStartupDiscovery } from "./updateDiscovery";
+import { scheduleStartupDiscovery } from "../updateDiscovery";
 
 /* ═══ 搜索状态 ═══ */
-export { getMarketplaceSearch, setMarketplaceSearch, onMarketplaceSearchChange } from "./marketplaceShared/searchState";
+export { getMarketplaceSearch, setMarketplaceSearch, onMarketplaceSearchChange } from "./searchState";
 
 /* ═══ 失败通道 ═══ */
-export { MARKET_SOURCE, notifyError, settleUpdateFailure } from "./marketplaceShared/notifications";
+export { MARKET_SOURCE, notifyError, settleUpdateFailure } from "./notifications";
 
 /* ═══ 数据 store ═══ */
-export { scheduleDataRefresh, useMarketplacePlugins } from "./marketplaceShared/pluginsStore";
-export { useMarketplaceCatalog, useCatalogEntryById } from "./marketplaceShared/catalogStore";
+export { scheduleDataRefresh, useMarketplacePlugins } from "./pluginsStore";
+export { useMarketplaceCatalog, useCatalogEntryById } from "./catalogStore";
 
 /* ═══ 失败归因字典 ═══ */
-export type { InstallFailReason } from "./marketplaceShared/messages";
+export type { InstallFailReason } from "./messages";
 export {
   classifyInstallError,
   installFailLabelKey,
@@ -45,13 +46,13 @@ export {
   failText,
   updateFailText,
   marketInstallStageLabel,
-} from "./marketplaceShared/messages";
+} from "./messages";
 
 /* ═══ 安装 / 更新 / 重试 ═══ */
-export { startMarketInstall, retryMarketInstall, retryMarketUpdate } from "./marketplaceShared/installFlow";
+export { startMarketInstall, retryMarketInstall, retryMarketUpdate } from "./installFlow";
 
 /* ═══ 离线态 ═══ */
-export { useOnlineStatus } from "./marketplaceShared/onlineStatus";
+export { useOnlineStatus } from "./onlineStatus";
 
 /* ═══ E6#33a 启动发现调度（模块级每进程一次；池门控见 scheduleStartupDiscovery） ═══
  * 任意市场池面首次 import 本模块（侧栏已装/禁用/内置、详情、主区 tab 首挂载都经 marketplaceShared）→

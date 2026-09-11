@@ -20,10 +20,10 @@ import { useDebouncedInput } from "@linkdesk/ui"; // E6#15h：共享件全走 @l
 import AddSourcePopup from "./SearchView/AddSourcePopup";
 /* E6#86d：侧栏样式已按实测分节拆为 3 件（原 MarketplaceSidebar.css 680 行）——**本处按原文档顺序
  *  全量 import**：5 个侧栏 surface 共用同一套样式，且各 surface 吃样式的类分散在自身 JSX 与其子件
- *  （如 ExtensionItem）里，逐件 import 要算传递闭包、收益为零。判据见 styles/detail-shell.css 头注。 */
-import "../../styles/sidebar-shell.css";
-import "../../styles/sidebar-list.css";
-import "../../styles/sidebar-explore.css";
+ *  （如 ExtensionItem）里，逐件 import 要算传递闭包、收益为零。判据见 styles/detail/detail-shell.css 头注。 */
+import "../../styles/sidebar/sidebar-shell.css";
+import "../../styles/sidebar/sidebar-list.css";
+import "../../styles/sidebar/sidebar-explore.css";
 
 const lk = () => window.linkdesk;
 

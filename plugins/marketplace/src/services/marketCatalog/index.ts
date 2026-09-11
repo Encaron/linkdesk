@@ -1,6 +1,8 @@
 /**
- * marketCatalog — 目录纯数据域（零 window/timer/IO 副作用，vitest 直测）——**门面**。
+ * marketCatalog — 目录纯数据域（零 window/timer/IO 副作用，vitest 直测）——**夹内入口（聚合门面）**。
  * E6#86（第 3.6.3 轮）feature-folder 化：原 390 行按职责拆进同名夹 `marketCatalog/`，本文件纯再导出。
+ * E6#86g（第 3.6.3b 轮）门面归位：`marketCatalog.ts` → `marketCatalog/index.ts`（services 无 basename
+ * 约束 ⇒ 门面形态用夹内入口；`views/` 因 basename = `render` = bundle key 才必须用夹旁散门面）。
  *
  * E6#29 marketplace.json 格式权威字段（01-GitHub-Releases方案.md §三/3.2）：
  *   顶层 { version?, updatedAt?, plugins[] }；条目 = id/name/version/description/author/
@@ -8,7 +10,7 @@
  *   versions[]/readmeUrl/screenshots[]/license/categories[]（旧条目不填不崩）。
  *
  * 本模块只做「格式→内存对象」的纯变换（parse/normalize/merge/compare/源 URL 归一），
- * 运行时拉取/缓存/配置读写 = marketSources.ts（消费本模块纯函数，jsdom 可 mock）。
+ * 运行时拉取/缓存/配置读写 = marketSources/（消费本模块纯函数，jsdom 可 mock）。
  *
  * 🔴 版本比较不 import src/core（插件独立铁律——零 @src/core）。本地实现与壳
  * semverUtils 同语义（忽略 v 前缀 / 缺位补 0 / 预发布逐位），双实现分处两进程域。
@@ -25,7 +27,7 @@
  * `installConfirmPayload` / `__tests__/*` 共十余处消费方的 import 路径一字不改。
  */
 
-export type { CatalogEntry, MarketplaceCatalog, ParseResult, CatalogVersionChoice } from "./marketCatalog/types";
+export type { CatalogEntry, MarketplaceCatalog, ParseResult, CatalogVersionChoice } from "./types";
 
 export {
   OFFICIAL_SOURCE_URL,
@@ -34,11 +36,11 @@ export {
   normalizeSourceUrl,
   pluginRepoUrl,
   sourceNameOfUrl,
-} from "./marketCatalog/sourceUrl";
+} from "./sourceUrl";
 
-export { parseCatalog } from "./marketCatalog/parse";
+export { parseCatalog } from "./parse";
 
-export { compareVersions, isVersionNewer, isPrereleaseVersion } from "./marketCatalog/semver";
+export { compareVersions, isVersionNewer, isPrereleaseVersion } from "./semver";
 
 export {
   stableLatestVersion,
@@ -49,6 +51,6 @@ export {
   versionActionTarget,
   selectableVersions,
   pinnedAfterApply,
-} from "./marketCatalog/select";
+} from "./select";
 
-export { mergeCatalogs } from "./marketCatalog/merge";
+export { mergeCatalogs } from "./merge";

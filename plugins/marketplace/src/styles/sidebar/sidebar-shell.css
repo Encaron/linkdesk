@@ -1,4 +1,5 @@
-/* MarketplaceSidebar — 对标 VS Code extensionsViewlet.css */
+/* MarketplaceSidebar — 对标 VS Code extensionsViewlet.css
+ * E6#86h（第 3.6.3b 轮）：3 件 sidebar-*.css 按容器分组移入 `styles/sidebar/`（分组轴与 `views/sidebar/` 同轴）。 */
 
 /* E6#30.12：安装/启用语义绿统一走壳主题域 --success（index.css 暗 #4CAF50 / 亮 #388A34；主题
    colorway.colors 写 "success" 可整套覆盖）。E5.8#128.8 本地 :root --status-connected 定义删除——
