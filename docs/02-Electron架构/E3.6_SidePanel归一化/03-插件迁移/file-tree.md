@@ -6,7 +6,7 @@
 
 ## 当前状态
 
-[sidebar.tsx](linkdesk/plugins/builtin/file-tree/src/sidebar.tsx) 137 行——`FileTreeSidebar` 大组件：
+sidebar.tsx 137 行——`FileTreeSidebar` 大组件：
 - header 标题（"资源管理器"）→ 迁移后 SidePanel 统画
 - 面包屑 → 迁移后移到 FoldersView 内容顶部
 - 工具栏（4 个按钮：新建文件/新建文件夹/刷新/收起全部）→ 保留在 FoldersView 内容顶部

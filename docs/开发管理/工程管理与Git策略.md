@@ -113,7 +113,7 @@ npm run check            # tsc + ESLint + vitest——commit 前必过
 
 ### 决策记录义务（E5.8#6）
 
-> 🔥 **非平凡改动必须落一篇决策记录**——规则全文见 [`docs/decisions/README.md`](../../decisions/README.md)。
+> 🔥 **非平凡改动必须落一篇决策记录**——规则全文见 [`docs/decisions/README.md`](../decisions/README.md)。
 
 - **什么算非平凡**：架构/方向性取舍、跨文件行为契约、未来维护者会困惑的"为什么"、推翻/修订已有决策。纯实现细节/格式/机械重构不算。
 - **落点**：`docs/decisions/{proposed,implemented,rejected,archived}/`——**路径即状态**（目录编码）；被取代 → 移 `archived/` + `Superseded by` 链接。

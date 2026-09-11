@@ -136,7 +136,7 @@ const data = await response.json();
 
 ## 五、发布流程（2026-08-30 第 3.1 轮审视——自动链路当下做全）
 
-> 🔴 **deferral 残留清除（第 3.1 轮顺带）**：原「v1.0 手动版 + 未来自动化版」是"当前够用、未来再补"话术——第 2.2 轮已拍板自动链路当下做全（沉 [03-插件发布流水线.md §四](02-插件开发工具链/03-插件发布流水线.md)）。发布 = GitHub REST API 自动链路：作者市场 UI 填 GitHub PAT → 创建 Release + 上传 asset + 更新自己仓库 marketplace.json → 全自动。
+> 🔴 **deferral 残留清除（第 3.1 轮顺带）**：原「v1.0 手动版 + 未来自动化版」是"当前够用、未来再补"话术——第 2.2 轮已拍板自动链路当下做全（沉 [03-插件发布流水线.md §四](../02-插件开发工具链/03-插件发布流水线.md)）。发布 = GitHub REST API 自动链路：作者市场 UI 填 GitHub PAT → 创建 Release + 上传 asset + 更新自己仓库 marketplace.json → 全自动。
 
 ---
 

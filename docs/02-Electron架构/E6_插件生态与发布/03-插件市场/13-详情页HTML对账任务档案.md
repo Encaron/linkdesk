@@ -33,9 +33,9 @@
 
 - **差什么（HTML 权威）**：02 帧 7（:1637）「缺依赖 = 事件型提示——点『安装』发现缺依赖 → 右下角 toast」；帧 3（:1043）「失败是事件型提示——一律走右下角 toast，不占顶部横幅」。用户拍板原文（02 :430）：**「顶部横幅把整个 UI 往下推 + 影响性能」**。结论：任何「装不了 / 为什么没反应」都应是 toast，不是要手动点掉的弹窗。
 - **现在是什么（file:line）**：
-  - [ExploreView.tsx:108-115](../../../../plugins/marketplace/src/views/ExploreView.tsx#L108-L115)：`if (!entry.downloadUrl) { await lk()?.dialog?.alert(t("该插件缺少下载地址")); return; }`——**这行正是用户引的那条**。阻塞式 alert 弹窗，点掉才走，还无「下载地址缺失」补救动作。
-  - [SearchView.tsx:160/164](../../../../plugins/marketplace/src/views/SearchView.tsx#L160-L164)：本地目录安装（`pluginManager.install(目录)`）校验失败 / 版本冲突 → 两处 `dialog.alert`。
-  - [DetailView.tsx:406/411](../../../../plugins/marketplace/src/views/DetailView.tsx#L406)（`doVersionAction` 缺 URL/无 update 面）亦用 `setError` 行内红字（见 A2）。
+  - [ExploreView.tsx:108-115](../../../../plugins/marketplace/src/views/sidebar/ExploreView.tsx)：`if (!entry.downloadUrl) { await lk()?.dialog?.alert(t("该插件缺少下载地址")); return; }`——**这行正是用户引的那条**。阻塞式 alert 弹窗，点掉才走，还无「下载地址缺失」补救动作。
+  - [SearchView.tsx:160/164](../../../../plugins/marketplace/src/views/sidebar/SearchView.tsx)：本地目录安装（`pluginManager.install(目录)`）校验失败 / 版本冲突 → 两处 `dialog.alert`。
+  - [DetailView.tsx:406/411](../../../../plugins/marketplace/src/views/detail/DetailView.tsx)（`doVersionAction` 缺 URL/无 update 面）亦用 `setError` 行内红字（见 A2）。
 - **需要什么**：事件反馈通道单一化——`notifications.show(msg, { type:"error"|"warning", actions:[…] })`（**#13.5 已建成**，marketplaceShared 已在用 `show`，见 A3）。
 - **补什么 / 怎么补 / 补哪里**：
   - ExploreView:109「缺下载地址」→ 删除 `dialog.alert`，改 `lk()?.notifications?.show(t("该插件缺少下载地址"), { type:"error" })`。**「该插件缺少下载地址」为下载资源缺失的静态拦阻 → 按定案 5：toast 报一次即可；若详情页保留同点提示 → 零位移浮层，不推布局。**
@@ -46,14 +46,14 @@
 ### A2　`setError` 行内红字把内容往下推——违反「不占顶部横幅 / 不推 UI」拍板
 
 - **差什么（HTML 权威）**：帧 3/7 拍板「頂部橫幅把整個 UI 往下推」一律弃。任何**事件型**失败不得靠「页面内长出一行红字」来呈现（那等于把 UI 往下推 + 事后还要自己消）。
-- **现在是什么**：DetailView 门禁/动作失败走 `setError` → 渲染成 [DetailView.tsx:822](../../../../plugins/marketplace/src/views/DetailView.tsx#L822) `<span className="mpd-action-error">{error}</span>`，CSS [MarketplaceDetail.css:329-333](../../../../plugins/marketplace/src/styles/MarketplaceDetail.css#L329-L333) `flex-basis:100%` **独占一行**——错误出现瞬间 action bar 长高，下面 navbar/正文整体被推。触发点：
-  - `installGateError()` [DetailView.tsx:486-511](../../../../plugins/marketplace/src/views/DetailView.tsx#L486-L511)：已装冲突 / 离线「联网后重试」/ 缺下载地址 / 无 install 面 / minApp 不足 → 五处 `setError`。
-  - `doVersionAction` [DetailView.tsx:401/406/411/427/431](../../../../plugins/marketplace/src/views/DetailView.tsx#L427)：离线 / 缺 URL / 失败归因 → 行内红字。
-  - enable/disable/uninstall 抛错 [DetailView.tsx:354/366/470](../../../../plugins/marketplace/src/views/DetailView.tsx#L354) → `setError`。
+- **现在是什么**：DetailView 门禁/动作失败走 `setError` → 渲染成 [DetailView.tsx:822](../../../../plugins/marketplace/src/views/detail/DetailView.tsx) `<span className="mpd-action-error">{error}</span>`，CSS MarketplaceDetail.css:329-333 `flex-basis:100%` **独占一行**——错误出现瞬间 action bar 长高，下面 navbar/正文整体被推。触发点：
+  - `installGateError()` [DetailView.tsx:486-511](../../../../plugins/marketplace/src/views/detail/DetailView.tsx)：已装冲突 / 离线「联网后重试」/ 缺下载地址 / 无 install 面 / minApp 不足 → 五处 `setError`。
+  - `doVersionAction` [DetailView.tsx:401/406/411/427/431](../../../../plugins/marketplace/src/views/detail/DetailView.tsx)：离线 / 缺 URL / 失败归因 → 行内红字。
+  - enable/disable/uninstall 抛错 [DetailView.tsx:354/366/470](../../../../plugins/marketplace/src/views/detail/DetailView.tsx) → `setError`。
 - **需要什么**：区分「**事件型失败**（瞬时通知 → toast）vs **持久状态**（如已装冲突后 UI 本就翻转，不需要再红字）」。门禁拦截属事件 → toast；动作执行失败属事件 → toast。
 - **补什么 / 怎么补 / 补哪里**：
   1. 一次性/自愈类（缺下载地址、minApp 不足、无安装面、enable/disable/uninstall 抛错）→ 改 `notifications.show(…, { type:"error" })`，删 `setError` 行。
-  2. 状态类（离线置灰）→ 不红字（按钮已置灰 + `title="联网后重试"` [DetailView.tsx:808/816-821](../../../../plugins/marketplace/src/views/DetailView.tsx#L816) 已表达），删行内红字。
+  2. 状态类（离线置灰）→ 不红字（按钮已置灰 + `title="联网后重试"` [DetailView.tsx:808/816-821](../../../../plugins/marketplace/src/views/detail/DetailView.tsx) 已表达），删行内红字。
   3. 已装冲突（防竞态）→ 属正常 UI 翻转（已装 → 按钮已变禁用/卸载），setError 本身罕见触发，可直接删行（静默）。
 - **改什么 / 改哪里**：删 `.mpd-action-error` 整段（或仅留 `installErrHere` 失败会话行，见 A3）；门禁/动作失败统一入口 = `toastGateError()` helper 包 `notifications.show`。
 
@@ -61,10 +61,10 @@
 
 - **差什么（HTML 权威）**：帧 3（02:1045）「action bar 回到『未安装』态但**按钮变红色『↻ 重试安装』**（断点续传或从头，实现时择一）」+ toast。**一个失败 = 一处可见重试口**，不是「toast 一个 + 页面又长出一行再一个」。
 - **现在是什么**：
-  - `settleInstallFailure`（[marketplaceShared.ts:468-491](../../../../plugins/marketplace/src/services/marketplaceShared.ts#L468-L491)）**已正确**发 error toast + `[重试]` actions（command `marketplace.retryInstall`，消费 #13.5）✓。
-  - 但 DetailView **又**渲染行内失败行 [DetailView.tsx:825-842](../../../../plugins/marketplace/src/views/DetailView.tsx#L825)（`installErrHere` → 归因文案 + [重试] + ✕），与 toast 重复 → 同一失败两个重试口 + 行内行 flex-basis 100% 又推 UI。
+  - `settleInstallFailure`（marketplaceShared.ts:468-491）**已正确**发 error toast + `[重试]` actions（command `marketplace.retryInstall`，消费 #13.5）✓。
+  - 但 DetailView **又**渲染行内失败行 [DetailView.tsx:825-842](../../../../plugins/marketplace/src/views/detail/DetailView.tsx)（`installErrHere` → 归因文案 + [重试] + ✕），与 toast 重复 → 同一失败两个重试口 + 行内行 flex-basis 100% 又推 UI。
 - **需要什么**：安装失败呈现收敛到帧 3 一种：**toast（已有）+ action bar 安装钮原位变红「↻ 重试安装」**。行内错误行退役。
-- **补什么 / 怎么补 / 补哪里**：安装钮（[DetailView.tsx:805-813](../../../../plugins/marketplace/src/views/DetailView.tsx#L805)）在 `installErrHere` 时渲染红色重试钮（复用 `retryMarketInstall`），`variant` 换 danger 语义 + label 换「重试安装」；删行内 `installErrHere` 错误行块。点击后进入 installing 会话自然消失。
+- **补什么 / 怎么补 / 补哪里**：安装钮（[DetailView.tsx:805-813](../../../../plugins/marketplace/src/views/detail/DetailView.tsx)）在 `installErrHere` 时渲染红色重试钮（复用 `retryMarketInstall`），`variant` 换 danger 语义 + label 换「重试安装」；删行内 `installErrHere` 错误行块。点击后进入 installing 会话自然消失。
 - **改什么 / 改哪里**：`.mpd-action-error-row` 块整删；DetailView 三态 action bar 的「未安装」分支接 `installErrHere ? 红重试钮 : 安装钮`；`dismissMarketInstallError` 若无用随之清（对账时定：toast 不依赖会话残留自给自足，行内 ✕ 关不再需要）。
 
 ### A4　缺依赖：未装不显示依赖行 + 安装前不查缺依赖（帧 7 对账，2026-09-09 新增，范围待用户拍板）
@@ -72,7 +72,7 @@
 > **范围注明**：此项超出「详情页对账」纯版式/事件归一——是**新功能面（市场装前依赖门禁，依赖引擎消费接线）**。是否进 L3.5 由用户拍板；不默认随批次二开工。
 
 - **差什么（HTML 权威，02 帧 7 缺依赖挂起）**：① **未装也显示依赖行**（帧 1 信息栏「依赖 storage-utils」蓝 dep-link，数据源 dependencies.ts `requires`）；② 点「安装」发现缺依赖 → **拦下** + 右下 toast「无法安装：缺少依赖 xx」+ [查看依赖] 主动作（点击跳对应依赖插件详情页）；③ 挂起持续表达 = 侧栏「等待依赖」琥珀徽标 + action bar「🚫 安装不可用（缺依赖）」。批注（帧 7 L1639）明令：「市场安装被拦」场景**不走**实机 `pd-pending-notice` 内嵌条（那是已装插件因依赖被卸载而挂起的另一场景）。
-- **现在是什么（源码现状）**：市场端**只做「已装后挂起」**——挂起态 action 区只读 blocked-chip「安装不可用（缺依赖）」（[DetailView.tsx:781-785](../../../../plugins/marketplace/src/views/DetailView.tsx#L781)）+ 主区「依赖未满足」说明块（[888-909](../../../../plugins/marketplace/src/views/DetailView.tsx#L888)）+ 侧栏依赖 InfoItem 的 warn chip（缺失黄 ✕ 可点跳）。但：未装态（仅 catalog `entry`）**依赖行恒 Dash**（[996-998](../../../../plugins/marketplace/src/views/DetailView.tsx#L996) 仅 installed 才出 chip）；`installGateError` 判定只含 已装冲突/离线/缺下载地址/无 API/minApp（[486-511](../../../../plugins/marketplace/src/views/DetailView.tsx#L486)），**无「requires 未满足」拦截** → 点装即装、装上才挂起，用户装完才惊觉缺依赖。
+- **现在是什么（源码现状）**：市场端**只做「已装后挂起」**——挂起态 action 区只读 blocked-chip「安装不可用（缺依赖）」（[DetailView.tsx:781-785](../../../../plugins/marketplace/src/views/detail/DetailView.tsx)）+ 主区「依赖未满足」说明块（[888-909](../../../../plugins/marketplace/src/views/detail/DetailView.tsx)）+ 侧栏依赖 InfoItem 的 warn chip（缺失黄 ✕ 可点跳）。但：未装态（仅 catalog `entry`）**依赖行恒 Dash**（[996-998](../../../../plugins/marketplace/src/views/detail/DetailView.tsx) 仅 installed 才出 chip）；`installGateError` 判定只含 已装冲突/离线/缺下载地址/无 API/minApp（[486-511](../../../../plugins/marketplace/src/views/detail/DetailView.tsx)），**无「requires 未满足」拦截** → 点装即装、装上才挂起，用户装完才惊觉缺依赖。
 - **需要什么 / 怎么补**：按帧 7 三段补齐 —— ① 未装读 `entry`（catalog）的 `requires` 显示依赖名（依赖引擎 E5.8#14/15 dependencies.ts 已有 `requires` 与缺失检测，市场只差消费）；② 点「安装」先过缺依赖检测，不过则 `notifications.show(type:"warning")` + [查看依赖]（零新 API，E3j#76 四方法现成）；③ blocked-chip/侧栏等待依赖的表达复用已装态样式。**实现阶段细节（dep 数据取 catalog 还是已装 requires、拦截是否要 minApp 同级异步）由依赖引擎接线时定。**
 - **改什么 / 改哪里**：DetailView 未装 action bar + installGate 判定 + 信息栏依赖行（未装分支）。档案仅立案，不自动开工。
 
@@ -85,7 +85,7 @@
 ### B1　动作（安装/卸载/更新）位置——图标右侧列，不是图标下方整行
 
 - **差什么（HTML 权威）**：01 竞标 A 头部 = 三段一行：`.pdva-ic`（图标）｜`.pdva-id`（名字/版本/发布者/描述/**chips 行**）｜`.pdva-acts`（**右上动作列**：安装钮 + 版本下拉，其下自动更新勾选）[01:829-853](mockups/01-插件详情页-竞标.html#L829)。**动作在图标/文字的右方同一头部**。
-- **现在是什么**：`.mpd-header` 只含 icon + details（[DetailView.tsx:735-759](../../../../plugins/marketplace/src/views/DetailView.tsx#L735)）；动作单独排 `.mpd-action-bar` **header 下一整行**（[DetailView.tsx:761-844](../../../../plugins/marketplace/src/views/DetailView.tsx#L761)，CSS [MarketplaceDetail.css:292-298](../../../../plugins/marketplace/src/styles/MarketplaceDetail.css#L292)）——按钮在图标**正下方**、横跨整宽。用户观感「安装/卸载按钮在图标下、不在右」。
+- **现在是什么**：`.mpd-header` 只含 icon + details（[DetailView.tsx:735-759](../../../../plugins/marketplace/src/views/detail/DetailView.tsx)）；动作单独排 `.mpd-action-bar` **header 下一整行**（[DetailView.tsx:761-844](../../../../plugins/marketplace/src/views/detail/DetailView.tsx)，CSS MarketplaceDetail.css:292-298）——按钮在图标**正下方**、横跨整宽。用户观感「安装/卸载按钮在图标下、不在右」。
 - **需要什么**：头部回归 .pdva 三栏 —— 左图标 + 中 id 列（名字/版本/徽标/作者/描述/**信息 chips**）+ 右动作列（三态主钮 + 版本下拉；自动更新勾选随已装态在此列）。窄容器时动作列可换行到下方（响应式兜底），但**默认 = 右侧**。
 - **补什么 / 怎么补 / 补哪里**：重构 `.mpd-header` 为 `display:flex` 三段，`.mpd-acts`（右列）收编 action bar 内容。chips 行（下载/许可证/更新时间/分类，mockup .pdva-chips [01:837-842](mockups/01-插件详情页-竞标.html#L837)）目前实现**未做**（下载数/许可/更新/分类散在右侧栏 InfoItem，未抽头部 chips）——按 .pdva 结构把关键元数据提为头部 chips 行（可选；若信息在右侧栏已足可对账后拍板省）。
 - **改什么 / 改哪里**：DetailView.tsx header JSX（735-759）加 `mpd-acts` 容器 + 把 action-bar 四态内容移入；MarketplaceDetail.css `.mpd-header`/`.mpd-action-bar` 重排（action-bar 类退役或改语义）。
@@ -94,8 +94,8 @@
 
 - **差什么（HTML 权威）**：01 竞标 A 图标为头部**左上**中等尺寸装饰位（.pdva-ic，约 40-56px，与文字同行锚顶）——不是巨大方形图标；头部面板与下方三 tab 之间**有清晰面板边界/分隔**（用户让步：气泡可弃但分隔线要做清）。
 - **现在是什么**：
-  - `.mpd-icon` 96×96 方形盒 + codicon 占位 96px [MarketplaceDetail.css:43-75](../../../../plugins/marketplace/src/styles/MarketplaceDetail.css#L43)——偏大、撑高头部。
-  - header 与 action bar/navbar **无下分隔线**（`.mpd-header` 无 border；`.mpd-navbar` 只有自身下边框 [.css:358-363](../../../../plugins/marketplace/src/styles/MarketplaceDetail.css#L358)）——三段无分界，视觉糊在一起。
+  - `.mpd-icon` 96×96 方形盒 + codicon 占位 96px MarketplaceDetail.css:43-75——偏大、撑高头部。
+  - header 与 action bar/navbar **无下分隔线**（`.mpd-header` 无 border；`.mpd-navbar` 只有自身下边框 .css:358-363）——三段无分界，视觉糊在一起。
 - **需要什么**：图标尺寸收敛到 mockup 尺度（~48-56px 内容位），头部块间加 `var(--separator)` 分隔线。
 - **补什么 / 怎么补 / 补哪里**：改 `.mpd-icon` 至 ~52px 容器 + 内图 ~40px（lucide/emoji/img 按其型）；`.mpd-header` 加 `border-bottom: 1px solid var(--separator)`（或与动作区合并成一面板后加底部边）。
 - **改什么 / 改哪里**：MarketplaceDetail.css：43-75（icon）、37-41（header 加 border）。
@@ -108,20 +108,20 @@
 
 - **差什么（HTML 权威 + 2026-09-09 覆盖）**：01 `.pdva-info` [01:880-891](mockups/01-插件详情页-竞标.html#L880)：`.pdva-if` 每行 = `k`（标签左）｜`v`（值右）**横排左右分列**（结构权威保留）；`.pdva-info` 的 `<h4>信息</h4>` 总标题 = **弃**（改分组节标题）。分组/组名/归组（组 1 基本信息段、组 2「市场」挂 已发布/上次发布/来源、组 3「资源」挂 仓库/问题/许可证、加料字段归组）= **开工前 ui-ux-pro-max + 与用户对齐，本档案不定死**。
 - **现在是什么**：
-  - 侧栏 `.mpd-info-sidebar` **无标题、无分组**（[DetailView.tsx:958-1000](../../../../plugins/marketplace/src/views/DetailView.tsx#L958) 直接 InfoItem 平铺起排）。
-  - `.mpd-info-item` `flex-direction: column`（[.css:430-435](../../../../plugins/marketplace/src/styles/MarketplaceDetail.css#L430)）——标签**在值上方**竖叠，非横排左右。
+  - 侧栏 `.mpd-info-sidebar` **无标题、无分组**（[DetailView.tsx:958-1000](../../../../plugins/marketplace/src/views/detail/DetailView.tsx) 直接 InfoItem 平铺起排）。
+  - `.mpd-info-item` `flex-direction: column`（.css:430-435）——标签**在值上方**竖叠，非横排左右。
   - 项间无分隔线（gap:1px 仅粘连，非清晰 row 分界）。
-  - **作者行缺失**：侧栏无 `InfoItem(作者)`——作者只在 header 副标题（[DetailView.tsx:756](../../../../plugins/marketplace/src/views/DetailView.tsx#L756)）。
-  - **禁用态连带坑（2026-09-09 源码盘点）**：纯禁用态 manifest 分支 [DetailView.tsx:59-63](../../../../plugins/marketplace/src/views/DetailView.tsx#L59) 无 `author`/`icon` 字段 → 插件禁用后 header 副标题（作者）消失、图标退 codicon 占位——与 [14 档案 §二 A](14-市场图标系统任务档案.md)「列表数据通道删 icon」同族：**详情数据源缺字段**。补作者/图标时必须一并补禁用态数据源，否则 B3/B2 做完作者与图标只在启用态可见。
+  - **作者行缺失**：侧栏无 `InfoItem(作者)`——作者只在 header 副标题（[DetailView.tsx:756](../../../../plugins/marketplace/src/views/detail/DetailView.tsx)）。
+  - **禁用态连带坑（2026-09-09 源码盘点）**：纯禁用态 manifest 分支 [DetailView.tsx:59-63](../../../../plugins/marketplace/src/views/detail/DetailView.tsx) 无 `author`/`icon` 字段 → 插件禁用后 header 副标题（作者）消失、图标退 codicon 占位——与 [14 档案 §二 A](14-市场图标系统任务档案.md)「列表数据通道删 icon」同族：**详情数据源缺字段**。补作者/图标时必须一并补禁用态数据源，否则 B3/B2 做完作者与图标只在启用态可见。
 - **需要什么**：右侧栏 = **分组**——组节标题（小字 muted「大标题」感）+ 组内每项一行 标签(左, muted) ｜ 值(右/左, 可断行) + 项间 `--separator` 细分隔。**不出现单一「信息」总词。**
 - **补什么 / 怎么补 / 补哪里**：aside 首层按组拆（节标题元素 `.mpd-info-group-title` + 组容器）；`.mpd-info-item` 改 `flex-direction:row; justify-content:space-between`（值 `text-align:right` 可断行）；项加 `border-bottom` 行间分隔；补 `InfoItem(作者, authorText)` 归其组。组结构实现前先 ui-ux-pro-max 定节标题层级 + 组名与用户对齐。
-- **改什么 / 改哪里**：[DetailView.tsx:958](../../../../plugins/marketplace/src/views/DetailView.tsx#L958)（aside 拆组 + 补作者行）；MarketplaceDetail.css:422-451（节标题 + 横排行 + 分隔线）。
-- **信息栏「来源/市场/仓库」行语义（2026-09-09 用户确认，防重复解释；跨会话见 memory e6-market-factory-publish）**：LinkDesk **无 VS Code「每插件一张外网商品页」**——不是没集中市场，而是轻量形态：集中市场 = **官方目录清单仓库** `encaron/linkdesk-marketplace` 的 `marketplace.json`（[marketCatalog.ts:56](../../../../plugins/marketplace/src/services/marketCatalog.ts#L56) 恒内置锁源、自动拉取）；现阶段官方目录**尚未上内容**（dev 空源）→ 用户观感「只有作者 GitHub」= **多源货架**（作者自仓库发，设计上与官方目录并存，非缺陷）。行语义：来源=官方目录条目 → 「来源」显示 官方，商品页=软件内详情页本身；来源=作者仓库 → 「仓库/问题」即作者真实 GitHub。**作者脚注「市场 ↗」删除（2026-09-09 用户拍板）**——无发布者账号页/每插件站外页可指，身份已由顶部作者行 + 「来源」行承载，脚注指哪都失真；mockup 04 帧注「已拍」同步。
+- **改什么 / 改哪里**：[DetailView.tsx:958](../../../../plugins/marketplace/src/views/detail/DetailView.tsx)（aside 拆组 + 补作者行）；MarketplaceDetail.css:422-451（节标题 + 横排行 + 分隔线）。
+- **信息栏「来源/市场/仓库」行语义（2026-09-09 用户确认，防重复解释；跨会话见 memory e6-market-factory-publish）**：LinkDesk **无 VS Code「每插件一张外网商品页」**——不是没集中市场，而是轻量形态：集中市场 = **官方目录清单仓库** `encaron/linkdesk-marketplace` 的 `marketplace.json`（marketCatalog.ts:56 恒内置锁源、自动拉取）；现阶段官方目录**尚未上内容**（dev 空源）→ 用户观感「只有作者 GitHub」= **多源货架**（作者自仓库发，设计上与官方目录并存，非缺陷）。行语义：来源=官方目录条目 → 「来源」显示 官方，商品页=软件内详情页本身；来源=作者仓库 → 「仓库/问题」即作者真实 GitHub。**作者脚注「市场 ↗」删除（2026-09-09 用户拍板）**——无发布者账号页/每插件站外页可指，身份已由顶部作者行 + 「来源」行承载，脚注指哪都失真；mockup 04 帧注「已拍」同步。
 > **VS Code 真源核实（2026-09-09，用户「别等我一段段喂，直接去读 VS Code 市场源码」后 curl [extensionEditor.ts](https://raw.githubusercontent.com/microsoft/vscode/main/src/vs/workbench/contrib/extensions/browser/extensionEditor.ts)）**：
 > - **分类 = 多枚 chip 并排**：`renderCategories`（:1086-1103）for 循环每分类一枚 `span.category`，可点按则按分类搜市场；现我们 categoryText `join(" · ")` 粘单串 [marketCategories.ts:43](../../../../plugins/marketplace/src/services/marketCategories.ts#L43) → B3 改每分类一枚 chip 并排（数据 categories[] 本数组，纯显示改）。实证：claude-code = AI/Chat 两枚。
-> - **资源组 = 逐行条件**：`renderExtensionResources`（:1105-1140）`if (extension.repository)` 仓库 / `if (extension.supportUrl)` 问题 / `if (extension.licenseUrl)` 许可证——**有才显**；尾部恒挂 `publisherDisplayName→publisherUrl` + "Marketplace"→extension.url 两外链。实证：claude-code 无「仓库」行（Anthropic 未公开源码仓库）只余「问题」——正常非漏。我们无 publisher 账号页/每插件外页 → **不照搬尾两枚**，身份 = 来源行；DetailView 现本就条件渲染 [972-991](../../../../plugins/marketplace/src/views/DetailView.tsx#L972)，B3 保持。
+> - **资源组 = 逐行条件**：`renderExtensionResources`（:1105-1140）`if (extension.repository)` 仓库 / `if (extension.supportUrl)` 问题 / `if (extension.licenseUrl)` 许可证——**有才显**；尾部恒挂 `publisherDisplayName→publisherUrl` + "Marketplace"→extension.url 两外链。实证：claude-code 无「仓库」行（Anthropic 未公开源码仓库）只余「问题」——正常非漏。我们无 publisher 账号页/每插件外页 → **不照搬尾两枚**，身份 = 来源行；DetailView 现本就条件渲染 [972-991](../../../../plugins/marketplace/src/views/detail/DetailView.tsx)，B3 保持。
 >
-> **大小行策略（2026-09-09 用户拍板「下载体积常显 + 已装可开目录」）**：「大小」值来源 = **实测下载包字节**，非作者嘴填——SDK publish 对分发件 `statSync().size` 量真实字节写 marketplace.json（[publish.ts:485](../../../../packages/plugin-sdk/src/publish.ts#L485) → `buildCatalogEntry(preview.sizeBytes)` [256](../../../../packages/plugin-sdk/src/publish.ts#L256)）。用户实读 VS Code：详情页 Size 只在**已装**（「安装」组）出现且值可点 → 开实际安装目录（[extensionEditor.ts:1185-1199](https://raw.githubusercontent.com/microsoft/vscode/main/src/vs/workbench/contrib/extensions/browser/extensionEditor.ts)，`if (extension.size)` + class 'link' + onClick open `extension.location`）。**拍板 = 两值不混淆**：下载体积（下载前知量）装不装都显（现 DetailView:965 已如此，B3 保持）；**已装插件的行值变链接「打开所在位置」→ 资源管理器开安装目录**——renderer 无安装路径知识（隔离），须新增**主进程解析插件路径 + `shell.showItemInFolder`** 小 API（对照 E5.8#153 revealStorage 先例 appearance-handlers.ts:48）。该 API 新增 = 壳能力批次（version-bump MINOR 向），**不入纯版式 B3 批次默认序**，排批次时定 API 名。（**2026-09-09 PowerShell 实证追加**：VS Code 已装信息栏还有第二枚「缓存」行同样可点开 → 该插件 globalStorage 数据目录 [extensionEditor.ts:1201-1223](https://raw.githubusercontent.com/microsoft/vscode/main/src/vs/workbench/contrib/extensions/browser/extensionEditor.ts) `computeSize(cacheLocation)` + open `cacheLocation`；**LinkDesk 对应物 = pluginDataDir** `<appData>/linkdesk/plugins/<id>/data`（[env-service.ts:63](../../../../electron/services/env-service.ts#L63)，含 cache/exports 子目录，安装即建 filesystem-guard:154，插件经 env.pluginDataDir 读到 [types.ts:207](../../../../src/core/api/linkdesk-api/types.ts#L207)）——挂起 API 可扩成**两枚开**：大小→安装目录 + 数据/缓存位置→pluginDataDir，排批次时定 UX。）✅ **2026-09-11 已落地（E6#78）**：本节拍板从挂起转执行（用户实机提问「为什么下载后大小后面的数字不变蓝色，不能打开安装的位置」触发）。API 定名 `shell.pluginLocation(pluginId)`（返回 `{ installDir, dataDir } | null`）+ `shell.openPluginFolder(pluginId, kind)`（`"install" | "data"`）；**开目录内容**（`shell.openPath`，与 `appearance.revealStorage` 同一手感）而非原注的 `showItemInFolder` 高亮单文件。UI：已装态「大小」行值变链接（点开安装目录）+「数据位置」行 `dataDir` 非 null 才画。全量落地记录见 [E6 执行清单 第 3.5.12 轮](../../E6-执行清单.md)。
+> **大小行策略（2026-09-09 用户拍板「下载体积常显 + 已装可开目录」）**：「大小」值来源 = **实测下载包字节**，非作者嘴填——SDK publish 对分发件 `statSync().size` 量真实字节写 marketplace.json（[publish.ts:485](../../../../packages/plugin-sdk/src/publish.ts#L485) → `buildCatalogEntry(preview.sizeBytes)` [256](../../../../packages/plugin-sdk/src/publish.ts#L256)）。用户实读 VS Code：详情页 Size 只在**已装**（「安装」组）出现且值可点 → 开实际安装目录（[extensionEditor.ts:1185-1199](https://raw.githubusercontent.com/microsoft/vscode/main/src/vs/workbench/contrib/extensions/browser/extensionEditor.ts)，`if (extension.size)` + class 'link' + onClick open `extension.location`）。**拍板 = 两值不混淆**：下载体积（下载前知量）装不装都显（现 DetailView:965 已如此，B3 保持）；**已装插件的行值变链接「打开所在位置」→ 资源管理器开安装目录**——renderer 无安装路径知识（隔离），须新增**主进程解析插件路径 + `shell.showItemInFolder`** 小 API（对照 E5.8#153 revealStorage 先例 appearance-handlers.ts:48）。该 API 新增 = 壳能力批次（version-bump MINOR 向），**不入纯版式 B3 批次默认序**，排批次时定 API 名。（**2026-09-09 PowerShell 实证追加**：VS Code 已装信息栏还有第二枚「缓存」行同样可点开 → 该插件 globalStorage 数据目录 [extensionEditor.ts:1201-1223](https://raw.githubusercontent.com/microsoft/vscode/main/src/vs/workbench/contrib/extensions/browser/extensionEditor.ts) `computeSize(cacheLocation)` + open `cacheLocation`；**LinkDesk 对应物 = pluginDataDir** `<appData>/linkdesk/plugins/<id>/data`（[env-service.ts:63](../../../../electron/services/env-service.ts#L63)，含 cache/exports 子目录，安装即建 filesystem-guard:154，插件经 env.pluginDataDir 读到 [types.ts:207](../../../../src/core/api/linkdesk-api/types.ts#L207)）——挂起 API 可扩成**两枚开**：大小→安装目录 + 数据/缓存位置→pluginDataDir，排批次时定 UX。）✅ **2026-09-11 已落地（E6#78）**：本节拍板从挂起转执行（用户实机提问「为什么下载后大小后面的数字不变蓝色，不能打开安装的位置」触发）。API 定名 `shell.pluginLocation(pluginId)`（返回 `{ installDir, dataDir } | null`）+ `shell.openPluginFolder(pluginId, kind)`（`"install" | "data"`）；**开目录内容**（`shell.openPath`，与 `appearance.revealStorage` 同一手感）而非原注的 `showItemInFolder` 高亮单文件。UI：已装态「大小」行值变链接（点开安装目录）+「数据位置」行 `dataDir` 非 null 才画。全量落地记录见 [E6 执行清单 第 3.5.12 轮](../E6-执行清单.md)。
 
 > **显示条件（2026-09-09 问「为什么有的有缓存」后源码核实）**：VS Code「缓存」行只在**该插件数据目录非空**才显示——[extensionEditor.ts:1205-1208](https://raw.githubusercontent.com/microsoft/vscode/main/src/vs/workbench/contrib/extensions/browser/extensionEditor.ts) `computeSize` 后 `if (!cacheSize) return`，空则整行藏。LinkDesk 版照抄：`数据位置` 行只在 pluginDataDir 非空时显。需不需要数据目录 = 插件有无**文件型落盘**（设置/开关走壳配置；文件/下载物/导出走 pluginDataDir——串口 receive-saves 先例 [index.tsx:674](../../../../plugins/serial-monitor/src/index.tsx#L674)）；纯 UI 插件恒空恒藏，非人人要有。）
 >
@@ -133,7 +133,7 @@
 ### B4　容器宽度——880px 居中不铺满标签页 → 用户拍板「去 880 全宽」（2026-09-09 实测定案）
 
 - **差什么（权威）**：mockup 详情 = 全宽主区 + 右侧固定 ~208px 信息栏（主内容吃满剩余），无「整体 880 居中」概念；VS Code 扩展详情页同款「通栏 + 右侧栏定宽」。
-- **现在是什么（2026-09-09 CDP 实测）**：`.mpd-detail { max-width:880px; margin:0 auto }` [.css:7-17](../../../../plugins/marketplace/src/styles/MarketplaceDetail.css#L7)——可视宽 1400 时详情列仅 880（左空 423/右空 98），**没有铺满整个标签页**；屏幕越宽两侧空带越大。
+- **现在是什么（2026-09-09 CDP 实测）**：`.mpd-detail { max-width:880px; margin:0 auto }` .css:7-17——可视宽 1400 时详情列仅 880（左空 423/右空 98），**没有铺满整个标签页**；屏幕越宽两侧空带越大。
 - **用户原话（2026-09-09，定案）**：「整个显示的内容其实是居中的…两边条线的两边是空的、只有中间这一部分是详情内容…哪怕有 redme 也是居中显示、两边那么大地方都没利用到」「一整个标签页那么大，他没有铺满整个标签页」。
 - **拍板**：**去掉 880 限宽**——头部/README 主内容自适应铺满主区可用宽，右侧信息栏定宽 ~208-220 不随内容挤（mockup + VS Code + 04 §三骨架）。此项不再是可选项。
 - **补什么 / 怎么补 / 补哪里**：`.mpd-detail` 删 `max-width:880px; margin:0 auto`（.css:12-13）；`.mpd-details-main`（README 主区）`flex:1` 吃满剩余宽；`.mpd-info-sidebar` `flex:none` 定宽（.css:422-428 已具 ~220）。实现时先调 `ui-ux-pro-max` 定「全宽 + 右栏定宽」列宽/长行断行规范（超长 URL / README 长行在宽列的可读性），不手写 px。
@@ -154,10 +154,10 @@
 
 对账如实说明（不是 bug，是**数据/状态门控**导致观感「你啥都没显示」）：
 
-1. **安装确认弹窗 = 有**（[DetailView.tsx:1007-1063](../../../../plugins/marketplace/src/views/DetailView.tsx#L1007)，`OverlayPortal .mpd-confirm`，列发布者/来源仓库/描述/版本/大小/许可证 + 「安装即信任」——已对齐帧 8 结构 ✓）。**只在「点安装」时弹**：`confirming && entry`——若插件是已装/本地（无 catalog `entry`），不弹。用户看到「没弹窗」= 看的插件已是已装态，本就不该弹。
-2. **自动更新勾选 = 有**（[DetailView.tsx:717-730](../../../../plugins/marketplace/src/views/DetailView.tsx#L717)）。**G2 拍板只在「已装且非挂起」显示**（mockup 帧 1 未装行无此勾，帧 2 安装中置灰）。用户看的是未装/挂起插件 → 不显示 = 正确行为。
-3. **软件大小 = 有**（[DetailView.tsx:965](../../../../plugins/marketplace/src/views/DetailView.tsx#L965) `entry?.size != null && <InfoItem …>`）。**只显示 catalog `size`**；已装/本地插件目录无此字段 → 诚实不显示（不伪造空位，04 §三「已装可另显安装目录大小」未做——可选补：已装读包/目录大小走 workspace 面）。
-4. **下载数 = 有**（[DetailView.tsx:969-971](../../../../plugins/marketplace/src/views/DetailView.tsx#L969)），GitHub Releases API 才显，http/无 API 源诚实隐藏（#30.8b）。
+1. **安装确认弹窗 = 有**（[DetailView.tsx:1007-1063](../../../../plugins/marketplace/src/views/detail/DetailView.tsx)，`OverlayPortal .mpd-confirm`，列发布者/来源仓库/描述/版本/大小/许可证 + 「安装即信任」——已对齐帧 8 结构 ✓）。**只在「点安装」时弹**：`confirming && entry`——若插件是已装/本地（无 catalog `entry`），不弹。用户看到「没弹窗」= 看的插件已是已装态，本就不该弹。
+2. **自动更新勾选 = 有**（[DetailView.tsx:717-730](../../../../plugins/marketplace/src/views/detail/DetailView.tsx)）。**G2 拍板只在「已装且非挂起」显示**（mockup 帧 1 未装行无此勾，帧 2 安装中置灰）。用户看的是未装/挂起插件 → 不显示 = 正确行为。
+3. **软件大小 = 有**（[DetailView.tsx:965](../../../../plugins/marketplace/src/views/detail/DetailView.tsx) `entry?.size != null && <InfoItem …>`）。**只显示 catalog `size`**；已装/本地插件目录无此字段 → 诚实不显示（不伪造空位，04 §三「已装可另显安装目录大小」未做——可选补：已装读包/目录大小走 workspace 面）。
+4. **下载数 = 有**（[DetailView.tsx:969-971](../../../../plugins/marketplace/src/views/detail/DetailView.tsx)），GitHub Releases API 才显，http/无 API 源诚实隐藏（#30.8b）。
 
 > **观感根因**：当用户看的是**已装且 catalog 无数据**（本地/内置）插件时，大小/下载/来源/版本历史全按诚实边界隐藏 → 右侧栏只剩标识符/版本/依赖几行，显得「什么都没显示」。**改进方向（可选拍板）**：已装态把「安装目录 / 包内大小」补上（诚实有据），减少空栏感——但对账优先级低于 A/B。
 

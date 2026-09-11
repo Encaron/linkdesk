@@ -314,7 +314,7 @@ npm 自动识别 `create-*` 前缀包名为 `npm create` 的别名：
 > ② 发布**已改异步**——CLI 打印 `+ pkg@version` 时包可能还没上架（**实测 plugin-sdk `0.1.10` 约 3.5 分钟后**才查到），中途重发吃 `E409 …previously staged version`。**判据落在 `npm view`，不落在发布命令的输出上。**
 > ③ **npm 恒定丢弃名为 `.gitignore` 的模板文件**（见 §九.5）——模板里那份必须叫 `gitignore`。
 
-> 🔴 **发了才动版本号**（层铁律「不发就别动版本号」）：`0.1.0 → 0.1.1` 的 bump 与发布**同批**完成，`npm run release:mark` 记基线——**前提是它已进 [门禁基线](06-门禁扩域与验收.md)**。
+> 🔴 **发了才动版本号**（层铁律「不发就别动版本号」）：`0.1.0 → 0.1.1` 的 bump 与发布**同批**完成，`npm run release:mark` 记基线——**前提是它已进 [门禁基线](../插件规范化层/06-门禁扩域与验收.md)**。
 > ✅ **2026-09-11（E6#95e + #94g）已照此执行**：先把它纳入基线（G4，否则 `release:mark` 也记不到它），再 bump `0.1.1` + 真发 + `release:mark`，`npm view create-linkdesk-plugin version` = `0.1.1` 实测一致。
 
 ---
@@ -326,7 +326,7 @@ npm 自动识别 `create-*` 前缀包名为 `npm create` 的别名：
 `CHANGELOG.md` 段标题能被 SDK 切段且版本号与 `plugin.json` 一致 / `scripts` ⊇ 5 条命令 / `i18n` 零死 key /
 占位符集合与 CLI `values` 相等且生成物无 `{{…}}` 残留 / **`npm pack` 的 tarball 不丢模板文件**。
 
-**八条逐条验过红灯**（表见 [06 §三](06-门禁扩域与验收.md)）——**改模板后不用手动比对，跑 `npm run check` 即可**。
+**八条逐条验过红灯**（表见 [06 §三](../插件规范化层/06-门禁扩域与验收.md)）——**改模板后不用手动比对，跑 `npm run check` 即可**。
 
 ---
 
