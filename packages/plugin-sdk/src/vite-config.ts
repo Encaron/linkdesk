@@ -545,7 +545,12 @@ export function defineLinkdeskPluginConfig(options: LinkdeskPluginOptions = {}):
 
         writeFileSync(join(pkgDir, "plugin.json"), `${JSON.stringify(distManifest, null, 2)}\n`, "utf8");
         for (const decl of collectI18nDecls(manifest)) copyFileInto(root, pkgDir, decl.rel);
-        copyFileInto(root, pkgDir, "icon.svg");
+        // E6#93b：此处原有一行 `copyFileInto(root, pkgDir, "icon.svg")`——已删，别再写回来。
+        //   它是「按文件位置推断插件属性」的写入侧版本（硬约束 11 明令禁止）：身份图进不进包，
+        //   唯一真源是下面那个 manifest.icon 分支，不是「插件根有没有叫 icon.svg 的文件」。
+        //   实测删它随包结果零变化（全仓仅 editor 有根 icon.svg，而它同时声明了 icon ⇒ 下方分支已覆盖）；
+        //   反过来，留着它会掩盖错误——作者把图挪进 resources/ 却忘改字段时，它会静默把一张
+        //   没人引用的根 icon.svg 也塞进包，让「裂图」变成一个查不出来的问题。
         copyFileInto(root, pkgDir, "README.md");
         // E6#70a：README 引用的相对媒体资产随包（cover.svg / resources/*.svg 等）——detail 说明区相对图
         //  靠 linkdesk://{id}/ 解析包内文件显形；缺此 = 安装版说明区裂图（15 档案 §三.3 现状根因）。

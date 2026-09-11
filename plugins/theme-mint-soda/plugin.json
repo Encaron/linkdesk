@@ -1,6 +1,7 @@
 {
   "name": "薄荷苏打",
-  "version": "1.0.1",
+  "version": "1.0.2",
+  "icon": "resources/icon.svg",
   "description": "清凉薄荷色系主题合集——薄荷冰露/海盐薄荷/青柠薄荷/薄荷苏打，Claymorphism 软萌风，全系亮色",
   "author": "LinkDesk",
   "contributes": {
