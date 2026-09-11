@@ -111,7 +111,7 @@ h1 .warn { color: var(--error); }
 <body>
 
 <h1>主软件更新 · 入口（帮助/齿轮菜单 + TitleBar 更新按钮）
-  <small>设计定案（03 档案）：「检查更新…」<b class="hl">恒显</b>（任何 mode 不消失，点击永远反馈：最新→toast「当前已是最新版本」）；<br>TitleBar 更新按钮 = <b class="hl">声明制 + 有更新才现 + 全文字 + 主题按钮色</b>（<code>registerTitleBarContribution</code> 右槽 + <code>when</code> 状态门控；复用壳共享 Button 组件 <code>.button</code> accent 实心，跟随主题；三态文字：下载更新 → 更新中 → 重新启动）；菜单里的「检查更新…」= 普通菜单项（无颜色）。更新通知/进度全走 toast（04）。</small>
+  <small>设计定案（03 档案）：「检查更新…」<b class="hl">恒显</b>（任何 mode 不消失，点击永远反馈：最新→通知面条目「当前已是最新版本」；<b class="warn">失败→归因文案 + [重试]</b>）；<br>TitleBar 更新按钮 = <b class="hl">声明制 + 有更新才现 + 全文字 + 主题按钮色</b>（<code>registerTitleBarContribution</code> 右槽 + <code>when</code> 状态门控；复用壳共享 Button 组件 <code>.button</code> accent 实心，跟随主题；三态文字：下载更新 → 更新中 → 重新启动）；菜单里的「检查更新…」= 普通菜单项（无颜色）。更新通知/进度全走<b>通知面（状态栏铃铛宽面板）</b>（04；<b class="warn">旧文「toast」= 已删的右下小卡</b>）。<br><b class="warn">🔴 2026-09-11 用词校正</b>：本图内所有「toast」一律读作「通知面条目」（右下窄小卡 <code>ToastHost</code> 已由 E6#72a 整删）。</small>
 </h1>
 
 <!-- ═══════════════ Frame 1：帮助菜单（ContextMenu 下拉） ═══════════════ -->
@@ -184,7 +184,7 @@ h1 .warn { color: var(--error); }
     </div>
   </div>
   <div class="frame-note">
-    <b>要点：</b>齿轮菜单与帮助菜单是<b>两个独立入口同一批命令</b>（对标 VS Code：菜单栏 + 齿轮都有「检查更新」——用户实测确认）。<code>update.checkForUpdates</code> 命令源唯一，「入口可多处」。<b class="ok">无齿轮角标</b>——更新状态靠 toast + 通知中心，不靠常驻徽标。
+    <b>要点：</b>齿轮菜单与帮助菜单是<b>两个独立入口同一批命令</b>（对标 VS Code：菜单栏 + 齿轮都有「检查更新」——用户实测确认）。<code>update.checkForUpdates</code> 命令源唯一，「入口可多处」。<b class="ok">无齿轮角标</b>——更新状态靠通知面条目 + 铃铛未读，不靠常驻徽标。
   </div>
 </div>
 
@@ -215,7 +215,8 @@ h1 .warn { color: var(--error); }
   </div>
   <div class="frame-note">
     <b>要点：</b><code>when: "updateActionable"</code> = 壳把 UpdateService 状态推成动态 context key（对标 <code>sidebarPosition</code> 随布局推送先例）→ <b class="ok">idle 无更新时按钮整体隐藏（不占位）——有更新才显示</b>。<br>
-    状态映射（2026-08-30 定稿）：available → 「下载更新」（点击 → <code>update.openUpdateFlow</code> 直接下载，跳过发现 toast）；downloading → 「更新中」（进度走 toast）；downloaded/ready → 「重新启动」（点击 → <code>quitAndInstall</code>）。三态文字由壳推 context key <code>updateButtonLabel</code> 动态显示。<br>
+    状态映射（2026-08-30 定稿）：available → 「下载更新」（点击 → <code>update.openUpdateFlow</code> 直接下载，跳过发现条目）；downloading → 「更新中」（进度走通知面）；downloaded/ready → 「重新启动」（点击 → <code>quitAndInstall</code>）。三态文字由壳推 context key <code>updateButtonLabel</code> 动态显示。<br>
+    ⚠️ <b class="warn">本图只画了「按钮怎么变」，没画「按钮与条目怎么配合</b>」——按钮永远<b>不显示进度细节</b>（进度归通知面，04 §〇 分工）。下载这一路的进度帧见 <code>02-更新通知与关于.html</code> Frame 2。<br>
     <b class="ok">主题按钮色（2026-08-30 反转确认）</b>：按钮复用壳共享 Button 组件（<code>Button.css .button</code> = accent 实心 + <code>var(--text-on-accent)</code>）——跟随主题，切换主题即变。菜单里的「检查更新…」保持普通菜单项（无颜色），互不混淆。
   </div>
 </div>

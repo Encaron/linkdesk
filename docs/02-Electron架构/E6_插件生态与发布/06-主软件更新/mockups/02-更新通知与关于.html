@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>主软件更新 · 更新通知（铃铛面板）+ 关于页（实机对齐）</title>
+<style>
+/* ═══════════════════════════════════════════════════════
+   LinkDesk 设计 token（mockup 仅示意——真实值读壳 CSS 变量）
+   ═══════════════════════════════════════════════════════ */
+:root {
+  --bg-window: #1E1E1E;
+  --bg-card: #2D2D2D;
+  --bg-titlebar: #252526;
+  --bg-icon-bar: #18181B;
+  --text-primary: #D4D4D4;
+  --text-secondary: #9D9D9D;
+  --text-muted: #8A8A8A;
+  --accent: #0078D4;
+  --accent-hover: #1A8CE8;
+  --text-on-accent: #FFFFFF;
+  --badge-text: #FFFFFF;
+  --border: #3C3C3C;
+  --separator: #474747;
+  --icon-inactive: #858585;
+  --hover-overlay: rgba(255,255,255,0.06);
+  --tab-hover-bg: rgba(255,255,255,0.08);
+  --shadow-tooltip: 0 4px 12px rgba(0,0,0,0.4);
+  --shadow-dialog-soft: 0 8px 32px rgba(0,0,0,0.35);
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-pill: 999px;
+  --danger: #E06C75;
+  --error: #E06C75;
+  --warning: #D7A25A;
+  --status-connected: #4EC9B0;
+  /* 字号档（对标壳 --font-size-*；mockup 直接给等价 px） */
+  --font-size-2xs: 10px;
+  --font-size-xs: 11px;
+  --font-size-sm: 12px;
+  --font-size-lg: 14px;
+  /* 状态栏 22px + 7px 间隙（实机对齐 StatusBarZone.css .status-bar-notif-panel） */
+  --panel-bottom: 29px;
+  --panel-right: 7px;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: #101013; color: var(--text-primary); font-family: "IBM Plex Sans", "Segoe UI", "Microsoft YaHei", system-ui, sans-serif; font-size: 13px; padding: 32px; max-width: 1200px; margin: 0 auto; }
+h1 { font-size: 20px; font-weight: 600; letter-spacing: 0.02em; margin-bottom: 6px; }
+h1 small { font-size: 13px; font-weight: 400; color: var(--text-muted); display: block; margin-top: 6px; line-height: 1.7; }
+h1 code, .mono { font-family: "JetBrains Mono", Consolas, monospace; font-size: 11px; color: var(--accent-hover); }
+h1 .hl { color: var(--status-connected); }
+h1 .warn { color: var(--danger); }
+
+.frame { background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; margin-top: 18px; }
+.frame-caption { padding: 10px 14px; border-bottom: 1px solid var(--border); display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.frame-caption b { font-size: 14px; }
+.frame-caption .tag { font-size: 11px; color: #fff; background: var(--accent); border-radius: 3px; padding: 1px 8px; font-weight: 600; }
+.frame-caption span { color: var(--text-secondary); font-size: 12px; }
+.frame-note { padding: 10px 14px; border-top: 1px solid var(--border); color: var(--text-muted); font-size: 12px; line-height: 1.8; background: #26262a; }
+.frame-note b { color: var(--text-secondary); }
+.frame-note .ok { color: var(--status-connected); }
+.frame-note .warn { color: var(--danger); }
+.frame-note code { font-family: "JetBrains Mono", Consolas, monospace; font-size: 11px; color: var(--accent-hover); }
+
+/* ── 应用窗口骨架 ── */
+.app { display: flex; flex-direction: column; min-height: 360px; background: var(--bg-window); font-size: 12px; overflow: hidden; margin-top: 14px; border-radius: 6px; border: 1px solid var(--border); position: relative; }
+.titlebar { height: 30px; flex: none; background: var(--bg-titlebar); display: flex; align-items: center; padding: 0 8px 0 12px; gap: 6px; user-select: none; }
+.titlebar .logo { width: 14px; height: 14px; flex: none; }
+.menu-btn { height: 22px; padding: 0 8px; background: transparent; border: none; color: var(--text-secondary); font-size: 12px; font-family: inherit; border-radius: var(--radius-sm); cursor: pointer; }
+.titlebar .drag { flex: 1; }
+.win-btn { width: 34px; height: 22px; border: none; background: transparent; color: var(--text-secondary); cursor: pointer; }
+
+/* TitleBar 更新按钮（实机对齐——壳共享 Button 组件：Button.css .button = accent 实心 + var(--text-on-accent)，主题跟随；全文字，宽度自适应；有更新才现 when 门控） */
+.tb-update {
+  display: inline-flex; align-items: center; justify-content: center;
+  height: 22px; padding: 0 10px; border: none;
+  background: var(--accent); color: var(--text-on-accent);
+  border-radius: var(--radius-sm); font-size: 12px; cursor: pointer;
+  -webkit-app-region: no-drag; font-family: inherit; white-space: nowrap;
+}
+.tb-update:hover { opacity: 0.85; }
+.tb-update:focus-visible { outline: 2px solid var(--accent-hover); outline-offset: 1px; }
+.statusbar { height: 22px; flex: none; background: var(--bg-titlebar); display: flex; align-items: center; padding: 0 8px; font-size: 11px; color: var(--text-secondary); }
+
+/* ── 状态栏（实机对齐——StatusBarZone：右区铃铛 + 未读徽标） ── */
+.statusbar .right { margin-left: auto; display: flex; align-items: center; gap: 4px; }
+.bell { position: relative; display: flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: var(--radius-sm); cursor: pointer; color: var(--text-secondary); }
+.bell:hover { background: var(--hover-overlay); color: var(--text-primary); }
+.bell svg { width: 14px; height: 14px; }
+.bell-badge { position: absolute; top: -2px; right: -2px; min-width: 14px; height: 14px; padding: 0 3px; border-radius: 8px; background: var(--accent); color: var(--badge-text); font-size: 9px; display: flex; align-items: center; justify-content: center; }
+
+/* ═══════════════════════════════════════════════════════
+   通知面板——🔴 唯一通知面（E6#72a 右下窄小卡整删后就是它）
+   实机对齐 StatusBarZone.css .status-bar-notif-panel：
+     fixed right 7px / bottom calc(22px × ui-scale + 7px) / width 420px / max-height 400px
+     bg-card + border separator + radius-md + shadow-dialog-soft
+   ═══════════════════════════════════════════════════════ */
+.notif-panel {
+  position: absolute;
+  right: var(--panel-right);
+  bottom: var(--panel-bottom);
+  width: 420px;
+  max-height: 400px;
+  background: var(--bg-card);
+  border: 1px solid var(--separator);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-dialog-soft);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.notif-panel-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 8px 0 12px; height: 35px; flex-shrink: 0;
+  border-bottom: 1px solid var(--separator);
+}
+.notif-panel-title { text-transform: uppercase; font-size: var(--font-size-xs); font-weight: 600; letter-spacing: 0.3px; color: var(--text-secondary); }
+.notif-panel-toolbar { display: flex; gap: 2px; flex-shrink: 0; }
+/* E6#73a / E6#73k：头部两钮（「清除已完成」管内容 /「最小化」管面板）——无图标、24×24 点按目标 */
+.notif-panel-action {
+  background: none; border: none; color: var(--text-secondary);
+  font-size: var(--font-size-xs); font-family: inherit; cursor: pointer;
+  padding: 2px 6px; border-radius: var(--radius-sm);
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 24px; min-height: 24px;
+}
+.notif-panel-action:hover { background: var(--tab-hover-bg); color: var(--text-primary); }
+.notif-panel-action:focus-visible { outline: 2px solid var(--accent-hover); outline-offset: -2px; }
+
+.notif-panel-list { overflow-y: auto; flex: 1; }
+
+/* ── 条目：DOM 序 = 视觉序（主行 → 进度条 → 详情行）。🔴 不许 column-reverse（E6#73d）── */
+.notif-item {
+  display: flex; flex-direction: column;
+  padding: 8px; border-bottom: 1px solid var(--separator);
+  user-select: text;   /* E6#72b：整条可拖选复制 */
+}
+.notif-item:last-child { border-bottom: none; }
+.notif-item button { user-select: none; }
+
+.notif-main-row { display: flex; align-items: flex-start; gap: 6px; }
+.notif-icon { flex: 0 0 16px; width: 16px; height: 22px; display: flex; align-items: center; justify-content: center; font-size: var(--font-size-lg); margin: 0 2px; }
+.notif-icon svg { width: 16px; height: 16px; }
+.notif-icon.info { color: var(--accent); }
+.notif-icon.warning { color: var(--warning); }
+.notif-icon.error { color: var(--error); }
+.notif-icon.success { color: var(--status-connected); }
+
+/* E6#72b：恒全显——整句换行、可拖选复制（不是单行截断，也没有「折叠」这回事） */
+.notif-msg {
+  flex: 1; font-size: var(--font-size-sm); color: var(--text-primary);
+  line-height: 22px; white-space: normal; overflow-wrap: anywhere; word-break: break-word;
+  min-width: 0; user-select: text; cursor: text;
+}
+/* E6#73k（J6）：面板内文字整层 secondary（muted 深色 3.99:1 不达标） */
+.notif-time { font-size: var(--font-size-2xs); color: var(--text-secondary); flex-shrink: 0; line-height: 22px; }
+.notif-dismiss {
+  background: none; border: none; color: var(--text-secondary); cursor: pointer;
+  font-size: var(--font-size-sm); flex-shrink: 0; padding: 0 4px;
+  min-height: 24px; min-width: 24px;
+  display: flex; align-items: center; justify-content: center;
+  /* 实机：opacity 0 → :hover / :focus-visible 才显形（E6#73k J4 补的键盘分支）。
+     本 mockup 为可读性**常显**——不是实现规格。 */
+  opacity: 1;
+}
+.notif-dismiss:hover { color: var(--text-primary); background: var(--tab-hover-bg); border-radius: var(--radius-sm); }
+
+/* ── E6#71i / E6#73k：真进度条（4px，不是 3px——73k 为可见性加粗过）── */
+.notif-progress {
+  position: relative; height: 4px; margin: 6px 0 2px;
+  border-radius: var(--radius-pill);
+  background: var(--bg-window);   /* 凹槽——刻意不承载信息 */
+  overflow: hidden; flex-shrink: 0;
+}
+.notif-progress-fill {
+  position: absolute; inset: 0 auto 0 0;
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+  transition: width 200ms ease-out;
+}
+
+/* ── 详情行：来源 + 动作按钮（恒全显，随条目一起出现）── */
+.notif-details-row {
+  display: flex; align-items: center; gap: 8px;
+  padding-left: 24px; margin-top: 4px;
+  font-size: var(--font-size-xs); color: var(--text-secondary);
+  flex-wrap: wrap;
+}
+.notif-source { color: var(--text-secondary); white-space: nowrap; user-select: text; cursor: text; }
+.notif-actions-row { display: flex; gap: 4px; }
+.notif-action-btn {
+  background: none; border: none; font-size: var(--font-size-xs); font-family: inherit;
+  cursor: pointer; padding: 2px 8px; border-radius: var(--radius-sm); white-space: nowrap;
+  display: inline-flex; align-items: center; justify-content: center;
+  min-height: 24px; min-width: 24px;
+}
+.notif-action-btn.primary { background: var(--accent); color: var(--badge-text); }
+.notif-action-btn.primary:hover { opacity: 0.85; }
+.notif-action-btn.secondary { color: var(--text-secondary); border: 1px solid var(--separator); }
+.notif-action-btn.secondary:hover { color: var(--text-primary); border-color: var(--text-muted); }
+.notif-action-btn:focus-visible { outline: 2px solid var(--accent-hover); outline-offset: 1px; }
+
+/* ── 关于页（标签页，方案 A）── */
+.about-tab { padding: 22px 32px; display: flex; flex-direction: column; gap: 14px; max-width: 420px; }
+.about-logo { width: 56px; height: 56px; }
+.about-name { font-size: 16px; font-weight: 600; }
+.about-fields { display: flex; flex-direction: column; gap: 6px; font-size: 12.5px; }
+.about-row { display: flex; gap: 10px; }
+.about-row .k { flex: 0 0 72px; color: var(--text-secondary); }
+.about-row .v { color: var(--text-primary); font-family: "JetBrains Mono", Consolas, monospace; font-size: 11.5px; }
+.about-actions { display: flex; gap: 8px; margin-top: 6px; }
+.about-btn { padding: 4px 14px; border-radius: var(--radius-sm); font-size: 12px; cursor: pointer; border: 1px solid var(--separator); background: transparent; color: var(--text-primary); font-family: inherit; }
+.about-btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.about-btn:hover { border-color: var(--text-muted); }
+
+/* ── Frame 0 两条路完整流程（总览）── */
+.flow { display: flex; gap: 32px; padding: 20px 24px 8px; justify-content: center; flex-wrap: wrap; }
+.flow-col { display: flex; flex-direction: column; align-items: center; gap: 8px; flex: 1; min-width: 240px; max-width: 300px; }
+.flow-node { width: 100%; background: var(--bg-window); border: 1px solid var(--separator); border-radius: 6px; padding: 8px 12px; text-align: center; font-size: 12px; line-height: 1.7; color: var(--text-primary); }
+.flow-node small { display: block; color: var(--text-secondary); font-size: 10.5px; margin-top: 3px; }
+.flow-node .hl { color: var(--status-connected); font-weight: 600; }
+.flow-node .warn { color: var(--danger); }
+.flow-start { border-color: rgba(78,201,176,0.5); background: rgba(78,201,176,0.08); }
+.flow-end { border-color: rgba(0,120,212,0.5); background: rgba(0,120,212,0.1); }
+.flow-dim { opacity: 0.72; }
+.flow-arrow { color: var(--text-muted); font-size: 11px; line-height: 1; white-space: nowrap; }
+.flow-join { text-align: center; color: var(--status-connected); font-size: 12px; font-weight: 600; padding: 10px 0 8px; letter-spacing: 0.04em; }
+.flow-main { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 0 24px 20px; max-width: 480px; margin: 0 auto; }
+
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+
+<h1>主软件更新 · 更新通知（铃铛面板）+ 关于页
+  <small>🔴 <b class="hl">2026-09-11 重画</b>——上一版画的是<b class="warn">已死的载体</b>（右下角小卡 + 默认折叠 + 无进度条）。E6#72a 把右下窄小卡整删、E6#71h 定案「恒全显」、E6#71i/E6#73k 落地真进度条 ⇒ <b class="hl">本文件已按现行通知面重画</b>。<br>唯一通知面 = <b class="hl">状态栏铃铛宽面板</b>（<code>.status-bar-notif-panel</code>，420px / 右下角 / 恒全显 / 可拖选复制）。更新发现/进度/完成/失败/手动结果<b class="hl">全走这一处</b>，<b class="warn">不新建任何 UI 表面</b>。TitleBar 按钮三态演进：<b class="hl">下载更新 → 更新中 → 重新启动</b>。关于页 = 标签页（方案 A）。</small>
+</h1>
+
+<!-- ═══════════════ Frame 0：两条路完整流程（总览） ═══════════════ -->
+<div class="frame">
+  <div class="frame-caption">
+    <b>Frame 0 · 两条路完整流程</b>
+    <span>路 A（被动）+ 路 B（主动）→ 汇合 → 重启（2026-08-30 用户设计）</span>
+    <span class="tag">流程总览</span>
+  </div>
+  <div class="flow">
+    <div class="flow-col">
+      <div class="flow-node flow-start"><span class="hl">路 A · 被动</span><small>有新版本，即便不点检查更新</small></div>
+      <div class="flow-arrow">↓ auto 后台检查到 available</div>
+      <div class="flow-node">TitleBar 按钮「下载更新」自动出现<small>when: updateActionable，主题按钮色，有更新才现（03 §4.2/4.3）</small></div>
+      <div class="flow-arrow">↓ 点击（openUpdateFlow）</div>
+      <div class="flow-node flow-dim">从按钮启动下载</div>
+    </div>
+    <div class="flow-col">
+      <div class="flow-node">帮助菜单「检查更新…」<small>恒显，任何 mode 都在（03）</small></div>
+      <div class="flow-arrow">↓ 点击</div>
+      <div class="flow-node">无更新 → 面板条目「<span class="warn">当前已是最新版本</span>」<small>Frame 4（有更新则下跳）</small></div>
+      <div class="flow-arrow">↓ 有更新</div>
+      <div class="flow-node">[发现更新条目] → 点「立即更新」<small>Frame 1</small></div>
+      <div class="flow-arrow"></div>
+      <div class="flow-node flow-dim">从条目启动下载</div>
+    </div>
+  </div>
+  <div class="flow-join">▼ 两条路汇合（同一流程）</div>
+  <div class="flow-main">
+    <div class="flow-node">下载中 → 条目文字「正在下载更新 42%」+ <b>4px 真进度条</b> + TitleBar 按钮变「<span class="hl">更新中</span>」<small>Frame 2（updateToast 循环改文字 + percent 驱动条宽）</small></div>
+    <div class="flow-arrow">↓ 下载完成 + 校验通过</div>
+    <div class="flow-node">条目「更新已下载，重启后生效」[稍后] [重启并更新] + 按钮变「<span class="hl">重新启动</span>」<small>Frame 3（无 3s 倒计时弹窗）</small></div>
+    <div class="flow-arrow">↓ 点「重启并更新」（或点按钮）</div>
+    <div class="flow-node flow-end">quitAndInstall → 软件重启 → 首启自动弹发行说明<small>05 §2.4（标签页）</small></div>
+  </div>
+  <div class="frame-note">
+    <b>要点：</b>两条路只差<b>触发方式</b>——路 A = 有新更新按钮自己出现（用户不用做任何事）；路 B = 用户主动菜单检查。触发后完全汇合。<b class="ok">无更新</b>走绿分支「当前已是最新版本」，即查即答——这是「入口恒显」的底气。下载一路无论从按钮还是条目进来，TitleBar 按钮都同步提示状态（<b class="ok">下载更新 → 更新中 → 重新启动</b>）。<b class="warn">按钮有更新才显示</b>——idle 无更新时整个隐藏不占位。<b class="warn">失败路径</b>见 Frame 5（不是死路——失败条目带 [重试]）。
+  </div>
+</div>
+
+<!-- ═══════════════ Frame 1：发现更新（面板条目） ═══════════════ -->
+<div class="frame">
+  <div class="frame-caption">
+    <b>Frame 1 · 发现更新</b>
+    <span>实机对齐——StatusBarZone.css .status-bar-notif-panel + .notif-item（恒全显）</span>
+    <span class="tag">恒全显 · 不折叠</span>
+  </div>
+  <div class="app">
+    <div class="titlebar">
+      <svg class="logo" viewBox="0 0 16 16"><rect x="2" y="2" width="12" height="12" rx="2.5" fill="#0078D4"/><rect x="5" y="5" width="6" height="6" rx="1" fill="#fff"/></svg>
+      <button class="menu-btn">文件</button><button class="menu-btn">查看</button><button class="menu-btn">帮助</button>
+      <span class="drag"></span>
+      <!-- TitleBar 更新按钮（available 态 = 全文字「下载更新」，主题按钮色；有更新才现） -->
+      <button class="tb-update" title="下载更新 0.2.0">下载更新</button>
+      <span class="win-btn">─</span><span class="win-btn">□</span><span class="win-btn">✕</span>
+    </div>
+    <div class="app-body" style="flex:1;position:relative;">
+      <div class="notif-panel">
+        <div class="notif-panel-header">
+          <div class="notif-panel-title">通知</div>
+          <div class="notif-panel-toolbar">
+            <button class="notif-panel-action">清除已完成</button>
+            <button class="notif-panel-action">最小化</button>
+          </div>
+        </div>
+        <div class="notif-panel-list">
+          <div class="notif-item">
+            <div class="notif-main-row">
+              <span class="notif-icon info"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v8M4.5 7L8 10.5 11.5 7M2.5 13.5h11"/></svg></span>
+              <span class="notif-msg">LinkDesk 有可用的更新 0.2.0</span>
+              <span class="notif-time">刚刚</span>
+              <button class="notif-dismiss" title="不再提示此版本">✕</button>
+            </div>
+            <div class="notif-details-row">
+              <span class="notif-source">主软件更新</span>
+              <div class="notif-actions-row">
+                <button class="notif-action-btn secondary">查看更新内容</button>
+                <button class="notif-action-btn primary">立即更新</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="statusbar"><div class="right"><div class="bell"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M8 1.8a4 4 0 0 0-4 4v3L2.8 11h10.4L12 8.8v-3a4 4 0 0 0-4-4zM6.4 13a1.6 1.6 0 0 0 3.2 0"/></svg><span class="bell-badge">1</span></div></div></div>
+  </div>
+  <div class="frame-note">
+    <b>要点：</b>条目抵达即进<b class="ok">铃铛面板</b>（未读 +1；面板关着时重要条目会自动展开——E6#72d）。🔴 <b class="ok">恒全显</b>：消息与两个按钮<b>一开始就都在</b>，<b class="warn">没有「默认折叠、点 ⋁ 展开」这回事</b>（E6#71h 定案两态删除）。整条<b class="ok">可拖选复制</b>（E6#72b）——「LinkDesk 有可用的更新 0.2.0」整句能一次划选。<br><code>isCloseAffordance: true</code> → 点 ✕ 该版本不再自动弹（Don't show again 持久化，手册菜单仍可查）。<code>source: "app.update"</code> → 来源行「主软件更新」由通知面的来源名机制解析（E6#73g S5），<b class="warn">不写死进 source</b>。<b class="ok">TitleBar「下载更新」按钮同步出现</b>（<code>when: updateActionable</code>，有更新才现）——即便不点检查更新，有新版本它自己就出来了（路 A）。
+  </div>
+</div>
+
+<!-- ═══════════════ Frame 2：下载进度（updateToast 循环 + 真进度条） ═══════════════ -->
+<div class="frame">
+  <div class="frame-caption">
+    <b>Frame 2 · 下载进度</b>
+    <span>实机对齐——updateToast(id, message, percent) + .notif-progress（E6#71i 落地 / E6#73k 加粗到 4px）</span>
+    <span class="tag">4px 真进度条</span>
+  </div>
+  <div class="app">
+    <div class="titlebar">
+      <svg class="logo" viewBox="0 0 16 16"><rect x="2" y="2" width="12" height="12" rx="2.5" fill="#0078D4"/><rect x="5" y="5" width="6" height="6" rx="1" fill="#fff"/></svg>
+      <span class="drag"></span>
+      <!-- TitleBar 更新按钮（downloading 态 = 全文字「更新中」，主题按钮色） -->
+      <button class="tb-update" title="正在下载更新…">更新中</button>
+      <span class="win-btn">─</span><span class="win-btn">□</span><span class="win-btn">✕</span>
+    </div>
+    <div class="app-body" style="flex:1;position:relative;">
+      <div class="notif-panel">
+        <div class="notif-panel-header">
+          <div class="notif-panel-title">通知</div>
+          <div class="notif-panel-toolbar">
+            <button class="notif-panel-action">最小化</button>
+          </div>
+        </div>
+        <div class="notif-panel-list">
+          <div class="notif-item">
+            <div class="notif-main-row">
+              <span class="notif-icon info"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v8M4.5 7L8 10.5 11.5 7M2.5 13.5h11"/></svg></span>
+              <span class="notif-msg">正在下载更新 42%</span>
+              <span class="notif-time">刚刚</span>
+              <button class="notif-dismiss">✕</button>
+            </div>
+            <!-- E6#71i：percent 非空 = 确定态真条（条宽 = percent）；无数值段 = 不定态扫动 -->
+            <div class="notif-progress"><div class="notif-progress-fill" style="width:42%"></div></div>
+            <div class="notif-details-row">
+              <span class="notif-source">主软件更新</span>
+              <div class="notif-actions-row">
+                <button class="notif-action-btn secondary">后台运行</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="statusbar"><div class="right"><div class="bell"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M8 1.8a4 4 0 0 0-4 4v3L2.8 11h10.4L12 8.8v-3a4 4 0 0 0-4-4zM6.4 13a1.6 1.6 0 0 0 3.2 0"/></svg><span class="bell-badge">1</span></div></div></div>
+  </div>
+  <div class="frame-note">
+    <b>要点：</b><code>updateToast(id, t("正在下载更新 {{percent}}%"), p.percent)</code>——<b class="ok">第三参 percent 非空 → 面板画真进度条</b>（<b class="warn">4px</b>，E6#73k 为可见性从 3px 加粗；条宽 = percent%，确定态；无百分数段走不定态扫动）。<b>文字 + 条双呈现</b>：百分比数字由发起方写进消息文案，条只做视觉化（壳不猜单位/不舍入）。节流 ≤500ms。<b class="ok">TitleBar 按钮变「更新中」</b>——下载这一路（无论从条目「立即更新」还是 TitleBar「下载更新」进来），按钮都同步提示状态。点「后台运行」= 收起面板，进度不丢（条目仍在面板里）。<br>⚠️ <b>阶段切换时 <code>percent</code> 必须显式传</b>：下载完进入「校验/解压」段若无百分数 → 传 <code>undefined</code> 落到不定态，<b class="warn">别留着上一个阶段的 42% 不动</b>（那会读成卡死）。
+  </div>
+</div>
+
+<!-- ═══════════════ Frame 3：下载完成（重启） ═══════════════ -->
+<div class="frame">
+  <div class="frame-caption">
+    <b>Frame 3 · 下载完成（重启）</b>
+    <span>实机对齐——notif actions [稍后] [重启并更新] → quitAndInstall</span>
+    <span class="tag">无 3s 倒计时弹窗</span>
+  </div>
+  <div class="app">
+    <div class="titlebar">
+      <svg class="logo" viewBox="0 0 16 16"><rect x="2" y="2" width="12" height="12" rx="2.5" fill="#0078D4"/><rect x="5" y="5" width="6" height="6" rx="1" fill="#fff"/></svg>
+      <button class="menu-btn">文件</button><button class="menu-btn">查看</button><button class="menu-btn">帮助</button>
+      <span class="drag"></span>
+      <!-- TitleBar 更新按钮（downloaded 态 = 全文字「重新启动」，主题按钮色） -->
+      <button class="tb-update" title="重启并更新">重新启动</button>
+      <span class="win-btn">─</span><span class="win-btn">□</span><span class="win-btn">✕</span>
+    </div>
+    <div class="app-body" style="flex:1;position:relative;">
+      <div class="notif-panel">
+        <div class="notif-panel-header">
+          <div class="notif-panel-title">通知</div>
+          <div class="notif-panel-toolbar">
+            <button class="notif-panel-action">最小化</button>
+          </div>
+        </div>
+        <div class="notif-panel-list">
+          <div class="notif-item">
+            <div class="notif-main-row">
+              <span class="notif-icon info"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v8M4.5 7L8 10.5 11.5 7M2.5 13.5h11"/></svg></span>
+              <span class="notif-msg">更新已下载，重启后生效</span>
+              <span class="notif-time">刚刚</span>
+              <button class="notif-dismiss">✕</button>
+            </div>
+            <div class="notif-details-row">
+              <span class="notif-source">主软件更新</span>
+              <div class="notif-actions-row">
+                <button class="notif-action-btn secondary">稍后</button>
+                <button class="notif-action-btn primary">重启并更新</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="statusbar"><div class="right"><div class="bell"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M8 1.8a4 4 0 0 0-4 4v3L2.8 11h10.4L12 8.8v-3a4 4 0 0 0-4-4zM6.4 13a1.6 1.6 0 0 0 3.2 0"/></svg><span class="bell-badge">1</span></div></div></div>
+  </div>
+  <div class="frame-note">
+    <b>要点：</b>「重启并更新」点击即 <code>quitAndInstall()</code>——<b class="ok">无 3s 倒计时弹窗</b>（那是新造 UI；条目点击即执行，误点风险低——重启是主按钮用户主动点）。「稍后」= 条目收入面板、状态回 idle（<b class="ok">保留 update 信息不重下</b>），TitleBar 按钮显示「重新启动」，仍可再触发。重启后首启自动弹发行说明。<b class="ok">TitleBar 按钮 = 主题按钮色</b>（03 §4.2：壳共享 Button 组件，全文字 + accent 实心，跟随主题）。
+  </div>
+</div>
+
+<!-- ═══════════════ Frame 4：手动检查无更新 ═══════════════ -->
+<div class="frame">
+  <div class="frame-caption">
+    <b>Frame 4 · 手动检查无更新</b>
+    <span>实机对齐——TOAST_TTL_SUCCESS=5000 自动消失</span>
+    <span class="tag">即查即答</span>
+  </div>
+  <div class="app">
+    <div class="titlebar">
+      <svg class="logo" viewBox="0 0 16 16"><rect x="2" y="2" width="12" height="12" rx="2.5" fill="#0078D4"/><rect x="5" y="5" width="6" height="6" rx="1" fill="#fff"/></svg>
+      <span class="drag"></span>
+      <span class="win-btn">─</span><span class="win-btn">□</span><span class="win-btn">✕</span>
+    </div>
+    <div class="app-body" style="flex:1;position:relative;">
+      <div class="notif-panel">
+        <div class="notif-panel-header">
+          <div class="notif-panel-title">通知</div>
+          <div class="notif-panel-toolbar">
+            <button class="notif-panel-action">最小化</button>
+          </div>
+        </div>
+        <div class="notif-panel-list">
+          <div class="notif-item">
+            <div class="notif-main-row">
+              <span class="notif-icon success"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5l3.2 3.2L13 5"/></svg></span>
+              <span class="notif-msg">当前已是最新版本</span>
+              <span class="notif-time">刚刚</span>
+              <button class="notif-dismiss">✕</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="statusbar"><div class="right"><div class="bell"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M8 1.8a4 4 0 0 0-4 4v3L2.8 11h10.4L12 8.8v-3a4 4 0 0 0-4-4zM6.4 13a1.6 1.6 0 0 0 3.2 0"/></svg></div></div></div>
+  </div>
+  <div class="frame-note">
+    <b>要点：</b>点「检查更新…」无更新 → 此条目（<code>ttl: TOAST_TTL_SUCCESS=5000</code> 自动消失）——<b class="ok">入口恒显的底气</b>：最新就说最新，<b class="warn">绝不让用户点了没反应</b>。无详情行（无动作可做）。铃铛<b class="ok">无未读徽标</b>（该条已读且无未读项）。
+  </div>
+</div>
+
+<!-- ═══════════════ Frame 5：检查 / 下载失败（带重试） ═══════════════ -->
+<div class="frame">
+  <div class="frame-caption">
+    <b>Frame 5 · 检查 / 下载失败 + [重试]</b>
+    <span>实机对齐——severity: "error" + action [重试]（TOAST_TTL_ERROR=8000）</span>
+    <span class="tag">不是死路</span>
+  </div>
+  <div class="app">
+    <div class="titlebar">
+      <svg class="logo" viewBox="0 0 16 16"><rect x="2" y="2" width="12" height="12" rx="2.5" fill="#0078D4"/><rect x="5" y="5" width="6" height="6" rx="1" fill="#fff"/></svg>
+      <button class="menu-btn">文件</button><button class="menu-btn">查看</button><button class="menu-btn">帮助</button>
+      <span class="drag"></span>
+      <span class="win-btn">─</span><span class="win-btn">□</span><span class="win-btn">✕</span>
+    </div>
+    <div class="app-body" style="flex:1;position:relative;">
+      <div class="notif-panel">
+        <div class="notif-panel-header">
+          <div class="notif-panel-title">通知</div>
+          <div class="notif-panel-toolbar">
+            <button class="notif-panel-action">最小化</button>
+          </div>
+        </div>
+        <div class="notif-panel-list">
+          <div class="notif-item">
+            <div class="notif-main-row">
+              <span class="notif-icon error"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="8" cy="8" r="6"/><path d="M8 4.8v4M8 11.2v.01"/></svg></span>
+              <span class="notif-msg">检查更新失败：网络连接不可用</span>
+              <span class="notif-time">刚刚</span>
+              <button class="notif-dismiss">✕</button>
+            </div>
+            <div class="notif-details-row">
+              <span class="notif-source">主软件更新</span>
+              <div class="notif-actions-row">
+                <button class="notif-action-btn secondary">重试</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="statusbar"><div class="right"><div class="bell"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M8 1.8a4 4 0 0 0-4 4v3L2.8 11h10.4L12 8.8v-3a4 4 0 0 0-4-4zM6.4 13a1.6 1.6 0 0 0 3.2 0"/></svg><span class="bell-badge">1</span></div></div></div>
+  </div>
+  <div class="frame-note">
+    <b>要点：</b>失败<b class="ok">必须落地成一条带 [重试] 的条目</b>——<b class="warn">不是死路</b>（对标插件侧教训：失败只报「未知错误」不给出口 = 用户卡死）。<b>归因要具体</b>：<code>网络 / 仓库不存在 / 限流 / 响应格式非法 / Release 无匹配 asset / tag 非 SemVer / 校验和不符</code>——每类一句人话，<b class="warn">不许塌成「未知错误」</b>。severity <code>error</code>（红图标）+ <code>TOAST_TTL_ERROR=8000</code>。<br><b>后台（auto）检查失败不打扰</b>：静默回 idle + 记 lastError，下周期自己再试——<b class="ok">手动检查才出这条</b>。下载中断同款：报错 + [重试]（重试 = 重头下，不做断点续传——第一版）。
+  </div>
+</div>
+
+<!-- ═══════════════ Frame 6：关于页（标签页 方案A） ═══════════════ -->
+<div class="frame">
+  <div class="frame-caption">
+    <b>Frame 6 · 关于 LinkDesk（标签页，方案 A）</b>
+    <span>实机对齐——发行说明标签页同款载体（标签页=通用表面容器）+ product.json / process.versions</span>
+    <span class="tag">已拍板：标签页</span>
+  </div>
+  <div class="app">
+    <div class="titlebar">
+      <svg class="logo" viewBox="0 0 16 16"><rect x="2" y="2" width="12" height="12" rx="2.5" fill="#0078D4"/><rect x="5" y="5" width="6" height="6" rx="1" fill="#fff"/></svg>
+      <span class="drag"></span>
+      <span class="win-btn">─</span><span class="win-btn">□</span><span class="win-btn">✕</span>
+    </div>
+    <div class="app-body" style="flex:1;display:flex;">
+      <div class="about-tab">
+        <svg class="about-logo" viewBox="0 0 56 56"><rect x="6" y="6" width="44" height="44" rx="10" fill="#0078D4"/><rect x="18" y="18" width="20" height="20" rx="4" fill="#fff"/></svg>
+        <div class="about-name">LinkDesk</div>
+        <div class="about-fields">
+          <div class="about-row"><span class="k">版本</span><span class="v">0.2.0 (user setup)</span></div>
+          <div class="about-row"><span class="k">提交</span><span class="v">91e6aa36…</span></div>
+          <div class="about-row"><span class="k">日期</span><span class="v">2026-08-30T00:00:00Z</span></div>
+          <div class="about-row"><span class="k">Electron</span><span class="v">42.8.1</span></div>
+          <div class="about-row"><span class="k">Chromium</span><span class="v">148.0.7778.280</span></div>
+          <div class="about-row"><span class="k">Node.js</span><span class="v">24.18.1</span></div>
+          <div class="about-row"><span class="k">V8</span><span class="v">14.8.178.38-electron.0</span></div>
+          <div class="about-row"><span class="k">OS</span><span class="v">Windows 11 Home China (10.0.26200)</span></div>
+        </div>
+        <div class="about-actions">
+          <button class="about-btn">检查更新…</button>
+          <button class="about-btn primary">复制</button>
+        </div>
+      </div>
+    </div>
+    <div class="statusbar"><div class="right"><div class="bell"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M8 1.8a4 4 0 0 0-4 4v3L2.8 11h10.4L12 8.8v-3a4 4 0 0 0-4-4zM6.4 13a1.6 1.6 0 0 0 3.2 0"/></svg></div></div></div>
+  </div>
+  <div class="frame-note">
+    <b>要点：</b>关于页 = <b class="ok">标签页（方案 A，已拍板 2026-08-30）</b>——因为壳 DialogService 现实能力（<code>title + message + 按钮</code>）画不出字段表 + 复制按钮；标签页 = 通用表面容器（发行说明同款）可全承载。「复制」→ 多行 <code>key: value</code> 到剪贴板 + 条目「已复制」；「检查更新…」→ 手机「设置→关于本机→软件更新」心智——<b class="ok">结果同样落回铃铛面板（Frame 1/4/5），不新开第二个面</b>。备选方案 B = DialogService <code>alert()</code> 多行降级（砍复制），已否决，见 06 档案 §三。
+  </div>
+</div>
+
+</body>
+</html>

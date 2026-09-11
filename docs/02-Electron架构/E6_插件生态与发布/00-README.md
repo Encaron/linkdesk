@@ -134,15 +134,17 @@ E6 要确保这三个人各自有一条完整链路。
 ```
 你的电脑                       用户电脑
 ────────                      ────────
-npm run electron:build        下载 LinkDesk Setup.exe
+npm run electron:build        下载 linkdesk-setup-{version}.exe
 → dist-electron/              安装 → 双击桌面图标
-→ LinkDesk Setup.exe          启动 → 看到完整壳
+→ linkdesk-setup-{version}.exe 启动 → 看到完整壳
                                 → 文件树/编辑器/串口/设置 全正常
                                 → 菜单/快捷键/右键 全正常
                                 → 主题切换/语言切换 全正常
 ```
 
 **对应任务：** 第 1 层 E5 收尾 + 生产构建验证。
+
+> ⚠️ **2026-09-11 订正**：上图原写 `LinkDesk Setup.exe`（大写空格、无版本号）= electron-builder **默认产物名**，**不是发布名**。发布名唯一真理源 = `electron-builder.yml` 的 `artifactName` ⇒ **`linkdesk-setup-{version}.exe`**（小写连字符带版本号）。**用错名的后果 = 更新器 `asset-missing`：检查更新成功、下载永远失败。** 见 [05-文档与发布/02-发布流水线.md](05-文档与发布/02-发布流水线.md) §〇 + E6#42e。
 
 ### 2.2 "插件链自动下载和插件生产全流程"
 

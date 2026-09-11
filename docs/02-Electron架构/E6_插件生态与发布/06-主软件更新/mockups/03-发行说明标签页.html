@@ -142,6 +142,15 @@ h1 .warn { color: var(--error); }
 .rn-banner .bb-btn { color: var(--accent-hover); cursor: pointer; font-weight: 500; }
 .rn-banner .bb-btn:hover { text-decoration: underline; }
 
+/* ── 加载中骨架（Frame 3——首帧拉取未回） ── */
+.rn-skel { padding: 4px 0; }
+.rn-skel-bar { height: 10px; border-radius: 4px; background: var(--hover-overlay); margin-bottom: 10px; }
+.rn-skel-bar.w40 { width: 40%; } .rn-skel-bar.w70 { width: 70%; } .rn-skel-bar.w90 { width: 90%; }
+.rn-skel-bar.h18 { height: 18px; }
+.rn-skel-list { display: flex; flex-direction: column; gap: 12px; padding: 8px 0; }
+.rn-skel-item { display: flex; flex-direction: column; gap: 6px; }
+/* 骨架只做占位——不做 shimmer 动效（prefers-reduced-motion 友好，且拉取通常 <1s） */
+
 /* ── 断网空态（拉取失败降级——05 §2.4） ── */
 .rn-empty { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 40px; }
 .rn-empty .empty-icon { width: 46px; height: 46px; border-radius: 10px; background: var(--hover-overlay); display: flex; align-items: center; justify-content: center; color: var(--text-muted); }
@@ -165,8 +174,8 @@ h1 .warn { color: var(--error); }
 
 <div class="frame">
   <div class="frame-caption">
-    <b>发行说明 · 壳内标签页</b>
-    <span>入口：帮助菜单「显示发行说明」/ 更新 toast「查看更新内容 →」/ 首启新版本自动打开</span>
+    <b>Frame 1 · 发行说明 · 壳内标签页（主态）</b>
+    <span>入口：帮助菜单「显示发行说明」/ 更新通知面条目「查看更新内容」/ 首启新版本自动打开</span>
   </div>
 
   <div class="app">
@@ -250,7 +259,7 @@ h1 .warn { color: var(--error); }
               <div class="rn-sect">
                 <div class="rn-sect-title"><span class="st-badge st-new">新增</span>新能力</div>
                 <ul>
-                  <li><span class="li-dot">•</span><span><b>壳侧主软件更新</b>：启动/每 4 小时自动检查 GitHub Releases，发现新版本 → 更新 toast + TitleBar「下载更新」按钮（有更新才现，主题按钮色；<code>update.mode</code> 两档：auto/manual）</span></li>
+                  <li><span class="li-dot">•</span><span><b>壳侧主软件更新</b>：启动/每 4 小时自动检查 GitHub Releases，发现新版本 → 通知面条目 + TitleBar「下载更新」按钮（有更新才现，主题按钮色；<code>update.mode</code> 两档：auto/manual）</span></li>
                   <li><span class="li-dot">•</span><span>发行说明标签页：<b>首启新版本自动打开</b>，历史版本左栏可回看</span></li>
                   <li><span class="li-dot">•</span><span>关于标签页：版本/提交/日期 + Electron/Chromium/Node/V8/OS，一键复制</span></li>
                 </ul>
@@ -280,13 +289,13 @@ h1 .warn { color: var(--error); }
   </div>
 
   <div class="frame-note">
-    <b>要点：</b>发行说明 = <b>主区标签页</b>（对齐插件详情页 01 竞标 A 骨架：头部集成当前版本信息 + 主体）。主体 = 左<b>窄栏</b>版本历史 220px（配角导航，git 历史 / GitHub Releases 前 30 条倒序，选中即渲染该版 body）+ 右<b>主区</b>更新内容（主角，GFM → 跟随主题）——<b>版本历史不是主角，不占一半</b>（用户指示「动 skill」后定）；「所有版本 → GitHub」浏览器看全量。标签页 = <b>单例</b>（<code>tabBehavior.singleton</code>，重复入口不叠 tab）+ 可关。顶部横幅 = 首启自动弹的提示（对标 VS Code，可「知道了」收起，此后该版本不重弹）。<b>「查看更新内容 →」从更新 toast 进入时</b>（04 §二 展开态 actions），自动打开并高亮新版本（选中 v0.2.0）。<br><b class="ok">布局定稿（2026-08-30 用户指示）：</b>发行说明内容 <b>不占声明式侧栏</b>——LinkDesk 侧栏 = 注册后出现的专属面板、与标签栏不同时开，为发行说明搞侧栏容器（title/toolbarslot…）很麻烦；改为像插件详情页一样把信息<b>集成进一个主区标签页</b>。本 mockup 外层画出<b>完整软件框架</b>（图标栏 / 应用侧栏 / 状态栏）示意——那些是软件本身的框架，发行说明只是主区其中一个 tab。
+    <b>要点：</b>发行说明 = <b>主区标签页</b>（对齐插件详情页 01 竞标 A 骨架：头部集成当前版本信息 + 主体）。主体 = 左<b>窄栏</b>版本历史 220px（配角导航，git 历史 / GitHub Releases 前 30 条倒序，选中即渲染该版 body）+ 右<b>主区</b>更新内容（主角，GFM → 跟随主题）——<b>版本历史不是主角，不占一半</b>（用户指示「动 skill」后定）；「所有版本 → GitHub」浏览器看全量。标签页 = <b>单例</b>（<code>tabBehavior.singleton</code>，重复入口不叠 tab）+ 可关。顶部横幅 = 首启自动弹的提示（对标 VS Code，可「知道了」收起，此后该版本不重弹）。<b>「查看更新内容」从通知面条目进入时</b>（mockup 02 Frame 1 的 actions），自动打开并高亮新版本（选中 v0.2.0）。<br><b class="ok">布局定稿（2026-08-30 用户指示）：</b>发行说明内容 <b>不占声明式侧栏</b>——LinkDesk 侧栏 = 注册后出现的专属面板、与标签栏不同时开，为发行说明搞侧栏容器（title/toolbarslot…）很麻烦；改为像插件详情页一样把信息<b>集成进一个主区标签页</b>。本 mockup 外层画出<b>完整软件框架</b>（图标栏 / 应用侧栏 / 状态栏）示意——那些是软件本身的框架，发行说明只是主区其中一个 tab。
   </div>
 </div>
 
 <div class="frame">
   <div class="frame-caption">
-    <b>发行说明 · 断网空态（无缓存）</b>
+    <b>Frame 2 · 发行说明 · 断网空态（无缓存）</b>
     <span>拉取失败降级——05 §2.4：①有缓存 → 离线直接显示缓存；②无缓存+断网 → 本空态</span>
   </div>
 
@@ -370,7 +379,101 @@ h1 .warn { color: var(--error); }
   </div>
 
   <div class="frame-note">
-    <b>要点：</b>断网降级三层——① <b>有缓存</b>：离线直接显示缓存版本说明（历史版本左窄栏照常，05 §2.4 缓存 24h 兜底）；② <b>无缓存 + 断网</b>：本空态（图标 + 文案 + 重试 + GitHub 链接，对标 VS Code 拉取失败「不打扰、不阻塞启动」）；③ <b>更新检查失败</b>（非发行说明页）：toast「检查更新失败」+ 下个周期自动重试（07 UpdateError code <code>network</code>，04 失败 toast）。左窄栏无缓存时显示「无本地缓存」占位，联网后自动拉取。框架同 Frame 1（完整软件框架示意，发行说明 = 主区标签页）。
+    <b>要点：</b>断网降级三层——① <b>有缓存</b>：离线直接显示缓存版本说明（历史版本左窄栏照常，05 §2.4 缓存 24h 兜底）；② <b>无缓存 + 断网</b>：本空态（图标 + 文案 + 重试 + GitHub 链接，对标 VS Code 拉取失败「不打扰、不阻塞启动」）；③ <b>更新检查失败</b>（**不在此页**，落回唯一通知面 = 铃铛面板条目「检查更新失败：…」+ <code>[重试]</code>，见 mockup 02 Frame 5）+ 下个周期自动重试（07 UpdateError code <code>network</code>）。<b class="warn">注意这两个面各管各的</b>：发行说明页拉不到 → 页面内空态；更新检查失败 → 通知面条目。左窄栏无缓存时显示「无本地缓存」占位，联网后自动拉取。框架同 Frame 1（完整软件框架示意，发行说明 = 主区标签页）。
+  </div>
+</div>
+
+<!-- ═══════════════ Frame 3：加载中（首帧拉取未回） ═══════════════ -->
+<div class="frame">
+  <div class="frame-caption">
+    <b>Frame 3 · 发行说明 · 加载中</b>
+    <span>首帧拉取未回——骨架占位，<b>不阻塞启动、不新造 spinner 面</b>（05 §2.4）</span>
+    <span class="tag">2026-09-11 补帧</span>
+  </div>
+
+  <div class="app">
+    <div class="titlebar">
+      <svg class="logo" viewBox="0 0 16 16"><rect x="2" y="2" width="12" height="12" rx="2.5" fill="#0078D4"/><rect x="5" y="5" width="6" height="6" rx="1" fill="#fff"/></svg>
+      <span class="app-name">LinkDesk</span>
+      <button class="menu-btn">文件</button><button class="menu-btn">查看</button><button class="menu-btn">帮助</button>
+      <span class="drag"></span>
+      <span class="win-btn">─</span><span class="win-btn">□</span><span class="win-btn">✕</span>
+    </div>
+    <div class="mid">
+      <div class="icon-bar">
+        <button class="icon-btn" title="文件树"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg></button>
+        <button class="icon-btn" title="搜索"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg></button>
+        <div class="ib-sep"></div>
+        <button class="icon-btn active" title="插件市场"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg></button>
+        <div class="ib-sep"></div>
+        <button class="icon-btn" title="设置"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.6M12 18.6v2.6M2.8 12h2.6M18.6 12h2.6M5.5 5.5l1.8 1.8M16.7 16.7l1.8 1.8M18.5 5.5l-1.8 1.8M7.3 16.7l-1.8 1.8"/></svg></button>
+      </div>
+
+      <div class="sidebar">
+        <div class="sidebar-header">插件市场</div>
+        <div class="ms-search">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
+          <input placeholder="搜索插件">
+        </div>
+        <div class="ms-body">
+          <div class="ms-sec">
+            <div class="ms-sec-head">▾ 已安装 <span class="cnt">2</span></div>
+            <div class="ms-item"><div class="mi-ic"><svg viewBox="0 0 24 24" fill="none" stroke="#4EC9B0" stroke-width="1.8"><rect x="4" y="5" width="16" height="12" rx="2"/><path d="M9 17v3M15 17v3M12 17v2"/></svg></div><div class="mi-nm">串口监视器 <span class="ver">v1.0.0</span></div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="main">
+        <div class="tabbar">
+          <div class="tab active">发行说明 <span class="tab-close">✕</span></div>
+          <div class="tab">文件 <span class="tab-close">✕</span></div>
+        </div>
+        <div class="rn">
+          <div class="rn-head">
+            <div style="width: 100%;">
+              <div class="rn-skel">
+                <div class="rn-skel-bar h18 w40"></div>
+                <div class="rn-skel-bar w70"></div>
+              </div>
+            </div>
+          </div>
+          <div class="rn-body">
+            <div class="rn-hist">
+              <div class="rn-hist-head">版本历史</div>
+              <div class="rn-skel-list" style="padding: 14px 16px;">
+                <div class="rn-skel-item"><div class="rn-skel-bar w70"></div><div class="rn-skel-bar w40"></div></div>
+                <div class="rn-skel-item"><div class="rn-skel-bar w70"></div><div class="rn-skel-bar w40"></div></div>
+                <div class="rn-skel-item"><div class="rn-skel-bar w70"></div><div class="rn-skel-bar w40"></div></div>
+              </div>
+            </div>
+            <div class="rn-content">
+              <div class="rn-skel" style="padding: 4px 0;">
+                <div class="rn-skel-bar h18 w40"></div>
+                <div class="rn-skel-bar w90"></div>
+                <div class="rn-skel-bar w90"></div>
+                <div class="rn-skel-bar w70"></div>
+                <div style="height:10px"></div>
+                <div class="rn-skel-bar h18 w40"></div>
+                <div class="rn-skel-bar w90"></div>
+                <div class="rn-skel-bar w70"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="statusbar">
+      <span class="left"><span class="dot"></span>就绪</span>
+      <span class="right"><span class="slot-name">发行说明</span> · 正在获取版本列表…</span>
+    </div>
+  </div>
+
+  <div class="frame-note">
+    <b>要点（为什么补这一帧）：</b>原稿只有「有内容」和「彻底拉不到」两态，**中间那段「正在拉」没有图**——实现者要么自己发明一个 spinner（新造 UI 表面 = 违反「载体只有一个」），要么**白屏**（用户以为标签页坏了）。本帧把第三态钉死：
+    <br>① <b class="ok">骨架占位</b>——头部版本区 + 左窄栏三条 + 右主区两段的灰条，**形状与 Frame 1 的真实布局一一对应**（不是居中转圈）；<b class="warn">不用 shimmer 动效</b>（拉取通常 &lt;1s，动效只会闪一下；且 prefers-reduced-motion 下本来就要关）。
+    <br>② <b class="ok">不阻塞别的标签页</b>——发行说明页自己在骨架态，用户可照常切走、关掉；首启自动弹的那次同样（05 §2.4「不打扰、不阻塞启动」）。
+    <br>③ <b>骨架 → 内容 / 空态 的二选一由拉取结果决定</b>：成功 → Frame 1（缓存命中则先渲染缓存再静默刷新，**不回到骨架**）；失败 → Frame 2。**没有第四态**。
   </div>
 </div>
 
