@@ -6,7 +6,7 @@
  * （身份/版本/数据/包文件/动作/安装腿六个 hook + 头/动作列/侧栏/概览/功能/更改日志六个展示件 +
  *  `info-bits` / `info-groups` 两组原子件 + `actionBits` 五枚小件构造器）。
  * **零行为变更、零消费方改动**（视图路径 `views/DetailView.tsx` 不变，SDK bundle key = basename 亦不变）。
- * 拆法逐段对照见 [文件整理层/03-市场插件整理.md](../../../../../../docs/02-Electron架构/E6_插件生态与发布/文件整理层/03-市场插件整理.md) §二。
+ * 拆法逐段对照见 docs/02-Electron架构/E6_插件生态与发布/文件整理层/03-市场插件整理.md §二。
  *
  * E6#30.11 搬迁：布局从壳 PluginDetailPoolView 迁入（header / navbar / body + info 侧栏），
  * 零 @src/core——数据全走 window.linkdesk.* IPC + 本插件模块级 store。
