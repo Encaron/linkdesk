@@ -18,21 +18,30 @@
  *      自身头注加 `@E6#0.6b` 标记。脚本机械核验：allowlist 条目头注缺标记 / 已瘦身回 ≤ 阈值
  *      （过期豁免）都报错强制移除——豁免纪律不靠自觉。allowlist 只作用于 800 生产源码档，
  *      市场档无豁免通道（拆分是 #30.11 正解）；allowlist 放行不豁免 #0.4d（仍禁止平铺拆）。
- *   4. per-scope（E6#0.6c）：SCAN_MARKETPLACE=false，仅 #30.11 拆完 MarketplaceSidebar.css
- *      （377>300）后翻 true。只扫 plugins/marketplace/src/**（根级 css/js/svg/json
- *      天然不扫；editor/file-tree/settings 等插件同界不扩域）。role 夹 + 扩展名按 12 档
- *      ROLE_LIMITS 上档取阈值；未知 role 夹 / 越界扩展名组合 → 报错逼显式上档，非兜底 800
- *      （防 per-scope 意图被静默瓦解）。嵌套 index 语义：根 entry index.tsx → 120；role 夹内
- *      嵌套 index 按 role 档落（12 档文档只写了根 index 一行）。
- *   5. 读取失败 fail-loud 不吞——SKIP_DIRS 是枚举式，未来未预料生成目录下读失败若被吞会让
+ *   4. per-scope（E6#0.6c）：原为 SCAN_MARKETPLACE=false，只等 #30.11 拆完 MarketplaceSidebar.css
+ *      （377>300）翻 true，且只扫 plugins/marketplace/src/**（editor/file-tree/settings 同界不扩域）。
+ *      🔥 **E6#88（2026-09-11）扩域收官**——改名 `SCAN_PLUGINS` 并翻转 true，扫 **全部**
+ *      `plugins/<id>/src/**`（主题/语言插件无 src，自然跳过）。休眠史：翻早 = 一屏 34 条红灯，
+ *      淹没「哪条是我刚拆坏的」信号 ⇒ 硬依赖 3.6.2/3.6.3/3.6.4 三轮拆完（24 处超限归零）才翻。
+ *      三档制见 §2.1：档 A `src/`+`electron/` → 800（allowlist 不动）/ 档 B `plugins/<id>/src/**`
+ *      → 角色表 / 档 C `plugins/<id>/src/index.tsx` → 120。
+ *      **未知 role 夹 / 根级未登记件 → 报错逼显式上档**，非兜底（防 per-scope 意图被静默瓦解）。
+ *   5. 角色表（E6#88）：`.css` **恒 300**（放哪都算样式，含 co-located `views/*.css`——按扩展名
+ *      优先判，不看目录）；role 夹 → `ROLE_LIMITS[首段目录]`。**同名夹聚合器 ×2** 两形：形 (a)
+ *      夹旁散门面（同级存在同名夹 `X/`，views 支）；形 (b) 夹内入口 `<roleDir>/<Feature>/index.ts(x)`
+ *      （非 views 支）。**不认第三形** `views/<功能夹>/<Named>.tsx`（夹名≠文件名 ≠ index）。
+ *   6. 🔔 夹宽黄灯（E6#88，阈值 12）：「一个夹的直接子项（文件 + 子夹）数 > 12」⇒ 提醒一行，
+ *      **永不进 exit code**。硬门禁会逼出 3 文件碎片夹，比 22 件平铺更糟——它只做一件事：
+ *      逼出「看一眼 + 给一句理由」。**先判扩展名/角色、再判夹宽**（两道独立 pass，互不影响）。
+ *   7. 读取失败 fail-loud 不吞——SKIP_DIRS 是枚举式，未来未预料生成目录下读失败若被吞会让
  *      真实源文件悄悄漏检（抛错让门禁红）。
  *
  * 用法：node scripts/check-file-size.mjs（已挂 npm run check，audit-i18n 后、eslint 前）
- * 退出码 0 = 零超限，退出码 1 = 有违规（打印到 stderr，附 rel: 行数 + 阈值 + 豁免数）。
+ * 退出码 0 = 零超限（黄灯也 0），退出码 1 = 有违规（打印到 stderr，附 rel: 行数 + 阈值 + 豁免数）。
  */
 
-import { readFileSync, readdirSync, existsSync } from "fs";
-import { resolve, dirname, join, relative, sep } from "path";
+import { readFileSync, readdirSync, existsSync, statSync } from "fs";
+import { resolve, dirname, join, relative, sep, basename } from "path";
 import { fileURLToPath } from "url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -46,23 +55,37 @@ const SKIP_DIRS = new Set(["node_modules", "dist", "dist-electron", ".git", ".vi
 const EXT_RE = /\.(ts|tsx|css)$/;
 
 /**
- * E6#0.6c 门开关——marketplace per-scope 档仅在 #30.11 拆完 MarketplaceSidebar.css
- * （377 > 300，12 档 styles 阈值）后翻转 true。翻早 → 肇事文件被列出红灯（行为正确，
- * 失败自解释）；翻晚 = 该档休眠。编辑器/file-tree/settings 等插件同界不扩域（清单未授权）。
+ * E6#88 门开关——插件域体积门禁。**翻于 2026-09-11**（3.6.2/3.6.3/3.6.4 三轮拆完后，
+ * 24 处超限归零）。休眠史见脚本头 §4——翻早 = 一屏红灯淹没真信号。
  */
-const SCAN_MARKETPLACE = false;
-/** marketplace 插件域根——只扫 src/**，根级 css/js/svg/json 天然不扫（2026-09-05 塌平单根） */
-const MARKETPLACE_SRC = "plugins/marketplace/src";
+const SCAN_PLUGINS = true;
+/** 插件域根——只扫 `<plugin>/src/**`；无 src 的插件（主题/语言插件）自然跳过 */
+const PLUGINS_ROOT = "plugins";
 
-/** E6#0.6c 12 档 §一·二 阈值表——role 夹 → 扩展名 → 行数上限。嵌套 index 按 role 档落 */
+/** E6#88 角色表——首段目录 → 行数上限（扩展名维度由 `.css` 恒 300 单独接管） */
 const ROLE_LIMITS = {
-  "views": { ".tsx": 150 },
-  "components": { ".tsx": 150 },
-  "services": { ".ts": 200 },
-  "styles": { ".css": 300 },
+  views: 150,
+  components: 150,
+  hooks: 150,
+  utils: 150,
+  services: 200,
+  // E6#88a 显式上档（2026-09-11，用户拍板「登记它们」）：serial-monitor 的 CodeMirror 6
+  // 域——5 个纯逻辑模块（appendLine/decorations/scroll/search/theme），无 JSX、无状态，
+  // 语义与 hooks/utils 同级。**登记 = 新增顶层目录必须显式上档**（fail-loud 机制的正解，
+  // 不是把代码搬去凑目录表）。规范侧同步见 09-插件目录规范 / 12 档 §一·二。
+  cm6: 150,
 };
-/** 市场根 entry——仅 index.tsx 上此档；其它根级 tsx 未上档报错（逼显式上档） */
-const MARKET_ENTRY_LIMIT = 120;
+/** `.css` 恒走此档——**按扩展名优先判，不看目录**（co-located `views/*.css` 与 `styles/*.css` 同一把尺） */
+const CSS_LIMIT = 300;
+/** 档 C——插件 entry，精确路径 `plugins/<id>/src/index.tsx`（**不许按 basename 匹配 `index.*`**，
+ * 否则 `services/<Feature>/index.ts` 会被误判成 entry，把 200 档收成 120） */
+const ENTRY_LIMIT = 120;
+/** 根级跨层共享单件（`src/types.ts` / `src/constants.ts` 等非 entry 的根级 ts/tsx）——
+ * 09-插件目录规范「特殊情况：跨层共享的类型定义放 src/ 根」已授权，故给一档而非 throw。
+ * E6#88a 用户拍板「登记它们」（2026-09-11）。取 hooks/utils 同级 150。 */
+const ROOT_SHARED_LIMIT = 150;
+/** 🔔 夹宽黄灯阈值（E6#88，[06 §三] 判据）——**只提醒，永不 fail build** */
+const FOLDER_WIDTH_WARN = 12;
 
 /**
  * E6#0.6b allowlist 拍板制——空数组启动，零豁免。新增条目 = 用户拍板 + 文件头注加
@@ -113,55 +136,114 @@ function verifyAllowlist() {
 }
 
 /**
- * E6#0.6c per-scope 档解析——rel 如 plugins/marketplace/src/views/X.tsx（2026-09-05 塌平单根）。
- * 根 entry 仅 index.tsx（→120）；role 夹取 ROLE_LIMITS[首段 dir][扩展名]，未知组合 throw（R3）。
+ * E6#88 聚合器判据——**两形都认**（12 档 §一·二 + [06 §〇] 门面形态铁律）：
+ *   形 (a) 夹旁散门面：同级存在同名夹 `X/`——`views/` 支（basename = `render` 字段，有约束）
+ *   形 (b) 夹内入口：`<roleDir>/<Feature>/index.ts(x)`（非 views 支）——无 basename 约束，门面即夹入口
+ * **刻意不认第三形**：`views/<功能夹>/<Named>.tsx`（夹名≠文件名、也不叫 index，如
+ * `views/keybinding-settings/KeybindingSettingsView.tsx`）= 功能域文件集合，按 views 档 150 计。
  */
-function marketLimit(relPath) {
+function isAggregator(relPath, dirs) {
+  const abs = resolve(ROOT, relPath);
+  const file = basename(abs);
+  const stem = file.replace(/\.(tsx?|css)$/, "");
+  if (existsSync(join(dirname(abs), stem)) && statSync(join(dirname(abs), stem)).isDirectory()) return true;
+  // 形 (b)：`<roleDir>/<Feature>/index.ts(x)`——判的是**文件名**（不是 dirs 末段，那是夹名）
+  if (dirs.length >= 2 && dirs[0] !== "views" && (file === "index.ts" || file === "index.tsx")) return true;
+  return false;
+}
+
+/**
+ * E6#88 插件域档解析——rel 如 `plugins/settings/src/views/SettingsView.tsx`。
+ * 顺序咬死：**`.css` 扩展名优先** → 根级（entry / 跨层共享单件）→ role 夹 → 聚合器 ×2。
+ * 未登记项 **throw**（fail-loud，逼显式上档——不许静默落进 800 兜底）。
+ */
+function pluginLimit(relPath) {
   const seg = relPath.split("/");
-  const srcIdx = seg.indexOf("src");
-  const dirs = seg.slice(srcIdx + 1, -1);
   const base = seg[seg.length - 1];
-  const ext = base.slice(base.lastIndexOf("."));
-  if (dirs.length === 0) {
-    if (base === "index.tsx") return MARKET_ENTRY_LIMIT;
-    throw new Error(`根级入口未上档（仅 index.tsx → ${MARKET_ENTRY_LIMIT}）：${base}`);
-  }
-  const role = dirs[0];
-  const roleExts = ROLE_LIMITS[role];
-  if (!roleExts) throw new Error(`未知 role 夹「${role}」未上 12 档——需在 ROLE_LIMITS 显式上档（E6#0.6c）`);
-  const lim = roleExts[ext];
-  if (lim === undefined) throw new Error(`组合「${role}/*${ext}」未上 12 档——需在 ROLE_LIMITS 显式上档（E6#0.6c）`);
-  return lim;
+  if (base.endsWith(".css")) return CSS_LIMIT;
+  const dirs = seg.slice(seg.indexOf("src") + 1, -1);
+  const limit = dirs.length === 0
+    ? (base === "index.tsx"
+        ? ENTRY_LIMIT
+        : (base === "index.ts"
+            ? (() => { throw new Error(`插件 src 根的 index.ts 未上档——entry 只认 index.tsx（→ ${ENTRY_LIMIT}）：${base}`); })()
+            : (base.endsWith(".ts") || base.endsWith(".tsx")
+                ? ROOT_SHARED_LIMIT
+                : (() => { throw new Error(`根级未上档（entry index.tsx → ${ENTRY_LIMIT} / 跨层共享 *.ts(x) → ${ROOT_SHARED_LIMIT}）：${base}`); })())))
+    : (() => {
+        const role = dirs[0];
+        if (ROLE_LIMITS[role] === undefined) {
+          throw new Error(`未知 role 夹「${role}」未上档——需在 ROLE_LIMITS 显式登记（E6#88 fail-loud）`);
+        }
+        return ROLE_LIMITS[role];
+      })();
+  return isAggregator(relPath, dirs) ? limit * 2 : limit;
+}
+
+/**
+ * 🔔 夹宽黄灯（E6#88，[06 §三] 判据）——一道**独立 pass**，与体积判定零耦合
+ * （「先判扩展名/角色、再判夹宽」的实现保证：role 解析 throw 也不影响本 pass）。
+ * 只数直接子项（文件 + 子夹），SKIP_DIRS 不算；**只打印，永不进 exit code**。
+ */
+function folderWidthWarnings(scanRoots) {
+  const warns = [];
+  const seen = new Set();
+  const visit = (dir) => {
+    const r = norm(dir);
+    if (seen.has(r)) return;
+    seen.add(r);
+    let entries;
+    try {
+      entries = readdirSync(dir, { withFileTypes: true }).filter((e) => !SKIP_DIRS.has(e.name));
+    } catch {
+      return; // 目录不可读——体积判定那侧已 fail-loud，这里静默跳过不重复报
+    }
+    if (entries.length > FOLDER_WIDTH_WARN) warns.push({ rel: rel(dir), n: entries.length });
+    for (const e of entries) if (e.isDirectory()) visit(join(dir, e.name));
+  };
+  for (const root of scanRoots) if (existsSync(root)) visit(root);
+  return warns.sort((a, b) => b.n - a.n);
 }
 
 function main() {
   verifyAllowlist();
 
-  /** 待扫 = 壳+electron 全域（800 档）+ 市场 src（12 档，gate 内）；豁免数上报 pass log */
+  /** 扫描域 = 壳 + electron（档 A，800）+ 各插件 src（档 B/C，E6#88 扩域） */
+  const scanRoots = [];
   const scanned = [];
   for (const d of DEFAULT_SCOPE_DIRS) {
     const root = resolve(ROOT, d);
     if (!existsSync(root)) continue;
-    for (const f of walk(root)) scanned.push({ rel: rel(f), full: f, market: false });
+    scanRoots.push(root);
+    for (const f of walk(root)) scanned.push({ rel: rel(f), full: f, plugin: false });
   }
-  if (SCAN_MARKETPLACE && existsSync(resolve(ROOT, MARKETPLACE_SRC))) {
-    for (const f of walk(resolve(ROOT, MARKETPLACE_SRC))) scanned.push({ rel: rel(f), full: f, market: true });
+  if (SCAN_PLUGINS) {
+    const pluginsRoot = resolve(ROOT, PLUGINS_ROOT);
+    if (existsSync(pluginsRoot)) {
+      for (const e of readdirSync(pluginsRoot, { withFileTypes: true })) {
+        if (!e.isDirectory()) continue;
+        const src = join(pluginsRoot, e.name, "src");
+        if (!existsSync(src)) continue; // theme-*/lang-* 无 src，自然跳过
+        scanRoots.push(src);
+        for (const f of walk(src)) scanned.push({ rel: rel(f), full: f, plugin: true });
+      }
+    }
   }
 
   const violations = [];
-  const sizes = []; // { rel, lines } —— pass log Top-N（把 440-521 逼近簇提前暴露，零额外告警噪音）
+  const sizes = []; // { rel, lines } —— pass log Top-N（把逼近簇提前暴露，零额外告警噪音）
   let exemptCount = 0;
 
   for (const f of scanned) {
     if (isTestFile(f.rel)) continue;
-    if (EXEMPT_FILES.some((e) => e.path === f.rel && !f.market)) {
+    if (EXEMPT_FILES.some((e) => e.path === f.rel && !f.plugin)) {
       exemptCount++;
       continue;
     }
     let limit;
-    if (f.market) {
+    if (f.plugin) {
       try {
-        limit = marketLimit(f.rel);
+        limit = pluginLimit(f.rel);
       } catch (err) {
         violations.push(`${f.rel}  ⚠  ${err.message}`);
         continue;
@@ -179,21 +261,29 @@ function main() {
     const lines = lineCount(src);
     sizes.push({ rel: f.rel, lines });
     if (lines > limit) {
-      violations.push(`${f.rel}  ⚠  ${lines} 行超阈值 ${limit}（>${limit} ${f.market ? "市场 12 档" : "生产源码"}体积门禁，E6#0.6a）`);
+      violations.push(`${f.rel}  ⚠  ${lines} 行超阈值 ${limit}（>${limit} ${f.plugin ? "插件角色档" : "生产源码"}体积门禁，E6#0.6a）`);
     }
   }
+
+  // 🔔 夹宽黄灯——先算、后判红；两件事各自报，黄灯不得吞掉红灯也不得让 check 假绿
+  const widthWarns = folderWidthWarnings(scanRoots);
 
   if (violations.length) {
     console.error(`❌ 文件体积门禁失败——${violations.length} 处超限（合法巨兽走 allowlist 拍板制，E6#0.6b）：`);
     for (const v of violations.slice(0, 60)) console.error(`   ${v}`);
     if (violations.length > 60) console.error(`   …（共 ${violations.length} 处，其余略）`);
+    for (const w of widthWarns) console.error(`   🔔 夹宽 ${w.rel} 直接子项 ${w.n} > ${FOLDER_WIDTH_WARN}（提醒，不计入本次失败）`);
     process.exit(1);
   }
 
   const exemptNote = EXEMPT_FILES.length ? `（豁免 ${exemptCount} 条 @E6#0.6b）` : "";
-  console.log(`✅ 文件体积门禁通过——${scanned.length - exemptCount} 个生产文件零超限${exemptNote}（红线 >${DEFAULT_MAX_LINES} 行，E6#0.6a）`);
+  console.log(`✅ 文件体积门禁通过——${scanned.length - exemptCount} 个生产文件零超限${exemptNote}（档 A 红线 >${DEFAULT_MAX_LINES} 行；插件域按角色表，E6#88）`);
   const top = sizes.sort((a, b) => b.lines - a.lines).slice(0, 5);
   if (top.length) console.log(`   当前最大 ${top.length} 文件（逼近红线预警）：${top.map((t) => `${t.rel} ${t.lines}`).join("  /  ")}`);
+  if (widthWarns.length) {
+    console.log(`   🔔 夹宽提醒 ${widthWarns.length} 处（直接子项 > ${FOLDER_WIDTH_WARN}，仅提醒不阻断——台账见 docs/.../06-目录结构二次收口.md §三）：`);
+    for (const w of widthWarns) console.log(`      ${w.rel}  ${w.n}`);
+  }
 }
 
 main();
