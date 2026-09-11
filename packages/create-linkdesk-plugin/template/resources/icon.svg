@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48">
+  <!-- ⚠️ 占位图——请替换成你自己插件的图标（同名同位置覆盖即可，plugin.json 的 icon 已指向本文件）。
+       写法与官方插件一致：界面里以 <img src="linkdesk://<id>/resources/icon.svg"> 显示，
+       是独立文档 ⇒ 不能用 var(--xxx)（解析不到），颜色必须自含实色。 -->
+  <defs>
+    <linearGradient id="phi_bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#64748B"/>
+      <stop offset="1" stop-color="#334155"/>
+    </linearGradient>
+    <linearGradient id="phi_glass" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.28"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0.02"/>
+    </linearGradient>
+  </defs>
+  <!-- 中性灰品牌块：刻意不设计成有含义的图形——它的意思是「这里还没有图」 -->
+  <rect x="0" y="0" width="48" height="48" rx="10" fill="url(#phi_bg)"/>
+  <rect x="0" y="0" width="48" height="48" rx="10" fill="url(#phi_glass)"/>
+  <!-- 虚线框 + 加号 = 「把你的图放这儿」 -->
+  <rect x="13" y="13" width="22" height="22" rx="5" fill="none"
+        stroke="#FFFFFF" stroke-opacity="0.9" stroke-width="2"
+        stroke-dasharray="4 3" stroke-linecap="round"/>
+  <path d="M24 19.5v9M19.5 24h9" stroke="#FFFFFF" stroke-width="2.4" stroke-linecap="round"/>
+</svg>

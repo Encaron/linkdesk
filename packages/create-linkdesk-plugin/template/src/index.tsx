@@ -9,21 +9,27 @@
  *   - sourceId  上下文数据（文件路径 / 数据源等），编辑器类插件用它定位内容。
  *
  * 样式：LinkDesk 主题色一律走 CSS 变量 var(--xxx)（见 index.css 示例），禁硬编码 hex。
- * UI 文案规范化后用 t()（react-i18next，壳提供）读 i18n/en.json——见 05-UI写法规约.md。
+ * 文案：用 t() 读——key 就是中文原文，英文译文放 i18n/en.json（见 05-UI写法规约.md）。
  * 壳已 external react/react-dom/react-i18next/i18next——构建不会打进包，插件工程无需 npm i 它们。
  */
 
+import { useTranslation } from "react-i18next";
 import "./index.css";
 
 export default function HelloPlugin(_props: { isActive?: boolean; tabId?: string; sourceId?: string }) {
+  const { t } = useTranslation();
+
   return (
     <div className="starter">
-      <h2 className="starter__title">{{displayName}} 跑起来了 ✨</h2>
-      <p className="starter__text">这是你的第一个 LinkDesk 插件。</p>
+      <h2 className="starter__title">{t("插件跑起来了 ✨")}</h2>
+      <p className="starter__text">{t("这是你的第一个 LinkDesk 插件。")}</p>
       <p className="starter__hint">
-        编辑 <code>src/index.tsx</code> 即可看到变化；<code>npm run build</code> 打包出{" "}
-        <code>.linkdesk-plugin</code> 分发文件。
+        <code>src/index.tsx</code> {t("是插件本体——改它，浏览器预览即时刷新。")}
       </p>
+      <p className="starter__hint">
+        <code>npm run build</code> {t("打包出分发文件，可装进 LinkDesk 或发布到市场。")}
+      </p>
+      <p className="starter__hint">{t("目录该放哪、发布怎么做，都写在 README.md 里。")}</p>
     </div>
   );
 }

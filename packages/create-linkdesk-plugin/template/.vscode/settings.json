@@ -1,4 +1,7 @@
 {
+  // 让 VS Code 按 JSONC 解析 plugin.json —— 它允许 // 注释与尾逗号（对标 VS Code 自己的 package.json）。
+  // 没有这一行，VS Code 会按严格 JSON 解析，本模板 plugin.json 里的注释会被标成满屏红波浪线。
+  // 这只是编辑器提示，不影响运行：LinkDesk 与 SDK 本来就按 jsonc 解析。
   "files.associations": {
     "plugin.json": "jsonc"
   }

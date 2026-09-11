@@ -9,11 +9,14 @@
   "$schema": "./node_modules/@linkdesk/plugin-sdk/schemas/plugin.schema.json",
 
   // ── 插件身份 ──
-  "pluginId": "{{pluginName}}", // 全局唯一 ID（kebab-case）——安装目录 / 寻址 / 命令前缀都按它
+  // 插件 ID 默认就是插件目录名（{{pluginName}}），所以这里不写。仅当「目录名要改、但安装身份
+  // 不能变」时才取消下面这行的注释——它是覆盖值，不是必填项。
+  // "pluginId": "{{pluginName}}",
   "name": "{{displayName}}", // 显示名——标签页 / 插件详情等 UI 出现处
-  "version": "0.1.0", // 语义化版本 x.y.z——发布更新比较靠它，改了要 +1
+  "version": "0.1.0", // 语义化版本 x.y.z——市场更新比较靠它；+1 时务必同笔补 CHANGELOG.md 的新段
   "description": "{{displayName}}——我的第一个 LinkDesk 插件", // 一句话描述（插件详情页展示）
   "author": "{{author}}", // 作者名
+  "icon": "resources/icon.svg", // 图标——图标栏 / 标签页 / 市场里显示的就是它（resources/icon.svg 是占位图，换成你的）
 
   // ── 入口（视图插件 = 此文件 default 导出一个 React 组件）──
   "entry": "src/index.tsx",

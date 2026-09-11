@@ -6,8 +6,11 @@
   "type": "module",
   "scripts": {
     "dev": "linkdesk-plugin-sdk dev",
+    "dev:real": "linkdesk-plugin-sdk dev --real",
     "build": "linkdesk-plugin-sdk build",
-    "validate": "linkdesk-plugin-sdk validate"
+    "publish": "linkdesk-plugin-sdk publish",
+    "validate": "linkdesk-plugin-sdk validate",
+    "lint": "linkdesk-plugin-sdk lint"
   },
   "devDependencies": {
     "@linkdesk/plugin-sdk": "^0.1.0",

@@ -1,3 +1,7 @@
 {
-  "hello": "Hello from LinkDesk!"
+  "插件跑起来了 ✨": "Your plugin is running ✨",
+  "这是你的第一个 LinkDesk 插件。": "This is your first LinkDesk plugin.",
+  "是插件本体——改它，浏览器预览即时刷新。": "is the plugin itself — edit it and the browser preview refreshes live.",
+  "打包出分发文件，可装进 LinkDesk 或发布到市场。": "produces the distributable bundle — install it into LinkDesk or publish it to the marketplace.",
+  "目录该放哪、发布怎么做，都写在 README.md 里。": "Where things go and how to publish are all in README.md."
 }
