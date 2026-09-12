@@ -17,6 +17,22 @@
 .button:hover:not(:disabled) { opacity: 0.85; }
 .button:disabled { opacity: 0.5; cursor: default; }
 
+/* E6#57.11：紧凑档——30px 工具条（TitleBar 右槽）内的全文字按钮。
+   只覆盖「高度 + 纵向留白 + 字号」，横向留白与基类同为 12px、配色/圆角/hover/disabled
+   全部继承基类 ⇒「复用壳共享按钮」这句话仍然成立，差的只是高度。
+   ⚠️ 12px 不是随手取的值：仓库 `check-spacing-grid` 门禁要求 padding/margin/gap 要么 ≤6
+   要么是 4 的倍数，设计稿原写的 10px 两条都不满足（2026-09-12 用户裁决改 12px）——
+   与设计规范自己的「4/8dp 节奏」也一致，不是为过门禁而将就。
+   ⚠️ `display/align-items` 只写在 --sm 里：基类没有 display 声明，加在基类会波及
+   settings / marketplace / FilePathInput 三处既有消费者。 */
+.button--sm {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 12px;
+  font-size: var(--font-size-xs); /* 12px——设计稿原值（--font-size-sm 是 13px）；裸 px 被字号门禁拦，故走 token */
+}
+
 /* ── 变体（marketplace 安装/启用 = 实心 success；禁用 = ghost；卸载 = danger 破坏性次级） ── */
 .button--success {
   background: var(--success);

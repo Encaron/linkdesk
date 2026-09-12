@@ -175,6 +175,23 @@ export interface TitleBarContribution {
   command: string;
   /** codicon 类名（如 "codicon-settings"）或图片路径 */
   icon?: string;
+  /**
+   * E6#57.11：按钮文字——**有这个字段就渲染全文字按钮，不渲染 icon**（两者互斥，文字优先）。
+   *
+   * 两种形态，**靠 `$` 前缀区分**（不是靠猜这个字符串「像不像一个键」）：
+   *   - `"$updateButtonLabel"` = **context key 引用**——前缀 `$` 之后是键名，
+   *     壳侧 `buildTitleBarSlots` 现场取该键的值当文字（池不评估，见 titlebar.ts）。
+   *   - `"下载更新"` = **静态文字**——当 i18n key 走 `t()`（i18n key = 中文原文，硬约束 2）。
+   *
+   * 🔴 **为什么必须有前缀**（2026-09-12 实证，不是洁癖）：本仓 i18n key **并非恒为中文**——
+   * `plugins/lang-defaults/en.json` 里实测存在 4 个纯 ASCII 形态的键（`EN` / `JSON` /
+   * `workspace` / `settings`）。所以「i18n key 恒中文、context key 恒 ASCII ⇒ 两命名空间天然不相交」
+   * 这个假设**是错的**：若按「该名字是不是一个活着的 context key」来判定，插件 A 今天写
+   * `label: "settings"`（想要静态文字），插件 B 明天注册一个叫 `settings` 的 context key，
+   * A 的按钮文字就被**静默顶掉**——跨插件隐式耦合，违反「插件互不知道对方存在」。
+   * 加前缀后歧义为零，且失败可见（键不存在时显示字面 `$xxx`，不是静默错）。
+   */
+  label?: string;
   /** context key when 条件——不满足时隐藏按钮 */
   when?: string;
   /** 排序权重——越小越靠外 */
@@ -182,6 +199,15 @@ export interface TitleBarContribution {
 }
 
 const _titleBar = new Map<string, Array<TitleBarContribution & { pluginId: string }>>();
+
+/** 清空槽位表（测试用）——E6#57.11 补。
+ *  为什么需要它：`clearMenus()` 只清 `_menus`，`clearRegistrationLayers()` 是「清登记、不跑 disposer」，
+ *  **两者都不会让本表变空**。而 `registerUpdateCommands()`（壳侧唯一一条 TitleBar 声明）要在每个
+ *  测试的 beforeEach 里重跑 ⇒ 没有重置口时条目会随用例累积，断言「右槽恰好一条」必红。
+ *  与 `clearMenus()` 同款的「测试用」先例。 */
+export function clearTitleBarContributions(): void {
+  _titleBar.clear();
+}
 
 /** 插件声明 contributes.titleBar → 注册按钮到指定槽位。
  *  E5.8#10 返 disposer：删"这一条"（按引用滤除）。 */

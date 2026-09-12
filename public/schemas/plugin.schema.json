@@ -470,7 +470,7 @@
         },
         "titleBar": {
           "type": "object",
-          "description": "顶栏按钮声明——对标 VS Code titleBar。声明标题栏左侧/右侧的图标按钮。",
+          "description": "顶栏按钮声明——对标 VS Code titleBar。声明标题栏左侧/右侧的按钮：图标按钮（icon）或全文字按钮（label），二者填一个。",
           "properties": {
             "left": {
               "type": "array",
@@ -481,6 +481,7 @@
                 "properties": {
                   "command": { "type": "string", "description": "点击执行的命令 ID" },
                   "icon": { "type": "string", "description": "codicon 图标名（如 codicon-settings）或图片路径" },
+                  "label": { "type": "string", "description": "按钮文字（E6#57.11）——填了就不渲染 icon。'$键名' = 取该 context key 的值当文字（如 $updateButtonLabel）；否则当 i18n key（本仓 i18n key = 中文原文）" },
                   "when": { "type": "string", "description": "context key when 条件——不满足时按钮隐藏" }
                 },
                 "additionalProperties": false
@@ -495,6 +496,7 @@
                 "properties": {
                   "command": { "type": "string", "description": "点击执行的命令 ID" },
                   "icon": { "type": "string", "description": "codicon 图标名（如 codicon-settings）或图片路径" },
+                  "label": { "type": "string", "description": "按钮文字（E6#57.11）——填了就不渲染 icon。'$键名' = 取该 context key 的值当文字（如 $updateButtonLabel）；否则当 i18n key（本仓 i18n key = 中文原文）" },
                   "when": { "type": "string", "description": "context key when 条件——不满足时按钮隐藏" }
                 },
                 "additionalProperties": false

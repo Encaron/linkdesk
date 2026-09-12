@@ -10,11 +10,17 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { clearRegistrationLayers } from "../../core/registry/registrationTracker";
 import { registerCommand, clearCommands } from "../../core/registry/commands/CommandRegistry";
-import { registerMenuItems, MENU_SLOTS, clearMenus } from "../../core/registry/commands/MenuRegistry";
+import {
+  registerMenuItems,
+  MENU_SLOTS,
+  clearMenus,
+  clearTitleBarContributions,
+  registerTitleBarContribution,
+} from "../../core/registry/commands/MenuRegistry";
 import { ContextKeyService } from "../../core/registry/commands/ContextKeyService"; // E5.8#37.6：when 过滤全局 context key
 import { registerShellMenus } from "../../core/commands/input-bindings/shellMenus"; // E6#57.10：帮助组真源
 import { registerUpdateCommands } from "../../core/commands/shell/updateCommands"; // E6#57.10：命令 title 回退源
-import { buildTitleBarMenuGroups, buildHamburgerMenuGroups } from "./titlebar";
+import { buildTitleBarMenuGroups, buildHamburgerMenuGroups, buildTitleBarSlots } from "./titlebar";
 
 const SHELL = "linkdesk.shell";
 const PLUGIN = "panel-plugin";
@@ -263,5 +269,112 @@ describe("E6#57.10 菜单内二级分组透传——帮助组正控 / 既有菜�
       // 组内所有序列化项（含嵌套子菜单父项）同组 ⇒ 0 条分隔线
       expect(new Set(g.items.map((i) => i.group))).toEqual(new Set([name]));
     }
+  });
+});
+
+/**
+ * E6#57.11：TitleBar 插槽 `label` 全文字按钮——解析规则 / when 门控 / tooltip 回退。
+ *
+ * 核心判据**可证伪**：`$键` 有值时断言拿到的是**键的值**——把实现换成「label 恒当静态字符串」，
+ * 这条必红（那时会得到字面 `$demoStatus`）。
+ */
+describe("E6#57.11 buildTitleBarSlots——label 解析 + when 门控", () => {
+  beforeEach(() => {
+    clearRegistrationLayers();
+    clearCommands();
+    clearMenus();
+    // 🔴 必须显式清——`clearMenus()` 只清 _menus、`clearRegistrationLayers()` 只清登记不跑 disposer，
+    // 两者都**不会**让槽位表变空（E6#57.11 补此重置口的原因）。
+    clearTitleBarContributions();
+    ContextKeyService.clear();
+  });
+
+  it("正控——`$键` 取 context key 的值（通用性：非更新专用的第三方文字按钮同样生效）", () => {
+    registerTitleBarContribution("demo-plugin", "right", { command: "demo.cmd", label: "$demoStatus" });
+    ContextKeyService.setValue("demoStatus", "Alpha");
+
+    expect(buildTitleBarSlots(id, "right")[0].label).toBe("Alpha");
+  });
+
+  it("负控——键值变了文字跟着变（证明是「渲染时现场读键」而不是「注册时抄一份」）", () => {
+    registerTitleBarContribution("demo-plugin", "right", { command: "demo.cmd", label: "$demoStatus" });
+    ContextKeyService.setValue("demoStatus", "Alpha");
+    expect(buildTitleBarSlots(id, "right")[0].label).toBe("Alpha");
+
+    ContextKeyService.setValue("demoStatus", "Beta");
+    expect(buildTitleBarSlots(id, "right")[0].label).toBe("Beta");
+  });
+
+  it("边界——`$键` 不存在 / 值为空串 ⇒ 显示**字面** `$demoStatus`（失败可见，不是静默空白）", () => {
+    registerTitleBarContribution("demo-plugin", "right", { command: "demo.cmd", label: "$demoStatus" });
+    expect(buildTitleBarSlots(id, "right")[0].label).toBe("$demoStatus");
+
+    ContextKeyService.setValue("demoStatus", "");
+    expect(buildTitleBarSlots(id, "right")[0].label).toBe("$demoStatus");
+  });
+
+  it("正控——无 `$` 前缀 ⇒ 当静态 i18n key 走 t()（同一字段两种形态）", () => {
+    registerTitleBarContribution("demo-plugin", "right", { command: "demo.cmd", label: "Alpha" });
+    expect(buildTitleBarSlots(id, "right")[0].label).toBe("Alpha");
+  });
+
+  it("图标项**不带** label 键（不是带个空串往下游走——池按「有没有这个键」二选一渲染）", () => {
+    registerTitleBarContribution("demo-plugin", "right", { command: "demo.cmd", icon: "codicon-graph" });
+    const btn = buildTitleBarSlots(id, "right")[0];
+    expect(btn.label).toBeUndefined();
+    expect(btn.icon).toBe("codicon-graph");
+    expect("label" in btn).toBe(false);
+  });
+
+  it("when 门控——不满足 ⇒ 该条**根本不出现**，不是画个占位的空按钮", () => {
+    registerTitleBarContribution("demo-plugin", "right", { command: "demo.cmd", label: "Alpha", when: "demoVisible" });
+    expect(buildTitleBarSlots(id, "right")).toHaveLength(0);
+
+    ContextKeyService.setValue("demoVisible", true);
+    expect(buildTitleBarSlots(id, "right")).toHaveLength(1);
+  });
+
+  it("tooltip——回退到命令自报的 title，不是命令 id（此前会把 update.openUpdateFlow 原样露给用户）", () => {
+    registerCommand("demo-plugin", { id: "demo.cmd", title: "Alpha", handler: async () => {} });
+    registerTitleBarContribution("demo-plugin", "right", { command: "demo.cmd", icon: "codicon-graph" });
+    expect(buildTitleBarSlots(id, "right")[0].title).toBe("Alpha");
+
+    // 命令没注册时退回命令 id——兜底不炸（图标按钮的 label 解析也不该因缺命令而抛）
+    clearCommands();
+    expect(buildTitleBarSlots(id, "right")[0].title).toBe("demo.cmd");
+  });
+});
+
+/**
+ * E6#57.11 真源——`registerUpdateCommands()` 里那条 TitleBar 声明。
+ *
+ * 走真源而不是抄一份 fixture（[[test-double-must-match-contract-not-impl]]）：抄 fixture 只会测出
+ * fixture 自洽——声明里的命令 id / 键名写歪了照样绿。
+ */
+describe("E6#57.11 真源声明——更新按钮（无更新不占位 / 有更新出文字）", () => {
+  const UPDATE_CMD = "update.openUpdateFlow";
+
+  beforeEach(() => {
+    clearRegistrationLayers();
+    clearCommands();
+    clearMenus();
+    clearTitleBarContributions();
+    ContextKeyService.clear();
+    registerUpdateCommands();
+  });
+
+  it("无更新（门控键未设）⇒ 右槽**没有**这个按钮——「不占位」是默认态", () => {
+    expect(buildTitleBarSlots(id, "right").map((b) => b.command)).not.toContain(UPDATE_CMD);
+  });
+
+  it("门控开 ⇒ 出现，文字取 `$updateButtonLabel` 的值，tooltip = 命令 title「处理更新」，且无 icon", () => {
+    ContextKeyService.setValue("updateActionable", true);
+    ContextKeyService.setValue("updateButtonLabel", "下载更新");
+
+    const btn = buildTitleBarSlots(id, "right").find((b) => b.command === UPDATE_CMD)!;
+    expect(btn).toBeDefined();
+    expect(btn.label).toBe("下载更新");
+    expect(btn.title).toBe("处理更新"); // 命令自报 title（E6#57.10 注册），不是命令 id
+    expect(btn.icon).toBeUndefined(); // 全文字按钮不渲染 icon
   });
 });

@@ -59,10 +59,13 @@ h1 .warn { color: var(--error); }
 .win-btn { width: 34px; height: 22px; border: none; background: transparent; color: var(--text-secondary); cursor: pointer; }
 .win-btn:hover { background: var(--hover-overlay); color: var(--text-primary); }
 
-/* TitleBar 更新按钮（实机对齐——registerTitleBarContribution 右槽 + 壳共享 Button 组件：Button.css .button = accent 实心 + var(--text-on-accent)，主题跟随；全文字宽度自适应，有更新才现） */
+/* TitleBar 更新按钮（实机对齐——registerTitleBarContribution 右槽 + 壳共享 Button 组件的紧凑档 .button--sm：
+   accent 实心 + var(--text-on-accent)，主题跟随；全文字宽度自适应，有更新才现）。
+   ⚠️ 横向留白 12px（原写 10px，2026-09-12 按仓库 check-spacing-grid 门禁 4 的倍数要求改——
+   同时与 .button 基类留白同值；改前先看 03-菜单与入口设计.md §4.2「样式」的理由，别改回 10px）。 */
 .tb-update {
   display: inline-flex; align-items: center; justify-content: center;
-  height: 22px; padding: 0 10px; border: none;
+  height: 22px; padding: 0 12px; border: none;
   background: var(--accent); color: var(--text-on-accent);
   border-radius: var(--radius-sm); font-size: 12px; cursor: pointer;
   -webkit-app-region: no-drag; font-family: inherit; white-space: nowrap;

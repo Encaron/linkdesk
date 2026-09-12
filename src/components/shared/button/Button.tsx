@@ -20,6 +20,8 @@
 import "./Button.css";
 
 type ButtonVariant = "success" | "danger" | "ghost";
+/** E6#57.11：紧凑尺寸档——30px 工具条（TitleBar）内的文字按钮 */
+type ButtonSize = "sm";
 
 interface ButtonProps {
   children: React.ReactNode;
@@ -28,10 +30,19 @@ interface ButtonProps {
   title?: string;
   type?: "button" | "submit" | "reset";
   variant?: ButtonVariant;
+  /**
+   * E6#57.11：尺寸档。`"sm"` = 22px 高——给 TitleBar 这类 30px 工具条用。
+   *
+   * 为什么是 props 而不是 `className` / `style` 透传：本组件的**抽壳动机**就是「壳组件零依赖
+   * 插件样式」（见文件头，原 .settings-action-btn 的倒置耦合）——开透传等于把刚收编的样式主权
+   * 又还回去，且消费方（settings / marketplace / FilePathInput）会被随手改样式的口子波及。
+   * 语义化的档位则相反：要什么尺寸说尺寸，样式仍归 Button.css 一处。
+   */
+  size?: ButtonSize;
 }
 
-function Button({ children, onClick, disabled, title, type = "button", variant }: ButtonProps) {
-  const cls = variant ? `button button--${variant}` : "button";
+function Button({ children, onClick, disabled, title, type = "button", variant, size }: ButtonProps) {
+  const cls = ["button", variant && `button--${variant}`, size && `button--${size}`].filter(Boolean).join(" ");
   return (
     <button type={type} className={cls} onClick={onClick} disabled={disabled} title={title}>
       {children}

@@ -192,9 +192,43 @@ export function buildHamburgerMenuGroups(t: (key: string) => string, vis: ZoneVi
   });
 }
 
-/** E5.7#5：标题栏槽位按钮序列化——when 过滤在壳（ContextKeyService），池不评估表达式 */
-export function buildTitleBarSlots(slot: "left" | "right"): TitleBarSlotButton[] {
+/** E6#57.11：`label` 的 context key 引用前缀——`$updateButtonLabel`。判据是**字面前缀**，
+ *  不是「这个名字看起来像不像一个键」（理由见 `MenuRegistry.TitleBarContribution.label` 的 🔴 段）。 */
+const CONTEXT_KEY_PREFIX = "$";
+
+/**
+ * E6#57.11：解析 `TitleBarContribution.label` → **最终显示文字**（池只拿结果，不评估）。
+ *
+ * - `"$updateButtonLabel"` ⇒ 取该 context key 的值当 i18n key 再 `t()`（键缺失/空串 ⇒ 落到下面那支，
+ *   界面显示字面 `$updateButtonLabel`——**失败可见**，不是静默空白）；
+ * - `"下载更新"` ⇒ 直接当 i18n key 走 `t()`。
+ *
+ * **翻译只在这一处发生**（壳侧），池哑渲染最终字符串——「显示文本铁律」。
+ * ⚠️ 为什么不在池里解析：`src/pool/` 对 `ContextKeyService` **零引用**（实测 grep 零命中），
+ * 池侧根本没有这套键的读面。设计文档 §4.2 原写「`TitleBarZone` 解析 label 引用后渲染」，
+ * 已按实际分工订正为「壳解析后推最终文本」（见 `03-菜单与入口设计.md`）。
+ */
+function resolveTitleBarLabel(raw: string, t: (key: string) => string): string {
+  if (raw.startsWith(CONTEXT_KEY_PREFIX)) {
+    const value = ContextKeyService.getValue<string>(raw.slice(CONTEXT_KEY_PREFIX.length));
+    if (typeof value === "string" && value !== "") return t(value);
+  }
+  return t(raw);
+}
+
+/** E5.7#5：标题栏槽位按钮序列化——when 过滤在壳（ContextKeyService），池不评估表达式。
+ *  E6#57.11：加 `label` 全文字按钮 + tooltip 回退修正（`t` 参数在首位，与 buildTitleBarMenuGroups 同形）。 */
+export function buildTitleBarSlots(t: (key: string) => string, slot: "left" | "right"): TitleBarSlotButton[] {
   return getTitleBarContributions(slot)
     .filter((item) => !item.when || ContextKeyService.matches(item.when))
-    .map((item) => ({ command: item.command, icon: item.icon, title: item.command }));
+    .map((item) => ({
+      command: item.command,
+      icon: item.icon,
+      // tooltip 修正（E6#57.11）：此前恒为 `item.command` ⇒ 会把 `update.openUpdateFlow` 这个
+      // 命令 id 原样当 tooltip 露给用户（mockup 标的 tooltip 是「处理更新」）。与 resolveItemNode
+      // （:83）同源，回退到命令自报的 title。
+      title: t(getCommand(item.command)?.title ?? item.command),
+      // label 无条件解析（有 label 就是全文字按钮）——池据「有无 label」二选一渲染。
+      ...(item.label ? { label: resolveTitleBarLabel(item.label, t) } : {}),
+    }));
 }

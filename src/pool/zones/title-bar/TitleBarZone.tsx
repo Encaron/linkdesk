@@ -22,6 +22,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import type { TitleBarLayout, TitleBarSlotButton } from "../../../core/types/pool/poolLayout";
 import ContextMenu from "@src/components/shared/context-menu/ContextMenu"; // E5.8#55：菜单栏下拉统一右键菜单渲染器
+import Button from "@src/components/shared/button/Button"; // E6#57.11：右槽全文字按钮——壳共享动作按钮的紧凑档（size="sm"）
 import { poolMenuToDescriptors } from "../../shared/menu-items"; // E5.8#55：池布局 DTO → ContextMenu 契约
 import { executePoolCommand } from "../../commands/executePoolCommand"; // E5.7#6：命令执行提取为池共享（IconBarZone 复用）
 import "./TitleBarZone.css";
@@ -83,22 +84,30 @@ function TitleBarZone({ titleBar }: { titleBar: TitleBarLayout }) {
   const wc = titleBar.windowControls;
   const openItems = openGroup ? titleBar.menuGroups.find((g) => g.group === openGroup) : undefined;
 
-  /** 槽位按钮渲染——left/right 共用（E5.8#1c 去重） */
-  const renderSlotButton = (item: TitleBarSlotButton) => (
-    <button
-      key={item.command}
-      className="titlebar-btn titlebar-slot-btn"
-      onClick={() => executePoolCommand(item.command)}
-      title={item.title}
-      style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
-    >
-      {item.icon ? (
-        <span className={`codicon ${item.icon}`} />
-      ) : (
-        <span className="codicon codicon-circle-outline" />
-      )}
-    </button>
-  );
+  /** 槽位按钮渲染——left/right 共用（E5.8#1c 去重）。
+   *  E6#57.11：`label` 存在 ⇒ 全文字按钮（{@link TitleBarSlotButton.label} 是**壳已解析好的成品
+   *  字符串**——本组件不翻译、不认 `$`、不评估 when，哑渲染契约不变）；
+   *  否则走原图标分支——**既有图标按钮的 DOM 逐字节不变**。 */
+  const renderSlotButton = (item: TitleBarSlotButton) =>
+    item.label !== undefined ? (
+      <Button key={item.command} size="sm" onClick={() => executePoolCommand(item.command)} title={item.title}>
+        {item.label}
+      </Button>
+    ) : (
+      <button
+        key={item.command}
+        className="titlebar-btn titlebar-slot-btn"
+        onClick={() => executePoolCommand(item.command)}
+        title={item.title}
+        style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
+      >
+        {item.icon ? (
+          <span className={`codicon ${item.icon}`} />
+        ) : (
+          <span className="codicon codicon-circle-outline" />
+        )}
+      </button>
+    );
 
   /** 下拉锚点——group 按钮左下角（池 WCV 满窗，rect 即窗口坐标，ContextMenu 定位消费） */
   const dropdownAnchor = (() => {
@@ -137,11 +146,14 @@ function TitleBarZone({ titleBar }: { titleBar: TitleBarLayout }) {
         </div>
       )}
 
-      {/* 右槽位——插件 contributes.titleBar.right */}
-      {titleBar.slots.right.map(renderSlotButton)}
-
       {/* 拖拽区——填充剩余空间 */}
       <div className="titlebar-drag-area" />
+
+      {/* 右槽位——插件 contributes.titleBar.right。
+          E6#57.11 订正位置：此前本行排在拖拽区**之前**，而拖拽区是 flex:1 ⇒ 按钮实际被挤到
+          **菜单右侧**，不是设计要的「窗口控制按钮左侧」（03-菜单与入口设计.md §4.2「位置」
+          + mockup Frame 3：菜单 → 拖拽区 → 更新按钮 → 窗控）。今天零条右槽贡献所以一直没露馅。 */}
+      {titleBar.slots.right.map(renderSlotButton)}
 
       {/* 窗口控制（pin ─ □ ×）——tooltip 壳 t() 推送；pin 置顶两态（E5.8#46.18：OS 级置顶，盖过其他应用） */}
       <div className="window-controls">

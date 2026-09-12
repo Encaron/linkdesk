@@ -419,7 +419,9 @@ useEffect(() => {
   "contributes": {
     "titleBar": {
       "right": [
-        { "command": "myPlugin.openPanel", "icon": "codicon-graph-line", "when": "myContext" }
+        { "command": "myPlugin.openPanel", "icon": "codicon-graph-line", "when": "myContext" },
+        { "command": "myPlugin.runTask", "label": "运行任务" },
+        { "command": "myPlugin.showStatus", "label": "$myPluginStatus", "when": "myStatusVisible" }
       ]
     }
   }
@@ -430,9 +432,23 @@ useEffect(() => {
 |------|:--:|------|
 | `command` | ✅ | 点击执行的命令 ID |
 | `icon` | ❌ | codicon 图标名或图片路径 |
+| `label` | ❌ | 按钮文字——**填了就不渲染 icon**（有 label 优先）。全文字按钮，宽度随文字自适应 |
 | `when` | ❌ | context key when 条件——不满足时按钮隐藏 |
 
 槽位：`left`（标题栏左侧）/ `right`（右侧）。
+
+**`label` 的两种形态（E6#57.11）**——按**字面前缀**区分，不是「猜这个名字像不像一个键」：
+
+| 写法 | 含义 |
+|:--|:--|
+| `"label": "运行任务"` | **静态文字**。当 i18n key 走 `t()`（本仓 i18n key = 中文原文），译文在插件的 i18n 文件里给（§3.9） |
+| `"label": "$myPluginStatus"` | **动态文字**。`$` 之后是 context key 名——壳侧取该键的**当前值**当文字，按键值随状态切换（对标 VS Code 的 `${...}` 思路） |
+
+⚠️ **动态文字的键由你自己用 `linkdesk.contextKey.set("myPluginStatus", "…")` 维护**；键不存在时按钮显示字面 `$myPluginStatus`（**故意让它显眼**——静默空白最难查）。
+
+⚠️ **`$` 前缀是必须的**：本仓 i18n key 并非恒为中文（英文界面下的 `EN`/`JSON`/`workspace`/`settings` 这类键就是纯 ASCII），所以「这个名字是不是一个活着的 context key」无法可靠判定——不加前缀时，别的插件注册一个同名 context key 就会把你的按钮文字**静默顶掉**。
+
+⚠️ **动态文字的值也是 i18n key**：`set` 进去的应是中文原文（如 `"运行中"`），壳侧仍会过一次 `t()` ⇒ 英文界面跟着变。直接塞成品译文会绕过翻译层。
 
 ### 3.11 `contributes.viewsContainers` + `contributes.views`——视图容器
 

@@ -16,7 +16,49 @@
  * 现状 core → hooks **只有 type-only import** 先例（`LayoutService.ts` / `tabIdentity.ts`）。
  */
 import { registerCommand } from "../../registry/commands/CommandRegistry";
+import { registerTitleBarContribution } from "../../registry/commands/MenuRegistry";
 import { APP_PLUGIN_ID } from "../../services/plugins/PluginStateService";
+import type { UpdateState } from "../../types/ipc/update";
+
+/* ── E6#57.11：TitleBar 更新按钮的两个 context key —— 壳保留键 ── */
+
+/** 显隐门控键：`true` = 有可处理的更新 ⇒ 按钮出现；缺省/`false` = **不占位**（不是画一个灰的） */
+export const UPDATE_ACTIONABLE_KEY = "updateActionable";
+
+/** 文字键：值是**中文 i18n key 原文**（不是译文）——翻译只在壳侧 `buildTitleBarSlots` 发生一次 */
+export const UPDATE_BUTTON_LABEL_KEY = "updateButtonLabel";
+
+/**
+ * 九态 → 按钮文字（i18n key）。返回 `null` = 无话可说 ⇒ 按钮隐藏。
+ *
+ * 🔴 **`updating` 归「更新中」而不是隐藏**（2026-09-12 用户拍板）——这是**设计文档表格里没有的一格**
+ * （`03-菜单与入口设计.md` §4.3 只写了三态）。原因：用户点完「重新启动」到软件真正退出之间有
+ * 一段安装期，此时把按钮抽掉会让人以为「点了没反应」；留着「更新中」才是「你的点击生效了」。
+ * 该格点击是 **no-op**（见下方 handler 的 `updating` 分支），符合「任何动作都会打架」。
+ */
+export function updateButtonKeyFor(state: UpdateState): string | null {
+  switch (state.type) {
+    case "available":
+      return "下载更新";
+    case "downloading":
+    case "updating":
+      return "更新中";
+    case "downloaded":
+    case "ready":
+      return "重新启动";
+    // uninitialized / disabled / idle / checking —— 无更新可处理，按钮不占位。
+    // 尤其 `idle`：它同时承载「已是最新」与「上次失败了」，两者都**不该**把这个按钮点亮
+    // （失败有它自己的出声面，#57.12 通知）。
+    default:
+      return null;
+  }
+}
+
+/** 显隐门控的值——**由 {@link updateButtonKeyFor} 派生**，不写第二份 switch。
+ *  两处各写一份九态判断 = 两份真相源，早晚一个改了另一个没改（按钮显示着却无文字/反过来的那种 bug）。 */
+export function isUpdateActionable(state: UpdateState): boolean {
+  return updateButtonKeyFor(state) !== null;
+}
 
 export function registerUpdateCommands(): void {
   registerCommand(APP_PLUGIN_ID, {
@@ -62,5 +104,15 @@ export function registerUpdateCommands(): void {
         await api.quitAndInstall();
       }
     },
+  });
+
+  // E6#57.11：TitleBar 右槽按钮——本模块的**第四个入口**（文件头 :5 已列）。
+  // 声明落在本模块而不是新开一处：这两个 id 与两个 context key 都在本文件；且这是**入口声明**
+  // 不是「出声」，与文件头「只做入口，不做出声」不冲突（它只是把 command id 指过去，零逻辑复本）。
+  // `label` 带 `$` 前缀 = context key 引用（见 MenuRegistry.TitleBarContribution.label 的 🔴 段）。
+  registerTitleBarContribution(APP_PLUGIN_ID, "right", {
+    command: "update.openUpdateFlow",
+    label: `$${UPDATE_BUTTON_LABEL_KEY}`,
+    when: UPDATE_ACTIONABLE_KEY,
   });
 }

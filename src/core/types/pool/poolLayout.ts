@@ -185,10 +185,16 @@ export interface PoolMenuGroup {
 /** 标题栏槽位按钮——插件 contributes.titleBar 声明（when 已由壳过滤） */
 export interface TitleBarSlotButton {
   command: string;
-  /** codicon 类名或图片路径 */
+  /** codicon 类名或图片路径——**与 `label` 互斥**：有 label 时池渲染文字按钮，本字段被忽略 */
   icon?: string;
-  /** tooltip——与壳 TitleBar title={item.command} 行为一致 */
+  /** tooltip——壳侧已 t()（命令自报 title，回退 command id） */
   title: string;
+  /**
+   * E6#57.11：按钮文字——**壳侧已解析完的最终字符串**（`$` context key 引用已取值、
+   * 静态字面量已过 `t()`）。池是哑渲染：拿到什么画什么，不评估、不翻译、不认 `$`。
+   * 有这个字段 ⇒ 渲染全文字按钮；没有 ⇒ 走 icon 那支。
+   */
+  label?: string;
 }
 
 /** 标题栏布局——Phase 2 #5 TitleBarZone 消费 */

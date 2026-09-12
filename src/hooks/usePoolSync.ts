@@ -29,6 +29,8 @@ import { ViewContainerService } from "../core/services/layout/ViewContainerServi
 import { layoutEngine, narrowPanelEdge, narrowSidebarEdge } from "../core/services/layout/LayoutEngine"; // E5.6#11-fix7：池◀按钮→壳 setZoneWidth("sidebar", 28)；E5.8#36.9：edge 窄化守卫
 import { getConfigurationValue } from "../core/services/configuration/ConfigurationService"; // E5.7#1：titleBar.menuBarVisible
 import { ContextKeyService } from "../core/registry/commands/ContextKeyService"; // E5.8#37.6：sidebarPosition 当开关 context key
+import { useUpdateState } from "./useUpdateState"; // E6#57.11：更新态 → TitleBar 按钮显隐/文字（九态映射在 updateCommands.ts）
+import { UPDATE_ACTIONABLE_KEY, UPDATE_BUTTON_LABEL_KEY, isUpdateActionable, updateButtonKeyFor } from "../core/commands/shell/updateCommands"; // E6#57.11
 import { getAssetPath } from "../core/utils/path/assetPath"; // E5.7#5：logoUrl——池不 import core，壳解析推送
 import { getTabCreatableViews } from "../pluginLoader/contributions/viewRegistry";
 // ── E5.8#0d.10-5：6 子模块聚合——序列化器 + 订阅组；E5.8#43-2：+ windowLayout（按窗口组装）──
@@ -81,6 +83,14 @@ export function usePoolSync({ windows, sidebarView, isSidebarVisible, panelActiv
   // setCollapsed 不 fire 事件 → handler 内手动 bump。
   const [layoutVersion, setLayoutVersion] = useState(0);
 
+  // E6#57.11：更新态——TitleBar 右槽按钮的显隐与文字源。
+  // 走 useUpdateState 的引用计数订阅（本处是壳内第二个消费者，第一个是 useUpdateScheduler；
+  // 各自 mount/unmount 时加减计数，最后一个走时拆 IPC 订阅）。
+  // 🔴 **不自己 bump layoutVersion**——updateState 直接进主推送 effect 的 deps，迁移本身即触发重推；
+  // 且进度**不是迁移**（实测 update-service.ts:267 `reportProgress` 走 onProgress 通道、
+  // 不碰 onStateChanged）⇒ 不存在高频重推。
+  const updateState = useUpdateState();
+
   // E5.7#8：Chord 状态栏提示——壳 StatusBar.tsx:88-115 逻辑迁入（字符串壳侧构建，池哑渲染）
   const [chordLabel, setChordLabel] = useState<string | null>(null);
   const chordTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -104,6 +114,13 @@ export function usePoolSync({ windows, sidebarView, isSidebarVisible, panelActiv
     // 真相源 = LayoutEngine dock.edge（narrowSidebarEdge 收窄）——随每次重推保持同步，
     // 壳侧 when 过滤（buildTitleBarMenuGroups / buildHamburgerMenuGroups / ui.ts getItems）即可命中。
     ContextKeyService.setValue("sidebarPosition", narrowSidebarEdge(layoutEngine.getZone("sidebar")?.dock?.edge));
+
+    // E6#57.11：TitleBar 更新按钮的两个 context key——**必须在下方组装 slots 之前 set**，
+    // 否则 buildTitleBarSlots 读到的是上一轮的值（与上一行 sidebarPosition 同一个顺序契约）。
+    // 值 = **中文 i18n key 原文**（不是译文）——翻译只在下游 buildTitleBarSlots 里发生一次；
+    // 池拿到的永远是成品字符串（「显示文本铁律」）。
+    ContextKeyService.setValue(UPDATE_ACTIONABLE_KEY, isUpdateActionable(updateState));
+    ContextKeyService.setValue(UPDATE_BUTTON_LABEL_KEY, updateButtonKeyFor(updateState) ?? "");
 
     // E5.6#11-fix8：记住上次非空 sidebarView——图标栏坍塌时 emit null，但 collapsed ▶ 仍需知道容器
     if (sidebarView) {
@@ -250,7 +267,7 @@ export function usePoolSync({ windows, sidebarView, isSidebarVisible, panelActiv
         menuBarVisible: MENU_STYLE_MENUBAR_VISIBLE[getConfigurationValue<string>("app.menuStyle") ?? "titlebar"] ?? true,
         // E5.8#148：zone 可见性上下文——查看→界面→主侧栏/面板 勾选态（panelVisible/isSidebarVisible 均入 effect deps → 变化即重推 ✓）
         menuGroups: buildTitleBarMenuGroups(t, { panelVisible, sidebarVisible: isSidebarVisible }),
-        slots: { left: buildTitleBarSlots("left"), right: buildTitleBarSlots("right") },
+        slots: { left: buildTitleBarSlots(t, "left"), right: buildTitleBarSlots(t, "right") },
         // E5.8#46.18：pin/unpin tooltip 两态（TitleBarZone 置顶按钮按置顶态切换显示）
         windowControls: { minimize: t("最小化"), maximize: t("最大化"), restore: t("还原"), close: t("关闭"), pin: t("置顶"), unpin: t("取消置顶") },
       },
@@ -278,5 +295,5 @@ export function usePoolSync({ windows, sidebarView, isSidebarVisible, panelActiv
       if (!win.ready) continue;
       poolApi.pushLayout(assembleWindowLayout(win, ctx), win.windowId);
     }
-  }, [windows, sidebarView, isSidebarVisible, panelActiveViewId, panelVisible, layoutVersion, t, chordLabel, eventEntries]);
+  }, [windows, sidebarView, isSidebarVisible, panelActiveViewId, panelVisible, layoutVersion, t, chordLabel, eventEntries, updateState]);
 }

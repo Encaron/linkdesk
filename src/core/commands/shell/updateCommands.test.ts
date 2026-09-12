@@ -15,10 +15,11 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { executeCommand, clearCommands, getCommand } from "../../registry/commands/CommandRegistry";
-import { clearMenus } from "../../registry/commands/MenuRegistry";
+import { clearMenus, clearTitleBarContributions, getTitleBarContributions } from "../../registry/commands/MenuRegistry";
 import { clearRegistrationLayers } from "../../registry/registrationTracker";
+import { APP_PLUGIN_ID } from "../../services/plugins/PluginStateService";
 import type { UpdateInfo, UpdateState } from "../../types/ipc/update";
-import { registerUpdateCommands } from "./updateCommands";
+import { registerUpdateCommands, isUpdateActionable, updateButtonKeyFor } from "./updateCommands";
 
 /** 更新描述桩——字段值全虚构（`.invalid` = RFC 2606 保留域，永不解析） */
 const INFO: UpdateInfo = {
@@ -55,6 +56,7 @@ beforeEach(() => {
   clearRegistrationLayers();
   clearCommands();
   clearMenus();
+  clearTitleBarContributions(); // E6#57.11：本模块现在还注册一条 TitleBar 声明，不清会逐用例累积
   registerUpdateCommands();
 });
 
@@ -147,5 +149,59 @@ describe("update.openUpdateFlow——九态分支（③ 尤其钉住不重复触
 
   it("无壳 update 面 → 静默 no-op，不抛", async () => {
     await expect(executeCommand("update.openUpdateFlow")).resolves.toBeUndefined();
+  });
+});
+
+/**
+ * E6#57.11：九态 → TitleBar 按钮（显隐 + 文字）。
+ *
+ * 🔴 这一格最容易写成**两份真相源**（一条 switch 出显隐、另一条 switch 出文字）⇒ 早晚一个改了
+ * 另一个没改（按钮亮着却没文字）。实现上 `isUpdateActionable` 由 `updateButtonKeyFor` **派生**，
+ * 下表逐条把两列一起钉住——改任何一列都必须同时满足另一列。
+ */
+describe("E6#57.11 九态 → 按钮文字/显隐映射", () => {
+  it("九态全表逐条（含用户拍板补的第四格 `updating`）", () => {
+    const TABLE: Array<{ state: UpdateState; actionable: boolean; label: string }> = [
+      { state: { type: "available", update: INFO }, actionable: true, label: "下载更新" },
+      {
+        state: { type: "downloading", update: INFO, progress: { transferred: 0, total: 1, percent: 0 } },
+        actionable: true,
+        label: "更新中",
+      },
+      { state: { type: "downloaded", update: INFO }, actionable: true, label: "重新启动" },
+      { state: { type: "ready", update: INFO }, actionable: true, label: "重新启动" },
+      // 🔴 `updating` = 「更新中」而不是隐藏（2026-09-12 用户拍板）——点完「重新启动」到软件真正退出
+      // 之间那段安装期，按钮抽掉会让人以为「点了没反应」。注意**点击仍是 no-op**（上方用例钉着）。
+      { state: { type: "updating", update: INFO }, actionable: true, label: "更新中" },
+      // 其余五态：无更新可处理 ⇒ **不占位**。尤其 `idle`——它同时承载「已是最新」与「上次失败了」，
+      // 两者都不该把这个按钮点亮（失败有它自己的出声面）。
+      { state: { type: "uninitialized" }, actionable: false, label: "" },
+      { state: { type: "disabled", reason: "demo-disabled" }, actionable: false, label: "" },
+      { state: { type: "idle" }, actionable: false, label: "" },
+      { state: { type: "checking" }, actionable: false, label: "" },
+    ];
+
+    for (const row of TABLE) {
+      expect(isUpdateActionable(row.state), `${row.state.type} 的显隐`).toBe(row.actionable);
+      expect(updateButtonKeyFor(row.state) ?? "", `${row.state.type} 的文字`).toBe(row.label);
+    }
+  });
+});
+
+/**
+ * E6#57.11：TitleBar 声明面——**声明写歪了 UI 上完全看不出来**（按钮不出现/显示键名），
+ * 所以逐字段钉住。`$` 前缀尤其要点名：漏了它按钮会显示字面 `updateButtonLabel`。
+ */
+describe("E6#57.11 TitleBar 声明面", () => {
+  it("恰好一条右槽贡献：命令 id / label 带 `$` 前缀 / when 键名 / 归属壳", () => {
+    const right = getTitleBarContributions("right");
+    expect(right).toHaveLength(1);
+    expect(right[0]).toMatchObject({
+      command: "update.openUpdateFlow",
+      label: "$updateButtonLabel",
+      when: "updateActionable",
+      pluginId: APP_PLUGIN_ID,
+    });
+    expect(getTitleBarContributions("left")).toHaveLength(0);
   });
 });

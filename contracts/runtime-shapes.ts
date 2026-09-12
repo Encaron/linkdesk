@@ -335,6 +335,9 @@ function chkTitleBarSlotButton(v: unknown, p: string, errs: string[]): void {
     if (typeof _t58.icon !== "string") errs.push(((p) + ".icon") + ": 期望 string，实收 " + typeof _t58.icon);
     }
     if (typeof _t58.title !== "string") errs.push(((p) + ".title") + ": 期望 string，实收 " + typeof _t58.title);
+    if (_t58.label !== undefined) {
+    if (typeof _t58.label !== "string") errs.push(((p) + ".label") + ": 期望 string，实收 " + typeof _t58.label);
+    }
   }
 }
 function chkTitleBarLayout(v: unknown, p: string, errs: string[]): void {

@@ -92,6 +92,18 @@
   color: var(--text-primary);
 }
 
+/* E6#57.11：右槽全文字按钮（壳共享 Button 的 .button--sm 档）。
+   🔴 必须由**宿主侧**补 no-drag：`.titlebar`（:12）整条是 drag 区，而共享 Button 没有
+   style/className 透传（见 Button.tsx 的 size 注释——那是刻意的）⇒ 不补这条，按钮会被
+   OS 当成拖拽区，**按下去只会拖窗口**。上面 `.titlebar-slot-btn` 那条 no-drag（:84）
+   只作用在图标按钮上，共享 Button 带不到。
+   flex-shrink: 0 —— 窄窗时按钮不被拖拽区压扁。
+   （.button--sm 的尺寸/字号在 Button.css，此处只管「在标题栏里怎么被对待」。） */
+.titlebar .button {
+  -webkit-app-region: no-drag;
+  flex-shrink: 0;
+}
+
 /* ── 窗口控制（─ □ ×）——流内 flex（E5.8 缝系统：跟随顶栏表面——fixed 早于悬浮表面时代，
    顶栏 margin 内缩时按钮留在窗口角落不同步；titlebar flex 末位自然右对齐，表面怎么动它怎么动） ── */
 
