@@ -46,8 +46,13 @@ files:
   - dist-electron/**/*
   - package.json
   - node_modules/**/*
-  # E6#57.1a：产品身份三件套之 product.json——随包进 asar（product.ts 经 app.getAppPath() 读，
-  # 07 更新 §四.1）。发布时由壳发布脚本写入版本/commit/date（E6#57.15a），dev 留占位。
+  - electron/product.json
+  # 🔴 E6#57.15a① —— 上面那一行就是产品身份 product.json **实际随包进 asar 的条目**（不是这条注释）。
+  # 路径必须与 electron/product.ts 的 productJsonPath() 逐段一致：app.getAppPath()/electron/product.json
+  # ⇒ 打包后落在 asar 内 electron/product.json（**不是 asar 根**，别写成 product.json）。
+  # 为什么这行不能少：缺了它 readFileSync 抛错被 catch 吞掉（product.ts:76），product.json 的字段
+  # 全部退回兜底值 —— updateUrl 变空串（product.ts:56）⇒ 更新元数据腿整条失效，且**不报错**，
+  # 靠人看产物永远看不出来。发布时由壳发布脚本覆写 version/commit/date（E6#57.15a），dev 留占位。
 
 # 🔥 E6#17a（#15d 消费切换相）：plugins/ 源码目录不再打包——resources/ 不含任何插件源码。
 # 打包版插件唯一运行根 = userData（bundled-plugins 发货 zip → boot 自动装解压落 userData）。
