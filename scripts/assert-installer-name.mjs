@@ -48,6 +48,9 @@ import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
+// YAML 极简读取器（E6#57.15a① 起与 check-packaging-files.mjs 共用——同一段解析只写一处）
+import { nestedValue, topLevelValue } from "./lib/yaml-lite.mjs";
+
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, "..");
 const BUILDER_YML = join(ROOT, "electron-builder.yml");
@@ -60,46 +63,8 @@ const DEFAULT_TEMPLATE = '${productName} Setup ${version}.${ext}';
 
 // ─────────────────────────── 纯判据（可被 --self-test 注入输入） ───────────────────────────
 
-/** 取 YAML 顶层键的值（零缩进的 `key:`）。找不到 → null。去引号、去行尾注释。 */
-function topLevelValue(yamlText, key) {
-  const re = new RegExp(`^${key}:[ \\t]*(.*)$`);
-  for (const raw of yamlText.split(/\r?\n/)) {
-    if (/^[ \t]/.test(raw) || raw.trimStart().startsWith("#")) continue;
-    const m = re.exec(raw);
-    if (!m) continue;
-    return stripValue(m[1]);
-  }
-  return null;
-}
-
-/** 取 `parent:` 块内某个子键的值（靠缩进判定块的范围）。找不到 → null。 */
-function nestedValue(yamlText, parent, key) {
-  const lines = yamlText.split(/\r?\n/);
-  const start = lines.findIndex((l) => new RegExp(`^${parent}:[ \\t]*$`).test(l));
-  if (start < 0) return null;
-  const re = new RegExp(`^[ \\t]+${key}:[ \\t]*(.*)$`);
-  for (let i = start + 1; i < lines.length; i++) {
-    const line = lines[i];
-    if (line.trim() === "" || line.trimStart().startsWith("#")) continue;
-    if (!/^[ \t]/.test(line)) return null; // 缩进结束 = 块结束
-    const m = re.exec(line);
-    if (m) return stripValue(m[1]);
-  }
-  return null;
-}
-
-function stripValue(v) {
-  let s = v.trim();
-  const hash = s.indexOf(" #"); // 行尾注释（`#` 前有空白才算，免得砍到值里的 #）
-  if (hash >= 0) s = s.slice(0, hash).trim();
-  if (
-    (s.startsWith('"') && s.endsWith('"') && s.length >= 2) ||
-    (s.startsWith("'") && s.endsWith("'") && s.length >= 2)
-  ) {
-    s = s.slice(1, -1);
-  }
-  return s;
-}
+// YAML 读取器（topLevelValue / nestedValue / stripValue）已抽到 ./lib/yaml-lite.mjs 共用。
+// 自测（`--self-test`）覆盖它们的行为等价——抽出后 11 例全过才算没抽坏。
 
 /** 判据①：配置层的 artifactName 是否逐字符等于契约模板。 */
 function checkArtifactName(yamlText) {
