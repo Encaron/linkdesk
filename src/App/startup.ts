@@ -34,6 +34,7 @@ import { syncCountersAfterRestore } from "../hooks/useTabManager";
 import { registerAppearanceConfiguration } from "./config/appearance";
 import { registerUpdateConfiguration } from "./config/update";
 import { initReleaseNotesOnLaunch } from "./releaseNotesOnLaunch";
+import { initVersionDowngradeNotice } from "./versionDowngradeNotice";
 
 export interface AppStartupDeps {
   setTheme: (v: string) => void;
@@ -264,6 +265,11 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
       // **不 await**——里面的取数要出网，`setReady` 不能等它；最坏也只是标签页晚一帧出现。
       // 本函数返回的 Promise 永不 reject（内部已收），但仍显式 void，写明「故意不接」。
       void initReleaseNotesOnLaunch();
+
+      // E6#42d 判据子项：应用层降级提示——与上一句同处、同款理由（配置/布局都已到位，且**不 await**：
+      // 账本读的是本地存储、不出网，但仍不许它挡 `setReady`）。它报的是「这台机器被换回旧版了」，
+      // 与发行说明那条互不相干，故各占一行、各自有独立的一次性守卫。
+      void initVersionDowngradeNotice();
 
       setReady(true);
     })();

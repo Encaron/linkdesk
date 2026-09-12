@@ -4,7 +4,7 @@
  * 通知面唯一（E6#72 归一，`ToastHost` 已整删）——本模块是 `app.update` 这个 source 的**唯一生产者**，
  * 全仓没有第二处 pushToast 更新条目。载体是状态栏铃铛宽面板，**零新 UI 表面**。
  *
- * ## 三条产出路径，各管自己那半（这是本格的核心设计）
+ * ## 四条产出路径，各管自己那半（这是本格的核心设计）
  *
  * **① 迁移驱动**（`useUpdateNotifications()`，挂载在 App.tsx）——发现 / 进度 / 完成三格是
  * **状态的函数**：态一到就出条目，壳里没有任何一处「点一下才出」。`available` 无论来自后台定时器
@@ -23,6 +23,11 @@
  * 没装完」，此时用户刚开机、什么都没点，两条路都够不到它：态是 `idle`（①② 都不管），而当班人
  * （`initUpdateService`）在**主进程**里、说不了话。故本模块**唯一点名认码**的例外就在这里，
  * 理由与处置见 `pushStartupInterrupted`。
+ *
+ * **④ 命令式出口**（`#42d` 判据子项「应用层降级提示」，2026-09-13 补）——`notifyVersionDowngrade` 是
+ * 本模块唯一一条**由外部直接把结论递进来**的入口：那件事**不是更新状态机的一格**（被降级的机器
+ * 态上是 `idle`，与「没更新可用」逐字节相同），没有可观察的迁移 ⇒ ①②③ 三条路一条都够不到它。
+ * 与 ② 的区别：② 是「发起方消化**自己发起**的结果」，④ 是「启动接线消化它与存储的**比对结果**」。
  *
  * ## 条目生命周期（一条条目贯穿全程，不闪不换位）
  *
@@ -138,7 +143,7 @@ function progressPatch(percent: number): { message: string; percent?: number } {
     : { message: i18n.t("正在下载更新 {{percent}}%", { percent }), percent };
 }
 
-/* ── 七类条目：① 迁移驱动（发现/进度/完成/降级记账）+ ② 发起方自消化（失败/已最新）+ ③ 启动复位 ── */
+/* ── 八类条目：① 迁移驱动（发现/进度/完成/降级记账）+ ② 发起方自消化（失败/已最新）+ ③ 启动复位 + ④ 应用层降级提示 ── */
 
 /** ① 发现 */
 function pushDiscovery(version: string): void {
@@ -288,6 +293,45 @@ function pushUpToDate(): void {
     // 都不是 ⇒ 不显式打开就只会让铃铛数字悄悄 +1（而且它 5 秒就没了），用户点了「检查更新…」
     // 却像什么都没发生。这是对白名单的**窄口径覆盖**：只此一条，不动 `shouldWake` 表达式本身
     // （动表达式会把内存墙、一切 warning 一起算重要）。
+    wake: true,
+  });
+}
+
+/**
+ * ⑧ **应用层降级提示**（E6#42d 判据子项）——本模块唯一一条**命令式**出口：没有态可观察，因为
+ * 「这台机器被降级了」**不是更新状态机的一格**（态是 `idle`：没有可用更新、没有错误、什么都没有）。
+ *
+ * 生产者是 `src/App/versionDowngradeNotice.ts` 的启动接线（账本 `update-highest-version` 只增不减，
+ * 判据全在那里）。本函数只负责**把这件已经判定的事说出去**——分工与其余七条一致：
+ * 「该不该说」归生产者，「怎么说」归本模块。
+ *
+ * 🔴 **为什么必须走这里、不许就地 `pushToast`**：`app.update` 这个 source 的唯一生产者就是本模块
+ * （见文件头「通知面唯一」）。在别处推一条同 source 的条目 = 来源分组、持久化抑制键、来源显示名
+ * 三处各有一套口径，改一处漏一处时用户会看到两条互不相干的「主软件更新」。
+ *
+ * 🔴 **消息里必须带两个版本号**：抑制键是 `${source}::${message}`（`toast.ts` 的 `isDismissed`）。
+ * 只写「LinkDesk 被降级了」⇒ 用户关掉「0.1.57 降自 0.1.58」这条，会把此后**任何**降级一起永久静音。
+ * 带上「从哪降到哪」之后，每对版本各算一条——这才对得上用户拍板的「每次启动都提示，直到点 × 或升回去」。
+ *
+ * `wake: true` 显式写：本条既非 error 也不带……它其实带一个按钮（走默认白名单也会醒），但仍写死——
+ * 它是这条通知的核心承诺（用户没点任何东西也该知道自己的软件被换回了旧版），不该随白名单调整漂移
+ * （同 `pushDiscovery` 的写法与理由）。
+ *
+ * `ttl: 0` 常驻：这条要能被读第二遍（用户得看清是从哪个版本降下来的）。
+ */
+export function notifyVersionDowngrade(current: string, highest: string): void {
+  pushToast({
+    message: i18n.t("LinkDesk 已被降级到 {{current}}（此前运行 {{highest}}）", { current, highest }),
+    source: SOURCE,
+    severity: "warning",
+    isCloseAffordance: true,
+    // 出口 = 重走一次检查更新。用户此刻最该做的事就是再装回新版，而这条路已经在（`#57.11` 的
+    // TitleBar 按钮 / 帮助菜单 / 齿轮菜单共用同一个命令）。`void` 的理由同 `restartToUpdate`：
+    // `notif:action` 分发器拿到 onClick 就**同步**调一下、无人 await 它的 promise。
+    actions: [
+      { label: i18n.t("检查更新"), isPrimary: true, onClick: () => { void checkForUpdatesAndReport(true); } },
+    ],
+    ttl: 0,
     wake: true,
   });
 }

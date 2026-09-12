@@ -468,6 +468,7 @@
   "重启并更新": "Restart and Update",
   "重新下载": "Download Again",
   "当前已是最新版本": "LinkDesk is up to date",
+  "LinkDesk 已被降级到 {{current}}（此前运行 {{highest}}）": "LinkDesk was downgraded to {{current}} (it previously ran {{highest}})",
   "显示发行说明": "Show Release Notes",
   "发行说明 v{{version}}": "Release Notes v{{version}}",
   "{{date}} · 稳定通道": "{{date}} · Stable channel",

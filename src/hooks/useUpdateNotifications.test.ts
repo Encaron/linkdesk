@@ -569,6 +569,68 @@ describe("useUpdateNotifications（「重启并更新」按钮）", () => {
   });
 });
 
+/**
+ * ⑧ 应用层降级提示（E6#42d 判据子项）——**唯一一条命令式出口**。
+ * 判「该不该说」归 `src/App/versionDowngradeNotice.ts`（账本在那边，单测也在那边）；
+ * 本文件只钉「怎么说」——形状、抑制键的分条口径、以及那颗按钮真能走通。
+ */
+describe("useUpdateNotifications（⑧ 应用层降级提示）", () => {
+  /** 「当前跑着哪个」与「这台机器到过的最高点」——值全虚构，与 INFO/NEXT 错开以免读串 */
+  const DOWN_TO = "9.9.11";
+  const DOWN_FROM = "9.9.12";
+
+  it("条目形状：warning · 常驻（ttl 0）· 唤醒 · × 可关 · 唯一按钮是主按钮", () => {
+    mod.notifyVersionDowngrade(DOWN_TO, DOWN_FROM);
+
+    const live = toast.getToasts();
+    expect(live).toHaveLength(1);
+    expect(live[0].source).toBe("app.update"); // 与其余七条同源——来源分组/显示名共用一套口径
+    expect(live[0].severity).toBe("warning");
+    expect(live[0].ttl).toBe(0);
+    expect(live[0].wake).toBe(true);
+    // 不带 progress/percent：这条不是进行中，否则 × 与「清除已完成」都会被 `isPending` 跳过
+    expect(live[0].progress).toBeFalsy();
+    expect(live[0].actions).toHaveLength(1);
+    expect(live[0].actions?.[0].isPrimary).toBe(true);
+  });
+
+  it("🔴 消息里**两个版本号都在**（抑制键是 source::message，缺一个就会误伤别的降级）", () => {
+    mod.notifyVersionDowngrade(DOWN_TO, DOWN_FROM);
+
+    const msg = toast.getToasts()[0].message;
+    expect(msg).toContain(DOWN_TO);
+    expect(msg).toContain(DOWN_FROM);
+    // 词条本身也没丢（`{{占位}}` 被插值掉了，不是原样留在界面上）
+    expect(msg).not.toContain("{{");
+  });
+
+  it("唯一那颗按钮是真出口——点它重走一次检查更新（context=true）", async () => {
+    stub.setCheckResult({ type: "idle" });
+    mod.notifyVersionDowngrade(DOWN_TO, DOWN_FROM);
+
+    await clickAction(0);
+
+    expect(stub.checkContexts).toEqual([true]);
+  });
+
+  it("🔴 × 的抑制键按「从哪降到哪」**分条**——关掉这一对不会把别的降级一起永久静音", () => {
+    mod.notifyVersionDowngrade(DOWN_TO, DOWN_FROM);
+    toast.dismissToast(toast.getToasts()[0].id); // 相当于用户点 ×（带 isCloseAffordance ⇒ 写台账）
+    expect(toast.getToasts()).toHaveLength(0);
+
+    mod.notifyVersionDowngrade(DOWN_TO, DOWN_FROM); // 同一对 ⇒ 被抑制（用户说了不要再看）
+    expect(toast.getToasts()).toHaveLength(0);
+
+    // 🔴 两个版本号**缺一不可**——下面两条各只动一半，任一半没进消息就会被错当成「同一对」永久静音
+    mod.notifyVersionDowngrade("9.9.10", DOWN_FROM); // 只动「降到哪」
+    expect(toast.getToasts()).toHaveLength(1);
+    toast.dismissToast(toast.getToasts()[0].id);
+
+    mod.notifyVersionDowngrade(DOWN_TO, "9.9.13"); // 只动「从哪降」
+    expect(toast.getToasts()).toHaveLength(1);
+  });
+});
+
 describe("非壳环境退化（vitest / 纯 Vite 预览）", () => {
   it("无 window.linkdesk ⇒ 两个包装函数静默返回 null，hook 不抛", async () => {
     delete (window as unknown as { linkdesk?: unknown }).linkdesk;
