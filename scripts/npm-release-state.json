@@ -1,5 +1,5 @@
 {
-  "_comment": "npm 发布基线——发布完成或知情绕行后由 `npm run release:mark` 更新（勿手改）",
+  "_comment": "npm 发布基线——由 `npm run release:mark` 更新（勿手改）；记基线须过货架核对，见 scripts/check-npm-release.mjs 文件头",
   "packages": [
     {
       "name": "@linkdesk/contracts",

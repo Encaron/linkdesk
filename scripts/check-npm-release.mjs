@@ -8,8 +8,26 @@
  *
  * 设计（e6-gate-philosophy 三档：推荐/警告/知情绕行）：
  *   - 🔴 永不 exit≠0——`npm run check` 全绿纪律不破；只打黄灯警告行。
- *   - 发布完成 或 知情绕行（改了但决定不发）后，跑 `npm run release:mark` 把当前内容记为基线，灯灭。
+ *   - 发布完成后跑 `npm run release:mark` 把当前内容记为基线，灯灭。
  *   - 基线存 scripts/npm-release-state.json（入库）——锚「上次发布/放行时的版本 + 作者面内容哈希」。
+ *
+ * 🔴 **`release:mark` 契约（2026-09-12 用户拍板「凡更新就发，记住，记不住就机械记住」）**：
+ * 本闸本身**永不拦人**（黄灯哲学不撤），但「把灯关掉」这个动作从今天起**要过货架核对**——
+ * 因为「不发布、只 mark」曾经是绕过口：灯灭了，货架还是旧的，纪律只活在人的记忆里。
+ *   记录前逐包过三关（**任一不过即拒绝该包，且整批不落盘、exit 1**）：
+ *     ① 货架问得到（网络不通/包不存在 ⇒ 拒绝。**绝不静默放行**——那就是又一条假门禁）
+ *     ② 货架 `latest` === 本地 `package.json` 版本（≠ ⇒ 「先 publish，或把版本号改回去」）
+ *     ③ 版本号自上次基线起动过（没动 ⇒ 内容跑在版本号前面了 ⇒ 逼 bump+publish）
+ *   无漂移的包（内容与版本都与基线一致）**原样带过**，不联网、不核对——没东西要记。
+ *   显式 `npm run release:mark -- --allow-drift` 才放行绕过。**绕过必须是看得见的动作，不是默认路径。**
+ * 🔴 **非 mark 模式绝不联网**——`npm run check` 每次提交都跑，它必须离线、必须快。
+ * 🔴 **不要让本脚本的 mark 分支「也 exit 0」**——它和上面的黄灯不是一回事：黄灯是提醒，拒绝记基线是保护。
+ *
+ * 用法：
+ *   npm run check:npm-release            # 黄灯核对（挂 `npm run check`，离线，永不 fail）
+ *   npm run release:mark                 # 记基线（过货架核对，拒绝时 exit 1）
+ *   npm run release:mark -- --allow-drift  # 显式绕过（真的决定这次不发）
+ *   npm run check:npm-release:selftest   # 判据自测（10 例，不联网不落盘）
  *
  * 判定（逐包）：
  *   A. 内容哈希漂移 且 package.json 版本 == 基线版本 → 「内容改了但版本没动——货架可能落后」⚠️
@@ -37,6 +55,32 @@ import { join, relative, resolve, sep } from "node:path";
 const REPO_ROOT = resolve(import.meta.dirname ?? __dirname, ".."); // scripts/ → repo 根
 const STATE_FILE = join(REPO_ROOT, "scripts", "npm-release-state.json");
 const mark = process.argv.includes("--mark");
+const allowDrift = process.argv.includes("--allow-drift");
+
+/**
+ * 向 npm 货架问「这个包的 latest 是哪个版本」。
+ *
+ * 🔴 **走 registry 的 dist-tags 端点，不走 `npm view`**——两个理由：
+ *   ① `npm view` 读**当前目录**的 `.npmrc`，而 `create-linkdesk-plugin` **无作用域**（它的
+ *      `.npmrc` 直接改默认源），从仓库根问会落到 `registry.npmmirror.com`（镜像有延迟）
+ *      ⇒ 同一段代码对四个包问的不是同一个货架。写死官方源才是唯一确定的问法。
+ *   ② 免掉 shell 与引号（Windows 上 npm 是 `npm.cmd`，带 `@scope/pkg` 与 `//` 的参数要过 cmd）。
+ * 端点极小（只回 dist-tags），比拉整个 packument 便宜。
+ */
+async function shelfLatest(name) {
+  const url = `https://registry.npmjs.org/-/package/${encodeURIComponent(name)}/dist-tags`;
+  try {
+    const res = await fetch(url, { signal: AbortSignal.timeout(15000) });
+    if (!res.ok) return { ok: false, reason: `HTTP ${res.status}` };
+    const tags = await res.json();
+    return tags?.latest
+      ? { ok: true, version: tags.latest }
+      : { ok: false, reason: "dist-tags 里没有 latest" };
+  } catch (err) {
+    const why = err?.name === "TimeoutError" ? "请求超时（15s）" : (err?.message ?? String(err));
+    return { ok: false, reason: why };
+  }
+}
 
 // 每包：dir=仓库内目录，versionFile=读版本的 package.json，surface=作者面文件（相对 repo 根的 glob/路径）
 const PACKAGES = [
@@ -149,14 +193,131 @@ function readVersion(dir) {
   }
 }
 
+/**
+ * 纯判据：这一次 mark 该做什么。**不碰磁盘、不联网**——货架结果由调用方注入，
+ * 故四条路径能被 `--self-test` 机械复跑（同族脚本同一套路）。
+ *
+ * 返回 `{ action }`：
+ *   `"skip"`       内容与版本都与基线一致 ⇒ 没东西要记（**不联网**）
+ *   `"need-shelf"` 有漂移 ⇒ 调用方去问货架，带着结果再调一次
+ *   `"record"`     放行，记为新基线
+ *   `"refuse"`     拒绝（`reason` = 给人看的整段文案，**文案只在这里写一份**）
+ */
+function markDecision({
+  pkg,
+  hasBaseline,
+  baselineVersion,
+  baselineHash,
+  currentVersion,
+  currentHash,
+  allowDrift,
+  shelf,
+}) {
+  // 无基线（新纳入 PACKAGES 的包）⇒ 两个「变过」都算真：必须走核对，不许因为「没得比」就蒙混
+  const contentChanged = hasBaseline ? currentHash !== baselineHash : true;
+  const versionMoved = hasBaseline ? currentVersion !== baselineVersion : true;
+
+  if (!contentChanged && !versionMoved) return { action: "skip" };
+  if (allowDrift) return { action: "record" };
+  if (!shelf) return { action: "need-shelf" };
+
+  if (!shelf.ok) {
+    return {
+      action: "refuse",
+      reason:
+        `${pkg.name}: 问不到货架（${shelf.reason}）—— 拒绝记基线。\n` +
+        `   ├ 网络/代理不通？修好再跑（**离线不代表可以默认放行**）\n` +
+        `   └ 确认这次就是不发？→ 显式绕过：\`npm run release:mark -- --allow-drift\``,
+    };
+  }
+  if (shelf.version !== currentVersion) {
+    return {
+      action: "refuse",
+      reason:
+        `${pkg.name}: 货架上是 ${shelf.version}，本地是 ${currentVersion} —— 拒绝记基线。\n` +
+        `   ├ 本地更新了？→ 先 \`npm publish\`（发布完成后本动作自然通过）\n` +
+        `   └ 版本号改错了？→ 把 ${pkg.dir}/package.json 改回去，别让版本号空转`,
+    };
+  }
+  if (!versionMoved) {
+    return {
+      action: "refuse",
+      reason:
+        `${pkg.name}: 作者面内容变了，但版本号仍 ${currentVersion}（= 基线版本）—— 拒绝记基线。\n` +
+        `   ├ 这正是「凡更新就发」要拦的：内容跑在版本号前面了 ⇒ 升版本 + \`npm publish\`\n` +
+        `   └ 确认这次就是不发？→ 显式绕过：\`npm run release:mark -- --allow-drift\``,
+    };
+  }
+  return { action: "record" };
+}
+
+/**
+ * `--self-test`：把「release:mark 契约」的十种输入跑一遍（**不碰网络、不碰磁盘**）。
+ * 覆盖的是 2026-09-12 落地时**在真脚本上实测过的四条路径**（①货架问不到 / ②货架落后 /
+ * ③内容跑在版本号前面 / ④`--allow-drift`）+ 正常发布 + 无漂移 + 首次纳入 + 两条负控。
+ */
+function runSelfTest() {
+  const P = { name: "@linkdesk/demo-pkg", dir: "demo-pkg" }; // 虚构值（硬约束 21 口径）
+  const ok = (v) => ({ ok: true, version: v });
+  const down = { ok: false, reason: "fetch failed" };
+  const base = {
+    pkg: P,
+    hasBaseline: true,
+    baselineVersion: "0.1.0",
+    baselineHash: "h1",
+    currentVersion: "0.1.0",
+    currentHash: "h1",
+    allowDrift: false,
+  };
+  const noBaseline = { ...base, hasBaseline: false, baselineVersion: undefined, baselineHash: undefined };
+  const cases = [
+    ["无漂移 ⇒ skip（且不索要货架 = 不联网）", { ...base }, "skip"],
+    ["🔴 负控：--allow-drift 但无漂移 ⇒ 仍 skip（不许因为加了 flag 就乱记）", { ...base, allowDrift: true }, "skip"],
+    ["① 货架问不到 ⇒ 拒（绝不静默放行）", { ...base, currentHash: "h2", shelf: down }, "refuse", /问不到货架/],
+    ["② 版本动了、货架落后 ⇒ 拒", { ...base, currentVersion: "0.1.1", currentHash: "h2", shelf: ok("0.1.0") }, "refuse", /货架上是 0\.1\.0，本地是 0\.1\.1/],
+    ["② 拒的文案要指名到具体文件", { ...base, currentVersion: "0.1.1", currentHash: "h2", shelf: ok("0.1.0") }, "refuse", /demo-pkg\/package\.json/],
+    ["③ 内容变了、版本没动 ⇒ 拒（「凡更新就发」要拦的正是这个）", { ...base, currentHash: "h2", shelf: ok("0.1.0") }, "refuse", /内容变了，但版本号仍 0\.1\.0/],
+    ["④ --allow-drift 且有漂移 ⇒ 记（绕过真能绕过）", { ...base, currentHash: "h2", allowDrift: true }, "record"],
+    ["正常发布后（内容变+版本动+货架跟上）⇒ 记", { ...base, currentVersion: "0.1.1", currentHash: "h2", shelf: ok("0.1.1") }, "record"],
+    ["首次纳入（无基线）⇒ 索要货架，不蒙混", { ...noBaseline }, "need-shelf"],
+    ["首次纳入 + 货架=本地 ⇒ 记", { ...noBaseline, shelf: ok("0.1.0") }, "record"],
+  ];
+
+  let failed = 0;
+  for (const [title, input, expectAction, expectRe] of cases) {
+    const r = markDecision(input);
+    const okAction = r.action === expectAction;
+    const okRe = !expectRe || expectRe.test(r.reason ?? "");
+    if (okAction && okRe) {
+      console.log(`  ✔ ${title}`);
+    } else {
+      failed++;
+      console.error(
+        `  ✗ ${title}\n      期望 ${expectAction}${expectRe ? ` 且匹配 ${expectRe}` : ""}，实得 ${r.action}` +
+          (r.reason ? `\n      reason: ${r.reason.replaceAll("\n", "\n      ")}` : ""),
+      );
+    }
+  }
+  console.log(
+    failed === 0
+      ? `\ncheck-npm-release self-test ✔️ ${cases.length} 例全过`
+      : `\ncheck-npm-release self-test ❌ ${failed}/${cases.length} 例失败`,
+  );
+  return failed === 0 ? 0 : 1;
+}
+
+if (process.argv.includes("--self-test")) process.exit(runSelfTest());
+
 const warnings = [];
 const updated = [];
+const refusals = [];
+const priorState = readState();
 
 for (const pkg of PACKAGES) {
   const surfaceFiles = expandSurface(pkg.surface);
   const currentHash = contentHash(surfaceFiles);
   const currentVersion = readVersion(pkg.dir);
-  const state = readState().find((s) => s.name === pkg.name) ?? null;
+  const state = priorState.find((s) => s.name === pkg.name) ?? null;
 
   if (!currentVersion) {
     warnings.push(`${pkg.name}: 找不到 ${pkg.dir}/package.json —— 无法核对版本，跳过`);
@@ -164,7 +325,29 @@ for (const pkg of PACKAGES) {
   }
 
   if (mark) {
-    // release:mark——记录当前内容+版本为基线（发布完成 或 知情绕行：改了但决定不发）
+    // release:mark——过「release:mark 契约」三关（见文件头）后记录当前内容+版本为基线。
+    // 判据全在纯函数 markDecision 里（可被 --self-test 复跑）；这里只管取货架结果与落库。
+    const input = {
+      pkg,
+      hasBaseline: Boolean(state?.contentHash),
+      baselineVersion: state?.version,
+      baselineHash: state?.contentHash,
+      currentVersion,
+      currentHash,
+      allowDrift,
+    };
+    let decision = markDecision(input);
+    // 只在「确实需要核对」时才出网——无漂移的包整批跳过，mark 日常不碰网络
+    if (decision.action === "need-shelf") decision = markDecision({ ...input, shelf: await shelfLatest(pkg.name) });
+
+    if (decision.action === "skip") {
+      updated.push(state); // 无漂移：原样带过（不重写、不改哈希口径）
+      continue;
+    }
+    if (decision.action === "refuse") {
+      refusals.push(decision.reason);
+      continue;
+    }
     updated.push({ name: pkg.name, version: currentVersion, contentHash: currentHash, files: surfaceFiles.length });
     continue;
   }
@@ -183,7 +366,7 @@ for (const pkg of PACKAGES) {
       `${pkg.name}: 作者面内容自 npm v${state.version} 发布后已变（${state.files ?? "?"} 文件基线漂移），` +
         `但 ${pkg.dir}/package.json 版本仍 ${currentVersion}——npm 货架没跟上。\n` +
         `   ├ 改了给作者的东西（新 API / schema / SDK）？→ 升版本 + \`npm publish\`（免验证）→ \`npm run release:mark\`\n` +
-        `   └ 改了但决定不发？→ 知情绕行：\`npm run release:mark\`（记当前为基线，下次真变更会再提醒）`,
+        `   └ 决定不发？→ 记基线要过货架核对，会拒：显式绕过用 \`npm run release:mark -- --allow-drift\``,
     );
   } else if (versionBumped) {
     // B. 版本动过但基线没 mark——bump 了 ≠ 发布了
@@ -197,14 +380,32 @@ for (const pkg of PACKAGES) {
 }
 
 if (mark) {
-  const state = { _comment: "npm 发布基线——发布完成或知情绕行后由 `npm run release:mark` 更新（勿手改）", packages: updated };
+  // 🔴 整批原子：任一包被拒 ⇒ 一个字节都不写（部分落盘会造出一个「有的包记得、有的没记」的中间态，
+  //    下次看基线的人分不清那是「还没发」还是「漏记」）
+  if (refusals.length > 0) {
+    console.error("\n⛔ [npm-release] 拒绝记基线——下列包未过「release:mark 契约」（状态文件未改动）：\n");
+    for (const r of refusals) console.error("  " + r.replaceAll("\n", "\n  "));
+    console.error("\n  → 逐条处理完再跑；确实要绕过请显式加 `-- --allow-drift`。\n");
+    if (warnings.length > 0) for (const w of warnings) console.warn("  " + w);
+    process.exit(1);
+  }
+  const state = {
+    _comment:
+      "npm 发布基线——由 `npm run release:mark` 更新（勿手改）；记基线须过货架核对，见 scripts/check-npm-release.mjs 文件头",
+    packages: updated,
+  };
   writeFileSync(STATE_FILE, `${JSON.stringify(state, null, 2)}\n`, "utf8");
-  console.log(`release:mark ✔️ 已记录 ${updated.map((u) => `${u.name}@${u.version}（${u.files} 文件）`).join("、")} 为发布基线`);
+  console.log(
+    `release:mark ✔️ 已记录 ${updated.map((u) => `${u.name}@${u.version}（${u.files} 文件）`).join("、")} 为发布基线` +
+      (allowDrift ? "　⚠️ --allow-drift：本次绕过货架核对" : ""),
+  );
 } else if (warnings.length > 0) {
   // 🟡 黄灯：永不 fail——只打印提醒，exit 0
   console.warn("\n⚠️  [npm-release] 黄灯：作者面内容与 npm 发布基线不一致（不阻塞，只是提醒）\n");
   for (const w of warnings) console.warn("  " + w.replaceAll("\n", "\n  "));
-  console.warn("\n  → 发布/放行后跑 `npm run release:mark` 让灯灭。\n");
+  console.warn(
+    "\n  → 发布完成后跑 `npm run release:mark` 让灯灭（该动作要过货架核对；确实不发的用 `-- --allow-drift`）。\n",
+  );
 } else {
   console.log("check-npm-release ✔️ @linkdesk/* 作者面与发布基线一致");
 }

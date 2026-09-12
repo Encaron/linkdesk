@@ -42,6 +42,8 @@
     "contracts:gen": "node scripts/generate-contract.mjs",
     "contracts:check": "node scripts/generate-contract.mjs --check",
     "release:mark": "node scripts/check-npm-release.mjs --mark",
+    "check:npm-release": "node scripts/check-npm-release.mjs",
+    "check:npm-release:selftest": "node scripts/check-npm-release.mjs --self-test",
     "lsp:smoke": "node scripts/check-lsp-smoke.mjs --base plugins/python",
     "postinstall": "node -e \"try{require('fs').rmSync('node_modules/.vite',{recursive:true,force:true})}catch(e){}\" && node scripts/install-lefthook.mjs && node scripts/install-plugin-sdk-deps.mjs && node scripts/build-linkdesk-ui.mjs",
     "icons:convert": "node scripts/convert-material-icons.mjs"
