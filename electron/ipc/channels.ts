@@ -233,6 +233,18 @@ export const IPC = {
     revealStorage: 'appearance:reveal-storage',
   },
   theme: { changed: 'theme:changed' },
+  // E6#57.4（06-主软件更新 07 §二）：主软件更新状态机——命令四条（invoke）+ 事件两条（broadcast）。
+  // 白名单只有 `update.getState`（PROXY_CHANNELS，只读；写命令第三方不得触发 = 更新是壳私事，07 §一）。
+  update: {
+    getState: 'update:getState',
+    checkForUpdates: 'update:checkForUpdates',
+    downloadUpdate: 'update:downloadUpdate',
+    quitAndInstall: 'update:quitAndInstall',
+    /** 发行说明取数（主进程出网 + 落 {userData} 缓存）——#57.8e/#57.13b；**默认不进 PROXY_CHANNELS** */
+    getReleaseNotes: 'update:getReleaseNotes',
+    stateChanged: 'update:stateChanged',
+    progress: 'update:progress',
+  },
   viewContainer: {
     getContainer: 'viewContainer:getContainer',
     getViews: 'viewContainer:getViews',
