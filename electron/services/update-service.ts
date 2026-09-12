@@ -155,9 +155,24 @@ export class UpdateService {
    *
    * ⚠️ `context` 本身不参与状态机决策（两条路记账一致，见文件头铁律）；它原样透传给检查腿
    * （#57.5 可据「用户主动」决定自己的取数策略），出声由发起方决定。下周期重试的调度在 #57.9d（壳侧）。
+   *
+   * 🔴 **`downloaded`/`ready` 也进「不查」那一档**（E6#57.12g，2026-09-12）：这两个态的含义是
+   * **「安装器已经在盘上等着装」**，而检查腿比对的是 `latest > current` —— 已下好的那个版本**必然**
+   * 还大于当前版本 ⇒ 一查就判「有更新」⇒ `available`。后果两头都错：
+   *   ① **界面说错话**——TitleBar 从「重新启动」退回「下载更新」，而包早就下完了（用户会以为白下了）；
+   *   ② **反复打扰**——每 4h 后台一查就重新走一遍 `available`，通知面再出一次「有可用更新」
+   *      （去重只对**点过 ✕** 的条目生效，没点过的照弹）。
+   * 语义上这是**不该发生的状态倒退**：检查的职责是「发现有没有新版本」，而这两个态已经是
+   * 「发现了、下好了、只差装上」——再问一次不会得到新信息。
+   * ⚠️ **`available` 不在此列**（仍照常检查）：用户可能把它晾着，此时若有更新的版本发布，
+   *   重新发现是对的。（已知副作用：`checking` 那一段 TitleBar 按钮会短暂消失再回来——这是
+   *   **既有行为**，与本次改动无关。）
    */
   async checkForUpdates(context: boolean): Promise<UpdateState> {
-    if (this.state.type === 'checking' || this.state.type === 'downloading' || this.state.type === 'updating') {
+    if (
+      this.state.type === 'checking' || this.state.type === 'downloading' || this.state.type === 'updating'
+      || this.state.type === 'downloaded' || this.state.type === 'ready'
+    ) {
       return this.state;
     }
     if (this.state.type === 'disabled' || this.state.type === 'uninitialized') return this.state;

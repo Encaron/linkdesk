@@ -25,7 +25,7 @@ import type { ShellTabAction } from '../src/core/types/ipc/tabActions';
 import type { SidebarAction } from '../src/core/types/ipc/sidebarActions';
 import type { ForwardedKeyboardInput, KeybindingSyncData } from '../src/core/types/ipc/keyboard';
 import type { OpenPortConfig, SerialDataPayload, SerialStatsPayload, SerialSystemPayload } from '../src/core/types/ipc/serial';
-import type { UpdateState } from '../src/core/types/ipc/update'; // E6#57.9c：update 状态迁移订阅载荷
+import type { DownloadProgress, UpdateState } from '../src/core/types/ipc/update'; // E6#57.9c：#57.12 加 DownloadProgress
 import type { DialogOpenOptions, DialogContentOpenOptions } from '../src/core/types/ipc/dialogs';
 import type { ConfigurationChangedPayload, PluginStateChangedPayload } from '../src/core/types/ipc/events';
 import type { BridgeRequestPayload } from '../src/core/types/ipc/bridge';
@@ -166,6 +166,12 @@ function buildShellUpdate() {
     // 🔴 只订阅不给「当前值」——广播是**变化**，不是**真相**。订阅方必须自己先 invoke(getState)
     //   补初值，否则壳 preload 无重放包装时会漏掉 mount 之前的那次迁移（07 §4.4）。
     onStateChanged: (cb: (state: UpdateState) => void) => events.on(IPC.update.stateChanged, cb),
+    // 下载进度订阅（E6#57.12）——与 onStateChanged **分属两条通道**：迁移是事件（重放有意义），
+    // 进度是瞬时量（`storeForReplay:false`，见 update-handlers.ts 的 onProgress 出口）。
+    // ⚠️ 想拿「当前」进度不要靠这条通道的首次回调——它在订阅前发生的帧不会补发；初值从
+    //    `getState()` 的 `downloading.progress` 取（服务在 reportProgress 里原地刷过），
+    //    本通道只负责**推进**。消费方 = src/hooks/useUpdateState.ts 的 useUpdateProgress()。
+    onProgress: (cb: (progress: DownloadProgress) => void) => events.on(IPC.update.progress, cb),
   };
 }
 

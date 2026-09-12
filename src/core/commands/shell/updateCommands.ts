@@ -6,8 +6,10 @@
  * 引用的都是本模块这两个 id——不在各入口各写一份逻辑。
  *
  * ⚠️ **本模块只做入口，不做出声**——点「检查更新…」之后的结果（已是最新 / 有新版本 /
- * 失败 + `[重试]`）由**通知面**消费状态机产出，那是 #57.12 的活（04-更新通知与交互）。
+ * 失败 + `[重试]`）由**通知面生产者**产出（`src/hooks/useUpdateNotifications.ts`，E6#57.12）。
  * 这里**不 pushToast**：四个入口共用同一个通知面，多写一处就等于多一个真相源。
+ * 本模块只负责「以**发起方**的身份把话递过去」——`checkForUpdates(true)` / `downloadUpdateAndReport()`
+ * 之所以带得上「手动」这个身份，靠的就是 handler 这一层知道自己在哪条路上（见该文件头两条路径）。
  *
  * 取用壳侧超额暴露的更新面走 `getShellUpdateApi()`（`src/hooks/useUpdateState.ts` 的
  * **全仓唯一转型处**）。用**动态 import** 而非顶层 import：同目录既有惯用法
@@ -69,12 +71,12 @@ export function registerUpdateCommands(): void {
     title: "检查更新…",
     category: "帮助",
     handler: async () => {
-      const { getShellUpdateApi } = await import("../../../hooks/useUpdateState");
-      const api = getShellUpdateApi();
-      if (!api) return; // 非壳环境（vitest 无 preload / 纯 Vite 预览）——入口静默 no-op，不抛
-      // context=true = **手动**检查。后台那条路是 useUpdateScheduler（auto 档 30s + 每 4h），
-      // 不从这里走——两条路的唯一区别就是这个布尔（07 §4.1），记账在 UpdateService 里完全一致。
-      await api.checkForUpdates(true);
+      // E6#57.12：改走 `checkForUpdatesAndReport(true)` —— 它是**发起方自消化**那条路的一员
+      // （见 useUpdateNotifications.ts 文件头）：本入口知道自己是「手动」，所以「无更新」要答话、
+      // 失败要出声。`context=true` 一个布尔同时管两件事（透传腿 + 说不说话），不许分头判断。
+      // 非壳环境（vitest 无 preload / 纯 Vite 预览）由它内部静默退化——本 handler 不再自己判。
+      const { checkForUpdatesAndReport } = await import("../../../hooks/useUpdateNotifications");
+      await checkForUpdatesAndReport(true);
     },
   });
 
@@ -97,7 +99,11 @@ export function registerUpdateCommands(): void {
       //   updating                      → 安装已在进行，任何动作都会打架
       //   idle / checking / uninitialized / disabled → 无动作可做
       if (state.type === "available") {
-        await api.downloadUpdate();
+        // E6#57.12：下载走 `downloadUpdateAndReport()` —— 失败要落一条带 `[重试]` 的通知
+        // （下载失败与「已最新」不同，它没有状态迁移可挂：`idle + lastError` 是终点，没人再说一句
+        // 用户就再也不知道刚才那一下没成）。本 handler 依旧只做入口，出声归通知面生产者一处。
+        const { downloadUpdateAndReport } = await import("../../../hooks/useUpdateNotifications");
+        await downloadUpdateAndReport();
       } else if (state.type === "downloaded" || state.type === "ready") {
         // 抛错面（无安装器 / 校验失败）在此上抛——executeCommand 统一 catch → reportError
         // → 用户可见提示。本模块不自造提示通道（见文件头「只做入口」）。

@@ -18,7 +18,7 @@
  * 覆盖矩阵：docs/02-Electron架构/E5.8_归一化基建/契约生成/命名空间矩阵.md §2
  */
 import type { LinkDeskAPI } from "../linkdesk-api";
-import type { UpdateState } from "../../types/ipc/update";
+import type { DownloadProgress, UpdateState } from "../../types/ipc/update";
 
 /** 池 preload 必暴露面（44 = 43 唯一 + config 别名；唯一缺 bridge；E6#72 删 toast 宿主桥面）——E5.8#34.5 加 panel（插件调 reveal 的池侧通道）；E5.8#37 加 floatingPanelHost（壳内悬浮面板哑渲染桥）；E5.8#41.12 加 settings（设置套枚举/切换，设置 UI 在池内渲染）；E5.8#41.14 加 factorySlots（任意 role 候选枚举/切换，设置 UI 通用区数据源）；E5.8#50.11 加 appearance（外观资产——选择图片拷贝入库）；E6#57.2a 加 app（只读产品身份——市场 minAppVersion E6#30.8c 消费） */
 export type PoolExposed = Pick<LinkDeskAPI,
@@ -80,5 +80,20 @@ export type ShellExposed = Pick<LinkDeskAPI,
     quitAndInstall(): Promise<void>;
     /** 状态迁移广播订阅——preload 侧落地为 `events.on(IPC.update.stateChanged)`，返回退订函数。 */
     onStateChanged(cb: (state: UpdateState) => void): () => void;
+    /**
+     * 下载进度订阅（E6#57.12）——**与 `onStateChanged` 是两条不同的通道，缺一不可**。
+     *
+     * 🔴 为什么不能从 `onStateChanged` 里读进度：`reportProgress` 只把 `DownloadProgress` 写进
+     * `this.state`**原地**（服务内部 `getState()` 拿得到），**不发 `stateChanged`**——那条广播
+     * 按设计只在**迁移**时发一条（#57.4c）。所以渲染侧手上的 `downloading` 态永远停在
+     * 「刚进下载」的那一帧（0%），进度条会一路不动直到落 `downloaded`。
+     * （服务层的节流 ≤500ms 也在 `onProgress` 这一路上，见 `PROGRESS_THROTTLE_MS`。）
+     *
+     * ⚠️ **进度是瞬时量，不是真相**——`storeForReplay:false`（`update-handlers.ts`），新起的窗口
+     * 重放不到「刚才的 50%」，这是**有意**的（重放一个过期百分比 = 假进度）。消费方要拿当前值
+     * 应当读**状态里**的 `downloading.progress`（`getState()` / `useUpdateState()` 都能拿到，
+     * 它是被原地刷新过的最新值），本通道只负责**推进**。
+     */
+    onProgress(cb: (progress: DownloadProgress) => void): () => void;
   };
 };

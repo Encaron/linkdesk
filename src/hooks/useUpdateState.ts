@@ -3,6 +3,9 @@
  *
  * `useUpdateState(): UpdateState`——壳组件读状态机全量态（通知面 #57.12 / 关于页 #57.14 /
  * TitleBar 按钮与「检查更新」入口 #57.10-#57.11 的共同数据源）。
+ * `useUpdateProgress(): DownloadProgress | null`——**同一份数据的另一个视图**（E6#57.12 加）：
+ * 进度不随 `stateChanged` 走（服务原地刷状态、只在迁移时广播），必须另走 `update:progress` 通道。
+ * 两者共用同一份模块单例与同一个引用计数。
  *
  * ## 三条设计约束，各对应一处实现
  *
@@ -31,7 +34,7 @@
  */
 import { useEffect, useState } from "react";
 import type { ShellExposed } from "../core/api/linkdesk-api/surfaces";
-import type { UpdateState } from "../core/types/ipc/update";
+import type { DownloadProgress, UpdateState } from "../core/types/ipc/update";
 
 /**
  * 壳侧私有更新面取用点——**全仓唯一的转型处**。
@@ -50,17 +53,37 @@ export function getShellUpdateApi(): ShellExposed["update"] | undefined {
 
 // ── 模块级单例（壳渲染进程内唯一一份；跟随消费者引用计数存活）──
 type Listener = (state: UpdateState) => void;
+type ProgressListener = (progress: DownloadProgress | null) => void;
 
 const _listeners = new Set<Listener>();
+const _progressListeners = new Set<ProgressListener>();
 let _state: UpdateState = { type: "uninitialized" };
+/** 当前进度——`null` = **不在下载中**（见 `_publishProgress` 的生命周期规则） */
+let _progress: DownloadProgress | null = null;
 let _refCount = 0;
 let _unsubscribeIpc: (() => void) | null = null;
+let _unsubscribeProgressIpc: (() => void) | null = null;
 /** 本次订阅周期内是否已收到过广播——决定 `getState()` 的快照还要不要采用（约束 ③） */
 let _heardBroadcast = false;
 
+/** 进度广播出口——`null` 也发（消费方靠它把进度条收掉），但同值不重发（`null` 连发是常态） */
+function _publishProgress(next: DownloadProgress | null): void {
+  if (_progress === next) return;
+  _progress = next;
+  for (const listener of _progressListeners) listener(next);
+}
+
+/**
+ * 状态迁移出口。**进度与态的生死绑在一起**（这一步是「42% 挂住」这类 bug 的唯一防线）：
+ * 只要新态不是 `downloading`，进度立刻归 `null`——否则下载结束（或失败回 `idle`）后，
+ * 最后那一帧进度会留在模块单例里，下一个消费者进来就读到一个**不存在的下载进度**。
+ */
 function _publish(next: UpdateState): void {
   _state = next;
   for (const listener of _listeners) listener(next);
+  // 迁移时状态里带的是**已知最新**进度（服务在 reportProgress 里原地刷过）：进 downloading 用它垫底，
+  // 出来就清空。两条通道由此对齐——态是骨架，进度通道只负责在两次迁移之间**推进**它。
+  _publishProgress(next.type === "downloading" ? next.progress : null);
 }
 
 function _start(): void {
@@ -72,6 +95,10 @@ function _start(): void {
     _heardBroadcast = true;
     _publish(next);
   });
+  // 进度是**独立通道**（迁移不发进度、进度不改态，见 surfaces.ts 的 onProgress 段）。
+  // ⚠️ 它没有重放：订阅前发生的那几帧补不回来——初值由下面的 `getState()` 快照垫
+  //    （`downloading.progress` 是被原地刷新的最新值），这里只接后续推进。
+  _unsubscribeProgressIpc = api.onProgress((progress) => _publishProgress(progress));
   void api
     .getState()
     .then((initial) => {
@@ -87,18 +114,26 @@ function _start(): void {
 function _stop(): void {
   _unsubscribeIpc?.();
   _unsubscribeIpc = null;
+  _unsubscribeProgressIpc?.();
+  _unsubscribeProgressIpc = null;
 }
 
-/** 引用计数获取——第 1 个消费者挂订阅，最后一个走时拆（返回释放函数，幂等）。 */
-function acquire(listener: Listener): () => void {
-  _listeners.add(listener);
+/**
+ * 引用计数获取——第 1 个消费者挂订阅，最后一个走时拆（返回释放函数，幂等）。
+ * 两个 hook（态 / 进度）**共用同一个计数与同一条 IPC 订阅周期**：它们是同一份数据的两个视图，
+ * 拆成两份计数只会多两处需要同步的启停。
+ */
+function acquire(listener: Listener | null, progressListener: ProgressListener | null): () => void {
+  if (listener) _listeners.add(listener);
+  if (progressListener) _progressListeners.add(progressListener);
   _refCount += 1;
   if (_refCount === 1) _start();
   let released = false;
   return () => {
     if (released) return; // 幂等：StrictMode 下 cleanup 可能被重复触发
     released = true;
-    _listeners.delete(listener);
+    if (listener) _listeners.delete(listener);
+    if (progressListener) _progressListeners.delete(progressListener);
     _refCount -= 1;
     if (_refCount === 0) _stop();
   };
@@ -111,8 +146,33 @@ export function useUpdateState(): UpdateState {
   useEffect(() => {
     // 订阅期间可能已有更新（模块级 _state 领先于本次 render）——先同步一次再挂，避免渲染旧值。
     setState(_state);
-    return acquire(setState);
+    return acquire(setState, null);
   }, []);
 
   return state;
+}
+
+/**
+ * 读下载进度（E6#57.12）——`null` = **当前不在下载中**。
+ *
+ * 🔴 为什么不能只靠 `useUpdateState()`：`UpdateService.reportProgress` 把进度**原地**写进
+ * `this.state` 却**不发 `stateChanged`**（那条广播按设计只在迁移时发一次）⇒ 渲染侧的
+ * `downloading` 态永远停在 0%，进度条一路不动直到跳成完成。本 hook 走 `update:progress` 通道。
+ *
+ * 生命周期：进 `downloading` 时有值（初值取自那一次迁移带的进度），离开 `downloading` 立刻
+ * 回 `null`（`_publish` 里清）⇒ **消费方不需要自己判 `state.type`**，「下载完了进度还挂在 42%」
+ * 从结构上不可能发生。
+ *
+ * ⚠️ 它是**瞬时量**，不是可复现的真相：晚挂载的消费者拿不到已经过去的那几帧（通道无重放），
+ * 只会从快照垫的底开始接后续推进——百分比因此可能一次跳一截，这是有意的（重放过期百分比 = 假进度）。
+ */
+export function useUpdateProgress(): DownloadProgress | null {
+  const [progress, setProgress] = useState<DownloadProgress | null>(_progress);
+
+  useEffect(() => {
+    setProgress(_progress);
+    return acquire(null, setProgress);
+  }, []);
+
+  return progress;
 }

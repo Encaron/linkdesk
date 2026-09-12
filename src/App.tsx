@@ -15,6 +15,7 @@ import { useState, useMemo, useRef } from "react";
 import { useHeartbeat } from "./hooks/useHeartbeat"; // E2a #5 心跳看门狗
 import { useMemoryMonitor } from "./hooks/useMemoryMonitor"; // E2a #6 内存监控
 import { useUpdateScheduler } from "./hooks/useUpdateScheduler"; // E6#57.9d 后台检查更新调度（auto 档）
+import { useUpdateNotifications } from "./hooks/useUpdateNotifications"; // E6#57.12 更新通知面生产者
 import { useTabManager } from "./hooks/useTabManager";
 import { usePoolSync } from "./hooks/usePoolSync";
 import { useWindowHost, type MainResourceActions } from "./App/windows/windowHost"; // E5.8#43-2：壳窗口注册表（多窗口 tabState + 窗口模式策略）；#46.2：主窗资源联动动作集
@@ -45,6 +46,10 @@ function App() {
   // E6#57.9d：更新后台调度——auto 档 mount 后 30s 首次检查，此后每 4h；manual 档不自动
   // （无窗口守卫——壳渲染进程结构上只有主窗口一份，实证见该文件头 + 08-调度归属与失败重试.md §一）
   useUpdateScheduler();
+  // E6#57.12：更新通知面生产者——发现 / 进度 / 完成三格由**状态迁移**驱动（后台查到的和手点查到的
+  // 走同一个迁移）；「已最新」「失败」两格不在这里，它们是**发起方自消化**的（见该文件头的两条路径）。
+  // 挂载点必须与调度器同处：调度器只负责「什么时候查」，本 hook 只负责「查完怎么说话」。
+  useUpdateNotifications();
   const [, setTheme] = useState<string>("dark"); // E5.8#50.21：初始 = 壳内置配方 id（启动后由 app.theme 覆盖）
   const [, setLang] = useState<"zh" | "en">("zh");
 

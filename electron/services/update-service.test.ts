@@ -223,6 +223,90 @@ describe("忙态与契约违反", () => {
   });
 });
 
+// ─────────── 🔴 待装态免疫检查（#57.12g / 2026-09-12 拍板「修状态机」） ───────────
+//
+// 病根：`downloaded`/`ready` 的含义是「安装器已在盘上等着装」，而检查腿比对 `latest > current`
+// ——已下好的那个版本**必然**还大于当前版本 ⇒ 一查就判 available ⇒ 界面从「重新启动」退回
+// 「下载更新」（用户以为白下了），且每 4h 后台检查反复弹一次「有可用更新」。
+// 判据 = **不进 checking、不调 probe、态原样**——三者缺一都不算修好。
+
+describe("待装态免疫检查（#57.12g）", () => {
+  /** 走到 `downloaded`（真下完，不是硬塞状态） */
+  async function toDownloaded() {
+    const ctx = makeService();
+    ctx.service.init();
+    await ctx.service.checkForUpdates(true);
+    await ctx.service.downloadUpdate();
+    ctx.states.length = 0;
+    ctx.probe.mockClear();
+    return ctx;
+  }
+
+  /** 跨重启复位出来的 `ready`（装到一半重启，盘上安装器还在） */
+  function toReady() {
+    const ctx = makeService({
+      resume: () => ({
+        state: { type: "ready", update: makeInfo() },
+        installerPath: "E:/fake/linkdesk-update-0.1.50.exe",
+      }),
+    });
+    ctx.service.init();
+    ctx.states.length = 0;
+    ctx.probe.mockClear();
+    return ctx;
+  }
+
+  it("downloaded 态再查 → 原样返回 + **不发起检查** + 零广播（一查必判 available ⇒ TitleBar 从「重新启动」退回「下载更新」）", async () => {
+    const { service, probe, states } = await toDownloaded();
+
+    const s = await service.checkForUpdates(false);
+
+    expect(s).toEqual({ type: "downloaded", update: makeInfo() });
+    expect(service.getState()).toEqual({ type: "downloaded", update: makeInfo() });
+    expect(probe).not.toHaveBeenCalled();
+    expect(states).toEqual([]);
+  });
+
+  it("ready 态同理（跨重启待续安装也不许被后台检查打回）", async () => {
+    const { service, probe, states } = toReady();
+
+    const s = await service.checkForUpdates(false);
+
+    expect(s.type).toBe("ready");
+    expect(probe).not.toHaveBeenCalled();
+    expect(states).toEqual([]);
+  });
+
+  it("🔴 手动（context:true）也一视同仁——检查腿永远收不到这次调用（不是「后台静默、手动照查」）", async () => {
+    const { service, probe } = await toDownloaded();
+
+    await service.checkForUpdates(true);
+
+    expect(probe).not.toHaveBeenCalled();
+  });
+
+  it("负控：available / idle **仍照常检查**——豁免只给待装态，不是把检查整个关掉", async () => {
+    // available：用户把它晾着，此时更晚的版本发布了就该重新发现
+    const avail = makeService();
+    avail.service.init();
+    await avail.service.checkForUpdates(true); // → available
+    avail.probe.mockClear();
+    await avail.service.checkForUpdates(false);
+    expect(avail.probe).toHaveBeenCalledTimes(1);
+
+    // idle：最普通的路径，当然要查（`mockResolvedValueOnce` 改下一次的答案，
+    // ⚠️ 不要走 `makeService({ probe })` 覆盖——返回体给的是**默认** mock，覆盖后数的是个没被调用的桩）
+    const idle = makeService();
+    idle.probe.mockResolvedValueOnce({ kind: "up-to-date" });
+    idle.service.init();
+    await idle.service.checkForUpdates(true); // → idle
+    expect(idle.service.getState()).toEqual({ type: "idle" });
+    idle.probe.mockClear();
+    await idle.service.checkForUpdates(false);
+    expect(idle.probe).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe("下载腿（#57.6 接线点）", () => {
   it("available → downloading（0%）→ 进度 → downloaded", async () => {
     const { service, states, progresses } = makeService({

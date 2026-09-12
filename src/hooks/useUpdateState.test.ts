@@ -18,7 +18,7 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { renderHook, act } from "@testing-library/react";
-import type { UpdateState, UpdateInfo } from "../core/types/ipc/update";
+import type { DownloadProgress, UpdateState, UpdateInfo } from "../core/types/ipc/update";
 
 /** 更新描述桩——字段值全虚构（`.invalid` = RFC 2606 保留域，永不解析） */
 const INFO: UpdateInfo = {
@@ -37,8 +37,12 @@ interface Stub {
   order: string[];
   /** 当前活着的订阅回调数（0 = 已拆） */
   listenerCount: () => number;
+  /** 当前活着的进度订阅回调数（0 = 已拆） */
+  progressListenerCount: () => number;
   /** 模拟主进程广播一次状态迁移 */
   emit: (state: UpdateState) => void;
+  /** 模拟主进程推一帧下载进度（`update:progress`——**不是** stateChanged，见 surfaces.ts 的 onProgress 段） */
+  emitProgress: (progress: DownloadProgress) => void;
   /** 让挂起的 `getState()` 以该快照 resolve */
   resolveSnapshot: (state: UpdateState) => void;
   /** 让挂起的 `getState()` reject */
@@ -48,6 +52,7 @@ interface Stub {
 /** 装壳 preload 的 `window.linkdesk.update` 桩——`getState` 故意挂起，由用例决定何时 resolve（构造竞态） */
 function installStub(): Stub {
   const handlers = new Set<(state: UpdateState) => void>();
+  const progressHandlers = new Set<(progress: DownloadProgress) => void>();
   const order: string[] = [];
   let resolveSnapshot: ((state: UpdateState) => void) | undefined;
   let rejectSnapshot: ((err: unknown) => void) | undefined;
@@ -67,6 +72,11 @@ function installStub(): Stub {
       handlers.add(cb);
       return () => { handlers.delete(cb); };
     },
+    onProgress: (cb: (progress: DownloadProgress) => void) => {
+      order.push("onProgress");
+      progressHandlers.add(cb);
+      return () => { progressHandlers.delete(cb); };
+    },
     checkForUpdates: async () => ({ type: "idle" }) as UpdateState,
     downloadUpdate: async () => ({ type: "idle" }) as UpdateState,
     quitAndInstall: async () => {},
@@ -77,7 +87,9 @@ function installStub(): Stub {
     getStateCalls: () => getStateCalls,
     order,
     listenerCount: () => handlers.size,
+    progressListenerCount: () => progressHandlers.size,
     emit: (state) => { for (const cb of [...handlers]) cb(state); },
+    emitProgress: (p) => { for (const cb of [...progressHandlers]) cb(p); },
     resolveSnapshot: (state) => { resolveSnapshot?.(state); },
     rejectSnapshot: (err) => { rejectSnapshot?.(err); },
   };
@@ -101,8 +113,8 @@ describe("useUpdateState（约束 ② 订阅先于拉初值）", () => {
     const stub = installStub();
     const { result } = renderHook(() => mod.useUpdateState());
 
-    // ② 顺序：先 onStateChanged 再 getState——反过来写会丢掉这段窗口里的迁移
-    expect(stub.order).toEqual(["onStateChanged", "getState"]);
+    // ② 顺序：两条订阅都先挂、`getState` 最后——反过来写会丢掉这段窗口里的迁移
+    expect(stub.order).toEqual(["onStateChanged", "onProgress", "getState"]);
     // 快照未回 ⇒ 停在状态机起点，不假装"已就绪"
     expect(result.current).toEqual({ type: "uninitialized" });
 
@@ -208,5 +220,92 @@ describe("useUpdateState（退化与非抛错面）", () => {
     expect(spy).toHaveBeenCalled();
     expect(result.current).toEqual({ type: "uninitialized" });
     expect(stub.listenerCount()).toBe(1); // 订阅不受影响，后续广播仍能纠正
+  });
+});
+
+// ─────────── useUpdateProgress（#57.12：进度是独立通道，不跟 stateChanged 走） ───────────
+
+const P50: DownloadProgress = { transferred: 5, total: 10, percent: 50 };
+
+/**
+ * 挂上进度 hook 并等初值快照落定——本组多个用例共用同一段三行前戏。
+ * 抽出来的直接原因是 `npm run duplication`（jscpd minLines 6 / minTokens 60）会把
+ * 复制粘贴的同款前戏判成克隆；顺带也让「快照给什么态」这一个变量在用例里显式可见。
+ */
+async function mountProgress(snapshot: UpdateState = { type: "idle" }) {
+  const stub = installStub();
+  const { result } = renderHook(() => mod.useUpdateProgress());
+  await act(async () => { stub.resolveSnapshot(snapshot); });
+  return { stub, result };
+}
+
+describe("useUpdateProgress（#57.12 进度通道）", () => {
+  it("🔴 进度帧推进 UI——**不靠 stateChanged**（服务原地刷状态、只在迁移时广播 ⇒ 只订态的话进度条一路停在 0%）", async () => {
+    const { stub, result } = await mountProgress();
+
+    // 进下载：这一帧来自**迁移**（state 带的进度 = 0%）
+    act(() => { stub.emit({ type: "downloading", update: INFO, progress: { transferred: 0, total: 10, percent: 0 } }); });
+    expect(result.current?.percent).toBe(0);
+
+    // 推进：只发进度帧，**零 stateChanged**（这正是主进程 reportProgress 的真实形状）
+    act(() => { stub.emitProgress({ transferred: 3, total: 10, percent: 30 }); });
+    expect(result.current?.percent).toBe(30);
+
+    act(() => { stub.emitProgress(P50); });
+    expect(result.current).toEqual(P50);
+  });
+
+  it("🔴 离开 downloading 立刻回 null——「下载完了进度还挂在 42%」从结构上不可能", async () => {
+    const { stub, result } = await mountProgress();
+
+    act(() => { stub.emit({ type: "downloading", update: INFO, progress: P50 }); });
+    expect(result.current).toEqual(P50);
+
+    // 完成（无论成功还是失败回 idle）——进度必须跟着态一起消失，不留在模块单例里
+    act(() => { stub.emit({ type: "downloaded", update: INFO }); });
+    expect(result.current).toBeNull();
+
+    act(() => { stub.emit({ type: "downloading", update: INFO, progress: { transferred: 1, total: 10, percent: 10 } }); });
+    act(() => { stub.emit({ type: "idle", lastError: { code: "interrupted", message: "半路断了" } }); });
+    expect(result.current).toBeNull();
+  });
+
+  it("初值取自快照里的 downloading.progress（进度通道无重放，宿主要自己垫底）", async () => {
+    // 订阅之前就在下载中：进度帧不会补发，唯一来源是 getState() 的 `downloading.progress`
+    const { result } = await mountProgress({ type: "downloading", update: INFO, progress: P50 });
+
+    expect(result.current).toEqual(P50);
+  });
+
+  it("负控：态**带**进度但那不是当前下载（非 downloading）⇒ 恒 null，不许把别的态里的数字当进度显示", async () => {
+    const { stub, result } = await mountProgress({ type: "available", update: INFO });
+    expect(result.current).toBeNull();
+
+    act(() => { stub.emit({ type: "checking" }); });
+    expect(result.current).toBeNull();
+  });
+
+  it("引用计数与态 hook **共用**一份订阅周期——一起挂、一起拆", async () => {
+    const stub = installStub();
+    const stateHook = renderHook(() => mod.useUpdateState());
+    const progressHook = renderHook(() => mod.useUpdateProgress());
+
+    expect(stub.getStateCalls()).toBe(1);          // 只拉一次初值
+    expect(stub.progressListenerCount()).toBe(1);  // 进度回调也只挂一次
+
+    // 走掉态消费者：引用计数 2→1**不为零** ⇒ 两条 IPC 订阅都还得留着（进度那边还要用同一个周期）
+    stateHook.unmount();
+    expect(stub.progressListenerCount()).toBe(1);
+    expect(stub.listenerCount()).toBe(1);
+
+    // 最后一个消费者也走 ⇒ 两条订阅一起拆干净
+    progressHook.unmount();
+    expect(stub.progressListenerCount()).toBe(0);
+    expect(stub.listenerCount()).toBe(0);
+  });
+
+  it("无 window.linkdesk ⇒ 恒 null，不抛", () => {
+    const { result } = renderHook(() => mod.useUpdateProgress());
+    expect(result.current).toBeNull();
   });
 });

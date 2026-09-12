@@ -30,7 +30,7 @@
  */
 import { useEffect, useState } from "react";
 import { getConfigurationValue, onDidChangeConfiguration } from "../core/services/configuration/ConfigurationService";
-import { getShellUpdateApi } from "./useUpdateState";
+import { checkForUpdatesAndReport } from "./useUpdateNotifications";
 
 /** 配置键——`app.update.mode` 的**唯一**字面量出处（改键名只改这里） */
 const MODE_KEY = "app.update.mode";
@@ -43,11 +43,16 @@ export const INITIAL_DELAY_MS = 30_000;
 /** 后台检查周期——对标 VS Code `_autoCheckTimer`（01 §2.2，内置常量不暴露）。export 理由同上。 */
 export const CHECK_INTERVAL_MS = 4 * 60 * 60 * 1000;
 
-/** 发一次**后台**检查。`context=false` 是显式传的语义值，不是省略参数（07 §4.1）。 */
+/**
+ * 发一次**后台**检查。`context=false` 是显式传的语义值，不是省略参数（07 §4.1）。
+ *
+ * 🔴 走 `checkForUpdatesAndReport` 而不是裸 `api.checkForUpdates`——**这一格是「后台静默」的唯一落点**
+ * （E6#57.12d 发起方自消化）：`context=false` 时它**只记账、不出声**，后台失败与手动失败在广播里
+ * 形状逐字节相同（`UpdateError` 只有 code+message），谁能出声只有发起方知道。反向也成立——
+ * 用户手点那条路必须**出声**，所以两条路不能再共用一处「看态决定说不说话」的推断。
+ */
 function fireBackgroundCheck(): void {
-  const api = getShellUpdateApi();
-  if (!api) return; // 非壳环境（vitest / 预览页）——静默不发
-  void api.checkForUpdates(false).catch((err: unknown) => {
+  void checkForUpdatesAndReport(false).catch((err: unknown) => {
     // 网络/校验错由服务收进态内 `lastError`（**不抛**，07 §4.1）；这里只兜"检查腿契约违反"
     // 那类真 bug（服务会把态先打回 idle 再抛，见 update-service.ts 的 catch 段）。
     console.error("[useUpdateScheduler] 后台检查更新异常：", err);

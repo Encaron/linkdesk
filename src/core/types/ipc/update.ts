@@ -94,10 +94,17 @@ export interface UpdateError {
  * uninitialized → disabled（更新源不可用）/ idle
  * idle ──check──▶ checking ──新版本──▶ available（无更新/出错 → idle）
  * available ──download──▶ downloading ──完成──▶ downloaded（失败 → idle + lastError）
- * downloaded ──「稍后」──▶ idle（保留 update，不重下）
- *            └─「重启并更新」──▶ updating ──quitAndInstall──▶ 进程退出
+ * downloaded ──「重启并更新」──▶ updating ──quitAndInstall──▶ 进程退出
  * ready = downloaded 的提示态（toast「重启并更新」已出）
  * ```
+ *
+ * 🔴 **`downloaded` 没有「回 idle」的边**（E6#57.12，2026-09-12 用户拍板；本文档旧版图里的
+ * `downloaded ──「稍后」──▶ idle` 是**错的**，已删）。通知面上的「稍后」**只收起那一条提示**，
+ * 状态原地不动——安装器已经在盘上等着装了，把态降回 `idle` 只会让用户重下一遍。
+ * 两个出口：`updating`（点「重启并更新」），或进程退出后由启动复位还原（#57.7a）。
+ * 由此推出 #57.12g（已在 `electron/services/update-service.ts` 落地）：这两个态**免疫检查**——
+ * 检查腿比的是 `latest > current`，已下好的版本必然还大于当前版本 ⇒ 一查必判 `available`，
+ * 界面就从「重新启动」退回「下载更新」。
  *
  * 🔴 **`downloaded`/`ready` 带 `warning` 槽（2026-09-12 用户拍板 ⇒ 选 (a)「给状态加 warning 槽」）**：
  * 降级放行（`checksum-unavailable` 等「照常安装、但要记一笔」的情形）**必须落在这个槽里**。
