@@ -1,5 +1,9 @@
 # 更新日志
 
+## v1.0.14（2026-09-13）
+
+- 补齐 0.1.58 漏发的 9 键（E6#57.14 关于标签页）：「提交」「日期」「关于 LinkDesk」「已复制」＋ Electron / Chromium / Node.js / V8 / OS 五个专有名词键——当次 commit 改了 `en.json` 但漏跑 `npm run pack:bundled-json` 重打 zip，1.0.13 名义的出厂 zip 内容停在 0.1.57，英文界面下关于标签页字段名/标题直接显示中文
+
 ## v1.0.13（2026-09-13）
 
 - 应用层降级提示文案英文补译（E6#42d）：新增「LinkDesk 已被降级到 {{current}}（此前运行 {{highest}}）」（LinkDesk was downgraded to … ）一键——这台机器被旧安装包换回低版本时那条通知，英文界面下此前会直接显示中文
