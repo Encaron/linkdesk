@@ -10,16 +10,29 @@
  *
  * 机制（单点门禁，仿 check-lsp-args-base.mjs 入 npm run check）：对 bundled-plugins/ 每个
  * working-tree zip，取 git HEAD 同路径 blob 作基线（无基线 = 新 bundled 插件跳过）：
- *   - 内容指纹 = zip 内每个非目录条目 {规范化名: sha256(内容)} 排序拼接——只比包内容，
+ *   - 内容指纹 = zip 内每个非目录条目 {规范化名: sha256(**归一 LF 后**的内容)} 排序拼接——只比包内容，
  *     不比 zip 字节（重建时间戳/压缩差异不误报）；
  *   - version = 顶层 plugin.json（容忍单层 wrapper，与 bundle-zip locateManifest 同规）version。
  *   - 判定：working version === HEAD version 且 指纹 ≠ → 🔴 红拦（改内容没 bump）；
  *     version 不同（bump 过）→ 过；指纹相同（重建无实质变更）→ 过。
  *
+ * 🔴 **行尾必须先归一（2026-09-12 修，同族第 5 次）**——指纹此前直接 sha256 原始字节，于是它比的
+ * **不只是内容、还捎带了行尾**，而两边行尾来源不同、谁都不受控：
+ *   ① 基线那份是**历史上某次工作区**打的（实测 `bundled-plugins/theme-zones.linkdesk-plugin`：
+ *      `plugin.json` 是 CRLF、`README.md` 是 LF——**同一包里混着**）；
+ *   ② 新产物那份是**当下工作区**打的（本机 `git ls-files --eol` = `i/lf w/crlf`：索引 LF、工作区 CRLF，
+ *      `.gitattributes` 管不住已检出的存量文件）。
+ * 一份源码在两种工作区打出的 zip ⇒ 判「改内容没 bump」**满屏红**——源码一个字没改。这红还**有毒**：
+ * 它给的唯一出路是「bump 插件版本」，于是人要么条件反射去 bump（用户侧收到一批零意义的"更新"），
+ * 要么学会绕过门禁（**假红让真红失效**）。判据 = 行尾不是内容（`normalizeEol` 只动 CRLF→LF，二进制
+ * 与无 CRLF 的文本逐字节不动）；**真内容变更照样红**（self-test 负例钉住，且只看 EOL 的差异另有一例
+ * 明确放行）。规则本体在 `scripts/lib/text-eol.mjs`——与打包脚本**共用同一份**，不各写一套。
+ *
  * 用法：
  *   node scripts/check-bundled-version-bump.mjs            # 扫 bundled-plugins/ vs git HEAD（挂 npm run check）
  *   node scripts/check-bundled-version-bump.mjs --compare A.zip B.zip   # 对拍任意两 zip 出判定（调试/验证）
- *   node scripts/check-bundled-version-bump.mjs --self-test             # 负例（同版改内容红）+ 正例（bump 过）自测
+ *   node scripts/check-bundled-version-bump.mjs --self-test             # 负例（同版改内容红）+ 正例（bump 过）
+ *                                                                       # + 行尾例（同版只差 EOL 放行）自测
  * 退出码 0 = 全过，1 = 有红拦（打印到 stderr）。
  */
 
@@ -30,6 +43,7 @@ import { tmpdir } from "node:os";
 import { join, resolve, dirname, basename } from "node:path";
 import { fileURLToPath } from "node:url";
 import JSZip from "jszip";
+import { normalizeEol } from "./lib/text-eol.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, "..");
@@ -58,6 +72,7 @@ async function readZipVersion(zip) {
 
 /**
  * 内容指纹 = 排序后的 `{规范化名}:{sha256}`——只比包内容不比 zip 字节（重建的非确定性元数据不误报）。
+ * 条目内容先过 `normalizeEol`（文本归一 LF、二进制原样）——行尾不是内容，见文件头 🔴 段。
  * 含 plugin.json 自身：仅 version 变 → 指纹也变，但判定先看 version 不等 → 不算违例（合法 bump）。
  */
 async function fingerprint(zip) {
@@ -66,7 +81,8 @@ async function fingerprint(zip) {
     const entry = zip.files[raw];
     if (entry.dir) continue;
     const name = raw.replace(/\\/g, "/");
-    rows.push(`${name}:${sha256(Buffer.from(await entry.async("uint8array")))}`);
+    const { buf } = normalizeEol(Buffer.from(await entry.async("uint8array")));
+    rows.push(`${name}:${sha256(buf)}`);
   }
   return rows.sort().join("\n");
 }
@@ -161,7 +177,7 @@ async function compareMode(aPath, bPath) {
   return v.ok;
 }
 
-/** --self-test：负例（同版改内容红）+ 正例（bump 过绿），合成 zip 不碰真实 bundled-plugins */
+/** --self-test：负例（同版改内容红）+ 正例（bump 过绿）+ 行尾例（同版只差 EOL 绿），合成 zip 不碰真实 bundled-plugins */
 async function selfTest() {
   const tmp = mkdtempSync(join(tmpdir(), "bundled-bump-selftest-"));
   try {
@@ -174,14 +190,20 @@ async function selfTest() {
     const base = join(tmp, "base.linkdesk-plugin");
     const sameContentDiff = join(tmp, "same-content-diff.linkdesk-plugin");
     const bumped = join(tmp, "bumped.linkdesk-plugin");
-    writeFileSync(base, await mkZip("1.0.0", "readme v1"));
-    writeFileSync(sameContentDiff, await mkZip("1.0.0", "readme v1 CHANGED")); // 同版改内容 → 负例
-    writeFileSync(bumped, await mkZip("1.0.1", "readme v1 CHANGED")); // bump 过 → 正例
+    const eolOnly = join(tmp, "eol-only.linkdesk-plugin");
+    writeFileSync(base, await mkZip("1.0.0", "readme v1\nsecond line\n"));
+    writeFileSync(sameContentDiff, await mkZip("1.0.0", "readme v1 CHANGED\nsecond line\n")); // 同版改内容 → 负例
+    writeFileSync(bumped, await mkZip("1.0.1", "readme v1 CHANGED\nsecond line\n")); // bump 过 → 正例
+    writeFileSync(eolOnly, await mkZip("1.0.0", "readme v1\r\nsecond line\r\n")); // 同版只差行尾 → 期望放行
 
     const neg = !(await compareMode(sameContentDiff, base)); // 期望红（同版内容 diff）
     const pos = await compareMode(bumped, base); // 期望绿（bump 过）
-    console.log(`\n[bundled-version-bump] self-test: 负例（同版改内容）红拦=${neg ? "✓" : "✗ FAIL"}  正例（bump 过）放行=${pos ? "✓" : "✗ FAIL"}`);
-    return neg && pos ? 0 : 1;
+    const eol = await compareMode(eolOnly, base); // 期望绿（只差 EOL = 无实质变更）
+    console.log(
+      `\n[bundled-version-bump] self-test: 负例（同版改内容）红拦=${neg ? "✓" : "✗ FAIL"}  ` +
+        `正例（bump 过）放行=${pos ? "✓" : "✗ FAIL"}  行尾例（同版只差 EOL）放行=${eol ? "✓" : "✗ FAIL"}`,
+    );
+    return neg && pos && eol ? 0 : 1;
   } finally {
     rmSync(tmp, { recursive: true, force: true });
   }

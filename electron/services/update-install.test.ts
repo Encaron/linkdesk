@@ -245,17 +245,19 @@ describe("🔴 启动复位：三支判据（盘上的事实说了算）", () =>
     });
   });
 
-  it("版本不等 + 安装器已不在 → idle + interrupted（销账），**不许**落 ready/downloaded", async () => {
+  it("版本不等 + 安装器已不在 → idle + install-interrupted（销账），**不许**落 ready/downloaded", async () => {
     await givenPending();
     fs.rmSync(installer);
     const r = await resolveStartupInstall(deps(CURRENT));
 
     expect(r.outcome).toBe("interrupted");
-    expect(r.resume).toMatchObject({ state: { type: "idle", lastError: { code: "interrupted" } } });
+    // 🔴 错误码是 `install-interrupted`（**不是**下载腿那个 `interrupted`）——本支没有发起方，
+    // 壳只能靠码认出它来出声；复用下载腿的码 = 用户下次启动零通知（2026-09-12 拆码）。
+    expect(r.resume).toMatchObject({ state: { type: "idle", lastError: { code: "install-interrupted" } } });
     expect(fs.existsSync(pendingInstallPath(dir))).toBe(false);
   });
 
-  it("🔴 清单判据 3 的字面场景：盘上是**别的（更旧）版本**的安装器 → 仍然 idle + interrupted", async () => {
+  it("🔴 清单判据 3 的字面场景：盘上是**别的（更旧）版本**的安装器 → 仍然 idle + install-interrupted", async () => {
     await givenPending();
     fs.rmSync(installer);
     placeInstaller("0.0.1"); // 名字解析得出、但**不等于记录目标** —— 快照不许当结论
@@ -265,7 +267,7 @@ describe("🔴 启动复位：三支判据（盘上的事实说了算）", () =>
     expect(r.resume?.state.type).toBe("idle");
   });
 
-  it("安装器在但内容是空的（0 字节）→ 不可用，同样归 interrupted", async () => {
+  it("安装器在但内容是空的（0 字节）→ 不可用，同样归 install-interrupted", async () => {
     await givenPending();
     fs.rmSync(installer);
     fs.writeFileSync(installer, "");

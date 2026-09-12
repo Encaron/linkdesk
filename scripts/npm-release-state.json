@@ -3,8 +3,8 @@
   "packages": [
     {
       "name": "@linkdesk/contracts",
-      "version": "0.1.8",
-      "contentHash": "021ee9889676751f1e75557798f30b31ad16c02148ef5d204bf44fb72ded3fd5",
+      "version": "0.1.9",
+      "contentHash": "e5034ecd41f60a3f1c85ac4db8477731d1f9e6d20915ee3af2d72cf3f144576d",
       "files": 2
     },
     {

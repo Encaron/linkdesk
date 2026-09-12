@@ -125,7 +125,7 @@ export function createUpdateInstaller(deps: UpdateInstallDeps = {}): InstallLeg 
       if (warning) record.warning = warning;
       await writePendingInstall(record, { getUpdateDir });
     } catch (e) {
-      throw err('write-error', `无法记录待安装状态——${msg(e)}`);
+      throw err('write-error', '无法记录待安装状态——{{detail}}', { detail: msg(e) });
     }
 
     try {
@@ -133,7 +133,7 @@ export function createUpdateInstaller(deps: UpdateInstallDeps = {}): InstallLeg 
     } catch (e) {
       // 拉不起来 ⇒ 立刻销账（我们还活着，知道自己没在装），别让下次启动误报「上次更新中断」。
       await clearPendingInstall({ getUpdateDir });
-      throw err('canceled', `无法启动安装程序——${msg(e)}`);
+      throw err('canceled', '无法启动安装程序——{{detail}}', { detail: msg(e) });
     }
     quit();
 
@@ -294,7 +294,10 @@ export async function resolveStartupInstall(deps: StartupInstallDeps = {}): Prom
       state: {
         type: 'idle',
         update: record.update,
-        lastError: { code: 'interrupted', message: '上次更新未完成（安装包已不在）——请重新下载后再试' },
+        // 🔴 码取 `install-interrupted`（**不是** `interrupted`）：本支没有任何发起方，只能靠壳的
+        // 迁移驱动那条路出声，而那条路对 `idle` 一律闭嘴、只认本码 ⇒ 复用 `interrupted` 时
+        // 用户下次启动**零通知**（2026-09-12 拆码，见 wire 类型里两个码的分界注释）。
+        lastError: { code: 'install-interrupted', message: '上次更新未完成（安装包已不在）——请重新下载后再试' },
       },
     },
   };
@@ -328,8 +331,8 @@ function isPendingRecord(raw: unknown): raw is PendingInstallRecord {
 }
 
 /** 失败结果的唯一构造口（码集由 07 §三 固定，本文件不新造码） */
-function err(code: UpdateError['code'], message: string): UpdateLegError {
-  return new UpdateLegError({ code, message });
+function err(code: UpdateError['code'], message: string, params?: UpdateError['params']): UpdateLegError {
+  return new UpdateLegError({ code, message, params });
 }
 
 function msg(e: unknown): string {

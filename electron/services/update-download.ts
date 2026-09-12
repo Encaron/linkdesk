@@ -118,7 +118,7 @@ export function createUpdateDownloader(deps: UpdateDownloadDeps = {}): DownloadL
     try {
       await fs.mkdir(path.dirname(installerPath), { recursive: true });
     } catch (e) {
-      throw writeFailure('安装器目录创建失败', e);
+      throw writeFailure('安装器目录创建失败——{{detail}}', e);
     }
 
     // 单一取消来源：本函数自持的空闲看门狗（契约里没有外部 signal——取消下载的入口由状态机与壳定，#57.7 起）。
@@ -126,7 +126,7 @@ export function createUpdateDownloader(deps: UpdateDownloadDeps = {}): DownloadL
     const wd = createIdleWatchdog(idleMs);
     /** 中断归因——**用「谁 abort 的」判定，不靠错误类名**（DOMException 跨环境形态不一） */
     const interrupted = (): UpdateLegError => wd.timedOut()
-      ? err('network', `下载超时——${idleMs / 1000} 秒无数据（网络或代理不稳）`)
+      ? err('network', '下载超时——{{seconds}} 秒无数据（网络或代理不稳）', { seconds: idleMs / 1000 })
       : err('interrupted', '下载中断——连接被断开');
 
     const hash = createHash('sha256');
@@ -144,13 +144,15 @@ export function createUpdateDownloader(deps: UpdateDownloadDeps = {}): DownloadL
         // 连接阶段就失败（DNS / 代理未生效 / ECONNRESET）——**这是 `network` 而不是 `interrupted`**，
         // 两者对用户与排查是两件事（见 wire 类型里 `interrupted` 的分界注释）
         if (wd.signal.aborted) throw interrupted();
-        throw err('network', `下载连不上——${msg(e)}（使用代理时确认系统代理已生效）`);
+        throw err('network', '下载连不上——{{detail}}（使用代理时确认系统代理已生效）', { detail: msg(e) });
       }
       if (!resp.ok || !resp.body) {
         // 404/403 = 直链失效或无权限（发布侧改过/删过包）⇒ 归 `asset-missing`，把矛头指向该指的地方；
         // 其余（5xx 等）是服务端瞬时状态 ⇒ `network`。**不许**一律报 network（第 3.5 层教训）。
         const code: UpdateError['code'] = resp.status === 404 || resp.status === 403 ? 'asset-missing' : 'network';
-        throw err(code, `下载失败 HTTP ${resp.status}${resp.statusText ? `: ${resp.statusText}` : ''}`);
+        // `statusText`（`Not Found`）是 HTTP 协议原文、无语言可言，与状态码一起当**不透明值**传。
+        const status = resp.statusText ? `${resp.status} ${resp.statusText}` : resp.status;
+        throw err(code, '下载失败 HTTP {{status}}', { status });
       }
       total = Number(resp.headers.get('content-length')) || total;
 
@@ -158,7 +160,7 @@ export function createUpdateDownloader(deps: UpdateDownloadDeps = {}): DownloadL
       const handle = await fs
         .open(partPath, 'w')
         .catch((e: unknown) => {
-          throw writeFailure('安装器临时文件打开失败', e);
+          throw writeFailure('安装器临时文件打开失败——{{detail}}', e);
         });
       try {
         const reader = resp.body.getReader();
@@ -168,7 +170,7 @@ export function createUpdateDownloader(deps: UpdateDownloadDeps = {}): DownloadL
             chunk = await reader.read();
           } catch (e) {
             if (wd.signal.aborted) throw interrupted();
-            throw err('interrupted', `下载中断——${msg(e)}`);
+            throw err('interrupted', '下载中断——{{detail}}', { detail: msg(e) });
           }
           if (chunk.done) break;
           const value = chunk.value;
@@ -177,7 +179,7 @@ export function createUpdateDownloader(deps: UpdateDownloadDeps = {}): DownloadL
           try {
             await handle.write(buf);
           } catch (e) {
-            throw writeFailure('安装器写盘失败（磁盘满 / 无权限）', e);
+            throw writeFailure('安装器写盘失败（磁盘满 / 无权限）——{{detail}}', e);
           }
           hash.update(buf);
           received += buf.byteLength;
@@ -192,7 +194,7 @@ export function createUpdateDownloader(deps: UpdateDownloadDeps = {}): DownloadL
       // 字节数、实收是**解压后**字节数，二者恒不相等 ⇒ 用 `!==` 会把完整下载判成中断（plugin-download
       // E6#73i F3 同款教训）。代价（如实登记）：压缩传输下的真截断可能漏检——那时还有 sha256 兜底。
       if (total > 0 && received < total) {
-        throw err('interrupted', `下载中断——已收 ${received}/${total} 字节`);
+        throw err('interrupted', '下载中断——已收 {{received}}/{{total}} 字节', { received, total });
       }
 
       const warning = verifyChecksum(hash.digest('hex'), update.checksum);
@@ -202,7 +204,7 @@ export function createUpdateDownloader(deps: UpdateDownloadDeps = {}): DownloadL
         await fs.rm(installerPath, { force: true });
         await fs.rename(partPath, installerPath);
       } catch (e) {
-        throw writeFailure('安装器落盘失败', e);
+        throw writeFailure('安装器落盘失败——{{detail}}', e);
       }
       // 终态必发 100%（不是停在某个中间值上，否则进度条看着像卡死）
       onProgress({ transferred: received, total: total || received, percent: 100 });
@@ -355,13 +357,19 @@ function percentOf(received: number, total: number): number {
 }
 
 /** 失败结果的唯一构造口（码集由 07 §三 固定，本文件不新造码） */
-function err(code: UpdateError['code'], message: string): UpdateLegError {
-  return new UpdateLegError({ code, message });
+function err(code: UpdateError['code'], message: string, params?: UpdateError['params']): UpdateLegError {
+  return new UpdateLegError({ code, message, params });
 }
 
-/** 落盘类失败——统一归 `write-error`（磁盘满 / 无权限 / 目标被占），文案带上系统原话便于排查 */
-function writeFailure(what: string, cause: unknown): UpdateLegError {
-  return err('write-error', `${what}——${msg(cause)}`);
+/**
+ * 落盘类失败——统一归 `write-error`（磁盘满 / 无权限 / 目标被占）。
+ *
+ * 🔴 第一个参数是**完整词条**（骨架 + `{{detail}}`），不是在调用点拼出来的句子：拼出来的字符串
+ * 整句一个字都不一样，永远成不了词条 ⇒ 那句话在所有语言下都是中文（见 `UpdateError.message` 注释）。
+ * 4 个调用点的骨架互不相同，故各自是一个独立词条，`{{detail}}` 只装系统错误原文（不透明值）。
+ */
+function writeFailure(message: string, cause: unknown): UpdateLegError {
+  return err('write-error', message, { detail: msg(cause) });
 }
 
 function msg(e: unknown): string {

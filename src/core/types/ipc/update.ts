@@ -43,7 +43,7 @@ export interface DownloadProgress {
 }
 
 /**
- * 检查腿六类 + 下载腿五类（01 §2.3 / §2.4）。
+ * 检查腿六类 + 下载腿五类 + 启动复位一类（01 §2.3 / §2.4 / §2.5）。
  * 文案必须互不相同——「当前已是最新版本」和「tag 不是 SemVer」是两件事，不许各归一半。
  *
  * ⚠️ 暂不单独 `export`：当前唯一消费方是本文件的 `UpdateError.code`，knip 门禁不许空导出。
@@ -78,13 +78,41 @@ type UpdateErrorCode =
    */
   | 'interrupted'
   /** 用户/系统取消 */
-  | 'canceled';
+  | 'canceled'
+  // —— 启动复位（一类，非腿产出） ——
+  /**
+   * 🔴 上次更新**没装成，且安装器已不在盘上**（启动复位 #57.7a 算出，`update-install.ts` 的
+   * `resolveStartupInstall`）——落 `idle + 本码`，`update` 保留。
+   *
+   * **为什么不复用 `interrupted`**（2026-09-12 拆码，超本格顺手修）：两者在腿内确实同义（都是
+   * 「这次没下成，重下」），但**壳侧的处置不同**——本码是**启动时从盘上读回来的**，没有任何发起方，
+   * 于是「谁发起谁出声」那条路（`checkForUpdatesAndReport`）根本走不到它 ⇒ 换成 `interrupted`
+   * 时用户**下次启动零通知**（#57.12 实测：`initUpdateService` 丢弃 `resolution.outcome`，
+   * 而生产者对 `idle` 一律闭嘴）。壳的迁移驱动那条路**只认本码**才出声（`useUpdateNotifications`），
+   * 于是「下载腿的断流」与「启动时的未完成」在机器上可分辨，不再靠「`update` 在不在」这种
+   * 会随实现漂移的间接不变式。
+   */
+  | 'install-interrupted';
 
 /** 一次失败的结构化记账——态内 `lastError`（不抛错，07 §4.1） */
 export interface UpdateError {
   code: UpdateErrorCode;
-  /** 人类可读（i18n key 形态） */
+  /**
+   * 人类可读 = **i18n key 形态**（= 中文原文，硬约束 2）。
+   *
+   * 🔴 **带运行时数值的句子必须写成词条 + `{{占位}}`，值走 `params`**——直接拼进 `message`
+   * （`下载超时——30 秒无数据`）会让整句**永远不可能成为词条**（一个字都不一样），`t()` 只能
+   * 原样吐出中文原文 ⇒ 那类句子在所有语言下都是中文（2026-09-12 修，超本格顺手修）。
+   * 分界线：**句子骨架（可翻译）进 `message`，只进不出的运行时值（秒数/字节数/系统错误原文）
+   * 进 `params`**。插值语法与壳侧 `t()` 一致（i18next 的 `{{name}}`）。
+   */
   message: string;
+  /**
+   * 词条占位符的实值（`{ seconds: 30 }` 对应词条里的 `{{seconds}}`）。
+   * 值**本身不再翻译**——系统错误原文（`msg(e)`）与 HTTP 状态文本天然无语言，故当**不透明值**传。
+   * 缺省（不传）= 该词条没有占位符，壳侧照旧 `t(message)`。
+   */
+  params?: Record<string, string | number>;
 }
 
 /**

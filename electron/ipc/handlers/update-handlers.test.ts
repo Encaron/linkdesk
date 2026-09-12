@@ -140,7 +140,7 @@ describe("② 异步读盘 → 同步 resume 闭包：盘上的事实决定启�
     expect(state.type === "ready" && state.update).toEqual(makeInfo());
   });
 
-  it("记录在 + 安装器不在 → 落 idle + interrupted（不是 ready——盘上没有可装的东西）", async () => {
+  it("记录在 + 安装器不在 → 落 idle + install-interrupted（不是 ready——盘上没有可装的东西）", async () => {
     await givenPendingRecord();
 
     await mod.initUpdateService();
@@ -148,7 +148,11 @@ describe("② 异步读盘 → 同步 resume 闭包：盘上的事实决定启�
 
     const state = (await invoke(IPC.update.getState)) as UpdateState;
     expect(state.type).toBe("idle");
-    expect(state.type === "idle" && state.lastError?.code).toBe("interrupted");
+    // 🔴 是 `install-interrupted`（不是腿里的 `interrupted`）——本用例正是**装配层**的哨兵：
+    //    壳侧只取 `resolution.resume`、`outcome` 被丢弃，所以「启动未完成」这件事**只能靠码**
+    //    从主进程走到渲染进程；码一旦退回 `interrupted`，壳的迁移驱动那条路就不再出声，
+    //    用户下次启动零通知（2026-09-12 拆码，见 useUpdateNotifications.test.ts ③ 组）。
+    expect(state.type === "idle" && state.lastError?.code).toBe("install-interrupted");
     // `update` 保留：知道有哪个版本，只是这次没装成（同 quitAndInstall 失败路径）
     expect(state.type === "idle" && state.update?.version).toBe(NEXT);
   });

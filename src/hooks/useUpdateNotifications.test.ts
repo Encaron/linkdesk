@@ -8,6 +8,9 @@
  * ④ **发起方自消化**：同一个 `idle + lastError`，`context=false` 静默、`true` 出声——
  *    这是全仓唯一能区分「后台」与「手动」的地方（态里区分不出来），必须成对断言；
  * ⑤ 唤醒旗标：进度不弹（`wake:false`）、发现/完成/手动已最新要弹。
+ * ⑥ **启动复位那一格只认码**（`install-interrupted`）——没有发起方，故由本模块出声；
+ *    同形的 `interrupted`（下载腿断流）必须闭嘴（成对负控，防实现改成看 `update` 在不在）。
+ * ⑦ 带数值的腿消息走 `params` 填 `{{占位}}`，且**没有译文时也要插值**（否则用户看到 `{{detail}}`）。
  *
  * 🔴 被测模块持有**模块级单例**（`_entryId`/`_announcedVersion`/`_warnedKeys`），且它消费的
  * `toast.ts` 同样是模块级队列 ⇒ 每个用例 `vi.resetModules()` + 动态 import 拿一份干净模块
@@ -131,14 +134,21 @@ function transition(state: UpdateState): void {
 }
 
 /**
- * 点条目上的**主按钮**（「重启并更新」）并放完它内部的异步。
+ * 点条目上第 `index` 个按钮并放完它内部的异步（`clickPrimary` 也走这里）。
  * ⚠️ 必须 `await flush()`：`notif:action` 的分发器是「`onClick(); dismissToast(id)`」的**同步**调用，
  * onClick 返回的 promise 无人 await——所以测试里的期望必须等这些微任务真的跑完，
  * 而且「漏出去的 rejected promise」这件事本身也只能在这段等待里暴露出来。
  */
+async function clickAction(index = 0): Promise<void> {
+  const action = toast.getToasts()[0].actions?.[index];
+  await act(async () => { action?.onClick(); await flush(); });
+}
+
+/** 点条目上的**主按钮**（「重启并更新」）——按钮位置由 `isPrimary` 决定，不写死下标 */
 async function clickPrimary(): Promise<void> {
-  const primary = toast.getToasts()[0].actions?.find((a) => a.isPrimary);
-  await act(async () => { primary?.onClick(); await flush(); });
+  const index = toast.getToasts()[0].actions?.findIndex((a) => a.isPrimary) ?? -1;
+  if (index < 0) throw new Error("条目上没有主按钮");
+  await clickAction(index);
 }
 
 describe("useUpdateNotifications（① 一条条目贯穿全程）", () => {
@@ -322,6 +332,94 @@ describe("useUpdateNotifications（④ 降级放行的记账单独一条）", ()
   });
 });
 
+describe("useUpdateNotifications（③ 启动复位——**没有发起方**的那一格）", () => {
+  /** 复位报出的那笔账（码是腿/复位自己写死的；句子用明显虚构的串，硬约束 21） */
+  const RESTORED = {
+    type: "idle",
+    update: INFO,
+    lastError: { code: "install-interrupted", message: "演示腿的复原句" },
+  } as const;
+
+  it("🔴 开机就吃到 idle + install-interrupted ⇒ 出声（整改前这里是**零通知**）", () => {
+    mountProducer();
+    transition({ ...RESTORED });
+
+    const live = toast.getToasts();
+    expect(live).toHaveLength(1);
+    expect(live[0].message).toContain("演示腿的复原句");
+    expect(live[0].severity).toBe("error");
+    expect(live[0].actions?.[0]?.label).toBe("重新下载");
+    expect(live[0].ttl).toBe(toast.TOAST_TTL_ERROR);
+    // 这条通知就是整笔修复的产出——不弹 = 没修
+    expect(live[0].wake).toBe(true);
+  });
+
+  it("🔴 负控：**同一个** idle + lastError 但码是下载腿的 interrupted ⇒ 一条都不出", () => {
+    mountProducer();
+    // 这两格在整改前是**同一个**码 ⇒ 壳分不出来。若实现改成「看 update 在不在」来认，
+    // 本用例当场变红：那是不随实现漂移的判据（`fail()` 今天丢 update、明天可能留）。
+    transition({ type: "idle", update: INFO, lastError: { code: "interrupted", message: "演示腿的断流句" } });
+
+    expect(toast.getToasts()).toHaveLength(0);
+  });
+
+  it("负控：idle 且没有 lastError（已最新 / 后台失败前）⇒ 一条都不出", () => {
+    mountProducer();
+    transition({ type: "idle", update: INFO });
+
+    expect(toast.getToasts()).toHaveLength(0);
+  });
+
+  it("重挂载不重复报（盘上读回来的同一格，不该每次挂载都弹一遍）", () => {
+    mountProducer();
+    transition({ ...RESTORED });
+    mountProducer(); // 第二个消费者 + 一次全新的「首次观察」
+    transition({ ...RESTORED });
+
+    expect(toast.getToasts()).toHaveLength(1);
+  });
+
+  it("[重新下载] 先回头重查再重下（与下载失败的 [重试] 共用同一个出口）", async () => {
+    mountProducer();
+    transition({ ...RESTORED });
+    stub.setCheckResult({ type: "available", update: INFO });
+
+    await clickAction();
+
+    expect(stub.checkContexts).toEqual([true]);
+    expect(stub.downloadCalls()).toBe(1);
+  });
+});
+
+describe("useUpdateNotifications（词条占位符——带数值的腿消息）", () => {
+  it("失败条目：腿的 `{{占位}}` 由 `params` 填上（不是把数值拼进 message）", async () => {
+    stub.setDownloadResult({
+      type: "idle",
+      lastError: { code: "network", message: "演示词条——{{detail}}（演示后缀）", params: { detail: "演示值" } },
+    });
+
+    await mod.downloadUpdateAndReport();
+
+    const live = toast.getToasts();
+    expect(live).toHaveLength(1);
+    expect(live[0].message).toContain("演示词条——演示值（演示后缀）");
+    // 没有译文时 `t()` 的退路必须**仍然插值**——否则用户看到的是带 `{{detail}}` 的原文
+    expect(live[0].message).not.toContain("{{");
+  });
+
+  it("降级放行的条目同样吃 params", () => {
+    mountProducer();
+    transition({
+      type: "downloaded",
+      update: INFO,
+      warning: { code: "checksum-unavailable", message: "演示词条——已收 {{received}} 字节", params: { received: 7 } },
+    });
+
+    const warn = toast.getToasts().find((t) => t.severity === "warning");
+    expect(warn?.message).toBe("演示词条——已收 7 字节");
+  });
+});
+
 describe("发起方自消化（⑤ 后台静默 / 手动出声——**成对的负控**）", () => {
   it("🔴 手动（context=true）失败 ⇒ 出声，带腿的人话 + [重试]", async () => {
     stub.setCheckResult({ type: "idle", lastError: { ...LEG_ERR } });
@@ -372,10 +470,7 @@ describe("发起方自消化（⑤ 后台静默 / 手动出声——**成对的�
     stub.setCheckResult({ type: "idle", lastError: { ...LEG_ERR } });
     await mod.checkForUpdatesAndReport(true);
 
-    await act(async () => {
-      toast.getToasts()[0].actions?.[0]?.onClick();
-      await flush();
-    });
+    await clickAction();
 
     expect(stub.checkContexts).toEqual([true, true]);
   });
@@ -397,10 +492,7 @@ describe("发起方自消化（⑤ 后台静默 / 手动出声——**成对的�
     // 重查这一步查到「仍有更新」⇒ 才允许重下
     stub.setCheckResult({ type: "available", update: INFO });
 
-    await act(async () => {
-      toast.getToasts()[0].actions?.[0]?.onClick();
-      await flush();
-    });
+    await clickAction();
 
     expect(stub.checkContexts).toEqual([true]);
     expect(stub.downloadCalls()).toBe(2);

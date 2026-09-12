@@ -4,7 +4,7 @@
  * 通知面唯一（E6#72 归一，`ToastHost` 已整删）——本模块是 `app.update` 这个 source 的**唯一生产者**，
  * 全仓没有第二处 pushToast 更新条目。载体是状态栏铃铛宽面板，**零新 UI 表面**。
  *
- * ## 两条产出路径，各管自己那半（这是本格的核心设计）
+ * ## 三条产出路径，各管自己那半（这是本格的核心设计）
  *
  * **① 迁移驱动**（`useUpdateNotifications()`，挂载在 App.tsx）——发现 / 进度 / 完成三格是
  * **状态的函数**：态一到就出条目，壳里没有任何一处「点一下才出」。`available` 无论来自后台定时器
@@ -18,6 +18,11 @@
  *
  * 🔴 **不许在壳侧用 ref 记「最近一次是谁发的」去猜**：后台定时器到期与用户手点撞在同一秒时，
  * 猜法必错，且错的正是「点了没反馈」那一侧——那是本仓反复吃过的亏。
+ *
+ * **③ 无发起方的那一格**（`install-interrupted`，2026-09-12 补）——启动复位（#57.7a）算出「上次更新
+ * 没装完」，此时用户刚开机、什么都没点，两条路都够不到它：态是 `idle`（①② 都不管），而当班人
+ * （`initUpdateService`）在**主进程**里、说不了话。故本模块**唯一点名认码**的例外就在这里，
+ * 理由与处置见 `pushStartupInterrupted`。
  *
  * ## 条目生命周期（一条条目贯穿全程，不闪不换位）
  *
@@ -78,6 +83,12 @@ let _announcedVersion: string | null = null;
  * 第一次得知这笔账，而它还没被解决（更新还没装）。同一会话内重挂载则不该再弹一遍。
  */
 const _warnedKeys = new Set<string>();
+/**
+ * 「启动复位未完成」是否已经报过——**重挂载不许再报一遍**。
+ * 与 `_warnedKeys` 同款理由：那个态是启动时从盘上读回来的**同一格**，重挂载（StrictMode 双跑 /
+ * 第二个消费者）会让 `prevRef` 从 `uninitialized` 重新开始，从而把它当成一次新迁移。
+ */
+let _startupInterruptedReported = false;
 
 /* ── 条目读写原语 ── */
 
@@ -126,7 +137,7 @@ function progressPatch(percent: number): { message: string; percent?: number } {
     : { message: i18n.t("正在下载更新 {{percent}}%", { percent }), percent };
 }
 
-/* ── 五类条目 ── */
+/* ── 七类条目：① 迁移驱动（发现/进度/完成/降级记账）+ ② 发起方自消化（失败/已最新）+ ③ 启动复位 ── */
 
 /** ① 发现 */
 function pushDiscovery(version: string): void {
@@ -207,8 +218,8 @@ function pushWarning(version: string, warning: UpdateError): void {
   _warnedKeys.add(key);
   pushToast({
     // 腿写好的那句人话（`UpdateError.message` 是 i18n key 形态）；查不到译文时 `t()` 原样返回
-    // 中文原文（i18n 的第 2 层退路），不会变成空串。
-    message: i18n.t(warning.message),
+    // 中文原文（i18n 的第 2 层退路），不会变成空串。带数值的词条由 `params` 填占位符。
+    message: i18n.t(warning.message, warning.params),
     source: SOURCE,
     severity: "warning",
     // 常驻：它要能被读第二遍（用户看不懂「漏附校验值」时需要回头再看）。`severity: "warning"`
@@ -224,7 +235,7 @@ function pushFailure(
   retry: () => void,
 ): void {
   pushToast({
-    message: i18n.t(prefix, { error: i18n.t(error.message) }),
+    message: i18n.t(prefix, { error: i18n.t(error.message, error.params) }),
     source: SOURCE,
     severity: "error",
     actions: [{ label: i18n.t("重试"), isPrimary: false, onClick: retry }],
@@ -232,7 +243,35 @@ function pushFailure(
   });
 }
 
-/** ⑥ 手动检查无更新——即查即答，短提示 */
+/**
+ * ⑥ 启动复位报出的「上次更新没装完」——**本模块里唯一不由发起方出品的一条**（`install-interrupted`）。
+ *
+ * 为什么必须有（#57.12 实测的真缺口，2026-09-12 修）：`resolveStartupInstall()` 算出这一格，
+ * 但 `initUpdateService()` 只留 `resolution.resume`、**丢掉 `outcome`**，而「谁发起谁出声」那条路
+ * 根本没有发起方（用户刚开机，什么都没点）⇒ 整改前的下场是**零通知**：用户上次更新被中断，
+ * 下次启动只看到一个安静的界面，TitleBar 也没有按钮（态是 `idle`，不是 `available`）。
+ *
+ * 🔴 触发条件**只认码**（`install-interrupted`），不认「`idle` 却带着 `update`」那种间接不变式——
+ * 后者取决于 `fail()` 当下丢不丢 `update`（今天丢、明天可能为了 [重试] 而留），一旦漂移就会
+ * 在普通下载失败上多出一条同款提示（重复出声）。码是腿/复位自己写死的，不随实现漂移。
+ *
+ * [重新下载] 的出口 = `retryDownload()`（先回头重查再重下）——与下载失败那条**共用同一个出口**，
+ * 因为复位后的处境与它一样：知道有哪个版本，但盘上没有可装的东西。
+ */
+function pushStartupInterrupted(error: UpdateError): void {
+  pushToast({
+    message: i18n.t(error.message, error.params),
+    source: SOURCE,
+    severity: "error",
+    actions: [{ label: i18n.t("重新下载"), isPrimary: false, onClick: () => { void retryDownload(); } }],
+    ttl: TOAST_TTL_ERROR,
+    // 显式打开（不靠 `defaultWake` 的 error 白名单）：**这条通知就是本次修复的全部产出**——
+    // 不弹就等于没修。写死在这里，免得将来有人收窄 `shouldWake` 时把它一起收掉。
+    wake: true,
+  });
+}
+
+/** ⑦ 手动检查无更新——即查即答，短提示 */
 function pushUpToDate(): void {
   pushToast({
     message: i18n.t("当前已是最新版本"),
@@ -352,9 +391,17 @@ function onState(next: UpdateState): void {
       // 降级放行的账随成功态一路传下来（`warning` 槽）——在这里落成独立一条。
       if (next.warning) pushWarning(next.update.version, next.warning);
       return;
+    case "idle":
+      // 🔴 `idle` 是唯一一格要**逐案看**的：普通失败/已最新都归发起方自消化（下面 default 的理由），
+      // 但**启动复位**那一格没有发起方（见 `pushStartupInterrupted`）⇒ 只认它的码，别的一律闭嘴。
+      if (next.lastError?.code === "install-interrupted" && !_startupInterruptedReported) {
+        _startupInterruptedReported = true;
+        pushStartupInterrupted(next.lastError);
+      }
+      return;
     default:
-      // idle / checking / updating / uninitialized / disabled —— 本模块**不出声**：
-      //   · `idle`：已最新与失败都在这里，但**谁发起谁说话**（发起方自消化那条路），
+      // checking / updating / uninitialized / disabled —— 本模块**不出声**：
+      //   · `idle` 的其余情形（已最新、后台/手动失败的普通态）：**谁发起谁说话**（发起方自消化那条路），
       //     迁移驱动这条路分不出后台与手动 ⇒ 一律闭嘴，宁可少说不可乱说；
       //   · `updating`：安装腿在跑，成功路径直接进程退出，此时说什么都是多余的；
       //   · `checking`：一次迁移而已，「正在检查…」不在任何一帧设计里，不新造。
