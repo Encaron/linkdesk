@@ -4,8 +4,15 @@
  *
  * 🔥 事实：54c 起内置插件 import @linkdesk/ui → node_modules symlink → packages/linkdesk-ui/dist。
  *   dist 是 gitignored 构建产物——fresh clone 后 dist 不存在，dev/build 立即炸
- *   （"Failed to resolve import @linkdesk/ui"）。→ postinstall 守卫重建（对齐
- *   scripts/install-plugin-sdk-deps.mjs 先例：CI 跳过 + 存在性守卫）。
+ *   （"Failed to resolve import @linkdesk/ui"）。→ postinstall 守卫重建（存在性守卫）。
+ *
+ * 🔴 2026-09-12：本脚本**不在 CI 跳过**——曾经照抄 scripts/install-plugin-sdk-deps.mjs 的
+ *   `if (CI) process.exit(0)`，2026-09-05 E6#54c 引入，后果是 **CI 上 Check 恒红**
+ *   （11 处 "Cannot find module '@linkdesk/ui'"）。
+ *   病根 = 照抄了先例的**代码**却没照抄它的**理由**：那边跳过的理由是「CI 自己装全量、
+ *   不重复」（说的是**装依赖**，CI 的 `npm ci` 会做同一件事）；而本脚本干的是**造产物**，
+ *   `file:` 依赖只建 symlink、dist 无第二来源 ⇒ CI 不造就是没有。
+ *   故此处**故意背离先例**：CI 与本地走同一条路（dist 缺失 ⇒ 构建；成本秒级）。
  *
  * 何时重建（gated，省重复 npm install 的秒级成本）：
  *   - dist/index.js 不存在（fresh clone / 手动清了 dist）
@@ -18,8 +25,6 @@ import { spawnSync } from "node:child_process";
 import { existsSync, statSync, readdirSync } from "node:fs";
 import { resolve, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-
-if (process.env.CI === "true" || process.env.GITHUB_ACTIONS === "true") process.exit(0);
 
 const HERE = dirname(fileURLToPath(import.meta.url)); // scripts/
 const ROOT = resolve(HERE, "..");
