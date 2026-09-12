@@ -387,18 +387,21 @@ if (mark) {
     for (const r of refusals) console.error("  " + r.replaceAll("\n", "\n  "));
     console.error("\n  → 逐条处理完再跑；确实要绕过请显式加 `-- --allow-drift`。\n");
     if (warnings.length > 0) for (const w of warnings) console.warn("  " + w);
-    process.exit(1);
+    process.exitCode = 1; // 🔴 不是 process.exit(1)——理由见文件末尾 process.exitCode = 0 处
+  } else {
+    const state = {
+      _comment:
+        "npm 发布基线——由 `npm run release:mark` 更新（勿手改）；记基线须过货架核对，见 scripts/check-npm-release.mjs 文件头",
+      packages: updated,
+    };
+    writeFileSync(STATE_FILE, `${JSON.stringify(state, null, 2)}\n`, "utf8");
+    console.log(
+      `release:mark ✔️ 已记录 ${updated.map((u) => `${u.name}@${u.version}（${u.files} 文件）`).join("、")} 为发布基线` +
+        (allowDrift ? "　⚠️ --allow-drift：本次绕过货架核对" : ""),
+    );
   }
-  const state = {
-    _comment:
-      "npm 发布基线——由 `npm run release:mark` 更新（勿手改）；记基线须过货架核对，见 scripts/check-npm-release.mjs 文件头",
-    packages: updated,
-  };
-  writeFileSync(STATE_FILE, `${JSON.stringify(state, null, 2)}\n`, "utf8");
-  console.log(
-    `release:mark ✔️ 已记录 ${updated.map((u) => `${u.name}@${u.version}（${u.files} 文件）`).join("、")} 为发布基线` +
-      (allowDrift ? "　⚠️ --allow-drift：本次绕过货架核对" : ""),
-  );
+  // ⚠️ 这里的 if/else 是**必须**的：`process.exitCode = 1` 不终止执行——少了 else，被拒的批次会
+  //    继续往下把那批「拒了又照样写」的基线落盘，「整批原子」当场失效。
 } else if (warnings.length > 0) {
   // 🟡 黄灯：永不 fail——只打印提醒，exit 0
   console.warn("\n⚠️  [npm-release] 黄灯：作者面内容与 npm 发布基线不一致（不阻塞，只是提醒）\n");
@@ -409,4 +412,15 @@ if (mark) {
 } else {
   console.log("check-npm-release ✔️ @linkdesk/* 作者面与发布基线一致");
 }
-process.exit(0);
+
+// 🔴 **结尾不调 `process.exit()`，只设 `process.exitCode`**（2026-09-12 修，实测）：
+//    `shelfLatest()` 用的是全局 `fetch`（undici），连接会以 keep-alive 留在池里。走到这里时那些
+//    句柄正处在**关闭途中**，此刻 `process.exit()` 强拆事件循环 ⇒ Windows 上 libuv 断言
+//    `Assertion failed: !(handle->flags & UV_HANDLE_CLOSING), file src\win\async.c, line 94`
+//    ⇒ **退出码变 127**（工作其实做完了：状态文件写了、黄灯也灭了，只有退出码是假的）。
+//    实证：联网路径（4 包里有漂移 ⇒ 真发 fetch）连跑 3 次 **3/3 EXIT=127**；不联网路径
+//    （基线一致 ⇒ 零 fetch）与 `--self-test` 均 EXIT=0。改法 = 让事件循环自己排空（undici 的
+//    空闲连接会在其 keep-alive 超时后自然关闭），退出码由 Node 在自然退出时读走。
+//    ⚠️ 判据：**真联网路径**跑 `npm run release:mark` 退出码必须是 0——不是「黄灯灭了」就算过
+//    （那盏灯在 127 那次也是灭的）。负控：不许靠 `-- --allow-drift` 把这条路径绕过去（绕过是
+//    显式动作，不是修好）。
