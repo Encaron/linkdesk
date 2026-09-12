@@ -101,7 +101,7 @@ Phase 1-5h ✅ 完成
 - `e5a5701` uninstallPlugin 重排序——Rust invoke 移到前端变更之前
 - `b574d8f` ContextMenu 加 stopPropagation + marketplace 卸载命令加错误日志
 - 🔥 **`aec1564` 卸载根因——Rust `fs::rename` → `copy_dir` + `fs::remove_dir_all`**（Windows Vite 文件锁致 rename 跨目录失败）
-- 🔥 结构性改进待做：invoke 统一日志 / 卸载单入口 / Rust error→前端 toast。详见 memory `uninstall-bug-recurring`
+- 🔥 结构性改进待做：invoke 统一日志 / 卸载单入口 / Rust error→前端 toast。详见 memory `bug-atlas` §A3
 
 **Bug 修复 session（2026-07-24，第三批代码质量）：**
 - `239b734` A组——G18 CoreEvents `_Phase5EventCount` hack → TODO; G19 formatTimestamp 提取到 useSendData 导出; G20 StorageService 反斜杠跨平台修复
@@ -111,7 +111,7 @@ Phase 1-5h ✅ 完成
 
 **E1 迁移 Bug（2026-07-25）：**
 - `e9bff65` 串口接收不到数据——serial-service 漏掉 Rust read_loop 100ms 超时冲刷（缝 bug）。设备不发 `\n` 时数据滞留缓冲区。修复：加 `flushTimer`。
-> 详见 memory `e1-flush-timeout-bug.md`
+> 详见 memory `bug-atlas` §A1 案例 E1
 
 分支：`phase5.5` → 将重命名为 `phase6`（Tauri 冻结），新分支 `electron` 开始迁移。Git 锚点 `52730fc`。
 
@@ -138,7 +138,7 @@ Phase 1-5h ✅ 完成
 1. `npm run check` 全绿——一条命令 = 双工程 tsc 零错误（壳 + electron/）+ ESLint `--max-warnings 0`（硬约束 13/14 全绿，零警告才过）+ vitest 全绿 + 间距网格 + pool-css。**无"基线接受"——红灯必须修到绿灯才提交。**
 2. `git diff --stat` 确认无调试日志残留（`console.log` / `debugger` / 临时注释）
 3. `git diff --staged | grep -E 'pluginId === "[a-z]|case "[a-z].*":|BOTTOM_ICONS|PLUGIN_ICON_PATH'` 返回空（无新增插件 ID 硬编码）
-4. **🔥 Vite deps 缓存自动清——`postinstall` 脚本会在每次 `npm install` 后自动 `rmSync node_modules/.vite`。** 极端情况（postinstall 被跳过、缓存仍有问题）→ 手动 `rm -rf node_modules/.vite` 再重启。（memory `vite-cache-after-import-fix.md`）
+4. **🔥 Vite deps 缓存自动清——`postinstall` 脚本会在每次 `npm install` 后自动 `rmSync node_modules/.vite`。** 极端情况（postinstall 被跳过、缓存仍有问题）→ 手动 `rm -rf node_modules/.vite` 再重启。（memory `toolbox-sop` §6.2）
 
 详见 memory `ai-pre-commit-checklist.md`——五条：完整性（改 N 个漏 M 个？）/ 归一化（同一个逻辑只一处写？）/ 边界（空/null/竞态测了吗？）/ 注册注销（mount-unmount-remount 对吗？）/ 提交前机械操作。
 
@@ -163,7 +163,7 @@ Phase 1-5h ✅ 完成
 17. **🔥 `useRef` 不得用于影响渲染输出的状态。** ref 更新不触发重渲染——React 输出和实际状态脱节。异步拿到数据 → ref 更新 → 组件不知道 → 下次任何事件触发重渲染时突然切到"新状态"→ UI 跳变/空白。渲染决策（显隐、内容切换、列表过滤）走 `useState`。ref 仅用于：DOM 引用、前值对比（不渲染）、generation counter。**教训：** #58e 用 ref 存 WebView ID → 切标签页时第二帧跳空 div → 全插件标签页空白。
 18. **🔥 Electron 窗口顶部 30px 是 `-webkit-app-region: drag` 拖拽区。** `position: fixed` 叠加层（弹窗/下拉/tooltip）放在 `top: 0` 范围内→OS 截鼠标事件做窗口拖拽。`z-index` 无效——这是 OS 级别的。所有 fixed 叠加层必须 `top: 30px`（或更高）避开 TitleBar 拖拽区。**教训：** ☰ 子面板 `top: 0` →上半部分被 TitleBar drag region 截事件 → 子面板消失 (9e6f936→8ff7a68)。
 19. **🔥 禁止模块级 `_initialized` guard + IPC 监听器注册。** 模块级函数 = 导入就执行 = 永不清理。壳 fallback 的 IPC 监听器在 WebView 就绪后成为僵尸回调（E3j #81 教训）。正确做法：一次性数据拉取（`_initOnce`）走模块级，IPC 监听器走 React `useEffect` + 引用计数（mount 注册 / unmount 清理）。ESLint `linkdesk/no-module-level-ipc-listener` 机械拦截。
-20. **🔥 preload 脚本的 IPC 监听器必须在模块顶层注册（`ipcRenderer.on` 在 `contextBridge.exposeInMainWorld` 之前），用缓冲+回放模式。** React `useEffect` 内注册太晚——IPC 事件可能在 mount 前到达。模式：模块级常驻 `ipcRenderer.on(channel, handler)` → push 到 `_buffer` → `onReady(cb)` 调用时回放 `_buffer` + 设置 `_active=true` 停止缓冲。**教训：** E5#11l Bug 4——`notifyReady` 在 `onReady` useEffect 之前到达，事件静默丢失，多 WebView 间歇性失效。详见 memory [[e5-multi-webview-6-bugs]] Bug 4。
+20. **🔥 preload 脚本的 IPC 监听器必须在模块顶层注册（`ipcRenderer.on` 在 `contextBridge.exposeInMainWorld` 之前），用缓冲+回放模式。** React `useEffect` 内注册太晚——IPC 事件可能在 mount 前到达。模式：模块级常驻 `ipcRenderer.on(channel, handler)` → push 到 `_buffer` → `onReady(cb)` 调用时回放 `_buffer` + 设置 `_active=true` 停止缓冲。**教训：** E5#11l Bug 4——`notifyReady` 在 `onReady` useEffect 之前到达，事件静默丢失，多 WebView 间歇性失效。详见 memory `multi-webview-bug-atlas` §A Bug 4。
 21. **🔥 测试 fixture 禁止真实插件名 + 真实 UI 文案（含英文，如 `"Settings"` 就是 settings 插件的英文标题）。** 测试桩数据（`viewId`/`pluginId`/`renderPath`/`title`/动作 `label`）一律用明显虚构值（`demo-plugin`/`demo-view`、`Demo View`/`Démo Vue`、`Alpha`/`Beta`/`Gamma`）——测试替身不指向真实插件，避免读者/AI 误以为存在运行时引用（硬约束 10 生产代码禁令向测试豁免区的延伸；2026-08-22 用户拍板）。**边界：** 断言被测代码产出的真实行为文案（如 i18n 输出"已隐藏"）不算违规；loader/FactorySlots 等验证真实接线而必须用真 id 的测试除外。不做 ESLint 机械规则——非时序 bug，且真 id 合法出现场景多，机械拦截必然误伤。
 22. **🔥 软件侧用户可见变更提交前，必须调用 version-bump skill 判定变更类别（feat/fix/breaking）并报告版本号判定。** 改动 `src/` 或 `electron/` 代码的 commit，message 必须带类别前缀（`feat:`/`fix:`/`breaking:`，可含 E6#编号，如 `feat:E6#xxx …`）；机械兜底 = `scripts/check-version-bump.mjs`（PreToolUse hook，警告档）+ 发布门禁脚本（E6#57.15d）。**违反=红灯——禁止「代码更新上去了版本号没更」**（2026-08-31 用户拍板；判据见 [.claude/skills/version-bump/SKILL.md](.claude/skills/version-bump/SKILL.md)）。
 
@@ -179,7 +179,7 @@ Phase 1-5h ✅ 完成
 - **drop zone 照抄 VS Code**：SPLIT_THRESHOLD=0.25 + 左右优先（不自创算法）
 - **递归分屏 SplitNode 树**：`leaf | branch(direction, [child, child], sizes)`，MAX_TREE_DEPTH=4
 
-## Phase 4 架构决策（详见 memory `phase4-design-decisions.md`）
+## Phase 4 架构决策（详见 memory `design-decisions.md`）
 
 - **插件 = 独立构建产物。** Vite 将 `plugins/` 下每个插件独立打包为 `dist/plugins/<pluginId>.js`。`.tsx` 插件重启生效，`.json` 插件即时生效（对标 VS Code）
 - **核心不认 pluginId。** 标签页行为（保底/单例/关闭确认）由 `plugin.json` 的 `tabBehavior` 声明，核心读 registry 不 switch on type
@@ -229,6 +229,6 @@ npx vitest run       # 单元测试（151 个）
 | 标签页/分屏设计 | `docs/phase3_标签页分屏/V3-Phase3-标签页分屏设计.md` |
 | 部件名称 | `docs/总体设计/V3-部件命名规范.md` |
 | 写插件 | **`docs/03-插件制造/`**——00-README 概览 / 01-API契约 / 02-生命周期 / 03-contributes / 04-分发 / 05-UI写法规约 / 06-plugin.json规范 / plugin.schema.json |
-| 已确认决策 | memory `design-decisions.md` + `phase4-design-decisions.md` |
-| 已知坑 | memory `v3-pitfalls.md` + `phase3-drag-bugs.md` |
+| 已确认决策 | memory `design-decisions.md` |
+| 已知坑 | memory `bug-atlas` |
 | 主题系统 | memory `theme-system.md` |
