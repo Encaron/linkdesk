@@ -33,6 +33,7 @@ import type {
   SerialStatsPayload,
   SerialSystemPayload,
 } from '../../src/core/types/ipc/serial';
+import type { UpdateState, DownloadProgress } from '../../src/core/types/ipc/update';
 
 /** 注册表行——channel = 接收边界实际到达的通道名；type = 契约类型名（须在本文件 import 声明） */
 export interface RuntimeDtoRow {
@@ -50,6 +51,9 @@ export const RUNTIME_DTO_REGISTRY: readonly RuntimeDtoRow[] = [
   { channel: 'workspace:activeChanged', type: 'WorkspaceActiveChangedPayload' },
   { channel: 'settings:requestGroup', type: 'SettingsRequestGroupPayload' },
   { channel: 'settings:scrollTo', type: 'SettingsScrollToPayload' },
+  // E6#57.8：主软件更新两推流——stateChanged 全量态（07 §4.2）+ progress 进度（服务层已节流）
+  { channel: IPC.update.stateChanged, type: 'UpdateState' },
+  { channel: IPC.update.progress, type: 'DownloadProgress' },
   // E5.8#28：serial 三推流通道全部注册——旧插件 vs 新壳载荷错配 dev 报错可诊断（#22.5 兜错配）
   { channel: IPC.serial.data, type: 'SerialDataPayload' },
   { channel: IPC.serial.stats, type: 'SerialStatsPayload' },

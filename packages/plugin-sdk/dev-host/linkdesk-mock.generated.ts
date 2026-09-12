@@ -363,4 +363,7 @@ export const linkdeskMock: Record<string, unknown> = {
   app: {
     getVersion: async (..._args: unknown[]) => { console.info("[linkdesk-mock] app.getVersion", ..._args); return ""; },
   },
+  update: {
+    getState: async (..._args: unknown[]) => { console.info("[linkdesk-mock] update.getState", ..._args); },
+  },
 };

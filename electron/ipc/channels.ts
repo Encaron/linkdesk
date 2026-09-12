@@ -24,7 +24,8 @@ export const IPC = {
     preloadReady: 'app:preloadReady',
     heartbeat: 'app:heartbeat',
     // E6#57（06-主软件更新 07 §二）：主软件产品身份命令通道——app 独立域（非 update.*）。
-    // main 直答（env 先例）：不进 PROXY_CHANNELS（PROXY 预留给 update.getState，见 07 §一）。
+    // main 直答（env 先例）：不进 PROXY_CHANNELS——PROXY 会给通道再挂一层 ipcMain.handle，
+    // 双登记启动即抛「second handler」；main 直答的域一律不进 PROXY（同款：update.* 四条命令）。
     getVersion: 'app:getVersion', // 只读：Electron app.getVersion()（package.json 单点，02 §2.3）
     getProductInfo: 'app:getProductInfo', // 只读：{ product, runtime } 全量身份（product.ts，关于页 8 字段）
   },
@@ -234,7 +235,11 @@ export const IPC = {
   },
   theme: { changed: 'theme:changed' },
   // E6#57.4（06-主软件更新 07 §二）：主软件更新状态机——命令四条（invoke）+ 事件两条（broadcast）。
-  // 白名单只有 `update.getState`（PROXY_CHANNELS，只读；写命令第三方不得触发 = 更新是壳私事，07 §一）。
+  // 🔴 四条命令**都不进 PROXY_CHANNELS**——它们在 update-handlers.ts 里由主进程 `ipcMain.handle`
+  //    直答（app/env 先例）；进 PROXY 会二次注册同通道 ⇒ 启动即抛「second handler」。
+  // 「第三方只读」靠**类型**落地，不靠通道白名单：池 preload 只注入 getState
+  //    （src/core/api/linkdesk-api/update.ts 的 🔴 段），写命令仅在壳 preload 的
+  //    buildShellUpdate() 超额暴露（07 §一：检查/下载/重启安装是壳私事）。
   update: {
     getState: 'update:getState',
     checkForUpdates: 'update:checkForUpdates',

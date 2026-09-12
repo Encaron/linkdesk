@@ -28,7 +28,7 @@ export type PoolExposed = Pick<LinkDeskAPI,
   | "workspace" | "filesystem" | "path" | "env" | "search" | "encoding"
   | "decorations" | "fileAssociation" | "langDef" | "lsp" | "protocol"
   | "viewContainer" | "plugins" | "pluginManager" | "window"
-  | "shell" | "hotExit" | "getFilePath" | "panel" | "settings" | "factorySlots"> & {
+  | "shell" | "hotExit" | "getFilePath" | "panel" | "settings" | "factorySlots" | "update"> & {
   /** pool 命名空间——分裂面方法级子集：池侧 = 收布局 + 发动作 + beforeClose 通道（壳侧 pushLayout/onReady/… 12 方法为壳→池推送面，池内不存在）。
    *  pool 契约必选（E5.8#22 审视 N1 修正后）——直接 Pick，无需 NonNullable
    *  E5.8#30.16（P8）：beforeClose 三方法唯一池侧（插件注册 handler / GroupTabBar 关闭路径 await）
@@ -52,7 +52,7 @@ export type ShellExposed = Pick<LinkDeskAPI,
   | "getFilePath" | "serial" | "filesystem" | "path" | "plugins"
   | "fileAssociation" | "pluginManager" | "dialog" | "pluginState" | "menu"
   | "contextKey" | "keybindings" | "p2p"
-  | "clipboard" | "shell" | "app" | "env" | "events" | "bridge" | "window"> & {
+  | "clipboard" | "shell" | "app" | "env" | "events" | "bridge" | "window" | "update"> & {
   commands: Pick<LinkDeskAPI["commands"], "registerCommand" | "_executeShellLocal">;
   tabs: Omit<LinkDeskAPI["tabs"], "onDidChangeActiveTab">;
   pool: Omit<LinkDeskAPI["pool"], "onLayout" | "ready" | "sidebarAction" | "tabAction" | "tabBarRects" | "dragPosition" | "onAdsorbHint" | "adsorbIndex" | "registerBeforeClose" | "unregisterBeforeClose" | "beforeClose">;

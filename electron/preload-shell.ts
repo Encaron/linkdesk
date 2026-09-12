@@ -146,6 +146,23 @@ function buildShellApp() {
   };
 }
 
+// E6#57.8：壳侧更新面——同 buildShellApp() 的工厂理由：契约的 update 面**只有 `getState`**
+// （第三方只读，见 src/core/api/linkdesk-api/update.ts 的 🔴 段），壳要用的写命令属超额暴露，
+// 内联进对象字面量会被 satisfies 的 excess-property 检查编译红；工厂返回走结构兼容。
+// 消费者 = 通知面板/关于页/手动检查（#57.9c、#57.12）——都在壳渲染进程。
+function buildShellUpdate() {
+  return {
+    // getState = 契约必选面（壳/池双端同步暴露——「关于」类插件读更新态）
+    getState: () => ipcRenderer.invoke(IPC.update.getState),
+    // ── 以下三条 = 壳内私有扩展（不在契约——池插件不可调）──
+    // 检查是**壳私事**：手动检查（用户点菜单）+ 后台检查（定时）都从壳发起（07 §一）。
+    checkForUpdates: (context: boolean) => ipcRenderer.invoke(IPC.update.checkForUpdates, context),
+    downloadUpdate: () => ipcRenderer.invoke(IPC.update.downloadUpdate),
+    // 抛错面：无安装器/校验失败时状态机把错误上抛，壳负责收成用户可见提示（通知面板 #57.12）
+    quitAndInstall: () => ipcRenderer.invoke(IPC.update.quitAndInstall),
+  };
+}
+
 try {
   // E5.8#20：契约面机械对齐——expose 对象 satisfies ShellExposed（24 命名空间，缺面/形状失配即编译红）
   const shellExposed = {
@@ -426,6 +443,9 @@ try {
     },
     // ── 产品身份（E6#57.2b——壳侧读宿主版本号/产品信息；关于页 E6#57.14 数据源）──
     app: buildShellApp(),
+
+    // ── 主软件更新（E6#57.8——只读 getState 进契约 + 写命令壳内私有扩展）──
+    update: buildShellUpdate(),
 
     // ── 事件（E2a #5 心跳 + E3j #77a on/emit 归一化）──
     events: {

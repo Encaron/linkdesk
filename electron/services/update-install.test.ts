@@ -188,13 +188,16 @@ describe("安装腿：落盘 → 拉起安装器 → 退出", () => {
     await vi.waitFor(() => expect(forceExit).toHaveBeenCalledTimes(1), { timeout: 2000 });
   });
 
-  it("缺省拉起方式 = app.relaunch({ execPath: 安装器, args: ['/S'] })——静默开关是 `/S` 不是 `--updated`", async () => {
+  // 逐字断言两条开关（#57.8f 判据 ①）：assisted 安装器的重启分支要 `${isForceRun}` **且** `${Silent}`
+  // 同时成立（installSection.nsh:104-110），少任何一条都不会把 App 拉回来 / 都会弹窗等人点。
+  // ⚠️ `--updated` **必须不在**这条命令里——那是安装器→App 的方向，由安装器自己加。
+  it("缺省拉起方式 = app.relaunch({ execPath: 安装器, args: ['/S', '--force-run'] })——静默 + 装完拉回 App", async () => {
     const leg = createUpdateInstaller({ getUpdateDir: () => dir, quit: () => electronMock.app.quit() });
 
     void leg(makeInfo(), installer);
     await vi.waitFor(() => expect(electronMock.lifecycleCalls).toContain("quit"));
 
-    expect(electronMock.relaunchCalls).toEqual([{ execPath: installer, args: ["/S"] }]);
+    expect(electronMock.relaunchCalls).toEqual([{ execPath: installer, args: ["/S", "--force-run"] }]);
   });
 });
 

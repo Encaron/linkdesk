@@ -71,6 +71,7 @@
  *   ✅ workspace（扩展）/ fileAssociation / search / decorations / encoding / viewContainer
  *   ✅ hotExit（E5.7#38：Hot Exit 备份——save/load/clear，主进程落盘）
  *   ✅ lsp / langDef（E5.6#14-fix/#14-lsp：编辑器在池内渲染——preload-shell 同款面迁入）
+ *   ✅ update（E6#57.8：主软件更新**只读**态——getState 主进程直答；写命令第三方不得触发，见 update.ts）
  *   ❌ pluginInstance / pluginViews / pluginRequest（per-tab 概念，不适用于池）
  */
 
@@ -92,6 +93,7 @@ import { buildViewContainer } from './preload-pool/viewcontainer';
 import { buildPanel } from './preload-pool/panel'; // E5.8#34.5：底部面板命名空间（panel.reveal）
 import { buildSettings } from './preload-pool/settings'; // E5.8#41.12：设置套命名空间（枚举/切换）
 import { buildFactorySlots } from './preload-pool/factory-slots'; // E5.8#41.14：系统插槽通用枚举面（槽位无关）
+import { buildUpdate } from './preload-pool/update'; // E6#57.8：主软件更新只读态（写命令不进契约）
 import {
   buildSerial,
   buildFilesystem,
@@ -191,6 +193,9 @@ try {
 
     // ── E5.8#41.14：系统插槽通用枚举面（任意 factoryRole 候选枚举/切换——串口/市场/设置同源）──
     factorySlots: buildFactorySlots(),
+
+    // ── E6#57.8：主软件更新只读态（getState 主进程直答；写命令第三方不得触发，不进此面）──
+    update: buildUpdate(),
   } satisfies PoolExposed;
 
   contextBridge.exposeInMainWorld(APP_NAMESPACE, poolExposed);

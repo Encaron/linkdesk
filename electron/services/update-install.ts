@@ -47,6 +47,22 @@ const STATE_FILE = 'state.json';
 const SILENT_SWITCH = '/S';
 
 /**
+ * 「装完把 App 拉回来」开关（E6#57.8f，2026-09-12 实机试出）。
+ *
+ * 🔴 **不传它，静默安装装完 App 就再也不回来了**——assisted 安装器（我们 `oneClick: false`）的重启
+ * 分支要求**两个**条件同时成立（`installSection.nsh:104-110`）：`${isForceRun}` **且** `${Silent}`。
+ * 我们只传 `/S` ⇒ 前一个不成立 ⇒ 用户更新完面对一个空桌面。
+ *
+ * ⚠️ `${isForceRun}` **不是模板里的常量**——`NsisScriptGenerator.js:29-39` 的 `flags()` 依
+ * `NsisTarget.js:579` 的开关清单**动态生成** `_isForceRun` 宏（`${StdUtils.TestParameter} $R9 "force-run"`）
+ * ⇒ 它认的正是这条命令行开关。这台机器上「找不到 `!define isForceRun`」的谜团由此闭合。
+ *
+ * ⚠️ **不要顺手加 `--updated`**：那个方向相反（安装器 → App，由安装器自己加，见 `common.nsh:122-133`
+ * 与 `installUtil.nsh:206`），我们自己传等于把「刚更新完」这件事提前说给旧进程听。
+ */
+const FORCE_RUN_SWITCH = '--force-run';
+
+/**
  * `app.quit()` 被拦时的兜底预算（④）。正常退出在毫秒级完成、本定时器根本不会触发；
  * 真触发只说明「有窗口拦了关闭」——那时若不兜底，`relaunch` 永不启动安装器，用户永久卡在「正在安装」。
  */
@@ -72,7 +88,7 @@ export interface PendingInstallRecord {
 export interface UpdateInstallDeps {
   /** 更新目录（缺省 `{userData}/update`） */
   getUpdateDir?: () => string;
-  /** 拉起安装器——缺省 `app.relaunch({ execPath, args: ['/S'] })`（① 退出后才启动） */
+  /** 拉起安装器——缺省 `app.relaunch({ execPath, args: ['/S', '--force-run'] })`（① 退出后才启动） */
   launchInstaller?: (installerPath: string) => void;
   /** 退出——缺省 `app.quit()`（优雅退出：先让 `before-quit` 收尾、布局落盘） */
   quit?: () => void;
@@ -136,7 +152,7 @@ export function createUpdateInstaller(deps: UpdateInstallDeps = {}): InstallLeg 
 
 /** 缺省拉起方式——`relaunch`：本进程退出后才启动安装器（①）；`args` 显式给全，不继承我们自己的命令行 */
 function defaultLaunch(installerPath: string): void {
-  app.relaunch({ execPath: installerPath, args: [SILENT_SWITCH] });
+  app.relaunch({ execPath: installerPath, args: [SILENT_SWITCH, FORCE_RUN_SWITCH] });
 }
 
 // ───────────────────────────── 落盘 / 读盘 / 销账 ─────────────────────────────

@@ -31,6 +31,7 @@ import { installBundledPlugins } from './plugins/bundled-install.js'; // E6#15c�
 import { recoverInterruptedUpdates } from './plugins/plugin-tree-recovery.js'; // E6#73j（G8）：复原被中断的更新替换（<id>.bak）
 import { cleanupStaleDownloads } from './services/plugin-download.js'; // E6#31a：启动清残留下载临时文件（.part/孤立包，01 §四·五 B1）
 import { cleanupUpdateResidue } from './services/update-download.js'; // E6#57.6d/e：启动清更新残留（.part + 方向守卫：删旧安装器，防自降级）
+import { initUpdateService, registerUpdateHandlers } from './ipc/handlers/update-handlers.js'; // E6#57.8：更新机制装配（状态机 + 三条腿）+ update.* 命令通道
 import { fileService } from './services/file-service.js';
 import { pluginFileService } from './services/plugin-file-service.js'; // E6#78：插件目录位置解析
 import { envService } from './services/env-service.js'; // E6#78：插件数据目录
@@ -125,6 +126,7 @@ function createWindow(): void {
   registerPluginInstallHandlers();                  // E6#11/#13（1.2-5）：装卸更 fs/net 段——无窗引用（进度走 IpcBridge.active）
   registerDialogHandlers(windowManager);            // E5.8#62 审计#4：对话框 parent 反查宿主窗——须在 windowManager 创建后注入
   registerPoolHandlers(windowManager, win);  // E5.6#8e
+  registerUpdateHandlers();                  // E6#57.8b：update.* 命令四条（服务在 whenReady 序列里已装配）
 
   // E5.6#9 → E5.7#4：创建唯一 Pool WebContentsView——极简Pool 单 WCV（#12 提前：SidebarPool 已删）
   windowManager.createMainPool();
@@ -480,6 +482,11 @@ app.whenReady().then(async () => {
   // （同版/更旧的删、比当前新的留；判据复用插件侧锚①）。🔴 真因：用户升到新版后磁盘里还躺着上一轮
   // 下好的**旧安装器** ⇒ 点「重启并更新」会把自己降级。内部吞错不拖垮启动。
   await cleanupUpdateResidue();
+  // E6#57.8：装配更新服务（状态机 + 三条腿 + 启动复位）。🔴 **必须排在 cleanupUpdateResidue() 之后**——
+  // 清理先按版本方向删掉失效安装器，复位再看盘上剩什么，两条结论才一致（#57.7a 判据 3；顺序反了会
+  // 出现「清理说删了、复位说还在」）。复位要读盘（异步），而服务的 resume 是同步闭包 ⇒ 在
+  // initUpdateService 内部 await 出结果再装进闭包，顺序由这条 await 链锁死。
+  await initUpdateService();
   // E5.7#48：Registry 主进程化——静态声明三表（LangDef/Protocol/FileAssociation）预加载，
   // 必须在 createWindow（池 WCV 创建于其内）之前——首个 IPC 查询到达时表已填好，无竞态窗口。
   // 装/卸/重装重扫通道注册一次；壳崩重建走 rebuildShell→createWindow，不经过 whenReady，

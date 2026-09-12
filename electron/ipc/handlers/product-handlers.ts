@@ -3,9 +3,10 @@
  *
  * main 直答（env-handlers 先例——E2c #13b env:get 同形：主进程持有数据的只读查询由 ipcMain.handle
  * 直接回传，壳/池 preload 各自 ipcRenderer.invoke 直达）。**app:getVersion / app:getProductInfo
- * 不进 PROXY_CHANNELS**——07 §一：PROXY 白名单预留给 update.getState（第三方关于类插件读版本号）；
- * 若双登记（本 handler + IpcBridge proxy 同通道）→ ipcMain.handle 二次注册，Electron 启动即抛
- * "Attempted to register a second handler"。
+ * 不进 PROXY_CHANNELS**——PROXY 那套会给每个通道**再挂一层** `ipcMain.handle` 转发到壳渲染进程；
+ * 双登记（本 handler + IpcBridge proxy 同通道）⇒ 二次注册，Electron 启动即抛
+ * "Attempted to register a second handler"。main 直答的域一律不进 PROXY（同款：`update.*`
+ * 四条命令也在 update-handlers.ts 直答，见 update-handlers.ts 文件头）。
  *
  * 数据源 = electron/product.ts（product.json 三件套 + process.versions 动态增强，02 §2.2）。
  * 永不抛：dev 无 product.json / 字段占位空 → commit/date 降级 '—'（07 §四.1）。

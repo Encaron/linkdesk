@@ -18,7 +18,7 @@ npm install -D @linkdesk/plugin-sdk
 > 自动生成，**勿手改**——由 `scripts/generate-api-cheatsheet.mjs` 从 `@linkdesk/contracts` 的 `linkdesk.d.ts` 现读产出，
 > `npm run check` 机械盯漂。完整签名与逐方法说明见 `linkdesk.d.ts` 本体（IDE 里可直接跳转）。
 
-**14 个域接口 → 45 个命名空间 / 242 个方法**，全部经 `window.linkdesk.<命名空间>.<方法>` 调用。（另含 1 个废弃别名 `config`，方法不重复计入）
+**15 个域接口 → 46 个命名空间 / 243 个方法**，全部经 `window.linkdesk.<命名空间>.<方法>` 调用。（另含 1 个废弃别名 `config`，方法不重复计入）
 
 | 命名空间 | 方法数 | 方法 | 说明 |
 |:--|:--:|:--|:--|
@@ -67,6 +67,7 @@ npm install -D @linkdesk/plugin-sdk
 | `settings` | 3 | `list` `getActive` `setActive` | —— |
 | `factorySlots` | 4 | `listRoles` `list` `getActive` `setActive` | —— |
 | `app` | 1 | `getVersion` | app 命名空间——只读产品身份 |
+| `update` | 1 | `getState` | update 命名空间——只读更新状态（供「关于」类插件读宿主版本/更新态） |
 
 ⚠️ = 契约可选命名空间（只在一侧注入）：`bridge` `hotExit`——调用前先判断是否存在，另一侧为 `undefined`。
 ° = 契约标 `?` 的成员：只在一侧 preload 注入（绝大多数是壳侧独有），**插件跑在池里**——调用前先判存在。

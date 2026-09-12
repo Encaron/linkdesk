@@ -1,7 +1,7 @@
 /**
  * 🔥 linkdesk.d.ts——window.linkdesk 插件 API 契约（自动生成，勿手改）
  *
- * 生成源：src/core/api/linkdesk-api.ts + linkdesk-api/（14 域接口 + types.ts）
+ * 生成源：src/core/api/linkdesk-api.ts + linkdesk-api/（15 域接口 + types.ts）
  *         + src/core/types/ipc/* + src/core/types/pool/*（wire 载荷类型）
  * 生成器：scripts/generate-contract.mjs（Route C——契约类型文件为源，纯类型打包）
  * 改契约源 → 跑 `node scripts/generate-contract.mjs`（npm run check 里 check-contracts 强制）
@@ -2195,16 +2195,152 @@ export interface AppAPI {
         getVersion(): Promise<string>;
     };
 }
+/** 有可用更新时的全量描述——`UpdateState.available` 起各态携带 */
+export interface UpdateInfo {
+    /** 新版本（SemVer，无 v 前缀） */
+    version: string;
+    /** 当前运行版本（`app.getVersion()`——02 §2.3 唯一运行时来源） */
+    currentVersion: string;
+    /** ISO 发布日期（Release `published_at`） */
+    publishedAt: string;
+    /** 发行说明页 URL（GitHub release `html_url`） */
+    releaseNotesUrl: string;
+    /** 安装器直链（`available` 之后才有——检查腿就能拿到，下载才消费） */
+    downloadUrl?: string;
+    /**
+     * 安装包 sha256（64 位小写 hex，**已剥 `sha256:` 前缀**）。
+     * 🔴 **源 = Release asset 的 `digest` 字段**（GitHub 服务端自动算）——API 里**没有** `checksum` 字段，
+     * 照名字取恒 `undefined` ⇒ 每次都走「未附 ⇒ 降级放行」⇒ 校验静默失效（05-文档与发布/02-发布流水线.md §1.5.1）。
+     */
+    checksum?: string;
+    /** 安装包字节数（Release asset `size`） */
+    size?: number;
+}
+/**
+ * 检查腿六类 + 下载腿五类（01 §2.3 / §2.4）。
+ * 文案必须互不相同——「当前已是最新版本」和「tag 不是 SemVer」是两件事，不许各归一半。
+ *
+ * ⚠️ 暂不单独 `export`：当前唯一消费方是本文件的 `UpdateError.code`，knip 门禁不许空导出。
+ * 壳侧要做「错误码 → 文案」映射时（#57.12）取 `UpdateError["code"]`，或届时把它升回具名导出。
+ */
+export type UpdateErrorCode =
+// —— 检查腿（六类） ——
+/** 不可达/超时/代理未生效（本腿必走 main-fetch.ts，E6#76） */
+'network'
+/** GitHub 403/429（`x-ratelimit-remaining: 0`）→「稍后自动重试」，不说成网络故障 */
+ | 'rate-limited'
+/** 仓库不存在 / 无 Release（404） */
+ | 'not-found'
+/** JSON 结构非法 / 缺 `tag_name`/`published_at` */
+ | 'invalid-response'
+/** 🔴 Release 到手但匹配不到 asset（命名漂移）——**不许报成 network** */
+ | 'asset-missing'
+/** 🔴 `tag_name` 非合法 SemVer——**与「无更新」分开报**，静默忽略会让发布事故隐形 */
+ | 'version-unparsable'
+// —— 下载腿（五类） ——
+/** sha256 不符 → 删文件 + 报错 */
+ | 'checksum-mismatch'
+/** 🔴 Release 未附校验值 → 记一笔 + 降级放行（不拦更新，01 §2.4） */
+ | 'checksum-unavailable'
+/** 落盘失败（磁盘满/无权限） */
+ | 'write-error'
+/**
+ * 🔴 传输中断——两种子情形共用一个码：① 进程中途退出留下的下载 → 重启后归 `idle + interrupted`，
+ * **不复活 `downloading`**（#57.6f）；② 本次下载**收了一半就断**（已收 < Content-Length，#57.6a）。
+ * 两者的用户语义与处置完全相同（这次没下成，重下），拆两码只会让壳多写一条一模一样的文案。
+ * ⚠️ 与 `network` 的分界：**连接阶段**就连不上 / 挂死超时 = `network`；**已经在下、半路断** = 本码。
+ */
+ | 'interrupted'
+/** 用户/系统取消 */
+ | 'canceled';
+/** 一次失败的结构化记账——态内 `lastError`（不抛错，07 §4.1） */
+export interface UpdateError {
+    code: UpdateErrorCode;
+    /** 人类可读（i18n key 形态） */
+    message: string;
+}
+/** 下载进度——`UpdateState.downloading` 携带，节流 ≤500ms 一条（07 §4.2） */
+export interface DownloadProgress {
+    /** 已下载字节 */
+    transferred: number;
+    /** 总字节 */
+    total: number;
+    /** 0-100 整数 */
+    percent: number;
+}
+/**
+ * 更新状态机判别联合（01 §2.1 九态）。
+ *
+ * ```
+ * uninitialized → disabled（更新源不可用）/ idle
+ * idle ──check──▶ checking ──新版本──▶ available（无更新/出错 → idle）
+ * available ──download──▶ downloading ──完成──▶ downloaded（失败 → idle + lastError）
+ * downloaded ──「稍后」──▶ idle（保留 update，不重下）
+ *            └─「重启并更新」──▶ updating ──quitAndInstall──▶ 进程退出
+ * ready = downloaded 的提示态（toast「重启并更新」已出）
+ * ```
+ *
+ * 🔴 **`downloaded`/`ready` 带 `warning` 槽（2026-09-12 用户拍板 ⇒ 选 (a)「给状态加 warning 槽」）**：
+ * 降级放行（`checksum-unavailable` 等「照常安装、但要记一笔」的情形）**必须落在这个槽里**。
+ * 此前只有一个 `idle.lastError` 槽，而**降级放行时状态走的是 `downloaded`** ⇒ 照旧类型实现这笔账
+ * 必然被无声丢掉（发布侧永远看不见自己漏附了校验值，拍板想要的效果归零；同属
+ * [[snapshot-shadows-truth-bug-class]] ④「只有一次机会 + 失败不出声」）。
+ *
+ * ⚠️ `warning` ≠ `lastError` 的复本：**`lastError` = 这次没成**（回 `idle`，有出口等用户重试）；
+ * **`warning` = 成了，但有一件发布侧该知道的事**（态照常往下走）。所以它只出现在「成功那条路」上，
+ * 且**跨态传递**：`downloaded.warning` →（壳出提示时）→ `ready.warning`。
+ */
+export type UpdateState = {
+    type: 'uninitialized';
+} | {
+    type: 'disabled';
+    reason: string;
+} | {
+    type: 'idle';
+    update?: UpdateInfo;
+    lastError?: UpdateError;
+} | {
+    type: 'checking';
+} | {
+    type: 'available';
+    update: UpdateInfo;
+} | {
+    type: 'downloading';
+    update: UpdateInfo;
+    progress: DownloadProgress;
+}
+/** `warning` = 降级放行的记账（如 `checksum-unavailable`）——见上方 🔴，不是失败 */
+ | {
+    type: 'downloaded';
+    update: UpdateInfo;
+    warning?: UpdateError;
+} | {
+    type: 'updating';
+    update: UpdateInfo;
+}
+/** `downloaded` 的提示态——`warning` 由 `downloaded` 传递而来（消费者是壳，#57.9/#57.12） */
+ | {
+    type: 'ready';
+    update: UpdateInfo;
+    warning?: UpdateError;
+};
+export interface UpdateAPI {
+    /** update 命名空间——只读更新状态（供「关于」类插件读宿主版本/更新态）。 */
+    update: {
+        /** 读当前状态机全量态（07 §4.1：永不抛——服务必然有态）。 */
+        getState(): Promise<UpdateState>;
+    };
+}
 /**
  * linkdesk API——插件代码的类型安全入口。
  * 对标 VS Code `vscode` 对象的全局命名空间结构。
  * 池 preload 注入的命名空间为插件运行时真相源（required）；
  * 仅 bridge（真壳独有）/ hotExit（池侧独有）为 `?` 可选——另一侧不注入（E5.8#22 审视 N1 修正：
  * 其余桥面 window/pool/shell/getFilePath 双端实有注入，契约标必选）。
- * E5.8#0d.10-9e：由 12 个命名空间域接口交叉组装（interface→type intersection，
+ * E5.8#0d.10-9e：由 15 个命名空间域接口交叉组装（interface→type intersection，
  * 索引访问 LinkDeskAPI["pool"]/["configuration"] 等消费方契约不变）。
  */
-export type LinkDeskAPI = CommandsAPI & AppearanceAPI & TabsAPI & KeybindingsAPI & UiAPI & DataAPI & WorkspaceAPI & EditorAPI & PluginsAPI & ShellAPI & PanelAPI & SettingsAPI & FactorySlotsAPI & AppAPI;
+export type LinkDeskAPI = CommandsAPI & AppearanceAPI & TabsAPI & KeybindingsAPI & UiAPI & DataAPI & WorkspaceAPI & EditorAPI & PluginsAPI & ShellAPI & PanelAPI & SettingsAPI & FactorySlotsAPI & AppAPI & UpdateAPI;
 /** 图标映射条目——字体 glyph 形态（单色/带色字体，seti 类每图标一色；codicon 即保底单色） */
 export interface IconThemeGlyph {
     /** CSS 类名（codicon 保底 / 自定义图标字体资产） */
