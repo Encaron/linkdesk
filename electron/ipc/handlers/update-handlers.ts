@@ -25,6 +25,7 @@ import { UpdateService } from '../../services/update-service.js';
 import { createUpdateProbe, isUpdateSourceConfigured } from '../../services/update-source.js';
 import { createUpdateDownloader } from '../../services/update-download.js';
 import { createUpdateInstaller, resolveStartupInstall } from '../../services/update-install.js';
+import { fetchReleaseNotes } from '../../services/update-release-notes.js';
 
 /** 更新服务单例——装配一次（`initUpdateService`），壳崩重建复用（无状态 handler 只管转发） */
 let service: UpdateService | null = null;
@@ -68,14 +69,20 @@ function requireService(): UpdateService {
 /**
  * 注册 `update.*` 命令处理器。
  *
- * **命令四条**（07 §4.1 错误语义逐条对齐）：
+ * **命令五条**（07 §4.1 错误语义逐条对齐）：
  * - `getState`：永不抛（服务必然有态）
  * - `checkForUpdates` / `downloadUpdate`：网络/校验错落**态内** `lastError`，不抛（服务层已收口）
  * - `quitAndInstall`：**抛**（无安装器/校验失败）——`loggedHandle` 记日志后原样 rethrow
+ * - `getReleaseNotes`：**抛**（失败且无缓存兜底时）——但它**不属于状态机**，见下
  *
- * ⚠️ `update.getReleaseNotes`（#57.8e）**本格不注册**：它要主进程出网 + 落 `{userData}` 缓存 +
- * 24h 过期，是独立一块（消费方 #57.13b 也在后面）。通道常量已在 `channels.ts` 就位，
- * **不注册空壳**——注册了却没有实现 = 死代码 + 一条到不了的通道。
+ * 🔴 **`getReleaseNotes` 走的是另一条线，不经过 `UpdateService`**（E6#57.8e 定）：状态机管的是
+ * 「有个新版本等着处理」这件事的生命周期（九态、广播、下载/安装腿），而发行说明是**一份只读文档**
+ * ——它没有状态、不广播、也不该在「有没有更新」这件事上留下任何痕迹。硬塞进服务只会让状态机多出
+ * 一堆与它无关的字段。它与服务的**唯一共同点**是「都从同一个更新源取数」，那一层已经由
+ * `update-http.ts`（共用出网面）承担了。故本 handler **直接调腿，不 requireService()**。
+ * ⚠️ 但这**不等于**「不装配也能用」：`registerUpdateHandlers()` 开头那次 `requireService().setCallbacks()`
+ * 是为了取服务实例（④ 号防线），漏调 `initUpdateService()` 照样在启动时抛——区别只在
+ * **handler 体内不碰服务状态**（发行说明与「当前是什么态」无关）。
  */
 export function registerUpdateHandlers(): void {
   // ④ 回调必须在 guard 之前（每次调用重绑最新 IpcBridge 实例）
@@ -105,4 +112,10 @@ export function registerUpdateHandlers(): void {
   loggedHandle(IPC.update.downloadUpdate, () => requireService().downloadUpdate());
 
   loggedHandle(IPC.update.quitAndInstall, () => requireService().quitAndInstall());
+
+  // `version` 收窄到「非空字符串」，其余（缺省/非字符串/空串）一律当「不传 = 最近一版」——
+  // 与 `context === true` 同款 fail-safe 方向：缺省是**有意义的正常输入**，不是错误。
+  loggedHandle(IPC.update.getReleaseNotes, (_event, version: unknown) =>
+    fetchReleaseNotes(typeof version === 'string' && version !== '' ? version : undefined),
+  );
 }

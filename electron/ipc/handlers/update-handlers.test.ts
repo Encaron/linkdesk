@@ -8,8 +8,10 @@
  *   ② **异步读盘 → 同步 `resume` 闭包**：盘上写一份真记录，装配后状态机必须真落在该落的态
  *   ③ 🔴 **漏接线要炸在启动时**：未装配就注册 → 抛，且不留下半注册的通道（不许静默降级成「没有更新」）
  *   ④ **回调重绑在 once-guard 之前** + 广播频道的 `storeForReplay` 取舍（`progress` 必须 false）
- * 另钉一条**没做**的事：`update.getReleaseNotes` 本格不注册（#57.8e）——通道常量在，但不注册空壳，
- * 所以下面「注册的恰好是这四条」是**有意**的断言，不是漏写。
+ * 另钉一条**曾经的「没做」**：`update.getReleaseNotes` 本格不注册（#57.8e 之前）——通道常量在、
+ * 但不注册空壳，于是「注册的恰好是四条」是一条**有意**的断言。✅ 2026-09-13 `#57.8e` 落地时
+ * **它如约变红**，改成五条（这条断言存在的全部意义就在这一次红——它挡住的是「有个通道但没人实现」
+ * 的静默死代码）。
  *
  * 测试手法（对标 `filesystem-guard.test.ts` / `serial-service.test.ts`）：`vi.resetModules()` + 动态
  * `import` ——**模块级单例**（`service` / `_registered`）用例间互不污染；electron 桩用文件内
@@ -28,6 +30,8 @@ import * as path from "node:path";
 const stub = vi.hoisted(() => {
   const handlers = new Map<string, (...args: unknown[]) => unknown>();
   const broadcastCalls: unknown[][] = [];
+  /** 发行说明取数腿收到的实参——**本文件不出真网**，只钉 handler 传了什么（见下方那条收窄用例） */
+  const releaseNotesCalls: unknown[][] = [];
   const app = {
     version: "1.2.3", // = loadProduct().version（唯一运行时版本源）——复位判据「我现在跑在哪个版本」
     userData: "",
@@ -44,6 +48,7 @@ const stub = vi.hoisted(() => {
     app,
     handlers,
     broadcastCalls,
+    releaseNotesCalls,
     ipcMain: { handle: (channel: string, fn: (...args: unknown[]) => unknown) => handlers.set(channel, fn) },
     // 本文件的用例一律不出网——真调用了要立刻炸，不能靠「恰好没调到」
     net: { fetch: () => { throw new Error("本用例不该出网"); } },
@@ -52,6 +57,21 @@ const stub = vi.hoisted(() => {
 vi.mock("electron", () => stub);
 vi.mock("../ipc-bridge.js", () => ({
   IpcBridge: { active: { broadcast: (...args: unknown[]) => stub.broadcastCalls.push(args) } },
+}));
+// 发行说明取数腿换成记账替身——本文件测的是**接线**（通道注册 + 参数收窄），取数算法在
+// `update-release-notes.test.ts` 里对着真本地 HTTP 服务测（两件事分开，失败时才知道坏在哪）。
+vi.mock("../../services/update-release-notes.js", () => ({
+  fetchReleaseNotes: (...args: unknown[]) => {
+    stub.releaseNotesCalls.push(args);
+    return Promise.resolve({
+      source: "network",
+      version: NEXT,
+      publishedAt: "2026-09-12T00:00:00Z",
+      body: "# fixture",
+      htmlUrl: "https://example.invalid/releases/tag/v9.9.9",
+      historical: [],
+    });
+  },
 }));
 
 import { IPC } from "../channels.js";
@@ -182,19 +202,40 @@ describe("② 异步读盘 → 同步 resume 闭包：盘上的事实决定启�
   });
 });
 
-describe("通道面——注册的恰好是四条（getReleaseNotes 有意不在此格）", () => {
-  it("注册四条命令通道；再来一次不重复注册", async () => {
+describe("通道面——注册的恰好是五条（#57.8e 落地后 getReleaseNotes 入列）", () => {
+  it("注册五条命令通道；再来一次不重复注册", async () => {
     await mod.initUpdateService();
     mod.registerUpdateHandlers();
 
     expect([...stub.handlers.keys()].sort()).toEqual(
-      [IPC.update.getState, IPC.update.checkForUpdates, IPC.update.downloadUpdate, IPC.update.quitAndInstall].sort(),
+      [
+        IPC.update.getState,
+        IPC.update.checkForUpdates,
+        IPC.update.downloadUpdate,
+        IPC.update.quitAndInstall,
+        IPC.update.getReleaseNotes,
+      ].sort(),
     );
-    // ⚠️ `getReleaseNotes`（#57.8e）不在上面那组里是**故意的**——通道常量在 channels.ts 就位，
-    // 但本格不注册空壳（注册了却没有实现 = 死代码 + 一条到不了的通道）。
+    // 🔴 五条与 `channels.ts` 里 `update` 命名空间的**命令**常量一一对应——多一条（注册了没有
+    // 实现 = 死代码 + 到不了的通道）或少一条（有常量没人实现）都在这里当场红。
 
     mod.registerUpdateHandlers(); // once-guard
-    expect(stub.handlers.size).toBe(4);
+    expect(stub.handlers.size).toBe(5);
+  });
+
+  // `version` 的收窄与 `context === true` 同款：**透给取数腿的只可能是字符串或 undefined**。
+  // 为什么这条值得钉：取数腿里 `normalizeTag(version)` 直接 `.trim()`——收窄漏了的话，
+  // 渲染侧传个数字进来就是一条 `TypeError` 穿透到 invoke reject（而不是一条能看懂的失败）。
+  it("`version` 收窄：非字符串/空串/缺省 ⇒ 一律按「不传 = 最近一版」，不把垃圾透给取数腿", async () => {
+    await mod.initUpdateService();
+    mod.registerUpdateHandlers();
+
+    await invoke(IPC.update.getReleaseNotes, "9.9.9");
+    await invoke(IPC.update.getReleaseNotes, 42);
+    await invoke(IPC.update.getReleaseNotes, "");
+    await invoke(IPC.update.getReleaseNotes);
+
+    expect(stub.releaseNotesCalls).toEqual([["9.9.9"], [undefined], [undefined], [undefined]]);
   });
 
   it("`context` 严格收窄到 `=== true`——非布尔真值按「后台检查」处理", async () => {

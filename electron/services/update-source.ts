@@ -23,17 +23,17 @@
  */
 
 import { appPackageName, loadProduct } from '../product.js';
-import { mainFetch } from './main-fetch.js';
+import {
+  INVALID_RESPONSE_MESSAGE,
+  META_TIMEOUT_MS,
+  NETWORK_MESSAGE,
+  NOT_FOUND_MESSAGE,
+  classifyHttpFailure,
+  fetchWithTimeout,
+} from './update-http.js';
 import { compareVersions, parseStrictSemver } from '../../src/core/utils/plugin/semverUtils.js';
 import type { UpdateError } from '../../src/core/types/ipc/update';
 import type { UpdateProbeResult } from './update-service.js';
-
-/**
- * 元数据腿超时预算——检查是一发小请求（本机实测 GitHub API < 1s），15s 远超正常值，
- * 只兜「连上了但半死不活」这一种。**总时长**而非空闲超时：这里没有流，「多久没动静」无从谈起
- * （对比 plugin-download 的下包腿——那里刻意用空闲超时，见其头注）。
- */
-const META_TIMEOUT_MS = 15_000;
 
 /**
  * 🔴 安装包名的**同形副本**——逐字符等于 `electron-builder.yml` 顶层 `artifactName`
@@ -49,12 +49,7 @@ const ASSET_NAME_TEMPLATE = '${name}-setup-${version}.${ext}';
 /** NSIS 目标扩展名（`${ext}` 的实值）。Windows 是首个平台（01 §2.5）；换平台时这里要跟 artifactName 一起变。 */
 const INSTALLER_EXT = 'exe';
 
-/** 六类失败文案——**互不相同**，且各自指向真正的责任方（用户网络 / 稍后重试 / 发布配置 / 发布命名） */
-const NETWORK_MESSAGE =
-  '网络不可用或更新服务无响应——请检查网络（使用代理时确认系统代理已生效），稍后会自动重试';
-const RATE_LIMITED_MESSAGE = '更新服务暂时限流——稍后会自动重试，无需处理';
-const NOT_FOUND_MESSAGE = '更新源不存在或尚未配置——请检查发布配置';
-const INVALID_RESPONSE_MESSAGE = '更新源返回的数据无法识别——更新源地址可能配置有误';
+/** 六类文案的后两类——**读懂了响应之后**的语义判定，故不与 HTTP 往返那四条同居 `update-http.ts` */
 const ASSET_MISSING_MESSAGE = '找到新版本但安装包缺失——发布侧可能改过安装包文件名';
 const VERSION_UNPARSABLE_MESSAGE = '更新源的版本标签不是合法版本号——发布侧的 tag 可能不合 SemVer 规范';
 
@@ -117,7 +112,10 @@ export function createUpdateProbe(
     } catch {
       return err('network', NETWORK_MESSAGE); // 连不上 / 超时 / 代理未生效（发起阶段）
     }
-    if (!resp.ok) return statusFailure(resp);
+    if (!resp.ok) {
+      const failure = classifyHttpFailure(resp.status);
+      return err(failure.code, failure.message);
+    }
 
     let body: unknown;
     try {
@@ -129,16 +127,6 @@ export function createUpdateProbe(
 
     return interpret(body, current, getAppName());
   };
-}
-
-/** 非 2xx 的归因——403/429 = 限流（GitHub 用 403 表达限流，`x-ratelimit-remaining: 0` 是佐证）；404 = 源不存在。 */
-function statusFailure(resp: Response): UpdateProbeResult {
-  if (resp.status === 403 || resp.status === 429) return err('rate-limited', RATE_LIMITED_MESSAGE);
-  if (resp.status === 404) return err('not-found', NOT_FOUND_MESSAGE);
-  // 🔴 其余非 2xx（5xx / 其它 4xx）在固定错误码全集（07 §三）里**没有对应档**——见清单该格的红字登记。
-  // 归 `network` 是**就近**而非**准确**：文案已措辞覆盖「服务无响应」这一子情形。**不许**改归
-  // `not-found` / `asset-missing`——那两个把矛头指向发布侧，而服务端 5xx 时发布侧什么都没做错。
-  return err('network', NETWORK_MESSAGE);
 }
 
 /**
@@ -214,23 +202,6 @@ function checksumFromDigest(digest: unknown): string | undefined {
   if (typeof digest !== 'string') return undefined;
   const m = /^sha256:([0-9a-f]{64})$/.exec(digest.trim().toLowerCase());
   return m ? m[1] : undefined;
-}
-
-/** 出网——**唯一出口**是 `main-fetch.ts`（E6#76）；`redirect: 'follow'` 与下包腿同语义。 */
-async function fetchWithTimeout(url: string, timeoutMs: number): Promise<Response> {
-  const ac = new AbortController();
-  const timer = setTimeout(() => ac.abort(), timeoutMs);
-  try {
-    return await mainFetch(url, {
-      redirect: 'follow',
-      signal: ac.signal,
-      // GitHub REST 要求声明 Accept；**不手写 User-Agent**——Chromium 网络栈自带合法的那个，
-      // 而 UA 在 Chromium 里属受限头，手写反而可能被忽略或报错。
-      headers: { Accept: 'application/vnd.github+json' },
-    });
-  } finally {
-    clearTimeout(timer);
-  }
 }
 
 /** 失败结果的唯一构造口——保证每条错误都带 code + 文案（码集由 07 §三 固定，本文件不新造码） */

@@ -116,6 +116,48 @@ export interface UpdateError {
 }
 
 /**
+ * 这一份发行说明数据是**刚在网拉的**还是**本地缓存兜的**（E6#57.8e）。
+ *
+ * 为什么要一个字段而不是「调用方自己知道」：**断网兜底这条路只有靠它才可断言**——
+ * 没有它，「网挂了有没有真的用上缓存」就只能靠数网络桩被调了几次来间接猜。
+ * 顺带：渲染侧将来若要标一句「离线数据」也有据可依（05 §2.4 的三态里暂时没有这一态）。
+ */
+type ReleaseNotesSource = 'network' | 'cache';
+
+/** 左窄栏版本历史的一条——**只有标头，没有正文**（正文按需选中那一版才给，见下）。
+ *  ⚠️ **不导出**（同文件 `UpdateErrorCode` / `WindowBounds` 先例）：唯一消费方就是下面 `ReleaseNotes`
+ *  的 `historical`——knip 门禁把「导出却无人 import」判红，而那个红是对的（渲染侧真要单独命名它，
+ *  用 `ReleaseNotes["historical"][number]` 即可，届时要导出再加，两字的事）。 */
+interface ReleaseNotesSummary {
+  /** 版本号（SemVer，无 v 前缀；⚠️ 发布侧打了不合规范的 tag 时原样给，见 `update-release-notes.ts` 文件头 ⑤） */
+  version: string;
+  /** ISO 发布日期 */
+  publishedAt: string;
+}
+
+/**
+ * 发行说明一次取数的全量返回——E6#57.8e（07 §三 定死形状 ＋ `source` 见上）。
+ *
+ * 🔴 **只带被选中那一版的正文**（`body`），历史列表只给标头（`historical`）：30 条正文一起传
+ * 是纯浪费（GitHub 的 body 动辄几千字），而用户一次只看一版。这不影响「切换版本」的体验——
+ * 列表已全在手上，换一版**不需要再出网**（正文都在同一次响应里，只是没往回传）。
+ */
+export interface ReleaseNotes {
+  /** 这份数据从哪来（见 `ReleaseNotesSource`） */
+  source: ReleaseNotesSource;
+  /** 选中版本的版本号；⚠️ 与请求的 `version` 不一致 = **请求的那一版不在列表里，已回落到最近一版** */
+  version: string;
+  /** ISO 发布日期 */
+  publishedAt: string;
+  /** Release body（GFM 原文）——渲染侧过 MarkdownView + sanitize（05 §2.4，与插件详情页同一条路） */
+  body: string;
+  /** 「在 GitHub 上查看」链接（Release `html_url`） */
+  htmlUrl: string;
+  /** 左窄栏版本历史（倒序；最多 30 条，05 §2.4） */
+  historical: ReleaseNotesSummary[];
+}
+
+/**
  * 更新状态机判别联合（01 §2.1 九态）。
  *
  * ```
