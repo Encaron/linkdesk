@@ -33,22 +33,27 @@
  * 在广播里的形状**一模一样**。「后台失败要不要出声」缺**数据路径**，已登记在 #57.12（它才是出声方）。
  */
 import { useEffect, useState } from "react";
+import { getShellExposed } from "../core/api/linkdesk-api/surfaces";
 import type { ShellExposed } from "../core/api/linkdesk-api/surfaces";
 import type { DownloadProgress, UpdateState } from "../core/types/ipc/update";
 
 /**
- * 壳侧私有更新面取用点——**全仓唯一的转型处**。
+ * 壳侧私有更新面取用点——**本文件专属的那半**。
  *
  * `window.linkdesk` 的静态类型是插件契约 `LinkDeskAPI`（其 `update` 面**只有 `getState`**——
  * 「第三方只读」这条约束的落点是类型，见 `src/core/api/linkdesk-api/update.ts` 的 🔴 段）。
  * 壳要用的写命令与事件订阅属**超额暴露**，其声明在 `ShellExposed["update"]`
  * （`src/core/api/linkdesk-api/surfaces.ts`），由 `preload-shell.ts` 的 `satisfies` 用 tsc 兜住。
- * 这里把运行时的超额暴露收窄回那份声明类型 ⇒ 消费方零 `any`、零第二处转型。
+ *
+ * 🔴 **转型本身不在本文件**——`#57.13` 起收拢到 `getShellExposed()`（surfaces.ts）。
+ * 原注写的是「全仓唯一的转型处」，而 `#57.13` 的 `app.getProductInfo` 成了第二个真实消费方：
+ * 若各消费方各写一处 `as`，「运行时面 vs 声明面」的差额就散了。现在**转型点仍只有一处**，
+ * 本函数退化为「取全量 → 摘 update 面」的两行委托（消费方签名与退化语义逐字不变）。
  *
  * 非壳环境（vitest 无 preload / 预览页）返回 `undefined`，调用方各自决定怎么退化。
  */
 export function getShellUpdateApi(): ShellExposed["update"] | undefined {
-  return window.linkdesk?.update as ShellExposed["update"] | undefined;
+  return getShellExposed()?.update;
 }
 
 // ── 模块级单例（壳渲染进程内唯一一份；跟随消费者引用计数存活）──

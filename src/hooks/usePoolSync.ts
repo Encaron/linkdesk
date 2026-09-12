@@ -30,6 +30,7 @@ import { layoutEngine, narrowPanelEdge, narrowSidebarEdge } from "../core/servic
 import { getConfigurationValue } from "../core/services/configuration/ConfigurationService"; // E5.7#1：titleBar.menuBarVisible
 import { ContextKeyService } from "../core/registry/commands/ContextKeyService"; // E5.8#37.6：sidebarPosition 当开关 context key
 import { useUpdateState } from "./useUpdateState"; // E6#57.11：更新态 → TitleBar 按钮显隐/文字（九态映射在 updateCommands.ts）
+import { useReleaseNotes } from "./useReleaseNotes"; // E6#57.13：发行说明标签页载荷（壳想、池画）
 import { UPDATE_ACTIONABLE_KEY, UPDATE_BUTTON_LABEL_KEY, isUpdateActionable, updateButtonKeyFor } from "../core/commands/shell/updateCommands"; // E6#57.11
 import { getAssetPath } from "../core/utils/path/assetPath"; // E5.7#5：logoUrl——池不 import core，壳解析推送
 import { getTabCreatableViews } from "../pluginLoader/contributions/viewRegistry";
@@ -90,6 +91,12 @@ export function usePoolSync({ windows, sidebarView, isSidebarVisible, panelActiv
   // 且进度**不是迁移**（实测 update-service.ts:267 `reportProgress` 走 onProgress 通道、
   // 不碰 onStateChanged）⇒ 不存在高频重推。
   const updateState = useUpdateState();
+
+  // E6#57.13：发行说明态——壳视图数据源（**壳想、池画**：本处订阅，组装时挂到 tab 上推给池）。
+  // 为什么挂在这里：`useSyncExternalStore` 的快照在态未变时**引用恒等**（useReleaseNotes.ts 的
+  // `_getSnapshot` 直接返回 `_phase.data`），所以它进 deps 只在**真变化时**触发重推——
+  // 与 updateState 同一条理由（见上），不构成重推风暴。
+  const releaseNotes = useReleaseNotes();
 
   // E5.7#8：Chord 状态栏提示——壳 StatusBar.tsx:88-115 逻辑迁入（字符串壳侧构建，池哑渲染）
   const [chordLabel, setChordLabel] = useState<string | null>(null);
@@ -286,6 +293,8 @@ export function usePoolSync({ windows, sidebarView, isSidebarVisible, panelActiv
       // 漂移窗按 zones 推 panel。真相源 = 壳窗口注册表（windows 是依赖，mode 变化即重推）。
       // 与上方 panelDetached 同源（面板对象 detachable + 独占裁决共用同一判定）。
       panelDetached,
+      // E6#57.13：发行说明载荷——serializeGroups 盖章到那一个壳视图 tab 上（池只画）
+      releaseNotes,
       t,
     };
 
@@ -295,5 +304,5 @@ export function usePoolSync({ windows, sidebarView, isSidebarVisible, panelActiv
       if (!win.ready) continue;
       poolApi.pushLayout(assembleWindowLayout(win, ctx), win.windowId);
     }
-  }, [windows, sidebarView, isSidebarVisible, panelActiveViewId, panelVisible, layoutVersion, t, chordLabel, eventEntries, updateState]);
+  }, [windows, sidebarView, isSidebarVisible, panelActiveViewId, panelVisible, layoutVersion, t, chordLabel, eventEntries, updateState, releaseNotes]);
 }

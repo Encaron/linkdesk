@@ -17,31 +17,10 @@ import { app } from 'electron';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import * as os from 'node:os';
-
-export interface Product {
-  nameLong: string;
-  nameShort: string;
-  version: string; // SemVer（运行时 = app.getVersion()，见头注）
-  commit: string; // git HEAD 短哈希（发布脚本写）；dev 空 → '—'
-  date: string; // ISO 8601（发布脚本写）；dev 空 → '—'
-  quality: 'stable' | 'preview';
-  updateUrl: string;
-}
-
-/** runtime 增强（process.versions，不落盘） */
-export interface ProductRuntime {
-  electron: string;
-  chromium: string;
-  node: string;
-  v8: string;
-  os: string; // `${platform} ${release}`（02 §2.2）
-}
-
-/** 关于标签页 8 字段唯一来源（07 §三）——app:getProductInfo 返回体 */
-export interface ProductInfo {
-  product: Product;
-  runtime: ProductRuntime;
-}
+// E6#57.13：三个 interface 搬到 `src/core/types/ipc/product.ts`（跨堆协议类型归口本目录的既有约定，
+// 同 `types/ipc/update.ts`）——渲染侧要消费 `app:getProductInfo` 就得有类型，而「src/ 里再抄一份」
+// 是同一个形状两份真值。本文件自此**只剩逻辑**（读 product.json + process.versions 增强）。
+import type { Product, ProductInfo, ProductRuntime } from '../src/core/types/ipc/product';
 
 /** 缺 product.json / dev 占位空字段 → 显示级降级值（07 §四.1：'—' 不崩） */
 const PLACEHOLDER = '—';

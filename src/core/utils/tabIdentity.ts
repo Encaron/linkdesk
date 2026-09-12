@@ -32,6 +32,12 @@ interface TabIdentityMeta {
   /** 是否为保底标签页（全场无标签时自动创建，不可关闭）。
    *  仅欢迎页声明——它没有 plugin.json，由本模块提供。 */
   isFallback?: boolean;
+  /**
+   * 单例——同 type 只允许一个标签页。**本字段是壳视图的出口**：插件的单例走
+   * `plugin.json tabBehavior.singleton`，壳视图没有 plugin.json（E6#57.13 实证），
+   * 只能在此声明。两处在 `getTabBehavior()` 合并。
+   */
+  singleton?: boolean;
   /** 身份字段——同 type+同此字段值=同一标签页。null=允许多实例不去重 */
   identityField: string | null;
   /** 生成标签页 ID——每种类型有自己的策略 */
@@ -100,9 +106,15 @@ function makeGenerateId(type: string, identityField: string | null): (opts?: Cre
  * 这些类型不由插件注册表渲染——壳自己处理（MainContent renderTabContent）。
  * 新插件不需要加到这里。这是封闭集合——只有壳级视图。 */
 
-const SHELL_RENDERED_TYPES = new Set(["plugin-detail", FALLBACK_PLUGIN_ID, "output"]); // E3f #54
+const SHELL_RENDERED_TYPES = new Set(["plugin-detail", FALLBACK_PLUGIN_ID, "output", "release-notes"]); // E3f #54 / E6#57.13
 
-/* ── 壳内部类型元数据（最小特殊处理——仅 plugin-detail 和 welcome）── */
+/** 发行说明壳视图的类型串——**壳/池两侧共用的契约字符串**。
+ *  池侧同义常量见 `src/pool/views/shell-renderer/ShellViewRenderer.tsx` 的 SHELL_VIEWS.ReleaseNotes
+ *  （Path B：池不得 value-import @src/core，故两侧各自声明，新增壳视图需同步——那条注释也这么写）。
+ *  壳侧四处消费（命令/通知面/首启自动弹/菜单）统一取本常量，**不写字面量**。 */
+export const RELEASE_NOTES_TAB_TYPE = "release-notes";
+
+/* ── 壳内部类型元数据（最小特殊处理——plugin-detail / 欢迎 / 发行说明）── */
 
 const SHELL_META: Record<string, TabIdentityMeta> = {
   "plugin-detail": {
@@ -110,6 +122,25 @@ const SHELL_META: Record<string, TabIdentityMeta> = {
     fallbackLabel: "插件详情",
     generateId: (opts) =>
       `plugin-detail-${opts?.detailPluginId ?? opts?.pluginId ?? Date.now()}`,
+  },
+  /**
+   * E6#57.13：发行说明标签页——壳直渲染视图（对标欢迎页先例）。
+   *
+   * 🔴 **任务书原文订正**：`#57.13a` 写「appearsIn.tabBar + tabBehavior.singleton」——
+   * 那是 plugin.json 的词汇，而**本视图不是插件、没有 plugin.json**，两个字段无从写起；
+   * 且 `entry` 门（`getTabCreatableViews`）只决定 [+] 菜单是否列出，壳视图本就不进 [+]（它是壳自己
+   * 经 `openOrFocusTab` 打开的）。真正管用的是本表 + 上面的封闭集合 SHELL_RENDERED_TYPES。
+   *
+   * `identityField: null` ⇒ 身份 = type 本身（`isSameTabIdentity` 对 null 恒真）——
+   * 这正是单例要的语义；`singleton: true` 再挡住 `tabs.create` 那条旁路（`reduceOpenOrFocus`
+   * 已在 Step 1 按 type 去重，但 `createTab` 不查 identity，得靠 behavior.singleton 拦）。
+   */
+  [RELEASE_NOTES_TAB_TYPE]: {
+    singleton: true,
+    identityField: null,
+    fallbackLabel: "发行说明",
+    /** 定值 ID——单例只有一个，用递增计数器只会让恢复布局后的 ID 漂移（无谓的不确定性）。 */
+    generateId: () => RELEASE_NOTES_TAB_TYPE,
   },
 };
 
@@ -152,12 +183,15 @@ export function getMeta(type: string): TabIdentityMeta {
   };
 }
 
-/** 获取内置行为——仅 isFallback 仍在本模块（welcome 无 plugin.json）。
- *  singleton/confirmOnClose 已迁移到 plugin.json tabBehavior，getTabBehavior() 合并两者。 */
+/** 获取内置行为——isFallback（欢迎页）与 singleton（**无 plugin.json 的壳视图**）仍在本模块。
+ *  插件的 singleton/confirmOnClose 走 plugin.json tabBehavior，getTabBehavior() 合并两者。 */
 export function getBuiltinTabBehavior(type: string): { singleton?: boolean; isFallback?: boolean; confirmOnClose?: string } {
   const meta = getMeta(type);
   const result: { singleton?: boolean; isFallback?: boolean; confirmOnClose?: string } = {};
   if (meta.isFallback) result.isFallback = true;
+  // E6#57.13：壳视图的单例出口（`SHELL_META` 声明）——此前本函数只认 isFallback，
+  // 于是「壳视图想声明单例」无处可写（plugin.json 那扇门对它不存在）。两者语义相同，同样向外合并。
+  if (meta.singleton) result.singleton = true;
   return result;
 }
 

@@ -16,6 +16,7 @@ import type { CreatableViewMeta } from "../../../core/types/pool/poolLayout";
 import WelcomePoolView from "../welcome/WelcomePoolView";
 import PluginDetailViewHost from "../plugin-detail/PluginDetailViewHost";
 import OutputPoolView from "../output/OutputPoolView";
+import ReleaseNotesPoolView from "../release-notes/ReleaseNotesPoolView";
 
 /**
  * E5.7#71：壳视图类型常量表——路由契约字符串集中此表。
@@ -30,6 +31,8 @@ const SHELL_VIEWS = {
   PluginDetail: "plugin-detail",
   /** 输出面板 */
   Output: "output",
+  /** 发行说明（E6#57.13）——壳取数、池只画，数据走 `PoolTab.releaseNotes` */
+  ReleaseNotes: "release-notes",
 } as const;
 
 interface ShellViewRendererProps {
@@ -50,6 +53,9 @@ export default function ShellViewRenderer({ tab, isActive, creatableViews }: She
       return <PluginDetailViewHost tab={tab} isActive={isActive} />;
     case SHELL_VIEWS.Output:
       return <OutputPoolView />;
+    case SHELL_VIEWS.ReleaseNotes:
+      // E6#57.13：数据在壳侧取好（`useReleaseNotes`），本视图只画 `tab.releaseNotes`
+      return <ReleaseNotesPoolView tab={tab} isActive={isActive} />;
     default:
       return (
         <div style={{

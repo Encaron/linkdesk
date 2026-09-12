@@ -20,6 +20,7 @@ import {
 import { ContextKeyService } from "../../core/registry/commands/ContextKeyService"; // E5.8#37.6：when 过滤全局 context key
 import { registerShellMenus } from "../../core/commands/input-bindings/shellMenus"; // E6#57.10：帮助组真源
 import { registerUpdateCommands } from "../../core/commands/shell/updateCommands"; // E6#57.10：命令 title 回退源
+import { registerReleaseNotesCommands } from "../../core/commands/shell/releaseNotesCommands"; // E6#57.13g：帮助菜单首项的命令
 import { buildTitleBarMenuGroups, buildHamburgerMenuGroups, buildTitleBarSlots } from "./titlebar";
 
 const SHELL = "linkdesk.shell";
@@ -201,7 +202,7 @@ describe("when 过滤（E5.8#37.6 侧栏换边菜单项——当开关至多一�
  *
  * 顶部菜单栏下拉此前画不出分隔线（PoolMenuItem 无 group / resolveItemNode 不序列化 /
  * toDescriptor 丢弃），本次三处打通。判据分两半，缺一不可：
- *   正控 = 帮助组的三个子项**真的带着三个不同的二级分组名**出来（否则 ContextMenu 一条线都不画）；
+ *   正控 = 帮助组的四个子项**真的带着四个不同的二级分组名**出来（否则 ContextMenu 一条线都不画）；
  *   负控 = 既有 文件/查看 组内**仍然只有一个分组名**（否则这次通用扩展会往老菜单里塞分隔线）。
  * 真源走 `registerShellMenus()`（不抄一份 fixture）——抄 fixture 只会测出 fixture 自洽
  * （[[test-double-must-match-contract-not-impl]]）。
@@ -213,13 +214,21 @@ describe("E6#57.10 菜单内二级分组透传——帮助组正控 / 既有菜�
     clearMenus();
   });
 
-  /** 真源注册：shellMenus（文件/查看/帮助）+ updateCommands（检查更新… 的 title 回退源） */
+  /**
+   * 真源注册：shellMenus（文件/查看/帮助）+ 菜单项引用的**命令**。
+   *
+   * 🔴 命令必须一起注册：菜单项的 label 在序列化时按 `getCommand(command)?.title ?? command` 解析
+   * （`titlebar.ts` 的 `resolveItemNode`）——**没注册的命令会把 id 原样显示在菜单里**
+   * （`update.openReleaseNotes` 出现在帮助菜单上）。所以这几个 `register*` 的组合要**照生产来**
+   * （`coreCommands.ts` 里就是同一批），少一个就会测出「菜单写出命令 id」这个假象。
+   */
   function registerRealMenus(): void {
     registerUpdateCommands();
+    registerReleaseNotesCommands();
     registerShellMenus();
   }
 
-  it("正控——帮助组：顺序 / label 覆盖 / 三个互不相同的二级分组名（= 2 条分隔线）", () => {
+  it("正控——帮助组：首项是发行说明 / 顺序 / label 覆盖 / 四个互不相同的二级分组名（= 3 条分隔线）", () => {
     registerRealMenus();
 
     const help = buildTitleBarMenuGroups(id, VIS(true, true)).find((g) => g.group === "help")!;
@@ -227,15 +236,20 @@ describe("E6#57.10 菜单内二级分组透传——帮助组正控 / 既有菜�
     // 组标签 = 无 command 容器项的 label；顶部下拉展平它 ⇒ 点「帮助」直接见命令
     expect(help.label).toBe("帮助");
     expect(help.items.map((i) => i.command)).toEqual([
+      // 🔴 E6#57.13g 的三条判据之一：发行说明是**首项**（设计 05-发行说明 §2.2 入口表第一行）。
+      //    写死位置而不是 `toContain`——插到第三位也算「在帮助菜单里」，但那不是设计要的。
+      "update.openReleaseNotes",
       "workbench.action.openKeybindingsSettings",
       "workbench.action.togglePluginDevTools",
       "update.checkForUpdates",
     ]);
     // label 覆盖：commands 自报的 title 是「打开键盘快捷方式」/「切换插件 DevTools」，
-    // 菜单里用更短/更贴切的说法——同一命令在不同菜单不同措辞是 label 的本职
-    expect(help.items.map((i) => i.label)).toEqual(["快捷键列表", "切换开发人员工具", "检查更新…"]);
-    // 🔴 画线的依据：三个值两两不同 ⇒ 相邻各出一条线（ContextMenu 语义，恰好 2 条）
-    expect(help.items.map((i) => i.group)).toEqual(["helpLearn", "helpDev", "helpUpdate"]);
+    // 菜单里用更短/更贴切的说法——同一命令在不同菜单不同措辞是 label 的本职。
+    // 🔴 首项**没有** label 覆盖 ⇒ 显示命令自己的 title（「显示发行说明」），两处措辞一致是刻意的。
+    expect(help.items.map((i) => i.label)).toEqual(["显示发行说明", "快捷键列表", "切换开发人员工具", "检查更新…"]);
+    // 🔴 画线的依据：四个值两两不同 ⇒ 相邻各出一条线（ContextMenu 语义，恰好 3 条）。
+    //    `helpRelease` 独占一组是设计（发布物相关自成一组），不是随手起的名字。
+    expect(help.items.map((i) => i.group)).toEqual(["helpRelease", "helpLearn", "helpDev", "helpUpdate"]);
   });
 
   it("正控——帮助组落在「查看」之后（注册序 = 组序，全 order 缺省 99）", () => {
@@ -250,7 +264,7 @@ describe("E6#57.10 菜单内二级分组透传——帮助组正控 / 既有菜�
     const help = buildHamburgerMenuGroups(id, VIS(true, true)).find((g) => g.group === "help")!;
     const parent = help.items[0];
     expect(parent).toMatchObject({ label: "帮助", command: "" });
-    expect(parent.children!.map((c) => c.group)).toEqual(["helpLearn", "helpDev", "helpUpdate"]);
+    expect(parent.children!.map((c) => c.group)).toEqual(["helpRelease", "helpLearn", "helpDev", "helpUpdate"]);
   });
 
   it("「打开键盘快捷方式」已移出「查看」——不并存（单一入口）", () => {

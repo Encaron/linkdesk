@@ -155,7 +155,26 @@ function buildShellUpdate() {
   return {
     // getState = 契约必选面（壳/池双端同步暴露——「关于」类插件读更新态）
     getState: () => ipcRenderer.invoke(IPC.update.getState),
-    // ── 以下三条 = 壳内私有扩展（不在契约——池插件不可调）──
+    // ── 以下四条 = 壳内私有扩展（不在契约——池插件不可调）──
+    /**
+     * 发行说明取数（E6#57.13b）——**壳内私有扩展的第二例**（第一例是 getProductInfo，同因同形：
+     * 壳内视图的数据源，属壳不属插件）。
+     *
+     * 🔴 **为什么池侧不暴露**（本格最核心的一条边界决策，别在后人手里改成「顺手给池开一个」）：
+     * 契约的 update 面只有 `getState` 是**设计**（`linkdesk-api/update.ts` 的 🔴 段 + 05 §2.4
+     * 「发行说明是壳自己的面，第三方插件没有读它的理由」）。而发行说明标签页是**壳内视图**
+     * （`SHELL_RENDERED_TYPES` 封闭集合成员，无 plugin.json）——它与第三方插件共用**同一个**
+     * `window.linkdesk`，所以「给池开一个」= 「给所有插件开一个」，二者不可分辨。
+     * ⇒ 数据走「**壳想、池画**」：壳在渲染进程取好（本方法，走 `src/hooks/useReleaseNotes.ts`
+     *   的模块单例），经 `pushLayout` 把结果挂在标签页上推给池，池只画。
+     *
+     * ⚠️ 与 `app.getProductInfo`（#57.14 关于页数据源）是**同一条规矩的两个实例**——两格必须同形，
+     *   否则「壳内视图取数」会出现两种互不相同的写法。
+     *
+     * @param version 指定版本号（无 v 前缀）；省略 = 最近一版。请求的那版不在列表里时主进程回落最近一版
+     *                （`ReleaseNotes.version` 与请求值不一致即为回落信号）。
+     */
+    getReleaseNotes: (version?: string) => ipcRenderer.invoke(IPC.update.getReleaseNotes, version),
     // 检查是**壳私事**：手动检查（用户点菜单）+ 后台检查（定时）都从壳发起（07 §一）。
     checkForUpdates: (context: boolean) => ipcRenderer.invoke(IPC.update.checkForUpdates, context),
     downloadUpdate: () => ipcRenderer.invoke(IPC.update.downloadUpdate),

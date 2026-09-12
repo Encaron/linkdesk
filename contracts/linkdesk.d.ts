@@ -1524,6 +1524,85 @@ export interface RightSidebarLayout {
     emptyText?: string;
     emptyHint?: string;
 }
+/** 左窄栏版本历史的一条——**显示文本已由壳格式化**（显示文本铁律：池拿到什么画什么） */
+export interface PoolReleaseNotesHistoryItem {
+    /** 版本号（无 v 前缀；显示时的 "v" 是格式不是文案，由池加） */
+    version: string;
+    /** 短日期 `MM-DD`（壳按 ISO 切出，**不走 locale**——mockup 03 就是这么画的，切换语言不该改它） */
+    dateLabel: string;
+}
+/**
+ * 发行说明标签页的壳→池数据——**三态判别联合**（05 §2.4：态由拉取结果唯一决定，没有第四种）。
+ *
+ * 🔴 **池不做任何判定**：`state` 是什么就画什么分支。连「加载中还是已就绪」这种判断也不许池自己做
+ * （那是壳的结论）——`#57.11` 的 context key 推送是同一条规矩的另一处落点。
+ *
+ * 🔴 **缓存命中不经过加载态**（05 §2.4）：壳在渲染进程持有内存缓存（`useReleaseNotes` 的模块单例），
+ * 所以「本次会话第二次打开」与「切换历史版本」都**直接落 `content`**，池的第一帧就有内容——不需要
+ * 骨架闪一下。骨架只在**真的一次冷拉取**（本会话第一次，且主进程缓存也没命中）时出现。
+ *
+ * ⚠️ **三帧对照** = `06-主软件更新/mockups/03-发行说明标签页.html` 的 Frame 3（loading）/
+ * Frame 1（content）/ Frame 2（empty）。
+ */
+export type PoolReleaseNotesData = {
+    state: "loading";
+} | {
+    state: "content";
+    /** 选中版本（无 v 前缀）——与请求值不一致即「请求的那版不在列表里，已回落最近一版」 */
+    version: string;
+    /** 头部小标题（壳 `t()` 完）——如「2026 年 8 月 30 日 · 稳定通道」 */
+    subtitle: string;
+    /** 通道徽标文字（壳 `t()` 完）——「稳定版」。
+     *  ⚠️ 数据源是 `/releases/latest`，该端点**按 GitHub 定义不含预发布** ⇒ 恒稳定通道；
+     *  将来真加预览通道（改端点）时**这里必须跟着变**，否则徽标开始撒谎。 */
+    channelLabel: string;
+    /** Release body（GFM 原文）——池过 `MarkdownView`（与插件详情页同一条路） */
+    body: string;
+    /**
+     * 「在 GitHub 查看全部」/「所有版本」的目标——**发行版列表页**（`github.com/O/R/releases`），
+     * 不是本次那一版的页面。
+     *
+     * 🔴 为什么不是 `htmlUrl`（主进程 `ReleaseNotes.htmlUrl` 是单版页）：mockup 03 的**三处**链接
+     * （Frame 1 头部 `.rn-actions`「在 GitHub 查看全部 →」、`.rn-all`「所有版本 → GitHub ↗」、
+     * Frame 2 `.rn-empty-link`「在 GitHub 上查看 →」）**指的都是列表页**——单版 URL 一个都用不上。
+     * 故壳侧改从 `product.updateUrl` 推列表页（`useReleaseNotes.ts` 的 `listPageUrl`），
+     * 不往下推 `htmlUrl`。
+     *
+     * **可选**：拿不到 `updateUrl`（dev 无 `product.json`）⇒ 字段缺席 ⇒ 池**不画**这些链接
+     * （空链接比没有链接更糟）。
+     */
+    listUrl?: string;
+    /** 左窄栏历史（倒序，含选中那版） */
+    historical: PoolReleaseNotesHistoryItem[];
+    /**
+     * 首启自动弹横幅的**整句文案**（壳 `t()` 完，含版本号）——`undefined` = 不画横幅。
+     *
+     * 为什么是「一句话」而不是 `banner: boolean` + 池自己 `t("检测到新版本 {{version}}…")`：
+     * 池自产文本这条线在壳视图这里是**不画**的（对标欢迎页——`WelcomePoolView` 的 `t()` 只用于
+     * 自己那几张写死的标签）。横幅句子里有版本号 = 有数据，数据文本归壳（同 `subtitle` /
+     * `channelLabel`）。顺带：这句话只有壳知道该不该出现（「首启自动弹那一次」是壳的账）。
+     */
+    banner?: string;
+} | {
+    state: "empty";
+    /**
+     * 🔴 **本态只有一个字段**——不是漏写，是**空态无话可传**。
+     *
+     * mockup 03 Frame 2 上所有的字（副标题「无法连接 GitHub」、左窄栏占位「无本地缓存 /
+     * 联网后自动拉取」、正文「无法加载发行说明」＋描述、「重试」）都是**纯静态文案**——
+     * 不含任何数据、不随版本/日期/语言之外的东西变，所以按硬约束 2「所有 UI 文字走 `t()`」
+     * 归**池侧自己的 `t()`**（池有自己的 i18n 上下文，`WelcomePoolView` 同款）。
+     * 壳往下推一份静态中文串，等于把「翻译发生在壳还是池」这件事变成两处。
+     *
+     * ⚠️ 为什么连「原因」也没有：`ReleaseNotes` 的失败**只有一条**——主进程把错误换成
+     * `Error(message)` 上抛，`UpdateLegError.detail.code`（`network` / `rate-limited` /
+     * `not-found`）**跨不过 IPC**（`invoke-log.ts` 的 `loggedHandle` 原样 rethrow，Electron 只
+     * 序列化 `message`）。所以要分「网络断了」和「GitHub 限流」得先让错误**结构化过 IPC**，
+     * 那是主进程/契约侧的事，**不是渲染侧能补的**。本格按 mockup 保留唯一那句通用文案。
+     * （同类一条：不画「离线」标注，理由见本文件末尾的 🔴 段。）
+     */
+    listUrl?: string;
+};
 /** 标签页在池中的表示——壳 pushLayout 时序列化 */
 export interface PoolTab {
     id: string;
@@ -1555,6 +1634,10 @@ export interface PoolTab {
      *  "plugin-detail" 声明的 _renderPath。壳 serializeGroups 现场解析盖章；池 ShellViewRenderer 消费：
      *  有 → 动态 import 市场 DetailView，缺/加载失败 → 壳 PluginDetailPoolView 保底。 */
     detailViewRenderPath?: string;
+    /** E6#57.13：发行说明标签页的壳→池数据（**壳想、池画**——壳取好挂在这里推下来，池只画）。
+     *  ⚠️ 与 `detailPluginId`/`detailViewRenderPath` 同型（壳视图的 per-tab 载荷）——**不是新范式**。
+     *  只有 `shellType === "release-notes"` 那一个标签页携带（全窗最多一份）。 */
+    releaseNotes?: PoolReleaseNotesData;
 }
 /** 分屏组——每个 group 占一个 flex 区域，内含 N 个 keep-alive 标签页 */
 export interface PoolGroup {

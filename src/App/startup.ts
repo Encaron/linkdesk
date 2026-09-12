@@ -33,6 +33,7 @@ import i18n from "../i18n";
 import { syncCountersAfterRestore } from "../hooks/useTabManager";
 import { registerAppearanceConfiguration } from "./config/appearance";
 import { registerUpdateConfiguration } from "./config/update";
+import { initReleaseNotesOnLaunch } from "./releaseNotesOnLaunch";
 
 export interface AppStartupDeps {
   setTheme: (v: string) => void;
@@ -256,6 +257,13 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
       } catch (e) {
         console.error("[startup] 读取未完成的安装任务失败:", e);
       }
+
+      // E6#57.13d：发行说明的启动接线（预热 + 首启自动弹）——位置在 initAll 之后：
+      //   · 配置服务已就绪（`app.update.showReleaseNotes` 读得到）；
+      //   · 布局已 restore（`openTab` 加进来的标签页落在恢复后的布局上，不会被恢复覆盖）。
+      // **不 await**——里面的取数要出网，`setReady` 不能等它；最坏也只是标签页晚一帧出现。
+      // 本函数返回的 Promise 永不 reject（内部已收），但仍显式 void，写明「故意不接」。
+      void initReleaseNotesOnLaunch();
 
       setReady(true);
     })();

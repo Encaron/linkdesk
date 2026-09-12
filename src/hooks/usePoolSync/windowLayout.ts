@@ -22,6 +22,7 @@ import type {
   TitleBarLayout,
   CreatableViewMeta,
   IconBarIcon,
+  PoolReleaseNotesData,
 } from "../../core/types/pool/poolLayout";
 import type { WindowShellState, PoolZone } from "../../App/windows";
 import { WINDOW_MODE_STRATEGIES } from "../../App/windows";
@@ -31,7 +32,7 @@ import { resolvedToIconBarIcon } from "./resolvedIcon"; // E6#69f：ResolvedIcon
 import { FileIconResolver } from "../../components/shared/file-icon/FileIconResolver"; // E6#69g：文件图标共享解析器（file-tree 同源，禁插件内双源/禁跨插件 import）
 import { IconRegistry } from "../../core/registry/appearance/IconRegistry"; // E6#69g：当前图标主题 mappings（app.iconTheme 变更 → layoutVersion 重算）
 import { getConfigurationValue } from "../../core/services/configuration/ConfigurationService"; // E6#69g：同步读 app.iconTheme（iconbar 读 menuStyle 同款）
-import { isShellRenderedTab, resolvePoolTabTitle } from "../../core/utils/tabIdentity";
+import { isShellRenderedTab, resolvePoolTabTitle, RELEASE_NOTES_TAB_TYPE } from "../../core/utils/tabIdentity";
 import { factorySlots } from "../../core/services/bootstrap/FactorySlots"; // E6#30.10b：活跃 marketplace 插件定位（iconbar 同源导入路径）
 import { ViewContainerService } from "../../core/services/layout/ViewContainerService"; // E6#30.10b：main 容器详情贡献寻址
 import type { ViewDescriptor } from "../../core/services/layout/ViewContainerService/types"; // E6#30.10b：_pluginId/_renderPath 内部标记字段读型
@@ -52,6 +53,14 @@ export interface WindowLayoutContext {
   panelDetached: boolean;
   /** 可创建视图列表——main 消费（detached 按 tabBarCreate 抑制） */
   creatableViews: CreatableViewMeta[];
+  /**
+   * E6#57.13：发行说明壳视图的载荷（**壳想、池画**——壳取好、池只画）。
+   *
+   * 一个窗口最多一个发行说明标签页（`tabBehavior.singleton` 语义，见 `SHELL_META`），
+   * 所以载荷挂在 ctx 上、由 `serializeGroups` 盖章到**那一个** tab 上，而不是按 tab 存一份。
+   * 池侧不在本窗有该 tab（或没打开）时载荷被忽略——不算错。
+   */
+  releaseNotes?: PoolReleaseNotesData;
   t: TFunction;
 }
 
@@ -99,8 +108,21 @@ function resolveFileTabIcon(filePath: string): IconBarIcon {
     : { kind: "codicon", name: desc.className, ...(desc.color ? { color: desc.color } : {}) };
 }
 
+/**
+ * E6#57.13：发行说明标签页的标题——**在序列化时推导，不改 tab state**。
+ *
+ * mockup 03 的标签栏文字是「发行说明 v0.2.0 ✕」/ 无内容时「发行说明 ✕」——即**标题随态变**。
+ * 备选做法（开 tab 时写进 `tab.label`）要在每次态变化时回来改标签页状态，多一条壳→tabState 写路径，
+ * 且语言切换后还要再修一遍；序列化期推导则天然随 `t` 与态一起重算（本文件既有做法，
+ * `resolvePoolTabTitle` 同理）。载荷缺席（没开该 tab / 尚未取到）→ `undefined` ⇒ 落回 `tab.label`
+ * （= `getDefaultLabel` 给的 `t("发行说明")`），与 mockup 的无版本态一致。
+ */
+function releaseNotesTabTitle(data: PoolReleaseNotesData | undefined, t: TFunction): string | undefined {
+  return data?.state === "content" ? t("发行说明 v{{version}}", { version: data.version }) : undefined;
+}
+
 /** 序列化某窗口的 tabState → PoolGroup[]——flex 树 + 标签元数据（图标/tabBehavior/壳内部视图标记） */
-export function serializeGroups(tabState: TabState, t: TFunction): PoolGroup[] {
+export function serializeGroups(tabState: TabState, t: TFunction, releaseNotes?: PoolReleaseNotesData): PoolGroup[] {
   const flexMap = computeGroupFlexes(tabState.root);
   // E6#30.10b：主区详情贡献一次解析、盖章所有 plugin-detail tab（同一窗口内活跃 marketplace 唯一）
   const detailContribution = resolveActiveMarketDetailContribution();
@@ -127,11 +149,14 @@ export function serializeGroups(tabState: TabState, t: TFunction): PoolGroup[] {
         : iconEntry?.manifest
           ? resolvedToIconBarIcon(resolvePluginIcon(iconPid, pickIdentityArt(iconEntry.manifest)))
           : undefined;
+      const isReleaseNotesTab = tab.type === RELEASE_NOTES_TAB_TYPE;
       return {
         id: tab.id,
         pluginId: pid,
         // 标签栏 title 推流时二次解析——getDefaultLabel 已 t()，此处兜底语言切换/恢复的旧语言快照
-        title: resolvePoolTabTitle(tab.label, entry?.manifest.name, t),
+        // E6#57.13：发行说明标签例外——标题随态（content 时带版本号），见 releaseNotesTabTitle
+        title: (isReleaseNotesTab ? releaseNotesTabTitle(releaseNotes, t) : undefined)
+          ?? resolvePoolTabTitle(tab.label, entry?.manifest.name, t),
         sourceId: tab.sourceId,
         dirty: tab.dirty,
         icon,
@@ -143,6 +168,8 @@ export function serializeGroups(tabState: TabState, t: TFunction): PoolGroup[] {
         detailPluginId: tab.detailPluginId,
         detailContributorId: isDetailTab ? detailContribution?.contributorId : undefined,
         detailViewRenderPath: isDetailTab ? detailContribution?.renderPath : undefined,
+        // E6#57.13：发行说明载荷——壳取好推下（壳想、池画）。只盖章到那一个 tab，别的类型不携带
+        releaseNotes: isReleaseNotesTab ? releaseNotes : undefined,
       };
     }),
   }));
@@ -166,7 +193,7 @@ export function assembleWindowLayout(win: WindowShellState, ctx: WindowLayoutCon
     iconBar: include("iconBar") ? ctx.iconBar : undefined,
     sidebar: include("sidebar") ? ctx.sidebar : undefined,
     rightSidebar: include("rightSidebar") ? ctx.rightSidebar : undefined,
-    groups: serializeGroups(win.tabState, ctx.t),
+    groups: serializeGroups(win.tabState, ctx.t, ctx.releaseNotes),
     root: win.tabState.root,
     activeGroupId: win.tabState.activeGroupId,
     // 空数组 = [+] 按钮无创建菜单（池 GroupTabBar 空列表不弹菜单）

@@ -18,7 +18,8 @@
  * 覆盖矩阵：docs/02-Electron架构/E5.8_归一化基建/契约生成/命名空间矩阵.md §2
  */
 import type { LinkDeskAPI } from "../linkdesk-api";
-import type { DownloadProgress, UpdateState } from "../../types/ipc/update";
+import type { DownloadProgress, ReleaseNotes, UpdateState } from "../../types/ipc/update";
+import type { ProductInfo } from "../../types/ipc/product";
 
 /** 池 preload 必暴露面（44 = 43 唯一 + config 别名；唯一缺 bridge；E6#72 删 toast 宿主桥面）——E5.8#34.5 加 panel（插件调 reveal 的池侧通道）；E5.8#37 加 floatingPanelHost（壳内悬浮面板哑渲染桥）；E5.8#41.12 加 settings（设置套枚举/切换，设置 UI 在池内渲染）；E5.8#41.14 加 factorySlots（任意 role 候选枚举/切换，设置 UI 通用区数据源）；E5.8#50.11 加 appearance（外观资产——选择图片拷贝入库）；E6#57.2a 加 app（只读产品身份——市场 minAppVersion E6#30.8c 消费） */
 export type PoolExposed = Pick<LinkDeskAPI,
@@ -48,8 +49,10 @@ export type PoolExposed = Pick<LinkDeskAPI,
  *  update 壳 = getState 契约面 + 写命令三条与 onStateChanged 壳内私有扩展（E6#57.9c/d——见下方 update 段）
  *  app 壳 = getVersion 契约面（E6#57.2b 双 preload 同步暴露）+ getProductInfo 壳内私有扩展（关于页
  *    E6#57.14 数据源，不在契约）。⚠️ 超额暴露实现要点：satisfies 的 excess-property 检查达字面量每层，
- *    内联 getProductInfo 会编译红——preload-shell 用 buildShellApp() 工厂构造（返回值结构兼容：目标需的
- *    都有 + 多余的容忍），池侧 buildApp() 只暴露契约面 getVersion */
+ *    内联 getProductInfo 曾因「上下文类型里没有这个名字」编译红——preload-shell 用 buildShellApp()
+ *    工厂构造绕过（返回值走结构兼容）。**E6#57.13 起这一条不再是必需的**：下方 `app:` 段已把
+ *    getProductInfo 写进清单（类型上有了这个名字），工厂构造保留（既定写法 + 注释讲清了来由，
+ *    为「现在可以不绕了」去改它属无谓改动）；池侧 buildApp() 只暴露契约面 getVersion */
 export type ShellExposed = Pick<LinkDeskAPI,
   | "getFilePath" | "serial" | "filesystem" | "path" | "plugins"
   | "fileAssociation" | "pluginManager" | "dialog" | "pluginState" | "menu"
@@ -73,6 +76,15 @@ export type ShellExposed = Pick<LinkDeskAPI,
    * 方法——`PoolExposed` 的 update 仍取自契约（只 getState）。
    */
   update: LinkDeskAPI["update"] & {
+    /**
+     * 发行说明取数（E6#57.13b）——**壳内私有扩展**，与 `buildShellApp()` 的 `getProductInfo`
+     * 同一先例同一理由：壳内视图的数据源属壳不属插件。而**壳内视图与第三方插件共用同一个
+     * `window.linkdesk`**（壳视图不是插件、没有 plugin.json），所以「给池开一个」等价于
+     * 「给所有插件开一个」——那是 05 §2.4 明文排除的（「发行说明是壳自己的面，第三方插件没有读它的理由」）。
+     * ⇒ 走「壳想、池画」：壳取好经 `pushLayout` 挂到标签页上，池哑渲染。
+     * 唯一消费者 = `src/hooks/useReleaseNotes.ts`（模块单例）。
+     */
+    getReleaseNotes(version?: string): Promise<ReleaseNotes>;
     /** 手动（`context=true`）/ 后台（`false`）检查。**壳私事**：两条路都从壳发起（07 §一）。 */
     checkForUpdates(context: boolean): Promise<UpdateState>;
     downloadUpdate(): Promise<UpdateState>;
@@ -96,4 +108,41 @@ export type ShellExposed = Pick<LinkDeskAPI,
      */
     onProgress(cb: (progress: DownloadProgress) => void): () => void;
   };
+  /**
+   * app 壳 = 契约的 `getVersion` **＋ 壳内私有扩展** `getProductInfo`。
+   *
+   * 🔴 与上面 `update` 段**同一条规矩的另一个实例**（`preload-shell` 的 `buildShellApp()` 头注
+   * 已写「两格必须同形」）：契约的 app 面只有 `getVersion`（E6#57.2b），而产品身份全量
+   * （关于页 8 字段 = `#57.14` 的数据源）属**壳内视图的取数**，不给池插件开
+   * （池 preload 只注入契约面 ⇒ 插件侧根本没有这个入口）。
+   *
+   * ⚠️ **本段是 `#57.13` 补的，不是新暴露**——`getProductInfo` 运行时一直在
+   * （`buildShellApp()` 工厂构造），只是**类型上缺这一行**：不补，壳侧消费它就会
+   * 「运行时能调到、tsc 说没有」。把这个差额补进清单 = 纳入 tsc 门禁（漏暴露 = 编译红）。
+   * 发行说明的「所有版本」链接正是第一个真实消费者（`useReleaseNotes.listPageUrl()`
+   * 从 `product.updateUrl` 推页面端点，见 `types/ipc/product.ts` 该字段的注释）。
+   */
+  app: LinkDeskAPI["app"] & {
+    /** 产品身份全量（`electron/product.ts` 的 `productInfo()`）——**壳内私有**，池侧不暴露 */
+    getProductInfo(): Promise<ProductInfo>;
+  };
 };
+
+/**
+ * 壳侧私有面的**唯一运行时转型点**——本文件是类型清单，运行时的取用口只此一个。
+ *
+ * 🔴 为什么需要它：`window.linkdesk` 的静态类型是**插件契约** `LinkDeskAPI`
+ * （`src/types/global.d.ts`），而壳渲染进程里跑的对象其实是 `preload-shell` 的**超额暴露体**
+ * （= 上面的 `ShellExposed`，由 `satisfies` 用 tsc 兜住形状）。契约面是壳面的**真子集**，
+ * 差额（`app.getProductInfo` / `update` 的写命令与订阅）在契约类型上**根本不存在** ⇒
+ * 壳侧消费方直接 `window.linkdesk.app.getProductInfo()` 会「运行时调得到、tsc 说没有」。
+ * 本函数把那层差额**一次收窄**，消费方零 `any`、零第二处转型。
+ *
+ * ⚠️ **不要在各消费方各写一处 `as`**——那正是本函数存在的原因（转型点一多，
+ * 「运行时面」与「声明面」之间的差额就没人能一眼看全了）。
+ *
+ * 非壳环境（vitest 无 preload / 纯前端预览）返回 `undefined`，消费方各自决定怎么退化。
+ */
+export function getShellExposed(): ShellExposed | undefined {
+  return window.linkdesk as unknown as ShellExposed | undefined;
+}

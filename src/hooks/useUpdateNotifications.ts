@@ -27,7 +27,7 @@
  * ## 条目生命周期（一条条目贯穿全程，不闪不换位）
  *
  * ```
- * available ──▶ [发现]  LinkDesk 有可用的更新 0.2.0     [立即更新]        ttl 0 · wake · × 可关
+ * available ──▶ [发现]  LinkDesk 有可用的更新 0.2.0  [查看更新内容][立即更新]  ttl 0 · wake · × 可关
  * downloading ─▶ [进度]  正在下载更新 42%              [后台运行]        ttl 0 · wake:false · 4px 条
  *                        └ percent 到 100 ─▶ 正在校验…（不定态，percent 归 undefined）
  * downloaded ─▶ [完成]  更新已下载，重启后生效          [稍后][重启并更新]  ttl 0 · 不设 ×
@@ -55,6 +55,7 @@ import {
   TOAST_TTL_ERROR, TOAST_TTL_SUCCESS, pushToast, replaceToast, type Toast,
 } from "../core/services/ui/toast";
 import type { UpdateError, UpdateState } from "../core/types/ipc/update";
+import { openReleaseNotesTab } from "../core/commands/shell/releaseNotesCommands";
 import { getShellUpdateApi, useUpdateProgress, useUpdateState } from "./useUpdateState";
 
 /**
@@ -149,9 +150,15 @@ function pushDiscovery(version: string): void {
     source: SOURCE,
     isCloseAffordance: true,
     actions: [
-      // ⚠️ 「查看更新内容」**本格不提供**：它要打开发行说明标签页，而那个标签页是 #57.13 的活、
-      //    壳 API 里也还没有 openExternal。给一颗点了没反应的按钮比少一颗更糟 ⇒ 等 #57.13e 补上，
-      //    届时在此加第二个 action（mockup 02 Frame 1 已按此登记为订正项）。
+      // ── E6#57.13e：「查看更新内容」——#57.12 因壳侧尚无落点而推迟（当时登记为 mockup 02 偏差 4：
+      //    「给一颗点了没反应的按钮比少一颗更糟」），现由 `openReleaseNotesTab({ version })` 接上。
+      //    序**在主按钮之前**（次级在左），与 mockup 02 Frame 1 的 [查看更新内容][立即更新] 一致
+      //    （完成那两条的「稍后 / 重启并更新」同款序）。
+      //    `void` 的原因同 `restartToUpdate` 那条注释：`notif:action` 分发器拿到 onClick 就
+      //    **同步**调一下、无人 await 它的 promise ⇒ 漏出去就是一条 unhandled rejection。
+      //    这里的失败面只有「动态 import 本地模块失败」这一条（`openReleaseNotesTab` 内部
+      //    `primeReleaseNotes` 不抛、`openTab` 是可选调用），不另立文案。
+      { label: i18n.t("查看更新内容"), isPrimary: false, onClick: () => { void openReleaseNotesTab({ version }); } },
       { label: i18n.t("立即更新"), isPrimary: true, onClick: () => { void downloadUpdateAndReport(); } },
     ],
     ttl: 0,

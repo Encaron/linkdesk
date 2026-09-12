@@ -26,6 +26,19 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { renderHook, act } from "@testing-library/react";
 import type { DownloadProgress, UpdateInfo, UpdateState } from "../core/types/ipc/update";
 
+/**
+ * 发现条目的「查看更新内容」走向**标签页**（`#57.13e`）——本文件只验「按哪个参数开」，
+ * 开标签页本身归 `releaseNotesCommands.test.ts`。不替身会给本文件带来一条真实标签页链
+ * （`primeReleaseNotes` + `getCallbacks`），那是另一份单测的现场。
+ */
+vi.mock("../core/commands/shell/releaseNotesCommands", () => ({
+  openReleaseNotesTab: vi.fn(async () => { /* 替身不开标签页 */ }),
+}));
+
+import { openReleaseNotesTab } from "../core/commands/shell/releaseNotesCommands";
+
+const mockOpen = vi.mocked(openReleaseNotesTab);
+
 /** 更新描述桩——字段值全虚构（`.invalid` = RFC 2606 保留域，永不解析） */
 const INFO: UpdateInfo = {
   version: "9.9.9",
@@ -388,6 +401,38 @@ describe("useUpdateNotifications（③ 启动复位——**没有发起方**的�
 
     expect(stub.checkContexts).toEqual([true]);
     expect(stub.downloadCalls()).toBe(1);
+  });
+});
+
+describe("发现条目的 [查看更新内容]（#57.13e）", () => {
+  it("两个按钮：次级在前、主按钮在后（对齐 mockup 02 Frame 1 的左右次序）", () => {
+    mountProducer();
+    transition({ type: "available", update: INFO });
+
+    const actions = toast.getToasts()[0].actions ?? [];
+    expect(actions.map((a) => a.label)).toEqual(["查看更新内容", "立即更新"]);
+    expect(actions[0].isPrimary).toBe(false);
+    expect(actions[1].isPrimary).toBe(true);
+  });
+
+  it("🔴 开标签页时**钉住这一版**——不传就等于「取最新」，而通知上写的是 9.9.9", async () => {
+    mountProducer();
+    transition({ type: "available", update: INFO });
+
+    await clickAction(0);
+
+    // `{ version }` 而非 `{}`：入口文案是「LinkDesk 有可用的更新 9.9.9」，
+    // 打开后若显示的是另一版（用户这段时间里又发了新版），那句话当场变假
+    expect(mockOpen).toHaveBeenCalledWith({ version: INFO.version });
+  });
+
+  it("负控：[查看更新内容] **不**触发下载——两个按钮各管各的", async () => {
+    mountProducer();
+    transition({ type: "available", update: INFO });
+
+    await clickAction(0);
+
+    expect(stub.downloadCalls()).toBe(0);
   });
 });
 

@@ -54,20 +54,27 @@ export function registerShellMenus(): void {
     },
     // ── E6#57.10：帮助菜单（设计 06-主软件更新/03-菜单与入口设计 §2.2 + mockups/01 Frame 1）──
     // 注册在「查看」之后 ⇒ collectMenuBarGroups 组序（全 order 99 = 注册序）自然排在末位。
-    // children 的 group 是**组内二级分组名**（helpLearn/helpDev/helpUpdate…）——ContextMenu 语义：
-    // 相邻不同 group 之间出一条分隔线（故本格 3 项 → 2 条线）。这些二级名是**该分组全部成员的
-    // 占位锚点**：未来 #57.13 的「显示发行说明」插 helpRelease、#57.14 的「关于 LinkDesk」与
+    // children 的 group 是**组内二级分组名**（helpRelease/helpLearn/helpDev/helpUpdate…）——ContextMenu 语义：
+    // 相邻不同 group 之间出一条分隔线（故当前 4 项 → 3 条线）。这些二级名是**该分组全部成员的
+    // 占位锚点**：#57.13 的「显示发行说明」已插 helpRelease、#57.14 的「关于 LinkDesk」与
     // 「检查更新…」同组 helpUpdate、许可证/隐私政策（新任务）插 helpLegal——插进来即自动归位，
     // 不需要再动分隔线。
     //
-    // ⚠️ 「打开帮助」「隐私政策」「查看许可证」「显示发行说明」「关于 LinkDesk」**本格不放**——
-    // 前两条是**发行后**的事（无站点 / 政策待制定，见 docs/05-版本更新/壳版本/发行后-帮助菜单待补项.md），
-    // 后三条各有落点任务（#57.13 / #57.14 / 许可证推荐任务），到位才声明，不放空壳菜单项。
+    // ⚠️ 「打开帮助」「隐私政策」「查看许可证」「关于 LinkDesk」**仍不放**——前两条是**发行后**
+    // 的事（无站点 / 政策待制定，见 docs/05-版本更新/壳版本/发行后-帮助菜单待补项.md），
+    // 后两条各有落点任务（#57.14 / 许可证推荐任务），到位才声明，不放空壳菜单项。
+    // （「显示发行说明」原也在这条清单里，`#57.13g` 落地后已移出。）
     {
       command: "",
       label: "帮助",
       group: "help",
       children: [
+        // ── E6#57.13g：发行说明入口——**首项**（设计 05-发行说明 §2.2 入口表第一行）。
+        // 为什么独占 helpRelease 而不并进 helpLearn：`helpRelease` 这个二级分组在 #57.10 就
+        // 预埋成锚点了（见上注），「发布物相关」（发行说明/关于/许可证）本就该自成一组；
+        // 顺带 ContextMenu 会在它与下一项之间画一条分隔线——首项 + 空组分隔线正是设计要的样子。
+        // 恒显（无 when）——「入口存在」不是「有更新才给你看」，用户随时可查历史版本说明。
+        { command: "update.openReleaseNotes", group: "helpRelease" },
         // 从「查看」移出（用户 2026-09-12 裁决：移入帮助，不是并存）。label 覆盖命令 title——
         // 同一命令在不同菜单用不同措辞是 label 的本职（VS Code 同款），命令 title 那一份不动。
         { command: "workbench.action.openKeybindingsSettings", label: "快捷键列表", group: "helpLearn" },
