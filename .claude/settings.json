@@ -9,12 +9,6 @@
             "command": "node \"${CLAUDE_PROJECT_DIR}/scripts/check-design-flow.mjs\"",
             "timeout": 30,
             "statusMessage": "设计流程机械门禁（E5.8#145）——不走不放行"
-          },
-          {
-            "type": "command",
-            "command": "node \"${CLAUDE_PROJECT_DIR}/scripts/check-version-bump.mjs\"",
-            "timeout": 15,
-            "statusMessage": "版本号判定门禁（E6#57.15e）——软件侧变更需分类（feat/fix/breaking）"
           }
         ]
       }

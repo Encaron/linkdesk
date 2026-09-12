@@ -99,11 +99,7 @@
         //   第三段）——从 ignore 移除，knip 纳入静态分析（脚本仅用 fs/path，零悬挂依赖）。
         // E5.8#22.5：契约运行期校验——生成器 AST 输入（scripts/generate-contract.mjs 读入发射
         //   contracts/runtime-shapes.ts），非运行时消费面。产物 runtime-shapes.ts 在 contracts/ 不在 knip project 域。
-        "electron/ipc/runtime-dto-registry.ts",
-        // E6#57.15e：version-bump 机械兜底——被 .claude/settings.json PreToolUse hook（Bash git commit*）
-        //   以字符串命令调用，knip 静态图（import 面）不覆盖 hook 配置引用 → 整文件豁免（2026-09-04
-        //   仓库结构上移 6.9 验证补录：2026-08-31 引入后 knip 即报，属既存卫生债随手清）。
-        "scripts/check-version-bump.mjs"
+        "electron/ipc/runtime-dto-registry.ts"
       ],
       "ignoreDependencies": [
         // E6#16：pool dev 曾经 import.meta.glob（PluginComponent/PoolStatusBarComponent）把插件源码直引

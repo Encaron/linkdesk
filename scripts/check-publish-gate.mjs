@@ -44,6 +44,12 @@
  * 📌 `--changelog-body` / `--changelog-date` 是为了**把 CI 里那段就地 bash 归一到这里**
  *    （`.github/workflows/build.yml` 原注释自陈：「#57.15d 落地后可把它接回这一步之前」）。
  *    从此「段存不存在、正文长什么样、日期从哪来」只有一处实现，CI 与本地不会各说各话。
+ *
+ * 📌 **切段规则自 E6#57.15e 起搬到了 `scripts/lib/changelog-section.mjs`**——因为那条规则
+ *    **多了一个消费者**：`scripts/check-changelog-section.mjs` 每次 `npm run check` 都跑同一判据
+ *    （发布门禁只在**发布那一下**拦，中间隔着任意的提交数）。规则本体不在这文件里了，**别搬回来**。
+ *    ⚠️ 本文件的 `--self-test` 里那 8 条切段用例（含前缀陷阱 `v0.1.4` ≠ `v0.1.49`）**现在测的是
+ *    共享模块**——这是好事：同一批负例从此同时替两个消费者守着。
  */
 
 import { execFileSync } from "node:child_process";
@@ -56,6 +62,10 @@ import { fileURLToPath } from "node:url";
 //    属于可接受的失败方式：门禁宁可炸，不可假装查过。
 import { compareVersions } from "../src/core/utils/plugin/semverUtils.ts";
 
+// 🔴 切段规则**只有一处实现**——`scripts/lib/changelog-section.mjs`，与 `check-changelog-section.mjs`
+//    （E6#57.15e，每次 npm run check 跑）**共用同一份**，不各写一套（理由见该文件头注）。
+import { changelogDate, changelogSection } from "./lib/changelog-section.mjs";
+
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, "..");
 const PKG = join(ROOT, "package.json");
@@ -63,42 +73,6 @@ const PRODUCT = join(ROOT, "electron", "product.json");
 const CHANGELOG = join(ROOT, "CHANGELOG.md");
 
 // ─────────────────────────── 纯判据（--self-test 注入输入） ───────────────────────────
-
-function escapeRe(s) {
-  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
-/**
- * 取 CHANGELOG 里 `## v{version}` 那一段的正文（到下一个 `## ` 为止），去掉段头后的前导空行。
- * 找不到该段 → null（调用方判红，**不静默当空**）。段在但正文为空 → 返回 ""（同样判红——空段
- * 在用户眼里和缺段一样：发行说明页一片空白）。
- *
- * ⚠️ 结尾那个 `([^0-9.]|$)` 是防前缀误匹配的（v0.1.4 不该匹配到 v0.1.47 那一段）。
- *    版本里的 `.` 这里按**字面**转义（比原先 CI 里的 awk 更严——awk 的 `.` 是通配符）。
- */
-function changelogSection(text, version) {
-  const lines = text.split(/\r?\n/);
-  const head = new RegExp(`^## v${escapeRe(version)}([^0-9.]|$)`);
-  const start = lines.findIndex((l) => head.test(l));
-  if (start < 0) return null;
-  const body = [];
-  for (let i = start + 1; i < lines.length; i++) {
-    if (/^## /.test(lines[i])) break;
-    body.push(lines[i]);
-  }
-  // 去前导空行（对标 CI 里那句 sed '/./,$!d'）
-  while (body.length > 0 && body[0].trim() === "") body.shift();
-  return body.join("\n");
-}
-
-/** 取段头 `## v{version}（{date}）` 里的日期。格式不对/没写 → ""（调用方回落构建日，不拦发布）。 */
-function changelogDate(text, version) {
-  const head = new RegExp(`^## v${escapeRe(version)}（`);
-  const line = text.split(/\r?\n/).find((l) => head.test(l));
-  if (!line) return "";
-  const m = /（([^）]*)）/.exec(line);
-  return m ? m[1] : "";
-}
 
 /**
  * 判据①：version 是否真的往前走了一步。

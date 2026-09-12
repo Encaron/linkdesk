@@ -49,8 +49,12 @@ const injection = [
   "",
 ].join("\n");
 
+// 🔴 **这份名单必须与 lefthook.yml 里实际声明的阶段同步**：lefthook 只会为配置里出现过的
+//    阶段生成 `.git/hooks/<stage>`，而下面这个循环只管「给已生成的 hook 注入 LEFTHOOK_CONFIG」。
+//    ⇒ 新加阶段却忘了加进这里 = **hook 文件在、注入不在** = lefthook 读到 git root 的空配置
+//    = **job 静默不跑**（本文件头注警告的正是这个）。**这是「假门禁」的典型形状：文件看起来装好了。**
 let patched = 0;
-for (const hook of ["pre-commit", "prepare-commit-msg", "pre-push"]) {
+for (const hook of ["pre-commit", "prepare-commit-msg", "commit-msg", "pre-push"]) {
   const file = join(repoRoot, ".git", "hooks", hook);
   if (!existsSync(file)) continue;
   const content = readFileSync(file, "utf8");

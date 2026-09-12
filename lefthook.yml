@@ -2,11 +2,17 @@
 # 安装：postinstall 自动跑 `node scripts/install-lefthook.mjs`（不靠文档要求装）。
 # 快检分层（对标 dsh "local checkpoints fast; CI owns the full matrix" 的无 CI 等价）：
 #   pre-commit 只检暂存文件（staged eslint --fix + whitespace，秒级）——commit 不被全量矩阵拖慢；
+#   commit-msg 检提交消息（E6#57.15e：软件侧变更必须带 feat/fix/breaking 前缀，硬拦）；
 #   全量门禁矩阵归 pre-push（typecheck，tsc 双工程）——最后防线。
 #
 # 🔥 单根布局（2026-09-04 仓库结构上移后）：git root = 工程根 = E:/linkdesk，
 # package.json/eslint.config.js 与 lefthook.yml 同根——无需 root 覆盖（job 默认在 git root 跑）。
 # 旧 monorepo 双目录时代（root: linkdesk 指子目录）已随结构上移废止。
+#
+# 🔴 **加任何新阶段（stage）时必须同时改 `scripts/install-lefthook.mjs` 的注入名单**——
+#    否则 hook 文件生成了、却拿不到 `LEFTHOOK_CONFIG` 注入 ⇒ lefthook 读到 git root 的空配置
+#    ⇒ **job 静默不跑**（该文件头注自己写的就是这个坑：hook 在、闸不在 = 假门禁）。
+#    E6#57.15e 加 `commit-msg` 时已按此办理（`commit-msg` 在注入名单里）。
 
 pre-commit:
   jobs:
@@ -18,6 +24,17 @@ pre-commit:
 
     - name: whitespace (staged)
       run: git diff --cached --check
+
+# E6#57.15e（2026-09-13，用户拍板）：提交消息必须给软件侧变更分类——**硬拦**。
+# 为什么不在 Claude 的 PreToolUse 钩子里（原来的位置）：那儿只覆盖「Claude 敲 git commit」
+# 一条路，用户本人手敲 / CI / 别的工具全都不经过。`commit-msg` 是 **git 自己**触发的，覆盖全部。
+# `{1}` = git 传进来的**提交消息文件路径**——读文件判定，`-F` / 编辑器 / heredoc 全都读得到
+# （旧实现从命令行正则扒 `-m "…"`，那三种方式静默放行）。
+# 逃生口：`git commit --no-verify` 跳过全部 git 钩子（git 机制，非本闸漏洞）。
+commit-msg:
+  jobs:
+    - name: commit category (E6#57.15e)
+      run: node scripts/check-version-bump.mjs {1}
 
 pre-push:
   jobs:
