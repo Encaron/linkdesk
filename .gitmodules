@@ -1,0 +1,3 @@
+[submodule ".claude/skills/amap-skills"]
+	path = .claude/skills/amap-skills
+	url = https://github.com/AMap-Web/amap-skills.git
