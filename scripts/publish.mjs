@@ -44,21 +44,47 @@ function say(line) {
   process.stdout.write(line);
 }
 
-/** 跑一个子进程，输出直通终端。返回退出码。 */
+/**
+ * 直接跑一个可执行文件（**不开 shell**）。参数原样传，路径含空格也安全。
+ *
+ * 🔴 调 node 自己那条路径**绝不能**开 shell：`process.execPath` =
+ *   `C:\Program Files\nodejs\node.exe`，含空格，而 spawn 开 shell 时**不替你加引号**
+ *   ⇒ cmd 把 `C:\Program` 当命令名 ⇒ `'C:\Program' 不是内部或外部命令`。
+ *   （本文件第一版就是这样，跑一次端到端当场炸——所以「不跑一次」等于没写。）
+ */
 function run(cmd, args) {
-  const r = spawnSync(cmd, args, { cwd: ROOT, stdio: "inherit", shell: process.platform === "win32" });
+  const r = spawnSync(cmd, args, { cwd: ROOT, stdio: "inherit", shell: false });
   return r.status ?? 1;
 }
 
-// ── 还原：单一实现，走 write-product-json.mjs --restore（它握有写之前的原始字节）──
+/**
+ * 跑一条命令行（**开 shell**）。只用于 Windows 上实际是 `.cmd` 的那种命令（npm）——
+ * Node ≥18.20 起，`.cmd`/`.bat` 不经 shell 直接 spawn 会 EINVAL（CVE-2024-27980 的处置）。
+ * 传**整条字符串**而非数组：Node 对「数组 + shell:true」会发 DEP0190 警告（数组元素不转义、只拼接）。
+ * 命令行是写死的字面量，不拼任何外部输入。
+ */
+function runShell(cmdline) {
+  const r = spawnSync(cmdline, { cwd: ROOT, stdio: "inherit", shell: true });
+  return r.status ?? 1;
+}
+
+// ── 还原 ──
+// 用**本次运行开头读到的原始字节**放回（内存），而不是走 write-product-json.mjs --restore
+// 那个临时目录备份：备份文件是**跨运行**存在的，万一它来自更早的一次写入，还原的就是那时的样子
+// （过期快照盖掉真值——本仓最忌的那一类）。内存里的这份按定义就是本次的真身。
+//  CLI 的 --restore 仍在（人工补救用；它还原的是「上一次写入之前」的样子，已在它的提示里写明）。
+let originalBytes = null;
 let restored = false;
 function restore() {
   if (restored) return;
   restored = true;
-  const code = run(process.execPath, [WRITER, "--restore"]);
-  if (code !== 0) {
+  if (originalBytes === null) return; // 还没写就退出：无事可做
+  try {
+    writeFileSync(PRODUCT, originalBytes);
+    say("  已还原 electron/product.json（本次运行开头的原始字节）\n");
+  } catch (e) {
     process.stderr.write(
-      `\n⚠️  自动还原没成功。请手动还原：git checkout -- electron/product.json\n` +
+      `\n⚠️  自动还原失败（${e.message}）。请手动还原：git checkout -- electron/product.json\n` +
         `    （别手写一份「占位」——占位值不是推导出来的，手抄就又成了第二份真相）\n`
     );
   }
@@ -88,28 +114,21 @@ function main() {
   }
 
   const version = JSON.parse(readFileSync(join(ROOT, "package.json"), "utf8")).version;
-  const hadProduct = existsSync(PRODUCT);
-  // 兜底：万一 write 那步在备份完成前就炸了，finally 仍能拿内存里的原始字节放回
-  const originalBytes = hadProduct ? readFileSync(PRODUCT, "utf8") : null;
+  if (!existsSync(PRODUCT)) {
+    fail(`找不到 ${PRODUCT}——发布身份文件不该缺席，先查它是不是被删/被改名了。`);
+  }
+  originalBytes = readFileSync(PRODUCT, "utf8"); // 本次的真身：还原只用它
 
   say(`\n📦 发布 ${version}\n${"─".repeat(60)}\n`);
 
   // ── 1. 写身份 ──
   say("① 写发布身份 → electron/product.json\n");
   if (run(process.execPath, [WRITER]) !== 0) {
-    fail(`写 product.json 失败`);
+    restore();
+    fail(`写 product.json 失败——已按本次开头的原始字节放回。`);
   }
-  // 双保险：write 已自带备份；这里再确保 finally 有得可用
-  process.on("exit", () => {
-    // 退出路径上（含异常逃逸）若还没还原，用内存字节直接放回
-    if (!restored && originalBytes !== null) {
-      try {
-        writeFileSync(PRODUCT, originalBytes);
-      } catch {
-        /* 退出路径上尽力而为；--restore 仍是正路 */
-      }
-    }
-  });
+  // 异常逃逸 / 提前退出也要还原（SIGINT 另有处理器）
+  process.on("exit", restore);
 
   // ── 2. 发布门禁 ①②③ ──
   say("\n② 发布门禁\n");
@@ -126,7 +145,8 @@ function main() {
     );
   } else {
     say("\n③ 打包（npm run electron:build；内含判据④与安装器文件名门禁）\n");
-    if (run("npm", ["run", "electron:build"]) !== 0) {
+    // 走 shell —— Windows 上 npm 是 npm.cmd（node 那条路径不开 shell，见 run()）
+    if (runShell("npm run electron:build") !== 0) {
       restore();
       fail(`打包失败——已还原 product.json。`);
     }
