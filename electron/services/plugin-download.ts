@@ -19,6 +19,7 @@ import * as fs from "fs/promises";
 import * as path from "path";
 import { envService } from "./env-service.js";
 import { mainFetch } from "./main-fetch.js";
+import { createIdleWatchdog } from "./idle-watchdog.js";
 import { BUNDLE_EXT } from "../plugins/bundle-zip.js";
 
 /** 半截标记后缀——下载进行中的落盘名（写满才 rename 去掉本后缀成正式包）。模块私有——消费方只见 rename 后正式包。 */
@@ -169,36 +170,25 @@ async function downloadOnce(
 
   onProgress?.(`开始下载 ${url}`);
 
-  const ac = new AbortController();
-  let idledOut = false;
-  let idle: ReturnType<typeof setTimeout> | undefined;
-  /** 有字节到达 → 重置空闲看门狗（判据是「还在动吗」） */
-  const bumpIdle = (): void => {
-    if (idle) clearTimeout(idle);
-    idle = setTimeout(() => {
-      idledOut = true;
-      ac.abort();
-    }, idleMs);
-  };
-  const onOuterAbort = (): void => ac.abort();
-  outer?.addEventListener("abort", onOuterAbort, { once: true });
-  if (outer?.aborted) ac.abort();
-  bumpIdle();
+  // 空闲看门狗走**唯一实现** `idle-watchdog.ts`（2026-09-12 与主软件更新腿归一时抽出）——
+  // 此前是本函数内联的一段；两腿各写一份 = 将来只改一处、另一条腿悄悄退化成「永远挂着」。
+  const wd = createIdleWatchdog(idleMs, outer);
+  wd.bump(); // 🔴 先装表再出网（见下：`mainFetch` 自己也会挂）
 
-  /** 中断归因——用「是否已 abort / 谁 abort 的」判定，不靠错误类名（DOMException 跨环境形态不一） */
+  /** 中断归因——用「谁 abort 的」判定，不靠错误类名（DOMException 跨环境形态不一） */
   const abortReason = (): DownloadError =>
-    outer?.aborted
+    wd.canceled()
       ? new DownloadError("下载已取消", false)
-      : idledOut
+      : wd.timedOut()
         ? new DownloadError(`下载超时——${idleMs / 1000} 秒无响应`, true)
         : new DownloadError("下载中断", true);
 
   try {
     let resp: Response;
     try {
-      resp = await mainFetch(url, { redirect: "follow", signal: ac.signal });
+      resp = await mainFetch(url, { redirect: "follow", signal: wd.signal });
     } catch (e) {
-      if (ac.signal.aborted) throw abortReason();
+      if (wd.signal.aborted) throw abortReason();
       // 非主动 abort 的 fetch 失败（ECONNRESET / ENOTFOUND …）——瞬时网络问题，可重试
       throw new DownloadError(e instanceof Error ? e.message : String(e), true);
     }
@@ -228,7 +218,7 @@ async function downloadOnce(
           try {
             chunk = await reader.read();
           } catch (e) {
-            if (ac.signal.aborted) throw abortReason();
+            if (wd.signal.aborted) throw abortReason();
             throw new DownloadError(e instanceof Error ? e.message : String(e), true);
           }
           if (chunk.done) break;
@@ -236,7 +226,7 @@ async function downloadOnce(
           if (value && value.byteLength > 0) {
             await handle.write(Buffer.from(value));
             received += value.byteLength;
-            bumpIdle();
+            wd.bump();
             if (total > 0) {
               const pct = Math.round((received / total) * 100);
               emitTick(`下载中 ${pct}%`, pct);
@@ -274,8 +264,7 @@ async function downloadOnce(
     onProgress?.(`下载完成（${total || "未知"} 字节）`);
     return { zipPath, total };
   } finally {
-    if (idle) clearTimeout(idle);
-    outer?.removeEventListener("abort", onOuterAbort);
+    wd.dispose();
   }
 }
 

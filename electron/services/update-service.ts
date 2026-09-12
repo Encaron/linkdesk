@@ -45,11 +45,17 @@ export class UpdateLegError extends Error {
   }
 }
 
-/** 下载腿（#57.6）——成功返回本地安装器路径；失败抛 `UpdateLegError` */
+/**
+ * 下载腿（#57.6）——成功返回本地安装器路径；失败抛 `UpdateLegError`。
+ *
+ * `warning` = **降级放行的记账**（如 `checksum-unavailable`：未附校验值，照常安装但要记一笔）。
+ * 🔴 它是「成了，但有一件发布侧该知道的事」，与「没成」（`UpdateLegError` → `idle.lastError`）
+ * 是两条不同的路——**不许把它塞进失败那条路**（那会让用户看到一次并不存在的失败）。
+ */
 export type DownloadLeg = (
   update: UpdateInfo,
   onProgress: (progress: DownloadProgress) => void,
-) => Promise<{ installerPath: string }>;
+) => Promise<{ installerPath: string; warning?: UpdateError }>;
 
 /** 安装腿（#57.7）——成功即进程退出（本函数不返回）；失败抛 `UpdateLegError` */
 export type InstallLeg = (update: UpdateInfo, installerPath: string) => Promise<void>;
@@ -140,7 +146,8 @@ export class UpdateService {
 
   /**
    * 开始下载——`available` 态专用。进度走 `onProgress`（节流），完成落 `downloaded`。
-   * 失败（校验不符/落盘失败/中断/取消）→ `idle` + `lastError`（下载腿抛 `UpdateLegError` 承载错误码）。
+   * 失败（校验不符/落盘失败/中断/取消）→ `idle` + `lastError`（下载腿抛 `UpdateLegError` 承载错误码）；
+   * **成功但有话要说**（降级放行）→ `downloaded.warning`（见 `DownloadLeg.warning`，两条路不许混）。
    *
    * 进度播报节流在**本模块**（`PROGRESS_THROTTLE_MS`）——下载腿只管逐块回调，不关心广播频率。
    */
@@ -155,18 +162,21 @@ export class UpdateService {
     this.lastProgressEmit = 0;
     this.transition({ type: 'downloading', update, progress: { transferred: 0, total: update.size ?? 0, percent: 0 } });
 
-    let installerPath: string;
+    let done: { installerPath: string; warning?: UpdateError };
     try {
-      const done = await this.deps.download(update, (progress) => this.reportProgress(progress));
-      installerPath = done.installerPath;
+      done = await this.deps.download(update, (progress) => this.reportProgress(progress));
     } catch (err) {
       if (err instanceof UpdateLegError) return this.fail(err.detail);
       this.transition({ type: 'idle' });
       throw err;
     }
 
-    this.installerPath = installerPath;
-    return this.transition({ type: 'downloaded', update });
+    this.installerPath = done.installerPath;
+    // 🔴 降级放行的账**随成功态走**（`warning`），不是 `lastError`：用户直接点「重启并更新」时
+    // 根本不经过 `idle`，塞进 `idle.lastError` 会在那条最短路径上把账丢掉（2026-09-12 拍板选 (a)）。
+    return this.transition(done.warning
+      ? { type: 'downloaded', update, warning: done.warning }
+      : { type: 'downloaded', update });
   }
 
   /**

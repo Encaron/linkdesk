@@ -295,3 +295,45 @@ describe("安装腿（#57.7 接线点）", () => {
     expect(install).not.toHaveBeenCalled();
   });
 });
+
+// ─────────────────── 降级放行的记账（#57.6b / 2026-09-12 拍板选 (a)） ───────────────────
+
+describe("降级放行的记账（#57.6b）", () => {
+  it("🔴 下载腿报 warning → 落在 downloaded.warning（**不是** lastError——那会把「成了」说成「没成」）", async () => {
+    const warning = { code: "checksum-unavailable" as const, message: "本次更新未附校验值" };
+    const { service } = makeService({
+      download: async () => ({ installerPath: "E:/fake/linkdesk-update-0.1.50.exe", warning }),
+    });
+    service.init();
+    await service.checkForUpdates(true);
+
+    const s = await service.downloadUpdate();
+
+    expect(s).toEqual({ type: "downloaded", update: makeInfo(), warning });
+    expect(service.getState()).toEqual({ type: "downloaded", update: makeInfo(), warning });
+  });
+
+  it("负控：没有 warning 时 `warning` 键**不出现**——否则壳分不清「有话说」和「没话说」", async () => {
+    const { service } = makeService();
+    service.init();
+    await service.checkForUpdates(true);
+    expect(await service.downloadUpdate()).toEqual({ type: "downloaded", update: makeInfo() });
+  });
+});
+
+// ─────────────────── 启动态（#57.6f：不许复活 downloading） ───────────────────
+
+describe("启动态（#57.6f）", () => {
+  it("🔴 新建实例恒从 uninitialized 起 ⇒ **没有**「读盘恢复上次态」的入口，`downloading` 无从复活", () => {
+    // 本格的实现口径：**不引入状态持久化**（见 electron/services/update-download.ts 文件头 ⚠️）。
+    // 磁盘侧的另一半（残留 `.part` 删、旧安装器按方向守卫删）由 update-download.test.ts 钉住——
+    // 两边合起来才是 #57.6f 的完整判据：既没有假态可复活，盘上也不留会变成假态的东西。
+    const fresh = makeService();
+    expect(fresh.service.getState()).toEqual({ type: "uninitialized" });
+    for (const configured of [true, false]) {
+      const { service } = makeService({ isSourceConfigured: () => configured });
+      service.init();
+      expect(["idle", "disabled"]).toContain(service.getState().type);
+    }
+  });
+});

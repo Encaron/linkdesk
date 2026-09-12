@@ -70,7 +70,12 @@ type UpdateErrorCode =
   | 'checksum-unavailable'
   /** 落盘失败（磁盘满/无权限） */
   | 'write-error'
-  /** 🔴 进程中途退出留下的下载 → 重启后归 `idle + interrupted`，**不复活 `downloading`**（#57.6f） */
+  /**
+   * 🔴 传输中断——两种子情形共用一个码：① 进程中途退出留下的下载 → 重启后归 `idle + interrupted`，
+   * **不复活 `downloading`**（#57.6f）；② 本次下载**收了一半就断**（已收 < Content-Length，#57.6a）。
+   * 两者的用户语义与处置完全相同（这次没下成，重下），拆两码只会让壳多写一条一模一样的文案。
+   * ⚠️ 与 `network` 的分界：**连接阶段**就连不上 / 挂死超时 = `network`；**已经在下、半路断** = 本码。
+   */
   | 'interrupted'
   /** 用户/系统取消 */
   | 'canceled';
@@ -93,6 +98,16 @@ export interface UpdateError {
  *            └─「重启并更新」──▶ updating ──quitAndInstall──▶ 进程退出
  * ready = downloaded 的提示态（toast「重启并更新」已出）
  * ```
+ *
+ * 🔴 **`downloaded`/`ready` 带 `warning` 槽（2026-09-12 用户拍板 ⇒ 选 (a)「给状态加 warning 槽」）**：
+ * 降级放行（`checksum-unavailable` 等「照常安装、但要记一笔」的情形）**必须落在这个槽里**。
+ * 此前只有一个 `idle.lastError` 槽，而**降级放行时状态走的是 `downloaded`** ⇒ 照旧类型实现这笔账
+ * 必然被无声丢掉（发布侧永远看不见自己漏附了校验值，拍板想要的效果归零；同属
+ * [[snapshot-shadows-truth-bug-class]] ④「只有一次机会 + 失败不出声」）。
+ *
+ * ⚠️ `warning` ≠ `lastError` 的复本：**`lastError` = 这次没成**（回 `idle`，有出口等用户重试）；
+ * **`warning` = 成了，但有一件发布侧该知道的事**（态照常往下走）。所以它只出现在「成功那条路」上，
+ * 且**跨态传递**：`downloaded.warning` →（壳出提示时）→ `ready.warning`。
  */
 export type UpdateState =
   | { type: 'uninitialized' }
@@ -101,6 +116,8 @@ export type UpdateState =
   | { type: 'checking' }
   | { type: 'available'; update: UpdateInfo }
   | { type: 'downloading'; update: UpdateInfo; progress: DownloadProgress }
-  | { type: 'downloaded'; update: UpdateInfo }
+  /** `warning` = 降级放行的记账（如 `checksum-unavailable`）——见上方 🔴，不是失败 */
+  | { type: 'downloaded'; update: UpdateInfo; warning?: UpdateError }
   | { type: 'updating'; update: UpdateInfo }
-  | { type: 'ready'; update: UpdateInfo };
+  /** `downloaded` 的提示态——`warning` 由 `downloaded` 传递而来（消费者是壳，#57.9/#57.12） */
+  | { type: 'ready'; update: UpdateInfo; warning?: UpdateError };

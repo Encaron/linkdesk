@@ -23,25 +23,8 @@ import * as os from "node:os";
 import * as path from "node:path";
 import * as http from "node:http";
 
-const electronMock = vi.hoisted(() => {
-  // hoist 时抓下原始 fetch——否则下方「出口锁定」把它打断时替身一起断，断言失效
-  const nodeFetch = globalThis.fetch;
-  const netFetchCalls: string[] = [];
-  const app = {
-    appPath: "",
-    version: "0.1.49",
-    getAppPath: () => app.appPath,
-    getVersion: () => app.version,
-  };
-  const net = {
-    fetch: (url: string, init?: RequestInit) => {
-      netFetchCalls.push(url);
-      return nodeFetch(url, init);
-    },
-  };
-  return { app, net, netFetchCalls };
-});
-vi.mock("electron", () => electronMock);
+// 🔴 共享桩必须先于 SUT import（见 electron-mock.ts 头注「纪律」）
+import { electronMock } from "./electron-mock.js";
 
 import {
   createUpdateProbe,
