@@ -63,8 +63,15 @@ function scanFile(relPath) {
 }
 
 function main() {
-  // app.* 声明集中在壳外观配置 + 壳通用配置两处（E5.8#50.19 主题组第二贡献点 "appearance"）
-  const targets = ["src/App/config/appearance.ts", "src/App/startup.ts"];
+  // app.* 声明集中在壳外观配置 + 壳通用配置 + 更新配置三处（E5.8#50.19 主题组第二贡献点
+  // "appearance"；E6#57.9a 更新组第三贡献点 "update"）。
+  // 🔴 本数组是**白名单**——新开一个壳配置声明文件却不加进来 ⇒ 该文件**根本不被扫**，
+  //   门禁静默放行（E6#57.9a 落地时实测确认：加文件当天不补这里，审计是假绿灯）。
+  const targets = [
+    "src/App/config/appearance.ts",
+    "src/App/startup.ts",
+    "src/App/config/update.ts",
+  ];
   const violations = targets.flatMap(scanFile);
 
   if (violations.length > 0) {

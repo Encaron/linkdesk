@@ -25,6 +25,7 @@ import type { ShellTabAction } from '../src/core/types/ipc/tabActions';
 import type { SidebarAction } from '../src/core/types/ipc/sidebarActions';
 import type { ForwardedKeyboardInput, KeybindingSyncData } from '../src/core/types/ipc/keyboard';
 import type { OpenPortConfig, SerialDataPayload, SerialStatsPayload, SerialSystemPayload } from '../src/core/types/ipc/serial';
+import type { UpdateState } from '../src/core/types/ipc/update'; // E6#57.9c：update 状态迁移订阅载荷
 import type { DialogOpenOptions, DialogContentOpenOptions } from '../src/core/types/ipc/dialogs';
 import type { ConfigurationChangedPayload, PluginStateChangedPayload } from '../src/core/types/ipc/events';
 import type { BridgeRequestPayload } from '../src/core/types/ipc/bridge';
@@ -160,6 +161,11 @@ function buildShellUpdate() {
     downloadUpdate: () => ipcRenderer.invoke(IPC.update.downloadUpdate),
     // 抛错面：无安装器/校验失败时状态机把错误上抛，壳负责收成用户可见提示（通知面板 #57.12）
     quitAndInstall: () => ipcRenderer.invoke(IPC.update.quitAndInstall),
+    // 状态迁移订阅（E6#57.9c）——主进程 onStateChanged 走 IpcBridge.broadcast('shell')，
+    // 落到 plugin:push 信封；events.on 按 data.channel 过滤（同 serial.onData 形状，:185）。
+    // 🔴 只订阅不给「当前值」——广播是**变化**，不是**真相**。订阅方必须自己先 invoke(getState)
+    //   补初值，否则壳 preload 无重放包装时会漏掉 mount 之前的那次迁移（07 §4.4）。
+    onStateChanged: (cb: (state: UpdateState) => void) => events.on(IPC.update.stateChanged, cb),
   };
 }
 

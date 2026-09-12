@@ -32,6 +32,7 @@ import { registerCommand } from "../core/registry/commands/CommandRegistry";
 import i18n from "../i18n";
 import { syncCountersAfterRestore } from "../hooks/useTabManager";
 import { registerAppearanceConfiguration } from "./config/appearance";
+import { registerUpdateConfiguration } from "./config/update";
 
 export interface AppStartupDeps {
   setTheme: (v: string) => void;
@@ -112,6 +113,10 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
       // 「主题」配置组声明（pluginId "appearance"）——E5.8 Phase 11.13 结构归一化：配置声明 + onApply 编排
       // 拆至 config/appearance.ts（registerAppearanceConfiguration）；onApply 委托 appearanceApplier 外观应用编排。
       registerAppearanceConfiguration(t);
+
+      // 「更新」配置组声明（pluginId "update"）——E6#57.9a：app.update.mode + app.update.showReleaseNotes。
+      // 纯声明零 onApply（两键都是被读取的存量值）——调度器/首启弹窗各自读，见 config/update.ts 文件头。
+      registerUpdateConfiguration(t);
 
       // Phase 5：初始化 context key 核心状态
       ContextKeyService.initCoreKeys();

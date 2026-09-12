@@ -442,5 +442,12 @@
   "卸载中...": "Uninstalling...",
   "该插件正在卸载中": "This plugin is currently being uninstalled",
   "卸载超时——{{n}} 分钟无进展": "Uninstall timed out — no progress for {{n}} minutes",
-  "上次有 {{count}} 项安装未完成": "{{count}} install(s) from last time weren't finished"
+  "上次有 {{count}} 项安装未完成": "{{count}} install(s) from last time weren't finished",
+  "更新": "Updates",
+  "检查更新": "Check for Updates",
+  "发行说明": "Release Notes",
+  "检查更新的方式——自动后台检查 / 仅在手动点击时检查": "How updates are checked — automatically in the background, or only when you click",
+  "自动——启动后检查一次，此后每 4 小时检查一次": "Automatic — check once at startup, then every 4 hours",
+  "手动——只有你自己点「检查更新」时才检查": "Manual — only check when you click \"Check for Updates\"",
+  "更新到新版本后，首次启动时自动打开发行说明": "Open release notes automatically the first time you launch after an update"
 }

@@ -18,6 +18,7 @@
  * 覆盖矩阵：docs/02-Electron架构/E5.8_归一化基建/契约生成/命名空间矩阵.md §2
  */
 import type { LinkDeskAPI } from "../linkdesk-api";
+import type { UpdateState } from "../../types/ipc/update";
 
 /** 池 preload 必暴露面（44 = 43 唯一 + config 别名；唯一缺 bridge；E6#72 删 toast 宿主桥面）——E5.8#34.5 加 panel（插件调 reveal 的池侧通道）；E5.8#37 加 floatingPanelHost（壳内悬浮面板哑渲染桥）；E5.8#41.12 加 settings（设置套枚举/切换，设置 UI 在池内渲染）；E5.8#41.14 加 factorySlots（任意 role 候选枚举/切换，设置 UI 通用区数据源）；E5.8#50.11 加 appearance（外观资产——选择图片拷贝入库）；E6#57.2a 加 app（只读产品身份——市场 minAppVersion E6#30.8c 消费） */
 export type PoolExposed = Pick<LinkDeskAPI,
@@ -44,6 +45,7 @@ export type PoolExposed = Pick<LinkDeskAPI,
  *  pool 壳 = 推送面（onLayout/ready/sidebarAction/tabAction 为池侧发送面，壳不实现）
  *  appearance 壳 = 仅 revealStorage（E5.8#153：齿轮命令 handler 在壳进程执行，需壳侧触发主进程 openPath；
  *    importImage 池独有——选图拷贝入库只在池设置 UI 发生）
+ *  update 壳 = getState 契约面 + 写命令三条与 onStateChanged 壳内私有扩展（E6#57.9c/d——见下方 update 段）
  *  app 壳 = getVersion 契约面（E6#57.2b 双 preload 同步暴露）+ getProductInfo 壳内私有扩展（关于页
  *    E6#57.14 数据源，不在契约）。⚠️ 超额暴露实现要点：satisfies 的 excess-property 检查达字面量每层，
  *    内联 getProductInfo 会编译红——preload-shell 用 buildShellApp() 工厂构造（返回值结构兼容：目标需的
@@ -57,4 +59,26 @@ export type ShellExposed = Pick<LinkDeskAPI,
   tabs: Omit<LinkDeskAPI["tabs"], "onDidChangeActiveTab">;
   pool: Omit<LinkDeskAPI["pool"], "onLayout" | "ready" | "sidebarAction" | "tabAction" | "tabBarRects" | "dragPosition" | "onAdsorbHint" | "adsorbIndex" | "registerBeforeClose" | "unregisterBeforeClose" | "beforeClose">;
   appearance: Pick<LinkDeskAPI["appearance"], "revealStorage">;
+  /**
+   * update 壳 = 契约只读面（`getState`）**＋ 壳内私有扩展**（E6#57.9c/d，06-主软件更新）。
+   *
+   * 🔴 为什么扩展声明在这里：契约的 update 面**只有 `getState`** 是**设计**（「第三方只读」落在
+   * **类型**上——池 preload 只注入契约面 ⇒ 插件侧根本没有写命令入口，见 linkdesk-api/update.ts 的
+   * 🔴 段）。壳侧那半（写命令 + 事件订阅）按 `buildShellApp()` 的既有先例用工厂函数**超额暴露**。
+   * 但「超额暴露」不等于「无类型」——把壳的完整面写进本清单，`preload-shell` 的
+   * `satisfies ShellExposed` 就把它纳入**tsc 门禁**：日后漏暴露一个方法 = 编译红，而不是
+   * 「类型上没有、运行时却有」的静默漂移。
+   *
+   * 消费者只有壳渲染进程的更新 hook（src/hooks/useUpdateState.ts 单点取用）。池侧**不注入**这几个
+   * 方法——`PoolExposed` 的 update 仍取自契约（只 getState）。
+   */
+  update: LinkDeskAPI["update"] & {
+    /** 手动（`context=true`）/ 后台（`false`）检查。**壳私事**：两条路都从壳发起（07 §一）。 */
+    checkForUpdates(context: boolean): Promise<UpdateState>;
+    downloadUpdate(): Promise<UpdateState>;
+    /** 抛错面：无安装器 / 校验失败时上抛，壳收成用户可见提示（通知面板 #57.12）。 */
+    quitAndInstall(): Promise<void>;
+    /** 状态迁移广播订阅——preload 侧落地为 `events.on(IPC.update.stateChanged)`，返回退订函数。 */
+    onStateChanged(cb: (state: UpdateState) => void): () => void;
+  };
 };
