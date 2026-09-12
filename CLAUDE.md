@@ -46,74 +46,17 @@
 
 标签页系统永不持有卡片注册表。卡片工作台是插件，不是架构第二层。
 
-## 当前阶段——E4 收尾 → E5 铁轨
+## 历史脉络（Tauri 时代 → E5.6 已封站）
 
-> **E4 文件树+Monaco 编辑器完工在即。E5 执行清单已就绪——4 层 15 轮 28 任务，~1,120 行。**
-> **E5 是第一优先：先铺铁轨再跑 04/05 的火车。** 壳内低耦合+布局引擎做完后，FloatingPanel/终端系统/可拖出标签页每个从 4+ 文件改为 1 文件+1 行配置。
-> **E5 执行清单：** `docs/02-Electron架构/E5_核心归一化与壳重构_待执行/05-执行清单.md`
->
-> ---
->
-> ## E3 历史记录（已封站）
+> **来历一句话**：V2 留下「名字写死 = 功能写死」的血教训 → **V3** 定下「圆形大厅」模型（核心只是桌子集合）→ **Tauri 时代 P1-P6** 跑通全部基础设施（**终端插件是第一个验证载体，不是软件的定义**）→ **迁 Electron（E1）** → **E2** 底层加固 → **E3** 多 WebView 与壳收尾 → **E4** 做出文件树与 Monaco 编辑器两个插件 → **E5–E5.6** 核心归一化与壳重构。
 
-> Phase 1-5 任务是建基础设施。终端插件作为第一个视图插件验证了全部基础设施——标签页分屏、命令系统、配置注册表、插件生命周期、数据管道。**以下终端相关条目是基础设施的验证载体，不是软件的定义。**
+> 🔴 **E5–E5.6 走的弯路（历史废案，只记结论）**：**多 WebView / Per-Tab WebView / 双 Pool —— 全部废弃**。Per-Tab 因 O(N) 个进程被否（E5.5#9）；**E5.7 用「极简 Pool」（O(1)）取代**，这才是今天的地基（memory `e5.7-extreme-simple-pool`）。E5.6 的「侧栏移入 Pool」只移了一半（#11），是日后 side panel 反复出问题的旧账。
 
-Phase 1-5h ✅ 完成
-**Phase 5.5a ✅ — viewRole 声明系统（4 文件，−13/+11 行）**
-**Phase 5.5b ✅ — `<SidebarSection>` 通用可折叠组件（2 文件，+191 行）**
-**Phase 5.5c C1 ✅ — `useTerminalSessions` 会话数据层（1 文件，+244 行）**
-**Phase 5.5c C2+C3 ✅ — 侧栏重写 + ControlPanel（4 文件，+857/−85 行），已验证通过**
-**Phase 5.5c C4a ✅ — 终端数据源切换 ConfigurationService → useTerminalSessions（1 文件，+42/−74 行）**
-**Phase 5.5c C4b ✅ — 修 3 个数据管道 Bug + 2 个连带修复（5 文件，+82/−5 行）**
-  附带修复：Babel JSX 箭头歧义（`sessions.map` 提取变量）、CM6 初始化时序（占位改 CSS 显隐）
-**Phase 5.5c C5 ✅ — plugin.json cleanup（删 contributes.configuration 71 行 / viewRole → sidebarPrimary / git rm toolbar.*，−220 行）**
-**Phase 5.5c 🎉 完成。5.5 全部完成。**
+> ✅ **这段时期做完、活到今天还在用的成果**（2026-09-13 已 grep 核实，不是印象）：**`linkdesk.*` 命名空间 API**（`electron/preload-pool/namespaces-*.ts`）· **ESLint 自定义防线**（`eslint.config.js` 的 `linkdesk/no-module-level-ipc-listener` 等，即硬约束 13/14 的机械兜底）。
 
-**Bug 修复 session（2026-07-22）：**
-- `304b6b1` 侧栏不同步标签页——TabActionsContext 加 focusTab+closeTab
-- `1c80cd3` CM6 右键复制/全选失效——view.focus()
-- `df260e1` F5 串口状态不同步——Rust get_serial_status
-- `f476c21` Toggle 命令标签不随状态变——registerCommand 更新 title
-- 📋 **12 个活跃 bug + 新 AI 执行路线图** → `docs/phase5.5_交互对标/V3-Phase5.5-Bug清单-2026-07-22.md`
+> ⚠️ **旧账已清，别再当待办**：卸载相关的六项结构性改进（invoke 统一带日志 / 卸载单入口 `performUninstall()` / Rust error→前端 toast / invoke 顺序 Rust 先于前端 / ContextMenu 冒泡 / `window.confirm`→`showConfirm`）**2026-07-24 起陆续做完**。完整史见 memory `bug-atlas` §A1 §A3。
 
-**Bug 修复 session（2026-07-23，步 14）：**
-- 归一化 `invokeBeforeCloseTab()` — Ctrl+W/[×]/中键三条关闭路径统一（viewRegistry.ts, TabBar.tsx, App.tsx）
-- `loadPluginRuntime` 硬编码 `plugin://${id}/dist/index.js` → 改用 Vite `/@fs/` 端点 + Rust `resolve_plugin_path`
-- `uninstallPlugin` 归一化：卸载=移文件+清禁用列表；`core:true` 插件不可卸载
-- `reinstallPlugin` 同 session 热装 + 退出重进 /@fs/ 即时加载（零重启）
-- `plugin.schema.json` `core` 字段语义补全 + `tabBehavior.invokeBeforeClose` 补录
-- 注释清理 `loader.ts`：消灭"工厂插件""运行时插件"→ 用声明字段描述
-
-详见 `docs/phase5_应用基础设施/V3-Phase5-设计.md`（命令系统 + 配置注册表 + 菜单系统 + 协议注册表 + context key + 快捷键 + scope）
-详见 `docs/phase5.5_交互对标/V3-Phase5.5-设计.md`（三栏交互对标 VS Code）
-详见 `docs/phase5_应用基础设施/V3-Phase5-最终验收报告.md`（Phase 5 验收——4 Blocking + 9 Quick Wins 已全部修完）
-	- **S5** 归一化按钮：PluginDetailView 与侧栏用同一套判断逻辑（元数据缓存 status > 禁用列表）
-	- **B86** 首次打开串口失败：`handleToggleOpen` 用 ref 替代闭包 state——ControlPanel 同事件循环内 setState + invoke 导致 portName 仍为空串
-	- **B3** F5 刷新 session 自动恢复：useSession 首次 mount 自动创建 + localStorage 持久化 session 名 + 重命名 ✓/✕ 按钮 + 侧栏不随标签页切换跳转
-
-**Bug 修复 session（2026-07-24，第二批 G 类 + 卸载根因）：**
-- `cab2d4e` G7 Monaco Enter 闭包过期 → ref 桥接
-- `683dd8b` G22 `parseInt("0") || 1000` → `isNaN(v) ? 1000 : v`
-- `9727f9c` G1 合屏丢标签页 → reduceUnsplit 迁移 tabs 到存活面板
-- `6ecc456` G3 F5 后计数器归零 ID 碰撞 → syncCountersAfterRestore
-- `cf15db1` G10 3+ 面板拖拽目标随机 → findOtherContainer 返回 groupId
-- `4299f51` 卸载弹窗 `window.confirm` → `showConfirm`（Tauri 兼容）
-- `e5a5701` uninstallPlugin 重排序——Rust invoke 移到前端变更之前
-- `b574d8f` ContextMenu 加 stopPropagation + marketplace 卸载命令加错误日志
-- 🔥 **`aec1564` 卸载根因——Rust `fs::rename` → `copy_dir` + `fs::remove_dir_all`**（Windows Vite 文件锁致 rename 跨目录失败）
-- 🔥 结构性改进待做：invoke 统一日志 / 卸载单入口 / Rust error→前端 toast。详见 memory `bug-atlas` §A3
-
-**Bug 修复 session（2026-07-24，第三批代码质量）：**
-- `239b734` A组——G18 CoreEvents `_Phase5EventCount` hack → TODO; G19 formatTimestamp 提取到 useSendData 导出; G20 StorageService 反斜杠跨平台修复
-- `7c3b452` B组——F2 plugin.json 6 字段审计（viewRole 🔴 零消费）; F3 C4a 残留 grep 确认干净; G15 撤销 toast .catch
-- `af2c638` C组——G4 listen 泄漏 → useTauriEvent; G5 render 改 ref → useEffect; G6 toLayoutData setState hack → ref; G12 duplicateTab 跨组 ID 检查
-- G14 → **E2c #19a**（PluginDetailView 幽灵页——订阅 onDidUnregister）；G17 代码已不存在（之前已删）
-
-**E1 迁移 Bug（2026-07-25）：**
-- `e9bff65` 串口接收不到数据——serial-service 漏掉 Rust read_loop 100ms 超时冲刷（缝 bug）。设备不发 `\n` 时数据滞留缓冲区。修复：加 `flushTimer`。
-> 详见 memory `bug-atlas` §A1 案例 E1
-
-分支：`phase5.5` → 将重命名为 `phase6`（Tauri 冻结），新分支 `electron` 开始迁移。Git 锚点 `52730fc`。
+> 📚 **要查细节去这些地方**：Tauri 时代存档 `docs/01-Tauri_P1至P5.5/`（P1-P6 六期；三批 bug 修复的逐笔记录在 [P6-Bug修复完整记录.md](docs/01-Tauri_P1至P5.5/P6-交互对标/P6-Bug修复完整记录.md)）· Electron 各期存档 `docs/02-Electron架构/`（E3 / E3.5 / E3.6 / E5.5 / E5.6 / E5.7 / E5.8）· 完整脉络 memory `evolution-chronicle`。
 
 ## Phase 路线
 
@@ -126,10 +69,11 @@ Phase 1-5h ✅ 完成
 | **E2** | **底层加固 + 侧栏扩展位（36/40 任务，~1,310 行）** | ✅ | ✅ E2a+E2b+E2c ✅，E2d 4 任务取消 |
 | **E3** | **多 WebView + 壳收尾（103 任务，~3,602 行）🏁 架构最后一站** | ❌ | 🎉 E3a-j 全部完成 |
 | **E4** | **文件树 + Monaco 编辑器（67 任务，~2,500 行）🏁 最后 E 编号** | ❌ | 🎉 全部完成（2026-08-03） |
-| **E5** | **核心归一化与壳重构（79 任务，~2,070 行）——铁轨** | ❌ | 🔥 L1 壳通信骨架 ✅（E5#1-#8）→ L2-L4 待执行 |
+| **E5** | **核心归一化与壳重构——铁轨** | ❌ | 🎉 E5–E5.6 完成（已封站）· **E5.7 极简 Pool ✅** · **E5.8 归一化基建 ✅** |
+| **E6** | **插件生态与发布（L5「文档与发布」进行中）** | ❌ | 🚀 进行中——真相源 `docs/02-Electron架构/E6_插件生态与发布/E6-执行清单.md` |
 | 之后 | 04-出厂制造（FloatingPanel/终端/悬浮窗）→ 05-版本更新（v1.1-v1.6）→ 卡片工作台 | ❌ | 📋 |
 
-> Phase 5 拆分为 5a-5h 八批次——每批交一个可用软件。拆分细节见 `docs/phase5_应用基础设施/V3-Phase5-设计.md` §九。
+> Phase 5 拆分为 5a-5h 八批次——每批交一个可用软件。详情存档在 [docs/01-Tauri_P1至P5.5/](docs/01-Tauri_P1至P5.5/)。
 
 ## 提交前自检
 
@@ -199,6 +143,13 @@ Phase 1-5h ✅ 完成
 - **不要说"这个功能插件做不了"——插件没有 API 白名单。** 插件代码和核心代码在同一个 WebView 里跑，React 组件就是 React 组件。`import Leaflet`、`import THREE.js`、`<iframe>`、`<video>`——核心代码能用的 JS 库和 Web API，插件全能用。视图插件的契约只有 `{ isActive: boolean }`，之外全是标准 React 自由发挥
 - **不要把终端当成软件的定义。** 终端是第一个视图插件，串口是第一个数据源。LinkDesk 不是"串口调试器"——跟 VS Code 不是"代码编辑器"一样。核心只有标签页+分屏+数据管道+注册表——不知道终端是什么、不知道串口是什么
 
+## 常发已知问题（老毛病——改到相关处先看这个）
+
+> 完整表在 memory `ui-debug-checklist` / `bug-atlas`；这里只记**反复回来的**。
+
+- **文件树 / 侧栏 sticky**：双层滚动架构（`.file-tree-scroll` + `.side-panel-content`）与 CSS `position: sticky` **不兼容**——sticky 的祖先链上都不是真正的滚动容器。E4V#57 曾因此放弃重做，动它之前先读 memory `evolution-chronicle` 的「`e4-sticky` 重做前提」。
+- **编辑器 / Monaco 颜色不跟、token 错乱**：两条已知根因——① **异步竞态**（`StandaloneWorkbenchThemeService` 抢在初始化前设主题，见 memory `bug-atlas` **B4**）；② **全局污染**（Pool 下 `window.monaco` 是共享单例，任何插件 `defineTheme`/`setTheme` 都会污染全局，见 memory `multi-webview-bug-atlas`）。**插件首选 CM6；必须用 Monaco 也绝不调 `defineTheme`/`setTheme`。**
+
 ## 开发命令
 
 ```bash
@@ -210,7 +161,7 @@ npm run dev          # 纯前端预览（Vite）
 npm run electron:dev # 完整 Electron 桌面应用（E1 步 1 后可用）
 npm run tauri dev    # Tauri 桌面应用（phase6 分支退路）
 npx tsc --noEmit     # TypeScript 检查
-npx vitest run       # 单元测试（151 个）
+npx vitest run       # 单元测试（会涨：2026-09 时 168 文件 / 2,342 例）
 ```
 
 ## 关键文件
