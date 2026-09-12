@@ -29,8 +29,16 @@ const PKG_DIR = join(ROOT, "packages", "create-linkdesk-plugin");
 const TEMPLATE_DIR = join(PKG_DIR, "template");
 const CLI = join(PKG_DIR, "index.js");
 
-/** 一次性生成目录（仓外，memory `dev-artifact-hygiene`）；可用 LINKDESK_SCRATCH 覆盖 */
-const SCRATCH_ROOT = process.env.LINKDESK_SCRATCH || "E:/linkdesk-build+scratch";
+/**
+ * 一次性生成目录（仓外，memory `dev-artifact-hygiene`）；可用 LINKDESK_SCRATCH 覆盖。
+ *
+ * 🔴 默认**从仓库根推导**（`<repo>/../linkdesk-build+scratch`），**不写死盘符**：
+ *   本机 ROOT=E:\linkdesk ⇒ 解析出来正是 `E:\linkdesk-build+scratch`（策略分毫不变）；
+ *   云端 ROOT=D:\a\linkdesk\linkdesk ⇒ 解析成它的兄弟目录，可写且随 runner 一起清掉。
+ *   写死 `E:/` 的后果（2026-09-12 CI 实测）：`mkdirSync` **ENOENT——云端没有 E 盘**
+ *   （run 34681219300）。且**任何没有 E 盘的机器都会炸，包括第三方作者**跑 `npm run check`。
+ */
+const SCRATCH_ROOT = process.env.LINKDESK_SCRATCH || resolve(ROOT, "..", "linkdesk-build+scratch");
 const SCRATCH_DIR = join(SCRATCH_ROOT, "scaffold-check");
 const PROBE_NAME = "scaffold-probe";
 
