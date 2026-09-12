@@ -23,7 +23,7 @@
 | 要落盘的东西 | 写到哪 | 规矩 |
 |------|------|------|
 | 用户拍板 / 教训 / 工作法 | 记忆库新建条目（frontmatter `name`/`description`/`type`，`description` 写**触发条件**非摘要）＋ `MEMORY.md` 加一行索引（两段式，一行一文件） | 格式与自检照 [docs/06-记忆系统整理/02-索引重写规范.md](./docs/06-记忆系统整理/02-索引重写规范.md)（行数 ≤100 · 孤儿 = 0 · 断链 = 0） |
-| 总纲级变更（架构定论 / 硬约束 / 开发命令） | **直接改 [CLAUDE.md](./CLAUDE.md)**——不要在 AGENTS.md 另立副本 | 压缩纪律见 memory `claude-md-compression-criteria`：废案压成一句、结论保留、删段前先查有无别的落点 |
+| 总纲级变更（架构定论 / 硬约束 / 开发命令 / 阶段推进 / 新增 npm script） | **直接改 [CLAUDE.md](./CLAUDE.md)**——完成工程任务时**同笔**完善其对应段落（头部进度行 / Phase 表 / 硬约束 / 开发命令 / 关键文件表），不要在 AGENTS.md 另立副本 | 压缩纪律见 memory `claude-md-compression-criteria`：废案压成一句、结论保留、删段前先查有无别的落点 |
 | 流水教训 / 事件 | [memory/JOURNAL.jsonl](./memory/JOURNAL.jsonl) 追加一行 `{"ts","tags","text"}`（append-only，不回改） | — |
 | E6 进度 | 工程内 `E6-执行清单.md`（**唯一真相源**） | 记忆不镜像工程文档——只留结论 + 指针 |
 
