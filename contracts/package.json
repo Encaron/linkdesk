@@ -1,6 +1,6 @@
 {
   "name": "@linkdesk/contracts",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "LinkDesk 插件契约类型——window.linkdesk.* 全量类型定义（E5.8 契约生成产物）。第三方插件作者唯一合法类型消费路径。",
   "type": "module",
   "types": "./linkdesk.d.ts",

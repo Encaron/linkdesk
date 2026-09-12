@@ -12,6 +12,8 @@ import { clearRegistrationLayers } from "../../core/registry/registrationTracker
 import { registerCommand, clearCommands } from "../../core/registry/commands/CommandRegistry";
 import { registerMenuItems, MENU_SLOTS, clearMenus } from "../../core/registry/commands/MenuRegistry";
 import { ContextKeyService } from "../../core/registry/commands/ContextKeyService"; // E5.8#37.6：when 过滤全局 context key
+import { registerShellMenus } from "../../core/commands/input-bindings/shellMenus"; // E6#57.10：帮助组真源
+import { registerUpdateCommands } from "../../core/commands/shell/updateCommands"; // E6#57.10：命令 title 回退源
 import { buildTitleBarMenuGroups, buildHamburgerMenuGroups } from "./titlebar";
 
 const SHELL = "linkdesk.shell";
@@ -72,7 +74,9 @@ describe("buildTitleBarMenuGroups（E5.8#148 面板招牌删除 + group:\"panel\
     const panel = buildTitleBarMenuGroups(id, VIS(true, true)).find((g) => g.group === "panel")!;
     expect(panel).toBeDefined();
     expect(panel.label).toBe("panel"); // 无招牌父项 → 组标签回退 groupName
-    expect(panel.items).toEqual([{ label: "新建终端", command: "panel-plugin.newTerminal" }]);
+    // E6#57.10：item.group 现在透传（画分隔线的依据）——fixture 项本就声明了 group:"panel"，
+    // 断言里带上它 = 正控「字段真的流过 resolveItemNode」。
+    expect(panel.items).toEqual([{ label: "新建终端", command: "panel-plugin.newTerminal", group: "panel" }]);
   });
 
   it("插件 contributes.menus.panel（新槽直连）同样自动归并", () => {
@@ -101,8 +105,8 @@ describe("E5.8#148 界面显隐勾选子菜单——checked 序列化（zone 可
 
     const view = buildTitleBarMenuGroups(id, VIS(false, true)).find((g) => g.group === "view")!;
     const ui = findUiSubmenu(view.items);
-    expect(ui[0]).toEqual({ label: "主侧栏", command: "workbench.action.toggleSidebarVisibility", checked: true });
-    expect(ui[1]).toEqual({ label: "面板", command: "workbench.action.togglePanel", checked: false });
+    expect(ui[0]).toEqual({ label: "主侧栏", command: "workbench.action.toggleSidebarVisibility", group: "view", checked: true });
+    expect(ui[1]).toEqual({ label: "面板", command: "workbench.action.togglePanel", group: "view", checked: false });
   });
 
   it("顶部菜单栏——状态翻转 → 勾选翻转（zone 显隐变化即重推 ✓）", () => {
@@ -122,8 +126,8 @@ describe("E5.8#148 界面显隐勾选子菜单——checked 序列化（zone 可
     const viewParent = view.items[0];
     expect(viewParent).toMatchObject({ label: "查看", command: "" });
     const ui = findUiSubmenu(viewParent.children ?? []);
-    expect(ui[0]).toEqual({ label: "主侧栏", command: "workbench.action.toggleSidebarVisibility", checked: false });
-    expect(ui[1]).toEqual({ label: "面板", command: "workbench.action.togglePanel", checked: true });
+    expect(ui[0]).toEqual({ label: "主侧栏", command: "workbench.action.toggleSidebarVisibility", group: "view", checked: false });
+    expect(ui[1]).toEqual({ label: "面板", command: "workbench.action.togglePanel", group: "view", checked: true });
   });
 
   it("界面父项自身不带 checked（无命令无谓词命中 → undefined 省略）", () => {
@@ -167,12 +171,12 @@ describe("when 过滤（E5.8#37.6 侧栏换边菜单项——当开关至多一�
     ContextKeyService.setValue("sidebarPosition", "left");
     const left = buildTitleBarMenuGroups(id, VIS(true, true)).find((g) => g.group === "view")!;
     expect(left.items.filter((i) => i.command === "workbench.action.toggleSidebarPosition"))
-      .toEqual([{ label: "移动到右侧", command: "workbench.action.toggleSidebarPosition" }]);
+      .toEqual([{ label: "移动到右侧", command: "workbench.action.toggleSidebarPosition", group: "view" }]);
 
     ContextKeyService.setValue("sidebarPosition", "right");
     const right = buildTitleBarMenuGroups(id, VIS(true, true)).find((g) => g.group === "view")!;
     expect(right.items.filter((i) => i.command === "workbench.action.toggleSidebarPosition"))
-      .toEqual([{ label: "移动到左侧", command: "workbench.action.toggleSidebarPosition" }]);
+      .toEqual([{ label: "移动到左侧", command: "workbench.action.toggleSidebarPosition", group: "view" }]);
   });
 
   it("汉堡同款——when 不满足项隐藏（原灰显）", () => {
@@ -182,6 +186,82 @@ describe("when 过滤（E5.8#37.6 侧栏换边菜单项——当开关至多一�
     const view = buildHamburgerMenuGroups(id, VIS(true, true)).find((g) => g.group === "view")!;
     // 父项保留（汉堡不展平）——子面板只含 when 命中的换边项（另一项被过滤隐藏）
     expect(view.items[0].children!.filter((c) => c.command === "workbench.action.toggleSidebarPosition"))
-      .toEqual([{ label: "移动到右侧", command: "workbench.action.toggleSidebarPosition" }]);
+      .toEqual([{ label: "移动到右侧", command: "workbench.action.toggleSidebarPosition", group: "view" }]);
+  });
+});
+
+/**
+ * E6#57.10：菜单内二级分组（`item.group`）透传——**分隔线的唯一依据**。
+ *
+ * 顶部菜单栏下拉此前画不出分隔线（PoolMenuItem 无 group / resolveItemNode 不序列化 /
+ * toDescriptor 丢弃），本次三处打通。判据分两半，缺一不可：
+ *   正控 = 帮助组的三个子项**真的带着三个不同的二级分组名**出来（否则 ContextMenu 一条线都不画）；
+ *   负控 = 既有 文件/查看 组内**仍然只有一个分组名**（否则这次通用扩展会往老菜单里塞分隔线）。
+ * 真源走 `registerShellMenus()`（不抄一份 fixture）——抄 fixture 只会测出 fixture 自洽
+ * （[[test-double-must-match-contract-not-impl]]）。
+ */
+describe("E6#57.10 菜单内二级分组透传——帮助组正控 / 既有菜单负控", () => {
+  beforeEach(() => {
+    clearRegistrationLayers();
+    clearCommands();
+    clearMenus();
+  });
+
+  /** 真源注册：shellMenus（文件/查看/帮助）+ updateCommands（检查更新… 的 title 回退源） */
+  function registerRealMenus(): void {
+    registerUpdateCommands();
+    registerShellMenus();
+  }
+
+  it("正控——帮助组：顺序 / label 覆盖 / 三个互不相同的二级分组名（= 2 条分隔线）", () => {
+    registerRealMenus();
+
+    const help = buildTitleBarMenuGroups(id, VIS(true, true)).find((g) => g.group === "help")!;
+    expect(help).toBeDefined();
+    // 组标签 = 无 command 容器项的 label；顶部下拉展平它 ⇒ 点「帮助」直接见命令
+    expect(help.label).toBe("帮助");
+    expect(help.items.map((i) => i.command)).toEqual([
+      "workbench.action.openKeybindingsSettings",
+      "workbench.action.togglePluginDevTools",
+      "update.checkForUpdates",
+    ]);
+    // label 覆盖：commands 自报的 title 是「打开键盘快捷方式」/「切换插件 DevTools」，
+    // 菜单里用更短/更贴切的说法——同一命令在不同菜单不同措辞是 label 的本职
+    expect(help.items.map((i) => i.label)).toEqual(["快捷键列表", "切换开发人员工具", "检查更新…"]);
+    // 🔴 画线的依据：三个值两两不同 ⇒ 相邻各出一条线（ContextMenu 语义，恰好 2 条）
+    expect(help.items.map((i) => i.group)).toEqual(["helpLearn", "helpDev", "helpUpdate"]);
+  });
+
+  it("正控——帮助组落在「查看」之后（注册序 = 组序，全 order 缺省 99）", () => {
+    registerRealMenus();
+
+    expect(buildTitleBarMenuGroups(id, VIS(true, true)).map((g) => g.group)).toEqual(["file", "view", "help"]);
+  });
+
+  it("正控——汉堡同款（不展平，「帮助」父项保留 + 子项分组名照带）", () => {
+    registerRealMenus();
+
+    const help = buildHamburgerMenuGroups(id, VIS(true, true)).find((g) => g.group === "help")!;
+    const parent = help.items[0];
+    expect(parent).toMatchObject({ label: "帮助", command: "" });
+    expect(parent.children!.map((c) => c.group)).toEqual(["helpLearn", "helpDev", "helpUpdate"]);
+  });
+
+  it("「打开键盘快捷方式」已移出「查看」——不并存（单一入口）", () => {
+    registerRealMenus();
+
+    const view = buildTitleBarMenuGroups(id, VIS(true, true)).find((g) => g.group === "view")!;
+    expect(view.items.map((i) => i.command)).not.toContain("workbench.action.openKeybindingsSettings");
+  });
+
+  it("负控——既有 文件/查看 组内仍只有一个分组名（通用扩展没往老菜单塞分隔线）", () => {
+    registerRealMenus();
+
+    const groups = buildTitleBarMenuGroups(id, VIS(true, true));
+    for (const name of ["file", "view"]) {
+      const g = groups.find((x) => x.group === name)!;
+      // 组内所有序列化项（含嵌套子菜单父项）同组 ⇒ 0 条分隔线
+      expect(new Set(g.items.map((i) => i.group))).toEqual(new Set([name]));
+    }
   });
 });

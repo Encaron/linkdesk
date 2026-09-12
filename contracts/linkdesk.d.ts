@@ -1300,6 +1300,13 @@ export interface PoolMenuItem {
     label: string;
     /** 点击执行的命令 ID——无 command 父项为 ""（汉堡不展平父项，点击 no-op） */
     command: string;
+    /**
+     * E6#57.10：菜单内二级分组名——渲染层按它切分隔线（ContextMenu 语义：相邻不同 group 之间出一条线）。
+     * 有值才序列化（无分组 = 兜底 `__default` 一组，不画线）。显示文本铁律：池只比字符串，不解释语义。
+     * ⚠️ 子菜单 children 上的 group 会被 ContextMenu 换成父项 group（mapChildren 语义）——
+     * 分组只在**顶层菜单项**上生效。
+     */
+    group?: string;
     /** 快捷键显示文本——formatKeyLabel 后。仅汉堡（showKeybindings）；titlebar 下拉无快捷键（同壳行为） */
     shortcut?: string;
     /** E5.8#148：当前项 √（显隐勾选菜单）——壳 buildTitleBarMenuGroups/汉堡经 resolveVisibilityChecked

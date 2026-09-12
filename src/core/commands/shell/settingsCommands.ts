@@ -88,11 +88,15 @@ export function registerSettingsCommands(): void {
     registerCommand(APP_PLUGIN_ID, c);
   }
 
-  // 齿轮菜单——设置/主题/语言 三个入口（E5.8#50.24：theme.pick 归一化命令 id）
+  // 齿轮菜单——设置/主题/语言/快捷键 四个入口（E5.8#50.24：theme.pick 归一化命令 id）
   registerMenuItems(MENU_SLOTS.ExtensionGear, APP_PLUGIN_ID, [
     { command: "core.openSettings", group: "navigation" },
     { command: "theme.pick", group: "navigation" },
     { command: "workbench.action.selectLanguage", group: "navigation" },
     { command: "workbench.action.openKeybindingsSettings", group: "navigation" },
+    // E6#57.10：新 group ⇒ 与上面四个 navigation 之间自动出一条分隔线（ContextMenu 相邻不同
+    // group 出线）。即设计 03 §三「入口可多处，命令源唯一」的第二处入口——命令 id 与帮助菜单同一条。
+    // 对齐 mockups/01 Frame 2：设置/主题/语言/快捷键 ── 检查更新…（/ 关于 LinkDesk 待 #57.14）。
+    { command: "update.checkForUpdates", group: "update" },
   ]);
 }

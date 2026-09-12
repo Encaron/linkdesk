@@ -30,7 +30,7 @@ export function registerShellMenus(): void {
         { command: "workbench.action.showOutput", group: "view" },
         { command: "theme.pick", group: "view" }, // E5.8#50.24：theme.pick 归一化命令 id
         { command: "workbench.action.selectLanguage", group: "view" },
-        { command: "workbench.action.openKeybindingsSettings", group: "view" },
+        // E6#57.10：「打开键盘快捷方式」已移入帮助菜单（label「快捷键列表」）——单一入口，不并存。
         // E5.8#37.6：侧栏换边——双 when 门控菜单项（左边 → 显示「移动到右侧」；右边 → 显示「移动到左侧」，
         // 同命令 toggleSidebarPosition，当开关至多一项显示）。when 壳侧一站式过滤
         // （菜单栏序列化 buildTitleBarMenuGroups / 汉堡 / ui.ts getItems）——sidebarPosition
@@ -50,6 +50,34 @@ export function registerShellMenus(): void {
             { command: "workbench.action.togglePanel", label: "面板", group: "view" },
           ],
         },
+      ],
+    },
+    // ── E6#57.10：帮助菜单（设计 06-主软件更新/03-菜单与入口设计 §2.2 + mockups/01 Frame 1）──
+    // 注册在「查看」之后 ⇒ collectMenuBarGroups 组序（全 order 99 = 注册序）自然排在末位。
+    // children 的 group 是**组内二级分组名**（helpLearn/helpDev/helpUpdate…）——ContextMenu 语义：
+    // 相邻不同 group 之间出一条分隔线（故本格 3 项 → 2 条线）。这些二级名是**该分组全部成员的
+    // 占位锚点**：未来 #57.13 的「显示发行说明」插 helpRelease、#57.14 的「关于 LinkDesk」与
+    // 「检查更新…」同组 helpUpdate、许可证/隐私政策（新任务）插 helpLegal——插进来即自动归位，
+    // 不需要再动分隔线。
+    //
+    // ⚠️ 「打开帮助」「隐私政策」「查看许可证」「显示发行说明」「关于 LinkDesk」**本格不放**——
+    // 前两条是**发行后**的事（无站点 / 政策待制定，见 docs/05-版本更新/壳版本/发行后-帮助菜单待补项.md），
+    // 后三条各有落点任务（#57.13 / #57.14 / 许可证推荐任务），到位才声明，不放空壳菜单项。
+    {
+      command: "",
+      label: "帮助",
+      group: "help",
+      children: [
+        // 从「查看」移出（用户 2026-09-12 裁决：移入帮助，不是并存）。label 覆盖命令 title——
+        // 同一命令在不同菜单用不同措辞是 label 的本职（VS Code 同款），命令 title 那一份不动。
+        { command: "workbench.action.openKeybindingsSettings", label: "快捷键列表", group: "helpLearn" },
+        // 复用现有命令 workbench.action.togglePluginDevTools（title「切换插件 DevTools」）——
+        // 不新注册第二条第 5 条命令：同一条命令换个菜单词。**无 when 门控**——
+        // 用户 2026-09-12 裁决「开启这个功能」（发行版里也要真能打开 devtool，
+        // 对应同批去掉的两道 isPackaged 闸门，见 plugin-view-handlers.ts / electron/main.ts）。
+        { command: "workbench.action.togglePluginDevTools", label: "切换开发人员工具", group: "helpDev" },
+        // 恒显入口——见 updateCommands.ts 文件头（入口存在 ≠ 能力承诺，manual 档不禁手动检查）
+        { command: "update.checkForUpdates", group: "helpUpdate" },
       ],
     },
   ]);

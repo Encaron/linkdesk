@@ -293,6 +293,9 @@ function chkPoolMenuItem(v: unknown, p: string, errs: string[]): void {
     const _t54 = v as Record<string, unknown>;
     if (typeof _t54.label !== "string") errs.push(((p) + ".label") + ": 期望 string，实收 " + typeof _t54.label);
     if (typeof _t54.command !== "string") errs.push(((p) + ".command") + ": 期望 string，实收 " + typeof _t54.command);
+    if (_t54.group !== undefined) {
+    if (typeof _t54.group !== "string") errs.push(((p) + ".group") + ": 期望 string，实收 " + typeof _t54.group);
+    }
     if (_t54.shortcut !== undefined) {
     if (typeof _t54.shortcut !== "string") errs.push(((p) + ".shortcut") + ": 期望 string，实收 " + typeof _t54.shortcut);
     }

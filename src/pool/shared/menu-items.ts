@@ -18,6 +18,9 @@ function toDescriptor(item: PoolMenuItem): MenuItemDescriptor {
   return {
     command: item.command,
     label: item.label,
+    // E6#57.10：菜单内二级分组透传——ContextMenu 据此在相邻不同 group 之间出分隔线。
+    // 原注释「单组无 divider 需求，不标 group」已随之作废（帮助菜单要分隔线）。
+    ...(item.group ? { group: item.group } : {}),
     ...(item.shortcut ? { shortcut: item.shortcut } : {}),
     // E5.8#148：显隐勾选态透传——壳序列化 checked（zone 可见 = ✓），池原样渲染
     ...(item.checked ? { checked: item.checked } : {}),
@@ -25,7 +28,7 @@ function toDescriptor(item: PoolMenuItem): MenuItemDescriptor {
   };
 }
 
-/** titlebar 单组下拉：PoolMenuItem[] → MenuItemDescriptor[]（单组无 divider 需求，不标 group） */
+/** titlebar 单组下拉：PoolMenuItem[] → MenuItemDescriptor[]（组内二级分组由 item.group 透传画线） */
 export function poolMenuToDescriptors(items: PoolMenuItem[]): MenuItemDescriptor[] {
   return items.map(toDescriptor);
 }

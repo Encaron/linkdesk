@@ -82,6 +82,9 @@ function resolveItemNode(item: MenuItem, ctx: ResolveItemCtx): PoolMenuItem | nu
   return {
     label: item.label ? ctx.t(item.label) : item.command ? ctx.t(getCommand(item.command)?.title ?? item.command) : "",
     command: item.command,
+    // E6#57.10：组内二级分组透传——菜单里画分隔线的唯一依据（ContextMenu 相邻不同 group = 一条线）。
+    // 全仓既有菜单项同组（文件="file" / 查看="view"）⇒ 序列化输出逐字节不变，只在新菜单里生效。
+    ...(item.group ? { group: item.group } : {}),
     // 壳 MenuRenderer.getKeyLabel：showKeybindings + 无绑定 → 不显示
     ...(kb?.key ? { shortcut: formatKeyLabel(kb.key) } : {}),
     // E5.8#148：显隐勾选——resolveChecked 命中命令（主侧栏/面板）→ 序列化当前勾选态

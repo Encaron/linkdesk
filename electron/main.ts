@@ -214,8 +214,10 @@ function createWindow(): void {
       }
     });
     // E3f #58：切换壳窗口 DevTools——多 WebView 未激活时的兜底
+    // E6#57.10：去掉 `app.isPackaged` 闸门（同 plugin-view-handlers.ts 池侧那一处，用户
+    // 2026-09-12 裁决「开启这个功能」）——两道闸门是发行版「选了 WebView 但 devtool 不出现」的根因。
     ipcMain.handle(IPC.window.toggleDevTools, () => {
-      if (!mainWindow || app.isPackaged) return;
+      if (!mainWindow) return;
       const wc = mainWindow.webContents;
       wc.isDevToolsOpened() ? wc.closeDevTools() : wc.openDevTools({ mode: 'detach' });
     });

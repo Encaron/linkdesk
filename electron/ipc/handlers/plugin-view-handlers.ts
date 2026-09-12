@@ -7,7 +7,7 @@
  * 唯一 WCV，无 zone 路由——poolId 概念全程不出现。
  */
 
-import { app, ipcMain, BrowserWindow } from 'electron';
+import { ipcMain, BrowserWindow } from 'electron'; // E6#57.10：`app` 随 isPackaged 闸门一起移除（仅此一处用过）
 import type { WindowManager } from '../../windows/window-manager.js'; // E5.6#8d
 import { IPC } from '../channels.js';
 // E5.8#46.19：OS 级拖拽幽灵窗——drag-position 流直接驱动（取消/释放隐藏，其余跟随光标）
@@ -48,8 +48,11 @@ export function registerPoolHandlers(windowManager: WindowManager, mainWindow: B
   });
 
   // E5.6#9 → E5.7#4：壳→Pool：切换 Pool DevTools——调试用
+  // E6#57.10：去掉 `if (app.isPackaged) return;`（用户 2026-09-12 裁决「开启这个功能」）——
+  // 发行版里齿轮菜单的选择器选完必须真能打开 devtool，原来的闸门让「选了但没反应」
+  // 在打包版里成为死路。权限边界不在这一层：能走到这里的前提是壳渲染进程已发 IPC，
+  // 而入口（帮助菜单/齿轮/命令面板）本身是壳自己的命令面，非第三方可达。
   ipcMain.on(IPC.pool.toggleDevTools, () => {
-    if (app.isPackaged) return;
     const poolView = _windowManager?.getPoolView();
     if (poolView && !poolView.webContents.isDestroyed()) {
       if (poolView.webContents.isDevToolsOpened()) {

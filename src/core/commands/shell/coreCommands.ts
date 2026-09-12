@@ -385,6 +385,7 @@ import { registerTabCommands } from "./tabCommands";
 import { registerSettingsCommands } from "./settingsCommands";
 import { registerPanelCommands } from "./panelCommands"; // E5.8#31：底部面板显隐命令（Ctrl+J）
 import { registerDeveloperCommands } from "./developerCommands";
+import { registerUpdateCommands } from "./updateCommands"; // E6#57.10：主软件更新入口命令（检查更新…/处理更新）
 import { registerShellMenus } from "../input-bindings/shellMenus";
 import { registerQuickPickCommand } from "../palette/quickPickCommand"; // E5.7#18：quickpick.show 从 components/shared/QuickPick.tsx 迁入
 import { showCommandPalette } from "../palette/commandPalette"; // E5.7#18：命令面板入口从 components/shared/CommandPalette.tsx 迁入
@@ -401,6 +402,7 @@ export function ensureCoreCommands(): void {
   registerSettingsCommands();
   registerPanelCommands(); // E5.8#31：底部面板显隐命令（Ctrl+J）
   registerDeveloperCommands();
+  registerUpdateCommands(); // E6#57.10：主软件更新入口命令
   registerQuickPickCommand(); // E5.7#18：quickpick.show 插件命令
 
   // ── 注册核心命令 ──
