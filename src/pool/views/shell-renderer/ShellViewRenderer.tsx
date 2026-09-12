@@ -17,6 +17,7 @@ import WelcomePoolView from "../welcome/WelcomePoolView";
 import PluginDetailViewHost from "../plugin-detail/PluginDetailViewHost";
 import OutputPoolView from "../output/OutputPoolView";
 import ReleaseNotesPoolView from "../release-notes/ReleaseNotesPoolView";
+import AboutView from "../about/AboutView";
 
 /**
  * E5.7#71：壳视图类型常量表——路由契约字符串集中此表。
@@ -33,6 +34,8 @@ const SHELL_VIEWS = {
   Output: "output",
   /** 发行说明（E6#57.13）——壳取数、池只画，数据走 `PoolTab.releaseNotes` */
   ReleaseNotes: "release-notes",
+  /** 关于（E6#57.14）——同款：壳取数、池只画，数据走 `PoolTab.about` */
+  About: "about",
 } as const;
 
 interface ShellViewRendererProps {
@@ -56,6 +59,9 @@ export default function ShellViewRenderer({ tab, isActive, creatableViews }: She
     case SHELL_VIEWS.ReleaseNotes:
       // E6#57.13：数据在壳侧取好（`useReleaseNotes`），本视图只画 `tab.releaseNotes`
       return <ReleaseNotesPoolView tab={tab} isActive={isActive} />;
+    case SHELL_VIEWS.About:
+      // E6#57.14：同款——数据在壳侧取好（`useAbout`），本视图只画 `tab.about`
+      return <AboutView tab={tab} isActive={isActive} />;
     default:
       return (
         <div style={{

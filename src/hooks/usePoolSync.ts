@@ -31,6 +31,7 @@ import { getConfigurationValue } from "../core/services/configuration/Configurat
 import { ContextKeyService } from "../core/registry/commands/ContextKeyService"; // E5.8#37.6：sidebarPosition 当开关 context key
 import { useUpdateState } from "./useUpdateState"; // E6#57.11：更新态 → TitleBar 按钮显隐/文字（九态映射在 updateCommands.ts）
 import { useReleaseNotes } from "./useReleaseNotes"; // E6#57.13：发行说明标签页载荷（壳想、池画）
+import { useAbout } from "./useAbout"; // E6#57.14：关于标签页载荷（同款）
 import { UPDATE_ACTIONABLE_KEY, UPDATE_BUTTON_LABEL_KEY, isUpdateActionable, updateButtonKeyFor } from "../core/commands/shell/updateCommands"; // E6#57.11
 import { getAssetPath } from "../core/utils/path/assetPath"; // E5.7#5：logoUrl——池不 import core，壳解析推送
 import { getTabCreatableViews } from "../pluginLoader/contributions/viewRegistry";
@@ -97,6 +98,12 @@ export function usePoolSync({ windows, sidebarView, isSidebarVisible, panelActiv
   // `_getSnapshot` 直接返回 `_phase.data`），所以它进 deps 只在**真变化时**触发重推——
   // 与 updateState 同一条理由（见上），不构成重推风暴。
   const releaseNotes = useReleaseNotes();
+
+  // E6#57.14：关于态——同一条规矩的第二个实例，理由逐条同上。
+  // ⚠️ 与 `releaseNotes` 唯一不同：`useAbout` 的快照是 `useMemo([snap, t])` 的产物，**每次 `t` 换引用
+  // 都出新对象**（语言切换时标签要跟着变）——但那正是它该重推的时刻，稳态下 `useMemo` 命中缓存、
+  // 引用恒等，所以进 deps 不会引起重推风暴。
+  const about = useAbout();
 
   // E5.7#8：Chord 状态栏提示——壳 StatusBar.tsx:88-115 逻辑迁入（字符串壳侧构建，池哑渲染）
   const [chordLabel, setChordLabel] = useState<string | null>(null);
@@ -295,6 +302,8 @@ export function usePoolSync({ windows, sidebarView, isSidebarVisible, panelActiv
       panelDetached,
       // E6#57.13：发行说明载荷——serializeGroups 盖章到那一个壳视图 tab 上（池只画）
       releaseNotes,
+      // E6#57.14：关于载荷——同款（serializeGroups 盖章到那一个壳视图 tab 上）
+      about,
       t,
     };
 
@@ -304,5 +313,5 @@ export function usePoolSync({ windows, sidebarView, isSidebarVisible, panelActiv
       if (!win.ready) continue;
       poolApi.pushLayout(assembleWindowLayout(win, ctx), win.windowId);
     }
-  }, [windows, sidebarView, isSidebarVisible, panelActiveViewId, panelVisible, layoutVersion, t, chordLabel, eventEntries, updateState, releaseNotes]);
+  }, [windows, sidebarView, isSidebarVisible, panelActiveViewId, panelVisible, layoutVersion, t, chordLabel, eventEntries, updateState, releaseNotes, about]);
 }

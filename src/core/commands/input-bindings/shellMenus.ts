@@ -60,10 +60,11 @@ export function registerShellMenus(): void {
     // 「检查更新…」同组 helpUpdate、许可证/隐私政策（新任务）插 helpLegal——插进来即自动归位，
     // 不需要再动分隔线。
     //
-    // ⚠️ 「打开帮助」「隐私政策」「查看许可证」「关于 LinkDesk」**仍不放**——前两条是**发行后**
-    // 的事（无站点 / 政策待制定，见 docs/05-版本更新/壳版本/发行后-帮助菜单待补项.md），
-    // 后两条各有落点任务（#57.14 / 许可证推荐任务），到位才声明，不放空壳菜单项。
-    // （「显示发行说明」原也在这条清单里，`#57.13g` 落地后已移出。）
+    // ⚠️ 「打开帮助」「隐私政策」「查看许可证」**仍不放**——前两条是**发行后**的事
+    // （无站点 / 政策待制定，见 docs/05-版本更新/壳版本/发行后-帮助菜单待补项.md），
+    // 后一条有落点任务（许可证推荐任务），到位才声明，不放空壳菜单项。
+    // （「显示发行说明」原也在这条清单里，`#57.13g` 落地后已移出；
+    //  「关于 LinkDesk」原在清单里，`#57.14g` 落地后已移出。）
     {
       command: "",
       label: "帮助",
@@ -85,6 +86,12 @@ export function registerShellMenus(): void {
         { command: "workbench.action.togglePluginDevTools", label: "切换开发人员工具", group: "helpDev" },
         // 恒显入口——见 updateCommands.ts 文件头（入口存在 ≠ 能力承诺，manual 档不禁手动检查）
         { command: "update.checkForUpdates", group: "helpUpdate" },
+        // ── E6#57.14g：关于入口——**末项**，与「检查更新…」**同组 `helpUpdate`**（判据①）：
+        // 同组 ⇒ ContextMenu 不在两者之间画分隔线（相邻不同组才出线），两行读起来是一件事
+        // ——「关于本机 / 软件更新」心智（06 §4.3）。不另开 `helpAbout` 组：画一条线会把
+        // 这对本该连读的入口拆成两摊。
+        // 恒显（无 when）——同款原则：版本信息随时可查，不挂在「有没有更新」上。
+        { command: "app.about", group: "helpUpdate" },
       ],
     },
   ]);

@@ -106,13 +106,18 @@ function makeGenerateId(type: string, identityField: string | null): (opts?: Cre
  * 这些类型不由插件注册表渲染——壳自己处理（MainContent renderTabContent）。
  * 新插件不需要加到这里。这是封闭集合——只有壳级视图。 */
 
-const SHELL_RENDERED_TYPES = new Set(["plugin-detail", FALLBACK_PLUGIN_ID, "output", "release-notes"]); // E3f #54 / E6#57.13
+const SHELL_RENDERED_TYPES = new Set(["plugin-detail", FALLBACK_PLUGIN_ID, "output", "release-notes", "about"]); // E3f #54 / E6#57.13 / E6#57.14
 
 /** 发行说明壳视图的类型串——**壳/池两侧共用的契约字符串**。
  *  池侧同义常量见 `src/pool/views/shell-renderer/ShellViewRenderer.tsx` 的 SHELL_VIEWS.ReleaseNotes
  *  （Path B：池不得 value-import @src/core，故两侧各自声明，新增壳视图需同步——那条注释也这么写）。
  *  壳侧四处消费（命令/通知面/首启自动弹/菜单）统一取本常量，**不写字面量**。 */
 export const RELEASE_NOTES_TAB_TYPE = "release-notes";
+
+/** 关于壳视图的类型串——E6#57.14。与 `RELEASE_NOTES_TAB_TYPE` 同款：池侧同义常量见
+ *  `ShellViewRenderer.tsx` 的 `SHELL_VIEWS.About`（两侧各自声明，新增壳视图需同步）。
+ *  壳侧消费方 = `aboutCommands.ts`（打开 + 复制两条命令），**不写字面量**。 */
+export const ABOUT_TAB_TYPE = "about";
 
 /* ── 壳内部类型元数据（最小特殊处理——plugin-detail / 欢迎 / 发行说明）── */
 
@@ -141,6 +146,20 @@ const SHELL_META: Record<string, TabIdentityMeta> = {
     fallbackLabel: "发行说明",
     /** 定值 ID——单例只有一个，用递增计数器只会让恢复布局后的 ID 漂移（无谓的不确定性）。 */
     generateId: () => RELEASE_NOTES_TAB_TYPE,
+  },
+  /**
+   * E6#57.14：关于标签页——壳直渲染视图，与发行说明**逐字段同形**（同一张表里的两个实例）。
+   *
+   * `fallbackLabel` 就是标签页标题（`getDefaultLabel` → `i18n.t(fallbackLabel)`），
+   * 06 §4.2 的标题行写的是「关于 LinkDesk」——**品牌名进 i18n key 是有意的**：
+   * 它是**软件名**（`t()` 查不到就原样返回，见 parseMissingKeyHandler），
+   * 换品牌只改这一处 + `product.json` 的 `nameLong`。
+   */
+  [ABOUT_TAB_TYPE]: {
+    singleton: true,
+    identityField: null,
+    fallbackLabel: "关于 LinkDesk",
+    generateId: () => ABOUT_TAB_TYPE,
   },
 };
 

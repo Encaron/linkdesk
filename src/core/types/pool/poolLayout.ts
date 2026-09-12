@@ -137,6 +137,9 @@ export interface PoolTab {
    *  ⚠️ 与 `detailPluginId`/`detailViewRenderPath` 同型（壳视图的 per-tab 载荷）——**不是新范式**。
    *  只有 `shellType === "release-notes"` 那一个标签页携带（全窗最多一份）。 */
   releaseNotes?: PoolReleaseNotesData;
+  /** E6#57.14：关于标签页的壳→池数据——与 `releaseNotes` **同一条规矩的第二个实例**
+   *  （壳视图的 per-tab 载荷，**不是新范式**）。只有 `shellType === "about"` 那个标签页携带。 */
+  about?: PoolAboutData;
 }
 
 // ── E6#57.13：发行说明标签页的壳→池载荷 ──
@@ -230,6 +233,64 @@ export type PoolReleaseNotesData =
  * 的情形（24h 内第二次打开）误标成离线。要真做这个标注，得让主进程多回一个「本次是否出过网」的
  * 字段（`ReleaseNotes` 加一维），**不是渲染侧能推出来的**。05 §2.4 的三态表里本来也没有这一态。
  */
+
+// ── E6#57.14：关于标签页的壳→池载荷 ──
+
+/**
+ * 关于页字段表的一行。
+ *
+ * 🔴 **`label` 也归壳 `t()`**——这是本格与 `PoolReleaseNotesData` 唯一的形制差别，理由不是「一致好看」：
+ * 关于页的八个标签（版本/提交/日期/Electron/Chromium/Node.js/V8/OS）**没有一个是不依赖数据的框架文字**
+ * ——每一行都是「这条数据的名字」，与 `channelLabel`（「稳定版」＝数据所在通道的名字）同类。
+ * 而池的界线是**「含数据的文本壳推，纯框架文字池写」**（`ReleaseNotesPoolView` 头注）：
+ * 池自产的应当是 `t("复制")`/`t("检查更新…")` 这种**不含任何字段名**的 chrome。
+ *
+ * 附带收益（06 §4.2 承诺的「字段可扩展 = 零架构改动」由此成真）：加一个字段 = 壳侧数组加一项，
+ * **池侧一个字都不用改**——池只知道「给我几行就画几行」，不知道也不需知道「版本」是什么意思。
+ * 反之若池自持标签表，加字段就得壳池两处同改，且两处的顺序随时可能漂移。
+ */
+export interface PoolAboutField {
+  /** 字段名（壳 `t()` 完）——如「版本」「Electron」 */
+  label: string;
+  /** 字段值——原样展示，壳不加工（`app.getVersion()` 的**纯**版本号，不带 VS Code 那种 `(user setup)` 后缀） */
+  value: string;
+}
+
+/**
+ * 关于标签页的壳→池数据——**两态判别联合**（06 §4.2 的布局无第三态）。
+ *
+ * 🔴 **池不做任何判定**（同 `PoolReleaseNotesData`）：`state` 是什么就画什么分支。
+ *
+ * ⚠️ **为什么没有 `empty`/`error` 态**：关于页的数据来自**本机主进程**（`app:getProductInfo` 读
+ * `product.json` + `process.versions`），不是网络——`electron/product.ts` 的 `loadProduct()` 缺失即
+ * 兜底、**永不抛**（commit/date 落 `—`，06 §4.4）。所以「取不到」这一态在主进程侧已被消化成
+ * 「值为 `—` 的 content」，渲染侧不需要第二个降级面。壳侧只在 `getShellExposed()` 拿不到
+ * （非 Electron 环境，池视图本就不会被渲染）时兜底成同一形状的 `content`，**不让池停在骨架**。
+ *
+ * ⚠️ **两帧对照** = `06-主软件更新/mockups/02-更新通知与关于.html` 的 Frame 6（content）；
+ * `loading` 无 mockup 帧——它是**一帧的过渡**（数据来自本机 IPC，非网络），骨架形状照 content 画
+ * 以免跳位（`ReleaseNotesPoolView.LoadingFrame` 同款取舍）。
+ */
+export type PoolAboutData =
+  | { state: "loading" }
+  | {
+      state: "content";
+      /** 品牌名——`product.nameLong`（唯一真相源在 `electron/product.json`，不写死在视图里） */
+      name: string;
+      /**
+       * 品牌标 URL——壳 `getAssetPath("assets/logo.svg")` 解析后推下来（**与 `titleBar.logoUrl`
+       * 同一个资产、同一条规矩**：池不 import core，资产路径一律壳解析）。
+       *
+       * 🔴 **本字段是「照验收图实现」时的一处有据偏离**：mockup Frame 6 的 `.about-logo` 手画了一个
+       * 圆角蓝方块 + 白方块（纯示意）。真资产 `public/assets/logo.svg` 是圆角蓝方块 + 「LD」，
+       * 且该文件自己的头注写着「**替换此文件即可更换 logo，无需改代码**」——
+       * 若此处手画一个方块，那句注释对本页就是假话，且同一个软件里会出现两个互相矛盾的「LinkDesk 标志」
+       * （标题栏一个、关于页一个）。故改用真资产：**品牌标全仓只有一个文件、一处规则**。
+       */
+      logoUrl: string;
+      /** 字段表——顺序即渲染顺序，壳定 */
+      fields: PoolAboutField[];
+    };
 
 /** 分屏组——每个 group 占一个 flex 区域，内含 N 个 keep-alive 标签页 */
 export interface PoolGroup {

@@ -96,7 +96,10 @@ export function registerSettingsCommands(): void {
     { command: "workbench.action.openKeybindingsSettings", group: "navigation" },
     // E6#57.10：新 group ⇒ 与上面四个 navigation 之间自动出一条分隔线（ContextMenu 相邻不同
     // group 出线）。即设计 03 §三「入口可多处，命令源唯一」的第二处入口——命令 id 与帮助菜单同一条。
-    // 对齐 mockups/01 Frame 2：设置/主题/语言/快捷键 ── 检查更新…（/ 关于 LinkDesk 待 #57.14）。
+    // 对齐 mockups/01 Frame 2：设置/主题/语言/快捷键 ── 检查更新… / 关于 LinkDesk。
     { command: "update.checkForUpdates", group: "update" },
+    // ── E6#57.14g：关于入口——**末项**，与「检查更新…」**同组 `update`**（判据②，与帮助菜单同款取舍：
+    // 同组不画线）。命令 id 与帮助菜单是**同一条**（`app.about`）——「入口可多处，命令源唯一」。
+    { command: "app.about", group: "update" },
   ]);
 }
