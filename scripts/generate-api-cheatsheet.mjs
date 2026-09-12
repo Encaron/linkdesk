@@ -46,6 +46,13 @@ import { ROOT, DTS, parseContract } from "./lib/contract-parse.mjs";
 const README = "packages/plugin-sdk/README.md";
 const BEGIN = "<!-- BEGIN API-CHEATSHEET -->";
 const END = "<!-- END API-CHEATSHEET -->";
+
+// 2026-09-12 修假红（第二次踩同一坑，第一次见 generate-contract.mjs:760 同日注记）：
+// 仓内 `core.autocrlf=true` 且无 .gitattributes ⇒ 生成器 writeFileSync 落 **LF**，
+// 而检出到 Windows 工作区是 **CRLF** ⇒ 裸串比对必然不等 ⇒ **干净检出恒红**。
+// 🔴 本地绿只是因为工作区那份是生成器自己写的 LF——同一份代码在云端全新检出就红
+// （实证：CI run 34680835378）。**只归一「行尾」，内容漂移照常红。**
+const normEol = (s) => (s === null ? null : s.replace(/\r\n/g, "\n"));
 /** 说明列压到一句话：顿号/句号截断 + 去除会撑破表格的竖线。 */
 function brief(doc) {
   if (!doc) return "——";
@@ -119,7 +126,8 @@ function main() {
   const check = process.argv.includes("--check");
   const generated = render();
   const readmePath = resolve(ROOT, README);
-  const readme = readFileSync(readmePath, "utf-8");
+  // 归一在读取处（而非比对处）：比对与落盘都走 LF 空间，写回也让整份收敛到 LF。
+  const readme = normEol(readFileSync(readmePath, "utf-8"));
 
   const beginAt = readme.indexOf(BEGIN);
   const endAt = readme.indexOf(END);
