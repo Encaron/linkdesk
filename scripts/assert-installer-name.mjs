@@ -17,7 +17,7 @@
  *   当时通常没有产物 ⇒ 要么恒红、要么「找不到就跳过」= 恒绿假门禁。故挂在 electron:build 之后（见
  *   package.json）与 CI 的 Build 步骤之后（02-发布流水线 §1.1）。
  *
- * 🔴 三条判据的分工（缺一条就漏一类事故）：
+ * 🔴 四条判据的分工（缺一条就漏一类事故）：
  *   ① 配置层——electron-builder.yml 顶层 artifactName 是否**逐字符等于**契约模板。
  *      防「有人觉得名字难看顺手改了 / 删了」。**契约写死在本文件，不从现场读**——若也从现场读，
  *      改坏配置时两边一起变 ⇒ 断言恒真 = 假门禁（memory `snapshot-shadows-truth-bug-class` ①）。
@@ -25,6 +25,15 @@
  *      「有且只有一个」是刻意的：0 个若判过 ⇒ 偷懒写法「什么都没找到 ⇒ 什么都没错」= 恒绿。
  *   ③ 元数据层——latest.yml 的 path 必须等于那个 .exe 的**实际**文件名。
  *      这是更新器真正读的字段；②③ 比对的两侧分别来自磁盘与产物元数据，是两条独立证据。
+ *   ④ 🔴 **消费侧同形副本**（E6#57.5a 新增）——更新器要找的那个包名是**运行时自己拼**的
+ *      （`electron/services/update-source.ts` 的 `ASSET_NAME_TEMPLATE`，拼法与 ② 同源但发生在
+ *      用户机器上、与本门禁相隔十万八千里）。改名若只改了配置，②③ 只会在**我们自己的**构建机上红，
+ *      **而那一刻门禁根本没跑**（它挂在 electron:build 尾，改配置的人可能压根不打包）；等真发布出去，
+ *      每个用户的更新器都报「安装包缺失」。所以必须在这里把**运行时那份副本**也钉死——
+ *      ①②③④ 四处同一个字符串，任何一处单独漂移都当场红。
+ *      ⚠️ 解析对象是**源码文本**，与配置层是两条独立证据（不是「自己验自己」——那是同一来源
+ *      既当被验者又当判据；此处一侧是 yml、一侧是 ts）。抽不出常量时**判红不放行**：
+ *      「抽不出来 ⇒ 什么都没错」就是恒绿假门禁的写法（同 ② 的注释）。
  *
  * 用法：
  *   node scripts/assert-installer-name.mjs              # 查真实产物（electron:build 尾部自动跑）
@@ -120,6 +129,39 @@ function checkBuildOutput(entries, expectedName) {
   return { ok: true, msg: `产物 ${exes[0]}` };
 }
 
+/** 消费侧同形副本的宿主文件（E6#57.5a） */
+const RUNTIME_SOURCE = join(ROOT, "electron", "services", "update-source.ts");
+
+/** 只在**行首**收紧——update-source.ts 的注释里也提到过这个常量名与那个模板，行首锚点把它们排除掉 */
+const RUNTIME_TEMPLATE_RE = /^const ASSET_NAME_TEMPLATE = '([^']*)';$/m;
+
+/**
+ * 判据④：运行时持有的同形副本是否逐字符等于契约模板（E6#57.5a）。
+ * 输入 = update-source.ts 的源码文本；抽不出常量也判红（理由见头注 ④）。
+ */
+function checkRuntimeTemplate(sourceText) {
+  const m = RUNTIME_TEMPLATE_RE.exec(sourceText);
+  if (m == null) {
+    return {
+      ok: false,
+      msg:
+        `④ 消费侧——在 electron/services/update-source.ts 里找不到行首的 ` +
+        `\`const ASSET_NAME_TEMPLATE = '...';\`。\n` +
+        `      🔴 这里刻意判红而不是跳过——「抽不出来 ⇒ 什么都没错」正是恒绿假门禁的写法。\n` +
+        `      多半是常量被改名 / 改成了模板字符串 / 挪去了别的文件 ⇒ 请同步本门禁的 RUNTIME_TEMPLATE_RE。`,
+    };
+  }
+  if (m[1] !== TEMPLATE) {
+    return {
+      ok: false,
+      msg:
+        `④ 消费侧——更新器拼的包名与发布配置**不是同一个形状**，这正是 asset-missing 的成因。\n` +
+        `      运行时（update-source.ts）：${m[1]}\n      契约（本门禁 / electron-builder.yml）：${TEMPLATE}`,
+    };
+  }
+  return { ok: true, msg: `④ 消费侧 update-source.ts 同形副本 = ${m[1]}` };
+}
+
 /** 判据③：latest.yml 的 path 必须等于 .exe 的实际文件名（更新器真正读的就是这个字段）。 */
 function checkLatestYml(ymlText, expectedName) {
   if (ymlText == null) {
@@ -159,6 +201,11 @@ function runSelfTest() {
     ["① 配置层", checkArtifactName(`appId: com.linkdesk.app\n`), false],
     ["① 配置层", checkArtifactName(`artifactName: "\${productName} Setup \${version}.\${ext}"\n`), false],
     ["① 配置层", checkArtifactName(`artifactName: "linkdesk-setup-\${version}.\${ext}"\n`), false],
+    // 判据④——运行时同形副本（正例 / 形状不符 / 常量抽不出 / 只有注释提到）
+    ["④ 消费侧", checkRuntimeTemplate("const ASSET_NAME_TEMPLATE = '" + TEMPLATE + "';\n"), true],
+    ["④ 消费侧", checkRuntimeTemplate("const ASSET_NAME_TEMPLATE = '" + DEFAULT_TEMPLATE + "';\n"), false],
+    ["④ 消费侧", checkRuntimeTemplate("const OTHER_TEMPLATE = 'x';\n"), false],
+    ["④ 消费侧", checkRuntimeTemplate(" * 行首锚点：注释里的 ASSET_NAME_TEMPLATE 不算数\nconst X = 1;\n"), false],
     // 判据②
     ["② 产物层", checkBuildOutput(["linkdesk-setup-0.1.47.exe"], "linkdesk-setup-0.1.47.exe"), true],
     ["② 产物层", checkBuildOutput(["LinkDesk Setup 0.1.47.exe"], "linkdesk-setup-0.1.47.exe"), false],
@@ -205,6 +252,7 @@ function main() {
 
   const checks = [];
   checks.push(checkArtifactName(yamlText));
+  checks.push(checkRuntimeTemplate(readFileSync(RUNTIME_SOURCE, "utf8")));
 
   if (!existsSync(outDir)) {
     checks.push({
@@ -240,7 +288,7 @@ function main() {
     process.stdout.write(`${join(outDir, expectedName).replace(/\\/g, "/")}\n`);
     return;
   }
-  say(`\n✅ 安装包文件名三处一致：${expectedName}\n`);
+  say(`\n✅ 安装包文件名四处一致（配置 / 消费侧副本 / 产物 / latest.yml）：${expectedName}\n`);
 }
 
 main();

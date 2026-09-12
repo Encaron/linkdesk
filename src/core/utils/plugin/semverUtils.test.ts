@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { compareVersions, versionGte, updateTargetDirection } from "./semverUtils";
+import { compareVersions, versionGte, updateTargetDirection, parseStrictSemver } from "./semverUtils";
 
 describe("compareVersions 基础", () => {
   it("相等返回 0", () => {
@@ -105,5 +105,35 @@ describe("updateTargetDirection（E6#33c 锚① 版本方向——包内版本 v
   it("同版本 = same（恒拒——重装非更新流职责）", () => {
     expect(updateTargetDirection("1.1.0", "1.1.0")).toBe("same");
     expect(updateTargetDirection("1.1.0", "v1.1.0")).toBe("same"); // v 前缀归一
+  });
+});
+
+describe("parseStrictSemver（E6#57.5 更新源 tag 严格校验——与上面的宽容比较不是同一个问题）", () => {
+  it("合法版本：v 前缀剥掉、缺段补 0 **不补**（核心段必须三段齐全）", () => {
+    expect(parseStrictSemver("v0.1.50")).toEqual({ version: "0.1.50", prerelease: false });
+    expect(parseStrictSemver("V0.1.50")).toEqual({ version: "0.1.50", prerelease: false });
+    expect(parseStrictSemver("0.1.50")).toEqual({ version: "0.1.50", prerelease: false });
+    expect(parseStrictSemver(" 1.2.3 ")).toEqual({ version: "1.2.3", prerelease: false });
+  });
+
+  it("预发布：判 true 且版本号带上预发布段（stable 通道据此忽略）", () => {
+    expect(parseStrictSemver("v0.1.50-beta.1")).toEqual({ version: "0.1.50-beta.1", prerelease: true });
+    expect(parseStrictSemver("1.0.0-rc.1")).toEqual({ version: "1.0.0-rc.1", prerelease: true });
+  });
+
+  it("构建元数据不进版本号（semver 2.0 §10：不参与优先级比较）", () => {
+    expect(parseStrictSemver("v1.2.3+build.5")).toEqual({ version: "1.2.3", prerelease: false });
+  });
+
+  it("🔴 非法一律 null——`v1.0`（缺段）/ `release-0.2.0`（带前缀）/ 前导零 / 四段", () => {
+    for (const bad of ["v1.0", "1.0", "release-0.2.0", "v0.1.50.1", "nightly", "", "v01.2.3"]) {
+      expect(parseStrictSemver(bad)).toBeNull();
+    }
+  });
+
+  it("与 compareVersions 的宽容形成对照——同一个输入，一个 null 一个给数", () => {
+    // 这条故意把两个函数的差别钉住：`compareVersions` 永不失败，拿它当「tag 合法吗」用是错的
+    expect(parseStrictSemver("v1.0")).toBeNull();
+    expect(compareVersions("v1.0", "0.1.49")).toBe(1);
   });
 });

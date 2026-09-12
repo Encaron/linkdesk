@@ -81,6 +81,34 @@ export function versionGte(a: string, b: string): boolean {
 }
 
 /**
+ * semver.org 官方校验正则（2.0 §9 附的那一条，逐字符照抄）——**严格**：核心段必须三段齐全。
+ */
+const STRICT_SEMVER_RE =
+  /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$/;
+
+/**
+ * 严格 SemVer 解析——E6#57.5（更新源 `tag_name` 判定），与上面的 `compareVersions` **不是同一个问题**：
+ *
+ * - `compareVersions` / `parseSemver` 是**宽容**的：`"abc"` → `[0]`、`"1.0"` → `[1,0]`，**永不失败**——
+ *   它只回答「谁大」，规则是「能比就比」。
+ * - 本函数回答「**这是不是一个合法的发布版本号**」——`v1.0`（缺段）、`release-0.2.0`（带前缀）**必须
+ *   回答 null**，否则更新腿会把发布事故（tag 打错）静默当成「没有更新」（01 §2.3 `version-unparsable`）。
+ *
+ * 忽略 `v`/`V` 前缀（tag 约定 = `v{version}`，02-发布流水线 §1.5）；剥离**构建元数据**（`+xxx`，
+ * semver 2.0 §10：不参与优先级比较，也不进版本号本身）。
+ *
+ * @returns `null` = 不是合法 SemVer；否则 `{ version: 无 v 前缀的版本号, prerelease: 是否预发布 }`
+ */
+export function parseStrictSemver(v: string): { version: string; prerelease: boolean } | null {
+  const s = v.trim().replace(/^[vV]/, '');
+  const m = STRICT_SEMVER_RE.exec(s);
+  if (!m) return null;
+  const core = `${m[1]}.${m[2]}.${m[3]}`;
+  const pre = m[4];
+  return { version: pre === undefined ? core : `${core}-${pre}`, prerelease: pre !== undefined };
+}
+
+/**
  * 更新目标版本方向判定（E6#33c 降级放行 锚① 语义单复本）——候选包内版本 vs 当前已装。
  * 返回 "upgrade"（目标更高 → 更新语义默认放行）/ "downgrade"（目标更低 → 默认拒，仅 allowOlder 显式放行）/
  * "same"（恒拒——无版本变化的重装非更新流职责）。调用方（stage-update handler）据此决定拒/放 + 报错文案。

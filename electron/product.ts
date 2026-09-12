@@ -94,6 +94,28 @@ export function loadProduct(): Product {
   return _productCache;
 }
 
+/**
+ * 产品短名 = `package.json` 的 `name`（E6#57.5a）——**唯一用途**：拼更新器要找的安装包名。
+ *
+ * 🔴 **为什么不能换成 `app.getName()`**：那一个函数**被问了两个问题**——Electron 在 `package.json`
+ * 同时有 `productName` 时返回 `productName`（"LinkDesk"，大写），否则返回 `name`（"linkdesk"）。
+ * 而 electron-builder 的 `artifactName` 用的是 **`${name}` 不是 `${productName}`**（electron-builder.yml
+ * 里就这一句注记）⇒ 哪天有人给 package.json 补上 `productName`，`app.getName()` 会**悄悄**变成大写那个，
+ * 拼出来的安装包名从此恒不匹配 ⇒ 每个用户的更新器都报「安装包缺失」。读 `name` 字段则**语义唯一**。
+ *
+ * 🔴 **与 loadProduct() 的「缺失即兜底」相反——本函数**故意抛**。** loadProduct 的消费方是显示
+ * （关于页），兜底值无害；本函数的消费方是**版本比对**——兜底出一个空串会让期望包名变成
+ * `-setup-0.1.50.exe`、恒不匹配，把**本机打包缺陷**伪装成「发布侧改了文件名」（错向归因）。
+ * 且 `package.json` 本就进 asar（electron-builder.yml `files:`），读不到只可能是包坏了 ⇒ 该硬失败。
+ */
+export function appPackageName(): string {
+  const raw = JSON.parse(readFileSync(join(app.getAppPath(), 'package.json'), 'utf8')) as { name?: unknown };
+  if (typeof raw.name !== 'string' || !raw.name) {
+    throw new Error('product: package.json 缺 name 字段（拼安装包名的唯一来源，见 appPackageName）');
+  }
+  return raw.name;
+}
+
 /** runtime 增强（process.versions 动态读 + os 拼接）——每次现读，不缓存（永不漂移） */
 export function productRuntime(): ProductRuntime {
   return {
