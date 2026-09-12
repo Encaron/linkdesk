@@ -5,6 +5,8 @@
  *   - `net.fetch` 转调 **hoist 时抓下的原始 fetch** —— 本地 http 服务真发包；「出口锁定」那几条把它
  *     打断时断言才有意义（转调是**真的转调**，不是假响应）。
  *   - `app` 的路径 / 版本面（`getAppPath` / `getVersion` / `getPath('userData')`）。
+ *   - `app` 的**退出编排面**（`relaunch` / `quit` / `exit`，#57.7 安装腿）——桩**不真退出**，
+ *     只把调用记进 `relaunchCalls` / `lifecycleCalls` 供断言（真退出 = 测试进程消失）。
  * 此前两份逐字符相同的 hoisted 桩 —— 两处各写一份 = 将来只改一处。
  *
  * 🔴 **纪律（同 src/App/viewContainerMocks.ts 约定）**：
@@ -21,6 +23,9 @@ const electronMock = vi.hoisted(() => {
   // hoist 时抓下原始 fetch——否则「出口锁定」把它打断时替身一起断，断言失效
   const nodeFetch = globalThis.fetch;
   const netFetchCalls: string[] = [];
+  /** 退出/重启编排的观测点（#57.7 安装腿）——桩**不真退出**，只记账（真退出 = 测试进程消失） */
+  const relaunchCalls: { execPath?: string; args?: string[] }[] = [];
+  const lifecycleCalls: string[] = [];
   const app = {
     appPath: "",
     userData: "",
@@ -33,6 +38,15 @@ const electronMock = vi.hoisted(() => {
       if (name !== "userData") throw new Error(`用例未预期的 app.getPath(${name})`);
       return app.userData;
     },
+    relaunch: (opts?: { execPath?: string; args?: string[] }) => {
+      relaunchCalls.push(opts ?? {});
+    },
+    quit: () => {
+      lifecycleCalls.push("quit");
+    },
+    exit: () => {
+      lifecycleCalls.push("exit");
+    },
   };
   const net = {
     fetch: (url: string, init?: RequestInit) => {
@@ -40,7 +54,7 @@ const electronMock = vi.hoisted(() => {
       return nodeFetch(url, init);
     },
   };
-  return { app, net, netFetchCalls };
+  return { app, net, netFetchCalls, relaunchCalls, lifecycleCalls };
 });
 
 vi.mock("electron", () => electronMock);

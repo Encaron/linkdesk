@@ -57,8 +57,26 @@ export type DownloadLeg = (
   onProgress: (progress: DownloadProgress) => void,
 ) => Promise<{ installerPath: string; warning?: UpdateError }>;
 
-/** 安装腿（#57.7）——成功即进程退出（本函数不返回）；失败抛 `UpdateLegError` */
-export type InstallLeg = (update: UpdateInfo, installerPath: string) => Promise<void>;
+/**
+ * 安装腿（#57.7）——成功即进程退出（本函数不返回）；失败抛 `UpdateLegError`。
+ *
+ * `warning` = 从 `downloaded`/`ready` 传下来的降级放行记账。**为什么腿要拿到它**：07 §三 规定它
+ * `downloaded → ready` 一路传递，而安装这一步是**进程退出前的最后一站**——不在这里落进记录（#57.7a
+ * 的 `PendingInstallRecord`），这笔账就随内存态一起没了：#57.6 拍板要它「不许在最短路径上丢」，
+ * 最短路径正是「下载完 → 直接点重启并更新」（全程不经过 `idle`）。
+ */
+export type InstallLeg = (update: UpdateInfo, installerPath: string, warning?: UpdateError) => Promise<void>;
+
+/**
+ * 启动复位结果（#57.7a）——`UpdateServiceDeps.resume` 的返回体。
+ * `null` = 没有待续安装（含「记录脏」「上次已经装成了」）⇒ 按 `disabled`/`idle` 正常初始化。
+ */
+export interface StartupResume {
+  /** 强制落这个态（当前唯一生产者 = 跨重启的 `ready`：装到一半重启，安装器还在） */
+  state: UpdateState;
+  /** 一并还原安装器路径——没有它，`quitAndInstall` 会判「当前没有已下载的更新可安装」 */
+  installerPath?: string;
+}
 
 export interface UpdateServiceDeps {
   /** 更新源是否已配置（`product.json.updateUrl` 非空）——#57.5a 实现；否 ⇒ `disabled` 态 */
@@ -69,6 +87,17 @@ export interface UpdateServiceDeps {
   download: DownloadLeg;
   /** 安装腿（#57.7） */
   install: InstallLeg;
+  /**
+   * 启动复位（#57.7a）——`init()` 调用一次，把**跨重启的待续安装**还原进内存态
+   * （生产者 = `update-install.ts` 的 `resolveStartupInstall`，装配在 #57.8）。
+   *
+   * 🔴 **必填，不许可选**：跨重启复位是「重启安装」的正常路径（用户在装到一半的重启后
+   * 再点一次「重启并更新」），漏接它不会报任何错——只会静默退回「没有可安装的更新」。
+   * 可选参数 = 给「未接线」留一个不出声的兜底，正是本模块开头明令禁止的东西。
+   * 注入一个值（而不是让本模块读盘）是因为**读盘要排在 `cleanupUpdateResidue()` 之后**，
+   * 那个顺序只有装配处（main 启动序）看得见。
+   */
+  resume: () => StartupResume | null;
 }
 
 /** 推送回调注入（对标 serial-service.setCallbacks）——壳/池广播出口，未注入则只更状态不广播 */
@@ -102,6 +131,13 @@ export class UpdateService {
    */
   init(): UpdateState {
     if (this.state.type !== 'uninitialized') return this.state;
+    // 启动复位**先于** disabled/idle：跨重启的 `ready`（装到一半重启、安装器还在盘上）与更新源
+    // 配没配无关——盘上那份安装器不需要网络也装得了，把它丢给 `disabled` 就是把用户已经下好的更新作废。
+    const resumed = this.deps.resume();
+    if (resumed) {
+      if (resumed.installerPath) this.installerPath = resumed.installerPath;
+      return this.transition(resumed.state);
+    }
     return this.deps.isSourceConfigured()
       ? this.transition({ type: 'idle' })
       : this.transition({ type: 'disabled', reason: 'update-source-unconfigured' });
@@ -194,7 +230,9 @@ export class UpdateService {
     const update = state.update;
     this.transition({ type: 'updating', update });
     try {
-      await this.deps.install(update, this.installerPath);
+      // `warning` 一并交给腿（07 §三：它要从 `downloaded`/`ready` 传下去）——退出前不落进记录就没了，
+      // 而这条正是「下载完直接点更新」的最短路径（全程不经过 `idle`，塞 `idle.lastError` 也捡不回来）。
+      await this.deps.install(update, this.installerPath, state.warning);
     } catch (err) {
       // 安装失败：态**不许停在 `updating`**（进程还在跑却自称「正在装」= 假状态 + 无出口）。
       // 回 `idle` 且**保留 update**（安装器还在盘上，用户能再试）。

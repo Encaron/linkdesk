@@ -13,7 +13,7 @@
 
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { UpdateService, UpdateLegError } from "./update-service";
-import type { DownloadLeg, InstallLeg, UpdateProbeResult, UpdateServiceDeps } from "./update-service";
+import type { DownloadLeg, InstallLeg, StartupResume, UpdateProbeResult, UpdateServiceDeps } from "./update-service";
 import type { DownloadProgress, UpdateInfo, UpdateState } from "../../src/core/types/ipc/update";
 
 const CURRENT = "0.1.49";
@@ -41,11 +41,14 @@ function makeService(over: Partial<UpdateServiceDeps> = {}) {
   const install = vi.fn<InstallLeg>(async () => {
     throw new Error("测试替身：安装腿不该返回");
   });
+  /** 缺省「没有待续安装」——跨重启复位的用例各自覆盖 */
+  const resume = vi.fn<() => StartupResume | null>(() => null);
   const deps: UpdateServiceDeps = {
     isSourceConfigured: () => true,
     probe,
     download,
     install,
+    resume,
     ...over,
   };
   const service = new UpdateService(deps);
@@ -55,7 +58,7 @@ function makeService(over: Partial<UpdateServiceDeps> = {}) {
     onStateChanged: (s) => states.push(s),
     onProgress: (p) => progresses.push(p),
   });
-  return { service, probe, download, install, states, progresses };
+  return { service, probe, download, install, resume, states, progresses };
 }
 
 afterEach(() => vi.restoreAllMocks());
@@ -76,6 +79,41 @@ describe("init 与 getState", () => {
     states.length = 0;
     expect(service.init()).toEqual({ type: "idle" });
     expect(states).toHaveLength(0);
+  });
+});
+
+describe("🔴 启动复位（#57.7a）：跨重启的待续安装还原进内存态", () => {
+  /** 跨重启的 `ready`——装到一半重启，盘上安装器还在（生产者 = update-install.resolveStartupInstall） */
+  function pendingReady(over: Partial<UpdateInfo> = {}): StartupResume {
+    return {
+      state: { type: "ready", update: makeInfo(over), warning: { code: "checksum-unavailable", message: "未附校验值" } },
+      installerPath: "E:/fake/linkdesk-update-0.1.50.exe",
+    };
+  }
+
+  it("有复位结果 → 落该态 + 广播一条；安装器路径一并还原（否则再点「重启并更新」会说没有可装的）", async () => {
+    const { service, resume, states, install } = makeService({ resume: () => pendingReady() });
+    expect(service.init()).toEqual(pendingReady().state);
+    expect(states.map((s) => s.type)).toEqual(["ready"]);
+
+    // 还原出来的路径真的被 `quitAndInstall` 用上（不是「落了个态、按钮却点不动」）
+    await expect(service.quitAndInstall()).rejects.toThrow("测试替身：安装腿不该返回");
+    expect(install).toHaveBeenCalledWith(makeInfo(), "E:/fake/linkdesk-update-0.1.50.exe", {
+      code: "checksum-unavailable",
+      message: "未附校验值",
+    });
+  });
+
+  it("复位**先于** disabled：更新源没配也得认盘上那份安装器（它不需要网络）", () => {
+    const { service } = makeService({ isSourceConfigured: () => false, resume: () => pendingReady() });
+    expect(service.init().type).toBe("ready");
+  });
+
+  it("无复位结果 → 照旧走 disabled/idle（复位不改变原有初始化语义）", () => {
+    const a = makeService({ resume: () => null });
+    expect(a.service.init()).toEqual({ type: "idle" });
+    const b = makeService({ isSourceConfigured: () => false, resume: () => null });
+    expect(b.service.init()).toEqual({ type: "disabled", reason: "update-source-unconfigured" });
   });
 });
 
