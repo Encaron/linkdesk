@@ -19,7 +19,8 @@
  * 作者面定义（tarball 内容的仓库侧代理）：
  *   @linkdesk/contracts         → contracts/linkdesk.d.ts + README.md（files 白名单成品；d.ts=作者消费的类型本体）
  *   @linkdesk/plugin-sdk        → src/** + schemas/**（plugin.schema + E6#60 收编 theme/icon-theme——schema 演进有 npm 黄灯盯）
- *                                 + README.md（dist 不入库=tsc(src) 派生物，src 为权威面）
+ *                                 + dev-host/**（**出货**：files 白名单里；含 generate-contract.mjs 的生成物
+ *                                   linkdesk-mock.generated.ts） + README.md（dist 不入库=tsc(src) 派生物，src 为权威面）
  *   create-linkdesk-plugin      → index.js + template/** + README.md（E6#95e 纳入）
  *                                 🔴 index.js 必须进面——它是 CLI 文案/占位符表；模板改了它常一起漂
  *   @linkdesk/ui                → src/** + README.md（E6#95e 纳入）
@@ -50,6 +51,12 @@ const PACKAGES = [
     surface: [
       "packages/plugin-sdk/src/**",
       "packages/plugin-sdk/schemas/**",
+      // 🔴 dev-host/** 进表面（2026-09-12 补，实测）：它在 package.json 的 files 白名单里**真出货**，
+      // 但表面只盯 src/schemas/README ⇒ 其中**生成物** `linkdesk-mock.generated.ts`（generate-contract.mjs
+      // 第三产物，随契约演进）改了**不会有任何灯**。实证：本次 `#57.8` 加 update 域后仓内 mock 已更新、
+      // 已发布的 0.1.10 里那份仍缺该命名空间——作者跑 `linkdesk-plugin dev` 拿到的 mock 少一个命名空间。
+      // 判据：改 channels.ts 加一条通道 → 重生成 mock → **本闸必须亮**（改前不亮）。
+      "packages/plugin-sdk/dev-host/**",
       "packages/plugin-sdk/README.md",
     ],
   },
@@ -97,13 +104,25 @@ function expandSurface(patterns) {
   return [...out].sort();
 }
 
-/** sha256 over 排序文件列表内容（含路径分隔行——改名即漂移） */
+/**
+ * sha256 over 排序文件列表内容（含路径分隔行——改名即漂移）。
+ *
+ * 🔴 **必须先归一行尾再入哈希**（2026-09-12 修，实测）：同一份仓库内容，本机工作区是 CRLF、
+ * 干净检出是 LF（`.gitattributes` 的 `* text=auto eol=lf` 只约束「之后的检出」，**改写不了已经躺在
+ * 盘上的旧字节**）⇒ 读原始字节算哈希 = 同一个内容在两次检出上得到两个哈希 ⇒ 基线**绑死记它的那台机器**。
+ * 实证：`HEAD` 内容在本机（CRLF）算出 `8903790d…`、在干净检出（LF）算出 `b027cb7e…`，
+ * 一个都对不上基线 ⇒ 换台机器/换次检出就必然误报。同类病本仓一天内已犯过两次
+ * （`generate-contract.mjs` 2026-09-11 修、`generate-api-cheatsheet.mjs` 2026-09-12 CI 红），
+ * 二者与 `contracts:check` 同款处理：**归一后再比**。
+ * ⚠️ 判据不是「归一后灯灭了」（灯灭也可能因为基线本来就旧），而是：
+ * **mark 之后，本机工作区与干净检出跑本脚本都必须静默**——不静默即说明还在绑机器。
+ */
 function contentHash(surfaceFiles) {
   const h = createHash("sha256");
   for (const rel of surfaceFiles) {
     const abs = join(REPO_ROOT, rel);
     if (!existsSync(abs)) continue;
-    const bytes = readFileSync(abs);
+    const bytes = readFileSync(abs, "utf8").split("\r\n").join("\n");
     h.update(`### ${rel}\n`);
     h.update(bytes);
   }
