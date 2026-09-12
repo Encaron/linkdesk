@@ -8,7 +8,7 @@
  * |:--|:--:|:--:|:--:|
  * | `showReleaseNotes=false` | ✗ | ✗ | **✓**（关的是「弹」，不是「有没有」） |
  * | 版本号与上次相同 | ✗ | —（本来就在） | **✓** |
- * | 版本不同 + 取数**拿到内容** | ✓（带横幅） | **✓** | —（已经取过了） |
+ * | 版本不同 + 取数**拿到内容** | ✓（带横幅 **＋ 点名当前版本号**） | **✓** | —（已经取过了） |
  * | 版本不同 + 取数**失败** | ✓（池画空态） | 🔴 **✗**（「下次启动再试」的全部实现） |
  * | 取不到版本号 | ✗ | ✗ | ✗（账上写一个假版本 = 下一次白弹） |
  *
@@ -88,7 +88,11 @@ describe("releaseNotesOnLaunch（决策表）", () => {
     await initReleaseNotesOnLaunch();
 
     expect(mockOpen).toHaveBeenCalledTimes(1);
-    expect(mockOpen).toHaveBeenCalledWith({ banner: true });
+    // 🔴 **`version` 是本次订正的主角**（`#57.13h` 收尾，2026-09-13）：原断言写的是
+    //    `{ banner: true }`——那一格空着 ⇒ 主进程「所请求的那一版不在缓存里 ⇒ 视为失效」那条判据
+    //    短路 ⇒ 升级前拉的缓存照旧命中 ⇒ 首启看到的是**上一版**的说明、横幅还把它当新版宣告。
+    //    **这条断言当时钉住的正是那个 bug**，所以它必须跟着改。
+    expect(mockOpen).toHaveBeenCalledWith({ banner: true, version: VERSION });
     // 🔴 记的是**应用版本号**（不是取回来的那份说明的版本号）——账的语义是「这一版启动弹过了」
     expect(mockWriteSeen).toHaveBeenCalledWith(VERSION);
   });

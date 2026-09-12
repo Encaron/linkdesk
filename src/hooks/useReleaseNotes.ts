@@ -192,10 +192,22 @@ export async function loadReleaseNotes(version?: string): Promise<void> {
     if (seq !== _seq) return; // 竞态：已被更晚的请求取代
     const listUrl = await _ensureListUrl();
     if (seq !== _seq) return;
-    // 首启自动弹：此刻才知道最新版号——填进 bannerVersion（见 Phase 的 🔴 段）。
-    // 🔴 `version === undefined` 是**必须的**：只有「取最新一版」这条路上的结果配得上「新版本」三个字。
-    // 若放行带版本号的请求，用户点一下左窄栏的 v0.1.50 就会冒出一条「检测到新版本 0.1.50」的横幅。
-    const bannerVersion = _phase.bannerPending && version === undefined ? notes.version : _phase.bannerVersion;
+    // 首启自动弹：此刻才知道那版的说明拿到了没有——填进 bannerVersion（见 Phase 的 🔴 段）。
+    //
+    // 🔴 **两条同时成立才画横幅**（`#57.13h` 收尾时订正，2026-09-13）：
+    //   ① `bannerPending`——这次取数是「宣告」，不是用户自己点开看（`primeReleaseNotes({banner:true})`
+    //      是唯一的上闩点；左窄栏点某一版走 `selectReleaseNotesVersion`，那条路会先把它清掉）。
+    //   ② `notes.version === announced`——**取数真把要宣告的那一版拿回来了**。
+    //
+    // ⚠️ ② 原来是写成 `version === undefined` 的（「只有取最新一版才配叫新版本」）。那个写法挡得住
+    // 「用户点历史版本」，却挡不住真正会出事的另一路：**首启自动弹点名的就是你刚装上的那版**，
+    // 而取数**可能回落**——缓存里没有它（升级前拉的，见主进程那条失效判据）、或离线走了缓存兜底时，
+    // `notes.version` 是**列表头那版**（多半正是你刚替换掉的那版）⇒ 横幅会写
+    // 「检测到新版本 0.1.54」，**同一句话从真话变成假话**（与 Phase 段说的那件事同型，只是换了个入口）。
+    // 记下"要宣告的那一版"再比对，两种入口一并挡住：拿不回来就不画。
+    const announced = version ?? notes.version;
+    const bannerVersion =
+      _phase.bannerPending && notes.version === announced ? notes.version : _phase.bannerVersion;
     _emit({
       notes,
       bannerVersion,
@@ -240,6 +252,11 @@ export async function loadReleaseNotes(version?: string): Promise<void> {
 
 /** 左窄栏点某一版 / 通知面条目定位到某一版（`#57.13e`）——都是「换一版重新取数」 */
 export function selectReleaseNotesVersion(version: string): void {
+  // 🔴 **用户自己点开的不算「宣告」**——先撤掉横幅待办再取数。
+  // 横幅判据的①（`bannerPending`）必须确实等于「这次取数是自动弹那一次」；本函数不走
+  // `primeReleaseNotes`（它是「换一版」不是「开页」），不清的话，一旦与首启自动弹抢在同一拍上，
+  // 被点的那一版就会顶着「检测到新版本」画出来（正是那条判据要挡的事）。
+  _phase = { ..._phase, bannerPending: false };
   void loadReleaseNotes(version);
 }
 

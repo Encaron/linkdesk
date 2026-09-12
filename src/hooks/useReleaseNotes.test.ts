@@ -265,6 +265,31 @@ describe("useReleaseNotes（④ 首启横幅）", () => {
     expect(data.banner).toContain("9.9.9");
   });
 
+  it("🔴 首启自动弹**带版本号**（`#57.13h` 订正后的走法）→ 取回来的正是这一版 ⇒ 照挂横幅", async () => {
+    const p = mod.primeReleaseNotes({ banner: true, version: "9.9.9" });
+    await settle();
+    await p;
+
+    // 点名了「当前运行的这一版」——主进程那条「所请求的那一版不在缓存里 ⇒ 视为失效」靠它才成立
+    expect(calls[0]).toBe("9.9.9");
+    const data = expectState("content");
+    expect(data.version).toBe("9.9.9");
+    expect(data.banner).toContain("9.9.9");
+  });
+
+  it("🔴 负控：点名要 9.9.9、取回来却是 9.9.8（缓存里没有你这一版）⇒ **不挂**横幅", async () => {
+    const p = mod.primeReleaseNotes({ banner: true, version: "9.9.9" });
+    await settle(-1, OLD); // 取数回落：拿回来的不是点名的那一版
+    await p;
+
+    const data = expectState("content");
+    expect(data.version).toBe("9.9.8");
+    // 画了就是「检测到新版本 9.9.8」——而用户刚装上的是 9.9.9：同一句话从真话变成假话。
+    // 这条负控同时守住 ①（`bannerPending` 只由自动弹上闩）——判据换成「记下要宣告的那一版再比对」
+    // 之后，两条判据缺一不可。
+    expect(data.banner).toBeUndefined();
+  });
+
   it("🔴 负控：显式要**某一版**时**不**挂横幅（否则点历史版本会冒出「检测到新版本」）", async () => {
     // 先制造「要挂横幅但版本还不知道」的账
     const p1 = mod.primeReleaseNotes({ banner: true });
