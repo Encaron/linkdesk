@@ -152,15 +152,23 @@ export class WindowManager {
       },
     });
 
-    view.webContents.on('console-message', (_event: unknown, level: number, message: string, line: number, sourceId: string) => {
+    // E6#37e（2026-09-12）：改用新签名——⚠️ **这不是纯外观清理，是行为改动**。
+    //   旧签名把 level 当**数字**（Blink 的 kVerbose=0 / kInfo=1 / kWarning=2 / kError=3），
+    //   故旧代码写 `level >= 3` 判错误。新签名里 level 是**字符串**
+    //   （`'debug' | 'info' | 'warning' | 'error'`，见 electron.d.ts 的
+    //   `WebContentsConsoleMessageEventParams`）——**沿用 `level >= 3` 会恒为 false**
+    //   （'error' 转数字是 NaN，NaN >= 3 为假）⇒ **池侧真错误全部静默降级成普通 log**，
+    //   即「失败不出声」。故此处按**等价映射**改写：旧数字 3（kError）↔ 新字符串 'error'，
+    //   0/1/2 ↔ 'debug'/'info'/'warning' 仍走 log。**改这里前先看清单 #37e 判据②**。
+    view.webContents.on('console-message', (event) => {
       const tag = `[pool:${debugLabel}]`;
-      if (level >= 3) console.error(`${tag} ${message}`);
-      else console.log(`${tag} ${message}`);
+      if (event.level === 'error') console.error(`${tag} ${event.message}`);
+      else console.log(`${tag} ${event.message}`);
       // E5.7#86 诊断：池渲染进程 console 也写 protocol-debug.log——与壳 [renderer] 同文件。
       // 此前池侧只打主进程终端——安装版 F12 禁用，池侧错误永远落不了盘（调试缺口）。
       try {
         const logFile = path.join(app.getPath('userData'), 'protocol-debug.log');
-        fs.appendFileSync(logFile, `[${new Date().toISOString()}] [pool] ${message}\n`);
+        fs.appendFileSync(logFile, `[${new Date().toISOString()}] [pool] ${event.message}\n`);
       } catch { /* ignore */ }
     });
 

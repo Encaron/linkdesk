@@ -150,11 +150,14 @@ function createWindow(): void {
   });
 
   // 🔥 E5#114d 诊断：把渲染进程 console 输出转发到文件——生产环境 F12 禁用
-  win.webContents.on('console-message', (_event, _level, message) => {
+  // E6#37e（2026-09-12）：改用新签名——后几个参数已收进事件对象。
+  //   旧签名 `(_event, _level, message)` 会打 `DeprecationWarning`（实测见
+  //   E6-执行清单 #37e 判据①）。本处只用 message，故直接读 `event.message`。
+  win.webContents.on('console-message', (event) => {
     try {
       const logFile = path.join(app.getPath('userData'), 'protocol-debug.log');
       const ts = new Date().toISOString();
-      fs.appendFileSync(logFile, `[${ts}] [renderer] ${message}\n`);
+      fs.appendFileSync(logFile, `[${ts}] [renderer] ${event.message}\n`);
     } catch { /* ignore */ }
   });
 
