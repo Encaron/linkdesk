@@ -156,12 +156,18 @@ function main() {
   restore();
 
   // ── 5. 打印后两步（本脚本不做，也不该做）──
+  //  ⚠️ 结尾这句必须**照实说**：`--no-build` 下没打包就不能说「已打包完成」——
+  //    否则你照它打的 tag，推上去 CI 打出来的包和你本地验的不是一回事。
   say(
-    `\n${"─".repeat(60)}\n✅ ${version} 已打包完成，本地 product.json 已还原成占位。\n\n` +
-      `接下来这两条**你自己敲**（本脚本不推、不打 tag）：\n\n` +
-      `    git tag v${version}\n` +
-      `    git push origin v${version}\n\n` +
-      `推上去之后 CI 会拿这个 tag 建 Release 并上传安装包。\n`
+    `\n${"─".repeat(60)}\n` +
+      (noBuild
+        ? `⚠️  ${version} 的「写身份 + 发布门禁」已过，product.json 已还原；**本次没有打包**（--no-build）。\n` +
+          `    ⇒ 判据④ 没跑、安装包没生成，**现在还不该打 tag**。要发就重跑一次不带 --no-build 的发布。\n`
+        : `✅ ${version} 已打包完成，本地 product.json 已还原成写之前的样子。\n\n` +
+          `接下来这两条**你自己敲**（本脚本不推、不打 tag）：\n\n` +
+          `    git tag v${version}\n` +
+          `    git push origin v${version}\n\n` +
+          `推上去之后 CI 会拿这个 tag 建 Release 并上传安装包。\n`)
   );
 }
 
