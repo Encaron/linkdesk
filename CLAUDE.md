@@ -183,3 +183,4 @@ npx vitest run       # 单元测试（会涨：2026-09 时 168 文件 / 2,342 �
 | 已确认决策 | memory `design-decisions.md` |
 | 已知坑 | memory `bug-atlas` |
 | 主题系统 | memory `theme-system.md` |
+| 新 AI 进场（ZCode / Codex） | 根目录 **`AGENTS.md`**——指针文件，指到本文件与记忆索引；**记忆库重组时同笔更新它** |
