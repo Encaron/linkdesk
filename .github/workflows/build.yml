@@ -36,7 +36,14 @@ jobs:
     runs-on: windows-latest
 
     steps:
+      # 🔴 订正 ⑥（2026-09-12，E6#57.15d）：**必须 fetch-depth: 0**。
+      #   默认（1）只取触发那一个提交、**连 tag 都不带**。而发布门禁的判据①是
+      #   「package.json 的版本 > 本地已有的最高 release tag」——tag 列表恒为空 ⇒
+      #   它会每次都判「首次发布」放行 ⇒ **一条恒真的门禁**（本仓最忌，见 02 §2.6）。
+      #   代价：全量克隆（本仓 3119 commits，很小）。换来的是一条真会红的判据①。
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-node@v4
         with:
@@ -54,28 +61,20 @@ jobs:
       #   所以「段存不存在」不是文档规矩，是**用户看得见的功能**的前提。
       #   提取出来顺手就断言了，不必等一个专门的脚本。
       #
-      # ⚠️ 设计稿 §1.1 在这里写的是 `node scripts/assert-changelog-section.mjs`（E6#57.15d 的产物）。
-      #   **该脚本当前不存在**（5.4 的任务，尚未实现）——照抄进 CI = 每次跑都 "Cannot find module"。
-      #   故此处**不调那个脚本**，改用就地断言；#57.15d 落地后可把它接回这一步之前。
+      # ✅ 2026-09-12（E6#57.15d 落地）：本步骤原先是一段就地的 `awk | sed` + `grep`。
+      #   本行注记的原话是「#57.15d 落地后可把它接回这一步之前」——现在照做：
+      #   改调 `scripts/check-publish-gate.mjs`（`--changelog-body` / `--changelog-date`）。
+      #   于是「段存不存在 / 正文长什么样 / 日期从哪来」全仓**只有一处实现**，
+      #   本地 `npm run publish` 与 CI 用的是同一份判据，不会各说各话。
+      #   ⚠️ 与原 awk 的差异（都是**收紧**）：版本里的 `.` 现在按字面量匹配，原 awk 里它是通配符
+      #   （`v0.1.4` 曾能匹配到 `v0.1.47` 那一段）。缺日期仍只 warning、不拦发布（行为不变）。
       - name: Extract Release body from CHANGELOG (and assert the section exists)
         id: changelog
         shell: bash
         run: |
-          version=$(node -p "require('./package.json').version")
-          # 取 `## v<version>` 那一段正文（到下一个 `## ` 为止）。
-          # `([^0-9.]|$)` 这个尾巴是防前缀误匹配：v0.1.4 不该匹配到 v0.1.47 那一段。
-          awk -v ver="v$version" '
-            $0 ~ "^## " ver "([^0-9.]|$)" { inside = 1; next }
-            inside && /^## / { exit }
-            inside { print }
-          ' CHANGELOG.md | sed '/./,$!d' > release-body.md   # 去掉段头后面那串前导空行
-          if [ ! -s release-body.md ]; then
-            echo "::error::CHANGELOG.md 里没有 '## v$version' 段。"
-            echo "::error::缺段 ⇒ Release 正文为空 ⇒ 用户点「查看更新内容」会看到一片空白。"
-            echo "::error::规矩（3.7.3 立）：bump 版本号必须同笔写 '## v<新版本>' 段。补上再发 tag。"
-            exit 1
-          fi
-          echo "Release 正文 = CHANGELOG.md 的 '## v$version' 段，$(wc -l < release-body.md) 行"
+          # 段缺失/段为空时脚本自己红（exit 1）并打出「3.7.3 立的规矩」那条可执行提示。
+          node scripts/check-publish-gate.mjs --changelog-body > release-body.md
+          echo "Release 正文 = CHANGELOG.md 的 '## v<version>' 段，$(wc -l < release-body.md) 行"
           echo "首行：$(head -1 release-body.md)"
 
           # 🔴 E6#43a：发布日期**从段头本身取**，不另造一个真值源。
@@ -83,13 +82,43 @@ jobs:
           #   同一个段、同一处提取，所以不存在「段在、日期不在」的漂移——
           #   唯一可能缺的是有人写段头时没带日期，那时回落构建日并打 warning（**不拦发布**：
           #   日期只影响正文观感，不该卡住一个已经过了两道门禁的版本）。
-          date=$(grep -m1 "^## v$version（" CHANGELOG.md | sed 's/.*（//; s/）.*//')
+          date=$(node scripts/check-publish-gate.mjs --changelog-date)
           if [ -z "$date" ]; then
             date=$(date -u +%F)
-            echo "::warning::段头 '## v$version' 没带（YYYY-MM-DD）日期，发布日期回落到构建日 $date"
+            echo "::warning::段头没带（YYYY-MM-DD）日期，发布日期回落到构建日 $date"
           fi
           echo "date=$date" >> "$GITHUB_OUTPUT"
           echo "发布日期 = $date（来自 CHANGELOG 段头）"
+
+      # 🔴 E6#57.15a —— 把发布身份写进 electron/product.json（版本/commit/日期/质量通道）。
+      #   为什么必须在 Build **之前**、且非做不可：
+      #     ① dev 期该文件是**占位**（version 0.1.0 / commit 空）。不写就打包 ⇒ 装出去的包里
+      #        嵌的是占位 ⇒ 更新信息页显示的版本、以及 #57.15c 的解包复核全部落空。
+      #     ② 它是判据④（产物 asar 里真有 electron/product.json）的**前置**：文件不在 asar 里
+      #        是「缺文件」，在 asar 里但内容是占位是「有文件没内容」，两种都是发包事故。
+      #   全部值现场取（package.json / git HEAD / 时钟），脚本内不写第二个版本号字面量。
+      #   ⚠️ 这一步会**改脏工作区**——CI 里无所谓（不提交）；本地是 scripts/publish.mjs 用
+      #     try/finally 在打包后逐字节还原，见该脚本头注。
+      - name: Write release identity into product.json
+        run: node scripts/write-product-json.mjs
+
+      # 🔴 E6#57.15d —— 发布门禁（本地 `npm run publish` 跑的是同一个脚本，判据同源）。
+      #   · tag 运行：`--expect-tag` 下**真的验** tag === v{package.json version}。
+      #     不验的话：tag=v0.1.47 而 package.json=0.1.49 ⇒ CI 打出 linkdesk-setup-0.1.49.exe、
+      #     下载链接按 v0.1.49 拼，而 Release 挂在 v0.1.47 上 ⇒ **下载链接 404**。
+      #     同时判据①切到「本次推送的 tag 必须 > 其余所有 tag」（自比无信息，见脚本头注）。
+      #   · 非 tag 运行（electron 分支 push / 手动触发）：**本次不存在要发的 tag**，tag 一致性
+      #     没有对象可验。这不是「跳过检查」——① 与 tag 一致性都是**发布时刻**的判据，
+      #     由本地 `npm run publish` 在打 tag **之前**执行（那时 tag 还不存在，才不会恒真）。
+      - name: Publish gate
+        shell: bash
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            node scripts/check-publish-gate.mjs --expect-tag "$GITHUB_REF_NAME"
+          else
+            echo "本次非 tag 运行（$GITHUB_REF）——本次不存在要发布的 tag，故 tag 一致性无对象可验。"
+            echo "发布时刻的三条判据（版本前进 / 两处版本一致 / CHANGELOG 段）由本地 npm run publish 执行。"
+          fi
 
       - name: Install dependencies
         run: npm ci
