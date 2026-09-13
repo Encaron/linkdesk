@@ -42,10 +42,10 @@ export function __setFilesOpenedForTest(v: boolean): void {
 
 export function useOpenPathIntake(): void {
   useEffect(() => {
-    // ⚠️ intake 是壳内私有扩展，不在插件契约 LinkDeskAPI 上 ⇒ 必须经 getShellExposed() 取
-    //（useReleaseNotes 的 getProductInfo 同款，不能直接 window.linkdesk.intake）。
+    // ⚠️ onOpenPath 是壳内私有扩展，不在插件契约 LinkDeskAPI 上 ⇒ 必须经 getShellExposed() 取
+    //（useReleaseNotes 的 getProductInfo 同款，不能直接 window.linkdesk.shell）。
     const lk = getShellExposed();
-    if (!lk?.intake?.onOpenPath) return; // 非壳环境（预览页/单测）——不挂
+    if (!lk?.shell?.onOpenPath) return; // 非壳环境（预览页/单测）——不挂
 
     const openOne = async (filePath: string): Promise<void> => {
       // 防御性存在校验——主进程分类与投递之间文件可能被删（02 设计文档 §三.2）。
@@ -68,7 +68,7 @@ export function useOpenPathIntake(): void {
       });
     };
 
-    return lk.intake.onOpenPath((paths) => {
+    return lk.shell.onOpenPath((paths) => {
       // 批内顺序处理——同批多文件按入参序开标签（对标 VS Code `code a.txt b.txt`），不并发抢序
       void (async () => {
         for (const p of paths) await openOne(p);

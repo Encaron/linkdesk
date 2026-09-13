@@ -50,6 +50,10 @@ const windowManager = {
   getPoolViewByWindowId: () => null,
   getPoolView: () => null,
   getAllPoolViews: () => [],
+  // E6#47b-1：多窗面——替身照契约（本测试单窗场景：唯一壳 = 主壳）
+  getAllShells: () => [mainWindow],
+  isShellWebContents: (wc: unknown) => wc === mainWindow.webContents,
+  getShellForPoolSender: () => mainWindow,
 };
 
 /** 建桥 + 取某个代理通道的 ipcMain.handle 回调 */

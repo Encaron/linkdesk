@@ -57,7 +57,7 @@ export type ShellExposed = Pick<LinkDeskAPI,
   | "getFilePath" | "serial" | "filesystem" | "path" | "plugins"
   | "fileAssociation" | "pluginManager" | "dialog" | "pluginState" | "menu"
   | "contextKey" | "keybindings" | "p2p"
-  | "clipboard" | "shell" | "app" | "env" | "events" | "bridge" | "window" | "update"> & {
+  | "clipboard" | "app" | "env" | "events" | "bridge" | "window" | "update"> & {
   commands: Pick<LinkDeskAPI["commands"], "registerCommand" | "_executeShellLocal">;
   tabs: Omit<LinkDeskAPI["tabs"], "onDidChangeActiveTab">;
   pool: Omit<LinkDeskAPI["pool"], "onLayout" | "ready" | "sidebarAction" | "tabAction" | "tabBarRects" | "dragPosition" | "onAdsorbHint" | "adsorbIndex" | "registerBeforeClose" | "unregisterBeforeClose" | "beforeClose">;
@@ -127,13 +127,14 @@ export type ShellExposed = Pick<LinkDeskAPI,
     getProductInfo(): Promise<ProductInfo>;
   };
   /**
-   * intake 壳 = **整面壳内私有扩展**（E6#46b，`buildShellUpdate`/`buildShellApp` 同先例同理由）：
+   * shell 壳 = 契约面 **＋ 壳内私有扩展** `onOpenPath`（E6#46b，`buildShellUpdate` 同先例同理由）：
    * 命令行/文件关联打开文件的消费者只有壳 App 顶层 hook（壳级功能不进插件——B79），
-   * 第三方插件没有「接收命令行文件」的理由 ⇒ 池 preload 不注入本面（不在契约 `LinkDeskAPI` 里）。
-   * 落点在 `preload-shell.ts` 的 `buildShellIntake()`，传输 = `workspace:openPath` 直发
-   * （非 plugin:push 分发）+ `IpcRelay` 缓冲回放（硬约束 20）。
+   * 第三方插件没有「接收命令行文件」的理由 ⇒ 池 preload 不注入（不进契约 `LinkDeskAPI`）。
+   * 传输 = `workspace:openPath` 直发（非 plugin:push 分发）+ `IpcRelay` 缓冲回放（硬约束 20）。
+   * ⚠️ 落点为什么是 shell 面：命名空间矩阵门禁只认契约已定义命名空间（新开顶层命名空间会红），
+   *    而壳侧没有 workspace 面（那是池的）——shell 是壳自有能力面，天然合适。
    */
-  intake: {
+  shell: LinkDeskAPI["shell"] & {
     /**
      * 订阅 intake 文件批（主进程 launch-args 路由的文件半）。载荷 = 本次到达的路径数组。
      * 首次订阅先 FIFO 回放订阅前缓冲的批次，此后实时投递；返回退订函数。

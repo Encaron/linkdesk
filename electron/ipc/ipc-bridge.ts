@@ -175,7 +175,7 @@ export class IpcBridge {
 
   /** 配置变更通知——SettingsView 直调 setConfigurationValue 绕过 proxy 时走此通道 */
   private onConfigChangedNotify = (_event: Electron.IpcMainEvent, { key, value }: { key: string; value: unknown }) => {
-    this.mainWindow.webContents.send(IPC.config.changed, { key, value });
+    this.sendAllShellsConfigChanged({ key, value }); // E6#47b-1：全局状态发全部壳
     this.broadcast(IPC.config.changed, { key, value });
   };
 
@@ -204,7 +204,7 @@ export class IpcBridge {
         // ── E5#19b fix: contextKey:set → 立即广播到壳 + 池（双渲染进程火种）──
         if (channel === IPC.contextKey.set) {
           const [key, value] = args as [string, unknown];
-          this.mainWindow.webContents.send(IPC.contextKey.changed, { key, value });
+          this.sendAllShellsContextKeyChanged({ key, value }); // E6#47b-1：全局状态发全部壳
           this.broadcast(IPC.contextKey.changed, { key, value });
         }
 
@@ -240,7 +240,10 @@ export class IpcBridge {
 
             this.pendingRequests.set(requestId, { resolve, reject, timer, channel, args: forwardedArgs });
 
-            this.mainWindow.webContents.send(IPC.bridge.request, {
+            // E6#47b-1：请求回**发起池所属的壳**（ws-N 池 → 自己的壳；主池/脱出池 → 主壳）。
+            // 原实现恒发主壳 ⇒ 多窗下 ws-2 的请求会被主壳应答，源窗上下文丢失（sourceId 族落错注册表）。
+            const owningShell = this.windowManager.getShellForPoolSender(_event.sender) ?? this.mainWindow;
+            owningShell.webContents.send(IPC.bridge.request, {
               requestId,
               channel,
               args: forwardedArgs,
@@ -281,7 +284,7 @@ export class IpcBridge {
       // config:set 成功后广播 config:changed——shell + 所有插件 WebView 的 onChange 依赖此通道
       if (pending.channel === IPC.config.set) {
         const [key, value] = pending.args as [string, unknown];
-        this.mainWindow.webContents.send(IPC.config.changed, { key, value });
+        this.sendAllShellsConfigChanged({ key, value }); // E6#47b-1：全局状态发全部壳
         this.broadcast(IPC.config.changed, { key, value });
       }
     }
@@ -296,7 +299,8 @@ export class IpcBridge {
     payload: unknown;
   }) => {
     // E5#61b + E5.7#43：解析事件来源——壳 emit 标 "shell"，池 emit 标 "pool"
-    const sourceId = event.sender === this.mainWindow.webContents ? "shell" : "pool";
+    // E6#47b-1：多窗下 shell 来源不只主壳——用 WindowManager 的壳注册表判定（否则 ws-N 壳的 emit 被误判成 pool）
+    const sourceId = this.windowManager.isShellWebContents(event.sender) ? "shell" : "pool";
     // ── E5.8#43-4（②）：commands:executeRequest 定向发目标窗口池 ──
     // 壳 CommandRegistry 归属表路由已把目标窗口算进载荷 targetWindowId——broadcast 按窗口过滤池视图，
     // 不再全池广播（否则模式 B：同命令双窗口注册 → 双池都执行 → 副作用双跑）。
@@ -315,6 +319,25 @@ export class IpcBridge {
   // ═══════════════════════════════════════════════════════
   // E3b #35 + E3c #40 → E5.7#43——广播推送（壳 → 唯一 Pool）
   // ═══════════════════════════════════════════════════════
+
+  /**
+   * E6#47b-1：全局状态（config/contextKey/plugin:push）发**全部壳窗**——每窗一份壳渲染进程，
+   * 全局状态改一发全收（对标 VS Code 设置全局共享）。全部壳皆亡时 no-op（不抛）。
+   * ⚠️ 定向回直（如 bridge.request）不走这里——那条按 sender 所属池反查单一壳。
+   */
+  // 🔴 审计门禁要求直发通道**字面量**（check-ipc-audit）——所以是两个频道各一个专发方法，
+  //    不是通用 (channel, payload) 形参（那条会被审计判「非字面量通道·无法审计」而红灯，实测撞过）。
+  private sendAllShellsConfigChanged(payload: { key: string; value: unknown }): void {
+    for (const shell of this.windowManager.getAllShells()) {
+      if (!shell.webContents.isDestroyed()) shell.webContents.send(IPC.config.changed, payload);
+    }
+  }
+
+  private sendAllShellsContextKeyChanged(payload: { key: string; value: unknown }): void {
+    for (const shell of this.windowManager.getAllShells()) {
+      if (!shell.webContents.isDestroyed()) shell.webContents.send(IPC.contextKey.changed, payload);
+    }
+  }
 
   /** 按 channel 存储最后一次广播——新 WebView 创建时重放 */
   private lastBroadcasts = new Map<string, unknown>();
@@ -338,8 +361,9 @@ export class IpcBridge {
       this.lastBroadcasts.set(channel, payload);
     }
     // 壳渲染进程（plugin:push）——壳侧 events.on 订阅（E5.6#2 双路径归一化进 broadcast）
-    if (this.mainWindow && !this.mainWindow.isDestroyed()) {
-      this.mainWindow.webContents.send(IPC.plugin.push, { channel, payload, source });
+    // E6#47b-1：发**全部壳窗**（每窗一份壳，全局广播谁都不能漏）
+    for (const shell of this.windowManager.getAllShells()) {
+      if (!shell.webContents.isDestroyed()) shell.webContents.send(IPC.plugin.push, { channel, payload, source });
     }
     // E5.8#43-4（②）：targetWindowId 指定 → 只发目标窗口池（executeRequest 定向发——命令作用于该窗口上下文）；
     // 未指定 → 全池广播（常态：theme/lang/config 等全局事件）。壳侧恒发（executeRequest 壳无订阅，无害一致）。

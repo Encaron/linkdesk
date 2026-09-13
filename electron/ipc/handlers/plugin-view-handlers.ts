@@ -12,6 +12,7 @@ import type { WindowManager } from '../../windows/window-manager.js'; // E5.6#8d
 import { IPC } from '../channels.js';
 // E5.8#46.19：OS 级拖拽幽灵窗——drag-position 流直接驱动（取消/释放隐藏，其余跟随光标）
 import { showDragGhost, hideDragGhost } from '../../windows/drag-ghost.js';
+import { shellVisiblePoolId } from '../../windows/pool-addressing.js'; // E6#47b-1：池→壳寻址归一（纯函数）
 import type { GhostAppearance } from '../../windows/drag-ghost.js';
 
 let _mainWindow: BrowserWindow | null = null;
@@ -29,17 +30,31 @@ export function registerPoolHandlers(windowManager: WindowManager, mainWindow: B
   if (_poolHandlersRegistered) return;
   _poolHandlersRegistered = true;
 
+  // ── E6#47b-1：多窗双向寻址归一（方案见 07-Shell集成与多窗口/01-多窗口架构.md §5.3）──
+  // 池→壳：按 sender 反查所属壳；ws-N 池在其壳里的名字叫 'main' ⇒ 载荷 windowId 必须改写回 'main'。
+  // 壳→池：ws-N 壳送出的 'main' = 它自己的池 ⇒ 经 resolvePoolKeyFromShellSender 换成注册表 key。
+  const shellTarget = (event: Electron.IpcMainEvent): BrowserWindow | null => {
+    const bySender = _windowManager?.getShellForPoolSender(event.sender) ?? null;
+    if (bySender && !bySender.isDestroyed()) return bySender;
+    return _mainWindow && !_mainWindow.isDestroyed() ? _mainWindow : null;
+  };
+  /** 壳内视角 windowId——ws-N 池回它的壳时改写为 'main'（壳的 windowHost 注册表以 'main' 指自身） */
+  const shellVisibleWindowId = (event: Electron.IpcMainEvent, windowId: string): string =>
+    shellVisiblePoolId(_windowManager?.getWindowIdByWebContents(event.sender) ?? 'main', windowId);
+
   // 壳→Pool：推送布局快照——按 windowId 定向（缺省 'main'，E5.7#4 单 WCV 直推；E5.8#43-2 脱出窗按 id 推送）
-  ipcMain.on(IPC.pool.pushLayout, (_event, layout: unknown, windowId?: string) => {
-    _windowManager?.pushLayout(layout, windowId);
+  ipcMain.on(IPC.pool.pushLayout, (event, layout: unknown, windowId?: string) => {
+    // E6#47b-1：壳内视角 → 注册表 key（ws-N 壳送 'main' = 它自己的池）
+    _windowManager?.pushLayout(layout, _windowManager.resolvePoolKeyFromShellSender(event.sender, windowId));
   });
 
   // Pool→壳：池 React 挂载完成（E5.8#43-1 A3：按 sender 反查 windowId 转发——壳据 windowId 定向推该窗布局）。
   // 主池→'main'，脱出池→脱出窗 id；sender 非注册池来源则兜底 'main'。
   ipcMain.on(IPC.pool.ready, (event) => {
     const windowId = _windowManager?.getWindowIdByWebContents(event.sender) ?? 'main';
-    if (_mainWindow && !_mainWindow.isDestroyed()) {
-      _mainWindow.webContents.send(IPC.pool.ready, { windowId });
+    const shell = shellTarget(event);
+    if (shell) {
+      shell.webContents.send(IPC.pool.ready, { windowId: shellVisibleWindowId(event, windowId) });
     }
     // E5.8#44-B：补推窗口 bounds——主窗启动时壳注册表 bounds 恒缺（moved/resized 上报只在用户移动后触发），
     // TabBar 命中检测需权威 bounds（视口 rect 转 screen 坐标）。脱出窗 created 已带 bounds，同样幂等补推。
@@ -52,8 +67,10 @@ export function registerPoolHandlers(windowManager: WindowManager, mainWindow: B
   // 发行版里齿轮菜单的选择器选完必须真能打开 devtool，原来的闸门让「选了但没反应」
   // 在打包版里成为死路。权限边界不在这一层：能走到这里的前提是壳渲染进程已发 IPC，
   // 而入口（帮助菜单/齿轮/命令面板）本身是壳自己的命令面，非第三方可达。
-  ipcMain.on(IPC.pool.toggleDevTools, () => {
-    const poolView = _windowManager?.getPoolView();
+  ipcMain.on(IPC.pool.toggleDevTools, (event) => {
+    // E6#47b-1：开的是发起壳自己那窗的池（多窗下不能恒开主池）
+    const poolKey = _windowManager?.resolvePoolKeyFromShellSender(event.sender);
+    const poolView = poolKey ? _windowManager?.getPoolViewByWindowId(poolKey) : _windowManager?.getPoolView();
     if (poolView && !poolView.webContents.isDestroyed()) {
       if (poolView.webContents.isDevToolsOpened()) {
         poolView.webContents.closeDevTools();
@@ -66,10 +83,8 @@ export function registerPoolHandlers(windowManager: WindowManager, mainWindow: B
   // E5.6#11i：Pool→壳——侧栏写操作（reorder/setCollapsed/setVisible）。
   // 池组件通过 pool.sidebarAction() 发送，主进程转发到壳窗口。
   // 壳侧 preload 接收后调 ViewContainerService 方法。
-  ipcMain.on(IPC.pool.sidebarAction, (_event, action: unknown) => {
-    if (_mainWindow && !_mainWindow.isDestroyed()) {
-      _mainWindow.webContents.send(IPC.pool.sidebarAction, action);
-    }
+  ipcMain.on(IPC.pool.sidebarAction, (event, action: unknown) => {
+    shellTarget(event)?.webContents.send(IPC.pool.sidebarAction, action);
   });
 
   // E5.6#16.5：Pool→壳——主区 tab 操作（切标签/关闭/拖拽排序/分屏/右键菜单等）。
@@ -81,10 +96,10 @@ export function registerPoolHandlers(windowManager: WindowManager, mainWindow: B
     // E5.8#46.19：窗外松手 = 拖拽结束——隐藏幽灵（窗内松手由池补 canceled；Esc 由 dragPosition canceled）
     const a = typeof action === 'object' && action !== null ? action as { action?: string } : null;
     if (a?.action === 'releaseOutsideWindow') hideDragGhost();
-    const shellAction = typeof action === 'object' && action !== null ? { ...action, sourceWindowId } : action;
-    if (_mainWindow && !_mainWindow.isDestroyed()) {
-      _mainWindow.webContents.send(IPC.pool.tabAction, shellAction);
-    }
+    const shellAction = typeof action === 'object' && action !== null
+      ? { ...action, sourceWindowId: shellVisibleWindowId(event, sourceWindowId) }
+      : action;
+    shellTarget(event)?.webContents.send(IPC.pool.tabAction, shellAction);
   });
 
   // E5.8#44-B：池→壳——TabBar viewport rects 上报（吸附/释放并窗命中检测数据源）。
@@ -92,9 +107,7 @@ export function registerPoolHandlers(windowManager: WindowManager, mainWindow: B
   // 窗口 bounds 壳已掌握（onWindowBoundsChanged），视口 rect 转 screen 坐标壳做（bounds.x + rect.left）。
   ipcMain.on(IPC.pool.tabBarRects, (event, rects: unknown) => {
     const windowId = _windowManager?.getWindowIdByWebContents(event.sender) ?? 'main';
-    if (_mainWindow && !_mainWindow.isDestroyed()) {
-      _mainWindow.webContents.send(IPC.pool.tabBarRects, { windowId, rects });
-    }
+    shellTarget(event)?.webContents.send(IPC.pool.tabBarRects, { windowId: shellVisibleWindowId(event, windowId), rects });
   });
 
   // E5.8#44-C：池→壳——拖拽位置上报（拎起后 mousemove 全程——吸附命中检测数据源）。
@@ -118,10 +131,10 @@ export function registerPoolHandlers(windowManager: WindowManager, mainWindow: B
         hideDragGhost();
       }
     }
-    const shellPos = typeof pos === 'object' && pos !== null ? { ...pos, sourceWindowId } : pos;
-    if (_mainWindow && !_mainWindow.isDestroyed()) {
-      _mainWindow.webContents.send(IPC.pool.dragPosition, shellPos);
-    }
+    const shellPos = typeof pos === 'object' && pos !== null
+      ? { ...pos, sourceWindowId: shellVisibleWindowId(event, sourceWindowId) }
+      : pos;
+    shellTarget(event)?.webContents.send(IPC.pool.dragPosition, shellPos);
   });
 
   // E5.8#44-C：壳→池——吸附提示（目标窗 TabBar 插入指示/清除）——按 windowId 定向推送（targetWindowId 壳命中解析）。
@@ -133,10 +146,10 @@ export function registerPoolHandlers(windowManager: WindowManager, mainWindow: B
   // 池组件 pool.adsorbIndex(p) 发送，主进程按 sender 解析 windowId 附上转发壳——壳存吸附注册表供释放并窗精确落位。
   ipcMain.on(IPC.pool.adsorbIndex, (event, p: unknown) => {
     const windowId = _windowManager?.getWindowIdByWebContents(event.sender) ?? 'main';
-    const shellIndex = typeof p === 'object' && p !== null ? { ...p, windowId } : p;
-    if (_mainWindow && !_mainWindow.isDestroyed()) {
-      _mainWindow.webContents.send(IPC.pool.adsorbIndex, shellIndex);
-    }
+    const shellIndex = typeof p === 'object' && p !== null
+      ? { ...p, windowId: shellVisibleWindowId(event, windowId) }
+      : p;
+    shellTarget(event)?.webContents.send(IPC.pool.adsorbIndex, shellIndex);
   });
 
   // E5.7#15：壳→Pool——QuickPick 哑渲染数据（聪慧→哑：壳序列化 DTO，池纯渲染）
@@ -145,10 +158,8 @@ export function registerPoolHandlers(windowManager: WindowManager, mainWindow: B
   });
 
   // E5.7#15：Pool→壳——QuickPick 动作（select/highlight/close/itemAction），按 key 回传
-  ipcMain.on(IPC.pool.quickpickAction, (_event, action: unknown) => {
-    if (_mainWindow && !_mainWindow.isDestroyed()) {
-      _mainWindow.webContents.send(IPC.pool.quickpickAction, action);
-    }
+  ipcMain.on(IPC.pool.quickpickAction, (event, action: unknown) => {
+    shellTarget(event)?.webContents.send(IPC.pool.quickpickAction, action);
   });
 
   // E5.7#17：壳→Pool——Dialog 哑渲染数据（聪慧→哑：壳序列化 DTO，池纯渲染）
@@ -157,10 +168,8 @@ export function registerPoolHandlers(windowManager: WindowManager, mainWindow: B
   });
 
   // E5.7#17：Pool→壳——Dialog 动作（confirm/cancel），壳侧 settle Promise
-  ipcMain.on(IPC.pool.dialogAction, (_event, action: unknown) => {
-    if (_mainWindow && !_mainWindow.isDestroyed()) {
-      _mainWindow.webContents.send(IPC.pool.dialogAction, action);
-    }
+  ipcMain.on(IPC.pool.dialogAction, (event, action: unknown) => {
+    shellTarget(event)?.webContents.send(IPC.pool.dialogAction, action);
   });
 
   // E5.8#37（Phase 8 类型 B）：壳→Pool——悬浮面板哑渲染数据（聪慧→哑：壳序列化 DTO，池纯渲染）
@@ -169,10 +178,8 @@ export function registerPoolHandlers(windowManager: WindowManager, mainWindow: B
   });
 
   // E5.8#37：Pool→壳——悬浮面板动作（open-in/close 按 actionId），壳侧 settle
-  ipcMain.on(IPC.pool.floatingPanelAction, (_event, action: unknown) => {
-    if (_mainWindow && !_mainWindow.isDestroyed()) {
-      _mainWindow.webContents.send(IPC.pool.floatingPanelAction, action);
-    }
+  ipcMain.on(IPC.pool.floatingPanelAction, (event, action: unknown) => {
+    shellTarget(event)?.webContents.send(IPC.pool.floatingPanelAction, action);
   });
 
   // E5.8#43-1（A4）：壳→主——创建脱出池窗（壳驱动：壳生成 windowId + bounds，主进程只执行窗口+池生命周期）

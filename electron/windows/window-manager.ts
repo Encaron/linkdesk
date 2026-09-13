@@ -12,6 +12,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { DEV_SERVER_URL } from '../constants.js'; // E5.6#5：Pool URL 构建（E5.7#45.5：shared/ 并入 constants.ts）
 import { attachKeyboardRouting } from './keyboard-router.js'; // E5.7 快捷键路由：池 WCV 挂载（工厂处——含 rebuildPool 覆盖）
+import { poolKeyFromShell } from './pool-addressing.js'; // E6#47b-1：壳→池寻址归一（纯函数）
 import { resolveFocusedWindowId } from './focus-router.js'; // E5.8#46.12 Step2：聚焦池窗解析（纯函数，单测独立）
 import { cacheLayoutSnapshot } from './crash-recovery.js'; // E5.7#36：崩溃恢复快照——pushLayout 中转处缓存
 import type { IpcBridge } from '../ipc/ipc-bridge.js'; // 类型引用——无运行时环（ipc-bridge 反向同是 type-only）
@@ -76,6 +77,11 @@ export class WindowManager {
   // 壳→池 UI 推流（QuickPick/Toast/Dialog/FloatingPanel）默认聚焦窗：用户在哪个窗触发，壳 UI 显示在哪个窗
   // （脱出窗 Ctrl+Shift+P 命令面板、Ctrl+W dirty 确认弹窗归位）。null = 尚无聚焦事件 → 回退主池（getFocusedWindowId）。
   private _focusedWindowId: string | null = null;
+
+  // ── E6#47b-1：多 workspace 窗——壳窗注册表（每窗 = 一个壳 BrowserWindow + 自己的一张池 WCV）──
+  // key = 壳窗标识（ws-1/ws-2…，与壳侧 ?wsWindow= 参数、该窗池的注册表 key 同源）。
+  // 池注册表 key 用 ws-N（全局唯一），而每个壳渲染进程眼里自己的池都叫 'main'（见 01-多窗口架构 §5.3）。
+  private workspaceShells = new Map<string, BrowserWindow>();
 
   constructor(private mainWindow: BrowserWindow) {
     this.startMemoryMonitoring();
@@ -189,8 +195,12 @@ export class WindowManager {
     // E5.7 键盘路由：before-input-event 挂池 WCV——焦点永远在池上，壳 keydown 收不到全局快捷键
     // （Ctrl+Shift+P 等全灭）。工厂处挂载 = 初始创建 + rebuildPool 崩溃恢复全覆盖
     // （E5.5#7 只挂了插件 WebView——极简Pool 时代池是唯一视图）。
-    // E5.8#43-1：恒指 this.mainWindow（壳窗口）——命中快捷键转发给壳执行；脱出窗池的输入同样发主窗壳（壳=唯一真相源），不随 hostWindow 变。
-    attachKeyboardRouting(view, this.mainWindow, windowId);
+    // E5.8#43-1：命中快捷键转发给壳执行，不随 hostWindow 变。
+    // E6#47b-1：目标壳按 windowId 反查——workspace 池回自己的壳（多窗下各窗快捷键归各窗）；
+    // 主池/脱出池仍回主壳（脱出窗无自己的壳，壳=唯一真相源）。
+    // ⚠️ 调用契约：workspace 池创建前宿主壳必须已 registerWorkspaceShell（否则此处回退主壳 → 快捷键误投）。
+    const shellForKeyboard = this.getShellForPoolId(windowId);
+    if (shellForKeyboard) attachKeyboardRouting(view, shellForKeyboard, windowId);
 
     // E5.6#14-fix：Pool 加载完成后回放初始广播状态（theme:changed/lang:changed/accent:changed 等）
     // 对标 per-tab 时代的 replayToPlugin（E5.7#43 已删）——池创建晚于初始广播，需补发。
@@ -598,6 +608,83 @@ export class WindowManager {
     return null;
   }
 
+  /* ── E6#47b-1：多 workspace 窗——壳注册与反查（方案见 07-Shell集成与多窗口/01-多窗口架构.md §五） ── */
+
+  /**
+   * 登记一个 workspace 壳窗（**须在其池创建之前调用**——池的键盘路由要按 windowId 反查所属壳）。
+   * 挂两件事：① focus → 焦点窗跟随（`mainWindow` 语义从「唯一的窗」变「当前聚焦的 workspace 窗」，
+   * 决策 B）；② closed → 摘注册表 + 焦点窗重指到仍存活的壳（推送类消费方依赖它非空）。
+   */
+  registerWorkspaceShell(win: BrowserWindow, wsWindowId: string): void {
+    this.workspaceShells.set(wsWindowId, win);
+    win.on('focus', () => {
+      if (!win.isDestroyed()) this.mainWindow = win;
+    });
+    win.on('closed', () => {
+      if (this.workspaceShells.get(wsWindowId) === win) this.workspaceShells.delete(wsWindowId);
+      if (this.mainWindow === win) {
+        const next = [...this.workspaceShells.values()].find((w) => !w.isDestroyed());
+        if (next) this.mainWindow = next;
+      }
+    });
+  }
+
+  /**
+   * 池所属壳窗——workspace 池（key = ws-N）取自己的壳；其余（main / detached:*）归主壳。
+   * detached 窗没有自己的壳（tab 归主窗），键盘与事件一律回主壳——旧行为不变。
+   * 未知/已销毁 → 回退主壳（与 getFocusedWindowId 同款「不落空」策略）；全无存活壳返回 null。
+   */
+  getShellForPoolId(windowId: string): BrowserWindow | null {
+    if (windowId.startsWith('ws-')) {
+      const shell = this.workspaceShells.get(windowId);
+      if (shell && !shell.isDestroyed()) return shell;
+    }
+    return this.mainWindow && !this.mainWindow.isDestroyed() ? this.mainWindow : null;
+  }
+
+  /** 按池 sender 反查所属壳窗（plugin-view-handlers 的池事件回壳用）——非池来源返回 null */
+  getShellForPoolSender(sender: WebContents): BrowserWindow | null {
+    const windowId = this.getWindowIdByWebContents(sender);
+    return windowId ? this.getShellForPoolId(windowId) : null;
+  }
+
+  /** sender 是否任一壳渲染进程（IpcBridge 的 shell/pool 来源判定——原判定只认主壳，多窗下会把 ws-2 壳误判成池） */
+  isShellWebContents(sender: WebContents): boolean {
+    if (this.mainWindow && !this.mainWindow.isDestroyed() && this.mainWindow.webContents === sender) return true;
+    for (const shell of this.workspaceShells.values()) {
+      if (!shell.isDestroyed() && shell.webContents === sender) return true;
+    }
+    return false;
+  }
+
+  /** 壳 sender → 其壳标识（ws-N；主壳/非壳 sender 返回 null）——壳→池寻址归一的输入 */
+  getWorkspaceIdByShellWebContents(wc: WebContents): string | null {
+    for (const [id, shell] of this.workspaceShells) {
+      if (!shell.isDestroyed() && shell.webContents === wc) return id;
+    }
+    return null;
+  }
+
+  /**
+   * E6#47b-1：壳发来的池定向寻址**归一**（壳内视角 → 主进程注册表 key）。
+   * 池注册表 key 全局唯一（ws-N），而每个壳眼里自己的池叫 'main'（见 01-多窗口架构 §5.3）——
+   * workspace 壳送 'main'（或不带）⇒ 目标是**它自己的池** ws-N；送别的 id（它知道的脱出窗）原样放行。
+   * 主壳/未知 sender 一律原样（旧行为：'main' 或指定 id）。
+   */
+  resolvePoolKeyFromShellSender(sender: WebContents, payloadWindowId?: string): string {
+    return poolKeyFromShell(this.getWorkspaceIdByShellWebContents(sender), payloadWindowId);
+  }
+
+  /** 全部存活壳窗——全局状态（config/contextKey/plugin:push）广播目标（每窗一份壳，都要收到） */
+  getAllShells(): BrowserWindow[] {
+    const out: BrowserWindow[] = [];
+    if (this.mainWindow && !this.mainWindow.isDestroyed()) out.push(this.mainWindow);
+    for (const shell of this.workspaceShells.values()) {
+      if (!shell.isDestroyed() && shell !== this.mainWindow) out.push(shell);
+    }
+    return out;
+  }
+
   /** E5.8#43-2（B3）：取指定 Pool 窗口的宿主 BrowserWindow——窗口控制按发送者路由消费（未知/已销毁返回 null） */
   getHostWindow(windowId: string): BrowserWindow | null {
     const entry = this.poolWindows.get(windowId);
@@ -641,6 +728,7 @@ export class WindowManager {
     for (const windowId of [...this.poolWindows.keys()]) {
       this.destroyPoolWindow(windowId);
     }
+    this.workspaceShells.clear(); // E6#47b-1：壳注册表随退出清空（窗口已由 Electron 销毁，防跨重建残留引用）
   }
 
 }

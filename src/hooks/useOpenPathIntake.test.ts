@@ -27,14 +27,14 @@ interface Stub {
 
 function installStub(opts: { exists: (p: string) => boolean; pluginFor: (ext: string) => Promise<string> }): Stub {
   let listener: ((paths: string[]) => void) | null = null;
-  const intake = {
+  const shell = {
     onOpenPath: (cb: (paths: string[]) => void) => {
       listener = cb;
       return () => { listener = null; };
     },
   };
   (window as unknown as { linkdesk: unknown }).linkdesk = {
-    intake,
+    shell,
     filesystem: { exists: (p: string) => Promise.resolve(opts.exists(p)) },
     fileAssociation: { getPluginFor: (ext: string) => opts.pluginFor(ext) },
   };
@@ -116,7 +116,7 @@ describe("useOpenPathIntake（E6#46b 壳侧 intake 消费）", () => {
     unmount();
   });
 
-  it("退订后不再接收；无 intake 面（非壳环境）→ 不挂不抛", async () => {
+  it("退订后不再接收；无 shell 面（非壳环境）→ 不挂不抛", async () => {
     const stub = installStub({ exists: () => true, pluginFor: async () => "" });
     const { unmount } = renderHook(() => mod.useOpenPathIntake());
     expect(stub.subscriberCount()).toBe(1);

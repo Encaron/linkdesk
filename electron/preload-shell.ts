@@ -203,9 +203,11 @@ function buildShellUpdate() {
   };
 }
 
-// E6#46b：intake 面——壳内私有扩展（buildShellUpdate 同先例同理由：消费者只有壳渲染进程的
-// intake hook，第三方插件没有「接收命令行文件」的理由，池侧不注入）。
-function buildShellIntake() {
+// E6#46b：intake 订阅 = **shell 命名空间上的壳内私有扩展**（与 update 的 onStateChanged 同款先例：
+// 契约面本身不带它，壳侧用工厂构造超额暴露）。⚠️ 踩过两次门禁：① 开新顶层命名空间（intake）会被
+// 命名空间矩阵门禁当「契约未定义的注入面」拦下；② 挂 workspace 面也不行——壳侧根本没有 workspace 面
+// （那是池的）。落点 = shell（壳自有能力面，ShellExposed 已 pick）。
+function buildShellIntakeExtras() {
   return {
     /**
      * 命令行/文件关联 intake 订阅（E6#46b）——载荷 = 本次到达的文件路径批（string[]）。
@@ -486,6 +488,8 @@ try {
       openPluginFolder: (pluginId: string, kind: PluginFolderKind) => ipcRenderer.invoke(IPC.shell.openPluginFolder, pluginId, kind),
       // E6#73j（G4）：真重启应用——壳 preload 独有（池不需要自己重启宿主，见 linkdesk-api/shell.ts 注释）
       relaunch: () => ipcRenderer.invoke(IPC.shell.relaunch),
+      // E6#46b：intake 订阅——shell 命名空间上的壳内私有扩展（工厂返回走结构兼容，同 buildShellApp 先例）
+      ...buildShellIntakeExtras(),
     },
     // ── 外观资产（E5.8#153：壳侧命令执行用——齿轮命令 handler 跑在壳进程，池 appearance 面不注入壳）──
     appearance: {
@@ -501,8 +505,6 @@ try {
     // ── 主软件更新（E6#57.8——只读 getState 进契约 + 写命令壳内私有扩展）──
     update: buildShellUpdate(),
 
-    // ── 命令行/文件关联 intake（E6#46b——壳内私有扩展，消费者只有壳 App 顶层 hook）──
-    intake: buildShellIntake(),
 
     // ── 事件（E2a #5 心跳 + E3j #77a on/emit 归一化）──
     events: {
