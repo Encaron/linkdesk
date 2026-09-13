@@ -40,8 +40,9 @@
  *
  * - **契约标法 / IPC 通道组 / 备注** 三列是人脑知识（如「D3 已修（#20-b 壳补 openFile）」），
  *   无法机械生成 ⇒ 本脚本不校验其措辞。**这几列的内容错了仍需人读出来。**
- * - §3「IPC channel 双端表（32 组 / 127 通道）」的组数/通道数与 `electron/ipc/channels.ts`
- *   的机械对账尚未做（同属手维护数字）——见 E6 清单登记项。
+ * - ~~§3「IPC channel 双端表」的组数/通道数与 channels.ts 的机械对账尚未做~~
+ *   → ✅ **2026-09-13 已做**（见下方 §3 计数器，第六条检查；修 E6 清单 5.1 登记项）。
+ *   旧数字「32 组 / 127 通道」停在 2026-08 且**通道总数是平扫下界**（嵌套组与工厂形状漏计）。
  *
  * 用法：node scripts/check-namespace-matrix.mjs（已挂 npm run check）
  * 退出码 0 = 全部合规，退出码 1 = 有漂移（打印到 stderr）。
@@ -50,6 +51,7 @@
 import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { ROOT, parseContract } from "./lib/contract-parse.mjs";
+import { stripComments } from "./lib/strip-comments.mjs";
 
 const MATRIX = "docs/02-Electron架构/E5.8_归一化基建/契约生成/命名空间矩阵.md";
 /** §2 表头——表被重构时要响，不能静默 0 命中后「全部通过」 */
@@ -113,6 +115,135 @@ function domainInterfaceCount() {
     n += (src.match(/^export interface \w+API \{/gm) ?? []).length;
   }
   return n;
+}
+
+
+/* ── §3「IPC channel 双端表」机械对账（2026-09-13，修 E6 清单 5.1 登记项）──────────────
+ *
+ * 手维护的 §3 表头（组数/通道数）与逐组行（组名/通道数）对照 channels.ts 现场计数。
+ * 旧数字「32 组 / 127 通道」停在 2026-08：组数已 34、通道总数当时是**平扫下界**（嵌套组与
+ * 工厂形状漏计）——第 ① 类 bug（手维护数字无对账门禁）。
+ *
+ * 计数口径（**递归下降 + 认字符串**，注释先剥）：
+ *   · 组 = `IPC` 对象深度 1 的键（值是对象的才算组；值是字符串的属上一个组）。
+ *   · 通道 = 组内**任意深度**的字符串字面量叶子（嵌套子对象展开计入顶层组）。
+ *   · 动态工厂（`filesystemChanged(watcherId)` 等，IPC 对象外的 export function）**不计入**
+ *     ——它们没有固定通道名，矩阵 §3 表脚注如实登记为「另有动态工厂」。
+ */
+
+/** 从剥离注释后的 channels.ts 源码数出 [{group, count}]——递归展开嵌套子对象到顶层组。
+ *  深度语义：IPC 体内的**组键在 0 层**（值是对象）；叶子字符串在 ≥1 层，计入所在顶层组。
+ *  动态工厂（`filesystemChanged(watcherId)` 等，IPC 对象外的 export function）**不计入**
+ *  ——它们没有固定通道名（矩阵 §3 表脚注如实登记「另有动态工厂」）。 */
+function countIpcChannels(stripped) {
+  const marker = stripped.indexOf("export const IPC = {");
+  if (marker === -1) throw new Error("channels.ts 未找到 'export const IPC = {'");
+  const start = stripped.indexOf("{", marker);
+  if (start === -1) throw new Error("channels.ts IPC 对象起点异常");
+
+  // 先定位 IPC 对象的闭合括号（字符串感知）——**只走体内**，`as const` 之后的词不是组
+  let d = 0;
+  let q = null;
+  let ipcEnd = -1;
+  for (let i = start; i < stripped.length; i++) {
+    const c = stripped[i];
+    if (q) {
+      if (c === "\\") { i++; continue; }
+      if (c === q) q = null;
+      continue;
+    }
+    if (c === "'" || c === '"') q = c;
+    else if (c === "{") d++;
+    else if (c === "}") { d--; if (d === 0) { ipcEnd = i; break; } }
+  }
+  if (ipcEnd === -1) throw new Error("channels.ts IPC 对象括号不闭合");
+
+  const groups = new Map();
+  let depth = 0;          // 0 = IPC 顶层（组键层）；≥1 = 组内/嵌套内
+  let group = null;       // 当前所在的顶层组
+  let inString = null;
+  let buf = "";           // 正在积累的标识符（键）
+  let pending = null;     // 深度 0 上刚见过的键（等看到 `{` 才确认是组）
+
+  const flush = () => { if (buf) { pending = buf; } buf = ""; };
+
+  const body = stripped.slice(start + 1, ipcEnd);
+  for (let i = 0; i < body.length; i++) {
+    const ch = body[i];
+    if (inString) {
+      if (ch === "\\") { i++; continue; }
+      if (ch === inString) {
+        inString = null;
+        if (depth >= 1 && group) groups.set(group, (groups.get(group) ?? 0) + 1);
+      }
+      continue;
+    }
+    if (ch === "'" || ch === '"') { flush(); inString = ch; continue; }
+    if (/\w/.test(ch)) { buf += ch; continue; }
+    flush();
+    if (ch === "{") {
+      if (depth === 0) {
+        if (!pending) throw new Error("channels.ts IPC 顶层出现无键对象");
+        group = pending;
+        groups.set(group, groups.get(group) ?? 0);
+        pending = null;
+      }
+      depth++;
+      continue;
+    }
+    if (ch === "}") {
+      depth--;
+      if (depth === 0) group = null;
+      continue;
+    }
+    // 其他分隔符（: , ;）——flush 已处理
+  }
+  if (depth !== 0) throw new Error("channels.ts IPC 对象括号不闭合");
+  return [...groups.entries()].map(([g, c]) => ({ group: g, count: c })).sort((a, b) => a.group.localeCompare(b.group));
+}
+
+/** 对 §3 表头数字与逐组行做机械对账——漂移即进 problems */
+function checkIpcSection(lines, problems) {
+  const headerLine = lines.find((l) => /^## 3\. IPC channel 双端表/.test(l));
+  if (!headerLine) {
+    problems.push({ what: "§3 双端表表头找不到（文档被重构？）", detail: "——", fix: "恢复 `## 3. IPC channel 双端表（N 组 / M 通道）` 表头" });
+    return;
+  }
+  const src = stripComments(readFileSync(resolve(ROOT, "electron", "ipc", "channels.ts"), "utf-8"));
+  const counted = countIpcChannels(src);
+  const total = counted.reduce((a, b) => a + b.count, 0);
+  const m = headerLine.match(/（(\d+) 组 \/ (\d+) 通道）/);
+  if (!m) {
+    problems.push({ what: "§3 表头数字格式不可解析", detail: headerLine.trim(), fix: "表头写 `（N 组 / M 通道）`（全角括号 + ` 组 / ` 分隔）" });
+    return;
+  }
+  if (Number(m[1]) !== counted.length || Number(m[2]) !== total) {
+    problems.push({
+      what: `§3 表头数字过期：文档写 ${m[1]} 组 / ${m[2]} 通道，channels.ts 现场计数 = **${counted.length} 组 / ${total} 通道**`,
+      detail: `实测各组：${counted.map((g) => `${g.group} ${g.count}`).join("、")}`,
+      fix: "用上列实测数字回填 §3 表头（脚本每次 check 自动对账，手改对不上会红）",
+    });
+  }
+  // 逐组行对账
+  const rowRe = /^\| (\w+) \| (\d+) \|/;
+  const docRows = new Map();
+  for (const l of lines) {
+    const rm = l.match(rowRe);
+    if (rm) docRows.set(rm[1], Number(rm[2]));
+  }
+  const counterSet = new Set(counted.map((g) => g.group));
+  for (const [g, c] of docRows) {
+    if (!counterSet.has(g)) {
+      problems.push({ what: `§3 表多出组 \`${g}\`（channels.ts 无此组）`, detail: `——`, fix: `删该行或核实组名` });
+    } else if (docRows.get(g) !== counted.find((x) => x.group === g).count) {
+      problems.push({ what: `§3 组 \`${g}\` 通道数过期：文档 ${c}，实测 ${counted.find((x) => x.group === g).count}`, detail: "——", fix: "按实测回填" });
+    }
+  }
+  for (const g of counterSet) {
+    if (!docRows.has(g)) {
+      problems.push({ what: `§3 表缺组 \`${g}\`（channels.ts 有此组 ${counted.find((x) => x.group === g).count} 通道）`, detail: "——", fix: "补一行" });
+    }
+  }
 }
 
 function main() {
@@ -294,6 +425,8 @@ function main() {
       fix: `改写为「+ ${realIfaces} 域接口」（数来自 ${API_DIR}/ 与 d.ts 双源）`,
     });
   }
+
+  checkIpcSection(readFileSync(resolve(ROOT, MATRIX), "utf-8").split("\n"), problems);
 
   if (problems.length) {
     console.error(`❌ 命名空间矩阵已漂移（${MATRIX}）\n`);

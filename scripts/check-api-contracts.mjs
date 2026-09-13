@@ -32,7 +32,9 @@ const DOC = "docs/03-插件制造/01-插件API契约.md";
 function collectNamespaceKeys(file) {
   const src = readFileSync(resolve(ROOT, file), "utf-8");
   const keys = new Set();
-  const re = /^\s{2}([a-zA-Z][a-zA-Z]*)\??:\s*\{/gm;
+  // 🔴 `\w+`（2026-09-13 修 5.1 登记的正则洞）：`[a-zA-Z]+` 匹配不了带数字的名字（`p2p`）——
+  //    文档一旦引用含数字的命名空间就会被漏检（静默降级）。与 scripts/lib/contract-parse.mjs 同口径。
+  const re = /^\s{2}(\w+)\??:\s*\{/gm;
   let m;
   while ((m = re.exec(src)) !== null) keys.add(m[1]);
   return keys;
@@ -54,9 +56,10 @@ function extractDocReferences() {
   const doc = readFileSync(resolve(ROOT, DOC), "utf-8");
   const refs = new Set();
   let m;
-  const linkdeskRe = /(?:window\.)?linkdesk\.([a-zA-Z]+)/g;
+  // 🔴 `\w+`（同上）：含数字的命名空间（`p2p`）不能被 `[a-zA-Z]+` 漏掉
+  const linkdeskRe = /(?:window\.)?linkdesk\.(\w+)/g;
   while ((m = linkdeskRe.exec(doc)) !== null) refs.add(m[1]);
-  const lkRe = /\blk\.([a-zA-Z]+)/g;
+  const lkRe = /\blk\.(\w+)/g;
   while ((m = lkRe.exec(doc)) !== null) refs.add(m[1]);
   // 误报排除：`linkdesk.d.ts` 文件名 → `d`（其余命中应真实存在）
   refs.delete("d");
@@ -84,4 +87,36 @@ function main() {
   console.log(`✅ API 契约反向漂移审计干净——文档 ${refs.size} 个命名空间引用全部命中 live 契约。`);
 }
 
-main();
+/**
+ * 自测——`--self-test`：正则洞回归钉（2026-09-13 修 5.1 登记项）。
+ * 判据 = 「旧正则错、新正则对」**两者都验**：旧 `[a-zA-Z]+` 对 `p2p` 引用捕到的是**残缺名** `p`
+ * （不是没抓到——是抓错名，违约报告会指向不存在的 `linkdesk.p`，比漏检更误导），新 `\w+` 必须抓全。
+ * 任何一条不成立即 exit 1（尺子不是恒绿）。
+ */
+function selfTest() {
+  const sample = "用 `linkdesk.p2p`（或 `lk.p2p`）发起对等连接。";
+  const oldRe = /(?:window\.)?linkdesk\.([a-zA-Z]+)/g;
+  const newRe = /(?:window\.)?linkdesk\.(\w+)/g;
+  const oldHit = oldRe.exec(sample)?.[1];
+  const newHit = newRe.exec(sample)?.[1];
+  if (oldHit !== "p") {
+    console.error(`❌ 自测失败：旧正则的残缺捕获是 ${oldHit}（期望 "p"）——「洞真实存在过」这条前提不成立，样本或修复已失效。`);
+    process.exit(1);
+  }
+  if (newHit !== "p2p") {
+    console.error(`❌ 自测失败：新正则未抓到 p2p（抓到 ${newHit}）。`);
+    process.exit(1);
+  }
+  const member = /^\s{2}(\w+)\??:\s*\{/gm.exec("  p2p?: {\n    send(): void;\n  }");
+  if (member?.[1] !== "p2p") {
+    console.error(`❌ 自测失败：接口成员正则未抓到 p2p（抓到 ${member?.[1]}）。`);
+    process.exit(1);
+  }
+  console.log("✅ 自测全过——旧正则把 p2p 抓成 p（洞真实）、新正则抓到 p2p（已修）、接口成员正则同口径。");
+}
+
+if (process.argv.includes("--self-test")) {
+  selfTest();
+} else {
+  main();
+}
