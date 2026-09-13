@@ -3,8 +3,8 @@
  *
  * 壳级功能不进插件（B79 教训：卸载所有插件后，命令行打开仍须可用）⇒ 挂 App 顶层。
  * 链路：主进程 launch-args 路由（文件半）→ preload IpcRelay 缓冲回放（硬约束 20）→
- * 本 hook → fileAssociation.getPluginFor(ext) → tab:openOrFocus（已有同 sourceId
- * 标签则聚焦既有标签——#46b 判重判据，语义由 useTabManager 的 openOrFocusTab 提供）。
+ * 本 hook → fileAssociation.getPluginFor(ext) → `tab:create`（判重靠 `reduceCreateTab` 的**身份去重**，
+ *  editor 的 identityField = filePath ⇒ 同文件聚焦、新文件新建）。
  *
  * 类型缺额走 DEFAULT_TAB_TYPE（E5.7#70/E5#99 壳政策常量——「未知类型路由到编辑器」，
  * 引用常量而非写字面量，硬约束 10 的白名单例外不新增）。
@@ -65,7 +65,7 @@ export function useOpenPathIntake(ready: boolean): void {
       const ext = dot > 0 ? name.slice(dot + 1).toLowerCase() : "";
       const pluginId = ext ? await lk.fileAssociation.getPluginFor(ext) : "";
       _hasOpenedFiles = true;
-      shellEvents.emit("tab:openOrFocus", {
+      shellEvents.emit("tab:create", {
         type: pluginId || DEFAULT_TAB_TYPE,
         opts: { filePath, sourceId: filePath, label: name, pinned: true },
       });

@@ -4,8 +4,8 @@
  * 钉住壳侧 intake 消费的三条判据（都是"写反了也照样能跑"的那种）：
  * ① 路由：有插件关联 → tab:openOrFocus 带该插件 id；无关联 → 走 DEFAULT_TAB_TYPE
  *   （E5#99 编辑器兜底同源，不许出现字面量插件 id——硬约束 10）；
- * ② 判重语义交给 openOrFocus：emit 的是 tab:openOrFocus 而非 tab:create（双开同一文件
- *   = 聚焦既有标签，#46b 判据）；
+ * ② 判重语义交给 reduceCreateTab 的身份去重：emit 的是 tab:create（同文件聚焦/新文件新建）
+ *   ——**不许改成 tab:openOrFocus**（它只按 type 去重，会聚焦掉别的 editor 标签，真机实证）；
  * ③ 防御：文件已不存在 → 不 emit（静默跳过，launch-args 同口径）。
  * 外加非壳环境退化（无 window.linkdesk.intake ⇒ 不挂订阅，不抛）。
  *
@@ -54,7 +54,7 @@ beforeEach(async () => {
   const { shellEvents } = await import("../core/react/events/ShellEvents");
   emitted = [];
   vi.spyOn(shellEvents, "emit").mockImplementation(((event: string, payload: never) => {
-    if (event === "tab:openOrFocus") emitted.push(payload);
+    if (event === "tab:create") emitted.push(payload);
   }) as typeof shellEvents.emit);
 });
 
@@ -66,7 +66,7 @@ afterEach(() => {
 const DEFAULT_TYPE = "editor"; // DEFAULT_TAB_TYPE 政策常量的现行值——用例断言它兜底生效
 
 describe("useOpenPathIntake（E6#46b 壳侧 intake 消费）", () => {
-  it("有插件关联 → tab:openOrFocus 带该插件 id + filePath/sourceId/label", async () => {
+  it("有插件关联 → tab:create 带该插件 id + filePath/sourceId/label", async () => {
     const stub = installStub({ exists: () => true, pluginFor: async () => "demo-plugin" });
     const { unmount } = renderHook(() => mod.useOpenPathIntake(true));
 

@@ -2,6 +2,10 @@
 
 > 目标：从任何入口（双击文件关联、右键菜单、命令行参数）把**文件**送进已有窗口的编辑器打开、把**文件夹**送成新窗口的 workspace——对标 VS Code 的 `code file.txt` / `code C:\project`。
 
+> 🔵 **非新能力**（E6#46 面）：本轮**零新增** `window.linkdesk.*` 命名空间与 `contributes.*` 字段——正文提到的
+> `contributes.fileAssociations` 是**既有**插件声明面（第三轮起就在用），本档只是它的消费者行为登记；
+> 新增的壳内私有扩展（`shell.onOpenPath`）不进插件契约（见 03 档同款声明口径）。
+
 ## 一、intake 源（三条，全部汇到同一个路由器）
 
 | 源 | 平台/时机 | 触发点 | 落点 |
@@ -37,7 +41,12 @@ routeLaunchItems(parseLaunchPaths 结果):
 - **处理流程**（每条 path）：
   1. 主进程发来的**已是分类结果**（folder 不走这条通道）——但壳仍做一次存在性防御（`filesystem.exists`；主进程分类与 send 之间文件可能被删）；失败 → **console.warn 静默丢弃不弹窗**（与 launch-args「启动路径失败不打扰用户」同口径；2026-09-13 实现时定，原写 pushToast 已订正——省一条 i18n 键的维护，行为对齐主进程半）；
   2. 取扩展名 → `linkdesk.fileAssociation.getPluginFor(ext)`（`preload-shell.ts:289` 已暴露）；
-  3. 有匹配插件 → 走「双击文件打开」的同一命令链：`explorer.openFile`（`plugins/file-tree` 注册，file-tree:50）为现状链路；**实施时以该命令的现有实现为准调用/复用，不复制它的逻辑**；
+  3. 有匹配插件 → 壳侧直接 emit **`tab:create`**（与文件树双击同一条落点：`createTab` → `reduceCreateTab`）：
+     - ✅ **判重靠身份去重**：`reduceCreateTab` Step 1 `findTabByIdentity` —— editor 的 `tabBehavior.identityField = filePath`
+       ⇒ 同一文件已开则**聚焦既有标签**、没开才新建（#46b 判据）；
+     - 🔴 **不许改用 `tab:openOrFocus`**（2026-09-13 真机实证）：`reduceOpenOrFocus` 只按 **type** 去重
+       ⇒ 打开 B 文件会把 A 文件的 editor 标签「聚焦」掉、新标签根本不出现（真 profile 里有一个别的 editor
+       标签时必现；空 profile 测不出——这也是它躲过前几轮验证的原因）。
   4. 无匹配 → fallback：当前激活编辑器标签打开（纯文本兜底，与文件树双击未关联类型的行为一致——实施时核对该兜底现状并保持同形）；
   5. 同一文件已在某标签打开 → 聚焦既有标签（对标编辑器习惯，判据写进 #46b 验收）。
 - **文件夹 → addFolder**：folders 在主进程路由层就分走了（开新窗），壳侧 `openPath` 通道只收文件。清单 #46b 原文「文件夹 → addFolder」描述的是**单窗时代**的行为，多窗后文件夹一律新窗（01 文档决策）——此为对 #46b 原文的第二处订正。
