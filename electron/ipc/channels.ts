@@ -278,5 +278,8 @@ export const IPC = {
     openFolder: 'workspace:openFolder',
     addFolder: 'workspace:addFolder',
     removeFolder: 'workspace:removeFolder',
+    // E6#46b：intake 文件投递（主进程 → 壳直发，非 plugin:push 分发）——命令行/文件关联/右键
+    // 三源汇入 launch-args 后的文件半；载荷 { paths: string[] }。壳侧经 preload 缓冲回放订阅。
+    openPath: 'workspace:openPath',
   },
 } as const;

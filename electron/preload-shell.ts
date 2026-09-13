@@ -62,6 +62,15 @@ ipcRenderer.on(IPC.pool.windowBoundsChanged, (_event, payload: PoolWindowBoundsP
   _windowBoundsRelay.push(payload);
 });
 
+// ── E6#46b：intake 文件投递（workspace:openPath，主进程直发 mainWindow）——缓冲回放走 IpcRelay
+// （硬约束 20）：启动 argv / second-instance 的文件批在壳 React 订阅前就可能到达，
+// 模块顶层常驻监听入队，onOpenPath 首次订阅时 FIFO 回放，之后实时投递。──
+const _openPathRelay = new IpcRelay<{ paths: string[] }>();
+
+ipcRenderer.on(IPC.workspace.openPath, (_event, payload: { paths: string[] }) => {
+  _openPathRelay.push(payload);
+});
+
 // ── E5.7#56：壳侧命令 handler 地图——插件入口模块双进程执行（壳 glob loader + 池视图渲染）──
 // 壳进程执行时 registerCommand 传入的 handler 是页面世界函数（contextBridge 双向代理，
 // 隔离世界可调用——preload-pool _poolCommands 同款机制）。壳 CommandRegistry 条目执行时
@@ -191,6 +200,20 @@ function buildShellUpdate() {
     //    `getState()` 的 `downloading.progress` 取（服务在 reportProgress 里原地刷过），
     //    本通道只负责**推进**。消费方 = src/hooks/useUpdateState.ts 的 useUpdateProgress()。
     onProgress: (cb: (progress: DownloadProgress) => void) => events.on(IPC.update.progress, cb),
+  };
+}
+
+// E6#46b：intake 面——壳内私有扩展（buildShellUpdate 同先例同理由：消费者只有壳渲染进程的
+// intake hook，第三方插件没有「接收命令行文件」的理由，池侧不注入）。
+function buildShellIntake() {
+  return {
+    /**
+     * 命令行/文件关联 intake 订阅（E6#46b）——载荷 = 本次到达的文件路径批（string[]）。
+     * 首次订阅先 FIFO 回放订阅前缓冲的批次（IpcRelay/硬约束 20），此后实时投递；返回退订函数。
+     * 消费者 = src/hooks/useOpenPathIntake.ts（App 顶层，壳级功能不进插件——B79）。
+     */
+    onOpenPath: (cb: (paths: string[]) => void): (() => void) =>
+      _openPathRelay.onReady((payload) => cb(payload.paths)),
   };
 }
 
@@ -477,6 +500,9 @@ try {
 
     // ── 主软件更新（E6#57.8——只读 getState 进契约 + 写命令壳内私有扩展）──
     update: buildShellUpdate(),
+
+    // ── 命令行/文件关联 intake（E6#46b——壳内私有扩展，消费者只有壳 App 顶层 hook）──
+    intake: buildShellIntake(),
 
     // ── 事件（E2a #5 心跳 + E3j #77a on/emit 归一化）──
     events: {

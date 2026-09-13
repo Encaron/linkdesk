@@ -99,6 +99,14 @@ function createWindow(): void {
   });
   mainWindow = win; // E5.7#36：壳崩重建复用 createWindow——模块引用先指向新窗
 
+  // E6#46b：冲刷启动早期缓冲的 intake 文件——did-finish-load 时 preload 模块顶层监听必已注册
+  // （preload 先于页面执行），IpcRelay 再兜 React 订阅前的窗口期，两端接力无丢失窗口。
+  win.webContents.once('did-finish-load', () => {
+    if (pendingOpenFiles.length > 0 && !win.isDestroyed()) {
+      win.webContents.send(IPC.workspace.openPath, { paths: pendingOpenFiles.splice(0) });
+    }
+  });
+
   // ── 注册 IPC 处理器（E5.7#36：全部幂等——首次注册 + 重建时刷新引用；无状态 handler 重复调用直接跳过）──
   registerPluginHandlers();
   registerEnvHandlers();
@@ -481,8 +489,14 @@ function routeLaunchItems(items: LaunchPaths): void {
     console.log(`[launch-args] 文件夹 intake ${items.folders.length} 项（E6#47a 接线前回退聚焦）: ${items.folders.join(', ')}`);
   }
   if (items.files.length > 0) {
-    pendingOpenFiles.push(...items.files);
-    console.log(`[launch-args] 文件 intake 已缓存 ${items.files.length} 项（E6#46b 消费）: ${items.files.join(', ')}`);
+    // E6#46b：窗在 → 直投壳（preload 模块顶层监听已注册，IpcRelay 兜 React 订阅前的窗口期）；
+    // 窗未建（启动早期/壳崩重建间隙）→ pendingOpenFiles 缓冲，createWindow 的 did-finish-load 冲刷。
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send(IPC.workspace.openPath, { paths: items.files });
+    } else {
+      pendingOpenFiles.push(...items.files);
+    }
+    console.log(`[launch-args] 文件 intake ${items.files.length} 项: ${items.files.join(', ')}`);
   }
 }
 

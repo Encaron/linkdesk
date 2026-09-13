@@ -35,7 +35,7 @@ routeLaunchItems(parseLaunchPaths 结果):
 
 - **位置**：壳 App 层（对标 B79 教训——「卸载所有插件后命令行打开还得能用」⇒ listener 放壳，不走任何插件）；通过既有 `useIpcEvent` 模式订阅 `IPC.workspace.openPath`（generation counter 防线内置，硬约束 5）。
 - **处理流程**（每条 path）：
-  1. 主进程发来的**已是分类结果**（folder 不走这条通道）——但壳仍做一次 `statSync` 防御（主进程分类与 send 之间文件可能被删；失败 → pushToast「文件不存在」，静默丢弃）；
+  1. 主进程发来的**已是分类结果**（folder 不走这条通道）——但壳仍做一次存在性防御（`filesystem.exists`；主进程分类与 send 之间文件可能被删）；失败 → **console.warn 静默丢弃不弹窗**（与 launch-args「启动路径失败不打扰用户」同口径；2026-09-13 实现时定，原写 pushToast 已订正——省一条 i18n 键的维护，行为对齐主进程半）；
   2. 取扩展名 → `linkdesk.fileAssociation.getPluginFor(ext)`（`preload-shell.ts:289` 已暴露）；
   3. 有匹配插件 → 走「双击文件打开」的同一命令链：`explorer.openFile`（`plugins/file-tree` 注册，file-tree:50）为现状链路；**实施时以该命令的现有实现为准调用/复用，不复制它的逻辑**；
   4. 无匹配 → fallback：当前激活编辑器标签打开（纯文本兜底，与文件树双击未关联类型的行为一致——实施时核对该兜底现状并保持同形）；

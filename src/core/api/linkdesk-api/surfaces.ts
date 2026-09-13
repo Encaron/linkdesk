@@ -126,6 +126,20 @@ export type ShellExposed = Pick<LinkDeskAPI,
     /** 产品身份全量（`electron/product.ts` 的 `productInfo()`）——**壳内私有**，池侧不暴露 */
     getProductInfo(): Promise<ProductInfo>;
   };
+  /**
+   * intake 壳 = **整面壳内私有扩展**（E6#46b，`buildShellUpdate`/`buildShellApp` 同先例同理由）：
+   * 命令行/文件关联打开文件的消费者只有壳 App 顶层 hook（壳级功能不进插件——B79），
+   * 第三方插件没有「接收命令行文件」的理由 ⇒ 池 preload 不注入本面（不在契约 `LinkDeskAPI` 里）。
+   * 落点在 `preload-shell.ts` 的 `buildShellIntake()`，传输 = `workspace:openPath` 直发
+   * （非 plugin:push 分发）+ `IpcRelay` 缓冲回放（硬约束 20）。
+   */
+  intake: {
+    /**
+     * 订阅 intake 文件批（主进程 launch-args 路由的文件半）。载荷 = 本次到达的路径数组。
+     * 首次订阅先 FIFO 回放订阅前缓冲的批次，此后实时投递；返回退订函数。
+     */
+    onOpenPath(cb: (paths: string[]) => void): () => void;
+  };
 };
 
 /**

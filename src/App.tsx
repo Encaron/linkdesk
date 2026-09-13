@@ -16,6 +16,7 @@ import { useHeartbeat } from "./hooks/useHeartbeat"; // E2a #5 心跳看门狗
 import { useMemoryMonitor } from "./hooks/useMemoryMonitor"; // E2a #6 内存监控
 import { useUpdateScheduler } from "./hooks/useUpdateScheduler"; // E6#57.9d 后台检查更新调度（auto 档）
 import { useUpdateNotifications } from "./hooks/useUpdateNotifications"; // E6#57.12 更新通知面生产者
+import { useOpenPathIntake } from "./hooks/useOpenPathIntake"; // E6#46b 命令行/文件关联 intake 消费（壳级，不进插件）
 import { useTabManager } from "./hooks/useTabManager";
 import { usePoolSync } from "./hooks/usePoolSync";
 import { useWindowHost, type MainResourceActions } from "./App/windows/windowHost"; // E5.8#43-2：壳窗口注册表（多窗口 tabState + 窗口模式策略）；#46.2：主窗资源联动动作集
@@ -51,6 +52,9 @@ function App() {
   // 走同一个迁移）；「已最新」「失败」两格不在这里，它们是**发起方自消化**的（见该文件头的两条路径）。
   // 挂载点必须与调度器同处：调度器只负责「什么时候查」，本 hook 只负责「查完怎么说话」。
   useUpdateNotifications();
+  // E6#46b：命令行/文件关联 intake 消费——文件 → fileAssociation → tab:openOrFocus；
+  // 文件夹已在主进程路由层分去开新窗（#47a/#47b），本 hook 只收文件。
+  useOpenPathIntake();
   const [, setTheme] = useState<string>("dark"); // E5.8#50.21：初始 = 壳内置配方 id（启动后由 app.theme 覆盖）
   const [, setLang] = useState<"zh" | "en">("zh");
 
