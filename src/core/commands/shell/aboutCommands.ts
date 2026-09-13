@@ -113,4 +113,19 @@ export function registerAboutCommands(): void {
       });
     },
   });
+
+  // 🔴 **恒显（无 when）**——同 app.about：许可信息随时可查（E6#57.10e ④，2026-09-13 用户拍板 MIT）。
+  // 呈现面 = 系统浏览器：`window.open` 被 E6#70c 的全局路由转交 `shell.openExternal`（VS Code
+  // 「View License」先例）——零新增 API 面，不为一段静态文本造新呈现面。
+  registerCommand(APP_PLUGIN_ID, {
+    id: "app.viewLicense",
+    title: "查看许可证",
+    category: "帮助",
+    handler: async () => {
+      window.open(LICENSE_URL, "_blank");
+    },
+  });
 }
+
+/** LICENSE 全文的线上正本——GitHub 承载（2026-09-11 拍板不建官网）。⚠️ 生效前提 = LICENSE 已推到远端 */
+const LICENSE_URL = "https://github.com/Encaron/linkdesk/blob/electron/LICENSE";

@@ -249,20 +249,22 @@ describe("E6#57.10 菜单内二级分组透传——帮助组正控 / 既有菜�
       // 🔴 E6#57.14g：关于是**末项**（设计 06 §4.3 心智：版本信息随时可查，排在更新之后）。
       //    同一条判据——写死位置，插到中间也必须红。
       "app.about",
+      // 🔴 E6#57.10e：查看许可证是**新的末项**（用户 2026-09-13 拍板 MIT，许可全文在 GitHub 承载）。
+      "app.viewLicense",
     ]);
     // label 覆盖：commands 自报的 title 是「打开键盘快捷方式」/「切换插件 DevTools」，
     // 菜单里用更短/更贴切的说法——同一命令在不同菜单不同措辞是 label 的本职。
     // 🔴 首项**没有** label 覆盖 ⇒ 显示命令自己的 title（「显示发行说明」），两处措辞一致是刻意的。
     expect(help.items.map((i) => i.label)).toEqual([
-      "显示发行说明", "快捷键列表", "切换开发人员工具", "检查更新…", "关于 LinkDesk",
+      "显示发行说明", "快捷键列表", "切换开发人员工具", "检查更新…", "关于 LinkDesk", "查看许可证",
     ]);
     // 🔴 画线的依据：**不同的值**之间才出线（ContextMenu 相邻比较组的语义）。
     //    `helpRelease` 独占一组是设计（发布物相关自成一组），不是随手起的名字。
-    // 🔴 E6#57.14g：末两项**同为 `helpUpdate`** ⇒ 它们之间**不出线**，两行读起来是一件事
-    //    （「关于本机 / 软件更新」心智）。所以条数从 4 涨到 5、**分组名仍只有 4 个不同值
-    //    ⇒ 分隔线仍是 3 条**——这条断言写的是分组名列表而不是线数，正是为了让这个区别可见。
+    // 🔴 E6#57.14g：`app.about` 前两项**同为 `helpUpdate`** ⇒ 它们之间**不出线**，两行读起来是一件事
+    //    （「关于本机 / 软件更新」心智）。E6#57.10e：`helpLegal` 是**新组** ⇒ 许可证前面**画一条线**
+    //    ——条数 5→6、不同分组名 4→5，分隔线 3→4。
     expect(help.items.map((i) => i.group)).toEqual([
-      "helpRelease", "helpLearn", "helpDev", "helpUpdate", "helpUpdate",
+      "helpRelease", "helpLearn", "helpDev", "helpUpdate", "helpUpdate", "helpLegal",
     ]);
   });
 
@@ -278,9 +280,10 @@ describe("E6#57.10 菜单内二级分组透传——帮助组正控 / 既有菜�
     const help = buildHamburgerMenuGroups(id, VIS(true, true)).find((g) => g.group === "help")!;
     const parent = help.items[0];
     expect(parent).toMatchObject({ label: "帮助", command: "" });
-    // E6#57.14g：末尾两个 `helpUpdate` = 「检查更新…」+「关于 LinkDesk」（同组 ⇒ 不画线，见上一条用例）
+    // E6#57.14g：末尾两个 `helpUpdate` = 「检查更新…」+「关于 LinkDesk」（同组 ⇒ 不画线，见上一条用例）；
+    // E6#57.10e：末尾 `helpLegal` = 查看许可证（新组）
     expect(parent.children!.map((c) => c.group)).toEqual([
-      "helpRelease", "helpLearn", "helpDev", "helpUpdate", "helpUpdate",
+      "helpRelease", "helpLearn", "helpDev", "helpUpdate", "helpUpdate", "helpLegal",
     ]);
   });
 

@@ -1,7 +1,8 @@
 {
   "name": "linkdesk",
+  "version": "0.1.60",
+  "license": "MIT",
   "private": true,
-  "version": "0.1.59",
   "type": "module",
   "main": "dist-electron/electron/main.js",
   "workspaces": [

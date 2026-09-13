@@ -161,10 +161,10 @@ describe("aboutCommands（② 「复制」不许把空串写进剪贴板）", ()
 });
 
 describe("aboutCommands（③④ 命令面形状）", () => {
-  it("🔴 本文件只注册这两条——「检查更新…」复用既有命令，不在这里造第二条", async () => {
+  it("🔴 本文件只注册这三条——「检查更新…」复用既有命令，不在这里造第二条", async () => {
     registerAboutCommands();
     // 本文件注册的全部命令（`clearCommands()` 清过场，所以这一份就是它注册的）
-    expect(getPluginCommands(APP_PLUGIN_ID).slice().sort()).toEqual(["app.about", "app.aboutCopy"]);
+    expect(getPluginCommands(APP_PLUGIN_ID).slice().sort()).toEqual(["app.about", "app.aboutCopy", "app.viewLicense"]);
     // 既有的那条**没被**顺手复制过来（同一条命令只该有一个注册点）
     expect(getCommand("update.checkForUpdates")).toBeUndefined();
   });

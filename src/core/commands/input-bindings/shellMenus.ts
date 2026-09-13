@@ -92,6 +92,13 @@ export function registerShellMenus(): void {
         // 这对本该连读的入口拆成两摊。
         // 恒显（无 when）——同款原则：版本信息随时可查，不挂在「有没有更新」上。
         { command: "app.about", group: "helpUpdate" },
+        // ── E6#57.10e：查看许可证——独占 `helpLegal`（预埋锚点，见上注）。
+        // 2026-09-13 用户拍板选 **MIT** ⇒ 本项到位才声明（原「不放空壳菜单项」的禁令解除）。
+        // 呈现面 = **系统浏览器打开 GitHub 上的 LICENSE 全文**（VS Code「View License」同款先例）：
+        // 走 E6#70c 的全局 window-open 路由，**零新增 API 面**（壳不假设编辑器插件存在、
+        // 不为一段静态文本造新呈现面）。⚠️ 生效前提 = LICENSE 已推到远端（当前攒本地未推，
+        // 推之前点它会 404——随下次推送一并生效，如实记）。
+        { command: "app.viewLicense", group: "helpLegal" },
       ],
     },
   ]);
