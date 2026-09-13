@@ -17,6 +17,7 @@ import { normalizePath } from "../../utils/path/pathUtils";
 import { shellEvents } from "../../react/events/ShellEvents";
 import { setPluginStateValue, getPluginStateValue, APP_PLUGIN_ID } from "../plugins/PluginStateService";
 import { read, readSync, write } from "../configuration/StorageService"; // E5.5#0e
+import { getShellExposed } from "../../api/linkdesk-api/surfaces"; // E6#47f：活跃工程上报主进程
 
 /* ── 类型 ── */
 
@@ -35,6 +36,14 @@ let _folders: WorkspaceFolder[] = [];
 let _activeWorkspaceUri: string | null = null;
 const _onDidChangeFolders = new Emitter<WorkspaceFolder[]>();
 const _onDidChangeActiveWorkspace = new Emitter<string>();
+
+
+/** E6#47f：把本窗活跃工程报给主进程（冷启动恢复最后活跃窗用）——非壳环境/池侧静默跳过 */
+function reportActiveToMain(folder: string | null): void {
+  try {
+    getShellExposed()?.shell?.reportActiveWorkspace?.(folder);
+  } catch { /* 非壳环境（测试/池）——上报是便利不是正确性 */ }
+}
 
 /* ── 查询 ── */
 
@@ -65,6 +74,7 @@ export function setActiveWorkspace(uri: string): void {
   // 持久化——走 PluginStateService（与 iconOrder/collapsedViews/currentProfile 归一化）。
   // E6#47e：key 加窗维度——每窗一个活跃工作区。
   setPluginStateValue(APP_PLUGIN_ID, activeWorkspaceKey(), normalized).catch((e) => { console.error("[Workspace] 保存工作区失败:", e); });
+  reportActiveToMain(normalized); // E6#47f
 }
 
 /** 订阅活跃工作区变更——对标 VS Code onDidChangeActiveWorkspaceFolder */
@@ -137,6 +147,7 @@ export function addFolder(folderPath: string): void {
 
   // E5.5#0e：持久化工作区文件夹列表——退出/重启后恢复
   _persistFolders();
+  reportActiveToMain(_activeWorkspaceUri ?? uri); // E6#47f：新窗/新工程即活跃工程
 }
 
 /**
@@ -170,6 +181,7 @@ export function removeFolder(folderPath: string): void {
 
   // E5.5#0e：持久化工作区文件夹列表
   _persistFolders();
+  reportActiveToMain(_activeWorkspaceUri); // E6#47f
 }
 
 /** 清空缓存（测试用） */
@@ -311,6 +323,7 @@ export async function initWorkspaceService(): Promise<void> {
 
     // E6#47b-2：参数工程与恢复项互不依赖——恢复成功时同样要载入（addFolder 自带去重/包含检查）
     if (launchFolder) addFolder(launchFolder);
+    reportActiveToMain(_activeWorkspaceUri); // E6#47f：恢复完把本窗活跃工程报到主进程
   } catch (e) {
     console.error("[Workspace] 恢复工作区文件夹失败:", e);
     // 降级：从空开始，不崩启动

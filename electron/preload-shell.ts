@@ -216,6 +216,11 @@ function buildShellIntakeExtras() {
      */
     onOpenPath: (cb: (paths: string[]) => void): (() => void) =>
       _openPathRelay.onReady((payload) => cb(payload.paths)),
+    /**
+     * E6#47f：把本窗活跃工程上报主进程（记 windows-state.json，冷启动恢复最后活跃窗）。
+     * 壳内私有扩展（同 onOpenPath 面）。fires-and-forgets（send）——上报失败不影响本地状态。
+     */
+    reportActiveWorkspace: (folder: string | null) => ipcRenderer.send(IPC.workspace.reportActive, folder),
   };
 }
 

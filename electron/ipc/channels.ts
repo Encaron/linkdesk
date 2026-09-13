@@ -281,5 +281,7 @@ export const IPC = {
     // E6#46b：intake 文件投递（主进程 → 壳直发，非 plugin:push 分发）——命令行/文件关联/右键
     // 三源汇入 launch-args 后的文件半；载荷 { paths: string[] }。壳侧经 preload 缓冲回放订阅。
     openPath: 'workspace:openPath',
+    // E6#47f：壳上报本窗活跃工程（主进程记 windows-state.json，冷启动恢复最后活跃窗用）
+    reportActive: 'workspace:reportActive',
   },
 } as const;

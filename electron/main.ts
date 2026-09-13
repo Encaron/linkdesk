@@ -41,6 +41,7 @@ import { IpcBridge } from './ipc/ipc-bridge.js';
 import { setupCrashRecovery, replayAfterShellRebuild, type CrashRecoveryDeps } from './windows/crash-recovery.js'; // E5.7#36
 import { setupExternalLinkRouting } from './windows/external-links.js'; // E6#70c：外链 → 系统浏览器
 import { parseLaunchPaths, type LaunchPaths } from './windows/launch-args.js'; // E6#46a：intake 解析半
+import { readWindowsState } from './windows/windows-state.js'; // E6#47f：冷启动恢复最后活跃窗
 import { APP_SCHEME, APPEARANCE_SCHEME, DEV_SERVER_URL } from './constants.js'; // E5#102b：DEV_SERVER_URL 定义在 constants.ts
 import { IPC } from './ipc/channels.js';
 // ── 单实例锁 ──
@@ -69,10 +70,10 @@ let _keyboardSyncRegistered = false;
 let _shellIpcRegistered = false;
 
 /**
- * 创建壳窗。E6#47b-2：`workspaceFolder` = 首窗要载入的工程文件夹（命令行/右键/恢复第一条）；
- * 首窗不带 `?wsWindow=` 参数（等价隐式 ws-1，与 WorkspaceService 的回落值同源）。
+ * 创建壳窗。E6#47b-2：`workspaceFolder` = 首窗要载入的工程文件夹（命令行/右键/恢复第一条）。
+ * E6#47f：`restoreWsWindowId` = 冷启动恢复时把上一会话该窗的状态 key 带回（不传 = 隐式 ws-1）。
  */
-function createWindow(workspaceFolder?: string): void {
+function createWindow(workspaceFolder?: string, restoreWsWindowId?: string): void {
   // E3f #51：标题栏暗色化——跟随 LinkDesk 暗色主题
   nativeTheme.themeSource = 'dark';
   // E3f #52：去掉 Electron 默认菜单栏（File/Edit/View/Window）——LinkDesk 用自己的
@@ -138,11 +139,19 @@ function createWindow(workspaceFolder?: string): void {
 
   // ── 加载内容：dev 模式从 Vite dev server，prod 模式从 dist/ ──
   // E6#47b-2：带 folder 启动 → 查询参数下发（壳 WorkspaceService 首帧读参数 addFolder）
-  const firstWinQuery = workspaceFolder ? `?${new URLSearchParams({ folder: workspaceFolder })}` : '';
+  // E6#47f：恢复启动 → 带回上一会话的 wsWindow 状态 key（否则恢复出的窗用 ws-1 的 key，状态对不上）
+  const firstWinParams: Record<string, string> = {};
+  if (workspaceFolder) firstWinParams.folder = workspaceFolder;
+  if (restoreWsWindowId) {
+    firstWinParams.wsWindow = restoreWsWindowId;
+    const n = Number(restoreWsWindowId.split('-')[1]);
+    if (Number.isFinite(n)) _nextWorkspaceId = Math.max(_nextWorkspaceId, n + 1); // 后续新窗不撞号
+  }
+  const firstWinQuery = Object.keys(firstWinParams).length > 0 ? `?${new URLSearchParams(firstWinParams)}` : '';
   if (isDev) {
     win.loadURL(`${DEV_SERVER_URL}${firstWinQuery}`);
   } else {
-    win.loadFile(path.join(__dirname, '../../dist/index.html'), workspaceFolder ? { query: { folder: workspaceFolder } } : undefined);
+    win.loadFile(path.join(__dirname, '../../dist/index.html'), Object.keys(firstWinParams).length > 0 ? { query: firstWinParams } : undefined);
   }
 
   // ready-to-show 后才显示窗口
@@ -165,6 +174,11 @@ function createWindow(workspaceFolder?: string): void {
   };
   if (!_windowIpcRegistered) {
     _windowIpcRegistered = true;
+    // E6#47f：壳上报本窗活跃工程 → 主进程记录并按窗落 windows-state.json（冷启动恢复用）
+    ipcMain.on(IPC.workspace.reportActive, (event, folder: string | null) => {
+      const key = windowManager?.resolveShellWindowKey(event.sender);
+      if (key) windowManager?.setWindowWorkspaceFolder(key, typeof folder === 'string' && folder ? folder : null);
+    });
     ipcMain.on(IPC.window.minimize, (event) => hostWindowFor(event)?.minimize());
     // E6#70d 全屏逃生：宿主窗若处原生全屏（页内 video HTML 全屏拉进），□ 按钮在渲染端以为是「最大化」（全屏≠最大化）
     // → maximize() 对全屏窗是 no-op → 用户被困全屏退不出。这里收成统一逃生口：全屏态点 □ = 还原窗口。
@@ -605,8 +619,18 @@ app.whenReady().then(async () => {
   // 文件夹参数 = 窗口：首窗直接载入 folders[0]（无参数则空窗；也不读恢复记录——有显式意图），
   // 其余文件夹各开一窗（routeLaunchItems 统一走 createWorkspaceWindow）。
   const launchPaths = parseLaunchPaths(process.argv.slice(1));
-  createWindow(launchPaths.folders[0]);
-  routeLaunchItems({ files: launchPaths.files, folders: launchPaths.folders.slice(1) });
+  if (launchPaths.folders.length === 0 && launchPaths.files.length === 0) {
+    // E6#47f：无参数启动（双击图标）→ 只恢复最后活跃窗（D7 拍板，对标 restoreWindows:"one"）。
+    // 文件夹已不存在 → 不载入它（空工作区），但状态 key 仍带回（标签页/布局照旧恢复）。
+    const lastActive = readWindowsState(app.getPath('userData')).lastActiveWindow;
+    const restoreFolder = lastActive?.workspaceFolder && fs.existsSync(lastActive.workspaceFolder)
+      ? lastActive.workspaceFolder
+      : undefined;
+    createWindow(restoreFolder, lastActive?.wsWindowId ?? undefined);
+  } else {
+    createWindow(launchPaths.folders[0]);
+    routeLaunchItems({ files: launchPaths.files, folders: launchPaths.folders.slice(1) });
+  }
 });
 
 app.on('window-all-closed', () => {

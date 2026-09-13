@@ -13,6 +13,7 @@ import * as path from 'path';
 import { DEV_SERVER_URL } from '../constants.js'; // E5.6#5：Pool URL 构建（E5.7#45.5：shared/ 并入 constants.ts）
 import { attachKeyboardRouting } from './keyboard-router.js'; // E5.7 快捷键路由：池 WCV 挂载（工厂处——含 rebuildPool 覆盖）
 import { poolKeyFromShell } from './pool-addressing.js'; // E6#47b-1：壳→池寻址归一（纯函数）
+import { writeWindowsState } from './windows-state.js'; // E6#47f：最后活跃窗落盘
 import { resolveFocusedWindowId } from './focus-router.js'; // E5.8#46.12 Step2：聚焦池窗解析（纯函数，单测独立）
 import { cacheLayoutSnapshot } from './crash-recovery.js'; // E5.7#36：崩溃恢复快照——pushLayout 中转处缓存
 import type { IpcBridge } from '../ipc/ipc-bridge.js'; // 类型引用——无运行时环（ipc-bridge 反向同是 type-only）
@@ -87,6 +88,10 @@ export class WindowManager {
    *  而 'main'/detached 池必须回**首窗壳**，绝不能落到「当前焦点窗」（焦点一飘即错页——
    *  2026-09-13 CDP 实证：第二窗打开后首窗文件树拿到空工作区）。焦点窗语义（mainWindow）只服务推送类消费方。 */
   private primaryShell: BrowserWindow | null = null;
+
+  /** E6#47f：每窗「活跃工程」——壳上报（workspace:reportActive）后按窗记录；
+   *  焦点/关窗那一刻落 windows-state.json（只记最后活跃窗，D7 拍板）。key 与池注册表同源。 */
+  private windowFolders = new Map<string, string | null>();
 
   constructor(private mainWindow: BrowserWindow) {
     this.startMemoryMonitoring();
@@ -645,6 +650,7 @@ export class WindowManager {
     this.primaryShell = win;
     win.on('focus', () => {
       if (!win.isDestroyed()) this.mainWindow = win;
+      this.persistLastActiveWindow('main'); // E6#47f：焦点即「最后活跃窗」的最强信号
     });
     win.on('closed', () => {
       if (this.primaryShell === win) this.primaryShell = null;
@@ -655,9 +661,11 @@ export class WindowManager {
     this.workspaceShells.set(wsWindowId, win);
     win.on('focus', () => {
       if (!win.isDestroyed()) this.mainWindow = win;
+      this.persistLastActiveWindow(wsWindowId); // E6#47f：焦点 = 最后活跃窗
     });
     win.on('closed', () => {
       if (this.workspaceShells.get(wsWindowId) === win) this.workspaceShells.delete(wsWindowId);
+      this.windowFolders.delete(wsWindowId);
       if (this.mainWindow === win) {
         const next = [...this.workspaceShells.values()].find((w) => !w.isDestroyed());
         if (next) this.mainWindow = next;
@@ -693,6 +701,31 @@ export class WindowManager {
       if (!shell.isDestroyed() && shell.webContents === sender) return true;
     }
     return false;
+  }
+
+  /** E6#47f：壳上报本窗活跃工程——记录并落盘（上报即「这窗现在是活跃的」的最强信号） */
+  setWindowWorkspaceFolder(windowId: string, folder: string | null): void {
+    this.windowFolders.set(windowId, folder);
+    this.persistLastActiveWindow(windowId);
+  }
+
+  /** E6#47f：某个壳 sender 的窗 key——首窗壳返回 'main'（池注册表 key），workspace 壳返回 ws-N */
+  resolveShellWindowKey(sender: WebContents): string | null {
+    if (this.primaryShell && !this.primaryShell.isDestroyed() && this.primaryShell.webContents === sender) return 'main';
+    return this.getWorkspaceIdByShellWebContents(sender);
+  }
+
+  /** E6#47f：把指定窗记成「最后活跃窗」（无参数冷启动恢复它） */
+  private persistLastActiveWindow(windowId: string): void {
+    try {
+      writeWindowsState(app.getPath('userData'), {
+        lastActiveWindow: {
+          workspaceFolder: this.windowFolders.get(windowId) ?? null,
+          // 'main' = 首窗（隐式 ws-1）→ 恢复时用隐式 id（不带参数）
+          wsWindowId: windowId === 'main' ? null : windowId,
+        },
+      });
+    } catch { /* 落盘失败不影响运行（恢复是便利不是正确性） */ }
   }
 
   /** 壳 sender → 其壳标识（ws-N；主壳/非壳 sender 返回 null）——壳→池寻址归一的输入 */

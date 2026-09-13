@@ -140,6 +140,8 @@ export type ShellExposed = Pick<LinkDeskAPI,
      * 首次订阅先 FIFO 回放订阅前缓冲的批次，此后实时投递；返回退订函数。
      */
     onOpenPath(cb: (paths: string[]) => void): () => void;
+    /** E6#47f：上报本窗活跃工程（主进程按窗记录 → windows-state.json → 冷启动恢复最后活跃窗） */
+    reportActiveWorkspace(folder: string | null): void;
   };
 };
 
