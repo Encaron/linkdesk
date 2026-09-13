@@ -40,6 +40,7 @@ import { syncKeybindings } from './windows/keyboard-router.js'; // E5.5#7-p6
 import { IpcBridge } from './ipc/ipc-bridge.js';
 import { setupCrashRecovery, replayAfterShellRebuild, type CrashRecoveryDeps } from './windows/crash-recovery.js'; // E5.7#36
 import { setupExternalLinkRouting } from './windows/external-links.js'; // E6#70c：外链 → 系统浏览器
+import { parseLaunchPaths, type LaunchPaths } from './windows/launch-args.js'; // E6#46a：intake 解析半
 import { APP_SCHEME, APPEARANCE_SCHEME, DEV_SERVER_URL } from './constants.js'; // E5#102b：DEV_SERVER_URL 定义在 constants.ts
 import { IPC } from './ipc/channels.js';
 // ── 单实例锁 ──
@@ -50,6 +51,9 @@ if (!gotLock) {
 
 // ── 窗口引用（后续 SerialService/file-service 需要 mainWindow.webContents.send()）──
 let mainWindow: BrowserWindow | null = null;
+// E6#46a：启动/second-instance 收到的文件路径缓存——#46b 壳侧就绪后消费（发送通道在该格接线）。
+// 文件夹不走这里：路由层直接开新窗（#47a/#47b）。
+const pendingOpenFiles: string[] = [];
 // E3a #24：插件 WebContentsView 生命周期管理
 let windowManager: WindowManager | null = null;
 // E3a #26：池渲染进程 ↔ 壳渲染进程 IPC 中继（E5.7#43）
@@ -464,6 +468,24 @@ protocol.registerSchemesAsPrivileged([
 ]);
 
 // ── 应用生命周期 ──
+/**
+ * E6#46a：intake 路由器——三条源（启动 argv / second-instance / macOS open-file）统一走这里，
+ * 只允许这一个路由逻辑（归一化，不许每源各写一份）。
+ *   folders → #47 开新窗；files → pendingOpenFiles 缓存，#46b 壳侧消费。
+ * ⚠️ 两处接线点尚有后手，落地格内收口，不许静默吞掉：
+ *   · folders 分支：createWorkspaceWindow 未落地（#47b），暂以 console 占位、行为回退聚焦；
+ *   · files 分支：壳侧消费通道未注册（#46b），暂存 pendingOpenFiles。
+ */
+function routeLaunchItems(items: LaunchPaths): void {
+  if (items.folders.length > 0) {
+    console.log(`[launch-args] 文件夹 intake ${items.folders.length} 项（E6#47a 接线前回退聚焦）: ${items.folders.join(', ')}`);
+  }
+  if (items.files.length > 0) {
+    pendingOpenFiles.push(...items.files);
+    console.log(`[launch-args] 文件 intake 已缓存 ${items.files.length} 项（E6#46b 消费）: ${items.files.join(', ')}`);
+  }
+}
+
 app.whenReady().then(async () => {
   registerProtocol();
   // E6#73j（G8）：先把「进程死在两次 rename 之间」留下的 <id>.bak 放回原位，再谈 ingest/发货/扫表。
@@ -495,6 +517,8 @@ app.whenReady().then(async () => {
   // 主进程三表数据天然存活、无需重扫。
   registerManifestRescanHandler();
   loadAllPluginManifests();
+  // E6#46a：启动 argv intake——文件关联双击 / 右键菜单 / 命令行带参启动（slice(1) 跳过 exe 本体）
+  routeLaunchItems(parseLaunchPaths(process.argv.slice(1)));
   createWindow();
 });
 
@@ -518,8 +542,9 @@ app.on('activate', () => {
   }
 });
 
-// 第二个实例启动时 → 聚焦已有窗口
-app.on('second-instance', () => {
+// 第二个实例启动时 → 解析其 argv 并路由（E6#46a）；无路径参数时维持聚焦行为
+app.on('second-instance', (_event, argv) => {
+  routeLaunchItems(parseLaunchPaths(argv));
   if (mainWindow) {
     if (mainWindow.isMinimized()) mainWindow.restore();
     mainWindow.focus();
