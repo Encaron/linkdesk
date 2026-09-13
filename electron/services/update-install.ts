@@ -32,7 +32,7 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 import { app } from 'electron';
 import { loadProduct } from '../product.js';
-import { updateDownloadDir, installerVersionFromName } from './update-download.js';
+import { updateDownloadDir, installerVersionFromName, sha256File } from './update-download.js';
 import { UpdateLegError, type InstallLeg, type StartupResume } from './update-service.js';
 import type { UpdateError, UpdateInfo, UpdateState } from '../../src/core/types/ipc/update';
 
@@ -114,6 +114,21 @@ export function createUpdateInstaller(deps: UpdateInstallDeps = {}): InstallLeg 
     // 错误码取 `canceled`（= 本次安装没有发生；码集由 07 §三 固定，**不新造码**），区分信息在文案里。
     if (!(await isUsableInstaller(installerPath))) {
       throw err('canceled', '安装包已不在盘上（可能被清理或移走）——请重新下载后再试');
+    }
+
+    // 🔴 **拉起前验货**（`#57.16` 实机批掘出的 A3 健壮性缺口，2026-09-13 用户拍板修）：
+    //   下载腿只在下载/复用那一刻验过 checksum；「记录在、盘上文件事后被换/损坏」的路径
+    //   （实测：坏安装器被静默执行 ⇒ NSIS 起不来 ⇒ **App 关了、没装上、没回来、零通知**，
+    //   用户唯一出路是手动删文件）在这里补第二道闸。验不过 ⇒ 删坏文件 + 清记录 +
+    //   抛 `checksum-mismatch`（**码与文案复用下载腿那份**，码集不新造）⇒ 用户下次检查照常重下。
+    //   ⚠️ checksum 拿不到时**不拦**（与下载腿「`checksum-unavailable` 降级放行」同一拍板口径）。
+    if (update.checksum) {
+      const actual = await sha256File(installerPath);
+      if (actual === null || actual !== update.checksum.toLowerCase()) {
+        await fs.rm(installerPath, { force: true }).catch(() => {});
+        await clearPendingInstall({ getUpdateDir }).catch(() => {});
+        throw err('checksum-mismatch', '安装包校验不通过——已删除、不会安装（下载损坏或发布侧换过包）');
+      }
     }
 
     // ③ 先落盘再动手。写不进去 ⇒ **不装**（宁可不装，也不制造一个「下次启动不知道自己刚才在装」的重启）。

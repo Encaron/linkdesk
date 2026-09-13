@@ -250,9 +250,21 @@ async function tryReuse(installerPath: string, expected: string | undefined): Pr
   // 文件不在 = 常态（首次下载）；读不动（锁 / 权限 / 是目录）= 不复用，走正常下载
   const st = await fs.stat(installerPath).catch(() => null);
   if (!st || !st.isFile() || st.size === 0) return null;
+  const digest = await sha256File(installerPath);
+  if (digest === null) return null; // 读不动（锁/权限）⇒ 不复用，走正常下载
+  return digest === expected.toLowerCase() ? st.size : null;
+}
+
+/**
+ * 文件的 sha256（hex 小写）——**逐块读入**（大文件不进内存）。
+ * 下载腿（复用校验）与安装腿（拉起前验货，`#57.16` 实机批掘出的 A3 缺口）共用这一份实现——
+ * 两道闸必须是**同一把尺子**，各写一份迟早读出两个不同的数。
+ * 读不动（锁/权限）⇒ `null`，由调用方决定语义。
+ */
+export async function sha256File(p: string): Promise<string | null> {
   const hash = createHash('sha256');
   try {
-    const handle = await fs.open(installerPath, 'r');
+    const handle = await fs.open(p, 'r');
     try {
       const buf = Buffer.alloc(1 << 20);
       for (;;) {
@@ -264,9 +276,9 @@ async function tryReuse(installerPath: string, expected: string | undefined): Pr
       await handle.close().catch(() => {});
     }
   } catch {
-    return null; // 读不动（锁/权限）⇒ 不复用，走正常下载
+    return null; // 读不动（锁/权限）
   }
-  return hash.digest('hex') === expected.toLowerCase() ? st.size : null;
+  return hash.digest('hex');
 }
 
 /**

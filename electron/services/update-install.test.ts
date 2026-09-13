@@ -19,6 +19,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import { createHash } from "node:crypto";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
@@ -42,6 +43,10 @@ import type { UpdateInfo } from "../../src/core/types/ipc/update";
 const CURRENT = "1.2.3";
 const NEXT = "9.9.9";
 
+/** 夹具安装器的固定内容与其真实 sha256——自洽（安装腿现在会验货，指纹必须对得上内容） */
+const FAKE_CONTENT = "fake-installer";
+const FAKE_SHA = createHash("sha256").update(FAKE_CONTENT).digest("hex");
+
 function makeInfo(over: Partial<UpdateInfo> = {}): UpdateInfo {
   return {
     version: NEXT,
@@ -49,7 +54,7 @@ function makeInfo(over: Partial<UpdateInfo> = {}): UpdateInfo {
     publishedAt: "2026-09-12T00:00:00Z",
     releaseNotesUrl: "https://example.invalid/releases/tag/v9.9.9",
     downloadUrl: "https://example.invalid/linkdesk-setup-9.9.9.exe",
-    checksum: "a".repeat(64),
+    checksum: FAKE_SHA,
     size: 1000,
     ...over,
   };
@@ -59,10 +64,10 @@ let root: string;
 let dir: string;
 let installer: string;
 
-/** 盘上放一份「可用的」安装器（内容非空即可——本腿只查存在性，完整性归下载腿的 sha256） */
+/** 盘上放一份「可用的」安装器（内容与 `makeInfo()` 默认 checksum 自洽；坏包用例自己覆盖内容） */
 function placeInstaller(version: string = NEXT): string {
   const p = path.join(dir, installerFileName(version));
-  fs.writeFileSync(p, "fake-installer");
+  fs.writeFileSync(p, FAKE_CONTENT);
   return p;
 }
 
@@ -147,6 +152,36 @@ describe("安装腿：落盘 → 拉起安装器 → 退出", () => {
     expect(launch).not.toHaveBeenCalled();
     expect(quit).not.toHaveBeenCalled();
     expect(fs.existsSync(pendingInstallPath(dir))).toBe(false);
+  });
+
+  it("🔴 拉起前验货（#57.16 A3 缺口）：内容与 checksum 不符 → 抛 checksum-mismatch + **删坏文件** + 不拉起不退出", async () => {
+    const launch = vi.fn();
+    const quit = vi.fn();
+    const leg = createUpdateInstaller({ getUpdateDir: () => dir, launchInstaller: launch, quit });
+
+    // 盘上文件是坏的（内容与 makeInfo 默认指纹不符）
+    fs.writeFileSync(installer, "corrupted-by-external-hand");
+    await expect(leg(makeInfo(), installer)).rejects.toMatchObject({
+      detail: { code: "checksum-mismatch" },
+    });
+    // 坏文件已删（不是留在盘上等用户手动清）+ 不拉起、不退出
+    expect(fs.existsSync(installer)).toBe(false);
+    expect(launch).not.toHaveBeenCalled();
+    expect(quit).not.toHaveBeenCalled();
+    expect(fs.existsSync(pendingInstallPath(dir))).toBe(false);
+  });
+
+  it("checksum 拿不到（发布侧漏附）→ 降级放行照常装（与下载腿 `checksum-unavailable` 同一拍板口径）", async () => {
+    const launch = vi.fn(() => {});
+    const quit = vi.fn();
+    const leg = createUpdateInstaller({ getUpdateDir: () => dir, launchInstaller: launch, quit });
+
+    const info = makeInfo({ checksum: undefined });
+    const p = leg(info, installer);
+    // 成功路径永不 settle——拉起即视为已发生（同「落盘先于拉起」用例的处置）
+    await vi.waitFor(() => expect(launch).toHaveBeenCalledTimes(1));
+    expect(quit).toHaveBeenCalled();
+    void p;
   });
 
   it("落盘失败（写不进去）→ 抛 write-error 且**不装**（fail-closed：宁可不装，也不装得不明不白）", async () => {
