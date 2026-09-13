@@ -47,3 +47,5 @@ E5.8 执行清单任务的**执行注**引用对应决策记录（`decisions/imp
 ## 目录
 
 - [implemented/lefthook-monorepo](implemented/lefthook-monorepo.md) — E5.8#3 lefthook 接入的 monorepo 方案（LEFTHOOK_CONFIG 注入 + job root: linkdesk）
+- [implemented/plugin-source-out-of-shell-repo](implemented/plugin-source-out-of-shell-repo.md) — 2026-09-14 插件源码外移：一插件一仓、壳仓只留产物、出厂=构建期拉取（执行载体 = E6 第 7 层 #97-#104）
+- [implemented/author-docs-reader-based-boundary](implemented/author-docs-reader-based-boundary.md) — 2026-09-14 作者面文档边界按读者不按目录；老 15 篇不搬（索引式归纳）；主题手册从设计文档提炼新写；文档单独发 npm 包；脚手架 `AGENTS.md` 四件事（执行载体 = E6 第 7.8 轮 #105）
