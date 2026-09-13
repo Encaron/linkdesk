@@ -74,10 +74,16 @@ afterEach(() => {
 
 const MODE_KEY = "app.update.mode";
 
-/** 挂载调度器（import 在文件顶层——本档不需要干净模块，模块内无单例状态） */
-async function mount() {
+/**
+ * 挂载调度器（import 在文件顶层——本档不需要干净模块，模块内无单例状态）。
+ * `ready` = App 的 post-init 信号；默认 true（等价于「配置已就绪」的老用例现场）。
+ * 🔴 A7 用例要传 false 起步——冷启动现场：mount 时配置注册/水合都没完成。
+ */
+async function mount(ready = true) {
   const { useUpdateScheduler } = await import("./useUpdateScheduler");
-  return renderHook(() => useUpdateScheduler());
+  return renderHook(({ r }: { r: boolean }) => useUpdateScheduler(r), {
+    initialProps: { r: ready },
+  });
 }
 
 describe("useUpdateScheduler（auto 档 ①）", () => {
@@ -186,6 +192,56 @@ describe("useUpdateScheduler（非壳环境退化）", () => {
     await act(async () => { await vi.advanceTimersByTimeAsync(INITIAL_DELAY_MS + CHECK_INTERVAL_MS); });
 
     expect(checkForUpdates).not.toHaveBeenCalled();
+    unmount();
+  });
+});
+
+describe("useUpdateScheduler（A7 修复——配置就绪后武装）", () => {
+  /** 冷启动现场共用起点：mode 键不存在（注册表未挂上）+ ready=false */
+  async function mountCold() {
+    cfg.values.delete(MODE_KEY);
+    return mount(false);
+  }
+
+  it("🔴 修复正控——mount 时档位读不到（冷启动现场）⇒ 不武装；ready 翻真 + 档位就位 ⇒ 现场重读并按期首查", async () => {
+    const { rerender, unmount } = await mountCold();
+
+    await act(async () => { await vi.advanceTimersByTimeAsync(INITIAL_DELAY_MS * 3); });
+    expect(checkForUpdates).not.toHaveBeenCalled();
+
+    // post-init：注册完成（值可读）+ App setReady(true) 的重渲染
+    cfg.values.set(MODE_KEY, "auto");
+    rerender({ r: true });
+
+    await act(async () => { await vi.advanceTimersByTimeAsync(INITIAL_DELAY_MS); });
+    expect(checkForUpdates).toHaveBeenCalledTimes(1);
+    expect(checkForUpdates).toHaveBeenLastCalledWith(false);
+    unmount();
+  });
+
+  it("🔴 ready 缺席负控——配置值就位但 ready 永远不给 ⇒ 永不发（旧行为焊死形态的回归钉）", async () => {
+    const { rerender, unmount } = await mountCold();
+
+    // 配置就位了（等价 initAll 完成），但组件没拿到 ready 信号
+    cfg.values.set(MODE_KEY, "auto");
+    rerender({ r: false });
+    await act(async () => { await vi.advanceTimersByTimeAsync(INITIAL_DELAY_MS * 5); });
+
+    expect(checkForUpdates).not.toHaveBeenCalled();
+    unmount();
+  });
+
+  it("ready 翻真发生在定时器窗口内 ⇒ 首查按 ready 时刻起算（不是按 mount 时刻）", async () => {
+    const { rerender, unmount } = await mountCold();
+    await act(async () => { await vi.advanceTimersByTimeAsync(20_000); });
+    expect(checkForUpdates).not.toHaveBeenCalled();
+
+    // 20s 时就绪——首查应在 20s + 30s = 50s，而不是 mount 后 30s
+    //（断言形状与上面 ① 的「差 1ms / +1ms」刻意不同：首查已迟到，直接跨过整个窗口验证恰好发一次）
+    cfg.values.set(MODE_KEY, "auto");
+    rerender({ r: true });
+    await act(async () => { await vi.advanceTimersByTimeAsync(INITIAL_DELAY_MS * 2); });
+    expect(checkForUpdates).toHaveBeenCalledTimes(1);
     unmount();
   });
 });

@@ -43,9 +43,10 @@ function App() {
   useHeartbeat();
   // E2a #6：内存监控——每 10s 采样，JS heap > 80% → toast 告警
   useMemoryMonitor();
-  // E6#57.9d：更新后台调度——auto 档 mount 后 30s 首次检查，此后每 4h；manual 档不自动
+  // E6#57.9d：更新后台调度——ready（post-init）后 30s 首次检查，此后每 4h；manual 档不自动
   // （无窗口守卫——壳渲染进程结构上只有主窗口一份，实证见该文件头 + 08-调度归属与失败重试.md §一）
-  useUpdateScheduler();
+  // 🔴 `ready` 参数是 A7 修复本体（#57.9e 立案）：mount 时配置未就绪，档位要等 post-init 才读得到。
+  useUpdateScheduler(ready);
   // E6#57.12：更新通知面生产者——发现 / 进度 / 完成三格由**状态迁移**驱动（后台查到的和手点查到的
   // 走同一个迁移）；「已最新」「失败」两格不在这里，它们是**发起方自消化**的（见该文件头的两条路径）。
   // 挂载点必须与调度器同处：调度器只负责「什么时候查」，本 hook 只负责「查完怎么说话」。

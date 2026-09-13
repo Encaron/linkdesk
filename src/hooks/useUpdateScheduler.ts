@@ -65,23 +65,34 @@ function readMode(): string {
 
 /**
  * 挂载后台调度器。只在壳根组件调一次（`src/App.tsx`，同 `useHeartbeat`/`useMemoryMonitor`）。
+ *
+ * 🔴 **`ready` 参数不是可省的形式参数，是 A7 修复的本体**（2026-09-13 立案，见 `#57.9e` 格）：
+ * 冷启动首帧渲染早于配置注册（`registerUpdateConfiguration` 在 initAll 里）与水合
+ * ⇒ mount 时刻 `readMode()` 恒为 undefined ⇒ 旧实现 `useState(readMode)` 把 undefined 焊死在
+ * mount 时刻、effect `mode !== "auto"` 永远早退 ⇒ **「启动后检查一次」从不发生**（实机 n=2）。
+ * 解法：武装 effect 等 `ready`（App 的 post-init 信号 = initAll 完成，`setReady(true)` 处）
+ * 翻真后**现场重读**档位——此刻注册与缓存必齐。档位变更仍走 onDidChangeConfiguration 计数重跑。
  */
-export function useUpdateScheduler(): void {
-  const [mode, setMode] = useState<string>(readMode);
+export function useUpdateScheduler(ready: boolean): void {
+  // 档位**变更计数器**，不是档位快照——mount 时刻的快照不可信（A7），effect 内现场重读。
+  const [modeVersion, setModeVersion] = useState(0);
 
-  // 切 mode 即时生效（#57.9e 判据）：设置页改 `app.update.mode` → 本 effect 重跑 ⇒ 旧定时器拆、
-  // 新定时器按新档起。只监听关心的这一个 key（对标 usePoolSync/useSubscriptions.ts:82 的 key 过滤）。
+  // 切 mode 即时生效（#57.9e 判据）：设置页改 `app.update.mode` → 计数 +1 ⇒ 武装 effect 重跑
+  // ⇒ 旧定时器拆、新定时器按新档起（档位在 effect 内现场重读）。只监听这一个 key。
   useEffect(() => {
     return onDidChangeConfiguration((key) => {
-      if (key === MODE_KEY) setMode(readMode());
+      if (key === MODE_KEY) setModeVersion((v) => v + 1);
     });
   }, []);
 
   useEffect(() => {
+    // ready 之前**什么都不做**——此时读到的档位必然是坏的（undefined），武装它等于没武装。
+    if (!ready) return;
+    const mode = readMode(); // 🔴 现场重读，不读 mount 快照（A7 本体）
     if (mode !== "auto") return; // manual：不自动发（也不留空定时器）
     let initial: ReturnType<typeof setTimeout> | undefined;
     let interval: ReturnType<typeof setInterval> | undefined;
-    // 幂等 stop——清理路径（unmount / 切 mode）与「首次触发后转周期」两条路都调得安全
+    // 幂等 stop——清理路径（unmount / 切 mode / ready 翻转）与「首次触发后转周期」两条路都调得安全
     // （对标 useSubscriptions.ts:251-267 的开/关定时器形状）
     const stop = (): void => {
       if (initial !== undefined) { clearTimeout(initial); initial = undefined; }
@@ -93,5 +104,5 @@ export function useUpdateScheduler(): void {
       interval = setInterval(fireBackgroundCheck, CHECK_INTERVAL_MS);
     }, INITIAL_DELAY_MS);
     return stop;
-  }, [mode]);
+  }, [ready, modeVersion]);
 }
