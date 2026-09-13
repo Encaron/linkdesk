@@ -101,6 +101,7 @@ function createWindow(workspaceFolder?: string): void {
 
   // E3a #24：初始化 WindowManager（E5.7#43：PluginViewRegistry 已删）
   windowManager = new WindowManager(win);
+  windowManager.registerPrimaryShell(win); // E6#47b-2：首窗壳稳定引用（'main' 池的归属，见 primaryShell 字段注释）
   // E5.5#7-p7：壳同步快捷键表到主进程（无窗口引用——只注册一次）
   if (!_keyboardSyncRegistered) {
     _keyboardSyncRegistered = true;

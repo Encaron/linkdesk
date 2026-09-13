@@ -12,6 +12,7 @@
 
 import type { LayoutData } from "../../../hooks/useTabManager";
 import { read, readSync, write, writeSync } from "../configuration/StorageService";
+import { getWorkspaceWindowId } from "./WorkspaceService"; // E6#47c：布局按窗隔离（key 加窗维度）
 import { exists, readFile, writeFile, createDir, joinPath, appDataDir } from "../files/FileService";
 
 /* ── 类型 ── */
@@ -68,6 +69,16 @@ export interface WorkspaceLayout {
 
 /* ── 缓存 ── */
 
+/**
+ * E6#47c：布局持久化 key 加窗维度——每窗一份 UI 布局（标签页/侧栏/面板），
+ * 否则多窗共用 "layout"：后开窗的初始化会把先开窗的侧栏/面板状态覆盖掉
+ * （2026-09-13 CDP 实证：首窗侧栏变空 placehold，罪魁 = 共享 key）。
+ * 与 WorkspaceService 的 `workspace-folders:<wsId>` 同款；非窗环境回落 ws-1。
+ */
+function layoutStorageKey(): string {
+  return `layout:${getWorkspaceWindowId()}`;
+}
+
 let _layoutCache: WorkspaceLayout = { tabs: { groups: [], activeGroupId: "" }, cards: [] };
 
 /* ── 初始化 ── */
@@ -77,7 +88,13 @@ export async function initLayoutService(): Promise<void> {
   // E5.8#71：read() 已归一为文件优先（文件 = 真相）。布局的 beforeunload 保底
   // （syncWriteLayout 写 localStorage-only，beforeunload 无法异步 I/O）是「关窗瞬间最后状态」通道，
   // 在此显式 readSync 优先——仅当 localStorage 无数据才落 read() 文件兜底。
-  const saved = readSync<WorkspaceLayout>("layout") ?? (await read<WorkspaceLayout>("layout"));
+  // E6#47c：本窗 key 优先；**仅首窗**（隐式 ws-1）回落旧全局 key——单窗时代布局零迁移沿用，
+  // 第二窗起绝不捡别人的布局（那是共享 key 的老 bug 换壳复活）。
+  const saved = readSync<WorkspaceLayout>(layoutStorageKey())
+    ?? (await read<WorkspaceLayout>(layoutStorageKey()))
+    ?? (getWorkspaceWindowId() === "ws-1"
+      ? (readSync<WorkspaceLayout>("layout") ?? (await read<WorkspaceLayout>("layout")))
+      : null);
   if (saved) {
     _layoutCache = saved;
   }
@@ -120,13 +137,13 @@ export function getDetachedWindows(): DetachedWindowState[] {
 /** 保存标签页布局 */
 export async function saveTabLayout(tabs: LayoutData): Promise<void> {
   _layoutCache.tabs = tabs;
-  await write("layout", _layoutCache);
+  await write(layoutStorageKey(), _layoutCache);
 }
 
 /** 保存卡片布局 */
 export async function saveCardLayout(cards: CardLayout[]): Promise<void> {
   _layoutCache.cards = cards;
-  await write("layout", _layoutCache);
+  await write(layoutStorageKey(), _layoutCache);
 }
 
 /** 保存工作区完整布局——Phase 7 workspace 导入导出用（panel 状态保留，不被整体替换冲掉） */
@@ -135,25 +152,25 @@ export async function saveWorkspaceLayout(
   cards: CardLayout[]
 ): Promise<void> {
   _layoutCache = { tabs, cards, ...(_layoutCache.panel ? { panel: _layoutCache.panel } : {}) };
-  await write("layout", _layoutCache);
+  await write(layoutStorageKey(), _layoutCache);
 }
 
 /** E5.7#63.7：保存底部面板布局状态 */
 export async function savePanelLayout(panel: PanelLayoutState): Promise<void> {
   _layoutCache.panel = panel;
-  await write("layout", _layoutCache);
+  await write(layoutStorageKey(), _layoutCache);
 }
 
 /** E5.8#36.9：保存侧栏布局状态 */
 export async function saveSidebarLayout(sidebar: SidebarLayoutState): Promise<void> {
   _layoutCache.sidebar = sidebar;
-  await write("layout", _layoutCache);
+  await write(layoutStorageKey(), _layoutCache);
 }
 
 /** E5.8#43-3：保存脱出窗清单——bounds 落盘（A6/I9-14），整表替换（壳注册表是脱出窗唯一真相源） */
 export async function saveDetachedWindows(windows: DetachedWindowState[]): Promise<void> {
   _layoutCache.detachedWindows = windows;
-  await write("layout", _layoutCache);
+  await write(layoutStorageKey(), _layoutCache);
 }
 
 /**
@@ -164,7 +181,7 @@ export async function saveDetachedWindows(windows: DetachedWindowState[]): Promi
  */
 export function syncWriteLayout(layout: WorkspaceLayout): void {
   _layoutCache = layout;
-  writeSync("layout", _layoutCache);
+  writeSync(layoutStorageKey(), _layoutCache);
 }
 
 /* ── 具名工作区（Phase 7） ── */

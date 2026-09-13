@@ -83,6 +83,11 @@ export class WindowManager {
   // 池注册表 key 用 ws-N（全局唯一），而每个壳渲染进程眼里自己的池都叫 'main'（见 01-多窗口架构 §5.3）。
   private workspaceShells = new Map<string, BrowserWindow>();
 
+  /** E6#47b-2 修复：首窗壳的**稳定引用**——首窗池的注册表 key 是 'main'（沿旧制，全仓多处消费），
+   *  而 'main'/detached 池必须回**首窗壳**，绝不能落到「当前焦点窗」（焦点一飘即错页——
+   *  2026-09-13 CDP 实证：第二窗打开后首窗文件树拿到空工作区）。焦点窗语义（mainWindow）只服务推送类消费方。 */
+  private primaryShell: BrowserWindow | null = null;
+
   constructor(private mainWindow: BrowserWindow) {
     this.startMemoryMonitoring();
     // E5.7#12.5：Pool bounds 换主——主进程跟随窗口 resize 满窗（壳不再推流）。
@@ -635,6 +640,17 @@ export class WindowManager {
    * 挂两件事：① focus → 焦点窗跟随（`mainWindow` 语义从「唯一的窗」变「当前聚焦的 workspace 窗」，
    * 决策 B）；② closed → 摘注册表 + 焦点窗重指到仍存活的壳（推送类消费方依赖它非空）。
    */
+  /** E6#47b-2：登记首窗壳（createWindow 在 createMainPool 之前调用）——'main' 池的稳定归属 */
+  registerPrimaryShell(win: BrowserWindow): void {
+    this.primaryShell = win;
+    win.on('focus', () => {
+      if (!win.isDestroyed()) this.mainWindow = win;
+    });
+    win.on('closed', () => {
+      if (this.primaryShell === win) this.primaryShell = null;
+    });
+  }
+
   registerWorkspaceShell(win: BrowserWindow, wsWindowId: string): void {
     this.workspaceShells.set(wsWindowId, win);
     win.on('focus', () => {
@@ -659,6 +675,8 @@ export class WindowManager {
       const shell = this.workspaceShells.get(windowId);
       if (shell && !shell.isDestroyed()) return shell;
     }
+    // 'main'/detached 池 → **首窗壳**（稳定），不随焦点飘（见 primaryShell 字段注释的 CDP 实证）
+    if (this.primaryShell && !this.primaryShell.isDestroyed()) return this.primaryShell;
     return this.mainWindow && !this.mainWindow.isDestroyed() ? this.mainWindow : null;
   }
 
@@ -749,6 +767,7 @@ export class WindowManager {
       this.destroyPoolWindow(windowId);
     }
     this.workspaceShells.clear(); // E6#47b-1：壳注册表随退出清空（窗口已由 Electron 销毁，防跨重建残留引用）
+    this.primaryShell = null;
   }
 
 }
