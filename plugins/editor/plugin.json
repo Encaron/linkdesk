@@ -1,5 +1,6 @@
 {
   "$schema": "../../../public/schemas/plugin.schema.json",
+  "pluginId": "editor",
   "name": "编辑器",
   "version": "1.0.9",
   "icon": "resources/icon.svg",

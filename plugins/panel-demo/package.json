@@ -1,6 +1,6 @@
 {
   "name": "linkdesk-plugin-panel-demo",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": true,
   "type": "module",
   "description": "面板 demo——E6#15 独立化：独立 build 产 .linkdesk-plugin（零 @src）。🔴 安装版不内置（2026-09-06 用户拍板：demo 不进发货集）——zip 留 dev-fixtures 作「第三方直接安装」回归验证件",

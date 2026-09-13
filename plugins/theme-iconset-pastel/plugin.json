@@ -1,5 +1,6 @@
 {
   "$schema": "../../public/schemas/plugin.schema.json",
+  "pluginId": "theme-iconset-pastel",
   "name": "粉彩图标集",
   "version": "1.0.0",
   "description": "精简彩色图标集——Material Icon Theme 常用精选（MIT，139 条映射 + 5 默认图标，含文件夹/新建文件/根文件夹彩色图标），图像资产形态应用（E5.8#133 图标主题闭环实例）",

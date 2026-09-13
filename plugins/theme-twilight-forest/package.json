@@ -1,0 +1,16 @@
+{
+  "name": "linkdesk-plugin-theme-twilight-forest",
+  "version": "1.0.1",
+  "private": true,
+  "type": "module",
+  "description": "暗色主题合集——青澜/暮紫/翠微，森林色系——纯数据插件（无 entry/无编译表面）。独立仓可自足构建：build 走 @linkdesk/plugin-sdk 的 pack 通道（目录整树打包），不产 bundle。",
+  "scripts": {
+    "build": "linkdesk-plugin-sdk pack",
+    "validate": "linkdesk-plugin-sdk validate",
+    "lint": "linkdesk-plugin-sdk lint",
+    "publish": "linkdesk-plugin-sdk publish"
+  },
+  "devDependencies": {
+    "@linkdesk/plugin-sdk": "^0.1.14"
+  }
+}

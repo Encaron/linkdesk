@@ -1,5 +1,6 @@
 {
   "$schema": "../../public/schemas/plugin.schema.json",
+  "pluginId": "theme-aurora-glass",
   "name": "极光玻璃",
   "version": "1.0.3",
   "description": "示例玻璃主题——Aurora UI 极光夜空 + 液态玻璃表面 + 全窗极光背景图（#50.6-#50.11 壳机制第一个真实消费者）",

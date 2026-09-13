@@ -1,0 +1,16 @@
+{
+  "name": "linkdesk-plugin-theme-terminal",
+  "version": "1.0.3",
+  "private": true,
+  "type": "module",
+  "description": "极限壳主题——font 域·字族轴：ui/mono 双键全指 Cascadia Mono 等宽族 + 绿字黑底终端配色（#50.27 效果验收端到端裁决，gallery ⑨ 壳真实落地）——纯数据插件（无 entry/无编译表面）。独立仓可自足构建：build 走 @linkdesk/plugin-sdk 的 pack 通道（目录整树打包），不产 bundle。",
+  "scripts": {
+    "build": "linkdesk-plugin-sdk pack",
+    "validate": "linkdesk-plugin-sdk validate",
+    "lint": "linkdesk-plugin-sdk lint",
+    "publish": "linkdesk-plugin-sdk publish"
+  },
+  "devDependencies": {
+    "@linkdesk/plugin-sdk": "^0.1.14"
+  }
+}

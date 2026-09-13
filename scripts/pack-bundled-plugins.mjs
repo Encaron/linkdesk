@@ -1,67 +1,74 @@
 #!/usr/bin/env node
 /**
- * E6#15d G3b（JSON 半边补发）——打包 `plugins/` 下 entryless 纯 JSON 插件为
+ * E6#15d G3b（JSON 半边补发）——把 `plugins/` 下 **entryless 纯数据插件**（主题 / 语言 / 图标集）打成
  * `.linkdesk-plugin` 直落 `bundled-plugins/`（boot bundled-install 自动装到 userData）。
  *
- * 为什么需要独立打包器（不走 plugin-sdk build）：
- *   - SDK `collectSurfaces`（vite-config.ts:178-183）要求 entry 或 contributes.views[].render，
- *     theme×10/lang×2 两者皆缺 → 直接 throw「无可编译表面」——SDK 无纯数据包路径。
- *   - SDK 静态拷贝清单只含 plugin.json/i18n/icon/README/CHANGELOG（vite-config.ts:297-306），
- *     **不含 contributes.themes[].path 的 JSON 数据文件**（themes/*.json / en.json / icons/**）——
- *     这些正是数据包本体，运行时经 linkdesk://<id>/… 按相对路径 fetch。
- *   本脚本语义 = 打包「目录整树」：plugin.json + 全部随包资源（SDK 平铺包契约——plugin.json 在顶）。
+ * 🔴 **本脚本现在只是「编排壳」**（E6#98c，L7 第 7.1 轮改造）：真正「一个插件目录 → 一个 zip」的打包
+ * 实现已收进 `@linkdesk/plugin-sdk` 的 `pack`（`packages/plugin-sdk/src/pack.ts`）——因为源码搬进各自
+ * 独立的仓之后，插件仓里要有自己的产 zip 手段，而**两条路径的打包行为必须逐字节一致**（否则同一插件
+ * 「壳内打的 zip」与「插件仓打的 zip」内容指纹不同，`check-bundled-version-bump.mjs` 会互相打架）。
+ * 收进 SDK 后「打包实现」在全仓只此一份，本脚本负责的是**壳仓侧的编排**：扫 `plugins/`、挑出
+ * entryless 的、定产物名、落 `bundled-plugins/`。
  *
- * 只打 entryless 目录（无 plugin.json.entry 且无 src/ = 纯数据/无编译表面）——
- *   React 8 有 entry/src，由各自 SDK build 产 zip，此处不碰（防双源漂移）。
- * zip 名 = 目录名（manifest 无 pluginId 时 bundle-zip deriveBundlePluginId 回退 zip 基名）。
- * 幂等：整树重打覆盖——bundled-plugins 是随壳只读发货夹，版本幂等由 bundled-install 处理。
+ * 为什么这类插件不能走 `plugin-sdk build`：
+ *   - SDK `collectSurfaces` 要求 entry 或 `contributes.views[].render`，theme×10/lang×2/iconset×1
+ *     两者皆缺 → 直接 throw「无可编译表面」——这正是本轮补 `pack` 的原因。
+ *   - SDK `build` 的静态拷贝清单只含 plugin.json/i18n/icon/README/CHANGELOG，**不含
+ *     `contributes.themes[].path` 指向的数据文件**（themes/*.json / en.json / icons/**）——那些正是
+ *     数据包本体，运行时经 `linkdesk://<id>/…` 按相对路径 fetch。故 `pack` 的语义 = 打包**目录整树**
+ *     （plugin.json 在顶，平铺包契约）。
  *
- * 🔴 **产物的行尾与工作区解耦**（2026-09-12 修，同族第 5 次）：本脚本此前 `readFileSync` 原样
- * 入包，于是 **zip 的内容取决于打包时工作区的行尾**——`.gitattributes` 管不住**已检出**的存量
- * 文件（本机实测 `git ls-files --eol` = `i/lf w/crlf`）⇒ 同一份源码重打一次就换了内容指纹 ⇒
- * `check-bundled-version-bump.mjs` 判「改内容没 bump」满屏**假红**，而它给的唯一出路是
- * 「bump 插件版本」（假红让真红失效，人就会条件反射去 bump 或绕过）。
+ * 只打 entryless 目录（无 `plugin.json.entry` 且无 `src/` = 纯数据/无编译表面）——React 插件有 entry/src，
+ * 由各自 SDK build 产 zip，此处不碰（防双源漂移）。
  *
- * 修法 = 文本条目一律归一 LF 再入包（二进制原样），判据与病根全在 `scripts/lib/text-eol.mjs`
- * ——**同一个规则门禁那边也要用**（基线 zip 自身就是混合行尾打出来的），所以只写那**一处**。
+ * 幂等：整树重打覆盖——`bundled-plugins/` 是随壳只读发货夹，版本幂等由 bundled-install 处理。
+ * ⚠️ 「重打覆盖」意味着**改了插件源码内容却不 bump `plugin.json.version`** ⇒
+ * `scripts/check-bundled-version-bump.mjs` 当场红（内容变更必 bump，已装用户按版本固化）。
+ *
+ * SDK 未构建时本脚本**自动构建一次**（postinstall 不产 `packages/plugin-sdk/dist`；六只 React 插件的
+ * `npm run build` 同样吃这份 dist——这条前置由本脚本自愈，不靠人记得）。
+ *
+ * 行尾归一与固定时间戳两条行为（产物可复现、与工作区行尾解耦）现在都在 SDK 的 `pack` 里，见
+ * `packages/plugin-sdk/src/pack.ts` 文件头 🔴 段——本脚本不再自己实现一遍。
  */
-import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, readdirSync, statSync, readFileSync, copyFileSync, rmSync } from "node:fs";
 import { join, resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import JSZip from "jszip";
-import { normalizeEol } from "./lib/text-eol.mjs";
+import { spawnSync } from "node:child_process";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(here, "..");
 const pluginsDir = join(repoRoot, "plugins");
 const bundledDir = join(repoRoot, "bundled-plugins");
+const sdkDir = join(repoRoot, "packages", "plugin-sdk");
+const sdkPackEntry = join(sdkDir, "dist", "pack.js");
 
-/**
- * 🔴 **条目时间戳固定**（2026-09-12，与上一个坑同族）——JSZip 默认给每个条目盖 `new Date()`，
- * 于是**内容一个字没改，重打一次 zip 的字节也全变**（实测：同一源码连打两次 sha256 不同）⇒
- * 产物不可复现：工作区恒脏（`git status` 永远显示这 12 个 zip 被改）、无法用「重打一遍」验证
- * 干净的产物、也没法判断某次 diff 是真改了内容还是只换了时间。
- * 门禁本来就明确不比 zip 字节（只比内容指纹，见 `check-bundled-version-bump.mjs`）——那是**绕开**，
- * 这里把元数据也钉死，让「同样的输入 ⇒ 同样的字节」成立。值本身无意义，只要跨机器恒定。
- */
-const ZIP_ENTRY_DATE = new Date(Date.UTC(2020, 0, 1, 0, 0, 0));
-
-/** 目录递归收集相对路径文件——zip 条目相对插件根、正斜杠（bundle-zip 解压期待平铺，无 wrapper） */
-function collectFiles(dir, prefix = "") {
-  const out = [];
-  for (const name of readdirSync(dir)) {
-    const full = join(dir, name);
-    const rel = prefix ? `${prefix}/${name}` : name;
-    if (statSync(full).isDirectory()) out.push(...collectFiles(full, rel));
-    else out.push(rel);
+/** SDK 未构建 ⇒ 就地构建一次（tsc 走仓根 typescript，不经 shell——Windows 上 npm 是 .cmd 要 shell:true） */
+function buildSdkIfNeeded() {
+  if (existsSync(sdkPackEntry)) return;
+  const tscBin = join(repoRoot, "node_modules", "typescript", "bin", "tsc");
+  if (!existsSync(tscBin)) {
+    console.error(`❌ @linkdesk/plugin-sdk 未构建且找不到仓根 typescript（${tscBin}）——先 npm install`);
+    process.exit(1);
   }
-  return out;
+  console.log("[pack-bundled-plugins] @linkdesk/plugin-sdk 尚未构建 → 先构建一次（tsc -p tsconfig.build.json）");
+  const r = spawnSync(process.execPath, [tscBin, "-p", join(sdkDir, "tsconfig.build.json")], {
+    stdio: "inherit",
+    cwd: sdkDir,
+  });
+  if (r.status !== 0 || !existsSync(sdkPackEntry)) {
+    console.error("❌ @linkdesk/plugin-sdk 构建失败——纯数据包打包中止");
+    process.exit(r.status ?? 1);
+  }
 }
+
+buildSdkIfNeeded();
+
+const { packPluginData } = await import(new URL(`file://${sdkPackEntry.replace(/\\/g, "/")}`).href);
 
 const packed = [];
 const skipped = [];
-/** 被归一行尾（CRLF → LF）的条目数——不为零 = 这台机器的检出是 CRLF，产物已与工作区行尾解耦 */
-let normalizedCount = 0;
+let normalizedTotal = 0;
 for (const dirName of readdirSync(pluginsDir)) {
   const dir = join(pluginsDir, dirName);
   const manifestPath = join(dir, "plugin.json");
@@ -74,19 +81,32 @@ for (const dirName of readdirSync(pluginsDir)) {
     continue; // React 插件——SDK build 产 zip，双源只准一处
   }
 
-  const zip = new JSZip();
-  for (const rel of collectFiles(dir)) {
-    const { buf, normalized } = normalizeEol(readFileSync(join(dir, rel)));
-    if (normalized) normalizedCount += 1;
-    zip.file(rel, buf, { date: ZIP_ENTRY_DATE });
+  // 产物名跟**身份**走（E6#98g 起 pluginId 显式声明）。这里读一次只为定文件名，真正的 id 裁决在
+  // packPluginData 内部（同一个 derivePluginId）——两处不一致就报错，不静默用错名字。
+  const outBase = typeof manifest.pluginId === "string" && manifest.pluginId !== "" ? manifest.pluginId : dirName;
+  const out = join(bundledDir, `${outBase}.linkdesk-plugin`);
+  const tmp = `${out}.part`;
+
+  let result;
+  try {
+    result = await packPluginData({ root: dir, outFile: tmp });
+  } catch (e) {
+    rmSync(tmp, { force: true });
+    console.error(`❌ ${dirName}: 打包失败——${e instanceof Error ? e.message : String(e)}`);
+    process.exit(1);
   }
-  const buf = await zip.generateAsync({ type: "nodebuffer", compression: "DEFLATE" });
-  const out = join(bundledDir, `${dirName}.linkdesk-plugin`);
-  writeFileSync(out, buf);
-  packed.push(`${dirName}.linkdesk-plugin (${(buf.byteLength / 1024).toFixed(1)} KB)`);
+  if (result.id !== outBase) {
+    rmSync(tmp, { force: true });
+    console.error(`❌ ${dirName}: 产物名与身份不一致（pluginId="${result.id}" ≠ 拟用名 "${outBase}"）——拒绝落位`);
+    process.exit(1);
+  }
+  copyFileSync(tmp, out); // 先打临时名再落位，避免半截产物
+  rmSync(tmp, { force: true });
+  normalizedTotal += result.normalizedCount;
+  packed.push({ name: `${outBase}.linkdesk-plugin`, kb: (result.bytes / 1024).toFixed(1), entries: result.entryCount });
 }
 
-console.log(`[pack-bundled-plugins] JSON 纯数据包打包完成 → bundled-plugins/ (${packed.length})`);
-console.log(`[pack-bundled-plugins] 行尾归一到 LF 的条目：${normalizedCount}（二进制条目原样，未计入）`);
-for (const p of packed) console.log(`  ✔ ${p}`);
-if (skipped.length) console.log(`[pack-bundled-plugins] 跳过（React/有编译表面，SDK 产）: ${skipped.join(", ")}`);
+console.log(`[pack-bundled-plugins] 纯数据包打包完成 → bundled-plugins/ (${packed.length})`);
+for (const p of packed) console.log(`  ✔ ${p.name}（${p.kb} KB, ${p.entries} 条目）`);
+console.log(`[pack-bundled-plugins] 行尾归一到 LF 的条目：${normalizedTotal}（二进制条目原样，未计入）`);
+if (skipped.length) console.log(`[pack-bundled-plugins] 跳过（React/有编译表面，SDK build 产）: ${skipped.join(", ")}`);

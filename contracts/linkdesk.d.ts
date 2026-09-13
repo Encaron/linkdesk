@@ -967,6 +967,18 @@ export interface StatusBarItem {
 }
 export interface PluginManifest {
     $schema?: string;
+    /**
+     * 插件身份——**发布后永不可变**（对标 VS Code 的 `publisher.name`）。安装目录
+     * `{userData}/plugins/<pluginId>/`、分发件名 `<pluginId>.linkdesk-plugin`、市场目录去重键、
+     * 卸载墓碑键、更新对账全部以它为准。
+     *
+     * L7（E6#98g）起**要求显式声明**：不声明时退回「项目目录名」兜底（`derivePluginId`），而仓库名
+     * 与本地目录名是自由的——目录名一改身份就跟着改，且五条后果（安装目录并存两份 / 墓碑对不上 /
+     * 市场出现两条 / 更新链静默断 / 插件数据看似丢失）没有一条会报错。兜底路径保留仅为向后兼容
+     * 仓外的存量第三方插件。
+     * 形状约束 `^[A-Za-z0-9][A-Za-z0-9._-]*$`（`SAFE_PLUGIN_ID`，防路径穿越直通文件系统）。
+     */
+    pluginId?: string;
     /** @deprecated 使用 contributes + tabBehavior 等声明字段代替——贡献点由 manifest 的实际声明字段检测（对标 VS Code contributes） */
     type?: PluginType;
     core?: boolean;

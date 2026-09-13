@@ -1,5 +1,6 @@
 {
   "$schema": "../../public/schemas/plugin.schema.json",
+  "pluginId": "python",
   "name": "Python",
   "version": "1.0.4",
   "icon": "resources/icon.svg",

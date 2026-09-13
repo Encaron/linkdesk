@@ -1,5 +1,6 @@
 {
   "$schema": "../../public/schemas/plugin.schema.json",
+  "pluginId": "file-tree",
   "name": "文件树",
   "version": "1.0.6",
   "icon": "resources/icon-bar.svg",

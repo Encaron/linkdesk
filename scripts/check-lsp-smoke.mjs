@@ -26,9 +26,39 @@ import { fileURLToPath, pathToFileURL } from "url";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, "..");
 
+/**
+ * 向上找 `<ancestor>/node_modules/<seg>` 首个命中（Node 模块解析语义）——找不到返回 null。
+ *
+ * 🔴 E6#98d（L7 第 7.1 轮）：**这是本轮抓到的真缺陷的修法**。此前 `--pyright` 缺省时只查
+ * `resolve(base, "node_modules/pyright/dist/pyright-langserver.js")` 一处——而 E6#16 workspaces 化后
+ * 插件依赖会被 **hoist 到仓库根**（实测：`pyright` 在 `node_modules/pyright`，`plugins/python/node_modules/`
+ * 整个不存在）⇒ `npm run lsp:smoke`（`--base plugins/python`）**恒报「pyright 缺失」**，而依赖其实在。
+ * 这与 `check-lsp-deps.mjs` 的 `resolveNodeModulesUpward` 是**同一条规则**——两处各写一份必然漂移，
+ * 故此处照抄同一语义（该脚本已在 E6#16 修过，本脚本漏了）。
+ *
+ * 另一重意义：python 插件源码搬出壳仓（L7 7.2）之后，`--base` 指向哪里由外部传入——上层搜索让
+ * 「基准 = 插件源码树」这个语义不依赖「插件根一定有自己的 node_modules」这个会被 npm 布局打破的假设。
+ */
+function resolveNodeModulesUpward(startDir, seg) {
+  let dir = startDir;
+  for (;;) {
+    const candidate = resolve(dir, "node_modules", ...seg.split("/"));
+    if (existsSync(candidate)) return candidate;
+    const parent = dirname(dir);
+    if (parent === dir) return null;
+    dir = parent;
+  }
+}
+
+/** pyright 入口解析——先向上找（本地命中优先，hoist 在父级/仓库根命中），都无则回落基准位（错误信息仍指向期望位） */
+function resolvePyrightFromBase(baseDir) {
+  const seg = "pyright/dist/pyright-langserver.js";
+  return resolveNodeModulesUpward(baseDir, seg) ?? resolve(baseDir, "node_modules", ...seg.split("/"));
+}
+
 /** 检查基准（E6 可配置）——CLI --base 优先，其次 LSP_DEP_BASE 环境变量，默认项目根 */
 let base = ROOT;
-/** pyright 脚本路径——--pyright 显式绝对路径优先，否则对 base resolve 相对约定 */
+/** pyright 脚本路径——--pyright 显式绝对路径优先，否则由 base 解析 */
 let pyrightPath = null;
 {
   const argv = process.argv.slice(2);
@@ -40,7 +70,7 @@ let pyrightPath = null;
   }
   if (!pyrightPath && process.env.LSP_DEP_BASE) base = resolve(process.env.LSP_DEP_BASE);
 }
-if (!pyrightPath) pyrightPath = resolve(base, "node_modules/pyright/dist/pyright-langserver.js");
+if (!pyrightPath) pyrightPath = resolvePyrightFromBase(base);
 
 /** 冒烟测试工作区（临时目录，脚本结束清理） */
 const WORKSPACE = mkdtempSync(resolve(tmpdir(), "ld-lsp-smoke-"));

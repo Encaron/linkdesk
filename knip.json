@@ -6,7 +6,11 @@
   //   check-lsp-deps 哨兵管 spawn 运行时）→ ignoreWorkspaces 让插件不进 knip 的可用 workspace 列表，
   //   其文件折回根 scope → 由 workspaces["."].project 只挡 src/electron/scripts（插件文件被 project 排除）。
   //   若日后插件要 knip 静态审计，另立拍板（本轮不加——插件 import 卫生由其自身 build 解析失败自证）。
-  "ignoreWorkspaces": ["plugins/*"],
+  // E6#98a（L7 7.1 轮）：`packages/*` 也加进 ignoreWorkspaces——插件的 build 脚本改成 `linkdesk-plugin-sdk`
+  //   之后，`@linkdesk/plugin-sdk` / `@linkdesk/ui` 必须由 workspaces 链接（否则插件声明的 npm 版本号在仓内
+  //   解析不到本地包，本地 SDK 改动也不生效）。这两个包各有自己的构建/发布面（prepack、files 白名单），
+  //   knip 的根 scope 不覆盖它们，单列审计属另一件事——同 plugins/* 的处置，本轮不扩域。
+  "ignoreWorkspaces": ["plugins/*", "packages/*"],
   "workspaces": {
     ".": {
       "entry": [

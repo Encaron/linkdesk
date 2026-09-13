@@ -11,6 +11,11 @@
       "description": "JSON Schema 引用——IDE 自动补全用",
       "$comment": "$schema 仅用于 IDE 自动补全，运行时不做 JSON Schema 验证"
     },
+    "pluginId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+      "description": "🔴 插件身份——发布后永不可变（对标 VS Code 的 publisher.name）。安装目录 {userData}/plugins/<pluginId>/、分发件名 <pluginId>.linkdesk-plugin、市场目录去重键、卸载墓碑键、更新对账，全部以它为准。强烈建议显式声明：不声明时退回「项目目录名」兜底，而仓库名与本地目录名是自由的（L7 源码外移后尤其危险）——目录名一改身份就跟着改，且五条后果（安装目录并存两份 / 墓碑对不上 / 市场出现两条 / 更新链静默断 / 插件数据看似丢失）**没有一条会报错**。字符集：字母、数字、`.`、`_`、`-`，首字符须字母或数字。"
+    },
     "type": {
       "type": "string",
       "description": "【已废弃】插件类型——不再必需。loader 从 entry/mode/themes/languages/resources 等声明字段自动检测贡献类型。保留仅用于向后兼容。E5.7#66：enum 开放为任意字符串。"
@@ -442,7 +447,7 @@
         },
         "fileAssociations": {
           "type": "array",
-          "description": "文件关联——文件扩展名 → 插件路由（主进程 plugin-manifest-loader 消费，E5.7#50 壳侧注册已删）。只声明扩展名 + 可选打开命令；pluginId 用目录名，无需声明。",
+          "description": "文件关联——文件扩展名 → 插件路由（主进程 plugin-manifest-loader 消费，E5.7#50 壳侧注册已删）。只声明扩展名 + 可选打开命令；本插件的 pluginId 由顶层 `pluginId` 字段声明（不声明则退回首层「目录名」兜底，见顶层 pluginId 字段说明）。",
           "items": {
             "type": "object",
             "required": ["extension"],

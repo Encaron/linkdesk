@@ -1,5 +1,6 @@
 {
   "$schema": "../../public/schemas/plugin.schema.json",
+  "pluginId": "marketplace",
   "name": "插件市场",
   "version": "1.0.28",
   "icon": "resources/icon.svg",

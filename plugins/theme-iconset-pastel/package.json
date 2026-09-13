@@ -1,0 +1,16 @@
+{
+  "name": "linkdesk-plugin-theme-iconset-pastel",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "精简彩色图标集——Material Icon Theme 常用精选（MIT，139 条映射 + 5 默认图标，含文件夹/新建文件/根文件夹彩色图标），图像资产形态应用（E5.8#133 图标主题闭环实例）——纯数据插件（无 entry/无编译表面）。独立仓可自足构建：build 走 @linkdesk/plugin-sdk 的 pack 通道（目录整树打包），不产 bundle。",
+  "scripts": {
+    "build": "linkdesk-plugin-sdk pack",
+    "validate": "linkdesk-plugin-sdk validate",
+    "lint": "linkdesk-plugin-sdk lint",
+    "publish": "linkdesk-plugin-sdk publish"
+  },
+  "devDependencies": {
+    "@linkdesk/plugin-sdk": "^0.1.14"
+  }
+}

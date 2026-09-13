@@ -1,5 +1,6 @@
 {
   "$schema": "../../public/schemas/plugin.schema.json",
+  "pluginId": "lang-test-ja",
   "name": "日本語テスト",
   "version": "1.0.2",
   "description": "单语言插件测试——E3c #42 验证",

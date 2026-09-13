@@ -1,11 +1,24 @@
 {
   "name": "linkdesk-plugin-marketplace",
-  "version": "1.0.0",
+  "version": "1.0.28",
   "private": true,
   "type": "module",
-  "description": "插件市场（内置）——E6#15 独立化：独立 build 产 .linkdesk-plugin，插件代码零 @src（消费 @linkdesk/ui 零件 + window.linkdesk.*）",
+  "description": "插件市场（内置）——独立仓可自足构建：build 走 @linkdesk/plugin-sdk 的 npm 通道，依赖在 dependencies 里显式声明（不再靠壳仓 workspaces 提升），插件代码零 @src（消费 @linkdesk/ui 零件 + window.linkdesk.*）",
   "scripts": {
-    "build": "node ../../packages/plugin-sdk/dist/bin.js build",
-    "lint": "node ../../packages/plugin-sdk/dist/bin.js lint ."
+    "dev": "linkdesk-plugin-sdk dev",
+    "dev:real": "linkdesk-plugin-sdk dev --real",
+    "build": "linkdesk-plugin-sdk build",
+    "validate": "linkdesk-plugin-sdk validate",
+    "lint": "linkdesk-plugin-sdk lint",
+    "publish": "linkdesk-plugin-sdk publish"
+  },
+  "dependencies": {
+    "@linkdesk/contracts": "^0.1.12",
+    "@linkdesk/ui": "^0.1.4"
+  },
+  "devDependencies": {
+    "@linkdesk/plugin-sdk": "^0.1.14",
+    "@types/react": "^18.3.12",
+    "typescript": "^5.6.3"
   }
 }

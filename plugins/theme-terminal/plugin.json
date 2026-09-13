@@ -1,5 +1,6 @@
 {
   "$schema": "../../public/schemas/plugin.schema.json",
+  "pluginId": "theme-terminal",
   "name": "终端机",
   "version": "1.0.3",
   "icon": "resources/icon.svg",

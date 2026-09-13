@@ -83,6 +83,7 @@ my-plugin/
 
 ```json
 {
+  "pluginId": "gps-map",
   "name": "GPS 地图",
   "version": "1.0.0",
   "icon": "resources/map.svg",
@@ -91,7 +92,7 @@ my-plugin/
   "entry": "src/index.tsx"
 }
 ```
-`entry` 字段 → loader 自动识别为视图插件。
+`entry` 字段 → loader 自动识别为视图插件。`pluginId` = **插件身份，发布后永不可改**——虽然不写也能跑（退回项目目录名兜底），**但新插件一律显式写**：仓库名与本地目录名是自由的，靠兜底等于让身份跟着名字漂。
 
 ## 贡献检测规则
 
@@ -209,7 +210,7 @@ my-plugin/
 | 字段 | 类型 | 说明 |
 |---|---|---|
 | `name` | `string` | 显示名称，用户可见。**schema 级必需**（与 `version` 并列，唯二必填） |
-| `version` | `string` | 语义化版本，如 `"1.0.0"`。**schema 级必需** |
+| `version` | `string` | 语义化版本，如 `"1.0.0"`。**schema 级必需**。🔴 **它同时是「四处同源」的唯一真源**（`CHANGELOG.md` 段标题 ↔ 本字段 ↔ 目录条目 `versions[].version` ↔ `package.json.version`）——规则见 [09-插件目录规范](09-插件目录规范.md)「与版本号联动」，**本表不复制** |
 | `entry` | `string` | 入口文件路径，相对插件目录。**仅视图/标签页插件需要**——不是 schema 级必需（entryless 侧栏插件零 entry，见「图标栏出现规则」） |
 | `icon` | `string` | 图标标识——codicon/Lucide 名称或 SVG 路径（可选，缺省用默认图标） |
 
@@ -220,6 +221,7 @@ my-plugin/
 | 字段 | 类型 | 说明 |
 |---|---|---|
 | `$schema` | `string` | JSON Schema 引用路径 |
+| `pluginId` | `string` | 🔴 **插件身份——发布后永不可变**（对标 VS Code 的 `publisher.name`）。安装目录 `{userData}/plugins/<pluginId>/`、分发件名 `<pluginId>.linkdesk-plugin`、市场目录去重键、卸载墓碑键、更新对账全部以它为准。**强烈建议显式声明**：不声明时退回「项目目录名」兜底，而仓库名与本地目录名是自由的——目录名一改身份就跟着改，且**没有一条会报错**。字符集 `^[A-Za-z0-9][A-Za-z0-9._-]*$`。规则与实测依据见 [16-命名规范](16-命名规范.md) |
 | `core` | `boolean` | `true` = **UI 防误删旗标**（对齐上文字段表 :44 新版措辞）——详情页卸载按钮不显示/禁用；**无行为特权、非类别**：API/命令层可卸可禁，卸走写 removed 墓碑（E6#18）。默认 `false` |
 | `distribution` | `string` | ⚠️ **遗留字段**（2026-09-05 塌平单根后不再对应任何目录，安装侧恒归一化为 `user`；schema 已标废弃）。**第三方请勿填写** |
 | `factoryRole` | `string` | 系统插槽角色：`"settings"` \| `"marketplace"`。**填 = 形态二（替换/进槽位切换）；不填 = 形态一（普通视图插件并存）**——详见下方「`factoryRole` 字段详解」 |

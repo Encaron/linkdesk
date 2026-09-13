@@ -1,5 +1,6 @@
 {
   "$schema": "../../public/schemas/plugin.schema.json",
+  "pluginId": "theme-panorama",
   "name": "整窗主视觉",
   "version": "1.0.1",
   "description": "极限壳主题——background 域极限：sailor-moon.jpg 全窗低遮罩当主视觉，chrome 半透明让位（#50.27 效果验收端到端裁决，gallery ⑪ 壳真实落地）",

@@ -5,15 +5,26 @@
 
 import { describe, it, expect, beforeEach } from "vitest";
 import { FileTreeClipboard } from "../services/FileTreeClipboard";
-import { ContextKeyService } from "@src/core/registry/commands/ContextKeyService";
 
-// E5#70e: 生产代码用 linkdesk.contextKey.set——测试环境 mock 回 ContextKeyService
+/**
+ * `window.linkdesk.contextKey` 的**本地最小桩**（E6#98b，L7 第 7.1 轮）。
+ *
+ * 此前这里 import 壳的 `ContextKeyService`（`@src/core/registry/commands/ContextKeyService`），
+ * 两个问题：
+ *   ① **插件独立成仓后那条路径不存在**——测试跑不起来（本轮要解的就是它）；
+ *   ② **测试依赖越界**：生产代码（`FileTreeClipboard`）走的是 `window.linkdesk.contextKey.set`
+ *      这条**契约**，测试却直连壳的**实现**。换成桩之后测试范围反而更准——它验的是「插件调了契约」，
+ *      而不是「壳的实现记住了」。
+ */
+const ctxKeys = new Map<string, unknown>();
+
+// E5#70e: 生产代码用 linkdesk.contextKey.set——测试环境用上面的桩承接
 function mockContextKey() {
   window.linkdesk = {
     ...(window.linkdesk ?? {}),
     contextKey: {
       set: (k: string, v: unknown) => {
-        ContextKeyService.setValue(k, v);
+        ctxKeys.set(k, v);
         return Promise.resolve();
       },
     },
@@ -26,9 +37,8 @@ describe("FileTreeClipboard", () => {
 
   beforeEach(() => {
     clipboard = new FileTreeClipboard();
-    // 清 ContextKeyService 残留状态
-    ContextKeyService.setValue("explorerResourceCut", false);
-    ContextKeyService.setValue("explorerClipboardEmpty", true);
+    // 清桩表残留状态
+    ctxKeys.clear();
   });
 
   /* ── 初始状态 ── */
@@ -86,11 +96,11 @@ describe("FileTreeClipboard", () => {
 
   it("cut→explorerResourceCut=true; pull 后→false", () => {
     clipboard.cut(["/a/1.txt"]);
-    expect(ContextKeyService.getValue("explorerResourceCut")).toBe(true);
-    expect(ContextKeyService.getValue("explorerClipboardEmpty")).toBe(false);
+    expect(ctxKeys.get("explorerResourceCut")).toBe(true);
+    expect(ctxKeys.get("explorerClipboardEmpty")).toBe(false);
 
     clipboard.pull();
-    expect(ContextKeyService.getValue("explorerResourceCut")).toBe(false);
-    expect(ContextKeyService.getValue("explorerClipboardEmpty")).toBe(true);
+    expect(ctxKeys.get("explorerResourceCut")).toBe(false);
+    expect(ctxKeys.get("explorerClipboardEmpty")).toBe(true);
   });
 });

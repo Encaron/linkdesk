@@ -1,5 +1,6 @@
 {
   "$schema": "../../public/schemas/plugin.schema.json",
+  "pluginId": "serial-monitor",
   "name": "串口监视器",
   "version": "1.0.8",
   "icon": "resources/icon-bar.svg",

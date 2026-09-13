@@ -22,18 +22,14 @@ function makeEntry(overrides: Partial<FileEntry> & { name: string; path: string;
   };
 }
 
-/* ── mock listDir ── */
+/* ── listDir 桩（喂给 window.linkdesk.filesystem.listDir，见 beforeEach） ── */
+// 🔴 E6#98b（L7 第 7.1 轮）：此处原有两条 `vi.mock("@src/core/...")`——`vi.mock` 的路径**必须能被解析**，
+//   插件独立成仓后 `@src` 不存在（解析失败 = 红灯）。实测删掉后 `npx vitest run plugins/file-tree` 全绿，
+//   证明它们是 E5#85 迁移后留下的**死 mock**（同文件原有注释亦自陈「FileTreeModel 用
+//   lk.filesystem.listDir 而非 @src/core/FileService」「迁移后不再使用」）。
+//   ⚠️ 判据是「测试真的过了」，不是注释说它不再使用——先删再真跑，删不掉才退回本地桩。
 
 const { listDir } = vi.hoisted(() => ({ listDir: vi.fn() }));
-vi.mock("@src/core/services/files/FileService", () => ({ listDir }));
-
-/* ── mock ConfigurationService（E5#85 迁移后不再使用，保留兼容）── */
-
-const { getConfigurationValue, onDidChangeConfiguration } = vi.hoisted(() => ({
-  getConfigurationValue: vi.fn(),
-  onDidChangeConfiguration: vi.fn(),
-}));
-vi.mock("@src/core/services/configuration/ConfigurationService", () => ({ getConfigurationValue, onDidChangeConfiguration }));
 
 /** E5#85 迁移后 FileTreeModel 通过 lk.configuration.get() 读配置——通过 __ldkConfigStore 设值 */
 function setConfig(key: string, value: unknown) {

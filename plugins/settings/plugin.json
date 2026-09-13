@@ -1,5 +1,6 @@
 {
   "$schema": "../../public/schemas/plugin.schema.json",
+  "pluginId": "settings",
   "name": "设置",
   "version": "1.0.5",
   "icon": "resources/icon-bar.svg",

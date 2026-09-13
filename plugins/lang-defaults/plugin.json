@@ -1,5 +1,6 @@
 {
   "$schema": "../../public/schemas/plugin.schema.json",
+  "pluginId": "lang-defaults",
   "name": "官方语言",
   "version": "1.0.16",
   "icon": "resources/icon.svg",

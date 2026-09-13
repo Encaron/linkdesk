@@ -1,0 +1,16 @@
+{
+  "name": "linkdesk-plugin-theme-panorama",
+  "version": "1.0.1",
+  "private": true,
+  "type": "module",
+  "description": "极限壳主题——background 域极限：sailor-moon.jpg 全窗低遮罩当主视觉，chrome 半透明让位（#50.27 效果验收端到端裁决，gallery ⑪ 壳真实落地）——纯数据插件（无 entry/无编译表面）。独立仓可自足构建：build 走 @linkdesk/plugin-sdk 的 pack 通道（目录整树打包），不产 bundle。",
+  "scripts": {
+    "build": "linkdesk-plugin-sdk pack",
+    "validate": "linkdesk-plugin-sdk validate",
+    "lint": "linkdesk-plugin-sdk lint",
+    "publish": "linkdesk-plugin-sdk publish"
+  },
+  "devDependencies": {
+    "@linkdesk/plugin-sdk": "^0.1.14"
+  }
+}
