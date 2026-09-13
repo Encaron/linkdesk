@@ -62,8 +62,9 @@ export function setActiveWorkspace(uri: string): void {
   if (_activeWorkspaceUri === normalized) return;
   _activeWorkspaceUri = normalized;
   _onDidChangeActiveWorkspace.fire(normalized);
-  // 持久化——走 PluginStateService（与 iconOrder/collapsedViews/currentProfile 归一化）
-  setPluginStateValue(APP_PLUGIN_ID, "activeWorkspace", normalized).catch((e) => { console.error("[Workspace] 保存工作区失败:", e); });
+  // 持久化——走 PluginStateService（与 iconOrder/collapsedViews/currentProfile 归一化）。
+  // E6#47e：key 加窗维度——每窗一个活跃工作区。
+  setPluginStateValue(APP_PLUGIN_ID, activeWorkspaceKey(), normalized).catch((e) => { console.error("[Workspace] 保存工作区失败:", e); });
 }
 
 /** 订阅活跃工作区变更——对标 VS Code onDidChangeActiveWorkspaceFolder */
@@ -117,8 +118,8 @@ export function addFolder(folderPath: string): void {
   CoreEvents.onDidChangeWorkspaceFolders.fire(_folders);
 
   // 活跃工作区恢复优先级：持久化值 > 首个文件夹自动激活
-  // 每次 addFolder 都检查——后续添加的文件夹可能匹配持久化值
-  const persisted = getPluginStateValue<string>(APP_PLUGIN_ID, "activeWorkspace");
+  // 每次 addFolder 都检查——后续添加的文件夹可能匹配持久化值（E6#47e：key 加窗维度）
+  const persisted = getPluginStateValue<string>(APP_PLUGIN_ID, activeWorkspaceKey());
   if (persisted) {
     const normalizedPersisted = normalizePath(persisted);
     if (_folders.some((f) => f.uri === normalizedPersisted)) {
@@ -191,9 +192,31 @@ export function triggerFoldersChanged(): void {
 
 /* ── E5.5#0e：持久化 ── */
 
+/* ── E6#47e：每窗一份——持久化 key 加窗维度 ──
+ * 多窗后每窗独立壳渲染进程（内存天然隔离），但落盘共用同一个 userData 文件——
+ * key 不加窗维度必然互相覆盖。主进程 createWorkspaceWindow（#47b）建窗时带
+ * ?wsWindow=ws-N，本模块据此派生全部持久化 key；无参数（单窗时代/老数据）回落 ws-1。 */
+
+/** 当前壳的窗标识——格式 ws-<数字>，非窗环境或格式不符回落 ws-1（拒绝脏值写进 key） */
+export function getWorkspaceWindowId(): string {
+  try {
+    const raw = new URLSearchParams(window.location.search).get("wsWindow");
+    if (raw && /^ws-\d+$/.test(raw)) return raw;
+  } catch { /* 非窗环境（测试） */ }
+  return "ws-1";
+}
+
+function foldersStorageKey(): string {
+  return `workspace-folders:${getWorkspaceWindowId()}`;
+}
+
+function activeWorkspaceKey(): string {
+  return `activeWorkspace:${getWorkspaceWindowId()}`;
+}
+
 /** 将 _folders 写入 StorageService——退出/重启后恢复（与 LayoutService/PluginStateService 同路径） */
 function _persistFolders(): void {
-  write("workspace-folders", _folders)
+  write(foldersStorageKey(), _folders)
     .catch((e) => { console.error("[Workspace] 保存工作区文件夹失败:", e); });
 }
 
@@ -206,7 +229,20 @@ export async function initWorkspaceService(): Promise<void> {
   try {
     // E5.8#71：read() 已文件优先归一——workspace-folders 的 beforeunload 保底（syncWriteWorkspaceFolders）
     // 与 layout 同款，显式 readSync 优先（仅 localStorage 无数据才落 read() 文件兜底）。
-    const saved = readSync<WorkspaceFolder[]>("workspace-folders") ?? (await read<WorkspaceFolder[]>("workspace-folders"));
+    // E6#47e：先读本窗 key；空且未迁移过 → 回落读全局旧 key（单窗时代数据归 ws-1 第一窗），
+    // 迁移标记防每次启动重复回落——旧值不该在多窗时代被再次读进任何新窗。
+    let saved = readSync<WorkspaceFolder[]>(foldersStorageKey()) ?? (await read<WorkspaceFolder[]>(foldersStorageKey()));
+    const migratedFlagKey = `workspace-migrated:${getWorkspaceWindowId()}`;
+    let migratedLegacyActive = false;
+    if ((!saved || !Array.isArray(saved) || saved.length === 0)
+        && !getPluginStateValue<boolean>(APP_PLUGIN_ID, migratedFlagKey)) {
+      const legacy = readSync<WorkspaceFolder[]>("workspace-folders") ?? (await read<WorkspaceFolder[]>("workspace-folders").catch(() => null));
+      if (legacy && Array.isArray(legacy) && legacy.length > 0) {
+        saved = legacy;
+        migratedLegacyActive = true; // 旧 activeWorkspace（无维度 key）只随本次迁移读一次
+      }
+      void setPluginStateValue(APP_PLUGIN_ID, migratedFlagKey, true).catch(() => {});
+    }
     if (!saved || !Array.isArray(saved) || saved.length === 0) return;
 
     // 验证磁盘上文件夹仍存在——已删除的跳过
@@ -239,8 +275,9 @@ export async function initWorkspaceService(): Promise<void> {
     _onDidChangeFolders.fire([..._folders]);
     CoreEvents.onDidChangeWorkspaceFolders.fire(_folders);
 
-    // 恢复活跃工作区
-    const persistedActive = getPluginStateValue<string>(APP_PLUGIN_ID, "activeWorkspace");
+    // 恢复活跃工作区——E6#47e：先读本窗 key；随迁移进来时回落读旧全局 key（只此一次）
+    const persistedActive = getPluginStateValue<string>(APP_PLUGIN_ID, activeWorkspaceKey())
+      ?? (migratedLegacyActive ? getPluginStateValue<string>(APP_PLUGIN_ID, "activeWorkspace") : undefined);
     if (persistedActive) {
       const normalized = normalizePath(persistedActive);
       if (valid.some((f) => f.uri === normalized)) {
@@ -269,6 +306,7 @@ export async function initWorkspaceService(): Promise<void> {
  */
 export function syncWriteWorkspaceFolders(): void {
   import("../configuration/StorageService").then(({ writeSync }) => {
-    writeSync("workspace-folders", _folders);
+    // E6#47e：key 加窗维度（与 _persistFolders 同 key）
+    writeSync(foldersStorageKey(), _folders);
   }).catch(() => {});
 }

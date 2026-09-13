@@ -6,6 +6,7 @@ import type { MutableRefObject } from "react";
 import { FileTreeModel } from "../../services/FileTreeModel";
 import { FileExcludeFilter } from "../../services/FileExcludeFilter";
 import { joinPath, normalizePath } from "../../utils/pathUtils";
+import { expandedUrisStateKey } from "../../utils/expandedUrisStateKey"; // E6#47e 多窗维度
 import { fsEmitter } from "./fsWatcher";
 import type { WorkspaceFolderDto } from "./types";
 
@@ -51,7 +52,7 @@ export function useWorkspaceRoots({ model, filterRef, rerender }: UseWorkspaceRo
       }
       model.setExcludeFilter(filter);
       // E4V#36b: 恢复展开状态——逐层重建（浅层先于深层，确保 findClosest 能找到父节点）
-      const savedUris = (await window.linkdesk?.pluginState?.get("file-tree", "expandedUris")) as string[] | undefined;
+      const savedUris = (await window.linkdesk?.pluginState?.get("file-tree", expandedUrisStateKey())) as string[] | undefined; // E6#47e 多窗维度
       if (savedUris && savedUris.length > 0) {
         const currentRoots = model.roots;
         const toExpand = savedUris

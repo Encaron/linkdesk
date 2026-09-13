@@ -5,6 +5,7 @@
  */
 import { useEffect, useRef } from "react";
 import type { FileTreeModel } from "../../services/FileTreeModel";
+import { expandedUrisStateKey } from "../../utils/expandedUrisStateKey"; // E6#47e 多窗维度
 
 export function useExpandPersistence(model: FileTreeModel) {
   const _expandSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -15,7 +16,7 @@ export function useExpandPersistence(model: FileTreeModel) {
         _expandSaveTimerRef.current = null;
         const uris = model.getExpandedUris();
         if (uris.length > 0) {
-          window.linkdesk?.pluginState?.set("file-tree", "expandedUris", uris).catch((e) => { console.error("[file-tree] 保存展开状态失败:", e); });
+          window.linkdesk?.pluginState?.set("file-tree", expandedUrisStateKey(), uris).catch((e) => { console.error("[file-tree] 保存展开状态失败:", e); });
         }
       }, 500);
     });
