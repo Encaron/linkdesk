@@ -247,6 +247,17 @@ function _persistFolders(): void {
  */
 export async function initWorkspaceService(): Promise<void> {
   try {
+    // E6#47b-2/#47c（真机实证定案）：**显式文件夹参数优先**——该窗工作区 = 该文件夹，**不叠加恢复项**。
+    //   理由两条：① 一个窗口一份工作区的模型下，「参数」就是用户点名要的东西（对标 `code A` 开 A）；
+    //   ② 叠加会撞 addFolder 的包含关系检查——实测：恢复出来的 `_testfiles` 把点名要的 `nested`（其子目录）
+    //      静默挡掉，用户看到的是"参数没生效"。标签页/布局的恢复不受影响（它们按窗走 layout:<id>）。
+    const launchFolder = readLaunchFolderParam();
+    if (launchFolder) {
+      addFolder(launchFolder);
+      reportActiveToMain(_activeWorkspaceUri);
+      return;
+    }
+
     // E5.8#71：read() 已文件优先归一——workspace-folders 的 beforeunload 保底（syncWriteWorkspaceFolders）
     // 与 layout 同款，显式 readSync 优先（仅 localStorage 无数据才落 read() 文件兜底）。
     // E6#47e：先读本窗 key；空且未迁移过 → 回落读全局旧 key（单窗时代数据归 ws-1 第一窗），
@@ -254,7 +265,12 @@ export async function initWorkspaceService(): Promise<void> {
     let saved = readSync<WorkspaceFolder[]>(foldersStorageKey()) ?? (await read<WorkspaceFolder[]>(foldersStorageKey()));
     const migratedFlagKey = `workspace-migrated:${getWorkspaceWindowId()}`;
     let migratedLegacyActive = false;
+    // 🔴 **仅首窗**回落旧全局 key（2026-09-13 真机实证）：第二窗起若也回落，会把主窗遗留的工程当自己的
+    //   ——后果不只是"多一个工程"：新窗真正该载入的 `?folder=` 目标若恰好是它的子目录，会被 addFolder 的
+    //   包含关系检查挡掉（实测 ws-2 拿到 _testfiles、nested 被拒）。与 LayoutService 的回落闸同款。
+    const isFirstWindow = getWorkspaceWindowId() === "ws-1";
     if ((!saved || !Array.isArray(saved) || saved.length === 0)
+        && isFirstWindow
         && !getPluginStateValue<boolean>(APP_PLUGIN_ID, migratedFlagKey)) {
       const legacy = readSync<WorkspaceFolder[]>("workspace-folders") ?? (await read<WorkspaceFolder[]>("workspace-folders").catch(() => null));
       if (legacy && Array.isArray(legacy) && legacy.length > 0) {
@@ -263,14 +279,7 @@ export async function initWorkspaceService(): Promise<void> {
       }
       void setPluginStateValue(APP_PLUGIN_ID, migratedFlagKey, true).catch(() => {});
     }
-    // E6#47b-2：带 folder 参数启动（主进程建窗时下发）→ 首帧载入该工程。
-    // 放在「恢复为空直接 return」之后——两件事互不依赖；恢复有内容时参数与恢复项去重（addFolder 内建）。
-    const launchFolder = readLaunchFolderParam();
-
-    if (!saved || !Array.isArray(saved) || saved.length === 0) {
-      if (launchFolder) addFolder(launchFolder);
-      return;
-    }
+    if (!saved || !Array.isArray(saved) || saved.length === 0) return;
 
     // 验证磁盘上文件夹仍存在——已删除的跳过
     const valid: WorkspaceFolder[] = [];
@@ -321,8 +330,6 @@ export async function initWorkspaceService(): Promise<void> {
     // 联动 workspace root
     setWorkspaceRoot(valid[0].uri);
 
-    // E6#47b-2：参数工程与恢复项互不依赖——恢复成功时同样要载入（addFolder 自带去重/包含检查）
-    if (launchFolder) addFolder(launchFolder);
     reportActiveToMain(_activeWorkspaceUri); // E6#47f：恢复完把本窗活跃工程报到主进程
   } catch (e) {
     console.error("[Workspace] 恢复工作区文件夹失败:", e);

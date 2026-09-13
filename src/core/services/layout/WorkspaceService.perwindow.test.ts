@@ -93,6 +93,21 @@ describe("WorkspaceService 每窗维度（E6#47e）", () => {
     });
   });
 
+  it("🔴 仅首窗回落旧全局 key：ws-2 即使本窗空也不捡主窗遗留（真机实证：捡了会把 ?folder= 目标按包含关系挡掉）", async () => {
+    window.history.replaceState(null, "", "/?wsWindow=ws-2&folder=C:/demo-project-x");
+    storageFiles.set("workspace-folders", FOLDERS); // 主窗（ws-1）时代的旧全局 key
+    try {
+      vi.resetModules();
+      mod = await import("./WorkspaceService");
+      await mod.initWorkspaceService();
+      const uris = mod.getWorkspaceFolders().map((f) => f.uri);
+      expect(uris).toContain("C:/demo-project-x");
+      expect(uris).not.toContain("C:/demo-project-a"); // 旧全局值不得进第二窗
+    } finally {
+      window.history.replaceState(null, "", "/");
+    }
+  });
+
   it("E6#47b-2：带 ?folder= 参数启动 → 首帧载入该工程（恢复为空也载入）", async () => {
     window.history.replaceState(null, "", "/?folder=C:/demo-project-x");
     try {
@@ -105,15 +120,22 @@ describe("WorkspaceService 每窗维度（E6#47e）", () => {
     }
   });
 
-  it("E6#47b-2：参数工程与恢复项并存时不重复（addFolder 去重）", async () => {
-    storageFiles.set("workspace-folders:ws-1", FOLDERS);
-    window.history.replaceState(null, "", "/?folder=C:/demo-project-a");
+  it("🔴 参数优先：本窗有恢复项时，?folder= 仍生效且旧项不进（真机实证：叠加会撞包含关系把参数挡掉）", async () => {
+    storageFiles.set("workspace-folders:ws-1", FOLDERS); // 有恢复项
+    window.history.replaceState(null, "", "/?folder=C:/demo-project-x");
     try {
       await mod.initWorkspaceService();
-      expect(mod.getWorkspaceFolders().filter((f) => f.uri === "C:/demo-project-a")).toHaveLength(1);
+      const uris = mod.getWorkspaceFolders().map((f) => f.uri);
+      expect(uris).toEqual(["C:/demo-project-x"]); // 参数独享，恢复项不叠加
     } finally {
       window.history.replaceState(null, "", "/");
     }
+  });
+
+  it("E6#47b-2：无参数时才恢复（D7）——恢复项原样进", async () => {
+    storageFiles.set("workspace-folders:ws-1", FOLDERS);
+    await mod.initWorkspaceService();
+    expect(mod.getWorkspaceFolders().map((f) => f.uri)).toEqual(["C:/demo-project-a"]);
   });
 
   it("窗 id 格式校验——location 带 wsWindow=ws-2 → key 用 ws-2；脏值回落 ws-1", async () => {
