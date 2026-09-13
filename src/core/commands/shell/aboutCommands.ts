@@ -128,4 +128,7 @@ export function registerAboutCommands(): void {
 }
 
 /** LICENSE 全文的线上正本——GitHub 承载（2026-09-11 拍板不建官网）。⚠️ 生效前提 = LICENSE 已推到远端 */
-const LICENSE_URL = "https://github.com/Encaron/linkdesk/blob/electron/LICENSE";
+// ⚠️ 2026-09-13 订正：写 `electron` 会 404——LICENSE 目前在 `e6` 分支（主线追平前不在默认分支上）。
+//    `e6` 分支长存 ⇒ 链接长期有效；主线追平后此链接依旧成立（e6 不删）。0.1.60 已带旧链接出门，
+//    本修随 0.1.61 生效（见 `#57.10e` 勾行的如实注）。
+const LICENSE_URL = "https://github.com/Encaron/linkdesk/blob/e6/LICENSE";
