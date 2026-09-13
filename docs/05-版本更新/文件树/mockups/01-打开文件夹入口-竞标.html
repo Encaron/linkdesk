@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<title>文件树「打开文件夹」侧栏入口竞标 —— A 常驻section / B 空态section / C 双轨</title>
+<!-- mockup 仅示意，真实实现走 var(--xxx) + ThemeEngine（硬约束 1）。
+     竞标只定骨架（信息架构 + 交互结构），皮肤一律走主题系统（2026-08-29 竞标收口裁决）。
+     三帧统一演示同一痛点场景：未打开任何文件夹 + 欢迎页标签已关闭。
+     打开链路（三版共用，全部现成、零新壳通道）：
+       按钮 → explorer.openFolder 命令（file-tree navigation.ts 已注册）
+            → workspace.openFolder()（WorkspaceService：dialog.open({directory:true}) → addFolder(path)，添加语义）
+            → onDidChangeFolders 广播 → FoldersView 树刷新 + 欢迎页最近列表记录 -->
+<style>
+  :root {
+    /* 壳真实 token 暗色示意值（与 E6 竞标 mockup 同源；真实实现走 ThemeEngine） */
+    --bg-window: #1E1E1E;
+    --bg-card: #2D2D2D;
+    --bg-input: #3C3C3C;
+    --bg-titlebar: #252526;
+    --bg-icon-bar: #18181B;
+    --bg-side-panel: #1E1E22;
+    --text-primary: #D4D4D4;
+    --text-secondary: #9D9D9D;
+    --text-muted: #8A8A8A;
+    --accent: #0078D4;
+    --accent-hover: #1A8CE8;
+    --text-on-accent: #FFFFFF;
+    --border: #3C3C3C;
+    --separator: #333333;
+    --hover-overlay: rgba(255,255,255,0.065);
+    --status-connected: #4EC994;
+    --error: #F48771;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #141414; color: var(--text-primary); font-family: "Segoe UI", "Microsoft YaHei", sans-serif; padding: 24px; }
+  h1 { font-size: 18px; font-weight: 600; }
+  h1 small { font-size: 13px; font-weight: 400; color: var(--text-muted); display: block; margin-top: 6px; line-height: 1.7; }
+
+  .frames { display: flex; gap: 24px; flex-wrap: wrap; align-items: flex-start; margin-top: 20px; }
+  .frame-col { width: 828px; }
+  .frame-caption { padding: 10px 4px 8px; display: flex; align-items: baseline; gap: 8px; }
+  .frame-caption b { font-size: 14px; }
+  .frame-caption span { color: var(--text-secondary); font-size: 12px; }
+  .tag { font-size: 11px; color: #fff; background: var(--accent); padding: 2px 8px; border-radius: 3px; }
+  .tag.a { background: #0078D4; }
+  .tag.b { background: #5f5f6e; }
+  .tag.c { background: #8B5CF6; }
+
+  /* ── 软件完整轮廓：真实 zone 尺寸（html-blueprint §五） ── */
+  .app { width: 800px; height: 560px; display: flex; flex-direction: column; background: var(--bg-window); border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+  .titlebar { height: 30px; background: var(--bg-titlebar); display: flex; align-items: center; padding: 0 8px; gap: 10px; flex: none; }
+  .titlebar .logo { width: 12px; height: 12px; border: 1.5px solid var(--text-muted); transform: rotate(45deg); border-radius: 2px; }
+  .titlebar .app-name { font-size: 12px; color: var(--text-secondary); }
+  .titlebar .menu { display: flex; gap: 2px; }
+  .titlebar .menu span { font-size: 12px; color: var(--text-secondary); padding: 3px 8px; border-radius: 3px; }
+  .titlebar .menu span:hover { background: var(--hover-overlay); }
+  .titlebar .win-btns { margin-left: auto; display: flex; gap: 6px; color: var(--text-secondary); font-size: 11px; }
+  .win-btns i { font-style: normal; padding: 2px 6px; }
+
+  .app-body { flex: 1; display: flex; min-height: 0; }
+  .icon-bar { width: 42px; background: var(--bg-icon-bar); display: flex; flex-direction: column; align-items: center; padding-top: 6px; gap: 4px; flex: none; }
+  .icon-bar .ic { width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; border-radius: 4px; color: var(--text-muted); font-size: 15px; position: relative; }
+  .icon-bar .ic.active { color: var(--text-primary); background: var(--hover-overlay); }
+  .icon-bar .ic.active::before { content: ""; position: absolute; left: -4px; top: 7px; bottom: 7px; width: 2px; background: var(--accent); border-radius: 1px; }
+
+  .sidebar { width: 216px; background: var(--bg-side-panel); border-right: 1px solid var(--separator); display: flex; flex-direction: column; flex: none; overflow: hidden; }
+  .sidebar-head { height: 35px; display: flex; align-items: center; padding: 0 12px; font-size: 12px; letter-spacing: 0.4px; color: var(--text-primary); flex: none; border-bottom: 1px solid var(--separator); }
+  .side-scroll { flex: 1; overflow-y: auto; min-height: 0; }
+
+  .section { border-bottom: 1px solid var(--separator); }
+  .sec-head { height: 24px; display: flex; align-items: center; padding: 0 8px 0 6px; gap: 4px; color: var(--text-secondary); font-size: 11px; letter-spacing: 0.4px; cursor: default; }
+  .sec-head:hover { background: var(--hover-overlay); }
+  .sec-head .twistie { font-size: 9px; width: 10px; color: var(--text-muted); }
+  .sec-head .title { flex: 1; }
+  .sec-head .acts { display: flex; gap: 2px; color: var(--text-muted); font-size: 11px; }
+  .sec-head .acts i { font-style: normal; padding: 1px 3px; border-radius: 3px; }
+  .sec-head .acts i:hover { background: var(--hover-overlay); color: var(--text-primary); }
+
+  .tree { padding: 2px 4px 6px; }
+  .row { display: flex; align-items: center; gap: 5px; height: 22px; padding: 0 6px; font-size: 13px; color: var(--text-primary); border-radius: 3px; }
+  .row:hover { background: var(--hover-overlay); }
+  .row .twistie { font-size: 9px; width: 10px; color: var(--text-muted); }
+  .row .fi { font-style: normal; font-size: 12px; width: 14px; text-align: center; color: var(--text-secondary); }
+  .row.lvl2 { padding-left: 26px; }
+  .row .sub { color: var(--text-muted); font-size: 11px; margin-left: auto; }
+
+  /* 空树占位（B/C 用的 FOLDERS 空态） */
+  .tree-empty { padding: 14px 12px; color: var(--text-muted); font-size: 12px; line-height: 1.7; }
+
+  .search-body { padding: 8px 10px; }
+  .search-input { height: 24px; background: var(--bg-input); border: 1px solid var(--border); border-radius: 3px; font-size: 12px; color: var(--text-muted); display: flex; align-items: center; padding: 0 8px; gap: 6px; }
+
+  /* ── 竞标差异面 ── */
+  /* A：常驻 section——主按钮 + 最近列表 */
+  .openA-body { padding: 8px 10px 10px; }
+  .btn-primary { height: 28px; width: 100%; background: var(--accent); color: var(--text-on-accent); border: none; border-radius: 3px; font-size: 12.5px; display: flex; align-items: center; justify-content: center; gap: 7px; cursor: pointer; }
+  .btn-primary:hover { background: var(--accent-hover); }
+  .recent-label { font-size: 11px; color: var(--text-muted); margin: 10px 2px 4px; }
+  .recent-item { display: flex; align-items: center; gap: 6px; height: 24px; padding: 0 6px; border-radius: 3px; font-size: 12.5px; color: var(--text-primary); cursor: pointer; }
+  .recent-item:hover { background: var(--hover-overlay); }
+  .recent-item .fi { font-style: normal; width: 14px; text-align: center; color: var(--text-secondary); font-size: 12px; }
+  .recent-item .path { color: var(--text-muted); font-size: 10.5px; margin-left: auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 96px; }
+  .recent-empty { font-size: 11.5px; color: var(--text-muted); padding: 2px 2px 0; line-height: 1.6; }
+
+  /* B：空态 section——引导卡（图标 + 文案 + 按钮），有根时整个 section 不注册 */
+  .openB-body { padding: 16px 18px 18px; text-align: center; }
+  .openB-body .glyph { width: 34px; height: 34px; margin: 0 auto 8px; border: 1.5px dashed var(--text-muted); border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 16px; color: var(--text-secondary); }
+  .openB-body .hint { font-size: 12px; color: var(--text-secondary); line-height: 1.7; margin-bottom: 10px; }
+  .openB-body .btn-primary { width: auto; padding: 0 16px; margin: 0 auto; }
+
+  /* C：双轨——FOLDERS 空态内嵌引导行（VS Code 正解位）+ 常驻瘦 section 仅一条按钮行 */
+  .tree-empty-cta { margin-top: 8px; height: 26px; border: 1px solid var(--border); border-radius: 3px; display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 12px; color: var(--text-primary); cursor: pointer; background: var(--bg-card); }
+  .tree-empty-cta:hover { border-color: var(--accent); color: var(--accent-hover); }
+  .openC-body { padding: 6px 10px; }
+  .row-cta { display: flex; align-items: center; gap: 7px; height: 24px; padding: 0 6px; border-radius: 3px; font-size: 12.5px; color: var(--text-primary); cursor: pointer; }
+  .row-cta:hover { background: var(--hover-overlay); }
+  .row-cta .fi { font-style: normal; width: 14px; text-align: center; color: var(--text-secondary); }
+
+  .main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+  .tabbar { height: 35px; background: var(--bg-card); border-bottom: 1px solid var(--separator); display: flex; align-items: flex-end; flex: none; }
+  .tab { height: 30px; padding: 0 14px; font-size: 12px; color: var(--text-secondary); display: flex; align-items: center; gap: 6px; border-top: 1px solid transparent; }
+  .tab.active { background: var(--bg-window); color: var(--text-primary); border-top: 1px solid var(--accent); }
+  .main-content { flex: 1; display: flex; align-items: center; justify-content: center; color: var(--text-muted); font-size: 13px; flex-direction: column; gap: 10px; }
+  .main-content .big { font-size: 40px; opacity: 0.4; }
+
+  .statusbar { height: 22px; background: var(--bg-window); border-top: 1px solid var(--separator); display: flex; align-items: center; padding: 0 10px; gap: 14px; font-size: 11px; color: var(--text-muted); flex: none; }
+  .statusbar .right { margin-left: auto; display: flex; gap: 14px; }
+
+  .frame-note { padding: 10px 6px 4px; font-size: 12px; color: var(--text-muted); line-height: 1.85; }
+  .frame-note b { color: var(--text-secondary); }
+  .frame-note .ok { color: var(--status-connected); }
+  .frame-note .warn { color: var(--error); }
+  .frame-note .pros { color: var(--text-secondary); }
+</style>
+</head>
+<body>
+  <h1>文件树「打开文件夹」侧栏入口 —— 竞标 <small>
+    问题：唯一 UI 入口是欢迎页「文件夹 → 打开文件夹」按钮（WelcomePoolView.tsx:130）；欢迎页是可关闭的标签页保底，一旦关闭，FoldersView 空态纯空白（FoldersView.tsx 条件渲染 roots.length &gt; 0），全软件再无打开文件夹的 UI 入口。<br>
+    竞争点只有一个：<b>入口的信息架构</b>（位置 × 常驻性 × 要不要带「最近」）。打开链路三版完全共用且全部现成——explorer.openFolder 命令已注册、workspace.openFolder→addFolder 已通、onDidChangeFolders 双端已消费，<b>零新壳通道、零壳侧改动</b>。皮肤一律走主题系统，竞标只定骨架。<br>
+    三帧统一演示同一痛点场景：<b>未打开任何文件夹 + 欢迎页标签已关闭</b>。每版标注所用设计 skill（html-blueprint §六 竞标联动，第一版默认 ui-ux-pro-max）。
+  </small></h1>
+
+  <div class="frames">
+
+    <!-- ═══════════ A 版 ═══════════ -->
+    <div class="frame-col">
+      <div class="frame-caption"><span class="tag a">A</span><b>✅ 定稿（2026-09-13 拍板）</b><b>常驻 section「打开文件夹」</b><span>搜索下方 order 2 永久注册，按钮 + 最近列表（把欢迎页「文件夹」区能力搬进侧栏）——所用 skill：ui-ux-pro-max（壳 UI 基线）</span></div>
+      <div class="app">
+        <div class="titlebar"><div class="logo"></div><div class="app-name">LinkDesk</div>
+          <div class="menu"><span>文件</span><span>查看</span><span>帮助</span></div>
+          <div class="win-btns"><i>─</i><i>□</i><i>×</i></div>
+        </div>
+        <div class="app-body">
+          <div class="icon-bar">
+            <div class="ic">⌂</div>
+            <div class="ic active">🗀</div>
+            <div class="ic">⌕</div>
+            <div class="ic">▸</div>
+            <div class="ic">⚙</div>
+          </div>
+          <div class="sidebar">
+            <div class="sidebar-head">资源管理器</div>
+            <div class="side-scroll">
+              <div class="section">
+                <div class="sec-head"><span class="twistie">▾</span><span class="title">尚未打开文件夹</span></div>
+                <div class="tree"></div>
+              </div>
+              <div class="section">
+                <div class="sec-head"><span class="twistie">▸</span><span class="title">搜索</span></div>
+              </div>
+              <div class="section">
+                <div class="sec-head"><span class="twistie">▾</span><span class="title">打开文件夹</span></div>
+                <div class="openA-body">
+                  <div class="btn-primary">⊕ 打开文件夹…</div>
+                  <div class="recent-label">最近</div>
+                  <div class="recent-item"><span class="fi">🗀</span>linkdesk<span class="path">E:\linkdesk</span></div>
+                  <div class="recent-item"><span class="fi">🗀</span>firmware<span class="path">D:\fw\stm32</span></div>
+                  <div class="recent-item"><span class="fi">🗀</span>docs<span class="path">D:\notes</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="main">
+            <div class="tabbar"><div class="tab active">欢迎</div><div class="tab">＋</div></div>
+            <div class="main-content"><div class="big">⌂</div>（本场景欢迎页已关闭——这里可以是任何标签页）</div>
+          </div>
+        </div>
+        <div class="statusbar"><span>Ln 1, Col 1</span><div class="right"><span>UTF-8</span><span>LinkDesk v0.1.60</span></div></div>
+      </div>
+      <div class="frame-note">
+        ① <b>注册方式：</b>plugin.json <code>contributes.views.explorer</code> 静态声明 + <code>useViewRegistration</code> 动态注册（order 2），由文件树自己注册——照 FOLDERS/SEARCH 既有先例，零壳改动。<br>
+        ② <b>行为：</b>按钮 → <code>explorer.openFolder</code> 命令（已存在，navigation.ts:66）→ 系统目录选择框 → <b>添加</b>进工作区（openFolder=dialog→addFolder，WorkspaceService.ts:78）。最近项点击 → <code>workspace.addFolder(path)</code>，同欢迎页语义。<br>
+        ③ <b>「最近」数据源：</b><code>pluginState.get("app","recentFolders")</code> 只读消费（欢迎页已在写），<code>onDidChangeFolders</code> 时刷新；最多 5 条。<br>
+        ④ <b>有根时：</b>section 照常驻留——最近列表仍有用（一键加根/换上下文）；FOLDERS 标题此时动态变成根名/「工作区」（既有逻辑不变）。<br>
+        <span class="pros">优点：</span>与用户提案一对一；欢迎页「文件夹」区能力整体入侧栏；最近列表在任意时刻都能用。<span class="warn">代价：</span>侧栏多一个常驻 section——有根时它是第三优先级信息，占约 90px 纵向空间。
+      </div>
+    </div>
+
+    <!-- ═══════════ B 版 ═══════════ -->
+    <div class="frame-col">
+      <div class="frame-caption"><span class="tag b">B</span><b>已淘汰（有根时移除 = E4V#44 死锁近亲形态）</b><b>空态 section「打开文件夹」</b><span>仅当工作区为空时动态注册、有根时移除——引导卡形态（图标 + 一句文案 + 按钮）——所用 skill：impeccable（打磨/精修/空态文案）</span></div>
+      <div class="app">
+        <div class="titlebar"><div class="logo"></div><div class="app-name">LinkDesk</div>
+          <div class="menu"><span>文件</span><span>查看</span><span>帮助</span></div>
+          <div class="win-btns"><i>─</i><i>□</i><i>×</i></div>
+        </div>
+        <div class="app-body">
+          <div class="icon-bar">
+            <div class="ic">⌂</div>
+            <div class="ic active">🗀</div>
+            <div class="ic">⌕</div>
+            <div class="ic">▸</div>
+            <div class="ic">⚙</div>
+          </div>
+          <div class="sidebar">
+            <div class="sidebar-head">资源管理器</div>
+            <div class="side-scroll">
+              <div class="section">
+                <div class="sec-head"><span class="twistie">▾</span><span class="title">尚未打开文件夹</span></div>
+                <div class="tree"></div>
+              </div>
+              <div class="section">
+                <div class="sec-head"><span class="twistie">▸</span><span class="title">搜索</span></div>
+              </div>
+              <div class="section">
+                <div class="openB-body">
+                  <div class="glyph">🗀</div>
+                  <div class="hint">您尚未打开任何文件夹。<br>打开一个文件夹以浏览和管理文件。</div>
+                  <div class="btn-primary">⊕ 打开文件夹…</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="main">
+            <div class="tabbar"><div class="tab active">欢迎</div><div class="tab">＋</div></div>
+            <div class="main-content"><div class="big">⌂</div>（本场景欢迎页已关闭）</div>
+          </div>
+        </div>
+        <div class="statusbar"><span>Ln 1, Col 1</span><div class="right"><span>UTF-8</span><span>LinkDesk v0.1.60</span></div></div>
+      </div>
+      <div class="frame-note">
+        ① <b>注册方式：</b>同样由文件树注册，但走 <b>动态注册/移除</b>——订阅 <code>onDidChangeFolders</code>：roots 空 → registerView；roots 非空 → 不注册（照 FOLDERS 动态标题的既有动态注册先例，viewContainer API 已支持）。<br>
+        ② <b>行为：</b>按钮链路与 A 完全一致（explorer.openFolder → 目录框 → addFolder）。<br>
+        ③ <b>不带「最近」列表</b>——空态卡片只回答「现在该怎么办」一个问题；最近能力仍归欢迎页。<br>
+        ④ <b>有根时：</b>整个 section 消失，侧栏回到 FOLDERS + SEARCH 两段，零冗余。<br>
+        <span class="pros">优点：</span>最贴 VS Code 空态哲学（空态 = 引导，非空 = 闭嘴）；侧栏常态不被占用；UX 依据——ui-ux-pro-max「Empty States: Guide users when no content exists, don't blank empty screens」。<span class="warn">代价：</span>侧栏没有「最近」——加根/换目录仍要回欢迎页或走目录框；动态注册比静态声明多一份订阅管理代码。
+      </div>
+    </div>
+
+    <!-- ═══════════ C 版 ═══════════ -->
+    <div class="frame-col">
+      <div class="frame-caption"><span class="tag c">C</span><b>已淘汰（同一风险面；空态提示精华收进 FT#3）</b><b>双轨——FOLDERS 空态内嵌引导 + 常驻瘦 section</b><span>空态引导放在 FOLDERS 自己肚子里（VS Code 正解位），另在搜索下常驻一条单行按钮（不带最近）——所用 skill：minimalist-ui（编辑部极简/高密度侧栏）</span></div>
+      <div class="app">
+        <div class="titlebar"><div class="logo"></div><div class="app-name">LinkDesk</div>
+          <div class="menu"><span>文件</span><span>查看</span><span>帮助</span></div>
+          <div class="win-btns"><i>─</i><i>□</i><i>×</i></div>
+        </div>
+        <div class="app-body">
+          <div class="icon-bar">
+            <div class="ic">⌂</div>
+            <div class="ic active">🗀</div>
+            <div class="ic">⌕</div>
+            <div class="ic">▸</div>
+            <div class="ic">⚙</div>
+          </div>
+          <div class="sidebar">
+            <div class="sidebar-head">资源管理器</div>
+            <div class="side-scroll">
+              <div class="section">
+                <div class="sec-head"><span class="twistie">▾</span><span class="title">尚未打开文件夹</span>
+                  <span class="acts"><i>＋</i><i>⟳</i></span></div>
+                <div class="tree">
+                  <div class="tree-empty">
+                    您尚未打开文件夹。
+                    <div class="tree-empty-cta">⊕ 打开文件夹…</div>
+                  </div>
+                </div>
+              </div>
+              <div class="section">
+                <div class="sec-head"><span class="twistie">▸</span><span class="title">搜索</span></div>
+              </div>
+              <div class="section">
+                <div class="openC-body">
+                  <div class="row-cta"><span class="fi">⊕</span>打开文件夹…</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="main">
+            <div class="tabbar"><div class="tab active">欢迎</div><div class="tab">＋</div></div>
+            <div class="main-content"><div class="big">⌂</div>（本场景欢迎页已关闭）</div>
+          </div>
+        </div>
+        <div class="statusbar"><span>Ln 1, Col 1</span><div class="right"><span>UTF-8</span><span>LinkDesk v0.1.60</span></div></div>
+      </div>
+      <div class="frame-note">
+        ① <b>轨道一（空态内嵌）：</b>FoldersView 空态（roots.length===0）渲染占位文案 + 引导按钮——位置就在树本该在的地方，对标 VS Code「您尚未打开文件夹」空态；顺手消灭 FoldersView 空白反模式。<br>
+        ② <b>轨道二（瘦 section）：</b>搜索下方常驻一条单行「打开文件夹…」按钮行，不带最近、不带文案——有根时也在，高度仅 24px+padding。<br>
+        ③ <b>行为：</b>两个入口走同一条 <code>explorer.openFolder</code> 命令链，无第二套逻辑。<br>
+        ④ <b>有根时：</b>轨道一随树出现自然消失；轨道二常驻。<br>
+        <span class="pros">优点：</span>视线动线最顺（空态引导出现在用户正盯着的位置）；常驻成本最小；空态修复与入口补缺一次做齐。<span class="warn">代价：</span>两处 UI 同一动作，多一份维护面；没有「最近」列表；实现任务数最多（FoldersView 空态改造 + 新 section 两个落点）。
+      </div>
+    </div>
+
+  </div>
+
+  <h1 style="margin-top: 28px;">拍板规则与收口<small>
+    ① 竞标拍板后本图即为历史记录，不再改结构；实现形态以拍板版本的<b>实现稿 mockup</b>（细节详解图）为准，下一批再画。<br>
+    ② 收口只取骨架 + token 写法（<code>var(--xxx)</code>），任何皮肤不硬编码进壳/插件 markup（2026-08-29 竞标收口裁决）。<br>
+    ③ 三版共同承诺：<b>零新壳通道</b>——命令、dialog、workspace、事件链全部现成；差异只在插件侧注册方式与信息架构。<br>
+    ④ 对应任务清单：<a href="../02-打开文件夹入口-执行清单.md" style="color: var(--accent-hover);">02-打开文件夹入口-执行清单.md</a>（FT# 前缀）；设计全文：<a href="../01-打开文件夹入口-设计.md" style="color: var(--accent-hover);">01-打开文件夹入口-设计.md</a>。
+  </small></h1>
+</body>
+</html>
