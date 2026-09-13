@@ -10,3 +10,7 @@
 ## 立案缘起（一句话账）
 
 用户发现：打开文件夹的唯一 UI 入口在欢迎标签页（`WelcomePoolView.tsx` 的「文件夹」区）；欢迎页是可关闭的标签页保底，一旦关闭、工作区又清空，FoldersView 空态纯空白，全软件再无打开文件夹的 UI 入口。经核实**命令与打开链路全部现成**（`explorer.openFolder` → `workspace.openFolder()` → `addFolder` → `onDidChangeFolders`），缺口只在 UI 入口层——故立案为文件树侧补丁，零壳改动。
+
+## 发布路径（改本插件源码前先读这条）
+
+file-tree 是 `distribution: builtin` 随包插件 ⇒ 补丁走**插件版本轴**（1.0.x），不占软件版本号；但随包 zip（`bundled-plugins/file-tree.linkdesk-plugin`）是**首启离线种子、非更新通道**——boot 只补缺失、永不刷新已装。故改源码必须：① bump `plugin.json` version（机械门禁 `check-bundled-version-bump` 红拦「同版改内容」）② 重打并同步 `bundled-plugins/` 里的 zip。**已有安装的用户拿到修复的路径** = 全新安装 / 清空插件目录 / 未来 bundled 上架市场按版本更新（真欠账 `E6#26b`）——实机验收须在 fresh userData 或 `--force-rematerialize-bundled` 下做，否则假阴性。详见 [01-设计.md §四.4](./01-打开文件夹入口-设计.md)、memory `version-and-release` §3.1。
