@@ -142,6 +142,16 @@ export type ShellExposed = Pick<LinkDeskAPI,
     onOpenPath(cb: (paths: string[]) => void): () => void;
     /** E6#47f：上报本窗活跃工程（主进程按窗记录 → windows-state.json → 冷启动恢复最后活跃窗） */
     reportActiveWorkspace(folder: string | null): void;
+    /**
+     * E6#45f：OS 集成开关（右键菜单/文件类型关联）——**真相源是注册表**（安装器 `installer.nsh`
+     * 与软件内写的是同一批键）。消费者 = 壳 startup 的「通用」组配置（onApply 写注册表 +
+     * 启动时按注册表同步配置值），所以只走壳侧、池不暴露（设置 UI 通过 configuration 消费）。
+     */
+    getIntegrationState(): Promise<{ fileMenu: boolean; dirMenu: boolean; fileAssoc: boolean }>;
+    setIntegrationEnabled(
+      kind: 'fileMenu' | 'dirMenu' | 'fileAssoc',
+      enabled: boolean,
+    ): Promise<{ fileMenu: boolean; dirMenu: boolean; fileAssoc: boolean }>;
   };
 };
 

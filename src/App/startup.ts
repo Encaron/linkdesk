@@ -18,6 +18,7 @@ import {
   getConfigurationValue, setConfigurationValue, resetConfigurationValue, inspectConfiguration,
 } from "../core/services/configuration/ConfigurationService";
 import { registerConfiguration, getMergedSchema } from "../core/registry/ConfigurationRegistry";
+import { getShellExposed } from "../core/api/linkdesk-api/surfaces"; // E6#45f：OS 集成开关（壳内私有扩展）
 import { runPendingConfigMigrations } from "../core/services/configuration/schemaMigrations";
 import { initLayoutService, getTabLayout } from "../core/services/layout/LayoutService";
 import { initWorkspaceService } from "../core/services/layout/WorkspaceService";
@@ -43,6 +44,32 @@ export interface AppStartupDeps {
 }
 
 /** mount-once 启动管线：注册 + initAll + post-init state 同步 + cleanup（HMR/StrictMode 安全） */
+/** E6#45f：配置键 ↔ OS 集成项的映射（同步与 onApply 共用一份，两处各写一份必漂移） */
+const OS_INTEGRATION_KEYS: Array<["app.osIntegration.fileMenu" | "app.osIntegration.dirMenu" | "app.osIntegration.fileAssoc",
+  "fileMenu" | "dirMenu" | "fileAssoc"]> = [
+  ["app.osIntegration.fileMenu", "fileMenu"],
+  ["app.osIntegration.dirMenu", "dirMenu"],
+  ["app.osIntegration.fileAssoc", "fileAssoc"],
+];
+
+/**
+ * E6#45f：把开关状态写进注册表（主进程服务，幂等）。
+ * 失败不抛（注册表写失败多半是企业策略/权限——报出来，别装作成功）：console.warn + 不回滚配置值
+ * （下次同步会把 UI 拉回注册表真相）。
+ */
+function applyOsIntegration(
+  kind: "fileMenu" | "dirMenu" | "fileAssoc",
+  enabled: boolean,
+): Promise<void> {
+  const shell = getShellExposed()?.shell;
+  if (!shell?.setIntegrationEnabled) return Promise.resolve(); // 非壳环境（单测/预览）
+  return shell.setIntegrationEnabled(kind, enabled)
+    .then(() => undefined)
+    .catch((e: unknown) => {
+      console.warn(`[startup] OS 集成写入失败 (${kind}=${enabled})——注册表可能被策略锁定:`, e);
+    });
+}
+
 export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): void {
   const { t } = useTranslation();
   useEffect(() => {
@@ -91,6 +118,28 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
             default: "titlebar",
             enum: ["titlebar", "hamburger", "both"],
             description: t("菜单栏样式——标题栏 / 汉堡菜单 / 两者都显示"),
+          },
+          // ── E6#45f：OS 集成开关（右键菜单 / 文件类型关联）──
+          // 🔴 **真相源是注册表**（HKCU；安装器 installer.nsh 与软件内写的是同一批键）——
+          //    这三项只是 UI 镜像：启动时按注册表现状回写（见 post-init 同步），toggle 的 onApply 写注册表。
+          //    与安装器勾选页天然一致：装的时候勾了 ⇒ 这里显示为开；软件里关掉 ⇒ 右键立即消失（不用重装）。
+          "app.osIntegration.fileMenu": {
+            type: "boolean",
+            default: false,
+            description: t("在资源管理器文件右键菜单中显示「Open with LinkDesk」"),
+            onApply: (v) => void applyOsIntegration("fileMenu", v === true),
+          },
+          "app.osIntegration.dirMenu": {
+            type: "boolean",
+            default: false,
+            description: t("在资源管理器文件夹右键菜单中显示「Open with LinkDesk」"),
+            onApply: (v) => void applyOsIntegration("dirMenu", v === true),
+          },
+          "app.osIntegration.fileAssoc": {
+            type: "boolean",
+            default: true,
+            description: t("将 LinkDesk 注册为受支持文件类型的编辑器（「打开方式」里可选）"),
+            onApply: (v) => void applyOsIntegration("fileAssoc", v === true),
           },
           // E5.7#79：窗口缩放级别——view.zoomIn/Out/Reset 命令的真值源（VS Code window.zoomLevel 同款）。
           // onApply 换算 factor=1.2^level 推主进程 setZoomFactor(池 WCV)；启动 applyAllConfigurations
@@ -221,6 +270,23 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
         }
       } catch (e) {
         console.error("[startup] schema 迁移失败:", e);
+      }
+
+      // E6#45f：OS 集成开关——**注册表是真相源**，启动时把现状同步进配置（UI 显示真相）：
+      // 安装器勾了右键 ⇒ 这里开机就显示为开；用户在软件外（重跑安装器/别的工具）改了 ⇒ 下次启动对齐。
+      // 写配置会触发 onApply → setIntegrationEnabled（主进程幂等：现状==目标则不写，不会来回打）。
+      try {
+        const shell = getShellExposed()?.shell;
+        if (shell?.getIntegrationState) {
+          const state = await shell.getIntegrationState();
+          for (const [configKey, kind] of OS_INTEGRATION_KEYS) {
+            if (getConfigurationValue<boolean>(configKey) !== state[kind]) {
+              await setConfigurationValue(configKey, state[kind], "user");
+            }
+          }
+        }
+      } catch (e) {
+        console.warn("[startup] OS 集成状态同步失败（不影响启动）:", e);
       }
 
       const initLang = getConfigurationValue<string>("app.language") ?? "zh";

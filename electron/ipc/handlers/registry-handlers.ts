@@ -19,6 +19,7 @@ import {
 } from '../../../src/core/registry/ProtocolRegistry.js';
 import { getPluginFor } from '../../../src/core/services/files/FileAssociationService.js';
 import { IPC } from '../channels.js';
+import { getIntegrationState, setIntegrationEnabled, type OsIntegrationKind } from '../../services/registry-integration.js'; // E6#45f
 
 let _registered = false;
 
@@ -53,5 +54,12 @@ export function registerRegistryHandlers(): void {
   // E5.7#50：FileAssociation 直连——原 PROXY_CHANNELS 代理（主进程→壳）拉直为主进程直答
   ipcMain.handle(IPC.fileAssociation.getPluginFor, (_event, extension: string) =>
     getPluginFor(extension)
+  );
+
+  // E6#45f：OS 集成开关——读现状 / 开-关某项（写 HKCU 注册表，per-user 免提权；幂等）。
+  // exePath = process.execPath（dev 下为 electron.exe——不做特判：dev 验的就是这条链）
+  ipcMain.handle(IPC.registry.getIntegrationState, () => getIntegrationState());
+  ipcMain.handle(IPC.registry.setIntegrationEnabled, (_event, kind: OsIntegrationKind, enabled: boolean) =>
+    setIntegrationEnabled(kind, enabled, process.execPath)
   );
 }

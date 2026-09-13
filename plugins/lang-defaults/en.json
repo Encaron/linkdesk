@@ -239,7 +239,6 @@
   "{{count}} 条通知": "{{count}} notifications",
   "通知": "Notifications",
   "清除已完成": "Clear Completed",
-  "最小化": "Minimize",
   "暂无通知": "No notifications",
   "主软件": "LinkDesk",
   "主软件更新": "LinkDesk updates",
@@ -521,5 +520,8 @@
   "无法记录待安装状态——{{detail}}": "Could not record the pending-install state — {{detail}}",
   "无法启动安装程序——{{detail}}": "Could not launch the installer — {{detail}}",
   "当前没有可下载的更新": "There is no update available to download",
-  "当前没有已下载的更新可安装": "There is no downloaded update to install"
+  "当前没有已下载的更新可安装": "There is no downloaded update to install",
+  "在资源管理器文件右键菜单中显示「Open with LinkDesk」": "Show \"Open with LinkDesk\" in the Explorer context menu for files",
+  "在资源管理器文件夹右键菜单中显示「Open with LinkDesk」": "Show \"Open with LinkDesk\" in the Explorer context menu for folders",
+  "将 LinkDesk 注册为受支持文件类型的编辑器（「打开方式」里可选）": "Register LinkDesk as an editor for supported file types (available under \"Open with\")"
 }

@@ -34,6 +34,7 @@ import type { FileChangeEvent } from '../src/core/services/files/FileService';
 import type { MenuItemDescriptor, PluginInstallRequestOpts, PluginInstallJobRef, PluginFolderKind } from '../src/core/api/linkdesk-api/types'; // E5.8#20：契约语义类型——menu.getItems 返回面；E6#73c：+ 安装 job 身份；E6#78：+ 插件目录落点
 // E5.8#1b：keybinding 归一化集中——主进程/壳/池三端共用单一权威源（防 E5.7#79 漂移复发）
 import { keyboardInputToKeyString } from '../src/core/utils/keybindingNormalization.js';
+import type { OsIntegrationKind } from './services/registry-integration.js'; // E6#45f（类型 only）
 
 // ── E5#19b fix: ContextKey 本地同步 store——IPC 回路延迟致键盘分发读不到最新值 ──
 const _contextKeyStore = new Map<string, unknown>();
@@ -221,6 +222,13 @@ function buildShellIntakeExtras() {
      * 壳内私有扩展（同 onOpenPath 面）。fires-and-forgets（send）——上报失败不影响本地状态。
      */
     reportActiveWorkspace: (folder: string | null) => ipcRenderer.send(IPC.workspace.reportActive, folder),
+    /**
+     * E6#45f：OS 集成开关（右键菜单/文件类型关联）——读注册表现状 / 开-关某项。
+     * 真相源是注册表（安装器与软件内写的是同一批键）；配置项只是 UI 镜像，见 startup.ts 通用组。
+     */
+    getIntegrationState: () => ipcRenderer.invoke(IPC.registry.getIntegrationState),
+    setIntegrationEnabled: (kind: OsIntegrationKind, enabled: boolean) =>
+      ipcRenderer.invoke(IPC.registry.setIntegrationEnabled, kind, enabled),
   };
 }
 

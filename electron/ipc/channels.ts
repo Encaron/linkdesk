@@ -271,6 +271,11 @@ export const IPC = {
     // E5.7#79：缩放——壳配置 window.zoomLevel onApply → 应用到池 WCV（主进程缓存供崩溃重建重放）
     setZoom: 'window:setZoom',
   },
+  // E6#45f：OS 集成开关（软件内勾选右键菜单/文件关联——写 HKCU，立即生效不用重装）
+  registry: {
+    getIntegrationState: 'registry:getIntegrationState',
+    setIntegrationEnabled: 'registry:setIntegrationEnabled',
+  },
   workspace: {
     getFolders: 'workspace:getFolders',
     getActive: 'workspace:getActive',
