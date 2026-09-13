@@ -143,6 +143,10 @@
 !ifndef BUILD_UNINSTALLER
 
   !include "nsDialogs.nsh"
+  ; 🔴 MUI2 必须先于本文件里的 MUI_HEADER_TEXT 展开（本文件先于模板展开，而模板的 MUI2 include 在后面）
+  ;    ——实测撞过：不自己 include ⇒ `!insertmacro: macro named "MUI_HEADER_TEXT" not found`，
+  ;    整包构建中止（standalone 语法台因自己 include 了 MUI2 才没暴露）。MUI2 自带 include guard，重复无害。
+  !include "MUI2.nsh"
 
   ; 勾选值（"1"=勾）：customInit 给默认 → 页面 leave 按 UI 覆盖 → customInstall 消费
   Var lkTaskFileMenu
