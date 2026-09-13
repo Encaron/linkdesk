@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>发行说明标签页 · 刷新按钮（在 mockup 03 基础上加）</title>
+<style>
+/* ═══════════════════════════════════════════════════════
+   LinkDesk 设计 token（mockup 仅示意，真实实现走 var(--xxx) + ThemeEngine）
+   本图 = `06-主软件更新/mockups/03-发行说明标签页.html` 的**增量版**：
+   骨架/布局/文案照抄原图，**唯一新增 = 头部动作区的「刷新」按钮及其三态**。
+   ═══════════════════════════════════════════════════════ */
+:root {
+  --bg-window: #1E1E1E;
+  --bg-card: #2D2D2D;
+  --bg-input: #3C3C3C;
+  --bg-titlebar: #252526;
+  --bg-side-panel: #1E1E22;
+  --text-primary: #D4D4D4;
+  --text-secondary: #9D9D9D;
+  --text-muted: #8A8A8A;
+  --accent: #0078D4;
+  --accent-hover: #1A8CE8;
+  --border: #3C3C3C;
+  --separator: #474747;
+  --hover-overlay: rgba(255,255,255,0.06);
+  --error: #E06C75;
+  --status-connected: #4EC9B0;
+  --bg-icon-bar: #18181B;
+  --icon-inactive: #858585;
+  --icon-active: #D4D4D4;
+  --bg-status: #0078D4;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: #101013; color: var(--text-primary); font-family: "IBM Plex Sans", "Segoe UI", "Microsoft YaHei", system-ui, sans-serif; font-size: 13px; padding: 32px; max-width: 1200px; margin: 0 auto; }
+h1 { font-size: 20px; font-weight: 600; letter-spacing: 0.02em; margin-bottom: 6px; }
+h1 small { font-size: 13px; font-weight: 400; color: var(--text-muted); display: block; margin-top: 6px; line-height: 1.7; }
+h1 code, .mono { font-family: "JetBrains Mono", Consolas, monospace; font-size: 11px; color: var(--accent-hover); }
+h1 .hl { color: var(--status-connected); }
+h1 .warn { color: var(--error); }
+
+.frame { background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; margin-top: 18px; }
+.frame-caption { padding: 10px 14px; border-bottom: 1px solid var(--border); display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.frame-caption b { font-size: 14px; }
+.frame-caption .tag { font-size: 11px; color: #fff; background: var(--accent); border-radius: 3px; padding: 1px 8px; font-weight: 600; }
+.frame-caption .tag.new { background: var(--status-connected); color: #101013; }
+.frame-caption span { color: var(--text-secondary); font-size: 12px; }
+.frame-note { padding: 10px 14px; border-top: 1px solid var(--border); color: var(--text-muted); font-size: 12px; line-height: 1.8; background: #26262a; }
+.frame-note b { color: var(--text-secondary); }
+.frame-note .ok { color: var(--status-connected); }
+.frame-note .warn { color: var(--error); }
+.frame-note code { font-family: "JetBrains Mono", Consolas, monospace; font-size: 11px; color: var(--accent-hover); }
+
+/* ── 应用窗口骨架（与 mockup 03 逐字一致） ── */
+.app { position: relative; display: flex; flex-direction: column; min-height: 560px; background: var(--bg-window); font-size: 12px; overflow: hidden; margin-top: 14px; border-radius: 6px; border: 1px solid var(--border); }
+.titlebar { height: 30px; flex: none; background: var(--bg-titlebar); display: flex; align-items: center; padding: 0 8px 0 12px; gap: 6px; user-select: none; }
+.titlebar .logo { width: 14px; height: 14px; flex: none; }
+.titlebar .app-name { font-size: 12px; color: var(--text-secondary); }
+.menu-btn { height: 22px; padding: 0 8px; background: transparent; border: none; color: var(--text-secondary); font-size: 12px; font-family: inherit; border-radius: 4px; cursor: pointer; }
+.menu-btn:hover { background: var(--hover-overlay); color: var(--text-primary); }
+.titlebar .drag { flex: 1; }
+.win-btn { width: 34px; height: 22px; border: none; background: transparent; color: var(--text-secondary); }
+.win-btn.close:hover { background: #c42b1c; color: #fff; }
+
+.mid { flex: 1; display: flex; min-height: 0; }
+
+.icon-bar { width: 48px; flex: none; background: var(--bg-icon-bar); display: flex; flex-direction: column; align-items: center; padding-top: 6px; gap: 2px; }
+.icon-btn { width: 48px; height: 42px; border: none; background: transparent; color: var(--icon-inactive); display: flex; align-items: center; justify-content: center; border-left: 2px solid transparent; cursor: pointer; }
+.icon-btn:hover { color: var(--text-primary); background: var(--hover-overlay); }
+.icon-btn.active { color: var(--icon-active); border-left-color: var(--accent); }
+.icon-btn svg { width: 20px; height: 20px; }
+.ib-sep { width: 26px; height: 1px; background: var(--border); margin: 5px 0; }
+
+.sidebar { width: 216px; flex: none; background: var(--bg-side-panel); border-right: 1px solid var(--border); display: flex; flex-direction: column; font-size: 12px; overflow: hidden; }
+.sidebar-header { padding: 10px 12px 4px; color: var(--text-secondary); letter-spacing: 0.06em; font-size: 11px; text-transform: uppercase; flex: none; }
+.ms-search { display: flex; align-items: center; gap: 4px; padding: 0 8px 8px; flex: none; }
+.ms-search input { flex: 1; height: 26px; padding: 3px 8px; background: var(--bg-input); border: 1px solid var(--border); border-radius: 4px; color: var(--text-primary); font-size: 12px; font-family: inherit; outline: none; }
+.ms-search svg { width: 12px; height: 12px; color: var(--text-muted); flex: none; }
+.ms-body { flex: 1; overflow-y: auto; padding-top: 2px; }
+.ms-sec-head { padding: 6px 12px 4px; font-size: 11px; color: var(--text-muted); }
+.ms-item { display: flex; align-items: center; gap: 8px; padding: 4px 12px; cursor: pointer; }
+.ms-item:hover { background: var(--hover-overlay); }
+.ms-item.selected { background: rgba(0,120,212,0.14); }
+.ms-item .mi-ic svg { width: 18px; height: 18px; flex: none; }
+.ms-item .mi-nm { font-size: 12px; color: var(--text-primary); }
+.ms-item .mi-nm .ver { color: var(--text-muted); font-size: 10.5px; }
+
+.main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.tabbar { height: 32px; flex: none; background: var(--bg-titlebar); display: flex; align-items: stretch; border-bottom: 1px solid var(--border); }
+.tab { display: flex; align-items: center; gap: 6px; padding: 0 12px; color: var(--text-secondary); border-right: 1px solid var(--border); border-top: 2px solid transparent; font-size: 12px; }
+.tab.active { background: var(--bg-window); color: var(--text-primary); border-top-color: var(--accent); }
+.tab .tab-close { display: flex; align-items: center; justify-content: center; width: 16px; height: 16px; border-radius: 3px; color: var(--text-muted); font-size: 10px; flex: none; }
+
+.statusbar { height: 22px; flex: none; background: var(--bg-status); color: #fff; display: flex; align-items: center; gap: 14px; padding: 0 12px; font-size: 11px; }
+.statusbar .right { margin-left: auto; opacity: 0.9; }
+.statusbar .slot-name { font-weight: 600; }
+
+.rn { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+.rn-head { flex: none; display: flex; align-items: center; gap: 14px; padding: 14px 20px; border-bottom: 1px solid var(--separator); }
+.rn-ver-title { font-size: 18px; font-weight: 600; font-family: "JetBrains Mono", Consolas, monospace; }
+.rn-ver-title .ch { font-size: 11.5px; color: var(--text-muted); font-family: inherit; margin-left: 10px; font-weight: 400; }
+.rn-meta { display: flex; align-items: center; gap: 10px; margin-top: 5px; font-size: 11.5px; color: var(--text-muted); }
+.rn-meta .ch-chip { font-size: 10px; padding: 1px 8px; border-radius: 8px; background: rgba(78,201,176,0.14); color: var(--status-connected); font-weight: 600; }
+.rn-actions { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+.ghost-btn { height: 26px; padding: 0 12px; border-radius: 5px; border: 1px solid var(--separator); background: transparent; color: var(--text-secondary); font-size: 12px; font-family: inherit; cursor: pointer; }
+.ghost-btn:hover { background: var(--hover-overlay); color: var(--text-primary); }
+
+/* ═══ 🔥 本次新增：刷新按钮（唯一增量） ═══ */
+.rn-refresh { display: inline-flex; align-items: center; gap: 6px; }
+.rn-refresh svg { width: 13px; height: 13px; flex: none; }
+/* 刷新中：图标转圈 = **进度语义**（不是装饰动效），文字同时改「刷新中…」——
+   即使 prefers-reduced-motion 关掉动画，文字仍在传达状态（双保险） */
+.rn-refresh.spinning svg { animation: rn-spin 0.9s linear infinite; }
+@keyframes rn-spin { to { transform: rotate(360deg); } }
+/* 刷新中禁用 = 防连点；禁用态**不降透明度到看不清**，仍可读（0.6 是下限） */
+.rn-refresh[disabled] { opacity: 0.6; cursor: default; }
+.rn-refresh[disabled]:hover { background: transparent; color: var(--text-secondary); }
+/* 就地状态注（「已是最新 · 刚刚」）——muted 一行，不新造提示面 */
+.rn-refresh-note { font-size: 11.5px; color: var(--text-muted); margin-right: 2px; }
+
+.rn-body { flex: 1; display: grid; grid-template-columns: 220px 1fr; min-height: 0; }
+.rn-hist { overflow-y: auto; padding: 10px 0; border-right: 1px solid var(--separator); min-width: 0; }
+.rn-hist-head { padding: 6px 20px 8px; font-size: 11px; color: var(--text-muted); letter-spacing: .06em; text-transform: uppercase; }
+.rn-ver { display: flex; align-items: center; gap: 8px; padding: 6px 20px; font-size: 11.5px; color: var(--text-secondary); cursor: pointer; font-family: "JetBrains Mono", Consolas, monospace; border-left: 2px solid transparent; }
+.rn-ver:hover { background: var(--hover-overlay); color: var(--text-primary); }
+.rn-ver.selected { background: rgba(0,120,212,0.14); color: var(--text-primary); border-left-color: var(--accent); }
+.rn-ver .v-new { font-size: 9px; padding: 0 5px; border-radius: 7px; background: var(--accent); color: #fff; font-family: inherit; flex: none; }
+.rn-ver .v-date { margin-left: auto; color: var(--text-muted); font-size: 10px; }
+.rn-all { padding: 10px 20px; border-top: 1px solid var(--separator); color: var(--accent-hover); font-size: 11px; cursor: pointer; }
+
+.rn-content { overflow-y: auto; padding: 18px 26px; min-width: 0; }
+.rn-sect { margin: 14px 0; }
+.rn-sect-title { font-size: 13px; font-weight: 600; color: var(--text-primary); margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+.rn-sect-title .st-badge { font-size: 10px; font-weight: 600; padding: 0 7px; border-radius: 7px; }
+.st-new { background: rgba(78,201,176,0.16); color: var(--status-connected); }
+.st-fix { background: rgba(224,108,117,0.16); color: var(--error); }
+.st-imp { background: rgba(0,120,212,0.16); color: var(--accent-hover); }
+.rn-sect ul { list-style: none; display: flex; flex-direction: column; gap: 6px; }
+.rn-sect li { display: flex; gap: 8px; font-size: 12.5px; line-height: 1.6; color: var(--text-secondary); }
+.rn-sect li .li-dot { color: var(--accent-hover); flex: none; }
+.rn-sect li code { font-family: "JetBrains Mono", Consolas, monospace; font-size: 11px; color: var(--accent-hover); background: rgba(0,120,212,0.08); padding: 0 4px; border-radius: 3px; }
+.rn-banner { display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-radius: 6px; border: 1px solid rgba(78,201,176,0.3); background: rgba(78,201,176,0.07); font-size: 12px; color: var(--text-secondary); margin-bottom: 16px; }
+.rn-banner .bb { color: var(--status-connected); font-weight: 600; flex: none; }
+.rn-banner .bb-btn { color: var(--accent-hover); cursor: pointer; font-weight: 500; }
+
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } .rn-refresh.spinning svg { animation: none; } }
+</style>
+</head>
+<body>
+
+<h1>发行说明标签页 · 刷新按钮
+  <small>本图 = <code>06-主软件更新/mockups/03-发行说明标签页.html</code> 的<b class="hl">增量版</b>：骨架 / 布局 / 文案**逐字照抄原图**，唯一新增 = 头部动作区多一个<b>「刷新」按钮</b>及其三态。原图三帧（主态 / 断网空态 / 加载骨架）仍有效，本图只画「刷新」这条新支路，不重复原图内容。<br>
+  <b>为什么要它：</b>发行说明的数据是<b>主进程 24h 落盘缓存</b>（<code>update-release-notes.ts</code> 的 <code>CACHE_MAX_AGE_MS</code>，失效判据两条：24h 过期 ＋「所请求那版不在缓存里」）。所以刚发的新版本，用户在当天可能一直看不到——<b>没有任何手动刷新入口</b>。空态里那个「重试」只在<b>拉不到</b>时出现，管不了「拉到了但是旧的」。<br>
+  <b>语义边界（本图定死）：</b><code>刷新</code> = <b>忽略 24h 缓存重新拉列表</b>（用户主动问「现在有没有新的」）；<code>重试</code>（既有）= <b>重试当前这一版</b>（拉失败后再来一次）。两者都保留，不合并。<br>
+  <b>设计 skill：</b><code>ui-ux-pro-max</code> —— 「Loading Indicators：操作 &gt;300ms 必须给反馈，禁止 UI 冻结」「Loading States：异步操作期间显示反馈」（两条均 High）；本图据此规定：点击后按钮转圈 + 文字改「刷新中…」+ 禁用防连点，<b>正文保持旧内容不回到骨架</b>。</small>
+</h1>
+
+<!-- ═══════════════ Frame 1：主态 · 按钮就位 ═══════════════ -->
+<div class="frame">
+  <div class="frame-caption">
+    <b>Frame 1 · 主态——「刷新」按钮就位（头部动作区，GitHub 链接左侧）</b>
+    <span class="tag new">本次增量</span>
+    <span>默认态：图标 + 「刷新」；右侧仍是既有「在 GitHub 查看全部 →」</span>
+  </div>
+
+  <div class="app">
+    <div class="titlebar">
+      <svg class="logo" viewBox="0 0 16 16"><rect x="2" y="2" width="12" height="12" rx="2.5" fill="#0078D4"/><rect x="5" y="5" width="6" height="6" rx="1" fill="#fff"/></svg>
+      <span class="app-name">LinkDesk</span>
+      <button class="menu-btn">文件</button><button class="menu-btn">查看</button><button class="menu-btn">帮助</button>
+      <span class="drag"></span>
+      <span class="win-btn">─</span><span class="win-btn">□</span><span class="win-btn">✕</span>
+    </div>
+    <div class="mid">
+      <div class="icon-bar">
+        <button class="icon-btn" title="文件树"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg></button>
+        <button class="icon-btn" title="搜索"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg></button>
+        <div class="ib-sep"></div>
+        <button class="icon-btn active" title="插件市场"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg></button>
+        <div class="ib-sep"></div>
+        <button class="icon-btn" title="设置"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.6M12 18.6v2.6M2.8 12h2.6M18.6 12h2.6M5.5 5.5l1.8 1.8M16.7 16.7l1.8 1.8M18.5 5.5l-1.8 1.8M7.3 16.7l-1.8 1.8"/></svg></button>
+      </div>
+
+      <div class="sidebar">
+        <div class="sidebar-header">插件市场</div>
+        <div class="ms-search">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
+          <input placeholder="搜索插件">
+        </div>
+        <div class="ms-body">
+          <div class="ms-sec-head">▾ 已安装</div>
+          <div class="ms-item"><div class="mi-ic"><svg viewBox="0 0 24 24" fill="none" stroke="#4EC9B0" stroke-width="1.8"><rect x="4" y="5" width="16" height="12" rx="2"/><path d="M9 17v3M15 17v3M12 17v2"/></svg></div><div class="mi-nm">串口监视器 <span class="ver">v1.0.0</span></div></div>
+        </div>
+      </div>
+
+      <div class="main">
+        <div class="tabbar">
+          <div class="tab active">发行说明 v0.2.0 <span class="tab-close">✕</span></div>
+          <div class="tab">文件 <span class="tab-close">✕</span></div>
+        </div>
+        <div class="rn">
+          <div class="rn-head">
+            <div>
+              <div class="rn-ver-title">v0.2.0<span class="ch">2026 年 8 月 30 日 · 稳定通道</span></div>
+              <div class="rn-meta">
+                <span class="ch-chip">稳定版</span>
+                <span>缓存 24h · 上次拉取 08-30 09:12</span>
+              </div>
+            </div>
+            <div class="rn-actions">
+              <button class="ghost-btn rn-refresh" title="忽略缓存，重新获取版本列表">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 5.5V11h-5.5"/></svg>
+                刷新
+              </button>
+              <button class="ghost-btn">在 GitHub 查看全部 →</button>
+            </div>
+          </div>
+          <div class="rn-body">
+            <div class="rn-hist">
+              <div class="rn-hist-head">版本历史</div>
+              <div class="rn-ver selected"><span class="v-new">新</span>v0.2.0<span class="v-date">08-30</span></div>
+              <div class="rn-ver">v0.1.0<span class="v-date">08-26</span></div>
+              <div class="rn-ver">v0.0.9<span class="v-date">08-20</span></div>
+              <div class="rn-ver">v0.0.8<span class="v-date">08-12</span></div>
+              <div class="rn-ver">v0.0.7<span class="v-date">08-02</span></div>
+              <div class="rn-all">所有版本 → GitHub ↗</div>
+            </div>
+            <div class="rn-content">
+              <div class="rn-banner">
+                <span class="bb">▼</span>检测到新版本 0.2.0，已自动打开本页。这是本次更新的内容。
+                <span style="flex:1;"></span><span class="bb-btn">知道了</span>
+              </div>
+              <div class="rn-sect">
+                <div class="rn-sect-title"><span class="st-badge st-new">新增</span>新能力</div>
+                <ul>
+                  <li><span class="li-dot">•</span><span><b>壳侧主软件更新</b>：启动/每 4 小时自动检查 GitHub Releases，发现新版本 → 通知面条目 + TitleBar「下载更新」按钮</span></li>
+                  <li><span class="li-dot">•</span><span>发行说明标签页：<b>首启新版本自动打开</b>，历史版本左栏可回看</span></li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="statusbar">
+      <span>就绪</span><span>发行说明 · v0.2.0 · 更新检查已是最新</span>
+      <span class="right"><span class="slot-name">发行说明</span> · 历史 11 版</span>
+    </div>
+  </div>
+
+  <div class="frame-note">
+    <b>① 位置 = 头部动作区（<code>.rn-actions</code>），在「在 GitHub 查看全部 →」左侧。</b>理由：这一区已经是本页动作的归属地（既有外链按钮在此）；放左窄栏标题行会把「导航」和「动作」混在一起，且窄栏是配角（220px，原图已定）。
+    <br><b>② 形态 = ghost 次按钮 + 图标 + 文字</b>（复用既有 <code>.ghost-btn</code> 皮肤，不新造按钮样式）；<b>不是</b>纯图标按钮——纯图标要再发明一套 tooltip/可发现性，且本页动作区只有两三个按钮，放得下文字。
+    <br><b>③ <code>title</code></b>：hover 说明它是「忽略缓存，重新获取版本列表」——把语义写在按钮上，不写在文档里。
+    <br><b>④ <code>.rn-meta</code> 加一句「缓存 24h · 上次拉取 …」</b>（本图新增的可选文案）——让用户明白「为什么我昨天看不到新版本」，也解释了这个按钮在解决什么问题。<span class="warn">这条是可选增强项，待拍板（见设计文档 §五.3）。</span>
+  </div>
+</div>
+
+<!-- ═══════════════ Frame 2：刷新中 ═══════════════ -->
+<div class="frame">
+  <div class="frame-caption">
+    <b>Frame 2 · 刷新中（进行中）</b>
+    <span class="tag new">本次增量</span>
+    <span>按钮转圈 + 文案改「刷新中…」+ 禁用防连点；<b>正文保持旧内容</b>，不回到骨架</span>
+  </div>
+
+  <div class="app">
+    <div class="titlebar">
+      <svg class="logo" viewBox="0 0 16 16"><rect x="2" y="2" width="12" height="12" rx="2.5" fill="#0078D4"/><rect x="5" y="5" width="6" height="6" rx="1" fill="#fff"/></svg>
+      <span class="app-name">LinkDesk</span>
+      <button class="menu-btn">文件</button><button class="menu-btn">查看</button><button class="menu-btn">帮助</button>
+      <span class="drag"></span>
+      <span class="win-btn">─</span><span class="win-btn">□</span><span class="win-btn">✕</span>
+    </div>
+    <div class="mid">
+      <div class="icon-bar">
+        <button class="icon-btn" title="文件树"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg></button>
+        <div class="ib-sep"></div>
+        <button class="icon-btn active" title="插件市场"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg></button>
+        <div class="ib-sep"></div>
+        <button class="icon-btn" title="设置"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.6M12 18.6v2.6M2.8 12h2.6M18.6 12h2.6M5.5 5.5l1.8 1.8M16.7 16.7l1.8 1.8M18.5 5.5l-1.8 1.8M7.3 16.7l-1.8 1.8"/></svg></button>
+      </div>
+
+      <div class="sidebar">
+        <div class="sidebar-header">插件市场</div>
+        <div class="ms-body">
+          <div class="ms-sec-head">▾ 已安装</div>
+          <div class="ms-item"><div class="mi-ic"><svg viewBox="0 0 24 24" fill="none" stroke="#4EC9B0" stroke-width="1.8"><rect x="4" y="5" width="16" height="12" rx="2"/><path d="M9 17v3M15 17v3M12 17v2"/></svg></div><div class="mi-nm">串口监视器 <span class="ver">v1.0.0</span></div></div>
+        </div>
+      </div>
+
+      <div class="main">
+        <div class="tabbar">
+          <div class="tab active">发行说明 v0.2.0 <span class="tab-close">✕</span></div>
+        </div>
+        <div class="rn">
+          <div class="rn-head">
+            <div>
+              <div class="rn-ver-title">v0.2.0<span class="ch">2026 年 8 月 30 日 · 稳定通道</span></div>
+              <div class="rn-meta">
+                <span class="ch-chip">稳定版</span>
+                <span>正在重新获取版本列表…</span>
+              </div>
+            </div>
+            <div class="rn-actions">
+              <button class="ghost-btn rn-refresh spinning" disabled aria-busy="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 5.5V11h-5.5"/></svg>
+                刷新中…
+              </button>
+              <button class="ghost-btn">在 GitHub 查看全部 →</button>
+            </div>
+          </div>
+          <div class="rn-body">
+            <div class="rn-hist">
+              <div class="rn-hist-head">版本历史</div>
+              <div class="rn-ver selected"><span class="v-new">新</span>v0.2.0<span class="v-date">08-30</span></div>
+              <div class="rn-ver">v0.1.0<span class="v-date">08-26</span></div>
+              <div class="rn-ver">v0.0.9<span class="v-date">08-20</span></div>
+              <div class="rn-all">所有版本 → GitHub ↗</div>
+            </div>
+            <div class="rn-content">
+              <div class="rn-sect">
+                <div class="rn-sect-title"><span class="st-badge st-new">新增</span>新能力</div>
+                <ul>
+                  <li><span class="li-dot">•</span><span><b>壳侧主软件更新</b>：启动/每 4 小时自动检查 GitHub Releases，发现新版本 → 通知面条目 + TitleBar「下载更新」按钮</span></li>
+                  <li><span class="li-dot">•</span><span>发行说明标签页：<b>首启新版本自动打开</b>，历史版本左栏可回看</span></li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="statusbar">
+      <span>就绪</span><span>发行说明 · 正在刷新版本列表…</span>
+      <span class="right"><span class="slot-name">发行说明</span> · 刷新中</span>
+    </div>
+  </div>
+
+  <div class="frame-note">
+    <b>① 正文不回骨架</b>——与 mockup 03 Frame 3 注 ③ 的既有约定一致（「缓存命中则先渲染缓存再静默刷新，<b>不回到骨架</b>」）。刷新期间正文与左栏都是旧数据照常可读、可点、可滚（<code>loadReleaseNotes</code> 现成就只在「当前不是 content」时才打 loading）。
+    <br><b>② 双通道反馈</b>：图标转圈（视觉）＋ 文字改「刷新中…」（语义）——<code>prefers-reduced-motion</code> 下动画关掉，文字仍在，状态不丢。
+    <br><b>③ 禁用 = 防连点</b>（<code>disabled</code> + <code>aria-busy</code>）；禁用态透明度下限 0.6，保证仍读得清——不用「灰到看不见」暗示不可用。
+    <br><b>④ 状态栏顺带一行</b>（「发行说明 · 正在刷新版本列表…」）——本页原本就在状态栏有位置（mockup 03 三帧都写了），沿用不新造。
+  </div>
+</div>
+
+<!-- ═══════════════ Frame 3：刷新完成 · 无新版 ═══════════════ -->
+<div class="frame">
+  <div class="frame-caption">
+    <b>Frame 3 · 刷新完成——列表没变（「已是最新」）</b>
+    <span class="tag new">本次增量</span>
+    <span>按钮回默认态 + 按钮左侧一行 muted 注；<b>不弹窗、不新造提示面</b></span>
+  </div>
+
+  <div class="app">
+    <div class="titlebar">
+      <svg class="logo" viewBox="0 0 16 16"><rect x="2" y="2" width="12" height="12" rx="2.5" fill="#0078D4"/><rect x="5" y="5" width="6" height="6" rx="1" fill="#fff"/></svg>
+      <span class="app-name">LinkDesk</span>
+      <button class="menu-btn">文件</button><button class="menu-btn">查看</button><button class="menu-btn">帮助</button>
+      <span class="drag"></span>
+      <span class="win-btn">─</span><span class="win-btn">□</span><span class="win-btn">✕</span>
+    </div>
+    <div class="mid">
+      <div class="icon-bar">
+        <button class="icon-btn active" title="插件市场"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg></button>
+        <div class="ib-sep"></div>
+        <button class="icon-btn" title="设置"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.6M12 18.6v2.6M2.8 12h2.6M18.6 12h2.6M5.5 5.5l1.8 1.8M16.7 16.7l1.8 1.8M18.5 5.5l-1.8 1.8M7.3 16.7l-1.8 1.8"/></svg></button>
+      </div>
+
+      <div class="sidebar">
+        <div class="sidebar-header">插件市场</div>
+        <div class="ms-body">
+          <div class="ms-sec-head">▾ 已安装</div>
+          <div class="ms-item"><div class="mi-ic"><svg viewBox="0 0 24 24" fill="none" stroke="#4EC9B0" stroke-width="1.8"><rect x="4" y="5" width="16" height="12" rx="2"/><path d="M9 17v3M15 17v3M12 17v2"/></svg></div><div class="mi-nm">串口监视器 <span class="ver">v1.0.0</span></div></div>
+        </div>
+      </div>
+
+      <div class="main">
+        <div class="tabbar">
+          <div class="tab active">发行说明 v0.2.0 <span class="tab-close">✕</span></div>
+        </div>
+        <div class="rn">
+          <div class="rn-head">
+            <div>
+              <div class="rn-ver-title">v0.2.0<span class="ch">2026 年 8 月 30 日 · 稳定通道</span></div>
+              <div class="rn-meta">
+                <span class="ch-chip">稳定版</span>
+                <span>上次拉取 09-14 10:03</span>
+              </div>
+            </div>
+            <div class="rn-actions">
+              <span class="rn-refresh-note">已是最新 · 刚刚</span>
+              <button class="ghost-btn rn-refresh" title="忽略缓存，重新获取版本列表">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 5.5V11h-5.5"/></svg>
+                刷新
+              </button>
+              <button class="ghost-btn">在 GitHub 查看全部 →</button>
+            </div>
+          </div>
+          <div class="rn-body">
+            <div class="rn-hist">
+              <div class="rn-hist-head">版本历史</div>
+              <div class="rn-ver selected"><span class="v-new">新</span>v0.2.0<span class="v-date">08-30</span></div>
+              <div class="rn-ver">v0.1.0<span class="v-date">08-26</span></div>
+              <div class="rn-ver">v0.0.9<span class="v-date">08-20</span></div>
+              <div class="rn-all">所有版本 → GitHub ↗</div>
+            </div>
+            <div class="rn-content">
+              <div class="rn-sect">
+                <div class="rn-sect-title"><span class="st-badge st-new">新增</span>新能力</div>
+                <ul>
+                  <li><span class="li-dot">•</span><span><b>壳侧主软件更新</b>：启动/每 4 小时自动检查 GitHub Releases，发现新版本 → 通知面条目 + TitleBar「下载更新」按钮</span></li>
+                  <li><span class="li-dot">•</span><span>发行说明标签页：<b>首启新版本自动打开</b>，历史版本左栏可回看</span></li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="statusbar">
+      <span>就绪</span><span>发行说明 · v0.2.0 · 已是最新</span>
+      <span class="right"><span class="slot-name">发行说明</span> · 上次拉取 10:03</span>
+    </div>
+  </div>
+
+  <div class="frame-note">
+    <b>① 「已是最新 · 刚刚」是一条就地 muted 注，不是 toast、不是弹窗</b>——本页已有状态栏一行可用；再开一个提示面就是「新造 UI 表面」（本仓红线：通知只有铃铛宽面板一处，页面内不自造）。
+    <br><b>② 文案带时间戳锚定</b>（「刚刚」→ 过一会儿转成「10:03」）——用户点完能确认「确实拉过了」，而不是怀疑按钮没反应。
+    <br><b>③ 若拉到了新版本</b>：左窄栏列表多一行、带既有 <code>v-new</code>「新」徽标（本图不必重画）；<b>是否自动跳到最新版，见设计文档 §五.1 待拍板</b>。
+  </div>
+</div>
+
+<!-- ═══════════════ Frame 4：刷新失败 ═══════════════ -->
+<div class="frame">
+  <div class="frame-caption">
+    <b>Frame 4 · 刷新失败——页面保留旧内容，错误落回唯一通知面</b>
+    <span class="tag new">本次增量</span>
+    <span>按钮回可用 + 状态栏一行；<b>不把整页打成空态</b>（有内容就不是断网）</span>
+  </div>
+
+  <div class="app">
+    <div class="titlebar">
+      <svg class="logo" viewBox="0 0 16 16"><rect x="2" y="2" width="12" height="12" rx="2.5" fill="#0078D4"/><rect x="5" y="5" width="6" height="6" rx="1" fill="#fff"/></svg>
+      <span class="app-name">LinkDesk</span>
+      <button class="menu-btn">文件</button><button class="menu-btn">查看</button><button class="menu-btn">帮助</button>
+      <span class="drag"></span>
+      <span class="win-btn">─</span><span class="win-btn">□</span><span class="win-btn">✕</span>
+    </div>
+    <div class="mid">
+      <div class="icon-bar">
+        <button class="icon-btn active" title="插件市场"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg></button>
+        <div class="ib-sep"></div>
+        <button class="icon-btn" title="设置"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.6M12 18.6v2.6M2.8 12h2.6M18.6 12h2.6M5.5 5.5l1.8 1.8M16.7 16.7l1.8 1.8M18.5 5.5l-1.8 1.8M7.3 16.7l-1.8 1.8"/></svg></button>
+      </div>
+
+      <div class="sidebar">
+        <div class="sidebar-header">插件市场</div>
+        <div class="ms-body">
+          <div class="ms-sec-head">▾ 已安装</div>
+          <div class="ms-item"><div class="mi-ic"><svg viewBox="0 0 24 24" fill="none" stroke="#4EC9B0" stroke-width="1.8"><rect x="4" y="5" width="16" height="12" rx="2"/><path d="M9 17v3M15 17v3M12 17v2"/></svg></div><div class="mi-nm">串口监视器 <span class="ver">v1.0.0</span></div></div>
+        </div>
+      </div>
+
+      <div class="main">
+        <div class="tabbar">
+          <div class="tab active">发行说明 v0.2.0 <span class="tab-close">✕</span></div>
+        </div>
+        <div class="rn">
+          <div class="rn-head">
+            <div>
+              <div class="rn-ver-title">v0.2.0<span class="ch">2026 年 8 月 30 日 · 稳定通道</span></div>
+              <div class="rn-meta">
+                <span class="ch-chip">稳定版</span>
+                <span>刷新失败 · 显示的是本地缓存（08-30 09:12）</span>
+              </div>
+            </div>
+            <div class="rn-actions">
+              <button class="ghost-btn rn-refresh" title="忽略缓存，重新获取版本列表">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 5.5V11h-5.5"/></svg>
+                刷新
+              </button>
+              <button class="ghost-btn">在 GitHub 查看全部 →</button>
+            </div>
+          </div>
+          <div class="rn-body">
+            <div class="rn-hist">
+              <div class="rn-hist-head">版本历史</div>
+              <div class="rn-ver selected"><span class="v-new">新</span>v0.2.0<span class="v-date">08-30</span></div>
+              <div class="rn-ver">v0.1.0<span class="v-date">08-26</span></div>
+              <div class="rn-ver">v0.0.9<span class="v-date">08-20</span></div>
+              <div class="rn-all">所有版本 → GitHub ↗</div>
+            </div>
+            <div class="rn-content">
+              <div class="rn-sect">
+                <div class="rn-sect-title"><span class="st-badge st-new">新增</span>新能力</div>
+                <ul>
+                  <li><span class="li-dot">•</span><span><b>壳侧主软件更新</b>：启动/每 4 小时自动检查 GitHub Releases，发现新版本 → 通知面条目 + TitleBar「下载更新」按钮</span></li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="statusbar">
+      <span>就绪</span><span>发行说明 · 刷新失败，已记入通知 · 下周期自动重试</span>
+      <span class="right"><span class="slot-name">发行说明</span> · 缓存 08-30</span>
+    </div>
+  </div>
+
+  <div class="frame-note">
+    <b>① 有内容就绝不打回空态</b>——空态（mockup 03 Frame 2）的成立前提是「<b>无缓存 + 拉不到</b>」。刷新失败时本地还有缓存 ⇒ 继续显示缓存，只在 <code>.rn-meta</code> 与状态栏如实说明「刷新失败 · 显示的是本地缓存（时间）」。
+    <br><b>② 失败详情落回唯一通知面</b>（铃铛宽面板条目「检查更新失败：…」+ [重试]，见 mockup 02 Frame 5）——<b>本页不自造错误条</b>。既有 <code>UpdateError</code> 通道现成，复用即可。
+    <br><b>③ 按钮立即回可用</b>：失败不允许把按钮永久禁用（那会让人以为坏了）；用户可以马上再点一次。
+    <br><b>④ 缓存时间戳是本帧的关键信息</b>：用户据此判断自己看到的是不是旧数据——这正是本需求要解决的痛点（「24h 内一直看旧」），所以失败态必须把它显出来。
+  </div>
+</div>
+
+</body>
+</html>
