@@ -1,7 +1,7 @@
 {
   "$schema": "../../public/schemas/plugin.schema.json",
   "name": "官方语言",
-  "version": "1.0.15",
+  "version": "1.0.16",
   "icon": "resources/icon.svg",
   "description": "出厂中文/English 语言包——可卸载，卸载后 t(key) 返回 key 原文",
   "author": "官方",
