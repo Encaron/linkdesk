@@ -41,6 +41,17 @@ const _lazyCache = new Map<string, React.ComponentType<PluginViewProps>>();
  *  （被展示的插件）——贡献视图由活跃 marketplace 插件渲染，resolvePath 要的是贡献插件根。
  */
 export function resolvePluginViewLoader(pluginId: string, renderPath?: string): (() => Promise<unknown>) | null {
+  // 🔴 #37f 边界诊断：pluginId 来自持久化布局 DTO，`string` 类型标注挡不住运行时坏数据
+  //   （2026-09-11~12 累计日志里 `[object Object]` 被当插件 id 六次——写入者未定位、现场已被探针覆盖）。
+  //   守卫做两件事：① 坏 id 不再发起 resolvePath / import（垃圾进垃圾出）；② 诊断打出**完整 JSON**
+  //   —— `"${pluginId}"` 模板串会把对象吃成 `[object Object]`，等于亲手抹掉线索。
+  if (typeof pluginId !== "string" || !pluginId) {
+    console.error(
+      `[PluginComponent] pluginId 非法（期望非空 string，收到 ${pluginId === null ? "null" : typeof pluginId}），拒绝加载。完整值：`,
+      JSON.stringify(pluginId, null, 1) ?? String(pluginId),
+    );
+    return null;
+  }
   let loader: (() => Promise<unknown>) | undefined;
 
   // 🔥 E6#62b：URL 轨直动态 import——renderPath 恒归一化 URL：
