@@ -16,6 +16,7 @@
  */
 
 import { readFileSync, readdirSync } from "fs";
+import { stripComments } from "./lib/strip-comments.mjs";
 import { resolve, dirname, extname } from "path";
 import { fileURLToPath } from "url";
 
@@ -85,8 +86,10 @@ function parseIpcObject(body, prefix, map) {
 }
 
 /** 解析 channels.ts → IPC 引用映射 */
-function loadIpcMap() {
-  const src = readFileSync(resolve(ROOT, "electron", "ipc", "channels.ts"), "utf-8");
+function loadIpcMap(source) {
+  // 🔴 先剥注释再解析（2026-09-13 修 5.1 登记项）——注释里的引号曾把括号配对吃坏、
+  //   后段通道组整体从映射消失（审计静默降级）。可选 source 参数 = 自测注入口。
+  const src = stripComments(source ?? readFileSync(resolve(ROOT, "electron", "ipc", "channels.ts"), "utf-8"));
   const map = {};
   const marker = src.indexOf("export const IPC = {");
   if (marker === -1) {
@@ -110,15 +113,6 @@ function buildGuardValues(ipcMap) {
     if (ipcMap[ref]) values.add(ipcMap[ref]);
   }
   return values;
-}
-
-/** 剥离行注释与块注释——注释里的示例 webContents.send 不算数（同 check-pool-css 模式）。
- *  注释内容以空格占位保留换行——剥离后行号仍对应原文件。 */
-function stripComments(src) {
-  let out = src;
-  out = out.replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, " ")); // 块注释（含跨行）
-  out = out.replace(/(^|[^:])\/\/[^\n]*/g, "$1"); // 行注释（避开 http:// 的 //）
-  return out;
 }
 
 function main() {
@@ -183,4 +177,37 @@ function main() {
   console.log(`✅ IPC 审计干净——数据推流通道 ${files.length} 文件零裸 webContents.send。`);
 }
 
-main();
+/**
+ * 自测——`--self-test`：注释剥离回归钉（2026-09-13 修 5.1 登记项）。
+ * 样本 = 注释里带引号（中文引号场景的等价物：半角双引号 + 撇号）+ 后段还有一个完整通道组。
+ * 判据：① 剥离后 ipcMap 仍含后段组（旧实现会丢）② 引号不再泄漏进字符串值 ③ 等长替换（偏移不变）。
+ */
+function selfTest() {
+  const sample = [
+    "export const IPC = {",
+    "  serial: {",
+    "    // 用户\"未关闭\"提示 — don't swallow this brace: {",
+    "    data: 'serial:data',",
+    "  },",
+    "  /* block comment with \"quote\" and { brace */",
+    "  window: {",
+    "    close: 'window:close',",
+    "  },",
+    "};",
+  ].join("\n");
+  const map = loadIpcMap(sample);
+  const fail = [];
+  if (map["IPC.serial.data"] !== "serial:data") fail.push("serial:data 丢失");
+  if (map["IPC.window.close"] !== "window:close") fail.push("window:close 丢失（注释引号吃坏了配对）");
+  if (fail.length) {
+    console.error("❌ 自测失败：" + fail.join("；"));
+    process.exit(1);
+  }
+  console.log("✅ 自测全过——注释带引号的样本上后段通道组完整存活（旧实现会丢 window 组）。");
+}
+
+if (process.argv.includes("--self-test")) {
+  selfTest();
+} else {
+  main();
+}
