@@ -93,6 +93,29 @@ describe("WorkspaceService 每窗维度（E6#47e）", () => {
     });
   });
 
+  it("E6#47b-2：带 ?folder= 参数启动 → 首帧载入该工程（恢复为空也载入）", async () => {
+    window.history.replaceState(null, "", "/?folder=C:/demo-project-x");
+    try {
+      await mod.initWorkspaceService();
+      expect(mod.getWorkspaceFolders()).toContainEqual({
+        uri: "C:/demo-project-x", name: "demo-project-x", index: 0,
+      });
+    } finally {
+      window.history.replaceState(null, "", "/");
+    }
+  });
+
+  it("E6#47b-2：参数工程与恢复项并存时不重复（addFolder 去重）", async () => {
+    storageFiles.set("workspace-folders:ws-1", FOLDERS);
+    window.history.replaceState(null, "", "/?folder=C:/demo-project-a");
+    try {
+      await mod.initWorkspaceService();
+      expect(mod.getWorkspaceFolders().filter((f) => f.uri === "C:/demo-project-a")).toHaveLength(1);
+    } finally {
+      window.history.replaceState(null, "", "/");
+    }
+  });
+
   it("窗 id 格式校验——location 带 wsWindow=ws-2 → key 用 ws-2；脏值回落 ws-1", async () => {
     window.history.replaceState(null, "", "/?wsWindow=ws-2");
     try {

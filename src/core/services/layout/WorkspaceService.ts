@@ -214,6 +214,14 @@ function activeWorkspaceKey(): string {
   return `activeWorkspace:${getWorkspaceWindowId()}`;
 }
 
+/** E6#47b-2：启动文件夹参数（`?folder=…`，主进程 createWorkspaceWindow/createWindow 下发）——非窗环境空串 */
+function readLaunchFolderParam(): string {
+  try {
+    const raw = new URLSearchParams(window.location.search).get("folder");
+    return raw && raw.trim() ? raw : "";
+  } catch { return ""; }
+}
+
 /** 将 _folders 写入 StorageService——退出/重启后恢复（与 LayoutService/PluginStateService 同路径） */
 function _persistFolders(): void {
   write(foldersStorageKey(), _folders)
@@ -243,7 +251,14 @@ export async function initWorkspaceService(): Promise<void> {
       }
       void setPluginStateValue(APP_PLUGIN_ID, migratedFlagKey, true).catch(() => {});
     }
-    if (!saved || !Array.isArray(saved) || saved.length === 0) return;
+    // E6#47b-2：带 folder 参数启动（主进程建窗时下发）→ 首帧载入该工程。
+    // 放在「恢复为空直接 return」之后——两件事互不依赖；恢复有内容时参数与恢复项去重（addFolder 内建）。
+    const launchFolder = readLaunchFolderParam();
+
+    if (!saved || !Array.isArray(saved) || saved.length === 0) {
+      if (launchFolder) addFolder(launchFolder);
+      return;
+    }
 
     // 验证磁盘上文件夹仍存在——已删除的跳过
     const valid: WorkspaceFolder[] = [];
@@ -293,6 +308,9 @@ export async function initWorkspaceService(): Promise<void> {
 
     // 联动 workspace root
     setWorkspaceRoot(valid[0].uri);
+
+    // E6#47b-2：参数工程与恢复项互不依赖——恢复成功时同样要载入（addFolder 自带去重/包含检查）
+    if (launchFolder) addFolder(launchFolder);
   } catch (e) {
     console.error("[Workspace] 恢复工作区文件夹失败:", e);
     // 降级：从空开始，不崩启动

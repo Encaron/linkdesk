@@ -68,35 +68,18 @@ let _lastZoomFactor = 1;
 let _keyboardSyncRegistered = false;
 let _shellIpcRegistered = false;
 
-function createWindow(): void {
+/**
+ * 创建壳窗。E6#47b-2：`workspaceFolder` = 首窗要载入的工程文件夹（命令行/右键/恢复第一条）；
+ * 首窗不带 `?wsWindow=` 参数（等价隐式 ws-1，与 WorkspaceService 的回落值同源）。
+ */
+function createWindow(workspaceFolder?: string): void {
   // E3f #51：标题栏暗色化——跟随 LinkDesk 暗色主题
   nativeTheme.themeSource = 'dark';
   // E3f #52：去掉 Electron 默认菜单栏（File/Edit/View/Window）——LinkDesk 用自己的
   Menu.setApplicationMenu(null);
 
   // E5.7#36：local win——closed 处理器需身份校验（旧窗销毁不得清掉重建后的新引用）
-  const win = new BrowserWindow({
-    width: 1400,
-    height: 900,
-    minWidth: 800,
-    minHeight: 500,
-    icon: isDev
-      ? path.join(__dirname, '../../build/icon.ico')
-      : path.join(process.resourcesPath, 'icon.ico'), // 打包后 icon.ico 在 extraResources，不在 ASAR 中
-    frame: false, // E3f #52f：隐藏原生窗口框架——LinkDesk 自己画 TitleBar
-    // E5.8#6.6 hex 豁免：主进程窗口初始背景色（OS 层，渲染进程 CSS 变量不可达；E3f #51 防启动白屏）
-    // eslint-disable-next-line linkdesk/no-hardcoded-hex
-    backgroundColor: '#1e1e1e', // E3f #51：暗色背景——消除启动白屏
-    webPreferences: {
-      preload: path.join(__dirname, 'preload-shell.js'),
-      contextIsolation: true,
-      nodeIntegration: false,
-      sandbox: false, // preload 需要访问 Node.js API 做 contextBridge
-      backgroundThrottling: false, // E2c fix：禁止 Chromium 节流后台定时器——心跳看门狗失焦时误判"无响应"
-    },
-    title: 'LinkDesk',
-    show: false, // ready-to-show 后再显示，避免白屏闪烁
-  });
+  const win = new BrowserWindow(shellWindowOptions());
   mainWindow = win; // E5.7#36：壳崩重建复用 createWindow——模块引用先指向新窗
 
   // E6#46b：冲刷启动早期缓冲的 intake 文件——did-finish-load 时 preload 模块顶层监听必已注册
@@ -153,10 +136,12 @@ function createWindow(): void {
   }
 
   // ── 加载内容：dev 模式从 Vite dev server，prod 模式从 dist/ ──
+  // E6#47b-2：带 folder 启动 → 查询参数下发（壳 WorkspaceService 首帧读参数 addFolder）
+  const firstWinQuery = workspaceFolder ? `?${new URLSearchParams({ folder: workspaceFolder })}` : '';
   if (isDev) {
-    win.loadURL(DEV_SERVER_URL);
+    win.loadURL(`${DEV_SERVER_URL}${firstWinQuery}`);
   } else {
-    win.loadFile(path.join(__dirname, '../../dist/index.html'));
+    win.loadFile(path.join(__dirname, '../../dist/index.html'), workspaceFolder ? { query: { folder: workspaceFolder } } : undefined);
   }
 
   // ready-to-show 后才显示窗口
@@ -168,13 +153,7 @@ function createWindow(): void {
   // E6#37e（2026-09-12）：改用新签名——后几个参数已收进事件对象。
   //   旧签名 `(_event, _level, message)` 会打 `DeprecationWarning`（实测见
   //   E6-执行清单 #37e 判据①）。本处只用 message，故直接读 `event.message`。
-  win.webContents.on('console-message', (event) => {
-    try {
-      const logFile = path.join(app.getPath('userData'), 'protocol-debug.log');
-      const ts = new Date().toISOString();
-      fs.appendFileSync(logFile, `[${ts}] [renderer] ${event.message}\n`);
-    } catch { /* ignore */ }
-  });
+  forwardShellConsoleToFile(win); // E6#47b-2：与 workspace 窗共用同一实现（去重）
 
   // E3f #52f：自定义窗口控制（─ □ ×）——TitleBar 按钮 → 主进程窗口操作
   // E5.8#43-2（B3）：按发送者路由——池 TitleBarZone 按钮来自哪个 Pool 窗口就作用于哪个宿主窗
@@ -477,16 +456,106 @@ protocol.registerSchemesAsPrivileged([
 
 // ── 应用生命周期 ──
 /**
+ * E6#47b-2：壳窗 BrowserWindow 公共选项（首窗 / workspace 窗同源——改一处两窗同变）。
+ * 色值走 hex 豁免（OS 层窗口背景，渲染进程 CSS 变量不可达；防启动白屏）。
+ */
+function shellWindowOptions(): Electron.BrowserWindowConstructorOptions {
+  return {
+    width: 1400,
+    height: 900,
+    minWidth: 800,
+    minHeight: 500,
+    icon: isDev
+      ? path.join(__dirname, '../../build/icon.ico')
+      : path.join(process.resourcesPath, 'icon.ico'), // 打包后 icon.ico 在 extraResources，不在 ASAR 中
+    frame: false, // E3f #52f：隐藏原生窗口框架——LinkDesk 自己画 TitleBar
+    // E5.8#6.6 hex 豁免：主进程窗口初始背景色（OS 层，渲染进程 CSS 变量不可达；E3f #51 防启动白屏）
+    // eslint-disable-next-line linkdesk/no-hardcoded-hex
+    backgroundColor: '#1e1e1e', // E3f #51：暗色背景——消除启动白屏
+    webPreferences: {
+      preload: path.join(__dirname, 'preload-shell.js'),
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: false, // preload 需要访问 Node.js API 做 contextBridge
+      backgroundThrottling: false, // E2c fix：禁止 Chromium 节流后台定时器——心跳看门狗失焦时误判"无响应"
+    },
+    title: 'LinkDesk',
+    show: false, // ready-to-show 后再显示，避免白屏闪烁
+  };
+}
+
+/** E6#47b-2：workspace 窗自增标识——首窗隐式 ws-1（不带参数），新建窗从 ws-2 起。 */
+let _nextWorkspaceId = 2;
+
+/**
+ * E6#47b-2：新建 workspace 窗（一个 Electron 进程 + 多 BrowserWindow 的「第二窗起」路径）。
+ *
+ * 与首窗的差异（都是有意为之，别「顺手统一」）：
+ *   · 不带 IPCs 注册块——全部 handler 已在首窗创建时注册且幂等（WindowManager/IpcBridge 单实例，
+ *     它们按 windowId / sender 路由，天然多窗）；重复注册会把「主壳回退引用」指向新窗（错）。
+ *   · 带 `?wsWindow=ws-N`（壳据此派生每窗持久化 key，见 #47e）+ `folder`（该窗要载入的工程）。
+ *   · 池注册表 key = ws-N（全局唯一）；壳内视角仍叫 'main'（pool-addressing 双向翻译）。
+ */
+function createWorkspaceWindow(workspaceFolder: string): void {
+  if (!windowManager) return; // 启动序保证：只在首窗创建后调用（whenReady/second-instance）
+  const wsId = `ws-${_nextWorkspaceId++}`;
+
+  const win = new BrowserWindow(shellWindowOptions());
+
+  // 壳注册（池创建之前——键盘路由按 windowId 反查所属壳依赖它）+ focus 焦点窗跟随 + closed 摘表
+  windowManager.registerWorkspaceShell(win, wsId);
+  windowManager.createWorkspacePool(wsId);
+
+  // 缩放跟随（与首窗同款重放；工作窗池不跨重建，无需缓存）
+  if (_lastZoomFactor !== 1) {
+    const poolView = windowManager.getPoolViewByWindowId(wsId);
+    if (poolView && !poolView.webContents.isDestroyed()) {
+      poolView.webContents.setZoomFactor(_lastZoomFactor);
+    }
+  }
+
+  forwardShellConsoleToFile(win);
+  win.once('ready-to-show', () => {
+    if (!win.isDestroyed()) win.show();
+  });
+  // 关窗清理：池 WCV 不随宿主 BrowserWindow 自动销毁（registerPool 挂在其 contentView 上）
+  win.on('closed', () => {
+    windowManager?.destroyWorkspacePool(wsId);
+  });
+
+  const query = new URLSearchParams({ wsWindow: wsId, folder: workspaceFolder });
+  if (isDev) {
+    win.loadURL(`${DEV_SERVER_URL}/?${query}`);
+  } else {
+    win.loadFile(path.join(__dirname, '../../dist/index.html'), { query: { wsWindow: wsId, folder: workspaceFolder } });
+  }
+  console.log(`[main] workspace 窗已创建 ${wsId} folder=${workspaceFolder}`);
+}
+
+/** E6#47b-2：壳渲染进程 console 转发到 protocol-debug.log（首窗/工作窗共用，防两处漂移） */
+function forwardShellConsoleToFile(win: BrowserWindow): void {
+  win.webContents.on('console-message', (event) => {
+    try {
+      const logFile = path.join(app.getPath('userData'), 'protocol-debug.log');
+      const ts = new Date().toISOString();
+      fs.appendFileSync(logFile, `[${ts}] [renderer] ${event.message}\n`);
+    } catch { /* ignore */ }
+  });
+}
+
+/**
  * E6#46a：intake 路由器——三条源（启动 argv / second-instance / macOS open-file）统一走这里，
  * 只允许这一个路由逻辑（归一化，不许每源各写一份）。
  *   folders → #47 开新窗；files → pendingOpenFiles 缓存，#46b 壳侧消费。
- * ⚠️ 两处接线点尚有后手，落地格内收口，不许静默吞掉：
- *   · folders 分支：createWorkspaceWindow 未落地（#47b），暂以 console 占位、行为回退聚焦；
- *   · files 分支：壳侧消费通道未注册（#46b），暂存 pendingOpenFiles。
+ * E6#47b-2 收口：folders → createWorkspaceWindow（各开一窗）；files → 直投壳/启动早期缓存。
  */
 function routeLaunchItems(items: LaunchPaths): void {
   if (items.folders.length > 0) {
-    console.log(`[launch-args] 文件夹 intake ${items.folders.length} 项（E6#47a 接线前回退聚焦）: ${items.folders.join(', ')}`);
+    // E6#47a 收口：文件夹 → 各开一个新窗（对标 code C:\projectA + code C:\projectB）
+    for (const folder of items.folders) {
+      createWorkspaceWindow(folder);
+      console.log(`[launch-args] 文件夹 intake 开新窗: ${folder}`);
+    }
   }
   if (items.files.length > 0) {
     // E6#46b：窗在 → 直投壳（preload 模块顶层监听已注册，IpcRelay 兜 React 订阅前的窗口期）；
@@ -531,9 +600,12 @@ app.whenReady().then(async () => {
   // 主进程三表数据天然存活、无需重扫。
   registerManifestRescanHandler();
   loadAllPluginManifests();
-  // E6#46a：启动 argv intake——文件关联双击 / 右键菜单 / 命令行带参启动（slice(1) 跳过 exe 本体）
-  routeLaunchItems(parseLaunchPaths(process.argv.slice(1)));
-  createWindow();
+  // E6#46a/#47a：启动 argv intake——文件关联双击 / 右键菜单 / 命令行带参启动（slice(1) 跳过 exe 本体）。
+  // 文件夹参数 = 窗口：首窗直接载入 folders[0]（无参数则空窗；也不读恢复记录——有显式意图），
+  // 其余文件夹各开一窗（routeLaunchItems 统一走 createWorkspaceWindow）。
+  const launchPaths = parseLaunchPaths(process.argv.slice(1));
+  createWindow(launchPaths.folders[0]);
+  routeLaunchItems({ files: launchPaths.files, folders: launchPaths.folders.slice(1) });
 });
 
 app.on('window-all-closed', () => {

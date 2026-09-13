@@ -340,6 +340,26 @@ export class WindowManager {
     return this.registerPool(this.mainWindow, 'main', 'pool');
   }
 
+  /**
+   * E6#47b-2：为某个 workspace 壳窗创建它的池（调用前须已 registerWorkspaceShell——键盘路由反查依赖）。
+   * 池注册表 key = wsWindowId（全局唯一）；返回 null = 壳未注册/已销毁（调用方按失败处理，不静默开空窗）。
+   */
+  createWorkspacePool(wsWindowId: string): WebContentsView | null {
+    const shell = this.workspaceShells.get(wsWindowId);
+    if (!shell || shell.isDestroyed()) {
+      console.error(`[WindowManager] createWorkspacePool 失败：壳 "${wsWindowId}" 未注册或已销毁`);
+      return null;
+    }
+    const existing = this.poolWindows.get(wsWindowId);
+    if (existing) return existing.view;
+    return this.registerPool(shell, wsWindowId, `workspace:${wsWindowId}`);
+  }
+
+  /** E6#47b-2：销毁某 workspace 壳窗的池——池 WCV 挂在宿主 contentView 上，不随 BrowserWindow 自动销毁 */
+  destroyWorkspacePool(wsWindowId: string): void {
+    this.destroyPoolWindow(wsWindowId);
+  }
+
   /** E5.7#12.5：某 Pool 窗口满窗零偏移——bounds 换主进程，默认主池。resize 跟随按 windowId 定向。 */
   private syncPoolBounds = (windowId = 'main'): void => {
     const entry = this.poolWindows.get(windowId);
