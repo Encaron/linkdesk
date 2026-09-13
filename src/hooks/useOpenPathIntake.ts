@@ -24,6 +24,22 @@ function basenameOf(filePath: string): string {
   return normalized.split("/").pop() || normalized;
 }
 
+/**
+ * E6#46b 焦点优先级：本会话已经过 intake 成功打开过文件 = 用户有「显式打开文件」的意图。
+ * 消费方 = `releaseNotesOnLaunch`（首启自动弹不得抢焦点盖在用户的文件上）。
+ * 会话级单调标记——只置 true，不复位（发行说明自动弹只在启动期跑一次，够用）。
+ */
+let _hasOpenedFiles = false;
+
+export function hasOpenedFilesThisSession(): boolean {
+  return _hasOpenedFiles;
+}
+
+/** 测试辅助：复位/预置单调标记（同 `__resetReleaseNotesLaunchForTest` 既有先例） */
+export function __setFilesOpenedForTest(v: boolean): void {
+  _hasOpenedFiles = v;
+}
+
 export function useOpenPathIntake(): void {
   useEffect(() => {
     // ⚠️ intake 是壳内私有扩展，不在插件契约 LinkDeskAPI 上 ⇒ 必须经 getShellExposed() 取
@@ -45,6 +61,7 @@ export function useOpenPathIntake(): void {
       const dot = name.lastIndexOf(".");
       const ext = dot > 0 ? name.slice(dot + 1).toLowerCase() : "";
       const pluginId = ext ? await lk.fileAssociation.getPluginFor(ext) : "";
+      _hasOpenedFiles = true;
       shellEvents.emit("tab:openOrFocus", {
         type: pluginId || DEFAULT_TAB_TYPE,
         opts: { filePath, sourceId: filePath, label: name, pinned: true },

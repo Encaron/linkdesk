@@ -36,6 +36,7 @@
 import { getConfigurationValue } from "../core/services/configuration/ConfigurationService";
 import { getShellExposed } from "../core/api/linkdesk-api/surfaces";
 import { openReleaseNotesTab } from "../core/commands/shell/releaseNotesCommands";
+import { hasOpenedFilesThisSession } from "../hooks/useOpenPathIntake"; // E6#46b 焦点优先级闸门
 import {
   getReleaseNotesState, prewarmReleaseNotes, readLastSeenVersion, writeLastSeenVersion,
 } from "../hooks/useReleaseNotes";
@@ -56,6 +57,16 @@ async function _run(): Promise<void> {
   // ── 开关只挡「弹」，不挡「预热」（见文件头）──
   const showOnLaunch = getConfigurationValue<boolean>(SHOW_SETTING) !== false;
   if (!showOnLaunch) {
+    prewarmReleaseNotes();
+    return;
+  }
+
+  // E6#46b：**用户显式打开文件的意图优先**——本会话已经过 intake 开了文件（命令行/文件关联/
+  // 右键「Open with LinkDesk」），说明这次启动带着用户点名要的东西；发行说明若照常自动弹
+  // 会**抢焦点**盖在用户的文件上（2026-09-13 CDP 实测复现：intake 标签已开，activeTab 却被
+  // 发行说明顶掉）。⇒ 只预热不弹、**不记账**——这版说明用户还没看过，下次正常启动（没带
+  // 文件）照旧自动弹一次，05 §2.5「只弹一次」的账不被这次跳过烧掉。
+  if (hasOpenedFilesThisSession()) {
     prewarmReleaseNotes();
     return;
   }

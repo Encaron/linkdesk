@@ -43,6 +43,7 @@ import { getConfigurationValue } from "../core/services/configuration/Configurat
 import { getReleaseNotesState, prewarmReleaseNotes, readLastSeenVersion, writeLastSeenVersion } from "../hooks/useReleaseNotes";
 import { openReleaseNotesTab } from "../core/commands/shell/releaseNotesCommands";
 import { __resetReleaseNotesLaunchForTest, initReleaseNotesOnLaunch } from "./releaseNotesOnLaunch";
+import { __setFilesOpenedForTest } from "../hooks/useOpenPathIntake"; // E6#46b 焦点优先级闸门
 
 /** 应用当前版本（= `app.getVersion()`，也就是**记账该写的那个值**） */
 const VERSION = "9.9.9";
@@ -71,6 +72,7 @@ function installShell(app: { getVersion: () => Promise<string> } | null = { getV
 beforeEach(() => {
   vi.clearAllMocks();
   __resetReleaseNotesLaunchForTest();
+  __setFilesOpenedForTest(false); // E6#46b 闸门逐用例复位
   mockConfig.mockReturnValue(true as never);
   mockReadSeen.mockResolvedValue(null);
   mockState.mockReturnValue({ state: "empty" } as PoolReleaseNotesData);
@@ -104,6 +106,15 @@ describe("releaseNotesOnLaunch（决策表）", () => {
     expect(mockOpen).toHaveBeenCalledTimes(1);
     // 记了这笔账 ⇒ 下次启动版本号相同 ⇒ 直接 return ⇒ 用户再也不会被弹（与 05 §2.5 相反）
     expect(mockWriteSeen).not.toHaveBeenCalled();
+  });
+
+  it("E6#46b：本会话已经 intake 开过文件 → 不弹、不记账，只预热（用户显式打开的文件优先，不被自动弹抢焦点）", async () => {
+    __setFilesOpenedForTest(true);
+    await initReleaseNotesOnLaunch();
+
+    expect(mockOpen).not.toHaveBeenCalled();
+    expect(mockWriteSeen).not.toHaveBeenCalled(); // 🔴 不记账——这版说明用户还没看过，下次正常启动照旧弹
+    expect(mockPrewarm).toHaveBeenCalledTimes(1);
   });
 
   it("版本相同 → 不开、不记账，但**照常预热**（用户随时可能自己点菜单打开）", async () => {
