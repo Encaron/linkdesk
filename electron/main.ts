@@ -655,7 +655,8 @@ app.on('activate', () => {
 
 // 第二个实例启动时 → 解析其 argv 并路由（E6#46a）；无路径参数时维持聚焦行为
 app.on('second-instance', (_event, argv) => {
-  routeLaunchItems(parseLaunchPaths(argv));
+  // 🔴 argv[0] 是 exe 自身（Windows 实证：不切会把 LinkDesk.exe 当成文件开出一个编辑器标签）
+  routeLaunchItems(parseLaunchPaths(argv.slice(1)));
   if (mainWindow) {
     if (mainWindow.isMinimized()) mainWindow.restore();
     mainWindow.focus();

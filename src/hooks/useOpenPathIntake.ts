@@ -40,8 +40,11 @@ export function __setFilesOpenedForTest(v: boolean): void {
   _hasOpenedFiles = v;
 }
 
-export function useOpenPathIntake(): void {
+export function useOpenPathIntake(ready: boolean): void {
   useEffect(() => {
+    // 🔴 ready 门：标签页恢复（restoreLayout）会把 tabState 整体替换——开文件若跑在它之前，标签被抹掉
+    //（2026-09-13 真机实证）。IpcRelay 在 preload 端着缓冲，等 ready 期间的文件不丢（硬约束 20 的用法）。
+    if (!ready) return;
     // ⚠️ onOpenPath 是壳内私有扩展，不在插件契约 LinkDeskAPI 上 ⇒ 必须经 getShellExposed() 取
     //（useReleaseNotes 的 getProductInfo 同款，不能直接 window.linkdesk.shell）。
     const lk = getShellExposed();
@@ -74,5 +77,5 @@ export function useOpenPathIntake(): void {
         for (const p of paths) await openOne(p);
       })();
     });
-  }, []);
+  }, [ready]);
 }

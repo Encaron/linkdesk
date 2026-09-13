@@ -68,7 +68,7 @@ const DEFAULT_TYPE = "editor"; // DEFAULT_TAB_TYPE 政策常量的现行值—�
 describe("useOpenPathIntake（E6#46b 壳侧 intake 消费）", () => {
   it("有插件关联 → tab:openOrFocus 带该插件 id + filePath/sourceId/label", async () => {
     const stub = installStub({ exists: () => true, pluginFor: async () => "demo-plugin" });
-    const { unmount } = renderHook(() => mod.useOpenPathIntake());
+    const { unmount } = renderHook(() => mod.useOpenPathIntake(true));
 
     await act(async () => { stub.emit(["/tmp/demo/file.xyz"]); });
 
@@ -85,7 +85,7 @@ describe("useOpenPathIntake（E6#46b 壳侧 intake 消费）", () => {
 
   it("无插件关联 → 走 DEFAULT_TAB_TYPE 编辑器兜底（不写字面量插件 id 的开关在壳政策常量）", async () => {
     const stub = installStub({ exists: () => true, pluginFor: async () => "" });
-    const { unmount } = renderHook(() => mod.useOpenPathIntake());
+    const { unmount } = renderHook(() => mod.useOpenPathIntake(true));
 
     await act(async () => { stub.emit(["/tmp/demo/unknown.zzz"]); });
 
@@ -96,7 +96,7 @@ describe("useOpenPathIntake（E6#46b 壳侧 intake 消费）", () => {
 
   it("同批多路径逐条处理；无扩展名 → 直接兜底", async () => {
     const stub = installStub({ exists: () => true, pluginFor: async () => "demo-plugin" });
-    const { unmount } = renderHook(() => mod.useOpenPathIntake());
+    const { unmount } = renderHook(() => mod.useOpenPathIntake(true));
 
     await act(async () => { stub.emit(["/tmp/demo/a.xyz", "/tmp/demo/Makefile"]); });
 
@@ -108,7 +108,7 @@ describe("useOpenPathIntake（E6#46b 壳侧 intake 消费）", () => {
 
   it("文件已不存在 → 不 emit（静默跳过）", async () => {
     const stub = installStub({ exists: () => false, pluginFor: async () => "demo-plugin" });
-    const { unmount } = renderHook(() => mod.useOpenPathIntake());
+    const { unmount } = renderHook(() => mod.useOpenPathIntake(true));
 
     await act(async () => { stub.emit(["/tmp/demo/gone.xyz"]); });
 
@@ -116,14 +116,25 @@ describe("useOpenPathIntake（E6#46b 壳侧 intake 消费）", () => {
     unmount();
   });
 
+  it("🔴 ready 门：未 ready 时不订阅（标签恢复会抹掉提前开的标签）", async () => {
+    const stub = installStub({ exists: () => true, pluginFor: async () => "demo-plugin" });
+    const { rerender, unmount } = renderHook(({ ready }: { ready: boolean }) => mod.useOpenPathIntake(ready), {
+      initialProps: { ready: false },
+    });
+    expect(stub.subscriberCount()).toBe(0); // 未 ready ⇒ 不订阅（IpcRelay 在 preload 端着缓冲，不丢）
+    rerender({ ready: true });
+    expect(stub.subscriberCount()).toBe(1);
+    unmount();
+  });
+
   it("退订后不再接收；无 shell 面（非壳环境）→ 不挂不抛", async () => {
     const stub = installStub({ exists: () => true, pluginFor: async () => "" });
-    const { unmount } = renderHook(() => mod.useOpenPathIntake());
+    const { unmount } = renderHook(() => mod.useOpenPathIntake(true));
     expect(stub.subscriberCount()).toBe(1);
     unmount();
     expect(stub.subscriberCount()).toBe(0);
 
     delete (window as unknown as { linkdesk?: unknown }).linkdesk;
-    expect(() => renderHook(() => mod.useOpenPathIntake()).unmount()).not.toThrow();
+    expect(() => renderHook(() => mod.useOpenPathIntake(true)).unmount()).not.toThrow();
   });
 });

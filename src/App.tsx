@@ -54,7 +54,6 @@ function App() {
   useUpdateNotifications();
   // E6#46b：命令行/文件关联 intake 消费——文件 → fileAssociation → tab:openOrFocus；
   // 文件夹已在主进程路由层分去开新窗（#47a/#47b），本 hook 只收文件。
-  useOpenPathIntake();
   const [, setTheme] = useState<string>("dark"); // E5.8#50.21：初始 = 壳内置配方 id（启动后由 app.theme 覆盖）
   const [, setLang] = useState<"zh" | "en">("zh");
 
@@ -183,6 +182,10 @@ function App() {
 
   // E5.8#0d.10-3g：标签页动作（图标直开/TabActions 桥接）+ 启动恢复——迁入 src/App/tabActions.ts
   useTabActions({ ready, createTab, openOrFocusTab, focusTab, closeTab, focusTabBySourceId: stableSourceIdRouters.focusTabBySourceId, restoreLayout, setPanelActiveViewId });
+  // E6#46b：intake 消费**必须排在 useTabActions 之后**——ready 翻真的那一次 commit 里，
+  // 标签页恢复（restoreLayout 整体替换 tabState）先跑、文件开标签后跑；反了就被恢复抹掉
+  //（2026-09-13 真机实证：带文件启动后标签消失，dev 空 profile 测不出来）。
+  useOpenPathIntake(ready);
 
   // E5#5c：包装 focusTab——emit tab:focused 通知状态栏
   const handleFocusTab = useMemo(
