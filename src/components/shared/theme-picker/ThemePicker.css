@@ -86,7 +86,11 @@
   white-space: nowrap;
 }
 
-.theme-card .badge {
+/* 纯文字徽标——**类名必须带命名空间**，不可叫 .badge。
+   壳的 Badge 组件（badge/Badge.css）占用 .badge = 实心 accent 药丸（background + padding + 圆角）；
+   插件视图（如设置页）会把 @linkdesk/ui 的样式与自己的样式打进同一张表，
+   裸 .badge 两条规则同时命中 → 紫底紫字，徽标文字被自己的背景吞成"一块纯色"。 */
+.theme-card .tbadge {
   font-size: var(--font-size-2xs); /* E5.8 Phase 12 #170：badge 9→2xs */
   color: var(--accent);
   white-space: nowrap;

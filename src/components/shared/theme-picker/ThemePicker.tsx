@@ -127,7 +127,7 @@ function ThemePicker({ value, onChange }: ThemePickerProps) {
             </div>
             <div className="tname">
               <span className="tname-name">{recipe.name}</span>
-              <span className="badge">
+              <span className="tbadge">
                 {single
                   ? (recipe.colorways[0]?.name ?? "")
                   : t("{{count}} 配色", { count: recipe.colorways.length })}

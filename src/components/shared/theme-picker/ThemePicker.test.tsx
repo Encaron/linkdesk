@@ -46,7 +46,7 @@ describe("ThemePicker", () => {
     const card = container.querySelector(".theme-card")!;
     expect(card.querySelectorAll(".pv-bar")).toHaveLength(3);
     expect(card.querySelectorAll(".pv-dot")).toHaveLength(0);
-    expect(card.querySelector(".badge")?.textContent).toBe("Gamma");
+    expect(card.querySelector(".tbadge")?.textContent).toBe("Gamma");
   });
 
   it("多配色配方——圆点（≤6）+ 计数徽标", async () => {
@@ -57,7 +57,7 @@ describe("ThemePicker", () => {
     });
     const card = container.querySelector(".theme-card")!;
     expect(card.querySelectorAll(".pv-dot")).toHaveLength(2);
-    expect(card.querySelector(".badge")?.textContent).toContain("2");
+    expect(card.querySelector(".tbadge")?.textContent).toContain("2");
   });
 
   it("value 匹配 → 选中态（active class + aria-pressed）", async () => {
