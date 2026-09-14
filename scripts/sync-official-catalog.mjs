@@ -123,6 +123,15 @@ function versionRank(a, b) {
   return 0;
 }
 
+/** 键排序的稳定序列化——用于**内容比较**（同一份数据被不同写入者落盘时键序可能不同，直接 stringify 会假不等） */
+function stableStringify(value) {
+  if (Array.isArray(value)) return `[${value.map(stableStringify).join(",")}]`;
+  if (value && typeof value === "object") {
+    return `{${Object.keys(value).sort().map((k) => `${JSON.stringify(k)}:${stableStringify(value[k])}`).join(",")}}`;
+  }
+  return JSON.stringify(value);
+}
+
 /** 只在版本更高时替换（同版不换、更低不换——防把官方目录往回退） */
 export function pickHigher(current, incoming) {
   if (!current) return incoming;
@@ -145,6 +154,7 @@ export function mergeCatalogs(official, ours, { repoForId }) {
 
   const added = [];
   const changed = [];
+  const metadataUpdated = [];
   const unchanged = [];
   const keptForeign = [];
   const byId = new Map();
@@ -172,6 +182,27 @@ export function mergeCatalogs(official, ours, { repoForId }) {
     }
     const better = pickHigher(existing, entry);
     if (better === existing) {
+      /* E6#106：**同版本但内容有变 ⇒ 采用**（此前的「版本比高者胜」会把这类更新整条跳过）。
+       *
+       * 为什么必须有这条：目录条目是**各仓条目的镜像**，而「元数据回填 / 展示字段演进」这类改动
+       * **不伴随版本号变化**——E6#106 把 18 只插件的 `icon`/`marketIcon` 从包内相对路径改成绝对 URL、
+       * 并补上此前从未写入的 `marketIcon`，插件版本一个没动。旧规则下这 17 条会被判「同版未动」，
+       * 官方目录继续挂着**未装态恒 404 的包内路径** ⇒ 修了一半，用户还是看不到图。
+       *
+       * 🔴 **只在版本相等时走这条路**：版本更低仍一律不动（`versionRank !== 0` 直接落 unchanged）——
+       * 否则「回填」会变成把官方目录往回退的口子（这条由自测的「更低版本不许往回退」负例钉住）。
+       *
+       * 取「保留我方缺失的键、其余以我方为准」（`{...existing, ...entry}`）：官方目录万一有维护者手工
+       * 补注（如 `repository`/`category`），不因本仓条目没写就被抹掉；反过来本仓新写的字段一定生效。
+       * 与既有两条铁律不冲突——本条只走到「我们的 repo 认领得到」的行（别人的行上文已 continue）。 */
+      if (versionRank(entry.version, existing.version) === 0) {
+        const merged = { ...existing, ...entry };
+        if (stableStringify(merged) !== stableStringify(existing)) {
+          cloned[idx] = merged;
+          metadataUpdated.push({ id: entry.id, version: entry.version });
+          continue;
+        }
+      }
       unchanged.push(entry.id);
       continue;
     }
@@ -185,7 +216,7 @@ export function mergeCatalogs(official, ours, { repoForId }) {
     updatedAt: new Date().toISOString(),
     plugins: cloned,
   };
-  return { catalog, report: { added, changed, unchanged, keptForeign } };
+  return { catalog, report: { added, changed, metadataUpdated, unchanged, keptForeign } };
 }
 
 /* ── fetch ───────────────────────────────────────────────────────────── */
@@ -287,6 +318,7 @@ async function main() {
   console.log(`  │ 官方目录原 ${official.plugins?.length ?? 0} 条 → 新 ${catalog.plugins.length} 条`);
   console.log(`  │ 新增 ${report.added.length}：${report.added.join(", ") || "（无）"}`);
   console.log(`  │ 更新 ${report.changed.length}：${report.changed.map((c) => `${c.id} ${c.from}→${c.to}`).join(", ") || "（无）"}`);
+  console.log(`  │ 同版改元数据 ${report.metadataUpdated.length}：${report.metadataUpdated.map((m) => `${m.id}(${m.version})`).join(", ") || "（无）"}`);
   console.log(`  │ 同版未动 ${report.unchanged.length}：${report.unchanged.join(", ") || "（无）"}`);
   console.log(`  │ 🔴 别人的行原样保留 ${report.keptForeign.length}：${report.keptForeign.map((k) => `${k.id}(${k.existingVersion} vs 我们${k.oursVersion})`).join(", ") || "（无）"}`);
   console.log(`  └─ 产物：${out}`);
@@ -336,12 +368,31 @@ function selfTest() {
   const back = mergeCatalogs({ plugins: [{ id: "x", version: "2.0.0", downloadUrl: "https://github.com/Encaron/linkdesk-plugin-x/releases/download/v2.0.0/x.linkdesk-plugin" }] }, [{ id: "x", version: "1.0.0", downloadUrl: "https://github.com/Encaron/linkdesk-plugin-x/releases/download/v1.0.0/x.linkdesk-plugin" }], { repoForId });
   check("更低版本不许把官方目录往回退", back.catalog.plugins[0].version === "2.0.0");
 
+  /* E6#106 负例：**同版本但内容有变**——「版本比高者胜」会把这类改动整条跳过，
+   * 而元数据回填（如 icon 相对路径 → 绝对 URL）正是同版内容变更。 */
+  const sameVer = mergeCatalogs(
+    { plugins: [{ id: "settings", version: "1.0.7", icon: "resources/icon-bar.svg", downloadUrl: "https://github.com/Encaron/linkdesk-plugin-settings/releases/download/v1.0.7/settings.linkdesk-plugin", versions: [{ version: "1.0.7" }] }] },
+    [{ id: "settings", version: "1.0.7", icon: "https://raw.githubusercontent.com/Encaron/linkdesk-plugin-settings/v1.0.7/resources/icon-bar.svg", iconSource: "url", downloadUrl: "https://github.com/Encaron/linkdesk-plugin-settings/releases/download/v1.0.7/settings.linkdesk-plugin", versions: [{ version: "1.0.7" }] }],
+    { repoForId },
+  );
+  check("同版内容有变 ⇒ 采用（icon 已 URL 化进目录）", sameVer.catalog.plugins[0].icon.startsWith("https://raw.githubusercontent.com/"));
+  check("同版内容变更单独入桶（metadataUpdated）", sameVer.report.metadataUpdated.some((m) => m.id === "settings"));
+  check("同版内容变更不算「版本更新」", sameVer.report.changed.length === 0);
+  // 同版且内容全等 ⇒ 零改动（幂等，防每次跑都产出一份「假 diff」）
+  const idemDl = "https://github.com/Encaron/linkdesk-plugin-settings/releases/download/v1.0.7/settings.linkdesk-plugin";
+  const idem = mergeCatalogs(
+    { plugins: [{ id: "settings", version: "1.0.7", icon: "https://x.invalid/i.svg", downloadUrl: idemDl, versions: [{ version: "1.0.7" }] }] },
+    [{ id: "settings", version: "1.0.7", icon: "https://x.invalid/i.svg", downloadUrl: idemDl, versions: [{ version: "1.0.7" }] }],
+    { repoForId },
+  );
+  check("同版且内容全等 ⇒ 判未动（幂等）", idem.report.unchanged.includes("settings") && idem.report.metadataUpdated.length === 0);
+
   if (fails.length) {
     console.error(`[sync-official-catalog] --self-test 🔴 ${fails.length} 例不过：`);
     for (const f of fails) console.error(`    ✗ ${f}`);
     return 1;
   }
-  console.log(`[sync-official-catalog] --self-test ✓ 8 例全过（含「别人的行不许动」撞号负例、版本回退负例）`);
+  console.log(`[sync-official-catalog] --self-test ✓ 11 例全过（含「别人的行不许动」撞号负例、版本回退负例、同版内容变更负例）`);
   return 0;
 }
 
