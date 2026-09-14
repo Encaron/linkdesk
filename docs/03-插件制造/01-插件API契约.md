@@ -137,8 +137,9 @@ async function list(): Promise<FileEntry[]> {
 
 **允许的 import（共享控件走 `@linkdesk/ui` npm 包；`@src/core` 例外白名单全表见 `eslint-local-rules.js` PLUGIN_IMPORT_WHITELIST）：**
 - `@linkdesk/contracts` **类型**（`import type`，零运行时耦合）——registry 真包（见 §三 3.1）
-- `@linkdesk/ui` **共享控件 / 共享 hooks**（ContextMenu / InlineInput / SelectBox / Toggle / ColorPicker / FormRow / ThemePicker 等，E6#54c 收归）——repo 插件走根 `file:` 依赖，第三方 `npm i @linkdesk/ui`；**不再从 `@src/components/shared/*` import**（E6#54c 后共享控件第二入口已删、仓库插件零引用）
-- **纯工具白名单（repo 源码 import 例外）**：`@src/core/pipeline/*`（DataConverter / DataDispatch / RingBuffer / ProtocolParser）+ `@src/core/utils/CancellationToken` + `@src/core/registry/commands/MenuRegistry`（仅 MenuId 类型/枚举）等——全表只以 eslint-local-rules.js 为准，不在此抄第二份
+- `@linkdesk/ui` **共享控件 / 共享 hooks**（ContextMenu / InlineInput / SelectBox / Toggle / ColorPicker / FormRow / ThemePicker 等，E6#54c 收归）——**在你自己工程的 `dependencies` 里显式声明**（`"@linkdesk/ui": "^0.1.4"`），构建走货架。🔴 E6#99（L7 7.2）后**官方插件与第三方是同一款工程形态**（官方 6 只在 E6#98a 已补上显式声明）；唯一例外是壳仓内那两只**开发夹具**（仍靠根 workspaces 提升）。**一律不从 `@src/components/shared/*` import**（E6#54c 后共享控件第二入口已删）
+- **纯工具白名单（`@src/core` 例外）**：`@src/core/pipeline/*`（DataConverter / DataDispatch / RingBuffer / ProtocolParser）+ `@src/core/utils/CancellationToken` + `@src/core/registry/commands/MenuRegistry`（仅 MenuId 类型/枚举）等——全表只以 eslint-local-rules.js 为准，不在此抄第二份
+  - 🔴 **E6#99 复核结论**：这条白名单**实际只剩壳仓夹具在用**——官方插件搬出壳仓后，它们的源码里 `@src` 早已零命中（运行时全走 `window.linkdesk.*`，总档案 §1.3 实测）。白名单**保留**（夹具仍在 `plugins/` 内、仍由同一条 eslint 规则守着），但**第三方作者请当作它不存在**：你能用的只有 `@linkdesk/contracts` / `@linkdesk/ui` / `window.linkdesk.*` 三样
 - **例外记录表**：白名单外 import 必须写进 memory `plugin-import-exceptions.md` 再放行（插件独立铁律审计项）
 
 > **`useConfiguration` / `useSendData` / `ViewContainerService` 等壳 hooks/服务禁止 import**（有模块级状态 → 调用方的修改壳进程看不到）——插件读配置走 `window.linkdesk.configuration`，状态同步走 `window.linkdesk.events`（订阅广播）/ `serial.onData` 等数据管道（见 `07-插件间通信.md`）。

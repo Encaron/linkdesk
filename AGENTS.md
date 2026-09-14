@@ -12,9 +12,10 @@
 ## 记忆体系（都在哪）
 
 - **主力记忆库（仓库外，机器本地，不进 git）**：`C:\Users\fengy\.claude\projects\e--linkdesk\memory\`——Claude Code 按工程路径生成的记忆目录，索引即上条 `MEMORY.md`。
-- **仓内流水日志**：[memory/JOURNAL.jsonl](./memory/JOURNAL.jsonl)——教训/事件追记（append-only）。
+- **本机流水日志（不进 git）**：`memory/JOURNAL.jsonl`——教训/事件追记（append-only）。⚠️ 根 `.gitignore` 的 `memory/` 把整个目录忽略了，它**不随仓走**（2026-09-14 用户拍板：与 memory 库同源，只在本机）。
 - **记忆整理档案**：[docs/06-记忆系统整理/](./docs/06-记忆系统整理/)——批次处置档案 + 索引重写规范。
 - 细节查证次序：CLAUDE.md → MEMORY.md 索引 → 对应记忆文件 → `docs/` 各期存档 → 源码。
+- 🔴 **一条分工判据（与上面连带）：** 需要「**仓库外的人**」知道的决策 → `docs/decisions/`（**进 git**）；只是维护者与他的 AI 用的 → memory（**不进 git**）。出处见 `docs/开发管理/工程管理与Git策略.md`。
 
 ## 维护义务（不只是读——AGENTS.md 的读者是共同维护者）
 
@@ -24,7 +25,7 @@
 |------|------|------|
 | 用户拍板 / 教训 / 工作法 | 记忆库新建条目（frontmatter `name`/`description`/`type`，`description` 写**触发条件**非摘要）＋ `MEMORY.md` 加一行索引（两段式，一行一文件） | 格式与自检照 [docs/06-记忆系统整理/02-索引重写规范.md](./docs/06-记忆系统整理/02-索引重写规范.md)（行数 ≤100 · 孤儿 = 0 · 断链 = 0） |
 | 总纲级变更（架构定论 / 硬约束 / 开发命令 / 阶段推进 / 新增 npm script） | **直接改 [CLAUDE.md](./CLAUDE.md)**——完成工程任务时**同笔**完善其对应段落（头部进度行 / Phase 表 / 硬约束 / 开发命令 / 关键文件表），不要在 AGENTS.md 另立副本 | 压缩纪律见 memory `claude-md-compression-criteria`：废案压成一句、结论保留、删段前先查有无别的落点 |
-| 流水教训 / 事件 | [memory/JOURNAL.jsonl](./memory/JOURNAL.jsonl) 追加一行 `{"ts","tags","text"}`（append-only，不回改） | — |
+| 流水教训 / 事件 | `memory/JOURNAL.jsonl`（**本机、不进 git**）追加一行 `{"ts","tags","text"}`（append-only，不回改） | — |
 | E6 进度 | 工程内 `E6-执行清单.md`（**唯一真相源**） | 记忆不镜像工程文档——只留结论 + 指针 |
 
 - ⚠️ `MEMORY.md` **每次对话自动加载**，是记忆库里最贵的文件——加行克制，超预算内容下沉到记忆文件本体。

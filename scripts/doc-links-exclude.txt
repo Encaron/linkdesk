@@ -21,3 +21,23 @@ docs/02-Electron架构/E5.5_多WebView恢复/	记录的是**已废弃的 Per-Tab
 docs/02-Electron架构/E5.6_Pool模型重构/	MEMORY / E5.6 清单明文记载「**已封存**」。
 docs/02-Electron架构/E5.7_极简Pool/	MEMORY / CLAUDE.md 明文记载「**已封存**」。
 docs/02-Electron架构/E5.8_归一化基建/	MEMORY / CLAUDE.md 明文记载「**已封存**」。
+
+# ── E6#99（L7 第 7.2 轮）：18 只发货插件源码外移独立仓 ⇒ 已封存任务档案里的源码引用永久失效 ──
+#
+# 判据 = 上面第 ③ 条（记录的是**已永久删除**的架构，改了就等于篡改历史）+ 第 ② 条（所属层已收官/封站）。
+# 这 9 份是**单档排除**（不是整树）——它们所在的两棵树里还有活文档，绝不能整树放行。
+# 🔴 为什么是「排除」而不是「回填」：这些档案记的是**当时那一刻**文件在哪（「#30c 改了 plugins/marketplace/
+#    src/…/DetailView.tsx」），把它改写成插件仓路径 **不是回填，是篡改历史记录**（同 E5.5 那条的理由）。
+#    它们的源码目标现在住 `Encaron/linkdesk-plugin-<id>`，但**档案里那句话的时态是过去**，不该被改写。
+# ⚠️ 这条口子只对**这 9 份**开：任何**活文档**（03-插件制造 / 各层规范 / CLAUDE.md / decisions）里
+#    出现指向 `plugins/<已外移 id>/…` 的链接，门禁**照旧红**——发现即修，不许往这里加。
+# 🔵 回收条件：若哪天这些档案被正式归档/移出 docs/（例如并入历史区），这些行应同笔删除（债随树走）。
+docs/02-Electron架构/E3.5-软件生态美化/串口监视器UI整改/01-全量审计.md	E3.5 已收官的任务档案；其 `plugins/serial-monitor/…` 引用随该插件外移（E6#99）永久失效——改写成插件仓路径 = 篡改当时的审计记录。
+docs/02-Electron架构/E6_插件生态与发布/03-插件市场/08-信任与安全.md	L3 市场层已收官；其中 `plugins/marketplace/…` 引用随该插件外移（E6#99）永久失效。
+docs/02-Electron架构/E6_插件生态与发布/03-插件市场/13-详情页HTML对账任务档案.md	L3.5 已收官的任务档案；`plugins/marketplace/…` 引用随外移永久失效（同上理由）。
+docs/02-Electron架构/E6_插件生态与发布/03-插件市场/14-市场图标系统任务档案.md	L3.5 已收官的任务档案；`plugins/marketplace/…` 引用随外移永久失效（同上理由）。
+docs/02-Electron架构/E6_插件生态与发布/03-插件市场/16-市场区健康审视任务档案.md	L3.5 已收官的任务档案；`plugins/marketplace/…` 引用随外移永久失效（同上理由）。
+docs/02-Electron架构/E6_插件生态与发布/03-插件市场/18-通知系统全账与设计定案.md	L3.5 已收官的设计定案档；其中 35 处 `plugins/{marketplace,editor,file-tree}/…` 引用随外移永久失效（同上理由）。
+docs/02-Electron架构/E6_插件生态与发布/插件规范化层/00-整理档案.md	L3.7 已收官（六轮全收官）；`plugins/marketplace/…` 引用随外移永久失效。
+docs/02-Electron架构/E6_插件生态与发布/插件规范化层/02-元数据链路归一.md	L3.7 已收官；`plugins/marketplace/…` 引用随外移永久失效。
+docs/02-Electron架构/E6_插件生态与发布/插件规范化层/03-官方插件补齐.md	L3.7 已收官；`plugins/{marketplace,settings,lang-defaults}/…` 引用随外移永久失效。

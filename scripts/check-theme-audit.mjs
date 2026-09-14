@@ -87,7 +87,18 @@ function main() {
     process.exit(1);
   }
 
-  console.log("✅ 全部主题 toggle-knob-on ≠ accent（ON 态旋钮与轨道可区分）。");
+  // 🔴 E6#99（L7 第 7.2 轮）：**覆盖域变更要明说，不许真空绿灯**。
+  //   本门禁扫 `plugins/<id>/themes/*.json`，而 10 只主题插件 + 1 只图标集插件均已外移独立仓
+  //   ⇒ 仓内 themeFiles 归零。归零时下面这行会把话说清楚（否则「0 个对象 → 无违规 → ✅」会被误读成
+  //   「主题都查过了」）。真正的检查随插件走：各插件仓自己的 CI（7.5 轮落）。
+  if (themeFiles.length === 0) {
+    console.log(
+      "⚠ 覆盖域变更（E6#99）：仓内 plugins/ 下 0 个主题文件——本门禁当前**无对象**（≠「主题都合规」）。" +
+        "\n   原因：主题/图标集插件的源码已外移各自独立仓，本仓只剩两只不含 themes/ 的开发夹具。" +
+        "\n   去向：主题数据检查随插件走，由各插件仓自己的 CI 负责（7.5 轮落）。"
+    );
+  }
+  console.log(`✅ 全部主题 toggle-knob-on ≠ accent（ON 态旋钮与轨道可区分）。已扫 ${themeFiles.length} 个主题文件。`);
 }
 
 main();

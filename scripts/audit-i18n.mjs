@@ -34,6 +34,7 @@
  */
 import { readFileSync, readdirSync, existsSync } from "fs";
 import { join } from "path";
+import JSZip from "jszip";
 
 // ── 0. 设计裁决排除——非 UI 数据/诊断（每项有出处注释，不得随意增删） ──
 const EXCLUDE_FILES = [
@@ -65,24 +66,70 @@ const EXCLUDE_RANGES = {
 
 // ── 1. 加载所有翻译 key ──
 // 2026-09-05 塌平单根：plugins/<id>（builtin/user 前缀全删）
+//
+// 🔴 E6#99（L7 第 7.2 轮）：**字典源随插件一起搬走了**——这处必须说清，否则本门禁会静默失去意义。
+//   病灶：本审计要回答的是「源码里的中文串有没有译名」，而译名的**大半住在插件里**——
+//   应用级字典 = lang-defaults 插件（运行时由它经 LanguageRegistry 提供，见 src/i18n/index.ts
+//   「第 1 层翻译资源由插件系统提供」），另有各插件的 i18n/en.json 也一并注册进同一资源表
+//   （实测：壳 src/hooks/usePoolSync/notif.ts 的「下载中 {{percent}}%」等 install 进度串，
+//   译名就住在 **marketplace** 插件的字典里）。仓内没有这些字典的第二份。
+//   18 只发货插件源码外移后照旧读文件 ⇒ `translated` 几乎为空 ⇒ **满屏假「缺翻译」**
+//   （比门禁失效更糟：假红会让真红失效）。
+//   处置：改读**随壳发货的种子 zip**（`bundled-plugins/*.linkdesk-plugin`）里的字典——
+//   它们不是「第二份真相源」，而是壳仓里**真实存在的那一份**（D3：出厂靠种子随包），
+//   语义还更准：被审计的就是「用户实际会拿到的那些字典」。
+//   种子缺失 ⇒ **响亮红灯**（下）：决不退化成「查了个空还说 ✓」。
+const SEED_DIR = "bundled-plugins";
+/** 包内字典条目——lang-defaults 用根级 `en.json`，其余插件用 `i18n/en.json`（两种都收） */
+const SEED_DICT_ENTRIES = ["en.json", "i18n/en.json"];
+const APP_DICT_SEED = `${SEED_DIR}/lang-defaults.linkdesk-plugin`;
+
+// 仓内夹具的字典——**仍在仓内**，照旧按路径读（演示插件 UI 串归插件自持）
 const I18N_FILES = [
-  "plugins/lang-defaults/en.json",
-  "plugins/file-tree/i18n/en.json",
-  "plugins/editor/i18n/en.json",
-  "plugins/serial-monitor/i18n/en.json",
-  "plugins/marketplace/i18n/en.json",
   "plugins/panel-demo/i18n/en.json", // E5.8#37.9：演示插件 UI 串归插件自持
   "plugins/floating-panel-demo/i18n/en.json", // E5.8#39.5：第二声明者验证载体 UI 串归插件自持
   // 🔥 E6#95d：`plugins/first-run-setup/i18n/en.json` 已删——该插件**源码在仓外**（用户 2026-09-11
   //   拍板「不搬」，见插件规范化层/00 §五②），此路径在本仓**永远够不着** ⇒ 每次 npm run check
   //   都白打一行 `⚠ 缺失:` 假警告。**门禁自己腐烂的实例**（06 §〇 闸 3），删掉不留待复活。
   // E5.8#41.17 settings-demo（漂亮设置卡片分区）条目已删——插件被用户自删（eef2d31c2），残留死路径
+  // 🔴 E6#99：`plugins/{lang-defaults,editor,file-tree,serial-monitor,marketplace}/…/en.json` 五条已删——
+  //   那些插件各自搬进独立仓，字典随源码走，改由下方**种子 zip** 读。
 ];
 
 const translated = new Set();
 for (const f of I18N_FILES) {
   if (!existsSync(f)) { console.warn(`⚠ 缺失: ${f}`); continue; }
   Object.keys(JSON.parse(readFileSync(f, "utf-8"))).forEach((k) => translated.add(k));
+}
+
+// 应用级字典：从随壳种子 zip 里取（lang-defaults 的 en.json + 各插件的 i18n/en.json）
+let seedDictKeys = 0;
+let seedDictFiles = 0;
+try {
+  if (!existsSync(APP_DICT_SEED)) throw new Error(`应用级字典种子不在位：${APP_DICT_SEED}`);
+  const zips = readdirSync(SEED_DIR).filter((n) => n.endsWith(".linkdesk-plugin"));
+  if (zips.length === 0) throw new Error(`${SEED_DIR}/ 下没有任何 .linkdesk-plugin`);
+  for (const name of zips) {
+    const zip = await JSZip.loadAsync(readFileSync(join(SEED_DIR, name)));
+    for (const wanted of SEED_DICT_ENTRIES) {
+      const entry = Object.keys(zip.files).find((n) => n === wanted || n.endsWith(`/${wanted}`));
+      if (!entry) continue;
+      const dict = JSON.parse(await zip.file(entry).async("string"));
+      const keys = Object.keys(dict);
+      keys.forEach((k) => translated.add(k));
+      seedDictKeys += keys.length;
+      seedDictFiles += 1;
+    }
+  }
+  if (seedDictKeys === 0) throw new Error(`${zips.length} 个种子 zip 里一个字典条目都没读到`);
+} catch (e) {
+  console.error(
+    `❌ 读不到随包字典（${SEED_DIR}/ 的种子 zip）：${e instanceof Error ? e.message : String(e)}\n` +
+      `   本审计靠它判定「源码里的中文串有没有译名」——18 只发货插件的**源码**已外移各自独立仓（E6#99），\n` +
+      `   壳仓里只剩这些随包种子。种子不在 ⇒ 审计无从进行：**不许退化成真空绿灯**，故此处直接红。\n` +
+      `   修复：确认 bundled-plugins/ 下的出厂种子在位（出厂种子不许丢；7.4 轮起由 sync:bundled 保鲜）。`
+  );
+  process.exit(1);
 }
 
 // ── 2. 扫描所有源文件，提取完整引用字符串中的中文 ──
@@ -299,7 +346,7 @@ const totalTranslated = found.size - missing.length;
 
 console.log(`\n=== i18n 审计 ===`);
 console.log(`已翻译: ${totalTranslated}  |  缺翻译: ${missing.length}  |  总字符串: ${totalFound}`);
-console.log(`翻译文件: ${I18N_FILES.length} 个, 共 ${translated.size} key\n`);
+console.log(`翻译文件: ${I18N_FILES.length} 个仓内夹具字典 + 随包种子字典（${SEED_DIR}/ 下 ${seedDictFiles} 个条目，${seedDictKeys} key）, 共 ${translated.size} key\n`);
 
 if (missing.length === 0) {
   console.log("✅ 所有中文 UI 字符串均有翻译。\n");

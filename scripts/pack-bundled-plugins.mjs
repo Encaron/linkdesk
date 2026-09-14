@@ -110,3 +110,16 @@ console.log(`[pack-bundled-plugins] 纯数据包打包完成 → bundled-plugins
 for (const p of packed) console.log(`  ✔ ${p.name}（${p.kb} KB, ${p.entries} 条目）`);
 console.log(`[pack-bundled-plugins] 行尾归一到 LF 的条目：${normalizedTotal}（二进制条目原样，未计入）`);
 if (skipped.length) console.log(`[pack-bundled-plugins] 跳过（React/有编译表面，SDK build 产）: ${skipped.join(", ")}`);
+
+// 🔴 E6#99（L7 第 7.2 轮）：12 只纯数据插件的**源码已外移各自独立仓** ⇒ 本脚本在壳仓里扫不到输入。
+//   门禁/工具扫了个空却照常报「完成」是最贵的坏法，故此处显式说清，并给出真正的入口在哪。
+//   本脚本的去向：7.4 轮落成 `sync:bundled` 时**退休**（那才是「出厂种子保鲜」的正主：按 lock 从
+//   各插件仓 Release 拉已发布版）。在它落地之前保留本脚本，是为了不留「文档指向一条不存在的命令」。
+if (packed.length === 0) {
+  console.log(
+    "[pack-bundled-plugins] ⚠ 覆盖域变更（E6#99）：仓内 plugins/ 下 0 个可打包的纯数据插件目录——本脚本当前**无对象**。" +
+      "\n   原因：12 只纯数据插件（10 主题 + 2 语言）的源码已外移各自独立仓（本仓只剩两只含 src 的开发夹具，属性是「跳过」）。" +
+      "\n   它们的 zip 现在由**各插件仓自己**产：`npm run build`（= `linkdesk-plugin-sdk pack`，E6#98c 落地的通道）。" +
+      "\n   出厂种子保鲜 = 7.4 轮的 `sync:bundled`（本脚本届时退休）。"
+  );
+}

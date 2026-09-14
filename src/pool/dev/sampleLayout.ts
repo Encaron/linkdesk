@@ -242,7 +242,9 @@ export function buildSampleDialog(): PoolDialogData {
 /** 悬浮面板样例——__mockPool.showFloatingPanel() 推浮层（调样式用）。E5.8#37。
  * 内容 = file-tree 视图——preview 未镜像 plugins 命名空间 → PluginComponent 走
  * 缺省回退（"插件不可用"）——面板 chrome（标题栏/动作/拖拽/调高）仍完整可调。
- * 动作 = mockup 帧 1 三件套：open-in（hover 展开全文）/ maximize（两态 toggle）/ close */
+ * 动作 = mockup 帧 1 三件套：open-in（hover 展开全文）/ maximize（两态 toggle）/ close
+ * ⚠️ E6#99：下面那个 renderPath 早已走不到真身（本样例的目的就是「走回退、调 chrome」）；
+ *    且 file-tree 源码已外移独立仓 ⇒ 它现在连"万一镜像了命名空间"也无从命中。样例身份不变。 */
 export function buildSampleFloatingPanel(): PoolFloatingPanelData {
   return {
     open: true,

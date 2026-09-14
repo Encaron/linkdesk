@@ -27,6 +27,9 @@ import { fileURLToPath } from "url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, "..");
+// 🔴 E6#99（L7 第 7.2 轮）覆盖域结论：`plugins/` 保留在扫描域内——18 只发货插件搬走后仓内仍有两只
+//   开发夹具（panel-demo / floating-panel-demo），它们同样不许裸写 hex；发货插件的硬编码色改由
+//   各插件仓自己的审计管（7.5 轮落）。白名单里指向发货插件的两条死路径已同笔删除（见下）。
 const SCAN_DIRS = ["src", "plugins"];
 const SKIP_DIRS = new Set(["node_modules", "dist", "dist-electron", ".git", ".vite", "__tests__"]);
 const EXT_RE = /\.(css|tsx|ts)$/;
@@ -53,14 +56,10 @@ const EXEMPT_FILES = [
     path: "src/components/shared/color-picker/ColorPicker.tsx",
     reason: "initialColor 默认值——插件调用 color-picker.pick 不带初始色时的兜底（同 accent 默认）",
   },
-  {
-    path: "plugins/settings/src/views/SettingsView/SettingRow/constants.ts", // E6#87d 随文件搬家改路径（原 .../SettingRow.tsx，2026-09-05 塌平单根前为 plugins/builtin/settings）
-    reason: "强调色预设 swatches 配置数据（COLOR_PICKER_PRESETS）",
-  },
-  {
-    path: "plugins/serial-monitor/src/hooks/useSerialSessions/types.ts", // E6#87b 随文件搬家改路径（原 plugins/serial-monitor/src/hooks/useSerialSessions.ts，2026-09-05 塌平单根前为 plugins/user/serial-monitor）
-    reason: "串口 session 色板配置数据（SESSION_COLORS 预设）",
-  },
+  // 🔴 E6#99（L7 第 7.2 轮）：原 `plugins/settings/…/SettingRow/constants.ts`（强调色预设 swatches）
+  //   与 `plugins/serial-monitor/…/useSerialSessions/types.ts`（串口 session 色板）两条白名单条目
+  //   **已随源码外移删除**——settings / serial-monitor 各自搬进独立仓，这两个文件的硬编码色
+  //   由各插件仓自己的审计管（7.5 轮落）。白名单里留死路径 = 白名单自己腐烂。
   {
     path: "src/components/shared/plugin-icon/defaultIdentityArt.ts", // E6#69a 统一默认身份彩色块（顶替 E6#66 defaultCoverArt.ts——该文件已随 #69f 删）
     reason: "默认身份彩色块 SVG 资产数据（DEFAULT_PLUGIN_IDENTITY_SVG data-URI）——外部 <img> 渲染 data-URI，CSS 变量在 img 内不可达，颜色只能字面量内嵌；与各插件 resources/*.svg 资产同性质（.svg 不被本审计扫描，TS 内嵌等价物文档化豁免）。本文件零消费逻辑；裁决逻辑在 sibling iconUtils.ts pickIdentityArt 不含 hex 照常受审",

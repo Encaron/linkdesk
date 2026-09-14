@@ -56,21 +56,53 @@ function resolvePyrightFromBase(baseDir) {
   return resolveNodeModulesUpward(baseDir, seg) ?? resolve(baseDir, "node_modules", ...seg.split("/"));
 }
 
-/** 检查基准（E6 可配置）——CLI --base 优先，其次 LSP_DEP_BASE 环境变量，默认项目根 */
+/** 检查基准（E6 可配置）——CLI --base 优先，其次 LSP_DEP_BASE 环境变量，否则自动发现 */
 let base = ROOT;
 /** pyright 脚本路径——--pyright 显式绝对路径优先，否则由 base 解析 */
 let pyrightPath = null;
+let baseExplicit = false;
 {
   const argv = process.argv.slice(2);
   for (let i = 0; i < argv.length; i++) {
-    if (argv[i] === "--base" && argv[i + 1]) base = resolve(argv[i + 1]);
-    if (argv[i].startsWith("--base=")) base = resolve(argv[i].slice("--base=".length));
+    if (argv[i] === "--base" && argv[i + 1]) { base = resolve(argv[i + 1]); baseExplicit = true; }
+    if (argv[i].startsWith("--base=")) { base = resolve(argv[i].slice("--base=".length)); baseExplicit = true; }
     if (argv[i] === "--pyright" && argv[i + 1]) pyrightPath = resolve(argv[i + 1]);
     if (argv[i].startsWith("--pyright=")) pyrightPath = resolve(argv[i].slice("--pyright=".length));
   }
-  if (!pyrightPath && process.env.LSP_DEP_BASE) base = resolve(process.env.LSP_DEP_BASE);
+  if (!pyrightPath && process.env.LSP_DEP_BASE) { base = resolve(process.env.LSP_DEP_BASE); baseExplicit = true; }
+}
+
+/**
+ * 🔴 E6#99（L7 第 7.2 轮）：python 插件源码已外移**独立仓** ⇒ 壳仓内再也没有 `plugins/python`。
+ * 「基准」这件事随之从「仓内固定路径」变成「由外部传入」——但 `npm run lsp:smoke` 不能因此变成
+ * 一条**恒失败**的命令（那等于把尺子藏起来）。故无显式基准时按**候选位**自动发现，全不命中就
+ * 报一条能照着做的错，而不是一句「pyright 缺失」。
+ *
+ * 候选顺序 = ① 仓内旧位（若哪天插件搬回来，零改动生效）② D6 本地容器约定位（`<兄弟目录>/linkdesk-plugins/official/`）。
+ */
+const CANDIDATE_BASES = [
+  resolve(ROOT, "plugins/python"),
+  resolve(ROOT, "..", "linkdesk-plugins", "official", "python"),
+];
+if (!pyrightPath && !baseExplicit) {
+  const hit = CANDIDATE_BASES.find((b) => existsSync(resolvePyrightFromBase(b)));
+  base = hit ?? CANDIDATE_BASES[0];
 }
 if (!pyrightPath) pyrightPath = resolvePyrightFromBase(base);
+if (!existsSync(pyrightPath)) {
+  console.error(
+    [
+      "❌ 找不到 pyright——LSP 冒烟无从跑起。",
+      `   已试基准：${base}`,
+      "   python 插件源码自 E6#99（L7 7.2）起住在**独立仓**，不在壳仓内。三条出路任选：",
+      "     · npm run lsp:smoke -- --base <python 插件仓路径>   （例：--base ../linkdesk-plugins/official/python，先在该仓 npm ci）",
+      "     · LSP_DEP_BASE=<同上> npm run lsp:smoke",
+      `     · 把该仓放到容器约定位：${CANDIDATE_BASES[1]}`,
+      "   另：check-lsp-deps.mjs（挂在 npm run check 的构建期哨兵）同样已无仓内对象——它的结论行会明说，不会真空绿灯。",
+    ].join("\n")
+  );
+  process.exit(1);
+}
 
 /** 冒烟测试工作区（临时目录，脚本结束清理） */
 const WORKSPACE = mkdtempSync(resolve(tmpdir(), "ld-lsp-smoke-"));
