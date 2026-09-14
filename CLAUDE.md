@@ -169,6 +169,11 @@ npm run pull:plugins # 把本地容器（linkdesk-plugins\{official,third-party}
                      #   ⚠️ **只拉不推**：只有 `git pull --ff-only`，没有 commit / push 任何路径（推送等用户点头 + 带代理）
                      #   `-- --dry-run` 只列会动谁；本机出网要代理时 `HTTPS_PROXY=http://127.0.0.1:7890 npm run pull:plugins`
                      #   🔴 顺手当红线哨兵：容器 / official / third-party 哪一级被 git init 了就红着喊出来
+npm run sync:plugin-agents # 18 只插件仓的 AGENTS.md ＋ .vscode/settings.json（E6#108g）
+                     #   给「在那个仓里单开 AI 干活」用的：每仓一份「这只插件是什么 / 规矩在哪 / 命令怎么敲」
+                     #   模板 ＋ 每只一段事实（脚本里 FACTS 表）；版本/命令/seed 全部**现场从该仓读**，不手抄
+                     #   `-- --check` 只校验不改（漂移 / 缺文件 / 出现内部坐标 ⇒ exit 1）｜`-- --dry-run` 只报
+                     #   ⚠️ **只写本地容器，不碰 git 不推送**；与 sync:plugin-ci 同一套思路
 npm run docs:build   # 作者面文档包产物（E6#105l）：真源 docs/03-插件制造/** → packages/plugin-docs/docs/**
                      #   `npm run docs:check` 与真源逐字节比对（挂 check）；出界链接会被绝对化成 GitHub URL
 npm run catalog:official          # 官方目录候选生成（E6#100c）：各插件仓 marketplace.json → scratch/ 候选
