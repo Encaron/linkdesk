@@ -29,7 +29,7 @@
 ### Step 1: Scaffold the Project
 
 ```bash
-npm create linkdesk-plugin theme-myglass    # kebab-case name
+npm create linkdesk-plugin@latest theme-myglass    # kebab-case name
 cd theme-myglass
 npm install
 ```

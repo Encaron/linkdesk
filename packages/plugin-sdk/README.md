@@ -158,3 +158,21 @@ export default function MyView({ isActive }: { isActive: boolean }) {
 
 - **dev preview** (source glob loading inside the shell) parses plugin.json as strict JSON; this SDK's validate tolerating comments/trailing commas is a publish-time capability — if a plugin needs to run in dev preview, keep plugin.json free of comments.
 - Dropping a commented plugin.json straight into the shell's `plugins/` dev directory breaks preview loading (jsonc support on the shell side is still to come).
+
+## Maintaining this package (LinkDesk maintainers)
+
+This package is **one of the five author axes** (the others: `@linkdesk/contracts` / `create-linkdesk-plugin` / `@linkdesk/ui` / `@linkdesk/plugin-docs`) and has its own version axis — **publishing it does not bump the application, and the application does not bump it**.
+
+Its surface is `src/**` + `schemas/**` + `dev-host/**` + this README: change any of them and the version must be bumped and published, otherwise plugin authors keep building against the old CLI/schemas.
+
+```bash
+# 1. bump  packages/plugin-sdk/package.json  version   (0.x backward-compatible → patch)
+# 2. build the dist the publish channel ships  (npm run build, inside the package)
+# 3. publish
+npm publish --registry=https://registry.npmjs.org     # 🔴 the registry flag is mandatory — the machine default is a read-only mirror
+# 4. record the baseline (run in the LinkDesk repo root)
+npm run release:mark
+```
+
+> 🔴 The shelf read has a **~3 minute replication delay** (`contracts` is visible within seconds, `plugin-sdk` takes minutes) — do **not** re-publish on a 404, npm will reject the duplicate version.
+> Full procedure + all three measured pitfalls → **`docs/06-发布管理/作者轴npm发版.md`** in the LinkDesk repository.

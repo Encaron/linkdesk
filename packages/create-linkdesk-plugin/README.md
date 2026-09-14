@@ -3,14 +3,16 @@
 The LinkDesk plugin scaffold — one command generates your first plugin project (the `yo code` equivalent).
 
 ```bash
-npm create linkdesk-plugin my-cool-plugin
+npm create linkdesk-plugin@latest my-cool-plugin
 ```
 
 Run it without a name and it asks interactively:
 
 ```bash
-npm create linkdesk-plugin
+npm create linkdesk-plugin@latest
 ```
+
+> 🔴 **Always write `@latest`.** Without the version anchor npm's `npx` cache may silently reuse a months-old copy and hand you an outdated skeleton — the CLI does not print its own version, so the only symptom is a project missing files (no `.git`, no `AGENTS.md`, no CI). With `@latest` npm is forced to ask the registry. Already bitten? `npm cache clean --force`.
 
 ## What you get
 
@@ -27,6 +29,8 @@ my-cool-plugin/
 ├── CHANGELOG.md          # release notes — data source for the marketplace "Changelog" tab
 ├── .github/workflows/ci.yml   # CI that runs `npm run verify` on every push
 ├── scripts/ci-verify.mjs      # the strict tier CI runs (lint + tests + declaration self-checks)
+├── vitest.config.ts      # test config (jsdom + globals; @linkdesk/ui is inlined so its CSS import resolves)
+├── vitest.setup.ts       # test runtime ground — mocks window.linkdesk (no Electron preload under vitest)
 ├── .vscode/settings.json      # plugin.json is treated as jsonc (comments do not light up red)
 ├── resources/
 │   └── icon.svg          # placeholder icon — replace it with your own
@@ -60,3 +64,21 @@ npm run publish    # one-shot publish (creates the GitHub Release + uploads + up
 > with the Chinese original at `docs/03-插件制造/`.
 
 > 🔴 The generated `AGENTS.md` also carries this pointer, plus the iron rules inline — so the AI working in your project knows where to look without being told.
+
+## Maintaining this package (LinkDesk maintainers)
+
+This package is **one of the five author axes** (the others: `@linkdesk/contracts` / `@linkdesk/plugin-sdk` / `@linkdesk/ui` / `@linkdesk/plugin-docs`) and has its own version axis — **publishing it does not bump the application, and the application does not bump it**.
+
+🔴 **The template is the product**: change `template/**` and the package version **must** be bumped and published — otherwise the skeleton authors get stays old and **no gate goes red** (only `check:npm-release` shows a yellow light).
+
+```bash
+# 1. bump  packages/create-linkdesk-plugin/package.json  version   (0.x backward-compatible → patch)
+# 2. publish
+npm publish --registry=https://registry.npmjs.org     # 🔴 the registry flag is mandatory — the machine default is a read-only mirror
+# 3. record the baseline (run in the LinkDesk repo root)
+npm run release:mark
+# 4. after publishing, verify the generated output really matches the template
+npm run check:scaffold
+```
+
+> Full procedure + the three measured pitfalls → **`docs/06-发布管理/作者轴npm发版.md`** in the LinkDesk repository.

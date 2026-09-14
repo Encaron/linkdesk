@@ -48,10 +48,20 @@ rule     byte-for-byte comparison against the source (except the link rewrites b
 
 This package is the **fifth author axis** (the others: `@linkdesk/contracts` / `@linkdesk/plugin-sdk` / `create-linkdesk-plugin` / `@linkdesk/ui`) — **any content change means a PATCH**, and it is independent of the application version.
 
+Its surface is the **generated** `docs/**`, so the order matters: edit the source trees under the repository's `docs/`, regenerate, then publish.
+
 ```bash
+# 1. edit the source docs (docs/03-plugin-authoring/** English / docs/03-插件制造/** Chinese)
+# 2. regenerate + verify byte-for-byte  (in the LinkDesk repo root)
+npm run docs:build && npm run docs:check
+# 3. bump  packages/plugin-docs/package.json  version, then publish
 npm publish --registry=https://registry.npmjs.org   # pass the registry explicitly (inside a workspace this package's .npmrc is ignored)
-npm run release:mark                                 # record the baseline (verified against the shelf)
+# 4. record the baseline (verified against the shelf)
+npm run release:mark
 ```
+
+> 🔴 The shelf read lags by **~3 minutes** for this package — don't re-publish on a 404.
+> Full procedure + the three measured pitfalls → **`docs/06-发布管理/作者轴npm发版.md`** in the LinkDesk repository.
 
 ## License
 

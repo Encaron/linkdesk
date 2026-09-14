@@ -105,7 +105,7 @@ System-level capabilities (serial ports, filesystem, configuration, dialogs) are
 **The commands authors actually type:**
 
 ```bash
-npm create linkdesk-plugin my-plugin   # ① Create the project (once per plugin; auto git init + initial commit)
+npm create linkdesk-plugin@latest my-plugin   # ① Create the project (once per plugin; auto git init + initial commit)
 cd my-plugin && npm install            # ② Install the SDK (types flow into the TS program automatically)
 npm run dev                            # Preview: browser dev host → HMR on save
 npm run dev:real                       # Real-machine loop: sub-second debugging inside an installed LinkDesk (for real-IPC plugins)
@@ -119,7 +119,7 @@ npm run publish                        # Publish to your own GitHub repo (step o
 ## 5. Zero to Shipped — The Shortest Path
 
 ```
-1. npm create linkdesk-plugin my-plugin    → generate the project (pluginId / name / author already filled in, git repo created)
+1. npm create linkdesk-plugin@latest my-plugin    → generate the project (pluginId / name / author already filled in, git repo created)
 2. Write plugin.json + src/index.tsx       → declare your plugin, write the first piece of UI
 3. npm run dev                             → see it in the browser preview host
 4. npm run build                           → produces my-plugin.linkdesk-plugin (a single-file zip)

@@ -105,7 +105,7 @@
 **作者真正敲的命令**：
 
 ```bash
-npm create linkdesk-plugin my-plugin   # ① 建工程（每建一个用一次；自动 git init + 初始提交）
+npm create linkdesk-plugin@latest my-plugin   # ① 建工程（每建一个用一次；自动 git init + 初始提交）
 cd my-plugin && npm install            # ② 装 SDK（类型自动进 TS program）
 npm run dev                            # 预览：浏览器 dev 宿主 → 改码 HMR
 npm run dev:real                       # 真机环：在已装 LinkDesk 里秒级真机调试（真 IPC 插件用）
@@ -119,7 +119,7 @@ npm run publish                        # 发布到你自己的 GitHub 仓（上�
 ## 五、从零到上线——最短路径
 
 ```
-1. npm create linkdesk-plugin my-plugin    → 生成工程（pluginId / name / author 已填好，git 仓已建）
+1. npm create linkdesk-plugin@latest my-plugin    → 生成工程（pluginId / name / author 已填好，git 仓已建）
 2. 写 plugin.json + src/index.tsx          → 声明你的插件、写第一段 UI
 3. npm run dev                             → 浏览器预览宿主里看见它
 4. npm run build                           → 产出 my-plugin.linkdesk-plugin（单文件 zip）

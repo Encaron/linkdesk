@@ -29,18 +29,20 @@ Break any of these and your plugin **installs but then breaks** (it can even tak
 **What to do**
 
 ```bash
-npm create linkdesk-plugin my-cool-plugin    # the name must be kebab-case (lowercase letters/digits/hyphens)
+npm create linkdesk-plugin@latest my-cool-plugin    # the name must be kebab-case (lowercase letters/digits/hyphens)
 cd my-cool-plugin
 npm install
 ```
 
-Running `npm create linkdesk-plugin` with no arguments asks for the plugin name interactively.
+Running `npm create linkdesk-plugin@latest` with no arguments asks for the plugin name interactively.
+
+> 🔴 **Keep the `@latest`.** Without a version anchor npm's npx cache can silently hand you a months-old copy of the scaffold, and the CLI never prints its own version — the only symptom is a project **missing files** (no git repo, no `AGENTS.md`, no CI, 7 files instead of 16). If that already happened to you: `npm cache clean --force`, then re-run.
 
 **How to know you did it right**
 A new directory shows `plugin.json` + `src/index.tsx`, and placeholders like `{{pluginName}}` in `plugin.json` have **been replaced with your real plugin name** (`pluginId` / `name` / `description` / `author` are filled in too, with `author` defaulting to `git config user.name`). The CLI prints a line telling you **whether a git repo was created**: if it was, `git log` has one "initial skeleton" commit and the branch is called `main`.
 
 **Which doc has the details**
-[02-plugin-dev-toolchain/01-create-linkdesk-plugin-scaffold.md](../02-Electron架构/E6_插件生态与发布/02-插件开发工具链/01-create-linkdesk-plugin脚手架.md) — the **file-by-file contract** for the generated output (why each file exists, the placeholder rules, the roles of the 15 template files). **Don't look for the project structure here**; that doc is the single source of truth.
+[02-plugin-dev-toolchain/01-create-linkdesk-plugin-scaffold.md](../02-Electron架构/E6_插件生态与发布/02-插件开发工具链/01-create-linkdesk-plugin脚手架.md) — the **file-by-file contract** for the generated output (why each file exists, the placeholder rules, the roles of the 16 template files). **Don't look for the project structure here**; that doc is the single source of truth.
 
 > ✅ **Repo creation (shipped 2026-09-14)**: the scaffold **creates the git repo for you** — following the three `cargo new` semantics, **not "always `git init`"**:
 > - the project directory is **not inside any git repo** ⇒ `git init -b main` automatically + **one initial commit** (the template ships a `.gitignore`, so your first step isn't a screenful of untracked files);
@@ -48,7 +50,7 @@ A new directory shows `plugin.json` + `src/index.tsx`, and placeholders like `{{
 > - **`--no-git`** ⇒ never create one (the escape hatch, matching `cargo new --vcs none`).
 >
 > The CLI **prints explicitly** whether it created a repo and why, so don't guess. 🔴 **This requires scaffold version ≥ 0.1.3** — older versions
-> neither create a repo nor generate CI in the project (`npm create linkdesk-plugin` pulls the latest by default).
+> neither create a repo nor generate CI in the project. The CLI has no `--version` flag, so it can't tell you which copy you got; that is exactly why Step 1's command carries `@latest`.
 > Where the project should live and what the repo should be called → [15-multi-repo-and-local-workspace](15-multi-repo-and-local-workspace.md).
 
 ---

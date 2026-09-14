@@ -42,6 +42,23 @@ cd packages/linkdesk-ui
 npm run build   # dist build: esm + aggregated css + declaration files
 ```
 
+## Maintaining this package (LinkDesk maintainers)
+
+This package is **one of the five author axes** (the others: `@linkdesk/contracts` / `@linkdesk/plugin-sdk` / `create-linkdesk-plugin` / `@linkdesk/plugin-docs`) and has its own version axis — **publishing it does not bump the application, and the application does not bump it**.
+
+Its surface is `src/**` + this README. The component source lives in the shell's `src/components/shared/` — **changing a component means this axis moved**, so bump and publish, otherwise plugin authors keep getting the old components.
+
+```bash
+# 1. bump  packages/linkdesk-ui/package.json  version   (0.x backward-compatible → patch)
+# 2. npm run build  (inside the package — dist is what ships)
+# 3. publish
+npm publish --registry=https://registry.npmjs.org     # 🔴 the registry flag is mandatory — the machine default is a read-only mirror
+# 4. record the baseline (run in the LinkDesk repo root)
+npm run release:mark
+```
+
+> Full procedure + the three measured pitfalls → **`docs/06-发布管理/作者轴npm发版.md`** in the LinkDesk repository.
+
 ## License
 
 MIT
