@@ -25,7 +25,7 @@ const pathMock = {
   },
 };
 
-// E5.7#98：测试全局窄类型 cast——替代 (globalThis as any)（__ldkConfigStore 由本文件声明、测试文件消费）
+// 测试全局窄类型 cast——替代 (globalThis as any)（__ldkConfigStore 由本文件声明、测试文件消费）
 type TestGlobal = { window?: Window; __ldkConfigStore?: Map<string, unknown> };
 const _g = globalThis as TestGlobal;
 

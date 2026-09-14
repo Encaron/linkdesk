@@ -1,7 +1,7 @@
 /**
  * {{displayName}}——LinkDesk 插件主视图（由 create-linkdesk-plugin 生成）。
  *
- * 视图插件契约（E5.8，见 docs/03-插件制造/01-API契约.md）：壳以 { isActive, tabId?, sourceId? }
+ * 视图插件契约（作者文档 01-plugin-api-contract.md）：壳以 { isActive, tabId?, sourceId? }
  * 渲染本文件 default 导出的组件：
  *   - isActive  本标签当前是否聚焦。keep-alive 下非聚焦标签仍在渲染，isActive 只用于
  *               gate「聚焦才跑」的副作用（如自动保存），切勿用它整块 blank 掉内容。
@@ -9,7 +9,7 @@
  *   - sourceId  上下文数据（文件路径 / 数据源等），编辑器类插件用它定位内容。
  *
  * 样式：LinkDesk 主题色一律走 CSS 变量 var(--xxx)（见 index.css 示例），禁硬编码 hex。
- * 文案：用 t() 读——key 就是中文原文，英文译文放 i18n/en.json（见 05-UI写法规约.md）。
+ * 文案：用 t() 读——key 就是中文原文，英文译文放 i18n/en.json（见作者文档 05-ui-conventions.md）。
  * 壳已 external react/react-dom/react-i18next/i18next——构建不会打进包，插件工程无需 npm i 它们。
  */
 

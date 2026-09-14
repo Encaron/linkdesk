@@ -23,10 +23,11 @@
  *   的漏洞——**如实记着，不假装覆盖**。它保证闸坏了也不至于把人锁死。
  *
  * ── 判定（判据可证伪，见 --self-test）──
- *   ① staged 含软件侧代码（src/ 或 electron/ 的 .ts/.tsx，排除 *.test.* / *.spec.*）
- *      → 提交消息**首行（subject）**必须以 feat:/fix:/breaking: 打头 → 否则红
+ *   ① staged 含**仓根**软件侧代码（**仓根** `src/` 或 `electron/` 的 .ts/.tsx，排除
+ *      `*.test.*` / `*.spec.*`）→ 提交消息**首行（subject）**必须以 feat:/fix:/breaking: 打头 → 否则红
  *      ⚠️ **只看首行**：「前缀」的语义就是打头。扫全文会让 `-m "闲聊" -m "feat: x"`
  *         这种把类别藏在第二行的写法蒙混过关。
+ *      ⚠️ **只有仓根**：`packages/**`（作者轴）不算——npm 发版 ≠ 软件 bump，见下方 `SOFTWARE_CODE_RE`。
  *   ② 纯文档（docs/ *.md）/ 配置（*.json）/ 测试 / scripts / .claude → 放行
  *   ③ `Merge …` 开头的合并提交 → **放行并出声**。理由：合并提交的内容是**已分类的**那些
  *      被合入的提交，自己没有新改动可分类；拦它只会把人逼去 `--no-verify`（反而削弱闸的权威）。
@@ -46,8 +47,17 @@ import { execSync } from "node:child_process";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, ".."); // 代码根（package.json 所在）
 
-/** 软件侧代码判定：src/ 或 electron/ 的 .ts/.tsx，排除测试文件与文档/依赖目录 */
-const SOFTWARE_CODE_RE = /(^|\/)(src|electron)\/.*\.tsx?$/;
+/**
+ * 软件侧代码判定：**仓根** `src/` 或 `electron/` 的 .ts/.tsx，排除测试文件与文档/依赖目录。
+ *
+ * 🔴 **必须锚定仓根（2026-09-14 E6#108f 实测修正）**：原来的 `/(^|\/)(src|electron)\/…/`
+ *   会连 **`packages/**\/src/…`** 一起命中——而 `packages/`（`@linkdesk/plugin-sdk` /
+ *   `linkdesk-ui` / `create-linkdesk-plugin/template/src/index.tsx` …）是**作者轴**，
+ *   不是软件轴：**npm 发版 ≠ 软件 bump**（memory `version-axes-separated`，本仓明文模型）。
+ *   误报的实际代价：改一句脚手架模板注释，也会被逼着给提交挂 `fix:` —— 而那一侧根本不该
+ *   触发软件版本判定。**触发本闸的只有壳自己的 `src/` 与 `electron/`。**
+ */
+const SOFTWARE_CODE_RE = /^(src|electron)\/.*\.tsx?$/;
 const TEST_FILE_RE = /\.(test|spec)\./;
 
 /** 类别前缀判定：feat:/fix:/breaking:（E6#57.15e 约定，可含 E6#编号） */
@@ -146,6 +156,14 @@ function runSelfTest() {
     // 测试文件不算软件侧代码（即使同批混着真代码，真代码那半仍要前缀）
     ["混批：真代码 + 测试，无前缀 → 硬拦", judge(["src/a.ts", "src/a.test.ts"], "无前缀"), false],
     ["混批：真代码 + 测试，有前缀 → 放行", judge(["src/a.ts", "src/a.test.ts"], "fix: 修"), true],
+    // 🔴 作者轴包**不算**软件侧代码（E6#108f 修正）：npm 发版 ≠ 软件 bump。
+    //    这三例过去会被误拦。
+    ["作者轴包 src（plugin-sdk）→ 放行", judge(["packages/plugin-sdk/src/index.ts"], "chore: 改 SDK 注释"), true],
+    ["作者轴包 src（ui）→ 放行", judge(["packages/linkdesk-ui/src/x.tsx"], "没前缀"), true],
+    ["脚手架模板 src（作者打开的第一个文件）→ 放行", judge(["packages/create-linkdesk-plugin/template/src/index.tsx"], "没前缀"), true],
+    // 但**根** src/electron 一个不少，仍必须带前缀（防「顺手把锚点放宽成不带根」）
+    ["根 src 仍须前缀 → 硬拦", judge(["src/App.tsx"], "没前缀"), false],
+    ["根 electron 仍须前缀 → 硬拦", judge(["electron/main.ts"], "没前缀"), false],
   ];
 
   let bad = 0;

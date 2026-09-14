@@ -34,14 +34,15 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { dirname, join, resolve, relative } from "node:path";
 import { fileURLToPath } from "node:url";
+/** 🔴 尺子在 lib 里（单一真相源）——`check-scaffold.mjs` 的断言 10 用的是**同一份正则** */
+import { SYMBOL_RE, scanText } from "./lib/author-symbols.mjs";
+
+export { SYMBOL_RE, scanText };
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, "..");
 /** 🔴 E6#105n：作者面是**两棵树**——中文（维护者面）＋ 英文（作者面主显）。两棵都要扫。 */
 const DOCS_ROOTS = [join(ROOT, "docs", "03-插件制造"), join(ROOT, "docs", "03-plugin-authoring")];
-
-/** 任务号形态（比 11 号档案原文的四种更全：把 `E5.7#` 也收进来——它同样是内部坐标） */
-export const SYMBOL_RE = /\bE[0-9]+(?:\.[0-9]+)*[A-Z]?#[0-9]+(?:\.[0-9]+)*[a-z]?(?:-[0-9]+)?/g;
 
 /** 递归列 .md */
 function listMarkdown(dir) {
@@ -52,16 +53,6 @@ function listMarkdown(dir) {
     else if (name.endsWith(".md")) out.push(p);
   }
   return out;
-}
-
-/** @returns {{file:string,line:number,symbol:string}[]} */
-export function scanText(text) {
-  const hits = [];
-  text.split("\n").forEach((l, i) => {
-    const m = l.match(SYMBOL_RE);
-    if (m) for (const s of m) hits.push({ line: i + 1, symbol: s });
-  });
-  return hits;
 }
 
 export function checkAuthorDocsSymbols(docsRoots = DOCS_ROOTS) {

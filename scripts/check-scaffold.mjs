@@ -12,6 +12,13 @@
  *   `main` 分支 + 一次初始提交；落在**某个 git 仓内**则**不建**嵌套仓；`--no-git` 一律不建。
  *   **两条相反路径都要验**（只验一边 = 半边门禁），负控见 `--self-test`。
  *
+ * 🔴 **E6#108（L7 7.9）新增断言 10：生成物里不许出现内部任务号**（`E6#102` / `E5.7#98` 这类）。
+ *   理由与作者面文档门禁**同一条**（memory `ai-friendliness-three-layers`）：任务号是本项目的内部
+ *   进度坐标，对陌生作者的 AI 是**无法解析的坐标**。而脚手架生成物是作者读到的**第三种东西**——
+ *   不是文档，是**他打开的第一个工程**（`src/index.tsx` 的注释、CI 配置、verify 脚本都在里面）。
+ *   🔴 **尺子与 `check-author-docs-symbols.mjs` 同一份**（`scripts/lib/author-symbols.mjs`）——
+ *   两处各写一份正则 = 必然漂移。实测立此断言时仓里已有 **15 处**（作者面对照：7.8 清过 155 处）。
+ *
  * 🔴 **闸 3（规则不许腐烂）的关键设计**：期望是**契约**，必须**显式写死**；从模板现场读 = 断言恒真 = 假门禁
  * （这正是 `check-file-size.mjs` 被关掉的同类错误）。**契约要显式，实现要现场读。**
  * 唯一的例外是「解析规则」这类**别人的实现**（CHANGELOG 切段正则 / 占位符 values 集合）——
@@ -29,6 +36,9 @@ import { resolve, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
 import { parse as parseJsonc, printParseErrorCode } from "jsonc-parser";
+/** 🔴 断言 10 的尺子与 `check-author-docs-symbols.mjs` **同一份**（lib 里的唯一定义处）——
+ *  作者面禁用内部任务号这件事，文档树与脚手架生成物必须同一把尺。 */
+import { scanText } from "./lib/author-symbols.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, "..");
@@ -142,6 +152,21 @@ function listFiles(dir, base = dir, out = []) {
 }
 
 // ── 断言 ──
+
+/**
+ * 断言 10 的判据本体（纯函数——`--self-test` 拿它做负控，不重复实现）：
+ * 逐文件找**内部任务号**，返回 `rel:行 ← 符号` 形态的命中清单。
+ */
+function scanInternalSymbols(dir) {
+  const hits = [];
+  for (const rel of listFiles(dir)) {
+    if (/\.(svg|png|ico|jpg|jpeg|webp|woff2?|ttf)$/i.test(rel)) continue;
+    for (const h of scanText(readFileSync(join(dir, rel), "utf8"))) {
+      hits.push(`${rel}:${h.line} ← ${h.symbol}`);
+    }
+  }
+  return hits;
+}
 
 function runAssertions(genDir) {
   const generated = listFiles(genDir);
@@ -270,6 +295,14 @@ function runAssertions(genDir) {
       fail(`i18n/en.json 有 ${dead.length} 个死 key（src/ 里没有 t() 调用）：\n     ${dead.join("\n     ")}`,
         "死 key = 教作者写死代码——补上调用，或从字典删掉");
     }
+  }
+
+  // 断言 10：生成物里不许出现**内部任务号**（E6#… / E5.7#… 这类；尺子与作者面文档门禁同一份）
+  const symbolHits = scanInternalSymbols(genDir);
+  if (symbolHits.length > 0) {
+    fail(`生成物里有 ${symbolHits.length} 处内部任务号：\n     ${symbolHits.join("\n     ")}`,
+      "任务号是**本项目的内部坐标**，第三方作者的 AI 解析不了——删掉坐标、保留「为什么」（写成一句人话）；" +
+        "尺子与 `check-author-docs-symbols.mjs` 同一份（`scripts/lib/author-symbols.mjs`）");
   }
 
   return generated;
@@ -494,6 +527,24 @@ if (!args.includes("--no-git")) {
     cases.push({ file, ok: hit.length > 0, n: fails.length, why: expect[file].why, first: fails[0] });
   }
 
+  // 断言 10 的负控（纯函数，不需要 CLI）：脏样本必须命中、干净样本必须零命中
+  const dirtyDir = join(root, "symbols-dirty");
+  const cleanDir = join(root, "symbols-clean");
+  mkdirSync(dirtyDir, { recursive: true });
+  mkdirSync(cleanDir, { recursive: true });
+  writeFileSync(join(dirtyDir, "a.ts"), "// 见 E6#102 与 E5.7#98 两处坐标\n");
+  writeFileSync(join(cleanDir, "a.ts"), "// 色 #0078d4、锚 [x](#api-速查表)、日期 2026-09-14 —— 都不是内部符号\n");
+  const dirtyHits = scanInternalSymbols(dirtyDir).length;
+  const cleanHits = scanInternalSymbols(cleanDir).length;
+  const symOk = dirtyHits === 2 && cleanHits === 0;
+  cases.push({
+    file: "symbols（断言 10 负控）",
+    ok: symOk,
+    n: dirtyHits,
+    why: "脏样本命中 2 处、干净样本 0 处（十六进制色与 markdown 锚不算）",
+    first: symOk ? undefined : `实得 dirty=${dirtyHits}（期望 2）· clean=${cleanHits}（期望 0）`,
+  });
+
   const failed = cases.filter((c) => !c.ok);
   for (const c of cases) {
     console.log(`  ${c.ok ? "✔" : "❌"} ${c.file}：${c.why}（判据红了 ${c.n} 条）`);
@@ -501,7 +552,7 @@ if (!args.includes("--no-git")) {
   rmSync(root, { recursive: true, force: true });
   if (failed.length > 0) {
     console.error(
-      `\n❌ check-scaffold 自检未过（${failed.length}/${cases.length}）：负控**没有**变红 ⇒ 断言 9 是恒真的假门禁。`,
+      `\n❌ check-scaffold 自检未过（${failed.length}/${cases.length}）：负控**没有**变红 ⇒ 断言恒真的假门禁。`,
     );
     for (const f of failed) {
       console.error(`  · ${f.file}：期望红在「${expect[f.file].must}」，实际没有`);
@@ -509,7 +560,7 @@ if (!args.includes("--no-git")) {
     }
     return 1;
   }
-  console.log(`\ncheck-scaffold self-test ✔️ ${cases.length}/${cases.length} 例全过（两条相反路径的负控都会红）`);
+  console.log(`\ncheck-scaffold self-test ✔️ ${cases.length}/${cases.length} 例全过（建仓两条相反路径 + 内部符号脏/净两样本的负控都会红）`);
   return 0;
 }
 
@@ -536,5 +587,5 @@ rmSync(SCRATCH_DIR, { recursive: true, force: true });
 console.log(
   `✅ 脚手架生成物符合契约——${EXPECTED_FILES.length} 个文件 / ${EXPECTED_SCRIPTS.length} 条命令 / ` +
     `pluginId 已声明 / 占位符与 CLI values 齐平 / CHANGELOG 段可切 / i18n 零死 key / npm 打包不丢文件 / ` +
-    `建仓三语义（仓外建·仓内不建·--no-git 不建）。`,
+    `建仓三语义（仓外建·仓内不建·--no-git 不建）/ 零内部任务号。`,
 );

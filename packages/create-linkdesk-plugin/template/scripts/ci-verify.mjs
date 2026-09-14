@@ -1,33 +1,33 @@
 #!/usr/bin/env node
 /**
- * ci-verify——插件仓自检门禁（E6#102 · L7 第 7.5 轮）。挂 `npm run verify`，由 `.github/workflows/ci.yml` 调起。
+ * ci-verify——插件仓自检门禁。挂 `npm run verify`，由 `.github/workflows/ci.yml` 调起。
  *
  * ── 为什么有它 ──
- * 插件源码搬出壳仓之后（E6#99），壳仓的 `npm run check` **够不着它们了**（那份门禁只覆盖壳仓）。
+ * 插件源码搬出壳仓之后，壳仓的 `npm run check` **够不着它们了**（那份门禁只覆盖壳仓）。
  * 搬走的一共六类检查：编译图 / eslint（含 linkdesk/* 自定义规则）/ vitest / 体量 / i18n / 主题审计。
  * 本脚本 + ci.yml + vitest 配置 = 给插件仓装回来的那一份，否则「独立」就是拿「质量真空」换的。
  *
  * ── 五段（每段独立判红；**没有对象也要说话**，不许静默绿）──
  *   ① lint 严格腿   —— `@linkdesk/plugin-sdk` 的 eslint 规则腿 + css/font-scale/spacing 三条扫描腿。
- *                     🔴 SDK 的 `npm run lint` 是 **WARN 级、永不 fail**（07 §六·三档：警告不是封锁，
+ *                     🔴 SDK 的 `npm run lint` 是 **WARN 级、永不 fail**（三档制：警告不是封锁，
  *                     作者本地不被拦——那是刻意的）。CI 要的是**拦截**，所以本段把同一份报告按
  *                     「零偏离」判定。**这是「lint 会红」的唯一来源**，别把这段删了换成 `npm run lint`。
  *   ② 跨插件 import —— 壳仓 `linkdesk/no-cross-plugin-import` 的**仓外形态**：插件源码不得引用别的插件
  *                     仓库/包（相对路径越出本仓根，或裸包名形如 `linkdesk-plugin-*` / `@linkdesk/plugin-*`），
  *                     package.json 也不得依赖别的插件包。共享代码只经 `@linkdesk/ui`，插件间通信走
  *                     `window.linkdesk.*`。⚠️ 这条规则**不在** SDK preset 里（preset 只注册 8 条 linkdesk
- *                     规则、且全 WARN）——故必须自带（「补进 preset」已登记为待收的账，见 06-门禁与CI.md）。
+ *                     规则、且全 WARN）——故必须自带（「补进 preset」目前仍是缺口）。
  *   ③ 字典完整性    —— `contributes.i18n` / `contributes.languages` 声明的字典：文件在、可解析、
  *                     每个值都是**非空字符串**。另打印「本仓 `t()` key 的自有字典覆盖度」为**黄灯**。
- *   ④ 声明自洽      —— 声明必须落在**真实存在的文件**上（E6#102f 的仓内等价物：壳侧读的是随包种子 /
+ *   ④ 声明自洽      —— 声明必须落在**真实存在的文件**上（壳侧读的是随包种子 /
  *                     冻结快照，插件仓该有「直接吃自己源码」的那条）：`entry` / `icon` / `views[].render`
  *                     文件在；`contributes.themes` / `iconThemes` 的数据文件在且过各自的 schema；
  *                     主题 recipe 引用的 `linkdesk://<id>/…` 资产在（且 id 就是本插件）；floatingPanel
  *                     三向自洽（viewId ↔ views[].id ↔ render）。
  *   ⑤ 目录条目形态  —— **发布产物** `marketplace.json` 里出现的图标字段（`icon` / `marketIcon`）必须是
- *                     绝对 URL + 来源标 `"url"`（E6#106）。理由：目录条目是**未装用户**看图时的唯一数据源，
+ *                     绝对 URL + 来源标 `"url"`。理由：目录条目是**未装用户**看图时的唯一数据源，
  *                     而包内相对路径（`resources/icon.svg`）在未装态恒 404（`linkdesk://` 只在本地已装的
- *                     插件根里找文件）。`publish` 自 E6#106 起自动 URL 化；本段是那条纪律的机械兜底——
+ *                     插件根里找文件）。`publish` 会自动 URL 化；本段是那条纪律的机械兜底——
  *                     它看不见「谁是图标栏插件」（不看插件类型，只看字段形态，硬约束 10 零 ID 知识）。
  *
  * ── 为什么 ③ 的覆盖度只能黄灯（不是漏做）──
@@ -70,7 +70,7 @@ const isSourceFile = (p) =>
 
 const sourceFiles = listFiles(join(ROOT, "src")).filter(isSourceFile);
 
-line("插件仓自检（ci-verify · E6#102）");
+line("插件仓自检（ci-verify）");
 line("────────────────────────────────────────────────────────────");
 
 // ── 读 manifest（JSONC——脚手架允许注释，与 SDK validatePluginJson 同一个解析器）──
@@ -136,7 +136,7 @@ const strictEslintRows = allRows.filter((r) => !RULE_NOT_FOUND_RE.test(r.message
 /** 判红的三样：真 eslint 偏离 + css 硬编码腿（硬约束 1 的 .css 半边，eslint 到不了 .css）+ 见下 ②③④⑤ */
 const cssLegViolations = legCount("check-css-hardcode");
 const strictLintViolations = strictEslintRows.length + cssLegViolations;
-/** 只报告不拦的两条腿：字号度量与 4px 节奏——属「审美校准」（SDK 07 §六），存量偏离多且修它们要动插件源码 */
+/** 只报告不拦的两条腿：字号度量与 4px 节奏——属「审美校准」，存量偏离多且修它们要动插件源码 */
 const advisoryLintViolations = legCount("check-font-scale") + legCount("check-spacing-grid");
 
 if (lintNoObject) {
@@ -163,7 +163,7 @@ if (advisoryLintViolations > 0) {
   line(
     `   ⚠ 附加腿（**报告不拦**）：font-scale ${legCount("check-font-scale")} 处 / ` +
       `spacing-grid ${legCount("check-spacing-grid")} 处——字号度量与 4px 节奏属审美校准档` +
-      `（SDK 07 §六），逐条见上方报告；确属有意的用标准 disable 注释写明理由。`,
+      `，逐条见上方报告；确属有意的用标准 disable 注释写明理由。`,
   );
 }
 
@@ -432,7 +432,7 @@ if (!manifest) {
   }
   if (themeAssetRefs.size > 0) ok.push(`${themeAssetRefs.size} 处 linkdesk:// 资产引用`);
 
-  /* ⑤ E6#106：目录条目的图标字段必须是**未装态可解析**的形态（绝对 URL）。
+  /* ⑤ 目录条目的图标字段必须是**未装态可解析**的形态（绝对 URL）。
    *
    * 为什么这条能是纯字段断言、不需要知道「谁是图标栏插件」：无论哪种插件，**未装用户**看市场行时
    * 目录条目是唯一数据源，而包内相对路径（`resources/icon.svg`）在未装态恒 404——「目录里存相对路径」
@@ -469,7 +469,7 @@ if (!manifest) {
           } else {
             catProblems.push(
               `${key} = ${JSON.stringify(v)} 是**包内相对路径**——目录条目是未装用户的唯一图源，` +
-                `相对路径在未装态恒 404。跑 \`npm run publish\` 让 SDK 自动转绝对 URL（E6#106）。`,
+                `相对路径在未装态恒 404。跑 \`npm run publish\` 让 SDK 自动转绝对 URL。`,
             );
           }
         }
@@ -520,7 +520,7 @@ if (!manifest) {
     line(`✅ ④ 声明自洽：${ok.length > 0 ? ok.join("、") + "——全部兑现。" : "本仓无声明对象（无 entry/views/themes）。"}`);
   }
 
-  // pluginId 缺声明——schema 兜底打黄灯（E6#98g），这里同款提示
+  // pluginId 缺声明——schema 兜底打黄灯，这里同款提示
   if (!manifest.pluginId) {
     line(
       `   ⚠ plugin.json 未显式声明 pluginId——身份现按目录名 "${pluginId}" 兜底。发布后身份不可变，` +

@@ -13,7 +13,7 @@
  *   {{date}} 注入 CHANGELOG.md 的初始段标题——格式必须是 `## v<版本>（YYYY-MM-DD）`，
  *   那是市场「更改日志」页签切段的解析依据（见 docs/02-Electron架构/.../插件规范化层/02）。
  *
- * 🔴 建仓三语义（E6#103 · L7 第 7.6 轮）——照抄 `cargo new`，**不是「一律 git init」**：
+ * 🔴 建仓三语义——照抄 `cargo new`，**不是「一律 git init」**：
  *   ① 目标目录**已在某个 git 仓内** ⇒ 不 init（防嵌套仓——在容器目录里生成插件正是这种情形）
  *   ② 不在任何 git 仓内 ⇒ `git init -b main`
  *   ③ `--no-git` ⇒ 不建仓（逃生口，对标 `cargo new --vcs none`）
