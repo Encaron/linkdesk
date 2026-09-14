@@ -1,37 +1,37 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://linkdesk.local/schemas/theme.schema.json",
-  "title": "LinkDesk 主题定义（ThemeRecipe，05 schema）",
-  "description": "contributes.themes 指向的主题 JSON 文件契约（E5.8#129 立——对标 plugin.schema.json，格式错当场拦）。镜像 src/core/types/theme.ts ThemeRecipe；解析语义见 parseThemeRecipe。新格式必备 colorways[]（决策 F：引擎只读新格式）；appearance 各域稀疏，缺的域继承 :root 壳默认。校验脚本 scripts/check-theme-schema.mjs（npm run check 链）。",
+  "title": "LinkDesk theme definition (ThemeRecipe)",
+  "description": "Contract for the theme JSON file referenced by contributes.themes (modeled on plugin.schema.json; format errors are rejected on the spot). Mirrors the ThemeRecipe type in src/core/types/theme.ts; parsing semantics live in parseThemeRecipe. The new format requires colorways[] (the engine reads only the new format); appearance domains are sparse, and an omitted domain inherits the shell's :root default. Validated by scripts/check-theme-schema.mjs (part of the npm run check chain).",
   "type": "object",
   "required": ["id", "name", "type", "colorways"],
   "additionalProperties": false,
   "properties": {
     "$schema": {
       "type": "string",
-      "description": "编辑器 IntelliSense 引用（可选）——相对路径 ../../../public/schemas/theme.schema.json"
+      "description": "Editor IntelliSense reference (optional) — relative path ../../../public/schemas/theme.schema.json"
     },
     "id": {
       "type": "string",
-      "description": "主题 id——全局唯一（app.theme 存此；惯例 = 插件短名）"
+      "description": "Theme id — globally unique (stored in app.theme; convention: the plugin's short name)"
     },
     "name": {
       "type": "string",
-      "description": "主题显示名——主题选择器/浏览器标题"
+      "description": "Theme display name — shown in the theme picker and the window title"
     },
     "type": {
       "type": "string",
       "enum": ["light", "dark"],
-      "description": "基础明暗——dark 基底 :root / light 覆盖层 data-theme"
+      "description": "Base light/dark mode — dark is the :root base, light is the data-theme override layer"
     },
     "appearance": {
       "type": "object",
-      "description": "风格域（单值稀疏）——缺的域继承 :root 壳默认",
+      "description": "Appearance domains (single value, sparse) — an omitted domain inherits the shell's :root default",
       "additionalProperties": false,
       "properties": {
         "radius": {
           "type": "object",
-          "description": "圆角八档（键 = 档位名，值 = px；999 = 全胶囊 pill）",
+          "description": "Eight radius steps (key = step name, value = px; 999 = full pill)",
           "additionalProperties": false,
           "properties": {
             "xs": { "type": "number" },
@@ -46,60 +46,60 @@
         },
         "glass": {
           "type": "object",
-          "description": "玻璃 + 悬浮面板材质（ThemeSurface）——缺省 = 无玻璃无悬浮",
+          "description": "Glass and floating panel material (ThemeSurface) — default: no glass, no floating",
           "additionalProperties": false,
           "properties": {
-            "type": { "type": "string", "enum": ["glass"], "description": "玻璃配方——缺省 = 无玻璃" },
-            "blur": { "type": "number", "description": "backdrop blur px——0 = 关" },
-            "saturate": { "type": "number", "description": "饱和度增强——1 = 关" },
-            "tint": { "type": "string", "description": "玻璃面叠加色" },
-            "opacity": { "type": "number", "description": "玻璃面不透明度（合成层基线）——1 = 不透明 / 0 = 全透见背景" },
-            "specular": { "type": "number", "description": "液态玻璃顶部高光强度——0 = 关" },
-            "specularColor": { "type": "string", "description": "顶部高光基色——缺省 = 白；alpha 仍走 specular" },
-            "morph": { "type": "number", "description": "形变过渡 ms——0 = 关" },
-            "radius": { "type": "number", "description": "悬浮圆角 px——0 = 直角贴边" },
-            "shadow": { "type": "boolean", "description": "投影浮起——true = 悬浮投影（映射 --shadow-lift）" },
-            "texture": { "type": "string", "description": "可平铺纹理图资产路径（⑬ 纸纹分区）" },
-            "textureOpacity": { "type": "number", "description": "纹理不透明度——1 = 不透明" }
+            "type": { "type": "string", "enum": ["glass"], "description": "Glass recipe — default: no glass" },
+            "blur": { "type": "number", "description": "Backdrop blur in px — 0 = off" },
+            "saturate": { "type": "number", "description": "Saturation boost — 1 = off" },
+            "tint": { "type": "string", "description": "Overlay tint color for the glass surface" },
+            "opacity": { "type": "number", "description": "Glass surface opacity (compositing baseline) — 1 = opaque / 0 = fully transparent, background shows through" },
+            "specular": { "type": "number", "description": "Liquid glass top highlight strength — 0 = off" },
+            "specularColor": { "type": "string", "description": "Base color of the top highlight — default: white; alpha still comes from specular" },
+            "morph": { "type": "number", "description": "Morph transition in ms — 0 = off" },
+            "radius": { "type": "number", "description": "Floating corner radius in px — 0 = square corners flush to the edge" },
+            "shadow": { "type": "boolean", "description": "Drop shadow lift — true = floating shadow (maps to --shadow-lift)" },
+            "texture": { "type": "string", "description": "Path to a tileable texture image asset (paper texture)" },
+            "textureOpacity": { "type": "number", "description": "Texture opacity — 1 = opaque" }
           }
         },
         "font": {
           "type": "object",
-          "description": "字体域——系统字体族名字符串 or 资产相对路径（#50.17：资产 → @font-face → 族名）",
+          "description": "Font domain — a system font family name or a relative asset path (asset → @font-face → family name)",
           "additionalProperties": false,
           "properties": {
-            "ui": { "type": "string", "description": "UI 字体（--font-ui）" },
-            "mono": { "type": "string", "description": "等宽字体（--font-mono）" }
+            "ui": { "type": "string", "description": "UI font (--font-ui)" },
+            "mono": { "type": "string", "description": "Monospace font (--font-mono)" }
           }
         },
         "background": {
           "type": "object",
-          "description": "图片背景域（panorama 全窗 / zones 切片）",
+          "description": "Image background domain (panorama = full window / zones = sliced)",
           "additionalProperties": false,
           "properties": {
-            "image": { "type": "string", "description": "图片路径——作者提供可解析 URL，引擎写 --bg-image 时 url() 包裹" },
-            "opacity": { "type": "number", "description": "图片层不透明度——1 = 不透明" },
-            "mask": { "type": "number", "description": "图片遮罩明暗（0-1）——0 = 无遮罩" },
-            "maskColor": { "type": "string", "description": "遮罩基色——缺省 = 黑；alpha 仍走 mask" },
-            "mode": { "type": "string", "enum": ["panorama", "zones"], "description": "切片模式——panorama（默认）/ zones（同图连续切片）" }
+            "image": { "type": "string", "description": "Image path — the author provides a resolvable URL; the engine wraps it in url() when writing --bg-image" },
+            "opacity": { "type": "number", "description": "Image layer opacity — 1 = opaque" },
+            "mask": { "type": "number", "description": "Image mask darkness (0-1) — 0 = no mask" },
+            "maskColor": { "type": "string", "description": "Mask base color — default: black; alpha still comes from mask" },
+            "mode": { "type": "string", "enum": ["panorama", "zones"], "description": "Slice mode — panorama (default) / zones (the same image sliced continuously)" }
           }
         }
       }
     },
     "colorways": {
       "type": "array",
-      "description": "配色变体列表（颜色域多值，至少 1 项）",
+      "description": "Colorway list (multi-value color domain, at least one entry)",
       "minItems": 1,
       "items": {
         "type": "object",
         "required": ["id", "name"],
         "additionalProperties": false,
         "properties": {
-          "id": { "type": "string", "description": "配色变体 id——全局唯一（app.themeColor 动态 enum 存此）" },
-          "name": { "type": "string", "description": "配色显示名" },
+          "id": { "type": "string", "description": "Colorway id — globally unique (stored in the dynamic app.themeColor enum)" },
+          "name": { "type": "string", "description": "Colorway display name" },
           "colors": {
             "type": "object",
-            "description": "颜色 token 集（键 = 变量契约 token 名去 -- 前缀；值 = 颜色字符串）",
+            "description": "Color token set (key = contract token name without the -- prefix; value = a color string)",
             "additionalProperties": { "type": "string" }
           }
         }

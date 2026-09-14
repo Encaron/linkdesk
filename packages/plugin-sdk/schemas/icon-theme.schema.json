@@ -1,82 +1,82 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://linkdesk.local/schemas/icon-theme.schema.json",
-  "title": "LinkDesk 图标主题 mappings 数据契约",
-  "description": "contributes.iconThemes 指向的 mappings JSON 文件契约——镜像引擎 normalizeIconThemeMappings（src/pluginLoader/contributions/contributions.ts，E5.8#133 定案）。匹配表四段（files/extensions/folders/foldersExpanded）+ 顶层默认图标五键（file/folder/folderExpanded/rootFolder/rootFolderExpanded）；条目双形态二选一：字体 glyph（class + 可选 color）或图像资产（imagePath，相对插件根）。可选顶层 font 段声明自定义图标字体。校验：npm 侧 @linkdesk/plugin-sdk validateIconThemeJson；repo 侧 check-theme-schema.mjs（contributes.iconThemes 全扫）。",
+  "title": "LinkDesk icon theme mappings data contract",
+  "description": "Contract for the mappings JSON file referenced by contributes.iconThemes — mirrors the engine's normalizeIconThemeMappings (src/pluginLoader/contributions/contributions.ts). Four mapping tables (files/extensions/folders/foldersExpanded) plus five top-level default icon keys (file/folder/folderExpanded/rootFolder/rootFolderExpanded); each entry takes one of two forms: a font glyph (class + optional color) or an image asset (imagePath, relative to the plugin root). An optional top-level font section declares a custom icon font. Validation: @linkdesk/plugin-sdk validateIconThemeJson on the npm side, check-theme-schema.mjs on the repo side (it scans every contributes.iconThemes entry).",
   "type": "object",
   "additionalProperties": false,
   "properties": {
     "$schema": {
       "type": "string",
-      "description": "编辑器 IntelliSense 引用（可选）——npm 作者引 node_modules/@linkdesk/plugin-sdk/schemas/icon-theme.schema.json"
+      "description": "Editor IntelliSense reference (optional) — npm authors reference node_modules/@linkdesk/plugin-sdk/schemas/icon-theme.schema.json"
     },
     "files": {
       "$ref": "#/$defs/mappingTable",
-      "description": "文件名 → 图标条目（命中优先级最高，未命中走 extensions）"
+      "description": "File name → icon entry (highest match priority; on a miss, extensions is consulted)"
     },
     "extensions": {
       "$ref": "#/$defs/mappingTable",
-      "description": "扩展名（含点，如 \".ts\"/\".jsx\"）→ 图标条目"
+      "description": "Extension (including the dot, e.g. \".ts\"/\".jsx\") → icon entry"
     },
     "folders": {
       "$ref": "#/$defs/mappingTable",
-      "description": "目录名 → 图标条目（折叠态）"
+      "description": "Folder name → icon entry (collapsed)"
     },
     "foldersExpanded": {
       "$ref": "#/$defs/mappingTable",
-      "description": "目录名 → 图标条目（展开态；缺省复用 folders）"
+      "description": "Folder name → icon entry (expanded; defaults to reusing folders)"
     },
     "file": {
       "$ref": "#/$defs/iconMapping",
-      "description": "默认文件图标——未命中 files/extensions 时使用（缺省 = 壳保底图标）"
+      "description": "Default file icon — used when files/extensions miss (default: the shell's fallback icon)"
     },
     "folder": {
       "$ref": "#/$defs/iconMapping",
-      "description": "默认文件夹图标——未命中 folders 时使用（缺省 = 壳保底）"
+      "description": "Default folder icon — used when folders misses (default: the shell's fallback)"
     },
     "folderExpanded": {
       "$ref": "#/$defs/iconMapping",
-      "description": "默认文件夹展开图标——未命中 foldersExpanded 时使用（缺省 = 壳保底）"
+      "description": "Default expanded folder icon — used when foldersExpanded misses (default: the shell's fallback)"
     },
     "rootFolder": {
       "$ref": "#/$defs/iconMapping",
-      "description": "根文件夹图标（缺省 = 壳保底）"
+      "description": "Root folder icon (default: the shell's fallback)"
     },
     "rootFolderExpanded": {
       "$ref": "#/$defs/iconMapping",
-      "description": "根文件夹展开图标（缺省 = 壳保底）"
+      "description": "Expanded root folder icon (default: the shell's fallback)"
     },
     "font": {
       "$ref": "#/$defs/fontSpec",
-      "description": "自定义图标字体（可选）——声明后壳生成 @font-face，glyph 类由作者提供"
+      "description": "Custom icon font (optional) — once declared, the shell generates @font-face and the author supplies the glyph classes"
     }
   },
   "$defs": {
     "mappingTable": {
       "type": "object",
-      "description": "匹配表——名字（文件名/扩展名/目录名）→ 图标条目",
+      "description": "Mapping table — name (file name / extension / folder name) → icon entry",
       "additionalProperties": { "$ref": "#/$defs/iconMapping" }
     },
     "iconMapping": {
-      "title": "图标条目——双形态二选一",
+      "title": "Icon entry — pick one of two forms",
       "type": "object",
       "anyOf": [
         {
-          "title": "字体 glyph 形态",
-          "description": "CSS 类名——codicon 保底 / 自定义图标字体（class 缺省 = 图标字体家族自带类）",
+          "title": "Font glyph form",
+          "description": "CSS class name — codicon as the fallback, or a custom icon font (when class is omitted, the icon font family's own class is used)",
           "required": ["class"],
           "properties": {
-            "class": { "type": "string", "description": "CSS 类名（如 \"codicon codicon-typescript\" 或 \"myfont myfont-rust\"）" },
-            "color": { "type": "string", "description": "可选每图标颜色（seti 类彩色字体；普通单色字体不写）" }
+            "class": { "type": "string", "description": "CSS class name (e.g. \"codicon codicon-typescript\" or \"myfont myfont-rust\")" },
+            "color": { "type": "string", "description": "Optional per-icon color (for colorful seti-style fonts; omit for plain monochrome fonts)" }
           },
           "additionalProperties": false
         },
         {
-          "title": "图像资产形态",
-          "description": "图像资产——任意多色/拟物化/贴图",
+          "title": "Image asset form",
+          "description": "Image asset — any multicolor, skeuomorphic, or textured artwork",
           "required": ["imagePath"],
           "properties": {
-            "imagePath": { "type": "string", "description": "图像资产相对插件根的路径（如 \"icons/js.svg\"）——渲染时壳用 getPluginAssetPath 解析 linkdesk:// 绝对 URL（硬约束 12 同族），禁止写 /assets/... 绝对路径" }
+            "imagePath": { "type": "string", "description": "Path to the image asset relative to the plugin root (e.g. \"icons/js.svg\") — at render time the shell resolves it to an absolute linkdesk:// URL via getPluginAssetPath; absolute /assets/... paths are forbidden" }
           },
           "additionalProperties": false
         }
@@ -84,13 +84,13 @@
     },
     "fontSpec": {
       "type": "object",
-      "description": "自定义图标字体元数据——path 相对插件根或绝对 URL；@font-face 由壳生成（池独立文档复刻），glyph 类 CSS 作者自写",
+      "description": "Custom icon font metadata — path is relative to the plugin root or an absolute URL; the shell generates @font-face and the author writes the glyph class CSS",
       "required": ["path", "family"],
       "additionalProperties": false,
       "properties": {
-        "path": { "type": "string", "description": "字体文件相对插件根路径（或 linkdesk:// / http(s):// / data: 绝对 URL）" },
-        "family": { "type": "string", "description": "作者 glyph CSS 里 font-family 写的族名" },
-        "glyphs": { "type": "string", "description": "glyph 类 CSS 文件相对插件根路径（可选；缺省 = 仅 @font-face，无自定义 glyph 类）" }
+        "path": { "type": "string", "description": "Font file path relative to the plugin root (or an absolute linkdesk:// / http(s):// / data: URL)" },
+        "family": { "type": "string", "description": "The family name the author writes in font-family in the glyph CSS" },
+        "glyphs": { "type": "string", "description": "Path to the glyph class CSS file relative to the plugin root (optional; default: @font-face only, no custom glyph classes)" }
       }
     }
   }

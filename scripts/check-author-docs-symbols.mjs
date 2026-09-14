@@ -17,7 +17,7 @@
  * 清账记录见 11 号档案（甲＝剥离；正文里删除坐标，要保留"为什么"就写成人话）。
  *
  * ## 扫描域与边界（🔴 读之前先看这段）
- *  - **扫**：`docs/03-插件制造/**` 下的 `*.md`（**含子夹**，如 `主题/`）。
+ *  - **扫**：`docs/03-插件制造/**` 与 `docs/03-plugin-authoring/**` 下的 `*.md`（**含子夹**，如 `主题/` / `themes/`）。
  *  - **不扫**：`plugin.schema.json`。**这不是漏，是判断**——它是「三份必须字节相等」的
  *    拷贝之一（`check-plugin-schema-sync` 守，另两份是 `public/schemas/` 与 SDK 包内），
  *    单独剥离某一份 = 当场红；三份一起剥 = SDK 包内容漂移 ⇒ 必须发一次 `@linkdesk/plugin-sdk`
@@ -37,7 +37,8 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, "..");
-const DOCS_ROOT = join(ROOT, "docs", "03-插件制造");
+/** 🔴 E6#105n：作者面是**两棵树**——中文（维护者面）＋ 英文（作者面主显）。两棵都要扫。 */
+const DOCS_ROOTS = [join(ROOT, "docs", "03-插件制造"), join(ROOT, "docs", "03-plugin-authoring")];
 
 /** 任务号形态（比 11 号档案原文的四种更全：把 `E5.7#` 也收进来——它同样是内部坐标） */
 export const SYMBOL_RE = /\bE[0-9]+(?:\.[0-9]+)*[A-Z]?#[0-9]+(?:\.[0-9]+)*[a-z]?(?:-[0-9]+)?/g;
@@ -63,13 +64,15 @@ export function scanText(text) {
   return hits;
 }
 
-export function checkAuthorDocsSymbols(docsRoot = DOCS_ROOT) {
+export function checkAuthorDocsSymbols(docsRoots = DOCS_ROOTS) {
   const reds = [];
   let files = 0;
-  for (const file of listMarkdown(docsRoot)) {
-    files++;
-    const rel = relative(ROOT, file).replaceAll("\\", "/");
-    for (const h of scanText(readFileSync(file, "utf8"))) reds.push({ file: rel, ...h });
+  for (const root of Array.isArray(docsRoots) ? docsRoots : [docsRoots]) {
+    for (const file of listMarkdown(root)) {
+      files++;
+      const rel = relative(ROOT, file).replaceAll("\\", "/");
+      for (const h of scanText(readFileSync(file, "utf8"))) reds.push({ file: rel, ...h });
+    }
   }
   return { files, reds };
 }

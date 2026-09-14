@@ -1,55 +1,58 @@
 # @linkdesk/plugin-docs
 
-> **LinkDesk 插件作者文档**——从零开始学会做一个插件。**离线包**：装到本地就能读，不用联网翻仓库。
+> **LinkDesk plugin-authoring documentation** — learn to build a plugin from zero. **Offline package**: install it and read locally, no need to browse the repository.
 
-写给谁：**插件作者，以及作者的 AI**。开头那份 `00-README.md` 是导览，按"我要做什么"或"我是哪一档（10 分钟 / 30 分钟 / 1 天）"分流。
+Written for **plugin authors and their AI assistants**. Start with `docs/00-readme.md` — it is a guided entry point that routes by "what do I want to build" and by "which tier am I in" (10 minutes / 30 minutes / 1 day).
 
-## 装
+## Install
 
 ```bash
 npm i @linkdesk/plugin-docs
-# 然后读 node_modules/@linkdesk/plugin-docs/docs/00-README.md
+# then read node_modules/@linkdesk/plugin-docs/docs/00-readme.md
 ```
 
-> 它不是构建依赖，**不用放进插件的 `package.json`**——想看的时候装一下即可。
+> It is not a build dependency — **do not add it to your plugin's `package.json`**. Install it when you want to read.
 
-## 里面有什么
+## What's inside
 
-| 你想干什么 | 看哪篇 |
+| What you want to do | Read |
 |:--|:--|
-| 先认领档位（10 分钟 / 30 分钟 / 1 天） | `docs/13-插件开发指南.md` |
-| 知道我的插件住哪一块（图标栏/侧栏/主区/底部面板/状态栏） | `docs/17-区域地图.md` |
-| 让几个区域联动（选中 → 切视图 → 状态栏更新） | `docs/18-区域间互动.md` |
-| 用壳提供的现成 UI 零件 | `docs/19-组件速查.md` |
-| 给插件加一条配置项 | `docs/20-我的插件加一条配置项.md` |
-| 做一个主题（零代码） | `docs/主题/01-做一个主题插件.md` · `docs/主题/02-主题字段速查.md` |
-| 查 API（能调什么） | `docs/01-插件API契约.md` |
-| 查某个字段 | `docs/06-plugin.json规范.md` · `docs/plugin.schema.json` |
+| Pick your tier (10 min / 30 min / 1 day) | `docs/13-development-guide.md` |
+| Know where your plugin lives (Icon Bar / Sidebar / Main Area / Bottom Panel / Status Bar) | `docs/17-region-map.md` |
+| Wire regions together (select → switch view → update the status bar) | `docs/18-cross-region-wiring.md` |
+| Use the UI parts the shell already provides | `docs/19-component-cheatsheet.md` |
+| Add a setting to your plugin | `docs/20-adding-a-setting.md` |
+| Build a theme (no code) | `docs/themes/01-build-a-theme-plugin.md` · `docs/themes/02-theme-field-index.md` |
+| Look up the API (what can I call) | `docs/01-plugin-api-contract.md` |
+| Look up a field | `docs/06-plugin-json-spec.md` · `docs/plugin.schema.json` |
 
-全部篇目 → `docs/00-README.md` 的文档索引。
+Full index → the documentation index in `docs/00-readme.md`.
 
-## 🔴 真源在哪（改文档请改那边）
+**Chinese version** (the maintainer-facing original, mirrored one-for-one): `docs/zh/00-README.md`.
+
+## 🔴 Where the source of truth is (edit the docs there, not here)
 
 ```
-真源   <仓库> docs/03-插件制造/**          ← 手工只改这一份
-  ↓    npm run docs:build（scripts/generate-plugin-docs.mjs）
-产物   本包 docs/**                        ← 生成物，别手改
-  ↓    npm run docs:check（挂 npm run check）
-判据   与真源逐字节比对（链接重写处除外）
+source   <repo> docs/03-plugin-authoring/**   (English — the author-facing primary)
+         <repo> docs/03-插件制造/**            (Chinese — the maintainer-facing original)
+  ↓      npm run docs:build  (scripts/generate-plugin-docs.mjs)
+output   this package's docs/**  (English at the root, Chinese under zh/)   ← generated, do not hand-edit
+  ↓      npm run docs:check  (wired into npm run check)
+rule     byte-for-byte comparison against the source (except the link rewrites below)
 ```
 
-- **链接**：指到 `docs/03-插件制造/` **外面**的那些（API 契约、工具链、主题变量契约…）在生成时被**绝对化**成 GitHub 链接——在 npm 包里也点得通。界内链接保持相对。
-- 所以**发现文档有问题**：去仓库改 `docs/03-插件制造/`，别改这个包；改了真源不重生成，`npm run check` 会红。
+- **Links**: targets that point **outside** the doc trees (the API contract, the toolchain docs, the theme variable contract…) are **absolutized to GitHub URLs** at generation time, so they work from inside an npm package too. In-tree links stay relative.
+- So **if you find a documentation problem**: fix it in the repository under `docs/`, not in this package. If the source changes and the package is not regenerated, `npm run check` fails.
 
-## 版本与发布
+## Versions and publishing
 
-本包是**第五根作者轴**（另四根：`@linkdesk/contracts` / `@linkdesk/plugin-sdk` / `create-linkdesk-plugin` / `@linkdesk/ui`）——**内容变即 PATCH**，与软件版本无关。
+This package is the **fifth author axis** (the others: `@linkdesk/contracts` / `@linkdesk/plugin-sdk` / `create-linkdesk-plugin` / `@linkdesk/ui`) — **any content change means a PATCH**, and it is independent of the application version.
 
 ```bash
-npm publish --registry=https://registry.npmjs.org   # 显式带 registry（workspace 里本包 .npmrc 会被忽略）
-npm run release:mark                                 # 记基线（过货架核对）
+npm publish --registry=https://registry.npmjs.org   # pass the registry explicitly (inside a workspace this package's .npmrc is ignored)
+npm run release:mark                                 # record the baseline (verified against the shelf)
 ```
 
-## 许可
+## License
 
 MIT

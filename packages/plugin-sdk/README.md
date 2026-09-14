@@ -1,26 +1,26 @@
 # @linkdesk/plugin-sdk
 
-LinkDesk 插件作者 SDK——对标 `@types/vscode`：装一个包，拿到 **`window.linkdesk.*` 类型提示 + 一键构建 `.linkdesk-plugin` + plugin.json 验证**。零壳源码依赖。
+The LinkDesk plugin author SDK — the counterpart to `@types/vscode`: install one package and get **`window.linkdesk.*` type hints + one-command builds of `.linkdesk-plugin` + plugin.json validation**. Zero dependency on the shell source.
 
-> 类型真相源 = `@linkdesk/contracts`（本包依赖转发，不复制生成物——契约漂移 → 你的 tsc 立即红）。
-> 插件作者写代码一律走 `window.linkdesk.*`（preload 注入），**禁止 `import @src/core`**。
+> The source of truth for types = `@linkdesk/contracts` (this package re-exports it and does not copy the generated artifact — contract drift → your tsc turns red immediately).
+> Plugin authors always write code against `window.linkdesk.*` (injected by the preload); **`import @src/core` is forbidden**.
 
-## 安装
+## Installation
 
 ```bash
 npm install -D @linkdesk/plugin-sdk
 ```
 
-## API 速查表
+## API cheat sheet
 
 <!-- BEGIN API-CHEATSHEET -->
 
 > 自动生成，**勿手改**——由 `scripts/generate-api-cheatsheet.mjs` 从 `@linkdesk/contracts` 的 `linkdesk.d.ts` 现读产出，
 > `npm run check` 机械盯漂。完整签名与逐方法说明见 `linkdesk.d.ts` 本体（IDE 里可直接跳转）。
 
-**15 个域接口 → 46 个命名空间 / 243 个方法**，全部经 `window.linkdesk.<命名空间>.<方法>` 调用。（另含 1 个废弃别名 `config`，方法不重复计入）
+**15 个域接口 → 46 个命名空间 / 243 个方法**，全部经 `window.linkdesk.<命名空间>.<方法>` 调用。 (plus 1 deprecated alias/es `config`, not counted twice)
 
-| 命名空间 | 方法数 | 方法 | 说明 |
+| Namespace | Methods | Method | Notes |
 |:--|:--:|:--|:--|
 | `commands` | 5 | `execute` `executeCommand` `registerCommand` `unregisterCommands` `getCommands` | 命令——对标 VS Code vscode.commands |
 | `configuration` | 15 | `get` `set` `getSchema` `onChange` `getConfigurationContributions` `inspectConfiguration` `getUserSettings` `onDidChangeConfiguration` `onPluginLifecycleChange` `consumeSettingsGroup` `onRequestSettingsGroup` `consumeScrollToSetting` `onRequestScrollToSetting` `consumeOpenKeybindings` `onRequestOpenKeybindings` | 配置—新名——对标 VS Code vscode.workspace.getConfiguration |
@@ -62,91 +62,91 @@ npm install -D @linkdesk/plugin-sdk
 | `window` | 11 | `minimize` `maximize` `unmaximize` `close` `setZoom` `toggleDevTools` `isMaximized` `onMaximizeChange` `setAlwaysOnTop` `isAlwaysOnTop` `onAlwaysOnTopChange` | 窗口控制——TitleBar 按钮映射，双端注入（11 方法同通道，共享模块 electron/window-name… |
 | `shell` | 6 | `showItemInFolder` `openInTerminal` `pluginLocation` `openPluginFolder` `startDrag` `relaunch`° | 壳级命令——revealInOS / openInTerminal / startDrag / relaunch，双端… |
 | `hotExit` ⚠️ | 3 | `save` `load` `clear` | 热退出暂存——编辑器未保存内容落盘（E5.7#53） |
-| `getFilePath` | 0 | （顶层函数）`getFilePath: (file: File) => string;` | OS 拖入文件路径获取——双端注入 |
+| `getFilePath` | 0 | (top-level function)`getFilePath: (file: File) => string;` | OS 拖入文件路径获取——双端注入 |
 | `panel` | 2 | `reveal` `revealFloating` | —— |
 | `settings` | 3 | `list` `getActive` `setActive` | —— |
 | `factorySlots` | 4 | `listRoles` `list` `getActive` `setActive` | —— |
 | `app` | 1 | `getVersion` | app 命名空间——只读产品身份 |
 | `update` | 1 | `getState` | update 命名空间——只读更新状态（供「关于」类插件读宿主版本/更新态） |
 
-⚠️ = 契约可选命名空间（只在一侧注入）：`bridge` `hotExit`——调用前先判断是否存在，另一侧为 `undefined`。
-° = 契约标 `?` 的成员：只在一侧 preload 注入（绝大多数是壳侧独有），**插件跑在池里**——调用前先判存在。
+⚠️ = optional namespace in the contract (injected on one side only): `bridge` `hotExit` — check for existence before calling; on the other side it is undefined.
+° = member marked `?` in the contract: injected in one side's preload only (almost always shell-side). **Your plugin runs in the pool** — check for existence before calling.
 
 <!-- END API-CHEATSHEET -->
 
-## 使用
+## Usage
 
-### 1. tsconfig——让 `window.linkdesk.` 有类型
+### 1. tsconfig — give `window.linkdesk.` its types
 
 ```jsonc
 {
   "compilerOptions": {
-    "types": ["@linkdesk/plugin-sdk"], // 全局 window.linkdesk 声明随契约注入
+    "types": ["@linkdesk/plugin-sdk"], // the global window.linkdesk declarations come in with the contracts
     "jsx": "react-jsx"
   }
 }
 ```
 
-不建任何 global.d.ts。`.ts/.tsx` 里 `window.linkdesk.tabs.create({...})` 直接有参数类型与返回类型检查。
+Create no global.d.ts at all. In `.ts`/`.tsx`, `window.linkdesk.tabs.create({...})` gets parameter and return type checking directly.
 
-### 2. plugin.json——声明插件（必填 `name`+`version`，可注释/尾逗号）
+### 2. plugin.json — declare the plugin (required `name` + `version`; comments and trailing commas allowed)
 
 ```jsonc
 {
-  "name": "My Plugin",        // 显示名
+  "name": "My Plugin",        // display name
   "version": "1.0.0",
-  "entry": "src/index.tsx",   // view/card/protocol 型插件必需
+  "entry": "src/index.tsx",   // required for view/card/protocol plugins
   "contributes": { "i18n": { "en": "i18n/en.json" } }
 }
 ```
 
-### 3. 构建——产出 `.linkdesk-plugin` 分发文件
+### 3. Build — produce the `.linkdesk-plugin` distributable
 
 ```bash
-npm run build   # 包自带 bin，等价 linkdesk-plugin-sdk build
+npm run build   # the package ships its own bin; equivalent to linkdesk-plugin-sdk build
 ```
 
-构建自动完成：**validate plugin.json → Vite 打包 `src/index.tsx` 为 `index.bundle.js` → 收拢 manifest/图标/i18n/README 进 `dist/<id>.linkdesk-plugin/` → zip 成项目根 `<id>.linkdesk-plugin`**。
+The build does all of this automatically: **validate plugin.json → Vite bundles `src/index.tsx` into `index.bundle.js` → gather manifest/icons/i18n/README into `dist/<id>.linkdesk-plugin/` → zip it into `<id>.linkdesk-plugin` at the project root**.
 
-- `react` / `react-dom` / `react-i18next` / `i18next` 由壳提供，**不打包**——其他依赖全部 inline，插件自包含。
-- 插件 id = `plugin.json` 的 `pluginId` 字段；不声明则以**项目目录名**兜底（对齐壳加载契约）。
-- 想自定义入口/输出目录/额外 external：
+- `react` / `react-dom` / `react-i18next` / `i18next` are provided by the shell and are **not bundled** — every other dependency is inlined, so plugins are self-contained.
+- Plugin id = the `pluginId` field of `plugin.json`; if it is not declared, the **project directory name** is used as a fallback (matching the shell's loading contract).
+- To customize the entry, output directory, or extra externals:
   ```js
   // vite.config.ts
   import { defineLinkdeskPluginConfig } from "@linkdesk/plugin-sdk";
   export default defineLinkdeskPluginConfig({ entry: "src/index.tsx", outDir: "dist" });
   ```
 
-### 单独校验
+### Standalone validation
 
 ```bash
-npm run validate          # 或 linkdesk-plugin-sdk validate ./plugin.json
+npm run validate          # or linkdesk-plugin-sdk validate ./plugin.json
 ```
 
-### 主题/图标数据文件 schema（E6#60——主题/图标作者 npm 通道）
+### Theme/icon data file schemas (the npm channel for theme and icon authors)
 
-`schemas/theme.schema.json` + `schemas/icon-theme.schema.json` 随包分发（与仓库 `public/schemas/` live 字节同步，漂移由 `check-plugin-schema-sync` 守卫）。主题/图标作者在数据 JSON 首行引 `$schema` 拿 IntelliSense：
+`schemas/theme.schema.json` + `schemas/icon-theme.schema.json` ship with the package (kept byte-synced with the repository's `public/schemas/`; drift is caught by `check-plugin-schema-sync`). Theme and icon authors reference `$schema` on the first line of their data JSON to get IntelliSense:
 
 ```jsonc
-// themes/my-glass.json（相对插件根）
+// themes/my-glass.json (relative to the plugin root)
 {
   "$schema": "./node_modules/@linkdesk/plugin-sdk/schemas/theme.schema.json",
   // …
 }
 ```
 
-数据文件**非 JSONC**（严格 JSON，同引擎加载）。构建期/CI 可用 validate 家族拦格式错（与仓库 `check-theme-schema.mjs` 同一 schema 文件，规则永不漂移）：
+Data files are **not JSONC** (strict JSON, loaded by the same engine). At build time or in CI, the validate family can catch format errors (the same schema files the repository's `check-theme-schema.mjs` uses, so the rules never drift):
 
 ```js
 import { validateThemeJson, validateIconThemeJson } from "@linkdesk/plugin-sdk";
 
 validateThemeJson("themes/my-glass.json");      // theme.schema.json
-validateIconThemeJson("icons/my-icons.json");   // icon-theme.schema.json（匹配表双形态契约）
+validateIconThemeJson("icons/my-icons.json");   // icon-theme.schema.json (dual-form contract for the match table)
 ```
 
-### index.bundle.js 约定
+### index.bundle.js conventions
 
-打包产物 `export default` 一个 React 组件——壳以 `{ isActive }` 渲染它：
+The bundle `export default`s a React component — the shell renders it with `{ isActive }`:
 
 ```tsx
 export default function MyView({ isActive }: { isActive: boolean }) {
@@ -154,7 +154,7 @@ export default function MyView({ isActive }: { isActive: boolean }) {
 }
 ```
 
-## 限制
+## Limitations
 
-- **dev 预览**（壳内源码 glob 加载）对 plugin.json 走严格 JSON 解析；本 SDK validate 容忍注释/尾逗号是发布向能力——若插件要在 dev 预览跑，plugin.json 请保持无注释。
-- plugin.json 若带注释直接放进壳 `plugins/` dev 目录，预览加载会崩（壳侧 jsonc 支持是后续轮）。
+- **dev preview** (source glob loading inside the shell) parses plugin.json as strict JSON; this SDK's validate tolerating comments/trailing commas is a publish-time capability — if a plugin needs to run in dev preview, keep plugin.json free of comments.
+- Dropping a commented plugin.json straight into the shell's `plugins/` dev directory breaks preview loading (jsonc support on the shell side is still to come).

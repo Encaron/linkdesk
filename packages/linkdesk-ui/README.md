@@ -1,45 +1,45 @@
 # @linkdesk/ui
 
-LinkDesk 共享 UI 组件库——右键菜单 / 下拉 / 组合框 / 开关 / 滑杆 / 取色器 / 表单行 / 文件路径输入 / 主题选择等。
+The LinkDesk shared UI component library — context menus, dropdowns, combo boxes, toggles, sliders, color pickers, form rows, file path inputs, theme pickers, and more.
 
-组件源码单一宿主于 LinkDesk 壳的 `src/components/shared/`，本包是其编译分发面：**插件作者 `npm i @linkdesk/ui` 后拿到的组件与内置插件同款、自动跟随宿主主题与玻璃态**，无需关心实现细节。
+The component source lives in exactly one place, `src/components/shared/` in the LinkDesk shell; this package is its compiled distribution surface: **after `npm i @linkdesk/ui`, plugin authors get the same components the built-in plugins use, automatically following the host theme and glassmorphism**, with no need to care about implementation details.
 
-## 安装
+## Installation
 
 ```bash
 npm i @linkdesk/ui react react-dom
 ```
 
-## 用法
+## Usage
 
 ```tsx
 import { SelectBox, Toggle } from "@linkdesk/ui";
-import "@linkdesk/ui/index.css"; // 绝大多数组件 CSS 由入口 JS 自动带入；需显式引入时用此路径
+import "@linkdesk/ui/index.css"; // most component CSS is pulled in automatically by the entry JS; use this path when you need to import it explicitly
 
 export function MyView() {
   return (
     <Toggle
       checked={checked}
       onChange={setChecked}
-      label={{ title: "启用", description: "打开后生效" }}
+      label={{ title: "Enable", description: "Takes effect once enabled" }}
     />
   );
 }
 ```
 
-> 🔥 样式走宿主 CSS 变量——无需（也不应）在插件里覆盖主题 hex。i18n 文案经宿主语言系统，组件内部文案由宿主翻译。
+> 🔥 Styling goes through host CSS variables — there is no need (and no reason) to override theme hex values inside a plugin. i18n strings go through the host language system, and the text inside components is translated by the host.
 
-## 设计约束
+## Design constraints
 
-- **单一源码，禁止拷贝**：本包 `dist/` 是构建产物（源码只在 LinkDesk 壳仓库），插件侧直接依赖 npm 分发；不要 fork 组件到插件内自维护。
-- **跟随主题**：所有组件消费宿主 CSS 变量，插件换主题自动变色。
-- 详见 LinkDesk 壳仓库 `docs/02-Electron架构/E6_插件生态与发布/01-插件独立构建/07-共享组件独立分发设计.md`。
+- **Single source, copying forbidden**: this package's `dist/` is a build artifact (the source lives only in the LinkDesk shell repository), and plugins depend on the npm distribution directly; do not fork components into a plugin and maintain them there.
+- **Follow the theme**: all components consume host CSS variables, so switching themes in a plugin recolors them automatically.
+- See the LinkDesk shell repository's `docs/02-Electron架构/E6_插件生态与发布/01-插件独立构建/07-共享组件独立分发设计.md`.
 
-## 开发（LinkDesk 壳仓库内）
+## Development (inside the LinkDesk shell repository)
 
 ```bash
 cd packages/linkdesk-ui
-npm run build   # dist 构建：esm + 聚合 css + 声明文件
+npm run build   # dist build: esm + aggregated css + declaration files
 ```
 
 ## License

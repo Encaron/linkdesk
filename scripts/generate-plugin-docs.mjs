@@ -6,7 +6,7 @@
  *
  * 形态（复用 `@linkdesk/contracts` 的成熟模式，零新机制）：
  *
- *     真源   docs/03-插件制造/**            ← 手工只改这一份
+ *     真源   docs/03-plugin-authoring/**（英文·作者面主显）+ docs/03-插件制造/**（中文·维护者面原文）
  *       ↓ 本脚本
  *     产物   packages/plugin-docs/docs/**
  *       ↓ `--check`
@@ -38,8 +38,15 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, "..");
-const SRC_DIR = join(ROOT, "docs", "03-插件制造");
 const DEST_DIR = join(ROOT, "packages", "plugin-docs", "docs");
+/**
+ * 🔴 两棵树（E6#105n）：**英文在包根 = 作者面主显**，中文收到 `zh/`（维护者面原文）。
+ * 出界链接的重写基准是各自的源树根（两棵树同深度），所以同一套规则对两边都成立。
+ */
+const TREES = [
+  { srcDir: join(ROOT, "docs", "03-plugin-authoring"), destDir: DEST_DIR, label: "en（作者面主显）" },
+  { srcDir: join(ROOT, "docs", "03-插件制造"), destDir: join(DEST_DIR, "zh"), label: "zh（维护者面原文）" },
+];
 /** 在线锚（11 号档案 §二 Y7） */
 const REPO_URL = "https://github.com/Encaron/linkdesk";
 const BRANCH = "electron";
@@ -55,7 +62,7 @@ function listFiles(dir, base = dir, out = []) {
 }
 
 /** 把出界相对链接绝对化（围栏块与行内代码不碰） */
-export function rewriteOutboundLinks(text) {
+export function rewriteOutboundLinks(text, srcDir) {
   const FENCE = /(^[ \t]*(?:```|~~~)[\s\S]*?^[ \t]*(?:```|~~~)[ \t]*$)/m;
   return text
     .split(FENCE)
@@ -70,8 +77,8 @@ export function rewriteOutboundLinks(text) {
             const [pathPart, anchor] = target.split("#");
             // 🔴 出界判定走**绝对路径**解析：path.relative 会把相对参数按 CWD 解析，
             //    直接喂 `../x` 这种相对串会算错层级（本脚本的自测就是为这条存在的）。
-            const abs = resolve(SRC_DIR, pathPart);
-            if (!relative(SRC_DIR, abs).startsWith("..")) return full; // 界内不动
+            const abs = resolve(srcDir, pathPart);
+            if (!relative(srcDir, abs).startsWith("..")) return full; // 界内不动
             const repoRel = relative(ROOT, abs).split("\\").join("/");
             const kind = /\.[a-z0-9]+$/i.test(repoRel) ? "blob" : "tree";
             return `](${REPO_URL}/${kind}/${BRANCH}/${repoRel}${anchor ? "#" + anchor : ""}${tail})`;
@@ -85,9 +92,13 @@ export function rewriteOutboundLinks(text) {
 /** 生成内容（Map<相对路径, 文本>） */
 export function build() {
   const out = new Map();
-  for (const rel of listFiles(SRC_DIR)) {
-    const raw = readFileSync(join(SRC_DIR, rel), "utf8");
-    out.set(rel, rel.endsWith(".md") ? rewriteOutboundLinks(raw) : raw);
+  for (const tree of TREES) {
+    const prefix = relative(DEST_DIR, tree.destDir).split("\\").join("/");
+    for (const rel of listFiles(tree.srcDir)) {
+      const raw = readFileSync(join(tree.srcDir, rel), "utf8");
+      const key = prefix ? prefix + "/" + rel : rel;
+      out.set(key, rel.endsWith(".md") ? rewriteOutboundLinks(raw, tree.srcDir) : raw);
+    }
   }
   return out;
 }
@@ -127,7 +138,7 @@ function check(files) {
 function selfTest() {
   const sample =
     "正文 [a](../02-Electron架构/x/01.md#锚) 与界内 [b](17-区域地图.md)。\n\n```\n示例 [c](../02-Electron架构/y/02.md)\n```\n行内 `[d](../02-Electron架构/z/03.md)` 结束。";
-  const got = rewriteOutboundLinks(sample);
+  const got = rewriteOutboundLinks(sample, join(ROOT, "docs", "03-plugin-authoring"));
   const want = "](https://github.com/Encaron/linkdesk/blob/electron/docs/02-Electron架构/x/01.md#锚)";
   const checks = [
     ["出界相对链接绝对化（含锚点保留）", got.includes(want)],
@@ -136,7 +147,7 @@ function selfTest() {
     ["行内代码里的示例链接不碰", got.includes("`[d](../02-Electron架构/z/03.md)`")],
     [
       "目录落点用 /tree/（无扩展名）",
-      rewriteOutboundLinks("[p](../../packages/plugin-sdk)").includes("/tree/electron/packages/plugin-sdk"),
+      rewriteOutboundLinks("[p](../../packages/plugin-sdk)", join(ROOT, "docs", "03-plugin-authoring")).includes("/tree/electron/packages/plugin-sdk"),
     ],
   ];
   let bad = 0;

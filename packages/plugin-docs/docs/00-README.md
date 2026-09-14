@@ -1,187 +1,189 @@
-# 插件开发——从这里开始
+# Plugin Development — Start Here
 
-> **这个目录只为一件事件存在：让插件作者（和作者的 AI）从零开始快速学会做一个插件。**
-> LinkDesk 核心是空壳，万物皆插件。**本页是导览**——按"我要做什么"或"我是哪一档"选入口，不用从头读到尾。
+> 🌐 **Chinese version（维护者面原文）→ [../03-插件制造/00-README.md](https://github.com/Encaron/linkdesk/blob/electron/docs/03-插件制造/00-README.md)** — this English tree is the **author-facing primary**; the two trees mirror each other one-for-one (the `check-author-docs-bilingual` gate enforces it).
+
+> **This directory exists for one purpose: to get plugin authors (and their AIs) from zero to a working plugin, fast.**
+> The LinkDesk core is an empty shell; everything is a plugin. **This page is the tour** — pick your entry point by "what I want to do" or "which tier I'm in"; there's no need to read top to bottom.
 
 | | |
 |---|---|
-| 目标读者 | 插件开发者（不是核心开发者） |
-| 怎么用 | 先在本页选入口 → 走 [13-插件开发指南](13-插件开发指南.md) 的动线 → 需要细节时按链接跳 |
-| 别的 | 本页底部的 [文档索引](#文档索引) 是这一目录的全部篇目——找不到东西时看那里 |
+| Audience | Plugin developers (not core developers) |
+| How to use | Pick an entry point on this page → follow a walkthrough in [13-development-guide](13-development-guide.md) → jump via links when you need details |
+| Also | The [documentation index](#documentation-index) at the bottom of this page lists every doc in this directory — look there when you can't find something |
 
 ---
 
-## 一、从哪开始
+## 1. Where to Start
 
-### 按「我要做什么」选
+### Pick by "What I want to do"
 
-| 我要做什么 | 先读 | 然后 |
+| What I want to do | Read first | Then |
 |:--|:--|:--|
-| **做一个最小插件**（10 分钟档） | [13-插件开发指南](13-插件开发指南.md) 的「三档入口」 | 跑起来就行——`npm create` → `npm run dev` |
-| **做一个视图插件**（30 分钟档：进区域、声明贡献点、用共享组件） | [17-区域地图](17-区域地图.md) | → [13 的 30 分钟档](13-插件开发指南.md) → [19-组件速查](19-组件速查.md) |
-| **做一个高难度插件**（1 天档：数据管道 / 跨插件 / Canvas / LSP） | [13 的 1 天档](13-插件开发指南.md) | → [07-插件间通信](07-插件间通信.md) · [14-数据管道命令约定](14-数据管道命令约定.md) |
-| **做一个主题**（不写代码） | [主题/01-做一个主题插件](主题/01-做一个主题插件.md) | → [主题/02-主题字段速查](主题/02-主题字段速查.md) |
-| **给我的插件加一条配置项** | [20-我的插件加一条配置项](20-我的插件加一条配置项.md) | → [03-插件contributes规范](03-插件contributes规范.md) |
-| **让几个区域联动**（侧栏选中 → 主区切换 → 状态栏更新） | [18-区域间互动](18-区域间互动.md) | → [07-插件间通信](07-插件间通信.md) |
-| **查 API**（能调什么） | [01-插件API契约 §三](01-插件API契约.md)（三处 API 面的入口表） | → SDK 包内 README 速查表 / `linkdesk.d.ts` |
-| **用壳提供的 UI 零件** | [19-组件速查](19-组件速查.md) | → [05-插件UI写法规约](05-插件UI写法规约.md) |
-| **查某个字段** | [06-plugin.json规范](06-plugin.json规范.md) | → `plugin.schema.json`（IDE 补全） |
-| **打包 / 给别人装 / 上架** | [04-插件分发格式](04-插件分发格式.md) | → [13 第 8–9 步](13-插件开发指南.md) |
-| **工程放哪、仓怎么起名** | [15-多仓开发与本地工作区](15-多仓开发与本地工作区.md) | → [16-命名规范](16-命名规范.md) |
+| **Build a minimal plugin** (10-minute tier) | "Three tiers" in [13-development-guide](13-development-guide.md) | Just get it running — `npm create` → `npm run dev` |
+| **Build a view plugin** (30-minute tier: get into a region, declare contribution points, use shared components) | [17-region-map](17-region-map.md) | → [the 30-minute tier in 13](13-development-guide.md) → [19-component-cheatsheet](19-component-cheatsheet.md) |
+| **Build an advanced plugin** (1-day tier: data pipeline / cross-plugin / Canvas / LSP) | [the 1-day tier in 13](13-development-guide.md) | → [07-plugin-to-plugin-communication](07-plugin-to-plugin-communication.md) · [14-data-pipeline-command-conventions](14-data-pipeline-command-conventions.md) |
+| **Build a theme** (no code) | [themes/01-build-a-theme-plugin](themes/01-build-a-theme-plugin.md) | → [themes/02-theme-field-index](themes/02-theme-field-index.md) |
+| **Add a setting to my plugin** | [20-adding-a-setting](20-adding-a-setting.md) | → [03-contributes-spec](03-contributes-spec.md) |
+| **Make several regions work together** (sidebar selection → main area switch → status bar update) | [18-cross-region-wiring](18-cross-region-wiring.md) | → [07-plugin-to-plugin-communication](07-plugin-to-plugin-communication.md) |
+| **Look up the API** (what can I call) | [01-plugin-api-contract §3](01-plugin-api-contract.md) (the entry table for the three API surfaces) | → the SDK package README cheatsheet / `linkdesk.d.ts` |
+| **Use the UI parts the shell provides** | [19-component-cheatsheet](19-component-cheatsheet.md) | → [05-ui-conventions](05-ui-conventions.md) |
+| **Look up a specific field** | [06-plugin-json-spec](06-plugin-json-spec.md) | → `plugin.schema.json` (IDE completion) |
+| **Package / share / list** | [04-distribution-format](04-distribution-format.md) | → [steps 8–9 in 13](13-development-guide.md) |
+| **Where to put the project, how to name the repo** | [15-multi-repo-and-local-workspace](15-multi-repo-and-local-workspace.md) | → [16-naming-conventions](16-naming-conventions.md) |
 
-### 按「我是哪一档」选
+### Pick by "Which tier I'm in"
 
-**同一句话的可测版：** 陌生作者（或他的 AI）**不问任何人**，只拿脚手架产物：
+**The testable version of that claim:** a stranger (or their AI) **asks nobody**, working only from the scaffold output:
 
-| 档 | 目标 | 动线入口 |
+| Tier | Goal | Walkthrough entry |
 |:--:|:--|:--|
-| ⏱ **10 分钟** | 做出**最小可跑插件** | [13-插件开发指南](13-插件开发指南.md) 第 1–3 步 |
-| ⏱ **30 分钟** | 做出**视图插件**（进得了区域、声明得了贡献点、用得上共享组件） | ＋ 第 4–6 步 ＋ [17-区域地图](17-区域地图.md) |
-| ⏱ **1 天** | 做出**高难度插件**（数据管道 / 跨插件 / Canvas / LSP 级） | ＋ 第 7–9 步 ＋ [07](07-插件间通信.md) · [14](14-数据管道命令约定.md) · [18](18-区域间互动.md) |
+| ⏱ **10 minutes** | Get a **minimal runnable plugin** | [13-development-guide](13-development-guide.md) steps 1–3 |
+| ⏱ **30 minutes** | Get a **view plugin** (gets into a region, declares contribution points, uses shared components) | + steps 4–6 + [17-region-map](17-region-map.md) |
+| ⏱ **1 day** | Get an **advanced plugin** (data pipeline / cross-plugin / Canvas / LSP class) | + steps 7–9 + [07](07-plugin-to-plugin-communication.md) · [14](14-data-pipeline-command-conventions.md) · [18](18-cross-region-wiring.md) |
 
-> 🔴 **写作时的诚实提醒**：这三档是本目录的**验收标准**，不是营销口号。**如果哪一档走不通，卡住的那一步就是缺篇清单**——请把它反馈给我们。
+> 🔴 **An honest note from the writers**: these three tiers are this directory's **acceptance criteria**, not marketing copy. **If any tier doesn't work end to end, the step you got stuck on is the missing-docs list** — please report it back to us.
 
 ---
 
-## 二、插件能做什么
+## 2. What Plugins Can Do
 
-**没有 API 白名单。** 插件在渲染进程里运行（所有插件共用同一个渲染进程，互相之间靠壳中转），能 `import` 任何 JS 库、调用任何 Web API——Canvas、WebGL、WebAssembly、WebRTC、Web Audio……Web 平台的一切，不加限制。
+**There is no API allowlist.** Plugins run in the renderer process (all plugins share one renderer process and talk to each other through the shell), and can `import` any JS library and call any Web API — Canvas, WebGL, WebAssembly, WebRTC, Web Audio… the whole Web platform, no restrictions.
 
-系统级能力（串口、文件系统、配置、对话框）通过 `window.linkdesk.*` 暴露——插件走壳中转，不能直接调 Node.js 原始能力，也不能 `import` 壳内部源码。
+System-level capabilities (serial ports, filesystem, configuration, dialogs) are exposed through `window.linkdesk.*` — plugins go through the shell; they cannot call raw Node.js capabilities directly, nor `import` shell-internal source code.
 
-| 你想做的 | 怎么做 | 例子 |
+| What you want to build | How | Example |
 |------|------|------|
-| GPS 地图 | `import` Leaflet / 高德 SDK → React 组件 | 高德地图插件 |
-| 串口数据解析 | `window.linkdesk.protocol.*`（主进程协议注册表）＋ `window.linkdesk.serial.onData` 数据管道 | SBQ 协议插件 |
-| 卡片可视化 | 卡片工作台是插件——`contributes.views` 往卡片容器注册视图 | 温度计/波形图卡片 |
-| 代码编辑器 | `import monaco-editor` → React 组件 | Monaco 编辑器插件 |
-| CAD 查看器 | `import` Three.js → Canvas/WebGL | CAD 插件 |
-| 文档阅读器 | `import markdown-it` / `<iframe>` | Markdown/HTML 阅读器 |
-| 逻辑分析仪 | Canvas 2D ＋ `window.linkdesk.serial` | 时序波形分析仪 |
-| 3D 模型查看 | `import` Three.js / Babylon.js | STL/STEP 查看器 |
-| 代码智能补全 | 接 LSP 协议 或 AI API | clangd / Copilot 插件 |
-| 图标/按钮 | codicon 图标集 ＋ CSS 变量 | 任何插件 |
+| GPS map | `import` Leaflet / AMap SDK → React component | AMap plugin |
+| Serial data parsing | `window.linkdesk.protocol.*` (main-process protocol registry) + `window.linkdesk.serial.onData` data pipeline | SBQ protocol plugin |
+| Card visualization | The card workbench is a plugin — `contributes.views` registers views into the card container | Thermometer/waveform cards |
+| Code editor | `import monaco-editor` → React component | Monaco editor plugin |
+| CAD viewer | `import` Three.js → Canvas/WebGL | CAD plugin |
+| Document reader | `import markdown-it` / `<iframe>` | Markdown/HTML reader |
+| Logic analyzer | Canvas 2D + `window.linkdesk.serial` | Timing waveform analyzer |
+| 3D model viewing | `import` Three.js / Babylon.js | STL/STEP viewer |
+| Code intelligence / completion | Speak the LSP protocol or an AI API | clangd / Copilot plugin |
+| Icons/buttons | codicon icon set + CSS variables | Any plugin |
 
 ---
 
-## 三、插件贡献类型（声明什么 = 出现在哪里）
+## 3. Plugin Contribution Types (what you declare = where it shows up)
 
-> `plugin.json` 的 `type` 字段**已废弃**——loader 从 `entry` / `mode` / `themes` / `languages` / `resources` / `contributes` 等声明字段自动检测贡献类型。**一个插件可同时贡献多种能力**（终端 = 视图 + 协议；CAD = 视图 + 主题）。
+> The `type` field in `plugin.json` is **deprecated** — the loader auto-detects contribution types from declaration fields such as `entry` / `mode` / `themes` / `languages` / `resources` / `contributes`. **A single plugin can contribute several capabilities at once** (terminal = view + protocol; CAD = view + theme).
 
-| 能力 | 声明方式 | 出现在哪 | 例子 |
+| Capability | How to declare it | Where it shows up | Example |
 |------|------|------|------|
-| **视图**（标签页） | `entry` ＋ `appearsIn.tabBar` | 主区标签页 | 终端/地图/CAD/编辑器 |
-| **侧栏 / 底部面板** | `contributes.viewsContainers` ＋ `contributes.views` | 侧栏 / 底部面板 | 文件树/输出/待办 |
-| **状态栏条目** | 顶层 `statusBar[]` | 状态栏 | 连接状态/流量计数 |
-| **标题栏按钮** | `contributes.titleBar` | 标题栏 | 一键运行 |
-| **命令 / 菜单 / 快捷键** | `contributes.commands` / `menus` / `keybindings` | 命令面板 / 右键菜单 / 快捷键 | — |
-| **设置项** | `contributes.configuration` | 设置页自动渲染一个分组 | → [20](20-我的插件加一条配置项.md) |
-| **设置 UI**（整套替代品） | `factoryRole: "settings"` ＋ `contributes.views` | 多套并存，用户切换 | → [10-如何造一个设置插件](10-如何造一个设置插件.md) |
-| **主题** | `contributes.themes` | 主题选择器 | → [主题/01](主题/01-做一个主题插件.md) |
-| **语言包**（UI 翻译） | `contributes.languages` | 语言列表 | 日本語 / English |
-| **协议解析** | `mode` 字段 ＋ `window.linkdesk.protocol.*` | 主进程协议注册表 | SBQ 心率协议 |
-| **静态资源** | 插件目录 `resources/` 声明相对路径 | 随插件分发 | STM32 参考手册 HTML |
+| **View** (tab) | `entry` + `appearsIn.tabBar` | Main Area tabs | Terminal/map/CAD/editor |
+| **Sidebar / Bottom Panel** | `contributes.viewsContainers` + `contributes.views` | Sidebar / Bottom Panel | File tree/output/todo |
+| **Status bar item** | top-level `statusBar[]` | Status Bar | Connection status/traffic counter |
+| **Title bar button** | `contributes.titleBar` | Title Bar | One-click run |
+| **Commands / menus / keybindings** | `contributes.commands` / `menus` / `keybindings` | Command palette / context menu / keybindings | — |
+| **Setting** | `contributes.configuration` | The settings page auto-renders a group | → [20](20-adding-a-setting.md) |
+| **Settings UI** (a whole replacement) | `factoryRole: "settings"` + `contributes.views` | Several coexist; the user switches | → [10-building-a-settings-plugin](10-building-a-settings-plugin.md) |
+| **Theme** | `contributes.themes` | Theme picker | → [themes/01](themes/01-build-a-theme-plugin.md) |
+| **Language pack** (UI translation) | `contributes.languages` | Language list | 日本語 / English |
+| **Protocol parsing** | the `mode` field + `window.linkdesk.protocol.*` | Main-process protocol registry | SBQ heart-rate protocol |
+| **Static resources** | the plugin's `resources/` directory declares relative paths | Shipped with the plugin | STM32 reference manual HTML |
 
-**每一块区域是什么、彼此什么关系、声明片段怎么抄** → [17-区域地图](17-区域地图.md)。
+**What each region is, how they relate to each other, and which snippets to copy** → [17-region-map](17-region-map.md).
 
 ---
 
-## 四、作者工具链四包
+## 4. The Author Toolchain: Four Packages
 
-> 第三方作者在**自己的工程根**写插件，不碰壳仓库——从零到 `.linkdesk-plugin` 全走 npm。
+> Third-party authors write plugins in **their own project root** and never touch the shell repo — from zero to `.linkdesk-plugin` is all npm.
 
-| 包 | 干什么 | 作者何时装 |
+| Package | What it does | When authors install it |
 |:--|:--|:--|
-| `create-linkdesk-plugin` | 一行生成插件工程骨架（对标 yo code）——**还会替你建好 git 仓** | 建新插件时 `npm create`，一次性、不进项目 |
-| `@linkdesk/plugin-sdk` | 作者工具链四命令：`dev`（dev 宿主+HMR）/ `build`（→ `.linkdesk-plugin`）/ `validate` / `lint`；随包 `plugin.schema.json` ＋ `theme.schema.json` ＋ dev 宿主页 | 每个插件工程 devDependencies |
-| `@linkdesk/contracts` | `window.linkdesk.*` 全量 TS 类型（契约生成产物——单一真相源） | **不用主动装**——SDK 依赖它并全量转发 |
-| `@linkdesk/ui` | 共享 UI 零件（按钮/下拉/开关/取色器/右键菜单…） | **可选**——想让界面跟内置同款（自动跟随主题/玻璃）时装 → [19-组件速查](19-组件速查.md) |
+| `create-linkdesk-plugin` | Generates a plugin project skeleton in one line (the yo code equivalent) — **and it creates the git repo for you** | `npm create` when starting a new plugin; one-off, not part of the project |
+| `@linkdesk/plugin-sdk` | The four author-toolchain commands: `dev` (dev host + HMR) / `build` (→ `.linkdesk-plugin`) / `validate` / `lint`; ships `plugin.schema.json` + `theme.schema.json` + the dev host page | devDependencies of every plugin project |
+| `@linkdesk/contracts` | Full TS types for `window.linkdesk.*` (generated contract artifacts — the single source of truth) | **No need to install it yourself** — the SDK depends on it and forwards everything |
+| `@linkdesk/ui` | Shared UI parts (buttons/selects/toggles/color picker/context menu…) | **Optional** — install it when you want your UI to look built-in (automatic theme/glass following) → [19-component-cheatsheet](19-component-cheatsheet.md) |
 
-**关系一句话**：`create` 生成工程 → 工程装 `sdk` → `sdk` 带 `contracts`（类型随来）→ `ui` 独立、按需装。
-> 版本号不写死在本页——**装的时候不带版本号即可拿到最新**。
+**In one sentence:** `create` generates the project → the project installs `sdk` → `sdk` brings `contracts` (types come along) → `ui` is standalone, installed on demand.
+> Version numbers are not pinned on this page — **just install without a version to get the latest**.
 
-**作者真正敲的命令**：
+**The commands authors actually type:**
 
 ```bash
-npm create linkdesk-plugin my-plugin   # ① 建工程（每建一个用一次；自动 git init + 初始提交）
-cd my-plugin && npm install            # ② 装 SDK（类型自动进 TS program）
-npm run dev                            # 预览：浏览器 dev 宿主 → 改码 HMR
-npm run dev:real                       # 真机环：在已装 LinkDesk 里秒级真机调试（真 IPC 插件用）
-npm run validate                       # 校验 plugin.json / 主题配方
-npm run build                          # 交活：my-plugin.linkdesk-plugin（装进 LinkDesk / 发布）
-npm run publish                        # 发布到你自己的 GitHub 仓（上架第一步）
+npm create linkdesk-plugin my-plugin   # ① Create the project (once per plugin; auto git init + initial commit)
+cd my-plugin && npm install            # ② Install the SDK (types flow into the TS program automatically)
+npm run dev                            # Preview: browser dev host → HMR on save
+npm run dev:real                       # Real-machine loop: sub-second debugging inside an installed LinkDesk (for real-IPC plugins)
+npm run validate                       # Validate plugin.json / theme recipe
+npm run build                          # Hand off: my-plugin.linkdesk-plugin (install into LinkDesk / publish)
+npm run publish                        # Publish to your own GitHub repo (step one of listing)
 ```
 
 ---
 
-## 五、从零到上线——最短路径
+## 5. Zero to Shipped — The Shortest Path
 
 ```
-1. npm create linkdesk-plugin my-plugin    → 生成工程（pluginId / name / author 已填好，git 仓已建）
-2. 写 plugin.json + src/index.tsx          → 声明你的插件、写第一段 UI
-3. npm run dev                             → 浏览器预览宿主里看见它
-4. npm run build                           → 产出 my-plugin.linkdesk-plugin（单文件 zip）
-5. 装上 / 发布                               → 给别人：一个文件搞定；上架：见下（两步）
+1. npm create linkdesk-plugin my-plugin    → generate the project (pluginId / name / author already filled in, git repo created)
+2. Write plugin.json + src/index.tsx       → declare your plugin, write the first piece of UI
+3. npm run dev                             → see it in the browser preview host
+4. npm run build                           → produces my-plugin.linkdesk-plugin (a single-file zip)
+5. Install / publish                       → to share: one file does it; to list: see below (two steps)
 ```
 
-**上架是两步，别只做第一步：**
+**Listing is two steps — don't stop after the first:**
 
-| 步 | 做什么 | 做完之后谁看得见 |
+| Step | What you do | Who can see it afterwards |
 |:--:|------|------|
-| ① | `npm run publish`——发布到**你自己**的 GitHub 仓（Release 资产 ＋ 仓库根 `marketplace.json`） | 只有手动把你的仓库加进"市场源"的人 |
-| ② | **把你的插件收录进官方目录** | **所有默认配置的用户** ← 这一步才是真正的"上架" |
+| ① | `npm run publish` — publish to **your own** GitHub repo (Release asset + `marketplace.json` at the repo root) | Only people who manually add your repo as a "marketplace source" |
+| ② | **Get your plugin into the official catalog** | **All users with default configuration** ← this step is what "listing" really means |
 
-完整口径 → [04-插件分发格式 §上架是两步](04-插件分发格式.md) · 端到端旅程 → [13-插件开发指南](13-插件开发指南.md) 第 9 步。
-
----
-
-## 硬约束——写任何一行插件代码前
-
-1. **所有颜色走 CSS 变量 `var(--xxx)`**，禁止硬编码 hex
-2. **所有 UI 文字走 `t()`**，禁止绕过 `t()` 硬编码显示字符串（i18n key = 插件 UI 原文，建议作者母语——中文插件用中文 key，英文/法文插件用自己的语言 key）
-3. **右键菜单走声明式**——`plugin.json` `contributes.menus` 声明 ＋ `<ContextMenu>` 消费（或 `window.linkdesk.menu.registerItems`），禁止手写右键菜单
-4. **弹窗用 `createPortal` render 到 `document.body`**
-5. **持久化走 `window.linkdesk.configuration.get/set/onChange`**，禁止 `localStorage.setItem()`
-6. **插件只走 `window.linkdesk.*` API，禁止 `import @src/core/...`**（ESLint `noCoreImportInPlugin` error 级拦截——`.tsx`/`.ts` 都拦）
-7. **不要条件渲染隐藏内容**——keep-alive 架构下所有标签页始终挂载
-8. **壳不知道你的插件是干什么的**——不要依赖壳的特殊判断
+Full story → [04-distribution-format §Listing Is Two Steps](04-distribution-format.md) · end-to-end journey → [13-development-guide](13-development-guide.md) step 9.
 
 ---
 
-## 文档索引
+## Hard Constraints — Before You Write Any Plugin Code
 
-| # | 文档 | 什么时候读 |
+1. **All colors go through CSS variables `var(--xxx)`**; hardcoded hex is forbidden
+2. **All UI text goes through `t()`**; hardcoding display strings to bypass `t()` is forbidden (i18n key = the plugin UI's source text — authors are advised to use their native language: Chinese plugins use Chinese keys, English/French plugins use keys in their own language)
+3. **Context menus are declarative** — declare them in `plugin.json` `contributes.menus` + consume them with `<ContextMenu>` (or `window.linkdesk.menu.registerItems`); hand-written context menus are forbidden
+4. **Popups render to `document.body` with `createPortal`**
+5. **Persistence goes through `window.linkdesk.configuration.get/set/onChange`**; `localStorage.setItem()` is forbidden
+6. **Plugins may only use the `window.linkdesk.*` API; `import @src/core/...` is forbidden** (ESLint `noCoreImportInPlugin` blocks it at `error` level — both `.tsx` and `.ts`)
+7. **Don't hide content with conditional rendering** — under the keep-alive architecture all tabs stay mounted
+8. **The shell doesn't know what your plugin does** — don't depend on any special-casing in the shell
+
+---
+
+## Documentation Index
+
+| # | Doc | When to read it |
 |:--:|------|------|
-| ★ | [13-插件开发指南](13-插件开发指南.md) | **第一次写插件从这里开始**——从 `npm create` 到上架的九步动线 ＋ 三档入口 |
-| 1 | [01-插件API契约](01-插件API契约.md) | 写第一行代码前——知道能调什么 API（**三处 API 面的总入口**） |
-| 2 | [02-插件生命周期](02-插件生命周期.md) | 理解注册→激活→运行→卸载全过程 |
-| 3 | [03-插件contributes规范](03-插件contributes规范.md) | 注册命令/菜单/快捷键/配置项/视图/主题/i18n/顶栏按钮 |
-| 4 | [04-插件分发格式](04-插件分发格式.md) | 安装分发——让别人能装你的插件（含**上架两步**口径） |
-| 5 | [05-插件UI写法规约](05-插件UI写法规约.md) | 右键菜单/浮层/持久化/快捷键两轨道/剪贴板三通道——必须走共享设施 |
-| 6 | [06-plugin.json规范](06-plugin.json规范.md) | plugin.json 全部字段参考——**注意：这里没有 `readme` / `changelog` 字段**，说明与更新日志以文件为准 |
-| 7 | [07-插件间通信](07-插件间通信.md) | 插件之间怎么传数据——**三通信机制**：事件广播 / 命令调用 / 数据管道 |
-| 8 | [08-ViewContainer-视图容器API](08-ViewContainer-视图容器API.md) | 视图容器全字段：注册侧栏/面板视图、往别人容器里加内容、titleActions |
-| 9 | [09-插件目录规范](09-插件目录规范.md) | 插件目录结构——文件放哪、命名约定 ＋ **`README.md` / `CHANGELOG.md` 的权威判据** |
-| 10 | [10-如何造一个设置插件](10-如何造一个设置插件.md) | **整套设置 UI 替代品**（≠ 给自己加一条配置项，那条见 20） |
-| 11 | [11-主题制作](11-主题制作.md) | 配方写法深度参考（目录规范 / 满配示例 / 迁移与避坑） |
-| 12 | [12-README说明区媒体契约](12-README说明区媒体契约.md) | README 放图/动图/封面外链视频/页内视频怎么写 |
-| 13 | [13-插件开发指南](13-插件开发指南.md) | **动线**（同首行） |
-| 14 | [14-数据管道命令约定](14-数据管道命令约定.md) | 数据管道命令的命名与注册约定 |
-| 15 | [15-多仓开发与本地工作区](15-多仓开发与本地工作区.md) | 插件工程放哪、仓库名怎么起、**容器绝不建仓**红线 |
-| 16 | [16-命名规范](16-命名规范.md) | **七种名字一条身份**——id 怎么起/能不能改、仓库叫什么、版本号四处同源 |
-| **17** | **[17-区域地图](17-区域地图.md)** | **我的插件出现在哪一块**——图标栏/侧栏/主区/底部面板/状态栏逐区怎么声明 |
-| **18** | **[18-区域间互动](18-区域间互动.md)** | **区域之间怎么联动**——侧栏选中 → 主区切换 → 状态栏更新（配方集） |
-| **19** | **[19-组件速查](19-组件速查.md)** | **壳提供了哪些 UI 零件**、什么时候用哪个 |
-| **20** | **[20-我的插件加一条配置项](20-我的插件加一条配置项.md)** | 最小做法：声明一条 → 设置页自动出现 → 代码里读 |
-| **T1** | **[主题/01-做一个主题插件](主题/01-做一个主题插件.md)** | 做主题的动线（零代码） |
-| **T2** | **[主题/02-主题字段速查](主题/02-主题字段速查.md)** | 配方字段与 CSS 变量的对照索引 |
+| ★ | [13-development-guide](13-development-guide.md) | **Start here the first time you write a plugin** — the nine-step walkthrough from `npm create` to listing + the three tiers |
+| 1 | [01-plugin-api-contract](01-plugin-api-contract.md) | Before the first line of code — know which APIs you can call (**the master entry to the three API surfaces**) |
+| 2 | [02-plugin-lifecycle](02-plugin-lifecycle.md) | Understand the whole register→activate→run→uninstall process |
+| 3 | [03-contributes-spec](03-contributes-spec.md) | Register commands/menus/keybindings/settings/views/themes/i18n/title bar buttons |
+| 4 | [04-distribution-format](04-distribution-format.md) | Install and distribute — let others install your plugin (including the **two-step listing** story) |
+| 5 | [05-ui-conventions](05-ui-conventions.md) | Context menus/overlays/persistence/two keybinding tracks/three clipboard channels — must go through the shared facilities |
+| 6 | [06-plugin-json-spec](06-plugin-json-spec.md) | The complete plugin.json field reference — **note: there is no `readme` / `changelog` field here**; the description and changelog are files |
+| 7 | [07-plugin-to-plugin-communication](07-plugin-to-plugin-communication.md) | How plugins pass data to each other — **three communication mechanisms**: event broadcast / command invocation / data pipeline |
+| 8 | [08-view-container-api](08-view-container-api.md) | Every ViewContainer field: registering sidebar/panel views, adding content to someone else's container, titleActions |
+| 9 | [09-plugin-directory-layout](09-plugin-directory-layout.md) | Plugin directory structure — where files go, naming conventions + **the authoritative criteria for `README.md` / `CHANGELOG.md`** |
+| 10 | [10-building-a-settings-plugin](10-building-a-settings-plugin.md) | **A whole replacement for the settings UI** (≠ adding one setting to your own plugin, which is doc 20) |
+| 11 | [11-authoring-themes](11-authoring-themes.md) | Deep reference on recipe authoring (directory conventions / full example / migration and pitfalls) |
+| 12 | [12-readme-media-contract](12-readme-media-contract.md) | How to write images/GIFs/linked cover videos/in-page videos in a README |
+| 13 | [13-development-guide](13-development-guide.md) | **The walkthrough** (same as the first row) |
+| 14 | [14-data-pipeline-command-conventions](14-data-pipeline-command-conventions.md) | Naming and registration conventions for data pipeline commands |
+| 15 | [15-multi-repo-and-local-workspace](15-multi-repo-and-local-workspace.md) | Where plugin projects live, how to name repos, **the iron rule that a container never hosts a repo** |
+| 16 | [16-naming-conventions](16-naming-conventions.md) | **Seven names, one identity** — how ids are chosen/whether they can change, what the repo is called, version numbers sourced in four places |
+| **17** | **[17-region-map](17-region-map.md)** | **Which region my plugin shows up in** — how to declare each of icon bar/sidebar/main area/Bottom Panel/status bar |
+| **18** | **[18-cross-region-wiring](18-cross-region-wiring.md)** | **How regions wire together** — sidebar selection → main area switch → status bar update (a set of recipes) |
+| **19** | **[19-component-cheatsheet](19-component-cheatsheet.md)** | **Which UI parts the shell provides**, and when to use which |
+| **20** | **[20-adding-a-setting](20-adding-a-setting.md)** | The minimal approach: declare one → it appears on the settings page automatically → read it in code |
+| **T1** | **[themes/01-build-a-theme-plugin](themes/01-build-a-theme-plugin.md)** | The theme-authoring walkthrough (no code) |
+| **T2** | **[themes/02-theme-field-index](themes/02-theme-field-index.md)** | A cross-index of recipe fields and CSS variables |
 
-**JSON Schema：** `plugin.schema.json`——IDE 自动补全 ｜ 主题配方：SDK 包内 `schemas/theme.schema.json`
+**JSON Schema:** `plugin.schema.json` — IDE autocompletion | Theme recipes: `schemas/theme.schema.json` inside the SDK package
 
 ---
 
-## 相关
+## Related
 
-- 契约类型真相源：`@linkdesk/contracts` 包内 `linkdesk.d.ts`（随 SDK 到达）
-- 主题系统设计文档（**壳的为什么**，作者不必读）：仓库 `docs/02-Electron架构/E5.8_归一化基建/外观主题化/`
-- Tauri 时代旧版文档：`docs/01-Tauri_P1至P5.5/`（仅历史参考）
+- Contract type source of truth: `linkdesk.d.ts` inside the `@linkdesk/contracts` package (arrives with the SDK)
+- Theme system design doc (**the shell's why**; authors need not read it): repo `docs/02-Electron架构/E5.8_归一化基建/外观主题化/`
+- Legacy Tauri-era docs: `docs/01-Tauri_P1至P5.5/` (historical reference only)

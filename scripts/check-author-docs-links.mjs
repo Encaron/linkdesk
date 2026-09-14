@@ -34,8 +34,9 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, "..");
-const DOCS_ROOT = join(ROOT, "docs", "03-插件制造");
-const SCOPE = relative(ROOT, DOCS_ROOT).replaceAll("\\", "/"); // docs/03-插件制造
+/** 🔴 E6#105n：作者面是**两棵树**——中文（维护者面）＋ 英文（作者面主显）；"界内"= 落在任一棵树里。 */
+const DOCS_ROOTS = [join(ROOT, "docs", "03-插件制造"), join(ROOT, "docs", "03-plugin-authoring")];
+const SCOPES = DOCS_ROOTS.map((d) => relative(ROOT, d).replaceAll("\\", "/"));
 const ALLOWLIST = join(__dirname, "author-docs-outbound-allowlist.txt");
 
 /** 读白名单：`<仓根相对路径>\t<理由>`；`#` 起注释 */
@@ -85,20 +86,23 @@ export function extractTargets(prose) {
 /**
  * @returns {{outbound:{file:string,target:string,resolved:string}[], checked:number}}
  */
-export function checkAuthorDocsLinks(docsRoot = DOCS_ROOT, allowlist = readAllowlist()) {
+export function checkAuthorDocsLinks(docsRoots = DOCS_ROOTS, allowlist = readAllowlist()) {
   const allowed = allowlist.map((e) => e.target);
+  const inScope = (resolved) => SCOPES.some((s) => resolved === s || resolved.startsWith(s + "/"));
   const outbound = [];
   let checked = 0;
-  for (const file of listMarkdown(docsRoot)) {
-    const rel = relative(ROOT, file).replaceAll("\\", "/");
-    for (const target of extractTargets(proseOnly(readFileSync(file, "utf8")))) {
-      checked++;
-      const resolved = relative(ROOT, resolve(dirname(file), target.split("#")[0]))
-        .replaceAll("\\", "/")
-        .replace(/\/+$/, "");
-      if (resolved === SCOPE || resolved.startsWith(SCOPE + "/")) continue; // 界内
-      const ok = allowed.some((a) => resolved === a || resolved.startsWith(a + "/"));
-      if (!ok) outbound.push({ file: rel, target, resolved });
+  for (const root of Array.isArray(docsRoots) ? docsRoots : [docsRoots]) {
+    for (const file of listMarkdown(root)) {
+      const rel = relative(ROOT, file).replaceAll("\\", "/");
+      for (const target of extractTargets(proseOnly(readFileSync(file, "utf8")))) {
+        checked++;
+        const resolved = relative(ROOT, resolve(dirname(file), target.split("#")[0]))
+          .replaceAll("\\", "/")
+          .replace(/\/+$/, "");
+        if (inScope(resolved)) continue; // 落在两棵树任一棵里 = 界内
+        const ok = allowed.some((a) => resolved === a || resolved.startsWith(a + "/"));
+        if (!ok) outbound.push({ file: rel, target, resolved });
+      }
     }
   }
   return { outbound, checked };
@@ -106,7 +110,7 @@ export function checkAuthorDocsLinks(docsRoot = DOCS_ROOT, allowlist = readAllow
 
 function main() {
   const allowlist = readAllowlist();
-  const { outbound, checked } = checkAuthorDocsLinks(DOCS_ROOT, allowlist);
+  const { outbound, checked } = checkAuthorDocsLinks(DOCS_ROOTS, allowlist);
   if (outbound.length > 0) {
     console.error(`\n❌ [author-docs-links] 作者面文档有未报备的出界链接（${outbound.length} 条）：\n`);
     for (const o of outbound) console.error(`  ${o.file} → ${o.target}\n      落点 ${o.resolved} 不在白名单里`);
@@ -123,7 +127,8 @@ function main() {
 }
 
 function selfTest() {
-  const docsRel = SCOPE; // docs/03-插件制造
+  const docsRel = SCOPES[0]; // docs/03-插件制造
+  const SCOPE = SCOPES[0];
   const cases = [
     { name: "界内", from: `${docsRel}/00-README.md`, target: "17-区域地图.md", resolvesOut: false, flag: false },
     { name: "界内子夹", from: `${docsRel}/主题/01-做一个主题插件.md`, target: "../11-主题制作.md", resolvesOut: false, flag: false },

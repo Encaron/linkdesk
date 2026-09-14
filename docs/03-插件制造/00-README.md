@@ -1,5 +1,7 @@
 # 插件开发——从这里开始
 
+> 🌐 **English version（作者面主显）→ [../03-plugin-authoring/00-readme.md](../03-plugin-authoring/00-readme.md)**——本中文树是**维护者面**；两棵树**篇篇对应**，改了一边必须同步另一边（门禁 `check-author-docs-bilingual` 盯着）。
+
 > **这个目录只为一件事件存在：让插件作者（和作者的 AI）从零开始快速学会做一个插件。**
 > LinkDesk 核心是空壳，万物皆插件。**本页是导览**——按"我要做什么"或"我是哪一档"选入口，不用从头读到尾。
 

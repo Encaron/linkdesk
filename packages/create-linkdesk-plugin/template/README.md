@@ -1,56 +1,56 @@
 # {{displayName}}
 
-> 一句话：这个插件做什么。（写在最上面——LinkDesk 市场的「详情」页签显示的就是本文件）
+> One line: what this plugin does. (Keep it at the very top — this file is what the marketplace shows on the **Details** tab.)
 
-<!-- 有场景封面时，把图放到 resources/cover.svg，再取消下面这行的注释：
-![{{displayName}} 场景封面](resources/cover.svg) -->
+<!-- When you have cover art, put the image at resources/cover.svg and uncomment the line below:
+![{{displayName}} cover](resources/cover.svg) -->
 
-## 怎么用
+## How to use
 
-安装后在 LinkDesk 里怎么打开、点哪里、看到什么。写清楚「第一次用的人怎么走通」。
+How to open it in LinkDesk, where to click, what you should see. Spell out the path a first-time user walks.
 
-## 目录说明——东西该放哪
+## Directory layout — where things go
 
-不必预建空文件夹（git 也不记录空目录）。**到需要时再建，位置按下表。**
+You do not need to pre-create empty folders (git does not track them). **Create them when you need them; the table below says where.**
 
-| 路径 | 放什么 | 什么时候有 |
+| Path | What goes here | When it exists |
 |:--|:--|:--|
-| `plugin.json` | 插件清单 | **必有** |
-| `README.md` | 说明——市场**详情**页签的数据源 | 强烈建议 |
-| `CHANGELOG.md` | 更新日志——市场**更改日志**页签的数据源 | 强烈建议 |
-| `resources/` | 资产：`icon.svg` / `cover.svg` / README 里引用的图 | 有图就有 |
-| `i18n/` | `en.json`（key = 中文原文；**不建 zh.json**） | 有 UI 文案就有 |
-| `themes/` · `languages/` · `snippets/` | 数据型插件的载荷 | 数据型才有 |
-| `src/index.tsx` | 入口（`plugin.json` 的 `entry`） | 视图插件必有 |
-| `src/views/` | 侧栏 / 面板视图组件（`contributes.views` 的 render 指向的文件） | 有视图时 |
-| `src/components/` | 本插件内部复用的组件 | 需要时 |
-| `src/services/` | 域逻辑 / IPC 封装 / 数据层 | 需要时 |
-| `src/styles/` | **多份** CSS 时统一放这（单份且与入口同夹也可） | 需要时 |
-| `src/__tests__/` | 单元测试（要测就自己 `npm i -D vitest`，脚手架不预装） | 需要时 |
+| `plugin.json` | The plugin manifest | **Always** |
+| `README.md` | Description — the data source for the marketplace **Details** tab | Strongly recommended |
+| `CHANGELOG.md` | Release notes — the data source for the marketplace **Changelog** tab | Strongly recommended |
+| `resources/` | Assets: `icon.svg` / `cover.svg` / images referenced from the README | Once you have images |
+| `i18n/` | `en.json` (key = the source string; **do not create `zh.json`**) | Once you have UI text |
+| `themes/` · `languages/` · `snippets/` | Payloads for data-only plugins | Data-only plugins |
+| `src/index.tsx` | Entry (the `entry` in `plugin.json`) | Always for view plugins |
+| `src/views/` | Sidebar / panel view components (the files `contributes.views` points at) | Once you have views |
+| `src/components/` | Components reused inside this plugin | When needed |
+| `src/services/` | Domain logic / IPC wrappers / data layer | When needed |
+| `src/styles/` | **Multiple** CSS files — keep them together here (a single file next to the entry is fine too) | When needed |
+| `src/__tests__/` | Unit tests (run `npm i -D vitest` yourself if you want them — the scaffold does not preinstall test tooling) | When needed |
 
-> 🔴 **共享的东西不进这里**——跨插件复用的组件 / hook 走 `@linkdesk/ui`（壳提供的公共包），**不要在插件里再写一份**；只属于本插件的域逻辑才留本地。
-> 🔴 **资产一律住 `resources/`，插件根不放散图**——能进安装包的是**被 README 引用过**或**被 `icon` / `marketIcon` 声明过**的文件，目录名本身没有魔法。
+> 🔴 **Shared things do not belong here** — components/hooks reused across plugins come from `@linkdesk/ui` (the public package the shell provides). **Do not write a second copy inside your plugin.** Only logic that belongs to this plugin stays local.
+> 🔴 **Assets always live in `resources/` — no loose images in the plugin root.** What gets into the install package is what is **referenced by the README** or **declared by `icon` / `marketIcon`**; the directory name itself has no magic.
 
-## 写这个插件的三条纪律
+## Three rules for this plugin
 
-1. **颜色走主题变量**——CSS 里一律 `var(--xxx)`，**禁硬编码 hex**。理由：LinkDesk 支持整套主题替换，写死颜色 = 换主题后你的插件不跟着变。
-2. **UI 文案走 `t()`**——`t("中文原文")`，英文放 `i18n/en.json`，**不建 `zh.json`**（中文 key 自带兜底）。**只加你真的用 `t()` 读过的 key**——没人读的 key 是死 key。代码标识符（`src/index.tsx` 这类）不是文案，别包进 `t()`。
-3. **插件身份只来自 `plugin.json` 的声明字段**——需要什么能力就声明什么字段（`contributes` / `tabBehavior` / `icon` …），**不要靠目录名或文件位置让别人猜你的插件是什么**。
+1. **Colors come from theme variables** — always `var(--xxx)` in CSS, **never a hard-coded hex**. Reason: LinkDesk supports full theme replacement, so a fixed color means your plugin does not follow the theme.
+2. **UI text goes through `t()`** — `t("source string")`, with English in `i18n/en.json` and **no `zh.json`** (the source string is the key and is its own fallback). **Only add keys you actually read with `t()`** — an unread key is a dead key. Code identifiers (`src/index.tsx` and friends) are not copy — do not wrap them in `t()`.
+3. **Plugin identity comes only from declared fields in `plugin.json`** — declare whatever capability you need (`contributes` / `tabBehavior` / `icon` …). **Never make other people guess what your plugin is from a directory name or file location.**
 
-## 发布
+## Publishing
 
 ```bash
-npm run publish     # 建 GitHub Release + 上传 .linkdesk-plugin + 更新 catalog
+npm run publish     # create the GitHub Release + upload the .linkdesk-plugin + update the catalog
 ```
 
-首次发布需要 GitHub token（跑一次会引导你填，存在本机）。只预览不动作：`npm run publish -- --dry-run`。
+The first publish needs a GitHub token (the command walks you through it once and stores it locally). To see what it would do without doing it: `npm run publish -- --dry-run`.
 
-发布还要求本工程**已经推到 GitHub**（`publish` 拿工程 origin 的仓库去建 Release）：
+Publishing also requires this project to be **pushed to GitHub** (`publish` uses your project's `origin` to create the Release):
 
 ```bash
-git remote add origin git@github.com:<你>/<仓库>.git
+git remote add origin git@github.com:<you>/<repo>.git
 git push -u origin main
 ```
 
-> 脚手架生成时已替你建好本仓（`main` 分支 + 一次初始提交），所以这一步只是接远端。
-> 若生成时带了 `--no-git`，则先自己 `git init -b main` 再提交。
+> The scaffold already created this repository for you (`main` branch + one initial commit), so this step is only about wiring the remote.
+> If you generated with `--no-git`, run `git init -b main` and commit first.

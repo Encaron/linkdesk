@@ -27,7 +27,12 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, "..");
 
 /** 🔑 单点锚词——lsp.args 相对路径基准语义的唯一表述。改基准语义 = 改锚词 + 全站同步 + 单测断言，漏一处即红。 */
-const ANCHOR = "插件根目录为基准";
+const ANCHORS = ["插件根目录为基准", "resolve against the plugin root"];
+const ANCHOR = ANCHORS[0]; // 报错文案用
+// ⚠️ E6#105n（2026-09-14 作者面英文化）：同一语义现有中/英两个语言变体——
+//    内部注释（代码/单测/SDK/构建哨兵）用中文变体，作者面 schema description 用英文变体。
+//    每处命中任一变体即算「与 schema 同一基准」；两个变体都必须列在这里，
+//    少一个就会把"只改了语言"误判成"基准被单边改写"。
 
 /** schema 站点：live 权威 + 两份字节拷贝（check-plugin-schema-sync 已保互同；此处三份都查，standalone 也稳） */
 const SCHEMA_FILES = [
@@ -69,17 +74,17 @@ function checkSchema(file, role) {
   }
   const descs = collectArgsDescriptions(parsed);
   if (descs.length === 0) return { ok: false, why: "找不到 args.description（schema 结构变了？）" };
-  const hit = descs.find((d) => d.includes(ANCHOR));
+  const hit = descs.find((d) => ANCHORS.some((a) => d.includes(a)));
   return hit
     ? { ok: true }
-    : { ok: false, why: `无任何 args.description 含锚词「${ANCHOR}」——lsp.args 基准描述被单边改写` };
+    : { ok: false, why: `无任何 args.description 含锚词「${ANCHORS.join("」/「")}」——lsp.args 基准描述被单边改写` };
 }
 
 function checkTextFile(name, role) {
   const text = readFileSync(resolve(ROOT, name), "utf-8");
-  return text.includes(ANCHOR)
+  return ANCHORS.some((a) => text.includes(a))
     ? { ok: true }
-    : { ok: false, why: `文件不含锚词「${ANCHOR}」——基准语义声明被删/改` };
+    : { ok: false, why: `文件不含锚词「${ANCHORS.join("」/「")}」——基准语义声明被删/改` };
 }
 
 function main() {
