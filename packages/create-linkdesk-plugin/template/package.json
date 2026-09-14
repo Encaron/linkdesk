@@ -10,11 +10,17 @@
     "build": "linkdesk-plugin-sdk build",
     "publish": "linkdesk-plugin-sdk publish",
     "validate": "linkdesk-plugin-sdk validate",
-    "lint": "linkdesk-plugin-sdk lint"
+    "lint": "linkdesk-plugin-sdk lint",
+    "verify": "node scripts/ci-verify.mjs",
+    "test": "vitest run"
   },
   "devDependencies": {
     "@linkdesk/plugin-sdk": "^0.1.0",
+    "@testing-library/react": "^16.3.2",
     "@types/react": "^18.3.12",
-    "typescript": "^5.6.3"
+    "jsdom": "^29.1.1",
+    "jsonc-parser": "^3.3.1",
+    "typescript": "^5.6.3",
+    "vitest": "^4.1.10"
   }
 }

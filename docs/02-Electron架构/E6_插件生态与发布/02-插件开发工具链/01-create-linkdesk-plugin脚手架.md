@@ -49,12 +49,18 @@ packages/create-linkdesk-plugin/
   ├── .npmrc               # 🔴 **无作用域的包必须直改默认源**（见 §七），不能照抄 scoped 那三份
   └── template/            # 模板文件（{{pluginName}} / {{displayName}} / {{author}} / {{date}} 占位符）
       ├── plugin.json            # JSONC 清单——E5.8 schema，逐字段注释分节（**不写 pluginId**，见 §九.1）
-      ├── package.json           # scripts: dev / dev:real / build / publish / validate / lint
+      ├── package.json           # scripts: dev / dev:real / build / publish / validate / lint / verify / test
       ├── tsconfig.json          # jsx: react-jsx + types 引 @linkdesk/plugin-sdk + strict
       ├── gitignore              # 🔴 **无点**——CLI 生成时改名成 .gitignore（npm 会丢 .gitignore，见 §九.5）
       ├── README.md              # 说明——市场「详情」页签数据源 + **目录契约表**
       ├── CHANGELOG.md           # 更新日志——市场「更改日志」页签数据源（段标题 `## v<版本>（日期）`）
       ├── .vscode/settings.json  # files.associations: plugin.json → jsonc（**带三行注释说明为什么**）
+      ├── .github/workflows/
+      │   └── ci.yml             # 🔴 **E6#102 新增**：push/PR 跑 validate → verify → build → test（§九.4）
+      ├── scripts/
+      │   └── ci-verify.mjs      # 🔴 **E6#102 新增**：仓内严格门禁（lint 全腿 + 跨插件 import + 字典 + 声明自洽）
+      ├── vitest.config.ts       # 🔴 **E6#102 新增**：环境对齐壳仓（jsdom/globals/setupFiles + @linkdesk/ui inline）
+      ├── vitest.setup.ts        # 🔴 **E6#102 新增**：window.linkdesk 六命名空间 mock——**测试的运行时地基**
       ├── resources/
       │   └── icon.svg           # 身份图**占位图**（中性灰虚线框——作者替换）
       ├── src/
@@ -65,6 +71,10 @@ packages/create-linkdesk-plugin/
 ```
 
 **v2 新增 6 件**（`README.md` / `CHANGELOG.md` / `.gitignore` / `resources/icon.svg` / `package.json` 两个 script / `.vscode` 注释）——缺口对照表见 [插件规范化层/05 §一](../插件规范化层/05-脚手架换代.md)。
+
+**E6#102（L7 第 7.5 轮）新增 4 件**（`.github/workflows/ci.yml` / `scripts/ci-verify.mjs` /
+`vitest.config.ts` / `vitest.setup.ts`）——「**新插件一建出来就自带门禁**」从此是默认行为，不是每仓手加。
+理由与判据见 [插件源码外移层/06-门禁与CI.md](../插件源码外移层/06-门禁与CI.md)。
 
 ---
 
@@ -323,8 +333,13 @@ npm 自动识别 `create-*` 前缀包名为 `npm create` 的别名：
 
 `scripts/check-scaffold.mjs` 已接进 `npm run check`，**每次提交前自动把模板真跑一遍**（生成到仓外一次性目录，不跑 `npm install`），
 再验 **8 条断言**：文件清单契约 / `pluginId` 已删 + `icon` 在位 / `plugin.json` 是合法 JSONC 且 `entry` 存在 /
-`CHANGELOG.md` 段标题能被 SDK 切段且版本号与 `plugin.json` 一致 / `scripts` ⊇ 5 条命令 / `i18n` 零死 key /
+`CHANGELOG.md` 段标题能被 SDK 切段且版本号与 `plugin.json` 一致 / `scripts` ⊇ 7 条命令 / `i18n` 零死 key /
 占位符集合与 CLI `values` 相等且生成物无 `{{…}}` 残留 / **`npm pack` 的 tarball 不丢模板文件**。
+
+> 🔴 **E6#102（L7 7.5）同笔改了两处契约**：① `scripts` 契约 5 条 → **7 条**（+ `verify` / `test`）；
+> ② 占位符残留扫描**对 `.github/**` 开了口子**——GitHub Actions 的表达式就是 `${{ … }}` 形状，与
+> 脚手架的 `{{pluginName}}` 同形，不加这条豁免的话，模板里一句合法的 workflow 注释就会被判成
+> 「未替换的占位符」红。豁免范围**只有 `.github/`** 这一条路径，别的文件里出现 `{{…}}` 照旧判红。
 
 **八条逐条验过红灯**（表见 [06 §三](../插件规范化层/06-门禁扩域与验收.md)）——**改模板后不用手动比对，跑 `npm run check` 即可**。
 
@@ -410,7 +425,7 @@ v1 的 `i18n/en.json` = `{"hello": "Hello from LinkDesk!"}`，而 `src/index.tsx
 | 项 | 不做的理由 |
 |:--|:--|
 | **预建 `src/` 子文件夹** | **空文件夹在 git 里根本不存在**（git 不记录目录），除非塞 `.gitkeep` = 为了留一个空夹放一个假文件，成本真、收益假；只做侧栏面板的小插件被塞 6 个空夹，比不预建更劝退。**「该放哪」是知识不是目录** ⇒ 用生成的 `README.md` 里**目录契约表**教。 |
-| **预建 vitest / 测试环境** | 官方插件的 `__tests__` 是**按需长出来的**，不是起步就有；给脚手架塞测试框架 = 给一个还没写业务的人配测试，加重起步负担。契约表里有 `src/__tests__/` 一行，作者要测时自己 `npm i -D vitest`。**若用户日后点名要，再单独立项**——不由本轮顺手加。 |
+| **预建 vitest / 测试环境** | ~~官方插件的 `__tests__` 是**按需长出来的**，不是起步就有；给脚手架塞测试框架 = 给一个还没写业务的人配测试，加重起步负担。契约表里有 `src/__tests__/` 一行，作者要测时自己 `npm i -D vitest`。**若用户日后点名要，再单独立项**——不由本轮顺手加。~~ 🔴 **2026-09-14 已改判（E6#102，L7 第 7.5 轮）**：**改判为「预建」**。理由不是「想法变了」，是**前提变了**——本行原来的假设是「插件与壳同仓、壳的方案顺手提供测试环境」；插件源码现在住在**自己的仓**里，壳仓的 vitest / jsdom / `vitest.setup.ts`（那份 `window.linkdesk` mock 是**运行时地基**，不是配置）够不着它，于是「不给脚手架配测试」的实际后果变成「**新插件永远不会有测试**」，而且 CI 模板也没了 `test` 这一步。⇒ 模板随附 `vitest.config.ts` + `vitest.setup.ts` + `"test": "vitest run"`（含 `passWithNoTests`：没写测试不判红，是「没写」不是「写错了」）。不想要测试的作者 `npm uninstall vitest jsdom @testing-library/react` 即可，CI 那一步是 `npm test --if-present`，**跳过是显式的**。 |
 
 ### 9.5 🔴 为什么模板里叫 `gitignore` 而不是 `.gitignore`（**E6#95c 执行期实测发现**）
 

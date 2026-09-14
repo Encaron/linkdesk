@@ -1,0 +1,45 @@
+# LinkDesk 插件仓 CI（E6#102）——「搬出去不等于脱管」。
+#
+# 为什么有这份文件：插件源码住在**自己的仓**里，壳仓的 `npm run check` 够不着它（那是壳的门禁）。
+# 类型 / lint / 测试 / i18n / 主题审计这些检查必须在**插件仓自己**跑一遍，否则「独立」是拿
+# 「质量真空」换的。本文件 + `npm run verify` 就是把那一份装回来。
+#
+# 四步各自对应一类「本该在提交前拦住」的错误：
+#   validate —— plugin.json 过 schema（身份/contributes 形状）+ 声明的 i18n 字典文件真的在
+#   verify   —— 严格门禁（内含 SDK lint 全腿；WARN 转拦）。见 scripts/ci-verify.mjs 头注
+#   build    —— 真的能产出 .linkdesk-plugin（构建期错误在这里现形，不是等用户装的时候）
+#   test     —— 工程自带测试（没写测试的工程自动跳过，不是失败）
+#
+# 🔴 这份文件**不用任何 `${{ … }}` 表达式**——它是被脚手架当模板复制出去的文本，而壳仓的
+#   `check-scaffold.mjs` 会把残留的 `{{…}}` 当「未替换占位符」判红。需要表达式时先去那道门禁
+#   登记（它已对 `.github/**` 开了口子，说明见该脚本）。
+#
+# node 版本对齐壳仓 engines（>=24）：插件与壳跑在同一个 Pool 里，别让语法/crypto 行为分叉。
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      # 依赖全部来自公开货架（@linkdesk/plugin-sdk 等作者面包）——本步骤不读 GitHub API，
+      # 故无需 GITHUB_TOKEN；将来若加了读 GitHub 的步骤，记得喂 token（共享 runner 的匿名
+      # 配额 60 次/时，匿名跑会把门禁打成 403 假红）。
+      - run: npm ci
+
+      - run: npm run validate
+      - run: npm run verify
+      - run: npm run build
+
+      # 没写测试的工程直接跳过（--if-present），不是失败——但**必须显式跳过**，
+      # 不许把「没跑」伪装成「跑了且绿」。
+      - run: npm test --if-present

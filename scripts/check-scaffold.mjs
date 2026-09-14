@@ -51,6 +51,12 @@ const EXPECTED_FILES = [
   "CHANGELOG.md",
   ".gitignore",
   ".vscode/settings.json",
+  // 🔴 E6#102（L7 7.5 轮）：新插件**一建出来就自带门禁**——这几件随模板走，
+  // 否则「搬出去不等于脱管」只覆盖到已有的 18 只，新插件第一分钟就脱管。
+  ".github/workflows/ci.yml",
+  "scripts/ci-verify.mjs",
+  "vitest.config.ts",
+  "vitest.setup.ts",
   "resources/icon.svg",
   "i18n/en.json",
   "src/index.tsx",
@@ -58,7 +64,16 @@ const EXPECTED_FILES = [
 ];
 
 /** 契约：`package.json` 的 scripts **必须**含这些命令（断言 5） */
-const EXPECTED_SCRIPTS = ["dev", "build", "publish", "validate", "lint"];
+const EXPECTED_SCRIPTS = ["dev", "build", "publish", "validate", "lint", "verify", "test"];
+
+/**
+ * 模板里**不是**占位符的 `{{…}}`——扫描豁免（E6#102 同笔）。
+ *
+ * GitHub Actions 的表达式就是 `${{ … }}` 形状，与脚手架的 `{{pluginName}}` 占位符同形；
+ * `.github/**` 下的文件是**给 GitHub 看的**，那里面出现的 `{{…}}` 一律不作数。
+ * 豁免范围刻意只有这一条路径——别的文件里出现 `{{…}}` 仍然是「未替换的占位符」。
+ */
+const PLACEHOLDER_SCAN_EXEMPT = /^\.github\//;
 
 const failures = [];
 const fail = (msg, hint) => failures.push(hint ? `${msg}\n     ↳ ${hint}` : msg);
@@ -133,6 +148,7 @@ function runAssertions(genDir) {
   if (cliKeys) {
     const used = new Set();
     for (const rel of listFiles(TEMPLATE_DIR)) {
+      if (PLACEHOLDER_SCAN_EXEMPT.test(rel)) continue; // `.github/**` 的 `${{ … }}` 不是占位符
       const text = readFileSync(join(TEMPLATE_DIR, rel), "utf8");
       for (const m of text.matchAll(/\{\{(\w+)\}\}/g)) used.add(m[1]);
     }
@@ -150,6 +166,7 @@ function runAssertions(genDir) {
     const leftover = [];
     for (const rel of generated) {
       if (/\.(svg|png|ico|jpg)$/i.test(rel)) continue;
+      if (PLACEHOLDER_SCAN_EXEMPT.test(rel)) continue; // `.github/**` 的 `${{ … }}` 不是占位符
       const text = readFileSync(join(genDir, rel), "utf8");
       for (const m of text.matchAll(/\{\{[^}]*\}\}/g)) leftover.push(`${rel} ← ${m[0]}`);
     }
