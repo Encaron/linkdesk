@@ -124,6 +124,13 @@ jobs:
         run: npm ci
 
       - name: Check
+        # 🔴 E6#101（L7 7.4 轮）：`npm run check` 里多了一道**联网**门禁
+        #   `check-bundled-freshness`（比对官方目录判「箱内出厂种子是否落后」）。
+        #   它默认读 `api.github.com`——**匿名 60 次/时·IP**，而 GitHub 托管 runner 的出口 IP 是共享的，
+        #   撞上别人的配额就是 403 ⇒ 门禁红 ⇒ 发不出 Release。故把 job 的 GITHUB_TOKEN 显式喂给它
+        #   （脚本按 `GITHUB_TOKEN` / `GH_TOKEN` 环境变量认领，见 scripts/lib/official-catalog.mjs）。
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: npm run check
 
       - name: Build

@@ -12,4 +12,6 @@ export type { LinkdeskPluginOptions } from "./vite-config.js";
 export { validatePluginJson } from "./validate.js";
 export { validateThemeJson, validateIconThemeJson } from "./validate.js";
 export type { ValidationResult } from "./validate.js";
+export { packPluginData } from "./pack.js";
+export type { PackResult } from "./pack.js";
 export type * from "./types.js";

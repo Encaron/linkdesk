@@ -9,10 +9,11 @@
  *   - validate：跑 validatePluginJson 逐行打错，exit 1/0
  */
 import { existsSync } from "node:fs";
-import { join } from "node:path";
+import { join, relative } from "node:path";
 import { build } from "vite";
 import { validatePluginJson } from "./validate.js";
 import { defineLinkdeskPluginConfig } from "./vite-config.js";
+import { packPluginData } from "./pack.js";
 import { runPluginDev } from "./dev-server.js";
 import { runPluginDevReal } from "./dev-real.js";
 import { runPluginPublish } from "./publish.js";
@@ -37,6 +38,9 @@ const USAGE = `linkdesk-plugin-sdk <command>
               真 IPC/串口/LSP 类插件的秒级真机调试（壳零新代码；LINKDESK_USER_PLUGINS_DIR /
               LINKDESK_CDP_PORT 可覆盖）
   build       在插件工程根构建 .linkdesk-plugin（读 plugin.json → Vite build → zip）
+  pack        纯数据插件（主题/语言/图标集——无 entry、无可编译表面）的打包通道（E6#98c）：
+              打包目录整树（plugin.json 在顶）→ <pluginId>.linkdesk-plugin。排除 node_modules/dist/
+              package.json/隐藏项。--out <path> 可指定输出文件（缺省 = 插件根 <pluginId>.linkdesk-plugin）
   publish     一键发布（E6#26）——自动链路：建 GitHub Release → 上传 .linkdesk-plugin → 更新工程
               origin 仓库根 marketplace.json（多市场源模型）。发前预览确认；--yes 跳过（CI）；
               --dry-run 只预览不碰网络。token：env LINKDESK_GITHUB_TOKEN，或首跑交互输入存入本机
@@ -100,6 +104,31 @@ async function main(): Promise<void> {
     case "build":
       code = await cmdBuild();
       break;
+    case "pack": {
+      // pack [--out <path>]——纯数据包通道（E6#98c）。只认这一个 flag，多余参数直接报用法（防拼错静默）
+      const outIdx = rest.indexOf("--out");
+      const unknown = rest.filter((a, i) => a !== "--out" && (outIdx < 0 || i !== outIdx + 1));
+      if (outIdx >= 0 && rest[outIdx + 1] === undefined) {
+        console.error("pack --out 需要一个路径参数");
+        code = 1;
+        break;
+      }
+      if (unknown.length > 0) {
+        console.error(USAGE);
+        code = 1;
+        break;
+      }
+      const result = await packPluginData({ root: process.cwd(), outFile: outIdx >= 0 ? rest[outIdx + 1] : undefined });
+      console.log(
+        `[linkdesk-plugin-sdk] ✔ ${result.id}.linkdesk-plugin（${(result.bytes / 1024).toFixed(1)} KB, ` +
+          `${result.entryCount} 条目）→ ${relative(process.cwd(), result.outPath) || result.outPath}`,
+      );
+      if (result.normalizedCount > 0) {
+        console.log(`[linkdesk-plugin-sdk] 行尾归一到 LF 的条目：${result.normalizedCount}（二进制条目原样，未计入）`);
+      }
+      code = 0;
+      break;
+    }
     case "publish": {
       // publish [--yes|--dry-run]——E6#26 自动发布链路（发前预览确认）
       const flags = rest.filter((a) => a.startsWith("-"));

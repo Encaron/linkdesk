@@ -3,7 +3,7 @@
 > **Tauri v2 + React 18 + TypeScript → 🔥 迁移到 Electron。通用容器。** 比 VS Code 更高级：VS Code 核心嵌了 Monaco 编辑器甩不掉，LinkDesk 核心是空壳。万物皆插件。
 >
 > **Tauri 时代 P1-P6 🎉。E3 🎉。E4 🎉（2026-08-03）。E5 🎉（2026-08-04）。** 壳通信骨架 + 三通信机制 + linkdesk.* 20 命名空间 API + ESLint 防线。Per-Tab WebView 已废弃（E5.5#9，O(N) 进程→E5.7 极简Pool O(1) 取代）。
-> **当前进度：** 🚀 E6 插件生态与发布（E4✅→E5✅→E5.6 封存→E5.7 极简Pool✅→**E5.8 归一化基建收官**→**E6：L4/L5 封站（2026-09-14）**→L6 安全加固与出厂判定在即）。进度唯一真相源：`docs/02-Electron架构/E6_插件生态与发布/E6-执行清单.md`。工作分支 = `e6`；主线 `electron`（e5.8 已并回追平）。E5.7/E5.8 执行清单已封存。
+> **当前进度：** 🚀 E6 插件生态与发布（E4✅→E5✅→E5.6 封存→E5.7 极简Pool✅→**E5.8 归一化基建收官**→**E6：L4/L5 封站（2026-09-14）→ L7 插件源码外移进行中（7.0 判据先立 ✅、7.1 出口打通 ✅——六只插件自足构建 + 身份显式化 + SDK `pack` 通道，**仓外构建 7/7 实证**；**7.2 逐个迁移 ✅——18 只发货插件源码外移各自独立仓（`Encaron/linkdesk-plugin-<id>`，保历史）并已推送、壳仓 `plugins/` 只剩两只夹具、12 类绑定逐条给结论（软件 0.1.61→0.1.62 PATCH）；7.3 上架两步 ✅ 2026-09-14 收官——18/18 publish 到各自仓（三产物核验）+ 官方目录工具 + 装机验收两阶全绿 + 卸载安全三连与更新通道实证真跑通 + 🔴 18 只已收录进官方目录（用户点头当天落地，提交 `66e8a974`）；7.4 出厂种子保鲜 ✅ 2026-09-14 收官——三件套一起上（机制 `sync:bundled` 三档 / 账 `bundled-plugins.lock.json` / 门禁 `check-bundled-freshness` 挂进 `npm run check`）+ 🔴 **出厂随包收敛为 6 只基础插件**（设置·插件市场·语言·基础主题·文件树·编辑器；其余走市场，18 只仍在官方目录）+ **端到端本命真跑通**（settings 1.0.6→1.0.7 → 收录 → `sync --latest` → 打包 → 干净 profile 读数 = 1.0.7）+ `pack-bundled-plugins.mjs` 退休（软件 0.1.62→0.1.63 PATCH）；7.5 门禁与 CI ✅ 2026-09-14 收官（**本地全绿、外发一件没做，等用户点头**）——**18 仓各自自带 CI ＋ 严格门禁**（`.github/workflows/ci.yml` + `scripts/ci-verify.mjs`：SDK lint 全腿判红 / 跨插件互引 / 字典完整性 / 声明自洽）＋ **测试基建随插件走**（5 仓 **25 文件 / 370 例全绿**，file-tree 69/69 与 7.1 记录逐字相同）＋ 🔴 **核出 SDK preset 两条真缺口**（`no-cross-plugin-import` 根本不在 preset 里 / 12 条注册规则全 WARN ⇒ 「lint 会红」必须自带严格腿）＋ 7 处负控全红、修回全绿 ＋ 脚手架模板同四件（**新插件一建出来就自带检查**）＋ 发布清单跨仓四步回填 ＋ 🔴 **18 仓 CI 真跑过一次（18/18 `success`，24–40 秒/仓）**（用户 2026-09-14 点头后推的 18 仓与壳仓 `e6`，7.5 主体 = `00ffce391`；npm 侧一件没发——模板改动与 7.6 的脚手架改动合并成一笔版本）；**7.6 脚手架 git init 与本地工作区 ✅（2026-09-14）**——脚手架**代建 git 仓**（照 `cargo new` 三语义 ＋ `--no-git` 逃生口）＋ 门禁断言 9 ＋ **`npm run pull:plugins`（只拉不推）** ＋ **`create-linkdesk-plugin` 0.1.3 真发**；**7.8 作者面文档收口与发布 ✅（2026-09-14，#105a-m 全过）**——`docs/03-插件制造` 从「文档集合」变「**教学动线**」（新篇 `17-区域地图` / `18-区域间互动` / `19-组件速查` / `20-我的插件加一条配置项` ＋ `主题/` 两篇 ＋ `00-README` 改导览 ＋ `13` 三档入口；**口号 = AI 10 分钟做出最小插件 / 30 分钟视图插件 / 1 天高难度插件**）＋ **155 处内部任务号清零**（含 `E5.7#`）、出界链接 57→48 **全部白名单化**（内部档案指针清零）＋ 顺手订正三处与实现相反（`04` 的「18 个 zip」→ 实际 **6 只出厂种子**、`15`/`16` 的「不许改目录名」）＋ **两条门禁**（`check-author-docs-symbols` 无内部任务号 / `check-author-docs-links` 出界链接白名单，**各带 `--self-test`**）接进 `npm run check` ＋ 脚手架模板新增 **`AGENTS.md`**（给作者的 AI 看的四件事；**0.1.3→0.1.4 已备未发**）＋ **第五根作者轴 `@linkdesk/plugin-docs`**（生成器 ＋ `--check` ＋ 24 文件产物，**首次发布待点头**）；**7.8 增补：作者面英文化 ✅（2026-09-14，E6#105n）**——**英文树 `docs/03-plugin-authoring/`（23 篇）是作者面主显**、中文树 `docs/03-插件制造/` 留作维护者面（既有引用零改动），两棵树由**双语对齐门禁** `check-author-docs-bilingual` 盯着（篇目对齐 + 入口互指；另两条作者面门禁的扫描域一并扩到两棵树）＋ **四条 schema 的 description 全部英文化并清掉内部任务号**（三份 `plugin.schema.json` 拷贝仍字节相等）＋ 三个 npm README 与速查表生成器英文化 ＋ 脚手架 `template/AGENTS.md`（英文，末尾一句指中文版）/`template/README.md`/CLI README 英文 ＋ 文档包**英文在包根、中文收 `zh/`**；🔴 **五根作者轴全量重新分发**（`@linkdesk/contracts@0.1.14` · `@linkdesk/plugin-sdk@0.1.15` · `create-linkdesk-plugin@0.1.4` · `@linkdesk/ui@0.1.5` · **`@linkdesk/plugin-docs@0.1.0` 首发**，均过货架核对 + `release:mark`）；下一个 = 7.7 全层验收（#104——七条判据 ＋ 四本账 ＋ 回归对照 ＋ **终局三档计时** ＋ 封层）**；AI 接力 = 一个会话只做一个轮次）**→L6 安全加固与出厂判定在即）。进度唯一真相源：`docs/02-Electron架构/E6_插件生态与发布/E6-执行清单.md`。工作分支 = `e6`；主线 `electron`（e5.8 已并回追平）。E5.7/E5.8 执行清单已封存。
 > **仓库结构（2026-09-04 第 0.15/0.16 轮完成）：** git 根 / npm 根 / VS Code 打开根已**合一于 `E:/linkdesk` 单根**（`src/` `electron/` `docs/` `package.json` 直接可见，无 `linkdesk/` 套娃）；`Serial_C_Language/` 已永久删除；历史经 filter-repo 抽子树（3119 commits，hash 全变、内容全保）；远端 `origin` 已 6 分支强推对齐（2026-09-04 用户拍板）。
 
 ## 架构——圆形大厅模型
@@ -70,8 +70,8 @@
 | **E3** | **多 WebView + 壳收尾（103 任务，~3,602 行）🏁 架构最后一站** | ❌ | 🎉 E3a-j 全部完成 |
 | **E4** | **文件树 + Monaco 编辑器（67 任务，~2,500 行）🏁 最后 E 编号** | ❌ | 🎉 全部完成（2026-08-03） |
 | **E5** | **核心归一化与壳重构——铁轨** | ❌ | 🎉 E5–E5.6 完成（已封站）· **E5.7 极简 Pool ✅** · **E5.8 归一化基建 ✅** |
-| **E6** | **插件生态与发布（L4 端到端验证 + L5 文档与发布 ✅ 封站 2026-09-14；剩 L6 安全加固 #48-52 与出厂判定）** | ❌ | 🚀 收官中——真相源 `docs/02-Electron架构/E6_插件生态与发布/E6-执行清单.md` |
-| 之后 | E6 完成即出厂 → 持续迭代：04-软件更新（软件本体）+ 05-插件更新（各插件独立版本） | ❌ | 📋 |
+| **E6** | **插件生态与发布（L4 端到端验证 + L5 文档与发布 ✅ 封站 2026-09-14；L7 插件源码外移进行中：7.0–7.6 ＋ 7.8 ✅，下一个 = 7.7 全层验收；剩 L6 安全加固 #48-52 与出厂判定）** | ❌ | 🚀 收官中——真相源 `docs/02-Electron架构/E6_插件生态与发布/E6-执行清单.md` |
+| 之后 | E6 完成即出厂 → 持续迭代：04-软件更新（软件本体）+ 05-插件更新（各插件独立版本）。**出厂插件源码在仓外（各自 GitHub 仓，一插件一仓），随包靠构建期拉取最新已发布版，不靠源码住在壳里** | ❌ | 📋 |
 
 > Phase 5 拆分为 5a-5h 八批次——每批交一个可用软件。详情存档在 [docs/01-Tauri_P1至P5.5/](docs/01-Tauri_P1至P5.5/)。
 
@@ -98,7 +98,7 @@
 8. **ProtocolParser 是独立可替换模块，RingBuffer 接口 `{ cardId, value }` 是硬边界**——开发阶段只用方括号协议，但任何代码不得写死"只有这一种协议"。Phase 4 协议插件系统通车时，只换解析器不改下游。
 9. **核心无知原则**（memory `core-ignorance-principle.md`）：核心不知道软件是干什么的。只定义"怎么接"，不定义"接什么"。往核心加东西前先问：加了之后核心变得更"知道自己是干什么的"了吗？是 → 别加，做成插件
 10. **禁止在 core/ 或 pluginLoader/ 中写死插件 ID。** 禁止 `if (pluginId === "terminal")` / `switch (pluginId) { case "terminal": ... }` / `PLUGIN_ICON_PATH["terminal"]` / `BOTTOM_ICONS = ["settings"]` 等任何形式的插件 ID 字面量硬编码。所有插件差异性行为走 plugin.json 声明（`viewRole` / `tabBehavior` / `iconLocation` / `keepSidebarOnFocus` 等字段）→ Registry 模式消费。**Phase 5g 把 `TabType` 从 8 个联合类型改成 `string` 就是为了消灭这个模式——不要再写回来。**
-11. **插件身份唯一来源是 plugin.json 声明字段。** 禁止用文件位置、目录名、是否在 Vite glob 中、是否在源码树里来推断插件属性。`core: true` 定义卸载按钮隐藏（纯 UI 防误删旗标——无行为特权，API/命令层可卸可禁，卸载走 removed 墓碑，见 E6#18），`tabBehavior` 定义标签页行为，`entry` 定义入口文件——所有属性都在 `PluginManifest` 类型和 JSON Schema 中有对应字段。代码注释中禁止发明 schema 里没有的分类名词（如"工厂插件""内置插件"）——用字段名：`core: true 的插件`、`glob 中的插件`。
+11. **插件身份唯一来源是 plugin.json 声明字段。** 禁止用文件位置、目录名、是否在 Vite glob 中、是否在源码树里来推断插件属性。**🔴 其中「插件身份 id」= 顶层 `pluginId` 字段（E6#98g 起进 schema 并要求显式声明）——发布后永不可变；`derivePluginId` 的目录名/zip 基名兜底只为兼容存量第三方插件，`validate` 会对缺声明打黄灯，官方插件 20 只已全部显式声明。** `core: true` 定义卸载按钮隐藏（纯 UI 防误删旗标——无行为特权，API/命令层可卸可禁，卸载走 removed 墓碑，见 E6#18），`tabBehavior` 定义标签页行为，`entry` 定义入口文件——所有属性都在 `PluginManifest` 类型和 JSON Schema 中有对应字段。代码注释中禁止发明 schema 里没有的分类名词（如"工厂插件""内置插件"）——用字段名：`core: true 的插件`、`glob 中的插件`。
 12. **🔥 禁止硬编码路径——所有资产路径走 `getAssetPath()`（`src/core/utils/assetPath.ts`）。** 禁止手写 `/assets/...`、`/icons/...`、`/plugins/...` 等绝对路径字面量。打包后 Electron 走 `file://` 协议，绝对路径全部炸裂。dev 模式 `http://localhost:1420` 能工作只是巧合。插件作者的自定义图标也必须走这条路——`resolvePluginIcon` 已内置。
 13. **🔥 async 初始化函数必须防 StrictMode 双重 effect 竞态。** `init*()` 有 `_initialized` guard 不够——第一次调用是 async，第二次可能在第一次完成前到达。第二次调必须返回第一次的进行中 Promise（`_loadingPromise`），不能直接 return undefined。详见 memory `invisible-bugs-lesson-59c.md` Bug 1。
 14. **🔥 useEffect 有回调 prop（onChange/onHighlight/onSelect 等）做非 DOM 副作用时，必须加活跃守卫。** 组件 `return null` 不代表 effect 不跑——React effect 只看挂载不看 DOM。守卫模式：`if (!open) return;` / `if (!isActive) return;`，且 `open`/`isActive` 必须纳入依赖数组。**写完后 grep 同组件的其他 effect——所有 effect 应有同样的守卫，漏掉的就是 bug。** 详见 memory `invisible-bugs-lesson-59c.md` Bug 2。
@@ -155,7 +155,22 @@
 ```bash
 # 🔥 提交前必跑——一条命令 = 双工程 tsc + ESLint --max-warnings 0 + vitest + 网格/pool-css
 npm run check
+#   ⚠️ 其中 `check-bundled-freshness`（E6#101）**默认联网**比对官方目录；无网络时它会红——离线用 `--offline` 明示降级
+#   ⚠️ 其中 `check-scaffold`（E6#103）**需要 git 在 PATH**（断言要真建仓、真问 rev-parse）；缺 git 会明确报出来
 
+npm run sync:bundled # 出厂种子保鲜（E6#101）：按账拉齐箱内种子 + 修剪到随包集
+                     #   `-- --latest` 读官方目录刷新账与种子（显式追新）｜`-- --offline` 断网只校验指纹
+npm run sync:plugin-ci # 插件仓门禁铺装（E6#102）：把脚手架模板里的 ci.yml / ci-verify.mjs
+                     #   （+有源码的加 tsconfig、有测试的加 vitest 两件）铺到 18 只插件仓的本地容器
+                     #   ⚠️ 只写本地、不碰 git 不推送；改完各仓要 `npm install --registry=https://registry.npmjs.org` 更 lock
+                     #   ⚠️ 插件仓的门禁在**插件仓自己**里跑：`.github/workflows/ci.yml` + `npm run verify`
+                     #     （严格腿 = SDK lint 全腿 + 跨插件 import + 字典完整性 + 声明自洽；壳仓的 check 够不着插件源码）
+npm run pull:plugins # 把本地容器（linkdesk-plugins\{official,third-party}）里的插件仓拉到最新（E6#103）
+                     #   ⚠️ **只拉不推**：只有 `git pull --ff-only`，没有 commit / push 任何路径（推送等用户点头 + 带代理）
+                     #   `-- --dry-run` 只列会动谁；本机出网要代理时 `HTTPS_PROXY=http://127.0.0.1:7890 npm run pull:plugins`
+                     #   🔴 顺手当红线哨兵：容器 / official / third-party 哪一级被 git init 了就红着喊出来
+npm run docs:build   # 作者面文档包产物（E6#105l）：真源 docs/03-插件制造/** → packages/plugin-docs/docs/**
+                     #   `npm run docs:check` 与真源逐字节比对（挂 check）；出界链接会被绝对化成 GitHub URL
 npm run lint         # 单独跑 ESLint（含硬约束 13/14 自定义规则）
 npm run dev          # 纯前端预览（Vite）
 npm run electron:dev # 完整 Electron 桌面应用（E1 步 1 后可用）
@@ -180,6 +195,7 @@ npx vitest run       # 单元测试（会涨：2026-09 时 168 文件 / 2,342 �
 | 标签页/分屏设计 | `docs/phase3_标签页分屏/V3-Phase3-标签页分屏设计.md` |
 | 部件名称 | `docs/总体设计/V3-部件命名规范.md` |
 | 写插件 | **`docs/03-插件制造/`**——00-README 概览 / 01-API契约 / 02-生命周期 / 03-contributes / 04-分发 / 05-UI写法规约 / 06-plugin.json规范 / plugin.schema.json |
+| 🔥 插件源码外移与上架（L7） | **`docs/02-Electron架构/E6_插件生态与发布/插件源码外移层/00-整理档案.md`**——源码真相源在插件仓、壳仓只留产物；九轮任务 + 交接.md（AI 一会话一轮接力）。**出厂种子保鲜 = 账 `bundled-plugins.lock.json`（谁随包看 `seed`）＋ 机制 `npm run sync:bundled` ＋ 门禁 `check-bundled-freshness`（挂 `npm run check`，默认联网）**；**插件仓的门禁在插件仓自己里**（`.github/workflows/ci.yml` + `npm run verify`，四段严格腿）——**壳仓的 `npm run check` 够不着插件源码**，两套互不覆盖（[06-门禁与CI.md](docs/02-Electron架构/E6_插件生态与发布/插件源码外移层/06-门禁与CI.md)）。**作者面文档（`docs/03-插件制造/`）= 教学动线**（导览 ＋ 三档入口 ＋ 区域地图/区域间互动/组件速查/配置项/主题）——两条门禁管它：`check-author-docs-symbols`（禁内部任务号）/ `check-author-docs-links`（出界链接必须报备在 `scripts/author-docs-outbound-allowlist.txt`）；**文档 npm 包** = `npm run docs:build` / `docs:check`（产物 `packages/plugin-docs/`，真源是两棵树）。**英文化后：作者面主显 = `docs/03-plugin-authoring/`（英文），中文原文 = `docs/03-插件制造/`；两棵树的篇目对齐由 `check-author-docs-bilingual` 守，跨树映射表写在该门禁的 `FILENAME_MAP`** |
 | 已确认决策 | memory `design-decisions.md` |
 | 已知坑 | memory `bug-atlas` |
 | 主题系统 | memory `theme-system.md` |

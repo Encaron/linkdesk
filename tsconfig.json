@@ -22,9 +22,10 @@
       "@linkdesk/contracts": ["./contracts/linkdesk.d.ts"]
     }
   },
-  // 2026-09-05 塌平过渡式：include 由 plugins/builtin（双目录整体）→ 4 个仍在壳编译图内的 core:true 插件。
-  // 不枚举全部 plugins/（serial-monitor 等 11 个潜伏类型错属 #16 各自独立 tsc 职责，塌平不扩覆盖）；
-  // #15f scanPluginEntries 移除后壳不再编译任何插件代码 → 收为 ["src"]。
-  "include": ["src", "plugins/editor", "plugins/file-tree", "plugins/marketplace", "plugins/settings"],
+  // E6#99（L7 第 7.2 轮）：18 只发货插件源码已外移各自独立仓 ⇒ 壳不再编译任何插件代码，include 收为 ["src"]。
+  // 沿革：2026-09-05 塌平过渡式曾留 4 个 core:true 插件（editor/file-tree/marketplace/settings）在编译图内；
+  // #15f scanPluginEntries 移除后壳早就不编译插件，那 4 条一直只是「潜伏类型错的探针」——探针随源码一起
+  // 搬走，改由各插件仓自己的 tsc/CI 负责（7.5 轮）。夹具（panel-demo / floating-panel-demo）从不进编译图。
+  "include": ["src"],
   "exclude": []
 }

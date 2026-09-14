@@ -25,6 +25,9 @@ description: >
 | **软件本体**（根 `package.json`） | 用户 | GitHub Release tag | 本 skill 判定 + 发布门禁（#57.15d） |
 | **@linkdesk/contracts** | 插件作者（拿类型） | npm | **发布者手工维护**——2026-09-06 拆焊反向 E5.8#22.6，版本轴独立于壳（壳升级≠契约升级）；只随 `window.linkdesk.*` API 面变而升 |
 | **@linkdesk/plugin-sdk** | 插件作者（构建） | npm | 同上，手工维护；依赖 `^0.1.x` contracts |
+| **create-linkdesk-plugin** | 插件作者（建工程） | npm | 手工维护；**模板改了必须发版**——不发 = 作者拿到的骨架是旧的（`check-npm-release` 黄灯盯） |
+| **@linkdesk/ui** | 插件作者（共享 UI 零件） | npm | 手工维护；壳 `src/components/shared/` 是单源，改组件即动了本轴 |
+| **@linkdesk/plugin-docs** | 插件作者（读文档） | npm | 🔴 **第五根轴（E6#105l 立）**：内容变即 PATCH；表面 = 生成物 `packages/plugin-docs/docs/**`（真源 `docs/03-插件制造/**`，改了不重生成 ⇒ `docs:check` 先红）。基线待首次真发后 `release:mark` 落 |
 | **插件自身 version**（各 plugin.json） | 作者自己 | marketplace | 作者维护，更新机制消费 |
 
 **判例**：优化拖出动画 → 只动软件轴（用户升级，不碰 npm）；优化 `linkdesk.*` API 面 → 作者轴（升 contracts/sdk 真发 npm，软件轴可不动）。**每轴变更仍必须跑该轴检测**——拆焊只拆错轴的「版本相等」断言，检测一条不撤（memory [[version-axes-separated]]）。

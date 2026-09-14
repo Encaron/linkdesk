@@ -26,21 +26,83 @@ import { fileURLToPath, pathToFileURL } from "url";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, "..");
 
-/** 检查基准（E6 可配置）——CLI --base 优先，其次 LSP_DEP_BASE 环境变量，默认项目根 */
+/**
+ * 向上找 `<ancestor>/node_modules/<seg>` 首个命中（Node 模块解析语义）——找不到返回 null。
+ *
+ * 🔴 E6#98d（L7 第 7.1 轮）：**这是本轮抓到的真缺陷的修法**。此前 `--pyright` 缺省时只查
+ * `resolve(base, "node_modules/pyright/dist/pyright-langserver.js")` 一处——而 E6#16 workspaces 化后
+ * 插件依赖会被 **hoist 到仓库根**（实测：`pyright` 在 `node_modules/pyright`，`plugins/python/node_modules/`
+ * 整个不存在）⇒ `npm run lsp:smoke`（`--base plugins/python`）**恒报「pyright 缺失」**，而依赖其实在。
+ * 这与 `check-lsp-deps.mjs` 的 `resolveNodeModulesUpward` 是**同一条规则**——两处各写一份必然漂移，
+ * 故此处照抄同一语义（该脚本已在 E6#16 修过，本脚本漏了）。
+ *
+ * 另一重意义：python 插件源码搬出壳仓（L7 7.2）之后，`--base` 指向哪里由外部传入——上层搜索让
+ * 「基准 = 插件源码树」这个语义不依赖「插件根一定有自己的 node_modules」这个会被 npm 布局打破的假设。
+ */
+function resolveNodeModulesUpward(startDir, seg) {
+  let dir = startDir;
+  for (;;) {
+    const candidate = resolve(dir, "node_modules", ...seg.split("/"));
+    if (existsSync(candidate)) return candidate;
+    const parent = dirname(dir);
+    if (parent === dir) return null;
+    dir = parent;
+  }
+}
+
+/** pyright 入口解析——先向上找（本地命中优先，hoist 在父级/仓库根命中），都无则回落基准位（错误信息仍指向期望位） */
+function resolvePyrightFromBase(baseDir) {
+  const seg = "pyright/dist/pyright-langserver.js";
+  return resolveNodeModulesUpward(baseDir, seg) ?? resolve(baseDir, "node_modules", ...seg.split("/"));
+}
+
+/** 检查基准（E6 可配置）——CLI --base 优先，其次 LSP_DEP_BASE 环境变量，否则自动发现 */
 let base = ROOT;
-/** pyright 脚本路径——--pyright 显式绝对路径优先，否则对 base resolve 相对约定 */
+/** pyright 脚本路径——--pyright 显式绝对路径优先，否则由 base 解析 */
 let pyrightPath = null;
+let baseExplicit = false;
 {
   const argv = process.argv.slice(2);
   for (let i = 0; i < argv.length; i++) {
-    if (argv[i] === "--base" && argv[i + 1]) base = resolve(argv[i + 1]);
-    if (argv[i].startsWith("--base=")) base = resolve(argv[i].slice("--base=".length));
+    if (argv[i] === "--base" && argv[i + 1]) { base = resolve(argv[i + 1]); baseExplicit = true; }
+    if (argv[i].startsWith("--base=")) { base = resolve(argv[i].slice("--base=".length)); baseExplicit = true; }
     if (argv[i] === "--pyright" && argv[i + 1]) pyrightPath = resolve(argv[i + 1]);
     if (argv[i].startsWith("--pyright=")) pyrightPath = resolve(argv[i].slice("--pyright=".length));
   }
-  if (!pyrightPath && process.env.LSP_DEP_BASE) base = resolve(process.env.LSP_DEP_BASE);
+  if (!pyrightPath && process.env.LSP_DEP_BASE) { base = resolve(process.env.LSP_DEP_BASE); baseExplicit = true; }
 }
-if (!pyrightPath) pyrightPath = resolve(base, "node_modules/pyright/dist/pyright-langserver.js");
+
+/**
+ * 🔴 E6#99（L7 第 7.2 轮）：python 插件源码已外移**独立仓** ⇒ 壳仓内再也没有 `plugins/python`。
+ * 「基准」这件事随之从「仓内固定路径」变成「由外部传入」——但 `npm run lsp:smoke` 不能因此变成
+ * 一条**恒失败**的命令（那等于把尺子藏起来）。故无显式基准时按**候选位**自动发现，全不命中就
+ * 报一条能照着做的错，而不是一句「pyright 缺失」。
+ *
+ * 候选顺序 = ① 仓内旧位（若哪天插件搬回来，零改动生效）② D6 本地容器约定位（`<兄弟目录>/linkdesk-plugins/official/`）。
+ */
+const CANDIDATE_BASES = [
+  resolve(ROOT, "plugins/python"),
+  resolve(ROOT, "..", "linkdesk-plugins", "official", "python"),
+];
+if (!pyrightPath && !baseExplicit) {
+  const hit = CANDIDATE_BASES.find((b) => existsSync(resolvePyrightFromBase(b)));
+  base = hit ?? CANDIDATE_BASES[0];
+}
+if (!pyrightPath) pyrightPath = resolvePyrightFromBase(base);
+if (!existsSync(pyrightPath)) {
+  console.error(
+    [
+      "❌ 找不到 pyright——LSP 冒烟无从跑起。",
+      `   已试基准：${base}`,
+      "   python 插件源码自 E6#99（L7 7.2）起住在**独立仓**，不在壳仓内。三条出路任选：",
+      "     · npm run lsp:smoke -- --base <python 插件仓路径>   （例：--base ../linkdesk-plugins/official/python，先在该仓 npm ci）",
+      "     · LSP_DEP_BASE=<同上> npm run lsp:smoke",
+      `     · 把该仓放到容器约定位：${CANDIDATE_BASES[1]}`,
+      "   另：check-lsp-deps.mjs（挂在 npm run check 的构建期哨兵）同样已无仓内对象——它的结论行会明说，不会真空绿灯。",
+    ].join("\n")
+  );
+  process.exit(1);
+}
 
 /** 冒烟测试工作区（临时目录，脚本结束清理） */
 const WORKSPACE = mkdtempSync(resolve(tmpdir(), "ld-lsp-smoke-"));

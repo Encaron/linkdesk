@@ -2,43 +2,43 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://serial-monitor-v3/workspace.schema.json",
   "title": "V3 Workspace Layout",
-  "description": "标签页布局 + 卡片列表。Phase 3 已锁定标签页结构，Phase 5 卡片字段开放。",
+  "description": "Tab layout + card list. The tab structure is locked; the card fields are still open.",
   "type": "object",
   "required": ["tabs"],
   "properties": {
     "tabs": {
       "type": "array",
-      "description": "所有打开的标签页（平铺数组）",
+      "description": "All open tabs (flat array)",
       "items": {
         "type": "object",
         "required": ["id", "type", "label"],
         "properties": {
-          "id": { "type": "string", "description": "标签页唯一 ID（UUID）" },
+          "id": { "type": "string", "description": "Unique tab ID (UUID)" },
           "type": {
             "type": "string",
-            "description": "标签页类型——Phase 5g 放开为任意字符串（插件 ID 即类型）。不再 enum 预定义。"
+            "description": "Tab type — an arbitrary string (the plugin ID is the type). No longer a predefined enum."
           },
-          "label": { "type": "string", "description": "标签页显示文本" },
-          "dirty": { "type": "boolean", "description": "是否有未保存修改" },
-          "workspaceName": { "type": "string", "description": "工作区名称（仅 workspace 类型）" },
-          "filePath": { "type": "string", "description": "文件路径（仅 editor 类型）" }
+          "label": { "type": "string", "description": "Tab display text" },
+          "dirty": { "type": "boolean", "description": "Whether there are unsaved changes" },
+          "workspaceName": { "type": "string", "description": "Workspace name (workspace type only)" },
+          "filePath": { "type": "string", "description": "File path (editor type only)" }
         },
         "additionalProperties": false
       }
     },
     "root": {
-      "description": "递归分屏树（SplitNode）。leaf=面板，branch=方向+子节点。Phase 3 格式已锁定。",
+      "description": "Recursive split tree (SplitNode). leaf = pane, branch = direction + child nodes. The format is locked.",
       "$ref": "#/$defs/SplitNode"
     },
     "cards": {
       "type": "array",
-      "description": "Phase 5 卡片列表（平铺数组，禁止嵌套）。字段待锁定。",
+      "description": "Card list (flat array; nesting is not allowed). Fields are not final yet.",
       "items": { "type": "object" }
     }
   },
   "$defs": {
     "SplitNode": {
-      "description": "leaf: 叶子面板 | branch: 分割方向 + 两个子节点 + 尺寸比例",
+      "description": "leaf: leaf pane | branch: split direction + two child nodes + size ratios",
       "oneOf": [
         {
           "type": "object",

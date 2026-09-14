@@ -7,11 +7,13 @@ import { mergeDomains } from "../ThemeEngine";
 import { loadRealRecipe } from "./testFixtures.mock";
 
 /* ── E5.8#50.27：真实极限壳主题端到端裁决——gallery ①⑨⑩ 壳真实落地。
-   读取 plugins/theme-{songti,terminal,pill} 真实主题 JSON（#50.27 验收「制作真实主题插件做端到端最终裁决」）。
-   例外依据：验证真实接线而必须用真 id/真数据（硬约束 21 豁免区）——虚构 fixture 无法裁决「gallery 配方 ↔ 引擎」契约。 */
+   读**真实**主题 recipe JSON（#50.27 验收「制作真实主题插件做端到端最终裁决」）。
+   例外依据：验证真实接线而必须用真 id/真数据（硬约束 21 豁免区）——虚构 fixture 无法裁决「gallery 配方 ↔ 引擎」契约。
+   🔴 E6#99（L7 7.2）：官方主题插件源码已外移独立仓 ⇒ 那些 recipe 改从**随壳发货的种子 zip** 读
+      （壳仓里真实存在的那一份，见 `testFixtures.mock.ts` 的 `readPluginText`）。**断言一条没减**。 */
 describe("ThemeEngine — 真实极限壳主题（E5.8#50.27，gallery 端到端裁决）", () => {
-  it("songti-print — 宋体印刷体 font 域（ui=SimSun 全 UI 宋体；形制现状直角 isolate 字族轴）", () => {
-    const { recipe } = loadRealRecipe(
+  it("songti-print — 宋体印刷体 font 域（ui=SimSun 全 UI 宋体；形制现状直角 isolate 字族轴）", async () => {
+    const { recipe } = await loadRealRecipe(
       "plugins/theme-songti/themes/songti-print.json",
       "songti-print", "宋体印刷体 Songti Print", "light",
     );
@@ -26,8 +28,8 @@ describe("ThemeEngine — 真实极限壳主题（E5.8#50.27，gallery 端到端
     expect(tokens["accent"]).toBe("#4A463E");
   });
 
-  it("terminal-monofont — 终端机 font 域（ui+mono 全 Cascadia Mono 等宽族；形制现状直角）", () => {
-    const { recipe } = loadRealRecipe(
+  it("terminal-monofont — 终端机 font 域（ui+mono 全 Cascadia Mono 等宽族；形制现状直角）", async () => {
+    const { recipe } = await loadRealRecipe(
       "plugins/theme-terminal/themes/terminal-monofont.json",
       "terminal-monofont", "终端机 Terminal Mono", "dark",
     );
@@ -42,8 +44,8 @@ describe("ThemeEngine — 真实极限壳主题（E5.8#50.27，gallery 端到端
     expect(tokens["status-connected"]).toBe("#00E676");
   });
 
-  it("pill-bubble — 全胶囊 radius 域（七档 999px 配方声明 + radius-full 去键继承 :root 50% + 悬浮形态 radius999/shadow + 泡泡糖；E5.8#104 配方圆角 clamp 进标尺 [0,32]）", () => {
-    const { recipe } = loadRealRecipe(
+  it("pill-bubble — 全胶囊 radius 域（七档 999px 配方声明 + radius-full 去键继承 :root 50% + 悬浮形态 radius999/shadow + 泡泡糖；E5.8#104 配方圆角 clamp 进标尺 [0,32]）", async () => {
+    const { recipe } = await loadRealRecipe(
       "plugins/theme-pill/themes/pill-bubble.json",
       "pill-bubble", "全胶囊 Pill Bubble", "light",
     );
@@ -65,8 +67,8 @@ describe("ThemeEngine — 真实极限壳主题（E5.8#50.27，gallery 端到端
     expect(tokens["accent"]).toBe("#D6336C"); // 泡泡糖
   });
 
-  it("panorama — 整窗主视觉 background 域（mode:panorama 全窗铺图 + 低遮罩 0.15 + zone 半透明让位，chrome 让位给影像）", () => {
-    const { recipe } = loadRealRecipe(
+  it("panorama — 整窗主视觉 background 域（mode:panorama 全窗铺图 + 低遮罩 0.15 + zone 半透明让位，chrome 让位给影像）", async () => {
+    const { recipe } = await loadRealRecipe(
       "plugins/theme-panorama/themes/panorama.json",
       "panorama", "整窗主视觉 Main Visual", "dark",
     );
@@ -94,8 +96,8 @@ describe("ThemeEngine — 真实极限壳主题（E5.8#50.27，gallery 端到端
    极光玻璃/影像分区/纸纹分区 3 主题从旧格式（顶层 colors+surface+background）纯数据迁移到
    { id, name, type, appearance, colorways[] }。本测试断言新格式字段 + mergeDomains token 与迁移前逐键一致（零回归）。 */
 describe("ThemeEngine — 旧格式主题迁移新格式（E5.8#74，决策 F）", () => {
-  it("aurora-glass — 极光玻璃（appearance.glass 全玻璃+悬浮形态 + background 全窗图，colorway 单配色）", () => {
-    const { recipe } = loadRealRecipe(
+  it("aurora-glass — 极光玻璃（appearance.glass 全玻璃+悬浮形态 + background 全窗图，colorway 单配色）", async () => {
+    const { recipe } = await loadRealRecipe(
       "plugins/theme-aurora-glass/aurora-glass.json",
       "aurora-glass", "极光玻璃 Aurora Glass", "dark",
     );
@@ -131,8 +133,8 @@ describe("ThemeEngine — 旧格式主题迁移新格式（E5.8#74，决策 F）
     expect(tokens["accent"]).toBe("#7C3AED");
   });
 
-  it("image-zones — 影像分区（appearance.glass 悬浮形态 + background.mode:zones 连续切片）", () => {
-    const { recipe } = loadRealRecipe(
+  it("image-zones — 影像分区（appearance.glass 悬浮形态 + background.mode:zones 连续切片）", async () => {
+    const { recipe } = await loadRealRecipe(
       "plugins/theme-zones/image-zones.json",
       "image-zones", "影像分区 Image Zones", "dark",
     );
@@ -160,8 +162,8 @@ describe("ThemeEngine — 旧格式主题迁移新格式（E5.8#74，决策 F）
     expect(tokens["accent"]).toBe("#E8923C");
   });
 
-  it("paper-zones — 纸纹分区（appearance.glass texture 平铺纹理 + 悬浮形态，无 background）", () => {
-    const { recipe } = loadRealRecipe(
+  it("paper-zones — 纸纹分区（appearance.glass texture 平铺纹理 + 悬浮形态，无 background）", async () => {
+    const { recipe } = await loadRealRecipe(
       "plugins/theme-zones/paper-zones.json",
       "paper-zones", "纸纹分区 Paper Zones", "light",
     );

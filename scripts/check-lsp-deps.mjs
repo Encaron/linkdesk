@@ -182,10 +182,35 @@ function scanElectronTs(file) {
 const pluginJsonFiles = collectFiles(resolve(ROOT, "plugins"), new Set([".json"]), []).filter((f) => f.endsWith("plugin.json"));
 const electronTsFiles = collectFiles(resolve(ROOT, "electron"), new Set([".ts"]), []);
 
-for (const f of pluginJsonFiles) scanPluginJson(f);
+/** langDefs 声明总数——用来把「无对象」和「都过」区分开（E6#99，见下方结论行） */
+let langDefCount = 0;
+for (const f of pluginJsonFiles) {
+  try {
+    const j = JSON.parse(readFileSync(f, "utf-8"));
+    if (Array.isArray(j?.contributes?.langDefs)) {
+      langDefCount += j.contributes.langDefs.filter((d) => d?.lsp).length;
+    }
+  } catch {
+    /* 非法 JSON 由别的门禁负责 */
+  }
+  scanPluginJson(f);
+}
 for (const f of electronTsFiles) scanElectronTs(f);
 
 console.log(`[lsp-deps] 哨兵检查 spawn 运行时依赖：${checked} 个二进制引用，${missing.length} 缺失（plugin.json 按插件目录基准，electron .ts 按项目根${cliBase ? `，--base=${cliBase}` : ""}）`);
+
+// 🔴 E6#99（L7 第 7.2 轮）：18 只发货插件源码外移后，本脚本的**第一源**（`plugins/*/plugin.json` 的
+// `langDefs.lsp`）在壳仓里**已经没有对象**——声明 langDefs 的是 python 插件，它搬进了自己的仓。
+// 门禁界最贵的一种坏法就是「扫了个空、然后照常报 ✓」：**真空绿灯比红灯更危险**，它让人以为还被保护着。
+// 故此处**显式打印覆盖域变更**——数字为零时把话说清楚，并指出真正的哨兵现在在哪。
+if (langDefCount === 0) {
+  console.log(
+    "[lsp-deps] ⚠ 覆盖域变更（E6#99）：仓内 plugin.json 里 0 条 langDefs.lsp 声明——第一源已无对象。" +
+      "\n           原因：声明 langDefs 的 python 插件源码已外移独立仓，本哨兵在壳仓内扫不到它（**这不等于检查通过**）。" +
+      "\n           壳侧仍有效的部分 = 第二源 electron/ 的 spawn 字面量扫描（见上行数字）。" +
+      "\n           插件侧由各插件仓自己的 CI 负责（7.5 轮落）；仓外手动验证走 `npm run lsp:smoke -- --base <python 插件仓路径>`。"
+  );
+}
 
 if (missing.length > 0) {
   for (const { ref, abs, source } of missing) {

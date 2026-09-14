@@ -7,5 +7,7 @@
   "标记为未完成": "Mark as Incomplete",
   "标记为已完成": "Mark as Complete",
   "自动追加演示日志": "Auto-append demo logs",
+  "暂停": "Pause",
+  "继续": "Resume",
   "已暂停——点击继续": "Paused — click to resume"
 }

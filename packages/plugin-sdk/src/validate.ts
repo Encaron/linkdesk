@@ -90,6 +90,30 @@ function collectRemovedFieldWarnings(manifest: unknown, base: string): string[] 
   return out;
 }
 
+/**
+ * pluginId 显式声明提醒（E6#98g，L7 第 7.1 轮）——**警告不是错误**（`valid` 不变）。
+ *
+ * 为什么必须有这道提醒：插件身份今天可以靠「项目目录名」兜底（`derivePluginId`），而目录名与仓库名
+ * 是**自由**的。L7 把源码搬进各自独立的仓（名字自由）之后，目录名一改，构建出的分发件就换了身份，
+ * 且五条后果——安装目录并存两份 / 卸载墓碑对不上 / 市场出现两条不同 id 的条目 / 更新链静默断 /
+ * 插件数据看似丢失——**没有一条会报错**。
+ *
+ * 兜底路径**不删**（仓外已有存量第三方插件在吃它），但作者必须被告知它不该被依赖。官方插件由仓库侧
+ * 门禁兜底（18 只全部显式声明），此处是作者侧软提醒。
+ */
+function collectPluginIdWarning(manifest: unknown, base: string): string[] {
+  if (!manifest || typeof manifest !== "object") return [];
+  const m = manifest as Record<string, unknown>;
+  // 空白串/shape 非法由 schema 的 pattern 先拦（那走 errors 分支、不会到这里）；此处 trim 只为
+  // 「schema 无 pattern 的未来」与「直接调用本函数」两条路留一道等价守卫——两条路判据必须一致。
+  if (typeof m.pluginId === "string" && m.pluginId.trim() !== "") return [];
+  return [
+    `${base} 未声明 "pluginId"——插件身份将退回「项目目录名」兜底。目录名与仓库名是自由的，` +
+      `一旦它们与插件身份不一致，构建出的分发件就会换一个身份，且不会有任何报错。` +
+      `请在 plugin.json 顶层显式声明 pluginId（值 = 当前目录名；发布后永不可改）。`,
+  ];
+}
+
 /** i18n 声明（相对插件根路径 + 声明来源）——validate 存在性检查与 packager 拷贝清单共用 */
 export interface I18nDecl {
   rel: string;
@@ -290,8 +314,9 @@ export function validatePluginJson(path: string): ValidationResult {
     }
   }
 
-  // 3) 已移除字段墓碑提示（E6#91d）——schema 顶层 additionalProperties: true ⇒ 这一步是作者**唯一**能被告知的通道
-  const warnings = collectRemovedFieldWarnings(manifest, base);
+  // 3) 已移除字段墓碑提示（E6#91d）+ pluginId 显式声明提醒（E6#98g）——schema 顶层
+  //    additionalProperties: true ⇒ 这两步是作者**唯一**能被告知的通道
+  const warnings = [...collectRemovedFieldWarnings(manifest, base), ...collectPluginIdWarning(manifest, base)];
 
   return { valid: errors.length === 0, errors, ...(warnings.length > 0 ? { warnings } : {}) };
 }

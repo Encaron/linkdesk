@@ -7,6 +7,14 @@ import linkdeskRules from "./eslint-local-rules.js";
 export default [
   // E5.8#19：契约生成物（contracts/linkdesk.d.ts）不 lint——纯类型自动生成，机器输出
   // E6#15b：插件独立 build 产物（dist/ + .linkdesk-plugin）不 lint——机器输出，非源码
+  //
+  // 🔴 E6#99（L7 第 7.2 轮）结论：**下面的 `plugins/**` 主 glob 与插件专属规则块一律保留**。
+  //   18 只发货插件源码已外移各自独立仓，但 `plugins/` 没有变空——panel-demo / floating-panel-demo
+  //   两只开发夹具仍住在仓内，它们**仍是插件**：`linkdesk/no-cross-plugin-import`（插件之间不许互相
+  //   import）、`linkdesk/no-core-import-in-plugin`（不许 import @src/core）、`no-hardcoded-chinese`
+  //   （JSX 中文走 t()）三条对夹具同样成立，摘掉 glob = 夹具裸奔。
+  //   「插件专属块随源码迁进插件仓 CI preset」这件事由 7.5 轮**另做一份**（插件仓自己带检查），
+  //   不是把仓内这份删掉。
   { ignores: ["contracts/**", "plugins/**/dist/**", "plugins/**/*.linkdesk-plugin", "plugins/**/*.linkdesk-plugin/**"] },
   {
     files: ["src/**/*.ts", "src/**/*.tsx", "plugins/**/*.ts", "plugins/**/*.tsx", "electron/**/*.ts"],
@@ -159,6 +167,8 @@ export default [
   },
 
   // ═══ E5#85：插件禁止 import @src/core——走 linkdesk.* API 合同 ═══
+  // 🔴 E6#99（L7 第 7.2 轮）：本块**保留**，活主体 = 仓内两只开发夹具（panel-demo / floating-panel-demo）。
+  //   18 只发货插件各自的 CI preset 是 7.5 轮的事（另做一份，不是把这份删掉）——理由见文件头的同笔结论。
   // 白名单（42 处保留）：Emitter/CoreEvents（事件工具类）、type imports（类型定义）、
   //   ViewContainerService/useConfiguration/SidebarTabSync/EncodingService（壳内组件/React hooks）、
   //   RingBuffer/DataConverter/FileSearcher（纯数据结构/壳级服务）、

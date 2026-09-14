@@ -1,149 +1,154 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://embeddesk.app/schemas/plugin.schema.json",
-  "title": "插件元数据",
-  "description": "plugin.json 的 JSON Schema——IDE 自动补全 + JSON 校验",
+  "title": "Plugin metadata",
+  "description": "JSON Schema for plugin.json — IDE autocompletion + JSON validation",
   "type": "object",
   "required": ["name", "version"],
   "properties": {
     "$schema": {
       "type": "string",
-      "description": "JSON Schema 引用——IDE 自动补全用",
-      "$comment": "$schema 仅用于 IDE 自动补全，运行时不做 JSON Schema 验证"
+      "description": "JSON Schema reference — used for IDE autocompletion",
+      "$comment": "$schema is used only for IDE autocompletion; no JSON Schema validation is performed at runtime"
+    },
+    "pluginId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+      "description": "🔴 Plugin identity — immutable once published (mirrors VS Code's publisher.name). Everything keys off it: install directory {userData}/plugins/<pluginId>/, distribution file name <pluginId>.linkdesk-plugin, marketplace dedup key, uninstall tombstone key, and update reconciliation. Strongly recommended to declare it explicitly: when omitted it falls back to the project directory name, but repository names and local directory names are free-form — rename the directory and the identity changes with it, and none of the five consequences (two install directories side by side / tombstone mismatch / duplicate marketplace entries / silently broken update chain / plugin data appearing lost) reports an error. Character set: letters, digits, `.`, `_`, `-`; the first character must be a letter or a digit."
     },
     "type": {
       "type": "string",
-      "description": "【已废弃】插件类型——不再必需。loader 从 entry/mode/themes/languages/resources 等声明字段自动检测贡献类型。保留仅用于向后兼容。E5.7#66：enum 开放为任意字符串。"
+      "description": "[Deprecated] Plugin type — no longer required. The loader infers the contribution type from declared fields such as entry/mode/themes/languages/resources. Kept only for backward compatibility. The value is an open string, not a closed enum."
     },
     "core": {
       "type": "boolean",
-      "description": "纯 UI 防误删旗标——声明此插件重要，卸载入口在插件详情 UI 不显示（藏钮，新手误删不了）。无任何行为特权：禁用/卸载经 API/命令层照常生效（卸后写 removed 墓碑，boot 不复活）。设置页/市场等基础能力靠的是 factoryRole 槽位（可替换），与 core 声明无关。无此声明 = 普通插件，UI 可自由装卸。默认 false。",
+      "description": "Pure UI safeguard against accidental removal — marks the plugin as important, so the uninstall entry is hidden in the plugin detail UI (newcomers cannot delete it by mistake). Grants no behavioral privilege: disable/uninstall still work through the API/command layer (uninstall writes a `removed` tombstone; boot does not resurrect it). Built-in capabilities such as the settings page and marketplace come from factoryRole slots (replaceable) and are unrelated to this flag. Absent = an ordinary plugin that the UI can freely install and uninstall. Default false.",
       "default": false
     },
     "factoryRole": {
       "type": "string",
-      "description": "系统插槽角色——声明此插件填充哪个系统级功能。settings=设置页（Ctrl+, 打开），marketplace=插件市场。同一 role 多插件合法并存（全收进槽位候选，一对多）；默认 = 首注册稳定序（core:true 无行为特权，不抢默认），用户切换的活动套持久化保持。"
+      "description": "System slot role — declares which system-level feature this plugin fills. settings = settings page (opened with Ctrl+,), marketplace = plugin marketplace. Multiple plugins with the same role may legally coexist (all become slot candidates, one-to-many); the default is the first registered in stable order (core:true grants no privilege and does not claim the default), and a user-switched active candidate is persisted."
     },
     "pluginRole": {
       "type": "string",
-      "description": "插件加载策略——view=有 React UI 组件，data=纯数据（主题/语言/协议），不填则自动推导。E5.7#66：enum 开放——第三方可声明新加载策略名。"
+      "description": "Plugin loading strategy — view = has React UI components, data = pure data (themes/languages/protocols); inferred when omitted. The value is an open string, so third parties may declare new strategy names."
     },
     "appearsIn": {
       "type": "object",
-      "description": "插件 UI 出现位置——声明式。替代 iconLocation+viewRole+keepSidebarOnFocus。",
+      "description": "Where the plugin's UI appears — declarative. Replaces iconLocation + viewRole + keepSidebarOnFocus.",
       "properties": {
-        "iconBar": { "type": "string", "enum": ["top", "bottom"], "description": "图标栏位置，不填=不显示图标" },
-        "sidePanel": { "type": "boolean", "description": "有侧栏视图容器，默认 false" },
-        "tabBar": { "type": "boolean", "description": "可作为标签页打开，默认 false" },
-        "statusBar": { "type": "string", "description": "自绘（代码）状态栏组件文件路径（相对插件根，.tsx，如 \"src/components/statusBar.tsx\"）——池按声明 URL 渲染，取代 statusBar 静态贡献项；仅贡献静态条目则不必填" }
+        "iconBar": { "type": "string", "enum": ["top", "bottom"], "description": "Icon Bar position; omitted = no icon shown" },
+        "sidePanel": { "type": "boolean", "description": "Has a Sidebar view container. Default false." },
+        "tabBar": { "type": "boolean", "description": "Can be opened as a tab. Default false." },
+        "statusBar": { "type": "string", "description": "File path of a self-drawn (code) Status Bar component, relative to the plugin root, .tsx, e.g. \"src/components/statusBar.tsx\" — the pool renders it from the declared URL, replacing static statusBar contributions; omit it when you only contribute static entries." }
       }
     },
     "distribution": {
       "type": "string",
       "enum": ["builtin", "user"],
       "default": "user",
-      "description": "⚠️ 遗留字段（2026-09-05 塌平单根后已无 plugins/builtin、plugins/user 之分——本字段不再对应任何目录，安装侧恒归一化为 user）。内置随带与否由 `core` 声明，与分发字段无关。第三方插件请勿填写。"
+      "description": "⚠️ Legacy field — after the single-root flattening there is no longer any plugins/builtin vs. plugins/user distinction, so this field maps to no directory and is always normalized to user on install. Whether a plugin ships built-in is declared by `core`, not by this field. Third-party plugins should not set it."
     },
     "name": {
       "type": "string",
-      "description": "显示名称",
+      "description": "Display name",
       "minLength": 1
     },
     "version": {
       "type": "string",
-      "description": "语义化版本",
+      "description": "Semantic version",
       "pattern": "^\\d+\\.\\d+\\.\\d+$"
     },
     "icon": {
       "type": "string",
-      "description": "图标（E6#69 三图模型分工）——图标栏位插件填 Type-1 单色剪影 glyph（壳图标栏只读本字段）；非图标栏插件此位即 Type-2 身份彩色图，标签栏/市场经「marketIcon ?? icon ?? 默认彩色块」复用本图。codicon 名或包内 svg/png 资产相对路径（iconSource 省略按值推断）"
+      "description": "Icon (split of the three-image model) — plugins placed on the Icon Bar set a Type-1 monochrome silhouette glyph here (the shell Icon Bar reads only this field); for plugins not on the Icon Bar this field is the Type-2 colored identity image, which the tab bar and marketplace reuse as marketIcon ?? icon ?? default colored block. A codicon name, or a path relative to a bundled svg/png asset (inferred from the value when iconSource is omitted)."
     },
     "iconSource": {
       "type": "string",
-      "description": "图标来源",
+      "description": "Icon source",
       "enum": ["codicon", "svg", "url", "lucide"],
       "default": "codicon"
     },
     "marketIcon": {
       "type": "string",
-      "description": "Type-2 插件身份彩色图（E6#69 改向——#67「cover art 场景封面」语义废止，场景封面如需展示嵌 README 而非本字段）——市场侧栏行/详情头与标签栏视图标签显同一张图。svg 资产相对路径；缺省 → 回退 icon → 统一默认彩色块。可选：零图插件全链路自动兜底，分工对第三方不可见"
+      "description": "Type-2 colored plugin identity image (the earlier \"cover art / scene cover\" meaning is retired — embed a scene cover in the README instead) — the marketplace Sidebar row / detail header and the tab bar view label show the same image. A path relative to a bundled svg asset; omitted → falls back to icon → shared default colored block. Optional: the whole chain falls back automatically for plugins with no images, so this split is invisible to third parties."
     },
     "marketIconSource": {
       "type": "string",
-      "description": "身份图来源——与 iconSource 同枚举；值走 svg 资产相对路径，source 省略按路径推断（显式 svg 会把路径当裸 URL，已装插件会裂）",
+      "description": "Identity image source — same enum as iconSource; the value is a path relative to a bundled svg asset, and when source is omitted it is inferred from the path (an explicit svg treats the path as a bare URL, which breaks already-installed plugins).",
       "enum": ["codicon", "svg", "url", "lucide"],
       "default": "codicon"
     },
     "description": {
       "type": "string",
-      "description": "一句话描述，插件详情页展示。支持多行"
+      "description": "One-line description shown on the plugin detail page. Multi-line supported."
     },
     "author": {
       "type": "string",
-      "description": "作者名"
+      "description": "Author name"
     },
     "entry": {
       "type": "string",
-      "description": "入口文件路径，相对插件目录。view/card/protocol 必需"
+      "description": "Entry file path, relative to the plugin directory. Required for view/card/protocol."
     },
     "sidebar": {
       "type": "string",
-      "description": "侧栏组件路径，仅 view 类型有效",
-      "$comment": "由 Vite glob 自动发现，无需插件声明"
+      "description": "Sidebar component path; only meaningful for the view type.",
+      "$comment": "Discovered automatically by Vite glob; no plugin declaration needed"
     },
     "tabBehavior": {
       "type": "object",
-      "description": "标签页行为声明——核心读此字段决定去重/保底/关闭确认",
+      "description": "Tab behavior declaration — the core reads this field to decide dedup / fallback / close confirmation.",
       "properties": {
         "isFallback": {
           "type": "boolean",
-          "description": "场上无标签页时自动创建此标签页，且不可关闭",
+          "description": "Automatically create this tab when no tab is open, and make it non-closable.",
           "default": false
         },
         "singleton": {
           "type": "boolean",
-          "description": "全局只允许一个实例",
+          "description": "Only one instance allowed globally.",
           "default": false
         },
         "confirmOnClose": {
           "type": "string",
-          "description": "关闭前弹出确认对话框，值为提示文本"
+          "description": "Show a confirmation dialog before closing; the value is the prompt text."
         },
         "invokeBeforeClose": {
           "type": "string",
-          "description": "关闭前调用的命令（在 confirmOnClose 确认之后、标签页关闭之前）。如终端声明 \"close_port\""
+          "description": "Command invoked before closing (after the confirmOnClose confirmation, before the tab closes). For example the terminal declares \"close_port\"."
         },
         "identityField": {
           "type": "string",
-          "description": "CreateTabOptions 中用于判断标签页身份的唯一字段。不声明=允许多实例不去重。如 workspace 声明 \"workspaceName\"——同名工作台只允许一个标签页。"
+          "description": "The single field in CreateTabOptions used to determine tab identity. Omitted = multiple instances allowed, no dedup. For example workspace declares \"workspaceName\" — only one tab per workspace name."
         }
       },
       "additionalProperties": false
     },
     "statusBar": {
       "type": "array",
-      "description": "状态栏贡献条目",
+      "description": "Status Bar contribution entries",
       "items": {
         "type": "object",
         "required": ["id"],
         "properties": {
-          "id": { "type": "string", "description": "唯一标识" },
-          "icon": { "type": "string", "description": "codicon 名称或 SVG 路径" },
-          "label": { "type": "string", "description": "显示文字" },
+          "id": { "type": "string", "description": "Unique identifier" },
+          "icon": { "type": "string", "description": "codicon name or SVG path" },
+          "label": { "type": "string", "description": "Display text" },
           "align": { "type": "string", "enum": ["left", "right"], "default": "left" },
-          "onClick": { "type": "string", "description": "点击行为——命令名" },
-          "configurable": { "type": "boolean", "description": "声明 true → 壳自动注册配置项并注入 visible prop。插件作者只写一行 JSON，零代码。", "default": false }
+          "onClick": { "type": "string", "description": "Click behavior — command name" },
+          "configurable": { "type": "boolean", "description": "Declaring true → the shell auto-registers a configuration entry and injects the visible prop. The plugin author writes one line of JSON, zero code.", "default": false }
         },
         "additionalProperties": false
       }
     },
     "file": {
       "type": "string",
-      "description": "单文件入口——theme/language 类型用。和 themes/languages 二选一"
+      "description": "Single-file entry — for the theme/language types. Use either this or themes/languages."
     },
     "themes": {
       "type": "array",
-      "description": "多主题数组，仅 theme 类型",
+      "description": "Array of multiple themes; only for the theme type.",
       "items": {
         "type": "object",
         "required": ["id", "name", "file"],
@@ -157,7 +162,7 @@
     },
     "languages": {
       "type": "array",
-      "description": "多语言数组，仅 language 类型",
+      "description": "Array of multiple languages; only for the language type.",
       "items": {
         "type": "object",
         "required": ["code", "name", "file"],
@@ -171,18 +176,18 @@
     },
     "mode": {
       "type": "string",
-      "description": "协议模式。text = Phase 4 可用；binary = Phase 6+ WASM",
+      "description": "Protocol mode. text = plain-text protocol; binary = WASM binary protocol (not available yet).",
       "enum": ["text", "binary"],
       "default": "text"
     },
     "resources": {
       "type": "array",
-      "description": "资源文件列表，仅 resource 类型",
+      "description": "Resource file list; only for the resource type.",
       "items": { "type": "string" }
     },
     "recommends": {
       "type": "array",
-      "description": "推荐同时安装的插件",
+      "description": "Plugins recommended to install alongside.",
       "items": {
         "type": "object",
         "required": ["plugin", "reason"],
@@ -195,7 +200,7 @@
     },
     "suggests": {
       "type": "array",
-      "description": "可选相关插件",
+      "description": "Optional related plugins.",
       "items": {
         "type": "object",
         "required": ["plugin", "reason"],
@@ -208,40 +213,40 @@
     },
     "requires": {
       "type": "array",
-      "description": "插件级激活顺序依赖（E5.8#13）——按 pluginId 声明，加载时先加载依赖再加载本插件。无版本约束。缺依赖 → 插件挂起（PENDING），依赖就绪自动加载。",
+      "description": "Plugin-level activation order dependency — declared by pluginId; dependencies load before this plugin. No version constraint. A missing dependency suspends the plugin (PENDING), which then loads automatically once the dependency is ready.",
       "items": { "type": "string" },
       "uniqueItems": true
     },
     "screenshots": {
       "type": "array",
-      "description": "截图 URL 数组",
-      "$comment": "Phase 6 PluginDetailView 增强时启用",
+      "description": "Array of screenshot URLs.",
+      "$comment": "Reserved for future PluginDetailView enhancements",
       "items": { "type": "string" }
     },
     "minAppVersion": {
       "type": "string",
-      "description": "最低软件版本要求"
+      "description": "Minimum required app version."
     },
     "docs": {
       "type": "string",
-      "description": "附带文档路径（资源插件联动）",
-      "$comment": "Phase 6 文档链接"
+      "description": "Path to accompanying documentation (used with resource plugins).",
+      "$comment": "Documentation link"
     },
     "cardDocMap": {
       "type": "object",
-      "description": "卡片 ID → 文档锚点映射",
-      "$comment": "Phase 8 卡片文档映射",
+      "description": "Card ID → documentation anchor mapping",
+      "$comment": "Card documentation mapping",
       "additionalProperties": { "type": "string" }
     },
     "i18n": {
       "type": "object",
-      "description": "@deprecated 使用 contributes.i18n 代替——翻译文件声明已迁移到 contributes 下。保留仅向后兼容。",
+      "description": "@deprecated Use contributes.i18n instead — translation file declarations moved under contributes. Kept only for backward compatibility.",
       "additionalProperties": { "type": "string" }
     },
     "cssVars": {
       "type": "object",
-      "description": "插件自定义 CSS 变量",
-      "$comment": "Phase 7 启用——插件注入 CSS 变量到 :root",
+      "description": "Plugin-defined CSS variables",
+      "$comment": "Plugins inject CSS variables into :root",
       "additionalProperties": {
         "type": "object",
         "properties": {
@@ -252,61 +257,61 @@
     },
     "permissions": {
       "type": "array",
-      "description": "权限声明",
-      "$comment": "Phase 6 启用——serial/filesystem/network 为第一批白名单值。E5.7#66：enum 开放——第三方可声明新权限名（主进程解释）。",
+      "description": "Permission declaration",
+      "$comment": "serial/filesystem/network are the first whitelist values. The value is an open string, so third parties may declare new permission names (interpreted by the main process).",
       "items": {
         "type": "string"
       }
     },
     "iconLocation": {
       "type": "string",
-      "description": "Phase 5g：图标在图标栏的位置。top（默认，上部可拖拽区）或 bottom（底部固定区）。",
+      "description": "Icon position in the Icon Bar. top (default, upper draggable area) or bottom (fixed bottom area).",
       "enum": ["top", "bottom"],
       "default": "top"
     },
     "viewRole": {
       "type": "string",
-      "description": "Phase 5g：视图在壳中的交互角色。sidebarPrimary=侧栏为主（点击 toggle 侧栏，标签页由侧栏内操作触发，默认），tabOnly=纯标签页视图（直接开标签页）。tabPrimary 已移除——所有插件统一 sidebarPrimary。",
+      "description": "Interaction role of the view in the shell. sidebarPrimary = Sidebar first (clicking toggles the Sidebar; tabs are opened from within the Sidebar; default), tabOnly = tab-only view (opens a tab directly). tabPrimary was removed — all plugins use sidebarPrimary.",
       "enum": ["sidebarPrimary", "tabOnly"],
       "default": "sidebarPrimary"
     },
     "shellRendered": {
       "type": "boolean",
-      "description": "Phase 5g：壳自己渲染此视图（不走插件路由）。仅欢迎页/插件详情页等壳级视图声明。",
+      "description": "The shell renders this view itself (bypassing plugin routing). Declared only by shell-level views such as the welcome page and plugin detail page.",
       "default": false
     },
     "keepSidebarOnFocus": {
       "type": "boolean",
-      "description": "Phase 5g：聚焦此视图时保留当前侧栏不清除。如插件详情页浏览时侧栏不变。",
+      "description": "Keep the current Sidebar when this view is focused — for example the Sidebar stays unchanged while browsing the plugin detail page.",
       "default": false
     },
     "contributes": {
       "type": "object",
-      "description": "贡献点声明——对标 VS Code package.json contributes。Phase 5 核心机制。",
+      "description": "Contribution point declarations — mirrors VS Code package.json contributes. A core mechanism.",
       "properties": {
         "commands": {
           "type": "array",
-          "description": "注册命令——CommandPalette/右键菜单/快捷键的消费源",
+          "description": "Registered commands — the source consumed by the Command Palette, context menus, and keybindings.",
           "items": {
             "type": "object",
             "required": ["id", "title"],
             "properties": {
-              "id": { "type": "string", "description": "命令 ID——如 terminal.clear" },
-              "title": { "type": "string", "description": "显示名称" },
-              "category": { "type": "string", "description": "命令面板分组" },
-              "when": { "type": "string", "description": "context key when 条件——如 activeEditor == 'terminal'" }
+              "id": { "type": "string", "description": "Command ID — e.g. terminal.clear" },
+              "title": { "type": "string", "description": "Display name" },
+              "category": { "type": "string", "description": "Command palette group" },
+              "when": { "type": "string", "description": "context key when condition — e.g. activeEditor == 'terminal'" }
             },
             "additionalProperties": false
           }
         },
         "menus": {
           "type": "object",
-          "description": "菜单项声明——按 MenuId 分组。壳内置注册点见 MenuRegistry MENU_SLOTS 常量表；E5.7#64 起 MenuId 开放字符串，第三方可声明任意新注册点（propertyNames enum 已删）。",
+          "description": "Menu item declarations — grouped by MenuId. The built-in shell registration points are listed in the MenuRegistry MENU_SLOTS constant; MenuId is an open string, so third parties may declare any new registration point.",
           "additionalProperties": {
             "type": "array",
             "items": {
               "oneOf": [
-                { "type": "string", "description": "命令 ID（简写）" },
+                { "type": "string", "description": "Command ID (shorthand)" },
                 { "$ref": "#/$defs/menuItem" }
               ]
             }
@@ -314,27 +319,27 @@
         },
         "keybindings": {
           "type": "array",
-          "description": "快捷键绑定",
+          "description": "Keybinding.",
           "items": {
             "type": "object",
             "required": ["command", "key"],
             "properties": {
               "command": { "type": "string" },
-              "key": { "type": "string", "description": "如 ctrl+k" },
-              "when": { "type": "string", "description": "context key when 条件" }
+              "key": { "type": "string", "description": "e.g. ctrl+k" },
+              "when": { "type": "string", "description": "context key when condition" }
             },
             "additionalProperties": false
           }
         },
         "configuration": {
           "type": "object",
-          "description": "设置项声明——Settings Editor 自动渲染",
+          "description": "Configuration declarations — rendered automatically by the Settings Editor.",
           "required": ["title", "properties"],
           "properties": {
-            "title": { "type": "string", "description": "设置分组名" },
+            "title": { "type": "string", "description": "Settings group name" },
             "properties": {
               "type": "object",
-              "description": "设置项映射——key → { type, default, enum?, description }",
+              "description": "Configuration mapping — key → { type, default, enum?, description }",
               "additionalProperties": {
                 "type": "object",
                 "required": ["type", "default", "description"],
@@ -342,14 +347,14 @@
                   "type": { "type": "string", "enum": ["string", "number", "boolean", "object", "array"] },
                   "default": {},
                   "enum": { "type": "array" },
-                  "enumDescriptions": { "type": "object", "description": "enum 值 → 显示名映射" },
+                  "enumDescriptions": { "type": "object", "description": "enum value → display name mapping" },
                   "description": { "type": "string" },
-                  "uiHint": { "type": "string", "description": "设置编辑器渲染提示。SettingsView 按提示选择控件。不认识的 hint 降级回 type 默认渲染——不抛错。E5.7#66：enum 开放——第三方可声明新 hint 名。" },
-                  "monoOnly": { "type": "boolean", "description": "等宽限定——仅 uiHint \"fontFamily\" 有意义。true/缺省 = 只列等宽族（编辑器字体）；false = 全字族（UI 字体）。E5.8#50.20。" },
-                  "minimum": { "type": "number", "description": "数值下限——type number 时生效（E5.8#65 补录：滑杆/数值控件范围）" },
-                  "maximum": { "type": "number", "description": "数值上限——type number 时生效（E5.8#65 补录：滑杆/数值控件范围）" },
-                  "step": { "type": "number", "description": "滑杆步进——仅 uiHint \"slider\" 有意义。缺省由 SettingsView 按区间推导（浮点区间自动 0.01）。E5.8#65。" },
-                  "group": { "type": "string", "description": "组内二级标题——同 group 的 key 在设置页归到子标题下渲染（E5.8#78/#189）；无 group 保持平铺（第三方零侵入）" }
+                  "uiHint": { "type": "string", "description": "Settings editor rendering hint. SettingsView picks the control from the hint. An unknown hint falls back to the default rendering for its type — no error is thrown. The value is an open string, so third parties may declare new hint names." },
+                  "monoOnly": { "type": "boolean", "description": "Monospace only — meaningful only with uiHint \"fontFamily\". true/omitted = list monospace families only (editor fonts); false = all families (UI fonts)." },
+                  "minimum": { "type": "number", "description": "Numeric lower bound — applies when type is number (range of the slider/numeric control)" },
+                  "maximum": { "type": "number", "description": "Numeric upper bound — applies when type is number (range of the slider/numeric control)" },
+                  "step": { "type": "number", "description": "Slider step — meaningful only with uiHint \"slider\". Defaults are derived by SettingsView from the range (0.01 for floating-point ranges)." },
+                  "group": { "type": "string", "description": "Second-level heading within a group — keys sharing a group are rendered under a subheading on the settings page; without a group they stay flat (zero intrusion for third parties)" }
                 },
                 "additionalProperties": false
               }
@@ -359,51 +364,51 @@
         },
         "configurationDefaults": {
           "type": "object",
-          "description": "弱默认值——插件给其他配置项的建议值，用户手动设置优先",
+          "description": "Weak defaults — suggested values this plugin gives for other configuration keys; values set by the user take precedence.",
           "additionalProperties": {}
         },
         "themes": {
           "type": "array",
-          "description": "主题声明——对标 VS Code contributes.themes。插件贡献主题供用户在主题浏览器/外观中切换。",
+          "description": "Theme declarations — mirrors VS Code contributes.themes. Plugins contribute themes that users can switch in the theme browser / appearance settings.",
           "items": {
             "type": "object",
             "required": ["id", "label", "uiTheme", "path"],
             "properties": {
-              "id": { "type": "string", "description": "主题 ID——如 my-theme-dark" },
-              "label": { "type": "string", "description": "显示名称——如 My Theme Dark" },
-              "uiTheme": { "type": "string", "enum": ["dark", "light", "highContrast"], "description": "基础 UI 主题——暗色/亮色/高对比" },
-              "path": { "type": "string", "description": "主题定义 JSON 文件路径" }
+              "id": { "type": "string", "description": "Theme ID — e.g. my-theme-dark" },
+              "label": { "type": "string", "description": "Display name — e.g. My Theme Dark" },
+              "uiTheme": { "type": "string", "enum": ["dark", "light", "highContrast"], "description": "Base UI theme — dark / light / high contrast" },
+              "path": { "type": "string", "description": "Path to the theme definition JSON file" }
             },
             "additionalProperties": false
           }
         },
         "iconThemes": {
           "type": "array",
-          "description": "产品图标主题——对标 VS Code productIconThemes。插件声明图标集供用户切换。",
+          "description": "Product icon themes — mirrors VS Code productIconThemes. Plugins declare icon sets that users can switch.",
           "items": {
             "type": "object",
             "required": ["id", "label", "path"],
             "properties": {
-              "id": { "type": "string", "description": "图标主题 ID——如 codicon" },
-              "label": { "type": "string", "description": "显示名称——如 Codicon" },
-              "path": { "type": "string", "description": "图标定义 JSON 文件路径" }
+              "id": { "type": "string", "description": "Icon theme ID — e.g. codicon" },
+              "label": { "type": "string", "description": "Display name — e.g. Codicon" },
+              "path": { "type": "string", "description": "Path to the icon definition JSON file" }
             },
             "additionalProperties": false
           }
         },
         "icons": {
           "type": "object",
-          "description": "共享图标——插件贡献图标供其他插件通过 iconSource:shared 引用。对标 VS Code icon extension point。",
+          "description": "Shared icons — a plugin contributes icons that other plugins reference via iconSource:shared. Mirrors the VS Code icon extension point.",
           "additionalProperties": {
             "type": "object",
             "required": ["description", "default"],
             "properties": {
-              "description": { "type": "string", "description": "图标描述" },
+              "description": { "type": "string", "description": "Icon description" },
               "default": {
                 "type": "object",
                 "properties": {
-                  "fontPath": { "type": "string", "description": "字体文件路径" },
-                  "fontCharacter": { "type": "string", "description": "字体字符码——如 \\e001" }
+                  "fontPath": { "type": "string", "description": "Font file path" },
+                  "fontCharacter": { "type": "string", "description": "Font character code — e.g. \\e001" }
                 },
                 "additionalProperties": false
               }
@@ -413,27 +418,27 @@
         },
         "langDefs": {
           "type": "array",
-          "description": "编程语言定义——对标 VS Code contributes.languages。声明新语言的 ID/扩展名/语法高亮/LSP 支持。",
+          "description": "Language definitions — mirrors VS Code contributes.languages. Declares a new language's ID/extensions/syntax highlighting/LSP support.",
           "items": {
             "type": "object",
             "required": ["id", "extensions"],
             "properties": {
-              "id": { "type": "string", "description": "语言 ID——如 cpp / python / rust" },
-              "extensions": { "type": "array", "items": { "type": "string" }, "description": "扩展名列表——如 ['.cpp', '.cxx', '.h']" },
-              "aliases": { "type": "array", "items": { "type": "string" }, "description": "别名——如 ['C++', 'C']" },
+              "id": { "type": "string", "description": "Language ID — e.g. cpp / python / rust" },
+              "extensions": { "type": "array", "items": { "type": "string" }, "description": "Extension list — e.g. ['.cpp', '.cxx', '.h']" },
+              "aliases": { "type": "array", "items": { "type": "string" }, "description": "Aliases — e.g. ['C++', 'C']" },
               "monarch": {
                 "type": "object",
-                "description": "可选——Monarch tokenizer 定义（Monaco 内建语法高亮）",
+                "description": "Optional — Monarch tokenizer definition (Monaco's built-in syntax highlighting)",
                 "properties": {
                   "tokenizer": { "type": "object" }
                 }
               },
               "lsp": {
                 "type": "object",
-                "description": "可选——LSP 语言服务器配置",
+                "description": "Optional — LSP language server configuration",
                 "properties": {
-                  "command": { "type": "string", "description": "启动命令——解释器或可执行名（解释器如 node；PATH 二进制如 clangd；或绝对路径）。python 插件即 command='node' + args 带脚本路径" },
-                  "args": { "type": "array", "items": { "type": "string" }, "description": "启动参数。E6#15e：相对路径式参数以插件根目录为基准解析（注册处一次绝对化）——如 'node_modules/pyright/dist/pyright-langserver.js' → <插件根>/node_modules/pyright/dist/pyright-langserver.js；'--stdio' 等 flag 原样透传。LSP 二进制随插件自带：SDK 打包按 args 引用把对应 node_modules 包打进 .linkdesk-plugin（壳不再发货 LSP，E5#114d extraResources 临时方案已删）" }
+                  "command": { "type": "string", "description": "Launch command — an interpreter or executable name (an interpreter such as node; a PATH binary such as clangd; or an absolute path). The python plugin uses command='node' plus args carrying the script path." },
+                  "args": { "type": "array", "items": { "type": "string" }, "description": "Launch arguments. Relative-path arguments resolve against the plugin root (made absolute once at registration) — e.g. 'node_modules/pyright/dist/pyright-langserver.js' → <plugin root>/node_modules/pyright/dist/pyright-langserver.js; flags such as '--stdio' are passed through verbatim. LSP binaries ship with the plugin: the SDK packaging bundles the referenced node_modules packages into the .linkdesk-plugin file (the shell no longer ships LSPs)." }
                 }
               }
             },
@@ -442,62 +447,62 @@
         },
         "fileAssociations": {
           "type": "array",
-          "description": "文件关联——文件扩展名 → 插件路由（主进程 plugin-manifest-loader 消费，E5.7#50 壳侧注册已删）。只声明扩展名 + 可选打开命令；pluginId 用目录名，无需声明。",
+          "description": "File associations — file extension → plugin routing (consumed by the main-process plugin-manifest-loader). Declare only the extension plus an optional open command; this plugin's own pluginId comes from the top-level `pluginId` field (see the top-level pluginId description for the directory-name fallback).",
           "items": {
             "type": "object",
             "required": ["extension"],
             "properties": {
-              "extension": { "type": "string", "description": "文件扩展名——不含点，如 dxf / stl / step" },
-              "command": { "type": "string", "description": "可选——打开该扩展名文件时执行的命令 ID" },
-              "displayName": { "type": "string", "description": "可选——'打开方式…'选择器中的显示名" }
+              "extension": { "type": "string", "description": "File extension — without the dot, e.g. dxf / stl / step" },
+              "command": { "type": "string", "description": "Optional — command ID to run when opening a file with this extension" },
+              "displayName": { "type": "string", "description": "Optional — display name in the 'Open with…' picker" }
             },
             "additionalProperties": false
           }
         },
         "languages": {
           "type": "array",
-          "description": "语言包——对标 VS Code language extension point。合集语言包一个 plugin.json 声明多个条目。",
+          "description": "Language packs — mirrors the VS Code language extension point. A collection language pack declares multiple entries in one plugin.json.",
           "items": {
             "type": "object",
             "required": ["id", "label", "path"],
             "properties": {
-              "id": { "type": "string", "description": "语言代码——如 zh / en / ja" },
-              "label": { "type": "string", "description": "显示名称——如 中文 / English / 日本語" },
-              "path": { "type": "string", "description": "i18n JSON 翻译文件路径" }
+              "id": { "type": "string", "description": "Language code — e.g. zh / en / ja" },
+              "label": { "type": "string", "description": "Display name — e.g. English / Japanese / Chinese" },
+              "path": { "type": "string", "description": "Path to the i18n JSON translation file" }
             },
             "additionalProperties": false
           }
         },
         "titleBar": {
           "type": "object",
-          "description": "顶栏按钮声明——对标 VS Code titleBar。声明标题栏左侧/右侧的按钮：图标按钮（icon）或全文字按钮（label），二者填一个。",
+          "description": "Title Bar button declarations — mirrors VS Code titleBar. Declares buttons on the left/right of the Title Bar: an icon button (icon) or a text-only button (label); set exactly one.",
           "properties": {
             "left": {
               "type": "array",
-              "description": "标题栏左侧按钮",
+              "description": "Left Title Bar buttons",
               "items": {
                 "type": "object",
                 "required": ["command"],
                 "properties": {
-                  "command": { "type": "string", "description": "点击执行的命令 ID" },
-                  "icon": { "type": "string", "description": "codicon 图标名（如 codicon-settings）或图片路径" },
-                  "label": { "type": "string", "description": "按钮文字（E6#57.11）——填了就不渲染 icon。'$键名' = 取该 context key 的值当文字（如 $updateButtonLabel）；否则当 i18n key（本仓 i18n key = 中文原文）" },
-                  "when": { "type": "string", "description": "context key when 条件——不满足时按钮隐藏" }
+                  "command": { "type": "string", "description": "Command ID to run on click" },
+                  "icon": { "type": "string", "description": "codicon name (e.g. codicon-settings) or image path" },
+                  "label": { "type": "string", "description": "Button text — when set, the icon is not rendered. '$keyName' takes the value of that context key as the text (e.g. $updateButtonLabel); otherwise the value is treated as an i18n key (in this repository an i18n key is the original Chinese string)." },
+                  "when": { "type": "string", "description": "context key when condition — the button is hidden while unmet" }
                 },
                 "additionalProperties": false
               }
             },
             "right": {
               "type": "array",
-              "description": "标题栏右侧按钮",
+              "description": "Right Title Bar buttons",
               "items": {
                 "type": "object",
                 "required": ["command"],
                 "properties": {
-                  "command": { "type": "string", "description": "点击执行的命令 ID" },
-                  "icon": { "type": "string", "description": "codicon 图标名（如 codicon-settings）或图片路径" },
-                  "label": { "type": "string", "description": "按钮文字（E6#57.11）——填了就不渲染 icon。'$键名' = 取该 context key 的值当文字（如 $updateButtonLabel）；否则当 i18n key（本仓 i18n key = 中文原文）" },
-                  "when": { "type": "string", "description": "context key when 条件——不满足时按钮隐藏" }
+                  "command": { "type": "string", "description": "Command ID to run on click" },
+                  "icon": { "type": "string", "description": "codicon name (e.g. codicon-settings) or image path" },
+                  "label": { "type": "string", "description": "Button text — when set, the icon is not rendered. '$keyName' takes the value of that context key as the text (e.g. $updateButtonLabel); otherwise the value is treated as an i18n key (in this repository an i18n key is the original Chinese string)." },
+                  "when": { "type": "string", "description": "context key when condition — the button is hidden while unmet" }
                 },
                 "additionalProperties": false
               }
@@ -507,33 +512,33 @@
         },
         "viewsContainers": {
           "type": "object",
-          "description": "声明侧栏容器——点此插件图标时切换到此容器。对标 VS Code viewsContainers。",
+          "description": "Declares Sidebar containers — clicking this plugin's icon switches to the container. Mirrors VS Code viewsContainers.",
           "patternProperties": {
             "^[a-z][a-z0-9-]*$": {
               "type": "object",
               "required": ["title"],
               "properties": {
-                "title": { "type": "string", "description": "容器标题——侧栏 header 显示" },
-                "icon": { "type": "string", "description": "容器图标——覆盖插件自身的图标" },
+                "title": { "type": "string", "description": "Container title — shown in the Sidebar header" },
+                "icon": { "type": "string", "description": "Container icon — overrides the plugin's own icon" },
                 "location": {
                   "type": "string",
                   "enum": ["sidebar", "panel", "auxiliarybar", "main"],
                   "default": "sidebar",
-                  "description": "容器位置——sidebar=侧栏, panel=底部面板, auxiliarybar=辅助侧栏（⚠ 壳当前未接线，声明 auxiliarybar 容器/视图不渲染）, main=主区标签页渲染面（E6#30.10：活跃 factoryRole 插件经 views.main[] 贡献，壳 ShellViewRenderer 解析 plugin-detail tab 时消费；第三方交付插件非市场类请用 sidebar/panel）"
+                  "description": "Container location — sidebar = Sidebar, panel = Bottom Panel, auxiliarybar = auxiliary sidebar (⚠ not wired in the shell yet: auxiliarybar containers/views are not rendered), main = Main Area tab render surface (contributed by the active factoryRole plugin via views.main[] and consumed by the shell's ShellViewRenderer when it resolves the plugin-detail tab; third-party plugins that are not marketplace-like should use sidebar/panel)"
                 },
                 "hideIfEmpty": {
                   "type": "boolean",
                   "default": false,
-                  "description": "无活跃 view 时自动隐藏容器"
+                  "description": "Hide the container automatically when it has no active views"
                 },
                 "order": {
                   "type": "number",
-                  "description": "同位置内的排序权重。小值靠前"
+                  "description": "Sort weight within the same location. Lower values come first"
                 },
                 "mergeHeaderWhenSingle": {
                   "type": "boolean",
                   "default": false,
-                  "description": "容器内只有一个 view 时隐藏 view header——标题合并到容器 header。对标 VS Code mergeViewWithContainerWhenSingleView"
+                  "description": "Hide the view header when the container holds a single view — the title merges into the container header. Mirrors VS Code mergeViewWithContainerWhenSingleView"
                 }
               },
               "additionalProperties": false
@@ -543,7 +548,7 @@
         },
         "views": {
           "type": "object",
-          "description": "往容器注册视图——key = 容器 ID。对标 VS Code views。",
+          "description": "Register views into containers — key = container ID. Mirrors VS Code views.",
           "patternProperties": {
             "^[a-z][a-z0-9-]*$": {
               "type": "array",
@@ -551,52 +556,52 @@
                 "type": "object",
                 "required": ["id", "render"],
                 "properties": {
-                  "id": { "type": "string", "description": "View 唯一 ID——如 folders / sessions / settings" },
-                  "title": { "type": "string", "description": "显示标题——SidebarSection 的 header 文字。空字符串=不显示折叠头" },
-                  "render": { "type": "string", "description": "视图组件的模块路径——相对插件根目录" },
-                  "when": { "type": "string", "description": "Context key when 条件" },
-                  "order": { "type": "number", "description": "同容器内的排序权重。小值在上" },
-                  "role": { "type": "string", "enum": ["toolbar", "section"], "default": "section", "description": "容器角色——toolbar 粘顶不被覆盖，section 有折叠头同级替换" },
-                  "collapsed": { "type": "boolean", "default": false, "description": "初始折叠状态" },
-                  "canToggleVisibility": { "type": "boolean", "default": true, "description": "用户可通过 Views 子菜单切换可见性" },
-                  "canMoveView": { "type": "boolean", "default": true, "description": "用户可将此 view 移到其他容器" },      "minHeight": {
+                  "id": { "type": "string", "description": "Unique view ID — e.g. folders / sessions / settings" },
+                  "title": { "type": "string", "description": "Display title — the header text of the SidebarSection. An empty string hides the collapsible header" },
+                  "render": { "type": "string", "description": "Module path of the view component — relative to the plugin root" },
+                  "when": { "type": "string", "description": "Context key when condition" },
+                  "order": { "type": "number", "description": "Sort weight within the container. Lower values on top" },
+                  "role": { "type": "string", "enum": ["toolbar", "section"], "default": "section", "description": "Container role — toolbar sticks to the top and is not overridden; section has a collapsible header and is replaced at the same level" },
+                  "collapsed": { "type": "boolean", "default": false, "description": "Initial collapsed state" },
+                  "canToggleVisibility": { "type": "boolean", "default": true, "description": "Users can toggle visibility from the Views submenu" },
+                  "canMoveView": { "type": "boolean", "default": true, "description": "Users can move this view to another container" },      "minHeight": {
         "type": "number",
-        "description": "声明视图最小高度——侧栏分区 PaneSash effectiveMinHeight（对标 VS Code view 的 view size）"
+        "description": "Declared minimum view height — the Sidebar pane PaneSash effectiveMinHeight (mirrors the VS Code view size)"
       },
 
-                  "hideByDefault": { "type": "boolean", "default": false, "description": "默认隐藏——用户需手动从 Views 菜单开启" },
-                  "singleViewPaneContainerTitle": { "type": "string", "description": "单 view 且容器 mergeHeaderWhenSingle 时替代容器 title" },
-                  "titleDescription": { "type": "string", "description": "标题旁的副文字——如 (5 files)" },
+                  "hideByDefault": { "type": "boolean", "default": false, "description": "Hidden by default — users must enable it manually from the Views menu" },
+                  "singleViewPaneContainerTitle": { "type": "string", "description": "Replaces the container title when there is a single view and the container has mergeHeaderWhenSingle" },
+                  "titleDescription": { "type": "string", "description": "Secondary text next to the title — e.g. (5 files)" },
                   "showActions": {
                     "type": "string",
                     "enum": ["always", "whenExpanded", "default"],
                     "default": "default",
-                    "description": "actions 显隐时机——always=始终, whenExpanded=展开时, default=hover 显示"
+                    "description": "When actions are shown — always, whenExpanded, or default (on hover)"
                   },
-                  "titleTooltip": { "type": "string", "description": "标题 hover tooltip——标题截断时显示完整文字" },
+                  "titleTooltip": { "type": "string", "description": "Title hover tooltip — shows the full text when the title is truncated" },
                   "titleActions": {
                     "type": "array",
-                    "description": "视图动作区声明（E5.8#36.5）——面板标签栏/侧栏 header 右侧 widget 列表，随视图走随视图迁移。三形态：icon 按钮 / dropdown 下拉菜单 / split 主按钮+下拉复合（VS Code 终端 [+] 新建 + [▾] 配置文件列表同款）。动作 = command + args，label/title 为 i18n key（中文原文）。",
+                    "description": "View action area declaration — the widget list on the right of the Panel tab bar / Sidebar header, carried along with the view when it moves. Three forms: icon button, dropdown menu, and split (primary button + dropdown, like the VS Code terminal's [+] New and [▾] profile list). An action is command + args; label/title are i18n keys (the original Chinese strings).",
                     "items": {
                       "type": "object",
                       "required": ["type", "id"],
                       "properties": {
-                        "type": { "type": "string", "enum": ["icon", "dropdown", "split"], "description": "widget 形态" },
-                        "id": { "type": "string", "description": "widget 唯一 ID——React key / 下拉展开状态定位" },
-                        "command": { "type": "string", "description": "点击执行的命令 ID（split=主按钮默认动作 / icon 必填）" },
-                        "icon": { "type": "string", "description": "codicon 类名（如 codicon-add）——icon/split 主按钮图标" },
-                        "title": { "type": "string", "description": "tooltip / aria-label——i18n key（split 无 icon 时作文本按钮）" },
-                        "args": { "description": "命令参数——executeCommand(command, args) 单个位置参数透传（JSON 可序列化）" },
+                        "type": { "type": "string", "enum": ["icon", "dropdown", "split"], "description": "Widget form" },
+                        "id": { "type": "string", "description": "Unique widget ID — React key / dropdown open-state anchor" },
+                        "command": { "type": "string", "description": "Command ID to run on click (split = default action of the primary button; required for icon)" },
+                        "icon": { "type": "string", "description": "codicon class name (e.g. codicon-add) — the icon/split primary button icon" },
+                        "title": { "type": "string", "description": "tooltip / aria-label — an i18n key (used as a text button when a split has no icon)" },
+                        "args": { "description": "Command arguments — passed through as the single positional argument of executeCommand(command, args) (JSON-serializable)" },
                         "items": {
                           "type": "array",
-                          "description": "dropdown / split 下拉条目",
+                          "description": "dropdown / split menu entries",
                           "items": {
                             "type": "object",
                             "required": ["label", "command"],
                             "properties": {
-                              "label": { "type": "string", "description": "显示文本——i18n key（中文原文）" },
-                              "command": { "type": "string", "description": "点击执行的命令 ID" },
-                              "args": { "description": "命令参数——单个位置参数透传" }
+                              "label": { "type": "string", "description": "Display text — an i18n key (the original Chinese string)" },
+                              "command": { "type": "string", "description": "Command ID to run on click" },
+                              "args": { "description": "Command arguments — passed through as a single positional argument" }
                             }
                           }
                         }
@@ -612,16 +617,16 @@
         },
         "floatingPanel": {
           "type": "object",
-          "description": "悬浮面板声明（E5.8#39.5）——声明 contributes.views 中某视图可在壳内悬浮面板显示（类型 B）。viewId 必须引用已注册视图——声明寻址解析出 pluginId/renderPath/title；未声明则无「在悬浮面板中打开」右键入口（I8-3 声明即出现）。首批声明者 = settings（#38 Ctrl+, 弹面板）。",
+          "description": "Floating Panel declaration — declares that a view in contributes.views can be shown in a Floating Panel inside the shell. viewId must reference an already registered view: the declaration is resolved into pluginId/renderPath/title. Without it there is no 'Open in Floating Panel' context menu entry. The first declarer is settings (Ctrl+, opens the panel).",
           "required": ["viewId"],
           "properties": {
-            "viewId": { "type": "string", "description": "视图 ID——contributes.views 已注册视图" }
+            "viewId": { "type": "string", "description": "View ID — a view registered in contributes.views" }
           },
           "additionalProperties": false
         },
         "i18n": {
           "type": "object",
-          "description": "插件自带翻译——key=语言代码, value=相对插件根目录的 JSON 文件路径。如 { \"en\": \"i18n/en.json\" }。不需要 zh.json——中文 key 自带兜底。",
+          "description": "Plugin-bundled translations — key = language code, value = JSON file path relative to the plugin root, e.g. { \"en\": \"i18n/en.json\" }. No zh.json is needed — Chinese keys are the built-in fallback.",
           "additionalProperties": { "type": "string" }
         }
       },
@@ -632,16 +637,16 @@
     "menuItem": {
       "type": "object",
       "required": ["command"],
-      "description": "菜单项——与运行时 ManifestMenuItem（MenuRegistry）对齐（E5.8#149 声明式 schema 唯一缺口补齐：label/order/children 递归自引用）。children 任意深度递归，与运行时归一一对一。",
+      "description": "Menu item — aligned with the runtime ManifestMenuItem (MenuRegistry); label/order/children are recursively self-referencing. children recurses to any depth and maps one-to-one onto the runtime normalization.",
       "properties": {
-        "command": { "type": "string", "description": "命令 ID（有 children 时可为空——父菜单项不执行命令，展开子菜单）" },
-        "label": { "type": "string", "description": "显示标签——有值时覆盖命令标题（getCommand(id).title）；父菜单项（无 command）必填" },
-        "group": { "type": "string", "description": "分组——navigation/edit/terminal/delete/split" },
-        "when": { "type": "string", "description": "context key when 条件" },
-        "order": { "type": "number", "description": "排序权重——同 group 内越小越靠前（E5.8#33）" },
+        "command": { "type": "string", "description": "Command ID (may be empty with children — a parent menu item runs no command and expands a submenu)" },
+        "label": { "type": "string", "description": "Display label — overrides the command title (getCommand(id).title) when present; required for a parent menu item (no command)" },
+        "group": { "type": "string", "description": "Group — navigation/edit/terminal/delete/split" },
+        "when": { "type": "string", "description": "context key when condition" },
+        "order": { "type": "number", "description": "Sort weight — lower values come first within the same group" },
         "children": {
           "type": "array",
-          "description": "嵌套子菜单——任意深度递归（对标 VS Code SubmenuAction，E5.8#148/#149）；有 children 时 command 可为空",
+          "description": "Nested submenus — recurses to any depth (mirrors the VS Code SubmenuAction); command may be empty when children is present",
           "items": { "$ref": "#/$defs/menuItem" }
         }
       },
@@ -650,7 +655,7 @@
   },
   "allOf": [
     {
-      "$comment": "entry 条件（废弃 type 系）——if 必须带 required:[\"type\"]，否则对缺 type 的 theme/language 等数据插件空真（properties 只验在场属性）→ 误强 entry（E6#5 SDK validate 冒烟实证 2026-09-04）。type 在场且命中 const 才强制 entry。",
+      "$comment": "entry condition (deprecated type family) — the if clause must include required:[\"type\"], otherwise it is vacuously true for data plugins such as theme/language that have no type (properties only validate properties that are present), which would wrongly require entry. entry is required only when type is present and matches the const.",
       "if": {
         "required": ["type"],
         "properties": { "type": { "const": "view" } }

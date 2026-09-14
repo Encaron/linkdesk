@@ -119,6 +119,16 @@ const PACKAGES = [
     dir: "packages/linkdesk-ui",
     surface: ["packages/linkdesk-ui/src/**", "packages/linkdesk-ui/README.md"],
   },
+  {
+    // 🔴 E6#105l（L7 7.8 轮）：**第五根作者轴**——作者面文档包。
+    // 表面 = 生成物本身（packages/plugin-docs/docs/**）+ 包 README；真源在 docs/03-插件制造/**，
+    // 改了真源不重生成 ⇒ docs:check 先红（挂 npm run check）⇒ 本闸再亮"该发版了"。
+    // ⚠️ 基线（npm-release-state.json）要等**首次真发**后由 release:mark 落——没发过就没有基线，
+    //    黄灯会一直亮着提醒，那是**正确状态**，不是故障。
+    name: "@linkdesk/plugin-docs",
+    dir: "packages/plugin-docs",
+    surface: ["packages/plugin-docs/docs/**", "packages/plugin-docs/README.md"],
+  },
 ];
 
 /** 展开 glob（支持 ** 递归目录），返回相对 repo 根的已存在文件排序列表 */

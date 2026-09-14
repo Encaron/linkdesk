@@ -1,6 +1,8 @@
 # plugin.json 规范
 
-> **E6 核 2026-09-06**（E6#58 对账）：塌平单根 `plugins/<id>`（无 builtin/user 双层）· 插件只有一类（core:true = 防误删旗标，非类别）· `distribution` = ⚠️ 遗留字段勿填。
+> **2026-09-06 与实现对齐核对**（对账）：塌平单根 `plugins/<id>`（无 builtin/user 双层）· 插件只有一类（core:true = 防误删旗标，非类别）· `distribution` = ⚠️ 遗留字段勿填。
+> 🔴 **本文件恒指「插件自己仓的根」**：插件源码住在**它自己的仓**里，壳仓 `plugins/` 只剩两只开发夹具。
+> 本文所有裸路径（`plugin.json` / `src/…` / `resources/…`）都是**相对插件仓根**说的——别再去壳仓 `plugins/` 里找发货插件的源码（那里没有）。
 > 插件元数据的唯一入口。一个插件 = 一个文件夹 + 一份 `plugin.json` + 入口文件。
 > **对标 VS Code：不再需要 `type` 字段——loader 从声明字段自动检测贡献类型。**
 
@@ -83,6 +85,7 @@ my-plugin/
 
 ```json
 {
+  "pluginId": "gps-map",
   "name": "GPS 地图",
   "version": "1.0.0",
   "icon": "resources/map.svg",
@@ -91,7 +94,7 @@ my-plugin/
   "entry": "src/index.tsx"
 }
 ```
-`entry` 字段 → loader 自动识别为视图插件。
+`entry` 字段 → loader 自动识别为视图插件。`pluginId` = **插件身份，发布后永不可改**——虽然不写也能跑（退回项目目录名兜底），**但新插件一律显式写**：仓库名与本地目录名是自由的，靠兜底等于让身份跟着名字漂。
 
 ## 贡献检测规则
 
@@ -111,7 +114,7 @@ my-plugin/
 | `contributes.themes` | theme (P6) | 注册到 ThemeRegistry → 主题浏览器 |
 | `contributes.languages` | language (P6) | 注册到 LanguageRegistry |
 | `contributes.fileAssociations` | — (P6) | 注册到 FileAssociationService → 双击文件自动打开 |
-| `contributes.floatingPanel` | — (E5.8#39.5) | 声明视图可在壳内悬浮面板显示——viewId 引用已注册视图；未声明则无「在悬浮面板中打开」右键（I8-3） |
+| `contributes.floatingPanel` | —  | 声明视图可在壳内悬浮面板显示——viewId 引用已注册视图；未声明则无「在悬浮面板中打开」右键（I8-3） |
 
 **插件可同时声明多种贡献。** 比如一个视图插件可以有 `entry` + `sidebar` + `statusBar` + `contributes.configuration` + `contributes.commands`——全部独立注册，互不影响。
 
@@ -209,7 +212,7 @@ my-plugin/
 | 字段 | 类型 | 说明 |
 |---|---|---|
 | `name` | `string` | 显示名称，用户可见。**schema 级必需**（与 `version` 并列，唯二必填） |
-| `version` | `string` | 语义化版本，如 `"1.0.0"`。**schema 级必需** |
+| `version` | `string` | 语义化版本，如 `"1.0.0"`。**schema 级必需**。🔴 **它同时是「四处同源」的唯一真源**（`CHANGELOG.md` 段标题 ↔ 本字段 ↔ 目录条目 `versions[].version` ↔ `package.json.version`）——规则见 [09-插件目录规范](09-插件目录规范.md)「与版本号联动」，**本表不复制** |
 | `entry` | `string` | 入口文件路径，相对插件目录。**仅视图/标签页插件需要**——不是 schema 级必需（entryless 侧栏插件零 entry，见「图标栏出现规则」） |
 | `icon` | `string` | 图标标识——codicon/Lucide 名称或 SVG 路径（可选，缺省用默认图标） |
 
@@ -220,7 +223,8 @@ my-plugin/
 | 字段 | 类型 | 说明 |
 |---|---|---|
 | `$schema` | `string` | JSON Schema 引用路径 |
-| `core` | `boolean` | `true` = **UI 防误删旗标**（对齐上文字段表 :44 新版措辞）——详情页卸载按钮不显示/禁用；**无行为特权、非类别**：API/命令层可卸可禁，卸走写 removed 墓碑（E6#18）。默认 `false` |
+| `pluginId` | `string` | 🔴 **插件身份——发布后永不可变**（对标 VS Code 的 `publisher.name`）。安装目录 `{userData}/plugins/<pluginId>/`、分发件名 `<pluginId>.linkdesk-plugin`、市场目录去重键、卸载墓碑键、更新对账全部以它为准。**强烈建议显式声明**：不声明时退回「项目目录名」兜底，而仓库名与本地目录名是自由的——目录名一改身份就跟着改，且**没有一条会报错**。字符集 `^[A-Za-z0-9][A-Za-z0-9._-]*$`。规则与实测依据见 [16-命名规范](16-命名规范.md) |
+| `core` | `boolean` | `true` = **UI 防误删旗标**（对齐上文字段表 :44 新版措辞）——详情页卸载按钮不显示/禁用；**无行为特权、非类别**：API/命令层可卸可禁，卸走写 removed 墓碑。默认 `false` |
 | `distribution` | `string` | ⚠️ **遗留字段**（2026-09-05 塌平单根后不再对应任何目录，安装侧恒归一化为 `user`；schema 已标废弃）。**第三方请勿填写** |
 | `factoryRole` | `string` | 系统插槽角色：`"settings"` \| `"marketplace"`。**填 = 形态二（替换/进槽位切换）；不填 = 形态一（普通视图插件并存）**——详见下方「`factoryRole` 字段详解」 |
 | `iconSource` | `string` | `"codicon"`（默认）/ `"svg"` / `"url"` |
@@ -236,7 +240,7 @@ my-plugin/
 | `resources` | `string[]` | 资源文件列表——HTML/图片等。仅 `resource` 类型 |
 | `recommends` | `array` | 推荐同时安装的插件 `[{ plugin: string, reason: string }]` |
 | `suggests` | `array` | 可选相关插件 `[{ plugin: string, reason: string }]` |
-| `requires` | `string[]` | 插件级激活依赖——按 pluginId 声明，加载时先加载依赖再加载本插件（E5.8#13）。无版本约束。详见下方「`requires` 字段详解」 |
+| `requires` | `string[]` | 插件级激活依赖——按 pluginId 声明，加载时先加载依赖再加载本插件。无版本约束。详见下方「`requires` 字段详解」 |
 | `screenshots` | `string[]` | 截图 URL 数组（Phase 5+ 启用） |
 | `minAppVersion` | `string` | 最低软件版本要求 |
 | `docs` | `string` | 附带文档路径（资源插件联动） |
@@ -255,7 +259,7 @@ my-plugin/
 
 ### `requires` 字段详解
 
-插件级激活顺序依赖——声明本插件激活前必须先激活哪些插件（E5.8#13）。
+插件级激活顺序依赖——声明本插件激活前必须先激活哪些插件。
 
 **对标 VS Code `extensionDependencies`**：同族机制，本字段是其归一化收口（见下「命名边界」）。
 
@@ -281,14 +285,14 @@ my-plugin/
 
 | 字段 | 层级 | 语义 |
 |---|---|---|
-| `requires` | 插件级（plugin.json 顶层） | 激活顺序依赖——先依赖后本插件（E5.8#13） |
+| `requires` | 插件级（plugin.json 顶层） | 激活顺序依赖——先依赖后本插件 |
 | `dependsOn` | 配置项级（`contributes.configuration` 项内） | 某配置项依赖另一配置项的值 |
-| `extensionDependencies` | 插件级（历史字段） | 已废弃——归并到 `requires`（E5.8#14 落地） |
+| `extensionDependencies` | 插件级（历史字段） | 已废弃——归并到 `requires`（落地） |
 
-### ~~`activationEvents`~~ —— 已删除（E6#62e 退役，2026-09-09）
+### ~~`activationEvents`~~ —— 已删除（退役，2026-09-09）
 
 > 🔴 本字段已从 schema 与运行时整体删除，**不要再写**（写了也不报错——schema 根 `additionalProperties: true` 容忍旧清单，但无任何效果）。
-> 退役理由：壳侧延迟激活轨（#9g）全删后，加载模型简化为「启动全量注册元数据 + JS 由池按 URL 懒加载」——无需事件字段做精确控制。
+> 退役理由：壳侧延迟激活轨全删后，加载模型简化为「启动全量注册元数据 + JS 由池按 URL 懒加载」——无需事件字段做精确控制。
 > **当前 JS 加载时机契约见 `02-插件生命周期.md` §五**：表面挂载（视图打开 import）∪ on-command 激活（命令 miss → import 属主 entry，纯命令插件 handler 须放 entry 顶层）。
 
 ### `factoryRole` 字段详解——形态一（并存）vs 形态二（替换）
@@ -301,7 +305,7 @@ my-plugin/
 | 本质 | 普通视图插件（`appearsIn.iconBar` + 自己的 view） | 该角色的一个候选，进 FactorySlots 槽位 |
 | 图标栏 | 自己的图标和官方**并排** | 激活套图标**占槽**、非激活套隐藏 |
 | 切换 | 无——用户自己点哪个进哪个 | 设置页自动出该**角色名分组** + 切换按钮 |
-| 今天能做吗 | ✅ 零壳改动 | ✅ E5.8 方案A 已落地（#41.11-#41.18） |
+| 今天能做吗 | ✅ 零壳改动 | ✅ 已落地 |
 
 **名字不参与机制。** 壳没有任何「比名字」的逻辑——pluginId 各归各永不撞；视图 id 由 `(pluginId, viewId)` 复合键免疫碰撞；显示名只是给用户看的。所谓「同名分组」其实是「**同角色分组**」——分组按**角色名**命名（如「插件市场」），你叫 "Marketplace" 还是 "Map Store"，只要声明了同一 `factoryRole` 就进同一组。
 
@@ -309,16 +313,16 @@ my-plugin/
 - **想并存 → 不填。** 例：第三方做全新市场 UI，图标栏官方旁边多一个自己的图标，点进去是自己的 UI，和官方拿同一份数据
 - **想替换 → 填。** 例：声明 `factoryRole:"marketplace"` → 设置页出「插件市场」组 + 切换按钮，切过去后图标/内容换成你的
 
-**形态二实现细节**（E5.8 Phase 8.2 方案A 已落地，#41.11-#41.18；参考实体 `plugins/settings`（官方 core:true 设置套）+ `10-如何造一个设置插件.md`）：
+**形态二实现细节**（已落地；参考实体 `plugins/settings`（官方 core:true 设置套）+ `10-如何造一个设置插件.md`）：
 
-- **① 一对多槽位**：同一 `factoryRole` 多插件声明 = **合法并存**，全收进槽位候选（不再"第一个胜出"）。**默认**（用户没切过/打开时）= 首注册稳定序（E6#18b：core:true 无行为特权，不抢默认——注册序不靠扫描序巧合）。多候选并存不再静默——壳控制台 fail-loud 点名全部候选 + 默认（每候选集合变化才重喷一次）。
-- **② 活动套 = 用户切换选择，落盘持久化**（重启保持）。公开枚举/切换面 `window.linkdesk.factorySlots.*`（#41.14 ⑤ 通用枚举面，槽位无关收 role 参数；settings 角色另有 `window.linkdesk.settings.*` 兼容别名，内部原样转发）：
+- **① 一对多槽位**：同一 `factoryRole` 多插件声明 = **合法并存**，全收进槽位候选（不再"第一个胜出"）。**默认**（用户没切过/打开时）= 首注册稳定序（core:true 无行为特权，不抢默认——注册序不靠扫描序巧合）。多候选并存不再静默——壳控制台 fail-loud 点名全部候选 + 默认（每候选集合变化才重喷一次）。
+- **② 活动套 = 用户切换选择，落盘持久化**（重启保持）。公开枚举/切换面 `window.linkdesk.factorySlots.*`（通用枚举面，槽位无关收 role 参数；settings 角色另有 `window.linkdesk.settings.*` 兼容别名，内部原样转发）：
 
   | 方法 | 作用 |
   |------|------|
   | `factorySlots.listRoles()` | 全部已填充角色名（注册序）——设置页先枚举角色再 list(role) 判候选数 |
   | `factorySlots.list(role)` | 该角色全部候选 `[{ pluginId, title, viewId? }]`——title=显示名原文，viewId=该套 `contributes.floatingPanel.viewId`（无声明 = undefined） |
-  | `factorySlots.getActive(role)` | 活动套插件 ID——读持久化，无记录/已卸载回退默认（首注册候选，E6#18b 无 core 优先） |
+  | `factorySlots.getActive(role)` | 活动套插件 ID——读持久化，无记录/已卸载回退默认（首注册候选，无 core 优先） |
   | `factorySlots.setActive(role, pluginId)` | 切换活动套——校验候选后落盘；**非候选 fail-loud 抛错** |
 
 - **③ 切换入口 = 设置页角色分组（动态出现）**：设置 UI 打开时枚举 `listRoles()` → 对每个**非设置插件角色** `list(role)` → **候选 ≥2 才建组**（单候选无切换意义）。组形态 = 切换按钮在顶（列出该角色全部候选，激活高亮）+ 激活套自己的配置在下方；复用同名组优先（按 pluginId 找激活候选自己的配置组）、没有才新建；激活套无配置项 → 空状态。切换 = `setActive` → 重拉数据 → 配置随激活套换。你的设置插件**自身角色**（settings）的切换 = 顶部通用区按钮（见 `10-如何造一个设置插件.md`）。
@@ -331,12 +335,11 @@ my-plugin/
 | | 形态一（并存） | 形态二（替换） |
 |---|---|---|
 | 第三方声明 | 不填 `factoryRole`——普通视图插件（`appearsIn.iconBar` + 自己的 view + `pluginManager.*` 数据） | 填 `factoryRole: "marketplace"` |
-| 图标栏 | 官方 Marketplace 旁并排你自己的图标，两个市场各自独立 | 只显示**激活套**图标（默认=首注册候选，E6#18b 无 core 优先），非激活套隐藏 |
+| 图标栏 | 官方 Marketplace 旁并排你自己的图标，两个市场各自独立 | 只显示**激活套**图标（默认=首注册候选，无 core 优先），非激活套隐藏 |
 | 设置页 | 无槽位概念 | 出「插件市场」角色组（候选 2）+ 切换按钮 |
 | 用户切换 | 无——自己点哪个进哪个 | 切到你的 Map Store → 图标/打开行为全换成你的，持久化重启保持 |
 | 数据 | 同一份 `pluginManager.*` API，各做各的 UI | 同一份数据，UI 换成激活套 |
 
-> 📖 设计拍板档案 → 记忆 `factory-role-coexistence`；任务 → E5.8 执行清单 #41.10 ⑧ / #41.11-#41.18 / #37.9.3.6
 
 ### `icon` 字段详解
 
@@ -376,14 +379,14 @@ my-plugin/
 
 ### 图标栏出现规则（appearsIn.iconBar）
 
-> **opt-IN——不声明 `appearsIn.iconBar` = 图标栏没有你的图标。** 曾经的 `iconLocation` 默认 `"top"`（opt-OUT——编辑器没声明也挤进图标栏）已被 E5#14 废弃，现在由 `appearsIn.iconBar` 声明式控制（`"top"` = 上部图标组，`"bottom"` = 底部固定组）。
+> **opt-IN——不声明 `appearsIn.iconBar` = 图标栏没有你的图标。** 曾经的 `iconLocation` 默认 `"top"`（opt-OUT——编辑器没声明也挤进图标栏）已被废弃，现在由 `appearsIn.iconBar` 声明式控制（`"top"` = 上部图标组，`"bottom"` = 底部固定组）。
 
 **两条路拿到图标：**
 
 | 路径 | 前提 | 说明 |
 |------|------|------|
 | **有 `entry`** | `entry` + `appearsIn.iconBar` | 经典形态——entry 组件注册进 viewRegistry，图标 + 可作为标签页打开 |
-| **entryless**（E5.8#37.9.2.3 起） | **无 `entry`** + `contributes.viewsContainers` 含侧栏容器 + `appearsIn.iconBar` | 侧栏专用插件的最简路径——**不需要写假 `src/index.tsx`**。壳注册 component-less 条目，图标照常出现 |
+| **entryless**（起） | **无 `entry`** + `contributes.viewsContainers` 含侧栏容器 + `appearsIn.iconBar` | 侧栏专用插件的最简路径——**不需要写假 `src/index.tsx`**。壳注册 component-less 条目，图标照常出现 |
 
 **谁拿不到图标：**
 - **数据插件**（零侧栏容器，如语言包）——故意不显示。`pluginRole: "data"` 门控，防"为凑图标被迫写空壳"
@@ -533,7 +536,7 @@ function CadView() {
 
 **可用菜单 ID：** `editorContext`（标签页内容右键）| `tabContext`（标签栏右键）| `fileContext`（文件树右键，Phase 6）| `cardContext`（卡片右键，Phase 7）| MenuId 开放 string（`menuBar` / 任意新注册点）
 
-**菜单项字段：** `command`（命令 ID，有 `children` 时可为空）| `label`（覆盖命令标题）| `group` | `when` | `order`（同组排序）| `children`（嵌套子菜单，**任意深度递归**——E5.8#148/#149）。详见 `03-插件contributes规范.md §3.2`。
+**菜单项字段：** `command`（命令 ID，有 `children` 时可为空）| `label`（覆盖命令标题）| `group` | `when` | `order`（同组排序）| `children`（嵌套子菜单，**任意深度递归**——）。详见 `03-插件contributes规范.md §3.2`。
 
 **菜单位置（MenuId）由框架定义，你只管在哪个位置挂什么命令。** 框架自己也注册了内置项——"关闭"、"分屏"是框架的，"清空"、"暂停"是终端插件的，"导入 DXF"是 CAD 插件的。用户右键时看到的菜单 = 框架内置 + 终端 + CAD + 你的插件——多方贡献，合并渲染。
 
@@ -635,4 +638,3 @@ plugins/<pluginId>/            ← repo 源码树（塌平单根；目录名 = �
 - `09-插件目录规范.md` — 源码目录结构与命名约定
 - [E6 第三方作者旅程](../02-Electron架构/E6_插件生态与发布/05-文档与发布/00-第三方作者旅程.md) — 从零到发布的完整路径
 - `plugin.schema.json` — 同目录 JSON Schema 文件（权威版本，三拷贝 gate 之一）
-- memory `plugin-system.md` — 插件系统完整设计

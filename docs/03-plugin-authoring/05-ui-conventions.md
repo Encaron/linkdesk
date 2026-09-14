@@ -1,0 +1,549 @@
+# Plugin UI Authoring Conventions
+
+> **In one line: the core already provides the standard components and registries—don't hand-roll wheels. Hand-rolling = inconsistent style + something to tear out at the next normalization.**
+> Skim this before writing a plugin, to avoid B62-style rework.
+> **Reconciled against the implementation on 2026-09-06**: flatten-to-single-root (no plugins/{builtin,user}) · shared controls go through @linkdesk/ui · distribution = `.linkdesk-plugin` zip. References to the corresponding mechanisms have been cleaned out of this page.
+
+---
+
+## 1. Context Menu → `<ContextMenu>` + MenuRegistry
+
+**❌ Forbidden:** hand-writing `<div className="my-menu">` + `useState` + a click-outside listener.
+
+**✅ Right:**
+```json
+// ① Declare the menu items—plugin.json contributes.menus (preferred, declarative)
+{
+  "contributes": {
+    "menus": {
+      "editorContext": [
+        { "command": "myPlugin.copy", "group": "navigation" },
+        { "command": "myPlugin.clear", "group": "edit" }
+      ]
+    }
+  }
+}
+```
+
+```tsx
+// Dynamic registration at runtime (equivalent)—window.linkdesk.menu.registerItems(menuId, pluginId, items)
+window.linkdesk.menu.registerItems("editorContext", "myPlugin", [
+  { command: "myPlugin.copy", group: "navigation" },
+  { command: "myPlugin.clear", group: "edit" },
+]);
+
+// ② Use the unified component—MenuId is an open string, so just write a string literal
+<ContextMenu menuId="editorContext" />
+```
+
+**Rationale:** `<ContextMenu>` brings its own backdrop + four blur paths (Escape / backdrop click / window blur / option click) + keyboard navigation + when-condition filtering. You can't hand-roll those four blur paths—B62 lesson.
+
+**MenuId is an open string (`src/core/registry/commands/MenuRegistry.ts` `export type MenuId = string`)—a plugin declaring any string at all is the contract; no shell code change is needed.** Shell built-in registration points (the MENU_SLOTS constant table):
+
+| MenuId (string literal) | Scenario |
+|---|---|
+| `commandPalette` | Ctrl+Shift+P command palette |
+| `tabContext` | Tab Bar tab right-click |
+| `panelViewContext` | Panel tab bar right-click (position/alignment submenu + view show/hide list) |
+| `editorContext` | Tab page main content area right-click |
+| `extensionGear` | Bottom gear menu (settings/command palette/theme picker) |
+| `marketplaceItemGear` | Marketplace entry gear (enable/disable/uninstall) |
+| `menuBar` | ☰ hamburger menu bar |
+| `panel` | The "Panel" menu in the menu bar |
+| `fileContext` | File tree right-click |
+| `cardContext` | Card right-click |
+| `quickSendContext` | Quick-send pill right-click |
+| `iconBar` | Icon bar right-click |
+| `settingItemGear` | Setting item gear (Settings Editor row hover) |
+| `viewTitleContext` | Sidebar view title right-click (collapse/reset position/group the view) |
+
+New context-menu scenarios → just declare a new open-string MenuId (e.g. `"myMenu"`): declare `contributes.menus.myMenu` + consume it with `<ContextMenu menuId="myMenu" />`—**zero shell changes** (the plugin-independence iron rule). The shell only needs to add a MENU_SLOTS entry if it wants to provide a unified render point for that scenario.
+
+---
+
+## 2. Overlays / Dialogs → `createPortal`
+
+**❌ Forbidden:** a dialog nested deep inside a div in the component tree.
+
+**✅ Right:**
+```tsx
+import { createPortal } from "react-dom";
+
+return createPortal(
+  <div className="my-dialog">{/* ... */}</div>,
+  document.body  // ← the key: render into body
+);
+```
+
+**Rationale:** under the keep-alive architecture inactive tabs are `display: none`, and children aren't visible even with `position: fixed` (B54 lesson). Only rendering into `document.body` escapes the component-tree constraint.
+
+---
+
+## 3. Persistence → `window.linkdesk.configuration` (declared via plugin.json contributes.configuration)
+
+**❌ Forbidden:** `localStorage.setItem()` / `PreferenceService.loadPrefs()` / hand-written file I/O / `import ... from "@src/core/..."`.
+
+**✅ Right—go through `window.linkdesk.configuration` (plugin communication iron rule: only `window.linkdesk.*`, never `import` from @src/core):**
+```tsx
+// Read configuration (a Promise—the value is dynamic at runtime)
+useEffect(() => {
+  window.linkdesk.configuration.get<boolean>("myPlugin.showLineNumbers").then((v) => {
+    setShowLineNumbers(v);
+  });
+}, []);
+
+// Write configuration
+await window.linkdesk.configuration.set("myPlugin.showLineNumbers", true);
+
+// Subscribe to changes—returns an unsubscribe; call it on unmount
+useEffect(() => {
+  return window.linkdesk.configuration.onChange<boolean>("myPlugin.showLineNumbers", (v) => {
+    setShowLineNumbers(v);
+  });
+}, []);
+```
+
+**Declaring configuration items in plugin.json:**
+```json
+{
+  "contributes": {
+    "configuration": {
+      "title": "My Plugin",
+      "properties": {
+        "myPlugin.showLineNumbers": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show line numbers"
+        }
+      }
+    }
+  }
+}
+```
+
+**Rationale:** the shell persists automatically + restores on restart + the Settings Editor renders it automatically. Hand-rolled localStorage → you lose Settings Editor integration + get the next persistence bug.
+
+---
+
+## 4. Keyboard Shortcuts → Two Tracks: Declarative (non-text keys) + Pool-side self-handling (text keys / focus-bound keys)
+
+Shortcuts have **two tracks**, and which one you pick depends on the nature of the key. **Picking the wrong track = a dead key or a hijack of the whole pool** (lesson).
+
+### 4.1 Track one: `contributes.keybindings` (visible in the settings panel)—**non-text keys only**
+
+**❌ Forbidden:** putting **text-editing keys** such as `ctrl+c` / `ctrl+v` / `ctrl+x` / `ctrl+a` / `f2` into `contributes.keybindings`.
+
+**✅ Right:** (non-text keys—such as `ctrl+k` / `ctrl+shift+e` / `f5`)
+```json
+{
+  "contributes": {
+    "keybindings": [
+      {
+        "key": "ctrl+k",
+        "command": "myPlugin.clear",
+        "when": "activeEditor == 'myPlugin'"
+      }
+    ]
+  }
+}
+```
+
+**Rationale (why text keys are a landmine):** declared/registered keys sync into the main-process keyCache → when `before-input-event` hits, the key is **swallowed unconditionally** (it doesn't respect when, doesn't respect an editable state, doesn't respect whether a handler even exists). Register one `ctrl+c` in the shell and you swallow the native `ctrl+c` of every input box / Monaco instance in the whole pool. The right answer for text keys = track two.
+
+### 4.2 Track two: pool-side self-handling (container onKeyDown)—the right answer for text keys + focus-bound keys
+
+**✅ Right:** a component handles its own keyboard interaction inside its own **container's `onKeyDown`**:
+
+```tsx
+<div
+  tabIndex={0}          // makes the container focusable—clicking a child makes the browser give focus to the nearest focusable ancestor
+  onKeyDown={(e) => {
+    if (e.key === "F2") { e.preventDefault(); startRename(); }
+  }}
+>
+  {items}
+</div>
+```
+
+**Why this is the right answer:** every plugin in the pool shares one document—**DOM focus partitions naturally**. Only a focused container receives the key; a focused Monaco doesn't, and multiple plugins can each do their own `ctrl+c` without stepping on each other. No when needed, no conflict detection needed. File tree clipboard keys = the shared `useClipboardKeys` hook + the same command chain. Clipboard-related keys can reuse `src/pool/hooks/useClipboardKeys` (declarative `onCopy`/`onCut`/`onPaste` callbacks, one implementation and one fix location for the mechanism).
+
+**❌ Anti-pattern (red flag):** `document.addEventListener("keydown", ...)` / `window.addEventListener("keydown", ...)` = **global hijack**—it bypasses the partitioning premise, and while the plugin has an active session it hijacks that key across the whole pool (serial F2 once hijacked the file tree's F2). **`tabIndex` + container `onKeyDown` is the right answer for focus partitioning**; non-focusable elements don't trigger it, so add `tabIndex={0}` to receive keys.
+
+**Note:** track-two keys **do not appear in the keyboard shortcuts settings panel**—the panel only shows KeybindingRegistry bindings (track one). This is a design trade-off (registering means swallowing across the pool, see 4.1), not a bug.
+
+### 4.3 Clipboard channel picker
+
+| What you want to copy | Channel | Example |
+|---|---|---|
+| Text inside an editable element (input/textarea/Monaco) | **Browser native**—write nothing | Ctrl+C/V inside an input box |
+| Arbitrary text | `window.linkdesk.clipboard.writeText` | Copy selected text to the system clipboard |
+| File/path list | `window.linkdesk.clipboard.writeFileList` | File tree copy → pasteable in Explorer (CF_HDROP) |
+
+**Note:** editable elements take the browser-native path—**don't** declare a shortcut and don't intercept it; Electron/Chromium wires up the system clipboard automatically.
+
+---
+
+## 5. Colors → CSS Variables `var(--xxx)`
+
+**❌ Forbidden:** hardcoding `#0078d4` / `#1e1e1e` / `#ffffff`.
+
+**✅ Right:**
+```css
+.my-element {
+  color: var(--text-primary);
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+}
+```
+
+**Rationale:** after a theme switch hardcoded colors stay the same → under a dark theme you get white text on a white background. See `src/index.css` for all available CSS variables.
+
+---
+
+## 6. Text → `t()` Internationalization
+
+**❌ Forbidden:** bypassing `t()` and hardcoding display strings (`<button>发送</button>` / `<button>Send</button>`).
+
+**✅ Right:**
+```tsx
+import { useTranslation } from "react-i18next";
+const { t } = useTranslation();
+<button>{t("发送")}</button>  // the i18n key = the plugin UI's source text (a Chinese plugin uses Chinese, an English/French plugin uses its own language)
+```
+
+---
+
+## 7. Sidebar List Item Selection → `onMouseDown` (not `onClick`)
+
+**❌ Forbidden:** using `onClick` to select items in a vertical Sidebar list.
+
+**✅ Right:**
+```tsx
+<div
+  className={`my-list-item${isActive ? " active" : ""}`}
+  onMouseDown={() => onSelect(item.id)}
+>
+  <span>{item.label}</span>
+</div>
+```
+
+**Rationale:** sidebar items sit vertically adjacent—on a fast click the mousedown lands on item A and the mouseup slides onto item B. Per the browser `click` event spec: when mousedown and mouseup land on different elements → click is dispatched to their common ancestor → React finds no handler on the ancestor → the event is silently lost. `onMouseDown` only cares about where the press happened and doesn't require the release on the same element—eliminating lost events on fast clicks.
+
+**Aligned with VS Code:** the Explorer file tree selects files with `onMouseDown`, not `onClick`. This is a pattern validated by tens of millions of users; don't design your own.
+
+**When it applies:** any clickable list in a Sidebar that is vertically arranged with small gaps between items—session lists, file trees, database connections, MQTT topics, device lists, and so on.
+
+**Handling child elements:** action buttons/input boxes inside an item need `onMouseDown={(e) => e.stopPropagation()}` to avoid accidentally selecting the parent item:
+```tsx
+<button
+  onMouseDown={(e) => e.stopPropagation()}
+  onClick={(e) => { e.stopPropagation(); handleDelete(); }}
+>
+  ✕
+</button>
+```
+
+---
+
+## 8. Plugin-Owned Data Models → `Emitter` Reactive Pattern
+
+**❌ Forbidden:** mutating the model in a command handler and then manually calling `rerender()` / `setVersion()` / passing a `treeVersion` prop.
+
+**✅ Right—the web-standard `EventTarget` (zero core imports; plugin-owned classes extend it directly):**
+```typescript
+class MyModel extends EventTarget {
+  private _items: Item[] = [];
+
+  add(item: Item): void {
+    this._items.push(item);
+    this.dispatchEvent(new CustomEvent("change"));  // ← dispatch at the end of every state-changing method
+  }
+
+  remove(id: string): void {
+    this._items = this._items.filter(i => i.id !== id);
+    this.dispatchEvent(new CustomEvent("change"));
+  }
+}
+```
+
+```tsx
+// Subscribe on component mount, clean up on unmount
+function MyView({ model }: { model: MyModel }) {
+  const [version, setVersion] = useState(0);
+
+  useEffect(() => {
+    const onChange = () => setVersion(v => v + 1);
+    model.addEventListener("change", onChange);
+    return () => model.removeEventListener("change", onChange);  // auto-unregistered on unmount
+  }, [model]);
+
+  const items = useMemo(() => computeItems(model), [model, version]);
+  // ...
+}
+```
+
+**Rationale:** three timing bugs (badge stuck at 0 / when stops working / refresh doesn't update the tree) all traced back to a module-level command handler mutating a mutable model, with React unable to perceive it. The model announces its own changes (`EventTarget`/`CustomEvent` are web standards; you don't need the shell's `Emitter`)—handlers only mutate the model and never touch React.
+
+**When it applies:** a plugin has module-level command handlers that need to trigger a UI refresh after changing data.
+
+**⚠️ Plugins must not `import { Emitter } from "@src/core/CoreEvents"`—that is a shell-internal implementation (plugin communication iron rule + ESLint `noCoreImportInPlugin` at error level). Plugin-owned models use the web-standard `EventTarget`; events between plugins, or between a plugin and the shell, go through `window.linkdesk.events` (see `07-plugin-to-plugin-communication.md`).**
+
+---
+
+## 9. System UI Overlays → linkdesk API (quickPick / notifications / dialog)
+
+**❌ Forbidden:** hand-rolled picker overlays / `window.alert()` / `window.confirm()` / `import ... from "@src/core/..."`.
+
+**✅ Right:**
+```tsx
+// Picker—window.linkdesk.quickPick.show({ items, placeholder, prefix })
+const picked = await window.linkdesk.quickPick.show({
+  placeholder: "Select target session",
+  items: [
+    { label: "Session A", description: "/dev/ttyUSB0" },
+    { label: "Session B", description: "/dev/ttyUSB1" },
+  ],
+});
+
+// Notification—window.linkdesk.notifications.show(message, { type })
+await window.linkdesk.notifications.show("Connected", { type: "info" });
+await window.linkdesk.notifications.show("Validation failed", { type: "error" });
+
+// Confirm / alert / file picker—window.linkdesk.dialog
+const ok = await window.linkdesk.dialog.confirm("Delete this session?");
+await window.linkdesk.dialog.alert("Version conflict, skipped");
+const file = await window.linkdesk.dialog.openFile({
+  filters: [{ name: "DXF files", extensions: ["dxf"] }],
+});
+```
+
+**Rationale:** all three are rendered uniformly by the in-pool host (QuickPickHost / **the bell wide notification panel** / DialogHost)—styles match the shell and scale with the theme and font size. Hand-rolled overlays = inconsistent style + `position: fixed` breaking under keep-alive (B54). Full signatures are in `contracts/linkdesk.d.ts`.
+
+> ⚠️ **Notifications are not "auto-vanishing floating cards"** (notification-surface unification and correction): the bottom-right narrow toast pipeline has been deleted entirely, and **the only notification surface = the status bar bell wide panel**. Three things authors need to know:
+> 1. **Notifications don't pop a card, don't steal focus, and don't block interaction**—they go into the bell (unread count +1), and the user only sees them after opening it. Don't treat notifications as a "must be seen" channel: if the user has to decide on the spot → use `dialog.confirm` (modal, steals focus).
+> 2. **Persistent notifications per source are quota-limited**—grouped by `options.source`, at most 5 persistent per group; beyond that, the oldest one from the same source is pushed out. A flood won't pile into a wall, but **don't count on notifications for long-term records either**.
+> 3. **Keyboard reachability means "the panel is reachable", not "notifications are reachable"**—the bell can be focused and opened with the keyboard, everything inside the panel can be reached with Tab, and `Esc` closes it; but the panel **has no focus trap** (non-modal, focus can leave freely). **Don't write assumptions like "Tab gets you to my notification button"**—the user may never open the panel at all.
+
+**Notification action buttons (`actions` on `notifications.show`):** failure / user-action-required notifications can carry an `actions` button array—clicking runs through the **command system** (modeled after VS Code's `showErrorMessage(msg, { title, command })` actions). Command handlers are registered by the plugin itself (`commands.registerCommand`):
+
+```tsx
+// Failure toast + [Retry]/[View dependencies]—command = a command the plugin registered itself
+await window.linkdesk.notifications.show("Install failed: cannot connect to source", {
+  type: "error", // error toasts linger 8s (enough to read the diagnostics); info/warning linger 6s
+  actions: [
+    { id: "retry", label: "Retry", isPrimary: true, command: "myplugin.retryInstall" },
+    { id: "deps", label: "View dependencies", command: "myplugin.openDeps" },
+  ],
+});
+// Commands can take arguments—clicking runs command(...args)
+await window.linkdesk.notifications.show("Save conflict", {
+  type: "warning",
+  actions: [{ label: "Force save", command: "myplugin.saveForce", args: [filePath] }],
+});
+```
+
+Button text = the final display text (the shell does not translate it a second time); `isPrimary: true` = primary button (accent), unset = secondary text button. **Not passing `actions` = no buttons today, zero behavioral change.** Full types are in `contracts/linkdesk.d.ts` (the `actions` of the `notifications.show` options).
+
+**Progress notifications + persistent notifications + source identity:** `show` **always returns a handle** (it isn't only progress bars that get one). The three easiest things to get wrong:
+
+```tsx
+// ① Progress notification—the handle drives the same single notification (it won't spawn N of them)
+const h = await window.linkdesk.notifications.show("Downloading…", {
+  progress: true,          // turns on a real progress bar; not passing percent = indeterminate animation
+  source: "myplugin",      // see ③
+});
+await h.update("Downloading…", 42);   // 0-100; passing only message keeps it indeterminate
+await h.finish("Download complete");        // closes the progress bar, optionally adds a completion notification
+// or await h.cancel();            // close it outright, no completion notification
+
+// ② Persistent notification—doesn't auto-dismiss, waits for the user to click × (use for error diagnostics)
+await window.linkdesk.notifications.show("Port is in use, please close other programs", {
+  type: "error",
+  persistent: true,
+});
+
+// ③ Source identity—the panel groups by it, 5 persistent slots per group
+await window.linkdesk.notifications.show("Sync failed", { source: "myplugin" });
+```
+
+**Three things you must know:**
+
+1. **The handle is the only key**: a notification **can only be updated/removed by the handle that created it**. A `show` with the same text elsewhere = another notification, and you can't retract theirs. To retract a persistent notification (e.g. a failed `persistent`), use its own handle or let the user click ×.
+2. **`source` must be self-reported**: the pool is a single process sharing one realm, all plugins share the same `window.linkdesk`, and preload **cannot** know which plugin issued this `show` ⇒ only the author can pass it explicitly. **Not passing it → everything lands in the "Other" group**; plugins pass their own plugin id, and the shell's own domains use `app.<domain>`.
+3. **`persistent` has a quota**: at most 5 persistent per group (by `source`); beyond that the oldest of the same source is pushed out and a summary hint is shown. **Persistent ≠ unlimited retention**—if you need retention, write your own file.
+
+> The full **behavior contract** (not signatures—for signatures see `contracts/linkdesk.d.ts`) is in the `notifications` row of [`01-plugin-api-contract.md`](01-plugin-api-contract.md) §3.2—this section only covers usage, and that one is authoritative for semantics.
+
+**Rich-content confirm dialogs (`dialog.confirmContent`):** use this when the confirm dialog needs **more than one line of text** (a form / list / screenshot / custom layout)—**the dialog is the shell (centered, masking, Esc, focus lock, click-mask to cancel) and your view draws the content** (modeled after VS Code's "the dialog is the shell, the plugin defines the content"):
+
+```tsx
+// 1) First declare the view for this content in plugin.json (any contributes.views container works)
+// 2) In code, address and open it by the "declared id"
+const ok = await window.linkdesk.dialog.confirmContent({
+  pluginId: "myplugin",      // the plugin the content belongs to (the shell uses this for composite addressing)
+  viewId: "myplugin.confirmImport", // declared id of the content view
+  title: "Confirm import",          // fallback title—if the content view fails to resolve, the shell falls back to a plain-text confirm
+  message: "3 entries will be overwritten",  // fallback body
+  payload: { files: ["a.ts", "b.ts"] }, // opaque payload: the shell doesn't interpret it, your view reads it itself
+});
+if (ok) { /* user confirmed */ }   // false = cancelled / closed
+```
+
+The other half—the content view (**another view in the same code**, reading the payload and stating a verdict):
+
+```tsx
+// In your content view component—mounting opens it, reading once is enough (every new dialog is a fresh mount)
+function MyConfirmContent() {
+  const data = window.linkdesk.dialogHost.current();
+  if (!data || data.open !== true) return null;        // defensive: don't render blank
+  const payload = data.content?.payload as MyPayload;
+  return (
+    <div>
+      {/* The body layout and the buttons are entirely yours to draw */}
+      <button onClick={() => window.linkdesk.dialogHost.cancel()}>Cancel</button>
+      <button onClick={() => window.linkdesk.dialogHost.confirm()}>OK</button>
+    </div>
+  );
+}
+```
+
+**The fallback is hard**: if `viewId` can't be resolved (view not declared / the declaring plugin isn't installed) → the shell **falls back to a plain-text confirm** (using `title`/`message`), the dialog still appears and **never dies silently**. So don't skip `title`/`message`. The payload crosses IPC via structured clone, so only cloneable data can go in it (no functions/React elements). There are only two ways to settle: `dialogHost.confirm()` / `dialogHost.cancel()`—**don't close the dialog yourself with `setState`**; the shell won't recognize it.
+
+---
+
+## 10. Font Sizes → `--font-size-*` tokens + `--ui-scale` (measurement-system normalization)
+
+**❌ Forbidden:** writing bare `px` for plugin text font sizes (`font-size: 14px`)—the `check-font-scale-audit` gate (`npm run check`) rejects it mechanically.
+
+**✅ Right:** font sizes consume `var(--font-size-*)`; line-height is unitless (`1.5`) or `calc(... * var(--ui-scale))`; fixed upper bounds (input box/button/status bar heights) are written as `calc(Npx * var(--ui-scale))` to scale with the global setting. Unified global font-size scaling (the `app.uiFontScale` setting, 85–150%, always shown and always in effect).
+
+**Scale table** (100% render = `--ui-scale: 1`; the engine computes the final px from the scale factor):
+
+| Step | Base px | Meaning |
+|---|---|---|
+| `--font-size-2xs` | 11 | badges/paths |
+| `--font-size-xs` | 12 | secondary text/buttons/stats |
+| `--font-size-sm` | 13 | main UI text (aligned with VS Code's 13px) |
+| `--font-size-md` | 14 | menus/tabs/file tree name |
+| `--font-size-lg` | 16 | icon glyphs/content icons (paired with 14px text) |
+| `--font-size-xl` | 18 | region titles |
+| `--font-size-2xl` | 22 | row icons/large text |
+| `--font-size-3xl` | 28 | pd-name |
+| `--font-size-4xl` | 30 | welcome-title |
+
+**Iron rules + boundaries (see the archive's §5 icon rulings / §6.2 monaco island decision):**
+- **Standalone display icons do not scale with font size** (decorative/brand semantics, not directly adjacent to text)—`.icon-btn .plugin-icon--codicon` 24 / `.plugin-icon--emoji` 24 / `.hamburger-btn` 20 / hero-icon 48 / row icons 20, and so on; for whitelist exemptions see `scripts/check-font-scale-audit.mjs`.
+- **Content-level font sizes go through `contributes.configuration`** (e.g. `editor.fontSize`)—large text areas/editor content are controlled by the plugin's own configuration and don't follow `--ui-scale`.
+- **The monaco content island precedent**: editor content reads `editor.fontSize`, while chrome (status bar/breadcrumbs) follows the global setting—two orthogonal axes, each minding its own business.
+- **Mapping rule**: migrating existing `NNpx` to the scale table goes "up one step"—`12→sm / 13→md / 11→xs / 10→2xs / 14→lg / 18→xl` (at 100% this enlarges to the new default baseline, aligned with VS Code).
+
+---
+
+## 11. The Token Contract—Six-Domain Matrix + Honest Boundaries + Data Discipline (.5)
+
+> **In one line:** before writing UI, check the 11.1 six-domain matrix—forms/controls/surfaces written with `var(--*)` **follow the theme + glass + global scaling automatically**, with zero plugin awareness. Doing it right is driven by recommendations, doing it wrong shows red through the gate but only as a WARN, and bypassing it takes a knowing declaration via a standard eslint-disable (content/brand fixed colors are legitimately exempt—see 11.2).
+> The gate = `linkdesk-plugin-sdk lint` (built into `@linkdesk/plugin-sdk`): the eslint rule leg + the three-check scanner leg, dual-track; all 15 items are **WARNs that never fail the build/upload**—advice, not a lockdown. Run it once at your project root; a violation shows red with self-explanatory fix text.
+
+### 11.1 The six-domain token matrix—authors can only write "follows automatically" if they know what variables exist
+
+| Domain | var() keys (the full list always defers to `src/index.css`) | How authors write it | Gate coverage |
+|---|---|---|---|
+| **Color** | `--text-primary/--text-secondary/--text-muted` (the text-color source is controlled by fontTone) + `--bg-window/--bg-side-panel/--bg-card/--bg-input/--bg-selection` + `--accent/--accent-hover` | `color: var(--text-primary)` | `linkdesk/no-hardcoded-hex` |
+| **Surface** | `--bg-*` surface fills + `--surface-radius` (follows the shell's global corner-radius slider) | `background: var(--bg-card)` | `linkdesk/no-hardcoded-hex` |
+| **Radius** | `--radius-xs/sm/md/lg/xl/2xl` + `--surface-radius` | `border-radius: var(--radius-md)` | `linkdesk/no-hardcoded-radius` (bare px in border-radius is red) |
+| **Glass** | `--glass-blur/--glass-saturate/--glass-tint/--glass-morph/--glass-specular…` (the full group in `src/index.css`) | `backdrop-filter: blur(var(--glass-blur)) …` | contract guidance—composite forms are beyond per-item gating |
+| **Font size** | `--font-size-2xs … 4xl` + `--ui-scale` (the scaling axis for `app.uiFontScale`; the scale table is in §10) | `font-size: var(--font-size-md)` / em/rem | `check-font-scale` (the check leg—a bare px font size is red) |
+| **Font family** | `--font-ui` / `--font-mono` | `font-family: var(--font-ui)` | contract guidance (authors may legitimately choose their own font) |
+
+`var(--*)` = theme/glass/global scaling follow automatically, with zero plugin awareness—**this is exactly why the @linkdesk/ui control layer can be "follow without thinking"** (54b/54c: controls are all tokens, and a plugin that does `npm i @linkdesk/ui` and consumes them follows along). Control reuse always imports from `@linkdesk/ui` (see §Quick Reference)—don't hand-roll wheels.
+
+### 11.2 Honest boundaries / knowing bypasses—content and brand colors can have their own sky
+
+**Three gate tiers (07 §6):** recommended (copy it and you're right) / warning (15 self-explanatory items, red but **a WARN never fails**) / knowing bypass (a standard eslint-disable declaration with a reason). **No ecosystem can stop an author from hardcoding colors**—VS Code also has extensions that don't follow the theme. What the gate does is make "doing it right" the default and "doing it wrong" explicitly red but **knowingly bypassable**: a comment carrying a reason = the "proceed anyway" informed confirmation on a browser danger page, not silently switching off the light.
+
+**Legitimate exemption categories:** var() fallback hex (`color: var(--x, #fff)` = a compliant form, not blocked) / color-picker swatches / canvas drawing / engine regions / **view-level exemption for content canvases**.
+
+**The content vs. chrome boundary (empirically validated by the Angry Birds test):** a game / data visualization / canvas Main Area = **a content world, not UI chrome**—UI chrome follows the theme (var()/t()/@linkdesk/ui), while content can have its own sky (grass green / health-bar red / sky blue need not follow the theme). Authors **declare a view-level exemption once**, and the gate doesn't light up item by item inside content regions (item-by-item disables for the 5-10 hardcoded values in a game are far too noisy):
+
+```tsx
+/* eslint-disable linkdesk/no-hardcoded-hex, linkdesk/no-hardcoded-radius -- content canvas: the game main area draws itself */
+export function GameBoard() {
+  return <canvas /* draws blue sky, green grass, red health bar—a content world, not UI chrome */ />;
+}
+```
+
+```tsx
+// Line-level knowing bypass (a brand fixed-color badge—exempts only this line, other lines are still blocked)
+// eslint-disable-next-line linkdesk/no-hardcoded-hex -- brand fixed-color badge
+const PRO_BADGE = <span style={{ color: "#ff6b00" }}>PRO</span>;
+```
+
+```css
+/* The same format in CSS (the check script recognizes it)—a color-picker swatch with a fixed value, exempt on this line */
+/* eslint-disable-next-line linkdesk/no-hardcoded-hex -- color-picker swatch */
+.swatch--brand { background: #ffd700; }
+```
+
+**Semantics:** a line that hits an exemption goes **entirely silent** and doesn't light up (aligned with eslint's native suppress—after a disable declaration nothing is reported item by item); **no declaration = an unhandled deviation**, and `linkdesk-plugin-sdk lint` reports it with a normal WARN. **This is not new syntax**—it's the same format as the shell's existing `no-hardcoded-hex` error suggestion. **Backgrounds not being glassed holds inherently at the mechanism layer**—backdrop-filter only paints shell surface elements and is not applied to a plugin view's root node, so content the author draws is simply never glassed.
+
+### 11.3 Non-CSS engine adaptation—the translation bridge (self-rendering engines don't use CSS variables)
+
+monaco-style self-rendering engines (canvas / WebGL / rich-text engines likewise) don't consume CSS variables—following the theme requires a **translation bridge**: subscribe to theme changes → translate into the engine's own theme API. Precedent: `src/services/theme-sync.ts` (it lives in **the editor plugin's own repo**, `Encaron/linkdesk-plugin-editor`—shipped plugin source is not in the shell repo):
+
+```ts
+// Subscribe to theme changes (the event may fire before mount → register at top level or guard on active, see 11.5)
+const off = window.linkdesk.events.on("theme:changed", () => {
+  engine.updateTheme(translateTheme()); // translate your tokens → the engine's theme object
+});
+```
+
+monaco's current opaque background and two-state (light/dark) following is **a transitional workaround, not a settled boundary**—full theme adaptation may come later.
+
+### 11.4 Plugin-private data channels—choosing a channel when you build your own settings UI / manage your own saves
+
+When authors build their own settings UI or manage their own saves (without going through a shell settings-page declaration), pick the data landing spot by semantics:
+
+| Channel | Good for | Example |
+|---|---|---|
+| `window.linkdesk.pluginState` (**preferred**) | plugin-managed saves—centralized caching + file persistence (a proper API: `get/set/onChange(pluginId, key)`) | game score / level progress / high-score board / skin preference |
+| `window.linkdesk.configuration.set(key)` private namespace | follows settings semantics, readable by other plugins/themes, **must appear in the shell settings-page UI** (declaring contributes.configuration puts it there) | plugin parameters (declared = UI; undeclared = a purely private key that still persists when written) |
+| `window.linkdesk.filesystem` | large files / binary / cross-plugin sharing | screenshot export / save files |
+| `localStorage` | supplementary—in-pool temporary cache (no cross-machine, no shell management) | high-frequency temporary values within a session |
+
+**Iron rule: private keys that don't declare `contributes.configuration` do not appear in the shell settings-page UI**—`config.set` writes and persists even without a schema (only enums get filtered), so authors who want the shell settings page declare a contribution, and those who want their own UI write private keys directly; the two don't interfere.
+
+### 11.5 Shell-discipline handoff list—each non-UI discipline sinks into the doc where it lands
+
+| Discipline | Where it's specified |
+|---|---|
+| The plugin's only entry is `window.linkdesk.*`; **importing @src/core (including any @src subpath) is forbidden** | `01-plugin-api-contract.md` |
+| Configuration: **subscribe, don't read once** (linkdesk.configuration is event-driven) | §3 of this file |
+| linkdesk.events subscription **timing**—the event may fire before mount (IPC buffering) → register at top level or guard on active | `02-plugin-lifecycle.md` |
+| **Don't hardcode other plugins' IDs** (differential behavior goes through plugin.json declaration fields, consumed via the Registry pattern) | `03-contributes-spec.md` |
+| Configuration keys **must have a default** | `06-plugin-json-spec.md` |
+| **Use only documented API namespaces** (don't casually hang undocumented `linkdesk.xxx` off the API) | `01-plugin-api-contract.md` |
+| Controls always come from `@linkdesk/ui` (since 54c built-in controls are imported from the npm package; `@src/components/shared/*` is forbidden) | §Quick Reference of this file |
+
+---
+
+## Quick Reference
+
+| What you want to do | Core facility | How to bring it in |
+|---|---|---|
+| Context menu | `<ContextMenu>` (open-string menuId) | `@linkdesk/ui` (ContextMenu) + a `plugin.json contributes.menus` declaration (or `window.linkdesk.menu.registerItems`, see §1) |
+| Overlay/dialog | `createPortal` | `react-dom` (render into `document.body`, see §2) |
+| Persistence | `window.linkdesk.configuration.get/set/onChange` | plugin communication iron rule—only `window.linkdesk.*` (see §3) |
+| System picker | `window.linkdesk.quickPick.show` | uniform rendering by the in-pool QuickPickHost (see §9) |
+| Notifications | `window.linkdesk.notifications.show` | uniform rendering by the in-pool **bell wide notification panel** (see §9; semantics in `01-plugin-api-contract.md` §3.2) |
+| Confirm/alert/file picker | `window.linkdesk.dialog.confirm/alert/open/openFile` | uniform rendering by the in-pool DialogHost (see §9) |
+| Rich-content confirm | `window.linkdesk.dialog.confirmContent({ pluginId, viewId, payload })` | the in-pool DialogHost renders the shell, **the content = a plugin-drawn view** (see §9) |
+| Shortcuts (non-text keys) | `plugin.json contributes.keybindings` | — (putting text keys here = swallowing the whole pool, see §4.1) |
+| Shortcuts (text keys / focus-bound keys) | container `onKeyDown` + `tabIndex` | pool-side self-handling, see §4.2 (document/window keydown is forbidden) |
+| Colors | CSS variables | `var(--xxx)`, list in `src/index.css` |
+| Font sizes | CSS variables | `var(--font-size-*)` + `--ui-scale`, bare px forbidden (#180 gate, see §10) |
+| Six-domain token overview | see the §11.1 matrix | color/surface/radius/glass/font size/font family—`var(--*)` follows theme+glass+scaling automatically; full list in `src/index.css` |
+| UI discipline gate | `linkdesk-plugin-sdk lint` | all 15 items are WARNs that never fail; a knowing bypass = a standard eslint-disable declaration (see §11.2) |
+| Text | `t()` | `useTranslation()` from `react-i18next` |
+| Sidebar list selection | `onMouseDown` (not `onClick`) | aligned with VS Code Explorer—prevents lost events when a fast click crosses elements |
+
+**Use these facilities when writing plugins; don't hand-roll. Even if you write one, it'll have to be torn out later—better to normalize from day one.**

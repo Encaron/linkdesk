@@ -9,7 +9,7 @@
  * 用法：node scripts/convert-material-icons.mjs <源 material-icons.json> <插件目录>
  * 例：  node scripts/convert-material-icons.mjs \
  *         "C:/Users/fengy/AppData/Local/Temp/mat-icons/package/dist/material-icons.json" \
- *         plugins/theme-iconset-pastel   # 2026-09-05 塌平单根（原 plugins/user/theme-iconset-pastel）
+ *         E:/linkdesk-plugins/official/theme-iconset-pastel   # E6#99 起插件源码住在独立仓（原 plugins/theme-iconset-pastel）
  *
  * 干的事：
  * 1. 把 VS Code iconTheme 格式（iconDefinitions.iconPath + fileExtensions/fileNames/folderNames）

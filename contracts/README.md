@@ -1,35 +1,35 @@
 # @linkdesk/contracts
 
-LinkDesk 插件契约类型——`window.linkdesk.*` 全量类型定义。
+The LinkDesk plugin contract types — the complete type definitions for `window.linkdesk.*`.
 
-> 本包由 LinkDesk 壳的**契约生成器**（`scripts/generate-contract.mjs`）从 `src/core/api/linkdesk-api.ts` 自动生成，**唯一**类型真相源。第三方插件作者用它拿到与壳完全同步的 API 类型——漂移即编译错误。
+> This package is generated automatically by the LinkDesk shell's **contract generator** (`scripts/generate-contract.mjs`) from `src/core/api/linkdesk-api.ts`, and is the **single** source of truth for types. Third-party plugin authors use it to get API types that are perfectly in sync with the shell — drift means a compile error.
 
-## 安装
+## Installation
 
 ```bash
 npm install -D @linkdesk/contracts
 ```
 
-## 使用
+## Usage
 
-包只含类型（`linkdesk.d.ts`，`types` 入口直指它），零运行时。装完后：
+The package contains types only (`linkdesk.d.ts`, with the `types` entry pointing straight at it) and has zero runtime. Once installed:
 
 ```ts
 import type { LinkDeskAPI } from "@linkdesk/contracts";
 
-// window.linkdesk 自动有类型（声明内置 global Window 接口），无需额外 global.d.ts
-window.linkdesk.configuration.get("editor.fontSize"); // 智能提示 + 类型检查
+// window.linkdesk is typed automatically (the built-in global Window interface is declared); no extra global.d.ts needed
+window.linkdesk.configuration.get("editor.fontSize"); // IntelliSense + type checking
 ```
 
-- **纯类型**：不含 `getLinkDesk`/`linkdesk` 值导出——运行时走 `window.linkdesk`（preload 注入）。
-- **自包含**：无任何 `@src/core` 依赖，拷一个 d.ts 进项目即完整类型。
-- **版本轴独立（2026-09-06 拆焊，反向 E5.8#22.6）**：包版本不再随壳——壳升级 ≠ 契约升级（软件升级是用户轴，与本包无关）。只有当 `window.linkdesk.*` API 面变了、作者要拿新类型时才升版发布。**内容仍与壳源码逐字节同步**（生成器比对，漂移即 `contracts:check` 红）——类型永远描述当前壳，只是版本号不绑壳。`npm update @linkdesk/contracts` 在版本升后拿新类型。
+- **Types only**: no `getLinkDesk`/`linkdesk` value exports — at runtime you go through `window.linkdesk` (injected by the preload).
+- **Self-contained**: no `@src/core` dependency whatsoever; drop a single d.ts into your project for the complete types.
+- **Independent version axis (decoupled on 2026-09-06)**: the package version no longer follows the shell — a shell upgrade is not a contract upgrade (app upgrades are a user-facing axis and unrelated to this package). A new version is published only when the `window.linkdesk.*` API surface changes and authors need the new types. **The content is still byte-for-byte in sync with the shell source** (compared by the generator; drift turns `contracts:check` red) — the types always describe the current shell, only the version number is not tied to it. Run `npm update @linkdesk/contracts` after a version bump to pick up the new types.
 
-## 与仓库产物双轨
+## Two tracks alongside the repository artifact
 
-- **推荐**：`npm i -D @linkdesk/contracts`（真实发布链，类型随版本走）
-- **备选**：从 LinkDesk 仓库 `contracts/linkdesk.d.ts` 拷贝（无 npm 环境时兜底）
+- **Recommended**: `npm i -D @linkdesk/contracts` (the real publication chain; types follow the version)
+- **Alternative**: copy `contracts/linkdesk.d.ts` from the LinkDesk repository (a fallback when there is no npm environment)
 
-## 协议
+## License
 
 MIT

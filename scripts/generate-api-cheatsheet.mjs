@@ -81,10 +81,10 @@ function render() {
   out.push("");
   out.push(
     `**${interfaces.length} 个域接口 → ${rows.length} 个命名空间 / ${total} 个方法**，全部经 \`window.linkdesk.<命名空间>.<方法>\` 调用。` +
-      (aliases.length ? `（另含 ${aliases.length} 个废弃别名 ${aliases.join(" ")}，方法不重复计入）` : ""),
+      (aliases.length ? ` (plus ${aliases.length} deprecated alias/es ${aliases.join(" ")}, not counted twice)` : ""),
   );
   out.push("");
-  out.push("| 命名空间 | 方法数 | 方法 | 说明 |");
+  out.push("| Namespace | Methods | Method | Notes |");
   out.push("|:--|:--:|:--|:--|");
   for (const [name, v] of rows) {
     let cell;
@@ -97,7 +97,7 @@ function render() {
         .join(" ");
     } else {
       // 顶层函数属性命名空间（如 getFilePath）无子方法——直接展示签名形状
-      cell = `（顶层函数）\`${(v.signature ?? "").replace(/\|/g, "\\|")}\``;
+      cell = `(top-level function)\`${(v.signature ?? "").replace(/\|/g, "\\|")}\``;
     }
     const mark = v.optional ? " ⚠️" : "";
     out.push(`| \`${name}\`${mark} | ${v.methods.length} | ${cell} | ${brief(v.doc)} |`);
@@ -108,12 +108,12 @@ function render() {
     out.push("");
     if (optional.length) {
       out.push(
-        `⚠️ = 契约可选命名空间（只在一侧注入）：${optional.join(" ")}——调用前先判断是否存在，另一侧为 \`undefined\`。`,
+        `⚠️ = optional namespace in the contract (injected on one side only): ${optional.join(" ")} — check for existence before calling; on the other side it is undefined.`,
       );
     }
     if (anyOptionalMember) {
       out.push(
-        "° = 契约标 `?` 的成员：只在一侧 preload 注入（绝大多数是壳侧独有），**插件跑在池里**——调用前先判存在。",
+        "° = member marked `?` in the contract: injected in one side's preload only (almost always shell-side). **Your plugin runs in the pool** — check for existence before calling.",
       );
     }
   }

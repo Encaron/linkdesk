@@ -1,5 +1,6 @@
 {
   "$schema": "../../public/schemas/plugin.schema.json",
+  "pluginId": "floating-panel-demo",
   "name": "悬浮面板演示",
   "version": "1.0.1",
   "icon": "layout",

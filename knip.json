@@ -6,7 +6,14 @@
   //   check-lsp-deps 哨兵管 spawn 运行时）→ ignoreWorkspaces 让插件不进 knip 的可用 workspace 列表，
   //   其文件折回根 scope → 由 workspaces["."].project 只挡 src/electron/scripts（插件文件被 project 排除）。
   //   若日后插件要 knip 静态审计，另立拍板（本轮不加——插件 import 卫生由其自身 build 解析失败自证）。
-  "ignoreWorkspaces": ["plugins/*"],
+  // E6#98a（L7 7.1 轮）：`packages/*` 也加进 ignoreWorkspaces——插件的 build 脚本改成 `linkdesk-plugin-sdk`
+  //   之后，`@linkdesk/plugin-sdk` / `@linkdesk/ui` 必须由 workspaces 链接（否则插件声明的 npm 版本号在仓内
+  //   解析不到本地包，本地 SDK 改动也不生效）。这两个包各有自己的构建/发布面（prepack、files 白名单），
+  //   knip 的根 scope 不覆盖它们，单列审计属另一件事——同 plugins/* 的处置，本轮不扩域。
+  // E6#99（L7 7.2 轮）复核结论：**两项都保留**。`plugins/*` 仍有活主体（两只夹具 workspace）；
+  //   `packages/*` 仍被壳侧工具链消费（`check` 里的 `tsc -p packages/plugin-sdk`、postinstall 的
+  //   build-linkdesk-ui.mjs、contracts 生成链）——18 只发货插件搬走**不改变**这两条的存在理由。
+  "ignoreWorkspaces": ["plugins/*", "packages/*"],
   "workspaces": {
     ".": {
       "entry": [
@@ -40,7 +47,7 @@
         "src/components/shared/toggle/Toggle.tsx",
         // E6#30c：同上——StringListEditor（E6#54b 零件集新成员）唯一消费方 = @linkdesk/ui lib 构建
         //   （settings renderControl uiHint "stringList" 经 barrel 消费）+ 插件 dist——壳 scope 断边误报。
-        "src/components/shared/string-list-editor/StringListEditor.tsx",
+        // 🔴 E6#99：该条目已摘除——插件搬走后 knip 的图变化使其豁免不再必要（knip 报 configuration hint）。
         // E6#15h：同上——src/components/shared/hooks/ 交互 hook（useClickPreview/useClipboardKeys/
         //   useDebouncedInput）的唯一消费方 = @linkdesk/ui lib 构建（packages/ 域）+ 插件 dist 消费——knip
         //   壳 scope 断边误报 unused。仍活：@linkdesk/ui dist 即由它们构建。详见 08-共享hook归位.md。
@@ -79,9 +86,7 @@
         //   unregisterFileAssociations/unregisterStatusBarPlugin，剩余 exports 全部可达，knip 不再需要豁免。
         "src/core/services/files/FileService.ts",
         "src/core/services/layout/LayoutService.ts",
-        "src/core/services/layout/WorkspaceService.ts",
         "src/core/services/plugins/IpcBridgeHandler.ts",
-        "src/core/services/plugins/IpcBridgeHandler/tabs.ts",
         "src/core/services/plugins/IpcBridgeHandler/workspace.ts",
         "src/core/services/plugins/ProfileService.ts",
         "src/core/services/ui/DialogService.ts",
@@ -113,6 +118,11 @@
         //   （file-tree/marketplace 等 `import { X } from "@linkdesk/ui"`，自声明零 deps，靠 root hoisting
         //   解析）——knip project 域（src/electron/scripts）排除插件 → 静态图断边误报 unused。root 必须
         //   持此 file: 链接供插件构建解析（真删 = 插件 build 解析失败红双兜底），故压制 unused 报告。
+        // 🔴 E6#99（L7 7.2）：18 只发货插件源码外移后，**monaco-editor / @codemirror×3 四条 ignoreDependencies
+        //   已摘除**——它们当年是为「插件源码折 root scope」而压制的，插件搬走后 root 里再无任何引用边，
+        //   留着就是一份没有作用的陈旧豁免（knip 自己会报 configuration hint）。
+        //   `@linkdesk/ui` **保留**：壳侧仍无 import 消费方，但 root 必须持这个 file: 链接供仓内夹具与
+        //   `@linkdesk/ui` 自身构建解析。
         // E6#16（实机实证）：buffer 是壳 renderer iconv-lite（EncodingService，声明 root dep）的
         //   require('buffer') 浏览器 Buffer 垫片——vite dev optimize 与 prod rollup 把裸 'buffer'
         //   解析到本包（#16 npm 重装前它由 tar-stream→bl 链作为无关传递依赖静默满足，净壳后暴露
@@ -121,10 +131,7 @@
         //   加载即活证。删它 = 复现 iconv-lite/safer-buffer 'prototype of undefined' dev 崩。
         "@linkdesk/ui",
         "buffer",
-        "monaco-editor",
-        "@codemirror/view",
-        "@codemirror/state",
-        "@codemirror/search"
+        "@linkdesk/ui"  // ⚠️ E6#99：原并列的 monaco-editor/@codemirror×3 已摘除（见上注释末段）
       ],
       "ignoreBinaries": [
         // E5.8#2：Linux 分支的真实外部命令（electron/main.ts openInTerminal 平台分支，xdg-open 是 Linux 版 exec 字符串）
