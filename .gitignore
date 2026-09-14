@@ -40,3 +40,7 @@ USER.md
 # AI 会话记忆工具产物（本机工具状态）
 memory/
 release2/
+
+# E6#100c：`sync-official-catalog` 的**候选产物**——它是「要人过目 + 用户点头」的中间态；
+# 真身 = 官方目录仓库里那份 marketplace.json。留在壳仓入库 = 第二份真相源，两份必分叉。
+scratch/
