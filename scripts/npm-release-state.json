@@ -15,9 +15,9 @@
     },
     {
       "name": "create-linkdesk-plugin",
-      "version": "0.1.2",
-      "contentHash": "edac8ba9ef4b5755141e200135b82ee33544d8629ff33667389e212159098317",
-      "files": 13
+      "version": "0.1.3",
+      "contentHash": "33e19d2bdd5bd88c19ab1d1a6b8a5c3ff73d75ee07f7d9370cb36a51d5d0a31f",
+      "files": 17
     },
     {
       "name": "@linkdesk/ui",

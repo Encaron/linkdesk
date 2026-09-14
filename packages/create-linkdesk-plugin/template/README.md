@@ -45,4 +45,14 @@ npm run publish     # 建 GitHub Release + 上传 .linkdesk-plugin + 更新 cata
 
 首次发布需要 GitHub token（跑一次会引导你填，存在本机）。只预览不动作：`npm run publish -- --dry-run`。
 
+发布还要求本工程**已经推到 GitHub**（`publish` 拿工程 origin 的仓库去建 Release）：
+
+```bash
+git remote add origin git@github.com:<你>/<仓库>.git
+git push -u origin main
+```
+
+> 脚手架生成时已替你建好本仓（`main` 分支 + 一次初始提交），所以这一步只是接远端。
+> 若生成时带了 `--no-git`，则先自己 `git init -b main` 再提交。
+
 > 完整作者文档见 LinkDesk 仓库的 `docs/03-插件制造/`（API 契约 / 生命周期 / contributes / 分发 / UI 写法规约）。

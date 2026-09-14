@@ -6,6 +6,11 @@
 > 🔵 **非新能力（2026-09-11，E6#95c/#95e 门禁与发布）**：模板形状**由 `scripts/check-scaffold.mjs` 8 条断言守**（§七·五），
 > 本包**进了 npm 发布基线**（§七）——**同样零新增壳 API / 零新增贡献点**。执行期实测发现并修掉两件真事故：**模板 `gitignore` 改名防 npm 丢弃**（§九.5）、**补本包 `.npmrc` 防发布落镜像源**（§七 坑①）。
 
+> 🔵 **非新能力（2026-09-14，E6#103 · L7 7.6 轮）**：本轮只改**脚手架自己的行为**——① CLI 代建 git 仓
+> （照 `cargo new` 三语义 ＋ `--no-git` 逃生口，§三）；② 模板把 `pluginId` 从「注释教学」改成**显式声明**
+> （该字段 `#98g` 早已进 schema，本轮是**消费既有字段**，不是新造）；③ 生成物契约多了**建仓三语义**一条断言（§七·五）。
+> **零新增壳 API / 零新增贡献点**。逐轮详案与判据 → [插件源码外移层/07-脚手架与工作区.md](../插件源码外移层/07-脚手架与工作区.md)。
+
 > 对应任务：E6#21-#23，**template v2 = E6#94（2026-09-11）**。对标 `yo code`（VS Code Extension Generator）。
 > ⚠️ 2026-08-30 第 2.1 轮审视：§四 模板 plugin.json 原为 E5.6 schema，已按 E5.8 实测换代（见 §八）。
 > 插件作者打一行命令 → 获得完整的插件项目骨架。
@@ -19,6 +24,7 @@ npm create linkdesk-plugin my-cool-plugin
 
 # 输出：
 # ✔ my-cool-plugin/ 已创建
+#   ✔ 已建 git 仓（main 分支 + 一次初始提交）        ← 视情形改写，见 §三
 #
 #   接下来：
 #     cd my-cool-plugin
@@ -27,13 +33,19 @@ npm create linkdesk-plugin my-cool-plugin
 #     npm run validate   # 校验 plugin.json（$schema / 字段 / i18n 文件）
 #     npm run build      # 打包出 my-cool-plugin.linkdesk-plugin，可装进 LinkDesk / 发布
 #
+#   要发布（npm run publish）时还需要一个 GitHub 远端：
+#     git remote add origin git@github.com:<你>/<仓库>.git
+#     git push -u origin main
+#
 #   然后：先读 README.md —— 目录该放哪、三条纪律、怎么发布都在里面。
 #   plugin.json 的 name / description / author 是你的身份信息，src/index.tsx 是插件本体。
 #   完整插件能力（侧栏视图 / 命令 / 设置 / 协议……）见 docs/03-插件制造/。
 ```
 
 > 🔵 **`dev` 命令 2.1 轮刻意不宣传，v2 轮补印**：E6#24 dev 宿主已落地 ⇒ 首屏补 `npm run dev` 顺理成章（§八.5 的「双向承接锚」在此结算）。
-> 🔴 **首屏依旧不提 `publish`**：它要 GitHub token，属「准备好了再做」的事——放在生成的 `README.md` 里详说，**CLI 首屏不吓人**。
+> 🔴 **首屏依旧不提 `publish`**（它要 GitHub token，属「准备好了再做」的事，放生成的 `README.md` 里详说）
+> ——**但「接远端」那两行印**（7.6 补）：仓已经替作者建好了，不把最后一步说出来，作者会以为已经能发布了。
+> 「建仓那一行」本身也**必须印**：这是作者最容易误以为「漏了」或「多做了」的地方（§三 行为定案）。
 
 ---
 
@@ -48,7 +60,7 @@ packages/create-linkdesk-plugin/
   ├── README.md            # 用法 + 生成物说明
   ├── .npmrc               # 🔴 **无作用域的包必须直改默认源**（见 §七），不能照抄 scoped 那三份
   └── template/            # 模板文件（{{pluginName}} / {{displayName}} / {{author}} / {{date}} 占位符）
-      ├── plugin.json            # JSONC 清单——E5.8 schema，逐字段注释分节（**不写 pluginId**，见 §九.1）
+      ├── plugin.json            # JSONC 清单——E5.8 schema，逐字段注释分节（**显式声明 pluginId**，见 §九.1）
       ├── package.json           # scripts: dev / dev:real / build / publish / validate / lint / verify / test
       ├── tsconfig.json          # jsx: react-jsx + types 引 @linkdesk/plugin-sdk + strict
       ├── gitignore              # 🔴 **无点**——CLI 生成时改名成 .gitignore（npm 会丢 .gitignore，见 §九.5）
@@ -75,6 +87,9 @@ packages/create-linkdesk-plugin/
 **E6#102（L7 第 7.5 轮）新增 4 件**（`.github/workflows/ci.yml` / `scripts/ci-verify.mjs` /
 `vitest.config.ts` / `vitest.setup.ts`）——「**新插件一建出来就自带门禁**」从此是默认行为，不是每仓手加。
 理由与判据见 [插件源码外移层/06-门禁与CI.md](../插件源码外移层/06-门禁与CI.md)。
+
+**E6#103（L7 第 7.6 轮）不加文件，改两处行为**：① CLI 生成完**按 `cargo new` 语义代建 git 仓**（§三）；
+② 模板 `plugin.json` 的 `pluginId` 从「注释掉的覆盖值」改成**显式声明**（§四、§九.1）。
 
 ---
 
@@ -117,24 +132,60 @@ function createPlugin(name) {
 **行为定案：**
 - **命名校验**：`/^[a-z][a-z0-9-]*$/`——拒绝大写/空格/前导数字，消息明示 kebab-case 规则（对标插件 ID `SAFE_PLUGIN_ID`）。
 - **既有目录**：非空即拒绝（exit 1），不静默覆盖。
-- **成功输出（v2）**：`cd` / `npm install` / `npm run dev` / `npm run validate` / `npm run build` + **把 `README.md` 指出来**（目录契约靠这一步被看见）+ 指向 `docs/03-插件制造/`；**不提 `publish`**。
+- **选项白名单**：只认 `--no-git` / `--help`（`-h`），**别的 `-` 开头一律报错退出**——`--nogit` 这种拼错若被静默忽略，作者会以为仓建好了。
 - **作者名**：`git config user.name` → 兜底 `you`。
 - **`{{date}}` 只注入 `CHANGELOG.md` 的初始段标题**——格式必须是 `## v<版本>（YYYY-MM-DD）`，那是市场「更改日志」页签切段的解析依据（[插件规范化层/02](../插件规范化层/02-元数据链路归一.md)）。**注入错格式 = 作者第一个插件就显示不了更新记录。**
+- **成功输出（v2）**：`cd` / `npm install` / `npm run dev` / `npm run validate` / `npm run build` + **把 `README.md` 指出来**（目录契约靠这一步被看见）+ 指向 `docs/03-插件制造/`；**不提 `publish` 本身**，但建了仓就把「接 GitHub 远端」那两行印出来（§一）。
+
+### 三·一、🔴 建仓（E6#103 · L7 第 7.6 轮）——照抄 `cargo new` 的三语义
+
+**痛点**：作者生成完工程第一件事是「跑起来」，而 `npm run publish` 会报错要求「已推到 GitHub 的 git 仓」
+（`packages/plugin-sdk/src/publish.ts` 的 `gitRemoteOrigin`），于是作者被迫**手敲三条命令**——卡在
+「先学一套流程、还没见到任何产出」那一步。
+
+**照抄的是这三条**（`cargo new` 的精确语义，**不是「一律 `git init`」**）：
+
+| # | `cargo new` 的行为 | 本 CLI |
+|:--:|:--|:--|
+| 1 | 目标目录**已在某个 git 仓内** ⇒ **不 init**（不造嵌套仓） | ✅ 同 |
+| 2 | 不在任何仓内 ⇒ 自动建仓（默认 `--vcs git`） | ✅ 同 |
+| 3 | `--vcs none` 关掉 | ✅ `--no-git` |
+
+判定用 `git rev-parse --show-toplevel`（在**目标目录里**问，目录此时已建好，向上找仓根正是 cargo 的做法）。
+
+**比 cargo 多一步：建完仓顺手做一次初始提交。** 理由：模板已生成 `.gitignore` ⇒ 作者第一次 `git status`
+不该是满屏 untracked；且 `git log` 立刻有一笔可回退的基线。提交消息 `chore: 初始骨架（create-linkdesk-plugin 生成）`，
+带 `--no-verify`（新仓的初始提交不该被使用者全局 `core.hooksPath` 上的钩子审）。
+
+**🔴 CLI 必须把结果说全**（这是「别让作者以为漏了」的落点）——五种情形各有自己那一行：
+
+| 情形 | 输出 | 说明 |
+|:--|:--|:--|
+| 建了 | `✔ 已建 git 仓（main 分支 + 一次初始提交）` | 正常路径 |
+| `--no-git` | `· --no-git：未建 git 仓（发布前需要自己 git init）` | 显式跳过 |
+| 已在某仓内 | `· 已在 git 仓内（<仓根>）——按 cargo new 语义不建嵌套仓` | **连仓根一起印**，作者才知道为什么 |
+| 没装 git | `⚠️ 找不到 git（不在 PATH）——未建仓；…` | 骨架照常给，不拿环境卡人 |
+| 提交失败 | `⚠️ 仓已建，但初始提交没成（git commit）：…` | 多半是没配 git 身份，给出那两条 `git config` |
+
+⇒ **任何一步失败都不终止脚手架**：骨架已经生成好了，建仓是加分项、不是前置条件。
+
+**`git init -b main`**（显式指定默认分支名）——避免作者第一次 `push` 撞上 `master` 提示，也与 GitHub 默认一致；
+git < 2.28 不认 `-b`，退回 `git init` ＋ `symbolic-ref HEAD refs/heads/main`。
 
 ---
 
 ## 四、模板文件——plugin.json
 
-> **E5.8 schema 真身**（JSONC：可注释、可尾逗号——LinkDesk 与 SDK 都按 jsonc 解析，对标 VS Code package.json；`.vscode/settings.json` 把 `plugin.json` 关联为 jsonc 让 VS Code 不标红）。字段取舍依据见 §八；**v2 两处改动（删 `pluginId` / 补 `icon`）依据见 §九**。
+> **E5.8 schema 真身**（JSONC：可注释、可尾逗号——LinkDesk 与 SDK 都按 jsonc 解析，对标 VS Code package.json；`.vscode/settings.json` 把 `plugin.json` 关联为 jsonc 让 VS Code 不标红）。字段取舍依据见 §八；**v2 两处改动（删 `pluginId` / 补 `icon`）见 §九；`pluginId` 已于 7.6 改回显式声明——§九.1 已改判**。
 
 ```jsonc
 {
   "$schema": "./node_modules/@linkdesk/plugin-sdk/schemas/plugin.schema.json",
 
   // ── 插件身份 ──
-  // 插件 ID 默认就是插件目录名（{{pluginName}}），所以这里不写。仅当「目录名要改、但安装身份
-  // 不能变」时才取消下面这行的注释——它是覆盖值，不是必填项。
-  // "pluginId": "{{pluginName}}",
+  // 🔴 插件 ID：显式声明。它是安装目录名 / 卸载墓碑 / 更新对账的唯一键，发布后永不可变。
+  // 它与插件所在的目录名无关（目录可以随便改）——别拿目录名当它的替身。
+  "pluginId": "{{pluginName}}",
   "name": "{{displayName}}",             // 显示名——标签页 / 插件详情等 UI
   "version": "0.1.0",                    // 语义化版本 x.y.z——+1 时务必同笔补 CHANGELOG.md 的新段
   "description": "{{displayName}}——我的第一个 LinkDesk 插件",
@@ -161,7 +212,7 @@ function createPlugin(name) {
 
 **逐字段取舍（注释分节示范，对标 VS Code package.json）：**
 - **为什么是「主区标签页 + appearsIn.tabBar + singleton」起步，而非 viewsContainers 侧栏视图**：标签页形态任何壳版本都能渲染；纯 contributes 视图依赖打包版分区视图渲染管线的完整度（面板-demo 曾有 E6#62e 缺口风险）。侧栏/面板能力以「注释掉的扩展块」示范，作者需要时取消注释即可，防撞前缀已示。
-- **`pluginId` 不写**（v2 改动）——理由见 §九.1。
+- **`pluginId` 显式写**（7.6 改判，理由见 §九.1）——不写等于教作者依赖「目录名兜底」，而那个兜底只为兼容存量第三方插件；硬约束 11 要求身份**显式声明**。
 - **`icon` 必须写**（v2 改动）——不写 ⇒ 生成物在图标栏 / 标签页 / 市场里全是**默认「插头」块**，作者第一眼看到的是「我做的插件坏了」。
 - **无 `views` 根级视图仍能跑**：壳对带 `entry` 的插件走入口渲染路径。
 
@@ -305,8 +356,8 @@ dist/
 ```bash
 cd packages/create-linkdesk-plugin
 npm whoami --registry=https://registry.npmjs.org   # = fengyili（不带 --registry 会假报未登录）
-npm config get registry                            # 🔴 必须 = https://registry.npmjs.org/（见下方坑 ①）
-npm publish                                        # 走本目录 .npmrc，无需再传 --registry
+npm config get registry --workspaces=false         # 🔴 必须 = https://registry.npmjs.org/（见下方坑 ①）
+npm publish --registry=https://registry.npmjs.org  # 🔴 **--registry 必传**，别只靠本目录 .npmrc（坑 ①）
 ```
 
 npm 自动识别 `create-*` 前缀包名为 `npm create` 的别名：
@@ -315,31 +366,57 @@ npm 自动识别 `create-*` 前缀包名为 `npm create` 的别名：
 无需额外配置。
 
 > ⚠️ **子包发布的三个坑（本仓已踩）**：
-> ① 🔴 **npm 只读当前目录的 `.npmrc`、不向上递归** ⇒ 每个可发布子包都要自带一份源路由。
->    **本包是**无作用域**包——不能用 `@linkdesk:registry=` 那条，必须直改默认源 `registry=https://registry.npmjs.org/`**。
->    **E6#95e 执行期实测事故**：本目录原先**没有** `.npmrc`（旧记「无 scoped 依赖故无碍」是**错的**——不设它就会落到
->    用户级默认源 `registry.npmmirror.com`，**镜像只读、发不上去**）。已补 `packages/create-linkdesk-plugin/.npmrc`。
->    **照抄规则**：有作用域 → `@linkdesk:registry=…`；**无作用域 → `registry=…`**——照抄错那种照样发错。
->    **判据不是「有没有 `.npmrc`」，是「本目录 `npm config get registry` 是不是官方源」。**
-> ② 发布**已改异步**——CLI 打印 `+ pkg@version` 时包可能还没上架（**实测 plugin-sdk `0.1.10` 约 3.5 分钟后**才查到），中途重发吃 `E409 …previously staged version`。**判据落在 `npm view`，不落在发布命令的输出上。**
-> ③ **npm 恒定丢弃名为 `.gitignore` 的模板文件**（见 §九.5）——模板里那份必须叫 `gitignore`。
+> ① 🔴 **`npm publish` 必须显式带 `--registry=https://registry.npmjs.org`**——这是本仓既有纪律
+>    （E6#2.5b / #23a：「npmmirror 不能发布」），**2026-09-14 实测又发现它还有第二种失效方式**：
+>    **npm 11 在 workspace 里会忽略「工作区成员自己的 `.npmrc`」**——本包在根 `package.json` 的
+>    `workspaces: ["packages/*"]` 里，于是**那份 `.npmrc` 被静默忽略**，`npm publish`（不带 `--registry`）
+>    的解析目标是 **`https://registry.npmmirror.com`**（dry-run 实测打印原文）。镜像只读 ⇒ 发布必失败，
+>    而且报错形态是 `ENEEDAUTH`（**看着像「没登录」，其实又是查错地方**——就是下面那条 2026-09-11 教训的翻版）。
+>    本机实测：`npm config get registry` 会连带报 `ENOWORKSPACES`；加 `--workspaces=false` 才看得到本目录那份的值。
+>    ⇒ **判据改成两条**：(a) `npm config get registry --workspaces=false` 是官方源；
+>    (b) **发布命令本身带 `--registry`**。`.npmrc` 保留（非 workspace 上下文 / 别的工具仍读它），**但不能只靠它**。
+>    ⚠️ **同一条适用于 `packages/` 下另外三个包**（`@linkdesk/contracts` / `plugin-sdk` / `ui`）——它们同样是工作区成员。
+> ② 🔴 **npm 会规范化 `bin`**：本地写 `"./index.js"`，**发布出去的 manifest 里是 `"index.js"`**（去掉前导 `./`），
+>    并伴随一条**措辞吓人的警告**「`script name index.js was invalid and removed`」——**实际没删**，
+>    `bin` 在货架上好好的（实测 `npm view create-linkdesk-plugin@0.1.3 bin` = `{ 'create-linkdesk-plugin': 'index.js' }`；
+>    0.1.1 / 0.1.2 同）。本地已改成不带 `./` 的规范形式，让「本地 = 发出去那份」。
+>    ⇒ **以后看到那条警告，先核货架再动手**，别去「修」一个不存在的问题。
+> ③ 发布**已改异步**——CLI 打印 `+ pkg@version` 时包可能还没上架（**实测 plugin-sdk `0.1.10` 约 3.5 分钟后**才查到），中途重发吃 `E409 …previously staged version`。**判据落在 `npm view`，不落在发布命令的输出上。**（本包 0.1.3 实测约 15 秒上架）
+> ④ **npm 恒定丢弃名为 `.gitignore` 的模板文件**（见 §九.5）——模板里那份必须叫 `gitignore`。
 
 > 🔴 **发了才动版本号**（层铁律「不发就别动版本号」）：`0.1.0 → 0.1.1` 的 bump 与发布**同批**完成，`npm run release:mark` 记基线——**前提是它已进 [门禁基线](../插件规范化层/06-门禁扩域与验收.md)**。
 > ✅ **2026-09-11（E6#95e + #94g）已照此执行**：先把它纳入基线（G4，否则 `release:mark` 也记不到它），再 bump `0.1.1` + 真发 + `release:mark`，`npm view create-linkdesk-plugin version` = `0.1.1` 实测一致。
+>
+> ✅ **2026-09-14（E6#103 · L7 7.6）：`0.1.2 → 0.1.3` 已 bump ＋ 已真发 ＋ 已 `release:mark`**（用户点头后执行）。
+> 这一笔一起发出去的：7.5 的模板四件（`.github/workflows/ci.yml` / `scripts/ci-verify.mjs` /
+> `vitest.config.ts` / `vitest.setup.ts` ＋ `package.json` 的 `verify`/`test` 与 4 个 devDeps）
+> ＋ 7.6 的建仓与 `pluginId` 显式声明。**实测读数**：货架 `latest = 0.1.3`（发完约 15 秒可见；
+> `versions` = `0.1.0/0.1.1/0.1.2/0.1.3`）· `dist.shasum` 与本地构建物一致（`d8c7906b…`）·
+> tarball **19 文件 / template 15 件齐含 `.github/`** · **从真货架下载 0.1.3 再真跑生成** ⇒
+> `.git` 在 · `main` · 1 笔初始提交 · `git status` 空 · `pluginId` 已是真名 · 生成物过**真 SDK validate** ·
+> 基线已记 `create-linkdesk-plugin@0.1.3（17 文件）`，`check-npm-release` **黄灯已灭**。
+> ⚠️ 发之前先修了两处：`bin` 改成不带 `./` 的规范形式（坑 ②）；发布命令补 `--registry`（坑 ①，**不改就会发向 npmmirror**）。
 
 ---
 
 ## 七·五、生成物形状**由门禁守着**（E6#95c）
 
 `scripts/check-scaffold.mjs` 已接进 `npm run check`，**每次提交前自动把模板真跑一遍**（生成到仓外一次性目录，不跑 `npm install`），
-再验 **8 条断言**：文件清单契约 / `pluginId` 已删 + `icon` 在位 / `plugin.json` 是合法 JSONC 且 `entry` 存在 /
+再验 **9 条断言**：文件清单契约 / **显式声明 `pluginId`** + `icon` 在位 / `plugin.json` 是合法 JSONC 且 `entry` 存在 /
 `CHANGELOG.md` 段标题能被 SDK 切段且版本号与 `plugin.json` 一致 / `scripts` ⊇ 7 条命令 / `i18n` 零死 key /
-占位符集合与 CLI `values` 相等且生成物无 `{{…}}` 残留 / **`npm pack` 的 tarball 不丢模板文件**。
+占位符集合与 CLI `values` 相等且生成物无 `{{…}}` 残留 / **`npm pack` 的 tarball 不丢模板文件** /
+**建仓三语义（仓外建·仓内不建·`--no-git` 不建）**。
 
 > 🔴 **E6#102（L7 7.5）同笔改了两处契约**：① `scripts` 契约 5 条 → **7 条**（+ `verify` / `test`）；
 > ② 占位符残留扫描**对 `.github/**` 开了口子**——GitHub Actions 的表达式就是 `${{ … }}` 形状，与
 > 脚手架的 `{{pluginName}}` 同形，不加这条豁免的话，模板里一句合法的 workflow 注释就会被判成
 > 「未替换的占位符」红。豁免范围**只有 `.github/`** 这一条路径，别的文件里出现 `{{…}}` 照旧判红。
+
+> 🔴 **E6#103（L7 7.6）加的是**断言 9 ＋ 一处**改判**：① **断言 2 反转**——过去「含 `pluginId` ⇒ 红」，
+> 现在「**缺 `pluginId` ⇒ 红**」（依据 = 硬约束 11 ＋ `#98g` 之后 18 只官方插件全部显式声明；旧断言的
+> 理由「E6#94 已删该字段」在 `#98g` 之后就过期了）；② **断言 9 = 建仓三语义**，两条**相反路径**都验
+> （只验一边 = 半边门禁），负控走 `node scripts/check-scaffold.mjs --self-test`（拿两个桩 CLI 复跑同一段
+> 判据：**不建仓 ⇒ 情形① 必红** / **无脑建仓 ⇒ 情形② 必红**）。⇒ 本门禁**需要 git 在 PATH 上**。
 
 **八条逐条验过红灯**（表见 [06 §三](../插件规范化层/06-门禁扩域与验收.md)）——**改模板后不用手动比对，跑 `npm run check` 即可**。
 
@@ -393,17 +470,35 @@ npm 自动识别 `create-*` 前缀包名为 `npm create` 的别名：
 
 > **教具层的判据写在这里，不写下来下一个人就会加回去。**
 
-### 9.1 为什么删 `pluginId` 那一行
+### 9.1 `pluginId` 那一行：v2 **删掉** → 7.6 **改判为「必须显式声明」**
 
-三条**独立**理由，任一成立即可：
+**v2（2026-09-11）当时的理由**（留档，别当它没发生过）：三条**独立**理由，任一成立即可——
 
-| # | 事实 | 出处 |
+| # | 当时的事实 | 出处 |
 |:--|:--|:--|
-| ① | **20/20 官方插件一只都没写 `pluginId`** | `grep -ln '"pluginId"' plugins/*/plugin.json` → 空 |
-| ② | **它是冗余的**——`{{pluginName}}` 就是**目录名**，而 `pluginId` 的兜底值**正是目录名** | `packages/plugin-sdk/src/validate.ts`：`pluginId = manifest.pluginId ?? sourceDirName` |
-| ③ | **schema 里没有 `pluginId` 这个属性**，顶层 `additionalProperties: true` ⇒ **写了不报错、不校验、静默接受** | `plugin.schema.json` |
+| ① | 官方插件一只都没写 `pluginId` | `grep -ln '"pluginId"' plugins/*/plugin.json` → 空 |
+| ② | **它是冗余的**——`{{pluginName}}` 就是目录名，而 `pluginId` 的兜底值**正是目录名** | `packages/plugin-sdk/src/validate.ts`：`pluginId = manifest.pluginId ?? sourceDirName` |
+| ③ | **schema 里没有 `pluginId` 这个属性**，顶层 `additionalProperties: true` ⇒ 写了不报错、不校验 | `plugin.schema.json` |
 
-⇒ **v1 教的是一个「写了等于没写、官方一只没用、schema 也不认」的字段。** v2 改成**注释教学**：能力保留（目录名要改时取消注释），冗余写法去掉。**别再加回来。**
+⇒ v2 的结论是「改成**注释教学**：能力保留（目录名要改时取消注释），冗余写法去掉」，并写了一句 **「别再加回来」**。
+
+🔴 **2026-09-14（`#98g` ＋ L7 第 7.6 轮）：三条全部失效，本条改判。**
+
+| # | v2 的理由 | 今天 |
+|:--|:--|:--|
+| ① | 官方 0 只写 | **实测 18/18 全部显式声明**（容器 `E:\linkdesk-plugins\official\*` 逐只 `grep '"pluginId"'` 都有）；硬约束 11 的正文说官方 **20 只**全声明 |
+| ② | 冗余 | 冗余**的事实**没变，**口径变了**——`pluginId` 是身份唯一键、**发布后不可变**（硬约束 11）；目录名兜底只为**兼容存量第三方插件**，新插件不该靠它 |
+| ③ | schema 不认 | **`#98g` 已把 `pluginId` 加进 schema**（`plugin.schema.json` 第 14 行）⇒ 它现在是正经字段，不再是「写了等于没写」 |
+
+⇒ **模板改为显式声明**：`"pluginId": "{{pluginName}}"`。⚠️ **只作废「别再加回来」这一句**，
+v2 那套推理本身当时是对的（**前提变了**）——`#98g` 之前，写它确实等于没写。
+
+**这一条值钱的教训（两句话）**：
+1. **教具的形态必须跟着 schema 走**——schema 加了字段、模板还教「不用写」，模板就成了**反面教材**，
+   而且这种「相反」**能活很久且没人报错**。
+2. **教具也要有门禁，门禁也要跟着 schema 走**：这次相反状态是 7.5 轮读工具链时**「撞见」并登记**的，
+   **不是任何门禁报出来的**——恰恰相反，`check-scaffold.mjs` 的**断言 2 当时正在反向钉死旧形态**
+   （「含 `pluginId` ⇒ 红」）。7.6 把断言 2 反转成「**缺 `pluginId` ⇒ 红**」，这类漂移才第一次有了机械兜底。
 
 ### 9.2 为什么 i18n 必须真调用
 

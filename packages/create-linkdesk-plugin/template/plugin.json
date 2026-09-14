@@ -9,9 +9,9 @@
   "$schema": "./node_modules/@linkdesk/plugin-sdk/schemas/plugin.schema.json",
 
   // ── 插件身份 ──
-  // 插件 ID 默认就是插件目录名（{{pluginName}}），所以这里不写。仅当「目录名要改、但安装身份
-  // 不能变」时才取消下面这行的注释——它是覆盖值，不是必填项。
-  // "pluginId": "{{pluginName}}",
+  // 🔴 插件 ID：**显式声明**。它是安装目录名 / 卸载墓碑 / 更新对账的唯一键，**发布后永不可变**。
+  // 它与插件所在的目录名**无关**（目录可以随便改）——所以别拿目录名当它的替身。
+  "pluginId": "{{pluginName}}",
   "name": "{{displayName}}", // 显示名——标签页 / 插件详情等 UI 出现处
   "version": "0.1.0", // 语义化版本 x.y.z——市场更新比较靠它；+1 时务必同笔补 CHANGELOG.md 的新段
   "description": "{{displayName}}——我的第一个 LinkDesk 插件", // 一句话描述（插件详情页展示）

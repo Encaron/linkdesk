@@ -156,6 +156,7 @@
 # 🔥 提交前必跑——一条命令 = 双工程 tsc + ESLint --max-warnings 0 + vitest + 网格/pool-css
 npm run check
 #   ⚠️ 其中 `check-bundled-freshness`（E6#101）**默认联网**比对官方目录；无网络时它会红——离线用 `--offline` 明示降级
+#   ⚠️ 其中 `check-scaffold`（E6#103）**需要 git 在 PATH**（断言要真建仓、真问 rev-parse）；缺 git 会明确报出来
 
 npm run sync:bundled # 出厂种子保鲜（E6#101）：按账拉齐箱内种子 + 修剪到随包集
                      #   `-- --latest` 读官方目录刷新账与种子（显式追新）｜`-- --offline` 断网只校验指纹
@@ -164,6 +165,10 @@ npm run sync:plugin-ci # 插件仓门禁铺装（E6#102）：把脚手架模板�
                      #   ⚠️ 只写本地、不碰 git 不推送；改完各仓要 `npm install --registry=https://registry.npmjs.org` 更 lock
                      #   ⚠️ 插件仓的门禁在**插件仓自己**里跑：`.github/workflows/ci.yml` + `npm run verify`
                      #     （严格腿 = SDK lint 全腿 + 跨插件 import + 字典完整性 + 声明自洽；壳仓的 check 够不着插件源码）
+npm run pull:plugins # 把本地容器（linkdesk-plugins\{official,third-party}）里的插件仓拉到最新（E6#103）
+                     #   ⚠️ **只拉不推**：只有 `git pull --ff-only`，没有 commit / push 任何路径（推送等用户点头 + 带代理）
+                     #   `-- --dry-run` 只列会动谁；本机出网要代理时 `HTTPS_PROXY=http://127.0.0.1:7890 npm run pull:plugins`
+                     #   🔴 顺手当红线哨兵：容器 / official / third-party 哪一级被 git init 了就红着喊出来
 npm run lint         # 单独跑 ESLint（含硬约束 13/14 自定义规则）
 npm run dev          # 纯前端预览（Vite）
 npm run electron:dev # 完整 Electron 桌面应用（E1 步 1 后可用）
