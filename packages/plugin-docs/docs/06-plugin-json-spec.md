@@ -228,6 +228,8 @@ Multi-theme package:
 | `distribution` | `string` | ⚠️ **Legacy field** (since the single-root flattening on 2026-09-05 it no longer maps to any directory; the install side always normalizes it to `user`; already marked deprecated in the schema). **Third parties must not fill this in** |
 | `factoryRole` | `string` | System slot role: `"settings"` \| `"marketplace"`. **Filling it in = form 2 (replace / switch into the slot); omitting it = form 1 (coexist as an ordinary view plugin)** — see "The `factoryRole` field in depth" below |
 | `iconSource` | `string` | `"codicon"` (default) / `"svg"` / `"url"` |
+| `marketIcon` | `string` | The **coloured identity image** for marketplace display (list row + detail header). Unlike `icon`: plugins on the icon bar use it to supply a colour image. Missing → falls back to `icon` → then to the unified default block. See "The marketplace image `marketIcon`" below |
+| `marketIconSource` | `string` | Same enum as `iconSource`. When the value is `resources/…` you can **just omit it** (inferred from the value) |
 | `description` | `string` | One-line description shown on the plugin detail page. Multi-line is supported |
 | `author` | `string` | Author name |
 | `sidebar` | `string` | Sidebar component path; only effective for the `view` type |
@@ -376,6 +378,42 @@ The icon appears in the icon bar, the tab bar, the welcome page and the [+] menu
 ```
 
 > **SVG + `fill="currentColor"` is recommended:** one file fits every size (24px in the icon bar, 14px in the tab bar, 24px/16px on the welcome page) and recolors automatically for light/dark themes. PNG gets blurry when scaled up and is not recommended.
+
+### The marketplace image `marketIcon` — what your plugin looks like in the market
+
+`icon` is the **small in-app icon** (icon bar / tab bar / [+] menu); `marketIcon` is the **coloured identity image shown in
+the marketplace list row and at the top of the detail page**. They can differ: a plugin that sits in the **icon bar** must
+draw `icon` as a single-colour line glyph (the icon bar force-tints it, so a coloured image turns into a blob), while the
+marketplace slot wants a branded colour image — that is when you add `marketIcon`. Plugins outside the icon bar normally
+do not need it (`icon` *is* the identity image).
+
+**Three tiers — pick what you need, all three are publishable:**
+
+| Tier | What you declare | What the marketplace shows |
+|:--|:--|:--|
+| **No image** | Declare neither | The unified default coloured block (good enough to publish) |
+| **One image** | `icon` only (coloured SVG) | The market row, the detail header and your own tab icon all show it |
+| **Two images** | `icon` (line glyph) + `marketIcon` (coloured identity image) | Line glyph in the UI, colour image in the marketplace |
+
+```json
+{ "icon": "resources/icon-bar.svg", "marketIcon": "resources/icon.svg" }
+```
+
+**The two data paths (not your concern, but they decide who sees which image):**
+
+| Who is looking | Read from | Value form |
+|:--|:--|:--|
+| **An installed user** | the `plugin.json` inside your package | A package-relative path (`resources/icon.svg`) — works offline |
+| **A not-yet-installed user** (browsing the market) | the catalog entry `marketplace.json` | An **absolute URL** — `publish` converts your relative path into a raw link automatically; **you never write the URL** |
+
+🔴 **Two rules:**
+
+1. Always write `icon` / `marketIcon` as a **package-relative path** (`resources/…`). `publish` turns it into
+   `https://raw.githubusercontent.com/<you>/<repo>/v<version>/resources/…` at release time — **writing a URL by hand is
+   redundant** and tends to go stale when the version changes. (An external CDN is still allowed: a full http(s) URL plus
+   `iconSource: "url"` is passed through untouched, but keeping it alive is on you.)
+2. **Changing the image = change the file + bump the version + `publish` again.** Installed users read the image from the
+   package, so they only get a new one with a new version; without a bump, whoever installed the old version never sees it.
 
 ### When an icon appears in the icon bar (appearsIn.iconBar)
 

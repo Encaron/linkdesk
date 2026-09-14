@@ -75,19 +75,47 @@ export function getListPluginManifests(): Array<{ pluginId: string; manifest: Pl
   return result;
 }
 
+/** 禁用列表投影行——字段与契约 `PluginInfoEntry`（contracts/linkdesk.d.ts）逐项对齐，本函数是它唯一生产者 */
+type DisabledPluginInfo = {
+  pluginId: string;
+  name: string;
+  description?: string;
+  version?: string;
+  core?: boolean;
+  updatable: boolean;
+  icon?: PluginManifest["icon"];
+  iconSource?: PluginManifest["iconSource"];
+  marketIcon?: PluginManifest["marketIcon"];
+  marketIconSource?: PluginManifest["marketIconSource"];
+};
+
 /** 获取禁用插件的基本信息（在 plugins/.disabled/ 下）
- *  E6#30.5b：带 core 旗标——详情页禁用分支卸载钮守 E6#18「core:true 详情页不画」（缓存 manifest 内含 core） */
-export function getDisabledPluginInfo(): Array<{ pluginId: string; name: string; description?: string; version?: string; core?: boolean; updatable: boolean }> {
+ *  E6#30.5b：带 core 旗标——详情页禁用分支卸载钮守 E6#18「core:true 详情页不画」（缓存 manifest 内含 core）
+ *  E6#106：带图标四字段——禁用行的展示图数据通道（同 E6#65a 给 list() 补图标通道的同一先例）。
+ *    禁用插件**仍在盘上**（disable 只记名单、目录原地不动），本地包内图标可达；不补这四个字段，禁用行
+ *    只能退到目录条目取图，而目录条目的图标是「未装态」形态（绝对 URL）⇒ **断网时禁用行裂图**。 */
+export function getDisabledPluginInfo(): DisabledPluginInfo[] {
   // B2 fix: 优先从缓存读——支持glob 外的插件（glob 中无清单）
   const cache = getMetadataCache();
   const disabled = getDisabledList();
-  const result: Array<{ pluginId: string; name: string; description?: string; version?: string; core?: boolean; updatable: boolean }> = [];
+  const result: DisabledPluginInfo[] = [];
   for (const pluginId of disabled) {
     // E6#73j（G6）：禁用**不改住所**（disable 只记名单，目录原地不动）——userData 家的禁用插件照样可更新
     const updatable = isPluginUpdatable(pluginId);
     const cached = cache[pluginId];
     if (cached) {
-      result.push({ pluginId, name: cached.name, description: cached.description, version: cached.version, core: cached.manifest?.core, updatable });
+      result.push({
+        pluginId,
+        name: cached.name,
+        description: cached.description,
+        version: cached.version,
+        core: cached.manifest?.core,
+        updatable,
+        icon: cached.manifest?.icon,
+        iconSource: cached.manifest?.iconSource,
+        marketIcon: cached.manifest?.marketIcon,
+        marketIconSource: cached.manifest?.marketIconSource,
+      });
       continue;
     }
     // 兜底：manifestIndex 中读（E6#9c——readAllManifests 水合 + glob 种子双源；此分支仅用于缓存未就绪的极端情况）
@@ -100,6 +128,10 @@ export function getDisabledPluginInfo(): Array<{ pluginId: string; name: string;
         version: m.version,
         core: m.core,
         updatable,
+        icon: m.icon,
+        iconSource: m.iconSource,
+        marketIcon: m.marketIcon,
+        marketIconSource: m.marketIconSource,
       });
     }
   }

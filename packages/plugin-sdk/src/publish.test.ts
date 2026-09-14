@@ -12,8 +12,11 @@
 import { describe, it, expect } from "vitest";
 import {
   buildCatalogEntry,
+  createEmptyCatalog,
   readmeRawUrl,
   sliceChangelogSection,
+  upsertCatalogEntry,
+  withCatalogIdentity,
   type ManifestView,
 } from "./publish.js";
 
@@ -237,5 +240,85 @@ describe("旧行为对照——朴素写法在这几条上会红", () => {
     expect(naiveSlice(SAMPLE, "9.9.9")).toBeUndefined(); // B2：两边都 undefined
     expect(naiveSlice(SAMPLE, "1.0.0")).toBe("- 最早的一条"); // 常规路径：两边都对
     expect(naiveSlice("## v1.0.0\n\n## v0.9.0\n- 旧\n", "1.0.0")).toBeUndefined(); // B3：两边都 undefined
+  });
+});
+
+/* ── E6#106（身份图上架链路）：目录条目的图标字段必须是「未装态可解析」形态 ──────────────
+ * 这一组的另一半在插件仓 marketplace 侧（CatalogRow 已装优先 + img onError 兜底）——
+ * 但**「选哪张图」这件事只有 plugin.json 知道**，所以本组是根因那一侧的钉子。 */
+
+describe("E6#106 withCatalogIdentity——图标字段转未装态可解析形态", () => {
+  const remote = { owner: "Encaron", repo: "linkdesk-plugin-demo" };
+  const tag = "v1.0.0";
+
+  it("包内相对路径 → 远端 raw 直链 + iconSource:\"url\"（两条字段都转）", () => {
+    const out = withCatalogIdentity(
+      { id: "demo", name: "Demo", version: "1.0.0", icon: "resources/icon-bar.svg", marketIcon: "resources/icon.svg" },
+      remote,
+      tag,
+    );
+    expect(out.icon).toBe("https://raw.githubusercontent.com/Encaron/linkdesk-plugin-demo/v1.0.0/resources/icon-bar.svg");
+    expect(out.marketIcon).toBe("https://raw.githubusercontent.com/Encaron/linkdesk-plugin-demo/v1.0.0/resources/icon.svg");
+    // 🔴 source 必须显式 "url"：消费端 resolvePluginIcon 对「无 source 的绝对 URL」会当包内路径拼 linkdesk://
+    expect(out.iconSource).toBe("url");
+    expect(out.marketIconSource).toBe("url");
+  });
+
+  it("本仓真正要修的那一格：图标栏插件（icon = Type-1 剪影 + marketIcon = Type-2 身份图）两条都进条目", () => {
+    const entry = buildCatalogEntry(
+      withCatalogIdentity(
+        { id: "serial", name: "串口", version: "1.0.9", icon: "resources/icon-bar.svg", marketIcon: "resources/icon.svg" },
+        remote,
+        tag,
+      ),
+      "https://example.invalid/a.zip",
+      1,
+      remote.owner,
+      "2026-09-14T00:00:00Z",
+      {},
+    );
+    expect(entry.marketIcon).toContain("/v1.0.0/resources/icon.svg");
+    expect(entry.marketIconSource).toBe("url");
+  });
+
+  it("作者自填 http(s) 绝对 URL → 原样留 + 补 iconSource:\"url\"", () => {
+    const out = withCatalogIdentity(
+      { id: "demo", name: "Demo", version: "1.0.0", icon: "https://cdn.example.invalid/i.svg" },
+      remote,
+      tag,
+    );
+    expect(out.icon).toBe("https://cdn.example.invalid/i.svg");
+    expect(out.iconSource).toBe("url");
+  });
+
+  it("lucide / codicon 图标名 → 原样留（不当路径拼 URL）；来源照声明，声明缺省照缺省", () => {
+    const withSource = withCatalogIdentity({ id: "demo", name: "Demo", version: "1.0.0", icon: "Smile", iconSource: "lucide" }, remote, tag);
+    expect(withSource.icon).toBe("Smile");
+    expect(withSource.iconSource).toBe("lucide");
+    const noSource = withCatalogIdentity({ id: "demo", name: "Demo", version: "1.0.0", icon: "terminal" }, remote, tag);
+    expect(noSource.icon).toBe("terminal"); // 消费端按值推断 codicon——两处判据同源，SDK 不替它决定
+    expect(noSource.iconSource).toBeUndefined();
+  });
+
+  it("无声明 → 不写键（零图可发：市场落统一默认彩色块，不塞空串）", () => {
+    const out = withCatalogIdentity({ id: "demo", name: "Demo", version: "1.0.0" }, remote, tag);
+    expect("icon" in out).toBe(false);
+    expect("marketIcon" in out).toBe(false);
+    const entry = buildCatalogEntry(out, "https://example.invalid/a.zip", 1, remote.owner, "2026-09-14T00:00:00Z", {});
+    expect("marketIcon" in entry).toBe(false);
+    expect("icon" in entry).toBe(false);
+  });
+
+  it("合并保历史：新版没声明 marketIcon 时，不让已收录条目塌成默认块", () => {
+    const first = buildCatalogEntry(
+      withCatalogIdentity({ id: "demo", name: "Demo", version: "1.0.0", marketIcon: "resources/icon.svg" }, remote, tag),
+      "https://example.invalid/v1.zip", 1, remote.owner, "2026-09-14T00:00:00Z", {},
+    );
+    const second = buildCatalogEntry(
+      withCatalogIdentity({ id: "demo", name: "Demo", version: "1.1.0" }, remote, "v1.1.0"),
+      "https://example.invalid/v11.zip", 1, remote.owner, "2026-09-15T00:00:00Z", {},
+    );
+    const merged = upsertCatalogEntry(upsertCatalogEntry(createEmptyCatalog(), first), second);
+    expect(merged.plugins[0]!.marketIcon).toBe(first.marketIcon);
   });
 });

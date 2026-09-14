@@ -17,6 +17,9 @@
  *             · `readmeUrl` ← 工程根有 `README.md` 时填 raw.githubusercontent.com/{owner}/{repo}/{tag}/README.md
  *             · `versions[0].changelog` ← 工程根 `CHANGELOG.md` 切出「版本号 === manifest.version」那一段正文
  *           **两者缺省即不写键**（无 README / 无 CHANGELOG / 切不到该版本）——写了 404、写空串都是骗人。
+ *           E6#106 同笔接通**身份图**：条目的 `icon`/`marketIcon` 由 `withCatalogIdentity` 转成绝对 URL
+ *           （包内相对路径 → raw 直链）。**不转 = 未装用户看到的插件图标恒 404**——目录条目是「未装态」
+ *           唯一数据源，而包内路径只有已装才可达。
  *   4. 发前预览确认（#26b「发布前预览+确认」）：打印 id/name/version/author/文件大小/目标仓库/tag
  *      → [y/N]；`--yes` 跳过（CI）；`--dry-run` 只打印将做动作不碰网络。
  *
@@ -57,8 +60,13 @@ export interface CatalogPluginEntry {
   version: string;
   description?: string;
   author?: { name: string; url?: string };
+  /** 界面小图标（已装态读包内；未装态读本字段）——**发布时 URL 化**，见 withCatalogIdentity */
   icon?: string;
   iconSource?: string;
+  /** E6#106：插件身份彩色图（Type-2）——图标栏 4 只插件的 `icon` 是 Type-1 剪影，**市场展示位必须读这一张**；
+   *  此前目录条目只带 `icon` ⇒ 市场行显剪影而本地显身份图（同一插件两张脸）。发布时 URL 化，同 `icon`。 */
+  marketIcon?: string;
+  marketIconSource?: string;
   category?: string;
   downloadUrl: string;
   size?: number;
@@ -237,6 +245,9 @@ export interface ManifestView {
   author?: string;
   icon?: string;
   iconSource?: string;
+  /** E6#106：Type-2 身份彩色图（图标栏插件才有；非图标栏插件 `icon` 即身份图） */
+  marketIcon?: string;
+  marketIconSource?: string;
 }
 
 export function collectManifestView(manifest: unknown, sourceDirName: string): ManifestView {
@@ -254,6 +265,8 @@ export function collectManifestView(manifest: unknown, sourceDirName: string): M
     author: str(m.author),
     icon: str(m.icon),
     iconSource: str(m.iconSource),
+    marketIcon: str(m.marketIcon),
+    marketIconSource: str(m.marketIconSource),
   };
 }
 
@@ -282,6 +295,9 @@ export function buildCatalogEntry(
     author: { name: v.author ?? owner },
     ...(v.icon !== undefined ? { icon: v.icon } : {}),
     ...(v.iconSource !== undefined ? { iconSource: v.iconSource } : {}),
+    // E6#106：身份图随条目——值应为 withCatalogIdentity 转换过的 URL 形态（缺省不写键）
+    ...(v.marketIcon !== undefined ? { marketIcon: v.marketIcon } : {}),
+    ...(v.marketIconSource !== undefined ? { marketIconSource: v.marketIconSource } : {}),
     ...(extras.readmeUrl !== undefined ? { readmeUrl: extras.readmeUrl } : {}),
     downloadUrl,
     size,
@@ -324,6 +340,9 @@ export function upsertCatalogEntry(catalog: MarketplaceCatalog, entry: CatalogPl
       // 保历史字段：新 manifest 没填的（icon/description 等）回落到旧值，避免发布抖动丢展示数据
       icon: entry.icon ?? existing.icon,
       iconSource: entry.iconSource ?? existing.iconSource,
+      // E6#106：身份图同待遇——作者删掉 marketIcon 声明时，不让目录条目跟着塌成剪影
+      marketIcon: entry.marketIcon ?? existing.marketIcon,
+      marketIconSource: entry.marketIconSource ?? existing.marketIconSource,
       description: entry.description ?? existing.description,
       category: entry.category ?? existing.category,
       minAppVersion: entry.minAppVersion ?? existing.minAppVersion,
@@ -352,6 +371,53 @@ export function releaseDownloadUrl(remote: GitHubRemote, tag: string, assetName:
  *  那份 README 同源（同一 commit）；用 main 会让「未装浏览者看到的」与「装上后看到的」是两份内容。 */
 export function readmeRawUrl(remote: GitHubRemote, tag: string): string {
   return `https://raw.githubusercontent.com/${remote.owner}/${remote.repo}/${tag}/README.md`;
+}
+
+/** E6#106：**包内相对路径 → 远端 raw 直链**（本仓唯一一处 URL 构造——与 readmeRawUrl 同 tag 同形态）。
+ *
+ *  为什么必须 URL 化（否则市场那一半永远好不了）：目录条目里的 `icon: "resources/icon.svg"` 是**包内**路径，
+ *  消费端 `resolvePluginIcon` 只能把它拼成 `linkdesk://<插件id>/resources/icon.svg`——该协议只在**本地已装**
+ *  的插件根里找文件。于是**插件没装时市场行图标恒 404**（用户看到的「卸掉之后图标就没了」即此）。
+ *  线上 `first-run-setup` 那条手写条目用的是绝对 URL + `iconSource:"url"`，形态早就对——本函数把这条形态
+ *  变成 publish 自动行为（作者零声明）。
+ *
+ *  ⚠️ 只服务**包内资产路径**；`lucide`/`codicon` 名与作者自填的 http(s) URL 不走这里（见 withCatalogIdentity）。 */
+export function assetRawUrl(remote: GitHubRemote, tag: string, relPath: string): string {
+  return `https://raw.githubusercontent.com/${remote.owner}/${remote.repo}/${tag}/${relPath.replace(/^\.?\//, "")}`;
+}
+
+/** 判「这个值是不是包内资产路径」——判据与消费端 `resolvePluginIcon`（src/components/shared/plugin-icon/
+ *  iconUtils.ts，@linkdesk/ui）**逐字对齐**：含 `/` 或 `.` ⇒ 按路径推断；否则按 codicon 名。
+ *  两处判据必须同一套，否则会出现「SDK 当图标名发出去、市场当路径收」这类两侧各自自洽的错。 */
+function looksLikeAssetPath(value: string): boolean {
+  return value.includes("/") || value.includes(".");
+}
+
+/**
+ * E6#106：目录条目身份字段裁决——把作者在 `plugin.json` 里的声明转成**未装态可解析的形态**。
+ *
+ * 三档（与作者面文档「零图 / 一张 icon / 可选 marketIcon」三档契约同构）：
+ *   - 作者自填 http(s) 绝对 URL → 原样留，**补 `iconSource:"url"`**（不补会被当包内路径拼成 linkdesk://，
+ *     已由 `resolvePluginIcon` 的推断规则决定，故必须显式）。
+ *   - 包内相对路径（`resources/icon.svg`）→ `assetRawUrl(...)` 转绝对 URL + `iconSource:"url"`。
+ *   - `lucide` / `codicon` 图标名 → **原样留**（消费端白名单/codicon 字体渲染）；作者声明的 iconSource 照带，
+ *     声明缺省也照缺省（消费端按值推断，两处判据同源）。
+ *   - 无值 → **不写该键**（沿用本仓「缺省即不写该键」纪律）。
+ */
+export function withCatalogIdentity(v: ManifestView, remote: GitHubRemote, tag: string): ManifestView {
+  const resolve = (value?: string, source?: string): { value?: string; source?: string } => {
+    if (value === undefined) return {};
+    if (/^https?:\/\//i.test(value)) return { value, source: "url" };
+    if (looksLikeAssetPath(value)) return { value: assetRawUrl(remote, tag, value), source: "url" };
+    return { value, source };
+  };
+  const icon = resolve(v.icon, v.iconSource);
+  const marketIcon = resolve(v.marketIcon, v.marketIconSource);
+  return {
+    ...v,
+    ...(icon.value !== undefined ? { icon: icon.value, iconSource: icon.source } : {}),
+    ...(marketIcon.value !== undefined ? { marketIcon: marketIcon.value, marketIconSource: marketIcon.source } : {}),
+  };
 }
 
 /** 去版本号前导 `v`——段标题与 plugin.json 两侧同规则，免「v1.0.0 vs 1.0.0」假不等 */
@@ -592,6 +658,15 @@ function collectPreview(root: string): PublishPreview {
   };
 }
 
+/** E6#106：发布预览里那行「市场行会显哪张图」——把三档契约在发布前摊开（缺身份图不是错误，
+ *  但作者有权先知道「我这只插件在市场里会显默认彩块」）。 */
+function identityOf(view: ManifestView, remote: GitHubRemote, tag: string): string {
+  const v = withCatalogIdentity(view, remote, tag);
+  if (v.marketIcon) return `✓ 身份图 marketIcon（Type-2，市场行/详情顶显这张）`;
+  if (v.icon) return `✓ icon（非图标栏插件：icon 即身份图，市场行显它）`;
+  return "✗ 未声明图标 → 市场落统一默认彩色块（零图可发，可接受）";
+}
+
 function renderPreview(p: PublishPreview): string {
   const lines = [
     "",
@@ -603,6 +678,8 @@ function renderPreview(p: PublishPreview): string {
     `  │ 发布号    : ${p.tag}`,
     `  │ 未装展示  : README ${p.readmeUrl ? "✓ 已随条目（远端直链）" : "✗ 工程根无 README.md → 不写 readmeUrl"}`,
     `  │             日志 ${p.changelog ? `✓ 已切出 v${p.version} 正文（${p.changelog.split("\n").length} 行）` : `✗ 工程根 CHANGELOG.md 无 v${p.version} 段 → 不写 changelog`}`,
+    // E6#106：把「市场行会显哪张图」在发布前摊开——身份图缺失是可发布但会显默认彩块的状态，作者有权先知道
+    `  │             图标 ${identityOf(p.view, p.remote, p.tag)}`,
     "  │ 将做      : 创建 GitHub Release → 上传 asset → 更新该仓库根 marketplace.json",
     "  └─────────────────────────────────────────",
   ];
@@ -657,10 +734,19 @@ export async function runPluginPublish(root: string, opts: PublishOptions = {}):
   // 4. 更新 marketplace.json（含新条目 / 既有条目版本历史拼接——描述/图标等回落旧值见 upsertCatalogEntry）
   const read = await apiReadCatalog(token, remote);
   const existing = read ? read.catalog : createEmptyCatalog();
-  const entry = buildCatalogEntry(preview.view, url, preview.sizeBytes, remote.owner, new Date().toISOString(), {
-    readmeUrl: preview.readmeUrl,
-    changelog: preview.changelog,
-  });
+  // E6#106：身份字段（icon/marketIcon）先转「未装态可解析」形态——包内相对路径 → 远端 raw 直链。
+  // 不做这一步，未装用户看到的插件图标恒是 404（目录里存的是 `resources/icon.svg` 这种包内路径）。
+  const entry = buildCatalogEntry(
+    withCatalogIdentity(preview.view, remote, tag),
+    url,
+    preview.sizeBytes,
+    remote.owner,
+    new Date().toISOString(),
+    {
+      readmeUrl: preview.readmeUrl,
+      changelog: preview.changelog,
+    },
+  );
   const merged = upsertCatalogEntry(existing, entry);
   await apiWriteCatalog(token, remote, id, read?.sha ?? null, merged);
 

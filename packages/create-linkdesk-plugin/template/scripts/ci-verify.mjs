@@ -7,7 +7,7 @@
  * 搬走的一共六类检查：编译图 / eslint（含 linkdesk/* 自定义规则）/ vitest / 体量 / i18n / 主题审计。
  * 本脚本 + ci.yml + vitest 配置 = 给插件仓装回来的那一份，否则「独立」就是拿「质量真空」换的。
  *
- * ── 四段（每段独立判红；**没有对象也要说话**，不许静默绿）──
+ * ── 五段（每段独立判红；**没有对象也要说话**，不许静默绿）──
  *   ① lint 严格腿   —— `@linkdesk/plugin-sdk` 的 eslint 规则腿 + css/font-scale/spacing 三条扫描腿。
  *                     🔴 SDK 的 `npm run lint` 是 **WARN 级、永不 fail**（07 §六·三档：警告不是封锁，
  *                     作者本地不被拦——那是刻意的）。CI 要的是**拦截**，所以本段把同一份报告按
@@ -24,6 +24,11 @@
  *                     文件在；`contributes.themes` / `iconThemes` 的数据文件在且过各自的 schema；
  *                     主题 recipe 引用的 `linkdesk://<id>/…` 资产在（且 id 就是本插件）；floatingPanel
  *                     三向自洽（viewId ↔ views[].id ↔ render）。
+ *   ⑤ 目录条目形态  —— **发布产物** `marketplace.json` 里出现的图标字段（`icon` / `marketIcon`）必须是
+ *                     绝对 URL + 来源标 `"url"`（E6#106）。理由：目录条目是**未装用户**看图时的唯一数据源，
+ *                     而包内相对路径（`resources/icon.svg`）在未装态恒 404（`linkdesk://` 只在本地已装的
+ *                     插件根里找文件）。`publish` 自 E6#106 起自动 URL 化；本段是那条纪律的机械兜底——
+ *                     它看不见「谁是图标栏插件」（不看插件类型，只看字段形态，硬约束 10 零 ID 知识）。
  *
  * ── 为什么 ③ 的覆盖度只能黄灯（不是漏做）──
  * `t()` 的 key 可以合法地住在**应用级字典**里（`lang-defaults` 插件，运行时由它经 LanguageRegistry
@@ -32,7 +37,7 @@
  * 同款理由）。所以：字典**文件本身**的问题判红（③ 上半），**跨仓才能回答**的覆盖度只报告。
  *
  * 用法：node scripts/ci-verify.mjs     （工程根 = cwd）
- * 退出码 0 = 四段全过；1 = 有红灯（逐条打印缺什么）
+ * 退出码 0 = 五段全过；1 = 有红灯（逐条打印缺什么）
  */
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { basename, dirname, join, relative, resolve, sep } from "node:path";
@@ -128,7 +133,7 @@ const legCount = (label) => report?.legs.find((l) => l.label === label)?.violati
 const allRows = report?.eslintRows ?? [];
 const ruleNotFound = allRows.filter((r) => RULE_NOT_FOUND_RE.test(r.message));
 const strictEslintRows = allRows.filter((r) => !RULE_NOT_FOUND_RE.test(r.message));
-/** 判红的三样：真 eslint 偏离 + css 硬编码腿（硬约束 1 的 .css 半边，eslint 到不了 .css）+ 见下 ②③④ */
+/** 判红的三样：真 eslint 偏离 + css 硬编码腿（硬约束 1 的 .css 半边，eslint 到不了 .css）+ 见下 ②③④⑤ */
 const cssLegViolations = legCount("check-css-hardcode");
 const strictLintViolations = strictEslintRows.length + cssLegViolations;
 /** 只报告不拦的两条腿：字号度量与 4px 节奏——属「审美校准」（SDK 07 §六），存量偏离多且修它们要动插件源码 */
@@ -427,6 +432,60 @@ if (!manifest) {
   }
   if (themeAssetRefs.size > 0) ok.push(`${themeAssetRefs.size} 处 linkdesk:// 资产引用`);
 
+  /* ⑤ E6#106：目录条目的图标字段必须是**未装态可解析**的形态（绝对 URL）。
+   *
+   * 为什么这条能是纯字段断言、不需要知道「谁是图标栏插件」：无论哪种插件，**未装用户**看市场行时
+   * 目录条目是唯一数据源，而包内相对路径（`resources/icon.svg`）在未装态恒 404——「目录里存相对路径」
+   * 这件事本身就不成立，与插件类型无关。故断言只取形态，零插件 ID 知识（硬约束 10）。
+   *
+   * 为什么归 CI 而不是壳仓门禁：条目是**各仓自己的产物**，壳仓的 `npm run check` 够不着别人的仓。
+   * 与 ④ 段其它腿不同，本腿的对象是 `marketplace.json`（发布产物）——未发布过（无该文件）即跳过。 */
+  const catalogPath = resolve(ROOT, "marketplace.json");
+  if (!existsSync(catalogPath)) {
+    line("   ℹ ⑤ 目录条目图标形态：本仓无 marketplace.json（尚未发布过）——跳过。");
+  } else {
+    const catProblems = [];
+    const catOk = [];
+    try {
+      const cat = JSON.parse(readFileSync(catalogPath, "utf8"));
+      const entries = Array.isArray(cat) ? cat : (cat.plugins ?? []);
+      for (const e of entries) {
+        if (!e || typeof e !== "object") continue;
+        for (const key of ["icon", "marketIcon"]) {
+          const v = e[key];
+          if (v === undefined) continue;
+          if (/^https?:\/\//i.test(v)) {
+            // 形态对：绝对 URL。再钉一句「来源必须显式标 url」——消费端 resolvePluginIcon 对
+            // 「无 source 的绝对 URL」会当包内路径拼出 linkdesk://（两处判据不同源就会出这种错）。
+            const srcKey = key === "icon" ? "iconSource" : "marketIconSource";
+            if (e[srcKey] !== "url") {
+              catProblems.push(
+                `${key} 是绝对 URL 但 ${srcKey} ≠ "url"（现为 ${JSON.stringify(e[srcKey])}）——` +
+                  `未装端会把它当包内路径拼 linkdesk://`,
+              );
+            } else {
+              catOk.push(key);
+            }
+          } else {
+            catProblems.push(
+              `${key} = ${JSON.stringify(v)} 是**包内相对路径**——目录条目是未装用户的唯一图源，` +
+                `相对路径在未装态恒 404。跑 \`npm run publish\` 让 SDK 自动转绝对 URL（E6#106）。`,
+            );
+          }
+        }
+      }
+    } catch (err) {
+      catProblems.push(`marketplace.json 解析失败：${err instanceof Error ? err.message : String(err)}`);
+    }
+    if (catProblems.length > 0) {
+      fail(`⑤ 目录条目图标形态：${catProblems.length} 处不可达/不合规\n${catProblems.map((p) => `       · ${p}`).join("\n")}`);
+    } else {
+      line(
+        `   ✅ ⑤ 目录条目图标形态：${catOk.length > 0 ? `${catOk.join("、")} 均为绝对 URL（未装态可达）` : "本仓条目未声明图标（零图可发，允许）"}`,
+      );
+    }
+  }
+
   // floatingPanel 声明自洽（壳侧 floatingPanelDeclarers.test.ts 的仓内等价物）
   const fp = manifest.contributes?.floatingPanel;
   if (fp && typeof fp === "object") {
@@ -479,5 +538,5 @@ if (failures.length > 0) {
   console.error(`  eslint-disable 注释 + 理由（见上面报告尾部），别把检查删了。`);
   process.exitCode = 1;
 } else {
-  console.log(`✅ 插件仓自检全过（${pluginId}）——lint / 跨插件 / 字典 / 声明自洽四段。`);
+  console.log(`✅ 插件仓自检全过（${pluginId}）——lint / 跨插件 / 字典 / 声明自洽 / 目录条目形态五段。`);
 }

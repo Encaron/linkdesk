@@ -228,6 +228,8 @@ my-plugin/
 | `distribution` | `string` | ⚠️ **遗留字段**（2026-09-05 塌平单根后不再对应任何目录，安装侧恒归一化为 `user`；schema 已标废弃）。**第三方请勿填写** |
 | `factoryRole` | `string` | 系统插槽角色：`"settings"` \| `"marketplace"`。**填 = 形态二（替换/进槽位切换）；不填 = 形态一（普通视图插件并存）**——详见下方「`factoryRole` 字段详解」 |
 | `iconSource` | `string` | `"codicon"`（默认）/ `"svg"` / `"url"` |
+| `marketIcon` | `string` | 市场展示位的**身份彩色图**（列表行 + 详情顶）。与 `icon` 不同：进图标栏的插件用它补一张彩色图。缺省 → 回退 `icon` → 再缺 → 统一默认彩色块。详见下方「市场展示图 `marketIcon`」 |
+| `marketIconSource` | `string` | 与 `iconSource` 同枚举。写 `resources/…` 时**省略即可**（按值推断） |
 | `description` | `string` | 一句话描述，插件详情页展示。支持多行 |
 | `author` | `string` | 作者名 |
 | `sidebar` | `string` | 侧栏组件路径，仅 `view` 类型有效 |
@@ -376,6 +378,39 @@ my-plugin/
 ```
 
 > **推荐 SVG + `fill="currentColor"`：** 一个文件适配所有尺寸（图标栏 24px、标签栏 14px、欢迎页 24px/16px），亮/暗主题自动变色。PNG 放大会模糊，不推荐。
+
+### 市场展示图 `marketIcon`——你的插件在市场里「长什么样」
+
+`icon` 是**界面小图标**（图标栏 / 标签栏 / [+] 菜单）；`marketIcon` 是**插件在市场列表行与详情页顶部的身份彩色图**。
+两者可以不是同一张：**进了图标栏的插件**，`icon` 必须是单色线稿（图标栏会强制着色成一种颜色，彩色图会糊成一块），
+而市场位该显一张有品牌色的图——这时就用 `marketIcon` 补第二枚。没进图标栏的插件一般不需要它（`icon` 本身就是身份图）。
+
+**三档契约——按需选，三档都能上架：**
+
+| 档 | 怎么声明 | 市场里显示 |
+|:--|:--|:--|
+| **零图** | 都不写 | 统一默认彩色块（够用即可上架） |
+| **一张图** | 只写 `icon`（彩色 SVG） | 市场行 + 详情顶 + 你的标签页图标都显它 |
+| **两张图** | `icon`（界面线稿）+ `marketIcon`（彩色身份图） | 界面用线稿、市场用彩色图 |
+
+```json
+{ "icon": "resources/icon-bar.svg", "marketIcon": "resources/icon.svg" }
+```
+
+**两条数据路（你不用管，但它决定「谁看得到哪张图」）：**
+
+| 谁在看 | 从哪读 | 值是什么形态 |
+|:--|:--|:--|
+| **已装用户** | 你包里的 `plugin.json` | 包内相对路径（`resources/icon.svg`）——断网也显 |
+| **未装用户**（逛市场） | 目录条目 `marketplace.json` | **绝对 URL**——`publish` 自动把你的包内路径转成 raw 直链，**你不用写 URL** |
+
+🔴 **两条纪律：**
+
+1. `icon` / `marketIcon` 一律写**包内相对路径**（`resources/…`）。`publish` 会在发布时自动转成
+   `https://raw.githubusercontent.com/<你>/<仓库>/v<版本>/resources/…`——**写 URL 是多余的**，而且换版本后容易过期。
+   （真要用外部 CDN 也可以：写完整 http(s) URL + `iconSource: "url"`，原样保留；但长期有效性得你自己保证。）
+2. **换图 = 改文件 + bump 版本 + 重新 `publish`**。已装用户的图从包里读，只随版本更新获得；不 bump 版本，
+   装了旧版的人永远看不到新图。
 
 ### 图标栏出现规则（appearsIn.iconBar）
 

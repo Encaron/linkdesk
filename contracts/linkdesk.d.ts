@@ -1191,7 +1191,11 @@ export interface PluginInstallResult {
 }
 /** 禁用/卸载列表条目——loader getDisabledPluginInfo/getUninstalledPluginInfo 序列化形状（PluginListSubset 的再子集）
  *  E6#30.5b：core 旗标透传——list() EXCLUDES 禁用插件，禁用态详情页卸载钮守 E6#18「core:true 详情页不画」
- *  只能经此拿到 core（缓存 manifest 内取值，纯新增可选字段零回归）。 */
+ *  只能经此拿到 core（缓存 manifest 内取值，纯新增可选字段零回归）。
+ *  E6#106：+ 图标四字段（icon/iconSource/marketIcon/marketIconSource）——**同 #65a 给 list() 补图标通道的
+ *  同一先例**。禁用行此前只能退到目录条目取图，而目录条目的图标已改绝对 URL（未装态形态）⇒ 禁用行
+ *  （明明插件还在盘上）会静默改拉远程图，断网即裂。补通道后裁决序与其它位统一：已装优先 → 目录 → 默认块。
+ *  未安装列表（getUninstalledPluginInfo）**不补**：插件已不在盘上，本地无图可读，目录条目本就是唯一来源。 */
 export interface PluginInfoEntry {
     pluginId: string;
     name: string;
@@ -1201,6 +1205,12 @@ export interface PluginInfoEntry {
     /** E6#73j（G6）：同 `PluginListEntry.updatable` 的住所判据——禁用**不改住所**（disable 只记名单，
      *  目录原地不动）⇒ userData 家的禁用插件照样可更新，app 树的则否。 */
     updatable?: boolean;
+    /** E6#106：界面小图标（Type-1 剪影 for 图标栏插件 / Type-2 身份图 for 其余） */
+    icon?: string;
+    iconSource?: "codicon" | "svg" | "url" | "lucide";
+    /** E6#106：插件身份彩色图（Type-2）——行/详情展示位的第一候选 */
+    marketIcon?: string;
+    marketIconSource?: "codicon" | "svg" | "url" | "lucide";
 }
 /** E6#11c/#13b（段 B）：更新结果——PluginInstallResult 的更新扩展。
  *  upToDate = catalog 直答已是最新（success:true 但非"更新发生"——UI 显示"已是最新"非红错误）；

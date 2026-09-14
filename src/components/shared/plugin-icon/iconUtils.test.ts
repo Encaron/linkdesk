@@ -44,6 +44,28 @@ describe("pickIdentityArt（身份图 = marketIcon ?? icon ?? 默认彩色块，
       iconSource: "url",
     });
   });
+
+  it("E6#106 市场行两态：已装读包内身份图，未装读目录身份图——两态都不再落 Type-1 剪影", () => {
+    // 一个图标栏插件的两个数据源（real-world 形态）：
+    //   已装 manifest：icon = Type-1 剪影（包内相对路径）、marketIcon = Type-2 身份图
+    //   目录条目：icon / marketIcon 均已 URL 化（未装态形态：绝对 URL + source "url"）
+    const installed = { icon: "resources/icon-bar.svg", marketIcon: "resources/icon.svg" };
+    const catalog = {
+      icon: "https://raw.githubusercontent.com/owner-two/demo-repo/v1.0.0/resources/icon-bar.svg",
+      iconSource: "url" as const,
+      marketIcon: "https://raw.githubusercontent.com/owner-two/demo-repo/v1.0.0/resources/icon.svg",
+      marketIconSource: "url" as const,
+    };
+    // 已装：候选序「已装 → 目录」→ 取**包内**身份图（本地、断网可用）
+    expect(pickIdentityArt(installed, catalog)).toEqual({ icon: "resources/icon.svg", iconSource: undefined });
+    // 未装（第一候选 undefined）→ 取**目录**身份图（URL 可达）——不是那张 icon-bar 剪影
+    expect(pickIdentityArt(undefined, catalog)).toEqual({ icon: catalog.marketIcon, iconSource: "url" });
+    // 回归钉子：目录条目若漏带 marketIcon（= 本 bug 原样），这里就退成剪影——正是要防的那张脸
+    expect(pickIdentityArt(undefined, { icon: catalog.icon, iconSource: "url" })).toEqual({
+      icon: catalog.icon,
+      iconSource: "url",
+    });
+  });
 });
 
 describe("默认彩色块资产形态（48×48 玻璃磁贴语法）", () => {
