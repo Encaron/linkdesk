@@ -10,12 +10,21 @@
  * 白名单（plugin.json / i18n / icon / README / CHANGELOG），纯数据包的**本体**恰恰是白名单之外的
  * 数据文件（`themes/*.json` / `icons/**` / `en.json`），只能走「整树」。
  *
- * 排除清单（两个理由，缺一不可）：
+ * 排除清单（三个理由）：
  *   - **构建/工具产物**：`node_modules/`、`dist/`、`<id>.linkdesk-plugin`（自己上一次的产物）、`*.tgz`
  *     ——独立仓里跑过 `npm install` 之后，不排会把整个 node_modules 打进 zip。
  *   - **npm 元数据**：`package.json` / `package-lock.json`——它们描述「怎么构建这个包」，不是插件内容。
  *     这个取舍与 `build` 一致（build 的静态清单从不拷 package.json）。
+ *   - 🔴 **仓库面工具文件**（2026-09-15 补）：`AGENTS.md`（给在这个仓里干活的 AI 看的仓面说明）、
+ *     `marketplace.json`（`publish` 写的**目录条目**——消费者全部经 GitHub Contents API 读**仓根**那份，
+ *     没有任何代码从「已装插件目录」读它）、`scripts/ci-verify.mjs`（仓自带门禁的入口）。
+ *     **判据 = 它是不是「插件内容」**：这三个都只服务「维护这个仓」，装插件的人一个都用不上。
+ *     ⚠️ 漏排的实际代价不是"多几个文件"——是**出厂件因此不可能由仓内重建**：同一份源码，
+ *     多一个仓面文件就换一个内容指纹，而「箱内 ↔ 账」两道门禁都看不见这种漂移。
+ *     与 `build` 一致（build 的静态清单同样不拷它们）。
  *   隐藏项（`.` 开头，含 `.git` / `.github` / `.gitignore` / `.npmrc`）一并排除——同属工具面。
+ *   ⚠️ **`LICENSE` 反过来要随包**（不排）：MIT 这类条款要求「副本里带版权声明」，而 zip 才是
+ *     用户真正拿到的那份；`build` 通道白名单里也同笔补了它（见 vite-config.ts 的拷贝清单）。
  *
  * 🔴 **两条与壳仓脚本必须逐字节一致的行为**（否则同一插件走「壳内」与「插件仓」两条路径产出的内容
  * 指纹不同，`scripts/check-bundled-version-bump.mjs` 的内容指纹门禁会互相打架）：
@@ -46,8 +55,11 @@ export const ZIP_ENTRY_DATE = new Date(Date.UTC(2020, 0, 1, 0, 0, 0));
 /** 排除的目录名（任意层级）——构建/工具产物 */
 const EXCLUDED_DIRS = new Set(["node_modules", "dist"]);
 
-/** 排除的文件名（任意层级）——npm 元数据 + 本通道自己的产物 */
-const EXCLUDED_FILES = new Set(["package.json", "package-lock.json"]);
+/** 排除的文件名（任意层级）——npm 元数据 + 仓库面工具文件（见文件头「排除清单」） */
+const EXCLUDED_FILES = new Set(["package.json", "package-lock.json", "AGENTS.md", "marketplace.json"]);
+
+/** 按**相对路径**排除——精确到一条路径，避免「同名文件在别处可能是插件内容」的误伤 */
+const EXCLUDED_REL_PATHS = new Set(["scripts/ci-verify.mjs"]);
 
 /**
  * 文本条目行尾归一——**判据照抄 git 的 `text=auto`**（不另立一套分类）：前 8000 字节含 NUL ⇒ 二进制，
@@ -77,6 +89,7 @@ export function isPackableRelPath(rel: string): boolean {
   const parts = rel.split("/");
   if (parts.some((p) => p.startsWith("."))) return false; // 隐藏项（.git/.github/.gitignore/.npmrc…）
   if (parts.some((p) => EXCLUDED_DIRS.has(p))) return false;
+  if (EXCLUDED_REL_PATHS.has(rel)) return false;
   const name = parts[parts.length - 1];
   if (EXCLUDED_FILES.has(name)) return false;
   if (name.endsWith(".linkdesk-plugin") || name.endsWith(".tgz")) return false;

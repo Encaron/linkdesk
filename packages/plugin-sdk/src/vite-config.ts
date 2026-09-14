@@ -559,6 +559,12 @@ export function defineLinkdeskPluginConfig(options: LinkdeskPluginOptions = {}):
           copyReadmeReferencedAssets(root, pkgDir, readFileSync(join(root, "README.md"), "utf8"));
         }
         copyFileInto(root, pkgDir, "CHANGELOG.md");
+        // 分发件随包带**许可证**（2026-09-15 补）：MIT 这类条款要求「所有副本或实质性部分里带版权声明」，
+        //   而 zip 才是用户真正拿到的那一份——不随包 = 声明没跟着软件走。三个常见命名取第一个命中的。
+        //   （`pack` 通道本来就整树带它；这里补的是 `build` 通道的白名单。）
+        for (const licenseName of ["LICENSE", "LICENSE.md", "LICENSE.txt"]) {
+          if (copyFileInto(root, pkgDir, licenseName)) break;
+        }
         const iconRel = (manifest as { icon?: unknown })?.icon;
         if (typeof iconRel === "string" && !iconRel.includes("\\")) copyFileInto(root, pkgDir, iconRel);
         // E6#67（双图标资产随包）：marketIcon（市场展示图 cover art）同 icon 待遇——声明路径拷进 zip，
