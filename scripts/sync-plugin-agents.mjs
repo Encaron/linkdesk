@@ -28,6 +28,11 @@
  *   node scripts/sync-plugin-agents.mjs --check     # 只校验、不改：漂移 / 缺文件 / 出现内部任务号 ⇒ exit 1
  *   LINKDESK_PLUGIN_CONTAINER=<dir> 覆盖容器位置（默认 E:\linkdesk-plugins\official）
  *
+ * 🔴 `--check` **已挂进 `npm run check`**（2026-09-15 用户拍板补的门禁缺口——此前这条漂移两个
+ *   会话都漏过：bump 之后 AGENTS.md 里那句「当前版本 x.y.z」会过期，而没有任何门禁在看它）。
+ *   正因如此，**容器不存在时必须跳过而不是判红**：CI / 别的克隆上没有那个仓库外目录。
+ *   两种「读不到仓」要分开——目录不在 = 跳过（exit 0）；目录在但零仓 = 位置配错（exit 1）。
+ *
  * ⚠️ 本脚本只改**本地容器**；**不碰 git、不 commit、不推送**（推 18 个仓等用户点头）。
  */
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
@@ -343,13 +348,26 @@ ${cmdLines}
 /* ─────────────────────────── 主流程 ─────────────────────────── */
 
 const seed = seedIds();
+
+// 🔴 容器不在 ⇒ **跳过（exit 0）**，不是红。
+// 本脚本扫的是「本机插件容器」——一个**仓库外**目录（默认 E:\linkdesk-plugins\official，可用
+// LINKDESK_PLUGIN_CONTAINER 覆盖）。CI、别的克隆、没做过源码外移的机器上本来就没有它。
+// 既然它已挂进 `npm run check`（2026-09-15 用户拍板补的门禁缺口），在这里判红就会在那些机器上
+// 产生**假红**——而假红让真红失效，是本仓最贵的坏法（同 check-bundled-freshness / audit-i18n 的判例）。
+// 注意与下面「目录在、但一个插件仓都读不到」**区分开**：那是真的配错了位置，仍然判红。
+if (!existsSync(CONTAINER)) {
+  console.log(`⏭️  [plugin-agents] 本机插件容器不存在（${CONTAINER}）——跳过（本机专有门禁，非失败）。`);
+  console.log(`     要跑它：LINKDESK_PLUGIN_CONTAINER=<容器根> node scripts/sync-plugin-agents.mjs --check`);
+  process.exit(0);
+}
+
 const ids = readdirSync(CONTAINER, { withFileTypes: true })
   .filter((e) => e.isDirectory() && existsSync(join(CONTAINER, e.name, "plugin.json")))
   .map((e) => e.name)
   .sort();
 
 if (ids.length === 0) {
-  console.error(`🔴 容器里一个插件仓都没读到：${CONTAINER}\n   （用 LINKDESK_PLUGIN_CONTAINER=<dir> 覆盖位置）`);
+  console.error(`🔴 容器在、但一个插件仓都没读到：${CONTAINER}\n   （目录存在却没有 <id>/plugin.json ⇒ 位置配错了；用 LINKDESK_PLUGIN_CONTAINER=<dir> 覆盖）`);
   process.exit(1);
 }
 
