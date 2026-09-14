@@ -47,12 +47,14 @@
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+// 官方目录坐标与插件仓命名规则**同源于一处**（E6#101：`sync:bundled` 与新鲜度门禁读同一份；
+// 两处各写一遍 owner/prefix 迟早漂移——漂移那天的表现是「一个工具认为这批是我们的、另一个不认」）
+import { OFFICIAL_REPO, PLUGIN_REPO } from "./lib/official-catalog.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, "..");
 
 /** 官方目录仓库（本脚本**只读它**——写它要用户点头） */
-const OFFICIAL_REPO = { owner: "Encaron", repo: "linkdesk-marketplace" };
 const OFFICIAL_RAW = `https://raw.githubusercontent.com/${OFFICIAL_REPO.owner}/${OFFICIAL_REPO.repo}/main/marketplace.json`;
 
 /* ── 清单来源（数据，不是代码字面量）────────────────────────────────── */
@@ -218,7 +220,7 @@ async function entryFor(id, { repoForId, offlineDir }) {
 /* ── 编排 ────────────────────────────────────────────────────────────── */
 
 function parseArgs(argv) {
-  const o = { owner: OFFICIAL_REPO.owner, repoPrefix: "linkdesk-plugin-", out: null, idsFile: null, offlineDir: null, selfTest: false };
+  const o = { owner: OFFICIAL_REPO.owner, repoPrefix: PLUGIN_REPO.prefix, out: null, idsFile: null, offlineDir: null, selfTest: false };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === "--self-test") o.selfTest = true;

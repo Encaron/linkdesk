@@ -1,0 +1,72 @@
+{
+  "$schema": "../../../../public/schemas/theme.schema.json",
+  "id": "pill-bubble",
+  "name": "全胶囊 Pill Bubble",
+  "type": "light",
+  "appearance": {
+    "radius": {
+      "xs": 999,
+      "sm": 999,
+      "md": 999,
+      "lg": 999,
+      "xl": 999,
+      "2xl": 999,
+      "pill": 999
+    },
+    "glass": {
+      "type": "glass",
+      "blur": 0,
+      "saturate": 1,
+      "opacity": 0.5,
+      "specular": 0.4,
+      "morph": 200,
+      "radius": 999,
+      "shadow": true
+    }
+  },
+  "colorways": [
+    {
+      "id": "bubble",
+      "name": "泡泡糖",
+      "colors": {
+        "bg-window": "#FFF0F5",
+        "bg-card": "#FFFFFF",
+        "bg-status": "#FFFFFF",
+        "bg-input": "#FFFFFF",
+        "bg-icon-bar": "#FFFFFF",
+        "bg-side-panel": "#FFFFFF",
+        "bg-toolbar": "#FFF7FA",
+        "text-primary": "#3A2E34",
+        "text-secondary": "#8A7B83",
+        "text-muted": "#B4A6AD",
+        "accent": "#D6336C",
+        "accent-hover": "#E44E82",
+        "border": "rgba(214, 51, 108, 0.18)",
+        "separator": "rgba(214, 51, 108, 0.10)",
+        "icon-active": "#D6336C",
+        "icon-inactive": "#B4A6AD",
+        "toggle-knob": "#FFFFFF",
+        "toggle-knob-on": "#FFFFFF",
+        "status-connected": "#10B981",
+        "status-disconnected": "#E8D9E0",
+        "scrollbar-thumb": "rgba(214, 51, 108, 0.20)",
+        "scrollbar-thumb-hover": "rgba(214, 51, 108, 0.35)",
+        "tab-hover-bg": "#FFE4EE",
+        "drop-indicator": "rgba(214, 51, 108, 0.10)",
+        "dirty-dot": "#D6336C",
+        "context-menu-shadow": "0 4px 12px rgba(58, 46, 52, 0.08)",
+        "drag-preview-shadow": "0 4px 16px rgba(58, 46, 52, 0.10)",
+        "hover-overlay": "rgba(214, 51, 108, 0.06)",
+        "system-log": "#8A7B83",
+        "sent-echo": "#D6336C",
+        "received": "#3A2E34",
+        "cm-timestamp": "#B4A6AD",
+        "badge-text": "#FFFFFF",
+        "text-on-accent": "#FFFFFF",
+        "danger": "#DC2626",
+        "error": "#DC2626",
+        "warning": "#D97706"
+      }
+    }
+  ]
+}

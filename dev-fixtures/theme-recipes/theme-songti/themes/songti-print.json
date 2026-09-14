@@ -1,0 +1,57 @@
+{
+  "$schema": "../../../../public/schemas/theme.schema.json",
+  "id": "songti-print",
+  "name": "宋体印刷体 Songti Print",
+  "type": "light",
+  "appearance": {
+    "font": {
+      "ui": "SimSun",
+      "mono": "Cascadia Mono"
+    }
+  },
+  "colorways": [
+    {
+      "id": "paper",
+      "name": "纸白墨黑",
+      "colors": {
+        "bg-window": "#FBF8F2",
+        "bg-card": "#FFFFFF",
+        "bg-status": "#FBF8F2",
+        "bg-input": "#FFFFFF",
+        "bg-icon-bar": "#F5F1E8",
+        "bg-side-panel": "#F7F4ED",
+        "bg-toolbar": "#FBF8F2",
+        "text-primary": "#2A2722",
+        "text-secondary": "#5C584F",
+        "text-muted": "#8B8577",
+        "accent": "#4A463E",
+        "accent-hover": "#5E594F",
+        "border": "#DDD6C8",
+        "separator": "#E8E2D6",
+        "icon-active": "#4A463E",
+        "icon-inactive": "#8B8577",
+        "toggle-knob": "#FFFFFF",
+        "toggle-knob-on": "#FBF8F2",
+        "status-connected": "#6B7255",
+        "status-disconnected": "#C9C2B4",
+        "scrollbar-thumb": "rgba(74, 70, 62, 0.18)",
+        "scrollbar-thumb-hover": "rgba(74, 70, 62, 0.30)",
+        "tab-hover-bg": "#F0EBE2",
+        "drop-indicator": "rgba(74, 70, 62, 0.06)",
+        "dirty-dot": "#4A463E",
+        "context-menu-shadow": "0 4px 12px rgba(42, 39, 34, 0.08)",
+        "drag-preview-shadow": "0 4px 16px rgba(42, 39, 34, 0.10)",
+        "hover-overlay": "rgba(0, 0, 0, 0.04)",
+        "system-log": "#5C584F",
+        "sent-echo": "#4A463E",
+        "received": "#2A2722",
+        "cm-timestamp": "#8B8577",
+        "badge-text": "#FFFFFF",
+        "text-on-accent": "#FBF8F2",
+        "danger": "#B3261E",
+        "error": "#B3261E",
+        "warning": "#B45309"
+      }
+    }
+  ]
+}

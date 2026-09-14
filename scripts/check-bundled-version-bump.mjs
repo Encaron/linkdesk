@@ -36,62 +36,27 @@
  * 退出码 0 = 全过，1 = 有红拦（打印到 stderr）。
  */
 
-import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
 import { existsSync, readdirSync, readFileSync, mkdtempSync, rmSync, writeFileSync, copyFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve, dirname, basename } from "node:path";
 import { fileURLToPath } from "node:url";
 import JSZip from "jszip";
-import { normalizeEol } from "./lib/text-eol.mjs";
+// 🔴 E6#101（L7 第 7.4 轮）：指纹实现抽到 `lib/bundled-fingerprint.mjs`——`sync:bundled` 与
+//   新鲜度门禁比的是**同一个东西**，同一件事写两遍必然漂移（会互相打架）。本脚本改 import 同一份，
+//   语义一个字节没动（`--self-test` 的三例就是这次抽取的回归证据）。
+import { fingerprintZip, readZipVersion } from "./lib/bundled-fingerprint.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, "..");
 const BUNDLED_DIR = join(ROOT, "bundled-plugins");
 const EXT = ".linkdesk-plugin";
 
-/** sha256——内容指纹单元 */
-function sha256(buf) {
-  return createHash("sha256").update(buf).digest("hex");
-}
-
-/** 顶层 plugin.json 的 version（容忍单层 wrapper 目录，与 bundle-zip locateManifest 同规）；取不到 → null */
-async function readZipVersion(zip) {
-  const norm = Object.keys(zip.files)
-    .map((n) => n.replace(/\\/g, "/"))
-    .filter((n) => n.slice(n.lastIndexOf("/") + 1) === "plugin.json")
-    .sort((a, b) => a.split("/").length - b.split("/").length);
-  if (norm.length === 0) return null;
-  try {
-    const parsed = JSON.parse(await zip.files[norm[0]].async("string"));
-    return typeof parsed.version === "string" ? parsed.version : null;
-  } catch {
-    return null;
-  }
-}
-
-/**
- * 内容指纹 = 排序后的 `{规范化名}:{sha256}`——只比包内容不比 zip 字节（重建的非确定性元数据不误报）。
- * 条目内容先过 `normalizeEol`（文本归一 LF、二进制原样）——行尾不是内容，见文件头 🔴 段。
- * 含 plugin.json 自身：仅 version 变 → 指纹也变，但判定先看 version 不等 → 不算违例（合法 bump）。
- */
-async function fingerprint(zip) {
-  const rows = [];
-  for (const raw of Object.keys(zip.files)) {
-    const entry = zip.files[raw];
-    if (entry.dir) continue;
-    const name = raw.replace(/\\/g, "/");
-    const { buf } = normalizeEol(Buffer.from(await entry.async("uint8array")));
-    rows.push(`${name}:${sha256(buf)}`);
-  }
-  return rows.sort().join("\n");
-}
-
-/** 读一个 zip 文件 → { version, fp }；打不开 → null */
+/** 读一个 zip 文件 → { version, fp }；打不开 → 抛 */
 async function inspectZip(path) {
   const buf = readFileSync(path);
   const zip = await JSZip.loadAsync(buf);
-  const fp = await fingerprint(zip);
+  const fp = await fingerprintZip(zip);
   const version = await readZipVersion(zip);
   return { version, fp, zip, buf };
 }
@@ -143,7 +108,7 @@ async function scanBundled() {
       continue;
     }
     const bZip = await JSZip.loadAsync(headBuf);
-    const b = { version: await readZipVersion(bZip), fp: await fingerprint(bZip) };
+    const b = { version: await readZipVersion(bZip), fp: await fingerprintZip(bZip) };
     const v = verdict(a.version, b.version, a.fp, b.fp);
     results.push({ name, ...v });
   }

@@ -1,0 +1,57 @@
+{
+  "$schema": "../../../../public/schemas/theme.schema.json",
+  "id": "terminal-monofont",
+  "name": "终端机 Terminal Mono",
+  "type": "dark",
+  "appearance": {
+    "font": {
+      "ui": "Cascadia Mono",
+      "mono": "Cascadia Mono"
+    }
+  },
+  "colorways": [
+    {
+      "id": "phosphor",
+      "name": "磷光绿",
+      "colors": {
+        "bg-window": "#0C0C0C",
+        "bg-card": "#141414",
+        "bg-status": "#0C0C0C",
+        "bg-input": "#1A1A1A",
+        "bg-icon-bar": "#101010",
+        "bg-side-panel": "#0E0E0E",
+        "bg-toolbar": "#121212",
+        "text-primary": "#4EC9B0",
+        "text-secondary": "#35A584",
+        "text-muted": "#3A8A72",
+        "accent": "#00E676",
+        "accent-hover": "#25F08C",
+        "border": "#1E3A30",
+        "separator": "#162A24",
+        "icon-active": "#00E676",
+        "icon-inactive": "#3A8A72",
+        "toggle-knob": "#4EC9B0",
+        "toggle-knob-on": "#0C0C0C",
+        "status-connected": "#00E676",
+        "status-disconnected": "#2E4A40",
+        "scrollbar-thumb": "rgba(0, 230, 118, 0.20)",
+        "scrollbar-thumb-hover": "rgba(0, 230, 118, 0.35)",
+        "tab-hover-bg": "#12251F",
+        "drop-indicator": "rgba(0, 230, 118, 0.15)",
+        "dirty-dot": "#CCA700",
+        "context-menu-shadow": "0 4px 12px rgba(0, 0, 0, 0.5)",
+        "drag-preview-shadow": "0 4px 16px rgba(0, 0, 0, 0.6)",
+        "hover-overlay": "rgba(78, 201, 176, 0.08)",
+        "system-log": "#3A8A72",
+        "sent-echo": "#00E676",
+        "received": "#4EC9B0",
+        "cm-timestamp": "#2E7D66",
+        "badge-text": "#0C0C0C",
+        "text-on-accent": "#0C0C0C",
+        "danger": "#F87171",
+        "error": "#F87171",
+        "warning": "#CCA700"
+      }
+    }
+  ]
+}

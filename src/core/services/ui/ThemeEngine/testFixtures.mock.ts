@@ -32,11 +32,17 @@ export const MOCK_THEME2: Theme = {
  * 2026-09-05 塌平单根（原 plugins/user/theme-*）。
  *
  * 🔴 E6#99（L7 第 7.2 轮）：**官方主题插件的源码已外移各自独立仓** ⇒ 仓内 `plugins/theme-*` 不存在了。
- *   本 helper 的**意图不变**（拿真实配方做端到端裁决，而不是虚构 fixture），只是「真实」的落点换了：
- *   ① 仓内还有源码（开发夹具）→ 直接读文件；
- *   ② 官方插件已外移 → 读**随壳发货的种子 zip**（`bundled-plugins/<id>.linkdesk-plugin`）里的同一个条目。
- *   种子是壳仓里**真实存在的那一份**（D3：出厂靠种子随包）——比「另存一份 fixture 副本」更真，
- *   也不会变成第二真相源。JSZip 是异步 API ⇒ helper 变 `async`，调用点加 `await`。 */
+ *   本 helper 的**意图不变**（拿真实配方做端到端裁决，而不是虚构 fixture），只是「真实」的落点换了。
+ * 🔴 E6#101（L7 第 7.4 轮）：随包种子**收敛到 6 只基础插件**（D4 判据「断网零插件能否自救」）⇒
+ *   当年**为测试造的**那些主题（songti / terminal / pill / panorama / aurora-glass / zones）不再随包，
+ *   种子 zip 也没了。**测试要的是「真实配方文本」，不是「随包」这件事**——两者诉求第一次分开，
+ *   故第三跳读 `dev-fixtures/theme-recipes/` 的**冻结快照**（来源与边界见该目录 README）。
+ *   链路（按「离真相近」排序）：
+ *     ① 仓内源码（开发夹具）→ 直接读文件；
+ *     ② 随包种子 zip（仍在箱内的基础插件）→ 读包内同一条目；
+ *     ③ 冻结快照（已改为纯市场的主题）→ 读快照文件。
+ *   **断言一条没减**；改配方请去插件仓，「改完立刻能验」的等价断言归 7.5 的 `E6#102f`。
+ *   JSZip 是异步 API ⇒ helper 变 `async`，调用点加 `await`。 */
 const ROOT = process.cwd();
 
 /** 从随包种子 zip 里取一个文本条目（相对插件根） */
@@ -49,14 +55,23 @@ async function readFromSeedZip(pluginId: string, entry: string): Promise<string>
   return zip.file(hit)!.async("string");
 }
 
-/** 读插件工程里的文本：仓内源码优先，缺则回落到随包种子（官方插件已外移，E6#99）
+/** 读插件工程里的文本：仓内源码 → 随包种子 zip → 冻结快照（三跳，见上）
  *  不导出——唯一消费者是本文件的 `loadRealRecipe`（knip 对未使用导出会报红）。 */
 async function readPluginText(rel: string): Promise<string> {
   const abs = path.join(ROOT, rel);
   if (fs.existsSync(abs)) return fs.readFileSync(abs, "utf8");
   const m = /^plugins\/([^/]+)\/(.+)$/.exec(normalizePath(rel));
   if (!m) throw new Error(`读不到 ${rel}（既不在仓内，也不像 plugins/<id>/… 形态）`);
-  return readFromSeedZip(m[1], m[2]);
+  const [, pluginId, entry] = m;
+  if (fs.existsSync(path.join(ROOT, "bundled-plugins", `${pluginId}.linkdesk-plugin`))) {
+    return readFromSeedZip(pluginId, entry);
+  }
+  const snapshot = path.join(ROOT, "dev-fixtures", "theme-recipes", pluginId, entry);
+  if (fs.existsSync(snapshot)) return fs.readFileSync(snapshot, "utf8");
+  throw new Error(
+    `读不到 ${rel}：不是仓内源码、不在随包种子里（它可能已改为纯市场）、也没有冻结快照` +
+      `（快照目录 dev-fixtures/theme-recipes/——新增这样的断言时要同笔放一份进去）`,
+  );
 }
 
 export async function loadRealRecipe(rel: string, id: string, label: string, uiTheme: "light" | "dark") {
