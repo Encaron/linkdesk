@@ -176,6 +176,9 @@ npm run backfill:catalog-identity # 目录条目身份图回填（E6#106）：18
                      #   `-- --check` 空跑核验（有漂移 exit 1）｜`--self-test` 纯函数负控 8 例
                      #   ⚠️ 依赖 SDK dist（先 `npm run --prefix packages/plugin-sdk build`）；只写本地、不推
 npm run sync:plugin-ci            # 插件仓门禁铺装（E6#102）：把脚手架模板的四件铺到 18 只插件仓（只写本地）
+npm run check:lockfile-sync # lockfile 与各 manifest 同源门禁（E6#107）：挂 check，离线秒级
+                     #   负控 = 「workspace 升版没刷 lock」那一类（实证：CI 自 7.6 起必红而本地全绿）
+                     #   ⚠️ **升 packages/* 版本号后必须重跑 npm install 并同笔提交 lock**
 npm run lint         # 单独跑 ESLint（含硬约束 13/14 自定义规则）
 npm run dev          # 纯前端预览（Vite）
 npm run electron:dev # 完整 Electron 桌面应用（E1 步 1 后可用）

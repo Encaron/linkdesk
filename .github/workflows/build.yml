@@ -249,3 +249,39 @@ jobs:
           #    CHANGELOG 正文，而自动生成那份是 commit 流水，与 body_path 叠在一起的呈现
           #    方式取决于 action 版本，**不如只要一份可预期的人写正文**。
           #    「首次贡献者名单」之类的附加区若日后确实想要，再单独加一步追加，别塞进这里赌行为。
+
+      # 🔴 E6#107 —— **发版核验**：把「流程绿、其实什么都没发出去」从静默变成红。
+      #
+      # 为什么必须有这一步（2026-09-14 实证，用户当晚收到数封失败邮件才发现）：
+      #   上面的 `Release` 步骤之前有 13 步，其中第 7 步 `npm ci` 因 lockfile 陈旧必红
+      #   ⇒ 后面的 `Release` 全是 skipped ⇒ **Release 从未产出**。而本地 `npm run publish`
+      #   一切全绿、tag 也推了、`git push` 也成功了——于是「版本号一路往上走、网上一片空白」
+      #   能持续好几版而没有任何人知道；失败信号只以 GitHub 邮件形式到达，而邮件说的是
+      #   「某个 job 失败」，没人把它翻译成「这一版根本没发出去」。
+      #   这一步做的事很小：**回头问一次 GitHub「这个 tag 的 Release 真在吗、安装包真挂上了吗」**。
+      #   在吗 = 绿；不在 = 红（同一个 job 红，与「哪一步出了错」同一个信号面，不需要新通道）。
+      - name: Verify the Release really exists (E6#107)
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          version=$(node -p "require('./package.json').version")
+          exe=$(basename "${{ steps.installer.outputs.path }}")
+          echo "核验：tag=$GITHUB_REF_NAME  package.json=$version  期望 asset=$exe"
+          # ① 发的是哪一个——tag 与版本号必须同源（发布门禁已查过，这里核的是「真发出去的那份」）
+          if [ "$GITHUB_REF_NAME" != "v$version" ]; then
+            echo "🔴 tag ($GITHUB_REF_NAME) 与 package.json 版本 (v$version) 不一致"; exit 1
+          fi
+          # ② Release 真的存在（softprops 静默失败 / 权限问题 / 步骤被 skip 都在这里现形）
+          if ! gh release view "$GITHUB_REF_NAME" --json tagName >/dev/null 2>&1; then
+            echo "🔴 tag $GITHUB_REF_NAME 没有对应的 Release——**这一版根本没发出去**"; exit 1
+          fi
+          # ③ 安装包真的挂上去了。🔴 三件 asset 里**唯一功能上必需的是 .exe**——
+          #    自研更新器按 asset 名精确匹配（latest.yml 是发布惯例伴随件 + 文件名门禁的第三方证据）
+          names=$(gh release view "$GITHUB_REF_NAME" --json assets -q '.assets[].name')
+          if ! printf '%s\n' "$names" | grep -qx "$exe"; then
+            echo "🔴 Release 里没有 $exe；实际挂的 asset 是："; printf '   %s\n' $names; exit 1
+          fi
+          echo "✅ Release $GITHUB_REF_NAME 已产出，且带安装包 $exe"
