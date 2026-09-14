@@ -20,8 +20,12 @@
  *      条目、且 `version` 与 `name` 同源（实证：lock 里 plugin-sdk 停在 0.1.14、脚手架停在 0.1.2）
  *   ④ workspace 在 lock 里**缺条目**：整个条目没有 ⇒ 红（`packages/plugin-docs` 曾整只不在 lock 里）
  *   ⑤ ⚠️ 黄灯不拦：lock 里有、而**目录已不存在**的 workspace 条目（18 只插件源码外移后留下的孤儿条目）。
- *      ——刻意**不判红**：npm 自己的 `npm ci` 容忍它们（实证：修好①②③④后 CI 全绿，而孤儿条目仍在）。
- *      把「npm 能过」的事判成红 = 假红，而假红让真红失效（本仓最贵的坏法）。
+ *      ——刻意**不判红**：npm 自己的 `npm ci` 容忍它们（实证：修好①②③④后 CI 全绿；这些条目在 lock 里
+ *      带 `extraneous: true`，即 npm 自认「不在依赖树里」）。把「npm 能过」的事判成红 = 假红，
+ *      而假红让真红失效（本仓最贵的坏法）。
+ *      ⚠️ **别信「跑一次 npm install 就清了」**（本文件第一版就是这么写的，**实测错**）：
+ *      2026-09-14 实测 `npm install --package-lock-only` **不清**它们；**手工删条目后重跑也不会写回来**
+ *      （因此可一次性清理——当天已清过一次）。黄灯规则保留，是留给**日后新出现**的孤儿。
  *
  * ── 为什么不是「跑一次真 `npm ci`」──
  *   那要动 `node_modules`、要联网、要几分钟，挂不进每次提交。本门禁只读两个 JSON，职责单一：
@@ -146,7 +150,7 @@ export function checkLockfileSync(rootDir) {
     if (!k || k.includes("node_modules")) continue;
     if (!wsPatternBases.some((b) => k.startsWith(b)) && !(pkg.workspaces ?? []).includes(k)) continue;
     if (wsRelSet.has(k)) continue;
-    warnings.push(`${k}（lock 里有、目录已不存在——npm ci 容忍它，不拦；清它的正当途径是真跑一次 npm install）`);
+    warnings.push(`${k}（lock 里有、目录已不存在；npm ci 容忍它，故只黄不红。⚠️ \`npm install\` 不会自动清——要么手工删条目，要么不管它）`);
   }
 
   return { problems, warnings, checked };
