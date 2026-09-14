@@ -56,6 +56,8 @@ const EXPECTED_FILES = [
   "tsconfig.json",
   "README.md",
   "CHANGELOG.md",
+  // E6#105k（L7 7.8 轮）：每个新插件**天生带**给 AI 看的进场文件（铁律内联 + 规则去哪找 + 下一步动线）
+  "AGENTS.md",
   ".gitignore",
   ".vscode/settings.json",
   // 🔴 E6#102（L7 7.5 轮）：新插件**一建出来就自带门禁**——这几件随模板走，

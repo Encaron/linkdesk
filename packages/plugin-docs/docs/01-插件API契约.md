@@ -23,7 +23,7 @@
 
 ## 二、壳 vs 插件——API 差异
 
-插件与壳在同一个渲染进程中运行，但注入的命名空间面不同。**每一面在哪个进程可用、池/壳/mock 四面覆盖如何——唯一真相源是[命名空间矩阵 §2 覆盖表](../02-Electron架构/E5.8_归一化基建/契约生成/命名空间矩阵.md#2-命名空间--四面覆盖矩阵)**，这里不再手写第二份清单。
+插件与壳在同一个渲染进程中运行，但注入的命名空间面不同。**每一面在哪个进程可用、池/壳/mock 四面覆盖如何——唯一真相源是[命名空间矩阵 §2 覆盖表](https://github.com/Encaron/linkdesk/blob/electron/docs/02-Electron架构/E5.8_归一化基建/契约生成/命名空间矩阵.md#2-命名空间--四面覆盖矩阵)**，这里不再手写第二份清单。
 
 几个要点（矩阵 §2 的摘要，细节以矩阵为准）：
 
@@ -40,12 +40,12 @@
 
 ### 3.0 唯一真相源
 
-**`window.linkdesk.*` 的全部方法签名、入参、返回、载荷类型 = [contracts/linkdesk.d.ts](../../contracts/linkdesk.d.ts)**（自动生成，勿手改）。
+**`window.linkdesk.*` 的全部方法签名、入参、返回、载荷类型 = [contracts/linkdesk.d.ts](https://github.com/Encaron/linkdesk/blob/electron/contracts/linkdesk.d.ts)**（自动生成，勿手改）。
 
 - **生成源：** `src/core/api/linkdesk-api.ts` + `linkdesk-api/`（14 域接口）+ `src/core/types/ipc/*` + `src/core/types/pool/*`（wire 载荷类型）
 - **生成器：** `scripts/generate-contract.mjs`（Route C——契约类型文件为源，纯类型打包单文件）
 - **机械门禁：** preload 双端 `satisfies` 契约面类型 → tsc 漂移门禁；`npm run check` 内 `contracts:check` hash 字节比对（#21）
-- **覆盖矩阵：** 每个命名空间 × 池/壳/mock 四面覆盖 → [命名空间矩阵 §2](../02-Electron架构/E5.8_归一化基建/契约生成/命名空间矩阵.md#2-命名空间--四面覆盖矩阵)
+- **覆盖矩阵：** 每个命名空间 × 池/壳/mock 四面覆盖 → [命名空间矩阵 §2](https://github.com/Encaron/linkdesk/blob/electron/docs/02-Electron架构/E5.8_归一化基建/契约生成/命名空间矩阵.md#2-命名空间--四面覆盖矩阵)
 
 ### 3.1 插件侧怎么消费
 
@@ -163,7 +163,7 @@ async function list(): Promise<FileEntry[]> {
 - **设备协议正确性作者自持**——CAN 帧/NMEA/采样解析全归插件，壳不认识任何设备。
 - **同一物理口仅单消费方**——OS 驱动排他（`serial-monitor` 打开的口，其他插件/标签页不能同时打开；多插件并存 = 各开各的口）。
 
-> 确认 `linkdesk.serial.*` 现成能力 → [contracts/linkdesk.d.ts](../../contracts/linkdesk.d.ts) `Serial` 域。要自定义 USB/原生通道 → 提给平台作者——这是「加通道」范畴（收敛、可枚举、一次性），不是给某插件打工。
+> 确认 `linkdesk.serial.*` 现成能力 → [contracts/linkdesk.d.ts](https://github.com/Encaron/linkdesk/blob/electron/contracts/linkdesk.d.ts) `Serial` 域。要自定义 USB/原生通道 → 提给平台作者——这是「加通道」范畴（收敛、可枚举、一次性），不是给某插件打工。
 
 ---
 

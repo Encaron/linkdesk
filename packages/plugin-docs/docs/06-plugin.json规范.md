@@ -636,5 +636,5 @@ plugins/<pluginId>/            ← repo 源码树（塌平单根；目录名 = �
 
 - `04-插件分发格式.md` — 分发/安装/版本兼容
 - `09-插件目录规范.md` — 源码目录结构与命名约定
-- [E6 第三方作者旅程](../02-Electron架构/E6_插件生态与发布/05-文档与发布/00-第三方作者旅程.md) — 从零到发布的完整路径
+- [E6 第三方作者旅程](https://github.com/Encaron/linkdesk/blob/electron/docs/02-Electron架构/E6_插件生态与发布/05-文档与发布/00-第三方作者旅程.md) — 从零到发布的完整路径
 - `plugin.schema.json` — 同目录 JSON Schema 文件（权威版本，三拷贝 gate 之一）
