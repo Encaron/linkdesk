@@ -188,12 +188,15 @@ npm run catalog:official          # 官方目录候选生成（E6#100c）：各�
 npm run backfill:catalog-identity # 目录条目身份图回填（E6#106）：18 只插件仓的 icon/marketIcon 转绝对 URL
                      #   `-- --check` 空跑核验（有漂移 exit 1）｜`--self-test` 纯函数负控 8 例
                      #   ⚠️ 依赖 SDK dist（先 `npm run --prefix packages/plugin-sdk build`）；只写本地、不推
-npm run check:plugin-prefix       # 插件 CSS 前缀**只读审计**（E6#109h-b①）：列某仓「裸定义类名 / 关键帧
+npm run audit:plugin-prefix       # 插件 CSS 前缀**只读审计**（E6#109h-b①）：列某仓「裸定义类名 / 关键帧
                      #   → 应改成的名字」（改名轮 ③–⑦ 的映射表、⑧ 的全量复核都复用它）
                      #   `-- <仓目录>` 单仓｜`-- --all [<容器>]` 多仓（默认 E:\linkdesk-plugins\official）｜`-- --json`
                      #   ⚠️ 判据不在脚本里：它 import 的正是 `check-css-namespace` 腿的同一个函数（同源）
                      #   ⚠️ 依赖 SDK dist（先 build）；**只读不写**；渲染点/`animation:` 引用不在射程（见 17 号档 §四）
-npm run check:plugin-prefix:selftest # 上者的正控/负控 7 例（含一条「腿与工具同源」的静态断言）
+                     #   ⚠️ **故意不在 `npm run check` 链里**（与 `backfill:catalog-identity` 同款）：它要 dist，而 dist 是
+                     #     .gitignore 的 ⇒ 接进去干净检出会当场红。**真门禁 = SDK 单测 18 例**（已随 vitest 挂在 check 里）；
+                     #     本工具的 `--self-test` 是它自己的体检（memory `gate-selftest-must-be-wired` 的判据内例外）
+npm run audit:plugin-prefix:selftest # 上者的正控/负控 7 例（含一条「腿与工具同源」的静态断言）
 npm run sync:plugin-ci            # 插件仓门禁铺装（E6#102）：把脚手架模板的四件铺到 18 只插件仓（只写本地）
 npm run check:lockfile-sync # lockfile 与各 manifest 同源门禁（E6#107）：挂 check，离线秒级
                      #   负控 = 「workspace 升版没刷 lock」那一类（实证：CI 自 7.6 起必红而本地全绿）
