@@ -111,6 +111,8 @@
 21. **🔥 测试 fixture 禁止真实插件名 + 真实 UI 文案（含英文，如 `"Settings"` 就是 settings 插件的英文标题）。** 测试桩数据（`viewId`/`pluginId`/`renderPath`/`title`/动作 `label`）一律用明显虚构值（`demo-plugin`/`demo-view`、`Demo View`/`Démo Vue`、`Alpha`/`Beta`/`Gamma`）——测试替身不指向真实插件，避免读者/AI 误以为存在运行时引用（硬约束 10 生产代码禁令向测试豁免区的延伸；2026-08-22 用户拍板）。**边界：** 断言被测代码产出的真实行为文案（如 i18n 输出"已隐藏"）不算违规；loader/FactorySlots 等验证真实接线而必须用真 id 的测试除外。不做 ESLint 机械规则——非时序 bug，且真 id 合法出现场景多，机械拦截必然误伤。
 22. **🔥 软件侧用户可见变更提交前，必须调用 version-bump skill 判定变更类别（feat/fix/breaking）并报告版本号判定。** 改动 `src/` 或 `electron/` 代码的 commit，message 必须带类别前缀（`feat:`/`fix:`/`breaking:`，可含 E6#编号，如 `feat:E6#xxx …`）。**三层机械兜底（E6#57.15e 立，2026-09-13 用户拍板升级为硬拦）**：① `scripts/check-version-bump.mjs` 挂在 lefthook 的 **`commit-msg`** 钩子上——**不带前缀 ⇒ 提交被 git 拒绝**，覆盖所有提交者与所有提交方式（`-m` / `-F` / 编辑器 / heredoc；唯一豁免 = `Merge …` 合并提交，且不静默）；② `scripts/check-changelog-section.mjs` 在**每次 `npm run check`** 上验「`package.json` 的版本号在 `CHANGELOG.md` 里有非空段」——**bump 版本号必须同笔写 `## v<新版本>` 段**；③ 发布门禁脚本（E6#57.15d）在发版那一下再拦一次。**违反=红灯——禁止「代码更新上去了版本号没更」**（2026-08-31 用户拍板；判据见 [.claude/skills/version-bump/SKILL.md](.claude/skills/version-bump/SKILL.md)）。逃生口 `git commit --no-verify` 跳过全部 git 钩子（git 机制，如实记着）。
 
+23. **🔥 CSS 类名是全局的——共享组件不得新增裸类名，插件不得借宿主保留名。** 插件视图里**一张样式表同时装着宿主 CSS + 共享组件 CSS + 所有已加载插件的 CSS**（实机读数：池文档 8 张样式表），所以裸类名（`.badge`/`.toggle`/`.input`…）等于全局标识符：一方「定义」、他方「渲染」，两边样式就落到同一个元素上，**不报错、只是长得不对**（`.badge` 案：主题卡片徽标文字被自己的背景吞掉，看着是一块纯色）。三条纪律：① 自己的元素用**自有前缀**（`settings-*`/`ms-*`/`mpd-*` 先例）；② 宿主保留名（`.input` 等宿主工具类 + `.badge`/`.button`/`.combobox`/`.mdv`/`.selectbox`/`.sle`/`.slider`/`.toggle` 共享组件类）**不要借来给自有元素用**——要那个样子就用那个组件；③ 状态类一律**复合**（`.你的类.active`），不裸写 `.active {}`。机械兜底 = `scripts/check-css-namespace.mjs`（4 判据 + 登记表，挂 `npm run check`）；作者面见 [05-插件UI写法规约 §12](docs/03-插件制造/05-插件UI写法规约.md)；判据与处置见 [11-样式命名空间审计.md](docs/02-Electron架构/E6_插件生态与发布/01-插件独立构建/11-样式命名空间审计.md)。**违反=红灯，逃生口 = 登记表里写明理由**（E6#109，2026-09-15）。
+
 固定名称，不用"三栏中间那个"。详见 `docs/总体设计/V3-部件命名规范.md`
 
 速查：图标栏（最左 42px）→ 侧栏 → 主区（标签页内容）。主区顶部是标签栏。最上面是顶栏。最下面是状态栏。
@@ -157,6 +159,7 @@
 npm run check
 #   ⚠️ 其中 `check-bundled-freshness`（E6#101）**默认联网**比对官方目录；无网络时它会红——离线用 `--offline` 明示降级
 #   ⚠️ 其中 `check-scaffold`（E6#103）**需要 git 在 PATH**（断言要真建仓、真问 rev-parse）；缺 git 会明确报出来
+#   ⚠️ 其中 `check-css-namespace`（E6#109）离线秒级；新增共享组件裸类名 / 宿主全局工具类 ⇒ 红——**逃生口 = 改登记表并写明理由**（硬约束 23）
 
 npm run sync:bundled # 出厂种子保鲜（E6#101）：按账拉齐箱内种子 + 修剪到随包集
                      #   `-- --latest` 读官方目录刷新账与种子（显式追新）｜`-- --offline` 断网只校验指纹
@@ -212,5 +215,6 @@ npx vitest run       # 单元测试（会涨：2026-09 时 168 文件 / 2,342 �
 | 已确认决策 | memory `design-decisions.md` |
 | 🔴 **作者轴五个 npm 包怎么发版** | **`docs/06-发布管理/作者轴npm发版.md`**——五轴对照（contracts / plugin-sdk / create-linkdesk-plugin / ui / plugin-docs）＋ 发版五步（改 → bump → publish → `release:mark` → 同笔提交）＋ 三个实测坑（`--registry` 必带 / **contracts 要 `cd contracts && npm publish`** / 货架约 3 分钟复制延迟）＋ **第五节 npx 缓存暗礁**（裸 `npm create linkdesk-plugin` 会静默给旧模板 ⇒ 一律写 `@latest`）。**软件本体的发版另见** `docs/06-发布管理/发布清单.md` |
 | 已知坑 | memory `bug-atlas` |
+| 🔥 CSS 命名空间（裸类名 / 保留名 / 关键帧） | **`docs/02-Electron架构/E6_插件生态与发布/01-插件独立构建/11-样式命名空间审计.md`**——文档同表读数（池文档 8 张样式表）＋ 全量分类总表（真案 `.badge` / 共享组件裸定义 8 / 宿主工具类 6 / 9 只插件零裸定义）＋ 处置五级。机械兜底 = **`scripts/check-css-namespace.mjs`**（4 判据 + 两张登记表，挂 `npm run check`；加登记表 = 一次公共面决策）；作者面纪律见 [05-插件UI写法规约 §12](docs/03-插件制造/05-插件UI写法规约.md)。**硬约束 23** |
 | 主题系统 | memory `theme-system.md` |
 | 新 AI 进场（ZCode / Codex） | 根目录 **`AGENTS.md`**——指针文件，指到本文件与记忆索引；**记忆库重组时同笔更新它** |
