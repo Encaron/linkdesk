@@ -3,7 +3,7 @@
    thumb 12px 圆点：--text-primary（暗色白/亮色黑自适应）+ tiny 投影（mockup 0 1px 4px 近似）。
    零硬编码——全走 token。 */
 
-.slider {
+.ldk-slider {
   -webkit-appearance: none;
   appearance: none;
   width: 130px;
@@ -19,12 +19,12 @@
   outline-offset: 4px;
 }
 
-.slider:disabled {
+.ldk-slider:disabled {
   opacity: 0.4;
   cursor: default;
 }
 
-.slider::-webkit-slider-thumb {
+.ldk-slider::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
   width: 12px;
@@ -35,6 +35,6 @@
   cursor: grab;
 }
 
-.slider::-webkit-slider-thumb:active {
+.ldk-slider::-webkit-slider-thumb:active {
   cursor: grabbing;
 }

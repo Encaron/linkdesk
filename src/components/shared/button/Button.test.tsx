@@ -42,11 +42,11 @@ describe("Button", () => {
 
   it("缺省 variant = 无修饰类（现状不变）", () => {
     const { getByRole } = render(<Button>Alpha</Button>);
-    expect(getByRole("button").className).toBe("button");
+    expect(getByRole("button").className).toBe("ldk-button");
   });
 
-  it.each(["success", "danger", "ghost"] as const)("variant=%s → button--%s 修饰类", (v) => {
+  it.each(["success", "danger", "ghost"] as const)("variant=%s → ldk-button--%s 修饰类", (v) => {
     const { getByRole } = render(<Button variant={v}>Alpha</Button>);
-    expect(getByRole("button").className).toBe(`button button--${v}`);
+    expect(getByRole("button").className).toBe(`ldk-button ldk-button--${v}`);
   });
 });

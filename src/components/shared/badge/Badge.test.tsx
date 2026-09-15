@@ -15,9 +15,9 @@ describe("Badge", () => {
     expect(getByText("Alpha")).toBeTruthy();
   });
 
-  it("类名 = badge", () => {
+  it("类名 = ldk-badge", () => {
     const { getByText } = render(<Badge>Alpha</Badge>);
-    expect(getByText("Alpha").className).toBe("badge");
+    expect(getByText("Alpha").className).toBe("ldk-badge");
   });
 
   it("title 透传（悬停提示）", () => {

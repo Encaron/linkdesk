@@ -4,7 +4,7 @@
 
    E6#30.14 variant——语义动作层级（视觉源 mockup 02 st-*，全走主题 token）：
      border 基 1px transparent（border-box 全局 → 尺寸零跳变）——实心钮边框同底，变体钮换 border-color。 */
-.button {
+.ldk-button {
   background: var(--accent);
   color: var(--text-on-accent);
   border: 1px solid transparent;
@@ -14,8 +14,8 @@
   cursor: pointer;
   white-space: nowrap;
 }
-.button:hover:not(:disabled) { opacity: 0.85; }
-.button:disabled { opacity: 0.5; cursor: default; }
+.ldk-button:hover:not(:disabled) { opacity: 0.85; }
+.ldk-button:disabled { opacity: 0.5; cursor: default; }
 
 /* E6#57.11：紧凑档——30px 工具条（TitleBar 右槽）内的全文字按钮。
    只覆盖「高度 + 纵向留白 + 字号」，横向留白与基类同为 12px、配色/圆角/hover/disabled
@@ -25,7 +25,7 @@
    与设计规范自己的「4/8dp 节奏」也一致，不是为过门禁而将就。
    ⚠️ `display/align-items` 只写在 --sm 里：基类没有 display 声明，加在基类会波及
    settings / marketplace / FilePathInput 三处既有消费者。 */
-.button--sm {
+.ldk-button--sm {
   display: inline-flex;
   align-items: center;
   height: 22px;
@@ -34,29 +34,29 @@
 }
 
 /* ── 变体（marketplace 安装/启用 = 实心 success；禁用 = ghost；卸载 = danger 破坏性次级） ── */
-.button--success {
+.ldk-button--success {
   background: var(--success);
   border-color: var(--success);
   color: var(--badge-text); /* = text-on-accent 别名（两主题皆白字），同 mockup 安装钮 #fff */
 }
 
-.button--ghost {
+.ldk-button--ghost {
   background: transparent;
   border-color: var(--separator);
   color: var(--text-secondary);
 }
-.button--ghost:hover:not(:disabled) {
+.ldk-button--ghost:hover:not(:disabled) {
   background: var(--hover-overlay);
   color: var(--text-primary);
   opacity: 1;
 }
 
-.button--danger {
+.ldk-button--danger {
   background: transparent;
   border-color: color-mix(in srgb, var(--danger) 45%, transparent);
   color: var(--danger); /* 破坏性红 = 壳既有 --danger（ContextMenu 删除项同源） */
 }
-.button--danger:hover:not(:disabled) {
+.ldk-button--danger:hover:not(:disabled) {
   background: color-mix(in srgb, var(--danger) 10%, transparent);
   border-color: color-mix(in srgb, var(--danger) 75%, transparent);
   opacity: 1;

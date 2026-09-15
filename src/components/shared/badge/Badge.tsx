@@ -16,7 +16,7 @@ interface BadgeProps {
 
 function Badge({ children, title }: BadgeProps) {
   return (
-    <span className="badge" title={title}>
+    <span className="ldk-badge" title={title}>
       {children}
     </span>
   );

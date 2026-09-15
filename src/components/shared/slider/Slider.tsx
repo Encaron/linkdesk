@@ -28,7 +28,7 @@ function Slider({ value, onChange, min = 0, max = 100, step = 1, ariaLabel, disa
   return (
     <input
       type="range"
-      className="slider"
+      className="ldk-slider"
       value={clamp(value)}
       min={min}
       max={max}

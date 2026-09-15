@@ -4,16 +4,6 @@
   "classes": {
     "shared": [
       {
-        "name": "badge",
-        "owner": "badge",
-        "why": "壳基础件「小圆角徽标」——市场/详情的 chip 形态"
-      },
-      {
-        "name": "button",
-        "owner": "button",
-        "why": "壳基础件按钮——插件按 .button--sm/--ghost 变体消费"
-      },
-      {
         "name": "combobox",
         "owner": "combobox",
         "why": "组合输入控件——插件 scoped 调优（.control-bar .combobox）"
@@ -32,16 +22,6 @@
         "name": "sle",
         "owner": "string-list-editor",
         "why": "字符串数组编辑器——插件 scoped 调优"
-      },
-      {
-        "name": "slider",
-        "owner": "slider",
-        "why": "滑杆——插件 scoped 调优（.settings-slider-control .slider）"
-      },
-      {
-        "name": "toggle",
-        "owner": "toggle",
-        "why": "开关——.toggle.on / .toggle.disabled 状态约定"
       }
     ],
     "host": [

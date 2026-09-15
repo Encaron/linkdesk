@@ -19,7 +19,7 @@
   white-space: nowrap;
 }
 
-.form-row > .toggle,
+.form-row > .ldk-toggle,
 .form-row > .input,
 .form-row > select,
 .form-row > .form-control {

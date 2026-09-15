@@ -102,10 +102,12 @@ describe("runReservedClassCheck —— 知情绕行", () => {
 });
 
 describe("loadReservedNames —— 随包清单可读", () => {
-  it("包内 schemas/reserved-class-names.json 能被读到，且两组合并后含真案 .badge", () => {
+  it("包内 schemas/reserved-class-names.json 能被读到，且 classes 两组都并进来", () => {
     const names = loadReservedNames();
     expect(names.classes.length).toBeGreaterThan(0);
-    expect(names.classes.map((c) => c.name)).toContain("badge");
+    // 不钉具体名字：E6#109g 的四批改名会陆续把 classes.shared 摘空，钉名字的断言会跟着批次变红
+    expect(names.classes.some((c) => c.owner)).toBe(true); // 共享组件组（带 owner）
+    expect(names.classes.some((c) => !c.owner)).toBe(true); // 宿主工具类组（无 owner）
     expect(names.keyframes.map((k) => k.name)).toContain("selectbox-in");
   });
 });

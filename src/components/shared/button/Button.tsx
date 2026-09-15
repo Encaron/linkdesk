@@ -42,7 +42,7 @@ interface ButtonProps {
 }
 
 function Button({ children, onClick, disabled, title, type = "button", variant, size }: ButtonProps) {
-  const cls = ["button", variant && `button--${variant}`, size && `button--${size}`].filter(Boolean).join(" ");
+  const cls = ["ldk-button", variant && `ldk-button--${variant}`, size && `ldk-button--${size}`].filter(Boolean).join(" ");
   return (
     <button type={type} className={cls} onClick={onClick} disabled={disabled} title={title}>
       {children}
