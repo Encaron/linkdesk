@@ -13,6 +13,8 @@ import { describe, it, expect } from "vitest";
 import {
   buildCatalogEntry,
   createEmptyCatalog,
+  judgePublishReadiness,
+  parsePorcelainStatus,
   readmeRawUrl,
   sliceChangelogSection,
   upsertCatalogEntry,
@@ -320,5 +322,89 @@ describe("E6#106 withCatalogIdentity——图标字段转未装态可解析形�
     );
     const merged = upsertCatalogEntry(upsertCatalogEntry(createEmptyCatalog(), first), second);
     expect(merged.plugins[0]!.marketIcon).toBe(first.marketIcon);
+  });
+});
+
+/* ────────────────────────────────────────────────────────────────────────
+   发布前置断言（E6#68c，2026-09-15 用户拍板「做成机械门禁」）。
+   实测来源：本机代理进程死掉那段时间，`git push` 失败而 `publish` **照样成功** ⇒
+   Release 与 asset 都对（asset 取自本地工作区），但 tag 打在**没推上去的旧 HEAD** 上
+   ⇒ 目录条目里的 icon / readmeUrl 直链（raw/…/v<版本>/…）全 404。
+   下面每条用例对应一个真实会发生的形态，不是凑覆盖率。
+   ──────────────────────────────────────────────────────────────────────── */
+describe("judgePublishReadiness——发布前置断言", () => {
+  it("本地 HEAD == 远端 HEAD 且工作区干净 → 放行", () => {
+    expect(judgePublishReadiness({ localHead: "a".repeat(40), remoteHead: "a".repeat(40), dirtyFiles: [] })).toEqual({ ok: true });
+  });
+
+  it("本地 HEAD ≠ 远端 HEAD（那笔提交没推上去）→ 拦，且必须给出修法", () => {
+    const v = judgePublishReadiness({ localHead: "a".repeat(40), remoteHead: "b".repeat(40), dirtyFiles: [] });
+    expect(v.ok).toBe(false);
+    if (!v.ok) {
+      expect(v.kind).toBe("unpushed");
+      expect(v.message).toContain("本地 HEAD 还没推上去");
+      expect(v.message).toContain("git push");
+      expect(v.message).toContain("404"); // 讲清后果，不只是「不许」
+    }
+  });
+
+  it("工作区脏（已跟踪文件有未提交改动）→ 拦，且把文件名念出来", () => {
+    const v = judgePublishReadiness({ localHead: "a".repeat(40), remoteHead: "a".repeat(40), dirtyFiles: [" M plugin.json", "M  README.md"] });
+    expect(v.ok).toBe(false);
+    if (!v.ok) {
+      expect(v.kind).toBe("dirty");
+      expect(v.message).toContain(" M plugin.json");
+      expect(v.message).toContain("M  README.md");
+    }
+  });
+
+  it("两个都犯 → 先报脏（更上游：脏工作区打出来的包根本不在任何提交里）", () => {
+    const v = judgePublishReadiness({ localHead: "a".repeat(40), remoteHead: "b".repeat(40), dirtyFiles: [" M x"] });
+    expect(v.ok).toBe(false);
+    if (!v.ok) expect(v.kind).toBe("dirty");
+  });
+
+  it("读不到远端 HEAD（空仓 / 权限 / API 抖）→ **放行 + 说明**，不判红（假红让真红失效）", () => {
+    const v = judgePublishReadiness({ localHead: "a".repeat(40), remoteHead: null, dirtyFiles: [] });
+    expect(v.ok).toBe(true);
+    if (v.ok) expect(v.skipped).toContain("远端 HEAD");
+  });
+
+  it("读不到本地 HEAD（非 git / git 不在 PATH）→ 同样放行 + 说明", () => {
+    const v = judgePublishReadiness({ localHead: null, remoteHead: "b".repeat(40), dirtyFiles: [] });
+    expect(v.ok).toBe(true);
+    if (v.ok) expect(v.skipped).toContain("本地 HEAD");
+  });
+
+  it("分叉（两笔互不在对方历史里）也是 local≠remote ⇒ 拦——tag 同样指向缺文件的那个提交", () => {
+    const v = judgePublishReadiness({ localHead: "abc1234".padEnd(40, "0"), remoteHead: "def5678".padEnd(40, "0"), dirtyFiles: [] });
+    expect(v.ok).toBe(false);
+  });
+
+  it("报错里只印 7 位短 sha（40 位原样倒出来扫一眼读不出）", () => {
+    const v = judgePublishReadiness({ localHead: "1234567" + "0".repeat(33), remoteHead: "7654321" + "0".repeat(33), dirtyFiles: [] });
+    expect(v.ok).toBe(false);
+    if (!v.ok) {
+      expect(v.message).toContain("1234567");
+      expect(v.message).toContain("7654321");
+      expect(v.message).not.toContain("0".repeat(20)); // 没把 40 位原样倒出来
+    }
+  });
+});
+
+describe("parsePorcelainStatus——git status 解析", () => {
+  it("空输出 / 只有换行 → 空数组（不是「脏了一条空路径」）", () => {
+    expect(parsePorcelainStatus("")).toEqual([]);
+    expect(parsePorcelainStatus("\n")).toEqual([]);
+    expect(parsePorcelainStatus("\r\n\r\n")).toEqual([]);
+  });
+
+  it("CRLF 与 LF 两种 git 输出都解析得出", () => {
+    expect(parsePorcelainStatus(" M a.ts\nM  b.json\n")).toHaveLength(2);
+    expect(parsePorcelainStatus(" M a.ts\r\nM  b.json\r\n")).toHaveLength(2);
+  });
+
+  it("原样保留 XY 状态码（作者靠它看懂是「改了没暂存」还是「已暂存」）", () => {
+    expect(parsePorcelainStatus("MM plugin.json")).toEqual(["MM plugin.json"]);
   });
 });

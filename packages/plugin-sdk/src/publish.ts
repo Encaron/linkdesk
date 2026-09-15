@@ -236,6 +236,132 @@ export function gitRemoteOrigin(root: string): string {
   }
 }
 
+/** 本地 HEAD 的 sha——读不到（非 git 工程 / git 不在 PATH / 空仓无提交）→ null，由调用方决定要不要拦 */
+export function gitHeadSha(root: string): string | null {
+  try {
+    const out = execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" });
+    const sha = out.trim();
+    return /^[0-9a-f]{7,40}$/.test(sha) ? sha : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * `git status --porcelain --untracked-files=no` 的解析（纯函数，便于单测）。
+ * 一行一条：` M path` / `M  path` / `MM path` / `R  old -> new`……本函数只取整行（够判「有没有脏」，
+ * 也能原样念给作者听），不做花哨解析——但**必须滤掉空行**，否则空输出会被当成「脏了一条」。
+ */
+export function parsePorcelainStatus(out: string): string[] {
+  return out
+    .split(/\r?\n/)
+    .map((l) => l.replace(/\s+$/, ""))
+    .filter((l) => l.trim() !== "");
+}
+
+/**
+ * 工作区里**已跟踪**文件的未提交改动（`git status --porcelain --untracked-files=no`）→ 文件清单。
+ *
+ * 只看已跟踪：untracked 不进任何提交、也常常是构件与临时文件（各仓 `.gitignore` 已把 `dist/` 与
+ * `<id>.linkdesk-plugin` 排除），拿它们拦发布只会制造假红。
+ */
+export function gitDirtyTracked(root: string): string[] {
+  try {
+    const out = execFileSync("git", ["status", "--porcelain", "--untracked-files=no"], { cwd: root, encoding: "utf8" });
+    return parsePorcelainStatus(out);
+  } catch {
+    return [];
+  }
+}
+
+/** 发布前置判据的结论（纯数据，便于单测；真正的 IO 在 assertPublishReady 里） */
+export type PublishReadiness =
+  | { ok: true; skipped?: string }
+  | { ok: false; kind: "unpushed" | "dirty"; message: string };
+
+/**
+ * 🔴 **发布前置断言**（E6#68c 追加，2026-09-15 用户拍板「把这条做成机械门禁」）。
+ *
+ * 为什么必须拦——**2026-09-15 实测踩过一次**：本机代理进程死掉的那段时间里，`git push` 失败
+ * 而 `publish` **照样成功**。两者是**两条独立链路**（push 走 git，publish 走 api.github.com 的
+ * Releases API），一条断不代表另一条断 ⇒ 于是「半成品发布」可以悄无声息地成立：
+ *   · Release 建好了、asset 传对了（asset 取自**本地工作区**的构建件）；
+ *   · 但 tag 是打在**远端默认分支 HEAD** 上的，而本地那笔提交没推上去
+ *     ⇒ **tag 指向的提交里没有你刚改的文件**；
+ *   · 目录条目里的 `icon` / `marketIcon` / `readmeUrl` 全写成
+ *     `raw.githubusercontent.com/<owner>/<repo>/v<版本>/<路径>` ⇒ **未装用户看到的图标与 README 全 404**。
+ *
+ * 两条判据：
+ *   ① `localHead` 必须 === `remoteHead`（远端默认分支 HEAD）——不等 = 本地有未推送的提交；
+ *   ② 工作区不能有已跟踪文件的未提交改动——发布件是从**工作区**打的包，脏工作区打出来的内容
+ *      **不在任何提交里**，与目录条目指向的 tag 对不上（memory `stale-sdk-built-plugin-zip` 同族）。
+ *
+ * 读不到远端 HEAD（空仓 / 权限 / API 抖）⇒ **放行 + 说明**，不判红：本仓最贵的坏法是**假红**
+ * （假红让真红失效），护栏不该因为自己读不到就拦住作者的正常发布。
+ */
+export function judgePublishReadiness(input: {
+  localHead: string | null;
+  remoteHead: string | null;
+  dirtyFiles: string[];
+}): PublishReadiness {
+  const { localHead, remoteHead, dirtyFiles } = input;
+  if (dirtyFiles.length > 0) {
+    return {
+      ok: false,
+      kind: "dirty",
+      message:
+        `🔴 工作区有未提交的改动（${dirtyFiles.length} 个）——**发布已中止**：\n` +
+        dirtyFiles.map((f) => `     ${f}`).join("\n") +
+        `\n   发布件是从**工作区**打的包，不是从任何提交打的 ⇒ 用户拿到的 zip 内容不在版本历史里，\n` +
+        `   而目录条目（icon / marketIcon / readmeUrl）指向的是 tag（= 远端某个提交）⇒ 两者对不上。\n` +
+        `   修法：先 commit（不想提交就 git stash），再 npm run build + publish。`,
+    };
+  }
+  if (localHead && remoteHead && localHead !== remoteHead) {
+    return {
+      ok: false,
+      kind: "unpushed",
+      message:
+        `🔴 本地 HEAD 还没推上去（本地 ${localHead.slice(0, 7)} ≠ 远端 ${remoteHead.slice(0, 7)}）——**发布已中止**：\n` +
+        `   publish 把 tag 打在**远端 HEAD** 上，而目录条目里的 icon / marketIcon / readmeUrl 全写成\n` +
+        `   raw.githubusercontent.com/<owner>/<repo>/v<版本>/<路径>。本地没推 ⇒ tag 指向的提交里**没有你刚改的文件**\n` +
+        `   ⇒ 未装用户看到的图标与 README 全 404（而 Release 里那份 asset 又是对的——两条链路互不相干，一条断不代表另一条断）。\n` +
+        `   修法：git push 之后再 publish。\n` +
+        `   已经发错了？补推之后把 tag 挪正：git push --force origin <新 sha>:refs/tags/v<版本>。`,
+    };
+  }
+  if (!localHead || !remoteHead) {
+    return {
+      ok: true,
+      skipped:
+        `⚠️ 发布前置断言跳过（${!localHead ? "读不到本地 HEAD" : "读不到远端 HEAD"}）——` +
+        `请自行确认「本地提交已推、工作区干净」再发布。`,
+    };
+  }
+  return { ok: true };
+}
+
+/** 远端默认分支 HEAD 的 sha（读不到 → null：空仓 / 权限 / API 抖，由判据放行） */
+async function apiBranchHead(token: string, remote: GitHubRemote, branch: string): Promise<string | null> {
+  const res = await ghHttp({ token, api: "api", path: `/repos/${remote.owner}/${remote.repo}/commits/${encodeURIComponent(branch)}` });
+  if (!res.ok) return null;
+  const json = res.json as { sha?: unknown } | null;
+  return typeof json?.sha === "string" ? json.sha : null;
+}
+
+/** 发布前置断言的 IO 壳：读三处事实 → 交给纯判据 → 不放行就 throw */
+async function assertPublishReady(root: string, token: string, remote: GitHubRemote, defaultBranch: string): Promise<void> {
+  const remoteHead = await apiBranchHead(token, remote, defaultBranch);
+  const verdict = judgePublishReadiness({
+    localHead: gitHeadSha(root),
+    remoteHead,
+    dirtyFiles: gitDirtyTracked(root),
+  });
+  if (!verdict.ok) throw new Error(verdict.message);
+  if (verdict.skipped) console.log(`  ${verdict.skipped}`);
+  else console.log(`  ✓ 发布前置断言：本地 HEAD 已推送且工作区干净`);
+}
+
 /** 作者面 manifest 摘要——entry 映射所需的字段（name/version 必填由 schema 保证，其余可选） */
 export interface ManifestView {
   id: string;
@@ -717,8 +843,11 @@ export async function runPluginPublish(root: string, opts: PublishOptions = {}):
   console.log("");
   console.log(`  publishing ${id} v${version} → github.com/${remote.owner}/${remote.repo} …`);
   // 1. 校验仓库 + 取 default_branch（顺带验证 token）
-  await apiGetRepo(token, remote);
+  const repoInfo = await apiGetRepo(token, remote);
   console.log("  ✓ 仓库可达、token 有效");
+  // 1.5 发布前置断言（E6#68c 追加）——本地 HEAD 必须已推送 + 工作区干净；否则 tag 会打在
+  //     「没有你刚改的文件」的提交上（2026-09-15 实测：push 失败而 publish 成功，见该函数头注）
+  await assertPublishReady(root, token, remote, repoInfo.defaultBranch);
   // 2. 防重发
   if (await apiReleaseExists(token, remote, tag)) {
     throw new Error(`Release ${tag} 已存在——该版本已发布过。要发新版本请先 bump plugin.json 的 version 再 build + publish`);
