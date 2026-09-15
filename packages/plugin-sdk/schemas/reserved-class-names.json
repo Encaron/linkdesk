@@ -4,19 +4,9 @@
   "classes": {
     "shared": [
       {
-        "name": "combobox",
-        "owner": "combobox",
-        "why": "组合输入控件——插件 scoped 调优（.control-bar .combobox）"
-      },
-      {
         "name": "mdv",
         "owner": "markdown-view",
         "why": "Markdown 渲染容器——详情的 README/发行说明"
-      },
-      {
-        "name": "sle",
-        "owner": "string-list-editor",
-        "why": "字符串数组编辑器——插件 scoped 调优"
       }
     ],
     "host": [

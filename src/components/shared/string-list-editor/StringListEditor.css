@@ -3,7 +3,7 @@
    颜色/字体全走 CSS 变量（硬约束 1）；token 对齐 settings `.object-editor-*` / 壳 `.input` 惯例，
    零新语义色（删除悬停红 = var(--error)、锁/幽灵钮 = var(--text-muted)，与 settings 原生控件同源）。 */
 
-.sle {
+.ldk-sle {
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -12,7 +12,7 @@
 
 /* ── 行——URL 语义下 url 走等宽；locked 行与可编辑行同构（只差末位元素） ── */
 
-.sle-row {
+.ldk-sle-row {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -21,13 +21,13 @@
   box-sizing: border-box;
 }
 
-.sle-glyph {
+.ldk-sle-glyph {
   font-size: var(--font-size-sm); /* 内容图标 12→sm（对齐 settings codicon 惯例） */
   color: var(--text-muted);
   flex-shrink: 0;
 }
 
-.sle-url {
+.ldk-sle-url {
   flex: 1;
   min-width: 0;
   font-family: var(--font-mono);
@@ -38,7 +38,7 @@
   text-overflow: ellipsis;
 }
 
-.sle-badge {
+.ldk-sle-badge {
   flex-shrink: 0;
   font-size: var(--font-size-2xs); /* 徽标 10→2xs */
   color: var(--text-muted);
@@ -48,13 +48,13 @@
   white-space: nowrap;
 }
 
-.sle-lock {
+.ldk-sle-lock {
   font-size: var(--font-size-sm); /* 锁 codicon 内容图标（基类 16px）→sm */
   color: var(--text-muted);
   flex-shrink: 0;
 }
 
-.sle-del {
+.ldk-sle-del {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -71,21 +71,21 @@
   transition: color 150ms ease, background 150ms ease;
 }
 
-.sle-del:hover {
+.ldk-sle-del:hover {
   color: var(--error);
   background: var(--hover-overlay);
 }
 
 /* ── 行内直添——输入框 + 按钮 ── */
 
-.sle-add-row {
+.ldk-sle-add-row {
   display: flex;
   align-items: center;
   gap: 6px;
   width: 100%;
 }
 
-.sle-input {
+.ldk-sle-input {
   flex: 1;
   min-width: 0;
   box-sizing: border-box;
@@ -100,11 +100,11 @@
   outline: none;
 }
 
-.sle-input:focus {
+.ldk-sle-input:focus {
   border-color: var(--accent);
 }
 
-.sle-add-btn {
+.ldk-sle-add-btn {
   flex-shrink: 0;
   padding: 3px 8px; /* 4px 节奏（间距网格） */
   border: 1px solid var(--separator);
@@ -117,28 +117,28 @@
   white-space: nowrap;
 }
 
-.sle-add-btn:hover:not(:disabled) {
+.ldk-sle-add-btn:hover:not(:disabled) {
   background: var(--tab-hover-bg);
 }
 
-.sle-add-btn:disabled {
+.ldk-sle-add-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
 
 /* ── 就近消息——错误（红）/ 提示（muted）二选一 ── */
 
-.sle-msg {
+.ldk-sle-msg {
   display: block;
   font-size: var(--font-size-2xs); /* 提示 10→2xs */
   line-height: 1.5;
   padding: 0 2px;
 }
 
-.sle-msg--error {
+.ldk-sle-msg--error {
   color: var(--error);
 }
 
-.sle-msg--hint {
+.ldk-sle-msg--hint {
   color: var(--text-muted);
 }

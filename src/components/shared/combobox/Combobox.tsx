@@ -122,14 +122,14 @@ function Combobox({ value, options, onChange, disabled, placeholder, title, clas
 
   return (
     <div
-      className={`combobox ${open ? "ldk-selectbox-open" : ""} ${disabled ? "ldk-selectbox-disabled" : ""} ${className ?? ""}`}
+      className={`ldk-combobox ${open ? "ldk-selectbox-open" : ""} ${disabled ? "ldk-selectbox-disabled" : ""} ${className ?? ""}`}
       ref={containerRef}
     >
-      <div className="combobox-field">
+      <div className="ldk-combobox-field">
         <input
           type="text"
           inputMode={inputMode}
-          className="combobox-input"
+          className="ldk-combobox-input"
           value={text}
           title={title}
           aria-label={title}

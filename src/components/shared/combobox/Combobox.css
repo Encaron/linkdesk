@@ -2,7 +2,7 @@
    下拉面板视觉复用 SelectBox（.ldk-selectbox-dropdown/list/item/empty 类，见 Combobox.tsx import）
    ——本文件只定义 field/input/arrow。一个视觉语言一处写（jscpd 0 克隆门禁）。 */
 
-.combobox {
+.ldk-combobox {
   position: relative;
   display: inline-block;
   min-width: 100px;
@@ -10,7 +10,7 @@
 
 /* ── 输入区（对标 ldk-selectbox-trigger 视觉，可编辑）── */
 
-.combobox-field {
+.ldk-combobox-field {
   display: flex;
   align-items: center;
   gap: 4px;
@@ -24,15 +24,15 @@
   cursor: text;
 }
 
-.combobox-field:hover:not(.ldk-selectbox-disabled) {
+.ldk-combobox-field:hover:not(.ldk-selectbox-disabled) {
   border-color: var(--accent);
 }
 
-.combobox.ldk-selectbox-open .combobox-field {
+.ldk-combobox.ldk-selectbox-open .ldk-combobox-field {
   border-color: var(--accent);
 }
 
-.combobox-input {
+.ldk-combobox-input {
   flex: 1;
   min-width: 0;
   padding: 0;
@@ -44,10 +44,10 @@
   line-height: 1.6; /* E5.8 Phase 12 #170：line-height 20px → unitless */
 }
 
-.combobox-input::placeholder {
+.ldk-combobox-input::placeholder {
   color: var(--text-muted); /* E5.8#128.7：幽灵 --fg-muted → --text-muted */
 }
 
-.combobox-input:disabled {
+.ldk-combobox-input:disabled {
   opacity: 0.5;
 }

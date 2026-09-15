@@ -96,24 +96,24 @@ export default function StringListEditor({
   };
 
   return (
-    <div className="sle">
+    <div className="ldk-sle">
       {/* locked（固定内置）行——pinned，恒显，不可删 */}
       {locked.map((url) => (
-        <div className="sle-row sle-row--locked" key={url} title={url}>
-          {urlOnly && <span className="codicon codicon-link sle-glyph" aria-hidden="true" />}
-          <span className="sle-url">{url}</span>
-          {lockedBadge && <span className="sle-badge">{lockedBadge}</span>}
-          <span className="codicon codicon-lock sle-lock" aria-hidden="true" />
+        <div className="ldk-sle-row ldk-sle-row--locked" key={url} title={url}>
+          {urlOnly && <span className="codicon codicon-link ldk-sle-glyph" aria-hidden="true" />}
+          <span className="ldk-sle-url">{url}</span>
+          {lockedBadge && <span className="ldk-sle-badge">{lockedBadge}</span>}
+          <span className="codicon codicon-lock ldk-sle-lock" aria-hidden="true" />
         </div>
       ))}
 
       {/* 可编辑条目行——可删 */}
       {value.map((item) => (
-        <div className="sle-row" key={item} title={item}>
-          {urlOnly && <span className="codicon codicon-link sle-glyph" aria-hidden="true" />}
-          <span className="sle-url">{item}</span>
+        <div className="ldk-sle-row" key={item} title={item}>
+          {urlOnly && <span className="codicon codicon-link ldk-sle-glyph" aria-hidden="true" />}
+          <span className="ldk-sle-url">{item}</span>
           <button
-            className="sle-del"
+            className="ldk-sle-del"
             title={removeTitle}
             aria-label={removeTitle}
             onClick={() => onChange(value.filter((v) => v !== item))}
@@ -124,9 +124,9 @@ export default function StringListEditor({
       ))}
 
       {/* 行内直添——输入 + 添加；Enter 即加；input 改动清错误 */}
-      <div className="sle-add-row">
+      <div className="ldk-sle-add-row">
         <input
-          className="sle-input"
+          className="ldk-sle-input"
           type="text"
           value={draft}
           placeholder={placeholder}
@@ -139,13 +139,13 @@ export default function StringListEditor({
             if (e.key === "Enter") add();
           }}
         />
-        <button className="sle-add-btn" type="button" onClick={add}>
+        <button className="ldk-sle-add-btn" type="button" onClick={add}>
           {addLabel}
         </button>
       </div>
 
-      {error && <span className="sle-msg sle-msg--error">{error}</span>}
-      {!error && hint && <div className="sle-msg sle-msg--hint">{hint}</div>}
+      {error && <span className="ldk-sle-msg ldk-sle-msg--error">{error}</span>}
+      {!error && hint && <div className="ldk-sle-msg ldk-sle-msg--hint">{hint}</div>}
     </div>
   );
 }
