@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "syncedAt": "2026-09-15T14:34:54.523Z",
+  "syncedAt": "2026-09-15T15:29:03.133Z",
   "note": "出厂种子的账（E6#101）。`seed:true` = 随包出厂（bootstrap 集，判据「断网零插件时用户能不能自救」）；`seed:false` = 纯市场（只登记，不随包）。谁随包是**数据**不是代码（硬约束 10）。刷新：npm run sync:bundled -- --latest；校验：npm run sync:bundled -- --offline。",
   "plugins": [
     {
@@ -62,9 +62,9 @@
     {
       "id": "settings",
       "repo": "Encaron/linkdesk-plugin-settings",
-      "version": "1.0.10",
-      "downloadUrl": "https://github.com/Encaron/linkdesk-plugin-settings/releases/download/v1.0.10/settings.linkdesk-plugin",
-      "fingerprint": "CHANGELOG.md:30882ce594ede182424faac0f9c8dc1b32d5b77e9003b41c2c98aeec393818d9\nLICENSE:66ade75576a2f04b7f1a11340b8141cf42a26d3a64bc441e3822e193291d3051\nREADME.md:60c6af07457cfdeefd5581fee63be64afbc717d32e2f6be1af9ac1405bfde3c1\nindex.bundle.css:a9a9b83e773334decb6acfc84bc4b6890891d43bfed86c29cddb2d41eb04f23e\nindex.bundle.js:1db6fe01e377045aa0fb5df8e41ebd3fb326fa4a9408b3cbd9de9056c629a537\nplugin.json:018cedabac2d7806a4ea48061dfaced9ea12a0c17222f11c3cea1fbc6985bb16\nresources/cover.svg:5b25e65f4e2665d70cb940f705c3c27a49353cffe280e71357ed03ef7e208ac7\nresources/icon-bar.svg:43bb1a604f8c29fe8170b3a5583bb5bf9f7df9898973466f3419d7f7dfe0d64e\nresources/icon.svg:5b586cb531b5bcb665a3f6db07a8eee3be03052b432501d371ea607ec356f4df\nviews/SettingsView.bundle.js:1db6fe01e377045aa0fb5df8e41ebd3fb326fa4a9408b3cbd9de9056c629a537",
+      "version": "1.0.11",
+      "downloadUrl": "https://github.com/Encaron/linkdesk-plugin-settings/releases/download/v1.0.11/settings.linkdesk-plugin",
+      "fingerprint": "CHANGELOG.md:b973dd3cacd5d5e542faf8a201c9e7d492d4826fe2e9dbdde97d8d579e7fbddf\nLICENSE:66ade75576a2f04b7f1a11340b8141cf42a26d3a64bc441e3822e193291d3051\nREADME.md:60c6af07457cfdeefd5581fee63be64afbc717d32e2f6be1af9ac1405bfde3c1\nindex.bundle.css:728de1675128c139a19398c0e4f53625f1ceaed1612d99b9b5d7530546ca34f5\nindex.bundle.js:7f7c6d6e936c76a742045b94284908612604aa2eb60c55c175f1ceedb6499101\nplugin.json:5fb5b136aac17843268a1a279bd8971d41bf75e59ba6ee49b038cf5110f4ba91\nresources/cover.svg:5b25e65f4e2665d70cb940f705c3c27a49353cffe280e71357ed03ef7e208ac7\nresources/icon-bar.svg:43bb1a604f8c29fe8170b3a5583bb5bf9f7df9898973466f3419d7f7dfe0d64e\nresources/icon.svg:5b586cb531b5bcb665a3f6db07a8eee3be03052b432501d371ea607ec356f4df\nviews/SettingsView.bundle.js:7f7c6d6e936c76a742045b94284908612604aa2eb60c55c175f1ceedb6499101",
       "seed": true
     },
     {
