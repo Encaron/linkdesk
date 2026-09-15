@@ -51,7 +51,7 @@ my-plugin/
 
 | Source root | Location | Form | HMR | Who lives here |
 |------|------|------|:--:|------|
-| **The plugin's own repo** | GitHub `Encaron/linkdesk-plugin-<id>` (local clones land under `E:\linkdesk-plugins\official\<id>\`) | source + SDK build (`npm run build` → `<id>.linkdesk-plugin`) | ✅ (`linkdesk-plugin-sdk dev`) | **all 18 shipped plugins**—one repo each (D1), and the only source of truth for their source |
+| **The plugin's own repo** | GitHub `Encaron/linkdesk-plugin-<id>` (local clones land under `E:\linkdesk-plugins\official\<id>\`) | source + SDK build (`npm run build` → `<id>.linkdesk-plugin`) | ✅ (`linkdesk-plugin-sdk dev`) | **all 18 shipped plugins**—one repo each, and the only source of truth for their source |
 | **Shell repo fixtures** | `<shell repo>/plugins/<id>/` (`env.appPluginsDir`) | source + Vite on-the-fly compilation | ✅ (`npm run dev` hot reload) | only the two remaining **dev fixtures**: `panel-demo` / `floating-panel-demo` (not shipped, not in the zip) |
 | **Installed state** | `{userData}/plugins/<id>/` | pre-built bundle unpacked from the zip | ❌ (changing the package means rebuild + reinstall/rematerialize) | every plugin installed on the user's machine |
 
@@ -163,7 +163,7 @@ Author-side notes on install/uninstall/update/reinstall are in [02 plugin lifecy
 | `core: true` plugins can't be uninstalled (accidental-deletion guard) | `builtin/` built-in extensions |
 | Uninstall = delete directory + settle the ledger (really deleted); only source-tree app plugins move to `.disabled/` | Uninstall = delete files (not recoverable) |
 | `env.get(id).pluginDataDir` | `ExtensionContext.storagePath` |
-| `core: true` plugin shipping = `bundled-plugins/*.linkdesk-plugin` (**a first-launch seed**: boot only fills in what's missing and **never refreshes installed copies**; but **the box itself does refresh with the shell version**—before packaging, `sync:bundled` pulls each plugin's "latest released version", D3) | Ships with app updates (built into the installer) |
+| `core: true` plugin shipping = `bundled-plugins/*.linkdesk-plugin` (**a first-launch seed**: boot only fills in what's missing and **never refreshes installed copies**; but **the box itself does refresh with the shell version**—before packaging, `sync:bundled` pulls each plugin's "latest released version") | Ships with app updates (built into the installer) |
 | `requires` **runtime** dependency orchestration ([02 §4](02-plugin-lifecycle.md)) | `extensionDependencies` resolved at install time |
 
 ---

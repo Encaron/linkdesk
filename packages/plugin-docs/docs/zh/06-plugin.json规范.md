@@ -111,9 +111,9 @@ my-plugin/
 | `contributes.configuration` | — | 注册到 ConfigurationRegistry → Settings Editor 自动渲染 |
 | `contributes.menus` | — | 注册到 MenuService → 右键菜单动态生成 |
 | `contributes.keybindings` | — | 注册到 KeybindingRegistry → 全局键盘监听 |
-| `contributes.themes` | theme (P6) | 注册到 ThemeRegistry → 主题浏览器 |
-| `contributes.languages` | language (P6) | 注册到 LanguageRegistry |
-| `contributes.fileAssociations` | — (P6) | 注册到 FileAssociationService → 双击文件自动打开 |
+| `contributes.themes` | theme | 注册到 ThemeRegistry → 主题浏览器 |
+| `contributes.languages` | language | 注册到 LanguageRegistry |
+| `contributes.fileAssociations` | — | 注册到 FileAssociationService → 双击文件自动打开 |
 | `contributes.floatingPanel` | —  | 声明视图可在壳内悬浮面板显示——viewId 引用已注册视图；未声明则无「在悬浮面板中打开」右键 |
 
 **插件可同时声明多种贡献。** 比如一个视图插件可以有 `entry` + `sidebar` + `statusBar` + `contributes.configuration` + `contributes.commands`——全部独立注册，互不影响。
@@ -255,7 +255,7 @@ my-plugin/
 
 说明与更新日志**以文件为准**——插件根目录的 `README.md` / `CHANGELOG.md`（位置、格式、与详情页的对应关系见 [09-插件目录规范](09-插件目录规范.md)）。
 
-这两个字段在 E6 开发期曾存在，但**从无读取方**（读取方按**固定文件名**读包内文件，不看任何声明字段），**2026-09-11 已删除**。
+这两个字段曾存在，但**从无读取方**（读取方按**固定文件名**读包内文件，不看任何声明字段），**2026-09-11 已删除**。
 
 > **写进 `plugin.json` 不会生效，只会被忽略**（顶层是宽松校验，写了不报错——所以它骗人）。**若你从旧教程 / 旧提交抄到了这两个字段 → 删掉，改写成文件。**
 
@@ -266,7 +266,7 @@ my-plugin/
 **对标 VS Code `extensionDependencies`**：同族机制，本字段是其归一化收口（见下「命名边界」）。
 
 **语义：**
-- 值 = 依赖插件的 `pluginId` 数组（无版本约束——激活顺序不承载版本语义，版本匹配属 E6 市场范畴）
+- 值 = 依赖插件的 `pluginId` 数组（无版本约束——激活顺序不承载版本语义，版本匹配属插件市场范畴）
 - loader 按拓扑序加载：`requires` 里的插件先激活，本插件再激活——扫描顺序不再影响激活顺序
 - 依赖缺失 → 本插件挂起（PENDING），依赖装好/启用后自动加载
 - 依赖被卸载/禁用 → 本插件连带卸载（消费者优先，逆拓扑序）

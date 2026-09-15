@@ -31,8 +31,8 @@
 |------|------|
 | **契约 40 命名空间** | 池注入 39（唯一缺 `bridge`）；壳注入 22；mock 注入 12 |
 | **池 = 插件运行时真相源** | 插件运行在池（pool）preload——池注入的命名空间为 **required**；`bridge` 真壳独有 |
-| **「仅壳」≠ 插件不可调** | `window.*`/`shell.*`/`hotExit.*`/`getFilePath` 池**实有注入**（N1 超集注记）——旧版把这几面标 ❌ 仅壳是错的 |
-| **契约必选面漂移已清零** | D1 `env.get(pluginId)` 转发、D2 `clipboard.readText` 壳补、D3 `dialog.openFile` 壳补——三项都已补齐实现，无 `?` 降级 |
+| **「仅壳」≠ 插件不可调** | `window.*`/`shell.*`/`hotExit.*`/`getFilePath` 池**实有注入**——旧版把这几面标 ❌ 仅壳是错的 |
+| **契约必选面漂移已清零** | `env.get(pluginId)` 转发、`clipboard.readText` 壳补、`dialog.openFile` 壳补——三项都已补齐实现，无 `?` 降级 |
 
 ---
 
@@ -81,10 +81,10 @@ async function list(): Promise<FileEntry[]> {
 | **decorations** | **同步契约**：`provideDecoration` 返回 `FileDecoration \| null \| undefined`，**不得返回 Promise**（异步提供方被跳过）；同 pluginId 重复 `registerProvider` 幂等覆盖；注销/注册自动全量刷新通知 `onDidChange([])`；provider 抛异常自愈剔除该条目 |
 | **filesystem** | 插件权限：插件数据目录读写、workspace 目录读、**其他插件目录禁止** |
 | **configuration** | 配置 key 命名规则 `<pluginId>.<property>`（如 `editor.fontSize`、`serial-monitor.baudRate`） |
-| **serial** | **多口路由：** 打开/关闭/动作定向接口的 `portName` **可选**——缺省 = 唯一打开口（0 口抛「串口未打开」；≥2 口抛「多串口已打开，请指定 portName」；**失败可见，不静默**）。三推流通道（`onData`/`onStats`/`onSystem`）载荷**对象化**带 `portName` 路由键（`SerialDataPayload`/`SerialStatsPayload`/`SerialSystemPayload`）——订阅方按**会话口**过滤（key=portName 是通用路由键模式：谁消费谁过滤，壳不代收）。每标签页仍单口（D3），会话-端口绑定在插件侧 |
+| **serial** | **多口路由：** 打开/关闭/动作定向接口的 `portName` **可选**——缺省 = 唯一打开口（0 口抛「串口未打开」；≥2 口抛「多串口已打开，请指定 portName」；**失败可见，不静默**）。三推流通道（`onData`/`onStats`/`onSystem`）载荷**对象化**带 `portName` 路由键（`SerialDataPayload`/`SerialStatsPayload`/`SerialSystemPayload`）——订阅方按**会话口**过滤（key=portName 是通用路由键模式：谁消费谁过滤，壳不代收）。每标签页仍单口，会话-端口绑定在插件侧 |
 | **panel** |  `panel.reveal(viewId)` 声明寻址聚焦底部面板视图——面板隐藏 → 展开并切到该视图（Ctrl+J 同机制）；已显示 → 切换聚焦；**viewId 不在 panel 容器 → no-op**（不报错）。**`panel.moveToEditor` 已移除**（弃内容迁移——位置移动是布局命令的事）。 `panel.revealFloating(viewId)` 壳内悬浮面板（类型 B）——按声明弹出某视图为悬浮面板。声明寻址 = ViewContainerService 全局视图索引（`contributes.views` 已注册**任意容器**视图，不限 panel——插件声明 `contributes.floatingPanel.viewId` 引用之）。**身份开关键**：无面板 → 开；同视图 → 关（toggle）；他面板 → 替换；**viewId 未声明/声明插件未装 → no-op**（不崩）。面板默认动作 =「在主窗口中打开」（仅声明插件可开成标签页时出现）+ 最大化 toggle + 关闭 |
 | **hotExit** | 崩溃恢复专用——脏内容落盘 `%APPDATA%/linkdesk/hot-exit/`（主进程路径约定单源，插件零直写）；保存/关闭标签页后调 `clear` 删备份 |
-| **shell** | 壳级 OS 动作：`showItemInFolder(p)` 资源管理器高亮单文件 / `openInTerminal(dirPath, terminalExe?, customCommand?)` 外部终端打开 / `startDrag(filePath, iconPath?)` 拖出到桌面。**`pluginLocation(pluginId)` / `openPluginFolder(pluginId, kind)` 插件磁盘位置两件套**——前者返回 `{ installDir, dataDir } | null`（**给身份不给路径拼装权**：路径由主进程解析，插件侧拿结果；盘上找不到 → `null`；`dataDir` 只在插件**真落过盘**时非 `null`，空/无 = 那行不该画）；后者 `kind: "install" \| "data"` 用资源管理器开目录**内容**（同 `appearance.revealStorage` 手感，非 `showItemInFolder` 高亮单文件），`install` 目录不在盘上抛错，`data` 先建空目录再开。**（G4）：`relaunch` 真重启应用**（退出并重新启动进程）——⚠️ **仅壳 preload 注入（契约 `?` 可选）**，池侧调用前必须判存在（`window.linkdesk.shell.relaunch?.`）。与 `window.location.reload` 的区别是**池在不在**：池是独立 `WebContentsView`，壳 reload 不重建它，更新视图类插件后 reload 只会看到旧 bundle；`relaunch` 调用后本进程随即终止，**不要依赖它的返回值**（Promise 永不落地） |
+| **shell** | 壳级 OS 动作：`showItemInFolder(p)` 资源管理器高亮单文件 / `openInTerminal(dirPath, terminalExe?, customCommand?)` 外部终端打开 / `startDrag(filePath, iconPath?)` 拖出到桌面。**`pluginLocation(pluginId)` / `openPluginFolder(pluginId, kind)` 插件磁盘位置两件套**——前者返回 `{ installDir, dataDir } | null`（**给身份不给路径拼装权**：路径由主进程解析，插件侧拿结果；盘上找不到 → `null`；`dataDir` 只在插件**真落过盘**时非 `null`，空/无 = 那行不该画）；后者 `kind: "install" \| "data"` 用资源管理器开目录**内容**（同 `appearance.revealStorage` 手感，非 `showItemInFolder` 高亮单文件），`install` 目录不在盘上抛错，`data` 先建空目录再开。**`relaunch` 真重启应用**（退出并重新启动进程）——⚠️ **仅壳 preload 注入（契约 `?` 可选）**，池侧调用前必须判存在（`window.linkdesk.shell.relaunch?.`）。与 `window.location.reload` 的区别是**池在不在**：池是独立 `WebContentsView`，壳 reload 不重建它，更新视图类插件后 reload 只会看到旧 bundle；`relaunch` 调用后本进程随即终止，**不要依赖它的返回值**（Promise 永不落地） |
 | **appearance** |  `revealStorage` 打开外观存储目录（`userData/appearance`）——主进程解析路径并 `shell.openPath` 开资源管理器**内容**（非 `showItemInFolder` 高亮单文件）；目录缺省也建（打开即见存储位置，空目录合法），`openPath` 失败抛错 fail-loud。返回 `Promise<void>` |
 | **app** |  `app.getVersion` = 宿主软件版本号（`Promise<string>`，只读）——唯一运行时来源 = Electron `app.getVersion`（`package.json` 单点，02 §2.3）；**主软件版本比对入口**（市场 minAppVersion 与更新检查都消费它）。壳内另有 `getProductInfo` 私有扩展（关于页 8 字段数据源，不在契约——池插件不可调） |
 | **tabs** | **跨窗资源事件联动：** `updateLabelBySourceId(sourceId, label)` / `closeBySourceId(sourceId)` = **全窗广播语义**——资源持有者在主窗与全部脱出窗的标签页同步更新/关闭；`sourceId` 为全局唯一资源身份（文件路径/会话 id），变更即全局事实（联动**不依赖调用方与标签页同窗**——脱出窗标签随侧栏改名/删除即时联动，对标 VS Code）。`focusBySourceId(sourceId)` = **按来源窗路由**（视图动作，聚焦到具体某窗，非全局事实）。**无新 API**——复用既有面，此行为契约由全窗广播保证 |
@@ -155,11 +155,11 @@ async function list(): Promise<FileEntry[]> {
 | 层 | 设备示例 | 通道 | 作者状态 |
 |:--|:--|:--|:--|
 | **串口系**（最大头） | USB-CAN 适配器（CH340/CP210x 虚拟串口）、GPS 模块（NMEA）、USB-TTL、便宜逻辑分析仪 | `linkdesk.serial.*`（Phase 6 通用化后） | ✅ **立即可写，零壳依赖**；多口/多插件并存成立 |
-| **自定义 USB** | 专业逻辑分析仪（Saleae 类，自定义 USB 端点） | 未来 `usb` 通道 | ⏳ E6 后版本化演进加一条通用通道（一次性，同 serial 同构）；**加完前这类设备要等** |
+| **自定义 USB** | 专业逻辑分析仪（Saleae 类，自定义 USB 端点） | 未来 `usb` 通道 | ⏳ 后续版本加一条通用通道（一次性，同 serial 同构）；**加完前这类设备要等** |
 | **厂商私有 DLL** | 高端设备（只有厂商 SDK/DLL） | 原生通道 | ⚠️ 独立架构课题（渲染沙箱无 Node 权限）；不在当前范围 |
 
 **平台责任边界（作者可放心依赖）：**
-- **通道正确性 + API 稳定承诺**——平台作者负责通道（打开 → 流式读写 → 关闭/错误/多实例/资源回收）；E6 上架后改 API = 版本化演进（`engines` 声明），加了不违约、不加不影响存量插件。
+- **通道正确性 + API 稳定承诺**——平台作者负责通道（打开 → 流式读写 → 关闭/错误/多实例/资源回收）；插件生态上线后改 API = 版本化演进（`engines` 声明），加了不违约、不加不影响存量插件。
 - **设备协议正确性作者自持**——CAN 帧/NMEA/采样解析全归插件，壳不认识任何设备。
 - **同一物理口仅单消费方**——OS 驱动排他（`serial-monitor` 打开的口，其他插件/标签页不能同时打开；多插件并存 = 各开各的口）。
 

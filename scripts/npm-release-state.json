@@ -27,8 +27,8 @@
     },
     {
       "name": "@linkdesk/plugin-docs",
-      "version": "0.1.5",
-      "contentHash": "af1f1416266110b19ea9fb27a27740b51252ab8b5bbf623e89071018fe69c214",
+      "version": "0.1.6",
+      "contentHash": "74c0e426cdbded56c73814e53aa66e10653c6b24259787e32660e0b10f8a8c2f",
       "files": 48
     }
   ]

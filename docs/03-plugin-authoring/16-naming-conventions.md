@@ -1,7 +1,7 @@
 # Naming Conventions — Seven Names, One Identity
 
 > 2026-09-14 · **Reader = plugin author.** After reading, you can answer four questions: **how do I choose an id? can it be changed? how do I change the display name? what should the repo be called?**
-> The decision rationale (N1-N6) and the VS Code empirical evidence live in [plugin-source-externalization/09-naming-conventions.md](../02-Electron架构/E6_插件生态与发布/插件源码外移层/09-命名规范.md) — this document is the author-facing landing point, and of the two there is **only one place to maintain**: change the rule here first and point back; don't create a second copy.
+> The decision rationale and the VS Code empirical evidence live in [plugin-source-externalization/09-naming-conventions.md](../02-Electron架构/E6_插件生态与发布/插件源码外移层/09-命名规范.md) — this document is the author-facing landing point, and of the two there is **only one place to maintain**: change the rule here first and point back; don't create a second copy.
 
 ---
 

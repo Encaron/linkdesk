@@ -111,9 +111,9 @@ The `entry` field → the loader automatically recognizes this as a view plugin.
 | `contributes.configuration` | — | registered into ConfigurationRegistry → rendered automatically by the Settings Editor |
 | `contributes.menus` | — | registered into MenuService → context menus generated dynamically |
 | `contributes.keybindings` | — | registered into KeybindingRegistry → global keyboard listening |
-| `contributes.themes` | theme (P6) | registered into ThemeRegistry → theme browser |
-| `contributes.languages` | language (P6) | registered into LanguageRegistry |
-| `contributes.fileAssociations` | — (P6) | registered into FileAssociationService → double-clicking a file opens it automatically |
+| `contributes.themes` | theme | registered into ThemeRegistry → theme browser |
+| `contributes.languages` | language | registered into LanguageRegistry |
+| `contributes.fileAssociations` | — | registered into FileAssociationService → double-clicking a file opens it automatically |
 | `contributes.floatingPanel` | —  | Declares that the view can be displayed in a floating panel inside the shell — viewId references an already-registered view; without the declaration there is no "Open in Floating Panel" context-menu item |
 
 **A plugin can declare several contributions at once.** A view plugin, for example, can have `entry` + `sidebar` + `statusBar` + `contributes.configuration` + `contributes.commands` — each is registered independently and does not affect the others.

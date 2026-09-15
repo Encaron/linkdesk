@@ -1,7 +1,7 @@
 # Plugin UI Authoring Conventions
 
 > **In one line: the core already provides the standard components and registries—don't hand-roll wheels. Hand-rolling = inconsistent style + something to tear out at the next normalization.**
-> Skim this before writing a plugin, to avoid B62-style rework.
+> Skim this before writing a plugin, to avoid the same kind of rework.
 > **Reconciled against the implementation on 2026-09-06**: flatten-to-single-root (no plugins/{builtin,user}) · shared controls go through @linkdesk/ui · distribution = `.linkdesk-plugin` zip. References to the corresponding mechanisms have been cleaned out of this page.
 
 ---
@@ -36,7 +36,7 @@ window.linkdesk.menu.registerItems("editorContext", "myPlugin", [
 <ContextMenu menuId="editorContext" />
 ```
 
-**Rationale:** `<ContextMenu>` brings its own backdrop + four blur paths (Escape / backdrop click / window blur / option click) + keyboard navigation + when-condition filtering. You can't hand-roll those four blur paths—B62 lesson.
+**Rationale:** `<ContextMenu>` brings its own backdrop + four blur paths (Escape / backdrop click / window blur / option click) + keyboard navigation + when-condition filtering. You can't hand-roll those four blur paths.
 
 **MenuId is an open string (`src/core/registry/commands/MenuRegistry.ts` `export type MenuId = string`)—a plugin declaring any string at all is the contract; no shell code change is needed.** Shell built-in registration points (the MENU_SLOTS constant table):
 
@@ -75,7 +75,7 @@ return createPortal(
 );
 ```
 
-**Rationale:** under the keep-alive architecture inactive tabs are `display: none`, and children aren't visible even with `position: fixed` (B54 lesson). Only rendering into `document.body` escapes the component-tree constraint.
+**Rationale:** under the keep-alive architecture inactive tabs are `display: none`, and children aren't visible even with `position: fixed`. Only rendering into `document.body` escapes the component-tree constraint.
 
 ---
 
@@ -317,7 +317,7 @@ const file = await window.linkdesk.dialog.openFile({
 });
 ```
 
-**Rationale:** all three are rendered uniformly by the in-pool host (QuickPickHost / **the bell wide notification panel** / DialogHost)—styles match the shell and scale with the theme and font size. Hand-rolled overlays = inconsistent style + `position: fixed` breaking under keep-alive (B54). Full signatures are in `contracts/linkdesk.d.ts`.
+**Rationale:** all three are rendered uniformly by the in-pool host (QuickPickHost / **the bell wide notification panel** / DialogHost)—styles match the shell and scale with the theme and font size. Hand-rolled overlays = inconsistent style + `position: fixed` breaking under keep-alive. Full signatures are in `contracts/linkdesk.d.ts`.
 
 > ⚠️ **Notifications are not "auto-vanishing floating cards"** (notification-surface unification and correction): the bottom-right narrow toast pipeline has been deleted entirely, and **the only notification surface = the status bar bell wide panel**. Three things authors need to know:
 > 1. **Notifications don't pop a card, don't steal focus, and don't block interaction**—they go into the bell (unread count +1), and the user only sees them after opening it. Don't treat notifications as a "must be seen" channel: if the user has to decide on the spot → use `dialog.confirm` (modal, steals focus).
