@@ -10,7 +10,7 @@
  * 间距走 spacing-grid（padding/margin/gap 1-6px 或 4 倍数；mockup 的 14/7/9px 已归位 12/8px）。
  */
 
-/* 硬约束 18：池顶部 .titlebar 30px 是 -webkit-app-region: drag 拖拽区——
+/* 硬约束 18：池顶部 .ldk-titlebar 30px 是 -webkit-app-region: drag 拖拽区——
    面板默认 top:12px 落拖拽区内会被 OS 截鼠标事件。根容器 no-drag 豁免整个面板层
    （含全屏遮罩），仿 .window-controls 先例。 */
 #floating-panel-root {

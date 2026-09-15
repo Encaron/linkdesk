@@ -10,7 +10,14 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { measureSurfaceZones, queryVisibleZone } from "./surface-zones";
+import { measureSurfaceZones, queryVisibleZone, ZONE_SELECTORS } from "./surface-zones";
+
+/** zone key → 真实类名。**从 ZONE_SELECTORS 现取，不手抄**——选择器改名（如 `.titlebar` →
+    `.ldk-titlebar`，E6#109j-a）时测试自己跟上，不会「测试绿而实机量测全 0」的假绿。 */
+function zoneClassOf(key: string): string {
+  const sel = ZONE_SELECTORS.find((z) => z.key === key)?.selector;
+  return sel?.replace(/^\./, "") ?? key;
+}
 
 /** 构建 zones 模式 DOM——documentElement 打 zones 标记 + 挂指定 class 的 zone 元素（选择器与 ZONE_SELECTORS 一致）。
     E5.8#127：zone 挂真实 .pool-body（grid 容器）内——换边触发测试需改其 grid-template（React inline style 写点）。 */
@@ -21,7 +28,7 @@ function setupZones(...keys: string[]): void {
   const body = document.querySelector(".pool-body")!;
   for (const key of keys) {
     const el = document.createElement("div");
-    el.className = key;
+    el.className = zoneClassOf(key);
     body.appendChild(el);
   }
 }

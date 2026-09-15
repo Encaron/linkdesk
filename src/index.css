@@ -286,7 +286,7 @@ html, body, #root, #pool-root {
   }
 }
 
-.divider {
+.ldk-divider {
   height: 1px;
   background: var(--separator);
   margin: 4px 0;
@@ -393,7 +393,7 @@ select {
    折叠优先，morph 对侧栏不生效（已知取舍）。
    E5.8#89 E4：backdrop-filter 已下移至 ::before 玻璃层（z:-1）——元素自身只留形态，
    透射模糊归玻璃层，盖住 ::after 影像（z:-2），内容保持锐利（见 ::before/::after 注释）。 */
-.titlebar,
+.ldk-titlebar,
 .icon-bar,
 .side-panel,
 .main-zone,
@@ -417,7 +417,7 @@ select {
 
 /* titlebar/status-bar——直连 pool-root 子表面，留缝用 margin（网格内表面已走 cell padding）。
    overflow:hidden = 圆角自裁（内容不外溢圆角曲线；下拉菜单已 portal 到 #context-menu-root 不受限）。 */
-.titlebar,
+.ldk-titlebar,
 .status-bar {
   margin: var(--surface-inset, 0px);
   overflow: hidden;
@@ -591,7 +591,7 @@ select {
    盖在 zone 图上（"图上的玻璃"、blur 可见），内容（z auto）仍在本层之上保持锐利。
    非影像主题：backdrop = 均匀 rgba 底色，blur 均匀色 = 本色，渲染与旧结构逐像素一致
    （仅 tint/specular 下移一层，本就语义为"底上、内容下"）。 */
-.titlebar::before,
+.ldk-titlebar::before,
 .icon-bar::before,
 .side-panel::before,
 .main-zone::before,
@@ -631,7 +631,7 @@ select {
    ::before backdrop-filter 能直接采样兄弟 .background-layer，切片图不再作为磨砂采样源；
    panorama 全景图只挂 background-layer，zone ::before 直接模糊它）。zones/纹理切片图
    filter 恒清晰（--surface-bg-image 只在 zones/纹理模式非 none）。零值 --surface-bg-image: none = 现状零变化。 */
-.titlebar::after,
+.ldk-titlebar::after,
 .icon-bar::after,
 .side-panel::after,
 .main-zone::after,
@@ -651,7 +651,7 @@ select {
   opacity: var(--glass-surface-bg-opacity, var(--surface-bg-opacity, 1));
   pointer-events: none;
 }
-.titlebar::after {
+.ldk-titlebar::after {
   background-position: var(--surface-titlebar-bg-position, 0 0);
 }
 .icon-bar::after {

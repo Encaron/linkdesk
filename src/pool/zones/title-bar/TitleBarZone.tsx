@@ -119,7 +119,7 @@ function TitleBarZone({ titleBar }: { titleBar: TitleBarLayout }) {
   })();
 
   return (
-    <div className="titlebar">
+    <div className="ldk-titlebar">
       {/* Logo——URL 由壳 getAssetPath 解析推送 */}
       <img className="titlebar-logo" src={titleBar.logoUrl} alt="LinkDesk" />
 

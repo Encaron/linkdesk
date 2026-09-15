@@ -115,7 +115,7 @@ export default function ViewTitleActions({ actions }: ViewTitleActionsProps) {
   );
 
   return (
-    <div className="vta" role="toolbar" aria-label={t("视图操作")}>
+    <div className="ldk-vta" role="toolbar" aria-label={t("视图操作")}>
       {actions.map((w) => (
         <div key={w.id} className="vta-widget">
           {w.type === "icon" && (

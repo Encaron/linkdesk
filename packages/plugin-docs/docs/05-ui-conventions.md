@@ -544,8 +544,7 @@ both stylesheets land on the same element.
 | Source | Reserved names | Notes |
 |---|---|---|
 | Host global utility classes | `.input` | Input-box utility—**just use it** (it exists for your inputs) |
-| Host global utility classes | `.titlebar`, `.divider`, `.about`, `.rn`, `.vta` | The host UI's own container names; don't reuse them |
-| Shared component classes | **the whole `ldk-` namespace**—today: `ldk-badge`, `ldk-button`, `ldk-combobox`, `ldk-mdv`, `ldk-selectbox`, `ldk-sle`, `ldk-slider`, `ldk-toggle` | Class names of the badge / button / combobox / Markdown container / select / string-list editor / slider / toggle components in `@linkdesk/ui`. **You don't have to memorize them**—remember one thing: **anything starting with `ldk-` belongs to a shared component, so don't put it on your own elements** |
+| Shared component classes + host container classes | **the whole `ldk-` namespace**—today: `ldk-badge`, `ldk-button`, `ldk-combobox`, `ldk-mdv`, `ldk-selectbox`, `ldk-sle`, `ldk-slider`, `ldk-toggle` (shared components), plus the host's own container classes such as `ldk-titlebar` | Class names of the badge / button / combobox / Markdown container / select / string-list editor / slider / toggle components in `@linkdesk/ui`. **You don't have to memorize them**—remember one thing: **anything starting with `ldk-` belongs to the host itself (shared components + host UI containers), so don't put it on your own elements** |
 
 **Want their look? Use their component**—`import { Button } from "@linkdesk/ui"`, don't hand-write its class
 name (hand-writing bypasses the component, and you fall behind the moment it changes).

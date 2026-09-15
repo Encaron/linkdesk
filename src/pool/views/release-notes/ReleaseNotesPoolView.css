@@ -31,7 +31,7 @@
  * 所以本文件**零 `@keyframes`、零 `animation`**——不是漏写。
  */
 
-.rn {
+.ldk-rn {
   flex: 1;
   display: flex;
   flex-direction: column;

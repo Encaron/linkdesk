@@ -59,7 +59,7 @@ export default function AboutView({ tab, isActive: _isActive }: AboutViewProps) 
 function ContentFrame({ data }: { data: Extract<PoolAboutData, { state: "content" }> }) {
   const { t } = useTranslation();
   return (
-    <div className="about">
+    <div className="ldk-about">
       <div className="about-inner">
         {/*
           品牌标 = **壳解析好的真资产 URL**（`assets/logo.svg`，与标题栏同一份）——不是手画的方块。
@@ -113,7 +113,7 @@ function ContentFrame({ data }: { data: Extract<PoolAboutData, { state: "content
  */
 function LoadingFrame() {
   return (
-    <div className="about" aria-busy="true">
+    <div className="ldk-about" aria-busy="true">
       <div className="about-skel" aria-hidden="true">
         <div className="about-skel-logo" />
         <div className="about-skel-bar about-skel-bar--name" />

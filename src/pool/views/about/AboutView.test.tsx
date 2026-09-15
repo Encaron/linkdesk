@@ -72,7 +72,7 @@ describe("AboutView（①② 两态直接分支）", () => {
   it("`loading` → 骨架（aria-busy + 八行占位），且**不画**正文的任何一件", () => {
     const { container } = renderView({ state: "loading" });
 
-    expect(container.querySelector(".about")?.getAttribute("aria-busy")).toBe("true");
+    expect(container.querySelector(".ldk-about")?.getAttribute("aria-busy")).toBe("true");
     // 八行字段的骨架条 —— 与 Frame 6 的八行一一对应（不跳位）
     expect(container.querySelectorAll(".about-skel .about-row")).toHaveLength(8);
     expect(container.querySelector(".about-name")).toBeNull();
@@ -85,7 +85,7 @@ describe("AboutView（①② 两态直接分支）", () => {
   it("🔴 负控：壳没推载荷时兜底画**骨架**，不是「全 `—` 的内容态」（把 `PENDING` 改成 content 这条必须红）", () => {
     const { container } = renderView();
 
-    expect(container.querySelector(".about")?.getAttribute("aria-busy")).toBe("true");
+    expect(container.querySelector(".ldk-about")?.getAttribute("aria-busy")).toBe("true");
     // 画成 content 会把「还没开始取数」说成「这台机器读不出身份」——那是撒谎
     expect(container.querySelector(".about-name")).toBeNull();
     expect(container.querySelectorAll(".about-row .v")).toHaveLength(0);
@@ -104,7 +104,7 @@ describe("AboutView（①② 两态直接分支）", () => {
   it("`content` ⇒ `aria-busy` 撤掉（骨架的标记不许留在正文上）", () => {
     const { container } = renderView(CONTENT);
 
-    expect(container.querySelector(".about")?.getAttribute("aria-busy")).toBeNull();
+    expect(container.querySelector(".ldk-about")?.getAttribute("aria-busy")).toBeNull();
   });
 });
 

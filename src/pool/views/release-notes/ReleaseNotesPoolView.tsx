@@ -78,7 +78,7 @@ export default function ReleaseNotesPoolView({ tab, isActive: _isActive }: Relea
 function LoadingFrame() {
   const { t } = useTranslation();
   return (
-    <div className="rn" aria-busy="true">
+    <div className="ldk-rn" aria-busy="true">
       <div className="rn-head">
         <div className="rn-skel rn-skel--head" aria-hidden="true">
           <div className="rn-skel-bar rn-skel-bar--h18 rn-w40" />
@@ -127,7 +127,7 @@ function LoadingFrame() {
 function EmptyFrame({ listUrl }: { listUrl?: string }) {
   const { t } = useTranslation();
   return (
-    <div className="rn">
+    <div className="ldk-rn">
       <div className="rn-head">
         <div className="rn-head-main">
           <div className="rn-ver-title">
@@ -181,7 +181,7 @@ function ContentFrame({ data }: { data: Extract<PoolReleaseNotesData, { state: "
   const { t } = useTranslation();
   const { listUrl } = data;
   return (
-    <div className="rn">
+    <div className="ldk-rn">
       <div className="rn-head">
         <div className="rn-head-main">
           <div className="rn-ver-title">

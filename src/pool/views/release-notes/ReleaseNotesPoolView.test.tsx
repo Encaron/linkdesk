@@ -66,7 +66,7 @@ describe("ReleaseNotesPoolView（① 三态直接分支）", () => {
   it("`loading` → 骨架（aria-busy，且**不画**任何一版的正文/空态文案）", () => {
     const { container } = renderView({ state: "loading" });
 
-    expect(container.querySelector(".rn")?.getAttribute("aria-busy")).toBe("true");
+    expect(container.querySelector(".ldk-rn")?.getAttribute("aria-busy")).toBe("true");
     expect(container.querySelectorAll(".rn-skel-item")).toHaveLength(3);
     expect(container.querySelector(".rn-empty")).toBeNull();
     expect(container.querySelector(".rn-ver-title")).toBeNull();
@@ -93,7 +93,7 @@ describe("ReleaseNotesPoolView（① 三态直接分支）", () => {
   it("🔴 负控：壳没推载荷时兜底画**骨架**，不是空态（把 `PENDING` 改成 empty 这条必须红）", () => {
     const { container } = renderView();
 
-    expect(container.querySelector(".rn")?.getAttribute("aria-busy")).toBe("true");
+    expect(container.querySelector(".ldk-rn")?.getAttribute("aria-busy")).toBe("true");
     // 画成 empty 会把「还没开始」说成「连不上 GitHub」——那是撒谎
     expect(container.querySelector(".rn-empty")).toBeNull();
   });

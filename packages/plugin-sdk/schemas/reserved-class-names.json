@@ -7,26 +7,6 @@
       {
         "name": "input",
         "why": "🔴 插件在用的输入框工具类（settings / serial-monitor 实测渲染 className=\"input\"）"
-      },
-      {
-        "name": "titlebar",
-        "why": "标题栏容器"
-      },
-      {
-        "name": "divider",
-        "why": "通用分隔线"
-      },
-      {
-        "name": "about",
-        "why": "关于页正文容器"
-      },
-      {
-        "name": "rn",
-        "why": "发行说明容器"
-      },
-      {
-        "name": "vta",
-        "why": "视图过渡动画容器"
       }
     ]
   },

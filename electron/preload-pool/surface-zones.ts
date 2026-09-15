@@ -25,9 +25,11 @@
     无害（panel 不渲染）；重新显示 → ResizeObserver 重算真实偏移（收敛判据沿用 #62）。
     E5.8#126：`.side-panel` DOM 有多个匹配（keep-alive 非活动容器 display:none / 折叠占位 /
     空态占位 + 右侧栏同款类）——querySelector 取首个可能命中 display:none 占位 → rect 全 0 →
-    token 恒 0 0（衣袖重复根因）。量测一律走 queryVisibleZone 选可见元素（见下）。 */
-const ZONE_SELECTORS: ReadonlyArray<{ key: string; selector: string }> = [
-  { key: "titlebar", selector: ".titlebar" },
+    token 恒 0 0（衣袖重复根因）。量测一律走 queryVisibleZone 选可见元素（见下）。
+    E6#109j-a：`titlebar` 的选择器随宿主容器类名一起前缀化（`.titlebar` → `.ldk-titlebar`，硬约束 23）
+    ——导出供单测直引，测试的 fixture DOM 由本表派生（不手抄类名，改名即同步）。 */
+export const ZONE_SELECTORS: ReadonlyArray<{ key: string; selector: string }> = [
+  { key: "titlebar", selector: ".ldk-titlebar" },
   { key: "icon-bar", selector: ".icon-bar" },
   { key: "side-panel", selector: ".side-panel" },
   { key: "main-zone", selector: ".main-zone" },
