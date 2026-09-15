@@ -225,7 +225,7 @@ html, body, #root, #pool-root {
 
 /* === 全局 UI class === */
 
-.setting-group {
+.ldk-setting-group {
   background: var(--bg-card);
   border-radius: var(--radius-md);
   padding: 12px;
@@ -242,7 +242,7 @@ html, body, #root, #pool-root {
 /* E6#54b：`.toggle` 规则已抽入 components/shared/toggle/Toggle.css（组件自 import）——
    @linkdesk/ui 包自包含；index.css 不再持有共享组件样式。 */
 
-.input {
+.ldk-input {
   background: var(--bg-input);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
@@ -252,7 +252,7 @@ html, body, #root, #pool-root {
   transition: border-color 150ms;
   outline: none;
 }
-.input:focus { border-color: var(--accent); }
+.ldk-input:focus { border-color: var(--accent); }
 
 /* E5.8#30.15（P5）：聚焦面板 accent 环——inset 阴影不占布局（聚焦/失焦零位移），
    var(--accent) 走 CSS 变量可主题化（硬约束 #1 禁硬编码 hex）。
@@ -270,8 +270,7 @@ html, body, #root, #pool-root {
   outline-offset: 2px;
 }
 /* 保留 input 的原生 outline:none 设计，:focus 用 border-color 表示 */
-.input:focus-visible,
-.search-input:focus-visible {
+.ldk-input:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 1px;
 }

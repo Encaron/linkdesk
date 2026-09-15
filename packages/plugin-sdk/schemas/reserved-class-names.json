@@ -3,12 +3,7 @@
   "version": 1,
   "classes": {
     "shared": [],
-    "host": [
-      {
-        "name": "input",
-        "why": "🔴 插件在用的输入框工具类（settings / serial-monitor 实测渲染 className=\"input\"）"
-      }
-    ]
+    "host": []
   },
   "keyframes": [
     {

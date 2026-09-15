@@ -48,7 +48,7 @@ export default function NumberInput({ value, onChange, min, max, step = 1, unit,
         aria-label={t("减少")}
       >−</button>
       <input
-        className="input number-input-field"
+        className="ldk-input number-input-field"
         type="text"
         value={value}
         onChange={(e) => {

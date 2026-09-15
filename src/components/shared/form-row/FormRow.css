@@ -20,7 +20,7 @@
 }
 
 .form-row > .ldk-toggle,
-.form-row > .input,
+.form-row > .ldk-input,
 .form-row > select,
 .form-row > .form-control {
   flex-shrink: 0;

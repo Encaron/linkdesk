@@ -1,6 +1,6 @@
 /* StringListEditor — 通用字符串数组编辑器（@linkdesk/ui 自包含样式，随组件分发）。
    E6#30c 新建——03-添加市场源-mockup.html ① 行内直添形态。
-   颜色/字体全走 CSS 变量（硬约束 1）；token 对齐 settings `.object-editor-*` / 壳 `.input` 惯例，
+   颜色/字体全走 CSS 变量（硬约束 1）；token 对齐 settings `.object-editor-*` / 壳 `.ldk-input` 惯例，
    零新语义色（删除悬停红 = var(--error)、锁/幽灵钮 = var(--text-muted)，与 settings 原生控件同源）。 */
 
 .ldk-sle {

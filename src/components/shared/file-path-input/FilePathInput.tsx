@@ -41,7 +41,7 @@ export default function FilePathInput({ value, onChange, dialogType }: FilePathI
   return (
     <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
       <input
-        className="input"
+        className="ldk-input"
         type="text"
         value={value}
         onChange={(e) => onChange(e.target.value)}

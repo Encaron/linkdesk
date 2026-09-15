@@ -102,11 +102,14 @@ describe("runReservedClassCheck —— 知情绕行", () => {
 });
 
 describe("loadReservedNames —— 随包清单可读", () => {
-  it("包内 schemas/reserved-class-names.json 能被读到（classes 非空 + 关键帧有位）", () => {
+  it("包内 schemas/reserved-class-names.json 能被读到（关键帧有位；classes 已进清账终态空集）", () => {
     const names = loadReservedNames();
-    expect(names.classes.length).toBeGreaterThan(0);
-    // 不钉具体名字：E6#109g 的四批改名已把 classes.shared 摘空（终态 = 空数组，件 1 收尾标志）
-    expect(names.classes.some((c) => !c.owner)).toBe(true); // 宿主工具类组（无 owner）
+    // 🔴 不钉「classes 非空」：E6#109g（四批共享组件改名，classes.shared 摘空）＋ E6#109j-b
+    //    （最后一条宿主工具类 `.input` 也前缀化，classes.host 摘空）⇒ 两组**双双进清账终态 = []**。
+    //    这是**设计要的终态**、不是缺数据：裸名一律前缀化后规规矩矩「带前缀 = 自带命名空间、
+    //    不需登记」⇒ 本表不再需要 entries。合并语义（两组都并进来）由下方夹具测试覆盖。
+    //    ⚠️ 反向断言仍是有意为之：谁再登记一个**裸名** ⇒ 这条当场红，逼一次知情决策。
+    expect(names.classes).toEqual([]);
     expect(names.keyframes.map((k) => k.name)).toContain("selectbox-in");
   });
 

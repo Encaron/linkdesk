@@ -549,8 +549,8 @@ both stylesheets land on the same element.
 
 | Source | Reserved names | Notes |
 |---|---|---|
-| Host global utility classes | `.input` | Input-box utility—**just use it** (it exists for your inputs) |
-| Shared component classes + host container classes | **the whole `ldk-` namespace**—today: `ldk-badge`, `ldk-button`, `ldk-combobox`, `ldk-mdv`, `ldk-selectbox`, `ldk-sle`, `ldk-slider`, `ldk-toggle` (shared components), plus the host's own container classes such as `ldk-titlebar` | Class names of the badge / button / combobox / Markdown container / select / string-list editor / slider / toggle components in `@linkdesk/ui`. **You don't have to memorize them**—remember one thing: **anything starting with `ldk-` belongs to the host itself (shared components + host UI containers), so don't put it on your own elements** |
+| The input-box utility the host **gives you** | `.ldk-input` | Input-box utility—**just use it** (it exists for your inputs). ⚠️ It is the **one** name in the whole `ldk-` family you're encouraged to **consume** (every other `ldk-` name means "hands off"; this one means "take it") |
+| Shared component classes + host container classes | **the whole `ldk-` namespace**—today: `ldk-badge`, `ldk-button`, `ldk-combobox`, `ldk-mdv`, `ldk-selectbox`, `ldk-sle`, `ldk-slider`, `ldk-toggle` (shared components), plus the host's own container classes such as `ldk-titlebar`, `ldk-input`, `ldk-setting-group` | Class names of the badge / button / combobox / Markdown container / select / string-list editor / slider / toggle components in `@linkdesk/ui`. **You don't have to memorize them**—remember one thing: **anything starting with `ldk-` belongs to the host itself (shared components + host UI containers), so don't put it on your own elements** (the one exception is `.ldk-input` on the row above: that one is **for you**) |
 
 **`@keyframes` names work the same way**—the host already uses the animation names below, so avoid them when naming your own animations. A collision has the same consequence as a class name (the later definition wins, the earlier one is dropped), and it is equally **silent**: one of the two animations simply stops playing, with nothing in the console.
 
@@ -635,6 +635,15 @@ component. **Nothing to do before you upgrade; when you upgrade, it's one prefix
   the JSX that uses it together (identifiers only—don't touch style values).
 
 > Want to see whether your project has bare names right now? Run `npm run verify` in the project root.
+
+### 12.3 The host's input-box utility was renamed: `.input` → `.ldk-input` (2026-09-16)
+
+**In one line: if your plugin wrote `className="input"`, change it to `className="ldk-input"`—the styling is identical, only the name changed.**
+
+- **What changed**: the host used to call its input-box utility **`.input`** (no prefix—the only host public name without `ldk-`). That conflicted with rule 1 above ("every cross-party name carries a namespace") ⇒ it is now **`.ldk-input`**. The host's **setting-group card**, `.setting-group`, was renamed to **`.ldk-setting-group`** at the same time.
+- **Who is affected**: **any plugin that wrote `className="input"` in its own JSX/TSX**—among the official plugins, `settings` and `serial-monitor` used it and were updated in the same release batch. **The fix is one place**: `className="input"` → `className="ldk-input"`; the same for concatenated forms (`"input my-input"` → `"ldk-input my-input"`). **Zero styling change**—same rule, same CSS variables, only the name.
+- **What happens if you don't**: the input doesn't error; it simply **loses the host-provided appearance** (background / border / radius / padding) and looks like a browser-native input.
+- **When you must change it**: as soon as you run on the **new shell**. The new shell version is **`0.2.0`**, and both official plugins now declare `minAppVersion: "0.2.0"` in `plugin.json`—declare the same value in your plugin and users on an older shell get a clear "requires app version ≥0.2.0" message instead of an unstyled input (see [04-distribution-format §minAppVersion](04-distribution-format.md) for the semantics).
 
 ---
 
