@@ -1,30 +1,33 @@
-/* {{displayName}} 样式示例（`npm run lint` 会照着下面三条查）。
-   三条纪律：
+/* {{displayName}} 样式示例（`npm run lint` 会照着下面四条查）。
+   四条纪律：
    · 颜色一律 var(--xxx)，禁硬编码 hex——用户换主题时你的插件要跟着变；
    · 字号一律 var(--font-size-*)——用户调全局字号时它才跟着缩放，裸 px 不会；
-   · padding / margin / gap 走 4px 节奏（4 的倍数）。 */
+   · padding / margin / gap 走 4px 节奏（4 的倍数）；
+   · 类名一律以 {{pluginName}}- 开头——插件视图里宿主、共享组件与**所有已加载插件**的
+     CSS 在同一张样式表里，裸类名（如 .starter）是全局标识符，会和别人的同名规则
+     互相覆盖（不报错、只是长得不对）。 */
 
-.starter {
+.{{pluginName}}-starter {
   padding: 24px;
   font-family: inherit;
 }
 
-.starter__title {
+.{{pluginName}}-starter__title {
   margin: 0 0 8px;
   color: var(--text);
 }
 
-.starter__text {
+.{{pluginName}}-starter__text {
   margin: 0 0 4px;
   color: var(--text-muted);
 }
 
-.starter__hint {
+.{{pluginName}}-starter__hint {
   margin: 0;
   color: var(--text-muted);
   font-size: var(--font-size-xs);
 }
 
-.starter__hint code {
+.{{pluginName}}-starter__hint code {
   font-family: var(--font-mono, monospace);
 }

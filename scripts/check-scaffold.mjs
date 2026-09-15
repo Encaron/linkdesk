@@ -19,6 +19,22 @@
  *   🔴 **尺子与 `check-author-docs-symbols.mjs` 同一份**（`scripts/lib/author-symbols.mjs`）——
  *   两处各写一份正则 = 必然漂移。实测立此断言时仓里已有 **15 处**（作者面对照：7.8 清过 155 处）。
  *
+ * 🔴 **E6#109h-b②（件 2 落地·脚手架模板）新增断言 11：生成物零裸类名 / 零裸关键帧**。
+ *   插件视图里宿主、共享组件与**所有已加载插件**的 CSS 装在**同一张样式表**里 ⇒ 裸类名是全局
+ *   标识符（`.badge` 案同形：不报错、只是长得不对）。模板是第三方作者抄的**第一份样本**——
+ *   **新产物不能一边出生一边违规**，否则作者拿到手的第一个工程就红在自己的 CI 上。
+ *   🔴 **判据不许在这里重写**：调的是 SDK 里 `check-css-namespace` 腿的**同一个函数**
+ *   （`runPluginPrefixCheck`，与只读审计工具 `scripts/plugin-css-prefix-audit.mjs` 同一个 dist 导出）——
+ *   在这里再抄一条「名字是否以 `<id>-` 开头」= 给下一次漂移埋钉子（理由与断言 10 同款，见下面「闸 3」）。
+ *   ⚠️ **射程（要说清，别以为它兜住了全部）**：本判据只看 **CSS 侧的定义点**（`.x {}` / `@keyframes x`）；
+ *   模板里的**渲染点**（`src/index.tsx` 的 `className="…"`）与 `animation:` 引用**不在射程内**——
+ *   「CSS 改了、TSX 没改」这种反向错误本条**不会红**（那属于改名轮的类名 token 判据，见 17 号档 §四）。
+ *   ⇒ 本断言证的是「**模板不再生成裸类名**」，不是「模板的 CSS 与 TSX 必然对得上」。
+ *   ⚠️ **依赖 SDK dist**：判据本体在 `packages/plugin-sdk/dist/**`（gitignored · tsc 派生物）⇒
+ *   缺失或比 `src/**` 旧时**先构建**（≈2s，只在缺失/过旧时付）——对齐 `scripts/build-linkdesk-ui.mjs`
+ *   那条「CI 与本地走同一条路：dist 缺失 ⇒ 构建」。**不构建就会拿旧判据报绿 = 假绿**
+ *   （memory `snapshot-shadows-truth-bug-class`：验证的是手边那份、不是真发出去那份）。
+ *
  * 🔴 **闸 3（规则不许腐烂）的关键设计**：期望是**契约**，必须**显式写死**；从模板现场读 = 断言恒真 = 假门禁
  * （这正是 `check-file-size.mjs` 被关掉的同类错误）。**契约要显式，实现要现场读。**
  * 唯一的例外是「解析规则」这类**别人的实现**（CHANGELOG 切段正则 / 占位符 values 集合）——
@@ -31,10 +47,12 @@
  * 退出码 0 = 生成物符合契约；1 = 有断言未过（逐条打印缺什么、该改哪）。
  */
 
-import { readFileSync, readdirSync, existsSync, rmSync, mkdirSync, realpathSync, writeFileSync } from "node:fs";
+import { readFileSync, readdirSync, existsSync, rmSync, mkdirSync, realpathSync, writeFileSync, statSync } from "node:fs";
 import { resolve, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
+import { createRequire } from "node:module";
+import { createHash } from "node:crypto";
 import { parse as parseJsonc, printParseErrorCode } from "jsonc-parser";
 /** 🔴 断言 10 的尺子与 `check-author-docs-symbols.mjs` **同一份**（lib 里的唯一定义处）——
  *  作者面禁用内部任务号这件事，文档树与脚手架生成物必须同一把尺。 */
@@ -96,6 +114,72 @@ const PLACEHOLDER_SCAN_EXEMPT = /^\.github\//;
 
 const failures = [];
 const fail = (msg, hint) => failures.push(hint ? `${msg}\n     ↳ ${hint}` : msg);
+
+/* ── 断言 11 的判据来源：SDK 的 dist（**同一条腿的同一个函数**，不手抄第二份） ── */
+
+const SDK_DIR = join(ROOT, "packages", "plugin-sdk");
+const SDK_PREFIX_MODULE = join(SDK_DIR, "dist", "eslint", "checks", "plugin-prefix.js");
+const SDK_SRC_DIR = join(SDK_DIR, "src");
+
+/** 递归求最新改动时间（空目录 → 0），用来判 dist 是否落后于源码 */
+function newestMtime(dir) {
+  let newest = 0;
+  for (const e of readdirSync(dir, { withFileTypes: true })) {
+    const full = join(dir, e.name);
+    newest = Math.max(newest, e.isDirectory() ? newestMtime(full) : statSync(full).mtimeMs);
+  }
+  return newest;
+}
+
+/**
+ * 取断言 11 的判据函数（懒加载；dist 缺失或落后于 `src/**` 时**先构建**）。
+ * 返回 `null` = 拿不到判据（原因已记进 `failures` ⇒ 门禁红，**绝不静默放过**）。
+ */
+let prefixCheckFn; // undefined = 尚未尝试；null = 试过且失败
+function getPrefixCheck() {
+  if (prefixCheckFn !== undefined) return prefixCheckFn;
+  prefixCheckFn = null;
+
+  const stale =
+    !existsSync(SDK_PREFIX_MODULE) ||
+    (existsSync(SDK_SRC_DIR) && newestMtime(SDK_SRC_DIR) > statSync(SDK_PREFIX_MODULE).mtimeMs);
+  if (stale) {
+    // Windows 上 `npm` 只能经 shell 启动（`npm.cmd` 直启在 Git Bash 下 EINVAL，同 assertPublishFidelity）。
+    // 🔴 用**整条命令串**而不是「命令 + 参数数组」：Node 的 DEP0190 只对后者告警（参数不转义、只拼接），
+    //    而这里的两个值都是固定字面量（脚本自算的仓库内路径），不含任何外部输入。
+    const r = spawnSync(`npm run --prefix "${SDK_DIR}" build`, { cwd: ROOT, encoding: "utf8", shell: true });
+    if (r.status !== 0) {
+      fail(
+        "构建 @linkdesk/plugin-sdk 的 dist 失败——断言 11 没有判据可用（**拿不到判据就报红，不许静默放过**）",
+        (r.stderr || r.stdout || "").trim().split("\n").slice(0, 5).join("\n     ") +
+          "\n     修好 SDK 的 tsc 构建，或手工 `npm run --prefix packages/plugin-sdk build` 看完整输出",
+      );
+      return null;
+    }
+  }
+
+  try {
+    // 同步 require：本仓 engines 是 Node ≥24，可直接 require ESM。
+    // ⚠️ SDK dist 将来若引入**顶层 await**，这里会报 ERR_REQUIRE_ASYNC_MODULE——那时改用
+    //    `await import()` 并把本脚本主流程改成异步（`plugin-css-prefix-audit.mjs` 就是这么写的）。
+    const req = createRequire(import.meta.url);
+    const mod = req(SDK_PREFIX_MODULE);
+    if (typeof mod.runPluginPrefixCheck !== "function") {
+      fail(
+        `SDK dist 里没有 runPluginPrefixCheck（${SDK_PREFIX_MODULE}）——dist 与源码不同步`,
+        "先 `npm run --prefix packages/plugin-sdk build`；别在这里补一条自己的判据",
+      );
+      return null;
+    }
+    prefixCheckFn = mod.runPluginPrefixCheck;
+  } catch (e) {
+    fail(
+      `加载断言 11 的判据失败（${SDK_PREFIX_MODULE}）：${e instanceof Error ? e.message : String(e)}`,
+      "先 `npm run --prefix packages/plugin-sdk build`；本断言刻意不自带判据——那是 check-css-namespace 腿的同一处实现",
+    );
+  }
+  return prefixCheckFn;
+}
 
 // ── 现场读「别人的实现」（不手抄第二份——闸 3） ──
 
@@ -305,6 +389,23 @@ function runAssertions(genDir) {
         "尺子与 `check-author-docs-symbols.mjs` 同一份（`scripts/lib/author-symbols.mjs`）");
   }
 
+  // 断言 11：生成物**零裸类名 / 零裸关键帧**（E6#109h-b②）——判据来自 SDK 的同一条腿，见文件头
+  const prefixCheck = getPrefixCheck();
+  if (prefixCheck) {
+    const report = prefixCheck(genDir);
+    if (report.violations.length > 0) {
+      const points = report.violations
+        .map((v) => `${v.file}:${v.line}  ← ${v.message.split("——")[0].trim()}`)
+        .join("\n     ");
+      fail(
+        `生成物有 ${report.violations.length} 处命名空间违规` +
+          `（裸定义类名 ${report.classes.length} / 裸关键帧 ${report.keyframes.length}）：\n     ${points}`,
+        "模板里的示例类名必须带 `{{pluginName}}-` 前缀（生成后即 `<pluginId>-`）——插件视图里宿主、" +
+          "共享组件与所有已加载插件的 CSS 同表，裸类名是全局标识符；改模板的 index.css + index.tsx（渲染点同笔）",
+      );
+    }
+  }
+
   return generated;
 }
 
@@ -475,6 +576,82 @@ function checkGitBehavior(cliPath, root) {
 }
 
 /**
+ * 断言 11 的**真变异**负控（不靠推理——照断言 10 的先例）：
+ *
+ *   ① 正控：**真跑 CLI** 出来的工程 ⇒ 判据必须 0 违规
+ *   ② 变异：把生成物 `src/index.css` 里的 `<名>-starter` 改回裸 `.starter` ⇒ 判据必须红，
+ *      且报点里带文件 ＋ 现名 ＋「应以 `<id>-` 开头」（即改模板把前缀删掉，门禁会拦住）
+ *   ③ 还原：写回原字节 ⇒ 判据回到 0，且 sha256 与原始**逐字节相同**
+ *
+ * ⇒ 证明这条断言**不是恒真的**（恒真的断言 = 没有断言）。只动**生成物**、不碰仓内模板。
+ */
+function prefixSelfTestCases() {
+  const out = [];
+  const push = (file, ok, n, why, first) => out.push({ file, ok, n, why, ...(first ? { first } : {}) });
+
+  const genDir = generate(); // 真跑 CLI（不模拟）
+  const check = getPrefixCheck(); // 懒加载：dist 缺失/过旧时先构建
+  if (!genDir || !check) {
+    push(
+      "断言 11（负控）",
+      false,
+      failures.length,
+      "真生成 / 判据加载失败——断言 11 无从验证（原因见上）",
+      failures.splice(0).join("；"),
+    );
+    return out;
+  }
+
+  // ① 正控：真生成物零违规
+  const clean = check(genDir);
+  push(
+    "断言 11 正控（真生成物）",
+    clean.violations.length === 0,
+    clean.violations.length,
+    "真跑 CLI 出来的工程必须零裸类名/关键帧",
+    clean.violations[0]?.message,
+  );
+
+  // ② 变异：CSS 改回裸名 ⇒ 判据必须红
+  const cssRel = "src/index.css";
+  const cssPath = join(genDir, cssRel);
+  const original = readFileSync(cssPath, "utf8");
+  const mutated = original.split(`${PROBE_NAME}-starter`).join("starter");
+  const didMutate = mutated !== original;
+  writeFileSync(cssPath, mutated);
+  const bad = check(genDir);
+  const hit = bad.violations.find((v) => v.file === cssRel && v.message.includes(`应以 "${PROBE_NAME}-" 开头`));
+  /** 裸定义站点数 = **4**：模板 CSS 的 5 处类名里，`.<名>-starter__hint code` 是 scoped 后代选择器、不占名
+   *  ⇒ 判据只报 4 个站点（详案/详案表说的「5 处」是**类名出现次数**，两把尺子，别混）。
+   *  ⚠️ 模板示例改动了类名数量 ⇒ 同笔更新这个期望值（期望是契约，显式写死）。 */
+  const EXPECTED_SITES = 4;
+  push(
+    "断言 11 负控（真变异：CSS 改回裸 .starter）",
+    didMutate && hit !== undefined && bad.violations.length === EXPECTED_SITES,
+    bad.violations.length,
+    `把 ${PROBE_NAME}-starter 改回裸 .starter ⇒ 判据必须红 ${EXPECTED_SITES} 条、且报点带「应以 "${PROBE_NAME}-" 开头」`,
+    didMutate
+      ? `红了 ${bad.violations.length} 条（期望 ${EXPECTED_SITES}）${hit ? "，但有一条正是期望形态" : `；没有一条是期望形态：${bad.violations[0]?.message ?? "（零违规）"}`}`
+      : `变异没生效——生成物 ${cssRel} 里没有 ${PROBE_NAME}-starter（模板被改过了？）`,
+  );
+
+  // ③ 还原：逐字节相同 + 判据回零
+  writeFileSync(cssPath, original);
+  const sha = (s) => createHash("sha256").update(s, "utf8").digest("hex");
+  const byteIdentical = sha(readFileSync(cssPath, "utf8")) === sha(original);
+  const again = check(genDir);
+  push(
+    "断言 11 还原（写回原字节）",
+    byteIdentical && again.violations.length === 0,
+    again.violations.length,
+    "还原后判据回绿，且文件 sha256 与变异前**逐字节相同**",
+    byteIdentical ? `还原后仍有 ${again.violations.length} 条违规` : "还原后 sha256 与原始不同",
+  );
+
+  return out;
+}
+
+/**
  * `--self-test`：**负控**——把断言 9 拿去喂两个「坏 CLI」，证明它不是恒真的。
  *
  *   桩 A「从不建仓」（= 7.6 之前的老行为）⇒ 情形① 必须红
@@ -545,6 +722,9 @@ if (!args.includes("--no-git")) {
     first: symOk ? undefined : `实得 dirty=${dirtyHits}（期望 2）· clean=${cleanHits}（期望 0）`,
   });
 
+  // 断言 11 的负控：真跑 CLI 生成 → 变异 CSS → 判据必红 → 还原逐字节
+  cases.push(...prefixSelfTestCases());
+
   const failed = cases.filter((c) => !c.ok);
   for (const c of cases) {
     console.log(`  ${c.ok ? "✔" : "❌"} ${c.file}：${c.why}（判据红了 ${c.n} 条）`);
@@ -555,12 +735,17 @@ if (!args.includes("--no-git")) {
       `\n❌ check-scaffold 自检未过（${failed.length}/${cases.length}）：负控**没有**变红 ⇒ 断言恒真的假门禁。`,
     );
     for (const f of failed) {
-      console.error(`  · ${f.file}：期望红在「${expect[f.file].must}」，实际没有`);
-      if (f.first) console.error(`      ↳ 它只红了：${f.first.split("\n")[0]}`);
+      // ⚠️ 不是每个用例都在 `expect` 里（断言 10/11 的用例自带 why）——不判空会在这里抛 TypeError
+      const e = expect[f.file];
+      console.error(`  · ${f.file}：${e ? `期望红在「${e.must}」` : f.why}，实际没有`);
+      if (f.first) console.error(`      ↳ 它只红了：${String(f.first).split("\n")[0]}`);
     }
     return 1;
   }
-  console.log(`\ncheck-scaffold self-test ✔️ ${cases.length}/${cases.length} 例全过（建仓两条相反路径 + 内部符号脏/净两样本的负控都会红）`);
+  console.log(
+    `\ncheck-scaffold self-test ✔️ ${cases.length}/${cases.length} 例全过` +
+      `（建仓两条相反路径 + 内部符号脏/净两样本 + 断言 11 的真变异：改回裸类名必红、还原逐字节相同）`,
+  );
   return 0;
 }
 
@@ -587,5 +772,5 @@ rmSync(SCRATCH_DIR, { recursive: true, force: true });
 console.log(
   `✅ 脚手架生成物符合契约——${EXPECTED_FILES.length} 个文件 / ${EXPECTED_SCRIPTS.length} 条命令 / ` +
     `pluginId 已声明 / 占位符与 CLI values 齐平 / CHANGELOG 段可切 / i18n 零死 key / npm 打包不丢文件 / ` +
-    `建仓三语义（仓外建·仓内不建·--no-git 不建）/ 零内部任务号。`,
+    `建仓三语义（仓外建·仓内不建·--no-git 不建）/ 零内部任务号 / 零裸类名·关键帧（与 check-css-namespace 腿同源）。`,
 );

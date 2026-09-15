@@ -20,16 +20,16 @@ export default function HelloPlugin(_props: { isActive?: boolean; tabId?: string
   const { t } = useTranslation();
 
   return (
-    <div className="starter">
-      <h2 className="starter__title">{t("插件跑起来了 ✨")}</h2>
-      <p className="starter__text">{t("这是你的第一个 LinkDesk 插件。")}</p>
-      <p className="starter__hint">
+    <div className="{{pluginName}}-starter">
+      <h2 className="{{pluginName}}-starter__title">{t("插件跑起来了 ✨")}</h2>
+      <p className="{{pluginName}}-starter__text">{t("这是你的第一个 LinkDesk 插件。")}</p>
+      <p className="{{pluginName}}-starter__hint">
         <code>src/index.tsx</code> {t("是插件本体——改它，浏览器预览即时刷新。")}
       </p>
-      <p className="starter__hint">
+      <p className="{{pluginName}}-starter__hint">
         <code>npm run build</code> {t("打包出分发文件，可装进 LinkDesk 或发布到市场。")}
       </p>
-      <p className="starter__hint">{t("目录该放哪、发布怎么做，都写在 README.md 里。")}</p>
+      <p className="{{pluginName}}-starter__hint">{t("目录该放哪、发布怎么做，都写在 README.md 里。")}</p>
     </div>
   );
 }

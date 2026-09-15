@@ -230,16 +230,16 @@ export default function HelloPlugin(_props: { isActive?: boolean; tabId?: string
   const { t } = useTranslation();
 
   return (
-    <div className="starter">
-      <h2 className="starter__title">{t("插件跑起来了 ✨")}</h2>
-      <p className="starter__text">{t("这是你的第一个 LinkDesk 插件。")}</p>
-      <p className="starter__hint">
+    <div className="{{pluginName}}-starter">
+      <h2 className="{{pluginName}}-starter__title">{t("插件跑起来了 ✨")}</h2>
+      <p className="{{pluginName}}-starter__text">{t("这是你的第一个 LinkDesk 插件。")}</p>
+      <p className="{{pluginName}}-starter__hint">
         <code>src/index.tsx</code> {t("是插件本体——改它，浏览器预览即时刷新。")}
       </p>
-      <p className="starter__hint">
+      <p className="{{pluginName}}-starter__hint">
         <code>npm run build</code> {t("打包出分发文件，可装进 LinkDesk 或发布到市场。")}
       </p>
-      <p className="starter__hint">{t("目录该放哪、发布怎么做，都写在 README.md 里。")}</p>
+      <p className="{{pluginName}}-starter__hint">{t("目录该放哪、发布怎么做，都写在 README.md 里。")}</p>
     </div>
   );
 }
@@ -248,18 +248,28 @@ export default function HelloPlugin(_props: { isActive?: boolean; tabId?: string
 **契约要点（doc 注释里也写着）：** `{ isActive?, tabId?, sourceId? }` 全可选——keep-alive 下非聚焦仍在渲染，isActive 只 gate 副作用；`if (!isActive) return null` 整块 blank 掉内容是反模式。**代码标识符（`src/index.tsx` / `npm run build`）留在 `<code>` 里、不进 `t()`**——它们不是 UI 文案。
 
 ```css
-/* {{displayName}} 样式示例（`npm run lint` 会照着下面三条查）。
-   三条纪律：
+/* {{displayName}} 样式示例（`npm run lint` 会照着下面四条查）。
+   四条纪律：
    · 颜色一律 var(--xxx)，禁硬编码 hex——用户换主题时你的插件要跟着变；
    · 字号一律 var(--font-size-*)——用户调全局字号时它才跟着缩放，裸 px 不会；
-   · padding / margin / gap 走 4px 节奏（4 的倍数）。 */
+   · padding / margin / gap 走 4px 节奏（4 的倍数）；
+   · 类名一律以 {{pluginName}}- 开头——插件视图里宿主、共享组件与**所有已加载插件**的
+     CSS 在同一张样式表里，裸类名（如 .starter）是全局标识符，会和别人的同名规则
+     互相覆盖（不报错、只是长得不对）。 */
 
-.starter { padding: 24px; font-family: inherit; }
-.starter__title { margin: 0 0 8px; color: var(--text); }
-.starter__text { margin: 0 0 4px; color: var(--text-muted); }
-.starter__hint { margin: 0; color: var(--text-muted); font-size: var(--font-size-xs); }
-.starter__hint code { font-family: var(--font-mono, monospace); }
+.{{pluginName}}-starter { padding: 24px; font-family: inherit; }
+.{{pluginName}}-starter__title { margin: 0 0 8px; color: var(--text); }
+.{{pluginName}}-starter__text { margin: 0 0 4px; color: var(--text-muted); }
+.{{pluginName}}-starter__hint { margin: 0; color: var(--text-muted); font-size: var(--font-size-xs); }
+.{{pluginName}}-starter__hint code { font-family: var(--font-mono, monospace); }
 ```
+
+> 🔴 **件 2 改动（2026-09-15，`create-linkdesk-plugin` 0.1.10）**：示例类名从裸 `.starter*` 改成
+> `.{{pluginName}}-starter*`——**新插件一出生就合规**。理由：插件视图里宿主、共享组件与**所有已加载
+> 插件**的 CSS 装在**同一张样式表**里（实机读数 8 张），裸类名是**全局标识符**（`.badge` 案同形：
+> 不报错、只是长得不对）。守它的门禁 = `check-scaffold.mjs` 的**断言 11**（生成物零裸类名/关键帧，
+> 判据**与 SDK 的 `check-css-namespace` 腿同源**，不另写一份）＋ 生成物自己的 `npm run lint`。
+> ⚠️ 只改类名标识符、**视觉一字不动**；`.gitignore`-style 的「零新机制」——`{{pluginName}}` 占位符本来就有。
 
 > 🔴 **v2 顺手修的一处自打脸**：v1 的 `.starter__hint` 写 `font-size: 12px`，而 v2 把 `npm run lint` 接进了模板 ⇒ **生成物第一次跑 lint 就报 `check-font-scale` 偏离**。改成 `var(--font-size-xs)`（= 同一个 12px，但跟着全局字号缩放），并订正注释里那句「布局/字号这类结构值用普通 px（不违反）」——**门禁存在之后它就不成立了**。
 
