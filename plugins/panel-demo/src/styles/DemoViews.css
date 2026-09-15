@@ -6,8 +6,8 @@
    - 对比度靠既有文本 token（--text-primary/muted/tertiary 已满足 4.5:1 设计基线）
    - prefers-reduced-motion 全关 transition */
 
-.demo-output,
-.demo-todo {
+.panel-demo-demo-output,
+.panel-demo-demo-todo {
   height: 100%;
   display: flex;
   flex-direction: column;
@@ -17,7 +17,7 @@
 
 /* ── 工具栏（两视图共用语义） ── */
 
-.demo-toolbar {
+.panel-demo-demo-toolbar {
   display: flex;
   align-items: center;
   gap: 4px;
@@ -26,7 +26,7 @@
   flex-shrink: 0;
 }
 
-.demo-toolbar-hint {
+.panel-demo-demo-toolbar-hint {
   margin-left: auto;
   font-size: var(--font-size-xs); /* E5.8 Phase 12 #178：toolbar-hint 11→xs */
   color: var(--text-muted); /* E5.8#128.8：幽灵 --text-tertiary → 真实 text-muted */
@@ -35,8 +35,8 @@
 
 /* ── 图标按钮（22px 幽灵钮——密集面板刻度） ── */
 
-.demo-icon-btn {
-  width: calc(22px * var(--ui-scale)); /* E5.8 Phase 12 #178：demo-icon-btn 22px 乘 scale */
+.panel-demo-demo-icon-btn {
+  width: calc(22px * var(--ui-scale)); /* E5.8 Phase 12 #178：panel-demo-demo-icon-btn 22px 乘 scale */
   height: calc(22px * var(--ui-scale));
   display: inline-flex;
   align-items: center;
@@ -51,17 +51,17 @@
   transition: background 0.15s, color 0.15s;
 }
 
-.demo-icon-btn:hover:not(:disabled) {
+.panel-demo-demo-icon-btn:hover:not(:disabled) {
   background: var(--hover-overlay);
   color: var(--text-primary);
 }
 
-.demo-icon-btn:focus-visible {
+.panel-demo-demo-icon-btn:focus-visible {
   outline: 1px solid var(--accent);
   outline-offset: -1px;
 }
 
-.demo-icon-btn:disabled {
+.panel-demo-demo-icon-btn:disabled {
   color: var(--text-muted);
   opacity: 0.45;
   cursor: default;
@@ -69,17 +69,17 @@
 
 /* ── 输出日志区——等宽 12px，三级着色（info/warn/error） ── */
 
-.demo-log {
+.panel-demo-demo-log {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
   padding: 6px 0;
   font-family: var(--font-mono, Consolas, monospace);
-  font-size: var(--font-size-sm); /* E5.8 Phase 12 #178：demo-log 12→sm */
+  font-size: var(--font-size-sm); /* E5.8 Phase 12 #178：panel-demo-demo-log 12→sm */
   line-height: 1.5; /* E5.8 Phase 12 #178：18px 写死 → 单位 1.5（18/12 比例） */
 }
 
-.demo-log-line {
+.panel-demo-demo-log-line {
   display: flex;
   gap: 8px;
   padding: 0 10px;
@@ -87,13 +87,13 @@
   word-break: break-all;
 }
 
-.demo-log-line:hover {
+.panel-demo-demo-log-line:hover {
   background: var(--hover-overlay);
 }
 
 /* ── 空态——E5.8#36.6 侧栏演示视图（ui-ux-pro-max 空态指引：有用消息 + 动作提示） ── */
 
-.demo-log-empty {
+.panel-demo-demo-log-empty {
   padding: 8px 12px;
   font-family: var(--font-mono, Consolas, monospace);
   font-size: var(--font-size-sm); /* E5.8 Phase 12 #178：log-empty 12→sm */
@@ -101,26 +101,26 @@
   user-select: none;
 }
 
-.demo-log-time {
+.panel-demo-demo-log-time {
   color: var(--text-muted); /* E5.8#128.8：幽灵 --text-tertiary → 真实 text-muted */
   flex-shrink: 0;
 }
 
-.demo-log-text {
+.panel-demo-demo-log-text {
   color: var(--text-muted); /* info 默认 */
 }
 
-.demo-log-line.warn .demo-log-text {
+.panel-demo-demo-log-line.warn .panel-demo-demo-log-text {
   color: var(--warning);
 }
 
-.demo-log-line.error .demo-log-text {
+.panel-demo-demo-log-line.error .panel-demo-demo-log-text {
   color: var(--error);
 }
 
 /* ── 待办输入行 ── */
 
-.demo-todo-form {
+.panel-demo-demo-todo-form {
   display: flex;
   gap: 6px;
   padding: 8px;
@@ -128,7 +128,7 @@
   flex-shrink: 0;
 }
 
-.demo-todo-input {
+.panel-demo-demo-todo-input {
   flex: 1;
   min-width: 0;
   height: calc(24px * var(--ui-scale)); /* E5.8 Phase 12 #178：todo-input 24px 乘 scale */
@@ -142,17 +142,17 @@
   transition: border-color 0.15s;
 }
 
-.demo-todo-input::placeholder {
+.panel-demo-demo-todo-input::placeholder {
   color: var(--text-muted); /* E5.8#128.8：幽灵 --text-tertiary → 真实 text-muted */
 }
 
-.demo-todo-input:focus {
+.panel-demo-demo-todo-input:focus {
   border-color: var(--accent);
 }
 
 /* ── 待办列表 ── */
 
-.demo-todo-list {
+.panel-demo-demo-todo-list {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
@@ -161,7 +161,7 @@
   list-style: none;
 }
 
-.demo-todo-item {
+.panel-demo-demo-todo-item {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -169,12 +169,12 @@
   padding: 0 8px;
 }
 
-.demo-todo-item:hover {
+.panel-demo-demo-todo-item:hover {
   background: var(--hover-overlay);
 }
 
 /* 勾选框——16px 空心方框，完成态 accent 填充 + check 图标 */
-.demo-todo-check {
+.panel-demo-demo-todo-check {
   width: calc(16px * var(--ui-scale)); /* E5.8 Phase 12 #178：todo-check 16px 盒乘 scale */
   height: calc(16px * var(--ui-scale));
   flex-shrink: 0;
@@ -191,21 +191,21 @@
   transition: background 0.15s, border-color 0.15s;
 }
 
-.demo-todo-check:hover {
+.panel-demo-demo-todo-check:hover {
   border-color: var(--accent);
 }
 
-.demo-todo-check:focus-visible {
+.panel-demo-demo-todo-check:focus-visible {
   outline: 1px solid var(--accent);
   outline-offset: 1px;
 }
 
-.demo-todo-item.done .demo-todo-check {
+.panel-demo-demo-todo-item.done .panel-demo-demo-todo-check {
   background: var(--accent);
   border-color: var(--accent);
 }
 
-.demo-todo-text {
+.panel-demo-demo-todo-text {
   flex: 1;
   min-width: 0;
   overflow: hidden;
@@ -215,25 +215,25 @@
   color: var(--text-primary);
 }
 
-.demo-todo-item.done .demo-todo-text {
+.panel-demo-demo-todo-item.done .panel-demo-demo-todo-text {
   color: var(--text-muted); /* E5.8#128.8：幽灵 --text-tertiary → 真实 text-muted */
   text-decoration: line-through;
 }
 
 /* 删除钮——常显但弱化（不依赖 hover 才可见——触屏可用），悬停转 danger */
-.demo-todo-remove {
+.panel-demo-demo-todo-remove {
   flex-shrink: 0;
   opacity: 0.55;
 }
 
-.demo-todo-remove:hover:not(:disabled) {
+.panel-demo-demo-todo-remove:hover:not(:disabled) {
   opacity: 1;
   color: var(--danger);
 }
 
 /* ── 空态 + 底部计数 ── */
 
-.demo-todo-empty {
+.panel-demo-demo-todo-empty {
   flex: 1;
   display: flex;
   align-items: center;
@@ -243,7 +243,7 @@
   color: var(--text-muted); /* E5.8#128.8：幽灵 --text-tertiary → 真实 text-muted */
 }
 
-.demo-todo-footer {
+.panel-demo-demo-todo-footer {
   flex-shrink: 0;
   padding: 4px 10px;
   border-top: 1px solid var(--separator);
@@ -255,9 +255,9 @@
 /* ── reduced motion——过渡全关（仅装饰性过渡，非信息传达） ── */
 
 @media (prefers-reduced-motion: reduce) {
-  .demo-icon-btn,
-  .demo-todo-input,
-  .demo-todo-check {
+  .panel-demo-demo-icon-btn,
+  .panel-demo-demo-todo-input,
+  .panel-demo-demo-todo-check {
     transition: none;
   }
 }

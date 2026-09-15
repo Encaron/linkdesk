@@ -51,16 +51,16 @@ export default function DemoTodoView() {
   const doneCount = todos.filter((x) => x.done).length;
 
   return (
-    <div className="demo-todo">
+    <div className="panel-demo-demo-todo">
       <form
-        className="demo-todo-form"
+        className="panel-demo-demo-todo-form"
         onSubmit={(e) => {
           e.preventDefault();
           add();
         }}
       >
         <input
-          className="demo-todo-input"
+          className="panel-demo-demo-todo-input"
           type="text"
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
@@ -69,7 +69,7 @@ export default function DemoTodoView() {
         />
         <button
           type="submit"
-          className="demo-icon-btn"
+          className="panel-demo-demo-icon-btn"
           title={t("添加")}
           aria-label={t("添加")}
           disabled={!draft.trim()}
@@ -77,22 +77,22 @@ export default function DemoTodoView() {
           <span className="codicon codicon-add" />
         </button>
       </form>
-      <ul className="demo-todo-list">
+      <ul className="panel-demo-demo-todo-list">
         {todos.map((x) => (
-          <li key={x.id} className={`demo-todo-item${x.done ? " done" : ""}`}>
+          <li key={x.id} className={`panel-demo-demo-todo-item${x.done ? " done" : ""}`}>
             <button
               type="button"
-              className="demo-todo-check"
+              className="panel-demo-demo-todo-check"
               title={x.done ? t("标记为未完成") : t("标记为已完成")}
               aria-label={x.done ? t("标记为未完成") : t("标记为已完成")}
               onClick={() => toggle(x.id)}
             >
               {x.done && <span className="codicon codicon-check" />}
             </button>
-            <span className="demo-todo-text">{x.text}</span>
+            <span className="panel-demo-demo-todo-text">{x.text}</span>
             <button
               type="button"
-              className="demo-icon-btn demo-todo-remove"
+              className="panel-demo-demo-icon-btn panel-demo-demo-todo-remove"
               title={t("删除")}
               aria-label={t("删除")}
               onClick={() => remove(x.id)}
@@ -103,9 +103,9 @@ export default function DemoTodoView() {
         ))}
       </ul>
       {todos.length === 0 ? (
-        <p className="demo-todo-empty">{t("暂无待办——添加一条试试")}</p>
+        <p className="panel-demo-demo-todo-empty">{t("暂无待办——添加一条试试")}</p>
       ) : (
-        <div className="demo-todo-footer">
+        <div className="panel-demo-demo-todo-footer">
           {t("{{done}}/{{total}} 项已完成", { done: doneCount, total: todos.length })}
         </div>
       )}

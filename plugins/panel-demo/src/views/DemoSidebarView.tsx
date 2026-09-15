@@ -61,19 +61,19 @@ export default function DemoSidebarView() {
   }, []);
 
   return (
-    <div className="demo-output">
-      <div className="demo-toolbar">
-        <span className="demo-toolbar-hint">
+    <div className="panel-demo-demo-output">
+      <div className="panel-demo-demo-toolbar">
+        <span className="panel-demo-demo-toolbar-hint">
           {t("侧栏动作区演示——点击 header 右侧图标追加/清空日志")}
         </span>
       </div>
-      <div className="demo-log" role="log" aria-live="polite">
+      <div className="panel-demo-demo-log" role="log" aria-live="polite">
         {lines.length === 0 && (
-          <div className="demo-log-empty">{t("暂无日志输出")}</div>
+          <div className="panel-demo-demo-log-empty">{t("暂无日志输出")}</div>
         )}
         {lines.map((l) => (
-          <div key={l.id} className={`demo-log-line ${l.level}`}>
-            <span className="demo-log-text">{l.text}</span>
+          <div key={l.id} className={`panel-demo-demo-log-line ${l.level}`}>
+            <span className="panel-demo-demo-log-text">{l.text}</span>
           </div>
         ))}
       </div>

@@ -98,10 +98,10 @@ export default function DemoOutputView({ isActive }: { isActive: boolean }) {
   }, []);
 
   return (
-    <div className="demo-output">
-      <div className="demo-toolbar">
+    <div className="panel-demo-demo-output">
+      <div className="panel-demo-demo-toolbar">
         <button
-          className="demo-icon-btn"
+          className="panel-demo-demo-icon-btn"
           title={running ? t("暂停") : t("继续")}
           aria-label={running ? t("暂停") : t("继续")}
           onClick={() => setRunning((r) => !r)}
@@ -109,22 +109,22 @@ export default function DemoOutputView({ isActive }: { isActive: boolean }) {
           <span className={`codicon ${running ? "codicon-pause" : "codicon-play"}`} />
         </button>
         <button
-          className="demo-icon-btn"
+          className="panel-demo-demo-icon-btn"
           title={t("清空输出")}
           aria-label={t("清空输出")}
           onClick={() => setLines([])}
         >
           <span className="codicon codicon-clear-all" />
         </button>
-        <span className="demo-toolbar-hint">
+        <span className="panel-demo-demo-toolbar-hint">
           {running ? t("自动追加演示日志") : t("已暂停——点击继续")}
         </span>
       </div>
-      <div className="demo-log" ref={scrollRef} role="log" aria-live="polite">
+      <div className="panel-demo-demo-log" ref={scrollRef} role="log" aria-live="polite">
         {lines.map((l) => (
-          <div key={l.id} className={`demo-log-line ${l.level}`}>
-            <span className="demo-log-time">{l.time}</span>
-            <span className="demo-log-text">{l.text}</span>
+          <div key={l.id} className={`panel-demo-demo-log-line ${l.level}`}>
+            <span className="panel-demo-demo-log-time">{l.time}</span>
+            <span className="panel-demo-demo-log-text">{l.text}</span>
           </div>
         ))}
       </div>
