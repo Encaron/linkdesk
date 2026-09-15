@@ -2,7 +2,7 @@
  * `runPluginLint()`——`npm run lint` 门禁编排（E6#54d）：eslint 规则腿 + 三 check 扫描腿双轨。
  *
  * 对标壳 check 同款双轨（07 §六·载体双轨）：eslint（12 项注册规则，全 WARN）管 ts/tsx；
- * css-hardcode / font-scale / spacing-grid 三移植脚本管整工程（eslint 到不了 .css，
+ * css-hardcode / font-scale / spacing-grid / css-namespace 四条移植脚本管整工程（eslint 到不了 .css，
  * ts/tsx 的 rgb()/hsl() 也归 css-hardcode 补）。jscpd = 项目级可选（文档引导，不进编排）。
  *
  * 门禁哲学（07 §六·三档）：违规全 WARN **永不 fail build**——本编排按违规数统计并打印
@@ -16,6 +16,7 @@ import { linkdeskPluginLintConfig, type PluginLintOptions } from "./preset.js";
 import { runCssHardcodeCheck } from "./checks/css-hardcode.js";
 import { runFontScaleCheck } from "./checks/font-scale.js";
 import { runSpacingGridCheck } from "./checks/spacing-grid.js";
+import { runReservedClassCheck } from "./checks/reserved-classes.js";
 import { type CheckViolation } from "./checks/scan.js";
 
 /** 示例用的门禁 id（打印知情绕行格式）；伪 id 与 check 脚本 CHECK_IDS 同源 */
@@ -39,7 +40,7 @@ export interface EslintRow {
 export interface PluginLintReport {
   files: number; // eslint 实际 lint 文件数
   eslintRows: EslintRow[]; // eslint 腿逐条偏离（含真 error——退出码依据）
-  legs: LintLeg[]; // 三 check 腿（css-hardcode / font-scale / spacing-grid）
+  legs: LintLeg[]; // 四 check 腿（css-hardcode / font-scale / spacing-grid / css-namespace）
   totalCheckViolations: number;
   tsconfigUsed: string | null; // 实际喂 import-x resolver 的 tsconfig（无则 null）
 }
@@ -89,12 +90,14 @@ export async function runPluginLint(root: string, options: PluginLintOptions = {
   const css = runCssHardcodeCheck(absRoot);
   const font = runFontScaleCheck(absRoot);
   const spacing = runSpacingGridCheck(absRoot);
+  const namespace = runReservedClassCheck(absRoot);
   const legs: LintLeg[] = [
     { id: "linkdesk/no-hardcoded-hex（css + rgb/hsl 腿）", label: "check-css-hardcode", violations: css },
     { id: "linkdesk/no-hardcoded-font-size", label: "check-font-scale", violations: font },
     { id: "linkdesk/no-nonstandard-spacing", label: "check-spacing-grid", violations: spacing },
+    { id: "linkdesk/no-reserved-class-name（宿主保留名裸定义）", label: "check-css-namespace", violations: namespace },
   ];
-  const totalCheckViolations = css.length + font.length + spacing.length;
+  const totalCheckViolations = css.length + font.length + spacing.length + namespace.length;
 
   return {
     files: results.length,

@@ -37,29 +37,26 @@ import { tmpdir } from "node:os";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, "..");
 
-/* ── 登记表（数据，不是代码里的散落判断）────────────────────────────── */
+/* ── 登记表（**单一真相源在 SDK 包里**，本脚本与插件侧检查腿读同一份）────────
 
-/** 共享组件已登记的裸定义：类名 → { owner: 组件目录名, why: 为什么它可以叫这个名字 } */
-const SHARED_BARE_REGISTRY = {
-  badge: { owner: "badge", why: "壳基础件「小圆角徽标」（E6#30.14b）——市场/详情的 chip 形态" },
-  button: { owner: "button", why: "壳基础件按钮（E6#30.13）——插件按 .button--sm/--ghost 变体消费" },
-  combobox: { owner: "combobox", why: "组合输入控件（E3.5）——插件 scoped 调优（.control-bar .combobox）" },
-  mdv: { owner: "markdown-view", why: "Markdown 渲染容器（E6#30.6a）——详情的 README/发行说明" },
-  selectbox: { owner: "select-box", why: "下拉选择（E3.5）——插件 scoped 调优" },
-  sle: { owner: "string-list-editor", why: "字符串数组编辑器（E6#30c）——插件 scoped 调优" },
-  slider: { owner: "slider", why: "滑杆（E5.8#50.9）——插件 scoped 调优（.settings-slider-control .slider）" },
-  toggle: { owner: "toggle", why: "开关（E5.8#50）——.toggle.on / .toggle.disabled 状态约定" },
-};
+   🔴 为什么不写在脚本里：同一张表要发给**插件作者**（`@linkdesk/plugin-sdk` 的
+   check-css-namespace 腿，插件仓 CI 跑）——写在壳脚本里就得再抄一份到 SDK（两份必漂）。
+   真相源 = `packages/plugin-sdk/schemas/reserved-class-names.json`（随 npm 包下发，
+   作者也能自己读）。本脚本额外做**反向核对**（登记 ↔ 实况），防止表烂掉。 */
 
-/** 宿主 index.css 已登记的全局工具类：类名 → why */
-const HOST_GLOBAL_REGISTRY = {
-  about: { why: "关于页正文容器" },
-  divider: { why: "通用分隔线" },
-  input: { why: "🔴 插件在用的输入框工具类（settings/serial-monitor 实测渲染 className=\"input\"）" },
-  rn: { why: "发行说明容器（ReleaseNotes）" },
-  titlebar: { why: "标题栏容器" },
-  vta: { why: "视图过渡动画容器" },
-};
+const RESERVED_FILE_REL = "packages/plugin-sdk/schemas/reserved-class-names.json";
+
+/** 读登记表：→ { shared: {name:{owner,why}}, host: {name:{why}}, keyframes: string[] } */
+function loadRegistry(root = ROOT) {
+  const file = join(root, RESERVED_FILE_REL);
+  const raw = JSON.parse(readFileSync(file, "utf8"));
+  const toMap = (list) => Object.fromEntries((list ?? []).map((x) => [x.name, { owner: x.owner, why: x.why }]));
+  return {
+    shared: toMap(raw.classes?.shared),
+    host: toMap(raw.classes?.host),
+    keyframes: (raw.keyframes ?? []).map((k) => k.name),
+  };
+}
 
 /* ── 解析 ──────────────────────────────────────────────────────────── */
 
@@ -153,7 +150,7 @@ function renderedTokens(file) {
 /* ── 判据 ──────────────────────────────────────────────────────────── */
 
 /** 跑全部判据；返回 violations: [{ kind, msg }] */
-export function runChecks(root = ROOT, registry = { shared: SHARED_BARE_REGISTRY, host: HOST_GLOBAL_REGISTRY }) {
+export function runChecks(root = ROOT, registry = loadRegistry(root)) {
   const violations = [];
   const sharedDir = join(root, "src", "components", "shared");
 
@@ -169,7 +166,7 @@ export function runChecks(root = ROOT, registry = { shared: SHARED_BARE_REGISTRY
         violations.push({
           kind: "shared-bare-unregistered",
           msg: `共享组件新增裸定义 .${name}（${relative(root, f).replace(/\\/g, "/")}）——裸类名是全局标识符，` +
-            `池文档里与其他插件同表。要么改名加前缀（推荐，如 .tbadge），要么登记进 check-css-namespace.mjs 的 SHARED_BARE_REGISTRY 并写明理由。`,
+            `池文档里与其他插件同表。要么改名加前缀（推荐，如 .tbadge），要么登记进 packages/plugin-sdk/schemas/reserved-class-names.json（classes.shared）并写明理由。`,
         });
       } else if (registry.shared[name].owner !== comp) {
         violations.push({
@@ -199,17 +196,21 @@ export function runChecks(root = ROOT, registry = { shared: SHARED_BARE_REGISTRY
     }
   }
 
-  // ③ 宿主 index.css 全局工具类登记
-  const indexCss = join(root, "src", "index.css");
-  if (statSync(indexCss, { throwIfNoEntry: false })) {
-    const { bareDefs } = parseCss(indexCss);
-    for (const name of bareDefs) {
+  // ③ 宿主全局工具类登记——范围 = **在池文档里生效的宿主 CSS**（index.css + src/pool/**；
+  //    池入口 pool-main.tsx 引 index.css，其余池组件样式随池 bundle 一起进同一张表）
+  const hostCssFiles = [join(root, "src", "index.css"), ...walk(join(root, "src", "pool"), (n) => n.endsWith(".css"))].filter(
+    (f) => statSync(f, { throwIfNoEntry: false })
+  );
+  const hostBareSet = new Set();
+  for (const f of hostCssFiles) {
+    for (const name of parseCss(f).bareDefs) {
       if (name.includes("-")) continue;
+      hostBareSet.add(name);
       if (!(name in registry.host)) {
         violations.push({
           kind: "host-global-unregistered",
-          msg: `宿主 index.css 新增全局工具类 .${name}——它随池文档进入所有插件视图，是跨仓公共面。` +
-            `请登记进 check-css-namespace.mjs 的 HOST_GLOBAL_REGISTRY（写明为什么必须是全局的）。`,
+          msg: `宿主新增全局工具类 .${name}（${relative(root, f).split("\\").join("/")}）——它随池文档进入所有插件视图，是跨仓公共面。` +
+            `请登记进 packages/plugin-sdk/schemas/reserved-class-names.json（classes.host，写明为什么必须是全局的）。`,
         });
       }
     }
@@ -228,6 +229,43 @@ export function runChecks(root = ROOT, registry = { shared: SHARED_BARE_REGISTRY
       violations.push({
         kind: "keyframes-clash",
         msg: `@keyframes 跨方重名 "${k}"：共享组件与 ${shellKf.get(k)} 都定义了它——关键帧名是全局的，先加载者/后定义者互相覆盖。请加命名空间前缀。`,
+      });
+    }
+  }
+
+  // ⑤ 反向核对：登记表 ↔ 实况（表是发给插件作者的数据，烂了会误导 + 假绿）
+  const allBareNow = new Set([...ownedBy.keys()]);
+  for (const name of Object.keys(registry.shared)) {
+    if (!allBareNow.has(name)) {
+      violations.push({
+        kind: "registry-stale",
+        msg: `登记表里的共享组件裸定义 .${name} 已不存在（改名/删除过）——请从 ${RESERVED_FILE_REL} 的 classes.shared 摘掉，否则插件侧会拿到过期的保留名。`,
+      });
+    }
+  }
+  const hostBareNow = hostBareSet;
+  for (const name of Object.keys(registry.host)) {
+    if (!hostBareNow.has(name)) {
+      violations.push({
+        kind: "registry-stale",
+        msg: `登记表里的宿主工具类 .${name} 已不在 index.css——请从 ${RESERVED_FILE_REL} 的 classes.host 摘掉（插件作者会照着过期的表避让）。`,
+      });
+    }
+  }
+  const actualKf = new Set([...sharedKf, ...shellKf.keys()]);
+  for (const name of registry.keyframes ?? []) {
+    if (!actualKf.has(name)) {
+      violations.push({
+        kind: "registry-stale",
+        msg: `登记表里的关键帧 "${name}" 已不存在于共享组件/壳 CSS——请从 ${RESERVED_FILE_REL} 的 keyframes 摘掉。`,
+      });
+    }
+  }
+  for (const k of actualKf) {
+    if (!(registry.keyframes ?? []).includes(k)) {
+      violations.push({
+        kind: "keyframes-unregistered",
+        msg: `关键帧 "${k}" 未登记（共享组件/壳实际定义了它）——插件作者会以为这个名字可用。请补进 ${RESERVED_FILE_REL} 的 keyframes。`,
       });
     }
   }
@@ -294,6 +332,20 @@ function selfTest() {
   mk("src/components/shared/theme-picker/X.css", ".toggle { color: red; }\n");
   cases.push(["负控⑥：裸定义换组件 ⇒ 红", runChecks(tmp, registry).some((v) => v.kind === "shared-bare-moved")]);
 
+  // 负控⑦：关键帧未登记（实况有、表里没有 ⇒ 插件作者会以为该名字可用）
+  setup();
+  mk("src/components/shared/toggle/Toggle.css", ".toggle { animation: my-in 1s; }\n@keyframes my-in { to { opacity: 1 } }\n");
+  cases.push(["负控⑦：关键帧未登记 ⇒ 红", runChecks(tmp, registry).some((v) => v.kind === "keyframes-unregistered")]);
+
+  // 负控⑧：登记过期（表里的名字实况已不存在 ⇒ 发给作者的清单在误导）
+  setup();
+  const staleRegistry = {
+    shared: { toggle: { owner: "toggle", why: "test" }, ghost: { owner: "ghost", why: "test" } },
+    host: { input: { why: "test" }, vanished: { why: "test" } },
+    keyframes: ["gone-anim"],
+  };
+  cases.push(["负控⑧：登记过期 ⇒ 红", runChecks(tmp, staleRegistry).filter((v) => v.kind === "registry-stale").length === 3]);
+
   rmSync(tmp, { recursive: true, force: true });
   let ok = true;
   for (const [name, pass] of cases) {
@@ -311,9 +363,10 @@ if (args.includes("--self-test")) selfTest();
 
 const violations = runChecks();
 if (violations.length === 0) {
+  const reg = loadRegistry();
   console.log(
-    `✅ [css-namespace] 共享组件裸定义 ${Object.keys(SHARED_BARE_REGISTRY).length} 个 / 宿主全局工具类 ` +
-      `${Object.keys(HOST_GLOBAL_REGISTRY).length} 个均在登记表内；无跨组件借用、无关键帧重名。`
+    `✅ [css-namespace] 登记表与实况一致（共享组件裸定义 ${Object.keys(reg.shared).length} 个 / 宿主全局工具类 ` +
+      `${Object.keys(reg.host).length} 个 / 关键帧 ${reg.keyframes.length} 个）；无跨组件借用。`
   );
   process.exit(0);
 }

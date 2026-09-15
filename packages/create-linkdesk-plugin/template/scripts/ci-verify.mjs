@@ -127,29 +127,38 @@ if (report) process.stdout.write(renderPluginLintReport(report) + "\n");
  * 但必须响亮打印——静默放过才是真问题。
  */
 const RULE_NOT_FOUND_RE = /^Definition for rule '.*' was not found/;
-/** 按腿取偏离数（label 与 lint.ts 的 legs 一致） */
-const legCount = (label) => report?.legs.find((l) => l.label === label)?.violations.length ?? 0;
 
 const allRows = report?.eslintRows ?? [];
 const ruleNotFound = allRows.filter((r) => RULE_NOT_FOUND_RE.test(r.message));
 const strictEslintRows = allRows.filter((r) => !RULE_NOT_FOUND_RE.test(r.message));
-/** 判红的三样：真 eslint 偏离 + css 硬编码腿（硬约束 1 的 .css 半边，eslint 到不了 .css）+ 见下 ②③④⑤ */
-const cssLegViolations = legCount("check-css-hardcode");
-const strictLintViolations = strictEslintRows.length + cssLegViolations;
-/** 只报告不拦的两条腿：字号度量与 4px 节奏——属「审美校准」，存量偏离多且修它们要动插件源码 */
-const advisoryLintViolations = legCount("check-font-scale") + legCount("check-spacing-grid");
+/**
+ * 判红的两样：真 eslint 偏离 + check 腿偏离（见下 ②③④⑤）。
+ * 🔴 **严格腿 = 除「报表档」外的全部腿**（fail-closed）：SDK 新增一条腿（如 check-css-namespace）
+ *    自动进严格档——想放宽必须把腿名写进 ADVISORY_LEGS 并说明理由，不许默默不查。
+ */
+const ADVISORY_LEGS = new Set(["check-font-scale", "check-spacing-grid"]);
+const reportLegs = report?.legs ?? [];
+const strictLegs = reportLegs.filter((l) => !ADVISORY_LEGS.has(l.label));
+const strictLegViolations = strictLegs.reduce((sum, l) => sum + l.violations.length, 0);
+const strictLintViolations = strictEslintRows.length + strictLegViolations;
+/** 报表档：字号度量与 4px 节奏——属「审美校准」，存量偏离多且修它们要动插件源码 */
+const advisoryLintViolations = reportLegs
+  .filter((l) => ADVISORY_LEGS.has(l.label))
+  .reduce((sum, l) => sum + l.violations.length, 0);
 
 if (lintNoObject) {
   line(`⏭ ① lint 严格腿：${lintNoObject}——本仓**无对象**（不是「绿」，是「没有可查的东西」）。`);
 } else if (strictLintViolations > 0) {
   fail(
-    `① lint 严格腿：${strictLintViolations} 处偏离（eslint ${strictEslintRows.length} + css 硬编码腿 ${cssLegViolations}）` +
-      `——SDK 的 \`npm run lint\` 只报告不拦，**CI 拦**。逐条见上方报告。`,
+    `① lint 严格腿：${strictLintViolations} 处偏离（eslint ${strictEslintRows.length} + ` +
+      strictLegs.map((l) => `${l.label} ${l.violations.length}`).join(" + ") +
+      `）——SDK 的 \`npm run lint\` 只报告不拦，**CI 拦**。逐条见上方报告。`,
   );
 } else {
   line(
-    `✅ ① lint 严格腿：eslint 规则腿 ${report.files} 文件 + css 硬编码腿 零偏离` +
-      `（本段判红的是「硬约束 1/2 那一档」）。`,
+    `✅ ① lint 严格腿：eslint 规则腿 ${report.files} 文件 + ` +
+      strictLegs.map((l) => `${l.label} 零偏离`).join(" + ") +
+      `（本段判红的是「硬约束」那一档）。`,
   );
 }
 if (ruleNotFound.length > 0) {
@@ -161,9 +170,12 @@ if (ruleNotFound.length > 0) {
 }
 if (advisoryLintViolations > 0) {
   line(
-    `   ⚠ 附加腿（**报告不拦**）：font-scale ${legCount("check-font-scale")} 处 / ` +
-      `spacing-grid ${legCount("check-spacing-grid")} 处——字号度量与 4px 节奏属审美校准档` +
-      `，逐条见上方报告；确属有意的用标准 disable 注释写明理由。`,
+    `   ⚠ 附加腿（**报告不拦**）：` +
+      reportLegs
+        .filter((l) => ADVISORY_LEGS.has(l.label))
+        .map((l) => `${l.label.replace("check-", "")} ${l.violations.length} 处`)
+        .join(" / ") +
+      `——字号度量与 4px 节奏属审美校准档，逐条见上方报告；确属有意的用标准 disable 注释写明理由。`,
   );
 }
 

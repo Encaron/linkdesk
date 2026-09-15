@@ -1,6 +1,6 @@
 {
   "name": "create-linkdesk-plugin",
-  "version": "0.1.8",
+  "version": "0.1.9",
   "description": "LinkDesk 插件脚手架——`npm create linkdesk-plugin@latest my-cool-plugin` 一行生成你的第一个插件项目（对标 yo code）。",
   "type": "module",
   "bin": {

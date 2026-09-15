@@ -17,6 +17,7 @@ export const CHECK_IDS = {
   cssHardcode: "linkdesk/no-hardcoded-hex",
   fontScale: "linkdesk/no-hardcoded-font-size",
   spacingGrid: "linkdesk/no-nonstandard-spacing",
+  cssNamespace: "linkdesk/no-reserved-class-name",
 } as const;
 
 interface RawComment {
