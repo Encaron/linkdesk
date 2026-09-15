@@ -32,6 +32,12 @@ plugins/*/*.linkdesk-plugin
 
 # === agent / 本机工具文件（保留在磁盘但不入库） ===
 .claude/
+# 2026-09-15 用户拍板：非 Claude 工具（ZCode / Codex）共用同一批技能——`.agents/skills` 是
+#   `.claude/skills` 的本机副本（28MB），`.codex` / `.zcode` 是各自 CLI 的按项目状态
+#   （钩子配置 / plan 产物）。三者一律只留磁盘，绝不入库。
+.agents/
+.codex/
+.zcode/
 # impeccable 设计 hook 本地运行时（ignore 决策存储 + 扫描缓存）
 .impeccable/
 # Codex CLI persona/profile（Codex 用）
