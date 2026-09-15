@@ -1,5 +1,10 @@
 /**
- * `runPluginLint()`——`npm run lint` 门禁编排（E6#54d）：eslint 规则腿 + 三 check 扫描腿双轨。
+ * `runPluginLint()`——`npm run lint` 门禁编排（E6#54d）：eslint 规则腿 + 四条 check 扫描腿双轨。
+ *
+ * E6#109h-b①：`check-css-namespace` 腿升级为**双判据**——「裸定义类名/关键帧必须以本仓 `<pluginId>-`
+ * 开头」（`checks/plugin-prefix.ts`，拍板 Q1=(A)，**不需要任何清单**）⊕「不得裸定义宿主保留名」
+ * （`checks/reserved-classes.ts`，随包清单）。两者**同一个 checkId / 同一条腿**，报点按 `文件:行`
+ * 去重（前缀优先）——详见该腿的组装处注释。
  *
  * 对标壳 check 同款双轨（07 §六·载体双轨）：eslint（12 项注册规则，全 WARN）管 ts/tsx；
  * css-hardcode / font-scale / spacing-grid / css-namespace 四条移植脚本管整工程（eslint 到不了 .css，
@@ -17,6 +22,7 @@ import { runCssHardcodeCheck } from "./checks/css-hardcode.js";
 import { runFontScaleCheck } from "./checks/font-scale.js";
 import { runSpacingGridCheck } from "./checks/spacing-grid.js";
 import { runReservedClassCheck } from "./checks/reserved-classes.js";
+import { runPluginPrefixCheck } from "./checks/plugin-prefix.js";
 import { type CheckViolation } from "./checks/scan.js";
 
 /** 示例用的门禁 id（打印知情绕行格式）；伪 id 与 check 脚本 CHECK_IDS 同源 */
@@ -43,6 +49,10 @@ export interface PluginLintReport {
   legs: LintLeg[]; // 四 check 腿（css-hardcode / font-scale / spacing-grid / css-namespace）
   totalCheckViolations: number;
   tsconfigUsed: string | null; // 实际喂 import-x resolver 的 tsconfig（无则 null）
+  /** 本仓 pluginId（命名空间腿的前缀来源；取不到 ⇒ null 且该腿 fail-closed 报红） */
+  pluginId: string | null;
+  /** pluginId 走了「目录名兜底」时的提示行——**必须打印**（详案 15 §一：让作者知道门禁用的是目录名） */
+  pluginIdNote: string | null;
 }
 
 export async function runPluginLint(root: string, options: PluginLintOptions = {}): Promise<PluginLintReport> {
@@ -90,12 +100,32 @@ export async function runPluginLint(root: string, options: PluginLintOptions = {
   const css = runCssHardcodeCheck(absRoot);
   const font = runFontScaleCheck(absRoot);
   const spacing = runSpacingGridCheck(absRoot);
-  const namespace = runReservedClassCheck(absRoot);
+  /**
+   * 命名空间腿 = **前缀判据 ⊕ 宿主保留名判据**（E6#109h-b①，详案 15 §二选项 (A)：并入现腿、同一个
+   * `CHECK_IDS.cssNamespace`、同一条 `check-css-namespace` 腿，不是两条腿）。
+   *
+   * 🔴 为什么要**去重**而不是简单相加：前缀判据（「裸定义必须以 `<pluginId>-` 开头」）在「裸定义」
+   *    这一轴上**完全覆盖**保留名判据（插件不可能再裸定义 `.badge`——它必须以 `<pluginId>-` 开头），
+   *    两条都报就成了一处命中报两次。**前缀优先**：保留名判据只补它独有的一格——**拿不到前缀**时
+   *    （`plugin.json` 缺失/损坏 ⇒ 前缀判据 fail-closed）仍能逐点报出「你占了一个宿主名字」。
+   *    保留名清单本身不删：前缀腿的报点里会带上「且这是宿主保留名」这句措辞（详见两个 check 的头注）。
+   */
+  const prefix = runPluginPrefixCheck(absRoot);
+  const reserved = runReservedClassCheck(absRoot);
+  const prefixKeys = new Set(prefix.violations.map((v) => `${v.file}:${v.line}`));
+  const namespace: CheckViolation[] = [
+    ...prefix.violations,
+    ...reserved.filter((v) => !prefixKeys.has(`${v.file}:${v.line}`)),
+  ];
   const legs: LintLeg[] = [
     { id: "linkdesk/no-hardcoded-hex（css + rgb/hsl 腿）", label: "check-css-hardcode", violations: css },
     { id: "linkdesk/no-hardcoded-font-size", label: "check-font-scale", violations: font },
     { id: "linkdesk/no-nonstandard-spacing", label: "check-spacing-grid", violations: spacing },
-    { id: "linkdesk/no-reserved-class-name（宿主保留名裸定义）", label: "check-css-namespace", violations: namespace },
+    {
+      id: "linkdesk/no-reserved-class-name（裸定义类名/关键帧必须带本仓 <pluginId>- 前缀；宿主保留名同 id）",
+      label: "check-css-namespace",
+      violations: namespace,
+    },
   ];
   const totalCheckViolations = css.length + font.length + spacing.length + namespace.length;
 
@@ -105,6 +135,8 @@ export async function runPluginLint(root: string, options: PluginLintOptions = {
     legs,
     totalCheckViolations,
     tsconfigUsed: tsconfig ? tsconfig : null,
+    pluginId: prefix.pluginId,
+    pluginIdNote: prefix.pluginIdNote,
   };
 }
 
@@ -135,6 +167,9 @@ export function renderPluginLintReport(report: PluginLintReport): string {
       lines.push(`    ${v.file}:${v.line}  ${v.message}`);
     }
   }
+
+  // 命名空间腿的前缀来源（E6#109h-b①）——目录名兜底时必须让作者看见（不许静默）
+  if (report.pluginIdNote) lines.push(`\nℹ 命名空间腿的前缀来源：${report.pluginIdNote}`);
 
   lines.push(
     `\n门禁 = 警告不是封锁（07 §六·三档）：未处理偏离可修可绕——知情绕行写标准注释\n` +

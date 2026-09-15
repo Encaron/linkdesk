@@ -8,6 +8,7 @@
  */
 import { readdirSync, readFileSync, existsSync } from "node:fs";
 import { join, relative, sep } from "node:path";
+import { buildDisableIndex, type DisableIndex } from "./disable.js";
 
 export const SKIP_DIRS = new Set(["node_modules", "dist", "dist-electron", ".git", ".vite", "coverage", "out"]);
 
@@ -69,4 +70,37 @@ export interface CheckViolation {
   message: string;
   /** eslint-disable 知情绕行的理由（若该行被豁免注释标记）；未豁免 = undefined */
   bypassReason?: string;
+}
+
+/** 命名空间判据的扫描扩展名 */
+const EXT_CSS = [".css"];
+
+/** 一条**命名空间判据**的巡检单元——CSS 文件 + 它的解析输入 + 它的豁免索引 */
+export interface CssScanUnit {
+  /** 工程相对路径（正斜杠）——报点里一律用它 */
+  rel: string;
+  /** 原文（豁免索引从它建：disable 注释是给人读的注释，剥注释后仍在原文里） */
+  src: string;
+  /** `stripComments(src)` 的输出——等长替换 ⇒ 行号与原文对齐，判据的解析输入 */
+  cleaned: string;
+  /** 本 check 的知情绕行索引 */
+  disabled: DisableIndex;
+}
+
+/**
+ * 收集**两条命名空间判据**（宿主保留名 / 本仓前缀）的巡检单元（E6#109h-b①）。
+ *
+ * 🔴 为什么做成共用函数而不是各写一遍 for 循环：两条判据必须**看到完全同一批站点**
+ *    （同一组文件、同一套「跳过测试/mock」口径、同一份豁免索引）——否则「前缀判据覆盖保留名判据」
+ *    这句话就只是约定而非结构。射程 = 只扫 `.css`（`EXT_CSS`，与现腿一致）。
+ */
+export function collectCssUnits(root: string, wantedIds: string[]): CssScanUnit[] {
+  const out: CssScanUnit[] = [];
+  for (const file of collectFiles(root, EXT_CSS)) {
+    const rel = relPath(root, file);
+    if (isTestOrMockRel(rel)) continue;
+    const src = readSource(file);
+    out.push({ rel, src, cleaned: stripComments(src), disabled: buildDisableIndex(src, wantedIds) });
+  }
+  return out;
 }

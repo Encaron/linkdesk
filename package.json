@@ -55,6 +55,8 @@
     "catalog:official": "node scripts/sync-official-catalog.mjs",
     "catalog:official:selftest": "node scripts/sync-official-catalog.mjs --self-test",
     "backfill:catalog-identity": "node scripts/backfill-catalog-identity.mjs",
+    "check:plugin-prefix": "node scripts/plugin-css-prefix-audit.mjs",
+    "check:plugin-prefix:selftest": "node scripts/plugin-css-prefix-audit.mjs --self-test",
     "backfill:catalog-identity:selftest": "node scripts/backfill-catalog-identity.mjs --self-test",
     "lsp:smoke": "node scripts/check-lsp-smoke.mjs",
     "postinstall": "node -e \"try{require('fs').rmSync('node_modules/.vite',{recursive:true,force:true})}catch(e){}\" && node scripts/install-lefthook.mjs && node scripts/install-plugin-sdk-deps.mjs && node scripts/build-linkdesk-ui.mjs",
