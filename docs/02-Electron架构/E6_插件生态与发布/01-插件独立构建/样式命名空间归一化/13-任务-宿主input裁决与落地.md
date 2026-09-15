@@ -117,3 +117,22 @@
 2. **不许选 (b) 却只改壳**（那是本条最危险的半成品：插件**当场**坏）。
 3. **不许顺手迁移那 10 处插件渲染点**（选 (a) 时，迁移属于「有组件之后」的另一件事）。
 4. **不许动 `FormRow.css` 的 `.form-row > .input` 组合契约语义**（11 档 §五 已登记为「有意消费」；选 (b) 时只改名字，不改结构）。
+
+---
+
+## 六、🔴 本轮实测留下的尾巴（写给下一棒，不许漏）
+
+> 状态：壳侧、登记表、作者面、两仓源码、作者轴发版、目录、种子**都已落地并提交/推送**；下面两条是**没做完**的部分。
+
+### ① `@linkdesk/ui` 这根轴：已重发 `0.2.1` ✅，但**两只已发插件的产物里还是旧的**
+
+- **机制**：壳 `src/components/shared/` 是**共享组件单源**，`@linkdesk/ui` 的 `prepack` 从它重建 ⇒ 本次 `.input → .ldk-input` **同时动了 ui 轴**（壳内 `packages/linkdesk-ui/dist` 已随构建更新；`0.2.0 → 0.2.1` 已发＋已 `release:mark`）。
+- 🔴 **但已发布的两只插件 bundle 里嵌的是 npm 上的 `@linkdesk/ui@0.2.0`（旧 dist）** ⇒ 产物里 `NumberInput` / `FilePathInput` 仍渲染 `className: "input …"`。**实测证据**：解包 `settings.linkdesk-plugin`（发包与出厂种子两份）⇒ `index.bundle.js` 与 `views/SettingsView.bundle.js` **各一处** `className: "input number-input-field"`（serial-monitor 产物零命中——它自己没用这两个组件）。
+- ⇒ **剩余步骤（按序）**：两仓 `npm update @linkdesk/ui --registry=https://registry.npmjs.org`（⚠️ 本机默认源是**镜像**，会读到旧版；⑧ 记的「`npm install` 拉不动仍满足区间的旧 lock」同样适用）→ 各自 **bump 一位 ＋ 写 CHANGELOG**（settings `1.0.12→1.0.13` / serial-monitor `1.0.13→1.0.14`）→ `npm run verify` ＋ `npm run build` → 🔴 **解包产物复核**（`ldk-input` 有命中、`className: "input ` **零**命中——**这才是本轮的真判据**，`npm run check` 看不见它）→ 提交推送 → `npm run publish -- --yes` → 壳仓 `sync-official-catalog.mjs` ＋ `sync:bundled -- --latest` ＋ 提交。
+- ⚠️ **为什么门禁没拦住**：`@linkdesk/ui` 的 surface 定义是 `packages/linkdesk-ui/src/**`（**包内薄壳**），**不是共享组件真源** ⇒ 改 `src/components/shared/` 时那盏黄灯**不会亮**（本次实测**确实没亮**，是本轮唯一一条「靠自己解包产物才发现」的缺口）。这正是队列第 14 行 **[E6#110](../../插件规范化层/07-任务-作者轴黄灯观察名单补齐.md)** 要修的覆盖面缺口——**本格是它的活体样本**，值得写进 E6#110 的开工材料。
+
+### ② 壳 `0.2.0` 的发布（tag → CI → Release）与实机核对尚未做
+
+- **现在的状态是自洽且安全的**：线上壳仍是 `0.1.66`，它配的是旧插件（旧插件用 `.input`、旧壳有 `.input` ⇒ 一致）；新发的两只插件声明了 `minAppVersion: "0.2.0"` ⇒ 旧壳上**市场拒装 ＋ 加载器拒载并给明确提示**，**不会**出现「静默没样式」。
+- 但**新壳发布之前，本次修复对用户不可见**。⇒ 收尾顺序：先做完 ①（两仓重发）→ 目录/种子 → **壳发 `0.2.0`** → **实机核对**（设置页对象编辑器 ＋ 串口快速发送栏的输入框样式正常；隔离 profile ＋ CDP）。
+- 版本判定已定：**软件轴 `0.1.66 → 0.2.0`**（0.x 破坏性走 minor 位；CHANGELOG 已写、门禁已认 `breaking:` 前缀）。
