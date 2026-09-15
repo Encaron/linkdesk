@@ -9,8 +9,8 @@
     },
     {
       "name": "@linkdesk/plugin-sdk",
-      "version": "0.1.21",
-      "contentHash": "949ba2769747143a35d4f525e70381f8e623a13d96d62b17735d31a9bc4ae6ed",
+      "version": "0.1.22",
+      "contentHash": "d546b5fb9edca967c06eca754cc4de42db36d8f8568f68cb062ed2966a9d1486",
       "files": 33
     },
     {
@@ -21,7 +21,7 @@
     },
     {
       "name": "@linkdesk/ui",
-      "version": "0.1.7",
+      "version": "0.2.0",
       "contentHash": "39d1694e44b9ed8920a87d5c31ed5a883fb185bc5a5ce68d19eeb0cfb3ccea11",
       "files": 2
     },
