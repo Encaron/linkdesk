@@ -545,7 +545,7 @@ both stylesheets land on the same element.
 |---|---|---|
 | Host global utility classes | `.input` | Input-box utility—**just use it** (it exists for your inputs) |
 | Host global utility classes | `.titlebar`, `.divider`, `.about`, `.rn`, `.vta` | The host UI's own container names; don't reuse them |
-| Shared component public classes | `.badge`, `.button`, `.combobox`, `.mdv`, `.selectbox`, `.sle`, `.slider`, `.toggle` | Class names of the badge / button / combobox / Markdown container / select / string-list editor / slider / toggle components in `@linkdesk/ui` |
+| Shared component classes | **the whole `ldk-` namespace**—today: `ldk-badge`, `ldk-button`, `ldk-combobox`, `ldk-mdv`, `ldk-selectbox`, `ldk-sle`, `ldk-slider`, `ldk-toggle` | Class names of the badge / button / combobox / Markdown container / select / string-list editor / slider / toggle components in `@linkdesk/ui`. **You don't have to memorize them**—remember one thing: **anything starting with `ldk-` belongs to a shared component, so don't put it on your own elements** |
 
 **Want their look? Use their component**—`import { Button } from "@linkdesk/ui"`, don't hand-write its class
 name (hand-writing bypasses the component, and you fall behind the moment it changes).
@@ -556,6 +556,30 @@ name (hand-writing bypasses the component, and you fall behind the moment it cha
 **A real example from this project**: using a host-reserved name as a "handy style name" on your own element
 painted the background and the text the same color, so the text was swallowed by its own background — the UI
 just looked like "a solid block". **No error**, just wrong, and hard to trace.
+
+### 12.1 Upgrading from an older `@linkdesk/ui`—the one thing you have to change yourself
+
+Shared component class names now carry an `ldk-` prefix (as of `@linkdesk/ui` **0.2.0**). This affects exactly
+one kind of code: rules in **your own plugin's CSS** that use a descendant selector to fine-tune a shared
+component. **Nothing to do before you upgrade; when you upgrade, it's one prefix.**
+
+- **When it hits you**: after `@linkdesk/ui` moves to **0.2.0**—**not before**. In older versions these
+  components' class names were bare (`.badge`), and the CSS shipped inside the package is consistent with the
+  components, so **if you don't upgrade, nothing breaks**. (A `^0.1.x` range will not cross over to `0.2.0` by
+  itself, so this only comes up on the upgrade you perform deliberately.)
+- **What is affected**: descendant selectors in **your own plugin CSS** such as
+  `.control-bar .combobox { … }`, `.settings-slider-control .slider { … }`, `.changelog .mdv { … }`.
+  **The components' own styles are unaffected, and your own class names don't change.**
+- **How to fix it**: add the `ldk-` prefix to **the part of the selector that points at the shared component**—
+  `.combobox` → `.ldk-combobox`, `.slider` → `.ldk-slider`, `.mdv` → `.ldk-mdv`, `.badge` → `.ldk-badge`,
+  `.selectbox-trigger` → `.ldk-selectbox-trigger`, `.combobox-field` → `.ldk-combobox-field`. **Family names
+  (suffixes like `-trigger` / `-field` / `-input`) take the prefix too.** Your own prefixes (`.control-bar`,
+  `.settings-*`) stay as they are. **After upgrading, grep your CSS for the eight old base names
+  `.badge`, `.button`, `.combobox`, `.mdv`, `.selectbox`, `.sle`, `.slider`, `.toggle`**: add the prefix where
+  the rule tunes a shared component, leave the rest alone.
+- **Why it isn't automatically compatible**: this kind of mismatch **raises no error**—a selector that no
+  longer matches simply stops applying, so the UI looks "roughly right, just a bit off". Because it is silent,
+  we moved the names under the `ldk-` prefix and wrote this section.
 
 ---
 
