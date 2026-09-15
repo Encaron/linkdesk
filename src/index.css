@@ -232,12 +232,7 @@ html, body, #root, #pool-root {
   margin-bottom: 8px;
 }
 
-.setting-group-title {
-  font-size: var(--font-size-md); /* E5.8 Phase 12 #164：13→md */
-  font-weight: 600;
-  color: var(--text-secondary);
-  margin-bottom: 12px;
-}
+/* E6#109k-a：`.setting-group-title` 已删——零消费方（壳仓 ＋ 18 只插件仓 ＋ 池文档实机全扫）。 */
 
 /* E6#54b：`.toggle` 规则已抽入 components/shared/toggle/Toggle.css（组件自 import）——
    @linkdesk/ui 包自包含；index.css 不再持有共享组件样式。 */
@@ -285,11 +280,7 @@ html, body, #root, #pool-root {
   }
 }
 
-.ldk-divider {
-  height: 1px;
-  background: var(--separator);
-  margin: 4px 0;
-}
+/* E6#109k-a：`.ldk-divider` 已删——全仓零采用（无渲染点、无后代引用，仓里也没有 `<hr>`）。 */
 
 /* === 归一化布局 class（防止控件错位） === */
 
