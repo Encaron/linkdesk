@@ -1,5 +1,5 @@
 /* Combobox——可输入 + 下拉（SelectBox 超集）。E5.8#30.17（审视 ④）。
-   下拉面板视觉复用 SelectBox（.selectbox-dropdown/list/item/empty 类，见 Combobox.tsx import）
+   下拉面板视觉复用 SelectBox（.ldk-selectbox-dropdown/list/item/empty 类，见 Combobox.tsx import）
    ——本文件只定义 field/input/arrow。一个视觉语言一处写（jscpd 0 克隆门禁）。 */
 
 .combobox {
@@ -8,7 +8,7 @@
   min-width: 100px;
 }
 
-/* ── 输入区（对标 selectbox-trigger 视觉，可编辑）── */
+/* ── 输入区（对标 ldk-selectbox-trigger 视觉，可编辑）── */
 
 .combobox-field {
   display: flex;
@@ -24,11 +24,11 @@
   cursor: text;
 }
 
-.combobox-field:hover:not(.selectbox-disabled) {
+.combobox-field:hover:not(.ldk-selectbox-disabled) {
   border-color: var(--accent);
 }
 
-.combobox.selectbox-open .combobox-field {
+.combobox.ldk-selectbox-open .combobox-field {
   border-color: var(--accent);
 }
 

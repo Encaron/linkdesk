@@ -46,7 +46,7 @@ function Harness({ open = true, children }: { open?: boolean; children?: ReactNo
 }
 
 function getDropdown(): HTMLElement {
-  const dd = document.body.querySelector(".selectbox-dropdown") as HTMLElement;
+  const dd = document.body.querySelector(".ldk-selectbox-dropdown") as HTMLElement;
   if (!dd) throw new Error("dropdown not mounted");
   return dd;
 }

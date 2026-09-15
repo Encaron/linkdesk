@@ -2,8 +2,8 @@
  * SelectBoxDropdown——SelectBox/Combobox 共用下拉面板。E5.8#30.17。
  *
  * 定位 + Portal + 列表骨架一处写（jscpd 0 克隆门禁：两组件不再各写一份 dropdown 结构）。
- * 视觉走 SelectBox.css 的 .selectbox-dropdown/list 类——一个视觉语言一处写。
- * 选项渲染（.selectbox-item）由宿主提供——SelectBox 与 Combobox 的交互模型不同
+ * 视觉走 SelectBox.css 的 .ldk-selectbox-dropdown/list 类——一个视觉语言一处写。
+ * 选项渲染（.ldk-selectbox-item）由宿主提供——SelectBox 与 Combobox 的交互模型不同
  * （点击 select vs 输入过滤），候选渲染留在各自组件。
  *
  * E5.8#69：定位改 effect 量测（post-paint）+ resize/scroll 重算，非渲染期同步读 rect——
@@ -81,7 +81,7 @@ export default function SelectBoxDropdown({ containerRef, onClose, onKeyDown, li
   return (
     <OverlayPortal onClose={onClose} triggerRef={containerRef}>
       <div
-        className="selectbox-dropdown"
+        className="ldk-selectbox-dropdown"
         onKeyDown={onKeyDown}
         style={{
           position: "fixed",
@@ -93,7 +93,7 @@ export default function SelectBoxDropdown({ containerRef, onClose, onKeyDown, li
         }}
       >
         {search}
-        <ul ref={listRef} className="selectbox-list" tabIndex={-1}>
+        <ul ref={listRef} className="ldk-selectbox-list" tabIndex={-1}>
           {children}
         </ul>
       </div>

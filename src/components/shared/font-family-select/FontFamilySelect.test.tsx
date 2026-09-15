@@ -29,10 +29,10 @@ function renderSelect(overrides: Record<string, unknown> = {}) {
   const onChange = vi.fn();
   const props = { value: "", onChange, ...overrides };
   const result = render(<FontFamilySelect {...props} />);
-  const triggerLabel = () => result.container.querySelector(".selectbox-label")?.textContent ?? "";
+  const triggerLabel = () => result.container.querySelector(".ldk-selectbox-label")?.textContent ?? "";
   const dropdownItems = () =>
-    Array.from(document.querySelectorAll(".selectbox-item")).map((el) => el.textContent ?? "");
-  const open = () => fireEvent.click(result.container.querySelector(".selectbox-trigger")!);
+    Array.from(document.querySelectorAll(".ldk-selectbox-item")).map((el) => el.textContent ?? "");
+  const open = () => fireEvent.click(result.container.querySelector(".ldk-selectbox-trigger")!);
   return { ...result, onChange, triggerLabel, dropdownItems, open };
 }
 
@@ -73,7 +73,7 @@ describe("FontFamilySelect", () => {
   it("E5.8#87 全字族模式——选「系统字体」→ onChange('__none__')", () => {
     const { open, onChange } = renderSelect({ monoOnly: false });
     open();
-    const sys = Array.from(document.querySelectorAll(".selectbox-item"))
+    const sys = Array.from(document.querySelectorAll(".ldk-selectbox-item"))
       .find((n) => n.textContent === "系统字体")!;
     fireEvent.click(sys);
     expect(onChange).toHaveBeenCalledWith("__none__");
@@ -95,7 +95,7 @@ describe("FontFamilySelect", () => {
   it("全字族模式——选「跟随主题」→ onChange('')（复位）", () => {
     const { open, onChange } = renderSelect({ monoOnly: false, value: "SimSun" });
     open();
-    const followTheme = Array.from(document.querySelectorAll(".selectbox-item"))
+    const followTheme = Array.from(document.querySelectorAll(".ldk-selectbox-item"))
       .find((n) => n.textContent === "跟随主题")!;
     fireEvent.click(followTheme);
     expect(onChange).toHaveBeenCalledWith("");

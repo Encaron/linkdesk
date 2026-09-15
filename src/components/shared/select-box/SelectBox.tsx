@@ -132,22 +132,22 @@ function SelectBox({ value, options, onChange, disabled, placeholder, title, cla
 
   return (
     <div
-      className={`selectbox ${open ? "selectbox-open" : ""} ${disabled ? "selectbox-disabled" : ""} ${className ?? ""}`}
+      className={`ldk-selectbox ${open ? "ldk-selectbox-open" : ""} ${disabled ? "ldk-selectbox-disabled" : ""} ${className ?? ""}`}
       ref={containerRef}
     >
       {/* 触发器 */}
       <button
         type="button"
-        className="selectbox-trigger"
+        className="ldk-selectbox-trigger"
         disabled={disabled}
         title={title}
         onClick={() => setOpen((v) => !v)}
       >
-        <span className="selectbox-label">
-          {selected?.preview && <span className="selectbox-swatch" style={{ background: selected.preview }} />}
+        <span className="ldk-selectbox-label">
+          {selected?.preview && <span className="ldk-selectbox-swatch" style={{ background: selected.preview }} />}
           {currentLabel}
         </span>
-        <span className={`codicon codicon-chevron-down selectbox-arrow ${open ? "selectbox-arrow-up" : ""}`} />
+        <span className={`codicon codicon-chevron-down ldk-selectbox-arrow ${open ? "ldk-selectbox-arrow-up" : ""}`} />
       </button>
 
       {/* 下拉面板——E5#96f: Portal 到 body，脱离 zone 层叠上下文。骨架共用 SelectBoxDropdown（E5.8#30.17 归一） */}
@@ -158,11 +158,11 @@ function SelectBox({ value, options, onChange, disabled, placeholder, title, cla
           onKeyDown={handleKey}
           listRef={listRef}
           search={showSearch ? (
-            <div className="selectbox-search">
+            <div className="ldk-selectbox-search">
               <input
                 ref={searchRef}
                 type="text"
-                className="selectbox-search-input"
+                className="ldk-selectbox-search-input"
                 placeholder={t("筛选...")}
                 value={search}
                 onChange={(e) => { setSearch(e.target.value); setFocusIdx(0); }}
@@ -171,16 +171,16 @@ function SelectBox({ value, options, onChange, disabled, placeholder, title, cla
           ) : undefined}
         >
           {filtered.length === 0 ? (
-            <li className="selectbox-empty">{t("无匹配项")}</li>
+            <li className="ldk-selectbox-empty">{t("无匹配项")}</li>
           ) : (
             filtered.map((o, i) => (
               <li
                 key={o.value}
-                className={`selectbox-item ${i === focusIdx ? "selectbox-item-focus" : ""} ${o.value === value ? "selectbox-item-selected" : ""}`}
+                className={`ldk-selectbox-item ${i === focusIdx ? "ldk-selectbox-item-focus" : ""} ${o.value === value ? "ldk-selectbox-item-selected" : ""}`}
                 onClick={() => select(o.value)}
                 onMouseEnter={() => setFocusIdx(i)}
               >
-                {o.preview && <span className="selectbox-swatch" style={{ background: o.preview }} />}
+                {o.preview && <span className="ldk-selectbox-swatch" style={{ background: o.preview }} />}
                 {o.label}
               </li>
             ))

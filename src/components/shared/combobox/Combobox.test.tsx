@@ -36,7 +36,7 @@ function renderCombobox(overrides: Record<string, unknown> = {}) {
   const result = render(<Combobox {...props} />);
   const input = result.container.querySelector("input")!;
   // 下拉面板经 Portal 渲染到 body——用 body 查询
-  const dropdownItems = () => document.querySelectorAll(".selectbox-item");
+  const dropdownItems = () => document.querySelectorAll(".ldk-selectbox-item");
   return { ...result, input, onChange, dropdownItems };
 }
 
@@ -117,11 +117,11 @@ describe("Combobox", () => {
     expect(items).toEqual(["230400"]);
   });
 
-  it("disabled → input 禁用 + combobox 挂 selectbox-disabled 类（pointer-events 阻断交互）", () => {
+  it("disabled → input 禁用 + combobox 挂 ldk-selectbox-disabled 类（pointer-events 阻断交互）", () => {
     const { container, input } = renderCombobox({ disabled: true });
     expect((input as HTMLInputElement).disabled).toBe(true);
     // jsdom 无法模拟浏览器对 disabled input 的 focus 阻断（fireEvent 直接派发事件），
     // 故断言视觉/交互层守卫类——真实浏览器中 disabled input 收不到 focus。
-    expect(container.querySelector(".combobox")!.className).toContain("selectbox-disabled");
+    expect(container.querySelector(".combobox")!.className).toContain("ldk-selectbox-disabled");
   });
 });

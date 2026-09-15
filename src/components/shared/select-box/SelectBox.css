@@ -2,7 +2,7 @@
    E5.8#128.7：幽灵 token 链（--bg-panel/--fg-input/--fg-default/--border-input/--border-default/
    --border-input-focus/--bg-selection/--fg-muted）全归一真实 token——首 token 恒解析，幽灵链+hex 是死路径。 */
 
-.selectbox {
+.ldk-selectbox {
   position: relative;
   display: inline-block;
   min-width: 100px;
@@ -11,7 +11,7 @@
 
 /* ── 触发器 ── */
 
-.selectbox-trigger {
+.ldk-selectbox-trigger {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -29,20 +29,20 @@
   text-align: left;
 }
 
-.selectbox-trigger:hover:not(:disabled) {
+.ldk-selectbox-trigger:hover:not(:disabled) {
   border-color: var(--accent);
 }
 
-.selectbox-trigger:disabled {
+.ldk-selectbox-trigger:disabled {
   opacity: 0.5;
   cursor: default;
 }
 
-.selectbox-open .selectbox-trigger {
+.ldk-selectbox-open .ldk-selectbox-trigger {
   border-color: var(--accent);
 }
 
-.selectbox-label {
+.ldk-selectbox-label {
   flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -50,7 +50,7 @@
 }
 
 /* E5.8#50.23：选项预览色块——触发器与下拉项的前置色点（配色变体 accent 等） */
-.selectbox-swatch {
+.ldk-selectbox-swatch {
   display: inline-block;
   width: 10px;
   height: 10px;
@@ -61,19 +61,19 @@
   flex-shrink: 0;
 }
 
-.selectbox-arrow {
+.ldk-selectbox-arrow {
   flex-shrink: 0;
   font-size: var(--font-size-sm); /* E5.8 Phase 12 #170：arrow 12→sm */
   transition: transform 0.15s ease;
 }
 
-.selectbox-arrow-up {
+.ldk-selectbox-arrow-up {
   transform: rotate(180deg);
 }
 
 /* ── 下拉面板 ── */
 
-.selectbox-dropdown {
+.ldk-selectbox-dropdown {
   position: absolute;
   top: 100%;
   left: 0;
@@ -100,12 +100,12 @@
 
 /* ── 搜索 ── */
 
-.selectbox-search {
+.ldk-selectbox-search {
   padding: 4px;
   border-bottom: 1px solid var(--separator);
 }
 
-.selectbox-search-input {
+.ldk-selectbox-search-input {
   width: 100%;
   padding: 2px 6px;
   background: var(--bg-input);
@@ -118,13 +118,13 @@
   box-sizing: border-box;
 }
 
-.selectbox-search-input:focus {
+.ldk-selectbox-search-input:focus {
   border-color: var(--accent);
 }
 
 /* ── 列表 ── */
 
-.selectbox-list {
+.ldk-selectbox-list {
   list-style: none;
   margin: 0;
   padding: 2px 0;
@@ -132,7 +132,7 @@
   outline: none;
 }
 
-.selectbox-item {
+.ldk-selectbox-item {
   padding: 3px 8px;
   font-size: var(--font-size-md); /* E5.8 Phase 12 #170：item 13→md */
   line-height: 1.6; /* E5.8 Phase 12 #170：line-height 20px → unitless */
@@ -140,16 +140,16 @@
   cursor: pointer;
 }
 
-.selectbox-item-focus {
+.ldk-selectbox-item-focus {
   background: var(--accent);
   color: var(--text-on-accent);
 }
 
-.selectbox-item-selected:not(.selectbox-item-focus) {
+.ldk-selectbox-item-selected:not(.ldk-selectbox-item-focus) {
   background: var(--bg-selection); /* E5.8#128.7：非聚焦选中底（accent 20% 衍生） */
 }
 
-.selectbox-empty {
+.ldk-selectbox-empty {
   padding: 6px 8px;
   font-size: var(--font-size-sm); /* E5.8 Phase 12 #170：empty 12→sm */
   color: var(--text-muted);
@@ -158,6 +158,6 @@
 
 /* ── 禁用态 ── */
 
-.selectbox-disabled {
+.ldk-selectbox-disabled {
   pointer-events: none;
 }

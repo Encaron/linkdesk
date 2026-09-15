@@ -10,7 +10,7 @@
  *
  * 归一化：壳组件库范畴（components/shared/）——壳视图 + 插件共用。
  * 壳内部引用 @src 源码；插件作者（含内置插件 E6#54c）→ `import { Combobox } from "@linkdesk/ui"`。
- * 下拉面板视觉复用 SelectBox（.selectbox-dropdown/list/item/empty 类）——一个视觉语言
+ * 下拉面板视觉复用 SelectBox（.ldk-selectbox-dropdown/list/item/empty 类）——一个视觉语言
  * 一处写，jscpd 0 克隆门禁：Combobox.css 只定义 field/input/arrow，下拉视觉零重写。
  */
 
@@ -18,7 +18,7 @@ import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import SelectBoxDropdown from "../select-box/SelectBoxDropdown"; // E5.8#30.17：共用下拉骨架（定位 + Portal + 列表）
 import "./Combobox.css";
-// 下拉视觉复用 SelectBox 类（selectbox-dropdown/list/item/empty）——不重写，规避 CSS 克隆
+// 下拉视觉复用 SelectBox 类（ldk-selectbox-dropdown/list/item/empty）——不重写，规避 CSS 克隆
 import "../select-box/SelectBox.css";
 
 interface ComboboxProps {
@@ -122,7 +122,7 @@ function Combobox({ value, options, onChange, disabled, placeholder, title, clas
 
   return (
     <div
-      className={`combobox ${open ? "selectbox-open" : ""} ${disabled ? "selectbox-disabled" : ""} ${className ?? ""}`}
+      className={`combobox ${open ? "ldk-selectbox-open" : ""} ${disabled ? "ldk-selectbox-disabled" : ""} ${className ?? ""}`}
       ref={containerRef}
     >
       <div className="combobox-field">
@@ -140,7 +140,7 @@ function Combobox({ value, options, onChange, disabled, placeholder, title, clas
           onChange={(e) => { setText(e.target.value); setOpen(true); setFocusIdx(-1); }}
           onKeyDown={handleKey}
         />
-        <span className={`codicon codicon-chevron-down selectbox-arrow ${open ? "selectbox-arrow-up" : ""}`} />
+        <span className={`codicon codicon-chevron-down ldk-selectbox-arrow ${open ? "ldk-selectbox-arrow-up" : ""}`} />
       </div>
 
       {/* 下拉面板——骨架共用 SelectBoxDropdown（定位 + Portal + 列表，E5.8#30.17 归一）；视觉复用 SelectBox 类 */}
@@ -151,12 +151,12 @@ function Combobox({ value, options, onChange, disabled, placeholder, title, clas
           listRef={listRef}
         >
           {filtered.length === 0 ? (
-            <li className="selectbox-empty">{t("无匹配项")}</li>
+            <li className="ldk-selectbox-empty">{t("无匹配项")}</li>
           ) : (
             filtered.map((o, i) => (
               <li
                 key={o}
-                className={`selectbox-item ${i === focusIdx ? "selectbox-item-focus" : ""} ${o === value ? "selectbox-item-selected" : ""}`}
+                className={`ldk-selectbox-item ${i === focusIdx ? "ldk-selectbox-item-focus" : ""} ${o === value ? "ldk-selectbox-item-selected" : ""}`}
                 onMouseDown={(e) => { e.preventDefault(); commit(o); }}
                 onMouseEnter={() => setFocusIdx(i)}
               >

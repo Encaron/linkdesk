@@ -53,9 +53,9 @@ function renderSelect(props: {
       domain={props.domain}
     />,
   );
-  const open = () => fireEvent.click(result.container.querySelector(".selectbox-trigger")!);
+  const open = () => fireEvent.click(result.container.querySelector(".ldk-selectbox-trigger")!);
   const dropdownItems = () =>
-    Array.from(document.querySelectorAll(".selectbox-item")).map((el) => el.textContent ?? "");
+    Array.from(document.querySelectorAll(".ldk-selectbox-item")).map((el) => el.textContent ?? "");
   return { ...result, onChange, open, dropdownItems };
 }
 
@@ -78,7 +78,7 @@ describe("DynamicSelect", () => {
     const { open } = renderSelect({ optionsFrom: "theme.colorways" });
     open();
     await screen.findByText("Alpha");
-    const swatches = Array.from(document.querySelectorAll(".selectbox-swatch"));
+    const swatches = Array.from(document.querySelectorAll(".ldk-selectbox-swatch"));
     expect(swatches.length).toBe(2);
     expect(swatches[0].getAttribute("style")).toContain("rgb(62, 158, 140)"); // 预览色块 = 配色 accent（#3E9E8C，jsdom 归一为 rgb）
   });
@@ -88,9 +88,9 @@ describe("DynamicSelect", () => {
     mockListRecipes([MINT]);
     const { container } = renderSelect({ optionsFrom: "theme.colorways", value: "dew" });
     await screen.findByText("Alpha");
-    const trigger = container.querySelector(".selectbox-label")!;
+    const trigger = container.querySelector(".ldk-selectbox-label")!;
     expect(trigger.textContent).toBe("Alpha");
-    const swatch = trigger.querySelector(".selectbox-swatch");
+    const swatch = trigger.querySelector(".ldk-selectbox-swatch");
     expect(swatch?.getAttribute("style")).toContain("rgb(62, 158, 140)");
   });
 
@@ -238,7 +238,7 @@ describe("DynamicSelect", () => {
     const { container } = renderSelect({ optionsFrom: "theme.colorways", domain: "colors" });
     // 异步加载完成后 options 长度 1 → DynamicSelect 返回 null（无 trigger）
     await vi.waitFor(() =>
-      expect(container.querySelector(".selectbox-trigger")).toBeNull(),
+      expect(container.querySelector(".ldk-selectbox-trigger")).toBeNull(),
     );
   });
 
@@ -248,6 +248,6 @@ describe("DynamicSelect", () => {
     const { open, container } = renderSelect({ optionsFrom: "theme.colorways", domain: "colors" });
     open();
     await screen.findByText("Alpha");
-    expect(container.querySelector(".selectbox-trigger")).not.toBeNull();
+    expect(container.querySelector(".ldk-selectbox-trigger")).not.toBeNull();
   });
 });

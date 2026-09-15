@@ -14,11 +14,6 @@
         "why": "Markdown 渲染容器——详情的 README/发行说明"
       },
       {
-        "name": "selectbox",
-        "owner": "select-box",
-        "why": "下拉选择——插件 scoped 调优"
-      },
-      {
         "name": "sle",
         "owner": "string-list-editor",
         "why": "字符串数组编辑器——插件 scoped 调优"
