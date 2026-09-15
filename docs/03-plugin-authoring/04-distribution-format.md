@@ -42,7 +42,7 @@ my-plugin/
 | **User install** | `pluginManager.install(url \| zip on disk \| directory)` | same as above | Download/extract/verify → write to disk; a directory source is a dev convenience only—the main distribution path is the zip |
 
 **Install-time verification (intercepted before extraction, so no half-installed directory is produced):**
-- Locate `plugin.json` at the zip top level (basename match, tolerating one wrapper directory)—JSONC parse (#55)
+- Locate `plugin.json` at the zip top level (basename match, tolerating one wrapper directory)—JSONC parse
 - `pluginId` resolution: manifest first, zip file basename as the fallback, cross-checked between the two sources; must pass the safe character set (no path separators/relative segments)
 - zip-slip protection—entry paths that escape the extraction target are rejected
 - Same version already installed → skip (user install deletes the source); different version → leave it alone (upgrading is the update flow's job; boot never overwrites)
@@ -93,7 +93,7 @@ Wording discipline (hard constraint 11): don't frame it as two categories "built
 
 `version` follows semver (`major.minor.patch`). **boot never refreshes an installed plugin** (the bundled folder is a first-launch offline seed, not an update channel)—there is only one way for an installed user to get new content = **the update flow**: `pluginManager.checkUpdates` (fetch catalog + semver comparison) → `update` (stage to tmp → atomic replace → roll back to the old version on failure). Real marketplace entries discover updates by version.
 
-### 🔥 Any content change must bump the plugin's own version (decided 2026-09-06, #15n)
+### 🔥 Any content change must bump the plugin's own version (decided 2026-09-06)
 
 **For a plugin that has been distributed, any content change (code / resources / README / CHANGELOG) must bump `plugin.json.version`.** An installed user's copy is **frozen per version**—boot only fills in what's missing and never refreshes what's installed; the only way for a user to get new content = **the version number**. Changing content without bumping = installed users stay stuck on the old content forever (confirmed empirically on 2026-09-06: a bundled shipping zip gained pyright without a bump → the installed copy's LSP broke entirely).
 

@@ -455,7 +455,7 @@ function MyConfirmContent() {
 | **Font size** | `--font-size-2xs … 4xl` + `--ui-scale` (the scaling axis for `app.uiFontScale`; the scale table is in §10) | `font-size: var(--font-size-md)` / em/rem | `check-font-scale` (the check leg—a bare px font size is red) |
 | **Font family** | `--font-ui` / `--font-mono` | `font-family: var(--font-ui)` | contract guidance (authors may legitimately choose their own font) |
 
-`var(--*)` = theme/glass/global scaling follow automatically, with zero plugin awareness—**this is exactly why the @linkdesk/ui control layer can be "follow without thinking"** (54b/54c: controls are all tokens, and a plugin that does `npm i @linkdesk/ui` and consumes them follows along). Control reuse always imports from `@linkdesk/ui` (see §Quick Reference)—don't hand-roll wheels.
+`var(--*)` = theme/glass/global scaling follow automatically, with zero plugin awareness—**this is exactly why the @linkdesk/ui control layer can be "follow without thinking"**—the controls are written entirely on tokens, so a plugin that does `npm i @linkdesk/ui` and consumes them follows along. Control reuse always imports from `@linkdesk/ui` (see §Quick Reference)—don't hand-roll wheels.
 
 ### 11.2 Honest boundaries / knowing bypasses—content and brand colors can have their own sky
 
@@ -522,7 +522,7 @@ When authors build their own settings UI or manage their own saves (without goin
 | **Don't hardcode other plugins' IDs** (differential behavior goes through plugin.json declaration fields, consumed via the Registry pattern) | `03-contributes-spec.md` |
 | Configuration keys **must have a default** | `06-plugin-json-spec.md` |
 | **Use only documented API namespaces** (don't casually hang undocumented `linkdesk.xxx` off the API) | `01-plugin-api-contract.md` |
-| Controls always come from `@linkdesk/ui` (since 54c built-in controls are imported from the npm package; `@src/components/shared/*` is forbidden) | §Quick Reference of this file |
+| Controls always come from `@linkdesk/ui` (built-in controls are imported from the npm package; `@src/components/shared/*` is forbidden) | §Quick Reference of this file |
 
 ---
 
@@ -552,13 +552,27 @@ both stylesheets land on the same element.
 | Host global utility classes | `.input` | Input-box utility—**just use it** (it exists for your inputs) |
 | Shared component classes + host container classes | **the whole `ldk-` namespace**—today: `ldk-badge`, `ldk-button`, `ldk-combobox`, `ldk-mdv`, `ldk-selectbox`, `ldk-sle`, `ldk-slider`, `ldk-toggle` (shared components), plus the host's own container classes such as `ldk-titlebar` | Class names of the badge / button / combobox / Markdown container / select / string-list editor / slider / toggle components in `@linkdesk/ui`. **You don't have to memorize them**—remember one thing: **anything starting with `ldk-` belongs to the host itself (shared components + host UI containers), so don't put it on your own elements** |
 
-> 🔧 **Maintainer note (authors can skip this)**—the **Reserved names** column is **machine-read**: the gate
-> in `npm run check` (`scripts/check-reserved-names-doc-sync.mjs`) cross-checks it **both ways** against the
+**`@keyframes` names work the same way**—the host already uses the animation names below, so avoid them when naming your own animations. A collision has the same consequence as a class name (the later definition wins, the earlier one is dropped), and it is equally **silent**: one of the two animations simply stops playing, with nothing in the console.
+
+| Reserved keyframe names | Notes |
+|---|---|
+| `selectbox-in` | the shared select dropdown's entrance animation |
+| `drop-zone-in` | the drop zone's entrance animation |
+| `dropdown-card-in` | the dropdown card's entrance animation |
+| `floating-panel-in` | the floating panel's entrance animation |
+| `group-tab-enter` | the group tab's entrance animation |
+| `group-tab-exit` | the group tab's exit animation |
+| `notif-icon-spin` | the notification icon's spin |
+| `notif-progress-scan` | the notification progress scan |
+
+> 🔧 **Maintainer note (authors can skip this)**—the **Reserved names** and **Reserved keyframe names** columns in the two tables above are **machine-read**: the gate
+> in `npm run check` (`scripts/check-reserved-names-doc-sync.mjs`) cross-checks them **both ways** against the
 > registry `packages/plugin-sdk/schemas/reserved-class-names.json`—every registry name must appear here, and
 > every name here must either be registered (bare names) or a real `ldk-` name present in the host source.
-> ⇒ **Editing this column is a public-surface change**: add/remove a name in **three places in one commit**—
-> the registry plus this table in both language trees. This column holds **class names only**; put prose in
-> the third column.
+> The keyframe table is cross-checked **both ways** against the registry's `keyframes` array in the same way.
+> ⇒ **Editing these two columns is a public-surface change**: add/remove a name in **three places in one commit**—
+> the registry plus these two tables in both language trees. Both columns hold **names only**; put prose in
+> the "Notes" column.
 
 **One more namespace rule**: your `pluginId` **must not start with `ldk-`**—the whole `ldk-` namespace belongs
 to the host, so a plugin called `ldk-tools` would derive its prefix (`ldk-tools-*`) **straight into host
@@ -638,7 +652,7 @@ component. **Nothing to do before you upgrade; when you upgrade, it's one prefix
 | Shortcuts (non-text keys) | `plugin.json contributes.keybindings` | — (putting text keys here = swallowing the whole pool, see §4.1) |
 | Shortcuts (text keys / focus-bound keys) | container `onKeyDown` + `tabIndex` | pool-side self-handling, see §4.2 (document/window keydown is forbidden) |
 | Colors | CSS variables | `var(--xxx)`, list in `src/index.css` |
-| Font sizes | CSS variables | `var(--font-size-*)` + `--ui-scale`, bare px forbidden (#180 gate, see §10) |
+| Font sizes | CSS variables | `var(--font-size-*)` + `--ui-scale`, bare px forbidden (gate, see §10) |
 | Six-domain token overview | see the §11.1 matrix | color/surface/radius/glass/font size/font family—`var(--*)` follows theme+glass+scaling automatically; full list in `src/index.css` |
 | UI discipline gate | `linkdesk-plugin-sdk lint` | all 15 items are WARNs that never fail; a knowing bypass = a standard eslint-disable declaration (see §11.2) |
 | Text | `t()` | `useTranslation()` from `react-i18next` |

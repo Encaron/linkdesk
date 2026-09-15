@@ -165,9 +165,10 @@ npm run check
 #   ⚠️ **插件侧的另一条腿不在这里**：同一条规则的插件版是 SDK 的 `check-css-namespace` 腿
 #     （`@linkdesk/plugin-sdk` 0.1.23 起随包下发，**插件仓 CI 的严格腿判红** —— 在插件工程根 `npm run verify`）；
 #     壳仓这条只扫宿主源码树，**够不着插件源码**（两条互不覆盖）
-#   ⚠️ 其中 `check-reserved-names-doc-sync`（E6#109i）离线秒级：把登记表 ↔ 作者面 §12 的「保留名」表
-#     **双向**钉住——登记表里的名字必须出现在表里；表里的裸名必须已登记、`ldk-` 名必须在宿主源码里
-#     真实存在；中英两棵树的表名字集合必须相等 ⇒ **改保留名要同笔改三处**（登记表 ＋ 两棵树 §12）
+#   ⚠️ 其中 `check-reserved-names-doc-sync`（E6#109i，E6#109k-b 扩到关键帧）离线秒级：把登记表 ↔ 作者面
+#     §12 的**两张表**（「保留名」＋「保留的关键帧名」）**双向**钉住——登记表里的名字必须出现在表里；
+#     表里的裸名必须已登记、`ldk-` 名必须在宿主源码里真实存在；关键帧表与登记表 `keyframes` 同样双向；
+#     中英两棵树的表名字集合必须相等 ⇒ **改保留名要同笔改三处**（登记表 ＋ 两棵树 §12 的两张表）
 
 npm run sync:bundled # 出厂种子保鲜（E6#101）：按账拉齐箱内种子 + 修剪到随包集
                      #   `-- --latest` 读官方目录刷新账与种子（显式追新）｜`-- --offline` 断网只校验指纹
@@ -228,7 +229,7 @@ npx vitest run       # 单元测试（会涨：2026-09 时 168 文件 / 2,342 �
 | 标签页/分屏设计 | `docs/phase3_标签页分屏/V3-Phase3-标签页分屏设计.md` |
 | 部件名称 | `docs/总体设计/V3-部件命名规范.md` |
 | 写插件 | **`docs/03-插件制造/`**——00-README 概览 / 01-API契约 / 02-生命周期 / 03-contributes / 04-分发 / 05-UI写法规约 / 06-plugin.json规范 / plugin.schema.json |
-| 🔥 插件源码外移与上架（L7） | **`docs/02-Electron架构/E6_插件生态与发布/插件源码外移层/00-整理档案.md`**——源码真相源在插件仓、壳仓只留产物；九轮任务 + 交接.md（AI 一会话一轮接力）。🔴 **本层已于 2026-09-14 全层封层**（七条判据 ＋ 四本账 ＋ 回归对照 ＋ 三档计时全跑完，读数与 6 条真发现住 [08-全层验收 §五](docs/02-Electron架构/E6_插件生态与发布/插件源码外移层/08-全层验收.md)）。**出厂种子保鲜 = 账 `bundled-plugins.lock.json`（谁随包看 `seed`）＋ 机制 `npm run sync:bundled` ＋ 门禁 `check-bundled-freshness`（挂 `npm run check`，默认联网）**；**插件仓的门禁在插件仓自己里**（`.github/workflows/ci.yml` + `npm run verify`，四段严格腿）——**壳仓的 `npm run check` 够不着插件源码**，两套互不覆盖，且 🔴 **「由各插件仓 CI 守」这句话有两处不成立**（N6 第 ④ 处锚 / 主题色规则，负控实证，见 [06-门禁与CI.md](docs/02-Electron架构/E6_插件生态与发布/插件源码外移层/06-门禁与CI.md) 与 memory `plugin-repo-gate-model` §九）。**作者面文档（`docs/03-插件制造/`）= 教学动线**（导览 ＋ 三档入口 ＋ 区域地图/区域间互动/组件速查/配置项/主题）——两条门禁管它：`check-author-docs-symbols`（禁内部任务号）/ `check-author-docs-links`（出界链接必须报备在 `scripts/author-docs-outbound-allowlist.txt`）；**文档 npm 包** = `npm run docs:build` / `docs:check`（产物 `packages/plugin-docs/`，真源是两棵树）。**英文化后：作者面主显 = `docs/03-plugin-authoring/`（英文），中文原文 = `docs/03-插件制造/`；两棵树的篇目对齐由 `check-author-docs-bilingual` 守，跨树映射表写在该门禁的 `FILENAME_MAP`**。⚠️ **L7 之后作者面还欠七篇**（双击文件到渲染的握手 / 工作区文件读写 / 预览宿主能·不能表 / 哪条命令跑 tsc / 多视图数据住哪 / props 表 / `enumDescriptions` 教反了）——清单在 memory `author-face-doc-gaps-l7` |
+| 🔥 插件源码外移与上架（L7） | **`docs/02-Electron架构/E6_插件生态与发布/插件源码外移层/00-整理档案.md`**——源码真相源在插件仓、壳仓只留产物；九轮任务 + 交接.md（AI 一会话一轮接力）。🔴 **本层已于 2026-09-14 全层封层**（七条判据 ＋ 四本账 ＋ 回归对照 ＋ 三档计时全跑完，读数与 6 条真发现住 [08-全层验收 §五](docs/02-Electron架构/E6_插件生态与发布/插件源码外移层/08-全层验收.md)）。**出厂种子保鲜 = 账 `bundled-plugins.lock.json`（谁随包看 `seed`）＋ 机制 `npm run sync:bundled` ＋ 门禁 `check-bundled-freshness`（挂 `npm run check`，默认联网）**；**插件仓的门禁在插件仓自己里**（`.github/workflows/ci.yml` + `npm run verify`，四段严格腿）——**壳仓的 `npm run check` 够不着插件源码**，两套互不覆盖，且 🔴 **「由各插件仓 CI 守」这句话有两处不成立**（N6 第 ④ 处锚 / 主题色规则，负控实证，见 [06-门禁与CI.md](docs/02-Electron架构/E6_插件生态与发布/插件源码外移层/06-门禁与CI.md) 与 memory `plugin-repo-gate-model` §九）。**作者面文档（`docs/03-插件制造/`）= 教学动线**（导览 ＋ 三档入口 ＋ 区域地图/区域间互动/组件速查/配置项/主题）——两条门禁管它：`check-author-docs-symbols`（禁内部任务号 ＋ **正文里的裸 `#` 坐标**，E6#109k-b）/ `check-author-docs-links`（出界链接必须报备在 `scripts/author-docs-outbound-allowlist.txt`）；**文档 npm 包** = `npm run docs:build` / `docs:check`（产物 `packages/plugin-docs/`，真源是两棵树）。**英文化后：作者面主显 = `docs/03-plugin-authoring/`（英文），中文原文 = `docs/03-插件制造/`；两棵树的篇目对齐由 `check-author-docs-bilingual` 守，跨树映射表写在该门禁的 `FILENAME_MAP`**。⚠️ **L7 之后作者面还欠七篇**（双击文件到渲染的握手 / 工作区文件读写 / 预览宿主能·不能表 / 哪条命令跑 tsc / 多视图数据住哪 / props 表 / `enumDescriptions` 教反了）——清单在 memory `author-face-doc-gaps-l7` |
 | 已确认决策 | memory `design-decisions.md` |
 | 🔴 **作者轴五个 npm 包怎么发版** | **`docs/06-发布管理/作者轴npm发版.md`**——五轴对照（contracts / plugin-sdk / create-linkdesk-plugin / ui / plugin-docs）＋ 发版五步（改 → bump → publish → `release:mark` → 同笔提交）＋ 三个实测坑（`--registry` 必带 / **contracts 要 `cd contracts && npm publish`** / 货架约 3 分钟复制延迟）＋ **第五节 npx 缓存暗礁**（裸 `npm create linkdesk-plugin` 会静默给旧模板 ⇒ 一律写 `@latest`）。**软件本体的发版另见** `docs/06-发布管理/发布清单.md` |
 | 已知坑 | memory `bug-atlas` |

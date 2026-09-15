@@ -148,7 +148,7 @@ unload plugin A
 
 > 🔴 **Retired 2026-09-09: the `activationEvents` field has been removed entirely** (the shell-side deferred activation track is fully retired — activation.ts / loader defer / `activatePlugin` / the CommandRegistry pre-activation hook are all deleted, and the field is gone from the three copies of the schema). **The shell always registers the full metadata set at startup** (`loadPlugin(pluginId, "startup")`, zero JS imports); plugin **JS is lazily loaded by the pool per URL**. There is no field to write and nothing to declare — only the two on-demand tracks below remain.
 
-**Metadata is registered at startup:** `initPluginLoader` discovers every plugin → the shell registers manifest/contributes (command display names/menus/config schemas/icon bar metadata are all visible) — **without importing any plugin JS** (hard constraint #17d: zero plugin source in the shell bundle).
+**Metadata is registered at startup:** `initPluginLoader` discovers every plugin → the shell registers manifest/contributes (command display names/menus/config schemas/icon bar metadata are all visible) — **without importing any plugin JS** (zero plugin source in the shell bundle).
 
 **JS loading = the pool's two on-demand tracks (the plugin author's contract):**
 
@@ -333,7 +333,7 @@ For source-tree app plugins: copy from `plugins/.disabled/<id>/` back to `plugin
 | Dimension | VS Code | LinkDesk |
 |------|---------|----------|
 | Activation timing | many `activationEvents` (onLanguage/onCommand/workspaceContains…) | **no event field** (retired) — the full metadata set is registered at startup; JS is loaded by the pool on demand |
-| Lazy loading | extension JS imported on demand | zero JS imports at shell startup (#17d); the pool is the only JS executor — a surface mount lazily loads the URL / a command miss imports the entry (on-command activation, §5) |
+| Lazy loading | extension JS imported on demand | zero JS imports at shell startup; the pool is the only JS executor — a surface mount lazily loads the URL / a command miss imports the entry (on-command activation, §5) |
 | Load scanning | scan `extensions/` at startup | single-source discovery, `plugins:listAll`, scanning directly in the main process (same surface in dev/prod) + 2s polling for hot-plug |
 | Dependencies | `extensionDependencies` | `requires` (string array) + suspend to PENDING / cycle fails / cascade unload |
 | Uninstall | Disable / Uninstall | installed state = really delete the directory + settle the account (a removed marker, boot does not revive it); repo source-tree app plugins = move to `.disabled/` as a **same-session** undo (orphans surviving a restart are cleaned automatically at boot) |

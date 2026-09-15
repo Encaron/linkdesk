@@ -1,6 +1,6 @@
 # README Description-Area Media Contract
 
-> 2026-09-09 · Documented (the author contract was added after all four 70a–d forms shipped). **Written for third-party plugin authors.**
+> 2026-09-09 · Documented (the author contract was added after all four forms shipped). **Written for third-party plugin authors.**
 > This document answers one question: **your README gets displayed by the plugin details page inside the LinkDesk app — if you want images / animated images / demo videos in it, how should you write them, and what are the rules?** Benchmarked against the open display canvas of VS Code's update page / extension READMEs.
 > Nature = **interface contract** — it only defines "how an author writes it correctly + how it will be displayed"; it contains no implementation code (the implementation surface = the shell's shared MarkdownView + the marketplace DetailView). Authors don't need to know how the app renders — just get the points below right.
 

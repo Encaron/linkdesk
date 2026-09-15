@@ -1,6 +1,6 @@
 {
   "name": "@linkdesk/plugin-docs",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "LinkDesk 插件作者文档（离线包）——`docs/03-插件制造` 的发布产物：从零学会做一个插件（导览 / 三档动线 / 区域地图 / 组件速查 / 主题 / API 入口）。",
   "type": "module",
   "files": [

@@ -33,7 +33,7 @@
 | `titleBar` | ✅ | 顶栏左右槽位按钮 | MenuRegistry |
 | `viewsContainers` | ✅ | 声明侧栏/面板容器 | ViewContainerService |
 | `views` | ✅ | 往容器注册视图——任何插件可往任意容器注册 | ViewContainerService |
-| `floatingPanel` | ✅ | 声明某视图可在壳内悬浮面板显示（类型 B）——viewId 引用已注册视图；未声明则无「在悬浮面板中打开」右键（I8-3） | 声明寻址 → FloatingPanelService |
+| `floatingPanel` | ✅ | 声明某视图可在壳内悬浮面板显示（类型 B）——viewId 引用已注册视图；未声明则无「在悬浮面板中打开」右键 | 声明寻址 → FloatingPanelService |
 | `i18n` | ✅ | 插件自带翻译文件 | i18nResources（i18next 命名空间） |
 
 ### 主进程消费（2 个）
@@ -665,9 +665,9 @@ useEffect(() => {
 
 | 声明后效果 | 机制 |
 |------|------|
-| 标签页右键出现「在悬浮面板中打开」 | I8-3——未声明不出现（按声明过滤） |
-| 打开后面板内三动作（在主窗口中打开 / 最大化 / 关闭） | I8-4/I8-9——「在主窗口中打开」落点 = 当前活动 group 尾部（复用文件树打开落点规则） |
-| `linkdesk.panel.revealFloating(viewId)` 可编程弹面板 | I8-2 面板身份开关键——无面板→开；同视图→关；他面板→替换 |
+| 标签页右键出现「在悬浮面板中打开」 | 未声明不出现（按声明过滤） |
+| 打开后面板内三动作（在主窗口中打开 / 最大化 / 关闭） | 「在主窗口中打开」落点 = 当前活动 group 尾部（复用文件树打开落点规则） |
+| `linkdesk.panel.revealFloating(viewId)` 可编程弹面板 | 面板身份开关键——无面板→开；同视图→关；他面板→替换 |
 | 卸载声明插件 → 右键条目消失 + revealFloating no-op 不崩 | 声明随插件生命周期卸载 |
 
 **首批声明者 = settings**（`core.openSettings` Ctrl+, 弹面板）；**第二声明者验证载体 = `floating-panel-demo`** 测试插件（标签页型视图，端到端验证替换 + 右键回程 + 卸载 no-op）。

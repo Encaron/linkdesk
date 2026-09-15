@@ -114,7 +114,7 @@ my-plugin/
 | `contributes.themes` | theme (P6) | 注册到 ThemeRegistry → 主题浏览器 |
 | `contributes.languages` | language (P6) | 注册到 LanguageRegistry |
 | `contributes.fileAssociations` | — (P6) | 注册到 FileAssociationService → 双击文件自动打开 |
-| `contributes.floatingPanel` | —  | 声明视图可在壳内悬浮面板显示——viewId 引用已注册视图；未声明则无「在悬浮面板中打开」右键（I8-3） |
+| `contributes.floatingPanel` | —  | 声明视图可在壳内悬浮面板显示——viewId 引用已注册视图；未声明则无「在悬浮面板中打开」右键 |
 
 **插件可同时声明多种贡献。** 比如一个视图插件可以有 `entry` + `sidebar` + `statusBar` + `contributes.configuration` + `contributes.commands`——全部独立注册，互不影响。
 
