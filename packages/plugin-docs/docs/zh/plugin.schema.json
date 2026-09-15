@@ -13,8 +13,8 @@
     },
     "pluginId": {
       "type": "string",
-      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
-      "description": "🔴 Plugin identity — immutable once published (mirrors VS Code's publisher.name). Everything keys off it: install directory {userData}/plugins/<pluginId>/, distribution file name <pluginId>.linkdesk-plugin, marketplace dedup key, uninstall tombstone key, and update reconciliation. Strongly recommended to declare it explicitly: when omitted it falls back to the project directory name, but repository names and local directory names are free-form — rename the directory and the identity changes with it, and none of the five consequences (two install directories side by side / tombstone mismatch / duplicate marketplace entries / silently broken update chain / plugin data appearing lost) reports an error. Character set: letters, digits, `.`, `_`, `-`; the first character must be a letter or a digit."
+      "pattern": "^(?!ldk-)[A-Za-z0-9][A-Za-z0-9._-]*$",
+      "description": "🔴 Plugin identity — immutable once published (mirrors VS Code's publisher.name). Everything keys off it: install directory {userData}/plugins/<pluginId>/, distribution file name <pluginId>.linkdesk-plugin, marketplace dedup key, uninstall tombstone key, and update reconciliation. Strongly recommended to declare it explicitly: when omitted it falls back to the project directory name, but repository names and local directory names are free-form — rename the directory and the identity changes with it, and none of the five consequences (two install directories side by side / tombstone mismatch / duplicate marketplace entries / silently broken update chain / plugin data appearing lost) reports an error. Character set: letters, digits, `.`, `_`, `-`; the first character must be a letter or a digit. It must not start with `ldk-`: that whole namespace belongs to the host and its shared components, and since your CSS class prefix is derived from this id (`<pluginId>-your-class`), an `ldk-` id would land in host territory by construction and void the plugin-prefix rule (SDK check-css-namespace leg)."
     },
     "type": {
       "type": "string",

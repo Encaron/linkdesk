@@ -533,12 +533,18 @@ host's styles, the shared components' (`@linkdesk/ui`) styles, and **every loade
 **class names are global identifiers**. Writing a class name claims that name; if someone else uses it too,
 both stylesheets land on the same element.
 
-**Two rules:**
+**Three rules:**
 
-1. **Give your own elements prefixed class names**—that's what the official plugins do (`settings-*`, `ms-*`,
-   `mpd-*`). Use your plugin name or an abbreviation as the prefix, not something obviously generic like
-   `.active-panel`.
-2. **These names are reserved by the host—don't use them for your own elements** (if you do, the host's
+1. **Class names you give your own elements must start with your `pluginId` plus a hyphen**—
+   `settings-*`, `editor-*`, `file-tree-*` … (`pluginId` is the id you declare in `plugin.json`; every
+   official plugin does this). **Don't use abbreviations**: the `ms-` / `mpd-` shorthand style is **retired**—
+   an abbreviation guarantees nothing, and two plugins that each abbreviate to `ms-` collide. `pluginId` is
+   unique by construction (immutable once published), so deriving the prefix from it is free collision
+   protection.
+2. **`@keyframes` names take the prefix too** (`file-tree-fadeIn`), and **rename the `animation:` reference in
+   the same edit**—a keyframe name is a global identifier exactly like a class name: on a collision the later
+   definition wins and the earlier animation silently stops.
+3. **These names are reserved by the host—don't use them for your own elements** (if you do, the host's
    styles will hit you):
 
 | Source | Reserved names | Notes |
@@ -553,6 +559,11 @@ both stylesheets land on the same element.
 > ⇒ **Editing this column is a public-surface change**: add/remove a name in **three places in one commit**—
 > the registry plus this table in both language trees. This column holds **class names only**; put prose in
 > the third column.
+
+**One more namespace rule**: your `pluginId` **must not start with `ldk-`**—the whole `ldk-` namespace belongs
+to the host, so a plugin called `ldk-tools` would derive its prefix (`ldk-tools-*`) **straight into host
+territory**, which also makes rule 1 meaningless. This constraint lives in the `plugin.json` schema, so your
+editor flags it immediately.
 
 **Want their look? Use their component**—`import { Button } from "@linkdesk/ui"`, don't hand-write its class
 name (hand-writing bypasses the component, and you fall behind the moment it changes).
@@ -587,6 +598,29 @@ component. **Nothing to do before you upgrade; when you upgrade, it's one prefix
 - **Why it isn't automatically compatible**: this kind of mismatch **raises no error**—a selector that no
   longer matches simply stops applying, so the UI looks "roughly right, just a bit off". Because it is silent,
   we moved the names under the `ldk-` prefix and wrote this section.
+
+### 12.2 The prefix rules (§12 rules 1 and 2) are live—what about existing code?
+
+**In one line: it keeps working unchanged, but the next time you touch that file is when you fix it.**
+
+- **The official plugins have already been cleaned up under the new rules**—four plugins were renamed:
+  `file-tree` (v1.0.9), `settings` (v1.0.11), `serial-monitor` (v1.0.12) and `marketplace` (v1.0.33); their
+  bare class names and keyframe names now carry the `<pluginId>-` prefix. The remaining official plugin repos
+  had no bare definitions to begin with (their class names either already carry a prefix or they define none).
+  Measured against the official catalog, the audit reads **18/18 compliant**.
+- **Third-party authors have no repository to change**: this rule governs only **the class and keyframe names
+  you write yourself**—it doesn't touch repo layout, your `pluginId`, or anyone else's code. You do **not**
+  need to cut a release for it.
+- **Old unprefixed class names raise no error and don't stop working**—they work fine today. The cost is that
+  **the collision risk is still there**: if another plugin defines the same class name, both stylesheets land
+  on the same element (no error, just wrong-looking, and hard to trace).
+- **Compliance is judged by the check that ships with your project**: a scaffolded project carries a strict
+  check leg (`npm run verify`) that scans your CSS for class names **bare-defined on your own elements** and
+  for `@keyframes` names, and fails them when they don't start with `<pluginId>-`. So the real action is
+  **rename them the next time you open that file**: `.panel {}` → `.myplugin-panel {}`, changing the CSS and
+  the JSX that uses it together (identifiers only—don't touch style values).
+
+> Want to see whether your project has bare names right now? Run `npm run verify` in the project root.
 
 ---
 
