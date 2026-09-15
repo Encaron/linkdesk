@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>设置页 · 「AI 接入」分区（增量 mockup）</title>
+<style>
+/* ═══════════════════════════════════════════════════════
+   LinkDesk 设计 token（mockup 仅示意，真实实现走 var(--xxx) + ThemeEngine）
+   本图 = `02-Electron架构/E5.8_归一化基建/外观主题化/mockups/02-设置页-主题区-重构-mockup.html`
+   的**增量版**：骨架/类名（settings-editor / settings-nav / settings-row / ld-toggle…）
+   照抄原图，**唯一新增 = 左导航「AI 接入」项 + 右侧「AI 接入」分区**。
+   形态仅示意；通道形态(stdio/HTTP)、默认开/关、命名 = 全部待拍板（见 01-设计.md §五）。
+   ═══════════════════════════════════════════════════════ */
+:root {
+  --bg-window: #0E0E12;
+  --bg-card: #17161D;
+  --bg-input: #1D1E26;
+  --text-primary: #D4D4D4;
+  --text-secondary: #9D9D9D;
+  --text-muted: #6E7280;
+  --accent: #8B7CF6;
+  --accent-hover: #A69CFF;
+  --border: #262838;
+  --separator: #34364A;
+  --hover-overlay: rgba(255,255,255,0.06);
+  --ok: #34D399;
+  --warn: #FBBF24;
+  --font-ui: "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", Consolas, monospace;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: #0A0A0E; color: var(--text-primary); font-family: var(--font-ui); font-size: 13px; padding: 32px; max-width: 1280px; margin: 0 auto; }
+h1 { font-size: 20px; font-weight: 600; letter-spacing: 0.02em; margin-bottom: 6px; }
+h1 small { font-size: 13px; font-weight: 400; color: var(--text-muted); display: block; margin-top: 6px; line-height: 1.7; }
+h1 code, .mono { font-family: var(--font-mono); font-size: 11px; color: var(--accent-hover); }
+h1 .hl { color: var(--ok); }
+
+.frame { background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; margin-top: 18px; }
+.frame-caption { padding: 10px 14px; border-bottom: 1px solid var(--border); display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.frame-caption b { font-size: 14px; }
+.frame-caption .tag { font-size: 11px; color: #fff; background: var(--accent); border-radius: 3px; padding: 1px 8px; font-weight: 600; }
+.frame-caption .tag.new { background: var(--ok); color: #101013; }
+.frame-caption span { color: var(--text-secondary); font-size: 12px; }
+.frame-note { padding: 10px 14px; border-top: 1px solid var(--border); color: var(--text-muted); font-size: 12px; line-height: 1.8; background: #131218; }
+.frame-note b { color: var(--text-secondary); }
+.frame-note .ok { color: var(--ok); }
+.frame-note .warn { color: var(--warn); }
+.frame-note code { font-family: var(--font-mono); font-size: 11px; color: var(--accent-hover); }
+
+/* ═══ 设置编辑器（骨架照抄原图，仅缩尺）═══ */
+.settings-editor {
+  position: relative; display: flex; flex-direction: column;
+  height: 640px; margin: 22px; background: var(--bg-window);
+  border: 1px solid rgba(255,255,255,0.10);
+  border-radius: 12px; box-shadow: 0 18px 50px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.06);
+  overflow: hidden;
+}
+.settings-body { display: flex; flex: 1; overflow: hidden; }
+.settings-nav { width: 172px; flex-shrink: 0; overflow-y: auto; border-right: 1px solid var(--border); padding: 10px 0; }
+.settings-nav-item { display: flex; align-items: center; justify-content: space-between; width: 100%; padding: 7px 20px; font-size: 13px; color: var(--text-primary); background: transparent; border: none; border-left: 2px solid transparent; cursor: pointer; text-align: left; font-family: inherit; }
+.settings-nav-item:hover { background: var(--hover-overlay); }
+.settings-nav-item.active { background: var(--hover-overlay); color: var(--text-primary); font-weight: 500; border-left-color: var(--accent); }
+.settings-nav-count { font-size: 11px; color: var(--text-muted); background: var(--hover-overlay); padding: 0 6px; border-radius: 10px; }
+.settings-nav-item .mi-ic { margin-right: 0; }
+
+.settings-main { flex: 1; display: flex; min-width: 0; }
+.settings-form { flex: 1; overflow-y: auto; padding: 18px 24px; min-width: 0; }
+.settings-group-title { font-size: 17px; font-weight: 600; margin: 0 0 6px 0; padding-bottom: 10px; border-bottom: 1px solid var(--border); color: var(--text-primary); }
+.settings-group-sub { font-size: 11.5px; color: var(--text-muted); margin-bottom: 16px; line-height: 1.6; }
+
+.settings-sub-section { margin: 18px 0 22px; }
+.settings-sub-head { display: flex; align-items: center; gap: 8px; padding: 5px 0; margin-bottom: 4px; border-radius: 6px; }
+.settings-sub-title { font-size: 12.5px; font-weight: 600; color: var(--text-secondary); letter-spacing: 0.02em; }
+.settings-sub-head::after { content: ''; flex: 1; height: 1px; background: var(--separator); margin-left: 6px; }
+.settings-sub-badge { font-size: 10px; color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent); padding: 1px 7px; border-radius: 999px; white-space: nowrap; }
+.settings-sub-badge.mute { color: var(--text-muted); background: var(--hover-overlay); border-color: var(--separator); }
+.settings-sub-desc { font-size: 11.5px; color: var(--text-muted); margin: 2px 0 8px 0; line-height: 1.6; }
+
+.settings-row { display: flex; align-items: flex-start; justify-content: space-between; padding: 9px 0; border-bottom: 1px solid var(--border); gap: 18px; }
+.settings-row:last-child { border-bottom: none; }
+.settings-row-info { flex: 1; min-width: 0; }
+.settings-row-label { display: flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 500; color: var(--text-primary); margin-bottom: 3px; }
+.settings-row-label .key { font-family: var(--font-mono); font-size: 10.5px; color: var(--text-muted); font-weight: 400; }
+.settings-row-label .new-chip { font-size: 9.5px; color: #101013; background: var(--ok); border-radius: 3px; padding: 0 5px; font-weight: 700; letter-spacing: 0.04em; }
+.settings-row-desc { display: block; font-size: 11.5px; color: var(--text-muted); line-height: 1.55; }
+.settings-row-desc em { font-style: normal; color: var(--text-secondary); }
+.settings-row-control { flex-shrink: 0; display: flex; align-items: center; min-width: 110px; justify-content: flex-end; gap: 8px; }
+.settings-row-gear { flex-shrink: 0; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; background: transparent; border: none; border-radius: 3px; color: var(--text-muted); font-size: 13px; cursor: pointer; opacity: 0; transition: opacity 120ms ease, background 120ms ease; margin-left: 2px; }
+.settings-row:hover .settings-row-gear { opacity: 1; }
+.settings-row-gear:hover { background: var(--hover-overlay); color: var(--text-primary); }
+
+/* ── 开关（照抄原图 .ld-toggle）── */
+.ld-toggle { position: relative; width: 34px; height: 18px; border-radius: 999px; background: rgba(255,255,255,0.14); cursor: pointer; transition: background 180ms ease; flex-shrink: 0; border: none; }
+.ld-toggle::after { content: ''; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: #fff; transition: transform 180ms cubic-bezier(0.32,0.72,0,1); box-shadow: 0 1px 3px rgba(0,0,0,0.4); }
+.ld-toggle.on { background: var(--accent); }
+.ld-toggle.on::after { transform: translateX(16px); }
+.ld-toggle-label { font-size: 11.5px; color: var(--text-secondary); }
+
+/* ═══ 🔥 本次新增：AI 接入分区专属（唯一增量）═══ */
+.ai-live { display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-mono); font-size: 11px; color: var(--text-secondary); }
+.ai-live .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 6px color-mix(in srgb, var(--ok) 60%, transparent); flex: none; }
+.ai-live.off .dot { background: var(--text-muted); box-shadow: none; }
+.ai-cmd { font-family: var(--font-mono); font-size: 11px; background: var(--bg-input); border: 1px solid var(--border); border-radius: 4px; padding: 2px 8px; color: var(--accent-hover); }
+.ghost-btn { height: 26px; padding: 0 12px; border-radius: 5px; border: 1px solid var(--separator); background: transparent; color: var(--text-secondary); font-size: 12px; font-family: inherit; cursor: pointer; }
+.ghost-btn:hover { background: var(--hover-overlay); color: var(--text-primary); }
+.ai-scope-list { margin: 4px 0 0 0; padding-left: 16px; font-size: 11.5px; color: var(--text-muted); line-height: 1.9; }
+.ai-scope-list code { font-family: var(--font-mono); font-size: 10.5px; color: var(--accent-hover); }
+.ai-scope-list .no { color: var(--warn); }
+</style>
+</head>
+<body>
+
+<h1>设置页 · 「AI 接入」分区 <span class="hl">（增量 mockup）</span>
+  <small>
+    在设置页既有骨架（<code>02-Electron架构/E5.8_归一化基建/外观主题化/mockups/02-设置页-主题区-重构-mockup.html</code>）上加一项。<br>
+    骨架 / 类名（<code>settings-nav</code> / <code>settings-row</code> / <code>ld-toggle</code>…）照抄原图；<b>唯一新增 = 左导航「AI 接入」+ 右侧三分节</b>。<br>
+    对应设计：<code>01-设计.md §四 · M4</code>（MCP + CLI 双通道）。形态仅示意——通道形态（stdio / HTTP）、默认开 / 关、分区命名 =
+    全部待拍板（见 §五）。
+  </small>
+</h1>
+
+<div class="frame">
+  <div class="frame-caption">
+    <b>Frame 1 · 「AI 接入」分区（新增）</b>
+    <span class="tag new">新增</span>
+    <span>左导航新增一项 · 三个分节：通道 / 开放范围与安全 / 记录</span>
+  </div>
+
+  <div class="settings-editor">
+    <div class="settings-body">
+      <div class="settings-nav">
+        <button class="settings-nav-item">主题<span class="settings-nav-count">1 插件</span></button>
+        <button class="settings-nav-item">通用<span class="settings-nav-count">6 项</span></button>
+        <button class="settings-nav-item">快捷键<span class="settings-nav-count">4 项</span></button>
+        <button class="settings-nav-item">语言<span class="settings-nav-count">2 项</span></button>
+        <button class="settings-nav-item active">AI 接入<span class="settings-nav-count">4 项</span></button>
+        <button class="settings-nav-item">关于</button>
+      </div>
+
+      <div class="settings-main">
+        <div class="settings-form">
+
+          <h1 class="settings-group-title">AI 接入</h1>
+          <div class="settings-group-sub">
+            让外部 AI（助手 / 脚本 / 自建 agent）直接操作本软件：<b>读</b>界面正在发生什么（布局 / 标签页 / 通知…），<b>做</b>用户能做的操作（走白名单命令面）。
+            两个通道二选一或同时开——AI 习惯哪个用哪个。
+          </div>
+
+          <!-- ── 分节 ①：通道 ── -->
+          <div class="settings-sub-section">
+            <div class="settings-sub-head"><span class="settings-sub-title">通道</span></div>
+
+            <div class="settings-row">
+              <div class="settings-row-info">
+                <label class="settings-row-label">mcp.enabled <span class="key">toggle</span> <span class="new-chip">NEW</span></label>
+                <span class="settings-row-desc">MCP 通道——标准 AI 接入口（JSON-RPC）。开启后 AI 客户端可<em>发现并调用</em>本软件的开放操作。</span>
+              </div>
+              <div class="settings-row-control">
+                <button class="ld-toggle on" aria-label="MCP 通道开关"></button>
+                <span class="ai-live"><span class="dot"></span>运行中 · 127.0.0.1:9333</span>
+                <button class="settings-row-gear" title="通道详情">⚙</button>
+              </div>
+            </div>
+
+            <div class="settings-row">
+              <div class="settings-row-info">
+                <label class="settings-row-label">cli.enabled <span class="key">toggle</span> <span class="new-chip">NEW</span></label>
+                <span class="settings-row-desc">CLI 通道——命令行直接操作（<code class="mono">linkdeskctl &lt;命令&gt;</code>）。适合脚本与命令行 AI，<em>零常驻</em>。</span>
+              </div>
+              <div class="settings-row-control">
+                <button class="ld-toggle on" aria-label="CLI 通道开关"></button>
+                <span class="ai-live"><span class="dot"></span>已就绪</span>
+                <button class="settings-row-gear" title="CLI 安装说明">⚙</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- ── 分节 ②：开放范围与安全 ── -->
+          <div class="settings-sub-section">
+            <div class="settings-sub-head"><span class="settings-sub-title">开放范围与安全</span><span class="settings-sub-badge">白名单</span></div>
+
+            <div class="settings-row" style="display:block;">
+              <div class="settings-row-info">
+                <label class="settings-row-label">ai.scope <span class="key">scope</span></label>
+                <span class="settings-row-desc">AI 只能执行<em>白名单操作</em>——命令 / 标签页 / 通知 / 设置 / 面板 / 插件管理；<span class="no">不开放任意代码执行</span>（与 CDP 的本质区别）。</span>
+                <ul class="ai-scope-list">
+                  <li>读：<code>tabs.list</code> · <code>notifications.list</code> · <code>layout.get</code> · <code>configuration.get</code> …</li>
+                  <li>做：<code>core.splitRight</code> · <code>tabs.create</code> · <code>pluginManager.install</code> · <code>notifications.action</code> …</li>
+                </ul>
+              </div>
+              <div style="margin-top:8px;">
+                <button class="ghost-btn">查看完整操作清单 →</button>
+              </div>
+            </div>
+
+            <div class="settings-row">
+              <div class="settings-row-info">
+                <label class="settings-row-label">ai.token <span class="key">action</span></label>
+                <span class="settings-row-desc">访问凭据——仅本机回环可连；凭据可随时重置（重置后旧连接立即失效）。</span>
+              </div>
+              <div class="settings-row-control">
+                <button class="ghost-btn">重新生成凭据</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- ── 分节 ③：记录（可后置）── -->
+          <div class="settings-sub-section">
+            <div class="settings-sub-head"><span class="settings-sub-title">记录</span><span class="settings-sub-badge mute">可后置</span></div>
+
+            <div class="settings-row">
+              <div class="settings-row-info">
+                <label class="settings-row-label">ai.auditLog <span class="key">action</span></label>
+                <span class="settings-row-desc">连接与操作日志——AI 的每一次操作都有记录，可回看「谁在什么时候改了什么」。</span>
+              </div>
+              <div class="settings-row-control">
+                <span class="ai-live off"><span class="dot"></span>未开启</span>
+                <button class="ghost-btn">查看日志</button>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="frame-note">
+    <b>图注：</b>「AI 接入」的挂载位（左导航项 vs 顶部页签）· 分区命名（「AI 接入」/「自动化」/「AI」）· 通道形态（MCP over stdio / over HTTP）·
+    默认开 / 关 · 是否要「连接与操作日志」—— <span class="warn">全部待拍板</span>，见 <code>01-设计.md §五</code>。
+    两通道状态徽标（<span class="ok">运行中 / 已就绪</span>）为形态示意：真实实现由主进程推状态、壳渲染（壳想池画）。
+  </div>
+</div>
+
+</body>
+</html>
