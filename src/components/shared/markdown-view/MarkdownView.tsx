@@ -170,7 +170,7 @@ function MarkdownView({ markdown, className, assetBase }: MarkdownViewProps) {
   const components = useMemo(() => makeComponents(assetBase), [assetBase]);
 
   return (
-    <div className={className ? `mdv ${className}` : "mdv"}>
+    <div className={className ? `ldk-mdv ${className}` : "ldk-mdv"}>
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         rehypePlugins={[rehypeRaw, [rehypeSanitize, mdvSanitizeSchema]]}

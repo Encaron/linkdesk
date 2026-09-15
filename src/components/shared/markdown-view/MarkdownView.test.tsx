@@ -34,9 +34,9 @@ describe("MarkdownView", () => {
     expect(container.querySelector("pre code")?.textContent).toContain("const x = 1");
   });
 
-  it("容器类名 = mdv + className 合并", () => {
+  it("容器类名 = ldk-mdv + className 合并", () => {
     const { container } = render(<MarkdownView markdown="# t" className="extra" />);
-    expect(container.firstElementChild?.className).toBe("mdv extra");
+    expect(container.firstElementChild?.className).toBe("ldk-mdv extra");
   });
 
   it("javascript: href 剥除——链接降级纯文本", () => {
@@ -56,7 +56,7 @@ describe("MarkdownView", () => {
 
   it("空/undefined markdown 渲染空容器不崩", () => {
     const { container } = render(<MarkdownView />);
-    expect(container.querySelector(".mdv")).toBeTruthy();
+    expect(container.querySelector(".ldk-mdv")).toBeTruthy();
   });
 
   it("E6#70a assetBase：裸相对/带目录相对图按基址解析成 linkdesk:// 绝对 URL（https 直通不受影响）", () => {

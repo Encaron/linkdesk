@@ -3,105 +3,105 @@
    硬约束 1/6：全 token（--text-primary/secondary/muted、--border、--bg-input、--font-mono、--radius-*、
    --accent），零硬编码 hex；字号走 --font-size 阶梯，行高 1.6 保证长文可读。 */
 
-.mdv {
+.ldk-mdv {
   color: var(--text-primary);
   font-size: var(--font-size-md);
   line-height: 1.6;
   overflow-wrap: break-word;
 }
-.mdv > :first-child {
+.ldk-mdv > :first-child {
   margin-top: 0;
 }
-.mdv > :last-child {
+.ldk-mdv > :last-child {
   margin-bottom: 0;
 }
 
 /* ── 标题层级（GitHub 语义下划线 h1/h2；字号阶梯递减） ── */
-.mdv h1,
-.mdv h2,
-.mdv h3,
-.mdv h4,
-.mdv h5,
-.mdv h6 {
+.ldk-mdv h1,
+.ldk-mdv h2,
+.ldk-mdv h3,
+.ldk-mdv h4,
+.ldk-mdv h5,
+.ldk-mdv h6 {
   color: var(--text-primary);
   font-weight: 600;
   line-height: 1.25;
   margin: 1.2em 0 0.5em;
 }
-.mdv h1 {
+.ldk-mdv h1 {
   font-size: var(--font-size-2xl);
   padding-bottom: 0.3em;
   border-bottom: 1px solid var(--border);
 }
-.mdv h2 {
+.ldk-mdv h2 {
   font-size: var(--font-size-xl);
   padding-bottom: 0.3em;
   border-bottom: 1px solid var(--border);
 }
-.mdv h3 {
+.ldk-mdv h3 {
   font-size: var(--font-size-lg);
 }
-.mdv h4 {
+.ldk-mdv h4 {
   font-size: var(--font-size-md);
 }
-.mdv h5,
-.mdv h6 {
+.ldk-mdv h5,
+.ldk-mdv h6 {
   font-size: var(--font-size-sm);
   color: var(--text-secondary);
 }
 
 /* ── 段落/列表/分割线 ── */
-.mdv p {
+.ldk-mdv p {
   margin: 0.6em 0;
 }
-.mdv ul,
-.mdv ol {
+.ldk-mdv ul,
+.ldk-mdv ol {
   margin: 0.6em 0;
   padding-left: 1.6em;
 }
-.mdv li {
+.ldk-mdv li {
   margin: 0.25em 0;
 }
-.mdv li > p {
+.ldk-mdv li > p {
   margin: 0.3em 0;
 }
-.mdv hr {
+.ldk-mdv hr {
   border: none;
   border-top: 1px solid var(--border);
   margin: 1.2em 0;
 }
-.mdv blockquote {
+.ldk-mdv blockquote {
   margin: 0.8em 0;
   padding: 0.1em 1em;
   border-left: 3px solid var(--accent);
   background: var(--bg-input);
   color: var(--text-secondary);
 }
-.mdv blockquote > :first-child {
+.ldk-mdv blockquote > :first-child {
   margin-top: 0.6em;
 }
-.mdv blockquote > :last-child {
+.ldk-mdv blockquote > :last-child {
   margin-bottom: 0.6em;
 }
 
 /* ── 链接（外链新窗 + noopener；危险 scheme 已在组件层剥除，纯样式） ── */
-.mdv a {
+.ldk-mdv a {
   color: var(--accent);
   text-decoration: none;
 }
-.mdv a:hover {
+.ldk-mdv a:hover {
   text-decoration: underline;
 }
 
 /* ── 代码块 + 行内代码（--font-mono 阶梯；背景 --bg-input 双主题自适应） ── */
-.mdv code {
+.ldk-mdv code {
   font-family: var(--font-mono);
   font-size: 0.9em;
   background: var(--bg-input);
   border-radius: var(--radius-xs);
   padding: 0.15em 0.4em;
 }
-.mdv pre {
+.ldk-mdv pre {
   margin: 0.8em 0;
   padding: 0.8em 1em;
   background: var(--bg-input);
@@ -109,7 +109,7 @@
   border-radius: var(--radius-md);
   overflow: auto;
 }
-.mdv pre code {
+.ldk-mdv pre code {
   background: transparent;
   padding: 0;
   font-size: var(--font-size-sm);
@@ -117,40 +117,40 @@
 }
 
 /* ── 表格（remark-gfm；GitHub 语义：细边框 + 表头字重） ── */
-.mdv table {
+.ldk-mdv table {
   border-collapse: collapse;
   margin: 0.8em 0;
   width: max-content;
   max-width: 100%;
   font-size: var(--font-size-sm);
 }
-.mdv th,
-.mdv td {
+.ldk-mdv th,
+.ldk-mdv td {
   border: 1px solid var(--border);
   padding: 0.35em 0.8em;
 }
-.mdv th {
+.ldk-mdv th {
   font-weight: 600;
   background: var(--bg-input);
 }
 
 /* ── 图片（宽不溢出；E2 外链 https 已在组件层把关） ── */
-.mdv img {
+.ldk-mdv img {
   max-width: 100%;
   height: auto;
   border-radius: var(--radius-sm);
 }
-.mdv video,
-.mdv iframe {
+.ldk-mdv video,
+.ldk-mdv iframe {
   max-width: 100%;
 }
 
 /* ── 任务列表 checkbox / 引用细节 ── */
-.mdv input[type="checkbox"] {
+.ldk-mdv input[type="checkbox"] {
   margin-right: 0.4em;
   vertical-align: middle;
   accent-color: var(--accent);
 }
-.mdv del {
+.ldk-mdv del {
   color: var(--text-muted);
 }

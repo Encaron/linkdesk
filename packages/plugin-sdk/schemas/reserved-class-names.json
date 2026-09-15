@@ -2,13 +2,7 @@
   "$comment": "宿主保留的 CSS 全局名——单一真相源（硬约束 23 / E6#109）。插件**不得给自有元素裸定义**这些名字（裸定义 = 选择器主体就是这个类名本身、无祖先，如 `.badge { }`）；scoped 调优（如 `.control-bar .combobox { }`）是合法消费，不在本表管辖。消费方：① 壳仓门禁 `scripts/check-css-namespace.mjs`（读本文件 + 反向核对实况）② `@linkdesk/plugin-sdk` 的 check-css-namespace 腿（随包下发，插件仓 CI 用）。改本表 = 一次公共面决策：新增前先问「这是公共面还是漏网的借用」并写明 why。",
   "version": 1,
   "classes": {
-    "shared": [
-      {
-        "name": "mdv",
-        "owner": "markdown-view",
-        "why": "Markdown 渲染容器——详情的 README/发行说明"
-      }
-    ],
+    "shared": [],
     "host": [
       {
         "name": "input",

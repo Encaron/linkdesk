@@ -102,12 +102,39 @@ describe("runReservedClassCheck —— 知情绕行", () => {
 });
 
 describe("loadReservedNames —— 随包清单可读", () => {
-  it("包内 schemas/reserved-class-names.json 能被读到，且 classes 两组都并进来", () => {
+  it("包内 schemas/reserved-class-names.json 能被读到（classes 非空 + 关键帧有位）", () => {
     const names = loadReservedNames();
     expect(names.classes.length).toBeGreaterThan(0);
-    // 不钉具体名字：E6#109g 的四批改名会陆续把 classes.shared 摘空，钉名字的断言会跟着批次变红
-    expect(names.classes.some((c) => c.owner)).toBe(true); // 共享组件组（带 owner）
+    // 不钉具体名字：E6#109g 的四批改名已把 classes.shared 摘空（终态 = 空数组，件 1 收尾标志）
     expect(names.classes.some((c) => !c.owner)).toBe(true); // 宿主工具类组（无 owner）
     expect(names.keyframes.map((k) => k.name)).toContain("selectbox-in");
+  });
+
+  it("classes 两组都并进来（shared 带 owner / host 不带）——夹具，不依赖真实表非空", () => {
+    // 🔴 为什么用夹具：classes.shared 在 E6#109g 收尾后**恒为空数组** ⇒ 真实包里那一组「并进来」
+    //    这件事已不可观测。若只断言「有带 owner 的条目」，一旦 shared 摘空就是必红的假判据；
+    //    删掉又会让 loadReservedNames 的合并语义彻底失去覆盖。夹具把语义钉住，与真实表是否为空解耦。
+    const root = mkdtempSync(join(tmpdir(), "ldk-reserved-"));
+    const file = join(root, "reserved-class-names.json");
+    writeFileSync(
+      file,
+      JSON.stringify({
+        classes: {
+          shared: [{ name: "demo-shared", owner: "demo-component", why: "夹具——共享组件组" }],
+          host: [{ name: "demo-host", why: "夹具——宿主工具类组" }],
+        },
+        keyframes: [{ name: "demo-keyframe", why: "夹具" }],
+      }),
+      "utf8"
+    );
+    try {
+      const names = loadReservedNames(file);
+      expect(names.classes.map((c) => c.name)).toEqual(["demo-shared", "demo-host"]); // 两组、shared 在前
+      expect(names.classes.find((c) => c.name === "demo-shared")?.owner).toBe("demo-component");
+      expect(names.classes.find((c) => c.name === "demo-host")?.owner).toBeUndefined();
+      expect(names.keyframes.map((k) => k.name)).toEqual(["demo-keyframe"]);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
   });
 });
