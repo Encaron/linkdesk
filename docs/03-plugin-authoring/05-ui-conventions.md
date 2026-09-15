@@ -526,6 +526,39 @@ When authors build their own settings UI or manage their own saves (without goin
 
 ---
 
+## 12. CSS Class Names—Prefix Your Own Elements; Don't "Borrow" Reserved Names
+
+**One thing to remember first: the plugin view's stylesheet is not yours alone.** The same window loads the
+host's styles, the shared components' (`@linkdesk/ui`) styles, and **every loaded plugin's** styles at once —
+**class names are global identifiers**. Writing a class name claims that name; if someone else uses it too,
+both stylesheets land on the same element.
+
+**Two rules:**
+
+1. **Give your own elements prefixed class names**—that's what the official plugins do (`settings-*`, `ms-*`,
+   `mpd-*`). Use your plugin name or an abbreviation as the prefix, not something obviously generic like
+   `.active-panel`.
+2. **These names are reserved by the host—don't use them for your own elements** (if you do, the host's
+   styles will hit you):
+
+| Source | Reserved names | Notes |
+|---|---|---|
+| Host global utility classes | `.input` | Input-box utility—**just use it** (it exists for your inputs) |
+| Host global utility classes | `.titlebar`, `.divider`, `.about`, `.rn`, `.vta` | The host UI's own container names; don't reuse them |
+| Shared component public classes | `.badge`, `.button`, `.combobox`, `.mdv`, `.selectbox`, `.sle`, `.slider`, `.toggle` | Class names of the badge / button / combobox / Markdown container / select / string-list editor / slider / toggle components in `@linkdesk/ui` |
+
+**Want their look? Use their component**—`import { Button } from "@linkdesk/ui"`, don't hand-write its class
+name (hand-writing bypasses the component, and you fall behind the moment it changes).
+
+**Always use state classes in compound form**: `.your-class.active`, `.your-class.on` (never bare
+`.active {}` or `.on {}`—that would also restyle same-named state elements in the host and in other plugins).
+
+**A real example from this project**: using a host-reserved name as a "handy style name" on your own element
+painted the background and the text the same color, so the text was swallowed by its own background — the UI
+just looked like "a solid block". **No error**, just wrong, and hard to trace.
+
+---
+
 ## Quick Reference
 
 | What you want to do | Core facility | How to bring it in |
@@ -544,6 +577,7 @@ When authors build their own settings UI or manage their own saves (without goin
 | Six-domain token overview | see the §11.1 matrix | color/surface/radius/glass/font size/font family—`var(--*)` follows theme+glass+scaling automatically; full list in `src/index.css` |
 | UI discipline gate | `linkdesk-plugin-sdk lint` | all 15 items are WARNs that never fail; a knowing bypass = a standard eslint-disable declaration (see §11.2) |
 | Text | `t()` | `useTranslation()` from `react-i18next` |
+| CSS class names / state classes | own prefix + host reserved-name list | see §12 (class names are global—all plugins share the document with the host) |
 | Sidebar list selection | `onMouseDown` (not `onClick`) | aligned with VS Code Explorer—prevents lost events when a fast click crosses elements |
 
 **Use these facilities when writing plugins; don't hand-roll. Even if you write one, it'll have to be torn out later—better to normalize from day one.**
