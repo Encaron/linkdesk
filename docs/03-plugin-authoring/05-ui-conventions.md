@@ -546,6 +546,14 @@ both stylesheets land on the same element.
 | Host global utility classes | `.input` | Input-box utility—**just use it** (it exists for your inputs) |
 | Shared component classes + host container classes | **the whole `ldk-` namespace**—today: `ldk-badge`, `ldk-button`, `ldk-combobox`, `ldk-mdv`, `ldk-selectbox`, `ldk-sle`, `ldk-slider`, `ldk-toggle` (shared components), plus the host's own container classes such as `ldk-titlebar` | Class names of the badge / button / combobox / Markdown container / select / string-list editor / slider / toggle components in `@linkdesk/ui`. **You don't have to memorize them**—remember one thing: **anything starting with `ldk-` belongs to the host itself (shared components + host UI containers), so don't put it on your own elements** |
 
+> 🔧 **Maintainer note (authors can skip this)**—the **Reserved names** column is **machine-read**: the gate
+> in `npm run check` (`scripts/check-reserved-names-doc-sync.mjs`) cross-checks it **both ways** against the
+> registry `packages/plugin-sdk/schemas/reserved-class-names.json`—every registry name must appear here, and
+> every name here must either be registered (bare names) or a real `ldk-` name present in the host source.
+> ⇒ **Editing this column is a public-surface change**: add/remove a name in **three places in one commit**—
+> the registry plus this table in both language trees. This column holds **class names only**; put prose in
+> the third column.
+
 **Want their look? Use their component**—`import { Button } from "@linkdesk/ui"`, don't hand-write its class
 name (hand-writing bypasses the component, and you fall behind the moment it changes).
 
