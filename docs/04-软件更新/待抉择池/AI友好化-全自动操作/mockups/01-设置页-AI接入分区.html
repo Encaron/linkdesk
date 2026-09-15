@@ -51,7 +51,7 @@ h1 .hl { color: var(--ok); }
 /* ═══ 设置编辑器（骨架照抄原图，仅缩尺）═══ */
 .settings-editor {
   position: relative; display: flex; flex-direction: column;
-  height: 640px; margin: 22px; background: var(--bg-window);
+  height: 800px; margin: 22px; background: var(--bg-window);
   border: 1px solid rgba(255,255,255,0.10);
   border-radius: 12px; box-shadow: 0 18px 50px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.06);
   overflow: hidden;
@@ -114,7 +114,7 @@ h1 .hl { color: var(--ok); }
 <h1>设置页 · 「AI 接入」分区 <span class="hl">（增量 mockup）</span>
   <small>
     在设置页既有骨架（<code>02-Electron架构/E5.8_归一化基建/外观主题化/mockups/02-设置页-主题区-重构-mockup.html</code>）上加一项。<br>
-    骨架 / 类名（<code>settings-nav</code> / <code>settings-row</code> / <code>ld-toggle</code>…）照抄原图；<b>唯一新增 = 左导航「AI 接入」+ 右侧三分节</b>。<br>
+    骨架 / 类名（<code>settings-nav</code> / <code>settings-row</code> / <code>ld-toggle</code>…）照抄原图；<b>唯一新增 = 左导航「AI 接入」+ 右侧四分节</b>。<br>
     对应设计：<code>01-设计.md §四 · M4</code>（MCP + CLI 双通道）。形态仅示意——通道形态（stdio / HTTP）、默认开 / 关、分区命名 =
     全部待拍板（见 §五）。
   </small>
@@ -124,7 +124,7 @@ h1 .hl { color: var(--ok); }
   <div class="frame-caption">
     <b>Frame 1 · 「AI 接入」分区（新增）</b>
     <span class="tag new">新增</span>
-    <span>左导航新增一项 · 三个分节：通道 / 开放范围与安全 / 记录</span>
+    <span>左导航新增一项 · 四个分节：通道 / 接入引导 / 开放范围与安全 / 记录</span>
   </div>
 
   <div class="settings-editor">
@@ -144,7 +144,8 @@ h1 .hl { color: var(--ok); }
           <h1 class="settings-group-title">AI 接入</h1>
           <div class="settings-group-sub">
             让外部 AI（助手 / 脚本 / 自建 agent）直接操作本软件：<b>读</b>界面正在发生什么（布局 / 标签页 / 通知…），<b>做</b>用户能做的操作（走白名单命令面）。
-            两个通道二选一或同时开——AI 习惯哪个用哪个。
+            两个通道二选一或同时开——AI 习惯哪个用哪个。<br>
+            <b>管外不管内</b>：本分区只辖「门外的 AI」——<em>关着 = 本机任何程序都连不进来</em>（钥匙只有你给）；软件里的插件归插件管理，不受此开关管辖。
           </div>
 
           <!-- ── 分节 ①：通道 ── -->
@@ -172,6 +173,53 @@ h1 .hl { color: var(--ok); }
                 <button class="ld-toggle on" aria-label="CLI 通道开关"></button>
                 <span class="ai-live"><span class="dot"></span>已就绪</span>
                 <button class="settings-row-gear" title="CLI 安装说明">⚙</button>
+              </div>
+            </div>
+
+            <div class="settings-row">
+              <div class="settings-row-info">
+                <label class="settings-row-label">debug.remoteDebugging <span class="key">toggle</span> <span class="new-chip" style="background:var(--warn);color:#101013">待拍板</span></label>
+                <span class="settings-row-desc">调试端口（CDP）——开发 / 深度排障用的「万能钥匙」。默认关；开启期间<em>本机任何程序可连</em>（<span class="no">仅排障时开</span>；日常操作走上面两条通道）。</span>
+              </div>
+              <div class="settings-row-control">
+                <button class="ld-toggle" aria-label="调试端口开关"></button>
+                <span class="ai-live off"><span class="dot"></span>已关闭</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- ── 分节 ②：接入引导（2026-09-16 补：M4 落点「接入引导」+ M3 手册；三路手把手）── -->
+          <div class="settings-sub-section">
+            <div class="settings-sub-head"><span class="settings-sub-title">接入引导</span><span class="settings-sub-badge">手把手</span></div>
+            <div class="settings-sub-desc">怎么让你的 AI 用上这台 LinkDesk——按手里 AI 的类型挑一条路：</div>
+
+            <div class="settings-row">
+              <div class="settings-row-info">
+                <label class="settings-row-label">① 终端型 AI（Claude Code / Codex CLI…）<span class="key">cli</span></label>
+                <span class="settings-row-desc">装完即就位（命令已在 PATH）——对 AI 说一句「<em>用 linkdeskctl 操作 LinkDesk</em>」，它自己 <code class="mono">--help</code> 就全懂了（零配置）。</span>
+              </div>
+              <div class="settings-row-control">
+                <button class="ghost-btn">复制这句话</button>
+              </div>
+            </div>
+
+            <div class="settings-row">
+              <div class="settings-row-info">
+                <label class="settings-row-label">② 桌面型 AI（Claude Desktop…）<span class="key">mcp</span></label>
+                <span class="settings-row-desc">MCP 需要「连一次」：复制下面这段配置，粘进你的 AI 客户端——之后永久顺手（对标本机首次配蓝牙）。</span>
+              </div>
+              <div class="settings-row-control">
+                <button class="ghost-btn">复制 MCP 配置</button>
+              </div>
+            </div>
+
+            <div class="settings-row">
+              <div class="settings-row-info">
+                <label class="settings-row-label">③ 任何 AI（含没见过的）<span class="key">manual</span></label>
+                <span class="settings-row-desc">把操作手册丢给它：「<em>这是我的软件说明书，照它操作</em>」——零前置知识也能上岗。</span>
+              </div>
+              <div class="settings-row-control">
+                <button class="ghost-btn">打开 AI 操作手册</button>
               </div>
             </div>
           </div>
@@ -203,6 +251,16 @@ h1 .hl { color: var(--ok); }
                 <button class="ghost-btn">重新生成凭据</button>
               </div>
             </div>
+
+            <div class="settings-row">
+              <div class="settings-row-info">
+                <label class="settings-row-label">ai.sensitive <span class="key">group</span> <span class="new-chip" style="background:var(--warn);color:#101013">待拍板</span></label>
+                <span class="settings-row-desc">敏感能力细分——如「允许 AI 发送串口数据」「允许 AI 装 / 卸插件」单独设闸；或首版整组开放（最高风险项已由「装 = 问一声」覆盖）。</span>
+              </div>
+              <div class="settings-row-control">
+                <button class="ghost-btn">管理细分…</button>
+              </div>
+            </div>
           </div>
 
           <!-- ── 分节 ③：记录（可后置）── -->
@@ -228,8 +286,9 @@ h1 .hl { color: var(--ok); }
 
   <div class="frame-note">
     <b>图注：</b>「AI 接入」的挂载位（左导航项 vs 顶部页签）· 分区命名（「AI 接入」/「自动化」/「AI」）· 通道形态（MCP over stdio / over HTTP）·
-    默认开 / 关 · 是否要「连接与操作日志」—— <span class="warn">全部待拍板</span>，见 <code>01-设计.md §五</code>。
-    两通道状态徽标（<span class="ok">运行中 / 已就绪</span>）为形态示意：真实实现由主进程推状态、壳渲染（壳想池画）。
+    <b>默认开 / 关</b>（AI 倾向默认关——安全默认）· 调试端口开关与敏感能力细分（<span class="warn">待拍板</span>）—— 见 <code>01-设计.md §五</code>。
+    <span class="ok">管外不管内</span>：本分区只辖「门外 AI」，软件内插件归插件管理（见 §八 授权粒度）。
+    「接入引导」为三路手把手（终端型 AI 一句话 / 桌面型 AI 粘配置 / 任何 AI 丢手册）——按 M4「接入引导」与 M3「手册随包」落点补齐，2026-09-16 用户点名「MCP 的发现」细化；两通道状态徽标为形态示意（真实实现：主进程推状态、壳渲染）。
   </div>
 </div>
 
