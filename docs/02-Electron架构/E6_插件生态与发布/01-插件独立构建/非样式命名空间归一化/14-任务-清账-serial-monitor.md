@@ -1,7 +1,7 @@
 # 第 1.44 轮 · `#111n-3`：**官方仓清账 · `serial-monitor`**
 
 > 🔄 **§〇c 口径修订（2026-09-16 第二次拍板）——先读 [00 档 §〇c 口径修订令](00-整理档案.md)。**
-> **被撤回的旧结论**：~~存量不改名 ／ 只报不改~~ ⇒ **改名 ＋ 迁移，规则零例外**。**根治的机械定义 = 官方仓需改处全 0**（`node scratch/audit-plugin-scope.mjs` 全 0）。
+> **被撤回的旧结论**：~~存量不改名 ／ 只报不改~~ ⇒ **改名 ＋ 迁移，规则零例外**。**根治的机械定义 = 官方仓需改处全 0**（`node scripts/audit-plugin-scope.mjs` 全 0）。
 > **上位约束的新措辞**：**操作体验零变化**（**名字可变，取值与功能不许变**）。
 > **本档因此新增的必做项**：任何改名**同笔带迁移** ＋ **逐项操作实测**。
 >
@@ -29,7 +29,7 @@
 
 | 项 | 读数 | 出处 / 复跑 |
 |:--|:--|:--|
-| **上下文旗子不合规** | **2**：`sourceOpen` · `serialSessionFocus` | `node scratch/audit-plugin-scope.mjs`（`── serial-monitor` 段） |
+| **上下文旗子不合规** | **2**：`sourceOpen` · `serialSessionFocus` | `node scripts/audit-plugin-scope.mjs`（`── serial-monitor` 段） |
 | 命令 id | **12**，**全部合规**（`serial-monitor.*`） | 同上 |
 | 设置键 | **2**，**全部合规** | 同上 |
 | i18n 顶层键 | **129**（跨仓不可判，**只登记**） | 同上 |
@@ -113,7 +113,7 @@
 ## 五、交棒要求
 
 1. **收尾四件套**（交接段顶部追加 · 清单轮次进度行 · 勾格全套 · **队列表整张复制**）。
-2. 🔴 **回报三组读数**：① 改名前/后 `node scratch/audit-plugin-scope.mjs` 的**本仓处数**（期望 2 → **0**）；② §三 的 ①②④ 判据读数；③ **§2.2 的「有无迁移面」核实结论 ＋ grep 输出**。
+2. 🔴 **回报三组读数**：① 改名前/后 `node scripts/audit-plugin-scope.mjs` 的**本仓处数**（期望 2 → **0**）；② §三 的 ①②④ 判据读数；③ **§2.2 的「有无迁移面」核实结论 ＋ grep 输出**。
 3. 🔴 **判「本格不做某条」必须写明理由**（尤其若判"旗子无持久化 ⇒ 无迁移面"）。
 4. **下一棒 = [1.45 清账 · `marketplace`](15-任务-清账-marketplace.md)（`#111n-4`）**。
 5. 跑 [00 档 §八](00-整理档案.md) 探针并记账。
@@ -129,7 +129,7 @@ sed -n '1,40p' "docs/02-Electron架构/E6_插件生态与发布/01-插件独立�
 # 1) 拿「清账轮作业包」（1.41 交付）→ 交接段顶部第一段
 
 # 2) 自量本仓
-node scratch/audit-plugin-scope.mjs | sed -n '/── serial-monitor/,/^──/p'
+node scripts/audit-plugin-scope.mjs | sed -n '/── serial-monitor/,/^──/p'
 node scratch/show-plugin-manifest.mjs "E:/linkdesk-plugins/official/serial-monitor"
 
 # 3) 两个旗子的全部出现点（三处都要看：manifest / 源码 set / 源码 when 与 overrides）

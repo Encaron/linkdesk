@@ -1,7 +1,7 @@
 # 第 1.45 轮 · `#111n-4`：**官方仓清账 · `marketplace`**
 
 > 🔄 **§〇c 口径修订（2026-09-16 第二次拍板）——先读 [00 档 §〇c 口径修订令](00-整理档案.md)。**
-> **被撤回的旧结论**：~~存量不改名 ／ 只报不改~~ ⇒ **改名 ＋ 迁移，规则零例外**。**根治的机械定义 = 官方仓需改处全 0**（`node scratch/audit-plugin-scope.mjs` 全 0）。
+> **被撤回的旧结论**：~~存量不改名 ／ 只报不改~~ ⇒ **改名 ＋ 迁移，规则零例外**。**根治的机械定义 = 官方仓需改处全 0**（`node scripts/audit-plugin-scope.mjs` 全 0）。
 > **上位约束的新措辞**：**操作体验零变化**（**名字可变，取值与功能不许变**）。
 > **本档因此新增的必做项**：任何改名**同笔带迁移** ＋ **逐项操作实测**。
 >
@@ -29,7 +29,7 @@
 
 | 项 | 读数 | 出处 / 复跑 |
 |:--|:--|:--|
-| **上下文旗子不合规** | **6**：`pluginDisabled` · `extensionHasThemes` · `extensionHasLanguages` · `extensionHasIconThemes` · `extensionHasConfiguration` · `extensionHasKeybindings` | `node scratch/audit-plugin-scope.mjs`（`── marketplace` 段） |
+| **上下文旗子不合规** | **6**：`pluginDisabled` · `extensionHasThemes` · `extensionHasLanguages` · `extensionHasIconThemes` · `extensionHasConfiguration` · `extensionHasKeybindings` | `node scripts/audit-plugin-scope.mjs`（`── marketplace` 段） |
 | 命令 id | **0 条声明**（本仓的命令走**运行时注册**，实测其 `marketplace.*` 已合规） | 同上 |
 | 设置键 | **1**，已合规 | 同上 |
 | i18n 顶层键 | **184**（跨仓不可判，**只登记**） | 同上 |
@@ -132,7 +132,7 @@
 ## 五、交棒要求
 
 1. **收尾四件套**（交接段顶部追加 · 清单轮次进度行 · 勾格全套 · **队列表整张复制**）。
-2. 🔴 **回报三组读数**：① 改名前/后 `node scratch/audit-plugin-scope.mjs` 的**本仓处数**（期望 6 → **0**）；② §三 的 ①②③④ 判据读数（**④ 要逐条列出的 7 个菜单条目**）；③ **§2.2 的「有无迁移面」核实结论 ＋ grep 输出**。
+2. 🔴 **回报三组读数**：① 改名前/后 `node scripts/audit-plugin-scope.mjs` 的**本仓处数**（期望 6 → **0**）；② §三 的 ①②③④ 判据读数（**④ 要逐条列出的 7 个菜单条目**）；③ **§2.2 的「有无迁移面」核实结论 ＋ grep 输出**。
 3. 🔴 **判「本格不做某条」必须写明理由**。
 4. **下一棒 = [1.46 清账 · `settings`](16-任务-清账-settings.md)（`#111n-5`）** —— ⚠️ **注意**：那一格要动**宿主命令的 `when`**（跨仓），是本轴**最高风险**的一格；本格的经验（"set 与读点成对"那条判据）**要写进交接段给它参考**。
 5. 跑 [00 档 §八](00-整理档案.md) 探针并记账。
@@ -148,7 +148,7 @@ sed -n '1,40p' "docs/02-Electron架构/E6_插件生态与发布/01-插件独立�
 # 1) 拿「清账轮作业包」（1.41 交付）→ 交接段顶部第一段
 
 # 2) 自量本仓
-node scratch/audit-plugin-scope.mjs | sed -n '/── marketplace/,/^──/p'
+node scripts/audit-plugin-scope.mjs | sed -n '/── marketplace/,/^──/p'
 
 # 3) 6 个旗子的全部 set / 读点（§1.1 的两处 ＋ 全仓复核）
 grep -rn "pluginDisabled\|extensionHasThemes\|extensionHasLanguages\|extensionHasIconThemes\|extensionHasConfiguration\|extensionHasKeybindings" \

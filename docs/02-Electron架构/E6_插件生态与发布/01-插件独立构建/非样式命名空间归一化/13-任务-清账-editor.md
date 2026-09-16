@@ -1,7 +1,7 @@
 # 第 1.43 轮 · `#111n-2`：**官方仓清账 · `editor`**
 
 > 🔄 **§〇c 口径修订（2026-09-16 第二次拍板）——先读 [00 档 §〇c 口径修订令](00-整理档案.md)。**
-> **被撤回的旧结论**：~~存量不改名 ／ 只报不改~~ ⇒ **改名 ＋ 迁移，规则零例外**。**根治的机械定义 = 官方仓需改处全 0**（`node scratch/audit-plugin-scope.mjs` 全 0）。
+> **被撤回的旧结论**：~~存量不改名 ／ 只报不改~~ ⇒ **改名 ＋ 迁移，规则零例外**。**根治的机械定义 = 官方仓需改处全 0**（`node scripts/audit-plugin-scope.mjs` 全 0）。
 > **上位约束的新措辞**：**操作体验零变化**（**名字可变，取值与功能不许变**）。
 > **本档因此新增的必做项**：任何改名**同笔带迁移** ＋ **逐项操作实测**。
 >
@@ -29,7 +29,7 @@
 
 | 项 | 读数 | 出处 / 复跑 |
 |:--|:--|:--|
-| **设置键不合规** | **1**：`files.autoSave` | `node scratch/audit-plugin-scope.mjs`（`── editor` 段） |
+| **设置键不合规** | **1**：`files.autoSave` | `node scripts/audit-plugin-scope.mjs`（`── editor` 段） |
 | 设置键合规 | **25**（`editor.*` 前缀，已合规） | 同上 |
 | 命令 id | **2**，**全部合规**（`editor.*`） | 同上 |
 | **文件关联** | **41 个扩展名**：`ts` `tsx` `js` `jsx` `mjs` `cjs` `json` `jsonc` `html` `htm` `css` `scss` `less` `md` `mdx` `py` `rs` `c` `h` `cpp` `hpp` `go` `java` `xml` `svg` `yaml` `yml` `toml` `sh` `bash` `sql` `lua` `php` `rb` `swift` `kt` `dart` `diff` `patch` `bat` `cmd` `ini` `cfg` `txt` `log` | 同上 |
@@ -107,7 +107,7 @@
 ## 五、交棒要求
 
 1. **收尾四件套**（交接段顶部追加 · 清单轮次进度行 · 勾格全套 · **队列表整张复制**）。
-2. 🔴 **回报三组读数**：① 改名前/后 `node scratch/audit-plugin-scope.mjs` 的**本仓处数**（期望 1 → **0**）；② §三 的 ①②③④ 判据读数；③ **§2.3 的 `editor.*` 归属结论**（这一条 1.42 与本格都关心）。
+2. 🔴 **回报三组读数**：① 改名前/后 `node scripts/audit-plugin-scope.mjs` 的**本仓处数**（期望 1 → **0**）；② §三 的 ①②③④ 判据读数；③ **§2.3 的 `editor.*` 归属结论**（这一条 1.42 与本格都关心）。
 3. 🔴 **判「本格不做某条」必须写明理由**（尤其「41 个文件关联不改」的实证）。
 4. **下一棒 = [1.44 清账 · `serial-monitor`](14-任务-清账-serial-monitor.md)（`#111n-3`）**。
 5. 跑 [00 档 §八](00-整理档案.md) 探针并记账。
@@ -123,7 +123,7 @@ sed -n '1,40p' "docs/02-Electron架构/E6_插件生态与发布/01-插件独立�
 # 1) 拿「清账轮作业包」（1.41 交付）→ 交接段顶部第一段；以及 1.42 关于 editor.* 的点名
 
 # 2) 自量本仓
-node scratch/audit-plugin-scope.mjs | sed -n '/── editor/,/^──/p'
+node scripts/audit-plugin-scope.mjs | sed -n '/── editor/,/^──/p'
 node scratch/show-plugin-manifest.mjs "E:/linkdesk-plugins/official/editor"
 
 # 3) 那一个键的引用点扫全

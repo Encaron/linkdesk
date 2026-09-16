@@ -1,0 +1,64 @@
+{
+  "$comment": "宿主保留面账（草案·生成式）——非样式命名空间归一化机制 A 的原型产物。插件不得占用这些名字；改动本账 = 一次公共面决策。",
+  "commandPrefixes": [
+    "app.",
+    "core.",
+    "theme.",
+    "update.",
+    "view.",
+    "workbench."
+  ],
+  "configKeys": [
+    "app.accentColor",
+    "app.accentMode",
+    "app.accentSource",
+    "app.appearanceMode",
+    "app.backgroundImage",
+    "app.backgroundMask",
+    "app.backgroundOpacity",
+    "app.fontFamily",
+    "app.fontFamilyMono",
+    "app.fontTone",
+    "app.glassBlur",
+    "app.glassOpacity",
+    "app.glassSaturate",
+    "app.glassTint",
+    "app.iconTheme",
+    "app.mixBackground",
+    "app.mixFont",
+    "app.mixMode",
+    "app.mixReset",
+    "app.surfaceRadius",
+    "app.theme",
+    "app.themeColor",
+    "app.uiFontScale",
+    "app.update.mode",
+    "app.update.showReleaseNotes",
+    "app.zoneBackgroundImage",
+    "app.zoneRadius",
+    "app.zoneRadiusScale"
+  ],
+  "pseudoPluginIds": [
+    "app",
+    "appearance",
+    "update"
+  ],
+  "contextKeys": [
+    "activeEditor",
+    "editorCount",
+    "editorHasSelection",
+    "inputFocus",
+    "settingFollowTheme",
+    "settingKey",
+    "settingModified",
+    "settingResetsToDefault",
+    "sidebarPosition",
+    "updateActionable",
+    "updateButtonLabel"
+  ],
+  "appearanceIds": [
+    "dark",
+    "dark-fallback",
+    "light"
+  ]
+}

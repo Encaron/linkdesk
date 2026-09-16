@@ -111,6 +111,9 @@ npm run pull:plugins        # 本地容器拉最新——只拉不推；🔴 容
 npm run docs:build          # 作者面文档包产物（docs:check 与真源逐字节比对，挂 check）
 npm run backfill:catalog-identity  # 目录条目身份图回填（--check / --self-test；依赖 SDK dist）
 npm run audit:plugin-prefix # 插件 CSS 前缀只读审计（改名轮映射表；依赖 SDK dist；故意不接 check 链）
+npm run audit:plugin-scope  # 插件侧「非样式命名空间」清账面（改名前逐仓清单；只读、不接 check 链；
+                            #   ⚠️ 读 scripts/host-reserved.json（生成式）——壳仓命令/设置面改了要 npm run audit:plugin-scope:regen）
+                            #   改容器：npm run audit:plugin-scope -- <容器目录>（默认 E:/linkdesk-plugins/official）
 npm run check:lockfile-sync # lockfile 同源门禁；升 packages/* 版本后必须重跑 npm install 同笔提交 lock
 npm run lint / dev / electron:dev / npx tsc --noEmit / npx vitest run
 ```

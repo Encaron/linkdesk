@@ -1,7 +1,7 @@
 # 第 1.46 轮 · `#111n-5`：**官方仓清账 · `settings`**（🔴 本轴风险最高的一格）
 
 > 🔄 **§〇c 口径修订（2026-09-16 第二次拍板）——先读 [00 档 §〇c 口径修订令](00-整理档案.md)。**
-> **被撤回的旧结论**：~~存量不改名 ／ 只报不改~~ ⇒ **改名 ＋ 迁移，规则零例外**。**根治的机械定义 = 官方仓需改处全 0**（`node scratch/audit-plugin-scope.mjs` 全 0）。
+> **被撤回的旧结论**：~~存量不改名 ／ 只报不改~~ ⇒ **改名 ＋ 迁移，规则零例外**。**根治的机械定义 = 官方仓需改处全 0**（`node scripts/audit-plugin-scope.mjs` 全 0）。
 > **上位约束的新措辞**：**操作体验零变化**（**名字可变，取值与功能不许变**）。
 > **本档因此新增的必做项**：任何改名**同笔带迁移** ＋ **逐项操作实测**。
 >
@@ -29,7 +29,7 @@
 
 | 项 | 读数 | 出处 / 复跑 |
 |:--|:--|:--|
-| **上下文旗子** | **4**：`settingKey` · `settingModified` · `settingFollowTheme` · `settingResetsToDefault` | `node scratch/audit-plugin-scope.mjs`（`── settings` 段） |
+| **上下文旗子** | **4**：`settingKey` · `settingModified` · `settingFollowTheme` · `settingResetsToDefault` | `node scripts/audit-plugin-scope.mjs`（`── settings` 段） |
 | 命令 id | **0 条声明** | 同上 |
 | 设置键（自有） | **0**（⚠️ 它**有 45+ 个 `t()` 调用**，但**文案键一个都不在自己仓**——住 `lang-defaults`，见 [1.39](09-任务-i18n与黄灯族评估.md)） | 同上 |
 | i18n 顶层键 | **0**（本仓无 `i18n/`） | 同上 |
@@ -131,7 +131,7 @@
 ## 五、交棒要求
 
 1. **收尾四件套**（交接段顶部追加 · 清单轮次进度行 · 勾格全套 · **队列表整张复制**）。
-2. 🔴 **回报四组读数**：① 改名前/后 `node scratch/audit-plugin-scope.mjs` 的**本仓处数**（甲路线期望 4 → **0**；乙路线**保持 4 但要有裁决记录**）；② §三 的 ①②③④ 判据读数（**④ 逐条列出 4 个菜单条目**）；③ **§2.3 错配窗结论**；④ **壳仓改动清单**（文件 ＋ 行 ＋ 提交）。
+2. 🔴 **回报四组读数**：① 改名前/后 `node scripts/audit-plugin-scope.mjs` 的**本仓处数**（甲路线期望 4 → **0**；乙路线**保持 4 但要有裁决记录**）；② §三 的 ①②③④ 判据读数（**④ 逐条列出 4 个菜单条目**）；③ **§2.3 错配窗结论**；④ **壳仓改动清单**（文件 ＋ 行 ＋ 提交）。
 3. 🔴 **判「本格不做某条」必须写明理由**（尤其若走乙路线 ⇒ 必须写明「这是裁决结果，不是漏做」）。
 4. **下一棒 = [1.47 清账 · 主题族](17-任务-清账-主题族.md)（`#111n-6`）**。
 5. 跑 [00 档 §八](00-整理档案.md) 探针并记账。
@@ -157,7 +157,7 @@ grep -rn "settingKey\|settingModified\|settingFollowTheme\|settingResetsToDefaul
   src/core/commands/ src/App/ | grep -v "\.test\."
 
 # 4) 自量本仓
-node scratch/audit-plugin-scope.mjs | sed -n '/── settings/,/^──/p'
+node scripts/audit-plugin-scope.mjs | sed -n '/── settings/,/^──/p'
 
 # 5) 基线（两侧）
 git -C "E:/linkdesk-plugins/official/settings" rev-parse HEAD
