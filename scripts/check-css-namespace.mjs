@@ -29,8 +29,21 @@
  *   ⑨ **token（自定义属性）作用域**（E6#109n-b · 轮次 1.24）⇒ 🔴 红
  *      （**作用域才是命名空间**：文档级只有宿主契约块能写、其余定义必须挂在自有命名空间的类之下、
  *        任何方不得定义 `ldk-*` 自定义属性。域 = `src/**\/*.css`。规则正文 = 31 号档 §一；
- *        判定体 = `lib/css-selectors.mjs` 的 `judgeTokenScope()`——**与运行时探针同一个函数**。
- *        ⚠️ 判据⑦⑧ 已预留给 1.26 的族段规则 / 关键帧引用不悬空，本轴取 ⑨。）
+ *        判定体 = `lib/css-selectors.mjs` 的 `judgeTokenScope()`——**与运行时探针同一个函数**。）
+ *   ⑦ **共享组件族段规则**（E6#109o-b · 轮次 1.26）⇒ 🔴 红
+ *      （`src/components/shared/**` 的每个**组件目录**里，`ldk-*` 独立定义的**族段必须与目录族一致**
+ *        ——族根 = 该目录内那个「其余 `ldk-*` 名字都是它延伸（`-`／`__`／相等）」的最短 `ldk-*` 名
+ *        ＝ 目录内所有 `ldk-*` 名的**共同族根**。一处耦合成本的机械守卫：新组件**自成一个族段**、
+ *        不与既有族撞名 ⇒ 「加新组件」永远是一次安全的加法。规则正文 = 32 号档 §三.2 判据⑦。）
+ *   ⑧ **关键帧引用不悬空**（E6#109o-b · 轮次 1.26）⇒ 🔴 红
+ *      （`animation` / `animation-name` 引用的每个名字必须在**同方**有关键帧定义；同方 = 宿主编译域
+ *        （宿主域 ＋ 共享组件域）——两边最终进同一张表。1.21／1.21b 把关键帧名全改成 `ldk-*`
+ *        ⇒「改名忘改引用」从此有真实发生率，而它的症状是**动画静默消失**（不报错）。）
+ *   ⑩ **宿主基线块**（R1 · E6#109o-b · 轮次 1.26）⇒ 🔴 红
+ *      （宿主 CSS 里的**顶层「无名字锚」选择器**只允许出现在**登记文件**里：登记 = **文件 ＋ 条数**
+ *        （`scripts/css-selector-baseline.json`，**零名字清单、零白名单**——名字级登记会腐）。
+ *        域 = 本文件的 `HOST_DOMAIN`（与探针 `host` 归属域**逐字一致**）。
+ *        ⚠️ 基线内站点**每次逐条打印**（文件:行 ＋ 选择器原文）⇒「哪几条」永远可见、不靠记忆。）
  *
  * ── 登记表 = 既成事实面（不是「允许随便加」）──
  *   登记表的 `classes` 整块已于 E6#109l-b **删除**：判据①③ 双双结构性之后，它没有消费方了
@@ -43,7 +56,7 @@
  * 退出码 0 = 合规；1 = 违规（打印到 stderr）。
  */
 
-import { readFileSync, readdirSync, statSync, mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
+import { readFileSync, readdirSync, mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
 import { resolve, dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { tmpdir } from "node:os";
@@ -54,10 +67,36 @@ import {
   tokenDefinitions,
   judgeTokenScope,
   TOKEN_WHY,
+  selectorFormSites,
+  animationRefs,
+  hasIdSelector,
 } from "./lib/css-selectors.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, "..");
+
+/* ── 🔴 宿主域（E6#109o-b 起**三处逐字一致**）─────────────────────────────────
+
+   判据③（类名结构性）／判据⑩（宿主基线块）／探针 `runtime-style-audit.mjs` 的 `host` 归属域
+   ——三处必须是**同一句**。1.22 实机抓到过不一致（`src/App.css` 在探针域内、却不在判据③ 域内
+   ⇒ 「宿主自己定义的类名 100% 是 `ldk-`」按门禁口径为假）；1.25 裁决 (a)＝**对齐域**，1.26 落地。
+
+   ⚠️ **域可以按判据分别设定**（1.24 已实证：判据⑨ 的域是更宽的 `src/**\/*.css`）——但「宿主域」这个名字
+   只有一个定义。改这一行必须同笔改 `scripts/css-selector-baseline.json` 的 `domain.files`
+   ＋ 探针 `PARTY_RULES` 的两条 host 规则（两处消费方各有断言钉住这一次漂移）。 */
+export const HOST_DOMAIN = ["src/*.css", "src/pool/**"];
+
+/** 宿主域的文件集合（非递归 `src/*.css` ＋ 递归 `src/pool/**`）——判据③ 与判据⑩ 共用 */
+function hostDomainFiles(root = ROOT) {
+  let entries = [];
+  try {
+    entries = readdirSync(join(root, "src"), { withFileTypes: true });
+  } catch {
+    return []; // 自测夹具里没有 src/ 时安静回空（walk() 同款行为）
+  }
+  const top = entries.filter((e) => e.isFile() && e.name.endsWith(".css")).map((e) => join(root, "src", e.name));
+  return [...top, ...walk(join(root, "src", "pool"), (n) => n.endsWith(".css"))];
+}
 
 /* ── 登记表（**单一真相源在 SDK 包里**，本脚本与插件侧检查腿读同一份）────────
 
@@ -133,6 +172,54 @@ export function tokenSites(root = ROOT) {
  *  E6#109l-b 起不再需要：判据①③ 是结构性的（看定义、不看渲染点）。
  *  留此说明以防「这个函数怎么没了」——真要用请连同判据一起加回来，别留悬空工具。 */
 
+/* ── 选择器形态轴（E6#109o-b · 轮次 1.26）─────────────────────────────────
+
+   判据⑦（族段规则）· 判据⑧（关键帧引用不悬空）· 判据⑩（宿主基线块）＋ 壳内夹具扫描。
+   口径**不在本文件**：`formOf()` / `selectorFormSites()` / `animationRefs()` 全部来自 lib——
+   与运行时探针（`runtime-style-audit.mjs` 的轴 ④）**同一份实现**，探针就是这一层的运行时镜像。
+   本文件只负责「扫哪些目录、拿什么去比对」。 */
+
+/** 基线登记表（**门禁与探针共读**＝同源；登记 = 文件 ＋ 条数，**零名字清单**） */
+const SELECTOR_BASELINE_REL = "scripts/css-selector-baseline.json";
+
+/** 读基线登记表。读不到 ⇒ 抛（由 runChecks 转成 🔴 —— 「登记表读不到」= 基线判据瞎了，不许静默放过） */
+export function loadSelectorBaseline(root = ROOT) {
+  return JSON.parse(readFileSync(join(root, SELECTOR_BASELINE_REL), "utf8"));
+}
+
+/** 判据⑩ 的站点：宿主域里 `formOf()` 为 **anchorless ∧ top** 的每个 compound（**逐条带文件:行**）。 */
+export function hostBaselineSites(root = ROOT) {
+  const out = [];
+  for (const f of hostDomainFiles(root)) {
+    const rel = relative(root, f).replace(/\\/g, "/");
+    for (const s of selectorFormSites(stripComments(readFileSync(f, "utf8")))) {
+      if (s.form.kind !== "anchorless" || !s.form.top) continue;
+      out.push({ file: rel, line: s.line, selector: s.selector, purePseudo: s.form.purePseudo });
+    }
+  }
+  return out;
+}
+
+/** 共享组件域的**族根**：目录内所有 `ldk-*` 名的**共同族根**（= 「其余名字都是它延伸
+ *  （`-`／`__`／相等）」的那个最短 `ldk-*` 名）。无共同族根 ⇒ `null`（调用方按「取最短名」兜底并报红）。 */
+export function familyRootOf(names) {
+  const uniq = [...new Set(names.filter((n) => n.startsWith("ldk-")))].sort();
+  if (uniq.length === 0) return null;
+  if (uniq.length === 1) return uniq[0];
+  let p = uniq[0];
+  for (const n of uniq) while (!n.startsWith(p)) p = p.slice(0, -1);
+  p = p.replace(/[-_]+$/, "");
+  if (p === "ldk" || p === "ldk-" || p === "") return null;
+  return uniq.every((n) => n === p || n.startsWith(p + "-") || n.startsWith(p + "__")) ? p : null;
+}
+
+/** 共享组件**组件目录**（`src/components/shared/<dir>/…` 的 `<dir>`；文件直接躺在域根时记 `(根)`） */
+function sharedComponentDir(rel) {
+  const rest = rel.slice("src/components/shared/".length);
+  const parts = rest.split("/");
+  return parts.length > 1 ? parts[0] : "(根)";
+}
+
 /* ── 判据 ──────────────────────────────────────────────────────────── */
 
 /** 跑全部判据；返回 violations: [{ kind, msg }] */
@@ -169,12 +256,14 @@ export function runChecks(root = ROOT, registry = loadRegistry(root)) {
   //    ⚠️ 不许把它改成「共享组件的 `ldk-` 名被别的目录渲染」——`.form-row > .ldk-toggle` 这类
   //      **合法消费**（宿主给的输入框工具类 + 组件组合）会被误判成红。**判据必须零假红。**
 
-  // ③ 宿主独立定义必须 `ldk-` 开头——**结构性判定**（E6#109l 起；域 = 在池文档里生效的宿主 CSS：
-  //    index.css + src/pool/**；池入口 pool-main.tsx 引 index.css，其余池组件样式随池 bundle 一起进同一张表）
+  // ③ 宿主独立定义必须 `ldk-` 开头——**结构性判定**（E6#109l 起）
+  //    🔴 **域 = `HOST_DOMAIN`（`src/*.css` ＋ `src/pool/**`）**——E6#109o-b（1.26）起**并进 `src/*.css`**：
+  //       原先只有 `index.css` ⇒ `src/App.css` 的 `.app-shell` 落在域外，「宿主自己定义的类名 100% 是
+  //       `ldk-`」这句话**按门禁口径为假**（1.22 实机抓到、1.25 裁决 (a) 对齐域）。此后它**无条件为真**，
+  //       且与探针 `host` 归属域、基线登记表的 `domain.files` **三处逐字一致**（§六.3 的验收）。
+  //    池入口 pool-main.tsx 引 index.css；壳窗口入口 main.tsx 引 index.css ＋ App.css —— 两者都在域内。
   //    ⇒ 与判据① 同为结构性 = 件 4 的**终态**（两个定义域一条规则：宿主与共享组件定义 = `ldk-` 开头）。
-  const hostCssFiles = [join(root, "src", "index.css"), ...walk(join(root, "src", "pool"), (n) => n.endsWith(".css"))].filter(
-    (f) => statSync(f, { throwIfNoEntry: false })
-  );
+  const hostCssFiles = hostDomainFiles(root);
   const hostDefsNow = new Set();
   for (const f of hostCssFiles) {
     for (const name of parseCss(f).bareDefs) {
@@ -252,6 +341,144 @@ export function runChecks(root = ROOT, registry = loadRegistry(root)) {
     });
   }
 
+  /* ── ⑦⑧⑩ ＋ 壳内夹具：**选择器形态轴**（E6#109o-b · 轮次 1.26）────────────────────
+     规则正文 = 32-任务-选择器形态轴门禁与落地.md §一（R0–R3）/§三.2。
+     一句话：**类名与 id 是「名字锚」；元素 / 通配 / 属性 / 伪类 / 伪元素不是** ——
+     后者**不需要与任何人同名**就能命中别人的元素（一条 `button { }` 静默改掉所有人的按钮），
+     而它们在两侧门禁里**此前根本不存在**。
+     ⚠️ 形态一律用 lib 的 `formOf()` 判——**不许**用 `hasAncestor()`／`subjectOf()`
+       （F3：它们把 `.x :pseudo` 误判成 `.x` 的一次顶层定义 ⇒ 会造出假红；那条偏差属轴 ①、已冻结）。 */
+
+  // ⑦ 共享组件**族段规则**——每个组件目录内的 `ldk-*` 独立定义必须与**目录族**一致
+  const sharedByDir = new Map();
+  for (const f of sharedCss) {
+    const rel = relative(root, f).replace(/\\/g, "/");
+    const dir = sharedComponentDir(rel);
+    const names = [...parseCss(f).bareDefs].filter((n) => n.startsWith("ldk-"));
+    sharedByDir.set(dir, [...(sharedByDir.get(dir) ?? []), ...names]);
+  }
+  for (const [dir, names] of sharedByDir) {
+    if (names.length === 0) continue;
+    // 族根 = 目录内 `ldk-*` 名的**共同族根**；退化（并列两个不相干的族）⇒ 取最短名兜底 —— 此时
+    // 其余名字都会落在下面那条 red 上（正是我们要的：报出来，让人重新起名）。
+    const family =
+      familyRootOf(names) ??
+      [...new Set(names)].sort((a, b) => a.length - b.length || a.localeCompare(b))[0];
+    const fam = family.slice("ldk-".length);
+    for (const name of new Set(names)) {
+      if (name === family || name.startsWith(`${family}-`) || name.startsWith(`${family}__`)) continue;
+      violations.push({
+        kind: "shared-family-mismatch",
+        msg: `共享组件族段越界：\`src/components/shared/${dir}/\` 定义了 .${name}，而本目录的族是 ` +
+          `"${fam}"（族根 .${family}，由目录内共同族根推定）——同一目录里的 \`ldk-*\` 独立定义必须与目录族一致 ` +
+          `（BEM 修饰 \`--\` 与元素后缀 \`__\` 允许）。` +
+          `改法：并进本目录族（.${family}-… ／ .${family}__…），并同笔改渲染它的 TSX/测试与 .css 里的复合、动画引用。` +
+          `⛔ 不要用「换个短前缀」绕过：族段规则是**新组件自成一个族段**这件事的机械守卫。`,
+      });
+    }
+  }
+
+  // ⑧ 关键帧引用不悬空——`animation` / `animation-name` 引用的名字必须在**同方**有 `@keyframes`
+  //    同方 = 宿主编译域（宿主域 ＋ 共享组件域）：两边最终进同一张表，且宿主/共享共用 `ldk-` 空间。
+  const allowedKeyframes = new Set([...sharedKf, ...shellKf.keys()]);
+  for (const f of [...hostDomainFiles(root), ...sharedCss]) {
+    const rel = relative(root, f).replace(/\\/g, "/");
+    for (const ref of animationRefs(stripComments(readFileSync(f, "utf8")))) {
+      if (allowedKeyframes.has(ref.name)) continue;
+      violations.push({
+        kind: "animation-ref-dangling",
+        msg: `${rel}:${ref.line}  \`${ref.decl}: … ${ref.name} …\` 引用的关键帧 "${ref.name}" 在本方` +
+          `（宿主域 ＋ 共享组件域，共 ${allowedKeyframes.size} 个）**没有 \`@keyframes\` 定义**——` +
+          `症状是**动画静默消失**（不报错、不抛异常）。1.21／1.21b 把关键帧名全改成 \`ldk-*\` ⇒` +
+          `「改名忘改引用」是这条判据的**真实发生率**来源。` +
+          `改法：要么补 \`@keyframes ${ref.name}\`，要么把引用改成真实存在的名字（两处同笔改）。`,
+      });
+    }
+  }
+
+  // ⑩ 宿主**基线块**（R1）——顶层「无名字锚」选择器只允许出现在登记文件里（**文件 ＋ 条数**）
+  //    ⚠️ 登记表读不到 ⇒ **fail-closed 红**（基线判据瞎了 ≠ 合规）。
+  let selectorBaseline = null;
+  let baselineError = null;
+  try {
+    selectorBaseline = loadSelectorBaseline(root);
+  } catch (e) {
+    baselineError = e instanceof Error ? e.message : String(e);
+  }
+  if (baselineError) {
+    violations.push({
+      kind: "selector-baseline-missing",
+      msg: `宿主基线登记表读不到（${SELECTOR_BASELINE_REL}）：${baselineError}——判据⑩ 以它为唯一真相源，` +
+        `读不到就判不了「哪几条基线是**有意的**」⇒ **fail-closed 报红**（静默放过 = 这条判据变瞎子）。`,
+    });
+  } else {
+    if (JSON.stringify(selectorBaseline.domain?.files) !== JSON.stringify(HOST_DOMAIN)) {
+      violations.push({
+        kind: "selector-baseline-domain-drift",
+        msg: `基线登记表声明的宿主域 ${JSON.stringify(selectorBaseline.domain?.files)} 与判据③⑩ 的域 ` +
+          `${JSON.stringify(HOST_DOMAIN)} **不一致**——「域不一致」就是「尺子不止一把」（本系列的病根）。` +
+          `改域必须同笔改三处：本脚本的 \`HOST_DOMAIN\` · 登记表的 \`domain.files\` · 探针 \`PARTY_RULES\` 的 host 两条。`,
+      });
+    }
+    const registered = new Map((selectorBaseline.files ?? []).map((x) => [x.file, x.count]));
+    const actualByFile = new Map();
+    for (const s of hostBaselineSites(root)) {
+      actualByFile.set(s.file, [...(actualByFile.get(s.file) ?? []), s]);
+    }
+    for (const file of new Set([...actualByFile.keys(), ...registered.keys()])) {
+      const list = actualByFile.get(file) ?? [];
+      if (!registered.has(file)) {
+        violations.push({
+          kind: "host-baseline-outside",
+          msg: `宿主基线之外出现顶层「无名字锚」选择器 ${list.length} 处（${file}）：` +
+            `${list.map((s) => `${file}:${s.line} \`${s.selector}\``).join(" · ")}——` +
+            `这类选择器**不需要与任何人同名**就能命中宿主与他方的元素（宿主、共享组件、所有已加载插件同表）。` +
+            `改法：挂到自有命名空间之下（\`.ldk-… select { }\`——注意**带锚**就不在本判据射程内）；` +
+            `确实是有意的共享基线 ⇒ **不许静默加**：把它并进基线文件（今天 = \`src/index.css\` 的文档级区块）` +
+            `**并同笔改 ${SELECTOR_BASELINE_REL} 的条数**（那是一次显式动作，且会被下面这条条数守卫盯住）。`,
+        });
+        continue;
+      }
+      const want = registered.get(file);
+      if (want !== list.length) {
+        violations.push({
+          kind: "host-baseline-count",
+          msg: `宿主基线**条数守卫**：${file} 实况 ${list.length} 条顶层无锚选择器，登记 ${want} 条——` +
+            `不一致即红（新增一条基线**必须同笔**改登记数，删掉一条也一样）。实况逐条：` +
+            `${list.map((s) => `:${s.line} \`${s.selector}\``).join(" · ")}。` +
+            `⇒ 这不是「数字对不上」这种小事：它正是「静默加一条跨方泄漏」与「静默去掉一条基线」的**唯一传感器**。`,
+        });
+      }
+    }
+  }
+
+  // ⑪ 的**壳内夹具**（E6#109o-b）：`plugins/**` ＋ `dev-fixtures/**` 的 CSS 里没有「基线区块」这个概念
+  //    ⇒ 任何**无锚选择器**站点 ⇒ 红（插件侧 R2）。今天实测 0 处（纯预防）。
+  //    ⚠️ 夹具的 `dist/`（构建产物）由 `walk()` 跳过——产物不该被源码门禁管（那是打包期的事）。
+  //    ⚠️ R3（跨方命中必须自带自有命名空间）在夹具侧**不做**：它需要「本仓 pluginId」，而夹具不是
+  //       插件工程（没有可解析的 plugin.json 身份链）⇒ 如实登记为边界（32 号档 §七 的夹具那行只点 ⑪）。
+  const fixtureCss = [
+    ...walk(join(root, "plugins"), (n) => n.endsWith(".css")),
+    ...walk(join(root, "dev-fixtures"), (n) => n.endsWith(".css")),
+  ];
+  for (const f of fixtureCss) {
+    const rel = relative(root, f).replace(/\\/g, "/");
+    for (const s of selectorFormSites(stripComments(readFileSync(f, "utf8")))) {
+      // R2 的形态：**无锚**（元素/通配/属性/伪类/伪元素）**或含 id** —— 一视同仁（32 号档 §四）
+      const anchorless = s.form.kind === "anchorless";
+      const byId = hasIdSelector(s.selector);
+      if (!anchorless && !byId) continue;
+      violations.push({
+        kind: "plugin-anchorless-selector",
+        msg: `${rel}:${s.line}  \`${s.selector}\`——插件 CSS 里的**${byId ? "id 选择器" : "无锚选择器"}**（R2：` +
+          `元素 / 通配 / 属性 / 伪类 / 伪元素 / **id** 一视同仁；顶层或限定一律禁）。插件视图的一张样式表里同时装着 ` +
+          `宿主 ＋ 共享组件 ＋ **所有已加载插件**的 CSS ⇒ 这类选择器命中「该文档里所有那一类元素」，与谁渲染无关` +
+          `${byId ? "（id 还额外是全局的、可猜的，优先级高于类）" : ""}。` +
+          `改法：挂在自己的根类之下（\`.panel-demo-root input { … }\`／用类替掉 id）。`,
+      });
+    }
+  }
+
   // ⑤ 反向核对：登记表 ↔ 实况（表是发给插件作者的数据，烂了会误导 + 假绿）
   //    ⚠️ E6#109l-b 起**只剩 `keyframes` 段**——`classes` 整块已删（判据①③ 双双结构性后无消费方）。
   const actualKf = new Set([...sharedKf, ...shellKf.keys()]);
@@ -294,6 +521,16 @@ function selfTest() {
     mk("src/components/shared/toggle/Toggle.tsx", 'export const T = () => <div className="ldk-toggle" />;\n');
     mk("src/index.css", ".ldk-input { background: var(--bg-input); }\n");
     mk("src/App.tsx", "export const A = () => <div className='x' />;\n");
+    // 判据⑩ 的基线登记表（夹具默认「任何文件都不许有顶层无锚站点」）——E6#109o-b 起它是 ⑩ 的
+    // 唯一真相源，且它声明的 `domain.files` 必须与 `HOST_DOMAIN` 逐字一致（域漂移会另报一条红）。
+    mkBaseline({ files: [] });
+  };
+  /** 写夹具的基线登记表（`files` = [{file,count}]） */
+  const mkBaseline = (body) => {
+    mk(
+      "scripts/css-selector-baseline.json",
+      JSON.stringify({ why: "(夹具)", domain: { files: HOST_DOMAIN }, ...body }, null, 1)
+    );
   };
   const registry = { keyframes: [] };
 
@@ -400,8 +637,11 @@ function selfTest() {
   cases.push(["负控⑩：`ldk-*` 自定义属性即便挂在自有类之下也红（V2，名字层一句话）", runChecks(tmp, registry).some((v) => v.kind === "token-scope-v2")]);
 
   // 正控⑦：契约块里的文档级定义 ⇒ 绿（`index.css` 的 `:root` 与 `[data-theme="light"]` 是**文件级**登记）
+  //   ⚠️ E6#109o-b 起这两条同时是判据⑩ 的基线站点 ⇒ 夹具必须登记它们（这正是「登记域」的真实形态：
+  //     **同一批文档级选择器**在判据⑨ 眼里是契约块、在判据⑩ 眼里是基线块 —— 两个判据、同一处事实）。
   setup();
   mk("src/index.css", ':root { --bg-window: #111; }\n[data-theme="light"] { --bg-window: #eee; }\n');
+  mkBaseline({ files: [{ file: "src/index.css", count: 2 }] });
   cases.push(["正控⑦：契约块（`src/index.css` 的 `:root` / `[data-theme=…]`）里的文档级定义 ⇒ 绿", runChecks(tmp, registry).length === 0]);
 
   // 正控⑧：类限定 + 自有类（**名字随你、无需前缀**）⇒ 绿
@@ -447,6 +687,167 @@ function selfTest() {
     cases.push(["锚⑥：多行注释之后的定义点行号不乱（`stripComments` 保留换行）⇒ 报点在第 4 行", line === "4"]);
   }
 
+  /* ── 判据⑦⑧⑩ ＋ 壳内夹具（**选择器形态轴** · E6#109o-b · 轮次 1.26）────────────
+     🔴 正控条数 ≥ 负控条数（件 2 立下的纪律）：每条「该红的」旁边都配一条「长得很像但该绿的」。 */
+
+  // 负控⑪：**基线文件之外**出现顶层无锚选择器（`button`）⇒ ⑩ 红
+  setup();
+  mk("src/pool/views/about/AboutView.css", "button { color: red; }\n");
+  cases.push([
+    "负控⑪：基线文件之外出现顶层无锚选择器 ⇒ 红（判据⑩ · R1）",
+    runChecks(tmp, registry).some((v) => v.kind === "host-baseline-outside"),
+  ]);
+
+  // 负控⑫：**`@media` 内的规则同样是顶层**（相对它所在的层叠上下文无祖先）⇒ ⑩ 红
+  setup();
+  mk("src/pool/views/about/AboutView.css", "@media (min-width: 1px) { button { color: red } }\n");
+  cases.push([
+    "负控⑫：`@media` 内的无锚选择器**同样算顶层** ⇒ 红（判据⑩）",
+    runChecks(tmp, registry).some((v) => v.kind === "host-baseline-outside" && /button/.test(v.msg)),
+  ]);
+
+  // 负控⑬：通配选择器落在基线文件之外 ⇒ ⑩ 红
+  setup();
+  mk("src/pool/views/about/AboutView.css", "* { margin: 0 }\n");
+  cases.push([
+    "负控⑬：`*` 落在基线文件之外 ⇒ 红（判据⑩）",
+    runChecks(tmp, registry).some((v) => v.kind === "host-baseline-outside"),
+  ]);
+
+  // 负控⑭：**条数守卫**——基线文件里多塞一条顶层无锚（稳态 2 条被打破）⇒ ⑩ 红
+  //   这条钉住「**静默加一条跨方泄漏**」这个动作：新增基线必须同笔改登记数 = 一次显式动作。
+  setup();
+  mk("src/index.css", ":root { --bg: #111 }\nhtml { height: 100% }\n");
+  mkBaseline({ files: [{ file: "src/index.css", count: 2 }] });
+  {
+    const before = runChecks(tmp, registry).length === 0;
+    mk("src/index.css", ":root { --bg: #111 }\nhtml { height: 100% }\ntextarea { resize: none }\n");
+    const caught = runChecks(tmp, registry).some((v) => v.kind === "host-baseline-count");
+    cases.push(["负控⑭：条数守卫（基线文件里多塞一条 ⇒ 站点数 ≠ 登记数）⇒ 红（判据⑩）", before && caught]);
+  }
+
+  // 负控⑭b：基线**域**漂移——登记表声明的宿主域 ≠ 判据③⑩ 的域 ⇒ 红
+  //   （「域不一致」就是「尺子不止一把」：这条断言是它唯一的机械传感器。）
+  setup();
+  mkBaseline({ domain: { files: ["src/index.css", "src/pool/**"] }, files: [] });
+  cases.push([
+    "负控⑭b：登记表声明的宿主域与门禁的域不一致 ⇒ 红（域一致性断言）",
+    runChecks(tmp, registry).some((v) => v.kind === "selector-baseline-domain-drift"),
+  ]);
+
+  // 负控⑭c：基线登记表**读不到** ⇒ fail-closed 红（静默放过 = 判据瞎了）
+  setup();
+  rmSync(join(tmp, "scripts", "css-selector-baseline.json"), { force: true });
+  cases.push([
+    "负控⑭c：基线登记表读不到 ⇒ fail-closed 红（判据⑩ 不许静默放过）",
+    runChecks(tmp, registry).some((v) => v.kind === "selector-baseline-missing"),
+  ]);
+
+  // 负控⑮：共享组件目录里定义 `ldk-not-toggle`（族段 ≠ 目录族 `toggle`）⇒ ⑦ 红
+  setup();
+  mk("src/components/shared/toggle/Toggle.css", ".ldk-toggle { background: red; }\n.ldk-not-toggle { color: red; }\n");
+  cases.push([
+    "负控⑮：共享组件目录里定义族外名字 ⇒ 红（判据⑦ 族段规则）",
+    runChecks(tmp, registry).some((v) => v.kind === "shared-family-mismatch"),
+  ]);
+
+  // 负控⑯：`animation` 引用的关键帧没有定义 ⇒ ⑧ 红（症状是动画静默消失）
+  setup();
+  mk("src/pool/views/about/AboutView.css", ".ldk-about-view { animation: ldk-gone 1s; }\n");
+  cases.push([
+    "负控⑯：`animation` 引用的关键帧没有定义 ⇒ 红（判据⑧ 引用不悬空）",
+    runChecks(tmp, registry).some((v) => v.kind === "animation-ref-dangling"),
+  ]);
+
+  // 负控⑰：壳内夹具（`plugins/**`）里的无锚选择器 ⇒ ⑪ 红（夹具没有「基线区块」这个概念）
+  setup();
+  mk("plugins/demo-fixture/src/styles/demo.css", "button { color: red; }\n");
+  cases.push([
+    "负控⑰：壳内夹具（`plugins/**`）里的无锚选择器 ⇒ 红（判据⑪ 的夹具面）",
+    runChecks(tmp, registry).some((v) => v.kind === "plugin-anchorless-selector"),
+  ]);
+
+  // 负控⑰b：夹具里的 **id 选择器**同样红（R2 对 id 与元素一视同仁，32 号档 §四）
+  setup();
+  mk("plugins/demo-fixture/src/styles/demo.css", "#demo-hook { color: red; }\n");
+  cases.push([
+    "负控⑰b：壳内夹具里的 **id 选择器** ⇒ 同样红（R2 一视同仁）",
+    runChecks(tmp, registry).some((v) => v.kind === "plugin-anchorless-selector" && /id 选择器/.test(v.msg)),
+  ]);
+
+  // 正控⑪：文档级基线**在基线文件里**且条数相等 ⇒ 绿（现况的等价夹具）
+  setup();
+  mk(
+    "src/index.css",
+    ":root { --bg: #111 }\nhtml, body { height: 100% }\n* { box-sizing: border-box }\n::-webkit-scrollbar { width: 4px }\n"
+  );
+  mkBaseline({ files: [{ file: "src/index.css", count: 5 }] });
+  cases.push([
+    "正控⑪：基线文件里的文档级基线 ＋ 条数相等 ⇒ 绿（判据⑩ 正控；含**纯伪元素形态**）",
+    runChecks(tmp, registry).length === 0,
+  ]);
+
+  // 正控⑫：复合（`.ldk-toggle.on::after`）**不占基线站点**（有名字锚）⇒ 绿（与轴 ① 同口径）
+  setup();
+  mk("src/components/shared/toggle/Toggle.css", ".ldk-toggle { background: red; }\n.ldk-toggle.on::after { color: red; }\n");
+  cases.push([
+    "正控⑫：共享组件复合选择器（`.ldk-toggle.on::after`）不算基线站点 ⇒ 绿",
+    runChecks(tmp, registry).length === 0,
+  ]);
+
+  // 正控⑬：🔴 `@keyframes` 体内的 `from` / `to` **不是选择器**——不算站点（钉住 `maskKeyframes()`）
+  setup();
+  mk("src/index.css", ":root { --bg: #111 }\n@keyframes ldk-probe { from { opacity: 0 } to { opacity: 1 } }\n");
+  mkBaseline({ files: [{ file: "src/index.css", count: 1 }] });
+  cases.push([
+    "正控⑬：`@keyframes` 体内的 `from`/`to` 不算站点（钉住 `maskKeyframes()`）⇒ 绿",
+    runChecks(tmp, { keyframes: ["ldk-probe"] }).length === 0,
+  ]);
+
+  // 正控⑭：宿主域文件里写 `.ldk-about-view textarea { }`（**有类锚**）⇒ 绿（⑩ 只管网子锚的）
+  setup();
+  mk("src/pool/views/about/AboutView.css", ".ldk-about-view textarea { resize: none; }\n");
+  cases.push([
+    "正控⑭：挂自有类之下的元素样式（有锚）⇒ 绿（判据⑩ 的射程只有无锚）",
+    runChecks(tmp, registry).length === 0,
+  ]);
+
+  // 正控⑮：族段**合规**形态——同目录内的 `--` 修饰与 `__` 元素后缀都算同族 ⇒ 绿
+  setup();
+  mk(
+    "src/components/shared/toggle/Toggle.css",
+    ".ldk-toggle { background: red; }\n.ldk-toggle--on { background: blue; }\n.ldk-toggle__knob { color: red; }\n"
+  );
+  cases.push([
+    "正控⑮：同目录内 `--` 修饰 ／ `__` 元素后缀算同族 ⇒ 绿（判据⑦）",
+    runChecks(tmp, registry).length === 0,
+  ]);
+
+  // 正控⑯：`animation` 引用的名字**在共享组件域**有定义（宿主域文件引用它）⇒ 绿
+  //   （判据⑧ 的「同方」= 宿主域 ＋ 共享组件域——两边最终进同一张表，跨边引用是设计内形态。）
+  setup();
+  mk(
+    "src/components/shared/toggle/Toggle.css",
+    ".ldk-toggle { animation: ldk-toggle-in 0.15s; }\n@keyframes ldk-toggle-in { from { opacity: 0 } }\n"
+  );
+  mk("src/pool/views/about/AboutView.css", ".ldk-about-view { animation: ldk-toggle-in 1s; }\n");
+  cases.push([
+    "正控⑯：宿主域引用共享组件域定义的关键帧 ⇒ 绿（判据⑧ 的「同方」= 宿主域 ＋ 共享组件域）",
+    runChecks(tmp, { keyframes: ["ldk-toggle-in"] }).length === 0,
+  ]);
+
+  // 锚⑧：**形态口径文案跨包同源**——`formOf()` 的锚词在壳 lib 与 SDK 的 `css-selectors.ts` 各一份
+  //   （跨包无法 import ⇒ 只能钉文本；照 1.24 `锚⑦` 先例：改一边不改另一边 ⇒ 自测当场红）。
+  {
+    const anchors = ["纯伪类/纯伪元素主体 ⇒ 无锚（不是无主体）", "不是顶层无锚（F3 反面）"];
+    const sdkSrc = readFileSync(join(ROOT, "packages", "plugin-sdk", "src", "eslint", "checks", "css-selectors.ts"), "utf8");
+    const shellSrc = readFileSync(join(ROOT, "scripts", "lib", "css-selectors.mjs"), "utf8");
+    cases.push([
+      "锚⑧：`formOf()` 口径文案壳 / SDK 同源（2 句锚词两边都在 ⇒ 改一边不改另一边必红）",
+      anchors.every((a) => shellSrc.includes(a) && sdkSrc.includes(a)),
+    ]);
+  }
+
   rmSync(tmp, { recursive: true, force: true });
   let ok = true;
   for (const [name, pass] of cases) {
@@ -466,11 +867,35 @@ const violations = runChecks();
 if (violations.length === 0) {
   const reg = loadRegistry();
   const tokens = tokenSites();
+  const baselineSites = hostBaselineSites();
+  const kfNames = new Set([
+    ...walk(join(ROOT, "src", "components", "shared"), (n) => n.endsWith(".css")).flatMap((f) =>
+      keyframeDefinitions(stripComments(readFileSync(f, "utf8"))).map((k) => k.name)
+    ),
+    ...hostDomainFiles().flatMap((f) => keyframeDefinitions(stripComments(readFileSync(f, "utf8"))).map((k) => k.name)),
+  ]);
   console.log(
     `✅ [css-namespace] 两个定义域独立定义全部 \`ldk-\`（宿主 ／ 共享组件，判据①③ 结构性、零登记表）；` +
-      `跨域同名 0；关键帧 ${reg.keyframes.length} 个与实况双向一致；` +
-      `token 作用域（判据⑨，域 src/**/*.css）${tokens.length} 个定义点零越界。`
+      `跨域同名 0；关键帧 ${reg.keyframes.length} 个与实况双向一致（引用不悬空，判据⑧）；` +
+      `token 作用域（判据⑨，域 src/**/*.css）${tokens.length} 个定义点零越界；` +
+      `共享组件族段（判据⑦）逐目录一致；壳内夹具无锚/id 选择器 0（判据⑪）。`
   );
+  // 🔴 基线**逐条打印**（R1 的纪律）：让「哪几条」永远可见、不依赖任何人的记忆。
+  console.log(
+    `\n   宿主基线块（判据⑩ · R1）——域 ${HOST_DOMAIN.join(" ＋ ")}，登记 ` +
+      `\`${SELECTOR_BASELINE_REL}\`（**文件 ＋ 条数**，零名字清单）：`
+  );
+  const byFile = new Map();
+  for (const s of baselineSites) byFile.set(s.file, [...(byFile.get(s.file) ?? []), s]);
+  for (const [file, list] of byFile) {
+    console.log(`   · ${file}   ${list.length} 条（登记 ${list.length}）`);
+    for (const s of list) console.log(`       :${String(s.line).padEnd(4)} ${s.selector}${s.purePseudo ? "   〔纯伪元素形态：无主体但**有意的**站点〕" : ""}`);
+  }
+  console.log(
+    `   ⇒ 这 ${baselineSites.length} 处 = **有意的共享基线**（插件依赖它们、且可覆写；32 号档 §二.1 有逐条实证）。` +
+      `\n   ⛔ 不许把基线当 bug 删（那是无障碍/布局地基）；🚫 也不许在基线文件里**静默加**一条——条数守卫会红。`
+  );
+  console.log(`\n   关键帧引用（判据⑧）：本方实际定义的 ${kfNames.size} 个名字可解析；悬空引用 0。`);
   process.exit(0);
 }
 console.error(`❌ [css-namespace] ${violations.length} 处违规（样式命名空间纪律）：`);

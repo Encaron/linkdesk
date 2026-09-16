@@ -224,7 +224,7 @@ function App() {
   if (!ready) return null;
 
   return (
-    <div className="app-shell">
+    <div className="ldk-app-shell">
       {/* E5.7#9：壳 DOM 全删——TitleBar(#5)/IconBar(#6)/StatusBar(#8)/SidePanel(#10) 已迁池内 zone，
           MainContent/WindowControls 删除（#9），SplitHandles 删除（#31）。壳 = 纯状态持有者
           （tabState/Registry/命令执行/侧栏宿主状态机），WCV 满窗覆盖壳渲染进程（#12.5），无可见 DOM。 */}

@@ -100,6 +100,147 @@ export function keyframeDefinitions(cleaned: string): KeyframeDefinition[] {
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
+   选择器形态谓词 —— E6#109o-b（轮次 1.26 · 件 7 落地）新增
+   ══════════════════════════════════════════════════════════════════════════
+
+   🔴 与壳仓 `scripts/lib/css-selectors.mjs` **同源**（口径文本一致；那边 `formOf()` 是同一套
+   判定式，壳门禁与运行时探针共用它）。跨包无法 import ⇒ 各写一份，由壳门禁 `--self-test`
+   的 `锚⑧` 用**锚词**把两份钉在一起。
+   规则正文 = 32-任务-选择器形态轴门禁与落地.md §一（R0）/§三.1。一句话：
+   **类名与 id 是「名字锚」；元素 / 通配 / 属性 / 伪类 / 伪元素不是**——后者
+   **不需要与任何人同名**就能命中别人的元素（一条 `button { }` 静默改掉所有人的按钮）。
+
+   🔴 **为什么不复用 `subjectOf()` / `hasAncestor()`（1.25 实测的 F3）**：
+     · `hasAncestor(".a :focus-visible")` 回 **false**（它连伪类一起剥 ⇒ 只剩 `.a` 一个 part）
+     · `subjectOf(".a :focus-visible")` 回 **".a"** ⇒ 既有「独立定义」口径把 `.x :pseudo`
+       算成 `.x` 的一次顶层定义。那是**轴 ① 的既有偏差，本轴不许改它**（改它 = 动「宿主 258 ／
+       共享组件 89」两串全系列读数 ＋ 18 仓 CI）⇒ 两条尺子在这一层**有意并存**。
+     本轴只剥**伪元素**（`::x`）、**伪类（`:x`）保留** ⇒ `.a :focus-visible` 有两个 compound
+     ⇒ 判「不是顶层无锚」（否则插件写 `.my-root :focus-visible { }` 会被判成**假红**）。
+
+   🔴 **锚词（跨包同源用）**：`纯伪类/纯伪元素主体 ⇒ 无锚（不是无主体）` ／
+     `` `.a :focus-visible` 不是顶层无锚（F3 反面） `` —— 壳门禁 `--self-test` 的 `锚⑧` 用这两句
+     把本文件与壳的 `lib/css-selectors.mjs` 钉在一起（照 1.24 `锚⑦` 先例）。
+*/
+
+/** 剥**伪元素**（`::x` / `::x(...)`）——伪类（`:x`）与 `:root` 一律**保留** */
+export const stripPseudoElements = (compound: string): string => String(compound).replace(/::[a-zA-Z-]+(\([^)]*\))?/g, "");
+
+/** 一个选择器的 compound 序列（剥伪元素后按组合符切） */
+export function compoundsOf(compound: string): string[] {
+  return stripPseudoElements(compound).trim().split(/[\s>+~]+/).filter(Boolean);
+}
+
+/** 该 compound 有没有**名字锚**（`.x` 或 `#x`）——**`(...)` 内不算锚**（那是过滤器不是主体，R0）；
+ *  属性选择器整段剥掉（`[class*=".x"]` 里的 `.x` 是**字符串字面量**，不是类选择器）。 */
+export function hasNameAnchor(compound: string): boolean {
+  return /[.#][-_a-zA-Z]/.test(String(compound).replace(/\[[^\]]*\]/g, "").replace(/\([^)]*\)/g, ""));
+}
+
+/** 选择器形态（`formOf()` 的返回值域） */
+export interface SelectorForm {
+  kind: "anchored" | "anchorless";
+  /** `anchorless` 时有效：true = **A 段**（顶层无锚）· false = **B 段**（限定无锚）；带锚恒 false */
+  top: boolean;
+  /** 剥伪元素后**没有 compound 了**（`::-webkit-scrollbar` / `::before`）——**是有意的形态站点** */
+  purePseudo: boolean;
+}
+
+/**
+ * **选择器形态谓词**——本轴判「形态」的**唯一入口**（S2/S3 共用同一份口径）。
+ * @param compound 逗号切开后的**一份**选择器（compound 序列）
+ */
+export function formOf(compound: string): SelectorForm {
+  const compounds = compoundsOf(compound);
+  if (compounds.length === 0) return { kind: "anchorless", top: true, purePseudo: true };
+  if (compounds.some(hasNameAnchor)) return { kind: "anchored", top: false, purePseudo: false };
+  if (compounds.length === 1) return { kind: "anchorless", top: true, purePseudo: false };
+  return { kind: "anchorless", top: false, purePseudo: false };
+}
+
+/** 该 compound 里有没有 **id 选择器**（`#x`）——R2/S2 对 id 与元素**同罪**（32 号档 §四）。
+ *  属性选择器整段剥掉（`[href^="#"]` 不算）；`(...)` 保留（`:has(#x)` 是真提及）。 */
+export function hasIdSelector(compound: string): boolean {
+  return /#[-_a-zA-Z]/.test(String(compound).replace(/\[[^\]]*\]/g, ""));
+}
+
+/** 该选择器（**含 `(...)` 内容**）里有没有 `ldk-*` 类——**R3 的「提及」口径**（`:has(.ldk-x)` 也算） */
+export function mentionsLdkClass(selector: string): boolean {
+  return /\.ldk-[\w-]*/.test(String(selector));
+}
+
+/** 该选择器（含 `(...)`）里有没有 `<prefix>` 开头的类——R3 的「自带自有命名空间」那一半 */
+export function hasOwnPrefixedClass(selector: string, prefix: string): boolean {
+  const p = String(prefix).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(`\\.${p}[\\w-]*`).test(String(selector));
+}
+
+/** 把 `@keyframes … { … }` **整块**换成等长空白（保留换行）——关键帧体内的 `from` / `to` / `0%`
+ *  **不是选择器**（不排除它们会造出一堆假站点）。用**大括号配平**扫描而不是正则。 */
+export function maskKeyframes(cleaned: string): string {
+  let out = "";
+  let i = 0;
+  const src = String(cleaned);
+  const blank = (s: string): string => s.replace(/[^\n]/g, " ");
+  while (i < src.length) {
+    const at = src.indexOf("@keyframes", i);
+    if (at < 0) {
+      out += src.slice(i);
+      break;
+    }
+    out += src.slice(i, at);
+    const brace = src.indexOf("{", at);
+    if (brace < 0) {
+      out += src.slice(at);
+      break;
+    }
+    let depth = 0;
+    let j = brace;
+    for (; j < src.length; j++) {
+      if (src[j] === "{") depth++;
+      else if (src[j] === "}") {
+        depth--;
+        if (depth === 0) {
+          j++;
+          break;
+        }
+      }
+    }
+    out += blank(src.slice(at, j));
+    i = j;
+  }
+  return out;
+}
+
+/** 一处**选择器形态站点**（同一条规则块里的多个选择器各出一份） */
+export interface SelectorFormSite {
+  /** 逗号切开后的那一份选择器文本（compound 序列） */
+  selector: string;
+  /** 1-based；= 该规则块选择器首个非空白字符所在行 */
+  line: number;
+  form: SelectorForm;
+}
+
+/**
+ * 列举一张样式表里的**选择器形态站点**——判据 S2/S3 的**同一个遍历**（与壳门禁同源）。
+ * 入参 = `stripComments(src)` 的输出。
+ *  · **递归进 at-rule**（`@media` / `@supports` 内的规则**同样是顶层**）；
+ *  · **跳过 `@keyframes` 体内**（`maskKeyframes()` 整块抹白）；
+ *  · 空规则体跳过（与 `bareClassDefinitions()` 同口径）。
+ */
+export function selectorFormSites(cleaned: string): SelectorFormSite[] {
+  const masked = maskKeyframes(cleaned);
+  const out: SelectorFormSite[] = [];
+  for (const m of masked.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+    const sel = m[1].trim();
+    if (sel.startsWith("@") || !m[2].trim()) continue;
+    const line = lineAt(masked, m.index + (m[1].length - m[1].trimStart().length));
+    for (const one of splitSelector(sel)) out.push({ selector: one, line, form: formOf(one) });
+  }
+  return out;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
    token（自定义属性）作用域原语——E6#109n-b（轮次 1.24）新增
    ══════════════════════════════════════════════════════════════════════════
 
@@ -118,8 +259,8 @@ export type TokenScope = "doc" | "class" | "id" | "other";
  *  ⚠️ `* .foo` 的主体是 `.foo`（定义落在 `.foo` 上）⇒ 不是文档级；`*::before` 剥完是 `*` ⇒ 是。 */
 const DOC_SUBJECT = /^(:root|html|body|\[data-theme|\*)/i;
 
-/** 剥**伪元素**（`:hover` / `:root` / `[data-theme=…]` 都保留） */
-const stripPseudoElements = (compound: string): string => compound.replace(/::[a-zA-Z-]+(\([^)]*\))?/g, "");
+/** 剥**伪元素**（`:hover` / `:root` / `[data-theme=…]` 都保留）——**由上面的形态谓词区定义并导出**
+ *  （E6#109o-b 起它与 `formOf()` 是同一件事的一半，故上移；此处不再重复定义）。 */
 
 /** 一个 compound 的作用域形态 */
 export function tokenScopeOf(compound: string): TokenScope {

@@ -15,6 +15,9 @@
  *
  * 🔴 E6#109n-b（1.24）：同一纪律再加一个 —— `runTokenScopeCheck`（token 作用域判据；审计工具用它出
  *    18 仓的 token 段读数）。**同样不是第二条判据路径**（腿用的就是它）。
+ *
+ * 🔴 E6#109o-b（1.26）：再加一个 —— `runSelectorFormCheck`（选择器形态判据 S2/S3；审计工具用它出
+ *    18 仓的「无锚 ／ 跨方命中」两段读数）。**同样不是第二条判据路径**（腿用的就是它）。
  */
 export { linkdeskPluginLintConfig } from "./preset.js";
 export type { PluginLintOptions } from "./preset.js";
@@ -24,3 +27,5 @@ export { runPluginPrefixCheck, resolvePluginIdForCss } from "./checks/plugin-pre
 export type { PluginPrefixReport, PrefixSite, PluginIdResolution, PluginIdSource } from "./checks/plugin-prefix.js";
 export { runTokenScopeCheck, judgePluginTokenScope } from "./checks/token-scope.js";
 export type { TokenScopeReport, TokenScopeSite, TokenScopeCode } from "./checks/token-scope.js";
+export { runSelectorFormCheck, judgeSelectorForm, SELECTOR_FORM_WHY } from "./checks/selector-form.js";
+export type { SelectorFormReport, SelectorFormSite, SelectorFormCode } from "./checks/selector-form.js";

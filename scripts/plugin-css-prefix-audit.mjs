@@ -39,6 +39,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, "..");
 const SDK_PREFIX_MODULE = join(ROOT, "packages", "plugin-sdk", "dist", "eslint", "checks", "plugin-prefix.js");
 const SDK_TOKEN_MODULE = join(ROOT, "packages", "plugin-sdk", "dist", "eslint", "checks", "token-scope.js");
+const SDK_SELECTOR_FORM_MODULE = join(ROOT, "packages", "plugin-sdk", "dist", "eslint", "checks", "selector-form.js");
 const SDK_LINT_MODULE = join(ROOT, "packages", "plugin-sdk", "dist", "eslint", "lint.js");
 const DEFAULT_CONTAINER = process.env.LINKDESK_PLUGIN_CONTAINER || "E:\\linkdesk-plugins\\official";
 
@@ -66,7 +67,19 @@ async function loadSdk() {
         `  先跑：npm run --prefix packages/plugin-sdk build`,
     );
   }
-  return { runPluginPrefixCheck: m.runPluginPrefixCheck, runTokenScopeCheck: t.runTokenScopeCheck };
+  // 选择器形态判据（E6#109o-b）——同一条腿的第三条判据（S2 禁无锚 / S3 跨方命中）
+  const sf = await import(pathToFileURL(SDK_SELECTOR_FORM_MODULE).href);
+  if (typeof sf.runSelectorFormCheck !== "function") {
+    throw new Error(
+      `SDK dist 里没有 runSelectorFormCheck —— dist 是旧的（E6#109o-b 之前构建的）。\n` +
+        `  先跑：npm run --prefix packages/plugin-sdk build`,
+    );
+  }
+  return {
+    runPluginPrefixCheck: m.runPluginPrefixCheck,
+    runTokenScopeCheck: t.runTokenScopeCheck,
+    runSelectorFormCheck: sf.runSelectorFormCheck,
+  };
 }
 
 /* ── 单仓读数 ─────────────────────────────────────────────────────────── */
@@ -75,6 +88,7 @@ async function loadSdk() {
 function auditRepo(sdk, dir, reserved) {
   const report = sdk.runPluginPrefixCheck(dir, reserved);
   const tokens = sdk.runTokenScopeCheck(dir);
+  const forms = sdk.runSelectorFormCheck(dir);
   /** 旧名 → 新名（去重；`sites` = 该名字在本仓出现多少处，供改名轮的 token 判据对数） */
   const map = new Map();
   const addSites = (sites, kind) => {
@@ -95,33 +109,43 @@ function auditRepo(sdk, dir, reserved) {
     error: report.error,
     boundary: report.boundary,
     // 🔴 token 段的红**参与 ok**（它是必须改的）；**黄不参与**（22 号档 §10.3：只报不拦）
+    // 🔴 选择器形态的 S2/S3 **全参与 ok**（两条都进腿报点 ⇒ 插件仓 CI 严格腿判红）
     ok:
       !report.error &&
       !report.boundary &&
       report.violations.length === 0 &&
       tokens.red.length === 0 &&
-      !tokens.error,
+      !tokens.error &&
+      forms.violations.length === 0 &&
+      !forms.error,
     counts: {
       classes: report.classes.length,
       keyframes: report.keyframes.length,
       tokensRed: tokens.red.length,
       tokensYellow: tokens.yellow.length,
+      // E6#109o-b：S2（禁无锚）／S3（跨方命中不带自有锚）——两条都判红
+      formS2: forms.anchorless.length,
+      formS3: forms.crossParty.length,
     },
-    files: [...new Set([...report.classes, ...report.keyframes, ...tokens.red, ...tokens.yellow].map((s) => s.file))].length,
+    files: [...new Set([...report.classes, ...report.keyframes, ...tokens.red, ...tokens.yellow, ...forms.violations].map((s) => s.file))].length,
     classes: report.classes,
     keyframes: report.keyframes,
     tokensRed: tokens.red,
     tokensYellow: tokens.yellow,
-    // 身份层的红：两条判据都会在「拿不到 pluginId」时 fail-closed 报同一处（`plugin.json:1`）
+    formS2: forms.anchorless,
+    formS3: forms.crossParty,
+    // 身份层的红：三条判据都会在「拿不到 pluginId」时 fail-closed 报同一处（`plugin.json:1`）
     // ⇒ 按 `文件:行` 去重（同一件事报两行 = 噪音，不是更多信息）
     blocking: [
       ...new Map(
-        [...report.violations, ...tokens.violations]
+        [...report.violations, ...tokens.violations, ...forms.violations]
           .filter((v) => v.file === "plugin.json")
           .map((v) => [`${v.file}:${v.line}`, v]),
       ).values(),
     ],
     mapping: [...map.values()].sort((a, b) => a.from.localeCompare(b.from)),
+    /** 🔴 「token 黄只报不拦」的**结构证据**：黄灯不进腿报点 ⇒ 这个数应为 0（与 tokensYellow 无关地成立） */
+    tokenLegCount: tokens.violations.length,
   };
 }
 
@@ -174,6 +198,21 @@ function renderRepo(r) {
     }
     L.push(`   改法：把定义搬进本插件自己的根类之下（同名同值 ⇒ 零视觉变化，作用域从「整个文档」缩回自己的子树）。`);
   }
+  // ── 选择器形态段（E6#109o-b · 1.26）——S2 禁无锚 ／ S3 跨方命中必须自带自有锚 ──
+  L.push("");
+  if (r.formS2.length === 0 && r.formS3.length === 0) {
+    L.push(`✅ 选择器形态（判据 S2/S3，R2/R3）：无锚选择器 0 ／ 跨方命中不带自有锚 0。`);
+  } else {
+    if (r.formS2.length > 0) {
+      L.push(`🔴 无锚选择器 ${r.formS2.length} 处（S2／R2：元素 / 通配 / 属性 / 伪类 / 伪元素 / id 一视同仁）：`);
+      for (const s of r.formS2) L.push(`   ${s.file}:${s.line}  \`${s.selector}\`  →  挂到自有根类之下（\`.${r.pluginId ?? "<pluginId>"}-root …\`）`);
+    }
+    if (r.formS3.length > 0) {
+      L.push(`🔴 跨方命中不带自有锚 ${r.formS3.length} 处（S3／R3：出现 \`ldk-*\` 提及就必须同时带本仓前缀类）：`);
+      for (const s of r.formS3) L.push(`   ${s.file}:${s.line}  \`${s.selector}\`  →  加自有根类（\`.${r.pluginId ?? "<pluginId>"}-root <原选择器>\`）`);
+    }
+    L.push(`   注：R3 **管形态不管意图**——改共享组件外观是合法特性（scoped 调优），只要写在自己的地盘里。`);
+  }
   return L.join("\n");
 }
 
@@ -184,29 +223,39 @@ function renderAll(results, skipped) {
   const pad = (s, n) => String(s).padEnd(n, " ");
   L.push(
     `   ${pad("仓", 22)} ${pad("pluginId", 24)} ${pad("来源", 12)} ${pad("类名处", 7)} ${pad("关键帧", 7)} ` +
-      `${pad("token红", 8)} ${pad("token黄", 8)} 状态`,
+      `${pad("token红", 8)} ${pad("token黄", 8)} ${pad("无锚S2", 7)} ${pad("跨方S3", 7)} 状态`,
   );
   for (const r of results) {
     const status = r.ok ? "✅ 合规" : r.error || r.boundary ? "❌ 身份层红" : "⚠ 待改名";
     L.push(
       `   ${pad(basename(r.root), 22)} ${pad(r.pluginId ?? "—", 24)} ${pad(r.pluginIdSource ?? "—", 12)} ` +
         `${pad(r.counts.classes, 7)} ${pad(r.counts.keyframes, 7)} ` +
-        `${pad(r.counts.tokensRed, 8)} ${pad(r.counts.tokensYellow, 8)} ${status}`,
+        `${pad(r.counts.tokensRed, 8)} ${pad(r.counts.tokensYellow, 8)} ` +
+        `${pad(r.counts.formS2, 7)} ${pad(r.counts.formS3, 7)} ${status}`,
     );
   }
   const totalClasses = results.reduce((n, r) => n + r.counts.classes, 0);
   const totalKf = results.reduce((n, r) => n + r.counts.keyframes, 0);
   const totalTokenRed = results.reduce((n, r) => n + r.counts.tokensRed, 0);
   const totalTokenYellow = results.reduce((n, r) => n + r.counts.tokensYellow, 0);
+  const totalS2 = results.reduce((n, r) => n + r.counts.formS2, 0);
+  const totalS3 = results.reduce((n, r) => n + r.counts.formS3, 0);
   const dirty = results.filter((r) => !r.ok);
   L.push("─".repeat(72));
   L.push(
     `合计：不合规类名 ${totalClasses} 处 / 关键帧 ${totalKf} 处 · token 红 ${totalTokenRed} 处 / 黄 ${totalTokenYellow} 处 · ` +
+      `选择器形态：无锚 S2 ${totalS2} 处 / 跨方 S3 ${totalS3} 处 · ` +
       `零不合规 ${results.length - dirty.length}/${results.length} 仓` +
       (skipped.length > 0 ? ` · 另有 ${skipped.length} 个非插件目录（无 plugin.json）未计` : ""),
   );
   if (dirty.length > 0) L.push(`待改名的仓：${dirty.map((r) => basename(r.root)).join(" / ")}`);
   if (totalTokenYellow > 0) L.push(`ℹ token 黄（建议、不拦）出现在：${results.filter((r) => r.counts.tokensYellow > 0).map((r) => `${basename(r.root)}×${r.counts.tokensYellow}`).join(" / ")}`);
+  if (totalS2 + totalS3 > 0) {
+    L.push(
+      `🔴 选择器形态不合规的仓（**进插件仓 CI 严格腿，判红**）：` +
+        `${results.filter((r) => r.counts.formS2 + r.counts.formS3 > 0).map((r) => `${basename(r.root)}(S2 ${r.counts.formS2}/S3 ${r.counts.formS3})`).join(" / ")}`,
+    );
+  }
   return L.join("\n");
 }
 
@@ -292,12 +341,15 @@ async function selfTest(sdk) {
     r.counts.tokensRed === 1 && r.ok === false && r.tokensRed[0].code === "V1",
   ]);
 
-  // 负控⑦：文档级 ＋ 自有前缀 ⇒ **黄**，且**不参与 ok**（「只报不拦」的结构实现）
+  // 负控⑦：文档级 ＋ 自有前缀 ⇒ **黄**；🔴 而「只报不拦」是 token 腿的**结构性质**（黄不进 `violations`）。
+  //   ⚠️ E6#109o-b 起 `ok` **不再**是这条判据的观测点——`：root` 本身就是**无锚选择器** ⇒ 同时命中件 7 的
+  //   S2（判红）。两条判据叠在同一处是**设计内**的（32 号档 §三.3 插件侧负控④ 明写「也命中 token 腿，
+  //   允许双报」）⇒ 这里改钉结构性质（`tokenLegCount === 0`），它才是「只报不拦」的实现。
   fresh(MANIFEST("demo"), ":root { --demo-ok: #22C55E; }\n");
   r = auditRepo(sdk, tmp);
   cases.push([
-    "负控⑦：`:root` 写自有前缀名 ⇒ token 黄 1（V6）、**ok 仍为 true**（只报不拦）",
-    r.counts.tokensYellow === 1 && r.counts.tokensRed === 0 && r.ok === true && r.tokensYellow[0].code === "V6",
+    "负控⑦：`:root` 写自有前缀名 ⇒ token 黄 1（V6）且**黄不进 token 腿报点**（只报不拦的结构性质）",
+    r.counts.tokensYellow === 1 && r.counts.tokensRed === 0 && r.tokenLegCount === 0 && r.tokensYellow[0].code === "V6",
   ]);
 
   // 负控⑧：定义 `ldk-*` 自定义属性 ⇒ 红（V2，任何作用域）
@@ -305,7 +357,37 @@ async function selfTest(sdk) {
   r = auditRepo(sdk, tmp);
   cases.push(["负控⑧：`--ldk-*` 自定义属性 ⇒ token 红 1（V2）", r.counts.tokensRed === 1 && r.tokensRed[0].code === "V2"]);
 
-  // 同源：工具 import 的模块 === 腿 import 的模块（dist 里那两条 import 边）
+  // ── 选择器形态段（E6#109o-b · 1.26）───────────────────────────────────
+  // 正控S：自有根类之下的元素样式（限定有锚）⇒ S2/S3 零、ok=true
+  fresh(MANIFEST("demo"), ".demo-root input { height: 20px; }\n");
+  r = auditRepo(sdk, tmp);
+  cases.push([
+    "正控S：`.demo-root input`（限定有锚）⇒ S2/S3 零、ok=true",
+    r.counts.formS2 === 0 && r.counts.formS3 === 0 && r.ok === true,
+  ]);
+
+  // 负控⑨：顶层无锚（`button`）⇒ S2 1 处 ＋ ok=false
+  fresh(MANIFEST("demo"), "button { border: none; }\n");
+  r = auditRepo(sdk, tmp);
+  cases.push([
+    "负控⑨：`button { }` 顶层无锚 ⇒ S2 1 处、ok=false（R2）",
+    r.counts.formS2 === 1 && r.ok === false && r.formS2[0].selector === "button",
+  ]);
+
+  // 负控⑩：跨方命中不带自有锚（`body .ldk-input`）⇒ S3 1 处 ＋ ok=false
+  fresh(MANIFEST("demo"), "body .ldk-input { height: 20px; }\n");
+  r = auditRepo(sdk, tmp);
+  cases.push([
+    "负控⑩：`body .ldk-input` ⇒ S3 1 处、ok=false（R3 管形态不管意图）",
+    r.counts.formS3 === 1 && r.ok === false,
+  ]);
+
+  // 负控⑪：`@media` 内的无锚同样算（不做「只看文件顶层」的漏判）
+  fresh(MANIFEST("demo"), "@media print {\n  div { display: none; }\n}\n");
+  r = auditRepo(sdk, tmp);
+  cases.push(["负控⑪：`@media` 内的无锚选择器 ⇒ S2 1 处（递归进 at-rule）", r.counts.formS2 === 1]);
+
+  // 同源：工具 import 的模块 === 腿 import 的模块（dist 里那三条 import 边）
   const lintSrc = existsSync(SDK_LINT_MODULE) ? readFileSync(SDK_LINT_MODULE, "utf8") : "";
   cases.push([
     "同源（前缀）：dist/eslint/lint.js（腿）import 的正是 checks/plugin-prefix.js（工具用的同一个模块）",
@@ -314,6 +396,10 @@ async function selfTest(sdk) {
   cases.push([
     "同源（token）：dist/eslint/lint.js（腿）import 的正是 checks/token-scope.js（工具用的同一个模块）",
     /checks\/token-scope\.js/.test(lintSrc),
+  ]);
+  cases.push([
+    "同源（选择器形态）：dist/eslint/lint.js（腿）import 的正是 checks/selector-form.js（工具用的同一个模块）",
+    /checks\/selector-form\.js/.test(lintSrc),
   ]);
 
   rmSync(tmp, { recursive: true, force: true });

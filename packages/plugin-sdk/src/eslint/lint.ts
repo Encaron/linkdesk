@@ -10,6 +10,11 @@
  * 文档级只有宿主契约块能写、其余定义必须挂在自有命名空间的类之下、任何方不得定义 `ldk-*`
  * 自定义属性。红进腿报点（CI 严格腿判红），🟡 黄（V6）只打印不拦。规则正文见 31 号档 §一。
  *
+ * 🔴 E6#109o-b（1.26）再加第四条：**选择器形态**（`checks/selector-form.ts`）——
+ * S2 禁无锚选择器（元素/通配/属性/伪类/伪元素/**id** 一视同仁；顶层或限定一律禁）·
+ * S3 跨方命中（选择器里出现 `ldk-*` 提及）必须自带自有 `.<pluginId>-*` 锚。两条全红、进腿报点。
+ * 规则正文见 32 号档 §一（R0–R3）；1.25 实测插件侧存量 **0**（18 仓 ＋ 夹具）⇒ 纯预防、零重发成本。
+ *
  * 对标壳 check 同款双轨（07 §六·载体双轨）：eslint（12 项注册规则，全 WARN）管 ts/tsx；
  * css-hardcode / font-scale / spacing-grid / css-namespace 四条移植脚本管整工程（eslint 到不了 .css，
  * ts/tsx 的 rgb()/hsl() 也归 css-hardcode 补）。jscpd = 项目级可选（文档引导，不进编排）。
@@ -28,6 +33,7 @@ import { runSpacingGridCheck } from "./checks/spacing-grid.js";
 import { runReservedClassCheck } from "./checks/reserved-classes.js";
 import { runPluginPrefixCheck } from "./checks/plugin-prefix.js";
 import { runTokenScopeCheck } from "./checks/token-scope.js";
+import { runSelectorFormCheck } from "./checks/selector-form.js";
 import { type CheckViolation } from "./checks/scan.js";
 
 /** 示例用的门禁 id（打印知情绕行格式）；伪 id 与 check 脚本 CHECK_IDS 同源 */
@@ -62,6 +68,8 @@ export interface PluginLintReport {
   tokenAdvisories: CheckViolation[];
   /** token 作用域判据的计数（红 = 进了腿报点；黄 = advisories） */
   tokenCounts: { red: number; yellow: number };
+  /** 选择器形态判据的计数（E6#109o-b）：S2 禁无锚 / S3 跨方命中不带自有锚——**都进腿报点** */
+  selectorFormCounts: { anchorless: number; crossParty: number };
 }
 
 export async function runPluginLint(root: string, options: PluginLintOptions = {}): Promise<PluginLintReport> {
@@ -130,19 +138,31 @@ export async function runPluginLint(root: string, options: PluginLintOptions = {
    *     必然重叠（前缀腿已报同一件事）⇒ 以先出的为准。
    */
   const tokenScope = runTokenScopeCheck(absRoot);
+  /**
+   * 🔴 E6#109o-b（1.26）：命名空间腿再加一条 —— **选择器形态**（S2 禁无锚 / S3 跨方命中）。
+   *   两条**都进本腿报点**（CI 严格腿判红）：无锚选择器命中「该文档里所有那一类元素」，与谁渲染无关。
+   *   ⚠️ 去重口径：与前面几条腿**同一处 `文件:行` 不重复报**（以先出的为准）。特别注意 F3 形态
+   *     `.ldk-side-panel :focus-visible`——**前缀腿也会报同一行**（`subjectOf()` 把它算成
+   *     `ldk-side-panel` 的一次定义，那是轴 ① 的既有偏差、本轮不许改）⇒ 这里让前缀腿的话先说。
+   */
+  const selectorForm = runSelectorFormCheck(absRoot);
   const prefixKeys = new Set(prefix.violations.map((v) => `${v.file}:${v.line}`));
   const tokenKeys = new Set(tokenScope.violations.map((v) => `${v.file}:${v.line}`));
+  const formKeys = new Set(selectorForm.violations.map((v) => `${v.file}:${v.line}`));
   const namespace: CheckViolation[] = [
     ...prefix.violations, // 前缀腿（含 fail-closed）
+    ...selectorForm.violations.filter((v) => !prefixKeys.has(`${v.file}:${v.line}`)), // 形态腿（同点不重复报）
     ...tokenScope.violations.filter((v) => !prefixKeys.has(`${v.file}:${v.line}`)), // token 腿（同点不重复报）
-    ...reserved.filter((v) => !prefixKeys.has(`${v.file}:${v.line}`) && !tokenKeys.has(`${v.file}:${v.line}`)),
+    ...reserved.filter(
+      (v) => !prefixKeys.has(`${v.file}:${v.line}`) && !tokenKeys.has(`${v.file}:${v.line}`) && !formKeys.has(`${v.file}:${v.line}`)
+    ),
   ];
   const legs: LintLeg[] = [
     { id: "linkdesk/no-hardcoded-hex（css + rgb/hsl 腿）", label: "check-css-hardcode", violations: css },
     { id: "linkdesk/no-hardcoded-font-size", label: "check-font-scale", violations: font },
     { id: "linkdesk/no-nonstandard-spacing", label: "check-spacing-grid", violations: spacing },
     {
-      id: "linkdesk/no-reserved-class-name（裸定义类名/关键帧必须带本仓 <pluginId>- 前缀；宿主保留名同 id）",
+      id: "linkdesk/no-reserved-class-name（裸定义类名/关键帧必须带本仓 <pluginId>- 前缀；宿主保留名、token 作用域、选择器形态同 id）",
       label: "check-css-namespace",
       violations: namespace,
     },
@@ -159,6 +179,7 @@ export async function runPluginLint(root: string, options: PluginLintOptions = {
     pluginIdNote: prefix.pluginIdNote,
     tokenAdvisories: tokenScope.advisories,
     tokenCounts: { red: tokenScope.red.length, yellow: tokenScope.yellow.length },
+    selectorFormCounts: { anchorless: selectorForm.anchorless.length, crossParty: selectorForm.crossParty.length },
   };
 }
 
@@ -201,6 +222,15 @@ export function renderPluginLintReport(report: PluginLintReport): string {
         `搬进自己的根类之下，作用域从整个文档缩回自己的子树。`,
     );
     for (const v of report.tokenAdvisories) lines.push(`    ${v.file}:${v.line}  ${v.message}`);
+  }
+
+  // 选择器形态判据的计数（E6#109o-b）——两条都进腿报点 ⇒ 这里只在**零违规**时补一句确认
+  const sf = report.selectorFormCounts;
+  if (sf.anchorless === 0 && sf.crossParty === 0) {
+    lines.push(
+      `\n✅ check-css-namespace（选择器形态 · S2/S3）：无锚选择器 0 ／ 跨方命中不带自有锚 0` +
+        `——插件 CSS 里没有「不需要同名就能撞」的选择器（元素/通配/属性/伪类/伪元素/id 一视同仁）。`
+    );
   }
 
   lines.push(

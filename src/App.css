@@ -1,8 +1,8 @@
-.app-shell {
+.ldk-app-shell {
   display: flex;
   flex-direction: column;
   height: 100vh;
   overflow: hidden;
 }
 
-/* .app-main 死 CSS 已随 E5.7#31 删除——E5.7#9 壳 DOM 全删后零渲染方（App 仅渲染 .app-shell） */
+/* .app-main 死 CSS 已随 E5.7#31 删除——E5.7#9 壳 DOM 全删后零渲染方（App 仅渲染 .ldk-app-shell） */

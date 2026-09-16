@@ -703,7 +703,48 @@ The three rules above govern **names**; this one governs **territory**. For cust
 
 **How it is enforced mechanically**: run `npm run lint` in the plugin project root (or `npm run verify` in CI) and each occurrence is reported—🔴 turns CI red, 🟡 only prints. When "it works locally but CI is red", read this section first.
 
-> 🔧 **Maintainer note (authors may skip)**: the rule text (including how the host registers its contract blocks and the floating-layer host exception) lives under `docs/02-Electron架构/E6_插件生态与发布/01-插件独立构建/样式命名空间归一化/`; the shell side is guarded by `scripts/check-css-namespace.mjs`, the plugin side by the SDK's `check-css-namespace` leg (the third criterion of that same leg, sharing one disable-comment id with the class-name and keyframe criteria).
+> 🔧 **Maintainer note (authors may skip)**: the rule text (including how the host registers its contract blocks and the floating-layer host exception) lives under `docs/02-Electron架构/E6_插件生态与发布/01-插件独立构建/样式命名空间归一化/`; the shell side is guarded by `scripts/check-css-namespace.mjs`, the plugin side by the SDK's `check-css-namespace` leg (token scope is the third criterion of that same leg, sharing one disable-comment id with the class-name and keyframe criteria).
+
+### 12.6 The selector itself needs a "landing spot" too—**anchorless selectors are forbidden** (2026-09-16)
+
+The five sections above govern **names** (class names / keyframes / custom properties). This one governs the **shape of the selector**—a rule that is even easier to overlook:
+
+> **Class names and ids are "name anchors"; element / universal / attribute / pseudo-class / pseudo-element selectors are not.**
+> The latter hit other people's elements **without sharing a single name with anyone.**
+
+```css
+/* ❌ one rule rewrites *every* button in the document—including the host's and other plugins' */
+button { border: none; }
+* { box-sizing: border-box; }
+#some-id { display: none; }   /* an id is global and guessable too, and outranks classes */
+:root { outline: none; }      /* `:root` is an anchorless selector as well */
+
+/* ✅ hang it under your own root class—same intent, landing spot limited to your own subtree */
+.my-plugin-root button { border: none; }
+```
+
+**Two rules** (both are **mechanically red** in `npm run lint` at the plugin project root / `npm run verify` in CI):
+
+| Rule | Verdict | Why |
+|---|---|---|
+| **No anchorless selectors** | The selector has **no** `.class` or `#id` subject (element / universal / attribute / pseudo-class / pseudo-element; **top-level *and* qualified, including inside `@media`**) ⇒ 🔴 | It hits "every element of that kind in the document", regardless of who rendered it |
+| **A cross-party hit must carry your own anchor** | The selector mentions an `ldk-*` class (**including a mention inside `:has(…)`**) but does **not** carry a `.<your pluginId>-*` class ⇒ 🔴 | `ldk-` is the host's namespace; **fine-tuning has to happen on your own territory** |
+
+⚠️ **The second rule does not forbid restyling shared components**—that is a **legitimate feature** (scoped tuning). It only requires you to **carry your own prefix as the anchor**:
+
+```css
+/* ❌ targets the host's / shared components' elements with no landing spot of your own ⇒ red */
+.ldk-toggle { transform: scale(1.1); }
+
+/* ✅ the same intent, written on your own territory ⇒ compliant */
+.my-plugin-root .ldk-toggle { transform: scale(1.1); }
+```
+
+**Why it is worth remembering**: the host itself has **17** such "anchorless selectors" (`*` resets / `html`·`body` / `[data-theme]` / `*:focus-visible` / the scrollbar family / `input[type="number"]`·`select`)—they are a **deliberate shared baseline** that plugins rely on (and may override). Precisely because they exist, **your anchorless selector will hit them**: write `button { }` and the host's buttons plus every other plugin's buttons change with it.
+
+**Migration**: **zero instances today**—a full re-check of the 18 official plugins plus the in-repo fixtures (the "anchorless S2 / cross-party S3" columns of `npm run audit:plugin-prefix -- --all`) is **0** ⇒ **you have nothing to change**; this rule is **preventive**.
+
+> 🔧 **Maintainer note (authors may skip)**: the rule text (R0 scope / R1 host baseline / R2 / R3) plus the decision formulas and negative controls live in `docs/02-Electron架构/E6_插件生态与发布/01-插件独立构建/样式命名空间归一化/32-任务-选择器形态轴门禁与落地.md`; the host side is guarded by criteria ⑩⑪ of `scripts/check-css-namespace.mjs` (plus the runtime mirror on axis ④ of the probe), and the plugin side by the **fourth criterion** of the SDK's `check-css-namespace` leg (`checks/selector-form.ts`, S2/S3).
 
 ---
 
@@ -726,6 +767,7 @@ The three rules above govern **names**; this one governs **territory**. For cust
 | UI discipline gate | `linkdesk-plugin-sdk lint` | all 15 items are WARNs that never fail; a knowing bypass = a standard eslint-disable declaration (see §11.2) |
 | Text | `t()` | `useTranslation()` from `react-i18next` |
 | CSS class names / state classes | own prefix + host reserved-name list | see §12 (class names are global—all plugins share the document with the host) |
+| Element / id selectors | must hang under your own root class | see §12.6 (an anchorless selector hits everyone's elements, name or no name) |
 | Sidebar list selection | `onMouseDown` (not `onClick`) | aligned with VS Code Explorer—prevents lost events when a fast click crosses elements |
 
 **Use these facilities when writing plugins; don't hand-roll. Even if you write one, it'll have to be torn out later—better to normalize from day one.**

@@ -17,6 +17,13 @@
  *   ③ **CSS 自定义属性名**：规则体里 `--x:` 的**定义**（＋ 引擎写在 `documentElement.style` 上的
  *      inline 值——那是**宿主契约**，**单列**、不参与碰撞判定）
  *   ④ **顶层「非类名」选择器**：**无祖先**的元素/通配/属性/id/复合选择器的**形态**（件 7 的运行时镜像）
+ *      —— 🔴 E6#109o-b（1.26）起**无锚形态**补齐：`doc:root` · `pseudo:::-webkit-scrollbar`（一族）·
+ *      `pseudo:::before` / `pseudo:::after` · `pseudo-class::focus-visible`。**改前它们是「静默丢」**：
+ *      `subjectOf()` 把「纯伪类/纯伪元素主体」剥成空串（`:root` / `::-webkit-scrollbar`，1.25 的 **F1**），
+ *      CSSOM 又把 `*::before` 序列化成 `::before`、`*:focus-visible` 序列化成 `:focus-visible`
+ *      （再丢 5 个站点，**F2**）⇒ 旧代码 `if (!sub) return null` 把两者**一起丢掉且没有任何计数器**。
+ *      ⇒ 现在 `selectorShape()` 对「无主体」**改判形态**（不是丢弃），并单列 `anchorlessSites` 供
+ *      「**静态 17 ＝ 运行时 17**」逐字对账（见下 `--compare-static`）。
  *
  * ── 碰撞定义与「方」──
  *   某个名字（或轴 ④ 的某个**形态**）被**两个或以上的「方」独立定义** ⇒ **报**。
@@ -64,9 +71,14 @@
  *   `--json`            落机器可读报告（默认 `scratch/runtime-style-audit.json`）
  *   `--raw`             同时落**原始 dump**（对账/写夹具用；报告里没有的事实都在这里）
  *   `--doc`             只采 URL 含该子串的文档（默认**全部** page 目标）
- *   `--compare-static`  追加一段**静态源 ↔ 运行时 对账**（类名/关键帧轴；只覆盖仓内 host / shared 两个域）
- *                       ——它专门让「**域边界不一致**」自己浮出来（真实用例：`src/App.css` 在探针归属域内、
- *                       却不在门禁判据③ 域内 ⇒ 「宿主 100% 是 `ldk-`」这句话按门禁口径并不覆盖它）。
+ *   `--compare-static`  追加一段**静态源 ↔ 运行时 对账**（类名/关键帧轴 ＋ 🔴 轴 ④ 无锚站点；
+ *                       只覆盖仓内 host / shared 两个域）。三件事：
+ *                        ① **域一致性**：探针 host 归属域 ＝ 门禁 `HOST_DOMAIN` ＝ 基线登记表 `domain.files`
+ *                           （三处**逐字一致**；域不一致就是「尺子不止一把」）；
+ *                        ② 每域「运行时独有」应为 0（类名/关键帧轴）；
+ *                        ③ 🔴 **轴 ④ 静态无锚站点 ＝ 运行时无锚站点**（**1.26 最硬的一条验收**；
+ *                           **按文档**对账——同一份 `src/index.css` 在壳窗口与池两个文档里各注入一次，
+ *                           跨文档求和会得到 2 倍，那是**重复计数不是差异**）。
  *   `--prefix-audit`    追加**前缀审计表**：每方「非 `ldk-` 独立定义」的计数与名单
  *                       ——**改前/改后对账用的就是这张表**（「244＋52 → 0」「8 → 0」）。
  *   退出码：0 = 结论成立（零 red 碰撞 ＋ 零未归属 ＋ 方名册够真）／1 = 有碰撞或结论不成立／2 = 连不上实例
@@ -126,13 +138,15 @@
  * ── 后续消费者 ──
  *   · **1.23（件 6 · token 轴）**：轴 ③ 就是它的现状读数（尤其"哪只插件在 document 级定义 token"）。
  *   · **1.25（件 7 · 选择器形态轴）**：轴 ④ 就是它的运行时镜像。
- *   · **1.20（系列收口）**：判据「探针终态零跨方碰撞」用它；🔴 **从本格起每轮收尾跑一遍并记账**（§九.3）。
+ *   · **1.26（件 7 落地）**：轴 ④ 的 F1/F2 已修 ＋ `--compare-static` 出「静态 = 运行时」读数；
+ *     🔴 **从本格起每轮收尾跑一遍并记账**（32 号档 §九.2／§九.3）。
+ *   · **1.20（系列收口）**：判据「探针终态零跨方碰撞」用它 ＋ 两条「逐字相等」证明（域一致 ＋ 轴 ④）。
  */
 
-import { readFileSync, writeFileSync, mkdirSync, readdirSync, statSync } from "node:fs";
+import { readFileSync, writeFileSync, mkdirSync, readdirSync, statSync, existsSync } from "node:fs";
 import { dirname, resolve, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
-import { splitSelector, hasAncestor, subjectOf, soleClassOf, stripComments, bareClassDefinitions, keyframeDefinitions, SOLE_CLASS, judgeTokenScope, tokenScopeOf } from "./lib/css-selectors.mjs";
+import { splitSelector, hasAncestor, subjectOf, soleClassOf, stripComments, bareClassDefinitions, keyframeDefinitions, SOLE_CLASS, judgeTokenScope, tokenScopeOf, formOf, compoundsOf, selectorFormSites } from "./lib/css-selectors.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, "..");
@@ -184,13 +198,32 @@ export function attributeSheet(origin) {
 /** 轴 ④：顶层「非类名」选择器的**形态**（单类名主体 = 轴 ① 的地盘 ⇒ 这里回 `null`）。
  *  形态的取法（**有意偏保守**：宁可多报一种形态，也不把两种不同的东西并成一种）：
  *    · 纯形态给名字：`universal:*` · `id:root` · `attr:[data-theme="light"]` · `element:select`
+ *    · **无锚形态**（E6#109o-b 新增，32 号档 §三.1）：`doc:root` · `pseudo:<原文>`（纯伪元素，
+ *      `::-webkit-scrollbar` / `::before`）· `pseudo-class:<原文>`（伪类独体，`:focus-visible`）
  *    · **带限定符/复合的主体一律原样报**：`input[type="number"]` / `.a.b` / `div.x` ⇒ `other:<主体原文>`
  *      —— 因为「`input` 的样式」与「`input[type=number]` 的样式」是**两件不同的事**，
  *      并成一个 `element:input` 会制造假碰撞（假红会让真红失效，22 号档 §10.3）。
- *  ⚠️ CSSOM 会归一引号与空白 ⇒ 同一形态的不同写法在运行时是同一个字符串（不会漏报）。 */
+ *  ⚠️ CSSOM 会归一引号与空白 ⇒ 同一形态的不同写法在运行时是同一个字符串（不会漏报）。
+ *
+ *  🔴 **1.25 实测的 F1/F2 就修在下面那个 `if (!sub)` 分支里**：
+ *    CSSOM 的 `selectorText` 会把 `*::before` 序列化成 `::before`、`*:focus-visible` 序列化成
+ *    `:focus-visible`（多余的 `*` 被吃掉，F2）；而 `:root` / `::-webkit-scrollbar` 一族本来就
+ *    「剥掉伪类/伪元素后没有主体」（F1）。旧代码 `if (!sub) return null` 把**这两种**都**静默丢掉**
+ *    ——没有任何计数器。⇒ 现在它们都是**有意的形态站点**：`pseudo:` / `pseudo-class:` / `doc:root`。 */
 export function selectorShape(compound) {
   const sub = subjectOf(compound);
-  if (!sub) return null;
+  if (!sub) {
+    // 无主体 ≠ 无形态：`subjectOf()` 连**伪类**一起剥 ⇒ 纯伪类/纯伪元素主体在这里回空串。
+    // 用 `formOf()` 的口径（只剥伪元素）判它到底是哪一类。
+    const raw = String(compound).trim();
+    const cs = compoundsOf(compound);
+    // 含伪元素（`::`）⇒ `pseudo:<原文>`：`::-webkit-scrollbar` · `::before` · `::-webkit-scrollbar-thumb:hover`
+    if (/::/.test(raw)) return `pseudo:${raw}`;
+    if (cs.length === 0) return `pseudo:${raw}`;
+    if (/^:root$/i.test(cs[0])) return "doc:root";
+    if (/^:/.test(cs[0])) return `pseudo-class:${raw}`; // :focus-visible / :hover（伪类独体）
+    return `other:${raw.replace(/\s+/g, "")}`; // 兜底：不静默丢
+  }
   if (SOLE_CLASS.test(sub)) return null;
   if (sub === "*") return "universal:*";
   let m;
@@ -244,7 +277,7 @@ export function collectParties(doc) {
   const parties = new Map();
   const bump = (party) => {
     if (!parties.has(party)) {
-      parties.set(party, { classes: new Set(), keyframes: new Set(), tokens: new Map(), tokenSites: [], shapes: new Set(), sheets: [], evidence: [] });
+      parties.set(party, { classes: new Set(), keyframes: new Set(), tokens: new Map(), tokenSites: [], shapes: new Set(), anchorless: new Set(), anchorlessSites: [], sheets: [], evidence: [] });
     }
     return parties.get(party);
   };
@@ -284,6 +317,15 @@ export function collectParties(doc) {
         if (shape) {
           p.shapes.add(shape);
           p.evidence.push({ axis: "selector-shape", name: shape, sheet: sheet.index, sel: one, at: r.at ?? "" });
+          // 🔴 E6#109o-b：**无锚站点**单列一份——它是与静态门禁（判据⑩／lib 的 `selectorFormSites()`）
+          //    **逐字可比**的那个数（「轴 ④ 静态 17 ＝ 运行时 17」）。`formOf()` 是唯一的形态口径：
+          //    `#root` 这类 id 形态是 **anchored**（D 段，只登记不设门禁）⇒ 不进这个计数。
+          if (formOf(one).kind === "anchorless") {
+            p.anchorless.add(shape);
+            // `origin` = 该样式表的来源线索（`data-vite-dev-id` / `href`）——`compareStatic()` 用它
+            // 把站点映射回**仓内文件**，从而按「该文档实际加载了域的哪些文件」逐字对账。
+            p.anchorlessSites.push({ shape, sel: one, sheet: sheet.index, at: r.at ?? "", origin: sheet.devId ?? sheet.href ?? null });
+          }
         }
       }
     }
@@ -576,6 +618,8 @@ export function analyzeDump(dump, { minPlugins = 2, sharedDomainNames = [] } = {
               keyframes: p.keyframes.size,
               token: p.tokens.size,
               "selector-shape": p.shapes.size,
+              // 🔴 E6#109o-b：轴 ④ 的**无锚站点数**（＝与静态门禁判据⑩ 逐字可比的那个数）
+              "selector-shape-anchorless": p.anchorlessSites.length,
               nonLdkClass: [...p.classes].filter((n) => !n.startsWith("ldk-")).length,
               nonLdkKeyframes: [...p.keyframes].filter((n) => !n.startsWith("ldk-")).length,
             },
@@ -583,6 +627,8 @@ export function analyzeDump(dump, { minPlugins = 2, sharedDomainNames = [] } = {
             keyframes: [...p.keyframes].sort(),
             tokens: allTokens[party],
             "selector-shapes": [...p.shapes].sort(),
+            anchorlessShapes: [...p.anchorless].sort(),
+            anchorlessSites: p.anchorlessSites,
             nonLdkClasses: [...p.classes].filter((n) => !n.startsWith("ldk-")).sort(),
             nonLdkKeyframes: [...p.keyframes].filter((n) => !n.startsWith("ldk-")).sort(),
           },
@@ -718,10 +764,38 @@ function runtimeNames(report, party) {
   return { classes, keyframes, classSheets };
 }
 
+/** 🔴 探针的 host 归属域（**字面量**；由 `PARTY_RULES` 的两条 host 规则实现）。
+ *  E6#109o-b（1.26）起它与门禁 `check-css-namespace.mjs` 的 `HOST_DOMAIN` ＋ 基线登记表的
+ *  `domain.files` **三处逐字一致**——`compareStatic()` 里有一条断言钉住这件事（域不一致就是
+ *  「尺子不止一把」，本系列一句话根因的层 3）。⚠️ 域**可以按判据分别设定**（判据⑨ 的域更宽），
+ *  但「宿主域」这个名字只有一个定义。 */
+export const PROBE_HOST_DOMAIN = ["src/*.css", "src/pool/**"];
+
+/** 某一方在某个域上的**无锚站点**（轴 ④ 与静态门禁逐字可比的那份数据） */
+function runtimeAnchorless(report, party) {
+  const out = [];
+  for (const d of report.documents) {
+    const p = d.parties[party];
+    if (!p) continue;
+    for (const s of p.anchorlessSites ?? []) out.push({ ...s, document: d.label });
+  }
+  return out;
+}
+
+/** 把样式表来源线索映射成**仓内相对路径**（对不上/文件不存在 ⇒ `null` = 不算进域）——`compareStatic` 用 */
+function relFromOrigin(origin, root) {
+  const s = String(origin ?? "").replace(/\\/g, "/");
+  const i = s.lastIndexOf("/src/");
+  if (i < 0) return null;
+  const rel = s.slice(i + 1);
+  return existsSync(join(root, rel)) ? rel : null;
+}
+
 /**
- * 静态 ↔ 运行时对账。两个 host 域并列，**专门让「域边界不一致」自己浮出来**：
- *   · `探针归属域` = `src/*.css` ＋ `src/pool/**`（= 探针 PARTY_RULES 里 host 那条的射程）
- *   · `门禁判据③ 域` = `src/index.css` ＋ `src/pool/**`（= `check-css-namespace.mjs` 的射程）
+ * 静态 ↔ 运行时对账（E6#109o-b 重写）。三件事：
+ *  ① **域一致性**：探针 host 归属域 ＝ 门禁 `HOST_DOMAIN` ＝ 基线登记表 `domain.files`（三处逐字一致）；
+ *  ② **类名/关键帧轴**（既有）：每域「运行时独有」应为 0；
+ *  ③ 🔴 **轴 ④：静态无锚站点 ＝ 运行时无锚站点**（**本轮最硬的一条验收**——两把尺子读数逐字相等）。
  */
 export function compareStatic(report, root = ROOT) {
   const srcTop = readdirSync(join(root, "src"), { withFileTypes: true })
@@ -730,12 +804,12 @@ export function compareStatic(report, root = ROOT) {
   const pool = walkCss(join(root, "src", "pool"));
   const shared = walkCss(join(root, "src", "components", "shared"));
   const domains = [
-    { key: "host", label: "host（探针归属域：src/*.css ＋ src/pool/**）", files: [...srcTop, ...pool] },
-    { key: "host", label: "host（门禁判据③ 域：src/index.css ＋ src/pool/**）", files: [...srcTop.filter((f) => f.endsWith("index.css")), ...pool] },
-    { key: "shared", label: "shared（src/components/shared/**）", files: shared },
+    { key: "host", label: "host（宿主域：src/*.css ＋ src/pool/**）", files: [...srcTop, ...pool], anchorless: true },
+    { key: "shared", label: "shared（src/components/shared/**）", files: shared, anchorless: true },
   ];
 
   const out = [];
+  const shapes = [];
   for (const dom of domains) {
     const stat = staticNames(dom.files);
     const run = runtimeNames(report, dom.key);
@@ -753,12 +827,71 @@ export function compareStatic(report, root = ROOT) {
       runtimeKeyframes: [...run.keyframes].sort(),
       keyframesRuntimeOnly: kfRuntimeOnly,
     });
+    // ③ 轴 ④ 的静态 ↔ 运行时（**同一个 lib 口径**：`selectorFormSites()` ＋ `formOf()`）
+    //    ⚠️ 对账**按文档**做：同一个域的文件可能被**多个文档**各加载一次（本仓：`src/index.css`
+    //      在壳窗口文档与池文档里各注入一份）⇒ 直接跨文档求和会得到 2 倍，那是**重复计数不是差异**。
+    //      每个文档只跟「**它实际加载了的**域内文件」的静态站点比。
+    if (dom.anchorless) {
+      const relOf = (f) => relative(root, f).replace(/\\/g, "/");
+      const staticOf = (files) =>
+        files
+          .flatMap((f) => selectorFormSites(stripComments(readFileSync(f, "utf8"))).map((s) => ({ ...s, file: relOf(f) })))
+          .filter((s) => s.form.kind === "anchorless" && s.form.top);
+      const perDoc = [];
+      for (const d of report.documents) {
+        const p = d.parties[dom.key];
+        if (!p || (p.anchorlessSites ?? []).length === 0) continue;
+        const sites = p.anchorlessSites.map((s) => ({ ...s, document: d.label }));
+        const files = [...new Set(sites.map((s) => relFromOrigin(s.origin, root)).filter(Boolean))].sort();
+        const staticSites = staticOf(files);
+        perDoc.push({
+          document: d.label,
+          files,
+          staticCount: staticSites.length,
+          runtimeCount: sites.length,
+          equal: staticSites.length === sites.length,
+          staticSites: staticSites.map((s) => ({ file: s.file, line: s.line, selector: s.selector })),
+          runtimeSites: sites.map((s) => ({ sheet: s.sheet, selector: s.sel, shape: s.shape })),
+        });
+      }
+      const domainStatic = staticOf(dom.files);
+      shapes.push({
+        domain: dom.label,
+        domainStaticCount: domainStatic.length,
+        perDocument: perDoc,
+        // 域内**一个站点都没有** ⇒ 运行时也必须是 0（不是「没得比」）
+        equal: perDoc.length === 0 ? domainStatic.length === 0 : perDoc.every((x) => x.equal),
+        runtimeShapes: [...new Set(perDoc.flatMap((x) => x.runtimeSites.map((s) => s.shape)))].sort(),
+      });
+    }
   }
-  // 域外补充：探针归属域里有、而门禁判定域里没有的独立定义（= 域边界不一致的**直接证据**）
-  const gateStat = staticNames([...srcTop.filter((f) => f.endsWith("index.css")), ...pool]).classes;
+
+  // ① 域一致性：三处逐字一致（探针字面量 ／ 门禁 HOST_DOMAIN ／ 登记表 domain.files）
+  let registryDomain = null;
+  let registryReadError = null;
+  try {
+    registryDomain = JSON.parse(readFileSync(join(root, "scripts", "css-selector-baseline.json"), "utf8"))?.domain?.files ?? null;
+  } catch (e) {
+    registryReadError = e instanceof Error ? e.message : String(e);
+  }
+  const gateDomain = ["src/*.css", "src/pool/**"]; // = check-css-namespace.mjs 的 HOST_DOMAIN（字面量重复一次，由本断言钉住）
+  const domainCheck = {
+    probe: PROBE_HOST_DOMAIN,
+    gate: gateDomain,
+    registry: registryDomain,
+    registryReadError,
+    ok:
+      JSON.stringify(PROBE_HOST_DOMAIN) === JSON.stringify(gateDomain) &&
+      JSON.stringify(registryDomain) === JSON.stringify(gateDomain),
+  };
+
+  // 域外补充：探针归属域里有、而门禁判定域里没有的独立定义（域边界不一致的**直接证据**）
+  // ⚠️ 域对齐之后这一段**按构造必为 0** —— 它保留下来是「对账留痕」，不是活的判据；
+  //    真正的活判据是上面的 `domainCheck`（两条域声明的字面量比较）。
+  const gateStat = staticNames([...srcTop, ...pool]).classes;
   const probeStat = staticNames([...srcTop, ...pool]).classes;
   const outsideGateDomain = [...probeStat].filter((n) => !gateStat.has(n)).sort();
-  return { domains: out, outsideGateDomain };
+  return { domains: out, outsideGateDomain, shapes, domainCheck };
 }
 
 function printPrefixAudit(report) {
@@ -768,15 +901,29 @@ function printPrefixAudit(report) {
     console.log(`\n▸ ${d.label}`);
     for (const [party, info] of Object.entries(d.parties)) {
       const c = info.counts;
-      console.log(`   ${party.padEnd(22)} 非 ldk- 类名 ${String(c.nonLdkClass).padStart(4)} ｜ 非 ldk- 关键帧 ${String(c.nonLdkKeyframes).padStart(2)} ｜ （总 类名 ${c.class} / 关键帧 ${c.keyframes}）`);
+      console.log(
+        `   ${party.padEnd(22)} 非 ldk- 类名 ${String(c.nonLdkClass).padStart(4)} ｜ 非 ldk- 关键帧 ${String(c.nonLdkKeyframes).padStart(2)} ｜ ` +
+          `（总 类名 ${c.class} / 关键帧 ${c.keyframes}）｜ 🔴 轴 ④ 无锚站点 ${String(c["selector-shape-anchorless"] ?? 0).padStart(3)}`
+      );
       if (c.nonLdkClass) console.log(`        ${info.nonLdkClasses.slice(0, 24).join(" ")}${info.nonLdkClasses.length > 24 ? " …" : ""}`);
       if (c.nonLdkKeyframes) console.log(`        ${info.nonLdkKeyframes.join(" ")}`);
+      const a = info.anchorlessShapes ?? [];
+      if (a.length) console.log(`        轴 ④ 无锚形态（${a.length}）：${a.join(" ")}`);
     }
   }
 }
 
 function printCompare(cmp) {
-  console.log("\n═══ 静态源 ↔ 运行时 对账（类名轴 ＋ 关键帧轴；只覆盖仓内两个域）═══");
+  console.log("\n═══ 静态源 ↔ 运行时 对账（类名轴 ＋ 关键帧轴 ＋ 🔴 轴 ④ 无锚站点；只覆盖仓内两个域）═══");
+  // ① 域一致性（E6#109o-b §六.3 的硬验收）
+  const dc = cmp.domainCheck ?? null;
+  if (dc) {
+    console.log(`\n▸ 域一致性（**三处逐字一致**）：${dc.ok ? "✔️ 一致" : "🔴 **不一致**"}`);
+    console.log(`   探针 host 归属域   ${JSON.stringify(dc.probe)}`);
+    console.log(`   门禁 HOST_DOMAIN   ${JSON.stringify(dc.gate)}`);
+    console.log(`   登记表 domain      ${dc.registryReadError ? `🔴 读不到（${dc.registryReadError}）` : JSON.stringify(dc.registry)}`);
+    if (!dc.ok) console.log("   ⇒ 域不一致就是「尺子不止一把」（本系列一句话根因的层 3）——改域必须三处同笔。");
+  }
   for (const d of cmp.domains) {
     console.log(`\n▸ ${d.domain}`);
     console.log(`   文件 ${d.files.length} 个 ｜ 静态独立定义 ${d.staticClasses} ｜ 运行时独立定义 ${d.runtimeClasses}`);
@@ -784,13 +931,36 @@ function printCompare(cmp) {
     console.log(`   静态独有（= 本次**没被 import/挂载**的文件里的名字，正常）：${d.staticOnly.length} 个${d.staticOnly.length ? ` —— ${d.staticOnly.slice(0, 12).join(" ")}${d.staticOnly.length > 12 ? " …" : ""}` : ""}`);
     console.log(`   关键帧：静态 ${d.staticKeyframes.length} ｜ 运行时 ${d.runtimeKeyframes.length} ｜ 运行时独有 ${d.keyframesRuntimeOnly.length}`);
   }
+  // ③ 🔴 轴 ④：静态无锚站点 ＝ 运行时无锚站点（**本轮最硬的一条验收**；**按文档**对账）
+  for (const s of cmp.shapes ?? []) {
+    console.log(
+      `\n▸ 🔴 轴 ④ 对账 —— ${s.domain}：${s.equal ? "✔️ **逐字相等**" : "🔴 **不相等**（差出来的就是「静默丢」——不是判绿）"}`
+    );
+    for (const d of s.perDocument) {
+      console.log(
+        `   · ${String(d.document).padEnd(8)} 静态无锚站点 **${d.staticCount}** ＝ 运行时 **${d.runtimeCount}** ${d.equal ? "✔️" : "🔴"}` +
+          `（该文档里**贡献了站点**的域内文件 ${d.files.length} 个）`
+      );
+      if (!d.equal) {
+        const rs = new Set(d.runtimeSites.map((x) => x.selector));
+        const miss = d.staticSites.filter((x) => !rs.has(x.selector));
+        console.log(`       静态有、运行时无（按 CSSOM 归一后的文本对不上 ⇒ 逐个查）：${miss.map((x) => `${x.file}:${x.line} \`${x.selector}\``).join(" · ") || "（无——差异来自重复计数）"}`);
+      }
+    }
+    if (s.perDocument.length === 0) {
+      console.log(`   · （域内静态无锚站点 ${s.domainStaticCount} 个、运行时 0 个 ⇒ ${s.equal ? "✔️ 两边都是空" : "🔴 对不上"}）`);
+    }
+    if (s.runtimeShapes.length) console.log(`   运行时形态（${s.runtimeShapes.length} 个）：${s.runtimeShapes.join(" · ")}`);
+  }
   if (cmp.outsideGateDomain.length) {
     console.log(`\n🔴 **域边界不一致**：探针归属域里有、而**门禁判据③ 域里没有**的独立定义 ${cmp.outsideGateDomain.length} 个：`);
     console.log(`   ${cmp.outsideGateDomain.join(" ")}`);
-    console.log("   ⇒ 这些名字来自 `src/*.css` 里**除 index.css 之外**的文件（本仓 = `src/App.css`，只在**壳窗口文档**生效）。");
-    console.log("   ⇒ 今天不构成跨方碰撞（壳窗口文档里没有别的方的 CSS），**但它不在任何一条门禁的射程内**——");
-    console.log("      「宿主自己定义的类名 100% 是 `ldk-`」这句话，按**门禁当前口径**不覆盖它。");
-    console.log("   ⛔ 本格**不改域、也不改 src/**（改域 = 改规则；改 src = 产品改动）⇒ 如实记账并交棒（见交接段）。");
+    console.log("   ⇒ 这些名字来自宿主域之外的文件 ⇒ 「宿主自己定义的类名 100% 是 `ldk-`」按门禁口径不覆盖它们。");
+  } else {
+    console.log(
+      "\n✅ **域边界不一致 = 0 个名字**：探针归属域 ＝ 门禁判据③ 域 ＝ 登记表 `domain.files`" +
+        " ⇒ 「宿主自己定义的类名 100% 是 `ldk-`」**无条件为真**（`.app-shell` 已于 1.26 改名 `.ldk-app-shell`）。"
+    );
   }
 }
 
@@ -1024,6 +1194,102 @@ function selfTest() {
   {
     const r = analyzeDump({ documents: [doc("pool", [sheet(0, HOST_CSS, rules(".ldk-a")), sheet(1, PLUG_A, rules(".alpha-root"), [{ name: "alpha-in", decl: "--ldk-bad: 1" }]), sheet(2, PLUG_B, rules(".beta-root"))])] });
     t("锚⑧：`@keyframes` 体内的 `--ldk-*` ⇒ 名字层照样红（V2，与作用域无关）", r.summary.tokenRed === 1 && r.documents[0].facts.tokenScope.red[0].code === "V2");
+  }
+
+  /* ── ㉟–㊷ 轴 ④ 的**无锚形态**（E6#109o-b · 1.26）——F1/F2 的钉子 ＋ 两把尺子逐字相等 ──
+     1.25 实测：`:root` / `::-webkit-scrollbar` 一族（F1，两把尺子共同盲区）＋ CSSOM 归一后的
+     `::before`/`::after`/`:focus-visible`（F2，运行时独有盲区）**被 `if (!sub) return null` 静默丢掉**
+     ——没有任何计数器。下面三条负控就是这三类的钉子；最后一条是**本轮最硬的一条验收**。 */
+
+  // ㉟ 负控⑧：`:root` ⇒ 轴 ④ 出现 `doc:root` 形态（🔴 **F1 的钉子**：修前它被静默丢）
+  {
+    const r = analyzeDump({ documents: [doc("pool", [sheet(0, HOST_CSS, rules(".ldk-a", ":root")), sheet(1, PLUG_A, rules(".alpha-root")), sheet(2, PLUG_B, rules(".beta-root"))])] });
+    const shapes = r.documents[0].parties.host["selector-shapes"];
+    t("负控⑧：`:root` 产出 `doc:root` 形态（F1 钉子：修前被 `if (!sub)` 静默丢）", shapes.includes("doc:root") && r.documents[0].parties.host.anchorlessSites.length === 1);
+  }
+  // ㊱ 负控⑨：`::-webkit-scrollbar` ⇒ `pseudo:::webkit-scrollbar`（同样是 F1 的钉子）
+  {
+    const r = analyzeDump({ documents: [doc("pool", [sheet(0, HOST_CSS, rules(".ldk-a", "::-webkit-scrollbar", "::-webkit-scrollbar-thumb")), sheet(1, PLUG_A, rules(".alpha-root")), sheet(2, PLUG_B, rules(".beta-root"))])] });
+    const shapes = r.documents[0].parties.host["selector-shapes"];
+    t("负控⑨：`::-webkit-scrollbar` 一族产出 `pseudo::…` 形态（F1 钉子）", shapes.includes("pseudo:::-webkit-scrollbar") && shapes.includes("pseudo:::-webkit-scrollbar-thumb"));
+  }
+  // ㊲ 负控⑩：CSSOM 归一后的 `::before` / `:focus-visible` ⇒ 各有形态（🔴 **F2 的钉子**）
+  {
+    const r = analyzeDump({ documents: [doc("pool", [sheet(0, HOST_CSS, rules(".ldk-a", "::before", "::after", ":focus-visible")), sheet(1, PLUG_A, rules(".alpha-root")), sheet(2, PLUG_B, rules(".beta-root"))])] });
+    const shapes = r.documents[0].parties.host["selector-shapes"];
+    t(
+      "负控⑩：CSSOM 归一后的 `::before`/`::after`/`:focus-visible` 各有形态（F2 钉子：修前再丢 5 站点）",
+      shapes.includes("pseudo:::before") && shapes.includes("pseudo:::after") && shapes.includes("pseudo-class::focus-visible"),
+    );
+  }
+  // ㊳ 正控⑮：🔴 **本轮最硬的一条验收** —— 轴 ④「静态 17 ＝ 运行时 17」。
+  //     做法：拿**真实的 `src/index.css`** 当夹具 —— 静态侧用门禁同一个 `selectorFormSites()` 数，
+  //     运行时侧把它按 **CSSOM 的实际序列化规则**（`*::x` → `::x`、`*:x` → `:x`，1.25 实测）
+  //     喂进 dump，再数无锚站点。两侧必须**逐字相等**，且都等于登记表里的条数（三把尺子对齐）。
+  //     ⚠️ 这条不是「一个常数 17」——index.css 变了三侧一起变；真正会红的是**任何一侧单独漂移**。
+  {
+    const indexPath = join(ROOT, "src", "index.css");
+    const cleaned = stripComments(readFileSync(indexPath, "utf8"));
+    const staticSites = selectorFormSites(cleaned).filter((s) => s.form.kind === "anchorless" && s.form.top);
+    // CSSOM 序列化：`*::before` → `::before`、`*:focus-visible` → `:focus-visible`（多余的 `*` 被吃掉）；
+    // 单独的 `*` 保留原样。⚠️ 这是**事实**（1.25 用 CSS.getMatchedStylesForNode 实测），不是口径。
+    const cssom = (sel) => String(sel).replace(/(^|[\s,>+~])\*(?=[:\[])/g, "$1");
+    const runtimeRules = selectorFormSites(cleaned).map((s) => ({ sel: cssom(s.selector) }));
+    const r = analyzeDump({
+      documents: [
+        doc("pool", [
+          sheet(0, { devId: "E:/linkdesk/src/index.css" }, runtimeRules),
+          sheet(1, PLUG_A, rules(".alpha-root")),
+          sheet(2, PLUG_B, rules(".beta-root")),
+        ]),
+      ],
+    });
+    const runtimeCount = r.documents[0].parties.host.anchorlessSites.length;
+    const registered = (() => {
+      try {
+        const b = JSON.parse(readFileSync(join(ROOT, "scripts", "css-selector-baseline.json"), "utf8"));
+        return b.files?.find((f) => f.file === "src/index.css")?.count ?? null;
+      } catch {
+        return null;
+      }
+    })();
+    t(
+      `正控⑮：🔴 轴 ④ 静态 ${staticSites.length} ＝ 运行时 ${runtimeCount} ＝ 登记 ${registered}（三把尺子逐字相等）`,
+      staticSites.length === runtimeCount && runtimeCount === registered,
+    );
+  }
+  // ㊴ 正控⑯：两条方各自定义同一形态（`element:button`）⇒ 仍报碰撞（改口径不得让既有负控失效）
+  {
+    const r = analyzeDump({ documents: [doc("pool", [sheet(0, HOST_CSS, rules("button")), sheet(1, PLUG_A, rules("button")), sheet(2, PLUG_B, rules(".beta-root"))])] });
+    t("正控⑯：两条方各自定义 `element:button` ⇒ 仍报碰撞（red，host 在内）", r.collisions.some((x) => x.axis === "selector-shape" && x.name === "element:button" && x.severity === "red"));
+  }
+  // ㊵ 正控：**id 形态不进无锚计数**（`#root` 是 D 段：登记不设门禁；与静态 A 段 17 处同口径）
+  {
+    const r = analyzeDump({ documents: [doc("pool", [sheet(0, HOST_CSS, rules("#root", "#ld-float-layer", ".ldk-a")), sheet(1, PLUG_A, rules(".alpha-root")), sheet(2, PLUG_B, rules(".beta-root"))])] });
+    const p = r.documents[0].parties.host;
+    t("正控⑰：id 形态（`#root`）产出形态但**不进无锚计数**（D 段口径）", p["selector-shapes"].includes("id:root") && p.anchorlessSites.length === 0);
+  }
+  // ㊶ 正控：**B 段（限定无锚）**在运行时与静态同待遇（都被 `hasAncestor()` 挡在站点之外）
+  {
+    const r = analyzeDump({ documents: [doc("pool", [sheet(0, HOST_CSS, rules("html body", ".ldk-a")), sheet(1, PLUG_A, rules(".alpha-root")), sheet(2, PLUG_B, rules(".beta-root"))])] });
+    t("正控⑱：`html body`（限定无锚）与静态口径一致——不进运行时无锚站点（本仓静态 B 段 = 0）", r.documents[0].parties.host.anchorlessSites.length === 0);
+  }
+  // ㊷ 锚：`selectorShape()` 与门禁的形态谓词**同源**（同一份 lib ⇒ 同判）
+  {
+    const same = [
+      [":root", "doc:root"],
+      ["::-webkit-scrollbar", "pseudo:::-webkit-scrollbar"],
+      [":focus-visible", "pseudo-class::focus-visible"],
+      ["*", "universal:*"],
+      ["select", "element:select"],
+      ['[data-theme="light"]', 'attr:[data-theme="light"]'],
+      ["#root", "id:root"],
+      ["input[type=\"number\"]", 'other:input[type="number"]'],
+    ].every(([sel, want]) => selectorShape(sel) === want);
+    const formOfAligned = [":root", "::-webkit-scrollbar", ":focus-visible", "*", "select"].every(
+      (sel) => (selectorShape(sel) === null) === (formOf(sel).kind === "anchored" && SOLE_CLASS.test(subjectOf(sel)))
+    );
+    t("锚⑨：`selectorShape()` 逐条符合预期，且「是否成站点」与 lib 的 `formOf()` 口径一致（同源）", same && formOfAligned);
   }
 
   let ok = true;
