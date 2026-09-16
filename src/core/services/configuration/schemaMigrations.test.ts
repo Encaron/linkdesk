@@ -49,12 +49,16 @@ const RADIUS_CONFIG: ConfigurationContribution = {
   },
 };
 
+/** E6#111d（1.34）：RADIUS_CONFIG 是**宿主外观键**——注册身份必须是宿主身份之一（保护区），
+ *  生产里这三个键正是 `appearance` 注册的（src/App/config/appearance.ts 外观组），故取 "appearance"。 */
+const HOST_CFG_ID = "appearance";
+
 describe("schemaMigrations — 版本编排（E5.8#85 补课）", () => {
   beforeEach(() => {
     clearConfigurationRegistrations();
     clearConfigurationCache();
     clearConfigMigrations();
-    registerConfiguration("test", RADIUS_CONFIG);
+    registerConfiguration(HOST_CFG_ID, RADIUS_CONFIG);
   });
 
   it("getConfigSchemaVersion——无标志 → SCHEMA_VERSION_INITIAL；写标志 → 读回", async () => {

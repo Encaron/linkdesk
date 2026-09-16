@@ -250,7 +250,22 @@ useEffect(() => {
 
 **Effect after installation:** the Settings Editor's left navigation tree automatically gains a "CAD Viewer" group → the form is rendered automatically on the right — no hand-written settings UI needed.
 
-**Key naming rule:** `<pluginId>.<property>`, e.g. `cad.gridSize`, `terminal.baudRate`
+**Key naming rule:** `<pluginId>.<property>` (**replace the first segment only, leave the stem untouched** — the first segment must be this repo's identity), e.g. `cad.gridSize`, `terminal.baudRate`. The rule is judged at **two levels** — don't conflate them:
+
+| Criterion | Severity | Judged by | What happens |
+|:--|:--:|:--|:--|
+| A key must **not** fall inside the **host's reserved key ledger** | 🔴 **red (rejected)** | the shell runtime `ConfigurationRegistry` + the SDK leg `linkdesk/no-unowned-config-key` | The declaration **does not take effect** (the key is never registered, never shows up in the settings page) and one `console.error` is emitted. Your plugin **still installs** — what's rejected is this one key, not your plugin |
+| A **new** key's first segment must be this repo's `pluginId` | 🟡 yellow (advisory) | the SDK leg (**the runtime does not enforce it**) | The report carries a `suggested` name with only the first segment replaced. 19 legacy keys break this rule (e.g. `files.exclude`); the shell renames and migrates those on its own schedule — **write new keys by the rule** |
+
+The **host reserved key ledger** (`configKeys`) is a **generated** list that ships inside the SDK package ⇒ machine-readable, never guess it:
+
+```
+node_modules/@linkdesk/plugin-sdk/schemas/host-reserved.json   →  "configKeys": [ "app.theme", ... ]
+```
+
+Every `app.*` key belongs to the host (its settings, appearance and update surfaces). The ledger **also contains retired keys** — names the host once used and then deleted (e.g. `app.themeColorMode`) **do not free up**: an old `settings.json` may still hold a value under that name, and the host's upgrade-time migration still reads it ⇒ taking it over means overwriting the host's **historical data**.
+
+> **Why "taking a host key" is red while "missing your prefix" is only yellow**: taking a host key does **real harm** (it overwrites the host's effective value and can poison internal flag keys such as `app.schemaVersion` — with neither side reporting anything, so what the user sees diverges from how the host actually behaves); whereas "missing the prefix" has 19 counter-examples in the existing corpus, and a hard rule would break those plugins on the spot. Different severity = different tolerance, not "the more important rule is written more strictly".
 
 **Reading settings from a plugin (the plugin communication iron rule — only through `window.linkdesk.configuration`):**
 ```typescript
@@ -277,6 +292,12 @@ useEffect(() => {
 ```
 
 The difference from `configuration`: `configuration` defines **your own** settings. `configurationDefaults` suggests values for **someone else's** settings. A value set by the user wins — a weak default only applies when the user has never set that key.
+
+**Key ownership:** weak-default keys go through the **same ledger** (`host-reserved.json`'s `configKeys`) —
+
+- **You may not suggest a value for a host key** (every `app.*` key is one): the key is rejected and one `console.error` is emitted. Same reasoning as above — that is the host's own settings surface, and dictating its default changes host behaviour.
+- Suggesting values for **your own** keys or for **another plugin's** keys is **legitimate** — that is exactly what this mechanism is for (which is also why it does **not** require your prefix: the prefix criterion applies only to the keys in `contributes.configuration`).
+- **Two plugins suggesting the same key** ⇒ **not rejected**: both stay on record, the merge takes the **last writer** in registration order, and one `console.warn` names the earlier plugin. That is the only legitimate "one key, several authors" shape — and a value the user set by hand in the settings page always outranks any weak default.
 
 ### 3.6 `contributes.themes` — themes
 

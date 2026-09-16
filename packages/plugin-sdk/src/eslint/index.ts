@@ -44,3 +44,13 @@ export type {
   CommandIdFace,
   HostReservedNames,
 } from "./checks/command-ownership.js";
+
+/**
+ * 🔴 E6#111d（1.34）：同一纪律再加一个 —— `runConfigOwnershipCheck`（配置键归属判据）。壳仓只读探针
+ *    用它与 `runCommandOwnershipCheck` 拼出「设置面」读数；**同样不是第二条判据路径**
+ *    （`lint.ts` 的第六条腿用的就是它——同一份实现，改一处两边一起变）。
+ *    分级：判据① 占宿主保留键 = 红（进腿报点）；判据② 新键不带本仓前缀 = 黄（`configAdvisories`，只打印）。
+ *    `loadHostReserved` 沿用上面命令腿那一个（**同一个 loader**——⛔ 不许在配置腿上再写一份）。
+ */
+export { runConfigOwnershipCheck, judgeConfigKey, judgeRegisterIdentity, manifestKeyLine } from "./checks/config-ownership.js";
+export type { ConfigOwnershipReport, ConfigKeySite, ConfigKeyCode, ConfigKeyFace } from "./checks/config-ownership.js";

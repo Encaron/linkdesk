@@ -45,10 +45,32 @@ import type { ErrorObject } from "ajv";
 const SCHEMAS_DIR = resolve(dirname(fileURLToPath(import.meta.url)), "../schemas");
 
 /**
- * pluginId 形状约束——复制自壳 src/pluginLoader/manifest.ts:64（独立 npm 包不能 import @src 壳源码；
+ * pluginId 形状约束——复制自壳 src/pluginLoader/discovery/manifest.ts:64（独立 npm 包不能 import @src 壳源码；
  * 加载契约 = 安装目录名 → validateInstallManifest 兜底，E6#7 钉死）。防路径穿越字符直通文件系统。
  */
 export const SAFE_PLUGIN_ID = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
+
+/**
+ * 宿主伪身份（`app` / `appearance` / `update`）——**读账**（包内 `schemas/host-reserved.json` 的
+ * `pseudoPluginIds`），⛔ 不在这里手写一份清单：手写 = 第二真相源（账里加一个伪身份时这份不会跟着变）。
+ * 账读不到 ⇒ 这条判据**退化为不生效**（不是「全部合法」——形状校验 SAFE_PLUGIN_ID 仍在）。
+ *
+ * 🔴 为什么身份禁令不塞进 `SAFE_PLUGIN_ID` 的正则里（E6#111d／1.34 拍板）：那个正则的语义是
+ * **字符集 ＋ 路径安全**（三个调用点共用，`src/core/api/types.ts:138` 的文档也照着它写）。
+ * 把身份规则折进去 ⇒ 失败信息分不清「形状不对」还是「你用了宿主的身份」，且静默改变了这个导出正则
+ * 对其它调用点的含义。两条规则分开写 = 两条独立可测判据（manifest schema 那一层没有代码分支，
+ * 只能在 pattern 里用负向先行断言，故那一层是正则）。
+ */
+const HOST_PSEUDO_PLUGIN_IDS: readonly string[] = (() => {
+  try {
+    const raw = JSON.parse(readFileSync(resolve(SCHEMAS_DIR, "host-reserved.json"), "utf8")) as {
+      pseudoPluginIds?: string[];
+    };
+    return raw.pseudoPluginIds ?? [];
+  } catch {
+    return [];
+  }
+})();
 
 export interface ValidationResult {
   valid: boolean;
@@ -160,6 +182,14 @@ export function derivePluginId(manifest: unknown, sourceDirName: string): string
     throw new Error(
       `pluginId "${pluginId}" 不合法（只允许字母/数字/._-，开头须为字母或数字）` +
         `——plugin.json 未声明 pluginId 时以项目目录名兜底，请改名目录或在 plugin.json 声明 pluginId`,
+    );
+  }
+  // E6#111d（1.34）判据 4：pluginId 不得落在宿主伪身份面（这条与形状判据是**两件事**，故两条分支）
+  if (HOST_PSEUDO_PLUGIN_IDS.includes(pluginId)) {
+    throw new Error(
+      `pluginId "${pluginId}" 是宿主自己的身份："app" / "appearance" / "update" 是宿主自己的身份` +
+        `（宿主用它注册配置/外观/更新），插件用它 ⇒ 冲突检测永不响、注销会摘掉宿主条目。` +
+        `改用别的 id（例如 "${pluginId}-你的插件名"）——目录名兜底这条路径同样受限，故也必须改目录名。`,
     );
   }
   return pluginId;

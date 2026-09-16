@@ -75,11 +75,18 @@ const MOCK_CONFIG: ConfigurationContribution = {
 
 function freshConfig() { return JSON.parse(JSON.stringify(MOCK_CONFIG)); }
 
+/**
+ * E6#111d（1.34）：MOCK_CONFIG 用的是**宿主键**（`app.*`）——注册身份必须是宿主身份之一
+ * （`app`/`appearance`/`update`），否则归属仲裁的**保护区**会拒掉这些键（该判据对所有非宿主身份生效）。
+ * 生产里 `app.theme` 正是 `appearance` 注册的（src/App/config/appearance.ts），故取 "appearance"。
+ */
+const HOST_CFG_ID = "appearance";
+
 describe("ConfigurationService — getConfigurationValue 三层合并", () => {
   beforeEach(() => {
     clearConfigurationRegistrations();
     clearConfigurationCache();
-    registerConfiguration("test", freshConfig());
+    registerConfiguration(HOST_CFG_ID, freshConfig());
   });
 
   it("getConfigurationValue — 返回 schema default（无 user/workspace 设置时）", () => {
@@ -108,20 +115,22 @@ describe("ConfigurationService — configurationDefaults 弱默认值", () => {
   beforeEach(() => {
     clearConfigurationRegistrations();
     clearConfigurationCache();
-    registerConfiguration("test", freshConfig());
+    registerConfiguration(HOST_CFG_ID, freshConfig());
   });
 
   it("getConfigurationValue — configurationDefaults 优先级高于 schema default", () => {
-    registerConfigurationDefaults("other-plugin", { "app.theme": "Light" });
+    // E6#111d：原先这个用例用宿主键 app.theme 演示——1.34 起**非宿主身份对宿主键的弱默认值被保护区拒绝**
+    // （判据见 ConfigurationRegistry 头部），故改用一条普通插件键演示同一条优先级（default false → true）。
+    registerConfigurationDefaults("other-plugin", { "editor.wordWrap": true });
     // configurationDefaults > schema default
-    expect(getConfigurationValue("app.theme")).toBe("Light");
+    expect(getConfigurationValue("editor.wordWrap")).toBe(true);
     rollback("other-plugin");
   });
 
   it("getConfigurationValue — 注销 configurationDefaults 后退回 schema default", () => {
-    registerConfigurationDefaults("other-plugin", { "app.theme": "Light" });
+    registerConfigurationDefaults("other-plugin", { "editor.wordWrap": true });
     rollback("other-plugin");
-    expect(getConfigurationValue("app.theme")).toBe("Dark");
+    expect(getConfigurationValue("editor.wordWrap")).toBe(false);
   });
 });
 
@@ -129,7 +138,7 @@ describe("ConfigurationService — enum 验证", () => {
   beforeEach(() => {
     clearConfigurationRegistrations();
     clearConfigurationCache();
-    registerConfiguration("test", freshConfig());
+    registerConfiguration(HOST_CFG_ID, freshConfig());
   });
 
   it("setConfigurationValue — enum 内的合法值写入成功", async () => {
@@ -150,7 +159,7 @@ describe("ConfigurationService — onDidChangeConfiguration 订阅", () => {
   beforeEach(() => {
     clearConfigurationRegistrations();
     clearConfigurationCache();
-    registerConfiguration("test", freshConfig());
+    registerConfiguration(HOST_CFG_ID, freshConfig());
   });
 
   it("onDidChangeConfiguration — 返回 unsubscribe 函数", () => {
@@ -166,7 +175,7 @@ describe("ConfigurationService — 批量写/复位（E5.8#59 播种广播收敛
   beforeEach(() => {
     clearConfigurationRegistrations();
     clearConfigurationCache();
-    registerConfiguration("test", freshConfig());
+    registerConfiguration(HOST_CFG_ID, freshConfig());
   });
 
   it("setConfigurationValueBatch — 全部 key 写入 + 逐 key 监听器 + 单次 applier（末 key 代表性）", async () => {
@@ -277,7 +286,7 @@ describe("ConfigurationService — 持久化串行队列 + 尾沿去抖（E5.8#6
   beforeEach(() => {
     clearConfigurationRegistrations();
     clearConfigurationCache();
-    registerConfiguration("test", freshConfig());
+    registerConfiguration(HOST_CFG_ID, freshConfig());
     persistProbe.sequence.length = 0;
     persistProbe.failOn = -1;
   });
@@ -310,7 +319,7 @@ describe("ConfigurationService — reload 防陈旧文件回滚（E5.8#61 审计
   beforeEach(() => {
     clearConfigurationRegistrations();
     clearConfigurationCache();
-    registerConfiguration("test", freshConfig());
+    registerConfiguration(HOST_CFG_ID, freshConfig());
     // 文件内容 = 死 id——陈旧文件（启动期清扫前磁盘仍是幽灵值）
     fileProbe.readFile.mockResolvedValue(JSON.stringify({ "app.theme": "ghost-theme-404" }));
     persistProbe.sequence.length = 0;

@@ -30,6 +30,10 @@ import type { ThemeRecipe } from "../../../types/theme";
 describe("ThemeEngine — 混搭合并（E5.8#50.26，10 §1/§3 每域各自取来源）", () => {
   // 虚构 fixture（硬约束 21）：demo-mix 插件 + demo-recipe/demo-radius 两配方（RECIPE/RECIPE_ASSET/GLASS_VARS = testFixtures 共享）
   const PLUGIN = "demo-mix";
+  /** E6#111d（1.34）：本文件三处注册的是**宿主外观键**（app.appearanceMode / app.themeColor——被 syncThemeColorEnum
+   *  按字面量读取）⇒ 注册身份必须是宿主身份之一（归属仲裁的保护区对所有非宿主身份生效）。
+   *  生产里这两个键正是 `appearance` 注册的（src/App/config/appearance.ts），故取 "appearance"。 */
+  const HOST_CFG_ID = "appearance";
   // 另一配方——圆角域来源（只贡献 radius 域；颜色/字体/玻璃域归 demo-recipe）
   const RADIUS_RECIPE: ThemeRecipe = {
     id: "demo-radius",
@@ -42,6 +46,7 @@ describe("ThemeEngine — 混搭合并（E5.8#50.26，10 §1/§3 每域各自取
   beforeEach(() => {
     clearConfigurationCache();
     rollback(PLUGIN);
+    rollback(HOST_CFG_ID); // E6#111d：上一测试按宿主身份注册的 app.* 配置回收（原为 rollback(PLUGIN) 一处收两事）
     cleanupPluginFontFaces(PLUGIN);
     const root = document.documentElement;
     for (const key of [...GLASS_VARS, "bg-window", "accent", "font-ui", "radius-sm", "radius-lg"]) {
@@ -244,7 +249,7 @@ describe("ThemeEngine — 混搭合并（E5.8#50.26，10 §1/§3 每域各自取
   it("E5.8 Phase 11.14 syncThemeColorEnum — custom 模式 = followTheme + 全配方配色（跨主题配色全集——修复「只当前配方可写」不一致）", () => {
     // 最小配置注册——app.appearanceMode + app.themeColor 进 ConfigurationRegistry（updateConfigurationEnum 消费面）；
     // 注册归 demo-mix → beforeEach rollback(PLUGIN) 自动回收（无需手动 clearConfigurationRegistrations）。
-    registerConfiguration(PLUGIN, {
+    registerConfiguration(HOST_CFG_ID, {
       title: "Demo",
       properties: {
         "app.appearanceMode": { type: "string", default: "followTheme", description: "" },
@@ -259,7 +264,7 @@ describe("ThemeEngine — 混搭合并（E5.8#50.26，10 §1/§3 每域各自取
   });
 
   it("E5.8 Phase 11.14 syncThemeColorEnum — followTheme 模式 = 当前活动配方配色（配方内变体）", () => {
-    registerConfiguration(PLUGIN, {
+    registerConfiguration(HOST_CFG_ID, {
       title: "Demo",
       properties: {
         "app.appearanceMode": { type: "string", default: "followTheme", description: "" },
@@ -272,7 +277,7 @@ describe("ThemeEngine — 混搭合并（E5.8#50.26，10 §1/§3 每域各自取
   });
 
   it("E5.8 Phase 11.14 syncThemeColorEnum — 无活动配方 → 保留上次 enum（不置空——避免下拉变输入框，与 syncAppThemeEnum 同哲学）", () => {
-    registerConfiguration(PLUGIN, {
+    registerConfiguration(HOST_CFG_ID, {
       title: "Demo",
       properties: {
         "app.appearanceMode": { type: "string", default: "followTheme", description: "" },

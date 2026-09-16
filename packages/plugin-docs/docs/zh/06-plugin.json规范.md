@@ -223,7 +223,7 @@ my-plugin/
 | 字段 | 类型 | 说明 |
 |---|---|---|
 | `$schema` | `string` | JSON Schema 引用路径 |
-| `pluginId` | `string` | 🔴 **插件身份——发布后永不可变**（对标 VS Code 的 `publisher.name`）。安装目录 `{userData}/plugins/<pluginId>/`、分发件名 `<pluginId>.linkdesk-plugin`、市场目录去重键、卸载墓碑键、更新对账全部以它为准。**强烈建议显式声明**：不声明时退回「项目目录名」兜底，而仓库名与本地目录名是自由的——目录名一改身份就跟着改，且**没有一条会报错**。字符集 `^[A-Za-z0-9][A-Za-z0-9._-]*$`。规则与实测依据见 [16-命名规范](16-命名规范.md) |
+| `pluginId` | `string` | 🔴 **插件身份——发布后永不可变**（对标 VS Code 的 `publisher.name`）。安装目录 `{userData}/plugins/<pluginId>/`、分发件名 `<pluginId>.linkdesk-plugin`、市场目录去重键、卸载墓碑键、更新对账全部以它为准。**强烈建议显式声明**：不声明时退回「项目目录名」兜底，而仓库名与本地目录名是自由的——目录名一改身份就跟着改，且**没有一条会报错**。字符集 `^[A-Za-z0-9][A-Za-z0-9._-]*$`，**外加三个禁用**（见下方「身份的三个禁用」）。规则与实测依据见 [16-命名规范](16-命名规范.md) |
 | `core` | `boolean` | `true` = **UI 防误删旗标**（对齐上文字段表 :44 新版措辞）——详情页卸载按钮不显示/禁用；**无行为特权、非类别**：API/命令层可卸可禁，卸走写 removed 墓碑。默认 `false` |
 | `distribution` | `string` | ⚠️ **遗留字段**（2026-09-05 塌平单根后不再对应任何目录，安装侧恒归一化为 `user`；schema 已标废弃）。**第三方请勿填写** |
 | `factoryRole` | `string` | 系统插槽角色：`"settings"` \| `"marketplace"`。**填 = 形态二（替换/进槽位切换）；不填 = 形态一（普通视图插件并存）**——详见下方「`factoryRole` 字段详解」 |
@@ -642,6 +642,24 @@ plugins/<pluginId>/            ← repo 源码树（塌平单根；目录名 = �
 `<pluginId>` = 文件夹名 = 插件唯一标识（身份唯一来源——loader 以目录名定 pluginId，schema 无顶层 pluginId 字段）。命名规则：
 - 小写英文 + 连字符：`gps-map`、`protocol-sbq`、`theme-dracula`
 - 不带软件名、不带版本号：`terminal` 不是 `v3-terminal`
+- **不许占下面三个禁用名**
+
+#### 身份的三个禁用
+
+| 禁用 | 为什么 |
+|:--|:--|
+| `app` · `appearance` · `update` | **这三个是宿主自己的身份**：壳用 `app` 注册通用设置、用 `appearance` 注册外观设置、用 `update` 注册更新设置。插件拿它当 pluginId ⇒ **冲突检测永不响**（宿主自己就是这个身份，先注册的永远是它），而且**卸载会摘掉宿主自己的条目**（注销按身份摘）——你的插件一卸，宿主的设置组跟着消失 |
+| `ldk-` 前缀 | 壳 / SDK 的**内部保留前缀**（`ldk-` 开头的名字留给产品线自己用）。第三方占用它 ⇒ 日后壳发一个同名插件必然相撞，而相撞的代价落在用户身上（装不上 / 更新对账错乱） |
+
+**拦在哪（三处，都拦）：** ① `plugin.schema.json` 的 `pluginId` pattern 负向断言（编辑器和 IDE 当场标红）——schema 就在你的工程里：`node_modules/@linkdesk/plugin-sdk/schemas/plugin.schema.json`；② SDK `validate` / `lint`（作者仓自检报点）；③ 壳的安装校验 `validateInstallManifest`（装不上，给的是同一条理由）。
+
+**报错形态**（三处文案同源，都点名 + 给理由，不是一句"不合法"）：
+
+```
+pluginId "app" 是宿主自己的身份（宿主用它注册配置/外观/更新），插件用它 ⇒ 冲突检测永不响、注销会摘掉宿主条目。
+```
+
+> ⚠️ **身份与键名是两件事**：`pluginId` 决定"你是谁"，`contributes.configuration` 的**键名**决定"这个键归谁"（那份规矩见 [03-插件contributes规范 §3.4](03-插件contributes规范.md)）。两者都不许碰宿主的保留面，但判据与报点各自独立。
 
 > 完整目录结构（`resources/` / `src/utils/` / `__tests__/` 放什么、命名约定）见 `09-插件目录规范.md`。
 

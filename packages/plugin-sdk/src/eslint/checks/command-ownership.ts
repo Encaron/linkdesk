@@ -47,23 +47,36 @@ import { buildDisableIndex, isDisabled, CHECK_IDS } from "./disable.js";
  * 🔴 写法必须是「路径式」（resolve + fileURLToPath）——`new URL(<字面量>, import.meta.url)` 是
  * Vite 的资产 URL 惯用式，本模块一旦被 Vite 处理会被改写成构建期资产引用（validate.ts 同款坑，E6#91e）。
  */
-const HOST_RESERVED_FILE = resolve(dirname(fileURLToPath(import.meta.url)), "../../../schemas/host-reserved.json");
+export const HOST_RESERVED_FILE = resolve(dirname(fileURLToPath(import.meta.url)), "../../../schemas/host-reserved.json");
 
-/** 本腿要读的两个家族（其余三个家族 —— configKeys / pseudoPluginIds / contextKeys / appearanceIds
- *  由设置键、上下文旗子等后续轮次消费；本腿只取与命令/协议 id 有关的两栏） */
+/** 本腿要读的两栏 ＋ **E6#111d（1.34）起原地补齐另两栏**——`configKeys`（配置键归属腿：判「不得占用宿主
+ *  设置面」）与 `pseudoPluginIds`（宿主伪身份：判「不得冒充宿主身份注册」）。**同一个 loader、同一份账**——
+ *  ⛔ 不许在各腿里各写一份 loader（两份 = 迟早漂，而这两条判据的输入必须是同一本账）。
+ *  剩下两栏（contextKeys / appearanceIds）由上下文旗子、外观 id 的后续轮次消费，此处不读也不删。 */
 export interface HostReservedNames {
   commandPrefixes: string[];
   protocolIds: string[];
+  /** E6#111d：宿主 app.* 配置键（保护区输入；含退役键） */
+  configKeys: string[];
+  /** E6#111d：宿主伪身份（app / appearance / update）——插件用它注册 = 冒充宿主 */
+  pseudoPluginIds: string[];
 }
 
 /** 读宿主保留面账；文件缺失 ⇒ 空表 ＋ 报告里打一条 note（静默空表 = 判据②变瞎子，不许不吭声） */
 export function loadHostReserved(file: string = HOST_RESERVED_FILE): HostReservedNames {
-  if (!existsSync(file)) return { commandPrefixes: [], protocolIds: [] };
+  if (!existsSync(file)) return { commandPrefixes: [], protocolIds: [], configKeys: [], pseudoPluginIds: [] };
   const raw = JSON.parse(readFileSync(file, "utf8")) as {
     commandPrefixes?: string[];
     protocolIds?: string[];
+    configKeys?: string[];
+    pseudoPluginIds?: string[];
   };
-  return { commandPrefixes: raw.commandPrefixes ?? [], protocolIds: raw.protocolIds ?? [] };
+  return {
+    commandPrefixes: raw.commandPrefixes ?? [],
+    protocolIds: raw.protocolIds ?? [],
+    configKeys: raw.configKeys ?? [],
+    pseudoPluginIds: raw.pseudoPluginIds ?? [],
+  };
 }
 
 /** 判据命中的两种形态 */

@@ -223,7 +223,7 @@ Multi-theme package:
 | Field | Type | Description |
 |---|---|---|
 | `$schema` | `string` | JSON Schema reference path |
-| `pluginId` | `string` | 🔴 **The plugin's identity — forever immutable after publication** (VS Code's `publisher.name` is the counterpart). The install directory `{userData}/plugins/<pluginId>/`, the distribution file name `<pluginId>.linkdesk-plugin`, the marketplace catalog dedupe key, the uninstall tombstone key and update reconciliation all key off it. **Declaring it explicitly is strongly recommended**: without a declaration it falls back to the "project directory name", and repo names and local directory names are free-form — rename the directory and the identity changes with it, with **nothing ever reporting an error**. Charset `^[A-Za-z0-9][A-Za-z0-9._-]*$`. Rules and the empirical evidence behind them are in [16-naming-conventions](16-naming-conventions.md) |
+| `pluginId` | `string` | 🔴 **The plugin's identity — forever immutable after publication** (VS Code's `publisher.name` is the counterpart). The install directory `{userData}/plugins/<pluginId>/`, the distribution file name `<pluginId>.linkdesk-plugin`, the marketplace catalog dedupe key, the uninstall tombstone key and update reconciliation all key off it. **Declaring it explicitly is strongly recommended**: without a declaration it falls back to the "project directory name", and repo names and local directory names are free-form — rename the directory and the identity changes with it, with **nothing ever reporting an error**. Charset `^[A-Za-z0-9][A-Za-z0-9._-]*$`, **plus three banned names** (see "The three identity bans" below). Rules and the empirical evidence behind them are in [16-naming-conventions](16-naming-conventions.md) |
 | `core` | `boolean` | `true` = **UI accidental-uninstall guard flag** (matching the newer wording in the field table above) — the uninstall button on the detail page is hidden/disabled; **no behavioral privileges and not a category**: the API/command layers can still uninstall and disable it, and uninstalling writes a `removed` tombstone. Defaults to `false` |
 | `distribution` | `string` | ⚠️ **Legacy field** (since the single-root flattening on 2026-09-05 it no longer maps to any directory; the install side always normalizes it to `user`; already marked deprecated in the schema). **Third parties must not fill this in** |
 | `factoryRole` | `string` | System slot role: `"settings"` \| `"marketplace"`. **Filling it in = form 2 (replace / switch into the slot); omitting it = form 1 (coexist as an ordinary view plugin)** — see "The `factoryRole` field in depth" below |
@@ -645,6 +645,25 @@ plugins/<pluginId>/            ← repo source tree (flat single root; directory
 `<pluginId>` = folder name = the plugin's unique identifier (the only source of identity — the loader derives pluginId from the directory name; the schema has no top-level pluginId field). Naming rules:
 - lowercase English + hyphens: `gps-map`, `protocol-sbq`, `theme-dracula`
 - no app name, no version number: `terminal`, not `v3-terminal`
+- **never one of the three banned names below**
+
+#### The three identity bans
+
+| Banned | Why |
+|:--|:--|
+| `app` · `appearance` · `update` | **These three are the host's own identities**: the shell registers its general settings under `app`, its appearance settings under `appearance`, and its update settings under `update`. A plugin using one of them ⇒ **collision detection can never fire** (the host itself holds that identity, so it is always the first registrant), and **uninstalling removes the host's own entry** (unregistration keys off identity) — uninstall your plugin and the host's settings group disappears with it |
+| the `ldk-` prefix | Reserved for the shell / SDK's **internal names** (everything starting with `ldk-` is kept for the product line itself). A third party taking it ⇒ a future shell plugin of the same name is guaranteed to collide, and the user pays for the collision (install fails / update reconciliation goes wrong) |
+
+**Where it is blocked (all three sites):** ① the negative assertion in `plugin.schema.json`'s `pluginId` pattern (your editor and IDE flag it on the spot) — the schema ships in your project at `node_modules/@linkdesk/plugin-sdk/schemas/plugin.schema.json`; ② the SDK's `validate` / `lint` (reported from your own repo); ③ the shell's install-time `validateInstallManifest` (the install fails, with the same reasoning).
+
+**What the error looks like** (all three sites share one wording: it names the offender and gives the reason, never a bare "invalid"):
+
+```
+pluginId "app" is the host's own identity (the host uses it to register configuration/appearance/update):
+a plugin using it ⇒ collision detection never fires, and unregistration removes the host's entry.
+```
+
+> ⚠️ **Identity and key names are two different things**: `pluginId` decides *who you are*, while the **key names** in `contributes.configuration` decide *who a key belongs to* (that rule is in [03-contributes-spec §3.4](03-contributes-spec.md)). Neither may touch the host's reserved surface, but the criteria and the reports are separate.
 
 > The complete directory structure (what goes in `resources/` / `src/utils/` / `__tests__/`, naming conventions) is in `09-plugin-directory-layout.md`.
 

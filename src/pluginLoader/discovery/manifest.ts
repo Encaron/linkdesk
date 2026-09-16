@@ -10,6 +10,8 @@
 import i18n from "../../i18n";
 import type { PluginManifest } from "../../core/api/types";
 import { compareVersions } from "../../core/utils/plugin/semverUtils";
+// E6#111d（1.34）：宿主伪身份清单——**读生成式运行时副本**（不是手写一份清单：手写 = 第二真相源）
+import { HOST_PSEUDO_PLUGIN_IDS } from "../../core/registry/host-reserved.generated";
 
 /* ── E5#12：旧格式归一化——纯函数，不 mutate 只读 glob manifest ── */
 
@@ -93,6 +95,14 @@ export function validateInstallManifest(manifest: unknown, sourceDirName: string
     throw new Error(
       `pluginId "${pluginId}" 不合法（只允许字母/数字/._-，开头须为字母或数字）` +
       `——manifest 未声明 pluginId 时以源目录名兜底，请改名目录或在 plugin.json 声明 pluginId`,
+    );
+  }
+  // E6#111d（1.34）判据 4：pluginId 不得落在宿主伪身份面（形状判据管不了它——"app" 是个完全合法的形状）
+  if (HOST_PSEUDO_PLUGIN_IDS.includes(pluginId)) {
+    throw new Error(
+      `pluginId "${pluginId}" 是宿主自己的身份："app" / "appearance" / "update" 是宿主自己的身份` +
+      `（宿主用它注册配置/外观/更新），插件用它 ⇒ 冲突检测永不响、注销会摘掉宿主条目。` +
+      `改用别的 id（例如 "${pluginId}-你的插件名"）——源目录名兜底这条路径同样受限，故也必须改目录名。`,
     );
   }
   const version = m.version;

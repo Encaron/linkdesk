@@ -1,5 +1,5 @@
 /**
- * `runPluginLint()`——`npm run lint` 门禁编排（E6#54d）：eslint 规则腿 + 五条 check 扫描腿双轨。
+ * `runPluginLint()`——`npm run lint` 门禁编排（E6#54d）：eslint 规则腿 + 六条 check 扫描腿双轨。
  *
  * E6#109h-b①：`check-css-namespace` 腿升级为**双判据**——「裸定义类名/关键帧必须以本仓 `<pluginId>-`
  * 开头」（`checks/plugin-prefix.ts`，拍板 Q1=(A)，**不需要任何清单**）⊕「不得裸定义宿主保留名」
@@ -35,6 +35,7 @@ import { runPluginPrefixCheck } from "./checks/plugin-prefix.js";
 import { runTokenScopeCheck } from "./checks/token-scope.js";
 import { runSelectorFormCheck } from "./checks/selector-form.js";
 import { runCommandOwnershipCheck } from "./checks/command-ownership.js";
+import { runConfigOwnershipCheck } from "./checks/config-ownership.js";
 import { type CheckViolation } from "./checks/scan.js";
 
 /** 示例用的门禁 id（打印知情绕行格式）；伪 id 与 check 脚本 CHECK_IDS 同源 */
@@ -73,6 +74,12 @@ export interface PluginLintReport {
   selectorFormCounts: { anchorless: number; crossParty: number };
   /** 🟡 E6#111b（1.32）命令/协议 id 归属判据的计数：三面的站点数 ＋ 不合规站点数（**全黄**，1.49 才收紧） */
   commandOwnershipCounts: { declared: number; runtime: number; protocol: number; bad: number };
+  /** 🟡 E6#111d（1.34）配置键归属判据的**黄灯建议**（判据②：新键不带本仓前缀）——**只打印、不拦** */
+  configAdvisories: CheckViolation[];
+  /** 配置键归属判据的计数（`runtime` = 源码里注册调用的身份名数；`bad` = 红站点数；`advisory` = 黄建议数） */
+  configOwnershipCounts: { declared: number; defaults: number; runtime: number; bad: number; advisory: number };
+  /** 宿主保留键账的加载实况（configKeys / pseudoPluginIds 两栏——账没读到 ⇒ 判据① 空转，必须能看出来） */
+  hostConfigLedger: { file: string; found: boolean; configKeys: number; pseudoPluginIds: number } | null;
   /** 宿主保留面账的加载实况（账没读到 ⇒ 判据②空转——报告里必须能看出来，不许静默） */
   hostReservedLedger: { file: string; found: boolean; commandPrefixes: number; protocolIds: number } | null;
 }
@@ -162,6 +169,16 @@ export async function runPluginLint(root: string, options: PluginLintOptions = {
    *      前缀腿在 `plugin.json:1` 上会各报一次——**那是两件不同的事**（一个说身份读不到，一个说前缀拿不到）。
    */
   const commandOwnership = runCommandOwnershipCheck(absRoot);
+  /**
+   * 🔴 E6#111d（1.34）：第六条 check 腿 —— **配置键归属**（`checks/config-ownership.ts`）。
+   *   三面：声明面（`contributes.configuration.properties` 的键）／弱默认值面（`contributes.configurationDefaults`
+   *   的键）／运行时面（源码里 `registerConfiguration*` 第一个实参 = 身份字面量）。
+   *   🔴 **分级与前一条腿不同**：判据①（占用宿主保留键）＝**红**，进腿报点；判据②（新键不带本仓前缀）＝**黄**，
+   *      进 `configAdvisories` 只打印不拦。理由：① 是真害（顶替宿主设置面、用户数据被串），
+   *      ② 是存量欠账（官方 18 仓 19 个键，运行时都不拦——见 1.34 任务书 §五）。
+   *   ⚠️ 与另几条腿**刻意不合并**（同命令腿的理由）：本腿的红站点将来要独立收紧/独立统计。
+   */
+  const configOwnership = runConfigOwnershipCheck(absRoot);
   const prefixKeys = new Set(prefix.violations.map((v) => `${v.file}:${v.line}`));
   const tokenKeys = new Set(tokenScope.violations.map((v) => `${v.file}:${v.line}`));
   const formKeys = new Set(selectorForm.violations.map((v) => `${v.file}:${v.line}`));
@@ -187,9 +204,14 @@ export async function runPluginLint(root: string, options: PluginLintOptions = {
       label: "check-command-ownership",
       violations: commandOwnership.violations,
     },
+    {
+      id: "linkdesk/no-unowned-config-key（配置键不得占用宿主保留键；新键应带本仓 <pluginId>. 前缀）",
+      label: "check-config-ownership",
+      violations: configOwnership.violations,
+    },
   ];
   const totalCheckViolations =
-    css.length + font.length + spacing.length + namespace.length + commandOwnership.violations.length;
+    css.length + font.length + spacing.length + namespace.length + commandOwnership.violations.length + configOwnership.violations.length;
 
   return {
     files: results.length,
@@ -209,6 +231,15 @@ export async function runPluginLint(root: string, options: PluginLintOptions = {
       bad: commandOwnership.sites.length,
     },
     hostReservedLedger: commandOwnership.hostLedger,
+    configAdvisories: configOwnership.advisories,
+    configOwnershipCounts: {
+      declared: configOwnership.declaredKeys.length,
+      defaults: configOwnership.defaultsKeys.length,
+      runtime: configOwnership.runtimeIdentities.length,
+      bad: configOwnership.red.length,
+      advisory: configOwnership.yellow.length,
+    },
+    hostConfigLedger: configOwnership.hostLedger,
   };
 }
 
@@ -275,6 +306,32 @@ export function renderPluginLintReport(report: PluginLintReport): string {
     lines.push(
       `    ⚠ 宿主保留面账没读到（${report.hostReservedLedger.file}）——判据②（不得占用宿主保留面）本轮**空转**。` +
         `SDK 安装不完整？重装 @linkdesk/plugin-sdk 后再跑。`,
+    );
+  }
+
+  // 🟡 E6#111d（1.34）配置键归属：黄灯建议（判据②）＋ 三面读数
+  if (report.configAdvisories.length > 0) {
+    lines.push(
+      `
+🟡 check-config-ownership（配置键归属 · 新键不带本仓前缀）：${report.configAdvisories.length} 处**建议**（不拦 build）——` +
+        `键是用户数据面，同名键被两个插件声明时只有一个能生效；改成"<你的 pluginId>.<名字>"归属才唯一。`,
+    );
+    for (const v of report.configAdvisories) lines.push(`    ${v.file}:${v.line}  ${v.message}`);
+  }
+  const cfg = report.configOwnershipCounts;
+  lines.push(
+    `
+🔴 check-config-ownership（配置键归属）：` +
+      `声明面 ${cfg.declared} 键 ／ 弱默认值面 ${cfg.defaults} 键 ／ 运行时面 ${cfg.runtime} 身份——` +
+      (cfg.bad === 0
+        ? `无占用宿主保留键的站点。`
+        : `${cfg.bad} 处占用**宿主保留键**（宿主的 app.* 设置面，运行时会直接拒绝注册）。`) +
+      (cfg.advisory > 0 ? `另有 ${cfg.advisory} 处前缀建议（见上）。` : ``),
+  );
+  if (report.hostConfigLedger) {
+    lines.push(
+      `    账 configKeys ${report.hostConfigLedger.configKeys} 个 ／ 伪身份 ${report.hostConfigLedger.pseudoPluginIds} 个` +
+        (report.hostConfigLedger.found ? `（${report.hostConfigLedger.file}）` : `　⚠ 账没读到——判据① 本轮**空转**`),
     );
   }
 

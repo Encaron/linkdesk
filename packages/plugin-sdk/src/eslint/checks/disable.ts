@@ -20,6 +20,8 @@ export const CHECK_IDS = {
   cssNamespace: "linkdesk/no-reserved-class-name",
   /** E6#111b（1.32）：命令 id / 协议 id 必须带本仓 `<pluginId>.` 前缀，且不得占用宿主保留面 */
   commandOwnership: "linkdesk/no-unowned-command-id",
+  /** E6#111d（1.34）：配置键必须带本仓 `<pluginId>.` 前缀（🟡 黄），且不得占用宿主保留键（🔴 红） */
+  configOwnership: "linkdesk/no-unowned-config-key",
 } as const;
 
 interface RawComment {

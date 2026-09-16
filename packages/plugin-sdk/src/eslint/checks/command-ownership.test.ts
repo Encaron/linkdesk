@@ -20,7 +20,12 @@ import { join } from "node:path";
 import { judgeCommandId, runCommandOwnershipCheck, manifestIdLine, type HostReservedNames } from "./command-ownership.js";
 
 /** 宿主保留面夹具（不依赖真账内容——真账会被后续轮次加家族；这里只钉判据的形状） */
-const RESERVED: HostReservedNames = { commandPrefixes: ["workbench.", "view."], protocolIds: ["bracket"] };
+const RESERVED: HostReservedNames = {
+  commandPrefixes: ["workbench.", "view."],
+  protocolIds: ["bracket"],
+  configKeys: [],
+  pseudoPluginIds: [],
+};
 
 /** 造一个临时插件工程（manifest 写成 JSONC——作者面允许注释，读 manifest 的代码必须容忍） */
 function withPlugin(
@@ -217,7 +222,11 @@ describe("fail-closed / 豁免 / 账的加载实况", () => {
     withPlugin(
       { files: { "src/a.ts": 'registerCommand("workbench.x", () => 0);\n' } },
       (root) => {
-        const r = runCommandOwnershipCheck(root, { commandPrefixes: [], protocolIds: [] }, NO_LEDGER);
+        const r = runCommandOwnershipCheck(
+          root,
+          { commandPrefixes: [], protocolIds: [], configKeys: [], pseudoPluginIds: [] },
+          NO_LEDGER,
+        );
         expect(r.hostLedger.found).toBe(false);
         // 账空 ⇒ 判据② 无输入；`workbench.x` 仍因**不带本仓前缀**被 ① 报出来
         expect(r.sites[0].code).toBe("no-plugin-prefix");

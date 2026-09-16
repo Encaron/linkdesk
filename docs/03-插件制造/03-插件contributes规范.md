@@ -250,7 +250,22 @@ useEffect(() => {
 
 **安装后效果：** Settings Editor 左侧导航树自动出现 "CAD 查看器" 分组 → 右侧自动渲染表单——不需要手写设置界面。
 
-**Key 命名规则：** `<pluginId>.<property>`，如 `cad.gridSize`、`terminal.baudRate`
+**Key 命名规则：** `<pluginId>.<property>`（**只换第一段、词干零变化**——第一段必须是本仓身份），如 `cad.gridSize`、`terminal.baudRate`。这条规则有**两级判定**，别混着记：
+
+| 判据 | 分级 | 谁判 | 会发生什么 |
+|:--|:--:|:--|:--|
+| 键**不得**落在**宿主保留键账**内 | 🔴 **红（拒登）** | 壳运行时 `ConfigurationRegistry` ＋ SDK 腿 `linkdesk/no-unowned-config-key` | 声明**不生效**（该键不注册、不进设置页），并给一条 `console.error`。插件**照常装上**——拒的是这一个键，不是你的插件 |
+| **新**键第一段必须是本仓 `pluginId` | 🟡 黄（建议） | SDK 腿（**运行时不管**） | 报点带 `suggested` = 只换第一段的新名。存量里有 19 个历史键不合此规（如 `files.exclude`），它们的改名与迁移由壳侧统一执行——**新键请照规矩写** |
+
+**宿主保留键账**（`configKeys`）是**生成式**清单，随 SDK 包下发 ⇒ 机器可读、别靠猜：
+
+```
+node_modules/@linkdesk/plugin-sdk/schemas/host-reserved.json   →  "configKeys": [ "app.theme", ... ]
+```
+
+`app.*` 全部都是宿主的（宿主的设置面、外观面、更新面）。**里面还含"退役键"**——宿主用过又删掉的名字（如 `app.themeColorMode`）**不腾位**：老 `settings.json` 里可能还留着值，宿主升级时的迁移代码仍会读它 ⇒ 占它 = 顶掉的是宿主的**历史数据**。
+
+> **为什么"占宿主键"是红、"没带自己前缀"只是黄**：占宿主键有**真害**（顶替宿主的生效值、污染内部标志键如 `app.schemaVersion`——两侧都不报错，用户看到的值和宿主实际行为不一致）；而"没带前缀"在存量里有 19 个反例，一刀切会把既有插件当场弄坏。分级不同 = 容忍度不同，不是"更重要的规矩写法更严"。
 
 **插件读设置（插件通信铁律——只走 `window.linkdesk.configuration`）：**
 ```typescript
@@ -277,6 +292,12 @@ useEffect(() => {
 ```
 
 和 `configuration` 的区别：`configuration` 定义了**自己的**设置项。`configurationDefaults` 给**别人的**设置项提供建议值。用户手动设置优先——弱默认只在用户从未设置过该 key 时生效。
+
+**Key 归属：** 弱默认值的键走**同一本账**（`host-reserved.json` 的 `configKeys`）——
+
+- **宿主的键不许建议**（`app.*` 一律在内）：该键被拒登 ＋ 一条 `console.error`。理由同上：那是宿主自己的设置面，替它定默认值 = 改宿主行为。
+- 给**自己**的键、给**别的插件**的键建议都**合法**——这正是本机制的设计用途（所以它**不要求**键带本仓前缀，前缀判据只对 `contributes.configuration` 的键判）。
+- **两个插件建议同一个键** ⇒ **不拒**：两边都在册，合并时按注册顺序**后写者胜出**，同时给一条 `console.warn` 点名先到者。这是唯一的"同键多人"合法形态——用户在设置页手动设过的值永远优先于任何弱默认值。
 
 ### 3.6 `contributes.themes`——主题
 
