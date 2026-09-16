@@ -200,3 +200,54 @@ const THEME_VALUE_MIGRATIONS: Record<string, string> = {
   Light: "light",
 };
 export { THEME_VALUE_MIGRATIONS };
+
+/* ── E6#111f／1.36：外观族 id 归属改名表（**两张**，🔴 不许合并） ──
+ *
+ * 出处 = [1.35 §十三] 的 25 条改名映射（9 配方 id ＋ 16 配色 id），规则 = `pluginId + "." + 旧名`，词干一字不动。
+ * 读时归一实现在 migration.ts（`normalizeRecipeId` / `normalizeColorwayId`）——**表是纯数据，函数带探针**。
+ *
+ * 🔴 **为什么必须两张表**：`mint-soda` **同时**是配方 id 和配色 id（`app.themeColor` 本来就双语义，E5.8#82）
+ *   ⇒ 一张表表达不了「同一个键在两个空间各映到自己的新名」；一旦将来两者不同（第三方插件更甚）就**静默映射错**。
+ *   `normalizeRecipeId("mint-soda")` 与 `normalizeColorwayId("mint-soda")` 今天**恰好同值**——⛔ 不许拿这个巧合
+ *   论证「一张表就够」（负控 3 就是钉它的）。
+ *
+ * 🔴 **宿主保底 id 不许进表**（进去 = 断掉「保底 → 官方实现」接替链）：配方栏 `dark`/`light`、
+ *   配色栏 `dark-fallback`/`light`、图标主题 `default`、哨兵 `followTheme` 全部不出现。
+ *   ⚠️ 别把这条读成「`dark` 不许进表」——**配色** `dark` 是 `theme-defaults` 自己的配色变体（不是宿主兜底
+ *   配色，兜底那份叫 `dark-fallback`）⇒ 它**在**配色表里是**对的**（13.2 第 2 行）；判据按空间算，
+ *   见 migration.test.ts 负控 1 的断言形状（按空间取交集，不是拍平比）。
+ */
+
+/** 配方 id 归属改名（9 条）——`app.theme` / `app.mixFont` / `app.mixBackground` 走这张 */
+export const RECIPE_ID_MIGRATIONS: Record<string, string> = {
+  "aurora-glass": "theme-aurora-glass.aurora-glass",
+  "mint-soda": "theme-mint-soda.mint-soda",
+  "panorama": "theme-panorama.panorama",
+  "pill-bubble": "theme-pill.pill-bubble",
+  "songti-print": "theme-songti.songti-print",
+  "terminal-monofont": "theme-terminal.terminal-monofont",
+  "twilight-forest": "theme-twilight-forest.twilight-forest",
+  "paper-zones": "theme-zones.paper-zones",
+  "image-zones": "theme-zones.image-zones",
+};
+
+/** 配色变体 id 归属改名（16 条）——`app.themeColor`（配色语义那一半）走这张。
+ *  🔴 与上表**键可重名、值空间不同**（`mint-soda`）：两张表 ＋ 两个函数是唯一能表达空间的形状。 */
+export const COLORWAY_ID_MIGRATIONS: Record<string, string> = {
+  "aurora": "theme-aurora-glass.aurora",
+  "dark": "theme-defaults.dark",
+  "mint-soda": "theme-mint-soda.mint-soda",
+  "mint-dew": "theme-mint-soda.mint-dew",
+  "sea-salt-mint": "theme-mint-soda.sea-salt-mint",
+  "lime-mint": "theme-mint-soda.lime-mint",
+  "moonlight": "theme-panorama.moonlight",
+  "bubble": "theme-pill.bubble",
+  "paper": "theme-songti.paper",
+  "phosphor": "theme-terminal.phosphor",
+  "sunset": "theme-twilight-forest.sunset",
+  "teal": "theme-twilight-forest.teal",
+  "twilight-purple": "theme-twilight-forest.twilight-purple",
+  "verdant": "theme-twilight-forest.verdant",
+  "image": "theme-zones.image",
+  "kraft": "theme-zones.kraft",
+};

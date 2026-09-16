@@ -34,8 +34,12 @@ export {
   isAssetFontPath, fontFormatOf, ensureFontFace, resolveRecipeFonts, cleanupPluginFontFaces, ensurePluginFontFacesCleanup,
 } from "./ThemeEngine/fonts";
 
+// E6#111f／1.36：+ 归属改名两张表（normalizeRecipeId/normalizeColorwayId）＋ app.themeColor 双语义串联
+//   （normalizeThemeColorValue）＋ 解析器装配槽（setAppearanceIdResolvers，App 层 appearanceApplier 调）。
+//   ⚠️ normalizeThemeValue 签名不变（内部串联）⇒ 既有 15 处调用点零改动。
 export {
-  normalizeThemeValue, deriveRadiusAbsoluteMigration, deriveGlassOpacityAbsoluteMigration, resolveMergedAppearanceMode,
+  normalizeThemeValue, normalizeThemeColorValue, normalizeRecipeId, normalizeColorwayId, setAppearanceIdResolvers,
+  deriveRadiusAbsoluteMigration, deriveGlassOpacityAbsoluteMigration, resolveMergedAppearanceMode,
 } from "./ThemeEngine/migration";
 
 export { getActiveRecipe, getCurrentTheme, getAppliedAccent } from "./ThemeEngine/state";

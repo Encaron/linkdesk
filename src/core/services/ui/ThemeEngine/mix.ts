@@ -9,6 +9,8 @@ import { ThemeRegistry } from "../../../registry/appearance/ThemeRegistry";
 import { getConfigurationValue, setConfigurationValue } from "../../configuration/ConfigurationService";
 import { updateConfigurationEnum } from "../../../registry/ConfigurationRegistry";
 import { MIX_DOMAIN_KEYS, MIX_FOLLOW_THEME, GLASS_TOKEN_KEYS, MIX_DOMAIN_ORDER } from "./constants";
+// E6#111f／1.36：域来源 id 的读时归一（本模块是 app.themeColor/app.mixFont/app.mixBackground 的唯一读入口）
+import { normalizeRecipeId, normalizeThemeColorValue } from "./migration";
 import { surfaceVariables, backgroundVariables, applyOverrides, flattenRadiusTokens } from "./tokens";
 import { recipeDomains } from "./recipe";
 import { getActiveRecipe } from "./state";
@@ -18,11 +20,19 @@ import { getActiveRecipe } from "./state";
  *  缺省域 = 基础配方回退（resolveDomainSource）。 */
 export type MixProfile = Partial<Record<ThemeDomain, string>>;
 
-/** 读当前混搭来源配置 → 档案（mixMode=mix 时引擎消费；缺省 = 全跟随主题） */
+/** 读当前混搭来源配置 → 档案（mixMode=mix 时引擎消费；缺省 = 全跟随主题）
+ *  E6#111f／1.36：域来源值是**外观 id**（colors = 配色 id／配方 id 双语义；font/background = 配方 id）
+ *   —— 这三条键（app.themeColor / app.mixFont / app.mixBackground）**原本没有任何读时归一**，
+ *   本函数是它们唯一的读入口（constants.ts 的 MIX_DOMAIN_KEYS 持的是**键名**不是 id 值，无需挂归一）。
+ *   哨兵 `followTheme` 两张表都不在 ⇒ 原样放行（负控 2：哨兵不是 id）。 */
 export function getMixProfile(): MixProfile {
   const profile = {} as MixProfile;
   for (const [domain, key] of Object.entries(MIX_DOMAIN_KEYS)) {
-    profile[domain as ThemeDomain] = String(getConfigurationValue<string>(key) ?? MIX_FOLLOW_THEME);
+    const raw = String(getConfigurationValue<string>(key) ?? MIX_FOLLOW_THEME);
+    const normalized = domain === "colors"
+      ? normalizeThemeColorValue(raw) // 双语义：先配色表、再配方表（[1.35 §14.3] 应用规则 2）
+      : normalizeRecipeId(raw);
+    profile[domain as ThemeDomain] = normalized ?? raw;
   }
   return profile;
 }
@@ -209,6 +219,8 @@ export function syncThemeColorConfig(recipe: ThemeRecipe): boolean {
   if (getConfigurationValue<string>("app.appearanceMode") === "custom") return false;
   const effective = getActiveRecipe()?.colorwayId ?? recipe.colorways[0]?.id ?? "";
   if (!effective) return false;
+  // E6#111f／1.36：**刻意**拿「盘上原值」跟「生效值」比——生效值已经过读时归一，两者不等即回写归属名
+  //   （旧值自愈成新名）。⛔ 别把左边也归一：那样相等的旧值会被判「已一致」而永不回写，盘面停在旧名。
   if (getConfigurationValue<string>("app.themeColor") === effective) return false;
   void setConfigurationValue("app.themeColor", effective, "user").catch(() => {});
   return true;

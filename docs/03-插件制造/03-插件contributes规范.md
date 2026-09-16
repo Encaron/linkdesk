@@ -322,6 +322,29 @@ useEffect(() => {
 
 > **🔥 配方 JSON 契约（已随 plugin-sdk 收编）**：`path` 指向的配方文件按 `theme.schema.json` 校验——repo 内 = `public/schemas/theme.schema.json`（`npm run check` 链 `check-theme-schema.mjs`，格式错当场红灯 exit 1 不静默）；npm 作者 = 随 `@linkdesk/plugin-sdk` 分发的 `schemas/theme.schema.json` + SDK `validateThemeJson`（同一 schema 文件，规则永不漂移）。运行时 `parseThemeRecipe` toast 是第二道防线。主题文件建议首行 `"$schema"` 引 schema 拿编辑器 IntelliSense（npm 路径见 [11-主题制作](11-主题制作.md) §②）。
 
+**id 命名规则：** 目标形态 = `<pluginId>.<名字>`（**只换第一段、词干零变化**），如 `theme-pill.pill-bubble`。**一条规则管三个 id**——`themes[].id`（配方）、`path` 指向的配方 JSON 里的顶层 `id`（配方），以及 `colorways[].id`（配色变体）。分级与设置键同形，别混着记：
+
+| 判据 | 分级 | 谁判 | 会发生什么 |
+|:--|:--:|:--|:--|
+| id **不得**落在**宿主兜底 id 账**的**本空间**那一栏 | 🔴 **红（拒注册）** | 壳运行时 `ThemeRegistry` ＋ SDK 腿 `linkdesk/appearance-ownership` | 该 id **注册不上**（配方/配色当即缺席，用户在选择器里看不到它）＋ 一条 `console.error` 点名撞上的是哪条兜底 id。插件**照常装上**——拒的是这一个 id，不是你的插件 |
+| **新** id 第一段应是本仓 `pluginId` | 🟡 黄（建议） | SDK 腿（**运行时不管**） | 报点带 `suggested` = 只换第一段的新名。存量官方主题仓还有 25 条 id 不合此规（`mint-soda`、`kraft` …），改名与迁移由壳侧统一执行——**新 id 请照规矩写** |
+| 同一插件的**两个配方**用同一个**配色** id | 🟡 黄 ＋ 登记 | SDK 腿 | 壳的契约是「配色变体 id **全局唯一**」——跨配方重复会让配色下拉出现重复项 |
+
+**宿主兜底 id 账**随 SDK 包下发，**按空间分栏**（配方与配色是**两个名字空间**：`mint-soda` 可以同时是两者，所以只比**本栏**，绝不跨栏）：
+
+```
+node_modules/@linkdesk/plugin-sdk/schemas/host-reserved.json
+  → "appearanceRecipeIds":   ["dark", "light"]                ← 配方栏
+    "appearanceColorwayIds": ["dark-fallback", "light"]       ← 配色栏（注意：配色兜底叫 dark-fallback，不叫 dark）
+    "appearanceIdGrants":    { "light": ["theme-defaults"] }  ← 例外：为该 id 记了证照的持有者
+```
+
+兜底 id 是「**全部主题插件卸光后仍能渲染**」的那一层，占它 = 顶替宿主的保底面。**`appearanceIdGrants` 不是白名单**——它**按 id 记**谁持有：`light` 有证照，因为官方主题仓正是宿主亮色兜底的**实现者**；你的插件不在表里（那是壳侧的公共面决策，作者加不进去）⇒ 一律判红。
+
+> **为什么"占兜底 id"是红、"没带自己前缀"只是黄**：占兜底 id 有**真害**（顶替宿主保底面，插件全卸光后主题跟着坏）；而"没带前缀"在存量里有 25 个反例，一刀切会把既有主题仓当场弄坏。分级不同 = 容忍度不同，不是"更重要的规矩写法更严"。
+
+**跨插件撞名（同一个 id 两个插件都声明）：** 壳**先者保留**——后注册的那个 id **注册不上**，并给一条 `console.error` 点名双方（谁先到、谁被拒）。它不是"占兜底 id"：两边都没碰宿主的名字，但**一个名字只有一份**，所以把自己的名字带上，才不会等到这一天。
+
 ### 3.7 `contributes.iconThemes`——图标主题
 
 ```json
@@ -391,6 +414,12 @@ useEffect(() => {
 
 > **🔥 mappings JSON 契约（立——icon-theme.schema.json 重写对齐引擎 normalizeIconThemeMappings）**：`path` 指向的 mappings 文件按 `icon-theme.schema.json` 校验——repo 内 = `public/schemas/icon-theme.schema.json`（`npm run check` 链 `check-theme-schema.mjs` 兼扫 `contributes.iconThemes`）；npm 作者 = 随 `@linkdesk/plugin-sdk` 分发的 `schemas/icon-theme.schema.json` + SDK `validateIconThemeJson`（同一 schema 文件，规则永不漂移）。运行时解析失败 warn/toast 是第二道防线。文件建议首行 `"$schema"` 引 schema 拿编辑器 IntelliSense。
 
+**id 命名规则：** 图标主题 id 只判**一条**——**不得**用宿主兜底 id `default`（判红：该 id 注册不上 ＋ 一条 `console.error`）。**不判**"带不带本仓前缀"：图标主题 id 会**原样显示在设置页**（选择器直接渲染 id 文本），给它改名 = 用户可见文字变化 ⇒ 本轮不动。想让它在下拉里好看，改的是 `label`（显示名），不是 id。
+
+```
+  → "appearanceIconThemeIds": ["default"]   ← 图标主题栏（只有这一条）
+```
+
 ### 3.8 `contributes.icons`——共享图标
 
 ```json
@@ -408,7 +437,10 @@ useEffect(() => {
 
 插件 A 贡献、插件 B 引用（`"icon": "stm32-chip"` + `"iconSource": "shared"`）。
 
-### 3.9 `contributes.languages`——UI 语言包 + `contributes.i18n`——插件自带翻译
+**id 命名规则：** 这里的**键**就是共享图标 id（插件 A 贡献、插件 B 引用）⇒ 建议带上本仓归属 `<pluginId>.<名字>`（🟡 建议，SDK 腿报点）。宿主没有兜底共享图标 ⇒ 这一族**没有红**；但两个插件声明**同一个键**时，后注册者**注册不上** ＋ 一条 `console.error` 点名双方（与配方/配色同一条仲裁）。
+
+### 3.9 `contributes.languages`——UI 语言包
+ + `contributes.i18n`——插件自带翻译
 
 **两条翻译管道，别混：**
 

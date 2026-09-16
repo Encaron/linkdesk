@@ -1,5 +1,5 @@
 /**
- * `runPluginLint()`——`npm run lint` 门禁编排（E6#54d）：eslint 规则腿 + 六条 check 扫描腿双轨。
+ * `runPluginLint()`——`npm run lint` 门禁编排（E6#54d）：eslint 规则腿 + **七条** check 扫描腿双轨（E6#111f/1.36：外观族 id 归属是第七条）。
  *
  * E6#109h-b①：`check-css-namespace` 腿升级为**双判据**——「裸定义类名/关键帧必须以本仓 `<pluginId>-`
  * 开头」（`checks/plugin-prefix.ts`，拍板 Q1=(A)，**不需要任何清单**）⊕「不得裸定义宿主保留名」
@@ -16,7 +16,8 @@
  * 规则正文见 32 号档 §一（R0–R3）；1.25 实测插件侧存量 **0**（18 仓 ＋ 夹具）⇒ 纯预防、零重发成本。
  *
  * 对标壳 check 同款双轨（07 §六·载体双轨）：eslint（12 项注册规则，全 WARN）管 ts/tsx；
- * css-hardcode / font-scale / spacing-grid / css-namespace / command-ownership 五条移植脚本管整工程（eslint 到不了 .css，
+ * css-hardcode / font-scale / spacing-grid / css-namespace / command-ownership / config-ownership / appearance-ownership
+ * 七条移植脚本管整工程（eslint 到不了 .css，
  * ts/tsx 的 rgb()/hsl() 也归 css-hardcode 补）。jscpd = 项目级可选（文档引导，不进编排）。
  *
  * 门禁哲学（07 §六·三档）：违规全 WARN **永不 fail build**——本编排按违规数统计并打印
@@ -36,6 +37,7 @@ import { runTokenScopeCheck } from "./checks/token-scope.js";
 import { runSelectorFormCheck } from "./checks/selector-form.js";
 import { runCommandOwnershipCheck } from "./checks/command-ownership.js";
 import { runConfigOwnershipCheck } from "./checks/config-ownership.js";
+import { runAppearanceOwnershipCheck } from "./checks/appearance-ownership.js";
 import { type CheckViolation } from "./checks/scan.js";
 
 /** 示例用的门禁 id（打印知情绕行格式）；伪 id 与 check 脚本 CHECK_IDS 同源 */
@@ -59,7 +61,7 @@ export interface EslintRow {
 export interface PluginLintReport {
   files: number; // eslint 实际 lint 文件数
   eslintRows: EslintRow[]; // eslint 腿逐条偏离（含真 error——退出码依据）
-  legs: LintLeg[]; // 五 check 腿（css-hardcode / font-scale / spacing-grid / css-namespace / command-ownership）
+  legs: LintLeg[]; // 七 check 腿（六条扫描腿 ＋ 命名空间腿内部四条判据；id 见各自 CHECK_IDS）
   totalCheckViolations: number;
   tsconfigUsed: string | null; // 实际喂 import-x resolver 的 tsconfig（无则 null）
   /** 本仓 pluginId（命名空间腿的前缀来源；取不到 ⇒ null 且该腿 fail-closed 报红） */
@@ -82,6 +84,28 @@ export interface PluginLintReport {
   hostConfigLedger: { file: string; found: boolean; configKeys: number; pseudoPluginIds: number } | null;
   /** 宿主保留面账的加载实况（账没读到 ⇒ 判据②空转——报告里必须能看出来，不许静默） */
   hostReservedLedger: { file: string; found: boolean; commandPrefixes: number; protocolIds: number } | null;
+  /** 🟡 E6#111f（1.36）外观族 id 归属判据的**黄灯建议**（判据①：新外观 id 不带本仓前缀 ＋ 同插件跨配方重复配色）——**只打印、不拦** */
+  appearanceAdvisories: CheckViolation[];
+  /** 外观族 id 归属判据的计数（四面名数 ＋ 红站点数 ＋ 黄建议数） */
+  appearanceOwnershipCounts: {
+    declaredRecipe: number;
+    declaredIconTheme: number;
+    declaredSharedIcon: number;
+    themeFileRecipe: number;
+    themeFileColorway: number;
+    bad: number;
+    advisory: number;
+  };
+  /** 宿主兜底外观 id 四栏 ＋ 证照账的加载实况（账没读到 ⇒ 判据② 空转，必须能看出来） */
+  hostAppearanceLedger: {
+    file: string;
+    found: boolean;
+    appearanceRecipeIds: number;
+    appearanceColorwayIds: number;
+    appearanceIconThemeIds: number;
+    appearanceSentinels: number;
+    appearanceIdGrants: number;
+  } | null;
 }
 
 export async function runPluginLint(root: string, options: PluginLintOptions = {}): Promise<PluginLintReport> {
@@ -179,6 +203,18 @@ export async function runPluginLint(root: string, options: PluginLintOptions = {
    *   ⚠️ 与另几条腿**刻意不合并**（同命令腿的理由）：本腿的红站点将来要独立收紧/独立统计。
    */
   const configOwnership = runConfigOwnershipCheck(absRoot);
+  /**
+   * 🔴 E6#111f（1.36）：第七条 check 腿 —— **外观族 id 归属**（`checks/appearance-ownership.ts`）。
+   *   两面：声明面（`contributes.themes[].id` / `contributes.iconThemes[].id` / `contributes.icons` 的键）／
+   *   主题文件面（`themes/*.json` 的顶层 `id` ＋ `colorways[].id`——🔴 配色 id **只在这一面出现**）。
+   *   🔴 **分级与配置腿同形**：判据②（占用宿主兜底外观 id，按空间比、证照者除外）＝**红**，进腿报点；
+   *      判据①（新外观 id 不带本仓前缀）＝**黄**，进 `appearanceAdvisories` 只打印不拦
+   *      ——出处 = 1.36 任务书 §二.2 的 ★**回退条件**（存量 25 条改名被判给 1.47 轮，不在本格执行 ⇒ 判据必须回退到黄）
+   *      ＋ 轴上**排序纪律**（1.32/1.34/1.36/1.38 先以「黄灯 ＋ 账」落地，**1.49 才收紧为红**）。
+   *   ⚠️ 与另几条腿**刻意不合并**（同命令腿/配置腿的理由）：本腿的红站点将来要独立收紧/独立统计；
+   *      且它的输入是**外观四栏**，与命令腿读的前缀栏、配置腿读的 configKeys 栏各不相干。
+   */
+  const appearanceOwnership = runAppearanceOwnershipCheck(absRoot);
   const prefixKeys = new Set(prefix.violations.map((v) => `${v.file}:${v.line}`));
   const tokenKeys = new Set(tokenScope.violations.map((v) => `${v.file}:${v.line}`));
   const formKeys = new Set(selectorForm.violations.map((v) => `${v.file}:${v.line}`));
@@ -209,9 +245,20 @@ export async function runPluginLint(root: string, options: PluginLintOptions = {
       label: "check-config-ownership",
       violations: configOwnership.violations,
     },
+    {
+      id: "linkdesk/no-unowned-appearance-id（外观族 id 不得占用宿主兜底外观 id；新 id 应带本仓 <pluginId>. 前缀）",
+      label: "check-appearance-ownership",
+      violations: appearanceOwnership.violations,
+    },
   ];
   const totalCheckViolations =
-    css.length + font.length + spacing.length + namespace.length + commandOwnership.violations.length + configOwnership.violations.length;
+    css.length +
+    font.length +
+    spacing.length +
+    namespace.length +
+    commandOwnership.violations.length +
+    configOwnership.violations.length +
+    appearanceOwnership.violations.length;
 
   return {
     files: results.length,
@@ -240,6 +287,17 @@ export async function runPluginLint(root: string, options: PluginLintOptions = {
       advisory: configOwnership.yellow.length,
     },
     hostConfigLedger: configOwnership.hostLedger,
+    appearanceAdvisories: appearanceOwnership.advisories,
+    appearanceOwnershipCounts: {
+      declaredRecipe: appearanceOwnership.declaredRecipeIds.length,
+      declaredIconTheme: appearanceOwnership.declaredIconThemeIds.length,
+      declaredSharedIcon: appearanceOwnership.declaredSharedIconIds.length,
+      themeFileRecipe: appearanceOwnership.themeFileRecipeIds.length,
+      themeFileColorway: appearanceOwnership.themeFileColorwayIds.length,
+      bad: appearanceOwnership.red.length,
+      advisory: appearanceOwnership.yellow.length,
+    },
+    hostAppearanceLedger: appearanceOwnership.hostLedger,
   };
 }
 
@@ -332,6 +390,34 @@ export function renderPluginLintReport(report: PluginLintReport): string {
     lines.push(
       `    账 configKeys ${report.hostConfigLedger.configKeys} 个 ／ 伪身份 ${report.hostConfigLedger.pseudoPluginIds} 个` +
         (report.hostConfigLedger.found ? `（${report.hostConfigLedger.file}）` : `　⚠ 账没读到——判据① 本轮**空转**`),
+    );
+  }
+
+  // 🟡 E6#111f（1.36）外观族 id 归属：黄灯建议（判据①）＋ 两面读数 ＋ 四栏账的加载实况
+  if (report.appearanceAdvisories.length > 0) {
+    lines.push(
+      `\n🟡 check-appearance-ownership（外观族 id 归属 · 1.49 起收紧为红）：${report.appearanceAdvisories.length} 处**建议**（不拦 build）——` +
+        `配方 / 配色 / 共享图标 id 是**全局名册的键**：同名 id 被两个插件声明时只有一个能生效（壳 1.36 起"先者保留"，后到者被拒）。` +
+        `改成"<你的 pluginId>.<名字>"（只换第一段、词干零变化）归属才唯一。`,
+    );
+    for (const v of report.appearanceAdvisories) lines.push(`    ${v.file}:${v.line}  ${v.message}`);
+  }
+  const ap = report.appearanceOwnershipCounts;
+  lines.push(
+    `\n🔴 check-appearance-ownership（外观族 id 归属）：` +
+      `声明面 配方 ${ap.declaredRecipe} ／ 图标主题 ${ap.declaredIconTheme} ／ 共享图标 ${ap.declaredSharedIcon} 名，` +
+      `主题文件面 配方 ${ap.themeFileRecipe} ／ 配色 ${ap.themeFileColorway} 名——` +
+      (ap.bad === 0
+        ? `无占用宿主兜底外观 id 的站点。`
+        : `${ap.bad} 处占用**宿主兜底外观 id**（宿主保底主题面，壳运行时会直接拒绝注册这条 id）。`) +
+      (ap.advisory > 0 ? `另有 ${ap.advisory} 处前缀建议（见上）。` : ``),
+  );
+  if (report.hostAppearanceLedger) {
+    const hl = report.hostAppearanceLedger;
+    lines.push(
+      `    账 兜底配方 ${hl.appearanceRecipeIds} ／ 兜底配色 ${hl.appearanceColorwayIds} ／ 保底图标主题 ${hl.appearanceIconThemeIds} ／ ` +
+        `哨兵 ${hl.appearanceSentinels} ／ 证照 ${hl.appearanceIdGrants} 条` +
+        (hl.found ? `（${hl.file}）` : `　⚠ 账没读到——判据② 本轮**空转**`),
     );
   }
 

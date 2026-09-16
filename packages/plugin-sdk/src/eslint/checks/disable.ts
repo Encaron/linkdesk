@@ -22,6 +22,11 @@ export const CHECK_IDS = {
   commandOwnership: "linkdesk/no-unowned-command-id",
   /** E6#111d（1.34）：配置键必须带本仓 `<pluginId>.` 前缀（🟡 黄），且不得占用宿主保留键（🔴 红） */
   configOwnership: "linkdesk/no-unowned-config-key",
+  /** E6#111f（1.36）：外观族 id（配方 / 配色 / 图标主题 / 共享图标）必须带本仓 `<pluginId>.` 前缀
+   *  （🟡 黄——★回退条件 ＋ 轴上排序纪律，见 `appearance-ownership.ts` 文件头），
+   *  且不得占用宿主兜底外观 id（🔴 红：配方 / 配色 / 图标主题三栏**按空间**比，有证照者除外）。
+   *  ⚠️ 图标主题 id **不判前缀**（1.36 §二.2 ⑦：本轮不改名——改名 = 设置页可见文字变化）⇒ 这个 id 只覆盖判据②。 */
+  appearanceOwnership: "linkdesk/no-unowned-appearance-id",
 } as const;
 
 interface RawComment {

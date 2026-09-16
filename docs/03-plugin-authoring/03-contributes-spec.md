@@ -322,6 +322,29 @@ The declaration is metadata-only; theme color data is fetched asynchronously at 
 
 > **🔥 Recipe JSON contract (now folded into plugin-sdk)**: the recipe file that `path` points to is validated against `theme.schema.json` — inside the repo that is `public/schemas/theme.schema.json` (`npm run check` chains `check-theme-schema.mjs`, and a format error turns the light red with exit 1 on the spot instead of staying silent); for npm authors it is the `schemas/theme.schema.json` shipped with `@linkdesk/plugin-sdk` plus the SDK's `validateThemeJson` (the same schema file, so the rules never drift). At runtime, a `parseThemeRecipe` toast is the second line of defense. Theme files should begin with `"$schema"` pointing at the schema to get editor IntelliSense (for the npm path see [11-authoring-themes](11-authoring-themes.md) §②).
 
+**id naming rule:** the target shape is `<pluginId>.<name>` (**replace the first segment only, leave the stem untouched**), e.g. `theme-pill.pill-bubble`. **One rule covers three ids** — `themes[].id` (recipe), the top-level `id` inside the recipe JSON that `path` points to (recipe), and `colorways[].id` (colorway variant). The severities mirror the key rule above:
+
+| Criterion | Severity | Judged by | What happens |
+|:--|:--:|:--|:--|
+| An id must **not** fall inside the **host fallback-id ledger**'s **own space** column | 🔴 **red (rejected)** | the shell runtime `ThemeRegistry` + the SDK leg `linkdesk/appearance-ownership` | The id **is not registered** (the recipe/colorway is simply absent, so users never see it in the picker) and one `console.error` names the fallback id it collided with. Your plugin **still installs** — what is rejected is this one id, not your plugin |
+| A **new** id's first segment should be this repo's `pluginId` | 🟡 yellow (advisory) | the SDK leg (**the runtime does not enforce it**) | The report carries a `suggested` name with only the first segment replaced. The official theme repos still declare 25 ids that break this rule (`mint-soda`, `kraft`, …); the shell renames and migrates those on its own schedule — **write new ids by the rule** |
+| Two recipes of the **same** plugin sharing one **colorway** id | 🟡 yellow + logged | the SDK leg | The shell's contract is that a **colorway id is globally unique** — a cross-recipe duplicate shows up as duplicate entries in the colorway dropdown |
+
+The **host fallback-id ledger** ships inside the SDK package and is **split by space** (recipes and colorways are **two namespaces**: `mint-soda` can be both, so the comparison stays **inside the column**, never across):
+
+```
+node_modules/@linkdesk/plugin-sdk/schemas/host-reserved.json
+  → "appearanceRecipeIds":   ["dark", "light"]                ← recipe column
+    "appearanceColorwayIds": ["dark-fallback", "light"]       ← colorway column (note: the colorway fallback is dark-fallback, not dark)
+    "appearanceIdGrants":    { "light": ["theme-defaults"] }  ← the exception: who holds that id by grant
+```
+
+A fallback id is the layer that keeps **the app rendering after every theme plugin is uninstalled**, so taking one over means taking over the host's fallback surface. **`appearanceIdGrants` is not an allowlist** — it records, **per id**, who holds it: `light` carries a grant because the official theme repo is the *implementer* of the host's light fallback; your plugin is not in that table (and cannot add itself — it is a shell-side public-surface decision) ⇒ it is always judged red.
+
+> **Why "taking a fallback id" is red while "missing your prefix" is only yellow**: taking a fallback id does **real harm** (it takes over the host's fallback surface, so themes break once the plugins are uninstalled); whereas "missing the prefix" has 25 counter-examples in the existing corpus, and a hard rule would break those theme repos on the spot. Different severity = different tolerance, not "the more important rule is written more strictly".
+
+**Two plugins declaring the same id:** the shell keeps the **first registrant** — the later id **cannot be registered** and one `console.error` names both sides (who arrived first, who was rejected). This is not the same as taking a fallback id: neither side touched the host's names, but **one name has room for one owner only**, so prefixing your own name is what keeps that day from arriving.
+
 ### 3.7 `contributes.iconThemes` — icon themes
 
 ```json
@@ -391,6 +414,12 @@ No `font` section → zero custom fonts (codicon fallback / a pure image-asset t
 
 > **🔥 mappings JSON contract (established — icon-theme.schema.json rewritten to align with the engine's normalizeIconThemeMappings)**: the mappings file that `path` points to is validated against `icon-theme.schema.json` — inside the repo that is `public/schemas/icon-theme.schema.json` (`npm run check` chains `check-theme-schema.mjs`, which also scans `contributes.iconThemes`); for npm authors it is the `schemas/icon-theme.schema.json` shipped with `@linkdesk/plugin-sdk` plus the SDK's `validateIconThemeJson` (the same schema file, so the rules never drift). A runtime parse failure with warn/toast is the second line of defense. Files should begin with `"$schema"` pointing at the schema to get editor IntelliSense.
 
+**id naming rule:** an icon-theme id is judged on **one thing only** — it must **not** be the host fallback id `default` (red: the id is not registered, plus one `console.error`). The "carry your repo prefix" criterion is **not applied here**: an icon-theme id is **shown verbatim in the settings page** (the picker renders the id text), so renaming it would change user-visible text ⇒ it stays as it is. If you want it to read better in the dropdown, change the `label` (display name), not the id.
+
+```
+  → "appearanceIconThemeIds": ["default"]   ← icon-theme column (this is its only entry)
+```
+
 ### 3.8 `contributes.icons` — shared icons
 
 ```json
@@ -408,7 +437,10 @@ No `font` section → zero custom fonts (codicon fallback / a pure image-asset t
 
 Plugin A contributes, plugin B references (`"icon": "stm32-chip"` + `"iconSource": "shared"`).
 
-### 3.9 `contributes.languages` — UI language packs + `contributes.i18n` — plugin-bundled translations
+**id naming rule:** the **keys** here *are* the shared icon ids (plugin A contributes, plugin B references) ⇒ prefix them with your repo identity: `<pluginId>.<name>` (🟡 advisory, reported by the SDK leg). The host has no fallback shared icons ⇒ this family has **no red**; but when two plugins declare the **same key**, the later one **cannot be registered** and one `console.error` names both sides (the same arbitration as recipes and colorways).
+
+### 3.9 `contributes.languages` — UI language packs
+ + `contributes.i18n` — plugin-bundled translations
 
 **Two translation pipelines — don't mix them:**
 

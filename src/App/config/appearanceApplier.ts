@@ -23,6 +23,9 @@ import {
   deriveGlassOpacityAbsoluteMigration, // E5.8#86：旧 wash 语义→绝对透明度迁移公式
   resolveMergedAppearanceMode, // E5.8#90：旧三枚举→单一外观模式轴迁移公式
   normalizeThemeValue,
+  normalizeThemeColorValue, // E6#111f／1.36：app.themeColor 双语义归一（配色表 → 配方表串联）
+  normalizeRecipeId, // E6#111f／1.36：混搭 font/background 域来源（配方 id 空间）归一
+  setAppearanceIdResolvers, // E6#111f／1.36：归属改名「顺序无关」解析器装配
   syncThemeColorConfig,
   syncThemeColorEnum, // E5.8 Phase 11.14：app.themeColor 跨主题配色全集 enum（替换原 inline updateConfigurationEnum）
   APPEARANCE_OVERRIDE_KEYS,
@@ -38,6 +41,18 @@ import { registerConfigMigration } from "../../core/services/configuration/schem
 
 /** E5.8#89 E1：外观 onApply 防抖窗口——与 settings.json watcher 去抖（ConfigurationService 80ms）同哲学 */
 const APPEARANCE_APPLY_DEBOUNCE_MS = 80;
+
+/* ── E6#111f／1.36：归属改名「顺序无关」解析器装配（装配点 = 本文件；判据与理由见 ThemeEngine/migration.ts 头注） ──
+ * 解析器答的是「这个 id **此刻**在注册本里解析得出来吗」——归一规则要**两问**：
+ *   「新名在」∧「旧名不在」才映（只问旧名不够：插件没装/还没加载完时旧名同样解析不出来）。
+ * 装配在这里而不是 ThemeEngine 里：只有 App 层同时够得着「引擎门面 + 登记本」，
+ *   放引擎侧会让 migration.ts 反向依赖 ThemeRegistry（主题模块已依赖引擎门面 ⇒ 成环）。
+ * 解析器是**惰性**的（每次读时问）⇒ 模块级装配先于 ThemeRegistry 填充也没关系。 */
+setAppearanceIdResolvers({
+  recipe: (id) => ThemeRegistry.getRecipe(id) !== undefined,
+  colorway: (id) =>
+    ThemeRegistry.getRecipes().some((r) => (r.colorways ?? []).some((c) => c.id === id)),
+});
 
 /** E5.8#50.10+50.19：外观覆盖配置 onApply 统一入口——当前主题存在才重应用（启动时 app.theme 先注册先 apply，本组恒非空）。
  * 重应用 = 配方路径 applyRecipeForConfig（内部合并用户外观覆盖 + 强调色） / flat 主题 applyTheme——
@@ -85,7 +100,8 @@ const resolveActiveRecipe = (): ThemeRecipe | undefined => {
  *  E5.8#82：themeColor 双语义——recipe 模式 = 配方内配色变体 id；mix 模式 = colors 域来源（配方 id / "followTheme"）。
  *  applyRecipe 的 colorwayId 参数只对 recipe 模式有选配语义；mix 模式来源由 mergeMixDomains 按 MIX_DOMAIN_KEYS 读。 */
 export const applyRecipeForConfig = (recipe: ThemeRecipe): void => {
-  const storedColor = getConfigurationValue<string>("app.themeColor");
+  // E6#111f／1.36：读时归一（双语义：配色表 → 配方表）。哨兵 followTheme 两表都不在 ⇒ 原样（负控 2）
+  const storedColor = normalizeThemeColorValue(getConfigurationValue<string>("app.themeColor"));
   // recipe 模式：配色变体 id（空 / 残留 "followTheme" → 配方首配色）；mix 模式：来源配方 id 被 resolveColorway
   // 找不到 → 自然回退首配色，颜色域实际由混搭合并按来源取（两者解耦，不互踩）
   const colorwayId = storedColor && storedColor !== MIX_FOLLOW_THEME ? storedColor : undefined;
@@ -228,5 +244,48 @@ registerConfigMigration({
     if (accentSource !== undefined) return;
     const appearanceMode = inspectConfiguration<string>("app.appearanceMode").userValue;
     setMany({ "app.accentSource": appearanceMode === "custom" ? "custom" : "followTheme" });
+  },
+});
+
+/* ── E6#111f／1.36：外观族 id 归属改名——配置迁移 **版本 6**（[1.35 §14.2] ① 那条腿） ──
+ * 与读时归一（migration.ts 的 normalizeRecipeId/normalizeColorwayId）**两条腿都要**：
+ *   本迁移把盘上的旧值**改写掉**（含 app.themeColor/app.mix* 这三条键**没有**独立读时归一入口的历史面），
+ *   读时归一管版本门禁**管不到**的三条路——外部手改 settings.json / 旧版 profile 导入 / 跨版本降级
+ *   （ProfileService.ts:233 的导入比较就靠它才比较得动）。
+ *
+ * 五键里本迁移只动 4 条：app.theme（配方 id ＋ legacy flat 名）/ app.themeColor（双语义）/
+ *   app.mixFont · app.mixBackground（配方 id）。第 5 条 app.iconTheme **本轮不改名**（图标主题 id 改名 = 设置页
+ *   可见文字变化，违「零 UI 变化」上位约束）⇒ 无需迁移，留位。
+ *
+ * 🔴 **解析器门控（顺序无关）**：官方 9 仓的 25 条改名归 1.42–1.48 清账格，**不在本格** ⇒ 此刻「新名」在注册本里
+ *   根本不存在 ⇒ 归一恒等 ⇒ 本迁移**零写**（盘上旧值仍然有效，硬映会当场弄坏正在用的主题）。
+ *   改名轮落地后，下一次启动解析器补上「新名在、旧名不在」⇒ 本迁移照常改写（届时若 app.schemaVersion 已越 6，
+ *   由 1.47 那格补一个新版本号并把这两张表原样搬过去——表是纯数据）。
+ *
+ * 幂等：已迁后值 = 新名（不在表里）⇒ 归一恒等 ⇒ 零写；版本门禁（schemaMigrations 过滤 version > current）
+ *   再兜一层。presence 门控：键不存在（全新安装/从未写过）⇒ 不产出该键。原子：单次 setMany。
+ * 不弹窗不重置（旧值落盘转新，用户无感）。 */
+registerConfigMigration({
+  version: 6,
+  name: "E6-111f appearance-id-ownership", // ⚠️ 不写 `#`：CSS 硬编码门禁会把 `#111f` 当 4 位 hex 颜色（假红）
+  migrate: async ({ setMany }) => {
+    const writes: Record<string, unknown> = {};
+    const theme = inspectConfiguration<string>("app.theme").userValue;
+    if (typeof theme === "string") {
+      const next = normalizeThemeValue(theme); // 已串联：legacy flat 名 → 归属表
+      if (next !== undefined && next !== theme) writes["app.theme"] = next;
+    }
+    const themeColor = inspectConfiguration<string>("app.themeColor").userValue;
+    if (typeof themeColor === "string") {
+      const next = normalizeThemeColorValue(themeColor);
+      if (next !== undefined && next !== themeColor) writes["app.themeColor"] = next;
+    }
+    for (const key of ["app.mixFont", "app.mixBackground"]) {
+      const value = inspectConfiguration<string>(key).userValue;
+      if (typeof value !== "string") continue;
+      const next = normalizeRecipeId(value);
+      if (next !== undefined && next !== value) writes[key] = next;
+    }
+    if (Object.keys(writes).length > 0) setMany(writes);
   },
 });

@@ -16,6 +16,9 @@ import { LanguageRegistry } from "../../core/registry/languages/LanguageRegistry
 import { registerTheme, getAvailableThemes } from "../../core/services/ui/ThemeEngine";
 import { unregisterTheme } from "../../core/services/ui/ThemeEngine/registry";
 import { rollback } from "../../core/registry/registrationTracker";
+// E6#111f／1.36 负控 16：读时归一（旧 id ↔ 新 id）——解析器注桩入口／槽位清理
+import { setAppearanceIdResolvers } from "../../core/services/ui/ThemeEngine";
+import { clearAppearanceIdResolvers } from "../../core/services/ui/ThemeEngine/migration";
 
 // ── Mock ConfigurationService 的 setConfigurationValue（避免 FS 依赖）──
 vi.mock("../../core/services/configuration/ConfigurationService", () => {
@@ -140,6 +143,75 @@ describe("revertIfCurrent——卸载当前贡献时自动回退", () => {
     expect(setCfg).not.toHaveBeenCalled();
     await setCfg("app.themeColor", "followTheme", "user");
     await setCfg("app.appearanceMode", "followTheme", "user");
+  });
+
+  /* ── 1b. E6#111f／1.36 负控 16：改名前后两种盘面都要判得出归属 ── */
+
+  /** 改名**已落地**的盘面：配方新名在册、旧名不在（解析器两问 ⇒ 读时归一生效） */
+  const RENAMED_RECIPE = "theme-mint-soda.mint-soda";
+  const RENAMED_PLUGIN = "theme-mint-soda";
+  const RENAMED_OLD_VALUE = "mint-soda"; // 版本 6 迁移前的落盘形态／旧 profile 值
+
+  function armRenamedPlate(): void {
+    ThemeRegistry.register(
+      { id: RENAMED_RECIPE, label: "薄荷苏打 Mint Soda", uiTheme: "dark", path: "mint.json" },
+      RENAMED_PLUGIN,
+    );
+    registerBuiltinDarkTheme(); // 替代项（回退目标 = 配方本 ＋ flat 本的第一个）
+    setAppearanceIdResolvers({ recipe: (id) => id === RENAMED_RECIPE });
+  }
+
+  /** mock 掉的 setConfigurationValue 的形状（与 ConfigurationService 契约面一致，别写 `any`） */
+  type SetCfg = (key: string, value: unknown, scope?: "user" | "workspace") => Promise<void>;
+
+  /** 清盘：登记本 ＋ **模块级解析器槽位**（不清会泄漏到后续用例）＋ mock store */
+  async function cleanupRenamedPlate(setCfg: SetCfg): Promise<void> {
+    ThemeRegistry.unregister(RENAMED_RECIPE);
+    clearAppearanceIdResolvers();
+    await setCfg("app.theme", "Dark", "user");
+  }
+
+  /** 本轮 revert 对 app.theme 的写入（0 或 1 条——判得出归属才写） */
+  function themeWrites(setCfg: SetCfg): unknown[] {
+    return vi.mocked(setCfg).mock.calls.filter((c) => c[0] === "app.theme").map((c) => c[1]);
+  }
+
+  it("🔴 负控 16（旧值盘面）：盘上是旧 id `mint-soda` ⇒ 读时归一后**判得出**并回退", async () => {
+    armRenamedPlate();
+    const { setConfigurationValue: setCfg } = await import("../../core/services/configuration/ConfigurationService");
+    await setCfg("app.theme", RENAMED_OLD_VALUE, "user");
+    vi.mocked(setCfg).mockClear();
+
+    await revertThemeIfCurrent(RENAMED_PLUGIN);
+
+    const writes = themeWrites(setCfg);
+    expect(writes).toHaveLength(1); // 判得出「当前主题来自本插件」⇒ 换替代项
+    expect(writes[0]).not.toBe(RENAMED_OLD_VALUE); // 且不是它自己
+    await cleanupRenamedPlate(setCfg);
+  });
+
+  it("🔴 负控 16（新值盘面）：盘上已是新 id ⇒ 同一条链同样判得出（两种盘面同语义）", async () => {
+    armRenamedPlate();
+    const { setConfigurationValue: setCfg } = await import("../../core/services/configuration/ConfigurationService");
+    await setCfg("app.theme", RENAMED_RECIPE, "user");
+    vi.mocked(setCfg).mockClear();
+
+    await revertThemeIfCurrent(RENAMED_PLUGIN);
+
+    expect(themeWrites(setCfg)).toHaveLength(1);
+    await cleanupRenamedPlate(setCfg);
+  });
+
+  it("🔴 负控 16 逆控：旧值是**别的插件**的配方 ⇒ 零写（证明上面两条不是「见谁都写」）", async () => {
+    armRenamedPlate();
+    const { setConfigurationValue: setCfg } = await import("../../core/services/configuration/ConfigurationService");
+    await setCfg("app.theme", RENAMED_OLD_VALUE, "user");
+    vi.mocked(setCfg).mockClear();
+
+    await revertThemeIfCurrent("demo-someone-else");
+
+    expect(themeWrites(setCfg)).toHaveLength(0);
+    await cleanupRenamedPlate(setCfg);
   });
 
   /* ── 2. 语言 revert ── */

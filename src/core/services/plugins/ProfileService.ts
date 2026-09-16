@@ -21,7 +21,7 @@ import i18n from "../../../i18n"; // E6#73h（D3）：用户可见文案走 i18n
 import { setConfigurationValue, getConfigurationValue, getUserSettings } from "../configuration/ConfigurationService";
 import { pushToast, TOAST_TTL_ERROR } from "../ui/NotificationService";
 import { deepEqual } from "../../utils/deepEqual"; // E5.8 归一化：JSON.stringify 深比较捷径统一走共享工具
-import { normalizeThemeValue } from "../ui/ThemeEngine"; // E5.8#50.21：快照导出/校验前旧值归一化
+import { normalizeThemeValue, normalizeThemeColorValue, normalizeRecipeId } from "../ui/ThemeEngine"; // E5.8#50.21：快照导出/校验前旧值归一化｜E6#111f／1.36：＋外观四键比较归一（见 PROFILE_COMPARE_NORMALIZERS）
 import {
   appDataDir,
   joinPath,
@@ -209,6 +209,30 @@ async function _restoreSnapshot(prev: RuntimeSnapshot): Promise<string[]> {
 
 /* ── 五维验证 ── */
 
+/**
+ * E6#111f／1.36：**比较前一律读时归一的外观键**（口径与消费点同源——同三个函数，不是另抄一份规则）。
+ *
+ * 为什么必须有：**Profile 文件不随版本 6 迁移**（那一版只改写 settings.json）。用户导入的旧 profile
+ * 里存的是旧外观 id（`mint-soda` / `kraft` / `pill-bubble`…），而盘面已经是新名 ⇒ 维度 2 逐字比较
+ * 必然报「切换失败」。归一到同一名之后，新旧两种盘面都判得出「其实是同一个值」。
+ *
+ * 🔴 `app.iconTheme` **刻意不列**：本格不动图标主题 id（§2.4 留位，改名归后续格）——列进来等于替下一格
+ *    决定它的迁移，而这张表是「比较口径」不是「迁移表」。
+ * 解析器未装配时三个函数全部**恒等**（fail-safe）⇒ 行为与 1.36 之前逐字节一致。
+ */
+const PROFILE_COMPARE_NORMALIZERS: Record<string, (value: string) => string | undefined> = {
+  "app.theme": normalizeThemeValue, // flat 名 ＋ 配方归属两段串联
+  "app.themeColor": normalizeThemeColorValue, // 双语义：配色表 → 配方表
+  "app.mixFont": normalizeRecipeId,
+  "app.mixBackground": normalizeRecipeId,
+};
+
+/** 维度 2 的单值归一（导出口径以便直测比较语义——生产路径只有 `_validateSwitch` 一处消费） */
+export function normalizeProfileSettingForCompare(key: string, value: unknown): unknown {
+  const norm = PROFILE_COMPARE_NORMALIZERS[key];
+  return norm ? norm(String(value)) : value;
+}
+
 interface ValidationError {
   dimension: number;
   message: string;
@@ -229,9 +253,8 @@ async function _validateSwitch(expected: Profile): Promise<ValidationError[]> {
   // 维度 2：settings 值——关键配置必须和 Profile 一致（app.theme 两侧归一化——旧 profile "Dark" vs 现值 "dark" 判等）
   for (const [key, expectedVal] of Object.entries(expected.settings)) {
     const actual = getConfigurationValue(key);
-    const isTheme = key === "app.theme";
-    const actualCmp = isTheme ? normalizeThemeValue(String(actual)) : actual;
-    const expectedCmp = isTheme ? normalizeThemeValue(String(expectedVal)) : expectedVal;
+    const actualCmp = normalizeProfileSettingForCompare(key, actual);
+    const expectedCmp = normalizeProfileSettingForCompare(key, expectedVal);
     if (!deepEqual(actualCmp, expectedCmp)) {
       errors.push({
         dimension: 2,

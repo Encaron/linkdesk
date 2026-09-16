@@ -14,6 +14,11 @@ import type { ThemeContribution } from "../../api/types";
 import { findTheme } from "../../services/ui/ThemeEngine";
 import { trackRegistration } from "../registrationTracker"; // E5.8#10：register 返 disposer——卸载自动逆序回滚
 import type { ThemeRecipe, ThemeAppearance, ThemeColorway } from "../../types/theme";
+import {
+  judgeAppearanceId,
+  logAppearanceIdRejection,
+  NOOP_DISPOSE,
+} from "./appearanceOwnership"; // E6#111f／1.36：外观 id 归属仲裁（出口 = logAppearanceIdRejection）
 
 interface RegisteredTheme extends ThemeContribution {
   pluginId: string;
@@ -116,16 +121,36 @@ function toColorMap(raw: unknown): Record<string, string> {
   return map;
 }
 
+/** 配方本里**第一个**声明该配色 id 的配方 —— 配色**没有独立登记本**（配色随配方进来），
+ *  本函数就是运行时的配色归属查询（判据②/③ 的"对应空间的账"比对靠它）。
+ *  @returns `occupied` = 已被某配方声明；`owner` = 那个配方的归属插件（`undefined` = 宿主兜底配方）。 */
+function findColorwayOwner(colorwayId: string): { occupied: boolean; owner?: string } {
+  for (const [recipeId, r] of recipes) {
+    if ((r.colorways ?? []).some((c) => c.id === colorwayId)) {
+      return { occupied: true, owner: recipeOwners.get(recipeId) };
+    }
+  }
+  return { occupied: false };
+}
+
 export const ThemeRegistry = {
-  /** 注册插件贡献的主题。同名 ID 后注册者覆盖（warn）。
+  /** 注册插件贡献的主题。同名 ID 后注册者覆盖（warn）——🔴 **E6#111f／1.36 起改为归属仲裁**
+   *  （`judgeAppearanceId`：顶替宿主兜底 / 跨插件同 id ⇒ 拒 ＋ `console.error`；同插件重注册不变）。
    *  E5.8#10 返 disposer：删"这一条"——仅当仍是当前占位者（防删后注册者的覆盖）；
    *  同步从插件 id 列表摘除自身。 */
   register(contribution: ThemeContribution, pluginId: string): () => void {
     const theme: RegisteredTheme = { ...contribution, pluginId };
-    if (themes.has(theme.id)) {
-      console.warn(
-        `[ThemeRegistry] 主题 "${theme.id}" 重复注册——后注册者 "${pluginId}" 覆盖`
-      );
+    // 元数据本（键 = `contributes.themes[].id`）与配方本**同空间**：声明的都是配方 id
+    const verdict = judgeAppearanceId({
+      space: "recipe",
+      id: theme.id,
+      pluginId,
+      prevOwner: themes.get(theme.id)?.pluginId,
+      occupied: themes.has(theme.id),
+    });
+    if (!verdict.accept) {
+      logAppearanceIdRejection("[ThemeRegistry]", verdict);
+      return NOOP_DISPOSE;
     }
     themes.set(theme.id, theme);
     const ids = pluginThemeIds.get(pluginId) ?? [];
@@ -189,21 +214,47 @@ export const ThemeRegistry = {
 
   /* ── E5.8#50.15：Recipe 登记/查询（05 schema 数据层） ── */
 
-  /** 注册解析后的配方。同名 id 后注册者覆盖——壳兜底（无归属，pluginId 省略）被插件配方覆盖不告警
-   *  （registerTheme 同款语义，兜底上位是预期行为）；插件间重复仍告警。
+  /** 注册解析后的配方。同名 id —— 🔴 **E6#111f／1.36 起改为归属仲裁**（`judgeAppearanceId`，
+   *  与原「壳兜底被插件覆盖不告警」相比：**有证照**的接替仍静默〔今天唯一一例 `theme-defaults` 接 `light`〕，
+   *  无证照的顶替 ⇒ **拒 ＋ `console.error`**；跨插件同 id ⇒ 先者保留、拒后者）。
    *  E5.8#10 返 disposer——删"这一条"（仅当仍是当前占位者）；无 pluginId（壳兜底）不追踪，返裸 disposer。 */
   registerRecipe(recipe: ThemeRecipe, pluginId?: string): () => void {
+    const verdict = judgeAppearanceId({
+      space: "recipe",
+      id: recipe.id,
+      pluginId,
+      prevOwner: recipeOwners.get(recipe.id),
+      occupied: recipes.has(recipe.id),
+    });
+    if (!verdict.accept) {
+      logAppearanceIdRejection("[ThemeRegistry]", verdict);
+      return NOOP_DISPOSE;
+    }
+    // 🔴 **配色变体 id**（判据②顶替宿主兜底 / ③跨插件同 id）：配方本没有独立的配色本——配色**随配方进来**
+    //   ⇒ `registerRecipe` 就是运行时判配色 id 的唯一入口，在这里逐个判。
+    //   粒度的选择：一条配色不合格 ⇒ **拒整条配方**（"拒那个 id 不拒插件"在配方本里表达不了——配方是一个
+    //   整体，剥掉某个配色 = 改主题内容 = 碰主题机制，禁区）。同插件跨配方同配色 id = **黄**（判据④），放行。
+    if (pluginId !== undefined) {
+      for (const cw of recipe.colorways ?? []) {
+        const cwOwner = findColorwayOwner(cw.id);
+        const cwVerdict = judgeAppearanceId({
+          space: "colorway",
+          id: cw.id,
+          pluginId,
+          prevOwner: cwOwner.owner,
+          occupied: cwOwner.occupied,
+        });
+        if (!cwVerdict.accept) {
+          logAppearanceIdRejection("[ThemeRegistry]", cwVerdict, recipe.id);
+          return NOOP_DISPOSE;
+        }
+      }
+    }
     // E5.8#61 审计#3：记录被覆盖的旧占位者（壳兜底/前插件配方）——disposer 卸载覆盖者时回填。
     //  原实现直接删 → 插件覆盖壳兜底（registerFallbackThemes 的 dark/light）后卸载，兜底会话内丢失
     //  （重启才恢复）；回填旧占位者让 getRecipe/getRecipes 立即恢复可用。
     const prev = recipes.get(recipe.id);
     const prevOwner = recipeOwners.get(recipe.id);
-    if (recipes.has(recipe.id)) {
-      const existingOwner = recipeOwners.get(recipe.id);
-      if (existingOwner) {
-        console.warn(`[ThemeRegistry] 配方 "${recipe.id}" 重复注册——后注册者 "${pluginId}" 覆盖`);
-      }
-    }
     recipes.set(recipe.id, recipe);
     if (pluginId) {
       recipeOwners.set(recipe.id, pluginId);
@@ -213,9 +264,15 @@ export const ThemeRegistry = {
     }
 
     const dispose = (): void => {
+      // 🔴 E6#111f／1.36：`restored` = 本次卸载**回填了旧占位者**。回填后的归属已由上一分支写好，
+      //   下面那句「残留归属清理」必须跳过——否则会在**同插件重注册**这条路径上把刚写回的归属删掉。
+      //   旧代码只在跨插件覆盖下被走到，那时回填的是**别人**的 owner，那句清理判不出来；
+      //   1.36 起同插件重注册成了主要覆盖路径（跨插件已改判红），这条路径当场显形（单测①）。
+      let restored = false;
       if (recipes.get(recipe.id) === recipe) {
         if (prev) {
           recipes.set(recipe.id, prev);
+          restored = true;
           if (prevOwner) recipeOwners.set(recipe.id, prevOwner);
           else recipeOwners.delete(recipe.id);
         } else {
@@ -224,7 +281,7 @@ export const ThemeRegistry = {
         }
       }
       if (pluginId) {
-        if (recipeOwners.get(recipe.id) === pluginId) recipeOwners.delete(recipe.id);
+        if (!restored && recipeOwners.get(recipe.id) === pluginId) recipeOwners.delete(recipe.id);
         const owned = pluginRecipeIds.get(pluginId);
         if (owned) {
           const kept = owned.filter((id) => id !== recipe.id);

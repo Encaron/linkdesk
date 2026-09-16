@@ -32,6 +32,11 @@ const RESERVED: HostReservedNames = {
   protocolIds: ["bracket"],
   configKeys: ["app.theme", "app.surfaceRadius", "app.schemaVersion"],
   pseudoPluginIds: ["app", "appearance", "update"],
+  appearanceRecipeIds: [],
+  appearanceColorwayIds: [],
+  appearanceIconThemeIds: [],
+  appearanceSentinels: [],
+  appearanceIdGrants: {},
 };
 
 const NO_LEDGER = join(tmpdir(), "no-such-host-reserved.json");

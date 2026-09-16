@@ -25,6 +25,15 @@
  *      ⇒ ⑩ 的「插件 ∩ 宿主」从**名字面**（声明 ∪ 运行时）算——**引用面单列**，不许混进来
  *        （1.31 §9.3 的连带缺陷正是「拿引用面当名字面」）。
  *
+ * ── 🔴 2026-09-17 口径修正（E6#111f · 轮次 1.36）──
+ *   ① **③e 主题配方 id**：原 `:160-161` 把 `theme.name`（**显示名**）也塞进 `recipeIds` 桶
+ *      ⇒ ③e 读 **20**（真值 **10**）。现只收 `id`；显示名单列一行 ③e′（**不是 id，不参与归属判据**）。
+ *   ② **③d 语言包 id**：原 `:116` 把 `langDefs[].id`（`python`）混进 `langCodes` ⇒ ③d 读 **4**
+ *      （真值 **3**）。`LangDefRegistry` 按**扩展名**作键 ⇒ 那个字段根本不是名字空间，现剔除。
+ *   ③ **⑩b** 并上外观两栏（配方 / 图标主题）——账 1.36 拆栏后，这正是「插件声明 ∩ 宿主兜底」的读数点。
+ *      同笔**减证照**（`appearanceIdGrants`）：不减 ⇒ 官方 `theme-defaults` 声明宿主亮色兜底 `light`
+ *      被读成顶替者（假红）——它恰恰是那条 id 的**持证照实现者**。读数行会另记「持证照」项。
+ *
  * ── 口径（本脚本自报，读数别跨口径引用）──
  *   · **处**（site）= 出现点个数；**名**（name）= 去重后的名字个数；**多方共写** = 被 ≥2 个来源写的名字数。
  *   · 一个「来源」= 插件 id（壳仓自身面 = 文件路径）；i18n 面按 `id#目录/文件` 记。
@@ -92,6 +101,7 @@ console.error(`[probe] 官方插件仓 ${plugins.length} 只（容器 ${CONTAINE
 const cmdDeclared = new Map(), cmdRuntime = new Map(), cmdRefs = new Map(),
   configKeys = new Map(), themeIds = new Map(), iconThemeIds = new Map(),
   sharedIconIds = new Map(), langCodes = new Map(), recipeIds = new Map(), viewIds = new Map(),
+  recipeDisplayNames = new Map(),
   containerIds = new Map(), menuSlots = new Map(), titleBarSlots = new Map(), langDefExts = new Map(),
   fileAssocExts = new Map(), keyStrings = new Map(), i18nTopKeys = new Map(), contextKeysSet = new Map(),
   protocolIds = new Map();
@@ -113,7 +123,8 @@ for (const p of plugins) {
   for (const x of c.langDefs || []) {
     for (const e of x.extensions || []) bucket(langDefExts, String(e).replace(/^\./, "").toLowerCase(), p.id);
     for (const e of x.filenamePatterns || []) bucket(langDefExts, String(e), p.id);
-    if (x.id) bucket(langCodes, x.id, p.id);
+    // 🔴 `langDefs[].id` **不是名字空间**（`LangDefRegistry` 按**扩展名**作键——E6#111f／1.36 §二.5）
+    //   ⇒ 不许并进语言码家族。原先这里 `bucket(langCodes, x.id)` 把 `python` 混进来，③d 读 4（真值 3）。
   }
   for (const x of c.fileAssociations || []) bucket(fileAssocExts, String(x.extension || "").replace(/^\./, "").toLowerCase(), p.id);
   for (const x of c.keybindings || []) {
@@ -154,11 +165,14 @@ for (const p of plugins) {
   }
 }
 // 主题配方 id（主题插件仓根 themes/*.json 或 i18n 同目录）
+// 🔴 只收 `t.id`——`t.name` 是**显示名**，不是 id（E6#111f／1.36 探针口径修正）。原先两行合收
+//   把 10 个配方名灌成 20，③e 读 20（真值 10）；显示名另有去处（设置页显示的是 name，
+//   改名不动它 —— 见 1.35 §12.3）。
 for (const p of plugins) {
   for (const f of walk(p.dir, (x) => /themes[\\/].*\.json$/.test(x))) {
     const t = readJsonc(f);
     if (t && t.id) bucket(recipeIds, t.id, p.id);
-    if (t && t.name) bucket(recipeIds, t.name, p.id);
+    if (t && t.name) bucket(recipeDisplayNames, t.name, p.id);
   }
 }
 // contextKey.set(...) 插件侧调用
@@ -210,6 +224,7 @@ report("③b 图标主题 id（contributes.iconThemes[].id）", iconThemeIds, { 
 report("③c 共享图标 id（contributes.icons）", sharedIconIds);
 report("③d 语言包 id（contributes.languages[].id）", langCodes, { showAll: true });
 report("③e 主题配方 id", recipeIds, { showAll: true });
+report("③e′ 主题显示名（`theme.name`——🔴 **不是 id**，单列只为对照，不参与任何归属判据）", recipeDisplayNames, { showAll: true });
 report("③f 协议 id（contributes.protocols[].id ＋ 源码 registerProtocol 字面量）", protocolIds, { showAll: true });
 report("④ 插件设置的 context key（contextKey.set）", contextKeysSet, { showAll: true });
 report("⑤ i18n 顶层键", i18nTopKeys, { limit: 15 });
@@ -263,13 +278,31 @@ if (!JSON_OUT) {
       { label: "设置键", map: configKeys, keys: ledger.configKeys, mode: "exact" },
       { label: "context key", map: contextKeysSet, keys: ledger.contextKeys, mode: "exact" },
       { label: "协议 id", map: protocolIds, keys: ledger.protocolIds, mode: "exact" },
+      // E6#111f／1.36：外观两栏并对（配方 / 图标主题）——🔴 **配方栏只跟配方栏比**（配色 id 是另一个
+      //   名字空间，合栏 = 官方 theme-defaults 的配色 `dark` 假红，见生成器文件头）
+      //   🔴 两栏都**减证照**（`grants`）——`appearanceIdGrants` 是**按 id 记**的正当持有者
+      //   （`light` ⇐ theme-defaults，它是宿主亮色兜底的官方实现者）：不减 = 把官方实现者报成顶替者
+      //   ⇒ **假红**，而假红会让真红失效（账文件头同款纪律）。
+      { label: "配方 id ∩ 兜底配方栏", map: recipeIds, keys: ledger.appearanceRecipeIds, mode: "exact", grants: ledger.appearanceIdGrants },
+      { label: "图标主题 id ∩ 保底栏", map: iconThemeIds, keys: ledger.appearanceIconThemeIds, mode: "exact", grants: ledger.appearanceIdGrants },
     ];
+    /** 该 id 的**声明者里至少有一个没证照** ⇒ 才算真命中（证照按 id 记，见 ⑩b 上注） */
+    const hasUngrantedDeclarer = (f, id) => {
+      const holders = f.grants?.[id];
+      if (!holders) return true;
+      return [...(f.map.get(id) ?? [])].some((pid) => !holders.includes(pid));
+    };
     for (const f of hostFaces) {
       const keys = f.keys || [];
-      const hits = f.mode === "prefix"
+      const raw = f.mode === "prefix"
         ? [...f.map.keys()].filter((k) => keys.some((p) => k.startsWith(p)))
         : [...f.map.keys()].filter((k) => keys.includes(k));
-      console.log(`   ${f.label} ∩ 账（宿主 ${keys.length} 项）= ${hits.length}${hits.length ? " → " + hits.slice(0, 30).join(", ") : ""}`);
+      const hits = f.grants ? raw.filter((k) => hasUngrantedDeclarer(f, k)) : raw;
+      const granted = f.grants ? raw.filter((k) => !hasUngrantedDeclarer(f, k)) : [];
+      console.log(
+        `   ${f.label} ∩ 账（宿主 ${keys.length} 项）= ${hits.length}${hits.length ? " → " + hits.slice(0, 30).join(", ") : ""}` +
+          (granted.length ? `（另有 ${granted.length} 项**持证照**、合法：${granted.join(", ")}）` : ""),
+      );
     }
     const pseudo = ledger.pseudoPluginIds || [];
     const idHits = plugins.map((p) => p.id).filter((id) => pseudo.includes(id));

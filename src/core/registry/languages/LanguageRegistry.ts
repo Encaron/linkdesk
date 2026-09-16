@@ -28,7 +28,14 @@ class LanguageRegistryImpl extends RegistryBase {
   }
 
   /** 注册插件贡献的语言包。同名 ID 后注册者覆盖（warn）。
-   *  E5.8#10：per-entry track——返 disposer（仅当仍是当前占位者才删，防覆盖误删）。 */
+   *  E5.8#10：per-entry track——返 disposer（仅当仍是当前占位者才删，防覆盖误删）。
+   *
+   *  🔴 **E6#111f／1.36：本册刻意不加归属仲裁**（不是漏了——是判据表里"恒空转 ⚪不判"那一行的落地）。
+   *  理由：键 = **语言码**（`zh` / `en` / `ja`），属 §〇c 三类**永久豁免**的全局概念名（语言码 / 文件关联
+   *  扩展名 / 语言定义扩展名）——语言码天然是共享概念，插件包"提供 zh 的翻译"是正常行为，
+   *  判它"不带归属"或"跨插件同 id"都是**假红**（宽容度模型：假红会让真红失效）。
+   *  ⇒ 保留既有 last-wins ＋ warn；语言包 id 不参与外观 id 的四栏账。
+   *  出处：1.36 §二.2 判据⑤ ＋ §〇c.2。 */
   register(contribution: LanguageContribution, pluginId: string): () => void {
     const lang: RegisteredLanguage = { ...contribution, pluginId };
     if (this.languages.has(lang.id)) {

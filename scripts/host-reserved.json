@@ -63,11 +63,25 @@
     "updateActionable",
     "updateButtonLabel"
   ],
-  "appearanceIds": [
+  "appearanceRecipeIds": [
     "dark",
+    "light"
+  ],
+  "appearanceColorwayIds": [
     "dark-fallback",
     "light"
   ],
+  "appearanceIconThemeIds": [
+    "default"
+  ],
+  "appearanceSentinels": [
+    "followTheme"
+  ],
+  "appearanceIdGrants": {
+    "light": [
+      "theme-defaults"
+    ]
+  },
   "protocolIds": [
     "bracket"
   ]

@@ -659,7 +659,7 @@ plugins/<pluginId>/            ← repo 源码树（塌平单根；目录名 = �
 pluginId "app" 是宿主自己的身份（宿主用它注册配置/外观/更新），插件用它 ⇒ 冲突检测永不响、注销会摘掉宿主条目。
 ```
 
-> ⚠️ **身份与键名是两件事**：`pluginId` 决定"你是谁"，`contributes.configuration` 的**键名**决定"这个键归谁"（那份规矩见 [03-插件contributes规范 §3.4](03-插件contributes规范.md)）。两者都不许碰宿主的保留面，但判据与报点各自独立。
+> ⚠️ **身份、键名、外观 id 是三件事**：`pluginId` 决定"你是谁"；`contributes.configuration` 的**键名**决定"这个键归谁"（[03-插件contributes规范 §3.4](03-插件contributes规范.md)）；`contributes.themes` / `iconThemes` / `icons` 里的 **id**（配方 / 配色变体 / 图标主题 / 共享图标）决定"这个外观名归谁"（同篇 §3.6–3.8）。三者都是**全局名册的键**、都不许碰宿主的保留面，但**三本不同的账**、判据与报点各自独立——认准你改的是哪一个。
 
 > 完整目录结构（`resources/` / `src/utils/` / `__tests__/` 放什么、命名约定）见 `09-插件目录规范.md`。
 

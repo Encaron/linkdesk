@@ -15,6 +15,11 @@
 import { RegistryBase } from "../../registry/RegistryBase";
 import type { IconThemeContribution, IconContribution, IconThemeMappings } from "../../api/types";
 import type { FontFaceSpec } from "../../types/ipc/events";
+import {
+  judgeAppearanceId,
+  logAppearanceIdRejection,
+  NOOP_DISPOSE,
+} from "./appearanceOwnership"; // E6#111f／1.36：外观 id 归属仲裁（出口 = logAppearanceIdRejection）
 
 interface RegisteredIconTheme extends IconThemeContribution {
   pluginId: string;
@@ -46,14 +51,21 @@ class IconRegistryImpl extends RegistryBase {
     super();
   }
 
-  /** 注册插件贡献的图标主题。同名 ID 后注册者覆盖（warn）。
+  /** 注册插件贡献的图标主题。同名 ID —— 🔴 **E6#111f／1.36 起改为归属仲裁**（判据②顶替宿主兜底
+   *  `default` / ③跨插件同 id ⇒ 拒 ＋ `console.error`；同插件重注册不变）。
    *  E5.8#10：per-entry track——返 disposer（仅当仍是当前占位者才删，防覆盖误删）。 */
   register(contribution: IconThemeContribution, pluginId: string): () => void {
     const theme: RegisteredIconTheme = { ...contribution, pluginId };
-    if (this.themes.has(theme.id)) {
-      console.warn(
-        `[IconRegistry] 图标主题 "${theme.id}" 重复注册——后注册者 "${pluginId}" 覆盖`
-      );
+    const verdict = judgeAppearanceId({
+      space: "iconTheme",
+      id: theme.id,
+      pluginId,
+      prevOwner: this.themes.get(theme.id)?.pluginId,
+      occupied: this.themes.has(theme.id),
+    });
+    if (!verdict.accept) {
+      logAppearanceIdRejection("[IconRegistry]", verdict);
+      return NOOP_DISPOSE;
     }
     this.themes.set(theme.id, theme);
     const ids = this.pluginThemeIds.get(pluginId) ?? [];
@@ -119,14 +131,21 @@ class IconRegistryImpl extends RegistryBase {
 
   /* ── 共享图标（contributes.icons） ── */
 
-  /** 注册插件贡献的共享图标。同名 ID 后注册者覆盖（warn）。
+  /** 注册插件贡献的共享图标。同名 ID —— 🔴 **E6#111f／1.36 起改为归属仲裁**（③跨插件同 id ⇒ 拒 ＋
+   *  `console.error`；🔴 宿主**没有**兜底共享图标 ⇒ 本空间保留面恒空，只剩这一条判据）。
    *  E5.8#10：per-entry track——返 disposer（仅当仍是当前占位者才删，防覆盖误删）。 */
   registerIcon(iconId: string, contribution: IconContribution, pluginId: string): () => void {
     const icon: RegisteredIcon = { ...contribution, pluginId };
-    if (this.icons.has(iconId)) {
-      console.warn(
-        `[IconRegistry] 共享图标 "${iconId}" 重复注册——后注册者 "${pluginId}" 覆盖`
-      );
+    const verdict = judgeAppearanceId({
+      space: "sharedIcon",
+      id: iconId,
+      pluginId,
+      prevOwner: this.icons.get(iconId)?.pluginId,
+      occupied: this.icons.has(iconId),
+    });
+    if (!verdict.accept) {
+      logAppearanceIdRejection("[IconRegistry]", verdict);
+      return NOOP_DISPOSE;
     }
     this.icons.set(iconId, icon);
     const ids = this.pluginIconIds.get(pluginId) ?? [];

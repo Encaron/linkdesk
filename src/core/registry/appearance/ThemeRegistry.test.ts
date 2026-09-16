@@ -112,11 +112,17 @@ describe("ThemeRegistry — registerRecipe / 查询 / 回滚", () => {
   const disposers: Array<() => void> = [];
   afterEach(() => {
     for (const d of disposers.splice(0)) d();
+    // 🔴 E6#111f／1.36 起本 describe 的用例**共用同一个模块级登记本**，而仲裁会在跨用例残留上判红
+    //   ⇒ 逐个用例清场（直删 + 还原 spy）：任一条用例中途断言失败，也不给下一条留脏局面。
+    for (const r of ThemeRegistry.getRecipes()) ThemeRegistry.unregisterRecipe(r.id);
+    vi.restoreAllMocks();
   });
   const fallbackC: ThemeContribution = { id: "demo-recipe", label: "Demo Recipe", uiTheme: "dark", path: "r.json" };
 
-  function recipe(id: string, name: string, type: "light" | "dark" = "dark") {
-    return { id, name, type, colorways: [{ id: "c", name: "C", colors: { bg: "#000" } }] };
+  // ⚠️ `colorwayId` 可覆盖：**配色 id 跨插件也判红**（判据③，配色随配方进来）⇒
+  //   想在同一条用例里让两个**不同插件**各注册一条配方，就必须给不同的配色 id（否则第二条被第一条的配色拦下）。
+  function recipe(id: string, name: string, type: "light" | "dark" = "dark", colorwayId = "c") {
+    return { id, name, type, colorways: [{ id: colorwayId, name: "C", colors: { bg: "#000" } }] };
   }
 
   it("registerRecipe → getRecipe/getRecipes/getRecipesByPlugin", () => {
@@ -126,53 +132,126 @@ describe("ThemeRegistry — registerRecipe / 查询 / 回滚", () => {
     expect(ThemeRegistry.getRecipesByPlugin("demo-plugin")).toContain("demo-recipe");
   });
 
-  it("同名重复注册 → 后注册者覆盖（warn）", () => {
+  // 🔴 E6#111f／1.36 判据③：本用例**翻面**——旧预期是「同名重复注册 → 后注册者覆盖（warn）」，
+  //   那是 1.36 明写废除的静默覆盖。跨插件同 id 现在 ⇒ 先者保留 ＋ 拒后者 ＋ console.error（点名双方）。
+  it("判据③：跨插件同 id ⇒ 先者保留 ＋ 拒后者 ＋ console.error 点名双方", () => {
+    const err = vi.spyOn(console, "error").mockImplementation(() => {});
     disposers.push(ThemeRegistry.registerRecipe(recipe("demo-recipe", "One"), "plugin-a"));
-    disposers.push(ThemeRegistry.registerRecipe(recipe("demo-recipe", "Two"), "plugin-b"));
-    expect(ThemeRegistry.getRecipe("demo-recipe")?.name).toBe("Two");
+    const rejected = ThemeRegistry.registerRecipe(recipe("demo-recipe", "Two"), "plugin-b");
+    expect(ThemeRegistry.getRecipe("demo-recipe")?.name).toBe("One"); // 先者保留
+    expect(ThemeRegistry.getRecipesByPlugin("plugin-b")).not.toContain("demo-recipe"); // 后者没写进去
+    expect(err).toHaveBeenCalledTimes(1);
+    const line = String(err.mock.calls[0][0]);
+    expect(line).toContain("plugin-a");
+    expect(line).toContain("plugin-b");
+    // 被拒的注册返 no-op disposer：调它不许摘掉先者
+    rejected();
+    expect(ThemeRegistry.getRecipe("demo-recipe")?.name).toBe("One");
+    err.mockRestore();
   });
 
-  it("disposer 回滚——删当前占位者；后注册者覆盖后 dispose 不误删新占位者", () => {
-    ThemeRegistry.registerRecipe(recipe("demo-recipe", "One"), "plugin-a");
-    ThemeRegistry.registerRecipe(recipe("demo-recipe", "Two"), "plugin-b");
-    // 卸载 plugin-a（先卸载方）——当前占位者是 Two，plugin-a 的 disposer 不应误删新占位者
-    rollback("plugin-a");
+  it("判据③（配色空间）：异插件的配方带**同配色 id** ⇒ 拒整条配方 ＋ 出声（配色随配方进来，无独立登记本）", () => {
+    const err = vi.spyOn(console, "error").mockImplementation(() => {});
+    disposers.push(ThemeRegistry.registerRecipe(recipe("demo-recipe-a", "A"), "plugin-a"));
+    // plugin-b 的配方 id 干净（demo-recipe-b），但配色 id 撞了 plugin-a 的 "c"
+    const rejected = ThemeRegistry.registerRecipe(recipe("demo-recipe-b", "B"), "plugin-b");
+    expect(ThemeRegistry.getRecipe("demo-recipe-b")).toBeUndefined(); // 整条拒，不是只拒配色
+    expect(err).toHaveBeenCalledTimes(1);
+    // 空间用**账/腿的码**（`space: "colorway"`，与 SDK 腿同一套词汇）＋ 成因句点名是哪条配方
+    const line = String(err.mock.calls[0][0]);
+    expect(line).toContain('空间 "colorway"');
+    expect(line).toContain('配方 "demo-recipe-b"');
+    rejected();
+    err.mockRestore();
+  });
+
+  it("判据④（黄）：**同插件**跨配方同配色 id ⇒ 放行（不拒、不出声——存量反例就是证据）", () => {
+    const err = vi.spyOn(console, "error").mockImplementation(() => {});
+    disposers.push(ThemeRegistry.registerRecipe(recipe("demo-recipe-a", "A"), "plugin-a"));
+    disposers.push(ThemeRegistry.registerRecipe(recipe("demo-recipe-b", "B"), "plugin-a"));
+    expect(ThemeRegistry.getRecipe("demo-recipe-b")).toBeDefined();
+    expect(err).not.toHaveBeenCalled();
+    err.mockRestore();
+  });
+
+  it("反向负控：**同 pluginId** 重注册同 id ⇒ 第二次生效且零日志（装配路径多阶段）", () => {
+    const err = vi.spyOn(console, "error").mockImplementation(() => {});
+    disposers.push(ThemeRegistry.registerRecipe(recipe("demo-recipe", "One"), "plugin-a"));
+    disposers.push(ThemeRegistry.registerRecipe(recipe("demo-recipe", "Two"), "plugin-a"));
     expect(ThemeRegistry.getRecipe("demo-recipe")?.name).toBe("Two");
-    expect(ThemeRegistry.getRecipesByPlugin("plugin-a")).not.toContain("demo-recipe");
-    // E5.8#61 审计#3：卸载 plugin-b → 回填被覆盖的旧占位者 One（非删空——插件卸载不吞前一个配方）
-    rollback("plugin-b");
+    expect(err).not.toHaveBeenCalled();
+    err.mockRestore();
+  });
+
+  it("E5.8#61 审计#3：disposer 回填被覆盖的旧占位者（同插件重注册路径）＋ 首个 disposer 清空", () => {
+    const first = ThemeRegistry.registerRecipe(recipe("demo-recipe", "One"), "plugin-a");
+    const second = ThemeRegistry.registerRecipe(recipe("demo-recipe", "Two"), "plugin-a");
+    expect(ThemeRegistry.getRecipe("demo-recipe")?.name).toBe("Two");
+    second(); // 卸载覆盖者 → 回填 One（插件卸载不吞前一个配方）
     expect(ThemeRegistry.getRecipe("demo-recipe")?.name).toBe("One");
     expect(ThemeRegistry.getRecipeOwner("demo-recipe")).toBe("plugin-a");
-    ThemeRegistry.unregisterRecipe("demo-recipe"); // 清理残留——One 的 disposer 已随 rollback 耗尽，直删恢复测试前状态
+    first();
+    expect(ThemeRegistry.getRecipe("demo-recipe")).toBeUndefined();
+  });
+
+  it("卸载回滚 —— rollback 只摘除该插件的配方，不动别人的", () => {
+    ThemeRegistry.registerRecipe(recipe("demo-recipe", "One", "dark", "c-a"), "plugin-a");
+    disposers.push(ThemeRegistry.registerRecipe(recipe("demo-other", "Other", "dark", "c-b"), "plugin-b"));
+    rollback("plugin-a");
+    expect(ThemeRegistry.getRecipe("demo-recipe")).toBeUndefined();
+    expect(ThemeRegistry.getRecipe("demo-other")?.name).toBe("Other");
   });
 
   it("getRecipe 未注册 → undefined", () => {
     expect(ThemeRegistry.getRecipe("no-such")).toBeUndefined();
   });
 
-  it("壳兜底注册（无 pluginId）→ 无归属 + 插件配方覆盖不告警 + 不追踪", () => {
-    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+  // 🔴 E6#111f／1.36 判据⑥：本用例**翻面**——旧预期是「插件配方覆盖壳兜底不告警」，1.36 明写废除。
+  //   无证照顶替宿主兜底条目 ⇒ 拒 ＋ console.error。
+  it("壳兜底注册（无 pluginId）→ 无归属；判据⑥：无证照顶替 ⇒ 拒 ＋ console.error（1.36 起不再静默）", () => {
+    const err = vi.spyOn(console, "error").mockImplementation(() => {});
     try {
       // 壳兜底配方无归属——getRecipeOwner 应为 undefined
       const fallback = ThemeRegistry.registerRecipe(recipe("demo-fallback", "Fallback"), undefined);
       expect(ThemeRegistry.getRecipe("demo-fallback")?.name).toBe("Fallback");
       expect(ThemeRegistry.getRecipeOwner("demo-fallback")).toBeUndefined();
-      // 插件配方覆盖兜底——无归属 → 不告警（registerTheme 同款语义）
-      const plugin = ThemeRegistry.registerRecipe(recipe("demo-fallback", "Plugin"), "plugin-a");
-      expect(ThemeRegistry.getRecipe("demo-fallback")?.name).toBe("Plugin");
-      expect(warn).not.toHaveBeenCalled();
-      expect(ThemeRegistry.getRecipesByPlugin("plugin-a")).toContain("demo-fallback");
-      // E5.8#61 审计#3：插件 dispose → 回填壳兜底配方（原实现删空——插件覆盖兜底后卸载，兜底会话内丢失，
-      // 重启才恢复）；兜底配方恢复且无归属（owner 清空）
-      plugin();
-      expect(ThemeRegistry.getRecipe("demo-fallback")?.name).toBe("Fallback");
-      expect(ThemeRegistry.getRecipeOwner("demo-fallback")).toBeUndefined();
+      // 插件顶替兜底——无证照 ⇒ 拒
+      const rejected = ThemeRegistry.registerRecipe(recipe("demo-fallback", "Plugin"), "plugin-a");
+      expect(ThemeRegistry.getRecipe("demo-fallback")?.name).toBe("Fallback"); // 兜底保留
       expect(ThemeRegistry.getRecipesByPlugin("plugin-a")).not.toContain("demo-fallback");
+      expect(err).toHaveBeenCalledTimes(1);
+      rejected(); // no-op disposer 不许动兜底
+      expect(ThemeRegistry.getRecipe("demo-fallback")?.name).toBe("Fallback");
       // 兜底裸 disposer 幂等（不复活、不误删新占位者）——此时占位者即兜底自身 → 删空
       fallback();
       expect(ThemeRegistry.getRecipe("demo-fallback")).toBeUndefined();
     } finally {
-      warn.mockRestore();
+      err.mockRestore();
+    }
+  });
+
+  it("判据⑥（唯一静默例外）：有证照的官方实现者接替宿主兜底 ⇒ 静默上位 ＋ disposer 回填兜底", () => {
+    const err = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      // 宿主兜底 `light`（配方 ＋ 配色同 id——账的 recipe/colorway 两栏都含 light）
+      const fallback = ThemeRegistry.registerRecipe(
+        { id: "light", name: "Host Light", type: "light", colorways: [{ id: "light", name: "Light", colors: {} }] },
+        undefined
+      );
+      // 账 `appearanceIdGrants.light = ["theme-defaults"]` ⇒ 唯一静默例外
+      const granted = ThemeRegistry.registerRecipe(
+        { id: "light", name: "Light", type: "light", colorways: [{ id: "light", name: "Light", colors: {} }] },
+        "theme-defaults"
+      );
+      expect(ThemeRegistry.getRecipe("light")?.name).toBe("Light");
+      expect(ThemeRegistry.getRecipeOwner("light")).toBe("theme-defaults");
+      expect(err).not.toHaveBeenCalled(); // 🔴 静默——这是设计里的交接，不是顶替
+      granted();
+      expect(ThemeRegistry.getRecipe("light")?.name).toBe("Host Light"); // 回填兜底
+      fallback();
+      expect(ThemeRegistry.getRecipe("light")).toBeUndefined();
+    } finally {
+      err.mockRestore();
     }
   });
 

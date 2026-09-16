@@ -3,7 +3,7 @@
  * #36l1：核心 Registry/Service 层 vitest 覆盖。
  */
 
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 // E5.8 Phase 11.15 3b：unregisterTheme/getThemesByPlugin 从门面撤出——registry 测试直引本体
 import { unregisterTheme, getThemesByPlugin } from "./registry";
 import {
@@ -42,13 +42,32 @@ describe("ThemeEngine — registerTheme / unregisterTheme", () => {
     expect(theme?.pluginId).toBe("my-plugin");
   });
 
-  it("registerTheme — 覆盖无 pluginId 的 fallback 主题不告警", () => {
-    // Fallback themes have no pluginId
-    registerTheme({ name: "Dark", type: "dark", colors: {} });
-    // Plugin theme overwrites fallback — should not warn (only logged)
-    registerTheme({ name: "Dark", type: "dark", colors: { bg: "#111" } }, "theme-dark");
+  // 🔴 E6#111f／1.36 判据⑥：本用例**翻面**——旧预期是「覆盖无 pluginId 的 fallback 不告警」，
+  //   那是 1.36 明写**废除**的行为（「覆盖宿主兜底要出声」）。flat 本键 = 显示名 ⇒ `reservedFace:false`
+  //   （不判「是不是宿主保留面」），但**⑥那条分支照判**：占位者无 pluginId ⇒ 拒 ＋ console.error。
+  it("registerTheme — 覆盖无 pluginId 的条目 ⇒ 拒 ＋ console.error（判据⑥：1.36 起不再静默）", () => {
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    registerTheme({ name: "Dark", type: "dark", colors: {} }); // 无 pluginId = 宿主侧条目
+    const dispose = registerTheme({ name: "Dark", type: "dark", colors: { bg: "#111" } }, "theme-dark");
     const theme = findTheme("Dark");
-    expect(theme?.pluginId).toBe("theme-dark");
+    expect(theme?.pluginId).toBeUndefined(); // 先者保留——后注册者**没写进去**
+    expect(spy).toHaveBeenCalledTimes(1);
+    expect(String(spy.mock.calls[0][0])).toContain("theme-dark"); // 点名本次登记者
+    // 被拒的注册返 no-op disposer：调用它**不许**把先者那条摘掉
+    dispose();
+    expect(findTheme("Dark")).toBeDefined();
+    spy.mockRestore();
+  });
+
+  it("registerTheme — 反向负控：同 pluginId 重注册 ⇒ 第二次生效且**零日志**（装配路径多阶段）", () => {
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    registerTheme({ name: "Dark", type: "dark", colors: {} }, "theme-dark");
+    const second = registerTheme({ name: "Dark", type: "dark", colors: { bg: "#222" } }, "theme-dark");
+    expect(findTheme("Dark")?.colors).toEqual({ bg: "#222" }); // 后者生效
+    expect(spy).not.toHaveBeenCalled(); // 不出声
+    second();
+    expect(findTheme("Dark")).toBeUndefined(); // 真 disposer（与 no-op 那支相反）
+    spy.mockRestore();
   });
 
   it("unregisterTheme — 注销后 getAvailableThemes 不含该主题", () => {

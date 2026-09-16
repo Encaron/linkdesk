@@ -663,7 +663,7 @@ pluginId "app" is the host's own identity (the host uses it to register configur
 a plugin using it ⇒ collision detection never fires, and unregistration removes the host's entry.
 ```
 
-> ⚠️ **Identity and key names are two different things**: `pluginId` decides *who you are*, while the **key names** in `contributes.configuration` decide *who a key belongs to* (that rule is in [03-contributes-spec §3.4](03-contributes-spec.md)). Neither may touch the host's reserved surface, but the criteria and the reports are separate.
+> ⚠️ **Identity, key names and appearance ids are three different things**: `pluginId` decides *who you are*; the **key names** in `contributes.configuration` decide *who a key belongs to* ([03-contributes-spec §3.4](03-contributes-spec.md)); and the **ids** inside `contributes.themes` / `iconThemes` / `icons` (recipe / colorway variant / icon theme / shared icon) decide *who an appearance name belongs to* (same file, §3.6–3.8). All three are **keys of a global registry** and none may touch the host's reserved surface — but they are **three separate ledgers** with separate criteria and separate reports, so be sure which one you are changing.
 
 > The complete directory structure (what goes in `resources/` / `src/utils/` / `__tests__/`, naming conventions) is in `09-plugin-directory-layout.md`.
 

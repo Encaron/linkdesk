@@ -5,9 +5,9 @@
  *   "lint": "linkdesk-plugin-sdk lint"          // 两条腿全跑 + 打印报告（bin）
  *   // 或编程：linkdeskPluginLintConfig() 展开进作者自配 eslint.config.js
  *
- * 全量门禁 = eslint 规则腿 + 四条 check 扫描腿（lint.ts 编排）。规则 id 与 disable 注释格式
- * 见 src/eslint/rules.ts 头注（双源注记）。除下面这一条**审计入口**外不暴露内部 check 函数——
- * bin lint 已聚合。
+ * 全量门禁 = eslint 规则腿 + **七条** check 扫描腿（lint.ts 编排）。规则 id 与 disable 注释格式
+ * 见 src/eslint/rules.ts 头注（双源注记）。除下面这组**审计入口**外不暴露内部 check 函数——
+ * bin lint 已聚合。（审计入口逐个带「不是第二条判据路径」的注记——腿用的就是同一个函数。）
  *
  * 🔴 E6#109h-b①：`runPluginPrefixCheck` 是**唯一一个对内 check 的具名导出**，专供壳仓只读审计工具
  *    `scripts/plugin-css-prefix-audit.mjs`（改名轮 ③–⑦ 生成「旧名 → 新名」映射、⑧ 全量复核）。
@@ -54,3 +54,28 @@ export type {
  */
 export { runConfigOwnershipCheck, judgeConfigKey, judgeRegisterIdentity, manifestKeyLine } from "./checks/config-ownership.js";
 export type { ConfigOwnershipReport, ConfigKeySite, ConfigKeyCode, ConfigKeyFace } from "./checks/config-ownership.js";
+
+/**
+ * 🔴 E6#111f（1.36）：同一纪律再加一个 —— `runAppearanceOwnershipCheck`（外观族 id 归属判据）。
+ *    壳仓只读探针 `scripts/audit-nonnaming.mjs` 用它出外观族读数；**同样不是第二条判据路径**
+ *    （`lint.ts` 的第七条腿用的就是它——同一份实现，改一处两边一起变）。
+ *    分级与配置腿同形：判据② 占宿主兜底外观 id = 红（进腿报点）；判据① 新 id 不带本仓前缀 = 黄
+ *    （`appearanceAdvisories`，只打印）——★回退条件 ＋ 排序纪律，见该文件头。
+ *    ⚠️ 五空间的**空间参数**是判据的一部分（`recipe` / `colorway` / `iconTheme` / `sharedIcon` / `sentinel`）：
+ *    跨空间比 = 假红（配方 `light` vs 配色 `light`），判据一律**按空间**取账栏，见 `reservedIdsForSpace`。
+ */
+export {
+  runAppearanceOwnershipCheck,
+  judgeAppearanceId,
+  reservedIdsForSpace,
+  grantHoldersFor,
+  readThemeJson,
+  themeIdLine,
+} from "./checks/appearance-ownership.js";
+export type {
+  AppearanceOwnershipReport,
+  AppearanceIdSite,
+  AppearanceIdCode,
+  AppearanceIdSpace,
+  AppearanceIdFace,
+} from "./checks/appearance-ownership.js";

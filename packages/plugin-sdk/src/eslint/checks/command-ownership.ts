@@ -49,10 +49,19 @@ import { buildDisableIndex, isDisabled, CHECK_IDS } from "./disable.js";
  */
 export const HOST_RESERVED_FILE = resolve(dirname(fileURLToPath(import.meta.url)), "../../../schemas/host-reserved.json");
 
-/** 本腿要读的两栏 ＋ **E6#111d（1.34）起原地补齐另两栏**——`configKeys`（配置键归属腿：判「不得占用宿主
- *  设置面」）与 `pseudoPluginIds`（宿主伪身份：判「不得冒充宿主身份注册」）。**同一个 loader、同一份账**——
- *  ⛔ 不许在各腿里各写一份 loader（两份 = 迟早漂，而这两条判据的输入必须是同一本账）。
- *  剩下两栏（contextKeys / appearanceIds）由上下文旗子、外观 id 的后续轮次消费，此处不读也不删。 */
+/** 本腿要读的两栏 ＋ **E6#111d（1.34）补齐配置面两栏** ＋ **E6#111f（1.36）补齐外观族四栏 ＋ 证照**。
+ *  **同一个 loader、同一份账**——⛔ 不许在各腿里各写一份 loader（两份 = 迟早漂，而这几条判据的输入必须是同一本账）。
+ *
+ *  逐栏的消费者：
+ *   · `commandPrefixes` / `protocolIds` → 命令 id 归属腿（本文件）；
+ *   · `configKeys`（配置键归属腿：判「不得占用宿主设置面」）/ `pseudoPluginIds`（宿主伪身份）→ 1.34；
+ *   · **`appearanceRecipeIds` / `appearanceColorwayIds` / `appearanceIconThemeIds` / `appearanceSentinels`**
+ *     → 外观族 id 归属腿（1.36）。🔴 **四栏不可合并**——配方 id 与配色 id 是**两个名字空间**
+ *     （`mint-soda` 同时是两者）：合栏比会把官方 `theme-defaults` 的配色 `light` 判成顶替配方 `light`
+ *     （**假红**，它恰恰是宿主亮兜底的官方实现者）。判据按空间取栏，见 `reservedIdsForSpace`；
+ *   · **`appearanceIdGrants`**（id → 持证 pluginId 列表）→ 同上。**不是白名单**：它是"某个兜底 id 的官方实现者"
+ *     的一次公共面决策（今天只有 `light` → `theme-defaults`），与"跳过判据"的豁免表刻意分开存。
+ *   · `contextKeys` 由上下文旗子轮次（1.38）消费，此处不读也不删。 */
 export interface HostReservedNames {
   commandPrefixes: string[];
   protocolIds: string[];
@@ -60,22 +69,54 @@ export interface HostReservedNames {
   configKeys: string[];
   /** E6#111d：宿主伪身份（app / appearance / update）——插件用它注册 = 冒充宿主 */
   pseudoPluginIds: string[];
+  /** E6#111f：宿主兜底**配方** id（`app.theme` 取值空间） */
+  appearanceRecipeIds: string[];
+  /** E6#111f：宿主兜底**配色变体** id（`app.themeColor` 取值空间）——🔴 与配方栏各成一格，别混 */
+  appearanceColorwayIds: string[];
+  /** E6#111f：宿主保底**图标主题** id（`app.iconTheme` 取值空间） */
+  appearanceIconThemeIds: string[];
+  /** E6#111f：宿主**外观哨兵值**（`followTheme`）——取值约定，不是 id */
+  appearanceSentinels: string[];
+  /** E6#111f：外观 id 的**证照**（id → 持证的 pluginId 列表）——「这个兜底 id 由谁实现」的公共面决策 */
+  appearanceIdGrants: Record<string, string[]>;
 }
 
 /** 读宿主保留面账；文件缺失 ⇒ 空表 ＋ 报告里打一条 note（静默空表 = 判据②变瞎子，不许不吭声） */
 export function loadHostReserved(file: string = HOST_RESERVED_FILE): HostReservedNames {
-  if (!existsSync(file)) return { commandPrefixes: [], protocolIds: [], configKeys: [], pseudoPluginIds: [] };
+  if (!existsSync(file)) {
+    return {
+      commandPrefixes: [],
+      protocolIds: [],
+      configKeys: [],
+      pseudoPluginIds: [],
+      appearanceRecipeIds: [],
+      appearanceColorwayIds: [],
+      appearanceIconThemeIds: [],
+      appearanceSentinels: [],
+      appearanceIdGrants: {},
+    };
+  }
   const raw = JSON.parse(readFileSync(file, "utf8")) as {
     commandPrefixes?: string[];
     protocolIds?: string[];
     configKeys?: string[];
     pseudoPluginIds?: string[];
+    appearanceRecipeIds?: string[];
+    appearanceColorwayIds?: string[];
+    appearanceIconThemeIds?: string[];
+    appearanceSentinels?: string[];
+    appearanceIdGrants?: Record<string, string[]>;
   };
   return {
     commandPrefixes: raw.commandPrefixes ?? [],
     protocolIds: raw.protocolIds ?? [],
     configKeys: raw.configKeys ?? [],
     pseudoPluginIds: raw.pseudoPluginIds ?? [],
+    appearanceRecipeIds: raw.appearanceRecipeIds ?? [],
+    appearanceColorwayIds: raw.appearanceColorwayIds ?? [],
+    appearanceIconThemeIds: raw.appearanceIconThemeIds ?? [],
+    appearanceSentinels: raw.appearanceSentinels ?? [],
+    appearanceIdGrants: raw.appearanceIdGrants ?? {},
   };
 }
 

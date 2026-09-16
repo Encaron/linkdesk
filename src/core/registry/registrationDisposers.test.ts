@@ -54,8 +54,10 @@ describe("ThemeRegistry — register() 返 disposer", () => {
   });
 
   it("同名覆盖——旧注册者 dispose 不删后注册者主题（防误删）", () => {
+    // ⚠️ 「同名覆盖」如今只可能发生在**同一个插件**身上（E6#111f／1.36 机制 B：异插件同 id ⇒ 判③拒后者），
+    //   故两次注册同用 PID——这既是当下的合法场景，也更贴原意（「后注册者」= 同主换版重注册）。
     const disposeA = ThemeRegistry.register({ id: "td2", label: "A", uiTheme: "dark", path: "a.json" }, PID);
-    const disposeB = ThemeRegistry.register({ id: "td2", label: "B", uiTheme: "dark", path: "b.json" }, PID_OTHER);
+    const disposeB = ThemeRegistry.register({ id: "td2", label: "B", uiTheme: "dark", path: "b.json" }, PID);
 
     disposeA(); // 不再占位——不得删 B 的主题
 

@@ -142,8 +142,10 @@ describe("loader — parseContributions（export function）", () => {
   });
 
   it("contributes.themes → ThemeRegistry 注册", () => {
+    // 主题 id 用**本插件前缀**（E6#111f／1.36 机制 B）：`dark` 是宿主保底配方 id，
+    // 再拿它注册会被运行时仲裁判②拒掉（这条夹具此前正是踩了那个坑才红的）。
     parseContributions(TEST_PLUGIN_ID, {
-      themes: [{ id: "dark", label: "Dark", uiTheme: "dark", path: "dark.json" }],
+      themes: [{ id: `${TEST_PLUGIN_ID}.dark`, label: "Dark", uiTheme: "dark", path: "dark.json" }],
     });
     const themes = ThemeRegistry.getAll().filter((t) => t.pluginId === TEST_PLUGIN_ID);
     expect(themes.length).toBe(1);

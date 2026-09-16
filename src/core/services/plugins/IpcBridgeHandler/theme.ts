@@ -8,7 +8,7 @@
  */
 
 import { ThemeRegistry } from "../../../registry/appearance/ThemeRegistry";
-import { recipeDomains, getActiveRecipe, getEffectiveTokens, normalizeThemeValue, deriveAppearanceSeedMap, getThemeBaseTokens, MIX_SOURCE_KEYS } from "../../ui/ThemeEngine";
+import { recipeDomains, getActiveRecipe, getEffectiveTokens, normalizeThemeValue, normalizeThemeColorValue, deriveAppearanceSeedMap, getThemeBaseTokens, MIX_SOURCE_KEYS } from "../../ui/ThemeEngine";
 import { getConfigurationValue, setConfigurationValue, resetConfigurationValueBatch } from "../../configuration/ConfigurationService";
 import type { RecipeMeta, ColorwayMeta } from "../../../api/linkdesk-api/types";
 import type { ThemeRecipe } from "../../../types/theme";
@@ -48,7 +48,8 @@ export async function handleThemeMethod(method: string, args: unknown[]): Promis
       if (recipe) {
         return {
           recipeId,
-          colorwayId: getConfigurationValue<string>("app.themeColor") ?? recipe.colorways[0]?.id ?? "",
+          // E6#111f／1.36：读时归一（双语义：配色表 → 配方表）——报给插件的 id 恒为归属名
+          colorwayId: normalizeThemeColorValue(getConfigurationValue<string>("app.themeColor")) ?? recipe.colorways[0]?.id ?? "",
         };
       }
       return null;

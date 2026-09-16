@@ -4,6 +4,8 @@
  */
 
 import { trackRegistration } from "../../../registry/registrationTracker"; // E5.8#10：register 返 disposer——卸载自动逆序回滚
+// E6#111f／1.36：外观 id 归属仲裁（flat 本键 = 显示名 ⇒ reservedFace:false，只判"覆盖宿主兜底要出声"）
+import { judgeAppearanceId, logAppearanceIdRejection, NOOP_DISPOSE } from "../../../registry/appearance/appearanceOwnership";
 // E5.8#50.15：质感类型下沉 core/types/theme.ts（05 schema 配方数据模型）——此处重导出兼容既有消费方
 //  ThemeColors 不入门面（零消费方——knip 门禁留死导出，api/types.ts 走 types/theme 直取）
 import type { ThemeColors, ThemeSurface, ThemeBackground } from "../../../types/theme";
@@ -32,14 +34,28 @@ const _pluginThemeNames = new Map<string, string[]>();
  * Phase 4：注册插件提供的主题。
  * 插件加载器扫描到 type: "theme" 插件后调用此函数。
  * 注册后的主题和内置主题在同一个列表中，不区分来源。
+ *
+ * 🔴 **E6#111f／1.36 起改为归属仲裁**：原先「覆盖 fallback 主题（无 pluginId）不告警」是**明写的预期**
+ *   ——本格**废除**（判据⑥：覆盖宿主兜底要**出声**）。三条分支照 §二.3：
+ *   · 同 pluginId 重注册 ⇒ 不变（装配路径多阶段，不出声不拒 —— 反向负控）
+ *   · 宿主兜底条目被插件覆盖 ⇒ 不在证照内 = **拒 ＋ `console.error`**
+ *   · 异插件同 key ⇒ **先者保留 ＋ 拒后者** ＋ 点名双方
+ *   ⚠️ 本册的键是**显示名**（`theme.name`，非 id）⇒ `reservedFace: false`：**不判"这个名字是不是宿主保留面"**
+ *   （§二.2 ⑧ 显示名冲突不判），只判上面那条"覆盖宿主兜底要出声"。往上报 `theme.name` 就是名字空间本身。
  */
 export function registerTheme(theme: Theme, pluginId?: string): () => void {
-  // 覆盖 fallback 主题（无 pluginId）不告警——插件主题上位是预期行为
-  if (pluginThemes.has(theme.name)) {
-    const existing = pluginThemes.get(theme.name)!;
-    if (existing.pluginId) {
-      console.warn(`[ThemeEngine] 主题 "${theme.name}" 重复注册——后注册者覆盖先注册者`);
-    }
+  const prev = pluginThemes.get(theme.name);
+  const verdict = judgeAppearanceId({
+    space: "recipe",
+    id: theme.name,
+    pluginId,
+    prevOwner: prev?.pluginId,
+    occupied: pluginThemes.has(theme.name),
+    reservedFace: false,
+  });
+  if (!verdict.accept) {
+    logAppearanceIdRejection("[ThemeEngine]", verdict);
+    return NOOP_DISPOSE;
   }
   // 单真源：存储 pluginId 到 Theme 对象——ThemeRegistry.get() fallback 通过此字段找到归属
   if (pluginId) {
