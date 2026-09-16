@@ -4,7 +4,7 @@
  * 依赖方向：pluginManager → CommandRegistry（getCommands）；被聚合器委派。
  */
 
-import { getCommands } from "../../../registry/commands/CommandRegistry";
+import { getCommands, resolveCommandOwnership } from "../../../registry/commands/CommandRegistry";
 import type {
   PluginInstallRequestOpts,
   PluginUpdateResult,
@@ -107,6 +107,11 @@ export async function handlePluginManagerMethod(method: string, args: unknown[])
       // 🔥 handler 是函数——结构化克隆拒绝 → 返回前剥去
       return getCommands().map(({ handler: _h, ...rest }) => rest);
     }
+    // E6#111b（H3 修点）：命令归属查询——池侧 on-command 激活取真属主。
+    // 🔴 池是单进程共享 realm，preload 无从知道「这次注册/执行是哪个插件的」⇒ 归属解析只在壳一处做，
+    //    池只消费。返回 { pluginId, source }；`source:"inferred"` = 推定档（池侧不缓存，声明晚到可翻盘）。
+    case "resolveCommandOwner":
+      return resolveCommandOwnership(args[0] as string);
     default:
       throw new Error(`未知的 plugins 方法: ${method}`);
   }

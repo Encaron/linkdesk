@@ -211,6 +211,7 @@ async function handlePluginsCall(method: string, args: unknown[]): Promise<unkno
     case "getUninstalled":
     case "isDisabled":
     case "getCommands":
+    case "resolveCommandOwner": // E6#111b：命令归属查询（池侧 on-command 激活取真属主；H3 修点）
       return handlePluginManagerMethod(method, args);
     // ── E5.5#7-p2：快捷键 IPC——插件 WebView 零 @src/core import（IpcBridgeHandler/keybindings 域委派）──
     case "getKeybindings":

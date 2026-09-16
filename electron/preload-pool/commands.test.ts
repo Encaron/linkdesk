@@ -11,42 +11,13 @@
  * 命令 ID 恒虚构（硬约束 21：demo-plugin 属主 + .say/.ping/.nope 名），不指向真实插件。
  */
 import { describe, it, expect, vi } from 'vitest';
-import type { IpcRenderer } from 'electron';
 import { IPC } from '../ipc/channels';
-import type { EventSystemApi } from '../ipc/event-system';
 
 // ── electron ipcRenderer 假实现（commands.ts 顶层 import ipcRenderer，必须先行 mock）──
-const { ipcMock } = vi.hoisted(() => {
-  const ipcMock = {
-    invoke: vi.fn(() => Promise.resolve(undefined)),
-    on: vi.fn(),
-  } as unknown as {
-    invoke: ReturnType<typeof vi.fn>;
-    on: ReturnType<typeof vi.fn>;
-  };
-  return { ipcMock };
-});
-
-vi.mock('electron', () => ({ ipcRenderer: ipcMock as unknown as IpcRenderer }));
+vi.mock('electron', async () => (await import('./commands.test-harness')).electronMock());
 
 import { buildCommands } from './commands';
-
-/** 假事件系统——捕获 executeRequest 单 handler；triggerAsync 等异步链跑完（sendExecuteResult 在其内） */
-function buildFakeEvents(): {
-  triggerAsync: (payload: unknown) => Promise<void>;
-} {
-  let handler: ((payload: unknown) => void | Promise<void>) | undefined;
-  const api = {
-    on: vi.fn((_channel: string, cb: (payload: unknown) => void | Promise<void>) => {
-      handler = cb;
-      return () => {};
-    }),
-    triggerAsync: async (payload: unknown) => {
-      if (handler) await handler(payload);
-    },
-  };
-  return api as unknown as EventSystemApi & { triggerAsync: (payload: unknown) => Promise<void> };
-}
+import { ipcMock, fakeEvents } from './commands.test-harness';
 
 describe('池侧 on-command 激活（E6#62e）', () => {
   beforeEach(() => {
@@ -54,7 +25,7 @@ describe('池侧 on-command 激活（E6#62e）', () => {
   });
 
   it('壳占位转发 miss → handler import 属主入口注册后重试命中 → executeResult 回传结果', async () => {
-    const events = buildFakeEvents();
+    const events = fakeEvents();
     const commands = buildCommands(events);
     const activated: string[] = [];
     // 模拟池 renderer 注册的激活回调——handler 里 registerCommand 模拟 entry 顶层副作用
@@ -73,7 +44,7 @@ describe('池侧 on-command 激活（E6#62e）', () => {
   });
 
   it('激活后仍 miss（命令在视图组件注册的 inherent 边界）→ reject 错误回传 executeResult', async () => {
-    const events = buildFakeEvents();
+    const events = fakeEvents();
     const commands = buildCommands(events);
     // entry import 完成但该命令 handler 不在 entry 顶层——激活重试仍 miss → 未在池内注册
     commands._setCommandMissHandler(async () => true);
@@ -86,7 +57,7 @@ describe('池侧 on-command 激活（E6#62e）', () => {
   });
 
   it('未注册激活回调 → executeRequest miss 直 reject', async () => {
-    const events = buildFakeEvents();
+    const events = fakeEvents();
     buildCommands(events); // 不注册 _setCommandMissHandler
 
     await events.triggerAsync({ requestId: 'r3', commandId: 'demo-plugin.nope', args: [] });
@@ -97,7 +68,7 @@ describe('池侧 on-command 激活（E6#62e）', () => {
   });
 
   it('executeCommand 直调 miss → 激活命中走池侧 handler，不 fallback 壳 IPC', async () => {
-    const events = buildFakeEvents();
+    const events = fakeEvents();
     const commands = buildCommands(events);
     commands._setCommandMissHandler(async (pluginId) => {
       commands.registerCommand(`${pluginId}.ping`, () => 42);
@@ -111,7 +82,7 @@ describe('池侧 on-command 激活（E6#62e）', () => {
   });
 
   it('executeCommand 直调二次 miss → fallback 壳 IPC 带原始含 token 参数', async () => {
-    const events = buildFakeEvents();
+    const events = fakeEvents();
     const commands = buildCommands(events);
 
     await commands.executeCommand('demo-plugin.nope', undefined, 'realArg');
@@ -123,7 +94,7 @@ describe('池侧 on-command 激活（E6#62e）', () => {
   });
 
   it('激活回调返回 false → 不重试直接 fallback', async () => {
-    const events = buildFakeEvents();
+    const events = fakeEvents();
     const commands = buildCommands(events);
     commands._setCommandMissHandler(async () => false);
 

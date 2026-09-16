@@ -398,7 +398,8 @@ try {
     // 条目 handler = (token, ...args) => linkdesk.commands._executeShellLocal(id, ...args)。
     // 池侧半程走 preload-pool.commands（Bug C 补全）——两半程在壳注册表自然汇合（幂等）。
     commands: {
-      registerCommand: (id: string, handler: (...args: unknown[]) => unknown, meta?: { title?: string; category?: string; when?: string }) => {
+      // E6#111b：meta.pluginId = 注册方显式申报的真身份（可选）——归属解析的 ② 档（①= 声明面查表）
+      registerCommand: (id: string, handler: (...args: unknown[]) => unknown, meta?: { title?: string; category?: string; when?: string; pluginId?: string }) => {
         _shellCommands.set(id, handler);
         ipcRenderer.invoke(IPC.commands.registerShell, id, meta ?? null).catch((e) => {
           console.error(`[preload-shell] commands:registerShell 回传失败 (${id}):`, e);

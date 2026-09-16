@@ -33,10 +33,39 @@ function callPoolHandler(id: string, args: unknown[]): Promise<unknown> | null {
  *  纯命令插件作者契约：命令 handler 在 entry 顶层注册（无视图可开也能按需激活）。 */
 let _commandMissHandler: ((pluginId: string) => Promise<boolean>) | null = null;
 
-/** 命令 ID 属主插件——约定 "pluginId.commandName"（与 unregisterCommands / registerPoolCommandMetadata 同约） */
+/** 命令 ID 的**推定**属主——名字第一段（约定 "pluginId.commandName"）。
+ *  🔴 E6#111b 后本函数**只是兜底**：真属主由壳解析（`resolvePoolCommandOwner`）。
+ *  名字推定的唯一合法用途 = 壳不可达时（浏览器 dev-host / 单测）的兼容档。 */
 function commandOwnerId(commandId: string): string | null {
   const dot = commandId.indexOf(".");
   return dot > 0 ? commandId.slice(0, dot) : null;
+}
+
+/** 命令 → 真属主（池侧缓存）。只缓存**权威档**（壳解析出的声明面／注册方自报）——
+ *  推定档不入缓存：声明晚到时必须能翻盘，缓存了就等于把推定钉成身份。 */
+const _poolCommandOwners = new Map<string, string>();
+
+/**
+ * 命令真属主解析——① 池侧已记（壳回执／注册方自报）→ ② 壳权威解析（声明面查表）→ ③ 名字推定兜底。
+ * 🔴 E6#111b（H3 修点）：旧实现直接切名字第一段 ⇒ 「借了别人前缀的命令」会把**不相干的插件**
+ *   整只 import 进来（`editor.selectForCompare` 属主是 file-tree，却去 import `editor` 插件）。
+ * 归属解析只在壳一处做（池是单进程共享 realm，preload 自己推不出身份），池侧只消费与兜底。
+ */
+async function resolvePoolCommandOwner(commandId: string): Promise<string | null> {
+  const known = _poolCommandOwners.get(commandId);
+  if (known) return known;
+  try {
+    const res = await ipcRenderer.invoke(IPC.plugins.call, "resolveCommandOwner", commandId) as
+      | { pluginId?: string; source?: string }
+      | null;
+    if (res && typeof res.pluginId === "string") {
+      if (res.source !== "inferred") _poolCommandOwners.set(commandId, res.pluginId);
+      return res.pluginId;
+    }
+  } catch {
+    // 壳不可达（浏览器 dev-host / 单测）→ 落 ③ 名字推定兜底（与 1.32 前行为一致）
+  }
+  return commandOwnerId(commandId);
 }
 
 /** 查池侧 handler——miss 先经 on-command 激活重试一次（import 属主入口，模块缓存幂等），仍 miss → fallback() */
@@ -47,7 +76,7 @@ async function callPoolHandlerWithActivation(
 ): Promise<unknown> {
   const direct = callPoolHandler(commandId, args);
   if (direct) return direct;
-  const owner = commandOwnerId(commandId);
+  const owner = await resolvePoolCommandOwner(commandId);
   if (owner && _commandMissHandler) {
     try {
       if (await _commandMissHandler(owner)) {
@@ -72,16 +101,29 @@ export function buildCommands(events: EventSystemApi) {
      * 不传 meta 的旧调用向后兼容（纯池内命令，壳侧不可见）。
      */
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- 命令 handler 入参类型由插件调用方决定，对标 VS Code registerCommand 的 (...args: any[]) => any
-    registerCommand: (id: string, handler: (...args: any[]) => any, meta?: { title?: string; category?: string; when?: string }) => {
+    registerCommand: (id: string, handler: (...args: any[]) => any, meta?: { title?: string; category?: string; when?: string; pluginId?: string }) => {
       _poolCommands.set(id, handler);
-      ipcRenderer.invoke(IPC.commands.register, id, meta ?? null).catch((e) => {
-        console.error(`[preload-pool] commands:register 回传失败 (${id}):`, e);
-      });
+      // E6#111b ②：注册方显式申报的真身份——优先于名字推定（照 notifications.source 先例）
+      if (meta?.pluginId) _poolCommandOwners.set(id, meta.pluginId);
+      // E6#111b ①：壳回执带回归属（声明面查表结果）——池侧只消费，不自己从名字推
+      ipcRenderer.invoke(IPC.commands.register, id, meta ?? null)
+        .then((res) => {
+          const r = res as { pluginId?: string; source?: string } | null;
+          if (r && typeof r.pluginId === 'string' && r.source !== 'inferred') _poolCommandOwners.set(id, r.pluginId);
+        })
+        .catch((e) => {
+          console.error(`[preload-pool] commands:register 回传失败 (${id}):`, e);
+        });
     },
-    /** 注销某插件的全部命令（约定：命令 ID 格式为 "pluginId.commandName"）——池侧 handler + 壳侧运行时条目同步注销 */
+    /** 注销某插件的全部命令——**按真属主摘**（E6#111b 判据⑤/H2）。真属主未知（无申报且壳回执未到）
+     *  时才退回名字前缀推定（1.32 前的行为，兼容档）。 */
     unregisterCommands: (pluginId: string) => {
       for (const [id] of _poolCommands) {
-        if (id.startsWith(pluginId + '.')) _poolCommands.delete(id);
+        const owner = _poolCommandOwners.get(id) ?? commandOwnerId(id);
+        if (owner === pluginId) {
+          _poolCommands.delete(id);
+          _poolCommandOwners.delete(id);
+        }
       }
       ipcRenderer.invoke(IPC.commands.unregister, pluginId).catch((e) => {
         console.error(`[preload-pool] commands:unregister 回传失败 (${pluginId}):`, e);

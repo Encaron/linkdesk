@@ -1,5 +1,5 @@
 /**
- * `runPluginLint()`——`npm run lint` 门禁编排（E6#54d）：eslint 规则腿 + 四条 check 扫描腿双轨。
+ * `runPluginLint()`——`npm run lint` 门禁编排（E6#54d）：eslint 规则腿 + 五条 check 扫描腿双轨。
  *
  * E6#109h-b①：`check-css-namespace` 腿升级为**双判据**——「裸定义类名/关键帧必须以本仓 `<pluginId>-`
  * 开头」（`checks/plugin-prefix.ts`，拍板 Q1=(A)，**不需要任何清单**）⊕「不得裸定义宿主保留名」
@@ -16,7 +16,7 @@
  * 规则正文见 32 号档 §一（R0–R3）；1.25 实测插件侧存量 **0**（18 仓 ＋ 夹具）⇒ 纯预防、零重发成本。
  *
  * 对标壳 check 同款双轨（07 §六·载体双轨）：eslint（12 项注册规则，全 WARN）管 ts/tsx；
- * css-hardcode / font-scale / spacing-grid / css-namespace 四条移植脚本管整工程（eslint 到不了 .css，
+ * css-hardcode / font-scale / spacing-grid / css-namespace / command-ownership 五条移植脚本管整工程（eslint 到不了 .css，
  * ts/tsx 的 rgb()/hsl() 也归 css-hardcode 补）。jscpd = 项目级可选（文档引导，不进编排）。
  *
  * 门禁哲学（07 §六·三档）：违规全 WARN **永不 fail build**——本编排按违规数统计并打印
@@ -34,6 +34,7 @@ import { runReservedClassCheck } from "./checks/reserved-classes.js";
 import { runPluginPrefixCheck } from "./checks/plugin-prefix.js";
 import { runTokenScopeCheck } from "./checks/token-scope.js";
 import { runSelectorFormCheck } from "./checks/selector-form.js";
+import { runCommandOwnershipCheck } from "./checks/command-ownership.js";
 import { type CheckViolation } from "./checks/scan.js";
 
 /** 示例用的门禁 id（打印知情绕行格式）；伪 id 与 check 脚本 CHECK_IDS 同源 */
@@ -57,7 +58,7 @@ export interface EslintRow {
 export interface PluginLintReport {
   files: number; // eslint 实际 lint 文件数
   eslintRows: EslintRow[]; // eslint 腿逐条偏离（含真 error——退出码依据）
-  legs: LintLeg[]; // 四 check 腿（css-hardcode / font-scale / spacing-grid / css-namespace）
+  legs: LintLeg[]; // 五 check 腿（css-hardcode / font-scale / spacing-grid / css-namespace / command-ownership）
   totalCheckViolations: number;
   tsconfigUsed: string | null; // 实际喂 import-x resolver 的 tsconfig（无则 null）
   /** 本仓 pluginId（命名空间腿的前缀来源；取不到 ⇒ null 且该腿 fail-closed 报红） */
@@ -70,6 +71,10 @@ export interface PluginLintReport {
   tokenCounts: { red: number; yellow: number };
   /** 选择器形态判据的计数（E6#109o-b）：S2 禁无锚 / S3 跨方命中不带自有锚——**都进腿报点** */
   selectorFormCounts: { anchorless: number; crossParty: number };
+  /** 🟡 E6#111b（1.32）命令/协议 id 归属判据的计数：三面的站点数 ＋ 不合规站点数（**全黄**，1.49 才收紧） */
+  commandOwnershipCounts: { declared: number; runtime: number; protocol: number; bad: number };
+  /** 宿主保留面账的加载实况（账没读到 ⇒ 判据②空转——报告里必须能看出来，不许静默） */
+  hostReservedLedger: { file: string; found: boolean; commandPrefixes: number; protocolIds: number } | null;
 }
 
 export async function runPluginLint(root: string, options: PluginLintOptions = {}): Promise<PluginLintReport> {
@@ -146,6 +151,17 @@ export async function runPluginLint(root: string, options: PluginLintOptions = {
    *     `ldk-side-panel` 的一次定义，那是轴 ① 的既有偏差、本轮不许改）⇒ 这里让前缀腿的话先说。
    */
   const selectorForm = runSelectorFormCheck(absRoot);
+  /**
+   * 🔴 E6#111b（1.32）：第五条 check 腿 —— **命令 id / 协议 id 归属**（`checks/command-ownership.ts`）。
+   *   三面同判 ①②：声明面（`contributes.commands[].id`）／运行时面（`registerCommand("<字面量>")`）／
+   *   协议面（`registerProtocol({ id: "<字面量>" })`）。
+   *   ⚠️ **本格只判黄**（官方仓还没改名，改名归 1.42–1.48）——报点进 WARN 通道即可，
+   *      `bin lint` 的退出码只看 eslint severity 2 ⇒ 对插件仓天然不构成红窗；**1.49 才收紧为红**。
+   *   ⚠️ **刻意不与另几条腿去重**（与 css-namespace 内部的去重口径相反）：本腿 1.49 要**独立收紧为红**，
+   *      把它的报点并进 css-namespace 腿或被那条腿吃掉，收紧时就分不清「谁在报」。fail-closed 那条与
+   *      前缀腿在 `plugin.json:1` 上会各报一次——**那是两件不同的事**（一个说身份读不到，一个说前缀拿不到）。
+   */
+  const commandOwnership = runCommandOwnershipCheck(absRoot);
   const prefixKeys = new Set(prefix.violations.map((v) => `${v.file}:${v.line}`));
   const tokenKeys = new Set(tokenScope.violations.map((v) => `${v.file}:${v.line}`));
   const formKeys = new Set(selectorForm.violations.map((v) => `${v.file}:${v.line}`));
@@ -166,8 +182,14 @@ export async function runPluginLint(root: string, options: PluginLintOptions = {
       label: "check-css-namespace",
       violations: namespace,
     },
+    {
+      id: "linkdesk/no-unowned-command-id（命令 id / 协议 id 必须带本仓 <pluginId>. 前缀，且不得占用宿主保留面）",
+      label: "check-command-ownership",
+      violations: commandOwnership.violations,
+    },
   ];
-  const totalCheckViolations = css.length + font.length + spacing.length + namespace.length;
+  const totalCheckViolations =
+    css.length + font.length + spacing.length + namespace.length + commandOwnership.violations.length;
 
   return {
     files: results.length,
@@ -180,6 +202,13 @@ export async function runPluginLint(root: string, options: PluginLintOptions = {
     tokenAdvisories: tokenScope.advisories,
     tokenCounts: { red: tokenScope.red.length, yellow: tokenScope.yellow.length },
     selectorFormCounts: { anchorless: selectorForm.anchorless.length, crossParty: selectorForm.crossParty.length },
+    commandOwnershipCounts: {
+      declared: commandOwnership.declaredIds.length,
+      runtime: commandOwnership.runtimeIds.length,
+      protocol: commandOwnership.protocolIds.length,
+      bad: commandOwnership.sites.length,
+    },
+    hostReservedLedger: commandOwnership.hostLedger,
   };
 }
 
@@ -230,6 +259,22 @@ export function renderPluginLintReport(report: PluginLintReport): string {
     lines.push(
       `\n✅ check-css-namespace（选择器形态 · S2/S3）：无锚选择器 0 ／ 跨方命中不带自有锚 0` +
         `——插件 CSS 里没有「不需要同名就能撞」的选择器（元素/通配/属性/伪类/伪元素/id 一视同仁）。`
+    );
+  }
+
+  // 🟡 E6#111b（1.32）命令/协议 id 归属：读数 ＋ 账的加载实况（判据② 的输入来自账——账没读到必须让作者看见）
+  const co = report.commandOwnershipCounts;
+  lines.push(
+    `\n🟡 check-command-ownership（命令/协议 id 归属 · 1.49 起收紧为红）：` +
+      `声明面 ${co.declared} 名 ／ 运行时面 ${co.runtime} 名 ／ 协议面 ${co.protocol} 名——` +
+      (co.bad === 0
+        ? `无不合规站点。`
+        : `${co.bad} 处不合规（不带本仓 <pluginId>. 前缀，或占用宿主保留面）。`),
+  );
+  if (report.hostReservedLedger && !report.hostReservedLedger.found) {
+    lines.push(
+      `    ⚠ 宿主保留面账没读到（${report.hostReservedLedger.file}）——判据②（不得占用宿主保留面）本轮**空转**。` +
+        `SDK 安装不完整？重装 @linkdesk/plugin-sdk 后再跑。`,
     );
   }
 

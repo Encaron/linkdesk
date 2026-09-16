@@ -40,7 +40,84 @@ export interface Command {
 }
 
 const _commands = new Map<string, Command>();
-const _pluginCommands = new Map<string, Set<string>>(); // pluginId → commandId[]
+const _pluginCommands = new Map<string, Set<string>>(); // pluginId → commandId[]（归属倒排索引）
+
+/* ── 归属（E6#111b：归属从身份来，不从名字来）── */
+
+/**
+ * 归属来源三档——1.31 裁决的解析优先级 ① 声明面 → ② 注册方自报 → ③ 名字推定。
+ *  - `declared`：plugin.json `contributes.commands[]` 声明面（loader 用真身份注册）——权威，不可改；
+ *  - `reported`：注册方显式申报（池／壳载荷的可选 `pluginId`，照 `notifications.source` 先例 `ui.ts:26-32`）；
+ *  - `inferred`：名字第一段推定——**老第三方零申报的兼容档，是"推定"不是身份**。
+ */
+export type CommandOwnerSource = "declared" | "reported" | "inferred";
+
+/** 注册方对身份的主张档——`inferred` = 不主张身份（调用方没报，只是名字里带着一段）。 */
+export type CommandOwnerClaim = CommandOwnerSource;
+
+/** 命令归属——`_commandOwners` 是唯一真相源，`_pluginCommands` 是它的按 pluginId 倒排索引（两册同笔维护）。 */
+export interface CommandOwnership {
+  pluginId: string;
+  source: CommandOwnerSource;
+}
+
+/** 档位强弱——**重挂只在「后到的档更强」时发生**（乱序到达的自愈），同档先到者保留。 */
+const _OWNER_STRENGTH: Record<CommandOwnerSource, number> = { inferred: 0, reported: 1, declared: 2 };
+
+/** 命令 id → 归属（唯一真相源）。 */
+const _commandOwners = new Map<string, CommandOwnership>();
+
+/** ③ 名字第一段推定——**只在前两档都拿不到时用**（不是身份，冲突时必须能出声）。 */
+function inferOwnerFromCommandId(commandId: string): string {
+  return commandId.split(".")[0];
+}
+
+/**
+ * 归属解析（① 声明面 → ② 自报 → ③ 名字推定）——**登记新条目与乱序纠正共用这一条**。
+ * 🔴 `inferred` 不主张身份 ⇒ 已登记归属先者保留；声明面恒为权威，任何主张都改不动它。
+ */
+function _resolveOwner(commandId: string, claimOwner: string, claim: CommandOwnerClaim): CommandOwnership {
+  const known = _commandOwners.get(commandId);
+  if (known?.source === "declared") return known;
+  if (claim === "inferred") return known ?? { pluginId: claimOwner, source: "inferred" };
+  if (known && _OWNER_STRENGTH[known.source] >= _OWNER_STRENGTH[claim]) return known;
+  return { pluginId: claimOwner, source: claim };
+}
+
+/** 归属两册同笔维护——写新归属并摘旧倒排（`_commandOwners` 与 `_pluginCommands` 恒一致）。 */
+function _setOwnership(commandId: string, owner: CommandOwnership): void {
+  const prev = _commandOwners.get(commandId);
+  if (prev && prev.pluginId !== owner.pluginId) _pluginCommands.get(prev.pluginId)?.delete(commandId);
+  _commandOwners.set(commandId, owner);
+  let set = _pluginCommands.get(owner.pluginId);
+  if (!set) {
+    set = new Set();
+    _pluginCommands.set(owner.pluginId, set);
+  }
+  set.add(commandId);
+}
+
+/** 摘归属（两册同笔）。 */
+function _dropOwnership(commandId: string): void {
+  const prev = _commandOwners.get(commandId);
+  _commandOwners.delete(commandId);
+  if (prev) _pluginCommands.get(prev.pluginId)?.delete(commandId);
+}
+
+/** 条目整删——命令表 ＋ 归属两册 ＋ 池运行时标记（disposer / 注销共用同一具尸体清单）。 */
+function _deleteCommandEntry(commandId: string): void {
+  _commands.delete(commandId);
+  _dropOwnership(commandId);
+  _poolRuntimeCommands.delete(commandId);
+}
+
+/**
+ * 命令归属查询——池侧 on-command 激活取真属主（`plugins.call "resolveCommandOwner"`，H3 修点）。
+ * 已登记 ⇒ 照实报（含来源档）；未登记 ⇒ ③ 名字推定，**`inferred` 是给池侧的信号：别缓存，声明晚到要能翻盘**。
+ */
+export function resolveCommandOwnership(commandId: string): CommandOwnership {
+  return _commandOwners.get(commandId) ?? { pluginId: inferOwnerFromCommandId(commandId), source: "inferred" };
+}
 
 /* ── 注册 / 注销 ── */
 
@@ -54,17 +131,33 @@ const _pluginCommands = new Map<string, Set<string>>(); // pluginId → commandI
  * E5.8#10 返 disposer：新增条目 → 登记"删这一条"disposer（卸载自动逆序回滚）；
  * 重注册分支 → 原条目由首注册者持有，返回 no-op（防误删他人命令）。
  */
-export function registerCommand(pluginId: string, command: Command): () => void {
+export function registerCommand(
+  pluginId: string,
+  command: Command,
+  claim: CommandOwnerClaim = "declared",
+): () => void {
+  const owner = _resolveOwner(command.id, pluginId, claim);
   if (_commands.has(command.id)) {
     // 重注册：更新 handler + title（toggle 命令的 title 随状态变化动态更新）。
     // loader 先注册元数据 → 组件 mount 时重注册覆盖 handler → useEffect 按状态更新 title。
     const existing = _commands.get(command.id)!;
-    // #59f1：异插件覆盖警告——两插件声明同一命令 ID
-    for (const [pid, ids] of _pluginCommands) {
-      if (ids.has(command.id) && pid !== pluginId) {
-        console.warn(`[CommandRegistry] "${command.id}" 被覆盖——原注册者: ${pid}，新注册者: ${pluginId}`);
-        break;
-      }
+    // E6#111b 判据③④（H1）：主张了身份（declared／reported）而归属不是他 ⇒ 异归属顶替，**不覆盖 ＋ 出声点名双方**。
+    // 🔴 不抛错——本函数调用点在 parseContributions 内，抛错 = 整只插件装不上（比被覆盖更坏）。
+    // 主张档 `inferred`（名字推定）不算主张 ⇒ 不拦：真实 handler 正是靠这条路径注册进声明的属主条目。
+    if (claim !== "inferred" && pluginId !== owner.pluginId) {
+      console.error(
+        `[CommandRegistry] "${command.id}" 异归属注册被拒——属主: ${owner.pluginId}（${owner.source}），`
+        + `新注册者: ${pluginId}——不覆盖（原 handler 保留）`,
+      );
+      return () => {};
+    }
+    // E6#111b §1.2 乱序到达自愈：推定落在先、真身份后到 ⇒ **重挂归属**。这是**另一条触发路径**，
+    // 与下面三行的「同插件重注册」互不干涉——那三行是既有设计，逐字未动。
+    const prev = _commandOwners.get(command.id);
+    if (prev && prev.pluginId !== owner.pluginId) {
+      _setOwnership(command.id, owner);
+      // 归属换人 ⇒ 清理权同笔移交新属主（原登记层是推定属主，真正卸载的那一方永远不会命中它）
+      trackRegistration(owner.pluginId, () => _deleteCommandEntry(command.id));
     }
     existing.handler = command.handler;
     existing.title = command.title;
@@ -74,20 +167,11 @@ export function registerCommand(pluginId: string, command: Command): () => void 
     return () => {};
   }
   _commands.set(command.id, command);
+  _setOwnership(command.id, owner);
 
-  let pluginSet = _pluginCommands.get(pluginId);
-  if (!pluginSet) {
-    pluginSet = new Set();
-    _pluginCommands.set(pluginId, pluginSet);
-  }
-  pluginSet.add(command.id);
-
-  // E5.8#10：登记"删这一条"disposer——卸载自动逆序回滚（含池运行时命令同步清）
-  return trackRegistration(pluginId, () => {
-    _commands.delete(command.id);
-    _pluginCommands.get(pluginId)?.delete(command.id);
-    _poolRuntimeCommands.delete(command.id);
-  });
+  // E5.8#10：登记"删这一条"disposer——卸载自动逆序回滚（含池运行时命令同步清）。
+  // E6#111b：登记层按**真属主**（owner.pluginId），不按调用方自报的名字——推定属主下二者可能不同。
+  return trackRegistration(owner.pluginId, () => _deleteCommandEntry(command.id));
 }
 
 /* ── 池侧命令元数据同步（E5.7 Bug C 补全——命令面板/菜单可见性）── */
@@ -125,9 +209,9 @@ const _poolCommandWindows = new Map<string, Set<string>>();
  */
 export function registerPoolCommandMetadata(
   commandId: string,
-  meta: { title?: string; category?: string; when?: string },
+  meta: { title?: string; category?: string; when?: string; pluginId?: string },
   windowId?: string,
-): void {
+): CommandOwnership {
   // §8.6 归属表：登记该命令的注册窗口（多窗口同一命令在每窗各注册一次 → 集合多成员）
   if (windowId) {
     let set = _poolCommandWindows.get(commandId);
@@ -137,16 +221,34 @@ export function registerPoolCommandMetadata(
     }
     set.add(windowId);
   }
+
+  // E6#111b 判据③（H1 修点）：归属从身份来——① 声明面查表 → ② meta.pluginId 自报 → ③ 名字推定。
+  // 🔴 旧实现是 `commandId.split(".")[0]`：两个插件同前缀运行时注册 ⇒ 推导归属相同 ⇒ 连 warn 都不响。
+  const owner = _resolveOwner(
+    commandId,
+    meta.pluginId ?? inferOwnerFromCommandId(commandId),
+    meta.pluginId ? "reported" : "inferred",
+  );
+
   const existing = _commands.get(commandId);
   if (existing) {
+    // 异归属自报 ⇒ 不覆盖显示面（与 registerCommand 同一条判据；照旧只动 title/category/when）
+    if (meta.pluginId && meta.pluginId !== owner.pluginId) {
+      console.error(
+        `[CommandRegistry] "${commandId}" 异归属注册被拒——属主: ${owner.pluginId}（${owner.source}），`
+        + `新注册者: ${meta.pluginId}——显示面不更新`,
+      );
+      return owner;
+    }
+    // 乱序自愈：推定落在先、声明/自报后到 ⇒ 重挂归属（与下面的显示面更新无关，各自独立）
+    if (_commandOwners.get(commandId)?.pluginId !== owner.pluginId) _setOwnership(commandId, owner);
     if (meta.title !== undefined) existing.title = meta.title;
     if (meta.category !== undefined) existing.category = meta.category;
     if (meta.when !== undefined) existing.when = meta.when;
-    return;
+    return owner;
   }
-  // 命令 ID 约定 "pluginId.commandName"——pluginId 取前缀（preload-pool unregister 同约定）
-  const pluginId = commandId.split(".")[0];
-  registerCommand(pluginId, {
+  // 命令 ID 约定 "pluginId.commandName"——**声明面查不到时才**退回前缀推定（preload-pool unregister 同约定）
+  registerCommand(owner.pluginId, {
     id: commandId,
     title: meta.title ?? commandId,
     category: meta.category,
@@ -155,8 +257,9 @@ export function registerPoolCommandMetadata(
     handler: async () => {
       console.warn(`[CommandRegistry] 命令 "${commandId}" 尚未绑定 handler——池内视图未挂载`);
     },
-  });
+  }, owner.source);
   _poolRuntimeCommands.add(commandId);
+  return owner;
 }
 
 /**
@@ -173,10 +276,15 @@ export function registerPoolCommandMetadata(
  */
 export function registerShellLocalCommand(
   commandId: string,
-  meta: { title?: string; category?: string; when?: string },
-): void {
-  const pluginId = commandId.split(".")[0];
-  registerCommand(pluginId, {
+  meta: { title?: string; category?: string; when?: string; pluginId?: string },
+): CommandOwnership {
+  // E6#111b 判据③（H1 修点）：与 registerPoolCommandMetadata 同一条归属解析（①→②→③）
+  const owner = _resolveOwner(
+    commandId,
+    meta.pluginId ?? inferOwnerFromCommandId(commandId),
+    meta.pluginId ? "reported" : "inferred",
+  );
+  registerCommand(owner.pluginId, {
     id: commandId,
     title: meta.title ?? commandId,
     category: meta.category,
@@ -187,7 +295,8 @@ export function registerShellLocalCommand(
       if (!bridge) return Promise.reject(new Error(`命令 "${commandId}" 壳侧执行桥不可用`));
       return bridge(commandId, ...args);
     },
-  });
+  }, owner.source);
+  return owner;
 }
 
 /**
@@ -199,15 +308,17 @@ export function registerShellLocalCommand(
  * 本窗口摘空（或旧路径未带 windowId）→ 整条命令删除（兼容单窗口原语义）。
  */
 export function unregisterPoolCommands(pluginId: string, windowId?: string): void {
-  const prefix = `${pluginId}.`;
+  // E6#111b 判据⑤（H2 修点）：遍历集按**真归属**取，不按名字前缀——
+  // 旧实现 `${pluginId}.` 前缀整片删 ⇒ 借了别人前缀的命令被连带删掉（假借 / 同名双插件同前缀双伤）。
+  const owns = (id: string): boolean => _commandOwners.get(id)?.pluginId === pluginId;
   // E5.8#46.14：遍历集 = _poolRuntimeCommands ∪ _poolCommandWindows 键——plugin.json 声明命令
   // 从未入 _poolRuntimeCommands（loader 元数据先注册，registerPoolCommandMetadata existing 分支
   // 直接 return），旧实现漏摘其归属 → 残留旧窗 id → executeInPool origin 亲和误路由到已无 handler
   // 的旧窗 → 「未在池内注册」。摘归属只清本窗口；归属摘空后仅运行时命令整条删 _commands，
   // plugin.json 声明命令由 loader 持有保留（palette 可见性走 when 门控）。
   const ids = new Set<string>();
-  for (const id of _poolRuntimeCommands) if (id.startsWith(prefix)) ids.add(id);
-  for (const id of _poolCommandWindows.keys()) if (id.startsWith(prefix)) ids.add(id);
+  for (const id of _poolRuntimeCommands) if (owns(id)) ids.add(id);
+  for (const id of _poolCommandWindows.keys()) if (owns(id)) ids.add(id);
   for (const id of ids) {
     if (windowId) {
       const set = _poolCommandWindows.get(id);
@@ -220,7 +331,7 @@ export function unregisterPoolCommands(pluginId: string, windowId?: string): voi
     if (_poolRuntimeCommands.has(id)) {
       _poolRuntimeCommands.delete(id);
       _commands.delete(id);
-      _pluginCommands.get(pluginId)?.delete(id);
+      _dropOwnership(id);
     }
   }
 }
@@ -237,9 +348,7 @@ export function purgePoolCommandWindows(windowId: string): void {
     _poolCommandWindows.delete(commandId);
     _poolRuntimeCommands.delete(commandId);
     _commands.delete(commandId);
-    for (const [pid, ids] of _pluginCommands) {
-      if (ids.delete(commandId) && ids.size === 0) _pluginCommands.delete(pid);
-    }
+    _dropOwnership(commandId);
   }
 }
 
@@ -396,6 +505,7 @@ export function getPluginCommands(pluginId: string): string[] {
 export function clearCommands(): void {
   _commands.clear();
   _pluginCommands.clear();
+  _commandOwners.clear();
   _poolRuntimeCommands.clear();
   _poolCommandWindows.clear();
   for (const [, pending] of _poolPending) clearTimeout(pending.timer);

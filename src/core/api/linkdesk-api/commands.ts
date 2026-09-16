@@ -24,12 +24,18 @@ export interface CommandsAPI {
      * plugin.json contributes.commands 未声明的命令经 meta 注册后同样可见/可执行。
      * 真相源分工：壳 CommandRegistry = 显示真相源（title/category/when 唯一权威），
      * 池 = 执行真相源（handler 唯一权威，永不跨进程）——meta 只同步显示面。
+     * 🔴 **E6#111b：`meta.pluginId` = 注册方显式申报的真身份**（可选，只做加法）。
+     *   命令归属解析优先级 = ① plugin.json 声明面 → ② 本字段 → ③ 名字第一段推定。
+     *   声明过的命令**不必填**（① 已权威）；只有「声明里没有、名字又不带自己前缀」的命令需要它，
+     *   否则该命令会被算到名字第一段那个属主头上（借他人前缀 ⇒ 归属错、且异归属顶替拦不住）。
+     *   照 `notifications.source` 先例（`ui.ts:26-32`）：池是单进程共享 realm，
+     *   所有插件共用同一个 `window.linkdesk` ⇒ **无从自动注入，只能作者显式报**。
      */
     registerCommand(
       commandId: string,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any -- 命令 handler 入参类型由插件调用方决定，对标 VS Code registerCommand 的 (...args: any[]) => any
       handler: (...args: any[]) => Promise<unknown> | unknown,
-      meta?: { title?: string; category?: string; when?: string },
+      meta?: { title?: string; category?: string; when?: string; pluginId?: string },
     ): void;
     /** 注销插件的池内命令（约定：命令 ID 格式为 "pluginId.commandName"）——随视图 unmount 调用 */
     unregisterCommands(pluginId: string): void;

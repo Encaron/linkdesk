@@ -3,15 +3,15 @@
   "packages": [
     {
       "name": "@linkdesk/contracts",
-      "version": "0.1.17",
-      "contentHash": "a02a74df760d54a6fb74fc94599e842b3ebca3e5ff41738cacff11bf7f3923d6",
+      "version": "0.1.18",
+      "contentHash": "cc8524c8201a826269113c92fb35a42d6f937722b73bc62beb7b7a9f75c69f0f",
       "files": 2
     },
     {
       "name": "@linkdesk/plugin-sdk",
-      "version": "0.1.28",
-      "contentHash": "726c46ea33065d22a8044eaaaf8cbc60239ad91545f48f258ae8ab34d7648db5",
-      "files": 40
+      "version": "0.1.30",
+      "contentHash": "307dcdc7aad417c5a9b8b233a09a5ac74e8a4c085c9c7b86f03426da1d569a5d",
+      "files": 43
     },
     {
       "name": "create-linkdesk-plugin",

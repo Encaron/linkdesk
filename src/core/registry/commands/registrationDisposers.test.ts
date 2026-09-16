@@ -5,7 +5,7 @@
  * 附：重注册分支 no-op（不误删首注册者条目）+ PluginLifecycle.onWillUninstall 自动逆序回滚。
  */
 
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { PluginLifecycle } from "../../../pluginLoader/lifecycle/lifecycle-events";
 import { clearRegistrationLayers } from "../registrationTracker";
 import { registerCommand, getCommand, getCommands, clearCommands } from "./CommandRegistry";
@@ -31,10 +31,10 @@ describe("CommandRegistry — register() 返 disposer", () => {
     expect(getCommands().some((c) => c.id === "test.cmd")).toBe(false);
   });
 
-  it("重注册分支返 no-op——dispose 只删首注册者的条目", () => {
+  it("同插件重注册返 no-op——只更新 handler/title，dispose 只删首注册者的条目", () => {
     const dispose1 = registerCommand(PID, { id: "test.cmd", title: "Test", handler: async () => {} });
-    // 异插件重注册——仅更新 handler/title，不新增条目（设计 §8 风险表钉死）
-    const dispose2 = registerCommand(PID_OTHER, { id: "test.cmd", title: "Test2", handler: async () => {} });
+    // 同属主重注册——更新 handler/title，不新增条目（设计 §8 风险表钉死）
+    const dispose2 = registerCommand(PID, { id: "test.cmd", title: "Test2", handler: async () => {} });
 
     dispose2(); // no-op——不得误删他人命令
 
@@ -43,6 +43,22 @@ describe("CommandRegistry — register() 返 disposer", () => {
 
     dispose1();
     expect(getCommand("test.cmd")).toBeUndefined();
+  });
+
+  // E6#111b 判据④：旧实现是「异插件覆盖 ＋ console.warn」——两个不同真身份撞同一 id 时静默改行为。
+  // 新语义 = 异归属**不覆盖** ＋ console.error 点名双方（本体见 commandOwnership.test.ts N4）。
+  it("异归属重注册 → 拒绝覆盖（原条目原样保留，disposer 语义不变）", () => {
+    const err = vi.spyOn(console, "error").mockImplementation(() => {});
+    const dispose1 = registerCommand(PID, { id: "test.clash", title: "首位", handler: async () => {} });
+    const dispose2 = registerCommand(PID_OTHER, { id: "test.clash", title: "篡位", handler: async () => {} });
+
+    expect(err).toHaveBeenCalledTimes(1);
+    dispose2(); // 仍是 no-op
+    expect(getCommand("test.clash")!.title).toBe("首位"); // 未被后来者改写
+
+    dispose1();
+    expect(getCommand("test.clash")).toBeUndefined();
+    err.mockRestore();
   });
 
   it("fire onWillUninstall → 命令自动逆序回滚（机械保障）", () => {

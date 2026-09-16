@@ -30,16 +30,16 @@ export async function handleCommandsChannel(channel: string, args: unknown[]): P
       // E5.7 Bug C 补全：池侧 registerCommand 元数据回传——title/category/when 同步进壳注册表
       // （命令面板可见性 + 动态 toggle 标题）；runtime 命令以占位条目登记，执行走转发桥。
       // E5.8#43-4（①③）：末位 windowId = 注册窗口归属（主进程 sender 注入）——归属表登记路由
-      const [commandId, meta, windowId] = args as [string, { title?: string; category?: string; when?: string } | null, string?];
-      registerPoolCommandMetadata(commandId, meta ?? {}, windowId);
-      break;
+      // E6#111b：meta.pluginId = 注册方显式申报的真身份（②）——**回执把解析出的归属还给池侧**，
+      //   池侧 on-command 激活据此取属主（H3：不再从名字第一段推）。
+      const [commandId, meta, windowId] = args as [string, { title?: string; category?: string; when?: string; pluginId?: string } | null, string?];
+      return registerPoolCommandMetadata(commandId, meta ?? {}, windowId);
     }
     case "commands:registerShell": {
       // E5.7#56：壳侧插件入口注册命令（双进程执行——壳 glob loader 侧半程真注册，
       // handler 存壳 preload 页面世界代理，执行走 _executeShellLocal 桥）
-      const [commandId, meta] = args as [string, { title?: string; category?: string; when?: string } | null];
-      registerShellLocalCommand(commandId, meta ?? {});
-      break;
+      const [commandId, meta] = args as [string, { title?: string; category?: string; when?: string; pluginId?: string } | null];
+      return registerShellLocalCommand(commandId, meta ?? {});
     }
     case "commands:unregister": {
       // E5.7 Bug C 补全：池侧 unregisterCommands 回传——移除运行时命令条目（loader 元数据保留）

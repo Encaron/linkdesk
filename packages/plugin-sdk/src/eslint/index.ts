@@ -29,3 +29,18 @@ export { runTokenScopeCheck, judgePluginTokenScope } from "./checks/token-scope.
 export type { TokenScopeReport, TokenScopeSite, TokenScopeCode } from "./checks/token-scope.js";
 export { runSelectorFormCheck, judgeSelectorForm, SELECTOR_FORM_WHY } from "./checks/selector-form.js";
 export type { SelectorFormReport, SelectorFormSite, SelectorFormCode } from "./checks/selector-form.js";
+
+/**
+ * 🔴 E6#111b（1.32）：同一纪律再加一个 —— `runCommandOwnershipCheck`（命令/协议 id 归属判据）。
+ *    壳仓只读探针 `scripts/audit-nonnaming.mjs` 用它出「声明面 ／ 运行时面 ／ 协议面」三面读数，
+ *    **同样不是第二条判据路径**（`lint.ts` 的第五条腿用的就是它——同一份实现，改一处两边一起变）。
+ *    ⚠️ 本格（1.32）该判据**只判黄**（`bin lint` 退出码只看 eslint severity 2），1.49 收紧为红。
+ */
+export { runCommandOwnershipCheck, judgeCommandId, loadHostReserved } from "./checks/command-ownership.js";
+export type {
+  CommandOwnershipReport,
+  CommandIdSite,
+  CommandIdCode,
+  CommandIdFace,
+  HostReservedNames,
+} from "./checks/command-ownership.js";

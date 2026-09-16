@@ -18,6 +18,8 @@ export const CHECK_IDS = {
   fontScale: "linkdesk/no-hardcoded-font-size",
   spacingGrid: "linkdesk/no-nonstandard-spacing",
   cssNamespace: "linkdesk/no-reserved-class-name",
+  /** E6#111b（1.32）：命令 id / 协议 id 必须带本仓 `<pluginId>.` 前缀，且不得占用宿主保留面 */
+  commandOwnership: "linkdesk/no-unowned-command-id",
 } as const;
 
 interface RawComment {
