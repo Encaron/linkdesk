@@ -37,18 +37,29 @@
  *      真实源文件悄悄漏检（抛错让门禁红）。
  *
  * 用法：node scripts/check-file-size.mjs（已挂 npm run check，audit-i18n 后、eslint 前）
+ *       node scripts/check-file-size.mjs --self-test
  * 退出码 0 = 零超限（黄灯也 0），退出码 1 = 有违规（打印到 stderr，附 rel: 行数 + 阈值 + 豁免数）。
+ *
+ * ── 🔴 E6#109p-b（1.28b）补自测 ──
+ *   1.27 全量体检的结论是「本道**没有自测** ⇒『它会红』从来没有机械证据」（只有两次人工真注入：
+ *   801 行 `src/__probe_bloat__.ts` ⇒ 红、151 行插件角色档 ⇒ 红）。本轮补可复跑自测，
+ *   按 1.27 的建议**测纯函数最划算**：`lineCount` / `pluginLimit` / `isTestFile`（三个相对
+ *   仓库根也不依赖路径的判据）＋ 夹宽黄灯阈值。`main()` 的打印与退出码**一字未动**。
+ *   形 (a)「夹旁散门面」那条分支要真 fs 才能验——`isAggregator` 走 `resolve(ROOT, relPath)`，
+ *   而 **`relPath` 是绝对路径时 resolve 直接返回它**，故可在 `os.tmpdir()` 造假夹验，
+ *   不必往仓库写一个字节（夹具 `finally rmSync`）。
  */
 
-import { readFileSync, readdirSync, existsSync, statSync } from "fs";
+import { readFileSync, readdirSync, existsSync, statSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "fs";
 import { resolve, dirname, join, relative, sep, basename } from "path";
 import { fileURLToPath } from "url";
+import { tmpdir } from "os";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, "..");
 
 /** 壳 + electron 生产源码统一红线——>800 即红（801 起）。新门禁类别的常量权威 */
-const DEFAULT_MAX_LINES = 800;
+export const DEFAULT_MAX_LINES = 800;
 /** 扫描域——src/ + electron/（plugins/ 是独立构建产物，插件体量守 03 插件制造文档规范不在此门禁） */
 const DEFAULT_SCOPE_DIRS = ["src", "electron"];
 const SKIP_DIRS = new Set(["node_modules", "dist", "dist-electron", ".git", ".vite", "__tests__"]);
@@ -90,7 +101,7 @@ const ENTRY_LIMIT = 120;
  * E6#88a 用户拍板「登记它们」（2026-09-11）。取 hooks/utils 同级 150。 */
 const ROOT_SHARED_LIMIT = 150;
 /** 🔔 夹宽黄灯阈值（E6#88，[06 §三] 判据）——**只提醒，永不 fail build** */
-const FOLDER_WIDTH_WARN = 12;
+export const FOLDER_WIDTH_WARN = 12;
 
 /**
  * E6#0.6b allowlist 拍板制——空数组启动，零豁免。新增条目 = 用户拍板 + 文件头注加
@@ -101,7 +112,7 @@ const EXEMPT_TOKEN = "@E6#0.6b";
 
 const norm = (p) => p.split(sep).join("/");
 const rel = (p) => norm(relative(ROOT, p));
-const isTestFile = (p) => /\.(test|spec)\.(tsx?|jsx?)$/.test(p) || /\.d\.ts$/.test(p);
+export const isTestFile = (p) => /\.(test|spec)\.(tsx?|jsx?)$/.test(p) || /\.d\.ts$/.test(p);
 
 function walk(dir, out = []) {
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
@@ -118,7 +129,7 @@ function walk(dir, out = []) {
  * 会少计成 1 行→放行巨兽）；尾随换行判定在归一之后（否则以 \r 结尾的文件漏减 1）。
  * BOM 粘首行不影响行数，不处理。空文件 = 0 行。
  */
-function lineCount(src) {
+export function lineCount(src) {
   const s = src.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
   if (s === "") return 0;
   return s.endsWith("\n") ? s.split("\n").length - 1 : s.split("\n").length;
@@ -162,7 +173,7 @@ function isAggregator(relPath, dirs) {
  * 顺序咬死：**`.css` 扩展名优先** → 根级（entry / 跨层共享单件）→ role 夹 → 聚合器 ×2。
  * 未登记项 **throw**（fail-loud，逼显式上档——不许静默落进 800 兜底）。
  */
-function pluginLimit(relPath) {
+export function pluginLimit(relPath) {
   const seg = relPath.split("/");
   const base = seg[seg.length - 1];
   if (base.endsWith(".css")) return CSS_LIMIT;
@@ -190,7 +201,7 @@ function pluginLimit(relPath) {
  * （「先判扩展名/角色、再判夹宽」的实现保证：role 解析 throw 也不影响本 pass）。
  * 只数直接子项（文件 + 子夹），SKIP_DIRS 不算；**只打印，永不进 exit code**。
  */
-function folderWidthWarnings(scanRoots) {
+export function folderWidthWarnings(scanRoots) {
   const warns = [];
   const seen = new Set();
   const visit = (dir) => {
@@ -210,7 +221,169 @@ function folderWidthWarnings(scanRoots) {
   return warns.sort((a, b) => b.n - a.n);
 }
 
+// ────────────────────────────────── 自测 ──────────────────────────────────
+
+/**
+ * 每例**真跑判据、断言实得**（1.27 的教训：只写「应该会红」是假门禁的常见死法）。
+ * 分组：**正控 = 判据给出该给的值**（阈值算术 / 档位解析 / 不跳过的正常件），
+ * **负控 = 该抛的必须抛**（未登记件 fail-loud）。负控断言「为对的原因抛」——
+ * 只断言「抛了」会让内部 bug 抛的 TypeError 冒充通过。
+ */
+function runSelfTest() {
+  const tmp = mkdtempSync(join(tmpdir(), "linkdesk-file-size-selftest-"));
+  const cases = [];
+  const eq = (tag, group, fn, want) => cases.push({ tag, group, fn, want });
+  const thr = (tag, fn, sub) => cases.push({ tag, group: "负控", fn, want: { throws: sub } });
+  const run = (fn) => {
+    try {
+      return { ok: true, v: fn() };
+    } catch (e) {
+      return { ok: false, msg: String(e.message) };
+    }
+  };
+  let bad = 0;
+  let posOk = 0;
+  let negCount = 0;
+  let total = 0;
+
+  try {
+    // ── 夹具：形 (a)「夹旁散门面」要真 fs（见文件头）──
+    mkdirSync(join(tmp, "src", "views", "A"), { recursive: true });
+    writeFileSync(join(tmp, "src", "views", "A.tsx"), ""); // 有同级同名夹 A/ ⇒ 聚合器
+    writeFileSync(join(tmp, "src", "views", "B.tsx"), ""); // 无同名夹 ⇒ 普通件（控制组）
+    const absPosix = (p) => join(tmp, p).replace(/\\/g, "/");
+    // ── 夹具：夹宽黄灯（只数直接子项；SKIP_DIRS 不算）──
+    const w13 = join(tmp, "width-13");
+    mkdirSync(w13, { recursive: true });
+    for (let i = 0; i < 13; i++) writeFileSync(join(w13, `f${i}.ts`), "");
+    const w12 = join(tmp, "width-12");
+    mkdirSync(w12, { recursive: true });
+    for (let i = 0; i < 12; i++) writeFileSync(join(w12, `f${i}.ts`), "");
+    const w12skip = join(tmp, "width-12-skip");
+    mkdirSync(join(w12skip, "node_modules"), { recursive: true });
+    for (let i = 0; i < 12; i++) writeFileSync(join(w12skip, `f${i}.ts`), "");
+
+    // ── 正控：lineCount（物理行数；归一顺序咬死）──
+    eq("正控：lineCount(`a\\nb\\n`) ⇒ 2", "正控", () => lineCount("a\nb\n"), 2);
+    eq("正控：lineCount(`a\\nb`) ⇒ 2（无尾随换行）", "正控", () => lineCount("a\nb"), 2);
+    eq("正控：lineCount(``) ⇒ 0（空文件）", "正控", () => lineCount(""), 0);
+    eq("正控：lineCount(`a\\r\\nb\\r\\n`) ⇒ 2（CRLF）", "正控", () => lineCount("a\r\nb\r\n"), 2);
+    eq(
+      "正控：lineCount(`a\\rb`) ⇒ 2（**孤 \\r 分隔**——钉住「先 CRLF 后孤 \\r」的归一顺序）",
+      "正控",
+      () => lineCount("a\rb"),
+      2,
+    );
+    eq(
+      "正控：lineCount(`a\\rb\\r`) ⇒ 2（孤 \\r 尾随：归一在前、判尾随在后，否则漏减 1）",
+      "正控",
+      () => lineCount("a\rb\r"),
+      2,
+    );
+    eq("正控：lineCount(`a\\n\\n`) ⇒ 2（尾随空行仍算一行）", "正控", () => lineCount("a\n\n"), 2);
+    eq("正控：lineCount(`\\n`) ⇒ 1（只有一个空行）", "正控", () => lineCount("\n"), 1);
+    eq("正控：lineCount(`// x\\n` × 801) ⇒ 801（违规门限的算术）", "正控", () => lineCount("// x\n".repeat(801)), 801);
+
+    // ── 正控：阈值语义（801 起红，即 >800）──
+    eq("正控：DEFAULT_MAX_LINES === 800（「≤」语义，801 起红）", "正控", () => DEFAULT_MAX_LINES, 800);
+    eq("正控：801 > 阈值 ⇒ 红", "正控", () => 801 > DEFAULT_MAX_LINES, true);
+    eq("正控：800 > 阈值 ⇒ 不红（边界 800 不含）", "正控", () => 800 > DEFAULT_MAX_LINES, false);
+
+    // ── 正控：isTestFile ──
+    eq("正控：isTestFile(`src/core/x.test.ts`) ⇒ true", "正控", () => isTestFile("src/core/x.test.ts"), true);
+    eq("正控：isTestFile(`plugins/p/src/views/A.spec.tsx`) ⇒ true", "正控", () => isTestFile("plugins/p/src/views/A.spec.tsx"), true);
+    eq("正控：isTestFile(`src/core/types.d.ts`) ⇒ true（ambient 声明非有机膨胀）", "正控", () => isTestFile("src/core/types.d.ts"), true);
+    eq("正控：isTestFile(`src/legacy.spec.js`) ⇒ true（js/jsx 家族同界）", "正控", () => isTestFile("src/legacy.spec.js"), true);
+    eq("正控：isTestFile(`src/core/x.ts`) ⇒ false", "正控", () => isTestFile("src/core/x.ts"), false);
+    eq("正控：isTestFile(`src/index.css`) ⇒ false", "正控", () => isTestFile("src/index.css"), false);
+    eq("正控：isTestFile(`src/attest.ts`) ⇒ false（不误伤子串）", "正控", () => isTestFile("src/attest.ts"), false);
+
+    // ── 正控：pluginLimit 档位解析（真实相对路径字符串）──
+    eq("正控：`plugins/x/src/views/A.css` ⇒ 300（.css 恒样式档）", "正控", () => pluginLimit("plugins/x/src/views/A.css"), 300);
+    eq("正控：`plugins/x/src/index.css` ⇒ 300（根级 .css 也恒 300）", "正控", () => pluginLimit("plugins/x/src/index.css"), 300);
+    eq(
+      "正控：`plugins/x/src/weird-role/A.css` ⇒ 300（**扩展名优先于 role**——未登记 role 夹里的 css 不 throw）",
+      "正控",
+      () => pluginLimit("plugins/x/src/weird-role/A.css"),
+      300,
+    );
+    eq("正控：`plugins/x/src/index.tsx` ⇒ 120（档 C entry）", "正控", () => pluginLimit("plugins/x/src/index.tsx"), 120);
+    eq("正控：`plugins/x/src/views/A.tsx` ⇒ 150（views 档）", "正控", () => pluginLimit("plugins/x/src/views/A.tsx"), 150);
+    eq(
+      "正控：`plugins/x/src/views/A/index.tsx` ⇒ 150（**不认第三形**：views 支的夹内入口不算聚合器）",
+      "正控",
+      () => pluginLimit("plugins/x/src/views/A/index.tsx"),
+      150,
+    );
+    eq("正控：`plugins/x/src/components/A/B.tsx` ⇒ 150（同名无夹 ⇒ 非聚合器）", "正控", () => pluginLimit("plugins/x/src/components/A/B.tsx"), 150);
+    eq("正控：`plugins/x/src/components/X/index.ts` ⇒ 300（形 (b) 聚合器 ×2）", "正控", () => pluginLimit("plugins/x/src/components/X/index.ts"), 300);
+    eq("正控：`plugins/x/src/components/X/index.tsx` ⇒ 300（形 (b) ×2，.tsx 同办）", "正控", () => pluginLimit("plugins/x/src/components/X/index.tsx"), 300);
+    eq("正控：`plugins/x/src/hooks/useX/index.ts` ⇒ 300（形 (b)，非 views 支）", "正控", () => pluginLimit("plugins/x/src/hooks/useX/index.ts"), 300);
+    eq("正控：`plugins/x/src/hooks/useX.ts` ⇒ 150（hooks 档）", "正控", () => pluginLimit("plugins/x/src/hooks/useX.ts"), 150);
+    eq("正控：`plugins/x/src/utils/number.ts` ⇒ 150（utils 档）", "正控", () => pluginLimit("plugins/x/src/utils/number.ts"), 150);
+    eq("正控：`plugins/x/src/services/telemetry.ts` ⇒ 200（services 自成一档）", "正控", () => pluginLimit("plugins/x/src/services/telemetry.ts"), 200);
+    eq("正控：`plugins/x/src/cm6/append-line.ts` ⇒ 150（E6#88a 显式上档）", "正控", () => pluginLimit("plugins/x/src/cm6/append-line.ts"), 150);
+    eq("正控：`plugins/x/src/types.ts` ⇒ 150（根级跨层共享单件）", "正控", () => pluginLimit("plugins/x/src/types.ts"), 150);
+    eq("正控：`plugins/x/src/constants.tsx` ⇒ 150（根级共享 .tsx 同办）", "正控", () => pluginLimit("plugins/x/src/constants.tsx"), 150);
+    eq(
+      "正控：tmp 假夹 `.../src/views/A.tsx`（同级有真夹 A/）⇒ 300（**形 (a) 夹旁散门面**，本分支要真 fs）",
+      "正控",
+      () => pluginLimit(absPosix("src/views/A.tsx")),
+      300,
+    );
+    eq(
+      "正控：tmp 控制组 `.../src/views/B.tsx`（无同级夹）⇒ 150（同一个夹里翻面 ⇒ 上面那条才成立）",
+      "正控",
+      () => pluginLimit(absPosix("src/views/B.tsx")),
+      150,
+    );
+
+    // ── 负控：未登记件必须 fail-loud（不是静默落 800 兜底）──
+    thr("负控：`plugins/x/src/weird-role/A.tsx`（未知 role 夹）⇒ throw", () => pluginLimit("plugins/x/src/weird-role/A.tsx"), "未知 role");
+    thr("负控：`plugins/x/src/index.ts`（非 .tsx 的 entry）⇒ throw", () => pluginLimit("plugins/x/src/index.ts"), "entry 只认 index.tsx");
+    thr("负控：`plugins/x/src/README.md`（根级未上档非 ts/tsx）⇒ throw", () => pluginLimit("plugins/x/src/README.md"), "根级未上档");
+
+    // ── 正控：夹宽黄灯阈值（>12 才提醒；黄灯**不进 exit code**——exit 只由 violations 决定）──
+    eq("正控：FOLDER_WIDTH_WARN === 12", "正控", () => FOLDER_WIDTH_WARN, 12);
+    eq("正控：13 个直接子项 ⇒ 1 处黄灯（>12 触发）", "正控", () => folderWidthWarnings([w13]).length, 1);
+    eq("正控：黄灯报的直接子项数就是 13", "正控", () => folderWidthWarnings([w13])[0].n, 13);
+    eq("正控：12 个直接子项 ⇒ 0 处（边界「>12」不含 12）", "正控", () => folderWidthWarnings([w12]).length, 0);
+    eq(
+      "正控：12 文件 + node_modules ⇒ 0 处（SKIP_DIRS 不算直接子项）",
+      "正控",
+      () => folderWidthWarnings([w12skip]).length,
+      0,
+    );
+
+    for (const c of cases) {
+      const r = run(c.fn);
+      const isThr = c.want && typeof c.want === "object" && "throws" in c.want;
+      const pass = isThr ? !r.ok && r.msg.includes(c.want.throws) : r.ok && r.v === c.want;
+      const got = r.ok ? r.v : `throw（${r.msg}）`;
+      const want = isThr ? `throw 含「${c.want.throws}」` : c.want;
+      if (c.group === "负控") negCount++;
+      if (pass && c.group === "正控") posOk++;
+      if (!pass) bad++;
+      total++;
+      process.stdout.write(`${pass ? "✅" : "🔴"} ${c.tag} —— 实得 ${got}${pass ? "" : `，应 ${want}`}\n`);
+    }
+  } finally {
+    rmSync(tmp, { recursive: true, force: true }); // 自测不许往仓库留垃圾
+  }
+
+  process.stdout.write(
+    bad === 0
+      ? `\n✅ check-file-size self-test 全过（${total} 例：正控 ${posOk} 绿 / 负控 ${negCount} 红）——尺子不是在恒绿。\n`
+      : `\n🔴 check-file-size self-test ${bad} 例不符（共 ${total} 例）。\n`,
+  );
+  process.exit(bad === 0 ? 0 : 1);
+}
+
+// ────────────────────────────────── 主流程 ──────────────────────────────────
+
 function main() {
+  if (process.argv.includes("--self-test")) return runSelfTest();
+
   verifyAllowlist();
 
   /** 扫描域 = 壳 + electron（档 A，800）+ 各插件 src（档 B/C，E6#88 扩域） */
