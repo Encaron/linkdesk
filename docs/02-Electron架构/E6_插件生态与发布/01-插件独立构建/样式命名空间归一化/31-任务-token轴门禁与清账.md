@@ -316,8 +316,9 @@ grep -nE "^[[:space:]]*--[a-zA-Z0-9-]+[[:space:]]*:" src/index.css | wc -l      
 grep -rn "^[[:space:]]*:root" E:/linkdesk-plugins/official/*/src --include=*.css
 # ③ 引擎写入 vs 契约（本格新造的两个只读脚本，见交接段）
 node scratch/token-axis-123.mjs            # 宿主/插件作用域形态清单 ＋ var() 量
-node scratch/token-engine-vs-contract.mjs  # 引擎写入集 vs 契约名（期望：94 里 47 个「引擎可能写」）
+node scratch/token-engine-vs-contract.mjs  # 引擎写入集 vs 契约名（期望：宿主 :root 94 名里 47 个可被引擎写）
 ```
+> ⚠️ **上面两行是「照抄重写」用的**：那两个脚本住 `scratch/`（`.gitignore` 内，**会丢**）。⇒ 🔴 **本格顺手必做的一小步**：把它们的逻辑**收进 §4.1 那个 `scripts/lib/css-selectors.mjs` 助手**（`tokenDefinitions()` 本来就要做 —— 顺手把「按 [(a)(b)(c) ＋ 名字] 归类 → 打印形态清单」做成门禁的 `--audit` 段或 `scripts/` 下的只读工具），**别让「本轴现状读数」继续依赖 scratch/**：那正是 [22 号档 §3.4](22-收口总方案-跨方样式污染九件套.md) 记的件 5 教训（**能力住在 scratch/ = 每轮重写、写完就丢**）。
 ```bash
 # ④ 运行时探针（件 5；启动配方在脚本头「启动配方」一节，照抄别自己发明）
 npm run audit:runtime-style -- --json scratch/rt-124.json --raw scratch/rt-124.raw.json \
