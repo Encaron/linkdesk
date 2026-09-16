@@ -39,16 +39,16 @@ export default function NumberInput({ value, onChange, min, max, step = 1, unit,
   const atMax = max !== undefined && value >= max;
 
   return (
-    <div className="number-input" style={style}>
+    <div className="ldk-number-input" style={style}>
       <button
-        className="number-input-btn"
+        className="ldk-number-input-btn"
         onClick={handleStepDown}
         disabled={atMin}
         tabIndex={-1}
         aria-label={t("减少")}
       >−</button>
       <input
-        className="ldk-input number-input-field"
+        className="ldk-input ldk-number-input-field"
         type="text"
         value={value}
         onChange={(e) => {
@@ -58,9 +58,9 @@ export default function NumberInput({ value, onChange, min, max, step = 1, unit,
         style={{ width: 56, textAlign: "center" }}
       />
       {/* E5.8 Phase 12 #161：unit 后缀夹在 input 与 + 之间——+ 保持 :last-child 右圆角不破 */}
-      {unit ? <span className="number-input-unit">{unit}</span> : null}
+      {unit ? <span className="ldk-number-input-unit">{unit}</span> : null}
       <button
-        className="number-input-btn"
+        className="ldk-number-input-btn"
         onClick={handleStepUp}
         disabled={atMax}
         tabIndex={-1}

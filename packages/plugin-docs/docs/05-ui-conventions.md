@@ -556,7 +556,7 @@ both stylesheets land on the same element.
 
 | Reserved keyframe names | Notes |
 |---|---|
-| `selectbox-in` | the shared select dropdown's entrance animation |
+| `ldk-selectbox-in` | the shared select dropdown's entrance animation |
 | `ldk-drop-zone-in` | the drop zone's entrance animation |
 | `ldk-dropdown-card-in` | the dropdown card's entrance animation |
 | `ldk-floating-panel-in` | the floating panel's entrance animation |
@@ -644,6 +644,29 @@ component. **Nothing to do before you upgrade; when you upgrade, it's one prefix
 - **Who is affected**: **any plugin that wrote `className="input"` in its own JSX/TSX**—among the official plugins, `settings` and `serial-monitor` used it and were updated in the same release batch. **The fix is one place**: `className="input"` → `className="ldk-input"`; the same for concatenated forms (`"input my-input"` → `"ldk-input my-input"`). **Zero styling change**—same rule, same CSS variables, only the name.
 - **What happens if you don't**: the input doesn't error; it simply **loses the host-provided appearance** (background / border / radius / padding) and looks like a browser-native input.
 - **When you must change it**: as soon as you run on the **new shell**. The new shell version is **`0.2.0`**, and both official plugins now declare `minAppVersion: "0.2.0"` in `plugin.json`—declare the same value in your plugin and users on an older shell get a clear "requires app version ≥0.2.0" message instead of an unstyled input (see [04-distribution-format §minAppVersion](04-distribution-format.md) for the semantics).
+
+### 12.4 The rest of the shared components' class names took the `ldk-` prefix too (2026-09-16)
+
+**In one line: same story as 12.1, just for the components that 12.1 didn't cover—if your own CSS tunes those components with descendant selectors, add the `ldk-` prefix when you upgrade.**
+
+- **What changed**: §12.1 covered the eight base names of `@linkdesk/ui` (`badge` / `button` / `combobox` / `mdv` / `selectbox` / `sle` / `slider` / `toggle`) at **0.2.0**. The remaining components' class names—plus one `@keyframes` name—now carry the prefix too, at **`@linkdesk/ui` 0.3.0**:
+
+  | Old family | New family |
+  |---|---|
+  | `.colorpicker-*` | `.ldk-colorpicker-*` |
+  | `.ctx-*` | `.ldk-ctx-*` |
+  | `.form-row` | `.ldk-form-row` |
+  | `.inline-input`, `.inline-input--compact/--normal` | `.ldk-inline-input`, `.ldk-inline-input--compact/--normal` |
+  | `.number-input*` | `.ldk-number-input*` |
+  | `.segmented-radio`, `.segmented-radio__option/__label` | `.ldk-segmented-radio`, `.ldk-segmented-radio__option/__label` |
+  | `.sidebar-section*`, `.sidebar-pane-view`, `.sidebar-pane-sash` | `.ldk-sidebar-section*`, `.ldk-sidebar-section-pane-view`, `.ldk-sidebar-section-pane-sash` |
+  | `.theme-picker*`, `.theme-card`, `.theme-preview` | `.ldk-theme-picker*`, `.ldk-theme-picker-card`, `.ldk-theme-picker-preview` |
+  | `.tbadge` / `.tname` / `.pv-bar` / `.pv-dot` (theme-card internals) | `.ldk-theme-picker-badge` / `.ldk-theme-picker-name` / `.ldk-theme-picker-preview-bar` / `.ldk-theme-picker-preview-dot` |
+  | `@keyframes selectbox-in` | `@keyframes ldk-selectbox-in` |
+
+- **Who is affected**: again **only your own CSS**'s descendant selectors that point at those components (e.g. `.settings-row:has(.theme-picker)`). **The components' own styling does not change, and your own class names stay as they are.** The whole point is that the shared components' names now all live in the `ldk-` namespace, whose rule you already know: **anything starting with `ldk-` belongs to the host—don't put it on your own elements** (the one exception is `.ldk-input`, the utility that is **for you**).
+- **What happens if you don't**: exactly the silent failure described in 12.1—the selector just stops matching and those few rules quietly stop applying. **No error.**
+- **When you must change it**: when you move to **`@linkdesk/ui` 0.3.0**. `^0.2.0` does not resolve `0.3.0` (that's how 0.x ranges work), so nothing breaks until you upgrade deliberately. **Grep your own CSS for the old names** after upgrading: an official plugin (`settings`) had exactly one such spot and it was fixed in the same release batch.
 
 ---
 

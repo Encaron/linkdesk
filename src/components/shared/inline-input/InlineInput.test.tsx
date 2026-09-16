@@ -89,10 +89,10 @@ describe("InlineInput", () => {
 
   it("size prop → className", () => {
     const compact = renderInput({ size: "compact" }).input;
-    expect(compact.className).toContain("inline-input--compact");
+    expect(compact.className).toContain("ldk-inline-input--compact");
 
     const normal = renderInput({ size: "normal" }).input;
-    expect(normal.className).toContain("inline-input--normal");
+    expect(normal.className).toContain("ldk-inline-input--normal");
   });
 
   // ── 2. selectMode ──

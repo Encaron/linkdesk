@@ -54,7 +54,7 @@ function FloatingLayerHost() {
       }}
     >
       {/* 遮罩平面（#107 浮层权威）——全部满屏 scrim（quick-pick-backdrop / dialog-host-backdrop /
-          floating-panel-backdrop / colorpicker-overlay / ContextMenu backdrop）经 createPortal 归位。
+          floating-panel-backdrop / ldk-colorpicker-overlay / ContextMenu backdrop）经 createPortal 归位。
           静态 div 不建 stacking context——portal 遮罩内联 z-index 仍在层上下文参与自分层。
           pointer-events:auto（遮罩需接收点击——容器 none 下渗，本平面统一 opt-in）。 */}
       <div id="ld-scrim-plane" style={{ pointerEvents: "auto" }} />

@@ -31,7 +31,7 @@ describe("ThemePicker", () => {
     const { container } = renderPicker();
     // listRecipes 是 async IPC——等一帧
     await vi.waitFor(() => {
-      expect(container.querySelectorAll(".theme-card")).toHaveLength(2);
+      expect(container.querySelectorAll(".ldk-theme-picker-card")).toHaveLength(2);
     });
     expect(container.textContent).toContain("Demo Mint");
     expect(container.textContent).toContain("Demo Forest");
@@ -41,32 +41,32 @@ describe("ThemePicker", () => {
     mockListRecipes([FOREST]);
     const { container } = renderPicker("demo-forest");
     await vi.waitFor(() => {
-      expect(container.querySelector(".theme-card")).toBeTruthy();
+      expect(container.querySelector(".ldk-theme-picker-card")).toBeTruthy();
     });
-    const card = container.querySelector(".theme-card")!;
-    expect(card.querySelectorAll(".pv-bar")).toHaveLength(3);
-    expect(card.querySelectorAll(".pv-dot")).toHaveLength(0);
-    expect(card.querySelector(".tbadge")?.textContent).toBe("Gamma");
+    const card = container.querySelector(".ldk-theme-picker-card")!;
+    expect(card.querySelectorAll(".ldk-theme-picker-preview-bar")).toHaveLength(3);
+    expect(card.querySelectorAll(".ldk-theme-picker-preview-dot")).toHaveLength(0);
+    expect(card.querySelector(".ldk-theme-picker-badge")?.textContent).toBe("Gamma");
   });
 
   it("多配色配方——圆点（≤6）+ 计数徽标", async () => {
     mockListRecipes([MINT]);
     const { container } = renderPicker();
     await vi.waitFor(() => {
-      expect(container.querySelector(".theme-card")).toBeTruthy();
+      expect(container.querySelector(".ldk-theme-picker-card")).toBeTruthy();
     });
-    const card = container.querySelector(".theme-card")!;
-    expect(card.querySelectorAll(".pv-dot")).toHaveLength(2);
-    expect(card.querySelector(".tbadge")?.textContent).toContain("2");
+    const card = container.querySelector(".ldk-theme-picker-card")!;
+    expect(card.querySelectorAll(".ldk-theme-picker-preview-dot")).toHaveLength(2);
+    expect(card.querySelector(".ldk-theme-picker-badge")?.textContent).toContain("2");
   });
 
   it("value 匹配 → 选中态（active class + aria-pressed）", async () => {
     mockListRecipes([MINT, FOREST]);
     const { container } = renderPicker("demo-forest");
     await vi.waitFor(() => {
-      expect(container.querySelectorAll(".theme-card")).toHaveLength(2);
+      expect(container.querySelectorAll(".ldk-theme-picker-card")).toHaveLength(2);
     });
-    const cards = container.querySelectorAll(".theme-card");
+    const cards = container.querySelectorAll(".ldk-theme-picker-card");
     expect(cards[0].classList.contains("active")).toBe(false);
     expect(cards[1].classList.contains("active")).toBe(true);
     expect(cards[1].getAttribute("aria-pressed")).toBe("true");
@@ -76,9 +76,9 @@ describe("ThemePicker", () => {
     mockListRecipes([MINT, FOREST]);
     const { container, onChange } = renderPicker();
     await vi.waitFor(() => {
-      expect(container.querySelectorAll(".theme-card")).toHaveLength(2);
+      expect(container.querySelectorAll(".ldk-theme-picker-card")).toHaveLength(2);
     });
-    fireEvent.click(container.querySelectorAll(".theme-card")[1]!);
+    fireEvent.click(container.querySelectorAll(".ldk-theme-picker-card")[1]!);
     expect(onChange).toHaveBeenCalledWith("demo-forest");
   });
 
@@ -86,14 +86,14 @@ describe("ThemePicker", () => {
     mockListRecipes([]);
     const { container } = renderPicker();
     await vi.waitFor(() => {
-      expect(container.querySelector(".theme-picker-empty")).toBeTruthy();
+      expect(container.querySelector(".ldk-theme-picker-empty")).toBeTruthy();
     });
   });
 
   it("listRecipes 不可用 → 空态兜底（不抛错）", async () => {
     const { container } = renderPicker();
     await vi.waitFor(() => {
-      expect(container.querySelector(".theme-picker-empty")).toBeTruthy();
+      expect(container.querySelector(".ldk-theme-picker-empty")).toBeTruthy();
     });
   });
 
@@ -101,11 +101,11 @@ describe("ThemePicker", () => {
     mockListRecipes([MINT, FOREST]);
     const { container } = renderPicker();
     await vi.waitFor(() => {
-      expect(container.querySelectorAll(".theme-card")).toHaveLength(2);
+      expect(container.querySelectorAll(".ldk-theme-picker-card")).toHaveLength(2);
     });
-    const grid = container.querySelector(".theme-picker")!;
+    const grid = container.querySelector(".ldk-theme-picker")!;
     fireEvent.keyDown(grid, { key: "ArrowRight" });
-    const cards = container.querySelectorAll(".theme-card");
+    const cards = container.querySelectorAll(".ldk-theme-picker-card");
     expect(document.activeElement).toBe(cards[1]);
     expect(cards[1].getAttribute("tabindex")).toBe("0");
     expect(cards[0].getAttribute("tabindex")).toBe("-1");
@@ -116,13 +116,13 @@ describe("ThemePicker", () => {
     mockListRecipes([MINT]);
     const { container } = renderPicker();
     await vi.waitFor(() => {
-      expect(container.querySelectorAll(".theme-card")).toHaveLength(1);
+      expect(container.querySelectorAll(".ldk-theme-picker-card")).toHaveLength(1);
     });
     // 热装新主题插件 → 配方集变化 → 卡片列表刷新（含新配方）
     mockListRecipes([MINT, FOREST]);
     triggerLifecycle();
     await vi.waitFor(() => {
-      expect(container.querySelectorAll(".theme-card")).toHaveLength(2);
+      expect(container.querySelectorAll(".ldk-theme-picker-card")).toHaveLength(2);
     });
   });
 });

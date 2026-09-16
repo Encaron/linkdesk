@@ -35,9 +35,9 @@ function renderPicker(overrides: Record<string, unknown> = {}) {
     ...overrides,
   };
   const result = render(<ColorPicker {...props} />);
-  const overlay = () => document.querySelector(".colorpicker-overlay")!;
-  const panel = () => document.querySelector(".colorpicker-panel") as HTMLElement | null;
-  const ok = () => document.querySelector(".colorpicker-ok")!;
+  const overlay = () => document.querySelector(".ldk-colorpicker-overlay")!;
+  const panel = () => document.querySelector(".ldk-colorpicker-panel") as HTMLElement | null;
+  const ok = () => document.querySelector(".ldk-colorpicker-ok")!;
   return { ...result, onChange, onClose, overlay, panel, ok };
 }
 
@@ -98,14 +98,14 @@ describe("ColorPicker 组件 — overlay 点击关闭（E5.8#83 根因 B）", ()
 
   it("点击 hex 输入 → 不关闭（面板内交互保持）", () => {
     const { onClose } = renderPicker();
-    const hex = document.querySelector(".colorpicker-hex")!;
+    const hex = document.querySelector(".ldk-colorpicker-hex")!;
     fireEvent.click(hex);
     expect(onClose).not.toHaveBeenCalled();
   });
 
   it("anchor 存在 → 面板带内联 left/top（clamp 后）且整体在视口内", () => {
     renderPicker({ anchor: { x: 900, y: 700 } });
-    const panel = document.querySelector(".colorpicker-panel") as HTMLElement;
+    const panel = document.querySelector(".ldk-colorpicker-panel") as HTMLElement;
     // jsdom 下 offsetWidth/offsetHeight=0 → 实测分支量到 0；仍应 clamp 在视口内
     expect(panel.style.left).not.toBe("");
     expect(panel.style.top).not.toBe("");

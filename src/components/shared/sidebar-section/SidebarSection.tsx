@@ -117,9 +117,9 @@ function SidebarSection({
   // E4V#48：headerHidden 时仍支持拖拽——外容器 draggable。
   if (headerHidden) {
     return (
-      <div className="sidebar-section" draggable={draggable} onDragStart={onDragStart} onDragEnd={onDragEnd}>
+      <div className="ldk-sidebar-section" draggable={draggable} onDragStart={onDragStart} onDragEnd={onDragEnd}>
         {open && pinnedContent && (
-          <div className="sidebar-section-pinned" style={{
+          <div className="ldk-sidebar-section-pinned" style={{
             position: "sticky",
             top: stickyTop ?? 0,
             zIndex: 1,
@@ -127,19 +127,19 @@ function SidebarSection({
             {pinnedContent()}
           </div>
         )}
-        {open && <div className="sidebar-section-body">{children}</div>}
+        {open && <div className="ldk-sidebar-section-body">{children}</div>}
       </div>
     );
   }
 
   return (
-    <div className="sidebar-section">
+    <div className="ldk-sidebar-section">
       {/* 🔥 E4V#fix: header + pinned 包进同一个 sticky 容器——消除 HEADER_H 硬编码。
          浏览器自动处理堆叠——不再各自算 top，不再有 CSS-TSX 不同步导致的缝。 */}
-      <div className="sidebar-section-sticky-head"
+      <div className="ldk-sidebar-section-sticky-head"
         style={stickyTop !== undefined ? { top: stickyTop } : undefined}>
         <div
-          className={`sidebar-section-header${!collapsible ? " not-collapsible" : ""}`}
+          className={`ldk-sidebar-section-header${!collapsible ? " not-collapsible" : ""}`}
           onClick={toggle}
           role="button"
           title={titleTooltip}
@@ -151,23 +151,23 @@ function SidebarSection({
           onDragEnd={onDragEnd}
         >
           {collapsible && (
-            <span className={`sidebar-section-arrow${open ? "" : " collapsed"}`}>
+            <span className={`ldk-sidebar-section-arrow${open ? "" : " collapsed"}`}>
               ▼
             </span>
           )}
-          <span className="sidebar-section-title">{title ? t(title) : title}</span>
+          <span className="ldk-sidebar-section-title">{title ? t(title) : title}</span>
           {titleDescription && (
-            <span className="sidebar-section-title-description">{titleDescription}</span>
+            <span className="ldk-sidebar-section-title-description">{titleDescription}</span>
           )}
           {badge !== undefined && badge !== "" && (
-            <span className="sidebar-section-badge">{badge}</span>
+            <span className="ldk-sidebar-section-badge">{badge}</span>
           )}
-          <span className="sidebar-section-spacer" />
+          <span className="ldk-sidebar-section-spacer" />
           {actions && (
             <>
               <span
                 ref={actionsRef}
-                className={`sidebar-section-actions${showActions === "default" ? " show-on-hover" : ""}${showActions === "whenExpanded" && !open ? " hidden" : ""}${actionsOverflow ? " overflow" : ""}`}
+                className={`ldk-sidebar-section-actions${showActions === "default" ? " show-on-hover" : ""}${showActions === "whenExpanded" && !open ? " hidden" : ""}${actionsOverflow ? " overflow" : ""}`}
                 onClick={(e) => e.stopPropagation()}
               >
                 {actions}
@@ -175,13 +175,13 @@ function SidebarSection({
               {actionsOverflow && (
                 <span
                   ref={moreRef}
-                  className={`sidebar-section-more${showActions === "default" ? " show-on-hover" : ""}`}
+                  className={`ldk-sidebar-section-more${showActions === "default" ? " show-on-hover" : ""}`}
                   onClick={(e) => { e.stopPropagation(); setMoreOpen((p) => !p); }}
                   title={t("更多操作…")}
                 >
                   …
                   {moreOpen && (
-                    <div className="sidebar-section-more-dropdown" onClick={(e) => e.stopPropagation()}>
+                    <div className="ldk-sidebar-section-more-dropdown" onClick={(e) => e.stopPropagation()}>
                       {actions}
                     </div>
                   )}
@@ -191,12 +191,12 @@ function SidebarSection({
           )}
         </div>
         {open && pinnedContent && (
-          <div className="sidebar-section-pinned">
+          <div className="ldk-sidebar-section-pinned">
             {pinnedContent()}
           </div>
         )}
       </div>
-      {open && <div className="sidebar-section-body">{children}</div>}
+      {open && <div className="ldk-sidebar-section-body">{children}</div>}
     </div>
   );
 }

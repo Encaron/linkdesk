@@ -43,7 +43,7 @@ function SegmentedRadio({ options, value, onChange, ariaLabel }: SegmentedRadioP
     onChange(options[next].value);
   };
   return (
-    <div className="segmented-radio" role="radiogroup" aria-label={ariaLabel}>
+    <div className="ldk-segmented-radio" role="radiogroup" aria-label={ariaLabel}>
       {options.map((opt, i) => {
         const selected = value === opt.value;
         return (
@@ -54,13 +54,13 @@ function SegmentedRadio({ options, value, onChange, ariaLabel }: SegmentedRadioP
             role="radio"
             aria-checked={selected}
             tabIndex={selected ? 0 : -1}
-            className={`segmented-radio__option${selected ? " is-selected" : ""}`}
+            className={`ldk-segmented-radio__option${selected ? " is-selected" : ""}`}
             title={opt.title ?? opt.label}
             onClick={() => onChange(opt.value)}
             onKeyDown={(e) => handleKeyDown(e, i)}
           >
             {opt.preview}
-            <span className="segmented-radio__label">{opt.label}</span>
+            <span className="ldk-segmented-radio__label">{opt.label}</span>
           </button>
         );
       })}

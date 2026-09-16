@@ -4,7 +4,7 @@
  * 全部颜色走 CSS 变量，不硬编码 hex。
  */
 
-.inline-input {
+.ldk-inline-input {
   border: 1px solid var(--border);
   background: var(--bg-input);
   color: var(--text-primary);
@@ -15,20 +15,20 @@
   transition: border-color 150ms ease-out, box-shadow 150ms ease-out;
 }
 
-.inline-input:focus {
+.ldk-inline-input:focus {
   border-color: var(--accent);
   box-shadow: 0 0 0 1px var(--accent);
 }
 
 /* 22px——文件树行内重命名（E5.8 Phase 12 #170：22px 乘 scale + 12→sm） */
-.inline-input--compact {
+.ldk-inline-input--compact {
   height: calc(22px * var(--ui-scale));
   font-size: var(--font-size-sm);
   padding: 0 4px;
 }
 
 /* 32px——设置搜索框 / 串口发送区（E5.8 Phase 12 #170：32px 乘 scale + 13→md） */
-.inline-input--normal {
+.ldk-inline-input--normal {
   height: calc(32px * var(--ui-scale));
   font-size: var(--font-size-md);
   padding: 0 8px;

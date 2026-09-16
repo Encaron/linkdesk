@@ -9,7 +9,7 @@
 
 /* ── 菜单面板 ── */
 
-.ctx-menu {
+.ldk-ctx-menu {
   position: fixed;
   /* E5.7#14：z-index 归 inline Z_INDEX.contextMenu（constants.ts 常量表）——
      CSS 变量不再参与本组件层级（浮层归一化设计.md §3） */
@@ -25,7 +25,7 @@
   overflow: hidden;
   /* E5.8#53：容器程序化聚焦（tabIndex=-1 + .focus() 抢键盘焦点）不画 outline——
      显式豁免稳压全局 *:focus-visible（同特异性时全局后声明胜，光写 outline:none 不够）；
-     菜单项键盘高亮仍走 .ctx-item.focused 背景，不受影响 */
+     菜单项键盘高亮仍走 .ldk-ctx-item.focused 背景，不受影响 */
   outline: none;
 
   /* E3.5: 出现动画——scale+opacity 150ms */
@@ -35,18 +35,18 @@
   transition: opacity 150ms ease-out, transform 150ms ease-out;
 }
 
-.ctx-menu:focus-visible {
+.ldk-ctx-menu:focus-visible {
   outline: none; /* E5.8#53：特异性(0,2,0)稳压全局 *:focus-visible */
 }
 
-.ctx-menu.show {
+.ldk-ctx-menu.show {
   opacity: 1;
   transform: scale(1);
 }
 
 /* ── 菜单项 ── */
 
-.ctx-item {
+.ldk-ctx-item {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -60,8 +60,8 @@
   user-select: none;
 }
 
-.ctx-item:hover,
-.ctx-item.focused {
+.ldk-ctx-item:hover,
+.ldk-ctx-item.focused {
   /* 左 accent 色条 + 半透明底色：不依赖 accent 做纯色背景，
      确保文字对比度始终 >= 9:1（text-primary on bg-card），
      任何 accent 色（绿/黄/青/紫）都不会导致文字不可读。 */
@@ -71,7 +71,7 @@
 }
 
 /* 图标——E3.5 icon 支持（E5.8 Phase 12 #170：盒 16px 乘 scale + 字形 14→lg） */
-.ctx-item-icon {
+.ldk-ctx-item-icon {
   flex-shrink: 0;
   width: calc(16px * var(--ui-scale));
   height: calc(16px * var(--ui-scale));
@@ -82,14 +82,14 @@
   opacity: 0.75;
 }
 
-.ctx-item:hover .ctx-item-icon,
-.ctx-item.focused .ctx-item-icon {
+.ldk-ctx-item:hover .ldk-ctx-item-icon,
+.ldk-ctx-item.focused .ldk-ctx-item-icon {
   opacity: 1;
   color: var(--accent);
 }
 
 /* 快捷键标注——右对齐，颜色 muted */
-.ctx-item-shortcut {
+.ldk-ctx-item-shortcut {
   flex-shrink: 0;
   margin-left: 12px;
   font-size: var(--font-size-xs); /* E5.8 Phase 12 #170：shortcut 11→xs */
@@ -98,15 +98,15 @@
   letter-spacing: 0.2px;
 }
 
-.ctx-item:hover .ctx-item-shortcut,
-.ctx-item.focused .ctx-item-shortcut {
+.ldk-ctx-item:hover .ldk-ctx-item-shortcut,
+.ldk-ctx-item.focused .ldk-ctx-item-shortcut {
   opacity: 0.9;
   color: var(--text-secondary);
 }
 
 /* E5.8#37.7：当前项 √——固定 16px 宽占位（选中态 ✓ / 非选中态空）——标签行不错位。
    颜色走 --accent（VS Code 菜单选中项同款强调）；flex-shrink:0 不参与收缩。 */
-.ctx-item-check {
+.ldk-ctx-item-check {
   flex-shrink: 0;
   width: 16px;
   font-size: var(--font-size-sm); /* E5.8 Phase 12 #170：check 12→sm */
@@ -116,7 +116,7 @@
 }
 
 /* 菜单项标签——允许文字截断 */
-.ctx-item-label {
+.ldk-ctx-item-label {
   flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -125,7 +125,7 @@
 
 /* ── 分隔符 ── */
 
-.ctx-divider {
+.ldk-ctx-divider {
   height: 1px;
   background: var(--separator);
   margin: 4px 12px;
@@ -133,23 +133,23 @@
 
 /* ── 危险操作（删除等）── */
 
-.ctx-item-danger {
+.ldk-ctx-item-danger {
   color: var(--danger);
 }
 
-.ctx-item-danger .ctx-item-icon {
+.ldk-ctx-item-danger .ldk-ctx-item-icon {
   opacity: 1;
 }
 
-.ctx-item-danger:hover,
-.ctx-item-danger.focused {
+.ldk-ctx-item-danger:hover,
+.ldk-ctx-item-danger.focused {
   background: var(--tab-hover-bg);
   color: var(--danger);
   box-shadow: inset 2px 0 0 var(--danger);
 }
 
-.ctx-item-danger:hover .ctx-item-shortcut,
-.ctx-item-danger.focused .ctx-item-shortcut {
+.ldk-ctx-item-danger:hover .ldk-ctx-item-shortcut,
+.ldk-ctx-item-danger.focused .ldk-ctx-item-shortcut {
   opacity: 0.9;
   color: var(--text-secondary);
 }

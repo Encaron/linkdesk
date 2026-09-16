@@ -10,9 +10,11 @@
  *   表——「保留名」表（类名）与「保留的关键帧名」表（`docs/03-插件制造/05-插件UI写法规约.md` 与
  *   `docs/03-plugin-authoring/05-ui-conventions.md` **两份手抄**）。本门禁把这三份**双向**钉在一起：
  *     ① 两棵树的表**名字集合必须相等**（中英互为译文，不许各写各的）；
- *     ② 登记表里每个名字**必须出现在表里**（登记了却不告诉作者 ⇒ 作者照一份不存在的清单写代码）；
- *     ③ 表里每个名字**必须真实存在**：裸名 ⇒ 必须在登记表里登记；`ldk-` 名 ⇒ 必须在宿主源码里定义过；
- *     ④ **关键帧列同 ①②③**——与登记表的 `keyframes` 段双向（**1.15 立的门禁只守了类名那一列**，
+ *     ② 表里每个名字**必须真实存在**：`ldk-` 名 ⇒ 必须在宿主源码（`src/` 下的 `*.css`）里定义过；
+ *        ⚠️ E6#109l-b 起**只剩这一种形态**——「裸保留名」这个类别已随登记表 `classes` 一起退役
+ *        （两个定义域都是结构性规则：自己定义的类名一律 `ldk-` 开头，不再有任何豁免表）。
+ *        裸名/其它形态出现在这一列 ⇒ 红（`doc-name-unclassified`）。
+ *     ③ **关键帧列同 ① ② ＋ 与登记表的 `keyframes` 段双向**（1.15 立的门禁只守了类名那一列，
  *        剩下的「宿主哪些 `@keyframes` 名字动不得」既没进作者面也没机器守 ⇒ E6#109k-b 补齐）。
  *
  * ── 为什么是「对账门禁」而不是「生成」（详案 §二 给两条路线，这里是拍板与理由）──
@@ -21,8 +23,8 @@
  *      `name` + `why`，而 `why` 是**维护者语**（含插件 id、含 `className="input"` 这类代码片段）——
  *      投影进作者面既泄漏维护者语、又变不出英文 ⇒ 要生成就得往 JSON 加双语散文字段，直接撞详案
  *      禁区 3「不许动 JSON 内容」。
- *   ② 表里那行 `ldk-*` 枚举**根本不在 JSON 里**（`classes.shared` 自件 1 收尾起恒为空数组——带前缀的
- *      名字自带命名空间，不需要登记）。⇒ 纯 JSON 投影生成不出这一行，还得再引入一个真源。
+ *   ② 表里那行 `ldk-*` 枚举**根本不在 JSON 里**（它们带前缀、自带命名空间，从不登记）。
+ *      ⇒ 纯 JSON 投影生成不出这一行，还得再引入一个真源。
  *   ③ 生成意味着 `docs:build` 要**回写源文档**（今天只读源、只写 `packages/plugin-docs`），会让手写
  *      散文中间的一段变成机器所有——比多一条门禁脆弱得多。
  *   ⇒ 选 (b)：**表照旧手写，名字集合由门禁守**。这也是本仓对这类病用过的药——`check-namespace-matrix.mjs`
@@ -76,17 +78,14 @@ const KF_NAME = /\b[A-Za-z][A-Za-z0-9-]*\b/g;
 /** 关键帧列里混进类名形态（`.foo`）= 放错表了 */
 const KF_DOT = /(?<!\w)\.\w/;
 
-/** 读登记表 → { bare: Map<name, why>, keyframes: Map<name, why> }
- *  （裸名 = 登记表 `classes` 管的那种，带前缀的自带命名空间、不登记；关键帧各自一段） */
+/** 读登记表 → { keyframes: Map<name, why> }
+ *  ⚠️ E6#109l-b：`classes` 整块已从登记表删除（两个定义域的类名规则都是结构性的 ⇒ 它没有消费方了）。
+ *     本脚本**只剩关键帧一侧的双向对账**；类名列仍守着「表里的名字必须在源码里真实存在」。 */
 export function loadRegistry(root = ROOT) {
   const raw = JSON.parse(readFileSync(join(root, RESERVED_FILE_REL), "utf8"));
-  const bare = new Map();
-  for (const list of [raw.classes?.shared, raw.classes?.host]) {
-    for (const x of list ?? []) bare.set(x.name, x.why ?? "");
-  }
   const keyframes = new Map();
   for (const x of raw.keyframes ?? []) keyframes.set(x.name, x.why ?? "");
-  return { bare, keyframes };
+  return { keyframes };
 }
 
 /** 取 §12 那一节的行（找不到节 ⇒ null） */
@@ -207,11 +206,10 @@ const ldkExists = (name, tokens) => tokens.has(name) || [...tokens].some((t) => 
 
 /**
  * 核心判据（纯函数，`--self-test` 与真跑共用）。
- * @param {{docs:{label:string,text:string}[], registeredBare:Map<string,string>,
- *          registeredKeyframes?:Map<string,string>, ldkTokens:Set<string>}} input
+ * @param {{docs:{label:string,text:string}[], registeredKeyframes?:Map<string,string>, ldkTokens:Set<string>}} input
  * @returns {{kind:string,msg:string}[]}
  */
-export function checkSync({ docs, registeredBare, registeredKeyframes = new Map(), ldkTokens }) {
+export function checkSync({ docs, registeredKeyframes = new Map(), ldkTokens }) {
   const violations = [];
   const parsed = new Map();
   for (const d of docs) {
@@ -247,7 +245,7 @@ export function checkSync({ docs, registeredBare, registeredKeyframes = new Map(
     }
   }
 
-  // ②③ 登记表 ↔ 表（双向）；同一处只报一次（两棵树一致时消息会重复）
+  // ② 表里的名字必须真实存在；同一处只报一次（两棵树一致时消息会重复）
   const seen = new Set();
   const push = (kind, msg) => {
     const key = kind + "|" + msg;
@@ -257,40 +255,23 @@ export function checkSync({ docs, registeredBare, registeredKeyframes = new Map(
   };
   for (const [label, p] of parsed) {
     for (const name of p.names) {
-      if (name.startsWith("ldk-")) {
-        if (!ldkExists(name, ldkTokens)) {
-          push(
-            "ldk-name-not-found",
-            `${label}：表里列了 \`${name}\`，但宿主源码（src/**/*.css）里没有任何这样的类名——` +
-              `作者会照一个不存在的面写代码。改法：删掉这一项，或核对它是否已被改名。`
-          );
-        }
-      } else if (!name.includes("-")) {
-        if (!registeredBare.has(name)) {
-          push(
-            "doc-name-unregistered",
-            `${label}：表里列了裸名 \`.${name}\`，但登记表（${RESERVED_FILE_REL}）里没有它——` +
-              `表里出现一个「不存在的保留名」，作者会白白避让一个空名字。` +
-              `改法：从表里删掉，或补进登记表（classes.host / classes.shared，写明为什么必须是全局的）。`
-          );
-        }
-      } else {
+      if (!name.startsWith("ldk-")) {
+        // ⚠️ E6#109l-b：这一列**只放 `ldk-` 名**。原来的「裸保留名」类别已随登记表 `classes` 一起退役
+        //    （宿主与共享组件的类名规则都是结构性的 ⇒ 没有任何全局裸名需要作者避让）。
         push(
           "doc-name-unclassified",
-          `${label}：表里出现了 \`.${name}\`——它既不是登记表管的裸名（不含连字符），也不是 \`ldk-\` 命名。` +
-            `这一列是**机器读的**：只放这两种形态的类名，说明文字写第三列。`,
+          `${label}：表里出现了 \`.${name}\`——这一列**只放 \`ldk-\` 名**（宿主与共享组件自己定义的类名` +
+            `一律带 \`ldk-\` 前缀，跨方公共面就这一个命名空间）。裸名不再是一个类别：` +
+            `E6#109l-b 起两个定义域的规则都是「自己定义的类名一律 \`ldk-\` 开头」，没有登记表、没有豁免名单。` +
+            `改法：删掉这一项（它已不存在），或改成它现在的 \`ldk-\` 名。`,
         );
+        continue;
       }
-    }
-  }
-  for (const name of registeredBare.keys()) {
-    for (const [label, p] of parsed) {
-      if (!p.names.includes(name)) {
+      if (!ldkExists(name, ldkTokens)) {
         push(
-          "registry-not-in-doc",
-          `${label}：登记表里的 \`.${name}\` 没出现在 §12 的表里——` +
-            `作者读不到它就会拿它当普通名字用（登记表存在的意义正是让作者知道要避让什么）。` +
-            `改法：把它补进表里（两棵树都要），或从登记表摘掉。`
+          "ldk-name-not-found",
+          `${label}：表里列了 \`${name}\`，但宿主源码（src/**/*.css）里没有任何这样的类名——` +
+            `作者会照一个不存在的面写代码。改法：删掉这一项，或核对它是否已被改名。`
         );
       }
     }
@@ -362,12 +343,11 @@ export function checkSync({ docs, registeredBare, registeredKeyframes = new Map(
 
 /* ── 自测（正控会绿 / 负控会红）────────────────────────────────────── */
 const fixture = ({
-  hostCell = "`.input`",
-  registry = ["input"],
+  hostCell = "`.ldk-input`",
   ldk = "`ldk-badge`, `ldk-titlebar`",
-  kfCell = "`selectbox-in`",
+  kfCell = "`ldk-selectbox-in`",
   kfEnCell = null,
-  kfRegistry = ["selectbox-in"],
+  kfRegistry = ["ldk-selectbox-in"],
   kfTable = true,
 }) => {
   const kfZh = kfTable ? `| 保留的关键帧名 | 说明 |\n|---|---|\n| ${kfCell} | 共享组件下拉入场动画 |\n\n` : "";
@@ -385,9 +365,8 @@ const fixture = ({
         text: `## 12. CSS Class Names\n\n| Source | Reserved names | Notes |\n|---|---|---|\n| Host global utility classes | ${hostCell} | note one |\n| Shared component classes | ${ldk} | note two, e.g. the badge one |\n\n${kfEn}### 12.1 Upgrading\n\ngrep your CSS for the eight old base names \`.badge\`, \`.toggle\`.\n`,
       },
     ],
-    registeredBare: new Map(registry.map((n) => [n, "fixture"])),
     registeredKeyframes: new Map(kfRegistry.map((n) => [n, "fixture"])),
-    ldkTokens: new Set(["ldk-badge", "ldk-badge--accent", "ldk-titlebar", "ldk-titlebar-btn"]),
+    ldkTokens: new Set(["ldk-badge", "ldk-badge--accent", "ldk-titlebar", "ldk-titlebar-btn", "ldk-input"]),
   };
 };
 
@@ -401,15 +380,16 @@ function selfTest() {
   };
 
   // 🔴 正控：三份一致 ⇒ 零违规（顺带钉住「英文散文里的 `e.g.` 不会被当成类名 `.g`」这条口径）
-  T("正控：两棵树一致 ＋ 与登记表一致 ⇒ 绿");
-  T("正控：列内散文里的 `e.g.` 不被误判成类名 ⇒ 绿", { hostCell: "`.input` (e.g. the plain one)" });
+  T("正控：两棵树一致 ＋ 关键帧与登记表一致 ⇒ 绿");
+  T("正控：列内散文里的 `e.g.` 不被误判成类名 ⇒ 绿", { hostCell: "`.ldk-input` (e.g. the plain one)" });
   T("正控：写成 `.ldk-badge` 也算 `ldk-` 形态 ⇒ 绿", { ldk: "`.ldk-badge`, `ldk-titlebar`" });
 
-  // 负控①：表里的裸名被改掉（详案判据的「负控」——防的是**文档侧**漂移）
-  T("负控①：表里裸名被改掉 ⇒ 红", { hostCell: "`.inputt`" }, ["doc-name-unregistered", "registry-not-in-doc"]);
+  // 🔴 负控①（**已翻面**）：这一列**只放 `ldk-` 名**——裸名（`.input`）从此是错的
+  //   （E6#109l-b 前它是「裸保留名」类别、要查登记表；`classes` 退役后该类别不存在 ⇒ 直接判红）
+  T("负控①：列里出现裸名 `.input` ⇒ 红（裸保留名类别已退役）", { hostCell: "`.input`" }, ["doc-name-unclassified"]);
 
-  // 负控②：登记表新增名字、表里没有（详案判据的「正控」——防的是**登记侧**漂移）
-  T("负控②：登记表多一个名字、表里没有 ⇒ 红", { registry: ["input", "brand-x"] }, ["registry-not-in-doc"]);
+  // 负控②：这一列里出现既非裸名、也非 `ldk-` 命名的第三种形态（`.some-widget`）
+  T("负控②：列里出现 `.some-widget` ⇒ 红", { hostCell: "`.ldk-input`, `.some-widget`" }, ["doc-name-unclassified"]);
 
   // 负控③：两棵树各自为政（中英手抄漂移——改英文树那一份，中文不动）
   {
@@ -439,25 +419,22 @@ function selfTest() {
     cases.push(["负控⑥：保留名列被改名 ⇒ 红", got.some((v) => v.kind === "table-missing"), got.map((v) => v.kind)]);
   }
 
-  // 负控⑦：这一列里混进第三种形态（既非登记裸名、也非 ldk- 命名）
-  T("负控⑦：列里出现 `.some-widget` ⇒ 红", { hostCell: "`.input`, `.some-widget`" }, ["doc-name-unclassified"]);
-
   // ── 关键帧列（E6#109k-b 补：1.15 的门禁只守了类名那一列）──
-  T("正控：关键帧表与登记表 `keyframes` 一致 ⇒ 绿", { kfCell: "`notif-icon-spin`", kfRegistry: ["notif-icon-spin"] });
+  T("正控：关键帧表与登记表 `keyframes` 一致 ⇒ 绿", { kfCell: "`ldk-notif-icon-spin`", kfRegistry: ["ldk-notif-icon-spin"] });
   T(
-    "负控⑧：文档侧关键帧被改名 ⇒ 红",
-    { kfCell: "`selectbox-out`" },
+    "负控⑦：文档侧关键帧被改名 ⇒ 红",
+    { kfCell: "`ldk-selectbox-out`" },
     ["keyframe-unregistered", "keyframe-not-in-doc"],
   );
-  T("负控⑨：登记表多一个关键帧、表里没有 ⇒ 红", { kfRegistry: ["selectbox-in", "brand-x-in"] }, ["keyframe-not-in-doc"]);
-  T("负控⑩：关键帧表整张消失 ⇒ 红", { kfTable: false }, ["table-missing"]);
-  T("负控⑪：关键帧列里混进 `.foo` 形态 ⇒ 红", { kfCell: "`.foo`" }, ["keyframe-name-unclassified"]);
-  T("负控⑫：登记表一条关键帧都没有（=`keyframes` 段被清空）⇒ 红", { kfRegistry: [] }, ["keyframe-unregistered"]);
+  T("负控⑧：登记表多一个关键帧、表里没有 ⇒ 红", { kfRegistry: ["ldk-selectbox-in", "ldk-brand-x-in"] }, ["keyframe-not-in-doc"]);
+  T("负控⑨：关键帧表整张消失 ⇒ 红", { kfTable: false }, ["table-missing"]);
+  T("负控⑩：关键帧列里混进 `.foo` 形态 ⇒ 红", { kfCell: "`.foo`" }, ["keyframe-name-unclassified"]);
+  T("负控⑪：登记表一条关键帧都没有（=`keyframes` 段被清空）⇒ 红", { kfRegistry: [] }, ["keyframe-unregistered"]);
   {
-    // 负控⑬：两棵树关键帧各自为政（只改英文树那一份）
-    const f = fixture({ kfEnCell: "`selectbox-enter`" });
+    // 负控⑫：两棵树关键帧各自为政（只改英文树那一份）
+    const f = fixture({ kfEnCell: "`ldk-selectbox-enter`" });
     const got = checkSync(f);
-    cases.push(["负控⑬：中英两棵树关键帧不一致 ⇒ 红", got.some((v) => v.kind === "doc-drift"), got.map((v) => v.kind)]);
+    cases.push(["负控⑫：中英两棵树关键帧不一致 ⇒ 红", got.some((v) => v.kind === "doc-drift"), got.map((v) => v.kind)]);
   }
 
   let bad = 0;
@@ -483,25 +460,24 @@ const docs = DOCS.map((d) => ({ label: d.label, text: readFileSync(join(ROOT, d.
 const reg = loadRegistry();
 const violations = checkSync({
   docs,
-  registeredBare: reg.bare,
   registeredKeyframes: reg.keyframes,
   ldkTokens: collectLdkTokens(),
 });
 
 if (violations.length === 0) {
   const names = parseReservedNames(docs[0].text).names;
-  const bare = names.filter((n) => !n.startsWith("ldk-"));
   const ldk = names.filter((n) => n.startsWith("ldk-"));
   const kf = parseReservedKeyframes(docs[0].text).names;
   console.log(
-    `✅ [reserved-names-doc] §12 两张表与登记表双向一致（裸名 ${bare.length} 个：${bare.map((n) => "." + n).join(", ")}；` +
-      `ldk- 名 ${ldk.length} 个；关键帧 ${kf.length} 个）；中英两棵树名字集合相等。`
+    `✅ [reserved-names-doc] §12 两张表与登记表双向一致（保留名 ${ldk.length} 个、全部为 \`ldk-\` 名；` +
+      `关键帧 ${kf.length} 个）；中英两棵树名字集合相等。`
   );
   process.exit(0);
 }
 console.error(`❌ [reserved-names-doc] ${violations.length} 处不一致（保留名清单的单一真相源）：`);
 for (const v of violations) console.error(`   · [${v.kind}] ${v.msg}`);
 console.error(
-  `   三份要一起对：登记表 ${RESERVED_FILE_REL} ↔ 两棵树的 §12 表；判据见 scripts/check-reserved-names-doc-sync.mjs 文件头。`
+  `   要对齐的两侧：登记表 ${RESERVED_FILE_REL} 的 \`keyframes\` 段 ↔ 两棵树的 §12 关键帧表；` +
+    `§12 的「保留名」列则必须只列真实存在的 \`ldk-\` 名（判据见 scripts/check-reserved-names-doc-sync.mjs 文件头）。`
 );
 process.exit(1);

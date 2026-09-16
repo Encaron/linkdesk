@@ -5,7 +5,7 @@
  * 对标 VS Code：hover 父项右侧弹出子面板，移开自动收回（150ms 延迟防闪烁）。
  *
  * E5.8#148：子菜单递归化——数据层（children 递归映射保留孙级）+ 渲染层（多级子面板链，
- * 每级 portal 平铺——.ctx-menu overflow:hidden 不能嵌套 DOM，兄弟平铺；hover 逐级展开，
+ * 每级 portal 平铺——.ldk-ctx-menu overflow:hidden 不能嵌套 DOM，兄弟平铺；hover 逐级展开，
  * Escape 逐级收，mousedown contains 全级覆盖）。顶栏两层 / 汉堡三层（查看→界面→面板）同此渲染器。
  *
  * 🔥 E5.5#7-p3 多 WebView 改造：零 import @src/core。
@@ -365,7 +365,7 @@ export default function ContextMenu({ menuId, anchor, context, onClose, resolveC
       {/* 主菜单 */}
       <div
         ref={menuRef}
-        className="ctx-menu"
+        className="ldk-ctx-menu"
         tabIndex={-1}
         style={{
           left: menuPos.left,
@@ -375,7 +375,7 @@ export default function ContextMenu({ menuId, anchor, context, onClose, resolveC
         }}
       >
         {resolved.map((item, i) => {
-          if ("type" in item) return <div key={`div-${i}`} className="ctx-divider" />;
+          if ("type" in item) return <div key={`div-${i}`} className="ldk-ctx-divider" />;
           const idx = clickableIdx++;
           const hasKids = !!(item.children && item.children.length > 0);
           const isFocused = idx === focusIdx;
@@ -387,7 +387,7 @@ export default function ContextMenu({ menuId, anchor, context, onClose, resolveC
             <div
               key={`${item.id}::${i}`}
               ref={(el) => { if (el) itemRefs.current.set(idx, el); else itemRefs.current.delete(idx); }}
-              className={`ctx-item${isFocused ? " focused" : ""}${isDanger ? " ctx-item-danger" : ""}`}
+              className={`ldk-ctx-item${isFocused ? " focused" : ""}${isDanger ? " ldk-ctx-item-danger" : ""}`}
               onClick={(e) => { e.stopPropagation(); if (!hasKids) handleItemClick(item); }}
               onMouseEnter={(e) => {
                 setFocusIdx(idx);
@@ -399,22 +399,22 @@ export default function ContextMenu({ menuId, anchor, context, onClose, resolveC
             >
               {/* E5.7#14：显示文本铁律——壳侧 t() 解析后推送，池哑渲染原文（不初始化 i18n） */}
               {/* E5.8#37.7：当前项 √——固定宽占位保证选中项标签不错位（VS Code 菜单同款） */}
-              <span className="ctx-item-check" aria-hidden="true">{item.checked ? "✓" : ""}</span>
-              <span className="ctx-item-label">{item.label}</span>
+              <span className="ldk-ctx-item-check" aria-hidden="true">{item.checked ? "✓" : ""}</span>
+              <span className="ldk-ctx-item-label">{item.label}</span>
               {hasKids && <span className="ctx-item-chevron">›</span>}
-              {item.shortcut && <span className="ctx-item-shortcut">{item.shortcut}</span>}
+              {item.shortcut && <span className="ldk-ctx-item-shortcut">{item.shortcut}</span>}
             </div>
           );
         })}
       </div>
 
-      {/* E5.8#148：多级子面板链——每级 portal 平铺（.ctx-menu overflow:hidden → 不能嵌套 DOM，
+      {/* E5.8#148：多级子面板链——每级 portal 平铺（.ldk-ctx-menu overflow:hidden → 不能嵌套 DOM，
           兄弟平铺避免裁切）。每级独立 contains 注册 + hover 子链管理；移出该级 → 从该级收（150ms）。 */}
       {subPanels.map((panel, level) => (
         <div
           key={level}
           ref={(el) => { if (el) panelRefs.current.set(level, el); else panelRefs.current.delete(level); }}
-          className="ctx-menu show"
+          className="ldk-ctx-menu show"
           style={{ left: panel.x, top: panel.y, zIndex: CONTEXT_MENU_Z_INDEX }}
           onMouseEnter={cancelClose}
           onMouseLeave={() => scheduleCloseFrom(level + 1)}
@@ -424,7 +424,7 @@ export default function ContextMenu({ menuId, anchor, context, onClose, resolveC
             return (
               <div
                 key={`${child.id}::${ki}`}
-                className="ctx-item"
+                className="ldk-ctx-item"
                 onClick={(e) => { e.stopPropagation(); if (!childHasKids) handleItemClick(child); }}
                 onMouseEnter={(e) => {
                   if (childHasKids) openSub(e.currentTarget as HTMLElement, child.children!, level + 1);
@@ -433,10 +433,10 @@ export default function ContextMenu({ menuId, anchor, context, onClose, resolveC
                 }}
                 onMouseLeave={() => { if (childHasKids) scheduleCloseFrom(level + 2); }}
               >
-                <span className="ctx-item-check" aria-hidden="true">{child.checked ? "✓" : ""}</span>
-                <span className="ctx-item-label">{child.label}</span>
+                <span className="ldk-ctx-item-check" aria-hidden="true">{child.checked ? "✓" : ""}</span>
+                <span className="ldk-ctx-item-label">{child.label}</span>
                 {childHasKids && <span className="ctx-item-chevron">›</span>}
-                {child.shortcut && <span className="ctx-item-shortcut">{child.shortcut}</span>}
+                {child.shortcut && <span className="ldk-ctx-item-shortcut">{child.shortcut}</span>}
               </div>
             );
           })}

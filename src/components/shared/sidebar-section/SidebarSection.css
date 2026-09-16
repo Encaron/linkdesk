@@ -10,13 +10,13 @@
 
 /* ── 区块容器 ── */
 
-.sidebar-section {
+.ldk-sidebar-section {
   /* 无额外样式——消费者通过 children 或外层 wrapper 控制间距 */
 }
 
 /* ── Header —— VS Code: 22px / 11px / 600 / uppercase ── */
 
-.sidebar-section-header {
+.ldk-sidebar-section-header {
   height: var(--sidebar-section-header-height, calc(22px * var(--ui-scale))); /* E5.8 Phase 12 #170：header 22px 默认乘 scale（主题覆盖值不随——作者自决） */
   padding: 0 8px;
   cursor: pointer;
@@ -30,26 +30,26 @@
   letter-spacing: 0.3px;
   color: var(--sidebar-section-header-fg, var(--text-muted));
   transition: color 0.1s ease;
-  /* sticky 由外层 .sidebar-section-sticky-head 接管——不再各自算 top */
+  /* sticky 由外层 .ldk-sidebar-section-sticky-head 接管——不再各自算 top */
   background: var(--bg-side-panel);
 }
 
-.sidebar-section-header:hover {
+.ldk-sidebar-section-header:hover {
   color: var(--sidebar-section-header-hover-fg, var(--text-primary));
 }
 
 /* 不可折叠时——无 pointer cursor，无 hover 变色 */
-.sidebar-section-header.not-collapsible {
+.ldk-sidebar-section-header.not-collapsible {
   cursor: default;
 }
 
-.sidebar-section-header.not-collapsible:hover {
+.ldk-sidebar-section-header.not-collapsible:hover {
   color: var(--sidebar-section-header-fg, var(--text-muted));
 }
 
 /* ── 三角箭头 ── */
 
-.sidebar-section-arrow {
+.ldk-sidebar-section-arrow {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -60,20 +60,20 @@
   transition: transform 0.1s ease;
 }
 
-.sidebar-section-arrow.collapsed {
+.ldk-sidebar-section-arrow.collapsed {
   transform: rotate(-90deg);
 }
 
 /* ── 标题 ── */
 
-.sidebar-section-title {
+.ldk-sidebar-section-title {
   flex-shrink: 0;
   white-space: nowrap;
 }
 
 /* ── Badge —— 对标 VS Code .badge ── */
 
-.sidebar-section-badge {
+.ldk-sidebar-section-badge {
   flex-shrink: 0;
   min-width: calc(18px * var(--ui-scale)); /* E5.8 Phase 12 #170：badge 18px 乘 scale */
   height: calc(18px * var(--ui-scale));
@@ -91,14 +91,14 @@
 
 /* ── Spacer —— 把 actions 推到右侧 ── */
 
-.sidebar-section-spacer {
+.ldk-sidebar-section-spacer {
   flex: 1;
   min-width: 4px;
 }
 
 /* ── Actions slot —— 点击不冒泡（由 TSX stopPropagation 保证） ── */
 
-.sidebar-section-actions {
+.ldk-sidebar-section-actions {
   display: flex;
   align-items: center;
   gap: 2px;
@@ -108,7 +108,7 @@
 
 /* ── 🆕 E3.6：标题副文字——对标 VS Code titleDescription ── */
 
-.sidebar-section-title-description {
+.ldk-sidebar-section-title-description {
   flex-shrink: 0;
   font-weight: 400;
   text-transform: none;
@@ -119,27 +119,27 @@
 /* ── 🆕 E3.6：showActions CSS ── */
 
 /* default：hover 才显示 actions。对标 VS Code ViewPaneShowActions.Default */
-.sidebar-section-actions.show-on-hover {
+.ldk-sidebar-section-actions.show-on-hover {
   opacity: 0;
   transition: opacity 0.1s ease;
 }
 
-.sidebar-section-header:hover .sidebar-section-actions.show-on-hover {
+.ldk-sidebar-section-header:hover .ldk-sidebar-section-actions.show-on-hover {
   opacity: 1;
 }
 
 /* whenExpanded + 折叠时：隐藏 */
-.sidebar-section-actions.hidden {
+.ldk-sidebar-section-actions.hidden {
   display: none;
 }
 
 /* E4V#43——溢出时裁切：overflow:hidden 自然裁切超宽按钮 */
-.sidebar-section-actions.overflow {
+.ldk-sidebar-section-actions.overflow {
   overflow: hidden;
 }
 
 /* E4V#43——… 更多操作按钮 */
-.sidebar-section-more {
+.ldk-sidebar-section-more {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -155,22 +155,22 @@
   position: relative;
 }
 
-.sidebar-section-more:hover {
+.ldk-sidebar-section-more:hover {
   color: var(--text-primary);
   background: var(--hover-overlay); /* E5.8#128.7：幽灵 --hover-bg → --hover-overlay */
 }
 
-.sidebar-section-more.show-on-hover {
+.ldk-sidebar-section-more.show-on-hover {
   opacity: 0;
   transition: opacity 0.1s ease;
 }
 
-.sidebar-section-header:hover .sidebar-section-more.show-on-hover {
+.ldk-sidebar-section-header:hover .ldk-sidebar-section-more.show-on-hover {
   opacity: 1;
 }
 
 /* E4V#43——… 下拉菜单 */
-.sidebar-section-more-dropdown {
+.ldk-sidebar-section-more-dropdown {
   position: absolute;
   top: 100%;
   right: 0;
@@ -190,7 +190,7 @@
 /* ── 🆕 StickyHead —— header + pinned 共用的粘顶容器 ── */
 /* 消除 HEADER_H 硬编码——浏览器处理堆叠，不各自算 top */
 
-.sidebar-section-sticky-head {
+.ldk-sidebar-section-sticky-head {
   position: sticky;
   z-index: var(--z-sidebar-sticky-header, 2);
   background: var(--bg-side-panel);
@@ -198,13 +198,13 @@
 
 /* ── 🆕 PinnedSlot —— sticky head 内的粘顶内容 ── */
 
-.sidebar-section-pinned {
+.ldk-sidebar-section-pinned {
   background: var(--bg-side-panel);
 }
 
 /* ── Body —— 折叠时不渲染（由 TSX 条件渲染保证） ── */
 
-.sidebar-section-body {
+.ldk-sidebar-section-body {
   /* 内容自己决定布局——不给 padding/margin，让消费者完全控制 */
 }
 
@@ -213,12 +213,12 @@
 /* view 容器 wrapper——flex:1 均分 + 拖拽后固定高度。
    🔥 不设 overflow——sticky header 在 overflow:hidden 父容器中失效。
    仅被 sash 拖过固定高度的 view 才由 inline style 设 overflow。 */
-.sidebar-pane-view {
+.ldk-sidebar-section-pane-view {
   /* overflow 由 inline style 控制 */
 }
 
 /* 分隔线——4px，hover 变粗变亮 */
-.sidebar-pane-sash {
+.ldk-sidebar-section-pane-sash {
   height: 4px;
   flex-shrink: 0;
   cursor: row-resize;
@@ -228,14 +228,14 @@
   z-index: 1;
 }
 
-.sidebar-pane-sash:hover {
+.ldk-sidebar-section-pane-sash:hover {
   background: var(--accent);
   opacity: 0.5;
 }
 
 /* ── E4V#47：拖拽排序指示器 ── */
 
-.sidebar-pane-view.drop-before::before {
+.ldk-sidebar-section-pane-view.drop-before::before {
   content: "";
   display: block;
   height: 2px;
@@ -246,10 +246,10 @@
 }
 
 /* draggable header——拖拽时半透明 */
-.sidebar-section-header[draggable="true"] {
+.ldk-sidebar-section-header[draggable="true"] {
   cursor: grab;
 }
 
-.sidebar-section-header[draggable="true"]:active {
+.ldk-sidebar-section-header[draggable="true"]:active {
   cursor: grabbing;
 }

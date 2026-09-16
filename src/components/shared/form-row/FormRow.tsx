@@ -8,7 +8,7 @@ interface FormRowProps {
 
 function FormRow({ label, children }: FormRowProps) {
   return (
-    <div className="form-row">
+    <div className="ldk-form-row">
       <label>{label}</label>
       {children}
     </div>

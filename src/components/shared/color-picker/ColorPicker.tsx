@@ -15,7 +15,7 @@ import OverlayPortal, { getScrimTarget } from "../overlay-portal/OverlayPortal";
 import "./ColorPicker.css";
 
 /* ── E5.8#83 根因 A：视口边界碰撞 ──
-   面板固定宽 232px（CSS .colorpicker-panel）；高随 presets 有无 ≈224/263。首帧估算 clamp，
+   面板固定宽 232px（CSS .ldk-colorpicker-panel）；高随 presets 有无 ≈224/263。首帧估算 clamp，
    挂载后实测校正——保证任意滚动位置 OK 键恒在视口内可 hover/点击。 */
 
 export const PANEL_WIDTH = 232;
@@ -240,45 +240,45 @@ export default function ColorPicker({ open, value, onChange, onClose, presets, a
           E5.8#107 浮层权威：归 #ld-scrim-plane（遮罩平面，无磨砂）——满屏遮罩与 surface 分离，
           结构隔离地板 :not(#ld-scrim-plane) 天然不碰它。z-index --z-overlay-backdrop(500) 仍 < 面板
           --z-overlay(600)——层上下文内相对次序不变。 */}
-      {createPortal(<div className="colorpicker-overlay" onClick={() => onClose()} />, getScrimTarget())}
+      {createPortal(<div className="ldk-colorpicker-overlay" onClick={() => onClose()} />, getScrimTarget())}
       <div
         ref={panelRef}
-        className="colorpicker-panel"
+        className="ldk-colorpicker-panel"
         style={anchor && displayPos ? { left: displayPos.left, top: displayPos.top } : undefined}
         onClick={(e) => e.stopPropagation()}
       >
         {/* SV 面板 */}
         <div
           ref={svRef}
-          className="colorpicker-sv"
+          className="ldk-colorpicker-sv"
           style={{ background: pureHueColor }}
           onMouseDown={(e) => {
             dragging.current = "sv";
             handleSvMouse(e);
           }}
         >
-          <div className="colorpicker-sv-white" />
-          <div className="colorpicker-sv-black" />
-          <div className="colorpicker-sv-cursor" style={{ left: posLeft, top: posTop }} />
+          <div className="ldk-colorpicker-sv-white" />
+          <div className="ldk-colorpicker-sv-black" />
+          <div className="ldk-colorpicker-sv-cursor" style={{ left: posLeft, top: posTop }} />
         </div>
 
         {/* 色相条 */}
         <div
           ref={hueRef}
-          className="colorpicker-hue"
+          className="ldk-colorpicker-hue"
           onMouseDown={(e) => {
             dragging.current = "hue";
             handleHueMouse(e);
           }}
         >
-          <div className="colorpicker-hue-cursor" style={{ left: hueLeft }} />
+          <div className="ldk-colorpicker-hue-cursor" style={{ left: hueLeft }} />
         </div>
 
         {/* 底部：预览 + hex 输入 */}
-        <div className="colorpicker-footer">
-          <div className="colorpicker-preview" style={{ background: hexInput }} />
+        <div className="ldk-colorpicker-footer">
+          <div className="ldk-colorpicker-preview" style={{ background: hexInput }} />
           <input
-            className="colorpicker-hex"
+            className="ldk-colorpicker-hex"
             type="text"
             value={hexInput}
             onChange={(e) => {
@@ -293,16 +293,16 @@ export default function ColorPicker({ open, value, onChange, onClose, presets, a
             }}
             spellCheck={false}
           />
-          <button className="colorpicker-ok" onClick={() => { onChange(hexInput); onClose(); }}>OK</button>
+          <button className="ldk-colorpicker-ok" onClick={() => { onChange(hexInput); onClose(); }}>OK</button>
         </div>
 
         {/* 预设色 */}
         {presets && presets.length > 0 && (
-          <div className="colorpicker-presets">
+          <div className="ldk-colorpicker-presets">
             {presets.map((c) => (
               <div
                 key={c}
-                className="colorpicker-preset"
+                className="ldk-colorpicker-preset"
                 style={{ background: c }}
                 title={c}
                 onClick={() => {

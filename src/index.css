@@ -284,7 +284,7 @@ html, body, #root, #pool-root {
 
 /* === 归一化布局 class（防止控件错位） === */
 
-/* E6#54b：`.form-row` 规则已抽入 components/shared/form-row/FormRow.css（组件自 import）。
+/* E6#54b：`.ldk-form-row` 规则已抽入 components/shared/form-row/FormRow.css（组件自 import）。
    原组合选择器 `.setting-row`（单数）为死选择器——设置插件渲染用 `settings-row`（复数）
    自有 SettingsView.css 管辖；随抽取一并清除。 */
 

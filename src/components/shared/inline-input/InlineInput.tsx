@@ -149,7 +149,7 @@ export const InlineInput = forwardRef<InlineInputHandle, InlineInputProps>(funct
   return (
     <input
       ref={inputRef}
-      className={`inline-input inline-input--${size}`}
+      className={`ldk-inline-input ldk-inline-input--${size}`}
       type={type}
       value={localValue}
       onChange={(e) => {

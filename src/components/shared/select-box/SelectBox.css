@@ -90,10 +90,10 @@
   max-width: calc(100vw - 24px); /* 绝对不溢出窗口——viewport 兜底，无硬编码固定值 */
   display: flex;
   flex-direction: column;
-  animation: selectbox-in 0.1s ease-out;
+  animation: ldk-selectbox-in 0.1s ease-out;
 }
 
-@keyframes selectbox-in {
+@keyframes ldk-selectbox-in {
   from { opacity: 0; transform: translateY(-4px); }
   to   { opacity: 1; transform: translateY(0); }
 }

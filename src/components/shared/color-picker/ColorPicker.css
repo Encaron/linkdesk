@@ -1,14 +1,14 @@
 /* E3f #59e：ColorPicker 归一化调色器样式——对标 VS Code ColorPicker */
 
 /* ── 遮罩 ── */
-.colorpicker-overlay {
+.ldk-colorpicker-overlay {
   position: fixed;
   inset: 0;
   z-index: var(--z-overlay-backdrop); /* E5#98 */
 }
 
 /* ── 面板 ── */
-.colorpicker-panel {
+.ldk-colorpicker-panel {
   position: fixed;
   z-index: var(--z-overlay); /* E5#98 */
   background: var(--bg-window);
@@ -26,13 +26,13 @@
   transform: translate(-50%, -50%);
 }
 
-.colorpicker-panel[style] {
+.ldk-colorpicker-panel[style] {
   /* 有 anchor 时取消居中 transform */
   transform: none;
 }
 
 /* ── SV 饱和度/明度面板 ── */
-.colorpicker-sv {
+.ldk-colorpicker-sv {
   width: 180px;
   height: 150px;
   border-radius: var(--radius-sm);
@@ -42,19 +42,19 @@
   user-select: none;
 }
 
-.colorpicker-sv-white {
+.ldk-colorpicker-sv-white {
   position: absolute;
   inset: 0;
   background: linear-gradient(to right, #fff, transparent);
 }
 
-.colorpicker-sv-black {
+.ldk-colorpicker-sv-black {
   position: absolute;
   inset: 0;
   background: linear-gradient(to top, #000, transparent);
 }
 
-.colorpicker-sv-cursor {
+.ldk-colorpicker-sv-cursor {
   position: absolute;
   width: 10px;
   height: 10px;
@@ -66,7 +66,7 @@
 }
 
 /* ── 色相条 ── */
-.colorpicker-hue {
+.ldk-colorpicker-hue {
   width: 180px;
   height: 14px;
   border-radius: var(--radius-md);
@@ -79,7 +79,7 @@
   );
 }
 
-.colorpicker-hue-cursor {
+.ldk-colorpicker-hue-cursor {
   position: absolute;
   top: -2px;
   width: 4px;
@@ -92,14 +92,14 @@
 }
 
 /* ── 底部：预览 + hex + OK ── */
-.colorpicker-footer {
+.ldk-colorpicker-footer {
   display: flex;
   align-items: center;
   gap: 6px;
   width: 100%;
 }
 
-.colorpicker-preview {
+.ldk-colorpicker-preview {
   width: 28px;
   height: 28px;
   border-radius: var(--radius-sm);
@@ -107,7 +107,7 @@
   flex-shrink: 0;
 }
 
-.colorpicker-hex {
+.ldk-colorpicker-hex {
   flex: 1;
   min-width: 0;
   height: calc(26px * var(--ui-scale)); /* E5.8 Phase 12 #170：26px 乘 scale */
@@ -122,11 +122,11 @@
   box-sizing: border-box;
 }
 
-.colorpicker-hex:focus {
+.ldk-colorpicker-hex:focus {
   border-color: var(--accent);
 }
 
-.colorpicker-ok {
+.ldk-colorpicker-ok {
   height: calc(26px * var(--ui-scale)); /* E5.8 Phase 12 #170：26px 乘 scale */
   padding: 0 12px;
   background: var(--accent);
@@ -138,12 +138,12 @@
   flex-shrink: 0;
 }
 
-.colorpicker-ok:hover {
+.ldk-colorpicker-ok:hover {
   background: var(--accent-hover);
 }
 
 /* ── 预设色 ── */
-.colorpicker-presets {
+.ldk-colorpicker-presets {
   width: 100%;
   display: flex;
   gap: 6px;
@@ -152,7 +152,7 @@
   border-top: 1px solid var(--separator);
 }
 
-.colorpicker-preset {
+.ldk-colorpicker-preset {
   width: 18px;
   height: 18px;
   border-radius: var(--radius-full);
@@ -161,7 +161,7 @@
   transition: transform 0.1s;
 }
 
-.colorpicker-preset:hover {
+.ldk-colorpicker-preset:hover {
   transform: scale(1.2);
   border-color: var(--accent);
 }

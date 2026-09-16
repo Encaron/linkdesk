@@ -1,10 +1,10 @@
 /* E5.8#99：分段单选（ghost 单选按钮组）——fontTone/accentSource 共用（#1+#4 归一化：两处重复 CSS 收敛）。
    半径走 var(--radius-sm)（硬约束 1/6——禁 raw px）；全部颜色走 CSS 变量，零硬编码 hex。 */
-.segmented-radio {
+.ldk-segmented-radio {
   display: flex;
   gap: 4px;
 }
-.segmented-radio__option {
+.ldk-segmented-radio__option {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -16,24 +16,24 @@
   cursor: pointer;
   transition: border-color 120ms ease, background 120ms ease;
 }
-.segmented-radio__option:hover {
+.ldk-segmented-radio__option:hover {
   border-color: var(--text-muted);
   background: var(--hover-overlay);
 }
-.segmented-radio__option:focus-visible {
+.ldk-segmented-radio__option:focus-visible {
   outline: 1px solid var(--accent);
   outline-offset: 1px;
 }
 /* 选中档一目了然——accent 描边 + 微着色（Navigation/Active State，对标 #91 视觉语言） */
-.segmented-radio__option.is-selected {
+.ldk-segmented-radio__option.is-selected {
   border-color: var(--accent);
   background: color-mix(in srgb, var(--accent) 12%, transparent);
 }
-.segmented-radio__label {
+.ldk-segmented-radio__label {
   font-size: var(--font-size-sm); /* E5.8 Phase 12 #170：12→sm */
   color: var(--text-secondary);
   white-space: nowrap;
 }
-.segmented-radio__option.is-selected .segmented-radio__label {
+.ldk-segmented-radio__option.is-selected .ldk-segmented-radio__label {
   color: var(--text-primary);
 }

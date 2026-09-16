@@ -3,13 +3,13 @@
  * E5#57: 替代原生 <input type="number"> spinner，跟主题配色走。
  */
 
-.number-input {
+.ldk-number-input {
   display: inline-flex;
   align-items: center;
   gap: 0;
 }
 
-.number-input-btn {
+.ldk-number-input-btn {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -26,38 +26,38 @@
   user-select: none;
 }
 
-.number-input-btn:first-child {
+.ldk-number-input-btn:first-child {
   border-radius: var(--radius-sm) 0 0 var(--radius-sm);
   border-right: none;
 }
 
-.number-input-btn:last-child {
+.ldk-number-input-btn:last-child {
   border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
   border-left: none;
 }
 
-.number-input-btn:hover:not(:disabled) {
+.ldk-number-input-btn:hover:not(:disabled) {
   background: var(--tab-hover-bg);
 }
 
-.number-input-btn:active:not(:disabled) {
+.ldk-number-input-btn:active:not(:disabled) {
   background: var(--accent);
   color: var(--text-on-accent);
 }
 
-.number-input-btn:disabled {
+.ldk-number-input-btn:disabled {
   opacity: 0.3;
   cursor: default;
 }
 
-.number-input-field {
+.ldk-number-input-field {
   border-radius: 0;
   text-align: center;
   width: 44px;
 }
 
 /* E5.8 Phase 12 #161：数值单位后缀（uiFontScale 的 ％）——静音小字，不抢步进按钮 */
-.number-input-unit {
+.ldk-number-input-unit {
   margin: 0 6px 0 8px;
   color: var(--text-muted);
   font-size: var(--font-size-sm); /* E5.8 Phase 12 #170：12→sm（过字号审计门禁） */

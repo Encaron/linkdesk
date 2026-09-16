@@ -10,22 +10,27 @@
  *   ⇒ 任何**裸类名**（`.badge` / `.toggle` / `.input` …）都是**全局标识符**：一方定义、他方渲染，
  *     两边的样式就落到同一个元素上。这就是 `.badge` 案的形态，而且它**不报错、只是长得不对**。
  *
- * ── 四条判据（全部可证伪，见 --self-test）──
- *   ① 共享组件**新增裸定义** ⇒ 🔴 红
- *      （共享组件的类名是跨仓公共 CSS 面：插件会写 `.control-bar .combobox` 这类 scoped 调优；
- *        新增即意味着「又占了一个全局名」，必须先登记理由再放行）
- *   ② **跨组件借用**：某个共享组件裸定义的类名，被**别的组件目录**（或壳源码）渲染 ⇒ 🔴 红
- *      （`.badge` 案的机械化判据——徽标类的名字只能由它自己的组件渲染）
- *   ③ 宿主**独立定义必须 `ldk-` 开头** ⇒ 🔴 红
- *      （E6#109l 起从「逐个登记」改成**结构性判定**——宿主自己定义的类名一律 `ldk-`，
+ * ── 判据（全部可证伪，见 --self-test）──
+ *   ① 共享组件**独立定义必须 `ldk-` 开头** ⇒ 🔴 红
+ *      （E6#109l-b 起从「新增裸定义要登记」改成**结构性判定**——共享组件自己定义的类名一律 `ldk-`，
  *        规则一句话、不需查表、没有白名单。三方带进来的名字（`codicon*`）天然出射程：
  *        本仓**只消费、从不独立定义**它，实测交集 = 0。）
+ *   ② **【已退役】跨组件借用**（原：共享组件裸定义的类名被别的目录/壳渲染 ⇒ 红）
+ *      （它的输入 =「共享组件的**裸**定义」——件 1 收完后裸定义清零、1.21b 之后独立定义全部 `ldk-`
+ *        ⇒ 该判据再也报不出任何东西。**退役而不是留着**：一个每天跑绿、什么都拦不住的判据
+ *        等价于死代码，且比死代码更坏（给人「有门禁」的错觉）。它想守的那件事由 ⑥ 接管。）
+ *   ③ 宿主**独立定义必须 `ldk-` 开头** ⇒ 🔴 红
+ *      （E6#109l 起从「逐个登记」改成**结构性判定**。域 = 池文档里生效的宿主 CSS：`index.css` ＋ `src/pool/**`。）
  *   ④ `@keyframes` 跨方重名（共享组件 × 壳）⇒ 🔴 红（关键帧名同样是全局的，第二条命名空间）
+ *   ⑥ **`ldk-` 名跨域唯一性**：宿主域与共享组件域各自「独立定义」的**同名** `ldk-` 类 ⇒ 🔴 红
+ *      （1.21 ＋ 1.21b 之后**两个域共用同一个 `ldk-` 命名空间**；一旦同名，宿主的元素会被共享组件的
+ *        样式命中——`.badge` 案同形。这是 1.21b 补的判据：件 4 的两半合起来才让「两个域同一命名空间」
+ *        成为事实，而在此之前没有任何一条判据看着这件事。）
  *
  * ── 登记表 = 既成事实面（不是「允许随便加」）──
- *   判据① 仍是「未登记的新增裸定义 ⇒ 红」；判据③ 自 E6#109l 起**不再查表**（结构性判定，规则 = `ldk-` 开头）。
- *   ⇒ `classes.host` 已整个摘空（E6#109l 落地时的终态：宿主走结构性规则，不再需要豁免表）；
- *      `classes.shared` 的形态变更（同样结构性）归 1.21b。登记项都带理由；想加请改本题表并写明理由。
+ *   登记表的 `classes` 整块已于 E6#109l-b **删除**：判据①③ 双双结构性之后，它没有消费方了
+ *   （`classes.shared` 自件 1 起就是空数组，`classes.host` 自 1.21 起摘空）——**留一个永远为空的字段
+ *   当装饰 = 死代码**。`keyframes` 段保留（它还有真输入：关键帧表 ＋ 作者面两棵树 §12 双向对账）。
  *
  * 用法：
  *   node scripts/check-css-namespace.mjs              # 判据（挂 npm run check）
@@ -46,20 +51,18 @@ const ROOT = resolve(__dirname, "..");
    🔴 为什么不写在脚本里：同一张表要发给**插件作者**（`@linkdesk/plugin-sdk` 的
    check-css-namespace 腿，插件仓 CI 跑）——写在壳脚本里就得再抄一份到 SDK（两份必漂）。
    真相源 = `packages/plugin-sdk/schemas/reserved-class-names.json`（随 npm 包下发，
-   作者也能自己读）。本脚本额外做**反向核对**（登记 ↔ 实况），防止表烂掉。 */
+   作者也能自己读）。本脚本额外做**反向核对**（登记 ↔ 实况），防止表烂掉。
+   ⚠️ E6#109l-b 删掉 `classes` 整块后，本脚本读它的 `keyframes` 段（`classes` 已无消费方；
+       SDK 侧 `loadReservedNames()` 对缺失的 `classes` 是「空表」语义，不崩、只是那条腿不再有输入
+       —— 那条既有空转腿的处置点名给了件 8／1.28）。 */
 
 const RESERVED_FILE_REL = "packages/plugin-sdk/schemas/reserved-class-names.json";
 
-/** 读登记表：→ { shared: {name:{owner,why}}, host: {name:{why}}, keyframes: string[] } */
+/** 读登记表：→ { keyframes: string[] } */
 function loadRegistry(root = ROOT) {
   const file = join(root, RESERVED_FILE_REL);
   const raw = JSON.parse(readFileSync(file, "utf8"));
-  const toMap = (list) => Object.fromEntries((list ?? []).map((x) => [x.name, { owner: x.owner, why: x.why }]));
-  return {
-    shared: toMap(raw.classes?.shared),
-    host: toMap(raw.classes?.host),
-    keyframes: (raw.keyframes ?? []).map((k) => k.name),
-  };
+  return { keyframes: (raw.keyframes ?? []).map((k) => k.name) };
 }
 
 /* ── 解析 ──────────────────────────────────────────────────────────── */
@@ -136,20 +139,9 @@ function walk(dir, test, out = []) {
   return out;
 }
 
-/** 源码里渲染/查询过的 class 名 token（className="a b" / className={`a ${x}`} / classList / querySelector） */
-const CLASS_TOKEN = /className\s*=\s*(?:"([^"]*)"|'([^']*)'|\{`([^`]*)`\})/g;
-const CSS_QUERY = /(?:classList\.(?:add|remove|toggle|contains)|querySelector(?:All)?)\(\s*['"]([^'"]+)['"]/g;
-
-function renderedTokens(file) {
-  const txt = readFileSync(file, "utf8");
-  const out = new Set();
-  for (const m of txt.matchAll(CLASS_TOKEN)) {
-    const s = (m[1] ?? m[2] ?? m[3] ?? "").replace(/\$\{[^}]*\}/g, " ");
-    for (const t of s.matchAll(/[a-zA-Z][\w-]*/g)) out.add(t[0]);
-  }
-  for (const m of txt.matchAll(CSS_QUERY)) for (const c of classesOf(m[1])) out.add(c);
-  return out;
-}
+/** 源码里渲染/查询过的 class 名 token —— ⚠️ 目前**没有消费方**（唯一用户判据② 已退役）。
+ *  E6#109l-b 起不再需要：判据①③ 是结构性的（看定义、不看渲染点）。
+ *  留此说明以防「这个函数怎么没了」——真要用请连同判据一起加回来，别留悬空工具。 */
 
 /* ── 判据 ──────────────────────────────────────────────────────────── */
 
@@ -158,52 +150,38 @@ export function runChecks(root = ROOT, registry = loadRegistry(root)) {
   const violations = [];
   const sharedDir = join(root, "src", "components", "shared");
 
-  // ① 共享组件裸定义登记（「裸」= 类名不含连字符——带前缀的已自带命名空间，不在本条判据内）
+  // ① 共享组件独立定义必须 `ldk-` 开头——**结构性判定**（E6#109l-b 起）
+  //    域 = `src/components/shared/**`（`@linkdesk/ui` 的单一真源；它的 CSS 会打进插件 bundle）。
+  //    规则与宿主侧同款、同一句话：**自己定义的类名一律 `ldk-` 开头**（不查表、无白名单）。
+  //    ⚠️ 退役说明见文件头判据②——原「跨组件借用」的输入是「共享组件的裸定义」，已清零。
   const sharedCss = walk(sharedDir, (n) => n.endsWith(".css"));
-  const ownedBy = new Map(); // 裸类名 → 组件目录名
+  const sharedDefsNow = new Set(); // 共享组件域的 `ldk-` 独立定义（供判据⑥ 用）
   for (const f of sharedCss) {
-    const comp = relative(sharedDir, f).split(/[\\/]/)[0];
-    const { bareDefs } = parseCss(f);
-    for (const name of bareDefs) {
-      if (name.includes("-")) continue;
-      if (!(name in registry.shared)) {
-        violations.push({
-          kind: "shared-bare-unregistered",
-          msg: `共享组件新增裸定义 .${name}（${relative(root, f).replace(/\\/g, "/")}）——裸类名是全局标识符，` +
-            `池文档里与其他插件同表。要么改名加前缀（推荐，如 .tbadge），要么登记进 packages/plugin-sdk/schemas/reserved-class-names.json（classes.shared）并写明理由。`,
-        });
-      } else if (registry.shared[name].owner !== comp) {
-        violations.push({
-          kind: "shared-bare-moved",
-          msg: `裸类名 .${name} 登记在「${registry.shared[name].owner}」，但现在由「${comp}」定义（${relative(root, f).replace(/\\/g, "/")}）——归属漂移，请核对登记表。`,
-        });
+    for (const name of parseCss(f).bareDefs) {
+      if (name.startsWith("ldk-")) {
+        sharedDefsNow.add(name);
+        continue;
       }
-      if (!ownedBy.has(name)) ownedBy.set(name, comp);
-    }
-  }
-
-  // ② 跨组件借用：共享组件裸定义的类名，被别的组件目录 / 壳源码渲染
-  const srcFiles = walk(join(root, "src"), (n) => /\.tsx?$/.test(n) && !n.endsWith(".d.ts") && !/\.(test|spec)\.tsx?$/.test(n));
-  for (const f of srcFiles) {
-    const rel = relative(root, f).replace(/\\/g, "/");
-    const isShared = rel.startsWith("src/components/shared/");
-    const comp = isShared ? rel.split("/")[3] : null;
-    for (const token of renderedTokens(f)) {
-      const owner = ownedBy.get(token);
-      if (!owner) continue; // 不是共享组件的裸定义 ⇒ 不归本条判据管（宿主工具类见 ③）
-      if (comp === owner) continue; // 自己组件渲染自己的类名 ✓
       violations.push({
-        kind: "cross-render",
-        msg: `跨组件借用裸类名：${rel} 渲染了 class "${token}"，而 .${token} 是「${owner}」组件定义的公共类名` +
-          ` ⇒ 该元素的样式会被「${owner}」的组件样式命中（.badge 案同形）。请给本组件的元素起自己的类名。`,
+        kind: "shared-bare-unprefixed",
+        msg: `共享组件独立定义 .${name}（${relative(root, f).replace(/\\/g, "/")}）不带 \`ldk-\` 前缀——` +
+          `它随共享组件 CSS 进入池文档（宿主 + 共享组件 + 所有已加载插件同一张表），是跨方公共标识符（硬约束 23）。` +
+          `共享组件侧的规则只有一条：**自己定义的类名一律 \`ldk-\` 开头**（不需要登记、也没有白名单）。` +
+          `改法：把名字并进本组件目录的族段（形如 .ldk-<目录组件族>-<元素>），并同笔改渲染它的 TSX/测试与 .css 里的复合/动画引用。`,
       });
     }
   }
 
+  // ② 【已退役】跨组件借用（原判据）——保留位号，不保留代码。
+  //    它的输入 =「共享组件的**裸**定义」（`ownedBy`）；件 1 收完裸定义清零、1.21b 收完全部独立定义
+  //    ⇒ 它从此报不出任何东西。**退役而不是留着**：每天跑绿却拦不住任何东西的判据 = 死代码，
+  //    且比死代码更坏（给人「有门禁」的错觉）。替代：⑥（`ldk-` 名跨域唯一性）。
+  //    ⚠️ 不许把它改成「共享组件的 `ldk-` 名被别的目录渲染」——`.form-row > .ldk-toggle` 这类
+  //      **合法消费**（宿主给的输入框工具类 + 组件组合）会被误判成红。**判据必须零假红。**
+
   // ③ 宿主独立定义必须 `ldk-` 开头——**结构性判定**（E6#109l 起；域 = 在池文档里生效的宿主 CSS：
   //    index.css + src/pool/**；池入口 pool-main.tsx 引 index.css，其余池组件样式随池 bundle 一起进同一张表）
-  //    🔴 判据①（共享组件，上方）**此刻刻意仍是「不含连字符」那把启发式尺子**——它的形态变更归 1.21b。
-  //       两条判据共处一个脚本是这个中间态的**有意形态**，自测里有一条 tripwire 钉住它（见 --self-test）。
+  //    ⇒ 与判据① 同为结构性 = 件 4 的**终态**（两个定义域一条规则：宿主与共享组件定义 = `ldk-` 开头）。
   const hostCssFiles = [join(root, "src", "index.css"), ...walk(join(root, "src", "pool"), (n) => n.endsWith(".css"))].filter(
     (f) => statSync(f, { throwIfNoEntry: false })
   );
@@ -239,25 +217,22 @@ export function runChecks(root = ROOT, registry = loadRegistry(root)) {
     }
   }
 
+  // ⑥ `ldk-` 名跨域唯一性：宿主域 × 共享组件域 各自「独立定义」的同名 ⇒ 红（E6#109l-b 补）
+  //    ⚠️ 只看**定义 × 定义**：`.form-row > .ldk-toggle`（共享组件消费宿主的 `ldk-input` 工具类）
+  //      与 `.ldk-titlebar .ldk-button`（宿主 scoped 调优共享组件的按钮）是**设计内的消费边**，不算撞车。
+  for (const name of sharedDefsNow) {
+    if (hostDefsNow.has(name)) {
+      violations.push({
+        kind: "ldk-cross-domain-clash",
+        msg: `\`ldk-\` 名跨域同名 "${name}"：宿主域与共享组件域**各自独立定义**了它——两个域共用同一个 ` +
+          `\`ldk-\` 命名空间（E6#109l／1.21b 之后的事实），同名即意味着**宿主的元素会被共享组件的样式命中**` +
+          `（\`.badge\` 案同形）。请给其中一侧换名——共享组件侧并入本目录族段，宿主侧用自己的语义名。`,
+      });
+    }
+  }
+
   // ⑤ 反向核对：登记表 ↔ 实况（表是发给插件作者的数据，烂了会误导 + 假绿）
-  const allBareNow = new Set([...ownedBy.keys()]);
-  for (const name of Object.keys(registry.shared)) {
-    if (!allBareNow.has(name)) {
-      violations.push({
-        kind: "registry-stale",
-        msg: `登记表里的共享组件裸定义 .${name} 已不存在（改名/删除过）——请从 ${RESERVED_FILE_REL} 的 classes.shared 摘掉，否则插件侧会拿到过期的保留名。`,
-      });
-    }
-  }
-  const hostBareNow = hostDefsNow;
-  for (const name of Object.keys(registry.host)) {
-    if (!hostBareNow.has(name)) {
-      violations.push({
-        kind: "registry-stale",
-        msg: `登记表里的宿主工具类 .${name} 已不在 index.css/pool CSS——请从 ${RESERVED_FILE_REL} 的 classes.host 摘掉（插件作者会照着过期的表避让）。`,
-      });
-    }
-  }
+  //    ⚠️ E6#109l-b 起**只剩 `keyframes` 段**——`classes` 整块已删（判据①③ 双双结构性后无消费方）。
   const actualKf = new Set([...sharedKf, ...shellKf.keys()]);
   for (const name of registry.keyframes ?? []) {
     if (!actualKf.has(name)) {
@@ -293,81 +268,79 @@ function selfTest() {
     mkdirSync(join(tmp, "src", "components", "shared", "toggle"), { recursive: true });
     mkdirSync(join(tmp, "src", "components", "shared", "theme-picker"), { recursive: true });
     mkdirSync(join(tmp, "src"), { recursive: true });
-    mk("src/components/shared/toggle/Toggle.css", ".toggle { background: red; }\n");
-    mk("src/components/shared/toggle/Toggle.tsx", 'export const T = () => <div className="toggle" />;\n');
+    mk("src/components/shared/toggle/Toggle.css", ".ldk-toggle { background: red; }\n");
+    mk("src/components/shared/toggle/Toggle.tsx", 'export const T = () => <div className="ldk-toggle" />;\n');
     mk("src/index.css", ".ldk-input { background: var(--bg-input); }\n");
     mk("src/App.tsx", "export const A = () => <div className='x' />;\n");
   };
-  const registry = {
-    shared: { toggle: { owner: "toggle", why: "test" } },
-    host: {},
-  };
+  const registry = { keyframes: [] };
 
-  // 正控：与登记表一致 ⇒ 零违规（**混合态**：判据① 仍查表、判据③ 已结构性）
+  // 正控：两域都 `ldk-` 化 ＋ 关键帧表一致 ⇒ 零违规（**终态**：判据①③ 双双结构性）
   setup();
-  cases.push(["正控：登记齐全 ＋ 宿主已 `ldk-` 化 ⇒ 绿", runChecks(tmp, registry).length === 0]);
+  cases.push(["正控：两域独立定义均 `ldk-` ＋ 无关键帧 ⇒ 绿（终态）", runChecks(tmp, registry).length === 0]);
 
-  // 负控①：共享组件新增未登记裸定义
-  setup();
-  mk("src/components/shared/theme-picker/ThemePicker.css", ".badge { color: red; }\n");
-  cases.push(["负控①：新增裸定义 ⇒ 红", runChecks(tmp, registry).some((v) => v.kind === "shared-bare-unregistered")]);
-
-  // 负控②：跨组件借用（别的组件目录渲染了 toggle 组件定义的 .toggle）
-  setup();
-  mk("src/components/shared/theme-picker/ThemePicker.tsx", 'export const P = () => <span className="toggle" />;\n');
-  cases.push(["负控②：跨组件借用 ⇒ 红", runChecks(tmp, registry).some((v) => v.kind === "cross-render")]);
-
-  // 负控③：壳源码渲染共享组件的裸类名
-  setup();
-  mk("src/App.tsx", "export const A = () => <div className='toggle' />;\n");
-  cases.push(["负控③：壳渲染共享裸类名 ⇒ 红", runChecks(tmp, registry).some((v) => v.kind === "cross-render")]);
-
-  // 负控④：宿主新增**带连字符**的裸定义（`.foo-bar`）⇒ 红
-  //   🔴 这正是旧启发式（`name.includes("-") ? 跳过`）漏掉的那一类——E6#109l 的形态变更就为它。
-  setup();
-  mk("src/index.css", ".ldk-input { color: red; }\n.foo-bar { color: blue; }\n");
-  cases.push(["负控④：宿主带连字符的裸定义 ⇒ 红", runChecks(tmp, registry).some((v) => v.kind === "host-bare-unprefixed")]);
-
-  // 负控④b：宿主不带连字符的裸定义（`.mybrand`）同样红（不是「只拦带连字符的」）
-  setup();
-  mk("src/index.css", ".mybrand { color: blue; }\n");
-  cases.push(["负控④b：宿主不带连字符的裸定义 ⇒ 红", runChecks(tmp, registry).some((v) => v.kind === "host-bare-unprefixed")]);
-
-  // 🔴 tripwire（混合态钉子）：判据③ 已结构性、判据① 仍旧启发式——同一份 `.foo-bar`
-  //   放**共享组件**里此刻**不报**（旧尺子跳过带连字符的名字），放**宿主**里必报。
-  //   ⇒ 1.21b 把判据① 也改成结构性之后，本用例会**当场变红**：那不是回归，是提醒改这条断言。
+  // 负控①：共享组件**带连字符**的独立定义（`.foo-bar`）⇒ 红
+  //   🔴 这正是旧启发式（`name.includes("-") ? 跳过`）漏掉的那一整类——1.21b 把判据① 转结构性就为它。
   setup();
   mk("src/components/shared/theme-picker/ThemePicker.css", ".foo-bar { color: red; }\n");
-  cases.push([
-    "tripwire：混合态——共享组件带连字符裸名此刻不报（判据① 待 1.21b 转结构性）",
-    !runChecks(tmp, registry).some((v) => v.kind === "shared-bare-unregistered"),
-  ]);
+  cases.push(["负控①：共享组件带连字符的裸定义 ⇒ 红", runChecks(tmp, registry).some((v) => v.kind === "shared-bare-unprefixed")]);
 
-  // 负控⑤：关键帧重名
+  // 负控①b：共享组件**不带连字符**的独立定义（`.mybrand`）同样红（不是「只拦带连字符的」）
   setup();
-  mk("src/components/shared/toggle/Toggle.css", ".toggle { animation: fade-in 1s; }\n@keyframes fade-in { to { opacity: 1 } }\n");
+  mk("src/components/shared/theme-picker/ThemePicker.css", ".mybrand { color: red; }\n");
+  cases.push(["负控①b：共享组件不带连字符的裸定义 ⇒ 红", runChecks(tmp, registry).some((v) => v.kind === "shared-bare-unprefixed")]);
+
+  // 🔴 tripwire（**已翻面**——混合态结束的钉子）：同一份 `.foo-bar` 放共享组件与放宿主**两侧都报**。
+  //   E6#109l（宿主转结构性）与本格（共享组件转结构性）之间那段混合态里，这条断言是「共享组件侧不报」；
+  //   件 4 收官后它翻成「两侧同为结构性」。⇒ 它同时钉住「判据①③ 形态一致」这件事本身。
+  setup();
+  mk("src/components/shared/theme-picker/ThemePicker.css", ".foo-bar { color: red; }\n");
+  mk("src/index.css", ".ldk-input { color: red; }\n.foo-bar { color: blue; }\n");
+  {
+    const ks = new Set(runChecks(tmp, registry).map((v) => v.kind));
+    cases.push([
+      "tripwire（翻面）：同一 `.foo-bar` 放共享组件与宿主两侧都报 ⇒ 判据①③ 同为结构性（终态）",
+      ks.has("shared-bare-unprefixed") && ks.has("host-bare-unprefixed"),
+    ]);
+  }
+
+  // 负控②：宿主**带连字符**的独立定义（`.foo-bar`）⇒ 红（E6#109l 加的，保留）
+  setup();
+  mk("src/index.css", ".ldk-input { color: red; }\n.foo-bar { color: blue; }\n");
+  cases.push(["负控②：宿主带连字符的裸定义 ⇒ 红", runChecks(tmp, registry).some((v) => v.kind === "host-bare-unprefixed")]);
+
+  // 负控②b：宿主不带连字符的裸定义（`.mybrand`）⇒ 红
+  setup();
+  mk("src/index.css", ".mybrand { color: blue; }\n");
+  cases.push(["负控②b：宿主不带连字符的裸定义 ⇒ 红", runChecks(tmp, registry).some((v) => v.kind === "host-bare-unprefixed")]);
+
+  // 负控③：**判据⑥**——宿主定义了一条共享组件已有的 `ldk-` 名（演示目录组件 `ldk-toggle`）
+  setup();
+  mk("src/index.css", ".ldk-input { color: red; }\n.ldk-toggle { color: blue; }\n");
+  cases.push(["负控③：`ldk-` 名跨域同名 ⇒ 红（判据⑥）", runChecks(tmp, registry).some((v) => v.kind === "ldk-cross-domain-clash")]);
+
+  // 正控⑥：**消费边不算撞车**——共享组件 CSS 里 scoped 消费宿主的 `ldk-input`、宿主 scoped 调优 `ldk-toggle`
+  //   （判据⑥ 只看「定义 × 定义」；这两条是文档明写的设计内消费）
+  setup();
+  mk("src/components/shared/toggle/Toggle.css", ".ldk-toggle { background: red; }\n.ldk-form-row > .ldk-input { flex-shrink: 0; }\n");
+  mk("src/index.css", ".ldk-input { background: var(--bg-input); }\n.ldk-titlebar .ldk-toggle { margin: 0; }\n");
+  cases.push(["正控⑥：scoped 消费/调优（有祖先）不算跨域撞车 ⇒ 绿", runChecks(tmp, registry).length === 0]);
+
+  // 负控④：关键帧重名
+  setup();
+  mk("src/components/shared/toggle/Toggle.css", ".ldk-toggle { animation: fade-in 1s; }\n@keyframes fade-in { to { opacity: 1 } }\n");
   mk("src/App.css", "@keyframes fade-in { to { opacity: 0 } }\n");
-  cases.push(["负控⑤：关键帧重名 ⇒ 红", runChecks(tmp, registry).some((v) => v.kind === "keyframes-clash")]);
+  cases.push(["负控④：关键帧重名 ⇒ 红", runChecks(tmp, registry).some((v) => v.kind === "keyframes-clash")]);
 
-  // 负控⑥：归属漂移
+  // 负控⑤：关键帧未登记（实况有、表里没有 ⇒ 插件作者会以为该名字可用）
   setup();
-  mk("src/components/shared/theme-picker/X.css", ".toggle { color: red; }\n");
-  cases.push(["负控⑥：裸定义换组件 ⇒ 红", runChecks(tmp, registry).some((v) => v.kind === "shared-bare-moved")]);
+  mk("src/components/shared/toggle/Toggle.css", ".ldk-toggle { animation: my-in 1s; }\n@keyframes my-in { to { opacity: 1 } }\n");
+  cases.push(["负控⑤：关键帧未登记 ⇒ 红", runChecks(tmp, registry).some((v) => v.kind === "keyframes-unregistered")]);
 
-  // 负控⑦：关键帧未登记（实况有、表里没有 ⇒ 插件作者会以为该名字可用）
+  // 负控⑥：登记过期（表里的关键帧实况已不存在 ⇒ 发给作者的清单在误导）
+  //   ⚠️ `classes` 整块已删（E6#109l-b）⇒ 登记过期只剩关键帧这一条腿。
   setup();
-  mk("src/components/shared/toggle/Toggle.css", ".toggle { animation: my-in 1s; }\n@keyframes my-in { to { opacity: 1 } }\n");
-  cases.push(["负控⑦：关键帧未登记 ⇒ 红", runChecks(tmp, registry).some((v) => v.kind === "keyframes-unregistered")]);
-
-  // 负控⑧：登记过期（表里的名字实况已不存在 ⇒ 发给作者的清单在误导）
-  //   四条都在：shared `ghost` / host `input`（`.ldk-input` 已不是 `.input`）/ host `vanished` / keyframes `gone-anim`。
-  setup();
-  const staleRegistry = {
-    shared: { toggle: { owner: "toggle", why: "test" }, ghost: { owner: "ghost", why: "test" } },
-    host: { input: { why: "test" }, vanished: { why: "test" } },
-    keyframes: ["gone-anim"],
-  };
-  cases.push(["负控⑧：登记过期 ⇒ 红", runChecks(tmp, staleRegistry).filter((v) => v.kind === "registry-stale").length === 4]);
+  cases.push(["负控⑥：登记过期（关键帧）⇒ 红", runChecks(tmp, { keyframes: ["gone-anim"] }).filter((v) => v.kind === "registry-stale").length === 1]);
 
   rmSync(tmp, { recursive: true, force: true });
   let ok = true;
@@ -388,8 +361,8 @@ const violations = runChecks();
 if (violations.length === 0) {
   const reg = loadRegistry();
   console.log(
-    `✅ [css-namespace] 登记表与实况一致（共享组件裸定义 ${Object.keys(reg.shared).length} 个 / 宿主全局工具类 ` +
-      `${Object.keys(reg.host).length} 个 / 关键帧 ${reg.keyframes.length} 个）；无跨组件借用。`
+    `✅ [css-namespace] 两个定义域独立定义全部 \`ldk-\`（宿主 ／ 共享组件，判据①③ 结构性、零登记表）；` +
+      `跨域同名 0；关键帧 ${reg.keyframes.length} 个与实况双向一致。`
   );
   process.exit(0);
 }

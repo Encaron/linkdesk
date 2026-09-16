@@ -56,7 +56,7 @@ function PaneSash({ onDrag, onEnd }: { onDrag: (deltaY: number) => void; onEnd?:
 
   return (
     <div
-      className="sidebar-pane-sash"
+      className="ldk-sidebar-section-pane-sash"
       onMouseDown={handleMouseDown}
     />
   );
@@ -88,7 +88,7 @@ function ViewPane({ viewId, height, collapsed, onContentHeight, showDropBefore, 
   return (
     <div
       data-view-id={viewId}
-      className={`sidebar-pane-view${showDropBefore ? " drop-before" : ""}`}
+      className={`ldk-sidebar-section-pane-view${showDropBefore ? " drop-before" : ""}`}
       style={height !== undefined && !collapsed
         ? { height, overflowY: "auto" }
         : undefined}

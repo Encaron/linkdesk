@@ -2,7 +2,7 @@
  * ThemePicker——主题配方卡片选择器（E5.8#50.22）。
  * 卡片网格：配方名称 + 配色徽标（单配色 = 预览条 / 多配色 = 配色圆点 + 计数）+ 选中态 + 键盘可达。
  * 数据源 = window.linkdesk.theme.listRecipes()（06 §2 RecipeMeta——id/名称/明暗/配色预览色）。
- * 视觉对标 mockup 01-设置页-主题区（.theme-picker 四列网格 + .theme-card 边框/悬停上浮/选中 accent 描边）。
+ * 视觉对标 mockup 01-设置页-主题区（.ldk-theme-picker 四列网格 + .ldk-theme-picker-card 边框/悬停上浮/选中 accent 描边）。
  * 受控组件：value = 当前 app.theme 值；点卡片 → onChange(recipeId)（上层写配置 → onApply 应用配方）。
  * 键盘：方向键在卡片间移动焦点（roving tabindex）+ Enter/Space 激活（原生 button）。
  * 预览区/圆点色 = 配方数据（inline style）——非样式硬编码（同 renderControl 色块先例）；
@@ -77,12 +77,12 @@ function ThemePicker({ value, onChange }: ThemePickerProps) {
   };
 
   if (recipes.length === 0) {
-    return <span className="theme-picker-empty">{t("无可用主题配方")}</span>;
+    return <span className="ldk-theme-picker-empty">{t("无可用主题配方")}</span>;
   }
 
   return (
     <div
-      className="theme-picker"
+      className="ldk-theme-picker"
       role="group"
       aria-label={t("主题配方")}
       onKeyDown={handleKeyDown}
@@ -97,37 +97,37 @@ function ThemePicker({ value, onChange }: ThemePickerProps) {
             key={recipe.id}
             ref={(el) => { cardRefs.current[i] = el; }}
             type="button"
-            className={`theme-card${active ? " active" : ""}`}
+            className={`ldk-theme-picker-card${active ? " active" : ""}`}
             tabIndex={focusIndex === i ? 0 : -1}
             aria-label={recipe.name}
             aria-pressed={active}
             onClick={() => onChange(recipe.id)}
             onFocus={() => setFocusIndex(i)}
           >
-            <div className="theme-preview" style={preview?.bgWindow ? { background: preview.bgWindow } : undefined}>
+            <div className="ldk-theme-picker-preview" style={preview?.bgWindow ? { background: preview.bgWindow } : undefined}>
               {single ? (
-                // 单配色配方——3 条强调色预览条（mockup .pv-bar）
+                // 单配色配方——3 条强调色预览条（mockup .ldk-theme-picker-preview-bar）
                 <>
-                  <span className="pv-bar" style={{ background: accent }} />
-                  <span className="pv-bar" style={{ background: accent }} />
-                  <span className="pv-bar" style={{ background: accent }} />
+                  <span className="ldk-theme-picker-preview-bar" style={{ background: accent }} />
+                  <span className="ldk-theme-picker-preview-bar" style={{ background: accent }} />
+                  <span className="ldk-theme-picker-preview-bar" style={{ background: accent }} />
                 </>
               ) : (
-                // 多配色配方——配色圆点色板（mockup .pv-dot）
-                <span className="pv-dots">
+                // 多配色配方——配色圆点色板（mockup .ldk-theme-picker-preview-dot）
+                <span className="ldk-theme-picker-preview-dots">
                   {recipe.colorways.slice(0, MAX_PREVIEW_DOTS).map((cw) => (
                     <span
                       key={cw.id}
-                      className="pv-dot"
+                      className="ldk-theme-picker-preview-dot"
                       style={cw.preview?.accent ? { background: cw.preview.accent } : undefined}
                     />
                   ))}
                 </span>
               )}
             </div>
-            <div className="tname">
-              <span className="tname-name">{recipe.name}</span>
-              <span className="tbadge">
+            <div className="ldk-theme-picker-name">
+              <span className="ldk-theme-picker-name-text">{recipe.name}</span>
+              <span className="ldk-theme-picker-badge">
                 {single
                   ? (recipe.colorways[0]?.name ?? "")
                   : t("{{count}} 配色", { count: recipe.colorways.length })}

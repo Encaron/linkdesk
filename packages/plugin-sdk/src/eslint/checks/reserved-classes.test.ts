@@ -109,8 +109,13 @@ describe("loadReservedNames —— 随包清单可读", () => {
     //    这是**设计要的终态**、不是缺数据：裸名一律前缀化后规规矩矩「带前缀 = 自带命名空间、
     //    不需登记」⇒ 本表不再需要 entries。合并语义（两组都并进来）由下方夹具测试覆盖。
     //    ⚠️ 反向断言仍是有意为之：谁再登记一个**裸名** ⇒ 这条当场红，逼一次知情决策。
+    //    🔴 E6#109l-b 追加（**点名给件 8／1.28**）：`classes` 整块已从清单删除 ⇒ 本行从「表里刻意留空」
+    //       变成「字段根本不存在、`loadReservedNames()` 兜底成空表」——断言仍在、但已无输入可拦。
+    //       同批受影响：`reserved-classes.ts` 的判据① 与 `plugin-prefix.ts:198` 的「且这是宿主保留名」
+    //       补充措辞，都随 `classes` 一起变成空转。**本格只维持它不崩、不改它的形态**（跨轴），
+    //       处置权在 1.28 的体检表。
     expect(names.classes).toEqual([]);
-    expect(names.keyframes.map((k) => k.name)).toContain("selectbox-in");
+    expect(names.keyframes.map((k) => k.name)).toContain("ldk-selectbox-in");
   });
 
   it("classes 两组都并进来（shared 带 owner / host 不带）——夹具，不依赖真实表非空", () => {
