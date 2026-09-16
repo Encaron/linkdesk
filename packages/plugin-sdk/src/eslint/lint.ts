@@ -6,6 +6,10 @@
  * （`checks/reserved-classes.ts`，随包清单）。两者**同一个 checkId / 同一条腿**，报点按 `文件:行`
  * 去重（前缀优先）——详见该腿的组装处注释。
  *
+ * 🔴 E6#109n-b（1.24）再加第三条：**token（自定义属性）作用域**（`checks/token-scope.ts`）——
+ * 文档级只有宿主契约块能写、其余定义必须挂在自有命名空间的类之下、任何方不得定义 `ldk-*`
+ * 自定义属性。红进腿报点（CI 严格腿判红），🟡 黄（V6）只打印不拦。规则正文见 31 号档 §一。
+ *
  * 对标壳 check 同款双轨（07 §六·载体双轨）：eslint（12 项注册规则，全 WARN）管 ts/tsx；
  * css-hardcode / font-scale / spacing-grid / css-namespace 四条移植脚本管整工程（eslint 到不了 .css，
  * ts/tsx 的 rgb()/hsl() 也归 css-hardcode 补）。jscpd = 项目级可选（文档引导，不进编排）。
@@ -23,6 +27,7 @@ import { runFontScaleCheck } from "./checks/font-scale.js";
 import { runSpacingGridCheck } from "./checks/spacing-grid.js";
 import { runReservedClassCheck } from "./checks/reserved-classes.js";
 import { runPluginPrefixCheck } from "./checks/plugin-prefix.js";
+import { runTokenScopeCheck } from "./checks/token-scope.js";
 import { type CheckViolation } from "./checks/scan.js";
 
 /** 示例用的门禁 id（打印知情绕行格式）；伪 id 与 check 脚本 CHECK_IDS 同源 */
@@ -53,6 +58,10 @@ export interface PluginLintReport {
   pluginId: string | null;
   /** pluginId 走了「目录名兜底」时的提示行——**必须打印**（详案 15 §一：让作者知道门禁用的是目录名） */
   pluginIdNote: string | null;
+  /** 🟡 token 作用域的黄灯建议（V6：文档级但名字带自有前缀）——**只打印、不拦**（E6#109n-b） */
+  tokenAdvisories: CheckViolation[];
+  /** token 作用域判据的计数（红 = 进了腿报点；黄 = advisories） */
+  tokenCounts: { red: number; yellow: number };
 }
 
 export async function runPluginLint(root: string, options: PluginLintOptions = {}): Promise<PluginLintReport> {
@@ -112,10 +121,21 @@ export async function runPluginLint(root: string, options: PluginLintOptions = {
    */
   const prefix = runPluginPrefixCheck(absRoot);
   const reserved = runReservedClassCheck(absRoot);
+  /**
+   * 🔴 E6#109n-b（1.24）：命名空间腿再加一条判据 —— **token（自定义属性）作用域**。
+   *   · 红（V1/V2/V5）进本腿报点 ⇒ CI 严格腿判红；
+   *   · 🟡 黄（V6：文档级但名字带自有前缀）进 `tokenAdvisories`**只打印、不拦**（22 号档 §10.3）。
+   *   ⚠️ 去重口径：（`文件:行`）已被前一条判据占用时**不重复报**——同一处 CSS 同时命中
+   *     「裸类名不带前缀」与「token 作用域」的概率低，但 fail-closed 那条（`plugin.json:1`）
+   *     必然重叠（前缀腿已报同一件事）⇒ 以先出的为准。
+   */
+  const tokenScope = runTokenScopeCheck(absRoot);
   const prefixKeys = new Set(prefix.violations.map((v) => `${v.file}:${v.line}`));
+  const tokenKeys = new Set(tokenScope.violations.map((v) => `${v.file}:${v.line}`));
   const namespace: CheckViolation[] = [
-    ...prefix.violations,
-    ...reserved.filter((v) => !prefixKeys.has(`${v.file}:${v.line}`)),
+    ...prefix.violations, // 前缀腿（含 fail-closed）
+    ...tokenScope.violations.filter((v) => !prefixKeys.has(`${v.file}:${v.line}`)), // token 腿（同点不重复报）
+    ...reserved.filter((v) => !prefixKeys.has(`${v.file}:${v.line}`) && !tokenKeys.has(`${v.file}:${v.line}`)),
   ];
   const legs: LintLeg[] = [
     { id: "linkdesk/no-hardcoded-hex（css + rgb/hsl 腿）", label: "check-css-hardcode", violations: css },
@@ -137,6 +157,8 @@ export async function runPluginLint(root: string, options: PluginLintOptions = {
     tsconfigUsed: tsconfig ? tsconfig : null,
     pluginId: prefix.pluginId,
     pluginIdNote: prefix.pluginIdNote,
+    tokenAdvisories: tokenScope.advisories,
+    tokenCounts: { red: tokenScope.red.length, yellow: tokenScope.yellow.length },
   };
 }
 
@@ -170,6 +192,16 @@ export function renderPluginLintReport(report: PluginLintReport): string {
 
   // 命名空间腿的前缀来源（E6#109h-b①）——目录名兜底时必须让作者看见（不许静默）
   if (report.pluginIdNote) lines.push(`\nℹ 命名空间腿的前缀来源：${report.pluginIdNote}`);
+
+  // 🟡 token 作用域的黄灯建议（E6#109n-b）——**只报不拦**：不进腿报点，故不影响 CI 结论
+  if (report.tokenAdvisories.length > 0) {
+    lines.push(
+      `\n🟡 check-css-namespace（token 作用域）：${report.tokenAdvisories.length} 处**建议**（不拦 build）——` +
+        `文档级定义但名字自带本仓前缀（V6）：没人跟你抢这个名字，但「写在 \`:root\`」这件事本身没有理由；` +
+        `搬进自己的根类之下，作用域从整个文档缩回自己的子树。`,
+    );
+    for (const v of report.tokenAdvisories) lines.push(`    ${v.file}:${v.line}  ${v.message}`);
+  }
 
   lines.push(
     `\n门禁 = 警告不是封锁（07 §六·三档）：未处理偏离可修可绕——知情绕行写标准注释\n` +

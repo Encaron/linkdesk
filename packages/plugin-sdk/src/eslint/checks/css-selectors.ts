@@ -98,3 +98,78 @@ export function keyframeDefinitions(cleaned: string): KeyframeDefinition[] {
   }
   return out;
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   token（自定义属性）作用域原语——E6#109n-b（轮次 1.24）新增
+   ══════════════════════════════════════════════════════════════════════════
+
+   🔴 与壳仓 `scripts/lib/css-selectors.mjs` **同源**（口径文本一致；那边 `judgeTokenScope()` 是
+   同一套判定式，壳门禁与运行时探针共用它）。跨包无法 import ⇒ 各写一份，由壳门禁 `--self-test`
+   的静态断言把**判级文案**钉在一起（见该脚本的 `锚⑦`）。
+   规则正文 = 31-任务-token轴门禁与清账.md §一：**作用域才是命名空间**。
+*/
+
+/** 定义点的作用域形态：`doc`（文档级）· `class`（类限定）· `id`（id 限定）· `other`（元素/通配/属性） */
+export type TokenScope = "doc" | "class" | "id" | "other";
+
+/** 文档级主体（(a)）：`:root` / `html` / `body` / `[data-theme…]` / 通配 `*`。
+ *  ⚠️ 只看**主体**（最后一个 compound、且**只剥伪元素**）——`:root` 本身是**伪类**，
+ *  用 `subjectOf()`（连伪类一起剥）会把 `:root` 剥成空串 ⇒ 这里单独剥 `::x` 形态。
+ *  ⚠️ `* .foo` 的主体是 `.foo`（定义落在 `.foo` 上）⇒ 不是文档级；`*::before` 剥完是 `*` ⇒ 是。 */
+const DOC_SUBJECT = /^(:root|html|body|\[data-theme|\*)/i;
+
+/** 剥**伪元素**（`:hover` / `:root` / `[data-theme=…]` 都保留） */
+const stripPseudoElements = (compound: string): string => compound.replace(/::[a-zA-Z-]+(\([^)]*\))?/g, "");
+
+/** 一个 compound 的作用域形态 */
+export function tokenScopeOf(compound: string): TokenScope {
+  const subject = stripPseudoElements(String(compound)).trim().split(/[\s>+~]+/).filter(Boolean).pop() ?? "";
+  if (!subject) return "doc"; // 纯伪元素形态（`::selection`）——无主体 ⇒ 文档级
+  if (DOC_SUBJECT.test(subject)) return "doc";
+  if (subject.startsWith("#")) return "id";
+  if (subject.includes(".")) return "class";
+  return "other";
+}
+
+/** compound 里的类名（剥属性选择器后再抓 `.x` —— `[class*=".x"]` 这类不算） */
+export function classesInCompound(compound: string): string[] {
+  const noAttr = String(compound).replace(/\[[^\]]*\]/g, "");
+  return [...noAttr.matchAll(/\.(-?[_a-zA-Z][\w-]*)/g)].map((m) => m[1]);
+}
+
+/** V5 的判定体：该 compound 里有没有 `${prefix}` 开头的类（本仓前缀 = `<pluginId>-`） */
+export function hasOwnClass(compound: string, prefix: string): boolean {
+  return classesInCompound(compound).some((c) => c.startsWith(prefix));
+}
+
+/** 一个自定义属性（token）的定义点 */
+export interface TokenDefinition {
+  /** 名字（**不含**前导 `--`） */
+  name: string;
+  /** 1-based；= 该规则块选择器首个非空白字符所在行（与 `BareClassDefinition.line` 同款） */
+  line: number;
+  /** 逗号切开后的那一份选择器文本（compound 原文，供报点回显与 V5 判「有没有自有类」） */
+  selector: string;
+  scope: TokenScope;
+}
+
+/**
+ * 列举一张样式表里的**自定义属性定义点**（同一条规则块里的多个选择器各出一份 —— 与类名轴同款）。
+ * 入参 = `stripComments(src)` 的输出。`var(--x)` 前一个字符是 `(` ⇒ 天然不命中「定义」。
+ */
+export function tokenDefinitions(cleaned: string): TokenDefinition[] {
+  const out: TokenDefinition[] = [];
+  for (const m of cleaned.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+    const sel = m[1].trim();
+    if (sel.startsWith("@") || !m[2].trim()) continue; // @media 等 at-rule 头 / 空规则体
+    const names: string[] = [];
+    for (const d of m[2].matchAll(/(?:^|[;{\s])--([a-zA-Z0-9][\w-]*)\s*:/g)) names.push(d[1]);
+    if (names.length === 0) continue;
+    const line = lineAt(cleaned, m.index + (m[1].length - m[1].trimStart().length));
+    for (const one of splitSelector(sel)) {
+      const scope = tokenScopeOf(one);
+      for (const name of names) out.push({ name, line, selector: one, scope });
+    }
+  }
+  return out;
+}

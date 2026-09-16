@@ -26,6 +26,11 @@
  *      （1.21 ＋ 1.21b 之后**两个域共用同一个 `ldk-` 命名空间**；一旦同名，宿主的元素会被共享组件的
  *        样式命中——`.badge` 案同形。这是 1.21b 补的判据：件 4 的两半合起来才让「两个域同一命名空间」
  *        成为事实，而在此之前没有任何一条判据看着这件事。）
+ *   ⑨ **token（自定义属性）作用域**（E6#109n-b · 轮次 1.24）⇒ 🔴 红
+ *      （**作用域才是命名空间**：文档级只有宿主契约块能写、其余定义必须挂在自有命名空间的类之下、
+ *        任何方不得定义 `ldk-*` 自定义属性。域 = `src/**\/*.css`。规则正文 = 31 号档 §一；
+ *        判定体 = `lib/css-selectors.mjs` 的 `judgeTokenScope()`——**与运行时探针同一个函数**。
+ *        ⚠️ 判据⑦⑧ 已预留给 1.26 的族段规则 / 关键帧引用不悬空，本轴取 ⑨。）
  *
  * ── 登记表 = 既成事实面（不是「允许随便加」）──
  *   登记表的 `classes` 整块已于 E6#109l-b **删除**：判据①③ 双双结构性之后，它没有消费方了
@@ -42,7 +47,14 @@ import { readFileSync, readdirSync, statSync, mkdtempSync, mkdirSync, writeFileS
 import { resolve, dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { tmpdir } from "node:os";
-import { bareClassDefinitions, keyframeDefinitions, stripComments } from "./lib/css-selectors.mjs";
+import {
+  bareClassDefinitions,
+  keyframeDefinitions,
+  stripComments,
+  tokenDefinitions,
+  judgeTokenScope,
+  TOKEN_WHY,
+} from "./lib/css-selectors.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, "..");
@@ -95,6 +107,24 @@ function walk(dir, test, out = []) {
     const full = join(dir, e.name);
     if (e.isDirectory()) walk(full, test, out);
     else if (test(e.name)) out.push(full);
+  }
+  return out;
+}
+
+/**
+ * 判据⑨ 的巡检单元：宿主 ＋ 共享组件域（`src/**\/*.css`）的全部 token 定义点。
+ * 一处 = `{ file, party, name, selector, line, scope }`；域与「谁定义的」在这里定一次，
+ * 判级一律交给 `lib` 的 `judgeTokenScope()`（本文件不自带第二条判定路径）。
+ */
+export function tokenSites(root = ROOT) {
+  const out = [];
+  for (const f of walk(join(root, "src"), (n) => n.endsWith(".css"))) {
+    const rel = relative(root, f).replace(/\\/g, "/");
+    // 共享组件域是独立的一方（与宿主**共用**同一个 `ldk-` 命名空间，判据⑥），其余 = 宿主
+    const party = rel.startsWith("src/components/shared/") ? "shared" : "host";
+    for (const def of tokenDefinitions(stripComments(readFileSync(f, "utf8")))) {
+      out.push({ ...def, file: rel, party });
+    }
   }
   return out;
 }
@@ -191,6 +221,37 @@ export function runChecks(root = ROOT, registry = loadRegistry(root)) {
     }
   }
 
+  // ⑨ **token 作用域**（E6#109n-b · 轮次 1.24；规则正文见 31 号档 §一）——
+  //    自定义属性（token）的**定义作用域**受结构约束：**作用域才是命名空间**（名字随你、地盘由构造判）。
+  //    本仓能判的三条：
+  //      V2  任何方定义 `ldk-*` 自定义属性 ⇒ 红（`ldk-` 整个命名空间属宿主，与类名/关键帧同一句）
+  //      V3  宿主／共享组件的**文档级**定义越出契约块 ⇒ 红（契约块 = 文件级登记：`src/index.css` 的
+  //          `:root` 与 `[data-theme="light"]`；里面放什么名字**不设名单**）
+  //      V4  宿主／共享组件的**类限定**定义不含任何 `.ldk-*` 类 ⇒ 红（定义落在非自有子树）
+  //    （V1/V5/V6 是**插件侧**的三条，壳仓够不着插件源码 ⇒ 在 SDK 的 `check-css-namespace` 腿，
+  //      见 `packages/plugin-sdk/src/eslint/checks/token-scope.ts`；两条腿互不覆盖。）
+  //    🔴 **域 = `src/**/*.css`（全部宿主 ＋ 共享组件 CSS）**，比判据③ 的域（`index.css` ＋ `src/pool/**`）**宽**：
+  //      V3 要抓的正是「契约块之外冒出文档级定义」，域越宽越有意义。⚠️ **判据③（类名）的域不动**——
+  //      `.app-shell` 那条域边界账归 26 号档 §5b（1.25 裁决）；**域可以按判据分别设定**。
+  //    ⚠️ 判定体不在本文件：`judgeTokenScope()` 来自 `lib/css-selectors.mjs`——**运行时探针用的同一个函数**
+  //      ⇒ 31 号档 §4.3 要的「判级文案与门禁逐字一致」由构造保证（不是靠人抄）。
+  const tokenSitesNow = tokenSites(root);
+  for (const site of tokenSitesNow) {
+    const { file: rel, name, selector, line, scope, party } = site;
+    const verdict = judgeTokenScope({ party, name, scope, compound: selector, file: rel });
+    if (verdict.level !== "red") continue; // 黄 / 不在射程内 ⇒ 只报不拦（本仓今天不产生黄）
+    violations.push({
+      kind: `token-scope-${verdict.code.toLowerCase()}`,
+      msg:
+        `[${verdict.code}] ${rel}:${line}  \`${selector} { --${name}: … }\`——${verdict.why} ` +
+        (verdict.code === "V3"
+          ? `改法：定义搬进自有命名空间的类之下（\`.ldk-*\`）；契约块只有 \`src/index.css\` 的 \`:root\` 与 \`[data-theme=…]\` 两块。`
+          : verdict.code === "V4"
+            ? `改法：把定义搬到自有根类之下（如 \`.ldk-<你的族段>-root { --${name}: … }\`）。`
+            : `改法：换成自有语义名（契约名归宿主）——自定义属性不得以 \`ldk-\` 开头。`),
+    });
+  }
+
   // ⑤ 反向核对：登记表 ↔ 实况（表是发给插件作者的数据，烂了会误导 + 假绿）
   //    ⚠️ E6#109l-b 起**只剩 `keyframes` 段**——`classes` 整块已删（判据①③ 双双结构性后无消费方）。
   const actualKf = new Set([...sharedKf, ...shellKf.keys()]);
@@ -221,6 +282,7 @@ function selfTest() {
   const tmp = mkdtempSync(join(tmpdir(), "ldk-css-ns-"));
   const mk = (rel, content) => {
     const full = join(tmp, rel);
+    mkdirSync(dirname(full), { recursive: true }); // 判据⑨ 的夹具要落到 `src/pool/**` 深层
     writeFileSync(full, content, { flag: "w", encoding: "utf8" });
   };
   const setup = () => {
@@ -302,6 +364,89 @@ function selfTest() {
   setup();
   cases.push(["负控⑥：登记过期（关键帧）⇒ 红", runChecks(tmp, { keyframes: ["gone-anim"] }).filter((v) => v.kind === "registry-stale").length === 1]);
 
+  /* ── 判据⑨（token 作用域 · E6#109n-b）────────────────────────────────
+     🔴 正控条数 ≥ 负控条数（件 2 立下的纪律）：判据**不许朝严的方向腐烂** ⇒
+        每一条「该红的」旁边都配一条「长得很像但该绿的」。 */
+
+  // 负控⑦：宿主把文档级定义写在契约块之外 ⇒ V3（**带连字符的名字照样红** ⇒ 尺子不是「连字符即安全」）
+  setup();
+  mk("src/pool/views/about/AboutView.css", ":root { --shadow-tiny: red; }\n");
+  cases.push([
+    "负控⑦：宿主非契约文件里的文档级定义 ⇒ 红（判据⑨ V3；带连字符的名字照样红）",
+    runChecks(tmp, registry).some((v) => v.kind === "token-scope-v3"),
+  ]);
+
+  // 负控⑧：共享组件挂非自有类 ⇒ V4
+  setup();
+  mk("src/components/shared/toggle/Toggle.css", ".ldk-toggle { background: red; }\n.foo-bar { --x: 1; }\n");
+  cases.push(["负控⑧：共享组件类限定定义挂非自有类 ⇒ 红（判据⑨ V4）", runChecks(tmp, registry).some((v) => v.kind === "token-scope-v4")]);
+
+  // 负控⑨：共享组件在文档级定义（且带 `ldk-` 名）⇒ **V3**（这条钉住「共享组件也在宿主文档级约束内」）
+  //   ——同一站点同时命中 V3 与 V2，判级**只报最具体的一条**（先 V3、过契约块后才落到 V2）；
+  //   V2 的「与作用域无关」由下一条（负控⑩）单独钉。
+  setup();
+  mk("src/components/shared/toggle/Toggle.css", ".ldk-toggle { background: red; }\n:root { --ldk-toggle-bg: red; }\n");
+  {
+    const kinds = runChecks(tmp, registry).map((v) => v.kind);
+    cases.push([
+      "负控⑨：共享组件文档级定义 ⇒ 红 V3（共享组件也在宿主文档级约束内）",
+      kinds.includes("token-scope-v3") && kinds.filter((k) => k.startsWith("token-scope-")).length === 1,
+    ]);
+  }
+
+  // 负控⑩：宿主在**类限定**下定义 `ldk-*` 自定义属性 ⇒ V2（**与作用域无关**：名字层一句话）
+  setup();
+  mk("src/index.css", ".ldk-input { --ldk-input-bg: red; }\n");
+  cases.push(["负控⑩：`ldk-*` 自定义属性即便挂在自有类之下也红（V2，名字层一句话）", runChecks(tmp, registry).some((v) => v.kind === "token-scope-v2")]);
+
+  // 正控⑦：契约块里的文档级定义 ⇒ 绿（`index.css` 的 `:root` 与 `[data-theme="light"]` 是**文件级**登记）
+  setup();
+  mk("src/index.css", ':root { --bg-window: #111; }\n[data-theme="light"] { --bg-window: #eee; }\n');
+  cases.push(["正控⑦：契约块（`src/index.css` 的 `:root` / `[data-theme=…]`）里的文档级定义 ⇒ 绿", runChecks(tmp, registry).length === 0]);
+
+  // 正控⑧：类限定 + 自有类（**名字随你、无需前缀**）⇒ 绿
+  setup();
+  mk("src/index.css", ".ldk-panel-zone { --panel-inset: 4px; }\n");
+  cases.push(["正控⑧：类限定定义挂在自有类之下（名字不带前缀也合规）⇒ 绿", runChecks(tmp, registry).length === 0]);
+
+  // 正控⑨：**`(c)` portal 面的浮层宿主根**（id 作用域）⇒ 绿（放宽的是「元素归谁」，不是「名字归谁」）
+  setup();
+  mk("src/index.css", "#ld-float-layer { --float-blur-floor: 8px; }\n");
+  cases.push(["正控⑨：`#ld-float-layer` 的 token 定义 ⇒ 绿（判据⑨ (c) portal 面）", runChecks(tmp, registry).length === 0]);
+
+  // 正控⑩：域扩到 `src/**` 之后，**类限定定义照样按类判**（`.ldk-*` 之下 ⇒ 绿，哪怕它不在 index.css）
+  //   ——这条防的是「把域宽误当成把规则也变宽」。
+  setup();
+  mk("src/pool/views/about/AboutView.css", ".ldk-about-view { --about-gap: 8px; }\n");
+  cases.push(["正控⑩：池域文件里的类限定定义（挂自有类）⇒ 绿（域宽 ≠ 规则宽）", runChecks(tmp, registry).length === 0]);
+
+  // 锚⑦：**跨包文案同源** —— 判级文案在壳（本文件的 `TOKEN_WHY`，门禁与运行时探针共用）与
+  //   SDK 腿（`packages/plugin-sdk/src/eslint/checks/token-scope.ts`）各一份（跨包无法 import）
+  //   ⇒ 用锚词把两份钉在一起：**改一边不改另一边 ⇒ 自测当场红**（口径文本一致不靠自觉）。
+  {
+    const anchors = [
+      "83 个只有样式表提供、引擎不写 inline", // V1
+      "整个命名空间属宿主", // V2
+      "跨方命中必须有自有根类作祖先", // V5
+      "无人同吃", // V6
+    ];
+    const sdkSrc = readFileSync(join(ROOT, "packages", "plugin-sdk", "src", "eslint", "checks", "token-scope.ts"), "utf8");
+    const shellText = Object.values(TOKEN_WHY).join("\n");
+    cases.push([
+      "锚⑦：判级文案壳 / SDK 同源（4 句锚词两边都在 ⇒ 改一边不改另一边必红）",
+      anchors.every((a) => shellText.includes(a) && sdkSrc.includes(a)),
+    ]);
+  }
+
+  // 锚⑥：**行号可映射** —— `stripComments` 保留换行（原先把换行也换成空格 ⇒ 多行注释后行号全部上移）。
+  //   这条同时是 SDK 腿报点（`文件:行`）的前提。
+  setup();
+  mk("src/pool/views/about/AboutView.css", "/* 多行注释\n   第二行\n   第三行 */\n:root { --shadow-tiny: red; }\n");
+  {
+    const line = /AboutView\.css:(\d+)/.exec(runChecks(tmp, registry).find((v) => v.kind === "token-scope-v3")?.msg ?? "")?.[1];
+    cases.push(["锚⑥：多行注释之后的定义点行号不乱（`stripComments` 保留换行）⇒ 报点在第 4 行", line === "4"]);
+  }
+
   rmSync(tmp, { recursive: true, force: true });
   let ok = true;
   for (const [name, pass] of cases) {
@@ -320,9 +465,11 @@ if (args.includes("--self-test")) selfTest();
 const violations = runChecks();
 if (violations.length === 0) {
   const reg = loadRegistry();
+  const tokens = tokenSites();
   console.log(
     `✅ [css-namespace] 两个定义域独立定义全部 \`ldk-\`（宿主 ／ 共享组件，判据①③ 结构性、零登记表）；` +
-      `跨域同名 0；关键帧 ${reg.keyframes.length} 个与实况双向一致。`
+      `跨域同名 0；关键帧 ${reg.keyframes.length} 个与实况双向一致；` +
+      `token 作用域（判据⑨，域 src/**/*.css）${tokens.length} 个定义点零越界。`
   );
   process.exit(0);
 }

@@ -12,6 +12,9 @@
  * 🔴 E6#109h-b①：`runPluginPrefixCheck` 是**唯一一个对内 check 的具名导出**，专供壳仓只读审计工具
  *    `scripts/plugin-css-prefix-audit.mjs`（改名轮 ③–⑦ 生成「旧名 → 新名」映射、⑧ 全量复核）。
  *    **它不是第二条判据路径**：`lint.ts` 的腿用的是**同一个函数**——工具与腿同源，改一处两边一起变。
+ *
+ * 🔴 E6#109n-b（1.24）：同一纪律再加一个 —— `runTokenScopeCheck`（token 作用域判据；审计工具用它出
+ *    18 仓的 token 段读数）。**同样不是第二条判据路径**（腿用的就是它）。
  */
 export { linkdeskPluginLintConfig } from "./preset.js";
 export type { PluginLintOptions } from "./preset.js";
@@ -19,3 +22,5 @@ export { runPluginLint, renderPluginLintReport } from "./lint.js";
 export type { PluginLintReport, LintLeg } from "./lint.js";
 export { runPluginPrefixCheck, resolvePluginIdForCss } from "./checks/plugin-prefix.js";
 export type { PluginPrefixReport, PrefixSite, PluginIdResolution, PluginIdSource } from "./checks/plugin-prefix.js";
+export { runTokenScopeCheck, judgePluginTokenScope } from "./checks/token-scope.js";
+export type { TokenScopeReport, TokenScopeSite, TokenScopeCode } from "./checks/token-scope.js";

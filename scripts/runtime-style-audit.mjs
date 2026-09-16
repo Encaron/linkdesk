@@ -44,8 +44,11 @@
  *     由 **SDK 静态腿**判红（18 仓实测 0 违规）⇒ 两把尺子合起来无死角。
  *     ⚠️ 🔴 **本格刻意不做「规则体逐字比较」**：`150ms` ↔ `0.15s` 这类**等价写法**会被逐字比较判成"冲突"
  *     ⇒ 正是 §10.3 说的假红。⇒ 判据改用**命名空间归属**（结构问题用结构判据，不用文本比对）。
- *   · ⚠️ **token 轴只报事实、不判红**：`--*` 的归属与作用域规则由 **1.23（件 6）定案**；
- *     本格是量尺、不是立法者（把没定案的规则写进探针 = 又一次「把正确寄托在一句话上」）。
+ *   · ⚠️ **token 轴 1.22 只报事实、1.24 起判级**：`--*` 的归属与作用域规则由 **1.23（件 6）定案**
+ *     （**作用域才是命名空间**：文档级只有宿主契约块能写、其余必须挂自有命名空间的类之下、
+ *     任何方不得定义 `ldk-*`），⇒ 本探针从 1.24（`E6#109n-b`）起出 **red / yellow ＋ 名单**
+ *     （判定式调 `lib/css-selectors.mjs` 的 `judgeTokenScope()`——**与壳门禁判据⑨ 同一个函数**）。
+ *     1.22 那条纪律仍然有效：**量尺不当立法者**——规则变，这里的判级跟着变；规则没定的轴仍然只报事实。
  *
  * ── 两层落地（🔴 别混成一层：只有一个"连上才跑"的脚本 = 判据的存活又被寄托在人工）──
  *   ① **纯分析层**（`analyzeDump()` 等导出）：吃「dump JSON」→ 出「跨方碰撞报告」。**能自测**
@@ -112,6 +115,11 @@
  *      （见下）——**绝不静默当宿主**。要拆开请看 dev 态读数或静态门禁。
  *   8. **CORS 不可读的样式表**（`cssRules` 抛异常）：**看不见内容 = 结论不成立**（不静默跳过）。
  *   9. **`ldk-` 命名空间内部的语义归属**（哪个名字"本该"属谁）：探针只报「同名跨域」，不判语义。
+ *  10. **非文档级（类限定）的 token 定义判不了 V4/V5**（E6#109n-b 新增）：运行时的作用域描述符
+ *      只留**主体**（`class:.foo`）、**丢了祖先** ⇒ 重建 compound 会漏掉 `.我的根类 .ldk-x` 里的
+ *      自有类 ⇒ **假红**。⇒ 类限定一律传 `compound: null`（**不判 ≠ 合规**，那两格由静态腿管）。
+ *      同一处口径差：事实面按「任何 `[data-…]`」算文档级，比门禁（只认 `[data-theme…]`）**宽**
+ *      ⇒ 判级一律**从 compound 原文重推**（`tokenScopeOf`），两边由构造一致。
  *   ⚠️ 本探针在 dev 态（逐文件注入、`data-vite-dev-id` 带绝对路径）能分开**宿主 / 共享组件 / codicon /
  *      每只插件**四方；这是它的**主用法**。
  *
@@ -124,7 +132,7 @@
 import { readFileSync, writeFileSync, mkdirSync, readdirSync, statSync } from "node:fs";
 import { dirname, resolve, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
-import { splitSelector, hasAncestor, subjectOf, soleClassOf, stripComments, bareClassDefinitions, keyframeDefinitions, SOLE_CLASS } from "./lib/css-selectors.mjs";
+import { splitSelector, hasAncestor, subjectOf, soleClassOf, stripComments, bareClassDefinitions, keyframeDefinitions, SOLE_CLASS, judgeTokenScope, tokenScopeOf } from "./lib/css-selectors.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, "..");
@@ -236,7 +244,7 @@ export function collectParties(doc) {
   const parties = new Map();
   const bump = (party) => {
     if (!parties.has(party)) {
-      parties.set(party, { classes: new Set(), keyframes: new Set(), tokens: new Map(), shapes: new Set(), sheets: [], evidence: [] });
+      parties.set(party, { classes: new Set(), keyframes: new Set(), tokens: new Map(), tokenSites: [], shapes: new Set(), sheets: [], evidence: [] });
     }
     return parties.get(party);
   };
@@ -286,6 +294,7 @@ export function collectParties(doc) {
         const set = p.tokens.get(name) ?? new Set();
         set.add(`@keyframes ${k.name}`);
         p.tokens.set(name, set);
+        p.tokenSites.push({ name, scope: `@keyframes ${k.name}`, sheet: sheet.index });
         p.evidence.push({ axis: "token", name, sheet: sheet.index, sel: `@keyframes ${k.name} 体内的定义`, at: k.at ?? "" });
       }
     }
@@ -297,12 +306,82 @@ export function collectParties(doc) {
           const set = p.tokens.get(name) ?? new Set();
           set.add(scope);
           p.tokens.set(name, set);
+          p.tokenSites.push({ name, scope, sheet: sheet.index });
           p.evidence.push({ axis: "token", name, sheet: sheet.index, sel: `${scope} 之下的定义`, at: r.at ?? "" });
         }
       }
     }
   }
   return { parties, unattributed };
+}
+
+/* ── token 作用域判级（E6#109n-b · 1.24；「两层证明」的第二层）─────────────────
+
+   规则既然定了（1.23 定案：**作用域才是命名空间**），探针就从「只报事实」升级为**判级**。
+   🔴 判定式**不在这里**：一律调壳仓 `lib/css-selectors.mjs` 的 `judgeTokenScope()`——与门禁
+      **同一个函数**（31 号档 §4.3 要的「判级文案与门禁逐字一致」由构造保证）。
+   ⚠️ 三处诚实边界（写进「覆盖不到」清单）：
+     · **非文档级的作用域判不了 V4/V5**：运行时的作用域描述符只留**主体**（`class:.foo`）、
+       **丢了祖先** ⇒ 重建出的 compound 会漏掉 `.我的根类 .ldk-x` 里的自有类 ⇒ **假红**。
+       ⇒ 类限定一律传 `compound: null`（= 不判，**不判 ≠ 合规**，静态腿管这一格）。
+     · **`attr:[data-…]`**：事实面（`DOC_LEVEL_CRITERION`）按「任何 `data-` 属性」算文档级，
+       比门禁（只认 `[data-theme…]`）**宽** ⇒ 判级一律**从 compound 原文重推**（`tokenScopeOf`），
+       两边由构造一致（本仓活体上两者重合，实测零分歧）。
+     · **名字层（V2）与作用域无关** ⇒ 类限定站点照样能判 V2（名字以 `ldk-` 开头即红）。
+   ───────────────────────────────────────────────────────────────────────── */
+
+/** 运行时的作用域描述符 → 可判级的 compound 原文（**只在能安全重建时给**，否则 `null`） */
+function runtimeCompound(part) {
+  if (part.startsWith("attr:")) return part.slice(5); // `attr:[data-theme="light"]` → 原样
+  const m = /^doc:(root|html|body|universal)$/.exec(part);
+  if (!m) return null; // `class:.foo`（丢祖先）/ `id:` / `element:` / `other:` 一律不重建
+  return { root: ":root", html: "html", body: "body", universal: "*" }[m[1]];
+}
+
+/** 一串描述符部分 → 判级结果（逐部分判，取**最重**的那条） */
+function gradeOne(partyKey, name, scopeDesc, file) {
+  const parts = scopeDesc.startsWith("list:") ? scopeDesc.slice(5).split(" | ") : [scopeDesc];
+  const isPlugin = partyKey.startsWith("plugin:");
+  const base = isPlugin ? "plugin" : partyKey;
+  const pluginId = isPlugin ? partyKey.slice("plugin:".length) : null;
+  const RANK = { red: 2, yellow: 1 };
+  let best = null;
+  for (const part of parts) {
+    const compound = runtimeCompound(part);
+    if (compound === null) {
+      // 非文档级：只能判名字层（V2）。先跑一次「不判作用域」的探针，看名字有没有问题
+      const nameOnly = judgeTokenScope({ party: base, pluginId, name, scope: "other", compound: null, file });
+      if (nameOnly.level && (!best || RANK[nameOnly.level] > RANK[best.level])) best = nameOnly;
+      continue;
+    }
+    const verdict = judgeTokenScope({ party: base, pluginId, name, scope: tokenScopeOf(compound), compound, file });
+    if (verdict.level && (!best || RANK[verdict.level] > RANK[best.level])) best = verdict;
+  }
+  return best;
+}
+
+/**
+ * 给「每一方的每一处 token 定义」判级 → `{ red: [...], yellow: [...] }`。
+ * 站点 = `{ party, name, scope, file, code, why }`（**按站点**计数；去重后的**名字**数另给）。
+ */
+export function gradeTokenScopes(parties, sheets = []) {
+  const red = [];
+  const yellow = [];
+  for (const [party, p] of parties) {
+    if (party === "codicon") continue; // 三方 CSS 不在射程（本仓只消费、不定义）
+    for (const site of p.tokenSites) {
+      const origin = sheets[site.sheet] ?? {};
+      const file = origin.devId ?? origin.href ?? null;
+      // ⚠️ 事实面的 token 名**带前导 `--`**（`--status-connected`——既有读数口径，不动），
+      //    而判定体要的是**裸名**（`status-connected`）⇒ 在这里剥一次（只有这一处转换）。
+      const name = site.name.replace(/^--/, "");
+      const verdict = gradeOne(party, name, site.scope, file);
+      if (!verdict) continue;
+      const entry = { party, name, scope: site.scope, file, code: verdict.code, why: verdict.why, at: origin.devId ?? origin.href ?? null };
+      (verdict.level === "red" ? red : yellow).push(entry);
+    }
+  }
+  return { red, yellow };
 }
 
 /** 轴 ④ 的形态是否**带类名锚**（`other:.x…` / `other:.x[y]`）——
@@ -468,6 +547,18 @@ export function analyzeDump(dump, { minPlugins = 2, sharedDomainNames = [] } = {
       if (dl.length) documentLevelTokens[party] = dl.sort((a, b) => a.name.localeCompare(b.name));
     }
 
+    // ── token 作用域判级（E6#109n-b）——规则已定案 ⇒ 探针出「红 / 黄 ＋ 名单」 ──
+    const tokenScope = gradeTokenScopes(parties, doc.sheets ?? []);
+    const uniqueNames = (list) => [...new Set(list.map((x) => `${x.party}--${x.name}`))].length;
+    const tokenScopeSummary = {
+      redSites: tokenScope.red.length,
+      yellowSites: tokenScope.yellow.length,
+      redNames: uniqueNames(tokenScope.red),
+      yellowNames: uniqueNames(tokenScope.yellow),
+      criterion:
+        "judgeTokenScope()（与壳门禁 check-css-namespace 判据⑨ **同一个函数**）；文案逐字一致",
+    };
+
     const pluginParties = [...parties.keys()].filter((x) => x.startsWith("plugin:")).sort();
     documents.push({
       label: doc.label ?? doc.url,
@@ -504,6 +595,8 @@ export function analyzeDump(dump, { minPlugins = 2, sharedDomainNames = [] } = {
         vendoredSharedNames: vendoredSharedNames.sort((a, b) => a.name.localeCompare(b.name)),
         documentLevelTokens,
         documentLevelCriterion: DOC_LEVEL_CRITERION,
+        tokenScope,
+        tokenScopeSummary,
         inlineHostTokens: [...(doc.inlineTokens ?? [])].sort(),
         inlineBodyTokens: [...(doc.bodyTokens ?? [])].sort(),
         pluginParties,
@@ -518,8 +611,10 @@ export function analyzeDump(dump, { minPlugins = 2, sharedDomainNames = [] } = {
   const yellows = allCollisions.filter((c) => c.severity === "yellow");
   const infos = allCollisions.filter((c) => c.severity === "info");
   const intrusions = documents.flatMap((d) => d.facts.ldkIntrusions);
+  const tokenRed = documents.flatMap((d) => d.facts.tokenScope.red);
+  const tokenYellow = documents.flatMap((d) => d.facts.tokenScope.yellow);
   const rosterOk = documents.length > 0 && documents.some((d) => d.facts.pluginParties.length >= minPlugins);
-  const ok = allUnattributed.length === 0 && reds.length === 0 && intrusions.length === 0 && rosterOk;
+  const ok = allUnattributed.length === 0 && reds.length === 0 && intrusions.length === 0 && tokenRed.length === 0 && rosterOk;
 
   return {
     probe: { ...(dump?.probe ?? {}), analyzer: "runtime-style-audit/v1", minPlugins, sharedDomainSeed: sharedDomain.size },
@@ -532,6 +627,8 @@ export function analyzeDump(dump, { minPlugins = 2, sharedDomainNames = [] } = {
       info: infos.length,
       unattributed: allUnattributed.length,
       ldkIntrusions: intrusions.length,
+      tokenRed: tokenRed.length,
+      tokenYellow: tokenYellow.length,
       rosterOk,
       perDocument: Object.fromEntries(
         documents.map((d) => [
@@ -881,6 +978,54 @@ function selfTest() {
     t("锚⑥：方名册判据按「至少一个文档 ≥2 只插件」——壳窗口文档没有插件不该把结论打成不成立", r.summary.rosterOk === true && r.ok === true);
   }
 
+  // ㉘–㉜ token 作用域判级（E6#109n-b · 1.24）——「两层证明」的第二层
+  const HOST_INDEX_CSS = { devId: "E:/linkdesk/src/index.css" };
+  // ㉘ 负控：插件在文档级写宿主契约名 ⇒ 红（`marketplace` 案复刻）＋ ok=false
+  {
+    const r = analyzeDump({ documents: [doc("pool", [sheet(0, HOST_CSS, rules(".ldk-a")), sheet(1, PLUG_A, [{ sel: ":root", decl: "--status-connected: green" }]), sheet(2, PLUG_B, rules(".beta-root"))])] });
+    const red = r.documents[0].facts.tokenScope.red;
+    t("负控⑫：插件在 `:root` 写宿主契约名 ⇒ token 红 1（V1）＋ ok=false", red.length === 1 && red[0].code === "V1" && red[0].party === "plugin:alpha" && r.ok === false);
+  }
+  // ㉙ 正控：插件在文档级写**自有前缀**名 ⇒ 黄，**不拦**（ok 仍成立）
+  {
+    const r = analyzeDump({ documents: [doc("pool", [sheet(0, HOST_CSS, rules(".ldk-a")), sheet(1, PLUG_A, [{ sel: ":root", decl: "--alpha-ok: green" }]), sheet(2, PLUG_B, rules(".beta-root"))])] });
+    const y = r.documents[0].facts.tokenScope.yellow;
+    t("正控⑪：插件在 `:root` 写自有前缀名 ⇒ token 黄 1（V6）、**ok 仍成立**（只报不拦）", y.length === 1 && y[0].code === "V6" && r.summary.tokenRed === 0 && r.ok === true);
+  }
+  // ㉚ 正控：**契约块**（`src/index.css` 的 `:root`）里的宿主文档级定义 ⇒ 绿（不算污染）
+  {
+    const r = analyzeDump({ documents: [doc("pool", [sheet(0, HOST_INDEX_CSS, [{ sel: ":root", decl: "--bg-card: #222" }]), sheet(1, PLUG_A, rules(".alpha-root")), sheet(2, PLUG_B, rules(".beta-root"))])] });
+    t("正控⑫：契约块（`src/index.css` 的 `:root`）里的宿主定义 ⇒ token 零红零黄", r.summary.tokenRed === 0 && r.summary.tokenYellow === 0 && r.ok === true);
+  }
+  // ㉛ 负控：宿主把文档级定义写在**契约块之外**（池域文件）⇒ 红 V3（影子契约）
+  {
+    const r = analyzeDump({ documents: [doc("pool", [sheet(0, HOST_CSS, [{ sel: ":root", decl: "--shadow-tiny: red" }]), sheet(1, PLUG_A, rules(".alpha-root")), sheet(2, PLUG_B, rules(".beta-root"))])] });
+    const red = r.documents[0].facts.tokenScope.red;
+    t("负控⑬：宿主在非契约文件里写文档级定义 ⇒ token 红 1（V3）＋ ok=false", red.length === 1 && red[0].code === "V3" && red[0].party === "host" && r.ok === false);
+  }
+  // ㉜ 正控/边界：类限定定义**判不了 V4/V5**（运行时丢了祖先）⇒ 既不红也不黄（不判 ≠ 合规）
+  //     同时钉住「名字层（V2）与作用域无关」：同一形态下 `--ldk-x` 照样红。
+  {
+    const r = analyzeDump({ documents: [doc("pool", [sheet(0, HOST_CSS, rules(".ldk-a")), sheet(1, PLUG_A, [{ sel: ".ldk-badge", decl: "--plain-x: 1" }]), sheet(2, PLUG_B, rules(".beta-root"))])] });
+    const r2 = analyzeDump({ documents: [doc("pool", [sheet(0, HOST_CSS, rules(".ldk-a")), sheet(1, PLUG_A, [{ sel: ".ldk-badge", decl: "--ldk-x: 1" }]), sheet(2, PLUG_B, rules(".beta-root"))])] });
+    t(
+      "正控⑬：类限定定义在运行时判不了 V4/V5（丢了祖先 ⇒ 不判，不制造假红）；但名字层 `ldk-` 照样红（V2）",
+      r.summary.tokenRed === 0 && r.summary.tokenYellow === 0 && r2.summary.tokenRed === 1 && r2.documents[0].facts.tokenScope.red[0].code === "V2",
+    );
+  }
+  // ㉝ 锚：**判级与门禁同源** —— gradeTokenScopes 的结论 === 直接调 `judgeTokenScope()` 的结论
+  //     （同一条实现；这里钉住「运行时没有第二条判定路径」这件事本身）
+  {
+    const direct = judgeTokenScope({ party: "plugin", pluginId: "alpha", name: "status-connected", scope: tokenScopeOf(":root"), compound: ":root", file: null });
+    const viaGrade = gradeOne("plugin:alpha", "status-connected", "doc:root", null);
+    t("锚⑦：运行时判级 === `judgeTokenScope()` 直接调用（与壳门禁判据⑨ 同一个函数，没有第二条判定路径）", direct.code === viaGrade.code && direct.why === viaGrade.why);
+  }
+  // ㉞ 锚：**`@keyframes` 体内的自定义属性**只判名字层（作用域是 `@keyframes …`，不是子树）
+  {
+    const r = analyzeDump({ documents: [doc("pool", [sheet(0, HOST_CSS, rules(".ldk-a")), sheet(1, PLUG_A, rules(".alpha-root"), [{ name: "alpha-in", decl: "--ldk-bad: 1" }]), sheet(2, PLUG_B, rules(".beta-root"))])] });
+    t("锚⑧：`@keyframes` 体内的 `--ldk-*` ⇒ 名字层照样红（V2，与作用域无关）", r.summary.tokenRed === 1 && r.documents[0].facts.tokenScope.red[0].code === "V2");
+  }
+
   let ok = true;
   for (const [name, pass] of cases) {
     console.log(`  ${pass ? "✓" : "✗"} ${name}`);
@@ -1066,6 +1211,17 @@ function printReport(report) {
     }
     if (d.facts.inlineHostTokens.length) console.log(`    · documentElement 上的 inline token（宿主契约，单列、不参与碰撞）：${d.facts.inlineHostTokens.length} 个`);
     for (const [party, list] of Object.entries(d.facts.documentLevelTokens)) console.log(`    · ${party} 的 document 级 token 定义：${list.length} 个（${list.map((x) => x.name).slice(0, 8).join(" ")}${list.length > 8 ? " …" : ""}）`);
+    // token 作用域判级（E6#109n-b）——红让结论不成立；黄只报
+    const ts = d.facts.tokenScope;
+    if (ts.red.length > 0) {
+      console.log(`    🔴 token 作用域**红** ${ts.red.length} 处（${d.facts.tokenScopeSummary.redNames} 名）——必须改：`);
+      for (const s of ts.red) console.log(`       [${s.code}] ${s.party} · --${s.name} · ${s.scope} · ${s.file ?? "(来源未知)"}`);
+      console.log(`       依据：${ts.red[0].why}`);
+    }
+    if (ts.yellow.length > 0) {
+      console.log(`    🟡 token 作用域**黄** ${ts.yellow.length} 处（${d.facts.tokenScopeSummary.yellowNames} 名）——建议改（不拦）：`);
+      for (const s of ts.yellow) console.log(`       [${s.code}] ${s.party} · --${s.name} · ${s.scope} · ${s.file ?? "(来源未知)"}`);
+    }
     for (const intr of d.facts.ldkIntrusions) console.log(`    🔴 [${intr.axis}] ${intr.name} —— ${intr.party} 占用了宿主 \`ldk-\` 命名空间`);
     if (d.facts.vendoredSharedNames.length) {
       const parties = [...new Set(d.facts.vendoredSharedNames.map((x) => x.party))].join(" / ");
@@ -1074,6 +1230,7 @@ function printReport(report) {
   }
   const byAxis = report.collisions.reduce((acc, c) => ((acc[c.axis] = (acc[c.axis] ?? 0) + 1), acc), {});
   console.log(`\n▸ 跨方碰撞：${report.collisions.length} 处（red ${report.summary.red} / yellow ${report.summary.yellow} / info ${report.summary.info}）｜按轴 ${JSON.stringify(byAxis)}`);
+  console.log(`▸ token 作用域（判据⑨ 的运行时镜像）：红 ${report.summary.tokenRed} 处 / 黄 ${report.summary.tokenYellow} 处`);
   for (const c of report.collisions) {
     const mark = c.severity === "red" ? "🔴" : c.severity === "yellow" ? "🟡" : "ℹ️";
     if (c.severity === "info") {
