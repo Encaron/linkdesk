@@ -16,9 +16,8 @@ import { basename, join } from "node:path";
 import { runPluginPrefixCheck, resolvePluginIdForCss } from "./plugin-prefix.js";
 import type { ReservedNames } from "./reserved-classes.js";
 
-/** 保留名夹具（不依赖真实清单内容——真实清单会被后续轮次改动） */
+/** 保留名夹具（不依赖真实清单内容——真实清单会被后续轮次改动）；⚠️ 只剩 `keyframes`（`classes` 已随判据① 退役） */
 const RESERVED: ReservedNames = {
-  classes: [{ name: "badge", owner: "badge", why: "壳基础件小圆角徽标" }],
   keyframes: [{ name: "drop-zone-in", why: "宿主拖放区入场动画" }],
 };
 
@@ -99,12 +98,14 @@ describe("判据① 裸定义类名必须带本仓前缀", () => {
     });
   });
 
-  it("保留名措辞补充：同时是宿主保留名 ⇒ 报点里补一句（不额外多报一处）", () => {
+  it("🔴 退役记录（E6#109p-b · 1.28）：`.badge` 只由本腿那条**结构性**判据报，不再补「宿主保留名」措辞", () => {
     withPlugin({ css: ".badge { background: var(--accent); }\n" }, (root) => {
       const r = runPluginPrefixCheck(root, RESERVED);
-      expect(r.violations).toHaveLength(1); // 只报一次
-      expect(r.violations[0].message).toContain("宿主保留名");
-      expect(r.classes[0].reserved).toBe(true);
+      expect(r.violations).toHaveLength(1); // 照旧只报一次（判据① 报点本就由本腿覆盖）
+      // 判据①（裸定义宿主保留类名）已退役 ⇒ 类名侧的保留名补充措辞随之删除：
+      // 「.badge 是保留名」这件事今天只由**本腿的前缀规则**兜（裸名必须以 <pluginId>- 开头）。
+      expect(r.violations[0].message).not.toContain("宿主保留名");
+      expect(r.classes[0].reserved).toBe(false);
     });
   });
 

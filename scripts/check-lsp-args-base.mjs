@@ -15,12 +15,19 @@
  * 任一处丢失锚词（基准语义被单边改写/删词）→ 红门禁。基准真要大改 → 全部处 + 单测断言一起改才绿。
  *
  * 用法：node scripts/check-lsp-args-base.mjs [--schema <path>]（已挂 npm run check，check-lsp-deps 后）
+ *       node scripts/check-lsp-args-base.mjs --self-test
  * 退出码 0 = 锚词全齐，1 = 有处缺失（打印到 stderr）。
  * `--schema <path>` 覆盖 schema 站点（负例自测用——对一份 sed 改词的临时副本跑，验证红门禁）。
+ *
+ * ── 🔴 E6#109p-b（1.28）补上 `--self-test`（件 8 修复）──
+ *   本脚本自 1.26 起就带着上面那个 `--schema` 负例口，**但一直没有自测** ⇒ 「它能红」只被人工验过一次。
+ *   现在把它接进自测：**每次 `npm run check` 都真跑一遍「删掉锚词 ⇒ 必须红 / 原样 ⇒ 必须过」**。
+ *   自测用 `os.tmpdir()` 造临时 schema 副本，**不碰仓库**（照 check-lsp-smoke.mjs 的 mkdtemp 先例）。
  */
 
-import { readFileSync } from "node:fs";
-import { resolve, dirname } from "node:path";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { join, resolve, dirname } from "node:path";
+import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -80,15 +87,100 @@ function checkSchema(file, role) {
     : { ok: false, why: `无任何 args.description 含锚词「${ANCHORS.join("」/「")}」——lsp.args 基准描述被单边改写` };
 }
 
+/** 文本站判定（纯函数——自测直接注入字符串，不碰盘）：命中**任一语言变体**锚词即算同基准 */
+export function checkText(text) {
+  return ANCHORS.some((a) => text.includes(a));
+}
+
 function checkTextFile(name, role) {
   const text = readFileSync(resolve(ROOT, name), "utf-8");
-  return ANCHORS.some((a) => text.includes(a))
+  return checkText(text)
     ? { ok: true }
     : { ok: false, why: `文件不含锚词「${ANCHORS.join("」/「")}」——基准语义声明被删/改` };
 }
 
+// ────────────────────────────────── 自测 ──────────────────────────────────
+
+/**
+ * 🔴 负例必须**真的会红**。本脚本的判据是**字面包含**（不是语义）——所以自测的职责就是证明
+ * 「字面被动过 ⇒ 红，字面没动 ⇒ 过」，并把这个形状**钉在链里**（此前只被人手验过一次）。
+ * 全部夹具住 `os.tmpdir()`，`finally` 里清掉。
+ */
+function runSelfTest() {
+  const tmp = mkdtempSync(join(tmpdir(), "ldk-lsp-args-"));
+  const liveAbs = resolve(ROOT, SCHEMA_FILES[0].name);
+  const liveJson = JSON.parse(readFileSync(liveAbs, "utf-8"));
+
+  /** 造一份「锚词被改掉」的 schema 副本（把两个变体都换掉） */
+  const stripped = JSON.stringify(liveJson)
+    .split(ANCHORS[0]).join("（基准语义已被单边改写）")
+    .split(ANCHORS[1]).join("(baseline semantics rewritten)");
+  const strippedPath = join(tmp, "schema-anchor-stripped.json");
+  writeFileSync(strippedPath, stripped, "utf-8");
+
+  /** 造一份「结构变了」的 schema（恒空：连 args.description 都没有） */
+  const noArgsPath = join(tmp, "schema-no-args.json");
+  writeFileSync(noArgsPath, JSON.stringify({ type: "object", properties: {} }), "utf-8");
+
+  /** 造一份「英文变体独有」的 schema（证明英文化后的双变体都被认） */
+  const enOnlyPath = join(tmp, "schema-en-only.json");
+  writeFileSync(enOnlyPath, JSON.stringify(liveJson).split(ANCHORS[0]).join("(the plugin root)"), "utf-8");
+
+  const cases = [
+    // ── 正控：原样必须过 ──
+    ["正控①：live schema 原样 ⇒ 含锚词（过）", checkSchema(liveAbs, "live"), true],
+    [
+      "正控②：schema 只留**英文**变体 ⇒ 仍算同基准（过）——英文化后两个变体都必须被认",
+      checkSchema(enOnlyPath, "en-only"),
+      true,
+    ],
+    ["正控③：文本站含锚词的字符串 ⇒ 过（纯函数，注入字符串）", { ok: checkText(`// 相对路径以${ANCHORS[0]}解析`) }, true],
+    [
+      "正控④：文本站只含英文变体 ⇒ 也过（同锚词的另一语言）",
+      { ok: checkText(`// relative paths resolve against the plugin root`) },
+      true,
+    ],
+    // ── 负控：动过字面必须红 ──
+    [
+      "🔴 负控①：schema 的锚词被改写 ⇒ 红（本用例等价于 `--schema` 那条人工负例）",
+      checkSchema(strippedPath, "stripped"),
+      false,
+    ],
+    [
+      "🔴 负控②：schema 结构变了（找不到任何一个 args.description）⇒ 红（不是静默放行）",
+      checkSchema(noArgsPath, "no-args"),
+      false,
+    ],
+    ["🔴 负控③：文本站两个变体都不含 ⇒ 红", { ok: checkText("// 基准语义声明被删") }, false],
+    [
+      "🔴 负控④：不存在的 schema 路径 ⇒ 读失败 ⇒ 红（fail-closed，不当作通过）",
+      checkSchema(join(tmp, "__missing__.json"), "missing"),
+      false,
+    ],
+  ];
+
+  let bad = 0;
+  try {
+    for (const [tag, res, wantOk] of cases) {
+      const pass = res.ok === wantOk;
+      if (!pass) bad++;
+      process.stdout.write(`${pass ? "✅" : "🔴"} ${tag} 应${wantOk ? "过" : "红"} —— 实得 ${res.ok ? "过" : "红"}\n`);
+      if (!pass && res.why) process.stderr.write(`      ← ${res.why}\n`);
+    }
+  } finally {
+    rmSync(tmp, { recursive: true, force: true });
+  }
+  process.stdout.write(
+    bad === 0
+      ? `\n✅ check-lsp-args-base self-test 全过（${cases.length} 例：正控绿 / 负控红）——尺子不是在恒绿。\n`
+      : `\n🔴 check-lsp-args-base self-test ${bad} 例不符。\n`,
+  );
+  process.exit(bad === 0 ? 0 : 1);
+}
+
 function main() {
   const argv = process.argv.slice(2);
+  if (argv.includes("--self-test")) return runSelfTest();
   const schemaOverride = argv.includes("--schema")
     ? argv[argv.indexOf("--schema") + 1]
     : null;

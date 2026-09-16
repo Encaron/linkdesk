@@ -195,7 +195,10 @@ export function runPluginPrefixCheck(root: string, reserved: ReservedNames = loa
   }
 
   // ── ①② 裸定义类名 / `@keyframes` 名必须以 `<pluginId>-` 开头 ──
-  const classReserved = new Map(reserved.classes.map((c) => [c.name, c]));
+  //    ⚠️ 类名侧的「宿主保留名」补充措辞已随**判据① 退役**（E6#109p-b · 1.28，见 reserved-classes.ts 文件头）：
+  //       清单的 `classes` 段已随 1.21b 删除 ⇒ 类名侧的保留名查表**恒空** ⇒ 那句补充永不触发，已删。
+  //       `PrefixSite.reserved` 对类名**恒 false**（字段保留 = 报点结构与只读审计工具的形状不变）；
+  //       关键帧侧仍用 `kfReserved` 补「与宿主关键帧同名」（那条**真有输入**：清单有 8 条关键帧）。
   const kfReserved = new Map(reserved.keyframes.map((k) => [k.name, k]));
   const pushSite = (file: string, line: number, message: string, unitDisabled: DisableIndex): boolean => {
     if (isDisabled(unitDisabled, line, CHECK_IDS.cssNamespace)) return false;
@@ -206,15 +209,14 @@ export function runPluginPrefixCheck(root: string, reserved: ReservedNames = loa
   for (const unit of collectCssUnits(absRoot, [CHECK_IDS.cssNamespace])) {
     for (const def of bareClassDefinitions(unit.cleaned)) {
       if (def.name.startsWith(prefix)) continue; // 合规：本仓前缀
-      const reservedEntry = classReserved.get(def.name);
       const site: PrefixSite = {
         file: unit.rel,
         line: def.line,
         name: def.name,
         suggested: prefix + def.name,
         selector: def.selector,
-        reserved: reservedEntry !== undefined,
-        ...(reservedEntry ? { reservedWhy: reservedEntry.why } : {}),
+        // 类名侧恒 false：保留名查表已随判据① 退役（`classes` 段已删 ⇒ 恒空）——见本段上方说明
+        reserved: false,
       };
       const kept = pushSite(
         unit.rel,
@@ -222,8 +224,7 @@ export function runPluginPrefixCheck(root: string, reserved: ReservedNames = loa
         `${def.selector}  ← 裸定义类名不带本仓前缀（本插件 pluginId = "${pluginId}"，应以 "${prefix}" 开头）` +
           `——插件视图里宿主、共享组件与**所有已加载插件**同表，裸类名是全局标识符（「.badge」案同形：` +
           `不报错、只是长得不对）。改成 .${site.suggested}（前缀只插入、不改词干 ⇒ 零视觉变化）；` +
-          `要那个样子就直接用对应组件（@linkdesk/ui）` +
-          (reservedEntry ? `。⚠ 且这是**宿主保留名**（${reservedEntry.why}）` : ""),
+          `要那个样子就直接用对应组件（@linkdesk/ui）`,
         unit.disabled,
       );
       if (kept) report.classes.push(site);

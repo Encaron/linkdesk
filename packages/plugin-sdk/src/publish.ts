@@ -374,6 +374,16 @@ export interface ManifestView {
   /** E6#106：Type-2 身份彩色图（图标栏插件才有；非图标栏插件 `icon` 即身份图） */
   marketIcon?: string;
   marketIconSource?: string;
+  /**
+   * 🔴 E6#109p-b（1.28）：**最低宿主版本**——原样带进目录条目（`buildCatalogEntry`）。
+   *
+   * 修的是 1.27 体检抓到的**空转判据**：市场侧那条「拒装」腿（`marketplace/src/services/marketCatalog/parse.ts`
+   * 读 → `useInstallAction.ts` 比对并拒装）**读的是 catalog 条目**，而生产端 `buildCatalogEntry()`
+   * **从不写这个键** ⇒ 官方 18 仓条目 **0/18 有**（只有 2 只在 plugin.json 里声明过）⇒ 那条腿永远不触发。
+   * ⇒ 本字段补上「manifest → 条目」这一段。⚠️ **存量条目不回溯**：已发布的条目要等各自**下次发布**才带上它。
+   * ⚠️ 字段缺省 ⇒ **不写该键**（沿用本仓「缺省即不写」纪律；市场侧对 undefined 天然放行）。
+   */
+  minAppVersion?: string;
 }
 
 export function collectManifestView(manifest: unknown, sourceDirName: string): ManifestView {
@@ -393,6 +403,8 @@ export function collectManifestView(manifest: unknown, sourceDirName: string): M
     iconSource: str(m.iconSource),
     marketIcon: str(m.marketIcon),
     marketIconSource: str(m.marketIconSource),
+    // 🔴 E6#109p-b（1.28）：最低宿主版本随条目走——市场「拒装」腿的唯一数据源（见 ManifestView 该字段说明）
+    minAppVersion: str(m.minAppVersion),
   };
 }
 
@@ -424,6 +436,8 @@ export function buildCatalogEntry(
     // E6#106：身份图随条目——值应为 withCatalogIdentity 转换过的 URL 形态（缺省不写键）
     ...(v.marketIcon !== undefined ? { marketIcon: v.marketIcon } : {}),
     ...(v.marketIconSource !== undefined ? { marketIconSource: v.marketIconSource } : {}),
+    // 🔴 E6#109p-b（1.28）：最低宿主版本——**市场「拒装」腿的输入**（缺省不写键，市场侧对 undefined 放行）
+    ...(v.minAppVersion !== undefined ? { minAppVersion: v.minAppVersion } : {}),
     ...(extras.readmeUrl !== undefined ? { readmeUrl: extras.readmeUrl } : {}),
     downloadUrl,
     size,

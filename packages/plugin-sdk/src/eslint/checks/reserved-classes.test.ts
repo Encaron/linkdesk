@@ -1,11 +1,17 @@
 /**
- * check-css-namespace 腿（E6#109e）单测——**插件 CSS 不得裸定义宿主保留名**。
+ * check-css-namespace 腿 单测——**@keyframes 名不得撞宿主保留关键帧名**。
  *
- * 为什么值得一条测试：这条腿的错法同样是**静默**的——真案（主题卡片徽标 `.badge`）在界面上只表现成
- * 「一块纯色」，不报错；而不查/误报又会让插件仓 CI 白红。故正反两向都钉住：
- *   ① 正控：带前缀 + scoped 调优 ⇒ 零违规（不许误伤合法消费）
- *   ② 负控：裸定义保留名 / 关键帧撞名 ⇒ 必红
- *   ③ 豁免：标准 disable 注释 ⇒ 知情绕行生效
+ * 为什么值得一条测试：这条腿的错法同样是**静默**的——关键帧撞名在界面上只表现成「动画不对」，
+ * 不报错；而不查/误报又会让插件仓 CI 白红。故正反两向都钉住。
+ *
+ * ── 🔴 判据①「裸定义宿主保留类名」已退役（E6#109p-b · 轮次 1.28 · 2026-09-16）──
+ *   退役记录写在这里（连同一条**退役钉子**测试：留 `classes` 字段也不再生效）：
+ *   1.27 全量门禁体检实测（`docs/02-Electron架构/E6_插件生态与发布/01-插件独立构建/样式命名空间归一化/27-任务-门禁健康度体检.md` §十二.2(a)）：
+ *     · 清单的 `classes` 段**已随 E6#109l-b（1.21b）整块删除** ⇒ `classMap` 恒空 ⇒ 判据想报也报不出来；
+ *     · 同一轴上 `plugin-prefix.ts` 的「裸定义必须带 `<pluginId>-`」**完全覆盖**它；
+ *     · `classes` 段是**终态删除**（类名规则已结构性化，登记表只剩 `keyframes`）⇒ 输入不会回来。
+ *   ⇒ 代码路径 ＋ `ReservedNames.classes` 字段一并删除。**判据② 保留**：拿不到 pluginId 时前缀腿
+ *     fail-closed，此时本腿是唯一能逐点报出「你占了宿主关键帧名」的腿（1.27 实验 (d) 实证）。
  */
 import { describe, expect, it } from "vitest";
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
@@ -14,11 +20,7 @@ import { join } from "node:path";
 import { runReservedClassCheck, loadReservedNames } from "./reserved-classes.js";
 
 const RESERVED = {
-  classes: [
-    { name: "badge", owner: "badge", why: "壳基础件小圆角徽标" },
-    { name: "input", why: "宿主输入框工具类" },
-  ],
-  keyframes: [{ name: "selectbox-in", why: "共享组件下拉入场" }],
+  keyframes: [{ name: "ldk-selectbox-in", why: "共享组件下拉入场" }],
 };
 
 function withFixture(css: string, fn: (root: string) => void): void {
@@ -39,7 +41,7 @@ describe("runReservedClassCheck —— 正控（不许误伤）", () => {
     });
   });
 
-  it("🔴 scoped 调优是合法消费（.control-bar .combobox）⇒ 零违规", () => {
+  it("scoped 调优（.my-bar .badge）⇒ 零违规", () => {
     withFixture(".my-bar .badge { margin-left: 4px; }\n", (root) => {
       expect(runReservedClassCheck(root, RESERVED)).toHaveLength(0);
     });
@@ -51,49 +53,74 @@ describe("runReservedClassCheck —— 正控（不许误伤）", () => {
     });
   });
 
+  it("带前缀的关键帧（本仓自己的）⇒ 零违规", () => {
+    withFixture("@keyframes probe-demo-fadeIn { from { opacity: 0 } }\n", (root) => {
+      expect(runReservedClassCheck(root, RESERVED)).toHaveLength(0);
+    });
+  });
+
   it("保留名清单为空 ⇒ 不产生任何违规（文件缺失时不假装有判据）", () => {
-    withFixture(".badge { color: red; }\n", (root) => {
-      expect(runReservedClassCheck(root, { classes: [], keyframes: [] })).toHaveLength(0);
+    withFixture("@keyframes ldk-selectbox-in { from { opacity: 0 } }\n", (root) => {
+      expect(runReservedClassCheck(root, { keyframes: [] })).toHaveLength(0);
     });
   });
 });
 
 describe("runReservedClassCheck —— 负控（必红）", () => {
-  it("裸定义宿主保留类名 .badge ⇒ 1 条违规、且报出文件名", () => {
-    withFixture(".badge { background: var(--accent); }\n", (root) => {
+  it("@keyframes 撞宿主关键帧名 ⇒ 红，且报出文件名与名字", () => {
+    withFixture("@keyframes ldk-selectbox-in { from { opacity: 0 } }\n", (root) => {
       const v = runReservedClassCheck(root, RESERVED);
       expect(v).toHaveLength(1);
       expect(v[0].file).toBe("src/style.css");
-      expect(v[0].message).toContain(".badge");
+      expect(v[0].message).toContain("ldk-selectbox-in");
+      expect(v[0].message).toContain("与宿主关键帧同名");
     });
   });
 
-  it("裸定义 .input（宿主工具类）⇒ 红", () => {
-    withFixture(".input { padding: 2px; }\n", (root) => {
-      expect(runReservedClassCheck(root, RESERVED)).toHaveLength(1);
-    });
-  });
-
-  it("@keyframes 撞宿主关键帧名 ⇒ 红", () => {
-    withFixture("@keyframes selectbox-in { from { opacity: 0 } }\n", (root) => {
-      const v = runReservedClassCheck(root, RESERVED);
-      expect(v).toHaveLength(1);
-      expect(v[0].message).toContain("selectbox-in");
-    });
-  });
-
-  it("注释里的保留名不算违规（判据只看真实规则）", () => {
-    withFixture("/* 注意：别写 .badge */\n.my-card { color: red; }\n", (root) => {
+  it("注释里的关键帧名不算违规（判据只看真实规则）", () => {
+    withFixture("/* 注意：别用 @keyframes ldk-selectbox-in */\n.my-card { color: red; }\n", (root) => {
       expect(runReservedClassCheck(root, RESERVED)).toHaveLength(0);
     });
+  });
+});
+
+describe("🔴 判据① 退役钉子（E6#109p-b · 1.28）", () => {
+  it("裸定义 `.badge` **不再**由本腿报（退役后它只由前缀腿那条结构性判据管）", () => {
+    withFixture(".badge { color: red; }\n.input { padding: 2px; }\n", (root) => {
+      // 退役前这两行各报 1 条（夹具清单里给过 badge/input）；退役后本腿一条都不报。
+      expect(runReservedClassCheck(root, RESERVED)).toHaveLength(0);
+    });
+  });
+
+  it("清单里就算还留着历史的 `classes` 键 ⇒ 也一律忽略（输入不会回来）", () => {
+    const root = mkdtempSync(join(tmpdir(), "ldk-reserved-"));
+    const file = join(root, "reserved-class-names.json");
+    writeFileSync(
+      file,
+      JSON.stringify({
+        classes: { shared: [{ name: "demo-shared", why: "夹具——历史遗留" }], host: [{ name: "demo-host", why: "夹具" }] },
+        keyframes: [{ name: "demo-keyframe", why: "夹具" }],
+      }),
+      "utf8"
+    );
+    try {
+      const names = loadReservedNames(file);
+      expect("classes" in names).toBe(false); // 字段已删（不再读、不再暴露）
+      expect(names.keyframes.map((k) => k.name)).toEqual(["demo-keyframe"]);
+      mkdirSync(join(root, "src"), { recursive: true });
+      writeFileSync(join(root, "src", "style.css"), ".demo-shared { color: red; }\n", "utf8");
+      expect(runReservedClassCheck(root, names)).toHaveLength(0);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
   });
 });
 
 describe("runReservedClassCheck —— 知情绕行", () => {
   it("标准 disable 注释 ⇒ 该行豁免", () => {
     withFixture(
-      "/* eslint-disable-next-line linkdesk/no-reserved-class-name -- 内容画布：随宿主主题走 */\n" +
-        ".badge { background: var(--accent); }\n",
+      "/* eslint-disable-next-line linkdesk/no-reserved-class-name -- 内容画布：随宿主动画走 */\n" +
+        "@keyframes ldk-selectbox-in { from { opacity: 0 } }\n",
       (root) => {
         expect(runReservedClassCheck(root, RESERVED)).toHaveLength(0);
       }
@@ -102,47 +129,11 @@ describe("runReservedClassCheck —— 知情绕行", () => {
 });
 
 describe("loadReservedNames —— 随包清单可读", () => {
-  it("包内 schemas/reserved-class-names.json 能被读到（关键帧有位；classes 已进清账终态空集）", () => {
+  it("包内 schemas/reserved-class-names.json 能被读到（只剩 keyframes；classes 段是终态删除）", () => {
     const names = loadReservedNames();
-    // 🔴 不钉「classes 非空」：E6#109g（四批共享组件改名，classes.shared 摘空）＋ E6#109j-b
-    //    （最后一条宿主工具类 `.input` 也前缀化，classes.host 摘空）⇒ 两组**双双进清账终态 = []**。
-    //    这是**设计要的终态**、不是缺数据：裸名一律前缀化后规规矩矩「带前缀 = 自带命名空间、
-    //    不需登记」⇒ 本表不再需要 entries。合并语义（两组都并进来）由下方夹具测试覆盖。
-    //    ⚠️ 反向断言仍是有意为之：谁再登记一个**裸名** ⇒ 这条当场红，逼一次知情决策。
-    //    🔴 E6#109l-b 追加（**点名给件 8／1.28**）：`classes` 整块已从清单删除 ⇒ 本行从「表里刻意留空」
-    //       变成「字段根本不存在、`loadReservedNames()` 兜底成空表」——断言仍在、但已无输入可拦。
-    //       同批受影响：`reserved-classes.ts` 的判据① 与 `plugin-prefix.ts:198` 的「且这是宿主保留名」
-    //       补充措辞，都随 `classes` 一起变成空转。**本格只维持它不崩、不改它的形态**（跨轴），
-    //       处置权在 1.28 的体检表。
-    expect(names.classes).toEqual([]);
+    // 🔴 E6#109p-b（1.28）：`classes` 整块早在 E6#109l-b 就从清单删了 ⇒ 本轮连**读它的代码**一起退役。
+    //    反向断言仍有意为之：谁把 `classes` 加回清单（或加回字段）⇒ 这条当场红，逼一次知情决策。
     expect(names.keyframes.map((k) => k.name)).toContain("ldk-selectbox-in");
-  });
-
-  it("classes 两组都并进来（shared 带 owner / host 不带）——夹具，不依赖真实表非空", () => {
-    // 🔴 为什么用夹具：classes.shared 在 E6#109g 收尾后**恒为空数组** ⇒ 真实包里那一组「并进来」
-    //    这件事已不可观测。若只断言「有带 owner 的条目」，一旦 shared 摘空就是必红的假判据；
-    //    删掉又会让 loadReservedNames 的合并语义彻底失去覆盖。夹具把语义钉住，与真实表是否为空解耦。
-    const root = mkdtempSync(join(tmpdir(), "ldk-reserved-"));
-    const file = join(root, "reserved-class-names.json");
-    writeFileSync(
-      file,
-      JSON.stringify({
-        classes: {
-          shared: [{ name: "demo-shared", owner: "demo-component", why: "夹具——共享组件组" }],
-          host: [{ name: "demo-host", why: "夹具——宿主工具类组" }],
-        },
-        keyframes: [{ name: "demo-keyframe", why: "夹具" }],
-      }),
-      "utf8"
-    );
-    try {
-      const names = loadReservedNames(file);
-      expect(names.classes.map((c) => c.name)).toEqual(["demo-shared", "demo-host"]); // 两组、shared 在前
-      expect(names.classes.find((c) => c.name === "demo-shared")?.owner).toBe("demo-component");
-      expect(names.classes.find((c) => c.name === "demo-host")?.owner).toBeUndefined();
-      expect(names.keyframes.map((k) => k.name)).toEqual(["demo-keyframe"]);
-    } finally {
-      rmSync(root, { recursive: true, force: true });
-    }
+    expect("classes" in names).toBe(false);
   });
 });

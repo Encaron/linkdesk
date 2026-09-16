@@ -23,11 +23,21 @@
  *   - 显式 `--base <dir>`：两源通吃覆盖（冒烟脚本等外部调用场景保留）。
  *
  * 用法：node scripts/check-lsp-deps.mjs [--base <dir>]（已挂 npm run check）
+ *       node scripts/check-lsp-deps.mjs --self-test
  * 退出码 0 = 全部就位，1 = 有缺失（打印到 stderr）。
+ *
+ * ── 🔴 E6#109p-b（1.28）补自测 ＋ 修诚实边界措辞 ──
+ *   1.27 体检把本哨兵判为「假活（从不触发）」：**两端输入同时为 0**（0 个二进制引用、0 缺失），
+ *   旧提示却照旧断言「壳侧仍有效的部分 = 第二源 electron/ 的 spawn 字面量扫描」——读者会把
+ *   「0 个引用 / 0 缺失」读成「检查通过」。现在按 `checked` 分叉：**两端都为 0 ⇒ 明说「本哨兵
+ *   今天无对象」，0 个引用 ≠ 通过**；`checked > 0` 才保留「壳侧仍有效」那句。
+ *   ⛔ 判据、退出码、统计数字行、缺失报错文案**均未动**——只改那段提示的措辞与分支。
+ *   自测用纯字符串判据（不读产品代码），并把 1.27 实测的**扩展名白名单盲区**钉成负例。
  */
 
-import { readFileSync, readdirSync, existsSync } from "fs";
-import { resolve, dirname, extname, isAbsolute, sep } from "path";
+import { readFileSync, readdirSync, existsSync, mkdirSync, mkdtempSync, writeFileSync, rmSync } from "fs";
+import { resolve, dirname, extname, isAbsolute } from "path";
+import { tmpdir } from "os";
 import { fileURLToPath } from "url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -92,15 +102,31 @@ function resolveRef(ref, baseDir) {
 }
 
 /** 是否路径式引用（含路径分隔符 = 相对/绝对文件，不是 PATH 二进制） */
-function isPathLike(ref) {
+export function isPathLike(ref) {
   return ref.includes("/") || ref.includes("\\") || isAbsolute(ref) || BINARY_EXT.test(ref);
+}
+
+/**
+ * 本哨兵的**射程判定**（纯函数，从 `checkRef` 那两行原样抽出，语义一字未改）：
+ * 引用是否「可判」——可判才解析 + 计入 `checked`。
+ *   ① 非路径式（`clangd` / `open -a Terminal` 这类 PATH 二进制或 shell 内建）⇒ 不判；
+ *   ② 相对 ref 且扩展名不在 `BINARY_EXT` 白名单 ⇒ 不判。
+ * 🔴 **已知盲区（钉在自测里，不在本轮修）**：`execFile("tools/x.py")` 这类**非白名单扩展名**
+ *    的路径式引用**收得到但判不了**——1.27 实测：往 electron/main.ts 加一条
+ *    `execFile("tools/__probe_missing__.py", [])` 仍是绿。放宽它 = 改判据，本轮不做。
+ */
+export function isJudgedRef(ref) {
+  if (typeof ref !== "string" || !ref) return false;
+  if (!isPathLike(ref)) return false; // 内建/PATH 二进制——同步无法验证，跳过
+  if (!BINARY_EXT.test(ref) && !isAbsolute(ref)) return false; // 非二进制扩展名的相对 ref 不查
+  return true;
 }
 
 /**
  * 扫描 TS 中 spawn/exec 调用参数里的字符串字面量。
  * 从匹配后的 `(` 起扫描到括号闭合，收集引号内字符串（跳过转义）。
  */
-function extractSpawnStrings(text) {
+export function extractSpawnStrings(text) {
   const results = [];
   const CALL_RE = /\b(spawn|exec|spawnSync|execFile|execFileSync)\s*\(/g;
   let m;
@@ -134,9 +160,7 @@ const missing = [];
 let checked = 0;
 
 function checkRef(ref, source, baseDir) {
-  if (typeof ref !== "string" || !ref) return;
-  if (!isPathLike(ref)) return;          // 内建/PATH 二进制（clangd 等）——同步无法验证，跳过
-  if (!BINARY_EXT.test(ref) && !isAbsolute(ref)) return; // 非二进制扩展名的相对 ref 不查
+  if (!isJudgedRef(ref)) return; // 射程判定抽到 isJudgedRef（语义与旧两行 if 完全一致）
   const abs = resolveRef(ref, baseDir);
   checked++;
   if (!existsSync(abs)) {
@@ -177,47 +201,196 @@ function scanElectronTs(file) {
   }
 }
 
-// ── 执行 ──
+// ────────────────────────────────── 自测 ──────────────────────────────────
 
-const pluginJsonFiles = collectFiles(resolve(ROOT, "plugins"), new Set([".json"]), []).filter((f) => f.endsWith("plugin.json"));
-const electronTsFiles = collectFiles(resolve(ROOT, "electron"), new Set([".ts"]), []);
+/**
+ * `--self-test`：**每例真跑判据、断言实得结果**（只写「应该怎样」不断言 = 假门禁的常见死法）。
+ * 主判据是纯函数（`extractSpawnStrings` / `isPathLike` / `isJudgedRef`），故全部用**纯字符串**
+ * 判定，不读产品代码；唯一一例要读盘的是「`node_modules/` 前缀向上解析」，在 `os.tmpdir()`
+ * 里自建一棵临时树（照 `check-lsp-smoke.mjs` 的 `mkdtempSync` 先例），`finally` 里清掉。
+ */
+function runSelfTest() {
+  const cases = [];
+  /** 用本哨兵真正的判据链过滤：先收字面量，再过射程判定 */
+  const judged = (src) => extractSpawnStrings(src).filter(isJudgedRef);
+  const eqJson = (got, want) => ({
+    pass: JSON.stringify(got) === JSON.stringify(want),
+    detail: `实得 ${JSON.stringify(got)}`,
+  });
 
-/** langDefs 声明总数——用来把「无对象」和「都过」区分开（E6#99，见下方结论行） */
-let langDefCount = 0;
-for (const f of pluginJsonFiles) {
-  try {
-    const j = JSON.parse(readFileSync(f, "utf-8"));
-    if (Array.isArray(j?.contributes?.langDefs)) {
-      langDefCount += j.contributes.langDefs.filter((d) => d?.lsp).length;
-    }
-  } catch {
-    /* 非法 JSON 由别的门禁负责 */
+  // ── 正控：收得到 ⇒ 且判得了 ──
+  cases.push([
+    "正控",
+    '`execFile("node_modules/x/y.js")` 的路径字面量 ⇒ 收得到且判得',
+    () => eqJson(judged('const f = () => execFile("node_modules/x/y.js", []);'), ["node_modules/x/y.js"]),
+  ]);
+  cases.push([
+    "正控",
+    '绝对路径字面量 `"C:/tools/a.exe"` ⇒ 收得到且判得（isAbsolute / 白名单兜住）',
+    () => eqJson(judged('const f = () => exec("C:/tools/a.exe", []);'), ["C:/tools/a.exe"]),
+  ]);
+  cases.push([
+    "正控",
+    '反斜杠写法的绝对路径 `"C:\\\\tools\\\\a.exe"` ⇒ 仍判得，但**转义被抽字面量的扫描器吞掉**（实得 `C:toolsa.exe`，靠 `.exe` 白名单才判到）——**已知局限，钉在此处**',
+    () => {
+      const raw = extractSpawnStrings('const f = () => exec("C:\\\\tools\\\\a.exe", []);');
+      return {
+        pass: raw.length === 1 && raw[0] === "C:toolsa.exe" && isJudgedRef(raw[0]),
+        detail: `收到 ${JSON.stringify(raw)}，判得 ${raw.filter(isJudgedRef).length} 个`,
+      };
+    },
+  ]);
+  cases.push([
+    "正控",
+    "模板串 `` `a/b.js` `` 里的路径 ⇒ 收得到且判得",
+    () => eqJson(judged("const f = () => execFile(`a/b.js`, []);"), ["a/b.js"]),
+  ]);
+  // `node_modules/` 前缀 ⇒ 向上解析（读盘语义，用临时树测；两条：hoist 命中 / 本地优先）
+  cases.push([
+    "正控",
+    "`node_modules/` 前缀走向上解析：插件根无本地依赖 ⇒ 命中父级（hoist 布局，pyright 实证）",
+    () => {
+      const tmp = mkdtempSync(resolve(tmpdir(), "ld-lsp-deps-"));
+      try {
+        const pkgDir = resolve(tmp, "pkg");
+        mkdirSync(pkgDir, { recursive: true });
+        const hoisted = resolve(tmp, "node_modules", "__probe_pkg__", "y.js");
+        mkdirSync(dirname(hoisted), { recursive: true });
+        writeFileSync(hoisted, "// probe\n");
+        const got = resolveRef("node_modules/__probe_pkg__/y.js", pkgDir);
+        return { pass: got === hoisted && existsSync(got), detail: `解析到 ${got}` };
+      } finally {
+        rmSync(tmp, { recursive: true, force: true });
+      }
+    },
+  ]);
+  cases.push([
+    "正控",
+    "`node_modules/` 前缀向上解析：本地命中优先于父级（嵌套布局不被 hoist 抢走）",
+    () => {
+      const tmp = mkdtempSync(resolve(tmpdir(), "ld-lsp-deps-"));
+      try {
+        const pkgDir = resolve(tmp, "pkg");
+        const local = resolve(pkgDir, "node_modules", "__probe_pkg__", "y.js");
+        const hoisted = resolve(tmp, "node_modules", "__probe_pkg__", "y.js");
+        for (const p of [local, hoisted]) {
+          mkdirSync(dirname(p), { recursive: true });
+          writeFileSync(p, "// probe\n");
+        }
+        const got = resolveRef("node_modules/__probe_pkg__/y.js", pkgDir);
+        return { pass: got === local, detail: `解析到 ${got}（期望本地 ${local}）` };
+      } finally {
+        rmSync(tmp, { recursive: true, force: true });
+      }
+    },
+  ]);
+
+  // ── 负控：不在射程的，一个都不许被当成可判引用 ──
+  cases.push([
+    "负控",
+    "`spawn(command, args)`（变量实参）⇒ 收不到任何字符串",
+    () => eqJson(judged("const f = () => spawn(command, args);"), []),
+  ]);
+  cases.push([
+    "负控",
+    '`spawn("clangd")`（非路径式 PATH 二进制）⇒ 收得到但判不了',
+    () => eqJson(judged('const f = () => spawn("clangd", []);'), []),
+  ]);
+  cases.push([
+    "负控",
+    '🔴 `execFile("tools/x.py")` ⇒ **收得到但判不了——扩展名白名单盲区**（1.27 实测已钉，本轮不修）',
+    () => {
+      const raw = extractSpawnStrings('const f = () => execFile("tools/__probe_missing__.py", []);');
+      const kept = raw.filter(isJudgedRef);
+      return {
+        pass: raw.includes("tools/__probe_missing__.py") && kept.length === 0,
+        detail: `收到 ${JSON.stringify(raw)}，其中判得 ${kept.length} 个`,
+      };
+    },
+  ]);
+  cases.push([
+    "负控",
+    '`exec("open -a Terminal")`（shell 内建 / 非路径）⇒ 收得到但判不了',
+    () => eqJson(judged('const f = () => exec("open -a Terminal");'), []),
+  ]);
+
+  let bad = 0;
+  for (const [kind, tag, run] of cases) {
+    const { pass, detail } = run();
+    if (!pass) bad++;
+    process.stdout.write(`${pass ? "✅" : "🔴"} ${kind}·${tag} —— ${detail}\n`);
   }
-  scanPluginJson(f);
-}
-for (const f of electronTsFiles) scanElectronTs(f);
-
-console.log(`[lsp-deps] 哨兵检查 spawn 运行时依赖：${checked} 个二进制引用，${missing.length} 缺失（plugin.json 按插件目录基准，electron .ts 按项目根${cliBase ? `，--base=${cliBase}` : ""}）`);
-
-// 🔴 E6#99（L7 第 7.2 轮）：18 只发货插件源码外移后，本脚本的**第一源**（`plugins/*/plugin.json` 的
-// `langDefs.lsp`）在壳仓里**已经没有对象**——声明 langDefs 的是 python 插件，它搬进了自己的仓。
-// 门禁界最贵的一种坏法就是「扫了个空、然后照常报 ✓」：**真空绿灯比红灯更危险**，它让人以为还被保护着。
-// 故此处**显式打印覆盖域变更**——数字为零时把话说清楚，并指出真正的哨兵现在在哪。
-if (langDefCount === 0) {
-  console.log(
-    "[lsp-deps] ⚠ 覆盖域变更（E6#99）：仓内 plugin.json 里 0 条 langDefs.lsp 声明——第一源已无对象。" +
-      "\n           原因：声明 langDefs 的 python 插件源码已外移独立仓，本哨兵在壳仓内扫不到它（**这不等于检查通过**）。" +
-      "\n           壳侧仍有效的部分 = 第二源 electron/ 的 spawn 字面量扫描（见上行数字）。" +
-      "\n           插件侧由各插件仓自己的 CI 负责（7.5 轮落）；仓外手动验证走 `npm run lsp:smoke -- --base <python 插件仓路径>`。"
+  process.stdout.write(
+    bad === 0
+      ? `\n✅ check-lsp-deps self-test 全过（${cases.length} 例：正控绿 / 负控红）——尺子不是在恒绿。\n`
+      : `\n🔴 check-lsp-deps self-test ${bad} 例不符。\n`,
   );
+  process.exit(bad === 0 ? 0 : 1);
 }
 
-if (missing.length > 0) {
-  for (const { ref, abs, source } of missing) {
-    console.error(`❌ LSP 运行时依赖缺失: "${ref}"（解析 ${abs}）——声明源 ${source}。删依赖时 knip 静态图看不见，本哨兵兜底。`);
+// ────────────────────────────────── 主流程 ──
+
+function runScan() {
+  missing.length = 0;
+  checked = 0;
+
+  const pluginJsonFiles = collectFiles(resolve(ROOT, "plugins"), new Set([".json"]), []).filter((f) => f.endsWith("plugin.json"));
+  const electronTsFiles = collectFiles(resolve(ROOT, "electron"), new Set([".ts"]), []);
+
+  /** langDefs 声明总数——用来把「无对象」和「都过」区分开（E6#99，见下方结论行） */
+  let langDefCount = 0;
+  for (const f of pluginJsonFiles) {
+    try {
+      const j = JSON.parse(readFileSync(f, "utf-8"));
+      if (Array.isArray(j?.contributes?.langDefs)) {
+        langDefCount += j.contributes.langDefs.filter((d) => d?.lsp).length;
+      }
+    } catch {
+      /* 非法 JSON 由别的门禁负责 */
+    }
+    scanPluginJson(f);
   }
-  console.error(`[lsp-deps] 红门禁——上述 ${missing.length} 个 spawn 依赖不存在。恢复依赖或删除失效引用后重跑。`);
-  process.exit(1);
+  for (const f of electronTsFiles) scanElectronTs(f);
+
+  console.log(`[lsp-deps] 哨兵检查 spawn 运行时依赖：${checked} 个二进制引用，${missing.length} 缺失（plugin.json 按插件目录基准，electron .ts 按项目根${cliBase ? `，--base=${cliBase}` : ""}）`);
+
+  // 🔴 E6#99（L7 第 7.2 轮）：18 只发货插件源码外移后，本脚本的**第一源**（`plugins/*/plugin.json` 的
+  // `langDefs.lsp`）在壳仓里**已经没有对象**——声明 langDefs 的是 python 插件，它搬进了自己的仓。
+  // 门禁界最贵的一种坏法就是「扫了个空、然后照常报 ✓」：**真空绿灯比红灯更危险**，它让人以为还被保护着。
+  // 故此处**显式打印覆盖域变更**——数字为零时把话说清楚，并指出真正的哨兵现在在哪。
+  // 🔴 E6#109p-b（1.28）：再往下分一层——**两端同时为 0 时不许再说「壳侧仍有效」**，
+  // 那是把「没量到东西」说成了「量过且合格」；`checked === 0` 时明说本哨兵**今天无对象**。
+  if (langDefCount === 0) {
+    console.log(
+      "[lsp-deps] ⚠ 覆盖域变更（E6#99）：仓内 plugin.json 里 0 条 langDefs.lsp 声明——第一源已无对象。" +
+        "\n           原因：声明 langDefs 的 python 插件源码已外移独立仓，本哨兵在壳仓内扫不到它（**这不等于检查通过**）。" +
+        (checked === 0
+          ? "\n           🔴 第二源 electron/ 的 spawn 字面量扫描同样为 0 个可判引用 ⇒ **本哨兵今天无对象**：" +
+            "\n              两端都没有可判对象，本门禁当前是「无对象」状态，**不等于通过**——" +
+            "\n              别把上行「0 个二进制引用，0 缺失」读成绿灯，它只说明**尺子没量到东西**。" +
+            "\n              （要让这条真跑起来，走 `npm run lsp:smoke -- --base <python 插件仓路径>`。）"
+          : "\n           壳侧仍有效的部分 = 第二源 electron/ 的 spawn 字面量扫描（见上行数字）。") +
+        "\n           插件侧由各插件仓自己的 CI 负责（7.5 轮落）；仓外手动验证走 `npm run lsp:smoke -- --base <python 插件仓路径>`。"
+    );
+  }
+
+  if (missing.length > 0) {
+    for (const { ref, abs, source } of missing) {
+      console.error(`❌ LSP 运行时依赖缺失: "${ref}"（解析 ${abs}）——声明源 ${source}。删依赖时 knip 静态图看不见，本哨兵兜底。`);
+    }
+    console.error(`[lsp-deps] 红门禁——上述 ${missing.length} 个 spawn 依赖不存在。恢复依赖或删除失效引用后重跑。`);
+    process.exit(1);
+  }
+
+  // 🔴 E6#109p-b（1.28）：`checked === 0` 时**不许**报一句光秃秃的 ✓——那时它只说明「尺子没量到东西」，
+  //   与「依赖都在」是两件事（1.27 体检：读者会把「0 个引用 / 0 缺失」读成通过）。
+  if (checked === 0) {
+    console.log("[lsp-deps] ⚠️ 本次无缺失——但 **checked === 0（今天无对象）** ⇒ 这条 ✓ 只说明尺子没量到东西，");
+    console.log("            不等于依赖都在（详见上方「本哨兵今天无对象」那段）。");
+  } else {
+    console.log(`[lsp-deps] ✓ 全部 spawn 运行时依赖物理存在（本次可判引用 ${checked} 个）`);
+  }
 }
 
-console.log("[lsp-deps] ✓ 全部 spawn 运行时依赖物理存在");
+if (process.argv.includes("--self-test")) runSelfTest();
+else runScan();
