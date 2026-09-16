@@ -68,7 +68,14 @@
 }
 
 .ldk-quick-pick-prefix {
-  padding-left: 14px;
+  /* ⚠️ 与设计稿的偏差（E6#109p-b · 1.28a 裁决）：设计方向文档（E3.5 命令面板美化 02-设计方向.md
+   *   的 `.palette-input-prefix`）写的是 `padding-left: 14px`，这里落 **16px**——**门禁逼的机械拧值，不是审美选择**：
+   *   ① `check-spacing-grid` 要求 padding/margin/gap 的 px ≤6 或为 4 的倍数（14 两头不沾）；
+   *   ② 面板里列表项 `padding: 8px 16px`、空态 `20px 16px` 的文字左缘都在 **16px** ⇒ 前缀对齐同一左槽 = 整框一个 gutter；
+   *   ③ 姊妹视图先例：mockup 的 14px 在 AboutView / ReleaseNotesPoolView 同样被拧成 16px（两处文件头各有记账）。
+   *   ⇒ 视觉差异 = `>` 字形右移 2px（无布局影响，纯内边距）。
+   */
+  padding-left: 16px;
   font-size: var(--font-size-lg); /* E5.8 Phase 12 #171：prefix 14→lg */
   color: var(--text-muted);
   user-select: none;
