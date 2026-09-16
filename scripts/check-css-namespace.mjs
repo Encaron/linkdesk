@@ -42,6 +42,7 @@ import { readFileSync, readdirSync, statSync, mkdtempSync, mkdirSync, writeFileS
 import { resolve, dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { tmpdir } from "node:os";
+import { bareClassDefinitions, keyframeDefinitions, stripComments } from "./lib/css-selectors.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, "..");
@@ -65,61 +66,20 @@ function loadRegistry(root = ROOT) {
   return { keyframes: (raw.keyframes ?? []).map((k) => k.name) };
 }
 
-/* ── 解析 ──────────────────────────────────────────────────────────── */
+/* ── 解析 ────────────────────────────────────────────────────────────
+   🔴 口径**不在本文件**：`splitSelector` / `hasAncestor` / `subjectOf` / 「什么算一个独立定义」
+   全部来自 `scripts/lib/css-selectors.mjs`——**同一份实现**也被运行时探针
+   `scripts/runtime-style-audit.mjs` 用（E6#109m 抽出的）。理由见 22 号档 §一 层 3：
+   本系列的真根因就是**尺子不止一把**；「静态说干净、运行时说撞车」时没人知道该信谁。
+   本文件只负责「**扫哪些目录、拿什么去比对**」，不负责「什么算一个定义」。 */
 
-/** 剥注释（选择器/属性里不会有 // 风格注释） */
-const stripComments = (css) => css.replace(/\/\*[\s\S]*?\*\//g, "");
-
-/** 按逗号切复合选择器（括号深度感知，够用） */
-function splitSelector(sel) {
-  const parts = [];
-  let depth = 0;
-  let buf = "";
-  for (const ch of sel) {
-    if (ch === "(" || ch === "[") depth++;
-    else if (ch === ")" || ch === "]") depth--;
-    if (ch === "," && depth === 0) {
-      parts.push(buf);
-      buf = "";
-    } else buf += ch;
-  }
-  if (buf.trim()) parts.push(buf);
-  return parts.map((p) => p.trim()).filter(Boolean);
-}
-
-/** 取选择器主体（最后一个 compound，去伪类/伪元素） */
-function subjectOf(compound) {
-  const noPseudo = compound.replace(/::?[a-zA-Z-]+(\([^)]*\))?/g, "");
-  return noPseudo.trim().split(/[\s>+~]+/).pop() ?? "";
-}
-
-/** 该复合选择器是否有祖先（有 ⇒ 是 scoped 调优，不是裸定义） */
-function hasAncestor(compound) {
-  const noPseudo = compound.replace(/::?[a-zA-Z-]+(\([^)]*\))?/g, "").trim();
-  return noPseudo.split(/[\s>+~]+/).length > 1;
-}
-
-const classesOf = (s) => [...s.matchAll(/\.(-?[_a-zA-Z][\w-]*)/g)].map((m) => m[1]);
-
-/** 收集一个 CSS 文件里的：裸定义类名、关键帧名 */
+/** 收集一个 CSS 文件里的：独立定义类名、关键帧名（口径 = lib，见上） */
 function parseCss(file) {
-  const css = stripComments(readFileSync(file, "utf8"));
-  const bareDefs = new Set();
-  const keyframes = new Set();
-  for (const m of css.matchAll(/@keyframes\s+([\w-]+)/g)) keyframes.add(m[1]);
-  for (const m of css.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
-    const sel = m[1].trim();
-    if (sel.startsWith("@") || !m[2].trim()) continue;
-    for (const one of splitSelector(sel)) {
-      if (hasAncestor(one)) continue; // scoped 调优——不算定义
-      const sub = subjectOf(one);
-      const cls = classesOf(sub);
-      if (cls.length !== 1) continue; // 复合（.x.on）不算裸定义
-      const only = sub.replace(/\./g, "").trim();
-      if (cls[0] === only) bareDefs.add(cls[0]);
-    }
-  }
-  return { bareDefs, keyframes };
+  const cleaned = stripComments(readFileSync(file, "utf8"));
+  return {
+    bareDefs: new Set(bareClassDefinitions(cleaned).map((d) => d.name)),
+    keyframes: new Set(keyframeDefinitions(cleaned).map((d) => d.name)),
+  };
 }
 
 /** 递归收集某目录下的文件 */
