@@ -73,6 +73,111 @@ export const EXEMPT = [
 ];
 
 /**
+ * ── 🔴 已知空转登记（`IDLE`）——**不是豁免**，是「**登记在册的、暂时无输入的正确判据**」──
+ *   与 `EXEMPT` 的区别：豁免说的是「**这道门禁不打算有自测**」（环境依赖），
+ *   空转登记说的是「**判据本身没错，但它的输入数据源今天不含违规形态**」（1.27 立的判据：**空转 ≠ 零存量**）。
+ *   处置只有两条路：**修数据源** 或 **退役**（⛔ 不是「放着不管」）。
+ *
+ *   每条必填 `what` / `why` / `status`（`已处置` | `未处置`）/ `who`（谁在什么时候补——⛔ 不许写「以后再补」）。
+ *   `check` 是**可选的机械核验**（防账本单向腐烂）：
+ *     · `mode: "absent"`  —— 该 marker **不该再出现**（用来钉「已退役」：有人加回来 ⇒ 红）
+ *     · `mode: "present"` —— 该 marker **必须仍在**（用来钉「已修好的生产端」：有人删掉 ⇒ 红）
+ *   ⭐ 全表**每次运行逐条打印**（含全绿时）⇒ 在链里天天可见，不会悄悄烂掉。
+ */
+export const IDLE = [
+  {
+    what: "SDK `reserved-classes.ts` 判据①「裸定义宿主保留类名」",
+    why:
+      "输入是 `schemas/reserved-class-names.json` 的 `classes` 段，而该段**已随 E6#109l-b（1.21b）整块删除**" +
+      "（现只剩 `keyframes`）⇒ `classMap` 恒空 ⇒ 判据想报也报不出来。1.27 实验实证：写 `.badge { }`（当年 `classes` 的头号名字）**只有前缀腿报点**。",
+    status: "已处置",
+    who:
+      "**1.28a（2026-09-16）**：判据① **退役**——代码路径 ＋ `ReservedNames.classes` 字段 ＋ `plugin-prefix.ts` 的类名侧补充措辞一并删除；" +
+      "⚠️ **判据②（关键帧撞宿主名）保留**——拿不到 `pluginId` 时前缀腿 fail-closed，它是唯一的独报腿。",
+    check: {
+      file: "packages/plugin-sdk/src/eslint/checks/reserved-classes.ts",
+      mode: "absent",
+      marker: "const classMap = new Map",
+      note:
+        "这里又出现 `const classMap = …` ⇒ 退役被改回去了（登记表与实况不符，红一次逼对账）。" +
+        "⚠️ marker 必须挑**只在代码里出现**的形态——第一版用了裸 `classMap`，结果撞上了本文件头部**自己那句退役说明**里的字样（登记表当场假红一次），这就是选 marker 的教训",
+    },
+  },
+  {
+    what: "市场「拒装」腿（catalog 条目的 `minAppVersion`）",
+    why:
+      "市场侧 `parse.ts` 读条目、`useInstallAction.ts` 拒装——**腿是齐的**；但生产端 `buildCatalogEntry()` **从不写该键**" +
+      "⇒ 官方 18 仓目录条目 **0/18 有**（准确说法：2/18 manifest 有声明、0/18 条目有）⇒ 那条腿永远不触发。",
+    status: "已处置",
+    who:
+      "**1.28a** 补生产端（`ManifestView` / `collectManifestView` / `buildCatalogEntry`）＋ **1.28b 真发** `@linkdesk/plugin-sdk@0.1.28`（2026-09-16）。" +
+      "⚠️ **存量条目不回溯**：已发布的 18 仓要等**各自下次发布**才带上该字段 ⇒ 对**存量版本**该腿仍不生效（对**新发布**生效）——这条边界交 1.20 报告。",
+    check: {
+      file: "packages/plugin-sdk/src/publish.ts",
+      mode: "present",
+      marker: "minAppVersion !== undefined",
+      note: "找不到生产端那段 ⇒ 有人把它删了（腿又变回空转）",
+    },
+  },
+  {
+    what: "壳判据⑧ 的**插件域另一半**（插件侧 `animation:` 引用的关键帧是否存在）",
+    why:
+      "判据⑧ 的域只做了**宿主域 ＋ 共享组件域**（`allowedKeyframes = sharedKf + shellKf`），而 **SDK 侧没有任何关键帧引用判据**。" +
+      "🔴 1.27 复量**推翻**了 1.26 的「缺口为空」：18 仓**有 3 处 `animation:` 引用**" +
+      "（`marketplace` ×1 ／ `serial-monitor` ×2，与 3 处同名 `@keyframes` 逐一对上、**今天自解析**）" +
+      "⇒ 缺口**有真实质量**（改名忘改引用 = 动画静默消失），只是今天恰好没踩。",
+    status: "未处置",
+    who: "归**一个新的 SDK 轮**（新判据要**先发 SDK、再铺 18 仓**）；1.27 登记、1.28 未做——⛔ 别在 1.29（件 9 评估轮）顺手开工。",
+  },
+];
+
+/**
+ * 纯判定（自测注入假输入）：空转登记表自身是否自洽 ＋ 机械核验。
+ * @param {{entries: any[], readFile: (rel: string) => string}} input
+ */
+export function judgeIdleRegistry({ entries, readFile }) {
+  const violations = [];
+  for (const e of entries) {
+    const label = e.what ?? "(缺 what)";
+    for (const field of ["what", "why", "status", "who"]) {
+      if (!e[field] || !String(e[field]).trim()) {
+        violations.push({
+          kind: "idle-incomplete",
+          what: label,
+          msg: `空转登记条目「${label}」缺 \`${field}\`——登记表必填 what/why/status/who`,
+        });
+      }
+    }
+    if (e.status && !["已处置", "未处置"].includes(e.status)) {
+      violations.push({
+        kind: "idle-status",
+        what: label,
+        msg: `空转登记条目「${label}」的 status 只能是「已处置」或「未处置」，实得 ${JSON.stringify(e.status)}`,
+      });
+    }
+    if (e.check) {
+      const { file, mode, marker, note } = e.check;
+      let text = null;
+      try {
+        text = readFile(file);
+      } catch {
+        violations.push({ kind: "idle-check-unreadable", what: label, msg: `空转登记条目「${label}」的机械核验读不到文件 ${file}` });
+      }
+      if (text !== null) {
+        const found = text.includes(marker);
+        if (mode === "absent" && found) {
+          violations.push({ kind: "idle-check-stale", what: label, msg: `空转登记条目「${label}」说它已退役，但 \`${file}\` 里仍有 \`${marker}\`——${note}` });
+        }
+        if (mode === "present" && !found) {
+          violations.push({ kind: "idle-check-lost", what: label, msg: `空转登记条目「${label}」说生产端已补，但 \`${file}\` 里找不到 \`${marker}\`——${note}` });
+        }
+      }
+    }
+  }
+  return violations;
+}
+
+/**
  * 纯判定（自测注入假输入）：给定域名册、链、豁免清单 ⇒ 违规列表。
  * 不读盘、不执行——「真跑」那一层在 `main()` 里（见 A②）。
  * @param {{files: string[], chain: string, exempt: {file: string, why: string}[], exists?: (f: string) => boolean}} input
@@ -221,6 +326,97 @@ export function runSelfTest() {
       }).violations.some((v) => v.kind === "exempt-no-reason"),
       true,
     ],
+    // ── 空转登记表（IDLE）自身：自洽 ＋ 机械核验 ──
+    [
+      "正控⑤：条目齐备（what/why/status/who）＋ 机械核验通过 ⇒ 零违规",
+      judgeIdleRegistry({
+        entries: [
+          { what: "x", why: "y", status: "已处置", who: "1.28a 已退役", check: { file: "a.ts", mode: "absent", marker: "gone", note: "n" } },
+        ],
+        readFile: () => "// 这里没有那个 marker",
+      }).length,
+      0,
+    ],
+    [
+      "正控⑥：**未处置**条目只要点了名「谁在什么时候补」就合规（登记 ≠ 必须马上做）",
+      judgeIdleRegistry({ entries: [{ what: "x", why: "y", status: "未处置", who: "归一个新的 SDK 轮" }], readFile: () => "" }).length,
+      0,
+    ],
+    [
+      "正控⑦：**真实** IDLE 登记表今天自洽（真读盘核验两条 marker）⇒ 零违规",
+      judgeIdleRegistry({ entries: IDLE, readFile: (rel) => readFileSync(resolve(ROOT, rel), "utf8") }).length,
+      0,
+    ],
+    [
+      "正控⑧：`mode: present` 且 marker 确实在 ⇒ 零违规（对照组）",
+      judgeIdleRegistry({
+        entries: [{ what: "x", why: "y", status: "已处置", who: "z", check: { file: "a.ts", mode: "present", marker: "minAppVersion !== undefined", note: "n" } }],
+        readFile: () => "  ...(v.minAppVersion !== undefined ? { minAppVersion: v.minAppVersion } : {}),",
+      }).length,
+      0,
+    ],
+    [
+      "正控⑨：**今天真实仓库**的域 ＋ 链 ＋ 豁免 ⇒ 零 not-wired（门禁自证的基线）",
+      judgeGateHealth({
+        files: readdirSync(SCRIPTS).filter((f) => f.endsWith(".mjs")),
+        chain: JSON.parse(readFileSync(PKG, "utf8")).scripts.check,
+        exempt: EXEMPT,
+        exists: (f) => existsSync(resolve(SCRIPTS, f)),
+      }).violations.length,
+      0,
+    ],
+    [
+      "正控⑩：空登记表 ⇒ 零违规（边界：不因「没登记」而红）",
+      judgeIdleRegistry({ entries: [], readFile: () => "" }).length,
+      0,
+    ],
+    [
+      "正控⑪：空域名册 ⇒ 零违规（边界：没有 check 脚本时不该红）",
+      judgeGateHealth({ files: ["README.md"], chain: "", exempt: [] }).violations.length,
+      0,
+    ],
+    [
+      "正控⑫：豁免**理由完整**的条目不会因「有理由」而红（对照组）",
+      judgeGateHealth({ files: ["check-a.mjs"], chain: "node scripts/check-a.mjs", exempt: [E("check-a.mjs", "环境依赖：怎么在有环境处跑 = npm run demo")] }).violations.length,
+      0,
+    ],
+    // ── 负控（空转登记表）──
+    [
+      "🔴 负控⑦：条目缺 `who` ⇒ 报 idle-incomplete（⛔ 不许写「以后再补」）",
+      judgeIdleRegistry({ entries: [{ what: "x", why: "y", status: "未处置", who: "  " }], readFile: () => "" }).some((v) => v.kind === "idle-incomplete"),
+      true,
+    ],
+    [
+      "🔴 负控⑧：status 写了第三种值 ⇒ 报 idle-status",
+      judgeIdleRegistry({ entries: [{ what: "x", why: "y", status: "待定", who: "z" }], readFile: () => "" })[0].kind,
+      "idle-status",
+    ],
+    [
+      "🔴 负控⑨：说「已退役」但 marker 又出现了（被人加回来）⇒ 报 idle-check-stale",
+      judgeIdleRegistry({
+        entries: [{ what: "x", why: "y", status: "已处置", who: "z", check: { file: "a.ts", mode: "absent", marker: "classMap", note: "n" } }],
+        readFile: () => "const classMap = new Map()",
+      })[0].kind,
+      "idle-check-stale",
+    ],
+    [
+      "🔴 负控⑩：说「生产端已补」但 marker 没了（被人删掉）⇒ 报 idle-check-lost",
+      judgeIdleRegistry({
+        entries: [{ what: "x", why: "y", status: "已处置", who: "z", check: { file: "a.ts", mode: "present", marker: "minAppVersion !== undefined", note: "n" } }],
+        readFile: () => "// 生产端那段不见了",
+      })[0].kind,
+      "idle-check-lost",
+    ],
+    [
+      "🔴 负控⑪：机械核验读不到文件 ⇒ 报 idle-check-unreadable（fail-closed，不静默跳过）",
+      judgeIdleRegistry({
+        entries: [{ what: "x", why: "y", status: "已处置", who: "z", check: { file: "nope.ts", mode: "absent", marker: "m", note: "n" } }],
+        readFile: () => {
+          throw new Error("ENOENT");
+        },
+      })[0].kind,
+      "idle-check-unreadable",
+    ],
   ];
 
   let bad = 0;
@@ -274,19 +470,32 @@ function main() {
     if (!r.ok) failed.push({ f, detail: r.detail });
   }
 
-  if (violations.length === 0 && failed.length === 0) {
+  // 空转登记表：自洽检查 ＋ 机械核验（它与「豁免」是两件事——见 IDLE 上方注释）
+  const idleViolations = judgeIdleRegistry({
+    entries: IDLE,
+    readFile: (rel) => readFileSync(resolve(ROOT, rel), "utf8"),
+  });
+  const problems = [...violations, ...idleViolations];
+
+  if (problems.length === 0 && failed.length === 0) {
     console.log(
       `✅ 门禁健康度：${domain.length} 道 check-*.mjs —— **有自测＋已接线 ${wired.length} 道 ／ 豁免 ${exempt.length} 道**` +
-        `（已接线者本脚本逐道真跑过，退出码全 0）。`,
+        `（已接线者本脚本逐道真跑过，退出码全 0）；**已知空转登记 ${IDLE.length} 条**（逐条如下，⛔ 不是豁免）。`,
     );
     for (const e of EXEMPT) {
-      console.log(`   ⚠️ 豁免：${e.file}（文件级 · 理由见本脚本 EXEMPT）`);
+      console.log(`   ⚠️ 豁免（文件级）：${e.file} —— 理由与「怎么在有环境处跑」见本脚本 EXEMPT`);
+    }
+    for (const e of IDLE) {
+      const mark = e.status === "已处置" ? "✅" : "⬜";
+      console.log(`   ${mark} [${e.status}] ${e.what}`);
+      console.log(`        输入为何为空：${e.why}`);
+      console.log(`        谁在什么时候补：${e.who}`);
     }
     return;
   }
 
-  console.error(`❌ 门禁健康度不达标——${violations.length + failed.length} 处问题：\n`);
-  for (const v of violations) console.error(`   [${v.kind}] ${v.msg}\n`);
+  console.error(`❌ 门禁健康度不达标——${problems.length + failed.length} 处问题：\n`);
+  for (const v of problems) console.error(`   [${v.kind}] ${v.msg}\n`);
   for (const f of failed) console.error(`   [self-test-failed] ${f.f} 的 --self-test **真跑失败**：${f.detail}\n`);
   console.error(`   域 = scripts/check-*.mjs（${domain.length} 道）—— ⛔ audit-*.mjs / 生成器 / plugin-css-prefix-audit`);
   console.error(`   等**不在域内**（后者是记忆 gate-selftest-must-be-wired 的**判据内例外**：它要 SDK dist，而 dist 是 gitignore 的）。`);
