@@ -668,6 +668,43 @@ component. **Nothing to do before you upgrade; when you upgrade, it's one prefix
 - **What happens if you don't**: exactly the silent failure described in 12.1—the selector just stops matching and those few rules quietly stop applying. **No error.**
 - **When you must change it**: when you move to **`@linkdesk/ui` 0.3.0**. `^0.2.0` does not resolve `0.3.0` (that's how 0.x ranges work), so nothing breaks until you upgrade deliberately. **Grep your own CSS for the old names** after upgrading: an official plugin (`settings`) had exactly one such spot and it was fixed in the same release batch.
 
+### 12.5 The **scope** of custom properties—`--x:` written under `:root` is written for the whole application
+
+The three rules above govern **names**; this one governs **territory**. For custom properties (`--xxx`) there is exactly one rule:
+
+> **Scope is the namespace.** The name is yours to choose; **which subtree it lives in** is what decides who it belongs to.
+
+**① Document-level scope is the host's alone.** Declarations on `:root` / `html` / `body` / `[data-theme="…"]` / `*` are **visible to the entire document**—that is not your territory:
+
+```css
+/* ❌ this declaration is visible to the whole document */
+:root { --my-panel-gap: 8px; }
+
+/* ✅ hang it under your own root class: scope = your subtree */
+.my-plugin-root { --my-panel-gap: 8px; }
+```
+
+**② Every other declaration hangs under one of your own classes.** Write `.your-class { --xxx: … }`—and note that **the name needs no prefix there**: a `--gap` under `:root` collides with someone else's, a `--gap` under `.my-plugin-root` cannot (the scope has already divided the territory).
+
+**③ Nobody may define a `--ldk-*` custom property** (same rule as class names and keyframes—the whole `ldk-` namespace belongs to the host).
+
+**Why this is nastier than a class-name collision**: most of the host's colors / radii / z-index layers are **provided by its stylesheets rather than written by code**. Write one of the host's contract names (say `--bg-card`) under `:root` and **you win**—the whole application's card background follows your value. And **switching themes may switch it back** (a theme overrides some of those names) ⇒ the symptom is "**works sometimes, breaks sometimes**", the hardest kind to diagnose.
+
+**One self-check** (glance at it when your CSS is done): **"is my `--x:` written under `:root`?"** If yes ⇒ move it under your own root class.
+
+**Migrating**—plugins that already define custom properties under `:root`:
+
+| Case | Level | What to do |
+|---|---|---|
+| Name **carries** your own prefix (`--my-plugin-gap`) | 🟡 suggested | Move it under your own root class. The name is yours and nobody competes for it, but there is no reason for it to sit under `:root`—after the move its scope shrinks from the whole document to your own subtree |
+| Name **carries no** prefix (`--gap`, `--bg-card`, …) | 🔴 required | It is live document-wide right now and may already be overriding the host's or another plugin's value ⇒ move it under your own root class (the name may stay as it is; **what changes is the scope**) |
+| Name starts with `ldk-` | 🔴 required | Give it one of your own names—`ldk-` is the host's namespace |
+| Written **under your own root class** | ✅ compliant | Nothing to do. Fine-tuning like `.your-root .ldk-x { --y: … }` is compliant too (one of your own classes appears in the selector) |
+
+**How it is enforced mechanically**: run `npm run lint` in the plugin project root (or `npm run verify` in CI) and each occurrence is reported—🔴 turns CI red, 🟡 only prints. When "it works locally but CI is red", read this section first.
+
+> 🔧 **Maintainer note (authors may skip)**: the rule text (including how the host registers its contract blocks and the floating-layer host exception) lives under `docs/02-Electron架构/E6_插件生态与发布/01-插件独立构建/样式命名空间归一化/`; the shell side is guarded by `scripts/check-css-namespace.mjs`, the plugin side by the SDK's `check-css-namespace` leg (the third criterion of that same leg, sharing one disable-comment id with the class-name and keyframe criteria).
+
 ---
 
 ## Quick Reference
