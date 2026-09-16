@@ -146,7 +146,7 @@ export default function MainZone({ groups, root, creatableViews, activeGroupId }
   if (groups.length === 0) {
     return (
       <div
-        className="main-zone" // E5.8#50.7：主区玻璃表面（index.css 消费 --surface-*/--glass-*；默认零值零变化）
+        className="ldk-main-zone" // E5.8#50.7：主区玻璃表面（index.css 消费 --surface-*/--glass-*；默认零值零变化）
         style={{
           display: "flex",
           alignItems: "center",
@@ -194,7 +194,7 @@ export default function MainZone({ groups, root, creatableViews, activeGroupId }
   return (
     <div
       ref={containerRef}
-      className="main-zone" // E5.8#50.7：主区玻璃表面（index.css 消费 --surface-*/--glass-*；默认零值零变化）
+      className="ldk-main-zone" // E5.8#50.7：主区玻璃表面（index.css 消费 --surface-*/--glass-*；默认零值零变化）
       style={{
         display: "flex",
         flex: 1,
@@ -216,7 +216,7 @@ export default function MainZone({ groups, root, creatableViews, activeGroupId }
                 key={p.groupId}
                 data-group-id={p.groupId}
                 // E5.8#30.15（P5）：聚焦面板 accent 环——inset 阴影零布局位移
-                className={p.groupId === activeGroupId ? "group-pane-focused" : undefined}
+                className={p.groupId === activeGroupId ? "ldk-group-pane-focused" : undefined}
                 // E5.8#30.15（P5）：点面板空白聚焦该面板——同组 no-op（省一次 IPC 回环）
                 onMouseDown={() => {
                   if (activeGroupId !== p.groupId) {
@@ -245,7 +245,7 @@ export default function MainZone({ groups, root, creatableViews, activeGroupId }
                 key={`handle-${h.branchIndex}`}
                 // E5.8#143：split-handle = 与 .zone-resize-handle 共享的点/线视觉（index.css 全局层）——
                 //   常态三点 / hover 成线 + 线端镜像 zone 圆角；行为（拖拽/双击复位）零改动
-                className={isH ? "split-handle" : "split-handle row"}
+                className={isH ? "ldk-split-handle" : "ldk-split-handle row"}
                 style={{
                   position: "absolute",
                   left: `${h.x}%`,
@@ -280,7 +280,7 @@ export default function MainZone({ groups, root, creatableViews, activeGroupId }
             key={group.id}
             data-group-id={group.id}
             // E5.8#30.15（P5）：单面板也带聚焦环（聚焦行为与多面板一致）
-            className={group.id === activeGroupId ? "group-pane-focused" : undefined}
+            className={group.id === activeGroupId ? "ldk-group-pane-focused" : undefined}
             onMouseDown={() => {
               if (activeGroupId !== group.id) {
                 tabAction({ action: "focusGroup", groupId: group.id });

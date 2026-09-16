@@ -22,7 +22,7 @@
  *    ——「选中行的底」全仓只有一处真值，不为本页再定义一次 14% 和 20% 两个近似值。
  *
  * 另有两处**内容**层面的删减（不是拧值），理由见 `.tsx`：
- * 不画 `.rn-meta` 里的「提交 91e6aa36」「主软件更新机制」（`ReleaseNotes` 里没有这两个数据）、
+ * 不画 `.ldk-rn-meta` 里的「提交 91e6aa36」「主软件更新机制」（`ReleaseNotes` 里没有这两个数据）、
  * 不画 `.st-badge` 分类徽标（body 是不透明 GFM，走唯一 `MarkdownView`）、不画 `.v-new`「新」徽标（装饰）。
  *
  * ## 骨架**不做 shimmer**
@@ -40,7 +40,7 @@
 
 /* ── 头部版本区（跨全宽） ── */
 
-.rn-head {
+.ldk-rn-head {
   flex: none;
   display: flex;
   align-items: center;
@@ -49,11 +49,11 @@
   border-bottom: 1px solid var(--separator);
 }
 
-.rn-head-main {
+.ldk-rn-head-main {
   min-width: 0;
 }
 
-.rn-ver-title {
+.ldk-rn-ver-title {
   display: flex;
   align-items: baseline;
   flex-wrap: wrap;
@@ -65,14 +65,14 @@
   color: var(--text-primary);
 }
 
-.rn-ver-sub {
+.ldk-rn-ver-sub {
   font-family: var(--font-ui);
   font-size: var(--font-size-2xs);
   font-weight: 400;
   color: var(--text-muted);
 }
 
-.rn-meta {
+.ldk-rn-meta {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -82,7 +82,7 @@
 }
 
 /* 通道徽标（「稳定版」）。色对语义色，**自己算不出别的值**——壳只说这一版是什么通道 */
-.rn-chip {
+.ldk-rn-chip {
   padding: 1px 8px;
   border-radius: var(--radius-lg);
   background: color-mix(in srgb, var(--status-connected) 14%, transparent);
@@ -91,7 +91,7 @@
   font-weight: 600;
 }
 
-.rn-actions {
+.ldk-rn-actions {
   margin-left: auto;
   display: flex;
   align-items: center;
@@ -103,7 +103,7 @@
  * 中键新开、右键复制地址、状态栏悬停预览 URL 全都只有 `<a>` 才有，而这些**不花一分钱**。
  * `target="_blank"` 见 `.tsx` 头注（不写它 = 把整个软件导航走）。
  */
-.rn-ghost-btn {
+.ldk-rn-ghost-btn {
   display: inline-flex;
   align-items: center;
   height: 26px;
@@ -118,28 +118,28 @@
   cursor: pointer;
 }
 
-.rn-ghost-btn:hover {
+.ldk-rn-ghost-btn:hover {
   background: var(--hover-overlay);
   color: var(--text-primary);
 }
 
 /* ── 主体：左窄栏版本历史（配角导航 220px）+ 右主区更新内容（主角） ── */
 
-.rn-body {
+.ldk-rn-body {
   flex: 1;
   display: grid;
   grid-template-columns: 220px 1fr;
   min-height: 0;
 }
 
-.rn-hist {
+.ldk-rn-hist {
   min-width: 0;
   overflow-y: auto;
   padding: 8px 0;
   border-right: 1px solid var(--separator);
 }
 
-.rn-hist-head {
+.ldk-rn-hist-head {
   padding: 6px 20px 8px;
   font-size: var(--font-size-2xs);
   color: var(--text-muted);
@@ -148,7 +148,7 @@
 }
 
 /* 空态时左窄栏的占位（「无本地缓存 / 联网后自动拉取」）——两行独立文案，不用 `<br>` 拼 */
-.rn-hist-note {
+.ldk-rn-hist-note {
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -166,7 +166,7 @@
  * 🔴 **不写 `outline: none`**：全局 `*:focus-visible`（`index.css:268`）给的焦点环是键盘用户
  * 唯一的方位感，这里抹掉它就等于让键盘走不到历史版本。
  */
-.rn-ver {
+.ldk-rn-ver {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -182,32 +182,32 @@
   cursor: pointer;
 }
 
-.rn-ver:hover {
+.ldk-rn-ver:hover {
   background: var(--hover-overlay);
   color: var(--text-primary);
 }
 
-/* 选中行 = 全仓统一的「选中底」+ accent 左竖条（对标 mockup 的 `.rn-ver.selected`） */
-.rn-ver--on,
-.rn-ver--on:hover {
+/* 选中行 = 全仓统一的「选中底」+ accent 左竖条（对标 mockup 的 `.ldk-rn-ver.selected`） */
+.ldk-rn-ver--on,
+.ldk-rn-ver--on:hover {
   background: var(--bg-selection);
   color: var(--text-primary);
   border-left-color: var(--accent);
 }
 
-.rn-ver-num {
+.ldk-rn-ver-num {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.rn-ver-date {
+.ldk-rn-ver-date {
   margin-left: auto;
   color: var(--text-muted);
 }
 
-.rn-all {
+.ldk-rn-all {
   display: block;
   padding: 12px 20px;
   border-top: 1px solid var(--separator);
@@ -216,24 +216,24 @@
   text-decoration: none;
 }
 
-.rn-all:hover {
+.ldk-rn-all:hover {
   text-decoration: underline;
 }
 
-.rn-content {
+.ldk-rn-content {
   min-width: 0;
   overflow-y: auto;
   padding: 16px 24px;
 }
 
-/* 空态要能把 `.rn-empty` 撑满剩余高度才能居中（grid 子项默认 stretch，这里改 flex 布局容器） */
-.rn-content--center {
+/* 空态要能把 `.ldk-rn-empty` 撑满剩余高度才能居中（grid 子项默认 stretch，这里改 flex 布局容器） */
+.ldk-rn-content--center {
   display: flex;
 }
 
 /* ── 首启自动弹横幅 ── */
 
-.rn-banner {
+.ldk-rn-banner {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -246,16 +246,16 @@
   color: var(--text-secondary);
 }
 
-.rn-banner-icon {
+.ldk-rn-banner-icon {
   flex: none;
   color: var(--status-connected);
 }
 
-.rn-banner-text {
+.ldk-rn-banner-text {
   min-width: 0;
 }
 
-.rn-banner-btn {
+.ldk-rn-banner-btn {
   flex: none;
   margin-left: auto;
   padding: 0 4px;
@@ -268,13 +268,13 @@
   cursor: pointer;
 }
 
-.rn-banner-btn:hover {
+.ldk-rn-banner-btn:hover {
   text-decoration: underline;
 }
 
 /* ── 空态（拉取失败且无缓存） ── */
 
-.rn-empty {
+.ldk-rn-empty {
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -284,7 +284,7 @@
   padding: 40px;
 }
 
-.rn-empty-icon {
+.ldk-rn-empty-icon {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -295,14 +295,14 @@
   color: var(--text-muted);
 }
 
-.rn-empty-title {
+.ldk-rn-empty-title {
   margin-top: 4px;
   font-size: var(--font-size-sm);
   font-weight: 600;
   color: var(--text-primary);
 }
 
-.rn-empty-desc {
+.ldk-rn-empty-desc {
   margin: 0;
   /* mockup 用 `<br>` 手动断行——改成限宽自然折行：换语言后句子长度会变，硬断行必错位 */
   max-width: 360px;
@@ -312,14 +312,14 @@
   line-height: 1.7;
 }
 
-.rn-empty-actions {
+.ldk-rn-empty-actions {
   display: flex;
   align-items: center;
   gap: 8px;
   margin-top: 8px;
 }
 
-.rn-btn {
+.ldk-rn-btn {
   height: 26px;
   padding: 0 16px;
   border: 1px solid var(--separator);
@@ -331,70 +331,70 @@
   cursor: pointer;
 }
 
-.rn-btn:hover {
+.ldk-rn-btn:hover {
   background: var(--hover-overlay);
 }
 
-.rn-btn--primary {
+.ldk-rn-btn--primary {
   border-color: transparent;
   background: var(--accent);
   color: var(--text-on-accent);
 }
 
-.rn-btn--primary:hover {
+.ldk-rn-btn--primary:hover {
   background: var(--accent-hover);
 }
 
-.rn-link {
+.ldk-rn-link {
   font-size: var(--font-size-xs);
   color: var(--accent-hover);
   text-decoration: none;
 }
 
-.rn-link:hover {
+.ldk-rn-link:hover {
   text-decoration: underline;
 }
 
 /* ── 骨架（加载中——形状与 Frame 1 一一对应，零动效） ── */
 
-.rn-skel {
+.ldk-rn-skel {
   padding: 4px 0;
 }
 
 /* 头部那一块要占满整行（Frame 3 的头部就是「一行骨架」，不是居中的小条） */
-.rn-skel--head {
+.ldk-rn-skel--head {
   width: 100%;
 }
 
-.rn-skel-bar {
+.ldk-rn-skel-bar {
   height: 10px;
   margin-bottom: 8px;
   border-radius: var(--radius-sm);
   background: var(--hover-overlay);
 }
 
-.rn-skel-bar--h18 {
+.ldk-rn-skel-bar--h18 {
   height: 18px;
 }
 
-.rn-w40 { width: 40%; }
-.rn-w70 { width: 70%; }
-.rn-w90 { width: 90%; }
+.ldk-rn-w40 { width: 40%; }
+.ldk-rn-w70 { width: 70%; }
+.ldk-rn-w90 { width: 90%; }
 
-.rn-skel-list {
+.ldk-rn-skel-list {
   display: flex;
   flex-direction: column;
   gap: 12px;
   padding: 16px;
 }
 
-.rn-skel-item {
+.ldk-rn-skel-item {
   display: flex;
   flex-direction: column;
   gap: 6px;
 }
 
 /* Frame 3 右主区两段之间的空行（mockup 是 `<div style="height:10px">`） */
-.rn-skel-gap {
+.ldk-rn-skel-gap {
   height: 10px;
 }

@@ -1,7 +1,7 @@
 /* GroupTabBar — E5.6#16.5 MainPool 内标签栏 */
 /* 和壳 TabBar.css 共享 CSS 变量——池 preload 通过 theme:changed 注入 */
 
-.group-tab-bar {
+.ldk-group-tab-bar {
   display: flex;
   align-items: stretch;
   background: var(--bg-card);
@@ -10,13 +10,13 @@
   user-select: none;
 }
 
-/* ── E5.8#46.10：整条 `tab-bar-adsorb` 高亮已删——吸附指示改为 .group-tab-drop-indicator
+/* ── E5.8#46.10：整条 `tab-bar-adsorb` 高亮已删——吸附指示改为 .ldk-group-tab-drop-indicator
    细竖线（两 tab 间插入缝隙，VS Code 式）。现象二（叠窗时横条被误认成菜单栏）随竖线
    归属（竖线落在哪个标签栏）自然消除。零新 CSS——复用已过审的拖拽插入指示器样式。 ── */
 
 /* ── 标签页列表── */
 
-.group-tab-list {
+.ldk-group-tab-list {
   display: flex;
   align-items: stretch;
   overflow-x: auto;
@@ -28,13 +28,13 @@
   padding-left: 4px;
   scrollbar-width: none;
 }
-.group-tab-list::-webkit-scrollbar {
+.ldk-group-tab-list::-webkit-scrollbar {
   display: none;
 }
 
 /* ── 标签页 item ── */
 
-.group-tab-item {
+.ldk-group-tab-item {
   display: flex;
   align-items: center;
   gap: 4px;
@@ -53,10 +53,10 @@
   transition: background 150ms, color 150ms, border-color 150ms, box-shadow 150ms;
   position: relative;
 }
-.group-tab-item:hover {
+.ldk-group-tab-item:hover {
   background: var(--tab-hover-bg);
 }
-.group-tab-item.active {
+.ldk-group-tab-item.active {
   background: var(--bg-window);
   color: var(--text-primary);
   border-color: var(--separator);
@@ -64,7 +64,7 @@
 }
 /* E5.8#51 竞标 D：active 顶部 2px accent 横杠——独立 ::before 元素（非 border-top），
    圆角 tab 上呈「短横杠」而非沿角线；left/right 8px 内缩避开圆角。 */
-.group-tab-item::before {
+.ldk-group-tab-item::before {
   content: "";
   position: absolute;
   top: 0;
@@ -75,16 +75,16 @@
   background: transparent;
   pointer-events: none;
 }
-.group-tab-item.active::before {
+.ldk-group-tab-item.active::before {
   background: var(--accent);
 }
-.group-tab-item.dragging {
+.ldk-group-tab-item.dragging {
   opacity: 0.3;
 }
 
 /* ── dirty dot ── */
 
-.group-tab-dirty-dot {
+.ldk-group-tab-dirty-dot {
   width: 8px;
   height: 8px;
   border-radius: var(--radius-full);
@@ -94,32 +94,32 @@
 
 /* ── 图标 ──（E6#69g：标签图标 = PoolPluginIcon 判别联合——img 走盒、codicon/emoji 走字形、lucide 走 svg） */
 
-.group-tab-icon {
+.ldk-group-tab-icon {
   flex-shrink: 0;
   opacity: 0.8;
 }
-.group-tab-icon.plugin-icon--img {
+.ldk-group-tab-icon.plugin-icon--img {
   width: calc(14px * var(--ui-scale)); /* E5.8 Phase 12 #169：tab 图标盒随 scale（文本相邻图标轨道） */
   height: calc(14px * var(--ui-scale));
   /* E5.8#46.6：禁原生 HTML5 拖拽——img 默认可拖，会与标签页指针拖拽抢手势（拖 tab 出原生图标拖影） */
   -webkit-user-drag: none;
 }
-.group-tab-icon.plugin-icon--lucide svg {
+.ldk-group-tab-icon.plugin-icon--lucide svg {
   width: calc(14px * var(--ui-scale));
   height: calc(14px * var(--ui-scale));
 }
-.group-tab-icon.plugin-icon--codicon,
-.group-tab-icon.plugin-icon--emoji {
+.ldk-group-tab-icon.plugin-icon--codicon,
+.ldk-group-tab-icon.plugin-icon--emoji {
   font-size: var(--font-size-lg); /* 14→lg */
   line-height: 1;
 }
-.group-tab-item.active .group-tab-icon {
+.ldk-group-tab-item.active .ldk-group-tab-icon {
   opacity: 1;
 }
 
 /* ── 标签文字 ── */
 
-.group-tab-label {
+.ldk-group-tab-label {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -128,13 +128,13 @@
 }
 
 /* 预览模式（对标 VS Code preview editor：斜体） */
-.group-tab-item.preview .group-tab-label {
+.ldk-group-tab-item.preview .ldk-group-tab-label {
   font-style: italic;
 }
 
 /* ── 关闭按钮 ── */
 
-.group-tab-close {
+.ldk-group-tab-close {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -151,18 +151,18 @@
   opacity: 0;
   transition: opacity 100ms, background 100ms, color 100ms;
 }
-.group-tab-item:hover .group-tab-close,
-.group-tab-item.active .group-tab-close {
+.ldk-group-tab-item:hover .ldk-group-tab-close,
+.ldk-group-tab-item.active .ldk-group-tab-close {
   opacity: 1;
 }
-.group-tab-close:hover {
+.ldk-group-tab-close:hover {
   background: var(--tab-hover-bg);
   color: var(--text-primary);
 }
 
 /* ── [+] 按钮 ── */
 
-.group-tab-plus-btn {
+.ldk-group-tab-plus-btn {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -176,14 +176,14 @@
   flex-shrink: 0;
   transition: background 100ms, color 100ms;
 }
-.group-tab-plus-btn:hover {
+.ldk-group-tab-plus-btn:hover {
   background: var(--tab-hover-bg);
   color: var(--text-primary);
 }
 
 /* ── 滚动箭头 ── */
 
-.group-tab-scroll-arrow {
+.ldk-group-tab-scroll-arrow {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -196,7 +196,7 @@
   cursor: pointer;
   flex-shrink: 0;
 }
-.group-tab-scroll-arrow:hover {
+.ldk-group-tab-scroll-arrow:hover {
   background: var(--tab-hover-bg);
   color: var(--text-primary);
 }
@@ -208,7 +208,7 @@
    margin-right +1 使净占 = W−3+1 = 0（整排纹丝不动，长按/拖动零挤占）。
    竖线落 [P+1, P+3]（P=前一 tab 右缘），空隙 [P, P+4]——两边各留 1px，正正好好站两个胶囊中间。
    高度 30px + margin-top 4px 对齐 tab 可视高。 */
-.group-tab-drop-indicator {
+.ldk-group-tab-drop-indicator {
   width: 2px;
   height: calc(30px * var(--ui-scale)); /* E5.8 Phase 12 #169：跟随 tab 高 */
   margin: 4px 1px 0 -3px;
@@ -224,21 +224,21 @@
 
 /* ── Enter / Exit 动画（对标旧 TabBar）── */
 
-.group-tab-item.entering {
-  animation: group-tab-enter 150ms ease-out;
+.ldk-group-tab-item.entering {
+  animation: ldk-group-tab-enter 150ms ease-out;
 }
 
-@keyframes group-tab-enter {
+@keyframes ldk-group-tab-enter {
   from { opacity: 0; max-width: 0; padding-left: 0; padding-right: 0; }
   to   { opacity: 1; max-width: 200px; padding-left: 8px; padding-right: 8px; }
 }
 
-.group-tab-item.exiting {
-  animation: group-tab-exit 120ms ease-in forwards;
+.ldk-group-tab-item.exiting {
+  animation: ldk-group-tab-exit 120ms ease-in forwards;
   pointer-events: none;
 }
 
-@keyframes group-tab-exit {
+@keyframes ldk-group-tab-exit {
   from { opacity: 1; max-width: 200px; }
   to   { opacity: 0; max-width: 0; padding-left: 0; padding-right: 0; }
 }
@@ -246,12 +246,12 @@
 /* ── 拖拽分屏 drop zone 毛玻璃（Glassmorphism 对标 VS Code editorDropTarget）──
    设计决策：拒绝 dashed 虚线边框（无美术感），改用内发光 box-shadow 定义区域边界。
    玻璃物理：半透明散射面 + backdrop-filter 模糊 + 固态 hairline 边框 + 内发光深度。 */
-@keyframes drop-zone-in {
+@keyframes ldk-drop-zone-in {
   from { opacity: 0; transform: scale(0.96); }
   to   { opacity: 1; transform: scale(1); }
 }
 
-.drop-glass-zone {
+.ldk-drop-glass-zone {
   position: absolute;
   pointer-events: none;
   /* 玻璃表面——半透明散射面叠加 backdrop-filter 毛玻璃（E5.8#76 死编码消除：
@@ -263,11 +263,11 @@
   border: 1px solid var(--drop-glass-border);
   /* 内发光——模拟玻璃边缘集光，定义区域边界 */
   box-shadow: var(--drop-glass-inner);
-  animation: drop-zone-in 120ms ease-out forwards;
+  animation: ldk-drop-zone-in 120ms ease-out forwards;
 }
 
 /* ── E5.6#16.7k-3：PlusMenu [+] 下拉菜单 ── */
-.group-tab-plus-menu {
+.ldk-group-tab-plus-menu {
   background: var(--bg-card); /* E5.8#128.3：幽灵 --bg-dropdown → --bg-card（下拉表面，同 quick-pick） */
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
@@ -276,7 +276,7 @@
   box-shadow: var(--shadow-lift);
 }
 
-.group-tab-plus-menu-item {
+.ldk-group-tab-plus-menu-item {
   display: block;
   width: 100%;
   padding: 8px 16px;
@@ -288,6 +288,6 @@
   cursor: pointer;
 }
 
-.group-tab-plus-menu-item:hover {
+.ldk-group-tab-plus-menu-item:hover {
   background: var(--hover-overlay); /* E5.8#128.3：幽灵 --bg-hover → --hover-overlay（原无效值，现恢复 hover 反馈） */
 }

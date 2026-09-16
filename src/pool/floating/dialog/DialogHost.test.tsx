@@ -90,12 +90,12 @@ function pushShell(data: PoolDialogData): void {
 }
 
 function getPanel(container: HTMLElement): HTMLElement {
-  return container.querySelector(".dialog-host-panel") as HTMLElement;
+  return container.querySelector(".ldk-dialog-host-panel") as HTMLElement;
 }
 
 function getBackdrop(): HTMLElement {
   // E5.8#107 浮层权威：遮罩 portal 出 container（createPortal → scrim-plane/body 兜底）——查 document
-  return document.querySelector(".dialog-host-backdrop") as HTMLElement;
+  return document.querySelector(".ldk-dialog-host-backdrop") as HTMLElement;
 }
 
 beforeEach(() => {
@@ -116,7 +116,7 @@ describe("富内容槽（content 模式，E6#71c）", () => {
     pushShell(contentData());
 
     const panel = getPanel(container);
-    expect(panel.className).toContain("dialog-host-panel--content");
+    expect(panel.className).toContain("ldk-dialog-host-panel--content");
     expect(screen.getByTestId("dialog-content-plugin").textContent).toBe(
       "demo-plugin-a :: /@fs/plugins/demo-plugin-a/src/views/ConfirmDemo.tsx"
     );
@@ -207,7 +207,7 @@ describe("文字模式零回归（无 content）", () => {
     expect(getPanel(container)).toBeTruthy();
 
     pushShell({ open: false });
-    expect(container.querySelector(".dialog-host-panel")).toBeNull();
-    expect(document.querySelector(".dialog-host-backdrop")).toBeNull();
+    expect(container.querySelector(".ldk-dialog-host-panel")).toBeNull();
+    expect(document.querySelector(".ldk-dialog-host-backdrop")).toBeNull();
   });
 });

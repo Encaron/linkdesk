@@ -9,7 +9,7 @@
  * 保留原值（Phase 6 #26 Z_INDEX/常量表可补面板级阴影 token）。
  */
 
-.status-bar {
+.ldk-status-bar {
   display: flex;
   align-items: center;
   height: calc(22px * var(--ui-scale)); /* E5.8 Phase 12 #166：22px 高+行高链乘 scale */
@@ -23,11 +23,11 @@
   line-height: calc(22px * var(--ui-scale));
 }
 
-.status-text {
+.ldk-status-text {
   color: var(--text-secondary);
 }
 
-.status-divider {
+.ldk-status-divider {
   display: inline-block;
   height: 14px;
   margin: 0 6px;
@@ -35,7 +35,7 @@
   vertical-align: middle;
 }
 
-.status-chord {
+.ldk-status-chord {
   font-size: var(--font-size-xs); /* 11→xs */
   color: var(--accent);
   max-width: 320px;
@@ -46,20 +46,20 @@
   min-width: 0;
 }
 
-.status-bar-left {
+.ldk-status-bar-left {
   display: flex;
   align-items: center;
   gap: 6px;
   flex: 1;
 }
 
-.status-bar-right {
+.ldk-status-bar-right {
   display: flex;
   align-items: center;
   gap: 6px;
 }
 
-.status-bar-btn {
+.ldk-status-bar-btn {
   background: none;
   border: none;
   color: var(--text-secondary);
@@ -72,26 +72,26 @@
   transition: background 120ms, color 120ms;
 }
 
-.status-bar-btn:hover {
+.ldk-status-bar-btn:hover {
   background: var(--tab-hover-bg);
   color: var(--text-primary);
 }
 
 /* ── P3-9：通知面板 —— 对标 VS Code notificationsCenter.css ── */
 
-.status-bar-notif-btn {
+.ldk-status-bar-notif-btn {
   position: relative;
 }
 
-.status-bar-notif-btn .codicon-bell {
+.ldk-status-bar-notif-btn .codicon-bell {
   font-size: var(--font-size-lg); /* 14→lg */
 }
 
-.status-bar-notif-btn.has-notifications {
+.ldk-status-bar-notif-btn.has-notifications {
   color: var(--accent);
 }
 
-.status-bar-notif-badge {
+.ldk-status-bar-notif-badge {
   position: absolute;
   top: 1px;
   right: 1px;
@@ -110,7 +110,7 @@
 /*
  * 对标 VS Code .notifications-center：right: 7px; bottom: 29px; max-width: 450px
  */
-.status-bar-notif-panel {
+.ldk-status-bar-notif-panel {
   position: fixed;
   right: 7px;
   bottom: calc(22px * var(--ui-scale) + 7px); /* E5.8 Phase 12 #166：22px status bar（scaled）+ 7px */
@@ -129,7 +129,7 @@
 /*
  * 对标 VS Code .notifications-center-header：height: 35px; title 11px uppercase
  */
-.notif-panel-header {
+.ldk-notif-panel-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -139,7 +139,7 @@
   flex-shrink: 0;
 }
 
-.notif-panel-header .notif-panel-title {
+.ldk-notif-panel-header .notif-panel-title {
   text-transform: uppercase;
   font-size: var(--font-size-xs); /* 11→xs */
   font-weight: 600;
@@ -147,7 +147,7 @@
   color: var(--text-secondary);
 }
 
-.notif-panel-header .notif-panel-heading {
+.ldk-notif-panel-header .notif-panel-heading {
   display: flex;
   align-items: baseline;
   gap: 8px;
@@ -160,7 +160,7 @@
    · 字色 --text-secondary 而**不是** --text-muted——这行是「还有几件事在跑」的实信息，
      不是装饰；压到 muted 会在 10px 上掉破可读线；
    · nowrap + 省略——摘要可以长（「3 项进行中 · 另有 4 项等待安装中」），但不许换行撑高头部。 */
-.notif-panel-header .notif-panel-summary {
+.ldk-notif-panel-header .notif-panel-summary {
   font-size: var(--font-size-2xs);
   color: var(--text-secondary);
   white-space: nowrap;
@@ -169,7 +169,7 @@
   min-width: 0;
 }
 
-.notif-panel-header .notif-panel-toolbar {
+.ldk-notif-panel-header .notif-panel-toolbar {
   display: flex;
   gap: 2px;
   flex-shrink: 0;
@@ -184,7 +184,7 @@
  * （实测 muted 在深色卡片上 3.99:1、浅色 4.17:1，均低于正文级 4.5:1；secondary 为 5.08:1 / 6.33:1）。
  * 点按目标同时撑到 WCAG 2.2 SC 2.5.8 的 24×24px——此前 2px 竖向内边距下只有 ~19px 高。
  */
-.notif-panel-action {
+.ldk-notif-panel-action {
   background: none;
   border: none;
   color: var(--text-secondary);
@@ -200,24 +200,24 @@
   min-height: calc(24px * var(--ui-scale));
 }
 
-.notif-panel-action:hover {
+.ldk-notif-panel-action:hover {
   background: var(--tab-hover-bg);
   color: var(--text-primary);
 }
 
-.notif-panel-empty {
+.ldk-notif-panel-empty {
   padding: 32px 16px;
   text-align: center;
   font-size: var(--font-size-sm); /* 12→sm */
   color: var(--text-secondary); /* E6#73k：面板内文字整层收口 4.5:1 */
 }
 
-.notif-panel-list {
+.ldk-notif-panel-list {
   overflow-y: auto;
   flex: 1;
 }
 
-.notif-panel-item {
+.ldk-notif-panel-item {
   /* 🔥 E6#73d（C4）：DOM 序 = 视觉序，`column-reverse` 已撤。
      2026-09-05 曾照抄 VS Code（DOM 详情行先 + column-reverse 翻回来），但那样**拖选复制**出来的
      文本顺序与屏幕从上到下相反——复制一条失败通知得到的是按钮文字打头的乱序串。
@@ -227,28 +227,28 @@
   flex-direction: column;
   padding: 8px;
   border-bottom: 1px solid var(--separator);
-  /* E6#72b：整条可拖选——跨「消息→来源→时间」一次划选能连起来（单给 .notif-panel-msg 设 text 时
+  /* E6#72b：整条可拖选——跨「消息→来源→时间」一次划选能连起来（单给 .ldk-notif-panel-msg 设 text 时
      跨元素选择会中断）。按钮排除在下（按钮文字被选中是纯噪音，且会干扰点击）。 */
   user-select: text;
 }
 
-.notif-panel-item button {
+.ldk-notif-panel-item button {
   user-select: none;
 }
 
-.notif-panel-item:last-child {
+.ldk-notif-panel-item:last-child {
   border-bottom: none;
 }
 
 /* Main row: icon + message + dismiss */
-.notif-panel-item .notif-main-row {
+.ldk-notif-panel-item .notif-main-row {
   display: flex;
   align-items: flex-start;
   gap: 6px;
 }
 
 /* VS Code: icon 16px, margin 4px, font-size 18px */
-.notif-panel-item .notif-icon {
+.ldk-notif-panel-item .notif-icon {
   flex: 0 0 16px;
   width: 16px;
   height: calc(22px * var(--ui-scale)); /* E5.8 Phase 12 #166：22px 行高链乘 scale */
@@ -259,15 +259,15 @@
   margin: 0 2px;
 }
 
-.notif-panel-item .notif-icon.info { color: var(--accent); }
-.notif-panel-item .notif-icon.warning { color: var(--warning); }
-.notif-panel-item .notif-icon.error { color: var(--error); }
+.ldk-notif-panel-item .notif-icon.info { color: var(--accent); }
+.ldk-notif-panel-item .notif-icon.warning { color: var(--warning); }
+.ldk-notif-panel-item .notif-icon.error { color: var(--error); }
 
 /* 消息行——E6#72b：从单行 ellipsis 改整句换行 + 可拖选复制（对应用户 P5「宽面板文字不能复制」）。
    行高/字号不变（面板密度节奏不动）；只把截断换成换行。
    ⚠️ 换行链三件套缺一不可：white-space 放行换行 / overflow-wrap 长 token（URL、无空格长串）强断 /
    min-width:0 让 flex 子项允许收缩到内容宽以下——少 min-width 则长串把面板撑宽。 */
-.notif-panel-msg {
+.ldk-notif-panel-msg {
   flex: 1;
   font-size: var(--font-size-sm); /* 12→sm */
   color: var(--text-primary);
@@ -305,7 +305,7 @@
  * （承载信息的那个元素），轨道自己有意不承载信息。
  * 判据：SC 1.4.11 管的是「理解内容所必需的图形对象」，空轨道不属于此列。
  */
-.notif-progress {
+.ldk-notif-progress {
   position: relative;
   height: 4px;                    /* E6#73k：3px → 4px（可见性） */
   margin: 6px 0 2px;              /* 上留与消息行的呼吸、下贴详情行 */
@@ -316,7 +316,7 @@
 }
 
 /* 确定态——条宽由 percent 驱动，分段到达平滑过渡不跳帧 */
-.notif-progress-fill {
+.ldk-notif-progress-fill {
   position: absolute;
   inset: 0 auto 0 0;             /* top/right/bottom/left：左贴齐，宽由内联 style 给 */
   border-radius: var(--radius-pill);
@@ -325,27 +325,27 @@
 }
 
 /* 不定态——无百分数段（校验/解压/加载）：强调色块扫过轨道 */
-.notif-progress-indeterminate {
+.ldk-notif-progress-indeterminate {
   position: absolute;
   inset: 0 auto 0 0;
   width: 40%;
   border-radius: var(--radius-pill);
   background: var(--accent);
-  animation: notif-progress-scan 1.2s linear infinite;
+  animation: ldk-notif-progress-scan 1.2s linear infinite;
 }
 
-@keyframes notif-progress-scan {
+@keyframes ldk-notif-progress-scan {
   /* transform % 相对自身宽（轨道 40%）——从完全出左到完全出右连续扫过 */
   0%   { transform: translateX(-100%); }
   100% { transform: translateX(350%); }
 }
 
 /* 进度图标转圈——与进度条同源语义（「正在跑」）。非进度图标不套此类 */
-.notif-icon-spin {
-  animation: notif-icon-spin 1.4s linear infinite;
+.ldk-notif-icon-spin {
+  animation: ldk-notif-icon-spin 1.4s linear infinite;
 }
 
-@keyframes notif-icon-spin {
+@keyframes ldk-notif-icon-spin {
   to { transform: rotate(360deg); }
 }
 
@@ -357,7 +357,7 @@
    （「解压中…」/「下载中 62%」）本来就把阶段说清楚了，条纹只负责不撒谎。
    条纹周期取 2px/4px：4px 高的条上比细密斜纹更容易在实机上看出「这是纹理不是纯色块」。 */
 @media (prefers-reduced-motion: reduce) {
-  .notif-progress-indeterminate {
+  .ldk-notif-progress-indeterminate {
     animation: none;
     transform: none;
     width: 100%;
@@ -367,10 +367,10 @@
       transparent 2px 6px
     );
   }
-  .notif-icon-spin {
+  .ldk-notif-icon-spin {
     animation: none;
   }
-  .notif-progress-fill {
+  .ldk-notif-progress-fill {
     transition: none;
   }
 }
@@ -383,7 +383,7 @@
  * 用户看不见焦点在哪，随手一个 Enter 就**真把那条通知删了**。补 `:focus-visible` 分支。
  * 用 `:focus-visible` 而非 `:focus`：鼠标点过的按钮不该因为「还focus着」就常驻显形。
  */
-.notif-panel-dismiss {
+.ldk-notif-panel-dismiss {
   background: none;
   border: none;
   color: var(--text-secondary); /* E6#73k（J6）：muted 3.99:1 → secondary 5.08:1 */
@@ -402,19 +402,19 @@
   transition: opacity 100ms;
 }
 
-.notif-panel-item:hover .notif-panel-dismiss,
-.notif-panel-dismiss:focus-visible {
+.ldk-notif-panel-item:hover .ldk-notif-panel-dismiss,
+.ldk-notif-panel-dismiss:focus-visible {
   opacity: 1;
 }
 
-.notif-panel-dismiss:hover {
+.ldk-notif-panel-dismiss:hover {
   color: var(--text-primary);
   background: var(--tab-hover-bg);
   border-radius: var(--radius-sm);
 }
 
 /* VS Code: details row below message——source + action buttons */
-.notif-panel-item .notif-details-row {
+.ldk-notif-panel-item .notif-details-row {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -425,7 +425,7 @@
   flex-wrap: wrap;
 }
 
-.notif-source {
+.ldk-notif-source {
   color: var(--text-secondary); /* E6#73k（J6）：同上层——来源串是实信息（可复制、要能读清） */
   white-space: nowrap;
   /* E6#72b：来源串（"来源: serial-monitor.portErrors"）也常要复制——同消息行放行拖选 */
@@ -433,12 +433,12 @@
   cursor: text;
 }
 
-.notif-actions-row {
+.ldk-notif-actions-row {
   display: flex;
   gap: 4px;
 }
 
-.notif-action-btn {
+.ldk-notif-action-btn {
   background: none;
   border: none;
   font-size: var(--font-size-xs); /* 11→xs */
@@ -457,40 +457,40 @@
   min-width: calc(24px * var(--ui-scale));
 }
 
-.notif-action-btn.primary {
+.ldk-notif-action-btn.primary {
   background: var(--accent);
   color: var(--badge-text);
 }
 
-.notif-action-btn.primary:hover {
+.ldk-notif-action-btn.primary:hover {
   opacity: 0.85;
 }
 
-.notif-action-btn.secondary {
+.ldk-notif-action-btn.secondary {
   color: var(--text-secondary); /* E6#73k（J6）：按钮文字是实信息，muted 3.99:1 不达标 */
   border: 1px solid var(--separator);
 }
 
-.notif-action-btn.secondary:hover {
+.ldk-notif-action-btn.secondary:hover {
   color: var(--text-primary);
   border-color: var(--text-muted);
 }
 
 /* Severity icons in notification panel */
-.notif-severity-error { color: var(--danger) !important; }
-.notif-severity-warning { color: var(--warning) !important; }
+.ldk-notif-severity-error { color: var(--danger) !important; }
+.ldk-notif-severity-warning { color: var(--warning) !important; }
 
 /* ── E3e #49/#50：NotificationCenter 增强 —— source 分组标题 + 未读徽章 + 时间标签 ── */
 
 /* 分组标题——插件名 + 未读数 */
-.notif-panel-section-header {
+.ldk-notif-panel-section-header {
   display: flex;
   align-items: center;
   gap: 6px;
   padding: 8px 12px 2px;
 }
 
-.notif-source-group-label {
+.ldk-notif-source-group-label {
   font-size: var(--font-size-xs); /* 11→xs */
   font-weight: 600;
   text-transform: uppercase;
@@ -498,7 +498,7 @@
   color: var(--text-secondary);
 }
 
-.notif-source-group-badge {
+.ldk-notif-source-group-badge {
   font-size: var(--font-size-2xs); /* 10→2xs */
   font-weight: 600;
   background: var(--accent);
@@ -513,27 +513,27 @@
 
 /* ═══════════════════════════════════════════════
    E6#73d 安装任务段——「进行中 / 另有 N 项等待安装中」两段的标题与行。
-   与来源分组标题（.notif-panel-section-header）的**层级区分靠结构不靠字号**：
+   与来源分组标题（.ldk-notif-panel-section-header）的**层级区分靠结构不靠字号**：
    任务段 = 「标签 + 贯穿到右端的细线」（结构性分隔，表示这是任务分区）；
    来源分组 = 纯标签无分隔线。两者同字号档，不引出新字号（避免 type-scale 乱档）。
    ═══════════════════════════════════════════════ */
 
-.notif-task-section-header {
+.ldk-notif-task-section-header {
   display: flex;
   align-items: center;
   gap: 6px;
   padding: 8px 12px 2px;
 }
 
-.notif-task-section-label {
-  /* 与 .notif-source-group-label 同档（xs / 600）——层级由右侧细线给，不由加重字色给。
+.ldk-notif-task-section-label {
+  /* 与 .ldk-notif-source-group-label 同档（xs / 600）——层级由右侧细线给，不由加重字色给。
      不加 uppercase：标签是整句短语（「另有 4 项等待安装中」），大写化对 CJK 无效、对混排只会更乱。 */
   font-size: var(--font-size-xs);
   font-weight: 600;
   color: var(--text-secondary);
 }
 
-.notif-task-section-rule {
+.ldk-notif-task-section-rule {
   flex: 1;
   height: 1px;
   background: var(--separator);
@@ -543,7 +543,7 @@
 /* E6#73d：第三段标题右端的计数（「1 项失败 · 3 项已完成」）——**在细线之后**，故细线要能被挤窄。
    2xs 档 + tabular-nums（计数随安装推进跳动，数字同宽不抖）；颜色 secondary 而非 muted——
    这是真信息不是脚注。 */
-.notif-task-section-count {
+.ldk-notif-task-section-count {
   font-size: var(--font-size-2xs);
   color: var(--text-secondary);
   flex-shrink: 0;
@@ -553,7 +553,7 @@
 
 /* 任务行右端状态短语（「下载中 62%」「等待安装中」）——消息行右侧，不占主行视觉权重。
    tabular-nums：百分比逐帧跳动时数字同宽，避免整行随字数抖动（进度条已在动，文字别再动）。 */
-.notif-job-status {
+.ldk-notif-job-status {
   font-size: var(--font-size-2xs);
   color: var(--text-secondary);
   flex-shrink: 0;
@@ -563,7 +563,7 @@
 }
 
 /* 等待行的字形（○）比进行中的 ⟳ 弱一档——「还没轮到」不该和「正在跑」一样显眼 */
-.notif-panel-item .notif-icon.codicon-circle-outline {
+.ldk-notif-panel-item .notif-icon.codicon-circle-outline {
   color: var(--text-muted);
 }
 
@@ -574,7 +574,7 @@
      10px 小字再压到 muted 会掉到可读性线下；
    · 不加 codicon、无 hover/不可点——一加图标就长得像通知行，会引导用户去点，而折叠掉的条目
      已不在库中，点了无事可做（死钮）；顶部 2px 留白把它与最后一条通知分开。 */
-.notif-panel-folded {
+.ldk-notif-panel-folded {
   padding: 2px 12px 8px;
   font-size: var(--font-size-2xs);
   color: var(--text-secondary);
@@ -582,7 +582,7 @@
 }
 
 /* 时间标签 */
-.notif-panel-time {
+.ldk-notif-panel-time {
   font-size: var(--font-size-2xs); /* 10→2xs */
   color: var(--text-secondary); /* E6#73k（J6）：10px 小字 + muted = 双重不可读，收口到 5.08:1 */
   flex-shrink: 0;
@@ -593,10 +593,10 @@
    E6#73k（J2）可听状态行——活区本体，**视觉上不可见**。
    通行的 sr-only 配方：1px 盒 + `clip-path` 抠掉画面（`clip-path` 而非已废弃的 `clip`；
    不用 `display:none`/`visibility:hidden`——那两者会把节点从无障碍树里一起摘掉，活区就成了哑巴）。
-   绝对定位 → 不参与 `.status-bar` 的 flex 布局，不占位、不撑高状态栏。
+   绝对定位 → 不参与 `.ldk-status-bar` 的 flex 布局，不占位、不撑高状态栏。
    ⚠️ 别顺手给它加背景/边框「方便调试」——一旦可见就是状态栏里的一个灵异白框。
    ═══════════════════════════════════════════════ */
-.notif-sr-live {
+.ldk-notif-sr-live {
   position: absolute;
   width: 1px;
   height: 1px;

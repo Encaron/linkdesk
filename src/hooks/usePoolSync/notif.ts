@@ -91,10 +91,10 @@ function formatTimeAgo(t: TFunction, ts: number): string {
  *  全员零生产者 ⇒ 该分支恒假。要开「作者自定义图标」是**新能力**，得走 8 维设计 + 契约生成，
  *  不在本行整肃范围内，故删分支而非补契约。 */
 function getNotifIconClass(n: Toast): string {
-  if (n.progress) return "codicon codicon-sync notif-icon-spin";
+  if (n.progress) return "codicon codicon-sync ldk-notif-icon-spin";
   switch (n.severity) {
-    case "error": return "codicon codicon-error notif-severity-error";
-    case "warning": return "codicon codicon-warning notif-severity-warning";
+    case "error": return "codicon codicon-error ldk-notif-severity-error";
+    case "warning": return "codicon codicon-warning ldk-notif-severity-warning";
     case "info":
     default: return "codicon codicon-info";
   }
@@ -172,7 +172,7 @@ function buildInstallSections(
         pluginId: j.pluginId,
         name: j.displayName || j.pluginId,
         iconClass:
-          state === "running" ? "codicon codicon-sync notif-icon-spin" : "codicon codicon-circle-outline",
+          state === "running" ? "codicon codicon-sync ldk-notif-icon-spin" : "codicon codicon-circle-outline",
         statusLabel:
           state === "running" ? installRowStatusLabel(t, j.stage, j.percent) : t("等待安装中"),
         // 进度条只在**进行中**且有真值时才画：排队行没有在途工作，画条是撒谎

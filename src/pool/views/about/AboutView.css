@@ -8,22 +8,22 @@
  *    mockup 违规值 → 就近吸附：`padding: 22px 32px` → `24px 32px`（22→24）·
  *    `gap: 14px` → `16px` · `gap: 10px` → `12px` · `padding: 4px 14px` → `0 16px`（14→16）。
  *    ⚠️ mockup 的 `padding: 4px 14px` 里那个 `4px` 本来合规，改 `0 16px` 是为与兄弟视图
- *    `ReleaseNotesPoolView.css` 的 `.rn-btn` **逐值一致**——同一个壳里两个按钮不该长得不一样。
+ *    `ReleaseNotesPoolView.css` 的 `.ldk-rn-btn` **逐值一致**——同一个壳里两个按钮不该长得不一样。
  * ② **字号阶梯**（`check-font-scale-audit.mjs`：禁裸 px）——mockup 的 `16px`/`12.5px`/`11.5px`/`12px`
  *    落 `--font-size-lg`(16) / `--font-size-xs`(12) / `--font-size-2xs`(11)。
  * ③ **零硬编码色**（`check-css-hardcode.mjs`）——mockup 品牌块写死 `#0078D4`、主按钮写死 `#fff`：
  *    前者 = 仓库既有的 `--accent`（`index.css:18` 就是 `#0078D4`，同值不同源），
- *    后者 = `--text-on-accent`（`ReleaseNotesPoolView.css` 的 `.rn-btn--primary` 同款）。
+ *    后者 = `--text-on-accent`（`ReleaseNotesPoolView.css` 的 `.ldk-rn-btn--primary` 同款）。
  *    品牌块的颜色**走 CSS 变量写在 .css 里**（不是把 hex 写进 `.tsx` 的 SVG 属性）——
  *    SVG 的 `fill` 也吃 `var()`，所以「品牌蓝」全仓只有 `--accent` 一处真值，主题换色时它跟着换。
  *
  * ## 两处**内容层**的取舍（不是拧值）
  *
- * - **hover 用底色而非边框**：mockup 写 `.about-btn:hover { border-color: var(--text-muted) }`——
- *   本文件改用兄弟视图 `.rn-btn:hover` 的 `background: var(--hover-overlay)`。理由：同一个壳内
+ * - **hover 用底色而非边框**：mockup 写 `.ldk-about-btn:hover { border-color: var(--text-muted) }`——
+ *   本文件改用兄弟视图 `.ldk-rn-btn:hover` 的 `background: var(--hover-overlay)`。理由：同一个壳内
  *   两套按钮 hover 反馈会读成「这里坏了」；且 mockup 那条规则对 `.primary` 也生效，
  *   会把主按钮的 accent 描边变成灰边（显然不是本意）。
- * - **`.about-inner` 这一层是 mockup 没有的**：mockup 把 `max-width: 420px` 直接挂在带 padding 的
+ * - **`.ldk-about-inner` 这一层是 mockup 没有的**：mockup 把 `max-width: 420px` 直接挂在带 padding 的
  *   滚动元素上，其宽度由内容自然决定 ⇒ 标签列的 72px 与值列的对齐会随最长值浮动。
  *   拆成「滚动区（填满）＋ 内容列（420 封顶）」两层后，宽度是确定的，与最长值无关。
  *
@@ -40,7 +40,7 @@
 }
 
 /* 内容列——420 封顶、左对齐（Frame 6 的版心） */
-.about-inner {
+.ldk-about-inner {
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -49,13 +49,13 @@
 
 /* ── 品牌区 ── */
 
-.about-logo {
+.ldk-about-logo {
   width: 56px;
   height: 56px;
   flex: none;
 }
 
-.about-name {
+.ldk-about-name {
   font-size: var(--font-size-lg);
   font-weight: 600;
   color: var(--text-primary);
@@ -63,24 +63,24 @@
 
 /* ── 字段表（八行 key: value） ── */
 
-.about-fields {
+.ldk-about-fields {
   display: flex;
   flex-direction: column;
   gap: 6px;
   font-size: var(--font-size-xs);
 }
 
-.about-row {
+.ldk-about-row {
   display: flex;
   gap: 12px;
 }
 
-.about-row .k {
+.ldk-about-row .k {
   flex: 0 0 72px;
   color: var(--text-secondary);
 }
 
-.about-row .v {
+.ldk-about-row .v {
   color: var(--text-primary);
   font-family: var(--font-mono);
   font-size: var(--font-size-2xs);
@@ -92,20 +92,20 @@
 
 /* ── 动作行 ── */
 
-.about-actions {
+.ldk-about-actions {
   display: flex;
   gap: 8px;
   margin-top: 6px;
 }
 
-/* E6#57.14 EXEMPT：按钮形态与兄弟视图 `.rn-btn` **逐值一致**是**设计决定**（同一个壳里两个按钮
+/* E6#57.14 EXEMPT：按钮形态与兄弟视图 `.ldk-rn-btn` **逐值一致**是**设计决定**（同一个壳里两个按钮
    不该长得不一样，见文件头 ①），而池视图按目录规范**各自持有自己的样式表**（`views/` 下 6 个域夹，
    无公共 css 层）⇒ 结构性重复无法靠抽公共类消除，除非为一块按钮新建一个共享层（为 13 行开一层，
    不划算且要动目录规范）。同款先例：`IconBarZone.css` / `RightSidebarZone.css` 的 EXEMPT 块。
    ⚠️ 代价如实记着：这两份**会互相漂移**——改一边必须改另一边。 */
 /* jscpd:ignore-start */
-/* 按钮形态与兄弟视图 `.rn-btn` 逐值一致（见文件头 ①） */
-.about-btn {
+/* 按钮形态与兄弟视图 `.ldk-rn-btn` 逐值一致（见文件头 ①） */
+.ldk-about-btn {
   height: 26px;
   padding: 0 16px;
   border: 1px solid var(--separator);
@@ -117,53 +117,53 @@
   cursor: pointer;
 }
 
-.about-btn:hover {
+.ldk-about-btn:hover {
   background: var(--hover-overlay);
 }
 /* jscpd:ignore-end */
 
-/* 「复制」是主按钮（Frame 6：`.about-btn.primary` 在右侧） */
-.about-btn--primary {
+/* 「复制」是主按钮（Frame 6：`.ldk-about-btn.primary` 在右侧） */
+.ldk-about-btn--primary {
   border-color: transparent;
   background: var(--accent);
   color: var(--text-on-accent);
 }
 
-.about-btn--primary:hover {
+.ldk-about-btn--primary:hover {
   background: var(--accent-hover);
 }
 
 /* ── 加载骨架（一帧的过渡，形状与正文一一对应 ⇒ 不跳位） ── */
 
-.about-skel {
+.ldk-about-skel {
   display: flex;
   flex-direction: column;
   gap: 16px;
   max-width: 420px;
 }
 
-.about-skel-logo {
+.ldk-about-skel-logo {
   width: 56px;
   height: 56px;
   border-radius: var(--radius-md);
   background: var(--hover-overlay);
 }
 
-.about-skel-bar {
+.ldk-about-skel-bar {
   height: 10px;
   border-radius: var(--radius-sm);
   background: var(--hover-overlay);
 }
 
-.about-skel-bar--name {
+.ldk-about-skel-bar--name {
   width: 96px;
   height: 16px;
 }
 
-.about-skel-bar--k {
+.ldk-about-skel-bar--k {
   width: 48px;
 }
 
-.about-skel-bar--v {
+.ldk-about-skel-bar--v {
   width: 160px;
 }

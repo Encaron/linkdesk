@@ -557,13 +557,13 @@ both stylesheets land on the same element.
 | Reserved keyframe names | Notes |
 |---|---|
 | `selectbox-in` | the shared select dropdown's entrance animation |
-| `drop-zone-in` | the drop zone's entrance animation |
-| `dropdown-card-in` | the dropdown card's entrance animation |
-| `floating-panel-in` | the floating panel's entrance animation |
-| `group-tab-enter` | the group tab's entrance animation |
-| `group-tab-exit` | the group tab's exit animation |
-| `notif-icon-spin` | the notification icon's spin |
-| `notif-progress-scan` | the notification progress scan |
+| `ldk-drop-zone-in` | the drop zone's entrance animation |
+| `ldk-dropdown-card-in` | the dropdown card's entrance animation |
+| `ldk-floating-panel-in` | the floating panel's entrance animation |
+| `ldk-group-tab-enter` | the group tab's entrance animation |
+| `ldk-group-tab-exit` | the group tab's exit animation |
+| `ldk-notif-icon-spin` | the notification icon's spin |
+| `ldk-notif-progress-scan` | the notification progress scan |
 
 > 🔧 **Maintainer note (authors can skip this)**—the **Reserved names** and **Reserved keyframe names** columns in the two tables above are **machine-read**: the gate
 > in `npm run check` (`scripts/check-reserved-names-doc-sync.mjs`) cross-checks them **both ways** against the

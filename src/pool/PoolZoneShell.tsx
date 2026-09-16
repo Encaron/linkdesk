@@ -55,7 +55,7 @@ function PoolZoneShell({ layout }: { layout: PoolLayout }) {
   });
 
   return (
-    <div className="pool-root">
+    <div className="ldk-pool-root">
       {/* E5.8#50.8：全窗背景图片层——zone 层之下（z-index 0），图从表面缝隙透出（#50.7 悬浮留缝） */}
       <BackgroundLayer />
 
@@ -64,13 +64,13 @@ function PoolZoneShell({ layout }: { layout: PoolLayout }) {
 
       {/* Row 2: pool-body（#37.5 grid）——IconBar + 左槽 + Main + 右槽（+ 面板行/列） */}
       <div
-        className="pool-body"
+        className="ldk-pool-body"
         style={{ gridTemplateColumns: grid.gridTemplateColumns, gridTemplateRows: grid.gridTemplateRows }}
       >
         {/* IconBar——E5.7#6（Phase 2）：42px 图标列 + 激活高亮 + ☰ 汉堡。恒全高（行跨全）。
             E5.8#43-2：layout.iconBar 缺省（脱出窗子集）→ 不渲染该 cell → auto 列 0 宽（无空列） */}
         {layout.iconBar && (
-          <div className="pool-grid-cell" style={cellStyle(grid.cells.iconbar)}>
+          <div className="ldk-pool-grid-cell" style={cellStyle(grid.cells.iconbar)}>
             <IconBarZone iconBar={layout.iconBar} />
           </div>
         )}
@@ -81,7 +81,7 @@ function PoolZoneShell({ layout }: { layout: PoolLayout }) {
             #37.5：恒挂载 + grid 放置随 sidebar.edge（左/右槽，swap 规则对边）。
             E5.8#43-2：layout.sidebar 缺省（脱出窗子集）→ 不渲染该 cell → auto 列 0 宽 */}
         {layout.sidebar && (
-          <div className="pool-grid-cell" style={cellStyle(grid.cells.sidebar)}>
+          <div className="ldk-pool-grid-cell" style={cellStyle(grid.cells.sidebar)}>
             <SidebarZone sidebar={layout.sidebar} />
           </div>
         )}
@@ -92,7 +92,7 @@ function PoolZoneShell({ layout }: { layout: PoolLayout }) {
             E5.8#46.17：无主区内容（drift 面板专用窗恒空 groups）→ 不渲染 MainZone（配合 grid
             hasMain=false 无内容行——面板独占全窗，无「没有打开的标签页」空占位）。 */}
         {layout.groups.length > 0 && (
-          <div className="pool-grid-cell" style={cellStyle(grid.cells.main)}>
+          <div className="ldk-pool-grid-cell" style={cellStyle(grid.cells.main)}>
             <MainZone groups={layout.groups} root={layout.root} creatableViews={layout.creatableViews} activeGroupId={layout.activeGroupId} />
           </div>
         )}
@@ -101,7 +101,7 @@ function PoolZoneShell({ layout }: { layout: PoolLayout }) {
             → 条件渲染永假 = 零 DOM（生产者建好前与建好后行为一致）。#37.5：面板行/列随
             edge/align 推导（隐藏 → 推导 panel cell null + 模板无面板行/列，零 DOM 验收）。 */}
         {layout.panel?.visible && grid.cells.panel && (
-          <div className="pool-grid-cell" style={cellStyle(grid.cells.panel)}>
+          <div className="ldk-pool-grid-cell" style={cellStyle(grid.cells.panel)}>
             <PanelZone panel={layout.panel} />
           </div>
         )}
@@ -111,7 +111,7 @@ function PoolZoneShell({ layout }: { layout: PoolLayout }) {
             #146：edge 从 sidebarEdge 对边反推——handle 落点/拖拽方向随槽位归一化（池布局 DTO
             RightSidebarLayout 不携带自身 edge，防两处字面量）。 */}
         {layout.rightSidebar?.visible && (
-          <div className="pool-grid-cell" style={cellStyle(grid.cells.rightSidebar)}>
+          <div className="ldk-pool-grid-cell" style={cellStyle(grid.cells.rightSidebar)}>
             <RightSidebarZone rightSidebar={layout.rightSidebar} edge={sidebarEdge === "left" ? "right" : "left"} />
           </div>
         )}

@@ -25,28 +25,30 @@ const ROOT = resolve(__dirname, "..");
 
 /**
  * 独立显示图标白名单——不随字号比例（与文本不直接相邻，语义 = 装饰/品牌，档案 §三.2）。
- * sel 以「子串」匹配规则选择器（支持复合类如 .welcome-card-icon.plugin-icon--codicon 与
- * 后代选择器如 .icon-btn .plugin-icon--codicon）。值 = 允许的裸 px 字号/行高。
+ * sel 以「子串」匹配规则选择器（支持复合类如 .ldk-welcome-card-icon.plugin-icon--codicon 与
+ * 后代选择器如 .ldk-icon-btn .plugin-icon--codicon）。值 = 允许的裸 px 字号/行高。
+ * ⚠️ 宿主侧选择器自 E6#109l 起一律带 `ldk-`（宿主独立定义 = `ldk-` 前缀，硬约束 23）——
+ * 改宿主类名时要同笔改本表里的 `sel`，否则这条腿会因为「选择器不再匹配」而把豁免当成违规报出来。
  * F7 固化 = 用户拍板基线；reconcile = #180 协调补录（同 §三.2 语义的现存独立显示图标）。
  */
 const WHITELIST = [
   // ── F7 固化（档案 §七） ──
-  { sel: ".icon-btn .plugin-icon--codicon", prop: "font-size", value: 24, why: "F7 图标栏 codicon 24px" },
+  { sel: ".ldk-icon-btn .plugin-icon--codicon", prop: "font-size", value: 24, why: "F7 图标栏 codicon 24px" },
   { sel: ".plugin-icon--emoji", prop: "font-size", value: 24, why: "F7 图标栏 emoji 24px" },
-  { sel: ".hamburger-btn", prop: "font-size", value: 20, why: "F7 ☰ 汉堡菜单 20px" },
+  { sel: ".ldk-hamburger-btn", prop: "font-size", value: 20, why: "F7 ☰ 汉堡菜单 20px" },
   { sel: ".marketplace-hero-icon", prop: "font-size", value: 48, why: "F7 marketplace 空态 hero 图标 48px" },
   { sel: ".marketplace-row-icon", prop: "font-size", value: 20, why: "F7 marketplace 行图标 20px" },
   // ── reconcile（#180 协调补录，同 §三.2 语义） ──
-  { sel: ".pd-icon-codicon", prop: "font-size", value: 40, why: "reconcile 插件详情大图标 codicon 40px（#63b B2 收敛 96→40）" },
-  { sel: ".pd-icon-badge", prop: "font-size", value: 12, why: "reconcile 插件详情徽标 codicon 12px（#63b B2 收敛 16→12）" },
-  { sel: ".pd-icon-badge", prop: "line-height", value: 20, why: "reconcile 插件详情徽标固定盒 20px（#63b B2 收敛 28→20）" },
+  { sel: ".ldk-pd-icon-codicon", prop: "font-size", value: 40, why: "reconcile 插件详情大图标 codicon 40px（#63b B2 收敛 96→40）" },
+  { sel: ".ldk-pd-icon-badge", prop: "font-size", value: 12, why: "reconcile 插件详情徽标 codicon 12px（#63b B2 收敛 16→12）" },
+  { sel: ".ldk-pd-icon-badge", prop: "line-height", value: 20, why: "reconcile 插件详情徽标固定盒 20px（#63b B2 收敛 28→20）" },
   // ── marketplace 插件详情主区视图（E6#30.11b 迁自 pd-*，同语义独立显示图标） ──
   { sel: ".mpd-icon .plugin-icon--codicon", prop: "font-size", value: 56, why: "marketplace 详情展示位 codicon 56px（E6#69c 展示框 128 档后 48→56 同步——图形型不随 128 框等比撑满）" },
   { sel: ".mpd-icon .plugin-icon--emoji", prop: "font-size", value: 56, why: "marketplace 详情展示位 emoji 56px（同上）" },
   { sel: ".mpd-icon-badge", prop: "font-size", value: 12, why: "marketplace 详情徽标 codicon 12px（#63b B2 收敛 16→12）" },
   { sel: ".mpd-icon-badge", prop: "line-height", value: 20, why: "marketplace 详情徽标固定盒 20px（#63b B2 收敛 28→20）" },
-  { sel: ".welcome-card-icon", prop: "font-size", value: 24, why: "reconcile 欢迎页卡片插件图标 24px" },
-  { sel: ".welcome-recent-icon", prop: "font-size", value: 16, why: "reconcile 欢迎页 recent 图标 16px" },
+  { sel: ".ldk-welcome-card-icon", prop: "font-size", value: 24, why: "reconcile 欢迎页卡片插件图标 24px" },
+  { sel: ".ldk-welcome-recent-icon", prop: "font-size", value: 16, why: "reconcile 欢迎页 recent 图标 16px" },
   { sel: ".ms-item-icon .plugin-icon--codicon", prop: "font-size", value: 28, why: "reconcile marketplace 侧栏图标 28px" },
   { sel: ".toast-icon", prop: "font-size", value: 16, why: "reconcile toast 状态图标 codicon 16px" },
   { sel: ".serial-monitor-placeholder-icon", prop: "font-size", value: 32, why: "reconcile 串口监视器空态图标 32px" },

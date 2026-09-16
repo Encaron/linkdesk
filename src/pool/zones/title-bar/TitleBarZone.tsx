@@ -96,7 +96,7 @@ function TitleBarZone({ titleBar }: { titleBar: TitleBarLayout }) {
     ) : (
       <button
         key={item.command}
-        className="titlebar-btn titlebar-slot-btn"
+        className="ldk-titlebar-btn ldk-titlebar-slot-btn"
         onClick={() => executePoolCommand(item.command)}
         title={item.title}
         style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
@@ -121,14 +121,14 @@ function TitleBarZone({ titleBar }: { titleBar: TitleBarLayout }) {
   return (
     <div className="ldk-titlebar">
       {/* Logo——URL 由壳 getAssetPath 解析推送 */}
-      <img className="titlebar-logo" src={titleBar.logoUrl} alt="LinkDesk" />
+      <img className="ldk-titlebar-logo" src={titleBar.logoUrl} alt="LinkDesk" />
 
       {/* 左槽位——插件 contributes.titleBar.left（when 已壳侧过滤） */}
       {titleBar.slots.left.map(renderSlotButton)}
 
       {/* 菜单按钮——hamburger 模式下隐藏（☰ 在 IconBarZone） */}
       {titleBar.menuBarVisible && titleBar.menuGroups.length > 0 && (
-        <div className="titlebar-menus">
+        <div className="ldk-titlebar-menus">
           {titleBar.menuGroups.map((g) => (
             <button
               key={g.group}
@@ -136,7 +136,7 @@ function TitleBarZone({ titleBar }: { titleBar: TitleBarLayout }) {
                 if (el) btnRefs.current.set(g.group, el);
                 else btnRefs.current.delete(g.group);
               }}
-              className={`titlebar-btn titlebar-menu-btn${openGroup === g.group ? " titlebar-btn-open" : ""}`}
+              className={`ldk-titlebar-btn ldk-titlebar-menu-btn${openGroup === g.group ? " titlebar-btn-open" : ""}`}
               onClick={() => setOpenGroup(openGroup === g.group ? null : g.group)}
               onMouseEnter={() => handleButtonHover(g.group)}
             >
@@ -147,7 +147,7 @@ function TitleBarZone({ titleBar }: { titleBar: TitleBarLayout }) {
       )}
 
       {/* 拖拽区——填充剩余空间 */}
-      <div className="titlebar-drag-area" />
+      <div className="ldk-titlebar-drag-area" />
 
       {/* 右槽位——插件 contributes.titleBar.right。
           E6#57.11 订正位置：此前本行排在拖拽区**之前**，而拖拽区是 flex:1 ⇒ 按钮实际被挤到
@@ -156,9 +156,9 @@ function TitleBarZone({ titleBar }: { titleBar: TitleBarLayout }) {
       {titleBar.slots.right.map(renderSlotButton)}
 
       {/* 窗口控制（pin ─ □ ×）——tooltip 壳 t() 推送；pin 置顶两态（E5.8#46.18：OS 级置顶，盖过其他应用） */}
-      <div className="window-controls">
+      <div className="ldk-window-controls">
         <button
-          className={`wc-btn wc-pin${pinned ? " wc-pin-active" : ""}`}
+          className={`ldk-wc-btn ldk-wc-pin${pinned ? " wc-pin-active" : ""}`}
           onClick={() => {
             const win = window.linkdesk?.window;
             if (pinned) win?.setAlwaysOnTop(false);
@@ -168,11 +168,11 @@ function TitleBarZone({ titleBar }: { titleBar: TitleBarLayout }) {
         >
           <span className={`codicon ${pinned ? "codicon-pinned" : "codicon-pin"}`} />
         </button>
-        <button className="wc-btn" onClick={() => window.linkdesk?.window?.minimize()} title={wc.minimize}>
+        <button className="ldk-wc-btn" onClick={() => window.linkdesk?.window?.minimize()} title={wc.minimize}>
           <span className="codicon codicon-chrome-minimize" />
         </button>
         <button
-          className="wc-btn"
+          className="ldk-wc-btn"
           onClick={() => {
             const win = window.linkdesk?.window;
             if (maximized) win?.unmaximize();
@@ -182,7 +182,7 @@ function TitleBarZone({ titleBar }: { titleBar: TitleBarLayout }) {
         >
           <span className={`codicon ${maximized ? "codicon-chrome-restore" : "codicon-chrome-maximize"}`} />
         </button>
-        <button className="wc-btn wc-close" onClick={() => window.linkdesk?.window?.close()} title={wc.close}>
+        <button className="ldk-wc-btn ldk-wc-close" onClick={() => window.linkdesk?.window?.close()} title={wc.close}>
           <span className="codicon codicon-chrome-close" />
         </button>
       </div>

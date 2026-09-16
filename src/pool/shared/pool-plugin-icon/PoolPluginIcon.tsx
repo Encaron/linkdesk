@@ -35,7 +35,7 @@ const LUCIDE_MAP: Record<string, ComponentType<any>> = {
 
 interface PoolPluginIconProps {
   icon: IconBarIcon;
-  /** 附加类名——消费端 CSS 作用域（如 "icon-bar-plugin-icon"） */
+  /** 附加类名——消费端 CSS 作用域（如 "ldk-icon-bar-plugin-icon"） */
   className?: string;
   alt?: string;
 }

@@ -114,15 +114,15 @@ export default function PanelZone({ panel }: PanelZoneProps) {
   return (
     <>
     <div
-      className={`panel-zone${isVertical ? " vertical" : ""} edge-${edge}${resize.resizing ? " resizing" : ""}`}
+      className={`ldk-panel-zone${isVertical ? " vertical" : ""} edge-${edge}${resize.resizing ? " resizing" : ""}`}
       style={isVertical ? { width: resize.size, height: "100%" } : { height: resize.size, width: "100%" }}
     >
       {/* 面板内容体——tabbar + keep-alive 内容区恒 column 排布（竖条时根 row + 本 wrapper column） */}
-      <div className="panel-zone-body">
+      <div className="ldk-panel-zone-body">
         {/* PanelTabBar 28px——切换器在行首，标签 80px 固定不 shrink，列表溢出滚动，[+] 在滚动区外始终最右 */}
         {/* E5.8#37.7：对整个标签栏右键 → 壳 ContextMenu（menuId panelViewContext——位置/对齐子菜单 + 视图显隐 #37.7.1） */}
         <div
-          className="panel-tabbar"
+          className="ldk-panel-tabbar"
           onContextMenu={(e) => {
             e.preventDefault();
             setTabbarMenu({ x: e.clientX, y: e.clientY });
@@ -131,30 +131,30 @@ export default function PanelZone({ panel }: PanelZoneProps) {
           {/* E5.8#34：容器切换器按钮——容器名 + ⌄；全空（无贡献视图）不渲染（无内容可切） */}
           {showSwitcher && (
             <button
-              className={`panel-switcher${switcherOpen ? " open" : ""}`}
+              className={`ldk-panel-switcher${switcherOpen ? " open" : ""}`}
               ref={switcherBtnRef}
               onClick={toggleSwitcher}
               aria-expanded={switcherOpen}
               aria-haspopup="menu"
               title={switcherLabel}
             >
-              <span className="panel-switcher-label">{switcherLabel}</span>
-              <span className="panel-switcher-chev" aria-hidden="true">⌄</span>
+              <span className="ldk-panel-switcher-label">{switcherLabel}</span>
+              <span className="ldk-panel-switcher-chev" aria-hidden="true">⌄</span>
             </button>
           )}
 
-          <div className="panel-tabbar-list">
+          <div className="ldk-panel-tabbar-list">
             {views.map((v) => (
               <div
                 key={v.id}
-                className={`panel-tab${v.id === activeViewId ? " active" : ""}`}
+                className={`ldk-panel-tab${v.id === activeViewId ? " active" : ""}`}
                 title={v.title}
                 onClick={() => {
                   // #63.7 App.tsx 消费——setPanelActiveViewId → usePoolSync 重推
                   window.linkdesk?.events?.emit("panel:viewSelected", v.id);
                 }}
               >
-                <span className="panel-tab-label">{v.title}</span>
+                <span className="ldk-panel-tab-label">{v.title}</span>
               </div>
             ))}
           </div>
@@ -166,7 +166,7 @@ export default function PanelZone({ panel }: PanelZoneProps) {
               建 drift 窗 + 面板独占迁移（I9-13 拍板 A）。tooltip 壳 t() 推送（显示文本铁律）。 */}
           {panel.detachable && (
             <button
-              className="panel-tab-detach"
+              className="ldk-panel-tab-detach"
               title={panel.detachTooltip}
               aria-label={panel.detachTooltip}
               onClick={() => {
@@ -180,7 +180,7 @@ export default function PanelZone({ panel }: PanelZoneProps) {
           {/* [+] 新建面板视图——panel:createView 壳无监听者（安全 no-op）；
               tooltip 由壳推（panel.createTooltip——显示文本铁律，池零自产文本） */}
           <button
-            className="panel-tab-create"
+            className="ldk-panel-tab-create"
             title={panel.createTooltip}
             aria-label={panel.createTooltip}
             onClick={() => {
@@ -198,27 +198,27 @@ export default function PanelZone({ panel }: PanelZoneProps) {
             anchor 坐标原样传入，触发锚 = switcherBtnRef（点击按钮 toggle 关闭）。 */}
         {switcherOpen && switcherPos && (
           <OverlayPortal onClose={() => setSwitcherOpen(false)} triggerRef={switcherBtnRef}>
-          <div className="dropdown-card panel-switcher-dropdown" style={switcherPos} role="menu">
+          <div className="ldk-dropdown-card ldk-panel-switcher-dropdown" style={switcherPos} role="menu">
             {switcher.map((g) => (
               <Fragment key={g.containerId}>
-                <div className="panel-switcher-group">{g.containerTitle}</div>
+                <div className="ldk-panel-switcher-group">{g.containerTitle}</div>
                 {g.items.map((item) => (
                   <div
                     key={item.viewId}
-                    className={`panel-switcher-item${item.active ? " active" : ""}${item.visible ? "" : " hidden-view"}`}
+                    className={`ldk-panel-switcher-item${item.active ? " active" : ""}${item.visible ? "" : " hidden-view"}`}
                     role="menuitem"
                     onClick={() => handleItemSelect(item, g.containerId)}
                   >
                     {/* 勾选 = 显隐——stopPropagation 不触发激活；下拉保持打开（可连续勾） */}
                     <span
-                      className={`panel-switcher-check${item.visible ? "" : " unchecked"}`}
+                      className={`ldk-panel-switcher-check${item.visible ? "" : " unchecked"}`}
                       aria-hidden="true"
                       onClick={(e) => { e.stopPropagation(); handleItemToggleVisible(item, g.containerId); }}
                     >
                       {item.visible ? "✓" : ""}
                     </span>
                     <span className="panel-switcher-name">{item.title}</span>
-                    <span className="panel-switcher-sub">{item.pluginId}</span>
+                    <span className="ldk-panel-switcher-sub">{item.pluginId}</span>
                   </div>
                 ))}
               </Fragment>
@@ -231,17 +231,17 @@ export default function PanelZone({ panel }: PanelZoneProps) {
             E5.7#63.7：每 view 经 PluginComponent 按 renderPath 动态加载（侧栏 PoolSectionStack 同款；
             PluginComponent 自带 ErrorBoundary + Suspense 兜底）。
             E5.8#34 空态：views 全空（全不勾 / 无贡献视图）→ .panel-empty 占位（文案壳 t() 推送） */}
-        <div className="panel-content">
+        <div className="ldk-panel-content">
           {views.length === 0 ? (
-            <div className="panel-empty">
-              <div className="panel-empty-big">{emptyText}</div>
-              {emptyHint && <div className="panel-empty-hint">{emptyHint}</div>}
+            <div className="ldk-panel-empty">
+              <div className="ldk-panel-empty-big">{emptyText}</div>
+              {emptyHint && <div className="ldk-panel-empty-hint">{emptyHint}</div>}
             </div>
           ) : (
             views.map((v) => (
               <div
                 key={v.id}
-                className="panel-view"
+                className="ldk-panel-view"
                 style={{ display: v.id === activeViewId ? "flex" : "none" }}
               >
                 <PluginComponent
@@ -272,7 +272,7 @@ export default function PanelZone({ panel }: PanelZoneProps) {
         右缘/右面板左缘。zIndex 走共享 var(--z-sticky)（= Z_INDEX.panelResizeHandle #26 常量表）。
         E5.8#143 视觉：常态三点 / hover 成线 + 线端镜像 zone 圆角 */}
     <div
-      className={`zone-resize-handle ${isVertical ? "vertical" : "horizontal"} ${handlePosition}`}
+      className={`ldk-zone-resize-handle ${isVertical ? "vertical" : "horizontal"} ${handlePosition}`}
       onMouseDown={resize.onResizeStart}
       aria-hidden="true"
     />

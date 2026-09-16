@@ -39,7 +39,7 @@ export default function PoolToolbarSlot({ views, onHeightChange }: PoolToolbarSl
   if (views.length === 0) return null;
 
   return (
-    <div ref={ref} className="side-panel-toolbar">
+    <div ref={ref} className="ldk-side-panel-toolbar">
       {views.map((view) => (
         <ErrorBoundary key={view.id} pluginId={view.pluginId}>
           <PluginComponent

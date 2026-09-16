@@ -12,7 +12,7 @@
 import "./BackgroundLayer.css";
 
 function BackgroundLayer() {
-  return <div className="background-layer" aria-hidden="true" />;
+  return <div className="ldk-background-layer" aria-hidden="true" />;
 }
 
 export default BackgroundLayer;

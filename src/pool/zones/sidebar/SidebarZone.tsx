@@ -97,13 +97,13 @@ export default function SidebarZone({ sidebar }: SidebarZoneProps) {
     const zoneHidden = !sidebar.visible || collapsed;
     return (
       <>
-        <div className="side-panel-zone" style={zoneHidden ? { display: "none" } : undefined}>
+        <div className="ldk-side-panel-zone" style={zoneHidden ? { display: "none" } : undefined}>
           {inner}
         </div>
         {/* E5.7#13 + 缝系统：4px resize handle——共享 .zone-resize-handle（index.css 全局层：锚 cell 边界
             = 缝中心，偏移 -inset 缝居中 / 直角贴边）。E5.8#143 视觉：常态三点 / hover 成线 + 线端镜像 zone 圆角 */}
         <div
-          className={`zone-resize-handle vertical ${handleEdgeForSlot(sidebar.edge ?? "left")}`}
+          className={`ldk-zone-resize-handle vertical ${handleEdgeForSlot(sidebar.edge ?? "left")}`}
           style={zoneHidden ? { display: "none" } : undefined}
           onMouseDown={resize.onResizeStart}
           aria-hidden="true"
@@ -123,8 +123,8 @@ export default function SidebarZone({ sidebar }: SidebarZoneProps) {
 
   // 空状态占位（文案壳侧 t() 推送——显示文本铁律）
   const renderPlaceholder = () => (
-    <div className={`side-panel${resize.resizing ? " resizing" : ""}`} style={{ width: resize.size, height: "100%" }}>
-      <div className="side-panel-placeholder">
+    <div className={`ldk-side-panel${resize.resizing ? " resizing" : ""}`} style={{ width: resize.size, height: "100%" }}>
+      <div className="ldk-side-panel-placeholder">
         <p>{sidebar.emptyText}</p>
         {sidebar.emptyHint && <p className="side-panel-placeholder-hint">{sidebar.emptyHint}</p>}
       </div>
@@ -163,19 +163,19 @@ export default function SidebarZone({ sidebar }: SidebarZoneProps) {
              .side-panel CSS 已含 display:flex + flex-direction:column——活动态不覆盖。 */
           <div
             key={c.containerId}
-            className={`side-panel${resize.resizing ? " resizing" : ""}`}
+            className={`ldk-side-panel${resize.resizing ? " resizing" : ""}`}
             style={{ width: resize.size, height: "100%", display: isActive && !collapsed ? undefined : "none" }}
           >
             {/* 容器 header——display:none 容器不可交互（仅活动容器可见） */}
             {effectiveTitle && (
               <div
-                className="side-panel-header"
+                className="ldk-side-panel-header"
                 onContextMenu={(e) => {
                   e.preventDefault();
                   setHeaderMenu({ x: e.clientX, y: e.clientY });
                 }}
               >
-                <span className="side-panel-title" title={effectiveTitle}>{effectiveTitle}</span>
+                <span className="ldk-side-panel-title" title={effectiveTitle}>{effectiveTitle}</span>
                 {/* E5.8#36.6：mergeHeaderWhenSingle 单视图合并——容器 header 即视图 header，titleActions 同声明消费 */}
                 {c.mergeHeaderWhenSingle === true && sectionViews.length === 1 && sectionViews[0].titleActions?.length
                   ? <ViewTitleActions actions={sectionViews[0].titleActions} />
@@ -184,7 +184,7 @@ export default function SidebarZone({ sidebar }: SidebarZoneProps) {
               </div>
             )}
 
-            <div className="side-panel-content">
+            <div className="ldk-side-panel-content">
               {/* ToolbarSlot——粘顶，flex-shrink:0 保证永不滚动消失（E5.6#16.7k） */}
               <div style={{ flexShrink: 0 }}>
                 <PoolToolbarSlot views={toolbarViews} onHeightChange={setToolbarHeight} />

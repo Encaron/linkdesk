@@ -11,13 +11,13 @@
 }
 
 /* widget 容器——split 主按钮+chevron 视觉成组 */
-.vta-widget {
+.ldk-vta-widget {
   display: flex;
   align-items: center;
 }
 
 /* 动作按钮——28px 方形（panel-tab-create 同款），muted → hover 高亮（E5.8 Phase 12 #169：28px 乘 scale + 12→sm） */
-.vta-btn {
+.ldk-vta-btn {
   height: calc(28px * var(--ui-scale));
   min-width: calc(28px * var(--ui-scale));
   display: flex;
@@ -34,24 +34,24 @@
   transition: background 150ms ease, color 150ms ease;
 }
 
-.vta-btn:hover {
+.ldk-vta-btn:hover {
   color: var(--text-primary);
   background: var(--hover-overlay);
 }
 
 /* 打开态——保持 hover 高亮，明确"下拉已展开" */
-.vta-chev.open {
+.ldk-vta-chev.open {
   color: var(--text-primary);
   background: var(--hover-overlay);
 }
 
-/* 下拉——共享 .dropdown-card（PanelZone 切换器下拉同源卡片本体）+ 本组件唯一 min-width */
-.vta-dropdown {
+/* 下拉——共享 .ldk-dropdown-card（PanelZone 切换器下拉同源卡片本体）+ 本组件唯一 min-width */
+.ldk-vta-dropdown {
   min-width: 140px;
 }
 
 /* 条目——小字号单行，hover 高亮 */
-.vta-item {
+.ldk-vta-item {
   padding: 4px 12px;
   font-size: var(--font-size-sm); /* E5.8 Phase 12 #169：item 12→sm */
   color: var(--text-primary);
@@ -63,8 +63,8 @@
   transition: background 150ms ease;
 }
 
-.vta-item:hover,
-.vta-item:focus-visible {
+.ldk-vta-item:hover,
+.ldk-vta-item:focus-visible {
   background: var(--hover-overlay);
   outline: none;
 }

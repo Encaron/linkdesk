@@ -11,7 +11,7 @@
 
 /* ── Backdrop ── */
 
-.quick-pick-backdrop {
+.ldk-quick-pick-backdrop {
   position: fixed;
   inset: 0;
   background: var(--scrim-overlay); /* 设计 §5.1 0.3——E5.8#128 遮罩密度 token */
@@ -20,18 +20,18 @@
   transition: opacity 150ms ease-out;
 }
 
-.quick-pick-backdrop.show {
+.ldk-quick-pick-backdrop.show {
   opacity: 1;
 }
 
 /* E3.5 #CP03: 退场快于入场——closing 期间缩短到 100ms */
-.quick-pick-backdrop.closing {
+.ldk-quick-pick-backdrop.closing {
   transition-duration: 100ms;
 }
 
 /* ── Panel ── */
 
-.quick-pick-panel {
+.ldk-quick-pick-panel {
   position: fixed;
   top: 15vh; /* 设计 §5.1（原 20%）——远离 TitleBar 拖拽区（硬约束 18） */
   left: 50%;
@@ -50,24 +50,24 @@
   transition: opacity 150ms ease-out, transform 150ms ease-out;
 }
 
-.quick-pick-panel.show {
+.ldk-quick-pick-panel.show {
   opacity: 1;
   transform: translateX(-50%) scale(1);
 }
 
-.quick-pick-panel.closing {
+.ldk-quick-pick-panel.closing {
   transition-duration: 100ms;
 }
 
 /* ── Input 行（E3.5 #CP10） ── */
 
-.quick-pick-input-row {
+.ldk-quick-pick-input-row {
   display: flex;
   align-items: center;
   border-bottom: 1px solid var(--separator);
 }
 
-.quick-pick-prefix {
+.ldk-quick-pick-prefix {
   padding-left: 14px;
   font-size: var(--font-size-lg); /* E5.8 Phase 12 #171：prefix 14→lg */
   color: var(--text-muted);
@@ -75,7 +75,7 @@
   flex-shrink: 0;
 }
 
-.quick-pick-input {
+.ldk-quick-pick-input {
   flex: 1;
   background: transparent;
   border: none;
@@ -86,7 +86,7 @@
 }
 
 /* E3.5 #CP13a: 清除按钮 */
-.quick-pick-clear {
+.ldk-quick-pick-clear {
   flex-shrink: 0;
   width: calc(28px * var(--ui-scale)); /* E5.8 Phase 12 #171：clear 28px 乘 scale */
   height: calc(28px * var(--ui-scale));
@@ -102,36 +102,36 @@
   margin-right: 4px;
 }
 
-.quick-pick-clear:hover {
+.ldk-quick-pick-clear:hover {
   color: var(--text-primary);
   background: var(--icon-btn-hover-bg); /* E5.8#128.6：图标按钮 hover token */
 }
 
 /* ── 列表 ── */
 
-.quick-pick-list {
+.ldk-quick-pick-list {
   flex: 1;
   overflow-y: auto;
   /* E3.5 #CP15: 滚动条——6px 细条 */
   scrollbar-width: thin;
 }
 
-.quick-pick-list::-webkit-scrollbar {
+.ldk-quick-pick-list::-webkit-scrollbar {
   width: 6px;
 }
 
-.quick-pick-list::-webkit-scrollbar-track {
+.ldk-quick-pick-list::-webkit-scrollbar-track {
   background: transparent;
 }
 
-.quick-pick-list::-webkit-scrollbar-thumb {
+.ldk-quick-pick-list::-webkit-scrollbar-thumb {
   background: var(--separator);
   border-radius: var(--radius-sm);
 }
 
 /* ── 列表项 ── */
 
-.quick-pick-item {
+.ldk-quick-pick-item {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -143,14 +143,14 @@
   transition: background 100ms;
 }
 
-.quick-pick-item:hover,
-.quick-pick-item.selected {
+.ldk-quick-pick-item:hover,
+.ldk-quick-pick-item.selected {
   background: var(--accent);
   color: var(--text-on-accent);
 }
 
 /* E3f #53b：对标 VS Code 两排布局——rows(column) > row(flex) */
-.quick-pick-item-content {
+.ldk-quick-pick-item-content {
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -158,7 +158,7 @@
   min-width: 0;
 }
 
-.quick-pick-item-row {
+.ldk-quick-pick-item-row {
   display: flex;
   align-items: baseline;
   gap: 8px;
@@ -166,7 +166,7 @@
 
 /* E5.8#32：已激活项勾选标记——label 左侧 ✓。颜色继承（hover/selected accent 态自动变 text-on-accent）——零新 hex。
  * 固定 width 占位——未激活项空占保对齐（对齐 VS Code quickInput 勾选列） */
-.quick-pick-item-check {
+.ldk-quick-pick-item-check {
   flex-shrink: 0;
   width: 14px;
   display: flex;
@@ -177,14 +177,14 @@
   opacity: 0.9;
 }
 
-.quick-pick-item-label {
+.ldk-quick-pick-item-label {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   flex: 1;
 }
 
-.quick-pick-item-category {
+.ldk-quick-pick-item-category {
   flex-shrink: 0;
   font-size: var(--font-size-xs); /* E5.8 Phase 12 #171：category 11→xs */
   opacity: 0.7;
@@ -192,7 +192,7 @@
 }
 
 /* E3.5 #CP04: detail 行——ID(左) + 快捷键pill(右) 对标 VS Code */
-.quick-pick-item-detail {
+.ldk-quick-pick-item-detail {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -201,7 +201,7 @@
   margin-top: 1px;
 }
 
-.quick-pick-item-detail-id {
+.ldk-quick-pick-item-detail-id {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -209,7 +209,7 @@
   min-width: 0;
 }
 
-.quick-pick-item-detail-right {
+.ldk-quick-pick-item-detail-right {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -219,14 +219,14 @@
 
 /* ── 快捷键 keycap pill（E3.5 #CP06 #CP07） ── */
 
-.keybinding-pill {
+.ldk-keybinding-pill {
   display: inline-flex;
   align-items: center;
   gap: 3px;
   font-size: var(--font-size-2xs); /* E5.8 Phase 12 #171：kbd 10→2xs */
 }
 
-.keybinding-pill kbd {
+.ldk-keybinding-pill kbd {
   display: inline-block;
   padding: 1px 5px;
   font-size: var(--font-size-2xs);
@@ -237,34 +237,34 @@
   line-height: 1.5;
 }
 
-.keybinding-sep {
+.ldk-keybinding-sep {
   opacity: 0.4;
   margin: 0 1px;
 }
 
 /* hover/selected 态 keycap 变亮 */
-.quick-pick-item:hover .keybinding-pill kbd,
-.quick-pick-item.selected .keybinding-pill kbd {
+.ldk-quick-pick-item:hover .ldk-keybinding-pill kbd,
+.ldk-quick-pick-item.selected .ldk-keybinding-pill kbd {
   background: var(--kbd-hover-bg); /* E5.8#128.6：keycap 选中行亮态 token */
   border-color: var(--kbd-hover-border);
 }
 
-.quick-pick-item:hover .quick-pick-item-category,
-.quick-pick-item:hover .quick-pick-item-detail,
-.quick-pick-item.selected .quick-pick-item-category,
-.quick-pick-item.selected .quick-pick-item-detail {
+.ldk-quick-pick-item:hover .ldk-quick-pick-item-category,
+.ldk-quick-pick-item:hover .ldk-quick-pick-item-detail,
+.ldk-quick-pick-item.selected .ldk-quick-pick-item-category,
+.ldk-quick-pick-item.selected .ldk-quick-pick-item-detail {
   opacity: 0.85;
 }
 
 /* ── 行内操作按钮（E3f #53b：命令面板齿轮） ── */
 
-.quick-pick-item-actions {
+.ldk-quick-pick-item-actions {
   flex-shrink: 0;
   display: flex;
   align-items: center;
 }
 
-.quick-pick-item-btn {
+.ldk-quick-pick-item-btn {
   background: none;
   border: none;
   color: inherit;
@@ -276,19 +276,19 @@
   border-radius: var(--radius-sm);
 }
 
-.quick-pick-item:hover .quick-pick-item-btn,
-.quick-pick-item.selected .quick-pick-item-btn {
+.ldk-quick-pick-item:hover .ldk-quick-pick-item-btn,
+.ldk-quick-pick-item.selected .ldk-quick-pick-item-btn {
   opacity: 0.8;
 }
 
-.quick-pick-item-btn:hover {
+.ldk-quick-pick-item-btn:hover {
   opacity: 1 !important;
   background: var(--icon-btn-hover-bg); /* E5.8#128.6：图标按钮 hover token（0.15→0.1 归一 VS Code 标准） */
 }
 
 /* ── 空态（E3.5 #CP08a） ── */
 
-.quick-pick-empty {
+.ldk-quick-pick-empty {
   padding: 20px 16px;
   font-size: var(--font-size-sm); /* E5.8 Phase 12 #171：12→sm */
   color: var(--text-muted);
@@ -297,7 +297,7 @@
 
 /* ── 结果计数（E3.5 #CP16） ── */
 
-.quick-pick-count {
+.ldk-quick-pick-count {
   padding: 4px 12px 8px;
   font-size: var(--font-size-2xs); /* E5.8 Phase 12 #171：10→2xs */
   color: var(--text-muted);

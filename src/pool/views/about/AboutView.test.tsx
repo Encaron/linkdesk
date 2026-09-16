@@ -74,12 +74,12 @@ describe("AboutView（①② 两态直接分支）", () => {
 
     expect(container.querySelector(".ldk-about")?.getAttribute("aria-busy")).toBe("true");
     // 八行字段的骨架条 —— 与 Frame 6 的八行一一对应（不跳位）
-    expect(container.querySelectorAll(".about-skel .about-row")).toHaveLength(8);
-    expect(container.querySelector(".about-name")).toBeNull();
-    expect(container.querySelector(".about-actions")).toBeNull();
+    expect(container.querySelectorAll(".ldk-about-skel .ldk-about-row")).toHaveLength(8);
+    expect(container.querySelector(".ldk-about-name")).toBeNull();
+    expect(container.querySelector(".ldk-about-actions")).toBeNull();
     expect(container.querySelector("img")).toBeNull();
     // 骨架条自身 aria-hidden——它们没有语义内容，读屏不该念出一串空 div
-    expect(container.querySelector(".about-skel")?.getAttribute("aria-hidden")).toBe("true");
+    expect(container.querySelector(".ldk-about-skel")?.getAttribute("aria-hidden")).toBe("true");
   });
 
   it("🔴 负控：壳没推载荷时兜底画**骨架**，不是「全 `—` 的内容态」（把 `PENDING` 改成 content 这条必须红）", () => {
@@ -87,15 +87,15 @@ describe("AboutView（①② 两态直接分支）", () => {
 
     expect(container.querySelector(".ldk-about")?.getAttribute("aria-busy")).toBe("true");
     // 画成 content 会把「还没开始取数」说成「这台机器读不出身份」——那是撒谎
-    expect(container.querySelector(".about-name")).toBeNull();
-    expect(container.querySelectorAll(".about-row .v")).toHaveLength(0);
+    expect(container.querySelector(".ldk-about-name")).toBeNull();
+    expect(container.querySelectorAll(".ldk-about-row .v")).toHaveLength(0);
   });
 
   it("`content` → 品牌区（名字 + 壳给的 logoUrl 原样进 img src）", () => {
     const { container } = renderView(CONTENT);
 
-    expect(container.querySelector(".about-name")?.textContent).toBe(CONTENT.name);
-    const img = container.querySelector(".about-logo")!;
+    expect(container.querySelector(".ldk-about-name")?.textContent).toBe(CONTENT.name);
+    const img = container.querySelector(".ldk-about-logo")!;
     expect(img.getAttribute("src")).toBe(CONTENT.logoUrl);
     // 名字就在正下方 ⇒ 读屏不重复念（装饰性图片）
     expect(img.getAttribute("aria-hidden")).toBe("true");
@@ -114,7 +114,7 @@ describe("AboutView（③ 字段行 = 壳推什么画什么）", () => {
   it("🔴 行序、条数、标签、值**逐字照传**——池不排序、不 `t()`、不补位", () => {
     const { container } = renderView(CONTENT);
 
-    const rows = [...container.querySelectorAll(".about-row")];
+    const rows = [...container.querySelectorAll(".ldk-about-row")];
     expect(rows).toHaveLength(CONTENT.fields.length);
     rows.forEach((row, i) => {
       expect(row.querySelector(".k")?.textContent).toBe(CONTENT.fields[i].label);
@@ -128,16 +128,16 @@ describe("AboutView（③ 字段行 = 壳推什么画什么）", () => {
       fields: [...CONTENT.fields, { label: "演示标签丙", value: "—" }],
     });
 
-    expect(container.querySelectorAll(".about-row")).toHaveLength(3);
+    expect(container.querySelectorAll(".ldk-about-row")).toHaveLength(3);
     // `—` 是壳给的**值**，池照画（池不知道它是不是占位符——那是壳的账）
-    expect(container.querySelectorAll(".about-row")[2].querySelector(".v")?.textContent).toBe("—");
+    expect(container.querySelectorAll(".ldk-about-row")[2].querySelector(".v")?.textContent).toBe("—");
   });
 
   it("壳推 0 行就不画字段区（不画一个空框）", () => {
     const { container } = renderView({ ...CONTENT, fields: [] });
 
-    expect(container.querySelector(".about-fields")).toBeTruthy();
-    expect(container.querySelectorAll(".about-row")).toHaveLength(0);
+    expect(container.querySelector(".ldk-about-fields")).toBeTruthy();
+    expect(container.querySelectorAll(".ldk-about-row")).toHaveLength(0);
   });
 });
 
@@ -146,23 +146,23 @@ describe("AboutView（③ 字段行 = 壳推什么画什么）", () => {
 describe("AboutView（④ 两个按钮各发哪条命令）", () => {
   it("「检查更新…」= **既有** `update.checkForUpdates`（零入参，第二个实参是 token 占位槽）", () => {
     const { container } = renderView(CONTENT);
-    fireEvent.click(container.querySelectorAll(".about-btn")[0]);
+    fireEvent.click(container.querySelectorAll(".ldk-about-btn")[0]);
 
     expect(emitted).toEqual([["update.checkForUpdates", [undefined]]]);
   });
 
   it("「复制」= `app.aboutCopy`（壳侧命令——剪贴板写入口在 core，池够不着）", () => {
     const { container } = renderView(CONTENT);
-    fireEvent.click(container.querySelectorAll(".about-btn")[1]);
+    fireEvent.click(container.querySelectorAll(".ldk-about-btn")[1]);
 
     expect(emitted).toEqual([["app.aboutCopy", [undefined]]]);
   });
 
   it("「复制」是**主按钮**（Frame 6 的 `.about-btn.primary` 在右）——别把两者画反", () => {
     const { container } = renderView(CONTENT);
-    const btns = container.querySelectorAll(".about-btn");
+    const btns = container.querySelectorAll(".ldk-about-btn");
 
-    expect(btns[1].classList.contains("about-btn--primary")).toBe(true);
-    expect(btns[0].classList.contains("about-btn--primary")).toBe(false);
+    expect(btns[1].classList.contains("ldk-about-btn--primary")).toBe(true);
+    expect(btns[0].classList.contains("ldk-about-btn--primary")).toBe(false);
   });
 });

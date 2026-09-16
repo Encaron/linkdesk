@@ -70,7 +70,7 @@ function pushShell(data: PoolFloatingPanelData): void {
 }
 
 function getPanel(container: HTMLElement): HTMLElement {
-  return container.querySelector(".floating-panel") as HTMLElement;
+  return container.querySelector(".ldk-floating-panel") as HTMLElement;
 }
 
 /** 手势测试前置——渲染 + 推样例 + 面板几何桩（jsdom getBoundingClientRect 全 0） */
@@ -145,7 +145,7 @@ describe("壳推送渲染", () => {
     expect(getPanel(container)).toBeTruthy();
 
     pushShell({ open: false });
-    expect(container.querySelector(".floating-panel")).toBeNull();
+    expect(container.querySelector(".ldk-floating-panel")).toBeNull();
   });
 });
 
@@ -206,7 +206,7 @@ describe("遮罩 / Esc 关闭（I8-8）", () => {
     render(<FloatingPanelHost />);
     pushShell(sampleData());
     // E5.8#107 浮层权威：遮罩 portal 出 container（createPortal → scrim-plane/body 兜底）——查 document 而非 container
-    const backdrop = document.querySelector(".floating-panel-backdrop") as HTMLElement;
+    const backdrop = document.querySelector(".ldk-floating-panel-backdrop") as HTMLElement;
     fireEvent.click(backdrop);
     expect(mockAction).toHaveBeenCalledWith("close");
   });
@@ -231,7 +231,7 @@ describe("遮罩 / Esc 关闭（I8-8）", () => {
 describe("I8-5 拖拽（整条标题栏 + 壳内钳制）", () => {
   it("拖拽移动面板——几何按 delta 更新", () => {
     const { panel } = setupPanel();
-    const title = panel.querySelector(".floating-panel-title") as HTMLElement;
+    const title = panel.querySelector(".ldk-floating-panel-title") as HTMLElement;
     startGesture(title, { x: 200, y: 100 });
     moveGesture(title, { x: 300, y: 200 });
 
@@ -246,7 +246,7 @@ describe("I8-5 拖拽（整条标题栏 + 壳内钳制）", () => {
     const maxTop = window.innerHeight - 400 - 6;
     const maxLeft = window.innerWidth - 640 - 6;
 
-    const title = panel.querySelector(".floating-panel-title") as HTMLElement;
+    const title = panel.querySelector(".ldk-floating-panel-title") as HTMLElement;
     startGesture(title, { x: 200, y: 100 });
     moveGesture(title, { x: 3000, y: 3000 });
 
@@ -271,13 +271,13 @@ describe("I8-5 拖拽（整条标题栏 + 壳内钳制）", () => {
 describe("I8-6 拖拽/调整后遮罩点击抑制", () => {
   it("松手同拍内 backdrop 点击被忽略（suppress 标志延迟一拍）", () => {
     const { panel } = setupPanel();
-    const title = panel.querySelector(".floating-panel-title") as HTMLElement;
+    const title = panel.querySelector(".ldk-floating-panel-title") as HTMLElement;
     startGesture(title, { x: 200, y: 100 });
     moveGesture(title, { x: 220, y: 120 });
     endGesture(title);
 
     // E5.8#107 浮层权威：遮罩 portal 出 container（createPortal → scrim-plane/body 兜底）——查 document 而非 container
-    const backdrop = document.querySelector(".floating-panel-backdrop") as HTMLElement;
+    const backdrop = document.querySelector(".ldk-floating-panel-backdrop") as HTMLElement;
     fireEvent.click(backdrop);
     expect(mockAction).not.toHaveBeenCalled();
   });
@@ -288,7 +288,7 @@ describe("I8-6 拖拽/调整后遮罩点击抑制", () => {
 describe("I8-7 resize（底部手柄调高）", () => {
   it("向下拖增高——height 按 delta，top 固定（只从底部伸展）", () => {
     const { panel } = setupPanel();
-    const resize = panel.querySelector(".floating-panel-resize") as HTMLElement;
+    const resize = panel.querySelector(".ldk-floating-panel-resize") as HTMLElement;
     startGesture(resize, { x: 300, y: 500 });
     moveGesture(resize, { x: 300, y: 600 });
 
@@ -298,7 +298,7 @@ describe("I8-7 resize（底部手柄调高）", () => {
 
   it("向上拖超过最小高被钳制到 300px", () => {
     const { panel } = setupPanel();
-    const resize = panel.querySelector(".floating-panel-resize") as HTMLElement;
+    const resize = panel.querySelector(".ldk-floating-panel-resize") as HTMLElement;
     startGesture(resize, { x: 300, y: 500 });
     moveGesture(resize, { x: 300, y: -1000 });
 

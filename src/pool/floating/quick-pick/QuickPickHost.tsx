@@ -92,10 +92,10 @@ export function pluginItemToDto(item: PluginQuickPickItem, index: number): PoolQ
 function renderKeybinding(keybinding: string) {
   const parts = keybinding.split("+");
   return (
-    <span className="keybinding-pill">
+    <span className="ldk-keybinding-pill">
       {parts.map((k, i) => (
         <span key={`${k}-${i}`}>
-          {i > 0 && <span className="keybinding-sep">+</span>}
+          {i > 0 && <span className="ldk-keybinding-sep">+</span>}
           <kbd>{k}</kbd>
         </span>
       ))}
@@ -321,7 +321,7 @@ export default function QuickPickHost() {
           分离后结构隔离地板 :not(#ld-scrim-plane) 天然不碰它。zIndex quickPick-1，点击关闭。 */}
       {createPortal(
         <div
-          className={`quick-pick-backdrop${show && !closing ? " show" : ""}${closing ? " closing" : ""}`}
+          className={`ldk-quick-pick-backdrop${show && !closing ? " show" : ""}${closing ? " closing" : ""}`}
           style={{ zIndex: Z_INDEX.quickPick - 1 }}
           onClick={() => closeCurrent()}
         />,
@@ -330,18 +330,18 @@ export default function QuickPickHost() {
       {/* Panel——设计 §5.1：top 15vh 居中，400px 宽，max 60vh 高 */}
       <div
         ref={panelRef}
-        className={`quick-pick-panel${show && !closing ? " show" : ""}${closing ? " closing" : ""}`}
+        className={`ldk-quick-pick-panel${show && !closing ? " show" : ""}${closing ? " closing" : ""}`}
         {...{ [OVERLAY_LAYER_ATTR]: "" }}
         style={{ zIndex: Z_INDEX.quickPick }}
         role="dialog"
         aria-modal="true"
       >
         {/* E3.5 #CP10: input 行——prefix + input + clear */}
-        <div className="quick-pick-input-row">
-          {renderData.prefix && <span className="quick-pick-prefix">{renderData.prefix}</span>}
+        <div className="ldk-quick-pick-input-row">
+          {renderData.prefix && <span className="ldk-quick-pick-prefix">{renderData.prefix}</span>}
           <input
             ref={inputRef}
-            className="quick-pick-input"
+            className="ldk-quick-pick-input"
             type="text"
             placeholder={renderData.placeholder}
             value={query}
@@ -350,17 +350,17 @@ export default function QuickPickHost() {
           />
           {query && (
             <button
-              className="quick-pick-clear codicon codicon-close"
+              className="ldk-quick-pick-clear codicon codicon-close"
               onClick={() => { setQuery(""); setSelected(0); inputRef.current?.focus(); }}
               title={t("清除")}
             />
           )}
         </div>
 
-        <div className="quick-pick-list" ref={listRef}>
+        <div className="ldk-quick-pick-list" ref={listRef}>
           {/* E3.5 #CP08: 空态提示 */}
           {filtered.length === 0 ? (
-            <div className="quick-pick-empty">
+            <div className="ldk-quick-pick-empty">
               {isPlugin ? t("未找到匹配项") : debouncedQuery ? t("未找到匹配命令") : t("输入命令名称搜索…")}
             </div>
           ) : (
@@ -369,29 +369,29 @@ export default function QuickPickHost() {
               return (
                 <div
                   key={item.key}
-                  className={`quick-pick-item${isSelected ? " selected" : ""}`}
+                  className={`ldk-quick-pick-item${isSelected ? " selected" : ""}`}
                   onClick={() => selectCurrent(item.key)}
                   onMouseEnter={() => setSelected(i)}
                 >
                   {/* 两排布局——rows(column) > row(flex)（E3f #53b） */}
-                  <div className="quick-pick-item-content">
-                    <div className="quick-pick-item-row">
+                  <div className="ldk-quick-pick-item-content">
+                    <div className="ldk-quick-pick-item-row">
                       {/* E5.8#32：已激活项勾选标记——label 左侧 ✓。checked true/false（视图选择器）恒渲染占位保对齐；undefined（通用 QuickPick/插件请求）不渲染零回归 */}
                       {item.checked !== undefined && (
-                        <span className={`quick-pick-item-check${item.checked ? " checked" : ""}`}>
+                        <span className={`ldk-quick-pick-item-check${item.checked ? " checked" : ""}`}>
                           {item.checked ? <span className="codicon codicon-check" /> : null}
                         </span>
                       )}
-                      <span className="quick-pick-item-label">{item.label}</span>
+                      <span className="ldk-quick-pick-item-label">{item.label}</span>
                       {item.category && (
-                        <span className="quick-pick-item-category">{item.category}</span>
+                        <span className="ldk-quick-pick-item-category">{item.category}</span>
                       )}
                     </div>
                     {(item.detail || item.keybinding) && (
-                      <span className="quick-pick-item-detail">
-                        <span className="quick-pick-item-detail-id">{item.detail}</span>
+                      <span className="ldk-quick-pick-item-detail">
+                        <span className="ldk-quick-pick-item-detail-id">{item.detail}</span>
                         {item.keybinding && (
-                          <span className="quick-pick-item-detail-right">
+                          <span className="ldk-quick-pick-item-detail-right">
                             {renderKeybinding(item.keybinding)}
                           </span>
                         )}
@@ -400,11 +400,11 @@ export default function QuickPickHost() {
                   </div>
                   {/* 行内操作按钮——回传 actionId，壳按 key 重解析执行 */}
                   {item.buttons && item.buttons.length > 0 && (
-                    <span className="quick-pick-item-actions">
+                    <span className="ldk-quick-pick-item-actions">
                       {item.buttons.map((b) => (
                         <button
                           key={b.actionId}
-                          className={`quick-pick-item-btn codicon codicon-${b.icon}`}
+                          className={`ldk-quick-pick-item-btn codicon codicon-${b.icon}`}
                           title={b.tooltip}
                           onClick={(e) => {
                             e.stopPropagation();
@@ -420,7 +420,7 @@ export default function QuickPickHost() {
           )}
           {/* E3.5 #CP16: 结果计数——插件请求不显示（VS Code showQuickPick 无计数） */}
           {!isPlugin && filtered.length > 0 && (
-            <div className="quick-pick-count">{filtered.length} {t("个命令")}</div>
+            <div className="ldk-quick-pick-count">{filtered.length} {t("个命令")}</div>
           )}
         </div>
       </div>

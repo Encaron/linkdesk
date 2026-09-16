@@ -1,9 +1,9 @@
 /* dropdown-card——E5.8#36.5 共享下拉卡样式类。池内 fixed 定位菜单/下拉卡片唯一真源。
-   消费方：PanelZone 切换器下拉（.panel-switcher-dropdown）+ ViewTitleActions 动作下拉
-   （.vta-dropdown）——各自文件只保留唯一差异（min-width），卡片本体统一在此。
+   消费方：PanelZone 切换器下拉（.ldk-panel-switcher-dropdown）+ ViewTitleActions 动作下拉
+   （.ldk-vta-dropdown）——各自文件只保留唯一差异（min-width），卡片本体统一在此。
    铁律对齐：全部 CSS 变量零硬编码 + 间距 4px 网格。keyframes 同文件自包含（池 CSS 零 @import）。 */
 
-.dropdown-card {
+.ldk-dropdown-card {
   position: fixed;
   display: flex;
   flex-direction: column;
@@ -16,10 +16,10 @@
   box-shadow: var(--context-menu-shadow);
   border-radius: var(--radius-sm);
   z-index: var(--z-dropdown);
-  animation: dropdown-card-in 150ms ease-out;
+  animation: ldk-dropdown-card-in 150ms ease-out;
 }
 
-@keyframes dropdown-card-in {
+@keyframes ldk-dropdown-card-in {
   from { opacity: 0; transform: translateY(-4px); }
   to   { opacity: 1; transform: translateY(0); }
 }

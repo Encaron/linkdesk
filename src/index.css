@@ -254,7 +254,7 @@ html, body, #root, #pool-root {
    E5.8#98 修：border-radius 跟随 --surface-radius（主区表面圆角同源）——环画在包裹元素上，
    inset box-shadow 沿元素圆角走；缺省 0px = 直角，现状零变化。圆角开大时环四角不再被
    main-zone overflow 裁掉（此前直角环四角顶在圆角表面上被裁）。 */
-.group-pane-focused {
+.ldk-group-pane-focused {
   border-radius: var(--surface-radius, 0px);
   box-shadow: inset 0 0 0 1px var(--accent);
 }
@@ -299,20 +299,20 @@ select {
 }
 
 /* 归一化滚动容器——所有可滚动区域默认 hidden-x */
-.scroll-y {
+.ldk-scroll-y {
   overflow-y: auto;
   overflow-x: hidden;
 }
 
-/* === E5.7#3 PoolZoneShell 布局骨架——.pool-root/.pool-body（#37.5 grid 化）+ .pool-grid-cell。
+/* === E5.7#3 PoolZoneShell 布局骨架——.ldk-pool-root/.ldk-pool-body（#37.5 grid 化）+ .ldk-pool-grid-cell。
    占位样式（.zone-placeholder/.zone-sidebar/.zone-panel/.zone-right-sidebar）已随
    Phase 2/3/5 zone 组件替换全部删除（E5.7#20/#21/#22 收官）。
-   E5.8#37.5：.pool-body flex row → CSS grid（决策 3——对齐延伸到侧栏/侧栏缩短/面板四向/
+   E5.8#37.5：.ldk-pool-body flex row → CSS grid（决策 3——对齐延伸到侧栏/侧栏缩短/面板四向/
    双栏互换唯一可行结构）。grid-template 由 PoolZoneShell 从 DTO 动态推导（computePoolGrid），
    此处只留 display:grid + 溢出语义。.pool-main-column 已删——MainZone 直接成 grid cell，
    PanelZone 移出为独立 cell。 */
 
-.pool-root {
+.ldk-pool-root {
   display: flex;
   flex-direction: column;
   width: 100%;
@@ -325,7 +325,7 @@ select {
   background: transparent;
 }
 
-.pool-body {
+.ldk-pool-body {
   flex: 1;
   display: grid;
   min-height: 0;
@@ -337,10 +337,10 @@ select {
    E5.8#50.7 ③ + 缝系统：留缝——网格内表面（icon-bar/side-panel/main-zone/panel-zone）走
    cell padding；直连子表面（titlebar/status-bar）用 margin。统一 --surface-inset 驱动
    （宿主派生，见 ThemeEngine 缝法则），0px = 直角贴死。
-   position: relative：resize handle（.zone-resize-handle）绝对定位锚本格边界 = 缝中心。
+   position: relative：resize handle（.ldk-zone-resize-handle）绝对定位锚本格边界 = 缝中心。
    overflow 移除：表面阴影/半缝 handle 跨格渲染（表面各自 overflow:hidden 自裁内容——
-   side-panel/panel-zone/main-zone 已有，icon-bar 补——窗口级 .pool-root/.pool-body 仍裁）。 */
-.pool-grid-cell {
+   side-panel/panel-zone/main-zone 已有，icon-bar 补——窗口级 .ldk-pool-root/.ldk-pool-body 仍裁）。 */
+.ldk-pool-grid-cell {
   position: relative;
   min-width: 0;
   min-height: 0;
@@ -363,32 +363,32 @@ select {
    E5.8#66 背景：旧写法 `--glass-blur: calc(var(--glass-blur)×)` 是自定义属性自引用循环 →
    guaranteed-invalid → 消费端 blur 落回 0px（实机验证侧栏 blur 恒 0，per-surface 差异化从未
    生效）。新 var 读继承的 --glass-blur（非自引用），无覆盖的表面走 backdrop-filter 嵌套 fallback。 */
-.icon-bar,
-.side-panel {
+.ldk-icon-bar,
+.ldk-side-panel {
   --surface-glass-blur-scale: 0.44;
 }
-.panel-zone {
+.ldk-panel-zone {
   --surface-glass-blur-scale: 1.11;
 }
-.icon-bar,
-.side-panel,
-.panel-zone {
+.ldk-icon-bar,
+.ldk-side-panel,
+.ldk-panel-zone {
   --surface-glass-blur: calc(var(--glass-blur, 0px) * var(--surface-glass-blur-scale, 1));
 }
 
 /* 表面统一——悬浮面板形态（圆角/投影；留缝在 cell padding /
    titlebar/statusbar margin）+ morph 过渡。z-index: 1：抬到 BackgroundLayer（z0）之上、
    浮层宿主（1500+）之下——表面内浮层全 portal 出（#55 统一渲染器），层叠上下文不困浮层。
-   注：.side-panel 自带 transition: width（折叠动画），同特异性后载覆盖本 transition——
+   注：.ldk-side-panel 自带 transition: width（折叠动画），同特异性后载覆盖本 transition——
    折叠优先，morph 对侧栏不生效（已知取舍）。
    E5.8#89 E4：backdrop-filter 已下移至 ::before 玻璃层（z:-1）——元素自身只留形态，
    透射模糊归玻璃层，盖住 ::after 影像（z:-2），内容保持锐利（见 ::before/::after 注释）。 */
 .ldk-titlebar,
-.icon-bar,
-.side-panel,
-.main-zone,
-.panel-zone,
-.status-bar {
+.ldk-icon-bar,
+.ldk-side-panel,
+.ldk-main-zone,
+.ldk-panel-zone,
+.ldk-status-bar {
   position: relative;
   z-index: 1;
   border-radius: var(--surface-radius, 0px);
@@ -401,34 +401,34 @@ select {
 
 /* 主区表面——MainZone 根原无背景（依赖 pool-root 底座）；玻璃主题 --bg-window rgba →
    主区 = 18px 玻璃面板（mockup 主视觉「图全窗铺底」）；默认主题不透明 = 现状零变化。 */
-.main-zone {
+.ldk-main-zone {
   background: var(--bg-window);
 }
 
 /* titlebar/status-bar——直连 pool-root 子表面，留缝用 margin（网格内表面已走 cell padding）。
    overflow:hidden = 圆角自裁（内容不外溢圆角曲线；下拉菜单已 portal 到 #context-menu-root 不受限）。 */
 .ldk-titlebar,
-.status-bar {
+.ldk-status-bar {
   margin: var(--surface-inset, 0px);
   overflow: hidden;
 }
 
 /* ── E5.8 缝系统共享 resize handle——宿主所有 zone 的分界线（结构元素，非可配组件，E5.8#143 视觉定稿）。
-   pool-css 门禁禁池 @import → 共享几何必须在此全局层（.split-handle 与它共享点/线视觉，零重复）。
+   pool-css 门禁禁池 @import → 共享几何必须在此全局层（.ldk-split-handle 与它共享点/线视觉，零重复）。
    锚定 cell 边界（= 缝中心）：偏移 = -inset → 圆角开（inset 2px）时 4px 手柄恰好居中填满 4px 缝
    （相邻表面各半，零重叠零空隙）；直角（inset 0）时手柄落在自身格内边缘（4px 分隔带，不遮邻格）。
    z-index --z-sticky（= Z_INDEX.panelResizeHandle 200）——表面（z1）之上、浮层（1500+）之下。
    #143 定稿：常态三点居中 → hover 整条线淡入 + 点淡出（opacity 150-200ms，transform/opacity 不触发重排）；
    命中区仍 4px（不改命中区语义）——手柄本体透明只露点/线；点/线写死固定值，只有线端读 zone 同键。 ── */
-.zone-resize-handle {
+.ldk-zone-resize-handle {
   position: absolute;
   z-index: var(--z-sticky);
 }
 
 /* #143 常态三点——缝正中心（离四角圆弧最远，直角/圆角都自然）。
    单元素 + box-shadow 两兄弟点 = 3 点（5px 中心距 = mockup gap 3px + 2px 点）。 */
-.zone-resize-handle::before,
-.split-handle::before {
+.ldk-zone-resize-handle::before,
+.ldk-split-handle::before {
   content: "";
   position: absolute;
   left: 50%;
@@ -445,9 +445,9 @@ select {
   pointer-events: none;
 }
 
-/* 横缝（.horizontal + MainZone 横条 .split-handle.row）：三点横排 */
-.zone-resize-handle.horizontal::before,
-.split-handle.row::before {
+/* 横缝（.horizontal + MainZone 横条 .ldk-split-handle.row）：三点横排 */
+.ldk-zone-resize-handle.horizontal::before,
+.ldk-split-handle.row::before {
   box-shadow:
     5px 0 0 0 var(--text-muted),
     -5px 0 0 0 var(--text-muted);
@@ -456,8 +456,8 @@ select {
 /* #143 hover 成线——整条线淡入 + 点淡出；线端 border-radius 镜像 zone 圆角
    （读 --surface-radius 唯一真相源：直角 0 → 线端直角 / 圆角 px → 2px 线端帽自动成胶囊，
    零新键零监视，与缝系统 --surface-inset 派生同血缘）。越弧只在 hover 瞬时出现——用户接受。 */
-.zone-resize-handle::after,
-.split-handle::after {
+.ldk-zone-resize-handle::after,
+.ldk-split-handle::after {
   content: "";
   position: absolute;
   left: 50%;
@@ -472,8 +472,8 @@ select {
   pointer-events: none;
 }
 
-.zone-resize-handle.horizontal::after,
-.split-handle.row::after {
+.ldk-zone-resize-handle.horizontal::after,
+.ldk-split-handle.row::after {
   left: 0;
   right: 0;
   top: 50%;
@@ -483,48 +483,48 @@ select {
   transform: translateY(-50%);
 }
 
-.zone-resize-handle:hover::after,
-.split-handle:hover::after {
+.ldk-zone-resize-handle:hover::after,
+.ldk-split-handle:hover::after {
   opacity: 1;
 }
 
-.zone-resize-handle:hover::before,
-.split-handle:hover::before {
+.ldk-zone-resize-handle:hover::before,
+.ldk-split-handle:hover::before {
   opacity: 0;
 }
 
-.zone-resize-handle.vertical {
+.ldk-zone-resize-handle.vertical {
   width: 4px;
   top: 0;
   bottom: 0;
   cursor: col-resize;
 }
 
-.zone-resize-handle.vertical.right {
+.ldk-zone-resize-handle.vertical.right {
   right: calc(-1 * var(--surface-inset, 0px));
 }
 
-.zone-resize-handle.vertical.left {
+.ldk-zone-resize-handle.vertical.left {
   left: calc(-1 * var(--surface-inset, 0px));
 }
 
-.zone-resize-handle.horizontal {
+.ldk-zone-resize-handle.horizontal {
   height: 4px;
   left: 0;
   right: 0;
   cursor: row-resize;
 }
 
-.zone-resize-handle.horizontal.top {
+.ldk-zone-resize-handle.horizontal.top {
   top: calc(-1 * var(--surface-inset, 0px));
 }
 
-.zone-resize-handle.horizontal.bottom {
+.ldk-zone-resize-handle.horizontal.bottom {
   bottom: calc(-1 * var(--surface-inset, 0px));
 }
 
 /* ── E5.8#107 浮层权威：结构隔离地板（Phase 2 最终态）——悬浮表面统一 backdrop-filter。
-   pool-css 门禁禁池 @import → 共享原语必须在此全局层，与 .zone-resize-handle 同先例。
+   pool-css 门禁禁池 @import → 共享原语必须在此全局层，与 .ldk-zone-resize-handle 同先例。
    玻璃模式激活时浮层表面色被合成半透明（synthesizeGlassSurfaces 半透明化 bg-card/bg-window），
    无 backdrop-filter 则背后内容透出字叠字；本规则给全部悬浮表面磨砂背后内容。
    E5.8#103 磨砂地板模型（用户拍板）：「浮层永远比主屏更重一层磨砂」——玻璃滑杆控主表面；
@@ -543,7 +543,7 @@ select {
      quick-pick 输入/列表、floating-panel 标题/正文）坐在父面板单层磨砂上，**不再**二次加厚
      （#187 色环根治：双层磨砂 → 文字/按钮行边缘「加厚磨砂框」）。
    scrim-plane 排除（:not(#ld-scrim-plane)）——遮罩满屏无磨砂（与 surface 分离后天然不碰）。
-   GroupTabBar .drop-glass-zone 同类规则留在其文件内（drop 目标专属含 drop 属性，不并入）。
+   GroupTabBar .ldk-drop-glass-zone 同类规则留在其文件内（drop 目标专属含 drop 属性，不并入）。
    拖拽幽灵排除裁决（#107）：icon-drag-preview + MainZone 拖拽预览**不进层**——瞬态 mimetic
    副本非文字表面，逐帧 backdrop-filter 纯开销；且 pointer-events:none 与层穿透一致（裁决非漏项）。 ── */
 #ld-float-layer {
@@ -557,11 +557,11 @@ select {
   -webkit-backdrop-filter: blur(max(var(--glass-blur, 0px), var(--float-blur-floor)));
 }
 
-/* 例外（深度 4+，文档化裁决）：.floating-panel-act.tip::after tooltip 芯片——伪元素嵌在
-   #floating-panel-root > .floating-panel > .floating-panel-title > .floating-panel-actions >
-   .floating-panel-act.tip::after = 深度 5，结构规则只到深度 3 够不着伪元素。唯一例外选择器——
+/* 例外（深度 4+，文档化裁决）：.ldk-floating-panel-act.tip::after tooltip 芯片——伪元素嵌在
+   #floating-panel-root > .ldk-floating-panel > .ldk-floating-panel-title > .ldk-floating-panel-actions >
+   .ldk-floating-panel-act.tip::after = 深度 5，结构规则只到深度 3 够不着伪元素。唯一例外选择器——
    新浮层若也嵌到深度 4+ 且需磨砂，先想结构归位（移到表面层），不要学这个例外。 */
-.floating-panel-act.tip::after {
+.ldk-floating-panel-act.tip::after {
   backdrop-filter: blur(max(var(--glass-blur, 0px), var(--float-blur-floor))) saturate(var(--glass-saturate, 1));
   -webkit-backdrop-filter: blur(max(var(--glass-blur, 0px), var(--float-blur-floor)));
 }
@@ -582,11 +582,11 @@ select {
    非影像主题：backdrop = 均匀 rgba 底色，blur 均匀色 = 本色，渲染与旧结构逐像素一致
    （仅 tint/specular 下移一层，本就语义为"底上、内容下"）。 */
 .ldk-titlebar::before,
-.icon-bar::before,
-.side-panel::before,
-.main-zone::before,
-.panel-zone::before,
-.status-bar::before {
+.ldk-icon-bar::before,
+.ldk-side-panel::before,
+.ldk-main-zone::before,
+.ldk-panel-zone::before,
+.ldk-status-bar::before {
   content: "";
   position: absolute;
   inset: 0;
@@ -618,15 +618,15 @@ select {
    （::before z:-1，含 backdrop-filter 模糊）之下——E5.8#89 E4：影像被玻璃模糊盖住
    （"图上的玻璃"、blur 可见），内容仍锐利。opacity 承载 --surface-bg-opacity
    （纹理/切片透明度）。E5.8#117：filter blur 已删除——镜像机制整体废除（cp114 证据：
-   ::before backdrop-filter 能直接采样兄弟 .background-layer，切片图不再作为磨砂采样源；
+   ::before backdrop-filter 能直接采样兄弟 .ldk-background-layer，切片图不再作为磨砂采样源；
    panorama 全景图只挂 background-layer，zone ::before 直接模糊它）。zones/纹理切片图
    filter 恒清晰（--surface-bg-image 只在 zones/纹理模式非 none）。零值 --surface-bg-image: none = 现状零变化。 */
 .ldk-titlebar::after,
-.icon-bar::after,
-.side-panel::after,
-.main-zone::after,
-.panel-zone::after,
-.status-bar::after {
+.ldk-icon-bar::after,
+.ldk-side-panel::after,
+.ldk-main-zone::after,
+.ldk-panel-zone::after,
+.ldk-status-bar::after {
   content: "";
   position: absolute;
   inset: 0;
@@ -637,26 +637,26 @@ select {
   background-size: var(--surface-bg-size, auto);
   /* E5.8#125：玻璃激活时优先读合成透明度（--glass-surface-bg-opacity = 原 surface-bg-opacity × 玻璃 alpha，
      synthesizeGlassSurfaces 派生）——glassOpacity 拉到 0 表面整层透明，zone 切片图同步淡出，
-     全窗背景图（.background-layer z0）透出；未激活/无派生键回退原值（零变化）。 */
+     全窗背景图（.ldk-background-layer z0）透出；未激活/无派生键回退原值（零变化）。 */
   opacity: var(--glass-surface-bg-opacity, var(--surface-bg-opacity, 1));
   pointer-events: none;
 }
 .ldk-titlebar::after {
   background-position: var(--surface-titlebar-bg-position, 0 0);
 }
-.icon-bar::after {
+.ldk-icon-bar::after {
   background-position: var(--surface-icon-bar-bg-position, 0 0);
 }
-.side-panel::after {
+.ldk-side-panel::after {
   background-position: var(--surface-side-panel-bg-position, 0 0);
 }
-.main-zone::after {
+.ldk-main-zone::after {
   background-position: var(--surface-main-zone-bg-position, 0 0);
 }
-.panel-zone::after {
+.ldk-panel-zone::after {
   background-position: var(--surface-panel-zone-bg-position, 0 0);
 }
-.status-bar::after {
+.ldk-status-bar::after {
   background-position: var(--surface-status-bar-bg-position, 0 0);
 }
 

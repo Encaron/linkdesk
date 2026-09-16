@@ -35,13 +35,13 @@ describe("detectDropZone", () => {
 function makeTabBar(tabWidths: number[], scrollLeft = 0): HTMLElement {
   const total = tabWidths.reduce((a, b) => a + b, 0);
   const bar = document.createElement("div");
-  bar.className = "group-tab-bar";
+  bar.className = "ldk-group-tab-bar";
   bar.getBoundingClientRect = () => ({ left: 100, top: 0, right: 100 + total, bottom: 35, width: total, height: 35 }) as DOMRect;
   Object.defineProperty(bar, "scrollLeft", { value: scrollLeft, writable: true, configurable: true });
   let left = 0;
   for (const w of tabWidths) {
     const tab = document.createElement("div");
-    tab.className = "group-tab-item";
+    tab.className = "ldk-group-tab-item";
     // 每 tab 捕获自己的内容偏移（闭包不捕获循环变量 left 的最终值）
     const offset = left;
     tab.getBoundingClientRect = () => ({ left: 100 + offset - scrollLeft, top: 0, right: 100 + offset - scrollLeft + w, bottom: 35, width: w, height: 35 }) as DOMRect;

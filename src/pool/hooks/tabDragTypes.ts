@@ -47,7 +47,7 @@ export function detectDropZone(
  */
 export function computeTabInsertIndex(el: HTMLElement, clientX: number): number {
   const rect = el.getBoundingClientRect();
-  const tabEls = el.querySelectorAll<HTMLElement>(".group-tab-item");
+  const tabEls = el.querySelectorAll<HTMLElement>(".ldk-group-tab-item");
   if (clientX < rect.left) return 0;
   if (clientX > rect.right) return tabEls.length;
   const scrollLeft = el.scrollLeft;

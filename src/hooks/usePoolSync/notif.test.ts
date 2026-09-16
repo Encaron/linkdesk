@@ -84,7 +84,7 @@ describe("buildNotif——进度字段透传（E6#72c）", () => {
 
   it("进度图标换 sync + spin 类", () => {
     pushToast({ message: "演示消息", source: "demo-plugin", progress: true, ttl: 0 });
-    expect(buildNotif(t).groups[0].items[0].iconClass).toBe("codicon codicon-sync notif-icon-spin");
+    expect(buildNotif(t).groups[0].items[0].iconClass).toBe("codicon codicon-sync ldk-notif-icon-spin");
   });
 
   // E6#73f：原「作者显式给 icon → 尊重作者」用例已删——`notifications.show` 契约里根本没有
@@ -96,8 +96,8 @@ describe("buildNotif——进度字段透传（E6#72c）", () => {
     pushToast({ message: "演示消息 丙", source: "demo-plugin", severity: "info", ttl: 0 });
     // 按消息取图标——不依赖组内时间排序（同毫秒时间戳下顺序不稳）
     const byMsg = new Map(buildNotif(t).groups[0].items.map((i) => [i.message, i.iconClass]));
-    expect(byMsg.get("演示消息 甲")).toBe("codicon codicon-error notif-severity-error");
-    expect(byMsg.get("演示消息 乙")).toBe("codicon codicon-warning notif-severity-warning");
+    expect(byMsg.get("演示消息 甲")).toBe("codicon codicon-error ldk-notif-severity-error");
+    expect(byMsg.get("演示消息 乙")).toBe("codicon codicon-warning ldk-notif-severity-warning");
     expect(byMsg.get("演示消息 丙")).toBe("codicon codicon-info");
   });
 });
@@ -224,7 +224,7 @@ describe("buildNotif——安装 job 两段（E6#73d）", () => {
     expect(row.name).toBe("演示插件");
     expect(row.statusLabel).toBe("下载中 62%");
     expect(row.percent).toBe(62);
-    expect(row.iconClass).toBe("codicon codicon-sync notif-icon-spin");
+    expect(row.iconClass).toBe("codicon codicon-sync ldk-notif-icon-spin");
     expect(row.cancellable).toBe(true);
     expect(row.cancelLabel).toBe("取消安装");
   });

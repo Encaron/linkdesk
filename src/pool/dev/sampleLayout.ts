@@ -198,7 +198,7 @@ export function buildSampleLayout(): PoolLayout {
             items: [
               {
                 id: "mock-notif-2",
-                iconClass: "codicon codicon-error notif-severity-error",
+                iconClass: "codicon codicon-error ldk-notif-severity-error",
                 message: "插件安装失败：网络不可达",
                 timeLabel: "5 分钟前",
                 sourceLabel: "来源: 插件市场",

@@ -156,7 +156,7 @@ export default function FloatingPanelHost() {
   const startGesture = (e: ReactPointerEvent<HTMLDivElement>) => {
     if (maximized) return; // I8-9 最大化态铺满窗口，不可拖/调
     // #41.6 整条标题栏拖拽——动作按钮区排除（点按钮不误触拖拽）
-    if ((e.target as Element).closest(".floating-panel-actions")) return;
+    if ((e.target as Element).closest(".ldk-floating-panel-actions")) return;
     if (e.pointerType === "mouse" && e.button !== 0) return;
     const rect = panelRef.current?.getBoundingClientRect();
     if (!rect) return;
@@ -232,7 +232,7 @@ export default function FloatingPanelHost() {
       {!maximized &&
         createPortal(
           <div
-            className="floating-panel-backdrop"
+            className="ldk-floating-panel-backdrop"
             style={{ zIndex: Z_INDEX.floatingPanel - 1 }}
             onClick={() => {
               if (suppressBackdropRef.current) return;
@@ -244,7 +244,7 @@ export default function FloatingPanelHost() {
 
       <div
         ref={panelRef}
-        className={`floating-panel${dragging ? " dragging" : ""}${maximized ? " maximized" : ""}`}
+        className={`ldk-floating-panel${dragging ? " dragging" : ""}${maximized ? " maximized" : ""}`}
         {...{ [OVERLAY_LAYER_ATTR]: "" }}
         style={{ ...panelStyle, zIndex: Z_INDEX.floatingPanel }}
         tabIndex={-1}
@@ -255,15 +255,15 @@ export default function FloatingPanelHost() {
         {/* 标题栏 = I8-5 拖拽面（#41.6 顶部 6px 手柄 → 整条标题栏；actions 按钮区 startGesture 内排除）——
             纯图标动作（mockup 帧 1：open-in hover 展开全文 / □✕ hover tooltip） */}
         <div
-          className="floating-panel-title"
+          className="ldk-floating-panel-title"
           onPointerDown={startGesture}
           onPointerMove={onDragMove}
           onPointerUp={endGesture}
           onPointerCancel={endGesture}
           onLostPointerCapture={endGesture}
         >
-          <span className="floating-panel-label">{data.title}</span>
-          <div className="floating-panel-actions">
+          <span className="ldk-floating-panel-label">{data.title}</span>
+          <div className="ldk-floating-panel-actions">
             {data.actions.map((action) => {
               // I8-9 两态图标/文案——池只渲染，语义壳给（零自产文本）
               const iconId = maximized && action.toggledIcon ? action.toggledIcon : action.icon;
@@ -272,10 +272,10 @@ export default function FloatingPanelHost() {
               //   expandOnHover = open-in（纯图标 hover 展开全文）；toggledIcon = 本地 toggle（□/⤡）；
               //   其余 = 回传壳（✕ close）
               const actionClass = action.expandOnHover
-                ? "floating-panel-act open-in"
+                ? "ldk-floating-panel-act open-in"
                 : action.toggledIcon
-                  ? "floating-panel-act tip"
-                  : "floating-panel-act tip close";
+                  ? "ldk-floating-panel-act tip"
+                  : "ldk-floating-panel-act tip close";
               return (
                 <button
                   key={action.id}
@@ -293,14 +293,14 @@ export default function FloatingPanelHost() {
         </div>
 
         {/* 内容——壳不持渲染器，池经 PluginComponent 渲染插件视图（isActive=打开中） */}
-        <div className="floating-panel-body">
+        <div className="ldk-floating-panel-body">
           <PluginComponent pluginId={data.pluginId} isActive={data.open} renderPath={data.renderPath} />
         </div>
 
         {/* I8-7 底部 8px resize 手柄（调高）——最大化态隐藏 */}
         {!maximized && (
           <div
-            className="floating-panel-resize"
+            className="ldk-floating-panel-resize"
             onPointerDown={startGesture}
             onPointerMove={onResizeMove}
             onPointerUp={endGesture}

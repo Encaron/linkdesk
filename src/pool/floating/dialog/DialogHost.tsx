@@ -116,7 +116,7 @@ export default function DialogHost() {
           rgba(0,0,0,0.5)，zIndex dialog-1，点击关闭（alert 除外）。 */}
       {createPortal(
         <div
-          className="dialog-host-backdrop"
+          className="ldk-dialog-host-backdrop"
           style={{ zIndex: Z_INDEX.dialog - 1 }}
           onClick={() => {
             if (!data.isAlert) api?.cancel();
@@ -128,7 +128,7 @@ export default function DialogHost() {
           E6#71c：富内容模式加 --content 修饰（padding 归零/内容控制自身边距） */}
       <div
         ref={panelRef}
-        className={content ? "dialog-host-panel dialog-host-panel--content" : "dialog-host-panel"}
+        className={content ? "ldk-dialog-host-panel ldk-dialog-host-panel--content" : "ldk-dialog-host-panel"}
         {...{ [OVERLAY_LAYER_ATTR]: "" }}
         style={{ zIndex: Z_INDEX.dialog }}
         tabIndex={-1}
@@ -144,15 +144,15 @@ export default function DialogHost() {
           <PluginComponent pluginId={content.pluginId} isActive renderPath={content.renderPath} />
         ) : (
           <>
-            {data.title && <h3 className="dialog-host-title">{data.title}</h3>}
-            <p className="dialog-host-message">{data.message}</p>
-            <div className="dialog-host-actions">
+            {data.title && <h3 className="ldk-dialog-host-title">{data.title}</h3>}
+            <p className="ldk-dialog-host-message">{data.message}</p>
+            <div className="ldk-dialog-host-actions">
               {!data.isAlert && (
-                <button className="dialog-host-btn dialog-host-btn-secondary" onClick={() => api?.cancel()}>
+                <button className="ldk-dialog-host-btn ldk-dialog-host-btn-secondary" onClick={() => api?.cancel()}>
                   {data.cancelLabel}
                 </button>
               )}
-              <button className="dialog-host-btn dialog-host-btn-primary" onClick={() => api?.confirm()}>
+              <button className="ldk-dialog-host-btn ldk-dialog-host-btn-primary" onClick={() => api?.confirm()}>
                 {data.confirmLabel}
               </button>
             </div>

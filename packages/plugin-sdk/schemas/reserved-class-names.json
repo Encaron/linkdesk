@@ -11,31 +11,31 @@
       "why": "共享组件 SelectBox 下拉入场动画"
     },
     {
-      "name": "drop-zone-in",
+      "name": "ldk-drop-zone-in",
       "why": "宿主拖放区入场动画"
     },
     {
-      "name": "dropdown-card-in",
+      "name": "ldk-dropdown-card-in",
       "why": "宿主下拉卡片入场动画"
     },
     {
-      "name": "floating-panel-in",
+      "name": "ldk-floating-panel-in",
       "why": "宿主浮动面板入场动画"
     },
     {
-      "name": "group-tab-enter",
+      "name": "ldk-group-tab-enter",
       "why": "宿主分组标签入场动画"
     },
     {
-      "name": "group-tab-exit",
+      "name": "ldk-group-tab-exit",
       "why": "宿主分组标签退场动画"
     },
     {
-      "name": "notif-icon-spin",
+      "name": "ldk-notif-icon-spin",
       "why": "宿主通知图标旋转"
     },
     {
-      "name": "notif-progress-scan",
+      "name": "ldk-notif-progress-scan",
       "why": "宿主通知进度扫描"
     }
   ]

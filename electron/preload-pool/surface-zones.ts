@@ -30,11 +30,11 @@
     ——导出供单测直引，测试的 fixture DOM 由本表派生（不手抄类名，改名即同步）。 */
 export const ZONE_SELECTORS: ReadonlyArray<{ key: string; selector: string }> = [
   { key: "titlebar", selector: ".ldk-titlebar" },
-  { key: "icon-bar", selector: ".icon-bar" },
-  { key: "side-panel", selector: ".side-panel" },
-  { key: "main-zone", selector: ".main-zone" },
-  { key: "panel-zone", selector: ".panel-zone" },
-  { key: "status-bar", selector: ".status-bar" },
+  { key: "icon-bar", selector: ".ldk-icon-bar" },
+  { key: "side-panel", selector: ".ldk-side-panel" },
+  { key: "main-zone", selector: ".ldk-main-zone" },
+  { key: "panel-zone", selector: ".ldk-panel-zone" },
+  { key: "status-bar", selector: ".ldk-status-bar" },
 ];
 
 /**
@@ -206,7 +206,7 @@ function scheduleLayoutMeasure(): void {
     zones 未激活时量测幂等直返。 */
 export function ensureSurfaceLayoutObserver(): void {
   if (typeof MutationObserver === "undefined") return;
-  const body = document.querySelector<HTMLElement>(".pool-body");
+  const body = document.querySelector<HTMLElement>(".ldk-pool-body");
   if (!body) return;
   if (_layoutObserver && _layoutObservedBody === body) return; // 已观察当前 pool-body
   if (_layoutObserver) _layoutObserver.disconnect();

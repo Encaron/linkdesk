@@ -31,13 +31,13 @@ const NOTIF: NotifLayout = {
  */
 function openPanel(statusBar: StatusBarLayout): HTMLElement {
   const { container, baseElement } = render(<StatusBarZone statusBar={statusBar} />);
-  fireEvent.click(container.querySelector(".status-bar-notif-btn")!);
+  fireEvent.click(container.querySelector(".ldk-status-bar-notif-btn")!);
   return baseElement;
 }
 
 /** 段落标题文本，按 DOM 出现顺序 */
 function sectionLabels(container: HTMLElement): string[] {
-  return [...container.querySelectorAll(".notif-task-section-label")].map((e) => e.textContent ?? "");
+  return [...container.querySelectorAll(".ldk-notif-task-section-label")].map((e) => e.textContent ?? "");
 }
 
 /**
@@ -70,7 +70,7 @@ describe("E6#73d：面板三段式结构", () => {
             key: "running",
             label: "1 项进行中",
             items: [
-              { id: "job-a", pluginId: "demo-plugin", name: "演示插件", iconClass: "codicon codicon-sync notif-icon-spin", statusLabel: "下载中 62%", percent: 62, cancellable: true, cancelLabel: "取消安装" },
+              { id: "job-a", pluginId: "demo-plugin", name: "演示插件", iconClass: "codicon codicon-sync ldk-notif-icon-spin", statusLabel: "下载中 62%", percent: 62, cancellable: true, cancelLabel: "取消安装" },
             ],
           },
           {
@@ -85,7 +85,7 @@ describe("E6#73d：面板三段式结构", () => {
     });
     // 结果区得有一条来源分组，才验证得了「结果段标题在分组之上」
     expect(sectionLabels(container)).toEqual(["1 项进行中", "另有 1 项等待安装中", "已有结果"]);
-    expect(container.querySelector(".notif-task-section-count")?.textContent).toBe("1 项失败");
+    expect(container.querySelector(".ldk-notif-task-section-count")?.textContent).toBe("1 项失败");
   });
 
   it("排队行不画进度条（没有在途工作，画条是撒谎——壳不带 percent 时池也不画）", () => {
@@ -104,7 +104,7 @@ describe("E6#73d：面板三段式结构", () => {
         ],
       },
     });
-    expect(container.querySelectorAll(".notif-progress")).toHaveLength(0);
+    expect(container.querySelectorAll(".ldk-notif-progress")).toHaveLength(0);
   });
 
   it("[取消安装] 走 secondary（不抢失败行 [重试] 的视线），点击回传 notif:cancelJob + jobId", () => {
@@ -118,14 +118,14 @@ describe("E6#73d：面板三段式结构", () => {
               key: "running",
               label: "1 项进行中",
               items: [
-                { id: "job-a", pluginId: "demo-plugin", name: "演示插件", iconClass: "codicon codicon-sync notif-icon-spin", statusLabel: "解压中...", cancellable: true, cancelLabel: "取消安装" },
+                { id: "job-a", pluginId: "demo-plugin", name: "演示插件", iconClass: "codicon codicon-sync ldk-notif-icon-spin", statusLabel: "解压中...", cancellable: true, cancelLabel: "取消安装" },
               ],
             },
           ],
         },
       });
       const btn = [...container.querySelectorAll("button")].find((b) => b.textContent === "取消安装")!;
-      expect(btn.className).toBe("notif-action-btn secondary");
+      expect(btn.className).toBe("ldk-notif-action-btn secondary");
       fireEvent.click(btn);
       // 行 key 就是 jobId——回传它才能定向中止（不是插件名，同名不同插件要能区分）
       // 只挑 cancelJob 那条：开面板本身也会发 notif:panel（三态镜像），不是本用例的被测面
@@ -158,15 +158,15 @@ describe("E6#73d（C4）：行内 DOM 序 = 视觉序", () => {
             key: "running",
             label: "1 项进行中",
             items: [
-              { id: "job-a", pluginId: "demo-plugin", name: "演示插件", iconClass: "codicon codicon-sync notif-icon-spin", statusLabel: "下载中 62%", percent: 62, cancellable: true, cancelLabel: "取消安装" },
+              { id: "job-a", pluginId: "demo-plugin", name: "演示插件", iconClass: "codicon codicon-sync ldk-notif-icon-spin", statusLabel: "下载中 62%", percent: 62, cancellable: true, cancelLabel: "取消安装" },
             ],
           },
         ],
       },
     });
-    const classes = childClasses(container.querySelector(".notif-panel-item")!);
-    before(classes, "notif-main-row", "notif-progress");
-    before(classes, "notif-progress", "notif-details-row");
+    const classes = childClasses(container.querySelector(".ldk-notif-panel-item")!);
+    before(classes, "notif-main-row", "ldk-notif-progress");
+    before(classes, "ldk-notif-progress", "notif-details-row");
   });
 
   it("通知行：主行 → 进度 → 详情（来源 + 动作按钮）", () => {
@@ -182,7 +182,7 @@ describe("E6#73d（C4）：行内 DOM 序 = 视觉序", () => {
             items: [
               {
                 id: "toast-1",
-                iconClass: "codicon codicon-error notif-severity-error",
+                iconClass: "codicon codicon-error ldk-notif-severity-error",
                 message: "演示消息",
                 timeLabel: "刚刚",
                 sourceLabel: "来源: demo-plugin",
@@ -193,7 +193,7 @@ describe("E6#73d（C4）：行内 DOM 序 = 视觉序", () => {
         ],
       },
     });
-    const item = container.querySelector(".notif-panel-item")!;
+    const item = container.querySelector(".ldk-notif-panel-item")!;
     before(childClasses(item), "notif-main-row", "notif-details-row");
     // 文本顺序 = 屏幕顺序（拖选复制的顺序）：消息在前、来源与按钮在后
     expect(item.textContent).toMatch(/演示消息[\s\S]*来源: demo-plugin[\s\S]*演示动作/);
@@ -219,7 +219,7 @@ describe("E6#73l：挂载即播状态（壳侧镜像崩溃复位）", () => {
   it("点铃铛开面板 → 镜像跟着走到 open（且认账）——挂载那一发不是终点", () => {
     withEmit((emitted) => {
       const { container } = render(<StatusBarZone statusBar={{ items: [], notif: NOTIF }} />);
-      fireEvent.click(container.querySelector(".status-bar-notif-btn")!);
+      fireEvent.click(container.querySelector(".ldk-status-bar-notif-btn")!);
       expect(emitted).toEqual([
         ["notif:panel", { state: "idle", markSeen: false }],
         ["notif:panel", { state: "open", markSeen: true }],
@@ -243,7 +243,7 @@ describe("E6#73k：通知面 aria 语义", () => {
 
   it("J1 铃铛：可读名 + 弹出层语义 + 展开态 + 指向面板（此前只有一个裸数字「3」）", () => {
     const { container } = renderBar({ items: [], notif: NOTIF });
-    const bell = container.querySelector(".status-bar-notif-btn")!;
+    const bell = container.querySelector(".ldk-status-bar-notif-btn")!;
     const panelId = "status-bar-notif-panel";
     expect(bell.getAttribute("aria-label")).toBe("通知");
     expect(bell.getAttribute("aria-haspopup")).toBe("dialog");
@@ -259,7 +259,7 @@ describe("E6#73k：通知面 aria 语义", () => {
 
   it("E6#75 铃铛＝收/开双通开关——第二次点收起面板，第三次点还能开回来", () => {
     const { container, baseElement } = render(<StatusBarZone statusBar={{ items: [], notif: NOTIF }} />);
-    const bell = container.querySelector(".status-bar-notif-btn")!;
+    const bell = container.querySelector(".ldk-status-bar-notif-btn")!;
     const panelId = "status-bar-notif-panel";
 
     fireEvent.click(bell);
@@ -284,7 +284,7 @@ describe("E6#73k：通知面 aria 语义", () => {
       items: [],
       notif: { ...NOTIF, unread: 3, bellTitle: "3 条通知" },
     });
-    expect(container.querySelector(".status-bar-notif-btn")!.getAttribute("aria-label")).toBe("3 条通知");
+    expect(container.querySelector(".ldk-status-bar-notif-btn")!.getAttribute("aria-label")).toBe("3 条通知");
   });
 
   it("J1 面板 = role=dialog + 名字；× 有可读名（此前是枚读不出名字的字形）", () => {
@@ -295,27 +295,27 @@ describe("E6#73k：通知面 aria 语义", () => {
         groups: [{ key: "demo-plugin", label: "demo-plugin", unread: 0, items: [{ id: "toast-1", iconClass: "codicon codicon-info", message: "演示消息", timeLabel: "刚刚", actions: [] }] }],
       },
     });
-    fireEvent.click(document.querySelector(".status-bar-notif-btn")!);
-    const panel = baseElement.querySelector(".status-bar-notif-panel")!;
+    fireEvent.click(document.querySelector(".ldk-status-bar-notif-btn")!);
+    const panel = baseElement.querySelector(".ldk-status-bar-notif-panel")!;
     expect(panel.getAttribute("role")).toBe("dialog");
     expect(panel.getAttribute("aria-label")).toBe("通知");
     // 非模态：不遮罩、点外面不关、Tab 不被圈住——标成 aria-modal 是撒谎
     expect(panel.getAttribute("aria-modal")).toBeNull();
-    expect(baseElement.querySelector(".notif-panel-dismiss")!.getAttribute("aria-label")).toBe("关闭");
+    expect(baseElement.querySelector(".ldk-notif-panel-dismiss")!.getAttribute("aria-label")).toBe("关闭");
   });
 
   it("J2 活区常驻在状态栏里（**不在面板里**）——面板关着也听得见后台装完了", () => {
     const { container } = renderBar({ items: [], notif: NOTIF });
-    const live = container.querySelector(".notif-sr-live")!;
+    const live = container.querySelector(".ldk-notif-sr-live")!;
     expect(live).not.toBeNull();
     expect(live.getAttribute("role")).toBe("status");
     expect(live.getAttribute("aria-live")).toBe("polite");
-    expect(container.querySelector(".status-bar-notif-panel")).toBeNull(); // 面板确实没开
+    expect(container.querySelector(".ldk-status-bar-notif-panel")).toBeNull(); // 面板确实没开
   });
 
   it("J2 通知落下来 → 活区跟着变；且**首次扫描只建基线**不出声", () => {
     const { container, rerender } = renderBar({ items: [], notif: NOTIF });
-    const live = () => container.querySelector(".notif-sr-live")!;
+    const live = () => container.querySelector(".ldk-notif-sr-live")!;
     expect(live().textContent).toBe(""); // 基线：存量通知不念
 
     rerender(
@@ -346,8 +346,8 @@ describe("E6#73k：通知面 aria 语义", () => {
         ],
       },
     });
-    fireEvent.click(document.querySelector(".status-bar-notif-btn")!);
-    const bar = baseElement.querySelector(".notif-progress")!;
+    fireEvent.click(document.querySelector(".ldk-status-bar-notif-btn")!);
+    const bar = baseElement.querySelector(".ldk-notif-progress")!;
     expect(bar.getAttribute("role")).toBe("progressbar");
     expect(bar.getAttribute("aria-label")).toBe("演示插件");
     expect(bar.getAttribute("aria-valuemin")).toBe("0");
@@ -365,8 +365,8 @@ describe("E6#73k：通知面 aria 语义", () => {
         groups: [{ key: "demo-plugin", label: "demo-plugin", unread: 0, items: [{ id: "toast-1", iconClass: "codicon codicon-info", message: "演示消息", timeLabel: "刚刚", progress: true, actions: [] }] }],
       },
     });
-    fireEvent.click(document.querySelector(".status-bar-notif-btn")!);
-    const bar = baseElement.querySelector(".notif-progress")!;
+    fireEvent.click(document.querySelector(".ldk-status-bar-notif-btn")!);
+    const bar = baseElement.querySelector(".ldk-notif-progress")!;
     expect(bar.getAttribute("role")).toBe("progressbar");
     expect(bar.getAttribute("aria-valuenow")).toBeNull();
   });
@@ -385,8 +385,8 @@ describe("E6#73k：通知面 aria 语义", () => {
         ],
       },
     });
-    fireEvent.click(document.querySelector(".status-bar-notif-btn")!);
-    expect(baseElement.querySelector(".notif-progress")!.getAttribute("aria-valuenow")).toBe("0");
+    fireEvent.click(document.querySelector(".ldk-status-bar-notif-btn")!);
+    expect(baseElement.querySelector(".ldk-notif-progress")!.getAttribute("aria-valuenow")).toBe("0");
   });
 });
 
@@ -405,28 +405,28 @@ describe("E6#73k（J5）：焦点管理", () => {
 
   it("点铃铛开 → 焦点落在**面板容器**上（不是「清除已完成」按钮上——随手一个 Enter 会把通知清了）", () => {
     const { container } = render(<StatusBarZone statusBar={{ items: [], notif: PANEL_ITEM }} />);
-    fireEvent.click(container.querySelector(".status-bar-notif-btn")!);
-    const panel = document.querySelector(".status-bar-notif-panel")!;
+    fireEvent.click(container.querySelector(".ldk-status-bar-notif-btn")!);
+    const panel = document.querySelector(".ldk-status-bar-notif-panel")!;
     expect(document.activeElement).toBe(panel);
     expect(panel.getAttribute("tabindex")).toBe("-1");
   });
 
   it("按「最小化」关 → 焦点**归还铃铛**（用户从哪进来的就回哪去）", () => {
     const { container } = render(<StatusBarZone statusBar={{ items: [], notif: PANEL_ITEM }} />);
-    const bell = container.querySelector(".status-bar-notif-btn")!;
+    const bell = container.querySelector(".ldk-status-bar-notif-btn")!;
     fireEvent.click(bell);
-    const minimize = [...document.querySelectorAll(".notif-panel-action")].find((b) => b.textContent === "最小化")!;
+    const minimize = [...document.querySelectorAll(".ldk-notif-panel-action")].find((b) => b.textContent === "最小化")!;
     fireEvent.click(minimize);
     expect(document.activeElement).toBe(bell);
   });
 
   it("关之前用户已经把焦点用去别处 → **不夺回来**（只在焦点真丢了时才还）", () => {
     const { container } = render(<StatusBarZone statusBar={{ items: [], notif: PANEL_ITEM }} />);
-    fireEvent.click(container.querySelector(".status-bar-notif-btn")!);
+    fireEvent.click(container.querySelector(".ldk-status-bar-notif-btn")!);
     const elsewhere = document.createElement("button");
     document.body.appendChild(elsewhere);
     elsewhere.focus();
-    const minimize = [...document.querySelectorAll(".notif-panel-action")].find((b) => b.textContent === "最小化")!;
+    const minimize = [...document.querySelectorAll(".ldk-notif-panel-action")].find((b) => b.textContent === "最小化")!;
     fireEvent.click(minimize);
     expect(document.activeElement).toBe(elsewhere);
     elsewhere.remove();
@@ -437,7 +437,7 @@ describe("E6#73k（J5）：焦点管理", () => {
       <StatusBarZone statusBar={{ items: [], notif: { ...PANEL_ITEM, autoOpen: true } }} />,
     );
     // 面板确实被弹开了（唤醒生效）……
-    expect(container.querySelector(".status-bar-notif-btn")!.getAttribute("aria-expanded")).toBe("true");
+    expect(container.querySelector(".ldk-status-bar-notif-btn")!.getAttribute("aria-expanded")).toBe("true");
     // ……但焦点没被拽走
     expect(document.activeElement).toBe(document.body);
   });

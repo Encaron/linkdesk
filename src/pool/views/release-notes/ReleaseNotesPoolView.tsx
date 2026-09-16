@@ -79,34 +79,34 @@ function LoadingFrame() {
   const { t } = useTranslation();
   return (
     <div className="ldk-rn" aria-busy="true">
-      <div className="rn-head">
-        <div className="rn-skel rn-skel--head" aria-hidden="true">
-          <div className="rn-skel-bar rn-skel-bar--h18 rn-w40" />
-          <div className="rn-skel-bar rn-w70" />
+      <div className="ldk-rn-head">
+        <div className="ldk-rn-skel ldk-rn-skel--head" aria-hidden="true">
+          <div className="ldk-rn-skel-bar ldk-rn-skel-bar--h18 ldk-rn-w40" />
+          <div className="ldk-rn-skel-bar ldk-rn-w70" />
         </div>
       </div>
-      <div className="rn-body">
-        <div className="rn-hist">
-          <div className="rn-hist-head">{t("版本历史")}</div>
-          <div className="rn-skel-list" aria-hidden="true">
+      <div className="ldk-rn-body">
+        <div className="ldk-rn-hist">
+          <div className="ldk-rn-hist-head">{t("版本历史")}</div>
+          <div className="ldk-rn-skel-list" aria-hidden="true">
             {[0, 1, 2].map((i) => (
-              <div className="rn-skel-item" key={i}>
-                <div className="rn-skel-bar rn-w70" />
-                <div className="rn-skel-bar rn-w40" />
+              <div className="ldk-rn-skel-item" key={i}>
+                <div className="ldk-rn-skel-bar ldk-rn-w70" />
+                <div className="ldk-rn-skel-bar ldk-rn-w40" />
               </div>
             ))}
           </div>
         </div>
-        <div className="rn-content">
-          <div className="rn-skel" aria-hidden="true">
-            <div className="rn-skel-bar rn-skel-bar--h18 rn-w40" />
-            <div className="rn-skel-bar rn-w90" />
-            <div className="rn-skel-bar rn-w90" />
-            <div className="rn-skel-bar rn-w70" />
-            <div className="rn-skel-gap" />
-            <div className="rn-skel-bar rn-skel-bar--h18 rn-w40" />
-            <div className="rn-skel-bar rn-w90" />
-            <div className="rn-skel-bar rn-w70" />
+        <div className="ldk-rn-content">
+          <div className="ldk-rn-skel" aria-hidden="true">
+            <div className="ldk-rn-skel-bar ldk-rn-skel-bar--h18 ldk-rn-w40" />
+            <div className="ldk-rn-skel-bar ldk-rn-w90" />
+            <div className="ldk-rn-skel-bar ldk-rn-w90" />
+            <div className="ldk-rn-skel-bar ldk-rn-w70" />
+            <div className="ldk-rn-skel-gap" />
+            <div className="ldk-rn-skel-bar ldk-rn-skel-bar--h18 ldk-rn-w40" />
+            <div className="ldk-rn-skel-bar ldk-rn-w90" />
+            <div className="ldk-rn-skel-bar ldk-rn-w70" />
           </div>
         </div>
       </div>
@@ -128,42 +128,42 @@ function EmptyFrame({ listUrl }: { listUrl?: string }) {
   const { t } = useTranslation();
   return (
     <div className="ldk-rn">
-      <div className="rn-head">
-        <div className="rn-head-main">
-          <div className="rn-ver-title">
+      <div className="ldk-rn-head">
+        <div className="ldk-rn-head-main">
+          <div className="ldk-rn-ver-title">
             {t("发行说明")}
-            <span className="rn-ver-sub">{t("无法连接 GitHub")}</span>
+            <span className="ldk-rn-ver-sub">{t("无法连接 GitHub")}</span>
           </div>
         </div>
       </div>
-      <div className="rn-body">
-        <div className="rn-hist">
-          <div className="rn-hist-head">{t("版本历史")}</div>
-          <div className="rn-hist-note">
+      <div className="ldk-rn-body">
+        <div className="ldk-rn-hist">
+          <div className="ldk-rn-hist-head">{t("版本历史")}</div>
+          <div className="ldk-rn-hist-note">
             <span>{t("无本地缓存")}</span>
             <span>{t("联网后自动拉取")}</span>
           </div>
         </div>
-        <div className="rn-content rn-content--center">
-          <div className="rn-empty">
-            <div className="rn-empty-icon" aria-hidden="true">
+        <div className="ldk-rn-content ldk-rn-content--center">
+          <div className="ldk-rn-empty">
+            <div className="ldk-rn-empty-icon" aria-hidden="true">
               <CloudOff size={20} />
             </div>
-            <div className="rn-empty-title">{t("无法加载发行说明")}</div>
-            <p className="rn-empty-desc">
+            <div className="ldk-rn-empty-title">{t("无法加载发行说明")}</div>
+            <p className="ldk-rn-empty-desc">
               {t("当前无法连接到 GitHub。请检查网络后重试，或在 GitHub 上查看全部版本。")}
             </p>
-            <div className="rn-empty-actions">
+            <div className="ldk-rn-empty-actions">
               <button
                 type="button"
-                className="rn-btn rn-btn--primary"
+                className="ldk-rn-btn ldk-rn-btn--primary"
                 onClick={() => executePoolCommand("update.releaseNotesRetry")}
               >
                 {t("重试")}
               </button>
               {/* 拿不到列表页 URL 就不画——**空链接比没有链接更糟**（同 `poolLayout.ts` 该字段的注释） */}
               {listUrl && (
-                <a className="rn-link" href={listUrl} target="_blank" rel="noreferrer">
+                <a className="ldk-rn-link" href={listUrl} target="_blank" rel="noreferrer">
                   {t("在 GitHub 上查看 →")}
                 </a>
               )}
@@ -182,39 +182,39 @@ function ContentFrame({ data }: { data: Extract<PoolReleaseNotesData, { state: "
   const { listUrl } = data;
   return (
     <div className="ldk-rn">
-      <div className="rn-head">
-        <div className="rn-head-main">
-          <div className="rn-ver-title">
+      <div className="ldk-rn-head">
+        <div className="ldk-rn-head-main">
+          <div className="ldk-rn-ver-title">
             {/* "v" 是**格式**不是文案（版本号本体由壳给，不含前缀）——所以不套 t() */}
             {`v${data.version}`}
             {/* `subtitle` = 「2026 年 8 月 30 日 · 稳定通道」，壳侧 `t()` 完（含日期，随语言变） */}
-            <span className="rn-ver-sub">{data.subtitle}</span>
+            <span className="ldk-rn-ver-sub">{data.subtitle}</span>
           </div>
-          <div className="rn-meta">
-            <span className="rn-chip">{data.channelLabel}</span>
+          <div className="ldk-rn-meta">
+            <span className="ldk-rn-chip">{data.channelLabel}</span>
           </div>
         </div>
         {listUrl && (
-          <div className="rn-actions">
-            <a className="rn-ghost-btn" href={listUrl} target="_blank" rel="noreferrer">
+          <div className="ldk-rn-actions">
+            <a className="ldk-rn-ghost-btn" href={listUrl} target="_blank" rel="noreferrer">
               {t("在 GitHub 查看全部 →")}
             </a>
           </div>
         )}
       </div>
-      <div className="rn-body">
-        <div className="rn-hist">
-          <div className="rn-hist-head">{t("版本历史")}</div>
+      <div className="ldk-rn-body">
+        <div className="ldk-rn-hist">
+          <div className="ldk-rn-hist-head">{t("版本历史")}</div>
           {data.historical.map((h) => (
             <HistoryRow key={h.version} item={h} selected={h.version === data.version} />
           ))}
           {listUrl && (
-            <a className="rn-all" href={listUrl} target="_blank" rel="noreferrer">
+            <a className="ldk-rn-all" href={listUrl} target="_blank" rel="noreferrer">
               {t("所有版本 → GitHub ↗")}
             </a>
           )}
         </div>
-        <div className="rn-content">
+        <div className="ldk-rn-content">
           {data.banner !== undefined && <Banner text={data.banner} />}
           {/*
             body = GitHub Release 的 GFM 原文 → 走壳共享 MarkdownView（**md 渲染唯一组件**，
@@ -238,13 +238,13 @@ function HistoryRow({ item, selected }: { item: PoolReleaseNotesHistoryItem; sel
   return (
     <button
       type="button"
-      className={selected ? "rn-ver rn-ver--on" : "rn-ver"}
+      className={selected ? "ldk-rn-ver ldk-rn-ver--on" : "ldk-rn-ver"}
       aria-current={selected ? "true" : undefined}
       onClick={() => executePoolCommand("update.releaseNotesSelect", item.version)}
     >
-      <span className="rn-ver-num">{`v${item.version}`}</span>
+      <span className="ldk-rn-ver-num">{`v${item.version}`}</span>
       {/* dateLabel 由壳切好（`MM-DD`，**不走 locale**——切语言不该改它） */}
-      <span className="rn-ver-date">{item.dateLabel}</span>
+      <span className="ldk-rn-ver-date">{item.dateLabel}</span>
     </button>
   );
 }
@@ -258,12 +258,12 @@ function HistoryRow({ item, selected }: { item: PoolReleaseNotesHistoryItem; sel
 function Banner({ text }: { text: string }) {
   const { t } = useTranslation();
   return (
-    <div className="rn-banner">
-      <Sparkles size={14} className="rn-banner-icon" aria-hidden="true" />
-      <span className="rn-banner-text">{text}</span>
+    <div className="ldk-rn-banner">
+      <Sparkles size={14} className="ldk-rn-banner-icon" aria-hidden="true" />
+      <span className="ldk-rn-banner-text">{text}</span>
       <button
         type="button"
-        className="rn-banner-btn"
+        className="ldk-rn-banner-btn"
         onClick={() => executePoolCommand("update.releaseNotesDismissBanner")}
       >
         {t("知道了")}

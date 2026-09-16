@@ -76,11 +76,11 @@ export default function ViewTitleActions({ actions }: ViewTitleActionsProps) {
   const renderDropdown = (w: MenuWidget) =>
     openId === w.id && anchor ? (
       <OverlayPortal onClose={() => setOpenId(null)} triggerRef={chevronRef}>
-        <div className="dropdown-card vta-dropdown" style={anchor} role="menu">
+        <div className="ldk-dropdown-card ldk-vta-dropdown" style={anchor} role="menu">
           {w.items.map((item, i) => (
             <div
               key={i}
-              className="vta-item"
+              className="ldk-vta-item"
               role="menuitem"
               tabIndex={0}
               onClick={() => handleItemClick(item)}
@@ -103,7 +103,7 @@ export default function ViewTitleActions({ actions }: ViewTitleActionsProps) {
   const renderChevron = (w: MenuWidget) => (
     <button
       ref={openId === w.id ? chevronRef : undefined}
-      className={`vta-btn vta-chev${openId === w.id ? " open" : ""}`}
+      className={`ldk-vta-btn ldk-vta-chev${openId === w.id ? " open" : ""}`}
       title={w.type === "dropdown" && w.title ? t(w.title) : undefined}
       aria-label={w.type === "dropdown" && w.title ? t(w.title) : t("更多操作")}
       aria-haspopup="menu"
@@ -117,10 +117,10 @@ export default function ViewTitleActions({ actions }: ViewTitleActionsProps) {
   return (
     <div className="ldk-vta" role="toolbar" aria-label={t("视图操作")}>
       {actions.map((w) => (
-        <div key={w.id} className="vta-widget">
+        <div key={w.id} className="ldk-vta-widget">
           {w.type === "icon" && (
             <button
-              className="vta-btn"
+              className="ldk-vta-btn"
               title={t(w.title)}
               aria-label={t(w.title)}
               onClick={() => runCommand(w.command, w.args)}
@@ -137,7 +137,7 @@ export default function ViewTitleActions({ actions }: ViewTitleActionsProps) {
           {w.type === "split" && (
             <>
               <button
-                className="vta-btn"
+                className="ldk-vta-btn"
                 title={t(w.title)}
                 aria-label={t(w.title)}
                 onClick={() => runCommand(w.command, w.args)}

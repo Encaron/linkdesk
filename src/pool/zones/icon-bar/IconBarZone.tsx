@@ -201,10 +201,10 @@ function IconBarZone({ iconBar }: { iconBar: IconBarLayout }) {
     const showBefore = dropTarget?.id === item.pluginId && dropTarget.pos === DROP_POS_TOP;
     const showAfter = dropTarget?.id === item.pluginId && dropTarget.pos === DROP_POS_BOTTOM;
     return (
-      <div key={item.pluginId} className="icon-bar-item-wrapper">
-        {showBefore && <div className="icon-drop-indicator" />}
+      <div key={item.pluginId} className="ldk-icon-bar-item-wrapper">
+        {showBefore && <div className="ldk-icon-drop-indicator" />}
         <button
-          className={`icon-btn${iconBar.activePluginId === item.pluginId ? " active" : ""}${draggedId === item.pluginId ? " dragging" : ""}${viewDropTarget === item.pluginId ? " view-drop-target" : ""}`}
+          className={`ldk-icon-btn${iconBar.activePluginId === item.pluginId ? " active" : ""}${draggedId === item.pluginId ? " dragging" : ""}${viewDropTarget === item.pluginId ? " view-drop-target" : ""}`}
           data-plugin-id={item.pluginId}
           onMouseDown={(e) => {
             if (e.button !== 0) return;
@@ -264,22 +264,22 @@ function IconBarZone({ iconBar }: { iconBar: IconBarLayout }) {
           title={item.label}
           aria-label={item.label}
         >
-          <PoolPluginIcon icon={item.icon} className="icon-bar-plugin-icon" alt={item.label} />
+          <PoolPluginIcon icon={item.icon} className="ldk-icon-bar-plugin-icon" alt={item.label} />
         </button>
-        {showAfter && <div className="icon-drop-indicator" />}
+        {showAfter && <div className="ldk-icon-drop-indicator" />}
       </div>
     );
   };
 
   return (
-    <div className="icon-bar" role="navigation" aria-label={iconBar.navLabel} ref={barRef}>
-      <div className="icon-bar-top">
+    <div className="ldk-icon-bar" role="navigation" aria-label={iconBar.navLabel} ref={barRef}>
+      <div className="ldk-icon-bar-top">
         {/* ☰ 汉堡——图标栏第一个位置（壳 HamburgerMenu；menuStyle hamburger/both 时可见） */}
         {iconBar.hamburgerVisible && iconBar.hamburger && (
           <>
             <button
               ref={hamburgerBtnRef}
-              className={`hamburger-btn${hamburgerOpen ? " hamburger-open" : ""}`}
+              className={`ldk-hamburger-btn${hamburgerOpen ? " hamburger-open" : ""}`}
               onClick={() => setHamburgerOpen(!hamburgerOpen)}
               title={iconBar.hamburger.title}
               aria-label={iconBar.hamburger.title}
@@ -302,7 +302,7 @@ function IconBarZone({ iconBar }: { iconBar: IconBarLayout }) {
         )}
         {topIcons.map((item) => renderIcon(item, false))}
       </div>
-      <div className="icon-bar-bottom">{bottomIcons.map((item) => renderIcon(item, true))}</div>
+      <div className="ldk-icon-bar-bottom">{bottomIcons.map((item) => renderIcon(item, true))}</div>
 
       {/* 齿轮菜单——底部图标左键/右键 → ExtensionGear（壳 IconBar 同款；#14 ContextMenu 门户） */}
       {gearAnchor && (
@@ -317,10 +317,10 @@ function IconBarZone({ iconBar }: { iconBar: IconBarLayout }) {
       {/* 拖影——壳 IconBar 同款半透明跟随 */}
       {previewPos && draggedIcon && createPortal(
         <div
-          className="icon-drag-preview"
+          className="ldk-icon-drag-preview"
           style={{ left: previewPos.x, top: previewPos.y }}
         >
-          <PoolPluginIcon icon={draggedIcon.icon} className="icon-bar-plugin-icon" />
+          <PoolPluginIcon icon={draggedIcon.icon} className="ldk-icon-bar-plugin-icon" />
         </div>,
         document.body
       )}

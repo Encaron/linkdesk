@@ -16,7 +16,7 @@
 }
 
 /* Logo——左侧品牌标识 */
-.titlebar-logo {
+.ldk-titlebar-logo {
   width: 22px;
   height: 22px;
   margin: 0 8px;
@@ -25,7 +25,7 @@
 }
 
 /* 菜单按钮容器 */
-.titlebar-menus {
+.ldk-titlebar-menus {
   display: flex;
   align-items: center;
   gap: calc(2px * var(--ui-scale)); /* E5.8 Phase 12 #165：间隙随字号比例 */
@@ -35,7 +35,7 @@
 /* 菜单按钮——如"文件""查看"
    E5.8 Phase 12 #165：30px 高恒不变（F1 拍板——拖拽区 OS 契约，硬约束 18 上界假设），
    仅内部文本缩放到 sm 档 + 垂直 padding 乘 scale（1.25× 下 16px 文本 + 缩 padding ≈ 26px < 30px 不溢出）。 */
-.titlebar-menu-btn {
+.ldk-titlebar-menu-btn {
   padding: calc(4px * var(--ui-scale)) 8px;
   height: 30px;
   display: flex;
@@ -52,25 +52,25 @@
   white-space: nowrap;
 }
 
-.titlebar-menu-btn:hover {
+.ldk-titlebar-menu-btn:hover {
   background: var(--hover-overlay);
   color: var(--text-primary);
 }
 
-.titlebar-menu-btn.titlebar-btn-open {
+.ldk-titlebar-menu-btn.titlebar-btn-open {
   background: var(--hover-overlay);
   color: var(--text-primary);
 }
 
 /* 拖拽区——菜单按钮右侧的空白区域，可拖拽窗口 */
-.titlebar-drag-area {
+.ldk-titlebar-drag-area {
   flex: 1;
   height: 100%;
   -webkit-app-region: drag;
 }
 
 /* 槽位按钮——插件 contributes.titleBar 的左右槽小图标按钮（图标 14→lg，E5.8 Phase 12 #165） */
-.titlebar-slot-btn {
+.ldk-titlebar-slot-btn {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -87,7 +87,7 @@
   flex-shrink: 0;
 }
 
-.titlebar-slot-btn:hover {
+.ldk-titlebar-slot-btn:hover {
   background: var(--hover-overlay);
   color: var(--text-primary);
 }
@@ -95,7 +95,7 @@
 /* E6#57.11：右槽全文字按钮（壳共享 Button 的 .ldk-button--sm 档）。
    🔴 必须由**宿主侧**补 no-drag：`.ldk-titlebar`（:7）整条是 drag 区，而共享 Button 没有
    style/className 透传（见 Button.tsx 的 size 注释——那是刻意的）⇒ 不补这条，按钮会被
-   OS 当成拖拽区，**按下去只会拖窗口**。上面 `.titlebar-slot-btn` 那条 no-drag（:84）
+   OS 当成拖拽区，**按下去只会拖窗口**。上面 `.ldk-titlebar-slot-btn` 那条 no-drag（:84）
    只作用在图标按钮上，共享 Button 带不到。
    flex-shrink: 0 —— 窄窗时按钮不被拖拽区压扁。
    （.ldk-button--sm 的尺寸/字号在 Button.css，此处只管「在标题栏里怎么被对待」。） */
@@ -107,13 +107,13 @@
 /* ── 窗口控制（─ □ ×）——流内 flex（E5.8 缝系统：跟随顶栏表面——fixed 早于悬浮表面时代，
    顶栏 margin 内缩时按钮留在窗口角落不同步；titlebar flex 末位自然右对齐，表面怎么动它怎么动） ── */
 
-.window-controls {
+.ldk-window-controls {
   display: flex;
   flex-shrink: 0;
   -webkit-app-region: no-drag;
 }
 
-.wc-btn {
+.ldk-wc-btn {
   width: 38px;
   height: 30px;
   display: flex;
@@ -128,19 +128,19 @@
   transition: background 120ms, color 120ms;
 }
 
-.wc-btn:hover {
+.ldk-wc-btn:hover {
   background: var(--hover-overlay);
   color: var(--text-primary);
 }
 
 /* E5.8#46.18：置顶激活态——实心 icon + accent 高亮（ui-ux-pro-max「active state 需视觉反馈」；
    置顶/解除两态一眼可辨，不依赖只换 icon） */
-.wc-btn.wc-pin-active,
-.wc-btn.wc-pin-active:hover {
+.ldk-wc-btn.wc-pin-active,
+.ldk-wc-btn.wc-pin-active:hover {
   color: var(--accent);
 }
 
-.wc-close:hover {
+.ldk-wc-close:hover {
   background: var(--titlebar-close-hover);
   color: var(--text-on-accent);
 }

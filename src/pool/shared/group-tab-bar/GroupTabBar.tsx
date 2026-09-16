@@ -231,13 +231,13 @@ export default function GroupTabBar({ groupId, tabs, activeTabId, draggingId, dr
 
   return (
     <div
-      className="group-tab-bar"
+      className="ldk-group-tab-bar"
       ref={setBarRef}
     >
       {/* 左滚动箭头 */}
       {overflowLeft && (
         <button
-          className="group-tab-scroll-arrow group-tab-scroll-left"
+          className="ldk-group-tab-scroll-arrow group-tab-scroll-left"
           onClick={() => scrollTabs(-200)}
         >
           <span className="codicon codicon-chevron-left" />
@@ -246,7 +246,7 @@ export default function GroupTabBar({ groupId, tabs, activeTabId, draggingId, dr
 
       {/* 标签页列表 */}
       <div
-        className="group-tab-list"
+        className="ldk-group-tab-list"
         ref={scrollRef}
         onWheel={onWheel}
         onScroll={checkOverflow}
@@ -262,16 +262,16 @@ export default function GroupTabBar({ groupId, tabs, activeTabId, draggingId, dr
             <div key={tab.id} style={{ display: "contents" }}>
               {/* 拖拽插入指示器——E5.6#16.7：props 驱动 */}
               {dragInsertIndex === idx && draggingId !== tab.id && (
-                <div className="group-tab-drop-indicator" />
+                <div className="ldk-group-tab-drop-indicator" />
               )}
               {/* E5.8#46.10：跨窗吸附插入指示竖线（替代原整条 tab-bar-adsorb 高亮）——壳下发缝隙，父层按组解析。
                   本地拖拽与被动吸附不同时发生（壳排除源窗），两指示器恒不同帧生效 */}
               {adsorbInsertIndex === idx && (
-                <div className="group-tab-drop-indicator" />
+                <div className="ldk-group-tab-drop-indicator" />
               )}
               <div
                 data-tab-id={tab.id}
-                className={`group-tab-item${isActive ? " active" : ""}${isDragging ? " dragging" : ""}${isEntering ? " entering" : ""}${isExiting ? " exiting" : ""}${!tab.pinned ? " preview" : ""}`}
+                className={`ldk-group-tab-item${isActive ? " active" : ""}${isDragging ? " dragging" : ""}${isEntering ? " entering" : ""}${isExiting ? " exiting" : ""}${!tab.pinned ? " preview" : ""}`}
                 title={tab.sourceId ?? (tab.pinned ? tab.title : `${tab.title} — ${t("双击固定")}`)}
                 onClick={() => {
                   tabAction({ action: "focusTab", tabId: tab.id });
@@ -300,19 +300,19 @@ export default function GroupTabBar({ groupId, tabs, activeTabId, draggingId, dr
                 }}
               >
                 {/* dirty dot */}
-                {tab.dirty && <span className="group-tab-dirty-dot" />}
+                {tab.dirty && <span className="ldk-group-tab-dirty-dot" />}
 
                 {/* 图标——IconBarIcon 判别联合（E6#69g：文件标签 codicon/img、视图标签 Type-2 img 等）
                     池侧哑渲染；img 禁原生拖拽（PoolPluginIcon draggable=false） */}
-                {tab.icon && <PoolPluginIcon icon={tab.icon} className="group-tab-icon" />}
+                {tab.icon && <PoolPluginIcon icon={tab.icon} className="ldk-group-tab-icon" />}
 
                 {/* 标签文字 */}
-                <span className="group-tab-label">{labels.get(tab.id) ?? tab.title}</span>
+                <span className="ldk-group-tab-label">{labels.get(tab.id) ?? tab.title}</span>
 
                 {/* 关闭按钮——仅 blocked 不显示。singleton 只管打开时去重，不管关闭 */}
                 {tab.closeBehavior !== "blocked" && (
                   <button
-                    className="group-tab-close"
+                    className="ldk-group-tab-close"
                     onClick={(e) => handleClose(tab, e)}
                     title={t("关闭")}
                     aria-label={t("关闭")}
@@ -327,17 +327,17 @@ export default function GroupTabBar({ groupId, tabs, activeTabId, draggingId, dr
 
         {/* 末尾插入指示器 */}
         {dragInsertIndex === tabs.length && (
-          <div className="group-tab-drop-indicator" />
+          <div className="ldk-group-tab-drop-indicator" />
         )}
         {/* E5.8#46.10：吸附竖线——末尾缝隙（落到最后一个标签之后） */}
         {adsorbInsertIndex === tabs.length && (
-          <div className="group-tab-drop-indicator" />
+          <div className="ldk-group-tab-drop-indicator" />
         )}
 
         {/* 右滚动箭头 */}
         {overflowRight && (
           <button
-            className="group-tab-scroll-arrow group-tab-scroll-right"
+            className="ldk-group-tab-scroll-arrow group-tab-scroll-right"
             onClick={() => scrollTabs(200)}
           >
             <span className="codicon codicon-chevron-right" />
@@ -348,7 +348,7 @@ export default function GroupTabBar({ groupId, tabs, activeTabId, draggingId, dr
             E5.8#107：触发锚 = 本按钮（ref + toggle——再点收起，OverlayPortal onClose 替代手动 mousedown） */}
         <button
           ref={plusBtnRef}
-          className="group-tab-plus-btn"
+          className="ldk-group-tab-plus-btn"
           onClick={(e) => {
             if (showPlusMenu) {
               setShowPlusMenu(false);
@@ -373,7 +373,7 @@ export default function GroupTabBar({ groupId, tabs, activeTabId, draggingId, dr
         {showPlusMenu && plusMenuPos && creatableViews && creatableViews.length > 0 && (
           <OverlayPortal onClose={() => setShowPlusMenu(false)} triggerRef={plusBtnRef}>
           <div
-            className="group-tab-plus-menu"
+            className="ldk-group-tab-plus-menu"
             style={{
               position: "fixed",
               left: plusMenuPos.x,
@@ -384,7 +384,7 @@ export default function GroupTabBar({ groupId, tabs, activeTabId, draggingId, dr
             {creatableViews.map((v) => (
               <button
                 key={v.pluginId}
-                className="group-tab-plus-menu-item"
+                className="ldk-group-tab-plus-menu-item"
                 onClick={() => {
                   tabAction({ action: "createTab", pluginId: v.pluginId });
                   setShowPlusMenu(false);

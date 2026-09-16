@@ -60,29 +60,29 @@ function ContentFrame({ data }: { data: Extract<PoolAboutData, { state: "content
   const { t } = useTranslation();
   return (
     <div className="ldk-about">
-      <div className="about-inner">
+      <div className="ldk-about-inner">
         {/*
           品牌标 = **壳解析好的真资产 URL**（`assets/logo.svg`，与标题栏同一份）——不是手画的方块。
           见 `PoolAboutData.logoUrl` 的 🔴 段：mockup 那个圆角方块是示意，真资产才是唯一真值。
           `alt=""` 而非 `alt="LinkDesk"`：正下方 `.about-name` 已经把名字说了一遍，
           读屏再念一次是重复。
         */}
-        <img className="about-logo" src={data.logoUrl} alt="" aria-hidden="true" />
-        <div className="about-name">{data.name}</div>
-        <div className="about-fields">
+        <img className="ldk-about-logo" src={data.logoUrl} alt="" aria-hidden="true" />
+        <div className="ldk-about-name">{data.name}</div>
+        <div className="ldk-about-fields">
           {/* 顺序、条数、名字全由壳定——池只 `map`，加字段本文件一个字都不用改 */}
           {data.fields.map((f) => (
-            <div className="about-row" key={f.label}>
+            <div className="ldk-about-row" key={f.label}>
               <span className="k">{f.label}</span>
               <span className="v">{f.value}</span>
             </div>
           ))}
         </div>
-        <div className="about-actions">
+        <div className="ldk-about-actions">
           {/* 「检查更新…」= 既有命令的第四个入口（见文件头） */}
           <button
             type="button"
-            className="about-btn"
+            className="ldk-about-btn"
             onClick={() => executePoolCommand("update.checkForUpdates")}
           >
             {t("检查更新…")}
@@ -90,7 +90,7 @@ function ContentFrame({ data }: { data: Extract<PoolAboutData, { state: "content
           {/* 「复制」= 主按钮（Frame 6 的 `.about-btn.primary` 在右侧） */}
           <button
             type="button"
-            className="about-btn about-btn--primary"
+            className="ldk-about-btn ldk-about-btn--primary"
             onClick={() => executePoolCommand("app.aboutCopy")}
           >
             {t("复制")}
@@ -114,13 +114,13 @@ function ContentFrame({ data }: { data: Extract<PoolAboutData, { state: "content
 function LoadingFrame() {
   return (
     <div className="ldk-about" aria-busy="true">
-      <div className="about-skel" aria-hidden="true">
-        <div className="about-skel-logo" />
-        <div className="about-skel-bar about-skel-bar--name" />
+      <div className="ldk-about-skel" aria-hidden="true">
+        <div className="ldk-about-skel-logo" />
+        <div className="ldk-about-skel-bar ldk-about-skel-bar--name" />
         {[0, 1, 2, 3, 4, 5, 6, 7].map((i) => (
-          <div className="about-row" key={i}>
-            <div className="about-skel-bar about-skel-bar--k" />
-            <div className="about-skel-bar about-skel-bar--v" />
+          <div className="ldk-about-row" key={i}>
+            <div className="ldk-about-skel-bar ldk-about-skel-bar--k" />
+            <div className="ldk-about-skel-bar ldk-about-skel-bar--v" />
           </div>
         ))}
       </div>

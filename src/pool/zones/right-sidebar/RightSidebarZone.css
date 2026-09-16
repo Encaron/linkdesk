@@ -1,10 +1,10 @@
 /* RightSidebarZone——E5.7#22。右侧栏骨架样式（设计 §2.7）。
-   与 SidebarZone.css 同源——基础面板类（.side-panel*）+ shared 组件类（.side-panel-toolbar）
+   与 SidebarZone.css 同源——基础面板类（.ldk-side-panel*）+ shared 组件类（.ldk-side-panel-toolbar）
    在本文件自包含一份（池 zone 零跨 zone import 纪律——壳目录规范；重复定义同值，无害）。
    .sidebar-pane-* 类由 PoolSectionStack 自带（components/shared/SidebarSection.css 既有 import）。 */
 
 /* zone 包装——pool-body flex 行的直接子项。顺序：handle（左边缘）→ panel */
-.right-sidebar-zone {
+.ldk-right-sidebar-zone {
   display: flex;
   flex-direction: row;
   flex-shrink: 0;
@@ -12,12 +12,12 @@
   min-height: 0;
 }
 
-/* ── E5.7#22：左侧 resize handle——已归一化到共享 .zone-resize-handle（index.css 全局层）。
+/* ── E5.7#22：左侧 resize handle——已归一化到共享 .ldk-zone-resize-handle（index.css 全局层）。
 
    ── 基础面板（SidebarZone.css 同源拷贝） ── */
-/* E5.8#1d EXEMPT：pool-css gate → RightSidebarZone 基础面板类自包含 SidebarZone 同款（.side-panel* 全套），结构性重复 */
+/* E5.8#1d EXEMPT：pool-css gate → RightSidebarZone 基础面板类自包含 SidebarZone 同款（.ldk-side-panel* 全套），结构性重复 */
 /* jscpd:ignore-start */
-.side-panel {
+.ldk-side-panel {
   background: var(--bg-side-panel);
   display: flex;
   flex-direction: column;
@@ -28,14 +28,14 @@
 }
 
 /* E5.8#159 折叠同源改版：无窄条——折叠 = wrapper display:none（grid auto 列 0 宽），
-   .side-panel.collapsed / .side-panel-expand 已删（折叠态无 UI 残留，SidebarZone #147 同款）。 */
+   .ldk-side-panel.collapsed / .side-panel-expand 已删（折叠态无 UI 残留，SidebarZone #147 同款）。 */
 
 /* 拖拽期间关闭宽度 transition（#13 同因——rAF 帧帧改宽，150ms 过渡会滞后成橡皮筋） */
-.side-panel.resizing {
+.ldk-side-panel.resizing {
   transition: none;
 }
 
-.side-panel-header {
+.ldk-side-panel-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -46,7 +46,7 @@
 }
 
 /* 🔥 UX06：对标 VS Code——11px/uppercase/letter-spacing/ellipsis（SidebarZone.css 同款） */
-.side-panel-title {
+.ldk-side-panel-title {
   font-size: var(--font-size-xs); /* E5.8 Phase 12 #167：11→xs（SidebarZone.css 同款） */
   font-weight: 600;
   text-transform: uppercase;
@@ -57,7 +57,7 @@
   text-overflow: ellipsis;
 }
 
-.side-panel-content {
+.ldk-side-panel-content {
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
@@ -65,7 +65,7 @@
 }
 
 /* 🔥 UX10：工具栏 sticky wrapper——z-index 高于 section header（PoolToolbarSlot 依赖） */
-.side-panel-toolbar {
+.ldk-side-panel-toolbar {
   position: sticky;
   top: 0;
   z-index: calc(var(--z-sidebar-sticky-header) + 1);
@@ -73,7 +73,7 @@
   overflow: hidden;
 }
 
-.side-panel-placeholder {
+.ldk-side-panel-placeholder {
   color: var(--text-muted);
   font-size: var(--font-size-sm); /* E5.8 Phase 12 #167：12→sm */
   padding: 12px;
@@ -84,13 +84,13 @@
 
 /* 🔥 UX04：尊重系统"减少动画"偏好——关闭所有 transition（SidebarZone.css 同款） */
 @media (prefers-reduced-motion: reduce) {
-  .side-panel {
+  .ldk-side-panel {
     transition: none !important;
   }
 }
 
 /* 🔥 UX05：键盘导航可见焦点环——侧栏内所有可聚焦元素（SidebarZone.css 同款） */
-.side-panel :focus-visible {
+.ldk-side-panel :focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }

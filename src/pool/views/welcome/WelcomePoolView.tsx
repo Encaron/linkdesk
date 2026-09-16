@@ -106,8 +106,8 @@ export default function WelcomePoolView({ isActive: _isActive, creatableViews }:
   };
 
   return (
-    <div className="welcome-page">
-      <div className="welcome-logo-bg" aria-hidden="true">
+    <div className="ldk-welcome-page">
+      <div className="ldk-welcome-logo-bg" aria-hidden="true">
         <svg viewBox="0 0 160 160">
           <polygon
             points="80,10 147,45 147,115 80,150 13,115 13,45"
@@ -119,71 +119,71 @@ export default function WelcomePoolView({ isActive: _isActive, creatableViews }:
         </svg>
       </div>
 
-      <div className="welcome-scroll">
-        <header className="welcome-hero">
-          <h1 className="welcome-title">LinkDesk</h1>
-          <p className="welcome-subtitle">{t("通用调试容器")}</p>
+      <div className="ldk-welcome-scroll">
+        <header className="ldk-welcome-hero">
+          <h1 className="ldk-welcome-title">LinkDesk</h1>
+          <p className="ldk-welcome-subtitle">{t("通用调试容器")}</p>
         </header>
 
-        <section className="welcome-section">
-          <h2 className="welcome-section-title">{t("文件夹")}</h2>
-          <button className="welcome-card welcome-open-folder" onClick={handleOpenFolder}>
-            <FolderOpen size={24} className="welcome-card-icon" />
-            <span className="welcome-card-label">{t("打开文件夹")}</span>
+        <section className="ldk-welcome-section">
+          <h2 className="ldk-welcome-section-title">{t("文件夹")}</h2>
+          <button className="ldk-welcome-card ldk-welcome-open-folder" onClick={handleOpenFolder}>
+            <FolderOpen size={24} className="ldk-welcome-card-icon" />
+            <span className="ldk-welcome-card-label">{t("打开文件夹")}</span>
           </button>
           {recentFolders.length > 0 && (
-            <div className="welcome-recent-list">
+            <div className="ldk-welcome-recent-list">
               <h3 className="welcome-recent-subtitle">{t("最近")}</h3>
               {recentFolders.slice(0, 5).map((f, i) => (
                 <button
                   key={`${f.path}-${i}`}
-                  className="welcome-recent-item"
+                  className="ldk-welcome-recent-item"
                   onClick={() => handleRecentFolderClick(f.path)}
                   title={f.path}
                 >
-                  <Folder size={16} className="welcome-recent-icon" />
-                  <span className="welcome-recent-label">{f.name}</span>
-                  <span className="welcome-recent-workspace">{f.path}</span>
+                  <Folder size={16} className="ldk-welcome-recent-icon" />
+                  <span className="ldk-welcome-recent-label">{f.name}</span>
+                  <span className="ldk-welcome-recent-workspace">{f.path}</span>
                 </button>
               ))}
             </div>
           )}
         </section>
 
-        <section className="welcome-section">
-          <h2 className="welcome-section-title">{t("开始")}</h2>
+        <section className="ldk-welcome-section">
+          <h2 className="ldk-welcome-section-title">{t("开始")}</h2>
           {(creatableViews && creatableViews.length > 0) ? (
-            <div className="welcome-card-grid">
+            <div className="ldk-welcome-card-grid">
               {creatableViews.map((v) => (
                 <button
                   key={v.pluginId}
-                  className="welcome-card"
+                  className="ldk-welcome-card"
                   onClick={() => handleShortcutClick(v.pluginId, v.label)}
                 >
-                  <PluginIcon pluginId={v.pluginId} className="welcome-card-icon" />
-                  <span className="welcome-card-label">{t(v.label)}</span>
+                  <PluginIcon pluginId={v.pluginId} className="ldk-welcome-card-icon" />
+                  <span className="ldk-welcome-card-label">{t(v.label)}</span>
                 </button>
               ))}
             </div>
           ) : (
-            <p className="welcome-empty">{t("暂无可用视图")}</p>
+            <p className="ldk-welcome-empty">{t("暂无可用视图")}</p>
           )}
         </section>
 
         {recentViews.length > 0 && (
-          <section className="welcome-section">
-            <h2 className="welcome-section-title">{t("最近")}</h2>
-            <div className="welcome-recent-list">
+          <section className="ldk-welcome-section">
+            <h2 className="ldk-welcome-section-title">{t("最近")}</h2>
+            <div className="ldk-welcome-recent-list">
               {recentViews.slice(0, 10).map((entry, i) => (
                 <button
                   key={`${entry.pluginId}-${entry.workspaceName ?? ""}-${i}`}
-                  className="welcome-recent-item"
+                  className="ldk-welcome-recent-item"
                   onClick={() => handleRecentClick(entry)}
                 >
-                  <PluginIcon pluginId={entry.pluginId} className="welcome-recent-icon" />
-                  <span className="welcome-recent-label">{t(entry.label)}</span>
+                  <PluginIcon pluginId={entry.pluginId} className="ldk-welcome-recent-icon" />
+                  <span className="ldk-welcome-recent-label">{t(entry.label)}</span>
                   {entry.workspaceName && (
-                    <span className="welcome-recent-workspace">{entry.workspaceName}</span>
+                    <span className="ldk-welcome-recent-workspace">{entry.workspaceName}</span>
                   )}
                 </button>
               ))}
@@ -191,11 +191,11 @@ export default function WelcomePoolView({ isActive: _isActive, creatableViews }:
           </section>
         )}
 
-        <section className="welcome-section">
-          <h2 className="welcome-section-title">{t("帮助")}</h2>
-          <div className="welcome-help-links">
-            <span className="welcome-help-item"><BookOpen size={14} /> {t("使用文档")}</span>
-            <span className="welcome-help-item">⌨ {t("键盘快捷键")}</span>
+        <section className="ldk-welcome-section">
+          <h2 className="ldk-welcome-section-title">{t("帮助")}</h2>
+          <div className="ldk-welcome-help-links">
+            <span className="ldk-welcome-help-item"><BookOpen size={14} /> {t("使用文档")}</span>
+            <span className="ldk-welcome-help-item">⌨ {t("键盘快捷键")}</span>
           </div>
         </section>
       </div>

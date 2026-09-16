@@ -46,7 +46,7 @@
   background: transparent;
   color: var(--text-muted);
   cursor: pointer;
-  font-size: var(--font-size-lg); /* E5.8 Phase 12 #178：icon-btn icon-only codicon（基类 16px）→lg */
+  font-size: var(--font-size-lg); /* E5.8 Phase 12 #178：ldk-icon-btn icon-only codicon（基类 16px）→lg */
   padding: 0;
   transition: background 0.15s, color 0.15s;
 }

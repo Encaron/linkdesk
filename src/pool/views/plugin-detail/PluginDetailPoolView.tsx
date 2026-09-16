@@ -75,7 +75,7 @@ export default function PluginDetailPoolView({ pluginId }: PluginDetailPoolViewP
   // ── 未找到 ──
   if (!plugin) {
     return (
-      <div className="plugin-detail-empty">
+      <div className="ldk-plugin-detail-empty">
         {pluginId ? (
           <p>{t("插件") + ` "${pluginId}" ` + t("未安装")}</p>
         ) : (
@@ -90,33 +90,33 @@ export default function PluginDetailPoolView({ pluginId }: PluginDetailPoolViewP
   const isCore = !!m.core;
 
   return (
-    <div className="plugin-detail">
+    <div className="ldk-plugin-detail">
       {/* ═══ Header — 对标壳 PluginDetailView ═══ */}
-      <header className="pd-header">
-        <div className="pd-icon-container">
+      <header className="ldk-pd-header">
+        <div className="ldk-pd-icon-container">
           {/* list() IPC 只序列化 7 字段（无 icon）——占位 codicon 兜底（E5.7#98） */}
-          <span className="codicon codicon-symbol-misc pd-icon-codicon" />
-          {isCore && <span className="pd-icon-badge codicon codicon-star-full" />}
+          <span className="codicon codicon-symbol-misc ldk-pd-icon-codicon" />
+          {isCore && <span className="ldk-pd-icon-badge codicon codicon-star-full" />}
         </div>
 
-        <div className="pd-header-details">
-          <div className="pd-title-row">
-            <h1 className="pd-name">{t(m.name ?? pluginId ?? "")}</h1>
-            {m.version && <span className="pd-version">v{m.version}</span>}
-            {isCore && <span className="pd-badge pd-badge-core">{t("内置")}</span>}
+        <div className="ldk-pd-header-details">
+          <div className="ldk-pd-title-row">
+            <h1 className="ldk-pd-name">{t(m.name ?? pluginId ?? "")}</h1>
+            {m.version && <span className="ldk-pd-version">v{m.version}</span>}
+            {isCore && <span className="ldk-pd-badge ldk-pd-badge-core">{t("内置")}</span>}
           </div>
           {m.author && (
-            <p className="pd-subtitle"><span>{m.author}</span></p>
+            <p className="ldk-pd-subtitle"><span>{m.author}</span></p>
           )}
           {m.description && (
-            <p className="pd-short-desc">{t(m.description)}</p>
+            <p className="ldk-pd-short-desc">{t(m.description)}</p>
           )}
         </div>
       </header>
 
       {/* ═══ E5.8#15.5：缺依赖挂起（PENDING）提示条——原因可读，等待恢复后自动启用 ═══ */}
       {plugin.pendingReason && (
-        <div className="pd-pending-notice">
+        <div className="ldk-pd-pending-notice">
           <span className="codicon codicon-info" />
           <span>{plugin.pendingReason}</span>
         </div>
@@ -124,35 +124,35 @@ export default function PluginDetailPoolView({ pluginId }: PluginDetailPoolViewP
 
       {/* ═══ Action Bar — E6#18a：core:true 只藏「卸载」钮（防误删旗标），禁用/启用照常（可禁）；
           「不可卸载」不再是诚实文案（命令/接口层可卸）——藏钮即防误删机制，不画锁死声明 ═══ */}
-      <div className="pd-action-bar">
+      <div className="ldk-pd-action-bar">
         {disabled ? (
-          <button className="pd-btn pd-btn-enable" onClick={handleEnable} disabled={busy}>
+          <button className="ldk-pd-btn ldk-pd-btn-enable" onClick={handleEnable} disabled={busy}>
             <span className="codicon codicon-play" /> {t("启用")}
           </button>
         ) : (
           <>
-            <button className="pd-btn pd-btn-disable" onClick={handleDisable} disabled={busy}>
+            <button className="ldk-pd-btn ldk-pd-btn-disable" onClick={handleDisable} disabled={busy}>
               <span className="codicon codicon-circle-slash" /> {t("禁用")}
             </button>
             {!isCore && (
-              <button className="pd-btn pd-btn-uninstall" onClick={handleUninstall} disabled={busy}>
+              <button className="ldk-pd-btn ldk-pd-btn-uninstall" onClick={handleUninstall} disabled={busy}>
                 <span className="codicon codicon-trash" /> {t("卸载")}
               </button>
             )}
           </>
         )}
-        {error && <span className="pd-action-error">{error}</span>}
+        {error && <span className="ldk-pd-action-error">{error}</span>}
       </div>
 
       {/* ═══ NavBar — 对标壳 ═══ */}
-      <nav className="pd-navbar">
-        <button className="pd-navtab active">{t("详情")}</button>
+      <nav className="ldk-pd-navbar">
+        <button className="ldk-pd-navtab active">{t("详情")}</button>
       </nav>
 
       {/* ═══ Body ═══ */}
-      <div className="pd-body">
-        <div className="pd-details-layout">
-          <div className="pd-details-main">
+      <div className="ldk-pd-body">
+        <div className="ldk-pd-details-layout">
+          <div className="ldk-pd-details-main">
             {m.description && (
               <div className="pd-readme">
                 <p>{t(m.description)}</p>
@@ -163,7 +163,7 @@ export default function PluginDetailPoolView({ pluginId }: PluginDetailPoolViewP
           </div>
 
           {/* Info Sidebar */}
-          <aside className="pd-info-sidebar">
+          <aside className="ldk-pd-info-sidebar">
             <InfoItem label={t("标识符")} value={plugin.pluginId} mono />
             {m.version && <InfoItem label={t("版本")} value={`v${m.version}`} />}
           </aside>
@@ -175,9 +175,9 @@ export default function PluginDetailPoolView({ pluginId }: PluginDetailPoolViewP
 
 function InfoItem({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
   return (
-    <div className="pd-info-item">
-      <span className="pd-info-label">{label}</span>
-      <span className={mono ? "pd-info-value mono" : "pd-info-value"}>{value}</span>
+    <div className="ldk-pd-info-item">
+      <span className="ldk-pd-info-label">{label}</span>
+      <span className={mono ? "ldk-pd-info-value mono" : "ldk-pd-info-value"}>{value}</span>
     </div>
   );
 }

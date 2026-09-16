@@ -2,7 +2,7 @@
    与 SidebarZone.css / GroupTabBar.css 同款样式语言（VS Code 对标：active 顶部 accent 边框、
    hover overlay、separator 分割线）。 */
 
-.panel-zone {
+.ldk-panel-zone {
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
@@ -11,27 +11,27 @@
   overflow: hidden;
 }
 
-/* E5.8#37.5：竖条模式（edge∈{left,right}）——根改 row，面板内容体由 .panel-zone-body 包 column */
-.panel-zone.vertical {
+/* E5.8#37.5：竖条模式（edge∈{left,right}）——根改 row，面板内容体由 .ldk-panel-zone-body 包 column */
+.ldk-panel-zone.vertical {
   flex-direction: row;
 }
 
 /* E5.8#37.5：四向边边框——面板与内容的边界随 edge（顶面板→底缘 / 左面板→右缘 / 右面板→左缘） */
-.panel-zone.edge-top {
+.ldk-panel-zone.edge-top {
   border-top: none;
   border-bottom: 1px solid var(--separator);
 }
-.panel-zone.edge-left {
+.ldk-panel-zone.edge-left {
   border-top: none;
   border-right: 1px solid var(--separator);
 }
-.panel-zone.edge-right {
+.ldk-panel-zone.edge-right {
   border-top: none;
   border-left: 1px solid var(--separator);
 }
 
 /* 面板内容体——tabbar + keep-alive 恒 column 排布（竖条时根 row + 本 wrapper column） */
-.panel-zone-body {
+.ldk-panel-zone-body {
   flex: 1;
   min-width: 0;
   min-height: 0;
@@ -42,14 +42,14 @@
 /* 拖拽期间 rAF 帧帧改尺寸——无 transition（与 SidebarZone .resizing 同因：
    过渡会滞后成橡皮筋） */
 
-/* ── E5.7#21 + #37.5：四向 resize handle——已归一化到共享 .zone-resize-handle（index.css 全局层）。
+/* ── E5.7#21 + #37.5：四向 resize handle——已归一化到共享 .ldk-zone-resize-handle（index.css 全局层）。
    位置类 = 面板自身坐标：top/bottom = 横带（row-resize 纵拖），left/right = 竖条（col-resize 横拖）。
    底面板 → 顶缘（top）/ 顶面板 → 底缘（bottom）/ 左面板 → 右缘（right）/ 右面板 → 左缘（left）。
    边 border（edge-top/left/right）保留为面板自绘边界；缝开时 handle 填缝与边框同色相邻，CDP 实测核对。 ── */
 
 /* ── PanelTabBar 28px（设计 §2.6） ── */
 
-.panel-tabbar {
+.ldk-panel-tabbar {
   display: flex;
   align-items: stretch;
   height: calc(28px * var(--ui-scale)); /* E5.8 Phase 12 #168：tabbar 28px 乘 scale（F11 容器随 scale 免裁字） */
@@ -59,7 +59,7 @@
 
 /* ── E5.8#34：容器切换器按钮——标签行首（mockup 帧 2：容器名 + ⌄） ── */
 
-.panel-switcher {
+.ldk-panel-switcher {
   display: flex;
   align-items: center;
   gap: 5px;
@@ -75,19 +75,19 @@
   transition: background 150ms ease;
 }
 
-.panel-switcher:hover,
-.panel-switcher.open {
+.ldk-panel-switcher:hover,
+.ldk-panel-switcher.open {
   background: var(--tab-hover-bg);
 }
 
-.panel-switcher-label {
+.ldk-panel-switcher-label {
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
   max-width: 120px;
 }
 
-.panel-switcher-chev {
+.ldk-panel-switcher-chev {
   color: var(--text-muted);
   font-size: var(--font-size-2xs); /* E5.8 Phase 12 #168：chev 10→2xs */
   line-height: 1;
@@ -95,13 +95,13 @@
 
 /* ── E5.8#34：切换器下拉——TitleBarZone 下拉同款（fixed 卡片 + shadow + 入场） ── */
 
-.panel-switcher-dropdown {
-  /* 卡片本体在 shared/dropdown-card/dropdown-card.css（.dropdown-card）——此处只留唯一 min-width */
+.ldk-panel-switcher-dropdown {
+  /* 卡片本体在 shared/dropdown-card/dropdown-card.css（.ldk-dropdown-card）——此处只留唯一 min-width */
   min-width: 180px;
 }
 
 /* 分组标题（dd-group）——小字号大写感，muted */
-.panel-switcher-group {
+.ldk-panel-switcher-group {
   padding: 6px 12px 4px;
   color: var(--text-muted);
   font-size: var(--font-size-xs); /* E5.8 Phase 12 #168：group 11→xs */
@@ -109,7 +109,7 @@
 }
 
 /* 条目（dd-item）——✓勾选 + 视图名 + 插件 sub */
-.panel-switcher-item {
+.ldk-panel-switcher-item {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -121,21 +121,21 @@
   transition: background 150ms ease;
 }
 
-.panel-switcher-item:hover {
+.ldk-panel-switcher-item:hover {
   background: var(--hover-overlay);
 }
 
 /* 激活项——accent 文字强调 */
-.panel-switcher-item.active .panel-switcher-name {
+.ldk-panel-switcher-item.active .panel-switcher-name {
   color: var(--accent);
 }
 
 /* 隐藏视图——名字减弱（仅勾选可交互恢复） */
-.panel-switcher-item.hidden-view .panel-switcher-name {
+.ldk-panel-switcher-item.hidden-view .panel-switcher-name {
   color: var(--text-muted);
 }
 
-.panel-switcher-check {
+.ldk-panel-switcher-check {
   width: 14px;
   flex-shrink: 0;
   color: var(--accent);
@@ -144,11 +144,11 @@
 }
 
 /* 未勾选——空位占位，悬停显勾选 affordance */
-.panel-switcher-check.unchecked:hover {
+.ldk-panel-switcher-check.unchecked:hover {
   color: var(--text-muted);
 }
 
-.panel-switcher-sub {
+.ldk-panel-switcher-sub {
   margin-left: auto;
   color: var(--text-muted);
   font-size: var(--font-size-xs); /* E5.8 Phase 12 #168：11→xs */
@@ -160,7 +160,7 @@
 
 /* ── E5.8#34：空态占位——全不勾 / 无贡献视图（文案壳 t() 推送） ── */
 
-.panel-empty {
+.ldk-panel-empty {
   width: 100%;
   height: 100%;
   display: flex;
@@ -171,12 +171,12 @@
   padding: 12px;
 }
 
-.panel-empty-big {
+.ldk-panel-empty-big {
   font-size: var(--font-size-md); /* E5.8 Phase 12 #168：empty-big 13→md */
   color: var(--text-secondary);
 }
 
-.panel-empty-hint {
+.ldk-panel-empty-hint {
   font-family: var(--font-mono);
   font-size: var(--font-size-xs); /* E5.8 Phase 12 #168：11→xs */
   color: var(--text-muted);
@@ -184,7 +184,7 @@
 }
 
 /* 标签列表——overflow-x 滚动，[+] 在其外固定最右 */
-.panel-tabbar-list {
+.ldk-panel-tabbar-list {
   display: flex;
   overflow-x: auto;
   min-width: 0;
@@ -192,7 +192,7 @@
 }
 
 /* 标签 80px 固定不 shrink（设计 §2.6）——E5.8 Phase 12 #168：80px 乘 scale（F11 容器随 scale 免裁字） */
-.panel-tab {
+.ldk-panel-tab {
   width: calc(80px * var(--ui-scale));
   flex-shrink: 0;
   display: flex;
@@ -205,25 +205,25 @@
   user-select: none;
 }
 
-.panel-tab:hover {
+.ldk-panel-tab:hover {
   color: var(--text-primary);
   background: var(--hover-overlay);
 }
 
-.panel-tab.active {
+.ldk-panel-tab.active {
   color: var(--text-primary);
   background: var(--bg-window);
   border-top-color: var(--accent);
 }
 
-.panel-tab-label {
+.ldk-panel-tab-label {
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
 }
 
 /* [+] 新建——28px 方形，滚动区外（E5.8 Phase 12 #168：宽 28px 乘 scale + 图标 14→lg） */
-.panel-tab-create {
+.ldk-panel-tab-create {
   width: calc(28px * var(--ui-scale));
   flex-shrink: 0;
   display: flex;
@@ -236,7 +236,7 @@
   font-size: var(--font-size-lg);
 }
 
-.panel-tab-create:hover {
+.ldk-panel-tab-create:hover {
   color: var(--text-primary);
   background: var(--hover-overlay);
 }
@@ -245,7 +245,7 @@
       #46.17 图标换 codicon-open-preview（窗口+箭头，语义「独立成窗」——原 empty-window 带横线方框
       用户看着像文件夹）；画 14px（对齐 create 14px 字号）；hover 同 hover-overlay。 ── */
 
-.panel-tab-detach {
+.ldk-panel-tab-detach {
   width: calc(28px * var(--ui-scale)); /* E5.8 Phase 12 #168：28px 乘 scale */
   flex-shrink: 0;
   display: flex;
@@ -257,24 +257,24 @@
   cursor: pointer;
 }
 
-.panel-tab-detach .codicon {
+.ldk-panel-tab-detach .codicon {
   font-size: var(--font-size-lg); /* 14→lg */
 }
 
-.panel-tab-detach:hover {
+.ldk-panel-tab-detach:hover {
   color: var(--text-primary);
   background: var(--hover-overlay);
 }
 
 /* ── keep-alive 内容区 ── */
 
-.panel-content {
+.ldk-panel-content {
   flex: 1;
   min-height: 0;
   position: relative;
 }
 
-.panel-view {
+.ldk-panel-view {
   width: 100%;
   height: 100%;
   flex-direction: column;

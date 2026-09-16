@@ -95,14 +95,14 @@ export default function RightSidebarZone({ rightSidebar, edge }: RightSidebarZon
     // 无视图——空状态（文案壳侧 t() 推送——显示文本铁律）
     if (!views || views.length === 0) {
       return (
-        <div className="side-panel-placeholder">
+        <div className="ldk-side-panel-placeholder">
           <p>{rightSidebar.emptyText}</p>
           {rightSidebar.emptyHint && <p className="side-panel-placeholder-hint">{rightSidebar.emptyHint}</p>}
         </div>
       );
     }
     return (
-      <div className="side-panel-content">
+      <div className="ldk-side-panel-content">
         {/* ToolbarSlot——粘顶，flex-shrink:0 保证永不滚动消失（SidebarZone #10 同款） */}
         <div style={{ flexShrink: 0 }}>
           <PoolToolbarSlot views={toolbarViews} onHeightChange={setToolbarHeight} />
@@ -129,13 +129,13 @@ export default function RightSidebarZone({ rightSidebar, edge }: RightSidebarZon
     const zoneHidden = !rightSidebar.visible || collapsed;
     return (
       <>
-        <div className="right-sidebar-zone" style={zoneHidden ? { display: "none" } : undefined}>
+        <div className="ldk-right-sidebar-zone" style={zoneHidden ? { display: "none" } : undefined}>
           {inner}
         </div>
         {/* E5.7#22 + 缝系统：左侧 4px resize handle——共享 .zone-resize-handle（index.css 全局层：
             锚本格左边界 = 缝中心，偏移 -inset 缝居中 / 直角贴边）。E5.8#143 视觉：常态三点 / hover 成线 */}
         <div
-          className={`zone-resize-handle vertical ${handleEdgeForSlot(edge)}`}
+          className={`ldk-zone-resize-handle vertical ${handleEdgeForSlot(edge)}`}
           style={zoneHidden ? { display: "none" } : undefined}
           onMouseDown={resize.onResizeStart}
           aria-hidden="true"
@@ -146,11 +146,11 @@ export default function RightSidebarZone({ rightSidebar, edge }: RightSidebarZon
 
   return renderZone(
     <>
-      <div className={`side-panel${resize.resizing ? " resizing" : ""}`} style={{ width: resize.size, height: "100%" }}>
+      <div className={`ldk-side-panel${resize.resizing ? " resizing" : ""}`} style={{ width: resize.size, height: "100%" }}>
         {/* 容器 header（无 ◀/▶ 折叠按钮——差异注记 ①：折叠/展开仅走图标栏 toggle + 界面勾选菜单） */}
         {effectiveTitle && (
-          <div className="side-panel-header">
-            <span className="side-panel-title" title={effectiveTitle}>{effectiveTitle}</span>
+          <div className="ldk-side-panel-header">
+            <span className="ldk-side-panel-title" title={effectiveTitle}>{effectiveTitle}</span>
             {/* E5.8#36.6：mergeHeaderWhenSingle 单视图合并——容器 header 即视图 header，titleActions 同声明消费 */}
             {mergeHeaderWhenSingle === true && sectionViews.length === 1 && sectionViews[0].titleActions?.length
               ? <ViewTitleActions actions={sectionViews[0].titleActions} />

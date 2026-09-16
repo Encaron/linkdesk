@@ -71,7 +71,7 @@ function pushShell(data: Parameters<ShowCb>[0]): void {
 }
 
 function getInput(container: HTMLElement): HTMLInputElement {
-  return container.querySelector(".quick-pick-input") as HTMLInputElement;
+  return container.querySelector(".ldk-quick-pick-input") as HTMLInputElement;
 }
 
 /* ── 模拟 rAF —— 入场动画 effect 依赖（InlineInput.test 同款） ── */
@@ -138,7 +138,7 @@ describe("插件 quickPick 本地桥", () => {
     fireEvent.keyDown(getInput(container), { key: "Enter" });
     expect(await result).toEqual(items[0]); // contextBridge 每跳克隆——生产为结构化副本，内容一致
     // 插件选择器关闭——面板消失
-    expect(container.querySelector(".quick-pick-panel")).toBeNull();
+    expect(container.querySelector(".ldk-quick-pick-panel")).toBeNull();
   });
 
   it("Escape → resolve(undefined)，面板消失", async () => {
@@ -146,7 +146,7 @@ describe("插件 quickPick 本地桥", () => {
     const result = showPlugin({ items: [{ label: "选项A" }] });
     fireEvent.keyDown(getInput(container), { key: "Escape" });
     expect(await result).toBeUndefined();
-    expect(container.querySelector(".quick-pick-panel")).toBeNull();
+    expect(container.querySelector(".ldk-quick-pick-panel")).toBeNull();
   });
 
   it("last-wins——新 show() 顶掉旧请求：旧 settle(null)，新请求照常解析", async () => {
@@ -160,7 +160,7 @@ describe("插件 quickPick 本地桥", () => {
     expect(screen.getByText("新请求")).toBeTruthy();
     expect(screen.queryByText("旧请求")).toBeNull();
 
-    const input = document.querySelector(".quick-pick-input") as HTMLInputElement;
+    const input = document.querySelector(".ldk-quick-pick-input") as HTMLInputElement;
     fireEvent.keyDown(input, { key: "Enter" });
     expect(await resultB).toEqual(itemsB[0]);
   });
@@ -183,7 +183,7 @@ describe("插件 quickPick 本地桥", () => {
     expect(screen.getByText("新")).toBeTruthy();
     expect(screen.queryByText("旧")).toBeNull();
 
-    const input = document.querySelector(".quick-pick-input") as HTMLInputElement;
+    const input = document.querySelector(".ldk-quick-pick-input") as HTMLInputElement;
     fireEvent.keyDown(input, { key: "Enter" });
     expect(await resultB).toEqual(itemsB[0]);
   });
@@ -221,11 +221,11 @@ describe("插件 quickPick 本地桥", () => {
     // 插件面板仍渲染（不被壳退场动画波及）
     expect(screen.getByText("插件项")).toBeTruthy();
 
-    const input = document.querySelector(".quick-pick-input") as HTMLInputElement;
+    const input = document.querySelector(".ldk-quick-pick-input") as HTMLInputElement;
     fireEvent.keyDown(input, { key: "Escape" });
     expect(await result).toBeUndefined();
     // 插件关闭后回落到壳数据——壳已是关闭态，面板消失
-    expect(document.querySelector(".quick-pick-panel")).toBeNull();
+    expect(document.querySelector(".ldk-quick-pick-panel")).toBeNull();
   });
 
   it("插件选择后回落到壳数据——壳仍在展示则复现壳条目", async () => {
@@ -241,7 +241,7 @@ describe("插件 quickPick 本地桥", () => {
     const result = showPlugin({ items });
     expect(screen.getByText("插件项")).toBeTruthy();
 
-    const input = document.querySelector(".quick-pick-input") as HTMLInputElement;
+    const input = document.querySelector(".ldk-quick-pick-input") as HTMLInputElement;
     fireEvent.keyDown(input, { key: "Enter" });
     expect(await result).toBe(items[0]);
     // 回落壳数据
@@ -260,7 +260,7 @@ describe("壳推送模式回归", () => {
       items: [{ key: "shell-1", searchText: "壳命令", label: "壳命令" }],
     });
 
-    const input = document.querySelector(".quick-pick-input") as HTMLInputElement;
+    const input = document.querySelector(".ldk-quick-pick-input") as HTMLInputElement;
     expect(input.placeholder).toBe("壳占位");
     fireEvent.keyDown(input, { key: "Enter" });
     expect(mockSelect).toHaveBeenCalledWith("shell-1");
@@ -274,7 +274,7 @@ describe("壳推送模式回归", () => {
       items: [{ key: "shell-1", searchText: "壳命令", label: "壳命令" }],
     });
 
-    const input = document.querySelector(".quick-pick-input") as HTMLInputElement;
+    const input = document.querySelector(".ldk-quick-pick-input") as HTMLInputElement;
     fireEvent.keyDown(input, { key: "Escape" });
     expect(mockClose).toHaveBeenCalled();
   });
@@ -293,7 +293,7 @@ describe("壳推送模式回归", () => {
     expect(screen.getByText("问题")).toBeTruthy();
     expect(screen.getByText("输出")).toBeTruthy();
     // 仅 checked:true 项渲染 ✓（false 保留空占位保对齐，但不渲染图标）
-    expect(container.querySelectorAll(".quick-pick-item-check").length).toBe(2);
-    expect(container.querySelectorAll(".quick-pick-item-check .codicon-check").length).toBe(1);
+    expect(container.querySelectorAll(".ldk-quick-pick-item-check").length).toBe(2);
+    expect(container.querySelectorAll(".ldk-quick-pick-item-check .codicon-check").length).toBe(1);
   });
 });

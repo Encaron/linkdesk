@@ -93,7 +93,7 @@ export default function DragOverlays({
             pointerEvents: "none",
           }}>
             <div
-              className="drop-glass-zone"
+              className="ldk-drop-glass-zone"
               style={zoneStyle}
             />
           </div>

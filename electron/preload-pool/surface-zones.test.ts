@@ -24,8 +24,8 @@ function zoneClassOf(key: string): string {
 function setupZones(...keys: string[]): void {
   const root = document.documentElement;
   root.style.setProperty("--surface-bg-zones", "1");
-  document.body.innerHTML = '<div class="pool-body" style="grid-template-columns: auto auto 1fr auto"></div>';
-  const body = document.querySelector(".pool-body")!;
+  document.body.innerHTML = '<div class="ldk-pool-body" style="grid-template-columns: auto auto 1fr auto"></div>';
+  const body = document.querySelector(".ldk-pool-body")!;
   for (const key of keys) {
     const el = document.createElement("div");
     el.className = zoneClassOf(key);
@@ -85,7 +85,7 @@ describe("surface-zones 收敛判据（E5.8#62 审计#3）", () => {
     vi.advanceTimersByTime(200); // 第 2 轮：仍 2 → stable=1（未收敛）
     // 迟挂 status-bar——found 增长 → 重置稳定计数继续轮询
     const sb = document.createElement("div");
-    sb.className = "status-bar";
+    sb.className = "ldk-status-bar";
     document.body.appendChild(sb);
     vi.advanceTimersByTime(200); // 第 3 轮：found=3 > 2 → 量测命中迟挂 zone
     expect(zonePos("status-bar")).toBe("0px 0px");
@@ -114,17 +114,17 @@ describe("surface-zones 收敛判据（E5.8#62 审计#3）", () => {
   });
 
   it("E5.8#126 多 .side-panel——跳过 display:none 占位选可见（衣袖重复根因守卫）", () => {
-    document.body.innerHTML = '<div class="pool-body"></div>';
-    const body = document.querySelector(".pool-body")!;
+    document.body.innerHTML = '<div class="ldk-pool-body"></div>';
+    const body = document.querySelector(".ldk-pool-body")!;
     // keep-alive 非活动容器/折叠占位在文档前（display:none）——querySelector('.side-panel') 原会选中它
     const hidden = document.createElement("div");
-    hidden.className = "side-panel";
+    hidden.className = "ldk-side-panel";
     hidden.style.display = "none";
     const visible = document.createElement("div");
-    visible.className = "side-panel";
+    visible.className = "ldk-side-panel";
     body.appendChild(hidden);
     body.appendChild(visible);
-    expect(queryVisibleZone(".side-panel")).toBe(visible);
+    expect(queryVisibleZone(".ldk-side-panel")).toBe(visible);
     // 量测全走可见选择——隐藏占位在前不干扰，写出 token（jsdom rect 全 0 → 0px 0px 确定性）
     document.documentElement.style.setProperty("--surface-bg-zones", "1");
     measureSurfaceZones();
@@ -139,7 +139,7 @@ describe("surface-zones 收敛判据（E5.8#62 审计#3）", () => {
     expect(document.documentElement.style.getPropertyValue("--surface-bg-size")).not.toBe("");
     document.documentElement.style.removeProperty("--surface-bg-size"); // 清——验证下面重算写回
     // 换边：React 写新 grid-template（位置平移，zone 尺寸不变——ResizeObserver 不触发）
-    const body = document.querySelector<HTMLElement>(".pool-body")!;
+    const body = document.querySelector<HTMLElement>(".ldk-pool-body")!;
     body.style.gridTemplateColumns = "auto 1fr auto auto";
     await vi.advanceTimersByTimeAsync(16); // flush MutationObserver microtask + setTimeout 合并回调
     expect(document.documentElement.style.getPropertyValue("--surface-bg-size")).not.toBe(""); // 已重算写回

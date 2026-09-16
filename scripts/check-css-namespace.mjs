@@ -16,12 +16,16 @@
  *        新增即意味着「又占了一个全局名」，必须先登记理由再放行）
  *   ② **跨组件借用**：某个共享组件裸定义的类名，被**别的组件目录**（或壳源码）渲染 ⇒ 🔴 红
  *      （`.badge` 案的机械化判据——徽标类的名字只能由它自己的组件渲染）
- *   ③ 宿主 `index.css` 的**全局工具类**新增 ⇒ 🔴 红
- *      （插件实测在用 `.input`：settings / serial-monitor 渲染 `className="input"`——扩面要走登记）
+ *   ③ 宿主**独立定义必须 `ldk-` 开头** ⇒ 🔴 红
+ *      （E6#109l 起从「逐个登记」改成**结构性判定**——宿主自己定义的类名一律 `ldk-`，
+ *        规则一句话、不需查表、没有白名单。三方带进来的名字（`codicon*`）天然出射程：
+ *        本仓**只消费、从不独立定义**它，实测交集 = 0。）
  *   ④ `@keyframes` 跨方重名（共享组件 × 壳）⇒ 🔴 红（关键帧名同样是全局的，第二条命名空间）
  *
  * ── 登记表 = 既成事实面（不是「允许随便加」）──
- *   登记项都带理由；新增一律红 ⇒ 逼一次「这是公共面还是漏网借用」的判断。想加请改本题表并写明理由。
+ *   判据① 仍是「未登记的新增裸定义 ⇒ 红」；判据③ 自 E6#109l 起**不再查表**（结构性判定，规则 = `ldk-` 开头）。
+ *   ⇒ `classes.host` 已整个摘空（E6#109l 落地时的终态：宿主走结构性规则，不再需要豁免表）；
+ *      `classes.shared` 的形态变更（同样结构性）归 1.21b。登记项都带理由；想加请改本题表并写明理由。
  *
  * 用法：
  *   node scripts/check-css-namespace.mjs              # 判据（挂 npm run check）
@@ -196,23 +200,25 @@ export function runChecks(root = ROOT, registry = loadRegistry(root)) {
     }
   }
 
-  // ③ 宿主全局工具类登记——范围 = **在池文档里生效的宿主 CSS**（index.css + src/pool/**；
-  //    池入口 pool-main.tsx 引 index.css，其余池组件样式随池 bundle 一起进同一张表）
+  // ③ 宿主独立定义必须 `ldk-` 开头——**结构性判定**（E6#109l 起；域 = 在池文档里生效的宿主 CSS：
+  //    index.css + src/pool/**；池入口 pool-main.tsx 引 index.css，其余池组件样式随池 bundle 一起进同一张表）
+  //    🔴 判据①（共享组件，上方）**此刻刻意仍是「不含连字符」那把启发式尺子**——它的形态变更归 1.21b。
+  //       两条判据共处一个脚本是这个中间态的**有意形态**，自测里有一条 tripwire 钉住它（见 --self-test）。
   const hostCssFiles = [join(root, "src", "index.css"), ...walk(join(root, "src", "pool"), (n) => n.endsWith(".css"))].filter(
     (f) => statSync(f, { throwIfNoEntry: false })
   );
-  const hostBareSet = new Set();
+  const hostDefsNow = new Set();
   for (const f of hostCssFiles) {
     for (const name of parseCss(f).bareDefs) {
-      if (name.includes("-")) continue;
-      hostBareSet.add(name);
-      if (!(name in registry.host)) {
-        violations.push({
-          kind: "host-global-unregistered",
-          msg: `宿主新增全局工具类 .${name}（${relative(root, f).split("\\").join("/")}）——它随池文档进入所有插件视图，是跨仓公共面。` +
-            `请登记进 packages/plugin-sdk/schemas/reserved-class-names.json（classes.host，写明为什么必须是全局的）。`,
-        });
-      }
+      hostDefsNow.add(name);
+      if (name.startsWith("ldk-")) continue;
+      violations.push({
+        kind: "host-bare-unprefixed",
+        msg: `宿主独立定义 .${name}（${relative(root, f).split("\\").join("/")}）不带 \`ldk-\` 前缀——` +
+          `它随池文档进入所有插件视图，是跨仓公共标识符（硬约束 23）。宿主侧的规则只有一条：` +
+          `**自己定义的类名一律 \`ldk-\` 开头**（不需要登记、也没有白名单）。` +
+          `改法：改成 .ldk-${name}，并同笔改渲染它的 TSX 与 .css 里的复合/动画引用。`,
+      });
     }
   }
 
@@ -243,12 +249,12 @@ export function runChecks(root = ROOT, registry = loadRegistry(root)) {
       });
     }
   }
-  const hostBareNow = hostBareSet;
+  const hostBareNow = hostDefsNow;
   for (const name of Object.keys(registry.host)) {
     if (!hostBareNow.has(name)) {
       violations.push({
         kind: "registry-stale",
-        msg: `登记表里的宿主工具类 .${name} 已不在 index.css——请从 ${RESERVED_FILE_REL} 的 classes.host 摘掉（插件作者会照着过期的表避让）。`,
+        msg: `登记表里的宿主工具类 .${name} 已不在 index.css/pool CSS——请从 ${RESERVED_FILE_REL} 的 classes.host 摘掉（插件作者会照着过期的表避让）。`,
       });
     }
   }
@@ -289,17 +295,17 @@ function selfTest() {
     mkdirSync(join(tmp, "src"), { recursive: true });
     mk("src/components/shared/toggle/Toggle.css", ".toggle { background: red; }\n");
     mk("src/components/shared/toggle/Toggle.tsx", 'export const T = () => <div className="toggle" />;\n');
-    mk("src/index.css", ".input { background: var(--bg-input); }\n");
+    mk("src/index.css", ".ldk-input { background: var(--bg-input); }\n");
     mk("src/App.tsx", "export const A = () => <div className='x' />;\n");
   };
   const registry = {
     shared: { toggle: { owner: "toggle", why: "test" } },
-    host: { input: { why: "test" } },
+    host: {},
   };
 
-  // 正控：与登记表一致 ⇒ 零违规
+  // 正控：与登记表一致 ⇒ 零违规（**混合态**：判据① 仍查表、判据③ 已结构性）
   setup();
-  cases.push(["正控：登记齐全 ⇒ 绿", runChecks(tmp, registry).length === 0]);
+  cases.push(["正控：登记齐全 ＋ 宿主已 `ldk-` 化 ⇒ 绿", runChecks(tmp, registry).length === 0]);
 
   // 负控①：共享组件新增未登记裸定义
   setup();
@@ -316,10 +322,26 @@ function selfTest() {
   mk("src/App.tsx", "export const A = () => <div className='toggle' />;\n");
   cases.push(["负控③：壳渲染共享裸类名 ⇒ 红", runChecks(tmp, registry).some((v) => v.kind === "cross-render")]);
 
-  // 负控④：宿主新增全局工具类未登记
+  // 负控④：宿主新增**带连字符**的裸定义（`.foo-bar`）⇒ 红
+  //   🔴 这正是旧启发式（`name.includes("-") ? 跳过`）漏掉的那一类——E6#109l 的形态变更就为它。
   setup();
-  mk("src/index.css", ".input { color: red; }\n.mybrand { color: blue; }\n");
-  cases.push(["负控④：宿主新增工具类 ⇒ 红", runChecks(tmp, registry).some((v) => v.kind === "host-global-unregistered")]);
+  mk("src/index.css", ".ldk-input { color: red; }\n.foo-bar { color: blue; }\n");
+  cases.push(["负控④：宿主带连字符的裸定义 ⇒ 红", runChecks(tmp, registry).some((v) => v.kind === "host-bare-unprefixed")]);
+
+  // 负控④b：宿主不带连字符的裸定义（`.mybrand`）同样红（不是「只拦带连字符的」）
+  setup();
+  mk("src/index.css", ".mybrand { color: blue; }\n");
+  cases.push(["负控④b：宿主不带连字符的裸定义 ⇒ 红", runChecks(tmp, registry).some((v) => v.kind === "host-bare-unprefixed")]);
+
+  // 🔴 tripwire（混合态钉子）：判据③ 已结构性、判据① 仍旧启发式——同一份 `.foo-bar`
+  //   放**共享组件**里此刻**不报**（旧尺子跳过带连字符的名字），放**宿主**里必报。
+  //   ⇒ 1.21b 把判据① 也改成结构性之后，本用例会**当场变红**：那不是回归，是提醒改这条断言。
+  setup();
+  mk("src/components/shared/theme-picker/ThemePicker.css", ".foo-bar { color: red; }\n");
+  cases.push([
+    "tripwire：混合态——共享组件带连字符裸名此刻不报（判据① 待 1.21b 转结构性）",
+    !runChecks(tmp, registry).some((v) => v.kind === "shared-bare-unregistered"),
+  ]);
 
   // 负控⑤：关键帧重名
   setup();
@@ -338,13 +360,14 @@ function selfTest() {
   cases.push(["负控⑦：关键帧未登记 ⇒ 红", runChecks(tmp, registry).some((v) => v.kind === "keyframes-unregistered")]);
 
   // 负控⑧：登记过期（表里的名字实况已不存在 ⇒ 发给作者的清单在误导）
+  //   四条都在：shared `ghost` / host `input`（`.ldk-input` 已不是 `.input`）/ host `vanished` / keyframes `gone-anim`。
   setup();
   const staleRegistry = {
     shared: { toggle: { owner: "toggle", why: "test" }, ghost: { owner: "ghost", why: "test" } },
     host: { input: { why: "test" }, vanished: { why: "test" } },
     keyframes: ["gone-anim"],
   };
-  cases.push(["负控⑧：登记过期 ⇒ 红", runChecks(tmp, staleRegistry).filter((v) => v.kind === "registry-stale").length === 3]);
+  cases.push(["负控⑧：登记过期 ⇒ 红", runChecks(tmp, staleRegistry).filter((v) => v.kind === "registry-stale").length === 4]);
 
   rmSync(tmp, { recursive: true, force: true });
   let ok = true;
