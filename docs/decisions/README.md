@@ -57,3 +57,4 @@ E5.8 执行清单任务的**执行注**引用对应决策记录（`decisions/imp
 - [implemented/reversible-registration-decision](implemented/reversible-registration-decision.md) — E5.8#8 可逆注册 Phase 2 三项拍板（兼容期一步到位 / 声明式全清全重扫 vs 命令式 disposer 回滚 / registerExternalGetter 不进插件回滚）
 - [implemented/plugin-source-out-of-shell-repo](implemented/plugin-source-out-of-shell-repo.md) — 2026-09-14 插件源码外移：一插件一仓、壳仓只留产物、出厂=构建期拉取（执行载体 = E6 第 7 层 #97-#104）
 - [implemented/author-docs-reader-based-boundary](implemented/author-docs-reader-based-boundary.md) — 2026-09-14 作者面文档边界按读者不按目录；老 15 篇不搬（索引式归纳）；主题手册从设计文档提炼新写；文档单独发 npm 包；脚手架 `AGENTS.md` 四件事（执行载体 = E6 第 7.8 轮 #105）
+- [rejected/plugin-view-style-isolation](rejected/plugin-view-style-isolation.md) — 2026-09-16 插件视图样式隔离：`@layer` / Shadow DOM / CSS Modules / 动态注入**四路皆不采用**（`@layer` 只解决「谁赢」不解决「谁命中」，附最小实验）；改用「命名空间约定 ＋ 静态门禁 ＋ 运行时探针」三层替代；**含 5 条可判定触发条件**（执行载体 = E6 第 1 层 1.29）
