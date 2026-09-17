@@ -9,9 +9,9 @@
     },
     {
       "name": "@linkdesk/plugin-sdk",
-      "version": "0.1.32",
-      "contentHash": "ad9947b86e8c496762db36a663adc49c6258f62557709335ba1600c25b72994b",
-      "files": 47
+      "version": "0.1.33",
+      "contentHash": "15384468587d400e38916d16e28e2727dbac60d62c678cb0a5f4c2992879545a",
+      "files": 49
     },
     {
       "name": "create-linkdesk-plugin",
@@ -27,8 +27,8 @@
     },
     {
       "name": "@linkdesk/plugin-docs",
-      "version": "0.1.12",
-      "contentHash": "28706294af68e40d6ea9cfb212209c7006dd1b909d57dbf9ab6c3a7f2c63f20e",
+      "version": "0.1.14",
+      "contentHash": "3d922dcae8ff36bea5d592d02077552e32dbef1cf2ce2e9cde781e2239a71af8",
       "files": 48
     }
   ]
