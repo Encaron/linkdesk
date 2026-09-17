@@ -465,6 +465,26 @@ Plugin A contributes, plugin B references (`"icon": "stm32-chip"` + `"iconSource
 - Translation files are loaded through `fetchPluginDataFile` (bypassing the Vite glob cache — JSON in a newly installed plugin directory is discovered in real time).
 - The plugin text iron rule: **all UI text goes through `t()`**, and the i18n key is the original Chinese text (`05 §6`).
 
+#### Bucket-key naming advice — **give your keys an owner** (advice, not a requirement)
+
+Your translation file is **one flat layer of keys**, and everyone writes into the same table: every plugin's keys, the shell's own keys, and the `lang-defaults` language pack's keys **live in one dictionary**. Within a language, the later registrant overwrites the earlier one — **and until now there was no notice at all**.
+
+**Advice**: give your keys an owner-bearing name, e.g. `serial-monitor.打开端口` instead of `打开端口`. Then even an accidental name clash is nobody else's business.
+
+🔴 **Why this is advice and not a requirement**: **an i18n key may legitimately live in the app-level dictionary**. The official `settings` plugin has 254 `t()` call sites and **not a single key of its own in its repo** — they all live in `lang-defaults`' `zh.json` / `en.json`. Inside your plugin repo there is only your own `i18n/*.json` — **you cannot see the shell's dictionary, nor any other plugin** — so "your key collided with someone" is **never decidable from your own repo**. Making it a blocker means guaranteed false positives, and false positives invalidate the rules that should really block. ⇒ **It is a yellow light, not a red one.**
+
+**How much overlap actually exists today** (told plainly, not exaggerated): the keys declared by the 18 official plugins (414 of them) overlap the `lang-defaults` keys in **65 places**, and **3 of those already have divergent translations** — for example `命令`, where the shell says `Command` while `serial-monitor` says `Commands`. **When both are written into the same dictionary, which one the user actually sees depends on plugin load order.**
+
+⚠️ **Runtime behaviour**: when an overwrite happens the shell emits a `console.warn` naming the **key + language + writer**:
+
+```
+[i18nResources] 键 "命令"（zh）被 serial-monitor 覆盖——已有同键，来源未知；值以后注册者为准
+```
+
+**It is a notice, not a blocker** — the value is still written (the later registrant wins, exactly as today); the collision merely becomes traceable. The wording says only "already has this key, source unknown": the shell **can report who overwrote, but cannot report who owned it originally**, and it does not claim what it cannot do.
+
+🔴 **When NOT prefixing is legitimate**: **extensions** such as `.py` / `.ts`, and **language codes** such as `zh` / `en` — they are not "unowned", they **should never have an owner**, and prefixing them would be a semantic error.
+
 ### 3.10 `contributes.titleBar` — top bar buttons
 
 ```json
