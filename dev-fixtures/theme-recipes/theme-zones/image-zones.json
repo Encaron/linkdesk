@@ -1,6 +1,6 @@
 {
   "$schema": "../../../public/schemas/theme.schema.json",
-  "id": "image-zones",
+  "id": "theme-zones.image-zones",
   "name": "影像分区 Image Zones",
   "type": "dark",
   "appearance": {
@@ -15,7 +15,7 @@
   },
   "colorways": [
     {
-      "id": "image",
+      "id": "theme-zones.image",
       "name": "影像区",
       "colors": {
         "bg-window": "rgba(18, 16, 12, 0.55)",

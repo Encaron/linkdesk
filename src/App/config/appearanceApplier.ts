@@ -25,6 +25,7 @@ import {
   normalizeThemeValue,
   normalizeThemeColorValue, // E6#111f／1.36：app.themeColor 双语义归一（配色表 → 配方表串联）
   normalizeRecipeId, // E6#111f／1.36：混搭 font/background 域来源（配方 id 空间）归一
+  normalizeIconThemeId, // E6#111n／1.47：图标主题 id 空间归一（app.iconTheme 单语义专表）
   setAppearanceIdResolvers, // E6#111f／1.36：归属改名「顺序无关」解析器装配
   syncThemeColorConfig,
   syncThemeColorEnum, // E5.8 Phase 11.14：app.themeColor 跨主题配色全集 enum（替换原 inline updateConfigurationEnum）
@@ -33,6 +34,7 @@ import {
   MIX_SOURCE_KEYS, // E5.8#90：混搭来源 key 全集——单一来源 ThemeEngine
 } from "../../core/services/ui/ThemeEngine";
 import { ThemeRegistry } from "../../core/registry/appearance/ThemeRegistry";
+import { IconRegistry } from "../../core/registry/appearance/IconRegistry";
 import type { ThemeRecipe } from "../../core/types/theme";
 import {
   getConfigurationValue, setConfigurationValueBatch, inspectConfiguration,
@@ -52,6 +54,9 @@ setAppearanceIdResolvers({
   recipe: (id) => ThemeRegistry.getRecipe(id) !== undefined,
   colorway: (id) =>
     ThemeRegistry.getRecipes().some((r) => (r.colorways ?? []).some((c) => c.id === id)),
+  // E6#111n／1.47：第三空间——图标主题**自己的注册本**（IconRegistry），与 ThemeRegistry 互不相干
+  //   （不许拿配方栏代替：某插件同时出主题与图标主题时两本内容不同，混用会映错空间）。
+  icon: (id) => IconRegistry.getAll().some((t) => t.id === id),
 });
 
 /** E5.8#50.10+50.19：外观覆盖配置 onApply 统一入口——当前主题存在才重应用（启动时 app.theme 先注册先 apply，本组恒非空）。
@@ -254,8 +259,11 @@ registerConfigMigration({
  *   （ProfileService.ts:233 的导入比较就靠它才比较得动）。
  *
  * 五键里本迁移只动 4 条：app.theme（配方 id ＋ legacy flat 名）/ app.themeColor（双语义）/
- *   app.mixFont · app.mixBackground（配方 id）。第 5 条 app.iconTheme **本轮不改名**（图标主题 id 改名 = 设置页
- *   可见文字变化，违「零 UI 变化」上位约束）⇒ 无需迁移，留位。
+ *   app.mixFont · app.mixBackground（配方 id）。第 5 条 app.iconTheme 当时**没改名**（[1.35 §12.3] 判「图标主题 id
+ *   本轮不改名」）⇒ 无需迁移，留位。
+ *   ⚠️ **E6#111n／1.47 订正**：该判定已被 [00 §〇c.1] **撤回**——图标主题 id 也带归属改名，上位约束经 §〇c.2
+ *   修订为「操作体验零变化：**名字可以变**，用户已存的值不许丢」⇒ 第 5 条键由**版本 12**（本文件尾部）补迁。
+ *   本迁移（v6）**保持原样不改**：历史迁移不许回改（已在老机器上跑过、跑过就是事实），补漏走新版本号。
  *
  * 🔴 **解析器门控（顺序无关）**：官方 9 仓的 25 条改名归 1.42–1.48 清账格，**不在本格** ⇒ 此刻「新名」在注册本里
  *   根本不存在 ⇒ 归一恒等 ⇒ 本迁移**零写**（盘上旧值仍然有效，硬映会当场弄坏正在用的主题）。
@@ -264,28 +272,63 @@ registerConfigMigration({
  *
  * 幂等：已迁后值 = 新名（不在表里）⇒ 归一恒等 ⇒ 零写；版本门禁（schemaMigrations 过滤 version > current）
  *   再兜一层。presence 门控：键不存在（全新安装/从未写过）⇒ 不产出该键。原子：单次 setMany。
- * 不弹窗不重置（旧值落盘转新，用户无感）。 */
+ * 不弹窗不重置（旧值落盘转新，用户无感）。
+ *
+ * ── E6#111n／1.47：**同名迁移的再跑（版本 12）** ──
+ * 为什么必须再跑一次：见 `schemaMigrations.ts` 的版本门禁警告——v6 **在改名落地前就烧掉了版本号**
+ *   （那时解析器两问的第二问不成立 ⇒ 零产出，但「成功语义含零产出」⇒ 版本照推）⇒ 官方 9 仓改名后
+ *   v6 再也不会跑，老用户盘的旧 id 永远等不到改写。**与 v8/v9/v10/v11 补跑同一个病、同一个解法**。
+ * ⚠️ 外观 id **不在**改名补跑通道（v7–v11 那套吃的是 `RENAME_ROUNDS` 的设置键/命令/旗子三栏，
+ *   外观三表根本不进那张数据）⇒ 只能在这里**各补一个版本号**。这是**已知缺口**（记在交接段，归 1.49）。
+ * 纯数据复用：v6 与 v12 **共用同一个迁移体**（`runAppearanceIdMigration`），不是第二套逻辑
+ *   （照 v7/v8 那个范本）。v6 的 migrate 改成引用同一函数 = 行为逐字节不变。
+ * ⚠️ 本步给五键**全过一遍**（不只 iconTheme）：9 配方 + 16 配色那 25 条同样是本格才落地的改名，
+ *   它们也欠一次改写——一把全过，比只补第 5 条更对（少一次未来再补版本号）。 */
+
+/**
+ * 外观五键归一迁移体（v6 / v12 共用）——「读时归一」的**落盘腿**（读时那条腿在 ThemeEngine/migration.ts）。
+ * 键与归一入口一一对应（[1.35 §14.2] 五键表）：
+ *   app.theme → normalizeThemeValue（legacy flat 名 ＋ 配方表串联）/ app.themeColor → normalizeThemeColorValue（双语义串联）
+ *   app.mixFont · app.mixBackground → normalizeRecipeId（配方 id 空间）/ app.iconTheme → normalizeIconThemeId（图标主题空间）
+ * 一律 presence 门控 + 「变了才写」⇒ 幂等零写；单次 setMany ⇒ 原子。
+ */
+async function runAppearanceIdMigration({ setMany }: { setMany: (w: Record<string, unknown>) => void }): Promise<void> {
+  const writes: Record<string, unknown> = {};
+  const theme = inspectConfiguration<string>("app.theme").userValue;
+  if (typeof theme === "string") {
+    const next = normalizeThemeValue(theme); // 已串联：legacy flat 名 → 归属表
+    if (next !== undefined && next !== theme) writes["app.theme"] = next;
+  }
+  const themeColor = inspectConfiguration<string>("app.themeColor").userValue;
+  if (typeof themeColor === "string") {
+    const next = normalizeThemeColorValue(themeColor);
+    if (next !== undefined && next !== themeColor) writes["app.themeColor"] = next;
+  }
+  for (const key of ["app.mixFont", "app.mixBackground"]) {
+    const value = inspectConfiguration<string>(key).userValue;
+    if (typeof value !== "string") continue;
+    const next = normalizeRecipeId(value);
+    if (next !== undefined && next !== value) writes[key] = next;
+  }
+  const iconTheme = inspectConfiguration<string>("app.iconTheme").userValue;
+  if (typeof iconTheme === "string") {
+    const next = normalizeIconThemeId(iconTheme);
+    if (next !== undefined && next !== iconTheme) writes["app.iconTheme"] = next;
+  }
+  if (Object.keys(writes).length > 0) setMany(writes);
+}
+
 registerConfigMigration({
   version: 6,
   name: "E6-111f appearance-id-ownership", // ⚠️ 不写 `#`：CSS 硬编码门禁会把 `#111f` 当 4 位 hex 颜色（假红）
-  migrate: async ({ setMany }) => {
-    const writes: Record<string, unknown> = {};
-    const theme = inspectConfiguration<string>("app.theme").userValue;
-    if (typeof theme === "string") {
-      const next = normalizeThemeValue(theme); // 已串联：legacy flat 名 → 归属表
-      if (next !== undefined && next !== theme) writes["app.theme"] = next;
-    }
-    const themeColor = inspectConfiguration<string>("app.themeColor").userValue;
-    if (typeof themeColor === "string") {
-      const next = normalizeThemeColorValue(themeColor);
-      if (next !== undefined && next !== themeColor) writes["app.themeColor"] = next;
-    }
-    for (const key of ["app.mixFont", "app.mixBackground"]) {
-      const value = inspectConfiguration<string>(key).userValue;
-      if (typeof value !== "string") continue;
-      const next = normalizeRecipeId(value);
-      if (next !== undefined && next !== value) writes[key] = next;
-    }
-    if (Object.keys(writes).length > 0) setMany(writes);
-  },
+  migrate: runAppearanceIdMigration,
+});
+
+/* E6#111n／1.47 清账 · 主题族：外观 id 改名的**补跑**（版本 12）——理由见上方 v6 块尾。
+ * 版本号取值依据：改名补跑通道最新登记到 v11（schemaMigrations.ts），本步接 12（实机核过：
+ *   全新隔离 profile 的 app.schemaVersion = 11），与 1.36 代码注释自己的预言一致。 */
+registerConfigMigration({
+  version: 12,
+  name: "E6-111n-6 appearance-id-ownership-themes", // ⚠️ 不写 `#`
+  migrate: runAppearanceIdMigration,
 });

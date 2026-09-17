@@ -1,6 +1,6 @@
 {
   "$schema": "../../../../public/schemas/theme.schema.json",
-  "id": "panorama",
+  "id": "theme-panorama.panorama",
   "name": "整窗主视觉 Main Visual",
   "type": "dark",
   "appearance": {
@@ -13,7 +13,7 @@
   },
   "colorways": [
     {
-      "id": "moonlight",
+      "id": "theme-panorama.moonlight",
       "name": "月夜主视觉",
       "colors": {
         "bg-window": "rgba(10, 14, 20, 0.30)",

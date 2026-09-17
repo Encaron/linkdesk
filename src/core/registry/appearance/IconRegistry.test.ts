@@ -3,8 +3,10 @@
  * 判据出处 = 1.36 §二.2/§二.3；纯判据在 appearanceOwnership.test.ts，本文件只钉**接线**：
  * 「拒 ⇒ 不进登记本 ＋ 返 no-op disposer ＋ console.error 一次」。
  *
- * ⚠️ 本轮**不改**图标主题 id（`ld-iconset-pastel` 留原名——改名 = 设置页可见文字变化），
- *   所以这里只用**账里真有的**保底 id `default` 与虚构值（硬约束 21）。
+ * ⚠️ E6#111n／1.47 **改判**：图标主题 id 本轮随主题族一起改名（`ld-iconset-pastel` →
+ *   `theme-iconset-pastel.ld-iconset-pastel`；[00 §〇c.1] 撤 [1.35 §12.3] 的「本轮不改」）。
+ *   🔴 改的是 **id**，`label`（设置页可见文字）一个字不动——两张面别混。
+ *   本文件只用**账里真有的**保底 id `default` 与虚构值（硬约束 21），故不受改名影响。
  */
 import { describe, it, expect, afterEach, vi } from "vitest";
 import { IconRegistry } from "./IconRegistry";

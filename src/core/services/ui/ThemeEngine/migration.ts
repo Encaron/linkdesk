@@ -3,11 +3,11 @@
  * #50.21 旧 flat 名归一 / #85 圆角倍数→绝对 px / #86 glassOpacity wash→绝对 / #90 三枚举→单轴。
  */
 
-import { THEME_VALUE_MIGRATIONS, RECIPE_ID_MIGRATIONS, COLORWAY_ID_MIGRATIONS, clampRadiusPx } from "./constants";
+import { THEME_VALUE_MIGRATIONS, RECIPE_ID_MIGRATIONS, COLORWAY_ID_MIGRATIONS, ICON_THEME_ID_MIGRATIONS, clampRadiusPx } from "./constants";
 import { getBaseRadius } from "./tokens";
 
 /**
- * E6#111f／1.36：外观族 id 归属改名的**读时归一**——两张表 ＋ 两个函数（[1.35 §14.3]）。
+ * E6#111f／1.36：外观族 id 归属改名的**读时归一**——三张表 ＋ 三个函数（[1.35 §14.3]／[00 §〇c.4]）。
  *
  * 🔴 **顺序无关（本格新增的裁决，必须写在代码里）**：官方 9 仓的 25 条改名**不在本格执行**
  *   （归 1.42–1.48 清账格）⇒ 若这里**无条件**把旧 id 映成新名，**今天**盘上的 `app.theme = "mint-soda"`
@@ -21,26 +21,35 @@ import { getBaseRadius } from "./tokens";
  *   解析器由 App 层 `appearanceApplier` 装配（那里同时够得着 ThemeEngine 与 ThemeRegistry，
  *   不会让本模块反向依赖登记本 —— 本模块**保持纯函数 + 一个模块级槽位**，测试可直接注桩）。
  *   改名轮（1.47）落地后，解析器自然翻成「新名在、旧名不在」⇒ 旧值读到即映新名；盘上旧值的**改写落盘**
- *   归版本 6 迁移（见 `appearanceApplier` 尾部），届时若版本已越 6，则由 1.47 那格补一个新版本号。
+ *   由版本 6 迁移（`appearanceApplier` 尾部）承担；**1.47 又补了一个版本 12**——因为 v6 在改名落地前
+ *   已经跑过（那时两问的第二问不成立 ⇒ 零写），老用户必须再跑一次才轮得到改写。
+ *
+ * ⚠️ **1.47 增第三空间（图标主题）**：与上面两张表**同规则、不同表**——图标主题 id 既不进配方栏也不进
+ *   配色栏（独立注册本）。⚠️ 它与「`app.themeColor` 双语义串联」那条不同：`app.iconTheme` **单语义**，
+ *   只过图标表一张（不许顺手串别的表：串了就等于替别的空间做决定）。
  */
 export type AppearanceIdResolver = (id: string) => boolean;
 
 let _recipeResolver: AppearanceIdResolver | null = null;
 let _colorwayResolver: AppearanceIdResolver | null = null;
+let _iconResolver: AppearanceIdResolver | null = null;
 
 /** 装配解析器（幂等：重复装配覆盖）。App 层启动时调一次——测试里注桩用同一入口。 */
 export function setAppearanceIdResolvers(resolvers: {
   recipe?: AppearanceIdResolver;
   colorway?: AppearanceIdResolver;
+  icon?: AppearanceIdResolver;
 }): void {
   if (resolvers.recipe) _recipeResolver = resolvers.recipe;
   if (resolvers.colorway) _colorwayResolver = resolvers.colorway;
+  if (resolvers.icon) _iconResolver = resolvers.icon;
 }
 
 /** 清空解析器（测试用）——清后**恒等**（没有解析器 = 不敢判，一律不动）。 */
 export function clearAppearanceIdResolvers(): void {
   _recipeResolver = null;
   _colorwayResolver = null;
+  _iconResolver = null;
 }
 
 /** 两个空间共用的同一条规则——见下方「判据」注释（两条函数只差表与解析器）。 */
@@ -103,6 +112,19 @@ export function normalizeThemeValue(value: string | undefined): string | undefin
  */
 export function normalizeThemeColorValue(value: string | undefined): string | undefined {
   return normalizeRecipeId(normalizeColorwayId(value));
+}
+
+/**
+ * E6#111n／1.47：图标主题 id 归属改名——**第三空间**（`app.iconTheme` 专表，[00 §〇c.4]）。
+ * ⚠️ **单语义、不许串联**：图标主题 id 既不进配方栏也不进配色栏，只过 `ICON_THEME_ID_MIGRATIONS` 一张表。
+ *   ⛔ 别照 `normalizeThemeColorValue` 的样子在这里也串 `normalizeRecipeId`——`app.iconTheme` 没有双语义
+ *   （它不是 `app.themeColor`），串了就等于「某插件同时出主题与图标主题」时把 id 映进**错的注册本**。
+ * 哨兵 `default`（宿主保底图标主题）不在表里 ⇒ 恒等——保底 id 不许进表（constants.ts 那条）。
+ * 改判出处：[1.35 §12.3] 的「图标主题 id 本轮不改名」被 [00 §〇c.1] 撤回——改的是**名字**不是功能，
+ *   上位约束经 §〇c.2 修订为「操作体验零变化：名字可以变，用户已存的值不许丢」⇒ 改名必须带迁移（就是本函数）。
+ */
+export function normalizeIconThemeId(value: string | undefined): string | undefined {
+  return normalizeViaTable(ICON_THEME_ID_MIGRATIONS, _iconResolver, value);
 }
 
 /**

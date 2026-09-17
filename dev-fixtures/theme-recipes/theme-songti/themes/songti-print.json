@@ -1,6 +1,6 @@
 {
   "$schema": "../../../../public/schemas/theme.schema.json",
-  "id": "songti-print",
+  "id": "theme-songti.songti-print",
   "name": "宋体印刷体 Songti Print",
   "type": "light",
   "appearance": {
@@ -11,7 +11,7 @@
   },
   "colorways": [
     {
-      "id": "paper",
+      "id": "theme-songti.paper",
       "name": "纸白墨黑",
       "colors": {
         "bg-window": "#FBF8F2",

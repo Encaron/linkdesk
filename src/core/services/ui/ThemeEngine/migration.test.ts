@@ -12,11 +12,13 @@ import {
   normalizeColorwayId,
   normalizeThemeValue,
   normalizeThemeColorValue,
+  // E6#111n／1.47：第三个外观空间（图标主题）——**独立一张表**，不与上面两表并栏
+  normalizeIconThemeId,
   setAppearanceIdResolvers,
 } from "../ThemeEngine";
 // 测试专用出口：`clearAppearanceIdResolvers` 零生产消费（照 11.15 3b 先例「测试直引本体」，不从门面暴露）
 import { clearAppearanceIdResolvers } from "./migration";
-import { RECIPE_ID_MIGRATIONS, COLORWAY_ID_MIGRATIONS } from "./constants";
+import { RECIPE_ID_MIGRATIONS, COLORWAY_ID_MIGRATIONS, ICON_THEME_ID_MIGRATIONS } from "./constants";
 import { HOST_RESERVED_APPEARANCE_IDS } from "../../../registry/host-reserved.generated";
 
 describe("ThemeEngine — deriveRadiusAbsoluteMigration 旧圆角倍数→绝对 px（E5.8#85 补课，schemaMigrations v2）", () => {
@@ -222,7 +224,11 @@ describe("ThemeEngine — 归属改名读时归一（E6#111f／1.36）", () => {
     //   它在配色表里是对的；宿主兜底的配色叫 `dark-fallback`）
     for (const id of HOST_RESERVED_APPEARANCE_IDS.recipe) expect(RECIPE_ID_MIGRATIONS[id]).toBeUndefined();
     for (const id of HOST_RESERVED_APPEARANCE_IDS.colorway) expect(COLORWAY_ID_MIGRATIONS[id]).toBeUndefined();
-    for (const id of HOST_RESERVED_APPEARANCE_IDS.iconTheme) expect(RECIPE_ID_MIGRATIONS[id]).toBeUndefined();
+    // 🔴 1.47 增第三空间：图标栏查**它自己那张表**（查配方表是查了个寂寞——两表本就不相干）
+    for (const id of HOST_RESERVED_APPEARANCE_IDS.iconTheme) {
+      expect(ICON_THEME_ID_MIGRATIONS[id]).toBeUndefined();
+      expect(RECIPE_ID_MIGRATIONS[id]).toBeUndefined();
+    }
     for (const id of HOST_RESERVED_APPEARANCE_IDS.sentinel) {
       expect(RECIPE_ID_MIGRATIONS[id]).toBeUndefined();
       expect(COLORWAY_ID_MIGRATIONS[id]).toBeUndefined();
@@ -231,21 +237,56 @@ describe("ThemeEngine — 归属改名读时归一（E6#111f／1.36）", () => {
     expect(COLORWAY_ID_MIGRATIONS["dark"]).toBe("theme-defaults.dark");
   });
 
-  it("负控 12：显示名 / 图标主题 id 过两个归一函数 ⇒ 恒等（它们不是 id）", () => {
-    setAppearanceIdResolvers({ recipe: resolver([]), colorway: resolver([]) });
+  it("负控 12：显示名过两个归一函数 ⇒ 恒等（它们不是 id）", () => {
+    setAppearanceIdResolvers({ recipe: resolver([]), colorway: resolver([]), icon: resolver([]) });
     for (const display of ["薄荷苏打 Mint Soda", "极光玻璃 Aurora Glass", "Light", "Dark"]) {
       expect(normalizeRecipeId(display)).toBe(display);
       expect(normalizeColorwayId(display)).toBe(display);
+      expect(normalizeIconThemeId(display)).toBe(display);
     }
-    expect(normalizeRecipeId("ld-iconset-pastel")).toBe("ld-iconset-pastel"); // 本轮不改图标主题 id
+    // 🔴 1.47 改判：`ld-iconset-pastel` **曾经**被这里钉成"不是 id、恒等"——现在它是图标主题空间的旧 id。
+    //   两个方向都钉：① 配方/配色表**不该**认它（串表 = 替别的空间做决定）；② 图标表**恰好**认它。
+    expect(normalizeRecipeId("ld-iconset-pastel")).toBe("ld-iconset-pastel");
     expect(normalizeColorwayId("ld-iconset-pastel")).toBe("ld-iconset-pastel");
+    expect(ICON_THEME_ID_MIGRATIONS["ld-iconset-pastel"]).toBe("theme-iconset-pastel.ld-iconset-pastel");
   });
 
-  it("映射表形状：25 条 = 9 配方 ＋ 16 配色，值一律 `pluginId.` 前缀（规则 = 只换第一段）", () => {
+  /* ── 第三空间（图标主题，E6#111n／1.47）——与上面两张表**同规则不同表** ── */
+  it("图标主题：没装解析器 ⇒ 恒等（fail-safe 与另两空间一致）", () => {
+    expect(normalizeIconThemeId("ld-iconset-pastel")).toBe("ld-iconset-pastel");
+  });
+
+  it("图标主题：仓已改名（新名在、旧名不在）⇒ 映到归属名", () => {
+    setAppearanceIdResolvers({ icon: resolver(["theme-iconset-pastel.ld-iconset-pastel"]) });
+    expect(normalizeIconThemeId("ld-iconset-pastel")).toBe("theme-iconset-pastel.ld-iconset-pastel");
+  });
+
+  it("🔴 图标主题：插件还是旧的（旧名在、新名不在）⇒ 恒等——不许把还能用的值提前打死", () => {
+    setAppearanceIdResolvers({ icon: resolver(["ld-iconset-pastel"]) });
+    expect(normalizeIconThemeId("ld-iconset-pastel")).toBe("ld-iconset-pastel");
+  });
+
+  it("🔴 图标主题**单语义**：配方/配色解析器说「该映」也不算数（不串表）", () => {
+    setAppearanceIdResolvers({
+      recipe: resolver(["theme-iconset-pastel.ld-iconset-pastel"]),
+      colorway: resolver(["theme-iconset-pastel.ld-iconset-pastel"]),
+      icon: resolver([]),
+    });
+    // 图标那本注册本里没有它 ⇒ 恒等（串表的实现会在这里映错空间）
+    expect(normalizeIconThemeId("ld-iconset-pastel")).toBe("ld-iconset-pastel");
+  });
+
+  it("图标主题：`default` 哨兵原样放行（它不是 id，宿主兜底）", () => {
+    setAppearanceIdResolvers({ icon: resolver(["theme-iconset-pastel.ld-iconset-pastel"]) });
+    expect(normalizeIconThemeId("default")).toBe("default");
+  });
+
+  it("映射表形状：26 条 = 9 配方 ＋ 16 配色 ＋ 1 图标主题，值一律 `pluginId.` 前缀（规则 = 只换第一段）", () => {
     expect(Object.keys(RECIPE_ID_MIGRATIONS)).toHaveLength(9);
     expect(Object.keys(COLORWAY_ID_MIGRATIONS)).toHaveLength(16);
-    for (const [oldId, newId] of Object.entries({ ...RECIPE_ID_MIGRATIONS, ...COLORWAY_ID_MIGRATIONS })) {
-      expect(newId).toMatch(/^theme-[a-z-]+\.[a-z0-9-]+$/); // 归属段 = 官方主题仓 pluginId
+    expect(Object.keys(ICON_THEME_ID_MIGRATIONS)).toHaveLength(1);
+    for (const [oldId, newId] of Object.entries({ ...RECIPE_ID_MIGRATIONS, ...COLORWAY_ID_MIGRATIONS, ...ICON_THEME_ID_MIGRATIONS })) {
+      expect(newId).toMatch(/^theme-[a-z-]+\.[a-z0-9-]+$/); // 归属段 = 官方主题仓 pluginId（图标主题也照此形状）
       expect(newId.endsWith(oldId)).toBe(true); // 词干一字不动
     }
   });

@@ -44,6 +44,7 @@ import {
 } from "../../core/services/configuration/schemaMigrations";
 import { write } from "../../core/services/configuration/StorageService";
 import { ThemeRegistry } from "../../core/registry/appearance/ThemeRegistry";
+import { IconRegistry } from "../../core/registry/appearance/IconRegistry";
 import type { ConfigurationContribution } from "../../core/registry/ConfigurationRegistry";
 import "./appearanceApplier"; // ← 副作用导入：登记 v2–v6（本节的被测对象 v6 在内）
 
@@ -81,17 +82,20 @@ const APPEARANCE_TEST_CONFIG: ConfigurationContribution = {
     "app.iconTheme": {
       type: "string",
       default: "default",
-      enum: ["default", "ld-iconset-pastel"],
-      description: "图标主题（本轮留位——不改名）",
+      // E6#111n／1.47：图标主题 id 本轮**也改名了**（`theme-iconset-pastel.ld-iconset-pastel`）
+      //   ⇒ 枚举两代都列（改名前/后两种盘面都要能种进来，否则 enum 校验会把迁移要写的值挡在门外）
+      enum: ["default", "ld-iconset-pastel", "theme-iconset-pastel.ld-iconset-pastel"],
+      description: "图标主题",
     },
   },
 };
 
 const HOST_CFG_ID = "appearance";
 
-/** 迁移动的四键 + 留位的第五键（负控 14 的「不产出」按这组断言） */
-const MIGRATED_KEYS = ["app.theme", "app.themeColor", "app.mixFont", "app.mixBackground"];
-const ALL_KEYS = [...MIGRATED_KEYS, "app.iconTheme"];
+/** 迁移改写的五键（负控 14 的「不产出」按这组断言）
+ *  ⚠️ 1.47 起 `app.iconTheme` 从「留位」转正：图标主题 id 本轮随主题族一起改名（[00 §〇c.1] 撤 [1.35 §12.3]）。 */
+const MIGRATED_KEYS = ["app.theme", "app.themeColor", "app.mixFont", "app.mixBackground", "app.iconTheme"];
+const ALL_KEYS = [...MIGRATED_KEYS];
 
 const writeMock = vi.mocked(write);
 
@@ -131,6 +135,21 @@ function registerPostRenameRecipes(disposers: Array<() => void>) {
   disposers.push(ThemeRegistry.registerRecipe(recipeStub("theme-panorama.panorama", "全景", ["theme-panorama.panorama"]), "theme-panorama"));
 }
 
+/** 图标主题的贡献桩——`IconRegistry` 是**独立注册本**（与 ThemeRegistry 互不相干） */
+function registerIconTheme(id: string, disposers: Array<() => void>): void {
+  disposers.push(IconRegistry.register({ id, label: "粉彩图标集", path: "icons/pastel.json" }, "theme-iconset-pastel"));
+}
+
+/** 改名前的盘面：旧图标主题 id 是真注册名 */
+function registerPreRenameIconTheme(disposers: Array<() => void>): void {
+  registerIconTheme("ld-iconset-pastel", disposers);
+}
+
+/** 改名轮落地后的盘面：新名是真注册名，旧名无人认领 */
+function registerPostRenameIconTheme(disposers: Array<() => void>): void {
+  registerIconTheme("theme-iconset-pastel.ld-iconset-pastel", disposers);
+}
+
 const OLD_PLATE: Record<string, unknown> = {
   "app.theme": "mint-soda",
   "app.themeColor": "mint-soda",
@@ -145,7 +164,17 @@ async function seed(values: Record<string, unknown>) {
 
 /** schema 版本种子设为 5 ⇒ 编排里只有 v6 待执行（其余真迁移与本节点无关） */
 async function seedSchemaVersionAt5() {
-  await setConfigurationValueBatch([{ key: SCHEMA_VERSION_KEY, value: 5 }]);
+  await seedSchemaVersionAt(5);
+}
+
+/** 种子版本号（v12 用例种 11 ⇒ 编排里只有 v12 待执行）——1.47 参数化 */
+async function seedSchemaVersionAt(version: number) {
+  await setConfigurationValueBatch([{ key: SCHEMA_VERSION_KEY, value: version }]);
+}
+
+/** 五键当前 `userValue` —— v12 用例的读数口（一处收口，不逐键抄 v6 正控那五行） */
+function fiveKeyPlate(): Record<string, unknown> {
+  return Object.fromEntries(MIGRATED_KEYS.map((k) => [k, inspectConfiguration(k).userValue]));
 }
 
 describe("appearanceApplier — E6#111f 版本 6 迁移（外观族 id 归属改名）", () => {
@@ -192,8 +221,9 @@ describe("appearanceApplier — E6#111f 版本 6 迁移（外观族 id 归属改
     expect(consoleError).not.toHaveBeenCalled();
   });
 
-  it("正控（与上条配对）——改名落地后同一盘面：四键改写落盘（证明本夹具**判得出写**）", async () => {
+  it("正控（与上条配对）——改名落地后同一盘面：五键改写落盘（证明本夹具**判得出写**）", async () => {
     registerPostRenameRecipes(disposers);
+    registerPostRenameIconTheme(disposers);
     await seed({ ...OLD_PLATE });
     await seedSchemaVersionAt5();
 
@@ -203,14 +233,14 @@ describe("appearanceApplier — E6#111f 版本 6 迁移（外观族 id 归属改
     expect(inspectConfiguration("app.themeColor").userValue).toBe("theme-mint-soda.mint-soda"); // 双语义：先配色表后配方表
     expect(inspectConfiguration("app.mixFont").userValue).toBe("theme-pill.pill-bubble");
     expect(inspectConfiguration("app.mixBackground").userValue).toBe("theme-panorama.panorama");
-    // 第五键留位：`app.iconTheme` 本轮不改名 ⇒ 一个字节都不碰
-    expect(inspectConfiguration("app.iconTheme").userValue).toBe("ld-iconset-pastel");
+    // 第五键（1.47 转正）：图标主题走**自己那张表**（单语义，不串配方表）
+    expect(inspectConfiguration("app.iconTheme").userValue).toBe("theme-iconset-pastel.ld-iconset-pastel");
     expect(appearanceSnapshot(lastPersisted())).toEqual({
       "app.theme": "theme-mint-soda.mint-soda",
       "app.themeColor": "theme-mint-soda.mint-soda",
       "app.mixFont": "theme-pill.pill-bubble",
       "app.mixBackground": "theme-panorama.panorama",
-      "app.iconTheme": "ld-iconset-pastel",
+      "app.iconTheme": "theme-iconset-pastel.ld-iconset-pastel",
     });
     // 不弹窗不重置——静默改写（迁移不打日志；未走 resetConfigurationValue ⇒ userValue 仍在）
     expect(consoleError).not.toHaveBeenCalled();
@@ -241,6 +271,49 @@ describe("appearanceApplier — E6#111f 版本 6 迁移（外观族 id 归属改
       expect(inspectConfiguration(key).userValue).toBeUndefined();
     }
     expect(appearanceSnapshot(lastPersisted())).toEqual({}); // 盘上不出现这四键
+  });
+
+  /* ── 版本 12（E6#111n／1.47）：主题族 id 真的落地了 —— v6 早烧掉，补漏只能靠新版本号 ── */
+  it("v12 正控——种 11：五键改写（含 `app.iconTheme`，v6 那次它还叫旧名、没得改）", async () => {
+    registerPostRenameRecipes(disposers);
+    registerPostRenameIconTheme(disposers);
+    await seed({ ...OLD_PLATE });
+    await seedSchemaVersionAt(11); // 1.46 交棒时的真机读数：v11 之后盘上仍是旧名
+
+    expect(await runPendingConfigMigrations()).toBe(true);
+    expect(getConfigSchemaVersion()).toBeGreaterThanOrEqual(12);
+    expect(fiveKeyPlate()).toEqual({
+      "app.theme": "theme-mint-soda.mint-soda",
+      "app.themeColor": "theme-mint-soda.mint-soda",
+      "app.mixFont": "theme-pill.pill-bubble",
+      "app.mixBackground": "theme-panorama.panorama",
+      "app.iconTheme": "theme-iconset-pastel.ld-iconset-pastel",
+    });
+    expect(consoleError).not.toHaveBeenCalled();
+  });
+
+  it("🔴 v12 恒真负控——图标主题新名**未**注册（插件还是旧的）：那一键零写，其余四键照写", async () => {
+    // 只把图标主题留在旧盘面（新名解析不出 ⇒ 单语义那张表判「恒等」）
+    registerPostRenameRecipes(disposers);
+    registerPreRenameIconTheme(disposers);
+    await seed({ ...OLD_PLATE });
+    await seedSchemaVersionAt(11);
+
+    expect(await runPendingConfigMigrations()).toBe(true);
+    const plate = fiveKeyPlate();
+    expect(plate["app.theme"]).toBe("theme-mint-soda.mint-soda"); // 四键确实写了
+    // ⇒ 改写**不是恒真**：同一轮里图标那一键被按住了（否则「迁移跑过」这个读数就说明不了任何事）
+    expect(plate["app.iconTheme"]).toBe("ld-iconset-pastel");
+  });
+
+  it("图标主题哨兵 `default` 原样放行——它不是 id（两侧都不进表）", async () => {
+    registerPostRenameRecipes(disposers);
+    registerPostRenameIconTheme(disposers);
+    await seed({ "app.iconTheme": "default" });
+    await seedSchemaVersionAt(11);
+
+    expect(await runPendingConfigMigrations()).toBe(true);
+    expect(inspectConfiguration("app.iconTheme").userValue).toBe("default");
   });
 
   it("哨兵与显示名原样放行——followTheme / flat 显示名不进改写（哨兵不是 id）", async () => {

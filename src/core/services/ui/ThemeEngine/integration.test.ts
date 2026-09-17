@@ -15,7 +15,7 @@ describe("ThemeEngine — 真实极限壳主题（E5.8#50.27，gallery 端到端
   it("songti-print — 宋体印刷体 font 域（ui=SimSun 全 UI 宋体；形制现状直角 isolate 字族轴）", async () => {
     const { recipe } = await loadRealRecipe(
       "plugins/theme-songti/themes/songti-print.json",
-      "songti-print", "宋体印刷体 Songti Print", "light",
+      "theme-songti.songti-print", "宋体印刷体 Songti Print", "light",
     );
     expect(recipe).not.toBeNull();
     expect(recipe!.type).toBe("light");
@@ -31,7 +31,7 @@ describe("ThemeEngine — 真实极限壳主题（E5.8#50.27，gallery 端到端
   it("terminal-monofont — 终端机 font 域（ui+mono 全 Cascadia Mono 等宽族；形制现状直角）", async () => {
     const { recipe } = await loadRealRecipe(
       "plugins/theme-terminal/themes/terminal-monofont.json",
-      "terminal-monofont", "终端机 Terminal Mono", "dark",
+      "theme-terminal.terminal-monofont", "终端机 Terminal Mono", "dark",
     );
     expect(recipe).not.toBeNull();
     expect(recipe!.appearance?.font).toEqual({ ui: "Cascadia Mono", mono: "Cascadia Mono" });
@@ -47,7 +47,7 @@ describe("ThemeEngine — 真实极限壳主题（E5.8#50.27，gallery 端到端
   it("pill-bubble — 全胶囊 radius 域（七档 999px 配方声明 + radius-full 去键继承 :root 50% + 悬浮形态 radius999/shadow + 泡泡糖；E5.8#104 配方圆角 clamp 进标尺 [0,32]）", async () => {
     const { recipe } = await loadRealRecipe(
       "plugins/theme-pill/themes/pill-bubble.json",
-      "pill-bubble", "全胶囊 Pill Bubble", "light",
+      "theme-pill.pill-bubble", "全胶囊 Pill Bubble", "light",
     );
     expect(recipe).not.toBeNull();
     // E5.8#85：radius-full 相对几何值 50%（:root 继承）——配方不写绝对 px（去键即继承）
@@ -70,7 +70,7 @@ describe("ThemeEngine — 真实极限壳主题（E5.8#50.27，gallery 端到端
   it("panorama — 整窗主视觉 background 域（mode:panorama 全窗铺图 + 低遮罩 0.15 + zone 半透明让位，chrome 让位给影像）", async () => {
     const { recipe } = await loadRealRecipe(
       "plugins/theme-panorama/themes/panorama.json",
-      "panorama", "整窗主视觉 Main Visual", "dark",
+      "theme-panorama.panorama", "整窗主视觉 Main Visual", "dark",
     );
     expect(recipe).not.toBeNull();
     expect(recipe!.type).toBe("dark");
@@ -99,10 +99,10 @@ describe("ThemeEngine — 旧格式主题迁移新格式（E5.8#74，决策 F）
   it("aurora-glass — 极光玻璃（appearance.glass 全玻璃+悬浮形态 + background 全窗图，colorway 单配色）", async () => {
     const { recipe } = await loadRealRecipe(
       "plugins/theme-aurora-glass/aurora-glass.json",
-      "aurora-glass", "极光玻璃 Aurora Glass", "dark",
+      "theme-aurora-glass.aurora-glass", "极光玻璃 Aurora Glass", "dark",
     );
     expect(recipe).not.toBeNull();
-    expect(recipe!.id).toBe("aurora-glass");
+    expect(recipe!.id).toBe("theme-aurora-glass.aurora-glass");
     expect(recipe!.type).toBe("dark");
     // 旧顶层 surface → appearance.glass（ThemeSurface 全字段）
     expect(recipe!.appearance?.glass).toEqual({
@@ -113,7 +113,7 @@ describe("ThemeEngine — 旧格式主题迁移新格式（E5.8#74，决策 F）
       image: "linkdesk://theme-aurora-glass/resources/aurora-bg.svg", opacity: 0.9, mask: 0.3,
     });
     expect(recipe!.colorways).toHaveLength(1);
-    expect(recipe!.colorways[0].id).toBe("aurora");
+    expect(recipe!.colorways[0].id).toBe("theme-aurora-glass.aurora");
     // 旧顶层 colors → colorways[0].colors（半透明紫 bg-titlebar 保留）
     expect(recipe!.colorways[0].colors?.["bg-titlebar"]).toBe("rgba(16, 26, 51, 0.55)");
     const tokens = mergeDomains(recipe!);
@@ -136,17 +136,17 @@ describe("ThemeEngine — 旧格式主题迁移新格式（E5.8#74，决策 F）
   it("image-zones — 影像分区（appearance.glass 悬浮形态 + background.mode:zones 连续切片）", async () => {
     const { recipe } = await loadRealRecipe(
       "plugins/theme-zones/image-zones.json",
-      "image-zones", "影像分区 Image Zones", "dark",
+      "theme-zones.image-zones", "影像分区 Image Zones", "dark",
     );
     expect(recipe).not.toBeNull();
-    expect(recipe!.id).toBe("image-zones");
+    expect(recipe!.id).toBe("theme-zones.image-zones");
     expect(recipe!.type).toBe("dark");
     expect(recipe!.appearance?.glass).toEqual({ radius: 8 });
     expect(recipe!.appearance?.background).toEqual({
       mode: "zones", image: "linkdesk://theme-zones/resources/zones-bg.svg", opacity: 0.95,
     });
     expect(recipe!.colorways).toHaveLength(1);
-    expect(recipe!.colorways[0].id).toBe("image");
+    expect(recipe!.colorways[0].id).toBe("theme-zones.image");
     const tokens = mergeDomains(recipe!);
     expect(tokens["surface-radius"]).toBe("8px");
     expect(tokens["surface-inset"]).toBe("2px"); // 缝法则——radius≠0 → 每格半缝
@@ -165,10 +165,10 @@ describe("ThemeEngine — 旧格式主题迁移新格式（E5.8#74，决策 F）
   it("paper-zones — 纸纹分区（appearance.glass texture 平铺纹理 + 悬浮形态，无 background）", async () => {
     const { recipe } = await loadRealRecipe(
       "plugins/theme-zones/paper-zones.json",
-      "paper-zones", "纸纹分区 Paper Zones", "light",
+      "theme-zones.paper-zones", "纸纹分区 Paper Zones", "light",
     );
     expect(recipe).not.toBeNull();
-    expect(recipe!.id).toBe("paper-zones");
+    expect(recipe!.id).toBe("theme-zones.paper-zones");
     expect(recipe!.type).toBe("light");
     expect(recipe!.appearance?.glass).toEqual({
       texture: "linkdesk://theme-zones/resources/paper-texture.svg", textureOpacity: 0.45,
@@ -177,7 +177,7 @@ describe("ThemeEngine — 旧格式主题迁移新格式（E5.8#74，决策 F）
     expect(recipe!.appearance?.background).toBeUndefined(); // 旧无 background
     expect(recipe!.colorways).toHaveLength(1);
     // E5.8 主题过老修正：配色 id 全局唯一契约（theme.ts L92）——kraft 避 songti-print 同款 "paper" 冲突
-    expect(recipe!.colorways[0].id).toBe("kraft");
+    expect(recipe!.colorways[0].id).toBe("theme-zones.kraft");
     const tokens = mergeDomains(recipe!);
     expect(tokens["surface-bg-image"]).toBe('url("linkdesk://theme-zones/resources/paper-texture.svg")');
     expect(tokens["surface-bg-repeat"]).toBe("repeat"); // 纹理平铺

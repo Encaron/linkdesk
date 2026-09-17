@@ -21,7 +21,7 @@ import i18n from "../../../i18n"; // E6#73h（D3）：用户可见文案走 i18n
 import { setConfigurationValue, getConfigurationValue, getUserSettings } from "../configuration/ConfigurationService";
 import { pushToast, TOAST_TTL_ERROR } from "../ui/NotificationService";
 import { deepEqual } from "../../utils/deepEqual"; // E5.8 归一化：JSON.stringify 深比较捷径统一走共享工具
-import { normalizeThemeValue, normalizeThemeColorValue, normalizeRecipeId } from "../ui/ThemeEngine"; // E5.8#50.21：快照导出/校验前旧值归一化｜E6#111f／1.36：＋外观四键比较归一（见 PROFILE_COMPARE_NORMALIZERS）
+import { normalizeThemeValue, normalizeThemeColorValue, normalizeRecipeId, normalizeIconThemeId } from "../ui/ThemeEngine"; // E5.8#50.21：快照导出/校验前旧值归一化｜E6#111f／1.36：＋外观四键比较归一（见 PROFILE_COMPARE_NORMALIZERS）｜E6#111n／1.47：＋app.iconTheme
 import {
   appDataDir,
   joinPath,
@@ -216,15 +216,19 @@ async function _restoreSnapshot(prev: RuntimeSnapshot): Promise<string[]> {
  * 里存的是旧外观 id（`mint-soda` / `kraft` / `pill-bubble`…），而盘面已经是新名 ⇒ 维度 2 逐字比较
  * 必然报「切换失败」。归一到同一名之后，新旧两种盘面都判得出「其实是同一个值」。
  *
- * 🔴 `app.iconTheme` **刻意不列**：本格不动图标主题 id（§2.4 留位，改名归后续格）——列进来等于替下一格
- *    决定它的迁移，而这张表是「比较口径」不是「迁移表」。
- * 解析器未装配时三个函数全部**恒等**（fail-safe）⇒ 行为与 1.36 之前逐字节一致。
+ * 🔴 `app.iconTheme` **E6#111n／1.47 列进来**：图标主题 id 本轮**改名了**（`ld-iconset-pastel` →
+ *    `theme-iconset-pastel.ld-iconset-pastel`，[00 §〇c.4] 归主题族清账轮）——1.36 那句「本格不动图标主题 id」
+ *    是当时的判定，已被 §〇c.1 撤回。不列进来 ⇒ 导入旧 profile 时维度 2 必报「切换失败」（同一个值两套名）。
+ * ⚠️ 本表是**比较口径**，不是迁移表——它跟迁移共用同源函数（不是另抄规则），但迁移的**键集**由
+ *    `appearanceApplier` 的迁移体决定，两者**故意不共用一张键清单**（那张清单是迁移语义，不是比较语义）。
+ * 解析器未装配时这些函数全部**恒等**（fail-safe）⇒ 行为与 1.36 之前逐字节一致。
  */
 const PROFILE_COMPARE_NORMALIZERS: Record<string, (value: string) => string | undefined> = {
   "app.theme": normalizeThemeValue, // flat 名 ＋ 配方归属两段串联
   "app.themeColor": normalizeThemeColorValue, // 双语义：配色表 → 配方表
   "app.mixFont": normalizeRecipeId,
   "app.mixBackground": normalizeRecipeId,
+  "app.iconTheme": normalizeIconThemeId, // 单语义：图标主题专表（不与配方/配色串联）
 };
 
 /** 维度 2 的单值归一（导出口径以便直测比较语义——生产路径只有 `_validateSwitch` 一处消费） */

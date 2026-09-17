@@ -37,8 +37,10 @@ export {
 // E6#111f／1.36：+ 归属改名两张表（normalizeRecipeId/normalizeColorwayId）＋ app.themeColor 双语义串联
 //   （normalizeThemeColorValue）＋ 解析器装配槽（setAppearanceIdResolvers，App 层 appearanceApplier 调）。
 //   ⚠️ normalizeThemeValue 签名不变（内部串联）⇒ 既有 15 处调用点零改动。
+// E6#111n／1.47：+ 第三空间 normalizeIconThemeId（`app.iconTheme` 单语义专表，不与配方/配色串联）。
 export {
-  normalizeThemeValue, normalizeThemeColorValue, normalizeRecipeId, normalizeColorwayId, setAppearanceIdResolvers,
+  normalizeThemeValue, normalizeThemeColorValue, normalizeRecipeId, normalizeColorwayId, normalizeIconThemeId,
+  setAppearanceIdResolvers,
   deriveRadiusAbsoluteMigration, deriveGlassOpacityAbsoluteMigration, resolveMergedAppearanceMode,
 } from "./ThemeEngine/migration";
 

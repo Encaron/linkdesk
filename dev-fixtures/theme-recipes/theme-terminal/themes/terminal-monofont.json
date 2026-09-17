@@ -1,6 +1,6 @@
 {
   "$schema": "../../../../public/schemas/theme.schema.json",
-  "id": "terminal-monofont",
+  "id": "theme-terminal.terminal-monofont",
   "name": "终端机 Terminal Mono",
   "type": "dark",
   "appearance": {
@@ -11,7 +11,7 @@
   },
   "colorways": [
     {
-      "id": "phosphor",
+      "id": "theme-terminal.phosphor",
       "name": "磷光绿",
       "colors": {
         "bg-window": "#0C0C0C",

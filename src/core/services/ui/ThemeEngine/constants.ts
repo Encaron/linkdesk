@@ -216,6 +216,12 @@ export { THEME_VALUE_MIGRATIONS };
  *   ⚠️ 别把这条读成「`dark` 不许进表」——**配色** `dark` 是 `theme-defaults` 自己的配色变体（不是宿主兜底
  *   配色，兜底那份叫 `dark-fallback`）⇒ 它**在**配色表里是**对的**（13.2 第 2 行）；判据按空间算，
  *   见 migration.test.ts 负控 1 的断言形状（按空间取交集，不是拍平比）。
+ *
+ * ⚠️ **E6#111n／1.47 订正（本轴 §〇c 零例外）**：图标主题 id `ld-iconset-pastel` **进表**（第三张）——
+ *   [1.35 §12.3] 那句「图标主题 id 本轮不改名」已被 [00 §〇c.1] 撤回（改的是**名字**，不是功能：§〇c.2
+ *   修订后的上位约束是「**操作体验零变化** —— 名字可以变，用户已存的值不许丢」）。
+ *   ⚠️ 它与 `default` **不是一回事**：`default` 是宿主保底哨兵（恒等，永不进表），`ld-iconset-pastel`
+ *   是插件自写的名字（不带归属 ⇒ 按规则改）。
  */
 
 /** 配方 id 归属改名（9 条）——`app.theme` / `app.mixFont` / `app.mixBackground` 走这张 */
@@ -250,4 +256,12 @@ export const COLORWAY_ID_MIGRATIONS: Record<string, string> = {
   "verdant": "theme-twilight-forest.verdant",
   "image": "theme-zones.image",
   "kraft": "theme-zones.kraft",
+};
+
+/** 图标主题 id 归属改名（1 条）——`app.iconTheme` 走这张（[00 §〇c.4] 把 `ld-iconset-pastel` 归入主题族清账轮）。
+ *  ⚠️ **第三张表，不许并进上面两张**：图标主题是**独立 id 空间**（既不进配方栏也不进配色栏）——
+ *  `IconRegistry` 的注册本与 `ThemeRegistry` 的两个本互不相干，并栏就会把「某插件同时有主题与图标主题」
+ *  这类将来必然出现的形态映错空间（与 `mint-soda` 的不许合表同一条理由）。 */
+export const ICON_THEME_ID_MIGRATIONS: Record<string, string> = {
+  "ld-iconset-pastel": "theme-iconset-pastel.ld-iconset-pastel",
 };

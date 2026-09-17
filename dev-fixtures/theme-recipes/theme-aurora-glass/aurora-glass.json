@@ -1,6 +1,6 @@
 {
   "$schema": "../../../public/schemas/theme.schema.json",
-  "id": "aurora-glass",
+  "id": "theme-aurora-glass.aurora-glass",
   "name": "极光玻璃 Aurora Glass",
   "type": "dark",
   "appearance": {
@@ -23,7 +23,7 @@
   },
   "colorways": [
     {
-      "id": "aurora",
+      "id": "theme-aurora-glass.aurora",
       "name": "极光紫",
       "colors": {
         "bg-titlebar": "rgba(16, 26, 51, 0.55)",
