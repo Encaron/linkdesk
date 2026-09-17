@@ -5,13 +5,16 @@
  * + 设置导航/外观 六方法（consumeSettingsGroup/consumeScrollToSetting/getAvailableThemes/
  * getCurrentTheme/getAvailableLanguages/getCurrentLanguage）+ 二订阅（_settingsGroupUnsub/_scrollToUnsub 属主）verbatim。
  * 依赖方向：ui → DialogService/toast/MenuRegistry/ContextKeyService/CommandRegistry/KeybindingRegistry/
- * ConfigurationRegistry/ThemeEngine/LanguageRegistry/i18n + linkdesk-api（LinkDeskAPI 订阅类型）；被聚合器委派。
+ * ConfigurationRegistry/ThemeEngine/LanguageRegistry/i18n + host-reserved.generated + linkdesk-api（LinkDeskAPI 订阅类型）；被聚合器委派。
+ * 🔴 E6#111h（1.38）：`contextKey:set` 对**宿主专用旗子**的运行时仲裁 = **出声 ＋ 放行**（见该 case 内注释；
+ *   保护主力是 SDK 静态腿 `context-ownership`，这里是第二道网）。
  */
 
 import { confirm, alert, confirmContent } from "../../ui/DialogService"; // E5#67 + E6#71c 富内容确认
 import { pushToast, dismissToast, getToasts, updateToast, TOAST_TTL_ERROR, type ToastSeverity } from "../../ui/toast";
 import { registerMenuItems, getMenuItems, MENU_SLOTS, type ManifestMenuItem } from "../../../registry/commands/MenuRegistry"; // E5#69
 import { ContextKeyService } from "../../../registry/commands/ContextKeyService"; // E5#70
+import { HOST_RESERVED_CONTEXT_KEYS_HOST_ONLY } from "../../../registry/host-reserved.generated"; // E6#111h（1.38）：宿主专用旗子·运行时第二道网
 import { getCommands, executeCommand } from "../../../registry/commands/CommandRegistry";
 import { findKeybindingForCommand } from "../../../registry/commands/KeybindingRegistry";
 import { resolvePanelChecked } from "../../../commands/shell/panelCommands"; // E5.8#37.7：面板位置/对齐当前项 √ 解析
@@ -196,6 +199,26 @@ export async function handleSettingsChannel(channel: string, args: unknown[]): P
     // ── E5#70：ContextKey——插件 SET 状态 ──
     case "contextKey:set": {
       const [key, value] = args as [string, unknown];
+      // ── E6#111h（1.38）：宿主专用旗子的**运行时仲裁 = 出声 ＋ 放行** ──
+      // 判据：写的是**宿主专用名**（账 `contextKeysHostOnly`，运行时副本 `HOST_RESERVED_CONTEXT_KEYS_HOST_ONLY`）。
+      // 🔴 为什么**不拒、不先者保留、不抛错**：旗子是**状态写**（`setValue(name, value)` 把名字当 map 键），
+      //   不是**注册**（`registerCommand` 才有归属）——同名旗子被两方先后写、后者覆盖前者，是正常运行时行为。
+      //   更要命的是**结构上做不到**「先者保留」：`args` 过 IPC 时**零身份**（就是 `[key, value]` 两个值，
+      //   见下一行的解构），通道里没有 pluginId ⇒ 「谁是先者」这个概念在本面上不存在。
+      //   ⇒ 唯一诚实的动作 = 出声点名（让它在 devtools / 日志里可见）＋ 值照写。
+      // 🔴 身份拿不到就**如实不写**「写入者是谁」——不编、不猜、不留空占位（1.37 §12.2 裁决）。
+      // ⚠️ **保护主力在静态腿**（SDK `context-ownership`：作者仓里、**带 pluginId**、编译期报点）；
+      //   这里是**第二道网**，只覆盖「已在运行时设了宿主专用名」这一形态。
+      // 🔴 出口形状（坑 4）：诊断文案必须**待在 console 调用之内**（本仓 i18n 审计只认这个形状），
+      //   与 ConfigurationRegistry 的 `logHostReservedRejection` 同形——**不许**改成返回文案的 helper。
+      if (HOST_RESERVED_CONTEXT_KEYS_HOST_ONLY.includes(key)) {
+        console.error(
+          `[IpcBridgeHandler] ⚠️ 经 IPC 写入**宿主专用** context key "${key}"：这是宿主内核/壳自己维护的状态旗子，` +
+            `插件不该设它——宿主菜单/命令面板的显隐条件会读到**这个值**（两边都不报错，用户只看到"菜单项莫名其妙不见了"）。` +
+            `本次**放行**（旗子是状态写不是注册，且通道不带写入者身份 ⇒ 无从判"先者"），值已照写。` +
+            `若你是插件作者：请改成 "<你的 pluginId>.${key}" 形状；宿主公开约定面（如 "setting*"）不在此列，可以设。`
+        );
+      }
       ContextKeyService.setValue(key, value);
       break;
     }

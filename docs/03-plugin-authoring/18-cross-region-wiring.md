@@ -77,6 +77,53 @@ useEffect(() => {
 
 > **This is "zero-code wiring"**: Title Bar buttons, context menu items, keybindings, and sidebar views can all use the same `when` condition — you `set` it in one place and the shell reads it in N places. The `when` syntax (`&&` / `||` / `==` / `in` / `!` / `()`) and the shell's built-in key table → [03-Contributes Spec §4](03-contributes-spec.md).
 
+#### 🔴 Flag reservation table — **read this before naming a key** (shell 1.38+)
+
+Flags are **keys in a global registry**: the name you `set` is **visible to the whole pool**, and the shell's built-in commands/menus read `when` against that same table. So names are not free-form — there are **two segments**, with different rules:
+
+**① Host-only flags (🔴 plugins must not set)** — state maintained by the host kernel/shell itself. Taking one over rewrites the show/hide conditions of host menus and the command palette, and **neither side reports an error** — the user just sees "a menu item mysteriously vanished":
+
+| Flag | What it controls (host side) |
+|:--|:--|
+| `activeEditor` | Current editor type (commands/menus gate on it) |
+| `editorCount` | Number of open editors |
+| `editorHasSelection` | Whether the current editor has a selection |
+| `inputFocus` | Whether an input is focused (🔴 the measured case: on F2 rename, **keybindings must yield**) |
+| `sidebarPosition` | Sidebar dock position |
+| `updateActionable` | Whether an installable update exists |
+| `updateButtonLabel` | The update button's text |
+
+**② Host public-convention flags (🟠 settable, but only the host should set them)** — the host `when` **reads** these; the writer is meant to be the host itself:
+
+| Flag | Convention | Who may set it |
+|:--|:--|:--|
+| `settingKey` | Settings row gear menu — **the current item's key** | Only the `settingItemGear` gear menu should |
+| `settingValue` | Same — current value | Same |
+| `settingType` | Same — control type | Same |
+| `settingScope` | Same — scope | Same |
+
+These four are **in practice** "anyone can set, anyone can read" (`MenuId` is an open string ⇒ a third party **can** add entries to the `settingItemGear` slot) — which is why setting them is **not** judged red. But **the one legitimate write site is the gear menu**: if you overwrite them from anywhere else, the gear menu opens against **the wrong row**. ⇒ **Don't set them** unless you are implementing that slot's menu.
+
+**Machine-readable source of truth** (ships with the SDK package — don't guess):
+
+```
+node_modules/@linkdesk/plugin-sdk/schemas/host-reserved.json
+  → "contextKeysHostOnly": ["activeEditor", "editorCount", ...]   ← segment ① do not set
+    "contextKeysPublic":   ["settingKey", "settingValue", ...]     ← segment ② don't set (except the gear menu)
+```
+
+**Two-level judgement** (same shape as config keys and appearance ids — don't conflate them):
+
+| Criterion | Grade | Judged by | What happens |
+|:--|:--:|:--|:--|
+| The `set` name ∈ **segment ① host-only** | 🔴 **red** | SDK leg `linkdesk/no-unowned-context-key` | Your lint reports red by name; the **runtime second net** adds a `console.error` at the `contextKey:set` bridge — but 🔴 **the value is still written, not rejected** (see below) |
+| **New** flag's first segment isn't your `pluginId` | 🟡 yellow (advisory) | SDK leg | Reported with `suggested` = the same name with only the first segment swapped (`zzzFlag` → `my-plugin.zzzFlag`). 23 flags across the 18 official repos break this rule; the shell migrates them centrally — **write new ones by the rule** |
+| The `set` name ∈ **segment ② convention face** | 🟠 **not judged** | Registered only | Legal, but see above: that's the gear menu's spot — don't overwrite it |
+
+> **Why "taking a host-only flag" is red while "missing your prefix" is only yellow**: taking a host-only flag does **real harm** (it replaces host state, and neither side errors); whereas "missing the prefix" has 23 counterexamples in existing code, so a blanket rule would break shipped plugins on the spot. Different grades = different tolerance, not "the more important rule is written stricter".
+
+> 🔴 **Why the runtime only speaks up and never rejects** (unlike config keys / appearance ids, which **refuse registration**): a flag is a **state write**, not a **registration** — `contextKey.set(name, value)` just writes a value into a table, and two parties writing the same name in sequence with the later one winning is **normal runtime behaviour**. "Refusing" would require the runtime to know **who came first**, but `contextKey:set` crosses IPC carrying **only `[key, value]` and no writer identity** ⇒ "first writer wins" is **structurally impossible** on this face. ⇒ The only honest action is to speak up by name and write the value anyway. **The real protection lives in your lint** (it has your identity and reports at compile time); the runtime layer is just a second net.
+
 ### Recipe C — One region changes, UI scattered across several places refreshes together
 
 Say "the serial port disconnected" has to affect the sidebar's connection row, a button in the Main Area, and the Status Bar's counter at the same time. **Publish one event and let each place subscribe on its own:**

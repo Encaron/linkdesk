@@ -6,14 +6,18 @@
  * E6#71i：#71j 延伸——progress handle 经 updateNotification 第三参 percent 写入进度；
  * persistent:true → ttl:0 长驻 + persistent 旗标 + 常驻上限淘汰（E6#73f 起**按来源分桶** TOAST_SOURCE_CAP）。
  * E6#73f（S6）：show 一律返回句柄（非 progress 也是）。
+ * E6#111h（1.38）：`contextKey:set` 对**宿主专用**旗子的运行时仲裁 = **出声 ＋ 放行**（本文件末组守它；
+ *   保护主力是 SDK 静态腿 `context-ownership`，这里是第二道网）。
  * fixture 用虚构值（硬约束 21：demo-plugin / demo-plugin.retryInstall / Demo plugin）。
  * @vitest-environment jsdom
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { handleUiMethod } from "./ui";
+import { handleUiMethod, handleSettingsChannel } from "./ui";
 import { registerCommand, clearCommands } from "../../../registry/commands/CommandRegistry";
 import { getToasts, dismissToast, TOAST_TTL_ERROR, TOAST_SOURCE_CAP } from "../../ui/toast";
+import { ContextKeyService } from "../../../registry/commands/ContextKeyService";
+import { HOST_RESERVED_CONTEXT_KEYS_HOST_ONLY } from "../../../registry/host-reserved.generated";
 
 const PLUGIN = "demo-plugin";
 
@@ -185,5 +189,66 @@ describe("showNotification 来源身份（E6#73g S5）", () => {
     await handleUiMethod("finishNotification", [handle, "Demo 完成"]);
     const done = activeToasts().find((t) => t.message === "Demo 完成");
     expect(done?.source).toBe("demo-market");
+  });
+});
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   E6#111h（1.38）：`contextKey:set` 过桥处的**运行时仲裁**（负控 ④ 真跑）
+   ═══════════════════════════════════════════════════════════════════════════
+   判据：经 IPC 写**宿主专用**旗子 ⇒ `console.error` **出声** ＋ **放行**。
+   🔴 本组的唯一理由：**「先者保留」/「拒绝」会在这里被抓住**——把它改成拒写，
+   「值照写」那几条当场翻红。保护主力在 SDK 静态腿（带身份、编译期报点），这里是第二道网。 */
+
+describe("contextKey:set 宿主专用旗子——运行时出声 ＋ 放行（E6#111h／负控 ④）", () => {
+  let errSpy: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+  });
+  afterEach(() => {
+    errSpy.mockRestore();
+  });
+
+  /** 本轮 console.error 的全部文案（拼一起方便断言点名） */
+  const said = (): string => errSpy.mock.calls.map((c: unknown[]) => String(c[0])).join("\n");
+
+  it("🔴 出声：点名**旗子名** ＋ 通道来源；拿不到插件身份就**如实不提**写入者", async () => {
+    await handleSettingsChannel("contextKey:set", ["activeEditor", "terminal"]);
+    expect(errSpy).toHaveBeenCalled();
+    const text = said();
+    expect(text).toContain("activeEditor"); // 点名旗子
+    expect(text).toContain("IPC"); // 点名通道来源（写入者 = "经 IPC 的那一方"）
+    expect(text).toContain("宿主专用");
+    // 🔴 如实：通道不带身份 ⇒ 文案里**不许**编出一个 pluginId（编了就是假的排查线索）
+    expect(text).not.toMatch(/pluginId\s*=\s*["'`]/);
+  });
+
+  it("🔴 放行：值**照写**——「先者保留」／「拒绝」会在这条被抓", async () => {
+    await handleSettingsChannel("contextKey:set", ["editorCount", 7]);
+    expect(ContextKeyService.getValue("editorCount")).toBe(7);
+    // 再写一次：同旗子被两方先后写、后者覆盖前者，是**正常运行时行为**（正是要出声的场景）
+    await handleSettingsChannel("contextKey:set", ["editorCount", 9]);
+    expect(ContextKeyService.getValue("editorCount")).toBe(9);
+  });
+
+  it("🟠 约定面旗子（setting*）⇒ **不出声**（它本来就该给插件设，不是「被占用」）", async () => {
+    await handleSettingsChannel("contextKey:set", ["settingKey", "app.theme"]);
+    expect(errSpy).not.toHaveBeenCalled();
+    expect(ContextKeyService.getValue("settingKey")).toBe("app.theme");
+  });
+
+  it("🟡 带本仓前缀的旗子 ⇒ 不出声（运行时不管归属轻伤——那是静态腿的活）", async () => {
+    await handleSettingsChannel("contextKey:set", ["demo-plugin.flag", true]);
+    expect(errSpy).not.toHaveBeenCalled();
+  });
+
+  it("射程：账里**全部**宿主专用旗子都能点名（不是只对写死那一条生效）", async () => {
+    expect(HOST_RESERVED_CONTEXT_KEYS_HOST_ONLY.length).toBeGreaterThan(0);
+    for (const key of HOST_RESERVED_CONTEXT_KEYS_HOST_ONLY) {
+      errSpy.mockClear();
+      await handleSettingsChannel("contextKey:set", [key, 1]);
+      expect(errSpy, `旗子 ${key} 没出声`).toHaveBeenCalled();
+      expect(ContextKeyService.getValue(key), `旗子 ${key} 的值没写进去`).toBe(1);
+    }
   });
 });

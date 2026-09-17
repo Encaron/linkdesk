@@ -61,7 +61,12 @@ export const HOST_RESERVED_FILE = resolve(dirname(fileURLToPath(import.meta.url)
  *     （**假红**，它恰恰是宿主亮兜底的官方实现者）。判据按空间取栏，见 `reservedIdsForSpace`；
  *   · **`appearanceIdGrants`**（id → 持证 pluginId 列表）→ 同上。**不是白名单**：它是"某个兜底 id 的官方实现者"
  *     的一次公共面决策（今天只有 `light` → `theme-defaults`），与"跳过判据"的豁免表刻意分开存。
- *   · `contextKeys` 由上下文旗子轮次（1.38）消费，此处不读也不删。 */
+ *   · **`contextKeysHostOnly` / `contextKeysPublic`** → 上下文旗子归属腿（1.38）。🔴 **两段不可合并**——
+ *     宿主专用（插件禁设 🔴）与宿主公开约定面（插件可设 🟠，写的人是官方 `settings`、读的人是宿主 `when`）
+ *     挤成一栏就看不出分级：合成一栏会把官方 `settings` 的 4 个约定面旗子判成「占用宿主旗子」
+ *     （**假红**，它恰恰是约定面的正当使用方）。判据按段取表，见 `context-ownership.ts`。
+ *     ⚠️ 旧账字段 `contextKeys`（一栏）**已删**——本接口是唯一消费者，不留别名。
+ */
 export interface HostReservedNames {
   commandPrefixes: string[];
   protocolIds: string[];
@@ -79,6 +84,11 @@ export interface HostReservedNames {
   appearanceSentinels: string[];
   /** E6#111f：外观 id 的**证照**（id → 持证的 pluginId 列表）——「这个兜底 id 由谁实现」的公共面决策 */
   appearanceIdGrants: Record<string, string[]>;
+  /** E6#111h：**宿主专用** context key（插件禁设 🔴）——宿主内核/壳自己写的状态旗子 */
+  contextKeysHostOnly: string[];
+  /** E6#111h：**宿主公开约定面** context key（插件可设 🟠）——宿主 `when` 读、写的人是插件
+   *  （今天 = `settings` 的齿轮菜单）；第三方设它**不判**，由运行时报点 */
+  contextKeysPublic: string[];
 }
 
 /** 读宿主保留面账；文件缺失 ⇒ 空表 ＋ 报告里打一条 note（静默空表 = 判据②变瞎子，不许不吭声） */
@@ -94,6 +104,8 @@ export function loadHostReserved(file: string = HOST_RESERVED_FILE): HostReserve
       appearanceIconThemeIds: [],
       appearanceSentinels: [],
       appearanceIdGrants: {},
+      contextKeysHostOnly: [],
+      contextKeysPublic: [],
     };
   }
   const raw = JSON.parse(readFileSync(file, "utf8")) as {
@@ -106,6 +118,8 @@ export function loadHostReserved(file: string = HOST_RESERVED_FILE): HostReserve
     appearanceIconThemeIds?: string[];
     appearanceSentinels?: string[];
     appearanceIdGrants?: Record<string, string[]>;
+    contextKeysHostOnly?: string[];
+    contextKeysPublic?: string[];
   };
   return {
     commandPrefixes: raw.commandPrefixes ?? [],
@@ -117,6 +131,8 @@ export function loadHostReserved(file: string = HOST_RESERVED_FILE): HostReserve
     appearanceIconThemeIds: raw.appearanceIconThemeIds ?? [],
     appearanceSentinels: raw.appearanceSentinels ?? [],
     appearanceIdGrants: raw.appearanceIdGrants ?? {},
+    contextKeysHostOnly: raw.contextKeysHostOnly ?? [],
+    contextKeysPublic: raw.contextKeysPublic ?? [],
   };
 }
 

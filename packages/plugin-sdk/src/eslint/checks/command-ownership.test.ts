@@ -30,6 +30,8 @@ const RESERVED: HostReservedNames = {
   appearanceIconThemeIds: [],
   appearanceSentinels: [],
   appearanceIdGrants: {},
+  contextKeysHostOnly: [],
+  contextKeysPublic: [],
 };
 
 /** 造一个临时插件工程（manifest 写成 JSONC——作者面允许注释，读 manifest 的代码必须容忍） */
@@ -229,7 +231,7 @@ describe("fail-closed / 豁免 / 账的加载实况", () => {
       (root) => {
         const r = runCommandOwnershipCheck(
           root,
-          { commandPrefixes: [], protocolIds: [], configKeys: [], pseudoPluginIds: [], appearanceRecipeIds: [], appearanceColorwayIds: [], appearanceIconThemeIds: [], appearanceSentinels: [], appearanceIdGrants: {} },
+          { commandPrefixes: [], protocolIds: [], configKeys: [], pseudoPluginIds: [], appearanceRecipeIds: [], appearanceColorwayIds: [], appearanceIconThemeIds: [], appearanceSentinels: [], appearanceIdGrants: {}, contextKeysHostOnly: [], contextKeysPublic: [] },
           NO_LEDGER,
         );
         expect(r.hostLedger.found).toBe(false);

@@ -50,18 +50,20 @@
     "appearance",
     "update"
   ],
-  "contextKeys": [
+  "contextKeysHostOnly": [
     "activeEditor",
     "editorCount",
     "editorHasSelection",
     "inputFocus",
-    "settingFollowTheme",
-    "settingKey",
-    "settingModified",
-    "settingResetsToDefault",
     "sidebarPosition",
     "updateActionable",
     "updateButtonLabel"
+  ],
+  "contextKeysPublic": [
+    "settingFollowTheme",
+    "settingKey",
+    "settingModified",
+    "settingResetsToDefault"
   ],
   "appearanceRecipeIds": [
     "dark",

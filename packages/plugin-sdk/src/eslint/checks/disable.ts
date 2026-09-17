@@ -27,6 +27,11 @@ export const CHECK_IDS = {
    *  且不得占用宿主兜底外观 id（🔴 红：配方 / 配色 / 图标主题三栏**按空间**比，有证照者除外）。
    *  ⚠️ 图标主题 id **不判前缀**（1.36 §二.2 ⑦：本轮不改名——改名 = 设置页可见文字变化）⇒ 这个 id 只覆盖判据②。 */
   appearanceOwnership: "linkdesk/no-unowned-appearance-id",
+  /** E6#111h（1.38）：插件设的 context 旗子必须带本仓 `<pluginId>.` 前缀（🟡 黄），
+   *  且不得占用**宿主专用**旗子（🔴 红：`contextKeysHostOnly`）。
+   *  ⚠️ 宿主**公开约定面**（`contextKeysPublic`，今天 = `settings` 齿轮菜单的 4 个 `setting*`）
+   *  **不判**（第三方设它合法：登记 ＋ 运行时报点）——见 `context-ownership.ts` 文件头。 */
+  contextOwnership: "linkdesk/no-unowned-context-key",
 } as const;
 
 interface RawComment {

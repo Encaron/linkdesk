@@ -79,3 +79,16 @@ export type {
   AppearanceIdSpace,
   AppearanceIdFace,
 } from "./checks/appearance-ownership.js";
+
+/**
+ * 🔴 E6#111h（1.38）：同一纪律再加一个 —— `runContextOwnershipCheck`（上下文旗子归属判据）。
+ *    壳仓只读探针 `scripts/audit-nonnaming.mjs` 用它出旗子面读数；**同样不是第二条判据路径**
+ *    （`lint.ts` 的第八条腿用的就是它——同一份实现，改一处两边一起变）。
+ *    分级与配置腿/外观腿同形：判据① 占**宿主专用**旗子 = 红（进腿报点）；判据③ 新旗子不带本仓前缀 = 黄
+ *    （`contextAdvisories`，只打印，1.49 才收紧为红）。
+ *    🟠 **宿主公开约定面**（`contextKeysPublic`）**不判**——第三方设它合法（`MenuId` 是开放字符串），
+ *    只登记在报告的 `publicFace` 里让"谁在设约定面"可见。
+ *    🔴 **两段不许合并**（合成一栏 ⇒ 官方 `settings` 的 4 个约定面旗子被当成"占用宿主旗子"= 假红）。
+ */
+export { runContextOwnershipCheck, judgeContextKey, RE_CONTEXT_KEY_SET } from "./checks/context-ownership.js";
+export type { ContextOwnershipReport, ContextKeySite, ContextKeyCode } from "./checks/context-ownership.js";

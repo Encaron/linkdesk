@@ -276,7 +276,8 @@ if (!JSON_OUT) {
       { label: "命令 id·声明∪运行时", map: cmdNames, keys: ledger.commandPrefixes, mode: "prefix" },
       { label: "命令 id·引用面", map: cmdRefs, keys: ledger.commandPrefixes, mode: "prefix" },
       { label: "设置键", map: configKeys, keys: ledger.configKeys, mode: "exact" },
-      { label: "context key", map: contextKeysSet, keys: ledger.contextKeys, mode: "exact" },
+      { label: "context key·宿主专用", map: contextKeysSet, keys: ledger.contextKeysHostOnly, mode: "exact" },
+      { label: "context key·宿主约定面", map: contextKeysSet, keys: ledger.contextKeysPublic, mode: "exact" },
       { label: "协议 id", map: protocolIds, keys: ledger.protocolIds, mode: "exact" },
       // E6#111f／1.36：外观两栏并对（配方 / 图标主题）——🔴 **配方栏只跟配方栏比**（配色 id 是另一个
       //   名字空间，合栏 = 官方 theme-defaults 的配色 `dark` 假红，见生成器文件头）

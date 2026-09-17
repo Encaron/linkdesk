@@ -38,6 +38,7 @@ import { runSelectorFormCheck } from "./checks/selector-form.js";
 import { runCommandOwnershipCheck } from "./checks/command-ownership.js";
 import { runConfigOwnershipCheck } from "./checks/config-ownership.js";
 import { runAppearanceOwnershipCheck } from "./checks/appearance-ownership.js";
+import { runContextOwnershipCheck } from "./checks/context-ownership.js";
 import { type CheckViolation } from "./checks/scan.js";
 
 /** 示例用的门禁 id（打印知情绕行格式）；伪 id 与 check 脚本 CHECK_IDS 同源 */
@@ -61,7 +62,7 @@ export interface EslintRow {
 export interface PluginLintReport {
   files: number; // eslint 实际 lint 文件数
   eslintRows: EslintRow[]; // eslint 腿逐条偏离（含真 error——退出码依据）
-  legs: LintLeg[]; // 七 check 腿（六条扫描腿 ＋ 命名空间腿内部四条判据；id 见各自 CHECK_IDS）
+  legs: LintLeg[]; // 八 check 腿（七条扫描腿 ＋ 命名空间腿内部四条判据；id 见各自 CHECK_IDS）
   totalCheckViolations: number;
   tsconfigUsed: string | null; // 实际喂 import-x resolver 的 tsconfig（无则 null）
   /** 本仓 pluginId（命名空间腿的前缀来源；取不到 ⇒ null 且该腿 fail-closed 报红） */
@@ -105,6 +106,18 @@ export interface PluginLintReport {
     appearanceIconThemeIds: number;
     appearanceSentinels: number;
     appearanceIdGrants: number;
+  } | null;
+  /** 🟡 E6#111h（1.38）上下文旗子归属判据的**黄灯建议**（判据③：新旗子不带本仓前缀）——**只打印、不拦** */
+  contextAdvisories: CheckViolation[];
+  /** 上下文旗子归属判据的计数（`keys` = 扫到的旗子名数；`bad` = 红站点数；`advisory` = 黄建议数；
+   *  `publicFace` = 设**宿主公开约定面**的写点数——**登记用，不拦**） */
+  contextOwnershipCounts: { keys: number; bad: number; advisory: number; publicFace: number };
+  /** 宿主旗子账两段的加载实况（账没读到 ⇒ 判据① 空转，必须能看出来） */
+  hostContextLedger: {
+    file: string;
+    found: boolean;
+    contextKeysHostOnly: number;
+    contextKeysPublic: number;
   } | null;
 }
 
@@ -215,6 +228,19 @@ export async function runPluginLint(root: string, options: PluginLintOptions = {
    *      且它的输入是**外观四栏**，与命令腿读的前缀栏、配置腿读的 configKeys 栏各不相干。
    */
   const appearanceOwnership = runAppearanceOwnershipCheck(absRoot);
+  /**
+   * 🔴 E6#111h（1.38）：第八条 check 腿 —— **上下文旗子归属**（`checks/context-ownership.ts`）。
+   *   一面：运行时面（源码里 `contextKey.set("<字面量>", …)` / `ContextKeyService.setValue("<字面量>", …)`）。
+   *   🔴 **分级与配置腿/外观腿同形**：判据①（占用**宿主专用**旗子 `contextKeysHostOnly`）＝**红**，进腿报点；
+   *      判据③（新旗子不带本仓 `<pluginId>.` 前缀）＝**黄**，进 `contextAdvisories` 只打印不拦
+   *      ——出处 = 轴上**排序纪律**（1.32/1.34/1.36/1.38 先以「黄灯 ＋ 账」落地，**1.49 才收紧为红**）。
+   *   🟠 **宿主公开约定面**（`contextKeysPublic`，今天 = `settings` 齿轮菜单的 4 个 `setting*`）**不判**：
+   *      第三方设它合法（`MenuId` 是开放字符串 ⇒ 谁都能进 `settingItemGear` 槽）⇒ 只登记在
+   *      `publicFace` 里让"谁在设约定面"可见，**不进任何退出码**。
+   *   ⚠️ 与另几条腿**刻意不合并**（同命令腿/配置腿的理由）：本腿的红站点将来要独立收紧/独立统计；
+   *      且它的输入是**旗子两段**，与命令腿读的前缀栏、配置腿读的 configKeys 栏各不相干。
+   */
+  const contextOwnership = runContextOwnershipCheck(absRoot);
   const prefixKeys = new Set(prefix.violations.map((v) => `${v.file}:${v.line}`));
   const tokenKeys = new Set(tokenScope.violations.map((v) => `${v.file}:${v.line}`));
   const formKeys = new Set(selectorForm.violations.map((v) => `${v.file}:${v.line}`));
@@ -250,6 +276,11 @@ export async function runPluginLint(root: string, options: PluginLintOptions = {
       label: "check-appearance-ownership",
       violations: appearanceOwnership.violations,
     },
+    {
+      id: "linkdesk/no-unowned-context-key（context 旗子不得占用宿主专用旗子；新旗子应带本仓 <pluginId>. 前缀）",
+      label: "check-context-ownership",
+      violations: contextOwnership.violations,
+    },
   ];
   const totalCheckViolations =
     css.length +
@@ -258,7 +289,8 @@ export async function runPluginLint(root: string, options: PluginLintOptions = {
     namespace.length +
     commandOwnership.violations.length +
     configOwnership.violations.length +
-    appearanceOwnership.violations.length;
+    appearanceOwnership.violations.length +
+    contextOwnership.violations.length;
 
   return {
     files: results.length,
@@ -298,6 +330,14 @@ export async function runPluginLint(root: string, options: PluginLintOptions = {
       advisory: appearanceOwnership.yellow.length,
     },
     hostAppearanceLedger: appearanceOwnership.hostLedger,
+    contextAdvisories: contextOwnership.advisories,
+    contextOwnershipCounts: {
+      keys: contextOwnership.keys.length,
+      bad: contextOwnership.red.length,
+      advisory: contextOwnership.yellow.length,
+      publicFace: contextOwnership.publicFace.length,
+    },
+    hostContextLedger: contextOwnership.hostLedger,
   };
 }
 
@@ -418,6 +458,36 @@ export function renderPluginLintReport(report: PluginLintReport): string {
       `    账 兜底配方 ${hl.appearanceRecipeIds} ／ 兜底配色 ${hl.appearanceColorwayIds} ／ 保底图标主题 ${hl.appearanceIconThemeIds} ／ ` +
         `哨兵 ${hl.appearanceSentinels} ／ 证照 ${hl.appearanceIdGrants} 条` +
         (hl.found ? `（${hl.file}）` : `　⚠ 账没读到——判据② 本轮**空转**`),
+    );
+  }
+
+  // 🟡 E6#111h（1.38）上下文旗子归属：黄灯建议（判据③）＋ 一面读数 ＋ 两段账的加载实况
+  if (report.contextAdvisories.length > 0) {
+    lines.push(
+      `\n🟡 check-context-ownership（上下文旗子归属 · 1.49 起收紧为红）：${report.contextAdvisories.length} 处**建议**（不拦 build）——` +
+        `旗子是**全局名册的键**：同名旗子被两个插件设时后写者静默胜出（壳运行时只出声、不拦——旗子是**状态写**，` +
+        `后写者覆盖前写者是正常行为）。改成"<你的 pluginId>.<名字>"（只换第一段、词干零变化）归属才唯一。`,
+    );
+    for (const v of report.contextAdvisories) lines.push(`    ${v.file}:${v.line}  ${v.message}`);
+  }
+  const ck = report.contextOwnershipCounts;
+  lines.push(
+    `\n🔴 check-context-ownership（上下文旗子归属）：` +
+      `运行时面 ${ck.keys} 个旗子名——` +
+      (ck.bad === 0
+        ? `无占用**宿主专用**旗子的站点。`
+        : `${ck.bad} 处占用**宿主专用旗子**（宿主的菜单/命令面板显隐条件，会被你的值改写而两边都不报错）。`) +
+      (ck.advisory > 0 ? `另有 ${ck.advisory} 处前缀建议（见上）。` : ``) +
+      (ck.publicFace > 0
+        ? `\n    🟠 ${ck.publicFace} 处设的是**宿主公开约定面**旗子（宿主 when 读、写的人是插件——如官方 settings 的齿轮菜单）` +
+          `⇒ **不判、不拦**（登记即可）。`
+        : ``),
+  );
+  if (report.hostContextLedger) {
+    const hc = report.hostContextLedger;
+    lines.push(
+      `    账 宿主专用 ${hc.contextKeysHostOnly} 个 ／ 宿主公开约定面 ${hc.contextKeysPublic} 个` +
+        (hc.found ? `（${hc.file}）` : `　⚠ 账没读到——判据① 本轮**空转**`),
     );
   }
 

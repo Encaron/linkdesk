@@ -2,8 +2,8 @@
 /**
  * 宿主保留面账（`scripts/host-reserved.json`）——**生成 ＋ 四向对账**。
  *
- * 是什么：宿主自己占用的名字，分九个家族——命令前缀 / `app.*` 配置键 / 伪 pluginId /
- *   context key / **兜底外观 id 四栏**（配方 / 配色 / 图标主题 / 哨兵）/ 内置协议 id。
+ * 是什么：宿主自己占用的名字，分十个家族——命令前缀 / `app.*` 配置键 / 伪 pluginId /
+ *   **context key 两段**（宿主专用 ／ 宿主公开约定面）/ **兜底外观 id 四栏**（配方 / 配色 / 图标主题 / 哨兵）/ 内置协议 id。
  *   插件不得占用这些名字；改动本账 = 一次公共面决策。
  * 出处与判据（唯一真源，本文不重述）：`docs/02-Electron架构/E6_插件生态与发布/01-插件独立构建/非样式命名空间归一化/02-任务-命令id归属落地.md` §六
  *   ＋ 1.31 评估档 §八（机制 A：宿主保留名账进 SDK）。
@@ -58,8 +58,19 @@
  *   🔴 另加一份 `appearanceIdGrants`：**按 id 记证照**（id → 宿主之外的正当持有者）。它不是白名单，
  *     不记「哪些仓被宽恕」——新插件永远不在表里，永远判红。今天唯一的证照 = `light` → `theme-defaults`。
  *
+ * ── context key 两段 ＋ `when:` 抽取（1.38 拆段 ＋ 修截断）──
+ *   旧账只有一栏 `contextKeys`（写 ∪ 读，11 项）——**两个字空间挤在一栏**：
+ *   ① **宿主专用**（插件禁设）：`activeEditor` / `editorHasSelection` / `editorCount` /
+ *      `sidebarPosition` / `updateActionable` / `updateButtonLabel` / `inputFocus`（共享内联输入组件面）；
+ *   ② **宿主公开约定面**（插件可设、宿主 `when` 读）：`settingKey` / `settingFollowTheme` /
+ *      `settingResetsToDefault` / `settingModified`——**写的人不是宿主**（官方插件 `settings` 的齿轮菜单），
+ *      读的人是宿主命令 `when`。⇒ 合成一栏 ⇒ 分级不可区分 ⇒ 官方 `settings` 当场假红。
+ *   🔴 段②**不手抄，是派生的**：`ctxRead − ctxWrite`（宿主读 ∧ 宿主不写）。
+ *   🔴 **`when:` 抽取在 1.38 前是截断的**（`[^"'`]+` 把 `'` 当终止符 ⇒ 引号后的旗子名**静默漏账**，是**假绿**）；
+ *      现改为「引号配对取完整表达式 ＋ 显式比较值过滤」，见 `extractWhenExpressions` / `whenKeys`。
+ *
  * ── 口径 ──
- *   九个家族比的都是**名字集合**（生成侧已去重 ＋ 字典序排序）；**顺序不同不算漂移，多一个少一个才算**。
+ *   十个家族比的都是**名字集合**（生成侧已去重 ＋ 字典序排序）；**顺序不同不算漂移，多一个少一个才算**。
  *   本账记的是「有哪些名字」（名），不是「出现过几处」（处/站点）——数量口径的读数在探针
  *   `scripts/audit-plugin-scope.mjs` 出，两者的口径不可互相引用。
  */
@@ -75,12 +86,17 @@ const SDK_REL = "packages/plugin-sdk/schemas/host-reserved.json";
 /** 运行时副本（壳运行时判保护区读它——见文件头「第四份产物」） */
 const RUNTIME_REL = "src/core/registry/host-reserved.generated.ts";
 
-/** 九个家族——键名 ＋ 中文标签（报错文本与自测共用，避免两处各写一份） */
+/** 十个家族——键名 ＋ 中文标签（报错文本与自测共用，避免两处各写一份）
+ *  🔴 E6#111h／1.38：原 `contextKeys`（一栏混两段）拆成
+ *  `contextKeysHostOnly`（宿主专用：插件禁设 🔴）＋ `contextKeysPublic`（宿主公开约定面：插件可设 🟠）
+ *  ——**两段不许合并**（出处 1.37 §10.2／§13.5：合成一栏就看不出分级，官方 `settings` 当场假红，
+ *  与 1.36「外观账一栏混两空间」同一种病）。 */
 export const FAMILIES = [
   { key: "commandPrefixes", label: "宿主命令前缀" },
   { key: "configKeys", label: "宿主 app.* 配置键" },
   { key: "pseudoPluginIds", label: "宿主伪 pluginId" },
-  { key: "contextKeys", label: "宿主机读/写的 context key" },
+  { key: "contextKeysHostOnly", label: "宿主专用 context key（插件禁设）" },
+  { key: "contextKeysPublic", label: "宿主公开约定 context key（插件可设）" },
   { key: "appearanceRecipeIds", label: "宿主兜底配方 id" },
   { key: "appearanceColorwayIds", label: "宿主兜底配色变体 id" },
   { key: "appearanceIconThemeIds", label: "宿主保底图标主题 id" },
@@ -172,6 +188,64 @@ function tryRead(p) {
   }
 }
 
+/* ── `when:` 表达式抽取（🔴 E6#111h／1.38 修：原实现在**第一个单引号处截断**，是**假绿**）──────
+ *
+ * 修前（`:214`）：`/when:\s*["'`]([^"'`]+)["'`]/g`——字符类把 `'` 也当终止符 ⇒
+ *   `when: "sidebarPosition == 'left'"` 抓到的是 `sidebarPosition == `（**截断**），
+ *   而 `when: "settingKey == 'x' && myFlag"` 里 **`myFlag` 整个丢掉** ⇒ **漏报（假绿）**。
+ *   ⚠️ 旧实现之所以「账还是对的」，靠的是**截断顺带把比较值也切掉了**——**账对，理由错**：
+ *   比较值（`left` / `right` / `app.backgroundImage`）本该由**明处的过滤**剔掉，不该靠正则出错。
+ * 修后：**按引号配对取完整表达式**（`"` 与 `'` 互相当作内容、`` ` `` 同为定界符）＋ token 切分
+ *   ＋ **显式的比较值过滤**（`COMPARE_OPS` 右值 ＋ `WHEN_SKIP` 词表）⇒ 过滤写在明处、可被 `--self-test` 自测。
+ */
+const WHEN_DELIMITERS = [`"`, "'", "`"];
+/** 比较运算符：紧跟其后的 token 是**右值**（`left` / `app.x` / `'app.x'`）——**不是旗子名** */
+const COMPARE_OPS = ["==", "!=", "===", "!==", "=", "<=", ">=", "<", ">"];
+/** `when` 语法词 ＋ 字面量：切出来也不是旗子名 */
+const WHEN_SKIP = ["true", "false", "and", "or", "not", "in", "regex"];
+
+/** 从 `when: <引号>…<同款引号>` 取**完整表达式**（引号配对；⛔ 别用「切到下一个引号」——那正是旧 bug） */
+export function extractWhenExpressions(src) {
+  const out = [];
+  for (const m of src.matchAll(/\bwhen\s*:\s*/g)) {
+    const start = (m.index ?? 0) + m[0].length;
+    const delim = src[start];
+    if (!WHEN_DELIMITERS.includes(delim)) continue;
+    const end = src.indexOf(delim, start + 1);
+    if (end > start) out.push(src.slice(start + 1, end));
+  }
+  return out;
+}
+
+/** 完整 `when` 表达式 → 读到的**旗子名**（左侧的标识符；比较值 / 语法词 / 属性名一律剔除）。
+ *  ⚠️ 切分**必须把比较运算符留在 token 流里**（`COMPARE_OPS` 是「跳过右值」唯一的识别依据）：
+ *  先把运算符前后补空白切成独立 token，**再按空白切**——⛔ 别按「非名字字符」切（那会把 `==`
+ *  连同空格一起当分隔符吞掉 ⇒ `a == b` 切成 `["a","b"]` ⇒ **比较值 `b` 被当成旗子名收进账**）。 */
+export function whenKeys(expr) {
+  const out = [];
+  const opsRe = /^(===|!==|==|!=|<=|>=|=|<|>)$/;
+  const tokens = String(expr)
+    .replace(/(===|!==|==|!=|<=|>=|=|<|>)/g, " $1 ")
+    .split(/\s+/)
+    .filter(Boolean)
+    // ⛔ 削边**不能削运算符本身**（`=` 是非名字字符，削边会把 `==` 整条削成空串 ⇒ 运算符消失）
+    .map((t) => (opsRe.test(t) ? t : t.replace(/^[^A-Za-z0-9_.$]+|[^A-Za-z0-9_.$]+$/g, "")))
+    .filter(Boolean);
+  for (let i = 0; i < tokens.length; i++) {
+    const t = tokens[i];
+    if (COMPARE_OPS.includes(t)) {
+      i++; // 跳过右值——`== 'left'` 的 `left` **不是旗子名**（显式过滤，不靠截断）
+      continue;
+    }
+    if (WHEN_SKIP.includes(t)) continue;
+    if (!/^[a-z]/.test(t)) continue;
+    // `a.x` 形态：`a` 是旗子名，`x` 是属性名（`!editorHasSelection` 之类无点，直接收）
+    const dot = t.indexOf(".");
+    out.push(dot > 0 ? t.slice(0, dot) : t);
+  }
+  return out;
+}
+
 /**
  * 现场重扫壳仓 → 账对象（九个家族，均已去重 ＋ 字典序）。
  * ⚠️ 扫描口径就是本函数：**改了扫描口径 = 改了公共面判据**，同笔在 §六 记一笔。
@@ -211,13 +285,10 @@ export function collectHostReserved(root = ROOT) {
     const src = fs.readFileSync(f, "utf8");
     for (const m of src.matchAll(/ContextKeyService\.setValue\(\s*["'`]([^"'`]+)["'`]/g)) ctxWrite.add(m[1]);
     for (const m of src.matchAll(/contextKey[?.]*\.set[?.]*\(\s*["'`]([^"'`]+)["'`]/g)) ctxWrite.add(m[1]);
-    for (const m of src.matchAll(/when:\s*["'`]([^"'`]+)["'`]/g)) {
-      for (const t of m[1].split(/[^A-Za-z0-9_]+/)) {
-        if (!t || ["true", "false", "and", "or", "not", "in", "regex"].includes(t)) continue;
-        if (/^[a-z]/.test(t)) ctxRead.add(t);
-      }
-    }
+    for (const expr of extractWhenExpressions(src)) for (const t of whenKeys(expr)) ctxRead.add(t);
   }
+  /** 内核三键：`initCoreKeys` 以 `this._state.set(...)` 直写，绕过 `setValue` ⇒ 上面的正则抓不到（硬编码补）。
+   *  🔴 **新增内核旗子必须同笔补这里**（出处 1.37 §10.3）。 */
   for (const k of ["activeEditor", "editorHasSelection", "editorCount"]) {
     ctxWrite.add(k);
     ctxRead.add(k);
@@ -270,17 +341,29 @@ export function collectHostReserved(root = ROOT) {
   /* ⑥ 宿主内置协议 id —— `registerProtocol({ id: "..." })` 的宿主写入点（与命令 id 同一个全局名册，
    *    E6#111b 判据⑦：插件协议 id 不得撞它。今日唯一写入点 = 内置方括号协议） */
   const protocols = new Set();
-  for (const f of walk(path.join(root, "src"), (x) => x.endsWith(".ts") && !x.endsWith(".test.ts"))) {
+  for (const f of walk(path.join(root, "src"), (x) => x.endsWith(".ts") && !x.includes(".test."))) {
     const src = fs.readFileSync(f, "utf8");
     for (const m of src.matchAll(/registerProtocol\s*\(\s*\{[\s\S]{0,400}?\bid\s*:\s*["']([^"']+)["']/g)) protocols.add(m[1]);
   }
+
+  /* ⑦ 🔴 约定面派生（E6#111h／1.38）：**宿主 `when` 读 ∧ 宿主源码不写** ⇒ 宿主公开约定面。
+   *    出处 = 1.37 §13.5 裁决（丙）：`settings` 的 4 个裸名旗子（`settingKey` / `settingFollowTheme` /
+   *    `settingResetsToDefault` / `settingModified`）**写的人是官方插件 `settings`、读的人是宿主命令 `when`**
+   *    ⇒ 它们事实上已是「谁都能设、谁都能读」的公开约定面，只是**没人登记**。登记 = 拆段 ＋ 双向对账 ＋ 出声。
+   *    ⛔ **不手抄名单**——名单是**派生的**（改完 `settings`/`coreCommands` 后重跑即自动跟上）；
+   *    手抄的名单迟早与实况漂，而漂的那天**双向对账会被自己骗过**（两边都拿手抄表）。
+   *    ⚠️ 派生依赖上面对内核三键 ＋ `UPDATE_*_KEY` 两键的硬编码补写：宿主写过的名字**不许**落进约定面
+   *    （否则「插件禁设」的段里混进宿主自己在写的旗子 ⇒ 官方 `usePoolSync` 当场假红）。 */
+  const ctxPublic = [...ctxRead].filter((k) => !ctxWrite.has(k)).sort();
+  const ctxHostOnly = [...new Set([...ctxWrite, ...ctxRead])].filter((k) => !ctxPublic.includes(k)).sort();
 
   return {
     $comment: LEDGER_COMMENT,
     commandPrefixes: [...prefix].sort(),
     configKeys: [...keys].sort(),
     pseudoPluginIds: [...new Set(pseudo)].sort(),
-    contextKeys: [...new Set([...ctxWrite, ...ctxRead])].sort(),
+    contextKeysHostOnly: ctxHostOnly,
+    contextKeysPublic: ctxPublic,
     appearanceRecipeIds: [...recipeIds].sort(),
     appearanceColorwayIds: [...colorwayIds].sort(),
     appearanceIconThemeIds: [...iconThemeIds].sort(),
@@ -425,13 +508,16 @@ export function checkAll({ ledger, actual, sdkRaw, ledgerRaw, runtimeRaw, runtim
 /**
  * 渲染运行时保留面模块（纯函数——生成与 `--check` 第四向**共用同一份渲染**，⛔ 不许两处各写一份）。
  * 带运行时真正要用的家族：`configKeys`（保护区）＋ `pseudoPluginIds`（宿主身份判别）
- *   ＋ **外观四栏 ＋ 证照**（E6#111f／1.36 追加：运行时仲裁「顶替宿主兜底 id」要按空间查表）。
- * ⚠️ 另外三个家族（命令前缀 / context key / 协议 id）**故意不进运行时**：它们的判据在作者侧门禁
+ *   ＋ **外观四栏 ＋ 证照**（E6#111f／1.36 追加：运行时仲裁「顶替宿主兜底 id」要按空间查表）
+ *   ＋ **context key 两段**（E6#111h／1.38 追加：运行时仲裁「插件经 IPC 写宿主专用旗子」要查专用段）。
+ * ⚠️ 另外三个家族（命令前缀 / 协议 id / **约定面段**）**故意不进运行时**：它们的判据在作者侧门禁
  *   （SDK lint）出，壳运行时不需要它们——塞进来只会多一份要同步的东西。
+ *   🔴 **约定面段不进运行时是刻意的**：约定面 = 「插件可设」⇒ 运行时对它**没有**可执行的判断；
+ *   塞进来只会让人以为运行时在管它。
  */
 export function renderRuntimeModule(reserved) {
   const arr = (name, values) =>
-    `export const ${name}: readonly string[] = [\n${values.map((v) => `  ${JSON.stringify(v)},`).join("\n")}\n];\n`;
+    `export const ${name}: readonly string[] = [\n${(values ?? []).map((v) => `  ${JSON.stringify(v)},`).join("\n")}\n];\n`;
   // 外观四栏 → 运行时按**空间名**查（配方 / 配色 / 图标主题 / 哨兵）——空间名写死在此，⛔ 别处不许再写一份
   const appearanceSpaces = APPEARANCE_COLUMNS.map((k, i) => [APPEARANCE_SPACES[i], k]);
   const appearanceBlock =
@@ -451,13 +537,19 @@ export function renderRuntimeModule(reserved) {
   return `/**
  * 🔴 **生成式文件——别手改。** 生成器 = \`scripts/gen-host-reserved.mjs\`（\`npm run audit:plugin-scope:regen\`）。
  *
- * 是什么：宿主保留面的**运行时副本**——壳运行时用它判四件事：
+ * 是什么：宿主保留面的**运行时副本**——壳运行时用它判五件事：
  *   · \`HOST_RESERVED_CONFIG_KEYS\`——插件不得占用的宿主配置键（保护区；撞了 ⇒ 拒绝注册 ＋ console.error）
  *   · \`HOST_PSEUDO_PLUGIN_IDS\`——宿主自己的注册身份（\`app\` = 壳通用 / \`appearance\` = 外观 / \`update\` = 更新）
  *   · \`HOST_RESERVED_APPEARANCE_IDS\`——宿主兜底外观 id，**按空间分栏**（recipe / colorway / iconTheme /
  *     sentinel）；两个空间不许合栏（配方 id 与配色 id 是两个名字空间，合栏 ⇒ 官方主题仓假红）
  *   · \`HOST_RESERVED_APPEARANCE_GRANTS\`——外观 id 的**证照**（id → 宿主之外的正当持有者）。🔴 **不是白名单**：
  *     按 id 记持有者，不记「哪些仓被宽恕」⇒ 新插件永远不在表里、永远判红
+ *   · \`HOST_RESERVED_CONTEXT_KEYS_HOST_ONLY\`——**宿主专用的 context key**（E6#111h／1.38）。
+ *     🔴 运行时对它**只出声、不放行以外的动作**：经 IPC 写入宿主专用名 ⇒ \`console.error\` 点名 ＋
+ *     **值照写**。理由 = 旗子是**状态写**不是注册（\`setValue\` 无归属参数、IPC 通道不带身份）⇒
+ *     运行时**拿不到「谁是先者」**，「先者保留」在这里**结构上不可实现**（1.37 §12.1/§12.2）。
+ *     ⚠️ **保护主力在静态腿**（SDK \`context-ownership\`）——运行时是**第二道网**，只覆盖
+ *     「插件在运行时设了宿主专用名」这一形态。
  *
  * 为什么运行时需要一份**静态**副本（而不是「看谁先注册」）：
  *   宿主真键里有**从未被注册**的（\`app.schemaVersion\`——settings.json 的内部标志键），
@@ -465,9 +557,13 @@ export function renderRuntimeModule(reserved) {
  *
  * 三份同源：壳账 \`scripts/host-reserved.json\` · SDK 副本 \`packages/plugin-sdk/schemas/host-reserved.json\`
  *   · 本文件。漂移由 \`node scripts/gen-host-reserved.mjs --check\` 拦（四向对账）。
+ *
+ * ⚠️ **账里的 \`contextKeysPublic\`（宿主公开约定面）刻意不进本模块**：约定面 = 「插件可设」⇒
+ *   运行时对它没有可执行的判断。
  */
 ${arr("HOST_RESERVED_CONFIG_KEYS", reserved.configKeys)}
 ${arr("HOST_PSEUDO_PLUGIN_IDS", reserved.pseudoPluginIds)}
+${arr("HOST_RESERVED_CONTEXT_KEYS_HOST_ONLY", reserved.contextKeysHostOnly)}
 ${appearanceBlock}${grantsBlock}`;
 }
 
@@ -503,7 +599,8 @@ function fixture() {
     commandPrefixes: ["app.", "view."],
     configKeys: ["app.theme"],
     pseudoPluginIds: ["app"],
-    contextKeys: ["inputFocus"],
+    contextKeysHostOnly: ["activeEditor"],
+    contextKeysPublic: ["settingKey"],
     appearanceRecipeIds: ["dark", "light"],
     appearanceColorwayIds: ["dark-fallback", "light"],
     appearanceIconThemeIds: ["default"],
@@ -559,9 +656,9 @@ function selfTest() {
   );
   // 🔴 负控③：家族整段被删（后面逐条比对已无意义）
   T(
-    "负控③：账里 contextKeys 段被删 ⇒ 红（family-missing）",
+    "负控③：账里 contextKeysHostOnly 段被删 ⇒ 红（family-missing）",
     (f) => {
-      delete f.ledger.contextKeys;
+      delete f.ledger.contextKeysHostOnly;
       return {};
     },
     ["family-missing"],
@@ -647,6 +744,64 @@ function selfTest() {
     cases.push(["正控④：真仓重扫——外观四栏非空 ＋ 证照自洽 ⇒ 绿", bad.length === 0, bad]);
   }
 
+  /* ── 1.38 新增：context key 两段 ＋ `when:` 抽取修复 ───────────────── */
+  // 🔴 负控⑭：两段之间串味（约定面的名字出现在宿主专用段 ⇒ 插件设「宿主约定面」会被误判成红）
+  T(
+    "负控⑭：约定面旗子混进宿主专用段 ⇒ 红（ledger-missing）",
+    (f) => {
+      f.actual.contextKeysHostOnly = [...f.actual.contextKeysHostOnly, "settingKey"];
+      return {};
+    },
+    ["ledger-missing"],
+  );
+  // 🔴 负控⑮：约定面段整段被删（拆段后退化回「一栏」的形态——分级又不可区分了）
+  T(
+    "负控⑮：账里 contextKeysPublic 段被删 ⇒ 红（family-missing）",
+    (f) => {
+      delete f.ledger.contextKeysPublic;
+      return {};
+    },
+    ["family-missing"],
+  );
+  // 🔴 负控⑯：运行时模块漏掉宿主专用段里的一个旗子（第五向——运行时与门禁读的不是同一本账）
+  T(
+    "负控⑯：运行时模块漏一个宿主专用 context key ⇒ 红（runtime-drift）",
+    (f) => ({ runtimeRaw: renderRuntimeModule(f.ledger).replace('"activeEditor",', "") }),
+    ["runtime-drift"],
+  );
+  /* 🔴 正控⑤/⑥/⑦：`when:` 抽取——**旧实现在这里会漏**（本格头号缺陷的守门）。
+   *  ⚠️ 这三条**必须直测抽取函数**，不能走 `collectHostReserved()`：真仓的 `when` 恰好都是
+   *   「比较值在末尾」的形态，旧实现在真仓上**照样给出正确的账**（账对、理由错）⇒ 用真仓当守门等于没测。 */
+  {
+    const extract = (s) => extractWhenExpressions(s).flatMap(whenKeys);
+    const cases5 = [
+      ["正控⑤：`== 'left'` 的右值不进账（比较值显式过滤）", extract(`when: "sidebarPosition == 'left'"`), ["sidebarPosition"]],
+      ["正控⑥：无引号字面量的表达式完整进账", extract(`when: "explorerFocus && !inputFocus"`), ["explorerFocus", "inputFocus"]],
+      [
+        "🔴 正控⑦（本格头号缺陷守门）：`== 'x' && myFlag` ⇒ myFlag 必须进账（旧实现会漏）",
+        extract(`when: "settingKey == 'x' && myFlag"`),
+        ["settingKey", "myFlag"],
+      ],
+      ["正控⑧：比较值在中间、后面还有旗子 ⇒ 后面的旗子必须进账", extract(`when: "a && b == 'x' || c"`), ["a", "b", "c"]],
+      ["正控⑨：单引号包表达式（合法写法）⇒ 内容完整", extract(`when: 'sidebarPosition == "left"'`), ["sidebarPosition"]],
+      ["正控⑩：`a.x` 形态取左边（属性名不是旗子名）", extract(`when: "panel.visible && b"`), ["panel", "b"]],
+    ];
+    for (const [name, got, want] of cases5) {
+      const ok = JSON.stringify(got) === JSON.stringify(want);
+      cases.push([`${name} ⇒ ${JSON.stringify(want)}`, ok, ok ? [] : [`实际 ${JSON.stringify(got)}`]]);
+    }
+  }
+  // 🔴 正控⑪：真仓两段都对 —— 宿主专用/约定面各自非空 ＋ **两段不相交**（交集非空 = 分级本身就没意义）
+  {
+    const real = collectHostReserved();
+    const bad = [];
+    if (!real.contextKeysHostOnly?.length) bad.push("family-empty:contextKeysHostOnly");
+    if (!real.contextKeysPublic?.length) bad.push("family-empty:contextKeysPublic");
+    const overlap = (real.contextKeysHostOnly ?? []).filter((k) => (real.contextKeysPublic ?? []).includes(k));
+    if (overlap.length) bad.push(`两段相交:${overlap.join(",")}`);
+    cases.push(["正控⑪：真仓重扫——context key 两段非空且不相交 ⇒ 绿", bad.length === 0, bad]);
+  }
+
   let bad = 0;
   for (const [name, ok, kinds] of cases) {
     if (!ok) bad++;
@@ -708,7 +863,16 @@ console.log("壳账", LEDGER_REL, "＋ SDK 副本", SDK_REL, "＋ 运行时模�
 console.log("命令前缀", out.commandPrefixes.length, JSON.stringify(out.commandPrefixes));
 console.log("app.* 键", out.configKeys.length);
 console.log("伪 pluginId", JSON.stringify(out.pseudoPluginIds));
-console.log("context key", out.contextKeys.length, JSON.stringify(out.contextKeys));
+console.log(
+  "宿主专用 context key",
+  out.contextKeysHostOnly.length,
+  JSON.stringify(out.contextKeysHostOnly),
+);
+console.log(
+  "宿主公开约定面 context key",
+  out.contextKeysPublic.length,
+  JSON.stringify(out.contextKeysPublic),
+);
 console.log("宿主兜底配方 id", JSON.stringify(out.appearanceRecipeIds));
 console.log("宿主兜底配色 id", JSON.stringify(out.appearanceColorwayIds));
 console.log("宿主保底图标主题 id", JSON.stringify(out.appearanceIconThemeIds));

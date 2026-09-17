@@ -37,6 +37,8 @@ const RESERVED: HostReservedNames = {
   appearanceIconThemeIds: [],
   appearanceSentinels: [],
   appearanceIdGrants: {},
+  contextKeysHostOnly: [],
+  contextKeysPublic: [],
 };
 
 const NO_LEDGER = join(tmpdir(), "no-such-host-reserved.json");

@@ -107,14 +107,20 @@ for (const d of fs.readdirSync(CONTAINER, { withFileTypes: true }).filter((e) =>
 const bad = (arr, reserved = []) => arr.filter((x) => reserved.some((p) => x === p || x.startsWith(p)));
 /** 逐仓的「需改」派生量——两处共用（⛔ 别只改一处：汇总表与明细会两边不一致） */
 const faceOf = (r) => {
-  const flagsBad = r.flags.filter((f) => HOST.contextKeys.includes(f) || !f.startsWith(r.id + "."));
+  // 🔴 E6#111h／1.38：旗子分两段判——宿主**专用**（插件禁设 ⇒ 需处理）与宿主**公开约定面**
+  //   （插件可设 ⇒ **不是**需处理；合成一段会把官方 `settings` 的 4 个约定面旗子报成"占宿主旗子"= 假红）。
+  //   仍逐条判「不带本仓 `<pluginId>.` 归属」（🟡 黄，1.49 才收紧）。
+  const flagsBad = r.flags.filter(
+    (f) => HOST.contextKeysHostOnly.includes(f) || !f.startsWith(r.id + "."),
+  );
+  const flagsPublic = r.flags.filter((f) => HOST.contextKeysPublic.includes(f));
   // 🔴 宿主兜底外观 id 从「不带归属」里剔除（见文件上方 HOST_APPEARANCE 注释）——它们单列一行
   const themeBad = r.themeIds.filter((x) => !HOST_APPEARANCE.has(x) && !x.startsWith(r.id + "-") && !x.startsWith(r.id + "."));
   const recBad = r.recipeIds.filter((x) => !HOST_APPEARANCE.has(bareId(x)) && !x.startsWith(r.id + "-") && !x.startsWith(r.id + "."));
   const hostHits = [...r.themeIds, ...r.iconThemeIds, ...r.recipeIds.map(bareId)]
     .filter((x) => HOST_APPEARANCE.has(x))
     .map((x) => `${x}${HOST_APPEARANCE_GRANTED.has(x) ? "(有证照)" : "(无证照)"}`);
-  return { flagsBad, themeBad, recBad, hostHits: [...new Set(hostHits)] };
+  return { flagsBad, flagsPublic, themeBad, recBad, hostHits: [...new Set(hostHits)] };
 };
 console.log(`[scope] 容器 ${CONTAINER} · ${rows.length} 仓\n`);
 const summary = [];
@@ -124,12 +130,14 @@ for (const r of rows.sort((a, b) => (b.cmdBad.length + b.cfgBad.length + b.flags
   summary.push({ id: r.id, total, r });
 }
 for (const { id, total, r } of summary) {
-  const { flagsBad, themeBad, recBad, hostHits } = faceOf(r);
+  const { flagsBad, flagsPublic, themeBad, recBad, hostHits } = faceOf(r);
   console.log(`── ${id}  需改 ${total} 处`);
   if (r.cmdBad.length) console.log(`   命令 id 不带归属 ${r.cmdBad.length}: ${r.cmdBad.join(", ")}`);
   if (r.runtime.length) console.log(`   运行时注册不带归属 ${r.runtime.length}: ${r.runtime.join(", ")}`);
   if (r.cfgBad.length) console.log(`   设置键不带归属 ${r.cfgBad.length}: ${r.cfgBad.join(", ")}`);
   if (flagsBad.length) console.log(`   旗子需处理 ${flagsBad.length}: ${flagsBad.join(", ")}`);
+  // 🔴 宿主**公开约定面**旗子单列——它们**不是**"需处理"（插件可设），改名归 1.46 的「零改动登记」
+  if (flagsPublic.length) console.log(`   宿主约定面旗子（🔴 不是需处理——登记为公开约定面）: ${flagsPublic.join(", ")}`);
   if (themeBad.length) console.log(`   主题 id 不带归属 ${themeBad.length}: ${themeBad.join(", ")}`);
   if (r.iconThemeIds.length) console.log(`   图标主题 id: ${r.iconThemeIds.join(", ")}`);
   if (r.langIds.length) console.log(`   语言包 id: ${r.langIds.join(", ")}`);
