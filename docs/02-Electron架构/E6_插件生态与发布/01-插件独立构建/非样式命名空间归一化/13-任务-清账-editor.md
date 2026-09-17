@@ -32,7 +32,7 @@
 | **设置键不合规** | **1**：`files.autoSave` | `node scripts/audit-plugin-scope.mjs`（`── editor` 段） |
 | 设置键合规 | **25**（`editor.*` 前缀，已合规） | 同上 |
 | 命令 id | **2**，**全部合规**（`editor.*`） | 同上 |
-| **文件关联** | **41 个扩展名**：`ts` `tsx` `js` `jsx` `mjs` `cjs` `json` `jsonc` `html` `htm` `css` `scss` `less` `md` `mdx` `py` `rs` `c` `h` `cpp` `hpp` `go` `java` `xml` `svg` `yaml` `yml` `toml` `sh` `bash` `sql` `lua` `php` `rb` `swift` `kt` `dart` `diff` `patch` `bat` `cmd` `ini` `cfg` `txt` `log` | 同上 |
+| **文件关联** | **45 个扩展名**（⚠️ **本档原写 41，2026-09-17 复量翻正**，见 §1.2）：`ts` `tsx` `js` `jsx` `mjs` `cjs` `json` `jsonc` `html` `htm` `css` `scss` `less` `md` `mdx` `py` `rs` `c` `h` `cpp` `hpp` `go` `java` `xml` `svg` `yaml` `yml` `toml` `sh` `bash` `sql` `lua` `php` `rb` `swift` `kt` `dart` `diff` `patch` `bat` `cmd` `ini` `cfg` `txt` `log` | 同上 |
 | i18n 顶层键 | **47**（跨仓不可判，**只登记**） | 同上 |
 | 旗子 | **0**（本仓不设 context key） | 同上 |
 
@@ -42,6 +42,12 @@
 2. **设计上就是多方共用**：[`FileAssociationService`](../../../../../src/core/services/files/FileAssociationService.ts) 的注释明写「**同一扩展名允许多个插件注册——"打开方式…"选择器消费全部**」（`FileAssociationService.ts:36-40`）⇒ 它**不是覆盖型花名册，是加性扩展点**。
 3. 🔴 **实测佐证**：`python` 插件（见 [1.48](18-任务-清账-其余插件.md)）**也声明语言定义扩展名**（`.py` / `.pyi`）⇒ 同一类"全局概念名"在两只仓里都出现，**改名必然两家都要改、且改完更错**。
 ⇒ **本格结论：不改 ＋ 登记为「明文的全局概念名」**（写进交接段与 1.49 的作者面说明）。
+
+### 1.2 ⚠️ 41 → 45 的**档内订正**（2026-09-17 清账实测，如实记）
+
+- **原读数 41** 是 2026-09-16 抄档时的数；**今日复量 = 45**（`node scripts/audit-plugin-scope.mjs` 的 `── editor` 段直接列出 45 个扩展名，逐条可数）。
+- 🔴 **订正只在本档，别处不动**：本轴正典与判据都**不消费这个数字**（文件关联**按设计不改名**，条数不进任何门禁）⇒ 它**纯属事实陈述**，改了不牵连任何结论。
+- ⚠️ **教训（本轴第二次）**：**抄来的数字会腐烂**。凡写进档的读数，**写的时候附可复跑命令**（本行已附）；下一棒复量若不符，**以复跑命令的输出为准并当场翻正**——[1.48](18-任务-清账-其余插件.md) §1.3 同一天抓到的是同一类问题的另一半（**探针漏计**，那个是真缺陷）。
 
 ---
 

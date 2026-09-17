@@ -134,6 +134,71 @@ export const RENAME_ROUNDS: RenameRound[] = [
     },
     appearance: { recipe: {}, colorway: {} },
   },
+  {
+    /* 1.43 清账 · editor（**1 个设置键**——本轴清账面最小的一格）。
+     *
+     * 🔴 **这一条是 1.42 特意留下的**：`files.autoSave` 由 `editor` 仓声明，而 v7/v8 的设置键搬家
+     *   有一道 `next in schema` 门禁（新名没被声明就不搬）。1.42 跑迁移时 `editor` 1.0.11
+     *   **仍声明着 `files.autoSave`** ⇒ 这条键在 1.42 那一轮**整组跳过、零写**。
+     *   ⚠️ 那不是漏做，是设计如此：当时硬搬 ⇒ 新名读默认、旧值蒸发（迁移自己制造出它要消灭的病）。
+     *   ⇒ **本格把 `editor` 仓改成新名 ⇒ 新名进了宿主 schema ⇒ 下一次启动迁移自动把它搬过去。**
+     *
+     * ⚠️ 本仓**命令 id 与旗子两个空间都是空的**（实测：2 条 `editor.*` 命令已合规、0 个旗子）
+     *   ⇒ 只有 `setting` 一栏有数据。🔴 **别把别的仓的名字混进这一轮**（混进来 = 本轮的
+     *   执行器会去 `editor` 仓找那些名字）。 */
+    round: "1.43",
+    plugin: "editor",
+    command: {},
+    setting: {
+      // 形状 = 1.33 §10.1「只换第一段，词干零变化」。⚠️ 与 1.42 轮的 `files.exclude` 是**同一条纪律**：
+      //   `files.*` 是**跨口申请的公共前缀**（editor 与 file-tree 各占一部分）⇒ 各归各的仓。
+      "files.autoSave": "editor.autoSave",
+    },
+    flag: {},
+    appearance: { recipe: {}, colorway: {} },
+  },
+  {
+    /* 1.44 清账 · serial-monitor（**2 个上下文旗子**）。
+     *
+     * 旗子无「公共 API」属性（1.37 §14.1）：它**不被任何引用位引用**，只被 `when` 表达式**读**
+     *   ⇒ 改名不破坏跨仓引用，只破坏「**谁的 `when` 在读**」。⚠️ 但读取是「**按名字碰**」
+     *   （`matches()` 拿名字当 map 键查）⇒ **无编译期/加载期校验**，漏一处 = **静默失效、不报错**。
+     *   ⇒ 写点（`contextKey.set`）与读点（`plugin.json` 的 `when`）**必须同笔**。
+     *
+     * 🔴 `serialSessionFocus` 是**死旗子**（1.37 §14.2 实测：全仓无人读）。本格照禁区
+     *   「只登记、不删」⇒ **改名照做**（与另一条同仓同笔，不拆两轮），**去留裁决见交接段**。 */
+    round: "1.44",
+    plugin: "serial-monitor",
+    command: {},
+    setting: {},
+    flag: {
+      sourceOpen: "serial-monitor.sourceOpen",
+      serialSessionFocus: "serial-monitor.serialSessionFocus",
+    },
+    appearance: { recipe: {}, colorway: {} },
+  },
+  {
+    /* 1.45 清账 · marketplace（**6 个上下文旗子**）。
+     *
+     * 🔑 本仓结构极清楚（1.45 §1.1）：**6 个旗子 ↔ 一个齿轮菜单的 7 个条目**。
+     *   写点全部在 `src/components/ExtensionItem.tsx:18-33`（6 set ＋ 6 复位），
+     *   读点全部在 `src/services/marketplaceShared/commands.ts:93-99` 的 `when`。
+     *   🔴 **只改 set 不改 `when`（或反之）⇒ 菜单项永久消失/永久出现**——且它看起来只是
+     *   「菜单少了一项」，没人会归因到命名。⇒ 本格的判据 ③「set 与读点成对」专抓这一半改。 */
+    round: "1.45",
+    plugin: "marketplace",
+    command: {},
+    setting: {},
+    flag: {
+      pluginDisabled: "marketplace.pluginDisabled",
+      extensionHasThemes: "marketplace.extensionHasThemes",
+      extensionHasLanguages: "marketplace.extensionHasLanguages",
+      extensionHasIconThemes: "marketplace.extensionHasIconThemes",
+      extensionHasConfiguration: "marketplace.extensionHasConfiguration",
+      extensionHasKeybindings: "marketplace.extensionHasKeybindings",
+    },
+    appearance: { recipe: {}, colorway: {} },
+  },
 ];
 
 /** 摊平后的「旧名 → 新名」四张表——**空间之间不许合并**（同名不同空间会映错，见 constants.ts 两张表那条注释） */

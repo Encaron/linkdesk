@@ -66,6 +66,21 @@ export function clearConfigMigrations(): void {
   _migrations.clear();
 }
 
+/**
+ * 读出**已登记**的迁移（按版本升序）——供「生产装配点是否真的存在」这类判据直接点名。
+ *
+ * 🔴 **为什么需要它**（1.43 本格实测出来的假负控，见 `__negctl__/v8-assembly.test.ts` 文件头）：
+ *   v9/v10/v11 **共用同一个迁移体**，而 `runPendingConfigMigrations` 把版本标志**一步推到
+ *   「待执行里的最高目标版本」** ⇒ 盘在 v8 时摘掉 v9 的登记行，仍会被 v10/v11 推到 11
+ *   ⇒ 「跑完后版本 ≥ 9」**照样成立**。**「终值够大」证明不了「某一步存在」。**
+ *   ⇒ 判「某个装配点存在」必须**直接问登记表**，不能靠终值推断。
+ *
+ * ⚠️ 只读快照（调用方拿到的是副本数组，改它不影响内部表）。不进任何门禁判定路径。
+ */
+export function inspectConfigMigrations(): ConfigMigration[] {
+  return [..._migrations.values()].sort((a, b) => a.version - b.version);
+}
+
 /* ── E6#111m／1.41：**改名迁移**（版本 7）——「改名 ＋ 迁移」的另一半 ──
  *
  * 背景：1.31–1.40 把五件（命令 id / 设置键 / 外观族 id / 上下文旗子 / i18n）的**登记与判据**做完了；
@@ -171,12 +186,55 @@ export const NAMESPACE_RENAME_MIGRATION_V8: ConfigMigration = {
   migrate: runNamespaceRenameMigration,
 };
 
+/* ── E6#111n-2／n-3／n-4：**改名迁移再次补跑**（版本 9／10／11）──
+ *
+ * 🔴 **同一个坑的第 2、3、4 次**（v7 预警 → 1.42 补 v8 → 本格再补三个）。
+ * 版本门禁是 `pending = migrations.filter(m => m.version > current)`，而**成功语义含零产出**
+ * （见模块头「成功语义」）⇒ 任何一次「迁移跑了但那一轮的官方仓还没改名」都会把版本推过该值，
+ * 那一轮之后的改名就**再也不会被搬**。本格（1.43–1.45）连做三个仓 ⇒ 补三个版本号。
+ *
+ * 为什么一次补三个而不是一个：三轮的改名**同笔发版**（用户装到的壳与插件是同一批），
+ * 对用户盘而言就是一个批次。三个独立版本号保留「哪一轮搬的什么」的可追溯性，
+ * 且任一格的迁移体改动都仍可单独定位。三者共用同一个迁移体（**纯数据复用，不是第二/三/四套逻辑**）。
+ *
+ * ⚠️ **幂等前提**：`runNamespaceRenameMigration` 靠 presence 门控（旧键没值就不产出）＋
+ *    「命中即恒等」（旧名已换新名 ⇒ 再跑零命中）⇒ 连跑 v7…v11 五次，只有第一次有产出。
+ * ⚠️ 1.46–1.48 **若在 v11 之后**落地新仓的改名，照旧**各自再补一个版本号**（本条就是范本）。 */
+export const NAMESPACE_RENAME_MIGRATION_V9: ConfigMigration = {
+  version: 9,
+  name: "E6-111n-2 namespace-rename-migration-editor", // ⚠️ 不写 `#`
+  migrate: runNamespaceRenameMigration,
+};
+
+/* 1.44 清账 · serial-monitor —— 只有旗子改名，而旗子是**运行时状态、不落盘**（本格已核实：
+ *   `sourceOpen` / `serialSessionFocus` 在 pluginState / StorageService / localStorage / workspace
+ *   四类持久化写入口的命中 = 0）⇒ **本步对用户盘零产出**。
+ * 🔴 **但仍然必须登记**：`runNamespaceRenameMigration` 的第二段 `migrateUserKeybindings` 是
+ *   **跨仓共读**的（`command` / `flag` 两栏摊平后一视同仁）——用户 `keybindings.json` 里的 `when`
+ *   子句可能引用本仓改名后的旗子。少了这一步 = 那条自定义键位**静默失效**（不报错、按了没反应）。 */
+export const NAMESPACE_RENAME_MIGRATION_V10: ConfigMigration = {
+  version: 10,
+  name: "E6-111n-3 namespace-rename-migration-serial-monitor", // ⚠️ 不写 `#`
+  migrate: runNamespaceRenameMigration,
+};
+
+/* 1.45 清账 · marketplace —— 同上（6 个旗子，运行时状态不落盘 ⇒ 对 settings.json 零产出；
+ *   登记的意义同样在 `migrateUserKeybindings` 那一段）。 */
+export const NAMESPACE_RENAME_MIGRATION_V11: ConfigMigration = {
+  version: 11,
+  name: "E6-111n-4 namespace-rename-migration-marketplace", // ⚠️ 不写 `#`
+  migrate: runNamespaceRenameMigration,
+};
+
 /* 顶层即登记（生产路径唯一的装配点）。
  * ⚠️ 测试要「清场再装回」时必须用导出的 `NAMESPACE_RENAME_MIGRATION` **重新登记**——
  *   `clearConfigMigrations()` 清掉之后**没有任何代码会再跑一次本文件的顶层**，
  *   于是编排手里空表 ⇒ 一条迁移都不跑（1.41 本格首版四条用例全被这一条坑到）。 */
 registerConfigMigration(NAMESPACE_RENAME_MIGRATION);
 registerConfigMigration(NAMESPACE_RENAME_MIGRATION_V8);
+registerConfigMigration(NAMESPACE_RENAME_MIGRATION_V9);
+registerConfigMigration(NAMESPACE_RENAME_MIGRATION_V10);
+registerConfigMigration(NAMESPACE_RENAME_MIGRATION_V11);
 
 /** 读取当前 schema 版本——无标志/非法 → SCHEMA_VERSION_INITIAL */
 export function getConfigSchemaVersion(): number {

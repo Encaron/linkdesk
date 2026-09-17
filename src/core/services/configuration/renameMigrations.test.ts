@@ -71,8 +71,11 @@ describe("renameMigrations · 1.42 补的 command / flag 两栏（清账·file-t
     expectStemUnchanged(entries);
   });
 
-  it("flag 栏在册 11 条，且新名一律带 file-tree. 前缀", () => {
-    const entries = Object.entries(maps.flag);
+  it("flag 栏里 file-tree 那 11 条，新名一律带 file-tree. 前缀", () => {
+    // ⚠️ 1.44/1.45 往 `flag` 栏又加了 8 条（serial-monitor 2 + marketplace 6）⇒ 摊平后总数是 19。
+    //    本用例只锚 **file-tree 这 11 条**（前缀判据按仓成立，不该被别仓的条数带走）——
+    //    改名前它断言「总数 11」，1.44 一加条目就红：那是**按总数断言**的经典脆弱点。
+    const entries = Object.entries(maps.flag).filter(([, newName]) => newName.startsWith("file-tree."));
     expect(entries.length).toBe(11);
     for (const [oldName, newName] of entries) {
       expect(newName.startsWith("file-tree."), `${oldName} → ${newName}`).toBe(true);
@@ -94,6 +97,78 @@ describe("renameMigrations · 1.42 补的 command / flag 两栏（清账·file-t
     for (const space of ["setting", "command", "flag"] as const) {
       for (const [oldName, newName] of Object.entries(maps[space])) {
         expect(newName, `${space} 的空转条目 ${oldName}`).not.toBe(oldName);
+      }
+    }
+  });
+});
+
+describe("renameMigrations · 1.43 / 1.44 / 1.45 三轮（清账·editor / serial-monitor / marketplace）", () => {
+  const maps = flattenRenameRounds();
+
+  /* 🔴 逐轮**点名**断言，不按总数断言。
+   *   理由（本轴 1.43 实测）：三条轮次共用同一个迁移体，而摊平表是**并集**——
+   *   「总数够大」证明不了「某一条在册」。**判「某条存在」必须直接点名它。** */
+  it("1.43：files.autoSave → editor.autoSave 在册（设置键，跨轮共读同一份数据）", () => {
+    expect(maps.setting["files.autoSave"]).toBe("editor.autoSave");
+  });
+
+  it("1.43：该条在**两条轮次**里都出现（file-tree 轮与 editor 轮），摊平后仍只有一条", () => {
+    const owners = RENAME_ROUNDS.filter((r) => Object.prototype.hasOwnProperty.call(r.setting, "files.autoSave")).map((r) => r.plugin);
+    expect(owners.length, `在册轮次只有 ${owners.length} 条——同一份数据两轮共读是刻意的`).toBeGreaterThanOrEqual(2);
+    // 摊平是并集 ⇒ 两个来源只能落成**一条**（若落成两条，`flatten` 的覆盖顺序就决定了结果，那是隐式耦合）
+    expect(Object.keys(maps.setting).filter((k) => k === "files.autoSave").length).toBe(1);
+  });
+
+  it("1.44：serial-monitor 两条旗子在册，且带 serial-monitor. 前缀", () => {
+    const expected: Record<string, string> = {
+      sourceOpen: "serial-monitor.sourceOpen",
+      serialSessionFocus: "serial-monitor.serialSessionFocus",
+    };
+    for (const [oldName, newName] of Object.entries(expected)) {
+      expect(maps.flag[oldName], `${oldName} 不在册`).toBe(newName);
+    }
+  });
+
+  it("1.45：marketplace 六条旗子在册——**与齿轮菜单的 7 个条目一一对应**", () => {
+    const expected: Record<string, string> = {
+      pluginDisabled: "marketplace.pluginDisabled",
+      extensionHasThemes: "marketplace.extensionHasThemes",
+      extensionHasLanguages: "marketplace.extensionHasLanguages",
+      extensionHasIconThemes: "marketplace.extensionHasIconThemes",
+      extensionHasConfiguration: "marketplace.extensionHasConfiguration",
+      extensionHasKeybindings: "marketplace.extensionHasKeybindings",
+    };
+    for (const [oldName, newName] of Object.entries(expected)) {
+      expect(maps.flag[oldName], `${oldName} 不在册`).toBe(newName);
+    }
+    // 6 个旗子 ↔ 7 个条目：`pluginDisabled` 被正反两侧各用一次（启用 / 禁用），其余各一次
+    expect(Object.keys(expected).length).toBe(6);
+  });
+
+  it("🔴 三轮的旗子新名一律带本仓前缀（防「改了名字却没带归属」——本轴的病根就是从这来的）", () => {
+    const belongTo: Record<string, string> = {
+      sourceOpen: "serial-monitor.",
+      serialSessionFocus: "serial-monitor.",
+      pluginDisabled: "marketplace.",
+      extensionHasThemes: "marketplace.",
+      extensionHasLanguages: "marketplace.",
+      extensionHasIconThemes: "marketplace.",
+      extensionHasConfiguration: "marketplace.",
+      extensionHasKeybindings: "marketplace.",
+    };
+    for (const [oldName, prefix] of Object.entries(belongTo)) {
+      const newName = maps.flag[oldName];
+      expect(newName, `${oldName} 不在册`).toBeTruthy();
+      expect(newName.startsWith(prefix), `${oldName} → ${newName} 没带 ${prefix}`).toBe(true);
+    }
+  });
+
+  it("三轮都不含空转条目（旧名 === 新名 = 假账）", () => {
+    for (const r of RENAME_ROUNDS.filter((x) => ["1.43", "1.44", "1.45"].includes(x.round))) {
+      for (const space of ["setting", "command", "flag"] as const) {
+        for (const [oldName, newName] of Object.entries(r[space])) {
+          expect(newName, `${r.round} ${space} 的空转条目 ${oldName}`).not.toBe(oldName);
+        }
       }
     }
   });
