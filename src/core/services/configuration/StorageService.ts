@@ -154,8 +154,23 @@ export async function write<T>(key: string, data: T): Promise<void> {
     if (!path) return;
     await writeFile(path, json);
   } catch (e) {
+    // E6#111m／1.41：**照旧吞掉**（调用方多半不需要知道），但把失败**记在案**上——
+    //   别名迁移的「先写新值、后删旧键」必须知道「写到底成没成」：
+    //   写失败还去删旧键 = 用户的值哪都没有了（本轴最重的伤害）。
+    _lastFileWriteFailed = true;
     console.warn(`[StorageService] 写入 ${key} 文件失败:`, e);
   }
+}
+
+/** 最近一次文件写入是否失败——**一次性读清**（读后复位）。
+ *  1.41 起给配置迁移编排用（见 `write` 里的注释）；日常调用方无感。 */
+let _lastFileWriteFailed = false;
+
+/** 取走「最近一次文件写失败」标志并复位——调用方在写之后立刻问，拿到的就是那一次的结果 */
+export function takeLastFileWriteFailed(): boolean {
+  const failed = _lastFileWriteFailed;
+  _lastFileWriteFailed = false;
+  return failed;
 }
 
 /**

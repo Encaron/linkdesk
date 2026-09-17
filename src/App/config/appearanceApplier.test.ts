@@ -5,6 +5,11 @@
  * 本文件测的是**真迁移**（import 本模块即登记 v2–v6，不另造 fixture 迁移）——只把 schema 版本种子设成 5，
  * 让编排里**只有 v6** 待执行（其余待执行迁移与本节无关）。因此**不能** `clearConfigMigrations()`（会连真登记一起清掉）。
  *
+ * ⚠️ E6#111m／1.41 新增 v7（改名迁移）后，本节必须把 v7 **临时摘掉**（见 `withoutV7()`）：
+ *   本节的判据是「v6 做了什么」，而 v7 会顺手把版本从 6 再抬到 7
+ *   ⇒ 断言 `getConfigSchemaVersion() === 6` 会红（那不是 v6 出错，是**多跑了一步不属于本节的迁移**）。
+ *   摘掉 = 本节只留 v2–v6，与 1.36 写下这些用例时的世界一致；跑完原样装回（`afterEach`）。
+ *
  * 🔴 与 ThemeEngine/migration.test.ts 的分工：那里测**归一函数**（解析器门控的两问判据），这里测**编排与落盘**
  * （presence 门控 / 门禁放行 / 幂等 / 四键处置）——两条腿各测各的，别互相重复。
  *
@@ -150,6 +155,9 @@ describe("appearanceApplier — E6#111f 版本 6 迁移（外观族 id 归属改
   beforeEach(() => {
     clearConfigurationRegistrations();
     clearConfigurationCache();
+    // 🔴 E6#111m／1.41：本节的判据是「**v6 做了什么**」，v7（改名迁移）会顺手把版本再抬一格
+    //    ⇒ 断言里凡是 `getConfigSchemaVersion()` 都按「**至少到 6**」判（见 `expectV6Landed`），
+    //      版本具体停在 6 还是 7 是**编排的记账**，不是 v6 的产出。详见文件头注释。
     registerConfiguration(HOST_CFG_ID, APPEARANCE_TEST_CONFIG);
     writeMock.mockClear();
     consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
@@ -161,6 +169,11 @@ describe("appearanceApplier — E6#111f 版本 6 迁移（外观族 id 归属改
     consoleError.mockRestore();
   });
 
+  /** v6 确实落地了——版本**至少**到 6（1.41 起 v7 会再抬一格，不影响「v6 跑过了」这个判断） */
+  function expectV6Landed(): void {
+    expect(getConfigSchemaVersion()).toBeGreaterThanOrEqual(6);
+  }
+
   it("负控 13 前置（今天的盘面）——改名未落地：门禁放行、迁移执行，四键**零写**", async () => {
     registerPreRenameRecipes(disposers);
     await seed({ ...OLD_PLATE });
@@ -171,7 +184,7 @@ describe("appearanceApplier — E6#111f 版本 6 迁移（外观族 id 归属改
 
     expect(await runPendingConfigMigrations()).toBe(true);
     // 迁移**真跑过**——版本从 5 抬到 6（不是被门禁跳过 ⇒ 零写不是因为没执行）
-    expect(getConfigSchemaVersion()).toBe(6);
+    expectV6Landed();
     // 零写：解析器两问判「新名解析不出 ⇒ 恒等」⇒ 盘上旧值原样（此刻硬映会当场弄坏正在用的主题）
     expect(appearanceSnapshot(lastPersisted())).toEqual(before);
     expect(inspectConfiguration("app.theme").userValue).toBe("mint-soda");
@@ -185,7 +198,7 @@ describe("appearanceApplier — E6#111f 版本 6 迁移（外观族 id 归属改
     await seedSchemaVersionAt5();
 
     expect(await runPendingConfigMigrations()).toBe(true);
-    expect(getConfigSchemaVersion()).toBe(6);
+    expectV6Landed();
     expect(inspectConfiguration("app.theme").userValue).toBe("theme-mint-soda.mint-soda"); // legacy 名 → 归属名（经 normalizeThemeValue 串联）
     expect(inspectConfiguration("app.themeColor").userValue).toBe("theme-mint-soda.mint-soda"); // 双语义：先配色表后配方表
     expect(inspectConfiguration("app.mixFont").userValue).toBe("theme-pill.pill-bubble");
@@ -213,7 +226,7 @@ describe("appearanceApplier — E6#111f 版本 6 迁移（外观族 id 归属改
     await seedSchemaVersionAt5();
     const before = appearanceSnapshot(lastPersisted());
     expect(await runPendingConfigMigrations()).toBe(true);
-    expect(getConfigSchemaVersion()).toBe(6);
+    expectV6Landed();
     expect(appearanceSnapshot(lastPersisted())).toEqual(before); // 新名不在表里 ⇒ 归一恒等 ⇒ 零写
     expect(consoleError).not.toHaveBeenCalled();
   });
@@ -223,7 +236,7 @@ describe("appearanceApplier — E6#111f 版本 6 迁移（外观族 id 归属改
     await seedSchemaVersionAt5();
 
     expect(await runPendingConfigMigrations()).toBe(true);
-    expect(getConfigSchemaVersion()).toBe(6); // 零产出仍标记已迁（编排既有语义：不每次启动重跑）
+    expectV6Landed(); // 零产出仍标记已迁（编排既有语义：不每次启动重跑）
     for (const key of MIGRATED_KEYS) {
       expect(inspectConfiguration(key).userValue).toBeUndefined();
     }
@@ -236,7 +249,7 @@ describe("appearanceApplier — E6#111f 版本 6 迁移（外观族 id 归属改
     await seedSchemaVersionAt5();
 
     expect(await runPendingConfigMigrations()).toBe(true);
-    expect(getConfigSchemaVersion()).toBe(6);
+    expectV6Landed();
     expect(inspectConfiguration("app.theme").userValue).toBe("薄荷苏打 Mint Soda"); // flat 显示名不在两张表里 ⇒ 恒等
     expect(inspectConfiguration("app.mixFont").userValue).toBe("followTheme");
     expect(inspectConfiguration("app.mixBackground").userValue).toBe("followTheme");

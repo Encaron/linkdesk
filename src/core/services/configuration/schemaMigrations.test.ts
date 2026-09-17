@@ -238,7 +238,15 @@ describe("schemaMigrations — 版本编排（E5.8#85 补课）", () => {
     });
 
     expect(await runPendingConfigMigrations()).toBe(false); // 删除失败 → 原子中止
-    expect(getConfigSchemaVersion()).toBe(1); // 版本不提升——下次启动全量重试
+    /* ⚠️ E6#111m／1.41 起这条的**期望值变了**（顺序由「先删后写」翻成「先写新值、后删旧键」）：
+     *   旧序：删先失败 ⇒ 版本标志**压根没写进内存** ⇒ 读到 1。
+     *   新序：新值 + 版本标志**先写成功**（这一步是刻意先做的，见 `runPendingConfigMigrations` 注释），
+     *        随后删除失败才中止 ⇒ 版本标志**已经在内存里了** ⇒ 读到 2。
+     *   ⚠️ 这是新序的**已知边界**，且它是**有意的**：宁可「版本已提但旧键残留」（下次启动不再重删，
+     *      残留只是一行陈旧项、用户的值不受影响），也不要「版本没提但旧值已删」（值永久丢失）。
+     *      —— 两者都是两台机器上的真实取舍，本轴选后者：**值 > 整洁**。
+     *   ⇒ 判据改为「本次返回 false（中止信号成立）」，不再断言版本号（那是顺序的实现细节）。 */
+    expect(getConfigSchemaVersion()).toBe(2);
   });
 
   // E5.8#90 v4 迁移 replica——编排链路验证（公式 = resolveMergedAppearanceMode，ThemeEngine/migration.test 直测）
