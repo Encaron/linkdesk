@@ -205,6 +205,59 @@ node scratch/prove-rename-shape.mjs --plugin file-tree --base $BASE --self-check
 
 ---
 
+## 二·五、🔴 落地完成勾格（**2026-09-17 实测，1.42 本格**）
+
+> **上位约束**：**操作体验零变化**（名字可变，取值与功能不许变）。**机械定义**：`node scripts/audit-plugin-scope.mjs` 本仓 **75 → 0**。
+
+### 2.5.1 三处面一起动（缺一处 = 静默死键）
+
+- [x] **设置键 18** —— 全部换成 `file-tree.*`（`contributes.configuration.*.key` ＋ 源码引用点）
+- [x] **命令 id** —— **21 条声明**（`plugin.json`）＋ **25 处运行时注册**（`registerCommand` 字面量，执行器够不着，人工逐条改）
+- [x] **上下文旗子 11** —— `contextKey.set` 的字符串
+- [x] 🔴 **`plugin.json` 6 条键位的 `when` 同笔跟改** —— `Enter → file-tree.openFocused` 的 `when: file-tree.focus && !file-tree.inputFocus` **命令 id 与旗子名同时出现**，无编译期检查
+- [x] 🔴 **`Menu.tsx` 4 处裸对象键 → 加引号**（执行器产出的是**语法错误**，`npm run verify` 的 eslint fatal 腿抓到；`context` 经 `ContextMenu` 以 `Record<string, unknown>` 按字符串键读 ⇒ 零语义变化）
+
+### 2.5.2 借用已还
+
+- [x] `editor.selectForCompare` / `editor.compareWithSelected` → `file-tree.*`（本仓零命中）
+- [x] `inputFocus` → `file-tree.inputFocus`（按 1.37 裁决）
+- [x] 🔴 **映射条目已进 `RENAME_ROUNDS` 的 `command` 栏** —— ⚠️ **1.43 别重复登记**（`selfCheckRenameMaps()` 判据③ 会红）
+
+### 2.5.3 形状证明与残留
+
+- [x] **形状证明真跑**：93 文件，逆映射还原回旧名比 `--base` 的 **git blob**（不比工作区）⇒ ✅
+- [x] **4 处差异逐条有据**：3 处＝1.31 §10.2.1 裁的 `revealInExplorer` 合并；1 处＝`Menu.tsx` 引号修复（净 +2 字符）
+- [x] **残留逐条人看**：插件侧 `explorer.*` / 裸旗子 **命中 0**
+- [x] **`plugin.json` 的 `workbench.view.explorer` 原样保留**（**引用宿主命令，合法**；**改名＝替宿主造新命令＝越界**）
+
+### 2.5.4 🔴 三条实证（**改名不实测 = 本轴要治的那种无声失效**）
+
+- [x] **实证① 设置项**：**18/18 取值不变**；活体 `true → false → true` 往返经 `linkdesk.config` 实测一致；旧键清盘；🔴 `files.autoSave` **被 `next in schema` 门禁正确拦下**（归 **1.43**）
+- [x] **实证② 快捷键（含 `when`）**：6 条默认 ＋ 3 条自定义全部照旧生效；`when: file-tree.focus && !file-tree.inputFocus` 完整；**零冲突**；真鼠标点击文件夹节点 ⇒ `file-tree.itemIsDir = true`
+- [x] **实证③ 右键菜单逐项显隐一致**（🔴 **顶替「主题跟随」** —— 本仓**无外观 id**，主题跟随归 **1.47**）：4 场景（文件/文件夹/根/空白）条目数 **12 / 11 / 8 / 8**，含快捷键提示与禁用态**逐字节相同**
+- [x] 🔴 **替换是明确的，不是静默跳过**（写进任务书 §2.6 与交接段）
+
+### 2.5.5 🔴 本轮实测抓到的真缺陷（**不在任务书里，是本格发现的**）
+
+- [x] **版本门禁把 v7 提前烧掉了**：1.41 交付 v7 时映射表三栏为空，而迁移成功语义是「含零产出也标记已迁」⇒ v7 **在改名落地之前**就把用户盘推到 `app.schemaVersion = 7`；1.42 真改名后 `7 > 7 = false` ⇒ **一条都不跑 ⇒ 设置键永不搬家、用户设置静默全丢**（同一次启动里 `migrateUserKeybindings` 无门禁照跑 ⇒ 快捷键**搬早了**＝静默死键）
+- [x] **修法**：v7 迁移体提成 `runNamespaceRenameMigration`，**v8 纯数据复用同一函数体**（不是第二套逻辑）
+- [x] 🔴 **负控真跑三态**（首版是**假负控**：测试自己 import 符号并登记 ⇒ 生产装配点没被走到）：完好 ⇒ 绿 ／ 摘登记行 ⇒ **红** ／ 还原 ⇒ 绿
+- [x] ⚠️ **1.43–1.48 每一轮都要各自再补一个版本号**（v8 也已被烧掉，同一坑会重犯）
+
+### 2.5.6 收尾
+
+- [x] 本仓门下三关：`npm run verify` ✅ ／ `npm run test` **69 passed** ✅ ／ `npm run build` **3/3 表面** ✅
+- [x] 插件仓提交（`0a52098`，**只按路径 `git add`**）＋ 壳仓提交（**只按路径**）
+- [x] 裁决档 [22](22-裁决-容器id与死键位-1.42.md)（容器 id 裁决 ＋ 死键位登记 ＋ `revealInExplorer` 合并登记）
+- [x] 收尾四件套（交接段顶部追加含队表整表 · 清单轮次进度行 · 勾格全套 · 队表整张复制）
+- [x] [00 档 §八](00-整理档案.md) 探针已跑并记账
+- [ ] 🔴 **发版未做（gated on 推送）** —— 见交接段「未完成事项」：仓已提交未推 ⇒ **必须先推后发** ⇒ `npm run publish` ⇒ `git pull --ff-only`
+- [ ] ⏳ **出厂种子 `sync:bundled` ＋ 目录回填未做**（依赖发版）
+
+**读数总账**：`npm run check` **EXIT=0 · 173 文件 / 2396 测试**（1.41 基线 172 / 2386）／`audit:plugin-scope` **file-tree 75 → 0**／插件 `file-tree` **1.0.10 → 1.0.11**。
+
+---
+
 ## 三、判据表（**含必须真跑过的负控**）
 
 | 判据 | 要求 | 负控（**必须真能红**） |
