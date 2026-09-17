@@ -30,6 +30,11 @@
 - **插件轴同批 10 仓**：theme-aurora-glass 1.0.7 · theme-defaults 1.0.5 · theme-iconset-pastel 1.0.4 ·
   theme-mint-soda 1.0.5 · theme-panorama 1.0.5 · theme-pill 1.0.5 · theme-songti 1.0.5 · theme-terminal 1.0.6 ·
   theme-twilight-forest 1.0.5 · theme-zones 1.0.4。
+- **出厂种子同笔跟上**：`theme-defaults` 是本轮唯一**随包**的那只，它的配色改名动了内容 ⇒ 箱内种子
+  `theme-defaults` **1.0.4 → 1.0.5**（与 Release 件 sha256 逐字节相同：`b0114dcc89b6…`）；其余 9 只是**纯市场件、仅记账**
+  ⇒ `check:bundled-freshness` **6/6 绿**（不收种子就会当场判红：新用户下载软件拿不到第二版插件）。
+- **官方目录同批收录**：21 条 → 21 条，**只改本批 10 条主题行**（版本 / 直链 / 时间戳 / 历史拼接），
+  非主题 8 条同版未动，第三方与样例行（`hello-linkdesk` · `first-run-setup` · `my-cool-plugin`）**逐字节原样**。
 - **边界（没做，如实记）**：不改主题机制（29 号档 P1–P7）· 不动主题实体内容（颜色 / 玻璃参数 / 字体档位 / 背景资源）·
   不动显示名 · 不改 `pluginId`；`theme-defaults` 的宿主兜底交接位 `light` **明文保留**（裁决结果，不是漏做
   —— 登记在宿主保留名账的「约定面」，见 `audit:plugin-scope` 的「顶替宿主兜底外观 id（有证照）」行）。
