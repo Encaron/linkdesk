@@ -38,6 +38,9 @@ import {
   SCHEMA_VERSION_KEY,
   NAMESPACE_RENAME_MIGRATION,
   NAMESPACE_RENAME_MIGRATION_V8,
+  registerConfigRepair,
+  inspectConfigRepairs,
+  clearConfigRepairs,
 } from "./schemaMigrations";
 import type { ConfigurationContribution } from "../../registry/ConfigurationRegistry";
 
@@ -408,5 +411,28 @@ describe("schemaMigrations — 1.42 版本门禁补跑（v8）· 🔴 实测抓�
     // 新值原样保留、没被二次改写
     expect(getConfigurationValue("file-tree.confirmDelete")).toBe(true);
     expect(getConfigSchemaVersion()).toBe(8);
+  });
+});
+
+/** E6#111k（1.49）：补跑登记表本身——「同名字覆盖」是重登记与测试清场的唯一机制，
+ *  编排体（`runConfigRepairs`）按 `inspectConfigRepairs()` 逐条跑且**逐条 try/catch**，
+ *  所以「点名是不是按名排序、同名会不会挂两条」直接决定失败日志点得出几个名字。 */
+describe("schemaMigrations — 1.49 补跑登记表（register / inspect / clear）", () => {
+  beforeEach(() => {
+    clearConfigRepairs();
+  });
+
+  it("起点空表 → 登记两条 → 同名再登记不增条（覆盖）→ 清空归零；点名按名升序", () => {
+    // 本文件不 import 任何注册方（外观 id 的注册在 App/config/appearanceApplier.ts）⇒ 起点必为空
+    expect(inspectConfigRepairs()).toEqual([]);
+
+    registerConfigRepair({ name: "b-repair", repair: () => {} });
+    registerConfigRepair({ name: "a-repair", repair: () => {} });
+    registerConfigRepair({ name: "b-repair", repair: () => {} }); // 同名覆盖，不是第三条
+
+    expect(inspectConfigRepairs().map((r) => r.name)).toEqual(["a-repair", "b-repair"]);
+
+    clearConfigRepairs();
+    expect(inspectConfigRepairs()).toEqual([]);
   });
 });

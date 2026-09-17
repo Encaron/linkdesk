@@ -42,10 +42,32 @@
  *     互不误吃）。列位置同样按表头找；表或该列找不到 ⇒ 红（`table-missing`）。
  *     该列**只放名字**（散文写「说明」列）；混进类名形态（`.foo`）⇒ 红（`keyframe-name-unclassified`）。
  *
+ * ── 第二段射程：**非样式家族**的「宿主保留的名字」总表（E6#111k／1.49 追加）──
+ *   来历：非样式命名空间归一化（E6#111）把五个家族的判据收紧到红之后，**宿主保留面账**
+ *   （`scripts/host-reserved.json`，生成式）必须**进作者面**——作者面没有这张表，插件作者就无从知道
+ *   自己正在占用宿主的名字（逐家族后果见 `16-命名规范 §七` 的「你会撞上什么」列：命令 id 归属不明、
+ *   设置键顶掉用户的主题、外观 id 撞出两个同名项、上下文旗子被别人的 `when` 读到）。
+ *   机器侧真源 = `scripts/host-reserved.json`；作者读的那份 = 两棵树 `16-命名规范` §七 的**总表**
+ *   （`| 家族 | 保留的名字 | 你会撞上什么 |` ／ `| Family | Reserved name | … |`）。本段把这三份**双向**钉住：
+ *     ① **家族名**必须在那份双语映射里（`FAMILY_LABELS`）：映射外的族名 ⇒ 红（`host-family-unknown`）；
+ *        账里冒出映射外的**新家族** ⇒ 也红（`host-family-unmapped`）——账是**生成式**的，加一个家族
+ *        必须同笔喂给作者面，否则作者面静默落后（而账、壳运行时、SDK 三份都已经是绿的，没人会察觉）。
+ *     ② **账 → 表**：账里每个名字都要在**对应家族**的行里出现（`host-name-unregistered`）。
+ *     ③ **表 → 账**：表里每个名字都要在账里（`host-name-not-in-ledger`）——🔴 **两侧都查**：
+ *        只查一侧的「对账」在**实况多一条**时照样是绿的（这正是 `gen-host-reserved.mjs --check` 四向的理由）。
+ *     ④ **中英两棵树相等**（「家族 ＋ 名字」的集合，`doc-drift`）：同一张表的两个译本，必须同笔改。
+ *     ⑤ **一句话规则句必须在**（`host-rule-missing`）：那句「宿主保留的名字不许占；插件自己写的名字必须带
+ *        `<pluginId>` 前缀」是这张表存在的理由，也是**不用查表就能记住**的那一条——表能被搬走，规则句不行。
+ *   ⚠️ 表按**表头**定位（同一行里同时命中「家族」/「Family」与「保留的名字」/「Reserved name」两列），
+ *      **不写死节号、不写死列序**：篇号与列序调整不该把门禁变瞎；但表被搬走／改名／改结构 ⇒
+ *      `host-table-missing` 判红（与第一段同一条纪律：**不许静默放过**）。
+ *   ⚠️ 与第一段**同文件、同门禁、同一次接线**——加带 `--self-test` 的新尺子必须同批进 `npm run check`，
+ *      扩既有门禁天然满足这一条（记忆 `gate-selftest-must-be-wired`：自测自己没接线 = 假门禁）。
+ *
  * 用法：
  *   node scripts/check-reserved-names-doc-sync.mjs              # 挂 npm run check
- *   node scripts/check-reserved-names-doc-sync.mjs --self-test  # 正控 4 ＋ 负控 13（类名列 ＋ 关键帧列）
- * 退出码 0 = 三份一致；1 = 有漂移（打印到 stderr）。
+ *   node scripts/check-reserved-names-doc-sync.mjs --self-test  # 正控 6 ＋ 负控 19（样式段 ＋ 非样式段）
+ * 退出码 0 = 各份一致；1 = 有漂移（打印到 stderr）。
  */
 import { readFileSync, readdirSync, existsSync } from "node:fs";
 import { dirname, join, resolve, relative } from "node:path";
@@ -53,6 +75,16 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, "..");
+
+/** 主入口判定——**被 `import` 时不许自己跑 main、更不许 `process.exit`**（判据函数要能被复用：
+ *  1.49 §2.4「货架保真」就是拿 `checkHostDocs` 去跑**文档包里的**两棵树与账；无这道守卫会让
+ *  引用方在 import 那一刻被 `process.exit(0)` 静默掐死——假的绿）。 */
+const IS_MAIN = (() => {
+  const argv1 = process.argv[1];
+  if (!argv1) return false;
+  const norm = (p) => resolve(p).replace(/\\/g, "/").toLowerCase();
+  return norm(argv1) === norm(fileURLToPath(import.meta.url));
+})();
 
 /** 机器侧真源（与 `check-css-namespace.mjs` 读**同一份**——别各抄一份） */
 const RESERVED_FILE_REL = "packages/plugin-sdk/schemas/reserved-class-names.json";
@@ -77,6 +109,52 @@ const KF_COL_LABEL_RE = /保留的关键帧名|Reserved keyframe names/;
 const KF_NAME = /\b[A-Za-z][A-Za-z0-9-]*\b/g;
 /** 关键帧列里混进类名形态（`.foo`）= 放错表了 */
 const KF_DOT = /(?<!\w)\.\w/;
+
+/* ══ 第二段射程：非样式家族的「宿主保留的名字」总表（E6#111k／1.49）══════════ */
+
+/** 作者面两棵树里**非样式家族那一篇**（与第一段是两篇不同的文档） */
+export const HOST_DOCS = [
+  { lang: "zh", label: "zh（维护者面原文）", rel: "docs/03-插件制造/16-命名规范.md" },
+  { lang: "en", label: "en（作者面主显）", rel: "docs/03-plugin-authoring/16-naming-conventions.md" },
+];
+
+/** 机器侧真源（生成式；它自己的四向对账在 `gen-host-reserved.mjs --check`，这里只做「账 ↔ 作者面」） */
+const HOST_LEDGER_REL = "scripts/host-reserved.json";
+
+/** 总表的两种表头——**同一行里同时命中「家族列」与「名字列」**才是那张表（两列都按表头找，不写死列序） */
+const FAMILY_COL_RE = /家族|Family/;
+const HOST_NAME_COL_RE = /保留的名字|Reserved name/;
+
+/** 一句话规则句的锚（措辞若改，同笔改这里——它守的是「这句不许悄悄消失」） */
+const HOST_RULE_RE = /宿主保留的名字不许占|names the host reserves are off limits/;
+
+/**
+ * 账里的家族 ⇒ 作者面那张表的**双语家族名**（表的族名必须落在这个映射里）。
+ * ⚠️ 键 = 账里的字段名（`scripts/host-reserved.json`）；值是**去掉 markdown 强调符后**的族名原文。
+ * ⚠️ 加家族 = 三处同笔：账（生成器）＋ 本映射 ＋ 两棵树的总表各一行。
+ */
+export const FAMILY_LABELS = {
+  commandPrefixes: { zh: "宿主命令前缀", en: "Host command prefix" },
+  protocolIds: { zh: "宿主协议 id", en: "Host protocol id" },
+  pseudoPluginIds: { zh: "宿主伪 pluginId", en: "Host pseudo plugin id" },
+  configKeys: { zh: "宿主配置键", en: "Host config key" },
+  appearanceRecipeIds: { zh: "宿主配方 id", en: "Host recipe id" },
+  appearanceColorwayIds: { zh: "宿主配色 id", en: "Host colorway id" },
+  appearanceIconThemeIds: { zh: "宿主图标主题 id", en: "Host icon theme id" },
+  appearanceSentinels: { zh: "宿主外观哨兵值", en: "Host appearance sentinel" },
+  contextKeysHostOnly: { zh: "宿主专用旗子（插件禁设）", en: "Host-only context key (plugins must not set)" },
+  contextKeysPublic: { zh: "宿主公开约定旗子（插件可设）", en: "Shared-contract context key (plugins may set)" },
+};
+
+/** 账里**不是名字列表**的字段（不是家族，别当成「漏掉的家族」判红）：
+ *  · `$comment` / `version` —— 账的自我描述与**形状**修订号；
+ *  · `appearanceIdGrants` —— **证照**映射（`{ 外观 id: [被授权的 pluginId…] }`）：它约束的是
+ *    「**谁有权声明**某个宿主兜底 id」，不是「哪些名字被保留」。作者面在「宿主配方 id」那一行的
+ *    「你会撞上什么」列里用散文交代它（`light` ← `theme-defaults`），故不进机器对账。 */
+const NON_FAMILY_KEYS = new Set(["$comment", "version", "appearanceIdGrants"]);
+
+/** 去掉 markdown 强调符／行内代码符并压平空白——族名的比较口径（表里写 `**x**` 与 `x` 等价） */
+const normLabel = (s) => String(s).replace(/[*`]/g, "").replace(/\s+/g, " ").trim();
 
 /** 读登记表 → { keyframes: Map<name, why> }
  *  ⚠️ E6#109l-b：`classes` 整块已从登记表删除（两个定义域的类名规则都是结构性的 ⇒ 它没有消费方了）。
@@ -176,6 +254,166 @@ export function parseReservedKeyframes(text) {
     return { colIndex, names: [...names], dotted };
   }
   return null;
+}
+
+/* ── 第二段：非样式家族的「宿主保留的名字」总表 ↔ 账（双向）──────────────── */
+
+/** 读生成式账（`scripts/host-reserved.json`）。⚠️ 这里**不校验账自身的形状/实况**——那是
+ *  `gen-host-reserved.mjs --check` 的四向射程（实况→账／账→实况／SDK 副本逐字节／运行时副本逐元素）。 */
+export function loadHostLedger(root = ROOT) {
+  return JSON.parse(readFileSync(join(root, HOST_LEDGER_REL), "utf8"));
+}
+
+/** 抽一个单元格里的 `` `名字` `` token（这一列**只放名字**，散文写第三列） */
+export function extractHostNames(cell) {
+  const out = [];
+  for (const m of String(cell).matchAll(/`([^`]+)`/g)) {
+    const n = m[1].trim();
+    if (n) out.push(n);
+  }
+  return out;
+}
+
+/**
+ * 定位「宿主保留的名字」总表 → { famCol, nameCol, rows: [{family, names}] }；找不到 ⇒ null。
+ * 判据：同一行表头里**同时**有「家族」/「Family」列与「保留的名字」/「Reserved name」列。
+ * ⚠️ 篇里另有同形表（`| 名字 | 真源在哪 |` 那张命名总表、`| Name | Examples | … |` 那张豁免说明表）
+ *    都不含这两列 ⇒ 不会被误吃。
+ */
+export function parseHostTable(text) {
+  const lines = text.split("\n");
+  for (let i = 0; i + 1 < lines.length; i++) {
+    if (!lines[i].startsWith("|")) continue;
+    if (!isSeparator(lines[i + 1])) continue;
+    const cells = splitCells(lines[i]);
+    const famCol = cells.findIndex((c) => FAMILY_COL_RE.test(c));
+    const nameCol = cells.findIndex((c) => HOST_NAME_COL_RE.test(c));
+    if (famCol < 0 || nameCol < 0 || famCol === nameCol) continue;
+    const rows = [];
+    for (let j = i + 2; j < lines.length && lines[j].startsWith("|"); j++) {
+      const c = splitCells(lines[j]);
+      rows.push({ family: normLabel(c[famCol] ?? ""), names: extractHostNames(c[nameCol] ?? "") });
+    }
+    if (rows.length === 0) return null;
+    return { famCol, nameCol, rows };
+  }
+  return null;
+}
+
+/**
+ * 核心判据（纯函数，`--self-test` 与真跑共用）：账 ↔ 两棵树的总表，双向 ＋ 中英互译 ＋ 规则句。
+ * @param {{docs:{lang:"zh"|"en",label:string,text:string}[], ledger:object}} input
+ * @returns {{kind:string,msg:string}[]}
+ */
+export function checkHostDocs({ docs, ledger }) {
+  const violations = [];
+  const seen = new Set();
+  const push = (kind, msg) => {
+    const key = kind + "|" + msg;
+    if (seen.has(key)) return;
+    seen.add(key);
+    violations.push({ kind, msg });
+  };
+
+  // ⓪ 账里冒出映射外的家族 ⇒ 红（账是生成式的：加家族不同笔喂作者面，作者面就静默落后）
+  for (const key of Object.keys(ledger)) {
+    if (NON_FAMILY_KEYS.has(key) || FAMILY_LABELS[key]) continue;
+    push(
+      "host-family-unmapped",
+      `账（${HOST_LEDGER_REL}）里有家族 \`${key}\`，但作者面的双语家族映射（scripts/check-reserved-names-doc-sync.mjs ` +
+        `的 \`FAMILY_LABELS\`）里没有它——账加了家族就必须**同笔**让作者面知道（作者不知道它，就无从避让：` +
+        `账、壳运行时、SDK 副本三份照样全绿，只有作者在读一份过期的表）。改法：补 \`FAMILY_LABELS\` ＋ 两棵树的总表各加行。`,
+    );
+  }
+
+  // ① 两棵树各自先过「规则句在不在」＋「总表找不找得到」
+  const parsed = new Map();
+  for (const d of docs) {
+    if (!HOST_RULE_RE.test(d.text)) {
+      push(
+        "host-rule-missing",
+        `${d.label}：找不到一句话规则句（「宿主保留的名字不许占；插件自己写的名字必须带 \`<pluginId>\` 前缀」）——` +
+          `这句是整张表存在的理由，也是**不用查表就能记住**的那一条。改法：补回去（中英同笔）；` +
+          `若确实要改措辞，同笔改 scripts/check-reserved-names-doc-sync.mjs 的 \`HOST_RULE_RE\`。`,
+      );
+    }
+    const p = parseHostTable(d.text);
+    if (!p) {
+      push(
+        "host-table-missing",
+        `${d.label}：找不到「宿主保留的名字」总表（同一行表头须同时含「家族」/「Family」与「保留的名字」/「Reserved name」，` +
+          `且至少一行内容）——门禁的射程就是这张表；表被移走/改名/改结构，作者面的宿主保留面就成了瞎子，` +
+          `所以这里按「红」处理。若确实要改表形，请同笔改本脚本的解析口径。`,
+      );
+      continue;
+    }
+    parsed.set(d.label, p);
+  }
+  if (parsed.size !== docs.length) return violations; // 表都没了 ⇒ 后面的比对没有意义
+
+  // ② 表 → 账（逐个名字）：族名必须在映射里；名字必须在该家族的账上
+  const pairSets = new Map(); // label → Set<"家族键|名字">
+  for (const d of docs) {
+    const labelToKey = new Map();
+    for (const [k, v] of Object.entries(FAMILY_LABELS)) labelToKey.set(normLabel(v[d.lang]), k);
+    const pairs = new Set();
+    for (const row of parsed.get(d.label).rows) {
+      const key = labelToKey.get(row.family);
+      if (!key) {
+        push(
+          "host-family-unknown",
+          `${d.label}：总表里出现了映射外的家族名「${row.family}」——族名对不上，这一行的名字就没法和账对上（` +
+            `对不上时若静默跳过，整行会**既不报错也不被检查**）。改法：改成 \`FAMILY_LABELS\` 里的双族名之一，或同笔补映射。`,
+        );
+        continue;
+      }
+      for (const n of row.names) {
+        pairs.add(key + "|" + n);
+        if (!(ledger[key] ?? []).includes(n)) {
+          push(
+            "host-name-not-in-ledger",
+            `${d.label}：\`${n}\` 被列在「${row.family}」下，但账（${HOST_LEDGER_REL}）的 \`${key}\` 里没有它——` +
+              `作者会白白避让一个并不保留的名字（代价＝把该带前缀的名字写成别的样子），或者反过来**账漏了一条**。` +
+              `改法：从表里删掉，或补进账并重跑 \`npm run audit:plugin-scope:regen\`。`,
+          );
+        }
+      }
+    }
+    pairSets.set(d.label, pairs);
+  }
+
+  // ③ 账 → 表（逐家族逐名字）：这一侧专治「实况/账多一条」——只查②的对账在实况多一条时是绿的
+  for (const d of docs) {
+    const pairs = pairSets.get(d.label);
+    for (const [key, v] of Object.entries(FAMILY_LABELS)) {
+      for (const n of ledger[key] ?? []) {
+        if (pairs.has(key + "|" + n)) continue;
+        push(
+          "host-name-unregistered",
+          `${d.label}：账里「${v[d.lang]}」有 \`${n}\`，作者面的总表里没有——作者读不到它就会照用` +
+            `（后果见该行「你会撞上什么」列）。改法：补进表里（**两棵树都要**），或从账里摘掉（那是一次公共面决策）。`,
+        );
+      }
+    }
+  }
+
+  // ④ 中英两棵树：同一张表的两个译本，集合必须相等
+  if (pairSets.size === 2) {
+    const [a, b] = docs.map((d) => d.label);
+    const pa = pairSets.get(a);
+    const pb = pairSets.get(b);
+    const onlyA = [...pa].filter((x) => !pb.has(x));
+    const onlyB = [...pb].filter((x) => !pa.has(x));
+    if (onlyA.length > 0 || onlyB.length > 0) {
+      const fmt = (xs) => xs.map((x) => x.replace("|", " → ")).sort().join("、");
+      push(
+        "doc-drift",
+        `两棵树的「宿主保留的名字」集合不一致：${a} 独有 [${fmt(onlyA)}]；${b} 独有 [${fmt(onlyB)}]。` +
+          `中英是同一张表的两个译本，必须同笔改。`,
+      );
+    }
+  }
+  return violations;
 }
 
 /** 宿主源码里真实出现过的 `ldk-` 类名（共享组件 CSS ＋ 宿主 CSS——池文档里同表的那一批） */
@@ -370,11 +608,45 @@ const fixture = ({
   };
 };
 
+/* 非样式家族那一段的自测夹具（账 ＋ 两棵树的总表 ＋ 规则句） */
+const hostFixture = ({
+  famZh = "宿主命令前缀",
+  famEn = "Host command prefix",
+  nameZh = "`app.`",
+  nameEn = null,
+  ledger = { commandPrefixes: ["app."] },
+  rule = true,
+  table = true,
+  extraTable = "",
+} = {}) => {
+  const ruleZh = rule ? "**一句话规则：宿主保留的名字不许占；插件自己写的名字必须带 `<pluginId>` 前缀。**\n\n" : "";
+  const ruleEn = rule
+    ? "**The one-sentence rule: names the host reserves are off limits; every name you invent must carry your `<pluginId>` prefix.**\n\n"
+    : "";
+  const tblZh = table ? `| 家族 | 保留的名字 | 你会撞上什么 |\n|---|---|---|\n| ${famZh} | ${nameZh} | 说明 |\n\n` : "";
+  const tblEn = table
+    ? `| Family | Reserved name | What happens if you take it |\n|---|---|---|\n| ${famEn} | ${nameEn ?? nameZh} | note |\n\n`
+    : "";
+  return {
+    docs: [
+      { lang: "zh", label: "zh-fixture", text: `${extraTable}## 七、宿主保留的名字\n\n${ruleZh}${tblZh}` },
+      { lang: "en", label: "en-fixture", text: `## 7. Names the host reserves\n\n${ruleEn}${tblEn}` },
+    ],
+    ledger,
+  };
+};
+
 function selfTest() {
   const cases = [];
   const T = (name, mutate, kinds = []) => {
     const f = fixture(mutate ?? {});
     const got = checkSync(f);
+    const ok = kinds.length === 0 ? got.length === 0 : kinds.every((k) => got.some((v) => v.kind === k));
+    cases.push([name, ok, got.map((v) => v.kind)]);
+  };
+  // 第二段（非样式家族）那条尺子的同一套收发
+  const H = (name, mutate, kinds = []) => {
+    const got = checkHostDocs(hostFixture(mutate ?? {}));
     const ok = kinds.length === 0 ? got.length === 0 : kinds.every((k) => got.some((v) => v.kind === k));
     cases.push([name, ok, got.map((v) => v.kind)]);
   };
@@ -437,6 +709,35 @@ function selfTest() {
     cases.push(["负控⑫：中英两棵树关键帧不一致 ⇒ 红", got.some((v) => v.kind === "doc-drift"), got.map((v) => v.kind)]);
   }
 
+  // ── 第二段：非样式家族的「宿主保留的名字」总表 ↔ 账（E6#111k／1.49 追加）──
+  H("正控：账 ↔ 两棵树总表双向一致 ＋ 规则句在 ⇒ 绿");
+  H("正控：篇内另有同形表（`| 名字 | 真源在哪 |`）不被误吃 ⇒ 绿", {
+    extraTable: "| 名字 | 真源在哪 |\n|---|---|\n| 插件身份 id | `plugin.json` |\n\n",
+  });
+  H("正控：族名为 `**` 强调形态（`**宿主命令前缀**`）与账仍对得上 ⇒ 绿", { famZh: "**宿主命令前缀**" });
+  // 负控⑬：表里多一个账里没有的名字（作者白白避让 / 或账漏了一条）
+  H("负控⑬：表里 `core.` 不在账里 ⇒ 红", { nameZh: "`app.`、`core.`" }, ["host-name-not-in-ledger"]);
+  // 负控⑭：**反向**——账里有、表里没有（只查一个方向的对账在这里是绿的）
+  H("负控⑭：账里 `core.` 表里没有 ⇒ 红", { ledger: { commandPrefixes: ["app.", "core."] } }, [
+    "host-name-unregistered",
+  ]);
+  // 负控⑮：族名不在双语映射里（例如英文树把族名改了个说法）
+  H("负控⑮：族名「Host command prefixes」不在映射里 ⇒ 红", { famEn: "Host command prefixes" }, [
+    "host-family-unknown",
+  ]);
+  // 负控⑯：账里冒出映射外的新家族（账是生成式的 ⇒ 加家族不同笔喂作者面就静默落后）
+  H("负控⑯：账里多一个映射外的新家族 ⇒ 红", { ledger: { commandPrefixes: ["app."], newReservedThing: ["x"] } }, [
+    "host-family-unmapped",
+  ]);
+  // 负控⑰：总表整张消失（含表头被改名/列被拿掉）
+  H("负控⑰：两棵树的总表整张消失 ⇒ 红", { table: false }, ["host-table-missing"]);
+  // 负控⑱：一句话规则句被删（表还在）
+  H("负控⑱：一句话规则句被删 ⇒ 红", { rule: false }, ["host-rule-missing"]);
+  // 负控⑲：两棵树各自为政（同一家族、不同名字）
+  H("负控⑲：中英两棵树名字不一致 ⇒ 红", { nameEn: "`core.`", ledger: { commandPrefixes: ["app.", "core."] } }, [
+    "doc-drift",
+  ]);
+
   let bad = 0;
   for (const [name, ok, kinds] of cases) {
     if (!ok) bad++;
@@ -448,36 +749,56 @@ function selfTest() {
 
 /* ── 入口 ──────────────────────────────────────────────────────────── */
 
-if (process.argv.slice(2).includes("--self-test")) process.exit(selfTest());
+if (IS_MAIN) main();
 
-for (const d of DOCS) {
-  if (!existsSync(join(ROOT, d.rel))) {
-    console.error(`❌ [reserved-names-doc] 作者面文档不存在：${d.rel}`);
-    process.exit(1);
+/** 主流程（仅直接运行时执行；被 import 时只暴露判据函数） */
+function main() {
+  if (process.argv.slice(2).includes("--self-test")) process.exit(selfTest());
+
+  for (const d of [...DOCS, ...HOST_DOCS]) {
+    if (!existsSync(join(ROOT, d.rel))) {
+      console.error(`❌ [reserved-names-doc] 作者面文档不存在：${d.rel}`);
+      process.exit(1);
+    }
   }
-}
-const docs = DOCS.map((d) => ({ label: d.label, text: readFileSync(join(ROOT, d.rel), "utf8") }));
-const reg = loadRegistry();
-const violations = checkSync({
-  docs,
-  registeredKeyframes: reg.keyframes,
-  ldkTokens: collectLdkTokens(),
-});
+  const docs = DOCS.map((d) => ({ label: d.label, text: readFileSync(join(ROOT, d.rel), "utf8") }));
+  const styleViolations = checkSync({
+    docs,
+    registeredKeyframes: loadRegistry().keyframes,
+    ldkTokens: collectLdkTokens(),
+  });
 
-if (violations.length === 0) {
-  const names = parseReservedNames(docs[0].text).names;
-  const ldk = names.filter((n) => n.startsWith("ldk-"));
-  const kf = parseReservedKeyframes(docs[0].text).names;
-  console.log(
-    `✅ [reserved-names-doc] §12 两张表与登记表双向一致（保留名 ${ldk.length} 个、全部为 \`ldk-\` 名；` +
-      `关键帧 ${kf.length} 个）；中英两棵树名字集合相等。`
+  const hostDocs = HOST_DOCS.map((d) => ({
+    lang: d.lang,
+    label: d.label,
+    text: readFileSync(join(ROOT, d.rel), "utf8"),
+  }));
+  const hostViolations = checkHostDocs({ docs: hostDocs, ledger: loadHostLedger() });
+
+  const violations = [...styleViolations, ...hostViolations];
+
+  if (violations.length === 0) {
+    const names = parseReservedNames(docs[0].text).names;
+    const ldk = names.filter((n) => n.startsWith("ldk-"));
+    const kf = parseReservedKeyframes(docs[0].text).names;
+    const hostRows = parseHostTable(hostDocs[0].text).rows;
+    const hostNames = hostRows.reduce((n, r) => n + r.names.length, 0);
+    console.log(
+      `✅ [reserved-names-doc] 两段射程都一致：` +
+        `①（样式）§12 两张表与登记表双向一致（保留名 ${ldk.length} 个、全部为 \`ldk-\` 名；关键帧 ${kf.length} 个）；` +
+        `②（非样式）§七「宿主保留的名字」总表与账 ${HOST_LEDGER_REL} 双向一致` +
+        `（家族 ${Object.keys(FAMILY_LABELS).length} 个 · 表 ${hostRows.length} 行 / ${hostNames} 个名字 · 规则句在）。` +
+        `两棵树的名字集合各自相等。`
+    );
+    process.exit(0);
+  }
+  console.error(`❌ [reserved-names-doc] ${violations.length} 处不一致（保留名清单的单一真相源）：`);
+  for (const v of violations) console.error(`   · [${v.kind}] ${v.msg}`);
+  console.error(
+    `   要对齐的三份：①（样式）登记表 ${RESERVED_FILE_REL} 的 \`keyframes\` 段 ↔ 两棵树的 §12 关键帧表；` +
+      `§12 的「保留名」列必须只列真实存在的 \`ldk-\` 名。` +
+      `②（非样式）账 ${HOST_LEDGER_REL} ↔ 两棵树 16-命名规范 §七 的「宿主保留的名字」总表` +
+      `（**家族名与名字两侧都查**，中英两个译本必须相等）。判据见 scripts/check-reserved-names-doc-sync.mjs 文件头。`
   );
-  process.exit(0);
+  process.exit(1);
 }
-console.error(`❌ [reserved-names-doc] ${violations.length} 处不一致（保留名清单的单一真相源）：`);
-for (const v of violations) console.error(`   · [${v.kind}] ${v.msg}`);
-console.error(
-  `   要对齐的两侧：登记表 ${RESERVED_FILE_REL} 的 \`keyframes\` 段 ↔ 两棵树的 §12 关键帧表；` +
-    `§12 的「保留名」列则必须只列真实存在的 \`ldk-\` 名（判据见 scripts/check-reserved-names-doc-sync.mjs 文件头）。`
-);
-process.exit(1);

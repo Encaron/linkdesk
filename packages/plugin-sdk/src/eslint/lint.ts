@@ -199,9 +199,9 @@ export async function runPluginLint(root: string, options: PluginLintOptions = {
    * 🔴 E6#111b（1.32）：第五条 check 腿 —— **命令 id / 协议 id 归属**（`checks/command-ownership.ts`）。
    *   三面同判 ①②：声明面（`contributes.commands[].id`）／运行时面（`registerCommand("<字面量>")`）／
    *   协议面（`registerProtocol({ id: "<字面量>" })`）。
-   *   ⚠️ **本格只判黄**（官方仓还没改名，改名归 1.42–1.48）——报点进 WARN 通道即可，
-   *      `bin lint` 的退出码只看 eslint severity 2 ⇒ 对插件仓天然不构成红窗；**1.49 才收紧为红**。
-   *   ⚠️ **刻意不与另几条腿去重**（与 css-namespace 内部的去重口径相反）：本腿 1.49 要**独立收紧为红**，
+   *   ⚠️ 注释订正（1.49）：原写「本格只判黄 …… 1.49 才收紧为红」，但实现里裁决**一律进 `violations`**
+   *      ⇒ 在插件仓 CI 一直是红（只有 `bin lint` 的本地退出码不看它）。1.49 保持现状 ＋ 订正注释。
+   *   ⚠️ **刻意不与另几条腿去重**（与 css-namespace 内部的去重口径相反）：本腿独立统计/独立收紧，
    *      把它的报点并进 css-namespace 腿或被那条腿吃掉，收紧时就分不清「谁在报」。fail-closed 那条与
    *      前缀腿在 `plugin.json:1` 上会各报一次——**那是两件不同的事**（一个说身份读不到，一个说前缀拿不到）。
    */
@@ -210,33 +210,32 @@ export async function runPluginLint(root: string, options: PluginLintOptions = {
    * 🔴 E6#111d（1.34）：第六条 check 腿 —— **配置键归属**（`checks/config-ownership.ts`）。
    *   三面：声明面（`contributes.configuration.properties` 的键）／弱默认值面（`contributes.configurationDefaults`
    *   的键）／运行时面（源码里 `registerConfiguration*` 第一个实参 = 身份字面量）。
-   *   🔴 **分级与前一条腿不同**：判据①（占用宿主保留键）＝**红**，进腿报点；判据②（新键不带本仓前缀）＝**黄**，
-   *      进 `configAdvisories` 只打印不拦。理由：① 是真害（顶替宿主设置面、用户数据被串），
-   *      ② 是存量欠账（官方 18 仓 19 个键，运行时都不拦——见 1.34 任务书 §五）。
-   *   ⚠️ 与另几条腿**刻意不合并**（同命令腿的理由）：本腿的红站点将来要独立收紧/独立统计。
+   *   🔴 **1.49 收紧**：判据②（新键不带本仓前缀）**升红**，与判据① 一并进腿报点 ⇒ 插件仓 CI 拦。
+   *      收紧前提已满足：官方 18 仓清账完成（需改处 0）⇒ 不再有存量反例造成红窗。
+   *   ⚠️ 与另几条腿**刻意不合并**（同命令腿的理由）：本腿的红站点独立收紧/独立统计。
    */
   const configOwnership = runConfigOwnershipCheck(absRoot);
   /**
    * 🔴 E6#111f（1.36）：第七条 check 腿 —— **外观族 id 归属**（`checks/appearance-ownership.ts`）。
    *   两面：声明面（`contributes.themes[].id` / `contributes.iconThemes[].id` / `contributes.icons` 的键）／
    *   主题文件面（`themes/*.json` 的顶层 `id` ＋ `colorways[].id`——🔴 配色 id **只在这一面出现**）。
-   *   🔴 **分级与配置腿同形**：判据②（占用宿主兜底外观 id，按空间比、证照者除外）＝**红**，进腿报点；
-   *      判据①（新外观 id 不带本仓前缀）＝**黄**，进 `appearanceAdvisories` 只打印不拦
-   *      ——出处 = 1.36 任务书 §二.2 的 ★**回退条件**（存量 25 条改名被判给 1.47 轮，不在本格执行 ⇒ 判据必须回退到黄）
-   *      ＋ 轴上**排序纪律**（1.32/1.34/1.36/1.38 先以「黄灯 ＋ 账」落地，**1.49 才收紧为红**）。
-   *   ⚠️ 与另几条腿**刻意不合并**（同命令腿/配置腿的理由）：本腿的红站点将来要独立收紧/独立统计；
+   *   🔴 **1.49 收紧**：判据①（新外观 id 不带本仓前缀）**升红**（出处 = 1.36 任务书 §二.2 的 ★回退条件
+   *      的反面 ＋ 轴上排序纪律「1.49 才收紧为红」——存量 25 条已由 1.47 清完 ＋ 迁移 v12 兜住用户已选值）；
+   *      **`iconTheme` 空间一并收进判据①**（旧「图标主题不改名」例外已随 [00 §〇c.1] 撤销）。
+   *      判据③（同插件跨配方重复配色）**仍是黄＋登记**（独立判据，不在本格射程）。
+   *   ⚠️ 与另几条腿**刻意不合并**（同命令腿/配置腿的理由）：本腿的红站点独立收紧/独立统计；
    *      且它的输入是**外观四栏**，与命令腿读的前缀栏、配置腿读的 configKeys 栏各不相干。
    */
   const appearanceOwnership = runAppearanceOwnershipCheck(absRoot);
   /**
    * 🔴 E6#111h（1.38）：第八条 check 腿 —— **上下文旗子归属**（`checks/context-ownership.ts`）。
    *   一面：运行时面（源码里 `contextKey.set("<字面量>", …)` / `ContextKeyService.setValue("<字面量>", …)`）。
-   *   🔴 **分级与配置腿/外观腿同形**：判据①（占用**宿主专用**旗子 `contextKeysHostOnly`）＝**红**，进腿报点；
-   *      判据③（新旗子不带本仓 `<pluginId>.` 前缀）＝**黄**，进 `contextAdvisories` 只打印不拦
-   *      ——出处 = 轴上**排序纪律**（1.32/1.34/1.36/1.38 先以「黄灯 ＋ 账」落地，**1.49 才收紧为红**）。
+   *   🔴 **1.49 收紧**：判据③（新旗子不带本仓 `<pluginId>.` 前缀）**升红**（出处 = 轴上排序纪律
+   *      「1.49 才收紧为红」——官方 18 仓的 23 个裸旗子已由 1.42/1.44/1.47 清完）。
    *   🟠 **宿主公开约定面**（`contextKeysPublic`，今天 = `settings` 齿轮菜单的 4 个 `setting*`）**不判**：
    *      第三方设它合法（`MenuId` 是开放字符串 ⇒ 谁都能进 `settingItemGear` 槽）⇒ 只登记在
-   *      `publicFace` 里让"谁在设约定面"可见，**不进任何退出码**。
+   *      `publicFace` 里让"谁在设约定面"可见，**不进任何退出码**。🔴 这是**已裁决的豁免**（1.46 丙路线），
+   *      **不是**「还没收紧的黄」——⛔ 别顺手把它收成红（会让官方 `settings` 当场假红）。
    *   ⚠️ 与另几条腿**刻意不合并**（同命令腿/配置腿的理由）：本腿的红站点将来要独立收紧/独立统计；
    *      且它的输入是**旗子两段**，与命令腿读的前缀栏、配置腿读的 configKeys 栏各不相干。
    */

@@ -134,11 +134,20 @@ const bad = (arr, reserved = []) => arr.filter((x) => reserved.some((p) => x ===
 const faceOf = (r) => {
   // 🔴 E6#111h／1.38：旗子分两段判——宿主**专用**（插件禁设 ⇒ 需处理）与宿主**公开约定面**
   //   （插件可设 ⇒ **不是**需处理；合成一段会把官方 `settings` 的 4 个约定面旗子报成"占宿主旗子"= 假红）。
-  //   仍逐条判「不带本仓 `<pluginId>.` 归属」（🟡 黄，1.49 才收紧）。
+  //   仍逐条判「不带本仓 `<pluginId>.` 归属」（1.49 起 SDK 腿判红，见下）。
+  /* 🔴 E6#111k／1.49 口径修正（**两条腿对齐**）：约定面那一段**同时**豁免「不带归属」这一问——
+   *   与 SDK 腿 `context-ownership.ts` 判据③ 逐字对齐（那边 `contextKeysPublic` 直接 `return null`：
+   *   既不红也不黄）。修前这里自相矛盾：明细行写着「🔴 不是需处理——登记为公开约定面」，
+   *   同一批名字却被 `!f.startsWith(...)` 算进 `flagsBad` ⇒ 官方 `settings` **需改读数 4**，
+   *   而 SDK 腿对同一批名字**零报点**——两条腿一个说"要改"一个说"不用改"，谁的读数都不能当判据用。
+   *   为什么约定面不该要求归属前缀（1.37 §13.5 裁决丙 ＋ 1.46 落地）：这 4 个旗子**写的人是插件、
+   *   读的人是宿主命令 `when`**，事实属性就是「谁都能设、谁都能读」的**跨方约定**；
+   *   给它加 `<pluginId>.` 前缀 = 把**公共契约面**私有化，下一个插件就没法再设了。 */
+  const isPublicFlag = (f) => HOST.contextKeysPublic.includes(f);
   const flagsBad = r.flags.filter(
-    (f) => HOST.contextKeysHostOnly.includes(f) || !f.startsWith(r.id + "."),
+    (f) => HOST.contextKeysHostOnly.includes(f) || (!isPublicFlag(f) && !f.startsWith(r.id + ".")),
   );
-  const flagsPublic = r.flags.filter((f) => HOST.contextKeysPublic.includes(f));
+  const flagsPublic = r.flags.filter(isPublicFlag);
   /* 🔴 1.47 口径③：三个外观空间**各自只跟同栏**的宿主保留名比（并集比会跨空间误判，见文件头）。 */
   const badIn = (space, ids) =>
     [...new Set(ids)].filter((x) => !SPACE_SET[space].has(x) && !ownedBy(x, r.id));

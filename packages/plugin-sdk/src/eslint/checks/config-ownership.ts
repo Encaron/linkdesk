@@ -11,10 +11,12 @@
  *   ① **宿主保留面**（🔴 红）：键落在账（包内 `schemas/host-reserved.json`）的 `configKeys` 里
  *      ⇒ 占用宿主设置面。**含退役键**——宿主不再写入的键也不腾位（老 `settings.json` 里可能仍有值，
  *      迁移代码还会读它）。判据出处 = 1.33 §11.1 裁决（丙）·（甲）。
- *   ② **本仓前缀**（🟡 黄）：**新键**第一段应是本仓 `pluginId`（`<pluginId>.<你的名字>`）。
+ *   ② **本仓前缀**（🔴 红 · **1.49 收紧**）：**新键**第一段应是本仓 `pluginId`（`<pluginId>.<你的名字>`）。
  *      与命令 id 同形（`judgeCommandId` 的「只换第一段、词干零变化」）。
  *      ⚠️ 只对 **`declared` 面**判——`defaults` 面的键**天然是别人的键**（`configurationDefaults` 的语义
  *      就是"为已存在的键建议一个弱默认值"，要求它带本仓前缀等于取消这个能力）。运行时面同理不判键。
+ *      🕐 **收紧史**：1.34 落地时按轴上排序纪律只判黄（判红会让插件仓 CI 在官方仓改名完成前处于红窗）；
+ *      1.49 清账完成（官方 18 仓需改处 0）后兑现为红——照 00 档 §四「收紧为红放在 1.49」。
  *   ③ **宿主伪身份**（🔴 红）：源码里 `registerConfiguration("<字面量>", …)` / `registerConfigurationDefaults(...)`
  *      的第一个实参落在账的 `pseudoPluginIds`（app / appearance / update）⇒ 冒充宿主身份注册。
  *
@@ -27,8 +29,10 @@
  *
  * ── 🔴 分工：本腿报红的那一条，运行时也报 ──
  * 判据① 在**运行时**（壳 `ConfigurationRegistry` 的保护区）同样生效——本腿是**提前在作者仓里**把同一件事报出来
- * （作者不必等装上壳才发现自己的键被拒）。判据② 运行时**不管**（存量 19 个反例还在，运行时拒前缀不合规的键
- * 会把存量插件当场弄坏）⇒ 判据② 只在这里、且只是黄。
+ * （作者不必等装上壳才发现自己的键被拒）。判据② 运行时**不管**（存量键的旧名靠 `registerConfigMigration` 搬运，
+ * 运行时拒前缀不合规的键会把存量插件当场弄坏）⇒ 判据② 只在这里判。
+ * 🔴 **1.49 起判据② 同样是红**：清理已完成（官方 18 仓需改处 0），第三方新写的裸键＝跨插件撞名，
+ * 是「本仓可答 ＋ 有真害」的真红（00 档 §10.3 宽容度模型：红灯两类之一）。
  *
  * 知情绕行 = 标准 disable 注释（`CHECK_IDS.configOwnership`）。⚠️ **fail-closed 不参与豁免**：
  * 拿不到 `pluginId` 说的不是「你的键怎么写」，而是「你的身份读不到」——那是工程根的问题。
@@ -75,9 +79,9 @@ export interface ConfigOwnershipReport {
   pluginIdNote: string | null;
   /** fail-closed：非 null ⇒ 本腿报红（拿不到身份就无从判归属） */
   error: string | null;
-  /** 🔴 必须改的（进腿报点） */
+  /** 🔴 必须改的（进腿报点）——1.49 收紧后 = 全部不合规站点 */
   red: ConfigKeySite[];
-  /** 🟡 建议改的（只打印，不拦） */
+  /** 🟡 建议改的——🔴 **1.49 起恒空**（判据② 已升红，站点全进 `red`）；字段保留只为探针输出形状不塌 */
   yellow: ConfigKeySite[];
   /** 三面的**全部**名（合规 ＋ 不合规，按出现顺序去重）——探针的读数面（口径：名数，非站点数） */
   declaredKeys: string[];
@@ -87,7 +91,7 @@ export interface ConfigOwnershipReport {
   hostLedger: { file: string; found: boolean; configKeys: number; pseudoPluginIds: number };
   /** 腿报点 = fail-closed ＋ 全部红 */
   violations: CheckViolation[];
-  /** 黄灯建议（`lint.ts` 打印用；**不进** `LintLeg.violations` ⇒ 不拦 CI） */
+  /** 黄灯建议——🔴 **1.49 起恒空**（同上）；保留字段＝探针/渲染器的输出形状不变 */
   advisories: CheckViolation[];
 }
 
@@ -232,13 +236,14 @@ export function runConfigOwnershipCheck(
     disabled?: { idx: ReturnType<typeof buildDisableIndex>; line: number },
   ): void => {
     if (disabled && isDisabled(disabled.idx, disabled.line, CHECK_IDS.configOwnership)) return;
-    if (site.code === "host-reserved") {
-      report.red.push(site);
-      violations.push({ file: site.file, line: site.line, message });
-    } else {
-      report.yellow.push(site);
-      report.advisories.push({ file: site.file, line: site.line, message });
-    }
+    /**
+     * 🔴 **1.49 起两条判据都是红**（收紧前：`host-reserved` 红 ／ `no-plugin-prefix` 黄 ⇒ 进 `advisories`
+     * 只打印不拦）。收紧后**全部进 `violations`** ⇒ 插件仓 CI（`ci-verify.mjs` 的严格腿）当场判红。
+     * `yellow` / `advisories` 两个字段保留为**空容器**：探针与报告仍按原形状读数（面不塌），
+     * 但不再有任何站点落进去——⛔ 别把它们删了（删了等于改探针的输出形状，与本格射程无关）。
+     */
+    report.red.push(site);
+    violations.push({ file: site.file, line: site.line, message });
   };
 
   /** 判据①②合一的报点（声明面 / 弱默认值面） */

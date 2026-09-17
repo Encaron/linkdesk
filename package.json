@@ -1,6 +1,6 @@
 {
   "name": "linkdesk",
-  "version": "0.2.10",
+  "version": "0.2.11",
   "license": "MIT",
   "private": true,
   "type": "module",
@@ -60,6 +60,7 @@
     "audit:runtime-style": "node scripts/runtime-style-audit.mjs",
     "audit:runtime-style:selftest": "node scripts/runtime-style-audit.mjs --self-test",
     "audit:plugin-scope": "node scripts/audit-plugin-scope.mjs",
+    "audit:plugin-ownership": "node scripts/audit-plugin-ownership.mjs",
     "audit:plugin-scope:regen": "node scripts/gen-host-reserved.mjs",
     "audit:plugin-scope:check": "node scripts/gen-host-reserved.mjs --check",
     "audit:plugin-scope:regen:selftest": "node scripts/gen-host-reserved.mjs --self-test",

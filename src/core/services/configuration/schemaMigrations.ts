@@ -66,6 +66,47 @@ export function clearConfigMigrations(): void {
   _migrations.clear();
 }
 
+/* ── 🔴 E6#111k／1.49：**补跑通道的注册点**（把 1.46b 那味药做成「可增补」的）──────
+ *
+ * 1.46b 只给「设置键 ＋ 用户快捷键」开了补跑（`repairRenamedKeys`），**外观 id 不在射程**
+ *   ⇒ 先更壳、后更插件的机器上，v6/v12 一样被空烧、五键永不搬（交接段 ⑷ 第 4 条的实测形态）。
+ *   本格把外观 id 也开进同一条通道：**形状照抄补跑通道**（每次启动对一次账、**不写版本标志**、
+ *   幂等靠 presence 门控 ＋「命中即恒等」）。
+ *
+ * 为什么是**注册点**而不是在编排里再写一个 `await repairXxx()`：
+ *   · 补跑体住在它自己的模块（外观 id 的体在 `App/config/appearanceApplier.ts`，因为归一函数与解析器都在那侧）；
+ *   · 编排在 `core/`，**不许反向依赖 App 层**（依赖方向见 appearanceApplier 文件头）；
+ *   · 直连调用 = 制造一条 core → App 的反向边；注册点 = 各模块**在自己的模块级登记**（与
+ *     `registerConfigMigration` 同一形状、同一理由）。
+ *   🔴 **接线判据**：注册发生在**模块求值时**，所以生产路径必须先 import 该模块。
+ *     `App/startup.ts` 静态 import 了 `App/config/appearance` → `appearanceApplier`，而
+ *     `runPendingConfigMigrations()` 在 post-init 才跑（`startup.ts` 里那条注释写的就是这条前置）
+ *     ⇒ 登记**早于**执行。⚠️ 新增补跑体时照此核对一遍，别只写注册不认接线。
+ */
+export interface ConfigRepair {
+  /** 可读名（失败日志里点名——一个补跑体坏了不许把别的拖下水） */
+  name: string;
+  /** 补跑体——只向 ctx 推变更，**不许**自己落盘、**不许**写版本标志（落盘统一由编排做） */
+  repair: (ctx: ConfigMigrationContext) => Promise<void> | void;
+}
+
+const _repairs = new Map<string, ConfigRepair>();
+
+/** 登记一个补跑体（同名字覆盖——重登记与测试清场都靠这条语义） */
+export function registerConfigRepair(repair: ConfigRepair): void {
+  _repairs.set(repair.name, repair);
+}
+
+/** 测试/档案用——当前登记了哪些补跑体（进 `npm run check` 的判据靠它点名，别靠 grep） */
+export function inspectConfigRepairs(): ConfigRepair[] {
+  return [..._repairs.values()].sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/** 测试用——清空补跑登记（⛔ 生产代码别调：清完没有任何代码会再登记一次，与 `clearConfigMigrations` 同坑） */
+export function clearConfigRepairs(): void {
+  _repairs.clear();
+}
+
 /**
  * 读出**已登记**的迁移（按版本升序）——供「生产装配点是否真的存在」这类判据直接点名。
  *
@@ -324,11 +365,29 @@ async function commitConfigWrites({
  * 幂等由既有两道自守保证：presence 门控（旧键没值 ⇒ 不产出）＋「命中即恒等」（已迁 ⇒ 再跑零命中）
  *   ⇒ 可以在**每次启动**跑一遍：门禁开了就搬、没开就零写（**顺序不再是判据**）。
  * 失败**不抛**（补跑是收敛动作，不该拦启动；它也没有版本要提升）：记 `console.error`，下次启动再试。
+ *
+ * 🔴 **E6#111k／1.49 改造**：本函数从「改名专用」升级为**补跑通道的统一跑法**——
+ *   ① 改名补跑（下面这一体，1.46b 原样）② `inspectConfigRepairs()` 里各注册体（1.49 起 = 外观 id）。
+ *   两者**共用一次落盘**（一个 batch 收集器 → 一次 `commitConfigWrites`）：
+ *   分开落盘 = 每次启动多写几次 settings.json，且「同一次启动里的两次补跑」会各写一份**互为陈旧**的全量缓存。
+ *   ⚠️ 顺序：改名补跑在**前**（它含 `migrateUserKeybindings` 那一步，自己落 keybindings.json，与 batch 无关）；
+ *     注册体在后，逐个 `try/catch` —— 一个补跑体坏了只点名记日志，**不吞掉别的补跑体已经推出的变更**
+ *     （下面的落盘照常执行）。
  */
-async function repairRenamedKeys(): Promise<boolean> {
+async function runConfigRepairs(): Promise<boolean> {
   const batch: BatchEntry[] = [];
   const deletes: string[] = [];
-  await runNamespaceRenameMigration(makeBatchCollector(batch, deletes));
+  const ctx = makeBatchCollector(batch, deletes);
+  // ① 内置：改名（设置键 ＋ 用户快捷键）——1.46b 的老药，逐字不动
+  await runNamespaceRenameMigration(ctx);
+  // ② 注册体：外观 id 等（见上方 `registerConfigRepair`）
+  for (const r of inspectConfigRepairs()) {
+    try {
+      await r.repair(ctx);
+    } catch (e) {
+      console.error(`[ConfigMigration] 补跑「${r.name}」失败（下次启动重试）：`, e);
+    }
+  }
   if (batch.length === 0 && deletes.length === 0) return false;
   /* 🔴 与编排同理：开跑先清「上次文件写失败」标志——它是**模块级一次性状态**，
    *   上一次运行（或上一个用例）留下的 true 会把本次**成功的写**误判成失败
@@ -338,7 +397,7 @@ async function repairRenamedKeys(): Promise<boolean> {
     await commitConfigWrites({ batch, deletes });
     return true;
   } catch (e) {
-    console.error("[ConfigMigration] 改名补跑落盘失败（下次启动重试）：", e);
+    console.error("[ConfigMigration] 补跑落盘失败（下次启动重试）：", e);
     return false;
   }
 }
@@ -353,7 +412,8 @@ export function getConfigSchemaVersion(): number {
  * 配置对齐总入口（`startup.ts` post-init 调它一次）。
  * ① 待执行迁移：version > 当前，升序执行；产出并入统一 batch。
  *    全部通过 → 单次持久化（含变更值 + 版本标志提升到最高目标版本）；任一抛错 → 原子中止（零写零提升）。
- * ② `repairRenamedKeys()`：**记账之后**补跑一次改名收敛（无版本门禁，见其注释）。
+ * ② `runConfigRepairs()`：**记账之后**补跑一次收敛（无版本门禁，见其注释）——
+ *    含内置的改名补跑（设置键 ＋ 快捷键）＋ 各注册补跑体（外观 id，见 `registerConfigRepair`）。
  * 返回：true = 本次有待执行迁移且全部通过；false = 无待执行迁移 或 有迁移失败（下次启动重试）。
  *   ⚠️ 返回 `false` **不等于「什么都没做」**——② 补跑可能刚把旧键搬过去（它不走版本记账）。
  */
@@ -396,8 +456,10 @@ export async function runPendingConfigMigrations(): Promise<boolean> {
    *    · 也放在**早退之前**：`pending` 为空（版本记账已跑满 = 门禁空烧的现场）时照样对一次账。
    *    · 放在总入口里面（而不是新增一个调用点）是**有意**的：生产接线点（`startup.ts`）一行不改，
    *      补跑就搭在同一条已被生产验证过的路径上，不新增「函数写好了没人调」的缺口
-   *      （memory `gate-selftest-must-be-wired` 是同一个坑）。 */
-  await repairRenamedKeys();
+   *      （memory `gate-selftest-must-be-wired` 是同一个坑）。
+   * 🔴 2026-09-18（1.49）：这一跑现在**同时**覆盖注册进来的补跑体（外观 id 在列，见
+   *    `registerConfigRepair`）——改名与外观 id 共用一次落盘。 */
+  await runConfigRepairs();
 
   return pending.length > 0;
 }

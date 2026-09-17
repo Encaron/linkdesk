@@ -7,12 +7,16 @@
  *   · 太紧 —— 🔴 **本腿独有的失效方向：跨空间比**。配方 id 与配色 id 是**两个名字空间**（`light`
  *     同时是两者），把四栏合成一栏比会把官方 `theme-defaults` 的配色 `light` 判成顶替配方 `light`
  *     ——**假红**，而它恰恰是宿主亮兜底的**官方实现者**（持 `light` 证照）。假红比漏报更贵：真红会跟着失效。
- *   · 太紧之二：**图标主题 id 判前缀**。§二.2 ⑦ 明令本轮不改名（改名 = 设置页可见文字变化，违「操作体验零变化」）
- *     ⇒ 报它就是报一个**不允许修**的洞。
+ *   · 太紧之二：**图标主题 id 判前缀** —— ⚠️ **此例外已随 [00 §〇c.1] 撤销**（1.49）：1.47 确实改了
+ *     图标主题 id（`ld-iconset-pastel` → `theme-iconset-pastel.pastel`），且 v12 迁移保住了用户已选值
+ *     ⇒ 「改名 = 设置页可见文字变化」的前提不再成立 ⇒ 判据① 对 `iconTheme` **照判**。
  *   · 太紧之三（跑官方 18 仓才显形）：**宿主兜底 id 本身不判①**。给它建议 `<pluginId>.light` = 让官方实现者
  *     去改宿主的兜底名 ⇒ 断接替链，且那条建议**永远修不得**（真账形状的正控：修前 3 黄 → 修后 1 黄）。
- * 故本测试钉住：判据② 三栏按空间比 ＋ 证照放行 ／ 判据① **不判图标主题、不判兜底栏内的 id** ／ 判据① 是**黄**（★回退条件 ＋ 排序纪律）
- * ／ ③ 跨配方重复配色 ／ 两面（声明面 ＋ **主题文件面**）／ fail-closed ／ 豁免 ／ 读不出的主题文件不许变成假红。
+ * 故本测试钉住：判据② 三栏按空间比 ＋ 证照放行 ／ 判据① **不判兜底栏内的 id**（含 `iconTheme` 现在照判）
+ * ／ 判据① 是**红**（1.49 收紧）／ 判据③ 仍是**黄＋登记**（不在本格射程）／ 两面（声明面 ＋ **主题文件面**）
+ * ／ fail-closed ／ 豁免 ／ 读不出的主题文件不许变成假红。
+ *
+ * ⚠️ `yellow` / `advisories` 两栏**保留**：判据③ 仍落这里，且它恒被断言——「有人把①②偷偷退回黄」当场被抓。
  */
 import { describe, expect, it } from "vitest";
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
@@ -105,8 +109,14 @@ describe("judgeAppearanceId —— 纯判据（按空间比 ＋ 证照放行）"
     expect(judge("light", "recipe", "theme-aurora")?.code).toBe("host-reserved");
   });
 
-  it("🔴 判据① 对 `iconTheme` 空间**不判**（§二.2 ⑦：本轮不改名——报它 = 报一个不允许修的洞）", () => {
-    expect(judge("ld-iconset-pastel", "iconTheme")).toBeNull();
+  it("🔴 判据① 对 `iconTheme` 空间**照判**（旧例外已随 [00 §〇c.1] 撤销，1.49 起——见文件头第二条例外）", () => {
+    // 1.47 实测：图标主题 id 确实改过名（`ld-iconset-pastel` → `theme-iconset-pastel.pastel`），
+    // 且 v12 迁移把用户已选值搬到了新名 ⇒ 「改名 = 设置页可见文字变化」的前提不成立 ⇒ 不许再豁免。
+    expect(judge("ld-iconset-pastel", "iconTheme")).toEqual({
+      code: "no-plugin-prefix",
+      suggested: "file-tree.ld-iconset-pastel",
+    });
+    expect(judge("file-tree.pastel", "iconTheme")).toBeNull(); // 带前缀 ⇒ 零命中（判据不是恒红）
   });
 
   it("但判据② 对 `iconTheme` 照判：占宿主保底 `default` ⇒ 红", () => {
@@ -136,7 +146,7 @@ describe("两面（声明面 / 主题文件面）＋ 分级", () => {
       {
         manifest: manifest({
           themes: [{ id: "file-tree.aurora", label: "极光", path: "themes/aurora.json" }],
-          iconThemes: [{ id: "ld-iconset-pastel", label: "粉彩" }],
+          iconThemes: [{ id: "file-tree.pastel", label: "粉彩" }],
           icons: { "file-tree.logo": { path: "icons/logo.svg" } },
         }),
         files: { "themes/aurora.json": THEME_OK },
@@ -146,7 +156,7 @@ describe("两面（声明面 / 主题文件面）＋ 分级", () => {
         expect(r.violations).toHaveLength(0);
         expect(r.advisories).toHaveLength(0);
         expect(r.declaredRecipeIds).toEqual(["file-tree.aurora"]);
-        expect(r.declaredIconThemeIds).toEqual(["ld-iconset-pastel"]);
+        expect(r.declaredIconThemeIds).toEqual(["file-tree.pastel"]);
         expect(r.declaredSharedIconIds).toEqual(["file-tree.logo"]);
         expect(r.themeFileRecipeIds).toEqual(["file-tree.aurora"]);
         expect(r.themeFileColorwayIds).toEqual(["file-tree.aurora.mint"]);
@@ -156,23 +166,24 @@ describe("两面（声明面 / 主题文件面）＋ 分级", () => {
     );
   });
 
-  it("🔴 判据② 红 ＋ 🟡 判据① 黄 **在同一例里同时断言**（分级写错也要被抓）", () => {
+  it("🔴 判据② ＋ 判据① **都红**，且在同一例里同时断言（分级写错也要被抓）", () => {
     withPlugin(
       {
         manifest: manifest({
           themes: [
             { id: "light", label: "亮", path: "themes/light.json" },        // 判据② ⇒ 红
-            { id: "aurora-glass", label: "极光", path: "themes/ag.json" },  // 判据① ⇒ 黄
+            { id: "aurora-glass", label: "极光", path: "themes/ag.json" },  // 判据① ⇒ 红（1.49 起）
             { id: "file-tree.aurora", label: "极光2", path: "themes/a.json" }, // 合规 ⇒ 不报
           ],
         }),
       },
       (root) => {
         const r = runAppearanceOwnershipCheck(root, RESERVED, NO_LEDGER);
-        expect(r.violations).toHaveLength(1); // 红：只在 violations 里
-        expect(r.advisories).toHaveLength(1); // 黄：只在 advisories 里（没进 violations）
-        expect(r.red.map((s) => s.id)).toEqual(["light"]);
-        expect(r.yellow.map((s) => s.id)).toEqual(["aurora-glass"]);
+        expect(r.violations).toHaveLength(2); // 两条判据都进 violations
+        expect(r.advisories).toHaveLength(0); // 判据① 不再进黄栏
+        expect(r.red.map((s) => s.id)).toEqual(["light", "aurora-glass"]);
+        expect(r.red.map((s) => s.code)).toEqual(["host-reserved", "no-plugin-prefix"]);
+        expect(r.yellow).toHaveLength(0);
         expect(r.red[0].space).toBe("recipe");
         expect(r.red[0].face).toBe("declared");
         // 红的那条：报点带空间名 ＋ 建议名；行号是真行号（不是恒 1）
@@ -180,12 +191,12 @@ describe("两面（声明面 / 主题文件面）＋ 分级", () => {
         expect(r.violations[0].line).toBeGreaterThan(1);
         expect(r.violations[0].message).toContain("配方 id");
         expect(r.violations[0].message).toContain('改成 "file-tree.light"');
-        expect(r.advisories[0].message).toContain('改成 "file-tree.aurora-glass"');
+        expect(r.violations[1].message).toContain('改成 "file-tree.aurora-glass"');
       },
     );
   });
 
-  it("🔴 真账形状的正控：`theme-defaults` 声明配方 `light` ＋ 主题文件配色 `light`/`dark` ⇒ **零红**，只剩一条黄", () => {
+  it("🔴 真账形状的正控（1.47 改名后）：`theme-defaults` 声明配方 `light` ＋ 配色 `light`/`theme-defaults.dark` ⇒ **零红零黄**", () => {
     withPlugin(
       {
         manifest: manifest({ themes: [{ id: "light", label: "亮", path: "themes/light.json" }] }, "theme-defaults"),
@@ -195,21 +206,18 @@ describe("两面（声明面 / 主题文件面）＋ 分级", () => {
             name: "亮",
             type: "light",
             // `light` 撞**兜底栏** ⇒ 既是该桶的官方实现者（持证照），也不该收前缀建议（见文件头）；
-            // `dark` **是** theme-defaults 自己的配色变体（不在任何兜底栏）⇒ 这条黄是**该报的**。
-            colorways: [{ id: "light", label: "亮" }, { id: "dark", label: "暗" }],
+            // `theme-defaults.dark` **带**本仓前缀（1.47 实测就是这个形状）⇒ 一条都不报。
+            colorways: [{ id: "light", label: "亮" }, { id: "theme-defaults.dark", label: "暗" }],
           }),
         },
       },
       (root) => {
         const r = runAppearanceOwnershipCheck(root, RESERVED, NO_LEDGER);
-        expect(r.red).toHaveLength(0); // ★ 1.36 立项时要除的就是这条假红
-        // 修前 3 条黄（全是 `light`——三条**修不得**的建议）；修后只剩 `dark` 一条，
-        // 与跑官方 18 仓的实测读数一致（theme-defaults：4 黄 → 1 黄，见文件头）。
-        expect(r.yellow).toHaveLength(1);
-        expect(r.yellow[0].id).toBe("dark");
-        expect(r.yellow[0].space).toBe("colorway");
-        expect(r.yellow[0].code).toBe("no-plugin-prefix");
-        expect(r.advisories[0].message).toContain('改成 "theme-defaults.dark"');
+        expect(r.red).toHaveLength(0); // ★ 1.36 立项时要除的假红（兜底栏内的 id 不判①）
+        // 1.36 立项时读数 4 黄 →（判据① 不判兜底栏）1 黄 →（1.47 把 `dark` 改名成
+        // `theme-defaults.dark`）**0 黄**。这条从"1 黄"走到"0 黄"正是 1.49 敢把判据① 升红的前提。
+        expect(r.yellow).toHaveLength(0);
+        expect(r.advisories).toHaveLength(0);
       },
     );
   });
@@ -273,8 +281,10 @@ describe("两面（声明面 / 主题文件面）＋ 分级", () => {
       },
       (root) => {
         const r = runAppearanceOwnershipCheck(root, RESERVED, NO_LEDGER);
-        // `mint-soda` 不带前缀 ⇒ 两个文件各报一次判据①（黄），**没有**第三条判据③的重复
-        expect(r.yellow.map((s) => s.code)).toEqual(["no-plugin-prefix", "no-plugin-prefix"]);
+        // `mint-soda` 不带前缀 ⇒ 两个文件各报一次判据①（🔴 1.49 起红；收紧前是黄），**没有**第三条判据③的重复
+        expect(r.red.map((s) => s.code)).toEqual(["no-plugin-prefix", "no-plugin-prefix"]);
+        expect(r.violations).toHaveLength(2);
+        expect(r.yellow).toHaveLength(0);
       },
     );
   });
@@ -360,7 +370,9 @@ describe("两面（声明面 / 主题文件面）＋ 分级", () => {
     withPlugin(
       { files: { "themes/a.json": JSON.stringify({ id: "file-tree.aurora", colorways: [{ id: "file-tree.mint" }] }) } },
       (root) => {
-        expect(runAppearanceOwnershipCheck(root, RESERVED, NO_LEDGER).advisories).toHaveLength(0);
+        const r = runAppearanceOwnershipCheck(root, RESERVED, NO_LEDGER);
+        expect(r.violations).toHaveLength(0);
+        expect(r.advisories).toHaveLength(0);
       },
     );
     withPlugin(
@@ -370,8 +382,8 @@ describe("两面（声明面 / 主题文件面）＋ 分级", () => {
       },
       (root) => {
         const r = runAppearanceOwnershipCheck(root, RESERVED, NO_LEDGER);
-        expect(r.advisories).toHaveLength(2); // 换身份后两个 id 都成了"不带本仓前缀"
-        expect(r.advisories[0].message).toContain('应以 "theme-aurora." 开头');
+        expect(r.violations).toHaveLength(2); // 换身份后两个 id 都成了"不带本仓前缀" ⇒ 1.49 起红
+        expect(r.violations[0].message).toContain('应以 "theme-aurora." 开头');
       },
     );
   });

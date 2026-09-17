@@ -7,11 +7,12 @@
  *     两个插件撞键时一个静默失效。
  *   · 太紧（把弱默认值面的键当"新键"要求前缀）⇒ **把 `configurationDefaults` 这个能力判死**
  *     （它的语义就是给**别人的**键建议弱默认值），作者只能 disable 整条腿。
- * 故：判据①（宿主保留面 ⇒ 红）／判据②（本仓前缀 ⇒ 黄）／**面差异**（`defaults` 面不判②）／
+ * 故：判据①（宿主保留面 ⇒ 红）／判据②（本仓前缀 ⇒ 🔴 **1.49 起红**，收紧前是黄）／**面差异**（`defaults` 面不判②）／
  * fail-closed ／ 豁免 —— 正反两向都钉住，另加三条元判据：
  *   · **同一份源码 ＋ 不同 pluginId ⇒ 不同裁决**（证明真在读 manifest，不是恒红/恒绿）；
- *   · **红与黄在同一例里同时断言**（`violations` 长度与 `advisories` 长度各就各位）——
- *     只测"报出来了"是不够的，**分级写错**（黄判成红）同样是这条腿的失效方向；
+ *   · **两条判据在同一例里同时断言**（`violations` 长度与 `advisories` 长度各就各位）——
+ *     只测"报出来了"是不够的，**分级写错**（把某一判据退回黄）同样是这条腿的失效方向；
+ *     1.49 起 `advisories` 恒空，故断言它为空 = 「有人悄悄退回黄」当场被抓；
  *   · **账读不到 ⇒ 明示空转**（不是静默绿）——账是判据① 的**唯一**输入（不许内联一份清单）。
  */
 import { describe, expect, it } from "vitest";
@@ -142,7 +143,7 @@ describe("三面（声明 / 弱默认值 / 运行时）＋ 分级", () => {
     );
   });
 
-  it("🔴 判据① 红 ＋ 🟡 判据② 黄 **在同一例里同时断言**（分级写错也要被抓）", () => {
+  it("🔴 判据① ＋ 判据② **都红**，且在同一例里同时断言（分级写错也要被抓）", () => {
     withPlugin(
       {
         manifest: manifest({
@@ -150,7 +151,7 @@ describe("三面（声明 / 弱默认值 / 运行时）＋ 分级", () => {
             title: "文件树",
             properties: {
               "app.theme": { type: "string" },            // 判据① ⇒ 红
-              "explorer.confirmDelete": { type: "boolean" }, // 判据② ⇒ 黄
+              "explorer.confirmDelete": { type: "boolean" }, // 判据② ⇒ 红（1.49 起）
               "file-tree.expandDepth": { type: "number" },   // 合规 ⇒ 不报
             },
           },
@@ -158,17 +159,18 @@ describe("三面（声明 / 弱默认值 / 运行时）＋ 分级", () => {
       },
       (root) => {
         const r = runConfigOwnershipCheck(root, RESERVED, NO_LEDGER);
-        expect(r.violations).toHaveLength(1); // 红：只在 violations 里
-        expect(r.advisories).toHaveLength(1); // 黄：只在 advisories 里（没进 violations）
-        expect(r.red.map((s) => s.key)).toEqual(["app.theme"]);
-        expect(r.yellow.map((s) => s.key)).toEqual(["explorer.confirmDelete"]);
+        expect(r.violations).toHaveLength(2); // 两条判据都进 violations
+        expect(r.advisories).toHaveLength(0); // 🔴 收紧的形状断言：黄栏保留但恒空
+        expect(r.red.map((s) => s.key)).toEqual(["app.theme", "explorer.confirmDelete"]);
+        expect(r.red.map((s) => s.code)).toEqual(["host-reserved", "no-plugin-prefix"]);
+        expect(r.yellow).toHaveLength(0);
         expect(r.red[0].face).toBe("declared");
         // 红的那条：报点带宿主保留键名 ＋ 建议名；行号是真行号（不是恒 1）
         expect(r.violations[0].file).toBe("plugin.json");
         expect(r.violations[0].line).toBeGreaterThan(1);
         expect(r.violations[0].message).toContain("宿主");
         expect(r.violations[0].message).toContain('改成 "file-tree.theme"');
-        expect(r.advisories[0].message).toContain('改成 "file-tree.confirmDelete"');
+        expect(r.violations[1].message).toContain('改成 "file-tree.confirmDelete"');
       },
     );
   });
@@ -190,7 +192,7 @@ describe("三面（声明 / 弱默认值 / 运行时）＋ 分级", () => {
     );
   });
 
-  it("运行时面：冒充宿主身份 ⇒ 红；用别人的 id ⇒ 黄；用自己的 id ⇒ 零命中", () => {
+  it("运行时面：冒充宿主身份 ⇒ 红；用别人的 id ⇒ 红（1.49 起）；用自己的 id ⇒ 零命中", () => {
     withPlugin(
       {
         files: {
@@ -201,15 +203,21 @@ describe("三面（声明 / 弱默认值 / 运行时）＋ 分级", () => {
       },
       (root) => {
         const r = runConfigOwnershipCheck(root, RESERVED, NO_LEDGER);
-        expect(r.violations).toHaveLength(1); // 冒充宿主 = 红
-        expect(r.advisories).toHaveLength(1); // 借别人的 id = 黄
-        expect(r.red[0].face).toBe("runtime");
-        expect(r.red[0].key).toBe("app");
-        expect(r.red[0].file).toBe("src/impersonate.ts");
-        expect(r.red[0].line).toBe(1);
-        expect(r.violations[0].message).toContain("宿主自己的身份");
-        expect(r.yellow[0].file).toBe("src/borrow.ts");
-        // 三面读数含全部身份名（合规的也在——口径：名数，非站点数）；目录遍历顺序不参与断言（比集合）
+        expect(r.violations).toHaveLength(2); // 冒充宿主 + 借别人的 id，两条都红
+        expect(r.advisories).toHaveLength(0);
+        // 目录遍历顺序不参与断言（比集合）：`borrow.ts` 与 `impersonate.ts` 谁先扫到都可以
+        const byFile = new Map(r.red.map((s) => [s.file, s]));
+        expect([...byFile.keys()].sort()).toEqual(["src/borrow.ts", "src/impersonate.ts"]);
+        const impersonate = byFile.get("src/impersonate.ts")!;
+        const borrow = byFile.get("src/borrow.ts")!;
+        expect(impersonate.face).toBe("runtime");
+        expect(impersonate.key).toBe("app");
+        expect(impersonate.code).toBe("host-reserved");
+        expect(impersonate.line).toBe(1);
+        expect(borrow.key).toBe("other-plugin");
+        expect(borrow.code).toBe("no-plugin-prefix");
+        expect(r.violations.map((v) => v.message).join("\n")).toContain("宿主自己的身份");
+        // 三面读数含全部身份名（合规的也在——口径：名数，非站点数）
         expect([...r.runtimeIdentities].sort()).toEqual(["app", "file-tree", "other-plugin"]);
       },
     );
@@ -261,8 +269,8 @@ describe("三面（声明 / 弱默认值 / 运行时）＋ 分级", () => {
       },
       (root) => {
         const r = runConfigOwnershipCheck(root, RESERVED, NO_LEDGER);
-        expect(r.advisories).toHaveLength(1); // 换身份后同一个键成了"不带本仓前缀"
-        expect(r.advisories[0].message).toContain('应以 "marketplace." 开头');
+        expect(r.violations).toHaveLength(1); // 换身份后同一个键成了"不带本仓前缀" ⇒ 1.49 起红
+        expect(r.violations[0].message).toContain('应以 "marketplace." 开头');
       },
     );
   });

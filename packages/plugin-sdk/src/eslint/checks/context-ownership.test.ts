@@ -4,8 +4,12 @@
  * 🔴 覆盖本格的三条判据分级（[1.37 §十六](../../../../../../docs/02-Electron架构/E6_插件生态与发布/01-插件独立构建/非样式命名空间归一化/07-任务-上下文旗子归属评估.md) 负控 ①②③）：
  *   ① 插件设**宿主专用**旗子 ⇒ 🔴 红（进 `violations`）
  *   ② 插件设**宿主公开约定面**旗子 ⇒ 🟠 **不红也不黄**（只在 `publicFace` 登记）——**分级写错会被这条抓住**
- *   ③ 插件旗子不带本仓归属 ⇒ 🟡 黄（进 `advisories`，**不进** `violations`）
+ *   ③ 插件旗子不带本仓归属 ⇒ 🔴 红（进 `violations`）——**1.49 收紧**（1.38 落地时是黄）；理由：官方
+ *      18 仓清账完成（需改处 0），且 `contextKeysPublic` 那条**裁定豁免**与判据③ 是两码事
  *   ⑦ 模板字符串拼名 ⇒ **不被抓**（**静态射程边界自证**，是边界不是 bug）
+ *
+ * ⚠️ `yellow` / `advisories` 两栏**保留为空容器**（探针与报告按原形状读数）——断言它们恒空，
+ *    是为了「有人悄悄把判据退回黄」时当场被抓。
  */
 import { describe, expect, it } from "vitest";
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
@@ -126,14 +130,17 @@ describe("runContextOwnershipCheck —— 负控 ②（约定面 ⇒ 不红）",
   });
 });
 
-describe("runContextOwnershipCheck —— 负控 ③（不带归属 ⇒ 黄，不是红）", () => {
-  it("🟡 插件设裸名旗子 ⇒ 进 advisories，**不进** violations", () => {
+describe("runContextOwnershipCheck —— 负控 ③（不带归属 ⇒ 🔴 红，1.49 起）", () => {
+  it("🔴 插件设裸名旗子 ⇒ 进 violations ＋ red（`advisories`/`yellow` 恒空）", () => {
     withPlugin({ files: { "src/a.ts": 'contextKey.set("zzzFlag", true);\n' } }, (root) => {
       const r = runContextOwnershipCheck(root, RESERVED);
-      expect(r.violations).toHaveLength(0);
-      expect(r.advisories).toHaveLength(1);
-      expect(r.yellow[0].code).toBe("no-plugin-prefix");
-      expect(r.yellow[0].suggested).toBe("file-tree.zzzFlag");
+      expect(r.violations).toHaveLength(1);
+      expect(r.red).toHaveLength(1);
+      expect(r.red[0].code).toBe("no-plugin-prefix");
+      expect(r.red[0].suggested).toBe("file-tree.zzzFlag");
+      // 🔴 收紧的形状断言：黄/建议两栏保留但恒空——退回黄 = 这里立刻红
+      expect(r.advisories).toHaveLength(0);
+      expect(r.yellow).toHaveLength(0);
     });
   });
 
@@ -160,9 +167,10 @@ describe("射程边界（负控 ⑦：断言**不被抓**——是边界不是 b
   it("🔴 **无插值**的模板 = 字面量 ⇒ 要扫得到（与上一条是两只脚，缺一个就是漏一半）", () => {
     withPlugin({ files: { "src/a.ts": "contextKey.set(`activeEditor`, 1);\ncontextKey.set(`mine`, 2);\n" } }, (root) => {
       const r = runContextOwnershipCheck(root, RESERVED);
-      // 第一行：宿主专用 ⇒ 红；第二行：无前缀 ⇒ 黄。**一条都不许少**
-      expect(r.red.map((s) => s.key)).toEqual(["activeEditor"]);
-      expect(r.yellow.map((s) => s.key)).toEqual(["mine"]);
+      // 第一行：宿主专用 ⇒ 红；第二行：无前缀 ⇒ 也红（1.49 起两条判据同进 violations）。**一条都不许少**
+      expect(r.red.map((s) => s.code)).toEqual(["host-reserved", "no-plugin-prefix"]);
+      expect(r.red.map((s) => s.key)).toEqual(["activeEditor", "mine"]);
+      expect(r.yellow).toHaveLength(0);
     });
   });
 
@@ -205,7 +213,11 @@ describe("fail-closed ＋ 账加载实况", () => {
       expect(r.hostLedger.found).toBe(false);
       expect(r.hostLedger.contextKeysHostOnly).toBe(0);
       expect(r.hostLedger.contextKeysPublic).toBe(0);
-      expect(r.violations).toHaveLength(0); // 账空 ⇒ 判据① 无从命中（这正是"空转"的样子）
+      // 账空 ⇒ 判据① 无从命中（这正是"空转"的样子）。⚠️ 但**判据③ 照样报红**——那颗旗子裸名无归属，
+      // 与账读不读到无关（1.49 起判据③ 也是红）⇒ 红的那条必须是 `no-plugin-prefix`，**不许**是 `host-reserved`
+      expect(r.violations).toHaveLength(1);
+      expect(r.red).toHaveLength(1);
+      expect(r.red[0].code).toBe("no-plugin-prefix");
     });
   });
 

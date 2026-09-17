@@ -12,7 +12,7 @@
  *   E6#109j 时它只是**生成侧原型**（文件头自述「只写不读」「无开关、无自测」）；1.32 升为**门禁**：
  *     · 默认跑        = 生成：写壳账 ＋ SDK 副本 ＋ 运行时模块（`npm run audit:plugin-scope:regen`）
  *     · `--check`     = 只读对账，挂 `npm run check`
- *     · `--self-test` = 正控 4 ＋ 负控 13（正控绿 / 负控红）
+ *     · `--self-test` = 逐条正控（绿）/ 负控（红），一条不符即红
  *
  * ── 四向对账（`--check` 的判据）──
  *   ① **实况 → 账**：现场重扫（壳源码）扫到、账里没有 ⇒ 红。典型成因：改了宿主命令/设置面**忘了重跑**。
@@ -28,6 +28,9 @@
  *     · 家族**整段缺失** ⇒ 红（段被删/改名，后面的逐条比对就没有意义了）；
  *     · 家族**为空数组** ⇒ 红（扫描器瞎了、目录被搬走时，空家族会**假装**对账通过——这条是给
  *       「宿主把 `src/core/commands` 挪个位置」这类重构留的报警器）。
+ *   ⑤ **`version` 字段**（E6#111k／1.49 追加）：账的修订号必须存在、是正整数、且与生成器常量
+ *      `LEDGER_VERSION` 一致。🔴 单独一条的理由：它是**只给人读**的字段，四向里只有「账 ↔ SDK 副本
+ *      逐字节」会顺带带上它 ⇒ **两侧一起被手改成同一个错值**时全绿，而那正是它要防的事。
  *
  * ── 第四份产物：运行时保留面模块（E6#111d／1.34 新增）──
  *   `src/core/registry/host-reserved.generated.ts`——壳**运行时**判保护区用的静态副本（只带
@@ -157,9 +160,32 @@ function objectLiteralAt(src, afterAt) {
   return "";
 }
 
+/* ── 账的修订号（E6#111k／1.49 定稿）──────────────────────────────────
+ * 🔴 **抬版本号的唯一理由 = 本账的形状/口径变了**（家族增删、某家族改口径、判据收紧）。
+ *    **逐条增删名字不抬它**——那只是实况漂移，由双向对账逼着重生成（重生成会让账自动跟上，
+ *    与 version 无关）。把它当「内容版本」用，等于每次改名都要手改一个只给人看的数字。
+ * ⚠️ 它与 `app.schemaVersion` 是**两回事**：这里记的是**账自己的**修订，不是用户 settings.json 的
+ *    迁移版本；两者同名纯属巧合，⛔ 别拿它当迁移门禁。
+ * 历史：1 = 十家族定稿（1.49 首次写入 `version` 字段本身）。 */
+const LEDGER_VERSION = 1;
+
 const LEDGER_COMMENT =
-  "宿主保留面账（生成式·定稿 E6#111b／1.32）——插件不得占用这些名字；改动本账 = 一次公共面决策，" +
-  "改完壳仓命令/设置/协议面必须重跑 scripts/gen-host-reserved.mjs（npm run audit:plugin-scope:regen）。" +
+  "宿主保留面账（生成式·E6#111b／1.32 定稿，1.49 补 version）——插件不得占用这些名字。" +
+  "消费方有**两条腿，互不覆盖**：" +
+  "① **壳腿** = 壳仓 `scripts/audit-plugin-scope.mjs`（跨容器普查，读本账 ＋ 反向核对实况）" +
+  "与 `src/core/registry/host-reserved.generated.ts`（壳**运行时**仲裁读的生成副本）；" +
+  "② **SDK 腿** = `@linkdesk/plugin-sdk` 的四个 `check-*-ownership`（随包下发本账的副本" +
+  " `schemas/host-reserved.json`，在**插件仓 CI** 判红）。" +
+  "为什么必须两条腿：壳腿看不见插件仓的源码，SDK 腿看不见壳的运行时——各自的射程都到不了对面。" +
+  "**改本表 = 一次公共面决策**：动手前先问「**这是公共面，还是漏网的借用？**」——" +
+  "公共面（多人正当读写、按约定共享）该进本账的设计里单列，借用（某插件用了宿主的名字）一律判红、不许宽恕；" +
+  "**新增条目要在这一段或对应家族的 why 里写明判据**，别只加一个名字。" +
+  "改完必须重跑生成器 `npm run audit:plugin-scope:regen`（scripts/gen-host-reserved.mjs）——" +
+  "账 ＋ SDK 副本 ＋ 运行时副本**三份同源**，手改任一份都会被判漂。" +
+  "**双向对账门禁在哪**：`node scripts/gen-host-reserved.mjs --check`（四向：实况→账 ／ 账→实况 ／" +
+  " SDK 副本逐字节 ／ 运行时副本逐元素），已接在 `npm run check` 里；" +
+  "实况多一条报 `ledger-missing`、账多一条报 `ledger-stale`、家族整段缺失/为空另有专门的报警。" +
+  "`version` = 本账**形状**的修订号（见生成器 `LEDGER_VERSION` 的抬版规则），不是 settings 迁移版本。" +
   "⚠️ configKeys 含**退役键**（曾被宿主使用、现已不再写入的键）：退役键**不腾出保留面**——" +
   "老 settings.json 里可能还留着值，插件此刻占它 = 顶掉的是宿主的历史数据（且迁移代码仍会读它）。";
 
@@ -359,6 +385,7 @@ export function collectHostReserved(root = ROOT) {
 
   return {
     $comment: LEDGER_COMMENT,
+    version: LEDGER_VERSION,
     commandPrefixes: [...prefix].sort(),
     configKeys: [...keys].sort(),
     pseudoPluginIds: [...new Set(pseudo)].sort(),
@@ -495,9 +522,45 @@ export function diffSdk(sdkRaw, ledgerRaw) {
   return [];
 }
 
-/** 三向合并（`--check` 与自测共用的唯一入口） */
+/**
+ * 账的 `version` 字段自检（E6#111k／1.49 新增）。
+ * 🔴 为什么这条不能省：`version` 是**只给人读**的字段（没有任何逐条比对碰它），
+ *   四向对账里只有「账 ↔ SDK 副本逐字节」会顺带带上它——**两边一起被手改成同一个错值**时全绿。
+ *   而它恰恰是「这本账被谁动过、动到第几版」的唯一线索 ⇒ 单列一条判据（缺 / 不是正整数 / 与生成器常量不符）。
+ * @returns {{kind:string,msg:string}[]}
+ */
+export function diffVersion(ledger) {
+  const v = ledger?.version;
+  if (!Number.isInteger(v) || v < 1) {
+    return [
+      {
+        kind: "version-bad",
+        msg:
+          `账的 \`version\` 缺失或不是正整数（实际 ${JSON.stringify(v)}）——` +
+          `本账是**生成式**的：要它就跟生成器常量 \`LEDGER_VERSION\` 一致。` +
+          `改法：npm run audit:plugin-scope:regen（⛔ 别手改 ${LEDGER_REL}）。`,
+      },
+    ];
+  }
+  if (v !== LEDGER_VERSION) {
+    return [
+      {
+        kind: "version-drift",
+        msg:
+          `账的 \`version\`=${v}，生成器常量 \`LEDGER_VERSION\`=${LEDGER_VERSION}——两边不一致。` +
+          `抬版本号的唯一理由是**本账形状/口径变了**（家族增删、改口径、判据收紧）；` +
+          `只增删名字**不**抬版本（那是实况漂移，重生成即跟上）。` +
+          `改法：改生成器的 \`LEDGER_VERSION\` 后 npm run audit:plugin-scope:regen。`,
+      },
+    ];
+  }
+  return [];
+}
+
+/** 全向合并（`--check` 与自测共用的唯一入口） */
 export function checkAll({ ledger, actual, sdkRaw, ledgerRaw, runtimeRaw, runtimeExpected }) {
   return [
+    ...diffVersion(ledger),
     ...diffFamilies(ledger, actual),
     ...diffGrants(ledger),
     ...diffSdk(sdkRaw, ledgerRaw),
@@ -596,6 +659,7 @@ export function diffRuntime(runtimeRaw, expectedRaw) {
 function fixture() {
   const ledger = {
     $comment: LEDGER_COMMENT,
+    version: LEDGER_VERSION,
     commandPrefixes: ["app.", "view."],
     configKeys: ["app.theme"],
     pseudoPluginIds: ["app"],
@@ -635,6 +699,26 @@ function selfTest() {
     return {};
   });
   T("正控③：运行时模块与账逐元素相同（第四向基线）⇒ 绿", (f) => ({ runtimeRaw: renderRuntimeModule(f.ledger) }));
+  /* 🔴 1.49 新增：`version` 字段本身（正控 ＋ 两条负控）——见 `diffVersion` 的注释：没有它，
+   *  「两边一起被手改成同一个错值」在四向对账里全绿。 */
+  T("正控③-b：账带正整数 version（与生成器常量一致）⇒ 绿");
+  T(
+    "负控③-c：账缺 version ⇒ 红（version-bad）",
+    (f) => {
+      delete f.ledger.version;
+      return { sdkRaw: JSON.stringify(f.ledger, null, 2) + "\n", ledgerRaw: JSON.stringify(f.ledger, null, 2) + "\n" };
+    },
+    ["version-bad"],
+  );
+  T(
+    "负控③-d：账 version 被手改（两侧一起改 ⇒ 逐字节那向看不出来）⇒ 红（version-drift）",
+    (f) => {
+      f.ledger.version = 99;
+      const raw = JSON.stringify(f.ledger, null, 2) + "\n";
+      return { sdkRaw: raw, ledgerRaw: raw };
+    },
+    ["version-drift"],
+  );
 
   // 🔴 负控①：实况多一条（改了宿主面忘重跑）
   T(

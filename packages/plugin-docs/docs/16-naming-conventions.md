@@ -74,4 +74,78 @@ The version number has **four landing points that must share one source**; chang
 
 ---
 
+## 7. Names the host reserves—don't take them, and don't count on "borrowing"
+
+**The one-sentence rule (memorise this instead of the table): names the host reserves are off limits; every name you invent must carry your `<pluginId>` prefix.**
+
+Both halves guard the same failure: a **public roster** — one global name table that **anyone can write into, where nobody checks ownership, and where a collision reports nothing**, so one side ends up **silently ineffective**. Per family, the damage looks like this:
+
+- **Command ids**: one command declared by two parties — which one wins depends on registration order.
+- **Config keys**: your value overwrites a host setting (the user reads that as "my settings changed on their own / got lost").
+- **Appearance ids** (recipes / colorways / icon themes): the theme dropdown shows two entries with the same id and the selection state looks wrong.
+- **Context keys**: someone else's `when` expression evaluates against your state (menus and shortcuts flicker in and out).
+
+### 7.1 Where the list lives, and who owns it
+
+The list is **generated**: the shell scans its own source and emits `scripts/host-reserved.json`, then ships a **byte-identical** copy inside `@linkdesk/plugin-sdk`. So **you already have it locally**:
+
+```
+node_modules/@linkdesk/plugin-sdk/schemas/host-reserved.json
+```
+
+The table below is **reconciled name by name** against it (gate `scripts/check-reserved-names-doc-sync.mjs`, wired into `npm run check`):
+
+| Family | Reserved name | What happens if you take it |
+|:--|:--|:--|
+| Host command prefix | `app.`、`core.`、`theme.`、`update.`、`view.`、`workbench.` | Your command id lands in the host's own segment — in the command palette and the keybindings page it looks like a host feature |
+| Host protocol id | `bracket` | Same name as the host's bracket-matching protocol handler ⇒ one of the two never runs, with no error |
+| Host pseudo plugin id | `app`、`appearance`、`update` | The host registers as a "plugin" too (shell core / appearance / updater) ⇒ these ids read as the host itself |
+| Host config key | `app.schemaVersion` | The config **internal version marker** (invisible in the settings UI, never registered) — taking it derails migration bookkeeping and the user's data looks lost |
+| Host config key | `app.theme`、`app.themeColor`、`app.themeColorMode`、`app.iconTheme` | Theme and colours — taking it overwrites the theme the user is currently using |
+| Host config key | `app.appearanceMode`、`app.accentColor`、`app.accentMode`、`app.accentSource`、`app.menuStyle` | Light/dark mode, accent colour, menu style |
+| Host config key | `app.backgroundImage`、`app.backgroundMask`、`app.backgroundOpacity`、`app.zoneBackgroundImage` | Background and per-zone backgrounds |
+| Host config key | `app.glassBlur`、`app.glassOpacity`、`app.glassSaturate`、`app.glassTint` | The four glass parameters |
+| Host config key | `app.surfaceRadius`、`app.zoneRadius`、`app.zoneRadiusScale` | Corner radii |
+| Host config key | `app.fontFamily`、`app.fontFamilyMono`、`app.fontTone`、`app.uiFontScale` | Fonts and text scaling |
+| Host config key | `app.mixMode`、`app.mixFont`、`app.mixBackground`、`app.mixReset` | Mix-and-match sources |
+| Host config key | `app.language` | UI language |
+| Host config key | `app.osIntegration.dirMenu`、`app.osIntegration.fileAssoc`、`app.osIntegration.fileMenu` | OS integration (context menu, file associations) |
+| Host config key | `app.update.mode`、`app.update.showReleaseNotes` | Update channel |
+| Host recipe id | `dark`、`light` | The **fallback values** of `app.theme`. ⚠️ `light` also carries a **grant**: the official `theme-defaults` plugin is the official implementer of the host's light fallback, so only it may declare that id |
+| Host colorway id | `dark-fallback`、`light` | Fallback values of `app.themeColor` and of the colorway source space |
+| Host icon theme id | `default` | The fallback value of `app.iconTheme` |
+| Host appearance sentinel | `followTheme` | The "follow the theme" sentinel of a mix source — **it is not an id**, so don't try to shadow it with a plugin id |
+| Host-only context key (plugins **must not** set) | `activeEditor`、`editorCount`、`editorHasSelection`、`inputFocus`、`sidebarPosition`、`updateActionable`、`updateButtonLabel` | Set one of these at runtime over IPC and the host logs a `console.error` **naming you** (the value is still written: these are state, not registrations, so the runtime cannot tell who came first) |
+| Shared-contract context key (plugins **may** set) | `settingKey`、`settingFollowTheme`、`settingModified`、`settingResetsToDefault` | These four are a **public contract**: the official `settings` plugin writes them, host commands read them in `when` clauses — use them as specified, don't change their meaning |
+
+**How to check yourself** (from your own repo): once `@linkdesk/plugin-sdk` is installed, your repo's `verify` runs four ownership legs (command ids / config keys / appearance ids / context keys); whichever one you violate is reported with its location plus the suggested fix, **"should start with `<pluginId>.`"**.
+
+### 7.2 Why three kinds of global concept names need no prefix
+
+Three kinds of names look ownerless but **should never have an owner** — prefixing them is a **semantic error**, not normalisation:
+
+| Name | Examples | Why a prefix would be wrong |
+|:--|:--|:--|
+| **File-association extensions** | `.md`, `.json`, `.ts` | They refer to a **filesystem/OS** concept — a prefix means the system no longer recognises the file type |
+| **Language-definition extensions** | `langDefs[].extensions` | Same: the field has to line up with external tools and editors for the same language |
+| **Language-pack language codes** | `zh` / `en` / `ja` (`langDefs[].id`, the keys of `contributes.i18n`) | They are **BCP 47 language tags** — the world writes them exactly like this; `my-plugin.zh` is not a language |
+
+⇒ By design these are **permanently out of scope** for the criteria (neither flagged nor registered): not an oversight, but a deliberate carve-out.
+
+### 7.3 i18n dictionary keys—**recommended** to carry ownership, not required
+
+Translation files are **one flat key layer**: every plugin's keys and the host's keys live in the same dictionary. We **recommend** writing your keys as `<pluginId>.<原文>` (e.g. `serial-monitor.打开端口`), but this is a **recommendation, not a rule** — the reasoning and today's real overlap numbers live in [03-contributes-spec §3.9 桶键命名建议](03-contributes-spec.md) (**that is the single source**; this document doesn't repeat it).
+
+### 7.4 Migration notes—renamed names never lose your values
+
+Renames on the host side **all come with migrations**, so users don't reconfigure anything and you don't have to compensate for them:
+
+- **Appearance ids** (recipes / colorways / icon themes): today they all have the `<pluginId>.<stem>` shape (e.g. `theme-aurora-glass.aurora-glass`). Older values in the user's `settings.json` are carried over by the **shell-side migration v12** (five keys: `app.theme` / `app.themeColor` / `app.mixFont` / `app.mixBackground` / `app.iconTheme`).
+- **Command ids / config keys / user keybindings**: the rename rounds carry migrations too (keys move, keybinding ids move with them).
+- ⚠️ **A migration can only carry a value once the new name exists**: for appearance ids, the plugin must **register the new name first** before the shell can tell where the old name should map. That is exactly why updating the app before the plugins leaves a window — hence the shell runs an extra **reconciliation pass on every startup** (it writes no version marker, so unlike ordinary migrations it doesn't stop after the first run).
+
+Your only takeaway as a plugin author: **don't invent compatibility aliases for old host names** — old-name mapping is the shell's job. Just declare names in the **new shape**.
+
+---
+
 > **← Index:** [00-readme](00-readme.md) · **Related:** [15-multi-repo-and-local-workspace](15-multi-repo-and-local-workspace.md) · [06-plugin-json-spec](06-plugin-json-spec.md) · [plugin-source-externalization/09-naming-conventions.md](https://github.com/Encaron/linkdesk/blob/electron/docs/02-Electron架构/E6_插件生态与发布/插件源码外移层/09-命名规范.md) (decision rationale)

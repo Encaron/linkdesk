@@ -8,14 +8,15 @@
  * 或者插件占**宿主兜底**的名字（`dark` / `light` / `dark-fallback` / `default`）⇒ 顶替宿主的保底面。
  *
  * ── 判据（与壳仓 `scripts/gen-host-reserved.mjs` 的账同源）──
- *   ① **本仓前缀**（🟡 黄）：**新**声明的外观 id 第一段应是本仓 `pluginId`（`<pluginId>.<名字>`，只换第一段、词干零变化）。
- *      ⚠️ ★**回退条件**：1.36 任务书 §二.2 把它定为红**但附回退条件**——「若本格落地时判定存量改名不执行
- *      （例如 1.42 改名轮被砍），本判据**必须**回退到黄」。本格落地时：存量 25 条改名**判给 1.47**（不是本格执行）
- *      ⇒ 照轴上的**排序纪律**（1.32/1.34/1.36/1.38 的判据先以「黄灯 ＋ 账」落地，**1.49 才收紧为红**）
- *      ——本判据在本格是**黄**，进 `advisories` 只打印不拦。
- *      🔴 例外：**图标主题 id 不判①**（任务书 §二.2 ⑦：本轮不改名——改名会让设置页可见文字变化，
- *      违「操作体验零变化」上位约束）⇒ 只判②。这一格不是漏了，是**判据表里"⚪不判"那一行的落地**。
- *      🔴 **第二条同类例外（跑官方 18 仓实测抓到的缺陷）**：**宿主兜底 id 本身不判①**——它在账的**本空间**栏内，
+ *   ① **本仓前缀**（🔴 红 · **1.49 收紧**）：声明的外观 id 第一段应是本仓 `pluginId`（`<pluginId>.<名字>`，只换第一段、词干零变化）。
+ *      🕐 **收紧史**：1.36 任务书 §二.2 把它定为红**但附回退条件**（「若存量改名不执行 ⇒ 必须回退到黄」）；
+ *      1.36 落地时存量 25 条改名判给 1.47，故按轴上排序纪律先落黄（**先「黄灯 ＋ 账」、1.49 才收紧为红**）。
+ *      1.49 清账完成（官方 18 仓需改处 0）后兑现为红。
+ *      🔴 **图标主题 id 一并收进判据①**（1.49 随手掰掉的旧例外）：1.36 曾按「本轮不改名」对 `iconTheme` 空间不判①，
+ *      而那条理由（改名＝设置页可见文字变化）**已被 [00 §〇c.1] 撤销**，1.47 实改了 1 条
+ *      （`ld-iconset-pastel` → `theme-iconset-pastel.ld-iconset-pastel`）并由**迁移 v12 五键**兜住用户已选值
+ *      ⇒ 「改名会丢用户体验」这个前提不再成立，例外随之作废（否则第三方声明裸图标主题 id 永远无人拦）。
+ *      🔴 **仍然成立的例外（跑官方 18 仓实测抓到的缺陷）**：**宿主兜底 id 本身不判①**——它在账的**本空间**栏内，
  *      要么已判红，要么你就是**持证照的实现者**。对后者建议 `<pluginId>.light` = 让官方实现者去改宿主的兜底名
  *      ⇒ **断掉「保底 → 官方实现」接替链**（本轴硬禁区），而且那条建议**永远修不得**。
  *      实测读数（修前 / 修后）：`theme-defaults` 报 **4 条黄 → 1 条黄**——被除掉的三条是 `light` 配方×2
@@ -38,8 +39,8 @@
  * ── 🔴 与运行时同源 ──
  * 壳运行时（`src/core/registry/appearance/appearanceOwnership.ts`）对**同样的三条分支**做仲裁：
  * 判据② 命中在壳里是**当场拒注册 ＋ console.error**；本腿是**提前在作者仓里把同一件事报出来**
- * （作者不必等装上壳才发现自己的 id 被拒）。判据①③ 运行时不管（存量 25 条还在，运行时拒前缀不合规的 id
- * 会把存量插件当场弄坏）⇒ 只在这里、且只是黄。
+ * （作者不必等装上壳才发现自己的 id 被拒）。判据①③ 运行时不管（运行时拒前缀不合规的 id 会把存量插件
+ * 当场弄坏——存量靠改名轮 ＋ 迁移表搬运）⇒ 只在这里判。
  *
  * 知情绕行 = 标准 disable 注释（`CHECK_IDS.appearanceOwnership`）。⚠️ **fail-closed 不参与豁免**：
  * 拿不到 `pluginId` 说的不是「你的 id 怎么写」，而是「你的身份读不到」——那是工程根的问题。
@@ -89,9 +90,9 @@ export interface AppearanceOwnershipReport {
   pluginIdNote: string | null;
   /** fail-closed：非 null ⇒ 本腿报红（拿不到身份就无从判归属） */
   error: string | null;
-  /** 🔴 必须改的（进腿报点）：占用宿主保留面 */
+  /** 🔴 必须改的（进腿报点）：占用宿主保留面 ＋ **1.49 起**不带本仓归属 */
   red: AppearanceIdSite[];
-  /** 🟡 建议改的（只打印，不拦）：不带本仓归属 / 同插件跨配方重复配色 */
+  /** 🟡 建议改的（只打印，不拦）：🔴 **1.49 起只剩「同插件跨配方重复配色」**（归属前缀已升红） */
   yellow: AppearanceIdSite[];
   /** 各面的**全部** id（合规 ＋ 不合规，按出现顺序去重）——探针的读数面（口径：名数，非站点数） */
   declaredRecipeIds: string[];
@@ -137,7 +138,8 @@ export function grantHoldersFor(id: string, reserved: HostReservedNames): string
  * 一个外观 id 的裁决（纯函数——单测与探针共用，别在别处再写一份判据）。
  *
  * 🔴 判据顺序 = **先②后①**：占宿主兜底面是红，能同时命中「不带前缀」的那一半不该把红降级成黄。
- * 🔴 判据① 对 `iconTheme` 空间**不判**（任务书 §二.2 ⑦：本轮不改名——改名 = 设置页可见文字变化）。
+ * 🔴 判据① 覆盖 **recipe / colorway / iconTheme / sharedIcon** 四个空间（1.49 起 `iconTheme` 不再豁免，
+ *    见文件头「图标主题 id 一并收进判据①」）。
  */
 export function judgeAppearanceId(
   id: string,
@@ -151,8 +153,8 @@ export function judgeAppearanceId(
   if (reservedIdsForSpace(space, reserved).includes(id) && !grantHoldersFor(id, reserved).includes(pluginId)) {
     return { code: "host-reserved", suggested, reserved: id };
   }
-  // ① 本仓前缀（🔴 iconTheme 不判——见文件头；sentinel 无声明通道，也不判）
-  if (space === "recipe" || space === "colorway" || space === "sharedIcon") {
+  // ① 本仓前缀（🔴 1.49 起含 iconTheme——旧例外已随 [00 §〇c.1] 撤销，见文件头；sentinel 无声明通道，不判）
+  if (space === "recipe" || space === "colorway" || space === "iconTheme" || space === "sharedIcon") {
     // 🔴 **宿主兜底 id 本身不判①**（跑官方 18 仓实测抓到的缺陷，见文件头）：它在**本空间**账内 ⇒
     //   要么上面已判红（无证照），要么你是**持证照的实现者**（`light` ⇐ theme-defaults）。给后者建议
     //   `<pluginId>.light` = 让官方实现者去改宿主兜底的名字 ⇒ **断掉「保底 → 官方实现」接替链**
@@ -300,7 +302,13 @@ export function runAppearanceOwnershipCheck(
     disabled?: { idx: ReturnType<typeof buildDisableIndex>; line: number },
   ): void => {
     if (disabled && isDisabled(disabled.idx, disabled.line, CHECK_IDS.appearanceOwnership)) return;
-    if (site.code === "host-reserved") {
+    /**
+     * 🔴 **1.49 起判据①②都进 `violations`**（收紧前：`host-reserved` 红 ／ `no-plugin-prefix` 黄）。
+     * 判据③（`same-plugin-colorway`）**仍是黄＋登记**——它是 1.36 §三③ 定的独立判据，不在本格
+     * 「归属前缀收紧」的射程内（见 1.49 交接段的「不做／顺延」）。
+     * `yellow` / `advisories` 保留为空容器：探针与渲染器的输出形状不变。
+     */
+    if (site.code === "host-reserved" || site.code === "no-plugin-prefix") {
       report.red.push(site);
       violations.push({ file: site.file, line: site.line, message });
     } else {

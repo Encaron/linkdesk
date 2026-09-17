@@ -40,6 +40,7 @@ import {
 import {
   runPendingConfigMigrations,
   getConfigSchemaVersion,
+  inspectConfigRepairs,
   SCHEMA_VERSION_KEY,
 } from "../../core/services/configuration/schemaMigrations";
 import { write } from "../../core/services/configuration/StorageService";
@@ -326,5 +327,90 @@ describe("appearanceApplier — E6#111f 版本 6 迁移（外观族 id 归属改
     expect(inspectConfiguration("app.theme").userValue).toBe("薄荷苏打 Mint Soda"); // flat 显示名不在两张表里 ⇒ 恒等
     expect(inspectConfiguration("app.mixFont").userValue).toBe("followTheme");
     expect(inspectConfiguration("app.mixBackground").userValue).toBe("followTheme");
+  });
+
+  /* ── 🔴 E6#111k／1.49：外观 id 的**补跑通道**（治 v12「空烧」）──────────────────────────────
+   * 病：先更壳、后更插件的机器上，v6/v12 在它唯一那次运行里「解析器两问」不成立 ⇒ 零产出，
+   *   而版本记账**含零产出也照样提升** ⇒ `pending = version > current` 永假 ⇒ 五键永不搬。
+   * 🔴 本节的种子是 **v12 已过**（不是 v11）——那正是空烧之后的盘面。 */
+
+  it("🔴 空烧正控——版本已烧到 12 的机器：**编排一步不跑**，补跑通道照样把五键搬过去", async () => {
+    registerPostRenameRecipes(disposers);
+    registerPostRenameIconTheme(disposers);
+    await seed({ ...OLD_PLATE });
+    await seedSchemaVersionAt(12); // ← 空烧现场：v6/v12 永不重跑
+
+    // 返回 false = 「无待执行迁移」（步骤 ① 一步没跑）——⚠️ 不等于「什么都没做」（见总入口注释）
+    expect(await runPendingConfigMigrations()).toBe(false);
+    // 🔴 五键照样搬到新名：这就是补跑通道的全部意义（改前这里是原样旧值——交接段 ⑷ 第 4 条的实测形态）
+    expect(fiveKeyPlate()).toEqual({
+      "app.theme": "theme-mint-soda.mint-soda",
+      "app.themeColor": "theme-mint-soda.mint-soda",
+      "app.mixFont": "theme-pill.pill-bubble",
+      "app.mixBackground": "theme-panorama.panorama",
+      "app.iconTheme": "theme-iconset-pastel.ld-iconset-pastel",
+    });
+    // 🔴 **版本标志不动**——补跑不是记账（若它把版本再抬一格，就等于又替未来烧掉一次门禁）
+    expect(getConfigSchemaVersion()).toBe(12);
+    expect(consoleError).not.toHaveBeenCalled();
+  });
+
+  it("🔴 空烧负控（与上条配对）——插件**还没到**时补跑零写：改名未落地不许硬映", async () => {
+    registerPreRenameRecipes(disposers); // 旧名才是真注册名（插件还是旧版）
+    registerPreRenameIconTheme(disposers);
+    await seed({ ...OLD_PLATE });
+    await seedSchemaVersionAt(12);
+
+    const before = appearanceSnapshot(lastPersisted());
+    expect(await runPendingConfigMigrations()).toBe(false);
+    // 解析器两问的第二问不成立 ⇒ 恒等 ⇒ 盘上一个字节都不动（硬映会当场弄坏正在用的主题）
+    expect(appearanceSnapshot(lastPersisted())).toEqual(before);
+    expect(fiveKeyPlate()).toEqual(OLD_PLATE);
+  });
+
+  it("🔴 「先更壳、后更插件」全流程——插件到位后**下一次启动**就搬（顺序不再是判据）", async () => {
+    // 第 1 次启动：新壳 ＋ 旧插件。壳把版本抬到 12（v12 真跑过，但零产出=空烧）
+    const stage1Icon: Array<() => void> = [];
+    registerPreRenameRecipes(disposers);
+    registerPreRenameIconTheme(stage1Icon);
+    await seed({ ...OLD_PLATE });
+    await seedSchemaVersionAt(11);
+    expect(await runPendingConfigMigrations()).toBe(true); // v12 记账（本步就是"把版本烧掉"的那一下）
+    expect(getConfigSchemaVersion()).toBeGreaterThanOrEqual(12);
+    expect(fiveKeyPlate()).toEqual(OLD_PLATE); // 零产出（新名还没注册）
+
+    // 第 2 次启动：插件更新到位（注册本换新名）。**版本门禁此刻是关的**（12 已过）
+    //   ⚠️ 旧名的注册项**必须真下线**：两问判据的第二问是「旧名解析不出」——旧名还在册 = 新旧并存的过渡态 ⇒ 恒等
+    for (const r of ThemeRegistry.getRecipes()) ThemeRegistry.unregisterRecipe(r.id);
+    for (const dispose of stage1Icon.splice(0)) dispose();
+    registerPostRenameRecipes(disposers);
+    registerPostRenameIconTheme(disposers);
+    expect(await runPendingConfigMigrations()).toBe(false); // 门禁空烧：一条迁移都不跑
+    expect(fiveKeyPlate()).toEqual({
+      "app.theme": "theme-mint-soda.mint-soda",
+      "app.themeColor": "theme-mint-soda.mint-soda",
+      "app.mixFont": "theme-pill.pill-bubble",
+      "app.mixBackground": "theme-panorama.panorama",
+      "app.iconTheme": "theme-iconset-pastel.ld-iconset-pastel",
+    });
+  });
+
+  it("补跑幂等——搬完之后再跑一辈子也零写（presence 门控 ＋ 命中即恒等）", async () => {
+    registerPostRenameRecipes(disposers);
+    registerPostRenameIconTheme(disposers);
+    await seed({ ...OLD_PLATE });
+    await seedSchemaVersionAt(12);
+    expect(await runPendingConfigMigrations()).toBe(false);
+
+    const after = appearanceSnapshot(lastPersisted());
+    expect(await runPendingConfigMigrations()).toBe(false); // 第二次
+    expect(await runPendingConfigMigrations()).toBe(false); // 第三次
+    expect(appearanceSnapshot(lastPersisted())).toEqual(after); // 值不变（且没有多写）
+  });
+
+  it("接线判据——`appearance-id-reconcile` 真在补跑登记表里（防「体写了没人登记」）", () => {
+    // 出处 = memory `gate-selftest-must-be-wired`：光有函数、没有登记点 = 静默不跑。
+    // 这里按**名字点验登记表**（不是 grep 源码里有没有这个字符串）。
+    expect(inspectConfigRepairs().map((r) => r.name)).toContain("appearance-id-reconcile");
   });
 });

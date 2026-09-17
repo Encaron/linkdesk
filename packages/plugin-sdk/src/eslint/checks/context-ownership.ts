@@ -22,10 +22,14 @@
  * ── 两条判据 ──
  *   ① **宿主专用旗子**（🔴 红）：源码字符串字面量 `contextKey.set("<contextKeysHostOnly 中的名字>")`
  *      ⇒ 占用宿主状态面。判据出处 = 1.37 §10.2 ＋ §12.2。
- *   ③ **本仓归属**（🟡 黄）：`contextKey.set("<name>")` 的 name **不以本仓 `pluginId` ＋ `.` 开头**
- *      ⇒ 建议改成 `<pluginId>.<你的名字>`（只换第一段、词干零变化）。
+ *   ③ **本仓归属**（🔴 红 · **1.49 收紧**）：`contextKey.set("<name>")` 的 name **不以本仓 `pluginId` ＋ `.` 开头**
+ *      ⇒ 改成 `<pluginId>.<你的名字>`（只换第一段、词干零变化）。
  *      ⚠️ 归属段用 **`.`** 而非 `-`：旗子是 **map 键**（`when` 里的标识符），
  *      命令 id / 配置键 / 外观 id 用的都是 `.`——`-` 在 `when` 表达式里会被当成减号。
+ *      🕐 **收紧史**：1.38 落地时按轴上排序纪律只判黄（官方仓当时还没改名）；1.49 清账完成后兑现为红。
+ *      🔴 **`contextKeysPublic`（约定面）仍然不判**——它**不是**「还没收紧的黄」，是**已裁决的豁免**
+ *      （1.46 丙路线：登记 ＋ 出声，不拦；第三方设约定面合法）。收紧只动「不带本仓归属的裸名」，
+ *      ⛔ 别把约定面一起收成红（那会让官方 `settings` 当场假红）。
  *
  * ── 🔴 射程（1.37 §15.1 登记的边界，别当成 bug）──
  *   只扫**源码字符串字面量**。三种看不见（**登记为残余边界**，负控 ⑦ 断言它们**不被抓**）：
@@ -72,9 +76,9 @@ export interface ContextOwnershipReport {
   pluginIdNote: string | null;
   /** fail-closed：非 null ⇒ 本腿报红（拿不到身份就无从判归属） */
   error: string | null;
-  /** 🔴 必须改的（进腿报点） */
+  /** 🔴 必须改的（进腿报点）——1.49 收紧后 = 占用宿主专用旗子 ＋ 不带本仓归属 */
   red: ContextKeySite[];
-  /** 🟡 建议改的（只打印，不拦） */
+  /** 🟡 建议改的——🔴 **1.49 起恒空**（归属判据已升红）；字段保留只为探针输出形状不塌 */
   yellow: ContextKeySite[];
   /** 🟠 **宿主公开约定面**的写点——**不报点、不拦、不进任何退出码**（登记用：让"谁在设约定面"可见） */
   publicFace: ContextKeySite[];
@@ -84,7 +88,7 @@ export interface ContextOwnershipReport {
   hostLedger: { file: string; found: boolean; contextKeysHostOnly: number; contextKeysPublic: number };
   /** 腿报点 = fail-closed ＋ 全部红 */
   violations: CheckViolation[];
-  /** 黄灯建议（`lint.ts` 打印用；**不进** `LintLeg.violations` ⇒ 不拦 CI） */
+  /** 黄灯建议——🔴 **1.49 起恒空**（归属判据已升红）；保留字段＝探针/渲染器的输出形状不变 */
   advisories: CheckViolation[];
 }
 
@@ -207,7 +211,7 @@ export function runContextOwnershipCheck(
         suggested: verdict.suggested,
         ...(verdict.reserved !== undefined ? { reserved: verdict.reserved } : {}),
       };
-      if (verdict.code === "host-reserved") {
+      if (verdict.code === "host-reserved" || verdict.code === "no-plugin-prefix") {
         if (isDisabled(idx, line, CHECK_IDS.contextOwnership)) continue;
         report.red.push(site);
         violations.push({ file: rel, line, message });

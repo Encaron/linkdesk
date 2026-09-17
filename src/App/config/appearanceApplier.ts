@@ -39,7 +39,7 @@ import type { ThemeRecipe } from "../../core/types/theme";
 import {
   getConfigurationValue, setConfigurationValueBatch, inspectConfiguration,
 } from "../../core/services/configuration/ConfigurationService";
-import { registerConfigMigration } from "../../core/services/configuration/schemaMigrations";
+import { registerConfigMigration, registerConfigRepair } from "../../core/services/configuration/schemaMigrations";
 
 /** E5.8#89 E1：外观 onApply 防抖窗口——与 settings.json watcher 去抖（ConfigurationService 80ms）同哲学 */
 const APPEARANCE_APPLY_DEBOUNCE_MS = 80;
@@ -331,4 +331,23 @@ registerConfigMigration({
   version: 12,
   name: "E6-111n-6 appearance-id-ownership-themes", // ⚠️ 不写 `#`
   migrate: runAppearanceIdMigration,
+});
+
+/* ── 🔴 E6#111k／1.49：外观 id 的**补跑通道**（不写版本标志的对账腿）——治 v12「空烧」──
+ *
+ * 病（交接段 ⑷ 第 4 条的实测形态）：**先更壳、后更插件**的机器上，v6/v12 那一步在它唯一那次运行里
+ *   「解析器两问」不成立（新名还没注册）⇒ 零产出，而版本记账**含零产出也照样提升**
+ *   ⇒ `pending = version > current` 从此为假 ⇒ 插件到位后**五键永不搬**（用户旧值静默停在旧名：
+ *   设置页把新名读成默认，不报错、不打日志）。
+ *
+ * 药 = 1.46b 同款：**每次启动对一次账、不写版本标志**——门禁开了就搬、没开就零写。
+ *   幂等由既有两道自守保证（presence 门控 ＋「命中即恒等」）⇒ 连跑一辈子也只有第一次有产出；
+ *   顺序（先更壳 / 先更插件）**不再是判据**。
+ *   ⚠️ 它**不是**第二套归一逻辑：跑的就是 v6/v12 那个体（`runAppearanceIdMigration`），
+ *     只是落盘由补跑通道统一做、且**不提升版本**。
+ *   ⚠️ 与 v6/v12 **并存**：那两步照旧（已跑过的老机器靠它；新机器靠它做首次记账），
+ *     本通道只是把「那次没跑成」的机器兜住。 */
+registerConfigRepair({
+  name: "appearance-id-reconcile",
+  repair: ({ setMany }) => runAppearanceIdMigration({ setMany }),
 });
