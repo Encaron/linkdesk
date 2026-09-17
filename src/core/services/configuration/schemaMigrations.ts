@@ -92,48 +92,83 @@ export function clearConfigMigrations(): void {
  *   ⚠️ **`app.schemaVersion` 已越过 7 的用户不会重跑**（版本门禁）——这是**已知且有意**的边界：
  *     改名轮发版时若需补跑，由那一格**补一个新版本号**（表是纯数据，搬过去即可，1.36 先例写明）。
  */
+
+/* ── 🔴 1.42 实测抓到的真缺陷：**版本门禁把 v7 提前烧掉了** ──
+ *
+ * 1.41 交付 v7 时，`RENAME_ROUNDS` 的 `command`/`flag` 两栏是空的、`setting` 也没有任何新名被声明。
+ * 而本文件的成功语义是「**含零产出也标记已迁**」（见模块头 §19 行）⇒ v7 在**改名落地之前**
+ * 就把用户盘的 `app.schemaVersion` 推到了 **7**。1.42 真改官方仓之后再启动：
+ *
+ *     pending = migrations.filter(m => m.version > current)   // 7 > 7 = false ⇒ **一条都不跑**
+ *
+ * ⇒ **设置键永不搬家**：旧键有值、新名读默认 = 用户的设置静默全丢。
+ * （同一次启动里 `migrateUserKeybindings` **照跑**——它在 v7 函数体内被无条件调用、没有 schema 门禁
+ *  ⇒ 快捷键反而**搬早了**：搬到一个插件还没声明的命令 id 上 = 静默死键。）
+ *
+ * 🔴 **修法照 v7 注释自己预告的那条**：「改名轮发版时若需补跑，由那一格补一个新版本号」——
+ *   本格就是它点名的第一个「那一格」。⇒ 迁移体抽成 `runNamespaceRenameMigration()`，
+ *   **v7 与 v8 登记同一个体**（幂等：已迁后旧键已删 ⇒ 再跑零写；这是纯数据复用，不是第二套逻辑）。
+ *   ⚠️ 后续 1.43–1.48 每轮清账**若在 v8 之后落地新仓的改名**，同样要**各自再补一个版本号**
+ *   （本轮已把这条写进交付说明——否则下一轮会以一模一样的方式静默失败）。 */
+async function runNamespaceRenameMigration({ setMany, deleteMany }: ConfigMigrationContext): Promise<void> {
+  const maps = flattenRenameRounds();
+  const schema = getMergedSchema();
+
+  // ── ① 设置键（user scope） ──
+  //     🔴 只在新名**已被声明**时才搬（见上方「今天零写」）——未声明 ⇒ 整组跳过、零写。
+  //     🔴 presence 自查：旧键在 user 侧没有值 ⇒ 不产出它。这条同时兜住「全新安装零写」。
+  //     ⚠️ **workspace scope 不在本步射程**：`setMany`/`deleteMany` 经
+  //        `setConfigurationValueBatch` 落到 **user** scope（编排层固定不传 scope），
+  //        而 workspace 侧的搬家需要 scope 参数 —— 如实登记为未覆盖的边界（见本格交付说明
+  //        「不做」表第 3 条：壳内**没有任何写入点**往 workspace scope 写设置，
+  //        `setWorkspaceRoot` 只读 `.linkdesk/settings.json`）⇒ 今天无实际受害者。
+  const declared = Object.entries(maps.setting).filter(([, next]) => next in schema);
+  const writes: Record<string, unknown> = {};
+  const oldKeys: string[] = [];
+  for (const [from, to] of declared) {
+    const userValue = inspectConfiguration<unknown>(from).userValue;
+    if (userValue === undefined) continue; // presence 门控：没写过 ⇒ 不产出
+    writes[to] = userValue;
+    oldKeys.push(from);
+  }
+  if (oldKeys.length > 0) {
+    // 🔴 顺序即约定：先写新名（`setMany`），旧键的删除由编排层在**写成功之后**单独执行
+    //    （`runPendingConfigMigrations` 先 `resetConfigurationValueBatch(deletes)` 再
+    //     `setConfigurationValueBatch(batch)`… 见那边注释；两者同批失败 = 都不落盘、版本不提升）。
+    setMany(writes);
+    deleteMany(oldKeys);
+  }
+
+  // ── ② 用户自定义快捷键（本格最容易漏、也最值钱的一条） ──
+  //     它**自己落盘**（keybindings.json 不在 settings.json 里，`inspectConfiguration` 够不着）。
+  //     ⚠️ **无 schema 门禁、无版本门禁**（幂等靠「旧名整词命中才改」）⇒ v8 重跑时旧名已换新名，
+  //     零命中零写；对 v7 那次「搬早了」的用户，这一步在 v8 里是**幂等的重跑**，不会二次改写。
+  await migrateUserKeybindings({
+    command: maps.command,
+    flag: maps.flag,
+    settingNewToOld: settingNewToOld(),
+  });
+}
+
 export const NAMESPACE_RENAME_MIGRATION: ConfigMigration = {
   version: 7,
   name: "E6-111m namespace-rename-migration", // ⚠️ 不写 `#`：CSS 硬编码门禁会把 `#111m` 当 4 位 hex 颜色（假红）
-  migrate: async ({ setMany, deleteMany }) => {
-    const maps = flattenRenameRounds();
-    const schema = getMergedSchema();
+  migrate: runNamespaceRenameMigration,
+};
 
-    // ── ① 设置键（user scope） ──
-    //     🔴 只在新名**已被声明**时才搬（见上方「今天零写」）——未声明 ⇒ 整组跳过、零写。
-    //     🔴 presence 自查：旧键在 user 侧没有值 ⇒ 不产出它。这条同时兜住「全新安装零写」。
-    //     ⚠️ **workspace scope 不在本步射程**：`setMany`/`deleteMany` 经
-    //        `setConfigurationValueBatch` 落到 **user** scope（编排层固定不传 scope），
-    //        而 workspace 侧的搬家需要 scope 参数 —— 如实登记为未覆盖的边界（见本格交付说明
-    //        「不做」表第 3 条：壳内**没有任何写入点**往 workspace scope 写设置，
-    //        `setWorkspaceRoot` 只读 `.linkdesk/settings.json`）⇒ 今天无实际受害者。
-    const declared = Object.entries(maps.setting).filter(([, next]) => next in schema);
-    const writes: Record<string, unknown> = {};
-    const oldKeys: string[] = [];
-    for (const [from, to] of declared) {
-      const userValue = inspectConfiguration<unknown>(from).userValue;
-      if (userValue === undefined) continue; // presence 门控：没写过 ⇒ 不产出
-      writes[to] = userValue;
-      oldKeys.push(from);
-    }
-    if (oldKeys.length > 0) {
-      // 🔴 顺序即约定：先写新名（`setMany`），旧键的删除由编排层在**写成功之后**单独执行
-      //    （`runPendingConfigMigrations` 先 `resetConfigurationValueBatch(deletes)` 再
-      //     `setConfigurationValueBatch(batch)`… 见那边注释；两者同批失败 = 都不落盘、版本不提升）。
-      setMany(writes);
-      deleteMany(oldKeys);
-    }
-
-    // ── ② 用户自定义快捷键（本格最容易漏、也最值钱的一条） ──
-    //     它**自己落盘**（keybindings.json 不在 settings.json 里，`inspectConfiguration` 够不着）。
-    //     映射表今天为空（`RENAME_ROUNDS` 只登记了设置键，命令 id / 旗子待 1.42–1.46 补齐）
-    //     ⇒ 本步**今天必然零命中、零写**；表补齐后同一步代码自动生效（表是纯数据）。
-    await migrateUserKeybindings({
-      command: maps.command,
-      flag: maps.flag,
-      settingNewToOld: settingNewToOld(),
-    });
-  },
+/* ── E6#111n／1.42：**改名迁移补跑**（版本 8）——版本门禁的补救 ──
+ *
+ * 为什么必须补：见上方「版本门禁把 v7 提前烧掉了」。v7 在映射表还是空的时候就把
+ * `app.schemaVersion` 推到了 7 ⇒ 1.42 把官方仓真改成新名之后，v7 **再也不会跑**。
+ * 本步与 v7 共用同一个迁移体（`runNamespaceRenameMigration`）：
+ *   · 对**已越过 7 的老用户**：本步是那次「没跑成的搬家」的**补跑**；
+ *   · 对**全新安装 / 未越过 7 的用户**：v7 与 v8 都会跑，第二次零写（presence 门控 ＋ 幂等）。
+ * 🔴 **纯数据复用，不是第二套逻辑**——照本文件 §92–93 行预警的做法。
+ * ⚠️ 1.43–1.48 每一轮**在 v8 之后**落地的新仓改名，都要**各自再补一个版本号**（同一坑会重犯）。 */
+export const NAMESPACE_RENAME_MIGRATION_V8: ConfigMigration = {
+  version: 8,
+  name: "E6-111n namespace-rename-migration-rerun", // ⚠️ 同上：不写 `#`
+  migrate: runNamespaceRenameMigration,
 };
 
 /* 顶层即登记（生产路径唯一的装配点）。
@@ -141,6 +176,7 @@ export const NAMESPACE_RENAME_MIGRATION: ConfigMigration = {
  *   `clearConfigMigrations()` 清掉之后**没有任何代码会再跑一次本文件的顶层**，
  *   于是编排手里空表 ⇒ 一条迁移都不跑（1.41 本格首版四条用例全被这一条坑到）。 */
 registerConfigMigration(NAMESPACE_RENAME_MIGRATION);
+registerConfigMigration(NAMESPACE_RENAME_MIGRATION_V8);
 
 /** 读取当前 schema 版本——无标志/非法 → SCHEMA_VERSION_INITIAL */
 export function getConfigSchemaVersion(): number {

@@ -57,11 +57,43 @@ export interface RenameRound {
  */
 export const RENAME_ROUNDS: RenameRound[] = [
   {
-    // 1.42 清账 · file-tree（18 个设置键）＋ 1.43 清账 · editor（1 个设置键）
-    // ——1.33 §10.2 的 19 行映射表，逐行照搬，形状 = pluginId + "." + 旧名去掉第一段。
+    // 1.42 清账 · file-tree（18 个设置键 ＋ 23 个命令 id ＋ 11 个旗子）＋ 1.43 清账 · editor（1 个设置键）
+    // ——设置键 = 1.33 §10.2 的 19 行映射表；命令 id = 1.31 §二 的实况清单（声明 ∪ 运行时）；
+    //   旗子 = 1.37 §14.3 的 11 行。三张表**逐行照搬**，形状 = pluginId + "." + 旧名去掉第一段。
+    // 🔴 **同一条数据两轮共读**：本轮的 `command`/`flag` 两栏**只服务 1.42**（1.43 的 editor 仓
+    //   两个空间都是空的——`files.autoSave` 是设置键）。1.43 开工时**往 1.43 自己的轮次加**，
+    //   别把它的名字混进这一轮（混进来 = 1.42 的执行器会去 editor 仓找 file-tree 的名字）。
     round: "1.42+1.43",
     plugin: "file-tree",
-    command: {},
+    command: {
+      // ── 声明面 contributes.commands[].id（21，`plugin.json`）──
+      "explorer.newFile": "file-tree.newFile",
+      "explorer.newFolder": "file-tree.newFolder",
+      "explorer.openFile": "file-tree.openFile",
+      "explorer.openToSide": "file-tree.openToSide",
+      "explorer.openWith": "file-tree.openWith",
+      "explorer.openFocused": "file-tree.openFocused",
+      "explorer.openInTerminal": "file-tree.openInTerminal",
+      "explorer.revealInOS": "file-tree.revealInOS",
+      "explorer.copyPath": "file-tree.copyPath",
+      "explorer.copyRelativePath": "file-tree.copyRelativePath",
+      "explorer.cut": "file-tree.cut",
+      "explorer.copy": "file-tree.copy",
+      "explorer.paste": "file-tree.paste",
+      "explorer.rename": "file-tree.rename",
+      "explorer.delete": "file-tree.delete",
+      "explorer.findInFolder": "file-tree.findInFolder",
+      "explorer.refresh": "file-tree.refresh",
+      "explorer.collapseAll": "file-tree.collapseAll",
+      "explorer.openFolder": "file-tree.openFolder",
+      "explorer.search": "file-tree.search",
+      // ── 只在运行时注册（`registerCommand`，未进声明面）──
+      "explorer.removeFolder": "file-tree.removeFolder",
+      "explorer.closeAllEditors": "file-tree.closeAllEditors",
+      // 🔴 还回借来的 `editor.*` 命名空间（本轴活体 1：由 file-tree 注册、却借 editor 前缀）
+      "editor.selectForCompare": "file-tree.selectForCompare",
+      "editor.compareWithSelected": "file-tree.compareWithSelected",
+    },
     setting: {
       "explorer.sortOrder": "file-tree.sortOrder",
       "explorer.compactFolders": "file-tree.compactFolders",
@@ -84,7 +116,22 @@ export const RENAME_ROUNDS: RenameRound[] = [
       // ⚠️ 这一条属 editor（1.43）——表按「旧名 → 新名」建，与申报仓无关（同一段数据两轮共读）
       "files.autoSave": "editor.autoSave",
     },
-    flag: {},
+    flag: {
+      // ── 1.37 §14.3 的 11 行 —— `explorer*` 9 ＋ `viewHasSomeCollapsibleItem` ＋ 借来的 `inputFocus` ──
+      explorerItemIsFile: "file-tree.itemIsFile",
+      explorerItemIsDir: "file-tree.itemIsDir",
+      explorerItemIsRoot: "file-tree.itemIsRoot",
+      explorerResourceReadonly: "file-tree.resourceReadonly",
+      explorerResourceCut: "file-tree.resourceCut",
+      explorerClipboardEmpty: "file-tree.clipboardEmpty",
+      explorerResourceMoveableToTrash: "file-tree.resourceMoveableToTrash",
+      explorerFocus: "file-tree.focus",
+      explorerViewletCompressedFocus: "file-tree.viewletCompressedFocus",
+      viewHasSomeCollapsibleItem: "file-tree.viewHasSomeCollapsibleItem",
+      // 🔴 还回借来的共享组件旗子（本轴活体 2）——**写点与读点（`plugin.json:150`）必须同笔**，
+      //    漏读点 = 重命名时快捷键**静默失效**（不报错）。宿主侧一行不动（1.37 §14.3 裁决）。
+      inputFocus: "file-tree.inputFocus",
+    },
     appearance: { recipe: {}, colorway: {} },
   },
 ];

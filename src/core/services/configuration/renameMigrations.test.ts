@@ -28,26 +28,74 @@ function roundWith(patch: Partial<RenameRound>): RenameRound {
   };
 }
 
+/**
+ * 形状判据（三栏共用）：**只换第一段，词干零变化**，且第一段确实换过。
+ * 抽成函数是为了过 `duplication` 门禁——同一段循环复制三遍会被 jscpd 判克隆。
+ */
+function expectStemUnchanged(entries: [string, string][]): void {
+  for (const [oldName, newName] of entries) {
+    const oldTail = oldName.slice(oldName.indexOf("."));
+    const newTail = newName.slice(newName.indexOf("."));
+    expect(newTail, `${oldName} → ${newName} 词干变了`).toBe(oldTail);
+    // 第一段确实换过（不是原地不动）——自检也会拦，这里做冗余断言把形状钉死
+    expect(newName.slice(0, newName.indexOf("."))).not.toBe(oldName.slice(0, oldName.indexOf(".")));
+  }
+}
+
 describe("renameMigrations · 真数据自检（正控）", () => {
   it("当前 RENAME_ROUNDS 通过自检（不抛）", () => {
     expect(() => selfCheckRenameMaps()).not.toThrow();
   });
 
   it("19 条设置键映射在册，且形状 = 「只换第一段，词干零变化」", () => {
-    const maps = flattenRenameRounds();
-    const entries = Object.entries(maps.setting);
+    const entries = Object.entries(flattenRenameRounds().setting);
     expect(entries.length).toBe(19);
-    for (const [oldName, newName] of entries) {
-      const oldTail = oldName.slice(oldName.indexOf("."));
-      const newTail = newName.slice(newName.indexOf("."));
-      expect(newTail, `${oldName} → ${newName} 词干变了`).toBe(oldTail);
-      // 第一段确实换过（不是原地不动）——自检也会拦，这里做冗余断言把形状钉死
-      expect(newName.slice(0, newName.indexOf("."))).not.toBe(oldName.slice(0, oldName.indexOf(".")));
-    }
+    expectStemUnchanged(entries);
   });
 
   it("同一条数据两轮共读：files.autoSave → editor.autoSave 在册（1.43 那格要用）", () => {
     expect(flattenRenameRounds().setting["files.autoSave"]).toBe("editor.autoSave");
+  });
+});
+
+describe("renameMigrations · 1.42 补的 command / flag 两栏（清账·file-tree）", () => {
+  const maps = flattenRenameRounds();
+
+  it("command 栏在册 24 条，且形状 = 「只换第一段，词干零变化」", () => {
+    const entries = Object.entries(maps.command);
+    // 20 声明（`contributes.commands[].id`）+ 2 只在运行时注册（`explorer.removeFolder` /
+    // `explorer.closeAllEditors`）+ 2 条还回的 `editor.*` = 24。
+    // ⚠️ `revealInExplorer` **不在册**：它旧名没有可换的第一段（新旧名词干相同），1.31 §10.2.1 裁为
+    //    与 `explorer.revealInExplorer` 合并 ⇒ 已在仓侧直接完成，不产生映射条目（空转条目 = 假账）。
+    expect(entries.length).toBe(24);
+    expectStemUnchanged(entries);
+  });
+
+  it("flag 栏在册 11 条，且新名一律带 file-tree. 前缀", () => {
+    const entries = Object.entries(maps.flag);
+    expect(entries.length).toBe(11);
+    for (const [oldName, newName] of entries) {
+      expect(newName.startsWith("file-tree."), `${oldName} → ${newName}`).toBe(true);
+    }
+  });
+
+  it("🔴 借用已还：editor.selectForCompare / editor.compareWithSelected 映到 file-tree.*", () => {
+    // 这两条由 file-tree 注册却借 editor 前缀 ⇒ 卸载 file-tree 时它们永不被清理，
+    // 卸载 editor 时反被误删（1.31 §1.2 活体 1）。本格把它们还回去。
+    expect(maps.command["editor.selectForCompare"]).toBe("file-tree.selectForCompare");
+    expect(maps.command["editor.compareWithSelected"]).toBe("file-tree.compareWithSelected");
+  });
+
+  it("🔴 借用已还：共享组件的 inputFocus 映到 file-tree.inputFocus（按 1.37 裁决）", () => {
+    expect(maps.flag["inputFocus"]).toBe("file-tree.inputFocus");
+  });
+
+  it("三张表都不含空转条目（旧名 === 新名 = 假账）", () => {
+    for (const space of ["setting", "command", "flag"] as const) {
+      for (const [oldName, newName] of Object.entries(maps[space])) {
+        expect(newName, `${space} 的空转条目 ${oldName}`).not.toBe(oldName);
+      }
+    }
   });
 });
 

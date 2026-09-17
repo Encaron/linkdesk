@@ -36,6 +36,8 @@ import {
   getConfigSchemaVersion,
   runPendingConfigMigrations,
   SCHEMA_VERSION_KEY,
+  NAMESPACE_RENAME_MIGRATION,
+  NAMESPACE_RENAME_MIGRATION_V8,
 } from "./schemaMigrations";
 import type { ConfigurationContribution } from "../../registry/ConfigurationRegistry";
 
@@ -341,5 +343,70 @@ describe("schemaMigrations — 版本编排（E5.8#85 补课）", () => {
     expect(await runPendingConfigMigrations()).toBe(true);
     expect(getConfigurationValue("app.accentSource")).toBe("custom"); // 用户值保留
     expect(getConfigSchemaVersion()).toBe(2);
+  });
+});
+
+describe("schemaMigrations — 1.42 版本门禁补跑（v8）· 🔴 实测抓到的真缺陷", () => {
+  beforeEach(() => {
+    clearConfigurationRegistrations();
+    clearConfigurationCache();
+    clearConfigMigrations();
+  });
+
+  /** 造一个「新名已被声明」的 schema —— v7 的设置键搬家有这道门禁（`next in schema`） */
+  function registerSchemaWithNewKeys(keys: string[]): void {
+    registerConfiguration("file-tree", {
+      title: "文件树",
+      properties: Object.fromEntries(
+        keys.map((k) => [k, { type: "boolean" as const, default: false, description: "t" }]),
+      ),
+    });
+  }
+
+  it("🔴 缺陷本体：用户盘已在 v7 ⇒ v7 单独登记时**一条都不跑**（设置键永不搬家）", async () => {
+    // 复现 1.42 用户盘的真状态：app.schemaVersion 已被 1.41 的 v7 推到 7
+    await setConfigurationValueBatch([{ key: SCHEMA_VERSION_KEY, value: 7 }]);
+    registerSchemaWithNewKeys(["file-tree.confirmDelete"]);
+
+    // 只登记 v7（1.41 交付时的状态）——按 `version > current` 过滤 ⇒ 7 > 7 = false
+    registerConfigMigration({ version: 7, name: "v7", migrate: async () => {} });
+
+    expect(await runPendingConfigMigrations()).toBe(false); // 零待执行
+    expect(getConfigSchemaVersion()).toBe(7); // 版本停在 7，永不提升
+  });
+
+  it("🔴 修法：登记 v8 后，已越过 7 的用户**能跑到补跑那一步**", async () => {
+    await setConfigurationValueBatch([{ key: SCHEMA_VERSION_KEY, value: 7 }]);
+    registerSchemaWithNewKeys(["file-tree.confirmDelete"]);
+
+    let v8ran = false;
+    registerConfigMigration({ version: 8, name: "v8", migrate: async () => { v8ran = true; } });
+
+    expect(await runPendingConfigMigrations()).toBe(true);
+    expect(v8ran).toBe(true); // 补跑确实执行了
+    expect(getConfigSchemaVersion()).toBe(8);
+  });
+
+  it("迁移体复用：v7 与 v8 共用同一个函数（纯数据复用，不是第二套逻辑）", () => {
+    // 🔴 这条钉死「不许为补跑另写一套搬家逻辑」——两轮的 migrate 必须是同一个引用。
+    expect(NAMESPACE_RENAME_MIGRATION_V8.migrate).toBe(NAMESPACE_RENAME_MIGRATION.migrate);
+    expect(NAMESPACE_RENAME_MIGRATION.version).toBe(7);
+    expect(NAMESPACE_RENAME_MIGRATION_V8.version).toBe(8);
+  });
+
+  it("幂等：v7 已跑过的盘，v8 重跑零写（旧键已删 ⇒ presence 门控不产出）", async () => {
+    // 模拟「已迁完」的盘：新名有值、旧名没有
+    await setConfigurationValueBatch([
+      { key: SCHEMA_VERSION_KEY, value: 7 },
+      { key: "file-tree.confirmDelete", value: true },
+    ]);
+    registerSchemaWithNewKeys(["file-tree.confirmDelete"]);
+    registerConfigMigration(NAMESPACE_RENAME_MIGRATION_V8);
+
+    await runPendingConfigMigrations();
+
+    // 新值原样保留、没被二次改写
+    expect(getConfigurationValue("file-tree.confirmDelete")).toBe(true);
+    expect(getConfigSchemaVersion()).toBe(8);
   });
 });
