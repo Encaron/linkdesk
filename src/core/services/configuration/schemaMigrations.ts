@@ -147,9 +147,9 @@ async function runNamespaceRenameMigration({ setMany, deleteMany }: ConfigMigrat
     oldKeys.push(from);
   }
   if (oldKeys.length > 0) {
-    // 🔴 顺序即约定：先写新名（`setMany`），旧键的删除由编排层在**写成功之后**单独执行
-    //    （`runPendingConfigMigrations` 先 `resetConfigurationValueBatch(deletes)` 再
-    //     `setConfigurationValueBatch(batch)`… 见那边注释；两者同批失败 = 都不落盘、版本不提升）。
+    // 🔴 顺序即约定：本函数只**声明**「新名要写、旧名要删」，两者的先后由落盘段
+    //    `commitConfigWrites` 保证（先写新值 → 复核落盘 → 才删旧键）。⛔ 别在这里自己动手删，
+    //    也别把顺序反成「先删后写」——那是 1.41 修掉的丢数据 bug（见 `commitConfigWrites` 注释）。
     setMany(writes);
     deleteMany(oldKeys);
   }
@@ -236,6 +236,113 @@ registerConfigMigration(NAMESPACE_RENAME_MIGRATION_V9);
 registerConfigMigration(NAMESPACE_RENAME_MIGRATION_V10);
 registerConfigMigration(NAMESPACE_RENAME_MIGRATION_V11);
 
+/** 落盘条目——编排与补跑共用的一种形状 */
+interface BatchEntry {
+  key: string;
+  value: unknown;
+}
+
+/**
+ * 批次收集器（**唯一一份**）——迁移体只往这里推变更，落盘统一由 `commitConfigWrites` 做。
+ * E5.8#90：废弃键删除收集要去重——与写入同原子（见模块头「键删除扩展」）。
+ */
+function makeBatchCollector(batch: BatchEntry[], deletes: string[]): ConfigMigrationContext {
+  return {
+    setMany: (values) => {
+      for (const [key, value] of Object.entries(values)) batch.push({ key, value });
+    },
+    deleteMany: (keys) => {
+      for (const key of keys) if (!deletes.includes(key)) deletes.push(key);
+    },
+  };
+}
+
+/**
+ * 🔴 统一落盘段（编排与补跑共用）——**顺序 = 先写新值、再删旧键**（任一失败 → 本次不算成功；迁移须幂等）。
+ *
+ * 🔴 E6#111m／1.41 修正了这里的顺序 —— 原先是「先删后写」，对**改名迁移**是**会丢用户数据**的：
+ *   本轴禁区明写「任何清旧键必须在**新值确实写成功之后**」。两次调用各是一次独立持久化，
+ *   删成功、写失败（磁盘满 / 权限 / 进程被杀）⇒ **旧键没了、新键没写** ⇒ 用户的设置凭空回默认。
+ *   ⚠️ 对 #85/#86/#90 那几步（旧键与新键**同名**或旧键本就是废弃键）这个顺序无差别——
+ *     所以这个缺陷在 1.41 之前**一直没有受害者**，是**改名迁移**第一次让它变成真害。
+ *   ⚠️ 残留风险（如实登记）：若「写新值」成功而「删旧键」失败 ⇒ 新旧并存一版（旧键仍在盘上）。
+ *     后果 = 设置页多一行陈旧项，**用户的值不丢**（读的是新键）⇒ 下次启动重试删除。
+ *     这是**有意的取舍**：宁可留一个可见的残留，不可丢一个看不见的值。
+ *
+ * `advanceTo` 给定时把版本标志并入**同一次持久化**（含零产出——那是**版本迁移**的记账语义，见模块头）；
+ * 补跑传 `undefined` ⇒ 不写版本标志（否则等于替某一轮把版本烧掉，正是 `repairRenamedKeys` 要治的病）。
+ * 抛错 = 该批次不算成功，由调用方决定是「原子中止（版本迁移）」还是「记日志下次重试（补跑）」。
+ */
+async function commitConfigWrites({
+  batch,
+  deletes,
+  advanceTo,
+}: {
+  batch: BatchEntry[];
+  deletes: string[];
+  advanceTo?: number;
+}): Promise<void> {
+  // 统一写新值（＋版本标志）
+  if (advanceTo !== undefined) batch.push({ key: SCHEMA_VERSION_KEY, value: advanceTo });
+  await setConfigurationValueBatch(batch);
+  /* 🔴 1.41：**写「成功」要问一句真的落盘了没**。
+   *   `StorageService.write` 对文件写失败是 **catch 掉只 warn**（调用方多半不需要知道），
+   *   于是磁盘满 / 权限 / 进程被杀时 `setConfigurationValueBatch` 照样 resolve
+   *   ⇒ 编排以为写成了、接着去删旧键 ⇒ **新值没写、旧值被删** = 本轴定义的最重伤害。
+   *   `takeLastFileWriteFailed()` 一次性读清那个标志，读到 true 就按「写失败」走同一条中止路径
+   *   （不删键、不提升版本、下次启动全量重试）。 */
+  if (takeLastFileWriteFailed()) {
+    throw new Error("settings.json 文件写入失败（StorageService 已吞掉原始错误，见其 warn 日志）");
+  }
+  // 新值确已落盘，这才轮到清旧键。删除单独走 resetConfigurationValueBatch
+  // （批量复位单次持久化 + 单次 applier，#59 先例）；
+  // 对未注册键 applier 读 schema 无 onApply → 零副作用（ConfigurationApplier 容错）。
+  if (deletes.length) {
+    await resetConfigurationValueBatch(deletes);
+    /* 🔴 同理：删旧键那一次的文件写也可能被 `StorageService.write` 吞掉。
+     *   这一步失败**不丢数据**（新值已在上一步落盘，只是旧键残留一行），
+     *   但版本**不能提升**——否则残留的旧键永久留下，而下次启动不会再来重试删除。
+     *   ⇒ 按「本次中止」处理：下次启动重跑（迁移幂等，重跑写同值、再删一次）。 */
+    if (takeLastFileWriteFailed()) {
+      throw new Error("settings.json 删键落盘失败（StorageService 已吞掉原始错误，见其 warn 日志）");
+    }
+  }
+}
+
+/**
+ * 🔴 2026-09-17（1.46b）**改名补跑通道**——把「新名已被声明、盘上却还挂着旧名」的设置键搬过去。
+ * 详案 [23-修复-改名迁移补跑通道](../../../../docs/02-Electron架构/E6_插件生态与发布/01-插件独立构建/非样式命名空间归一化/23-修复-改名迁移补跑通道.md)。
+ *
+ * 为什么必须有它（实测真缺陷）：改名迁移的每一步（v7…v11）**在它唯一那次运行里要么搬、要么永久作废**——
+ *   · `runNamespaceRenameMigration` 有一道 `next in schema` 门禁（新名没被声明就不搬，理由见上方 :98-108）；
+ *   · 而编排的版本标志**零产出也提升**（模块头「成功语义」——那条语义是给**无门禁**的 #85/#86/#90 定的）；
+ *   ⇒ 插件比壳**晚到**的机器上，这一步被空烧，`pending = version > current` 再不选中它。
+ *   实证：某机 `app.schemaVersion=11` ＋ `files.autoSave="afterDelay"`（默认 `off`）＋ 实装 editor 1.0.11
+ *   ⇒ 1.43 那一格的改名永不生效，用户的自动保存静默回默认（不报错、不打日志）。
+ *
+ * 做法：跑**同一个改名体**（纯数据复用，不另造第二套逻辑）＋ **同一段落盘**，唯一区别是**不写版本标志**。
+ * 幂等由既有两道自守保证：presence 门控（旧键没值 ⇒ 不产出）＋「命中即恒等」（已迁 ⇒ 再跑零命中）
+ *   ⇒ 可以在**每次启动**跑一遍：门禁开了就搬、没开就零写（**顺序不再是判据**）。
+ * 失败**不抛**（补跑是收敛动作，不该拦启动；它也没有版本要提升）：记 `console.error`，下次启动再试。
+ */
+async function repairRenamedKeys(): Promise<boolean> {
+  const batch: BatchEntry[] = [];
+  const deletes: string[] = [];
+  await runNamespaceRenameMigration(makeBatchCollector(batch, deletes));
+  if (batch.length === 0 && deletes.length === 0) return false;
+  /* 🔴 与编排同理：开跑先清「上次文件写失败」标志——它是**模块级一次性状态**，
+   *   上一次运行（或上一个用例）留下的 true 会把本次**成功的写**误判成失败
+   *   （后果不是丢数据，是白等下次启动；但判据必须反映**本次**的写）。 */
+  takeLastFileWriteFailed();
+  try {
+    await commitConfigWrites({ batch, deletes });
+    return true;
+  } catch (e) {
+    console.error("[ConfigMigration] 改名补跑落盘失败（下次启动重试）：", e);
+    return false;
+  }
+}
+
 /** 读取当前 schema 版本——无标志/非法 → SCHEMA_VERSION_INITIAL */
 export function getConfigSchemaVersion(): number {
   const v = inspectConfiguration<number>(SCHEMA_VERSION_KEY).userValue;
@@ -243,82 +350,54 @@ export function getConfigSchemaVersion(): number {
 }
 
 /**
- * 运行所有待执行迁移——version > 当前，升序执行；产出并入统一 batch。
- * 全部通过 → 单次持久化（含变更值 + 版本标志提升到最高目标版本）；任一抛错 → 原子中止（零写零提升）。
+ * 配置对齐总入口（`startup.ts` post-init 调它一次）。
+ * ① 待执行迁移：version > 当前，升序执行；产出并入统一 batch。
+ *    全部通过 → 单次持久化（含变更值 + 版本标志提升到最高目标版本）；任一抛错 → 原子中止（零写零提升）。
+ * ② `repairRenamedKeys()`：**记账之后**补跑一次改名收敛（无版本门禁，见其注释）。
  * 返回：true = 本次有待执行迁移且全部通过；false = 无待执行迁移 或 有迁移失败（下次启动重试）。
+ *   ⚠️ 返回 `false` **不等于「什么都没做」**——② 补跑可能刚把旧键搬过去（它不走版本记账）。
  */
 export async function runPendingConfigMigrations(): Promise<boolean> {
   const current = getConfigSchemaVersion();
   const pending = [..._migrations.values()]
     .filter((m) => m.version > current)
     .sort((a, b) => a.version - b.version);
-  if (pending.length === 0) return false;
 
-  // 🔴 开跑先清「上次文件写失败」标志——它是**模块级一次性状态**，
-  //    上一次运行（或上一个用例）留下的 true 会把本次**成功的写**误判成失败。
-  takeLastFileWriteFailed();
+  if (pending.length > 0) {
+    // 🔴 开跑先清「上次文件写失败」标志——它是**模块级一次性状态**，
+    //    上一次运行（或上一个用例）留下的 true 会把本次**成功的写**误判成失败。
+    takeLastFileWriteFailed();
 
-  const batch: Array<{ key: string; value: unknown }> = [];
-  /** 删除请求——**已按迁移声明序记下**，但真正删要等新值写成功（见下方落盘段） */
-  const deletes: string[] = [];
-  for (const migration of pending) {
+    const batch: BatchEntry[] = [];
+    /** 删除请求——**已按迁移声明序记下**，但真正删要等新值写成功（见 `commitConfigWrites`） */
+    const deletes: string[] = [];
+    const ctx = makeBatchCollector(batch, deletes);
+    for (const migration of pending) {
+      try {
+        await migration.migrate(ctx);
+      } catch (e) {
+        // 原子失败——本次不落盘不提升，下次启动全量重试（防版本越过未成功迁移）
+        console.error(`[ConfigMigration] "${migration.name}"（v${migration.version}）失败，本次中止（下次启动重试）：`, e);
+        return false;
+      }
+    }
+    /* 全部通过 → 落盘（顺序与失败语义见 `commitConfigWrites`）。 */
     try {
-      await migration.migrate({
-        setMany: (values) => {
-          for (const [key, value] of Object.entries(values)) batch.push({ key, value });
-        },
-        // E5.8#90：废弃键删除收集（去重）——与写入同原子（见模块头「键删除扩展」）
-        deleteMany: (keys) => {
-          for (const key of keys) if (!deletes.includes(key)) deletes.push(key);
-        },
-      });
+      await commitConfigWrites({ batch, deletes, advanceTo: pending[pending.length - 1].version });
     } catch (e) {
-      // 原子失败——本次不落盘不提升，下次启动全量重试（防版本越过未成功迁移）
-      console.error(`[ConfigMigration] "${migration.name}"（v${migration.version}）失败，本次中止（下次启动重试）：`, e);
+      console.error("[ConfigMigration] 迁移落盘/删键失败，本次中止（下次启动重试）：", e);
       return false;
     }
   }
-  /* 全部通过 → 落盘。**顺序 = 先写新值、再删旧键**（任一失败 → 不提升，下次启动重试；迁移须幂等）。
-   *
-   * 🔴 E6#111m／1.41 修正了这里的顺序 —— 原先是「先删后写」，对**改名迁移**是**会丢用户数据**的：
-   *   本轴禁区明写「任何清旧键必须在**新值确实写成功之后**」。两次调用各是一次独立持久化，
-   *   删成功、写失败（磁盘满 / 权限 / 进程被杀）⇒ **旧键没了、新键没写** ⇒ 用户的设置凭空回默认，
-   *   而版本**没有提升**（`return false` 在写失败分支）⇒ 下次启动重跑，但旧值**已经不在盘上了**。
-   *   ⚠️ 对 #85/#86/#90 那几步（旧键与新键**同名**或旧键本就是废弃键）这个顺序无差别——
-   *     所以这个缺陷在 1.41 之前**一直没有受害者**，是**改名迁移**第一次让它变成真害。
-   *   ⚠️ 代价：正常路径多一次「写后删」的序，而不是「删后写」——两条路都是两次持久化，零额外成本。
-   *   ⚠️ 残留风险（如实登记）：若「写新值」成功而「删旧键」失败 ⇒ 新旧并存一版（旧键仍在盘上）。
-   *     后果 = 设置页多一行陈旧项，**用户的值不丢**（读的是新键）⇒ 下次启动重试删除。
-   *     这是**有意的取舍**：宁可留一个可见的残留，不可丢一个看不见的值。 */
-  try {
-    // 统一写新值 + 版本标志（含零产出——全新安装也标记已迁，见模块头注释）
-    batch.push({ key: SCHEMA_VERSION_KEY, value: pending[pending.length - 1].version });
-    await setConfigurationValueBatch(batch);
-    /* 🔴 1.41：**写「成功」要问一句真的落盘了没**。
-     *   `StorageService.write` 对文件写失败是 **catch 掉只 warn**（调用方多半不需要知道），
-     *   于是磁盘满 / 权限 / 进程被杀时 `setConfigurationValueBatch` 照样 resolve
-     *   ⇒ 编排以为写成了、接着去删旧键 ⇒ **新值没写、旧值被删** = 本轴定义的最重伤害。
-     *   `takeLastFileWriteFailed()` 一次性读清那个标志，读到 true 就按「写失败」走同一条中止路径
-     *   （不删键、不提升版本、下次启动全量重试）。 */
-    if (takeLastFileWriteFailed()) {
-      throw new Error("settings.json 文件写入失败（StorageService 已吞掉原始错误，见其 warn 日志）");
-    }
-    // 新值确已落盘，这才轮到清旧键。删除单独走 resetConfigurationValueBatch
-    // （批量复位单次持久化 + 单次 applier，#59 先例）；
-    // 对未注册键 applier 读 schema 无 onApply → 零副作用（ConfigurationApplier 容错）。
-    if (deletes.length) {
-      await resetConfigurationValueBatch(deletes);
-      /* 🔴 同理：删旧键那一次的文件写也可能被 `StorageService.write` 吞掉。
-       *   这一步失败**不丢数据**（新值已在上一步落盘，只是旧键残留一行），
-       *   但版本**不能提升**——否则残留的旧键永久留下，而下次启动不会再来重试删除。
-       *   ⇒ 按「本次中止」处理：下次启动重跑（迁移幂等，重跑写同值、再删一次）。 */
-      if (takeLastFileWriteFailed()) {
-        throw new Error("settings.json 删键落盘失败（StorageService 已吞掉原始错误，见其 warn 日志）");
-      }
-    }
-  } catch (e) {
-    console.error("[ConfigMigration] 迁移落盘/删键失败，本次中止（下次启动重试）：", e);
-    return false;
-  }
-  return true;
+
+  /* 🔴 2026-09-17（1.46b）：**记账之后补跑一次改名**（无版本门禁）——
+   *    · 位置放在版本记账**之后**：待执行迁移在场时先按原语义走完（1.41 的
+   *      「先写新值、再删旧键」与「任一失败即原子中止」一条不动，既有判据不受影响）；
+   *    · 也放在**早退之前**：`pending` 为空（版本记账已跑满 = 门禁空烧的现场）时照样对一次账。
+   *    · 放在总入口里面（而不是新增一个调用点）是**有意**的：生产接线点（`startup.ts`）一行不改，
+   *      补跑就搭在同一条已被生产验证过的路径上，不新增「函数写好了没人调」的缺口
+   *      （memory `gate-selftest-must-be-wired` 是同一个坑）。 */
+  await repairRenamedKeys();
+
+  return pending.length > 0;
 }

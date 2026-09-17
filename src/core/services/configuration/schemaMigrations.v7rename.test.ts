@@ -273,11 +273,13 @@ describe("落盘顺序 · 先写新值后删旧键（用真持久化链）", () 
    *   压根没进内存缓存，后面整套判据都是在空盘上演戏（本格首版四条用例全绿也是这个原因）。
    * 而 `it()` 体里才种的话，init 早已跑完 ⇒ 种子永远晚一步。
    * ⇒ 把「种 + init」合成一个显式助手，每条用例自己决定种什么再启动。
+   * ⚠️ `version` = `app.schemaVersion` 的种子：默认 **6**（= v7 待执行，本文件上半场用）；
+   *    1.46b 补跑组传 **11**（= 版本记账已跑满、门禁空烧的现场）。
    */
-  async function boot(seed: Record<string, unknown>): Promise<void> {
+  async function boot(seed: Record<string, unknown>, version = 6): Promise<void> {
     const { initStorageService, clearStorageCache } = await import("./StorageService");
     const { initConfigurationService } = await import("./ConfigurationService");
-    socket.set(SETTINGS_PATH, JSON.stringify({ ...seed, [SCHEMA_VERSION_KEY]: 6 }));
+    socket.set(SETTINGS_PATH, JSON.stringify({ ...seed, [SCHEMA_VERSION_KEY]: version }));
     // 🔴 顺序：**先清缓存、再 init**。`clearStorageCache()` 会把 `_filePaths` / `_appDataDir` 都清掉，
     //    于是 `initStorageService()` 会用**已装好的假 FileService** 重新解析路径（得 `C:/userData/…`）。
     clearStorageCache();
@@ -372,5 +374,85 @@ describe("落盘顺序 · 先写新值后删旧键（用真持久化链）", () 
     expect(onDisk["file-tree.confirmDelete"]).toBe(false); // 🔴 新值**在**
     expect(onDisk["explorer.confirmDelete"]).toBe(false); // 旧值也还在（残留）
     // ⇒ 这就是模块头写明的**有意取舍**：宁可留一个可见的残留，不可丢一个看不见的值。
+  });
+
+  /* ══════════════════════════════════════════════════════════════════
+   *  🔴 E6#111n-5b／1.46b **改名补跑通道**——治「门禁空烧」那类静默丢值
+   *     （详案：docs/…/非样式命名空间归一化/23-修复-改名迁移补跑通道.md）
+   *
+   *  现场 = **本机实测形态**：`app.schemaVersion` 已经跑满（11）、插件那时还没声明新名 ⇒
+   *  改名的版本步骤被空烧，而 `pending = version > current` 再不会选中它 ⇒ 用户的旧键**永久停在旧名**，
+   *  设置页把新名读成默认（不报错、不打日志）。补跑通道就是补这一笔。
+   *
+   *  ★ 本组两条判据只在本组可测：**版本标志不动**（补跑不碰记账）＋ **每次启动重跑仍零写**
+   *    （幂等，否则每次启动都碰 settings.json 会触发 watcher 抖动）。
+   * ══════════════════════════════════════════════════════════════════ */
+  describe("1.46b 补跑通道 · 版本记账已跑满（门禁空烧的现场）", () => {
+    it("🔴 复现本机形态：版本已是 11 ⇒ 值照搬、旧键照清，且**版本标志一字不动**", async () => {
+      registerConfiguration("file-tree", fileTreeConfig({ renamed: true }));
+      // 本机形态：记账跑满（11）而用户的旧键还挂着值
+      await boot({ "explorer.confirmDelete": false }, 11);
+
+      const ok = await runPendingConfigMigrations();
+      await settle();
+      // ⚠️ 返回 false = 「无待执行迁移」——**不代表什么都没做**（补跑刚搬完）。
+      expect(ok).toBe(false);
+      expect(inspectConfiguration("file-tree.confirmDelete").userValue).toBe(false);
+      const onDisk = diskSettings();
+      expect(onDisk["file-tree.confirmDelete"]).toBe(false);
+      expect(onDisk["explorer.confirmDelete"]).toBeUndefined();
+      expect(schemaVersionOnDisk()).toBe(11); // 🔴 补跑不替任何一轮记账（否则烧掉别人的版本）
+      expect(writeSeq.length).toBeGreaterThanOrEqual(2); // 写新值一次、删旧键一次
+    });
+
+    it("幂等 ＋ 零写：连跑两次，第二次**一次盘都没碰**（防每次启动抖动 watcher）", async () => {
+      registerConfiguration("file-tree", fileTreeConfig({ renamed: true }));
+      await boot({ "explorer.confirmDelete": false }, 11);
+      await runPendingConfigMigrations();
+      await settle();
+      const writesAfterFirst = writeSeq.length;
+      const diskAfterFirst = JSON.stringify(diskSettings());
+
+      expect(await runPendingConfigMigrations()).toBe(false);
+      await settle();
+      // 旧键已删 ⇒ 补跑体零命中 ⇒ 连一次 `writeFile` 都不发生（不是「写同值」）
+      expect(writeSeq.length).toBe(writesAfterFirst);
+      expect(JSON.stringify(diskSettings())).toBe(diskAfterFirst);
+    });
+
+    it("🔴 门禁仍设防：新名**没被声明** ⇒ 补跑同样零写零搬（不许把值挂到没人读的新名上）", async () => {
+      registerConfiguration("file-tree", fileTreeConfig({ renamed: false }));
+      await boot({ "explorer.confirmDelete": false }, 11);
+
+      await runPendingConfigMigrations();
+      await settle();
+      expect(writeSeq.length).toBe(0); // 门禁 + presence 双自守 ⇒ 零写
+      const onDisk = diskSettings();
+      expect(onDisk["explorer.confirmDelete"]).toBe(false); // 旧键原地不动
+      expect(onDisk["file-tree.confirmDelete"]).toBeUndefined();
+    });
+
+    it("presence 门控：旧键**从没写过** ⇒ 补跑不凭空造出新键（零写）", async () => {
+      registerConfiguration("file-tree", fileTreeConfig({ renamed: true }));
+      await boot({}, 11); // 空盘：writer 从没写过任何设置
+
+      await runPendingConfigMigrations();
+      await settle();
+      expect(writeSeq.length).toBe(0);
+      expect(inspectConfiguration("file-tree.confirmDelete").userValue).toBeUndefined();
+    });
+
+    it("补跑失败**不拦启动**（不抛、版本不动、下次启动重试）", async () => {
+      registerConfiguration("file-tree", fileTreeConfig({ renamed: true }));
+      await boot({ "explorer.confirmDelete": false }, 11);
+      failingWrites = 1; // 补跑那一次写失败
+
+      await expect(runPendingConfigMigrations()).resolves.toBe(false); // 抛不出去
+      await settle();
+      const onDisk = diskSettings();
+      expect(onDisk["explorer.confirmDelete"]).toBe(false); // 值没丢（写失败 ⇒ 删除那步没跑）
+      expect(onDisk["file-tree.confirmDelete"]).toBeUndefined();
+      expect(schemaVersionOnDisk()).toBe(11); // 补跑没有版本可提升
+    });
   });
 });
