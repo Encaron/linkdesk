@@ -28,3 +28,16 @@
 - 四断言全绿 → 写本档 §执行记录（读数 + 截图/探针输出）→ **开闸**，#123 可做。
 - 任一红 → **停批**：把红因、根因（file:line）、两条出路（修法 / 回退分发式）写进交接本顶部，等用户裁决。⛔ 不许带病改方案继续往后铺。
 - 本格产物可留在工作区（#123 接手正式化）；不 commit 到主干则在本档注明工作区状态。
+
+## §执行记录（2026-09-19 · 会话 A · ✅ 四断言全绿——**开闸**）
+
+- **改动**：`build-pool-vendor.mjs` 的 `MAP_KEYS` 加 `"@linkdesk/ui"`（头注标明 spike、#123 正式化）＋ `entryFileRel` 加 case（**实测产物名 = `./@linkdesk/ui.js`**，esbuild 对包入口按 specifier 路径产文件）＋ `injectImportMap` 同笔注入 vendor css link（**实测产物名 = `./pool-vendor/@linkdesk/ui.css`**，esbuild 对含 css import 的入口产同名 .css；`data-pool-vendor="css"` 标记 + 幂等剥旧）。`npm run build` 干净链 EXIT=0。
+- **前置新鲜度**：跑 vendor 前先 `npm run build --workspace @linkdesk/ui`（dist 就绪：index.js 579.02 kB + index.css 19.64 kB）。
+- **单实例的结构证据（esbuild chunk 共享，import 同一 URL = 同一模块实例）**：`@linkdesk/ui.js` 的 import 与各 vendor 入口逐一对上——react → `chunk-BB6DBU3L.js`（= `react.js` 入口的 chunk）、react-dom → `chunk-34CI2ETP.js`、react-i18next（useTranslation）→ `chunk-AOUUL4FZ.js`、i18next → `chunk-7ZWKYZN5.js`。零 facade 工作（照 00 §六1 预判：真 ESM 直连）。
+- **真机 probe**（`scripts/spike-ui-vendor-probe.cjs`，Electron = 真实 Chromium，加载**真实打包产物** `dist/pool.html`，import-map 与 css link 均为打包轨道注入原件）：
+  1. **具名导出链接 ✅**：`import("@linkdesk/ui")` 实曝 **29 键**（与 #121 快照 29 值导出互证）；抽查 9 个（SelectBox / ContextMenu / HintCard / Button / Slider / Toggle / Combobox / inferSliderStep / pickIdentityArt）全为真函数/对象，missing = []（import-map 严格静态链接的死亡形态未出现）。
+  2. **单实例 ✅**：两个独立 `<script type="module">` 入口（模拟两插件 bundle）各自 `import("@linkdesk/ui")` → 模块对象 `===` 全等、`SelectBox === SelectBox`。
+  3. **CSS + token 跟随 ✅**：vendor css link 生效（styleSheets 命中 `pool-vendor/@linkdesk/ui.css`；渲染 Button 有样式）；`--accent` 改 `#ff0000` → `backgroundColor` 实测 `rgb(0, 120, 212)` → `rgb(255, 0, 0)`（token 层未被 vendor 化破坏）。
+  4. **无插件零成本 ✅**：任何显式 import 之前 resource timing 零条 `pool-vendor/@linkdesk` 条目、零 modulepreload/preload——import-map 是被动声明，无插件消费 = 零网络零执行。
+- **出口**：四断言全绿 ⇒ **开闸，#123 可做**。本格改动 commit 到主干（vendor script 带 spike 标注 + 探针脚本 `scripts/spike-ui-vendor-probe.cjs` 保留为可复跑证据）；#123 正式化时把 ui 包 build 内聚进根 build 链、`DEFAULT_EXTERNAL` 同步加项。
+- ⚠️ spike 实测的**已知偏差**（给 #123）：esbuild 重跑会改 chunk 哈希名（共享结构不变）；`build-pool-vendor.mjs` 头注「覆盖集 = DEFAULT_EXTERNAL 全集」此刻与 SDK 侧**故意不同步**（ui 只进了 MAP_KEYS，#123 补 DEFAULT_EXTERNAL——中间态若有人单独发插件 SDK 产物无影响，sdk 包未发版）。

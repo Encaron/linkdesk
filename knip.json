@@ -27,7 +27,9 @@
         // E5.8#2：electron 三件套（主进程 + 双 preload——preload-pool 池侧 / preload-shell 壳侧）
         "electron/main.ts",
         "electron/preload-pool.ts",
-        "electron/preload-shell.ts"
+        "electron/preload-shell.ts",
+        // E6#122：vendor spike 真机探针（npx electron 直跑的独立入口，零仓内消费方——非死代码）
+        "scripts/spike-ui-vendor-probe.cjs"
       ],
       "project": [
         // E5.8#2：plugins/ 排除——插件是独立 vite 构建产物（dist/plugins/*.js 构建自证），knip 只管壳 src/ + electron/

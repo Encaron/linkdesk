@@ -36,7 +36,9 @@ const vendorDir = resolve(distDir, "pool-vendor");
 process.env.NODE_ENV = "production";
 const require_ = createRequire(import.meta.url);
 
-/** DEFAULT_EXTERNAL 全集 —— 与 packages/plugin-sdk/src/vite-config.ts 的 DEFAULT_EXTERNAL 同步维护（宿主运行时契约） */
+/** DEFAULT_EXTERNAL 全集 —— 与 packages/plugin-sdk/src/vite-config.ts 的 DEFAULT_EXTERNAL 同步维护（宿主运行时契约）
+ *  ⚠️ E6#122 spike（2026-09-19）：临时加 "@linkdesk/ui"（池 vendor 单实例供给 probe，全批 go/no-go 闸）。
+ *     正式化（DEFAULT_EXTERNAL 同步加项 + ui build 内聚）在 #123——本格只证可行，红即停批。 */
 const MAP_KEYS = [
   "react",
   "react-dom",
@@ -45,6 +47,7 @@ const MAP_KEYS = [
   "react/jsx-dev-runtime",
   "i18next",
   "react-i18next",
+  "@linkdesk/ui",
 ];
 
 // 纯 CJS 派生（esbuild 只出 default）→ 需 facade。原生 ESM（具名全真）→ 直连。
@@ -114,6 +117,7 @@ function entryFileRel(spec) {
     case "react/jsx-dev-runtime": return "./react/jsx-dev-runtime.js";
     case "i18next": return "./i18next.js";
     case "react-i18next": return "./react-i18next.js";
+    case "@linkdesk/ui": return "./@linkdesk/ui.js"; // E6#122 spike：esbuild 对包入口产 "@linkdesk/ui.js"（实测）
     default: throw new Error(`unknown spec ${spec}`);
   }
 }
@@ -144,16 +148,23 @@ function injectImportMap(map) {
   const html = readFileSync(htmlPath, "utf-8");
   const tag =
     `<script type="importmap">\n${JSON.stringify({ imports: map }, null, 2)}\n    </script>`;
-  // 幂等：先剥掉既有 import-map（npm run build 每次 fresh，此处防手动重跑双注）
-  const stripped = html.replace(/<script type="importmap">[\s\S]*?<\/script>\s*/g, "");
+  // E6#122 spike：ui 组件样式随壳走（CSS 通道定案见 03 §三）——vendor css link 与 import-map 同笔注入。
+  // 产物名实测 = ./pool-vendor/@linkdesk/ui.css（esbuild 对含 css import 的入口产同名 .css）。
+  const cssLink = map["@linkdesk/ui"]
+    ? `<link rel="stylesheet" data-pool-vendor="css" href="./pool-vendor/@linkdesk/ui.css">`
+    : "";
+  // 幂等：先剥掉既有 import-map / vendor css link（npm run build 每次 fresh，此处防手动重跑双注）
+  const stripped = html
+    .replace(/<script type="importmap">[\s\S]*?<\/script>\s*/g, "")
+    .replace(/<link rel="stylesheet" data-pool-vendor="css"[^>]*>\s*/g, "");
   const titleIdx = stripped.indexOf("</title>");
   if (titleIdx === -1) {
     throw new Error("[pool-vendor] dist/pool.html 缺 </title> 锚点，无法注入 import-map。");
   }
   const injectAt = titleIdx + "</title>".length;
-  const out = stripped.slice(0, injectAt) + "\n    " + tag + stripped.slice(injectAt);
+  const out = stripped.slice(0, injectAt) + "\n    " + tag + (cssLink ? "\n    " + cssLink : "") + stripped.slice(injectAt);
   writeFileSync(htmlPath, out);
-  console.log(`[pool-vendor] import-map 已注入 dist/pool.html（${MAP_KEYS.length} specifiers → pool-vendor/）`);
+  console.log(`[pool-vendor] import-map 已注入 dist/pool.html（${MAP_KEYS.length} specifiers → pool-vendor/）${cssLink ? " + ui css link" : ""}`);
 }
 
 const map = await buildVendor();
