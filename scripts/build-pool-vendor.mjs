@@ -20,11 +20,12 @@
  * 产物全部落 dist/pool-vendor/（electron-builder files 含 dist/** → 随包进 asar，file:// 相对可加载）。
  */
 import { build } from "esbuild";
+import { execSync } from "child_process";
 import { resolve, dirname, join } from "path";
 import { fileURLToPath } from "url";
 import { createRequire } from "module";
 import {
-  existsSync, mkdirSync, rmSync, readFileSync, writeFileSync, copyFileSync, readdirSync,
+  existsSync, mkdirSync, rmSync, readFileSync, writeFileSync, copyFileSync, readdirSync, statSync,
 } from "fs";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -37,8 +38,8 @@ process.env.NODE_ENV = "production";
 const require_ = createRequire(import.meta.url);
 
 /** DEFAULT_EXTERNAL 全集 —— 与 packages/plugin-sdk/src/vite-config.ts 的 DEFAULT_EXTERNAL 同步维护（宿主运行时契约）
- *  ⚠️ E6#122 spike（2026-09-19）：临时加 "@linkdesk/ui"（池 vendor 单实例供给 probe，全批 go/no-go 闸）。
- *     正式化（DEFAULT_EXTERNAL 同步加项 + ui build 内聚）在 #123——本格只证可行，红即停批。 */
+ *  E6#123：`@linkdesk/ui` 正式入列（#122 spike 四断言全绿后转正；vendor 入口构建前内聚 ui 包 build，
+ *  保证 dist 新鲜——见下方 ensureUiDist()）。 */
 const MAP_KEYS = [
   "react",
   "react-dom",
@@ -50,6 +51,18 @@ const MAP_KEYS = [
   "@linkdesk/ui",
 ];
 
+/** ui 包 dist 保鲜（#123 内聚）：vendor 入口 = workspace `@linkdesk/ui` 的 dist/index.js，
+ *  壳侧改了共享组件而 ui 包没重 build ⇒ vendor 带陈旧组件。⛔ 不污染根 build 链（任务书 §一2 裁定：脚本内聚）。 */
+function ensureUiDist() {
+  const pkgJson = resolve(repoRoot, "packages", "linkdesk-ui", "package.json");
+  const distEntry = resolve(repoRoot, "packages", "linkdesk-ui", "dist", "index.js");
+  const srcEntry = resolve(repoRoot, "packages", "linkdesk-ui", "src", "index.ts");
+  const needs = !existsSync(distEntry) || statSync(srcEntry).mtimeMs > statSync(distEntry).mtimeMs;
+  if (!needs) return;
+  console.log("[pool-vendor] @linkdesk/ui dist 缺失或陈旧（src 比 dist 新）→ 内聚重 build …");
+  execSync("npm run build --workspace @linkdesk/ui", { cwd: repoRoot, stdio: "inherit" });
+}
+
 // 纯 CJS 派生（esbuild 只出 default）→ 需 facade。原生 ESM（具名全真）→ 直连。
 const NEED_FACADE = new Set(["react", "react-dom", "react-dom/client", "react/jsx-runtime", "react/jsx-dev-runtime"]);
 
@@ -58,6 +71,7 @@ async function buildVendor() {
     console.log("[pool-vendor] dist/ 不存在，跳过（build 未跑）。");
     return null;
   }
+  ensureUiDist();
   rmSync(stageDir, { recursive: true, force: true });
   rmSync(vendorDir, { recursive: true, force: true });
   mkdirSync(stageDir, { recursive: true });
@@ -148,8 +162,8 @@ function injectImportMap(map) {
   const html = readFileSync(htmlPath, "utf-8");
   const tag =
     `<script type="importmap">\n${JSON.stringify({ imports: map }, null, 2)}\n    </script>`;
-  // E6#122 spike：ui 组件样式随壳走（CSS 通道定案见 03 §三）——vendor css link 与 import-map 同笔注入。
-  // 产物名实测 = ./pool-vendor/@linkdesk/ui.css（esbuild 对含 css import 的入口产同名 .css）。
+  // E6#123：ui 组件样式随壳走（CSS 通道定案见 03 号任务书 §二）——vendor css link 与 import-map 同笔注入。
+  // 产物名 = ./pool-vendor/@linkdesk/ui.css（esbuild 对含 css import 的入口产同名 .css，#122 实测）。
   const cssLink = map["@linkdesk/ui"]
     ? `<link rel="stylesheet" data-pool-vendor="css" href="./pool-vendor/@linkdesk/ui.css">`
     : "";

@@ -32,6 +32,10 @@ export const CHECK_IDS = {
    *  ⚠️ 宿主**公开约定面**（`contextKeysPublic`，今天 = `settings` 齿轮菜单的 4 个 `setting*`）
    *  **不判**（第三方设它合法：登记 ＋ 运行时报点）——见 `context-ownership.ts` 文件头。 */
   contextOwnership: "linkdesk/no-unowned-context-key",
+  /** E6#123（L9 集中供给）：组件样式由壳池 vendor 统一供给——插件源码 import @linkdesk/ui 的 css 判红。
+   *  ⚠️ 本 id 在 CHECK_IDS 里**仅作文档**：`checks/ui-css-import.ts` 刻意不接 disable 机制
+   *  （「知情地把样式烤死」是语义错误不是合法偏离），eslint-disable 注释对它无效。 */
+  uiCssImport: "linkdesk/no-ui-css-import",
 } as const;
 
 interface RawComment {

@@ -42,6 +42,7 @@ import { runCommandOwnershipCheck } from "./checks/command-ownership.js";
 import { runConfigOwnershipCheck } from "./checks/config-ownership.js";
 import { runAppearanceOwnershipCheck } from "./checks/appearance-ownership.js";
 import { runContextOwnershipCheck } from "./checks/context-ownership.js";
+import { runUiCssImportCheck } from "./checks/ui-css-import.js";
 import { type CheckViolation } from "./checks/scan.js";
 
 /** 示例用的门禁 id（打印知情绕行格式）；伪 id 与 check 脚本 CHECK_IDS 同源 */
@@ -188,6 +189,16 @@ export async function runPluginLint(root: string, options: PluginLintOptions = {
   const css = runCssHardcodeCheck(absRoot);
   const font = runFontScaleCheck(absRoot);
   const spacing = runSpacingGridCheck(absRoot);
+  /**
+   * 🔴 E6#123：第九条 check 腿 —— **`@linkdesk/ui` 样式 import 判红**（`checks/ui-css-import.ts`）。
+   *   L9 起组件代码与样式都由壳池 vendor 单实例供给——插件源码 import `@linkdesk/ui/index.css`
+   *   会把组件样式重新烤进插件 bundle（「壳改样式全生态跟随」破产一半）。存量 = 0
+   *   （#123 侦察：四只消费仓＋仓内插件全部零 css import，样式一直是随 JS 图走的）⇒ 纯预防。
+   *   ⚠️ 本腿**没有 disable 豁免出口**（check 内不接 buildDisableIndex）——「知情地把样式烤死」
+   *      是语义错误不是合法偏离。⚠️ 与 css-namespace 腿刻意不合并：判据物是 import specifier
+   *      不是样式文本，独立统计/独立收紧。
+   */
+  const uiCssImport = runUiCssImportCheck(absRoot);
   /**
    * 命名空间腿 = **前缀判据 ⊕ 宿主保留名判据**（E6#109h-b①，详案 15 §二选项 (A)：并入现腿、同一个
    * `CHECK_IDS.cssNamespace`、同一条 `check-css-namespace` 腿，不是两条腿）。
@@ -346,6 +357,11 @@ export async function runPluginLint(root: string, options: PluginLintOptions = {
       label: "check-context-ownership",
       violations: contextOwnership.violations,
     },
+    {
+      id: "linkdesk/no-ui-css-import（组件样式由壳池 vendor 统一供给——插件源码不得 import @linkdesk/ui 的 css）",
+      label: "check-ui-css-import",
+      violations: uiCssImport,
+    },
   ];
   const totalCheckViolations =
     css.length +
@@ -355,7 +371,8 @@ export async function runPluginLint(root: string, options: PluginLintOptions = {
     commandOwnership.violations.length +
     configOwnership.violations.length +
     appearanceOwnership.violations.length +
-    contextOwnership.violations.length;
+    contextOwnership.violations.length +
+    uiCssImport.length;
 
   return {    files: results.length,
     eslintRows,

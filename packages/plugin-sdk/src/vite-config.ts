@@ -53,8 +53,11 @@ import {
 /** 壳提供、插件不得重复打包的依赖——i18next 必须 external（B3：自打实例 → 翻译全空）。
  *  E6#15d 消费切换实证：`react-dom/client` 必须同列 external——池 import-map 已提供 clean 副本，
  *  否则作者 import react-dom/client 时其 dev wrapper（createRoot 解析读 `process.env.NODE_ENV`，
- *  顶层执行）被内联进 bundle → 池运行态 ReferenceError: process is not defined → 视图全崩。 */
-export const DEFAULT_EXTERNAL = ["react", "react-dom", "react-dom/client", "react/jsx-runtime", "react-i18next", "i18next"];
+ *  顶层执行）被内联进 bundle → 池运行态 ReferenceError: process is not defined → 视图全崩。
+ *  E6#123（L9 集中供给）：`@linkdesk/ui` 加入宿主运行时契约——组件代码由壳池 vendor 单实例供给
+ *  （import-map，`scripts/build-pool-vendor.mjs` 同步维护 MAP_KEYS），样式由 vendor css link 供给
+ *  （插件源码 ⛔ import ui 的 css，lint 腿 `check-ui-css-import` 判红）。语义见 UI 集中供给 00-整理档案。 */
+export const DEFAULT_EXTERNAL = ["react", "react-dom", "react-dom/client", "react/jsx-runtime", "react-i18next", "i18next", "@linkdesk/ui"];
 
 /** E6#15m：打包红标记——includeLspRuntimePackages 对不可解 .bin 抛带此前缀的错，
  * closeBundle 据此把它**重新抛出**（真红拦 build），其余一般打包错仍走 warn（失败隔离）。 */

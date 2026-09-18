@@ -33,6 +33,9 @@ function resolveUserDataBundles(): Plugin {
     ["react/jsx-dev-runtime", null],
     ["react-i18next", null],
     ["i18next", null],
+    // E6#123（L9）：ui 入 DEFAULT_EXTERNAL 后插件 bundle 是裸 import——dev 同款解析到 workspace 包
+    //（dist/index.js 自带 `import "./index.css"` ⇒ dev 的组件 css 也随此解析进图，见下方 pool css 兜底）。
+    ["@linkdesk/ui", null],
   ]);
   return {
     name: "linkdesk-userdata-bundle-externals",
@@ -45,6 +48,28 @@ function resolveUserDataBundles(): Plugin {
   };
 }
 
+/**
+ * E6#123（L9 集中供给）dev 兜底：组件 css 由壳池 vendor link 供给（打包轨道）——dev 轨道 vite dev
+ * 服务 pool.html 时没有 vendor 注入，给 **pool.html**（⛔ 不碰壳窗口 index.html）注一条指向
+ * workspace `@linkdesk/ui/dist/index.css` 的 link，保证 dev 预览不丢组件样式。
+ * 仅 dev 轨道（apply: "serve"）；打包轨道由 build-pool-vendor.mjs 注入的 vendor link 承担。
+ */
+function injectPoolUiCss(): Plugin {
+  const require = createRequire(join(__dirname, "package.json"));
+  const cssAbs = resolve(require.resolve("@linkdesk/ui"), "..", "index.css").replace(/\\/g, "/");
+  return {
+    name: "linkdesk-dev-pool-ui-css",
+    apply: "serve",
+    transformIndexHtml: {
+      order: "pre" as const,
+      handler(html, ctx) {
+        if (!ctx.filename.replace(/\\/g, "/").endsWith("/pool.html")) return html;
+        return html.replace("</head>", `    <link rel="stylesheet" href="/@fs/${cssAbs}">\n  </head>`);
+      },
+    },
+  };
+}
+
 export default defineConfig(async ({ command }) => {
   // E5.7#31.7：池开发预览入口——仅 vite dev（浏览器 mock 模式，Codex UI 设计通道）。
   // 生产构建（npm run build）零污染：preview.html + mock fixture 不进 dist。
@@ -53,7 +78,7 @@ export default defineConfig(async ({ command }) => {
     : {};
 
   return {
-    plugins: [react(), resolveUserDataBundles()],
+    plugins: [react(), resolveUserDataBundles(), injectPoolUiCss()],
     // Electron loadFile 需要相对路径——绝对路径 /assets/ 会解析到文件系统根
     base: './',
     clearScreen: false,

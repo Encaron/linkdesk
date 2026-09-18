@@ -29,3 +29,12 @@
 ## 四、回勾要求
 
 - 本档执行记录（侦察结论 + 三通道读数）+ 清单回勾 + 交接本一段。SDK 改动随 #127 真发（本格 bump 不 publish，照 0.3.1 先例）。
+
+## §执行记录（2026-09-19 · 会话 B · ✅ 落地）
+
+- **消费面侦察（§二5，先做）**：`grep` 仓内 `plugins/`、`bundled-plugins/` ＋ 四只官方消费仓（file-tree 5 文件 / settings 7 / serial-monitor 13 / marketplace 16）——**全部零处** `import "@linkdesk/ui/index.css"`。样式自 E6#54b 起一直是**随 JS 图**烤进各插件 `index.bundle.css` 的（ui 包 dist/index.js 自带 css import，插件 build 时汇入）。⇒ 按任务书预判：§二2/3 简化为「SDK 防回归判据照立」（无存量要清），§二4 dev 兜底照做。
+- **JS 通道**：`vite-config.ts` `DEFAULT_EXTERNAL` +`"@linkdesk/ui"`（头注释同笔更新，指向 L9 档案；`:422` 汇合处未动）；`build-pool-vendor.mjs` 的 `MAP_KEYS` 正式化（去 spike 标注）＋ **`ensureUiDist()` 内聚**（vendor 入口构建前比对 `src/index.ts` 与 `dist/index.js` mtime，陈旧即 `npm run build --workspace @linkdesk/ui`——选脚本内聚、不污染根链，照 §一2 裁定）；根 build 链未改。
+- **CSS 通道**：vendor css link 注入转正（#122 已落，`data-pool-vendor="css"` 标记 + 幂等剥旧）；**SDK 新 lint 腿 `check-ui-css-import`**（`checks/ui-css-import.ts` ＋ 5 例单测全过）：插件源码出现 specifier `@linkdesk/ui/index.css`（含 dist 形态 / css `@import`）本身即判红——「判 specifier 本身不判写法」照 `check-pool-css-imports` 口径；⚠️ 本腿**刻意不接 disable 机制**（「知情地把样式烤死」是语义错误非合法偏离，CHECK_IDS 里注明仅作文档）。
+- **dev 兜底**：壳 `vite.config.ts` 新增 `injectPoolUiCss()`（`apply: "serve"` ＋ `transformIndexHtml`，只命中 **pool.html**、⛔ 不碰壳 index.html——curl 实测：pool.html 注入 `/@fs/E:/linkdesk/packages/linkdesk-ui/dist/index.css`、index.html 零命中）；**同笔补一处任务书未点名但必须的 dev 解析**：`resolveUserDataBundles()` 的 external Map 加 `"@linkdesk/ui"`（ui 入 DEFAULT_EXTERNAL 后已装插件的裸 import 在 dev 下须经它解析到 workspace 包；dist/index.js 自带 css import ⇒ dev 组件样式也随图走，与 transformIndexHtml 互为双保险）。
+- **验收读数**：本地 workspace SDK（0.1.40 dist 重 build）重 build `file-tree` ⇒ 产物 `index.bundle.js` 的 import **全是裸 specifier**（`from "@linkdesk/ui"` / react 系 / i18next）；组件实现标记（`data-overlay-wrapper` / `SelectBox`）grep **零命中**；组件样式标记（`ldk-badge` / `ldk-button` / `ldk-form-row`）在产物 css **零命中**。`npm run check` 全绿（2517 测试，+5 例）。
+- **边界**：SDK 本格 bump 不 publish（随 #127 真发）；插件源码删 css import 无存量（#125 只剩依赖 bump ＋ 重 build）；「安装版实机 UI 同款」验收归 #127 实机验收链（本格 dev 轨道已验注入）。
