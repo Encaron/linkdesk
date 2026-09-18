@@ -3,15 +3,15 @@
   "packages": [
     {
       "name": "@linkdesk/contracts",
-      "version": "0.1.18",
-      "contentHash": "cc8524c8201a826269113c92fb35a42d6f937722b73bc62beb7b7a9f75c69f0f",
+      "version": "0.1.19",
+      "contentHash": "0bd7f7873882f41ce00a8d3ef11c10ceaceaeaaba91a5384d239798453db074c",
       "files": 2
     },
     {
       "name": "@linkdesk/plugin-sdk",
-      "version": "0.1.38",
-      "contentHash": "b0a2aa70f56b349996fd9b101b5ec794e2f35a2b74545cd05dc9c4da75f4d334",
-      "files": 52
+      "version": "0.1.40",
+      "contentHash": "964cdc675db37e39d0f4f53abfbcefa24455b8dd14c21bd55f2bb071a1cf167c",
+      "files": 56
     },
     {
       "name": "create-linkdesk-plugin",
@@ -21,14 +21,14 @@
     },
     {
       "name": "@linkdesk/ui",
-      "version": "0.3.0",
-      "contentHash": "39d1694e44b9ed8920a87d5c31ed5a883fb185bc5a5ce68d19eeb0cfb3ccea11",
+      "version": "0.3.1",
+      "contentHash": "c9d5407cf495fdd36bf3faba610e2f185f6047eaba7c764173e2131853511e03",
       "files": 2
     },
     {
       "name": "@linkdesk/plugin-docs",
-      "version": "0.1.18",
-      "contentHash": "a7abfe11717cc26c21a33d06447dd84eccc8c9fee50075b8769fda68d1ac5038",
+      "version": "0.1.23",
+      "contentHash": "c728413f419ddad0bc4e753b74867ac72c36b88d688e283b1f4529bee51baa0c",
       "files": 48
     }
   ]
