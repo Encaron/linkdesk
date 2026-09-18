@@ -65,6 +65,7 @@ import { Button, Toggle, ContextMenu } from "@linkdesk/ui";
 | `ContextMenu` | Context menu component | Works with `contributes.menus` — see [05-UI Conventions](05-ui-conventions.md) |
 | `InlineInput` | Inline input (imperative handle) | Renaming in place in a tree/list (grab the `ref` and call `InlineInputHandle`) |
 | `OverlayPortal` | Overlay portal host | Use it when a custom-drawn dialog needs to portal to body; don't scatter bare `createPortal` calls everywhere |
+| `HintCard` | Anchored hover hint card (non-interactive) | For "hover a small badge, see a short explanation card": give `lines` (1–3 sentences) and the anchor element; triggering/positioning/glass are all handled by the shell; ⛔ no links or buttons inside the card |
 
 > The list follows the package's actual export surface (`packages/linkdesk-ui/src/index.ts` is the single source of truth) — if this page disagrees with the package, **the package wins**.
 

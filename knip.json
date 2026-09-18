@@ -41,6 +41,9 @@
         //   @linkdesk/ui，这些组件的唯一消费方变成 @linkdesk/ui 的 vite lib 构建（packages/ 域，非本
         //   工程 scope）→ knip 静态图断边误报 unused。组件仍活：@linkdesk/ui dist 即由它们构建而来。
         //   豁免语义同下方 src/core/index.ts「桶导出面向插件/独立构建域」——不是死代码。
+        // E6#120：同上——HintCard 唯一消费方 = @linkdesk/ui lib 构建 + 插件 dist（marketplace 卡体替换）——
+        //   壳 scope 断边误报豁免（带测试：HintCard.test.tsx）。
+        "src/components/shared/hint-card/HintCard.tsx",
         "src/components/shared/file-path-input/FilePathInput.tsx",
         "src/components/shared/form-row/FormRow.tsx",
         "src/components/shared/number-input/NumberInput.tsx",

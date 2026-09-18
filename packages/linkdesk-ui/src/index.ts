@@ -6,7 +6,7 @@
  * 改组件只改壳一处，壳与包同源。
  *
  * 导出面 = 插件实际消费集（E6#54c 锚点：4 内置插件 33 处 import 收敛于此）+ 必备类型：
- *   - 16 直接消费组件（07 §三 实盘清单）
+ *   - 17 直接消费组件（07 §三 实盘清单；E6#120 起 +HintCard）
  *   - inferSliderStep（settings renderControl 直引）
  *   - InlineInputHandle / ContextMenuProps / ManifestIconShape / ResolvedIcon
  *
@@ -23,6 +23,8 @@ export { default as DynamicSelect } from "@shared/select-box/DynamicSelect";
 export { default as FilePathInput } from "@shared/file-path-input/FilePathInput";
 export { default as FontFamilySelect } from "@shared/font-family-select/FontFamilySelect";
 export { default as FormRow } from "@shared/form-row/FormRow";
+// E6#120：通用悬停说明卡（格 5 市场卡收编为共享件——触发/文案归调用方，卡与定位归壳）
+export { default as HintCard } from "@shared/hint-card/HintCard";
 export { default as NumberInput } from "@shared/number-input/NumberInput";
 export { default as SegmentedRadio } from "@shared/segmented-radio/SegmentedRadio";
 export { default as SelectBox } from "@shared/select-box/SelectBox";

@@ -1,0 +1,47 @@
+/* E6#120 壳 HintCard——通用悬停说明卡（格 5 市场卡收编为共享件，视觉原样）。
+   色彩/字号/圆角/阴影全走 token（硬约束 1：零硬编码 hex；字号走 --font-size-*）。
+   🔴 全部用**真实 token**（--bg-window/--border/--text-*）——格 5 原卡的 --bg-panel/--border-strong/--fg-*
+   是 E5.8#128.7 归一后的**幽灵 token**（壳内无定义 ⇒ 实机透明底），收编时一并修正。
+   卡体 = OverlayPortal 的 [data-overlay-wrapper] 直接子 ⇒ 玻璃由 src/index.css 深度 3
+   结构规则下发（blur(max(var(--glass-blur), --float-blur-floor))），本文件⛔ 不写 backdrop-filter
+   （写了 = 给自己建 backdrop root，把结构玻璃掐断——E5.8#109 教训）。
+   定位 fixed（JS 量锚贴边、翻面与视口夹紧见 computeCardPosition）；pointer-events:none
+   （纯看文案的卡——不截 hover、卡内不可交互，08 号档禁区②）。 */
+.ldk-hint-card-host {
+  display: inline-flex;
+}
+
+.ldk-hint-card {
+  position: fixed;
+  z-index: var(--z-dropdown);
+  width: 300px;
+  box-sizing: border-box;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-window);
+  box-shadow: var(--shadow-pop);
+  pointer-events: none;
+}
+
+.ldk-hint-card-title {
+  margin-bottom: 4px;
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.ldk-hint-card p {
+  margin: 0 0 4px;
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  line-height: 1.7;
+}
+
+.ldk-hint-card-note {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+}
