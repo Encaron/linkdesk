@@ -1,0 +1,549 @@
+<!doctype html>
+<!--
+  ============================================================================
+  市场「兼容状态」显示设计 · 细节详解类（单张 · 五个状态 ＋ 悬停帮助卡）
+  ----------------------------------------------------------------------------
+  ⚠️ mockup 仅示意：真实实现走 var(--xxx) + ThemeEngine（本文件里的 token 取值只为看图，
+     落地时一律用宿主主题引擎的真 token，⛔ 不许照抄本文件里的 hex）。
+  ⚠️ 落地前必读：CLAUDE.md 硬约束 16 —— 改任何 CSS/样式/配色/字体/间距/布局前，
+     必须先 Skill(ui-ux-pro-max) 拿设计系统。
+  任务编号锚点：E6#118（第 8.5 轮 · 市场显示）｜读数来自 E6#117 ｜悬空判据来自 E6#114
+  图类：细节详解（骨架已定稿 = 市场插件既有详情页，本图只展开状态，不另立骨架）
+  🔴 显示面只有详情页：用户 2026-09-18 拍板「侧栏显示密度已经很大」⇒ 侧栏列表不标状态。
+  说明浮层 = 悬停帮助卡：容器 = 壳共享件 OverlayPortal（@linkdesk/ui 已导出，市场插件今天就在用）＋ 插件自有卡片；
+     触发 = 鼠标停在状态标上（移开就消失；键盘 Tab 可达、触屏点按退化）——无遮罩、不抢焦点、卡内不可交互；
+     文案 = 插件 i18n 预设，壳只给机器态。
+
+  🔴 文案口径（唯一真相源 = ../00-整理档案.md §〇d）——本图里出现的每一个字都给用户看：
+     用户面只许出现：正常 / 兼容 / 部分不适配 / 不适配 / —（＋ 用户能自己做的动作）
+     ⛔ 用户面不许出现：待修 · 处数（N 处）· 悬空 · 契合度 · 依赖/包名 · 源码/文件/行号 ·
+        「重新打包」·「老」「过期」· 评分/推荐/排行
+     领域类比（用户原话）：「我从没见过手机厂给用户发的版本更新里写他们改的什么源码。」
+     作者面（谁该改哪一行）住在插件仓自己的判据报告里，⛔ 不进这张界面。
+
+  zone 真实尺寸（照 html-blueprint 规范）：titlebar 30 / icon-bar 42 / sidebar 216 / main flex:1 /
+     tabbar 35 / statusbar 22（状态栏背景 = --bg-window）
+  间距：一律 4px 网格（≤6px 的微调豁免）｜字号：一律 var(--font-size-*)｜颜色：一律 var(--xxx)
+  角标：共享组件 ldk-badge（⛔ 不自造 .badge）｜市场自有类名一律 marketplace- 前缀
+  ============================================================================
+-->
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<title>市场兼容状态 · 细节详解（E6#118）</title>
+<style>
+  /* ── token：dark 为默认（本文件的 hex 只用于看图；落地不用它） ── */
+  :root{
+    --bg-window:#181818; --bg-titlebar:#1f1f1f; --bg-activitybar:#1a1a1a; --bg-sidebar:#1c1c1c;
+    --bg-editor:#1f1f1f; --bg-tabbar:#1f1f1f; --bg-panel:#242424; --bg-hover:#2a2a2a;
+    --bg-active:#333333; --bg-input:#2b2b2b;
+    --fg-primary:#e6e6e6; --fg-secondary:#b0b0b0; --fg-muted:#808080; --fg-onaccent:#ffffff;
+    --border:#333333; --border-strong:#454545;
+    --accent:#3b82f6; --accent-hover:#2f6fd8;
+    --success:#3f9c5a; --warning:#c08a2e; --error:#c04a4a; --info:#4a7fc0;
+    --badge-bg:#2f2f2f; --badge-fg:#c8c8c8;
+    --font-size-xs:11px; --font-size-sm:12px; --font-size-md:13px; --font-size-lg:14px; --font-size-title:16px;
+    --font-ui:-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;
+    --radius-sm:3px; --radius-md:5px;
+  }
+  body.light{
+    --bg-window:#f3f3f3; --bg-titlebar:#e8e8e8; --bg-activitybar:#ececec; --bg-sidebar:#f6f6f6;
+    --bg-editor:#ffffff; --bg-tabbar:#f6f6f6; --bg-panel:#fbfbfb; --bg-hover:#ebebeb;
+    --bg-active:#e0e0e0; --bg-input:#ffffff;
+    --fg-primary:#1f1f1f; --fg-secondary:#555555; --fg-muted:#8a8a8a; --fg-onaccent:#ffffff;
+    --border:#dcdcdc; --border-strong:#c2c2c2;
+    --accent:#2f6fd8; --accent-hover:#2559b3;
+    --success:#2f7d47; --warning:#9a6b1c; --error:#a63b3b; --info:#34679f;
+    --badge-bg:#e8e8e8; --badge-fg:#4a4a4a;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg-window);color:var(--fg-primary);font-family:var(--font-ui);font-size:var(--font-size-md)}
+  .page{max-width:1220px;margin:0 auto;padding:16px}
+  .page-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+  .page-head h1{font-size:var(--font-size-title);margin:0;font-weight:600}
+  .page-head .sub{color:var(--fg-muted);font-size:var(--font-size-sm)}
+  .page-head .spacer{flex:1}
+  button.ui{background:var(--bg-panel);border:1px solid var(--border-strong);color:var(--fg-primary);
+    font:inherit;font-size:var(--font-size-sm);padding:4px 8px;border-radius:var(--radius-sm);cursor:pointer}
+  button.ui:hover{background:var(--bg-hover)}
+  .legend{display:flex;gap:12px;flex-wrap:wrap;color:var(--fg-secondary);font-size:var(--font-size-sm);margin-bottom:16px}
+  .legend span{display:inline-flex;align-items:center;gap:4px}
+  .legend .law{flex-basis:100%;color:var(--fg-muted)}
+
+  /* ── 帧容器：frame-caption（上）＋ .app（中）＋ frame-note（下） ── */
+  .frame{margin:0 0 24px;border:1px solid var(--border-strong);border-radius:var(--radius-md);overflow:hidden;background:var(--bg-window)}
+  .frame-caption{padding:8px 12px;background:var(--bg-panel);border-bottom:1px solid var(--border);
+    font-size:var(--font-size-sm);color:var(--fg-primary);display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .frame-caption .tag{background:var(--bg-active);color:var(--fg-secondary);border-radius:var(--radius-sm);
+    padding:0 4px;font-size:var(--font-size-xs)}
+  .frame-caption .tag.ok{color:var(--fg-primary)}
+  .frame-caption .dest{color:var(--fg-muted);font-size:var(--font-size-xs)}
+  .frame-note{padding:8px 12px;background:var(--bg-panel);border-top:1px solid var(--border);
+    font-size:var(--font-size-sm);color:var(--fg-secondary);line-height:1.7}
+  .frame-note b{color:var(--fg-primary);font-weight:600}
+
+  /* ── 壳轮廓（zone 真实尺寸） ── */
+  .app{display:grid;grid-template-columns:42px 216px 1fr;grid-template-rows:30px 1fr 22px;height:460px;background:var(--bg-editor)}
+  .titlebar{grid-column:1/4;grid-row:1;background:var(--bg-titlebar);border-bottom:1px solid var(--border);
+    display:flex;align-items:center;gap:8px;padding:0 8px;font-size:var(--font-size-sm);color:var(--fg-secondary)}
+  .titlebar .dot{width:8px;height:8px;border-radius:50%;background:var(--fg-muted)}
+  .icon-bar{grid-column:1;grid-row:2;background:var(--bg-activitybar);border-right:1px solid var(--border);
+    display:flex;flex-direction:column;align-items:center;padding-top:8px;gap:8px}
+  .icon-bar .ic{width:24px;height:24px;border-radius:var(--radius-sm);background:var(--bg-hover);opacity:.7}
+  .icon-bar .ic.on{background:var(--accent);opacity:1}
+  .sidebar{grid-column:2;grid-row:2;background:var(--bg-sidebar);border-right:1px solid var(--border);
+    display:flex;flex-direction:column;min-width:0}
+  .sidebar-head{padding:8px;font-size:var(--font-size-xs);color:var(--fg-muted);text-transform:uppercase;letter-spacing:.4px}
+  .statusbar{grid-column:1/4;grid-row:3;background:var(--bg-window);border-top:1px solid var(--border);
+    display:flex;align-items:center;gap:12px;padding:0 8px;font-size:var(--font-size-xs);color:var(--fg-muted)}
+  .main{grid-column:3;grid-row:2;display:flex;flex-direction:column;min-width:0;background:var(--bg-editor)}
+  .tabbar{height:35px;display:flex;align-items:center;gap:8px;padding:0 8px;background:var(--bg-tabbar);border-bottom:1px solid var(--border)}
+  .tabbar .tab{padding:4px 8px;font-size:var(--font-size-sm);color:var(--fg-secondary);border-radius:var(--radius-sm);cursor:default}
+  .tabbar .tab.active{background:var(--bg-editor);color:var(--fg-primary);border-bottom:2px solid var(--accent)}
+  .empty{flex:1;display:flex;align-items:center;justify-content:center;color:var(--fg-muted);font-size:var(--font-size-sm)}
+
+  /* ── 共享角标组件（ldk-badge · 示意） ── */
+  .ldk-badge{display:inline-flex;align-items:center;gap:4px;height:16px;padding:0 4px;border-radius:var(--radius-sm);
+    background:var(--badge-bg);color:var(--badge-fg);font-size:var(--font-size-xs);white-space:nowrap}
+  .ldk-badge.info{background:color-mix(in srgb,var(--info) 18%,var(--badge-bg));color:var(--info)}
+  .ldk-badge.warn{background:color-mix(in srgb,var(--warning) 20%,var(--badge-bg));color:var(--warning)}
+  .ldk-badge.err{background:color-mix(in srgb,var(--error) 20%,var(--badge-bg));color:var(--error)}
+  .ldk-badge.ok{background:color-mix(in srgb,var(--success) 18%,var(--badge-bg));color:var(--success)}
+
+  /* ── 市场侧栏行（marketplace-ms-* · 照既有类名） ── */
+  .marketplace-ms-extension-item{display:flex;gap:8px;padding:8px;border-bottom:1px solid var(--border);cursor:default}
+  .marketplace-ms-extension-item.catalog:hover{background:var(--bg-hover)}
+  .marketplace-ms-extension-item.selected{background:var(--bg-active)}
+  .marketplace-ms-item-icon{width:32px;height:32px;border-radius:var(--radius-sm);background:var(--bg-hover);flex:0 0 auto}
+  .marketplace-ms-item-body{flex:1;min-width:0}
+  .marketplace-ms-item-header{display:flex;align-items:center;gap:8px;font-size:var(--font-size-md);color:var(--fg-primary)}
+  .marketplace-ms-item-version{font-size:var(--font-size-xs);color:var(--fg-muted)}
+  .marketplace-ms-item-desc{font-size:var(--font-size-sm);color:var(--fg-secondary);margin:4px 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .marketplace-ms-item-meta{display:flex;align-items:center;gap:4px;flex-wrap:wrap}
+  .marketplace-ms-item-author{font-size:var(--font-size-xs);color:var(--fg-muted)}
+  .marketplace-ms-item-tag{font-size:var(--font-size-xs);color:var(--fg-secondary);background:var(--bg-panel);
+    border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 4px}
+
+  /* ── 详情页（marketplace-mpd-*） ── */
+  .mpd{display:flex;gap:16px;padding:16px;min-height:0;flex:1}
+  .mpd-body{flex:1;min-width:0}
+  .mpd-head{display:flex;gap:12px;align-items:flex-start}
+  .mpd-icon{width:52px;height:52px;border-radius:var(--radius-md);background:var(--bg-hover);flex:0 0 auto}
+  .mpd-title{font-size:var(--font-size-lg);color:var(--fg-primary)}
+  .mpd-sub{font-size:var(--font-size-sm);color:var(--fg-muted);margin-top:4px}
+  .mpd-nav{display:flex;gap:16px;border-bottom:1px solid var(--border);margin:12px 0}
+  .mpd-nav .n{padding:8px 0;font-size:var(--font-size-sm);color:var(--fg-secondary)}
+  .mpd-nav .n.on{color:var(--fg-primary);border-bottom:2px solid var(--accent)}
+  .mpd-card{border:1px solid var(--border);border-radius:var(--radius-md);background:var(--bg-panel);padding:8px;margin-top:8px}
+  .mpd-info{width:216px;flex:0 0 auto;border-left:1px solid var(--border);padding-left:12px}
+  .mpd-group{margin-bottom:12px}
+  .mpd-group h4{margin:0 0 4px;font-size:var(--font-size-xs);color:var(--fg-muted);font-weight:600;letter-spacing:.4px}
+  .mpd-kv{display:flex;justify-content:space-between;gap:8px;font-size:var(--font-size-sm);padding:2px 0}
+  .mpd-kv .k{color:var(--fg-muted)}
+  .mpd-kv .v{color:var(--fg-primary);text-align:right}
+  .btn{font:inherit;font-size:var(--font-size-sm);padding:4px 12px;border-radius:var(--radius-sm);
+    border:1px solid var(--border-strong);background:var(--bg-panel);color:var(--fg-primary);cursor:default}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:var(--fg-onaccent)}
+  .btn.ghost{background:transparent}
+
+  /* ── 悬停帮助卡（帧 ②）：鼠标停上去出、移开就消 ── */
+  .mpd{position:relative}
+  .mpd-group.anchor{position:relative}   /* 卡片锚在这个组上（落地 = triggerRef 量状态标 + fixed 定位） */
+  .ldk-badge.hovered{outline:2px solid var(--accent);outline-offset:2px}
+  .hovercard{position:absolute;right:calc(100% + 12px);top:4px;width:300px;padding:12px;
+    border:1px solid var(--border-strong);border-radius:var(--radius-md);background:var(--bg-panel);
+    box-shadow:0 6px 20px rgba(0,0,0,.35);pointer-events:none}
+  .hovercard::after{content:"";position:absolute;right:-5px;top:8px;width:8px;height:8px;background:var(--bg-panel);
+    border-right:1px solid var(--border-strong);border-top:1px solid var(--border-strong);transform:rotate(45deg)}
+  .hovercard .hc-title{font-size:var(--font-size-sm);color:var(--fg-primary);font-weight:600;margin-bottom:4px}
+  .hovercard p{margin:0 0 4px;font-size:var(--font-size-sm);color:var(--fg-secondary);line-height:1.7}
+  .hovercard .hc-src{margin-top:8px;padding-top:8px;border-top:1px solid var(--border);font-size:var(--font-size-xs);color:var(--fg-muted)}
+
+  /* ── 帧 ③：五态并列（同一个信息栏位置，五个词各长什么样） ── */
+  .states{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;padding:16px;background:var(--bg-editor)}
+  .state-card{width:auto;border:1px solid var(--border);border-radius:var(--radius-md);background:var(--bg-panel);padding:12px;margin:0}
+  .state-why{margin-top:8px;padding-top:8px;border-top:1px solid var(--border);font-size:var(--font-size-sm);color:var(--fg-secondary);line-height:1.7}
+  .why-tag{display:inline-block;margin-right:6px;padding:0 4px;font-size:var(--font-size-xs);color:var(--fg-muted);
+    border:1px solid var(--border);border-radius:var(--radius-sm)}
+  /* ── 规范速查 ── */
+  .spec{border:1px solid var(--border-strong);border-radius:var(--radius-md);padding:16px;background:var(--bg-panel)}
+  .spec h2{font-size:var(--font-size-lg);margin:0 0 8px}
+  .spec h3{font-size:var(--font-size-md);margin:16px 0 4px}
+  table{width:100%;border-collapse:collapse;font-size:var(--font-size-sm)}
+  th,td{text-align:left;padding:4px 8px;border-bottom:1px solid var(--border);vertical-align:top}
+  th{color:var(--fg-muted);font-weight:600}
+  code{font-family:ui-monospace,Consolas,monospace;font-size:var(--font-size-sm);background:var(--bg-hover);
+    padding:0 4px;border-radius:var(--radius-sm)}
+  .hint{color:var(--fg-muted);font-size:var(--font-size-sm);line-height:1.8}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="page-head">
+    <h1>市场「兼容状态」显示设计</h1>
+    <span class="sub">细节详解类 · 五个状态 ＋ 悬停帮助卡 ＋ 规范速查 ｜ <code>E6#118</code>（读数来自 <code>E6#117</code>）</span>
+    <span class="spacer"></span>
+    <button class="ui" id="theme-btn" type="button">切换 dark / light</button>
+  </div>
+
+  <div class="legend">
+    <span><span class="ldk-badge ok">正常</span> 与当前版本一致</span>
+    <span><span class="ldk-badge">兼容</span> 与当前版本兼容（更早做适配，仍可用）</span>
+    <span><span class="ldk-badge warn">部分不适配</span> 能装能用，个别界面可能显示不正常</span>
+    <span><span class="ldk-badge err">不适配</span> 装不上，需要更新 LinkDesk</span>
+    <span>读不到时显示 <b>—</b>（裸文本，不套角标）</span>
+    <span class="law">🔴 这是**给用户看**的界面：只有上面这五个词 ＋ 用户自己能做的动作（⛔ 不出现处数、名字、依赖、源码、文件行号——那类说法住在插件作者自己的判据报告里）。</span>
+  </div>
+
+  <!-- ══════════════ 帧 ② ══════════════ -->
+  <section class="frame">
+    <div class="frame-caption">
+      <span class="tag ok">帧 ① 定稿候选</span>
+      <span>主区 · 插件详情页信息栏：<b>状态只标在这里</b>（侧栏不标）</span>
+      <span class="dest">去向 = 落点 A（<code>DetailView/useInfoGroups.tsx</code>，<b>只加行、不改骨架</b>）</span>
+    </div>
+
+    <div class="app">
+      <div class="titlebar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span>LinkDesk — 市场 / 插件详情</span></div>
+      <div class="icon-bar"><div class="ic"></div><div class="ic on"></div><div class="ic"></div></div>
+
+      <div class="sidebar">
+        <div class="sidebar-head">探索插件</div>
+        <div class="marketplace-ms-extension-item catalog selected">
+          <div class="marketplace-ms-item-icon"></div>
+          <div class="marketplace-ms-item-body">
+            <div class="marketplace-ms-item-header"><span>文件树</span><span class="marketplace-ms-item-version">v1.2.4</span></div>
+            <div class="marketplace-ms-item-desc">侧栏文件浏览器与常用文件操作</div>
+            <div class="marketplace-ms-item-meta"><span class="marketplace-ms-item-author">linkdesk</span>
+              <span class="marketplace-ms-item-tag">官方</span></div>
+          </div>
+        </div>
+        <div class="marketplace-ms-extension-item catalog">
+          <div class="marketplace-ms-item-icon"></div>
+          <div class="marketplace-ms-item-body">
+            <div class="marketplace-ms-item-header"><span>第三方示例插件</span><span class="marketplace-ms-item-version">v0.4.1</span></div>
+            <div class="marketplace-ms-item-desc">演示用插件</div>
+            <div class="marketplace-ms-item-meta"><span class="marketplace-ms-item-author">someone</span>
+              <span class="marketplace-ms-item-tag">社区</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="main">
+        <div class="tabbar"><span class="tab active">市场</span></div>
+        <div class="mpd">
+          <div class="mpd-body">
+            <div class="mpd-head">
+              <div class="mpd-icon"></div>
+              <div style="flex:1;min-width:0">
+                <div class="mpd-title">第三方示例插件 <span class="marketplace-ms-item-version">v0.4.1</span></div>
+                <div class="mpd-sub">someone · 社区 · 最近更新 2026-03-11</div>
+              </div>
+              <button class="btn primary" type="button">安装</button>
+            </div>
+
+            <div class="mpd-nav"><span class="n on">详情</span><span class="n">功能</span><span class="n">更改日志</span></div>
+
+            <div class="mpd-card">
+              <div style="font-size:var(--font-size-sm);color:var(--fg-secondary);line-height:1.8">
+                演示用插件。<br />
+                <span style="color:var(--fg-muted)">README 摘要…（既有内容不动）</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="mpd-info">
+            <div class="mpd-group">
+              <h4>概览</h4>
+              <div class="mpd-kv"><span class="k">标识符</span><span class="v">sample-plugin</span></div>
+              <div class="mpd-kv"><span class="k">作者</span><span class="v">someone</span></div>
+              <div class="mpd-kv"><span class="k">版本</span><span class="v">0.4.1</span></div>
+            </div>
+
+            <div class="mpd-group">
+              <h4>市场</h4>
+              <div class="mpd-kv"><span class="k">来源</span><span class="v">官方目录</span></div>
+              <div class="mpd-kv"><span class="k">首次发布</span><span class="v">2026-02-20</span></div>
+              <div class="mpd-kv"><span class="k">更新时间</span><span class="v">2026-03-11</span></div>
+            </div>
+
+            <div class="mpd-group">
+              <h4>兼容性</h4>
+              <div class="mpd-kv"><span class="k">状态</span><span class="v"><span class="ldk-badge warn">部分不适配</span></span></div>
+            </div>
+
+            <div class="mpd-group">
+              <h4>依赖 · 环境</h4>
+              <div class="mpd-kv"><span class="k">需 LinkDesk</span><span class="v">≥ 0.2.0 ✓</span></div>
+              <div class="mpd-kv"><span class="k">依赖</span><span class="v">—</span></div>
+              <div class="mpd-kv"><span class="k">被依赖</span><span class="v">—</span></div>
+            </div>
+
+            <div class="mpd-group">
+              <h4>资源</h4>
+              <div class="mpd-kv"><span class="k">大小</span><span class="v">1.2 MB</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="statusbar"><span>sample-plugin · v0.4.1</span><span>已装 · 可正常使用</span></div>
+    </div>
+
+    <div class="frame-note">
+      <b>①数据来源</b>：「需 LinkDesk」那行<b>已有</b>（<code>useInfoGroups</code> 的「依赖 · 环境」组吃 <code>minAppVersion</code>）——本格<b>复用不新造</b>；新增的只有「兼容性」组（<b>只一行状态</b>）——🔴 <b>全页只有这一颗状态标</b>（用户 2026-09-18 砍掉标题旁那一颗：同一条信息出现两次 = 重复）。⛔ 用户面<b>不出现处数与名字</b>（那些是插件作者自己要看的）。
+      <b>②信息栏不再写提示行</b>（用户 2026-09-18 砍掉）：原来那行「说明 · 点状态看详情 ›」是<b>点击触发</b>时代的残留——改成悬停后它既多余，又是在<b>指使鼠标</b>（触屏用户看不懂）。⇒「兼容性」组只留一行状态；<b>入口不靠文字行</b>，也不靠 <code>cursor</code> 变样（壳里今天零 <code>cursor:help</code> 惯例）。
+      <b>②行为</b>：⚠️<b>「安装」按钮照常可用</b>（部分不适配 ≠ 拒装；本批不加拒绝墙）；只有「不适配」才天然装不上（<b>既有机制</b>，本图只把它显示出来）。
+      <b>③任务编号锚点</b>：<code>E6#118</code> §三落点 A；骨架已由 <code>E6#63</code> 定稿 ⇒ <b>只加行、不改结构</b>。
+      <b>④为什么侧栏不标</b>：用户 2026-09-18 拍板——<b>侧栏显示密度已经很大</b>，兼容状态<b>只在详情页信息栏</b>显示；⛔ 不许「顺手」把标加回列表行。
+    </div>
+  </section>
+
+  <!-- ══════════════ 帧 ③ ══════════════ -->
+  <section class="frame">
+    <div class="frame-caption">
+      <span class="tag ok">帧 ② 定稿候选</span>
+      <span>悬停帮助卡：<b>鼠标停在状态标上</b> → 贴标的小卡片（无遮罩、不抢焦点；<b>移开就消失</b>）</span>
+      <span class="dest">去向 = 落点 B（新组件 · <code>marketplace-</code> 前缀 · <b>容器 = 共享件 <code>OverlayPortal</code></b>，照 <code>SearchView/AddSourcePopup.tsx</code>）</span>
+    </div>
+
+    <div class="app" style="height:400px">
+      <div class="titlebar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span>LinkDesk — 市场 / 插件详情</span></div>
+      <div class="icon-bar"><div class="ic"></div><div class="ic on"></div><div class="ic"></div></div>
+      <div class="sidebar">
+        <div class="sidebar-head">探索插件</div>
+        <div class="marketplace-ms-extension-item catalog selected">
+          <div class="marketplace-ms-item-icon"></div>
+          <div class="marketplace-ms-item-body">
+            <div class="marketplace-ms-item-header"><span>第三方示例插件</span><span class="marketplace-ms-item-version">v0.4.1</span></div>
+            <div class="marketplace-ms-item-desc">演示用插件</div>
+            <div class="marketplace-ms-item-meta"><span class="marketplace-ms-item-author">someone</span>
+              <span class="marketplace-ms-item-tag">社区</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="main">
+        <div class="tabbar"><span class="tab active">市场</span></div>
+        <div class="mpd">
+          <div class="mpd-body">
+            <div class="mpd-head">
+              <div class="mpd-icon"></div>
+              <div style="flex:1;min-width:0">
+                <div class="mpd-title">第三方示例插件</div>
+                <div class="mpd-sub">someone · 社区</div>
+              </div>
+              <button class="btn primary" type="button">安装</button>
+            </div>
+
+            <div class="mpd-card">
+              <div style="font-size:var(--font-size-sm);color:var(--fg-secondary);line-height:1.8">
+                演示用插件。<br />
+                <span style="color:var(--fg-muted)">README 摘要…（既有内容不动）</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="mpd-info">
+            <div class="mpd-group">
+              <h4>概览</h4>
+              <div class="mpd-kv"><span class="k">标识符</span><span class="v">sample-plugin</span></div>
+              <div class="mpd-kv"><span class="k">作者</span><span class="v">someone</span></div>
+              <div class="mpd-kv"><span class="k">版本</span><span class="v">0.4.1</span></div>
+            </div>
+
+            <div class="mpd-group anchor">
+              <h4>兼容性</h4>
+              <div class="mpd-kv"><span class="k">状态</span><span class="v"><span class="ldk-badge warn hovered">部分不适配</span></span></div>
+
+              <!-- 悬停帮助卡：框外描边 = 示意「这一刻鼠标正停在这个标上」（落地无描边，只有真实 hover 态） -->
+              <div class="hovercard">
+                <div class="hc-title">部分不适配</div>
+                <p>它<b>仍然可以正常安装和使用</b>，你的文件和数据不受影响。</p>
+                <p>只是它按较早版本的 LinkDesk 做的，个别界面可能显示得不够对。</p>
+                <p>这不是评分——插件发布适配新版的新版本后会恢复；已经有新版本就点「更新」。</p>
+                <div class="hc-src">LinkDesk 在你本机自动核对，不联网、不上传｜读不到时显示「—」</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="statusbar"><span>sample-plugin · v0.4.1</span><span>已装 · 可正常使用</span></div>
+    </div>
+
+    <div class="frame-note">
+      <b>①触发（用户 2026-09-18 纠正后定稿）</b>：<b>鼠标停在状态标上 → 出卡；鼠标移开 → 消失</b>。⛔ 不是点击弹层、⛔ 不是 toast / 弹窗 / 暗屏大面板（那些要把注意力从主视线上拽走）。<b>键盘</b>：标可 Tab 聚焦 ⇒ 聚焦即出卡、失焦 / Esc 关（鼠标体验一点不变）；<b>触屏</b>：没有 hover ⇒ <b>点一下出、点外关</b>（退化路径，否则触屏用户永远看不到）。卡片先出前留约 400ms 悬停意图延时——防鼠标划过时闪一下。
+      <b>②不挡事</b>：无遮罩、无暗屏、<b>不抢焦点</b>（容器<b>不传 <code>trapFocus</code></b>、<code>closeOnOutsideClick={false}</code>）、<b>不推挤布局</b>（贴标 fixed 浮在旁边）；卡片本身<b>不可交互</b>（<code>pointer-events:none</code>）⇒ 鼠标不会「卡」在卡上，卡里也就不放链接与按钮。
+      <b>②b 不写提示行、也不挂 <code>title</code></b>（用户 2026-09-18 砍掉「说明 · 鼠标停上来看」那行）：悬停本身就是入口，写出来既多余又是指使鼠标。⚠️ 另注意：壳共享角标 <code>ldk-badge</code> <b>自带 <code>title</code> 提议</b>（`src/components/shared/badge/Badge.tsx:19`），市场插件今天已有 41 处在用原生 <code>title</code> 当悬停提示（如 `ExtensionItem.tsx:91` 的「等待依赖」标挂 `pendingReason`）⇒ <b>状态标上⛔ 不许再挂 <code>title</code></b>——原生提示会与卡同屏冒出来打架。<b>为什么要卡而不用原生 <code>title</code></b>：<code>title</code> 是系统画的、不能换行排版、不跟主题、键盘聚焦与触屏都摸不到，装不下这句三行说明。
+      <b>③卡片纪律</b>：<b>三句话以内、一眼看完</b>（悬停卡不是说明书的容器）；只讲用户能感知的事（能不能装、会不会显示不对、他该做什么），⛔ 不写源码 / 依赖 / 文件行号，⛔ 不把「改造插件」派给用户——修插件是插件作者的事；⛔ 不写阈值（「超过 N 天」）与评分词；读数缺失 ⇒ 显示「—」＋「暂时读不到」。
+      <b>④归属</b>：<b>容器</b> = 壳共享件 <code>OverlayPortal</code>（<code>@linkdesk/ui</code> 已导出，市场插件今天就在 <code>AddSourcePopup</code> 里用）⇒ 零新增壳组件、零 SDK 发版；<b>卡片</b> = 插件自有（<code>marketplace-</code> 前缀）；<b>字</b> = 插件 <code>i18n/en.json</code> 预设，壳只给机器态。详见规范速查 ⑦。
+      <b>⑤任务编号锚点</b>：<code>E6#118</code> §三落点 B ＋ §四显示口径；文案与格 6 的作者面说明<b>各说各的受众</b>（作者面那份才写「改哪一行」）。
+      <b>⑥信息栏其余组与标题略</b>（见帧 ①）；🔴 <b>状态标全页只有一颗</b>——就在信息栏「兼容性」组那一行（用户 2026-09-18 砍掉标题旁那颗）⇒ 卡<b>只贴这一颗</b>，没有第二处触发点。
+    </div>
+  </section>
+
+  <!-- ══════════════ 帧 ③ ══════════════ -->
+  <section class="frame">
+    <div class="frame-caption">
+      <span class="tag ok">帧 ③ 定稿候选</span>
+      <span>同一个位置，五个词各长什么样（信息栏<b>只有一行状态</b>；下面灰框是各态<b>悬停卡</b>里的字，不是信息栏的行）</span>
+      <span class="dest">去向 = 落点 A 的四种显示态 ＋ 「读不到」态（一色一义，⛔ 不加第六个词）</span>
+    </div>
+
+    <div class="states">
+      <div class="mpd-info state-card">
+        <div class="mpd-group">
+          <h4>兼容性</h4>
+          <div class="mpd-kv"><span class="k">状态</span><span class="v"><span class="ldk-badge ok">正常</span></span></div>
+        </div>
+        <div class="state-why"><span class="why-tag">悬停卡</span>这只插件与当前 LinkDesk 版本一致。</div>
+      </div>
+
+      <div class="mpd-info state-card">
+        <div class="mpd-group">
+          <h4>兼容性</h4>
+          <div class="mpd-kv"><span class="k">状态</span><span class="v"><span class="ldk-badge">兼容</span></span></div>
+        </div>
+        <div class="state-why"><span class="why-tag">悬停卡</span>这只插件是按较早版本的 LinkDesk 做的，仍然可以正常安装和使用。</div>
+      </div>
+
+      <div class="mpd-info state-card">
+        <div class="mpd-group">
+          <h4>兼容性</h4>
+          <div class="mpd-kv"><span class="k">状态</span><span class="v"><span class="ldk-badge warn">部分不适配</span></span></div>
+        </div>
+        <div class="state-why"><span class="why-tag">悬停卡</span>能装能用，只是个别界面可能显示得不正常。</div>
+      </div>
+
+      <div class="mpd-info state-card">
+        <div class="mpd-group">
+          <h4>兼容性</h4>
+          <div class="mpd-kv"><span class="k">状态</span><span class="v"><span class="ldk-badge err">不适配</span></span></div>
+        </div>
+        <div class="state-why"><span class="why-tag">悬停卡</span>装不上，需要更新 LinkDesk 才能安装。</div>
+        <div class="mpd-kv"><span class="k">需 LinkDesk</span><span class="v">≥ 0.3.0 ✗</span></div>
+      </div>
+
+      <div class="mpd-info state-card">
+        <div class="mpd-group">
+          <h4>兼容性</h4>
+          <div class="mpd-kv"><span class="k">状态</span><span class="v">—</span></div>
+        </div>
+        <div class="state-why"><span class="why-tag">悬停卡</span>暂时读不到这只插件的兼容信息——⛔ 不当成「不适配」。</div>
+      </div>
+    </div>
+
+    <div class="frame-note">
+      <b>①为什么只有两个词有颜色</b>：只有<b>真有问题</b>才给警示色（<code>warn</code> / <code>err</code>）；「正常 / 兼容 / —」保持中性（<code>ldk-badge</code> 默认）——⛔ 不是红黑榜、不是评分。
+      <b>②「兼容」不判老</b>：它只是「插件最后发版日 <b>早于</b>当前 LinkDesk 构建日」这一条事实（⛔ 没有「超过 N 天」这种阈值）；日期本身住在「市场」组的「更新时间」行。
+      <b>③「不适配」是既有机制</b>：<code>minAppVersion &gt; 当前 LinkDesk</code> 本来就装不上、载不起来——本格只是把它<b>显示出来</b>，⛔ 不改机制。
+    </div>
+  </section>
+  <!-- ══════════════ 规范速查（非帧） ══════════════ -->
+  <section class="spec">
+    <h2>规范速查（落地照这张表，别照图里的 hex）</h2>
+
+    <h3>① 用户面五个词 × 判据 × 显示（机械可核）</h3>
+    <table>
+      <tr><th>用户面词</th><th>用户读到的意思</th><th>判据（全部是事实比较，⛔ 无阈值）</th><th>显示</th><th>动作影响</th></tr>
+      <tr><td><b>正常</b></td><td>与当前版本一致</td><td>悬空 0 ＋ <code>minAppVersion</code> 满足 ＋ 插件最后发版日 ≥ 当前 LinkDesk 构建日</td><td><code>ldk-badge ok</code>「正常」</td><td>无</td></tr>
+      <tr><td><b>兼容</b></td><td>与当前版本兼容（更早做适配，仍可用）</td><td>悬空 0 ＋ <code>minAppVersion</code> 满足 ＋ 插件最后发版日 &lt; 当前 LinkDesk 构建日（或壳日期拿不到）</td><td><code>ldk-badge</code>「兼容」</td><td>无</td></tr>
+      <tr><td><b>部分不适配</b></td><td>能装能用，个别界面可能显示不正常</td><td>悬空 &gt; 0</td><td><code>ldk-badge warn</code>「部分不适配」</td><td>无（<b>不拒装</b>）</td></tr>
+      <tr><td><b>不适配</b></td><td>装不上，需要更新 LinkDesk</td><td><code>minAppVersion &gt; 当前 LinkDesk</code></td><td><code>ldk-badge err</code>「不适配」＋ 详情页「需 LinkDesk ≥ x.y.z」</td><td><b>既有机制</b>（拒装/拒载，本批不改）</td></tr>
+      <tr><td><b>—</b></td><td>这一条暂时读不到</td><td>读数缺失（离线 / 未跑尺子）</td><td>「—」</td><td>无（⛔ <b>不许显示成「不适配」</b>）</td></tr>
+    </table>
+    <p class="hint">「正常 / 兼容」的分界只用<b>两个真日期比大小</b>（插件最后发版日 vs 当前 LinkDesk 构建日 = <code>electron/product.json</code> 的 <code>date</code>，已随 <code>app:getProductInfo</code> 下发）——<b>不是</b>「超过 N 天」。若用户在设计段说「两个都写兼容就好」⇒ 删掉这条比较即可（一行改动）。</p>
+
+    <h3>② 三套词表按受众分家（唯一真相源 = <code>00-整理档案.md §〇d</code>）</h3>
+    <table>
+      <tr><th>受众</th><th>他要回答的问题</th><th>面上说</th><th>⛔ 不许出现</th></tr>
+      <tr><td><b>用户</b>（这张界面）</td><td>我装它、用它，会不会有问题？我该做什么？</td><td>正常 / 兼容 / 部分不适配 / 不适配 / — ＋ 用户能做的动作</td><td>待修 · 处数 · 悬空 · 契合度 · 依赖/包名 · 源码/文件/行号 · 重新打包 · 老/过期 · 评分/推荐</td></tr>
+      <tr><td><b>插件作者</b>（自己仓里）</td><td>我该改哪一行？</td><td>「N 处引用已失效的名字」＋名字＋<code>文件:行</code>＋两步修法</td><td>——</td></tr>
+      <tr><td><b>维护者</b>（尺子/门禁/账）</td><td>面被拿走了没有？</td><td>悬空名 · 面快照 · 只加不删 · 退役账</td><td>——</td></tr>
+    </table>
+    <p class="hint">领域类比（用户原话）：<b>「我从没见过手机厂给用户发的版本更新里写他们改的什么源码。」</b>——写给用户看的东西永远用<b>用户视角的现象</b>，不是<b>开发者视角的改动清单</b>。</p>
+
+    <h3>③ 两处落点（只加，不改骨架）</h3>
+    <table>
+      <tr><th>#</th><th>落点</th><th>既有文件（真仓路径）</th><th>加什么</th></tr>
+      <tr><td>A</td><td>详情页信息栏</td><td><code>src/views/detail/DetailView/useInfoGroups.tsx:73-118</code></td><td>新增「兼容性」组（<b>只一行状态</b>——⛔ 不写「点/停在这里看说明」这类提示行；🔴 <b>全页唯一的状态标就在这一行</b>，标题旁不挂）；「需 LinkDesk」复用既有行</td></tr>
+      <tr><td>B</td><td>悬停帮助卡（原称「说明浮层」）</td><td>新组件（<code>marketplace-</code> 前缀），<b>容器 = <code>@linkdesk/ui</code> 的 <code>OverlayPortal</code></b>（<code>closeOnOutsideClick={false}</code>、<b>不传 <code>trapFocus</code></b>），照 <code>src/views/sidebar/SearchView/AddSourcePopup.tsx</code> 的形状</td><td>三句大白话说明 ＋ 数据来源；<b>鼠标停在状态标上出、移开消失</b>（键盘 Tab 可达、触屏点按退化）</td></tr>
+    </table>
+    <p class="hint">⛔ <b>侧栏列表不标</b>：用户 2026-09-18 拍板「侧栏显示密度已经很大」⇒ 兼容状态<b>只在详情页信息栏</b>看得到（原来那条行内状态标方案已撤）。</p>
+
+    <h3>④ token 与网格（一律走 token，⛔ 零硬编码）</h3>
+    <table>
+      <tr><th>用途</th><th>用什么</th></tr>
+      <tr><td>颜色</td><td><code>var(--bg-*)</code> / <code>var(--fg-*)</code> / <code>var(--border*)</code> / <code>var(--accent|success|warning|error|info)</code> —— 与 ThemeEngine 一致，本图 hex 仅供看图</td></tr>
+      <tr><td>字号</td><td><code>var(--font-size-xs|sm|md|lg|title)</code>（⛔ 不写裸 px）</td></tr>
+      <tr><td>间距</td><td>4px 网格（<code>4/8/12/16</code>；≤6px 微调豁免）</td></tr>
+      <tr><td>圆角 / 角标</td><td><code>var(--radius-sm|md)</code>；角标用共享组件 <code>ldk-badge</code></td></tr>
+      <tr><td>zone（本图用的真实尺寸）</td><td>titlebar <b>30</b> / icon-bar <b>42</b> / sidebar <b>216</b> / main 弹性 / tabbar <b>35</b> / statusbar <b>22</b>（状态栏背景 = <code>--bg-window</code>）</td></tr>
+      <tr><td>类名</td><td>市场自有类名一律 <code>marketplace-</code> 前缀（本图沿用既有 <code>marketplace-ms-*</code> / <code>marketplace-mpd-*</code>）</td></tr>
+    </table>
+
+    <h3>⑤ i18n（两棵树同笔，⛔ 别只写中文）</h3>
+    <table>
+      <tr><th>key（= 中文原文）</th><th>en.json 里的英文</th><th>用在哪</th></tr>
+      <tr><td>正常</td><td>Up to date</td><td>详情页「兼容性」组 / 浮层</td></tr>
+      <tr><td>兼容</td><td>Compatible</td><td>详情页「兼容性」组 / 浮层</td></tr>
+      <tr><td>部分不适配</td><td>Partly incompatible</td><td>详情页「兼容性」组 / 浮层标题</td></tr>
+      <tr><td>不适配</td><td>Not compatible</td><td>详情页「兼容性」组 / 浮层</td></tr>
+      <tr><td>兼容性</td><td>Compatibility</td><td>详情页组名</td></tr>
+      <tr><td>需 LinkDesk ≥ {version}</td><td>Requires LinkDesk ≥ {version}</td><td>详情页（<b>既有行，复用</b>）</td></tr>
+      <tr><td>「部分不适配」是什么意思</td><td>What does “Partly incompatible” mean?</td><td>浮层标题</td></tr>
+      <tr><td>暂时读不到</td><td>Not available</td><td>读数缺失时</td></tr>
+    </table>
+    <p class="hint">⚠️ key 用中文原文是<b>既有约定</b>（<code>i18n/en.json</code> 的 key 就是中文）；<code>i18n/zh.json</code> 只覆盖 <code>category.*</code> 一类 slug，新文案按既有约定只进 <code>en.json</code>（若该插件已对某类 key 做 zh 覆盖，则同笔补）。</p>
+
+    <h3>⑥ 用户面禁词（格 5 收尾必跑，⛔ 命中即红）</h3>
+    <table>
+      <tr><th>核什么</th><th>怎么核</th></tr>
+      <tr><td>禁词零命中</td><td>用户面文案集合 grep <code>待修|悬空|契合度|依赖|重新打包|源码|处|老|过期|评分|推荐|排行</code> ⇒ <b>零命中</b></td></tr>
+      <tr><td>阈值词零命中</td><td>grep <code>超过 ?[0-9]+ ?天|阈值|threshold</code> ⇒ <b>零命中</b></td></tr>
+      <tr><td>五个词不许改</td><td>界面上的状态词与上表①<code>逐个字符</b>一致（⛔ 不许临时换词、不许加第六个词）</td></tr>
+    </table>
+    <h3>⑦ 帮助卡是谁造的 · 怎么触发 · 字从哪来（用户 2026-09-18 四问 ＋ 触发方式纠正后的答案）</h3>
+    <table>
+      <tr><th>问</th><th>答</th></tr>
+      <tr><td><b>容器</b>（portal / 层级 / 关闭谁管）</td><td><b>壳的共享件</b>：<code>OverlayPortal</code>（壳仓 <code>src/components/shared/overlay-portal/OverlayPortal.tsx</code>，经 <code>@linkdesk/ui</code> 导出给所有插件）——portal 目标（<code>#overlay-root</code>）、z 序、Esc、焦点都归它 ⇒ <b>零新增壳组件、零 SDK 发版</b>。市场插件<b>今天就在用</b>：<code>src/views/sidebar/SearchView/AddSourcePopup.tsx</code>（<code>&lt;OverlayPortal onClose triggerRef&gt;</code>）。<b>本格用法与它不同的一点</b>：<b>不传 <code>trapFocus</code></b>（不循环焦点、不自动聚焦）＋ <code>closeOnOutsideClick={false}</code>（鼠标按下不该关掉一张只靠「移开」消失的卡）；<code>onClose</code> 仍要传给 Esc 用</td></tr>
+      <tr><td><b>卡片</b>（长什么样）</td><td><b>市场插件自己的组件</b>（<code>marketplace-</code> 前缀），照 <code>AddSourcePopup</code> 的形状写：<code>&lt;OverlayPortal onClose triggerRef={状态标} closeOnOutsideClick={false}&gt;</code> ＋ 自己一段 JSX。<b>卡内不可交互</b>（<code>pointer-events:none</code>）：纯文本、无链接无按钮，三句话以内</td></tr>
+      <tr><td><b>触发</b></td><td><b>鼠标停在状态标上 → 出卡；鼠标移开 → 消失</b>（先约 400ms 悬停意图延时，防划过闪烁）。<b>键盘</b>：标可 Tab 聚焦 ⇒ 聚焦即出卡、失焦 / Esc 关；<b>触屏</b>：无 hover ⇒ 点一下出、点外关（退化路径）。⛔ <b>不是点击弹层</b>（点状态标不做任何事，不占点击语义）· ⛔ 不用右键（本行的右键已是<b>齿轮菜单</b>的语义）· ⛔ 不做 toast / 弹窗 / 暗屏大面板（那是「把注意力拽过来」的一类，不是帮助卡）</td></tr>
+      <tr><td><b>位置</b></td><td>贴状态标（<code>triggerRef</code> 量位置 + fixed 定位）：信息栏在主区右侧 ⇒ 卡<b>向左展开</b>，不会盖住状态标自己；贴到窗口边缘就翻转到另一侧。⛔ 不居中大面板、⛔ 不推挤布局（浮着，不动内容）</td></tr>
+      <tr><td><b>字</b>（预设文案）</td><td><b>预设，住在市场插件的 <code>i18n/en.json</code>（key = 中文原文）</b>；<b>壳只给机器态</b>（<code>state</code> 枚举 ＋ 两个真日期 ＋ <code>minAppVersion</code> 事实）——⛔ 壳不下发任何用户可见句子（否则多语言和文案口径会分裂到核心里）</td></tr>
+      <tr><td><b>能不能给别的小提示复用</b>（通用帮助卡）</td><td><b>先分清两件东西</b>：①<b>容器</b>（悬浮层挂哪、怎么关）<b>今天就有</b>，是壳共享件 <code>OverlayPortal</code>，任何插件现在就能用；②<b>「瞄一眼就出、移开就消」的帮助卡本身</b>（触发语义 ＋ 延时 ＋ 定位翻转 ＋ 键盘/触屏退化 ＋ 不可交互）<b>今天没有</b>——壳 <code>src/components/shared/</code> 的 24 个零件里没有 tooltip / hover 卡这类件。<br />要做成全壳通用件 = <b>新能力</b>：按 <code>design-flow</code> 走 8 维度 ＋ <code>@linkdesk/ui</code> 与作者面 docs 发版（⚠️ <b>不涉 18 仓接腿</b>，见下）。准入先例是通的——[E6 07 号档](../../01-插件独立构建/07-共享组件独立分发设计.md) 把 <code>@linkdesk/ui</code> 零件判为壳能力（多提供方 = 任何插件消费 / 多消费方 = 内置＋第三方 / 壳不懂业务），帮助卡是通用控件、不带业务语义，同一条成立。⇒ 🔴 <b>2026-09-18 已单独立格：<code>E6#120</code>（第 8.7 轮 · 本批最后一棒）</b>，详案 = <code>08-任务-通用悬停提示卡.md</code>（8 维度设计前置已填满）。⚠️ <b>两处实测更正</b>：① 该件落地后壳夹数是 <b>25</b> 个（今天 24）；② <b>不涉「18 仓接腿」</b>——<code>@linkdesk/ui</code> 只被 4 只官方插件消费，且零件是编译进各插件 bundle 的（不在 SDK external 名单）⇒ 要用新件得各自升依赖 ＋ 重新构建 ＋ 发新版，<b>不存在一次铺开</b>（18 仓那条腿是 SDK 判据的事，不是本件的事）。本层先用「容器 ＋ 插件自有卡片」落地——格 7 先做完则格 5 直接用共享件（两条路只留<b>一份</b>实现）。</td></tr>
+    </table>
+
+    <h3>⑧ 通用件：叫什么名字 ＋ 谁管哪一半（🔴 <b>2026-09-18 已立格</b> <code>E6#120</code> · 第 8.7 轮 · 本批最后一棒）</h3>
+    <p class="hint">用户 2026-09-18 问：「壳只提供一个可以 hover 的卡，卡里显示什么、在哪句话 hover 显示，是插件侧的能力对吧？」——<b>对，这正是「桌子不知道内容」</b>。名字另有一条铁律：<b>壳件名描述「它是什么」，⛔ 不描述「谁在用」</b>。<br />本条原写「候选格 · 🔵 待拍板」——<b>现已立格</b>：详案 = <code>08-任务-通用悬停提示卡.md</code>（含 8 维度设计前置 ＋ 判据 ＋ 禁区 ＋ 进场命令）。本格与格 5 <b>可换序、⛔ 不许并行</b>：格 5 先落地 ⇒ 格 7 替换它的插件自有卡；格 7 先落地 ⇒ 格 5 直接用共享件——两条路都只留<b>一份</b>实现。</p>
+    <table>
+      <tr><th>名字</th><th>判定</th></tr>
+      <tr><td><code>Tooltip</code></td><td>⛔ <b>不用</b>：各设计系统里 Tooltip 是<b>单词 / 短语级、纯文本</b>的提示；我们这张是三句话 ＋ 数据来源，撑不住这个名字</td></tr>
+      <tr><td><code>HoverCard</code></td><td>⛔ <b>不用</b>：名字对得上触发方式，但在设计系统惯例里 HoverCard 意味着<b>富内容且可交互</b>（里面能放链接、表单，鼠标能移进去）。我们这张偏偏<b>不可交互</b>（<code>pointer-events:none</code>）⇒ 叫这名字等于给未来的人留一个「往里塞表单」的坑</td></tr>
+      <tr><td><b><code>HintCard</code></b>（推荐）</td><td>✅ 名的是<b>用途</b>（一张短解释卡），<b>不把交互写进名字</b>——「纯展示、不可交互、≤3 句」作为<b>契约</b>写进组件文档。中文叫「提示卡」。备选 <code>HelpCard</code>（贴用户原话「帮助小卡片」，但「help」易被读成「帮助中心入口」）。⛔ <b>更不许</b> <code>onlyMarketplaceCanUse_hoverCard</code> / <code>marketplaceHintCard</code> / <code>compatHintCard</code> 这类<b>带消费方或业务字样</b>的名字（用户 2026-09-18 点名）</td></tr>
+      <tr><td>落地地址（若立格）</td><td>壳仓 <code>src/components/shared/hint-card/HintCard.tsx</code>；类名 <code>ldk-hint-card</code>（照 <code>ldk-badge</code> / <code>ldk-form-row</code> 惯例；多词长名可如 <code>context-menu→ldk-ctx-*</code> 那样缩写，本件词短，全拼即可）＋ 经 <code>@linkdesk/ui</code> 导出。<b>同夹必须带 <code>HintCard.test.tsx</code></b>（夹内惯例：tsx ＋ css ＋ 测试同夹）——🔴 实测：<code>knip.json</code> 的 ignore 名单里那 4 个共享件（<code>FilePathInput</code> / <code>FormRow</code> / <code>NumberInput</code> / <code>Toggle</code>）<b>正好都是没有测试文件</b>的，而带测试的（<code>badge</code> / <code>theme-browser</code> / <code>string-list-editor</code>）都不在名单里 ⇒ 带测试就不被判死代码</td></tr>
+      <tr><td><b>🔴 但不进保留名账</b>（2026-09-18 实测更正）</td><td><code>reserved-class-names.json</code> 的 <code>classes</code> 整块已在 <b>E6#109l-b 删除</b>，今天只剩 <code>$comment / version / keyframes</code>（关键帧 8 条）；<code>scripts/host-reserved.json</code> 的十二个家族里<b>也没有类名栏</b>。类名规则早已是<b>结构性的</b>「自己定义的类名一律 <code>ldk-</code> 开头」——<code>ldk-*</code> 在作者面文档里是<b>一行通配</b>，从不逐个登记 ⇒ 新件<b>零登记动作</b>；唯一要求是 CSS 真的落在壳 <code>src/**/*.css</code> 里（<code>check-reserved-names-doc-sync</code> 会核「表里每个名在宿主真实存在」）</td></tr>
+      <tr><td>若立格：<b>发版三条轴</b></td><td><b>① <code>@linkdesk/ui</code> 0.3.0 → 0.3.1</b>（0.x 阶段一切<b>向后兼容</b>变更走 <b>patch 位</b>，minor 位留给破坏性——version-bump 判据）＋ 真发 npm；<b>② 壳 PATCH</b>（<code>src/</code> 新增共享件 ＋ 随包种子同步）；<b>③ 消费方插件</b>（要用它的那几只 PATCH ＋ lock 抬版）。<br />🔴 <b>不涉「18 仓接腿」</b>（2026-09-18 实测更正）：<code>@linkdesk/ui</code> 今天只被 <b>4 只</b>官方插件消费（marketplace / file-tree / serial-monitor / settings，声明均 <code>^0.3.0</code>——因走 patch 位，<b>声明一个字都不用改</b>，只需刷新 lock），且 <b><code>plugin-sdk</code> / <code>contracts</code> 两根轴零改动</b>（UI 零件不经 <code>linkdesk.*</code> 面、不经 SDK 面）</td></tr>
+      <tr><td>若立格：<b>文档追平 5 处</b></td><td><code>packages/linkdesk-ui/src/index.ts</code>（加导出行 ＋ 头注释「16 直接消费组件」计数）· <code>docs/开发管理/壳目录规范.md</code> 那张 24 夹清单 → 25 · <code>01-插件独立构建/07-共享组件独立分发设计.md</code> §三 实盘清单 · 作者面<b>两棵树</b>（<code>docs/03-插件制造/05-插件UI写法规约.md</code> ＋ <code>docs/03-plugin-authoring/05-ui-conventions.md</code>，<code>check-author-docs-bilingual</code> 逼两份同步）· <code>packages/plugin-docs/</code> <b>不手改</b>（<code>docs:build</code> 生成物；但作者面一变 ⇒ 第五根版本轴 <code>@linkdesk/plugin-docs</code> PATCH）</td></tr>
+    </table>
+    <p class="hint"><b>名字铁律（照进格 4 的机械判据）</b>：共享件（<code>src/components/shared/</code> 目录名 ＋ 组件名 ＋ <code>ldk-</code> 类名）grep <code>marketplace|compat|file-tree|filetree|explorer|serial|settings|editor</code> ⇒ <b>零命中</b>；命中任一 = 名字里带了消费方或插件业务 ⇒ 红。<b>壳平台概念可以用</b>（<code>theme-picker</code> / <code>theme-browser</code> 就在共享件里——主题是壳基建，不是某插件业务）。<br />先例（同一判断在别处已做过）：<code>urlSourceKey</code>——<b>生于市场的「加市场源」去重键，名字却取通用语义，没叫 <code>marketplaceUrlKey</code></b>（<code>packages/linkdesk-ui/src/index.ts:39</code> 注释里写明它今天同时服务 marketplace 与 settings）· <code>FileIconResolver</code>（生于 file-tree 需求，名字通用）· <code>MarkdownView</code>。</p>
+    <table>
+      <tr><th>谁管</th><th>管什么（机制 / 内容切法）</th></tr>
+      <tr><td><b>壳（机制，插件看不见）</b></td><td><b>触发接线</b>（悬停意图延时约 400ms、鼠标移开消失、键盘聚焦出卡 / 失焦关、触屏点一下出 / 点外关）· <b>定位</b>（贴锚点、边缘翻转）· <b>层级</b>（<code>#overlay-root</code>、不抢焦点、无遮罩）· <b>磨砂玻璃</b>（卡面进层即吃 <b>E5.8#107 结构地板</b>的 <code>backdrop-filter</code>——与右键菜单<b>同一条规则、同一种效果</b>，零新增 CSS；🔴 但<b>卡面必须是 <code>[data-overlay-wrapper]</code> 的直接子元素</b>（深度 3），若在中间多套一层定位盒，玻璃规则够不着 ⇒ 该处 <code>src/index.css:526-558</code> 注释已明写「新浮层若嵌到深度 4+ 且需磨砂，先想结构归位，不要学那个例外」）· <b>Esc</b> · <b>无障碍</b>（<code>aria-describedby</code> 把卡与触发器关联）· <b>与原生 <code>title</code> 互斥</b>。<br />⚠️ <b>触发接线必须归壳</b>——若让插件自己接 <code>onMouseEnter</code>，延时 / 触屏退化 / 键盘 / a11y 这几件事就会在每个消费方各错一遍（正是本仓历史上类名撞车、各家自写 portal 的同一类病）</td></tr>
+      <tr><td><b>插件（内容与策略）</b></td><td><b>触发元素是谁</b>（这颗状态标）· <b>卡里写什么</b>（JSX / i18n 文案）· <b>卡多宽、出现在哪一侧</b>（可给偏好，壳有权按空间翻转）· <b>什么时候不出卡</b>（如读数缺失时的文案）</td></tr>
+      <tr><td><b>保底（design-flow 8 维度① 要求）</b></td><td>这个壳件<b>删掉 / 没被用</b>时界面不残废：状态标本身已经把「正常 / 兼容 / 部分不适配 / 不适配 / —」说清楚，卡只是补充解释 ⇒ <b>保底 = 标</b>，不依赖卡</td></tr>
+      <tr><td><b>非目标（写进契约，防被人越用越大）</b></td><td>⛔ 不做富交互内容（链接 / 按钮 / 表单 / 可滚动区）——那需要「鼠标能移进卡里 ＋ 离开宽限期」，是<b>另一个组件</b>；⛔ 不做「替代原生 <code>title</code>」的全仓清扫（另一条轴的事）；⛔ 不做点击展开 / 固定 / 多卡同屏</td></tr>
+    </table>
+    <p class="hint">⚠️ 上图与上表是<b>给用户点头用的示意图</b>；落地以格 5 的设计段结论为准（偏离要写进 <code>05-任务-市场显示状态.md</code> §9.3）。</p>
+  </section>
+
+</div>
+
+<script>
+  // 主题切换：本批 mockup 的硬要求（dark/light 两套 + 可点击切换）
+  document.getElementById("theme-btn").addEventListener("click", function () {
+    document.body.classList.toggle("light");
+  });
+</script>
+</body>
+</html>

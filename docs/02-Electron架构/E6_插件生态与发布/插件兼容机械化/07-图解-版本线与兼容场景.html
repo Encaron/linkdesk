@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>图解 · 四条版本线与兼容场景</title>
+<!--
+  ============================================================================
+  07-图解-版本线与兼容场景.html —— 讲解图（不是设计图、不是规范、不是任务书）
+  ----------------------------------------------------------------------------
+  为什么有这一篇：用户 2026-09-18 反复问「谁判断兼容」「ui 包升级和插件要不要跟」，
+  绕不出来，根因是**把四条互不相干的版本线当成了一条**（ui 包版本 ↔ 壳版本）。
+  本图把那四条线并排摊开，再把三类判断与真实场景逐格推演一遍。
+
+  🔴 数字纪律：文中每个数字都标【实测】或【示例】。实测 = 本机今天真读到的读数；
+     示例 = 为了讲清逻辑编的假想（如「壳 1.0.72」，本仓壳今天不是 1.x）。
+  相关：00-整理档案 §〇d（五个状态词的唯一真相源）· 05-任务-市场显示状态.md ·
+      ../01-插件独立构建/07-共享组件独立分发设计.md（打捆决策）
+  ============================================================================
+-->
+<style>
+  :root{
+    --bg:#14161a; --bg-panel:#1c1f24; --bg-sunken:#101216; --bg-soft:#22262c;
+    --border:#2c313a; --border-strong:#3a4150;
+    --fg-primary:#e6e9ef; --fg-secondary:#aab2c0; --fg-muted:#79828f;
+    --accent:#5aa9ff; --ok:#4ec98a; --warn:#e0a63c; --err:#e06a6a;
+    --radius-sm:4px; --radius-md:8px; --radius-lg:12px;
+    --font-size-xs:11px; --font-size-sm:12.5px; --font-size-md:14px; --font-size-lg:17px; --font-size-xl:22px;
+    --mono:ui-monospace,SFMono-Regular,Consolas,"Cascadia Mono",monospace;
+  }
+  body.light{
+    --bg:#f6f7f9; --bg-panel:#ffffff; --bg-sunken:#eef0f3; --bg-soft:#f1f3f6;
+    --border:#dfe3e9; --border-strong:#c6ccd6;
+    --fg-primary:#1b1f24; --fg-secondary:#4a5361; --fg-muted:#7c8695;
+    --accent:#2b7fd4; --ok:#1f9d63; --warn:#a9761a; --err:#c04545;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;padding:0 0 72px;background:var(--bg);color:var(--fg-primary);
+    font-family:-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;
+    font-size:var(--font-size-md);line-height:1.75;
+  }
+  .wrap{max-width:1080px;margin:0 auto;padding:0 28px}
+  header.top{
+    border-bottom:1px solid var(--border);background:var(--bg-panel);
+    padding:22px 0 18px;margin-bottom:28px;position:sticky;top:0;z-index:5;
+  }
+  header.top .wrap{display:flex;align-items:flex-start;gap:16px;flex-wrap:wrap}
+  h1{font-size:var(--font-size-xl);margin:0 0 6px;line-height:1.35}
+  .sub{color:var(--fg-secondary);font-size:var(--font-size-sm);margin:0}
+  .spacer{flex:1}
+  .toggle{
+    border:1px solid var(--border-strong);background:var(--bg-soft);color:var(--fg-secondary);
+    font-size:var(--font-size-sm);padding:6px 12px;border-radius:var(--radius-md);cursor:pointer;
+  }
+  .toggle:hover{color:var(--fg-primary);border-color:var(--accent)}
+  .tag{
+    display:inline-block;padding:1px 7px;border-radius:var(--radius-sm);font-size:var(--font-size-xs);
+    border:1px solid var(--border-strong);color:var(--fg-muted);margin-right:6px;white-space:nowrap;
+  }
+  .tag.real{border-color:var(--ok);color:var(--ok)}
+  .tag.demo{border-color:var(--warn);color:var(--warn)}
+  .tag.fix{border-color:var(--accent);color:var(--accent)}
+
+  section{margin:0 0 38px}
+  h2{font-size:var(--font-size-lg);margin:0 0 4px;padding-top:6px}
+  h2 .num{
+    display:inline-block;width:24px;height:24px;line-height:24px;text-align:center;
+    background:var(--bg-soft);border:1px solid var(--border-strong);border-radius:var(--radius-sm);
+    font-size:var(--font-size-sm);color:var(--fg-secondary);margin-right:9px;font-family:var(--mono)
+  }
+  h3{font-size:var(--font-size-md);margin:20px 0 8px;color:var(--fg-primary)}
+  p{margin:8px 0;color:var(--fg-secondary)}
+  p.lead{color:var(--fg-primary)}
+  ul{margin:8px 0;padding-left:22px;color:var(--fg-secondary)}
+  li{margin:4px 0}
+  code{font-family:var(--mono);font-size:.92em;background:var(--bg-soft);padding:1px 5px;border-radius:var(--radius-sm);color:var(--fg-primary)}
+  b{color:var(--fg-primary)}
+  .box{border:1px solid var(--border);border-radius:var(--radius-md);background:var(--bg-panel);padding:14px 16px;margin:14px 0}
+  .box.alert{border-color:var(--err);background:linear-gradient(0deg,rgba(224,106,106,.06),rgba(224,106,106,.06)),var(--bg-panel)}
+  .box.key{border-color:var(--accent);background:linear-gradient(0deg,rgba(90,169,255,.07),rgba(90,169,255,.07)),var(--bg-panel)}
+  .box.evidence{border-color:var(--ok);background:linear-gradient(0deg,rgba(78,201,138,.06),rgba(78,201,138,.06)),var(--bg-panel)}
+  .box h4{margin:0 0 6px;font-size:var(--font-size-md);color:var(--fg-primary)}
+  .box p:last-child,.box ul:last-child{margin-bottom:0}
+
+  /* 四条版本线 */
+  .tracks{display:grid;gap:10px;margin:16px 0}
+  .track{display:grid;grid-template-columns:150px 1fr 190px;gap:14px;align-items:center;
+    border:1px solid var(--border);border-radius:var(--radius-md);background:var(--bg-panel);padding:12px 14px}
+  .track .who{font-size:var(--font-size-sm);color:var(--fg-secondary);line-height:1.5}
+  .track .who b{display:block;font-size:var(--font-size-md)}
+  .axis{position:relative;height:26px}
+  .axis .line{position:absolute;left:0;right:0;top:12px;height:2px;background:var(--border-strong);border-radius:2px}
+  .axis .tick{position:absolute;top:5px;width:2px;height:16px;background:var(--border-strong)}
+  .axis .lbl{position:absolute;top:-9px;transform:translateX(-50%);font-family:var(--mono);font-size:var(--font-size-xs);color:var(--fg-muted);white-space:nowrap}
+  .axis .here{position:absolute;top:8px;width:10px;height:10px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 3px rgba(90,169,255,.18);transform:translateX(-50%)}
+  .track .note{font-size:var(--font-size-xs);color:var(--fg-muted);font-family:var(--mono)}
+
+  /* 三卡 */
+  .cards3{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px;margin:14px 0}
+  .card{border:1px solid var(--border);border-radius:var(--radius-md);background:var(--bg-panel);padding:14px 16px}
+  .card h4{margin:0 0 8px;font-size:var(--font-size-md)}
+  .card .q{color:var(--fg-muted);font-size:var(--font-size-sm);margin:0 0 8px}
+  .card .a{font-size:var(--font-size-sm);color:var(--fg-secondary);margin:0}
+  .card .a code{white-space:nowrap}
+
+  /* 焊接流程 */
+  .flow{display:flex;align-items:stretch;gap:0;flex-wrap:wrap;margin:16px 0}
+  .flow .step{
+    flex:1;min-width:150px;border:1px solid var(--border);background:var(--bg-panel);
+    padding:12px 14px;border-radius:var(--radius-md);margin:0 26px 12px 0;position:relative;
+  }
+  .flow .step:last-child{margin-right:0}
+  .flow .step::after{
+    content:"▶";position:absolute;right:-20px;top:50%;transform:translateY(-50%);
+    color:var(--fg-muted);font-size:12px;
+  }
+  .flow .step:last-child::after{content:""}
+  .flow .step .n{font-family:var(--mono);font-size:var(--font-size-xs);color:var(--fg-muted)}
+  .flow .step b{display:block;margin:2px 0 4px;font-size:var(--font-size-sm)}
+  .flow .step span{font-size:var(--font-size-xs);color:var(--fg-muted);display:block;line-height:1.6}
+  .flow .step.hot{border-color:var(--accent)}
+
+  /* 通用表 */
+  table{width:100%;border-collapse:collapse;margin:14px 0;font-size:var(--font-size-sm)}
+  th,td{border:1px solid var(--border);padding:8px 10px;text-align:left;vertical-align:top}
+  th{background:var(--bg-soft);color:var(--fg-primary);font-weight:600;font-size:var(--font-size-sm)}
+  td{color:var(--fg-secondary)}
+  td b{color:var(--fg-primary)}
+  .ok{color:var(--ok)} .warn{color:var(--warn)} .err{color:var(--err)} .mut{color:var(--fg-muted)}
+  .pill{display:inline-block;padding:1px 7px;border-radius:999px;font-size:var(--font-size-xs);border:1px solid var(--border-strong);color:var(--fg-muted)}
+  .pill.ok{border-color:var(--ok);color:var(--ok)}
+  .pill.warn{border-color:var(--warn);color:var(--warn)}
+  .pill.err{border-color:var(--err);color:var(--err)}
+
+  /* 误解对照 */
+  .wrong{display:grid;grid-template-columns:1fr 1fr;gap:0;border:1px solid var(--border);border-radius:var(--radius-md);overflow:hidden;margin:12px 0}
+  .wrong > div{padding:12px 14px;font-size:var(--font-size-sm)}
+  .wrong .w{background:linear-gradient(0deg,rgba(224,106,106,.07),rgba(224,106,106,.07)),var(--bg-panel);border-right:1px solid var(--border)}
+  .wrong .r{background:linear-gradient(0deg,rgba(78,201,138,.06),rgba(78,201,138,.06)),var(--bg-panel)}
+  .wrong .w strong{color:var(--err)} .wrong .r strong{color:var(--ok)}
+  .wrong p{margin:4px 0 0}
+
+  /* 口诀 */
+  .creed{border:1px solid var(--accent);border-radius:var(--radius-lg);background:var(--bg-panel);padding:18px 20px;margin:16px 0}
+  .creed ol{margin:8px 0 0;padding-left:20px;color:var(--fg-secondary)}
+  .creed li{margin:6px 0}
+  footer{border-top:1px solid var(--border);margin-top:44px;padding-top:16px;color:var(--fg-muted);font-size:var(--font-size-xs)}
+  footer code{font-size:var(--font-size-xs)}
+</style>
+</head>
+<body>
+<header class="top"><div class="wrap">
+  <div>
+    <h1>图解 · 四条版本线与兼容场景</h1>
+    <p class="sub">把「谁判断兼容 / ui 包升级插件要不要跟 / 为什么有的插件装不上」一次讲清 ·
+      <span class="tag">讲解图</span><span class="tag">非设计图 · 非规范 · 非任务书</span></p>
+  </div>
+  <div class="spacer"></div>
+  <button class="toggle" onclick="document.body.classList.toggle('light')">切换 dark / light</button>
+</div></header>
+
+<div class="wrap">
+
+<!-- ── 0 ─────────────────────────────────────────────────────────────── -->
+<section>
+  <h2><span class="num">0</span>这篇要解决的，是一个具体的绕不出来</h2>
+  <p class="lead">用户（2026-09-18）连着问了十几轮，核心始终卡在同一个地方：<b>把四条互不相干的版本线当成了一条</b>——
+  以为「ui 包版本」和「壳版本」是同一把尺子上的前后刻度（<code>ui 2.3.5</code> ↔ 壳 <code>1.0.88</code>、<code>ui 2.3.6</code> ↔ 壳 <code>1.0.89</code>），
+  于是推出「用旧 ui 的插件在旧壳上能用、用新 ui 的插件必须装新壳」。</p>
+  <div class="box alert">
+    <h4>结论先放这（后面每一节都在证明它）</h4>
+    <p><b>ui 包的版本只决定两件事</b>：① 插件构建时能不能拿到它；② 插件想不想用上新零件。<br />
+    <b>它不决定</b>：用户能不能装这只插件、市场里显示哪个词。</p>
+  </div>
+</section>
+
+<!-- ── 1 ─────────────────────────────────────────────────────────────── -->
+<section>
+  <h2><span class="num">1</span>四条版本线：各走各的，中间没有任何换算表</h2>
+  <p>下面是今天真实的四个数字（全部【实测】）。注意它们的<b>数量级都对不上</b>——因为它们本来就不是一条线。</p>
+
+  <div class="tracks">
+    <div class="track">
+      <div class="who"><b>① 壳版本</b>LinkDesk 自己</div>
+      <div class="axis">
+        <div class="line"></div>
+        <div class="tick" style="left:6%"></div><div class="lbl" style="left:6%">0.1.0</div>
+        <div class="tick" style="left:42%"></div><div class="lbl" style="left:42%">0.2.0</div>
+        <div class="here" style="left:78%"></div><div class="lbl" style="left:78%">0.2.11 ← 今天</div>
+      </div>
+      <div class="note">用户装的软件<br />维护：本仓 version-bump</div>
+    </div>
+
+    <div class="track">
+      <div class="who"><b>② ui 包版本</b><code>@linkdesk/ui</code></div>
+      <div class="axis">
+        <div class="line"></div>
+        <div class="tick" style="left:10%"></div><div class="lbl" style="left:10%">0.1.x</div>
+        <div class="tick" style="left:50%"></div><div class="lbl" style="left:50%">0.2.x</div>
+        <div class="here" style="left:86%"></div><div class="lbl" style="left:86%">0.3.0 ← 今天</div>
+      </div>
+      <div class="note">零件厂的产品线<br />维护：发 npm 单独走</div>
+    </div>
+
+    <div class="track">
+      <div class="who"><b>③ 插件自己的版本</b>如市场插件</div>
+      <div class="axis">
+        <div class="line"></div>
+        <div class="tick" style="left:8%"></div><div class="lbl" style="left:8%">1.0.0</div>
+        <div class="tick" style="left:60%"></div><div class="lbl" style="left:60%">1.0.34</div>
+        <div class="here" style="left:92%"></div><div class="lbl" style="left:92%">1.0.35 ← 今天</div>
+      </div>
+      <div class="note">插件发新版时的编号<br />维护：各插件作者</div>
+    </div>
+
+    <div class="track">
+      <div class="who"><b>④ 门槛 <code>minAppVersion</code></b>插件作者<b>手写</b></div>
+      <div class="axis">
+        <div class="line"></div>
+        <div class="tick" style="left:30%"></div><div class="lbl" style="left:30%">0.2.0 ← 唯一被写下的值</div>
+        <div class="lbl" style="left:88%">多数插件：<b>这一行没写</b></div>
+      </div>
+      <div class="note">写法：<code>plugin.json</code> 里一行<br />写的是<b>壳的</b>版本号，不是 ui 的</div>
+    </div>
+  </div>
+
+  <div class="box evidence">
+    <h4>④ 这一行的实测读数（今天）</h4>
+    <ul>
+      <li>18 只官方插件里，<b>只有 2 只写了</b> <code>minAppVersion</code>：<code>serial-monitor</code> 与 <code>settings</code>，都写 <code>0.2.0</code>。</li>
+      <li>随包 6 个种子里只有 <code>settings</code> 有这一行；<b>市场插件 <code>marketplace</code> 根本没写</b>。</li>
+      <li>壳现在 <code>0.2.11</code> ≥ <code>0.2.0</code> ⇒ 今天<b>没有任何插件被拒装</b>。</li>
+      <li>实物长这样（<code>official/settings/plugin.json</code> 第 4–6 行）：
+        <br /><code>"name": "设置", "version": "1.0.14", "minAppVersion": "0.2.0"</code></li>
+    </ul>
+    <p>⇒ 这个数字<b>不是从 ui 包继承的</b>，是作者按「我用了哪些壳能力」自己写的；也正因为如此，它跟 <code>@linkdesk/ui</code> 的 <code>0.3.0</code> 连数量级都不一样。</p>
+  </div>
+
+  <div class="box">
+    <h4>ui 与壳之间唯一真实的联系（存在，但要作者手动落）</h4>
+    <p>ui 组件内部<b>会调壳的运行时 API</b>——实测 <code>src/components/shared/</code> 里有 <b>21 处</b> <code>window.linkdesk.*</code>，涉及 10 个文件。
+    所以：某天某个 ui 组件用上了<b>新壳才有的 API</b>，用它构建的插件在旧壳上就会出问题 ⇒ <b>这时作者应该把 <code>minAppVersion</code> 写高一点</b>。</p>
+    <p>⚠️ 但请记住两点：① 是<b>作者手动写</b>；② 系统<b>不会也不能</b>从 ui 版本自动推这个门槛——那个版本号在插件产物里<b>读不出来</b>
+    （打包时排除了 <code>package.json</code>，代码被压缩内联、没有版本标记）。</p>
+  </div>
+</section>
+
+<!-- ── 2 ─────────────────────────────────────────────────────────────── -->
+<section>
+  <h2><span class="num">2</span>三个误解 → 正解（就是这几天走过的弯路）</h2>
+
+  <div class="wrong">
+    <div class="w"><strong>误解 ①</strong><p>ui 包会声明「我适配哪些壳版本」（如 ui 2.3.6 适配壳 1.0.89+）</p></div>
+    <div class="r"><strong>正解</strong><p>包<b>只有代码</b>，没有这张表。装不装得上的门槛是 <code>minAppVersion</code>，由<b>插件作者手写</b></p></div>
+  </div>
+
+  <div class="wrong">
+    <div class="w"><strong>误解 ②</strong><p>插件声明了 <code>^0.3.0</code>，ui 包一出补丁（0.3.1），所有插件就<b>自动享受</b>新体验</p></div>
+    <div class="r"><strong>正解</strong><p>装了哪个版本由<b>插件仓的清单（lock）钉死</b>；而且零件是<b>焊进插件产物</b>的，包升级不会改变已装在用户机器上的插件</p></div>
+  </div>
+
+  <div class="wrong">
+    <div class="w"><strong>误解 ③</strong><p>插件用的 ui 版本老（如 1.9.11）⇒ 不可使用</p></div>
+    <div class="r"><strong>正解</strong><p>ui 版本<b>完全不参与</b>可用性判断。老零件在新壳上照样跑（因为壳根本不认它）</p></div>
+  </div>
+</section>
+
+<!-- ── 3 ─────────────────────────────────────────────────────────────── -->
+<section>
+  <h2><span class="num">3</span>为什么「包升级 ≠ 用户拿到」：零件是编译期焊进去的</h2>
+
+  <div class="flow">
+    <div class="step">
+      <div class="n">STEP 1</div><b>零件源码</b>
+      <span>壳仓 <code>src/components/shared/</code>（单一副本）→ 经 <code>@linkdesk/ui</code> 对外分发</span>
+    </div>
+    <div class="step hot">
+      <div class="n">STEP 2</div><b>构建时焊进产物</b>
+      <span>插件跑 <code>vite build</code>，共享件源码被<b>内联进插件自己的 bundle</b></span>
+    </div>
+    <div class="step">
+      <div class="n">STEP 3</div><b>用户机器上的插件</b>
+      <span>装完之后，这只插件<b>自带一份</b>它构建时的零件拷贝</span>
+    </div>
+    <div class="step">
+      <div class="n">STEP 4</div><b>包再更新也没用</b>
+      <span>npm 上把包更新一百次，<b>改不了用户机器里那份</b></span>
+    </div>
+  </div>
+
+  <div class="box evidence">
+    <h4>实测证据（拆开随包的市场插件 zip 看到的）</h4>
+    <ul>
+      <li>产物里 <b>5 个视图 bundle</b> 都能搜到共享件自己的实现痕迹：<code>views/DetailView.bundle.js</code> · <code>SearchView</code> · <code>InstalledListView</code> · <code>BuiltinListView</code> · <code>ConfirmInstall</code>（命中 <code>overlay-root</code> / <code>data-overlay-wrapper</code> / <code>ldk-badge</code>）。</li>
+      <li>SDK 的「由壳提供、插件不许自己打」名单<b>只有六个</b>：<code>react</code> · <code>react-dom</code> · <code>react-dom/client</code> · <code>react/jsx-runtime</code> · <code>react-i18next</code> · <code>i18next</code>（<code>packages/plugin-sdk/src/vite-config.ts:55</code>）。<b><code>@linkdesk/ui</code> 不在里面</b>，也没有 import-map。</li>
+      <li>设计文档原话（E6 <code>07-共享组件独立分发设计.md</code> 第 28 行）：「<code>@linkdesk/ui</code> 属"<b>其它皆内联</b>"——组件源码<b>编译进各插件 bundle</b>」。</li>
+    </ul>
+  </div>
+
+  <div class="box">
+    <h4>这是<b>有意选的路线</b>，不是疏忽——两条路线的取舍</h4>
+    <table>
+      <tr><th style="width:34%">对比项</th><th>打捆（本仓今天的选择）</th><th>运行时共享（external + import-map）</th></tr>
+      <tr><td>零件代码在哪</td><td>每只插件产物里<b>各带一份</b></td><td>壳提供一份，插件运行时去取</td></tr>
+      <tr><td>包修了 bug</td><td class="warn">每只插件<b>各自重新发版</b>才生效</td><td class="ok">包一改，全体立刻受益</td></tr>
+      <tr><td>壳与插件版本</td><td class="ok">互不依赖：老插件在新壳上照跑</td><td class="err">必须对齐，否则可能崩</td></tr>
+      <tr><td>插件产物体积</td><td class="warn">每只各多一份（重复）</td><td class="ok">更小</td></tr>
+      <tr><td>作者要配什么</td><td class="ok">零配置，装 SDK 即达</td><td class="warn">要管版本对齐</td></tr>
+    </table>
+    <p>⇒ 本仓选了左边，换来的是「插件产物自洽、作者零配置」（代价：修复要各自发版）。这也是为什么这块面要<b>尽量稳、尽量少改</b>。</p>
+  </div>
+</section>
+
+<!-- ── 4 ─────────────────────────────────────────────────────────────── -->
+<section>
+  <h2><span class="num">4</span>三个问题，三套判据（别混）</h2>
+
+  <div class="cards3">
+    <div class="card">
+      <h4>① 用户能不能<b>装</b>这只插件？</h4>
+      <p class="q">唯一判据</p>
+      <p class="a">插件自己写的 <code>minAppVersion</code> vs 用户装的<b>壳版本</b>。<br />
+      不满足 ⇒ 装不上（<span class="pill err">不适配</span>）。<br />
+      <span class="mut">实现：<code>src/pluginLoader/resolution/runtime.ts:202-218</code> ——<b>既有硬机制</b>，本批只把它显示出来。</span></p>
+    </div>
+    <div class="card">
+      <h4>② 市场里<b>显示哪个词</b>？</h4>
+      <p class="q">三条依据（详见第 6 节）</p>
+      <p class="a">宿主有没有把插件还在喊的名字拿走（悬空名）＋ <code>minAppVersion</code> 够不够 ＋ 插件发布日 vs 这只壳的构建日。<br />
+      <span class="mut">ui 版本<b>不参与</b>。</span></p>
+    </div>
+    <div class="card">
+      <h4>③ 插件<b>能不能用上新零件</b>？</h4>
+      <p class="q">全靠插件作者自己动手</p>
+      <p class="a">进货（刷 ui 依赖）→ 重新构建（新零件焊进去）→ <b>发一个新版插件</b>。<br />
+      <span class="mut">三步缺一，用户那边什么都不会变。</span></p>
+    </div>
+  </div>
+</section>
+
+<!-- ── 5 ─────────────────────────────────────────────────────────────── -->
+<section>
+  <h2><span class="num">5</span><code>^0.3.0</code> 管什么、不管什么</h2>
+  <p><code>^0.3.0</code> 的全部含义 = <code>&gt;=0.3.0 &lt;0.4.0</code>（实测 <code>semver@7.8.5</code> 展开）。它是一句<b>「允许范围」</b>，不是「已经装上的版本」。</p>
+  <table>
+    <tr><th style="width:50%"><span class="ok">它管</span></th><th>它不管</th></tr>
+    <tr>
+      <td>零件厂出 0.3.1 时，插件的<b>声明不会失效</b>、不会构建红、<b>不用改文件</b></td>
+      <td>插件<b>不会自动装到</b> 0.3.1（钉死它的是插件仓的<b>清单</b>）</td>
+    </tr>
+    <tr>
+      <td>所以「没有任何插件被<b>迫</b>适配」——不改也不会坏</td>
+      <td>插件<b>不会自动用上</b>新零件（要重新构建 ＋ 重新发版，用户更新后才生效）</td>
+    </tr>
+    <tr>
+      <td>如果是 <code>0.4.0</code>（跳代）⇒ 声明立刻失效、必须齐步改 —— <b>那才叫被迫适配</b></td>
+      <td>跟「显示哪个词」「能不能装」<b>都没有关系</b></td>
+    </tr>
+  </table>
+  <div class="box key">
+    <p><b>一句话</b>：<code>^0.3.0</code> 保证的是「你不被逼着干活」，<b>不是</b>「你自动拿到新东西」。</p>
+  </div>
+</section>
+
+<!-- ── 6 ─────────────────────────────────────────────────────────────── -->
+<section>
+  <h2><span class="num">6</span>场景推演：四个插件 × 两个用户</h2>
+  <p class="lead">下面用户与插件的数字是<b>假想的</b><span class="tag demo">示例</span>，用来把逻辑走一遍；
+  每格最后都给出<b>判定依据</b>，以及<b>缺什么信息就推不出</b>——这本身就是结论。</p>
+
+  <table>
+    <tr>
+      <th style="width:16%">设定</th><th style="width:21%">插件一</th><th style="width:21%">插件二</th>
+      <th style="width:21%">插件三</th><th style="width:21%">插件四</th>
+    </tr>
+    <tr>
+      <td><b>插件自己版本</b></td>
+      <td>1.0.8</td><td>1.0.8</td><td>0.9.0</td><td>1.2.0</td>
+    </tr>
+    <tr>
+      <td><b>用的 ui 零件</b></td>
+      <td>2.3.5（旧）</td><td>2.3.6（最新）</td><td>1.9.11（很旧）</td><td>2.2.8（旧）</td>
+    </tr>
+    <tr>
+      <td><b>自己写的门槛<br />minAppVersion</b></td>
+      <td class="warn">未写</td><td class="warn">未写</td><td class="warn">未写</td><td class="mut">假设写了 1.0.85</td>
+    </tr>
+    <tr>
+      <td><b>别的实情</b></td>
+      <td>发布日较早</td><td>发布日较新</td><td>发布日较早</td><td>发布日较新</td>
+    </tr>
+  </table>
+
+  <h3>用户一：壳 1.0.72（假想的旧版软件）<span class="tag demo">示例</span></h3>
+  <table>
+    <tr><th style="width:12%">插件</th><th style="width:16%">能不能装</th><th style="width:18%">显示哪个词</th><th>为什么（判定依据）</th></tr>
+    <tr>
+      <td><b>插件一</b></td>
+      <td class="ok">能装</td><td class="warn">兼容</td>
+      <td>没写门槛 ⇒ 装得进；发布日早于这只壳的构建日 ⇒ <b>兼容</b>。<br /><span class="mut">跟它用 ui 2.3.5 无关。</span></td>
+    </tr>
+    <tr>
+      <td><b>插件二</b></td>
+      <td class="ok">能装</td><td class="ok">正常</td>
+      <td>同样没写门槛 ⇒ 也装得进！<b>「用新 ui 就必须新壳」这个推断不成立</b>。<br />若它的发布日早于 1.0.72 的构建日，显示的也是「兼容」。</td>
+    </tr>
+    <tr>
+      <td><b>插件三</b></td>
+      <td class="ok">能装</td><td class="warn">兼容</td>
+      <td>ui 是 1.9.11（跨代）也<b>不影响可用</b>——零件在它肚子里，壳不认它。</td>
+    </tr>
+    <tr>
+      <td><b>插件四</b></td>
+      <td class="err">装不上 · 不适配</td><td class="mut">—</td>
+      <td><b>唯一原因</b>：它自己写了门槛 <code>1.0.85 &gt; 1.0.72</code>。这是<b>作者的声明</b>，不是 ui 版本推出来的。</td>
+    </tr>
+  </table>
+
+  <h3>用户二：壳 1.0.89（假想的较新版软件）<span class="tag demo">示例</span></h3>
+  <table>
+    <tr><th style="width:12%">插件</th><th style="width:16%">能不能装</th><th style="width:18%">显示哪个词</th><th>为什么（判定依据）</th></tr>
+    <tr><td><b>插件一</b></td><td class="ok">能装</td><td class="warn">兼容</td><td>门槛没写、发布日早于 1.0.89 的构建日 ⇒ 兼容。</td></tr>
+    <tr><td><b>插件二</b></td><td class="ok">能装</td><td class="ok">正常</td><td>发布日新于这只壳的构建日 ⇒ 正常。</td></tr>
+    <tr><td><b>插件三</b></td><td class="ok">能装</td><td class="warn">兼容</td><td>同上：ui 1.9.11 不参与判断。</td></tr>
+    <tr><td><b>插件四</b></td><td class="ok">能装</td><td class="ok">正常</td><td><code>1.0.85 ≤ 1.0.89</code> ⇒ 门槛过了 ⇒ 装得上。</td></tr>
+  </table>
+
+  <div class="box key">
+    <h4>这张表最值钱的两条</h4>
+    <ul>
+      <li><b>同一只插件，在两个用户那里显示的词可以不一样</b>（因为两只壳的构建日不同）——所以「显示哪个词」是<b>插件 × 这只壳</b>的联合结果，不是插件的固有属性。</li>
+      <li>想推任何一格，缺的那个数永远是<b>「插件自己写的门槛」</b>；<b>ui 版本推进去也算不出来</b>。</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ── 7 ─────────────────────────────────────────────────────────────── -->
+<section>
+  <h2><span class="num">7</span>一次修复，怎么传到用户手上（四步，缺一不可）</h2>
+  <p>拿「ui 0.3.55 有个 bug，作者修好发成 0.3.56」走一遍。<b>发 0.3.56 那一刻，全世界什么都没变。</b></p>
+  <div class="flow">
+    <div class="step"><div class="n">①</div><b>零件厂发 0.3.56</b><span>只有 npm 上多了一个新版本</span></div>
+    <div class="step hot"><div class="n">②</div><b>每只想要它的插件：进货</b><span>刷清单 0.3.55 → 0.3.56（声明 <code>^0.3.0</code> 不用改）</span></div>
+    <div class="step hot"><div class="n">③</div><b>重新造车 + 发新车</b><span>重新构建（新零件焊进去）→ 插件自己升版本发新版</span></div>
+    <div class="step"><div class="n">④</div><b>用户更新插件</b><span>市场推新版 / 用户点更新，修好的那份才到用户手里</span></div>
+  </div>
+  <div class="box alert">
+    <p><b>所以</b>：不是「所有插件通通不用动就享受」，而是「<b>每只想要它的插件，各自重新发一次版才能享受</b>」。
+    没去进的那只，继续带着 0.3.55 的 bug 照跑——<b>不坏，但也没修</b>。</p>
+  </div>
+</section>
+
+<!-- ── 8 ─────────────────────────────────────────────────────────────── -->
+<section>
+  <h2><span class="num">8</span>回本行：五个状态词的真实判据</h2>
+  <p>五个词<b>不是评分、不是人评的</b>，每一条都是「两个事实比大小」，唯一真相源 = <code>00-整理档案.md §〇d</code>。
+  <span class="tag fix">本批读数由格 4 <code>E6#117</code> 算</span><span class="tag fix">格 5 <code>E6#118</code> 只负责显示</span></p>
+  <table>
+    <tr><th style="width:16%">用户面词</th><th style="width:34%">机械判据</th><th>说明</th></tr>
+    <tr><td><span class="pill ok">正常</span></td>
+      <td>无悬空名 ＋ <code>minAppVersion</code> 满足 ＋ 插件发布日 <b>≥</b> 壳构建日</td>
+      <td>与当前版本一致</td></tr>
+    <tr><td><span class="pill">兼容</span></td>
+      <td>无悬空名 ＋ <code>minAppVersion</code> 满足 ＋ 插件发布日 <b>&lt;</b> 壳构建日</td>
+      <td>更早适配、仍可用；<b>不判老、不判差</b>。壳构建日拿不到时也落这里（保守且是真话）</td></tr>
+    <tr><td><span class="pill warn">部分不适配</span></td>
+      <td>悬空名 <b>&gt; 0</b>（插件还在喊宿主已经没有的名字）</td>
+      <td>能装能用，个别界面可能显示不正常</td></tr>
+    <tr><td><span class="pill err">不适配</span></td>
+      <td><code>minAppVersion</code> <b>高于</b>当前壳</td>
+      <td>装不上——既有硬机制，本批只把它显示出来</td></tr>
+    <tr><td><span class="pill mut">—</span></td>
+      <td>读数缺失（离线 / 尺子没跑）</td>
+      <td>⛔ <b>不许</b>显示成「不适配」</td></tr>
+  </table>
+  <h3>附：这两个日期分别从哪读（2026-09-18 追问「是不是 GitHub 上的」）</h3>
+  <p class="lead">答案两边不一样：<b>壳那个不在 GitHub</b>（壳自己随身带着），<b>插件那个在</b>（GitHub 上的目录文件里）。</p>
+  <table>
+    <tr><th style="width:13%"></th><th style="width:23%">谁写的</th><th style="width:26%">存在哪</th><th style="width:17%">怎么读</th><th>拿不到时</th></tr>
+    <tr>
+      <td><b>壳的构建日</b></td>
+      <td>壳发布脚本 <code>scripts/write-product-json.mjs</code>——<b>发布那一刻的机器时间</b></td>
+      <td>壳<b>自己的身份文件</b> <code>electron/product.json</code> 的 <code>date</code> 字段，<b>随安装包一起打进去</b></td>
+      <td>运行时读它 → 随 <code>app:getProductInfo</code> 下发界面 · <b>离线可得</b></td>
+      <td>仓库/开发期<b>恒为空</b>（发布脚本跑完还会还原成占位）⇒ 显示 <code>—</code> ⇒ 判「兼容」</td>
+    </tr>
+    <tr>
+      <td><b>插件的发版日</b></td>
+      <td>插件发版时由 SDK 写（<code>publish</code> 命令；同一动作里先建 GitHub Release，再写这个时间）</td>
+      <td><b>官方目录</b>：GitHub 仓 <code>encaron/linkdesk-marketplace</code> 的 <code>marketplace.json</code>，每个条目的 <code>publishedAt</code>（第三方源同形状，写在自己那个源里）</td>
+      <td>从目录读（联网或已有缓存）</td>
+      <td>离线 / 本地侧载插件没有目录来源 ⇒ <code>—</code></td>
+    </tr>
+  </table>
+  <div class="box">
+    <h4>两个连带事实（都会影响「怎么算」）</h4>
+    <ul>
+      <li><b>插件包自己身上没有日期</b>——拆开产物里那份清单（<code>plugin.json</code>）实测只有 <code>pluginId / name / version / icon / description / author / entry / contributes …</code>，<b>没有任何日期字段</b>。所以「看看插件文件本身就知道它哪天发的」这条路走不通，发版日只能问目录。</li>
+      <li><b>本地确实有一个日期，但它不是发版日</b>：安装账本里记着 <code>installedAt</code> = <b>我哪天把它装上的</b>（首次装记一次，以后升级不改）。它晚于作者发版日，拿它顶替会把「兼容」误判成「正常」。</li>
+    </ul>
+    <p>这样分工是<b>有意的</b>：壳的构建日放自己包里 ⇒ <b>离线也能判，不受 GitHub 通不通影响</b>；插件的发版日放目录 ⇒ 目录本来就是「谁发了什么」的登记处。</p>
+  </div>
+
+  <div class="box">
+    <p>这套机制今天<b>还没落地</b>：第 8 层 6 格判据（<code>E6#114</code>–<code>E6#119</code>）2026-09-18 立案，<b>全部未勾</b>；壳里 grep <code>compat</code> 零命中。（同日该层另立<b>第 7 格</b> <code>E6#120</code>＝把那张悬停卡从插件自有件抽成壳的共享件，<b>与本图讲的口径无关</b>。）
+    落地后两个连带事实要提前知道：</p>
+    <ul>
+      <li><b>「兼容」的日期比较跟 ui 包无关</b>，比的是<b>插件发布日</b>与<b>这只壳的构建日</b>。</li>
+      <li>尺子第一次跑起来，会把<b>既存的</b>旧账照亮（宿主过去改名留下的悬空名）⇒ 上线时可能有一批插件被标「部分不适配」。
+      那不是新伤，而是<b>第一次被看见</b>；且后果被设计得很轻：标<b>不改按钮行为</b>，装不上的判定仍归 <code>minAppVersion</code>。</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ── 9 ─────────────────────────────────────────────────────────────── -->
+<section>
+  <h2><span class="num">9</span>口诀：四行，换任何说法都不跑偏</h2>
+  <div class="creed">
+    <ol>
+      <li><b>能不能装</b> → 看插件自己手写的 <code>minAppVersion</code> 对<b>壳版本</b>（跟 ui 版本无关）。</li>
+      <li><b>显示哪个词</b> → 宿主有没有拿走你喊的名字 ＋ 门槛够不够 ＋ <b>插件发布日 vs 这只壳的构建日</b>。</li>
+      <li><b>能不能用上新零件</b> → 插件自己去<b>进货 → 重新构建 → 发新版</b>；三步缺一，用户那边什么都不变。</li>
+      <li><b>ui 包版本</b> → 只管第 3 条。<b>前两条它一个字都说不上。</b></li>
+    </ol>
+    <p style="margin-top:12px"><b>再加一句时间账</b>：包发新版的那一刻，<b>全世界什么都没变</b>——变化只会发生在「某只插件重新发版、且用户更新了它」之后。</p>
+  </div>
+</section>
+
+<footer>
+  <p><b>本文性质</b>：讲解图（用户 2026-09-18 问「谁判断兼容 / 版本号是不是判断源」的逐条答复，配图固化）。<b>不是</b>设计图（设计图 = <code>mockups/01-市场兼容状态-细节详解.html</code>）、<b>不是</b>规范（规范 = <code>docs/开发管理/壳目录规范.md</code>）、<b>不是</b>任务书（任务书 = <code>00</code>–<code>06</code> 号档）。</p>
+  <p><b>数字纪律</b>：标 <span class="tag real">实测</span> 的 = 本机今天真读到的（壳 <code>0.2.11</code> · ui <code>0.3.0</code> · 市场插件 <code>1.0.35</code> · 只有 2 只官方插件写了 <code>minAppVersion=0.2.0</code> · 产物里 5 个 bundle 含共享件痕迹 · SDK external 六个包 · 壳内 21 处 <code>window.linkdesk.*</code> · <code>^0.3.0</code> 展开为 <code>&gt;=0.3.0 &lt;0.4.0</code>）；
+    标 <span class="tag demo">示例</span> 的 = 为讲清逻辑假想的值（用户壳 <code>1.0.72</code> / <code>1.0.89</code>、插件 <code>1.0.8</code>、ui <code>2.3.5</code> 等）。</p>
+  <p><b>相关落点</b>：<code>00-整理档案.md</code> §〇d（五词唯一真相源）· <code>05-任务-市场显示状态.md</code>（格 5 详案）· <code>04-任务-兼容读数.md</code>（格 4）· <code>../01-插件独立构建/07-共享组件独立分发设计.md</code>（打捆决策原话）· <code>packages/plugin-sdk/src/vite-config.ts</code>（external 名单）。</p>
+</footer>
+
+</div>
+</body>
+</html>
