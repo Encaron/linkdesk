@@ -17,8 +17,12 @@
  * 边界（04 档案 §六）：作用域 = 作者自研 dev 插件——目标目录若已有同 id 安装（市场装发布版）会被**覆盖且不备份**；
  * 多插件工程并行 dev 需各自独立工程；CSS 等热更走整窗口 reload（秒级，非亚秒 HMR——那是 E6#28.7 B 的候选卖点）。
  * 作者仍不碰壳源码/构建（插件独立铁律），不造第二壳。
+ *
+ * 🔴 E6#28.5e（2026-09-18）：**并发互斥锁**——第二个 `dev --real` 启动即明确退出并报 pid。
+ * 出处 04 档案 §8.2：两实例抢同一目标时第二个 `dist/` 上 EPERM，**报错后旧产物原样不动** ⇒
+ * 作者看到的现象仍是「改了没反应」，与「源码树宿主发旧代码」（§8.1）症状完全重合，现场骗过 AI 两轮。
  */
-import { copyFileSync, existsSync, mkdirSync, readdirSync, rmSync, watch, type FSWatcher } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, watch, writeFileSync, type FSWatcher } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { homedir } from "node:os";
 import { get as httpGet, type IncomingMessage } from "node:http";
@@ -48,6 +52,110 @@ export function resolveUserPluginsDir(): string {
 /** 平台判定代码根目录是否已存在（首启时可能还没有——提示作者先跑一次 LinkDesk，或给 LINKDESK_USER_PLUGINS_DIR） */
 function userPluginsDirExists(): boolean {
   return existsSync(resolveUserPluginsDir());
+}
+
+/* ── 并发互斥锁（E6#28.5e） ────────────────────────────────────────── */
+
+/** 锁文件内容——`pid` 是唯一的**活体判据**；其余三个字段只为「谁的实例在跑」这句人话提示 */
+export interface DevRealLock {
+  pid: number;
+  pluginId: string;
+  /** 发起实例的工程根（同一插件 id 可能来自不同工程） */
+  root: string;
+  startedAt: string;
+}
+
+/**
+ * 锁文件路径 = **直写目标所在的那一根 plugins 目录**下的 `.dev-real-<id>.lock`。
+ *
+ * 🔴 为什么锁在目标根而不是工程根：两实例抢的是**同一个** `{userData}/plugins/<id>` 直写目标——
+ *   同工程双开 ⇒ 同 dist ＋ 同目标；**不同工程同 pluginId ⇒ 同目标**。锁在工程根只挡得住前者。
+ * ⚠️ 该目录里放文件对壳无害：`listPluginDirs()` 只认**含 plugin.json 的目录**，且跳过 `.` 开头的条目。
+ */
+export function devRealLockPath(pluginsRoot: string, pluginId: string): string {
+  return join(pluginsRoot, `.dev-real-${pluginId.replace(/[^a-zA-Z0-9._-]/g, "_")}.lock`);
+}
+
+/** pid 是否活着——`process.kill(pid, 0)` 不发信号只探存在；EPERM = 存在但不属于当前用户（仍算活） */
+export function isProcessAlive(pid: number): boolean {
+  if (!Number.isInteger(pid) || pid <= 0) return false;
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (e) {
+    return (e as NodeJS.ErrnoException).code === "EPERM";
+  }
+}
+
+/** 读锁文件：`lock` = 内容认得出来；`corrupt` = 文件在但读不出 pid（当陈旧锁处置，⛔ 不许让它永久锁死） */
+function readDevRealLock(lockPath: string): { lock: DevRealLock | null; corrupt: boolean } {
+  if (!existsSync(lockPath)) return { lock: null, corrupt: false };
+  try {
+    const raw = JSON.parse(readFileSync(lockPath, "utf8")) as Partial<DevRealLock>;
+    if (typeof raw?.pid !== "number" || !Number.isInteger(raw.pid)) return { lock: null, corrupt: true };
+    return {
+      lock: {
+        pid: raw.pid,
+        pluginId: String(raw.pluginId ?? "?"),
+        root: String(raw.root ?? "?"),
+        startedAt: String(raw.startedAt ?? "?"),
+      },
+      corrupt: false,
+    };
+  } catch {
+    return { lock: null, corrupt: true };
+  }
+}
+
+export interface LockAcquireResult {
+  /** false ⇒ 已有**活**实例占着（调用方必须退出，不许继续 build/直写） */
+  ok: boolean;
+  /** ok=false 时 = 占锁的那个实例 */
+  holder: DevRealLock | null;
+  /** 处置说明（陈旧锁覆盖 / 锁文件损坏 / 本进程残留）——调用方打印 */
+  notes: string[];
+}
+
+/**
+ * 取锁：无锁 → 写；有锁但 **pid 已死 / 读不出来 / 是本进程自己** → 按陈旧锁覆盖；有活实例 → 拒绝。
+ * `isAlive` 可注入（自测模拟「另一个活进程」用——真判据就是 `isProcessAlive`）。
+ */
+export function acquireDevRealLock(
+  lockPath: string,
+  info: { pluginId: string; root: string },
+  isAlive: (pid: number) => boolean = isProcessAlive,
+): LockAcquireResult {
+  const notes: string[] = [];
+  const { lock, corrupt } = readDevRealLock(lockPath);
+  if (corrupt) {
+    notes.push(`锁文件读不出来（${lockPath}）——按陈旧锁覆盖`);
+  } else if (lock && lock.pid !== process.pid && isAlive(lock.pid)) {
+    return { ok: false, holder: lock, notes };
+  } else if (lock) {
+    notes.push(
+      lock.pid === process.pid
+        ? `发现本进程自己的残留锁（上一次没清干净）——覆盖`
+        : `发现陈旧锁（pid ${lock.pid} 已不在）——覆盖`,
+    );
+  }
+  mkdirSync(dirname(lockPath), { recursive: true });
+  writeFileSync(
+    lockPath,
+    `${JSON.stringify({ pid: process.pid, pluginId: info.pluginId, root: info.root, startedAt: new Date().toISOString() }, null, 2)}\n`,
+    "utf8",
+  );
+  return { ok: true, holder: null, notes };
+}
+
+/** 释放锁——**只删自己的**（`pid` 不是本进程 ⇒ 不动，免得替别人的实例解锁）；失败静默（退出路径不添噪音） */
+export function releaseDevRealLock(lockPath: string): void {
+  const { lock } = readDevRealLock(lockPath);
+  if (!lock || lock.pid !== process.pid) return;
+  try {
+    rmSync(lockPath, { force: true });
+  } catch {
+    // 忽略：退出路径上删不掉锁文件不阻断进程收尾（陈旧锁下次会被覆盖）
+  }
 }
 
 /* ── 物化目录直写 ─────────────────────────────────────────────── */
@@ -208,10 +316,28 @@ export async function runPluginDevReal(root: string): Promise<void> {
     );
   }
 
+  // ── 并发互斥锁（E6#28.5e）——必须在**首轮 build 之前**取：第二个实例要**启动即退出**，
+  //    不许先跑完一轮 build（几十秒）再在 dist/ 上 EPERM 静默留旧产物（04 §8.2 的失败形态）。
+  const hadPluginsRoot = userPluginsDirExists();
+  const lockPath = devRealLockPath(pluginsRoot, pluginId);
+  const lock = acquireDevRealLock(lockPath, { pluginId, root });
+  if (!lock.ok) {
+    const h = lock.holder as DevRealLock;
+    throw new Error(
+      `已有一个 dev --real 在跑（pid ${h.pid}）——插件「${h.pluginId}」，工程 ${h.root}，起于 ${h.startedAt}。\n` +
+        `  两个实例抢同一个直写目标（${targetDir}）时第二个会**静默失败**：报 EPERM 而**旧产物原样不动**，` +
+        `现象与「改了没反应」一模一样（04 档案 §8.2——现场骗过 AI 两轮）。\n` +
+        `  先关掉那个实例（在它的窗口按 Ctrl+C，或结束 pid ${h.pid}）再跑本命令；` +
+        `要同时开发两个插件，请用两个**不同 pluginId** 的工程。`,
+    );
+  }
+  for (const n of lock.notes) console.log(`  ℹ ${n}`);
+
   console.log("");
   console.log(`  LinkDesk 真机环（E6#28.5）→ 插件「${pluginId}」`);
   console.log(`  直写目标：${targetDir}`);
-  console.log(`    ${userPluginsDirExists() ? "✓ 定位到运行中 LinkDesk 的插件目录" : "⚠ userData/plugins 尚不存在——先启动一次 LinkDesk（首次运行会建目录）"}`);
+  console.log(`    ${hadPluginsRoot ? "✓ 定位到运行中 LinkDesk 的插件目录" : "⚠ userData/plugins 尚不存在——先启动一次 LinkDesk（首次运行会建目录）"}`);
+  console.log(`  并发互斥：锁 ${lockPath}（pid ${process.pid}；退出时自动清）`);
   console.log(`  覆盖语义：目标已存在同名安装 → 被 dev 直写覆盖且不备份（作用域 = 自研 dev 插件）`);
   console.log(`  reload：需 LinkDesk 以 --remote-debugging-port=${CDP_PORT} 启动（CDP 连不上会跳过，改码后自动重试）`);
   console.log(`  改码 → 自动 build → 直写 → reload；Ctrl+C 停止`);
@@ -280,7 +406,10 @@ export async function runPluginDevReal(root: string): Promise<void> {
 
   // 首轮：初始 build → 直写 → reload（不依赖文件事件）
   schedule("初始 build → 直写 → reload");
-  if (stopped) return;
+  if (stopped) {
+    releaseDevRealLock(lockPath);
+    return;
+  }
 
   // 源码 watch（root 递归；node_modules/.git/dist 等事件按路径忽略——不触发自激重建）
   try {
@@ -300,20 +429,25 @@ export async function runPluginDevReal(root: string): Promise<void> {
     console.error("  ⚠ 递归文件监听不可用——dev --real 降级为一次性 build 直写；改码后重启本命令生效");
   }
 
-  await new Promise<void>((stop) => {
-    const shutdown = (): void => {
-      stopped = true;
-      if (timer) clearTimeout(timer);
-      for (const w of watchers) {
-        try {
-          w.close();
-        } catch {
-          // 忽略关闭失败
+  try {
+    await new Promise<void>((stop) => {
+      const shutdown = (): void => {
+        stopped = true;
+        if (timer) clearTimeout(timer);
+        for (const w of watchers) {
+          try {
+            w.close();
+          } catch {
+            // 忽略关闭失败
+          }
         }
-      }
-      stop();
-    };
-    process.once("SIGINT", shutdown);
-    process.once("SIGTERM", shutdown);
-  });
+        stop();
+      };
+      process.once("SIGINT", shutdown);
+      process.once("SIGTERM", shutdown);
+    });
+  } finally {
+    // 退出（含 Ctrl+C 与异常抛出）即清锁——下一个实例不该被一把死锁挡住
+    releaseDevRealLock(lockPath);
+  }
 }
