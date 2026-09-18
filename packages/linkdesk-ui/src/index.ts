@@ -5,10 +5,13 @@
  * 引用壳 `src/components/shared/` 的原件；packages/linkdesk-ui 的 dist 是编译产物。
  * 改组件只改壳一处，壳与包同源。
  *
- * 导出面 = 插件实际消费集（E6#54c 锚点：4 内置插件 33 处 import 收敛于此）+ 必备类型：
- *   - 17 直接消费组件（07 §三 实盘清单；E6#120 起 +HintCard）
- *   - inferSliderStep（settings renderControl 直引）
- *   - InlineInputHandle / ContextMenuProps / ManifestIconShape / ResolvedIcon
+ * 导出面 = 插件实际消费集（E6#54c 锚点：4 内置插件 33 处 import 收敛于此）+ 必备类型。
+ * 🔴 计数与 scripts/ui-surface.json 的 count 互为对账（E6#121 起机械校验，改导出面必同笔改这里）：
+ *   - 22 组件（19 个 default 导出 + InlineInput / PluginIcon / FileIconResolver 具名）
+ *   - 3 hooks（useClickPreview / useClipboardKeys / useDebouncedInput，E6#15h）
+ *   - 4 helpers（pickIdentityArt / DEFAULT_PLUGIN_IDENTITY_URI / inferSliderStep / urlSourceKey）
+ *   - 5 类型（IconDescriptor / InlineInputHandle / ContextMenuProps / ManifestIconShape / ResolvedIcon）
+ *   - E6#121 起：导出面**只加不删**（check-ui-surface-additive 常驻判红——L9 集中供给的终身承诺）
  *
  * 🔴 公共导出面的唯一真相源——scripts/build.mjs 据此生成 dist/index.d.ts。
  */

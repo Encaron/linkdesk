@@ -1,0 +1,46 @@
+{
+  "generatedAt": "2026-09-18T20:50:39.277Z",
+  "components": [
+    "Badge",
+    "Button",
+    "ColorPicker",
+    "Combobox",
+    "ContextMenu",
+    "DynamicSelect",
+    "FileIconResolver",
+    "FilePathInput",
+    "FontFamilySelect",
+    "FormRow",
+    "HintCard",
+    "InlineInput",
+    "MarkdownView",
+    "NumberInput",
+    "OverlayPortal",
+    "PluginIcon",
+    "SegmentedRadio",
+    "SelectBox",
+    "Slider",
+    "StringListEditor",
+    "ThemePicker",
+    "Toggle"
+  ],
+  "hooks": [
+    "useClickPreview",
+    "useClipboardKeys",
+    "useDebouncedInput"
+  ],
+  "helpers": [
+    "DEFAULT_PLUGIN_IDENTITY_URI",
+    "inferSliderStep",
+    "pickIdentityArt",
+    "urlSourceKey"
+  ],
+  "types": [
+    "ContextMenuProps",
+    "IconDescriptor",
+    "InlineInputHandle",
+    "ManifestIconShape",
+    "ResolvedIcon"
+  ],
+  "count": 34
+}

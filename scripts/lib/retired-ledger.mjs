@@ -78,6 +78,8 @@ export const KIND_COLUMNS = {
     "ledger.appearanceIdGrants.",
   ],
   protocol: ["ledger.protocolIds."],
+  /** E6#121：`@linkdesk/ui` 导出面（快照 scripts/ui-surface.json 的四栏）。退役另须钉线窗口承接旧插件（00-整理档案 §六4）。 */
+  uiExport: ["components.", "hooks.", "helpers.", "types."],
 };
 
 /**
