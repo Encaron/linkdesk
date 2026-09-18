@@ -29,6 +29,13 @@ export { runTokenScopeCheck, judgePluginTokenScope } from "./checks/token-scope.
 export type { TokenScopeReport, TokenScopeSite, TokenScopeCode } from "./checks/token-scope.js";
 export { runSelectorFormCheck, judgeSelectorForm, SELECTOR_FORM_WHY } from "./checks/selector-form.js";
 export type { SelectorFormReport, SelectorFormSite, SelectorFormCode } from "./checks/selector-form.js";
+/**
+ * 🔴 E6#112（2026-09-18）：命名空间腿的**第五条**判据 —— `runKeyframeRefCheck`（关键帧引用悬空）。
+ *    壳侧判据⑧ 的同源另一半（那边域 = 宿主域 ＋ 共享组件域，本处域 = 插件域）；
+ *    口径由壳门禁 `--self-test` 的 `锚⑨` 用锚词钉住（本包的口径在 `checks/css-selectors.ts`）。
+ */
+export { runKeyframeRefCheck, KEYFRAME_REF_WHY } from "./checks/keyframe-refs.js";
+export type { KeyframeRefReport, KeyframeRefSite } from "./checks/keyframe-refs.js";
 
 /**
  * 🔴 E6#111b（1.32）：同一纪律再加一个 —— `runCommandOwnershipCheck`（命令/协议 id 归属判据）。

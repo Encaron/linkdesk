@@ -126,8 +126,20 @@ export const IDLE = [
       "🔴 1.27 复量**推翻**了 1.26 的「缺口为空」：18 仓**有 3 处 `animation:` 引用**" +
       "（`marketplace` ×1 ／ `serial-monitor` ×2，与 3 处同名 `@keyframes` 逐一对上、**今天自解析**）" +
       "⇒ 缺口**有真实质量**（改名忘改引用 = 动画静默消失），只是今天恰好没踩。",
-    status: "未处置",
-    who: "归**一个新的 SDK 轮**（新判据要**先发 SDK、再铺 18 仓**）；1.27 登记、1.28 未做——⛔ 别在 1.29（件 9 评估轮）顺手开工。",
+    status: "已处置",
+    who:
+      "**E6#112（2026-09-18）**：SDK 新增判据 `checks/keyframe-refs.ts`（`runKeyframeRefCheck`）＋ 接进" +
+      "命名空间腿（`lint.ts`，与类名/关键帧/token/形态**同 id、同点不重复报**）＋ 自测 14 例 ＋ 壳门禁 `锚⑨` 钉两份抽取口径。" +
+      "发 `@linkdesk/plugin-sdk@0.1.37`（源码注释订正后补发 `0.1.38`）；18 仓真跑 0 红（3 处引用全自解析）。" +
+      "⚠️ **铺开边界**：18 仓 lock 今天仍钉 `0.1.34` ⇒ 这条腿要等**各自下次升 SDK 依赖**才进它们的 CI（不许说成「已铺开」）。",
+    check: {
+      file: "packages/plugin-sdk/src/eslint/checks/keyframe-refs.ts",
+      mode: "present",
+      marker: "export function runKeyframeRefCheck(",
+      note:
+        "找不到这个导出 ⇒ 判据被人删了（插件域又回到「没人看着」）；登记表与实况不符，红一次逼对账。" +
+        "⚠️ marker 挑**只在代码里出现**的形态（1.28b 裸 `classMap` 撞上自述文案而假红一次的教训）。",
+    },
   },
 ];
 

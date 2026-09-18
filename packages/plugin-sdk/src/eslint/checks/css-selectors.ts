@@ -314,3 +314,63 @@ export function tokenDefinitions(cleaned: string): TokenDefinition[] {
   }
   return out;
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   关键帧引用口径 —— E6#112（2026-09-18）新增
+   ══════════════════════════════════════════════════════════════════════════
+
+   🔴 与壳仓 `scripts/lib/css-selectors.mjs` 的 `animationRefs()`／`ANIMATION_KEYWORDS`
+   **同源**（口径文本一致；那边由 `scripts/check-css-namespace.mjs` 判据⑧ 消费——域是
+   **宿主域 ＋ 共享组件域**，本包这份服务的正是**插件域那一半**）。跨包无法 import ⇒
+   各写一份，由壳门禁 `--self-test` 的 `锚⑨` 用**锚词**把两份钉在一起（照 1.24 锚⑦ /
+   1.26 锚⑧ 先例：改一边不改另一边 ⇒ 自测当场红）。
+   规则正文 = docs/02-Electron架构/E6_插件生态与发布/插件规范化层/08-任务-插件域关键帧引用判据.md
+*/
+
+/** `animation` 值里**不是名字**的关键字（时长/缓动/方向/播放态…）——照壳侧逐字同源 */
+const ANIMATION_KEYWORDS = new Set([
+  "none", "initial", "inherit", "unset", "revert", "revert-layer",
+  "infinite", "normal", "reverse", "alternate", "alternate-reverse",
+  "forwards", "backwards", "both", "running", "paused",
+  "linear", "ease", "ease-in", "ease-out", "ease-in-out", "step-start", "step-end",
+  "steps", "cubic-bezier", "auto",
+]);
+
+/** 是不是一个「像名字的」标识符（排除时长/数字/函数调用） */
+const isIdentLike = (t: string): boolean => /^-?[_a-zA-Z][\w-]*$/.test(t);
+
+/** `animation` / `animation-name` 引用的一个关键帧名 */
+export interface AnimationRef {
+  name: string;
+  /** 1-based；= **属性名**所在行 */
+  line: number;
+  /** 属性名原文（`animation` / `animation-name` / `-webkit-animation`…，供报点回显） */
+  decl: string;
+}
+
+/**
+ * 列举一张样式表里 `animation` / `animation-name` 引用的**关键帧名**。
+ * 入参 = `stripComments(src)` 的输出。
+ * ⚠️ 只匹配 `animation:` / `animation-name:`（`animation-timing-function` 等**不匹配**——
+ *    `animation` 之后要求 `\s*:` 或 `-name:`）；`var(--x)` 这类函数**不算**名字（里面有 `(`）。
+ */
+export function animationRefs(cleaned: string): AnimationRef[] {
+  const out: AnimationRef[] = [];
+  for (const m of cleaned.matchAll(/(?:^|[;{])\s*([\w-]+)\s*:\s*([^;}]*)/g)) {
+    const prop = m[1];
+    // 只认 `animation` / `animation-name`（含 `-webkit-` 前缀形态）；`--x` 自定义属性名里含
+    // "animation" 的一大把（`--my-animation:`）——它的值是名字清单里根本没有的东西 ⇒ 会造出假红。
+    if (prop.startsWith("--")) continue;
+    if (!/(^|-)animation(-name)?$/.test(prop)) continue;
+    // 行号 = **属性名**所在行（m[0] 前面还有 1 个分隔符 ＋ 空白 ⇒ 不能用 m.index）
+    const line = lineAt(cleaned, m.index + m[0].indexOf(prop));
+    for (const part of m[2].split(",")) {
+      for (const tok of part.trim().split(/\s+/)) {
+        if (!isIdentLike(tok)) continue;
+        if (ANIMATION_KEYWORDS.has(tok.toLowerCase())) continue;
+        out.push({ name: tok, line, decl: prop });
+      }
+    }
+  }
+  return out;
+}

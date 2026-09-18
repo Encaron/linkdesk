@@ -848,6 +848,28 @@ function selfTest() {
     ]);
   }
 
+  // 锚⑨：**关键帧名抽取口径跨包同源**（E6#112 · 2026-09-18）——`animationRefs()` 在主仓的域是
+  //   宿主域 ＋ 共享组件域（判据⑧），在 SDK 是**插件域**（第 46 号档那条腿）；域不同、**抽取口径必须同一份**，
+  //   否则「同一个 `animation:` 值，壳说有一个名字、SDK 说没有」——两边报点会各说各话。
+  //   跨包无法 import ⇒ 照 `锚⑦`/`锚⑧` 先例钉文本：**改一边不改另一边 ⇒ 自测当场红**。
+  //   4 句锚词各钉一件事：① 关键字表（漏一个 ⇒ 把时长/缓动当名字 ⇒ 假红）；
+  //   ② `--*` 跳过（自定义属性名里含 "animation" 的一大把）；③ 那条跳过的**理由**（口径不是巧合）；
+  //   ④ 属性名正则本体（放宽一位 ⇒ `animation-timing-function: linear` 当场变假红）。
+  {
+    const anchors = [
+      '"none", "initial", "inherit", "unset", "revert", "revert-layer",',
+      "--my-animation:",
+      "会造出假红",
+      "if (!/(^|-)animation(-name)?$/.test(prop)) continue;",
+    ];
+    const sdkSrc = readFileSync(join(ROOT, "packages", "plugin-sdk", "src", "eslint", "checks", "css-selectors.ts"), "utf8");
+    const shellSrc = readFileSync(join(ROOT, "scripts", "lib", "css-selectors.mjs"), "utf8");
+    cases.push([
+      "锚⑨：`animationRefs()` 口径壳 / SDK 同源（4 句锚词两边都在 ⇒ 改一边不改另一边必红）",
+      anchors.every((a) => shellSrc.includes(a) && sdkSrc.includes(a)),
+    ]);
+  }
+
   rmSync(tmp, { recursive: true, force: true });
   let ok = true;
   for (const [name, pass] of cases) {

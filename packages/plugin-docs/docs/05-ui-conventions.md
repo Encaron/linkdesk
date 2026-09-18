@@ -565,6 +565,17 @@ both stylesheets land on the same element.
 | `ldk-notif-icon-spin` | the notification icon's spin |
 | `ldk-notif-progress-scan` | the notification progress scan |
 
+**The name you reference has to exist somewhere**—rule 2 above says "when you rename, change the reference in
+the same commit"; this is the other half, and **the machine checks it**: the name you write in
+`animation` / `animation-name` must either be defined by an `@keyframes` **in your own CSS** or be one of the
+names in **the reserved table above** (referencing the host's animations is **legitimate consumption**—you will
+not be flagged). Reference a name **nobody defined** and the animation **reports nothing, warns nothing, it
+just does not run**—the symptom is "why isn't my animation working", while the console stays silent (other
+plugins and the host are running in the same window, so it is hard to spot at a glance).
+From `@linkdesk/plugin-sdk` **≥ 0.1.37**, the plugin lint reports these **dangling references** one by one
+(**file name + line number + the name**); if you genuinely need a name the gate cannot see (say the animation
+is injected at runtime), use a standard `eslint-disable` comment stating why.
+
 > 🔧 **Maintainer note (authors can skip this)**—the **Reserved names** and **Reserved keyframe names** columns in the two tables above are **machine-read**: the gate
 > in `npm run check` (`scripts/check-reserved-names-doc-sync.mjs`) cross-checks them **both ways** against the
 > registry `packages/plugin-sdk/schemas/reserved-class-names.json`—every registry name must appear here, and
@@ -744,7 +755,7 @@ button { border: none; }
 
 **Migration**: **zero instances today**—a full re-check of the 18 official plugins plus the in-repo fixtures (the "anchorless S2 / cross-party S3" columns of `npm run audit:plugin-prefix -- --all`) is **0** ⇒ **you have nothing to change**; this rule is **preventive**.
 
-> 🔧 **Maintainer note (authors may skip)**: the rule text (R0 scope / R1 host baseline / R2 / R3) plus the decision formulas and negative controls live in `docs/02-Electron架构/E6_插件生态与发布/01-插件独立构建/样式命名空间归一化/32-任务-选择器形态轴门禁与落地.md`; the host side is guarded by criteria ⑩⑪ of `scripts/check-css-namespace.mjs` (plus the runtime mirror on axis ④ of the probe), and the plugin side by the **fourth criterion** of the SDK's `check-css-namespace` leg (`checks/selector-form.ts`, S2/S3).
+> 🔧 **Maintainer note (authors may skip)**: the rule text (R0 scope / R1 host baseline / R2 / R3) plus the decision formulas and negative controls live in `docs/02-Electron架构/E6_插件生态与发布/01-插件独立构建/样式命名空间归一化/32-任务-选择器形态轴门禁与落地.md`; the host side is guarded by criteria ⑩⑪ of `scripts/check-css-namespace.mjs` (plus the runtime mirror on axis ④ of the probe), and the plugin side by the **fourth and fifth criteria** of the SDK's `check-css-namespace` leg (`checks/selector-form.ts` for S2/S3, and `checks/keyframe-refs.ts` for dangling keyframe references—the latter in place since **2026-09-18**, SDK `≥ 0.1.37`).
 
 ---
 

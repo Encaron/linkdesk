@@ -35,6 +35,7 @@ import { runReservedClassCheck } from "./checks/reserved-classes.js";
 import { runPluginPrefixCheck } from "./checks/plugin-prefix.js";
 import { runTokenScopeCheck } from "./checks/token-scope.js";
 import { runSelectorFormCheck } from "./checks/selector-form.js";
+import { runKeyframeRefCheck } from "./checks/keyframe-refs.js";
 import { runCommandOwnershipCheck } from "./checks/command-ownership.js";
 import { runConfigOwnershipCheck } from "./checks/config-ownership.js";
 import { runAppearanceOwnershipCheck } from "./checks/appearance-ownership.js";
@@ -62,7 +63,7 @@ export interface EslintRow {
 export interface PluginLintReport {
   files: number; // eslint 实际 lint 文件数
   eslintRows: EslintRow[]; // eslint 腿逐条偏离（含真 error——退出码依据）
-  legs: LintLeg[]; // 八 check 腿（七条扫描腿 ＋ 命名空间腿内部四条判据；id 见各自 CHECK_IDS）
+  legs: LintLeg[]; // 八 check 腿（七条扫描腿 ＋ 命名空间腿内部五条判据；id 见各自 CHECK_IDS）
   totalCheckViolations: number;
   tsconfigUsed: string | null; // 实际喂 import-x resolver 的 tsconfig（无则 null）
   /** 本仓 pluginId（命名空间腿的前缀来源；取不到 ⇒ null 且该腿 fail-closed 报红） */
@@ -75,6 +76,8 @@ export interface PluginLintReport {
   tokenCounts: { red: number; yellow: number };
   /** 选择器形态判据的计数（E6#109o-b）：S2 禁无锚 / S3 跨方命中不带自有锚——**都进腿报点** */
   selectorFormCounts: { anchorless: number; crossParty: number };
+  /** 🔴 E6#112（2026-09-18）：关键帧引用腿读数（refs = 引用点总数；dangling = 悬空；allowed = 允许集大小） */
+  keyframeRefCounts: { refs: number; dangling: number; allowed: number };
   /** 🟡 E6#111b（1.32）命令/协议 id 归属判据的计数：三面的站点数 ＋ 不合规站点数（**全黄**，1.49 才收紧） */
   commandOwnershipCounts: { declared: number; runtime: number; protocol: number; bad: number };
   /** 🟡 E6#111d（1.34）配置键归属判据的**黄灯建议**（判据②：新键不带本仓前缀）——**只打印、不拦** */
@@ -179,6 +182,15 @@ export async function runPluginLint(root: string, options: PluginLintOptions = {
   const prefix = runPluginPrefixCheck(absRoot);
   const reserved = runReservedClassCheck(absRoot);
   /**
+   * 🔴 E6#112（2026-09-18）：命名空间腿第五条判据 —— **插件域关键帧引用悬空**（`checks/keyframe-refs.ts`）。
+   *   域与壳侧判据⑧ **互补**：那边是宿主域 ＋ 共享组件域，本处是**插件域**（官方 18 仓今天 3 处引用、
+   *   全部自解析 ⇒ 纯预防性）。允许集 = 本仓被扫描 CSS 的 `@keyframes` ∪ 宿主保留账那 8 条。
+   *   ⚠️ 去重口径：与前面几条腿**同一处 `文件:行` 不重复报**（以先出的为准）——本判据报在属性名行，
+   *     前缀腿报在 `@keyframes` 定义行，两处本就不同；fail-closed 那条与前缀腿的 `plugin.json:1`
+   *     会重叠（同一件事不说两遍）。
+   */
+  const keyframeRefs = runKeyframeRefCheck(absRoot);
+  /**
    * 🔴 E6#109n-b（1.24）：命名空间腿再加一条判据 —— **token（自定义属性）作用域**。
    *   · 红（V1/V2/V5）进本腿报点 ⇒ CI 严格腿判红；
    *   · 🟡 黄（V6：文档级但名字带自有前缀）进 `tokenAdvisories`**只打印、不拦**（22 号档 §10.3）。
@@ -243,6 +255,7 @@ export async function runPluginLint(root: string, options: PluginLintOptions = {
   const prefixKeys = new Set(prefix.violations.map((v) => `${v.file}:${v.line}`));
   const tokenKeys = new Set(tokenScope.violations.map((v) => `${v.file}:${v.line}`));
   const formKeys = new Set(selectorForm.violations.map((v) => `${v.file}:${v.line}`));
+  const reservedKeys = new Set(reserved.map((v) => `${v.file}:${v.line}`));
   const namespace: CheckViolation[] = [
     ...prefix.violations, // 前缀腿（含 fail-closed）
     ...selectorForm.violations.filter((v) => !prefixKeys.has(`${v.file}:${v.line}`)), // 形态腿（同点不重复报）
@@ -250,13 +263,21 @@ export async function runPluginLint(root: string, options: PluginLintOptions = {
     ...reserved.filter(
       (v) => !prefixKeys.has(`${v.file}:${v.line}`) && !tokenKeys.has(`${v.file}:${v.line}`) && !formKeys.has(`${v.file}:${v.line}`)
     ),
+    // 关键帧引用腿（E6#112）——同点不重复报（以先出的为准）
+    ...keyframeRefs.violations.filter(
+      (v) =>
+        !prefixKeys.has(`${v.file}:${v.line}`) &&
+        !tokenKeys.has(`${v.file}:${v.line}`) &&
+        !formKeys.has(`${v.file}:${v.line}`) &&
+        !reservedKeys.has(`${v.file}:${v.line}`)
+    ),
   ];
   const legs: LintLeg[] = [
     { id: "linkdesk/no-hardcoded-hex（css + rgb/hsl 腿）", label: "check-css-hardcode", violations: css },
     { id: "linkdesk/no-hardcoded-font-size", label: "check-font-scale", violations: font },
     { id: "linkdesk/no-nonstandard-spacing", label: "check-spacing-grid", violations: spacing },
     {
-      id: "linkdesk/no-reserved-class-name（裸定义类名/关键帧必须带本仓 <pluginId>- 前缀；宿主保留名、token 作用域、选择器形态同 id）",
+      id: "linkdesk/no-reserved-class-name（裸定义类名/关键帧必须带本仓 <pluginId>- 前缀；宿主保留名、token 作用域、选择器形态、关键帧引用悬空同 id）",
       label: "check-css-namespace",
       violations: namespace,
     },
@@ -291,8 +312,7 @@ export async function runPluginLint(root: string, options: PluginLintOptions = {
     appearanceOwnership.violations.length +
     contextOwnership.violations.length;
 
-  return {
-    files: results.length,
+  return {    files: results.length,
     eslintRows,
     legs,
     totalCheckViolations,
@@ -302,6 +322,11 @@ export async function runPluginLint(root: string, options: PluginLintOptions = {
     tokenAdvisories: tokenScope.advisories,
     tokenCounts: { red: tokenScope.red.length, yellow: tokenScope.yellow.length },
     selectorFormCounts: { anchorless: selectorForm.anchorless.length, crossParty: selectorForm.crossParty.length },
+    keyframeRefCounts: {
+      refs: keyframeRefs.refs,
+      dangling: keyframeRefs.dangling.length,
+      allowed: keyframeRefs.allowed.length,
+    },
     commandOwnershipCounts: {
       declared: commandOwnership.declaredIds.length,
       runtime: commandOwnership.runtimeIds.length,
@@ -389,6 +414,16 @@ export function renderPluginLintReport(report: PluginLintReport): string {
         `——插件 CSS 里没有「不需要同名就能撞」的选择器（元素/通配/属性/伪类/伪元素/id 一视同仁）。`
     );
   }
+
+  // 关键帧引用判据的读数（E6#112）——壳侧判据⑧ 的同源另一半（那边宿主域＋共享组件域，本处插件域）
+  const kf = report.keyframeRefCounts;
+  lines.push(
+    `\n✅ check-css-namespace（关键帧引用 · E6#112）：引用点 ${kf.refs} 处 ／ 允许集 ${kf.allowed} 个名字` +
+      `（本仓 \`@keyframes\` ＋ 宿主保留账）——` +
+      (kf.dangling === 0
+        ? `无悬空引用（动画不会「静默消失」）。`
+        : `${kf.dangling} 处**悬空**（引用的名字在允许集里找不到 ⇒ 动画静默消失）。`),
+  );
 
   // 🟡 E6#111b（1.32）命令/协议 id 归属：读数 ＋ 账的加载实况（判据② 的输入来自账——账没读到必须让作者看见）
   const co = report.commandOwnershipCounts;
