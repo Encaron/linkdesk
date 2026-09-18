@@ -82,12 +82,12 @@ import {
   splitSelector,
   soleClassOf,
 } from "./lib/css-selectors.mjs";
+import { walk, collectHostDefs } from "./lib/host-surface.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(HERE, "..");
 const DEFAULT_BUNDLED = join(ROOT, "bundled-plugins");
 const DEFAULT_CONTAINER = process.env.LINKDESK_PLUGIN_CONTAINER || "E:\\linkdesk-plugins\\official";
-const RESERVED_KEYFRAMES = join(ROOT, "packages", "plugin-sdk", "schemas", "reserved-class-names.json");
 /** 名字形态（与 `css-selectors.mjs` 的 `isIdentLike` 同款）——⛔ 别放宽成「像名字就行」 */
 const IDENT = /^-?[_a-zA-Z][\w-]*$/;
 /** 宿主/共享命名空间：硬约束 23 —— `ldk-` 整个命名空间属宿主侧，插件不得定义 */
@@ -97,93 +97,11 @@ const HOST_NAMESPACE = /^ldk-/;
    一、宿主定义集
    ══════════════════════════════════════════════════════════════════════════ */
 
-/** 递归列举目录下全部文件（按扩展名过滤）；`node_modules` / `.git` 不进 */
-function walk(dir, exts, out = []) {
-  if (!existsSync(dir)) return out;
-  for (const name of readdirSync(dir)) {
-    if (name === "node_modules" || name === ".git") continue;
-    const p = join(dir, name);
-    if (statSync(p).isDirectory()) walk(p, exts, out);
-    else if (exts.some((e) => name.endsWith(e))) out.push(p);
-  }
-  return out;
-}
-
 /** 偏移 → 1-based 行号（与 `stripComments` 的等长替换配套：偏移可直接映射） */
 const lineAt = (text, index) => text.slice(0, index).split("\n").length;
 
-/**
- * 宿主**实际加载**的第三方样式表——从 `src/**\/*.{ts,tsx,css}` 的 CSS import 图机械解析。
- * 只收「非相对路径」（`@scope/pkg/x.css` 这类包名路径）；解析不到的**如实登记**，不静默丢。
- */
-function loadedExternalCss() {
-  const files = new Set();
-  const unresolved = new Set();
-  for (const f of walk(join(ROOT, "src"), [".ts", ".tsx", ".css"])) {
-    const text = readFileSync(f, "utf8");
-    for (const m of text.matchAll(/(?:import|@import)\s*\(?\s*["']([^"']+\.css)["']/g)) {
-      const spec = m[1];
-      if (spec.startsWith(".") || spec.startsWith("/")) continue;
-      const cand = join(ROOT, "node_modules", ...spec.split("/"));
-      if (existsSync(cand)) files.add(cand);
-      else unresolved.add(spec);
-    }
-  }
-  return { files: [...files], unresolved: [...unresolved] };
-}
-
-/** 一张样式表里**选择器**提到（含定义与 scoped 调优）的类名 */
-function classesInStylesheet(cleaned) {
-  const out = [];
-  for (const m of cleaned.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
-    const sel = m[1].trim();
-    if (sel.startsWith("@") || !m[2].trim()) continue; // @media 等 at-rule 头 / 空规则体（与裸定义同口径）
-    // 属性选择器里的 `.x` 是字符串字面量（`[class*="ldk-"]`）不是类选择器 ⇒ 整段剥掉
-    const noAttr = sel.replace(/\[[^\]]*\]/g, " ");
-    for (const one of splitSelector(noAttr)) {
-      for (const t of one.matchAll(/\.(-?[_a-zA-Z][\w-]*)/g)) out.push(t[1]);
-    }
-  }
-  return out;
-}
-
-/** 收集宿主定义集（类名提及集 ＋ 裸定义集 ＋ 关键帧名集） */
-function collectHostDefs() {
-  const srcCss = walk(join(ROOT, "src"), [".css"]);
-  const sharedCss = walk(join(ROOT, "src", "components", "shared"), [".css"]);
-  const ext = loadedExternalCss();
-  const files = [...srcCss, ...ext.files];
-  const classes = new Set();
-  const bareDefs = new Set();
-  const srcBareDefs = new Set();
-  const keyframes = new Set();
-  for (const f of files) {
-    const cleaned = stripComments(readFileSync(f, "utf8"));
-    for (const n of classesInStylesheet(cleaned)) classes.add(n);
-    for (const d of bareClassDefinitions(cleaned)) {
-      bareDefs.add(d.name);
-      if (!ext.files.includes(f)) srcBareDefs.add(d.name);
-    }
-    for (const k of keyframeDefinitions(cleaned)) keyframes.add(k.name);
-  }
-  let reserved = [];
-  if (existsSync(RESERVED_KEYFRAMES)) {
-    reserved = JSON.parse(readFileSync(RESERVED_KEYFRAMES, "utf8")).keyframes.map((k) => k.name);
-    for (const n of reserved) keyframes.add(n);
-  }
-  return {
-    cssFiles: files,
-    srcCssCount: srcCss.length,
-    sharedCssCount: sharedCss.length,
-    externalCss: ext.files.map((f) => relative(ROOT, f).split(sep).join("/")),
-    externalUnresolved: ext.unresolved,
-    classes,
-    bareDefs,
-    srcBareDefs,
-    keyframes,
-    reservedKeyframes: reserved,
-  };
-}
+// 宿主定义集采集（`walk` / `collectHostDefs`）自 E6#115 起住 `scripts/lib/host-surface.mjs`——
+// 面快照第 ③ 栏与本体尺子**必须同一生成器**（口径与理由见该文件头注）。
 
 /* ══════════════════════════════════════════════════════════════════════════
    二、读产物——zip（内置 zlib）与目录两种输入
