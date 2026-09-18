@@ -2,7 +2,7 @@
 
 The LinkDesk shared UI component library — context menus, dropdowns, combo boxes, toggles, sliders, color pickers, form rows, file path inputs, theme pickers, and more.
 
-The component source lives in exactly one place, `src/components/shared/` in the LinkDesk shell; this package is its compiled distribution surface: **after `npm i @linkdesk/ui`, plugin authors get the same components the built-in plugins use, automatically following the host theme and glassmorphism**, with no need to care about implementation details.
+**Centralized UI supply (L9, E6#123/#124):** the component source lives in exactly one place, `src/components/shared/` in the LinkDesk shell, and at runtime the components are served to every plugin by the shell pool as a single vendor instance (import-map + vendor css) — **the shell upgrades once, every plugin follows**. This npm package is the *type contract + dev resolution body*: `npm i @linkdesk/ui` gives your editor types and lets local dev resolve the imports; it is no longer shipped inside your plugin bundle. The package version is locked step with the shell version (one line, no lookup table).
 
 ## Installation
 
@@ -14,7 +14,7 @@ npm i @linkdesk/ui react react-dom
 
 ```tsx
 import { SelectBox, Toggle } from "@linkdesk/ui";
-import "@linkdesk/ui/index.css"; // most component CSS is pulled in automatically by the entry JS; use this path when you need to import it explicitly
+// No css import — component styles are supplied by the shell at runtime (importing @linkdesk/ui css is a lint error: linkdesk/no-ui-css-import).
 
 export function MyView() {
   return (

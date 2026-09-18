@@ -1,7 +1,7 @@
 {
   "name": "@linkdesk/ui",
-  "version": "0.3.1",
-  "description": "@linkdesk/ui——LinkDesk 共享 UI 组件（右键/下拉/开关/取色器等）。壳 src/components/shared 单一源码经构建编译，插件作者 npm i 后与内置插件同款、自动跟随主题/玻璃的界面。",
+  "version": "0.2.13",
+  "description": "@linkdesk/ui——LinkDesk 共享 UI 组件的类型契约 + dev 解析体。L9 集中供给：组件代码与样式在运行时由壳池 vendor 单实例供给（壳改一处全生态跟随）；npm i 装的是类型与本地解析体，插件源码不 import 本包 css（lint 腿 check-ui-css-import 判红）。版本号与壳同号锁步（E6#124 重锚）。",
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.js",

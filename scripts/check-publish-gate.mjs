@@ -1,7 +1,7 @@
 /**
  * E6#57.15d：发布门禁——发布前机械卡死，不靠自觉（02-产品身份与版本 §2.6）。
  *
- * 它防的是一句话：「**代码更新上去了，版本号没更**」。四条判据（②的 tag 那半在 CI，见下）：
+ * 它防的是一句话：「**代码更新上去了，版本号没更**」。五条判据（②的 tag 那半在 CI，见下）：
  *
  *   ① **版本号真的往前走了**——`package.json` 的 version **严格大于**本地已有的最高 release tag。
  *      没往前走 ⇒ 红。（`compareVersions` 用壳里那把**唯一权威**——`src/core/utils/plugin/
@@ -13,6 +13,8 @@
  *      （05 §2.4）——缺段/空段 ⇒ 用户点「查看更新内容」看到一片空白。规矩 3.7.3 立的原话：
  *      「bump 了版本号就必须同笔写 `## v<新版本>` 段」。
  *   ④ **打包产物里 `electron/product.json` 真的在**——**不在本文件实现**，见下「④为什么不在这」。
+ *   ⑤ **`@linkdesk/ui` 同号锁步**（E6#124）——ui 包 version === 壳 version，不等判红（版本重锚定案，
+ *      一条线，作者面无需对照表；撞号规则 = 壳让位 bump）。
  *
  * ── ④ 为什么不在这（归一化，不是漏）──
  *   ④ 已经由 `scripts/check-packaging-files.mjs --with-artifact` 实现，挂在 `npm run electron:build`
@@ -71,6 +73,8 @@ const ROOT = resolve(__dirname, "..");
 const PKG = join(ROOT, "package.json");
 const PRODUCT = join(ROOT, "electron", "product.json");
 const CHANGELOG = join(ROOT, "CHANGELOG.md");
+/** E6#124（L9 重锚）：`@linkdesk/ui` 从此与壳**同号锁步**——发版断言的对照物（判据⑤）。 */
+const UI_PKG = join(ROOT, "packages", "linkdesk-ui", "package.json");
 
 // ─────────────────────────── 纯判据（--self-test 注入输入） ───────────────────────────
 
@@ -161,6 +165,31 @@ function judgeTagMatch(pkgVersion, tag) {
       `      不拦的话：产物叫 linkdesk-setup-${pkgVersion}.exe、下载链接按 v${pkgVersion} 拼，\n` +
       `      而 Release 挂在这个 tag 上 ⇒ **下载链接 404**。`,
   };
+}
+
+/** 判据⑤（E6#124 L9 重锚）：壳发版必带 `@linkdesk/ui` 同号 bump——ui 版本 = 壳版本，不等判红。
+ *  版本重锚定案（2026-09-19）：ui 包版本号从此 = 发它的那个壳版本号（一条线，作者面无需对照表）；
+ *  撞号规则 = 壳让位 bump（npm 版本不可复用）。详见 UI 集中供给 00-整理档案 §三。 */
+function judgeUiVersionLockstep(pkgVersion, uiPkgText) {
+  if (typeof uiPkgText !== "string") {
+    return { ok: false, msg: `⑤ ui 锁步 —— 读不到 packages/linkdesk-ui/package.json` };
+  }
+  let parsed;
+  try {
+    parsed = JSON.parse(uiPkgText);
+  } catch (e) {
+    return { ok: false, msg: `⑤ ui 锁步 —— linkdesk-ui/package.json 不是合法 JSON：${e.message}` };
+  }
+  if (parsed.version !== pkgVersion) {
+    return {
+      ok: false,
+      msg:
+        `⑤ ui 锁步 —— @linkdesk/ui = ${JSON.stringify(parsed.version)}，壳 = ${pkgVersion}。\n` +
+        `      版本重锚定案（E6#124）：ui 包版本从此 = 壳版本**同号锁步**——壳发版必带 ui 同号 bump\n` +
+        `      （改 packages/linkdesk-ui/package.json 的 version + npm install 同步 lock）。`,
+    };
+  }
+  return { ok: true, msg: `⑤ ui 锁步 —— @linkdesk/ui === 壳 === ${pkgVersion}` };
 }
 
 /** 判据③：段存在且非空。 */
@@ -262,6 +291,11 @@ function runSelfTest() {
   push("③ 段头日期", { ok: changelogDate(CL, "0.1.49") === "2026-09-12", msg: changelogDate(CL, "0.1.49") }, true);
   push("③ 段头无日期", { ok: changelogDate(CL, "0.1.4x") === "", msg: "" }, true);
 
+  // ⑤（E6#124 L9 重锚：ui 同号锁步）
+  push("⑤ ui 同号锁步", judgeUiVersionLockstep("0.2.13", JSON.stringify({ version: "0.2.13" })), true);
+  push("⑤ ui 版本没跟上（还是旧线号）", judgeUiVersionLockstep("0.2.13", JSON.stringify({ version: "0.3.1" })), false);
+  push("⑤ 读不到 ui package.json", judgeUiVersionLockstep("0.2.13", null), false);
+
   let bad = 0;
   for (const [tag, result, wantOk] of cases) {
     const pass = result.ok === wantOk;
@@ -327,6 +361,7 @@ function main() {
   checks.push(judgeVersionAdvance(pkgVersion, localVersionTags(), { selfTagIsThisRelease: expectedTag !== null }));
   checks.push(judgeVersionMatch(pkgVersion, existsSync(PRODUCT) ? readFileSync(PRODUCT, "utf8") : null));
   checks.push(judgeChangelog(changelogSection(changelogText, pkgVersion)));
+  checks.push(judgeUiVersionLockstep(pkgVersion, existsSync(UI_PKG) ? readFileSync(UI_PKG, "utf8") : null));
   if (expectedTag !== null) {
     checks.push(judgeTagMatch(pkgVersion, expectedTag));
   }
