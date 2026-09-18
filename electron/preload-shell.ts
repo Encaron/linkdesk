@@ -31,7 +31,7 @@ import type { ConfigurationChangedPayload, PluginStateChangedPayload } from '../
 import type { BridgeRequestPayload } from '../src/core/types/ipc/bridge';
 import type { PoolQuickPickAction, PoolDialogAction, PoolFloatingPanelAction, MemoryPressureData, PoolReadyPayload, CreatePoolWindowRequest, PoolWindowClosedPayload, PoolWindowBoundsPayload, TabBarRectsPayload, ShellTabDragPosition, AdsorbHintPayload, AdsorbIndexPayload } from '../src/core/types/ipc/poolActions';
 import type { FileChangeEvent } from '../src/core/services/files/FileService';
-import type { MenuItemDescriptor, PluginInstallRequestOpts, PluginInstallJobRef, PluginFolderKind } from '../src/core/api/linkdesk-api/types'; // E5.8#20：契约语义类型——menu.getItems 返回面；E6#73c：+ 安装 job 身份；E6#78：+ 插件目录落点
+import type { MenuItemDescriptor, PluginInstallRequestOpts, PluginInstallJobRef, PluginFolderKind, PluginCompatibilityRequest } from '../src/core/api/linkdesk-api/types'; // E5.8#20：契约语义类型——menu.getItems 返回面；E6#73c：+ 安装 job 身份；E6#78：+ 插件目录落点；E6#117：+ 兼容读数请求
 // E5.8#1b：keybinding 归一化集中——主进程/壳/池三端共用单一权威源（防 E5.7#79 漂移复发）
 import { keyboardInputToKeyString } from '../src/core/utils/keybindingNormalization.js';
 import type { OsIntegrationKind } from './services/registry-integration.js'; // E6#45f（类型 only）
@@ -308,6 +308,8 @@ try {
       resolvePath:      (id: string) => ipcRenderer.invoke(IPC.plugins.resolvePath, id),
       // E6#7（1.2-4）：resolvePath 的兄弟——{ root, entry, bundle }（bundle 入口恒 index.bundle.js）
       resolveEntry:     (id: string) => ipcRenderer.invoke(IPC.plugins.resolveEntry, id),
+      // E6#117：兼容读数（只读 invoke——main 直答，状态算法单点在主进程；池 preload 同面同通道）
+      getCompatibility: (req: PluginCompatibilityRequest) => ipcRenderer.invoke(IPC.plugins.getCompatibility, req),
       // E6#11/#13（1.2-5）：包安装流主进程 fs/net 段——壳 preload 独有（loader 在壳跑；download/extract handler 不对池暴露）
       // E6#73c：job 身份随行——主进程段进度事件据此回填 jobId/pluginId（缺省 = 事件不带身份）
       packageDownload:  (url: string, job?: PluginInstallJobRef) => ipcRenderer.invoke(IPC.plugins.download, url, job),

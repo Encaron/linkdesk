@@ -252,6 +252,7 @@ export const linkdeskMock: Record<string, unknown> = {
   plugins: {
     resolvePath: async (..._args: unknown[]) => { console.info("[linkdesk-mock] plugins.resolvePath", ..._args); return ""; },
     resolveEntry: async (..._args: unknown[]) => { console.info("[linkdesk-mock] plugins.resolveEntry", ..._args); },
+    getCompatibility: async (..._args: unknown[]) => { console.info("[linkdesk-mock] plugins.getCompatibility", ..._args); },
     listDirs: async (..._args: unknown[]) => { console.info("[linkdesk-mock] plugins.listDirs", ..._args); return []; },
     listAll: async (..._args: unknown[]) => { console.info("[linkdesk-mock] plugins.listAll", ..._args); return []; },
     listDisabledDirs: async (..._args: unknown[]) => { console.info("[linkdesk-mock] plugins.listDisabledDirs", ..._args); return []; },

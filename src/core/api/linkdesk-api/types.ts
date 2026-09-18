@@ -349,3 +349,34 @@ export interface PluginToastAction {
   /** 透传给命令 handler 的 ...args */
   args?: unknown[];
 }
+
+/** 兼容读数请求（E6#117）——plugins.getCompatibility 入参：插件身份 ＋ 目录侧事实（未装插件由
+ *  调用方从 catalog 条目供给；已装插件以磁盘 manifest 为生效值，主进程覆盖） */
+export interface PluginCompatibilityRequest {
+  pluginId: string;
+  /** 插件要求的最低壳版本（catalog 条目携带；未装插件的唯一来源） */
+  minAppVersion?: string | null;
+  /** 插件最后发版日（catalog `publishedAt`，ISO） */
+  publishedAt?: string | null;
+}
+
+/** 兼容读数（E6#117）——状态算法单点在壳 `src/core/compat/compatibility.ts`；本面只给机器态，
+ *  ⛔ 不携带任何用户可见句子（用户面文案归市场插件 i18n，用户面词表见 00 号档 §〇d） */
+export interface PluginCompatibilityReading {
+  pluginId: string;
+  /** 五态（与用户面五词固定对应，对应表住在 compatibility.ts 头注） */
+  state: "current" | "compatible" | "drifted" | "incompatible" | "unknown";
+  /** 悬空读数；null = 拿不到（未装 / 目录读不了）——缺数据 ≠ 有问题 */
+  dangling: { count: number; names: string[] } | null;
+  /** 生效的最低壳版本（已装 = 磁盘 manifest；未装 = 调用方供给）；没有 ⇒ null */
+  minAppVersion: string | null;
+  shellVersion: string;
+  /** minAppVersion 缺失/非法 ⇒ null（没得比）；false ⇒ state = "incompatible" */
+  minAppSatisfied: boolean | null;
+  /** 插件最后发版日（YYYY-MM-DD）；catalog 拿不到 ⇒ null */
+  lastUpdate: string | null;
+  /** 当前壳构建日（YYYY-MM-DD）；dev 占位 ⇒ null */
+  shellBuiltAt: string | null;
+  /** 哪些输入缺失（诊断面；state = "unknown" 时非空） */
+  unknown: string[];
+}

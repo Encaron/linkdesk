@@ -213,6 +213,7 @@
       "set"
     ],
     "plugins": [
+      "getCompatibility",
       "listAll",
       "listDirs",
       "listDisabledDirs",
@@ -563,6 +564,7 @@
       "set"
     ],
     "plugins": [
+      "getCompatibility",
       "listAll",
       "listDirs",
       "listDisabledDirs",

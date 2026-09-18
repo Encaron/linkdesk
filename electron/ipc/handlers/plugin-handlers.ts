@@ -5,9 +5,14 @@
  * 每个 Rust 命令 → 一个 ipcMain.handle('plugins:*') 处理器。
  */
 
-import { ipcMain } from 'electron';
+import { app, ipcMain } from 'electron';
 import { pluginFileService } from '../../services/plugin-file-service.js';
+import { loadProduct } from '../../product.js';
 import { IPC } from '../channels.js';
+// E6#117：兼容读数——状态算法单点在 src/core/compat/（主进程编译内；渲染/插件零复算）
+import { computeCompatibilityReading } from '../../../src/core/compat/compatibility.js';
+import { parseManifestJson } from '../../../src/pluginLoader/jsonc.js';
+import type { PluginCompatibilityRequest } from '../../../src/core/api/linkdesk-api/types.js';
 
 // E5.7#36：壳崩重建复用本函数——无状态 handler，IPC 通道只注册一次
 let _registered = false;
@@ -48,5 +53,26 @@ export function registerPluginHandlers(): void {
   // E6#7（1.2-4）：解析插件入口（resolvePath 的兄弟，discovery 族）——{ root, entry, bundle }
   ipcMain.handle(IPC.plugins.resolveEntry, async (_event, pluginId: string) => {
     return pluginFileService.resolveEntry(pluginId);
+  });
+
+  // E6#117：兼容读数（只读，main 直答；同 product-handlers 的 env:get 直答先例——不进 PROXY_CHANNELS）
+  ipcMain.handle(IPC.plugins.getCompatibility, async (_event, req: PluginCompatibilityRequest) => {
+    // 生效 minAppVersion = 加载器执法的那份：已装插件以磁盘 manifest 覆盖调用方供给（未装才吃 catalog）
+    let minAppVersion = typeof req?.minAppVersion === 'string' ? req.minAppVersion : null;
+    if (pluginFileService.locateDir(req.pluginId)) {
+      try {
+        minAppVersion = parseManifestJson(await pluginFileService.readManifest(req.pluginId)).minAppVersion ?? null;
+      } catch {
+        // manifest 读不了 ⇒ 保留调用方供给值（compute 端 null 语义照走，不猜）
+      }
+    }
+    return computeCompatibilityReading(
+      { ...req, minAppVersion },
+      {
+        shellVersion: app.getVersion(),
+        shellBuiltAtRaw: loadProduct().date,
+        locatePluginDir: (id) => pluginFileService.locateDir(id),
+      },
+    );
   });
 }

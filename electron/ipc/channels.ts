@@ -137,6 +137,8 @@ export const IPC = {
     resolvePath: 'plugins:resolvePath',
     // E6#7（1.2-4）：resolvePath 的兄弟（discovery 族，非安装 handler）——{ root, entry, bundle }
     resolveEntry: 'plugins:resolveEntry',
+    // E6#117：兼容读数（只读 invoke、main 直答、不进 PROXY_CHANNELS——状态算法单点在 src/core/compat/）
+    getCompatibility: 'plugins:get-compatibility',
     rescanManifests: 'plugins:rescanManifests',
     // ── E6#11/#13（1.2-5）：装卸更主进程真 fs/net 段（#13a 折叠后 install/uninstall 无主进程入口；
     //    loader 在壳 renderer，主进程只做 download/extract/update 真网络与磁盘）──

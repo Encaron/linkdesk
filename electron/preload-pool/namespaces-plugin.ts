@@ -10,7 +10,7 @@ import { ipcRenderer, webUtils } from 'electron';
 import { IPC } from '../ipc/channels';
 import { type EventSystemApi } from '../ipc/event-system';
 import type { PluginStateChangedPayload } from '../../src/core/types/ipc/events';
-import type { MenuItemDescriptor, PluginInstallRequestOpts, PluginFolderKind } from '../../src/core/api/linkdesk-api/types'; // E5.8#20：契约语义类型——menu.getItems 返回面；E6#78：+ 插件目录落点
+import type { MenuItemDescriptor, PluginInstallRequestOpts, PluginFolderKind, PluginCompatibilityRequest } from '../../src/core/api/linkdesk-api/types'; // E5.8#20：契约语义类型——menu.getItems 返回面；E6#78：+ 插件目录落点；E6#117：+ 兼容读数请求
 // E5.8#1b：keybinding 归一化集中——主进程/壳/池三端共用单一权威源（防 E5.7#79 漂移复发）
 import { keyboardInputToKeyString } from '../../src/core/utils/keybindingNormalization.js';
 
@@ -45,12 +45,17 @@ export function buildPluginManager() {
  * 提供 resolvePath 让 PluginComponent 在 glob 查找失败时 fallback 到动态 import()。
  */
 export function buildPlugins() {
+  // E5.8#1d EXEMPT：壳 preload-shell 镜像——双 preload 各持 window.linkdesk.* 契约（plugins 命名空间），无法共享
+  /* jscpd:ignore-start */
   return {
     resolvePath: (id: string) => ipcRenderer.invoke(IPC.plugins.resolvePath, id),
     // E6#7（1.2-4）：resolvePath 的兄弟——{ root, entry, bundle }（bundle 入口恒 index.bundle.js；
     // PluginComponent 默认主 tab 入口据此拼 URL，不再硬编码 src/index.tsx）
     resolveEntry: (id: string) => ipcRenderer.invoke(IPC.plugins.resolveEntry, id),
+    // E6#117：兼容读数（只读 invoke——main 直答，与壳 preload 同面同通道；市场插件格 5 消费）
+    getCompatibility: (req: PluginCompatibilityRequest) => ipcRenderer.invoke(IPC.plugins.getCompatibility, req),
   };
+  /* jscpd:ignore-end */
 }
 
 /** theme 命名空间——主题查询/应用（06 §2：列表走 API，选中走配置）。

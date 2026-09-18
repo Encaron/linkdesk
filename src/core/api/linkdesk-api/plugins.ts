@@ -14,6 +14,8 @@ import type {
   PluginInfoEntry,
   PluginDiscoveryEntry,
   PluginEntryInfo,
+  PluginCompatibilityRequest,
+  PluginCompatibilityReading,
 } from "./types";
 import type { PluginManifest } from "../types";
 
@@ -25,6 +27,10 @@ export interface PluginsAPI {
     /** E6#7（1.2-4）：resolvePath 的兄弟（discovery 族）——返回 { root, entry, bundle }（bundle 入口恒 index.bundle.js）。
      *  可选——保 state.ts 守卫与两 preload 面（壳/池）编译不裂；调用方先判存在再调用。 */
     resolveEntry?(id: string): Promise<PluginEntryInfo>;
+    /** E6#117：兼容读数（只读）——「这份插件跟当前版本搭不搭」由壳单点算出（状态算法
+     *  `src/core/compat/compatibility.ts`；用户面五词与读数的对应表住该文件头注）。
+     *  可选——同 resolveEntry 先例（保 mock 与既有实现面编译不裂；调用方先判存在）。 */
+    getCompatibility?(req: PluginCompatibilityRequest): Promise<PluginCompatibilityReading>;
     listDirs?(): Promise<string[]>;
     /** E6#9a：全量发现——[{ pluginId, entry, manifest }]（替代 import.meta.glob；打包插件不在源码树，主进程读盘唯一真源） */
     listAll?(): Promise<PluginDiscoveryEntry[]>;
