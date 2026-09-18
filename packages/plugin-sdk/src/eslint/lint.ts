@@ -36,6 +36,8 @@ import { runPluginPrefixCheck } from "./checks/plugin-prefix.js";
 import { runTokenScopeCheck } from "./checks/token-scope.js";
 import { runSelectorFormCheck } from "./checks/selector-form.js";
 import { runKeyframeRefCheck } from "./checks/keyframe-refs.js";
+import { runDanglingNameCheck } from "./checks/dangling-names.js";
+import { runRetiredNameHint, type RetiredNameHint } from "./checks/retired-names.js";
 import { runCommandOwnershipCheck } from "./checks/command-ownership.js";
 import { runConfigOwnershipCheck } from "./checks/config-ownership.js";
 import { runAppearanceOwnershipCheck } from "./checks/appearance-ownership.js";
@@ -78,6 +80,23 @@ export interface PluginLintReport {
   selectorFormCounts: { anchorless: number; crossParty: number };
   /** 🔴 E6#112（2026-09-18）：关键帧引用腿读数（refs = 引用点总数；dangling = 悬空；allowed = 允许集大小） */
   keyframeRefCounts: { refs: number; dangling: number; allowed: number };
+  /** 🔴 E6#119（2026-09-19）：悬空名腿读数（格 1 口径的作者侧移植——三份同口径，`锚⑩` 钉住） */
+  danglingNameCounts: {
+    ldkRefs: number;
+    kfRefs: number;
+    dangling: number;
+    skippedInterp: number;
+    skippedDynamic: number;
+    notJudged: number;
+    /** `ldk-*` 名只被包内自己满足（归前缀腿判红，本腿不判悬空） */
+    borrowedLdk: string[];
+    hostClassCount: number;
+    hostKeyframeCount: number;
+  };
+  /** 🟡 E6#119：退役名提示（只提示、⛔ 永不拒绝——不进任何腿报点） */
+  retiredHints: RetiredNameHint[];
+  /** 退役登记账的加载实况（found=false ⇒ 提示空转——报告里必须能看出来，不许静默） */
+  retiredLedger: { file: string; found: boolean; retiredCount: number } | null;
   /** 🟡 E6#111b（1.32）命令/协议 id 归属判据的计数：三面的站点数 ＋ 不合规站点数（**全黄**，1.49 才收紧） */
   commandOwnershipCounts: { declared: number; runtime: number; protocol: number; bad: number };
   /** 🟡 E6#111d（1.34）配置键归属判据的**黄灯建议**（判据②：新键不带本仓前缀）——**只打印、不拦** */
@@ -191,6 +210,22 @@ export async function runPluginLint(root: string, options: PluginLintOptions = {
    */
   const keyframeRefs = runKeyframeRefCheck(absRoot);
   /**
+   * 🔴 E6#119（2026-09-19）：命名空间腿第六条判据 —— **插件域悬空名**（`checks/dangling-names.ts`）。
+   *   格 1 尺子（壳 `scripts/plugin-dangling-name-audit.mjs`）的作者侧移植——作者在自己仓里就能跑出
+   *   红黄，不必问维护者。三份同口径（壳尺子 ／ 壳运行时腿 ／ 本腿），`锚⑩` 锚词钉住。
+   *   允许集 = 本仓 CSS 定义集 ∪ 随包 `schemas/host-css-names.json`（宿主定义集，同一生成器下发）；
+   *   🔴 宿主定义集读不到 ⇒ fail-closed「未核验」报红（假绿比假红更坏）。
+   *   ⚠️ 去重口径：与前几条判据**同一处 `文件:行` 不重复报**（以先出的为准）——关键帧通道的悬空
+   *     两腿都会判（允许集不同：那条只含保留账 8 条，本条含宿主全部关键帧），同点让先出的说。
+   */
+  const danglingNames = runDanglingNameCheck(absRoot);
+  /**
+   * 🟡 E6#119：**退役名提示**（`checks/retired-names.ts`）——`retired[]` **不是黑名单**：退役 ≠ 删除，
+   *   本腿的报点**永不进 violations**（CI 严格腿看不见它），只以 ℹ 行打印「哪天退的休、替身是谁」。
+   *   升级成拒绝 = 自选 2.0 的活，不在本批（⛔ 把提示升级成拒绝是本格禁区）。
+   */
+  const retiredNames = runRetiredNameHint(absRoot);
+  /**
    * 🔴 E6#109n-b（1.24）：命名空间腿再加一条判据 —— **token（自定义属性）作用域**。
    *   · 红（V1/V2/V5）进本腿报点 ⇒ CI 严格腿判红；
    *   · 🟡 黄（V6：文档级但名字带自有前缀）进 `tokenAdvisories`**只打印、不拦**（22 号档 §10.3）。
@@ -256,6 +291,7 @@ export async function runPluginLint(root: string, options: PluginLintOptions = {
   const tokenKeys = new Set(tokenScope.violations.map((v) => `${v.file}:${v.line}`));
   const formKeys = new Set(selectorForm.violations.map((v) => `${v.file}:${v.line}`));
   const reservedKeys = new Set(reserved.map((v) => `${v.file}:${v.line}`));
+  const kfKeys = new Set(keyframeRefs.violations.map((v) => `${v.file}:${v.line}`));
   const namespace: CheckViolation[] = [
     ...prefix.violations, // 前缀腿（含 fail-closed）
     ...selectorForm.violations.filter((v) => !prefixKeys.has(`${v.file}:${v.line}`)), // 形态腿（同点不重复报）
@@ -271,13 +307,22 @@ export async function runPluginLint(root: string, options: PluginLintOptions = {
         !formKeys.has(`${v.file}:${v.line}`) &&
         !reservedKeys.has(`${v.file}:${v.line}`)
     ),
+    // 悬空名腿（E6#119）——同点不重复报（以先出的为准；fail-closed「未核验」落 plugin.json:1，与前缀腿重叠时让先出的说）
+    ...danglingNames.violations.filter(
+      (v) =>
+        !prefixKeys.has(`${v.file}:${v.line}`) &&
+        !tokenKeys.has(`${v.file}:${v.line}`) &&
+        !formKeys.has(`${v.file}:${v.line}`) &&
+        !reservedKeys.has(`${v.file}:${v.line}`) &&
+        !kfKeys.has(`${v.file}:${v.line}`)
+    ),
   ];
   const legs: LintLeg[] = [
     { id: "linkdesk/no-hardcoded-hex（css + rgb/hsl 腿）", label: "check-css-hardcode", violations: css },
     { id: "linkdesk/no-hardcoded-font-size", label: "check-font-scale", violations: font },
     { id: "linkdesk/no-nonstandard-spacing", label: "check-spacing-grid", violations: spacing },
     {
-      id: "linkdesk/no-reserved-class-name（裸定义类名/关键帧必须带本仓 <pluginId>- 前缀；宿主保留名、token 作用域、选择器形态、关键帧引用悬空同 id）",
+      id: "linkdesk/no-reserved-class-name（裸定义类名/关键帧必须带本仓 <pluginId>- 前缀；宿主保留名、token 作用域、选择器形态、关键帧引用悬空、悬空名引用同 id）",
       label: "check-css-namespace",
       violations: namespace,
     },
@@ -327,6 +372,21 @@ export async function runPluginLint(root: string, options: PluginLintOptions = {
       dangling: keyframeRefs.dangling.length,
       allowed: keyframeRefs.allowed.length,
     },
+    danglingNameCounts: {
+      ldkRefs: danglingNames.ldkRefs,
+      kfRefs: danglingNames.kfRefs,
+      dangling: danglingNames.dangling.length,
+      skippedInterp: danglingNames.skipped.interp,
+      skippedDynamic: danglingNames.skipped.dynamic,
+      notJudged: danglingNames.notJudgedCount,
+      borrowedLdk: danglingNames.borrowedLdk,
+      hostClassCount: danglingNames.hostClassCount,
+      hostKeyframeCount: danglingNames.hostKeyframeCount,
+    },
+    retiredHints: retiredNames.hints,
+    retiredLedger: retiredNames.ledger.found
+      ? { file: retiredNames.ledger.file, found: true, retiredCount: retiredNames.ledger.retired.length }
+      : { file: retiredNames.ledger.file, found: false, retiredCount: 0 },
     commandOwnershipCounts: {
       declared: commandOwnership.declaredIds.length,
       runtime: commandOwnership.runtimeIds.length,
@@ -424,6 +484,36 @@ export function renderPluginLintReport(report: PluginLintReport): string {
         ? `无悬空引用（动画不会「静默消失」）。`
         : `${kf.dangling} 处**悬空**（引用的名字在允许集里找不到 ⇒ 动画静默消失）。`),
   );
+
+  // 悬空名判据的读数（E6#119）——格 1 尺子的作者侧移植（三份同口径，`锚⑩` 钉住）
+  const dn = report.danglingNameCounts;
+  lines.push(
+    `\n${dn.dangling === 0 ? "✅" : "⚠"} check-css-namespace（悬空名 · E6#119）：\`ldk-*\` 引用 ${dn.ldkRefs} 处 ／ ` +
+      `关键帧引用 ${dn.kfRefs} 处 ／ **悬空 ${dn.dangling} 处**——宿主定义集 ${dn.hostClassCount} 类名 ＋ ${dn.hostKeyframeCount} 关键帧（随包下发）。` +
+      `射程外如实计数：插值模板跳过 ${dn.skippedInterp} ／ 动态拼接跳过 ${dn.skippedDynamic} ／ 非 \`ldk-*\` 未判 ${dn.notJudged}` +
+      `（自有命名空间 / DOM 钩子 / 第三方内联）。` +
+      (dn.borrowedLdk.length > 0
+        ? `⚠ 借用宿主命名空间（\`ldk-*\` 自己定义）：${dn.borrowedLdk.join(" · ")}——归前缀腿判，此处不判悬空。`
+        : ``) +
+      (dn.dangling === 0 ? `发布后不会静默丢样式。` : `悬空站点见上方腿报点（修法两步：换名/补定义 ＋ 重新打包发版）。`),
+  );
+
+  // 🟡 退役名提示（E6#119）——`retired[]` 不是黑名单：只提示、⛔ 永不拒绝（不进任何腿报点）
+  if (report.retiredLedger && !report.retiredLedger.found) {
+    lines.push(
+      `\n⚠ 退役登记账没读到（${report.retiredLedger.file}）——退役名提示本轮**空转**。` +
+        `SDK 安装不完整？重装 @linkdesk/plugin-sdk 后再跑。`,
+    );
+  }
+  if (report.retiredHints.length > 0) {
+    lines.push(
+      `\nℹ 退役名提示（E6#119 · 只提示、不会拦你）：本仓有 ${report.retiredHints.length} 处还在引用**已退役**的宿主名字——` +
+        `宿主不因它拒载你（退役 ≠ 删除），但新名字那套语义你的插件已经拿不到了。建议升依赖＋改用替身＋重发一版。`,
+    );
+    for (const h of report.retiredHints) {
+      lines.push(`    ${h.file}:${h.line}  \`${h.name}\`（${h.since} 起退役）⇒ 建议改用 \`${h.replacedBy}\``);
+    }
+  }
 
   // 🟡 E6#111b（1.32）命令/协议 id 归属：读数 ＋ 账的加载实况（判据② 的输入来自账——账没读到必须让作者看见）
   const co = report.commandOwnershipCounts;

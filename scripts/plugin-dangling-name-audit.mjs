@@ -614,6 +614,32 @@ function selfTest() {
     'jsx("div",{className:"stub-own"});',
     ".stub-own{animation:stub-ghost-anim .2s}")), 1, ["stub-ghost-anim"]);
 
+  // 锚⑩：**悬空名判据口径跨包同源**（E6#119 · 2026-09-19）——本工具（格 1 尺子）、壳运行时腿
+  //   （`src/core/compat/dangling-scan.ts`，格 4，对账测试钉死）与 SDK 作者侧腿
+  //   （`packages/plugin-sdk/src/eslint/checks/dangling-names.ts`）三份同口径；前两份由对账钉住，
+  //   SDK 腿跨包无法 import ⇒ 照 `锚⑧`/`锚⑨` 先例钉文本：**改一边不改另一边 ⇒ 自测当场红**。
+  //   6 句锚词各钉一条口径：① 判定对象（只判「不属于它自己」的名字）② 悬空定义 ③ 动态拼接跳过
+  //   ④ 非 ldk- 不计悬空（误报控）⑤ borrowedLdk（自定 ldk-* 归前缀腿）⑥ 关键帧通道。
+  //   ⚠️ 该断言在 SDK 单测（dangling-names.test.ts，常驻壳 check）里也有一份——双保险。
+  {
+    const anchors = [
+      "只判「**不属于它自己**的名字」",
+      "在「自身定义集 ∪ 当前宿主定义集」里都没有",
+      "动态拼接一律**跳过并计数**",
+      "（自有命名空间 / DOM 钩子 / 第三方内联）",
+      "只被包内自己满足",
+      "`animation:` / `animation-name:` 引用的**关键帧名**",
+    ];
+    const sdkSrc = readFileSync(join(ROOT, "packages", "plugin-sdk", "src", "eslint", "checks", "dangling-names.ts"), "utf8");
+    const thisSrc = readFileSync(fileURLToPath(import.meta.url), "utf8");
+    cases.push({
+      label: "锚⑩：悬空名口径壳尺子 / SDK 腿同源（6 句锚词两边都在 ⇒ 改一边不改另一边必红）",
+      ok: anchors.every((a) => thisSrc.includes(a) && sdkSrc.includes(a)),
+      got: anchors.filter((a) => !thisSrc.includes(a) || !sdkSrc.includes(a)),
+      expect: [],
+    });
+  }
+
   rmSync(dir, { recursive: true, force: true });
   let bad = 0;
   for (const c of cases) {

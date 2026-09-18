@@ -679,6 +679,7 @@ component. **Nothing to do before you upgrade; when you upgrade, it's one prefix
 - **What happens if you don't**: exactly the silent failure described in 12.1—the selector just stops matching and those few rules quietly stop applying. **No error.**
 - 🔴 **Whenever the host renames a shared name, there are always two steps on your side: ① bump the `@linkdesk/ui` dependency, ② rebuild (repack) your plugin.** The dependency is **inlined into your bundle** (it is not resolved at runtime), so step ① without step ② changes nothing—the package still ships the old set of names. That is the only reason a plugin can lag behind a host that was fixed long ago.
 - **When you must change it**: when you move to **`@linkdesk/ui` 0.3.0**. `^0.2.0` does not resolve `0.3.0` (that's how 0.x ranges work), so nothing breaks until you upgrade deliberately. **Grep your own CSS for the old names** after upgrading: an official plugin (`settings`) had exactly one such spot and it was fixed in the same release batch.
+- **You get the same ruler** (`@linkdesk/plugin-sdk` 0.1.40 onward): your repo's lint ships with a dangling-name check—when the host renames a shared name and you didn't follow, **your own CI calls it out** (usage and fixes in [16-naming-conventions §7.6](16-naming-conventions.md)).
 
 ### 12.5 The **scope** of custom properties—`--x:` written under `:root` is written for the whole application
 

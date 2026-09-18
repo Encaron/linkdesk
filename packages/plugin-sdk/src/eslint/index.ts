@@ -38,6 +38,27 @@ export { runKeyframeRefCheck, KEYFRAME_REF_WHY } from "./checks/keyframe-refs.js
 export type { KeyframeRefReport, KeyframeRefSite } from "./checks/keyframe-refs.js";
 
 /**
+ * 🔴 E6#119（2026-09-19）：命名空间腿的**第六条**判据 —— `runDanglingNameCheck`（悬空名）。
+ *    格 1 尺子（壳 `scripts/plugin-dangling-name-audit.mjs`）的作者侧移植：作者在自己仓里跑出红黄。
+ *    三份同口径（壳尺子 ／ 壳运行时腿 ／ 本腿），`锚⑩` 锚词钉住；宿主定义集 = 随包
+ *    `schemas/host-css-names.json`（同一生成器下发，读不到 ⇒ fail-closed「未核验」）。
+ * 🟡 同笔：`runRetiredNameHint`（退役名提示）——`retired[]` 不是黑名单，**只提示、永不拒绝**。
+ */
+export { runDanglingNameCheck, loadHostCssNames, DANGLING_NAME_WHY } from "./checks/dangling-names.js";
+export type {
+  DanglingNameReport,
+  DanglingNameSite,
+  HostCssNames,
+} from "./checks/dangling-names.js";
+export { runRetiredNameHint, loadRetiredLedger } from "./checks/retired-names.js";
+export type {
+  RetiredNameReport,
+  RetiredNameHint,
+  RetiredEntry,
+  RetiredLedger,
+} from "./checks/retired-names.js";
+
+/**
  * 🔴 E6#111b（1.32）：同一纪律再加一个 —— `runCommandOwnershipCheck`（命令/协议 id 归属判据）。
  *    壳仓只读探针 `scripts/audit-nonnaming.mjs` 用它出「声明面 ／ 运行时面 ／ 协议面」三面读数，
  *    **同样不是第二条判据路径**（`lint.ts` 的第五条腿用的就是它——同一份实现，改一处两边一起变）。

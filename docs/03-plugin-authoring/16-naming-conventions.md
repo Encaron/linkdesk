@@ -155,9 +155,11 @@ actions. Only three things matter to you:
 1. **You are never auto-uninstalled, and never refused**: retirement is the host's own business—the shell does not
    uninstall or refuse to load you because you reference a retired name, and it is never used to gate `minAppVersion`.
    Your plugin keeps running, on the semantics of the **new** name.
-2. **If you reference a retired name, you should be able to get a reading in your own repo** (⚠️ **not today**: the
-   SDK-side retired-name hint lands in a **later step**; until then `retired[]` is only **data shipped in the package**,
-   with no tool reporting it for you—don't read that as "nobody is tracking it").
+2. **If you reference a retired name, you get a hint in your own repo** (`@linkdesk/plugin-sdk` **0.1.40** onward,
+   usage in 7.6): `linkdesk-plugin-sdk lint` and your repo's CI scan your sources and `plugin.json` for references
+   to retired names and report each one with since-when and what replaced it (`file:line`). 🔴 It is **only a
+   hint**—it never enters any failing leg and will never block your build or release (retired ≠ deleted; the host
+   does not refuse to load you over it).
 3. **Two steps to fix**: ① bump your `@linkdesk/plugin-sdk` dependency; ② ship a new release (`npm run publish`).
    ⛔ Don't shim the old name yourself—retired names **do not free up their slot**: taking one over only overwrites the
    host's **historical data** (see the config-key rows in 7.1).
@@ -172,6 +174,25 @@ only states facts, and no gate will ever use it to block you.
 > **user**); its internal consistency is guarded by `scripts/check-retired-ledger.mjs` (wired into `npm run check`), and
 > the single outlet for "surface taken away but registered ⇒ pass" is `scripts/check-api-surface-additive.mjs`.
 
+### 7.6 Run the "dangling name" self-check in your own repo (`@linkdesk/plugin-sdk` 0.1.40 onward)
+
+Your repo's CI (the strict lint leg of `ci-verify`) and `linkdesk-plugin-sdk lint` ship with a **dangling name**
+check: it takes every `ldk-*` name your sources shout plus every keyframe name your CSS references via `animation:`,
+and matches them against **two definition sets**—① the definitions in your own CSS; ② the host definition set
+shipped with the package (`schemas/host-css-names.json` inside the SDK). A name in neither set is reported as
+dangling (name + `file:line`), because that style **silently disappears after publishing** (zero errors—this is the
+mechanical reminder for "the host renamed it and you didn't follow"; the thing §12.4 describes now has someone
+watching it for you).
+
+- **How to fix a red (two steps)**: ① switch to a name that really exists in the host, or define it in your repo
+  (your own class names start with `<pluginId>-`; `ldk-*` belongs to the host); ② re-pack and ship.
+- **No false alarms**: dynamically composed names (`` className={`x-${v}`} ``) are **skipped and counted**, never
+  judged; third-party built-ins (Monaco / codicon—the name and its rules live in their own bundled styles) and DOM
+  hook names are **not judged**; test and mock files are not scanned.
+- **Informed bypass**: `// eslint-disable-next-line linkdesk/no-reserved-class-name -- reason` (same id as the
+  namespace leg).
+- **Host definition set unreadable** ⇒ the leg reports "**unverified**" instead of "0 issues"—that means a broken
+  install; reinstall `@linkdesk/plugin-sdk`.
 
 ---
 

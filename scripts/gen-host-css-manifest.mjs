@@ -24,9 +24,15 @@
  * `src/core/compat/dangling-scan.ts`（运行时悬空扫描腿）——`HOST_CSS_MANIFEST.classes` /
  * `.keyframes` 与格 1 `judge()` 里的 `host.classes` / `host.keyframes` 同名同义。
  *
+ * ── 🔴 E6#119（2026-09-19）起同笔产出第三份：SDK 随包 JSON ──
+ * `packages/plugin-sdk/schemas/host-css-names.json`（作者侧悬空名腿的允许集）——与运行时清单
+ * **同一生成器同一次采集**（⛔ 两份口径不会分叉；`--check`／`--self-test` 两条都查）。
+ * 为什么不并进 `host-reserved.json`：那是**保留名账**（退役账门禁看管）＋ 本清单是
+ * `collectHostDefs()` 的**纯投影**、无人工栏——账与面不混装。
+ *
  * 用法：
- *   node scripts/gen-host-css-manifest.mjs             # 重写生成物
- *   node scripts/gen-host-css-manifest.mjs --check     # 磁盘 == 重算（不一致退出码 1）——check 链成员
+ *   node scripts/gen-host-css-manifest.mjs             # 重写两份生成物（TS 清单 ＋ SDK JSON）
+ *   node scripts/gen-host-css-manifest.mjs --check     # 两份磁盘 == 重算（不一致退出码 1）——check 链成员
  *   node scripts/gen-host-css-manifest.mjs --self-test # 数据形状自检
  */
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -36,6 +42,8 @@ import { collectHostDefs } from "./lib/host-surface.mjs";
 
 const HERE = fileURLToPath(import.meta.url);
 const OUT = new URL("../src/core/compat/host-css.generated.ts", `file://${HERE.replace(/\\/g, "/")}`);
+/** E6#119 起同笔产出：SDK 随包 JSON（作者侧悬空名腿的允许集） */
+const SDK_OUT = new URL("../packages/plugin-sdk/schemas/host-css-names.json", `file://${HERE.replace(/\\/g, "/")}`);
 
 /** file URL pathname（/E:/…）→ 盘上路径（E:/…） */
 const fromFileUrlPath = (p) => p.replace(/^\/([A-Za-z]:)/, "$1");
@@ -89,6 +97,25 @@ const chunk = (arr, size = 8) => {
   return out;
 };
 
+/** SDK 随包 JSON（E6#119 · 作者侧悬空名腿的允许集）——与运行时清单同一投影，排序去重保证 diff 稳定 */
+function renderSdkJson(host) {
+  return (
+    JSON.stringify(
+      {
+        $comment:
+          "宿主 CSS 定义集（E6#119 随包下发）——生成物勿手改。数据唯一源 = scripts/lib/host-surface.mjs 的 collectHostDefs()（格 1 尺子 / 格 2 面快照第③栏 / 壳运行时清单 host-css.generated.ts 的同一采集器），由 scripts/gen-host-css-manifest.mjs 同笔生成（--check 对账）。口径原文见 01-任务-悬空名核验.md §8.2。",
+        version: 1,
+        generatedFrom: "scripts/gen-host-css-manifest.mjs",
+        classes: [...host.classes].sort(),
+        keyframes: [...host.keyframes].sort(),
+        reservedKeyframeCount: host.reservedKeyframes.length,
+      },
+      null,
+      2,
+    ) + "\n"
+  );
+}
+
 function selfTest() {
   const host = collectHostDefs();
   const classes = [...host.classes];
@@ -100,6 +127,10 @@ function selfTest() {
   eq("保留关键帧账已并入（8 条）", host.reservedKeyframes.length, 8);
   eq("关键帧全集 ⊇ 保留账", keyframes.length >= host.reservedKeyframes.length, true);
   eq("codicon 在宿主类名里（第三方 CSS 解析成功）", classes.some((n) => n.startsWith("codicon-")).toString(), "true");
+  // E6#119：SDK 随包 JSON 与重算一致（两份投影同源——磁盘上的那份漂了当场红）
+  let sdkDisk = null;
+  try { sdkDisk = readFileSync(fromFileUrlPath(SDK_OUT.pathname), "utf8"); } catch { /* 缺文件 ⇒ 判漂 */ }
+  eq("SDK 随包 JSON（host-css-names.json）与重算一致", sdkDisk, renderSdkJson(host));
   let bad = 0;
   for (const c of cases) {
     if (!c.ok) bad++;
@@ -112,7 +143,9 @@ function selfTest() {
 function main() {
   const argv = process.argv.slice(2);
   if (argv.includes("--self-test")) process.exit(selfTest());
-  const text = render(collectHostDefs());
+  const host = collectHostDefs();
+  const text = render(host);
+  const sdkText = renderSdkJson(host);
   if (argv.includes("--check")) {
     let disk = null;
     try { disk = readFileSync(fromFileUrlPath(OUT.pathname), "utf8"); } catch { /* 缺文件 ⇒ 判漂 */ }
@@ -121,13 +154,23 @@ function main() {
       console.error("  修复：npm run host-css:regen（同笔提交生成物）");
       process.exit(1);
     }
-    console.log("✅ host-css.generated.ts 与 collectHostDefs() 重算一致");
+    let sdkDisk = null;
+    try { sdkDisk = readFileSync(fromFileUrlPath(SDK_OUT.pathname), "utf8"); } catch { /* 缺文件 ⇒ 判漂 */ }
+    if (sdkDisk !== sdkText) {
+      console.error("✗ packages/plugin-sdk/schemas/host-css-names.json 与重算不一致（E6#119 随包投影漂了）——");
+      console.error("  修复：npm run host-css:regen（同笔提交两份生成物）");
+      process.exit(1);
+    }
+    console.log("✅ host-css.generated.ts ＋ SDK host-css-names.json 与 collectHostDefs() 重算一致（两份同源）");
     process.exit(0);
   }
   const outPath = fromFileUrlPath(OUT.pathname);
   mkdirSync(outPath.slice(0, outPath.lastIndexOf("/") === -1 ? outPath.lastIndexOf("\\") : outPath.lastIndexOf("/")), { recursive: true });
   writeFileSync(outPath, text);
-  console.log(`✅ 已重写 ${relative(process.cwd(), fromFileUrlPath(OUT.pathname))}`);
+  const sdkOutPath = fromFileUrlPath(SDK_OUT.pathname);
+  mkdirSync(sdkOutPath.slice(0, sdkOutPath.lastIndexOf("/") === -1 ? sdkOutPath.lastIndexOf("\\") : sdkOutPath.lastIndexOf("/")), { recursive: true });
+  writeFileSync(sdkOutPath, sdkText);
+  console.log(`✅ 已重写 ${relative(process.cwd(), outPath)} ＋ ${relative(process.cwd(), sdkOutPath)}`);
 }
 
 main();
