@@ -1,7 +1,7 @@
 /**
  * @vitest-environment node
  *
- * `dev --real` **并发互斥锁**（E6#28.5e）单测——出处 04-作者真机调试环.md §8.2/§8.4。
+ * `dev --real` 两条防坑单测——并发互斥锁（E6#28.5e）+ 源码树宿主告警（E6#28.5d），出处 04-作者真机调试环.md §8。
  *
  * ⚠️ 环境必须是 **node**（不是默认的 jsdom）：本文件 import 的 `dev-real.js` 顶层 import `vite`，
  *    而 esbuild 在 jsdom 环境里自检失败（`new TextEncoder().encode("") instanceof Uint8Array` 为假）
@@ -16,16 +16,22 @@
  * 🔴 锁的判据只有一条：**pid 是不是还活着**。下面既有纯函数级用例（覆盖陈旧/损坏/他锁），
  * 也有**真起一个子进程**的集成用例（`isProcessAlive` 与「启动即退出」只能真跑才算数）。
  */
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { spawn } from "node:child_process";
 import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { createServer } from "node:http";
+import type { AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
   acquireDevRealLock,
+  cdpReloadPool,
   devRealLockPath,
   isProcessAlive,
+  isViteSourceHost,
   releaseDevRealLock,
+  renderViteSourceHostWarning,
+  resetViteSourceHostWarning,
   runPluginDevReal,
   type DevRealLock,
 } from "./dev-real.js";
@@ -192,6 +198,103 @@ describe("runPluginDevReal 的并发闸（真起一个子进程当「第一个�
       rmSync(base, { recursive: true, force: true });
     } finally {
       holder.kill();
+    }
+  });
+});
+
+/** 桩 CDP：只答 `/json/list`（列表就是判别的那一步）；WebSocket 一律连不上 ⇒ 告警必须发生在连之前 */
+async function withStubCdp(target: Record<string, unknown>, fn: (port: number) => Promise<void>): Promise<void> {
+  const server = createServer((_req, res) => {
+    res.setHeader("content-type", "application/json");
+    res.setHeader("connection", "close");
+    res.end(JSON.stringify([target]));
+  });
+  await new Promise<void>((res) => server.listen(0, "127.0.0.1", () => res()));
+  const { port } = server.address() as AddressInfo;
+  try {
+    await fn(port);
+  } finally {
+    server.closeAllConnections();
+    await new Promise<void>((res) => server.close(() => res()));
+  }
+}
+
+describe("源码树宿主判据（E6#28.5d）", () => {
+  it("正控：dev server 供的池文档（http(s) / /@fs/）⇒ 判为源码树宿主", () => {
+    // 壳 dev 分支：loadURL(`${DEV_SERVER_URL}/pool.html`)（window-manager.ts:218）
+    expect(isViteSourceHost("http://localhost:1420/pool.html")).toBe(true);
+    expect(isViteSourceHost("http://127.0.0.1:1420/index.html")).toBe(true);
+    // 🔴 判 scheme 而不是判端口：dev server 端口被占会漂到 1421/1422…，按端口判会在漂移时**静默漏报**
+    expect(isViteSourceHost("http://localhost:1421/pool.html")).toBe(true);
+    expect(isViteSourceHost("https://localhost:5173/pool.html")).toBe(true);
+    // /@fs/ 是 Vite 外挂磁盘模块的特征，单独成立
+    expect(isViteSourceHost("http://localhost:9999/@fs/E:/proj/node_modules/.vite/deps/x.js")).toBe(true);
+  });
+
+  it("负控：生产/安装版宿主的池文档形态一条都不命中（不误报）", () => {
+    // 壳生产分支（app.isPackaged）：loadFile(.../dist/pool.html)（window-manager.ts:222）
+    expect(isViteSourceHost("file:///E:/linkdesk/dist/pool.html")).toBe(false);
+    expect(isViteSourceHost("file:///C:/Program%20Files/LinkDesk/resources/app.asar/dist/pool.html")).toBe(false);
+    // 其他非 http 文档（加载失败页 / 空白 / 自定义协议）
+    expect(isViteSourceHost("linkdesk://pool/pool.html")).toBe(false);
+    expect(isViteSourceHost("chrome-error://chromewebdata/")).toBe(false);
+    expect(isViteSourceHost("about:blank")).toBe(false);
+    // 字段缺失 / 空（旧 CDP 不带 url）⇒ 判不了就不报（宁可不报也不误报）
+    expect(isViteSourceHost(undefined)).toBe(false);
+    expect(isViteSourceHost("")).toBe(false);
+  });
+
+  it("告警正文：报出池 URL ＋ 三条人话（源码树 / 安装版反而新鲜 / 换宿主）+ 可照抄的启动参数", () => {
+    const text = renderViteSourceHostWarning(9222, "http://localhost:1420/pool.html");
+    expect(text).toContain("http://localhost:1420/pool.html");
+    expect(text).toContain("源码树");
+    expect(text).toContain("安装版");
+    expect(text).toContain("--remote-debugging-port=9222");
+  });
+
+  it("真路径（桩 CDP）：池目标出自 dev server ⇒ cdpReloadPool 真打告警，且**只打一次**；file:// 打包形态 ⇒ 一条不打", async () => {
+    const spy = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    const text = (): string => spy.mock.calls.map((c) => c.join(" ")).join("\n");
+    try {
+      await withStubCdp(
+        { title: "LinkDesk Pool", url: "http://localhost:1420/pool.html", webSocketDebuggerUrl: "ws://127.0.0.1:1/devtools/page/x" },
+        async (port) => {
+          resetViteSourceHostWarning();
+          // WS 连不上（桩没有 WS 服务端）⇒ 返回 false，但告警在连接之前就该已经打出来
+          await cdpReloadPool(port).catch(() => false);
+          expect(text()).toContain("源码树");
+          expect(text()).toContain(":1420");
+          const once = spy.mock.calls.length;
+          expect(once).toBeGreaterThan(0);
+          // 一个环里每轮 reload 都刷 = 噪音（盖掉真正的日志）⇒ 第二次不再打
+          await cdpReloadPool(port).catch(() => false);
+          expect(spy.mock.calls.length).toBe(once);
+        },
+      );
+
+      spy.mockClear();
+      await withStubCdp(
+        {
+          title: "LinkDesk Pool",
+          url: "file:///C:/Program%20Files/LinkDesk/resources/app.asar/dist/pool.html",
+          webSocketDebuggerUrl: "ws://127.0.0.1:1/devtools/page/x",
+        },
+        async (port) => {
+          resetViteSourceHostWarning();
+          await cdpReloadPool(port).catch(() => false);
+          expect(text()).not.toContain("源码树");
+        },
+      );
+
+      // 目标里没有 url 字段（旧 CDP / 字段缺失）⇒ 判不了就不报（宁可不报也不误报）
+      spy.mockClear();
+      await withStubCdp({ title: "LinkDesk Pool", webSocketDebuggerUrl: "ws://127.0.0.1:1/devtools/page/x" }, async (port) => {
+        resetViteSourceHostWarning();
+        await cdpReloadPool(port).catch(() => false);
+        expect(text()).not.toContain("源码树");
+      });
+    } finally {
+      spy.mockRestore();
     }
   });
 });

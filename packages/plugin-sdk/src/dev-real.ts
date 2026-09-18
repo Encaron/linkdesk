@@ -21,6 +21,11 @@
  * 🔴 E6#28.5e（2026-09-18）：**并发互斥锁**——第二个 `dev --real` 启动即明确退出并报 pid。
  * 出处 04 档案 §8.2：两实例抢同一目标时第二个 `dist/` 上 EPERM，**报错后旧产物原样不动** ⇒
  * 作者看到的现象仍是「改了没反应」，与「源码树宿主发旧代码」（§8.1）症状完全重合，现场骗过 AI 两轮。
+ *
+ * 🔴 E6#28.5d（2026-09-18）：**源码树宿主告警**——reload 时若池窗口文档出自 dev server（`http(s)://`
+ * 或 `/@fs/`；生产分支恒为 `loadFile` ⇒ `file://`），打一条醒目的一次性告警。出处 04 档案 §8.1 坑 1：
+ * 源码树宿主（`electron:dev`）的模块图在内存里，直写磁盘的新产物它看不见 ⇒「重启后第一下生效、
+ * 之后每次都不动」。同一症状的第二个来源。
  */
 import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, watch, writeFileSync, type FSWatcher } from "node:fs";
 import { dirname, join, resolve } from "node:path";
@@ -191,6 +196,8 @@ function hasBuildOutput(pkgDir: string): boolean {
 interface CdpTarget {
   title?: string;
   webSocketDebuggerUrl?: string;
+  /** 🔴 E6#28.5d 新增（可选字段，零回归）：池窗口文档自身的 URL——判断「这页是不是 Vite 供的」只能靠它 */
+  url?: string;
 }
 
 /** 最小 WS 句柄接口——不依赖全局 WebSocket 类型（tsconfig types:[]，lib 无 dom） */
@@ -224,6 +231,47 @@ function cdpListTargets(port: number): Promise<CdpTarget[]> {
   });
 }
 
+/* ── 宿主溯源：这页是「源码树 dev」还是「安装版」？（E6#28.5d · 04 档案 §8.1 坑 1） ── */
+
+/**
+ * 这个文档 URL 是否由**源码树 dev 宿主**（dev server）供给。判据两条，任一命中即算：
+ *   ① 文档是 `http(s)://…`——壳的 dev 分支就是 `loadURL(${DEV_SERVER_URL}/pool.html)`
+ *      （`electron/windows/window-manager.ts:218`），也就是 `http://localhost:1420/pool.html`；
+ *      **生产分支是 `loadFile(.../dist/pool.html)`（:222）⇒ 文档恒为 `file://`** ⇒ 不误报。
+ *      判「scheme 是 http」而不是「端口是 1420」：dev server 端口被占时会漂（1421/1422…），
+ *      按端口判会在漂移时静默漏报——而判据要的恰恰是「这页是不是 dev server 供的」。
+ *   ② 含 `/@fs/`——Vite 外挂磁盘模块的路径前缀（dev server 供页的第二特征）。
+ */
+export function isViteSourceHost(url: string | undefined | null): boolean {
+  if (!url) return false;
+  if (url.includes("/@fs/")) return true;
+  return /^https?:\/\//i.test(url);
+}
+
+/** 本进程是否已经提示过（一个环里每轮 reload 都刷一遍 = 噪音，盖掉真正的日志） */
+let viteHostWarned = false;
+
+/** 自测用：复位「已提示过」旗标。生产路径不需要——一次提示足够。 */
+export function resetViteSourceHostWarning(): void {
+  viteHostWarned = false;
+}
+
+/** 宿主是源码树 dev 时的醒目告警正文（**一次**顶到眼前；纯函数，自测直接断言文本） */
+export function renderViteSourceHostWarning(port: number, url: string): string {
+  return [
+    "  ╔══════════════════════════════════════════════════════════════════════════════",
+    `  ║ ⚠ 宿主是【源码树 dev】（${url}）——真机环在这里会**发旧代码**，别拿它判断「改没改生效」`,
+    "  ╠══════════════════════════════════════════════════════════════════════════════",
+    "  ║ 机制：源码树宿主经 Vite 供模块 ⇒ 模块图**在内存里**；SDK 直写磁盘的新产物它看不见，",
+    "  ║   重导入拿到的还是那份旧模块（04 档案 §8.1：重启后**第一下生效、之后每次都不动**，",
+    "  ║   现场骗过 AI 两轮）。",
+    "  ║ 反直觉：**安装版宿主反而比源码树宿主新鲜**——`linkdesk://` 逐请求 readFileSync，每次现读磁盘。",
+    `  ║ 怎么办：换**安装版 / win-unpacked** 当宿主，启动照旧加 --remote-debugging-port=${port}。`,
+    "  ║   **真机环的质量 = 安装版宿主的质量**（04 §四 四形态表：安装版是唯一合法宿主）。",
+    "  ╚══════════════════════════════════════════════════════════════════════════════",
+  ].join("\n");
+}
+
 /**
  * 经 CDP 刷新「LinkDesk Pool」窗口——renderer 重 import = 直写产物生效。返回是否找到并刷新成功。
  *
@@ -242,6 +290,11 @@ export async function cdpReloadPool(port = CDP_PORT): Promise<boolean> {
   const pool = targets.find((t) => t.title === "LinkDesk Pool");
   const url = pool?.webSocketDebuggerUrl;
   if (!pool || !url) return false;
+  const pageUrl = pool.url;
+  if (!viteHostWarned && pageUrl && isViteSourceHost(pageUrl)) {
+    viteHostWarned = true; // 只提示一次：本环后续每轮 reload 都刷 = 噪音
+    console.warn(renderViteSourceHostWarning(port, pageUrl));
+  }
   const Ws = (globalThis as { WebSocket?: WsCtor }).WebSocket;
   if (!Ws) {
     return false; // 全局 WebSocket 不可用（Node 太旧）——视为找不到，调用方打指引
