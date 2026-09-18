@@ -166,8 +166,9 @@ function objectLiteralAt(src, afterAt) {
  *    与 version 无关）。把它当「内容版本」用，等于每次改名都要手改一个只给人看的数字。
  * ⚠️ 它与 `app.schemaVersion` 是**两回事**：这里记的是**账自己的**修订，不是用户 settings.json 的
  *    迁移版本；两者同名纯属巧合，⛔ 别拿它当迁移门禁。
- * 历史：1 = 十家族定稿（1.49 首次写入 `version` 字段本身）。 */
-const LEDGER_VERSION = 1;
+ * 历史：1 = 十家族定稿（1.49 首次写入 `version` 字段本身）；
+ *      2 = 加 `retired[]` 退役登记栏（E6#116：账多了一栏 = 形状变了 ⇒ 抬版；家族与名字一条没动）。 */
+const LEDGER_VERSION = 2;
 
 const LEDGER_COMMENT =
   "宿主保留面账（生成式·E6#111b／1.32 定稿，1.49 补 version）——插件不得占用这些名字。" +
@@ -187,7 +188,14 @@ const LEDGER_COMMENT =
   "实况多一条报 `ledger-missing`、账多一条报 `ledger-stale`、家族整段缺失/为空另有专门的报警。" +
   "`version` = 本账**形状**的修订号（见生成器 `LEDGER_VERSION` 的抬版规则），不是 settings 迁移版本。" +
   "⚠️ configKeys 含**退役键**（曾被宿主使用、现已不再写入的键）：退役键**不腾出保留面**——" +
-  "老 settings.json 里可能还留着值，插件此刻占它 = 顶掉的是宿主的历史数据（且迁移代码仍会读它）。";
+  "老 settings.json 里可能还留着值，插件此刻占它 = 顶掉的是宿主的历史数据（且迁移代码仍会读它）。" +
+  "📌 **`retired[]` = 退役登记栏**（E6#116／本账 version 2 起）：**人工栏**——生成器**原样携带**（不扫描、不由实况推）。" +
+  "每条 = { name, kind, since, why, replacedBy, landing, approvedBy }：谁批的（必须**用户本人**签的日期）、为什么、替身是谁、还剩哪个活口。" +
+  "**退役 ≠ 删除**：退役名**不腾位**（同上——老值还在），所以它照旧留在本账对应家族里，只是不再是对插件许过的面。" +
+  "🔴 它**不是黑名单**：只供人读与作者侧提示，⛔ 不许任何门禁拿它去拦插件；「有登记即放行」的唯一出口在" +
+  "`scripts/check-api-surface-additive.mjs`（面被拿走 ＋ 有登记 ⇒ 放行），本栏自身的自洽对账在 `scripts/check-retired-ledger.mjs`。" +
+  "⚠️ 运行时副本**不下发** `retired`（`renderRuntimeModule` 只渲染显式家族常量，运行时对它没有可执行判断）；" +
+  "SDK 副本随本账**逐字节**含它——「要不要给作者侧提示退役名」= 格 6 的取舍点。";
 
 function walk(dir, f, out = []) {
   let e;
@@ -203,6 +211,21 @@ function walk(dir, f, out = []) {
     else if (f(p)) out.push(p);
   }
   return out;
+}
+
+/**
+ * 读账里那一栏**人工**的退役登记（E6#116）——生成器**原样携带**：
+ * `retired[]` **不来自任何扫描**，一次「重生成」若把它冲掉，等于抹掉全部退役记录与用户签名。
+ * ⚠️ 推论：手改 `retired[]` **不会**被 `--check` 判红（它是本账唯一不由实况推的栏）——
+ *   它的自洽（形状 ／ 退役的必须真退役 ／ 落点绑得住）由 `scripts/check-retired-ledger.mjs` 管。
+ */
+function readRetiredColumn(root = ROOT) {
+  try {
+    const raw = JSON.parse(fs.readFileSync(path.join(root, LEDGER_REL), "utf8"));
+    return Array.isArray(raw.retired) ? raw.retired : [];
+  } catch {
+    return [];
+  }
 }
 
 /** 读一个文件，读不到返回 ""（扫描源缺失 ⇒ 少几条账项，由对账的 family-empty／ledger-missing 兜） */
@@ -397,6 +420,7 @@ export function collectHostReserved(root = ROOT) {
     appearanceSentinels: [...sentinels].sort(),
     appearanceIdGrants: APPEARANCE_ID_GRANTS,
     protocolIds: [...protocols].sort(),
+    retired: readRetiredColumn(root),
   };
 }
 

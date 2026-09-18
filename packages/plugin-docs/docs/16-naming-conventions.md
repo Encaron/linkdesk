@@ -146,6 +146,33 @@ Renames on the host side **all come with migrations**, so users don't reconfigur
 
 Your only takeaway as a plugin author: **don't invent compatibility aliases for old host names** — old-name mapping is the shell's job. Just declare names in the **new shape**.
 
+### 7.5 Host names do get retired—you are never forced to upgrade
+
+The host also **retires its own names**: a **rename** (the name changed), a **changed meaning** (same name, different
+meaning) and a **changed value domain** (same name and meaning, different accepted values) all count as retirement-level
+actions. Only three things matter to you:
+
+1. **You are never auto-uninstalled, and never refused**: retirement is the host's own business—the shell does not
+   uninstall or refuse to load you because you reference a retired name, and it is never used to gate `minAppVersion`.
+   Your plugin keeps running, on the semantics of the **new** name.
+2. **If you reference a retired name, you should be able to get a reading in your own repo** (⚠️ **not today**: the
+   SDK-side retired-name hint lands in a **later step**; until then `retired[]` is only **data shipped in the package**,
+   with no tool reporting it for you—don't read that as "nobody is tracking it").
+3. **Two steps to fix**: ① bump your `@linkdesk/plugin-sdk` dependency; ② ship a new release (`npm run publish`).
+   ⛔ Don't shim the old name yourself—retired names **do not free up their slot**: taking one over only overwrites the
+   host's **historical data** (see the config-key rows in 7.1).
+
+Retired names are **on the record**: the host ledger (`retired[]` in `scripts/host-reserved.json`) plus the
+**byte-identical** copy inside the SDK package, each entry stating since when, why, what replaced it and where a live
+reference still remains. That ledger is **co-read** by host maintainers and authors, and 🔴 **it is not a blacklist**—it
+only states facts, and no gate will ever use it to block you.
+
+> 🔧 **Maintainer note (authors can skip)**: the ledger's source of truth and shape live in
+> `scripts/lib/retired-ledger.mjs` (7 fields + the kind vocabulary + `approvedBy` which must be a date signed by the
+> **user**); its internal consistency is guarded by `scripts/check-retired-ledger.mjs` (wired into `npm run check`), and
+> the single outlet for "surface taken away but registered ⇒ pass" is `scripts/check-api-surface-additive.mjs`.
+
+
 ---
 
 > **← Index:** [00-readme](00-readme.md) · **Related:** [15-multi-repo-and-local-workspace](15-multi-repo-and-local-workspace.md) · [06-plugin-json-spec](06-plugin-json-spec.md) · [plugin-source-externalization/09-naming-conventions.md](https://github.com/Encaron/linkdesk/blob/electron/docs/02-Electron架构/E6_插件生态与发布/插件源码外移层/09-命名规范.md) (decision rationale)

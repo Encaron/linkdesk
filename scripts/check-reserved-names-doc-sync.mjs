@@ -150,8 +150,11 @@ export const FAMILY_LABELS = {
  *  · `$comment` / `version` —— 账的自我描述与**形状**修订号；
  *  · `appearanceIdGrants` —— **证照**映射（`{ 外观 id: [被授权的 pluginId…] }`）：它约束的是
  *    「**谁有权声明**某个宿主兜底 id」，不是「哪些名字被保留」。作者面在「宿主配方 id」那一行的
- *    「你会撞上什么」列里用散文交代它（`light` ← `theme-defaults`），故不进机器对账。 */
-const NON_FAMILY_KEYS = new Set(["$comment", "version", "appearanceIdGrants"]);
+ *    「你会撞上什么」列里用散文交代它（`light` ← `theme-defaults`），故不进机器对账；
+ *  · `retired` —— **退役登记**（E6#116）：它是「谁批的 / 为什么 / 替身是谁 / 还剩哪个活口」的**账**，
+ *    形状 ≠ 名字列表（每项是一张记录、不是字符串）⇒ 不按家族对账。它自身的自洽（形状 ＋ 三条断言）
+ *    由 `scripts/check-retired-ledger.mjs` 管；「退役名要不要提示给作者」= 格 6 的取舍点。 */
+const NON_FAMILY_KEYS = new Set(["$comment", "version", "appearanceIdGrants", "retired"]);
 
 /** 去掉 markdown 强调符／行内代码符并压平空白——族名的比较口径（表里写 `**x**` 与 `x` 等价） */
 const normLabel = (s) => String(s).replace(/[*`]/g, "").replace(/\s+/g, " ").trim();

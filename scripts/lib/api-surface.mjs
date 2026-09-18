@@ -190,7 +190,9 @@ function collectLedger() {
   const raw = JSON.parse(readFileSync(resolve(ROOT, LEDGER), "utf8"));
   const out = {};
   for (const key of Object.keys(raw)) {
-    if (key === "$comment" || key === "version") continue; // 散文 + 账形状修订号（抬版 ≠ 面被拿走）
+    // 散文 ＋ 账形状修订号（抬版 ≠ 面被拿走）＋ 退役登记栏（E6#116：它是**记录**不是面——某条名字退不退，
+    // 不改变它是不是宿主保留面；混进快照只会让「人补一句 why」也把面抖一遍，且与格 3 的账重复记账）
+    if (key === "$comment" || key === "version" || key === "retired") continue;
     out[key] = raw[key];
   }
   return out;

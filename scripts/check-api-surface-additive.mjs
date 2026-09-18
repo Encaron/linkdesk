@@ -5,7 +5,7 @@
  * 用法：
  *   node scripts/check-api-surface-additive.mjs              # 门禁（已挂 npm run check）
  *   node scripts/check-api-surface-additive.mjs --json       # 机读输出（人读那套之外多一段 JSON）
- *   node scripts/check-api-surface-additive.mjs --self-test  # 自测（正控 3 ／ 负控 4 ／ 计数 1）
+ *   node scripts/check-api-surface-additive.mjs --self-test  # 自测（正控 4 ／ 负控 7 ／ 计数 1）
  *   node scripts/check-api-surface-additive.mjs --init       # 建基线：把今天的面写成快照（首次落地专用）
  *
  * ── 判定式（三条硬边界写在脚本头，改之前先读）──
@@ -19,8 +19,13 @@
  *   ③ **失败必须给出可执行的下一步**：「改回去」或「走退役登记 E6#116」二选一，⛔ 没有第三条路。
  *
  * ── 只有一条动态逻辑，且只有一条口径（坑单 §二第三步的「二选一」在这里落定）──
- *   本格（`E6#116` 退役登记）尚未落地 ⇒ **今天一律判红**。格 3 落地后，「已在 `retired[]` 登记且带
- *   `approvedBy` 的退役 ⇒ 放行」这条**加在本文件**（红出口在谁手里，谁负责放行）——⛔ 不许两处并存。
+ *   🔴 **「有登记即放行」的唯一归属在**本文件**（格 3 `E6#116` 已落地 2026-09-18）**：面被拿走时**查账**——
+ *   命中 `scripts/host-reserved.json` 的 `retired[]` 里一条**带用户签名**（`用户 · YYYY-MM-DD`）
+ *   且 `kind` 对得上栏目的登记 ⇒ **放行**并逐条打印「已登记的退役」；没命中 ⇒ 照旧判红。
+ *   ⛔ **不许两处并存**：格 3 的对账门禁 `check-retired-ledger.mjs` **只管账内部自洽**，它不判「面被拿走」；
+ *      判定式与匹配规则在 `scripts/lib/retired-ledger.mjs`（两个文件共用那一份，⛔ 别处不许再写一套）。
+ *   ⚠️ 账读不到 ⇒ **按「没有登记」处理**（fail-closed：拿不到放行依据就判红，⛔ 不是静默放行）。
+ *   ⚠️ 放行 ≠ 删除：退役名**不腾位**（活口还在原地，见 `retired[].landing`）。
  */
 import { spawnSync } from "node:child_process";
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
@@ -35,6 +40,7 @@ import {
   COLUMN_LABELS,
 } from "./lib/api-surface.mjs";
 import { ROOT } from "./lib/host-surface.mjs";
+import { exemptionFor, readRegistry } from "./lib/retired-ledger.mjs";
 
 const SELF_TEST = process.argv.includes("--self-test");
 const INIT = process.argv.includes("--init");
@@ -142,16 +148,38 @@ function run() {
 
   const { removed, added } = diffSurface(baseline.snapshot, current);
 
+  // ── 「有登记即放行」——本文件唯一的动态逻辑（见文件头）。账读不到 ⇒ fail-closed（当没登记处理）。──
+  let registry = [];
+  try {
+    registry = readRegistry();
+  } catch (err) {
+    console.log(`⚠️ 退役登记表读不到（${err.message}）⇒ 本次**按「没有登记」处理**（fail-closed，⛔ 不静默放行）。`);
+  }
+  const exempted = [];
+  const blocking = [];
+  for (const p of removed) {
+    const hit = exemptionFor(p, registry);
+    if (hit) exempted.push({ path: p, how: hit.how });
+    else blocking.push(p);
+  }
+  if (exempted.length > 0) {
+    console.log(`✅ 已登记的退役 ${exempted.length} 处——**放行**（retired[] 里有带用户签名的条目，退役 ≠ 删除）：`);
+    for (const e of exempted) console.log(`     · ${e.path}
+       ⇒ ${e.how}`);
+  }
+
   console.log(`api-surface-additive：基线 = ${baseline.kind === "tag" ? "上一个已发布 tag" : "降级档"} \`${baseline.ref}\``);
   if (baseline.why) console.log(`   ⚠️ ${baseline.why}`);
 
-  if (removed.length > 0) {
-    console.log(`\n🔴 面被拿走 ${removed.length} 处（基线 \`${baseline.ref}\`）——插件正在用的面不见了：\n`);
-    printRows(removed);
+  if (blocking.length > 0) {
+    console.log(`\n🔴 面被拿走 ${blocking.length} 处（基线 \`${baseline.ref}\`）——插件正在用的面不见了：\n`);
+    printRows(blocking);
     console.log(`\n   下一步二选一（⛔ 没有第三条路）：`);
     console.log(`     ① 改回去——平台承诺「旧插件在新版本上仍然能跑」（memory plugin-authoring-manual.md:179-180）`);
-    console.log(`     ② 若是有意的退役 ⇒ 走退役登记 E6#116（登记落地前，本门禁一律判红——⛔ 不许就地加白名单）`);
-    if (JSON_OUT) console.log(JSON.stringify({ baseline: baseline.ref, kind: baseline.kind, removed, added }, null, 2));
+    console.log(`     ② 若是有意的退役 ⇒ 走退役登记 E6#116：在 scripts/host-reserved.json 的 retired[] 里登记`);
+    console.log(`        （形状见 scripts/lib/retired-ledger.mjs 头注；approvedBy 必须**用户本人**签）`);
+    console.log(`        ⇒ 本门禁下次放行；⛔ 不许就地加白名单 / 豁免名单（那正是本条要治的病）`);
+    if (JSON_OUT) console.log(JSON.stringify({ baseline: baseline.ref, kind: baseline.kind, removed, added, exempted, blocking }, null, 2));
     return 1;
   }
 
@@ -160,9 +188,13 @@ function run() {
     printRows(added);
     console.log(`\n   ⇒ 跑 \`npm run api-surface:regen\` 更新 ${SNAPSHOT_REL} 并同笔提交（⛔ 不更新不判红，但下一条 tag 的基线会落后）。`);
   } else {
-    console.log(`✅ 与基线相比：缺项 0 ／ 新增 0 —— 面一条没少（共 ${flattenSurface(current).length} 条面）。`);
+    console.log(
+      removed.length === 0
+        ? `✅ 与基线相比：缺项 0 ／ 新增 0 —— 面一条没少（共 ${flattenSurface(current).length} 条面）。`
+        : `✅ 面没少：拿走的 ${removed.length} 处全部有退役登记背过书（上面已逐条打印 ⇒ 放行）；新增 ${added.length} 处。`,
+    );
   }
-  if (JSON_OUT) console.log(JSON.stringify({ baseline: baseline.ref, kind: baseline.kind, removed, added }, null, 2));
+  if (JSON_OUT) console.log(JSON.stringify({ baseline: baseline.ref, kind: baseline.kind, removed, added, exempted, blocking }, null, 2));
   return 0;
 }
 
@@ -281,6 +313,31 @@ function selfTest() {
     push("负控5（主路径）：tag 里有快照 ⇒ kind=tag（不作任何降级）", b.kind === "tag" && b.ref === "v0.9.9" && !b.why, `${b.kind} / ${b.ref}`);
   }
 
+  // ── 放行（E6#116「有登记即放行」——本文件唯一的动态逻辑，见文件头）──
+  {
+    const reg = [{ name: "registerCommand", kind: "apiMember", approvedBy: "用户 · 2026-09-18" }];
+    const hit = exemptionFor("apiNamespaces.commands.registerCommand", reg);
+    push(
+      "正控4（有登记即放行）：kind 对栏 ＋ 名字命中 ＋ 用户签名 ⇒ 放行",
+      Boolean(hit && /registerCommand/.test(hit.how)),
+      JSON.stringify(hit),
+    );
+  }
+  {
+    const reg = [{ name: "registerCommand", kind: "apiMember", approvedBy: "AI · 2026-09-18" }];
+    push(
+      "负控6：签名不是用户本人（AI 自己签）⇒ **不放行**",
+      exemptionFor("apiNamespaces.commands.registerCommand", reg) === null,
+    );
+  }
+  {
+    const reg = [{ name: "registerCommand", kind: "configKey", approvedBy: "用户 · 2026-09-18" }];
+    push(
+      "负控7：kind 栏目对不上（拿配置键登记去放行 API 成员）⇒ 不放行",
+      exemptionFor("apiNamespaces.commands.registerCommand", reg) === null,
+    );
+  }
+
   // ── 计数 ──
   {
     const paths = flattenSurface(stub());
@@ -295,7 +352,7 @@ function selfTest() {
   for (const c of cases) console.log(`${c.ok ? "✅" : "🔴"} ${c.name}${c.ok ? "" : `\n     ↳ ${c.detail}`}`);
   console.log(
     bad.length === 0
-      ? `\n✅ check-api-surface-additive self-test 全过（${cases.length} 例：正控 3 ／ 负控 5 ／ 计数 1）——门禁不是在恒绿。`
+      ? `\n✅ check-api-surface-additive self-test 全过（${cases.length} 例：正控 4 ／ 负控 7 ／ 计数 1）——门禁不是在恒绿。`
       : `\n🔴 check-api-surface-additive self-test ${bad.length} 例不符（共 ${cases.length} 例）。`,
   );
   return bad.length === 0 ? 0 : 1;

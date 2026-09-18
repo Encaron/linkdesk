@@ -1,6 +1,6 @@
 {
-  "$comment": "宿主保留面账（生成式·E6#111b／1.32 定稿，1.49 补 version）——插件不得占用这些名字。消费方有**两条腿，互不覆盖**：① **壳腿** = 壳仓 `scripts/audit-plugin-scope.mjs`（跨容器普查，读本账 ＋ 反向核对实况）与 `src/core/registry/host-reserved.generated.ts`（壳**运行时**仲裁读的生成副本）；② **SDK 腿** = `@linkdesk/plugin-sdk` 的四个 `check-*-ownership`（随包下发本账的副本 `schemas/host-reserved.json`，在**插件仓 CI** 判红）。为什么必须两条腿：壳腿看不见插件仓的源码，SDK 腿看不见壳的运行时——各自的射程都到不了对面。**改本表 = 一次公共面决策**：动手前先问「**这是公共面，还是漏网的借用？**」——公共面（多人正当读写、按约定共享）该进本账的设计里单列，借用（某插件用了宿主的名字）一律判红、不许宽恕；**新增条目要在这一段或对应家族的 why 里写明判据**，别只加一个名字。改完必须重跑生成器 `npm run audit:plugin-scope:regen`（scripts/gen-host-reserved.mjs）——账 ＋ SDK 副本 ＋ 运行时副本**三份同源**，手改任一份都会被判漂。**双向对账门禁在哪**：`node scripts/gen-host-reserved.mjs --check`（四向：实况→账 ／ 账→实况 ／ SDK 副本逐字节 ／ 运行时副本逐元素），已接在 `npm run check` 里；实况多一条报 `ledger-missing`、账多一条报 `ledger-stale`、家族整段缺失/为空另有专门的报警。`version` = 本账**形状**的修订号（见生成器 `LEDGER_VERSION` 的抬版规则），不是 settings 迁移版本。⚠️ configKeys 含**退役键**（曾被宿主使用、现已不再写入的键）：退役键**不腾出保留面**——老 settings.json 里可能还留着值，插件此刻占它 = 顶掉的是宿主的历史数据（且迁移代码仍会读它）。",
-  "version": 1,
+  "$comment": "宿主保留面账（生成式·E6#111b／1.32 定稿，1.49 补 version）——插件不得占用这些名字。消费方有**两条腿，互不覆盖**：① **壳腿** = 壳仓 `scripts/audit-plugin-scope.mjs`（跨容器普查，读本账 ＋ 反向核对实况）与 `src/core/registry/host-reserved.generated.ts`（壳**运行时**仲裁读的生成副本）；② **SDK 腿** = `@linkdesk/plugin-sdk` 的四个 `check-*-ownership`（随包下发本账的副本 `schemas/host-reserved.json`，在**插件仓 CI** 判红）。为什么必须两条腿：壳腿看不见插件仓的源码，SDK 腿看不见壳的运行时——各自的射程都到不了对面。**改本表 = 一次公共面决策**：动手前先问「**这是公共面，还是漏网的借用？**」——公共面（多人正当读写、按约定共享）该进本账的设计里单列，借用（某插件用了宿主的名字）一律判红、不许宽恕；**新增条目要在这一段或对应家族的 why 里写明判据**，别只加一个名字。改完必须重跑生成器 `npm run audit:plugin-scope:regen`（scripts/gen-host-reserved.mjs）——账 ＋ SDK 副本 ＋ 运行时副本**三份同源**，手改任一份都会被判漂。**双向对账门禁在哪**：`node scripts/gen-host-reserved.mjs --check`（四向：实况→账 ／ 账→实况 ／ SDK 副本逐字节 ／ 运行时副本逐元素），已接在 `npm run check` 里；实况多一条报 `ledger-missing`、账多一条报 `ledger-stale`、家族整段缺失/为空另有专门的报警。`version` = 本账**形状**的修订号（见生成器 `LEDGER_VERSION` 的抬版规则），不是 settings 迁移版本。⚠️ configKeys 含**退役键**（曾被宿主使用、现已不再写入的键）：退役键**不腾出保留面**——老 settings.json 里可能还留着值，插件此刻占它 = 顶掉的是宿主的历史数据（且迁移代码仍会读它）。📌 **`retired[]` = 退役登记栏**（E6#116／本账 version 2 起）：**人工栏**——生成器**原样携带**（不扫描、不由实况推）。每条 = { name, kind, since, why, replacedBy, landing, approvedBy }：谁批的（必须**用户本人**签的日期）、为什么、替身是谁、还剩哪个活口。**退役 ≠ 删除**：退役名**不腾位**（同上——老值还在），所以它照旧留在本账对应家族里，只是不再是对插件许过的面。🔴 它**不是黑名单**：只供人读与作者侧提示，⛔ 不许任何门禁拿它去拦插件；「有登记即放行」的唯一出口在`scripts/check-api-surface-additive.mjs`（面被拿走 ＋ 有登记 ⇒ 放行），本栏自身的自洽对账在 `scripts/check-retired-ledger.mjs`。⚠️ 运行时副本**不下发** `retired`（`renderRuntimeModule` 只渲染显式家族常量，运行时对它没有可执行判断）；SDK 副本随本账**逐字节**含它——「要不要给作者侧提示退役名」= 格 6 的取舍点。",
+  "version": 2,
   "commandPrefixes": [
     "app.",
     "core.",
@@ -87,5 +87,16 @@
   },
   "protocolIds": [
     "bracket"
+  ],
+  "retired": [
+    {
+      "name": "app.themeColorMode",
+      "kind": "configKey",
+      "since": "2026-08-25",
+      "why": "并入 app.theme ＋ app.themeColor：颜色模式不再有独立开关（自定义 vs 跟随配方改由 appearance 配方 / 配色域表达）",
+      "replacedBy": "app.theme",
+      "landing": "src/App/startup.ts:246（仍被读 + 清扫）",
+      "approvedBy": "用户 · 2026-09-18"
+    }
   ]
 }
