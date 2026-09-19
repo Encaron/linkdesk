@@ -26,7 +26,7 @@ description: >
 | **@linkdesk/contracts** | 插件作者（拿类型） | npm | **发布者手工维护**——2026-09-06 拆焊反向 E5.8#22.6，版本轴独立于壳（壳升级≠契约升级）；只随 `window.linkdesk.*` API 面变而升 |
 | **@linkdesk/plugin-sdk** | 插件作者（构建） | npm | 同上，手工维护；依赖 `^0.1.x` contracts |
 | **create-linkdesk-plugin** | 插件作者（建工程） | npm | 手工维护；**模板改了必须发版**——不发 = 作者拿到的骨架是旧的（`check-npm-release` 黄灯盯） |
-| **@linkdesk/ui** | 插件作者（共享 UI 零件） | npm | 手工维护；壳 `src/components/shared/` 是单源，改组件即动了本轴 |
+| **@linkdesk/ui** | 插件作者（共享 UI 零件） | npm | 🔴 **E6#124 重锚（2026-09-19）：与壳同号锁步**——ui 版本 = 发它的那个壳版本号，**壳发版必带 ui 同号 bump**（`packages/linkdesk-ui/package.json` + `npm install` 同笔同步 lock；断言 = 发布门禁判据⑤）；撞号则壳让位 bump。壳 `src/components/shared/` 是单源，改组件即动了本轴 |
 | **@linkdesk/plugin-docs** | 插件作者（读文档） | npm | 🔴 **第五根轴（E6#105l 立）**：内容变即 PATCH；表面 = 生成物 `packages/plugin-docs/docs/**`（真源 `docs/03-插件制造/**`，改了不重生成 ⇒ `docs:check` 先红）。基线待首次真发后 `release:mark` 落 |
 | **插件自身 version**（各 plugin.json） | 作者自己 | marketplace | 作者维护，更新机制消费 |
 
@@ -117,7 +117,7 @@ VS Code 十年几百版不升 2 的根因：**一切新能力增量进、旧格�
 
 ## 四、更新落点（类别判定后，改这些文件）
 
-1. **`package.json`** `version` —— 唯一真值，改这里
+1. **`package.json`** `version` —— 唯一真值，改这里；🔴 **同笔必改 `packages/linkdesk-ui/package.json` 为同号**（E6#124 锁步，`npm install` 同步 lock）——漏改会被发布门禁判据⑤当场判红
 2. **`electron/product.json`** `version` —— 开发期可留占位；发布期由壳发布脚本（E6#57.15a）写入，**不手写第二份**（02 §2.3：任何地方不手写第二份版本号；`app.getVersion()` = 唯一运行时来源）
 3. **CHANGELOG.md** —— 每次 bump 写一条：`## v0.1.1（YYYY-MM-DD）` + 类别清单（feat/fix/breaking）（02 §2.6，对标 VS Code）
 4. **Git tag** —— `vX.Y.Z`（无 v 前缀的版本号比较，02 §2.4），Release body = 该版发行说明（05 数据源）
