@@ -38,6 +38,7 @@
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { parse as parseJsonc, printParseErrorCode } from "jsonc-parser";
 import { scanText } from "./lib/author-symbols.mjs";
 
 const ROOT = resolve(fileURLToPath(import.meta.url), "../..");
@@ -254,7 +255,15 @@ const FACTS = {
 
 /** 现场读一只仓的 `plugin.json` / `package.json`（读不到 ⇒ 抛出，让调用方报红） */
 function readRepo(dir) {
-  const manifest = JSON.parse(readFileSync(join(dir, "plugin.json"), "utf8"));
+  // plugin.json 是 JSONC（可注释可尾逗号，官方格式——脚手架与 schema 都按 JSONC 教）；
+  // ⛔ 不许用 JSON.parse：第三方作者的合法 JSONC 清单（如 geme-tihu-bicycle）会当场炸掉整轮同步。
+  const manifestErrors = [];
+  const manifest = parseJsonc(readFileSync(join(dir, "plugin.json"), "utf8"), manifestErrors, { allowTrailingComma: true });
+  if (manifestErrors.length > 0 || !manifest || typeof manifest !== "object") {
+    throw new Error(
+      `plugin.json 不是合法 JSONC：${manifestErrors.map((e) => printParseErrorCode(e.error)).join("、") || "解析为空"}`,
+    );
+  }
   const pkg = JSON.parse(readFileSync(join(dir, "package.json"), "utf8"));
   return { manifest, pkg };
 }
@@ -366,6 +375,13 @@ const ids = readdirSync(CONTAINER, { withFileTypes: true })
   .map((e) => e.name)
   .sort();
 
+// 🔴 射程 = FACTS 表（官方发货仓的事实账）——**表 = 官方仓名单的唯一真相源**。
+// 容器里可能出现第三方作者仓（如 geme-tihu-bicycle，用户 pull 进来的）：它们不在表里 ⇒
+// **跳过，不渲染、不比对、不写**——往别人的仓写 AGENTS.md 越权（⛔ 不写别人的仓）；
+// 若表外仓其实是「新收编的官方仓」，跳过清单会把它亮出来——该走的流程是补 FACTS 段，不是硬编码名单。
+const tableOutIds = ids.filter((id) => !(id in FACTS));
+const officialIds = ids.filter((id) => id in FACTS);
+
 if (ids.length === 0) {
   console.error(`🔴 容器在、但一个插件仓都没读到：${CONTAINER}\n   （目录存在却没有 <id>/plugin.json ⇒ 位置配错了；用 LINKDESK_PLUGIN_CONTAINER=<dir> 覆盖）`);
   process.exit(1);
@@ -376,7 +392,7 @@ const drift = [];
 const problems = [];
 let wrote = 0;
 
-for (const id of ids) {
+for (const id of officialIds) {
   const dir = join(CONTAINER, id);
   let want;
   try {
@@ -425,7 +441,10 @@ for (const id of ids) {
 /* ─────────────────────────── 报告 ─────────────────────────── */
 
 console.log(`[plugin-agents] 容器：${CONTAINER}`);
-console.log(`[plugin-agents] 读到 ${ids.length} 只插件仓；随包出厂（seed）${ids.filter((i) => seed.has(i)).length} 只`);
+console.log(`[plugin-agents] 读到 ${ids.length} 只插件仓；官方发货（FACTS 表内）${officialIds.length} 只，随包出厂（seed）${officialIds.filter((i) => seed.has(i)).length} 只`);
+if (tableOutIds.length > 0) {
+  console.log(`[plugin-agents] 跳过 FACTS 表外仓 ${tableOutIds.length} 只（第三方作者仓——不渲染、不比对、不写）：${tableOutIds.join("、")}`);
+}
 
 if (problems.length > 0) {
   console.error(`\n❌ [plugin-agents] ${problems.length} 处硬问题：`);
