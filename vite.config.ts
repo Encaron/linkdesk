@@ -16,6 +16,15 @@ const host = process.env.TAURI_DEV_HOST;
 const userPluginsHome = process.env.APPDATA ? join(process.env.APPDATA, "linkdesk", "plugins") : "";
 
 /**
+ * 🔴 2026-09-19（L9 实机暴露）：上面那份是 **Windows 原生形态（反斜杠）**，只该给 fs.allow 用；
+ * Vite 传给插件的 importer id 一律**正斜杠**（`C:/Users/.../plugins/x/views/a.bundle.js`）
+ * ⇒ 拿原生形态去 `includes` 恒假。E6#7 起该钩子在 Windows 上**从未生效**，一直没人发现：
+ * react 系在壳自身 import 图里、有 Vite 优化器兜底；直到 E6#123 插件开始裸 import `@linkdesk/ui`
+ * （壳自己不 import 它 ⇒ 无兜底）才浮出水面——插件视图整个挂在 "Failed to resolve import"。
+ */
+const userPluginsHomePosix = userPluginsHome.replace(/\\/g, "/");
+
+/**
  * E6#7（1.2-4）：dev-only 解析兜底——SDK 预构建的 index.bundle.js 把 react 系 externalize 成裸 import；
  * 该 bundle 物理在 {userData}/plugins（项目根外），node resolution 从它向上走不到项目 node_modules，
  * 裸 import 必然 "Failed to resolve import react"。此处**只对 userData 插件 importer** 把裸 specifier
@@ -40,10 +49,12 @@ function resolveUserDataBundles(): Plugin {
   return {
     name: "linkdesk-userdata-bundle-externals",
     resolveId(source, importer) {
-      if (!userPluginsHome || !importer?.includes(userPluginsHome)) return null;
+      if (!userPluginsHomePosix || !importer?.includes(userPluginsHomePosix)) return null;
       if (!external.has(source)) return null;
-      // createRequire.resolve 尊重包的 exports map（react/jsx-runtime 等 subpath）
-      return require.resolve(source);
+      // createRequire.resolve 尊重包的 exports map（react/jsx-runtime 等 subpath）；
+      // 返回值归一成正斜杠——Vite 内部 id 全是 posix，原生反斜杠路径是同一颗雷的另一半
+      //（与 injectPoolUiCss 处理 css 路径同款写法）。
+      return require.resolve(source).replace(/\\/g, "/");
     },
   };
 }
