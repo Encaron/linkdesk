@@ -18,7 +18,7 @@ import {
   setPluginResidence,
 } from "../../resolution/state";
 import { validateInstallManifest, resolveVersionConflict } from "../../discovery/manifest";
-import { loadPlugin } from "../../resolution/runtime";
+import { loadPlugin, getKnownManifest } from "../../resolution/runtime";
 import { parseManifestJson } from "../../jsonc"; // E6#55：作者 plugin.json JSONC——唯一解析入口
 // E6#13b/c（段 B）：packageOps 签名引用 PluginUpdateCheckResult——types.ts 契约面
 // E6#73q：PluginInstallRequestOpts——安装请求侧身份（pluginId/displayName/origin）
@@ -32,6 +32,7 @@ import {
   settleInstallJob,
 } from "../install-queue";
 import { emitInstallProgress, jobProgress } from "./progress";
+import { findDependencyCycle, missingDependencies } from "./dependency-install";
 
 /* ═══════════════════════════════════════════════════════════
    E6#11/#13（1.2-5）：包安装流——url/.linkdesk-plugin 真安装（单一路径，主进程只做 fs/net）
@@ -110,7 +111,7 @@ export async function installPlugin(
   let result: PluginInstallResult;
   try {
     result = isPackageSource(sourcePath)
-      ? await installPackageFromSource(sourcePath, opts, jobId)
+      ? await installPackageFromSource(sourcePath, opts, jobId, [], new Set())
       : await installPluginFromDirectory(sourcePath, jobId);
   } catch (e) {
     // 两条流各自 catch（错误文案更具体）；此处是兜底——绝不让 job 停在「在跑」永不出终态
@@ -189,6 +190,8 @@ async function installPackageFromSource(
   sourcePath: string,
   opts: PluginInstallRequestOpts | undefined,
   jobId: string,
+  ancestors: string[],
+  chainInstalled: Set<string>,
 ): Promise<PluginInstallResult> {
   const source = sourcePath.trim();
   jobProgress(jobId, "validating");
@@ -225,14 +228,34 @@ async function installPackageFromSource(
       }
     }
     const { pluginId, version, targetDir } = extracted;
-    const displayName = await manifestNameOf(targetDir, pluginId);
+    const manifest = await readInstallManifest(targetDir);
+    const displayName = typeof manifest?.name === "string" && manifest.name.trim() !== "" ? manifest.name : pluginId;
     // E6#73j（G6）：包安装落在 {userData}/plugins/<id> = 用户安装家 ⇒ 此后可被新包更新
     // （不等下次启动重新发现——本会话装完立刻开详情页就该看见更新能力）
     setPluginResidence(pluginId, "userData");
 
     // E6#73q：真 id 此刻才从包内 manifest 裁决出来——回填 job 身份，池侧行才从「未知」变成真名
     // （调用方传了 pluginId 则此处是同一值的幂等刷新；显示名只有壳读过包才知道）
-    identifyInstallJob(jobId, { pluginId, displayName });
+    // E6#73o：依赖安装与父 job 共用 jobId——身份回填只属于父插件（祖先链非空 = 本调用是依赖腿，不抢父行身份）
+    if (ancestors.length === 0) identifyInstallJob(jobId, { pluginId, displayName });
+
+    // E6#73o：依赖链自动装（设计 20 档）——解压后、落账/加载前，缺失依赖内联装进本 job 的槽；
+    // 失败回滚**父插件**本次解压产物：否则重试安装撞「目标已存在」拒绝，而它未入账本也无法卸载（死端）。
+    // 已装成的依赖保留（对后续安装有用，回滚它反而是破坏）。
+    if (opts?.catalogUrl && manifest) {
+      try {
+        await installMissingDependenciesInline({
+          jobId,
+          manifest,
+          catalogUrl: opts.catalogUrl,
+          ancestors: [...ancestors, pluginId],
+          chainInstalled,
+        });
+      } catch (e) {
+        try { await linkdesk().filesystem.remove(targetDir); } catch { /* 回滚失败非致命——错误照报 */ }
+        throw e;
+      }
+    }
 
     // 3) 账本 add（#12b 欠账还清——安装流消费 add；磁盘事实在 user/ 子目录 → 源默认 user；
     //    market UI 未来可传 marketplace）
@@ -258,14 +281,62 @@ async function installPackageFromSource(
   }
 }
 
-/** 包内显示名——读已解压 plugin.json（失败回退 pluginId） */
-async function manifestNameOf(targetDir: string, pluginId: string): Promise<string> {
+/** 包内 manifest——读已解压 plugin.json（jsonc 唯一解析入口）；读不到/解析失败返回 null（调用方逐字段兜底）。
+ *  E6#73o：原 manifestNameOf 扩成全量读取——显示名与 requires 同一次读出，别为依赖再读第二遍。 */
+async function readInstallManifest(targetDir: string): Promise<PluginManifest | null> {
   try {
     const raw = await linkdesk().filesystem.readTextFile(`${targetDir}/plugin.json`);
-    const m = parseManifestJson(raw);
-    return typeof m?.name === "string" && m.name.trim() !== "" ? m.name : pluginId;
+    return parseManifestJson(raw) as PluginManifest;
   } catch {
-    return pluginId;
+    return null;
+  }
+}
+
+/**
+ * 依赖链自动装（E6#73o，设计 20 档 §二）——本层缺失依赖逐个**内联**装进父 job 已持有的槽：
+ * 不建第二条 job、不进 FIFO（73q「子包占槽护栏」= 结构，见 dependency-install.ts 头注）。
+ * 解析 = `packageUpdateCheck` 打来源目录取最新直链（D3，零新主进程 API）；依赖自己的 requires
+ * 递归同路处理（D2，祖先链环守卫给全链文案）；取消沿父 jobId 中止在途依赖下载（D5）；
+ * 本链新装的记入 `chainInstalled`——manifestIndex 刷新是异步广播，安装期以本链账本为准防跨层重装。
+ */
+async function installMissingDependenciesInline(spec: {
+  jobId: string;
+  manifest: PluginManifest;
+  catalogUrl: string;
+  /** 祖先链（含调用方自己）——环守卫的栈 */
+  ancestors: string[];
+  chainInstalled: Set<string>;
+}): Promise<void> {
+  const deps = missingDependencies(spec.manifest, (id) => getKnownManifest(id) !== undefined, spec.chainInstalled);
+  if (deps.length === 0) return;
+  const check = packageOps().packageUpdateCheck;
+  if (!check) throw new Error(i18n.t("壳面缺 updateCheck——依赖无法解析"));
+  for (const [i, dep] of deps.entries()) {
+    if (isInstallJobCancelled(spec.jobId)) throw new Error(i18n.t("已取消安装"));
+    const cycle = findDependencyCycle(spec.ancestors, dep);
+    if (cycle) throw new Error(i18n.t("依赖环：{{chain}}", { chain: cycle }));
+    jobProgress(spec.jobId, "validating", dep, i18n.t("正在安装依赖：{{name}}（{{i}}/{{n}}）", { name: dep, i: i + 1, n: deps.length }));
+    let url: string;
+    try {
+      const resolved = await check(dep, spec.catalogUrl);
+      if (!resolved.downloadUrl) throw new Error(i18n.t("目录条目缺下载直链"));
+      url = resolved.downloadUrl;
+    } catch (e) {
+      throw new Error(i18n.t("依赖 {{id}} 无法从来源市场解析：{{err}}", { id: dep, err: errMsg(e) }));
+    }
+    try {
+      const r = await installPackageFromSource(
+        url,
+        { pluginId: dep, displayName: dep, origin: "dependency", ledgerSource: "marketplace", catalogUrl: spec.catalogUrl },
+        spec.jobId,
+        [...spec.ancestors, dep],
+        spec.chainInstalled,
+      );
+      if (!r.success) throw new Error(r.error ?? i18n.t("未知错误"));
+    } catch (e) {
+      throw new Error(i18n.t("依赖 {{id}} 安装失败：{{err}}", { id: dep, err: errMsg(e) }));
+    }
+    spec.chainInstalled.add(dep);
   }
 }
 

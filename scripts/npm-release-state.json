@@ -3,9 +3,12 @@
   "packages": [
     {
       "name": "@linkdesk/contracts",
-      "version": "0.1.19",
-      "contentHash": "0bd7f7873882f41ce00a8d3ef11c10ceaceaeaaba91a5384d239798453db074c",
-      "files": 2
+      "version": "0.1.20",
+      "contentHash": "0b731e49900add056f0ca4e2d6fecfa888d8636870f33eed43134f80e72c267f",
+      "fileHashes": {
+        "contracts/README.md": "24f92b03cbdacc4a",
+        "contracts/linkdesk.d.ts": "9e721f91f8cc9067"
+      }
     },
     {
       "name": "@linkdesk/plugin-sdk",
@@ -101,7 +104,7 @@
     },
     {
       "name": "@linkdesk/ui",
-      "version": "0.2.13",
+      "version": "0.2.14",
       "contentHash": "b11c4b35f2275cc5c99e96fd9fe59369dcfa3a59d2d7ccc5bff0cf93e6bbea4d",
       "fileHashes": {
         "packages/linkdesk-ui/README.md": "9b032b907c299083",
@@ -177,15 +180,15 @@
     },
     {
       "name": "@linkdesk/plugin-docs",
-      "version": "0.1.27",
-      "contentHash": "af3601c28fabf2de7f09d2ce4a7a6c9d6caade63be542b344eef17994131e42b",
+      "version": "0.1.28",
+      "contentHash": "789b261e2533c8b5eed1c45cd85c627d44642bc67b70a5bd321b8eb9ebc05480",
       "fileHashes": {
         "packages/plugin-docs/README.md": "6cd51394e987a3f2",
         "packages/plugin-docs/docs/00-readme.md": "de551c820b50ebe9",
         "packages/plugin-docs/docs/01-plugin-api-contract.md": "b1b4964e80a64d03",
         "packages/plugin-docs/docs/02-plugin-lifecycle.md": "aeda91886c7d874b",
         "packages/plugin-docs/docs/03-contributes-spec.md": "9fdf561710e6f817",
-        "packages/plugin-docs/docs/04-distribution-format.md": "374e95278228b6e6",
+        "packages/plugin-docs/docs/04-distribution-format.md": "657b3e3a1e93ae20",
         "packages/plugin-docs/docs/05-ui-conventions.md": "5cbdfc94260fba0c",
         "packages/plugin-docs/docs/06-plugin-json-spec.md": "9d71290ef084319e",
         "packages/plugin-docs/docs/07-plugin-to-plugin-communication.md": "ef34c052c31e7d38",
@@ -208,7 +211,7 @@
         "packages/plugin-docs/docs/zh/01-插件API契约.md": "69e71654d2673a0b",
         "packages/plugin-docs/docs/zh/02-插件生命周期.md": "0d9c46f4628c1dbf",
         "packages/plugin-docs/docs/zh/03-插件contributes规范.md": "81fe23bc60449dad",
-        "packages/plugin-docs/docs/zh/04-插件分发格式.md": "2731e6ad57eb0f34",
+        "packages/plugin-docs/docs/zh/04-插件分发格式.md": "ab007725be30fe7d",
         "packages/plugin-docs/docs/zh/05-插件UI写法规约.md": "0e6fda4617a8facb",
         "packages/plugin-docs/docs/zh/06-plugin.json规范.md": "626dfd93e9fcda63",
         "packages/plugin-docs/docs/zh/07-插件间通信.md": "84906e4c07837908",

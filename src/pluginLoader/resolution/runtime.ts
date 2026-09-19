@@ -126,8 +126,9 @@ async function loadPluginLifecycle(
 
 /** 已知 manifest 面——环检测走闭包的数据源（发现索引 + 挂起）。
  *  E6#9c：manifestIndex（readAllManifests 水合，glob + 运行时全覆盖）单一真源；
- *  挂起留兜底（环 = 相互依赖未就绪，必有挂起方，#14 分析成文）。E6#62e：延迟注册表已删。 */
-function getKnownManifest(pluginId: string): PluginManifest | undefined {
+ *  挂起留兜底（环 = 相互依赖未就绪，必有挂起方，#14 分析成文）。E6#62e：延迟注册表已删。
+ *  E6#73o：导出复用——依赖链自动装的「依赖已已知」判定同源（install-ops 消费），别写第二份。 */
+export function getKnownManifest(pluginId: string): PluginManifest | undefined {
   return getManifestById(pluginId) ?? _pendingPlugins.get(pluginId);
 }
 

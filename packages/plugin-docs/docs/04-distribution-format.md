@@ -106,6 +106,7 @@ All three are declared in the schema (see [03-contributes](03-contributes-spec.m
 - `minAppVersion` — checked at load time (not satisfied → toast + skip)
 - **Mechanical gate (SDK lint)**: consuming `@linkdesk/ui` at runtime ⇒ `plugin.json` must declare `minAppVersion` ≥ `0.2.13` (the UI re-anchor version — vendor supply of shared components exists only from that shell onward; `import type` is exempt as compile-time-erased). Enforced by `linkdesk-plugin-sdk lint` (`check-ui-min-app-version`), no disable exit
 - `requires` — runtime dependency orchestration applies (missing dependency → suspend as PENDING + cycle fail-loud + cascading uninstall in reverse topological order, see [02 §4](02-plugin-lifecycle.md))
+- **Auto-install at install time (shell-side, opt-in via the request)**: when the install request carries a catalog source URL (the marketplace passes the listing's source), missing `requires` dependencies are installed automatically **inside the same install job** — inline and recursive, no second concurrency slot; a failing dependency fails the parent job (naming the dependency) and rolls back the parent's extracted files so a retry starts clean. Already-installed dependencies are skipped; disabled ones are never auto-enabled. Declaring `requires` is all an author does — no shell changes needed
 - `permissions` — declaring them informs the user; the authorization model is still pending
 
 ---

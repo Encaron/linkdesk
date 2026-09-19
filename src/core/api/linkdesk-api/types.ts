@@ -179,6 +179,13 @@ export interface PluginInstallRequestOpts {
   displayName?: string;
   /** job 出身——行 = 一次用户动作（user，缺省）；插件拖来的依赖（dependency）藏在那一行里 */
   origin?: "user" | "dependency";
+  /**
+   * E6#73o：依赖解析目录——传入后，本插件 `requires` 里**缺失**的依赖由壳在**同一安装 job 内**
+   * 自动先装（内联递归、不占第二个槽——依赖解析复用 updateCheck 打本目录取最新直链）。
+   * 不传 = 行为与现状一致（缺依赖 parked）。解析半径 = 本目录（壳不内置任何目录 URL）。
+   * 设计定案：docs/02-Electron架构/E6_插件生态与发布/03-插件市场/20-依赖链自动安装设计定案.md。
+   */
+  catalogUrl?: string;
 }
 
 /** E6#73c：安装进度的 job 身份——壳侧 `installPlugin` 调主进程 fs/net 段（download/extract）时随行，
