@@ -296,10 +296,10 @@ function scanCss(cleaned: string): {
 /* jscpd:ignore-end */
 
 /** 一份产物的文本面（调用方从磁盘目录读出） */
-interface ArtifactFile { name: string; text: string }
+export interface ArtifactFile { name: string; text: string }
 
 /** 一个产物的扫描结果（格 1 `scanArtifact` 同构） */
-interface ArtifactScan {
+export interface ArtifactScan {
   jsNames: ShoutSite[];
   kfRefs: ShoutSite[];
   cssMentions: Set<string>;
@@ -310,7 +310,12 @@ interface ArtifactScan {
   jsFiles: number;
 }
 
-function scanArtifact(files: ArtifactFile[]): ArtifactScan {
+/**
+ * 逐文件累加器——**同步入口与 worker 后台扫描共用同一份归并口径**（`E6#131`，2026-09-19）：
+ * 两路结果一致由构造保证（同一段归并代码，不写第二份），worker 逐文件喂、扫完即丢文本，
+ * 几百 MB 的包内存也只留派生小集。口径仍由 dangling-scan.test.ts 的机械对账钉住。
+ */
+export function createArtifactScanAccumulator(): { scanFile: (f: ArtifactFile) => void; finish: () => ArtifactScan } {
   const jsNames: ShoutSite[] = [];
   const kfRefs: ShoutSite[] = [];
   const cssMentions = new Set<string>();
@@ -319,24 +324,34 @@ function scanArtifact(files: ArtifactFile[]): ArtifactScan {
   const skipped = { interp: 0, dynamic: 0 };
   let cssFiles = 0;
   let jsFiles = 0;
-  for (const f of files) {
-    if (f.name === "plugin.json") continue;
-    if (f.name.endsWith(".css")) {
-      cssFiles++;
-      const css = scanCss(stripComments(f.text));
-      for (const n of css.selfDefs) selfDefs.add(n);
-      for (const n of css.selfKeyframes) selfKeyframes.add(n);
-      for (const n of css.cssMentions) cssMentions.add(n);
-      for (const r of css.kfRefs) kfRefs.push({ ...r, file: f.name });
-    } else if (/\.(js|mjs|cjs|html)$/.test(f.name)) {
-      jsFiles++;
-      const { literals, skipped: s } = shoutSites(f.text);
-      for (const l of literals) jsNames.push({ ...l, file: f.name });
-      skipped.interp += s.interp;
-      skipped.dynamic += s.dynamic;
-    }
-  }
-  return { jsNames, kfRefs, cssMentions, selfDefs, selfKeyframes, skipped, cssFiles, jsFiles };
+  return {
+    scanFile(f: ArtifactFile): void {
+      if (f.name === "plugin.json") return;
+      if (f.name.endsWith(".css")) {
+        cssFiles++;
+        const css = scanCss(stripComments(f.text));
+        for (const n of css.selfDefs) selfDefs.add(n);
+        for (const n of css.selfKeyframes) selfKeyframes.add(n);
+        for (const n of css.cssMentions) cssMentions.add(n);
+        for (const r of css.kfRefs) kfRefs.push({ ...r, file: f.name });
+      } else if (/\.(js|mjs|cjs|html)$/.test(f.name)) {
+        jsFiles++;
+        const { literals, skipped: s } = shoutSites(f.text);
+        for (const l of literals) jsNames.push({ ...l, file: f.name });
+        skipped.interp += s.interp;
+        skipped.dynamic += s.dynamic;
+      }
+    },
+    finish(): ArtifactScan {
+      return { jsNames, kfRefs, cssMentions, selfDefs, selfKeyframes, skipped, cssFiles, jsFiles };
+    },
+  };
+}
+
+function scanArtifact(files: ArtifactFile[]): ArtifactScan {
+  const acc = createArtifactScanAccumulator();
+  for (const f of files) acc.scanFile(f);
+  return acc.finish();
 }
 
 /** 悬空条目（名字 ＋ 出处） */
@@ -345,8 +360,9 @@ export interface DanglingName { name: string; via: "js-classname" | "css-animati
 /**
  * 判一个产物（格 1 `judge` 同构）：须判定的引用在「自身定义集 ∪ 宿主定义集」里都没有 ⇒ 悬空。
  * `ldk-*` 只被包内自己满足的名字（borrowedLdk）**不算悬空**——那归 SDK 腿判红，与本读数无关。
+ * E6#131：worker 后台扫描同用本函数（与同步口径同源）。
  */
-function judgeDangling(scan: ArtifactScan, hostClasses: ReadonlySet<string>, hostKeyframes: ReadonlySet<string>): {
+export function judgeDangling(scan: ArtifactScan, hostClasses: ReadonlySet<string>, hostKeyframes: ReadonlySet<string>): {
   dangling: DanglingName[];
   borrowedLdk: string[];
   ldkRefs: number;
@@ -374,8 +390,8 @@ function judgeDangling(scan: ArtifactScan, hostClasses: ReadonlySet<string>, hos
   };
 }
 
-/** 递归收集目录下指定扩展名的文件（跳过 node_modules / .git——与格 1 目录输入同口径） */
-function walkFiles(dir: string, exts: string[], out: string[] = []): string[] {
+/** 递归收集目录下指定扩展名的文件（跳过 node_modules / .git——与格 1 目录输入同口径）。E6#131：worker 同用 */
+export function walkFiles(dir: string, exts: string[], out: string[] = []): string[] {
   if (!statSync(dir).isDirectory()) return out;
   for (const name of readdirSync(dir)) {
     if (name === "node_modules" || name === ".git") continue;
@@ -386,11 +402,12 @@ function walkFiles(dir: string, exts: string[], out: string[] = []): string[] {
   return out;
 }
 
-const ARTIFACT_EXTS = [".css", ".js", ".mjs", ".cjs", ".html"];
+/** 扫描的产物扩展名（E6#131：worker 同用） */
+export const ARTIFACT_EXTS = [".css", ".js", ".mjs", ".cjs", ".html"];
 
-/** 宿主定义集（生成物 → Set；模块级构造一次） */
-const HOST_CLASSES = new Set<string>(HOST_CSS_MANIFEST.classes);
-const HOST_KEYFRAMES = new Set<string>(HOST_CSS_MANIFEST.keyframes);
+/** 宿主定义集（生成物 → Set；模块级构造一次）。E6#131：worker 后台扫描同用（同口径） */
+export const HOST_CLASSES = new Set<string>(HOST_CSS_MANIFEST.classes);
+export const HOST_KEYFRAMES = new Set<string>(HOST_CSS_MANIFEST.keyframes);
 
 /**
  * 扫一个**已装插件目录**的悬空名（运行时唯一入口——已装插件是解包目录，不是 zip）。
