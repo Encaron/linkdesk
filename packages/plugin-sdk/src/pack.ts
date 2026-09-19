@@ -37,6 +37,12 @@
  *   ② **条目时间戳固定**（`ZIP_ENTRY_DATE`）——JSZip 默认给每个条目盖 `new Date()`，于是内容一个字没改
  *      重打一次字节也全变 ⇒ 产物不可复现（`git status` 恒脏、无法用「重打一遍」验证、也判断不了某次
  *      diff 是真改内容还是只换时间）。值本身无意义，只要跨机器恒定。
+ *      🔴 **E6#15o（2026-09-19）补全：隐式目录条目同钉**——`file()` 的 `createFolders` 隐式建的父目录
+ *      条目吃 `o.date || new Date()`（jszip object.js:33），文件条目钉了、目录条目没钉 ⇒ 带子目录的
+ *      插件连打两次仍差几个字节（09-14 复验：同尺寸差 4 字节）。`pinDirectoryEntryDates()` 在
+ *      generate 前把 `zip.files` 里全部目录条目同值覆写——generate 只认条目自身的 `.date`
+ *      （jszip generate/index.js:38），改写即生效。build 通道（vite-config `zipTree`）同笔接入
+ *      （那边此前连文件条目都没钉，且 `readdirSync` 不排序 ⇒ 条目顺序在 ext4 上也漂移）。
  *
  * 用法：
  *   `linkdesk-plugin-sdk pack`            → 插件根 `./<pluginId>.linkdesk-plugin`
@@ -51,6 +57,37 @@ import { derivePluginId, readPluginManifest, validatePluginJson } from "./valida
  * 条目时间戳固定——值本身无意义，只要跨机器恒定。与壳仓 `scripts/pack-bundled-plugins.mjs` 同值。
  */
 export const ZIP_ENTRY_DATE = new Date(Date.UTC(2020, 0, 1, 0, 0, 0));
+
+/**
+ * 把 zip 里全部**目录条目**的时间戳钉到 `ZIP_ENTRY_DATE`——E6#15o（2026-09-19）。
+ *
+ * 病根：`file()` 的 `createFolders` 隐式建的父目录条目在 jszip `object.js:33` 吃
+ * `o.date || new Date()`——文件条目钉了、目录条目没钉 ⇒ 带子目录的插件连打两次字节必变
+ * （09-14 复验：同尺寸差 4 字节 = 目录条目的 dos time/date 字段）。修法 = generate 前对
+ * `zip.files` 里 `dir === true` 的条目同值覆写——generate 只认条目自身的 `.date`
+ * （jszip `generate/index.js:38` `var dir = file.dir, date = file.date`），改写即生效。
+ * pack 与 build（vite-config）两通道同源调用此函数。
+ */
+export function pinDirectoryEntryDates(zip: JSZip): void {
+  for (const entry of Object.values(zip.files)) {
+    if (entry.dir) entry.date = ZIP_ENTRY_DATE;
+  }
+}
+
+/** pkgDir → zip 目录遍历——条目相对 pkgDir、正斜杠归一（build 通道用；住在 pack 是因为
+ *  「确定性打包」的两条纪律——时间戳固定 ＋ 条目顺序确定——两通道同源，别写两份）。
+ *  🔴 E6#15o（2026-09-19）：文件条目日期固定（此前 build 通道全部条目盖 `new Date()`）＋
+ *  `readdirSync` 结果按名排序（NTFS 恰好按名返回、ext4 不然 ⇒ 不排序则条目顺序跨机漂移，
+ *  隐式目录条目的出现时机连带漂）；目录条目由调用处在 generate 前用 `pinDirectoryEntryDates` 钉住。 */
+export function zipTree(zip: JSZip, dir: string, prefix: string): void {
+  const entries = readdirSync(dir, { withFileTypes: true }).sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
+  for (const e of entries) {
+    const rel = prefix ? `${prefix}/${e.name}` : e.name;
+    const full = join(dir, e.name);
+    if (e.isDirectory()) zipTree(zip, full, rel);
+    else zip.file(rel, readFileSync(full), { date: ZIP_ENTRY_DATE });
+  }
+}
 
 /** 排除的目录名（任意层级）——构建/工具产物 */
 const EXCLUDED_DIRS = new Set(["node_modules", "dist"]);
@@ -157,6 +194,8 @@ export async function packPluginData(options: { root: string; outFile?: string }
   if (entryCount === 0) {
     throw new Error(`插件根没有任何可打包条目：${root}（plugin.json 之外全被排除？）`);
   }
+
+  pinDirectoryEntryDates(zip); // E6#15o：隐式目录条目同钉固定时间戳（见函数注）
 
   const buf = await zip.generateAsync({ type: "nodebuffer", compression: "DEFLATE" });
   const outPath = resolve(options.outFile ?? join(root, `${id}.linkdesk-plugin`));

@@ -43,6 +43,7 @@ import { runConfigOwnershipCheck } from "./checks/config-ownership.js";
 import { runAppearanceOwnershipCheck } from "./checks/appearance-ownership.js";
 import { runContextOwnershipCheck } from "./checks/context-ownership.js";
 import { runUiCssImportCheck } from "./checks/ui-css-import.js";
+import { runUiMinAppVersionCheck } from "./checks/ui-min-app-version.js";
 import { type CheckViolation } from "./checks/scan.js";
 
 /** 示例用的门禁 id（打印知情绕行格式）；伪 id 与 check 脚本 CHECK_IDS 同源 */
@@ -199,6 +200,16 @@ export async function runPluginLint(root: string, options: PluginLintOptions = {
    *      不是样式文本，独立统计/独立收紧。
    */
   const uiCssImport = runUiCssImportCheck(absRoot);
+  /**
+   * 🔴 E6#129（2026-09-19）：第十条 check 腿 —— **`@linkdesk/ui` 消费 ⇒ `minAppVersion` 声明门禁**
+   *   （`checks/ui-min-app-version.ts`）。L9 起组件由壳池 vendor 单实例供给、与壳同号锁步（E6#124
+   *   重锚 = 0.2.13）——新 SDK 把 ui external 化，旧壳装了没声明的插件 = 组件无处解析、视图全崩。
+   *   存量 = 0（四只消费仓 #128 已声明 `0.2.13`，其余官方仓不消费 ui）⇒ 纯预防。
+   *   ⚠️ 同 `check-ui-css-import`：**没有 disable 豁免出口**——「知情地把旧壳用户放到无供给的 ui 上」
+   *      是语义错误不是合法偏离。⚠️ 刻意独立成腿不并入 ui-css-import：判据物是**声明面**
+   *      （plugin.json 的 minAppVersion），那边是 import specifier，独立统计/独立收紧。
+   */
+  const uiMinAppVersion = runUiMinAppVersionCheck(absRoot);
   /**
    * 命名空间腿 = **前缀判据 ⊕ 宿主保留名判据**（E6#109h-b①，详案 15 §二选项 (A)：并入现腿、同一个
    * `CHECK_IDS.cssNamespace`、同一条 `check-css-namespace` 腿，不是两条腿）。
@@ -362,6 +373,11 @@ export async function runPluginLint(root: string, options: PluginLintOptions = {
       label: "check-ui-css-import",
       violations: uiCssImport,
     },
+    {
+      id: `linkdesk/no-ui-without-min-app-version（消费 @linkdesk/ui ⇒ plugin.json 必须声明 minAppVersion ≥ ${"0.2.13"}——重锚号，低于它的旧壳无 vendor 供给）`,
+      label: "check-ui-min-app-version",
+      violations: uiMinAppVersion,
+    },
   ];
   const totalCheckViolations =
     css.length +
@@ -372,7 +388,8 @@ export async function runPluginLint(root: string, options: PluginLintOptions = {
     configOwnership.violations.length +
     appearanceOwnership.violations.length +
     contextOwnership.violations.length +
-    uiCssImport.length;
+    uiCssImport.length +
+    uiMinAppVersion.length;
 
   return {    files: results.length,
     eslintRows,

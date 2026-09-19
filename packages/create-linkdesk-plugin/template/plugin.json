@@ -16,6 +16,10 @@
   "pluginId": "{{pluginName}}",
   "name": "{{displayName}}", // 显示名——标签页 / 插件详情等 UI 出现处
   "version": "0.1.0", // 语义化版本 x.y.z——市场更新比较靠它；+1 时务必同笔补 CHANGELOG.md 的新段
+  // ── 最低壳版本──
+  // 模板消费 @linkdesk/ui（组件由壳池 vendor 单实例供给）⇒ 必须声明 ≥ 重锚号 0.2.13：低于它的旧壳
+  // 没有组件可解析，装上即视图全崩。SDK lint 腿（check-ui-min-app-version）机械把关，漏声明判红。
+  "minAppVersion": "0.2.13",
   "description": "{{displayName}}——我的第一个 LinkDesk 插件", // 一句话描述（插件详情页展示）
   "author": "{{author}}", // 作者名
   "icon": "resources/icon.svg", // 图标——图标栏 / 标签页 / 市场里显示的就是它（resources/icon.svg 是占位图，换成你的）

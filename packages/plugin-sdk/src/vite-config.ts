@@ -49,6 +49,7 @@ import {
   readPluginManifest,
   validatePluginJson,
 } from "./validate.js";
+import { pinDirectoryEntryDates, zipTree } from "./pack.js";
 
 /** 壳提供、插件不得重复打包的依赖——i18next 必须 external（B3：自打实例 → 翻译全空）。
  *  E6#15d 消费切换实证：`react-dom/client` 必须同列 external——池 import-map 已提供 clean 副本，
@@ -217,16 +218,6 @@ function readmeMediaRefs(md: string): string[] {
  *  作者零声明清单——detail 说明区渲染以 assetBase=linkdesk://{id}/ 解析这些相对路径 → 资产必须真在包内。 */
 function copyReadmeReferencedAssets(root: string, pkgDir: string, readmeText: string): void {
   for (const rel of readmeMediaRefs(readmeText)) copyFileInto(root, pkgDir, rel);
-}
-
-/** pkgDir → zip 目录遍历——条目相对 pkgDir、正斜杠归一 */
-function zipTree(zip: JSZip, dir: string, prefix: string): void {
-  for (const e of readdirSync(dir, { withFileTypes: true })) {
-    const rel = prefix ? `${prefix}/${e.name}` : e.name;
-    const full = join(dir, e.name);
-    if (e.isDirectory()) zipTree(zip, full, rel);
-    else zip.file(rel, readFileSync(full));
-  }
 }
 
 /** Node 标准向上 node_modules 链（E6#16）——workspaces 化后插件依赖可被 hoist 提升到仓库根 node_modules，
@@ -579,6 +570,7 @@ export function defineLinkdeskPluginConfig(options: LinkdeskPluginOptions = {}):
         if (!real) {
           const zip = new JSZip();
           zipTree(zip, pkgDir, "");
+          pinDirectoryEntryDates(zip); // 🔴 E6#15o：隐式目录条目同钉固定时间戳（pack 通道同源函数）
           const buf = await zip.generateAsync({ type: "nodebuffer", compression: "DEFLATE" });
           const zipPath = join(root, pkgName);
           writeFileSync(zipPath, buf);

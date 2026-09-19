@@ -104,6 +104,7 @@ Wording discipline (hard constraint 11): don't frame it as two categories "built
 All three are declared in the schema (see [03-contributes](03-contributes-spec.md)) and none is enforced at install time—their semantics align with [02 Lifecycle §9](02-plugin-lifecycle.md):
 
 - `minAppVersion` — checked at load time (not satisfied → toast + skip)
+- **Mechanical gate (SDK lint)**: consuming `@linkdesk/ui` at runtime ⇒ `plugin.json` must declare `minAppVersion` ≥ `0.2.13` (the UI re-anchor version — vendor supply of shared components exists only from that shell onward; `import type` is exempt as compile-time-erased). Enforced by `linkdesk-plugin-sdk lint` (`check-ui-min-app-version`), no disable exit
 - `requires` — runtime dependency orchestration applies (missing dependency → suspend as PENDING + cycle fail-loud + cascading uninstall in reverse topological order, see [02 §4](02-plugin-lifecycle.md))
 - `permissions` — declaring them informs the user; the authorization model is still pending
 
