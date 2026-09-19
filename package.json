@@ -71,6 +71,7 @@
     "api-surface:init": "node scripts/check-api-surface-additive.mjs --init",
     "ui-surface:regen": "node scripts/gen-ui-surface.mjs",
     "audit:plugin-scope": "node scripts/audit-plugin-scope.mjs",
+    "audit:plugin-dead-css": "node scripts/audit-plugin-dead-css.mjs",
     "audit:plugin-ownership": "node scripts/audit-plugin-ownership.mjs",
     "audit:plugin-scope:regen": "node scripts/gen-host-reserved.mjs",
     "audit:plugin-scope:check": "node scripts/gen-host-reserved.mjs --check",

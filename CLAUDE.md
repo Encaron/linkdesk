@@ -114,6 +114,8 @@ npm run audit:plugin-prefix # 插件 CSS 前缀只读审计（改名轮映射表
 npm run audit:plugin-scope  # 插件侧「非样式命名空间」清账面（改名前逐仓清单；只读、不接 check 链；
                             #   ⚠️ 读 scripts/host-reserved.json（生成式）——壳仓命令/设置面改了要 npm run audit:plugin-scope:regen）
                             #   改容器：npm run audit:plugin-scope -- <容器目录>（默认 E:/linkdesk-plugins/official）
+npm run audit:plugin-dead-css # 插件 CSS 死类只读审计（E6#113 尺子：定义了、本仓源码无人用的自写前缀类；
+                            #   容许动态拼接〔宁可漏报〕；只报不拦、不接 check 链、需插件容器在场）
 npm run audit:nonnaming     # 非样式命名空间普查探针（①命令 id ②设置键 ③外观族 ⑤协议 id…＋⑩b 账背对账；
                             #   2026-09-17（1.32）从 gitignore 的 scratch/ 搬进 scripts/，同笔删原件；只读、不接 check 链）
 npm run audit:nonnaming:json # 上条的机读输出（--json）
