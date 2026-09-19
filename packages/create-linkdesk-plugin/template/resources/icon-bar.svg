@@ -1,0 +1,9 @@
+<svg fill="none" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
+  <!-- 图标栏 Type-1 单色线稿剪影占位——替换成你自己插件的剪影（同名覆盖即可）。
+       用法：plugin.json 里 "appearsIn": { "iconBar": "top" } ＋ "icon": "resources/icon-bar.svg"。
+       ⚠️ 图标栏会对图强制单色染色——别放彩色图（彩色进来会糊成一团）；
+       这是独立 SVG 文档 ⇒ 不能用 var(--xxx)（解析不到），颜色必须自含实色。
+       市场里要彩色身份图不归这张管——那是 marketIcon 的职责（见 plugin.json 注释 / 作者面 06 号 §marketIcon）。 -->
+  <rect x="4.5" y="4.5" width="15" height="15" rx="3.5" stroke="#9CA3AF" stroke-width="1.8" stroke-dasharray="3.5 2.5" stroke-linecap="round"/>
+  <path d="M12 9v6M9 12h6" stroke="#9CA3AF" stroke-width="1.8" stroke-linecap="round"/>
+</svg>

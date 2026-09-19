@@ -59,7 +59,7 @@
 
 ---
 
-## 3. Three Things People Mix Up Most
+## 3. Things People Mix Up Most
 
 ### ① Icon Bar ≠ tab: two plugin shapes
 
@@ -72,6 +72,16 @@ A plugin has **two paths** to being seen. Don't mix them up:
 
 > **entryless is the recommended path for sidebar-only plugins** — no need to write an empty `src/index.tsx` just to earn an icon.
 > Conversely: `appearsIn.tabBar: true` **requires** an `entry` (tabs are rendered by the entry component).
+
+**What clicking the Icon Bar icon actually does, by declaration** (two shell consumers read the same click independently — one opens tabs, one switches the sidebar):
+
+| Declaration | Clicking the icon does |
+|:--|:--|
+| `entry` + `appearsIn: { iconBar: "top", tabBar: true }` | **Opens (or focuses) a tab** — the classic shape, nothing else to declare |
+| `entry` + `appearsIn: { iconBar: "top" }` — no `tabBar`, no sidebar container | **Nothing** — the icon is display-only. `iconBar` alone never opens a tab; add `tabBar: true` for that |
+| No `entry` + sidebar container + `appearsIn: { iconBar: "top" }` | **Switches to your sidebar container**; clicking the same icon again collapses/expands the sidebar — entryless never opens a tab |
+| `entry` + `tabBar: true` + sidebar container | The sidebar switch always happens; the tab opens **only when `appearsIn.sidePanel` is not declared** — declare `sidePanel: true` to keep the click sidebar-only |
+| Top-level `statusBar[]` | Never goes through the Icon Bar at all — entries render directly in the Status Bar, and clicking one runs that entry's own `onClick` command |
 
 **Three cases where you don't get an icon** (none of them are bugs — they're by design):
 - You don't declare `appearsIn.iconBar` (**opt-in** — no declaration, no icon)
@@ -91,6 +101,16 @@ The sidebar holds two layers, **container → view**: the container is a "channe
 ### ③ Don't wrap your view component in `SidebarSection` yourself
 
 When the shell renders with `PoolSectionStack` it **automatically** wraps your component in a collapsible header. Just return the **content**; wrap it yourself and you get a double header.
+
+### ④ Three images, three jobs: `icon` / `marketIcon` / `cover`
+
+| Image | Where it shows up | The one rule that bites |
+|:--|:--|:--|
+| `icon` | Icon Bar / tab bar / [+] menu / welcome page | **The Icon Bar force-tints it** — draw a single-colour line glyph, a coloured image turns into a blob |
+| `marketIcon` | Marketplace list row + detail-page header | The coloured identity image; omit it and the market falls back to `icon` |
+| `cover` | README description area only | Not a manifest field — put the file in `resources/` and reference it from `README.md` |
+
+Full rules → [06-plugin.json Spec §The marketplace image marketIcon](06-plugin-json-spec.md) · [12-README Media Contract](12-readme-media-contract.md).
 
 ---
 

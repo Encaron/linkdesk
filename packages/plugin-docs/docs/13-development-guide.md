@@ -222,6 +222,29 @@ publish's target repo = your project's git remote `origin` (publishing to **your
 >
 > When you still need to run `git init` yourself: you generated with `--no-git`, or the project was generated **inside another git repo** (in which case the scaffold deliberately skips creating a nested repo, following `cargo new` semantics).
 
+**Publishing from CI / non-interactive shells (AI agents included)**
+
+Two steps want you at the keyboard in an interactive run — both have non-interactive answers:
+
+| Interactive step | Non-interactive answer |
+|:--|:--|
+| The GitHub token prompt | Set the `LINKDESK_GITHUB_TOKEN` env var (below) |
+| The `[y/N]` "publish this?" confirmation | Pass `--yes` (or preview first with `--dry-run`) |
+
+`publish` finds the token in this order: **①** env `LINKDESK_GITHUB_TOKEN` → **②** the SDK config file (`linkdesk-sdk/config.json` under your OS config directory — written automatically the first time you published from an interactive terminal) → **③** a masked interactive prompt. Without a token in a non-interactive shell, publish **fails immediately** with a message telling you to set the env var — it does not hang.
+
+```bash
+LINKDESK_GITHUB_TOKEN=ghp_xxx npm run publish -- --yes   # one-off, inside a script
+```
+
+```yaml
+# GitHub Actions — expose the stored secret to the step
+env:
+  LINKDESK_GITHUB_TOKEN: ${{ secrets.LINKDESK_GITHUB_TOKEN }}
+```
+
+> 🔔 **A 401 that means "expired", not "wrong":** publish talks to the GitHub REST API with a **classic PAT** (repo scope). If publishing suddenly fails with 401 while everything else on the machine still works, the usual culprit is an **expired PAT** — create a fresh one and update the env var or the config file.
+
 **How to know you did it right**
 Step one: your `.linkdesk-plugin` asset shows up on the GitHub Release. Step two: once your entry is in the official catalog, **on a clean machine (default configuration, no marketplace sources added)** it can be found in the marketplace, installed, and updated — that's the criterion for "listing complete".
 

@@ -28,6 +28,8 @@
 | **Look up the API** (what can I call) | [01-plugin-api-contract §3](01-plugin-api-contract.md) (the entry table for the three API surfaces) | → the SDK package README cheatsheet / `linkdesk.d.ts` |
 | **Use the UI parts the shell provides** | [19-component-cheatsheet](19-component-cheatsheet.md) | → [05-ui-conventions](05-ui-conventions.md) |
 | **Look up a specific field** | [06-plugin-json-spec](06-plugin-json-spec.md) | → `plugin.schema.json` (IDE completion) |
+| **Choose my plugin's images** (which file does what: icon-bar glyph / marketplace identity / README cover) | [06-plugin-json-spec §The marketplace image marketIcon](06-plugin-json-spec.md) | → [17-region-map §the three-image model](17-region-map.md) |
+| **Put images / videos in my README** (what the marketplace Details tab shows) | [12-readme-media-contract](12-readme-media-contract.md) | — |
 | **Package / share / list** | [04-distribution-format](04-distribution-format.md) | → [steps 8–9 in 13](13-development-guide.md) |
 | **Where to put the project, how to name the repo** | [15-multi-repo-and-local-workspace](15-multi-repo-and-local-workspace.md) | → [16-naming-conventions](16-naming-conventions.md) |
 

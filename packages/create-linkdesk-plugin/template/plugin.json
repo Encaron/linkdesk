@@ -22,7 +22,13 @@
   "minAppVersion": "0.2.13",
   "description": "{{displayName}}——我的第一个 LinkDesk 插件", // 一句话描述（插件详情页展示）
   "author": "{{author}}", // 作者名
-  "icon": "resources/icon.svg", // 图标——图标栏 / 标签页 / 市场里显示的就是它（resources/icon.svg 是占位图，换成你的）
+  // ── 图标——三图模型（完整规则见作者面 06 号《plugin.json 规范》§marketIcon）──
+  // icon = 界面小图标：标签页 [＋] 菜单 / 欢迎页等处（要进 42px 图标栏需再声明 appearsIn.iconBar；
+  //   ⚠️ 图标栏会对图强制单色染色——进图标栏的图要画单色线稿剪影，resources/icon-bar.svg 是预置占位）。
+  // marketIcon = 市场彩色身份图：市场列表行与详情页头部用（可选；缺省回落 icon）。
+  // cover = README 场景封面：只住 README 说明区，不是 manifest 字段（resources/cover.svg 已预置）。
+  "icon": "resources/icon.svg", // 占位图，换成你的
+  // "marketIcon": "resources/icon.svg", // 市场彩色身份图（可选；缺省回落 icon）——市场要彩色展示时取消注释
 
   // ── 入口（视图插件 = 此文件 default 导出一个 React 组件）──
   "entry": "src/index.tsx",
@@ -33,6 +39,16 @@
 
   // ── 贡献点（contributes：全部可选，按需增删）──
   "contributes": {
+    // ── 贡献点速查（每键一行，只指路不展开——完整语法与示例见作者面 03 号《contributes 规范》，落位见 17 号《区域地图》）──
+    // commands —— 注册命令：命令面板 / 右键菜单 / 快捷键 / 标题栏按钮的公共落脚点（id 用 "<pluginId>." 前缀防撞）
+    // keybindings —— 给命令绑快捷键：keys ＋ command ＋ when（上下文旗子，条件满足才触发）
+    // menus —— 菜单位声明（右键菜单走声明式，禁止手写右键菜单）
+    // configuration —— 声明设置项：设置页自动渲染一个分组（另见 20 号《我的插件加一条配置项》）
+    // titleBar —— 标题栏按钮：right[] / left[]，icon ＋ command（＋ when）
+    // viewsContainers / views —— 侧栏 / 底部面板的容器与视图（下面注释里有现成示例；容器 API 详见 08 号）
+    // themes / languages —— 主题包 / 语言包（数据型插件的载荷）
+    // floatingPanel —— 把你已有的某个视图声明成「可在悬浮面板打开」
+    // ⚠️ statusBar 不是 contributes 的键——它是 plugin.json **顶层**的 statusBar[] 数组（写进 contributes 无效，见 17 号 ⑦ 状态栏）
     // 自带翻译：key=语言码, value=相对插件根的 JSON 文件。UI 文案用 t() 读这里；无需 zh.json——中文 key 原文自带兜底。
     "i18n": { "en": "i18n/en.json" },
     // ── 需要「侧栏 / 底部面板 / 辅助侧栏」分区视图时：取消注释，在 src/views/ 放对应组件，

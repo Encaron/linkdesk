@@ -154,6 +154,8 @@ Author-side notes on install/uninstall/update/reinstall are in [02 plugin lifecy
    Content changes require a version bump → rebuild and republish → user runs checkUpdates/update
 ```
 
+> Publishing from CI / a non-interactive shell (env token, `--yes`, the expired-PAT 401 trap) → [13-development-guide Step 9](13-development-guide.md).
+
 ---
 
 ## 8. Comparison with VS Code

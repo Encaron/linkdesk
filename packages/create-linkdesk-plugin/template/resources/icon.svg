@@ -1,7 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48">
   <!-- ⚠️ 占位图——请替换成你自己插件的图标（同名同位置覆盖即可，plugin.json 的 icon 已指向本文件）。
        写法与官方插件一致：界面里以 <img src="linkdesk://<id>/resources/icon.svg"> 显示，
-       是独立文档 ⇒ 不能用 var(--xxx)（解析不到），颜色必须自含实色。 -->
+       是独立文档 ⇒ 不能用 var(--xxx)（解析不到），颜色必须自含实色。
+       三图模型——本文件 = 界面小图标（要进图标栏需 appearsIn.iconBar，图标栏会强制单色染色，
+       进图标栏请换 resources/icon-bar.svg 那样的单色剪影）；市场彩色身份图 = marketIcon；
+       README 场景封面 = resources/cover.svg。各管各的，详见作者面 06 号《plugin.json 规范》§marketIcon。 -->
   <defs>
     <linearGradient id="phi_bg" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0" stop-color="#64748B"/>
