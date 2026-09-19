@@ -7,9 +7,13 @@
  * npm 版本跟上」——内容改了、版本没动、没发布，插件作者永远拿旧类型/旧工具，且不报错。本脚本堵这个缝。
  *
  * 设计（e6-gate-philosophy 三档：推荐/警告/知情绕行）：
- *   - 🔴 永不 exit≠0——`npm run check` 全绿纪律不破；只打黄灯警告行。
+ *   - 🔴 黄灯永不 exit≠0——`npm run check` 全绿纪律不破；只打黄灯警告行。
+ *   - 🆕 E6#110 一条例外（红灯，mark/check 两模式都拦）：**覆盖面断言**——barrel 引用的 @shared 目录 ⊆
+ *     ui 的 surface，缺一即红 exit 1。它管的不是「货架落后」而是「名单自身腐烂」（闸 3：规则本身不许腐烂）：
+ *     烂名单让黄灯对共享组件静默漏报，比单次漏发更糟，必须硬失败。黄灯本身的「永不 fail」语义不变。
  *   - 发布完成后跑 `npm run release:mark` 把当前内容记为基线，灯灭。
- *   - 基线存 scripts/npm-release-state.json（入库）——锚「上次发布/放行时的版本 + 作者面内容哈希」。
+ *   - 基线存 scripts/npm-release-state.json（入库）——锚「上次发布/放行时的版本 + 作者面内容哈希」；
+ *     🆕 E6#110 起基线另存**逐文件哈希**（fileHashes）⇒ 黄灯亮时能报出漂移的是哪些文件。
  *
  * 🔴 **`release:mark` 契约（2026-09-12 用户拍板「凡更新就发，记住，记不住就机械记住」）**：
  * 本闸本身**永不拦人**（黄灯哲学不撤），但「把灯关掉」这个动作从今天起**要过货架核对**——
@@ -27,7 +31,7 @@
  *   npm run check:npm-release            # 黄灯核对（挂 `npm run check`，离线，永不 fail）
  *   npm run release:mark                 # 记基线（过货架核对，拒绝时 exit 1）
  *   npm run release:mark -- --allow-drift  # 显式绕过（真的决定这次不发）
- *   npm run check:npm-release:selftest   # 判据自测（10 例，不联网不落盘）
+ *   npm run check:npm-release:selftest   # 判据自测（14 例 = mark 契约 10 + 覆盖断言 4，不联网不落盘）
  *
  * 判定（逐包）：
  *   A. 内容哈希漂移 且 package.json 版本 == 基线版本 → 「内容改了但版本没动——货架可能落后」⚠️
@@ -41,7 +45,9 @@
  *                                   linkdesk-mock.generated.ts） + README.md（dist 不入库=tsc(src) 派生物，src 为权威面）
  *   create-linkdesk-plugin      → index.js + template/** + README.md（E6#95e 纳入）
  *                                 🔴 index.js 必须进面——它是 CLI 文案/占位符表；模板改了它常一起漂
- *   @linkdesk/ui                → src/** + README.md（E6#95e 纳入）
+ *   @linkdesk/ui                → src/**（barrel 导出面）+ README.md + src/components/shared/<进包组件 22 目录>/**
+ *                                 （🆕 E6#110 接上产物真源：真进包内容住壳仓 shared/**，prepack 现场编译——
+ *                                   只登记 barrel = 改共享组件永不亮灯，1.9 轮实证 ui 一次没亮）
  *
  * 🔴 **为什么 2026-09-11 补了后两个包**（06 §三·五）：它们同样发在 npm、同样是作者面，但基线里没有 ⇒
  * **模板改了不发版，不会有任何灯会亮**。实证 `@linkdesk/ui@0.1.2` 已落后仓内 6 次改动（含 `assetBase`，
@@ -51,6 +57,7 @@
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { join, relative, resolve, sep } from "node:path";
+import { collectUiSharedDirs } from "./lib/ui-surface.mjs";
 
 const REPO_ROOT = resolve(import.meta.dirname ?? __dirname, ".."); // scripts/ → repo 根
 const STATE_FILE = join(REPO_ROOT, "scripts", "npm-release-state.json");
@@ -117,7 +124,39 @@ const PACKAGES = [
   {
     name: "@linkdesk/ui",
     dir: "packages/linkdesk-ui",
-    surface: ["packages/linkdesk-ui/src/**", "packages/linkdesk-ui/README.md"],
+    // 🔴 E6#110：surface = 产物真源。真进包的内容住壳仓 src/components/shared/**（prepack 现场编译），
+    // 只登记 barrel 目录 ⇒ 改共享组件永不亮灯（1.9 轮实证：四批改名 ui 一次没亮，0.2.0 靠人想起来才发）。
+    // ⛔ 不许一把梭 `src/components/shared/**`：language-picker / theme-browser / sidebar-section 三只
+    //   壳内专用（不在 barrel、改了不改包内容）会被算成「包内容变了」= 3 处误报（闸 1：零误报才配红灯），
+    //   且 expandSurface 无排除语法 ⇒ 逐目录显式列；漏登记的目录由下方覆盖面断言报红兜住。
+    // 🔴 22 目录 = barrel 引用集（2026-09-19 重测口径；`collectUiSharedDirs()` 可随时复核）。
+    //   新增共享组件 = barrel + 这份名单同笔各加一行，漏一边断言红。
+    surface: [
+      "packages/linkdesk-ui/src/**",
+      "packages/linkdesk-ui/README.md",
+      "src/components/shared/badge/**",
+      "src/components/shared/button/**",
+      "src/components/shared/color-picker/**",
+      "src/components/shared/combobox/**",
+      "src/components/shared/context-menu/**",
+      "src/components/shared/file-icon/**",
+      "src/components/shared/file-path-input/**",
+      "src/components/shared/font-family-select/**",
+      "src/components/shared/form-row/**",
+      "src/components/shared/hint-card/**",
+      "src/components/shared/hooks/**",
+      "src/components/shared/inline-input/**",
+      "src/components/shared/markdown-view/**",
+      "src/components/shared/number-input/**",
+      "src/components/shared/overlay-portal/**",
+      "src/components/shared/plugin-icon/**",
+      "src/components/shared/segmented-radio/**",
+      "src/components/shared/select-box/**",
+      "src/components/shared/slider/**",
+      "src/components/shared/string-list-editor/**",
+      "src/components/shared/theme-picker/**",
+      "src/components/shared/toggle/**",
+    ],
   },
   {
     // 🔴 E6#105l（L7 7.8 轮）：**第五根作者轴**——作者面文档包。
@@ -158,6 +197,20 @@ function expandSurface(patterns) {
   return [...out].sort();
 }
 
+// 🆕 E6#110 覆盖面断言（纯函数，--self-test 可复跑）：barrel 引用的 @shared 目录 ⊆ surface 登记的目录，
+// 缺一即红（主流程两模式都拦）。同时把一把梭 `src/components/shared/**` 判为违例——expandSurface 无排除
+// 语法，一把梭会把三只壳内专用目录的改动也算成「包内容变了」= 误报工厂（闸 1）。
+const SHARED_GLOB_PREFIX = "src/components/shared/";
+function uiSurfaceCoverage(surface, sharedDirs) {
+  const banned = surface.filter((p) => p === `${SHARED_GLOB_PREFIX}**`);
+  const covered = new Set(
+    surface
+      .filter((p) => p.startsWith(SHARED_GLOB_PREFIX) && p.endsWith("/**") && p !== `${SHARED_GLOB_PREFIX}**`)
+      .map((p) => p.slice(SHARED_GLOB_PREFIX.length, -3)),
+  );
+  return { banned, missing: sharedDirs.filter((d) => !covered.has(d)) };
+}
+
 /**
  * sha256 over 排序文件列表内容（含路径分隔行——改名即漂移）。
  *
@@ -173,14 +226,17 @@ function expandSurface(patterns) {
  */
 function contentHash(surfaceFiles) {
   const h = createHash("sha256");
+  const perFile = {};
   for (const rel of surfaceFiles) {
     const abs = join(REPO_ROOT, rel);
     if (!existsSync(abs)) continue;
     const bytes = readFileSync(abs, "utf8").split("\r\n").join("\n");
     h.update(`### ${rel}\n`);
     h.update(bytes);
+    // 🆕 E6#110：顺带留逐文件哈希（16 hex 足够防漂移误判）——黄灯亮时能报出漂移文件名单
+    perFile[rel] = createHash("sha256").update(bytes).digest("hex").slice(0, 16);
   }
-  return h.digest("hex");
+  return { hash: h.digest("hex"), perFile };
 }
 
 function readState() {
@@ -262,9 +318,10 @@ function markDecision({
 }
 
 /**
- * `--self-test`：把「release:mark 契约」的十种输入跑一遍（**不碰网络、不碰磁盘**）。
+ * `--self-test`：把「release:mark 契约」的十种输入 ＋ E6#110 覆盖面断言四例跑一遍（**不碰网络、不碰磁盘**）。
  * 覆盖的是 2026-09-12 落地时**在真脚本上实测过的四条路径**（①货架问不到 / ②货架落后 /
- * ③内容跑在版本号前面 / ④`--allow-drift`）+ 正常发布 + 无漂移 + 首次纳入 + 两条负控。
+ * ③内容跑在版本号前面 / ④`--allow-drift`）+ 正常发布 + 无漂移 + 首次纳入 + 两条负控
+ * ＋ 覆盖断言（全登记 / 缺一报缺〔= 桩 barrel 加未登记目录同型〕/ 非 shared 前缀不算覆盖 / 一把梭违例）。
  */
 function runSelfTest() {
   const P = { name: "@linkdesk/demo-pkg", dir: "demo-pkg" }; // 虚构值（硬约束 21 口径）
@@ -308,15 +365,55 @@ function runSelfTest() {
       );
     }
   }
+  // 🆕 E6#110 覆盖面断言（纯函数，不碰磁盘）：桩 barrel 加未登记目录 ⇔ sharedDirs 多一个名字，断言必须报缺
+  const covCases = [
+    ["覆盖断言：barrel 目录全登记 ⇒ 无缺口", uiSurfaceCoverage(["src/components/shared/badge/**", "src/components/shared/hooks/**"], ["badge", "hooks"]), { banned: [], missing: [] }],
+    ["🔴 覆盖断言负控：barrel 多出未登记目录 ⇒ 报缺（桩 barrel 加新组件同型）", uiSurfaceCoverage(["src/components/shared/badge/**"], ["badge", "stub-foo"]), { banned: [], missing: ["stub-foo"] }],
+    ["覆盖断言：非 shared 前缀的 surface 项不算覆盖（防路径前缀配错仍绿灯）", uiSurfaceCoverage(["packages/linkdesk-ui/src/**"], ["badge"]), { banned: [], missing: ["badge"] }],
+    ["覆盖断言：一把梭 src/components/shared/** ⇒ 违例且不算任何覆盖（三只壳内专用会造误报，闸 1）", uiSurfaceCoverage(["src/components/shared/**"], ["badge"]), { banned: ["src/components/shared/**"], missing: ["badge"] }],
+  ];
+  for (const [title, got, expect] of covCases) {
+    if (JSON.stringify(got) === JSON.stringify(expect)) {
+      console.log(`  ✔ ${title}`);
+    } else {
+      failed++;
+      console.error(`  ✗ ${title}\n      期望 ${JSON.stringify(expect)}，实得 ${JSON.stringify(got)}`);
+    }
+  }
+  const total = cases.length + covCases.length;
   console.log(
     failed === 0
-      ? `\ncheck-npm-release self-test ✔️ ${cases.length} 例全过`
-      : `\ncheck-npm-release self-test ❌ ${failed}/${cases.length} 例失败`,
+      ? `\ncheck-npm-release self-test ✔️ ${total} 例全过（mark 契约 ${cases.length} + 覆盖断言 ${covCases.length}）`
+      : `\ncheck-npm-release self-test ❌ ${failed}/${total} 例失败`,
   );
   return failed === 0 ? 0 : 1;
 }
 
 if (process.argv.includes("--self-test")) process.exit(runSelfTest());
+
+// 🆕 E6#110 覆盖面断言：名单接不住 barrel ⇒ 黄灯对共享组件静默漏报（本格要堵的病根复发）。
+// 红、mark/check 两模式都拦、fail-closed。此刻尚未出网（无 undici 句柄），可安全 process.exit——
+// 文件尾注「不调 process.exit」只约束联网路径之后。
+{
+  const uiPkg = PACKAGES.find((p) => p.name === "@linkdesk/ui");
+  if (uiPkg) {
+    const { banned, missing } = uiSurfaceCoverage(uiPkg.surface, collectUiSharedDirs());
+    if (banned.length > 0 || missing.length > 0) {
+      const lines = ["\n⛔ [npm-release] 覆盖面断言红——@linkdesk/ui 的黄灯名单接不住 barrel 的导出面："];
+      if (banned.length > 0)
+        lines.push("  ├ ⛔ surface 里出现一把梭 `src/components/shared/**`（三只壳内专用会造误报，闸 1）——逐目录显式列。");
+      if (missing.length > 0)
+        lines.push(
+          `  ├ 下列 @shared 目录已被 barrel 引用（= 进包）但不在 surface——它们的改动不会点亮黄灯（静默漏发）：\n  │   ${missing.join("、")}`,
+        );
+      lines.push(
+        "  └ → 到本脚本 @linkdesk/ui 的 surface 逐条补 `src/components/shared/<名>/**`（与 packages/linkdesk-ui/src/index.ts 同笔核对），补完重跑。",
+      );
+      console.error(lines.join("\n") + "\n");
+      process.exit(1);
+    }
+  }
+}
 
 const warnings = [];
 const updated = [];
@@ -325,7 +422,7 @@ const priorState = readState();
 
 for (const pkg of PACKAGES) {
   const surfaceFiles = expandSurface(pkg.surface);
-  const currentHash = contentHash(surfaceFiles);
+  const { hash: currentHash, perFile: currentPerFile } = contentHash(surfaceFiles);
   const currentVersion = readVersion(pkg.dir);
   const state = priorState.find((s) => s.name === pkg.name) ?? null;
 
@@ -358,7 +455,7 @@ for (const pkg of PACKAGES) {
       refusals.push(decision.reason);
       continue;
     }
-    updated.push({ name: pkg.name, version: currentVersion, contentHash: currentHash, files: surfaceFiles.length });
+    updated.push({ name: pkg.name, version: currentVersion, contentHash: currentHash, fileHashes: currentPerFile });
     continue;
   }
 
@@ -371,9 +468,20 @@ for (const pkg of PACKAGES) {
   const versionBumped = currentVersion !== state.version;
 
   if (currentHash !== baseline && !versionBumped) {
-    // A. 内容变了、版本没动 → 货架可能落后（主提醒）
+    // A. 内容变了、版本没动 → 货架可能落后（主提醒）。
+    //    🆕 E6#110：基线存逐文件哈希 ⇒ 报出漂移文件名单（+ 新增 / - 移除 / ~ 内容变）；旧基线无数清单退回计数。
+    const drift = state.fileHashes
+      ? [
+          ...surfaceFiles.filter((f) => !(f in state.fileHashes)).map((f) => `+ ${f}`),
+          ...Object.keys(state.fileHashes).filter((f) => !surfaceFiles.includes(f)).map((f) => `- ${f}`),
+          ...surfaceFiles.filter((f) => f in state.fileHashes && currentPerFile[f] !== state.fileHashes[f]).map((f) => `~ ${f}`),
+        ]
+      : null;
+    const driftText = drift
+      ? `漂移 ${drift.length} 个文件：${drift.slice(0, 10).join("；")}${drift.length > 10 ? `；…共 ${drift.length} 个` : ""}`
+      : `${state.files ?? "?"} 文件基线漂移（旧基线未存逐文件哈希）`;
     warnings.push(
-      `${pkg.name}: 作者面内容自 npm v${state.version} 发布后已变（${state.files ?? "?"} 文件基线漂移），` +
+      `${pkg.name}: 作者面内容自 npm v${state.version} 发布后已变（${driftText}），` +
         `但 ${pkg.dir}/package.json 版本仍 ${currentVersion}——npm 货架没跟上。\n` +
         `   ├ 改了给作者的东西（新 API / schema / SDK）？→ 升版本 + \`npm publish\`（免验证）→ \`npm run release:mark\`\n` +
         `   └ 决定不发？→ 记基线要过货架核对，会拒：显式绕过用 \`npm run release:mark -- --allow-drift\``,
@@ -405,8 +513,8 @@ if (mark) {
       packages: updated,
     };
     writeFileSync(STATE_FILE, `${JSON.stringify(state, null, 2)}\n`, "utf8");
-    console.log(
-      `release:mark ✔️ 已记录 ${updated.map((u) => `${u.name}@${u.version}（${u.files} 文件）`).join("、")} 为发布基线` +
+      console.log(
+        `release:mark ✔️ 已记录 ${updated.map((u) => `${u.name}@${u.version}（${u.fileHashes ? Object.keys(u.fileHashes).length : (u.files ?? "?")} 文件）`).join("、")} 为发布基线` +
         (allowDrift ? "　⚠️ --allow-drift：本次绕过货架核对" : ""),
     );
   }

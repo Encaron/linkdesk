@@ -23,6 +23,7 @@
  *
  * ── 集合语义 ──
  *   所有数组排序后写入 ⇒ 只改顺序、只改 barrel 注释**不产生 diff**（判红的输入只有名字集合）。
+ *   · E6#110 起另有 `collectUiSharedDirs()`——barrel 引用的 `@shared/<dir>` 目录集（黄灯名单覆盖面断言的输入）。
  */
 
 import { readFileSync } from "node:fs";
@@ -79,6 +80,34 @@ export function collectUiSurface(root = ROOT) {
     helpers: [...surface.helpers].sort(),
     types: [...surface.types].sort(),
   };
+}
+
+/**
+ * barrel 引用的 `@shared/<dir>` 目录集（排序）——E6#110 黄灯名单「覆盖面断言」的输入。
+ * 🔴 与 collectUiSurface 同一组正则、同一份 barrel——同一把尺子的第二个读数，⛔ 不在别处另写解析器
+ * （仓里出现第二个 barrel 解析器 = 又一把会自我漂移的尺子，正是 E6#110 要防的病）。
+ * 形状纪律与 collectUiSurface 同步：不认识的导出行照样抛（fail-closed，别让新形状悄悄绕出名单）。
+ */
+export function collectUiSharedDirs(root = ROOT) {
+  const src = readBarrel(root);
+  const dirs = new Set();
+  for (const rawLine of src.split(/\r?\n/)) {
+    const line = rawLine.trim();
+    if (!line || line.startsWith("//") || line.startsWith("*") || line.startsWith("/*")) continue;
+    const m = RE_DEFAULT.exec(line) ?? RE_TYPE.exec(line) ?? RE_NAMED.exec(line);
+    if (!m) {
+      if (line.startsWith("export ")) {
+        throw new Error(
+          `${BARREL_REL} 出现本提取器不认识的导出行：${line}\n（新导出形状要么改归 lib/ui-surface.mjs 的口径，要么别用该形状）`,
+        );
+      }
+      continue;
+    }
+    if (typeof m[2] === "string" && m[2].startsWith("@shared/")) {
+      dirs.add(m[2].slice("@shared/".length).split("/")[0]);
+    }
+  }
+  return [...dirs].sort();
 }
 
 function readBarrel(root) {
