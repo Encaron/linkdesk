@@ -97,7 +97,7 @@ System-level capabilities (serial ports, filesystem, configuration, dialogs) are
 | `create-linkdesk-plugin` | Generates a plugin project skeleton in one line (the yo code equivalent) — **and it creates the git repo for you** | `npm create` when starting a new plugin; one-off, not part of the project |
 | `@linkdesk/plugin-sdk` | The four author-toolchain commands: `dev` (dev host + HMR) / `build` (→ `.linkdesk-plugin`) / `validate` / `lint`; ships `plugin.schema.json` + `theme.schema.json` + the dev host page | devDependencies of every plugin project |
 | `@linkdesk/contracts` | Full TS types for `window.linkdesk.*` (generated contract artifacts — the single source of truth) | **No need to install it yourself** — the SDK depends on it and forwards everything |
-| `@linkdesk/ui` | Shared UI parts (buttons/selects/toggles/color picker/context menu…) | **Optional** — install it when you want your UI to look built-in (automatic theme/glass following) → [19-component-cheatsheet](19-component-cheatsheet.md) |
+| `@linkdesk/ui` | Shared UI parts (buttons/selects/toggles/color picker/context menu…) — **the shell pool serves one instance at runtime**; installing it is for types and local dev | **Optional** — install it when you want your UI to look built-in (automatic theme/glass following); **its version matches the shell's** (one line → [19-component-cheatsheet §2.1](19-component-cheatsheet.md)) |
 
 **In one sentence:** `create` generates the project → the project installs `sdk` → `sdk` brings `contracts` (types come along) → `ui` is standalone, installed on demand.
 > Version numbers are not pinned on this page — **just install without a version to get the latest**.

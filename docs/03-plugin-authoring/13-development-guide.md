@@ -145,7 +145,7 @@ No errors in the output means it passes. Declared a command → press `Ctrl+Shif
 npm i @linkdesk/ui
 ```
 
-Controls like context menus, selects, and toggles come from the shared package — **glass/theme follow automatically**, no styling of your own.
+Controls like context menus, selects, and toggles come from the shared package — **glass/theme follow automatically**, no styling of your own; components and styles are supplied by the shell pool at runtime (install the line that **matches the shell**, see [19-component-cheatsheet §2.1](19-component-cheatsheet.md)), and ⛔ you must not import its css.
 
 **How to know you did it right**
 Switch themes and your context menu's appearance follows (hand-made implementations usually don't). Repo hard constraint 3 is explicit: a hand-written context menu is a violation.

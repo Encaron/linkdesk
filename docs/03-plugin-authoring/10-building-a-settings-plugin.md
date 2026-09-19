@@ -71,7 +71,7 @@ The filename is simply `settings.json`, with no shell-side map — copy it as-is
 
 ## Shared controls — `@linkdesk/ui`
 
-A settings UI's shared controls live in the **`@linkdesk/ui`** package (consolidated there — third parties `npm i @linkdesk/ui` and import directly; **`import @src/core/...` is forbidden, and so is `@src/components/...`**):
+A settings UI's shared controls live in the **`@linkdesk/ui`** package (consolidated there — third parties `npm i @linkdesk/ui` and import directly; **`import @src/core/...` is forbidden, and so is `@src/components/...`**); install the version line that **matches the shell** (see [19-component-cheatsheet §2.1](19-component-cheatsheet.md): ui version = shell version) — components and styles are supplied by the shell pool at runtime, so ⛔ **do not import its css from your source**:
 
 `ContextMenu` · `InlineInput` · `SelectBox` · `Toggle` · `ColorPicker` · `FontFamilySelect` · `FilePathInput` · `NumberInput` · `Slider` · `Combobox` · `FormRow` · `SegmentedRadio` · `ThemePicker` · `PluginIcon` · shared hooks (`useDebouncedInput` / `useClipboardKeys`, etc.)
 

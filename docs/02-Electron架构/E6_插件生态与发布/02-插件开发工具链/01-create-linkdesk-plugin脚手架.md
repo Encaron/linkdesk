@@ -61,7 +61,7 @@ packages/create-linkdesk-plugin/
   ├── .npmrc               # 🔴 **无作用域的包必须直改默认源**（见 §七），不能照抄 scoped 那三份
   └── template/            # 模板文件（{{pluginName}} / {{displayName}} / {{author}} / {{date}} 占位符）
       ├── plugin.json            # JSONC 清单——E5.8 schema，逐字段注释分节（**显式声明 pluginId**，见 §九.1）
-      ├── package.json           # scripts: dev / dev:real / build / publish / validate / lint / verify / test
+      ├── package.json           # dependencies: @linkdesk/ui（装配时解析当前版本线）· scripts: dev / dev:real / build / publish / validate / lint / verify / test
       ├── tsconfig.json          # jsx: react-jsx + types 引 @linkdesk/plugin-sdk + strict
       ├── gitignore              # 🔴 **无点**——CLI 生成时改名成 .gitignore（npm 会丢 .gitignore，见 §九.5）
       ├── README.md              # 说明——市场「详情」页签数据源 + **目录契约表**
@@ -90,6 +90,13 @@ packages/create-linkdesk-plugin/
 
 **E6#103（L7 第 7.6 轮）不加文件，改两处行为**：① CLI 生成完**按 `cargo new` 语义代建 git 仓**（§三）；
 ② 模板 `plugin.json` 的 `pluginId` 从「注释掉的覆盖值」改成**显式声明**（§四、§九.1）。
+
+**E6#126（L9 第 9.5 轮）不加文件，改一处**：模板 `package.json` 首次带 `dependencies` ——
+`"@linkdesk/ui": "latest"`，语义 = **装配时解析当前重锚号**：ui 版本 = 壳版本（一条线，无对照表——
+见 [19-组件速查 §2.1](../../../03-插件制造/19-组件速查.md)），模板里**不写死号**，作者 `npm install`
+那一刻货架 `latest` 指向哪条线就装哪条；要保底就自己钉到最低支持的壳版本（模板 README 已写）。
+⛔ 模板**不出现** ui 的 css import（L9 起组件样式由壳池供给、插件源码 import css 判红），
+与官方插件仓同款工程形态。
 
 ---
 

@@ -44,9 +44,9 @@ npm run build   # dist build: esm + aggregated css + declaration files
 
 ## Maintaining this package (LinkDesk maintainers)
 
-This package is **one of the five author axes** (the others: `@linkdesk/contracts` / `@linkdesk/plugin-sdk` / `create-linkdesk-plugin` / `@linkdesk/plugin-docs`) and has its own version axis — **publishing it does not bump the application, and the application does not bump it**.
+This package is **one of the five author axes** (the others: `@linkdesk/contracts` / `@linkdesk/plugin-sdk` / `create-linkdesk-plugin` / `@linkdesk/plugin-docs`) — 🔴 **with one exception to the axis-independence rule (L9 re-anchor, 2026-09-19): this package's version is locked step with the shell version** (ui `0.2.13` ⇔ shell `0.2.13`; one line, no lookup table). Every shell release carries a same-number bump of this package, and the shell yields the number if npm has already taken it. The mechanical assertion lives in `scripts/check-publish-gate.mjs` criterion ⑤ (`judgeUiVersionLockstep`).
 
-Its surface is `src/**` + this README. The component source lives in the shell's `src/components/shared/` — **changing a component means this axis moved**, so bump and publish, otherwise plugin authors keep getting the old components.
+Its surface is `src/**` + this README. The component source lives in the shell's `src/components/shared/`, and at runtime the shell pool serves it (L9 — plugins no longer carry a copy). **Changing a component moves the shell tree and this package together**, so rebuild this package and publish it under the same number as the shell.
 
 ```bash
 # 1. bump  packages/linkdesk-ui/package.json  version   (0.x backward-compatible → patch)

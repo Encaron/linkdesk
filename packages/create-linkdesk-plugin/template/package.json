@@ -4,6 +4,9 @@
   "private": true,
   "description": "{{displayName}}——LinkDesk 插件（由 create-linkdesk-plugin 生成）",
   "type": "module",
+  "dependencies": {
+    "@linkdesk/ui": "latest"
+  },
   "scripts": {
     "dev": "linkdesk-plugin-sdk dev",
     "dev:real": "linkdesk-plugin-sdk dev --real",

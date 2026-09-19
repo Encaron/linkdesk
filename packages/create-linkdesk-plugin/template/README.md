@@ -28,7 +28,7 @@ You do not need to pre-create empty folders (git does not track them). **Create 
 | `src/styles/` | **Multiple** CSS files — keep them together here (a single file next to the entry is fine too) | When needed |
 | `src/__tests__/` | Unit tests (run `npm i -D vitest` yourself if you want them — the scaffold does not preinstall test tooling) | When needed |
 
-> 🔴 **Shared things do not belong here** — components/hooks reused across plugins come from `@linkdesk/ui` (the public package the shell provides). **Do not write a second copy inside your plugin.** Only logic that belongs to this plugin stays local.
+> 🔴 **Shared things do not belong here** — components/hooks reused across plugins come from `@linkdesk/ui` (the public package the shell provides; it is already declared in `package.json` as `"latest"`, which resolves to the shell's current version line when you install — pin it to a specific shell version if you need a floor). The shell supplies that one instance at runtime, so **do not import its css** and **do not write a second copy inside your plugin**. Only logic that belongs to this plugin stays local.
 > 🔴 **Assets always live in `resources/` — no loose images in the plugin root.** What gets into the install package is what is **referenced by the README** or **declared by `icon` / `marketIcon`**; the directory name itself has no magic.
 
 ## Three rules for this plugin

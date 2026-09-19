@@ -21,7 +21,7 @@ The generated project has **the same shape as an official plugin** — README / 
 ```
 my-cool-plugin/
 ├── plugin.json           # plugin manifest (JSONC: comments + trailing commas allowed, sectioned example fields, VS Code $schema validation)
-├── package.json          # scripts: dev / dev:real / build / publish / validate / lint / verify / test
+├── package.json          # deps: @linkdesk/ui (resolves the shell's current version line) · scripts: dev / dev:real / build / publish / validate / lint / verify / test
 ├── tsconfig.json         # jsx: react-jsx + window.linkdesk.* types (@linkdesk/plugin-sdk)
 ├── AGENTS.md             # what this project is + the iron rules + where the docs are (for your AI assistant)
 ├── .gitignore            # node_modules / dist / *.linkdesk-plugin

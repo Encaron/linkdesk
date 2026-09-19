@@ -35,9 +35,28 @@ npm i @linkdesk/ui      # Optional — install it when you want your UI to match
 
 ```tsx
 import { Button, Toggle, ContextMenu } from "@linkdesk/ui";
+// ⛔ Do not import "@linkdesk/ui/index.css" — the shell pool supplies the styles; that line has no business in your source
 ```
 
-> The package is the build artifact of a **single-source, anti-drift** setup: the shell changes a component → the package changes with it, so "same as the built-ins" is literally the same implementation. It also **does not go into** your `.linkdesk-plugin` bundle (externalized at build time) — no need to worry about size.
+> The package is the build artifact of a **single-source, anti-drift** setup: the shell changes a component → the package changes with it, so "same as the built-ins" is literally the same implementation. It also **does not go into** your `.linkdesk-plugin` bundle (externalized at build time), and at **runtime the shell pool supplies that one instance** — nothing to worry about in terms of size or duplicate copies.
+
+### 2.1 One version line (no lookup table)
+
+The version of `@linkdesk/ui` **equals the version of the LinkDesk shell you installed**. Shell 0.2.13 → package 0.2.13.
+
+- **Which one to install**: look at the **oldest shell** you intend to support and install the matching ui version; `npm i @linkdesk/ui@latest` gets you the newest line. This page keeps no lookup table — the shell maintains that line, and it isn't something you have to track.
+- **No need to chase upgrades**: a range like `^0.2.13` picks up later patches on the same line by itself; a shell upgrade won't suddenly break your plugin.
+- **When you do have to move**: only when a **new component you want** appears in a higher version — that's a deliberate upgrade on your side, not something you're forced into.
+
+### 2.2 Three promises the shell makes to authors (each backed by a mechanical gate)
+
+| Promise | What it means | Backstop |
+|:--|:--|:--|
+| **Add-only** | Published component/export names are lifelong commitments: new ones get added, existing ones are never renamed or removed | The shell repo's export-surface snapshot gate (removing one fails the gate) |
+| **Behavior changes arrive as new names** | To change behavior, a new prop or a new component name is added; the old name keeps its meaning | Same gate — changing the meaning of an old name counts as a removal |
+| **Styles follow the shell** | What a component looks like is the shell's call; upgrades bring the styling along | Styles are supplied by the shell pool (above); your bundle carries no copy that can drift |
+
+> Conversely: **to change appearance, switch components or variant props — don't override `ldk-` class names** (those belong to the host; see [05-UI Conventions](05-ui-conventions.md) §12).
 
 ---
 
@@ -95,6 +114,7 @@ import { Button, Toggle, ContextMenu } from "@linkdesk/ui";
 | The Title Bar eats half the clicks on my dialog | The overlay sits at `top: 0` and collides with the window drag region | Use the shared overlay component (it already avoids the drag region) |
 | User settings don't stick | You used `localStorage` | `window.linkdesk.configuration.set` |
 | Two UI libraries installed, styles bleed into each other | You pulled in a third-party component library | Use the shared parts where you can; if you truly need a third party, watch out for style isolation |
+| The shell restyled a component but my plugin didn't follow | Your source `import`s `@linkdesk/ui`'s css (baking the styles into your own package) | Delete that line — the shell pool supplies the styles (the SDK's lint leg fails it; see §2) |
 
 ---
 

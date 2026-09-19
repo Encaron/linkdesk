@@ -294,7 +294,7 @@
     <ul>
       <li>产物里 <b>5 个视图 bundle</b> 都能搜到共享件自己的实现痕迹：<code>views/DetailView.bundle.js</code> · <code>SearchView</code> · <code>InstalledListView</code> · <code>BuiltinListView</code> · <code>ConfirmInstall</code>（命中 <code>overlay-root</code> / <code>data-overlay-wrapper</code> / <code>ldk-badge</code>）。</li>
       <li>SDK 的「由壳提供、插件不许自己打」名单<b>只有六个</b>：<code>react</code> · <code>react-dom</code> · <code>react-dom/client</code> · <code>react/jsx-runtime</code> · <code>react-i18next</code> · <code>i18next</code>（<code>packages/plugin-sdk/src/vite-config.ts:55</code>）。<b><code>@linkdesk/ui</code> 不在里面</b>，也没有 import-map。</li>
-      <li>设计文档原话（E6 <code>07-共享组件独立分发设计.md</code> 第 28 行）：「<code>@linkdesk/ui</code> 属"<b>其它皆内联</b>"——组件源码<b>编译进各插件 bundle</b>」。</li>
+      <li>设计文档原话（E6 <code>07-共享组件独立分发设计.md</code> 第 28 行）：「<code>@linkdesk/ui</code> 属"<b>其它皆内联</b>"——组件源码<b>编译进各插件 bundle</b>」。 <b>⚠️ 2026-09-19（L9「UI 集中供给」起）该结论已翻转</b>：<code>@linkdesk/ui</code> 已进 SDK 的 external 名单、由壳池 vendor 单实例供给——本行是**当时的实测快照**，读现状请看 [UI集中供给/00-整理档案.md](../UI集中供给/00-整理档案.md)。</li>
     </ul>
   </div>
 

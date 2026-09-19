@@ -97,7 +97,7 @@
 | `create-linkdesk-plugin` | 一行生成插件工程骨架（对标 yo code）——**还会替你建好 git 仓** | 建新插件时 `npm create`，一次性、不进项目 |
 | `@linkdesk/plugin-sdk` | 作者工具链四命令：`dev`（dev 宿主+HMR）/ `build`（→ `.linkdesk-plugin`）/ `validate` / `lint`；随包 `plugin.schema.json` ＋ `theme.schema.json` ＋ dev 宿主页 | 每个插件工程 devDependencies |
 | `@linkdesk/contracts` | `window.linkdesk.*` 全量 TS 类型（契约生成产物——单一真相源） | **不用主动装**——SDK 依赖它并全量转发 |
-| `@linkdesk/ui` | 共享 UI 零件（按钮/下拉/开关/取色器/右键菜单…） | **可选**——想让界面跟内置同款（自动跟随主题/玻璃）时装 → [19-组件速查](19-组件速查.md) |
+| `@linkdesk/ui` | 共享 UI 零件（按钮/下拉/开关/取色器/右键菜单…）——**运行时由壳池供给同一份实例**，装它是为了类型与本地 dev | **可选**——想让界面跟内置同款（自动跟随主题/玻璃）时装；**版本与壳同号**（一条线 → [19-组件速查 §2.1](19-组件速查.md)） |
 
 **关系一句话**：`create` 生成工程 → 工程装 `sdk` → `sdk` 带 `contracts`（类型随来）→ `ui` 独立、按需装。
 > 版本号不写死在本页——**装的时候不带版本号即可拿到最新**。

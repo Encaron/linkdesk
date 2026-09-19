@@ -15,7 +15,8 @@
  *   注释里的提及不算（stripComments / stripLineComments 同其余 check）。
  *
  * ── 报文指向 ──
- *   作者面新语义文档（#126 落地；落地前指向 L9 档案 00-整理档案）。作者侧动作只有一种：
+ *   作者面文档：`docs/03-插件制造/19-组件速查.md §二`（英文 `docs/03-plugin-authoring/19-component-cheatsheet.md §2`）
+ *   与 `05-插件UI写法规约.md §12.4`（EN `05-ui-conventions.md §12.4`）。作者侧动作只有一种：
  *   **删掉该行**——样式由壳供给，无需任何替代写法。
  *   ⚠️ 本腿**没有豁免出口**（disable 注释对它无效——「知情地把样式烤死」不是合法偏离，
  *   是语义错误；其余腿的 disable 机制不含本腿）。存量=0（#123 侦察：四只消费仓＋仓内插件全部零 import）。
@@ -28,8 +29,8 @@ const EXT = [".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".css"];
 const SPECIFIER_RE = /@linkdesk\/ui\/(?:dist\/)?index\.css/g;
 
 export const UI_CSS_IMPORT_WHY =
-  "组件样式由壳池统一供给（L9 集中供给）：插件源码不 import @linkdesk/ui 的 css——删掉该行即可，" +
-  "无需替代写法；语义见 UI 集中供给 00-整理档案（作者面文档随 #126 更新）";
+  "组件样式由壳池统一供给：插件源码不 import @linkdesk/ui 的 css——删掉该行即可，无需替代写法；" +
+  "作者面说明见《组件速查》§二（05-插件UI写法规约 §12.4）";
 
 export function runUiCssImportCheck(root: string): CheckViolation[] {
   const violations: CheckViolation[] = [];
