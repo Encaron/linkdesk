@@ -40,6 +40,14 @@ import { ghErrorDetail, ghHttp } from "./github-http.js";
 
 /* ── 类型 ─────────────────────────────────────────────────────────────── */
 
+/**
+ * publish 成功收尾的固定提示（E6#133）。publish 用 Contents API 在**远端**独立提交
+ * marketplace.json，本地 HEAD 从此落后一个提交——不 pull，下次 publish 必撞
+ * 「本地 ≠ 远端」前置断言（第三方作者实测撞上）。文案与断言文案同批维护。
+ */
+export const PUBLISH_REMOTE_UPDATED_HINT =
+  "📌 已在你仓库远端更新 marketplace.json（独立提交）——本地建议先 git pull，否则下次 publish 会撞「本地 ≠ 远端」前置断言。";
+
 export interface GitHubRemote {
   owner: string;
   repo: string;
@@ -52,7 +60,9 @@ export interface CatalogVersion {
   changelog?: string;
 }
 
-/** marketplace.json 插件条目——对齐规范 §三/§3.2 字段（作者条目=纯增量，缺字段不崩） */
+/** marketplace.json 插件条目——对齐规范 §三/§3.2 字段（作者条目=纯增量，缺字段不崩）。
+ *  🔴 本类型与 `schemas/marketplace.schema.json` 是同一契约的两面（E6#135）：类型加/删字段必须
+ *  同笔改 schema——对账测试 marketplace-schema.test.ts 用「真实产出过 schema」钉住。 */
 export interface CatalogPluginEntry {
   id: string;
   name: string;
@@ -327,6 +337,8 @@ export function judgePublishReadiness(input: {
         `   raw.githubusercontent.com/<owner>/<repo>/v<版本>/<路径>。本地没推 ⇒ tag 指向的提交里**没有你刚改的文件**\n` +
         `   ⇒ 未装用户看到的图标与 README 全 404（而 Release 里那份 asset 又是对的——两条链路互不相干，一条断不代表另一条断）。\n` +
         `   修法：git push 之后再 publish。\n` +
+        `   若上一次 publish 后你还没 pull 过——publish 曾替你在远端独立提交过 marketplace.json，\n` +
+        `   本地不知道这笔提交；先 git pull 再重试（E6#133）。\n` +
         `   已经发错了？补推之后把 tag 挪正：git push --force origin <新 sha>:refs/tags/v<版本>。`,
     };
   }
@@ -898,6 +910,7 @@ export async function runPluginPublish(root: string, opts: PublishOptions = {}):
   console.log(`     Release    : https://github.com/${remote.owner}/${remote.repo}/releases/tag/${tag}`);
   console.log(`     下载直链   : ${url}`);
   console.log(`     marketplace.json 已更新（${merged.plugins.length} 个插件条目）`);
+  console.log(`  ${PUBLISH_REMOTE_UPDATED_HINT}`);
   console.log("  要让别人看到：对方在 LinkDesk 市场「添加市场源」填本仓库 URL 即见；想所有用户默认可见 → 申请收录官方目录。");
   return 0;
 }

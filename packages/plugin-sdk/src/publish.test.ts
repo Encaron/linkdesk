@@ -19,6 +19,7 @@ import {
   sliceChangelogSection,
   upsertCatalogEntry,
   withCatalogIdentity,
+  PUBLISH_REMOTE_UPDATED_HINT,
   type ManifestView,
 } from "./publish.js";
 
@@ -399,6 +400,26 @@ describe("judgePublishReadiness——发布前置断言", () => {
       expect(v.message).toContain("7654321");
       expect(v.message).not.toContain("0".repeat(20)); // 没把 40 位原样倒出来
     }
+  });
+
+  it("🔴 E6#133：unpushed 文案必须带『先 git pull』指引——本地 ≠ 远端还有一种成因是上次 publish", () => {
+    // publish 自己在远端独立提交过 marketplace.json ⇒ 本地落后远端。此成因下作者**没有可推的东西**，
+    // 只说「git push」会把人引进死胡同（第三方作者实测撞上原话：publish 会向远端写 marketplace.json，
+    // 但本地不知道）。原有「tag 挪正」修法不得被这次补句挤掉。
+    const v = judgePublishReadiness({ localHead: "a".repeat(40), remoteHead: "b".repeat(40), dirtyFiles: [] });
+    expect(v.ok).toBe(false);
+    if (!v.ok) {
+      expect(v.message).toContain("git pull");
+      expect(v.message).toContain("git push --force origin");
+    }
+  });
+});
+
+describe("PUBLISH_REMOTE_UPDATED_HINT——publish 收尾提示（E6#133）", () => {
+  it("文案三要素：远端已更新 / 建议 git pull / 点名会撞的前置断言（缺一读者就不知道下一步）", () => {
+    expect(PUBLISH_REMOTE_UPDATED_HINT).toContain("远端更新 marketplace.json");
+    expect(PUBLISH_REMOTE_UPDATED_HINT).toContain("git pull");
+    expect(PUBLISH_REMOTE_UPDATED_HINT).toContain("本地 ≠ 远端");
   });
 });
 

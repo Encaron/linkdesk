@@ -16,6 +16,15 @@ const DATA_DIR_RE = /(^|\/)(i18n|themes?|color-picker)\//;
 const EXT_CSS = [".css"];
 const EXT_CODE = [".ts", ".tsx"];
 
+/**
+ * 报错即文档——可用的 token 族清单（E6#132）。此处列的每个族都由 css-hardcode.test.ts 对账
+ * （族前缀必须在壳 `src/index.css` 的 `:root` 真源里真实存在）：此前文案列了不存在的 `--surface-*`
+ * 而漏了 `--shadow-*`，第三方作者照文案找 token 不得，把三处阴影全删。⛔ 不做动态拼接
+ * （lint 运行时读文件 = 引入 IO 依赖）；新增族在这里补一条 + 对账测试自动接管。
+ */
+export const CSS_TOKEN_HINT =
+  "应走 CSS 变量：var(--text-*/--bg-*/--accent-*/--border-*/--shadow-*/--radius-*/--tone-*/--status-*/--icon-*/--z-*/…——族全集以宿主 :root 下发为准，勿自造兜底";
+
 const HEX_RE = /#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})\b/g;
 const RGB_RE = /rgba?\(|hsla?\(/g;
 /** 定义上下文：本行属 `--name: <字面量>` 自定义属性（token 单一权威，非消费） */
@@ -60,7 +69,7 @@ export function runCssHardcodeCheck(root: string): CheckViolation[] {
         push(
           rel,
           i + 1,
-          `${line.trim().slice(0, 100)}  ← 硬编码 ${h.color}（应走 CSS 变量 var(--text-*/--bg-*/--accent-*/--surface-*)）`,
+          `${line.trim().slice(0, 100)}  ← 硬编码 ${h.color}（${CSS_TOKEN_HINT}）`,
           disabled
         );
       }
@@ -82,7 +91,7 @@ export function runCssHardcodeCheck(root: string): CheckViolation[] {
         push(
           rel,
           i + 1,
-          `${line.trim().slice(0, 100)}  ← 硬编码 ${m[0] === "rgb(" || m[0] === "rgba(" ? "rgb()" : "hsl()"}（应走 CSS 变量）`,
+          `${line.trim().slice(0, 100)}  ← 硬编码 ${m[0] === "rgb(" || m[0] === "rgba(" ? "rgb()" : "hsl()"}（${CSS_TOKEN_HINT}）`,
           disabled
         );
       }
