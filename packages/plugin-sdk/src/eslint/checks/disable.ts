@@ -36,6 +36,9 @@ export const CHECK_IDS = {
    *  ⚠️ 本 id 在 CHECK_IDS 里**仅作文档**：`checks/ui-css-import.ts` 刻意不接 disable 机制
    *  （「知情地把样式烤死」是语义错误不是合法偏离），eslint-disable 注释对它无效。 */
   uiCssImport: "linkdesk/no-ui-css-import",
+  /** E6#137（2026-09-20）：window/document 全局 keydown/keyup 监听判红——正解 = 容器 onKeyDown +
+   *  tabIndex（focus 分区）；确需全局抓键的正当形态（快捷键录制器）走 disable ＋ 理由（判据无白名单）。 */
+  noGlobalKeyListener: "linkdesk/no-global-key-listener",
 } as const;
 
 interface RawComment {

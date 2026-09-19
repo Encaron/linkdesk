@@ -37,6 +37,8 @@ import { runTokenScopeCheck } from "./checks/token-scope.js";
 import { runSelectorFormCheck } from "./checks/selector-form.js";
 import { runKeyframeRefCheck } from "./checks/keyframe-refs.js";
 import { runDanglingNameCheck } from "./checks/dangling-names.js";
+import { runDanglingOwnClassCheck } from "./checks/dangling-own-classes.js";
+import { runGlobalKeyListenerCheck } from "./checks/no-global-key-listener.js";
 import { runRetiredNameHint, type RetiredNameHint } from "./checks/retired-names.js";
 import { runCommandOwnershipCheck } from "./checks/command-ownership.js";
 import { runConfigOwnershipCheck } from "./checks/config-ownership.js";
@@ -95,6 +97,18 @@ export interface PluginLintReport {
     hostClassCount: number;
     hostKeyframeCount: number;
   };
+  /** 🔴 E6#136（2026-09-20）：自有类名引用悬空腿读数（refs = 自有前缀引用站点；defs = 本仓 CSS 提及集；
+   *  orphanSegments = 含孤儿闭合符被剔除的选择器段——根因案信号） */
+  danglingOwnClassCounts: {
+    refs: number;
+    defs: number;
+    dangling: number;
+    orphanSegments: number;
+    skippedInterp: number;
+    skippedDynamic: number;
+  };
+  /** 🔴 E6#137（2026-09-20）：全局键盘监听腿读数（sites = 看见的站点含豁免；red = 判红） */
+  globalKeyCounts: { sites: number; red: number };
   /** 🟡 E6#119：退役名提示（只提示、⛔ 永不拒绝——不进任何腿报点） */
   retiredHints: RetiredNameHint[];
   /** 退役登记账的加载实况（found=false ⇒ 提示空转——报告里必须能看出来，不许静默） */
@@ -242,6 +256,26 @@ export async function runPluginLint(root: string, options: PluginLintOptions = {
    */
   const danglingNames = runDanglingNameCheck(absRoot);
   /**
+   * 🔴 E6#136（2026-09-20）：命名空间腿第七条判据 —— **插件域自有类名引用悬空**（`checks/dangling-own-classes.ts`）。
+   *   第三方作者实测踩出的口径缝隙：CSS 块注释里列 token 族时用了「族名＋/」分隔 ⇒ 闭合符提前收口注释
+   *   ⇒ 残渣黏住下一条规则把它整条吞掉 ⇒ TSX 引用的类名**静默丢样式**——恰好落在 dangling-names
+   *   「非 ldk- 未定义名不计悬空（假红比漏报更坏）」有意宽松掉的那一格。本腿只补这一格（窄口子）：
+   *   只判**本插件前缀**的 className 字面量引用、定义集 = 本仓 CSS 规则选择器提及集（scoped 合法）、
+   *   动态拼接跳过并计数、含孤儿闭合符的选择器段整段剔除（与运行时「规则被吞」如实对齐——根因案就此能红）。
+   *   ⚠️ 去重口径：与前几条判据**同一处 `文件:行` 不重复报**（以先出的为准）；fail-closed 那条
+   *     （`plugin.json:1`，身份读不到 ⇒ 无法判定）与前缀腿重叠时让先出的说。
+   */
+  const danglingOwnClasses = runDanglingOwnClassCheck(absRoot);
+  /**
+   * 🔴 E6#137（2026-09-20）：第九条 check 腿 —— **window/document 全局键盘监听判红**（`checks/no-global-key-listener.ts`）。
+   *   作者面 05-ui-conventions §4.2 早已定案 focus 分区正解、全局 keydown 点名为反模式，但一直无机械腿
+   *   = 空转判据。第三方作者实测即写 window keydown，官方仓自己也命中 3 处（serial-monitor 两处、
+   *   settings 录制器一处——后者裁决走 disable 豁免，判据无白名单）。报文教正解（容器 onKeyDown +
+   *   tabIndex），⛔ 不做壳层键盘分发（架构改动，05 号已定案 DOM focus 分区）。
+   *   ⚠️ 独立统计/独立收紧（同命令腿/配置腿的「刻意不合并」口径）：本腿红站点独立记账。
+   */
+  const globalKeys = runGlobalKeyListenerCheck(absRoot);
+  /**
    * 🟡 E6#119：**退役名提示**（`checks/retired-names.ts`）——`retired[]` **不是黑名单**：退役 ≠ 删除，
    *   本腿的报点**永不进 violations**（CI 严格腿看不见它），只以 ℹ 行打印「哪天退的休、替身是谁」。
    *   升级成拒绝 = 自选 2.0 的活，不在本批（⛔ 把提示升级成拒绝是本格禁区）。
@@ -314,6 +348,7 @@ export async function runPluginLint(root: string, options: PluginLintOptions = {
   const formKeys = new Set(selectorForm.violations.map((v) => `${v.file}:${v.line}`));
   const reservedKeys = new Set(reserved.map((v) => `${v.file}:${v.line}`));
   const kfKeys = new Set(keyframeRefs.violations.map((v) => `${v.file}:${v.line}`));
+  const danglingNameKeys = new Set(danglingNames.violations.map((v) => `${v.file}:${v.line}`));
   const namespace: CheckViolation[] = [
     ...prefix.violations, // 前缀腿（含 fail-closed）
     ...selectorForm.violations.filter((v) => !prefixKeys.has(`${v.file}:${v.line}`)), // 形态腿（同点不重复报）
@@ -337,6 +372,16 @@ export async function runPluginLint(root: string, options: PluginLintOptions = {
         !formKeys.has(`${v.file}:${v.line}`) &&
         !reservedKeys.has(`${v.file}:${v.line}`) &&
         !kfKeys.has(`${v.file}:${v.line}`)
+    ),
+    // 自有类名悬空腿（E6#136）——同点不重复报（以先出的为准；fail-closed「无法判定」落 plugin.json:1，与前缀腿重叠时让先出的说）
+    ...danglingOwnClasses.violations.filter(
+      (v) =>
+        !prefixKeys.has(`${v.file}:${v.line}`) &&
+        !tokenKeys.has(`${v.file}:${v.line}`) &&
+        !formKeys.has(`${v.file}:${v.line}`) &&
+        !reservedKeys.has(`${v.file}:${v.line}`) &&
+        !kfKeys.has(`${v.file}:${v.line}`) &&
+        !danglingNameKeys.has(`${v.file}:${v.line}`)
     ),
   ];
   const legs: LintLeg[] = [
@@ -374,9 +419,9 @@ export async function runPluginLint(root: string, options: PluginLintOptions = {
       violations: uiCssImport,
     },
     {
-      id: `linkdesk/no-ui-without-min-app-version（消费 @linkdesk/ui ⇒ plugin.json 必须声明 minAppVersion ≥ ${"0.2.13"}——重锚号，低于它的旧壳无 vendor 供给）`,
-      label: "check-ui-min-app-version",
-      violations: uiMinAppVersion,
+      id: "linkdesk/no-global-key-listener（window/document 全局 keydown/keyup 监听判红——正解 = 容器 onKeyDown + tabIndex focus 分区；正当形态走 disable + 理由）",
+      label: "check-global-key-listener",
+      violations: globalKeys.violations,
     },
   ];
   const totalCheckViolations =
@@ -389,7 +434,8 @@ export async function runPluginLint(root: string, options: PluginLintOptions = {
     appearanceOwnership.violations.length +
     contextOwnership.violations.length +
     uiCssImport.length +
-    uiMinAppVersion.length;
+    uiMinAppVersion.length +
+    globalKeys.violations.length;
 
   return {    files: results.length,
     eslintRows,
@@ -417,6 +463,15 @@ export async function runPluginLint(root: string, options: PluginLintOptions = {
       hostClassCount: danglingNames.hostClassCount,
       hostKeyframeCount: danglingNames.hostKeyframeCount,
     },
+    danglingOwnClassCounts: {
+      refs: danglingOwnClasses.ownRefs,
+      defs: danglingOwnClasses.ownDefs,
+      dangling: danglingOwnClasses.dangling.length,
+      orphanSegments: danglingOwnClasses.orphanSegments,
+      skippedInterp: danglingOwnClasses.skipped.interp,
+      skippedDynamic: danglingOwnClasses.skipped.dynamic,
+    },
+    globalKeyCounts: { sites: globalKeys.sites.length, red: globalKeys.violations.length },
     retiredHints: retiredNames.hints,
     retiredLedger: retiredNames.ledger.found
       ? { file: retiredNames.ledger.file, found: true, retiredCount: retiredNames.ledger.retired.length }
