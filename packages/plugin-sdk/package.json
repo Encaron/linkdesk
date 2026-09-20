@@ -1,6 +1,6 @@
 {
   "name": "@linkdesk/plugin-sdk",
-  "version": "0.1.44",
+  "version": "0.1.46",
   "description": "@linkdesk/plugin-sdk——LinkDesk 插件作者 SDK（对标 @types/vscode）：window.linkdesk.* 类型 + 一键 build(.linkdesk-plugin) + dev 宿主 + plugin.json 验证 + eslint 门禁（E6#54d）。作者 npm i 后零壳源码依赖。",
   "type": "module",
   "main": "./dist/index.js",

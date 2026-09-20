@@ -95,4 +95,22 @@ describe("全局键盘监听判据（E6#137 · focus 分区正解的机械面）
       expect(r.sites).toHaveLength(0);
     });
   });
+
+  it("⑥ 回归钉子（E6#137 顺笔修的既有 bug）：跨行块注释之后，豁免注释仍要生效——", () => {
+    // 修前 tokenizeComments 对块注释体内换行双重计数 ⇒ 其后所有 disable 指令行号整体偏大、
+    // 豁免错位失效（settings 录制器豁免首次真实踩中，CI 假红）。本例在块注释之后给豁免。
+    const ts = [
+      "/**",
+      " * 录制器模块说明（跨行块注释）",
+      " */",
+      "import { h } from './h';",
+      "// eslint-disable-next-line linkdesk/no-global-key-listener -- 快捷键录制器：capture 抓原始键",
+      "window.addEventListener('keydown', h, true);",
+    ].join("\n");
+    withPlugin({ files: { "src/recorder.ts": ts } }, (root) => {
+      const r = runGlobalKeyListenerCheck(root);
+      expect(r.sites).toHaveLength(1);
+      expect(r.violations).toHaveLength(0);
+    });
+  });
 });

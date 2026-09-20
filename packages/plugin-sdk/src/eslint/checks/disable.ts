@@ -76,15 +76,14 @@ function tokenizeComments(source: string): RawComment[] {
     if (next === "*") {
       // 块注释到 *​/
       let j = i + 2;
-      let l = line;
       while (j < n && !(source[j] === "*" && source[j + 1] === "/")) {
-        if (source[j] === "\n") l++;
         j++;
       }
       const end = j + 2 <= n ? j + 2 : j;
       out.push({ text: source.slice(i + 2, j), startLine: line });
-      line = l + (end > j ? 0 : 0); // 闭合后若跨行已计过
-      // 推进：更新 line 计数越过内容
+      // 行计数**只此一处**（E6#137 修复：原实现 l 变量与 for 循环对块内换行**双重计数**，
+      // 跨行块注释之后的所有 directive 行号整体偏大 ⇒ disable-next-line/line 全部错位失效——
+      // settings 录制器豁免首次真实踩中）。闭合符 `*/` 本身无换行，计入区间无副作用。
       for (let k = i; k < end; k++) if (source[k] === "\n") line++;
       i = end;
       continue;

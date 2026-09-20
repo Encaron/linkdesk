@@ -12,7 +12,8 @@
 - 附带：此前打开编辑器详情页后反复出现的"加载中 → 卡死 → 循环"随之消失。
 - 作者轴同批真发：`@linkdesk/plugin-sdk` **0.1.43**（2026-09-20，独立发版——插件作者工具链，软件本体不动）：css-hardcode 报错文案对齐 token 库（补 `--shadow-*` 等七族＋防再脱节对账单测）＋ publish 收尾「远端 marketplace.json 已更新，建议先 git pull」提示 ＋ dev 宿主 `#ld-root` 定高、`:root` 兜底 token 扩到宿主全集（预览不再面板全透明/画布塌陷）＋ `marketplace.schema.json` 随包。来源 = 生态首个第三方 AI 作者 12 坑实测（E6#132-#135）。
 - 作者轴同批真发（第二批）：`@linkdesk/plugin-docs` **0.1.29**：作者面动线与发布文档——17 号加「声明组合 → 图标栏点击行为」矩阵＋三图模型（icon/marketIcon/cover）指针块、00 号加图标身份→06 号与 README 媒体→12 号两根阅读指针、13 号发布步新增「在 CI / 非交互终端发布」小节（token 取值链 env＞配置档＞掩码＋`--yes`＋经典 PAT 到期 401 提醒）；`create-linkdesk-plugin` **0.1.13**：脚手架四件套——plugin.json 图标注释升级三图模型＋预置 marketIcon 注释行、resources 预置 `icon-bar.svg`（单色剪影）/`cover.svg`（README 封面）带注释占位、contributes 每键一行速查（statusBar 顶层坑写明）、README「测试工具需自装」过时句修正＋dev 宿主 `#ld-root` 定高约定句。来源 = 同批第三方作者实测（E6#138-#140）。
-- 作者轴同批真发（第三批）：`@linkdesk/plugin-sdk` **0.1.44**（2026-09-20，独立发版——插件作者工具链，软件本体不动）：新增两条门禁腿——「自有类名引用悬空」（className 引用的本插件前缀类名必须在本仓 CSS 有定义，CSS 注释被提前闭合吞规则的根因案机械可抓，动态拼接跳过）＋「window/document 全局键盘监听判红」（报错教 focus 分区正解＝容器 onKeyDown＋tabIndex，正当形态走豁免注释）。来源 = 同批第三方作者实测（E6#136-#137）。
+- 作者轴同批真发（第三批）：`@linkdesk/plugin-sdk` **0.1.46**（2026-09-20，独立发版——插件作者工具链，软件本体不动；0.1.44→0.1.45→0.1.46 同日三连发，0.1.44/0.1.45 均短命版、无消费者）：新增两条门禁腿——「自有类名引用悬空」（className 引用的本插件前缀类名必须在本仓 CSS 有定义，CSS 注释被提前闭合吞规则的根因案机械可抓，动态拼接跳过）＋「window/document 全局键盘监听判红」（报错教 focus 分区正解＝容器 onKeyDown＋tabIndex，正当形态走豁免注释）。＋顺笔补全两件（修复都由新腿豁免注释首次真实踩中）：① SDK preset 把各 check 脚本伪 id（含壳仓惯例的 no-module-level-ipc-listener）登记为 no-op 哑规则——作者照报错文案写的 eslint-disable 豁免注释不再触发「Definition for rule was not found」CLI 假红；② 修复豁免解析器（disable.ts）对**跨行块注释的换行双重计数**——其后所有 disable 指令行号整体偏大、豁免错位失效的既有 bug（加回归钉子单测）。来源 = 同批第三方作者实测（E6#136-#137）。
+- 作者轴同批真发（第四批）：`@linkdesk/plugin-docs` **0.1.30**（2026-09-20）：中文维护者面 05 号（UI 写法规约）随包重生成——§4.2 键盘节加「全局键盘监听反模式有腿了」句、§12 加「自有类名引用侧也有腿了」句（含注释提前闭合吞规则的根因案说明与动态拼接跳过口径）。来源 = 第三批 SDK 两腿的维护者面判据落笔（E6#136-#137）。
 
 ## v0.2.14（2026-09-19）
 

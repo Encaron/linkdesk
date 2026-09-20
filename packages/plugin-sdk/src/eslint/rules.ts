@@ -444,6 +444,9 @@ export const noQuickpickRenderItem: Rule.RuleModule = {
 // eslint 按原样名查 plugin.rules（config.js parseRuleId 后直查，无 camel 转换），
 // 故键必须与 preset 里 `linkdesk/<rule>` 的破折号名一致（壳 export default 同款）。
 // ═══════════════════════════════════════════════════════════
+/** check 伪 id 的哑规则——空遍历器，存在即「eslint 认得这个 id」，别给它加任何判定 */
+const NOOP_CHECK_RULE: Rule.RuleModule = { meta: { type: "problem" }, create() { return {}; } };
+
 export const linkdeskRuleMap: Record<string, Rule.RuleModule> = {
   "no-async-init-guard-only": noAsyncInitGuardOnly,
   "no-effect-callback-without-active-guard": noEffectCallbackWithoutActiveGuard,
@@ -453,4 +456,26 @@ export const linkdeskRuleMap: Record<string, Rule.RuleModule> = {
   "no-hardcoded-hex": noHardcodedHex,
   "no-hardcoded-radius": noHardcodedRadius,
   "no-quickpick-render-item": noQuickpickRenderItem,
+
+  // ═══════════════════════════════════════════════════════════
+  // check 脚本伪 id 的 **no-op 登记**（E6#137 顺笔补全）——这些 id 的真判定在
+  // `checks/` 各 run*Check（lint.ts 双轨），eslint 层注册哑规则只为两件事：
+  //   ① 作者照报错文案写的 `eslint-disable-next-line linkdesk/no-xxx` 豁免注释
+  //      不再触发 ESLint 的「Definition for rule was not found」error（CLI 景观假红，
+  //      教作者写的豁免自己先报错 = 文案自相矛盾）；
+  //   ② 仓里照壳惯例写的 disable id（no-module-level-ipc-listener 是壳仓规则名，
+  //      SDK preset 本无此规则）同样不再报 not-found。
+  // 哑规则零遍历零报点——判据语义由各 check 自己认注释（disable.ts），两层互不越界。
+  // ═══════════════════════════════════════════════════════════
+  "no-hardcoded-font-size": NOOP_CHECK_RULE,
+  "no-nonstandard-spacing": NOOP_CHECK_RULE,
+  "no-reserved-class-name": NOOP_CHECK_RULE,
+  "no-unowned-command-id": NOOP_CHECK_RULE,
+  "no-unowned-config-key": NOOP_CHECK_RULE,
+  "no-unowned-appearance-id": NOOP_CHECK_RULE,
+  "no-unowned-context-key": NOOP_CHECK_RULE,
+  "no-ui-css-import": NOOP_CHECK_RULE,
+  "no-ui-without-min-app-version": NOOP_CHECK_RULE,
+  "no-global-key-listener": NOOP_CHECK_RULE,
+  "no-module-level-ipc-listener": NOOP_CHECK_RULE,
 };
