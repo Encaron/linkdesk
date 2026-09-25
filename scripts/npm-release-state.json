@@ -12,8 +12,8 @@
     },
     {
       "name": "@linkdesk/plugin-sdk",
-      "version": "0.1.46",
-      "contentHash": "a7add457f331d158bec8809a0195f039b2a867f33377b0e3bf65f562e1e9a4e5",
+      "version": "0.1.47",
+      "contentHash": "8c15950106088f8196ab3a39b29c68b3b8a0da20c3dc2356473c2458fd561d78",
       "fileHashes": {
         "packages/plugin-sdk/README.md": "1920f2cb83028d36",
         "packages/plugin-sdk/dev-host/dev-main.tsx": "49c59b28e17ca424",
@@ -82,21 +82,23 @@
         "packages/plugin-sdk/src/types.ts": "ed009a0cae5843b1",
         "packages/plugin-sdk/src/validate.test.ts": "90b04d4b693654f8",
         "packages/plugin-sdk/src/validate.ts": "9d25bcaa130f23c2",
-        "packages/plugin-sdk/src/vite-config.ts": "ec594032298986c5"
+        "packages/plugin-sdk/src/vite-config.ts": "ec594032298986c5",
+        "packages/plugin-sdk/src/vitest-setup.test.ts": "0b6f7c00df1cd61a",
+        "packages/plugin-sdk/src/vitest-setup.ts": "9a917591a9ce7616"
       }
     },
     {
       "name": "create-linkdesk-plugin",
-      "version": "0.1.13",
-      "contentHash": "4bbf158ac61514586e9231107e3ba93341dcbb47822e20a9be33e9e6e85741b0",
+      "version": "0.1.14",
+      "contentHash": "99411dadf1dcadaeae222f307d47cd2d0e4f92c5f71920c104f665f7636d9330",
       "fileHashes": {
-        "packages/create-linkdesk-plugin/README.md": "c47f1041356070b1",
+        "packages/create-linkdesk-plugin/README.md": "a5a2a297d71f31dd",
         "packages/create-linkdesk-plugin/index.js": "eb4bd60fd45a0354",
         "packages/create-linkdesk-plugin/template/.github/workflows/ci.yml": "e3f8728e36df4c52",
         "packages/create-linkdesk-plugin/template/.vscode/settings.json": "b0b28a5609be3fe9",
-        "packages/create-linkdesk-plugin/template/AGENTS.md": "3ab22a46f7b72662",
+        "packages/create-linkdesk-plugin/template/AGENTS.md": "d19329e98c266657",
         "packages/create-linkdesk-plugin/template/CHANGELOG.md": "d49034c6803e3e64",
-        "packages/create-linkdesk-plugin/template/README.md": "772b36e55db05c3e",
+        "packages/create-linkdesk-plugin/template/README.md": "9a3fbf8e1b305719",
         "packages/create-linkdesk-plugin/template/gitignore": "6346b85a1072029c",
         "packages/create-linkdesk-plugin/template/i18n/en.json": "fa95c83ad64a4919",
         "packages/create-linkdesk-plugin/template/package.json": "14ff8d5d7eef6d0b",
@@ -109,7 +111,7 @@
         "packages/create-linkdesk-plugin/template/src/index.tsx": "407b70687c603daa",
         "packages/create-linkdesk-plugin/template/tsconfig.json": "ad02ff01b22e853b",
         "packages/create-linkdesk-plugin/template/vitest.config.ts": "3f2bf5d062888b2b",
-        "packages/create-linkdesk-plugin/template/vitest.setup.ts": "45ff4eb3847ffd20"
+        "packages/create-linkdesk-plugin/template/vitest.setup.ts": "9e8c79ac7d716ea6"
       }
     },
     {
@@ -190,8 +192,8 @@
     },
     {
       "name": "@linkdesk/plugin-docs",
-      "version": "0.1.30",
-      "contentHash": "f7df7e3e9d5a5c8c11144144abb63105cee9687b2a7f575d7bae780f3d4ce29b",
+      "version": "0.1.31",
+      "contentHash": "801618978cbf16b9589d142562a46a7ef44871ae50952d7706b0ad94b7f60cfe",
       "fileHashes": {
         "packages/plugin-docs/README.md": "6cd51394e987a3f2",
         "packages/plugin-docs/docs/00-readme.md": "8af2c3830caa115e",
@@ -207,7 +209,7 @@
         "packages/plugin-docs/docs/10-building-a-settings-plugin.md": "51243e8343aefb28",
         "packages/plugin-docs/docs/11-authoring-themes.md": "e1ccbc706bb83235",
         "packages/plugin-docs/docs/12-readme-media-contract.md": "f55015eb63e06b00",
-        "packages/plugin-docs/docs/13-development-guide.md": "79e6919cf08d7d43",
+        "packages/plugin-docs/docs/13-development-guide.md": "bf7923efc1eecc45",
         "packages/plugin-docs/docs/14-data-pipeline-command-conventions.md": "4d05c2d9bd2fb520",
         "packages/plugin-docs/docs/15-multi-repo-and-local-workspace.md": "36c294a17b092a5f",
         "packages/plugin-docs/docs/16-naming-conventions.md": "c19c44f6c20932ba",
@@ -230,7 +232,7 @@
         "packages/plugin-docs/docs/zh/10-如何造一个设置插件.md": "3c82e964deae7470",
         "packages/plugin-docs/docs/zh/11-主题制作.md": "0fe3fea82813fa4d",
         "packages/plugin-docs/docs/zh/12-README说明区媒体契约.md": "e6af4b63c2780de2",
-        "packages/plugin-docs/docs/zh/13-插件开发指南.md": "9fd6d7bf85eca573",
+        "packages/plugin-docs/docs/zh/13-插件开发指南.md": "0f57287432cff4c3",
         "packages/plugin-docs/docs/zh/14-数据管道命令约定.md": "18a0e06efee0fd26",
         "packages/plugin-docs/docs/zh/15-多仓开发与本地工作区.md": "85d3b361d22289f3",
         "packages/plugin-docs/docs/zh/16-命名规范.md": "f070a60de5e9ffdf",

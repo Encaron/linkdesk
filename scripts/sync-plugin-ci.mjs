@@ -38,6 +38,8 @@ const DRY = process.argv.includes("--dry-run");
 /** 模板里的五件（前两件全铺；后三件只给**有源码**的仓——纯数据插件没有 TS 工程） */
 const ALWAYS = [".github/workflows/ci.yml", "scripts/ci-verify.mjs"];
 const FOR_SOURCED = ["tsconfig.json"];
+// ⚠️ `vitest.setup.ts` 的**内容**由模板决定、本表只管「这只仓该不该有它」——模板里那份现在是一行指针
+//    （`import "@linkdesk/plugin-sdk/vitest-setup";`），所以铺下去的就是指针，不必在这里另做判断。
 const FOR_TESTED = ["vitest.config.ts", "vitest.setup.ts"];
 /** 版本区间与壳仓根 devDependencies 对齐（vitest/jsdom）与 SDK 的传递依赖同版（jsonc-parser） */
 const DEV_DEPS = {
@@ -51,6 +53,14 @@ if (!existsSync(CONTAINER)) {
   console.error(`❌ 容器不存在：${CONTAINER}（用 LINKDESK_PLUGIN_CONTAINER 指定）`);
   process.exit(1);
 }
+
+/**
+ * 🔴 第三方仓**不代改**（L11 红线）：本脚本只负责**官方发货仓**的 CI/测试基建一致性。
+ * 第三方作者自持的仓（用户 pull 进容器的）一行都不碰——它们自足能跑，迁不迁、何时迁归作者。
+ * 口径与 `sync-plugin-agents.mjs` 的 FACTS 表同源（**表外 = 第三方**）；那边是从表推、
+ * 这边是名单式，两边都只认「官方才写」，第三方仓永远不在写入集里。
+ */
+const THIRD_PARTY = new Set(["geme-tihu-bicycle"]);
 
 /** 容器下的插件仓 = 含 plugin.json 的一级目录（**不写死 id 清单**——加插件不用改脚本） */
 const repos = readdirSync(CONTAINER, { withFileTypes: true })
@@ -74,9 +84,14 @@ function testFiles(dir) {
 }
 
 const changes = [];
+const skipped = [];
 const record = (repo, what) => changes.push(`${repo}: ${what}`);
 
 for (const id of repos) {
+  if (THIRD_PARTY.has(id)) {
+    skipped.push(id);
+    continue;
+  }
   const dir = join(CONTAINER, id);
   const tests = testFiles(dir);
   const hasSrc = existsSync(join(dir, "src"));
@@ -130,6 +145,7 @@ for (const id of repos) {
 
 console.log(`${DRY ? "[dry-run] " : ""}容器：${CONTAINER}（${repos.length} 只）`);
 for (const c of changes) console.log(`  · ${c}`);
+if (skipped.length > 0) console.log(`  · 跳过第三方仓 ${skipped.length} 只（不代改）：${skipped.join("、")}`);
 const written = changes.filter((c) => !c.includes("无差异")).length;
 console.log(`\n${DRY ? "将改动" : "已改动"} ${written} 处。`);
 if (!DRY && written > 0) {

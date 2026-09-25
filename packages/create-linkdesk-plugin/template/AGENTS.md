@@ -47,6 +47,15 @@ npm run publish    # ⑧ publish to your own GitHub repo (first step of listing)
 - **This project is its own git repo** (the scaffold ran `git init -b main` plus one initial commit). `publish` uses `origin` to create the Release ⇒ pushing to GitHub is just two commands: `git remote add origin <your repo>` + `git push -u origin main`.
 - **Keep the version numbers in step**: `plugin.json`'s `version` and `package.json`'s `version` **must match**; and every bump needs a matching `## v<new version>（YYYY-MM-DD）` section in `CHANGELOG.md`, or the plugin's detail page will show "no changelog provided for this version".
 
+## 6. Tests in this repo
+
+- **The toolchain is preinstalled** (`vitest` / `jsdom` / `@testing-library/react` are already declared) — write a `*.test.ts` file and run `npm run test`.
+- **The shared test ground comes from the SDK**: the minimal `window.linkdesk` mock lives in `@linkdesk/plugin-sdk/vitest-setup`, and this repo's `vitest.setup.ts` is a **one-line pointer** to it. **Do not paste a second copy in here** — a copied mock drifts from the shared one and nothing would notice.
+- **Pure logic should be tested**: a `src/**/*.ts` unit that touches neither React nor `window.linkdesk` should get a `src/__tests__/<same name>.test.ts`. Views and hooks are worth testing **when it pays off** — nothing measures that today.
+- **Plugin-specific stubs stay in your own test files**: if your code calls something the shared mock does not cover (say `window.linkdesk.serial`), set that stub up with `vi.fn()` in the test. Do not ask the shared mock to grow a branch for your plugin.
+- **Declarative plugins** (pure JSON / themes / language packs) have **no testable units** — their gate is the structure and declaration checks in `npm run verify`. "It has no tests" is not a defect there.
+- **Older projects can migrate whenever they like**: replacing the full mock body with the one-line pointer plus one `npm install` is the whole move (upside: mock upgrades then ride along with the SDK).
+
 ---
 
 > Author: {{author}} ｜ Generated: {{date}}

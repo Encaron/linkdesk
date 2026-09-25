@@ -30,7 +30,7 @@ my-cool-plugin/
 ├── .github/workflows/ci.yml   # CI that runs `npm run verify` on every push
 ├── scripts/ci-verify.mjs      # the strict tier CI runs (lint + tests + declaration self-checks)
 ├── vitest.config.ts      # test config (jsdom + globals; @linkdesk/ui is inlined so its CSS import resolves)
-├── vitest.setup.ts       # test runtime ground — mocks window.linkdesk (no Electron preload under vitest)
+├── vitest.setup.ts       # one-line pointer to the shared test ground in @linkdesk/plugin-sdk (the window.linkdesk mock)
 ├── .vscode/settings.json      # plugin.json is treated as jsonc (comments do not light up red)
 ├── resources/
 │   └── icon.svg          # placeholder icon — replace it with your own

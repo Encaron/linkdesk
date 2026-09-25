@@ -351,6 +351,15 @@ ${cmdLines}
   **别把 \`verify\` 里的这段删了换成 \`npm run lint\`**。
 - 🔴 **壳仓的 \`npm run check\` 够不着本仓**（源码搬出去之后就不在它的扫描域里了）——
   本仓的绿灯只由本仓的这两条腿给出。
+
+## 8. 测试
+
+- **工具已预装**（\`vitest\` / \`jsdom\` / \`@testing-library/react\` 都在本仓 \`devDependencies\` 里）——写 \`*.test.ts\` 文件，跑 \`npm run test\`。
+- **共享测试地基在 SDK**：\`window.linkdesk\` 的最小 mock 由 \`@linkdesk/plugin-sdk/vitest-setup\` 提供，本仓 \`vitest.setup.ts\` 是**一行指针**。⛔ **不要在本仓再抄一份完整 mock**——副本会漂，而没有任何门禁看着它。
+- **纯逻辑单元应配测试**：\`src/**/*.ts\` 里既不碰 React、也不碰 \`window.linkdesk\` 的单元，应配 \`src/__tests__/<同名>.test.ts\`；视图 / hook 层**按需**（今天没有判据量它）。
+- **本仓专属的桩住本仓测试文件**：共享 mock 没覆盖的能力（例如 \`window.linkdesk.serial\`）在自己的测试里用 \`vi.fn()\` 补上，⛔ 不要要求共享 mock 为某一只插件长分支。
+- **声明式仓**（纯 JSON / 主题 / 语言包）**无可测单元**——它们的门禁是 \`npm run verify\` 的结构与声明判据；「没有测试」在那里**不是缺陷**。
+- 若本仓 \`vitest.setup.ts\` 还是完整 mock 体（老仓形态）：换成一行指针 ＋ 跑一次 \`npm install\` 即可，**迁移不是强制**（好处是 mock 升级跟着 SDK 走）。
 `;
 }
 

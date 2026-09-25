@@ -35,6 +35,11 @@
  *   那条「CI 与本地走同一条路：dist 缺失 ⇒ 构建」。**不构建就会拿旧判据报绿 = 假绿**
  *   （memory `snapshot-shadows-truth-bug-class`：验证的是手边那份、不是真发出去那份）。
  *
+ * 🔴 **新增断言 12：`vitest.setup.ts` 必须是指针形态**。模板里这份曾经是壳仓 mock 的**逐字副本**
+ *   （＝「新插件一出生就自带一份会漂的拷贝」，且没有任何门禁守着它跟真源走）。真源收敛进 SDK 之后
+ *   （`@linkdesk/plugin-sdk/vitest-setup`），模板这份只该是**一行指针**——本断言把「收敛」钉住：
+ *   三条判据（含 subpath / 无 mock 标志串 / 行数 ≤ 5），负控见 `--self-test`。
+ *
  * 🔴 **闸 3（规则不许腐烂）的关键设计**：期望是**契约**，必须**显式写死**；从模板现场读 = 断言恒真 = 假门禁
  * （这正是 `check-file-size.mjs` 被关掉的同类错误）。**契约要显式，实现要现场读。**
  * 唯一的例外是「解析规则」这类**别人的实现**（CHANGELOG 切段正则 / 占位符 values 集合）——
@@ -102,6 +107,12 @@ const EXPECTED_FILES = [
 
 /** 契约：`package.json` 的 scripts **必须**含这些命令（断言 5） */
 const EXPECTED_SCRIPTS = ["dev", "build", "publish", "validate", "lint", "verify", "test"];
+
+/** 契约：模板的 `vitest.setup.ts` 是**一行指针**（断言 12）——三条判据，任一不满足即红 */
+const SETUP_IMPORT_MARKER = "@linkdesk/plugin-sdk/vitest-setup";
+/** mock 体的标志串：把共享 mock 抄回来任一段都会命中（**盯内容形态**，与真源的文件名解耦） */
+const SETUP_MOCK_MARKERS = ["__ldkConfigStore", "pathMock", "configurationMock", "workspaceMock", "filesystemMock", "tabsMock"];
+const SETUP_POINTER_MAX_LINES = 5;
 
 /**
  * 模板里**不是**占位符的 `{{…}}`——扫描豁免（E6#102 同笔）。
@@ -250,6 +261,27 @@ function scanInternalSymbols(dir) {
     }
   }
   return hits;
+}
+
+/**
+ * 断言 12 的判据本体（纯函数——`--self-test` 拿它做负控，不重复实现）：
+ * 返回「不是指针形态」的理由清单（空 = 过）。三条判据见文件头 ＋ 上面那两个常量。
+ */
+function checkSetupPointer(text) {
+  const out = [];
+  const body = text.replace(/\r\n/g, "\n");
+  if (!body.includes(SETUP_IMPORT_MARKER)) {
+    out.push(`没有指向共享测试地基——应含一行 \`import "${SETUP_IMPORT_MARKER}";\``);
+  }
+  const hits = SETUP_MOCK_MARKERS.filter((m) => body.includes(m));
+  if (hits.length > 0) {
+    out.push(`看着是 mock 体而不是指针（命中 ${hits.join("、")}）——共享 mock 的真源在 SDK，别在这里抄第二份`);
+  }
+  const lines = body.replace(/\n+$/, "").split("\n").length;
+  if (lines > SETUP_POINTER_MAX_LINES) {
+    out.push(`行数 ${lines} > ${SETUP_POINTER_MAX_LINES}——指针不该长成一个文件（注释也算行）`);
+  }
+  return out;
 }
 
 function runAssertions(genDir) {
@@ -402,6 +434,22 @@ function runAssertions(genDir) {
           `（裸定义类名 ${report.classes.length} / 裸关键帧 ${report.keyframes.length}）：\n     ${points}`,
         "模板里的示例类名必须带 `{{pluginName}}-` 前缀（生成后即 `<pluginId>-`）——插件视图里宿主、" +
           "共享组件与所有已加载插件的 CSS 同表，裸类名是全局标识符；改模板的 index.css + index.tsx（渲染点同笔）",
+      );
+    }
+  }
+
+  // 断言 12：模板的 `vitest.setup.ts` 是**指针形态**（真源 = SDK 的共享测试地基），不是 mock 体 —— 见文件头
+  const setupRel = "vitest.setup.ts";
+  const setupTemplatePath = join(TEMPLATE_DIR, setupRel.split("/").join("\\"));
+  if (!existsSync(setupTemplatePath)) {
+    fail(`模板里没有 ${setupRel}——断言 12 没有判据可用`, "它仍应在 EXPECTED_FILES 里（新插件一出生就该有测试地基）");
+  } else {
+    const setupProblems = checkSetupPointer(readFileSync(setupTemplatePath, "utf8"));
+    if (setupProblems.length > 0) {
+      fail(
+        `模板的 ${setupRel} 不是指针形态：\n     ${setupProblems.join("\n     ")}`,
+        `共享 mock 的真源是 SDK 的 \`${SETUP_IMPORT_MARKER}\`——模板这份只该是「一两行注释 ＋ 一行 import」；` +
+          "插件专属的桩住各仓自己的测试文件里（那条纪律写在模板 AGENTS.md 里）",
       );
     }
   }
@@ -652,6 +700,56 @@ function prefixSelfTestCases() {
 }
 
 /**
+ * 断言 12 的负控（纯函数，不需要 CLI——判据全在 `checkSetupPointer` 里，同一段代码不是抄一遍）：
+ *
+ *   ① 正控：**仓内模板真身** ⇒ 判据必须 0 问题
+ *   ② 负控：把 mock 体抄回来（旧形态：无指针行 ＋ 标志串 ＋ 超过 5 行）⇒ **三条判据全中**
+ *
+ * ⇒ 证明这条断言不是恒真的。只读模板、不写任何文件。
+ */
+function setupPointerSelfTestCases() {
+  const out = [];
+  const push = (file, ok, n, why, first) => out.push({ file, ok, n, why, ...(first ? { first } : {}) });
+
+  const real = readFileSync(join(TEMPLATE_DIR, "vitest.setup.ts"), "utf8");
+  const okProblems = checkSetupPointer(real);
+  push(
+    "断言 12 正控（仓内模板真身）",
+    okProblems.length === 0,
+    okProblems.length,
+    "模板的 vitest.setup.ts 必须是指针形态（含 subpath / 无 mock 标志串 / 行数 ≤ 5）",
+    okProblems[0],
+  );
+
+  // 旧形态（＝收敛之前那份 mock 体）：三条判据该各咬一条
+  const oldStyle = [
+    "// path 纯函数——直接实现，不走 IPC",
+    "const pathMock = { normalize: (p) => p.replace(/\\/g, '/') };",
+    "const configurationMock = { get: async () => null };",
+    "const workspaceMock = {};",
+    "const filesystemMock = {};",
+    "const tabsMock = {};",
+    "globalThis.window.linkdesk = { path: pathMock, configuration: configurationMock };",
+  ].join("\n");
+  const badProblems = checkSetupPointer(oldStyle);
+  const caught = {
+    缺指针: badProblems.some((p) => p.includes("没有指向共享测试地基")),
+    mock体: badProblems.some((p) => p.includes("mock 体")),
+    行数: badProblems.some((p) => p.includes("行数")),
+  };
+  const allCaught = Object.values(caught).every(Boolean);
+  push(
+    "断言 12 负控（把 mock 体抄回来）",
+    allCaught,
+    badProblems.length,
+    "旧形态（无指针行 ＋ mock 标志串 ＋ 超行数）⇒ 三条判据必须全中",
+    allCaught ? undefined : `实得 ${JSON.stringify(caught)}（红了 ${badProblems.length} 条）`,
+  );
+
+  return out;
+}
+
+/**
  * `--self-test`：**负控**——把断言 9 拿去喂两个「坏 CLI」，证明它不是恒真的。
  *
  *   桩 A「从不建仓」（= 7.6 之前的老行为）⇒ 情形① 必须红
@@ -725,6 +823,9 @@ if (!args.includes("--no-git")) {
   // 断言 11 的负控：真跑 CLI 生成 → 变异 CSS → 判据必红 → 还原逐字节
   cases.push(...prefixSelfTestCases());
 
+  // 断言 12 的负控：真模板必须过；把 mock 体抄回来必须红（三条判据全中）
+  cases.push(...setupPointerSelfTestCases());
+
   const failed = cases.filter((c) => !c.ok);
   for (const c of cases) {
     console.log(`  ${c.ok ? "✔" : "❌"} ${c.file}：${c.why}（判据红了 ${c.n} 条）`);
@@ -744,7 +845,8 @@ if (!args.includes("--no-git")) {
   }
   console.log(
     `\ncheck-scaffold self-test ✔️ ${cases.length}/${cases.length} 例全过` +
-      `（建仓两条相反路径 + 内部符号脏/净两样本 + 断言 11 的真变异：改回裸类名必红、还原逐字节相同）`,
+      `（建仓两条相反路径 + 内部符号脏/净两样本 + 断言 11 的真变异：改回裸类名必红、还原逐字节相同` +
+      ` + 断言 12 指针形态：真模板过、把 mock 体抄回来必红）`,
   );
   return 0;
 }
@@ -772,5 +874,6 @@ rmSync(SCRATCH_DIR, { recursive: true, force: true });
 console.log(
   `✅ 脚手架生成物符合契约——${EXPECTED_FILES.length} 个文件 / ${EXPECTED_SCRIPTS.length} 条命令 / ` +
     `pluginId 已声明 / 占位符与 CLI values 齐平 / CHANGELOG 段可切 / i18n 零死 key / npm 打包不丢文件 / ` +
-    `建仓三语义（仓外建·仓内不建·--no-git 不建）/ 零内部任务号 / 零裸类名·关键帧（与 check-css-namespace 腿同源）。`,
+    `建仓三语义（仓外建·仓内不建·--no-git 不建）/ 零内部任务号 / 零裸类名·关键帧（与 check-css-namespace 腿同源）/ ` +
+    `vitest.setup.ts 是一行指针（真源 = SDK 共享测试地基）。`,
 );
