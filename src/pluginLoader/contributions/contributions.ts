@@ -11,7 +11,7 @@
  * lifecycle-ops 双端消费，放此处防 runtime↔lifecycle-ops 成环）。
  */
 
-import type { PluginManifest, ThemeContribution, IconThemeContribution, IconContribution, LanguageContribution, ContributesViews, IconThemeMappings, IconThemeMapping } from "../../core/api/types";
+import type { PluginManifest, ThemeContribution, IconThemeContribution, IconContribution, LanguageContribution, ContributesViews, ContributesViewsContainers, IconThemeMappings, IconThemeMapping } from "../../core/api/types";
 import type { FontFaceSpec } from "../../core/types/ipc/events";
 import { getPluginAssetPath } from "../../core/utils/path/pluginAssetPath";
 import { registerTheme, getAvailableThemes, ensurePluginFontFacesCleanup, normalizeThemeValue, syncThemeColorEnum, fontFormatOf } from "../../core/services/ui/ThemeEngine";
@@ -39,6 +39,58 @@ function extractThemeColors(data: Record<string, unknown>): Record<string, strin
   return colors;
 }
 
+/* ── contributes 坏项宽容（E6#152：坏项跳过 + warn，整组不崩） ── */
+
+/** warn 文案里的形状名（`null` 单独认——`typeof null` 是 "object"，写出来会误导）。 */
+function shapeOf(v: unknown): string {
+  return v === null ? "null" : Array.isArray(v) ? "array" : typeof v;
+}
+
+/**
+ * `contributes` 的**数组形**声明宽容读取——只返回可安全逐项消费的对象列表。
+ *
+ * 🔴 为什么要有这一层（根因）：`contributes` 整块在**装载路径零形状校验**——
+ * `validateInstallManifest`（discovery/manifest.ts）只校 `pluginId`/`version`/`name`；
+ * `public/schemas/plugin.schema.json` 只喂**作者侧**校验器（SDK `validate.ts`）⇒
+ * 手写清单写坏（`commands: [null]` 空槽、把数组写成 `{}`）会一路走到这里。
+ * 此前各循环直读 `cmd.id` / `for...of`：一处坏项抛错 → 被 `loadPluginLifecycle`
+ * （resolution/runtime.ts）那句 `catch { console.error }` 吞掉 ⇒ 该插件**从这一项往后的
+ * 全部贡献静默不注册**（菜单/快捷键/主题/视图容器/视图全丢——界面表现 =「插件装了、
+ * 面板空着」），用户零提示、只有日志一行错。
+ *
+ * 契约（与 `normalizeIconThemeMappings` 的无效条目同款）：坏项跳过 + warn 一条带位置的
+ * 信息，其余项照常注册——**解析永不抛**。项内字段的语义判断仍归各 Registry（本层只管
+ * 「这一项能不能安全递出去」）。
+ */
+function contribArray<T>(pluginId: string, key: string, v: unknown): T[] {
+  if (!Array.isArray(v)) {
+    console.warn(`[loader] ⚠️ 插件 "${pluginId}" 的 contributes.${key} 不是数组（${shapeOf(v)}）——该项跳过，其余贡献照常注册`);
+    return [];
+  }
+  const out: T[] = [];
+  v.forEach((item, i) => {
+    if (item && typeof item === "object") out.push(item as T);
+    else console.warn(`[loader] ⚠️ 插件 "${pluginId}" 的 contributes.${key}[${i}] 是空项/非对象（${shapeOf(item)}）——已跳过`);
+  });
+  return out;
+}
+
+/** `contributes` 的**键值表形**声明宽容读取（`menus`/`viewsContainers`/`views`/`icons` 这类 key → 声明 的表）。 */
+function contribEntries(pluginId: string, key: string, v: unknown): Array<[string, unknown]> {
+  if (!v || typeof v !== "object" || Array.isArray(v)) {
+    console.warn(`[loader] ⚠️ 插件 "${pluginId}" 的 contributes.${key} 不是键值表（${shapeOf(v)}）——该项跳过，其余贡献照常注册`);
+    return [];
+  }
+  return Object.entries(v as Record<string, unknown>);
+}
+
+/** 单项声明的宽容读取——形状不对 → `null`（warn 一条），调用方就此跳过该项。 */
+function contribObject<T extends object>(pluginId: string, key: string, v: unknown): T | null {
+  if (v && typeof v === "object" && !Array.isArray(v)) return v as T;
+  console.warn(`[loader] ⚠️ 插件 "${pluginId}" 的 contributes.${key} 形状不对（${shapeOf(v)}）——该项跳过，其余贡献照常注册`);
+  return null;
+}
+
 /* ── Phase 5：parseContributions——对标 VS Code package.json contributes ── */
 
 /**
@@ -49,18 +101,20 @@ function extractThemeColors(data: Record<string, unknown>): Record<string, strin
 export async function parseContributions(pluginId: string, c: Record<string, unknown>, pluginRoot?: string): Promise<void> {
   // contributes.configuration → ConfigurationRegistry
   if (c.configuration) {
-    const config = c.configuration as { title: string; properties: Record<string, unknown> };
-    registerConfiguration(pluginId, {
-      title: config.title,
-      properties: config.properties as Record<string, import("../../core/registry/ConfigurationRegistry").ConfigurationProperty>,
-    });
+    const config = contribObject<{ title: string; properties: Record<string, unknown> }>(pluginId, "configuration", c.configuration);
+    if (config) {
+      registerConfiguration(pluginId, {
+        title: config.title,
+        properties: config.properties as Record<string, import("../../core/registry/ConfigurationRegistry").ConfigurationProperty>,
+      });
+    }
   }
 
   // contributes.commands → CommandRegistry
   // Phase 5c fix：静态导入替代动态 import()——动态 import 的 .then() 晚于组件 mount，
   // 导致 terminal 组件注册的真实 handler 被 placeholder 覆盖。
   if (c.commands) {
-    const cmds = c.commands as Array<{ id: string; title: string; category?: string; when?: string }>;
+    const cmds = contribArray<{ id: string; title: string; category?: string; when?: string }>(pluginId, "commands", c.commands);
     for (const cmd of cmds) {
       registerCommand(pluginId, {
         id: cmd.id,
@@ -79,15 +133,15 @@ export async function parseContributions(pluginId: string, c: Record<string, unk
 
   // contributes.menus → MenuRegistry
   if (c.menus) {
-    const menus = c.menus as Record<string, ManifestMenuItem[]>;
-    for (const [menuId, items] of Object.entries(menus)) {
-      registerMenuItems(menuId, pluginId, items);
+    // 逐菜单各自宽容：一个菜单的声明写坏，不吃掉其余菜单（表本身坏 → 整组跳过 + warn）
+    for (const [menuId, items] of contribEntries(pluginId, "menus", c.menus)) {
+      registerMenuItems(menuId, pluginId, contribArray<ManifestMenuItem>(pluginId, `menus.${menuId}`, items));
     }
   }
 
   // contributes.keybindings → KeybindingRegistry
   if (c.keybindings) {
-    const kbs = c.keybindings as Array<{ command: string; key: string; when?: string }>;
+    const kbs = contribArray<{ command: string; key: string; when?: string }>(pluginId, "keybindings", c.keybindings);
     for (const kb of kbs) {
       registerKeybinding({ command: kb.command, key: kb.key, when: kb.when, source: "plugin", pluginId });
     }
@@ -95,12 +149,13 @@ export async function parseContributions(pluginId: string, c: Record<string, unk
 
   // contributes.configurationDefaults → ConfigurationRegistry（盲区 2：弱默认值）
   if (c.configurationDefaults) {
-    registerConfigurationDefaults(pluginId, c.configurationDefaults as Record<string, unknown>);
+    const defaults = contribObject<Record<string, unknown>>(pluginId, "configurationDefaults", c.configurationDefaults);
+    if (defaults) registerConfigurationDefaults(pluginId, defaults);
   }
 
   // contributes.themes → ThemeRegistry（metadata only——数据在 loadPlugin 中异步加载）
   if (c.themes) {
-    const themeList = c.themes as ThemeContribution[];
+    const themeList = contribArray<ThemeContribution>(pluginId, "themes", c.themes);
     for (const tc of themeList) {
       ThemeRegistry.register(tc, pluginId);
     }
@@ -108,7 +163,7 @@ export async function parseContributions(pluginId: string, c: Record<string, unk
 
   // contributes.iconThemes → IconRegistry
   if (c.iconThemes) {
-    const list = c.iconThemes as IconThemeContribution[];
+    const list = contribArray<IconThemeContribution>(pluginId, "iconThemes", c.iconThemes);
     for (const it of list) {
       IconRegistry.register(it, pluginId);
     }
@@ -116,15 +171,15 @@ export async function parseContributions(pluginId: string, c: Record<string, unk
 
   // contributes.icons → IconRegistry（共享图标）
   if (c.icons) {
-    const map = c.icons as Record<string, IconContribution>;
-    for (const [iconId, contribution] of Object.entries(map)) {
-      IconRegistry.registerIcon(iconId, contribution, pluginId);
+    for (const [iconId, contribution] of contribEntries(pluginId, "icons", c.icons)) {
+      const item = contribObject<IconContribution>(pluginId, `icons.${iconId}`, contribution);
+      if (item) IconRegistry.registerIcon(iconId, item, pluginId);
     }
   }
 
   // contributes.languages → LanguageRegistry（metadata only——数据在 loadPlugin 中异步加载）
   if (c.languages) {
-    const langList = c.languages as LanguageContribution[];
+    const langList = contribArray<LanguageContribution>(pluginId, "languages", c.languages);
     for (const lc of langList) {
       LanguageRegistry.register(lc, pluginId);
     }
@@ -132,25 +187,28 @@ export async function parseContributions(pluginId: string, c: Record<string, unk
 
   // E3h #66：contributes.titleBar → MenuRegistry（TitleBar 左右槽位按钮）
   if (c.titleBar) {
-    const tb = c.titleBar as { left?: TitleBarContribution[]; right?: TitleBarContribution[] };
-    if (tb.left) {
-      for (const item of tb.left) {
-        registerTitleBarContribution(pluginId, "left", item);
+    const tb = contribObject<{ left?: TitleBarContribution[]; right?: TitleBarContribution[] }>(pluginId, "titleBar", c.titleBar);
+    if (tb) {
+      if (tb.left) {
+        for (const item of contribArray<TitleBarContribution>(pluginId, "titleBar.left", tb.left)) {
+          registerTitleBarContribution(pluginId, "left", item);
+        }
       }
-    }
-    if (tb.right) {
-      for (const item of tb.right) {
-        registerTitleBarContribution(pluginId, "right", item);
+      if (tb.right) {
+        for (const item of contribArray<TitleBarContribution>(pluginId, "titleBar.right", tb.right)) {
+          registerTitleBarContribution(pluginId, "right", item);
+        }
       }
     }
   }
 
   // E3.6：contributes.viewsContainers → ViewContainerService（同步）
   if (c.viewsContainers) {
-    const containers = c.viewsContainers as Record<string, { title: string; icon?: string; location?: string; hideIfEmpty?: boolean; order?: number; mergeHeaderWhenSingle?: boolean }>;
     try {
       const { ViewContainerService } = await import("../../core/services/layout/ViewContainerService");
-      for (const [containerId, desc] of Object.entries(containers)) {
+      for (const [containerId, rawDesc] of contribEntries(pluginId, "viewsContainers", c.viewsContainers)) {
+        const desc = contribObject<ContributesViewsContainers[string]>(pluginId, `viewsContainers.${containerId}`, rawDesc);
+        if (!desc) continue;
         ViewContainerService.registerViewContainer(pluginId, {
           id: containerId,
           title: desc.title,
@@ -167,11 +225,11 @@ export async function parseContributions(pluginId: string, c: Record<string, unk
   // E3.6：contributes.views → ViewContainerService（异步——动态 import view 组件）
   if (c.views) {
     // E5.8#1c：schema 归口 ContributesViews（types.ts 权威定义）——替代手写内联类型
-    const views = c.views as ContributesViews;
+    // 逐容器各自宽容：一个容器的 views 写坏，不吃掉其余容器的视图（容器名进 warn 定位）
     try {
       const { ViewContainerService } = await import("../../core/services/layout/ViewContainerService");
-      for (const [containerId, viewDefs] of Object.entries(views)) {
-        for (const viewDef of viewDefs) {
+      for (const [containerId, viewDefs] of contribEntries(pluginId, "views", c.views)) {
+        for (const viewDef of contribArray<ContributesViews[string][number]>(pluginId, `views.${containerId}`, viewDefs)) {
           // E5#34b: render 路径相对于插件根目录。
           // E6#62b 收单根裁决（#15d「dev 源码 glob 根」分支随源码轨退役）：resolvedRoot = 调用方
           //   pluginRoot（loadPlugin Step3 已对全插件 resolveRuntimePluginRoot）/ 缺失则此处现解析——
