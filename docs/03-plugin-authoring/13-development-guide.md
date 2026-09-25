@@ -254,6 +254,25 @@ Step one: your `.linkdesk-plugin` asset shows up on the GitHub Release. Step two
 
 ---
 
+## Tests in a plugin repo
+
+Nothing to set up — but "should I test this?" deserves a straight answer.
+
+- **The toolchain is preinstalled.** `vitest` / `jsdom` / `@testing-library/react` are already in `devDependencies` — write `src/__tests__/<same-name>.test.ts` and run `npm run test`.
+- **The shared test ground comes from the SDK.** The minimal `window.linkdesk` mock lives in `@linkdesk/plugin-sdk/vitest-setup`, and your `vitest.setup.ts` is a **one-line pointer** to it. ⛔ **Do not paste a second copy into your repo** — a copied mock silently drifts from the shared one.
+- **Pure logic is what pays off.** A unit under `src/**/*.ts` that touches neither React nor `window.linkdesk` should get a test. Views and interactions are worth testing **when it pays off** — nothing measures that today.
+- **Plugin-specific stubs stay in your own test files.** Does your code call something the shared mock does not cover (say `window.linkdesk.serial`)? Stub it with `vi.fn()` in the test that needs it — do not expect the shared mock to grow a branch for your plugin.
+- **Declarative plugins** (pure JSON / themes / language packs) have **no testable units** — their gate is `npm run verify` (structure + declarations). **"It has no tests" is not a defect there.**
+- **Older projects can migrate whenever they like.** Replacing the full mock body with the one-line pointer plus one `npm install` is the whole move (upside: mock upgrades then ride along with the SDK).
+
+**How to know you did it right**
+
+```bash
+npm run test     # vitest run — an empty suite passes on purpose (passWithNoTests)
+```
+
+---
+
 ## Pitfalls Beginners Hit Most
 
 | Symptom | Root cause | Where to look |
@@ -281,4 +300,5 @@ Step one: your `.linkdesk-plugin` asset shows up on the GitHub Release. Step two
 | A whole **replacement settings UI** | [10-building-a-settings-plugin](10-building-a-settings-plugin.md) |
 | Build **themes/icons** | [11-authoring-themes](11-authoring-themes.md) |
 | **Where files should go**; authoritative README/CHANGELOG criteria | [09-plugin-directory-layout](09-plugin-directory-layout.md) |
+| Decide **whether / how to test my plugin** | [§ Tests in a plugin repo](#tests-in-a-plugin-repo) |
 | The full documentation index | [00-readme §Documentation Index](00-readme.md#documentation-index) |

@@ -71,8 +71,8 @@ packages/create-linkdesk-plugin/
       │   └── ci.yml             # 🔴 **E6#102 新增**：push/PR 跑 validate → verify → build → test（§九.4）
       ├── scripts/
       │   └── ci-verify.mjs      # 🔴 **E6#102 新增**：仓内严格门禁（lint 全腿 + 跨插件 import + 字典 + 声明自洽）
-      ├── vitest.config.ts       # 🔴 **E6#102 新增**：环境对齐壳仓（jsdom/globals/setupFiles + @linkdesk/ui inline）
-      ├── vitest.setup.ts        # 🔴 **E6#102 新增**：window.linkdesk 六命名空间 mock——**测试的运行时地基**
+      ├── vitest.config.ts       # 🔴 **E6#102 新增**：环境对齐壳仓（jsdom/globals；`setupFiles` 指下面那枚指针 + @linkdesk/ui inline）
+      ├── vitest.setup.ts        # 🔴 **E6#102 新增** → 2026-09-25 收敛为**一行指针**：指向 SDK 共享地基 `@linkdesk/plugin-sdk/vitest-setup`（原六命名空间 mock，见 §9.4）
       ├── resources/
       │   └── icon.svg           # 身份图**占位图**（中性灰虚线框——作者替换）
       ├── src/
@@ -537,7 +537,7 @@ v1 的 `i18n/en.json` = `{"hello": "Hello from LinkDesk!"}`，而 `src/index.tsx
 | 项 | 不做的理由 |
 |:--|:--|
 | **预建 `src/` 子文件夹** | **空文件夹在 git 里根本不存在**（git 不记录目录），除非塞 `.gitkeep` = 为了留一个空夹放一个假文件，成本真、收益假；只做侧栏面板的小插件被塞 6 个空夹，比不预建更劝退。**「该放哪」是知识不是目录** ⇒ 用生成的 `README.md` 里**目录契约表**教。 |
-| **预建 vitest / 测试环境** | ~~官方插件的 `__tests__` 是**按需长出来的**，不是起步就有；给脚手架塞测试框架 = 给一个还没写业务的人配测试，加重起步负担。契约表里有 `src/__tests__/` 一行，作者要测时自己 `npm i -D vitest`。**若用户日后点名要，再单独立项**——不由本轮顺手加。~~ 🔴 **2026-09-14 已改判（E6#102，L7 第 7.5 轮）**：**改判为「预建」**。理由不是「想法变了」，是**前提变了**——本行原来的假设是「插件与壳同仓、壳的方案顺手提供测试环境」；插件源码现在住在**自己的仓**里，壳仓的 vitest / jsdom / `vitest.setup.ts`（那份 `window.linkdesk` mock 是**运行时地基**，不是配置）够不着它，于是「不给脚手架配测试」的实际后果变成「**新插件永远不会有测试**」，而且 CI 模板也没了 `test` 这一步。⇒ 模板随附 `vitest.config.ts` + `vitest.setup.ts` + `"test": "vitest run"`（含 `passWithNoTests`：没写测试不判红，是「没写」不是「写错了」）。不想要测试的作者 `npm uninstall vitest jsdom @testing-library/react` 即可，CI 那一步是 `npm test --if-present`，**跳过是显式的**。 |
+| **预建 vitest / 测试环境** | ~~官方插件的 `__tests__` 是**按需长出来的**，不是起步就有；给脚手架塞测试框架 = 给一个还没写业务的人配测试，加重起步负担。契约表里有 `src/__tests__/` 一行，作者要测时自己 `npm i -D vitest`。**若用户日后点名要，再单独立项**——不由本轮顺手加。~~ 🔴 **2026-09-14 已改判（E6#102，L7 第 7.5 轮）**：**改判为「预建」**。理由不是「想法变了」，是**前提变了**——本行原来的假设是「插件与壳同仓、壳的方案顺手提供测试环境」；插件源码现在住在**自己的仓**里，壳仓的 vitest / jsdom / `vitest.setup.ts`（那份 `window.linkdesk` mock 是**运行时地基**，不是配置）够不着它，于是「不给脚手架配测试」的实际后果变成「**新插件永远不会有测试**」，而且 CI 模板也没了 `test` 这一步。⇒ 模板随附 `vitest.config.ts` + `vitest.setup.ts` + `"test": "vitest run"`（含 `passWithNoTests`：没写测试不判红，是「没写」不是「写错了」）。不想要测试的作者 `npm uninstall vitest jsdom @testing-library/react` 即可，CI 那一步是 `npm test --if-present`，**跳过是显式的**。 🔵 **2026-09-25 再进一步（L11 `E6#144`-`E6#145`）：那份 mock 的「真源」搬进了 SDK**——`packages/plugin-sdk/src/vitest-setup.ts` ⇒ subpath `@linkdesk/plugin-sdk/vitest-setup`；模板与官方 5 仓的 `vitest.setup.ts` 一律**缩成一行指针**（壳仓根走同仓相对路径引**源码**，因为壳没有 `@linkdesk/plugin-sdk` 依赖），原来的 8 份同体拷贝 ⇒ **1 处真源 ＋ 7 枚指针**（壳根 / 模板 / 官方 5 仓），脚本从此守住「指针形态」而不只是「文件在不在」。第三方仓 `geme-tihu-bicycle` 手里那份**原样不动**（不代改，迁移建议只转达作者）。**旧仓迁移非强制**：换成一枚指针 ＋ 一次 `npm install` 就是全部动作，好处是 mock 升级从此刻起跟着 SDK 走。 |
 
 ### 9.5 🔴 为什么模板里叫 `gitignore` 而不是 `.gitignore`（**E6#95c 执行期实测发现**）
 

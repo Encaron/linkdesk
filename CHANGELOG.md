@@ -15,6 +15,8 @@
 - 作者轴同批真发（第三批）：`@linkdesk/plugin-sdk` **0.1.46**（2026-09-20，独立发版——插件作者工具链，软件本体不动；0.1.44→0.1.45→0.1.46 同日三连发，0.1.44/0.1.45 均短命版、无消费者）：新增两条门禁腿——「自有类名引用悬空」（className 引用的本插件前缀类名必须在本仓 CSS 有定义，CSS 注释被提前闭合吞规则的根因案机械可抓，动态拼接跳过）＋「window/document 全局键盘监听判红」（报错教 focus 分区正解＝容器 onKeyDown＋tabIndex，正当形态走豁免注释）。＋顺笔补全两件（修复都由新腿豁免注释首次真实踩中）：① SDK preset 把各 check 脚本伪 id（含壳仓惯例的 no-module-level-ipc-listener）登记为 no-op 哑规则——作者照报错文案写的 eslint-disable 豁免注释不再触发「Definition for rule was not found」CLI 假红；② 修复豁免解析器（disable.ts）对**跨行块注释的换行双重计数**——其后所有 disable 指令行号整体偏大、豁免错位失效的既有 bug（加回归钉子单测）。来源 = 同批第三方作者实测（E6#136-#137）。
 - 作者轴同批真发（第四批）：`@linkdesk/plugin-docs` **0.1.30**（2026-09-20）：中文维护者面 05 号（UI 写法规约）随包重生成——§4.2 键盘节加「全局键盘监听反模式有腿了」句、§12 加「自有类名引用侧也有腿了」句（含注释提前闭合吞规则的根因案说明与动态拼接跳过口径）。来源 = 第三批 SDK 两腿的维护者面判据落笔（E6#136-#137）。
 
+- 作者轴同批真发（第五批，L11 插件测试覆盖层·会话一）：`@linkdesk/plugin-sdk` **0.1.47**（测试地基收进 SDK——真源新增 `packages/plugin-sdk/src/vitest-setup.ts` ＋ subpath `./vitest-setup` ＋ 5 例对账单测；壳根 `vitest.setup.ts` 收成一行相对引源码）· `create-linkdesk-plugin` **0.1.14**（模板 `vitest.setup.ts` 收成一行指针 ＋ `AGENTS.md` 测试纪律段 ＋ README 指针说明；`check-scaffold.mjs` 断言 12 守「指针形态」）· `@linkdesk/plugin-docs` **0.1.31**（作者面 13 号中英两篇新增「插件仓里的测试怎么写」六条＋文档地图一行；中文维护者面 01 号改写两处「逐字副本」旧话）。官方 5 仓（指针＋lock＋AGENTS.md）与 13 只声明式仓（AGENTS.md）各仓一笔落盘。来源 = E6#144-#146。
+
 ## v0.2.14（2026-09-19）
 
 🔌 **装插件时，它声明的依赖会自动一起装上**（此前缺依赖只会「挂起等待」）
