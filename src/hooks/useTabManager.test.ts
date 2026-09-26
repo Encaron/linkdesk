@@ -69,6 +69,16 @@ function twoGroupState(): TabState {
   };
 }
 
+/** 04 焦点判据 fixture：A/B/C 三格单面板，activeIdx 指定焦点（0=A 1=B 2=C） */
+function abcState(activeIdx: number): TabState {
+  const tabs = [w("A", "demo_a"), w("B", "demo_b"), w("C", "demo_c")];
+  return {
+    groups: [{ id: "main", tabs, activeTabId: tabs[activeIdx].id }],
+    activeGroupId: "main",
+    root: { type: "leaf", groupId: "main" },
+  };
+}
+
 beforeEach(() => {
   resetPluginCounter("terminal", 0);
   resetPluginCounter("workspace", 0);
@@ -320,6 +330,29 @@ describe("reduceCloseTab", () => {
     expect(r.closed).toBe(true);
     expect(getAllLeafGroupIds(r.state!.root)).toHaveLength(1);
   });
+
+  // ── 04「标签栏关闭焦点跳第一格」（2026-09-27 用户拍板）──
+
+  it("🔴 关非焦点标签 ⇒ 焦点原地不动（关 style.css 不抢 app123.c 的焦点）", () => {
+    const tabs = abcState(2).groups[0].tabs; // 焦点在 C
+    const r = reduceCloseTab(abcState(2), tabs[0].id); // 关掉非焦点的 A
+    expect(r.closed).toBe(true);
+    expect(r.state!.groups[0].activeTabId).toBe(tabs[2].id); // 仍在 C
+  });
+
+  it("🔴 关掉焦点标签 ⇒ 去右邻（对标 VS Code；旧实现恒落第一格）", () => {
+    const tabs = abcState(1).groups[0].tabs; // 焦点在中间的 B
+    const r = reduceCloseTab(abcState(1), tabs[1].id);
+    expect(r.closed).toBe(true);
+    expect(r.state!.groups[0].activeTabId).toBe(tabs[2].id); // 右邻 C
+  });
+
+  it("🔴 关掉末尾的焦点标签 ⇒ 右邻没了退左邻", () => {
+    const tabs = abcState(2).groups[0].tabs;
+    const r = reduceCloseTab(abcState(2), tabs[2].id);
+    expect(r.closed).toBe(true);
+    expect(r.state!.groups[0].activeTabId).toBe(tabs[1].id); // 左邻 B
+  });
 });
 
 /* ── reduceSplitTab + reduceUnsplit ── */
@@ -518,6 +551,12 @@ describe("reduceRemoveTab（E5.8#44）", () => {
     const r = reduceRemoveTab(s, "workspace-nope");
     expect(r.removedTab).toBeNull();
     expect(r.state).toBe(s);
+  });
+
+  it("🔴 摘除非焦点 tab → 源组焦点不动（跨窗搬走旁边的格子，本组焦点零移动——同 reduceCloseTab 判据）", () => {
+    const tabs = abcState(2).groups[0].tabs;
+    const r = reduceRemoveTab(abcState(2), tabs[0].id);
+    expect(r.state.groups[0].activeTabId).toBe(tabs[2].id);
   });
 });
 

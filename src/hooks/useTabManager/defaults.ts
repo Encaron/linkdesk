@@ -101,7 +101,12 @@ export function ensureFallback(state: TabState): TabState {
   return state;
 }
 
-/** 选焦点标签页——关掉后选相邻的 */
+/**
+ * 选焦点标签页——关掉后选相邻的（优先右邻，右邻没了退左邻，对标 VS Code）。
+ * 🔴 调用方必须传**删除前的原列表**：closedId 要在列表里找位次——传已删的 remaining 会让
+ *    idx 恒 -1、恒返回 tabs[0]（关任何标签焦点都砸第一格的旧 bug，右邻/左邻分支整体死码）。
+ *    调用方还须自行判定「关的是不是本组当前焦点」——非焦点标签被关时焦点不该动（04 拍板）。
+ */
 export function pickNextActive(tabs: Tab[], closedId: string): string {
   const idx = tabs.findIndex((t) => t.id === closedId);
   if (idx === -1) return tabs[0]?.id ?? "";

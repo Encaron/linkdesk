@@ -199,7 +199,11 @@ export function reduceCloseTab(prev: TabState, tabId: string): CloseTabResult {
     };
   }
 
-  const newActiveId = pickNextActive(remaining, tabId);
+  // 🔴 焦点转移只在关掉**本组当前焦点**时发生——关非焦点标签（hover 关旁边那格）焦点零移动
+  //    （04「标签栏关闭焦点跳第一格」，2026-09-27 用户拍板）。邻位语义必须从**原列表**找位次：
+  //    传 remaining 会让 findIndex 恒 -1 → 恒落 tabs[0]（原 bug：关任何标签焦点都砸第一格，
+  //    pickNextActive 的右邻/左邻分支因此是死代码）。
+  const newActiveId = group.activeTabId === tabId ? pickNextActive(group.tabs, tabId) : group.activeTabId;
   const newGroups = prev.groups.map((g) =>
     g.id === group.id ? { ...g, tabs: remaining, activeTabId: newActiveId } : g
   );
@@ -247,7 +251,9 @@ export function reduceRemoveTab(prev: TabState, tabId: string): { state: TabStat
     return { state: { ...prev, groups: newGroups }, removedTab: tab };
   }
 
-  const newActiveId = pickNextActive(remaining, tabId);
+  // 🔴 同 reduceCloseTab：焦点转移只在摘掉**本组当前焦点**时发生（跨窗搬走非焦点标签，源组焦点不动）；
+  //    邻位语义从原列表找位次（传 remaining 恒 -1 → 恒落第一格，同款死代码 bug）。
+  const newActiveId = group.activeTabId === tabId ? pickNextActive(group.tabs, tabId) : group.activeTabId;
   return {
     state: { ...prev, groups: prev.groups.map((g) => (g.id === group.id ? { ...g, tabs: remaining, activeTabId: newActiveId } : g)) },
     removedTab: tab,
