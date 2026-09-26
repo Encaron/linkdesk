@@ -69,6 +69,7 @@ export const KIND_COLUMNS = {
   keyframe: ["reservedKeyframes."],
   commandPrefix: ["ledger.commandPrefixes."],
   configKey: ["ledger.configKeys."],
+  pseudoPluginId: ["ledger.pseudoPluginIds."],
   contextKey: ["ledger.contextKeysHostOnly.", "ledger.contextKeysPublic."],
   appearanceId: [
     "ledger.appearanceRecipeIds.",

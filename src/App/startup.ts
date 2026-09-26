@@ -91,11 +91,15 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
       // E5.8#50.19：app.theme + 5 外观覆盖 key 已迁入「主题」组（第二贡献 pluginId "appearance"，08 §5 决策 D）。
       // E5.8#79：app.accentColor 强调色也迁入「主题」组（accent 本质 = 主题色域颜色覆盖）。
       // E5.8#90：app.accentMode/app.mixMode 已删（三枚举归一外观主开关，见组内注释）；强调色并入自定义模式一槽。
+      // 04-软件更新「设置页通用归类」（2026-09-26 拍板）：组内 8 条按 prop.group 分三节——界面 / 系统集成 / 更新
+      //   （「更新」两键由 config/update.ts 以同 pluginId 二次注册 merge 进来）；
+      //   判据：一级目录留给条目多、成体系的域，更新域只有 2 条撑不起目录。节顺序 = 声明首现序：界面 → 系统集成 → 更新。
       registerConfiguration(APP_PLUGIN_ID, {
         title: t("通用"),
         properties: {
           "app.language": {
             type: "string",
+            group: t("界面"),
             default: "zh",
             enum: ["zh", "en"],
             description: t("界面语言"),
@@ -115,6 +119,7 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
           },
           "app.menuStyle": {
             type: "string",
+            group: t("界面"),
             default: "titlebar",
             enum: ["titlebar", "hamburger", "both"],
             description: t("菜单栏样式——标题栏 / 汉堡菜单 / 两者都显示"),
@@ -125,18 +130,21 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
           //    与安装器勾选页天然一致：装的时候勾了 ⇒ 这里显示为开；软件里关掉 ⇒ 右键立即消失（不用重装）。
           "app.osIntegration.fileMenu": {
             type: "boolean",
+            group: t("系统集成"),
             default: false,
             description: t("在资源管理器文件右键菜单中显示「Open with LinkDesk」"),
             onApply: (v) => void applyOsIntegration("fileMenu", v === true),
           },
           "app.osIntegration.dirMenu": {
             type: "boolean",
+            group: t("系统集成"),
             default: false,
             description: t("在资源管理器文件夹右键菜单中显示「Open with LinkDesk」"),
             onApply: (v) => void applyOsIntegration("dirMenu", v === true),
           },
           "app.osIntegration.fileAssoc": {
             type: "boolean",
+            group: t("系统集成"),
             default: true,
             description: t("将 LinkDesk 注册为受支持文件类型的编辑器（「打开方式」里可选）"),
             onApply: (v) => void applyOsIntegration("fileAssoc", v === true),
@@ -146,6 +154,7 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
           // 自动执行 onApply → 持久化缩放开机即恢复（StorageService 现成）。
           "window.zoomLevel": {
             type: "number",
+            group: t("界面"),
             default: 0,
             minimum: -8,
             maximum: 8,
@@ -165,7 +174,8 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
       // 拆至 config/appearance.ts（registerAppearanceConfiguration）；onApply 委托 appearanceApplier 外观应用编排。
       registerAppearanceConfiguration(t);
 
-      // 「更新」配置组声明（pluginId "update"）——E6#57.9a：app.update.mode + app.update.showReleaseNotes。
+      // 「更新」两键归并进「通用」（同 pluginId 二次注册 merge；04-软件更新「设置页通用归类」2026-09-26）
+      // ——E6#57.9a：app.update.mode + app.update.showReleaseNotes。
       // 纯声明零 onApply（两键都是被读取的存量值）——调度器/首启弹窗各自读，见 config/update.ts 文件头。
       registerUpdateConfiguration(t);
 

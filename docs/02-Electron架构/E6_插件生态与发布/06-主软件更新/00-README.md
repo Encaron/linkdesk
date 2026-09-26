@@ -101,13 +101,13 @@ TitleBar「下载更新」按钮自动出现（主题按钮色）   无更新 �
 | 更新通知/进度 | ~~`#toast-root`（右下角）~~ **⚠️ 2026-09-10 校正：** `#toast-root` 容器已由 **E6#72a 整删**（仓库仅剩 `FloatingLayerHost.tsx:36` 一行删除注记）；显示面 = **状态栏铃铛宽面板**（E6#72 通知面归一，`StatusBarZone.css:111` 对标 VS Code `.notifications-center`）。服务层 API 名 `pushToast`/`updateToast` **未变**（`NotificationService` 喂同一 store）——故右两列仍成立 | **通知**（发现/进度/完成/失败/手动结果全走，铃铛宽面板显示） | 状态机 → `pushToast`/`updateToast` |
 | 发行说明 | **标签页**（复刻欢迎页模式） | 壳直渲染 view + tabBehavior 声明 | GitHub Releases body |
 | 关于页 | **标签页**（已拍板，对标发行说明）——DialogService 现实能力承载不了复制按钮 | 字段表 + 复制 + 检查更新 | product.json + process.versions |
-| 设置项 | 设置页「更新」组 | update.mode 下拉（auto/manual） | `app.update.mode` |
+| 设置项 | 设置页「通用」组「更新」节 | update.mode 下拉（auto/manual） | `app.update.mode` |
 
 - 所有更新 UI 用壳共享组件（ContextMenu / toast / 声明插槽 / 标签页）——**不新建宿主**。
 
 ### ⑦ 配置设计
-- `app.update.mode`：`string` enum，`auto/manual`，默认 `auto`（对标 VS Code `update.mode` 简化为两档——砍 none/start，检查更新恒显）。壳 `registerConfiguration("update", ...)` 保底。
-- 设置页「更新」组（组内二级标题，对标 E5.8#78 `group` 机制）。
+- `app.update.mode`：`string` enum，`auto/manual`，默认 `auto`（对标 VS Code `update.mode` 简化为两档——砍 none/start，检查更新恒显）。壳 `registerConfiguration(APP_PLUGIN_ID, ...)` 保底（04「设置页通用归类」2026-09-26 起并入「通用」，原独立 pluginId `"update"` 目录退役）。
+- 设置页「通用」组内「更新」节（二级 `group` 机制，E5.8#78；04「设置页通用归类」2026-09-26 起由独立「更新」一级目录并入，键名零变更）。
 - 更新通道（stable/preview）：`app.update.quality`，默认 `stable`——**第一版只 stable，留位不实现**（2026-08-30 拍板，见 §五①）。
 - 检查频率：内置常量（无用户配置项）——**启动后延迟 30s 首次检查 + 每 4 小时后台检查**（对标 VS Code 定期后台；2026-08-30 拍板）。
 

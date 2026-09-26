@@ -10,7 +10,7 @@
  * 两档，都只**拒一个键**、都**不抛错**（抛错 = 整个插件装不上，代价远大于一个键失效）：
  *   🔴 **保护区**：非宿主身份的插件注册的键落在宿主保留面（`HOST_RESERVED_CONFIG_KEYS`）⇒ 拒该键。
  *   🟡 **首撞保留**：两个非宿主插件注册同一个键 ⇒ 先注册者保留，后者的该键被拒。
- * 宿主身份 = pluginId ∈ `HOST_PSEUDO_PLUGIN_IDS`（app / appearance / update）——保护区对宿主自己不生效。
+ * 宿主身份 = pluginId ∈ `HOST_PSEUDO_PLUGIN_IDS`（app / appearance；"update" 已于 2026-09-26 退役——04 设置页通用归类，见 scripts/host-reserved.json 的 retired[]）——保护区对宿主自己不生效。
  * 保留面清单是**生成式**的（`src/core/registry/host-reserved.generated.ts`，改法见 `npm run audit:plugin-scope:regen`）；
  * 为什么运行时需要一份静态副本而不是"看谁先注册"：宿主有**从未注册**的真键（`app.schemaVersion`）。
  */

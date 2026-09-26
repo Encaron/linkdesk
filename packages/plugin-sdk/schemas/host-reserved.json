@@ -48,8 +48,7 @@
   ],
   "pseudoPluginIds": [
     "app",
-    "appearance",
-    "update"
+    "appearance"
   ],
   "contextKeysHostOnly": [
     "activeEditor",
@@ -97,6 +96,15 @@
       "replacedBy": "app.theme",
       "landing": "src/App/startup.ts:246（仍被读 + 清扫）",
       "approvedBy": "用户 · 2026-09-18"
+    },
+    {
+      "name": "update",
+      "kind": "pseudoPluginId",
+      "since": "2026-09-26",
+      "why": "设置页「通用」归类（docs/04-软件更新，2026-09-26 拍板方案 A）：壳「更新」2 键并入「通用」组（config/update.ts 改以 APP_PLUGIN_ID 二次注册 merge），独立 pluginId \"update\" 设置一级目录退役；设置键 app.update.* 名字零变更、消费方零改动",
+      "replacedBy": "app（「通用」组内「更新」二级节）",
+      "landing": "src/App/config/update.ts（registerConfiguration(APP_PLUGIN_ID, ...)）",
+      "approvedBy": "用户 · 2026-09-26"
     }
   ]
 }

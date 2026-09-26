@@ -339,21 +339,27 @@ describe("ConfigurationRegistry — 键归属仲裁（E6#111d：保护区 / 首�
     expect(warnSpy).not.toHaveBeenCalled();
   });
 
-  it("N6（反向负控）— 宿主身份（app / appearance / update）注册自己的 app.* ⇒ 全部正常进、零输出", () => {
+  it("N6（反向负控）— 宿主身份（app / appearance）注册自己的 app.* ⇒ 全部正常进、零输出", () => {
     registerConfiguration("app", { title: "壳通用", properties: { "app.language": probe("zh") } });
     registerConfiguration("appearance", {
       title: "外观",
       properties: { "app.theme": probe("Dark"), "app.surfaceRadius": probe(8) },
     });
-    registerConfiguration("update", { title: "更新", properties: { "app.update.mode": probe("stable") } });
 
     const merged = getMergedSchema();
     expect(merged["app.language"].default).toBe("zh");
     expect(merged["app.theme"].default).toBe("Dark");
     expect(merged["app.surfaceRadius"].default).toBe(8);
-    expect(merged["app.update.mode"].default).toBe("stable");
     expect(errSpy).not.toHaveBeenCalled();
     expect(warnSpy).not.toHaveBeenCalled();
+  });
+
+  it("N6b — 退役宿主身份 \"update\"（04 设置页通用归类，两键已并入 app 二次注册）现按非宿主 pluginId 对待 ⇒ 注册 app.* 被保护区拒", () => {
+    registerConfiguration("update", { title: "更新", properties: { "app.update.mode": probe("stable") } });
+
+    expect(getMergedSchema()["app.update.mode"]).toBeUndefined(); // 被拒
+    expect(errSpy).toHaveBeenCalledTimes(1);
+    expect(String(errSpy.mock.calls[0]?.[0])).toContain("app.update.mode");
   });
 
   it("N8 — 非宿主插件的 configurationDefaults 建议 app.theme ⇒ 不登记 ＋ error（A7 对称面，不是 A3）", () => {

@@ -3,7 +3,7 @@
  *
  * 是什么：宿主保留面的**运行时副本**——壳运行时用它判五件事：
  *   · `HOST_RESERVED_CONFIG_KEYS`——插件不得占用的宿主配置键（保护区；撞了 ⇒ 拒绝注册 ＋ console.error）
- *   · `HOST_PSEUDO_PLUGIN_IDS`——宿主自己的注册身份（`app` = 壳通用 / `appearance` = 外观 / `update` = 更新）
+ *   · `HOST_PSEUDO_PLUGIN_IDS`——宿主自己的注册身份（`app` = 壳通用 / `appearance` = 外观；`update` 已于 2026-09-26 退役——04 设置页通用归类，见 retired[]）
  *   · `HOST_RESERVED_APPEARANCE_IDS`——宿主兜底外观 id，**按空间分栏**（recipe / colorway / iconTheme /
  *     sentinel）；两个空间不许合栏（配方 id 与配色 id 是两个名字空间，合栏 ⇒ 官方主题仓假红）
  *   · `HOST_RESERVED_APPEARANCE_GRANTS`——外观 id 的**证照**（id → 宿主之外的正当持有者）。🔴 **不是白名单**：
@@ -66,7 +66,6 @@ export const HOST_RESERVED_CONFIG_KEYS: readonly string[] = [
 export const HOST_PSEUDO_PLUGIN_IDS: readonly string[] = [
   "app",
   "appearance",
-  "update",
 ];
 
 export const HOST_RESERVED_CONTEXT_KEYS_HOST_ONLY: readonly string[] = [
