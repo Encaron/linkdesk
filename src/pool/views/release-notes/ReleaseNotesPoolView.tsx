@@ -28,7 +28,7 @@
  */
 
 import { useTranslation } from "react-i18next";
-import { CloudOff, Sparkles } from "lucide-react";
+import { CloudOff, RefreshCw, Sparkles } from "lucide-react";
 import MarkdownView from "../../../components/shared/markdown-view/MarkdownView";
 import { executePoolCommand } from "../../commands/executePoolCommand";
 import type {
@@ -161,6 +161,16 @@ function EmptyFrame({ listUrl }: { listUrl?: string }) {
               >
                 {t("重试")}
               </button>
+              {/* 「刷新」与「重试」并存不合并（04 设计 §三）：一个问「现在有没有新的」（绕缓存），一个问「刚才那个再来一次」 */}
+              <button
+                type="button"
+                className="ldk-rn-btn"
+                title={t("忽略缓存，重新获取版本列表")}
+                onClick={() => executePoolCommand("update.releaseNotesRefresh")}
+              >
+                <RefreshCw size={13} className="ldk-rn-refresh-icon" aria-hidden="true" />
+                {t("刷新")}
+              </button>
               {/* 拿不到列表页 URL 就不画——**空链接比没有链接更糟**（同 `poolLayout.ts` 该字段的注释） */}
               {listUrl && (
                 <a className="ldk-rn-link" href={listUrl} target="_blank" rel="noreferrer">
@@ -192,15 +202,29 @@ function ContentFrame({ data }: { data: Extract<PoolReleaseNotesData, { state: "
           </div>
           <div className="ldk-rn-meta">
             <span className="ldk-rn-chip">{data.channelLabel}</span>
+            {/* 刷新结果注记（壳 `t()` 完整句推下来）——muted 一行，就地如实说（04 设计 §六③） */}
+            {data.refreshNote !== undefined && <span className="ldk-rn-refresh-note">{data.refreshNote}</span>}
           </div>
         </div>
-        {listUrl && (
-          <div className="ldk-rn-actions">
+        {/* 刷新按钮**无条件**渲染（listUrl 拿不到也该能刷新）；外链仍按有无 URL 画 */}
+        <div className="ldk-rn-actions">
+          <button
+            type="button"
+            className="ldk-rn-ghost-btn ldk-rn-refresh"
+            title={t("忽略缓存，重新获取版本列表")}
+            disabled={data.refreshing === true}
+            aria-busy={data.refreshing === true ? "true" : undefined}
+            onClick={() => executePoolCommand("update.releaseNotesRefresh")}
+          >
+            <RefreshCw size={13} className={data.refreshing === true ? "ldk-rn-refresh-icon ldk-rn-refresh-icon--spin" : "ldk-rn-refresh-icon"} aria-hidden="true" />
+            {data.refreshing === true ? t("刷新中…") : t("刷新")}
+          </button>
+          {listUrl && (
             <a className="ldk-rn-ghost-btn" href={listUrl} target="_blank" rel="noreferrer">
               {t("在 GitHub 查看全部 →")}
             </a>
-          </div>
-        )}
+          )}
+        </div>
       </div>
       <div className="ldk-rn-body">
         <div className="ldk-rn-hist">

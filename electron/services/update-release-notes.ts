@@ -97,15 +97,19 @@ export interface ReleaseNotesDeps {
 
 /**
  * 拉发行说明——`version` 不传 = 最近一版（07 §4.1）。
+ * `deps.force = true`（04「发行说明刷新按钮」）＝ 跳过缓存命中短路，**绕过 24h 现拉最新**：
+ * 「新鲜」与「含不含所请求那版」两条判据在 force 下都无意义——用户明说了「现在就去拿最新的」。
+ * 🔴 两条铁律**不变**：成功仍写缓存（③）、失败仍走缓存兜底且不回写 `fetchedAt`（④）。
  *
  * 失败语义（07 §4.1 定死）：**失败 → 缓存兜底；无缓存才抛**。抛的是 `UpdateLegError`
  * （带 `UpdateError` 明细，码取自 07 §三 的固定码集，本文件不新造码）。
  * ⚠️ 渲染侧那三态里的空态**不显示这条 message**（05 §2.4 Frame 2 是固定文案 + `[重试]`）——
  * 本 message 是给日志与排障的，所以「跨 IPC 抛出时明细被 Electron 包成字符串」这件事不影响用户。
+ * （与 `ReleaseNotesDeps` 合用一个形参位只为不破坏既有调用序——force 不是注入依赖，属请求选项。）
  */
 export async function fetchReleaseNotes(
   version?: string,
-  deps: ReleaseNotesDeps = {},
+  deps: ReleaseNotesDeps & { force?: boolean } = {},
 ): Promise<ReleaseNotes> {
   const getUpdateUrl = deps.getUpdateUrl ?? (() => loadProduct().updateUrl);
   const getCacheDir = deps.getCacheDir ?? updateDownloadDir;
@@ -117,7 +121,7 @@ export async function fetchReleaseNotes(
   const wanted = version ? normalizeTag(version) : undefined;
 
   // ── 缓存命中：新鲜 **且**（没点名要哪版 或 点的那版就在里面）⇒ 直接给，不出网 ──
-  if (cached && isFresh(cached, now()) && (wanted === undefined || contains(cached, wanted))) {
+  if (!deps.force && cached && isFresh(cached, now()) && (wanted === undefined || contains(cached, wanted))) {
     return buildReleaseNotes(cached.releases, wanted, 'cache');
   }
 

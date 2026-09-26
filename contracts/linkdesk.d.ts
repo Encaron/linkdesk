@@ -1647,6 +1647,18 @@ export type PoolReleaseNotesData = {
     /** 左窄栏历史（倒序，含选中那版） */
     historical: PoolReleaseNotesHistoryItem[];
     /**
+     * 「刷新中」相位（04「发行说明刷新按钮」）——壳推下来，**池不自己判**（同 `state` 规矩）：
+     * `true` = 刷新在途 ⇒ 头部按钮转圈 + 禁用 + `aria-busy`，**正文保持旧内容**（不回骨架）。
+     * `undefined` = 不在刷新中。
+     */
+    refreshing?: boolean;
+    /**
+     * 刷新结果注记（壳 `t()` 完整句，含数据的文本归壳）——`undefined` = 不画。
+     * 三种：「已是最新」/「已发现新版本 {{version}}…」/「刷新失败 · 正在显示本地缓存」。
+     * 只在 force 那一趟组装 ⇒ 普通取数（切版本/重试）不残留。
+     */
+    refreshNote?: string;
+    /**
      * 首启自动弹横幅的**整句文案**（壳 `t()` 完，含版本号）——`undefined` = 不画横幅。
      *
      * 为什么是「一句话」而不是 `banner: boolean` + 池自己 `t("检测到新版本 {{version}}…")`：

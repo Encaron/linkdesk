@@ -171,3 +171,50 @@ describe("ReleaseNotesPoolView（③ 三种交互各发哪条命令）", () => {
     }
   });
 });
+
+/* ── ④ 刷新按钮（04「发行说明刷新按钮」） ── */
+
+describe("ReleaseNotesPoolView（④ 刷新按钮——池哑渲染该负责的三态）", () => {
+  it("content 头部有「刷新」且点击发 `update.releaseNotesRefresh`；listUrl 缺席时刷新按钮**仍画**", () => {
+    const { container } = renderView(CONTENT);
+    const btn = container.querySelector(".ldk-rn-refresh")!;
+    expect(btn.textContent).toContain("刷新");
+    fireEvent.click(btn);
+
+    expect(emitted).toEqual([["update.releaseNotesRefresh", [undefined]]]);
+
+    cleanup();
+    const noUrl = renderView({ ...CONTENT, listUrl: undefined });
+    expect(noUrl.container.querySelector(".ldk-rn-refresh")).toBeTruthy();
+  });
+
+  it("refreshing ⇒ 按钮禁用 + aria-busy + 转圈类 + 「刷新中…」；正文照旧不回骨架", () => {
+    const { container } = renderView({ ...CONTENT, refreshing: true });
+
+    const btn = container.querySelector(".ldk-rn-refresh") as HTMLButtonElement;
+    expect(btn.disabled).toBe(true);
+    expect(btn.getAttribute("aria-busy")).toBe("true");
+    expect(btn.textContent).toContain("刷新中…");
+    expect(btn.querySelector(".ldk-rn-refresh-icon--spin")).toBeTruthy();
+    // 正文保持旧内容（不回骨架）——刷新不冻结页面
+    expect(container.querySelector(".ldk-rn-skel")).toBeNull();
+    expect(container.querySelector(".ldk-rn-ver-title")?.textContent).toContain("v9.9.9");
+  });
+
+  it("refreshNote 给了就画（壳 `t()` 完的整句，池零自产文本）", () => {
+    const { container } = renderView({ ...CONTENT, refreshNote: "演示注记句子" });
+
+    expect(container.querySelector(".ldk-rn-refresh-note")?.textContent).toBe("演示注记句子");
+  });
+
+  it("空态「刷新」与「重试」并存不合并（语义不同：绕缓存 vs 重试当前版）", () => {
+    const { container } = renderView({ state: "empty" });
+    const buttons = [...container.querySelectorAll("button")];
+    expect(buttons.some((b) => b.textContent === "刷新")).toBe(true);
+    expect(buttons.some((b) => b.textContent === "重试")).toBe(true);
+
+    const refreshBtn = buttons.find((b) => b.textContent === "刷新")!;
+    fireEvent.click(refreshBtn);
+    expect(emitted).toEqual([["update.releaseNotesRefresh", [undefined]]]);
+  });
+});

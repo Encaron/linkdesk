@@ -37,6 +37,7 @@ import type { ReleaseNotes } from "../core/types/ipc/update";
 import type { PoolReleaseNotesData, PoolReleaseNotesHistoryItem } from "../core/types/pool/poolLayout";
 import { read, readSync, write } from "../core/services/configuration/StorageService";
 import { getShellExposed } from "../core/api/linkdesk-api/surfaces";
+import { pushToast } from "../core/services/ui/toast";
 import { getShellUpdateApi } from "./useUpdateState";
 
 /* ── 持久化：首启自动弹的「上次见过的版本」（#57.13d）── */
@@ -173,22 +174,31 @@ function _shortDate(iso: string): string {
 /**
  * 拉一版发行说明并更新单例态。`version` 省略 = 最近一版。
  *
+ * `opts.force`（04「发行说明刷新按钮」）＝ 绕过 24h 缓存现拉（主进程侧跳过命中短路）；
+ * `opts.latestBefore` = 刷新发起前列表头那版的版本号——落地时比对出「有无新版」，成 `refreshNote`。
+ *
  * 三条出口（05 §2.4 三态，"态由拉取结果唯一决定"）：
  *   成功            → `content`
  *   失败但有内存缓存 → **原地不动**（缓存兜底——设计写的是「有缓存直接渲染缓存版本说明」）
  *   失败且无缓存     → `empty`
  */
-export async function loadReleaseNotes(version?: string): Promise<void> {
+export async function loadReleaseNotes(
+  version?: string,
+  opts?: { force?: boolean; latestBefore?: string },
+): Promise<void> {
   const api = getShellUpdateApi();
   if (!api) return; // 非壳环境（vitest / 预览页）——保持现状，不抛
   const seq = ++_seq;
   // 🔴 已有内容 ⇒ 不打回 loading（文件头 ①）。切换版本时正文**保持旧的那版**直到新的回来
   // ——不闪、也不撒谎（`version` 字段没变，池高亮的还是当前真正显示的那版）。
+  // 刷新（force）同理不打回 loading，但要把 `refreshing` 相位置位——按钮转圈、正文保持（04 设计 §六②）。
   if (_phase.data.state !== "content") {
     _emit({ ..._phase, data: { state: "loading" } });
+  } else if (opts?.force) {
+    _emit({ ..._phase, data: { ..._phase.data, refreshing: true } });
   }
   try {
-    const notes = await api.getReleaseNotes(version);
+    const notes = await api.getReleaseNotes(version, opts?.force === true);
     if (seq !== _seq) return; // 竞态：已被更晚的请求取代
     const listUrl = await _ensureListUrl();
     if (seq !== _seq) return;
@@ -208,6 +218,25 @@ export async function loadReleaseNotes(version?: string): Promise<void> {
     const announced = version ?? notes.version;
     const bannerVersion =
       _phase.bannerPending && notes.version === announced ? notes.version : _phase.bannerVersion;
+    // 刷新结果注记（04 设计 §六③）——只在 force 那一趟组装；普通取数不带该键（注记不残留）。
+    // 主进程「失败走缓存兜底」**不抛** ⇒ hook 侧只能从 `source === "cache"` 识别「这次没拉到新数据」
+    // ——刷新时它就是「刷新失败」，页内如实注记 + 通知面一条（设计：详情落回唯一通知面）。
+    let refreshNote: string | undefined;
+    if (opts?.force) {
+      const latestAfter = notes.historical[0]?.version;
+      if (notes.source === "cache") {
+        refreshNote = i18n.t("刷新失败 · 正在显示本地缓存");
+        pushToast({ source: "update", severity: "warning", ttl: 0, message: refreshNote });
+      } else if (latestAfter !== undefined && latestAfter !== opts.latestBefore) {
+        // 有新版（列表头变了）——正文保持用户正看的那版（不搬视线），指路左窄栏
+        refreshNote =
+          opts.latestBefore !== undefined
+            ? i18n.t("已发现新版本 {{version}}——在左侧选择查看", { version: latestAfter })
+            : i18n.t("已是最新"); // 空态刷新成功（无旧列表可比）——拿到列表本身就是「是最新」
+      } else if (latestAfter !== undefined) {
+        refreshNote = i18n.t("已是最新");
+      }
+    }
     _emit({
       notes,
       bannerVersion,
@@ -229,6 +258,7 @@ export async function loadReleaseNotes(version?: string): Promise<void> {
         ...(bannerVersion !== null && bannerVersion === notes.version
           ? { banner: i18n.t("检测到新版本 {{version}}，已自动打开本页。这是本次更新的内容。", { version: notes.version }) }
           : {}),
+        ...(refreshNote !== undefined ? { refreshNote } : {}),
         ...(listUrl ? { listUrl } : {}),
       },
     });
@@ -236,7 +266,17 @@ export async function loadReleaseNotes(version?: string): Promise<void> {
     if (seq !== _seq) return;
     // 有内存缓存 ⇒ 静默保持（缓存兜底）。**注意这里不报错、不出声**——05 §2.4 定的：
     // 「更新检查失败」才落通知面，发行说明拉不到只在本页内降级，二者各管各的。
-    if (_phase.data.state === "content") return;
+    // 🔴 唯一例外：**刷新**必须如实反馈（04 设计 §六③「所有失败面」）——走到这 = 主进程抛错
+    //    （磁盘缓存也没了），正文是内存里那份旧内容，跟兜底一回事 ⇒ 注记 + 铃铛都不能少。
+    //    普通取数（切版本/重试）失败仍静默保持——refreshing 只在 force 那一趟置位，天然分流。
+    if (_phase.data.state === "content") {
+      if (_phase.data.refreshing) {
+        const note = i18n.t("刷新失败 · 正在显示本地缓存");
+        _emit({ ..._phase, data: { ..._phase.data, refreshing: false, refreshNote: note } });
+        pushToast({ source: "update", severity: "warning", ttl: 0, message: note });
+      }
+      return;
+    }
     const listUrl = await _ensureListUrl();
     if (seq !== _seq) return;
     // 空态：**一个字都不传**（所有字都是池侧静态文案，见 PoolReleaseNotesData 的 🔴 段）。
@@ -263,6 +303,18 @@ export function selectReleaseNotesVersion(version: string): void {
 /** 空态「重试」 */
 export function retryReleaseNotes(): void {
   void loadReleaseNotes(_phase.notes?.version);
+}
+
+/**
+ * 「刷新」——绕过 24h 缓存现拉最新列表（04「发行说明刷新按钮」，池经 `update.releaseNotesRefresh` 到这）。
+ *
+ * 🔴 语义与「重试」不合并（04 设计 §三）：重试 = 「刚才那一版再来一次」，刷新 = 「现在有没有新的」。
+ * 🔴 刷新**不搬走视线**（04 设计 §五待拍板①，按推荐拍板 2026-09-26）：保持当前所选版本重新取数；
+ * 有新版时正文不变、`refreshNote` 指路左窄栏——正在读旧版的人不被打断。
+ */
+export function refreshReleaseNotes(): void {
+  const current = _phase.data.state === "content" ? _phase.data.version : _phase.notes?.version;
+  void loadReleaseNotes(current, { force: true, latestBefore: _phase.notes?.historical[0]?.version });
 }
 
 /**

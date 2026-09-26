@@ -39,16 +39,18 @@ vi.mock("../../../hooks/useReleaseNotes", () => ({
   getReleaseNotesState: vi.fn(() => ({ state: h.phase })),
   selectReleaseNotesVersion: vi.fn(),
   retryReleaseNotes: vi.fn(),
+  refreshReleaseNotes: vi.fn(),
   dismissReleaseNotesBanner: vi.fn(),
 }));
 
 import { clearCommands, executeCommand, getCommand } from "../../registry/commands/CommandRegistry";
 import { updateCoreCallbacks, type CoreCallbacks } from "../infra/CoreCallbacks";
-import { selectReleaseNotesVersion } from "../../../hooks/useReleaseNotes";
+import { refreshReleaseNotes, selectReleaseNotesVersion } from "../../../hooks/useReleaseNotes";
 import { RELEASE_NOTES_TAB_TYPE } from "../../utils/tabIdentity";
 import { registerReleaseNotesCommands } from "./releaseNotesCommands";
 
 const mockSelect = vi.mocked(selectReleaseNotesVersion);
+const mockRefresh = vi.mocked(refreshReleaseNotes);
 
 /**
  * 等到「同步段已经跑过」——判据 = 替身 `primeReleaseNotes` 已经挂了 resolver。
@@ -121,9 +123,14 @@ describe("releaseNotesCommands（② 跨进程入参守卫）", () => {
 });
 
 describe("releaseNotesCommands（③ 命令面形状）", () => {
-  it("三条池侧动作用 `when: \"false\"`（不进命令面板）——所以标题是英文调试标签", () => {
+  it("四条池侧动作用 `when: \"false\"`（不进命令面板）——所以标题是英文调试标签", () => {
     registerReleaseNotesCommands();
-    for (const id of ["update.releaseNotesSelect", "update.releaseNotesRetry", "update.releaseNotesDismissBanner"]) {
+    for (const id of [
+      "update.releaseNotesSelect",
+      "update.releaseNotesRetry",
+      "update.releaseNotesRefresh",
+      "update.releaseNotesDismissBanner",
+    ]) {
       expect(getCommand(id)?.when).toBe("false");
     }
   });
@@ -131,5 +138,12 @@ describe("releaseNotesCommands（③ 命令面形状）", () => {
   it("人用的那条恒显（无 `when`）——「入口存在」不是「有更新才给你看」", () => {
     registerReleaseNotesCommands();
     expect(getCommand("update.openReleaseNotes")?.when).toBeUndefined();
+  });
+
+  it("「刷新」接线（04「发行说明刷新按钮」）——发命令即调 refreshReleaseNotes", async () => {
+    registerReleaseNotesCommands();
+    await executeCommand("update.releaseNotesRefresh");
+
+    expect(mockRefresh).toHaveBeenCalledTimes(1);
   });
 });

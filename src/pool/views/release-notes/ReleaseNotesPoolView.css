@@ -123,6 +123,43 @@
   color: var(--text-primary);
 }
 
+/* 「刷新」按钮（04「发行说明刷新按钮」）——复用 ghost 皮肤，只补禁用态与图标动画 */
+.ldk-rn-ghost-btn:disabled {
+  color: var(--text-muted);
+  cursor: default;
+}
+
+.ldk-rn-ghost-btn:disabled:hover {
+  background: transparent;
+  color: var(--text-muted);
+}
+
+.ldk-rn-refresh-icon--spin {
+  animation: ldk-rn-spin 1.4s linear infinite;
+}
+
+@keyframes ldk-rn-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* reduced-motion 下动画关掉——「刷新中…」文字仍在，状态不丢（04 设计 §六②） */
+@media (prefers-reduced-motion: reduce) {
+  .ldk-rn-refresh-icon--spin {
+    animation: none;
+  }
+}
+
+/* 刷新结果注记——meta 行里的 muted 一小段，与通道徽标同排 */
+.ldk-rn-refresh-note {
+  font-size: var(--font-size-2xs);
+  color: var(--text-muted);
+}
+
 /* ── 主体：左窄栏版本历史（配角导航 220px）+ 右主区更新内容（主角） ── */
 
 .ldk-rn-body {

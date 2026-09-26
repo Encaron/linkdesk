@@ -564,6 +564,7 @@ both stylesheets land on the same element.
 | `ldk-group-tab-exit` | the group tab's exit animation |
 | `ldk-notif-icon-spin` | the notification icon's spin |
 | `ldk-notif-progress-scan` | the notification progress scan |
+| `ldk-rn-spin` | the release-notes page's refresh icon spin |
 
 **The name you reference has to exist somewhere**—rule 2 above says "when you rename, change the reference in
 the same commit"; this is the other half, and **the machine checks it**: the name you write in

@@ -183,8 +183,10 @@ function buildShellUpdate() {
      *
      * @param version 指定版本号（无 v 前缀）；省略 = 最近一版。请求的那版不在列表里时主进程回落最近一版
      *                （`ReleaseNotes.version` 与请求值不一致即为回落信号）。
+     * @param force 忽略 24h 缓存现拉最新（04「发行说明刷新按钮」）——只有用户点「刷新」时才传。
      */
-    getReleaseNotes: (version?: string) => ipcRenderer.invoke(IPC.update.getReleaseNotes, version),
+    getReleaseNotes: (version?: string, force?: boolean) =>
+      ipcRenderer.invoke(IPC.update.getReleaseNotes, version, force === true),
     // 检查是**壳私事**：手动检查（用户点菜单）+ 后台检查（定时）都从壳发起（07 §一）。
     checkForUpdates: (context: boolean) => ipcRenderer.invoke(IPC.update.checkForUpdates, context),
     downloadUpdate: () => ipcRenderer.invoke(IPC.update.downloadUpdate),

@@ -33,6 +33,10 @@
     {
       "name": "ldk-notif-progress-scan",
       "why": "宿主通知进度扫描"
+    },
+    {
+      "name": "ldk-rn-spin",
+      "why": "宿主发行说明页刷新图标旋转（04「发行说明刷新按钮」）"
     }
   ]
 }

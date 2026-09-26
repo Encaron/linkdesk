@@ -254,6 +254,51 @@ describe("🔴 失效判据两条（24h ＋「含不含所请求的那一版」�
   });
 });
 
+// ─────────────────────────── 2b. force（04「发行说明刷新按钮」） ───────────────────────────
+
+describe("force——绕过缓存命中短路现拉，两条铁律不变", () => {
+  it("缓存**新鲜** + force ⇒ 仍然出网、source=network（跳过 24h 与「含不含那版」整条短路）", async () => {
+    const server = await startServer([{ body: THREE_RELEASES }, { body: [release("2.3.0"), ...THREE_RELEASES] }]);
+    try {
+      await fetchReleaseNotes(undefined, makeDeps(server.updateUrl));
+      // 时钟一毫秒没走——缓存新鲜得很，force 也必须真出第二趟（刷新按钮的正控）
+      const fresh = await fetchReleaseNotes(undefined, { ...makeDeps(server.updateUrl), force: true });
+
+      expect(server.requests).toHaveLength(2);
+      expect(fresh.source).toBe("network");
+      expect(fresh.version).toBe("2.3.0");
+    } finally {
+      await server.close();
+    }
+  });
+
+  it("force 成功仍写缓存：`fetchedAt` 刷成本次时间（铁律③），下次**不带** force 走缓存", async () => {
+    const server = await startServer([{ body: THREE_RELEASES }, { body: THREE_RELEASES }]);
+    try {
+      await fetchReleaseNotes(undefined, makeDeps(server.updateUrl));
+      clock += 60_000;
+      await fetchReleaseNotes(undefined, { ...makeDeps(server.updateUrl), force: true });
+
+      const cache = readCacheFile();
+      expect(new Date(cache.fetchedAt).getTime()).toBe(T0 + 60_000);
+      expect(cache.releases.map((r) => r.version)).toEqual([NEWEST, MIDDLE, OLDEST]);
+    } finally {
+      await server.close();
+    }
+  });
+
+  it("force 失败 + 有缓存 ⇒ 兜底 source=cache 且**不回写** `fetchedAt`（铁律④）", async () => {
+    const first = await startServer([{ body: THREE_RELEASES }]);
+    await fetchReleaseNotes(undefined, makeDeps(first.updateUrl));
+    const before = readCacheFile().fetchedAt;
+    await first.close(); // 网没了——force 也拉不到
+
+    const notes = await fetchReleaseNotes(undefined, { ...makeDeps(first.updateUrl), force: true });
+    expect(notes.source).toBe("cache");
+    expect(readCacheFile().fetchedAt).toBe(before); // 一次断网不许把 24h 续命成永久
+  });
+});
+
 // ─────────────────────────── 3. 失败兜底 ───────────────────────────
 
 describe("失败 ⇒ 缓存兜底；无缓存才抛（07 §4.1）", () => {

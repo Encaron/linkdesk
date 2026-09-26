@@ -83,8 +83,11 @@ export type ShellExposed = Pick<LinkDeskAPI,
      * 「给所有插件开一个」——那是 05 §2.4 明文排除的（「发行说明是壳自己的面，第三方插件没有读它的理由」）。
      * ⇒ 走「壳想、池画」：壳取好经 `pushLayout` 挂到标签页上，池哑渲染。
      * 唯一消费者 = `src/hooks/useReleaseNotes.ts`（模块单例）。
+     *
+     * @param force 忽略 24h 缓存现拉最新（04「发行说明刷新按钮」）——成功仍写缓存、失败仍走缓存兜底
+     *              （主进程铁律不变）；失败且无缓存照旧抛。
      */
-    getReleaseNotes(version?: string): Promise<ReleaseNotes>;
+    getReleaseNotes(version?: string, force?: boolean): Promise<ReleaseNotes>;
     /** 手动（`context=true`）/ 后台（`false`）检查。**壳私事**：两条路都从壳发起（07 §一）。 */
     checkForUpdates(context: boolean): Promise<UpdateState>;
     downloadUpdate(): Promise<UpdateState>;

@@ -9,6 +9,7 @@
  * | `update.openReleaseNotes` | **人**——帮助菜单首项（`#57.13g`）/ 命令面板 | 命令面板可见 |
  * | `update.releaseNotesSelect` | **池**——左窄栏点某一版 | `when: "false"` |
  * | `update.releaseNotesRetry` | **池**——空态「重试」 | `when: "false"` |
+ * | `update.releaseNotesRefresh` | **池**——头部「刷新」（04「发行说明刷新按钮」，绕 24h 缓存） | `when: "false"` |
  * | `update.releaseNotesDismissBanner` | **池**——横幅「知道了」 | `when: "false"` |
  *
  * ## 🔴 后三条为什么是**命令**，不是新开一条 IPC 通道
@@ -114,6 +115,17 @@ export function registerReleaseNotesCommands(): void {
     handler: async () => {
       const { retryReleaseNotes } = await import("../../../hooks/useReleaseNotes");
       retryReleaseNotes();
+    },
+  });
+
+  registerCommand(APP_PLUGIN_ID, {
+    /** 头部「刷新」（04「发行说明刷新按钮」）——绕过 24h 缓存现拉最新列表，保持当前所选版本 */
+    id: "update.releaseNotesRefresh",
+    title: "Release Notes: Refresh",
+    when: "false",
+    handler: async () => {
+      const { refreshReleaseNotes } = await import("../../../hooks/useReleaseNotes");
+      refreshReleaseNotes();
     },
   });
 

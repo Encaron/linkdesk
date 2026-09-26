@@ -235,7 +235,29 @@ describe("通道面——注册的恰好是五条（#57.8e 落地后 getReleaseN
     await invoke(IPC.update.getReleaseNotes, "");
     await invoke(IPC.update.getReleaseNotes);
 
-    expect(stub.releaseNotesCalls).toEqual([["9.9.9"], [undefined], [undefined], [undefined]]);
+    // 第二参 = 取数选项（04「发行说明刷新按钮」）——普通调用恒 `{ force: false }`
+    expect(stub.releaseNotesCalls).toEqual([
+      ["9.9.9", { force: false }],
+      [undefined, { force: false }],
+      [undefined, { force: false }],
+      [undefined, { force: false }],
+    ]);
+  });
+
+  it("`force` 严格收窄到 `=== true`（04「发行说明刷新按钮」）——非布尔真值按「不绕缓存」处理", async () => {
+    await mod.initUpdateService();
+    mod.registerUpdateHandlers();
+
+    await invoke(IPC.update.getReleaseNotes, "9.9.9", true);
+    await invoke(IPC.update.getReleaseNotes, "9.9.9", "yes"); // 真值但非布尔 → 保守那一侧
+    await invoke(IPC.update.getReleaseNotes, "9.9.9", 1);
+
+    // releaseNotesCalls 跨用例累积——只看本用例的最后三次
+    expect(stub.releaseNotesCalls.slice(-3)).toEqual([
+      ["9.9.9", { force: true }],
+      ["9.9.9", { force: false }],
+      ["9.9.9", { force: false }],
+    ]);
   });
 
   it("`context` 严格收窄到 `=== true`——非布尔真值按「后台检查」处理", async () => {

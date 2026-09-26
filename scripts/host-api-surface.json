@@ -1086,6 +1086,8 @@
     "ldk-rn-hist-note",
     "ldk-rn-link",
     "ldk-rn-meta",
+    "ldk-rn-refresh-icon--spin",
+    "ldk-rn-refresh-note",
     "ldk-rn-skel",
     "ldk-rn-skel--head",
     "ldk-rn-skel-bar",
@@ -1214,6 +1216,7 @@
     "ldk-group-tab-exit",
     "ldk-notif-icon-spin",
     "ldk-notif-progress-scan",
+    "ldk-rn-spin",
     "ldk-selectbox-in"
   ],
   "ledger": {

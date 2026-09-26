@@ -115,7 +115,10 @@ export function registerUpdateHandlers(): void {
 
   // `version` 收窄到「非空字符串」，其余（缺省/非字符串/空串）一律当「不传 = 最近一版」——
   // 与 `context === true` 同款 fail-safe 方向：缺省是**有意义的正常输入**，不是错误。
-  loggedHandle(IPC.update.getReleaseNotes, (_event, version: unknown) =>
-    fetchReleaseNotes(typeof version === 'string' && version !== '' ? version : undefined),
+  // `force` 同款收窄（04「发行说明刷新按钮」）——只有 `=== true` 才绕过缓存现拉。
+  loggedHandle(IPC.update.getReleaseNotes, (_event, version: unknown, force: unknown) =>
+    fetchReleaseNotes(typeof version === 'string' && version !== '' ? version : undefined, {
+      force: force === true,
+    }),
   );
 }

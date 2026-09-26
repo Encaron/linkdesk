@@ -22,6 +22,11 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import type { ReleaseNotes } from "../core/types/ipc/update";
 import type { PoolReleaseNotesData } from "../core/types/pool/poolLayout";
 
+// ⑧ 刷新失败兜底要出通知面——mock 掉（壳 toast 服务不在测试环境装），断言进断言段
+vi.mock("../core/services/ui/toast", () => ({ pushToast: vi.fn(() => "mock-toast-id") }));
+import { pushToast } from "../core/services/ui/toast";
+const pushToastMock = vi.mocked(pushToast);
+
 /** 最新一版（fixture） */
 const NOTES: ReleaseNotes = {
   source: "network",
@@ -50,6 +55,8 @@ type Mod = typeof import("./useReleaseNotes");
 let mod: Mod;
 /** 每次 `getReleaseNotes` 的入参逐次记录——「显式要某一版」与「要最新」在实现里是同一入口 */
 let calls: Array<string | undefined>;
+/** 与 calls 平行的 force 位（04「发行说明刷新按钮」）——「刷新」那一次必须透传 true */
+let forceCalls: Array<boolean>;
 /**
  * 挂起的 resolver 队列——竞态用例要手控「谁先回」。
  * `null` = 那一次已经被放行过（**位置保留**，否则下标会随时间漂移，`settle(1)` 就不是原来那一次了）。
@@ -63,14 +70,16 @@ let nextValue: ReleaseNotes;
 /** 装一次壳侧取数替身；`withProduct` 控制 `app.getProductInfo` 在不在（验「拿不到链接就不画」） */
 function installStub(withProduct = true): void {
   calls = [];
+  forceCalls = [];
   pending = [];
   nextMode = "resolve";
   nextValue = NOTES;
 
   const stub: Record<string, unknown> = {
     update: {
-      getReleaseNotes: (version?: string) => {
+      getReleaseNotes: (version?: string, force?: boolean) => {
         calls.push(version);
+        forceCalls.push(force === true);
         if (nextMode === "reject") return Promise.reject(new Error("演示取数失败"));
         return new Promise<ReleaseNotes>((resolve) => { pending.push({ resolve }); });
       },
@@ -369,5 +378,95 @@ describe("useReleaseNotes（⑦ 启动预热）", () => {
 
     mod.prewarmReleaseNotes();
     expect(calls).toHaveLength(1);
+  });
+});
+
+/* ── ⑧ 刷新（04「发行说明刷新按钮」） ── */
+
+describe("useReleaseNotes（⑧ 刷新——绕缓存现拉、不搬视线）", () => {
+  beforeEach(() => {
+    installStub();
+  });
+
+  it("force=true 透传给 getReleaseNotes；版本保持当前所选（刷新不搬走视线）", async () => {
+    const p = mod.loadReleaseNotes("9.9.8");
+    await settle(-1, OLD);
+    await p;
+    expect(mod.getReleaseNotesState().state).toBe("content");
+
+    mod.refreshReleaseNotes();
+    // 刷新中相位：正文保持旧版、refreshing 置位、不打回 loading
+    const refreshing = expectState("content");
+    expect(refreshing.version).toBe("9.9.8");
+    expect(refreshing.refreshing).toBe(true);
+    expect(calls).toEqual(["9.9.8", "9.9.8"]);
+    expect(forceCalls).toEqual([false, true]);
+
+    await settle(-1, OLD);
+    await flush();
+    const done = expectState("content");
+    expect(done.version).toBe("9.9.8");
+    expect(done.refreshing).toBeUndefined();
+  });
+
+  it("刷新拉回**更新了的**列表头 ⇒ refreshNote「已发现新版本…」（正文保持，指路左窄栏）", async () => {
+    const p = mod.loadReleaseNotes();
+    await settle();
+    await p;
+
+    mod.refreshReleaseNotes();
+    await settle(-1, { ...NOTES, historical: [{ version: "9.9.10", publishedAt: "2026-02-01T00:00:00Z" }] });
+    await flush();
+    const data = expectState("content");
+    expect(data.refreshNote).toBe("已发现新版本 9.9.10——在左侧选择查看");
+  });
+
+  it("主进程兜底（source=cache）⇒ refreshNote「刷新失败」＋ 通知面一条 warning", async () => {
+    const p = mod.loadReleaseNotes();
+    await settle();
+    await p;
+
+    mod.refreshReleaseNotes();
+    await settle(-1, { ...NOTES, source: "cache" });
+    await flush();
+    const data = expectState("content");
+    expect(data.refreshNote).toBe("刷新失败 · 正在显示本地缓存");
+    expect(pushToastMock).toHaveBeenCalledTimes(1);
+    expect(pushToastMock.mock.calls[0]?.[0]).toMatchObject({ severity: "warning", ttl: 0 });
+  });
+
+  it("普通取数（切版本）不带 refreshNote——注记不残留", async () => {
+    const p = mod.loadReleaseNotes();
+    await settle();
+    await p;
+
+    mod.refreshReleaseNotes();
+    await settle(-1, NOTES);
+    await flush();
+    expect(expectState("content").refreshNote).toBe("已是最新");
+
+    const p2 = mod.loadReleaseNotes("9.9.8"); // 先拿引用再放行（await 顺序反了会死锁）
+    await settle(-1, OLD);
+    await p2;
+    await flush();
+    expect(expectState("content").refreshNote).toBeUndefined();
+  });
+
+  it("刷新失败（reject）＋ content ⇒ 正文保持、refreshing 复位、注记＋铃铛如实反馈（失败面无死角）", async () => {
+    const p = mod.loadReleaseNotes();
+    await settle();
+    await p;
+
+    nextMode = "reject"; // 先上闸——refresh 这次同步 reject（reject 模式不进 pending，不用 settle）
+    pushToastMock.mockClear(); // mock 模块级、跨用例累积——只看本用例的这一条
+    mod.refreshReleaseNotes();
+    expect(expectState("content").refreshing).toBe(true);
+    await flush();
+    const data = expectState("content");
+    expect(data.refreshing).toBe(false);
+    expect(data.refreshNote).toBe("刷新失败 · 正在显示本地缓存");
+    expect(data.version).toBe("9.9.9");
+    expect(pushToastMock).toHaveBeenCalledTimes(1);
+    expect(pushToastMock.mock.calls[0]?.[0]).toMatchObject({ severity: "warning", ttl: 0 });
   });
 });

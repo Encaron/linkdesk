@@ -122,9 +122,14 @@ function selfTest() {
   const keyframes = [...host.keyframes];
   const cases = [];
   const eq = (label, got, expect) => cases.push({ label, ok: got === expect, got, expect });
+  // 期望 = 登记表自身（同一份真源）——加关键帧不用改自测（04 加 ldk-rn-spin 时的教训）
+  const reservedKeyframesExpected = JSON.parse(
+    readFileSync(new URL("../packages/plugin-sdk/schemas/reserved-class-names.json", `file://${HERE.replace(/\\/g, "/")}`), "utf8"),
+  ).keyframes.length;
   eq("宿主类名非空（壳 CSS 在）", classes.length > 0, true);
   eq("宿主类名全部像标识符", classes.every((n) => /^-?[_a-zA-Z][\w-]*$/.test(n)).toString(), "true");
-  eq("保留关键帧账已并入（8 条）", host.reservedKeyframes.length, 8);
+  // 期望从登记表读，不写死——加关键帧（如 04 的 ldk-rn-spin）不该改自测（04 改此行时教训）
+  eq(`保留关键帧账已并入（${host.reservedKeyframes.length} 条）`, host.reservedKeyframes.length, reservedKeyframesExpected);
   eq("关键帧全集 ⊇ 保留账", keyframes.length >= host.reservedKeyframes.length, true);
   eq("codicon 在宿主类名里（第三方 CSS 解析成功）", classes.some((n) => n.startsWith("codicon-")).toString(), "true");
   // E6#119：SDK 随包 JSON 与重算一致（两份投影同源——磁盘上的那份漂了当场红）

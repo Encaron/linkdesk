@@ -744,11 +744,17 @@ function chkPoolReleaseNotesData(v: unknown, p: string, errs: string[]): void {
             chkPoolReleaseNotesHistoryItem(_t114.historical[_t115], (((p) + ".historical") + "[" + _t115 + "]"), _t113);
         }
       }
+      if (_t114.refreshing !== undefined) {
+      if (!(_t114.refreshing === false || _t114.refreshing === true)) _t113.push(((p) + ".refreshing") + ": 期望 false|true");
+      }
+      if (_t114.refreshNote !== undefined) {
+      if (typeof _t114.refreshNote !== "string") _t113.push(((p) + ".refreshNote") + ": 期望 string，实收 " + typeof _t114.refreshNote);
+      }
       if (_t114.banner !== undefined) {
       if (typeof _t114.banner !== "string") _t113.push(((p) + ".banner") + ": 期望 string，实收 " + typeof _t114.banner);
       }
     }
-  const _t117 = (v !== null && typeof v === "object" && !Array.isArray(v) ? (((v as Record<string, unknown>).state === "content" ? 1 : 0)) : 0);
+  const _t117 = (v !== null && typeof v === "object" && !Array.isArray(v) ? (((v as Record<string, unknown>).state === "content" ? 1 : 0) + (((v as Record<string, unknown>).refreshing === false) || ((v as Record<string, unknown>).refreshing === true) ? 1 : 0)) : 0);
   if (_t113.length > 0) {
   const _t118: string[] = [];
     if (v === null || typeof v !== "object" || Array.isArray(v)) _t118.push((p) + ": 期望 object");
