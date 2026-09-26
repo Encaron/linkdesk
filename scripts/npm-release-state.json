@@ -116,7 +116,7 @@
     },
     {
       "name": "@linkdesk/ui",
-      "version": "0.2.15",
+      "version": "0.2.16",
       "contentHash": "b11c4b35f2275cc5c99e96fd9fe59369dcfa3a59d2d7ccc5bff0cf93e6bbea4d",
       "fileHashes": {
         "packages/linkdesk-ui/README.md": "9b032b907c299083",
@@ -192,8 +192,8 @@
     },
     {
       "name": "@linkdesk/plugin-docs",
-      "version": "0.1.31",
-      "contentHash": "801618978cbf16b9589d142562a46a7ef44871ae50952d7706b0ad94b7f60cfe",
+      "version": "0.1.32",
+      "contentHash": "3e7036731df9ba8457067021695cf441e709559d0d1a98441babd662008aafbc",
       "fileHashes": {
         "packages/plugin-docs/README.md": "6cd51394e987a3f2",
         "packages/plugin-docs/docs/00-readme.md": "8af2c3830caa115e",
@@ -209,7 +209,7 @@
         "packages/plugin-docs/docs/10-building-a-settings-plugin.md": "51243e8343aefb28",
         "packages/plugin-docs/docs/11-authoring-themes.md": "e1ccbc706bb83235",
         "packages/plugin-docs/docs/12-readme-media-contract.md": "f55015eb63e06b00",
-        "packages/plugin-docs/docs/13-development-guide.md": "bf7923efc1eecc45",
+        "packages/plugin-docs/docs/13-development-guide.md": "b22d26765bd25865",
         "packages/plugin-docs/docs/14-data-pipeline-command-conventions.md": "4d05c2d9bd2fb520",
         "packages/plugin-docs/docs/15-multi-repo-and-local-workspace.md": "36c294a17b092a5f",
         "packages/plugin-docs/docs/16-naming-conventions.md": "c19c44f6c20932ba",
@@ -232,7 +232,7 @@
         "packages/plugin-docs/docs/zh/10-如何造一个设置插件.md": "3c82e964deae7470",
         "packages/plugin-docs/docs/zh/11-主题制作.md": "0fe3fea82813fa4d",
         "packages/plugin-docs/docs/zh/12-README说明区媒体契约.md": "e6af4b63c2780de2",
-        "packages/plugin-docs/docs/zh/13-插件开发指南.md": "0f57287432cff4c3",
+        "packages/plugin-docs/docs/zh/13-插件开发指南.md": "bebbe16d31b536e8",
         "packages/plugin-docs/docs/zh/14-数据管道命令约定.md": "18a0e06efee0fd26",
         "packages/plugin-docs/docs/zh/15-多仓开发与本地工作区.md": "85d3b361d22289f3",
         "packages/plugin-docs/docs/zh/16-命名规范.md": "f070a60de5e9ffdf",
