@@ -11,6 +11,7 @@ import { app, BrowserWindow, ipcMain, protocol, dialog, nativeTheme, Menu, shell
 import { exec } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
+import { seedBackgroundColor } from './theme-seed.js'; // 04「启动过场」④A：窗背景按持久化主题 seed
 import { registerSerialHandlers } from './ipc/handlers/serial-handlers.js';
 import { registerFileHandlers } from './ipc/handlers/file-handlers.js';
 import { loadAllPluginManifests, registerManifestRescanHandler } from './plugins/plugin-manifest-loader.js'; // E5.7#48：Registry 主进程化——三表预加载
@@ -485,8 +486,8 @@ function shellWindowOptions(): Electron.BrowserWindowConstructorOptions {
       : path.join(process.resourcesPath, 'icon.ico'), // 打包后 icon.ico 在 extraResources，不在 ASAR 中
     frame: false, // E3f #52f：隐藏原生窗口框架——LinkDesk 自己画 TitleBar
     // E5.8#6.6 hex 豁免：主进程窗口初始背景色（OS 层，渲染进程 CSS 变量不可达；E3f #51 防启动白屏）
-    // eslint-disable-next-line linkdesk/no-hardcoded-hex
-    backgroundColor: '#1e1e1e', // E3f #51：暗色背景——消除启动白屏
+    // 04「启动过场」④A：写死暗色 → 按持久化主题 seed（E3f #51 的目标不变、手段升级，见 theme-seed.ts）
+    backgroundColor: seedBackgroundColor(),
     webPreferences: {
       preload: path.join(__dirname, 'preload-shell.js'),
       contextIsolation: true,

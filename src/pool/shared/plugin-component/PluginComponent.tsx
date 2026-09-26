@@ -14,6 +14,7 @@
 import React, { Suspense, useEffect, useMemo, useRef } from "react";
 import { cssUrlForRenderPath, retainPluginCss, releasePluginCss } from "./bundleCss"; // E6#15：bundle 插件 css <link>（池=视图挂载文档）
 import { useTranslation } from "react-i18next";
+import { ViewSkeleton } from "../view-skeleton/ViewSkeleton"; // 04「启动过场」④C：内容加载骨架
 import i18n from "../../../i18n";
 import ErrorBoundary from "../error-boundary/ErrorBoundary"; // E5.7#20：池侧版（不 import 壳 components 目录）
 
@@ -204,20 +205,8 @@ export default function PluginComponent({ pluginId, isActive, tabId, sourceId, r
     <ErrorBoundary pluginId={pluginId}>
       <Suspense
         fallback={
-          <div
-            className="plugin-loading"
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              height: "100%",
-              color: "var(--text-muted)",
-              fontSize: "var(--font-size-md)", /* E5.8 Phase 12 #171：13→md */
-              userSelect: "none",
-            }}
-          >
-            {t("加载中...")}
-          </div>
+          // 04「启动过场」④C：纯文字 → 呼吸骨架（100ms 延迟出现；aria-label 复用「加载中...」零新 i18n）
+          <ViewSkeleton />
         }
       >
         <LazyComponent isActive={isActive} tabId={tabId} sourceId={sourceId} />

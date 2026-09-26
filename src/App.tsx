@@ -225,7 +225,7 @@ function App() {
 
   // E5.6#9a → E5.7#4：Pool 布局同步——壳窗口注册表/侧栏/面板变化 → 按窗口定向推送到各 Pool
   // E5.8#43-2：windows 注册表替代单 tabState——主窗恒推全量，脱出窗按策略表 zones 推子集
-  usePoolSync({ windows, sidebarView, isSidebarVisible: isSidebarExpanded, panelActiveViewId, panelVisible, onTabAction: handleTabAction });
+  usePoolSync({ windows, sidebarView, isSidebarVisible: isSidebarExpanded, panelActiveViewId, panelVisible, bootReady: ready, onTabAction: handleTabAction });
 
   // E5.8#0d.10-3f：布局持久化（beforeunload 同步写入 + 标签页/面板 100ms 防抖保存）迁入 src/App/persistence.ts
   // E5.8#43-3：windows 传入——脱出窗 bounds 变化落盘（moved/resized 上报 → 注册表 → 持久化）

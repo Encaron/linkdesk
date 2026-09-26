@@ -10,6 +10,7 @@
 import { BrowserWindow, WebContentsView, WebContents, app, nativeTheme, screen } from 'electron';
 import * as fs from 'fs';
 import * as path from 'path';
+import { seedBackgroundColor } from '../theme-seed.js'; // 04「启动过场」④A：池 WCV 背景同源 seed
 import { DEV_SERVER_URL } from '../constants.js'; // E5.6#5：Pool URL 构建（E5.7#45.5：shared/ 并入 constants.ts）
 import { attachKeyboardRouting } from './keyboard-router.js'; // E5.7 快捷键路由：池 WCV 挂载（工厂处——含 rebuildPool 覆盖）
 import { ShellRegistry } from './shell-registry.js'; // E6#47b：多窗壳注册表（自本文件抽出，体积门禁）
@@ -225,10 +226,9 @@ export class WindowManager {
 
     view.setVisible(false);
     // E5.6#10：Pool 背景色跟随主题——防止空内容时显示白色闪烁
-    // nativeTheme.shouldUseDarkColors 反映当前实际主题（受 main.ts theme:changed IPC 更新）
-    // E5.8#6.6 hex 豁免：WebContentsView 背景色（OS 层 setBackgroundColor，CSS 变量不可达）
-    // eslint-disable-next-line linkdesk/no-hardcoded-hex
-    view.setBackgroundColor(nativeTheme.shouldUseDarkColors ? '#1e1e1e' : '#f5f5f5');
+    // 04「启动过场」④A：nativeTheme 快照 → 持久化主题 seed（与主窗 theme-seed.ts 同源；
+    // hex 字面量收敛在 theme-seed.ts 一处豁免）
+    view.setBackgroundColor(seedBackgroundColor());
     // E5.8#43-1（A1）：挂载到宿主窗口 contentView（主池=mainWindow，脱出窗池=脱出窗口）
     hostWindow.contentView.addChildView(view);
 

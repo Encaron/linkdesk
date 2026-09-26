@@ -1,0 +1,50 @@
+/* ViewSkeleton——内容加载骨架（04「启动过场」④C）。
+   规格（01-设计 §4.3）：条高 12 / 间距 8 / 圆角 4（4 栅格）；呼吸 0.55↔1 / 1.4s；
+   reduced-motion 静止、形状保留。颜色全走 token。 */
+
+.ldk-view-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: calc(8px * var(--ui-scale));
+  padding: calc(16px * var(--ui-scale));
+  height: 100%;
+  user-select: none;
+}
+
+.ldk-view-skeleton > * {
+  animation: ldk-view-skeleton-breath 1.4s ease-in-out infinite;
+}
+
+.ldk-view-skeleton-title {
+  height: calc(12px * var(--ui-scale));
+  width: 40%;
+  border-radius: var(--radius-xs);
+  background: var(--tab-hover-bg);
+}
+
+.ldk-view-skeleton-card {
+  height: calc(64px * var(--ui-scale));
+  border-radius: var(--radius-sm);
+  background: var(--tab-hover-bg);
+}
+
+.ldk-view-skeleton-row {
+  height: calc(12px * var(--ui-scale));
+  border-radius: var(--radius-xs);
+  background: var(--tab-hover-bg);
+}
+
+.ldk-view-skeleton-row.w100 { width: 100%; }
+.ldk-view-skeleton-row.w85 { width: 85%; }
+.ldk-view-skeleton-row.w60 { width: 60%; }
+
+@keyframes ldk-view-skeleton-breath {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ldk-view-skeleton > * {
+    animation: none;
+  }
+}

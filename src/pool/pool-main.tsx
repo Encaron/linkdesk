@@ -15,6 +15,7 @@
 import { useState, useEffect, useRef, StrictMode, useTransition } from "react";
 import ReactDOM from "react-dom/client";
 import PoolZoneShell from "./PoolZoneShell";
+import { BootMark } from "./shared/boot-mark/BootMark"; // 04「启动过场」④B：池首帧品牌过场
 import { activatePluginEntryForCommands } from "./shared/plugin-component/entryActivation"; // E6#62e：on-command 激活注册
 import type { PoolLayout } from "../core/types/pool/poolLayout";
 // E5.6#11 fix：池独立 WebContentsView——需加载基础 CSS（变量/字体/图标/间距）
@@ -72,8 +73,17 @@ function PoolApp() {
     }
   }, []);
 
-  // 首个布局未到达前渲染 null（E5.7#1——v2 无空对象初始值，缓冲回放保证 ready 后立即到达）
-  if (!layout) return null;
+  // 04「启动过场」④B：首份布局未到达 → BootMark 品牌过场（替代原 null——那等于放弃声明过场）。
+  // 布局到达后过场淡出 120ms 再卸载，与整帧交叉，无跳变。淡出期间整帧已在过场之下渲染。
+  const [bootFade, setBootFade] = useState(false);
+  useEffect(() => {
+    if (!layout || bootFade) return;
+    const timer = setTimeout(() => setBootFade(true), 120);
+    return () => clearTimeout(timer);
+  }, [layout, bootFade]);
+
+  // 首个布局未到达前渲染 BootMark（E5.7#1——v2 无空对象初始值，缓冲回放保证 ready 后立即到达）
+  if (!layout) return <BootMark />;
 
   // E5.6#11-fix6：侧栏防闪烁——当前 push 的 sidebar 不可见/空时，用上次可见的 sidebar 顶替。
   // 其余 zone 一律用当前布局。E5.7#2 之前此逻辑分发给 SidebarRenderer，现合并进唯一布局。
@@ -85,7 +95,12 @@ function PoolApp() {
     : undefined;
 
   // E5.7#2：唯一根组件——无 zone 路由
-  return <PoolZoneShell layout={{ ...layout, sidebar: effectiveSidebar }} />;
+  return (
+    <>
+      <PoolZoneShell layout={{ ...layout, sidebar: effectiveSidebar }} />
+      {!bootFade && <BootMark fading />}
+    </>
+  );
 }
 
 // ── E5.6#7e：挂载到 pool.html 的 pool-root ──

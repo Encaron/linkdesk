@@ -668,6 +668,7 @@
     "edge-right",
     "edge-top",
     "error",
+    "fading",
     "focused",
     "form-control",
     "form-label",
@@ -712,6 +713,9 @@
     "ldk-app-shell",
     "ldk-background-layer",
     "ldk-badge",
+    "ldk-boot-mark",
+    "ldk-boot-mark-logo",
+    "ldk-boot-mark-wordmark",
     "ldk-button",
     "ldk-button--danger",
     "ldk-button--ghost",
@@ -1029,6 +1033,10 @@
     "ldk-titlebar-menus",
     "ldk-titlebar-slot-btn",
     "ldk-toggle",
+    "ldk-view-skeleton",
+    "ldk-view-skeleton-card",
+    "ldk-view-skeleton-row",
+    "ldk-view-skeleton-title",
     "ldk-vta",
     "ldk-vta-btn",
     "ldk-vta-chev",
@@ -1095,18 +1103,24 @@
     "v",
     "vertical",
     "view-drop-target",
+    "visible",
+    "w100",
+    "w60",
+    "w85",
     "warning",
     "wc-pin-active"
   ],
   "keyframes": [
     "codicon-spin",
+    "ldk-boot-mark-breath",
     "ldk-drop-zone-in",
     "ldk-dropdown-card-in",
     "ldk-floating-panel-in",
     "ldk-notif-icon-spin",
     "ldk-notif-progress-scan",
     "ldk-rn-spin",
-    "ldk-selectbox-in"
+    "ldk-selectbox-in",
+    "ldk-view-skeleton-breath"
   ],
-  "reservedKeyframeCount": 7
+  "reservedKeyframeCount": 9
 }

@@ -6,6 +6,7 @@
 import { CoreEvents } from "../../../react/events/CoreEvents";
 // E5.8#50.15：质感类型下沉 core/types/theme.ts（05 schema 配方数据模型）
 import type { ThemeSurface, ThemeBackground, ThemeDomain } from "../../../types/theme";
+import { writeThemeSnapshot } from "./snapshot";
 import type { Theme } from "./registry";
 // E5.8#50.17：广播给池复刻 @font-face（池独立文档，不跨文档继承）
 import type { FontFaceSpec } from "../../../types/ipc/events";
@@ -143,6 +144,9 @@ export function commitTokens(
   }
   setLastCommittedKeys(Object.keys(variables));
   root.setAttribute("data-theme", themeType);
+
+  // 04「启动过场」④A：权威应用完成 → 写快照（开机第一帧原样铺回去；镜像层零逻辑，见 snapshot.ts）
+  writeThemeSnapshot(themeType, variables);
 
   // E3b #35：广播 CSS 变量到所有插件 WebView——跨进程主题同步
   // E5.8#50.17：fontFaces 随载荷带给池——池侧复刻 @font-face（独立文档，壳注册的不生效）

@@ -29,6 +29,14 @@
     {
       "name": "ldk-rn-spin",
       "why": "宿主发行说明页刷新图标旋转（04「发行说明刷新按钮」）"
+    },
+    {
+      "name": "ldk-boot-mark-breath",
+      "why": "宿主池首帧品牌过场呼吸（04「启动过场」④B）"
+    },
+    {
+      "name": "ldk-view-skeleton-breath",
+      "why": "宿主内容加载骨架呼吸（04「启动过场」④C）"
     }
   ]
 }

@@ -55,6 +55,8 @@ export interface UsePoolSyncInput {
   panelActiveViewId: string | null;
   /** E5.8#31：底部面板显隐——false = 不推 panel 字段（池 panel?.visible undefined → PanelZone 不渲染） */
   panelVisible: boolean;
+  /** 04「启动过场」④B：首推门槛（= App ready）——false 时不推布局，池停在品牌过场 */
+  bootReady: boolean;
   /** E5.6#16.5：MainPool tab 操作回调——池→壳→useTabManager（含分屏比例更新） */
   onTabAction?: (action: ShellTabAction) => void; // E5.7#96：wire 契约定型（E5.8#44-B：ShellTabAction 含 sourceWindowId）
 }
@@ -65,7 +67,7 @@ export interface UsePoolSyncInput {
  * E5.7#9：侧栏宽度不再经 props——LayoutEngine getBounds 内部直读 + onDidChangeLayout 重推。
  * E5.7#63.7：面板高度同理——getBounds("panel") 内部直读，resizeZoneHeight → onDidChangeLayout 重推。
  */
-export function usePoolSync({ windows, sidebarView, isSidebarVisible, panelActiveViewId, panelVisible, onTabAction }: UsePoolSyncInput): void {
+export function usePoolSync({ windows, sidebarView, isSidebarVisible, panelActiveViewId, panelVisible, bootReady, onTabAction }: UsePoolSyncInput): void {
   // E5.7#5：菜单栏/槽位/窗口控件文案在壳解析——t() 变化（切语言）会触发下方 effect 重推
   const { t } = useTranslation();
 
@@ -124,6 +126,11 @@ export function usePoolSync({ windows, sidebarView, isSidebarVisible, panelActiv
   });
 
   useEffect(() => {
+    // 04「启动过场」④B：首推门槛——bootReady（= setReady）为假时整段跳过（含首推）。
+    // 「逐个蹦」的消灭手段：串行插件加载的过程被藏进池首帧过场（BootMark），ready 后整帧一次到达。
+    // 池侧本就有缓冲回放，晚推不丢；ready 翻真后本 effect 随 deps 重跑自然补推。
+    if (!bootReady) return;
+
     // E5.8#37.6：侧栏边 context key——当开关（双 when 门控菜单项 + 菜单栏「查看」+ 命令面板共用）。
     // 真相源 = LayoutEngine dock.edge（narrowSidebarEdge 收窄）——随每次重推保持同步，
     // 壳侧 when 过滤（buildTitleBarMenuGroups / buildHamburgerMenuGroups / ui.ts getItems）即可命中。
@@ -313,5 +320,5 @@ export function usePoolSync({ windows, sidebarView, isSidebarVisible, panelActiv
       if (!win.ready) continue;
       poolApi.pushLayout(assembleWindowLayout(win, ctx), win.windowId);
     }
-  }, [windows, sidebarView, isSidebarVisible, panelActiveViewId, panelVisible, layoutVersion, t, chordLabel, eventEntries, updateState, releaseNotes, about]);
+  }, [windows, sidebarView, isSidebarVisible, panelActiveViewId, panelVisible, layoutVersion, t, chordLabel, eventEntries, updateState, releaseNotes, about, bootReady]);
 }

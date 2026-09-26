@@ -1,0 +1,53 @@
+/* BootMark——池首帧品牌过场（04「启动过场」④B）。
+   底色 = 主题快照铺的 --bg-window（④A 内联脚本已写回，第一帧即用户主题色）；
+   呼吸动效 1.4s ease-in-out 往复（安静，不扫光——01-设计 §三原则 3）。 */
+
+.ldk-boot-mark {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: calc(12px * var(--ui-scale));
+  background: var(--bg-window);
+  opacity: 0;
+  transition: opacity 120ms ease-out;
+}
+
+.ldk-boot-mark.visible {
+  opacity: 1;
+}
+
+.ldk-boot-mark.fading {
+  opacity: 0; /* 布局已到——120ms 淡出让位整帧（transition 复用 .ldk-boot-mark 的 120ms） */
+}
+
+.ldk-boot-mark.visible .ldk-boot-mark-logo,
+.ldk-boot-mark.visible .ldk-boot-mark-wordmark {
+  animation: ldk-boot-mark-breath 1.4s ease-in-out infinite;
+}
+
+.ldk-boot-mark-logo {
+  width: calc(48px * var(--ui-scale));
+  height: calc(48px * var(--ui-scale));
+}
+
+.ldk-boot-mark-wordmark {
+  font-size: var(--font-size-lg); /* 14→lg */
+  color: var(--text-muted);
+  user-select: none;
+}
+
+@keyframes ldk-boot-mark-breath {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 1; }
+}
+
+/* 系统级无障碍：动效静止、形状保留（01-设计 §七 5） */
+@media (prefers-reduced-motion: reduce) {
+  .ldk-boot-mark.visible .ldk-boot-mark-logo,
+  .ldk-boot-mark.visible .ldk-boot-mark-wordmark {
+    animation: none;
+  }
+}
