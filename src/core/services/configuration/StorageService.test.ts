@@ -22,7 +22,7 @@ vi.mock("../files/FileService", () => ({
   appDataDir: fileProbe.appDataDir,
 }));
 
-import { read, pickReadSource } from "./StorageService";
+import { read, pickReadSource, storageFilename } from "./StorageService";
 
 describe("pickReadSource 读取源优先序（纯函数）", () => {
   it("文件存在 → 文件优先（即使 localStorage 有陈旧值——#71 分叉 bug 核心）", () => {
@@ -96,5 +96,26 @@ describe("StorageService.read 文件优先归一", () => {
 
     const got = await read<Record<string, unknown>>("settings");
     expect(got?.["app.theme"]).toBe("dark");
+  });
+});
+
+/* ── 04「冒号文件名 ADS」：文件名净化 ── */
+
+describe("storageFilename 文件名净化（04，2026-09-27）", () => {
+  it("🔴 按窗键 layout:ws-1 → layout-ws-1.json（冒号非法 → 净化成 -）", () => {
+    expect(storageFilename("layout:ws-1")).toBe("layout-ws-1.json");
+    expect(storageFilename("layout:ws-2")).toBe("layout-ws-2.json");
+  });
+
+  it("已知键映射不变（净化不影响合法名）", () => {
+    expect(storageFilename("settings")).toBe("settings.json");
+    expect(storageFilename("layout")).toBe("layout.json");
+    expect(storageFilename("plugin-states")).toBe("plugin-states.json");
+  });
+
+  it("全部 Windows 非法字符都被净化（反斜杠用 chr 构造——字面量转义经过多层工具链会被减半）", () => {
+    const bs = String.fromCharCode(92); // 反斜杠
+    const input = `a${bs}b:c*d?e"f<g>h|i`;
+    expect(storageFilename(input)).toBe("a-b-c-d-e-f-g-h-i.json");
   });
 });

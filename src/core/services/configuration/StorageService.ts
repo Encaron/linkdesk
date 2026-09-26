@@ -46,6 +46,20 @@ async function _filePath(key: string): Promise<string> {
     _appDataDir = await appDataDir();
   }
 
+  const filename = storageFilename(key);
+  const fullPath = await joinPath(_appDataDir, filename);
+  _filePaths.set(key, fullPath);
+  return fullPath;
+}
+
+/**
+ * key → 文件名（纯函数，可单测）。已知键走映射；其余 `${key}.json`。
+ * 🔴 04「冒号文件名 ADS」（2026-09-27）：E6#47c 的按窗键 `layout:ws-1` 拼出 `layout:ws-1.json`
+ * ——冒号在 Windows 文件名里非法，写入实际打进 NTFS 备用数据流（ADS：0 字节基文件 `layout`
+ * ＋ 隐形流），「文件 = 真相」对布局类静默失效。统一把非法字符净化成 `-`（`layout-ws-1.json`）；
+ * 旧 ADS 数据由 `read()` 的一次性迁移接住（见 `_legacyFilePath`）。
+ */
+export function storageFilename(key: string): string {
   const map: Record<string, string> = {
     "settings": "settings.json",
     "layout": "layout.json",
@@ -53,9 +67,19 @@ async function _filePath(key: string): Promise<string> {
     "prefs": "prefs.json",
   };
   const filename = map[key] ?? `${key}.json`;
-  const fullPath = await joinPath(_appDataDir, filename);
-  _filePaths.set(key, fullPath);
-  return fullPath;
+  // Windows 非法文件名字符（\ / : * ? " < > |）→ "-"；净化只影响映射外的动态键（已知键全合法）
+  return filename.replace(/[\\/:*?"<>|]/g, "-");
+}
+
+/**
+ * 旧（未净化）文件路径——与净化后不同时才有意义（迁移源）。读路径上做一次性迁移后不再使用。
+ */
+async function _legacyFilePath(key: string): Promise<string | null> {
+  if (!_hasLinkdesk() || !_appDataDir) return null;
+  const legacy = `${key}.json`;
+  const filename = storageFilename(key);
+  if (legacy === filename) return null; // 已知键等旧映射本就合法，无迁移源
+  return joinPath(_appDataDir, legacy);
 }
 
 /* ── 初始化 ── */
@@ -107,6 +131,19 @@ export async function read<T>(key: string): Promise<T | null> {
           }
           return parsed;
         } catch { /* 文件损坏——JSON 解析失败 → 走 localStorage 兜底 */ }
+      }
+      // 04「冒号文件名 ADS」一次性迁移——净化后路径缺失而旧冒号路径（Windows 上 = ADS 形态）
+      // 有数据时：读旧 → 落新 → 回写 localStorage，此后旧路径不再被使用（不删除——userData 卫生另案）。
+      const legacyPath = await _legacyFilePath(key);
+      if (legacyPath && await fsExists(legacyPath)) {
+        const legacyRaw = await readFile(legacyPath);
+        try {
+          const parsed = JSON.parse(legacyRaw) as T;
+          await writeFile(path, legacyRaw);
+          try { localStorage.setItem(lsKey, legacyRaw); } catch { /* ignore */ }
+          console.info(`[StorageService] 已迁移旧布局文件: ${legacyPath} → ${path}`);
+          return parsed;
+        } catch { /* 旧路径内容损坏——当不存在 */ }
       }
     } catch { /* 文件不存在或不可读 */ }
   }
