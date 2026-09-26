@@ -368,6 +368,10 @@ try {
       // E6#71c 富内容确认——同池 buildDialog 契约镜像（双侧对齐防漂移，同链代理到壳 DialogService）
       confirmContent: (opts: DialogContentOpenOptions): Promise<boolean> =>
         ipcRenderer.invoke(IPC.dialog.confirmContent, opts),
+      // 04「工作区导入」：选 .linkdesk-workspace 并读回文本（主进程 showOpenDialog + readFile）。
+      // 壳内私有扩展（同 update 段 getReleaseNotes 先例——文件选择的手势约束见 channels.ts 注）。
+      openWorkspaceImport: (): Promise<{ path: string; content: string } | null> =>
+        ipcRenderer.invoke(IPC.dialog.openWorkspaceImport),
     },
 
     // ── E5#71：插件持久化存储 ──

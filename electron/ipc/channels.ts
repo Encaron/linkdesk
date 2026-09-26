@@ -62,6 +62,10 @@ export const IPC = {
     open: 'dialog:open',
     // E6#71c 富内容确认——插件自绘确认内容（content 视图声明寻址 + 不透明 payload）
     confirmContent: 'dialog:confirmContent',
+    // 04「工作区导入导出-布局恢复断线」：选工作区文件并读回内容（主进程 showOpenDialog + readFile）。
+    // 🔴 不走壳渲染的 input.click()——菜单点击的手势在 pool 树，handler 在壳树，user gesture
+    //    不跨 WebContents ⇒ 文件对话框被 Chromium 静默拒绝（04 实测「点了没反应」的第二个根因）。
+    openWorkspaceImport: 'dialog:openWorkspaceImport',
   },
   encoding: {
     detect: 'encoding:detect',

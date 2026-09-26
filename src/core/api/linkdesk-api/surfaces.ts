@@ -58,6 +58,15 @@ export type ShellExposed = Pick<LinkDeskAPI,
   | "fileAssociation" | "pluginManager" | "dialog" | "pluginState" | "menu"
   | "contextKey" | "keybindings" | "p2p"
   | "clipboard" | "app" | "env" | "events" | "bridge" | "window" | "update"> & {
+  /**
+   * dialog 壳内私有扩展（04「工作区导入导出-布局恢复断线」）——照 update 段先例（契约面 &
+   * 壳私有扩展交叉）。文件选择必须走主进程 showOpenDialog：壳树 input.click() 的文件对话框
+   * 需要 user gesture，而菜单点击的手势在 pool 树（WebContents 隔离）⇒ Chromium 静默拒绝。
+   */
+  dialog: LinkDeskAPI["dialog"] & {
+    /** 选 .linkdesk-workspace 并读回文本；null = 用户取消 / 文件读不出（渲染侧反馈） */
+    openWorkspaceImport?: () => Promise<{ path: string; content: string } | null>;
+  };
   commands: Pick<LinkDeskAPI["commands"], "registerCommand" | "_executeShellLocal">;
   tabs: Omit<LinkDeskAPI["tabs"], "onDidChangeActiveTab">;
   pool: Omit<LinkDeskAPI["pool"], "onLayout" | "ready" | "sidebarAction" | "tabAction" | "tabBarRects" | "dragPosition" | "onAdsorbHint" | "adsorbIndex" | "registerBeforeClose" | "unregisterBeforeClose" | "beforeClose">;

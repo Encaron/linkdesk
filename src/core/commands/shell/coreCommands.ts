@@ -18,6 +18,7 @@ import i18n from "../../../i18n";
 import { getWorkspaceLayout } from "../../services/layout/LayoutService"; // E3f #56
 import { pushToast } from "../../services/ui/toast"; // 04 工作区导入反馈（唯一通知面）
 import { getUserSettings } from "../../services/configuration/ConfigurationService"; // E3f #56
+import { getShellExposed } from "../../api/linkdesk-api/surfaces"; // 04 工作区导入：壳私有 dialog 扩展
 import { CONFIG_NONE_SENTINEL } from "../../services/ui/ThemeEngine"; // E5.8#158：默认项哨兵（__none__）
 
 // E5#44-1：Callbacks 类型 + 注册函数提取到 CoreCallbacks.ts
@@ -73,36 +74,32 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
     title: "导入工作区",
     category: "文件",
     handler: async () => {
-      const input = document.createElement("input");
-      input.type = "file";
-      input.accept = ".linkdesk-workspace";
-      input.onchange = async () => {
-        const file = input.files?.[0];
-        if (!file) return;
-        // 04「工作区导入导出-布局恢复断线」（2026-09-26）：旧实现 catch 静默——成功/失败都无提示。
-        // 最小校验（04 档案 §五.3）：JSON 坏 / 版本不识别 / 内容为空 ⇒ 明确报错，不静默。
-        let data: { version?: unknown; layout?: unknown; settings?: unknown };
-        try {
-          data = JSON.parse(await file.text());
-        } catch {
-          pushToast({ source: "workspace", severity: "error", message: i18n.t("导入失败：不是有效的工作区文件") });
-          return;
-        }
-        if (data.version !== 1) {
-          pushToast({ source: "workspace", severity: "error", message: i18n.t("导入失败：不支持的工作区文件版本") });
-          return;
-        }
-        if (!data.layout && !data.settings) {
-          pushToast({ source: "workspace", severity: "error", message: i18n.t("导入失败：文件里没有可恢复的内容") });
-          return;
-        }
-        // RESTORE_WORKSPACE 的监听器（lifecycle.ts）同步执行：布局恢复 + 设置写回 + 布局落盘
-        window.dispatchEvent(new CustomEvent(CUSTOM_EVENTS.RESTORE_WORKSPACE, {
-          detail: { layout: data.layout, settings: data.settings },
-        }));
-        pushToast({ source: "workspace", severity: "info", message: i18n.t("工作区已导入——布局与设置已恢复") });
-      };
-      input.click();
+      // 🔴 文件选择走主进程 dialog（04 实测第二根因）：input.click() 的文件对话框需要 user
+      //    gesture，而菜单点击的手势在 pool 树、本 handler 在壳树——user gesture 不跨 WebContents
+      //    ⇒ Chromium 静默拒绝（对话框根本不弹，正是用户看到的「点了没反应」）。
+      const picked = await getShellExposed()?.dialog?.openWorkspaceImport?.();
+      if (!picked) return; // 用户取消——无动作无提示
+      // 最小校验（04 档案 §五.3）：JSON 坏 / 版本不识别 / 内容为空 ⇒ 明确报错，不静默。
+      let data: { version?: unknown; layout?: unknown; settings?: unknown };
+      try {
+        data = JSON.parse(picked.content);
+      } catch {
+        pushToast({ source: "workspace", severity: "error", message: i18n.t("导入失败：不是有效的工作区文件") });
+        return;
+      }
+      if (data.version !== 1) {
+        pushToast({ source: "workspace", severity: "error", message: i18n.t("导入失败：不支持的工作区文件版本") });
+        return;
+      }
+      if (!data.layout && !data.settings) {
+        pushToast({ source: "workspace", severity: "error", message: i18n.t("导入失败：文件里没有可恢复的内容") });
+        return;
+      }
+      // RESTORE_WORKSPACE 的监听器（lifecycle.ts）同步执行：布局恢复 + 设置写回 + 布局落盘
+      window.dispatchEvent(new CustomEvent(CUSTOM_EVENTS.RESTORE_WORKSPACE, {
+        detail: { layout: data.layout, settings: data.settings },
+      }));
+      pushToast({ source: "workspace", severity: "info", message: i18n.t("工作区已导入——布局与设置已恢复") });
     },
   },
   {
