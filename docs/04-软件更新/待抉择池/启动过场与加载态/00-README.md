@@ -21,4 +21,5 @@
 - **主题真相源不挪**：仍是 `theme-defaults` 插件贡献（`contributes.themes`）+ ConfigurationService（`app.theme`）。④A 的快照只是 **localStorage 镜像**，权威管线照旧在 `initAll` Step 5 落地——**快照层永远不许长逻辑**（01-设计 §九 对下一棒的硬话）。
 - **Path B 哑渲染边界**：池首帧过场与骨架组件都是**纯展示**，不得 import `@src/core/*` 运行时（`PoolZoneShell.tsx:20` 的红线对新增组件同样生效）。
 - **零新 i18n（设计目标）**：骨架无文字、过场无文字，`aria-label` 复用既有 key「加载中...」⇒ **不触发 `lang-defaults` 发版**。若开工时忍不住要加文案，先回本文件改这条并补跨仓后果段。
+- **与 [程序图标偏小与软件内品牌标不一致](../程序图标偏小与软件内品牌标不一致.md) 的资产关系**：BootMark（01-设计 §4.2）的 logo **取既有 `logoUrl` 同源资产**（`getAssetPath("assets/logo.svg")`，与标题栏 / 关于页同一份）——本项只定「摆法」（位置 / 尺寸 / 动效），**标长什么样归那条**；那条换源后本项过场**零代码跟随**。mockup Frame 1 里的「LD」蓝块是示意占位（画的是现行标），不是实现规格——实现规格里没有「LD」二字，只有「读同一份资产」。
 - 硬约束 16 已照办：mockup 绘制前已调 `html-blueprint` skill（复杂场景型；**非竞标**，故无多 skill 联动，基线 = 壳 token 体系）。
