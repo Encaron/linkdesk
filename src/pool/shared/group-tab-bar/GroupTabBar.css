@@ -234,29 +234,11 @@
    且 menuTop ≥ 30 钳制（硬约束 18）——旧注释"WCV 视口在 TitleBar 下方"在 E5.7 不成立：
    Pool 是 100%×100% WCV，TitleBarZone 在池内渲染 drag 区。 ── */
 
-/* ── Enter / Exit 动画（对标旧 TabBar）── */
-
-.ldk-group-tab-item.entering {
-  animation: ldk-group-tab-enter 150ms ease-out;
-}
-
-@keyframes ldk-group-tab-enter {
-  from { opacity: 0; max-width: 0; padding-left: 0; padding-right: 0; }
-  to   { opacity: 1; max-width: calc(240px * var(--ui-scale)); padding-left: 8px; padding-right: 8px; }
-}
-
-.ldk-group-tab-item.exiting {
-  animation: ldk-group-tab-exit 120ms ease-in forwards;
-  pointer-events: none;
-}
-
-/* 🔴 04「标签栏内容自适应」：关键帧的 max-width 与新宽度上限同口径（原 from 200px 与 240px 上限
-   不一致——宽标签在收起动画首帧会先跳窄一下）。动画期间宽 = min(内容宽, 动画值)，内容窄的标签
-   长到内容宽就停，视觉不受 240 影响。 */
-@keyframes ldk-group-tab-exit {
-  from { opacity: 1; max-width: calc(240px * var(--ui-scale)); }
-  to   { opacity: 0; max-width: 0; padding-left: 0; padding-right: 0; }
-}
+/* ── Enter / Exit 动画已整删（04「标签栏开关联动动画」，2026-09-27 用户拍板：直接替换／瞬时开关）──
+   原 `ldk-group-tab-enter`（150ms 展开）与 `ldk-group-tab-exit`（120ms 收缩）两套关键帧及
+   .entering/.exiting 规则退役：预览替换时「缩口再拓回」、关闭时后续标签滑动补位，皆由
+   max-width 动画渐变宽度所致——状态层本就是原位替换/一帧补位，动画是唯一元凶。配套的
+   组件侧 entering/exiting 状态机与关闭前 120ms 等待同笔删除。 */
 
 /* ── 拖拽分屏 drop zone 毛玻璃（Glassmorphism 对标 VS Code editorDropTarget）──
    设计决策：拒绝 dashed 虚线边框（无美术感），改用内发光 box-shadow 定义区域边界。

@@ -105,6 +105,24 @@
       "replacedBy": "app（「通用」组内「更新」二级节）",
       "landing": "src/App/config/update.ts（registerConfiguration(APP_PLUGIN_ID, ...)）",
       "approvedBy": "用户 · 2026-09-26"
+    },
+    {
+      "name": "ldk-group-tab-enter",
+      "kind": "keyframe",
+      "since": "2026-09-27",
+      "why": "04「标签栏开关联动动画」（2026-09-27 用户拍板「直接替换／瞬时开关」）：进入/退出动画整删，关键帧随 .entering/.exiting 规则与组件侧状态机一并退役（预览替换原位换内容、开关不再有渐变过程）",
+      "replacedBy": "（无——开标签即完整大小出现，无入场动画）",
+      "landing": "src/pool/shared/group-tab-bar/GroupTabBar.css",
+      "approvedBy": "用户 · 2026-09-27"
+    },
+    {
+      "name": "ldk-group-tab-exit",
+      "kind": "keyframe",
+      "since": "2026-09-27",
+      "why": "04「标签栏开关联动动画」（2026-09-27 用户拍板「直接替换／瞬时开关」）：进入/退出动画整删，关键帧随 .entering/.exiting 规则与组件侧状态机一并退役（预览替换原位换内容、开关不再有渐变过程）",
+      "replacedBy": "（无——关闭即当帧消失，无退场动画；关闭前 120ms 等待同笔删除）",
+      "landing": "src/pool/shared/group-tab-bar/GroupTabBar.css",
+      "approvedBy": "用户 · 2026-09-27"
     }
   ]
 }

@@ -19,14 +19,6 @@
       "why": "宿主浮动面板入场动画"
     },
     {
-      "name": "ldk-group-tab-enter",
-      "why": "宿主分组标签入场动画"
-    },
-    {
-      "name": "ldk-group-tab-exit",
-      "why": "宿主分组标签退场动画"
-    },
-    {
       "name": "ldk-notif-icon-spin",
       "why": "宿主通知图标旋转"
     },

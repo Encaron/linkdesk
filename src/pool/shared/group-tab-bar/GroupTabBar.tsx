@@ -228,24 +228,12 @@ export default function GroupTabBar({ groupId, tabs, activeTabId, draggingId, dr
   // E5.6#16.7：拖拽状态由 MainRenderer 全局管理——此组件只做视觉渲染
   // draggingId / dragInsertIndex 从 props 读
 
-  // ── Enter / Exit 动画（对标旧 TabBar）──
-  const [enteringTabId, setEnteringTabId] = useState<string | null>(null);
-  const [exitingTabId, setExitingTabId] = useState<string | null>(null);
-  const prevTabIds = useRef(new Set<string>(tabs.map((t) => t.id)));
-
-  // 检测新标签页 → 播放进入动画
-  useEffect(() => {
-    const currentIds = new Set(tabs.map((t) => t.id));
-    for (const id of currentIds) {
-      if (!prevTabIds.current.has(id)) {
-        setEnteringTabId(id);
-        const timer = setTimeout(() => setEnteringTabId(null), 150);
-        prevTabIds.current = currentIds;
-        return () => clearTimeout(timer);
-      }
-    }
-    prevTabIds.current = currentIds;
-  }, [tabs]);
+  // ── Enter / Exit 动画已整删（04「标签栏开关联动动画」，2026-09-27 用户拍板）──
+  // 原为 150ms 展开（entering）/ 120ms 收缩（exiting）两段 max-width 动画。用户实测两个坏效果：
+  // ① 预览替换（点新文件顶掉斜体标签）时——旧格瞬失、新格从 0 长回，后面的标签先左移再右移，
+  //    「猛的缩口再猛的拓回」；② 关闭时后面标签跟着 120ms 滑动补位。而状态层（reduceCreateTab
+  //    Step 3）本就是原位替换、关后补位也只需一帧——动画是唯一的元凶，删掉即「直接替换／瞬时开关」。
+  // 焦点语义的 120ms 等待随之退役：beforeClose 确认一过立即发 IPC。
 
   const barRef = useRef<HTMLDivElement | null>(null);
 
@@ -257,10 +245,10 @@ export default function GroupTabBar({ groupId, tabs, activeTabId, draggingId, dr
     onMountRef.current?.(el);
   }, []);
 
-  // ── 关闭（带动画——对标旧 TabBar closeWithAnimation）──
+  // ── 关闭（无动画——04 拍板「瞬时关闭」）──
   // E5.8#30.16（P8）：先 await 通用 beforeClose 可取消通道（插件 handler 否决则标签页/串口双保留）→
-  // 再播 exit 动画 120ms → 发 IPC 关闭。壳侧 handleTabAction closeTab 处理 dirty 确认。
-  // closingRef 防重入：beforeClose 弹确认/动画进行中，同标签页的二次关闭点击直接忽略（确认后 closePort 恰好一次）。
+  // 立即发 IPC 关闭（原 120ms exit 动画等待已随动画整删）。closingRef 防重入：beforeClose 弹确认
+  // 进行中，同标签页的二次关闭点击直接忽略（确认后 closePort 恰好一次）。
   const closingRef = useRef(new Set<string>());
   const handleClose = useCallback(
     async (tab: PoolTab, e?: ReactMouseEvent) => {
@@ -270,12 +258,9 @@ export default function GroupTabBar({ groupId, tabs, activeTabId, draggingId, dr
       try {
         const allowed = await poolApi?.beforeClose?.(tab.pluginId, tab) ?? true;
         if (!allowed) return;
-        setExitingTabId(tab.id);
-        await new Promise((r) => setTimeout(r, 120));
         tabAction({ action: "closeTab", tabId: tab.id });
       } finally {
         closingRef.current.delete(tab.id);
-        setExitingTabId(null);
       }
     },
     [poolApi, tabAction],
@@ -312,8 +297,6 @@ export default function GroupTabBar({ groupId, tabs, activeTabId, draggingId, dr
         {tabs.map((tab, idx) => {
           const isActive = tab.id === activeTabId;
           const isDragging = draggingId === tab.id;
-          const isEntering = enteringTabId === tab.id;
-          const isExiting = exitingTabId === tab.id;
 
           return (
             <div key={tab.id} style={{ display: "contents" }}>
@@ -328,7 +311,7 @@ export default function GroupTabBar({ groupId, tabs, activeTabId, draggingId, dr
               )}
               <div
                 data-tab-id={tab.id}
-                className={`ldk-group-tab-item${isActive ? " active" : ""}${isDragging ? " dragging" : ""}${isEntering ? " entering" : ""}${isExiting ? " exiting" : ""}${!tab.pinned ? " preview" : ""}`}
+                className={`ldk-group-tab-item${isActive ? " active" : ""}${isDragging ? " dragging" : ""}${!tab.pinned ? " preview" : ""}`}
                 title={tab.sourceId ?? (tab.pinned ? tab.title : `${tab.title} — ${t("双击固定")}`)}
                 onClick={() => {
                   tabAction({ action: "focusTab", tabId: tab.id });

@@ -560,8 +560,6 @@ both stylesheets land on the same element.
 | `ldk-drop-zone-in` | the drop zone's entrance animation |
 | `ldk-dropdown-card-in` | the dropdown card's entrance animation |
 | `ldk-floating-panel-in` | the floating panel's entrance animation |
-| `ldk-group-tab-enter` | the group tab's entrance animation |
-| `ldk-group-tab-exit` | the group tab's exit animation |
 | `ldk-notif-icon-spin` | the notification icon's spin |
 | `ldk-notif-progress-scan` | the notification progress scan |
 | `ldk-rn-spin` | the release-notes page's refresh icon spin |

@@ -1226,8 +1226,6 @@
     "ldk-drop-zone-in",
     "ldk-dropdown-card-in",
     "ldk-floating-panel-in",
-    "ldk-group-tab-enter",
-    "ldk-group-tab-exit",
     "ldk-notif-icon-spin",
     "ldk-notif-progress-scan",
     "ldk-rn-spin",
