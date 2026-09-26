@@ -14,14 +14,28 @@ import type { KeyboardInput } from "../types/ipc/keyboard";
 /**
  * 规范化快捷键字符串 → 可比较的形式。
  * "Ctrl+K" → "ctrl+k", "CTRL+SHIFT+B" → "ctrl+shift+b"
+ *
+ * 🔴 **双段（chord）键位串先按空格分段、每段各自归一化、再拼回**（04 池「双段快捷键注册被打乱」，
+ * 2026-09-14 E6 第 4 层实测发现）：空格是**段分隔符**，不是可排序 token——旧实现对整串
+ * `split("+")`，第二段的修饰键被并进第一段参与排序，`ctrl+k ctrl+h` → `ctrl+h+k ctrl`
+ * ⇒ 注册键与按键串永远对不上 = 静默死键（不报错、不进冲突表）。能否幸存完全取决于
+ * 第二段字母是否 ≥ k，没有任何文档或门禁会提示。
  */
 function normalizeKey(key: string): string {
+  // 加号两侧的空白先折叠掉（"ctrl + k" 与 "ctrl+k" 同串）——否则它会被下面的段拆分误当段界
   return key
-    .toLowerCase()
-    .split("+")
-    .map((k) => k.trim())
-    .sort(compareModifiers)
-    .join("+");
+    .replace(/\s*\+\s*/g, "+")
+    .trim()
+    .split(/\s+/)
+    .map((stroke) =>
+      stroke
+        .toLowerCase()
+        .split("+")
+        .filter(Boolean)
+        .sort(compareModifiers)
+        .join("+"),
+    )
+    .join(" ");
 }
 
 /** 特殊键映射——KeyboardEvent.key → 规范化短名 */
