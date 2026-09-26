@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LinkDesk 启动过场 · 参考图（复杂场景型）</title>
+<!-- ═══════════════════════════════════════════════════════════════════
+  启动过场与加载态 · 复杂场景型参考图（非竞标——基线 = 壳 token 体系）
+  立案 2026-09-26 · docs/04-软件更新/待抉择池/启动过场与加载态/
+  ⚠️ mockup 仅示意，真实实现走 var(--xxx) + ThemeEngine（硬约束 1）
+  帧序列：Frame 0 新旧时序对照 · Frame 1 首帧 · Frame 2 整帧出现 ·
+          Frame 3 内容就位中 · Frame 4 就绪终态 · 骨架规格卡
+  绘制前已调 html-blueprint skill（硬约束 16）
+═══════════════════════════════════════════════════════════════════ -->
+<style>
+  /* ── 页面级 token（图纸自身）────────────────────────────── */
+  :root {
+    --page-bg: #141414;
+    --page-card: #1D1D1D;
+    --page-border: #2A2A2A;
+    --page-text: #E8E8E8;
+    --page-muted: #9A9A9A;
+    --page-faint: #6F6F6F;
+    --good: #3FB950;   /* 语义：采用/达标 */
+    --bad: #F85149;    /* 语义：淘汰/痛点 */
+    --info: #58A6FF;   /* 语义：说明/锚点 */
+    --hover-overlay: rgba(255, 255, 255, 0.06);
+    --sk-shine: rgba(255, 255, 255, 0.08); /* 仅扫光演示格用（该方案已淘汰） */
+    --font-size-xs: 11px;
+    --font-size-sm: 12px;
+    --font-size-md: 13px;
+    --font-size-lg: 16px;
+    --font-size-xl: 20px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--page-bg);
+    color: var(--page-text);
+    font-family: "Segoe UI", "Microsoft YaHei", sans-serif;
+    font-size: var(--font-size-md);
+    padding: 24px 16px 64px;
+    line-height: 1.6;
+  }
+  code {
+    font-family: Consolas, monospace;
+    font-size: var(--font-size-sm);
+    color: var(--info);
+    background: var(--hover-overlay);
+    border-radius: 4px;
+    padding: 0 4px;
+  }
+  #theme-toggle {
+    position: fixed; top: 16px; right: 16px; z-index: 9;
+    background: var(--page-card); color: var(--page-text);
+    border: 1px solid var(--page-border); border-radius: 6px;
+    padding: 6px 12px; font-size: var(--font-size-sm); cursor: pointer;
+  }
+  #theme-toggle:hover { border-color: var(--page-faint); }
+
+  header { max-width: 1180px; margin: 0 auto 24px; }
+  header h1 { font-size: var(--font-size-xl); margin-bottom: 8px; }
+  header .meta { color: var(--page-muted); font-size: var(--font-size-sm); margin-bottom: 4px; }
+  header .rule {
+    border-left: 3px solid var(--bad); background: var(--page-card);
+    border-radius: 0 6px 6px 0; padding: 8px 12px; margin-top: 12px;
+    font-size: var(--font-size-sm); color: var(--page-muted);
+  }
+  header .rule b { color: var(--page-text); }
+
+  /* ── 帧容器 ─────────────────────────────────────────── */
+  .frame { max-width: 1180px; margin: 0 auto 28px; }
+  .frame-caption {
+    display: flex; align-items: center; gap: 8px;
+    font-size: var(--font-size-md); font-weight: 600; margin-bottom: 8px;
+  }
+  .tag {
+    font-size: var(--font-size-xs); font-weight: 400; border-radius: 4px;
+    padding: 1px 8px; background: var(--hover-overlay); color: var(--page-muted);
+  }
+  .tag.ok { color: var(--good); }
+  .tag.no { color: var(--bad); }
+  .frame-note {
+    background: var(--page-card); border: 1px solid var(--page-border);
+    border-radius: 6px; padding: 10px 14px; margin-top: 8px;
+    font-size: var(--font-size-sm); color: var(--page-muted);
+  }
+  .frame-note b { color: var(--page-text); }
+  .frame-note .k { color: var(--info); }
+
+  /* ── 壳窗口 token（暗色 = 真实 :root 兜底值；亮色 = data-theme light）── */
+  .win {
+    --bg-window: #1E1E1E; --bg-card: #2D2D2D; --bg-input: #3C3C3C;
+    --bg-titlebar: #181818; --bg-icon-bar: #181818; --bg-side-panel: #1F1F1F;
+    --text-primary: #D4D4D4; --text-secondary: #9D9D9D; --text-muted: #6E6E6E;
+    --accent: #1A8CE8; --accent-hover: #3BA3F5; --text-on-accent: #FFFFFF;
+    --border: #333333; --separator: #2A2A2A;
+    --icon-active: #D4D4D4; --icon-inactive: #8A8A8A;
+    --sk-bar: #2D2D2D; --sk-bar-strong: #3A3A3A;
+    width: 100%; height: 540px;
+    background: var(--bg-window);
+    border: 1px solid var(--page-border); border-radius: 8px;
+    overflow: hidden; display: flex; flex-direction: column;
+  }
+  .win.is-light {
+    --bg-window: #F5F5F5; --bg-card: #FFFFFF; --bg-input: #EAEAEA;
+    --bg-titlebar: #ECECEC; --bg-icon-bar: #ECECEC; --bg-side-panel: #F0F0F0;
+    --text-primary: #242424; --text-secondary: #5A5A5A; --text-muted: #8A8A8A;
+    --accent: #1A8CE8; --accent-hover: #1573C4; --text-on-accent: #FFFFFF;
+    --border: #D9D9D9; --separator: #E4E4E4;
+    --icon-active: #242424; --icon-inactive: #767676;
+    --sk-bar: #E2E2E2; --sk-bar-strong: #D4D4D4;
+  }
+  .win.h280 { height: 280px; }
+
+  /* ── titlebar（真实 30px）── */
+  .titlebar {
+    height: 30px; flex: none; background: var(--bg-titlebar);
+    display: flex; align-items: center; gap: 8px; padding: 0 8px;
+    border-bottom: 1px solid var(--separator);
+  }
+  .tb-logo {
+    width: 16px; height: 16px; border-radius: 4px; background: var(--accent);
+    color: var(--text-on-accent); font-size: 8px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .tb-name { font-size: var(--font-size-sm); color: var(--text-primary); }
+  .tb-menu { display: flex; gap: 12px; margin-left: 8px; }
+  .tb-menu span { font-size: var(--font-size-sm); color: var(--text-secondary); }
+  .tb-drag { flex: 1; }
+  .tb-btns { display: flex; gap: 12px; color: var(--text-muted); font-size: var(--font-size-sm); }
+
+  /* ── body：icon-bar(42) + sidebar(216) + main ── */
+  .wbody { flex: 1; display: flex; min-height: 0; }
+  .iconbar {
+    width: 42px; flex: none; background: var(--bg-icon-bar);
+    border-right: 1px solid var(--separator);
+    display: flex; flex-direction: column; align-items: center;
+    padding-top: 8px; gap: 4px;
+  }
+  .ib {
+    width: 28px; height: 28px; border-radius: 6px; position: relative;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--icon-inactive); font-size: var(--font-size-md);
+  }
+  .ib.active { color: var(--icon-active); background: var(--hover-overlay); }
+  .ib.active::before {
+    content: ""; position: absolute; left: -7px; top: 6px; bottom: 6px;
+    width: 3px; border-radius: 2px; background: var(--accent);
+  }
+  .ib-glyph { font-size: var(--font-size-md); line-height: 1; }
+
+  .sidebar {
+    width: 216px; flex: none; background: var(--bg-side-panel);
+    border-right: 1px solid var(--separator);
+    display: flex; flex-direction: column; min-height: 0;
+  }
+  .sb-head {
+    height: 32px; flex: none; display: flex; align-items: center;
+    justify-content: space-between; padding: 0 12px;
+    font-size: var(--font-size-sm); color: var(--text-primary);
+  }
+  .sb-head .sb-x { color: var(--text-muted); }
+  .sb-search {
+    height: 24px; flex: none; margin: 4px 12px 8px; border-radius: 4px;
+    background: var(--bg-input); color: var(--text-muted);
+    font-size: var(--font-size-xs); display: flex; align-items: center; padding: 0 8px;
+  }
+  .sb-tree { flex: 1; overflow: hidden; padding: 0 8px; }
+  .tr {
+    height: 20px; display: flex; align-items: center; gap: 4px;
+    font-size: var(--font-size-sm); color: var(--text-secondary);
+    white-space: nowrap; padding-left: 4px;
+  }
+  .tr.d1 { padding-left: 20px; }
+  .tr.d2 { padding-left: 36px; }
+  .tr .cv { color: var(--text-muted); width: 12px; }
+  .tr.sel { background: var(--hover-overlay); color: var(--text-primary); border-radius: 4px; }
+
+  .main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+  .tabbar {
+    height: 35px; flex: none; background: var(--bg-card);
+    border-bottom: 1px solid var(--separator);
+    display: flex; align-items: stretch; overflow: hidden;
+  }
+  .tab {
+    display: flex; align-items: center; padding: 0 12px; gap: 6px;
+    font-size: var(--font-size-sm); color: var(--text-secondary);
+    border-top: 2px solid transparent; border-right: 1px solid var(--separator);
+    white-space: nowrap;
+  }
+  .tab.active { color: var(--text-primary); border-top-color: var(--accent); background: var(--bg-window); }
+  .tab .dirty { width: 6px; height: 6px; border-radius: 50%; background: var(--text-secondary); }
+  .content { flex: 1; min-height: 0; padding: 24px; overflow: hidden; }
+  .groups { flex: 1; display: flex; min-height: 0; }
+  .group { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+  .group + .group { border-left: 1px solid var(--separator); }
+
+  .statusbar {
+    height: 22px; flex: none; background: var(--bg-window);
+    border-top: 1px solid var(--separator);
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 12px; font-size: var(--font-size-xs); color: var(--text-muted);
+  }
+
+  /* ── 骨架（ViewSkeleton 规格）── */
+  .sk-line, .sk-card, .sk-tr {
+    background: var(--sk-bar); border-radius: 4px;
+    animation: ldk-pulse 1.4s ease-in-out infinite;
+  }
+  .sk-line { height: 12px; margin-bottom: 8px; }
+  .sk-card { height: 88px; margin-bottom: 12px; border-radius: 6px; }
+  .sk-tr { height: 20px; margin-bottom: 4px; }
+  .w100 { width: 100%; } .w85 { width: 85%; } .w60 { width: 60%; } .w40 { width: 40%; }
+  @keyframes ldk-pulse { 0%, 100% { opacity: 0.55; } 50% { opacity: 1; } }
+  @media (prefers-reduced-motion: reduce) {
+    .sk-line, .sk-card, .sk-tr, .boot-mark .boot-logo, .boot-mark .boot-name { animation: none; opacity: 0.8; }
+  }
+
+  /* 编辑器假内容（就位态示意） */
+  .code { font-family: Consolas, monospace; font-size: var(--font-size-sm); color: var(--text-secondary); line-height: 1.9; }
+  .code .ln { color: var(--text-muted); display: inline-block; width: 24px; }
+
+  /* ── Frame 1：首帧（boot）── */
+  .win.boot { align-items: center; justify-content: center; }
+  .boot-mark { text-align: center; }
+  .boot-logo {
+    width: 48px; height: 48px; border-radius: 12px; background: var(--accent);
+    color: var(--text-on-accent); font-size: var(--font-size-lg); font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 12px; animation: ldk-pulse 1.4s ease-in-out infinite;
+  }
+  .boot-name {
+    font-size: var(--font-size-md); color: var(--text-secondary);
+    animation: ldk-pulse 1.4s ease-in-out infinite;
+  }
+  .boot-note { margin-top: 12px; font-size: var(--font-size-xs); color: var(--text-muted); }
+
+  /* ── Frame 0：时序对照条 ── */
+  .tl-row { display: flex; gap: 8px; align-items: stretch; margin-bottom: 8px; }
+  .tl-label {
+    width: 96px; flex: none; font-size: var(--font-size-sm); font-weight: 600;
+    display: flex; align-items: center;
+  }
+  .tl-label.old { color: var(--page-muted); }
+  .tl-label.new { color: var(--good); }
+  .stage {
+    flex: 1; background: var(--page-card); border: 1px solid var(--page-border);
+    border-radius: 6px; padding: 8px 10px; position: relative;
+  }
+  .stage::after {
+    content: "→"; position: absolute; right: -9px; top: 50%;
+    transform: translateY(-50%); color: var(--page-faint); font-size: var(--font-size-xs); z-index: 1;
+  }
+  .stage:last-child::after { content: ""; }
+  .stage .st { font-size: var(--font-size-sm); color: var(--page-text); }
+  .stage .sd { font-size: var(--font-size-xs); color: var(--page-faint); }
+  .stage.pain { border-left: 3px solid var(--bad); }
+  .stage.pain .st::after { content: " ❌"; }
+  .stage.win2 { border-left: 3px solid var(--good); }
+  .stage.win2 .st::after { content: " ✅"; }
+  .stage .case { position: absolute; top: 6px; right: 8px; font-size: 10px; color: var(--info); }
+
+  /* ── 骨架规格卡 ── */
+  .spec-grid { display: flex; gap: 12px; }
+  .spec-card {
+    flex: 1; background: var(--page-card); border: 1px solid var(--page-border);
+    border-radius: 8px; padding: 16px;
+  }
+  .spec-card h3 { font-size: var(--font-size-md); margin-bottom: 8px; }
+  .spec-card table { width: 100%; border-collapse: collapse; font-size: var(--font-size-sm); }
+  .spec-card td { padding: 4px 0; color: var(--page-muted); border-bottom: 1px solid var(--page-border); }
+  .spec-card td:first-child { color: var(--page-text); width: 40%; }
+  .demo {
+    height: 96px; border-radius: 6px; background: var(--page-bg);
+    border: 1px solid var(--page-border); padding: 12px; margin: 8px 0;
+  }
+  .demo .sk-line { background: var(--sk-shine); }
+  .demo.pulse .sk-line { background: var(--page-border); animation: ldk-pulse 1.4s ease-in-out infinite; }
+  .verdict { font-size: var(--font-size-sm); }
+  .verdict.yes { color: var(--good); }
+  .verdict.no { color: var(--bad); }
+  .spec-card p { font-size: var(--font-size-xs); color: var(--page-faint); }
+
+  footer { max-width: 1180px; margin: 0 auto; color: var(--page-faint); font-size: var(--font-size-sm); }
+  footer .chk { color: var(--good); }
+</style>
+</head>
+<body>
+<button id="theme-toggle">切换亮 / 暗主题</button>
+
+<header>
+  <h1>LinkDesk 启动过场 · 参考图</h1>
+  <div class="meta">立案 2026-09-26 · 复杂场景型（时序 + 规则交织）· 非竞标——基线 = 壳 token 体系 · 配套文档：01-设计.md（§二 现状六幕读码）</div>
+  <div class="meta">本图回答的问题：启动从「黑屏变色逐个蹦」改成什么样？加载态长什么样、动到什么程度？</div>
+  <div class="rule">🔴 <b>零新能力 · 零新 i18n · 主题真相源不挪</b>——本图每个环节都落在既有机制上（快照 = localStorage 镜像；骨架 = Suspense fallback 换组件；过场 = 首推延后）。图上无一处新文案。</div>
+</header>
+
+<!-- ══════════ Frame 0 · 新旧时序对照 ══════════ -->
+<section class="frame">
+  <div class="frame-caption">Frame 0 · 新旧时序对照 <span class="tag">本案总纲</span></div>
+  <div class="tl-row">
+    <div class="tl-label old">现状 · 六幕</div>
+    <div class="stage pain"><div class="st">① 纯黑</div><div class="sd">OS 背景写死暗色；壳 null · 池 null</div></div>
+    <div class="stage pain"><div class="st">② 框架 + 欢迎页</div><div class="sd">:root 暗兜底 · 推得早（主窗恒就绪）</div></div>
+    <div class="stage pain"><div class="st">③ 图标 / 侧栏逐个蹦</div><div class="sd">串行 await · 每插件一推</div></div>
+    <div class="stage pain"><div class="st">④ 变色！</div><div class="sd">主题殿后（全插件之后 Step 5）</div></div>
+    <div class="stage"><div class="st">⑤ 标签涌入</div><div class="sd">restoreLayout 一次整批 setState</div></div>
+    <div class="stage pain"><div class="st">⑥ 内容逐个就位</div><div class="sd">唯一加载态 =「加载中...」一行字</div></div>
+  </div>
+  <div class="tl-row">
+    <div class="tl-label new">目标 · 四幕</div>
+    <div class="stage win2"><div class="st">① 主题色底 + 品牌过场</div><div class="sd">快照先行 + OS 层 seed（④A）</div><span class="case">④A</span></div>
+    <div class="stage win2"><div class="st">② 整帧出现</div><div class="sd">首推延后到插件就绪 · 图标一次全亮（④B）</div><span class="case">④B</span></div>
+    <div class="stage win2"><div class="st">③ 内容就位</div><div class="sd">呼吸骨架 · 快于 100ms 不显示（④C）</div><span class="case">④C</span></div>
+    <div class="stage win2"><div class="st">④ 就绪</div><div class="sd">与现行终态逐像素一致</div></div>
+  </div>
+  <div class="frame-note">
+    <b>验证点①</b> 旧六幕的痛点全是<b>结构性</b>的（01-设计 §二）：写死暗色 / 推得早 / 串行推 / 主题殿后——所以本案是三案合并改时序，<span class="k">不是</span>给每一幕补动画。<br>
+    <b>验证点②</b> 对应关系：旧①→新①（④A 主题快照）；旧②③→新②（④B 首推延后）；旧⑤⑥→新③（④C 骨架）。串行加载本身不在本图范围内（④D 可选、独立验收）。<br>
+    <b>验证点③</b> 「从底部往上启动」经读码裁定不存在（池整框一次 commit 画出）——<b>不为它设计任何东西</b>。
+  </div>
+</section>
+
+<!-- ══════════ Frame 1 · 首帧 ══════════ -->
+<section class="frame">
+  <div class="frame-caption">Frame 1 · t0 首帧——主题快照已生效 <span class="tag">④A + ④B</span></div>
+  <div class="win boot h280">
+    <div class="boot-mark">
+      <div class="boot-logo">LD</div>
+      <div class="boot-name">LinkDesk</div>
+      <div class="boot-note">（呼吸动效示意——静图看 animate，reduced-motion 下静止）</div>
+    </div>
+  </div>
+  <div class="frame-note">
+    <b>验证点①</b> <span class="k">第一帧就是用户的主题色</span>：壳与池的 <code>index.html / pool.html</code> 内联脚本在首绘前同步读 localStorage 快照（<code>ldk.theme.snapshot.v1</code>），写 <code>data-theme</code> + 全量 CSS 变量；此帧没有 titlebar / 侧栏——<b>池布局尚未推送，画轮廓反而失真</b>。<br>
+    <b>验证点②</b> OS 层窗背景不再写死 <code>#1e1e1e</code>：主进程启动时同步读 settings.json 的 <code>app.theme</code> seed 窗背景与池 WCV 背景（E3f #51 的目标「不白屏」不变，手段换掉）。<br>
+    <b>验证点③</b> 品牌 mark <b>延迟 150ms 才出现</b>、首份布局到达即 120ms 淡出——快启动根本看不到它，杜绝「logo 闪一下又没了」；<b>无任何文字</b>（零新 i18n）。<br>
+    <b>验证点④</b> 快照缺失 / 坏 JSON / 版本不符 → 什么都不做，回退现状暗兜底（§4.1 降级）；亮暗切换钮可预览两种主题下的本帧。
+  </div>
+</section>
+
+<!-- ══════════ Frame 2 · 整帧出现 ══════════ -->
+<section class="frame">
+  <div class="frame-caption">Frame 2 · 整帧出现——图标全亮、内容骨架 <span class="tag">④B + ④C</span></div>
+  <div class="win">
+    <div class="titlebar">
+      <div class="tb-logo">LD</div><div class="tb-name">LinkDesk</div>
+      <div class="tb-menu"><span>文件</span><span>查看</span><span>帮助</span></div>
+      <div class="tb-drag"></div>
+      <div class="tb-btns"><span>─</span><span>□</span><span>×</span></div>
+    </div>
+    <div class="wbody">
+      <div class="iconbar">
+        <div class="ib active"><span class="ib-glyph">⌂</span></div>
+        <div class="ib"><span class="ib-glyph">▦</span></div>
+        <div class="ib"><span class="ib-glyph">⌕</span></div>
+        <div class="ib"><span class="ib-glyph">⎇</span></div>
+        <div class="ib"><span class="ib-glyph">⊞</span></div>
+        <div class="ib"><span class="ib-glyph">⚙</span></div>
+      </div>
+      <div class="sidebar">
+        <div class="sb-head"><span>资源管理器</span><span class="sb-x">⋯</span></div>
+        <div class="sb-search">搜索文件...</div>
+        <div class="sb-tree">
+          <div class="sk-tr w85"></div>
+          <div class="sk-tr w60"></div>
+          <div class="sk-tr w100"></div>
+          <div class="sk-tr w40"></div>
+          <div class="sk-tr w85"></div>
+          <div class="sk-tr w60"></div>
+          <div class="sk-tr w100"></div>
+        </div>
+      </div>
+      <div class="main">
+        <div class="tabbar">
+          <div class="tab active">welcome</div>
+          <div class="tab">README.md</div>
+          <div class="tab">main.ts</div>
+          <div class="tab"><span class="dirty"></span>设置</div>
+          <div class="tab">发行说明</div>
+          <div class="tab">关于 LinkDesk</div>
+        </div>
+        <div class="content">
+          <div class="sk-line w40"></div>
+          <div class="sk-card"></div>
+          <div class="sk-card"></div>
+          <div class="sk-line w100"></div>
+          <div class="sk-line w85"></div>
+          <div class="sk-line w60"></div>
+        </div>
+      </div>
+    </div>
+    <div class="statusbar"><span>LinkDesk</span><span>⎋ 就绪</span></div>
+  </div>
+  <div class="frame-note">
+    <b>验证点①</b> <span class="k">一帧整帧</span>：首推延后到插件就绪（门槛 = 待拍板 §八①），图标栏六枚图标<b>一次全亮</b>（贡献点注册完成才推）；现状幕②「只有欢迎页的半截框架」与幕③「逐个蹦」从此不存在。<br>
+    <b>验证点②</b> 标签头一批到：<code>restoreLayout</code> 本就是一次整批 setState——上一会话的 6 个标签与帧同时出现，不再分先后。<br>
+    <b>验证点③</b> 此时内容区与侧栏树仍是<b>骨架</b>：各视图 chunk 懒加载 + file-tree 读盘还没完——骨架替它们占住位置，整帧不空、不跳。<br>
+    <b>验证点④</b> 骨架条高 12 / 间距 8 / 圆角 4、行宽梯度 100 / 85 / 60——与 Frame 3 的规格卡同源，全仓骨架一个长相（关于页 mockup Frame 3 同语言）。
+  </div>
+</section>
+
+<!-- ══════════ Frame 3 · 内容就位中（分屏对照） ══════════ -->
+<section class="frame">
+  <div class="frame-caption">Frame 3 · 内容就位中——骨架 → 真身 <span class="tag">④C</span></div>
+  <div class="win">
+    <div class="titlebar">
+      <div class="tb-logo">LD</div><div class="tb-name">LinkDesk</div>
+      <div class="tb-menu"><span>文件</span><span>查看</span><span>帮助</span></div>
+      <div class="tb-drag"></div>
+      <div class="tb-btns"><span>─</span><span>□</span><span>×</span></div>
+    </div>
+    <div class="wbody">
+      <div class="iconbar">
+        <div class="ib"><span class="ib-glyph">⌂</span></div>
+        <div class="ib active"><span class="ib-glyph">▦</span></div>
+        <div class="ib"><span class="ib-glyph">⌕</span></div>
+        <div class="ib"><span class="ib-glyph">⎇</span></div>
+        <div class="ib"><span class="ib-glyph">⊞</span></div>
+        <div class="ib"><span class="ib-glyph">⚙</span></div>
+      </div>
+      <div class="sidebar">
+        <div class="sb-head"><span>资源管理器</span><span class="sb-x">⋯</span></div>
+        <div class="sb-search">搜索文件...</div>
+        <div class="sb-tree">
+          <div class="tr"><span class="cv">▾</span>LINKDESK</div>
+          <div class="tr d1"><span class="cv">▾</span>src</div>
+          <div class="tr d2 sel">App.tsx</div>
+          <div class="tr d2">index.css</div>
+          <div class="tr d1"><span class="cv">▸</span>electron</div>
+          <div class="tr d1"><span class="cv">▸</span>docs</div>
+          <div class="tr d1">package.json</div>
+        </div>
+      </div>
+      <div class="main">
+        <div class="groups">
+          <div class="group">
+            <div class="tabbar">
+              <div class="tab active">main.ts</div>
+            </div>
+            <div class="content">
+              <div class="code">
+                <div><span class="ln">12</span>function createWindow(): void {</div>
+                <div><span class="ln">13</span>&nbsp;&nbsp;const win = new BrowserWindow({</div>
+                <div><span class="ln">14</span>&nbsp;&nbsp;&nbsp;&nbsp;// E3f #51：暗色背景——消除启动白屏</div>
+                <div><span class="ln">15</span>&nbsp;&nbsp;&nbsp;&nbsp;backgroundColor: seedWindowBackground(),</div>
+                <div><span class="ln">16</span>&nbsp;&nbsp;&nbsp;&nbsp;show: false,</div>
+                <div><span class="ln">17</span>&nbsp;&nbsp;});</div>
+                <div><span class="ln">18</span>}</div>
+              </div>
+            </div>
+          </div>
+          <div class="group">
+            <div class="tabbar">
+              <div class="tab active"><span class="dirty"></span>设置</div>
+            </div>
+            <div class="content">
+              <div class="sk-line w40"></div>
+              <div class="sk-card"></div>
+              <div class="sk-card"></div>
+              <div class="sk-line w100"></div>
+              <div class="sk-line w85"></div>
+              <div class="sk-line w60"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="statusbar"><span>LinkDesk</span><span>⎋ 就绪</span></div>
+  </div>
+  <div class="frame-note">
+    <b>验证点①</b> 分屏左右就是同一段时间里的两个真实状态：<b>左组 chunk 已就位</b>（编辑器真身），<b>右组仍在加载</b>（骨架占位）——骨架在真身到达时原位替换，无跳动、无布局位移。<br>
+    <b>验证点②</b> 骨架<b>延迟 100ms 才渲染</b>：本地 chunk 命中（<code>_lazyCache</code> 二次挂载零 Suspense）时根本看不到加载态——「不闪」是验收项（§七 4）。<br>
+    <b>验证点③</b> 动效 = <b>呼吸</b>（opacity 0.55 ↔ 1 · 1.4s ease-in-out 往复），<b>不用扫光</b>——本机加载是毫秒级，扫光是「要等很久」的网络产品语言；系统「减少动态效果」开启时骨架静止、形状保留。<br>
+    <b>验证点④</b> 唯一 DOM 改动点 = <code>PluginComponent.tsx:205</code> 的 Suspense fallback 换 <code>&lt;ViewSkeleton /&gt;</code>；<code>aria-label</code> 复用既有 key「加载中...」——零新 i18n（不触发 lang-defaults 发版）。侧栏树骨架由通用骨架兜底，file-tree 插件自身不改。
+  </div>
+</section>
+
+<!-- ══════════ Frame 4 · 就绪终态 ══════════ -->
+<section class="frame">
+  <div class="frame-caption">Frame 4 · 就绪终态——与现行版本逐像素一致 <span class="tag">对照帧</span></div>
+  <div class="win">
+    <div class="titlebar">
+      <div class="tb-logo">LD</div><div class="tb-name">LinkDesk</div>
+      <div class="tb-menu"><span>文件</span><span>查看</span><span>帮助</span></div>
+      <div class="tb-drag"></div>
+      <div class="tb-btns"><span>─</span><span>□</span><span>×</span></div>
+    </div>
+    <div class="wbody">
+      <div class="iconbar">
+        <div class="ib"><span class="ib-glyph">⌂</span></div>
+        <div class="ib active"><span class="ib-glyph">▦</span></div>
+        <div class="ib"><span class="ib-glyph">⌕</span></div>
+        <div class="ib"><span class="ib-glyph">⎇</span></div>
+        <div class="ib"><span class="ib-glyph">⊞</span></div>
+        <div class="ib"><span class="ib-glyph">⚙</span></div>
+      </div>
+      <div class="sidebar">
+        <div class="sb-head"><span>资源管理器</span><span class="sb-x">⋯</span></div>
+        <div class="sb-search">搜索文件...</div>
+        <div class="sb-tree">
+          <div class="tr"><span class="cv">▾</span>LINKDESK</div>
+          <div class="tr d1"><span class="cv">▾</span>src</div>
+          <div class="tr d2 sel">App.tsx</div>
+          <div class="tr d2">index.css</div>
+          <div class="tr d1"><span class="cv">▾</span>electron</div>
+          <div class="tr d2">main.ts</div>
+          <div class="tr d1"><span class="cv">▸</span>docs</div>
+          <div class="tr d1">package.json</div>
+        </div>
+      </div>
+      <div class="main">
+        <div class="tabbar">
+          <div class="tab active">main.ts</div>
+          <div class="tab"><span class="dirty"></span>设置</div>
+          <div class="tab">发行说明</div>
+          <div class="tab">关于 LinkDesk</div>
+        </div>
+        <div class="content">
+          <div class="code">
+            <div><span class="ln">1</span>// 启动六幕 → 四幕：本行之后与现行版本无任何差别</div>
+            <div><span class="ln">2</span>// ——本项只改「到这里的路」，不改「这里」</div>
+            <div><span class="ln">3</span></div>
+            <div><span class="ln">4</span>const ready = await initAll({ /* 六步管线照旧 */ });</div>
+            <div><span class="ln">5</span>setReady(true);</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="statusbar"><span>LinkDesk</span><span>⎋ 就绪</span></div>
+  </div>
+  <div class="frame-note">
+    <b>验证点①</b> 终态像素零改动：zone 尺寸沿用壳实测（titlebar 30 / icon-bar <b>42</b> / sidebar 216 / tabbar <b>35</b> / statusbar <b>22</b>，状态栏背景 = <code>--bg-window</code> + border-top）——本项是「过场工程」，不是视觉改版。<br>
+    <b>验证点②</b> 主题切换钮右上角——本帧在亮 / 暗两个主题下都应成立（快照保证的是「你上次的样子」，不是某种固定配色）。
+  </div>
+</section>
+
+<!-- ══════════ 骨架规格卡 ══════════ -->
+<section class="frame">
+  <div class="frame-caption">骨架规格 · 动效裁决 <span class="tag">④C 实现参数</span></div>
+  <div class="spec-grid">
+    <div class="spec-card">
+      <h3>ViewSkeleton 尺寸表</h3>
+      <table>
+        <tr><td>条高 / 间距 / 圆角</td><td>12 / 8 / 4（栅格 4 的倍数）</td></tr>
+        <tr><td>标题条</td><td>宽 40% × 高 12</td></tr>
+        <tr><td>卡片块</td><td>高 88，圆角 6，× 2</td></tr>
+        <tr><td>行条梯度</td><td>100 / 85 / 60%</td></tr>
+        <tr><td>树行骨架</td><td>高 20（= 真树行高）</td></tr>
+        <tr><td>出现延迟</td><td>100ms（快于阈值不渲染）</td></tr>
+        <tr><td>读屏</td><td>条 aria-hidden · 容器 role=status · aria-label 复用「加载中...」</td></tr>
+      </table>
+      <p>落点：src/pool/shared/view-skeleton/（新，纯展示，Path B 红线内）；接线：PluginComponent.tsx:205 的 Suspense fallback。</p>
+    </div>
+    <div class="spec-card">
+      <h3>动效 A · 呼吸</h3>
+      <div class="demo pulse">
+        <div class="sk-line w40"></div>
+        <div class="sk-line w100"></div>
+        <div class="sk-line w85"></div>
+        <div class="sk-line w60"></div>
+      </div>
+      <div class="verdict yes">✅ 采用——opacity 0.55 ↔ 1 · 1.4s ease-in-out 往复</div>
+      <p>安静、无方向暗示；reduced-motion 下静止保形。用户问「要不要一闪一闪」的答案：要动效，但只要这种。</p>
+    </div>
+    <div class="spec-card">
+      <h3>动效 B · 扫光（shimmer）</h3>
+      <div class="demo">
+        <div class="sk-line w40" style="background: linear-gradient(90deg, var(--page-border) 30%, var(--sk-shine) 50%, var(--page-border) 70%);"></div>
+        <div class="sk-line w100" style="background: linear-gradient(90deg, var(--page-border) 30%, var(--sk-shine) 50%, var(--page-border) 70%);"></div>
+        <div class="sk-line w85" style="background: linear-gradient(90deg, var(--page-border) 30%, var(--sk-shine) 50%, var(--page-border) 70%);"></div>
+      </div>
+      <div class="verdict no">❌ 不采用——扫光是「要等很久」的网络产品语言</div>
+      <p>本机 IPC / 本地 chunk 加载是毫秒级；扫光暗示等待，与「快于 100ms 不显示」的设计自相矛盾。此格仅示意淘汰方案，不做动画。</p>
+    </div>
+  </div>
+  <div class="frame-note">
+    <b>对账</b>：本图颜色全部走 token（组件规则零 hex / 零 rgba，rgba 只存在于 :root 的 --hover-overlay 与 --sk-shine 定义）；zone 尺寸 = 壳实测值（42 / 35 / 22 铁律）；间距 4 的倍数；字号全 token。<b>mockup 仅示意，真实实现走 var(--xxx) + ThemeEngine。</b>
+  </div>
+</section>
+
+<footer>
+  <p><span class="chk">✓</span> 类型 = 复杂场景（时序 + 规则）；✓ 完整软件轮廓（Frame 1 除外——该帧本质就是「尚无轮廓」）；✓ 每帧 frame-caption + frame-note 验证点编号；✓ 零硬编码色（token 定义除外）；✓ 主题切换可交互。</p>
+  <p>配套：01-设计.md（现状六幕读码 §二 · 方案 ④A/④B/④C/④D §四 · 落点 §五 · 待拍板 §八）· 00-README.md（立案 · 三案合并拍板）。</p>
+</footer>
+
+<script>
+  document.getElementById("theme-toggle").addEventListener("click", function () {
+    document.querySelectorAll(".win").forEach(function (w) { w.classList.toggle("is-light"); });
+  });
+</script>
+</body>
+</html>
