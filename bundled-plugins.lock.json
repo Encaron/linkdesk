@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "syncedAt": "2026-09-26T15:39:47.342Z",
+  "syncedAt": "2026-09-26T17:45:38.479Z",
   "note": "出厂种子的账（E6#101）。`seed:true` = 随包出厂（bootstrap 集，判据「断网零插件时用户能不能自救」）；`seed:false` = 纯市场（只登记，不随包）。谁随包是**数据**不是代码（硬约束 10）。刷新：npm run sync:bundled -- --latest；校验：npm run sync:bundled -- --offline。",
   "plugins": [
     {
@@ -22,9 +22,9 @@
     {
       "id": "lang-defaults",
       "repo": "Encaron/linkdesk-plugin-lang-defaults",
-      "version": "1.0.24",
-      "downloadUrl": "https://github.com/Encaron/linkdesk-plugin-lang-defaults/releases/download/v1.0.24/lang-defaults.linkdesk-plugin",
-      "fingerprint": "CHANGELOG.md:c01444530d461fa2a9a66127433d73b7b171b3ade715ed10640212f4b59dac1b\nLICENSE:66ade75576a2f04b7f1a11340b8141cf42a26d3a64bc441e3822e193291d3051\nREADME.md:5bfbd656e092d376ccd5843af47631d3d3d1fc786978611384350b88dbb5862d\nen.json:3f7ca90c460aa9f8db2752596764cb48ca13a6a0829d47a61df0ccd9888ff88c\nplugin.json:e76641d2759c9ee2e6d60ecda6452f1815eef9d4a71c2d335dfe96283e2966be\nresources/cover.svg:5f4dc33217c392e0e32d58d8931d8e66c251012896d419b4d2bc487458108af0\nresources/icon.svg:3e541009fc343d47fb82c8d53076526cd445955eafab464cf8d92e0c4571e88b\nzh.json:55a8032171771ed81a54d23538b35fa506741d1205f34abad393d6424cfafd13",
+      "version": "1.0.25",
+      "downloadUrl": "https://github.com/Encaron/linkdesk-plugin-lang-defaults/releases/download/v1.0.25/lang-defaults.linkdesk-plugin",
+      "fingerprint": "CHANGELOG.md:28be4d19a87e84e21313948b1ff322143c297ee7a084e81f96652704e122745e\nLICENSE:66ade75576a2f04b7f1a11340b8141cf42a26d3a64bc441e3822e193291d3051\nREADME.md:5bfbd656e092d376ccd5843af47631d3d3d1fc786978611384350b88dbb5862d\nen.json:0de7f5570e494e03fac12ebc7b8e809bb5a3df453df2e036d643da96c9ad3e63\nplugin.json:7b69fc78d46f622bd7ef10da9b1a34830a92308efc7c6f2f3359210fcc9ee9ee\nresources/cover.svg:5f4dc33217c392e0e32d58d8931d8e66c251012896d419b4d2bc487458108af0\nresources/icon.svg:3e541009fc343d47fb82c8d53076526cd445955eafab464cf8d92e0c4571e88b\nzh.json:55a8032171771ed81a54d23538b35fa506741d1205f34abad393d6424cfafd13",
       "seed": true
     },
     {

@@ -61,6 +61,8 @@ interface Answer {
   body?: unknown;
   /** 直接发原文（测「2xx 但不是 JSON」）——优先于 body */
   raw?: string;
+  /** 附加响应头——限流归因判据头（`x-ratelimit-*`）从这里进 */
+  headers?: Record<string, string>;
 }
 
 interface Server {
@@ -84,6 +86,7 @@ async function startServer(answers: Answer[]): Promise<Server> {
     res.writeHead(a.status ?? 200, {
       "content-type": "application/json",
       "content-length": String(Buffer.byteLength(payload)),
+      ...a.headers,
     });
     res.end(payload);
   });
@@ -409,8 +412,16 @@ describe("列表清洗", () => {
 // ─────────────────────────── 6. 状态码归因（复用共用表） ───────────────────────────
 
 describe("状态码归因——复用 `update-http.ts` 那一张表，不另立一套", () => {
-  it("403 ⇒ rate-limited（GitHub 用 403 表达限流）", async () => {
-    expect(await codeOf(fetchOnce([{ status: 403, body: {} }]).then((r) => r.notes))).toBe("rate-limited");
+  it("403 且额度确已用尽 ⇒ rate-limited（GitHub 用 403 表达限流；`remaining: 0` 是判据）", async () => {
+    expect(
+      await codeOf(
+        fetchOnce([{ status: 403, body: {}, headers: { "x-ratelimit-remaining": "0" } }]).then((r) => r.notes),
+      ),
+    ).toBe("rate-limited");
+  });
+
+  it("🔴 403 但读不到「额度用尽」⇒ 不说「限流」，归 network（与检查腿同一张表、同一方向）", async () => {
+    expect(await codeOf(fetchOnce([{ status: 403, body: {} }]).then((r) => r.notes))).toBe("network");
   });
 
   it("404 ⇒ not-found；500 ⇒ network（就近而非准确，理由在共用表的注释里）", async () => {

@@ -61,6 +61,7 @@ import {
 } from "../core/services/ui/toast";
 import type { UpdateError, UpdateState } from "../core/types/ipc/update";
 import { openReleaseNotesTab } from "../core/commands/shell/releaseNotesCommands";
+import { noteCheckOutcome } from "./updateAutoRetry";
 import { getShellUpdateApi, useUpdateProgress, useUpdateState } from "./useUpdateState";
 
 /**
@@ -352,6 +353,9 @@ export async function checkForUpdatesAndReport(context: boolean): Promise<Update
   const api = getShellUpdateApi();
   if (!api) return null; // 非壳环境（vitest / 纯 Vite 预览）——静默 no-op，不抛
   const next = await api.checkForUpdates(context);
+  // #57.9g：每个检查的结局都喂给自动重试状态机（本函数是唯一进料口——后台调度 / 手动命令 /
+  // [重试] / 下载失败重查四条路全过这里）。撤链与续链的判据在 updateAutoRetry 内部。
+  noteCheckOutcome(next);
   if (!context) return next;
   if (next.type === "idle") {
     if (next.lastError) {

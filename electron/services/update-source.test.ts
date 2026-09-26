@@ -238,12 +238,31 @@ describe("六类失败归因（#57.5c）", () => {
     expect(errorOf(await probeOnce({ hang: true }, { timeoutMs: 50 })).code).toBe("network");
   });
 
-  it("rate-limited——403 / 429（GitHub 用 403 表达限流）", async () => {
+  it("rate-limited——403/429 且额度确已用尽（GitHub 用 403 表达限流；`remaining: 0` 是判据）", async () => {
     for (const status of [403, 429]) {
       expect(errorOf(await probeOnce({ status, headers: { "x-ratelimit-remaining": "0" } })).code).toBe(
         "rate-limited",
       );
     }
+  });
+
+  it("🔴 403 但额度没用完 ⇒ 不说「限流」（受限 IP / 滥用检测形态——稍后重试不会好）", async () => {
+    for (const opts of [
+      { status: 403 }, // 头整个缺失（中间盒 / 非 API 形态）
+      { status: 403, headers: { "x-ratelimit-remaining": "57" } }, // 受限但额度未耗尽
+    ]) {
+      expect(errorOf(await probeOnce(opts)).code).toBe("network");
+    }
+  });
+
+  it("🔴 限流且读得到 reset ⇒ 文案给**确定的本地恢复时刻**（`{{time}}` 走 params，不拼进 message）", async () => {
+    const error = errorOf(await probeOnce({
+      status: 403,
+      headers: { "x-ratelimit-remaining": "0", "x-ratelimit-reset": "1758945600" },
+    }));
+    expect(error.code).toBe("rate-limited");
+    expect(error.message).toContain("{{time}}");
+    expect((error as { params?: Record<string, string> }).params?.time).toMatch(/^\d{2}:\d{2}$/);
   });
 
   it("not-found——404；更新源为空串也归此类（不拿空 URL 去 fetch 说成网络不好）", async () => {
@@ -285,14 +304,15 @@ describe("六类失败归因（#57.5c）", () => {
   it("🔴 六类文案互不相同（各归一半 = 找不到真因）", async () => {
     const messages = [
       errorOf(await probeOnce({ status: 404 })).message, //                        not-found
-      errorOf(await probeOnce({ status: 403 })).message, //                        rate-limited
+      errorOf(await probeOnce({ status: 403, headers: { "x-ratelimit-remaining": "0" } })).message, // rate-limited
       errorOf(await probeOnce({ status: 503 })).message, //                        network
       errorOf(await probeOnce({ body: releaseResponse({ tag_name: "v1.0" }) })).message, // version-unparsable
       errorOf(await probeOnce({ body: releaseResponse({ assets: [] }) })).message, //       asset-missing
       errorOf(await probeOnce({ raw: "not json" })).message, //                     invalid-response
       errorOf(await probeDeadPort()).message, //                                    network（真·断网）
+      errorOf(await probeOnce({ status: 403 })).message, //                         network（403 非限流形态）
     ];
-    // 503 与断网同属 network（同一条文案），其余各一条 ⇒ 去重后 6 种
+    // 503 / 真断网 / 非限流 403 同属 network（同一条文案），其余各一条 ⇒ 去重后 6 种
     expect(new Set(messages).size).toBe(6);
   });
 });

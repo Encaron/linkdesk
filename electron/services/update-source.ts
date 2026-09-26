@@ -30,6 +30,7 @@ import {
   NOT_FOUND_MESSAGE,
   classifyHttpFailure,
   fetchWithTimeout,
+  rateLimitHeadersOf,
 } from './update-http.js';
 import { compareVersions, parseStrictSemver } from '../../src/core/utils/plugin/semverUtils.js';
 import type { UpdateError } from '../../src/core/types/ipc/update';
@@ -113,8 +114,8 @@ export function createUpdateProbe(
       return err('network', NETWORK_MESSAGE); // 连不上 / 超时 / 代理未生效（发起阶段）
     }
     if (!resp.ok) {
-      const failure = classifyHttpFailure(resp.status);
-      return err(failure.code, failure.message);
+      const failure = classifyHttpFailure(resp.status, rateLimitHeadersOf(resp));
+      return err(failure.code, failure.message, failure.params);
     }
 
     let body: unknown;
@@ -204,7 +205,12 @@ function checksumFromDigest(digest: unknown): string | undefined {
   return m ? m[1] : undefined;
 }
 
-/** 失败结果的唯一构造口——保证每条错误都带 code + 文案（码集由 07 §三 固定，本文件不新造码） */
-function err(code: UpdateError['code'], message: string): UpdateProbeResult {
-  return { kind: 'error', error: { code, message } };
+/** 失败结果的唯一构造口——保证每条错误都带 code + 文案（码集由 07 §三 固定，本文件不新造码）；
+ *  `params` 透传词条占位符实值（限流恢复时刻等），缺省 = 无占位符 */
+function err(
+  code: UpdateError['code'],
+  message: string,
+  params?: Record<string, string | number>,
+): UpdateProbeResult {
+  return { kind: 'error', error: params ? { code, message, params } : { code, message } };
 }
