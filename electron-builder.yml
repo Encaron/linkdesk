@@ -71,6 +71,7 @@ extraResources:
   # spawn 命中 userData 路径，无需 ASAR 外拷贝。E5#114d 临时 hack 删除（核心无知：壳不背语言工具）。
 
 win:
+  icon: build/icon.ico # 04：显式声明（此前靠 build/ 约定目录兜底——挪目录/加平台会静默丢图标）
   target:
     - target: nsis
       arch: [x64]
