@@ -283,6 +283,7 @@ function makeCoreCallbacks(tabs: Array<typeof TAB1> = [TAB1, TAB2]) {
     detachTab: vi.fn(),
     mergeTabToMain: vi.fn(),
     findTabWindow: vi.fn(),
+    restoreTabLayout: vi.fn(),
     windows: [win],
     updateTabState,
     closeWindow,

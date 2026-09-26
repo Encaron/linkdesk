@@ -17,12 +17,13 @@ import { useMemoryMonitor } from "./hooks/useMemoryMonitor"; // E2a #6 内存监
 import { useUpdateScheduler } from "./hooks/useUpdateScheduler"; // E6#57.9d 后台检查更新调度（auto 档）
 import { useUpdateNotifications } from "./hooks/useUpdateNotifications"; // E6#57.12 更新通知面生产者
 import { useOpenPathIntake } from "./hooks/useOpenPathIntake"; // E6#46b 命令行/文件关联 intake 消费（壳级，不进插件）
-import { useTabManager } from "./hooks/useTabManager";
+import { useTabManager, syncCountersAfterRestore } from "./hooks/useTabManager";
 import { usePoolSync } from "./hooks/usePoolSync";
 import { useWindowHost, type MainResourceActions } from "./App/windows/windowHost"; // E5.8#43-2：壳窗口注册表（多窗口 tabState + 窗口模式策略）；#46.2：主窗资源联动动作集
 
 // Phase 5b：核心命令注册（右键菜单归一化）+ E5#5e-ii-f：核心回调（壳快捷键执行标签页操作）
 import { updateCoreCallbacks, type CoreCallbacks } from "./core/commands/shell/coreCommands";
+import { shellEvents } from "./core/react/events/ShellEvents";
 import { createCoreCallbacks, createTabActionHandler, createFocusTabHandler, createSourceIdRouters, createStableSourceIdRoutersBridge } from "./App/tabCallbacks";
 import { useAppStartup } from "./App/startup";
 import { useAppLifecycle } from "./App/lifecycle";
@@ -200,8 +201,16 @@ function App() {
       duplicateTab: _duplicateTab, pinTab,
       detachTab: relocation.detachTabToNewWindow, mergeTabToMain: relocation.mergeTabToMain, findTabWindow: relocation.findTabWindow,
       windows, updateTabState, closeWindow,
+      // 04「工作区导入导出-布局恢复断线」：导入时的标签页布局恢复——照启动恢复全流程
+      // （src/App/tabActions.ts:84-100 模板）：tab:focused 补发（E5.7 Bug D）＋ 计数器同步。
+      restoreTabLayout: (layout) => {
+        const focused = restoreLayout(layout);
+        if (focused) shellEvents.emit("tab:focused", focused);
+        syncCountersAfterRestore(layout.groups.flatMap((g) => g.tabs));
+        return focused;
+      },
     }),
-    [closeTab, splitTab, tabState, handleFocusTab, unsplit, openOrFocusTab, restoreClosedTab, _duplicateTab, pinTab, relocation, windows, updateTabState, closeWindow],
+    [closeTab, splitTab, tabState, handleFocusTab, unsplit, openOrFocusTab, restoreClosedTab, _duplicateTab, pinTab, relocation, windows, updateTabState, closeWindow, restoreLayout],
   );
   updateCoreCallbacks(coreCallbacks);
 

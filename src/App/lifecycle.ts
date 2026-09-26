@@ -17,6 +17,10 @@ import { setPluginStateValue, APP_PLUGIN_ID } from "../core/services/plugins/Plu
 import { ContextKeyService } from "../core/registry/commands/ContextKeyService";
 import { factorySlots } from "../core/services/bootstrap/FactorySlots";
 import { onDidRequestShowChannel } from "../core/services/ui/LogChannel";
+import { getCallbacks, type CoreCallbacks } from "../core/commands/infra/CoreCallbacks";
+import { getCardLayout, saveWorkspaceLayout } from "../core/services/layout/LayoutService";
+import { pushToast } from "../core/services/ui/toast";
+import i18n from "../i18n";
 
 export interface AppLifecycleDeps {
   setTheme: (v: string) => void;
@@ -130,7 +134,20 @@ export function useAppLifecycle({ setTheme, setLang, sidebarView, setSidebarView
         layout?: { tabs?: { groups: unknown[]; activeGroupId: string }; cards?: unknown[] };
         settings?: Record<string, unknown>;
       };
-      if (detail.layout?.tabs?.groups?.length) { /* workspace:restore 事件由 useTabManager 接管 */ }
+      // 04「工作区导入导出-布局恢复断线」（2026-09-26 接线）——旧分支体是空的（E5#5e-ii-f TODO 说的
+      // `workspace:restore` 事件从未存在，断线史见 04 档案 §三）。正解 = CoreCallbacks 可选回调：
+      // 只有 tabActions 作用域拿得到 `restoreLayout`（useTabManager），非组件监听器经 getCallbacks 转。
+      // 🔴 恢复成功即落盘（saveWorkspaceLayout）——重启后导入结果仍在（04 档案 §四：持久化零件现成；
+      //    该函数保 panel 状态不被整体替换冲掉，cards 传现值）。
+      if (detail.layout?.tabs?.groups?.length) {
+        try {
+          const tabs = detail.layout.tabs as Parameters<NonNullable<CoreCallbacks["restoreTabLayout"]>>[0];
+          getCallbacks()?.restoreTabLayout?.(tabs);
+          void saveWorkspaceLayout(tabs, getCardLayout());
+        } catch {
+          pushToast({ source: "workspace", severity: "error", message: i18n.t("导入失败：不是有效的工作区文件") });
+        }
+      }
       if (detail.settings) {
         for (const [key, value] of Object.entries(detail.settings)) {
           try { setConfigurationValue(key, value); } catch { /* skip */ }

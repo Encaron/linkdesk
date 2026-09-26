@@ -7,6 +7,7 @@
  */
 
 import type { WindowMode } from "../../types/windows"; // E5.8#45：WindowMode 单一真相源（core/types——壳策略层同源引用）
+import type { LayoutData } from "../../../hooks/useTabManager"; // 04 工作区导入恢复：整表替换的入参形状（同 useTabManager.restoreLayout）
 
 export interface CoreCallbacks {
   closeTab: (tabId: string) => void;
@@ -36,6 +37,13 @@ export interface CoreCallbacks {
   mergeTabToMain: (tabId: string) => void;
   /** E5.8#44：找 tab 所在窗口——「并回主窗口」可见性判定（detached 才注入） */
   findTabWindow: (tabId: string) => { windowId: string; mode: WindowMode } | null;
+  /**
+   * 04「工作区导入导出-布局恢复断线」（2026-09-26 接线）：导入工作区时的**标签页布局恢复**——
+   * 整表替换语义（同启动恢复 `restoreLayout`），含 `tab:focused` 补发与计数器同步（E5.7 Bug D 全流程）。
+   * ⚠️ **可选成员**：只有 App 的 tabActions 作用域拿得到 `restoreLayout`（useTabManager），
+   * 非组件代码（`lifecycle.ts` 的 RESTORE_WORKSPACE 监听器）经 `getCallbacks()?.` 调用。
+   */
+  restoreTabLayout?: (layout: LayoutData) => { pluginId: string; tabId: string } | null;
 }
 
 let _callbacks: CoreCallbacks | null = null;

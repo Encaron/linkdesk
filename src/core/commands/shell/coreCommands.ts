@@ -16,6 +16,7 @@ import { APP_PLUGIN_ID } from "../../services/plugins/PluginStateService";
 import { CUSTOM_EVENTS } from "../../react/events/CoreEvents";
 import i18n from "../../../i18n";
 import { getWorkspaceLayout } from "../../services/layout/LayoutService"; // E3f #56
+import { pushToast } from "../../services/ui/toast"; // 04 工作区导入反馈（唯一通知面）
 import { getUserSettings } from "../../services/configuration/ConfigurationService"; // E3f #56
 import { CONFIG_NONE_SENTINEL } from "../../services/ui/ThemeEngine"; // E5.8#158：默认项哨兵（__none__）
 
@@ -78,15 +79,28 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
       input.onchange = async () => {
         const file = input.files?.[0];
         if (!file) return;
+        // 04「工作区导入导出-布局恢复断线」（2026-09-26）：旧实现 catch 静默——成功/失败都无提示。
+        // 最小校验（04 档案 §五.3）：JSON 坏 / 版本不识别 / 内容为空 ⇒ 明确报错，不静默。
+        let data: { version?: unknown; layout?: unknown; settings?: unknown };
         try {
-          const text = await file.text();
-          const data = JSON.parse(text);
-          if (data.layout) {
-            window.dispatchEvent(new CustomEvent(CUSTOM_EVENTS.RESTORE_WORKSPACE, {
-              detail: { layout: data.layout, settings: data.settings },
-            }));
-          }
-        } catch { /* 格式错误——静默 */ }
+          data = JSON.parse(await file.text());
+        } catch {
+          pushToast({ source: "workspace", severity: "error", message: i18n.t("导入失败：不是有效的工作区文件") });
+          return;
+        }
+        if (data.version !== 1) {
+          pushToast({ source: "workspace", severity: "error", message: i18n.t("导入失败：不支持的工作区文件版本") });
+          return;
+        }
+        if (!data.layout && !data.settings) {
+          pushToast({ source: "workspace", severity: "error", message: i18n.t("导入失败：文件里没有可恢复的内容") });
+          return;
+        }
+        // RESTORE_WORKSPACE 的监听器（lifecycle.ts）同步执行：布局恢复 + 设置写回 + 布局落盘
+        window.dispatchEvent(new CustomEvent(CUSTOM_EVENTS.RESTORE_WORKSPACE, {
+          detail: { layout: data.layout, settings: data.settings },
+        }));
+        pushToast({ source: "workspace", severity: "info", message: i18n.t("工作区已导入——布局与设置已恢复") });
       };
       input.click();
     },
