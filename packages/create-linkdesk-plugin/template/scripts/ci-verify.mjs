@@ -7,7 +7,7 @@
  * 搬走的一共六类检查：编译图 / eslint（含 linkdesk/* 自定义规则）/ vitest / 体量 / i18n / 主题审计。
  * 本脚本 + ci.yml + vitest 配置 = 给插件仓装回来的那一份，否则「独立」就是拿「质量真空」换的。
  *
- * ── 五段（每段独立判红；**没有对象也要说话**，不许静默绿）──
+ * ── 六段（每段独立判红；**没有对象也要说话**，不许静默绿）──
  *   ① lint 严格腿   —— `@linkdesk/plugin-sdk` 的 eslint 规则腿 + css/font-scale/spacing 三条扫描腿。
  *                     🔴 SDK 的 `npm run lint` 是 **WARN 级、永不 fail**（三档制：警告不是封锁，
  *                     作者本地不被拦——那是刻意的）。CI 要的是**拦截**，所以本段把同一份报告按
@@ -29,6 +29,12 @@
  *                     而包内相对路径（`resources/icon.svg`）在未装态恒 404（`linkdesk://` 只在本地已装的
  *                     插件根里找文件）。`publish` 会自动 URL 化；本段是那条纪律的机械兜底——
  *                     它看不见「谁是图标栏插件」（不看插件类型，只看字段形态，硬约束 10 零 ID 知识）。
+ *   ⑥ 测试覆盖      —— 结构判据（2026-09-26 用户拍板升拦）：**纯逻辑单元**（`src` 下任意深度的 `.ts`
+ *                     去 `.d.ts`/测试/barrel/`use*`/含 `window.linkdesk` 或 React）应有测试，命中 =
+ *                     **同名测试文件 ∨ 被任一测试文件引用**——与官方覆盖尺**同一份实现**
+ *                     （`@linkdesk/plugin-sdk/test-audit`，⛔ 别复制判据）。🔴 零测报出 ≠ 判死：
+ *                     同名判据看不见跨文件覆盖（一跳传递假红实测过）⇒ 先核覆盖再补测，别写无意义测试凑数。
+ *                     百分比不上门禁（覆盖口径已定稿为结构判据）；声明式/零逻辑仓按据豁免（无硬编码白名单）。
  *
  * ── 为什么 ③ 的覆盖度只能黄灯（不是漏做）──
  * `t()` 的 key 可以合法地住在**应用级字典**里（`lang-defaults` 插件，运行时由它经 LanguageRegistry
@@ -37,13 +43,14 @@
  * 同款理由）。所以：字典**文件本身**的问题判红（③ 上半），**跨仓才能回答**的覆盖度只报告。
  *
  * 用法：node scripts/ci-verify.mjs     （工程根 = cwd）
- * 退出码 0 = 五段全过；1 = 有红灯（逐条打印缺什么）
+ * 退出码 0 = 六段全过；1 = 有红灯（逐条打印缺什么）
  */
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { basename, dirname, join, relative, resolve, sep } from "node:path";
 import { parse as parseJsonc, printParseErrorCode } from "jsonc-parser";
 import { runPluginLint, renderPluginLintReport } from "@linkdesk/plugin-sdk/eslint";
 import { validateThemeJson, validateIconThemeJson } from "@linkdesk/plugin-sdk";
+import { analyzeRepo } from "@linkdesk/plugin-sdk/test-audit";
 
 const ROOT = process.cwd();
 const failures = [];
@@ -541,6 +548,24 @@ if (!manifest) {
   }
 }
 
+// ═══════════════ ⑥ 测试覆盖（结构判据——2026-09-26 用户拍板升拦）═══════════════
+// 审计核心与官方覆盖尺**同一份实现**（@linkdesk/plugin-sdk/test-audit 单一真源）——⛔ 别在这里复制判据。
+const audit = analyzeRepo(ROOT, { official: true });
+if (audit.kind === "exempt") {
+  line(`⏭ ⑥ 测试覆盖：${audit.exempt}`);
+} else if (audit.zeroTest.length > 0) {
+  fail(
+    `⑥ 测试覆盖：${audit.zeroTest.length} 个纯逻辑单元零测试（判据 = 同名测试文件 ∨ 被任一测试文件引用）：\n` +
+      audit.zeroTest.map((z) => `       src/${z.unit}.ts（${z.evidence.join(" + ")}）`).join("\n") +
+      `\n     ⚠️ 零测 = 待裁决不是判死——同名判据看不见跨文件覆盖，先核这些单元是否已被别的测试` +
+      `间接覆盖，再补测（替身照契约不照实现；夹具不用真插件名/真文案；⛔ 不写无断言测试凑数）。`,
+  );
+} else {
+  line(
+    `✅ ⑥ 测试覆盖：纯逻辑单元 ${audit.logicUnits} 个全部有测试（宽口径 ${audit.wideUnits}，命中 = 同名 ∨ 被引用）。`,
+  );
+}
+
 // ═══════════════ 结论 ═══════════════
 line("────────────────────────────────────────────────────────────");
 if (failures.length > 0) {
@@ -550,5 +575,5 @@ if (failures.length > 0) {
   console.error(`  eslint-disable 注释 + 理由（见上面报告尾部），别把检查删了。`);
   process.exitCode = 1;
 } else {
-  console.log(`✅ 插件仓自检全过（${pluginId}）——lint / 跨插件 / 字典 / 声明自洽 / 目录条目形态五段。`);
+  console.log(`✅ 插件仓自检全过（${pluginId}）——lint / 跨插件 / 字典 / 声明自洽 / 目录条目形态 / 测试覆盖六段。`);
 }

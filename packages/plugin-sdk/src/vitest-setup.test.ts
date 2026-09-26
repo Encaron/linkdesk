@@ -100,6 +100,15 @@ describe("共享测试地基——window.linkdesk 最小 mock", () => {
       if (sub === "./package.json") continue; // 直指文件、没有 dist 形态
       const def = typeof target === "string" ? target : (target.default ?? "");
       const types = typeof target === "string" ? target : (target.types ?? "");
+      if (/^\.\/[\w-]+\.mjs$/.test(def)) {
+        // 免构建根发 subpath（如 ./test-audit）：.mjs 与 .d.ts 成对直发、不进 dist——刻意为之：
+        // 壳仓的覆盖尺要引「源文件」（dist 是 gitignore 的派生物，干净检出必炸）。
+        // 守约束：两件都必须真实在包里（files 白名单漏了会静默少发）。
+        if (!existsSync(join(sdkDir, def))) problems.push(`${sub}: 免构建入口 ${def} 文件不在`);
+        if (types !== def.replace(/\.mjs$/, ".d.ts")) problems.push(`${sub}: types（${types}）应与 ${def} 成对的 .d.ts`);
+        else if (!existsSync(join(sdkDir, types))) problems.push(`${sub}: 免构建入口 ${types} 文件不在`);
+        continue;
+      }
       const src = toSrc(def);
       if (def !== `./dist/${def.replace(/^\.\/dist\//, "")}`) problems.push(`${sub}: default 不在 dist/ 下（${def}）`);
       else if (!existsSync(join(sdkDir, src))) problems.push(`${sub}: 声明的入口没有对应源文件 ${src}`);

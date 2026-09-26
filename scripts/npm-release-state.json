@@ -12,8 +12,8 @@
     },
     {
       "name": "@linkdesk/plugin-sdk",
-      "version": "0.1.47",
-      "contentHash": "8c15950106088f8196ab3a39b29c68b3b8a0da20c3dc2356473c2458fd561d78",
+      "version": "0.1.48",
+      "contentHash": "8f4d29436b59b2f6319f378126f3281dfcdf6af76dd00456315a07018d400e32",
       "fileHashes": {
         "packages/plugin-sdk/README.md": "1920f2cb83028d36",
         "packages/plugin-sdk/dev-host/dev-main.tsx": "49c59b28e17ca424",
@@ -83,14 +83,14 @@
         "packages/plugin-sdk/src/validate.test.ts": "90b04d4b693654f8",
         "packages/plugin-sdk/src/validate.ts": "9d25bcaa130f23c2",
         "packages/plugin-sdk/src/vite-config.ts": "ec594032298986c5",
-        "packages/plugin-sdk/src/vitest-setup.test.ts": "0b6f7c00df1cd61a",
+        "packages/plugin-sdk/src/vitest-setup.test.ts": "bd55dc42017f41cf",
         "packages/plugin-sdk/src/vitest-setup.ts": "9a917591a9ce7616"
       }
     },
     {
       "name": "create-linkdesk-plugin",
-      "version": "0.1.14",
-      "contentHash": "99411dadf1dcadaeae222f307d47cd2d0e4f92c5f71920c104f665f7636d9330",
+      "version": "0.1.15",
+      "contentHash": "12a5e4cc0ac2724ee62f7a45f5c0616eb9bff4ca1bd275c8eaef1705f45e8e75",
       "fileHashes": {
         "packages/create-linkdesk-plugin/README.md": "a5a2a297d71f31dd",
         "packages/create-linkdesk-plugin/index.js": "eb4bd60fd45a0354",
@@ -106,7 +106,7 @@
         "packages/create-linkdesk-plugin/template/resources/cover.svg": "7dcd9223956231b4",
         "packages/create-linkdesk-plugin/template/resources/icon-bar.svg": "2b644aa6d1c30751",
         "packages/create-linkdesk-plugin/template/resources/icon.svg": "956f4aabbf183e5b",
-        "packages/create-linkdesk-plugin/template/scripts/ci-verify.mjs": "9b758eeaf23a0e15",
+        "packages/create-linkdesk-plugin/template/scripts/ci-verify.mjs": "e3e1ededc64f07e6",
         "packages/create-linkdesk-plugin/template/src/index.css": "cc8643e7b2166b5c",
         "packages/create-linkdesk-plugin/template/src/index.tsx": "407b70687c603daa",
         "packages/create-linkdesk-plugin/template/tsconfig.json": "ad02ff01b22e853b",

@@ -34,8 +34,14 @@
  * ── 定位 ──
  *   审计族：需要插件容器在场、**只读**（第三方仓只读报出、一字不写）、**不进 `npm run check`**、
  *   退出码恒 0（同 audit-plugin-dead-css / audit-plugin-scope）。⛔ 不引覆盖率百分比、不设阈值、不判红黄灯
- *   ——「要不要升格成『拦』」是待拍板题（层内 06 号档 ①）。
+ *   ——「升不升拦」已由用户 2026-09-26 拍板：**升**（E6#155 步二，判红落点 = 各仓 `ci-verify.mjs` 第六段）；
+ *   本尺保持 19 仓只读盘点（盘点 ≠ 判红——两件事、两个落点、**判据同源**）。
  *   ⛔ 本脚本不进 `check-gate-health.mjs` 自测域（那域的判据是文件名 `check-*.mjs`）⇒ 无需 `--self-test`。
+ *
+ * ── 审计核心（单一真源）──
+ *   口径与两条判据住在 `packages/plugin-sdk/test-audit.mjs`（SDK subpath `@linkdesk/plugin-sdk/test-audit`，
+ *   E6#155 步二起）：壳尺与 18 仓 CI 第六段调的是**同一份实现**，⛔ 任何一处都不许复制判据
+ *   （判据漂移 = 两把尺子打架，假红会让真红失效）。
  *
  * ── 官方仓名单来源 ──
  *   现场读 `scripts/sync-plugin-agents.mjs` 的 FACTS 表（那 = **官方仓名单唯一真相源**，会话一刚同步过
@@ -47,36 +53,15 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { AUDIT_CALIBER, analyzeRepo } from "../packages/plugin-sdk/test-audit.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const AGENTS_SCRIPT = path.join(ROOT, "scripts", "sync-plugin-agents.mjs");
 const CONTAINER = process.argv.slice(2).find((a) => !a.startsWith("--")) || process.env.LINKDESK_PLUGIN_CONTAINER || "E:/linkdesk-plugins";
 const JSON_OUT = process.argv.includes("--json");
 
-/** barrel 三件套（无逻辑、只搬运/声明）——与 §〇b 口径逐字同源。 */
-const BARRELS = new Set(["types.ts", "index.ts", "constants.ts"]);
 const SKIP_DIRS = new Set(["node_modules", ".git", "dist", "release", "resources"]);
-
-const isTestFile = (p) => /\.(test|spec)\.tsx?$/.test(p);
-/** 计行 = 含末行换行（逐文件 split 后求和）——与立案读数同法。 */
-const countLines = (p) => fs.readFileSync(p, "utf8").split(/\r?\n/).length;
 const read = (p) => fs.readFileSync(p, "utf8");
-
-function walk(dir, filter, out = []) {
-  let ents;
-  try {
-    ents = fs.readdirSync(dir, { withFileTypes: true });
-  } catch {
-    return out;
-  }
-  for (const e of ents) {
-    if (SKIP_DIRS.has(e.name)) continue;
-    const p = path.join(dir, e.name);
-    if (e.isDirectory()) walk(p, filter, out);
-    else if (filter(p)) out.push(p);
-  }
-  return out;
-}
 
 /** 官方仓名单 = sync-plugin-agents.mjs 的 FACTS 表（唯一真相源）；读不到 ⇒ null（降级：全部按官方报，并打一行警告）。 */
 function officialIds() {
@@ -131,112 +116,11 @@ function discoverRepos(root) {
   return out.sort((a, b) => a.id.localeCompare(b.id));
 }
 
-/** 严口径：`.ts` 单元再减 `use*` hook / 含 `window.linkdesk` / 含 React 导入。 */
-function isPureLogic(file) {
-  if (/^use/.test(path.basename(file))) return false;
-  const text = read(file);
-  if (text.includes("window.linkdesk")) return false;
-  if (/\bfrom\s+["']react["']/.test(text)) return false;
-  if (/\brequire\(\s*["']react["']\s*\)/.test(text)) return false;
-  if (/\bimport\s+React\b/.test(text)) return false;
-  return true;
-}
-
-/** 测试文件里出现的模块说明符（from / import() / require() / vi.mock 的字符串）。 */
-function specifiersOf(text) {
-  const out = [];
-  const re = /(?:from|import|require|vi\.mock|vi\.doMock|vi\.importActual|vi\.importMock)\s*\(?\s*["']([^"']+)["']/g;
-  let m;
-  while ((m = re.exec(text))) out.push(m[1]);
-  return out;
-}
-
-/** 一个单元「被引用」的全部可能写法：路径 ∨ 基名 ∨ 目录桶（含 index）。 */
-function unitSpecifiers(unitPath, srcDir) {
-  const rel = path.relative(srcDir, unitPath).split(path.sep).join("/").replace(/\.ts$/, "");
-  const base = path.posix.basename(rel);
-  const dirRel = path.posix.dirname(rel);
-  const specs = new Set([rel, base, `${rel}.ts`, `${base}.ts`, `${base}.js`]);
-  const dirAbs = path.dirname(unitPath);
-  if (fs.existsSync(path.join(dirAbs, "index.ts")) || fs.existsSync(path.join(dirAbs, "index.tsx"))) {
-    specs.add(dirRel);
-    specs.add(`${dirRel}/index`);
-  }
-  return { rel, specs: [...specs] };
-}
-
-/** 声明式 / 零逻辑仓的**有据豁免**：先看结构事实，再看 entry 头注自述（⛔ 不硬编码白名单）。 */
-function exemptReason(repoDir, srcExists, wideCount) {
-  if (!srcExists) return "不适用（纯声明式：无 `src/`，无可测单元；门禁 = `ci-verify.mjs` 的结构与声明判据）";
-  if (wideCount === 0) {
-    for (const entry of ["src/index.tsx", "src/index.ts"]) {
-      const p = path.join(repoDir, entry);
-      if (!fs.existsSync(p)) continue;
-      const quote = read(p)
-        .split(/\r?\n/)
-        .slice(0, 40)
-        .find((l) => l.includes("零逻辑"));
-      if (quote) return `不适用（零逻辑空壳 entry——${entry} 头注自述「${quote.replace(/^[\s*/]+/, "").trim()}」）`;
-    }
-    return "不适用（零逻辑空壳 entry：`src/` 下无非 barrel `.ts` 单元）";
-  }
-  return null;
-}
-
-function analyze(repo, official) {
-  const srcDir = path.join(repo.dir, "src");
-  const srcExists = fs.existsSync(srcDir);
-  const srcFiles = srcExists ? walk(srcDir, (p) => /\.(ts|tsx|css)$/.test(p)) : [];
-  const testFiles = srcFiles.filter(isTestFile);
-  const prodFiles = srcFiles.filter((p) => !isTestFile(p));
-  const candidates = srcFiles.filter((p) => p.endsWith(".ts") && !p.endsWith(".d.ts") && !isTestFile(p) && !BARRELS.has(path.basename(p)));
-  const units = candidates.filter(isPureLogic);
-
-  const prodLines = prodFiles.reduce((a, p) => a + countLines(p), 0);
-  const testLines = testFiles.reduce((a, p) => a + countLines(p), 0);
-  const testBaseNames = new Set(testFiles.map((p) => path.basename(p).replace(/\.(test|spec)\.tsx?$/, "")));
-  const testSpecs = testFiles.map((p) => specifiersOf(read(p)));
-
-  const judged = units.map((p) => {
-    const base = path.basename(p, ".ts");
-    const parent = path.basename(path.dirname(p));
-    const hitBasename = testBaseNames.has(base) || testBaseNames.has(parent);
-    const { rel, specs } = unitSpecifiers(p, srcDir);
-    const hitReference = testSpecs.some((list) => list.some((s) => specs.some((c) => s === c || s.endsWith(`/${c}`))));
-    return { unit: rel, hitBasename, hitReference, covered: hitBasename || hitReference };
-  });
-  const zeroTest = judged.filter((j) => !j.covered);
-
-  let kind = "logic";
-  let exempt = null;
-  if (!official) kind = "third-party";
-  else if (!srcExists || candidates.length === 0) {
-    kind = "exempt";
-    exempt = exemptReason(repo.dir, srcExists, candidates.length);
-  }
-
-  return {
-    id: repo.id,
-    group: repo.group,
-    kind,
-    exempt,
-    prodLines,
-    testLines,
-    testFiles: testFiles.length,
-    wideUnits: candidates.length,
-    logicUnits: units.length,
-    zeroTest: zeroTest.map((j) => ({ unit: j.unit, evidence: ["basename-miss", "reference-miss"] })),
-    coveredBasenameOnly: judged.filter((j) => j.hitBasename && !j.hitReference).map((j) => j.unit),
-    coveredReferenceOnly: judged.filter((j) => !j.hitBasename && j.hitReference).map((j) => j.unit),
-    coveredBoth: judged.filter((j) => j.hitBasename && j.hitReference).map((j) => j.unit),
-  };
-}
-
 /* ─────────────────────────── 主流程 ─────────────────────────── */
 
 const ids = officialIds();
 const repos = discoverRepos(CONTAINER);
-const rows = repos.map((r) => analyze(r, ids ? ids.has(r.id) : true));
+const rows = repos.map((r) => ({ id: r.id, group: r.group, ...analyzeRepo(r.dir, { official: ids ? ids.has(r.id) : true }) }));
 const officialRows = rows.filter((r) => r.kind !== "third-party");
 const logicRows = officialRows.filter((r) => r.kind === "logic");
 const exemptRows = officialRows.filter((r) => r.kind === "exempt");
@@ -246,14 +130,7 @@ const payload = {
   container: CONTAINER,
   officialListSource: ids ? "scripts/sync-plugin-agents.mjs FACTS 表" : null,
   officialListWarning: ids ? null : "官方仓名单读取失败（按全部官方报）",
-  caliber: {
-    prodLines: "src/**/*.{ts,tsx,css} 去 *.test.ts(x)，逐文件 split(/\\r?\\n/).length 求和（含末行换行）",
-    testLines: "src/**/*.test.ts(x)",
-    wideUnits: "src/**/*.ts 去 .d.ts / *.test.ts / barrel(types|index|constants)",
-    logicUnits: "宽口径再减 use* hook / 含 window.linkdesk / 含 React 导入",
-    hit: "① 同名测试文件（基名 = 单元名 ∨ 目录名）∨ ② 任一测试文件的模块说明符引用（含目录桶）",
-    zeroTestNote: "零测 = 待裁决，不是判死——同名判据看不见跨文件覆盖，请逐条核",
-  },
+  caliber: AUDIT_CALIBER,
   repos: rows,
   summary: {
     repos: rows.length,
@@ -342,5 +219,5 @@ if (s.zeroTest || thirdPartyRows.some((r) => r.zeroTest.length)) {
 }
 
 console.log(`\n[plugin-tests] ⚠️ 零测 = 待裁决，不是判死——同名判据看不见跨文件覆盖，请逐条核（本层两次实测：file-tree 27%、marketplace 47% 的立案读数是假红）。`);
-console.log(`[plugin-tests] 只报不拦（exit 0）——不进 npm run check / CI / ci-verify.mjs；要不要升格为「拦」是待拍板题（插件测试覆盖层/06-待拍板方向题.md ①）。`);
+console.log(`[plugin-tests] 只报不拦（exit 0）——本尺管 19 仓盘点；判红在**各仓 ci-verify.mjs 第六段**（E6#155 步二，2026-09-26 用户拍板；判据同源 @linkdesk/plugin-sdk/test-audit，⛔ 两处不许分叉）。`);
 process.exitCode = 0;
