@@ -35,6 +35,7 @@ import ContextMenu from "@src/components/shared/context-menu/ContextMenu";
 import OverlayPortal from "../../../components/shared/overlay-portal/OverlayPortal"; // E5.8#107 浮层权威：PlusMenu 进 #overlay-root
 import { Z_INDEX } from "../../../constants"; // E5.8#107：裸 1001 → Z_INDEX 常量（禁裸数字）
 import PoolPluginIcon from "../pool-plugin-icon/PoolPluginIcon"; // E6#69g：标签图标哑渲染判别联合（codicon/img/emoji/lucide）
+import { revealDelta } from "./revealActiveTab"; // 04「标签栏内容自适应」：活动标签滚入视野的纯增量
 import "./GroupTabBar.css";
 
 // ═══════════════════════════════════════════════════════════════════
@@ -146,13 +147,69 @@ export default function GroupTabBar({ groupId, tabs, activeTabId, draggingId, dr
     scrollRef.current?.scrollBy({ left: delta, behavior: "smooth" });
   };
 
-  // ── 滚轮横向滚动 ──
+  // ── 滚轮横向滚动（04「标签栏内容自适应」判据写死：纵向滚轮→横向滚；横向滚轮走原生 deltaX；
+  //    Ctrl+滚轮不拦截——字号缩放优先）──
   const onWheel = useCallback((e: React.WheelEvent) => {
-    if (scrollRef.current) {
-      e.preventDefault();
-      scrollRef.current.scrollLeft += e.deltaY;
-    }
+    if (e.ctrlKey) return;
+    if (!scrollRef.current) return;
+    e.preventDefault();
+    scrollRef.current.scrollLeft += Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
   }, []);
+
+  // ── 活动标签自动滚入视野（04「标签栏内容自适应」配套：切/键盘切/新开（落最右）/关闭后邻居上位，
+  //    全部经 activeTabId 变化汇入这一个 effect——不含无关 tabs 重排，用户手滚的位置不被拽走）。
+  //    位置用 rect 差值不用 offsetLeft——item 外的 display:contents wrapper 让 offsetParent 不可靠
+  //    （见 revealActiveTab.ts 头注）。reduced-motion 下退化为瞬时跳转。──
+  useEffect(() => {
+    const list = scrollRef.current;
+    if (!list) return;
+    const el = list.querySelector<HTMLElement>(`[data-tab-id="${CSS.escape(activeTabId)}"]`);
+    if (!el) return;
+    const listRect = list.getBoundingClientRect();
+    const elRect = el.getBoundingClientRect();
+    const delta = revealDelta(
+      list.scrollLeft,
+      list.clientWidth,
+      elRect.left - listRect.left + list.scrollLeft,
+      elRect.width,
+    );
+    if (delta === 0) return;
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    list.scrollTo({ left: list.scrollLeft + delta, behavior: reduceMotion ? "auto" : "smooth" });
+  }, [activeTabId]);
+
+  // ── 拖拽到可视区边缘自动滚动（04 配套 3：标签变宽后目标位可能落在屏外——不自动滚拖不过去也看不见）。
+  //    指针停在边缘区即持续滚（rAF 循环），离开边缘区/拖出列表即停；拖拽结束（draggingId 清空）整组拆除。──
+  useEffect(() => {
+    if (!draggingId) return; // 活跃守卫（硬约束 14）
+    const list = scrollRef.current;
+    if (!list) return;
+    const EDGE_PX = 32; // 距左右缘多宽算「边缘区」
+    const SPEED_PX = 10; // 每帧滚动的像素（rAF ~60fps ⇒ ~600px/s）
+    let raf = 0;
+    let speed = 0;
+    const tick = (): void => {
+      if (speed !== 0) list.scrollLeft += speed;
+      raf = requestAnimationFrame(tick);
+    };
+    const onMove = (e: PointerEvent): void => {
+      const rect = list.getBoundingClientRect();
+      const inside = e.clientY >= rect.top && e.clientY <= rect.bottom && e.clientX >= rect.left && e.clientX <= rect.right;
+      if (!inside) {
+        speed = 0;
+        return;
+      }
+      if (e.clientX < rect.left + EDGE_PX) speed = -SPEED_PX;
+      else if (e.clientX > rect.right - EDGE_PX) speed = SPEED_PX;
+      else speed = 0;
+    };
+    window.addEventListener("pointermove", onMove, { passive: true });
+    raf = requestAnimationFrame(tick);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("pointermove", onMove);
+    };
+  }, [draggingId]);
 
   // ── 右键菜单——壳 ContextMenu 接管（menuId="TabContext"），池不再硬编码菜单项。
   // ContextMenu 自带 mousedown 外部点击检测（contains 守卫）+ E5.7#14 backdrop 吞第一击

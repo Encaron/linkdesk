@@ -38,9 +38,14 @@
   display: flex;
   align-items: center;
   gap: 4px;
-  flex: 0 1 120px;
-  min-width: 64px;
-  max-width: 240px;
+  /* 04「标签栏内容自适应与横向滚动」：宽度按内容撑开、不挤压不省略（原 flex: 0 1 120px 可压缩）
+     ——装不下走横向滚动（机制已在：overflow-x + 滚轮 + 箭头），只动宽度轴。
+     min 64 保留短名标签的可点下限；max 240 作高上限——超宽才省略号，否则一个超长文件名占满整条。
+     🔴 出处考（04 档 §六）：120/64/240 三个数在 E3.5-软件生态美化/TabBar标签栏美化/ 无记载
+     （2026-09-27 复查仍无）——本笔把 64/240 补乘 --ui-scale（240 原本漏乘，连坐面判据）。 */
+  flex: 0 0 auto;
+  min-width: calc(64px * var(--ui-scale));
+  max-width: calc(240px * var(--ui-scale));
   height: calc(30px * var(--ui-scale)); /* E5.8 Phase 12 #169：tab 30px 乘 scale（最高危） */
   margin: 4px 4px 0 0; /* E5.8#51 竞标 D：顶浮 4px + tab 间常驻 4px 空隙（指示器净占 0 落空隙） */
   padding: 0 8px;
@@ -230,7 +235,7 @@
 
 @keyframes ldk-group-tab-enter {
   from { opacity: 0; max-width: 0; padding-left: 0; padding-right: 0; }
-  to   { opacity: 1; max-width: 200px; padding-left: 8px; padding-right: 8px; }
+  to   { opacity: 1; max-width: calc(240px * var(--ui-scale)); padding-left: 8px; padding-right: 8px; }
 }
 
 .ldk-group-tab-item.exiting {
@@ -238,8 +243,11 @@
   pointer-events: none;
 }
 
+/* 🔴 04「标签栏内容自适应」：关键帧的 max-width 与新宽度上限同口径（原 from 200px 与 240px 上限
+   不一致——宽标签在收起动画首帧会先跳窄一下）。动画期间宽 = min(内容宽, 动画值)，内容窄的标签
+   长到内容宽就停，视觉不受 240 影响。 */
 @keyframes ldk-group-tab-exit {
-  from { opacity: 1; max-width: 200px; }
+  from { opacity: 1; max-width: calc(240px * var(--ui-scale)); }
   to   { opacity: 0; max-width: 0; padding-left: 0; padding-right: 0; }
 }
 
