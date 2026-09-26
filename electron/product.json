@@ -5,5 +5,12 @@
   "commit": "",
   "date": "",
   "quality": "stable",
-  "updateUrl": "https://api.github.com/repos/encaron/linkdesk/releases/latest"
+  "updateUrl": "https://api.github.com/repos/encaron/linkdesk/releases/latest",
+  "author": {
+    "nameZh": "冯毅力",
+    "nameEn": "Feng YiLi",
+    "emailPrimary": "fengyilix@gmail.com",
+    "emailSecondary": "fengyilix@outlook.com",
+    "copyrightHolder": "冯毅力（Encaron）"
+  }
 }

@@ -36,6 +36,27 @@ export interface Product {
    * `serial-v3` → `linkdesk`）。改仓库 = 改 `product.json` 一处。
    */
   updateUrl: string;
+  /**
+   * 作者身份（04「关于 LinkDesk 标签页重设计」2026-09-26 拍板②：身份唯一真相源 = product.json）。
+   * ⚠️ **可选**：旧 shape 的 product.json 没有这个块 ⇒ `undefined` ⇒ 关于页**整块作者卡不画**
+   * （「没有作者信息」与「读不出来」是两件事，后者才画 `—`）。GitHub 账号**不在此块**——
+   * 由 `updateUrl` 的 owner 段推出（不写死，同页脚仓库链接）。
+   */
+  author?: ProductAuthor;
+}
+
+/** 关于页作者卡 / 页脚版权行的身份数据（04 设计 §四.1 ③c④；手写常量，发布脚本不覆写，同 `nameLong`） */
+export interface ProductAuthor {
+  /** 中文名（值，不翻译） */
+  nameZh: string;
+  /** 英文名（值，不翻译） */
+  nameEn: string;
+  /** 主邮箱（工作事务；`mailto:` 链接） */
+  emailPrimary: string;
+  /** 备邮箱（生活事务；`mailto:` 链接） */
+  emailSecondary: string;
+  /** 版权持有者署名口径（「冯毅力（Encaron）」——与 LICENSE / 关于页页脚三处一致） */
+  copyrightHolder: string;
 }
 
 /** runtime 增强（`process.versions` + `os`，不落盘） */

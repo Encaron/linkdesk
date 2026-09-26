@@ -30,7 +30,7 @@ import { useMemo, useSyncExternalStore } from "react";
 import { useTranslation } from "react-i18next";
 import i18n from "../i18n";
 import type { ProductInfo } from "../core/types/ipc/product";
-import type { PoolAboutData, PoolAboutField } from "../core/types/pool/poolLayout";
+import type { PoolAboutCard, PoolAboutData, PoolAboutField } from "../core/types/pool/poolLayout";
 import { getShellExposed } from "../core/api/linkdesk-api/surfaces";
 import { getAssetPath } from "../core/utils/path/assetPath";
 
@@ -110,6 +110,9 @@ export function primeAbout(): Promise<void> {
  *
  * 纯函数（入参 + `t` 决定输出，不读模块态）——所以 `useAbout` 能在语言切换时重算，
  * 而 `getAboutCopyText` 能拿到**与屏幕上一模一样**的那份标签（复制出去的中文/英文跟着界面走）。
+ *
+ * 04「关于页重设计」四区信息架构：HERO（名+版本药丸+tagline）/ 动作行（池自画命令按钮）/
+ * 卡片×3（本版本·运行环境·作者）/ 页脚（版权行+两条外链）——作者卡**整块缺席**保底（§五①）。
  */
 function buildAboutData(snap: AboutSnap, t: (key: string) => string): PoolAboutData {
   if (!snap.ready) return { state: "loading" };
@@ -117,18 +120,55 @@ function buildAboutData(snap: AboutSnap, t: (key: string) => string): PoolAboutD
   const product = snap.raw?.product;
   const runtime = snap.raw?.runtime;
 
-  // 顺序 = 06 §4.2 的字段表顺序（版本/提交/日期/Electron/Chromium/Node.js/V8/OS）。
-  // 值缺失一律落 PLACEHOLDER —— 先 `??` 再 `||`：空串也是「没有」，不能画成空白行。
-  const fields: PoolAboutField[] = [
-    { label: t("版本"), value: product?.version || PLACEHOLDER },
-    { label: t("提交"), value: product?.commit || PLACEHOLDER },
-    { label: t("日期"), value: product?.date || PLACEHOLDER },
-    { label: t("Electron"), value: runtime?.electron || PLACEHOLDER },
-    { label: t("Chromium"), value: runtime?.chromium || PLACEHOLDER },
-    { label: t("Node.js"), value: runtime?.node || PLACEHOLDER },
-    { label: t("V8"), value: runtime?.v8 || PLACEHOLDER },
-    { label: t("OS"), value: runtime?.os || PLACEHOLDER },
+  // ── 卡片×3（04 设计 §四.1 ③）——作者卡按下文条件追加，故 2 或 3 张 ──
+  const cards: PoolAboutCard[] = [
+    {
+      title: t("本版本"),
+      rows: [
+        // 值缺失一律落 PLACEHOLDER —— 先 `??` 再 `||`：空串也是「没有」，不能画成空白行
+        { label: t("提交"), value: product?.commit || PLACEHOLDER },
+        { label: t("日期"), value: product?.date || PLACEHOLDER },
+        { label: t("通道"), value: product?.quality === "preview" ? t("预览版") : t("稳定版") },
+      ],
+    },
+    {
+      title: t("运行环境"),
+      rows: [
+        { label: t("Electron"), value: runtime?.electron || PLACEHOLDER },
+        { label: t("Chromium"), value: runtime?.chromium || PLACEHOLDER },
+        { label: t("Node.js"), value: runtime?.node || PLACEHOLDER },
+        { label: t("V8"), value: runtime?.v8 || PLACEHOLDER },
+        { label: t("OS"), value: runtime?.os || PLACEHOLDER },
+      ],
+    },
   ];
+
+  // ── GitHub owner / 仓库主页——从 `updateUrl` 推，**不写死仓库地址**（仓库名改过一次：
+  //    serial-v3 → linkdesk；写死 = 第二处真值源。`useReleaseNotes.listPageUrl` 同源推导）。
+  const updateUrl = product?.updateUrl || "";
+  const repoMatch = /https:\/\/api\.github\.com\/repos\/([^/]+)\/([^/]+)/.exec(updateUrl);
+  const owner = repoMatch?.[1];
+  const repoUrl = repoMatch ? `https://github.com/${repoMatch[1]}/${repoMatch[2]}` : undefined;
+
+  // ── 作者卡（04 拍板②：author 块是身份唯一真相源；形状不合法 ⇒ 整块不画，不是画一屏 —）
+  //    行数克制 ≤4：姓名（中英并列一行）/ 邮箱一主一备 / GitHub 主页（owner 段推出，不写死）。
+  const author = product?.author;
+  if (author) {
+    const authorRows: PoolAboutField[] = [
+      // 姓名与邮箱是**值**不是标签——不进 t()（验收 8/12：切语言姓名邮箱不变）
+      { label: t("姓名"), value: `${author.nameZh} ${author.nameEn}` },
+      { label: t("邮箱"), value: author.emailPrimary, href: `mailto:${author.emailPrimary}` },
+      // 备用行：mockup 的 k 列是空位 + 值降档色——主次靠顺序与颜色双表达，不写第二遍「邮箱」
+      { label: "", value: author.emailSecondary, href: `mailto:${author.emailSecondary}`, secondary: true },
+      ...(owner
+        ? [{ label: t("GitHub"), value: `github.com/${owner}`, href: `https://github.com/${owner}` }]
+        : []),
+    ];
+    cards.push({
+      title: t("作者"),
+      rows: authorRows,
+    });
+  }
 
   return {
     state: "content",
@@ -139,7 +179,12 @@ function buildAboutData(snap: AboutSnap, t: (key: string) => string): PoolAboutD
     // 品牌标——与 `usePoolSync` 推 `titleBar.logoUrl` 是**同一句 `getAssetPath("assets/logo.svg")`**
     // （唯一真相源 = `public/assets/logo.svg`；硬约束 12：资产路径一律走 `getAssetPath`）。
     logoUrl: getAssetPath("assets/logo.svg"),
-    fields,
+    version: product?.version || PLACEHOLDER,
+    tagline: t("一个容器，装下你所有的工作方式"),
+    cards,
+    // 版权行 = 法律文本不翻译（「MIT License」是专有名词）——年份动态、署名口径与 LICENSE 一致（拍板④）
+    ...(author ? { footerCopyright: `© ${new Date().getFullYear()} ${author.copyrightHolder} · MIT License` } : {}),
+    ...(repoUrl ? { repoUrl } : {}),
   };
 }
 
@@ -154,18 +199,25 @@ export function getAboutState(): PoolAboutData {
 }
 
 /**
- * 「复制」要写进剪贴板的那串文本——**`key: value` 每行一条、`\n` 连接**（06 §4.3，对标 VS Code）。
+ * 「复制」要写进剪贴板的那串文本——04 拍板⑥（2026-09-26）：**带作者行**的名片全文。
+ * 结构 = 首行 `名字 版本` + 每卡 `[标题]` 与 `label: value` 行 + 版权行，`\n` 连接。
  *
  * 🔴 在**壳侧**现算，不往池推：① 写剪贴板的是壳（`ClipboardService` 在 core，池够不着）；
  * ② 标签必须是**屏幕上那一份**（随语言变），而池只在渲染时 `t()`——把拼好的串推下去，
- * 语言一切换就与按钮下的字段表对不上了。现算 = 永远同源。
+ * 语言一切换就与页面上的字段对不上了。现算 = 永远同源。
  *
  * `null` = 还没取到数（理论上点不到——按钮在 `content` 态才画；真出现就当无事发生，不写空串进剪贴板）。
  */
 export function getAboutCopyText(): string | null {
   const data = getAboutState();
   if (data.state !== "content") return null;
-  return data.fields.map((f) => `${f.label}: ${f.value}`).join("\n");
+  const lines: string[] = [`${data.name} ${data.version}`];
+  for (const card of data.cards) {
+    lines.push(`[${card.title}]`);
+    for (const row of card.rows) lines.push(row.label ? `${row.label}: ${row.value}` : row.value);
+  }
+  if (data.footerCopyright !== undefined) lines.push(data.footerCopyright);
+  return lines.join("\n");
 }
 
 /**

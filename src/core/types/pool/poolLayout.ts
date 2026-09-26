@@ -262,10 +262,30 @@ export type PoolReleaseNotesData =
  * 反之若池自持标签表，加字段就得壳池两处同改，且两处的顺序随时可能漂移。
  */
 export interface PoolAboutField {
-  /** 字段名（壳 `t()` 完）——如「版本」「Electron」 */
+  /** 字段名（壳 `t()` 完）——如「提交」「Electron」「邮箱」 */
   label: string;
   /** 字段值——原样展示，壳不加工（`app.getVersion()` 的**纯**版本号，不带 VS Code 那种 `(user setup)` 后缀） */
   value: string;
+  /**
+   * 存在 = 该值是**链接**（04「关于页重设计」②原则「身份/联系方式/出处一律可点」）：
+   * `mailto:` → 池画 `<a href>`（全局外链路由 `EXTERNAL_PROTOCOLS` 含 mailto → openEmail）；
+   * `https` → 外链（`target="_blank"`，同一路由转系统浏览器，软件本身不导航离开）。
+   * `undefined` = 纯文本（提交哈希 / 版本串这类机器产出值，不可点也不该点）。
+   */
+  href?: string;
+  /**
+   * true = 值降一档色（`--text-secondary`）——作者卡**备用邮箱**行用（04 设计 §三②：主走链接色、
+   * 备降一档，主次靠顺序 + 颜色双表达；mockup 的 `.mail--secondary` 同款）。`undefined` = 正常档。
+   */
+  secondary?: boolean;
+}
+
+/** 关于页卡片区的一张卡（04 设计 §四.1 ③：本版本 / 运行环境 / 作者——版心 640 内齐宽） */
+export interface PoolAboutCard {
+  /** 卡标题（壳 `t()` 完）——如「本版本」「运行环境」「作者」 */
+  title: string;
+  /** 卡内行——卡内文本**左对齐**（04 拍板①：版心居中 ≠ 每行居中，key: value 要竖线） */
+  rows: PoolAboutField[];
 }
 
 /**
@@ -300,8 +320,25 @@ export type PoolAboutData =
        * （标题栏一个、关于页一个）。故改用真资产：**品牌标全仓只有一个文件、一处规则**。
        */
       logoUrl: string;
-      /** 字段表——顺序即渲染顺序，壳定 */
-      fields: PoolAboutField[];
+      /** HERO 版本药丸（04 设计 §四.1：版本从字段表提到名字旁——这一页被打开的原因要一眼看到） */
+      version: string;
+      /** HERO 定位句（壳 `t()` 完整句——拍板⑤文案「一个容器，装下你所有的工作方式」；它是标签、要翻译） */
+      tagline: string;
+      /**
+       * 卡片区（04 设计 §四.1 ③：版心 640 内齐宽的三张卡）——壳组好、池只 `map`。
+       * 作者卡**整块缺席** = `product.author` 形状不合法（保底：不画整卡，不是画一屏 `—`）⇒ 2 或 3 张。
+       */
+      cards: PoolAboutCard[];
+      /**
+       * 页脚版权行（壳侧组装的完整句——`© ${年份} ${product.author.copyrightHolder} · MIT License`）。
+       * `undefined` = 不画（author 块缺席 ⇒ 版权行没有署名主体，与作者卡同生共死）。
+       */
+      footerCopyright?: string;
+      /**
+       * 页脚「在 GitHub 查看源码」目标——由 `updateUrl` 推（owner/repo 段 → `github.com/O/R`，
+       * **不写死仓库地址**，`useReleaseNotes.listPageUrl()` 同源推导）；`undefined` = 不画（同「空链接比没有链接更糟」）。
+       */
+      repoUrl?: string;
     };
 
 /** 分屏组——每个 group 占一个 flex 区域，内含 N 个 keep-alive 标签页 */

@@ -1,31 +1,28 @@
 /**
- * AboutView 样式——E6#57.14a。
- * 验收图：`06-主软件更新/mockups/02-更新通知与关于.html` 的 **Frame 6**。
+ * AboutView 样式——E6#57.14a；04「关于页重设计」（2026-09-26 拍板）四区版式。
+ * 参考图：`docs/04-软件更新/待抉择池/关于LinkDesk标签页重设计/mockups/01-关于标签页-重设计.html`。
  *
- * ## 与 mockup 的偏差全部是**门禁**逼的（同 `ReleaseNotesPoolView.css` 的处理法，逐条记账）
+ * ## 与 mockup 的偏差全部是**门禁**逼的（沿旧版头注的记账惯例，逐条留）
  *
  * ① **间距网格**（`check-spacing-grid.mjs`：`padding`/`margin`/`gap` 的 px 必须 ≤6 或 4 的倍数）
- *    mockup 违规值 → 就近吸附：`padding: 22px 32px` → `24px 32px`（22→24）·
- *    `gap: 14px` → `16px` · `gap: 10px` → `12px` · `padding: 4px 14px` → `0 16px`（14→16）。
- *    ⚠️ mockup 的 `padding: 4px 14px` 里那个 `4px` 本来合规，改 `0 16px` 是为与兄弟视图
- *    `ReleaseNotesPoolView.css` 的 `.ldk-rn-btn` **逐值一致**——同一个壳里两个按钮不该长得不一样。
- * ② **字号阶梯**（`check-font-scale-audit.mjs`：禁裸 px）——mockup 的 `16px`/`12.5px`/`11.5px`/`12px`
- *    落 `--font-size-lg`(16) / `--font-size-xs`(12) / `--font-size-2xs`(11)。
- * ③ **零硬编码色**（`check-css-hardcode.mjs`）——mockup 品牌块写死 `#0078D4`、主按钮写死 `#fff`：
- *    前者 = 仓库既有的 `--accent`（`index.css:18` 就是 `#0078D4`，同值不同源），
- *    后者 = `--text-on-accent`（`ReleaseNotesPoolView.css` 的 `.ldk-rn-btn--primary` 同款）。
- *    品牌块的颜色**走 CSS 变量写在 .css 里**（不是把 hex 写进 `.tsx` 的 SVG 属性）——
- *    SVG 的 `fill` 也吃 `var()`，所以「品牌蓝」全仓只有 `--accent` 一处真值，主题换色时它跟着换。
+ *    mockup 违规值 → 就近吸附：`gap: 10px` → `12px`（HERO 名字行 / 卡间距）·
+ *    `.hero-ver` 的 `padding: 2px 10px` → `2px 12px`（10→12；2px 本身 ≤6 合规）。
+ * ② **字号阶梯**（`check-font-scale-audit.mjs`：禁裸 px）——mockup 的 22/16/13/12/11px
+ *    落 `--font-size-2xl`(22) / `--font-size-lg`(16) / `--font-size-sm`(13) / `--font-size-xs`(12) / `--font-size-2xs`(11)。
+ * ③ **零硬编码色**（`check-css-hardcode.mjs`）——全 `var()`；版本药丸的 accent 底 = `--accent` +
+ *    `--text-on-accent`（与主按钮同款，品牌蓝全仓只有 token 一处真值）。
  *
- * ## 两处**内容层**的取舍（不是拧值）
+ * ## 版式口径（04 拍板①）
  *
- * - **hover 用底色而非边框**：mockup 写 `.ldk-about-btn:hover { border-color: var(--text-muted) }`——
- *   本文件改用兄弟视图 `.ldk-rn-btn:hover` 的 `background: var(--hover-overlay)`。理由：同一个壳内
- *   两套按钮 hover 反馈会读成「这里坏了」；且 mockup 那条规则对 `.primary` 也生效，
- *   会把主按钮的 accent 描边变成灰边（显然不是本意）。
- * - **`.ldk-about-inner` 这一层是 mockup 没有的**：mockup 把 `max-width: 420px` 直接挂在带 padding 的
- *   滚动元素上，其宽度由内容自然决定 ⇒ 标签列的 72px 与值列的对齐会随最长值浮动。
- *   拆成「滚动区（填满）＋ 内容列（420 封顶）」两层后，宽度是确定的，与最长值无关。
+ * **版心居中，卡内左对齐**——居中的是版心与区块（HERO/动作行/页脚在版心内各自居中，
+ * 卡片齐宽），`key: value` 的行内文本仍左对齐（逐行居中会打散标签列与值列的竖线）。
+ * `.ldk-about-inner`（滚动区填满 + 版心 640 居中）两层拆分是当年刻意设计，重排后保留——
+ * 宽度确定、不随最长值浮动。
+ *
+ * ## 可划选（4.3，E6#72b 先例）
+ *
+ * 内容层 `user-select: text; cursor: text`，`button`/`a` 保持 `user-select: none`
+ * （点按不误选）——**不动** `index.css:207` 的全局规则。
  *
  * ## 零动效
  *
@@ -39,72 +36,84 @@
   padding: 24px 32px;
 }
 
-/* 内容列——420 封顶、左对齐（Frame 6 的版心） */
+/* 版心——640 居中（原 420 且无 align-items 缩在左上；04 拍板①）＋ 内容层可划选 */
 .ldk-about-inner {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  max-width: 420px;
+  gap: 20px;
+  width: 100%;
+  max-width: 640px;
+  margin: 0 auto;
+  user-select: text;
+  cursor: text;
 }
 
-/* ── 品牌区 ── */
+/* 按钮/链接保持不可选——点按不误选（E6#72b 先例：可选文本区里的动作面单列） */
+.ldk-about-inner button,
+.ldk-about-inner a {
+  user-select: none;
+}
+
+/* ── ① HERO（居中）── */
+
+.ldk-about-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  text-align: center;
+}
 
 .ldk-about-logo {
-  width: 56px;
-  height: 56px;
+  width: 96px;
+  height: 96px;
   flex: none;
 }
 
+.ldk-about-hero-name-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
 .ldk-about-name {
-  font-size: var(--font-size-lg);
+  font-size: var(--font-size-2xl);
   font-weight: 600;
   color: var(--text-primary);
 }
 
-/* ── 字段表（八行 key: value） ── */
-
-.ldk-about-fields {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  font-size: var(--font-size-xs);
-}
-
-.ldk-about-row {
-  display: flex;
-  gap: 12px;
-}
-
-.ldk-about-row .k {
-  flex: 0 0 72px;
-  color: var(--text-secondary);
-}
-
-.ldk-about-row .v {
-  color: var(--text-primary);
+/* 版本药丸——这一页被打开的原因放名字旁一眼可见（04 §四.1：字段表里不再重复它） */
+.ldk-about-ver {
   font-family: var(--font-mono);
-  font-size: var(--font-size-2xs);
-  /* 值可能很长（V8 版本串 / 系统版本串）。默认 `min-width: auto` 会让弹性子项**撑破**行宽
-     ——mockup 没写这段是因为它的示例值都短；真机换一台机器就可能溢出。 */
-  min-width: 0;
-  overflow-wrap: anywhere;
+  font-size: var(--font-size-xs);
+  background: var(--accent);
+  color: var(--text-on-accent);
+  border-radius: var(--radius-pill);
+  padding: 2px 12px;
 }
 
-/* ── 动作行 ── */
+.ldk-about-tagline {
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  max-width: 420px;
+}
+
+/* ── ② 动作行（居中）── */
 
 .ldk-about-actions {
   display: flex;
   gap: 8px;
-  margin-top: 6px;
+  justify-content: center;
+  flex-wrap: wrap;
 }
 
 /* E6#57.14 EXEMPT：按钮形态与兄弟视图 `.ldk-rn-btn` **逐值一致**是**设计决定**（同一个壳里两个按钮
-   不该长得不一样，见文件头 ①），而池视图按目录规范**各自持有自己的样式表**（`views/` 下 6 个域夹，
-   无公共 css 层）⇒ 结构性重复无法靠抽公共类消除，除非为一块按钮新建一个共享层（为 13 行开一层，
-   不划算且要动目录规范）。同款先例：`IconBarZone.css` / `RightSidebarZone.css` 的 EXEMPT 块。
+   不该长得不一样，见 AboutView.css 旧头注①），而池视图按目录规范**各自持有自己的样式表**（`views/` 下
+   6 个域夹，无公共 css 层）⇒ 结构性重复无法靠抽公共类消除，除非为一块按钮新建一个共享层（为 13 行
+   开一层，不划算且要动目录规范）。同款先例：`IconBarZone.css` / `RightSidebarZone.css` 的 EXEMPT 块。
    ⚠️ 代价如实记着：这两份**会互相漂移**——改一边必须改另一边。 */
 /* jscpd:ignore-start */
-/* 按钮形态与兄弟视图 `.ldk-rn-btn` 逐值一致（见文件头 ①） */
+/* 按钮形态与兄弟视图 `.ldk-rn-btn` 逐值一致（见上 EXEMPT 注） */
 .ldk-about-btn {
   height: 26px;
   padding: 0 16px;
@@ -122,7 +131,7 @@
 }
 /* jscpd:ignore-end */
 
-/* 「复制」是主按钮（Frame 6：`.ldk-about-btn.primary` 在右侧） */
+/* 「复制」是主按钮（04 设计 §四.1 ②：动作行第一位） */
 .ldk-about-btn--primary {
   border-color: transparent;
   background: var(--accent);
@@ -133,20 +142,117 @@
   background: var(--accent-hover);
 }
 
-/* ── 加载骨架（一帧的过渡，形状与正文一一对应 ⇒ 不跳位） ── */
+/* ── ③ 卡片×3（版心内齐宽；卡内文本左对齐）── */
 
-.ldk-about-skel {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  max-width: 420px;
+.ldk-about-card {
+  background: var(--bg-card);
+  border: 1px solid var(--separator);
+  border-radius: var(--radius-md);
+  padding: 16px 20px;
 }
 
-.ldk-about-skel-logo {
-  width: 56px;
-  height: 56px;
-  border-radius: var(--radius-md);
+/* 卡标题——小字大写（mockup `.card-title` 同款；字距不在 spacing-grid 判据内） */
+.ldk-about-card-title {
+  font-size: var(--font-size-2xs);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 12px;
+}
+
+.ldk-about-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: var(--font-size-xs);
+}
+
+.ldk-about-row {
+  display: flex;
+  gap: 12px;
+}
+
+.ldk-about-row .k {
+  flex: 0 0 72px;
+  color: var(--text-secondary);
+}
+
+.ldk-about-row .v {
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-2xs);
+  /* 值可能很长（V8 版本串 / 系统版本串）。默认 `min-width: auto` 会让弹性子项**撑破**行宽。 */
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* 链接值（邮箱 mailto / GitHub 主页）——与 mockup `.mail`/`.gh` 同一种「找到你」的长相 */
+.ldk-about-link {
+  color: var(--accent-hover);
+  text-decoration: none;
+  font-family: var(--font-ui);
+  font-size: var(--font-size-xs);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.ldk-about-link:hover {
+  text-decoration: underline;
+}
+
+/* 备用邮箱降一档（04 设计 §三②：主走链接色、备降档——主次靠顺序 + 颜色双表达） */
+.ldk-about-link--secondary {
+  color: var(--text-secondary);
+}
+
+/* ── ④ 页脚（居中 muted）── */
+
+.ldk-about-foot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+/* 版权行——muted 小字是**唯一豁免**（04 设计 §六②：非信息承载，亮色下 4.5:1 达标） */
+.ldk-about-foot-copy {
+  font-size: var(--font-size-2xs);
+  color: var(--text-muted);
+}
+
+.ldk-about-foot-links {
+  display: flex;
+  gap: 16px;
+}
+
+/* 页脚链接（MIT 全文 / 在 GitHub 查看源码）——小号链接色按钮，形态同源 */
+.ldk-about-foot-link {
+  border: none;
+  background: transparent;
+  padding: 0;
+  color: var(--accent-hover);
+  font-family: var(--font-ui);
+  font-size: var(--font-size-xs);
+  cursor: pointer;
+}
+
+.ldk-about-foot-link:hover {
+  text-decoration: underline;
+}
+
+/* ── 加载骨架（一帧的过渡，形状与四区正文一一对应 ⇒ 不跳位） ── */
+
+.ldk-about-skel {
+  border-radius: var(--radius-sm);
   background: var(--hover-overlay);
+}
+
+/* 🔴 骨架类名沿用 E6#57.14 旧族（宿主类名账里的名字不换——见 AboutView.tsx 骨架段注） */
+.ldk-about-skel-logo {
+  width: 96px;
+  height: 96px;
+  border-radius: var(--radius-lg);
 }
 
 .ldk-about-skel-bar {
@@ -156,8 +262,16 @@
 }
 
 .ldk-about-skel-bar--name {
-  width: 96px;
+  width: 180px;
   height: 16px;
+}
+
+.ldk-about-skel-bar--tagline {
+  width: 260px;
+}
+
+.ldk-about-skel-bar--title {
+  width: 96px;
 }
 
 .ldk-about-skel-bar--k {

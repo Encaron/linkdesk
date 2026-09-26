@@ -20,7 +20,7 @@ import * as os from 'node:os';
 // E6#57.13：三个 interface 搬到 `src/core/types/ipc/product.ts`（跨堆协议类型归口本目录的既有约定，
 // 同 `types/ipc/update.ts`）——渲染侧要消费 `app:getProductInfo` 就得有类型，而「src/ 里再抄一份」
 // 是同一个形状两份真值。本文件自此**只剩逻辑**（读 product.json + process.versions 增强）。
-import type { Product, ProductInfo, ProductRuntime } from '../src/core/types/ipc/product';
+import type { Product, ProductAuthor, ProductInfo, ProductRuntime } from '../src/core/types/ipc/product';
 
 /** 缺 product.json / dev 占位空字段 → 显示级降级值（07 §四.1：'—' 不崩） */
 const PLACEHOLDER = '—';
@@ -33,6 +33,15 @@ const DEFAULT_PRODUCT: Omit<Product, 'version'> = {
   date: PLACEHOLDER,
   quality: 'stable',
   updateUrl: '',
+  // 04「关于页重设计」：author 是手写常量（不是构建期注入字段，同 nameLong）——
+  // dev 缺文件时给同款真值兜底；形状不对（旧 product.json 无此块）按 undefined 处理 ⇒ 作者卡不画。
+  author: {
+    nameZh: '冯毅力',
+    nameEn: 'Feng YiLi',
+    emailPrimary: 'fengyilix@gmail.com',
+    emailSecondary: 'fengyilix@outlook.com',
+    copyrightHolder: '冯毅力（Encaron）',
+  },
 };
 
 let _productCache: Product | null = null;
@@ -50,8 +59,12 @@ export function loadProduct(): Product {
   if (_productCache) return _productCache;
 
   let raw: Record<string, unknown> = {};
+  // author 的兜底判据要分两种（04「关于页重设计」）：缺文件 → DEFAULT 真值兜底（同 nameLong）；
+  // 文件在但 author 形状非法 → undefined ⇒ 作者卡整块不画（「没有作者信息」≠「读不出来」）。
+  let fileLoaded = false;
   try {
     raw = JSON.parse(readFileSync(productJsonPath(), 'utf8'));
+    fileLoaded = true;
   } catch {
     // 缺文件 / 坏 JSON → 兜底默认（07 §四.1：不崩）
   }
@@ -59,6 +72,26 @@ export function loadProduct(): Product {
   const commit = typeof raw.commit === 'string' && raw.commit ? raw.commit : PLACEHOLDER;
   const date = typeof raw.date === 'string' && raw.date ? raw.date : PLACEHOLDER;
   const quality = raw.quality === 'preview' ? 'preview' : 'stable';
+
+  // author 块形状守卫（04「关于页重设计」）：五字段全为非空 string 才收——
+  // 旧 shape / 半截块一律按 undefined ⇒ 关于页作者卡整块不画（保底：不是画一屏 —）。
+  const a = raw.author as Record<string, unknown> | undefined;
+  const author: ProductAuthor | undefined =
+    a &&
+    typeof a === 'object' &&
+    typeof a.nameZh === 'string' && a.nameZh !== '' &&
+    typeof a.nameEn === 'string' && a.nameEn !== '' &&
+    typeof a.emailPrimary === 'string' && a.emailPrimary !== '' &&
+    typeof a.emailSecondary === 'string' && a.emailSecondary !== '' &&
+    typeof a.copyrightHolder === 'string' && a.copyrightHolder !== ''
+      ? {
+          nameZh: a.nameZh as string,
+          nameEn: a.nameEn as string,
+          emailPrimary: a.emailPrimary as string,
+          emailSecondary: a.emailSecondary as string,
+          copyrightHolder: a.copyrightHolder as string,
+        }
+      : undefined;
 
   _productCache = {
     nameLong: typeof raw.nameLong === 'string' && raw.nameLong ? raw.nameLong : DEFAULT_PRODUCT.nameLong,
@@ -69,6 +102,7 @@ export function loadProduct(): Product {
     date,
     quality,
     updateUrl: typeof raw.updateUrl === 'string' ? raw.updateUrl : DEFAULT_PRODUCT.updateUrl,
+    author: fileLoaded ? author : DEFAULT_PRODUCT.author,
   };
   return _productCache;
 }
