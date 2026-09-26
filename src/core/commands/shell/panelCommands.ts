@@ -163,6 +163,10 @@ export function registerPanelCommands(): void {
   // E5.8#37.7：面板标签栏右键「面板位置」「对齐面板」两子菜单（对标 VS Code Panel 标题栏右键 ②③）。
   // 子项 label 覆盖命令标题（子菜单短标签）；checked 由 getItems 桥 resolvePanelChecked 动态标记
   // （当前项 √——单选：位置当前 edge 一项 / 对齐当前 align 一项）。
+  // 04「面板右键隐藏项」（2026-09-27 用户点单）：「隐藏」排在对齐面板之后、插件贡献项之前——
+  // 分组按注册序渲染（ContextMenu groupOrder 首遇即排），本数组第三位即天然落在该位置；
+  // 用户的痛点 = 不用绕顶栏「查看→界面」就能收起面板。右键时面板必然可见（隐藏了就没有标签栏可右键），
+  // 故 label 恒为「隐藏」（无 toggle 双态文案）。
   registerMenuItems(MENU_SLOTS.PanelViewContext, APP_PLUGIN_ID, [
     {
       command: "",
@@ -185,6 +189,11 @@ export function registerPanelCommands(): void {
         { command: "workbench.action.alignPanelLeft", label: "左对齐" },
         { command: "workbench.action.alignPanelRight", label: "右对齐" },
       ],
+    },
+    {
+      command: "workbench.action.togglePanel",
+      label: "隐藏",
+      group: "panelHide",
     },
   ]);
 }

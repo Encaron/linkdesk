@@ -97,7 +97,11 @@ export function useLayoutPersistence({ ready, tabState, panelActiveViewId, panel
           };
         }
         // E5.8#36.9：侧栏边——beforeunload 兜底落盘（防抖保存可能未覆盖）
-        layout.sidebar = { edge: narrowSidebarEdge(layoutEngine.getZone("sidebar")?.dock?.edge) };
+        // 04「侧栏显隐持久化」：宽度同笔兜底（折叠态 = 宽 ≤48，重启由 tabActions 恢复）
+        layout.sidebar = {
+          edge: narrowSidebarEdge(layoutEngine.getZone("sidebar")?.dock?.edge),
+          width: layoutEngine.getBounds("sidebar")?.width ?? 280,
+        };
         // E5.8#43-3（A6/I9-14）：脱出窗 bounds 兜底落盘——防抖保存可能未覆盖，退出时同步写入
         const detached = serializeDetachedWindows(windowsRef.current);
         if (detached.length) layout.detachedWindows = detached;
@@ -138,6 +142,8 @@ export function useLayoutPersistence({ ready, tabState, panelActiveViewId, panel
   const panelSaveInitialized = useRef(false);
   const lastSavedPanelRef = useRef<{ height: number; edge: string; align: string; width?: number; activeViewId?: string; visible?: boolean } | null>(null);
   const lastSavedSidebarEdgeRef = useRef<"left" | "right">(narrowSidebarEdge(layoutEngine.getZone("sidebar")?.dock?.edge));
+  // 04「侧栏显隐持久化」：宽度与边同款锁步——折叠/展开（setZoneWidth）也触发 onDidChangeLayout → 本防抖
+  const lastSavedSidebarWidthRef = useRef<number>(layoutEngine.getBounds("sidebar")?.width ?? 280);
   useEffect(() => {
     if (!ready) return;
     if (!panelSaveInitialized.current) {
@@ -164,17 +170,25 @@ export function useLayoutPersistence({ ready, tabState, panelActiveViewId, panel
         ...(panelActiveViewId ? { activeViewId: panelActiveViewId } : {}),
         visible: panelVisibleRef.current,
       };
+      // 🔴 04（2026-09-27 实测）：这里的「无变化提前 return」原本拦的是整个 doSave——侧栏块排在
+      // 它后面，纯侧栏变化（折叠/展开）触发本函数时面板字段没变 ⇒ 侧栏保存永远走不到（width 恒旧值）。
+      // 改为各块独立守卫：面板无变化只跳过面板保存，侧栏照常比对落盘。
       const last = lastSavedPanelRef.current;
-      if (last && last.height === height && last.edge === edge && last.align === align && last.width === width
-          && last.activeViewId === panelActiveViewId && last.visible === panelVisibleRef.current) return;
-      lastSavedPanelRef.current = state;
-      void savePanelLayout(state).catch((e) => { console.error("[App] 保存面板布局失败:", e); });
+      const panelChanged = !(last && last.height === height && last.edge === edge && last.align === align && last.width === width
+          && last.activeViewId === panelActiveViewId && last.visible === panelVisibleRef.current);
+      if (panelChanged) {
+        lastSavedPanelRef.current = state;
+        void savePanelLayout(state).catch((e) => { console.error("[App] 保存面板布局失败:", e); });
+      }
 
       // E5.8#36.9：侧栏边锁步保存——dockTo 换边 → onDidChangeLayout → 本防抖 → 落盘（#37.6 消费方）
+      // 04「侧栏显隐持久化」：宽度与边同款锁步——折叠/展开改 zone 宽也走这里，显隐随宽度持久化
       const sidebarEdge = narrowSidebarEdge(layoutEngine.getZone("sidebar")?.dock?.edge);
-      if (lastSavedSidebarEdgeRef.current !== sidebarEdge) {
+      const sidebarWidth = layoutEngine.getBounds("sidebar")?.width ?? 280;
+      if (lastSavedSidebarEdgeRef.current !== sidebarEdge || lastSavedSidebarWidthRef.current !== sidebarWidth) {
         lastSavedSidebarEdgeRef.current = sidebarEdge;
-        void saveSidebarLayout({ edge: sidebarEdge }).catch((e) => { console.error("[App] 保存侧栏布局失败:", e); });
+        lastSavedSidebarWidthRef.current = sidebarWidth;
+        void saveSidebarLayout({ edge: sidebarEdge, width: sidebarWidth }).catch((e) => { console.error("[App] 保存侧栏布局失败:", e); });
       }
     };
     const schedule = () => {

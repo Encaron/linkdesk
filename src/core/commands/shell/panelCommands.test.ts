@@ -190,6 +190,16 @@ describe("panelViewContext getItems——checked 壳侧解析透传（E5.8#37.7 
     expect(childOf(alignMenu, "workbench.action.alignPanelJustify")?.checked).toBe(true);
     expect(childOf(alignMenu, "workbench.action.alignPanelCenter")?.checked).toBe(false);
   });
+
+  it("04：「隐藏」项在对齐面板之后（注册序＝渲染序），命令 = togglePanel", async () => {
+    const items = await handleSettingsChannel("menu:getItems", ["panelViewContext", undefined]) as MenuItemDescriptor[];
+    const posIdx = items.findIndex((i) => i.label === "面板位置");
+    const alignIdx = items.findIndex((i) => i.label === "对齐面板");
+    const hideIdx = items.findIndex((i) => i.label === "隐藏");
+    expect(hideIdx).toBeGreaterThan(alignIdx);
+    expect(alignIdx).toBeGreaterThan(posIdx);
+    expect(items[hideIdx]?.command).toBe("workbench.action.togglePanel");
+  });
 });
 
 describe("panelViewContext getItems——视图显隐清单动态注入（E5.8#37.7.1）", () => {

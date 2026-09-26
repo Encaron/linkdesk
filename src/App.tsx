@@ -78,7 +78,8 @@ function App() {
   // E5.8#0d.10-3e：侧栏宿主状态机（折叠状态机 + 状态同步 + 启动恢复）迁入 src/App/sidebarHost.ts
   useSidebarHost({ setSidebarView, setIsSidebarExpanded, ready });
   // E5.8#31：底部面板显隐宿主——panelVisible 真相源 + 订阅 panel:toggle（Ctrl+J）翻转 + 立即落盘
-  const { panelVisible, setPanelVisible } = usePanelHost({ panelActiveViewId });
+  // （04：ready 传入——显隐初值待布局缓存装载后现场重读；mount 快照恒命中「?? true」的 racing 根因已修）
+  const { panelVisible, setPanelVisible } = usePanelHost({ panelActiveViewId, ready });
   // E5.8#34.5：panel.reveal 通用 API 壳侧消费——面板展开 + 切到该视图（面板隐藏时同 Ctrl+J 机制）
   usePanelReveal({ setPanelVisible, setPanelActiveViewId });
   // E5.8#39.5：panel.revealFloating 通用 API 壳侧消费——声明寻址 + I8-2 身份开关键 + pushPanel

@@ -108,6 +108,12 @@ export function useTabActions({
       if (savedSidebar?.edge) {
         layoutEngine.dockTo("sidebar", savedSidebar.edge);
       }
+      // 04「侧栏显隐持久化」：恢复折叠/展开宽度（≤48 = 折叠，sidebarHost 真相源）；旧布局无 width → 不动。
+      // 广播 sidebar:toggled 同步「查看→界面→主侧栏」勾选态（isSidebarExpanded 初始恒 false，不随宽度派生）。
+      if (typeof savedSidebar?.width === "number" && Number.isFinite(savedSidebar.width) && savedSidebar.width > 0) {
+        layoutEngine.setZoneWidth("sidebar", savedSidebar.width);
+        shellEvents.emit("sidebar:toggled", savedSidebar.width > 48);
+      }
 
       const savedPanel = getPanelLayout();
       if (!savedPanel) return;

@@ -43,9 +43,12 @@ export interface PanelLayoutState {
   visible?: boolean;
 }
 
-/** E5.8#36.9：侧栏布局状态——edge 持久化（#37.6 侧栏换边消费方）。旧布局无此字段 → 缺省 "left"。 */
+/** E5.8#36.9：侧栏布局状态——edge 持久化（#37.6 侧栏换边消费方）。旧布局无此字段 → 缺省 "left"。
+ *  04「侧栏显隐持久化」（2026-09-27）：加 width——折叠/展开的真相源是 zone 宽（≤48 = 折叠，
+ *  sidebarHost 派生折叠态），持久化宽度即持久化显隐，不新造 visible 布尔（防双真相漂移）。 */
 export interface SidebarLayoutState {
   edge?: "left" | "right";
+  width?: number;
 }
 
 /** E5.8#43-3：脱出窗持久化状态——重启/F5 恢复浮窗（I9-15）。此刻浮窗无 tab（tab 归属随 #44 拖出后扩展），仅落盘窗口矩形。 */

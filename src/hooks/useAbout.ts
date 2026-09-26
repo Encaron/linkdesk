@@ -161,7 +161,8 @@ function buildAboutData(snap: AboutSnap, t: (key: string) => string): PoolAboutD
       // 备用行：mockup 的 k 列是空位 + 值降档色——主次靠顺序与颜色双表达，不写第二遍「邮箱」
       { label: "", value: author.emailSecondary, href: `mailto:${author.emailSecondary}`, secondary: true },
       ...(owner
-        ? [{ label: t("GitHub"), value: `github.com/${owner}`, href: `https://github.com/${owner}` }]
+        // "GitHub" 是品牌名（数据标识符）不进 t()——i18n 审计「可疑 key」判据（04 批复检时被 strict 拦下）
+        ? [{ label: "GitHub", value: `github.com/${owner}`, href: `https://github.com/${owner}` }]
         : []),
     ];
     cards.push({
