@@ -130,17 +130,18 @@
   white-space: nowrap;
   flex: 1;
   min-width: 0;
+  /* 🔴 斜体 ink 溢出补偿——**所有标签恒定预留**（04 实测两轮）：中文无真斜体字形，Chromium 以
+     合成斜体（整字右倾 ≈ 0.2×字号）模拟，倾斜笔画**超出文本排版宽（advance）**；标签盒在内容
+     自适应下恰好贴住 advance，溢出末笔被 overflow:hidden 的裁剪边（padding box）切掉。旧版固定宽
+     120px 的盒余量无意间掩盖过它。第一轮只给 .preview 补 4px ⇒ 斜体↔正体互切（pin/unpin）时
+     标签宽度变 4px、后续标签左右横跳（用户实测不喜欢）⇒ 改为**按斜体宽度恒定预留**：互切零位移，
+     正体仅多 4px 不可见余量。英文（真斜体，倾角已计入 advance）与正体同享此余量。 */
+  padding-right: 4px;
 }
 
-/* 预览模式（对标 VS Code preview editor：斜体） */
+/* 预览模式（对标 VS Code preview editor：斜体）——宽度与正体同口径（补偿在基础规则恒定预留） */
 .ldk-group-tab-item.preview .ldk-group-tab-label {
   font-style: italic;
-  /* 🔴 斜体 ink 溢出补偿（04 实测：中文被裁末笔右缘）——中文无真斜体字形，Chromium 以合成斜体
-     （整字右倾 ≈ 0.2×字号）模拟，倾斜笔画**超出文本排版宽（advance）**；标签盒在内容自适应下
-     恰好贴住 advance，溢出部分被本标签 overflow:hidden 的裁剪边（padding box）切掉。旧版固定宽
-     120px 时盒宽于文本，余量无意间掩盖了它——本条在裁剪边内留出倾斜量（4px ≥ 2.6px 剪切量）。
-     英文（真斜体，倾角已计入 advance）与正体（不倾斜）不受影响；代价仅是斜体标签宽 4px。 */
-  padding-right: 4px;
 }
 
 /* ── 关闭按钮 ── */
