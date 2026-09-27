@@ -1,0 +1,944 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LinkDesk 悬停提示系统 · 参考图（细节详解型）</title>
+<!-- ═══════════════════════════════════════════════════════════════════
+  悬停提示系统（HintTip）· 细节详解型参考图（非竞标——基线 = 壳 token 体系）
+  立案 2026-09-27 · docs/04-软件更新/待抉择池/悬停提示系统/mockups/
+  ⚠️ mockup 仅示意，真实实现走 var(--xxx) + ThemeEngine（硬约束 1）
+  zone 真实尺寸：titlebar 30 / icon-bar 42 / tabbar 35 / statusbar 22（html-blueprint §五）
+  帧序列：Frame 0 现状对照 · Frame 1 图标栏基础 · Frame 2 带快捷键 ·
+          Frame 3 密集排只出一张 · Frame 4 揭示截断 · Frame 5 状态栏混合 ·
+          Frame 6 边缘翻面 · Frame 7 拖拽中不出卡 · Frame 8 拍板区（视觉三案）·
+          Frame 9 快捷键画法对照 · Frame 10 规格卡
+  绘制前已调 html-blueprint skill（硬约束 16）
+═══════════════════════════════════════════════════════════════════ -->
+<style>
+  /* ── 页面级 token（图纸自身）────────────────────────────── */
+  :root {
+    --page-bg: #141414;
+    --page-card: #1D1D1D;
+    --page-border: #2A2A2A;
+    --page-text: #E8E8E8;
+    --page-muted: #9A9A9A;
+    --page-faint: #6F6F6F;
+    --good: #3FB950;   /* 语义：采用/达标 */
+    --bad: #F85149;    /* 语义：淘汰/痛点 */
+    --info: #58A6FF;   /* 语义：说明/锚点 */
+    --warn: #D29922;   /* 语义：待拍板 */
+    --page-hover: rgba(255, 255, 255, 0.06);
+    --font-size-xs: 11px;
+    --font-size-sm: 12px;
+    --font-size-md: 13px;
+    --font-size-lg: 16px;
+    --font-size-xl: 20px;
+    --font-mono: Consolas, monospace;
+    /* ⚠️ 对照用：原生 tooltip 的观感 = Windows/Chromium 系统色，**不是壳 token**
+       （真实值由系统决定、壳 CSS 碰不到——这正是要消灭它的原因）。仅在 Frame 0 出现。 */
+    --os-tip-bg: #F2F2F2;
+    --os-tip-border: #9A9A9A;
+    --os-tip-text: #1A1A1A;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--page-bg);
+    color: var(--page-text);
+    font-family: "Segoe UI", "Microsoft YaHei", sans-serif;
+    font-size: var(--font-size-md);
+    padding: 24px 16px 64px;
+    line-height: 1.6;
+  }
+  code {
+    font-family: var(--font-mono);
+    font-size: var(--font-size-sm);
+    color: var(--info);
+    background: var(--page-hover);
+    border-radius: 4px;
+    padding: 0 4px;
+  }
+  #theme-toggle {
+    position: fixed; top: 16px; right: 16px; z-index: 99;
+    background: var(--page-card); color: var(--page-text);
+    border: 1px solid var(--page-border); border-radius: 6px;
+    padding: 6px 12px; font-size: var(--font-size-sm); cursor: pointer;
+  }
+  #theme-toggle:hover { border-color: var(--page-faint); }
+
+  header { max-width: 1180px; margin: 0 auto 20px; }
+  header h1 { font-size: var(--font-size-xl); margin-bottom: 8px; }
+  header .meta { color: var(--page-muted); font-size: var(--font-size-sm); margin-bottom: 4px; }
+  header .rule {
+    border-left: 3px solid var(--info); background: var(--page-card);
+    border-radius: 0 6px 6px 0; padding: 8px 12px; margin-top: 12px;
+    font-size: var(--font-size-sm); color: var(--page-muted);
+  }
+  header .rule b { color: var(--page-text); }
+
+  nav.frames { max-width: 1180px; margin: 0 auto 28px; display: flex; flex-wrap: wrap; gap: 6px; }
+  nav.frames a {
+    color: var(--page-muted); text-decoration: none; font-size: var(--font-size-sm);
+    background: var(--page-card); border: 1px solid var(--page-border);
+    border-radius: 4px; padding: 2px 8px;
+  }
+  nav.frames a:hover { color: var(--page-text); border-color: var(--page-faint); }
+
+  /* ── 帧容器 ─────────────────────────────────────────── */
+  .frame { max-width: 1180px; margin: 0 auto 32px; }
+  .frame-caption {
+    display: flex; align-items: center; gap: 8px;
+    font-size: var(--font-size-md); font-weight: 600; margin-bottom: 8px;
+  }
+  .tag {
+    font-size: var(--font-size-xs); font-weight: 400; border-radius: 4px;
+    padding: 1px 8px; background: var(--page-hover); color: var(--page-muted);
+  }
+  .tag.ok { color: var(--good); }
+  .tag.no { color: var(--bad); }
+  .tag.warn { color: var(--warn); }
+  .frame-note {
+    background: var(--page-card); border: 1px solid var(--page-border);
+    border-radius: 6px; padding: 10px 14px; margin-top: 8px;
+    font-size: var(--font-size-sm); color: var(--page-muted);
+  }
+  .frame-note b { color: var(--page-text); }
+  .frame-note .k { color: var(--info); }
+  .frame-note ol, .frame-note ul { margin: 4px 0 0 18px; }
+  .frame-note li { margin-bottom: 2px; }
+
+  .cols { display: flex; gap: 16px; }
+  .cols > * { flex: 1; min-width: 0; }
+  .col-cap {
+    font-size: var(--font-size-sm); color: var(--page-muted);
+    margin-bottom: 6px; display: flex; align-items: center; gap: 6px;
+  }
+
+  /* ── 壳窗口（真实 token 值；暗色 = 壳 :root 兜底 / 亮色 = theme-defaults 真值）── */
+  .win {
+    --bg-window: #1E1E1E; --bg-card: #2D2D2D; --bg-input: #3C3C3C;
+    --bg-titlebar: #252526; --bg-icon-bar: #18181B; --bg-side-panel: #1E1E22;
+    --text-primary: #D4D4D4; --text-secondary: #9D9D9D; --text-muted: #8A8A8A;
+    --accent: #0078D4; --accent-hover: #1A8CE8; --text-on-accent: #FFFFFF;
+    --border: #3C3C3C; --separator: #474747;
+    --icon-active: #D4D4D4; --icon-inactive: #858585;
+    --hover-overlay: rgba(255, 255, 255, 0.06);
+    --titlebar-close-hover: #C42B1C;
+    --kbd-bg: rgba(128, 128, 128, 0.1); --kbd-border: rgba(128, 128, 128, 0.12);
+    --radius-sm: 4px; --radius-md: 6px;
+    --shadow-tooltip: 0 2px 8px rgba(0, 0, 0, 0.3);
+    --shadow-pop: 0 4px 12px rgba(0, 0, 0, 0.4);
+    --font-size-2xs: 11px; --font-size-xs: 12px; --font-size-sm: 13px;
+    --font-size-md: 14px; --font-mono: "JetBrains Mono", Consolas, monospace;
+    position: relative; overflow: hidden;
+    background: var(--bg-window);
+    border: 1px solid var(--page-border); border-radius: 8px;
+    display: flex; flex-direction: column;
+  }
+  .win.h300 { height: 300px; }
+  .win.h240 { height: 240px; }
+  .win.h200 { height: 200px; }
+  .win.h150 { height: 150px; }
+  .win.is-light {
+    --bg-window: #FFFFFF; --bg-card: #F5F5F5; --bg-input: #FFFFFF;
+    --bg-titlebar: #DDDDDD; --bg-icon-bar: #F0F0F0; --bg-side-panel: #F5F5F5;
+    --text-primary: #2D2D2D; --text-secondary: #5A5A5A; --text-muted: #767676;
+    --accent: #0078D4; --accent-hover: #106EBE; --text-on-accent: #FFFFFF;
+    --border: #D4D4D4; --separator: #E8E8E8;
+    --icon-active: #2D2D2D; --icon-inactive: #767676;
+    --hover-overlay: rgba(0, 0, 0, 0.04);
+    --kbd-bg: rgba(0, 0, 0, 0.05); --kbd-border: rgba(0, 0, 0, 0.09);
+    --shadow-tooltip: 0 2px 8px rgba(0, 0, 0, 0.16);
+    --shadow-pop: 0 4px 12px rgba(0, 0, 0, 0.12);
+  }
+
+  /* ── titlebar（真实 30px）── */
+  .titlebar {
+    height: 30px; flex: none; background: var(--bg-titlebar);
+    display: flex; align-items: center; gap: 8px; padding: 0 8px;
+    border-bottom: 1px solid var(--separator);
+  }
+  .tb-logo {
+    width: 16px; height: 16px; border-radius: 4px; background: var(--accent);
+    color: var(--text-on-accent); font-size: 8px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center; flex: none;
+  }
+  .tb-name { font-size: var(--font-size-sm); color: var(--text-primary); flex: none; }
+  .tb-menu { display: flex; gap: 12px; margin-left: 8px; }
+  .tb-menu span { font-size: var(--font-size-sm); color: var(--text-secondary); }
+  .tb-drag { flex: 1; }
+  .tb-btns { display: flex; }
+  .wc-btn {
+    width: 40px; height: 30px; display: flex; align-items: center; justify-content: center;
+    color: var(--text-muted); font-size: var(--font-size-xs);
+  }
+  .wc-btn.hot { background: var(--hover-overlay); color: var(--text-primary); }
+  .wc-btn.close.hot { background: var(--titlebar-close-hover); color: #FFFFFF; }
+
+  /* ── body：icon-bar(42) + sidebar(216) + main ── */
+  .wbody { flex: 1; display: flex; min-height: 0; }
+  .iconbar {
+    width: 42px; flex: none; background: var(--bg-icon-bar);
+    border-right: 1px solid var(--separator);
+    display: flex; flex-direction: column; align-items: center;
+    padding-top: 8px; gap: 4px;
+  }
+  .ib {
+    width: 28px; height: 28px; border-radius: 6px; position: relative;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--icon-inactive); font-size: var(--font-size-md);
+  }
+  .ib.active { color: var(--icon-active); background: var(--hover-overlay); }
+  .ib.hot { background: var(--hover-overlay); color: var(--icon-active); }
+  .ib.active::before {
+    content: ""; position: absolute; left: -7px; top: 6px; bottom: 6px;
+    width: 3px; border-radius: 2px; background: var(--accent);
+  }
+
+  .sidebar {
+    width: 216px; flex: none; background: var(--bg-side-panel);
+    border-right: 1px solid var(--separator);
+    display: flex; flex-direction: column; min-height: 0;
+  }
+  .sb-head {
+    height: 32px; flex: none; display: flex; align-items: center;
+    justify-content: space-between; padding: 0 12px;
+    font-size: var(--font-size-sm); color: var(--text-primary);
+  }
+  .sb-head .sb-x { color: var(--text-muted); }
+  .sb-search {
+    height: 24px; flex: none; margin: 4px 12px 8px; border-radius: 4px;
+    background: var(--bg-input); color: var(--text-muted);
+    font-size: var(--font-size-xs); display: flex; align-items: center; padding: 0 8px;
+  }
+  .sb-tree { flex: 1; overflow: hidden; padding: 0 8px; }
+  .tr {
+    height: 20px; display: flex; align-items: center; gap: 4px;
+    font-size: var(--font-size-sm); color: var(--text-secondary);
+    white-space: nowrap; padding-left: 4px; border-radius: 4px;
+  }
+  .tr.d1 { padding-left: 20px; }
+  .tr.sel { background: var(--hover-overlay); color: var(--text-primary); }
+  .tr .cv { color: var(--text-muted); width: 12px; flex: none; }
+  .tr .nm { overflow: hidden; text-overflow: ellipsis; }
+
+  .main { flex: 1; display: flex; flex-direction: column; min-width: 0; position: relative; }
+  .tabbar {
+    height: 35px; flex: none; background: var(--bg-card);
+    border-bottom: 1px solid var(--separator);
+    display: flex; align-items: stretch; overflow: hidden;
+  }
+  .tab {
+    display: flex; align-items: center; padding: 0 12px; gap: 6px;
+    font-size: var(--font-size-sm); color: var(--text-secondary);
+    border-top: 2px solid transparent; border-right: 1px solid var(--separator);
+    white-space: nowrap; max-width: 132px;
+  }
+  .tab .tt { overflow: hidden; text-overflow: ellipsis; }
+  .tab.active { color: var(--text-primary); border-top-color: var(--accent); background: var(--bg-window); }
+  .tab.hot { background: var(--hover-overlay); }
+  .content { flex: 1; min-height: 0; padding: 18px; color: var(--text-muted); font-size: var(--font-size-sm); overflow: hidden; }
+
+  .statusbar {
+    height: 22px; flex: none; background: var(--bg-window);
+    border-top: 1px solid var(--separator);
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 12px; font-size: var(--font-size-xs); color: var(--text-muted);
+  }
+  .sb-left, .sb-right { display: flex; align-items: center; gap: 12px; }
+  .sb-item { display: flex; align-items: center; gap: 4px; }
+  .sb-item.hot { color: var(--text-primary); }
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--icon-inactive); flex: none; }
+  .dot.on { background: var(--accent); }
+
+  /* ══ 悬停提示条（本件主角）══════════════════════════════════
+     ⚠️ 三档差异只在「内边距 / 圆角 / 字号 / 阴影」——
+       骨架、token、定位逻辑三档共用（Frame 8 拍板区并排对照）。 */
+  .tip {
+    position: absolute; z-index: 20; pointer-events: none;
+    background: var(--bg-card); color: var(--text-primary);
+    border: 1px solid var(--border);
+    display: flex; align-items: center; gap: 8px;
+    max-width: 260px; white-space: nowrap;
+  }
+  .tip.wrap { white-space: normal; }
+  .tip .tip-label { overflow: hidden; text-overflow: ellipsis; }
+  .tip .tip-note {
+    color: var(--text-muted); border-top: 1px solid var(--separator);
+    margin-top: 6px; padding-top: 6px; white-space: normal;
+  }
+  .tip .tip-shortcut { flex: none; }
+  .tip .tip-icon { flex: none; color: var(--text-secondary); }
+
+  /* 案 A 紧凑条（AI 倾向）——最像「把系统小方框换成我们的」 */
+  .tip.vA {
+    padding: 3px 8px; border-radius: var(--radius-sm);
+    font-size: var(--font-size-xs); box-shadow: var(--shadow-tooltip);
+  }
+  /* 案 B 中号——多一圈呼吸，更清楚但更重 */
+  .tip.vB {
+    padding: 6px 10px; border-radius: var(--radius-md);
+    font-size: var(--font-size-sm); box-shadow: var(--shadow-pop);
+  }
+  /* 案 C 带第二行注脚——信息量大，但已接近 HintCard 的骨相 */
+  .tip.vC {
+    padding: 8px 10px; border-radius: var(--radius-md);
+    font-size: var(--font-size-sm); box-shadow: var(--shadow-pop);
+    display: block;
+  }
+  .tip.vC .tip-row { display: flex; align-items: center; gap: 8px; }
+
+  /* ⛔ 无箭头——用户 2026-09-27 拍板：「就是一个框型」（不要气泡小尖角）
+     归属感靠「贴紧锚」（GAP_PX = 6），不靠指向性尖角；也少一处随翻面翻转的样式 */
+
+  /* ── 快捷键两种画法（Frame 9 对照）────────────────────── */
+  .sc-flat {                        /* ① ContextMenu 现状：等宽纯文本 */
+    font-family: var(--font-mono); font-size: var(--font-size-xs);
+    opacity: 0.6; letter-spacing: 0.2px;
+  }
+  .sc-key {                         /* ② QuickPick 现状：键帽 keycap */
+    display: inline-flex; align-items: center; gap: 2px;
+    font-size: var(--font-size-2xs);
+  }
+  .sc-key kbd {
+    font-family: var(--font-mono); font-size: var(--font-size-2xs);
+    background: var(--kbd-bg); border: 1px solid var(--kbd-border);
+    border-radius: var(--radius-sm); padding: 1px 5px; line-height: 1.5;
+  }
+  .sc-key .sep { opacity: 0.4; margin: 0 1px; }
+  /* ③ 混合：键帽做主、纯文本做副（Frame 9 第三列提案） */
+  .sc-key.flat-plus { opacity: 0.85; }
+
+  /* ── 原生对照（Frame 0 左）——系统观感，非壳 token ── */
+  .os-tip {
+    position: absolute; z-index: 20; pointer-events: none;
+    background: var(--os-tip-bg); color: var(--os-tip-text);
+    border: 1px solid var(--os-tip-border);
+    padding: 2px 6px; font-size: 12px; font-family: "Segoe UI", sans-serif;
+    border-radius: 0; white-space: nowrap;
+  }
+
+  /* ── 拍板区 ───────────────────────────────────────── */
+  .pick-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .pick-card {
+    background: var(--page-card); border: 1px solid var(--page-border);
+    border-radius: 8px; padding: 12px;
+  }
+  .pick-card.reco { border-color: var(--good); }
+  .pick-card h4 { font-size: var(--font-size-md); margin-bottom: 2px; }
+  .pick-card .pick-sub { font-size: var(--font-size-xs); color: var(--page-muted); margin-bottom: 10px; }
+  .pick-stage {
+    position: relative; height: 96px; border-radius: 6px;
+    background: var(--page-bg); border: 1px solid var(--page-border);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .pick-card ul { margin: 10px 0 0 16px; font-size: var(--font-size-xs); color: var(--page-muted); }
+  .pick-card ul li { margin-bottom: 2px; }
+
+  /* ── 规格表 ───────────────────────────────────────── */
+  table.spec {
+    width: 100%; border-collapse: collapse; font-size: var(--font-size-sm);
+    background: var(--page-card); border: 1px solid var(--page-border); border-radius: 6px;
+  }
+  table.spec th, table.spec td {
+    text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--page-border);
+    color: var(--page-muted); vertical-align: top;
+  }
+  table.spec th { color: var(--page-text); font-weight: 600; background: var(--page-hover); }
+  table.spec td b { color: var(--page-text); }
+  table.spec tr:last-child td { border-bottom: none; }
+
+  .badge-inline {
+    display: inline-block; font-size: var(--font-size-xs); border-radius: 4px;
+    padding: 0 6px; background: var(--page-hover); color: var(--page-muted);
+  }
+</style>
+</head>
+<body>
+<button id="theme-toggle" type="button">切换亮/暗主题</button>
+
+<header>
+  <h1>悬停提示系统（HintTip）· 参考图</h1>
+  <div class="meta">细节详解型 · 立案 2026-09-27 · <code>docs/04-软件更新/待抉择池/悬停提示系统/mockups/</code></div>
+  <div class="meta">配套详案：<code>01-设计.md</code> · 入口：<code>00-README.md</code></div>
+  <div class="rule">
+    <b>这张图要回答一件事：</b>软件里今天那个"悬停出来的小方框"是 <b>Chromium 原生 tooltip</b>（HTML <code>title</code> 白送），
+    外观由系统决定、壳 CSS 碰不到——它<b>不跟壳的主题/字号/模糊</b>。本件 = 用壳自己的<b>轻提示条</b>把它替掉，
+    并让它<b>自动带出快捷键</b>（复用右键菜单那份已经做好的命令→快捷键解析）。<br />
+    <span class="badge-inline">mockup 仅示意 · 真实实现走 var(--xxx) + ThemeEngine（硬约束 1）</span>
+  </div>
+</header>
+
+<nav class="frames">
+  <a href="#f0">0 现状对照</a>
+  <a href="#f1">1 图标栏·基础</a>
+  <a href="#f2">2 带快捷键</a>
+  <a href="#f3">3 密集排只出一张</a>
+  <a href="#f4">4 揭示截断</a>
+  <a href="#f5">5 状态栏·混合</a>
+  <a href="#f6">6 边缘翻面</a>
+  <a href="#f7">7 拖拽中不出卡</a>
+  <a href="#f8">8 拍板区</a>
+  <a href="#f9">9 快捷键画法</a>
+  <a href="#f10">10 规格卡</a>
+</nav>
+
+<!-- ══════════════════ Frame 0 · 现状对照 ══════════════════ -->
+<section class="frame" id="f0">
+  <div class="frame-caption">Frame 0 · 现状对照：同一个位置，两个世界<span class="tag">问题陈述</span></div>
+  <div class="cols">
+    <div>
+      <div class="col-cap"><span class="tag no">今天</span> Chromium 原生 tooltip（系统 UI）</div>
+      <div class="win h150">
+        <div class="titlebar">
+          <div class="tb-logo">LD</div><div class="tb-name">LinkDesk</div>
+          <div class="tb-drag"></div>
+        </div>
+        <div class="wbody">
+          <div class="iconbar">
+            <div class="ib hot">&#9776;</div>
+            <div class="ib">&#128193;</div>
+            <div class="ib">&#128268;</div>
+            <div class="ib">&#128230;</div>
+          </div>
+          <div class="main">
+            <div class="content">图标栏汉堡按钮上悬停 →</div>
+          </div>
+        </div>
+        <div class="os-tip" style="left: 8px; top: 74px;">菜单</div>
+      </div>
+    </div>
+    <div>
+      <div class="col-cap"><span class="tag ok">本件</span> 壳自己的轻提示条（走 token）</div>
+      <div class="win h150">
+        <div class="titlebar">
+          <div class="tb-logo">LD</div><div class="tb-name">LinkDesk</div>
+          <div class="tb-drag"></div>
+        </div>
+        <div class="wbody">
+          <div class="iconbar">
+            <div class="ib hot">&#9776;</div>
+            <div class="ib">&#128193;</div>
+            <div class="ib">&#128268;</div>
+            <div class="ib">&#128230;</div>
+          </div>
+          <div class="main">
+            <div class="content">图标栏汉堡按钮上悬停 →</div>
+          </div>
+        </div>
+        <div class="tip vA" style="left: 48px; top: 76px;"><span class="tip-label">菜单</span></div>
+      </div>
+    </div>
+  </div>
+  <div class="frame-note">
+    <b>验证点：</b>
+    <ol>
+      <li><b>左 = 系统的小方框</b>：浅底、方角、系统字体、固定约 500ms 延迟——颜色/圆角/字号<b>一条都改不了</b>，也<b>不跟主题</b>（右图切到亮色主题，左边那张卡不会变，因为它不归我们管）。依据：<span class="k">src/pool/zones/icon-bar/IconBarZone.tsx:284</span> 挂的 HTML <code>title</code> ＋ <span class="k">src/hooks/usePoolSync/iconbar.ts:82</span> 的 <code>t("菜单")</code>。</li>
+      <li><b>右 = 本件</b>：颜色走 <code>var(--bg-card)</code>/<code>var(--text-primary)</code>、圆角走 <code>--radius-sm</code>、阴影走 <b>壳里已预留但今天无人用的 <code>--shadow-tooltip</code></b>（定义在 <span class="k">src/index.css:84</span>）——深浅主题、三档模糊、字号缩放零代码跟随。</li>
+      <li>两图的差别<b>不是美术偏好</b>：左边那个是"软件里长了一个不属于我们的控件"。</li>
+    </ol>
+  </div>
+</section>
+
+<!-- ══════════════════ Frame 1 · 图标栏基础 ══════════════════ -->
+<section class="frame" id="f1">
+  <div class="frame-caption">Frame 1 · 图标栏 · 基础文字提示<span class="tag">说明类</span></div>
+  <div class="win h240">
+    <div class="titlebar">
+      <div class="tb-logo">LD</div><div class="tb-name">LinkDesk</div>
+      <div class="tb-menu"><span>文件</span><span>编辑</span><span>查看</span><span>帮助</span></div>
+      <div class="tb-drag"></div>
+      <div class="tb-btns">
+        <div class="wc-btn">&#9472;</div><div class="wc-btn">&#9723;</div><div class="wc-btn close">&#10005;</div>
+      </div>
+    </div>
+    <div class="wbody">
+      <div class="iconbar">
+        <div class="ib hot">&#9776;</div>
+        <div class="ib active">&#128193;</div>
+        <div class="ib">&#128268;</div>
+        <div class="ib">&#128230;</div>
+      </div>
+      <div class="main">
+        <div class="tabbar">
+          <div class="tab active"><span class="tt">package.json</span></div>
+          <div class="tab"><span class="tt">串口监视器</span></div>
+        </div>
+        <div class="content">鼠标停在图标栏第一颗（汉堡）上</div>
+      </div>
+    </div>
+    <div class="statusbar">
+      <div class="sb-left"><span class="sb-item">就绪</span></div>
+      <div class="sb-right"><span class="sb-item"><span class="dot on"></span>已连接</span></div>
+    </div>
+    <div class="tip vA" style="left: 48px; top: 78px;"><span class="tip-label">菜单</span></div>
+    <div class="tip vA" style="left: 48px; top: 110px;"><span class="tip-label">文件树</span></div>
+  </div>
+  <div class="frame-note">
+    <b>验证点：</b>
+    <ol>
+      <li>这是本件覆盖最多的形态：<b>把 <code>title="菜单"</code> 换成 <code>data-hint="菜单"</code></b>，其余一字不改——DOM 结构零变化、不包壳、不改 flex 布局。</li>
+      <li>文案来源不变：仍由壳侧算好推给池（显示文本铁律），<b>壳不下发用户可见句子给渲染器</b>——提示条只负责"显示调用方给的字"。</li>
+      <li>延时比说明卡短（<span class="k">HintCard</span> 的 400ms 是"看一眼就走"的说明卡节奏；轻提示要跟手）——具体值见 Frame 8 / 待拍板 2。</li>
+    </ol>
+  </div>
+</section>
+
+<!-- ══════════════════ Frame 2 · 带快捷键 ══════════════════ -->
+<section class="frame" id="f2">
+  <div class="frame-caption">Frame 2 · 图标栏 · 自动带出快捷键（用户第 3 问）<span class="tag ok">本件的核心增值</span></div>
+  <div class="win h240">
+    <div class="titlebar">
+      <div class="tb-logo">LD</div><div class="tb-name">LinkDesk</div>
+      <div class="tb-menu"><span>文件</span><span>编辑</span><span>查看</span><span>帮助</span></div>
+      <div class="tb-drag"></div>
+      <div class="tb-btns">
+        <div class="wc-btn">&#9472;</div><div class="wc-btn">&#9723;</div><div class="wc-btn close">&#10005;</div>
+      </div>
+    </div>
+    <div class="wbody">
+      <div class="iconbar">
+        <div class="ib">&#9776;</div>
+        <div class="ib active">&#128193;</div>
+        <div class="ib">&#128268;</div>
+        <div class="ib">&#128230;</div>
+      </div>
+      <div class="main">
+        <div class="tabbar">
+          <div class="tab active"><span class="tt">package.json</span></div>
+        </div>
+        <div class="content">鼠标停在「文件树」图标上——它绑了命令 <code>fileTree.focus</code></div>
+      </div>
+    </div>
+    <div class="statusbar">
+      <div class="sb-left"><span class="sb-item">就绪</span></div>
+      <div class="sb-right"><span class="sb-item"><span class="dot on"></span>已连接</span></div>
+    </div>
+    <div class="tip vA" style="left: 48px; top: 110px;">
+      <span class="tip-label">文件树</span>
+      <span class="sc-key tip-shortcut"><kbd>Ctrl</kbd><span class="sep">+</span><kbd>Shift</kbd><span class="sep">+</span><kbd>E</kbd></span>
+    </div>
+  </div>
+  <div class="frame-note">
+    <b>验证点：</b>
+    <ol>
+      <li><b>不是新造能力</b>——壳里这条链已经在跑，右键菜单正在用：查绑定 <span class="k">src/hooks/usePoolSync/titlebar.ts:85</span> → 格式化 <span class="k">titlebar.ts:35</span> 的 <code>formatKeyLabel()</code>（<code>"ctrl+k ctrl+t"</code> → <code>"Ctrl+K Ctrl+T"</code>，含双段 chord）→ 推给池 <span class="k">titlebar.ts:89</span> → 池侧渲染 <span class="k">ContextMenu.tsx:405</span>。</li>
+      <li>写法：调用方只写 <code>data-hint-command="fileTree.focus"</code>，<b>名字与快捷键自动来</b>——不写死文案、不写死键位，改键位全软件跟走。</li>
+      <li><b>无绑定就不显示</b>（照菜单既有语义 <code>kb?.key ? … : {}</code>）——绝不显示一个空键帽。</li>
+      <li>🔴 命令映射<b>必须与菜单同源</b>（两把尺子必然漂移）；建议次序 = 菜单补全先做，本件直接吃它已推的那份数据。见 <code>01-设计.md</code> §4.4 与 §十一·6。</li>
+    </ol>
+  </div>
+</section>
+
+<!-- ══════════════════ Frame 3 · 密集排 ══════════════════ -->
+<section class="frame" id="f3">
+  <div class="frame-caption">Frame 3 · 密集排 · 只出一张（不堆叠、不排队）<span class="tag warn">高风险区</span></div>
+  <div class="win h200">
+    <div class="titlebar">
+      <div class="tb-logo">LD</div><div class="tb-name">LinkDesk</div>
+      <div class="tb-menu"><span>文件</span><span>编辑</span><span>查看</span><span>帮助</span></div>
+      <div class="tb-drag"></div>
+      <div class="tb-btns">
+        <div class="wc-btn">&#9472;</div><div class="wc-btn hot">&#9723;</div><div class="wc-btn close">&#10005;</div>
+      </div>
+    </div>
+    <div class="wbody">
+      <div class="iconbar">
+        <div class="ib">&#9776;</div><div class="ib active">&#128193;</div>
+        <div class="ib">&#128268;</div><div class="ib">&#128230;</div>
+      </div>
+      <div class="main">
+        <div class="tabbar"><div class="tab active"><span class="tt">package.json</span></div></div>
+        <div class="content">鼠标从「最小化」扫向「关闭」——中间那颗正被悬停</div>
+      </div>
+    </div>
+    <div class="tip vA" style="right: 42px; top: 32px;"><span class="tip-label">最大化</span></div>
+  </div>
+  <div class="frame-note">
+    <b>验证点：</b>
+    <ol>
+      <li><b>同一时刻只许存在一张提示条</b>：上一个锚移开立即收，新的才出。⛔ 不许排队、不许堆叠、不许"扫过去弹出三张"。</li>
+      <li>窗口按钮三颗紧贴（<span class="k">TitleBarZone.tsx:167/171/181/185</span>），是这条规则压力最大的地方——今天原生 tooltip 由系统统一管理所以天然满足；换成自绘后<b>这条必须由我们的状态机自己保证</b>。</li>
+      <li>本帧也是 <b>placement 翻面</b>的实例：窗口按钮贴着窗口顶边 ⇒ 首选 <code>top</code>（贴锚上方）贴不下 ⇒ 自动翻到 <code>bottom</code>（条落在锚下方）。⛔ <b>本件是纯框、不带小箭头</b>（2026-09-27 用户拍板）——归属感靠「贴紧锚」（间距固定 <code>GAP_PX = 6</code>），所以翻面只解决「装不下」，不承担「指向」。</li>
+      <li>🔴 这一排还有一层风险：改结构可能撞 <code>-webkit-app-region: drag</code>（硬约束 18，窗口顶部 30px 是 OS 级拖拽区）——所以本件坚持<b>属性式、不包元素</b>。</li>
+    </ol>
+  </div>
+</section>
+
+<!-- ══════════════════ Frame 4 · 揭示截断 ══════════════════ -->
+<section class="frame" id="f4">
+  <div class="frame-caption">Frame 4 · 揭示类 · 看全被截断的文字<span class="tag">另一类需求</span></div>
+  <div class="win h200">
+    <div class="titlebar">
+      <div class="tb-logo">LD</div><div class="tb-name">LinkDesk</div>
+      <div class="tb-drag"></div>
+      <div class="tb-btns">
+        <div class="wc-btn">&#9472;</div><div class="wc-btn">&#9723;</div><div class="wc-btn close">&#10005;</div>
+      </div>
+    </div>
+    <div class="wbody">
+      <div class="iconbar">
+        <div class="ib">&#9776;</div><div class="ib active">&#128193;</div>
+        <div class="ib">&#128268;</div><div class="ib">&#128230;</div>
+      </div>
+      <div class="main">
+        <div class="tabbar">
+          <div class="tab active hot"><span class="tt">very-long-component-name.tsx</span></div>
+          <div class="tab"><span class="tt">串口监视器</span></div>
+        </div>
+        <div class="content">标签被截断 ⇒ 悬停看全名（原来挂在 <span class="k">GroupTabBar.tsx:315</span> 的 title 上）</div>
+      </div>
+    </div>
+    <div class="tip vA" style="left: 100px; top: 62px;"><span class="tip-label">very-long-component-name.tsx — 双击固定</span></div>
+  </div>
+  <div class="frame-note">
+    <b>验证点：</b>
+    <ol>
+      <li><b>这是与"说明类"不同的需求</b>：元素上<b>已经有那段字</b>（只是被 CSS 截断了），提示只是把它放出来。全软件约 <b>13 处</b>（侧栏/面板标题、标签页标题、文件路径、列表 URL、色值、徽章文字）。</li>
+      <li>所以它要<b>更短的延时</b>——"看全被截断的字"必须立刻，不能等意图延时。⚠️ 具体值待拍板（Frame 8 / 待拍板 2）。</li>
+      <li>标签栏还有一层：标签是<b>可拖拽</b>的（<code>draggable</code> ＋ 拖拽协议）。属性式不包元素 ⇒ 与拖拽零冲突；换 <span class="k">HintCard</span> 那种包一层 span 的做法就会动到拖拽结构——这是"为什么必须新件"的实证之一。</li>
+      <li>今天这条文案还夹着操作提示（"双击固定"）。它属于<b>说明</b>而不只是揭示——收编时逐处裁决，本帧按现状原样搬。</li>
+    </ol>
+  </div>
+</section>
+
+<!-- ══════════════════ Frame 5 · 状态栏混合 ══════════════════ -->
+<section class="frame" id="f5">
+  <div class="frame-caption">Frame 5 · 状态栏 · 图标 ＋ 文字 ＋ 快捷键 混合<span class="tag">说明类</span></div>
+  <div class="win h150">
+    <div class="titlebar">
+      <div class="tb-logo">LD</div><div class="tb-name">LinkDesk</div>
+      <div class="tb-drag"></div>
+    </div>
+    <div class="wbody">
+      <div class="iconbar">
+        <div class="ib">&#9776;</div><div class="ib active">&#128193;</div>
+        <div class="ib">&#128268;</div><div class="ib">&#128230;</div>
+      </div>
+      <div class="main">
+        <div class="tabbar"><div class="tab active"><span class="tt">package.json</span></div></div>
+        <div class="content">鼠标悬停在状态栏的通知铃铛上</div>
+      </div>
+    </div>
+    <div class="statusbar">
+      <div class="sb-left"><span class="sb-item">就绪</span></div>
+      <div class="sb-right">
+        <span class="sb-item"><span class="dot on"></span>已连接 · COM3</span>
+        <span class="sb-item hot">&#128276;</span>
+      </div>
+    </div>
+    <div class="tip vC" style="right: 8px; bottom: 30px; width: 240px;">
+      <div class="tip-row">
+        <span class="tip-icon">&#128276;</span>
+        <span class="tip-label">通知</span>
+        <span class="sc-key tip-shortcut"><kbd>Ctrl</kbd><span class="sep">+</span><kbd>Shift</kbd><span class="sep">+</span><kbd>N</kbd></span>
+      </div>
+      <div class="tip-note">当前无未读通知</div>
+    </div>
+  </div>
+  <div class="frame-note">
+    <b>验证点：</b>
+    <ol>
+      <li>状态栏只有 <b>22px</b> 高（真实尺寸），提示条紧贴其上沿 ⇒ 是 <b>首选 <code>top</code></b> 的典型场景（贴不下则翻 <code>bottom</code>）。</li>
+      <li>这一帧用的是 <b>案 C（带第二行注脚）</b>——用来对照"信息量 vs 重量"：主行＋分隔线＋注脚，已经<b>很接近 <span class="k">HintCard</span> 的骨相</b>。⚠️ 案 C 有和说明卡重复的风险，见 Frame 8。</li>
+      <li>三个元素（图标/文字/快捷键）在三种状态下都<b>不许把条撑出视口</b>——夹紧规则照保底②、⛔ 不裁字。</li>
+      <li>状态栏各项今天挂在 <span class="k">StatusBarZone.tsx:195/242/406</span>。</li>
+    </ol>
+  </div>
+</section>
+
+<!-- ══════════════════ Frame 6 · 边缘翻面 ══════════════════ -->
+<section class="frame" id="f6">
+  <div class="frame-caption">Frame 6 · 视口边缘 · 翻面与夹紧（⛔ 不裁字）<span class="tag">保底②</span></div>
+  <div class="cols">
+    <div>
+      <div class="col-cap">贴底边 ⇒ 翻到上方</div>
+      <div class="win h150">
+        <div class="wbody">
+          <div class="iconbar"><div class="ib">&#9776;</div><div class="ib active">&#128193;</div></div>
+          <div class="main">
+            <div class="content">锚贴下沿（状态栏最右）</div>
+          </div>
+        </div>
+        <div class="statusbar">
+          <div class="sb-left"><span class="sb-item">就绪</span></div>
+          <div class="sb-right"><span class="sb-item hot">&#128276;</span></div>
+        </div>
+        <div class="tip vA" style="right: 6px; bottom: 28px;"><span class="tip-label">通知</span></div>
+      </div>
+    </div>
+    <div>
+      <div class="col-cap">贴右边 ⇒ 夹紧到边缘</div>
+      <div class="win h150">
+        <div class="wbody">
+          <div class="iconbar"><div class="ib">&#9776;</div><div class="ib active">&#128193;</div></div>
+          <div class="main">
+            <div class="content">锚贴右沿 ⇒ 条左移夹紧，字一个不少</div>
+          </div>
+        </div>
+        <div class="tip vA" style="right: 8px; top: 58px; max-width: 232px;">
+          <span class="tip-label">插件市场 · 已装 12 个插件，3 个有更新</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="frame-note">
+    <b>验证点：</b>
+    <ol>
+      <li>首选方向贴不下 ⇒ <b>自动翻另一面</b>；两面都不够 ⇒ <b>夹紧到视口边缘</b>，⛔ <b>不裁字</b>（宁可占宽也不截断）。</li>
+      <li>这条与 <span class="k">HintCard</span> 的保底②同源（<code>computeCardPosition</code>）——但本件是<b>独立纯函数</b>（方向四向、无固定宽、参数不同），单测直接钉。</li>
+      <li>边缘余量、间距照 HintCard 既有取值（<code>EDGE_PX = 8</code> / <code>GAP_PX = 6</code>）——同一套视觉语言，不另立数字。</li>
+    </ol>
+  </div>
+</section>
+
+<!-- ══════════════════ Frame 7 · 拖拽中不出卡 ══════════════════ -->
+<section class="frame" id="f7">
+  <div class="frame-caption">Frame 7 · 拖拽中 · 不出条（拖拽优先）<span class="tag warn">交互冲突</span></div>
+  <div class="win h200">
+    <div class="titlebar">
+      <div class="tb-logo">LD</div><div class="tb-name">LinkDesk</div>
+      <div class="tb-drag"></div>
+    </div>
+    <div class="wbody">
+      <div class="iconbar">
+        <div class="ib">&#9776;</div><div class="ib active">&#128193;</div>
+        <div class="ib">&#128268;</div><div class="ib">&#128230;</div>
+      </div>
+      <div class="main">
+        <div class="tabbar">
+          <div class="tab active"><span class="tt">串口监视器</span></div>
+          <div class="tab hot"><span class="tt">package.json</span></div>
+        </div>
+        <div class="content">正把「package.json」标签拖出（半透明跟手副本）</div>
+      </div>
+    </div>
+    <div class="tip vA" style="left: 420px; top: 62px; opacity: 0.25;">
+      <span class="tip-label">（本该出的条——拖拽中一律不出）</span>
+    </div>
+  </div>
+  <div class="frame-note">
+    <b>验证点：</b>
+    <ol>
+      <li><b>拖拽一旦开始，提示条立即收且不再出</b>，拖拽结束复位。<b>拖拽优先于提示</b>——今天原生 tooltip 不抢拖拽，自绘后这条要我们保证。</li>
+      <li>同类规则还有：<b>按下鼠标（pointerdown）即收</b>（照 <span class="k">HintCard</span> 「只靠移开消失的卡不该被鼠标按下关掉」的反向取舍——提示条比说明卡更轻，按下即收更跟手）。⚠️ 此条待定，见 <code>01-设计.md</code> §九。</li>
+      <li>本帧同时也是"属性式为什么不包元素"的实证：包一层 span 会让拖拽目标的兄弟节点结构错位（图标栏的 <code>ldk-icon-drop-indicator</code> 就是这个结构）。</li>
+    </ol>
+  </div>
+</section>
+
+<!-- ══════════════════ Frame 8 · 拍板区 ══════════════════ -->
+<section class="frame" id="f8">
+  <div class="frame-caption">Frame 8 · 拍板区 · 视觉档位三案并排<span class="tag warn">待拍板 2</span></div>
+  <div class="pick-grid">
+    <div class="pick-card reco">
+      <h4>案 A · 紧凑条</h4>
+      <div class="pick-sub">✅ AI 倾向 · 最贴近"把系统小方框换成我们的、但不更吵"</div>
+      <div class="pick-stage">
+        <div class="tip vA" style="position: static;"><span class="tip-label">菜单</span></div>
+      </div>
+      <ul>
+        <li>内边距 <code>3px 8px</code> · 圆角 <code>--radius-sm</code></li>
+        <li>字号 <code>--font-size-xs</code></li>
+        <li>阴影 <code>--shadow-tooltip</code>（已预留、壳内无人用）</li>
+        <li>最接近今天的大小 ⇒ <b>收编 43 处后观感变化最小</b></li>
+      </ul>
+    </div>
+    <div class="pick-card">
+      <h4>案 B · 中号</h4>
+      <div class="pick-sub">更清楚，但每一处都比今天更重</div>
+      <div class="pick-stage">
+        <div class="tip vB" style="position: static;"><span class="tip-label">菜单</span></div>
+      </div>
+      <ul>
+        <li>内边距 <code>6px 10px</code> · 圆角 <code>--radius-md</code></li>
+        <li>字号 <code>--font-size-sm</code></li>
+        <li>阴影 <code>--shadow-pop</code></li>
+        <li>可读性更好，但在图标栏/状态栏这种小格子里<b>偏大</b></li>
+      </ul>
+    </div>
+    <div class="pick-card">
+      <h4>案 C · 带第二行注脚</h4>
+      <div class="pick-sub">⚠️ 信息量大，但已接近 HintCard 的骨相</div>
+      <div class="pick-stage">
+        <div class="tip vC" style="position: static; width: 210px;">
+          <div class="tip-row"><span class="tip-label">文件树</span><span class="sc-key tip-shortcut"><kbd>Ctrl</kbd><span class="sep">+</span><kbd>Shift</kbd><span class="sep">+</span><kbd>E</kbd></span></div>
+          <div class="tip-note">显示/隐藏左侧文件树</div>
+        </div>
+      </div>
+      <ul>
+        <li>主行 ＋ 分隔线 ＋ 注脚</li>
+        <li>与 <span class="k">HintCard</span>（说明卡）<b>职责重叠风险</b></li>
+        <li>建议：<b>不设为默认</b>；需要注脚的少数处走"组件式 <code>&lt;HintTip note=…&gt;</code>"即可</li>
+      </ul>
+    </div>
+  </div>
+  <div class="frame-note">
+    <b>验证点：</b>
+    <ol>
+      <li><b>三案骨架相同</b>（同一渲染器、同一 token、同一翻面逻辑），差别只在<b>内边距/圆角/字号/阴影</b>——所以拍板成本低，拍完只改一处样式。</li>
+      <li>⛔ <b>三案都不带小箭头</b>——用户 2026-09-27 拍板「就是一个框型」，不要气泡小尖角。代价是归属感全靠「贴紧锚」，所以间距固定 <code>GAP_PX = 6</code> 不许再放大；好处是少 7px 遮挡，也少一处随翻面翻转的样式。</li>
+      <li>🔴 <b>案 C 与 <span class="k">HintCard</span> 的边界</b>：说明卡继续管"有标题/长文案/玻璃"的场合；提示条若也长成那副样子，等于同一个东西有两份实现——这就是本件要避免的"两套并存"重演。</li>
+      <li>切右上角「切换亮/暗主题」可对三案做主题跟随验证（三案都走 token）。</li>
+    </ol>
+  </div>
+</section>
+
+<!-- ══════════════════ Frame 9 · 快捷键画法对照 ══════════════════ -->
+<section class="frame" id="f9">
+  <div class="frame-caption">Frame 9 · 快捷键今天已有两种画法——提示条不许成为第三种<span class="tag warn">待拍板 3</span></div>
+  <div class="cols">
+    <div>
+      <div class="col-cap"><span class="tag">现状①</span> 右键菜单：等宽<b>纯文本</b>（不是键帽）</div>
+      <div class="win h150">
+        <div class="wbody">
+          <div class="iconbar"><div class="ib">&#9776;</div><div class="ib active">&#128193;</div></div>
+          <div class="main">
+            <div class="content" style="padding: 12px;">
+              <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 6px 8px; box-shadow: var(--shadow-pop);">
+                <div style="display:flex; align-items:center; justify-content:space-between; color: var(--text-secondary); padding: 3px 6px;">
+                  <span>刷新文件树</span><span class="sc-flat">Ctrl+Shift+E</span>
+                </div>
+                <div style="display:flex; align-items:center; justify-content:space-between; color: var(--text-secondary); padding: 3px 6px; background: var(--hover-overlay); border-radius: 4px;">
+                  <span>命令面板…</span><span class="sc-flat">Ctrl+Shift+P</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="frame-note" style="margin-top: 8px;">依据：<span class="k">ContextMenu.css:92</span> —— <code>font-family: var(--font-mono)</code> ＋ <code>opacity: .6</code> ＋ <code>--font-size-xs</code>。</div>
+    </div>
+    <div>
+      <div class="col-cap"><span class="tag">现状②</span> 命令面板：<b>键帽 keycap</b></div>
+      <div class="win h150">
+        <div class="wbody">
+          <div class="iconbar"><div class="ib">&#9776;</div><div class="ib active">&#128193;</div></div>
+          <div class="main">
+            <div class="content" style="padding: 12px;">
+              <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 6px 8px; box-shadow: var(--shadow-pop);">
+                <div style="display:flex; align-items:center; justify-content:space-between; color: var(--text-secondary); padding: 3px 6px;">
+                  <span>刷新文件树</span>
+                  <span class="sc-key"><kbd>Ctrl</kbd><span class="sep">+</span><kbd>Shift</kbd><span class="sep">+</span><kbd>E</kbd></span>
+                </div>
+                <div style="display:flex; align-items:center; justify-content:space-between; color: var(--text-primary); padding: 3px 6px; background: var(--hover-overlay); border-radius: 4px;">
+                  <span>命令面板…</span>
+                  <span class="sc-key"><kbd>Ctrl</kbd><span class="sep">+</span><kbd>Shift</kbd><span class="sep">+</span><kbd>P</kbd></span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="frame-note" style="margin-top: 8px;">依据：<span class="k">QuickPickHost.css:238-245</span> —— <code>--kbd-bg</code>/<code>--kbd-border</code> ＋ <code>--font-size-2xs</code> ＋ <code>&lt;kbd&gt;</code>。</div>
+    </div>
+  </div>
+  <div class="frame-note">
+    <b>验证点：</b>
+    <ol>
+      <li><b>同一个软件里，快捷键有两种长相</b>（菜单一套、命令面板一套）。提示条会是<b>第三种</b>——这正是"归一化"该管的时刻。</li>
+      <li><b>AI 倾向：统一到②键帽</b>（它更像"键盘上的键"、在浅深两色下都更清楚），并<b>顺带把右键菜单也归到键帽</b>，消掉这个缺口。</li>
+      <li>若怕同批太大 ⇒ 先让提示条用键帽，菜单侧归一化<b>另立小件</b>登记，不塞进本件。</li>
+      <li>⛔ 无论拍哪个，<b>都不许"提示条自己再发明一种"</b>。</li>
+    </ol>
+  </div>
+</section>
+
+<!-- ══════════════════ Frame 10 · 规格卡 ══════════════════ -->
+<section class="frame" id="f10">
+  <div class="frame-caption">Frame 10 · 规格卡（实现时照此）<span class="tag">实现锚点</span></div>
+  <table class="spec">
+    <thead>
+      <tr><th style="width: 22%;">项</th><th style="width: 38%;">值 / token</th><th>说明与依据</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><b>条体底</b></td>
+        <td><code>var(--bg-card)</code></td>
+        <td>与下拉/菜单同族表面（不是玻璃——玻璃留给 <span class="k">HintCard</span>）</td>
+      </tr>
+      <tr>
+        <td><b>边</b></td>
+        <td><code>var(--border)</code> · 1px</td>
+        <td>与菜单/下拉同一套描边语言</td>
+      </tr>
+      <tr>
+        <td><b>文字</b></td>
+        <td><code>var(--text-primary)</code> · 案 A 用 <code>--font-size-xs</code> / 案 B/C 用 <code>--font-size-sm</code></td>
+        <td>字号走 token ⇒ 全局字号缩放跟走</td>
+      </tr>
+      <tr>
+        <td><b>圆角</b></td>
+        <td><code>var(--radius-sm)</code>（案 A）/ <code>var(--radius-md)</code>（案 B/C）</td>
+        <td>八档语义见变量契约 §2.2</td>
+      </tr>
+      <tr>
+        <td><b>阴影</b></td>
+        <td><code>var(--shadow-tooltip)</code>（案 A）/ <code>var(--shadow-pop)</code>（案 B/C）</td>
+        <td>🔴 <code>--shadow-tooltip</code> <b>壳里已定义、今天无人用</b>（<span class="k">src/index.css:84</span>）——本件正好用上，<b>不新增 token</b></td>
+      </tr>
+      <tr>
+        <td><b>宽度</b></td>
+        <td><code>max-content</code> ＋ <code>max-width: 260px</code></td>
+        <td>⚠️ <b>不是 <span class="k">HintCard</span> 的固定 300px</b>——这是两件最本质的差别</td>
+      </tr>
+      <tr>
+        <td><b>间距/余量</b></td>
+        <td><code>GAP_PX = 6</code> · <code>EDGE_PX = 8</code></td>
+        <td>照 <span class="k">HintCard</span> 既有取值，同一套视觉语言</td>
+      </tr>
+      <tr>
+        <td><b>层级</b></td>
+        <td>复用浮层权威 <code>#overlay-root</code>（<span class="k">OverlayPortal</span>）</td>
+        <td>E5.8#107 单一门；⛔ 不新建 overlay 通道、不新开 z 档</td>
+      </tr>
+      <tr>
+        <td><b>定位</b></td>
+        <td>四向首选 ＋ 翻面 ＋ 夹紧（纯函数 <code>computeTipPosition</code>）</td>
+        <td>⛔ 不裁字；与 <span class="k">HintCard.computeCardPosition</span> 同族但独立（参数不同）</td>
+      </tr>
+      <tr>
+        <td><b>延时</b></td>
+        <td>说明类：待拍板（短于 <span class="k">HintCard</span> 的 400ms）· 揭示类：近 0</td>
+        <td>⚠️ 待拍板 2 的一部分——参考图给不了体感，需 dev 实机试</td>
+      </tr>
+      <tr>
+        <td><b>指针事件</b></td>
+        <td><code>pointer-events: none</code></td>
+        <td>纯看文案的条，⛔ 不接管点击、不挡 hover（照 <span class="k">HintCard</span> 禁区）</td>
+      </tr>
+      <tr>
+        <td><b>无障碍</b></td>
+        <td>提示点<b>自带 <code>aria-label</code></b>（渲染器不管可访问名）</td>
+        <td>因为属性式会替掉 <code>title</code> ⇒ 必须同笔兜住可访问名（<code>01-设计.md</code> §二·①保底二）</td>
+      </tr>
+      <tr>
+        <td><b>类名</b></td>
+        <td><code>ldk-hint-tip</code> / <code>-row</code> / <code>-label</code> / <code>-note</code></td>
+        <td><code>ldk-</code> 命名空间属宿主；与 <span class="k">ldk-hint-card-*</span> 同族并列；新名要进宿主保留名账</td>
+      </tr>
+      <tr>
+        <td><b>⛔ 禁止</b></td>
+        <td>条内放按钮/链接 · 富文本/Markdown · 跟随鼠标（贴锚不贴指针） · <b>小箭头 / 气泡尖角</b></td>
+        <td>越界即变成"菜单/toast/浮层"，那是别的件（箭头已拍板不要——纯框型）</td>
+      </tr>
+    </tbody>
+  </table>
+  <div class="frame-note">
+    <b>一句话：</b>本件是「把<b>不属于我们的控件</b>（Chromium 原生 tooltip）换成<b>走我们 token 的轻提示条</b>」，
+    并让它在<b>与右键菜单同源</b>的数据上自动带出快捷键。<b>43 处壳侧 ＋ 4 只官方插件仓</b>是收编面，
+    <b>三条门禁腿</b>负责不让原生小方框长回来。
+    详案与 7 条待拍板见 <code>01-设计.md</code>。
+  </div>
+</section>
+
+<script>
+  // 主题切换（html-blueprint 检查清单：交互可用）
+  document.getElementById("theme-toggle").addEventListener("click", function () {
+    document.querySelectorAll(".win").forEach(function (w) {
+      w.classList.toggle("is-light");
+    });
+  });
+</script>
+</body>
+</html>
