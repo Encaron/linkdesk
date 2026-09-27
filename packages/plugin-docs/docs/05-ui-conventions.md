@@ -763,6 +763,64 @@ button { border: none; }
 
 ---
 
+## 13. Hover Hints → the `data-hint` attributes (or `<HintTip>`)
+
+**That little bar that appears when the pointer rests on your button/icon is not drawn by the browser.**
+
+The host ships one unified light hint (`HintTip`): light/dark theme, UI scaling, edge flipping, and the
+keycap look for shortcuts are all decided in one place by the shell. **You do not import anything** to use
+it—write attributes:
+
+```tsx
+// ❌ native title: drawn by the browser; theme/scaling/keycaps never follow the shell (red since SDK >= 0.1.49)
+<button title={t("Refresh")}>
+
+// ✅ attribute form: swap title= for data-hint= (zero DOM structure change)
+<button data-hint={t("Refresh")} aria-label={t("Refresh")}>
+
+// ✅ with a shortcut: give the command id and the shell looks it up (name + keys come from that one table,
+//    so the hint bar / context menu / command palette always say the same thing)
+<button data-hint-command="fileTree.refresh" aria-label={t("Refresh")}>
+
+// ✅ reveal kind ("see the whole truncated text"): it must appear at once, don't make it wait
+<div data-hint={fullPath} data-hint-delay="0">{truncated}</div>
+
+// ✅ composite cases (you want to control the wrapper): the component form
+import { HintTip } from "@linkdesk/ui";
+<HintTip label={t("Refresh")} command="fileTree.refresh"><button …>…</button></HintTip>
+```
+
+Four attributes, all written on your own DOM elements:
+
+| Attribute | What it does |
+|---|---|
+| `data-hint` | The hint text (explain and reveal kinds share it—**the text is always yours**; the shell never ships sentences) |
+| `data-hint-command` | Command id—the shell reads name and shortcut from the command table. **Same source** as the context menu / command palette (change it once, everything follows) |
+| `data-hint-delay` | Intent delay in ms. Explain kind: **leave the default** (120 ms—prevents a flash while sweeping past); reveal kind: pass `"0"` |
+| `data-hint-placement` | Preferred side: `top`/`bottom`/`left`/`right` (default `top`; flips automatically when it does not fit) |
+
+**⚠️ Three rules**
+
+1. **Explain kind waits, reveal kind does not**—"see the whole truncated text" must be immediate; a command
+   explanation for an icon is exactly the case that should pause a moment.
+2. **No more native `title=`**: the SDK leg `linkdesk/no-native-title` (SDK >= 0.1.49) marks it red—`lint`
+   prints a red row and `ci-verify` fails. For the rare form where the hint renderer cannot reach (the
+   legitimate exception), write `// eslint-disable-next-line linkdesk/no-native-title -- reason` (a **reason
+   is mandatory**).
+3. **No buttons inside the bar**: a hint is a hint, not a menu (use `<ContextMenu>` for interaction); for a
+   **long text / title / footnote** or multi-line explanation use `HintCard`—that component is the one that
+   owns "long explanations with a footnote".
+
+> 🔧 **Maintainer note (authors may skip)**: renderer = `src/components/shared/hint-tip/HintTipRenderer.tsx`
+> (a single mount in the pool: delegated `pointerover`/`pointerout`/`focusin`/`focusout` plus an intent-delay
+> state machine); the single source of truth for the attribute literals is `hintAttrs.ts` (⛔ never write a
+> `"data-hint"` literal anywhere else); the master switch is the shell config `app.hint.enabled` (default on,
+> visible in settings); the gates are three legs — shell-side `scripts/check-native-title.mjs` (legacy
+> white-list ledger, new sites only) and the SDK leg `checks/no-native-title.ts` (same id, pinned to each
+> other by the three 锚⑪ anchor sentences).
+
+---
+
 ## Quick Reference
 
 | What you want to do | Core facility | How to bring it in |
@@ -776,6 +834,7 @@ button { border: none; }
 | Rich-content confirm | `window.linkdesk.dialog.confirmContent({ pluginId, viewId, payload })` | the in-pool DialogHost renders the shell, **the content = a plugin-drawn view** (see §9) |
 | Shortcuts (non-text keys) | `plugin.json contributes.keybindings` | — (putting text keys here = swallowing the whole pool, see §4.1) |
 | Shortcuts (text keys / focus-bound keys) | container `onKeyDown` + `tabIndex` | pool-side self-handling, see §4.2 (document/window keydown is forbidden) |
+| Hover hints | `data-hint` / `data-hint-command` / `data-hint-delay` attributes (or `<HintTip>`) | just write them on your own DOM elements — **no import needed** (see §13; a native `title=` is red) |
 | Colors | CSS variables | `var(--xxx)`, list in `src/index.css` |
 | Font sizes | CSS variables | `var(--font-size-*)` + `--ui-scale`, bare px forbidden (gate, see §10) |
 | Six-domain token overview | see the §11.1 matrix | color/surface/radius/glass/font size/font family—`var(--*)` follows theme+glass+scaling automatically; full list in `src/index.css` |

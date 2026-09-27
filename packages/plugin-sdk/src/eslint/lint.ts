@@ -39,6 +39,7 @@ import { runKeyframeRefCheck } from "./checks/keyframe-refs.js";
 import { runDanglingNameCheck } from "./checks/dangling-names.js";
 import { runDanglingOwnClassCheck } from "./checks/dangling-own-classes.js";
 import { runGlobalKeyListenerCheck } from "./checks/no-global-key-listener.js";
+import { runNativeTitleCheck } from "./checks/no-native-title.js";
 import { runRetiredNameHint, type RetiredNameHint } from "./checks/retired-names.js";
 import { runCommandOwnershipCheck } from "./checks/command-ownership.js";
 import { runConfigOwnershipCheck } from "./checks/config-ownership.js";
@@ -109,6 +110,8 @@ export interface PluginLintReport {
   };
   /** 🔴 E6#137（2026-09-20）：全局键盘监听腿读数（sites = 看见的站点含豁免；red = 判红） */
   globalKeyCounts: { sites: number; red: number };
+  /** 04「悬停提示系统」件 2（2026-09-27）：原生 title= 腿读数（sites = 看见的小写标签站点含豁免；red = 判红） */
+  nativeTitleCounts: { sites: number; red: number };
   /** 🟡 E6#119：退役名提示（只提示、⛔ 永不拒绝——不进任何腿报点） */
   retiredHints: RetiredNameHint[];
   /** 退役登记账的加载实况（found=false ⇒ 提示空转——报告里必须能看出来，不许静默） */
@@ -276,6 +279,17 @@ export async function runPluginLint(root: string, options: PluginLintOptions = {
    */
   const globalKeys = runGlobalKeyListenerCheck(absRoot);
   /**
+   * 04「悬停提示系统」件 2（2026-09-27）：第十一条 check 腿 —— **JSX 原生 `title=` 判红**
+   *   （`checks/no-native-title.ts`）。悬停提示已由宿主 `HintTip`（`data-hint*` 属性式）统一，
+   *   原生 title 是第二把尺子（浏览器画、深浅主题/字号缩放/键帽都不跟壳走）⇒ 作者侧也判红。
+   *   判据窄口子：**只判小写 HTML 标签上的 title=**（大写组件上的 title 是组件自己的 prop——
+   *   `<SidebarSection title="">` 的标题文本就在这一格；一刀切会满屏假红，假红让真红失效）。
+   *   ⚠️ 与壳侧门禁 `scripts/check-native-title.mjs` 同口径（同一个腿 id ＋ 锚⑪ 3 句锚词互钉）；
+   *      壳侧那 43 处存量走白名单账（只判新增），本腿不带账（作者的正确动作是改代码或写豁免注释）。
+   *   ⚠️ 独立统计/独立收紧（同其余腿的「刻意不合并」口径）。
+   */
+  const nativeTitle = runNativeTitleCheck(absRoot);
+  /**
    * 🟡 E6#119：**退役名提示**（`checks/retired-names.ts`）——`retired[]` **不是黑名单**：退役 ≠ 删除，
    *   本腿的报点**永不进 violations**（CI 严格腿看不见它），只以 ℹ 行打印「哪天退的休、替身是谁」。
    *   升级成拒绝 = 自选 2.0 的活，不在本批（⛔ 把提示升级成拒绝是本格禁区）。
@@ -423,6 +437,11 @@ export async function runPluginLint(root: string, options: PluginLintOptions = {
       label: "check-global-key-listener",
       violations: globalKeys.violations,
     },
+    {
+      id: "linkdesk/no-native-title（JSX 里小写 HTML 标签上的原生 title= 判红——悬停提示统一走 data-hint / HintTip；确需原生 title 走 disable + 理由）",
+      label: "check-native-title",
+      violations: nativeTitle.violations,
+    },
   ];
   const totalCheckViolations =
     css.length +
@@ -435,7 +454,8 @@ export async function runPluginLint(root: string, options: PluginLintOptions = {
     contextOwnership.violations.length +
     uiCssImport.length +
     uiMinAppVersion.length +
-    globalKeys.violations.length;
+    globalKeys.violations.length +
+    nativeTitle.violations.length;
 
   return {    files: results.length,
     eslintRows,
@@ -472,6 +492,7 @@ export async function runPluginLint(root: string, options: PluginLintOptions = {
       skippedDynamic: danglingOwnClasses.skipped.dynamic,
     },
     globalKeyCounts: { sites: globalKeys.sites.length, red: globalKeys.violations.length },
+    nativeTitleCounts: { sites: nativeTitle.sites.length, red: nativeTitle.violations.length },
     retiredHints: retiredNames.hints,
     retiredLedger: retiredNames.ledger.found
       ? { file: retiredNames.ledger.file, found: true, retiredCount: retiredNames.ledger.retired.length }

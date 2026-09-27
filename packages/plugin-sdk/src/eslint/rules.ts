@@ -477,5 +477,8 @@ export const linkdeskRuleMap: Record<string, Rule.RuleModule> = {
   "no-ui-css-import": NOOP_CHECK_RULE,
   "no-ui-without-min-app-version": NOOP_CHECK_RULE,
   "no-global-key-listener": NOOP_CHECK_RULE,
+  // 04「悬停提示系统」件 2（2026-09-27）：原生 title= 腿（`checks/no-native-title.ts`）——哑规则只为让
+  // 作者照文案写的 `eslint-disable-next-line linkdesk/no-native-title -- 理由` 不报 not-found（E6#137 同一个坑）。
+  "no-native-title": NOOP_CHECK_RULE,
   "no-module-level-ipc-listener": NOOP_CHECK_RULE,
 };

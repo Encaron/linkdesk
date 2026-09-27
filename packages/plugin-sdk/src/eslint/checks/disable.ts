@@ -39,6 +39,12 @@ export const CHECK_IDS = {
   /** E6#137（2026-09-20）：window/document 全局 keydown/keyup 监听判红——正解 = 容器 onKeyDown +
    *  tabIndex（focus 分区）；确需全局抓键的正当形态（快捷键录制器）走 disable ＋ 理由（判据无白名单）。 */
   noGlobalKeyListener: "linkdesk/no-global-key-listener",
+  /** 04「悬停提示系统」件 2（2026-09-27）：插件源码 JSX 里**小写 HTML 标签上的原生 `title=`** 判红
+   *  （`checks/no-native-title.ts`）——悬停提示已由宿主 `HintTip`（`data-hint*` 属性式）统一，原生 title
+   *  是第二把尺子（浏览器画、样式与键帽都不跟壳走）。确需原生 title 的形态（提示渲染器够不到的）走
+   *  disable ＋ 理由（**理由必填**）。⚠️ 同名腿 id 壳侧门禁 `scripts/check-native-title.mjs` 也认同一批
+   *  注释——两把尺子同一个口径（锚⑪）。 */
+  noNativeTitle: "linkdesk/no-native-title",
 } as const;
 
 interface RawComment {
