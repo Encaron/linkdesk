@@ -37,6 +37,69 @@ afterEach(() => {
   while (dirs.length > 0) rmSync(dirs.pop()!, { recursive: true, force: true });
 });
 
+/**
+ * `contributes.floatingPanel` 首开形态（defaultForm / formKey）——**作者面机械门禁**。
+ *
+ * 为什么值得单列一组：这两个字段的**互斥**是纯 schema 语义（`"not": { "required": [...] }`），
+ * 壳侧代码里**没有任何分支**会因此报错——删掉 schema 里那个 `"not"` 之后，壳的自然测试全绿，
+ * 两个字段并存只会「formKey 优先」静默通过作者校验。故此处把契约钉在 schema 上：改 schema
+ * 若破了互斥/词汇表，这里是第一道出声的地方。
+ */
+describe("validatePluginJson——floatingPanel 首开形态（defaultForm / formKey）", () => {
+  it("不声明两者 → valid（原行为，存量作者零回归）", () => {
+    const res = validatePluginJson(fixture({ contributes: { floatingPanel: { viewId: "demo-panel" } } }));
+    expect(res.valid).toBe(true);
+  });
+
+  it("defaultForm 取词汇表内值 → valid（作者定死形态）", () => {
+    const res = validatePluginJson(
+      fixture({ contributes: { floatingPanel: { viewId: "demo-panel", defaultForm: "tab" } } }),
+    );
+    expect(res.valid).toBe(true);
+  });
+
+  it("formKey 是字符串 → valid（用户可配形态）", () => {
+    const res = validatePluginJson(
+      fixture({ contributes: { floatingPanel: { viewId: "demo-panel", formKey: "demo.openForm" } } }),
+    );
+    expect(res.valid).toBe(true);
+  });
+
+  it("词汇表外的 defaultForm → invalid（形态词汇表是闭集，拼错不许静默）", () => {
+    const res = validatePluginJson(
+      fixture({ contributes: { floatingPanel: { viewId: "demo-panel", defaultForm: "panel" } } }),
+    );
+    expect(res.valid).toBe(false);
+    // 报错落到出错字段上（ajv 只报失败的那个关键字：enum = 闭集违规）
+    expect(res.errors.join("\n")).toContain("contributes.floatingPanel.defaultForm");
+    expect(res.errors.join("\n")).toContain("enum");
+  });
+
+  it("🔴 两者并存 → invalid（互斥红线；壳侧无分支可拦，只有 schema 拦得住）", () => {
+    const res = validatePluginJson(
+      fixture({
+        contributes: { floatingPanel: { viewId: "demo-panel", defaultForm: "tab", formKey: "demo.openForm" } },
+      }),
+    );
+    expect(res.valid).toBe(false);
+    // 报错落在 floatingPanel 本身（失败关键字 = not，即 "not: { required: [...] }" 这条互斥约束）
+    expect(res.errors.join("\n")).toContain("contributes.floatingPanel:");
+    expect(res.errors.join("\n")).toContain("not");
+  });
+
+  it("formKey 非字符串 → invalid", () => {
+    const res = validatePluginJson(
+      fixture({ contributes: { floatingPanel: { viewId: "demo-panel", formKey: 123 } } }),
+    );
+    expect(res.valid).toBe(false);
+  });
+
+  it("缺 viewId → invalid（viewId 仍是唯一必填）", () => {
+    const res = validatePluginJson(fixture({ contributes: { floatingPanel: { defaultForm: "tab" } } }));
+    expect(res.valid).toBe(false);
+  });
+});
+
 describe("validatePluginJson——墓碑提示（E6#91d）", () => {
   it("干净 manifest → 无 warnings 键（墓碑不是噪音）", () => {
     const res = validatePluginJson(fixture({}));

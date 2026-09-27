@@ -14,7 +14,8 @@ import { openKeybindingsSettings } from "../../registry/commands/KeybindingRegis
 import { requestSettingsGroup, requestScrollToSetting } from "../../registry/ConfigurationRegistry";
 import { APP_PLUGIN_ID } from "../../services/plugins/PluginStateService";
 import { shellEvents } from "../../react/events/ShellEvents";
-import { getFloatingPanelViewId } from "../../../pluginLoader/contributions/viewRegistry";
+import { getFloatingPanelViewId, getTabCreatableViews } from "../../../pluginLoader/contributions/viewRegistry";
+import { resolveFloatingPanelOpenForm } from "../../services/ui/floatingPanelForm";
 
 export function registerSettingsCommands(): void {
   const commands = [
@@ -34,6 +35,17 @@ export function registerSettingsCommands(): void {
         // E5.8#38（I8-1/I8-2）：声明制 revealFloating——面板身份开关键（无面板→开/同视图→关/他面板→替换）
         // 走 #39.5 子项 B wire（壳侧 useFloatingPanelReveal 编排），声明未解析 → no-op 不崩
         const fpViewId = getFloatingPanelViewId(settingsPluginId);
+        // 🪡 首开形态（声明制通用接缝，2026-09 用户拍板）：插件声明 defaultForm / formKey（键交用户），
+        // 壳决定开成标签页还是悬浮面板——壳侧零插件 id 硬编码，将来任何声明者自动生效。
+        // ⚠️ 只作用于「此刻没有设置标签页」这一支：上面聚焦支已 return，开成之后的面板↔标签页互转
+        // （面板右上角「在主窗口中打开」/ 标签页右键「在悬浮面板中打开」）仍各走原路，不归这里管。
+        const form = resolveFloatingPanelOpenForm(settingsPluginId);
+        // 声明 tab 且该插件**真能**开成标签页（appearsIn.tabBar + entry，同 open-in 按钮门控）→ 开标签页。
+        // 声明 tab 却无标签页形态 = 作者声明矛盾 ⇒ 落回面板（有面板就开），不静默无动作。
+        if (form === "tab" && getTabCreatableViews().some((v) => v.pluginId === settingsPluginId)) {
+          getCallbacks()?.openTab(settingsPluginId);
+          return;
+        }
         // E5.8#41.16 🔴 复合寻址：双设置套并存时裸 viewId="settings" 会被 getViewByViewId 判歧义 fail-loud →
         // 静默 no-op（Ctrl+,/齿轮失效）。壳侧路径已知激活套 pluginId → 载荷携带，resolve 走复合键精确命中（#41.8 §4.2）。
         if (fpViewId) shellEvents.emit("panel:reveal-floating", { viewId: fpViewId, pluginId: settingsPluginId });

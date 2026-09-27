@@ -620,9 +620,12 @@
           "description": "Floating Panel declaration — declares that a view in contributes.views can be shown in a Floating Panel inside the shell. viewId must reference an already registered view: the declaration is resolved into pluginId/renderPath/title. Without it there is no 'Open in Floating Panel' context menu entry. The first declarer is settings (Ctrl+, opens the panel).",
           "required": ["viewId"],
           "properties": {
-            "viewId": { "type": "string", "description": "View ID — a view registered in contributes.views" }
+            "viewId": { "type": "string", "description": "View ID — a view registered in contributes.views" },
+            "defaultForm": { "enum": ["floatingPanel", "tab"], "description": "Form used the FIRST time this view is opened — 'floatingPanel' (Floating Panel inside the shell) or 'tab'. Author-fixed: the user gets no Settings entry. Omit to keep the previous behaviour (a declaring plugin opens as a Floating Panel). Mutually exclusive with formKey." },
+            "formKey": { "type": "string", "description": "Configuration key that lets the USER choose the first-open form. Must be declared in this same plugin's contributes.configuration: its default is the author's default form, and its value must be 'floatingPanel' or 'tab' (any other value falls back to the author-fixed form). Declaring it makes the item appear in the Settings editor. Mutually exclusive with defaultForm." }
           },
-          "additionalProperties": false
+          "additionalProperties": false,
+          "not": { "required": ["defaultForm", "formKey"] }
         },
         "i18n": {
           "type": "object",

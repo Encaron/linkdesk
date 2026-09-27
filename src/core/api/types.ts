@@ -309,12 +309,24 @@ export interface ContributesViews {
   }>;
 }
 
+/** 悬浮面板「首开形态」——壳拥有的**形态词汇表**（声明面与配置值同用一套，值即形态，无映射层）。
+ *  'floatingPanel' = 壳内悬浮面板；'tab' = 标签页。
+ *  分工：插件只**声明**想要哪种（defaultForm/formKey），壳**决定并执行**（openTab / panel:reveal-floating）。 */
+export type FloatingPanelOpenForm = "floatingPanel" | "tab";
+
 /** contributes.floatingPanel 的形状——声明某视图可在壳内悬浮面板显示（E5.8#39.5 类型 B）。
  *  viewId 必须引用 contributes.views 中已注册的视图——声明寻址解析出 pluginId/renderPath/title。
  *  首批声明者 = settings（#38 Ctrl+, 弹面板）；第二声明者验证载体 = floating-panel-demo 测试插件。 */
 export interface ContributesFloatingPanel {
   /** 视图 ID——contributes.views 已注册视图（声明 floatingPanel 视图才有「在悬浮面板中打开」右键 I8-3） */
   viewId: string;
+  /** **首次打开**用哪种形态（作者定死，不给用户入口）——不声明 = 原行为（有面板即面板）。
+   *  ⛔ 与 formKey 互斥（plugin.schema.json 机械拒）：一个形态两个来源 ⇒ 键的 default 与它谁说了算说不清。 */
+  defaultForm?: FloatingPanelOpenForm;
+  /** **首次打开**形态的用户配置键——声明则设置页出现该项，用户自己选；键的 `default` 即作者默认形态
+   *  （故与 defaultForm 互斥）。键 = 同插件 contributes.configuration 里一个 type:"string" 的键，
+   *  取值 = 上面的形态词汇表；未声明该键 / 取值不在词汇表 ⇒ 降级 defaultForm → 无（不崩，出声）。 */
+  formKey?: string;
 }
 
 /* ── 视图插件注册条目 ── */

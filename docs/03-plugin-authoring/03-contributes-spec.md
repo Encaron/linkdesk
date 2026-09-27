@@ -33,7 +33,7 @@
 | `titleBar` | ✅ | top bar left/right slot buttons | MenuRegistry |
 | `viewsContainers` | ✅ | declare sidebar/panel containers | ViewContainerService |
 | `views` | ✅ | register views in a container — any plugin can register in any container | ViewContainerService |
-| `floatingPanel` | ✅ | declare that a view can be shown in a shell-internal floating panel (type B) — `viewId` references an already-registered view; without the declaration there is no "Open in Floating Panel" context menu item | declaration addressing → FloatingPanelService |
+| `floatingPanel` | ✅ | declare that a view can be shown in a shell-internal floating panel (type B) — `viewId` references an already-registered view; without the declaration there is no "Open in Floating Panel" context menu item; optional `defaultForm`/`formKey` fix or offer the **first-open form** (§3.15) | declaration addressing → FloatingPanelService |
 | `i18n` | ✅ | plugin-bundled translation files | i18nResources (i18next namespace) |
 
 ### Main-process consumers (2)
@@ -733,6 +733,8 @@ useEffect(() => {
 | Field | Required | Description |
 |------|:--:|------|
 | `viewId` | ✅ | **a view ID already registered in contributes.views** — declaration addressing resolves the plugin/renderPath/title |
+| `defaultForm` | ❌ | the form used the **first time** the view is opened, fixed by the author (the user gets no entry point): `"floatingPanel"` (floating panel) \| `"tab"` (tab) |
+| `formKey` | ❌ | the **first-open** form is **left to the user**: a configuration key name (you declare that key in `contributes.configuration`; its `default` is your default form) |
 
 **Declaring is consuming — four things appear automatically:**
 
@@ -743,7 +745,43 @@ useEffect(() => {
 | `linkdesk.panel.revealFloating(viewId)` opens the panel programmatically | panel identity toggle semantics — no panel → open; same view → close; another panel → replace |
 | Uninstalling the declaring plugin → the menu item disappears + revealFloating no-ops without crashing | the declaration unloads with the plugin lifecycle |
 
-**The first declarer = settings** (`core.openSettings`, Ctrl+, opens the panel); **the second declarer, used as a validation vehicle = the `floating-panel-demo` test plugin** (a tab-style view; end-to-end validation of replacement + the right-click return path + unload no-op).
+#### Configurable first-open form (`defaultForm` / `formKey`) — authors who just want the panel to pop out add nothing
+
+**Division of labour: the plugin only declares which form it wants; the shell decides and executes** — the plugin has zero execution power and the shell has zero plugin knowledge (the shell hard-codes no plugin ID, so any future declarer works without shell changes).
+
+| What the author wants | How to write it | What the user sees in the Settings editor |
+|:--|:--|:--|
+| Fix the form, no user override | `"defaultForm": "tab"` | Nothing (no Settings item appears at all) |
+| Let the user choose | `"formKey": "<plugin-id>.openForm"` plus declaring that key yourself in `contributes.configuration` | The control for that key (toggle/dropdown, rendered from your `type`) |
+
+```json
+{
+  "contributes": {
+    "floatingPanel": { "viewId": "settings", "formKey": "settings.openForm" },
+    "configuration": {
+      "title": "Settings plugin",
+      "properties": {
+        "settings.openForm": {
+          "type": "string",
+          "enum": ["floatingPanel", "tab"],
+          "default": "floatingPanel",
+          "description": "Form when opening Settings — floatingPanel / tab"
+        }
+      }
+    }
+  }
+}
+```
+
+**The shell's decision chain** (first match wins; executed by "first open" entry points — today that is `core.openSettings`):
+
+1. `formKey` is present and that key **is registered** → read its value: `"floatingPanel"` / `"tab"` is used as-is (**the value *is* the form — no mapping layer**);
+2. otherwise `defaultForm` (only legal values are accepted);
+3. neither → **previous behaviour** (a declaring plugin opens as a floating panel — today's settings default).
+
+**Four boundaries**: ① it only governs the **first open** — an existing tab is still focused and an already-open panel still toggles shut; changing the form afterwards keeps using the two old paths ("Open in main window" / "Open in Floating Panel"); ② `formKey` and `defaultForm` are **mutually exclusive** (both declared ⇒ schema validation fails — one form from two sources); ③ a typo'd `formKey` / a key that was never registered ⇒ falls back to `defaultForm` (neither = previous behaviour) plus one warning — it **never fails silently**; ④ declaring `"defaultForm": "tab"` on a plugin with no tab form (`appearsIn.tabBar` + `entry`) falls back to the floating panel rather than silently doing nothing.
+
+**The first declarer = settings** (`core.openSettings`, Ctrl+, opens the panel, and `settings.openForm` lets the user change it inside the "Settings plugin" group); **the second declarer, used as a validation vehicle = the `floating-panel-demo` test plugin** (a tab-style view; end-to-end validation of replacement + the right-click return path + unload no-op).
 
 ---
 

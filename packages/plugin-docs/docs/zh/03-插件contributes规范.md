@@ -33,7 +33,7 @@
 | `titleBar` | ✅ | 顶栏左右槽位按钮 | MenuRegistry |
 | `viewsContainers` | ✅ | 声明侧栏/面板容器 | ViewContainerService |
 | `views` | ✅ | 往容器注册视图——任何插件可往任意容器注册 | ViewContainerService |
-| `floatingPanel` | ✅ | 声明某视图可在壳内悬浮面板显示（类型 B）——viewId 引用已注册视图；未声明则无「在悬浮面板中打开」右键 | 声明寻址 → FloatingPanelService |
+| `floatingPanel` | ✅ | 声明某视图可在壳内悬浮面板显示（类型 B）——viewId 引用已注册视图；未声明则无「在悬浮面板中打开」右键；可选 `defaultForm`/`formKey` 定/选**首开形态**（§3.15） | 声明寻址 → FloatingPanelService |
 | `i18n` | ✅ | 插件自带翻译文件 | i18nResources（i18next 命名空间） |
 
 ### 主进程消费（2 个）
@@ -733,6 +733,8 @@ useEffect(() => {
 | 字段 | 必需 | 说明 |
 |------|:--:|------|
 | `viewId` | ✅ | **contributes.views 中已注册的视图 ID**——声明寻址解析出插件/renderPath/title |
+| `defaultForm` | ❌ | **首次打开**用哪种形态，作者定死（用户没入口）：`"floatingPanel"`（悬浮面板）\| `"tab"`（标签页） |
+| `formKey` | ❌ | **首次打开**形态**交给用户选**：填一个配置键名（键由你在 `contributes.configuration` 里声明，键的 `default` 即作者默认形态） |
 
 **声明即消费，四件事自动出现：**
 
@@ -743,7 +745,43 @@ useEffect(() => {
 | `linkdesk.panel.revealFloating(viewId)` 可编程弹面板 | 面板身份开关键——无面板→开；同视图→关；他面板→替换 |
 | 卸载声明插件 → 右键条目消失 + revealFloating no-op 不崩 | 声明随插件生命周期卸载 |
 
-**首批声明者 = settings**（`core.openSettings` Ctrl+, 弹面板）；**第二声明者验证载体 = `floating-panel-demo`** 测试插件（标签页型视图，端到端验证替换 + 右键回程 + 卸载 no-op）。
+#### 首开形态可配（`defaultForm` / `formKey`）——只想要面板能弹出来的作者一个字都不用加
+
+**分工：插件只声明想要哪种，壳决定并执行**——插件零执行权、壳零插件知识（壳侧不认任何插件 ID，换一只声明者自动生效，不必改壳）。
+
+| 作者想要 | 写法 | 用户在设置页的入口 |
+|:--|:--|:--|
+| 定死形态，不给用户改 | `"defaultForm": "tab"` | 无（设置页不出现任何项） |
+| 让用户自己选 | `"formKey": "<插件id>.openForm"` ＋ 自己在 `contributes.configuration` 里声明这个键 | 该键的控件（布尔/下拉按你的 `type` 渲染） |
+
+```json
+{
+  "contributes": {
+    "floatingPanel": { "viewId": "settings", "formKey": "settings.openForm" },
+    "configuration": {
+      "title": "设置插件",
+      "properties": {
+        "settings.openForm": {
+          "type": "string",
+          "enum": ["floatingPanel", "tab"],
+          "default": "floatingPanel",
+          "description": "打开设置时的形态——floatingPanel 悬浮面板 / tab 标签页"
+        }
+      }
+    }
+  }
+}
+```
+
+**壳的判定链**（第一命中即定；由「第一次打开」这一类入口执行——今天 = `core.openSettings`）：
+
+1. `formKey` 有、且那个键**已注册** → 读它的值：`"floatingPanel"` / `"tab"` 直接用（**值即形态，无映射层**）；
+2. 否则看 `defaultForm`（合法值才认）；
+3. 都没有 → **原行为**（声明了面板即面板——今天设置插件的默认）。
+
+**四条边界**：① 只管**第一次打开**——已有标签页仍聚焦、面板开着再点仍按开关键关掉，打开之后想换形态照旧走「在主窗口中打开」/「在悬浮面板中打开」两条老路；② `formKey` 与 `defaultForm` **互斥**（同时写 ⇒ schema 校验红：一个形态两个来源）；③ `formKey` 写错字 / 没注册那个键 ⇒ 降级 `defaultForm`（都没有 = 原行为）＋ 出声一条 warn——**不静默失效**；④ 声明 `"defaultForm": "tab"` 但插件没有标签页形态（`appearsIn.tabBar` + `entry`）⇒ 落回悬浮面板，不静默无动作。
+
+**首批声明者 = settings**（`core.openSettings` Ctrl+, 弹面板，`settings.openForm` 在「设置插件」组里让用户改）；**第二声明者验证载体 = `floating-panel-demo`** 测试插件（标签页型视图，端到端验证替换 + 右键回程 + 卸载 no-op）。
 
 ---
 

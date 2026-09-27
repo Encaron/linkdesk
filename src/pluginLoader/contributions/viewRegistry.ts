@@ -65,12 +65,20 @@ export function getViewPlugins(): ViewPluginEntry[] {
   return Array.from(registry.values());
 }
 
+/** 读取插件的壳内悬浮面板**声明整体**——contributes.floatingPanel（viewId + 首开形态两个字段）。
+ *  单一读取点：viewId 与 defaultForm/formKey 都必须经此出（两份各自 registry.get 会漂）。 */
+export function getFloatingPanelDeclaration(pluginId: string): ContributesFloatingPanel | null {
+  const declaration = registry.get(pluginId)?.manifest?.contributes?.floatingPanel as ContributesFloatingPanel | undefined;
+  return declaration && typeof declaration === "object" && typeof declaration.viewId === "string"
+    ? declaration
+    : null;
+}
+
 /** 读取插件的壳内悬浮面板声明（E5.8#39.5 类型 B）——contributes.floatingPanel.viewId。
  *  声明制（I8-3）：声明即出现——标签页右键「在悬浮面板中打开」注入条件 = 本函数非 null。
  *  未声明 / 声明非字符串 → null（不注入）。声明寻址解析在 App revealFloatingPanel（resolve→toggle→push）。 */
 export function getFloatingPanelViewId(pluginId: string): string | null {
-  const declaration = registry.get(pluginId)?.manifest?.contributes?.floatingPanel as ContributesFloatingPanel | undefined;
-  return typeof declaration?.viewId === "string" ? declaration.viewId : null;
+  return getFloatingPanelDeclaration(pluginId)?.viewId ?? null;
 }
 
 /** 获取标签页行为声明——plugin.json 声明覆盖内置规则 */

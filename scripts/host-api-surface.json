@@ -723,6 +723,11 @@
     "contributes.fileAssociations[].displayName": [],
     "contributes.fileAssociations[].extension": [],
     "contributes.floatingPanel": [],
+    "contributes.floatingPanel.defaultForm": [
+      "floatingPanel",
+      "tab"
+    ],
+    "contributes.floatingPanel.formKey": [],
     "contributes.floatingPanel.viewId": [],
     "contributes.i18n": [],
     "contributes.iconThemes": [],

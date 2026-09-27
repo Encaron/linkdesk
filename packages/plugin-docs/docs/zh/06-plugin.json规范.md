@@ -114,7 +114,7 @@ my-plugin/
 | `contributes.themes` | theme | 注册到 ThemeRegistry → 主题浏览器 |
 | `contributes.languages` | language | 注册到 LanguageRegistry |
 | `contributes.fileAssociations` | — | 注册到 FileAssociationService → 双击文件自动打开 |
-| `contributes.floatingPanel` | —  | 声明视图可在壳内悬浮面板显示——viewId 引用已注册视图；未声明则无「在悬浮面板中打开」右键 |
+| `contributes.floatingPanel` | —  | 声明视图可在壳内悬浮面板显示——viewId 引用已注册视图；未声明则无「在悬浮面板中打开」右键；可选 `defaultForm`/`formKey` 定/选**首开形态** |
 
 **插件可同时声明多种贡献。** 比如一个视图插件可以有 `entry` + `sidebar` + `statusBar` + `contributes.configuration` + `contributes.commands`——全部独立注册，互不影响。
 
@@ -329,7 +329,7 @@ my-plugin/
 
 - **③ 切换入口 = 设置页角色分组（动态出现）**：设置 UI 打开时枚举 `listRoles()` → 对每个**非设置插件角色** `list(role)` → **候选 ≥2 才建组**（单候选无切换意义）。组形态 = 切换按钮在顶（列出该角色全部候选，激活高亮）+ 激活套自己的配置在下方；复用同名组优先（按 pluginId 找激活候选自己的配置组）、没有才新建；激活套无配置项 → 空状态。切换 = `setActive` → 重拉数据 → 配置随激活套换。你的设置插件**自身角色**（settings）的切换 = 顶部通用区按钮（见 `10-如何造一个设置插件.md`）。
 - **④ 图标栏占槽**：声明 `factoryRole` 的插件（形态二），图标栏**只渲染激活套图标**、非激活套隐藏——"把官方的剔除换成你的"；不声明的形态一照旧全出并排。
-- **⑤ 路由接缝**：打开设置（`Ctrl+,` / 齿轮）= `factorySlots.getActive("settings")` → 已开标签页聚焦 / 声明了 `floatingPanel` → 悬浮面板（载荷带 pluginId 复合寻址）/ 无声明 → 开标签页。切换激活套后，后续打开全走新套，两端一致。
+- **⑤ 路由接缝**：打开设置（`Ctrl+,` / 齿轮）= `factorySlots.getActive("settings")` → 已开标签页聚焦 / **按声明定首开形态**（`formKey` 键值 → `defaultForm` → 原行为）：`tab` → 开标签页；`floatingPanel` → 悬浮面板（载荷带 pluginId 复合寻址）；无 `floatingPanel` 声明 → 本入口不动（原行为）。切换激活套后，后续打开全走新套，两端一致。**首开形态只管「第一次打开」**——打开之后的面板↔标签页互转仍各走原路（判据与边界 → `03-插件contributes规范.md` §3.15）。
 - **⑥ 全插件侧换套**（切换按钮点击，零壳改动）：`setActive` → 标签页形态 = 关本套 tab → 开目标套（singleton 去重已存在则聚焦）；悬浮面板形态 = `panel.revealFloating(viewId, pluginId?)` **原地复合替换**面板内容（不背后弹残留 tab；目标套无 floatingPanel 声明 → 退回开标签页）。删任意套 → `onPluginLifecycleChange` → 重拉 → 按钮自动消失。
 
 **双场景示例（官方 + 第三方 插件市场）：**

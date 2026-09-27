@@ -36,12 +36,28 @@ Follow the official settings plugin (= the `plugin.json` in **the settings plugi
         { "id": "settings", "title": "Settings", "render": "src/views/SettingsView.tsx", "order": 0 }
       ]
     },
-    "floatingPanel": { "viewId": "settings" }   // ③ floating panel form (optional)
+    "floatingPanel": { "viewId": "settings", "formKey": "settings.openForm" }   // ③ floating panel form (optional) — formKey hands the first-open form to the user
   }
 }
 ```
 
 All three key declarations are required: **`factoryRole: "settings"`** (puts you in the shared-area candidate list) + **`contributes.views`** (the actual render component) + **`floatingPanel`** (the `Ctrl+,` fallback form).
+
+**The first-open form is configurable (optional; write nothing and it opens as a floating panel)**: to let the user choose (floating panel / tab), add `"formKey": "<plugin-id>.openForm"` to `floatingPanel` and declare that key yourself — the key's `default` is your default form:
+
+```json
+"configuration": {
+  "title": "Settings plugin",
+  "properties": {
+    "settings.openForm": {
+      "type": "string", "enum": ["floatingPanel", "tab"], "default": "floatingPanel",
+      "description": "Form when opening Settings — floatingPanel / tab"
+    }
+  }
+}
+```
+
+To fix the form with no user override, write `"defaultForm": "tab"` instead (no configuration key ⇒ no Settings item appears at all). The two are **mutually exclusive** (declaring both fails schema validation); the decision chain, the boundaries and the "the shell decides, the plugin only declares" split → [`03-contributes-spec.md` §3.15](03-contributes-spec.md).
 
 ## Data API shape — everything goes through `window.linkdesk.*`
 
