@@ -70,6 +70,9 @@ function SidebarSection({
 }: SidebarSectionProps) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(defaultOpen);
+  // 04：外部折叠翻转跟随——侧栏 header 右键「视图」子菜单 → 壳持久化 → 快照重推 → defaultOpen 变。
+  // 只在**值变化**时同步 ⇒ 用户点箭头后的本地开合不被重推覆盖（defaultOpen 未变 = 不触发）。
+  useEffect(() => { setOpen(defaultOpen); }, [defaultOpen]);
   // E4V#43——actions 溢出检测 + … 下拉
   const actionsRef = useRef<HTMLSpanElement>(null);
   const moreRef = useRef<HTMLSpanElement>(null);

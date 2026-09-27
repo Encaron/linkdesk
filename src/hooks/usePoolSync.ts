@@ -36,7 +36,7 @@ import { UPDATE_ACTIONABLE_KEY, UPDATE_BUTTON_LABEL_KEY, isUpdateActionable, upd
 import { getAssetPath } from "../core/utils/path/assetPath"; // E5.7#5：logoUrl——池不 import core，壳解析推送
 import { getTabCreatableViews } from "../pluginLoader/contributions/viewRegistry";
 // ── E5.8#0d.10-5：6 子模块聚合——序列化器 + 订阅组；E5.8#43-2：+ windowLayout（按窗口组装）──
-import { buildSidebarViewMetas, buildPanelViewMetas, buildPanelSwitcherGroups } from "./usePoolSync/sidebar-panel";
+import { buildSidebarViewMetas, buildPanelViewMetas, buildPanelSwitcherGroups, buildEffectiveCollapsedViewIds } from "./usePoolSync/sidebar-panel";
 import { buildTitleBarMenuGroups, buildTitleBarSlots, MENU_STYLE_MENUBAR_VISIBLE } from "./usePoolSync/titlebar";
 import { buildIconBar } from "./usePoolSync/iconbar";
 import { buildStatusBarItems } from "./usePoolSync/statusbar";
@@ -163,7 +163,10 @@ export function usePoolSync({ windows, sidebarView, isSidebarVisible, panelActiv
     if (effectiveSidebarView) {
       const container = ViewContainerService.getViewContainer(effectiveSidebarView);
       const views = buildSidebarViewMetas(effectiveSidebarView, t);
-      const collapsedSet = ViewContainerService.loadCollapsedState();
+      // 04：折叠态推**有效折叠集**（显式展开 > 显式折叠 > 插件声明）——池不持第二套真相，
+      // section 展开态与 header 右键「视图」子菜单勾选态同读这一份（此前推裸持久化列，
+      // 声明 collapsed 的视图勾选态印反、点击方向算反 → 子菜单点了没反应）。
+      const effectiveCollapsedViewIds = buildEffectiveCollapsedViewIds();
       const isCollapsed = sidebarWidth <= 48;
       // E5.7#84：keep-alive——全部侧栏容器序列化（非仅活动）。池按 containerId 常驻挂载、
       // display:none 切换——切容器不卸载视图（矩阵场景 1 ④：文件树折叠态保持）。
@@ -185,7 +188,7 @@ export function usePoolSync({ windows, sidebarView, isSidebarVisible, panelActiv
         mergeHeaderWhenSingle: container?.mergeHeaderWhenSingle,
         views,
         containers,
-        collapsedViews: [...collapsedSet],
+        collapsedViews: effectiveCollapsedViewIds,
         collapsed: isCollapsed,
         viewId: views[0]?.pluginId ?? null,  // 向后兼容
         // E5.7#10：侧栏 UI 文本壳侧 t() 推送（显示文本铁律——池渲染零自产文本）

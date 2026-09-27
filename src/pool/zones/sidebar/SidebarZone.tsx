@@ -118,8 +118,29 @@ export default function SidebarZone({ sidebar }: SidebarZoneProps) {
     ?? (containerId ? [{ containerId, containerTitle, mergeHeaderWhenSingle, views }] : []);
   const activeEntry = containers.find((c) => c.containerId === containerId);
 
-  // 活动容器的 section 视图——header 右键菜单"视图"子菜单动态项（菜单只能从活动容器 header 打开）
+  // 活动容器的 section 视图清单——header 右键「视图」子菜单动态项（菜单只能从活动容器 header 打开）。
+  // 04 修复（2026-09-28 语义拍板）：子菜单语义 = **快速折叠 section**——点一下收成只剩标题条、再点展开，
+  // 与点 section 箭头的链路完全同款（onSidebarAction "setCollapsed" → 壳持久化 → 快照重推）；
+  // 不是视图显隐（显隐是面板「视图清单」的事，两者不可混）。
+  // 勾选态 = 当前展开 ⇔ 不在 collapsedViews 里；该列表是壳的**有效折叠集**（声明折叠 ⊕ 显式折叠 − 显式展开），
+  // 与 section 渲染读的是同一份 → 勾选态即实际开合态，点击方向由它反推，不再有「声明折叠点不动」的死角。
+  const collapsedViewIds = new Set(collapsedViews ?? []);
   const activeSectionViews = (activeEntry?.views ?? []).filter((v) => v.role !== ROLE_TOOLBAR);
+
+  // 容器 header——两处复用（正常容器 / 视图全被隐藏的容器）：title head 右键是「视图」子菜单唯一入口
+  const renderHeader = (title: string, titleActions?: SidebarViewMeta["titleActions"]) => (
+    <div
+      className="ldk-side-panel-header"
+      onContextMenu={(e) => {
+        e.preventDefault();
+        setHeaderMenu({ x: e.clientX, y: e.clientY });
+      }}
+    >
+      <span className="ldk-side-panel-title" data-hint={title} data-hint-delay="0">{title}</span>
+      {/* E5.8#36.6：mergeHeaderWhenSingle 单视图合并——容器 header 即视图 header，titleActions 同声明消费 */}
+      {titleActions ? <ViewTitleActions actions={titleActions} /> : null}
+    </div>
+  );
 
   // 空状态占位（文案壳侧 t() 推送——显示文本铁律）
   const renderPlaceholder = () => (
@@ -138,13 +159,13 @@ export default function SidebarZone({ sidebar }: SidebarZoneProps) {
       {/* E5.8#147 折叠改版：折叠=真消失（无窄条/▶）。容器视图 keep-alive 保留（display:none 不卸载——
           折叠态容器仍在 containers.map 内挂载，视图状态不丢）。 */}
       {containers.map((c) => {
-        // 无视图容器：活动 → 空态占位；非活动 → 不渲染（无组件可保持）
+        const isActive = c.containerId === containerId;
+        // 真·空容器（无任何注册视图 / 旧布局无清单）：活动 → 空态占位；非活动 → 不渲染（无组件可保持）
         if (c.views.length === 0) {
-          return c.containerId === containerId && !collapsed
+          return isActive && !collapsed
             ? <Fragment key={c.containerId}>{renderPlaceholder()}</Fragment>
             : null;
         }
-        const isActive = c.containerId === containerId;
         const toolbarViews: SidebarViewMeta[] = [];
         const sectionViews: SidebarViewMeta[] = [];
         for (const v of c.views) {
@@ -158,6 +179,10 @@ export default function SidebarZone({ sidebar }: SidebarZoneProps) {
         const effectiveTitle = (c.mergeHeaderWhenSingle && sectionViews.length === 1 && sectionViews[0].singleViewPaneContainerTitle)
           ? sectionViews[0].singleViewPaneContainerTitle
           : c.containerTitle;
+        // E5.8#36.6：mergeHeaderWhenSingle 单视图合并——容器 header 即视图 header，titleActions 同声明消费
+        const headerActions = c.mergeHeaderWhenSingle === true && sectionViews.length === 1 && sectionViews[0].titleActions?.length
+          ? sectionViews[0].titleActions
+          : undefined;
         return (
           /* E5.7#84：keep-alive——display:none 切换（含折叠态），组件常驻不卸载。
              .side-panel CSS 已含 display:flex + flex-direction:column——活动态不覆盖。 */
@@ -166,23 +191,9 @@ export default function SidebarZone({ sidebar }: SidebarZoneProps) {
             className={`ldk-side-panel${resize.resizing ? " resizing" : ""}`}
             style={{ width: resize.size, height: "100%", display: isActive && !collapsed ? undefined : "none" }}
           >
-            {/* 容器 header——display:none 容器不可交互（仅活动容器可见） */}
-            {effectiveTitle && (
-              <div
-                className="ldk-side-panel-header"
-                onContextMenu={(e) => {
-                  e.preventDefault();
-                  setHeaderMenu({ x: e.clientX, y: e.clientY });
-                }}
-              >
-                <span className="ldk-side-panel-title" data-hint={effectiveTitle} data-hint-delay="0">{effectiveTitle}</span>
-                {/* E5.8#36.6：mergeHeaderWhenSingle 单视图合并——容器 header 即视图 header，titleActions 同声明消费 */}
-                {c.mergeHeaderWhenSingle === true && sectionViews.length === 1 && sectionViews[0].titleActions?.length
-                  ? <ViewTitleActions actions={sectionViews[0].titleActions} />
-                  : null}
-                {/* E5.8#159 收口：无 ◀/▶ 折叠按钮——折叠/展开仅走图标栏 toggle + 界面勾选菜单 */}
-              </div>
-            )}
+            {/* 容器 header——display:none 容器不可交互（仅活动容器可见）
+                E5.8#159 收口：无 ◀/▶ 折叠按钮——折叠/展开仅走图标栏 toggle + 界面勾选菜单 */}
+            {effectiveTitle && renderHeader(effectiveTitle, headerActions)}
 
             <div className="ldk-side-panel-content">
               {/* ToolbarSlot——粘顶，flex-shrink:0 保证永不滚动消失（E5.6#16.7k） */}
@@ -220,10 +231,20 @@ export default function SidebarZone({ sidebar }: SidebarZoneProps) {
           resolveChildren={(_parentId, ctx) => {
             const cid = ctx.containerId as string | undefined;
             if (!cid) return undefined;
-            return activeSectionViews.map((v) => ({
-              id: "workbench.action.toggleViewVisibility",
-              label: v.title ?? v.id,
-            }));
+            // 04：语义 = 快速折叠 section——每一项折叠态取自壳快照 collapsedViews（池不持第二套真相），
+            // 点击只转发用户手势（onSidebarAction "setCollapsed"，与 section 箭头 onToggleCollapse 同一通道），
+            // 状态仍由壳拥有并持久化 → 快照重推 → 勾选态与实际开合一并刷新。
+            return activeSectionViews.map((v) => {
+              const isCollapsed = collapsedViewIds.has(v.id);
+              return {
+                id: `sidebar.view.collapse.${v.id}`,
+                label: v.title ?? v.id,
+                checked: !isCollapsed,
+                onSelect: () => {
+                  handleSidebarAction({ action: "setCollapsed", containerId: cid, viewId: v.id, pluginId: v.pluginId, collapsed: !isCollapsed });
+                },
+              };
+            });
           }}
         />
       )}

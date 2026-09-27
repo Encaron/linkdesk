@@ -47,7 +47,8 @@ export type { ViewDescriptor };
 import { ViewContainerModel } from "./ViewContainerService/model";
 // E5.8#0d.10-11c：折叠持久化域（唯一不碰实例私有状态的独立域）→ 委派式拆分，Core 后缀区分模块函数
 import {
-  loadCollapsedState as loadCollapsedStateCore,
+  loadCollapsedKeys as loadCollapsedKeysCore,
+  loadExpandedKeys as loadExpandedKeysCore,
   setCollapsed as setCollapsedCore,
   isCollapsed as isCollapsedCore,
 } from "./ViewContainerService/collapsed";
@@ -286,9 +287,14 @@ class ViewContainerServiceClass extends RegistryBase {
 
   /* ═══ E4V#46 View 折叠持久化（委派 ViewContainerService/collapsed 域） ═══ */
 
-  /** 加载持久化的折叠状态 */
-  loadCollapsedState(): Set<string> {
-    return loadCollapsedStateCore();
+  /** 用户显式折叠的复合键集（04 有效折叠集第 1 列） */
+  loadCollapsedKeys(): Set<string> {
+    return loadCollapsedKeysCore();
+  }
+
+  /** 用户显式展开的复合键集（04 有效折叠集第 2 列——「声明折叠但被用户拉开」的记录） */
+  loadExpandedKeys(): Set<string> {
+    return loadExpandedKeysCore();
   }
 
   /** 保存单个 view 折叠状态——E5.8#41.9.2：签名加 pluginId（复合键持久化，同名视图各存各的） */

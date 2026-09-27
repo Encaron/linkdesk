@@ -43,6 +43,19 @@ function lk() {
 
 /* ── 类型 ── */
 
+/**
+ * 04「侧栏视图子菜单」：动态子菜单项（resolveChildren 返回值）。
+ * 与静态 children（mapChildren）同能力——`checked` 勾选态 / `onSelect` 池侧回调；
+ * 只回 `{id,label}` 的旧形状点击无处可去（侧栏「视图」子菜单曾因此静默无效）。
+ */
+interface DynamicChildItem {
+  id: string;
+  label: string;
+  checked?: boolean;
+  /** 池侧就地处理（不经壳命令）——动态项本就是池构建，动作走池→壳回调通道（04 侧栏折叠）。 */
+  onSelect?: () => void;
+}
+
 export interface ContextMenuProps {
   /** 菜单槽位——字符串 API 契约 */
   menuId: string;
@@ -57,7 +70,7 @@ export interface ContextMenuProps {
    * @param ctx 同 context prop
    * @returns 子菜单项列表，或 undefined 表示无子项
    */
-  resolveChildren?: (parentId: string, ctx: Record<string, unknown>) => Array<{ id: string; label: string }> | undefined;
+  resolveChildren?: (parentId: string, ctx: Record<string, unknown>) => DynamicChildItem[] | undefined;
   /**
    * E5.8#55：外部注入菜单项——顶部/汉堡下拉复用本渲染器（menuId 仅作标识，
    * 数据不走 menu.getItems IPC，布局快照 PoolMenuItem[] 转换后直接注入）。
@@ -89,6 +102,8 @@ interface ResolvedItem {
    * context 整菜单共享，per-item 身份只能走命令载荷：executeCommand(id, undefined, ...commandArgs, context)。
    */
   commandArgs?: unknown[];
+  /** 04：池侧回调——有值则点击/回车直接就地在池内执行，不走壳命令（动态子菜单项专用） */
+  onSelect?: () => void;
   /** 子菜单项——有值则渲染为可展开项，hover 弹出子面板（E5.8#148：任意深度递归保留） */
   children?: ResolvedItem[];
 }
@@ -160,7 +175,9 @@ export default function ContextMenu({ menuId, anchor, context, onClose, resolveC
       } else if (rawChildren && rawChildren.length === 0 && resolveChildren) {
         const dyn = resolveChildren(item.command, context ?? {});
         if (dyn && dyn.length > 0) {
-          children = dyn.map((c) => ({ id: c.id, label: c.label, group }));
+          // 04：动态子项透传 checked（勾选态）+ onSelect（池侧动作）——此前只取 {id,label}，
+          // 侧栏「视图」子菜单点了没反应（动作无处可去）。
+          children = dyn.map((c) => ({ id: c.id, label: c.label, group, checked: c.checked, onSelect: c.onSelect }));
         }
       }
 
@@ -282,7 +299,12 @@ export default function ContextMenu({ menuId, anchor, context, onClose, resolveC
         const item = clickableItems[focusIdx];
         // E5.8#37.7.1：命令载荷透传——executeCommand(id, undefined, ...commandArgs, context)，
         // 池 preload 剥 token 后原样转发 → 壳 handler 收 args = [...commandArgs, context]。
-        if (item) { lk().commands?.executeCommand?.(item.id, undefined, ...(item.commandArgs ?? []), context); onClose(); }
+        // 04：带池侧回调的动态项优先就地执行——键盘激活与鼠标点击同语义。
+        if (item) {
+          if (item.onSelect) item.onSelect();
+          else lk().commands?.executeCommand?.(item.id, undefined, ...(item.commandArgs ?? []), context);
+          onClose();
+        }
       }
     };
     window.addEventListener("keydown", onKeyNav);
@@ -298,6 +320,8 @@ export default function ContextMenu({ menuId, anchor, context, onClose, resolveC
   // per-item 身份走命令载荷：executeCommand(id, undefined, ...commandArgs, context)）。
   const handleItemClick = useCallback(async (item: ResolvedItem) => {
     onClose();
+    // 04：动态项带池侧回调 → 就地执行（池→壳回调通道，如侧栏 section 折叠）；否则照旧走壳命令。
+    if (item.onSelect) { item.onSelect(); return; }
     await lk().commands?.executeCommand?.(item.id, undefined, ...(item.commandArgs ?? []), context);
   }, [context, onClose]);
 

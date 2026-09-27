@@ -26,7 +26,7 @@ interface PoolSectionStackProps {
   containerId: string;
   toolbarHeight: number;
   mergeHeaderWhenSingle?: boolean;
-  /** 持久化折叠的 view ID 集合——壳 loadCollapsedState() 输出 */
+  /** **有效**折叠的 view ID 集合——壳 buildEffectiveCollapsedViewIds() 输出（04：含声明折叠 ⊕ 显式折叠 − 显式展开） */
   collapsedViews?: string[];
   /** 池→壳 IPC 回调——对标 ViewContainerService 写方法 */
   onSidebarAction: (action: SidebarAction) => void;
@@ -112,7 +112,9 @@ export default function PoolSectionStack({
 }: PoolSectionStackProps) {
   // ── view 高度（拖拽后固定）──
   const [viewHeights, setViewHeights] = useState<Record<string, number>>({});
-  // 🔥 跟踪每个 view 的折叠状态——折叠的 view 不占 flex 空间，只占 header 高度
+  // 🔥 跟踪每个 view 的折叠状态——折叠的 view 不占 flex 空间，只占 header 高度。
+  // 种子 = 壳推的**有效**折叠集（04：已含声明折叠）∪ 声明 `view.collapsed`（兜底：右栏载荷暂无该字段）。
+  // 本 set 是渲染层唯一折叠真相：SidebarSection 的 defaultOpen 与 ViewPane 的 collapsed 同读它。
   const [collapsedViewSet, setCollapsedViewSet] = useState<Set<string>>(() => {
     const s = new Set<string>();
     for (const v of views) {
@@ -121,6 +123,26 @@ export default function PoolSectionStack({
     }
     return s;
   });
+  // 04：折叠集跟随壳快照——池内箭头点击是乐观本地更新（即时），而 header 右键「视图」子菜单的
+  // 折叠由壳持久化后随快照回来。不跟随则 ViewPane 的 collapsed（定高归属）与实际开合脱节。
+  // 按**差集**应用（只吃壳明确改动的项）——避免每次重推把本地开合覆盖回插件声明默认值（view.collapsed）。
+  const prevCollapsedPropRef = useRef<Set<string>>(new Set(collapsedViews ?? []));
+  useEffect(() => {
+    const next = new Set(collapsedViews ?? []);
+    const prev = prevCollapsedPropRef.current;
+    prevCollapsedPropRef.current = next;
+    const added: string[] = [];
+    const removed: string[] = [];
+    for (const id of next) if (!prev.has(id)) added.push(id);
+    for (const id of prev) if (!next.has(id)) removed.push(id);
+    if (added.length === 0 && removed.length === 0) return;
+    setCollapsedViewSet((cur) => {
+      const s = new Set(cur);
+      for (const id of added) s.add(id);
+      for (const id of removed) s.delete(id);
+      return s;
+    });
+  }, [collapsedViews]);
   const dragBaseRef = useRef<{ upperId: string; baseHeight: number; lowerId: string; lowerBaseHeight: number } | null>(null);
 
   // ── 实测内容高度 ──
@@ -220,7 +242,6 @@ export default function PoolSectionStack({
 
   const singleView = views.length === 1;
   const mergeHeader = singleView && mergeHeaderWhenSingle === true;
-  const collapsedSet = new Set(collapsedViews ?? []);
 
   const renderSection = (view: SidebarViewMeta, draggable: boolean, onDragStart?: (e: React.DragEvent) => void, onDragEnd?: () => void) => {
     // E5.6#11g：空状态由插件内部自行判断——PluginComponent 始终挂载（防 E4V#44 死锁）
@@ -242,9 +263,9 @@ export default function PoolSectionStack({
       );
     }
 
-    // 持久化折叠覆盖初始折叠态
-    const isPersistedCollapsed = collapsedSet.has(view.id);
-    const defaultOpen = isPersistedCollapsed ? false : !view.collapsed;
+    // 04：折叠态取自本地 set（= 壳有效折叠集的镜像 ∪ 声明兜底）——不再另算一遍 prop，
+    // 否则「菜单折叠」与「箭头折叠」会各读一份真相，声明折叠的视图两处必然分叉。
+    const defaultOpen = !collapsedViewSet.has(view.id);
 
     return (
       <SidebarSection

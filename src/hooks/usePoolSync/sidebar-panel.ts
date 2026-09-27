@@ -2,6 +2,7 @@
  * usePoolSync 侧栏/面板/分屏序列化——buildSidebarViewMetas / buildPanelViewMetas / computeGroupFlexes。
  * E5.8#0d.10-5a：自 usePoolSync.ts 拆出——纯函数：ViewContainerService 活跃视图 → DTO；
  * SplitNode 树 → group flex 比例。零 hook 依赖。
+ * 04：+ buildEffectiveCollapsedViewIds（有效折叠集——三类真相合并，侧栏快照 collapsedViews 的产出）。
  * 依赖方向：sidebar-panel → core/services/layout + core/utils/splitTree（type）；无反向。
  */
 
@@ -9,6 +10,7 @@ import type { SidebarViewMeta, PanelViewMeta, PanelSwitcherGroup } from "../../c
 import { ViewContainerService } from "../../core/services/layout/ViewContainerService";
 import type { ViewDescriptor } from "../../core/services/layout/ViewContainerService"; // E5.7#98：_pluginId/_renderPath 窄接口基型
 import type { SplitNode } from "../../core/utils/splitTree"; // E5.6#16：从分屏树计算 flex 比例
+import { viewKey } from "../../core/services/layout/ViewContainerService/keys"; // 04：折叠持久化按复合键寻址
 
 /**
  * E5.6#11d：从 ViewContainerService 构建完整 SidebarViewMeta[]。
@@ -95,6 +97,32 @@ export function buildPanelSwitcherGroups(
     });
   }
   return groups;
+}
+
+/**
+ * 04（2026-09-28）：有效折叠视图集——合并三类真相 → **裸 viewId 列表**（侧栏快照 collapsedViews 的产出）。
+ *   优先级：用户显式展开 > 用户显式折叠 > 插件声明 `view.collapsed`（用户手势永远赢过插件默认）。
+ * 为什么壳侧合并而不是池侧：池只渲染、不做判断（壳选池画）——勾选态与展开态直接读这一份列表，
+ * 两处若各算一次就必然分叉（旧实现正是：菜单按持久化列算、渲染按声明算 → 勾选态印反）。
+ * 覆盖 sidebar + auxiliarybar（左右两个侧栏 zone）**全部容器含隐藏视图**——隐藏再显示时折叠态保持。
+ * 两个 zone 共用同一份列表（各自按自己的 viewId 过滤），zone 级字段语义保持扁平 viewId 数组不变（契约零改动）。
+ */
+export function buildEffectiveCollapsedViewIds(): string[] {
+  const explicitCollapsed = ViewContainerService.loadCollapsedKeys();
+  const explicitExpanded = ViewContainerService.loadExpandedKeys();
+  const result = new Set<string>();
+  for (const location of ["sidebar", "auxiliarybar"] as const) {
+    for (const container of ViewContainerService.getViewContainers(location)) {
+      for (const v of ViewContainerService.getViews(container.id)) {
+        const desc = v as ViewDescriptor & { _pluginId?: string };
+        const key = viewKey(desc._pluginId ?? "", v.id);
+        // 显式展开压过一切（含声明折叠）；其次显式折叠；最后落到插件声明
+        const collapsed = explicitExpanded.has(key) ? false : explicitCollapsed.has(key) ? true : v.collapsed === true;
+        if (collapsed) result.add(v.id);
+      }
+    }
+  }
+  return [...result];
 }
 
 /**
