@@ -10,7 +10,15 @@ import { loadRealRecipe } from "./testFixtures.mock";
    读**真实**主题 recipe JSON（#50.27 验收「制作真实主题插件做端到端最终裁决」）。
    例外依据：验证真实接线而必须用真 id/真数据（硬约束 21 豁免区）——虚构 fixture 无法裁决「gallery 配方 ↔ 引擎」契约。
    🔴 E6#99（L7 7.2）：官方主题插件源码已外移独立仓 ⇒ 那些 recipe 改从**随壳发货的种子 zip** 读
-      （壳仓里真实存在的那一份，见 `testFixtures.mock.ts` 的 `readPluginText`）。**断言一条没减**。 */
+      （壳仓里真实存在的那一份，见 `testFixtures.mock.ts` 的 `readPluginText`）。**断言一条没减**。
+   🔴 2026-09-28：六只演示插件整体下架，`theme-zones` 的插件仓 `Encaron/linkdesk-plugin-theme-zones` 同时被删
+      ⇒ 后面 `image-zones` / `paper-zones` 两条用例的输入 `dev-fixtures/theme-recipes/theme-zones/`
+      **从此没有上游**，是这条数据的唯一存本（「硬约束 21 豁免」里的『真实 id』对这两条已不再是活插件）。
+      **保留是有意的**（用户 2026-09-28 拍板 B 案），依据：它是唯一一份用到 `background` 域的「真实完整配方」
+      （`background.mode: zones` ＋ `glass.texture` 两条分支的真实样本只此一份）；
+      ⚠️ 而机制层覆盖另有合成用例（`tokens.test.ts:135-165` / `mix.test.ts:172-187`）
+      ⇒ 将来若真要删这两条，先确认那两处合成断言仍在，别把「唯一真实样本」当残留清掉。
+      细节与边界见 `dev-fixtures/theme-recipes/README.md`。 */
 describe("ThemeEngine — 真实极限壳主题（E5.8#50.27，gallery 端到端裁决）", () => {
   it("songti-print — 宋体印刷体 font 域（ui=SimSun 全 UI 宋体；形制现状直角 isolate 字族轴）", async () => {
     const { recipe } = await loadRealRecipe(
@@ -133,6 +141,8 @@ describe("ThemeEngine — 旧格式主题迁移新格式（E5.8#74，决策 F）
     expect(tokens["accent"]).toBe("#7C3AED");
   });
 
+  // ⚠️ 本用例与下面 paper-zones 的输入是 `dev-fixtures/theme-recipes/theme-zones/`——上游插件 2026-09-28 已随
+  //    六只演示插件下架，快照即**唯一存本**（见文件头 ＋ 该目录 README）。它是**有意保留**的，别当残留清掉。
   it("image-zones — 影像分区（appearance.glass 悬浮形态 + background.mode:zones 连续切片）", async () => {
     const { recipe } = await loadRealRecipe(
       "plugins/theme-zones/image-zones.json",
