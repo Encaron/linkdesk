@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>插件市场 · 「检查更新」按钮（＋软件内升级路径）——参考图</title>
+<style>
+/* ═══════════════════════════════════════════════════════
+   LinkDesk token（值 = 壳真实主题 src/index.css 暗/亮两套；
+   mockup 仅示意，真实实现走 var(--xxx) + ThemeEngine）。
+   本图类型 = 细节详解：单一已定稿骨架逐状态展开，六帧。
+   zone 真实尺寸（skill §五 尺寸铁律）：titlebar 30 / icon-bar 42 /
+   sidebar 280（LayoutEngine.ts:101 默认宽） / tabbar 35 / statusbar 22，
+   状态栏背景 = --bg-window（不是历史美化的蓝）。
+   ═══════════════════════════════════════════════════════ */
+:root {
+  --bg-window:#1E1E1E; --bg-card:#2D2D2D; --bg-input:#3C3C3C;
+  --bg-titlebar:#252526; --bg-icon-bar:#18181B; --bg-side-panel:#1E1E22;
+  --text-primary:#D4D4D4; --text-secondary:#9D9D9D; --text-muted:#8A8A8A;
+  --accent:#0078D4; --accent-hover:#1A8CE8; --text-on-accent:#FFFFFF;
+  --border:#3C3C3C; --separator:#474747;
+  --icon-active:#D4D4D4; --icon-inactive:#858585;
+  --hover-overlay:rgba(255,255,255,0.06); --tab-hover-bg:#353535;
+  --error:#E06C75; --status-connected:#4EC9B0; --success:#4CAF50; --danger:#EF4444;
+  --badge-text:var(--text-on-accent);
+  --bg-mask-color:#000; --shadow-color:rgba(0,0,0,0.35);
+  --font-size-2xs:11px; --font-size-xs:12px; --font-size-sm:13px;
+  --radius-sm:4px; --radius-md:6px; --ui-scale:1;
+}
+body.light {
+  --bg-window:#FFFFFF; --bg-card:#F5F5F5; --bg-input:#FFFFFF;
+  --bg-titlebar:#DDDDDD; --bg-icon-bar:#F0F0F0; --bg-side-panel:#F5F5F5;
+  --text-primary:#2D2D2D; --text-secondary:#5A5A5A; --text-muted:#767676;
+  --accent-hover:#106EBE;
+  --border:#D4D4D4; --separator:#E8E8E8;
+  --icon-active:#2D2D2D; --icon-inactive:#999999;
+  --hover-overlay:rgba(0,0,0,0.04); --tab-hover-bg:#E8E8E8;
+  --error:#B3261E; --status-connected:#388A34; --success:#388A34; --danger:#D32F2F;
+  --shadow-color:rgba(0,0,0,0.18);
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:var(--bg-icon-bar); color:var(--text-primary); font-family:"IBM Plex Sans","Segoe UI","Microsoft YaHei",system-ui,sans-serif; font-size:13px; padding:28px; max-width:1240px; margin:0 auto; }
+h1 { font-size:19px; font-weight:600; letter-spacing:0.02em; margin-bottom:6px; }
+h1 small { display:block; margin-top:6px; font-size:12.5px; font-weight:400; line-height:1.85; color:var(--text-secondary); }
+code, .mono { font-family:"JetBrains Mono",Consolas,monospace; font-size:11px; color:var(--accent-hover); }
+.hl { color:var(--status-connected); } .warn { color:var(--error); }
+.toolbar-top { display:flex; align-items:center; gap:8px; margin:14px 0 4px; flex-wrap:wrap; }
+.toolbar-top button { padding:4px 12px; border:1px solid var(--separator); border-radius:var(--radius-sm); background:transparent; color:var(--text-secondary); font:inherit; font-size:var(--font-size-xs); cursor:pointer; }
+.toolbar-top button:hover { color:var(--text-primary); border-color:var(--accent); background:var(--tab-hover-bg); }
+.toolbar-top span { font-size:11.5px; color:var(--text-muted); }
+
+/* ── 帧壳 ── */
+.frame { background:var(--bg-card); border:1px solid var(--border); border-radius:8px; overflow:hidden; margin-top:18px; }
+.frame-caption { padding:10px 14px; border-bottom:1px solid var(--border); display:flex; align-items:baseline; gap:10px; flex-wrap:wrap; }
+.frame-caption b { font-size:14px; }
+.frame-caption .tag { font-size:11px; font-weight:600; color:var(--text-on-accent); background:var(--accent); border-radius:3px; padding:1px 8px; }
+.frame-caption .tag.new { background:var(--status-connected); color:var(--bg-icon-bar); }
+.frame-caption .tag.pos { background:var(--success); }
+.frame-caption .tag.keep { background:var(--separator); color:var(--text-primary); }
+.frame-caption span { font-size:12px; color:var(--text-secondary); }
+.frame-note { padding:10px 14px; border-top:1px solid var(--border); background:var(--bg-side-panel); color:var(--text-muted); font-size:12px; line-height:1.85; }
+.frame-note b { color:var(--text-secondary); }
+.frame-note code { font-size:11px; }
+.stage { padding:16px; display:flex; justify-content:center; }
+.stage--partial { justify-content:flex-start; }
+
+/* ── 窗口骨架（真实尺寸） ── */
+.app { position:relative; display:flex; flex-direction:column; width:min(1100px,calc(100vw - 30px)); height:470px; background:var(--bg-window); border:1px solid var(--border); border-radius:var(--radius-md); overflow:hidden; font-size:var(--font-size-xs); }
+.app--partial { width:280px; height:400px; }
+.titlebar { height:30px; flex:none; display:flex; align-items:center; gap:6px; padding:0 8px 0 10px; background:var(--bg-titlebar); user-select:none; }
+.titlebar .logo { width:14px; height:14px; flex:none; }
+.titlebar .app-name { font-size:var(--font-size-xs); color:var(--text-secondary); }
+.menu-btn { height:22px; padding:0 8px; border:none; border-radius:var(--radius-sm); background:transparent; color:var(--text-secondary); font:inherit; font-size:var(--font-size-xs); cursor:pointer; }
+.menu-btn:hover { background:var(--hover-overlay); color:var(--text-primary); }
+.titlebar .drag { flex:1; }
+.bell { position:relative; width:24px; height:22px; border:none; background:transparent; color:var(--text-secondary); display:inline-flex; align-items:center; justify-content:center; }
+.bell svg { width:14px; height:14px; }
+.bell .dot { position:absolute; top:3px; right:4px; width:6px; height:6px; border-radius:50%; background:var(--accent); border:1px solid var(--bg-titlebar); }
+.win-btn { width:34px; height:22px; border:none; background:transparent; color:var(--text-secondary); font:inherit; }
+.mid { flex:1; display:flex; min-height:0; }
+.icon-bar { width:42px; flex:none; display:flex; flex-direction:column; align-items:center; padding-top:6px; gap:2px; background:var(--bg-icon-bar); }
+.icon-btn { width:42px; height:38px; border:none; border-left:2px solid transparent; background:transparent; color:var(--icon-inactive); display:inline-flex; align-items:center; justify-content:center; cursor:pointer; }
+.icon-btn:hover { color:var(--text-primary); background:var(--hover-overlay); }
+.icon-btn.active { color:var(--icon-active); border-left-color:var(--accent); }
+.icon-btn svg { width:19px; height:19px; }
+.ib-sep { width:24px; height:1px; background:var(--border); margin:4px 0; }
+.main { flex:1; min-width:0; display:flex; flex-direction:column; }
+.tabbar { height:35px; flex:none; display:flex; align-items:stretch; background:var(--bg-card); border-bottom:1px solid var(--border); }
+.tab { display:flex; align-items:center; gap:6px; padding:0 12px; border-top:2px solid transparent; border-right:1px solid var(--border); color:var(--text-secondary); font-size:var(--font-size-xs); }
+.tab.active { background:var(--bg-window); color:var(--text-primary); border-top-color:var(--accent); }
+.statusbar { height:22px; flex:none; display:flex; align-items:center; gap:14px; padding:0 12px; background:var(--bg-window); border-top:1px solid var(--border); color:var(--text-muted); font-size:var(--font-size-2xs); }
+.statusbar .right { margin-left:auto; }
+.main-body { flex:1; overflow:hidden; padding:14px 18px; display:flex; flex-direction:column; gap:10px; }
+.main-body .ph { font-size:var(--font-size-2xs); color:var(--text-muted); }
+
+/* ── 市场侧栏（.ldk-side-panel-toolbar 里的 toolbar 视图 .marketplace-ms-header） ── */
+.sidebar { width:280px; flex:none; display:flex; flex-direction:column; background:var(--bg-side-panel); border-right:1px solid var(--border); overflow:hidden; }
+.ms-header { flex:none; padding:5px 12px 8px 12px; }
+/* 🔥 本刀加 flex-wrap:wrap——窄侧栏（最小 170px）三钮放不下时换行，
+   壳侧 PoolToolbarSlot 的 ResizeObserver→onHeightChange 会自适应高度，不需要壳改 */
+.ms-header-actions { display:flex; justify-content:flex-end; align-items:center; gap:6px; margin-bottom:4px; flex-wrap:wrap; }
+/* 既有两钮的皮肤（插件本地 CSS，本刀不动） */
+.ms-btn { display:inline-flex; align-items:center; gap:4px; height:22px; padding:3px 10px; border:1px solid var(--separator); border-radius:var(--radius-sm); background:transparent; color:var(--text-secondary); font:inherit; font-size:var(--font-size-xs); white-space:nowrap; cursor:pointer; }
+.ms-btn:hover:not([disabled]) { color:var(--text-primary); border-color:var(--accent); background:var(--tab-hover-bg); }
+.ms-btn[disabled] { opacity:0.6; cursor:default; }
+.ms-btn svg { width:13px; height:13px; flex:none; }
+/* 新钮 = 壳共享 <Button variant="ghost" size="sm">（Button.css:28-52）——骨架/配色全归壳，本处只补图标与文字间距 */
+.ms-btn--update { padding:0 12px; }
+.ms-btn--update svg { width:13px; height:13px; }
+.ms-btn--update.spinning svg { animation:ms-spin 0.9s linear infinite; }
+@keyframes ms-spin { to { transform:rotate(360deg); } }
+/* 就地状态注（「已是最新 · 刚刚」）——muted 一行，不新造提示面 */
+.ms-note { width:max-content; font-size:var(--font-size-2xs); color:var(--text-muted); }
+.ms-search { position:relative; height:calc(28px * var(--ui-scale)); }
+.ms-search input { width:100%; height:calc(28px * var(--ui-scale)); padding:4px 28px 4px 8px; border:1px solid var(--separator); border-radius:var(--radius-sm); background:var(--bg-card); color:var(--text-primary); font:inherit; font-size:var(--font-size-xs); outline:none; }
+.ms-search input::placeholder { color:var(--text-muted); }
+.ms-search .s-ic { position:absolute; right:6px; top:50%; transform:translateY(-50%); width:12px; height:12px; color:var(--text-muted); }
+.ms-body { flex:1; overflow-y:auto; padding-top:2px; }
+.ms-sec { padding:6px 12px 4px; font-size:var(--font-size-xs); color:var(--text-secondary); }
+.ms-item { display:flex; align-items:flex-start; gap:10px; width:100%; padding:8px 12px 8px 20px; border:none; background:none; color:inherit; font:inherit; text-align:left; cursor:pointer; }
+.ms-item:hover { background:var(--hover-overlay); }
+.ms-item.selected { background:color-mix(in srgb,var(--accent) 14%,transparent); }
+.ms-item-icon { width:20px; height:20px; flex:none; border-radius:var(--radius-sm); background:var(--accent); color:var(--text-on-accent); display:inline-flex; align-items:center; justify-content:center; font-size:var(--font-size-2xs); }
+.ms-item-details { flex:1; min-width:0; display:flex; flex-direction:column; gap:2px; }
+.ms-item-header { display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
+.ms-item-name { font-size:var(--font-size-xs); color:var(--text-primary); }
+.ms-item-version { font-size:var(--font-size-2xs); color:var(--text-muted); }
+.ms-item-desc { font-size:var(--font-size-2xs); color:var(--text-muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+/* 可更新徽标（sidebar-list.css:142-159 逐值对照）——只示状态，动作归详情页 */
+.ms-badge-update { display:inline-flex; align-items:center; gap:2px; padding:0 4px; border:1px solid color-mix(in srgb,var(--accent) 30%,transparent); border-radius:3px; background:color-mix(in srgb,var(--accent) 8%,transparent); color:var(--accent); font-size:var(--font-size-2xs); white-space:nowrap; }
+.ms-badge-update svg { width:10px; height:10px; }
+
+/* ── 悬停提示（真实实现 = data-hint → HintTip；本图静态画收敛态）
+      ⚠️ 绝对定位的提示条必须 width:max-content（skill §九点一 坑 1） ── */
+.btn-wrap { position:relative; display:inline-flex; }
+.hint { position:absolute; top:calc(100% + 5px); left:0; z-index:6; width:max-content; max-width:250px; padding:4px 8px; border:1px solid var(--separator); border-radius:var(--radius-sm); background:var(--bg-card); color:var(--text-primary); font-size:var(--font-size-2xs); line-height:1.6; box-shadow:0 4px 12px var(--shadow-color); }
+/* 尖角指上（气泡在按钮下方）⇒ 可见边 = top+left（skill §九点一 坑 4） */
+.hint::after { content:""; position:absolute; top:-5px; left:12px; width:8px; height:8px; background:var(--bg-card); border-top:1px solid var(--separator); border-left:1px solid var(--separator); transform:rotate(45deg); }
+
+/* ── 详情页（升级路径帧） ── */
+.detail-head { display:flex; align-items:flex-start; gap:12px; padding:14px 18px; border-bottom:1px solid var(--separator); }
+.detail-head .d-ic { width:40px; height:40px; flex:none; border-radius:var(--radius-md); background:var(--accent); color:var(--text-on-accent); display:inline-flex; align-items:center; justify-content:center; }
+.detail-head .d-name { font-size:15px; color:var(--text-primary); }
+.detail-head .d-ver { margin-top:3px; font-size:var(--font-size-2xs); color:var(--text-muted); }
+.detail-head .d-ver .arrow { color:var(--accent); }
+.detail-actions { margin-left:auto; display:flex; align-items:center; gap:8px; }
+.ldk-button { display:inline-flex; align-items:center; gap:6px; height:22px; padding:0 12px; border:1px solid transparent; border-radius:var(--radius-sm); background:var(--accent); color:var(--text-on-accent); font:inherit; font-size:var(--font-size-xs); cursor:pointer; }
+.ldk-button--ghost { background:transparent; border-color:var(--separator); color:var(--text-secondary); }
+.mask { position:absolute; inset:0; background:color-mix(in srgb,var(--bg-mask-color) 55%,transparent); }
+.confirm { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:340px; padding:16px; border:1px solid var(--separator); border-radius:var(--radius-md); background:var(--bg-card); box-shadow:0 10px 30px var(--shadow-color); }
+.confirm h4 { font-size:13px; font-weight:600; margin-bottom:8px; }
+.confirm p { font-size:var(--font-size-xs); color:var(--text-secondary); line-height:1.7; }
+.confirm .c-acts { display:flex; justify-content:flex-end; gap:8px; margin-top:14px; }
+
+/* ── 通知面板（铃铛·唯一通知面）── */
+.bell-panel { position:absolute; top:32px; right:8px; width:300px; padding:10px 12px; border:1px solid var(--separator); border-radius:var(--radius-md); background:var(--bg-card); box-shadow:0 8px 24px var(--shadow-color); z-index:5; }
+.bell-panel .bp-head { font-size:var(--font-size-2xs); color:var(--text-muted); margin-bottom:6px; }
+.bell-panel .bp-row { display:flex; gap:6px; font-size:var(--font-size-xs); color:var(--text-secondary); line-height:1.6; }
+.bell-panel .bp-row .b-dot { color:var(--accent); flex:none; }
+
+/* ── 几何对账读数（skill §九：用页面内读数对账，不靠肉眼） ── */
+.audit { margin-top:20px; padding:12px 14px; border:1px solid var(--border); border-radius:8px; background:var(--bg-card); font-family:"JetBrains Mono",Consolas,monospace; font-size:11.5px; line-height:1.9; color:var(--text-secondary); white-space:pre-wrap; }
+.audit b { color:var(--status-connected); } .audit .bad { color:var(--error); }
+@media (prefers-reduced-motion: reduce) { * { transition:none !important; } .ms-btn--update.spinning svg { animation:none; } }
+</style>
+</head>
+<body>
+
+<h1>插件市场 · 「检查更新」按钮（＋软件内升级路径）
+  <small>
+    <b>要回答的问题：</b>侧栏工具栏那行（搜索框上方，现为「安装 / 市场源」）怎么再加一枚钮，让<b>有没有新版本当场就能查</b>——今天只能退出软件重进、或干等好几分钟。<br>
+    <b>为什么今天要等</b>（三条机制叠加）：① 目录缓存 <code>CACHE_TTL_MS = 5min</code>（<code>marketSources/io.ts:27</code>）＋ 官方源 raw CDN 自带的 <code>max-age=300</code>；② 发现循环<b>每进程只排一趟</b>（池代码首载 +10s，判不了才按 30/60/120/300s 阶梯重试，走完本会话不再试，<code>updateDiscovery/schedule.ts:11-23</code>）；③ 「可更新」徽标<b>只随目录重拉</b>翻新（<code>ExtensionItem.tsx:93-96</code> ← <code>useCatalogEntryById()</code>）。<span class="hl">⇒ 全链路没有「现在就去查」的入口</span>（唯一的手动强刷只接在<b>错误态重试</b>上，<code>ExploreView.tsx:80</code>）。<br>
+    <b>好消息：</b>引擎早造好了——<code>runUpdateDiscovery(force)</code> 的注释白纸黑字写着「<b>force=true 手动刷新用</b>（跳过 5min fresh 缓存）」，<code>_running</code> 还自带并发合并。<b>本刀 = 把已造好的引擎接到一枚用户能按的钮上</b>，不改编排语义。<br>
+    <b>语义边界（本图定死）：</b><code>检查更新</code> = 强刷目录 ＋ 当场补跑一趟发现（<b>只发现、只通知，绝不代升级</b>）；<code>升级</code> = 既有链（行内徽标 → 详情页「更新」→ 恒弹确认卡），<b>本刀不改</b>。P1 那条路是 Opt-IN，点「检查更新」<b>不构成</b>对自动更新的授权。<br>
+    <b>控件：</b>壳共享 <code>&lt;Button variant="ghost" size="sm"&gt;</code>（<code>src/components/shared/button/Button.tsx</code>，经 <code>@linkdesk/ui</code> 导出；市场<b>详情页的启用/禁用/卸载已在用</b>——<code>DetailView/DetailActionBar.tsx:13,80-100</code>）。<br>
+    <b>设计 skill：</b><code>ui-ux-pro-max</code>（Loading Indicators / Loading States，两条 High）＋ 本仓 <code>html-blueprint</code>（zone 真实尺寸、颜色全 token、帧注编号）。
+  </small>
+</h1>
+
+<div class="toolbar-top">
+  <button id="themeBtn">切换亮/暗主题</button>
+  <span>颜色全走 <code>var(--xxx)</code>（切主题即整页翻面 ⇒ 反证零硬编码色）；zone 用真实尺寸 icon-bar 42 / tabbar 35 / statusbar 22 / 侧栏 280。</span>
+</div>
+
+<!-- ═══════════════ Frame 1：默认态（全窗口） ═══════════════ -->
+<div class="frame" id="f1">
+  <div class="frame-caption">
+    <b>Frame 1 · 默认态——「检查更新」钮就位（动作行最左端），并画出悬停提示</b>
+    <span class="tag new">本刀增量</span>
+    <span>次序 <code>[检查更新][安装][市场源]</code>：既有两钮相对次序零改动；提示走 <code>data-hint</code></span>
+  </div>
+  <div class="stage">
+    <div class="app">
+      <div class="titlebar">
+        <svg class="logo" viewBox="0 0 16 16"><rect x="2" y="2" width="12" height="12" rx="2.5" fill="#0078D4"/><rect x="5" y="5" width="6" height="6" rx="1" fill="#fff"/></svg>
+        <span class="app-name">LinkDesk</span>
+        <button class="menu-btn">文件</button><button class="menu-btn">查看</button><button class="menu-btn">帮助</button>
+        <span class="drag"></span>
+        <span class="win-btn">─</span><span class="win-btn">□</span><span class="win-btn">✕</span>
+      </div>
+      <div class="mid">
+        <div class="icon-bar">
+          <button class="icon-btn" title="文件树"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg></button>
+          <div class="ib-sep"></div>
+          <button class="icon-btn active" title="插件市场"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg></button>
+          <div class="ib-sep"></div>
+          <button class="icon-btn" title="设置"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.6M12 18.6v2.6M2.8 12h2.6M18.6 12h2.6M5.5 5.5l1.8 1.8M16.7 16.7l1.8 1.8M18.5 5.5l-1.8 1.8M7.3 16.7l-1.8 1.8"/></svg></button>
+        </div>
+
+        <div class="sidebar">
+          <div class="ms-header">
+            <div class="ms-header-actions">
+              <span class="btn-wrap">
+                <button class="ms-btn ms-btn--update" style="color:var(--text-primary);border-color:var(--accent);background:var(--tab-hover-bg);" data-hint="立即向市场源查询插件新版本（忽略 5 分钟缓存）">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 5.5V11h-5.5"/></svg>检查更新
+                </button>
+                <span class="hint">立即向市场源查询插件新版本（忽略 5 分钟缓存）</span>
+              </span>
+              <button class="ms-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 5v14M5 12h14"/></svg>安装</button>
+              <button class="ms-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 5v14M5 12h14"/></svg>市场源</button>
+            </div>
+            <div class="ms-search">
+              <input placeholder="搜索插件">
+              <svg class="s-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
+            </div>
+          </div>
+          <div class="ms-body">
+            <div class="ms-sec">▾ 已安装</div>
+            <button class="ms-item">
+              <span class="ms-item-icon">设</span>
+              <span class="ms-item-details">
+                <span class="ms-item-header"><span class="ms-item-name">设置</span><span class="ms-item-version">v1.0.20</span></span>
+                <span class="ms-item-desc">LinkDesk 设置面板</span>
+              </span>
+            </button>
+            <button class="ms-item">
+              <span class="ms-item-icon" style="background:var(--success)">树</span>
+              <span class="ms-item-details">
+                <span class="ms-item-header"><span class="ms-item-name">文件树</span><span class="ms-item-version">v1.0.16</span></span>
+                <span class="ms-item-desc">资源管理器侧栏</span>
+              </span>
+            </button>
+            <button class="ms-item">
+              <span class="ms-item-icon" style="background:var(--separator);color:var(--text-primary)">市</span>
+              <span class="ms-item-details">
+                <span class="ms-item-header"><span class="ms-item-name">插件市场</span><span class="ms-item-version">v1.0.45</span></span>
+                <span class="ms-item-desc">发现与安装插件</span>
+              </span>
+            </button>
+          </div>
+        </div>
+
+        <div class="main">
+          <div class="tabbar"><div class="tab active">插件市场</div></div>
+          <div class="main-body"><div class="ph">主区（示意）——本图焦点在侧栏工具栏那一行，主区只作上下文。</div></div>
+        </div>
+      </div>
+      <div class="statusbar">
+        <span>就绪</span><span>插件市场 · 已安装 6 · 上次检查 09:12</span>
+        <span class="right">插件市场</span>
+      </div>
+    </div>
+  </div>
+  <div class="frame-note">
+    <b>① 位置 = 动作行 <code>.marketplace-ms-header-actions</code> 的最左端</b>，即 <code>[检查更新][安装][市场源]</code>。这一行是 <code>role:"toolbar"</code> 视图（<code>plugin.json</code> 的 <code>views.marketplace[0]</code>，<code>order:-1</code>）——壳用 <code>PoolToolbarSlot</code> 渲染，粘顶、不被折叠 section 覆盖。放<b>最左</b>的两个理由：既有两钮相对次序<b>零改动</b>（老用户肌肉记忆不破）；「查」是无副作用的读操作且最常用，与两个「写」操作（安装/加源）在视觉上天然分隔。
+    <br><b>② 宽度账（实数，见页底对账读数）</b>：侧栏默认 <b>280px</b>（<code>LayoutEngine.ts:101</code>，可拖 170–600）− 左右 padding 24px = <b>256px</b> 可用（动作行自身盒宽实测 255px，差 1px 是分隔线边框）；三钮实测 <b>90.8 + 62.8 + 74.8 ≈ 229px</b>，含 2×6px gap <b>合计 ≈240px</b> ⇒ <b>默认宽度一行放得下，余约 15px</b>。侧栏窄到约 <b>265px 以下</b>才换行——而 <code>.marketplace-ms-header-actions</code> 本刀加 <code>flex-wrap: wrap</code>，换行后 toolbar 变高由<b>壳既有</b> <code>ResizeObserver → onHeightChange</code> 自适应（<code>PoolToolbarSlot.tsx:20-38</code>）⇒ <b>壳侧零改动</b>。
+    <br><b>③ 控件 = 壳共享 <code>&lt;Button variant="ghost" size="sm"&gt;</code></b>（高 22px、<code>--separator</code> 描边、<code>--text-secondary</code> 字、hover <code>--hover-overlay</code> + 字提亮，全 token）。与另两钮<b>视觉同族</b>（同为 ghost 小钮）。<span class="warn">⚠️ 既有两个钮本刀不动</span>（留在插件本地 CSS）——三钮一并收编会外扩返工面；「市场侧栏三钮收编进壳 Button」立为后续小件（做法同 04 那次「悬停提示第三套机制收编」：<b>分刀做，不一刀切</b>）。
+    <br><b>④ 提示走 <code>data-hint</code></b>（⛔ 不写裸 <code>title=</code>，规约 §13——原生 title 不跟主题/字号）。文案把语义写在按钮上：「立即向市场源查询插件新版本（忽略 5 分钟缓存）」。⚠️ 提示条是绝对定位元素，本图按 <code>width: max-content</code> 画（skill §九点一 坑 1：不给 <code>max-content</code> 会被压成一列），尖角指上 ⇒ 可见边取 <code>top+left</code>（同条坑 4）。
+  </div>
+</div>
+
+<!-- ═══════════════ Frame 2：检查中（全窗口） ═══════════════ -->
+<div class="frame" id="f2">
+  <div class="frame-caption">
+    <b>Frame 2 · 检查中——按钮转圈 + 文案改「检查中…」+ 禁用防连点；列表与主区保持旧内容</b>
+    <span class="tag">状态</span>
+    <span>正文<b>不回骨架</b>（与 04 那次同款判据）</span>
+  </div>
+  <div class="stage">
+    <div class="app">
+      <div class="titlebar">
+        <svg class="logo" viewBox="0 0 16 16"><rect x="2" y="2" width="12" height="12" rx="2.5" fill="#0078D4"/><rect x="5" y="5" width="6" height="6" rx="1" fill="#fff"/></svg>
+        <span class="app-name">LinkDesk</span>
+        <button class="menu-btn">文件</button><button class="menu-btn">查看</button><button class="menu-btn">帮助</button>
+        <span class="drag"></span>
+        <span class="win-btn">─</span><span class="win-btn">□</span><span class="win-btn">✕</span>
+      </div>
+      <div class="mid">
+        <div class="icon-bar">
+          <button class="icon-btn" title="文件树"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg></button>
+          <div class="ib-sep"></div>
+          <button class="icon-btn active" title="插件市场"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg></button>
+          <div class="ib-sep"></div>
+          <button class="icon-btn" title="设置"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.6M12 18.6v2.6M2.8 12h2.6M18.6 12h2.6M5.5 5.5l1.8 1.8M16.7 16.7l1.8 1.8M18.5 5.5l-1.8 1.8M7.3 16.7l-1.8 1.8"/></svg></button>
+        </div>
+        <div class="sidebar">
+          <div class="ms-header">
+            <div class="ms-header-actions">
+              <button class="ms-btn ms-btn--update spinning" disabled aria-busy="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 5.5V11h-5.5"/></svg>检查中…
+              </button>
+              <button class="ms-btn" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 5v14M5 12h14"/></svg>安装</button>
+              <button class="ms-btn" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 5v14M5 12h14"/></svg>市场源</button>
+            </div>
+            <div class="ms-search"><input placeholder="搜索插件"><svg class="s-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg></div>
+          </div>
+          <div class="ms-body">
+            <div class="ms-sec">▾ 已安装</div>
+            <button class="ms-item">
+              <span class="ms-item-icon">设</span>
+              <span class="ms-item-details">
+                <span class="ms-item-header"><span class="ms-item-name">设置</span><span class="ms-item-version">v1.0.20</span></span>
+                <span class="ms-item-desc">LinkDesk 设置面板</span>
+              </span>
+            </button>
+            <button class="ms-item">
+              <span class="ms-item-icon" style="background:var(--success)">树</span>
+              <span class="ms-item-details">
+                <span class="ms-item-header"><span class="ms-item-name">文件树</span><span class="ms-item-version">v1.0.16</span></span>
+                <span class="ms-item-desc">资源管理器侧栏</span>
+              </span>
+            </button>
+            <button class="ms-item">
+              <span class="ms-item-icon" style="background:var(--separator);color:var(--text-primary)">市</span>
+              <span class="ms-item-details">
+                <span class="ms-item-header"><span class="ms-item-name">插件市场</span><span class="ms-item-version">v1.0.45</span></span>
+                <span class="ms-item-desc">发现与安装插件</span>
+              </span>
+            </button>
+          </div>
+        </div>
+        <div class="main">
+          <div class="tabbar"><div class="tab active">插件市场</div></div>
+          <div class="main-body"><div class="ph">主区（示意）——检查中<b>不打回骨架</b>：旧内容照常可读、可滚、可点。</div></div>
+        </div>
+      </div>
+      <div class="statusbar">
+        <span>就绪</span><span>插件市场 · 正在检查插件更新…</span>
+        <span class="right">插件市场</span>
+      </div>
+    </div>
+  </div>
+  <div class="frame-note">
+    <b>① 正文不回骨架</b>——与 04 那次同款判据（「缓存命中则先渲染缓存再静默刷新」）。刷新期间列表与目录都是旧数据照常可读可点。
+    <br><b>② 双通道反馈</b>：图标转圈（视觉）＋ 文案改「检查中…」（语义）——<code>prefers-reduced-motion</code> 下动画关掉、<b>文字仍在</b>，状态不丢。
+    <br><b>③ 禁用 = 防连点</b>（<code>disabled</code> + <code>aria-busy</code>）；禁用态透明度用 <b>0.6</b>（<code>Button.css</code> 的 <code>opacity:.5</code> 基础上本图取 0.6 保证仍读得清）——不用「灰到看不见」暗示不可用。⚠️ 另两钮在此态是否一并禁用 = <b>实现期决定</b>（本图按「一并禁用」画，防用户在检查中途触发安装造成两个写操作打架）。
+    <br><b>④ 连点/重叠只跑一趟</b>——<code>runUpdateDiscovery</code> 的 <code>_running</code> promise 复用（<code>run.ts:41-47</code>）：手动点与启动调度重叠时<b>并发一趟</b>，不会打两次网络。这是引擎自带能力，本刀不另造节流。
+  </div>
+</div>
+
+<!-- ═══════════════ Frame 3：检查完成 · 有更新（全窗口 · 正控） ═══════════════ -->
+<div class="frame" id="f3">
+  <div class="frame-caption">
+    <b>Frame 3 · 检查完成——有更新：行内徽标<b>当场</b>出现 ＋ 铃铛亮起（本设计的正控）</b>
+    <span class="tag pos">正控</span>
+    <span>「不必退出软件重进、不必等好几分钟」这句需求，就看这一帧</span>
+  </div>
+  <div class="stage">
+    <div class="app">
+      <div class="titlebar">
+        <svg class="logo" viewBox="0 0 16 16"><rect x="2" y="2" width="12" height="12" rx="2.5" fill="#0078D4"/><rect x="5" y="5" width="6" height="6" rx="1" fill="#fff"/></svg>
+        <span class="app-name">LinkDesk</span>
+        <button class="menu-btn">文件</button><button class="menu-btn">查看</button><button class="menu-btn">帮助</button>
+        <span class="drag"></span>
+        <button class="bell" title="通知"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 8-3 8h18s-3-1-3-8"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg><span class="dot"></span></button>
+        <span class="win-btn">─</span><span class="win-btn">□</span><span class="win-btn">✕</span>
+      </div>
+      <div class="mid">
+        <div class="icon-bar">
+          <button class="icon-btn" title="文件树"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg></button>
+          <div class="ib-sep"></div>
+          <button class="icon-btn active" title="插件市场"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg></button>
+          <div class="ib-sep"></div>
+          <button class="icon-btn" title="设置"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.6M12 18.6v2.6M2.8 12h2.6M18.6 12h2.6M5.5 5.5l1.8 1.8M16.7 16.7l1.8 1.8M18.5 5.5l-1.8 1.8M7.3 16.7l-1.8 1.8"/></svg></button>
+        </div>
+        <div class="sidebar">
+          <div class="ms-header">
+            <div class="ms-header-actions">
+              <span class="ms-note">发现 2 个可更新 · 刚刚</span>
+              <button class="ms-btn ms-btn--update">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 5.5V11h-5.5"/></svg>检查更新
+              </button>
+              <button class="ms-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 5v14M5 12h14"/></svg>安装</button>
+              <button class="ms-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 5v14M5 12h14"/></svg>市场源</button>
+            </div>
+            <div class="ms-search"><input placeholder="搜索插件"><svg class="s-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg></div>
+          </div>
+          <div class="ms-body">
+            <div class="ms-sec">▾ 已安装</div>
+            <button class="ms-item">
+              <span class="ms-item-icon">设</span>
+              <span class="ms-item-details">
+                <span class="ms-item-header"><span class="ms-item-name">设置</span>
+                  <span class="ms-badge-update"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 19V5M5 12l7-7 7 7"/></svg>可更新 v1.0.21</span>
+                  <span class="ms-item-version">v1.0.20</span></span>
+                <span class="ms-item-desc">LinkDesk 设置面板</span>
+              </span>
+            </button>
+            <button class="ms-item">
+              <span class="ms-item-icon" style="background:var(--success)">树</span>
+              <span class="ms-item-details">
+                <span class="ms-item-header"><span class="ms-item-name">文件树</span>
+                  <span class="ms-badge-update"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 19V5M5 12l7-7 7 7"/></svg>可更新 v1.0.17</span>
+                  <span class="ms-item-version">v1.0.16</span></span>
+                <span class="ms-item-desc">资源管理器侧栏</span>
+              </span>
+            </button>
+            <button class="ms-item">
+              <span class="ms-item-icon" style="background:var(--separator);color:var(--text-primary)">市</span>
+              <span class="ms-item-details">
+                <span class="ms-item-header"><span class="ms-item-name">插件市场</span><span class="ms-item-version">v1.0.45</span></span>
+                <span class="ms-item-desc">发现与安装插件</span>
+              </span>
+            </button>
+          </div>
+        </div>
+        <div class="main">
+          <div class="tabbar"><div class="tab active">插件市场</div></div>
+          <div class="main-body"><div class="ph">主区（示意）——「发现」到这一步结束；<b>升级动作在下一帧</b>（详情页），不在列表里发生。</div></div>
+        </div>
+      </div>
+      <div class="statusbar">
+        <span>就绪</span><span>插件市场 · 检查完成 · 发现 2 个可更新</span>
+        <span class="right">插件市场</span>
+      </div>
+      <div class="bell-panel">
+        <div class="bp-head">通知</div>
+        <div class="bp-row"><span class="b-dot">●</span><span><b>设置</b> 有新版本 v1.0.21（当前 v1.0.20）· 打开详情升级</span></div>
+        <div class="bp-row"><span class="b-dot">●</span><span><b>文件树</b> 有新版本 v1.0.17（当前 v1.0.16）· 打开详情升级</span></div>
+      </div>
+    </div>
+  </div>
+  <div class="frame-note">
+    <b>① 徽标判据 = 目录 <code>updateToVersion</code> vs 已装版本</b>，来源 <code>useCatalogEntryById()</code> 的 Map——<code>catalog.entries</code> 引用一变即重建（<code>catalogStore.ts:113-124</code>），所以<b>目录一强刷，徽标立刻翻新</b>。这就是「点一下当场出现」的机制，不需要任何新判定。⚠️ 徽标对**已装/内置/禁用**三种行共用同一把钥匙。
+    <br><b>② 徽标只示状态，动作归详情页</b>（<code>ExtensionItem.tsx:93</code> 原话「只示状态，动作归详情」）——本刀<b>不动</b>这个分工。理由：在 280px 窄栏里塞「装/升/卸」三种写操作，等于把恒弹确认卡的对话挤进列表；要不要改成行内一键升级见设计文档 §五·4（推荐先不改、等实机体感）。
+    <br><b>③ 铃铛 = 唯一通知面</b>（本仓红线：页面内不自造提示面）。发现到新版本推一条既有通道的消息（`updateDiscovery/messages.ts` 的 <code>updateBellMessage</code>），详情写在这里。⚠️ 面板几何为**示意**（既有实现为准），本图只为说明「通知落哪」。
+    <br><b>④ 「发现 2 个可更新 · 刚刚」是就地 muted 注</b>，不是 toast / 不是弹窗——只占按钮左侧一行（<code>.ms-note</code>，<code>width: max-content</code>）。
+  </div>
+</div>
+
+<!-- ═══════════════ Frame 4：检查完成 · 无更新（侧栏局部） ═══════════════ -->
+<div class="frame" id="f4">
+  <div class="frame-caption">
+    <b>Frame 4 · 检查完成——无更新：按钮回默认 ＋ 就地一行「已是最新 · 刚刚」</b>
+    <span class="tag">状态</span>
+    <span>局部（侧栏真实 280px）——本图焦点是那一行注的落点与宽度</span>
+  </div>
+  <div class="stage stage--partial">
+    <div class="app app--partial" style="height:340px;">
+      <div class="sidebar" style="width:100%;border-right:none;height:100%;">
+        <div class="ms-header">
+          <div class="ms-header-actions">
+            <span class="ms-note">已是最新 · 刚刚</span>
+            <button class="ms-btn ms-btn--update"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 5.5V11h-5.5"/></svg>检查更新</button>
+            <button class="ms-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 5v14M5 12h14"/></svg>安装</button>
+            <button class="ms-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 5v14M5 12h14"/></svg>市场源</button>
+          </div>
+          <div class="ms-search"><input placeholder="搜索插件"><svg class="s-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg></div>
+        </div>
+        <div class="ms-body">
+          <div class="ms-sec">▾ 已安装</div>
+          <button class="ms-item">
+            <span class="ms-item-icon">设</span>
+            <span class="ms-item-details">
+              <span class="ms-item-header"><span class="ms-item-name">设置</span><span class="ms-item-version">v1.0.20</span></span>
+              <span class="ms-item-desc">LinkDesk 设置面板</span>
+            </span>
+          </button>
+          <button class="ms-item">
+            <span class="ms-item-icon" style="background:var(--success)">树</span>
+            <span class="ms-item-details">
+              <span class="ms-item-header"><span class="ms-item-name">文件树</span><span class="ms-item-version">v1.0.16</span></span>
+              <span class="ms-item-desc">资源管理器侧栏</span>
+            </span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="frame-note">
+    <b>① 就地 muted 注，不新造提示面</b>——「已是最新 · 刚刚」放按钮左侧（同一行，右对齐组的左端）。⛔ 不弹 toast、不弹对话框：本仓通知只有铃铛宽面板一处。
+    <br><b>② 文案带时间戳锚定</b>（「刚刚」→ 过一会儿转成具体时刻，如「10:03」）——用户点完能<b>确认确实查过了</b>，而不是怀疑按钮没反应。这是「点了没反应」类体感问题的正解。
+    <br><b>③ 状态栏同步一行</b>：本帧是局部图没画状态栏，实际整窗底部那行写「插件市场 · 检查完成 · 已是最新」（与 Frame 2/3 同一位置）。
+    <br><b>④ 注与按钮同在一行会拉宽</b>：三钮 229px + 注约 74px + 3×6px gap ≈ <b>321px</b> &gt; 256px ⇒ <b>此时必定换行</b>（<code>flex-wrap</code>），注单独占一行、右对齐（实测换行后行高 50px）。这是 Frame 1 那条宽度账的直接推论，也是「注要短」的原因（别写成一句长话）。
+  </div>
+</div>
+
+<!-- ═══════════════ Frame 5：检查失败（侧栏局部） ═══════════════ -->
+<div class="frame" id="f5">
+  <div class="frame-caption">
+    <b>Frame 5 · 检查失败——列表<b>原样保留</b>，按钮<b>立即回可用</b>，失败详情落回铃铛</b>
+    <span class="tag">状态</span>
+    <span>有内容就绝不打回空态；⛔ 不在页面内自造错误条</span>
+  </div>
+  <div class="stage stage--partial">
+    <div class="app app--partial" style="height:340px;">
+      <div class="sidebar" style="width:100%;border-right:none;height:100%;">
+        <div class="ms-header">
+          <div class="ms-header-actions">
+            <span class="ms-note" style="color:var(--error)">检查失败 · 显示的是旧目录</span>
+            <button class="ms-btn ms-btn--update"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 5.5V11h-5.5"/></svg>检查更新</button>
+            <button class="ms-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 5v14M5 12h14"/></svg>安装</button>
+            <button class="ms-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 5v14M5 12h14"/></svg>市场源</button>
+          </div>
+          <div class="ms-search"><input placeholder="搜索插件"><svg class="s-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg></div>
+        </div>
+        <div class="ms-body">
+          <div class="ms-sec">▾ 已安装</div>
+          <button class="ms-item">
+            <span class="ms-item-icon">设</span>
+            <span class="ms-item-details">
+              <span class="ms-item-header"><span class="ms-item-name">设置</span><span class="ms-item-version">v1.0.20</span></span>
+              <span class="ms-item-desc">LinkDesk 设置面板</span>
+            </span>
+          </button>
+          <button class="ms-item">
+            <span class="ms-item-icon" style="background:var(--success)">树</span>
+            <span class="ms-item-details">
+              <span class="ms-item-header"><span class="ms-item-name">文件树</span><span class="ms-item-version">v1.0.16</span></span>
+              <span class="ms-item-desc">资源管理器侧栏</span>
+            </span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="frame-note">
+    <b>① 有内容就绝不打回空态</b>——空态的成立前提是「<b>无缓存 + 拉不到</b>」；失败时本地还有旧目录 ⇒ <b>继续显示旧内容</b>，只在注里如实说明「检查失败 · 显示的是旧目录」＋ 状态栏一行。机制上天然如此：<code>forceRefreshCatalog</code> 的 <code>.catch</code> 保持旧结果（<code>catalogStore.ts:104-107</code>）。
+    <br><b>② 按钮立即回可用</b>——失败不允许把按钮永久禁用（那会让人以为坏了、只能重启软件，正好倒回本需求要消灭的处境）。用户想再点就再点。
+    <br><b>③ 失败详情落回唯一通知面</b>（铃铛宽面板「检查更新失败：…」+ [重试]），<b>页面内不自造错误条</b>。
+    <br><b>④ 与目录「坏 parse」的区别</b>：那是既有 <code>CatalogErrorState</code>（探索页空态 + 重试，<code>ExploreView.tsx:80</code>）。本节画的是<b>正常态下点刷新失败</b>——两者不合并，但可共用同一条 <code>forceRefreshCatalog</code> 腿。
+  </div>
+</div>
+
+<!-- ═══════════════ Frame 6：升级路径（全窗口 · 既有链，不改） ═══════════════ -->
+<div class="frame" id="f6">
+  <div class="frame-caption">
+    <b>Frame 6 · 升级路径——「在软件里点升级」落在哪：行 → 详情页「更新」→ 恒弹确认卡</b>
+    <span class="tag keep">既有链·不改</span>
+    <span>用户原话「我是要在软件中能点升级的那种更新」——这条链已存在，本帧只作落点指引</span>
+  </div>
+  <div class="stage">
+    <div class="app">
+      <div class="titlebar">
+        <svg class="logo" viewBox="0 0 16 16"><rect x="2" y="2" width="12" height="12" rx="2.5" fill="#0078D4"/><rect x="5" y="5" width="6" height="6" rx="1" fill="#fff"/></svg>
+        <span class="app-name">LinkDesk</span>
+        <button class="menu-btn">文件</button><button class="menu-btn">查看</button><button class="menu-btn">帮助</button>
+        <span class="drag"></span>
+        <span class="win-btn">─</span><span class="win-btn">□</span><span class="win-btn">✕</span>
+      </div>
+      <div class="mid">
+        <div class="icon-bar">
+          <button class="icon-btn" title="文件树"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg></button>
+          <div class="ib-sep"></div>
+          <button class="icon-btn active" title="插件市场"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg></button>
+          <div class="ib-sep"></div>
+          <button class="icon-btn" title="设置"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.6M12 18.6v2.6M2.8 12h2.6M18.6 12h2.6M5.5 5.5l1.8 1.8M16.7 16.7l1.8 1.8M18.5 5.5l-1.8 1.8M7.3 16.7l-1.8 1.8"/></svg></button>
+        </div>
+        <div class="sidebar">
+          <div class="ms-header">
+            <div class="ms-header-actions">
+              <button class="ms-btn ms-btn--update"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 5.5V11h-5.5"/></svg>检查更新</button>
+              <button class="ms-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 5v14M5 12h14"/></svg>安装</button>
+              <button class="ms-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 5v14M5 12h14"/></svg>市场源</button>
+            </div>
+            <div class="ms-search"><input placeholder="搜索插件"><svg class="s-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg></div>
+          </div>
+          <div class="ms-body">
+            <div class="ms-sec">▾ 已安装</div>
+            <button class="ms-item selected">
+              <span class="ms-item-icon">设</span>
+              <span class="ms-item-details">
+                <span class="ms-item-header"><span class="ms-item-name">设置</span>
+                  <span class="ms-badge-update"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 19V5M5 12l7-7 7 7"/></svg>可更新 v1.0.21</span>
+                  <span class="ms-item-version">v1.0.20</span></span>
+                <span class="ms-item-desc">LinkDesk 设置面板</span>
+              </span>
+            </button>
+            <button class="ms-item">
+              <span class="ms-item-icon" style="background:var(--success)">树</span>
+              <span class="ms-item-details">
+                <span class="ms-item-header"><span class="ms-item-name">文件树</span><span class="ms-item-version">v1.0.16</span></span>
+                <span class="ms-item-desc">资源管理器侧栏</span>
+              </span>
+            </button>
+          </div>
+        </div>
+        <div class="main">
+          <div class="tabbar"><div class="tab active">插件详情 · 设置</div><div class="tab">插件市场</div></div>
+          <div class="detail-head">
+            <span class="d-ic">设</span>
+            <div>
+              <div class="d-name">设置</div>
+              <div class="d-ver">已装 v1.0.20 <span class="arrow">→</span> 目录 v1.0.21 · 稳定版</div>
+            </div>
+            <div class="detail-actions">
+              <button class="ldk-button"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 5.5V11h-5.5"/></svg>更新到 v1.0.21</button>
+              <button class="ldk-button ldk-button--ghost">禁用</button>
+            </div>
+          </div>
+          <div class="main-body"><div class="ph">详情正文（示意）——升级按钮在<b>动作栏</b>（<code>DetailActionBar</code>），与「禁用/卸载」同排；主操作是实心钮，破坏性/次级是 ghost（按钮双轨制）。</div></div>
+        </div>
+      </div>
+      <div class="statusbar">
+        <span>就绪</span><span>插件详情 · 设置</span>
+        <span class="right">稳定通道</span>
+      </div>
+      <div class="mask"></div>
+      <div class="confirm">
+        <h4>确认更新「设置」？</h4>
+        <p>将从官方目录下载 <b>v1.0.21</b> 并替换当前版本（v1.0.20）。来源：官方目录。</p>
+        <div class="c-acts">
+          <button class="ldk-button ldk-button--ghost">取消</button>
+          <button class="ldk-button">确认更新</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="frame-note">
+    <b>① 四步链（已存在，本刀不改）</b>：行内徽标 <code>可更新 vN</code>（<code>ExtensionItem.tsx:93-96</code>）→ 点行开详情 → 动作栏「更新」（<code>DetailView.doVersionAction</code> / <code>useDetailVersionAction.ts</code>，<code>mode:"update"</code>）→ 确认卡。
+    <br><b>② 确认卡恒弹</b>——2026-09-10 用户拍板「都问」：<b>每次安装、每次更新都弹</b>，官方目录也不豁免；标题「确认更新」（<code>installGate.ts:12,58,70</code>）。
+    <br><b>③ 自动更新走另一条路、不过此门</b>——勾选「自动更新」本身就是那条路的授权（Opt-IN，默认关）。所以「检查更新」按下去只<b>发现 + 通知</b>，勾过的插件才落地。
+    <br><b>④ 动作栏控件 = 壳共享 <code>&lt;Button&gt;</code></b>（实心 accent = 主操作；ghost = 次级；danger = 卸载）——与 Frame 1 的新钮同一个壳控件，同一套 token。
+    <br><b>⑤ 待拍板</b>：要不要在列表行给「一键升级」（见设计文档 §五·4）。本帧按<b>现状</b>画：徽标只示状态，动作归详情。
+  </div>
+</div>
+
+<div class="audit" id="audit">几何对账读数（脚本算，非肉眼）…</div>
+
+<script>
+// 亮/暗主题切换——颜色全走 token ⇒ 一次翻面即全页生效（顺便反证零硬编码色）
+document.getElementById('themeBtn').addEventListener('click', () => document.body.classList.toggle('light'));
+
+// 几何对账：把关键尺寸算出来印在页面上（skill §九：不拿眼睛看截图）
+(() => {
+  const px = (el) => el ? Math.round(el.getBoundingClientRect().width * 10) / 10 : null;
+  const h  = (el) => el ? Math.round(el.getBoundingClientRect().height * 10) / 10 : null;
+  const out = [];
+  const it = (label, v, ok) => out.push((ok === false ? '✗ ' : '· ') + label + '：' + v);
+
+  // Frame 1：动作行宽度账
+  const f1 = document.querySelector('#f1 .app');
+  const sb = f1.querySelector('.sidebar');
+  const row = f1.querySelector('.ms-header-actions');
+  const btns = [...row.querySelectorAll('.ms-btn')];
+  const inner = px(sb) - 24; // padding 5px 12px 8px → 左右各 12
+  it('侧栏宽 / 内容可用宽', px(sb) + 'px / ' + inner + 'px');
+  btns.forEach((b, i) => it('第' + (i + 1) + '钮「' + b.textContent.trim() + '」', px(b) + '×' + h(b) + 'px'));
+  const sum = btns.reduce((a, b) => a + px(b), 0) + 6 * (btns.length - 1);
+  it('三钮合计（含 2×6px gap）', Math.round(sum * 10) / 10 + 'px',
+     sum <= inner + 0.5);
+  // ⚠️ 判溢出**不能**用 row.scrollWidth：行内 .btn-wrap 里那枚绝对定位提示条（250px 宽）会把自己的宽度
+  // 算进滚动溢出（实测 264 > 255，差的 9px 全是提示条越出行右缘的那截，与三钮无关）。
+  // 判据改成「行内直接子元素宽之和 ＋ gap」对 row.clientWidth——三个子元素都是流内元素，不受绝对定位污染。
+  it('三钮布局需求宽 vs 行宽（判溢出的真判据）',
+     Math.round(sum * 10) / 10 + ' vs ' + row.clientWidth + ' ⇒ ' + (sum <= row.clientWidth ? '不溢出' : '溢出'),
+     sum <= row.clientWidth + 0.5);
+  it('（附注）row.scrollWidth 受绝对定位提示条影响，不作判据',
+     row.scrollWidth + '（含提示条越行右缘 ' + Math.round(row.scrollWidth - row.clientWidth) + 'px）');
+  it('动作行是否单行（高 ≈ 22px）', h(row) + 'px', h(row) < 30);
+
+  // Frame 1：提示条（绝对定位）宽度——坑 1 的验收点
+  const hint = f1.querySelector('.hint');
+  it('提示条宽（须自然宽、非压窄）', px(hint) + '×' + h(hint) + 'px', px(hint) > 120);
+  const hb = f1.querySelector('.btn-wrap').getBoundingClientRect();
+  const hr = hint.getBoundingClientRect();
+  it('提示条右缘是否越出侧栏右缘', Math.round(hr.right) + ' ≤ ' + Math.round(sb.getBoundingClientRect().right),
+     hr.right <= sb.getBoundingClientRect().right + 0.5);
+
+  // Frame 3/6：徽标是否把行挤破
+  const f3row = document.querySelector('#f3 .ms-item-header');
+  it('Frame3 带徽标的活动行宽（头行）', px(f3row) + 'px');
+  const f3item = document.querySelector('#f3 .ms-item');
+  it('Frame3 行是否横向溢出', f3item.scrollWidth + ' vs ' + f3item.clientWidth,
+     f3item.scrollWidth <= f3item.clientWidth + 1);
+
+  // Frame 4：注与三钮同行必溢出 ⇒ 应换行（frame-note ④ 的读数证据）
+  const f4row = document.querySelector('#f4 .ms-header-actions');
+  const f4btns = [...f4row.querySelectorAll('.ms-btn')];
+  const f4sum = f4btns.reduce((a, b) => a + px(b), 0) + px(f4row.querySelector('.ms-note')) + 6 * (f4btns.length);
+  it('Frame4 注+三钮合计', Math.round(f4sum * 10) / 10 + 'px（> 256 ⇒ 换行）', f4sum > 256);
+  it('Frame4 实际行高（换行后 ≈ 2 行）', h(f4row) + 'px', h(f4row) > 30);
+
+  // zone 尺寸自查（skill §五 尺寸铁律）
+  it('icon-bar 宽（须 42）', px(f1.querySelector('.icon-bar')));
+  it('tabbar 高（须 35）', h(f1.querySelector('.tabbar')));
+  it('statusbar 高（须 22）', h(f1.querySelector('.statusbar')));
+  it('titlebar 高（须 30）', h(f1.querySelector('.titlebar')));
+
+  document.getElementById('audit').textContent =
+    '几何对账读数（页面内脚本实测，frame:line 见各帧注）\n' + out.join('\n');
+})();
+</script>
+</body>
+</html>
