@@ -1,5 +1,6 @@
-# 侧栏 toolbar 与 section 吸顶丢失（待抉择池）
+# 侧栏 toolbar 与 section 吸顶丢失（已落地 · ⏳ 未发版）
 
+> **状态：✅ 已修复（2026-09-28，dev 实证）· ⏳ 未发版**——用户拍板「这次既然是壳的改动，但是我仍旧不需要发版更新软件，仍旧 dev 测试好即可，再攒一波更新点再发版」。落地读数、拍板结论、遗留见下 §落地记录。
 > **现象**（用户 2026-09-28 报）：侧栏工具栏那一行（搜索框／安装／市场源／检查更新）**不再吸顶**，section 列表头（sticky head）也不吸——两者都跟着列表一起滚走。左右栏同病。
 > **性质**：**E5.7「侧栏迁池」搬运时的回归**——不是新需求、不是设计变更：**机制一行没删，让机制生效的容器形态丢了**。
 > **归属**：**软件本体（壳）· 修复件**——与 [已落地/工作区导入导出-布局恢复断线.md](../已落地/工作区导入导出-布局恢复断线.md) 同类先例（那件根因同样是「重构搬家断线」＝ `E5#5e-ii-f`）。
@@ -26,7 +27,36 @@
 | ⑤ | 搬运链：`ef21def07` 新建 `SidebarZone.tsx(+167) / .css(+120)`；`44082f933`（E5.7#11）删掉还带着正确内联样式的 `SidebarRenderer.tsx(−156)`；`git log --all -S flexDirection -- '*SidebarZone*'` = **空**（此后从没补回来） | git |
 | ⑥ | **唯一真相源也断了**：全仓搜 `.side-panel-content` 只剩两处（左右栏两个池 zone）——当初「各一份」的壳侧载体 `src/components/SidePanel.tsx` **也已不存在** ⇒ 「照旧写法抄回来」这条路今天同样没了，布局**必须**写进 CSS | 全仓 grep |
 
-## 要拍板的事（四件）
+## 落地记录（2026-09-28）
+
+**拍板四件**（用户选择题全选推荐项）＋ 一条发版口径：
+
+| # | 事 | 结论 |
+|:--:|:--|:--|
+| ① | 修法 A／B | **A**——布局写进 CSS（B＝保留容器自滚，滚动容器归属里外两处、语义糊） |
+| ② | 那条失效的 `position:sticky` 留不留 | **删**（连它的 `calc(var(--z-sidebar-sticky-header) + 1)` z-index 一起删；留着会被下一个人当生效机制读——判据表 ④ 就是这么来的） |
+| ③ | 右栏 | **同一件一起修**（不另立第二件） |
+| ④ | 补门禁腿 | **先一次性 CDP 实证**，门禁化**另登记** → [../待抉择池/侧栏布局形态门禁化.md](../待抉择池/侧栏布局形态门禁化.md) |
+| — | 发版 | **本次不发版**：dev 测好即止，攒下一批一起发（`package.json` 仍 0.2.20） |
+
+**落点**（两文件，各两处；左右栏同值）
+
+| 文件 | 改动 |
+|:--|:--|
+| `src/pool/zones/sidebar/SidebarZone.css` | `.ldk-side-panel-content` ＋`display:flex; flex-direction:column;`，`overflow-y:auto` → `overflow:hidden`；`.ldk-side-panel-toolbar` 删 `position/top/z-index`；两处注释改写为「粘顶靠容器 flex 纵列，不靠 sticky」 |
+| `src/pool/zones/right-sidebar/RightSidebarZone.css` | 同上（`RightSidebarZone.css:60/:68` 与左栏同构同病） |
+
+**实证读数（CDP，9222 上 dev 实例；Vite HMR 把改动推入同一实例，未重启、未动持久化）**
+
+- **先造确定性溢出**：往 section 内层注入 2000px 填充块——空 workspace 下 section 无内容体，不造溢出就量不出真假（这本身也是判据表 ②③ 之外的一个测量前提）。
+- **修前**：`content` `display:block`／clientH 813 · scrollH 2230（**它自己在滚**）；带 `flex:1` 的内层 clientH = scrollH = 2161（**＝内容高**，剩余 752 被无视 ⇒ `flex:1` 是死属性）；滚外层 300 → **toolbarTop 65 → −235、section 头 126 → −174**（症状复现）；内层 `scrollTop` 恒 0（**不可滚 ⇒ sticky 的包含块永不滚动，吸顶物理上不可能**）。
+- **修后**：`content` `display:flex / flex-direction:column / overflow:hidden`，clientH = scrollH = 813（**不再自滚**）；内层 clientH 744 · scrollH 2161 → 可滚；内层滚 300／700 时 **toolbarTop 恒 65**；section 头钉在内层顶端 **126 不动**（`stuck=true`）。再往 section 体内注入 900px（section 高 983）复测，头仍钉 126 ⇒ 吸顶真的生效，且被父盒边界正确钳制（空 profile 下每个 section 仅 22px 头、无行程，是**正确**行为，不是缺陷）。
+- **收尾**：两块填充 div 均已拔除（`innerScrollH` 回到 744）；实例保持运行，未关。
+
+**门禁**：`npm run check` **全绿**——vitest 205 文件 / 2785 例（`check` 是单条 `&&` 链，vitest 跑到即前序 tsc×3／ESLint／pool-css／grid／contracts／全部脚本判据均过）。
+**版本判定**：PATCH 量级（纯 CSS 布局修复，零 API／契约／IPC 改动）；**落号随下一批攒批统一定**，不在本件单独占号。
+
+## 当初要拍板的事（四件 · 2026-09-28 已拍板，结论见上）
 
 1. **修法 A（推荐）／B** —— 两个 `.ldk-side-panel-content` 各补 `display:flex; flex-direction:column;` ＋ 把 `overflow-y:auto` 换成 `overflow:hidden`（滚动交回内层那个 `flex:1` 的 div，正是 #16.7k 原意）。
    - **推荐 A 的理由**：丢失的根因就是**布局只活在内联样式里**——搬运时掉一个 prop 不报错、门禁也不查；写进类名才是防复发。
@@ -46,13 +76,18 @@
 
 ## 验收判据（做完怎么算成）
 
-- [ ] 列表滚到底，工具栏仍在顶部（**左右栏都测**）
-- [ ] 多 section 场景：section 头吸顶、折叠交互不受影响
-- [ ] 断点回归：插件市场搜索框内容超限（E5.6#16.7k 的**原始场景**）不再把 toolbar 挤出可视区
-- [ ] 窄侧栏（170px）／亮暗主题／`--ui-scale` 放大一档：不破格、不裁切
-- [ ] `npm run check` 全绿（含 pool-css 门禁）；04 本行划销 ＋ 本档 `git mv` 进 `已落地/`
+- [x] 列表滚到底，工具栏仍在顶部（**CDP 实证**：内层滚 300／700，toolbarTop 恒 65；右栏与左栏同值同删，未单独量）
+- [x] 多 section 场景：section 头吸顶、折叠交互不受影响（**CDP 实证**：注入内容体后 section 高 983，头钉在内层顶端 126 不动）
+- [ ] 断点回归：插件市场搜索框内容超限（E5.6#16.7k 的**原始场景**）不再把 toolbar 挤出可视区——⚠️ 空 workspace 造不出该现场，留给用户实机一眼（改动本身已把 toolbar 整个移出滚动区，见 §落地记录读数）
+- [ ] 窄侧栏（170px）／亮暗主题／`--ui-scale` 放大一档：不破格、不裁切——**未测**；本件只动容器 `display` 与滚动归属，不涉宽度/主题/字号 token，随下一批发版回归
+- [x] `npm run check` 全绿（含 pool-css 门禁）；04 本行已划销 ＋ 本档已 `git mv` 进 `已落地/`
 
-> ⚠️ **动手前两条程序**（本项目规矩，别省）：① **先 CDP 实证**——量改前改后 `.ldk-side-panel-content` 的 `computed display` 与滚动容器归属（提案方自己也声明「未起实机量 computed style」，本项目不拿推论当读数）；② 纯 CSS／布局改动须过 CLAUDE.md **硬约束 16**（先经 `Skill` 调设计 skill 拿设计系统，再动 token/间距写法）。
+> ✅ **动手前两条程序（已执行）**：① 先 CDP 实证——改前与改后都量了 `.ldk-side-panel-content` 的 `computed display` ＋「谁是真滚动容器」＋滚动前后坐标（读数见 §落地记录）；② 纯 CSS／布局改动过了 CLAUDE.md **硬约束 16**（经 `Skill` 调 `ui-ux-pro-max`；本件**零新增颜色/间距/token**，只补容器形态）。
+
+## 遗留（另登记，不在本件内）
+
+- **门禁化**（用户拍板「先一次性实证，门禁化另登记」）⇒ [../待抉择池/侧栏布局形态门禁化.md](../待抉择池/侧栏布局形态门禁化.md)——给「搬运类任务丢容器形态」补一条机械腿（候选 A dev＋CDP 冒烟／B 静态断言容器规则块／C 只上文档纪律）。
+- **未发版**：号随下一批攒批统一定，`package.json` 仍 0.2.20。
 
 ## 顺带记一条影响面
 
