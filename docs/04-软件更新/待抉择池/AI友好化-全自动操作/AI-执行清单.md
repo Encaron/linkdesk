@@ -154,7 +154,7 @@
 
 #### AI#23 ⬜ C 类·插件侧：serial-monitor（跨仓批次）
 
-- [ ] **AI#23** `serial-monitor` 补命令：快捷发送**编辑/删除**（`serial-monitor:src/views/SerialMonitorView/QuickSendBar.tsx:38,72`，现仅右键）· **关闭串口会话**（`serial-monitor:src/components/SessionListItem.tsx:106-127`，现仅 hover 出现的按钮）。｜另：`AI#10` 顺手面的「发送」命令化与编码切换入口（[01-设计.md §十 第 10 例](01-设计.md)：**API 已现成** `linkdesk.serial.sendText(text, enc, portName)`，**编码就是参数**，缺的是命令化）。｜⚠️ 插件源码已外移 ⇒ PATCH ＋ 发布 ＋ **官方目录收录**才是发版（[CLAUDE.md](../../../../CLAUDE.md) 硬约束 24）
+- [ ] **AI#23** `serial-monitor` 补命令：快捷发送**编辑/删除**（`serial-monitor:src/views/SerialMonitorView/QuickSendBar.tsx:38,72`，现仅右键）· **关闭串口会话**（`serial-monitor:src/components/SessionListItem.tsx:106-127`，现仅 hover 出现的按钮）· 🔴 **打开端口（选 COM ＋ 波特率 ＋ 帧格式）**（`serial-monitor:src/components/ControlPanel/useControlPanel.ts` 的 `toggleOpen` ＋ `ControlPanel/index.tsx` 的选择器，**现仅鼠标**；⚠️ **API 全在**——`src/core/api/linkdesk-api/data.ts:13,17` 的 `listPorts()` ＋ `openPort({portName, baudRate, dataBits, stopBits, parity, encoding})` ⇒ **只差挂牌**；命令本体要落在**插件自己**，⛔ 别让 AI 绕过插件直调 API，否则侧栏灯/会话列表不动｜**2026-09-28 用户点名后补登**）。｜另：`AI#10` 顺手面的「发送」命令化与编码切换入口（[01-设计.md §十 第 10 例](01-设计.md)：**API 已现成** `linkdesk.serial.sendText(text, enc, portName)`，**编码就是参数**，缺的是命令化）。｜⚠️ 插件源码已外移 ⇒ PATCH ＋ 发布 ＋ **官方目录收录**才是发版（[CLAUDE.md](../../../../CLAUDE.md) 硬约束 24）
 
 #### AI#24 ⬜ C 类·插件侧：file-tree（跨仓批次）
 
