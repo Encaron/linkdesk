@@ -279,7 +279,7 @@ body[data-showbox="on"] .anchorline { display: block; }
   <div class="bar-row">
     <div class="grp"><span class="lab">大小</span>
       <button class="pill" data-size="compact" aria-pressed="true">紧凑（现状 12px / 3×8）</button>
-      <button class="pill" data-size="medium" aria-pressed="false">中号（13px / 5×10）</button>
+      <button class="pill" data-size="medium" aria-pressed="false">中号（13px / 5×12）</button>
       <button class="pill" data-size="large" aria-pressed="false">大号（14px / 6×12）</button>
     </div>
     <div class="grp"><span class="lab">视口</span>
@@ -451,7 +451,7 @@ body[data-showbox="on"] .anchorline { display: block; }
     <h3>三档大小对照</h3>
     <dl>
       <dt>紧凑（现状）</dt><dd>12px / 行高 1.5 / 内边距 3×8 / max-width 260 → 实测高 26px</dd>
-      <dt>中号</dt><dd>13px / 1.45 / 5×10 / 300 → 实测高 31px</dd>
+      <dt>中号</dt><dd>13px / 1.45 / 5×12 / 300 → 实测高 31px<br /><span class="note">横向原写 10px，落地改 12px：10px 过不了间距网格门禁（&gt;6px 必须是 4 的倍数）</span></dd>
       <dt>大号</dt><dd>14px / 1.4 / 6×12 / 340 → 实测高 34px</dd>
       <dt>参考·原生</dt><dd>Windows 下约 9pt（≈12–13px）+ 4–6px 内边距 ⇒ 不是字小，是<b>内边距与行高太紧</b></dd>
     </dl>
@@ -467,7 +467,9 @@ body[data-showbox="on"] .anchorline { display: block; }
   延迟缺省 120ms、揭示类写 `data-hint-delay="0"`。③ 样式 = <code>HintTip.css:17-42</code>。
   <br><b>壳侧 0 处显式方位</b>：全仓 <code>data-hint-placement</code> 只有测试里出现过（<code>HintTip.test.tsx:55</code>）——
   所以今天<b>每一处提示都走缺省 `top`</b>，这正是"一律显示在上方"的来源。
-  <br><b>拍板状态</b>：本图为待拍板件，未动任何源码；方案 ④（尖角）与大小换档都要用户重新拍板后才落实现。
+  <br><b>拍板状态</b>：🔴 用户 2026-09-27 已拍板 <b>「中号 ＋ 案 C（气泡：②的落点＋尖角）」</b>，
+  源码已落地（<code>placement.ts</code> 判据重写 ＋ <code>HintTipRenderer.tsx</code> 尖角 ＋ <code>HintTip.css</code> 中号档）；
+  本图是**验收对照面**（默认仍停在「紧凑 ＋ 方案①」＝改前现状，点「中号」＋「④ C·气泡」看的就是落地版）。
 </div>
 
 <script>
@@ -482,7 +484,7 @@ body[data-showbox="on"] .anchorline { display: block; }
   /* ── 三档大小（紧凑＝现状逐字：12px / 1.5 / 3×8 / 260）── */
   var SIZES = {
     compact: { fs: "var(--font-size-xs)", lh: 1.5, pad: "3px 8px", maxW: 260, name: "紧凑（现状）" },
-    medium: { fs: "var(--font-size-sm)", lh: 1.45, pad: "5px 10px", maxW: 300, name: "中号" },
+    medium: { fs: "var(--font-size-sm)", lh: 1.45, pad: "5px 12px", maxW: 300, name: "中号" },
     large: { fs: "var(--font-size-md)", lh: 1.4, pad: "6px 12px", maxW: 340, name: "大号" }
   };
 
@@ -673,7 +675,17 @@ body[data-showbox="on"] .anchorline { display: block; }
     tipKbd.innerHTML = html;
   }
 
-  /** 设置尖角（只方案④）——指向锚的可见字形中心，且夹在条的边长之内 */
+  /** 设置尖角（只方案④）——指向锚的可见字形中心，且夹在条的边长之内
+   *
+   *  🔴 2026-09-27 修一处**方向做反**的缺陷（本图自检漏网，用户复审前必须修）：
+   *     尖角是 8×8 正方形 `rotate(45deg)` 后的菱形，**"藏哪两条边 ＝ 指向哪"**——两者是配套的：
+   *     `rotate(45deg)` 把原来的 `border-bottom` 转到**左下边**、`border-right` 转到**右下边**
+   *     ⇒ 留 bottom+right 才是指向**正下**。（改前的隐藏组合对应 `rotate(-45deg)`，与这里写的
+   *     `rotate(45deg)` 不配套 ⇒ 四个方位的尖角全部**指歪 90°**。）
+   *     四条正确组合：top⇒藏 top+left · bottom⇒藏 bottom+right · left⇒藏 bottom+left · right⇒藏 top+right。
+   *  ⚠️ 同时修一处**残留状态**：尖角元素是全图共用的，上一帧藏过的边不会自己回来
+   *     ⇒ 每次先把四条边全部还原（`= ""`）再按方位藏，否则切几次方案就少一条边。
+   */
   function setTail(a, t, placement, pos) {
     if (state.scheme !== 4) { tip.setAttribute("data-tail", "off"); return; }
     tip.setAttribute("data-tail", "on");
@@ -681,18 +693,23 @@ body[data-showbox="on"] .anchorline { display: block; }
     var gx = (g.left + g.right) / 2, gy = (g.top + g.bottom) / 2;
     var s = 8, half = s / 2;
     tipTail.style.transform = "rotate(45deg)";
+    /* 先全部还原（见上「残留状态」）——`""` 落回样式表里的 `border: 1px solid var(--border)` */
+    tipTail.style.borderTop = "";
+    tipTail.style.borderRight = "";
+    tipTail.style.borderBottom = "";
+    tipTail.style.borderLeft = "";
     if (placement === "top" || placement === "bottom") {
       var tx = clamp(gx - pos.left, half + 4, t.width - half - 4);
       tipTail.style.left = (tx - half) + "px";
       tipTail.style.top = "";
-      if (placement === "top") { tipTail.style.bottom = (-half - 1) + "px"; tipTail.style.borderRight = "none"; tipTail.style.borderTop = "none"; }
-      else { tipTail.style.top = (-half - 1) + "px"; tipTail.style.bottom = ""; tipTail.style.borderLeft = "none"; tipTail.style.borderBottom = "none"; }
+      if (placement === "top") { tipTail.style.bottom = (-half - 1) + "px"; tipTail.style.borderTop = "none"; tipTail.style.borderLeft = "none"; }
+      else { tipTail.style.top = (-half - 1) + "px"; tipTail.style.bottom = ""; tipTail.style.borderBottom = "none"; tipTail.style.borderRight = "none"; }
     } else {
       var ty = clamp(gy - pos.top, half + 4, t.height - half - 4);
       tipTail.style.top = (ty - half) + "px";
       tipTail.style.left = "";
-      if (placement === "left") { tipTail.style.right = (-half - 1) + "px"; tipTail.style.borderLeft = "none"; tipTail.style.borderTop = "none"; }
-      else { tipTail.style.left = (-half - 1) + "px"; tipTail.style.borderRight = "none"; tipTail.style.borderBottom = "none"; }
+      if (placement === "left") { tipTail.style.right = (-half - 1) + "px"; tipTail.style.borderBottom = "none"; tipTail.style.borderLeft = "none"; }
+      else { tipTail.style.left = (-half - 1) + "px"; tipTail.style.borderTop = "none"; tipTail.style.borderRight = "none"; }
     }
   }
 
