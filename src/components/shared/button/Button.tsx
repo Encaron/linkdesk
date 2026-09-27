@@ -17,6 +17,7 @@
  * 消费方：settings renderHint:"action" 命令按钮、背景图三态按钮、FilePathInput「…」按钮、
  * marketplace 详情 action bar（禁用/启用/卸载，E6#30.14c）。
  */
+import { HINT_ATTR } from "../hint-tip/hintAttrs";
 import "./Button.css";
 
 type ButtonVariant = "success" | "danger" | "ghost";
@@ -43,8 +44,19 @@ interface ButtonProps {
 
 function Button({ children, onClick, disabled, title, type = "button", variant, size }: ButtonProps) {
   const cls = ["ldk-button", variant && `ldk-button--${variant}`, size && `ldk-button--${size}`].filter(Boolean).join(" ");
+  // `title` 是**悬停提示**，不是 DOM 的 `title=`（那会出 Chromium 原生小方框，不跟主题/字号——写法规约 §13）。
+  // 属性名走 `hintAttrs` 单一真相源——⛔ 别在这里写 "data-hint" 字面量。
+  // 无障碍名：显式文字子代 ⇒ 可见文字就是名字（⛔ 别用 aria-label 盖它，WCAG 2.5.3）；图标型才拿提示兜底。
+  const hasVisibleText = typeof children === "string" || typeof children === "number";
   return (
-    <button type={type} className={cls} onClick={onClick} disabled={disabled} title={title}>
+    <button
+      type={type}
+      className={cls}
+      onClick={onClick}
+      disabled={disabled}
+      {...(title ? { [HINT_ATTR]: title } : null)}
+      aria-label={!hasVisibleText && title ? title : undefined}
+    >
       {children}
     </button>
   );

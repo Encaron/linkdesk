@@ -85,7 +85,7 @@ describe("PoolSectionStack（E5.8#36.6 侧栏 section header 动作区）", () =
       />,
     );
     // 动作图标出现在 header（title = i18n key 原文——t 缺表回退；同面板 #36.5 同一渲染器）
-    const btn = screen.getByTitle("侧栏清空输出");
+    const btn = screen.getByLabelText("侧栏清空输出");
     expect(btn).toBeTruthy();
     fireEvent.click(btn);
     expect(mockExecuteCommand).toHaveBeenCalledWith("panel-demo.sidebarClearLog");
@@ -115,7 +115,7 @@ describe("PoolSectionStack（E5.8#36.6 侧栏 section header 动作区）", () =
     );
     // 点击前 section 展开——mock 视图可见
     expect(screen.getByTestId("mock-plugin-view")).toBeTruthy();
-    fireEvent.click(screen.getByTitle("侧栏清空输出"));
+    fireEvent.click(screen.getByLabelText("侧栏清空输出"));
     // 命令已执行
     expect(mockExecuteCommand).toHaveBeenCalled();
     // 未触发折叠 IPC（actions span stopPropagation——header onClick=toggle 不冒泡）

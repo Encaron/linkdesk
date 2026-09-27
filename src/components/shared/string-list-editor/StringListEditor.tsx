@@ -99,7 +99,7 @@ export default function StringListEditor({
     <div className="ldk-sle">
       {/* locked（固定内置）行——pinned，恒显，不可删 */}
       {locked.map((url) => (
-        <div className="ldk-sle-row ldk-sle-row--locked" key={url} title={url}>
+        <div className="ldk-sle-row ldk-sle-row--locked" key={url} data-hint={url} data-hint-delay="0">
           {urlOnly && <span className="codicon codicon-link ldk-sle-glyph" aria-hidden="true" />}
           <span className="ldk-sle-url">{url}</span>
           {lockedBadge && <span className="ldk-sle-badge">{lockedBadge}</span>}
@@ -109,12 +109,12 @@ export default function StringListEditor({
 
       {/* 可编辑条目行——可删 */}
       {value.map((item) => (
-        <div className="ldk-sle-row" key={item} title={item}>
+        <div className="ldk-sle-row" key={item} data-hint={item} data-hint-delay="0">
           {urlOnly && <span className="codicon codicon-link ldk-sle-glyph" aria-hidden="true" />}
           <span className="ldk-sle-url">{item}</span>
           <button
             className="ldk-sle-del"
-            title={removeTitle}
+            data-hint={removeTitle}
             aria-label={removeTitle}
             onClick={() => onChange(value.filter((v) => v !== item))}
           >

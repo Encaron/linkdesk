@@ -5,75 +5,8 @@
     "口径：只记**小写 HTML 标签**上的 title=（大写组件是组件自己的 prop，门禁不判）；豁免注释的站点不进账。",
     "门禁 scripts/check-native-title.mjs 只判两件事：① 实得 > 账 = 新增（红灯，报出具体行号）② 实得 < 账 = 收编了没销账（红灯）。",
     "⇒ 收编一处就必须把这里减一（减到 0 删掉该格），**收编进度 = 本账递减**，可对账可公示。",
-    "⚠️ 件 3（壳侧存量收编）落完时本账应为 {}——那是目标态，不是要求：⛔ 不许为了凑空账把判据放宽。"
+    "✅ 2026-09-27 件 3 落仓：壳侧 43 处（21 文件）全部收编为 data-hint ⇒ 本账清零（目标态已达成）。",
+    "⚠️ 账清零**不是**放宽判据的结果：判据一字未动，只是账里的站点都被改成了 data-hint。此后本仓新写一处原生 title= 即红。"
   ],
-  "counts": {
-    "plugins/panel-demo/src/views/DemoOutputView.tsx": {
-      "button": 2
-    },
-    "plugins/panel-demo/src/views/DemoTodoView.tsx": {
-      "button": 3
-    },
-    "src/components/shared/badge/Badge.tsx": {
-      "span": 1
-    },
-    "src/components/shared/button/Button.tsx": {
-      "button": 1
-    },
-    "src/components/shared/color-picker/ColorPicker.tsx": {
-      "div": 1
-    },
-    "src/components/shared/combobox/Combobox.tsx": {
-      "input": 1
-    },
-    "src/components/shared/segmented-radio/SegmentedRadio.tsx": {
-      "button": 1
-    },
-    "src/components/shared/select-box/SelectBox.tsx": {
-      "button": 1
-    },
-    "src/components/shared/sidebar-section/SidebarSection.tsx": {
-      "div": 1,
-      "span": 1
-    },
-    "src/components/shared/string-list-editor/StringListEditor.tsx": {
-      "button": 1,
-      "div": 2
-    },
-    "src/pool/floating/quick-pick/QuickPickHost.tsx": {
-      "button": 2
-    },
-    "src/pool/shared/group-tab-bar/GroupTabBar.tsx": {
-      "button": 2,
-      "div": 1
-    },
-    "src/pool/shared/view-title-actions/ViewTitleActions.tsx": {
-      "button": 3
-    },
-    "src/pool/views/release-notes/ReleaseNotesPoolView.tsx": {
-      "button": 2
-    },
-    "src/pool/views/welcome/WelcomePoolView.tsx": {
-      "button": 1
-    },
-    "src/pool/zones/icon-bar/IconBarZone.tsx": {
-      "button": 2
-    },
-    "src/pool/zones/panel/PanelZone.tsx": {
-      "button": 3,
-      "div": 1
-    },
-    "src/pool/zones/right-sidebar/RightSidebarZone.tsx": {
-      "span": 1
-    },
-    "src/pool/zones/sidebar/SidebarZone.tsx": {
-      "span": 1
-    },
-    "src/pool/zones/status-bar/StatusBarZone.tsx": {
-      "button": 3
-    },
-    "src/pool/zones/title-bar/TitleBarZone.tsx": {
-      "button": 5
-    }
-  }
+  "counts": {}
 }

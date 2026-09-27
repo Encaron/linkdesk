@@ -12,6 +12,7 @@
 
 import { type ReactNode, useState, useCallback, useRef, useEffect } from "react";
 import { useTranslation } from "react-i18next";
+import { HINT_ATTR, HINT_DELAY_ATTR } from "../hint-tip/hintAttrs";
 import "./SidebarSection.css";
 
 interface SidebarSectionProps {
@@ -132,6 +133,10 @@ function SidebarSection({
     );
   }
 
+  // 揭示类（类型注释：「标题截断时显示完整文字」）⇒ 延时归零。无 titleTooltip ⇒ 零属性（⛔ 不留空的 data-hint-delay）。
+  // 属性名走 `hintAttrs` 单一真相源——⛔ 别在这里写 "data-hint" 字面量。
+  const hint = titleTooltip ? { [HINT_ATTR]: titleTooltip, [HINT_DELAY_ATTR]: "0" } : null;
+
   return (
     <div className="ldk-sidebar-section">
       {/* 🔥 E4V#fix: header + pinned 包进同一个 sticky 容器——消除 HEADER_H 硬编码。
@@ -142,7 +147,7 @@ function SidebarSection({
           className={`ldk-sidebar-section-header${!collapsible ? " not-collapsible" : ""}`}
           onClick={toggle}
           role="button"
-          title={titleTooltip}
+          {...hint}
           aria-expanded={collapsible ? open : undefined}
           tabIndex={collapsible ? 0 : undefined}
           onKeyDown={collapsible ? onKeyDown : undefined}
@@ -177,7 +182,7 @@ function SidebarSection({
                   ref={moreRef}
                   className={`ldk-sidebar-section-more${showActions === "default" ? " show-on-hover" : ""}`}
                   onClick={(e) => { e.stopPropagation(); setMoreOpen((p) => !p); }}
-                  title={t("更多操作…")}
+                  data-hint={t("更多操作…")}
                 >
                   …
                   {moreOpen && (

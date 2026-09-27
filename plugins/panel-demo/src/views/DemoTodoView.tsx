@@ -70,7 +70,7 @@ export default function DemoTodoView() {
         <button
           type="submit"
           className="panel-demo-demo-icon-btn"
-          title={t("添加")}
+          data-hint={t("添加")}
           aria-label={t("添加")}
           disabled={!draft.trim()}
         >
@@ -83,7 +83,7 @@ export default function DemoTodoView() {
             <button
               type="button"
               className="panel-demo-demo-todo-check"
-              title={x.done ? t("标记为未完成") : t("标记为已完成")}
+              data-hint={x.done ? t("标记为未完成") : t("标记为已完成")}
               aria-label={x.done ? t("标记为未完成") : t("标记为已完成")}
               onClick={() => toggle(x.id)}
             >
@@ -93,7 +93,7 @@ export default function DemoTodoView() {
             <button
               type="button"
               className="panel-demo-demo-icon-btn panel-demo-demo-todo-remove"
-              title={t("删除")}
+              data-hint={t("删除")}
               aria-label={t("删除")}
               onClick={() => remove(x.id)}
             >

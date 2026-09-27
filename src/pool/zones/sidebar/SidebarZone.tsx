@@ -175,7 +175,7 @@ export default function SidebarZone({ sidebar }: SidebarZoneProps) {
                   setHeaderMenu({ x: e.clientX, y: e.clientY });
                 }}
               >
-                <span className="ldk-side-panel-title" title={effectiveTitle}>{effectiveTitle}</span>
+                <span className="ldk-side-panel-title" data-hint={effectiveTitle} data-hint-delay="0">{effectiveTitle}</span>
                 {/* E5.8#36.6：mergeHeaderWhenSingle 单视图合并——容器 header 即视图 header，titleActions 同声明消费 */}
                 {c.mergeHeaderWhenSingle === true && sectionViews.length === 1 && sectionViews[0].titleActions?.length
                   ? <ViewTitleActions actions={sectionViews[0].titleActions} />

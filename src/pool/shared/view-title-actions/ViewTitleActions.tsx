@@ -104,7 +104,7 @@ export default function ViewTitleActions({ actions }: ViewTitleActionsProps) {
     <button
       ref={openId === w.id ? chevronRef : undefined}
       className={`ldk-vta-btn ldk-vta-chev${openId === w.id ? " open" : ""}`}
-      title={w.type === "dropdown" && w.title ? t(w.title) : undefined}
+      data-hint={w.type === "dropdown" && w.title ? t(w.title) : undefined}
       aria-label={w.type === "dropdown" && w.title ? t(w.title) : t("更多操作")}
       aria-haspopup="menu"
       aria-expanded={openId === w.id}
@@ -121,7 +121,7 @@ export default function ViewTitleActions({ actions }: ViewTitleActionsProps) {
           {w.type === "icon" && (
             <button
               className="ldk-vta-btn"
-              title={t(w.title)}
+              data-hint={t(w.title)}
               aria-label={t(w.title)}
               onClick={() => runCommand(w.command, w.args)}
             >
@@ -138,7 +138,7 @@ export default function ViewTitleActions({ actions }: ViewTitleActionsProps) {
             <>
               <button
                 className="ldk-vta-btn"
-                title={t(w.title)}
+                data-hint={t(w.title)}
                 aria-label={t(w.title)}
                 onClick={() => runCommand(w.command, w.args)}
               >

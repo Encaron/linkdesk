@@ -192,7 +192,7 @@ function StatusBarZone({ statusBar }: { statusBar: StatusBarLayout }) {
     ) : item.onClick ? (
       <button
         className="ldk-status-bar-btn"
-        title={item.title || item.label}
+        data-hint={item.title || item.label}
         onClick={() => executePoolCommand(item.onClick!)}
       >
         {content}
@@ -239,7 +239,7 @@ function StatusBarZone({ statusBar }: { statusBar: StatusBarLayout }) {
           ref={bellRef}
           className={`ldk-status-bar-btn ldk-status-bar-notif-btn${notif.unread > 0 ? " has-notifications" : ""}`}
           onClick={() => dispatch({ type: "bell" })}
-          title={notif.bellTitle}
+          data-hint={notif.bellTitle}
           aria-label={notif.bellTitle}
           aria-haspopup="dialog"
           aria-expanded={expanded}
@@ -403,7 +403,7 @@ function StatusBarZone({ statusBar }: { statusBar: StatusBarLayout }) {
                             <button
                               className="ldk-notif-panel-dismiss"
                               onClick={() => emitNotif("notif:dismiss", item.id)}
-                              title={notif.dismissTitle}
+                              data-hint={notif.dismissTitle}
                               // E6#73k（J1）：按钮里只有一枚 codicon 字形（私有区码位，读屏器念不出名），
                               // 无 `aria-label` 时它就是个没名字的「按钮」——用户不知道按下去会删什么。
                               aria-label={notif.dismissTitle}

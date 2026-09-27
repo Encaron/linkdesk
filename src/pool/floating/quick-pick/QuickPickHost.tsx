@@ -352,7 +352,8 @@ export default function QuickPickHost() {
             <button
               className="ldk-quick-pick-clear codicon codicon-close"
               onClick={() => { setQuery(""); setSelected(0); inputRef.current?.focus(); }}
-              title={t("清除")}
+              data-hint={t("清除")}
+              aria-label={t("清除")}
             />
           )}
         </div>
@@ -405,7 +406,8 @@ export default function QuickPickHost() {
                         <button
                           key={b.actionId}
                           className={`ldk-quick-pick-item-btn codicon codicon-${b.icon}`}
-                          title={b.tooltip}
+                          data-hint={b.tooltip}
+                          aria-label={b.tooltip}
                           onClick={(e) => {
                             e.stopPropagation();
                             api?.itemAction(item.key, b.actionId);

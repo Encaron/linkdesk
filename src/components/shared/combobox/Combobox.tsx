@@ -17,6 +17,7 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import SelectBoxDropdown from "../select-box/SelectBoxDropdown"; // E5.8#30.17：共用下拉骨架（定位 + Portal + 列表）
+import { HINT_ATTR } from "../hint-tip/hintAttrs";
 import "./Combobox.css";
 // 下拉视觉复用 SelectBox 类（ldk-selectbox-dropdown/list/item/empty）——不重写，规避 CSS 克隆
 import "../select-box/SelectBox.css";
@@ -131,7 +132,7 @@ function Combobox({ value, options, onChange, disabled, placeholder, title, clas
           inputMode={inputMode}
           className="ldk-combobox-input"
           value={text}
-          title={title}
+          {...(title ? { [HINT_ATTR]: title } : null)}
           aria-label={title}
           placeholder={placeholder}
           disabled={disabled}

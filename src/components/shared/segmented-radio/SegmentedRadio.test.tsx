@@ -73,11 +73,13 @@ describe("SegmentedRadio", () => {
     expect(container.querySelector('[data-testid="preview-sw"]')).not.toBeNull();
   });
 
-  it("title 透传（完整解释 tooltip）", () => {
+  it("title 透传为 data-hint（说明类 ⇒ 不给 data-hint-delay；⛔ 不出原生 title=）", () => {
     const { buttons } = renderRadio([
       { value: "a", label: "Alpha", title: "Alpha full" },
     ]);
-    expect(buttons[0].getAttribute("title")).toBe("Alpha full");
+    expect(buttons[0].getAttribute("data-hint")).toBe("Alpha full");
+    expect(buttons[0].getAttribute("data-hint-delay")).toBeNull();
+    expect(buttons[0].getAttribute("title")).toBeNull();
   });
 
   it("aria-label 传给 radiogroup（读屏）", () => {

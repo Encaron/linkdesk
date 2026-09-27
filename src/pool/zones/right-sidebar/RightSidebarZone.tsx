@@ -150,7 +150,7 @@ export default function RightSidebarZone({ rightSidebar, edge }: RightSidebarZon
         {/* 容器 header（无 ◀/▶ 折叠按钮——差异注记 ①：折叠/展开仅走图标栏 toggle + 界面勾选菜单） */}
         {effectiveTitle && (
           <div className="ldk-side-panel-header">
-            <span className="ldk-side-panel-title" title={effectiveTitle}>{effectiveTitle}</span>
+            <span className="ldk-side-panel-title" data-hint={effectiveTitle} data-hint-delay="0">{effectiveTitle}</span>
             {/* E5.8#36.6：mergeHeaderWhenSingle 单视图合并——容器 header 即视图 header，titleActions 同声明消费 */}
             {mergeHeaderWhenSingle === true && sectionViews.length === 1 && sectionViews[0].titleActions?.length
               ? <ViewTitleActions actions={sectionViews[0].titleActions} />

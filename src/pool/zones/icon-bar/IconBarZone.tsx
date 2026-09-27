@@ -261,7 +261,7 @@ function IconBarZone({ iconBar }: { iconBar: IconBarLayout }) {
               // 数据损坏忽略——壳侧无动作
             }
           }}
-          title={item.label}
+          data-hint={item.label}
           aria-label={item.label}
         >
           <PoolPluginIcon icon={item.icon} className="ldk-icon-bar-plugin-icon" alt={item.label} />
@@ -281,7 +281,7 @@ function IconBarZone({ iconBar }: { iconBar: IconBarLayout }) {
               ref={hamburgerBtnRef}
               className={`ldk-hamburger-btn${hamburgerOpen ? " hamburger-open" : ""}`}
               onClick={() => setHamburgerOpen(!hamburgerOpen)}
-              title={iconBar.hamburger.title}
+              data-hint={iconBar.hamburger.title}
               aria-label={iconBar.hamburger.title}
             >
               <span className="codicon codicon-menu" />

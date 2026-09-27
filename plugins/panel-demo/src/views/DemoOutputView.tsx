@@ -102,7 +102,7 @@ export default function DemoOutputView({ isActive }: { isActive: boolean }) {
       <div className="panel-demo-demo-toolbar">
         <button
           className="panel-demo-demo-icon-btn"
-          title={running ? t("暂停") : t("继续")}
+          data-hint={running ? t("暂停") : t("继续")}
           aria-label={running ? t("暂停") : t("继续")}
           onClick={() => setRunning((r) => !r)}
         >
@@ -110,7 +110,7 @@ export default function DemoOutputView({ isActive }: { isActive: boolean }) {
         </button>
         <button
           className="panel-demo-demo-icon-btn"
-          title={t("清空输出")}
+          data-hint={t("清空输出")}
           aria-label={t("清空输出")}
           onClick={() => setLines([])}
         >

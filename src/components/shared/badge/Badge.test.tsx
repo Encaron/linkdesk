@@ -20,8 +20,18 @@ describe("Badge", () => {
     expect(getByText("Alpha").className).toBe("ldk-badge");
   });
 
-  it("title 透传（悬停提示）", () => {
+  it("title 透传为 data-hint（揭示类 ⇒ 延时归零；⛔ 不出原生 title=）", () => {
     const { getByText } = render(<Badge title="Demo title">Alpha</Badge>);
-    expect(getByText("Alpha").getAttribute("title")).toBe("Demo title");
+    const el = getByText("Alpha");
+    expect(el.getAttribute("data-hint")).toBe("Demo title");
+    expect(el.getAttribute("data-hint-delay")).toBe("0");
+    expect(el.getAttribute("title")).toBeNull();
+  });
+
+  it("无 title ⇒ 不出提示属性（零噪声）", () => {
+    const { getByText } = render(<Badge>Alpha</Badge>);
+    const el = getByText("Alpha");
+    expect(el.getAttribute("data-hint")).toBeNull();
+    expect(el.getAttribute("data-hint-delay")).toBeNull();
   });
 });

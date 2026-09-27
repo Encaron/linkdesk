@@ -98,7 +98,8 @@ function TitleBarZone({ titleBar }: { titleBar: TitleBarLayout }) {
         key={item.command}
         className="ldk-titlebar-btn ldk-titlebar-slot-btn"
         onClick={() => executePoolCommand(item.command)}
-        title={item.title}
+        data-hint={item.title}
+        aria-label={item.title}
         style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
       >
         {item.icon ? (
@@ -164,11 +165,12 @@ function TitleBarZone({ titleBar }: { titleBar: TitleBarLayout }) {
             if (pinned) win?.setAlwaysOnTop(false);
             else win?.setAlwaysOnTop(true);
           }}
-          title={pinned ? wc.unpin : wc.pin}
+          data-hint={pinned ? wc.unpin : wc.pin}
+          aria-label={pinned ? wc.unpin : wc.pin}
         >
           <span className={`codicon ${pinned ? "codicon-pinned" : "codicon-pin"}`} />
         </button>
-        <button className="ldk-wc-btn" onClick={() => window.linkdesk?.window?.minimize()} title={wc.minimize}>
+        <button className="ldk-wc-btn" onClick={() => window.linkdesk?.window?.minimize()} data-hint={wc.minimize} aria-label={wc.minimize}>
           <span className="codicon codicon-chrome-minimize" />
         </button>
         <button
@@ -178,11 +180,12 @@ function TitleBarZone({ titleBar }: { titleBar: TitleBarLayout }) {
             if (maximized) win?.unmaximize();
             else win?.maximize();
           }}
-          title={maximized ? wc.restore : wc.maximize}
+          data-hint={maximized ? wc.restore : wc.maximize}
+          aria-label={maximized ? wc.restore : wc.maximize}
         >
           <span className={`codicon ${maximized ? "codicon-chrome-restore" : "codicon-chrome-maximize"}`} />
         </button>
-        <button className="ldk-wc-btn ldk-wc-close" onClick={() => window.linkdesk?.window?.close()} title={wc.close}>
+        <button className="ldk-wc-btn ldk-wc-close" onClick={() => window.linkdesk?.window?.close()} data-hint={wc.close} aria-label={wc.close}>
           <span className="codicon codicon-chrome-close" />
         </button>
       </div>

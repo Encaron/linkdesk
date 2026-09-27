@@ -12,6 +12,7 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import SelectBoxDropdown from "./SelectBoxDropdown"; // E5.8#30.17：共用下拉骨架（定位 + Portal + 列表）
+import { HINT_ATTR } from "../hint-tip/hintAttrs";
 import "./SelectBox.css";
 
 interface SelectBoxOption {
@@ -140,7 +141,7 @@ function SelectBox({ value, options, onChange, disabled, placeholder, title, cla
         type="button"
         className="ldk-selectbox-trigger"
         disabled={disabled}
-        title={title}
+        {...(title ? { [HINT_ATTR]: title } : null)}
         onClick={() => setOpen((v) => !v)}
       >
         <span className="ldk-selectbox-label">

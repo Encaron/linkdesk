@@ -312,7 +312,7 @@ export default function GroupTabBar({ groupId, tabs, activeTabId, draggingId, dr
               <div
                 data-tab-id={tab.id}
                 className={`ldk-group-tab-item${isActive ? " active" : ""}${isDragging ? " dragging" : ""}${!tab.pinned ? " preview" : ""}`}
-                title={tab.sourceId ?? (tab.pinned ? tab.title : `${tab.title} — ${t("双击固定")}`)}
+                data-hint={tab.sourceId ?? (tab.pinned ? tab.title : `${tab.title} — ${t("双击固定")}`)} data-hint-delay="0"
                 onClick={() => {
                   tabAction({ action: "focusTab", tabId: tab.id });
                   // E5.7 fix（2026-08-16）：点击标签 → 该编辑器获焦（VS Code 语义）。
@@ -354,7 +354,7 @@ export default function GroupTabBar({ groupId, tabs, activeTabId, draggingId, dr
                   <button
                     className="ldk-group-tab-close"
                     onClick={(e) => handleClose(tab, e)}
-                    title={t("关闭")}
+                    data-hint={t("关闭")}
                     aria-label={t("关闭")}
                   >
                     <span className="codicon codicon-close" />
@@ -402,7 +402,7 @@ export default function GroupTabBar({ groupId, tabs, activeTabId, draggingId, dr
               tabAction({ action: "createTab" });
             }
           }}
-          title={t("新建标签页")}
+          data-hint={t("新建标签页")}
           aria-label={t("新建标签页")}
         >
           +

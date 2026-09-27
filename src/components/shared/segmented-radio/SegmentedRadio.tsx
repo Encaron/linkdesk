@@ -55,7 +55,7 @@ function SegmentedRadio({ options, value, onChange, ariaLabel }: SegmentedRadioP
             aria-checked={selected}
             tabIndex={selected ? 0 : -1}
             className={`ldk-segmented-radio__option${selected ? " is-selected" : ""}`}
-            title={opt.title ?? opt.label}
+            data-hint={opt.title ?? opt.label}
             onClick={() => onChange(opt.value)}
             onKeyDown={(e) => handleKeyDown(e, i)}
           >

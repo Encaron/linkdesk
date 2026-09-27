@@ -52,7 +52,7 @@ describe("ViewTitleActions（E5.8#36.5 视图动作区统一渲染器）", () =>
       { type: "icon", id: "clear", command: "demo.clear", icon: "codicon-clear-all", title: "清空输出" },
     ];
     render(<ViewTitleActions actions={actions} />);
-    fireEvent.click(screen.getByTitle("清空输出"));
+    fireEvent.click(screen.getByLabelText("清空输出"));
     expect(mockExecuteCommand).toHaveBeenCalledWith("demo.clear");
   });
 
@@ -61,7 +61,7 @@ describe("ViewTitleActions（E5.8#36.5 视图动作区统一渲染器）", () =>
       { type: "icon", id: "add", command: "demo.add", icon: "codicon-add", title: "添加", args: { level: "info" } },
     ];
     render(<ViewTitleActions actions={actions} />);
-    fireEvent.click(screen.getByTitle("添加"));
+    fireEvent.click(screen.getByLabelText("添加"));
     expect(mockExecuteCommand).toHaveBeenCalledWith("demo.add", { level: "info" });
   });
 
@@ -101,7 +101,7 @@ describe("ViewTitleActions（E5.8#36.5 视图动作区统一渲染器）", () =>
     ];
     render(<ViewTitleActions actions={actions} />);
     // 主按钮执行默认
-    fireEvent.click(screen.getByTitle("新建"));
+    fireEvent.click(screen.getByLabelText("新建"));
     expect(mockExecuteCommand).toHaveBeenCalledWith("demo.new");
     // chevron 展开备选
     fireEvent.click(screen.getByRole("button", { name: "更多操作" }));
@@ -120,7 +120,7 @@ describe("ViewTitleActions（E5.8#36.5 视图动作区统一渲染器）", () =>
       },
     ];
     render(<ViewTitleActions actions={actions} />);
-    fireEvent.click(screen.getByTitle("配置"));
+    fireEvent.click(screen.getByLabelText("配置"));
     expect(mockExecuteCommand).toHaveBeenCalledWith("demo.cfg");
   });
 

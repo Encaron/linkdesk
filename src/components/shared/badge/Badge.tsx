@@ -6,6 +6,7 @@
  *   消费方：marketplace 详情「内置」chip（mpd-badge-core 收编，E6#30.14b）。
  */
 import type { ReactNode } from "react";
+import { HINT_ATTR, HINT_DELAY_ATTR } from "../hint-tip/hintAttrs";
 import "./Badge.css";
 
 interface BadgeProps {
@@ -15,8 +16,11 @@ interface BadgeProps {
 }
 
 function Badge({ children, title }: BadgeProps) {
+  // 徽标上的 hint 一律是**揭示类**（文案 = 被截断的完整值）⇒ 延时归零，不等那 120ms（写法规约 §13 纪律一）。
+  // 属性名走 `hintAttrs` 单一真相源——⛔ 别在这里写 "data-hint" 字面量。
+  const hint = title ? { [HINT_ATTR]: title, [HINT_DELAY_ATTR]: "0" } : null;
   return (
-    <span className="ldk-badge" title={title}>
+    <span className="ldk-badge" {...hint}>
       {children}
     </span>
   );

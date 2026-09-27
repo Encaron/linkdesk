@@ -304,7 +304,7 @@ export default function ColorPicker({ open, value, onChange, onClose, presets, a
                 key={c}
                 className="ldk-colorpicker-preset"
                 style={{ background: c }}
-                title={c}
+                data-hint={c} data-hint-delay="0"
                 onClick={() => {
                   const next = hexToHsv(c);
                   hsvRef.current = next;

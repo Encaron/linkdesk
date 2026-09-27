@@ -136,7 +136,7 @@ export default function PanelZone({ panel }: PanelZoneProps) {
               onClick={toggleSwitcher}
               aria-expanded={switcherOpen}
               aria-haspopup="menu"
-              title={switcherLabel}
+              data-hint={switcherLabel}
             >
               <span className="ldk-panel-switcher-label">{switcherLabel}</span>
               <span className="ldk-panel-switcher-chev" aria-hidden="true">⌄</span>
@@ -148,7 +148,7 @@ export default function PanelZone({ panel }: PanelZoneProps) {
               <div
                 key={v.id}
                 className={`ldk-panel-tab${v.id === activeViewId ? " active" : ""}`}
-                title={v.title}
+                data-hint={v.title} data-hint-delay="0"
                 onClick={() => {
                   // #63.7 App.tsx 消费——setPanelActiveViewId → usePoolSync 重推
                   window.linkdesk?.events?.emit("panel:viewSelected", v.id);
@@ -167,7 +167,7 @@ export default function PanelZone({ panel }: PanelZoneProps) {
           {panel.detachable && (
             <button
               className="ldk-panel-tab-detach"
-              title={panel.detachTooltip}
+              data-hint={panel.detachTooltip}
               aria-label={panel.detachTooltip}
               onClick={() => {
                 // E5.7#97：events.emit 载荷参数 required——无载荷信号显式传 undefined（wire 契约对齐）
@@ -181,7 +181,7 @@ export default function PanelZone({ panel }: PanelZoneProps) {
               tooltip 由壳推（panel.createTooltip——显示文本铁律，池零自产文本） */}
           <button
             className="ldk-panel-tab-create"
-            title={panel.createTooltip}
+            data-hint={panel.createTooltip}
             aria-label={panel.createTooltip}
             onClick={() => {
               // E5.7#97：events.emit 载荷参数 required——无载荷信号显式传 undefined（wire 契约对齐）

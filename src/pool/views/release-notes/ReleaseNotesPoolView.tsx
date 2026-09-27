@@ -165,7 +165,7 @@ function EmptyFrame({ listUrl }: { listUrl?: string }) {
               <button
                 type="button"
                 className="ldk-rn-btn"
-                title={t("忽略缓存，重新获取版本列表")}
+                data-hint={t("忽略缓存，重新获取版本列表")}
                 onClick={() => executePoolCommand("update.releaseNotesRefresh")}
               >
                 <RefreshCw size={13} className="ldk-rn-refresh-icon" aria-hidden="true" />
@@ -211,7 +211,7 @@ function ContentFrame({ data }: { data: Extract<PoolReleaseNotesData, { state: "
           <button
             type="button"
             className="ldk-rn-ghost-btn ldk-rn-refresh"
-            title={t("忽略缓存，重新获取版本列表")}
+            data-hint={t("忽略缓存，重新获取版本列表")}
             disabled={data.refreshing === true}
             aria-busy={data.refreshing === true ? "true" : undefined}
             onClick={() => executePoolCommand("update.releaseNotesRefresh")}

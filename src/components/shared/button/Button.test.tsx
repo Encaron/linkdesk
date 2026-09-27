@@ -30,9 +30,25 @@ describe("Button", () => {
     expect(onClick).not.toHaveBeenCalled();
   });
 
-  it("title 透传（tooltip）", () => {
+  it("title 透传为 data-hint（⛔ 不出原生 title=——那是 Chromium 小方框）", () => {
     const { getByRole } = render(<Button title="Demo title">Alpha</Button>);
-    expect(getByRole("button").getAttribute("title")).toBe("Demo title");
+    const btn = getByRole("button");
+    expect(btn.getAttribute("data-hint")).toBe("Demo title");
+    expect(btn.getAttribute("title")).toBeNull();
+  });
+
+  it("有可见文字 ⇒ 不让 aria-label 盖掉无障碍名（WCAG 2.5.3）", () => {
+    const { getByRole } = render(<Button title="Demo title">Alpha</Button>);
+    expect(getByRole("button").getAttribute("aria-label")).toBeNull();
+  });
+
+  it("图标型（无文字子代）⇒ 提示文案兼当无障碍名", () => {
+    const { getByRole } = render(
+      <Button title="Demo title">
+        <span className="codicon codicon-add" />
+      </Button>,
+    );
+    expect(getByRole("button").getAttribute("aria-label")).toBe("Demo title");
   });
 
   it("type 默认 button，可覆盖", () => {

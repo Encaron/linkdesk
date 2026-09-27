@@ -139,7 +139,7 @@ export default function WelcomePoolView({ isActive: _isActive, creatableViews }:
                   key={`${f.path}-${i}`}
                   className="ldk-welcome-recent-item"
                   onClick={() => handleRecentFolderClick(f.path)}
-                  title={f.path}
+                  data-hint={f.path} data-hint-delay="0"
                 >
                   <Folder size={16} className="ldk-welcome-recent-icon" />
                   <span className="ldk-welcome-recent-label">{f.name}</span>
