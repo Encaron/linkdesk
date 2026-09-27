@@ -1,13 +1,14 @@
 <!--
-  LinkDesk 正典品牌标——六边形 + 三节点（04「程序图标偏小与品牌标不一致」，2026-09-27 定源）。
+  LinkDesk 正典品牌标——实心六边形＋三白孔（04「程序图标」C 案定稿，2026-09-27 用户拍板）。
   单一真源：build/icon.ico（8 帧）与 public/assets/logo.svg（标题栏/关于页/BootMark 共用）
   均由 scripts/build-brand-icons.py 从本文件生成——改标 = 改本文件 + 跑脚本，禁止改导出物。
-  几何 = 欢迎页水印（WelcomePoolView.tsx）同款意象归一化：高占画布 ≈96%、宽 ≈92%（对齐 Telegram
-  量级，修复旧 ico 63%×73% 的「小一圈」；六边形高瘦比使宽维略低于高维——形状固有）。
+  几何：正六边形（点朝上）高占画布 94%（宽 ≈82%，√3/2 固有）；三个白孔＝原版 ico
+  （63%×73% 时代）的白孔位/孔径同比例放大——「蓝色填充大部分」观感 ＋「小一圈」修复兼得。
+  ⚠️ v0.2.19 已发布的 icon 为误取水印意象的线条版（未重切），本修正随 v0.2.20 发版。
 -->
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
-  <polygon points="128,12 239,70 239,186 128,244 17,186 17,70" fill="none" stroke="#0078d4" stroke-width="13" stroke-linejoin="round"/>
-  <circle cx="128" cy="72" r="13" fill="#0078d4"/>
-  <circle cx="72" cy="174" r="13" fill="#0078d4"/>
-  <circle cx="184" cy="174" r="13" fill="#0078d4"/>
+  <polygon points="128,8 233,68 233,188 128,248 23,188 23,68" fill="#0078d4"/>
+  <circle cx="128" cy="63" r="8" fill="#ffffff"/>
+  <circle cx="72" cy="163" r="8" fill="#ffffff"/>
+  <circle cx="182" cy="163" r="8" fill="#ffffff"/>
 </svg>
