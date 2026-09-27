@@ -42,6 +42,8 @@ function Combobox({ value, options, onChange, disabled, placeholder, title, clas
   const [text, setText] = useState(value);
   const [focusIdx, setFocusIdx] = useState(-1);
   const containerRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const arrowRef = useRef<HTMLSpanElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
   // 编辑中（聚焦）外部值变更不覆盖编辑缓冲；失焦后缓冲跟随外部值
   const focusedRef = useRef(false);
@@ -93,6 +95,50 @@ function Combobox({ value, options, onChange, disabled, placeholder, title, clas
     [value, onChange],
   );
 
+  /**
+   * 🔴 点击面归一——field 整块可点（2026-09-27 用户实机挑出「点击很受限、很难用」）。
+   *
+   * 改前**只有 `<input>` 自己的像素管用**，`<span>` 箭头与 field 的内边距/间隙全是死区：
+   * span 不可聚焦、field 也没有点击处理 ⇒ 点它们既不聚焦输入框、也不开下拉；更别扭的是
+   * **开着时点箭头会让输入框失焦**（原生：点不可聚焦元素 ⇒ 当前焦点元素 blur）⇒
+   * `onBlur → commit → setOpen(false)` ⇒ 「箭头只能关、不能开」——最像开关的东西反而打不开。
+   * 根因 = 当年复用了 SelectBox 的**视觉**（field + chevron + 共用下拉面板），却没搬它的
+   * **单一可点面**（SelectBox 的触发器整块是一个 `<button onClick={toggle}>`）。
+   *
+   * 改后：箭头 = 开关（**复用既有聚焦/失焦两条链**，不新增第二套开关状态）；其余死区 = 聚焦输入框。
+   * 失焦提交语义（防误触发重开端口）原样不动——关那条走的仍是 `blur → commit`。
+   */
+  const handleFieldMouseDown = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      const input = inputRef.current;
+      if (!input) return;
+
+      // ① 箭头 = 开关。preventDefault 阻断原生的「失焦」默认动作，改由本分支显式驱动
+      //    （否则会先失焦提交、再聚焦，一开一关打架）。
+      if (arrowRef.current?.contains(e.target as Node)) {
+        e.preventDefault();
+        if (open) {
+          setOpen(false);
+          // 失焦链顺带提交已输入文本（与「点外面」同语义），并让下次点击能重新聚焦
+          input.blur();
+        } else {
+          input.focus(); // 未聚焦 → onFocus 开下拉
+          setOpen(true); // Escape 后「已聚焦但已关」态下 onFocus 不再触发 ⇒ 补一次（幂等）
+        }
+        return;
+      }
+
+      // ② 输入框本身——走原生路径（拖动选字 / 点击定位光标不打断）
+      if (e.target === input) return;
+
+      // ③ field 的内边距 / 间隙（原死区）→ 聚焦输入框
+      e.preventDefault();
+      input.focus(); // 未聚焦 → onFocus 开下拉
+      setOpen(true); // 已聚焦但已被 Escape 关掉时 onFocus 不再触发 ⇒ 补一次（幂等）
+    },
+    [open],
+  );
+
   const handleKey = useCallback(
     (e: React.KeyboardEvent) => {
       switch (e.key) {
@@ -126,9 +172,10 @@ function Combobox({ value, options, onChange, disabled, placeholder, title, clas
       className={`ldk-combobox ${open ? "ldk-selectbox-open" : ""} ${disabled ? "ldk-selectbox-disabled" : ""} ${className ?? ""}`}
       ref={containerRef}
     >
-      <div className="ldk-combobox-field">
+      <div className="ldk-combobox-field" onMouseDown={handleFieldMouseDown}>
         <input
           type="text"
+          ref={inputRef}
           inputMode={inputMode}
           className="ldk-combobox-input"
           value={text}
@@ -141,7 +188,13 @@ function Combobox({ value, options, onChange, disabled, placeholder, title, clas
           onChange={(e) => { setText(e.target.value); setOpen(true); setFocusIdx(-1); }}
           onKeyDown={handleKey}
         />
-        <span className={`codicon codicon-chevron-down ldk-selectbox-arrow ${open ? "ldk-selectbox-arrow-up" : ""}`} />
+        {/* 纯装饰字形——键盘用户的开关是 ↑/↓/Enter/Escape（见 handleKey），故不进可访问树；
+            鼠标用户的开关 = 本 span（handleFieldMouseDown ①），光标见 Combobox.css */}
+        <span
+          ref={arrowRef}
+          aria-hidden="true"
+          className={`codicon codicon-chevron-down ldk-selectbox-arrow ${open ? "ldk-selectbox-arrow-up" : ""}`}
+        />
       </div>
 
       {/* 下拉面板——骨架共用 SelectBoxDropdown（定位 + Portal + 列表，E5.8#30.17 归一）；视觉复用 SelectBox 类 */}

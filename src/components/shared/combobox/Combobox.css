@@ -32,6 +32,20 @@
   border-color: var(--accent);
 }
 
+/* 🔴 2026-09-27：箭头是**下拉开关**（点击切换，见 Combobox.tsx handleFieldMouseDown ①）——
+   光标显示可点，与 field 的 text 光标区分（改前它继承 cursor:text，长着一副「只能读」的样子）。
+   作用域限定在本组件：SelectBox 里同一个类在 <button> 内（那里已经是 pointer），不受影响。 */
+.ldk-combobox .ldk-selectbox-arrow {
+  cursor: pointer;
+}
+
+/* 键盘焦点指示——input 自身 `outline: none`，聚焦靠 field 边框变 accent 表达。
+   改前只有 `.ldk-selectbox-open` 一条 ⇒ Escape 关掉下拉但焦点仍在输入框时边框退回常态
+   （有焦点、看不出来）。:focus-within 补上这个盲区。 */
+.ldk-combobox-field:focus-within {
+  border-color: var(--accent);
+}
+
 .ldk-combobox-input {
   flex: 1;
   min-width: 0;
