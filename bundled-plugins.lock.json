@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "syncedAt": "2026-09-27T17:04:46.016Z",
+  "syncedAt": "2026-09-27T18:12:56.315Z",
   "note": "出厂种子的账（E6#101）。`seed:true` = 随包出厂（bootstrap 集，判据「断网零插件时用户能不能自救」）；`seed:false` = 纯市场（只登记，不随包）。谁随包是**数据**不是代码（硬约束 10）。刷新：npm run sync:bundled -- --latest；校验：npm run sync:bundled -- --offline。",
   "plugins": [
     {
@@ -38,9 +38,9 @@
     {
       "id": "marketplace",
       "repo": "Encaron/linkdesk-plugin-marketplace",
-      "version": "1.0.45",
-      "downloadUrl": "https://github.com/Encaron/linkdesk-plugin-marketplace/releases/download/v1.0.45/marketplace.linkdesk-plugin",
-      "fingerprint": "CHANGELOG.md:41f96bcb292260f986ee8dd6c53a776d7bc973a86cef8267bb74fe7aeff4b08d\nLICENSE:66ade75576a2f04b7f1a11340b8141cf42a26d3a64bc441e3822e193291d3051\nREADME.md:0dc9eb3fc0cf6058b6044bfbe649038e2775a4b882c3a98926cf5aa9ae9ad583\ni18n/en.json:ccbeaba1e91cb8798842dab9ce7cdcfe0a2a8a08bdce406cdff9c007c0756bb7\ni18n/zh.json:2492ef3dd20e641648da3a03ccf12e0932ef5717f9368a750cefe2c98ef48e63\nindex.bundle.css:d0b02ce5fac0d31c0575b5394791ee14b0b39132769767bb5d605b6caa552a8d\nindex.bundle.js:36370322052327acf165a63c843b48144d4ea9487630002e6630e01587286a7b\nplugin.json:501a09f10a790d712774d5b1bbb10a1da7c56ecc71f816be80347cfb1dab38b3\nresources/cover.svg:427d096fbf8835262134ce3bb94e09dd626d8f37c7414290794bfa9d6a954239\nresources/icon-brand.svg:90a5f646f2200a9e1ba8c281cf2b1816cf07b4b4f2c067f96cc7c3a02b63ed6b\nresources/icon.svg:d69ffbb60b33ff0d9b47ae4560ce487dcd042288f18f5aec401108a795939274\nviews/BuiltinListView.bundle.js:b59caa33aeb52d9545bc7da746b24bdeb296ce1157f11ea415f75c260252bb25\nviews/ConfirmInstall.bundle.js:89df51b7b9dd8cadaa4f140a149cd53cc6217b0711dff06a33642763cca0f3f1\nviews/DetailView.bundle.js:0dd6669eb024b31a2a956c09d9b06fa422da994fb4b0c317138831bc55ee12d1\nviews/DisabledListView.bundle.js:38d2c57d564f7ed865b87f8c37ec75bfe941d35833989bf2318397fad37ff286\nviews/ExploreView.bundle.js:a4e1b058b9ea35463bd035888929dcb59fb901ad5acd8bf3cd24ca9cb2d4b79b\nviews/InstalledListView.bundle.js:3f9d056902d904c91a0a5fe6a01d8d04aefd1ee350234834cc1adc8acbefe3fb\nviews/SearchView.bundle.js:3072cdf0a60e31d2c7bb201043f32f7b03284c50bf85724e78492df45cd6e1b6",
+      "version": "1.1.0",
+      "downloadUrl": "https://github.com/Encaron/linkdesk-plugin-marketplace/releases/download/v1.1.0/marketplace.linkdesk-plugin",
+      "fingerprint": "CHANGELOG.md:5582d24cd671d6429adb6aabe385d85d4c7e5dd0588e67fb91a12a5e7bc077df\nLICENSE:66ade75576a2f04b7f1a11340b8141cf42a26d3a64bc441e3822e193291d3051\nREADME.md:0dc9eb3fc0cf6058b6044bfbe649038e2775a4b882c3a98926cf5aa9ae9ad583\ni18n/en.json:bcc172edaf8908fbfc5a0841fef3e180688ba3deba7d0c068a72a0de9d67aa49\ni18n/zh.json:2492ef3dd20e641648da3a03ccf12e0932ef5717f9368a750cefe2c98ef48e63\nindex.bundle.css:0d7b2901e3e106ac30a527ff16a9ca55113adf3c7ad20142a5862a97a2bc6f8c\nindex.bundle.js:0b91c12ab949b8057c3df1e35c420077396f6ac173098a90fc7889533f378fab\nplugin.json:9d14cde98797f1db887869dda3ac58d43e905189a2de0d43e33f9becc0460c1e\nresources/cover.svg:427d096fbf8835262134ce3bb94e09dd626d8f37c7414290794bfa9d6a954239\nresources/icon-brand.svg:90a5f646f2200a9e1ba8c281cf2b1816cf07b4b4f2c067f96cc7c3a02b63ed6b\nresources/icon.svg:d69ffbb60b33ff0d9b47ae4560ce487dcd042288f18f5aec401108a795939274\nviews/BuiltinListView.bundle.js:97c30d15d2cab0ea7166c531634c0f8342bde6b89da4cccdf25728a68f124375\nviews/ConfirmInstall.bundle.js:89df51b7b9dd8cadaa4f140a149cd53cc6217b0711dff06a33642763cca0f3f1\nviews/DetailView.bundle.js:4d2e483612fe38f51d4a647f3f7b59fa7ebdac23a21301428d97ef3411c27b46\nviews/DisabledListView.bundle.js:398f0341229824e234064e61b50f857793546a2c8a62dfe740bd16849d5c437a\nviews/ExploreView.bundle.js:e42555f177a2b593c3ba41e5215e1fa4b65dd1d2eecbca47c231828fe62bbc8f\nviews/InstalledListView.bundle.js:e95332604444c0ae096e2d893ab08dd7445d53980a22a6176d6f63789a987a5b\nviews/SearchView.bundle.js:7fc5980d8f66ed7409b37a14102e6e626198887ca3a4d9bc3a71de7279420b1c",
       "seed": true
     },
     {
