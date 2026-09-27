@@ -45,7 +45,7 @@
  *                                   linkdesk-mock.generated.ts） + README.md（dist 不入库=tsc(src) 派生物，src 为权威面）
  *   create-linkdesk-plugin      → index.js + template/** + README.md（E6#95e 纳入）
  *                                 🔴 index.js 必须进面——它是 CLI 文案/占位符表；模板改了它常一起漂
- *   @linkdesk/ui                → src/**（barrel 导出面）+ README.md + src/components/shared/<进包组件 22 目录>/**
+ *   @linkdesk/ui                → src/**（barrel 导出面）+ README.md + src/components/shared/<进包组件 24 目录>/**
  *                                 （🆕 E6#110 接上产物真源：真进包内容住壳仓 shared/**，prepack 现场编译——
  *                                   只登记 barrel = 改共享组件永不亮灯，1.9 轮实证 ui 一次没亮）
  *
@@ -131,6 +131,10 @@ const PACKAGES = [
     //   且 expandSurface 无排除语法 ⇒ 逐目录显式列；漏登记的目录由下方覆盖面断言报红兜住。
     // 🔴 22 目录 = barrel 引用集（2026-09-19 重测口径；`collectUiSharedDirs()` 可随时复核）。
     //   新增共享组件 = barrel + 这份名单同笔各加一行，漏一边断言红。
+    //   🆕 2026-09-27：24 目录——04「悬停提示系统」件 1 加 hint-tip（barrel 导出 `HintTip`）＋
+    //   keybinding-hint（**不在 barrel 但随 HintTip 进包**——键帽件是被 HintTip/ContextMenu 共同消费的
+    //   产物真源，它变了包内容就变了，不登记 = 静默漏发；AssertionFn 只查"barrel 有、surface 无"，
+    //   surface 多登记一个真进包目录不触发误报）。
     surface: [
       "packages/linkdesk-ui/src/**",
       "packages/linkdesk-ui/README.md",
@@ -144,8 +148,10 @@ const PACKAGES = [
       "src/components/shared/font-family-select/**",
       "src/components/shared/form-row/**",
       "src/components/shared/hint-card/**",
+      "src/components/shared/hint-tip/**",
       "src/components/shared/hooks/**",
       "src/components/shared/inline-input/**",
+      "src/components/shared/keybinding-hint/**",
       "src/components/shared/markdown-view/**",
       "src/components/shared/number-input/**",
       "src/components/shared/overlay-portal/**",

@@ -41,6 +41,7 @@ import { buildTitleBarMenuGroups, buildTitleBarSlots, MENU_STYLE_MENUBAR_VISIBLE
 import { buildIconBar } from "./usePoolSync/iconbar";
 import { buildStatusBarItems } from "./usePoolSync/statusbar";
 import { buildNotif } from "./usePoolSync/notif";
+import { buildCommandHints } from "./usePoolSync/hints"; // 04「悬停提示系统」件 1：命令表（提示条自动补文案/快捷键）
 import { useSyncSubscriptions } from "./usePoolSync/useSubscriptions";
 import { assembleWindowLayout, type WindowLayoutContext } from "./usePoolSync/windowLayout";
 
@@ -311,6 +312,11 @@ export function usePoolSync({ windows, sidebarView, isSidebarVisible, panelActiv
       releaseNotes,
       // E6#57.14：关于载荷——同款（serializeGroups 盖章到那一个壳视图 tab 上）
       about,
+      // 04「悬停提示系统」件 1：提示条总开关 + 命令表（窗口无关，恒推——assembleWindowLayout 不吃 zones）。
+      // 缺省开：读不到配置（未初始化/键没注册）时不该变成"全软件没提示"。
+      hintEnabled: getConfigurationValue<boolean>("app.hint.enabled") ?? true,
+      // 命令表一次算好（buildCommandHints——与菜单序列化**同源同尺**，见该文件头注释）
+      commands: buildCommandHints(t),
       t,
     };
 

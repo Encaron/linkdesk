@@ -124,6 +124,16 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
             enum: ["titlebar", "hamburger", "both"],
             description: t("菜单栏样式——标题栏 / 汉堡菜单 / 两者都显示"),
           },
+          // 04「悬停提示系统」件 1：提示条**总开关**（用户拍板 ④「只给总开关」——不给单条粒度开关）。
+          // 关掉 = 池侧渲染器不挂委托监听、全软件不出提示条（`usePoolSync` 推 `hintEnabled`，
+          // 配置变化订阅在同一批——拨一下当场生效，不必重启）。
+          // 缺省开：提示是纯增强（挡不住任何操作），默认给上才对得起「用户不知道图标/快捷键是什么」。
+          "app.hint.enabled": {
+            type: "boolean",
+            group: t("界面"),
+            default: true,
+            description: t("悬停提示——鼠标停在图标/按钮上时显示名称与快捷键"),
+          },
           // ── E6#45f：OS 集成开关（右键菜单 / 文件类型关联）──
           // 🔴 **真相源是注册表**（HKCU；安装器 installer.nsh 与软件内写的是同一批键）——
           //    这三项只是 UI 镜像：启动时按注册表现状回写（见 post-init 同步），toggle 的 onApply 写注册表。

@@ -102,7 +102,7 @@ The table below is **reconciled name by name** against it (gate `scripts/check-r
 | Host pseudo plugin id | `app`、`appearance` | The host registers as a "plugin" too (shell core / appearance; the former "update" group merged into General on 2026-09-26 — `update` is retired & logged) ⇒ these ids read as the host itself |
 | Host config key | `app.schemaVersion` | The config **internal version marker** (invisible in the settings UI, never registered) — taking it derails migration bookkeeping and the user's data looks lost |
 | Host config key | `app.theme`、`app.themeColor`、`app.themeColorMode`、`app.iconTheme` | Theme and colours — taking it overwrites the theme the user is currently using |
-| Host config key | `app.appearanceMode`、`app.accentColor`、`app.accentMode`、`app.accentSource`、`app.menuStyle` | Light/dark mode, accent colour, menu style |
+| Host config key | `app.appearanceMode`、`app.accentColor`、`app.accentMode`、`app.accentSource`、`app.menuStyle`、`app.hint.enabled` | Light/dark mode, accent colour, menu style, hover hints |
 | Host config key | `app.backgroundImage`、`app.backgroundMask`、`app.backgroundOpacity`、`app.zoneBackgroundImage` | Background and per-zone backgrounds |
 | Host config key | `app.glassBlur`、`app.glassOpacity`、`app.glassSaturate`、`app.glassTint` | The four glass parameters |
 | Host config key | `app.surfaceRadius`、`app.zoneRadius`、`app.zoneRadiusScale` | Corner radii |

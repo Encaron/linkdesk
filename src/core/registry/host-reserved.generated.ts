@@ -40,6 +40,7 @@ export const HOST_RESERVED_CONFIG_KEYS: readonly string[] = [
   "app.glassOpacity",
   "app.glassSaturate",
   "app.glassTint",
+  "app.hint.enabled",
   "app.iconTheme",
   "app.language",
   "app.menuStyle",

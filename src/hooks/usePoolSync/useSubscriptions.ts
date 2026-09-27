@@ -87,9 +87,11 @@ export function useSyncSubscriptions({
   // 其他配置变化不 bump（避免无关重推）。
   // E6#69g：app.iconTheme 也进重推集——文件标签图标随图标主题切换实时重算（windowLayout 序列化读
   //   app.iconTheme → IconRegistry.getMappings 现场解析；图标栏/树行不受影响，池自收 iconTheme:changed）。
+  // 04「悬停提示系统」件 1：app.hint.enabled（提示条总开关）同款——改动即重推，池侧 `hintEnabled` 翻转，
+  //   委托监听随之挂/卸（本开关**不需要**重启，配置面板拨一下当场生效）。
   useEffect(() => {
     return onDidChangeConfiguration((key) => {
-      if (key === "app.menuStyle" || key === "app.iconTheme" || isStatusBarConfigKey(key))
+      if (key === "app.menuStyle" || key === "app.iconTheme" || key === "app.hint.enabled" || isStatusBarConfigKey(key))
         setLayoutVersion((v) => v + 1);
     });
   }, [setLayoutVersion]);

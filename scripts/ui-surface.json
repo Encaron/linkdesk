@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-18T20:50:39.277Z",
+  "generatedAt": "2026-09-27T06:38:23.182Z",
   "components": [
     "Badge",
     "Button",
@@ -12,6 +12,7 @@
     "FontFamilySelect",
     "FormRow",
     "HintCard",
+    "HintTip",
     "InlineInput",
     "MarkdownView",
     "NumberInput",
@@ -37,10 +38,11 @@
   ],
   "types": [
     "ContextMenuProps",
+    "HintTipProps",
     "IconDescriptor",
     "InlineInputHandle",
     "ManifestIconShape",
     "ResolvedIcon"
   ],
-  "count": 34
+  "count": 36
 }

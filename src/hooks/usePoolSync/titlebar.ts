@@ -9,6 +9,7 @@ import { getMenuItems, MENU_SLOTS, getTitleBarContributions, type MenuItem } fro
 import { getCommand } from "../../core/registry/commands/CommandRegistry"; // E5.7#5：菜单项 label 回退 command.title
 import { getKeybindings } from "../../core/registry/commands/KeybindingRegistry"; // E5.7#6：汉堡菜单快捷键显示
 import { ContextKeyService } from "../../core/registry/commands/ContextKeyService"; // E5.7#5：槽位按钮 when 过滤 + context 变化重推
+import { formatKeyLabel } from "../../core/utils/formatKeyLabel"; // 04「悬停提示系统」件 1：快捷键标签**单权威**（提示条键帽同源）
 
 /** E5.7#1：app.menuStyle 枚举 → 菜单栏可见——titleBar 布局（Phase 2 #5 TitleBarZone 消费） */
 export const MENU_STYLE_MENUBAR_VISIBLE: Record<string, boolean> = {
@@ -31,19 +32,9 @@ function whenMatch(item: MenuItem): boolean {
   return !item.when || ContextKeyService.matches(item.when);
 }
 
-/** 壳 MenuRenderer.formatKeyLabel 同款——chord: "ctrl+k ctrl+t" → "Ctrl+K Ctrl+T" */
-function formatKeyLabel(key: string): string {
-  return key
-    .split(" ")
-    .map((chord) =>
-      chord
-        .replace(/ctrl\+/i, "Ctrl+")
-        .replace(/alt\+/i, "Alt+")
-        .replace(/shift\+/i, "Shift+")
-        .replace(/\+\w/g, (m) => m.toUpperCase())
-    )
-    .join(" ");
-}
+// 快捷键标签格式化（`"ctrl+k ctrl+t"` → `"Ctrl+K Ctrl+T"`）——04「悬停提示系统」件 1 抽到
+// core/utils/formatKeyLabel.ts **单权威**：提示条的键帽显示与菜单 shortcut 显示必须是同一份实现
+// （原先此处有个自称「壳 MenuRenderer 同款」的本地副本——两把尺子，见该文件头注释）。
 
 /** E5.8#148：zone 显隐勾选菜单的可见性上下文——usePoolSync 状态传入（真相源 = App state，
  *  与命令 handler emit sidebar:toggle/panel:toggle 同一入口链），顶部/汉堡共用。 */

@@ -62,6 +62,10 @@ function makeCtx(): WindowLayoutContext {
     creatableViews: [{ pluginId: "demo-plugin", label: "Demo View" }],
     // E5.8#45：面板已脱出（存在 drift 窗）→ true；测试各场景显式覆盖
     panelDetached: false,
+    // 04「悬停提示系统」件 1：提示条两字段（窗口无关、恒推）——命令表给一条带快捷键的样例，
+    // 「脱出窗也推提示数据」的断言据此（见下方用例）
+    hintEnabled: true,
+    commands: { "demo.cmd": { title: "演示命令", keybinding: "Ctrl+K Ctrl+T" } },
     t,
   };
 }
@@ -151,6 +155,17 @@ describe("assembleWindowLayout 按窗口模式策略组装", () => {
     ctx.panelDetached = true;
     expect(assembleWindowLayout(mainWin, ctx).panel).toBeUndefined();
     expect(assembleWindowLayout(driftWin, ctx).panel).toBeDefined();
+  });
+
+  // 04「悬停提示系统」件 1：提示条数据**不吃 zones 策略**——它不是 zone，而是一层挂在文档上的行为。
+  // 每种窗口模式自己的区域（脱出窗的标签栏/漂移窗的面板切换器）一样有提示，缺了就局部失效。
+  it("提示条两字段每窗都推（组件/命令表/开关与 zone 策略无关）——main/detached/drift 三模式同值", () => {
+    const ctx = makeCtx();
+    for (const mode of ["main", "detached", "drift"] as const) {
+      const layout = assembleWindowLayout(makeWindow({ windowId: `w-${mode}`, mode }), ctx);
+      expect(layout.hintEnabled).toBe(true);
+      expect(layout.commands).toEqual({ "demo.cmd": { title: "演示命令", keybinding: "Ctrl+K Ctrl+T" } });
+    }
   });
 });
 

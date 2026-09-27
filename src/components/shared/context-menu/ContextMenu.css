@@ -88,20 +88,13 @@
   color: var(--accent);
 }
 
-/* 快捷键标注——右对齐，颜色 muted */
+/* 快捷键槽位——只做本菜单的**落位**（右对齐、不参与收缩、与标签留间距）。
+   ⚠️ 04「悬停提示系统」件 1（拍板③）：这里原先是快捷键的**长相**（等宽字体 + opacity .6）——
+   长相已统一到键帽件 `src/components/shared/keybinding-hint/`（与命令面板同款，全软件一份），
+   本类自 2026-09-27 起**只管布局**：改字号/颜色/字体请改键帽件，⛔ 不要加回这里。 */
 .ldk-ctx-item-shortcut {
   flex-shrink: 0;
   margin-left: 12px;
-  font-size: var(--font-size-xs); /* E5.8 Phase 12 #170：shortcut 11→xs */
-  opacity: 0.6;
-  font-family: var(--font-mono);
-  letter-spacing: 0.2px;
-}
-
-.ldk-ctx-item:hover .ldk-ctx-item-shortcut,
-.ldk-ctx-item.focused .ldk-ctx-item-shortcut {
-  opacity: 0.9;
-  color: var(--text-secondary);
 }
 
 /* E5.8#37.7：当前项 √——固定 16px 宽占位（选中态 ✓ / 非选中态空）——标签行不错位。
@@ -146,10 +139,4 @@
   background: var(--tab-hover-bg);
   color: var(--danger);
   box-shadow: inset 2px 0 0 var(--danger);
-}
-
-.ldk-ctx-item-danger:hover .ldk-ctx-item-shortcut,
-.ldk-ctx-item-danger.focused .ldk-ctx-item-shortcut {
-  opacity: 0.9;
-  color: var(--text-secondary);
 }

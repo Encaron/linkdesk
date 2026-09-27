@@ -24,6 +24,7 @@ import type {
   IconBarIcon,
   PoolReleaseNotesData,
   PoolAboutData,
+  PoolCommandHints,
 } from "../../core/types/pool/poolLayout";
 import type { WindowShellState, PoolZone } from "../../App/windows";
 import { WINDOW_MODE_STRATEGIES } from "../../App/windows";
@@ -68,6 +69,10 @@ export interface WindowLayoutContext {
    * 同理 `tabBehavior.singleton` ⇒ 一窗最多一个，不按 tab 存一份。
    */
   about?: PoolAboutData;
+  /** 04「悬停提示系统」件 1：提示条总开关镜像（`app.hint.enabled`）——窗口无关，恒推 */
+  hintEnabled: boolean;
+  /** 04「悬停提示系统」件 1：命令表——窗口无关，恒推（见 PoolCommandHints 注释：与菜单同源） */
+  commands: PoolCommandHints;
   t: TFunction;
 }
 
@@ -217,5 +222,10 @@ export function assembleWindowLayout(win: WindowShellState, ctx: WindowLayoutCon
     // 漂移窗恒推 panel（I9-13——漂移窗 = 面板专用窗）
     panel: include("panel") && !(win.mode === "main" && ctx.panelDetached) ? ctx.panel : undefined,
     statusBar: include("statusBar") ? ctx.statusBar : undefined,
+    // 04「悬停提示系统」件 1：提示条开关 + 命令表**不吃 zones 策略**——它们不是 zone，
+    // 而是一层挂在文档上的行为（脱出窗/漂移窗里的图标栏、标签栏、面板切换器一样有 title 提示）。
+    // 只随 windowLayout 无 zone 走 ⇒ 每窗都推同一份。
+    hintEnabled: ctx.hintEnabled,
+    commands: ctx.commands,
   };
 }

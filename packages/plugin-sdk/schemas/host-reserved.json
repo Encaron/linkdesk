@@ -24,6 +24,7 @@
     "app.glassOpacity",
     "app.glassSaturate",
     "app.glassTint",
+    "app.hint.enabled",
     "app.iconTheme",
     "app.language",
     "app.menuStyle",

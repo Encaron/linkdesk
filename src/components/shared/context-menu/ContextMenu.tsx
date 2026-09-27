@@ -26,6 +26,7 @@ import { createPortal } from "react-dom";
 import type { MenuItemDescriptor } from "@linkdesk/contracts"; // E6#54a：出包类型重定向（@src 别名包内不可解析）
 import OverlayPortal, { getScrimTarget } from "../overlay-portal/OverlayPortal";
 import { isTopmostOverlayFrom } from "../overlay-portal/overlayLayer";
+import KeybindingHint from "../keybinding-hint/KeybindingHint"; // 04「悬停提示系统」件 1（拍板③）：快捷键长相统一到键帽
 import "./ContextMenu.css";
 
 /* ── E6#54b：浮层层级包内携带（解耦审计 §三 项 2）──
@@ -402,7 +403,10 @@ export default function ContextMenu({ menuId, anchor, context, onClose, resolveC
               <span className="ldk-ctx-item-check" aria-hidden="true">{item.checked ? "✓" : ""}</span>
               <span className="ldk-ctx-item-label">{item.label}</span>
               {hasKids && <span className="ctx-item-chevron">›</span>}
-              {item.shortcut && <span className="ldk-ctx-item-shortcut">{item.shortcut}</span>}
+              {/* 04「悬停提示系统」件 1（拍板③）：快捷键长相**统一到键帽**——本处原是一段等宽纯文本
+                  （`--font-mono` + `opacity:.6`），与命令面板的键帽是两种长相；现两处同吃 KeybindingHint。
+                  `className` 只做本菜单的布局落位（flex-shrink + 左间距），⛔ 外观全在键帽件里。 */}
+              {item.shortcut && <KeybindingHint label={item.shortcut} className="ldk-ctx-item-shortcut" />}
             </div>
           );
         })}
@@ -436,7 +440,8 @@ export default function ContextMenu({ menuId, anchor, context, onClose, resolveC
                 <span className="ldk-ctx-item-check" aria-hidden="true">{child.checked ? "✓" : ""}</span>
                 <span className="ldk-ctx-item-label">{child.label}</span>
                 {childHasKids && <span className="ctx-item-chevron">›</span>}
-                {child.shortcut && <span className="ldk-ctx-item-shortcut">{child.shortcut}</span>}
+                {/* 子面板同款（与顶层一致——键帽长相不分层级） */}
+                {child.shortcut && <KeybindingHint label={child.shortcut} className="ldk-ctx-item-shortcut" />}
               </div>
             );
           })}

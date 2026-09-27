@@ -2040,10 +2040,18 @@ export interface StatusBarLayout {
     notif: NotifLayout;
 }
 /**
- * PoolLayout v2——E5.7 唯一的 Pool 收到全量布局快照。
- * titleBar 必有（窗口 chrome——池恒渲染）；iconBar/sidebar/statusBar/panel/rightSidebar 可选——
- * 主池恒推全量，脱出窗（E5.8#43-2 窗口模式策略表）只推 titleBar+groups 子集（池按字段条件渲染，无空列/空条）。
+ * 04「悬停提示系统」件 1：命令表——`commandId → { title, keybinding }`，供 `data-hint-command` 自动补文案与快捷键。
+ *
+ * **必须与菜单同源**：菜单今天读的是 `usePoolSync/titlebar.ts` 的「注册表 + formatKeyLabel」，
+ * 提示条若另拉一份（池侧再查一次注册表）⇒ 同一命令在两处显示不同快捷键
+ * （memory `two-rulers-one-caliber`：同一判断实现两遍 = 假红让真红失效）。
+ * ⇒ 壳侧 `usePoolSync/hints.ts` 一次算好推下来，池**哑渲染**（显示文本铁律）。
+ * `keybinding` 是**壳已格式化**的串（`"Ctrl+K Ctrl+T"`）——池不 import `src/core/*`（Path B）。
  */
+export type PoolCommandHints = Record<string, {
+    title: string;
+    keybinding?: string;
+}>;
 export interface PoolLayout {
     version: 2;
     titleBar: TitleBarLayout;
@@ -2066,6 +2074,11 @@ export interface PoolLayout {
     panel?: PanelLayout;
     /** 状态栏——缺省 = 池不渲染该 zone（脱出窗子集；主池恒推） */
     statusBar?: StatusBarLayout;
+    /** 04「悬停提示系统」件 1：提示条总开关（`app.hint.enabled` 的镜像）。
+     *  缺省/undefined = **开**——脱出窗或未推送时不该「因为没这个字段」就全软件没提示。 */
+    hintEnabled?: boolean;
+    /** 04「悬停提示系统」件 1：命令表——`data-hint-command` 的自动补文案与快捷键来源。窗口无关 ⇒ 恒推。 */
+    commands?: PoolCommandHints;
 }
 /**
  * 池→壳侧栏动作 wire 契约——E5.7#97。

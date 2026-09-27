@@ -29,7 +29,7 @@
     --info: #58A6FF;   /* 语义：说明/锚点 */
     --warn: #D29922;   /* 语义：待拍板 */
     --page-hover: rgba(255, 255, 255, 0.06);
-    --font-size-xs: 11px;
+    --font-size-xs: 11px;   /* ⚠️ 页面自己的刻度，**不是壳 token**——壳真值见 .win 作用域：--font-size-2xs: 11px / --font-size-xs: 12px */
     --font-size-sm: 12px;
     --font-size-md: 13px;
     --font-size-lg: 16px;
@@ -776,7 +776,8 @@
   <div class="frame-note">
     <b>验证点：</b>
     <ol>
-      <li>🟢 <b>2026-09-27 已拍板：案 A 紧凑条</b>——字 <code>--font-size-xs</code>(11px) / 圆角 <code>--radius-sm</code>(4px) / 阴影 <code>--shadow-tooltip</code> / 内边距 3×8。案 B、案 C <b>不实现</b>（规格卡已收敛成单一取值）。</li>
+      <li>🟢 <b>2026-09-27 已拍板：案 A 紧凑条</b>——字 <code>--font-size-xs</code>(12px) / 圆角 <code>--radius-sm</code>(4px) / 阴影 <code>--shadow-tooltip</code> / 内边距 3×8。案 B、案 C <b>不实现</b>（规格卡已收敛成单一取值）。
+        <br><span style="color:var(--warn)">⚠️ 2026-09-27 修正：此处原写「(11px)」有误——壳真值 <code>--font-size-xs = 12px</code>（<code>11px</code> 是 <code>--font-size-2xs</code>）。依据 = 壳 <code>src/index.css</code> 与本文件 <code>.win</code> 作用域（真 token 值那一段）。页面 <code>:root</code> 里的 <code>--font-size-xs: 11px</code> 是**页面自己的刻度**，不是壳 token——别拿来当壳的读数。</span></li>
       <li><b>三案骨架相同</b>（同一渲染器、同一 token、同一翻面逻辑），差别只在<b>内边距/圆角/字号/阴影</b>——所以拍板成本低，拍完只改一处样式。</li>
       <li>⛔ <b>三案都不带小箭头</b>——用户 2026-09-27 拍板「就是一个框型」，不要气泡小尖角。代价是归属感全靠「贴紧锚」，所以间距固定 <code>GAP_PX = 6</code> 不许再放大；好处是少 7px 遮挡，也少一处随翻面翻转的样式。</li>
       <li>🔴 <b>案 C 与 <span class="k">HintCard</span> 的边界</b>：说明卡继续管"有标题/长文案/玻璃"的场合；提示条若也长成那副样子，等于同一个东西有两份实现——这就是本件要避免的"两套并存"重演。</li>

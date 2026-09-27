@@ -7,10 +7,10 @@
  *
  * 导出面 = 插件实际消费集（E6#54c 锚点：4 内置插件 33 处 import 收敛于此）+ 必备类型。
  * 🔴 计数与 scripts/ui-surface.json 的 count 互为对账（E6#121 起机械校验，改导出面必同笔改这里）：
- *   - 22 组件（19 个 default 导出 + InlineInput / PluginIcon / FileIconResolver 具名）
+ *   - 23 组件（20 个 default 导出 + InlineInput / PluginIcon / FileIconResolver 具名）
  *   - 3 hooks（useClickPreview / useClipboardKeys / useDebouncedInput，E6#15h）
  *   - 4 helpers（pickIdentityArt / DEFAULT_PLUGIN_IDENTITY_URI / inferSliderStep / urlSourceKey）
- *   - 5 类型（IconDescriptor / InlineInputHandle / ContextMenuProps / ManifestIconShape / ResolvedIcon）
+ *   - 6 类型（IconDescriptor / InlineInputHandle / ContextMenuProps / ManifestIconShape / ResolvedIcon / HintTipProps）
  *   - E6#121 起：导出面**只加不删**（check-ui-surface-additive 常驻判红——L9 集中供给的终身承诺）
  *
  * 🔴 公共导出面的唯一真相源——scripts/build.mjs 据此生成 dist/index.d.ts。
@@ -28,6 +28,11 @@ export { default as FontFamilySelect } from "@shared/font-family-select/FontFami
 export { default as FormRow } from "@shared/form-row/FormRow";
 // E6#120：通用悬停说明卡（格 5 市场卡收编为共享件——触发/文案归调用方，卡与定位归壳）
 export { default as HintCard } from "@shared/hint-card/HintCard";
+// 04「悬停提示系统」件 1：轻提示条（**糖**——把 props 转成 `data-hint*` 属性挂到子元素上，
+// DOM 结构零变化；真正渲染由池内单例 HintTipRenderer 做）。与 HintCard 分工：卡 = 多行说明，
+// 条 = 一行紧凑。插件**不 import 也能用**——直接写 `data-hint="…"` 属性即可（属性式铁律）。
+export { default as HintTip } from "@shared/hint-tip/HintTip";
+export type { HintTipProps } from "@shared/hint-tip/HintTip";
 export { default as NumberInput } from "@shared/number-input/NumberInput";
 export { default as SegmentedRadio } from "@shared/segmented-radio/SegmentedRadio";
 export { default as SelectBox } from "@shared/select-box/SelectBox";

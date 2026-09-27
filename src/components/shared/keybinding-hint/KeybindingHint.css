@@ -1,0 +1,37 @@
+/* KeybindingHint——快捷键键帽（04「悬停提示系统」件 1）。
+   全软件**唯一**的快捷键长相：`--kbd-bg` / `--kbd-border` / `--font-size-2xs` / `--radius-sm`
+   四个 token 就是全部外观 —— 深浅主题、三档玻璃、全局字号缩放零代码（硬约束 1：零硬编码色）。
+   出处：从 `QuickPickHost.css:238` 的 `.ldk-keybinding-pill kbd` 那套取同一组 token
+   （拍板「统一到键帽」= 保留那个长相、把它做成唯一的一份）。 */
+.ldk-keybinding-hint {
+  display: inline-flex;
+  align-items: center;
+  /* 与左侧文案的间距——tuning 档（< 4px 网格），照 QuickPickHost 既有节奏 */
+  gap: 3px;
+}
+
+.ldk-keybinding-hint-chord {
+  display: inline-flex;
+  align-items: center;
+}
+
+/* chord 之间（"Ctrl+K" 与 "Ctrl+T"）——比 chord 内的 `+` 宽一档，看得出是两段 */
+.ldk-keybinding-hint-chord--spaced {
+  margin-left: 6px;
+}
+
+.ldk-keybinding-hint kbd {
+  display: inline-block;
+  padding: 1px 5px;
+  font-size: var(--font-size-2xs);
+  font-family: var(--font-mono);
+  background: var(--kbd-bg);
+  border: 1px solid var(--kbd-border);
+  border-radius: var(--radius-sm);
+  line-height: 1.5;
+}
+
+.ldk-keybinding-hint-sep {
+  opacity: 0.4;
+  margin: 0 1px;
+}

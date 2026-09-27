@@ -1,0 +1,42 @@
+/* HintTip——轻提示条（04「悬停提示系统」件 1；视觉 = 用户 2026-09-27 拍板的**案 A 紧凑条**）。
+   四个取值就是拍板结论，⛔ 别现场发挥：字号 `--font-size-xs`(12px) · 圆角 `--radius-sm`(4px) ·
+   阴影 `--shadow-tooltip`（壳里早已预留、此前零消费的 token）· 内边距 3×8。
+   案 B（中号）/ 案 C（带第二行注脚）已拍板**不实现**——参考图留档对照用。
+
+   🔴 没有小箭头 / 气泡尖角（用户原话「就是一个框型」）——归属感靠**贴紧锚**承担，
+   `GAP_PX = 6` 是它的全部机制（见 placement.ts 头注释），⛔ 别再加尖角"补足指向性"。
+
+   定位 `fixed`（渲染器量锚贴边、四向翻面与视口夹紧见 placement.ts 的纯函数）；
+   `pointer-events: none`——纯看文案的条，⛔ 条内不放按钮/链接（那是 HintCard 划的禁区，
+   也是本件避免"提示变成菜单"的边界）。
+
+   玻璃：本件是 `OverlayPortal` 的 `[data-overlay-wrapper]` 直接子 ⇒ 按 `src/index.css`
+   深度 3 结构规则会拿到 `backdrop-filter`。**不关掉它**——宁可吃一口无观感的 GPU 开销
+   （`--bg-card` 不透明 ⇒ 模糊滤不出任何东西），也不为一件开结构例外（地板是"进层即隔离"
+   的结构事实，开口子就会有人问"为什么它特殊"）。⛔ 本文件不写 backdrop-filter 任何形态。 */
+.ldk-hint-tip {
+  position: fixed;
+  z-index: var(--z-dropdown);
+  display: inline-flex;
+  align-items: center;
+  /* 文案与键帽之间——tuning 档（< 4px 网格） */
+  gap: 6px;
+  box-sizing: border-box;
+  /* 上限而非定宽：宽度随内容（`max-content`），长文案换行而不是被裁——
+     ⛔「夹紧不裁字」是保底②，故这里不给 `text-overflow: ellipsis` */
+  max-width: 260px;
+  padding: 3px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-card);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-tooltip);
+  pointer-events: none;
+  /* 长路径 / URL 无空格也要能断（揭示类典型场景：被截断的文件路径） */
+  overflow-wrap: anywhere;
+}
+
+.ldk-hint-tip-label {
+  font-size: var(--font-size-xs);
+  line-height: 1.5;
+}

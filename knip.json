@@ -59,6 +59,13 @@
         "src/components/shared/hooks/useClickPreview.ts",
         "src/components/shared/hooks/useClipboardKeys.ts",
         "src/components/shared/hooks/useDebouncedInput.ts",
+        // E6#120 同型（04「悬停提示系统」件 1，2026-09-27）：HintTip 的壳内消费方 = 属性式（插件/壳侧写
+        //   `data-hint` 属性，零 import）＋ `@linkdesk/ui` lib 构建（packages/ 域，knip 不覆盖）＋ 单测——
+        //   ⇒ 组件默认导出与 `HintTipProps` 在根 scope 里都断边（实测报「导出类型未用」）。
+        //   仍活：`HintTipRenderer`（池内单例，直接从池树可达）才是真渲染方；本件只是**属性糖**。
+        //   ⛔ 不给 KeybindingHint 加同类豁免——它有壳内真消费者（ContextMenu / HintTipRenderer），
+        //   故那边把 Props 改回模块内私有（真断边就该修，不是压）。
+        "src/components/shared/hint-tip/HintTip.tsx",
         // E5.8#2：core 聚合器 + 其 re-export 面（@src/core 插件 API 入口，壳内按需直引具体文件——
         //   桶导出面向 plugins/ 排除域与 window.linkdesk 契约，knip 静态图不覆盖 IPC 字符串分发。
         //   ProtocolParser/ConfigurationRegistry/ThemeEngine/api-types/IpcBridgeHandler
