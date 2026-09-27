@@ -21,23 +21,48 @@ import { readFileSync, existsSync } from "node:fs";
 import { resolve } from "node:path";
 import JSZip from "jszip";
 import { registerViewPlugin, getFloatingPanelViewId } from "./viewRegistry";
+import { isFloatingPanelOpenForm } from "../../core/services/ui/floatingPanelForm";
 import { normalizePath } from "../../core/utils/path/pathUtils";
 import type { PluginManifest } from "../../core/api/types";
 
 /** 测试运行 cwd = 项目根（E:/linkdesk）——相对路径直指插件目录 */
 const PROJECT_ROOT = resolve(__dirname, "../../..");
 
-/** 声明者清单——[描述, pluginId, plugin.json 相对项目根] */
-const DECLARERS: Array<{ label: string; pluginId: string; jsonPath: string }> = [
+/** 首开形态声明期望——`null` = 作者一个都没声明（老写法，必须继续合法） */
+interface OpenFormExpectation {
+  formKey: string;
+  enumValues: string[];
+  defaultValue: string;
+}
+
+/** 声明者清单——[描述, pluginId, plugin.json 相对项目根, 首开形态期望] */
+const DECLARERS: Array<{
+  label: string;
+  pluginId: string;
+  jsonPath: string;
+  openForm: OpenFormExpectation | null;
+}> = [
   // 2026-09-05 塌平单根：settings 原 plugins/builtin/settings、floating-panel-demo 原 plugins/user/floating-panel-demo
-  { label: "settings（首批声明者——#38 Ctrl+, 弹面板）", pluginId: "settings", jsonPath: "plugins/settings/plugin.json" },
-  { label: "floating-panel-demo（第二声明者验证载体）", pluginId: "floating-panel-demo", jsonPath: "plugins/floating-panel-demo/plugin.json" },
+  {
+    label: "settings（首批声明者——#38 Ctrl+, 弹面板）",
+    pluginId: "settings",
+    jsonPath: "plugins/settings/plugin.json",
+    // 2026-09-27「首开形态」刀：源码外移后声明只住在种子 zip 里，故**种子不刷到 1.0.20 就读不到这几行**
+    openForm: { formKey: "settings.openForm", enumValues: ["floatingPanel", "tab"], defaultValue: "floatingPanel" },
+  },
+  {
+    label: "floating-panel-demo（第二声明者验证载体）",
+    pluginId: "floating-panel-demo",
+    jsonPath: "plugins/floating-panel-demo/plugin.json",
+    openForm: null, // 用户明确「demo 不改」——它守的是「不声明 = 原行为」这条零回归
+  },
 ];
 
 interface DeclarerContributes {
-  floatingPanel?: { viewId?: unknown };
+  floatingPanel?: { viewId?: unknown; defaultForm?: unknown; formKey?: unknown };
   views?: Record<string, Array<{ id: string; render?: string }>>;
   viewsContainers?: Record<string, { location?: string }>;
+  configuration?: { properties?: Record<string, { type?: unknown; enum?: unknown; default?: unknown }> };
 }
 
 /** 从已加载的 manifest 里取本例关心的四个值（每个 it 自己取，免得依赖收集期的顺序） */
@@ -49,7 +74,7 @@ function declOf(manifest: PluginManifest) {
 }
 
 describe("floatingPanel 声明者完整性（E5.8#39.5 子项 D）", () => {
-  for (const { label, pluginId, jsonPath } of DECLARERS) {
+  for (const { label, pluginId, jsonPath, openForm } of DECLARERS) {
     describe(label, () => {
       let manifest: PluginManifest;
       /** render 判据——两种形态各按自己的规矩，见每支内的注释 */
@@ -101,6 +126,29 @@ describe("floatingPanel 声明者完整性（E5.8#39.5 子项 D）", () => {
       it("容器 location=auxiliarybar（LinkDesk 无此区域渲染——真不可见 + _viewIndex 可寻址）", () => {
         const { contributes, containerId } = declOf(manifest);
         expect(contributes?.viewsContainers?.[containerId]?.location).toBe("auxiliarybar");
+      });
+
+      it("首开形态声明自洽（formKey 指向本插件已声明的配置键；defaultForm/formKey 不得并存）", () => {
+        const { contributes } = declOf(manifest);
+        const decl = contributes?.floatingPanel;
+        if (!openForm) {
+          // 不声明 = 走原行为（弹面板）。存量作者与 demo 都靠这一支守住零回归。
+          expect(decl?.defaultForm).toBeUndefined();
+          expect(decl?.formKey).toBeUndefined();
+          return;
+        }
+        expect(decl?.formKey).toBe(openForm.formKey);
+        // 🔴 互斥红线在这里的第二道：schema 的 "not" 拦构建期，这一条拦「发出去的种子确实没两者并存」
+        expect(decl?.defaultForm).toBeUndefined();
+        const prop = contributes?.configuration?.properties?.[openForm.formKey];
+        expect(prop, `配置键 "${openForm.formKey}" 未在 contributes.configuration 里声明——壳读到会降级`).toBeTruthy();
+        expect(prop?.type).toBe("string");
+        const rawEnum = prop?.enum;
+        const enumValues: unknown[] = Array.isArray(rawEnum) ? (rawEnum as unknown[]) : [];
+        expect([...enumValues].sort()).toEqual([...openForm.enumValues].sort());
+        expect(prop?.default).toBe(openForm.defaultValue);
+        // 每个候选值都必须是壳认识的词汇表值——不认识的会被判定层丢掉再降级
+        for (const v of enumValues) expect(isFloatingPanelOpenForm(v)).toBe(true);
       });
 
       it("端到端：真实 manifest 注册 → getFloatingPanelViewId 返回声明 viewId（子项 C 注入条件）", () => {

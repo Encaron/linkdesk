@@ -1,6 +1,6 @@
 # 05-插件更新 · 设置插件（首开形态：悬浮面板 / 标签页）
 
-> 2026-09-27 建；**同日发版**——插件 v1.0.20 已发 Release，npm 作者轴三包已发（§七）。⚠️ 仅 **官方目录收录**未做（写另一个仓，等点头）；**真机验收**仍挂 §六·7。
+> 2026-09-27 建；**同日全链落地**——插件 v1.0.20 已发 Release、npm 作者轴三包已发、**官方目录已收录**、出厂种子箱已同步刷到 1.0.20（§七）。⚠️ 仅 **真机验收**仍挂 §六·7。
 > **一句话**：插件声明「第一次打开我的面板」用哪种形态，**壳决定并执行**；作者可定死（`defaultForm`），也可把选择权交给用户（`formKey` → 设置页出现一个下拉）。首个实例 = 官方设置插件（`settings.openForm`，默认悬浮面板，保持今日行为）。
 > ⚠️ 设置插件源码**不在本仓**：`E:\linkdesk-plugins\official\settings`（独立 git 仓）⇒ 本刀为**跨仓双提交**，见 §二。
 
@@ -91,6 +91,7 @@ formKey 有值但键没注册 / 值非法   → 降级 defaultForm → 再不行
 | ④ | 官方插件 plugin.json 合法 | ajv draft-2020 对 live schema 实跑：本体 `true`；负控「非法 defaultForm」`false`、「两者并存」`false ["must NOT be valid"]`、「formKey 非字符串」`false` |
 | ⑤ | 四份 schema 同源 | `public/schemas/` ↔ `docs/03-插件制造/` ↔ `packages/plugin-sdk/schemas/` ↔ 生成物（`check-plugin-schema-sync` + `generate-plugin-docs --check`） |
 | ⑥ | 作者文档 zh↔en 配对 | `docs/03-插件制造/03`（§3.15 新增「首开形态可配」小节）· `06`（路由接缝 ⑤ **已顺手改正**）· `10`（设置插件）＋ `docs/03-plugin-authoring/*` 镜像 ＋ 生成物 47 文件 |
+| ⑦ | **种子里那份声明真实且自洽**（发出版之后才有的一环） | `floatingPanelDeclarers.test.ts` 新增一条（该文件 12 例全过）：`formKey` 必指向本插件 `contributes.configuration` 里已声明的键、与 `defaultForm` 不得并存、枚举值必属壳的词汇表（`isFloatingPanelOpenForm`）；demo 那支反向断言「两者一个都没声明」= 存量的零回归。实测种子 zip：`1.0.20`、`{"viewId":"settings","formKey":"settings.openForm"}`、配置项标题「设置插件」 |
 
 测试踩坑留档（值得写进下个会话的脑子）：`ShellEventBus.on()` 订阅时会**重放缓冲的最后一条载荷**，所以命令测试**不能**用 `shellEvents.on` 数事件（会数到上一个用例的 emit）——改用 `vi.spyOn(shellEvents, "emit")` ＋ 过滤辅助。
 
@@ -133,7 +134,7 @@ formKey 有值但键没注册 / 值非法   → 降级 defaultForm → 再不行
 
 | # | 事项 | 说明 | 何时办 |
 |:--|:--|:--|:--|
-| 1 | **种子 zip 刷新 + 声明门禁补一条** | ⏳ **仍未办**（且发版也没解开）：种子箱**跟着官方目录走**，而收录（上架第二步）未做 ⇒ 箱内仍是 `settings@1.0.19`，今天断言不到新字段。收录跑完再 `sync:bundled --latest`，同笔给 `floatingPanelDeclarers.test.ts` 补「声明了 `defaultForm`/`formKey` 且合法」一条 | 收录之后（同批） |
+| 1 | ~~种子 zip 刷新 + 声明门禁补一条~~ → **✅ 已办（本批）** | 收录落地 → `sync:bundled --latest` 把箱内刷到 1.0.20（`check-bundled-version-bump` 要的正是这条：内容变必带版本号）→ `floatingPanelDeclarers.test.ts` 补一条「`formKey` 指向本插件已声明配置键 ＋ 与 `defaultForm` 不得并存 ＋ 枚举值必属壳的词汇表」（12 例全过）。**注意该断言读的是种子 zip** ⇒ 种子没刷到新版它会红，是它逼着「发完必须刷箱」 | ✅ 已办（本批） |
 | 2 | ~~`minAppVersion` 升位~~ → **已决：不升** | 1.0.20 **有意**维持 `0.2.20`：旧壳忽略未知字段（老行为=面板），**降级安全**；不像 1.0.19 的 `data-hint` 那条非升不可（旧壳会显示异常）。实测依据与理由已写进插件 `CHANGELOG.md` 的 v1.0.20 段 | ✅ 已决（本批） |
 | 3 | 「快捷键设置」是第二条路 | `openKeybindingsSettings` 走 `CUSTOM_EVENTS.OPEN_SETTINGS` → `icon:selected`（`tabActions.ts:45` 仅对 tabOnly 插件开标签页），**不经过 `core.openSettings`** ⇒ 首开形态声明对它不生效。今日设置插件声明 `auxiliarybar`，该分支本就不开标签页。属**既有边界**、非本刀引入；是否收编另立任务 | 待用户决定 |
 | 4 | `enumDescriptions` 形状漂移 | schema 里是 **object**，设置插件按 **`string[]`** 消费 ⇒ 今天无法给 enum 项挂本地化标签（`settings.openForm` 的两项只能读 `enum` 原值渲染）。观察到即记账，未修 | 待立任务 |
@@ -159,8 +160,12 @@ formKey 有值但键没注册 / 值非法   → 降级 defaultForm → 再不行
 
 **发版次序是被迫的、有实测证据**：插件仓升 SDK `^0.1.49 → ^0.1.50` 后，`npm run validate` 先判**红**——`contributes.floatingPanel: 不符合 schema 约束 additionalProperties`（本地装的 0.1.49 schema 不认 `formKey`）。⇒ 必须 **npm 先发 SDK，插件仓再 `npm install`、再发**。发完 0.1.50，同一条命令转 ✅。
 
-### 还剩一步：官方目录收录（**要用户本人点头**）
+### 第二步：官方目录收录 —— ✅ 已落地（用户点头后）
 
-- 现状：插件仓 v1.0.20 已在网上，但**官方目录仍是 1.0.19** ⇒ 种子箱**跟目录走**（用户能装到的就是目录那版），故箱内仍 1.0.19，`check-bundled-freshness` 也**因此仍绿**（它的对账方是目录，不是插件仓）。
-- 收录 = 上架第二步：`npm run catalog:official`（🔴 **只生成、不推**，产物落 `scratch/`）。真正写官方目录仓 `Encaron/linkdesk-marketplace` 是**写另一个仓**，按项目红线**等用户点头**再动。
-- 推送边界：**插件仓已推**（`publish` 前置断言要求）；**壳仓未推**——本刀壳侧提交只落本地（memory `push-wait-for-user`）。
+**为什么少了它等于没发**（本刀最值得记住的一条）：软件判定「有没有更新」的唯一依据是**官方目录**——市场插件的 `OFFICIAL_SOURCE_URL` 恒拉 `encaron/linkdesk-marketplace` 的 `marketplace.json`（UI 标「内置」），拿目录里的版本 vs 本地已装版本比大。只 `publish` 不收录 ⇒ 插件仓 Release 发了、**默认用户看不到「可更新」徽标**（只有手动把插件仓加为市场源的人看得见）。用户就是这么发现的：「我不是让设置发版了吗？为什么我在软件内没看到设置的更新按钮？」
+
+- 动作：`npm run catalog:official`（🔴 **只生成、不推**，产物落 `scratch/official-catalog.next.json`）→ 合并结果 **22 条里只有 settings 一条变**（版本 ＋ 图标/README/下载直链/体积/发布时间/版本历史 共 8 字段），别人的 21 条逐字节原样 → 写官方目录仓 → 提交 `93b5e65` → **带代理推**（用户点头后）。
+- 收录后线上实测（两路都查）：`api.github.com` **与**软件实际拉取的 `raw.githubusercontent.com` 都已返回 `settings 1.0.20`（`updatedAt 2026-09-27T17:01:35Z`）⇒ 裸源也即时生效，不必等 CDN。
+- **连带必做**：目录一收录，种子箱立刻落后 ⇒ 同批 `sync:bundled --latest` 把箱内刷到 1.0.20（不刷则 `check-bundled-freshness` ④ 判红）。⚠️ 该脚本匿名读 `api.github.com` 会撞 **60 次/时·IP** 的额度（本会话实测 `HTTP 403 rate limit exceeded`）——设 `GITHUB_TOKEN` 重跑即可（用本机已存 PAT，未打印）。
+- 软件侧缓存：市场目录有 **5min fresh 缓存**（`CACHE_TTL_MS`）⇒ 想立刻看见就点市场刷新（`forceRefreshCatalog` 显式绕过）或重开视图。
+- 推送边界：**插件仓 ＋ 官方目录仓已推**；**壳仓未推**——本刀壳侧提交只落本地（memory `push-wait-for-user`）。
