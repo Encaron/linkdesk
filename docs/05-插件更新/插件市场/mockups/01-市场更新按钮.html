@@ -481,7 +481,8 @@ code, .mono { font-family:"JetBrains Mono",Consolas,monospace; font-size:11px; c
     <b>① 就地 muted 注，不新造提示面</b>——「已是最新 · 刚刚」放按钮左侧（同一行，右对齐组的左端）。⛔ 不弹 toast、不弹对话框：本仓通知只有铃铛宽面板一处。
     <br><b>② 文案带时间戳锚定</b>（「刚刚」→ 过一会儿转成具体时刻，如「10:03」）——用户点完能<b>确认确实查过了</b>，而不是怀疑按钮没反应。这是「点了没反应」类体感问题的正解。
     <br><b>③ 状态栏同步一行</b>：本帧是局部图没画状态栏，实际整窗底部那行写「插件市场 · 检查完成 · 已是最新」（与 Frame 2/3 同一位置）。
-    <br><b>④ 注与按钮同在一行会拉宽</b>：三钮 229px + 注约 74px + 3×6px gap ≈ <b>321px</b> &gt; 256px ⇒ <b>此时必定换行</b>（<code>flex-wrap</code>），注单独占一行、右对齐（实测换行后行高 50px）。这是 Frame 1 那条宽度账的直接推论，也是「注要短」的原因（别写成一句长话）。
+    <br><b>④ 注与三钮同排会超宽 ⇒ 必换行</b>：三钮 229px + 注约 74px + 3×6px gap ≈ <b>321px</b> &gt; 256px ⇒ <b>此时必定换行</b>（<code>flex-wrap</code>；实测换行后行高 50px）。这也是「注要短」的真原因（注越长，首行容得下的钮越少）。
+    <br><span class="warn">⚠️ 2026-09-27 订正</span>：换行是<b>贪心按 DOM 顺序</b>排的，而注在本帧 markup 里是<b>最左</b>那一枚 ⇒ 注<b>先占掉首行一段</b>、放不下的钮顺次下行。<b>原句写的「注单独占一行」只在注自己都放不进首行时才成立</b>——那是<b>推论不是读数</b>（当时对账只量了总宽与行高，没量「哪几个元素同排」）。现已在页底对账补一行 <code>Frame4 各行元素</code>，下次开图即印真读数。
   </div>
 </div>
 
@@ -621,7 +622,7 @@ code, .mono { font-family:"JetBrains Mono",Consolas,monospace; font-size:11px; c
     <br><b>② 确认卡恒弹</b>——2026-09-10 用户拍板「都问」：<b>每次安装、每次更新都弹</b>，官方目录也不豁免；标题「确认更新」（<code>installGate.ts:12,58,70</code>）。
     <br><b>③ 自动更新走另一条路、不过此门</b>——勾选「自动更新」本身就是那条路的授权（Opt-IN，默认关）。所以「检查更新」按下去只<b>发现 + 通知</b>，勾过的插件才落地。
     <br><b>④ 动作栏控件 = 壳共享 <code>&lt;Button&gt;</code></b>（实心 accent = 主操作；ghost = 次级；danger = 卸载）——与 Frame 1 的新钮同一个壳控件，同一套 token。
-    <br><b>⑤ 待拍板</b>：要不要在列表行给「一键升级」（见设计文档 §五·4）。本帧按<b>现状</b>画：徽标只示状态，动作归详情。
+    <br><b>⑤ 行内一键升级 = 已拍板「不改」</b>（2026-09-27）：本帧按<b>现状</b>画——徽标只示状态，动作归详情；要不要改等本刀实机体感出来再单独立项（设计文档 §五·4）。
   </div>
 </div>
 
@@ -680,6 +681,18 @@ document.getElementById('themeBtn').addEventListener('click', () => document.bod
   const f4sum = f4btns.reduce((a, b) => a + px(b), 0) + px(f4row.querySelector('.ms-note')) + 6 * (f4btns.length);
   it('Frame4 注+三钮合计', Math.round(f4sum * 10) / 10 + 'px（> 256 ⇒ 换行）', f4sum > 256);
   it('Frame4 实际行高（换行后 ≈ 2 行）', h(f4row) + 'px', h(f4row) > 30);
+  // 2026-09-27 补：**哪几个元素落在同一行**——原对账只量了总宽与行高，没量这个 ⇒ 注④ 的「注单独占一行」
+  // 是推论不是读数。贪心换行按 DOM 顺序排，而注在 DOM 最左 ⇒ 注先占首行一段、放不下的钮下行。
+  (() => {
+    const rows = new Map();
+    [...f4row.children].forEach((el) => {
+      const top = Math.round(el.getBoundingClientRect().top);
+      rows.set(top, [...(rows.get(top) || []), el.textContent.trim() || el.className]);
+    });
+    it('Frame4 各行元素（贪心按 DOM 顺序，注在最左）',
+       [...rows.entries()].sort((a, b) => a[0] - b[0])
+         .map(([, els], i) => '第' + (i + 1) + '行 ' + els.join(' ＋ ')).join('　／　'));
+  })();
 
   // zone 尺寸自查（skill §五 尺寸铁律）
   it('icon-bar 宽（须 42）', px(f1.querySelector('.icon-bar')));
