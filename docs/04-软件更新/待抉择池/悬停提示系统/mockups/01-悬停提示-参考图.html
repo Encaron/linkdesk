@@ -729,11 +729,11 @@
 
 <!-- ══════════════════ Frame 8 · 拍板区 ══════════════════ -->
 <section class="frame" id="f8">
-  <div class="frame-caption">Frame 8 · 拍板区 · 视觉档位三案并排<span class="tag warn">待拍板 2</span></div>
+  <div class="frame-caption">Frame 8 · 拍板区 · 视觉档位三案并排<span class="tag ok">🟢 2026-09-27 已选「案 A 紧凑条」——B/C 留档对照（未采纳）</span></div>
   <div class="pick-grid">
     <div class="pick-card reco">
       <h4>案 A · 紧凑条</h4>
-      <div class="pick-sub">✅ AI 倾向 · 最贴近"把系统小方框换成我们的、但不更吵"</div>
+      <div class="pick-sub">🟢 2026-09-27 用户拍板采纳 · 最贴近"把系统小方框换成我们的、但不更吵"</div>
       <div class="pick-stage">
         <div class="tip vA" style="position: static;"><span class="tip-label">菜单</span></div>
       </div>
@@ -746,7 +746,7 @@
     </div>
     <div class="pick-card">
       <h4>案 B · 中号</h4>
-      <div class="pick-sub">更清楚，但每一处都比今天更重</div>
+      <div class="pick-sub">未采纳（留档对照）· 更清楚，但每一处都比今天更重</div>
       <div class="pick-stage">
         <div class="tip vB" style="position: static;"><span class="tip-label">菜单</span></div>
       </div>
@@ -759,7 +759,7 @@
     </div>
     <div class="pick-card">
       <h4>案 C · 带第二行注脚</h4>
-      <div class="pick-sub">⚠️ 信息量大，但已接近 HintCard 的骨相</div>
+      <div class="pick-sub">未采纳（留档对照）· ⚠️ 信息量大，但已接近 HintCard 的骨相</div>
       <div class="pick-stage">
         <div class="tip vC" style="position: static; width: 210px;">
           <div class="tip-row"><span class="tip-label">文件树</span><span class="sc-key tip-shortcut"><kbd>Ctrl</kbd><span class="sep">+</span><kbd>Shift</kbd><span class="sep">+</span><kbd>E</kbd></span></div>
@@ -776,6 +776,7 @@
   <div class="frame-note">
     <b>验证点：</b>
     <ol>
+      <li>🟢 <b>2026-09-27 已拍板：案 A 紧凑条</b>——字 <code>--font-size-xs</code>(11px) / 圆角 <code>--radius-sm</code>(4px) / 阴影 <code>--shadow-tooltip</code> / 内边距 3×8。案 B、案 C <b>不实现</b>（规格卡已收敛成单一取值）。</li>
       <li><b>三案骨架相同</b>（同一渲染器、同一 token、同一翻面逻辑），差别只在<b>内边距/圆角/字号/阴影</b>——所以拍板成本低，拍完只改一处样式。</li>
       <li>⛔ <b>三案都不带小箭头</b>——用户 2026-09-27 拍板「就是一个框型」，不要气泡小尖角。代价是归属感全靠「贴紧锚」，所以间距固定 <code>GAP_PX = 6</code> 不许再放大；好处是少 7px 遮挡，也少一处随翻面翻转的样式。</li>
       <li>🔴 <b>案 C 与 <span class="k">HintCard</span> 的边界</b>：说明卡继续管"有标题/长文案/玻璃"的场合；提示条若也长成那副样子，等于同一个东西有两份实现——这就是本件要避免的"两套并存"重演。</li>
@@ -786,7 +787,7 @@
 
 <!-- ══════════════════ Frame 9 · 快捷键画法对照 ══════════════════ -->
 <section class="frame" id="f9">
-  <div class="frame-caption">Frame 9 · 快捷键今天已有两种画法——提示条不许成为第三种<span class="tag warn">待拍板 3</span></div>
+  <div class="frame-caption">Frame 9 · 快捷键今天已有两种画法——提示条不许成为第三种<span class="tag ok">🟢 已拍板：统一到②键帽，并顺带归一右键菜单</span></div>
   <div class="cols">
     <div>
       <div class="col-cap"><span class="tag">现状①</span> 右键菜单：等宽<b>纯文本</b>（不是键帽）</div>
@@ -837,8 +838,7 @@
     <b>验证点：</b>
     <ol>
       <li><b>同一个软件里，快捷键有两种长相</b>（菜单一套、命令面板一套）。提示条会是<b>第三种</b>——这正是"归一化"该管的时刻。</li>
-      <li><b>AI 倾向：统一到②键帽</b>（它更像"键盘上的键"、在浅深两色下都更清楚），并<b>顺带把右键菜单也归到键帽</b>，消掉这个缺口。</li>
-      <li>若怕同批太大 ⇒ 先让提示条用键帽，菜单侧归一化<b>另立小件</b>登记，不塞进本件。</li>
+      <li>🟢 <b>2026-09-27 已拍板：统一到②键帽</b>，并<b>顺带把右键菜单也归到键帽</b>（<code>ContextMenu.css:92</code> 那套等宽灰字改走 <code>--kbd-bg</code>/<code>--kbd-border</code>）——全软件只剩一种快捷键长相。本批因此多一处菜单样式改动，<b>回归面 +1</b>。</li>
       <li>⛔ 无论拍哪个，<b>都不许"提示条自己再发明一种"</b>。</li>
     </ol>
   </div>
@@ -864,17 +864,17 @@
       </tr>
       <tr>
         <td><b>文字</b></td>
-        <td><code>var(--text-primary)</code> · 案 A 用 <code>--font-size-xs</code> / 案 B/C 用 <code>--font-size-sm</code></td>
+        <td><code>var(--text-primary)</code> · <code>--font-size-xs</code>（案 A 已拍板）</td>
         <td>字号走 token ⇒ 全局字号缩放跟走</td>
       </tr>
       <tr>
         <td><b>圆角</b></td>
-        <td><code>var(--radius-sm)</code>（案 A）/ <code>var(--radius-md)</code>（案 B/C）</td>
+        <td><code>var(--radius-sm)</code>（4px · 案 A 已拍板）</td>
         <td>八档语义见变量契约 §2.2</td>
       </tr>
       <tr>
         <td><b>阴影</b></td>
-        <td><code>var(--shadow-tooltip)</code>（案 A）/ <code>var(--shadow-pop)</code>（案 B/C）</td>
+        <td><code>var(--shadow-tooltip)</code>（案 A 已拍板）</td>
         <td>🔴 <code>--shadow-tooltip</code> <b>壳里已定义、今天无人用</b>（<span class="k">src/index.css:84</span>）——本件正好用上，<b>不新增 token</b></td>
       </tr>
       <tr>
@@ -899,7 +899,7 @@
       </tr>
       <tr>
         <td><b>延时</b></td>
-        <td>说明类：待拍板（短于 <span class="k">HintCard</span> 的 400ms）· 揭示类：近 0</td>
+        <td>说明类：短于 <span class="k">HintCard</span> 的 400ms（具体值 dev 实测时定）· 揭示类：近 0</td>
         <td>⚠️ 待拍板 2 的一部分——参考图给不了体感，需 dev 实机试</td>
       </tr>
       <tr>
@@ -916,6 +916,11 @@
         <td><b>类名</b></td>
         <td><code>ldk-hint-tip</code> / <code>-row</code> / <code>-label</code> / <code>-note</code></td>
         <td><code>ldk-</code> 命名空间属宿主；与 <span class="k">ldk-hint-card-*</span> 同族并列；新名要进宿主保留名账</td>
+      </tr>
+      <tr>
+        <td><b>用户开关</b></td>
+        <td><code>app.hint.enabled</code>（总开关，默认开）</td>
+        <td>🟢 2026-09-27 拍板：只给总开关——延时与「是否显示快捷键」不做（少即是多，省 i18n ＋ 门禁面）</td>
       </tr>
       <tr>
         <td><b>⛔ 禁止</b></td>
