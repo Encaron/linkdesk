@@ -28,14 +28,6 @@
       "seed": true
     },
     {
-      "id": "lang-test-ja",
-      "repo": "Encaron/linkdesk-plugin-lang-test-ja",
-      "version": "1.0.4",
-      "downloadUrl": "https://github.com/Encaron/linkdesk-plugin-lang-test-ja/releases/download/v1.0.4/lang-test-ja.linkdesk-plugin",
-      "fingerprint": "CHANGELOG.md:aa624599af46889d2b85eda2e86348361d38ed7c21a4ab3faefe9b6bd7b87c43\nLICENSE:66ade75576a2f04b7f1a11340b8141cf42a26d3a64bc441e3822e193291d3051\nREADME.md:32aebd47abc6dc1c0f957eb6aa2f7772c643fb40150d9700fb1459265dad9201\nja.json:402b97d8a5b8dcab2c32d2a3ae7ba7993089135c509b1080606ffd1f33eadb2f\nplugin.json:548802dcd6432c8bc5c3f4a14cec5873a87a228c8893181f950df2a6d5b2b699\nresources/icon.svg:5875887fa6f2f96750b0e1e4e1d048d993f8630930a0776b6d4623e08978c3d4",
-      "seed": false
-    },
-    {
       "id": "marketplace",
       "repo": "Encaron/linkdesk-plugin-marketplace",
       "version": "1.1.0",
@@ -137,14 +129,6 @@
       "version": "1.0.5",
       "downloadUrl": "https://github.com/Encaron/linkdesk-plugin-theme-twilight-forest/releases/download/v1.0.5/theme-twilight-forest.linkdesk-plugin",
       "fingerprint": "CHANGELOG.md:490a14aa75be9a5e7b02ccf06aa0394823beb03543e8707d9543ac15b17229d1\nLICENSE:66ade75576a2f04b7f1a11340b8141cf42a26d3a64bc441e3822e193291d3051\nREADME.md:c6aa44e697206eaab3539c9849f210664e1be404438cdc65126d94c33a85b2ff\nplugin.json:2aa7ebde1bb04b85947e62add8e5726ef220bcd98862bf0f36f36ce8eb862289\nresources/icon.svg:459169ee85bef40fa2b2c4f01a1b6dd840b33f3a1690dddb667fe753ccc6c5af\nthemes/twilight-forest.json:47ee9a86d0d043efec896e2774bb55410586afb8a68f8066b0c0b0d98b7b13e1",
-      "seed": false
-    },
-    {
-      "id": "theme-zones",
-      "repo": "Encaron/linkdesk-plugin-theme-zones",
-      "version": "1.0.4",
-      "downloadUrl": "https://github.com/Encaron/linkdesk-plugin-theme-zones/releases/download/v1.0.4/theme-zones.linkdesk-plugin",
-      "fingerprint": "CHANGELOG.md:0e42dc493e9f1cabd27d317ab35e707cecce8f4fb075a1c8c3beb2375f1f0f13\nLICENSE:66ade75576a2f04b7f1a11340b8141cf42a26d3a64bc441e3822e193291d3051\nREADME.md:b0c59591db1b538b1180bd643ececdcea4d71ea2dc2c91482ed259e0ecb76598\nplugin.json:d5b34d4bd5515f810393169b1e3d5cd2488910aa1e573d68f6749cf907e3b4b0\nresources/icon.svg:a37be21f334f9f908a6d7dcba7969557b4eca2205ff7289c25aac5cddf69610e\nresources/paper-texture.svg:1ea44ee218e9f17d16fd911e5481b2cbf6228e15e3b3dc28d221ab943d2eef4e\nresources/zones-bg.svg:604045404831b58c1095c8fa66efeddb11b37f79834a1dfaaf4ea8ada619e53b\nthemes/image-zones.json:4846055961dfb9548baee22009119730ce0eaad3e5a05505b46983017bd889b1\nthemes/paper-zones.json:a733e6ccd9b3b848e0f0cf010ccd22693920df9965b475260a9f6392746fc70d",
       "seed": false
     },
     {

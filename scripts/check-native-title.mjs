@@ -50,7 +50,7 @@ import { fileURLToPath } from "url";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, "..");
 
-// 域 = 壳侧 JSX（池层 ＋ 共享件）＋ 仓内两只开发夹具（照 check-css-hardcode 的 SCAN_DIRS 口径）
+// 域 = 壳侧 JSX（池层 ＋ 共享件）＋ 仓内开发夹具 panel-demo（照 check-css-hardcode 的 SCAN_DIRS 口径）
 const SCAN_DIRS = ["src", "plugins"];
 const SKIP_DIRS = new Set(["node_modules", "dist", "dist-electron", ".git", ".vite", "coverage", "out"]);
 const EXT_RE = /\.tsx$/;

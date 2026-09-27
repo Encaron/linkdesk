@@ -87,7 +87,9 @@ const APP_DICT_SEED = `${SEED_DIR}/lang-defaults.linkdesk-plugin`;
 // 仓内夹具的字典——**仍在仓内**，照旧按路径读（演示插件 UI 串归插件自持）
 const I18N_FILES = [
   "plugins/panel-demo/i18n/en.json", // E5.8#37.9：演示插件 UI 串归插件自持
-  "plugins/floating-panel-demo/i18n/en.json", // E5.8#39.5：第二声明者验证载体 UI 串归插件自持
+  // 🔥 2026-09-28：`plugins/floating-panel-demo/i18n/en.json` 条目已删——插件本体（含其市场条目、
+  //   GitHub 仓、本仓 `plugins/floating-panel-demo/`）由用户拍板整套移除，此路径永不再存在。
+  //   与下面两条同一处置：**死路径不留待复活**（它会让每次 check 白打一行 `⚠ 缺失:`）。
   // 🔥 E6#95d：`plugins/first-run-setup/i18n/en.json` 已删——该插件**源码在仓外**（用户 2026-09-11
   //   拍板「不搬」，见插件规范化层/00 §五②），此路径在本仓**永远够不着** ⇒ 每次 npm run check
   //   都白打一行 `⚠ 缺失:` 假警告。**门禁自己腐烂的实例**（06 §〇 闸 3），删掉不留待复活。

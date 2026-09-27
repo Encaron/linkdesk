@@ -103,7 +103,7 @@ function scan() {
   }
   // 🔴 E6#99（L7 第 7.2 轮）：覆盖域从「20 只」缩到「仓内夹具」——数字变小时要**说明为什么**，
   //   否则「✓ 2 只插件对齐」会被读成「18 只都查过了」。18 只发货插件已外移各自独立仓，
-  //   它们的第 ④ 处锚由各插件仓自己的 CI 守（7.5 轮落）；壳仓留下的 = 两只开发夹具。
+  //   它们的第 ④ 处锚由各插件仓自己的 CI 守（7.5 轮落）；壳仓留下的 = 一只开发夹具（panel-demo）。
   console.log(
     `\n[plugin-version-sync] ✓ plugins/ ${checked.length} 只插件 package.json.version === plugin.json.version（N6 第四处锚对齐）。` +
       (checked.length <= 2

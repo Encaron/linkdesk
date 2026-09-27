@@ -1,6 +1,6 @@
 /**
  * floatingPanel 声明者完整性测试——E5.8#39.5 子项 D 首批/第二声明者验证。
- * 覆盖两插件（settings 首批 + floating-panel-demo 第二）：
+ * 覆盖声明者清单（`DECLARERS`）里的每只插件：
  *   ① 声明形状（floatingPanel.viewId 非空字符串）
  *   ② viewId ↔ contributes.views 关联（必须引用已声明视图——声明寻址前提）
  *   ③ render 文件物理存在（E6#17d 后壳侧不 import render——池 PluginComponent glob 构建时扫描，
@@ -11,9 +11,19 @@
  *
  * 🔴 E6#99（L7 第 7.2 轮）：**settings 的源码已外移独立仓** ⇒ 它的 plugin.json 与 render 不再在仓内。
  *   本测试的**意图不变**（拿真实 manifest 验证声明自洽），只是「真实」的落点换了：
- *   ① 仓内还有源码（floating-panel-demo 夹具）→ 查盘；
- *   ② 官方插件已外移（settings）→ 读**随壳发货的种子 zip**（`bundled-plugins/settings.linkdesk-plugin`）
+ *   ① 仓内还有源码 → 查盘；
+ *   ② 官方插件已外移 → 读**随壳发货的种子 zip**（`bundled-plugins/settings.linkdesk-plugin`）
  *      的 plugin.json 与条目表。种子是壳仓里真实存在的那一份，不是第二份副本。**断言一条没减。**
+ *
+ * ⚠️ 2026-09-28：**第二声明者载体 floating-panel-demo 已随其插件（市场条目 / GitHub 仓 / 仓内
+ *   `plugins/floating-panel-demo/`）整体下架**（用户拍板，理由：主题与演示类插件不再需要）。
+ *   连带丢失的两条覆盖：
+ *     · 「第二只插件也能声明 floatingPanel」——声明制曾是 settings 独苗 + 一只验证载体的形状；
+ *     · 「作者一个首开形态都不声明 = 原行为」的**真实 manifest** 断言（现只剩 `floatingPanelForm`
+ *       单元的纯函数侧）。
+ *   清单里 `openForm: null` 那一支**保留**为表的合法形态（它就是上面第二条的形状），等下一个
+ *   真实载体认领；同时「仓内源码树」分支（甲）当前**无声明者走**（只剩外移仓的 zip 分支乙），
+ *   但两面都留着——夹具回来时不用重写本文件。
  */
 
 import { describe, it, expect, beforeAll } from "vitest";
@@ -42,7 +52,7 @@ const DECLARERS: Array<{
   jsonPath: string;
   openForm: OpenFormExpectation | null;
 }> = [
-  // 2026-09-05 塌平单根：settings 原 plugins/builtin/settings、floating-panel-demo 原 plugins/user/floating-panel-demo
+  // 2026-09-05 塌平单根：settings 原 plugins/builtin/settings
   {
     label: "settings（首批声明者——#38 Ctrl+, 弹面板）",
     pluginId: "settings",
@@ -50,12 +60,8 @@ const DECLARERS: Array<{
     // 2026-09-27「首开形态」刀：源码外移后声明只住在种子 zip 里，故**种子不刷到 1.0.20 就读不到这几行**
     openForm: { formKey: "settings.openForm", enumValues: ["floatingPanel", "tab"], defaultValue: "floatingPanel" },
   },
-  {
-    label: "floating-panel-demo（第二声明者验证载体）",
-    pluginId: "floating-panel-demo",
-    jsonPath: "plugins/floating-panel-demo/plugin.json",
-    openForm: null, // 用户明确「demo 不改」——它守的是「不声明 = 原行为」这条零回归
-  },
+  // ⚠️ 2026-09-28：第二声明者 floating-panel-demo 已随插件整体下架（见文件头）——此处不留死条目：
+  //    它的 jsonPath 已不存在，留着会让 ② 分支去找一只**不随包**的种子 zip 而报「种子里没有 plugin.json」。
 ];
 
 interface DeclarerContributes {

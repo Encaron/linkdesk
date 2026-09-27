@@ -389,7 +389,7 @@ function main() {
 
   // 🔴 E6#109p-b（1.28）：**覆盖域变更要明说，不许真空绿灯**——照 check-theme-audit.mjs 的 E6#99 那段
   //   同款措辞（那是全链的诚实样板）。本门禁扫 contributes.themes / contributes.iconThemes 指向的数据
-  //   文件，而主题/图标集插件源码已外移各自独立仓 ⇒ 仓内两只开发夹具都不含 themes/ ⇒ 扫描数归零。
+  //   文件，而主题/图标集插件源码已外移各自独立仓 ⇒ 仓内开发夹具 panel-demo 不含 themes/ ⇒ 扫描数归零。
   //   归零（themes 与 iconThemes 双双为 0）时，下面这段必须在 ✅ **之前**打印——否则
   //   「theme.schema.json 0 个主题文件、icon-theme.schema.json 0 个图标主题 mappings全部合规」
   //   会被读者读成「都查过了」。
@@ -397,7 +397,7 @@ function main() {
     console.log(
       "⚠ 覆盖域变更（E6#109p-b，照 check-theme-audit 的 E6#99 样板）：仓内 plugins/ 下 0 个主题/图标数据文件——" +
         "本门禁当前**无对象**（≠「主题/图标都合规」）。" +
-        "\n   原因：主题/图标集插件的源码已外移各自独立仓，本仓只剩两只不含 themes/ 的开发夹具。" +
+        "\n   原因：主题/图标集插件的源码已外移各自独立仓，本仓只剩一只不含 themes/ 的开发夹具（panel-demo）。" +
         "\n   去向：主题/图标 schema 检查随插件走，由各插件仓自己的 CI 负责。"
     );
   }

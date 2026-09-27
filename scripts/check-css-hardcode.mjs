@@ -33,7 +33,7 @@ import { fileURLToPath } from "url";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, "..");
 // 🔴 E6#99（L7 第 7.2 轮）覆盖域结论：`plugins/` 保留在扫描域内——18 只发货插件搬走后仓内仍有两只
-//   开发夹具（panel-demo / floating-panel-demo），它们同样不许裸写 hex；发货插件的硬编码色改由
+//   开发夹具（panel-demo——2026-09-28 floating-panel-demo 已随插件下架删除），它同样不许裸写 hex；发货插件的硬编码色改由
 //   各插件仓自己的审计管（7.5 轮落）。白名单里指向发货插件的两条死路径已同笔删除（见下）。
 const SCAN_DIRS = ["src", "plugins"];
 const SKIP_DIRS = new Set(["node_modules", "dist", "dist-electron", ".git", ".vite", "__tests__"]);

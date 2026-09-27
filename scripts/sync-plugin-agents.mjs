@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * sync-plugin-agents——给 18 只官方插件仓铺 / 校验 **AGENTS.md**（＋ `.vscode/settings.json`）。
+ * sync-plugin-agents——给官方插件仓（名单 = 下方 FACTS 表）铺 / 校验 **AGENTS.md**（＋ `.vscode/settings.json`）。
  *
  * ── 为什么要有它（而不是手改 18 遍）──
  * 插件源码外移之后，**每个插件仓都是自己那只插件的真源**（壳仓没有源码了）。作者（也就是我们）
@@ -145,15 +145,6 @@ const FACTS = {
       "改词典不用动代码；`build` 走 SDK 的 `pack` 通道（**整树打包**）。",
     ],
   },
-  "lang-test-ja": {
-    what: "日语测试语言包——**验证载体**，故意只译了一部分。",
-    where: "不出现在任何区域。",
-    layout: "`ja.json` 在**仓根**；本仓**没有 `resources/`**，`plugin.json` 里也**没有 `icon`**。",
-    notes: [
-      "🔴 它是**测试载体不是完整翻译**：缺译是设计，别去「补全」它（补全了就失去验证价值）。",
-      "它同时是「语言包可以是插件」这条机制的活证据。",
-    ],
-  },
   "theme-defaults": {
     what: "官方主题——出厂亮色 / 暗色配色。",
     where: "外观主题：在设置 → 外观里切换；不出现在图标栏 / 侧栏。",
@@ -185,17 +176,6 @@ const FACTS = {
       "资源在 `resources/`：`aurora-bg.svg` 是**全窗背景图**（本体），另有 `cover.svg` / `icon.svg`。",
       "配方顶层键用 `appearance`（与用 `type` 的老主题不同）。",
       "玻璃参数与色板在 README 里有专节——改数值前先读那份。",
-    ],
-  },
-  "theme-zones": {
-    what: "分区纹理示例主题——演示 **per-surface 背景**两条路：纸纹分区（`surface.texture` 平铺纹理）与影像分区（`background.mode: zones` 连续切片）。",
-    where: "外观主题：在设置 → 外观里切换（本仓声明了**两只**主题）。",
-    layout:
-      "两份配方在**仓根**：`paper-zones.json` / `image-zones.json`。\n" +
-      "🔴 **已知偏差**：作者文档要求「配方只住 `themes/`、不许摊到仓根」，本仓是外移前的历史形态。改它要动路径 ＋ 发版，记在账上。",
-    notes: [
-      "**全仓唯一声明两只主题**的插件（`contributes.themes` 两条）——它是「一只插件可以带多套主题」的活样本。",
-      "资源：`resources/paper-texture.svg`（纸纹平铺图）、`resources/zones-bg.svg`（分区切片图）、`icon.svg`。",
     ],
   },
   "theme-panorama": {
