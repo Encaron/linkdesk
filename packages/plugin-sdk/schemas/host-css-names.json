@@ -786,6 +786,7 @@
     "ldk-hint-card-title",
     "ldk-hint-tip",
     "ldk-hint-tip-label",
+    "ldk-hint-tip-tail",
     "ldk-icon-bar",
     "ldk-icon-bar-bottom",
     "ldk-icon-bar-item-wrapper",

@@ -215,4 +215,32 @@ describe("HintTipRenderer 状态机（委托监听 + 延时 + 开收 + aria 借�
     act(() => { vi.advanceTimersByTime(DEFAULT_OPEN_DELAY_MS); });
     expect(btn.parentElement?.id).toBe("host"); // 出条后也不变（条 portal 到 overlay root / body）
   });
+
+  describe("气泡尖角（DOM 契约——CSS 那四条 `[data-tip-placement]` 规则靠这两样东西挂上）", () => {
+    it("条里带尖角元素（纯装饰 ⇒ aria-hidden）＋ 根上写**实际**落点方位；沿边落位内联在副轴那一维", () => {
+      const { btn } = mount({ "data-hint": "最小化" });
+      fireEvent.pointerOver(btn);
+      act(() => { vi.advanceTimersByTime(DEFAULT_OPEN_DELAY_MS); });
+      const tip = screen.getByRole("tooltip");
+      const tail = tip.querySelector(".ldk-hint-tip-tail") as HTMLElement;
+      expect(tail).not.toBeNull();
+      expect(tail.getAttribute("aria-hidden")).toBe("true"); // 不参与无障碍树（没有任何语义）
+      // jsdom 无布局（锚与条尺寸全 0）⇒ 首选 top 那一侧空间只有 0px（< 条长+GAP）⇒ **如实翻面到 bottom**
+      expect(tip.getAttribute("data-tip-placement")).toBe("bottom");
+      // 横条的沿边落位写 `left`、竖条写 `top`——CSS 只管主轴那一侧的偏移，两处不许撞
+      expect(tail.style.getPropertyValue("left")).not.toBe("");
+      expect(tail.style.getPropertyValue("top")).toBe("");
+    });
+
+    it("首选方位主轴不够 ⇒ 属性反映**翻面后**的方位（left ⇒ right），不回写首选", () => {
+      const { btn } = mount({ "data-hint": "最小化", "data-hint-placement": "left" });
+      fireEvent.pointerOver(btn);
+      act(() => { vi.advanceTimersByTime(DEFAULT_OPEN_DELAY_MS); });
+      const tip = screen.getByRole("tooltip");
+      expect(tip.getAttribute("data-tip-placement")).toBe("right");
+      const tail = tip.querySelector(".ldk-hint-tip-tail") as HTMLElement;
+      expect(tail.style.getPropertyValue("top")).not.toBe("");
+      expect(tail.style.getPropertyValue("left")).toBe("");
+    });
+  });
 });

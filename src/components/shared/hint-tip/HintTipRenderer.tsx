@@ -2,8 +2,9 @@
  * HintTip 单例渲染器（04「悬停提示系统」件 1；设计详案 §四·4.1–4.4）。
  *
  * ── 职责（壳给什么 / 调用方给什么）──
- * **壳给**：何时出（触发状态机）· 出在哪（四向 + 翻面 + 夹紧 → `placement.ts`）· 长什么样（`HintTip.css`）
- * · 何时收；**调用方给**：文案与命令 id（写在**自己的 DOM 属性**上，见 `hintAttrs.ts`）。
+ * **壳给**：何时出（触发状态机）· 出在哪（主轴判可贴 · 副轴居中后夹紧 · 绝不压锚 ＋ 气泡尖角
+ * → `placement.ts`）· 长什么样（`HintTip.css`）· 何时收；
+ * **调用方给**：文案与命令 id（写在**自己的 DOM 属性**上，见 `hintAttrs.ts`）。
  *
  * ── 为什么是「一处单例 + 全局委托」而不是「每个提示点一个组件」──
  * ① 属性式 = 存量收编（壳侧 43 处 ＋ 插件容器 ~95 处）是**纯属性替换**，DOM 结构零变化；
@@ -23,10 +24,10 @@
  * 提示是**纯增强**：本渲染器没挂载（或总开关关掉）⇒ 只是"没有提示"，绝不阻断任何交互
  * （不接管点击、不挡 hover、不占位）。⛔ 也不在失败时"退回原生 title"——那正是要消灭的东西。
  */
-import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 import OverlayPortal from "../overlay-portal/OverlayPortal";
 import KeybindingHint from "../keybinding-hint/KeybindingHint";
-import { computeTipPosition, type TipAnchorRect, type TipPlacement, type TipPosition } from "./placement";
+import { computeTailOffset, computeTipPosition, tailAxisOf, type TipAnchorRect, type TipPlacement, type TipPosition, type TipSize } from "./placement";
 import { DEFAULT_OPEN_DELAY_MS, HINT_ATTR, HINT_COMMAND_ATTR, HINT_DELAY_ATTR, HINT_PLACEMENT_ATTR, HINT_SELECTOR } from "./hintAttrs";
 import type { PoolCommandHints } from "../../../core/types/pool/poolLayout";
 import "./HintTip.css";
@@ -42,6 +43,9 @@ export interface HintPayload {
 }
 
 const PLACEMENTS: readonly string[] = ["top", "bottom", "left", "right"];
+
+/** 粗落点用的零尺寸（`show()` 先按锚给个落点，`useLayoutEffect` 量到真尺寸立刻校正——见 `place`） */
+const ZERO_TIP: TipSize = { width: 0, height: 0 };
 
 /**
  * **纯函数**：锚元素 + 壳推的命令表 → 该元素要出的条（`null` = 不出条）。
@@ -85,6 +89,8 @@ interface OpenState {
   payload: HintPayload;
   /** 实测落点（先出一个粗落点，`useLayoutEffect` 量到真尺寸立刻校正——paint 前完成，不闪帧） */
   pos: TipPosition;
+  /** 尖角元素沿条边的落位（与 `pos` **同批**算出——渲染期不读布局） */
+  tail: number;
   /** 是否已完成一次实测（未实测时先按粗落点定位，肉眼不可见差别，仅防首帧跳动） */
   measured: boolean;
 }
@@ -129,34 +135,47 @@ export default function HintTipRenderer({ commands, enabled = true }: HintTipRen
     setState(null);
   }, []);
 
+  /**
+   * 量一次锚 → **落点 ＋ 尖角落位**（三处调用点共用，⛔ 别再各算一遍——两把尺子必然漂移）。
+   * `tip` 传 [`ZERO_TIP`] 时是"粗落点"：真尺寸要等条渲染出来才量得到，`useLayoutEffect` 立刻校正。
+   * 尖角与落点同批算：它的落位依赖 `pos`（条被夹到哪里），晚一步就会指歪。
+   */
+  const place = useCallback((anchor: Element, payload: HintPayload, tip: TipSize): { pos: TipPosition; tail: number } => {
+    const rect = toAnchorRect(anchor.getBoundingClientRect());
+    const pos = computeTipPosition(rect, tip, viewportSize(), payload.placement);
+    return { pos, tail: computeTailOffset(rect, tip, pos, pos.placement) };
+  }, []);
+
   /** 出条（同步）：写 aria ＋ 先按锚矩形给粗落点（尺寸用 0——`useLayoutEffect` 立刻校正） */
   const show = useCallback(
     (anchor: Element, payload: HintPayload) => {
       if (!anchor.isConnected) return; // 锚已卸载 ⇒ 不出（保底①的结构等价物）
-      const rect = toAnchorRect(anchor.getBoundingClientRect());
-      const pos = computeTipPosition(rect, { width: 0, height: 0 }, viewportSize(), payload.placement);
+      const { pos, tail } = place(anchor, payload, ZERO_TIP);
       prevDescribedBy.current = anchor.getAttribute("aria-describedby");
       shownRef.current = anchor;
       anchor.setAttribute("aria-describedby", tipId);
-      setState({ anchor, payload, pos, measured: false });
+      setState({ anchor, payload, pos, tail, measured: false });
     },
-    [tipId],
+    [place, tipId],
   );
 
-  /* ── 实测校正（翻面 ＋ 夹紧）——量到真尺寸立刻重算，paint 前完成不闪帧（照 HintCard 先例）──
+  /* ── 实测校正（翻面 ＋ 副轴居中 ＋ 夹紧 ＋ 尖角）——量到真尺寸立刻重算，paint 前完成不闪帧（照 HintCard 先例）──
      ⚠️ 只在落点**真的变了**时 setState——否则"重算 → 落点未变 → 又重算"会成死循环。 */
   useLayoutEffect(() => {
     if (!state || !tipRef.current) return;
-    const a = toAnchorRect(state.anchor.getBoundingClientRect());
     const t = tipRef.current.getBoundingClientRect();
-    const pos = computeTipPosition(a, { width: t.width, height: t.height }, viewportSize(), state.payload.placement);
-    const same = Math.abs(pos.top - state.pos.top) < 0.5 && Math.abs(pos.left - state.pos.left) < 0.5 && pos.placement === state.pos.placement;
+    const { pos, tail } = place(state.anchor, state.payload, { width: t.width, height: t.height });
+    const same =
+      Math.abs(pos.top - state.pos.top) < 0.5 &&
+      Math.abs(pos.left - state.pos.left) < 0.5 &&
+      Math.abs(tail - state.tail) < 0.5 &&
+      pos.placement === state.pos.placement;
     if (same) {
       if (!state.measured) setState({ ...state, measured: true });
       return;
     }
-    setState({ ...state, pos, measured: true });
-  }, [state]);
+    setState({ ...state, pos, tail, measured: true });
+  }, [state, place]);
 
   /* ── 主委托：pointerover/out ＋ focusin/out ＋ 点击收 ＋ 拖拽抑制（挂载期常驻，enabled 关闭即不挂）── */
   useEffect(() => {
@@ -250,10 +269,9 @@ export default function HintTipRenderer({ commands, enabled = true }: HintTipRen
         close(); // 锚被卸载（切视图/换标签）——条不能留在屏幕上
         return;
       }
-      const a = toAnchorRect(state.anchor.getBoundingClientRect());
       const t = tipRef.current?.getBoundingClientRect();
-      const pos = computeTipPosition(a, { width: t?.width ?? 0, height: t?.height ?? 0 }, viewportSize(), state.payload.placement);
-      setState((cur) => (cur === state ? { ...cur, pos, measured: true } : cur));
+      const { pos, tail } = place(state.anchor, state.payload, { width: t?.width ?? 0, height: t?.height ?? 0 });
+      setState((cur) => (cur === state ? { ...cur, pos, tail, measured: true } : cur));
     };
     document.addEventListener("keydown", onKeyDown);
     document.addEventListener("scroll", follow, true);
@@ -263,7 +281,7 @@ export default function HintTipRenderer({ commands, enabled = true }: HintTipRen
       document.removeEventListener("scroll", follow, true);
       window.removeEventListener("resize", follow);
     };
-  }, [state, close]);
+  }, [state, close, place]);
 
   /* 卸载清计时器 ＋ 归还 aria（硬约束 14——让"漏清理"在这里不可能发生） */
   useEffect(() => () => {
@@ -277,6 +295,9 @@ export default function HintTipRenderer({ commands, enabled = true }: HintTipRen
 
   if (!enabled || !state) return null;
 
+  // 尖角：方位决定写哪一维（`tailAxisOf` 的口径与 CSS 里四条 `[data-tip-placement]` 规则配套）
+  const tailStyle: CSSProperties = tailAxisOf(state.pos.placement) === "left" ? { left: state.tail } : { top: state.tail };
+
   return (
     <OverlayPortal>
       {/* 无 onClose：本件不是"可关浮层"（无遮罩、无外部点击关闭语义、不抢焦点、不 trapFocus）——
@@ -286,11 +307,15 @@ export default function HintTipRenderer({ commands, enabled = true }: HintTipRen
         ref={tipRef}
         id={tipId}
         className="ldk-hint-tip"
+        data-tip-placement={state.pos.placement}
         role="tooltip"
         style={state.measured ? { top: state.pos.top, left: state.pos.left } : { top: state.pos.top, left: state.pos.left, visibility: "hidden" }}
       >
         <span className="ldk-hint-tip-label">{state.payload.label}</span>
         {state.payload.shortcut && <KeybindingHint label={state.payload.shortcut} />}
+        {/* 气泡尖角（用户 2026-09-27 改判：初版拍板的「就是一个框型」作废）——纯装饰零语义 ⇒ aria-hidden；
+            "露哪两条边"由 CSS 按 data-tip-placement 决定，沿边落位由 `computeTailOffset` 算好内联写。 */}
+        <span className="ldk-hint-tip-tail" aria-hidden="true" style={tailStyle} />
       </div>
     </OverlayPortal>
   );

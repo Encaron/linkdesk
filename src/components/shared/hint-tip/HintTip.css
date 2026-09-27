@@ -1,12 +1,19 @@
-/* HintTip——轻提示条（04「悬停提示系统」件 1；视觉 = 用户 2026-09-27 拍板的**案 A 紧凑条**）。
-   四个取值就是拍板结论，⛔ 别现场发挥：字号 `--font-size-xs`(12px) · 圆角 `--radius-sm`(4px) ·
-   阴影 `--shadow-tooltip`（壳里早已预留、此前零消费的 token）· 内边距 3×8。
-   案 B（中号）/ 案 C（带第二行注脚）已拍板**不实现**——参考图留档对照用。
+/* HintTip——轻提示条（04「悬停提示系统」件 1；2026-09-27 返工后 = 用户拍板的**中号 ＋ 案 C 气泡**）。
+   取值都是拍板结论，⛔ 别现场发挥：字号 `--font-size-sm`(13px) · 行高 1.45 · 内边距 5×12 ·
+   圆角 `--radius-sm`(4px) · 阴影 `--shadow-tooltip` · 上限宽 300px。
+   ⚠️ 参考图里写的内边距是 **5×10**，落地取 **5×12**：横向 10px 过不了间距网格门禁
+      （`check-spacing-grid`：>6px 必须是 4 的倍数；纵向 5px ≤ 6 属微调档，照留）。实测高 31px 与图一致。
+   🔁 初版（落地当天）是"案 A 紧凑条 12px / 3×8 / 260px"；用户 2026-09-27 看过参考图后**换档**。
+      ⚠️ 档位命名与旧案号别混：旧案 A=紧凑 / 旧案 B=中号（**已落地**）/ 旧案 C=第二行注脚
+      （仍**不实现**——`hintAttrs.ts` 里那条禁令照旧有效）。
 
-   🔴 没有小箭头 / 气泡尖角（用户原话「就是一个框型」）——归属感靠**贴紧锚**承担，
-   `GAP_PX = 6` 是它的全部机制（见 placement.ts 头注释），⛔ 别再加尖角"补足指向性"。
+   🔴 尖角（气泡）：用户同日**改判**初版那条「不要小箭头，就是一个框型」——现在**要**尖角。
+   归属感从此是两只手：贴紧锚（`GAP_PX = 6`）＋ 尖角指向锚（`placement.ts` 的 `computeTailOffset`）。
+   ⛔ 尖角的"留哪两条边"与 `rotate(45deg)` 是**配套**的（改一处必须改另一处，否则尖角指歪 90°）：
+      `rotate(45deg)` 下，正方形原来的 `border-bottom` 转到菱形的左下边、`border-right` 转到右下边
+      ⇒ **留 bottom ＋ right ＝ 指向正下**；四个方位同理各留一对，见下面 `[data-tip-placement]` 四条规则。
 
-   定位 `fixed`（渲染器量锚贴边、四向翻面与视口夹紧见 placement.ts 的纯函数）；
+   定位 `fixed`（渲染器量锚 → `placement.ts` 纯函数算主轴可贴/副轴居中/绝不压锚/尖角落位）；
    `pointer-events: none`——纯看文案的条，⛔ 条内不放按钮/链接（那是 HintCard 划的禁区，
    也是本件避免"提示变成菜单"的边界）。
 
@@ -24,8 +31,8 @@
   box-sizing: border-box;
   /* 上限而非定宽：宽度随内容（`max-content`），长文案换行而不是被裁——
      ⛔「夹紧不裁字」是保底②，故这里不给 `text-overflow: ellipsis` */
-  max-width: 260px;
-  padding: 3px 8px;
+  max-width: 300px;
+  padding: 5px 12px;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   background: var(--bg-card);
@@ -37,6 +44,43 @@
 }
 
 .ldk-hint-tip-label {
-  font-size: var(--font-size-xs);
-  line-height: 1.5;
+  font-size: var(--font-size-sm);
+  line-height: 1.45;
+}
+
+/* ── 气泡尖角（装饰；方位与沿边落位都由渲染器给：`data-tip-placement` ＋ 内联 left/top）──
+   8×8 正方形绕心 `rotate(45deg)` ＝ 菱形，露出"指向锚"的那半个角；
+   两半里**藏在条内的那一半**靠条自身的背景盖住，所以这里只需裁掉两条**不该露**的边。
+   主轴那一侧的偏移写在这里（-5px ＝ 只露半个角），副轴那一维的值一律由渲染器内联写。 */
+.ldk-hint-tip-tail {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  transform: rotate(45deg);
+}
+
+.ldk-hint-tip[data-tip-placement="top"] .ldk-hint-tip-tail {
+  bottom: -5px;
+  border-top: none;
+  border-left: none;
+}
+
+.ldk-hint-tip[data-tip-placement="bottom"] .ldk-hint-tip-tail {
+  top: -5px;
+  border-bottom: none;
+  border-right: none;
+}
+
+.ldk-hint-tip[data-tip-placement="left"] .ldk-hint-tip-tail {
+  right: -5px;
+  border-bottom: none;
+  border-left: none;
+}
+
+.ldk-hint-tip[data-tip-placement="right"] .ldk-hint-tip-tail {
+  left: -5px;
+  border-top: none;
+  border-right: none;
 }
