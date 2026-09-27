@@ -1,15 +1,15 @@
 # 05-插件更新 · 设置插件（首开形态：悬浮面板 / 标签页）
 
-> 2026-09-27 建，⏳ **未发版**（改动已落地、待用户实机验收后随攒批发布）。
+> 2026-09-27 建；**同日发版**——插件 v1.0.20 已发 Release，npm 作者轴三包已发（§七）。⚠️ 仅 **官方目录收录**未做（写另一个仓，等点头）；**真机验收**仍挂 §六·7。
 > **一句话**：插件声明「第一次打开我的面板」用哪种形态，**壳决定并执行**；作者可定死（`defaultForm`），也可把选择权交给用户（`formKey` → 设置页出现一个下拉）。首个实例 = 官方设置插件（`settings.openForm`，默认悬浮面板，保持今日行为）。
 > ⚠️ 设置插件源码**不在本仓**：`E:\linkdesk-plugins\official\settings`（独立 git 仓）⇒ 本刀为**跨仓双提交**，见 §二。
 
 | 项 | 值 |
 |:--|:--|
 | 类别 | 插件更新（设置插件专项）＋ 壳侧通用接缝 |
-| 插件版本 | 1.0.19（**本刀不动**——按用户指令「等实机验收后再谈版本/发版」） |
-| `minAppVersion` | 0.2.20（**本刀不动**——新字段由新壳读；见 §六·4） |
-| 状态 | 🟢 代码/测试/文档全绿，⏳ 未发版、未推送 |
+| 插件版本 | **1.0.20**（本刀改动落进 1.0.20；发布实绩见 §七） |
+| `minAppVersion` | 0.2.20（**有意不升**——降级安全，理由见 §六·2） |
+| 状态 | 🟢 代码/测试/文档全绿；插件 ✅ 已发（Release v1.0.20）、npm ✅ 三包已发；壳仓 ⏳ 未推 |
 
 ---
 
@@ -77,7 +77,7 @@ formKey 有值但键没注册 / 值非法   → 降级 defaultForm → 再不行
 }
 ```
 
-`version` / `minAppVersion` **均未动**。
+`plugin.json` 里的 `version` / `minAppVersion` 在这一笔都**没动**（改的是声明本身）；发布那一笔才把 `version` 提到 1.0.20，`minAppVersion` 维持 0.2.20（**有意**，见 §六·2）。
 
 ---
 
@@ -133,8 +133,8 @@ formKey 有值但键没注册 / 值非法   → 降级 defaultForm → 再不行
 
 | # | 事项 | 说明 | 何时办 |
 |:--|:--|:--|:--|
-| 1 | **种子 zip 刷新 + 声明门禁补一条** | 壳内 `floatingPanelDeclarers.test.ts` 读的是 `bundled-plugins/settings.linkdesk-plugin` **zip 种子**（插件源码在仓外，种子只在发版批次刷新）⇒ 今天它断言不到新字段。发版重打种子后，给它补「声明了 `defaultForm`/`formKey` 且合法」一条 | 发版批次 |
-| 2 | `minAppVersion` 升位 | 新壳才读 `defaultForm`/`formKey`。旧壳忽略未知字段（老行为=面板）；新插件若把默认改成 `tab`，旧壳仍开面板——**降级是安全的**，但语义上应把 `minAppVersion` 提到含本刀的首个版本 | 发版批次（与 1 同笔） |
+| 1 | **种子 zip 刷新 + 声明门禁补一条** | ⏳ **仍未办**（且发版也没解开）：种子箱**跟着官方目录走**，而收录（上架第二步）未做 ⇒ 箱内仍是 `settings@1.0.19`，今天断言不到新字段。收录跑完再 `sync:bundled --latest`，同笔给 `floatingPanelDeclarers.test.ts` 补「声明了 `defaultForm`/`formKey` 且合法」一条 | 收录之后（同批） |
+| 2 | ~~`minAppVersion` 升位~~ → **已决：不升** | 1.0.20 **有意**维持 `0.2.20`：旧壳忽略未知字段（老行为=面板），**降级安全**；不像 1.0.19 的 `data-hint` 那条非升不可（旧壳会显示异常）。实测依据与理由已写进插件 `CHANGELOG.md` 的 v1.0.20 段 | ✅ 已决（本批） |
 | 3 | 「快捷键设置」是第二条路 | `openKeybindingsSettings` 走 `CUSTOM_EVENTS.OPEN_SETTINGS` → `icon:selected`（`tabActions.ts:45` 仅对 tabOnly 插件开标签页），**不经过 `core.openSettings`** ⇒ 首开形态声明对它不生效。今日设置插件声明 `auxiliarybar`，该分支本就不开标签页。属**既有边界**、非本刀引入；是否收编另立任务 | 待用户决定 |
 | 4 | `enumDescriptions` 形状漂移 | schema 里是 **object**，设置插件按 **`string[]`** 消费 ⇒ 今天无法给 enum 项挂本地化标签（`settings.openForm` 的两项只能读 `enum` 原值渲染）。观察到即记账，未修 | 待立任务 |
 | 5 | 设置行标签 = 原样配置键 | `SettingRow.tsx:65` 直接印 key 原文（如 `settings.openForm`），未走「键 → 人话标签」映射。本刀沿用现状（用户未见异议） | — |
@@ -143,8 +143,24 @@ formKey 有值但键没注册 / 值非法   → 降级 defaultForm → 再不行
 
 ---
 
-## 七、发布路径（等用户点头）
+## 七、发布实绩（2026-09-27）
 
-- 🔴 **不推、不发版**：本次两笔提交只落本地。推必须用户本人点头且带代理 `127.0.0.1:7890`。
-- 插件版本轴：设置插件走自己的 `plugin.json` 版本（现 1.0.19）——**本刀不动版本号**；改源码后的「已有安装用户拿到更新」路径与 `bundled-plugins` 种子关系见 memory `version-and-release` §3.1（本插件是 `distribution: builtin`＋市场双通道时以此类推）。
-- 攒批：⏳ 未发版标记保留在本行与 05 索引行，直到随批发出。
+用户拍板原话：「**关于插件的发版，npm 等发版，我同意，软件的发版由于时间过长，先用 dev 测，多攒一点更新点再发**」⇒ **插件轴 + npm 轴发，软件轴缓期**。
+
+| 轴 | 结果 |
+|:--|:--|
+| 插件 settings | ✅ **v1.0.20 已发**：[Release v1.0.20](https://github.com/Encaron/linkdesk-plugin-settings/releases/tag/v1.0.20) ＋ asset `settings.linkdesk-plugin`（41.5 KB）＋ 该仓 `marketplace.json` 已更新（远端独立提交，本地已 pull 追平）。`publish` 前置断言「本地 HEAD 已推送」⇒ 插件仓**已推**（带代理） |
+| npm `@linkdesk/plugin-sdk` | ✅ **0.1.50**——顺手修掉一条**真缺陷**：0.1.49 的 tarball 里躺着 32 个 `*.test.js`（根因 = `tsc` 从不清 `outDir`，陈旧 `dist` 被打包）⇒ `build` 改成先清 `dist`、`prepack` 走 `build` |
+| npm `@linkdesk/contracts` | ✅ 0.1.22 |
+| npm `@linkdesk/plugin-docs` | ✅ 0.1.34（新增 `.npmrc` 指向 npmjs 源） |
+| npm `@linkdesk/ui` | ⏸ **缓发**——**锁步壳版本**（E6#124），软件轴 0.2.20 未动 ⇒ 不能单独升 |
+| 软件本体 | ⏸ **缓期**（用户决定：dev 先测、攒更新点） |
+| release 基线 | ✅ `npm run release:mark -- --allow-drift` 已记（**显式绕过项** = `@linkdesk/ui` 8 文件漂移：`combobox/*`、`hint-tip/*` 早前几刀改的；绕过原因见上行） |
+
+**发版次序是被迫的、有实测证据**：插件仓升 SDK `^0.1.49 → ^0.1.50` 后，`npm run validate` 先判**红**——`contributes.floatingPanel: 不符合 schema 约束 additionalProperties`（本地装的 0.1.49 schema 不认 `formKey`）。⇒ 必须 **npm 先发 SDK，插件仓再 `npm install`、再发**。发完 0.1.50，同一条命令转 ✅。
+
+### 还剩一步：官方目录收录（**要用户本人点头**）
+
+- 现状：插件仓 v1.0.20 已在网上，但**官方目录仍是 1.0.19** ⇒ 种子箱**跟目录走**（用户能装到的就是目录那版），故箱内仍 1.0.19，`check-bundled-freshness` 也**因此仍绿**（它的对账方是目录，不是插件仓）。
+- 收录 = 上架第二步：`npm run catalog:official`（🔴 **只生成、不推**，产物落 `scratch/`）。真正写官方目录仓 `Encaron/linkdesk-marketplace` 是**写另一个仓**，按项目红线**等用户点头**再动。
+- 推送边界：**插件仓已推**（`publish` 前置断言要求）；**壳仓未推**——本刀壳侧提交只落本地（memory `push-wait-for-user`）。
