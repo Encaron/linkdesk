@@ -62,7 +62,7 @@
 
 ## 六、活的样板（照抄不会错）
 
-- 官方 8 只已嵌场景封面的插件 README = 现成范本：`editor` / `file-tree` / `serial-monitor` / `settings` / `python` / `theme-terminal` / `theme-aurora-glass` / `lang-defaults`（另有首个第三方真插件 `hello-linkdesk`）。看它们 README 顶部那张 `![…](resources/cover.svg)` 就是封面标准写法。
+- 官方 8 只已嵌场景封面的插件 README = 现成范本：`editor` / `file-tree` / `serial-monitor` / `settings` / `python` / `theme-terminal` / `theme-aurora-glass` / `lang-defaults`。看它们 README 顶部那张 `![…](resources/cover.svg)` 就是封面标准写法。
 - 页内 `<video>` / 封面外链写法：串口监视器 README 的 git 历史 commit `2f9a52c6b`（页内真播）与 `8c9d71551`（全屏修复）各带一段当时手测用的完整 `<video>` / `<a><img></a>` 示例，验完即撤——要抄完整写法可看那两次提交。
 
 ---

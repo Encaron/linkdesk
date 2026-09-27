@@ -757,7 +757,7 @@ button { border: none; }
 
 **Why it is worth remembering**: the host itself has **17** such "anchorless selectors" (`*` resets / `html`·`body` / `[data-theme]` / `*:focus-visible` / the scrollbar family / `input[type="number"]`·`select`)—they are a **deliberate shared baseline** that plugins rely on (and may override). Precisely because they exist, **your anchorless selector will hit them**: write `button { }` and the host's buttons plus every other plugin's buttons change with it.
 
-**Migration**: **zero instances today**—a full re-check of the 18 official plugins plus the in-repo fixtures (the "anchorless S2 / cross-party S3" columns of `npm run audit:plugin-prefix -- --all`) is **0** ⇒ **you have nothing to change**; this rule is **preventive**.
+**Migration**: **zero instances today**—a full re-check of the official plugins plus the in-repo fixture (the "anchorless S2 / cross-party S3" columns of `npm run audit:plugin-prefix -- --all`) is **0** ⇒ **you have nothing to change**; this rule is **preventive**.
 
 > 🔧 **Maintainer note (authors may skip)**: the rule text (R0 scope / R1 host baseline / R2 / R3) plus the decision formulas and negative controls live in `docs/02-Electron架构/E6_插件生态与发布/01-插件独立构建/样式命名空间归一化/32-任务-选择器形态轴门禁与落地.md`; the host side is guarded by criteria ⑩⑪ of `scripts/check-css-namespace.mjs` (plus the runtime mirror on axis ④ of the probe), and the plugin side by the **fourth and fifth criteria** of the SDK's `check-css-namespace` leg (`checks/selector-form.ts` for S2/S3, and `checks/keyframe-refs.ts` for dangling keyframe references—the latter in place since **2026-09-18**, SDK `≥ 0.1.37`).
 

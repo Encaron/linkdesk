@@ -117,7 +117,7 @@ node_modules/@linkdesk/plugin-sdk/schemas/host-reserved.json
 | Criterion | Grade | Judged by | What happens |
 |:--|:--:|:--|:--|
 | The `set` name ∈ **segment ① host-only** | 🔴 **red** | SDK leg `linkdesk/no-unowned-context-key` | Your lint reports red by name; the **runtime second net** adds a `console.error` at the `contextKey:set` bridge — but 🔴 **the value is still written, not rejected** (see below) |
-| **New** flag's first segment isn't your `pluginId` | 🟡 yellow (advisory) | SDK leg | Reported with `suggested` = the same name with only the first segment swapped (`zzzFlag` → `my-plugin.zzzFlag`). 23 flags across the 18 official repos break this rule; the shell migrates them centrally — **write new ones by the rule** |
+| **New** flag's first segment isn't your `pluginId` | 🟡 yellow (advisory) | SDK leg | Reported with `suggested` = the same name with only the first segment swapped (`zzzFlag` → `my-plugin.zzzFlag`). 23 flags across the official repos break this rule; the shell migrates them centrally — **write new ones by the rule** |
 | The `set` name ∈ **segment ② convention face** | 🟠 **not judged** | Registered only | Legal, but see above: that's the gear menu's spot — don't overwrite it |
 
 > **Why "taking a host-only flag" is red while "missing your prefix" is only yellow**: taking a host-only flag does **real harm** (it replaces host state, and neither side errors); whereas "missing the prefix" has 23 counterexamples in existing code, so a blanket rule would break shipped plugins on the spot. Different grades = different tolerance, not "the more important rule is written stricter".

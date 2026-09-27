@@ -62,7 +62,7 @@ The `README.md` in the plugin root directory is displayed in the **"Details" tab
 
 ## 6. Live exemplars (copy them and you can't go wrong)
 
-- The READMEs of the 8 official plugins that already embed scene covers are ready-made models: `editor` / `file-tree` / `serial-monitor` / `settings` / `python` / `theme-terminal` / `theme-aurora-glass` / `lang-defaults` (plus the first real third-party plugin, `hello-linkdesk`). The `![…](resources/cover.svg)` at the top of their READMEs is the standard way to write a cover.
+- The READMEs of the 8 official plugins that already embed scene covers are ready-made models: `editor` / `file-tree` / `serial-monitor` / `settings` / `python` / `theme-terminal` / `theme-aurora-glass` / `lang-defaults`. The `![…](resources/cover.svg)` at the top of their READMEs is the standard way to write a cover.
 - In-page `<video>` / cover link-out examples: the serial-monitor README's git history commits `2f9a52c6b` (real in-page playback) and `8c9d71551` (fullscreen fix) each carry a complete `<video>` / `<a><img></a>` example from the manual testing of that moment, reverted once verified — look at those two commits if you want to copy a complete example.
 
 ---

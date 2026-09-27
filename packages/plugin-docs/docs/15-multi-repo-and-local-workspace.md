@@ -11,7 +11,7 @@
 
 ```
 E:\linkdesk-plugins\
-├─ official\          ← your own plugins (the 18 official ones + later new plugins)
+├─ official\          ← your own plugins (the official ones + later new plugins)
 │   ├─ file-tree\
 │   └─ settings\
 └─ third-party\       ← other people's plugins (cloned to study / fork)
@@ -62,7 +62,7 @@ Benchmarked against the empirically verified VS Code position (`ms-vscode.cpptoo
 
 **Where you clone a plugin project and what the directory is called have no effect on plugin identity** — a plugin repo is self-contained, and the shell only recognizes the Release URL and the catalog; it **does not recognize local paths at all**. ⇒ The local directory structure can be rearranged at any time, with zero risk.
 
-Live evidence: the source repos of the two plugins `hello-linkdesk` and `first-run-setup` sit flat outside the container and still build, publish, get listed, and install/uninstall normally in the installed app. All 18 official plugins are the same way today (each in its own independent repo).
+Live evidence: all 16 official plugins work this way today — each source repo sits flat outside the container (one independent repo per plugin) and still builds, publishes, gets listed, and installs/uninstalls normally in the installed app.
 
 ✅ **So "renaming a directory" is already safe today**: plugin identity = the top-level `pluginId` field (which must be declared explicitly and cannot be changed after publication), **and it has nothing to do with the directory name**.
 

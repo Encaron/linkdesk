@@ -473,7 +473,7 @@ Your translation file is **one flat layer of keys**, and everyone writes into th
 
 🔴 **Why this is advice and not a requirement**: **an i18n key may legitimately live in the app-level dictionary**. The official `settings` plugin has 254 `t()` call sites and **not a single key of its own in its repo** — they all live in `lang-defaults`' `zh.json` / `en.json`. Inside your plugin repo there is only your own `i18n/*.json` — **you cannot see the shell's dictionary, nor any other plugin** — so "your key collided with someone" is **never decidable from your own repo**. Making it a blocker means guaranteed false positives, and false positives invalidate the rules that should really block. ⇒ **It is a yellow light, not a red one.**
 
-**How much overlap actually exists today** (told plainly, not exaggerated): the keys declared by the 18 official plugins (414 of them) overlap the `lang-defaults` keys in **65 places**, and **3 of those already have divergent translations** — for example `命令`, where the shell says `Command` while `serial-monitor` says `Commands`. **When both are written into the same dictionary, which one the user actually sees depends on plugin load order.**
+**How much overlap actually exists** (told plainly, not exaggerated — the counts below are a **measurement**, taken when the roster was 18 official plugins, not a live figure): those plugins declared **414 keys**, **65 of which overlap** the `lang-defaults` keys, and **3 of those already have divergent translations** — for example `命令`, where the shell says `Command` while `serial-monitor` says `Commands`. **When both are written into the same dictionary, which one the user actually sees depends on plugin load order.**
 
 ⚠️ **Runtime behaviour**: when an overwrite happens the shell emits a `console.warn` naming the **key + language + writer**:
 
@@ -781,7 +781,7 @@ useEffect(() => {
 
 **Four boundaries**: ① it only governs the **first open** — an existing tab is still focused and an already-open panel still toggles shut; changing the form afterwards keeps using the two old paths ("Open in main window" / "Open in Floating Panel"); ② `formKey` and `defaultForm` are **mutually exclusive** (both declared ⇒ schema validation fails — one form from two sources); ③ a typo'd `formKey` / a key that was never registered ⇒ falls back to `defaultForm` (neither = previous behaviour) plus one warning — it **never fails silently**; ④ declaring `"defaultForm": "tab"` on a plugin with no tab form (`appearsIn.tabBar` + `entry`) falls back to the floating panel rather than silently doing nothing.
 
-**The first declarer = settings** (`core.openSettings`, Ctrl+, opens the panel, and `settings.openForm` lets the user change it inside the "Settings plugin" group); **the second declarer, used as a validation vehicle = the `floating-panel-demo` test plugin** (a tab-style view; end-to-end validation of replacement + the right-click return path + unload no-op).
+**Currently the only declarer = settings** (`core.openSettings`, Ctrl+, opens the panel, and `settings.openForm` lets the user change it inside the "Settings plugin" group). The mechanism itself is generic and is validated end-to-end (replacement + the right-click return path + unload no-op) — nothing stops you from becoming the second declarer.
 
 ---
 
