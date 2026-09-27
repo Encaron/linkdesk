@@ -58,17 +58,19 @@
 }
 
 .ldk-side-panel-content {
+  /* 🔴 flex 纵列是本容器唯一正确的形态（SidebarZone.css 同款）——toolbar 包装（flex-shrink:0）
+     钉在滚动区外，section 包装（flex:1 + min-height:0）自任唯一滚动容器 ⇒ 两者粘顶的前提。
+     ⚠️ 2026-09-28 修复：内联 style 版才有的这两条曾漏搬进 CSS（E5.7#10/#22 同期）⇒ 右栏与左栏同病灶。 */
   flex: 1;
-  overflow-y: auto;
-  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden; /* 单滚动容器：滚动归 flex:1 的子层 */
   padding: 0 8px 8px 8px;
 }
 
-/* 🔥 UX10：工具栏 sticky wrapper——z-index 高于 section header（PoolToolbarSlot 依赖） */
+/* 工具栏包装（PoolToolbarSlot 根节点）。
+   2026-09-28：position:sticky / top / z-index 已删（同 SidebarZone.css——toolbar 本就在滚动区外）。 */
 .ldk-side-panel-toolbar {
-  position: sticky;
-  top: 0;
-  z-index: calc(var(--z-sidebar-sticky-header) + 1);
   background: var(--bg-side-panel);
   overflow: hidden;
 }

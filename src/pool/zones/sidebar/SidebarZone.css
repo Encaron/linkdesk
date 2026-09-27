@@ -63,17 +63,23 @@
 }
 
 .ldk-side-panel-content {
+  /* 🔴 本容器必须是 flex 纵列——E5.6#16.7k「toolbar 粘顶 + section 头吸顶」的**前提**就在这两行：
+     子层① toolbar 包装（flex-shrink:0，SidebarZone.tsx 内联）钉在滚动区外；
+     子层② section 包装（flex:1 + min-height:0，内联）独占剩余高度、自任唯一滚动容器。
+     ⚠️ 2026-09-28 修复：这两条原先是内联 style，E5.7#10 迁池时没搬进 CSS（当时只对行为清单、没对前提）
+     ⇒ 容器退回「块级 + 自滚」，子层② 的 flex:1 失效（高度=内容高）、section 头的 sticky 永不生效
+     ⇒ toolbar 与 section 头双双跟着列表滚走。布局前提落在这里，不许只靠使用者内联样式补。 */
   flex: 1;
-  overflow-y: auto;
-  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden; /* 单滚动容器：滚动归子层②，本层不外溢 */
   padding: 0 8px 8px 8px;
 }
 
-/* 🔥 UX10：工具栏 sticky wrapper——z-index 高于 section header */
+/* 工具栏包装（PoolToolbarSlot 根节点）。
+   2026-09-28：position:sticky / top / z-index 已删——toolbar 在滚动区外，无物可粘，
+   与 section 头也不再抢层。粘顶由 .ldk-side-panel-content 的 flex 纵列保证。 */
 .ldk-side-panel-toolbar {
-  position: sticky;
-  top: 0;
-  z-index: calc(var(--z-sidebar-sticky-header) + 1);
   background: var(--bg-side-panel);
   overflow: hidden;
 }
