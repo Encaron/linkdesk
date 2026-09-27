@@ -1,0 +1,857 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>HintTip 落点与尺寸 · 集成切换参考图（04-软件更新）</title>
+<!--
+  ═══════════════════════════════════════════════════════════════════════════
+  类型：**集成切换**（html-blueprint §三）——单工作台 + 交互控件切换观察，不上下平铺。
+  回答的问题：HintTip 的落点该怎么定、大小该取哪一档——用户在真实壳 chrome 上逐处悬停试。
+  骨架：**画完整软件轮廓**（titlebar → icon-bar → sidebar → main(tabbar+内容) → statusbar）。
+
+  ⚠️ mockup 仅示意，真实实现走 var(--xxx) + ThemeEngine。
+     下方 token 区块是把 src/index.css:5-128 的**值**抄过来当"壳"，组件样式一律走 var()，
+     ⛔ 不在组件里硬编码色值（硬约束 1）。
+
+  尺寸出处（真实，非自拟）：
+    titlebar 30px      TitleBarZone.css:10       窗口控制 38×30  TitleBarZone.css:116-118
+    icon-bar 42px      IconBarZone.css:15        栏内按钮 42×42 / **字形仅 24×24**  IconBarZone.css:40,73
+    tabbar   35px      GroupTabBar.css:8         tab 30px / min64 / max240          GroupTabBar.css:47-49
+    statusbar 22px     StatusBarZone.css:15      侧栏示意 216px（可变宽）
+    HintTip：字号 --font-size-xs(12px) · 圆角 --radius-sm(4px) · 内边距 3×8
+             · 间距 GAP_PX=6 · 视口余量 EDGE_PX=8        HintTip.css:28 / placement.ts:18,20
+  ═══════════════════════════════════════════════════════════════════════════
+-->
+<style>
+/* ─────────────────────────────────────────────────────────────────────────
+   token 镜像区（唯一允许出现色值的地方）——摘自 src/index.css，真实实现由 ThemeEngine 供给
+   ───────────────────────────────────────────────────────────────────────── */
+:root {
+  --bg-window: #1E1E1E;
+  --bg-card: #2D2D2D;
+  --bg-input: #3C3C3C;
+  --text-primary: #D4D4D4;
+  --text-secondary: #9D9D9D;
+  --text-muted: #8A8A8A;
+  --accent: #0078D4;
+  --accent-hover: #1A8CE8;
+  --border: #3C3C3C;
+  --separator: #474747;
+  --icon-inactive: #858585;
+  --font-size-2xs: 11px;
+  --font-size-xs: 12px;
+  --font-size-sm: 13px;
+  --font-size-md: 14px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --shadow-tooltip: 0 2px 8px rgba(0, 0, 0, 0.3);
+  --bg-titlebar: #252526;
+  --bg-icon-bar: #18181B;
+  --bg-side-panel: #1E1E22;
+  --hover-overlay: rgba(255, 255, 255, 0.06);
+  --z-dropdown: 650;
+  --kbd-bg: rgba(128, 128, 128, 0.1);
+  --kbd-border: rgba(128, 128, 128, 0.12);
+  --status-connected: #4EC9B0;
+  --error: #E06C75;
+  --text-on-accent: #FFFFFF;
+  --titlebar-close-hover: #c42b1c;
+  --ui-scale: 1;
+  --font-mono: "JetBrains Mono", Consolas, monospace;
+}
+html[data-theme="light"] {
+  --bg-window: #FFFFFF;
+  --bg-card: #F5F5F5;
+  --bg-input: #FFFFFF;
+  --text-primary: #2D2D2D;
+  --text-secondary: #5A5A5A;
+  --text-muted: #767676;
+  --accent-hover: #106EBE;
+  --border: #D4D4D4;
+  --separator: #E8E8E8;
+  --icon-inactive: #999999;
+  --bg-titlebar: #DDDDDD;
+  --bg-icon-bar: #F0F0F0;
+  --bg-side-panel: #F5F5F5;
+  --hover-overlay: rgba(0, 0, 0, 0.04);
+  --shadow-tooltip: 0 2px 8px rgba(0, 0, 0, 0.16);
+  --kbd-bg: rgba(0, 0, 0, 0.06);
+  --kbd-border: rgba(0, 0, 0, 0.12);
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg-window);
+  color: var(--text-primary);
+  font-family: system-ui, "Segoe UI", "Microsoft YaHei", sans-serif;
+  font-size: 13px;
+}
+
+/* ── 控件条（sticky）── */
+.bar { position: sticky; top: 0; z-index: 900; background: var(--bg-card); border-bottom: 1px solid var(--border); padding: 10px 14px; }
+.bar-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
+.bar-row + .bar-row { margin-top: 8px; }
+.bar-title { font-weight: 600; margin-right: 4px; }
+.grp { display: flex; align-items: center; gap: 6px; }
+.grp > .lab { color: var(--text-muted); font-size: var(--font-size-xs); }
+.pill {
+  border: 1px solid var(--border); background: var(--bg-window); color: var(--text-secondary);
+  border-radius: 999px; padding: 4px 11px; font-size: var(--font-size-xs); cursor: pointer; font-family: inherit;
+}
+.pill:hover { background: var(--hover-overlay); color: var(--text-primary); }
+.pill[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--text-on-accent); }
+.chk { display: inline-flex; align-items: center; gap: 5px; font-size: var(--font-size-xs); color: var(--text-secondary); cursor: pointer; }
+
+/* ── 舞台 ── */
+.stage { padding: 16px 14px 28px; overflow-x: auto; }
+.frame-caption { font-size: var(--font-size-xs); color: var(--text-muted); margin-bottom: 8px; }
+.frame-caption b { color: var(--text-primary); }
+
+/* ── 窗口（真实 chrome 轮廓）── */
+.win {
+  position: relative; overflow: hidden; display: flex; flex-direction: column;
+  /* 宽度取 min(标称, 视口可用)——若写死 1280px，浏览器视口 1280 时窗口右缘（含 ✕）会被切掉，
+     而 ✕ 正是要判的那个点。窗口自身仍是自洽坐标系（条的夹紧读的就是它的尺寸）。 */
+  width: min(1280px, calc(100vw - 30px)); height: 720px; background: var(--bg-window);
+  border: 1px solid var(--border); border-radius: var(--radius-md);
+}
+.win[data-vp="windowed"] { width: min(820px, calc(100vw - 30px)); }
+
+/* 顶栏 30px */
+.titlebar {
+  height: 30px; flex: none; display: flex; align-items: center; gap: 2px; padding-left: 8px;
+  background: var(--bg-titlebar); border-bottom: 1px solid var(--border); user-select: none;
+}
+.tb-logo { width: 16px; height: 16px; margin-right: 6px; background: var(--accent); clip-path: polygon(50% 0, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%); }
+.tb-name { font-size: var(--font-size-xs); color: var(--text-secondary); margin-right: 10px; }
+.tb-menu { height: 22px; padding: 0 8px; border: 0; background: none; color: var(--text-secondary); font: inherit; font-size: var(--font-size-xs); border-radius: var(--radius-sm); cursor: default; }
+.tb-menu:hover { background: var(--hover-overlay); color: var(--text-primary); }
+.tb-spacer { flex: 1; height: 100%; }
+.window-controls { display: flex; height: 100%; }
+.wc-btn {
+  width: 38px; height: 30px; flex: none; display: flex; align-items: center; justify-content: center;
+  border: 0; background: none; color: var(--text-secondary); font: inherit; font-size: var(--font-size-sm); cursor: default;
+}
+.wc-btn:hover { background: var(--hover-overlay); color: var(--text-primary); }
+.wc-btn.close:hover { background: var(--titlebar-close-hover); color: var(--text-on-accent); }
+.wc-btn .glyph { width: 16px; height: 16px; display: grid; place-items: center; line-height: 1; }
+
+/* 主体 */
+.body { flex: 1; display: flex; min-height: 0; }
+
+/* 图标栏 42px */
+.icon-bar { width: 42px; flex: none; display: flex; flex-direction: column; align-items: center; gap: 2px; padding-top: 6px; background: var(--bg-icon-bar); }
+.ib-item { width: 42px; height: 42px; flex: none; display: grid; place-items: center; border: 0; background: none; color: var(--icon-inactive); cursor: default; position: relative; }
+.ib-item:hover { color: var(--text-primary); }
+.ib-item.active { color: var(--text-primary); }
+.ib-item.active::before { content: ""; position: absolute; left: 0; top: 6px; bottom: 6px; width: 2px; background: var(--accent); border-radius: 1px; }
+.ib-item .glyph { width: 24px; height: 24px; display: grid; place-items: center; font-size: 18px; line-height: 1; }
+
+/* 侧栏 216px */
+.sidebar { width: 216px; flex: none; background: var(--bg-side-panel); border-right: 1px solid var(--border); padding: 8px 0; }
+.sb-head { padding: 0 10px 8px; font-size: var(--font-size-xs); color: var(--text-secondary); text-transform: uppercase; letter-spacing: .04em; }
+.sb-row {
+  display: flex; align-items: center; gap: 6px; height: 22px; padding: 0 8px 0 16px;
+  font-size: var(--font-size-xs); color: var(--text-primary); cursor: default; overflow: hidden; white-space: nowrap;
+}
+.sb-row:hover { background: var(--hover-overlay); }
+.sb-row .txt { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; direction: rtl; text-align: left; }
+.sb-row .ico { flex: none; width: 14px; text-align: center; color: var(--icon-inactive); }
+
+/* 主区 */
+.main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.tabbar {
+  height: 35px; flex: none; display: flex; align-items: center; gap: 1px; padding-left: 4px;
+  background: var(--bg-card); border-bottom: 1px solid var(--border); overflow: hidden;
+}
+.tab {
+  height: 30px; min-width: 64px; max-width: 240px; flex: 0 1 auto; display: flex; align-items: center; gap: 6px;
+  padding: 0 8px; border: 0; background: none; color: var(--text-secondary); font: inherit; font-size: var(--font-size-xs);
+  cursor: default; position: relative; overflow: hidden; white-space: nowrap;
+}
+.tab .t-ico { flex: none; width: 14px; height: 14px; display: grid; place-items: center; }
+.tab .t-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tab.active { background: var(--bg-window); color: var(--text-primary); }
+.tab.active::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 2px; background: var(--accent); }
+.tab .t-close { flex: none; width: 14px; height: 14px; display: grid; place-items: center; border-radius: var(--radius-sm); font-size: 12px; }
+.tab .t-close:hover { background: var(--hover-overlay); color: var(--text-primary); }
+.tab-plus { width: 26px; height: 22px; flex: none; border: 0; background: none; color: var(--text-secondary); font: inherit; cursor: default; border-radius: var(--radius-sm); }
+.tab-plus:hover { background: var(--hover-overlay); color: var(--text-primary); }
+
+.editor { flex: 1; position: relative; padding: 10px 12px; overflow: hidden; }
+.toolbar { display: flex; align-items: center; gap: 4px; margin-bottom: 10px; }
+.tool-btn { width: 26px; height: 22px; border: 0; background: none; color: var(--icon-inactive); font: inherit; border-radius: var(--radius-sm); cursor: default; }
+.tool-btn:hover { background: var(--hover-overlay); color: var(--text-primary); }
+.toolbar .sep { width: 1px; height: 14px; background: var(--separator); margin: 0 4px; }
+.code-line { font-family: var(--font-mono); font-size: var(--font-size-xs); color: var(--text-muted); line-height: 1.9; white-space: pre; }
+
+/* 主区里那张「右键菜单」——复现用户点 3.2 第二种情形（长文案 + 靠顶 + 靠右） */
+.menu-card {
+  position: absolute; top: 6px; right: 10px; min-width: 240px; padding: 4px;
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md);
+  box-shadow: var(--shadow-tooltip); z-index: 20;
+}
+.menu-item {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px; height: 26px; padding: 0 8px;
+  border: 0; background: none; color: var(--text-primary); font: inherit; font-size: var(--font-size-xs);
+  border-radius: var(--radius-sm); cursor: default; width: 100%; text-align: left;
+}
+.menu-item:hover { background: var(--hover-overlay); }
+.menu-item .mi-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.menu-item .mi-kbd { flex: none; }
+.menu-sep { height: 1px; background: var(--separator); margin: 4px 6px; }
+
+/* 状态栏 22px */
+.statusbar {
+  height: 22px; flex: none; display: flex; align-items: center; gap: 12px; padding: 0 10px;
+  background: var(--bg-window); border-top: 1px solid var(--border); font-size: var(--font-size-xs); color: var(--text-secondary);
+}
+.sb-item { display: inline-flex; align-items: center; gap: 4px; height: 100%; cursor: default; }
+.sb-item:hover { color: var(--text-primary); }
+
+/* ── 键帽（KeybindingHint 同形：--kbd-bg/--kbd-border/--font-size-2xs/--radius-sm）── */
+.kbd { display: inline-flex; align-items: center; gap: 3px; }
+.kbd kbd {
+  display: inline-block; padding: 1px 5px; font-size: var(--font-size-2xs); font-family: var(--font-mono);
+  background: var(--kbd-bg); border: 1px solid var(--kbd-border); border-radius: var(--radius-sm); line-height: 1.5;
+}
+.kbd .sep { opacity: .4; margin: 0 1px; }
+
+/* ── HintTip 本体（跟随「大小」档切换）── */
+.tip {
+  position: absolute; z-index: var(--z-dropdown); display: inline-flex; align-items: center; gap: 6px;
+  /* 🔴 必须 width:max-content——绝对定位 + inline-flex 默认「缩至可用」：贴右缘的条会被父盒
+     剩余宽度压窄成一列（实测被压到 89px、文字逐字换行），落点几何就不判了。
+     真实壳里 `position:fixed` + 「量→重排」循环会把它收敛回自然宽，这里直接锁自然宽（＝收敛态）。 */
+  width: max-content;
+  max-width: 260px; padding: 3px 8px; border: 1px solid var(--border); border-radius: var(--radius-sm);
+  background: var(--bg-card); color: var(--text-primary); box-shadow: var(--shadow-tooltip);
+  pointer-events: none; overflow-wrap: anywhere; visibility: hidden;
+}
+.tip .tip-label { font-size: var(--font-size-xs); line-height: 1.5; }
+.tip .tip-tail {
+  position: absolute; width: 8px; height: 8px; background: var(--bg-card); display: none;
+  border: 1px solid var(--border);
+}
+.tip[data-tail="on"] .tip-tail { display: block; }
+
+/* ── 可视化辅助 ── */
+.hitbox { position: absolute; pointer-events: none; border: 1px dashed var(--error); display: none; }
+.glyphbox { position: absolute; pointer-events: none; border: 1px dashed var(--status-connected); display: none; }
+body[data-showbox="on"] .hitbox, body[data-showbox="on"] .glyphbox { display: block; }
+.anchorline { position: absolute; pointer-events: none; border: 1px solid var(--accent-hover); display: none; }
+body[data-showbox="on"] .anchorline { display: block; }
+.legend { display: flex; gap: 16px; font-size: var(--font-size-xs); color: var(--text-muted); margin: 8px 0 0; }
+.legend i { display: inline-block; width: 10px; height: 10px; border-style: dashed; border-width: 1px; margin-right: 4px; vertical-align: -1px; }
+
+/* ── 诊断面板 ── */
+.diag { padding: 0 14px 40px; display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 12px; }
+.card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 10px 12px; }
+.card h3 { margin: 0 0 8px; font-size: var(--font-size-sm); font-weight: 600; }
+.card h3 span.zh { color: var(--text-muted); font-weight: 400; font-size: var(--font-size-xs); }
+.card dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; font-size: var(--font-size-xs); }
+.card dt { color: var(--text-muted); white-space: nowrap; }
+.card dd { margin: 0; font-family: var(--font-mono); }
+.why { margin: 0; padding-left: 16px; font-size: var(--font-size-xs); color: var(--text-secondary); line-height: 1.7; }
+.why li::marker { color: var(--text-muted); }
+.bad { color: var(--error); }
+.good { color: var(--status-connected); }
+.note { font-size: var(--font-size-xs); color: var(--text-muted); line-height: 1.7; }
+.note b { color: var(--text-secondary); }
+.frame-note { margin-top: 14px; font-size: var(--font-size-xs); color: var(--text-muted); line-height: 1.8; }
+.frame-note b { color: var(--text-secondary); }
+</style>
+</head>
+<body data-showbox="off">
+
+<div class="bar">
+  <div class="bar-row">
+    <span class="bar-title">HintTip 落点与尺寸 · 集成切换参考图</span>
+    <div class="grp"><span class="lab">方案</span>
+      <button class="pill" data-scheme="1" aria-pressed="true">① 现状（复刻现行算法）</button>
+      <button class="pill" data-scheme="2" aria-pressed="false">② A·贴锚修正（边缘感知）</button>
+      <button class="pill" data-scheme="3" aria-pressed="false">③ B·跟随鼠标</button>
+      <button class="pill" data-scheme="4" aria-pressed="false">④ C·气泡（贴锚＋尖角）</button>
+    </div>
+  </div>
+  <div class="bar-row">
+    <div class="grp"><span class="lab">大小</span>
+      <button class="pill" data-size="compact" aria-pressed="true">紧凑（现状 12px / 3×8）</button>
+      <button class="pill" data-size="medium" aria-pressed="false">中号（13px / 5×10）</button>
+      <button class="pill" data-size="large" aria-pressed="false">大号（14px / 6×12）</button>
+    </div>
+    <div class="grp"><span class="lab">视口</span>
+      <button class="pill" data-vp="full" aria-pressed="true">全屏 / 最大化（≤1280）</button>
+      <button class="pill" data-vp="windowed" aria-pressed="false">窗口化（820）</button>
+    </div>
+    <div class="grp">
+      <label class="chk"><input type="checkbox" id="cb-box" /> 显示命中框 / 可见字形 / 锚</label>
+      <label class="chk"><input type="checkbox" id="cb-glyph" /> 贴锚基准＝可见字形（否则＝命中框）</label>
+      <label class="chk"><input type="checkbox" id="cb-theme" /> 浅色主题</label>
+    </div>
+  </div>
+</div>
+
+<div class="stage">
+  <div class="frame-caption"><b>集成切换</b>·完整壳轮廓（titlebar 30 → icon-bar 42 → sidebar 216 → main(tabbar 35 + 内容) → statusbar 22，尺寸均为源码实测）——把鼠标停到带提示的部件上，对照下方诊断面板看落点是怎么算出来的。</div>
+
+  <div class="win" id="win" data-vp="full">
+    <!-- 顶栏 30px -->
+    <div class="titlebar">
+      <span class="tb-logo"></span>
+      <span class="tb-name">LinkDesk</span>
+      <button class="tb-menu" data-hint="文件" data-hint-command="menu.file">文件</button>
+      <button class="tb-menu" data-hint="查看" data-hint-command="menu.view">查看</button>
+      <button class="tb-menu" data-hint="帮助" data-hint-command="menu.help">帮助</button>
+      <span class="tb-spacer"></span>
+      <div class="window-controls">
+        <button class="wc-btn" id="wc-pin" data-hint="置顶窗口" data-hint-command="window.toggleAlwaysOnTop"><span class="glyph">📌</span></button>
+        <button class="wc-btn" id="wc-min" data-hint="最小化" data-hint-command="window.minimize"><span class="glyph">─</span></button>
+        <button class="wc-btn" id="wc-max" data-hint="最大化" data-hint-command="window.toggleMaximize"><span class="glyph">▭</span></button>
+        <button class="wc-btn close" id="wc-close" data-hint="关闭窗口" data-hint-command="window.close"><span class="glyph">✕</span></button>
+      </div>
+    </div>
+
+    <div class="body">
+      <!-- 图标栏 42px（按钮 42×42，字形仅 24×24） -->
+      <div class="icon-bar">
+        <button class="ib-item active" id="ib-1" data-hint="资源管理器"><span class="glyph">🗂</span></button>
+        <button class="ib-item" id="ib-2" data-hint="搜索"><span class="glyph">🔍</span></button>
+        <button class="ib-item" id="ib-3" data-hint="源代码管理"><span class="glyph">⑂</span></button>
+        <button class="ib-item" id="ib-4" data-hint="扩展"><span class="glyph">▦</span></button>
+        <button class="ib-item" id="ib-hamburger" data-hint="更多" data-hint-command="menu.hamburger"><span class="glyph">☰</span></button>
+      </div>
+
+      <!-- 侧栏 -->
+      <div class="sidebar">
+        <div class="sb-head">资源管理器</div>
+        <div class="sb-row" data-hint="src"><span class="ico">▾</span><span class="txt">src</span></div>
+        <div class="sb-row" data-hint="components" data-hint-delay="0"><span class="ico">▾</span><span class="txt">components</span></div>
+        <div class="sb-row" data-hint="shared" data-hint-delay="0"><span class="ico">▾</span><span class="txt">shared</span></div>
+        <div class="sb-row" id="sb-long" data-hint="E:\linkdesk\src\components\shared\hint-tip\HintTipRenderer.tsx" data-hint-delay="0"><span class="ico">⌘</span><span class="txt">E:\linkdesk\src\components\shared\hint-tip\HintTipRenderer.tsx</span></div>
+        <div class="sb-row" id="sb-long2" data-hint="e:\linkdesk\docs\04-软件更新\待抉择池\HintTip-落点与尺寸返工\mockups\01-落点方案-集成切换.html" data-hint-delay="0"><span class="ico">⌘</span><span class="txt">e:\linkdesk\docs\04-软件更新\待抉择池\HintTip-落点与尺寸返工\mockups\01-落点方案-集成切换.html</span></div>
+      </div>
+
+      <!-- 主区 -->
+      <div class="main">
+        <div class="tabbar">
+          <button class="tab active" id="tab-normal" data-hint="index.css" data-hint-delay="0"><span class="t-ico">#</span><span class="t-label">index.css</span><span class="t-close" id="tab-close" data-hint="关闭" data-hint-command="tab.close">✕</span></button>
+          <button class="tab" id="tab-long" data-hint="HintTipRenderer.tsx — 双击固定" data-hint-delay="0"><span class="t-ico">⌘</span><span class="t-label">HintTipRenderer.tsx — 双击固定</span><span class="t-close" data-hint="关闭" data-hint-command="tab.close">✕</span></button>
+          <button class="tab" id="tab-diff" data-hint="HintTipRenderer.tsx ↔ placement.ts（差异）— 双击固定" data-hint-delay="0"><span class="t-ico">⇄</span><span class="t-label">HintTipRenderer.tsx ↔ placement.ts（差异）— 双击固定</span><span class="t-close" data-hint="关闭" data-hint-command="tab.close">✕</span></button>
+          <button class="tab-plus" data-hint="新建标签页" data-hint-command="tab.new">＋</button>
+        </div>
+
+        <div class="editor">
+          <div class="toolbar">
+            <button class="tool-btn" id="tool-1" data-hint="运行" data-hint-command="workbench.run">▶</button>
+            <button class="tool-btn" id="tool-2" data-hint="拆分编辑器" data-hint-command="workbench.splitEditor">▥</button>
+            <span class="sep"></span>
+            <button class="tool-btn" id="tool-3" data-hint="在这个文件中查找" data-hint-command="actions.find">🔍</button>
+          </div>
+          <div class="code-line">.ldk-hint-tip { position: fixed; padding: 3px 8px; }</div>
+          <div class="code-line">.ldk-hint-tip-label { font-size: var(--font-size-xs); }</div>
+          <div class="code-line">computeTipPosition(anchor, tip, viewport, "top");</div>
+
+          <!-- 复现点 3.2 第二种：长文案 + 靠顶 + 靠右的菜单（file-tree 插件的「选择以比较 / 与已选项比较」同形） -->
+          <div class="menu-card">
+            <button class="menu-item" id="menu-long-1" data-hint="选择以进行比较" data-hint-command="fileTree.selectForCompare" data-hint-delay="0">
+              <span class="mi-label">选择以进行比较</span><span class="mi-kbd kbd"></span>
+            </button>
+            <button class="menu-item" id="menu-long-2" data-hint="与已选项进行比较（差异视图）" data-hint-command="fileTree.compareWithSelected" data-hint-delay="0">
+              <span class="mi-label">与已选项进行比较（差异视图）</span><span class="mi-kbd kbd"></span>
+            </button>
+            <div class="menu-sep"></div>
+            <button class="menu-item" id="menu-long-3" data-hint="在文件资源管理器中显示（较长的一条说明文案）" data-hint-command="fileTree.revealInOS" data-hint-delay="0">
+              <span class="mi-label">在文件资源管理器中显示…</span><span class="mi-kbd kbd"></span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 状态栏 22px -->
+    <div class="statusbar">
+      <span class="sb-item" data-hint="主分支" data-hint-command="git.branch">⑂ main</span>
+      <span class="sb-item" data-hint="0 个问题" data-hint-command="problems.toggle">⚠ 0</span>
+      <span style="flex:1"></span>
+      <span class="sb-item" id="stat-1" data-hint="UTF-8" data-hint-command="editor.encoding">UTF-8</span>
+      <span class="sb-item" id="stat-2" data-hint="第 12 行，第 40 列" data-hint-command="editor.gotoLine">行 12，列 40</span>
+    </div>
+
+    <!-- 命中框 / 字形框 / 锚 可视化层 -->
+    <div class="hitbox" id="m-hitbox"></div>
+    <div class="glyphbox" id="m-glyphbox"></div>
+    <div class="anchorline" id="m-anchorline"></div>
+
+    <!-- HintTip 本体（position:absolute ⇒ 与真实一致：DOM 条永远出不了窗口） -->
+    <div class="tip" id="tip" role="tooltip"><span class="tip-label"></span><span class="kbd" id="tip-kbd"></span><i class="tip-tail" id="tip-tail"></i></div>
+  </div>
+
+  <div class="legend">
+    <span><i style="border-color: var(--error)"></i>命中框（元素真实盒——图标栏 42×42）</span>
+    <span><i style="border-color: var(--status-connected)"></i>可见字形（图标栏只 24×24）</span>
+    <span><i style="border-color: var(--accent-hover)"></i>实际参与计算的锚</span>
+    <span style="color: var(--text-secondary)">勾选「显示命中框」看这三层</span>
+  </div>
+</div>
+
+<div class="diag">
+  <div class="card" id="card-live">
+    <h3>现在这一次悬停 <span class="zh">（鼠标停到部件上就有数）</span></h3>
+    <dl id="live-dl">
+      <dt>热点</dt><dd id="d-hot">—（把鼠标停到带提示的部件上）</dd>
+      <dt>锚</dt><dd id="d-anchor">—</dd>
+      <dt>条尺寸</dt><dd id="d-size">—</dd>
+      <dt>首方位 → 实际</dt><dd id="d-place">—</dd>
+      <dt>落点</dt><dd id="d-pos">—</dd>
+      <dt>是否压锚</dt><dd id="d-overlap">—</dd>
+    </dl>
+    <ol class="why" id="d-why"></ol>
+  </div>
+
+  <div class="card" id="card-problems">
+    <h3>三个复现点 <span class="zh">（随方案/大小/视口实时重算）</span></h3>
+    <dl>
+      <dt>① 窗口控制 ✕</dt><dd id="p-close">—</dd>
+      <dt>② 长文案菜单（窗口化）</dt><dd id="p-menu">—</dd>
+      <dt>③ 图标悬空距离</dt><dd id="p-icon">—</dd>
+    </dl>
+    <div class="note" id="p-note" style="margin-top:8px"></div>
+  </div>
+
+  <div class="card">
+    <h3>四种方案各自意味着什么</h3>
+    <ul class="why">
+      <li><b>① 现状</b>＝<code>placement.ts</code> 逐行移植：默认 <code>top</code>、边对齐不居中、
+        <b>整矩形一票拟合</b>（副轴越界也算"贴不下"）、翻面要求对方位<b>完整</b>贴合，最后才夹紧。
+        ⇒ 两面都不完整贴合时<b>保持首方位 + 夹紧</b>——夹紧会把条按回锚上（✕ 那处就是这么被盖的）。</li>
+      <li><b>② 贴锚修正</b>＝只按<b>主轴</b>判能不能贴（副轴交给夹紧）、副轴改为<b>与锚的可见字形居中</b>、
+        夹紧后若与锚相交则<b>强制换到空间更大的一侧</b>。⇒ ✕ 会翻到下方并贴住窗口右缘；
+        长文案在窗口化下也能落到下方。</li>
+      <li><b>③ 跟随鼠标</b>＝条贴光标右下 (+14, +18)，越界翻到左上。最贴原生体感；
+        代价是会盖住相邻项目（图标栏密集排、菜单项），看截断文字时也可能盖住正在读的那行。</li>
+      <li><b>④ 气泡</b>＝②的几何 + 一个 8×8 尖角指向锚的可见字形中心。归属感最强，直接消灭图标栏那种"悬空"观感；
+        ⚠️ 等于推翻 2026-09-27 那条「不要小箭头，就是框型」的拍板——要重新拍。</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3>一条硬事实：条不可能越出窗口</h3>
+    <div class="note">
+      原生的那个小方框能压到 webview 边缘之外，是因为它由 Chromium/OS 在<b>页面之外</b>绘制；
+      我们的条是页面里的 DOM，<b>物理上出不了窗口</b>——所以"越界"这一条只能做到<b>贴边夹紧</b>
+      （要真越界，得另开一个透明置顶 BrowserWindow 来画，那是新窗口 + 新 IPC + 焦点管理的重活，
+      池层还是哑渲染器，<b>不建议</b>）。
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>三档大小对照</h3>
+    <dl>
+      <dt>紧凑（现状）</dt><dd>12px / 行高 1.5 / 内边距 3×8 / max-width 260 → 实测高 26px</dd>
+      <dt>中号</dt><dd>13px / 1.45 / 5×10 / 300 → 实测高 31px</dd>
+      <dt>大号</dt><dd>14px / 1.4 / 6×12 / 340 → 实测高 34px</dd>
+      <dt>参考·原生</dt><dd>Windows 下约 9pt（≈12–13px）+ 4–6px 内边距 ⇒ 不是字小，是<b>内边距与行高太紧</b></dd>
+    </dl>
+    <div class="note" style="margin-top:8px">三档都走 <code>--font-size-*</code> / <code>--radius-sm</code> / <code>--shadow-tooltip</code>，
+      跟着全局字号缩放（<code>--ui-scale</code>）零代码。</div>
+  </div>
+</div>
+
+<div class="frame-note" style="padding: 0 14px 48px">
+  <b>①②③ 逐条依据（file:line）</b>：
+  ① 落点算法 = <code>src/components/shared/hint-tip/placement.ts:81-100</code>（`GAP_PX=6` 与 `EDGE_PX=8` 在同文件 18/20 行）；
+  不翻面只夹紧的分支在 87-97 行。② 触发与延时 = <code>HintTipRenderer.tsx:56-72</code>（`resolveHintPayload`，缺省方位 `top` 在 69 行）；
+  延迟缺省 120ms、揭示类写 `data-hint-delay="0"`。③ 样式 = <code>HintTip.css:17-42</code>。
+  <br><b>壳侧 0 处显式方位</b>：全仓 <code>data-hint-placement</code> 只有测试里出现过（<code>HintTip.test.tsx:55</code>）——
+  所以今天<b>每一处提示都走缺省 `top`</b>，这正是"一律显示在上方"的来源。
+  <br><b>拍板状态</b>：本图为待拍板件，未动任何源码；方案 ④（尖角）与大小换档都要用户重新拍板后才落实现。
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  /* ── 常量：与 placement.ts 逐字同值（18/20 行）── */
+  var GAP_PX = 6;
+  var EDGE_PX = 8;
+  var OPP = { top: "bottom", bottom: "top", left: "right", right: "left" };
+
+  /* ── 三档大小（紧凑＝现状逐字：12px / 1.5 / 3×8 / 260）── */
+  var SIZES = {
+    compact: { fs: "var(--font-size-xs)", lh: 1.5, pad: "3px 8px", maxW: 260, name: "紧凑（现状）" },
+    medium: { fs: "var(--font-size-sm)", lh: 1.45, pad: "5px 10px", maxW: 300, name: "中号" },
+    large: { fs: "var(--font-size-md)", lh: 1.4, pad: "6px 12px", maxW: 340, name: "大号" }
+  };
+
+  /* ── 命令表（模拟壳推给池的 PoolCommandHints：提示条的快捷键由壳算好）── */
+  var COMMANDS = {
+    "menu.file": { title: "文件", keybinding: "Alt+F" },
+    "menu.view": { title: "查看" },
+    "menu.help": { title: "帮助" },
+    "window.toggleAlwaysOnTop": { title: "置顶窗口" },
+    "window.minimize": { title: "最小化", keybinding: "Ctrl+M" },
+    "window.toggleMaximize": { title: "最大化", keybinding: "Ctrl+Shift+M" },
+    "window.close": { title: "关闭窗口", keybinding: "Ctrl+W" },
+    "menu.hamburger": { title: "更多" },
+    "tab.close": { title: "关闭", keybinding: "Ctrl+W" },
+    "tab.new": { title: "新建标签页", keybinding: "Ctrl+T" },
+    "workbench.run": { title: "运行", keybinding: "F5" },
+    "workbench.splitEditor": { title: "拆分编辑器" },
+    "actions.find": { title: "在这个文件中查找", keybinding: "Ctrl+F" },
+    "fileTree.selectForCompare": { title: "选择以进行比较" },
+    "fileTree.compareWithSelected": { title: "与已选项进行比较（差异视图）" },
+    "fileTree.revealInOS": { title: "在文件资源管理器中显示" },
+    "git.branch": { title: "主分支" },
+    "problems.toggle": { title: "0 个问题" },
+    "editor.encoding": { title: "UTF-8" },
+    "editor.gotoLine": { title: "转到行/列" , keybinding: "Ctrl+G" }
+  };
+
+  var state = { scheme: 1, size: "compact", vp: "full", glyphAnchor: false, theme: "dark" };
+
+  var win = document.getElementById("win");
+  var tip = document.getElementById("tip");
+  var tipLabel = tip.querySelector(".tip-label");
+  var tipKbd = document.getElementById("tip-kbd");
+  var tipTail = document.getElementById("tip-tail");
+  var mHit = document.getElementById("m-hitbox");
+  var mGlyph = document.getElementById("m-glyphbox");
+  var mLine = document.getElementById("m-anchorline");
+  var scale = 1;
+
+  function r(n) { return Math.round(n * 10) / 10; }
+  function clamp(v, lo, hi) { return Math.min(Math.max(v, lo), hi); }
+  function rectOf(el) { var b = el.getBoundingClientRect(); return { top: b.top, bottom: b.bottom, left: b.left, right: b.right, width: b.width, height: b.height }; }
+  function winRect() { return win.getBoundingClientRect(); }
+  /** 换算到窗口局部坐标（＝真实里 position:fixed 相对池文档，等价且不受页面滚动影响） */
+  function local(el) {
+    var b = rectOf(el); var w = winRect();
+    return { top: b.top - w.top, bottom: b.bottom - w.top, left: b.left - w.left, right: b.right - w.left, width: b.width, height: b.height };
+  }
+  function vpSize() { var b = winRect(); return { width: b.width, height: b.height }; }
+  function intersects(p, t, a) { return !(p.left + t.width <= a.left || p.left >= a.right || p.top + t.height <= a.top || p.top >= a.bottom); }
+
+  function rawPlacement(a, t, p) {
+    switch (p) {
+      case "top": return { top: a.top - t.height - GAP_PX, left: a.left };
+      case "bottom": return { top: a.bottom + GAP_PX, left: a.left };
+      case "left": return { top: a.top, left: a.left - t.width - GAP_PX };
+      case "right": return { top: a.top, left: a.right + GAP_PX };
+    }
+  }
+  function fits(pos, t, vp) {
+    return pos.top >= EDGE_PX && pos.left >= EDGE_PX &&
+      pos.top + t.height <= vp.height - EDGE_PX && pos.left + t.width <= vp.width - EDGE_PX;
+  }
+
+  /* ══ 方案①：placement.ts 逐行复刻（含 which-branch 轨迹）══ */
+  function scheme1(a, t, vp, placement) {
+    var why = [];
+    var primary = rawPlacement(a, t, placement);
+    var opp = OPP[placement];
+    var rawOpp = rawPlacement(a, t, opp);
+    why.push("首选 " + placement + "：raw top=" + r(primary.top) + " left=" + r(primary.left));
+    why.push("fits(首选) = " + fits(primary, t, vp) + "（要求 上≥" + EDGE_PX + " · 左≥" + EDGE_PX +
+      " · 下≤" + r(vp.height - EDGE_PX) + " · 右≤" + r(vp.width - EDGE_PX) + "）");
+    var resolved = placement, pos = primary;
+    if (!fits(primary, t, vp) && fits(rawOpp, t, vp)) {
+      resolved = opp; pos = rawOpp;
+      why.push("⇒ 翻面到 " + opp + "（对方位<b>完整</b>贴合）");
+    } else if (!fits(primary, t, vp)) {
+      why.push("<span class='bad'>⇒ 不翻面</span>：对方位 " + opp + " 的 fits 也是 false（raw top=" + r(rawOpp.top) +
+        " left=" + r(rawOpp.left) + "）——<b>副轴越界也算「贴不下」，把可用的翻面否决掉了</b>");
+    }
+    var maxTop = Math.max(EDGE_PX, vp.height - t.height - EDGE_PX);
+    var maxLeft = Math.max(EDGE_PX, vp.width - t.width - EDGE_PX);
+    var T = clamp(pos.top, EDGE_PX, maxTop), L = clamp(pos.left, EDGE_PX, maxLeft);
+    if (T !== pos.top || L !== pos.left) {
+      why.push("夹紧：top " + r(pos.top) + "→" + r(T) + "，left " + r(pos.left) + "→" + r(L) + "（夹紧<b>不改方位</b>）");
+    }
+    return { pos: { top: T, left: L }, placement: resolved, why: why };
+  }
+
+  /* ══ 方案②：贴锚修正（主轴判可贴 · 副轴居中后夹紧 · 保证不压锚）══ */
+  function scheme2(a, t, vp, placement) {
+    var why = [];
+    var space = { top: a.top, bottom: vp.height - a.bottom, left: a.left, right: vp.width - a.right };
+    var need = { top: t.height + GAP_PX, bottom: t.height + GAP_PX, left: t.width + GAP_PX, right: t.width + GAP_PX };
+    var chosen = null, s;
+    for (var i = 0; i < 2; i++) {
+      s = i === 0 ? placement : OPP[placement];
+      if (space[s] >= need[s]) {
+        chosen = s;
+        why.push("主轴判据：<b>" + s + "</b> 侧空间 " + r(space[s]) + " ≥ 需要 " + r(need[s]) + " ⇒ 贴 " + s +
+          (i === 1 ? "（首选 " + placement + " 侧空间 " + r(space[placement]) + " 不够，翻面）" : "（首选方位可用）"));
+        break;
+      }
+      why.push("主轴判据：" + s + " 侧空间 " + r(space[s]) + " < 需要 " + r(need[s]) + " ⇒ 贴不下");
+    }
+    if (!chosen) {
+      var all = ["top", "bottom", "left", "right"].sort(function (x, y) { return space[y] - space[x]; });
+      chosen = all[0];
+      why.push("<span class='bad'>四面都不够</span> ⇒ 取<b>空间最大</b>的一侧：" + chosen + "（" + r(space[chosen]) + "）");
+    }
+    var pos = rawPlacement(a, t, chosen);
+    why.push("主轴贴边并保 " + GAP_PX + "px 间距");
+    var cx = (a.left + a.right) / 2, cy = (a.top + a.bottom) / 2;
+    if (chosen === "top" || chosen === "bottom") { pos.left = cx - t.width / 2; why.push("副轴：与锚中心 x=" + r(cx) + " 居中（此后夹紧）"); }
+    else { pos.top = cy - t.height / 2; why.push("副轴：与锚中心 y=" + r(cy) + " 居中（此后夹紧）"); }
+    var before = { top: pos.top, left: pos.left };
+    pos.top = clamp(pos.top, EDGE_PX, vp.height - t.height - EDGE_PX);
+    pos.left = clamp(pos.left, EDGE_PX, vp.width - t.width - EDGE_PX);
+    if (before.top !== pos.top || before.left !== pos.left) {
+      why.push("副轴夹紧进视口：left " + r(before.left) + "→" + r(pos.left) + "，top " + r(before.top) + "→" + r(pos.top) +
+        "（<b>主轴间距不动</b>，所以不会压回锚上）");
+    }
+    if (intersects(pos, t, a)) {
+      var order = ["top", "bottom", "left", "right"].sort(function (x, y) { return space[y] - space[x]; });
+      chosen = order[0]; pos = rawPlacement(a, t, chosen);
+      if (chosen === "top" || chosen === "bottom") pos.left = clamp(cx - t.width / 2, EDGE_PX, vp.width - t.width - EDGE_PX);
+      else pos.top = clamp(cy - t.height / 2, EDGE_PX, vp.height - t.height - EDGE_PX);
+      why.push("<span class='bad'>夹紧会压住锚</span> ⇒ 强制改到空间最大的一侧：" + chosen);
+    }
+    return { pos: pos, placement: chosen, why: why };
+  }
+
+  /* ══ 方案③：跟随鼠标（右下 +14/+18，越界翻左上）══ */
+  function scheme3(a, t, vp, placement, pt) {
+    var why = [];
+    var x = pt.x, y = pt.y, ox = 14, oy = 18;
+    why.push("贴光标右下 (+" + ox + ", +" + oy + ")——与锚<b>无关</b>（这就是原生 tooltip 的体感）");
+    if (x + ox + t.width > vp.width - EDGE_PX) { x = pt.x - ox - t.width; why.push("右越界 ⇒ 翻到光标左侧"); }
+    if (y + oy + t.height > vp.height - EDGE_PX) { y = pt.y - oy - t.height; why.push("下越界 ⇒ 翻到光标上方"); }
+    var T = clamp(y, EDGE_PX, vp.height - t.height - EDGE_PX), L = clamp(x, EDGE_PX, vp.width - t.width - EDGE_PX);
+    if (T !== y || L !== x) why.push("再夹紧贴边（条出不了窗口）");
+    return { pos: { top: T, left: L }, placement: placement, why: why };
+  }
+
+  /* ── 锚：命中框 或 可见字形（.glyph / .t-ico / .ico 内的可见盒）── */
+  function glyphElOf(el) {
+    return el.querySelector(".glyph") || el.querySelector(".t-ico") || el.querySelector(".ico") ||
+      el.querySelector(".mi-label") || el.querySelector(".t-label");
+  }
+  function anchorOf(el) {
+    var g = glyphElOf(el);
+    if (state.glyphAnchor && g) return { rect: local(g), kind: "可见字形", glyph: local(g), box: local(el) };
+    return { rect: local(el), kind: "命中框", glyph: g ? local(g) : null, box: local(el) };
+  }
+
+  /** 应用到条上的尺寸档 */
+  function applySize() {
+    var s = SIZES[state.size];
+    tip.style.fontSize = s.fs;
+    tip.style.padding = s.pad;
+    tip.style.maxWidth = s.maxW + "px";
+    tipLabel.style.fontSize = s.fs;
+    tipLabel.style.lineHeight = String(s.lh);
+  }
+
+  function payloadOf(el) {
+    var cmd = el.getAttribute("data-hint-command");
+    var meta = cmd ? COMMANDS[cmd] : null;
+    var label = (el.getAttribute("data-hint") || (meta && meta.title) || "").trim();
+    return { label: label, shortcut: meta && meta.keybinding ? meta.keybinding : "" };
+  }
+
+  function renderKbd(str) {
+    if (!str) { tipKbd.innerHTML = ""; return; }
+    var parts = str.split(" ");
+    var html = "";
+    for (var i = 0; i < parts.length; i++) {
+      if (i) html += "<span class='sep'>·</span>";
+      var keys = parts[i].split("+");
+      html += "<span class='kbd'>";
+      for (var j = 0; j < keys.length; j++) {
+        if (j) html += "<span class='sep'>+</span>";
+        html += "<kbd>" + keys[j] + "</kbd>";
+      }
+      html += "</span>";
+    }
+    tipKbd.innerHTML = html;
+  }
+
+  /** 设置尖角（只方案④）——指向锚的可见字形中心，且夹在条的边长之内 */
+  function setTail(a, t, placement, pos) {
+    if (state.scheme !== 4) { tip.setAttribute("data-tail", "off"); return; }
+    tip.setAttribute("data-tail", "on");
+    var g = state.glyphAnchor && a.glyph ? a.glyph : a.box;
+    var gx = (g.left + g.right) / 2, gy = (g.top + g.bottom) / 2;
+    var s = 8, half = s / 2;
+    tipTail.style.transform = "rotate(45deg)";
+    if (placement === "top" || placement === "bottom") {
+      var tx = clamp(gx - pos.left, half + 4, t.width - half - 4);
+      tipTail.style.left = (tx - half) + "px";
+      tipTail.style.top = "";
+      if (placement === "top") { tipTail.style.bottom = (-half - 1) + "px"; tipTail.style.borderRight = "none"; tipTail.style.borderTop = "none"; }
+      else { tipTail.style.top = (-half - 1) + "px"; tipTail.style.bottom = ""; tipTail.style.borderLeft = "none"; tipTail.style.borderBottom = "none"; }
+    } else {
+      var ty = clamp(gy - pos.top, half + 4, t.height - half - 4);
+      tipTail.style.top = (ty - half) + "px";
+      tipTail.style.left = "";
+      if (placement === "left") { tipTail.style.right = (-half - 1) + "px"; tipTail.style.borderLeft = "none"; tipTail.style.borderTop = "none"; }
+      else { tipTail.style.left = (-half - 1) + "px"; tipTail.style.borderRight = "none"; tipTail.style.borderBottom = "none"; }
+    }
+  }
+
+  /** 核心：算一次（返回诊断对象），供悬停显示与「复现点」复算共用 */
+  function probe(el, pt) {
+    var p = payloadOf(el);
+    var a = anchorOf(el);
+    var vp = vpSize();
+    applySize();
+    tipLabel.textContent = p.label;
+    /* 🔴 键帽必须在**量尺寸之前**就位——键帽宽度不小（「关闭窗口」不带键帽 72px、带 Ctrl+W 达 143px），
+       晚一步就会用偏小的宽度去算夹紧，条会溢出窗口右缘被裁（真实渲染器是「渲染→量→重算」，天然对齐）。 */
+    renderKbd(p.shortcut);
+    tip.style.visibility = "hidden";
+    tip.style.left = "-9999px"; tip.style.top = "-9999px";
+    var t = { width: tip.offsetWidth, height: tip.offsetHeight };
+    var placement = el.getAttribute("data-hint-placement") || "top";
+    var res;
+    if (state.scheme === 1) res = scheme1(a.rect, t, vp, placement);
+    else if (state.scheme === 2) res = scheme2(a.rect, t, vp, placement);
+    else if (state.scheme === 3) res = scheme3(a.rect, t, vp, placement, pt || { x: a.rect.right, y: a.rect.bottom });
+    else res = scheme2(a.rect, t, vp, placement);
+    return { el: el, label: p.label, shortcut: p.shortcut, anchor: a, tip: t, vp: vp, res: res };
+  }
+
+  function paint(d) {
+    var el = d.el, a = d.anchor, t = d.tip, res = d.res;
+    applySize();
+    tipLabel.textContent = d.label;
+    renderKbd(d.shortcut);
+    tip.style.left = res.pos.left + "px";
+    tip.style.top = res.pos.top + "px";
+    tip.style.visibility = "visible";
+    setTail(a, t, res.placement, res.pos);
+
+    /* 可视化层 */
+    function box(node, rct) { node.style.left = rct.left + "px"; node.style.top = rct.top + "px"; node.style.width = rct.width + "px"; node.style.height = rct.height + "px"; }
+    box(mHit, a.box);
+    if (a.glyph) box(mGlyph, a.glyph);
+    box(mLine, a.rect);
+
+    /* 诊断 */
+    document.getElementById("d-hot").textContent = d.label + "（" + el.tagName.toLowerCase() + (el.id ? "#" + el.id : "") + "）";
+    document.getElementById("d-anchor").textContent = a.kind + "  " + r(a.rect.left) + "," + r(a.rect.top) + " " + r(a.rect.width) + "×" + r(a.rect.height) +
+      (a.glyph ? "（命中框 " + r(a.box.width) + "×" + r(a.box.height) + "）" : "");
+    document.getElementById("d-size").textContent = SIZES[state.size].name + " —— " + r(t.width) + "×" + r(t.height);
+    document.getElementById("d-place").textContent = (el.getAttribute("data-hint-placement") || "top") + " → " + res.placement;
+    document.getElementById("d-pos").textContent = "top " + r(res.pos.top) + " , left " + r(res.pos.left);
+    var ov = intersects(res.pos, t, a.rect);
+    document.getElementById("d-overlap").innerHTML = ov
+      ? (state.scheme === 3
+          ? "<span class='note'>是——但方案③是「跟随鼠标」，贴鼠标就必然压住锚，这是它的本意（原生 tooltip 同理），⛔ 在这一档不算缺陷</span>"
+          : "<span class='bad'>是——条压在锚上</span>")
+      : "<span class='good'>否</span>";
+    var ul = document.getElementById("d-why");
+    ul.innerHTML = "";
+    res.why.forEach(function (w) { var li = document.createElement("li"); li.innerHTML = w; ul.appendChild(li); });
+  }
+
+  function hide() { tip.style.visibility = "hidden"; }
+
+  /* ── 事件：委托（与真实同构：pointerover / pointerout 捕获）── */
+  var current = null;
+  document.addEventListener("pointerover", function (e) {
+    var el = e.target instanceof Element ? e.target.closest("[data-hint]") : null;
+    if (!el || el === current) return;
+    current = el;
+    paint(probe(el, { x: e.clientX - winRect().left, y: e.clientY - winRect().top }));
+  }, true);
+  document.addEventListener("pointerout", function (e) {
+    var el = e.target instanceof Element ? e.target.closest("[data-hint]") : null;
+    if (!el) return;
+    if (e.relatedTarget instanceof Node && el.contains(e.relatedTarget)) return;
+    current = null; hide();
+  }, true);
+  /* 方案③要跟着鼠标动 */
+  document.addEventListener("pointermove", function (e) {
+    if (state.scheme !== 3 || !current) return;
+    var wr = winRect();
+    var x = e.clientX - wr.left, y = e.clientY - wr.top;
+    if (x < 0 || y < 0 || x > wr.width || y > wr.height) return;
+    var a = anchorOf(current), t = { width: tip.offsetWidth, height: tip.offsetHeight };
+    var res = scheme3(a.rect, t, vpSize(), current.getAttribute("data-hint-placement") || "top", { x: x, y: y });
+    tip.style.left = res.pos.left + "px"; tip.style.top = res.pos.top + "px";
+    document.getElementById("d-pos").textContent = "top " + r(res.pos.top) + " , left " + r(res.pos.left);
+  }, true);
+  win.addEventListener("pointerleave", function () { current = null; hide(); });
+
+  /* ── 复现点：三个问题的实时读数 ── */
+  function refreshProblems() {
+    var note = document.getElementById("p-note");
+    var pClose = document.getElementById("p-close");
+    var pMenu = document.getElementById("p-menu");
+    var pIcon = document.getElementById("p-icon");
+
+    /* ① 关闭按钮 —— 全屏下贴右缘，正是用户看到"盖在 ✕ 上"的那一处 */
+    var d1 = probe(document.getElementById("wc-close"), null);
+    var ov1 = intersects(d1.res.pos, d1.tip, d1.anchor.rect);
+    pClose.innerHTML = ov1
+      ? "<span class='bad'>压住 ✕</span>：落点 top=" + r(d1.res.pos.top) + " left=" + r(d1.res.pos.left) + "（方位仍 = " + d1.res.placement + "）"
+      : "<span class='good'>不压</span>：翻到 " + d1.res.placement + "，落点 top=" + r(d1.res.pos.top) + " left=" + r(d1.res.pos.left) + "（贴窗口右缘）";
+
+    /* ② 长文案菜单项 —— 视口切窗口化时最容易复现 */
+    var d2 = probe(document.getElementById("menu-long-2"), null);
+    var tabbar = local(document.querySelector(".tabbar"));
+    var hitTabbar = !(d2.res.pos.left + d2.tip.width <= tabbar.left || d2.res.pos.left >= tabbar.right ||
+      d2.res.pos.top + d2.tip.height <= tabbar.top || d2.res.pos.top >= tabbar.bottom);
+    var ov2 = intersects(d2.res.pos, d2.tip, d2.anchor.rect);
+    pMenu.innerHTML = "<span class='" + (hitTabbar || ov2 ? "bad" : "good") + "'>" +
+      (hitTabbar ? "盖住标签栏" : ov2 ? "压在菜单项上" : "正常（落在项下方）") + "</span>：方位 " + d2.res.placement +
+      "，落点 top=" + r(d2.res.pos.top) + " left=" + r(d2.res.pos.left) + "；条 " + r(d2.tip.width) + "×" + r(d2.tip.height) +
+      "；视口宽 " + r(d2.vp.width) + "（" + (state.vp === "full" ? "全屏" : "窗口化") + "）";
+
+    /* ③ 图标悬空距离 —— 条底边 ↔ 可见字形顶边的视觉距离 */
+    var ibEl = document.getElementById("ib-2");
+    var ibBox = local(ibEl), ibGlyph = local(ibEl.querySelector(".glyph"));
+    var d3 = probe(ibEl, null);
+    var gapToGlyph = r(ibGlyph.top - (d3.res.pos.top + d3.tip.height));
+    pIcon.innerHTML = gapToGlyph >= 0
+      ? "条底边到<b>可见字形</b>顶边 = <b>" + gapToGlyph + "px</b>（锚取" + d3.anchor.kind + "）——字形顶边距命中框顶边 " + r(ibGlyph.top - ibBox.top) + "px"
+      : "条与字形<b>重叠</b> " + Math.abs(gapToGlyph) + "px";
+
+    note.innerHTML = "①窗口控制✕＝全屏下贴右缘那一处；②长文案菜单＝file-tree 插件「选择以比较 / 与已选项比较」同形（靠顶 + 靠右 + 文案长）；③图标栏按钮命中框 42×42、字形只 24×24 ⇒ 锚取命中框时<b>天然多出 " +
+      r((ibBox.height - ibGlyph.height) / 2) + "px</b> 空档，再加 GAP " + GAP_PX + "px。<b>试试：把视口切到「窗口化」再点方案①</b>——②③ 会同时现形。";
+  }
+
+  /* ── 控件绑定 ── */
+  function bindPills(attr, apply) {
+    document.querySelectorAll("[data-" + attr + "]").forEach(function (b) {
+      b.addEventListener("click", function () {
+        document.querySelectorAll("[data-" + attr + "]").forEach(function (o) { o.setAttribute("aria-pressed", "false"); });
+        b.setAttribute("aria-pressed", "true");
+        apply(b.getAttribute("data-" + attr));
+        current = null; hide();
+        refreshProblems();
+      });
+    });
+  }
+  bindPills("scheme", function (v) { state.scheme = Number(v); });
+  bindPills("size", function (v) { state.size = v; });
+  bindPills("vp", function (v) {
+    state.vp = v;
+    win.setAttribute("data-vp", v);
+    document.querySelectorAll(".menu-card").forEach(function (m) { m.style.right = "10px"; });
+  });
+  document.getElementById("cb-box").addEventListener("change", function (e) {
+    document.body.setAttribute("data-showbox", e.target.checked ? "on" : "off");
+  });
+  document.getElementById("cb-glyph").addEventListener("change", function (e) { state.glyphAnchor = e.target.checked; current = null; hide(); refreshProblems(); });
+  document.getElementById("cb-theme").addEventListener("change", function (e) {
+    state.theme = e.target.checked ? "light" : "dark";
+    document.documentElement.setAttribute("data-theme", state.theme);
+  });
+
+  /* 初始化 */
+  applySize();
+  refreshProblems();
+  window.addEventListener("resize", function () { current = null; hide(); });
+})();
+</script>
+</body>
+</html>
