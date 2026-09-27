@@ -138,7 +138,8 @@ formKey 有值但键没注册 / 值非法   → 降级 defaultForm → 再不行
 | 3 | 「快捷键设置」是第二条路 | `openKeybindingsSettings` 走 `CUSTOM_EVENTS.OPEN_SETTINGS` → `icon:selected`（`tabActions.ts:45` 仅对 tabOnly 插件开标签页），**不经过 `core.openSettings`** ⇒ 首开形态声明对它不生效。今日设置插件声明 `auxiliarybar`，该分支本就不开标签页。属**既有边界**、非本刀引入；是否收编另立任务 | 待用户决定 |
 | 4 | `enumDescriptions` 形状漂移 | schema 里是 **object**，设置插件按 **`string[]`** 消费 ⇒ 今天无法给 enum 项挂本地化标签（`settings.openForm` 的两项只能读 `enum` 原值渲染）。观察到即记账，未修 | 待立任务 |
 | 5 | 设置行标签 = 原样配置键 | `SettingRow.tsx:65` 直接印 key 原文（如 `settings.openForm`），未走「键 → 人话标签」映射。本刀沿用现状（用户未见异议） | — |
-| 6 | 本刀真机未验 | 「打包态才见效的项 dev 测不了」不适用（这是纯逻辑分支，dev 可验），但仍需用户实机点一遍：齿轮打开 → 面板；把 `settings.openForm` 改成 `tab` → 重开设置成标签页 | 用户验收 |
+| 6 | **SDK 声明自洽可加一条** | 插件仓 `npm run verify` 的「④ 声明自洽」今天只验 `floatingPanel → viewId` 是否兑现；`formKey` 是否指向**本插件已声明的配置键**它不管（这个洞由壳侧运行时兜：未注册键降级＋出声一次）。补一条构建期门禁更早出声——但 SDK 是 npm 包，改动要升 SDK 版本＋插件仓锁步，属发版区 | 待立任务（与发版同批） |
+| 7 | 本刀真机未验 | 「打包态才见效的项 dev 测不了」不适用（这是纯逻辑分支，dev 可验），但仍需用户实机点一遍：齿轮打开 → 面板；把 `settings.openForm` 改成 `tab` → 重开设置成标签页 | 用户验收 |
 
 ---
 
