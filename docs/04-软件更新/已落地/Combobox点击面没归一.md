@@ -102,11 +102,34 @@ dev 手测（串口监视器 → 波特率那一格，`npm run electron:dev`）�
 4. 悬停箭头 → 光标是**手型**（改前是文本 I 形）。
 5. **回归**：聚焦后 Tab 走开 / 点别处 → 提交语义与改前一致（无变更不触发 `onChange`）。
 
-## 五、边界与遗留
+## 五、⚠️ 用户 2026-09-27 追加提问：「dev 里怎么还是没变？是串口监视器要更新一个版本吗？」
+
+**答案：不需要给串口监视器升版本——缺的是把 `@linkdesk/ui` 的 dist 重新构建一次。** 这一节把链路钉死，免得后人重查。
+
+**① 先证明"集中供给"机制正常在跑**（用户记忆里的设计：`E6#123` L9，改壳 UI 全生态跟走）：
+
+| 检查 | 实测 |
+|:--|:--|
+| 插件 bundle 是自带一份 ui，还是裸 import？ | **裸 import**——`dist/serial-monitor.linkdesk-plugin/index.bundle.js` 里是 `@linkdesk/ui` 字符串，`ldk-combobox-input`（Combobox 实现体的特征串）**命中 0** ⇒ 插件**没有**内联副本 |
+| dev 实际加载的那份安装副本呢（`{userData}/plugins/serial-monitor`） | 同样：`ldk-combobox-input` **0 命中** ＋ 带裸 `@linkdesk/ui` ⇒ **外置型**，运行时由宿主供给 |
+| 插件仓 `node_modules/@linkdesk/ui` 装的是 0.2.13 旧版，要紧吗？ | **不要紧**——它只当**类型契约**用（L9 设计原话：「包本身降级为类型契约 + dev 解析体」）。运行时那份由宿主给 |
+
+**② 真因：宿主供给的那份是「构建产物」，源码改了没重建。**
+
+- 供给物 = `packages/linkdesk-ui/dist/index.js`（壳仓 workspace 包，`node_modules/@linkdesk/ui` 是指向它的软链）。
+- 它的 `src` 只有一行 `export * from "@shared/…"`——**组件源码单一真源就是壳的 `src/components/shared/`**，dist 是 `npm run build -w @linkdesk/ui` 出来的**产物**（`.gitignore:3 dist/` 已忽略 ⇒ 是产物不是源码）。
+- dev 轨道**没有任何"保鲜"逻辑**；而 `npm run check` 只做类型检查与门禁断言，**不构建**。⇒ 改了 `src/components/shared/**` 而没重建 dist，dev 里就看不到改动。**本次正是如此。**
+- 🔵 对照：**打包轨道有保鲜**——`scripts/build-pool-vendor.mjs:54-63` 明写「ui 包 dist 保鲜（#123 内聚）：vendor 入口 = workspace `@linkdesk/ui` 的 dist/index.js」，并在 `src` 比 `dist` 新时**自动 `npm run build --workspace @linkdesk/ui`**。所以**生产上不需要谁去操心**：随下一次壳发版，vendor 轨道自动带上这个修复，**已装的 serial-monitor（1.0.21）零发版就吃到**——用户记忆中「软件更新一次、所有插件都受益」的设计**成立且正在生效**。
+
+**③ 补救（已做）**：`npm run ui:build`（= `npm run build -w @linkdesk/ui`）重建 dist；并已把它**接进 `npm run dev` 与 `npm run electron:dev` 的启动链**（2026-09-27），下次改共享组件不会再撞这个坑。CLAUDE.md 开发命令段同笔补了说明。
+
+> 🔴 一句话教训：**「集中供给」的供给物是构建产物**——改壳共享组件后，dev 轨道必须手动重建一次。判据 = 看 `packages/linkdesk-ui/dist/index.css` 有没有你新加的规则（CSS 类名不压缩，比 JS 里找函数名可靠得多，JS 会压缩改名）。
+
+## 六、边界与遗留
 
 - **同类消费者普查（用户问的「其他地方」）**：本仓 ＋ 官方插件仓 `E:/linkdesk-plugins` 里，`Combobox` 的消费者**只有一处**——`serial-monitor/src/components/ControlPanel/BaudInput.tsx`（行 19）。`SelectBox`（只有下拉、正则取值）整块触发器是 `<button>`，**不存在本缺陷**；`Select`/`Input` 等其余共享控件与此形态无关。
 - **未来「双形态共存」的判据（用户提的那条）已落**：新组件若也要「可输入 ＋ 可下拉」，**直接用 `Combobox`，不要照抄视觉手搓一份**——本缺陷的完整成因就是「照抄了视觉、没抄交互骨架」。这条同 `SelectBox` → `Combobox` 的历史教训。
 - ⏳ **未实机验收**：机械面全绿，但点击手感/光标形态只有真实浏览器里能判（jsdom 不实现「mousedown 默认聚焦」等默认动作，测试里凡依赖聚焦链的路径都由被测代码自己驱动——这一点已在测试注释里写明，免得后人误读为「浏览器行为已覆盖」）。
-- **发版时的连带**：`@linkdesk/ui` 与壳**同号锁步**（`E6#124`）——发版时随壳一起 bump 到同号；插件仓（`serial-monitor` 等）是否跟版由用户定（本件插件侧零代码改动，不跟版也能吃到新行为，因为 `@linkdesk/ui` 的源码就是壳的 `src/components/shared/`）。
+- **发版时的连带**：`@linkdesk/ui` 与壳**同号锁步**（`E6#124`）——发版时随壳一起 bump 到同号。**插件仓不需要跟版**：本件插件侧零代码改动，且 `@linkdesk/ui` 由宿主集中供给、插件 bundle 里是裸 import（实证见 §五）⇒ serial-monitor 停在自己的 1.0.21 也能吃到修复。
 
 > **同类先例（同日同族）**：[标签 tooltip 印内部 id.md](标签tooltip印内部id.md)、[悬浮面板提示条没进收编.md](悬浮面板提示条没进收编.md)——三件都是「用户看一眼就发现的表面小事，根因都在**一处没人清点过的抽象层**」。

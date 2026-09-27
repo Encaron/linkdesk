@@ -122,6 +122,11 @@ npm run audit:nonnaming     # 非样式命名空间普查探针（①命令 id �
                             #   2026-09-17（1.32）从 gitignore 的 scratch/ 搬进 scripts/，同笔删原件；只读、不接 check 链）
 npm run audit:nonnaming:json # 上条的机读输出（--json）
 npm run check:lockfile-sync # lockfile 同源门禁；升 packages/* 版本后必须重跑 npm install 同笔提交 lock
+npm run ui:build            # 🔴 改了壳共享组件（src/components/shared/**）后**必跑**——@linkdesk/ui 的 dist 是构建产物，
+                            #   而 dev 轨道解析的就是它（L9 设计原文：包 = **类型契约 + dev 解析体**）⇒ 只改源码不重建，
+                            #   dev 里**看不到任何变化**（插件那侧也一样，因为插件 bundle 对 ui 是裸 import、由宿主供给）。
+                            #   ⚠️ 打包轨道不用手动跑（build-pool-vendor 有「src 比 dist 新就重建」保鲜）；dev 轨道没有这层
+                            #   ——已接进 `npm run dev` 与 `npm run electron:dev` 启动链（2026-09-27，踩过）。
 npm run lint / dev / electron:dev / npx tsc --noEmit / npx vitest run
 ```
 
