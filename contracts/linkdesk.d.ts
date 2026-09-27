@@ -1783,6 +1783,12 @@ export interface PoolTab {
     pluginId: string;
     title: string;
     sourceId?: string;
+    /** 标签 tooltip 文案——**只给人看**（有才用；无 ⇒ 池侧回落 `title` ＋「双击固定」后缀）。
+     *  🔴 2026-09-27：⛔ 别拿 `sourceId` 当文案——它是跨组移动/事件寻址/插件绑数据的**功能键**
+     *  （插件 API `tabs.closeBySourceId` 认的就是它），插件标签上常是 `settings-2`、`serial-monitor-49`
+     *  这类内部 id，收编 HintTip 时曾被原样印在 tooltip 上。壳 serializeGroups 现场解析：
+     *  文件标签 → 完整路径（E5#53 原意），其余 → `undefined`。 */
+    hint?: string;
     dirty?: boolean;
     // 🆕 E5.6#16.5：TabBar 渲染所需元数据
     /** 标签图标——IconBarIcon 判别联合（E6#69f/#69g：视图标签 = Type-2 身份图 img；文件标签 = 文件类型图标

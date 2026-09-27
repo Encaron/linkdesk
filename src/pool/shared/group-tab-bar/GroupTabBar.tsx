@@ -71,11 +71,14 @@ function disambiguateLabels(tabs: PoolTab[]): Map<string, string> {
   const countByLabel = new Map<string, number>();
   for (const t of tabs) countByLabel.set(t.title, (countByLabel.get(t.title) ?? 0) + 1);
   for (const t of tabs) {
-    if ((countByLabel.get(t.title) ?? 0) <= 1 || !t.sourceId) {
+    // ⛔ 读 `hint`（壳给的人看的来源——**真文件标签**才有值 = 完整路径），不读 `sourceId`：
+    //   sourceId 是功能键，插件标签上是 `settings-2` 这类内部 id——单段取不到父目录虽不显形，
+    //   但插件 id 里含 `/` 时会把一个无意义的「父段」印进**可见标签名**（2026-09-27 同案收口）
+    if ((countByLabel.get(t.title) ?? 0) <= 1 || !t.hint) {
       result.set(t.id, t.title);
       continue;
     }
-    const parts = normalizePath(t.sourceId).split("/").filter(Boolean);
+    const parts = normalizePath(t.hint).split("/").filter(Boolean);
     const parent = parts.length >= 2 ? parts[parts.length - 2] : "";
     result.set(t.id, parent ? `${t.title} • ${parent}/` : t.title);
   }
@@ -309,10 +312,13 @@ export default function GroupTabBar({ groupId, tabs, activeTabId, draggingId, dr
               {adsorbInsertIndex === idx && (
                 <div className="ldk-group-tab-drop-indicator" />
               )}
+              {/* tooltip 文案：壳推的 `hint`（文件标签 = 完整路径）优先，否则标签名（未固定时带「双击固定」）。
+                  ⛔ 不许用 tab.sourceId——它是跨组移动/事件寻址/插件绑数据的功能键，插件标签上会是
+                  settings-2 / serial-monitor-49 这类内部 id（2026-09-27 曾原样印在 tooltip 上） */}
               <div
                 data-tab-id={tab.id}
                 className={`ldk-group-tab-item${isActive ? " active" : ""}${isDragging ? " dragging" : ""}${!tab.pinned ? " preview" : ""}`}
-                data-hint={tab.sourceId ?? (tab.pinned ? tab.title : `${tab.title} — ${t("双击固定")}`)} data-hint-delay="0"
+                data-hint={tab.hint ?? (tab.pinned ? tab.title : `${tab.title} — ${t("双击固定")}`)} data-hint-delay="0"
                 onClick={() => {
                   tabAction({ action: "focusTab", tabId: tab.id });
                   // E5.7 fix（2026-08-16）：点击标签 → 该编辑器获焦（VS Code 语义）。

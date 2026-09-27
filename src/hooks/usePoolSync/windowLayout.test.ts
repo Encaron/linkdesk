@@ -198,4 +198,26 @@ describe("serializeGroups 标签页序列化", () => {
     expect(tab.shellRendered).toBe(false);
     expect(tab.closeBehavior).toBe("normal");
   });
+
+  it("tooltip 文案（hint）只认 filePath——文件标签给完整路径（E5#53 原意）", () => {
+    const state = makeTabState();
+    state.groups[0].tabs[0].filePath = "E:/proj/src/App.tsx";
+    expect(serializeGroups(state, t)[0].tabs[0].hint).toBe("E:/proj/src/App.tsx");
+    // 空串不是文案（也别让它变成空 tooltip）
+    state.groups[0].tabs[0].filePath = "";
+    expect(serializeGroups(state, t)[0].tabs[0].hint).toBeUndefined();
+  });
+
+  it("🔴 回归：插件标签的 sourceId 绝不进 tooltip（settings-2 / serial-monitor-49 不再印到用户眼前）", () => {
+    const state = makeTabState();
+    // 壳侧回填（defaults.ts:56——无 identityField ⇒ sourceId = 生成的 tab id）的两个真身：
+    state.groups[0].tabs[0].sourceId = "settings-2";
+    let tab = serializeGroups(state, t)[0].tabs[0];
+    expect(tab.sourceId).toBe("settings-2"); // 功能键照旧下推（跨组移动/事件寻址/插件绑数据要用它）
+    expect(tab.hint).toBeUndefined();        // ⛔ 但不进文案 ⇒ 池侧回落 title（未固定时＋「双击固定」）
+    // 插件自造 id（serial-monitor 把会话 id 当 sourceId 传）同理——只要没有 filePath 就不给文案
+    state.groups[0].tabs[0].sourceId = "serial-monitor-49";
+    tab = serializeGroups(state, t)[0].tabs[0];
+    expect(tab.hint).toBeUndefined();
+  });
 });

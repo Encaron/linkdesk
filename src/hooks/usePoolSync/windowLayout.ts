@@ -120,6 +120,16 @@ function resolveFileTabIcon(filePath: string): IconBarIcon {
     : { kind: "codicon", name: desc.className, ...(desc.color ? { color: desc.color } : {}) };
 }
 
+/** 标签 tooltip 文案——E5#53 的原意只有一句：**文件标签的 tooltip 显示完整路径**。
+ *  当年 editor 标签的 `sourceId` 恰好等于文件路径，于是被实现成「有 sourceId 就打 sourceId」——
+ *  一个巧合写成了规则；`filePath` 不随载荷下推后，插件标签的 `sourceId`（`settings-2`、
+ *  `serial-monitor-49` 这类内部 id）就漏到了用户眼前（2026-09-27 用户实机挑出）。
+ *  🔴 口径：文案归壳算（与同函数里 `title`/`icon` 同一条「壳想池画」），`sourceId` 只当功能键。
+ *  只有真文件标签给路径；其余返回 `undefined` ⇒ 池侧落回 `title` ＋「双击固定」后缀。 */
+function resolvePoolTabHint(filePath: string | undefined): string | undefined {
+  return filePath || undefined;
+}
+
 /**
  * E6#57.13：发行说明标签页的标题——**在序列化时推导，不改 tab state**。
  *
@@ -176,6 +186,7 @@ export function serializeGroups(
         title: (isReleaseNotesTab ? releaseNotesTabTitle(releaseNotes, t) : undefined)
           ?? resolvePoolTabTitle(tab.label, entry?.manifest.name, t),
         sourceId: tab.sourceId,
+        hint: resolvePoolTabHint(tab.filePath),
         dirty: tab.dirty,
         icon,
         pinned: tab.pinned,

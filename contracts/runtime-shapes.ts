@@ -844,6 +844,9 @@ function chkPoolTab(v: unknown, p: string, errs: string[]): void {
     if (_t109.sourceId !== undefined) {
     if (typeof _t109.sourceId !== "string") errs.push(((p) + ".sourceId") + ": 期望 string，实收 " + typeof _t109.sourceId);
     }
+    if (_t109.hint !== undefined) {
+    if (typeof _t109.hint !== "string") errs.push(((p) + ".hint") + ": 期望 string，实收 " + typeof _t109.hint);
+    }
     if (_t109.dirty !== undefined) {
     if (!(_t109.dirty === false || _t109.dirty === true)) errs.push(((p) + ".dirty") + ": 期望 false|true");
     }
