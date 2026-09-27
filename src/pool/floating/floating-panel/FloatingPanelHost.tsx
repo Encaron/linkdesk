@@ -33,6 +33,7 @@ import { createPortal } from "react-dom";
 import { Z_INDEX } from "../../../constants";
 import { getScrimTarget } from "../../../components/shared/overlay-portal/OverlayPortal"; // E5.8#107 浮层权威：遮罩归 scrim-plane
 import { OVERLAY_LAYER_ATTR, isTopmostOverlay } from "../../../components/shared/overlay-portal/overlayLayer"; // E6#73b ④ Esc 分层
+import { HINT_ATTR } from "../../../components/shared/hint-tip/hintAttrs"; // 04「悬停提示系统」：属性名走单一真相源（⛔ 别写 "data-hint" 字面量）
 import type { PoolFloatingPanelButton, PoolFloatingPanelData } from "../../../core/types/pool/poolFloatingPanel";
 import PluginComponent from "../../shared/plugin-component/PluginComponent";
 import "./FloatingPanel.css";
@@ -253,7 +254,13 @@ export default function FloatingPanelHost() {
         onClick={(e) => e.stopPropagation()}
       >
         {/* 标题栏 = I8-5 拖拽面（#41.6 顶部 6px 手柄 → 整条标题栏；actions 按钮区 startGesture 内排除）——
-            纯图标动作（mockup 帧 1：open-in hover 展开全文 / □✕ hover tooltip） */}
+            纯图标动作（mockup 帧 1：open-in hover 展开全文 / □✕ 悬停提示见下）。
+            🔴 2026-09-27 收编：□✕ 原先是 `.tip::after { content: attr(data-tip) }` 的**纯 CSS 提示**
+            （12px / 内边距 3×8、无气泡尖角、不跟主题字号缩放）——与主窗标题栏那几个窗口按钮
+            （`TitleBarZone` 的 `wc.minimize/maximize/close`，走 `data-hint`）是**两把尺子**，
+            用户实机挑出「没有气泡、偏小一点」。现改挂 `data-hint`：长相/延时/尖角/键帽全归 HintTip。
+            ⛔ 别再回 CSS 造提示——门禁 `check-css-tooltip.mjs`（腿 3）判 `content: attr()` 的新增。
+            open-in 那颗**不**收编：它是"hover 就地展开全文"（`open-in` 分支 + `.lbl`），另一种交互。 */}
         <div
           className="ldk-floating-panel-title"
           onPointerDown={startGesture}
@@ -274,13 +281,13 @@ export default function FloatingPanelHost() {
               const actionClass = action.expandOnHover
                 ? "ldk-floating-panel-act open-in"
                 : action.toggledIcon
-                  ? "ldk-floating-panel-act tip"
-                  : "ldk-floating-panel-act tip close";
+                  ? "ldk-floating-panel-act"
+                  : "ldk-floating-panel-act close";
               return (
                 <button
                   key={action.id}
                   className={actionClass}
-                  data-tip={currentLabel}
+                  {...{ [HINT_ATTR]: currentLabel }}
                   aria-label={currentLabel}
                   onClick={() => handleAction(action)}
                 >

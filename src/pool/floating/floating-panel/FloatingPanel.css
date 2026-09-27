@@ -102,7 +102,6 @@
 }
 
 .ldk-floating-panel-act {
-  position: relative;
   height: calc(26px * var(--ui-scale)); /* E5.8 Phase 12 #171：act 26px 乘 scale */
   padding: 0 8px;
   display: flex;
@@ -161,26 +160,10 @@
 .ldk-floating-panel-act.open-in:hover .lbl { opacity: 1; }
 .ldk-floating-panel-act.open-in svg { color: var(--accent); }
 
-/* □ / ✕：hover tooltip（data-tip 纯 CSS——文案来自 DTO label，池零自产文本）。
-   向下落入面板内部（标题栏在面板顶），overflow:hidden 不裁到 */
-.ldk-floating-panel-act.tip::after {
-  content: attr(data-tip);
-  position: absolute;
-  top: calc(100% + 6px);
-  right: 0;
-  background: var(--bg-input);
-  border: 1px solid var(--separator);
-  color: var(--text-primary);
-  font-size: var(--font-size-xs); /* E5.8 Phase 12 #171：tooltip 11→xs */
-  padding: 3px 8px;
-  border-radius: var(--radius-sm);
-  white-space: nowrap;
-  opacity: 0;
-  pointer-events: none;
-  transform: translateY(-3px);
-  transition: opacity 120ms ease, transform 120ms ease;
-}
-.ldk-floating-panel-act.tip:hover::after { opacity: 1; transform: translateY(0); }
+/* □ / ✕ 的悬停提示**已收编**（2026-09-27）——原 `.tip::after { content: attr(data-tip) }` 纯 CSS 提示
+   （12px / 3×8、无尖角、不跟主题字号缩放）与主窗标题栏窗口按钮是两把尺子，用户实机挑出「没有气泡、偏小」。
+   现由 JSX 挂 `data-hint`（文案仍来自 DTO label，池零自产文本），长相/延时/尖角/键帽全归 HintTipRenderer。
+   ⛔ 别在这里重新造提示——门禁 `check-css-tooltip.mjs`（腿 3）判 `content: attr()` 的新增。 */
 
 /* I8-7 底部 8px resize 手柄（调高，cursor:ns-resize；mockup .fp-resize） */
 .ldk-floating-panel-resize {
