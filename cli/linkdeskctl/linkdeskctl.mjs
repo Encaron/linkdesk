@@ -58,6 +58,8 @@ const STATIC_USAGE = `linkdeskctl——一条命令控制运行中的 LinkDesk�
   notifications                 读通知面板（按钮的 command 事实随行）
   notify-action <id> <action>   执行通知上的按钮（action = 按钮 label 或序号）
   log                           读最近操作账（正门三件套之「账本」的读取面）
+  mcp                           起 MCP stdio server（给 AI 客户端配置用——⛔ 别在终端里直接跑；
+                                客户端配置 = { "command": "<linkdeskctl 绝对路径>", "args": ["mcp"] }）
 
 选项:
   --json                  机读输出（给 AI 用；失败时带 code + hint）
@@ -291,6 +293,14 @@ async function main() {
   }
 
   const subcommand = rest[0];
+
+  // MCP 皮（AI#36）——stdio server 模式：接管 stdin/stdout，不走普通子命令流程（AI#37：不读盘不挂死）
+  if (subcommand === "mcp") {
+    const { runMcpServer } = await import("./lib/mcp-server.mjs");
+    runMcpServer({ userDataDir: opts.userDataDir });
+    return; // 生命周期归 stdin（客户端关管道 = 退出）
+  }
+
   let payload;
   try {
     payload = buildRequest(subcommand, rest.slice(1), opts);
