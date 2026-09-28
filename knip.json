@@ -75,6 +75,11 @@
         "src/core/index.ts",
         "src/core/api/linkdesk-api.ts",
         "src/core/api/linkdesk-api/types.ts",
+        // M1 AI#3（2026-09-28）：tabs 契约文件的 DTO 子类型 `TabsSnapshotWindow` 壳内无第二消费方——
+        //   它的名字只为**生成的公共契约**（contracts/linkdesk.d.ts 逐字照抄该接口 + 其文档）与 docs 存在，
+        //   而 contracts/ 不在 knip project 域（src/electron/scripts）⇒ 静态图断边误报「导出类型未用」。
+        //   语义同上面两条桶导出（面向插件/契约域，不是死代码）；缺了它 `contracts:gen` 产物即少一个具名类型。
+        "src/core/api/linkdesk-api/tabs.ts",
         "src/core/api/types.ts",
         "src/core/commands/shell/coreCommands.ts",
         "src/core/commands/input-bindings/shellKeybindings.ts",

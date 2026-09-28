@@ -91,7 +91,8 @@
       "cancel",
       "confirm",
       "current",
-      "onShow"
+      "onShow",
+      "pending"
     ],
     "encoding": [
       "decode",
@@ -174,7 +175,9 @@
       "registerItems"
     ],
     "notifications": [
-      "show"
+      "list",
+      "show",
+      "subscribe"
     ],
     "p2p": [
       "on",
@@ -234,6 +237,7 @@
       "closeWindow",
       "createWindow",
       "dragPosition",
+      "getLayout",
       "onAdsorbHint",
       "onAdsorbIndex",
       "onDialogAction",
@@ -312,6 +316,7 @@
       "create",
       "focus",
       "focusBySourceId",
+      "list",
       "onDidChangeActiveTab",
       "openOrFocus",
       "updateLabelBySourceId"
@@ -442,7 +447,8 @@
       "cancel",
       "confirm",
       "current",
-      "onShow"
+      "onShow",
+      "pending"
     ],
     "encoding": [
       "decode",
@@ -525,7 +531,9 @@
       "registerItems"
     ],
     "notifications": [
-      "show"
+      "list",
+      "show",
+      "subscribe"
     ],
     "p2p": [
       "on",
@@ -583,6 +591,7 @@
       "adsorbIndex",
       "beforeClose",
       "dragPosition",
+      "getLayout",
       "onAdsorbHint",
       "onLayout",
       "ready",
@@ -643,6 +652,7 @@
       "create",
       "focus",
       "focusBySourceId",
+      "list",
       "onDidChangeActiveTab",
       "openOrFocus",
       "updateLabelBySourceId"

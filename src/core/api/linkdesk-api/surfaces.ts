@@ -36,14 +36,17 @@ export type PoolExposed = Pick<LinkDeskAPI,
    *  E5.8#30.16（P8）：beforeClose 三方法唯一池侧（插件注册 handler / GroupTabBar 关闭路径 await）
    *  E5.8#44-B：tabBarRects 唯一池侧（MainZone 上报 TabBar rects——壳侧无发送面）
    *  E5.8#44-C：dragPosition/onAdsorbHint 唯一池侧（池上报拖拽位置 + 订阅壳吸附提示——壳侧无发送/订阅面）
-   *  E5.8#46.10：adsorbIndex 唯一池侧（池回传插入缝隙——壳侧无发送面） */
-  pool: Pick<LinkDeskAPI["pool"], "onLayout" | "ready" | "sidebarAction" | "tabAction" | "tabBarRects" | "dragPosition" | "onAdsorbHint" | "adsorbIndex" | "registerBeforeClose" | "unregisterBeforeClose" | "beforeClose">;
+   *  E5.8#46.10：adsorbIndex 唯一池侧（池回传插入缝隙——壳侧无发送面）
+   *  M1 AI#4：getLayout 唯一池侧（读本窗最近一次快照——壳是推送方，没有「读回自己刚推的东西」的需求） */
+  pool: Pick<LinkDeskAPI["pool"], "getLayout" | "onLayout" | "ready" | "sidebarAction" | "tabAction" | "tabBarRects" | "dragPosition" | "onAdsorbHint" | "adsorbIndex" | "registerBeforeClose" | "unregisterBeforeClose" | "beforeClose">;
 };
 
 /** 壳 preload 必暴露面（24；bridge 真壳独有）。commands/tabs/pool/appearance 命名空间方法级子集：
  *  commands 壳 = 注册面（execute/executeCommand/unregisterCommands/getCommands 为池侧执行面，壳不实现）
  *  tabs 壳缺 onDidChangeActiveTab（池侧订阅面——壳是标签权威自身，无订阅需求）
+ *    ＋ M1 AI#3 的 list（读取面——壳自己手上就是这份 state，不绕 IPC 问自己）
  *  pool 壳 = 推送面（onLayout/ready/sidebarAction/tabAction 为池侧发送面，壳不实现）
+ *    ＋ M1 AI#4 的 getLayout（池侧读数面——同上）
  *  appearance 壳 = 仅 revealStorage（E5.8#153：齿轮命令 handler 在壳进程执行，需壳侧触发主进程 openPath；
  *    importImage 池独有——选图拷贝入库只在池设置 UI 发生）
  *  update 壳 = getState 契约面 + 写命令三条与 onStateChanged 壳内私有扩展（E6#57.9c/d——见下方 update 段）
@@ -68,8 +71,8 @@ export type ShellExposed = Pick<LinkDeskAPI,
     openWorkspaceImport?: () => Promise<{ path: string; content: string } | null>;
   };
   commands: Pick<LinkDeskAPI["commands"], "registerCommand" | "_executeShellLocal">;
-  tabs: Omit<LinkDeskAPI["tabs"], "onDidChangeActiveTab">;
-  pool: Omit<LinkDeskAPI["pool"], "onLayout" | "ready" | "sidebarAction" | "tabAction" | "tabBarRects" | "dragPosition" | "onAdsorbHint" | "adsorbIndex" | "registerBeforeClose" | "unregisterBeforeClose" | "beforeClose">;
+  tabs: Omit<LinkDeskAPI["tabs"], "onDidChangeActiveTab" | "list">;
+  pool: Omit<LinkDeskAPI["pool"], "getLayout" | "onLayout" | "ready" | "sidebarAction" | "tabAction" | "tabBarRects" | "dragPosition" | "onAdsorbHint" | "adsorbIndex" | "registerBeforeClose" | "unregisterBeforeClose" | "beforeClose">;
   appearance: Pick<LinkDeskAPI["appearance"], "revealStorage">;
   /**
    * update 壳 = 契约只读面（`getState`）**＋ 壳内私有扩展**（E6#57.9c/d，06-主软件更新）。

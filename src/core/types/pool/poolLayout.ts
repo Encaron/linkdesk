@@ -552,6 +552,17 @@ export interface PoolStatusBarItem {
 interface NotifAction {
   label: string;
   isPrimary?: boolean;
+  /**
+   * M1 `AI#2`：按下去会执行的命令 + 参数（壳 `executeCommand(command, ...args)`）。
+   *
+   * 读取面用——AI 经契约读 DTO 就能答「按钮里有什么 / 该执行哪个 / 执行后做什么」，
+   * 并**照它调 `commands.executeCommand` 真执行**（与手点按钮同一条命令路径）。
+   * ⚠️ 池**点击路径零改动**：面板仍回传位置序号、由壳侧闭包执行（闭包不可序列化）。
+   * 缺省 = 该按钮无命令（点击仅关闭通知）——与契约 `PluginToastAction.command` 可选同源。
+   */
+  command?: string;
+  /** 命令参数——与 `command` 成对；`command` 缺省时本字段无意义 */
+  args?: unknown[];
 }
 
 /** 通知条目——壳侧已解析（icon 类/时间/来源标签/动作全部壳侧完成） */
@@ -571,6 +582,24 @@ interface NotifItem {
   /** E6#72c：确定态百分比 0-100——有值画定宽填充，无值画不定态扫动（对标 E3e 原版语义）。
    *  池侧渲染时自行钳位（壳不作保证——契约宽容，畸形值不撑破布局）。 */
   percent?: number;
+  /**
+   * M1 `AI#6`：唤醒旗标（E6#73b 白名单的**只读透传**）——本条通知是否**允许**把面板弹出来。
+   *
+   * 🔴 **恒在**（`false` 也有信息量：它就是「这条没弹」的答案，见 R5-4 的取舍）。AI 据此答
+   * toast 六问之「**因为什么**弹出」：`wake:true` = 进白名单的四类之一（用户点击发起的安装 job /
+   * job 终态 / 插件自发的非进度通知 / 壳自产该弹级条目），`wake:false` = 明令静默（进度类等）。
+   * ⚠️ 判据只有壳侧 `notif.ts` 的 `shouldWake` 一处**（`wake === true`）——本字段是它的读数出口，
+   * **不是**第二个判据；⛔ 不得因此回退成 `isImportantNotif` 一把梭（18 档 ㉓）。
+   * ⚠️ 「最小化」**不带静音权力**——唤回判据里没有「且未最小化」（加了等于终态唤不回，违反 R5-5）。
+   */
+  wake: boolean;
+  /**
+   * M1 `AI#6`：自动消失时长（ms，`0` = 不自动消失）。壳 toast 存储直通——`pushToast` 恒填。
+   * 与 `persistent` 同源判据（`ttl <= 0` ⇒ 常驻，见 toast.ts 的 `derivePersistent`）。
+   */
+  ttl?: number;
+  /** M1 `AI#6`：长驻（不自动消失、等用户手动点 ×）。只在 true 时带字段——同 `progress` 的缺省约定。 */
+  persistent?: boolean;
 }
 
 /** 通知分组——壳 NotificationCenter buildSourceGroups（source 第一段归类 + 未读排序） */

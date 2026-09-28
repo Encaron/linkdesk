@@ -90,6 +90,7 @@ export const linkdeskMock: Record<string, unknown> = {
     updateLabelBySourceId: async (..._args: unknown[]) => { console.info("[linkdesk-mock] tabs.updateLabelBySourceId", ..._args); },
     closeBySourceId: async (..._args: unknown[]) => { console.info("[linkdesk-mock] tabs.closeBySourceId", ..._args); },
     onDidChangeActiveTab: (..._args: unknown[]) => { console.info("[linkdesk-mock] tabs.onDidChangeActiveTab", ..._args); return () => {}; },
+    list: async (..._args: unknown[]) => { console.info("[linkdesk-mock] tabs.list", ..._args); },
   },
   keybindings: {
     getKeybindings: async (..._args: unknown[]) => { console.info("[linkdesk-mock] keybindings.getKeybindings", ..._args); return []; },
@@ -107,6 +108,8 @@ export const linkdeskMock: Record<string, unknown> = {
   },
   notifications: {
     show: async (..._args: unknown[]) => { console.info("[linkdesk-mock] notifications.show", ..._args); return { update: async () => {}, finish: async () => {}, cancel: async () => {} }; },
+    list: async (..._args: unknown[]) => { console.info("[linkdesk-mock] notifications.list", ..._args); },
+    subscribe: (..._args: unknown[]) => { console.info("[linkdesk-mock] notifications.subscribe", ..._args); return () => {}; },
   },
   menu: {
     registerItems: async (..._args: unknown[]) => { console.info("[linkdesk-mock] menu.registerItems", ..._args); },
@@ -137,6 +140,7 @@ export const linkdeskMock: Record<string, unknown> = {
   dialogHost: {
     onShow: (..._args: unknown[]) => { console.info("[linkdesk-mock] dialogHost.onShow", ..._args); return () => {}; },
     current: (..._args: unknown[]) => { console.info("[linkdesk-mock] dialogHost.current", ..._args); },
+    pending: async (..._args: unknown[]) => { console.info("[linkdesk-mock] dialogHost.pending", ..._args); return []; },
     confirm: (..._args: unknown[]) => { console.info("[linkdesk-mock] dialogHost.confirm", ..._args); },
     cancel: (..._args: unknown[]) => { console.info("[linkdesk-mock] dialogHost.cancel", ..._args); },
   },
@@ -307,6 +311,7 @@ export const linkdeskMock: Record<string, unknown> = {
     closeWindow: (..._args: unknown[]) => { console.info("[linkdesk-mock] pool.closeWindow", ..._args); },
     onWindowClosed: (..._args: unknown[]) => { console.info("[linkdesk-mock] pool.onWindowClosed", ..._args); return () => {}; },
     onWindowBoundsChanged: (..._args: unknown[]) => { console.info("[linkdesk-mock] pool.onWindowBoundsChanged", ..._args); return () => {}; },
+    getLayout: (..._args: unknown[]) => { console.info("[linkdesk-mock] pool.getLayout", ..._args); },
     onLayout: (..._args: unknown[]) => { console.info("[linkdesk-mock] pool.onLayout", ..._args); return () => {}; },
     ready: (..._args: unknown[]) => { console.info("[linkdesk-mock] pool.ready", ..._args); },
     sidebarAction: (..._args: unknown[]) => { console.info("[linkdesk-mock] pool.sidebarAction", ..._args); },

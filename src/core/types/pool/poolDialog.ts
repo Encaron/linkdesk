@@ -29,3 +29,29 @@ export type PoolDialogData =
         payload?: unknown;
       };
     };
+
+/**
+ * M1 `AI#5`：**在途弹窗**的可读投影——「有没有 confirm/alert 正弹着、在等什么」。
+ *
+ * 🔴 与 `PoolDialogData` 的关系：那个是**哑渲染载荷**（池照它画），这个是**问「现在在等什么」的答案**
+ * （读 `DialogService` 登记的在途 options）。两者形状刻意同源但**不是同一条通道**：
+ * 那个走 `pool:dialog` 直推，这个走 `plugins:call("getPendingDialogs")` 按需拉。
+ *
+ * 取用面 = `window.linkdesk.dialogHost.pending()`。
+ */
+export interface PoolPendingDialog {
+  /** `"confirm"` = 可取消（Escape/点遮罩）；`"alert"` = 只有确定（`PoolDialogData.isAlert` 同源） */
+  kind: "confirm" | "alert";
+  title: string;
+  message: string;
+  /**
+   * 按钮文案——**已由壳按显示文本铁律解析**（显式 `confirmLabel`/`cancelLabel` 优先，否则 i18n 缺省；
+   * 与推送面 `bridges.ts` **同一份实现**，见 `DialogService.resolveDialogButtons`）。
+   * `kind:"confirm"` → 2 条（确定、取消）；`kind:"alert"` → 1 条（确定）。
+   * ⚠️ 富内容模式（`content` 存在）下按钮由插件视图自画 ⇒ **空数组**（⛔ 别拿确定/取消去猜）。
+   */
+  buttons: string[];
+  /** E6#71c 富内容确认——内容 = 插件自绘视图。给**身份**（不给 renderPath：那是池内寻址键，
+   *  而本面在池里问的是"壳在等什么"），⛔ 不带 payload（不透明载荷可能很大，读「在等什么」也用不上）。 */
+  content?: { pluginId: string; viewId: string };
+}

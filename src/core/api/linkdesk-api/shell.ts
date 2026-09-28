@@ -56,6 +56,21 @@ export interface ShellAPI {
     // ── E5.8#43-3：主→壳 池窗 bounds 变更（moved/resized 上报）——壳注册表更新 + 落盘浮窗位置（I9-14）──
     onWindowBoundsChanged(cb: (payload: PoolWindowBoundsPayload) => void): () => void;
     // ── 池侧（壳 preload 无） ──
+    /**
+     * M1 `AI#4`：**按需读当前布局**——本窗最近一次收到的完整布局快照（树 `root` + 分组 `groups`）。
+     *
+     * 🔴 与 `onLayout` 是**同一把尺**：返回的就是最近一次 `onLayout` 的载荷本体。
+     * 池按 whole-value 快照整帧渲染、**不缓存旧值合并**（`poolLayout.ts` 头注释两条铁律）——
+     * 本方法只为「不用等下一帧」而留一个读数口，**不参与渲染**。
+     *
+     * ⚠️ 未收到过任何一次推送（池刚起、壳尚未推 / 非就绪窗）→ `null`（**不编一份空布局**）。
+     * ⚠️ **脱出窗拿到的是策略子集**（`WINDOW_MODE_STRATEGIES`：detached = `titleBar`+`groups`；
+     * drift = `titleBar`+`panel`）⇒ 那些窗里 `statusBar`/`sidebar`/`iconBar` **不存在**——
+     * 这是窗口模式的正常结果，不是丢数据。要跨窗看全貌用 `tabs.list()`（问壳）。
+     * ⚠️ 分屏树深度上限 `MAX_TREE_DEPTH = 4`（`src/core/utils/splitTree.ts`）——树里不会出现更深层，
+     * 读取方不必按无限深度兜底，但**也别假设一定能到 4 层**（用户不一定分那么多）。
+     */
+    getLayout(): PoolLayout | null;
     onLayout(cb: (layout: PoolLayout) => void): () => void;
     ready(): void;
     sidebarAction(action: SidebarAction): void;

@@ -18,7 +18,7 @@ npm install -D @linkdesk/plugin-sdk
 > 自动生成，**勿手改**——由 `scripts/generate-api-cheatsheet.mjs` 从 `@linkdesk/contracts` 的 `linkdesk.d.ts` 现读产出，
 > `npm run check` 机械盯漂。完整签名与逐方法说明见 `linkdesk.d.ts` 本体（IDE 里可直接跳转）。
 
-**15 个域接口 → 46 个命名空间 / 244 个方法**，全部经 `window.linkdesk.<命名空间>.<方法>` 调用。 (plus 1 deprecated alias/es `config`, not counted twice)
+**15 个域接口 → 46 个命名空间 / 249 个方法**，全部经 `window.linkdesk.<命名空间>.<方法>` 调用。 (plus 1 deprecated alias/es `config`, not counted twice)
 
 | Namespace | Methods | Method | Notes |
 |:--|:--:|:--|:--|
@@ -28,15 +28,15 @@ npm install -D @linkdesk/plugin-sdk
 | `theme` | 11 | `getCurrent` `getAvailable` `apply` `listRecipes` `getActive` `getEffectiveTokens` `setRecipe` `setColorway` `resetAppearance` `resetMix` `getBaselineSeeds` | —— |
 | `language` | 5 | `getCurrent` `getAvailable` `set` `getInitial` `onChange` | —— |
 | `appearance` | 2 | `importImage` `revealStorage` | E5.8#50.11：外观资产——本地选图拷贝入库（受控来源——用户任选路径不能 file:// 直读） |
-| `tabs` | 8 | `create` `openOrFocus` `focus` `close` `focusBySourceId` `updateLabelBySourceId` `closeBySourceId` `onDidChangeActiveTab` | —— |
+| `tabs` | 9 | `create` `openOrFocus` `focus` `close` `focusBySourceId` `updateLabelBySourceId` `closeBySourceId` `onDidChangeActiveTab` `list` | —— |
 | `keybindings` | 12 | `getKeybindings` `getConflicts` `registerKeybinding` `saveUserKeybindings` `removeKeybindingForCommand` `resetKeybindingToDefault` `findKeybindingForCommand` `setKeybindingCaptureActive` `keyboardEventToKeyString` `onChange` `syncToMainProcess`° `onForwardedEvent`° | —— |
-| `notifications` | 1 | `show` | 通知——插件弹通知（E6#72：唯一通知面 = 铃铛宽通知面板，右下窄卡链路已整删），对标 VS Code vscod… |
+| `notifications` | 3 | `show` `list` `subscribe` | 通知——插件弹通知（E6#72：唯一通知面 = 铃铛宽通知面板，右下窄卡链路已整删），对标 VS Code vscod… |
 | `menu` | 2 | `registerItems` `getItems` | E5#69：菜单——插件声明式读写 |
 | `contextKey` | 1 | `set` | E5#70：ContextKey——插件 SET 状态供壳 when 子句读 |
 | `dialog` | 5 | `confirm` `alert` `open` `openFile` `confirmContent` | E5#67：弹窗——确认/提示/文件选择 |
 | `quickPick` | 1 | `show` | E5.7#63：插件 quickPick 选择器——池内本地桥（零 IPC，QuickPickHost 渲染） |
 | `quickPickHost` | 6 | `registerHost` `onShow` `select` `highlight` `close` `itemAction` | E5.7#63：QuickPick 宿主渲染桥——池 QuickPickHost 消费（壳 preload 无此面） |
-| `dialogHost` | 4 | `onShow` `current` `confirm` `cancel` | E5.7#17：Dialog 哑渲染订阅——池 DialogHost 消费（壳 preload 无此面） |
+| `dialogHost` | 5 | `onShow` `current` `pending` `confirm` `cancel` | E5.7#17：Dialog 哑渲染订阅——池 DialogHost 消费（壳 preload 无此面） |
 | `floatingPanelHost` | 2 | `onShow` `action` | E5.8#37（Phase 8 类型 B）：悬浮面板哑渲染订阅——池 FloatingPanelHost 消费（壳 p… |
 | `serial` | 11 | `listPorts` `getStatus` `openPort` `closePort` `sendData` `sendText` `setDtr` `setRts` `onData` `onStats` `onSystem` | 串口——读/写/监听，对标 VS Code SerialPort API |
 | `clipboard` | 3 | `readText` `writeText` `writeFileList` | 剪贴板——读/写系统剪贴板 |
@@ -58,7 +58,7 @@ npm install -D @linkdesk/plugin-sdk
 | `plugins` | 14 | `resolvePath` `resolveEntry`° `getCompatibility`° `listDirs`° `listAll`° `listDisabledDirs`° `readManifest`° `readAllManifests`° `packageDownload`° `packageExtract`° `packageCancel`° `packageUpdateCheck`° `packageStageUpdate`° `packageCommitUpdate`° | 插件发现——双端注入：resolvePath 双端同面 |
 | `pluginManager` | 13 | `list` `enable` `disable` `uninstall` `install` `installWithProgress`° `reinstall` `getDisabled` `getUninstalled` `isDisabled` `update`° `checkUpdates`° `notifyManifestChanged`° | 插件管理——桥接 IpcBridgeHandler → loader 函数 |
 | `bridge` ⚠️ | 4 | `onRequest` `respond` `broadcast` `notifyConfigChanged` | 壳↔插件通信中继——壳 preload 独有 |
-| `pool` | 31 | `pushLayout` `onReady` `toggleDevTools` `onSidebarAction` `onTabAction` `onTabBarRects` `onDragPosition` `pushAdsorbHint` `onAdsorbIndex` `pushQuickPick` `onQuickPickAction` `pushDialog` `onDialogAction` `pushFloatingPanel` `onFloatingPanelAction` `onMemoryPressure` `createWindow` `closeWindow` `onWindowClosed` `onWindowBoundsChanged` `onLayout` `ready` `sidebarAction` `tabAction` `tabBarRects` `dragPosition` `onAdsorbHint` `adsorbIndex` `registerBeforeClose` `unregisterBeforeClose` `beforeClose` | 池控制——壳 preload：推送布局 + 注册池→壳动作回调 |
+| `pool` | 32 | `pushLayout` `onReady` `toggleDevTools` `onSidebarAction` `onTabAction` `onTabBarRects` `onDragPosition` `pushAdsorbHint` `onAdsorbIndex` `pushQuickPick` `onQuickPickAction` `pushDialog` `onDialogAction` `pushFloatingPanel` `onFloatingPanelAction` `onMemoryPressure` `createWindow` `closeWindow` `onWindowClosed` `onWindowBoundsChanged` `getLayout` `onLayout` `ready` `sidebarAction` `tabAction` `tabBarRects` `dragPosition` `onAdsorbHint` `adsorbIndex` `registerBeforeClose` `unregisterBeforeClose` `beforeClose` | 池控制——壳 preload：推送布局 + 注册池→壳动作回调 |
 | `window` | 11 | `minimize` `maximize` `unmaximize` `close` `setZoom` `toggleDevTools` `isMaximized` `onMaximizeChange` `setAlwaysOnTop` `isAlwaysOnTop` `onAlwaysOnTopChange` | 窗口控制——TitleBar 按钮映射，双端注入（11 方法同通道，共享模块 electron/window-name… |
 | `shell` | 6 | `showItemInFolder` `openInTerminal` `pluginLocation` `openPluginFolder` `startDrag` `relaunch`° | 壳级命令——revealInOS / openInTerminal / startDrag / relaunch，双端… |
 | `hotExit` ⚠️ | 3 | `save` `load` `clear` | 热退出暂存——编辑器未保存内容落盘（E5.7#53） |
