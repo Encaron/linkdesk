@@ -38,6 +38,11 @@ plugins/*/*.linkdesk-plugin
 .agents/
 .codex/
 .zcode/
+# 2026-09-28 用户拍板：`.zcodeignore`（ZCode 的忽略清单）是上条的**衍生缓存**——它的上半段
+#   「同步自本文件」、下半段是工具默认规则与空的自定义区，**规则唯一真相源仍是本文件**；
+#   且同步动作会重写它的上半段 ⇒ 入库必与本体分叉。只留磁盘。（`.zcode/` 带斜杠只匹配目录，
+#   匹配不到同名文件——这就是它一直挂在 `??` 的机械原因。）
+.zcodeignore
 # impeccable 设计 hook 本地运行时（ignore 决策存储 + 扫描缓存）
 .impeccable/
 # Codex CLI persona/profile（Codex 用）
