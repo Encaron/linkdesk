@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>设置页 · 「AI 接入」分区（落地版 · 重规划）</title>
+<style>
+/* ═══════════════════════════════════════════════════════
+   落地版 mockup（2026-09-28 重规划）——骨架/类名照抄 01 原稿
+   （02-Electron架构/E5.8_归一化基建/外观主题化/mockups/02-设置页-主题区-重构-mockup.html）。
+   重规划原则（用户拍板）：控件尽量基础（开关/按钮/只读文字），一眼看懂不读文档；
+   🔴 配置项一项不少——01 原稿 25 个元素全部保留，只改「画不画得出来」的形态：
+     · NEW 徽标 → 不加（P-5 已拍板）
+     · ⚙ 悬浮齿轮 → 普通按钮行（信息一条不少）
+     · 分节徽章（手把手/白名单/可后置）→ 并入分节副标题一行小字
+     · 状态发光点 → 纯文字（更克制）
+   🆕 需要新造的通用件只有两形（#38.12，跨仓 settings，对一切插件可用）：
+     ① 只读状态行（含多行明细）② 分节副标题。其余全部旧组件直接渲染。
+   ═══════════════════════════════════════════════════════ */
+:root {
+  --bg-window: #0E0E12;
+  --bg-card: #17161D;
+  --bg-input: #1D1E26;
+  --text-primary: #D4D4D4;
+  --text-secondary: #9D9D9D;
+  --text-muted: #6E7280;
+  --accent: #8B7CF6;
+  --accent-hover: #A69CFF;
+  --border: #262838;
+  --separator: #34364A;
+  --hover-overlay: rgba(255,255,255,0.06);
+  --ok: #34D399;
+  --warn: #FBBF24;
+  --font-ui: "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", Consolas, monospace;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: #0A0A0E; color: var(--text-primary); font-family: var(--font-ui); font-size: 13px; padding: 32px; max-width: 1280px; margin: 0 auto; }
+h1 { font-size: 20px; font-weight: 600; letter-spacing: 0.02em; margin-bottom: 6px; }
+h1 small { font-size: 13px; font-weight: 400; color: var(--text-muted); display: block; margin-top: 6px; line-height: 1.7; }
+h1 code, .mono { font-family: var(--font-mono); font-size: 11px; color: var(--accent-hover); }
+h1 .hl { color: var(--ok); }
+
+.frame { background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; margin-top: 18px; }
+.frame-caption { padding: 10px 14px; border-bottom: 1px solid var(--border); display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.frame-caption b { font-size: 14px; }
+.frame-caption span { color: var(--text-secondary); font-size: 12px; }
+.frame-note { padding: 10px 14px; border-top: 1px solid var(--border); color: var(--text-muted); font-size: 12px; line-height: 1.8; background: #131218; }
+.frame-note b { color: var(--text-secondary); }
+.frame-note .ok { color: var(--ok); }
+.frame-note .new { color: var(--ok); font-weight: 600; }
+.frame-note code { font-family: var(--font-mono); font-size: 11px; color: var(--accent-hover); }
+
+/* ═══ 设置编辑器（骨架照抄原图）═══ */
+.settings-editor {
+  position: relative; display: flex; flex-direction: column;
+  height: 860px; margin: 22px; background: var(--bg-window);
+  border: 1px solid rgba(255,255,255,0.10);
+  border-radius: 12px; box-shadow: 0 18px 50px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.06);
+  overflow: hidden;
+}
+.settings-body { display: flex; flex: 1; overflow: hidden; }
+.settings-nav { width: 172px; flex-shrink: 0; overflow-y: auto; border-right: 1px solid var(--border); padding: 10px 0; }
+.settings-nav-item { display: flex; align-items: center; justify-content: space-between; width: 100%; padding: 7px 20px; font-size: 13px; color: var(--text-primary); background: transparent; border: none; border-left: 2px solid transparent; cursor: pointer; text-align: left; font-family: inherit; }
+.settings-nav-item:hover { background: var(--hover-overlay); }
+.settings-nav-item.active { background: var(--hover-overlay); color: var(--text-primary); font-weight: 500; border-left-color: var(--accent); }
+.settings-nav-count { font-size: 11px; color: var(--text-muted); background: var(--hover-overlay); padding: 0 6px; border-radius: 10px; }
+
+.settings-main { flex: 1; display: flex; min-width: 0; }
+.settings-form { flex: 1; overflow-y: auto; padding: 18px 24px; min-width: 0; }
+.settings-group-title { font-size: 17px; font-weight: 600; margin: 0 0 6px 0; padding-bottom: 10px; border-bottom: 1px solid var(--border); color: var(--text-primary); }
+.settings-group-sub { font-size: 11.5px; color: var(--text-muted); margin-bottom: 16px; line-height: 1.6; }
+
+.settings-sub-section { margin: 18px 0 22px; }
+.settings-sub-head { display: flex; align-items: center; gap: 8px; padding: 5px 0; margin-bottom: 4px; border-radius: 6px; }
+.settings-sub-title { font-size: 12.5px; font-weight: 600; color: var(--text-secondary); letter-spacing: 0.02em; }
+.settings-sub-head::after { content: ''; flex: 1; height: 1px; background: var(--separator); margin-left: 6px; }
+.settings-sub-desc { font-size: 11.5px; color: var(--text-muted); margin: 2px 0 8px 0; line-height: 1.6; }
+
+.settings-row { display: flex; align-items: flex-start; justify-content: space-between; padding: 9px 0; border-bottom: 1px solid var(--border); gap: 18px; }
+.settings-row:last-child { border-bottom: none; }
+.settings-row-info { flex: 1; min-width: 0; }
+.settings-row-label { display: flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 500; color: var(--text-primary); margin-bottom: 3px; }
+.settings-row-label .key { font-family: var(--font-mono); font-size: 10.5px; color: var(--text-muted); font-weight: 400; }
+.settings-row-label .key.np { color: var(--ok); } /* 新组件消费方标注（仅 mockup 标注用） */
+.settings-row-desc { display: block; font-size: 11.5px; color: var(--text-muted); line-height: 1.55; }
+.settings-row-desc em { font-style: normal; color: var(--text-secondary); }
+.settings-row-control { flex-shrink: 0; display: flex; align-items: center; min-width: 150px; justify-content: flex-end; gap: 8px; }
+
+/* ── 开关（照抄原图 .ld-toggle）── */
+.ld-toggle { position: relative; width: 34px; height: 18px; border-radius: 999px; background: rgba(255,255,255,0.14); cursor: pointer; transition: background 180ms ease; flex-shrink: 0; border: none; }
+.ld-toggle::after { content: ''; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: #fff; transition: transform 180ms cubic-bezier(0.32,0.72,0,1); box-shadow: 0 1px 3px rgba(0,0,0,0.4); }
+.ld-toggle.on { background: var(--accent); }
+.ld-toggle.on::after { transform: translateX(16px); }
+
+/* ═══ AI 接入分区（基础形：按钮 + 纯文字状态）═══ */
+.ai-live { font-family: var(--font-mono); font-size: 11px; color: var(--text-secondary); white-space: nowrap; }
+.ai-live.off { color: var(--text-muted); }
+.ghost-btn { height: 26px; padding: 0 12px; border-radius: 5px; border: 1px solid var(--separator); background: transparent; color: var(--text-secondary); font-size: 12px; font-family: inherit; cursor: pointer; white-space: nowrap; }
+.ghost-btn:hover { background: var(--hover-overlay); color: var(--text-primary); }
+.ai-scope-list { margin: 4px 0 0 0; padding-left: 16px; font-size: 11.5px; color: var(--text-muted); line-height: 1.9; }
+.ai-scope-list code { font-family: var(--font-mono); font-size: 10.5px; color: var(--accent-hover); }
+.ai-scope-list .no { color: var(--warn); }
+</style>
+</head>
+<body>
+
+<h1>设置页 · 「AI 接入」分区 <span class="hl">（落地版 · 重规划）</span>
+  <small>
+    01 原稿的<b>落地形态</b>：骨架/类名照抄原图；<b>配置项一项不少</b>（18 键全保留），只改画不出来的装饰形态
+    （NEW 徽标不加＝P-5 · ⚙ 齿轮→按钮行 · 分节徽章→并入副标题 · 发光点→纯文字）。<br>
+    🆕 <b>需要新造的通用件只有两形</b>（行内标 <code class="mono" style="color:var(--ok)">新</code>）＝
+    <code>#38.12</code> 跨仓 settings 通用件：<b>① 只读状态行（含多行明细）② 分节副标题</b>——对一切插件可用，不为本系列开特权。<br>
+    其余全部旧组件直接渲染：开关（<code>type:"boolean"</code>）×4 · 按钮（<code>renderHint:"action"</code>）×9 · 导航项/分节标题（既有派生）。
+  </small>
+</h1>
+
+<div class="frame">
+  <div class="frame-caption">
+    <b>Frame 1 · 「AI 接入」分区（落地版）</b>
+    <span>左导航计数 = 真实键数 <b>18 项</b>（P-1 认真实计数）· 四个分节：通道 / 接入引导 / 开放范围与安全 / 记录</span>
+  </div>
+
+  <div class="settings-editor">
+    <div class="settings-body">
+      <div class="settings-nav">
+        <button class="settings-nav-item">通用<span class="settings-nav-count">6 项</span></button>
+        <button class="settings-nav-item">主题<span class="settings-nav-count">1 插件</span></button>
+        <button class="settings-nav-item">快捷键<span class="settings-nav-count">4 项</span></button>
+        <button class="settings-nav-item">语言<span class="settings-nav-count">2 项</span></button>
+        <button class="settings-nav-item active">AI 接入<span class="settings-nav-count">18 项</span></button>
+        <button class="settings-nav-item">关于</button>
+      </div>
+
+      <div class="settings-main">
+        <div class="settings-form">
+
+          <h1 class="settings-group-title">AI 接入</h1>
+          <div class="settings-group-sub">
+            让外部 AI（助手 / 脚本 / 自建 agent）直接操作本软件：<b>读</b>界面正在发生什么，<b>做</b>白名单内的操作。两个通道二选一或同时开——AI 习惯哪个用哪个。<br>
+            <b>管外不管内</b>：本分区只辖「门外的 AI」——关着 = 本机任何程序都连不进来（钥匙只有你给）；软件里的插件归插件管理管，不受此开关管辖。
+          </div>
+
+          <!-- ── 分节 ①：通道（8 键）── -->
+          <div class="settings-sub-section">
+            <div class="settings-sub-head"><span class="settings-sub-title">通道</span></div>
+            <div class="settings-sub-desc">开关改动后<b>重启软件生效</b>；状态行是实时读数，不是配置值。</div>
+
+            <div class="settings-row">
+              <div class="settings-row-info">
+                <label class="settings-row-label">MCP 通道 <span class="key">ai.mcp.enabled · 开关</span></label>
+                <span class="settings-row-desc">标准 AI 接入口（JSON-RPC）。开启后 AI 客户端可<em>发现并调用</em>本软件的开放操作。</span>
+              </div>
+              <div class="settings-row-control"><button class="ld-toggle on" aria-label="MCP 通道开关"></button></div>
+            </div>
+
+            <div class="settings-row">
+              <div class="settings-row-info">
+                <label class="settings-row-label">MCP 通道状态 <span class="key np">ai.mcp.status · 只读状态（新）</span></label>
+                <span class="settings-row-desc">实时运行状态——监听地址 / 没起来的原因，与内核活读数一致。</span>
+              </div>
+              <div class="settings-row-control"><span class="ai-live">运行中 · 127.0.0.1:9333</span></div>
+            </div>
+
+            <div class="settings-row">
+              <div class="settings-row-info">
+                <label class="settings-row-label">通道详情 <span class="key">ai.mcp.openDetails · 按钮</span></label>
+                <span class="settings-row-desc">连接地址、凭据存放位置、连不上时的原因对照。</span>
+              </div>
+              <div class="settings-row-control"><button class="ghost-btn">打开通道详情</button></div>
+            </div>
+
+            <div class="settings-row">
+              <div class="settings-row-info">
+                <label class="settings-row-label">CLI 通道 <span class="key">ai.cli.enabled · 开关</span></label>
+                <span class="settings-row-desc">命令行直接操作（<code class="mono">linkdeskctl &lt;命令&gt;</code>）。适合脚本与命令行 AI，<em>零常驻</em>。</span>
+              </div>
+              <div class="settings-row-control"><button class="ld-toggle on" aria-label="CLI 通道开关"></button></div>
+            </div>
+
+            <div class="settings-row">
+              <div class="settings-row-info">
+                <label class="settings-row-label">CLI 通道状态 <span class="key np">ai.cli.status · 只读状态（新）</span></label>
+                <span class="settings-row-desc">命令就位 = 已就绪；通道关着 = 已关闭。</span>
+              </div>
+              <div class="settings-row-control"><span class="ai-live">已就绪</span></div>
+            </div>
+
+            <div class="settings-row">
+              <div class="settings-row-info">
+                <label class="settings-row-label">CLI 安装说明 <span class="key">ai.cli.openInstall · 按钮</span></label>
+                <span class="settings-row-desc"><code class="mono">linkdeskctl</code> 怎么装、PATH 怎么配（安装版已默认勾选）。</span>
+              </div>
+              <div class="settings-row-control"><button class="ghost-btn">查看安装说明</button></div>
+            </div>
+
+            <div class="settings-row">
+              <div class="settings-row-info">
+                <label class="settings-row-label">调试端口（CDP） <span class="key">ai.debug.remoteDebugging · 开关</span></label>
+                <span class="settings-row-desc">开发 / 排障用的「万能钥匙」。默认关；开启期间<em>本机任何程序可连</em>——仅排障时开，日常操作走上面两条通道。</span>
+              </div>
+              <div class="settings-row-control"><button class="ld-toggle" aria-label="调试端口开关"></button></div>
+            </div>
+
+            <div class="settings-row">
+              <div class="settings-row-info">
+                <label class="settings-row-label">调试端口状态 <span class="key np">ai.debug.status · 只读状态（新）</span></label>
+                <span class="settings-row-desc">端口真的在不在听——与命令行参数实况一致，不猜。</span>
+              </div>
+              <div class="settings-row-control"><span class="ai-live off">已关闭</span></div>
+            </div>
+          </div>
+
+          <!-- ── 分节 ②：接入引导（3 键）── -->
+          <div class="settings-sub-section">
+            <div class="settings-sub-head"><span class="settings-sub-title">接入引导</span></div>
+            <div class="settings-sub-desc">怎么让你的 AI 用上这台 LinkDesk——按手里 AI 的类型挑一条路，点一下就行，不用读文档。</div>
+
+            <div class="settings-row">
+              <div class="settings-row-info">
+                <label class="settings-row-label">① 终端型 AI（Claude Code / Codex CLI…） <span class="key">ai.guide.copyCliLine · 按钮</span></label>
+                <span class="settings-row-desc">装完即就位（命令已在 PATH）——对 AI 说一句「<em>用 linkdeskctl 操作 LinkDesk</em>」，它自己 <code class="mono">--help</code> 就全懂了（零配置）。</span>
+              </div>
+              <div class="settings-row-control"><button class="ghost-btn">复制这句话</button></div>
+            </div>
+
+            <div class="settings-row">
+              <div class="settings-row-info">
+                <label class="settings-row-label">② 桌面型 AI（Claude Desktop…） <span class="key">ai.guide.copyMcpConfig · 按钮</span></label>
+                <span class="settings-row-desc">MCP 需要「连一次」：复制这段配置粘进 AI 客户端——之后永久顺手（对标本机首次配蓝牙）。</span>
+              </div>
+              <div class="settings-row-control"><button class="ghost-btn">复制 MCP 配置</button></div>
+            </div>
+
+            <div class="settings-row">
+              <div class="settings-row-info">
+                <label class="settings-row-label">③ 任何 AI（含没见过的） <span class="key">ai.guide.openManual · 按钮</span></label>
+                <span class="settings-row-desc">把操作手册丢给它：「<em>这是我的软件说明书，照它操作</em>」——零前置知识也能上岗。</span>
+              </div>
+              <div class="settings-row-control"><button class="ghost-btn">打开 AI 操作手册</button></div>
+            </div>
+          </div>
+
+          <!-- ── 分节 ③：开放范围与安全（4 键）── -->
+          <div class="settings-sub-section">
+            <div class="settings-sub-head"><span class="settings-sub-title">开放范围与安全</span></div>
+            <div class="settings-sub-desc">AI 只能做白名单里的事，<b>不开放任意代码执行</b>（与 CDP 的本质区别）；装 / 卸插件每次都要你点头。</div>
+
+            <div class="settings-row" style="display:block;">
+              <div class="settings-row-info">
+                <label class="settings-row-label">开放范围 <span class="key np">ai.scope.summary · 只读明细（新）</span></label>
+                <span class="settings-row-desc">从白名单唯一真相源生成（与 <code class="mono">linkdeskctl --help</code> 同一份数据，不手抄）：</span>
+                <ul class="ai-scope-list">
+                  <li>读：<code>describe</code> · <code>ping</code> · <code>tabs</code> · <code>notifications</code> · <code>log</code></li>
+                  <li>做：<code>openTab</code> · <code>exec</code>（壳命令面，运行期派生）· <code>install</code> · <code>notifyAction</code> —— <span class="no">不开放任意代码执行</span></li>
+                </ul>
+              </div>
+              <div style="margin-top:8px;">
+                <button class="ghost-btn">查看完整操作清单 →</button>
+                <span class="key" style="margin-left:6px;">ai.scope.openList · 按钮</span>
+              </div>
+            </div>
+
+            <div class="settings-row">
+              <div class="settings-row-info">
+                <label class="settings-row-label">访问凭据 <span class="key">ai.token.regenerate · 按钮</span></label>
+                <span class="settings-row-desc">仅本机回环可连；重置后旧连接立即失效。<em>明文不显示在这里</em>（查看走通道详情 / CLI）。</span>
+              </div>
+              <div class="settings-row-control"><button class="ghost-btn">重新生成凭据</button></div>
+            </div>
+
+            <div class="settings-row">
+              <div class="settings-row-info">
+                <label class="settings-row-label">敏感能力细分 <span class="key">ai.sensitive.openManager · 按钮</span></label>
+                <span class="settings-row-desc">如「允许 AI 发送串口数据」「允许 AI 装 / 卸插件」单独设闸；最高风险项已由「装 = 问一声」覆盖。</span>
+              </div>
+              <div class="settings-row-control"><button class="ghost-btn">管理细分…</button></div>
+            </div>
+          </div>
+
+          <!-- ── 分节 ④：记录（3 键）── -->
+          <div class="settings-sub-section">
+            <div class="settings-sub-head"><span class="settings-sub-title">记录</span></div>
+            <div class="settings-sub-desc">AI 的每一次操作都有账，可回看「谁在什么时候改了什么」；默认不记，开了才有。</div>
+
+            <div class="settings-row">
+              <div class="settings-row-info">
+                <label class="settings-row-label">操作日志 <span class="key">ai.auditLog.enabled · 开关</span></label>
+                <span class="settings-row-desc">记录 AI 的每一次连接与操作（被拒的调用也记——「AI 以为没做、其实做了」要查得出来）。</span>
+              </div>
+              <div class="settings-row-control"><button class="ld-toggle" aria-label="操作日志开关"></button></div>
+            </div>
+
+            <div class="settings-row">
+              <div class="settings-row-info">
+                <label class="settings-row-label">日志状态 <span class="key np">ai.auditLog.status · 只读状态（新）</span></label>
+                <span class="settings-row-desc">跟着上面的开关走。</span>
+              </div>
+              <div class="settings-row-control"><span class="ai-live off">未开启</span></div>
+            </div>
+
+            <div class="settings-row">
+              <div class="settings-row-info">
+                <label class="settings-row-label">查看日志 <span class="key">ai.auditLog.open · 按钮</span></label>
+                <span class="settings-row-desc">谁在何时调了什么、结果如何。</span>
+              </div>
+              <div class="settings-row-control"><button class="ghost-btn">查看日志</button></div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="frame-note">
+    <b>落地对照：</b><br>
+    <span class="new">🆕 新造（仅两形，#38.12 跨仓 settings 通用件，对一切插件可用）：</span>
+    ① <b>只读状态行</b>（含多行只读明细）——消费方 <code>ai.mcp.status</code> / <code>ai.cli.status</code> / <code>ai.debug.status</code> / <code>ai.auditLog.status</code> / <code>ai.scope.summary</code> 共 5 键；
+    ② <b>分节副标题</b>——消费方分区副标题 ＋ 4 个分节副标题。
+    值都来自<b>运行时数据源</b>（状态行与内核活读数一致 ⛔ 不写死字符串；明细从白名单唯一真相源生成 ⛔ 不手抄）。<br>
+    ♻️ <b>旧组件直接渲染（零新控件）</b>：开关 ×4（<code>ai.mcp.enabled</code> / <code>ai.cli.enabled</code> / <code>ai.debug.remoteDebugging</code> / <code>ai.auditLog.enabled</code>）·
+    按钮 ×9（通道详情 / 安装说明 / 复制三路 / 完整清单 / 重新生成凭据 / 管理细分 / 查看日志，<code>renderHint:"action"</code>，先例 <code>app.mixReset</code>）·
+    导航项与分节标题（<code>registerConfiguration("ai-bridge", …)</code> ＋ 每键 <code>group</code> 派生，既有机制）。<br>
+    <b>与 01 原稿的形态差异（元素一个不少，只改画法）</b>：NEW 徽标不加（P-5 已拍板）· ⚙ 悬浮齿轮 → 普通按钮行 ·
+    分节徽章（手把手/白名单/可后置）→ 并入分节副标题 · 状态发光点 → 纯文字 ·
+    scope 明细用<b>真实白名单操作名</b>（9 操作，原稿的 core.splitRight 等是设计期示意）· 导航计数 18 项 = 真实键数（P-1）。
+  </div>
+</div>
+
+</body>
+</html>
