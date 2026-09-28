@@ -33,6 +33,8 @@ import { installBundledPlugins } from './plugins/bundled-install.js'; // E6#15c�
 import { recoverInterruptedUpdates } from './plugins/plugin-tree-recovery.js'; // E6#73j（G8）：复原被中断的更新替换（<id>.bak）
 import { cleanupStaleDownloads } from './services/plugin-download.js'; // E6#31a：启动清残留下载临时文件（.part/孤立包，01 §四·五 B1）
 import { cleanupUpdateResidue } from './services/update-download.js'; // E6#57.6d/e：启动清更新残留（.part + 方向守卫：删旧安装器，防自降级）
+import { readPendingInstallSync } from './services/update-install.js'; // M5 AI#17：装前捎带的调试开关（同步读，卡在 ready 之前）
+import { applyDebugSwitches, planDebugAdoption, waitRestartWindow, type DebugAdoptionPlan } from './services/debug-switches.js'; // M5 AI#17/#18：调试开关（CDP 家族）跨重启保留 + 二次启动路由
 import { initUpdateService, registerUpdateHandlers } from './ipc/handlers/update-handlers.js'; // E6#57.8：更新机制装配（状态机 + 三条腿）+ update.* 命令通道
 import { fileService } from './services/file-service.js';
 import { pluginFileService } from './services/plugin-file-service.js'; // E6#78：插件目录位置解析
@@ -50,6 +52,23 @@ import { IPC } from './ipc/channels.js';
 const gotLock = app.requestSingleInstanceLock();
 if (!gotLock) {
   app.quit();
+}
+
+// ── M5 AI#17：更新重启把调试开关捡回来（CDP 端口不丢）──
+// 根因：装完把 App 拉回来的 NSIS `StartApp` 只带 `--updated`（`app-builder-lib/templates/nsis/common.nsh:122-133`），
+// 我们自己的命令行**一个字节都传不过去** ⇒ 带电调口启动的用户/更新后端口就没了、AI 连接断在更新这一跳。
+// 通道只有一条：装前把开关落进待安装记录（`update-install.ts` 写侧），这里在 ready **之前**重新 appendSwitch。
+// 🔴 位置三条硬约束：
+//   ① 必须早于 app ready（`appendSwitch` 的时限，`debug-switches.ts` 头注）；
+//   ② 排在 `requestSingleInstanceLock()` **之后**：输了锁的那个进程也会跑到这里，而它此刻正要
+//      `app.quit()`——捡钥匙是**跑起来的那个进程**的事（且不让第二个进程的 argv 被动过再上报请求）；
+//   ③ 读的是同一份记录：`resolveStartupInstall()` 要到 whenReady 里才销账，这里抢在它前面。
+// ⚠️ 没有记录 / 记录里没有调试开关 ⇒ 一行不 append：**默认不监听**（01-设计.md §八）不许被这条路径破坏。
+if (gotLock) {
+  const restored = applyDebugSwitches(readPendingInstallSync()?.debugSwitches);
+  if (restored.length > 0) {
+    console.log(`[main] 从待安装记录恢复调试开关（更新重启前带的就是这些）: ${restored.join(' ')}`);
+  }
 }
 
 // ── 窗口引用（后续 SerialService/file-service 需要 mainWindow.webContents.send()）──
@@ -656,10 +675,42 @@ app.on('activate', () => {
   }
 });
 
+/**
+ * M5 `AI#18`：二次启动请求了新调试开关 ⇒ 只能重启才生效（Chromium 开关改不了运行中的实例）。
+ *
+ * 🔴 **但不能立刻 relaunch**——`waitRestartWindow` 的注释讲了根因（二次启动那个进程自己绑着请求的
+ * 端口，并集进程抢不过它、而 CDP 端口绑不上**不重试**）；打包态 5/5 复现「App 跑着但没有调试口」。
+ * 等完之后本进程 `relaunch + exit(0)`，与同文件两处既有先例（IPC.shell.relaunch / 心跳刷新）同形。
+ * 超时（8s）也照旧重启：用户已经要求重启了，⛔ 不许把他晾在一个「等端口」的状态里；出声即可。
+ */
+async function restartWithDebugSwitches(plan: DebugAdoptionPlan): Promise<void> {
+  const { freed, waitedMs, timedOut } = await waitRestartWindow(plan.freePorts);
+  const ports = plan.freePorts.length > 0 ? plan.freePorts.join(',') : '（无）';
+  if (timedOut) {
+    console.warn(`[main] 等端口释放超时（${waitedMs}ms / 端口 ${ports} 仍被占）——照旧重启，新调试口可能不生效`);
+  }
+  console.log(
+    `[main] 二次启动请求调试开关（新采纳: ${plan.adopted.join(' ')}）——等待 ${waitedMs}ms` +
+      `（端口 ${ports}，空闲=${freed.join(',') || 'n/a'}）后重启以生效`,
+  );
+  app.relaunch({ args: plan.args });
+  app.exit(0);
+}
+
 // 第二个实例启动时 → 解析其 argv 并路由（E6#46a）；无路径参数时维持聚焦行为
 app.on('second-instance', (_event, argv) => {
   // 🔴 argv[0] 是 exe 自身（Windows 实证：不切会把 LinkDesk.exe 当成文件开出一个编辑器标签）
-  routeLaunchItems(parseLaunchPaths(argv.slice(1)));
+  const requested = argv.slice(1);
+  // ── M5 AI#18：带参二次启动 = 对**正在跑的实例**提一个调试开关请求 ──
+  // 🔴 并集语义（只增不减，`debug-switches.ts` ②）：双击图标（请求里没有调试开关）**不许**掐掉端口，
+  //    否则一次误双击就断了 AI 的连接；请求里的文件路径随 args 一并交给新进程，不丢。
+  const plan = planDebugAdoption(requested, process.argv.slice(1));
+  if (plan.restart) {
+    // 不 await（本进程马上要退出）；restartWithDebugSwitches 内部先等端口释放再 relaunch。
+    void restartWithDebugSwitches(plan);
+    return; // 本进程正在消失：别再动窗口（焦点会落在即将销毁的窗上）；intake 已随 args 交给新进程
+  }
+  routeLaunchItems(parseLaunchPaths(requested));
   if (mainWindow) {
     if (mainWindow.isMinimized()) mainWindow.restore();
     mainWindow.focus();

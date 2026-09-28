@@ -15,6 +15,8 @@
  *   5. 🔴 **白名单**（#57.7a 判据 2）：盘上记录的 `type` 只可能是 `'updating'`；
  *      `checking`/`downloading` 一律当脏数据（读侧强制）。
  *   6. 写读往返一致 + 脏记录（坏 JSON / 越界路径）不抛、不卡启动。
+ *   7. 🆕 **M5 `AI#17`**：记录捎带调试开关（写侧按白名单收窄；没有就不写这个字段）＋ **同步读**
+ *      （启动最前段 appendSwitch 前的窗口，异步读盘赶不上）与异步读**同源**（同一份形状守卫）。
  * 全部 fixture 为虚构值（版本 `1.2.3`/`9.9.9`，硬约束 21）。
  */
 
@@ -32,13 +34,14 @@ import {
   createUpdateInstaller,
   pendingInstallPath,
   readPendingInstall,
+  readPendingInstallSync,
   resolveStartupInstall,
   writePendingInstall,
 } from "./update-install.js";
 import { installerFileName } from "./update-download.js";
 import { UpdateLegError } from "./update-service.js";
-import type { PendingInstallRecord } from "./update-install.js";
-import type { UpdateInfo } from "../../src/core/types/ipc/update";
+import type { PendingInstallRecord, UpdateInstallDeps } from "./update-install.js";
+import type { UpdateError, UpdateInfo } from "../../src/core/types/ipc/update";
 
 const CURRENT = "1.2.3";
 const NEXT = "9.9.9";
@@ -85,6 +88,25 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
+/**
+ * 跑一次安装腿、等记录落盘，返回**盘上原文**——「写侧到底写了什么」是三处用例的共同起点
+ * （记录内容 / 捎带调试开关 / 无开关不写字段）。只是把那三段样板收成一处，不改任何既有语义。
+ */
+async function installAndReadRecord(
+  deps: Partial<UpdateInstallDeps> = {},
+  warning?: UpdateError,
+): Promise<Record<string, unknown>> {
+  const leg = createUpdateInstaller({
+    getUpdateDir: () => dir,
+    launchInstaller: () => {},
+    quit: () => {},
+    ...deps,
+  });
+  void leg(makeInfo(), installer, warning);
+  await vi.waitFor(async () => expect(await readPendingInstall({ getUpdateDir: () => dir })).not.toBeNull());
+  return JSON.parse(fs.readFileSync(pendingInstallPath(dir), "utf8")) as Record<string, unknown>;
+}
+
 describe("安装腿：落盘 → 拉起安装器 → 退出", () => {
   it("🔴 落盘先于拉起安装器（拉起那一刻盘上已有记录），且 quit 在拉起之后", async () => {
     const order: string[] = [];
@@ -120,17 +142,11 @@ describe("安装腿：落盘 → 拉起安装器 → 退出", () => {
   });
 
   it("🔴 记录内容：`type` 白名单为 updating，带 update/installerPath/startedAt/warning", async () => {
-    const leg = createUpdateInstaller({
-      getUpdateDir: () => dir,
-      launchInstaller: () => {},
-      quit: () => {},
-      now: () => "2026-09-12T01:02:03.000Z",
-    });
+    const raw = await installAndReadRecord(
+      { now: () => "2026-09-12T01:02:03.000Z" },
+      { code: "checksum-unavailable", message: "未附校验值" },
+    );
 
-    void leg(makeInfo(), installer, { code: "checksum-unavailable", message: "未附校验值" });
-    await vi.waitFor(async () => expect(await readPendingInstall({ getUpdateDir: () => dir })).not.toBeNull());
-
-    const raw = JSON.parse(fs.readFileSync(pendingInstallPath(dir), "utf8")) as PendingInstallRecord;
     expect(raw).toEqual({
       type: "updating",
       update: makeInfo(),
@@ -349,5 +365,91 @@ describe("🔴 启动复位：三支判据（盘上的事实说了算）", () =>
     expect((await resolveStartupInstall(deps(NEXT))).outcome).toBe("installed");
     expect(await readPendingInstall({ getUpdateDir: () => dir })).toBeNull();
     await clearPendingInstall({ getUpdateDir: () => dir }); // 幂等（销账后再销一次不抛）
+  });
+});
+
+describe("M5 AI#17：记录捎带调试开关（装完 App 是被安装器拉回来的，我们的命令行过不去）", () => {
+  it("生效的调试开关落进记录——白名单外的注入值在**写侧**就被收窄", async () => {
+    const raw = await installAndReadRecord({
+      getDebugSwitches: () => ["--remote-debugging-port=9222", "--user-data-dir=D:/tmp/x", "--remote-debugging-port=0"],
+    });
+
+    // 只留白名单内且值合法的那个；`--user-data-dir` 是别的进程自己该带的，`=0` 是随机端口
+    expect(raw.debugSwitches).toEqual(["--remote-debugging-port=9222"]);
+  });
+
+  it("没有开关 ⇒ **整个字段不写**（缺省 = 没有，不是「空数组」）；缺省面读的是 process.argv", async () => {
+    // 不注入 getDebugSwitches ⇒ 走缺省：读 process.argv 里的 CDP 开关（测试进程不带 ⇒ 空）
+    const raw = await installAndReadRecord();
+    expect("debugSwitches" in raw).toBe(false);
+  });
+});
+
+describe("M5 AI#17：启动最前段同步读（appendSwitch 卡在 ready 之前）", () => {
+  const write = (over: Partial<PendingInstallRecord> = {}) =>
+    writePendingInstall(
+      {
+        type: "updating",
+        update: makeInfo(),
+        installerPath: installer,
+        startedAt: "2026-09-12T01:02:03.000Z",
+        ...over,
+      },
+      { getUpdateDir: () => dir },
+    );
+
+  it("同步读 == 异步读（同一份记录 + 同一套守卫）：带调试开关的记录两条路径同结论", async () => {
+    await write({ debugSwitches: ["--remote-debugging-port=9222"] });
+
+    const sync = readPendingInstallSync({ getUpdateDir: () => dir });
+    expect(sync).toEqual(await readPendingInstall({ getUpdateDir: () => dir }));
+    expect(sync?.debugSwitches).toEqual(["--remote-debugging-port=9222"]);
+  });
+
+  it("旧版记录（没有 debugSwitches 字段）照收——向后兼容，⛔ 不是「缺字段 = 脏」", async () => {
+    await write();
+    expect(readPendingInstallSync({ getUpdateDir: () => dir })?.debugSwitches).toBeUndefined();
+  });
+
+  it("带调试开关的记录照样走复位（白名单字段不许干扰 ready/interrupted 判定）", async () => {
+    await write({ debugSwitches: ["--remote-debugging-port=9222"] });
+    const r = await resolveStartupInstall({ getUpdateDir: () => dir, getCurrentVersion: () => CURRENT });
+    expect(r.outcome).toBe("ready");
+  });
+
+  it("没有记录 → null（启动最前段据此确认「默认不监听」没被破坏）", () => {
+    expect(readPendingInstallSync({ getUpdateDir: () => dir })).toBeNull();
+  });
+
+  it.each([
+    ["坏 JSON", "{ 这不是 json"],
+    [
+      "路径越界",
+      JSON.stringify({ type: "updating", update: makeInfo(), installerPath: "C:/windows/system32/x.exe", startedAt: "t" }),
+    ],
+    [
+      "debugSwitches 不是数组",
+      JSON.stringify({
+        type: "updating",
+        update: makeInfo(),
+        installerPath: installer,
+        startedAt: "t",
+        debugSwitches: "--remote-debugging-port=9222",
+      }),
+    ],
+    [
+      "debugSwitches 里混了非字符串",
+      JSON.stringify({
+        type: "updating",
+        update: makeInfo(),
+        installerPath: installer,
+        startedAt: "t",
+        debugSwitches: ["--remote-debugging-port=9222", 42],
+      }),
+    ],
+  ])("🔴 脏记录（%s）→ 同步/异步两条路径都 null 且不抛（启动路径不许被脏文件卡住）", async (_label, content) => {
+    fs.writeFileSync(pendingInstallPath(dir), content);
+    expect(readPendingInstallSync({ getUpdateDir: () => dir })).toBeNull();
+    expect(await readPendingInstall({ getUpdateDir: () => dir })).toBeNull();
   });
 });

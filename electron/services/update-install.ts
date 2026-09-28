@@ -26,11 +26,19 @@
  * ⑤ **复位判据以「盘上的事实」为准，不以记录为准**：记录是快照（[[snapshot-shadows-truth-bug-class]] ①），
  *    所以「装成功了吗」问**当前运行版本**、「安装器还在吗」问**文件名解析出的版本是否等于记录目标**
  *    ——只看记录自称、或只看「文件在不在」，都会把成功报成中断 / 把别的版本当目标装上去。
+ *
+ * 🔴 **M5 `AI#17` 追加的一件事**：记录还**捎带**本机生效的调试开关（`debugSwitches?`）——装完把 App
+ *    拉回来的 NSIS `StartApp` 只带 `--updated`（`common.nsh:122-133`），我们自己的命令行**一个字节都
+ *    传不过去**，于是「更新后 AI 仍能操作」（CDP 端口不丢）只能靠记录把参数带过重启（读侧 =
+ *    `main.ts` 启动最前段的 `applyDebugSwitches`）。⛔ 本文件不管**范围**（白名单 / 收窄 / 并集裁决
+ *    全在 `debug-switches.ts`），只负责**捎带**——两层各管一件事。
  */
 
 import * as fs from 'fs/promises';
+import { readFileSync } from 'node:fs';
 import * as path from 'path';
 import { app } from 'electron';
+import { extractDebugSwitches, sanitizeDebugSwitches } from './debug-switches.js';
 import { loadProduct } from '../product.js';
 import { updateDownloadDir, installerVersionFromName, sha256File } from './update-download.js';
 import { UpdateLegError, type InstallLeg, type StartupResume } from './update-service.js';
@@ -82,6 +90,12 @@ export interface PendingInstallRecord {
   startedAt: string;
   /** 降级放行的记账（如 `checksum-unavailable`）——跨重启传递，同 `downloaded.warning` */
   warning?: UpdateError;
+  /**
+   * 本机生效的调试开关（`--remote-debugging-port=9222` 等，M5 `AI#17`）——跨重启交给启动最前段重新
+   * `appendSwitch`（见文件头「追加的一件事」）。写侧已按白名单收窄（`sanitizeDebugSwitches`），
+   * 读侧再收一次。⚠️ **无开关时整个字段不写**（与 `warning?` 同款：缺省 = 没有，不是「空数组」）。
+   */
+  debugSwitches?: string[];
 }
 
 /** 安装腿依赖——生产缺省即真值源；注入只为单测（临时目录 / 观测调用序 / 不真退出） */
@@ -98,6 +112,12 @@ export interface UpdateInstallDeps {
   quitFallbackMs?: number;
   /** 记录时刻（缺省 `new Date().toISOString()`） */
   now?: () => string;
+  /**
+   * 本机生效的调试开关——缺省 `extractDebugSwitches(process.argv)`（M5 `AI#17`）。
+   * ⚠️ 与启动复位**同一份真相**：`appendSwitch` 生效的那些已由 `applyDebugSwitches` 推回
+   * `process.argv`（`debug-switches.ts` ③），所以这里读 argv 就够——**别另找一份状态**。
+   */
+  getDebugSwitches?: () => string[];
 }
 
 /** 造安装腿——返回 `(update, installerPath) => Promise<void>`，直接喂给 `new UpdateService({ install })` */
@@ -108,6 +128,7 @@ export function createUpdateInstaller(deps: UpdateInstallDeps = {}): InstallLeg 
   const forceExit = deps.forceExit ?? (() => app.exit(0));
   const fallbackMs = deps.quitFallbackMs ?? QUIT_FALLBACK_MS;
   const now = deps.now ?? (() => new Date().toISOString());
+  const getDebugSwitches = deps.getDebugSwitches ?? (() => extractDebugSwitches(process.argv));
 
   return async function install(update, installerPath, warning): Promise<void> {
     // 安装器不见了（被清理腿删了 / 被用户或杀软移走）——**不许**拉起一个不存在的文件（那会静默什么都不发生）。
@@ -138,6 +159,10 @@ export function createUpdateInstaller(deps: UpdateInstallDeps = {}): InstallLeg 
       // `warning`（降级放行的记账，如 `checksum-unavailable`）**跟着记录过重启**——07 §三 要求它
       // `downloaded → ready` 一路传下去，而跨重启那一段只有记录能带（内存态在退出时就没了）。
       if (warning) record.warning = warning;
+      // M5 `AI#17`：把当前生效的调试开关捎过重启（装完之后 App 是被安装器拉回来的，我们的命令行过不去）。
+      // 落盘前再收窄一次（注入面可以给任意值）；没有就**不写这个字段**。
+      const debugSwitches = sanitizeDebugSwitches(getDebugSwitches());
+      if (debugSwitches.length > 0) record.debugSwitches = debugSwitches;
       await writePendingInstall(record, { getUpdateDir });
     } catch (e) {
       throw err('write-error', '无法记录待安装状态——{{detail}}', { detail: msg(e) });
@@ -215,6 +240,29 @@ export async function readPendingInstall(deps: PendingInstallDeps = {}): Promise
   } catch {
     return null;
   }
+  return guardPendingRecord(raw, dir);
+}
+
+/**
+ * 读记录（**同步版**）——只给**启动最前段**用：`app.commandLine.appendSwitch` 必须早于 app ready
+ * （M5 `AI#17` 的端口复位正卡在这个窗口里），异步读盘赶不上。
+ *
+ * 🔴 判据与 `readPendingInstall` **同源**（同一份 `isPendingRecord` + 同一条路径守卫
+ * `guardPendingRecord`）——「同步一套、异步一套」两处判定，迟早会在其中一处漏掉新加的白名单。
+ */
+export function readPendingInstallSync(deps: PendingInstallDeps = {}): PendingInstallRecord | null {
+  const dir = (deps.getUpdateDir ?? updateDownloadDir)();
+  let raw: unknown;
+  try {
+    raw = JSON.parse(readFileSync(pendingInstallPath(dir), 'utf8'));
+  } catch {
+    return null;
+  }
+  return guardPendingRecord(raw, dir);
+}
+
+/** 记录内容守卫——同步/异步两条读路径**唯一**一处判定（形状白名单 + 路径必须在更新目录内） */
+function guardPendingRecord(raw: unknown, dir: string): PendingInstallRecord | null {
   if (!isPendingRecord(raw)) return null;
   if (path.dirname(path.resolve(raw.installerPath)) !== path.resolve(dir)) {
     console.warn('[update-install] 忽略越界的待安装记录（路径不在更新目录内）');
@@ -342,7 +390,12 @@ function isPendingRecord(raw: unknown): raw is PendingInstallRecord {
   const u = r.update;
   if (typeof u !== 'object' || u === null) return false;
   const info = u as Record<string, unknown>;
-  return typeof info.version === 'string' && typeof info.currentVersion === 'string';
+  if (typeof info.version !== 'string' || typeof info.currentVersion !== 'string') return false;
+  // M5 `AI#17`：调试开关可选（旧版记录没有它 ⇒ 照收，向后兼容），但在场就必须是**字符串数组**
+  // （不是 = 脏记录 ⇒ 整条作废，fail-closed）。⚠️ 白名单**不在**这里判——那件事归
+  // `debug-switches.ts` 的 `sanitizeDebugSwitches`（一处一职：这里管形状，那里管范围）。
+  if (r.debugSwitches === undefined) return true;
+  return Array.isArray(r.debugSwitches) && r.debugSwitches.every((s) => typeof s === 'string');
 }
 
 /** 失败结果的唯一构造口（码集由 07 §三 固定，本文件不新造码） */

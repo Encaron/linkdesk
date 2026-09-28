@@ -7,6 +7,8 @@
  *   - `app` 的路径 / 版本面（`getAppPath` / `getVersion` / `getPath('userData')`）。
  *   - `app` 的**退出编排面**（`relaunch` / `quit` / `exit`，#57.7 安装腿）——桩**不真退出**，
  *     只把调用记进 `relaunchCalls` / `lifecycleCalls` 供断言（真退出 = 测试进程消失）。
+ *   - `app.commandLine.appendSwitch`（M5 `AI#17`/`AI#18` 调试开关）——同样只记进 `switchCalls`：
+ *     真调会改**测试进程自己**的 Chromium 开关表，且「生效了没有」在单测里无从观测。
  * 此前两份逐字符相同的 hoisted 桩 —— 两处各写一份 = 将来只改一处。
  *
  * 🔴 **纪律（同 src/App/viewContainerMocks.ts 约定）**：
@@ -26,6 +28,8 @@ const electronMock = vi.hoisted(() => {
   /** 退出/重启编排的观测点（#57.7 安装腿）——桩**不真退出**，只记账（真退出 = 测试进程消失） */
   const relaunchCalls: { execPath?: string; args?: string[] }[] = [];
   const lifecycleCalls: string[] = [];
+  /** 调试开关生效面的观测点（M5 `AI#17`）——桩不真 append（那会改测试进程自己的开关表） */
+  const switchCalls: { name: string; value?: string }[] = [];
   const app = {
     appPath: "",
     userData: "",
@@ -47,6 +51,11 @@ const electronMock = vi.hoisted(() => {
     exit: () => {
       lifecycleCalls.push("exit");
     },
+    commandLine: {
+      appendSwitch: (name: string, value?: string) => {
+        switchCalls.push(value === undefined ? { name } : { name, value });
+      },
+    },
   };
   const net = {
     fetch: (url: string, init?: RequestInit) => {
@@ -54,7 +63,7 @@ const electronMock = vi.hoisted(() => {
       return nodeFetch(url, init);
     },
   };
-  return { app, net, netFetchCalls, relaunchCalls, lifecycleCalls };
+  return { app, net, netFetchCalls, relaunchCalls, lifecycleCalls, switchCalls };
 });
 
 vi.mock("electron", () => electronMock);
