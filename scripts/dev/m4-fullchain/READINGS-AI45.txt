@@ -1,0 +1,292 @@
+═══ AI#45 §七 验收·读数（2026-09-29 · 会话 13）═══
+── 跑法：净态重启的隔离实例（ISO=ldk-ai45 · CDP 9444 · Vite dev）· accept.mjs --channel both ──
+
+── 前置 ──
+  ✔ ENV-CDP                        CDP http://127.0.0.1:9444 上的 target = ["pool","shell"]
+  ✔ ENV-USERDATA                   记录在盘：C:\Users\fengy\AppData\Local\Temp\ldk-ai45\ai-bridge.json
+  ✔ MCP-S0.0                       initialize ⇒ serverInfo={"name":"linkdesk","version":"0.2.21"}
+  ✔ MCP-S0.0b                      tools/list 在线派生 10 个：linkdesk_status linkdesk_describe linkdesk_ping linkdesk_tabs linkdesk_open_tab linkdesk_exec linkdesk_install linkdesk_notifications linkdesk_notify_action linkdesk_log
+
+── 通道 MCP：开标签 → 执行命令 → 读通知 → 执行通知按钮 ──
+  ✔ MCP-S0.1                       enabled=true listening=true pid=18564 127.0.0.1:59004
+  ✔ MCP-S0.2                       认人：应答 pid=18564 == 记录 pid=18564
+  ✔ MCP-S0.3 壳读面就绪                 等 0.0s 后命令面 127 条（冷启动时延）
+  ✔ MCP-S0.4 命令路径就绪                暖机命令 view.zoomReset ⇒ ok=true（等 0.1s）
+  ✔ MCP-S1.1 负控                    命令面127条里没有 marketplace.retryInstall ⇒ EUNKNOWN（运行期派生的白名单真在现取）
+  ✔ MCP-S1.2                       open-tab marketplace ⇒ accepted（tabs:create 是 fire 型，成不成看下一行）
+  ✔ MCP-S1.3 回读                    tabs 回读含 marketplace：{"windows":[{"windowId":"main","mode":"main","ready":true,"activeGroupId":"main","root":{"type":"leaf","groupId":"main"},"groups":[{"id":"ma
+  ✔ MCP-S1.4 CDP证人                 池标签条 = ["欢迎","发行说明 v0.2.21","插件市场"]
+  ✔ MCP-S1.5 生长                    命令面 127 → 132，新挂牌 = ["marketplace.enable","marketplace.disable","marketplace.uninstall","marketplace.retryInstall","marketplace.retryUpdate"]（「挂牌即进名单」）
+  ✔ MCP-S2.1.门出现                   809ms · 确认安装 串口监视器 确认前请查看来源与发布者。 发布者 官方 官方发布 来源 encaron/linkdesk-marketplace 描述 串口数据监视器——接收区（CM6）+ 发送栏（Monaco）+ 侧栏设置。LinkDesk 第一个视图插件，通用容器基础设施在此验证。不绑定任何特定用途。 版本 v1.0.25 大小 164 KB 取消 确认安装
+  ✔ MCP-S2.1.点确认                   clicked="确认安装" buttons=["取消","确认安装"]
+  ✔ MCP-S2.2                       exec 严格回执：ok=true code=- {
+  "commandId": "marketplace.retryInstall",
+  "result": null
+}
+  ✔ MCP-S2.3                       通知面板 1 条，其中带 command 的 1 条：id=toast-1 「serial-monitor：安装失败：网络连接不可用」
+  ✔ MCP-S2.4 CDP证人                 池通知面板 = [["重试"]]（按钮真在用户看得见的地方）
+  ✔ MCP-S3.1                       按钮事实随行：command=marketplace.retryInstall args=[{"pluginId":"serial-monitor","downloadUrl":"http://127.0.0.1:9/nope.linkdesk-plugin"}]（M1 AI#2 的 command/args 经 DTO 活着）
+  ✔ MCP-S3.2 负控                    乱点名按钮 ⇒ ENOTFOUND
+  ✔ MCP-S4.1.门出现                   130ms · 确认安装 串口监视器 确认前请查看来源与发布者。 发布者 官方 官方发布 来源 encaron/linkdesk-marketplace 描述 串口数据监视器——接收区（CM6）+ 发送栏（Monaco）+ 侧栏设置。LinkDesk 第一个视图插件，通用容器基础设施在此验证。不绑定任何特定用途。 版本 v1.0.25 大小 164 KB 取消 确认安装
+  ✔ MCP-S4.1.点确认                   clicked="确认安装" buttons=["取消","确认安装"]
+  ✔ MCP-S4.2                       按按钮 = 跑命令：pressed=true command=marketplace.retryInstall code=-
+  ✔ MCP-S4.3 双证人                   按钮那一下又跑出一条**新**的带 command 通知：toast-2（旧 toast-1 + 新 = 2 条）
+  ✔ MCP-S4.4 CDP证人                 池面板条数 1 → 2
+  ✔ MCP-S4.5 负控                    乱点通知 id ⇒ ENOTFOUND
+  ✔ MCP-S5.1                       账本本轮：exec(arg=marketplace.retryInstall) 成功 1 条 · notifyAction 成功 1 条（arg 只对 exec/install 记，见残余）
+  ✔ MCP-S5.2 负控留痕                  先记后判：被拒的那条也在账上（ok=false code=EUNKNOWN），本轮 1 条／账本读完 30 条
+
+── M5 AI#19 ① 复验（MCP 腿）：装一个插件 → 打开它 → 操作它（⛔ 全程走通道，不拿 CDP 冒充） ──
+  ✔ MCP-S6.0 前置                    插件包在盘上：E:\linkdesk-plugins\official\serial-monitor\serial-monitor.linkdesk-plugin
+  ✗ MCP-S6.1 装前                    命令面 132 条，无 serial-monitor.*（净态：上一腿装完已卸干净）
+  ✔ MCP-S6.2.门出现                   6ms · AI 请求安装插件： E:\linkdesk-plugins\official\serial-monitor\serial-monitor.linkdesk-plugin （问一声的原因：插件 = 陌生代码，装上就会运行） 允许吗？（不点 = 不执行） 取消 确定
+  ✔ MCP-S6.2.点确认                   clicked="确定" buttons=["取消","确定"]
+  ✔ MCP-S6.3 装                     install ⇒ installed=true job={"success":false,"error":"Error invoking remote method 'plugins:extract': Error: 插件 \"serial-monitor\" 已存在安装目录——如需覆盖请先卸载，版本升级请走更新流程"} code=-
+  ✔ MCP-S6.4 打开                    open-tab serial-monitor ⇒ accepted
+  ✔ MCP-S6.5 CDP证人                 池标签条 = ["欢迎","发行说明 v0.2.21","插件市场","串口监视器"]
+  ✔ MCP-S6.6 挂牌                    命令面 132 → 135，serial-monitor.* 新挂牌 20 条（视图挂载即挂牌）
+  ✔ MCP-S6.7 操作                    exec serial-monitor.toggleLineNumbers ⇒ ok=true code=-（装完就能操作它）
+  ✔ MCP-S6.8 交叉验                   同一条已装命令经**另一条**通道 ⇒ ok=true code=-
+  ✔ MCP-S7.1                       exec marketplace.disable ⇒ ok=true
+  ✔ MCP-S7.2 负控                    「已禁用：串口监视器」的按钮没绑命令 ⇒ notify-action ENOACTION（⛔ 不假装按得动）
+  ✔ MCP-S7.3 复原                    exec marketplace.enable ⇒ ok=true（不留半禁用态）
+  ✔ MCP-S6.9 还原                    exec marketplace.uninstall ⇒ ok=true code=-
+
+── 合计 41/42 条读数（跳过 0） · ✗ MCP-S6.1 装前 ──
+
+── 净态全清重启（plugins/ 也清空，首启重铺种子）· accept.mjs --channel cli ──
+
+── 前置 ──
+  ✔ ENV-CDP                        CDP http://127.0.0.1:9444 上的 target = ["pool","shell"]
+  ✔ ENV-USERDATA                   记录在盘：C:\Users\fengy\AppData\Local\Temp\ldk-ai45\ai-bridge.json
+
+── 通道 CLI：开标签 → 执行命令 → 读通知 → 执行通知按钮 ──
+  ✔ CLI-S0.1                       enabled=true listening=true pid=57236 127.0.0.1:53870
+  ✔ CLI-S0.2                       认人：应答 pid=57236 == 记录 pid=57236
+  ✔ CLI-S0.3 壳读面就绪                 等 0.1s 后命令面 110 条（冷启动时延）
+  ✔ CLI-S0.4 命令路径就绪                暖机命令 view.zoomReset ⇒ ok=true（等 0.2s）
+  ✔ CLI-S1.1 负控                    命令面110条里没有 marketplace.retryInstall ⇒ EUNKNOWN（运行期派生的白名单真在现取）
+  ✔ CLI-S1.2                       open-tab marketplace ⇒ accepted（tabs:create 是 fire 型，成不成看下一行）
+  ✔ CLI-S1.3 回读                    tabs 回读含 marketplace：{"windows":[{"windowId":"main","mode":"main","ready":true,"activeGroupId":"main","root":{"type":"leaf","groupId":"main"},"groups":[{"id":"ma
+  ✔ CLI-S1.4 CDP证人                 池标签条 = ["欢迎","发行说明 v0.2.21","插件市场"]
+  ✔ CLI-S1.5 生长                    命令面 110 → 115，新挂牌 = ["marketplace.enable","marketplace.disable","marketplace.uninstall","marketplace.retryInstall","marketplace.retryUpdate"]（「挂牌即进名单」）
+  ✔ CLI-S2.1.门出现                   536ms · 确认安装 串口监视器 确认前请查看来源与发布者。 发布者 官方 官方发布 来源 encaron/linkdesk-marketplace 描述 串口数据监视器——接收区（CM6）+ 发送栏（Monaco）+ 侧栏设置。LinkDesk 第一个视图插件，通用容器基础设施在此验证。不绑定任何特定用途。 版本 v1.0.25 大小 164 KB 取消 确认安装
+  ✔ CLI-S2.1.点确认                   clicked="确认安装" buttons=["取消","确认安装"]
+  ✔ CLI-S2.2                       exec 严格回执：ok=true code=- {
+  "ok": true,
+  "subcommand": "exec",
+  "op": "exec",
+  "servedBy": 57236,
+  "recordPid": 57236,
+  "result": {
+    "co
+  ✔ CLI-S2.3                       通知面板 1 条，其中带 command 的 1 条：id=toast-1 「serial-monitor：安装失败：网络连接不可用」
+  ✔ CLI-S2.4 CDP证人                 池通知面板 = [["重试"]]（按钮真在用户看得见的地方）
+  ✔ CLI-S3.1                       按钮事实随行：command=marketplace.retryInstall args=[{"pluginId":"serial-monitor","downloadUrl":"http://127.0.0.1:9/nope.linkdesk-plugin"}]（M1 AI#2 的 command/args 经 DTO 活着）
+  ✔ CLI-S3.2 负控                    乱点名按钮 ⇒ ENOTFOUND
+  ✔ CLI-S4.1.门出现                   144ms · 确认安装 串口监视器 确认前请查看来源与发布者。 发布者 官方 官方发布 来源 encaron/linkdesk-marketplace 描述 串口数据监视器——接收区（CM6）+ 发送栏（Monaco）+ 侧栏设置。LinkDesk 第一个视图插件，通用容器基础设施在此验证。不绑定任何特定用途。 版本 v1.0.25 大小 164 KB 取消 确认安装
+  ✔ CLI-S4.1.点确认                   clicked="确认安装" buttons=["取消","确认安装"]
+  ✔ CLI-S4.2                       按按钮 = 跑命令：pressed=true command=marketplace.retryInstall code=-
+  ✔ CLI-S4.3 双证人                   按钮那一下又跑出一条**新**的带 command 通知：toast-2（旧 toast-1 + 新 = 2 条）
+  ✔ CLI-S4.4 CDP证人                 池面板条数 1 → 2
+  ✔ CLI-S4.5 负控                    乱点通知 id ⇒ ENOTFOUND
+  ✔ CLI-S5.1                       账本本轮：exec(arg=marketplace.retryInstall) 成功 1 条 · notifyAction 成功 1 条（arg 只对 exec/install 记，见残余）
+  ✔ CLI-S5.2 负控留痕                  先记后判：被拒的那条也在账上（ok=false code=EUNKNOWN），本轮 1 条／账本读完 29 条
+
+── M5 AI#19 ① 复验（CLI 腿）：装一个插件 → 打开它 → 操作它（⛔ 全程走通道，不拿 CDP 冒充） ──
+  ✔ CLI-S6.0 前置                    插件包在盘上：E:\linkdesk-plugins\official\serial-monitor\serial-monitor.linkdesk-plugin
+  ✔ CLI-S6.1 装前                    命令面 115 条，无 serial-monitor.*（净态：上一腿装完已卸干净）
+  ✔ CLI-S6.2.门出现                   130ms · AI 请求安装插件： E:\linkdesk-plugins\official\serial-monitor\serial-monitor.linkdesk-plugin （问一声的原因：插件 = 陌生代码，装上就会运行） 允许吗？（不点 = 不执行） 取消 确定
+  ✔ CLI-S6.2.点确认                   clicked="确定" buttons=["取消","确定"]
+  ✔ CLI-S6.3 装                     install ⇒ installed=true job={"success":true,"pluginId":"serial-monitor","version":"1.0.25"} code=-
+  ✔ CLI-S6.4 打开                    open-tab serial-monitor ⇒ accepted
+  ✔ CLI-S6.5 CDP证人                 池标签条 = ["欢迎","发行说明 v0.2.21","插件市场","串口监视器"]
+  ✔ CLI-S6.6 挂牌                    命令面 115 → 135，serial-monitor.* 新挂牌 20 条（视图挂载即挂牌）
+  ✔ CLI-S6.7 操作                    exec serial-monitor.toggleLineNumbers ⇒ ok=true code=-（装完就能操作它）
+  ✔ CLI-S7.1                       exec marketplace.disable ⇒ ok=true
+  ✔ CLI-S7.2 负控                    「已禁用：串口监视器」的按钮没绑命令 ⇒ notify-action ENOACTION（⛔ 不假装按得动）
+  ✔ CLI-S7.3 复原                    exec marketplace.enable ⇒ ok=true（不留半禁用态）
+  ✔ CLI-S6.9 还原                    exec marketplace.uninstall ⇒ ok=true code=-
+
+── 合计 39/39 条读数（跳过 0） ──
+
+── 再净态重启 · accept.mjs --channel mcp ──
+
+── 前置 ──
+  ✔ ENV-CDP                        CDP http://127.0.0.1:9444 上的 target = ["pool","shell"]
+  ✔ ENV-USERDATA                   记录在盘：C:\Users\fengy\AppData\Local\Temp\ldk-ai45\ai-bridge.json
+  ✔ MCP-S0.0                       initialize ⇒ serverInfo={"name":"linkdesk","version":"0.2.21"}
+  ✔ MCP-S0.0b                      tools/list 在线派生 10 个：linkdesk_status linkdesk_describe linkdesk_ping linkdesk_tabs linkdesk_open_tab linkdesk_exec linkdesk_install linkdesk_notifications linkdesk_notify_action linkdesk_log
+
+── 通道 MCP：开标签 → 执行命令 → 读通知 → 执行通知按钮 ──
+  ✔ MCP-S0.1                       enabled=true listening=true pid=43124 127.0.0.1:52020
+  ✔ MCP-S0.2                       认人：应答 pid=43124 == 记录 pid=43124
+  ✔ MCP-S0.3 壳读面就绪                 等 0.0s 后命令面 110 条（冷启动时延）
+  ✔ MCP-S0.4 命令路径就绪                暖机命令 view.zoomReset ⇒ ok=true（等 0.1s）
+  ✔ MCP-S1.1 负控                    命令面110条里没有 marketplace.retryInstall ⇒ EUNKNOWN（运行期派生的白名单真在现取）
+  ✔ MCP-S1.2                       open-tab marketplace ⇒ accepted（tabs:create 是 fire 型，成不成看下一行）
+  ✔ MCP-S1.3 回读                    tabs 回读含 marketplace：{"windows":[{"windowId":"main","mode":"main","ready":true,"activeGroupId":"main","root":{"type":"leaf","groupId":"main"},"groups":[{"id":"ma
+  ✔ MCP-S1.4 CDP证人                 池标签条 = ["欢迎","发行说明 v0.2.21","插件市场"]
+  ✔ MCP-S1.5 生长                    命令面 110 → 115，新挂牌 = ["marketplace.enable","marketplace.disable","marketplace.uninstall","marketplace.retryInstall","marketplace.retryUpdate"]（「挂牌即进名单」）
+  ✔ MCP-S2.1.门出现                   804ms · 确认安装 串口监视器 确认前请查看来源与发布者。 发布者 官方 官方发布 来源 encaron/linkdesk-marketplace 描述 串口数据监视器——接收区（CM6）+ 发送栏（Monaco）+ 侧栏设置。LinkDesk 第一个视图插件，通用容器基础设施在此验证。不绑定任何特定用途。 版本 v1.0.25 大小 164 KB 取消 确认安装
+  ✔ MCP-S2.1.点确认                   clicked="确认安装" buttons=["取消","确认安装"]
+  ✔ MCP-S2.2                       exec 严格回执：ok=true code=- {
+  "commandId": "marketplace.retryInstall",
+  "result": null
+}
+  ✔ MCP-S2.3                       通知面板 1 条，其中带 command 的 1 条：id=toast-1 「serial-monitor：安装失败：网络连接不可用」
+  ✔ MCP-S2.4 CDP证人                 池通知面板 = [["重试"]]（按钮真在用户看得见的地方）
+  ✔ MCP-S3.1                       按钮事实随行：command=marketplace.retryInstall args=[{"pluginId":"serial-monitor","downloadUrl":"http://127.0.0.1:9/nope.linkdesk-plugin"}]（M1 AI#2 的 command/args 经 DTO 活着）
+  ✔ MCP-S3.2 负控                    乱点名按钮 ⇒ ENOTFOUND
+  ✔ MCP-S4.1.门出现                   131ms · 确认安装 串口监视器 确认前请查看来源与发布者。 发布者 官方 官方发布 来源 encaron/linkdesk-marketplace 描述 串口数据监视器——接收区（CM6）+ 发送栏（Monaco）+ 侧栏设置。LinkDesk 第一个视图插件，通用容器基础设施在此验证。不绑定任何特定用途。 版本 v1.0.25 大小 164 KB 取消 确认安装
+  ✔ MCP-S4.1.点确认                   clicked="确认安装" buttons=["取消","确认安装"]
+  ✔ MCP-S4.2                       按按钮 = 跑命令：pressed=true command=marketplace.retryInstall code=-
+  ✔ MCP-S4.3 双证人                   按钮那一下又跑出一条**新**的带 command 通知：toast-2（旧 toast-1 + 新 = 2 条）
+  ✔ MCP-S4.4 CDP证人                 池面板条数 1 → 2
+  ✔ MCP-S4.5 负控                    乱点通知 id ⇒ ENOTFOUND
+  ✔ MCP-S5.1                       账本本轮：exec(arg=marketplace.retryInstall) 成功 1 条 · notifyAction 成功 1 条（arg 只对 exec/install 记，见残余）
+  ✔ MCP-S5.2 负控留痕                  先记后判：被拒的那条也在账上（ok=false code=EUNKNOWN），本轮 1 条／账本读完 30 条
+
+── M5 AI#19 ① 复验（MCP 腿）：装一个插件 → 打开它 → 操作它（⛔ 全程走通道，不拿 CDP 冒充） ──
+  ✔ MCP-S6.0 前置                    插件包在盘上：E:\linkdesk-plugins\official\serial-monitor\serial-monitor.linkdesk-plugin
+  ✔ MCP-S6.1 装前                    命令面 115 条，无 serial-monitor.*（净态：上一腿装完已卸干净）
+  ✔ MCP-S6.2.门出现                   6ms · AI 请求安装插件： E:\linkdesk-plugins\official\serial-monitor\serial-monitor.linkdesk-plugin （问一声的原因：插件 = 陌生代码，装上就会运行） 允许吗？（不点 = 不执行） 取消 确定
+  ✔ MCP-S6.2.点确认                   clicked="确定" buttons=["取消","确定"]
+  ✔ MCP-S6.3 装                     install ⇒ installed=true job={"success":true,"pluginId":"serial-monitor","version":"1.0.25"} code=-
+  ✔ MCP-S6.4 打开                    open-tab serial-monitor ⇒ accepted
+  ✔ MCP-S6.5 CDP证人                 池标签条 = ["欢迎","发行说明 v0.2.21","插件市场","串口监视器"]
+  ✔ MCP-S6.6 挂牌                    命令面 115 → 135，serial-monitor.* 新挂牌 20 条（视图挂载即挂牌）
+  ✔ MCP-S6.7 操作                    exec serial-monitor.toggleLineNumbers ⇒ ok=true code=-（装完就能操作它）
+  ✔ MCP-S7.1                       exec marketplace.disable ⇒ ok=true
+  ✔ MCP-S7.2 负控                    「已禁用：串口监视器」的按钮没绑命令 ⇒ notify-action ENOACTION（⛔ 不假装按得动）
+  ✔ MCP-S7.3 复原                    exec marketplace.enable ⇒ ok=true（不留半禁用态）
+  ✔ MCP-S6.9 还原                    exec marketplace.uninstall ⇒ ok=true code=-
+
+── 合计 41/41 条读数（跳过 0） ──
+
+── 同一实例 · gate-accept.mjs（AI#29 敏感动作门 · 非坐标点击）──
+AI#29 验收 —— 敏感动作的**统一确认回路**（不是唯一鼠标路径）
+实例：C:/Users/fengy/AppData/Local/Temp/ldk-ai45 · CDP http://127.0.0.1:9444 · 敏感命令 update.openUpdateFlow
+
+── 前置 ──
+  ✔ ENV-PING                   应答 pid=43124 通道=tcp 版本=0.2.21
+  ✔ ENV-CDP                    target = ["pool","shell"]
+
+── ① 自述面（describe.askFirst） ──
+  ✔ G0.1·自述含敏感命令               commands = ["update.openUpdateFlow"]
+  ✔ G0.2·自述含敏感操作               ops = ["install"]
+  ✔ G0.3·🔴 AI 没有应答面           9 个操作，命中 /dialog|answer|confirm|approve|reply/ 的 = []
+  ✔ G0.4·--help 能自查名单          --timeout <毫秒>         单次请求超时（默认 5000；**要用户点头的动作**默认 600000——等得起人）
+
+── ② 名单外不问 ──
+  ✔ G1.1·普通命令照旧                exec view.zoomReset ⇒ ok=true code=null
+  ✔ G1.2·普通命令不弹门               1.2s 内池里没有确认面板
+
+── ③ 键盘腿（Esc = 拒） ──
+  ✔ G2·门出现                     75ms · 按钮=["取消","确定"]
+  ✔ G2·门接得住键盘                  焦点=ldk-dialog-host-panel · docFocus=false · 就绪 152ms
+  ✔ G2·门文案统一                   AI 请求执行敏感命令「update.openUpdateFlow」： 处理主软件更新（有新版本会先下载，下载完**重启并装**） （问一声的原因：装更新 = 换掉正在跑的程序本体，不可回退） 允许吗？（不点 = 不执行） 取消 确定
+  ✔ G2·键盘腿(cdp)                按 Escape ⇒ exit=1 ok=false code=EUSERDENIED 226ms · hint=去软件里点那个确认框（键盘 Enter = 同意 / Esc = 取消）——**不点就不执行**；授权不缓存，下次还会问…
+  ✔ G2·门已收                     3ms 内面板消失
+  ✔ G2.5·被拒读数可自救               hint=去软件里点那个确认框（键盘 Enter = 同意 / Esc = 取消）——**不点就不执行**；授权不缓存，下次还会问（AI#29）。
+
+── ③ 键盘腿（Enter = 准） ──
+  ✔ G3·门出现                     72ms · 按钮=["取消","确定"]
+  ✔ G3·门接得住键盘                  焦点=ldk-dialog-host-panel · docFocus=true · 就绪 151ms
+  ✔ G3·门文案统一                   AI 请求执行敏感命令「update.openUpdateFlow」： 处理主软件更新（有新版本会先下载，下载完**重启并装**） （问一声的原因：装更新 = 换掉正在跑的程序本体，不可回退） 允许吗？（不点 = 不执行） 取消 确定
+  ✔ G3·键盘腿(cdp)                按 Enter ⇒ exit=0 ok=true code=null 175ms
+  ✔ G3·门已收                     3ms 内面板消失
+
+── ④ 账本（不撒谎） ──
+  ✔ G4.1·拒了记 ok=false          ts=2026-09-28T20:23:35.318Z op=exec ok=false code=EUSERDENIED arg=update.openUpdateFlow
+  ✔ G4.2·准了记 ok=true           ts=2026-09-28T20:23:35.510Z op=exec ok=true code=null arg=update.openUpdateFlow
+  ✔ G4.3·盘上账同一条                ai-bridge-log.jsonl 尾 8 行：ts=2026-09-28T20:23:35.318Z op=exec ok=false code=EUSERDENIED arg=update.openUpdateFlow
+
+── ⑤ 负控 ──
+  ✔ G5.1·不存在的命令不问              code=EUNKNOWN · 门=没出现
+  ✔ G5.2·Esc 那次真没落地            同一条命令 Enter 那次 ok=true —— 同路径两种读法，差别只来自那一下按键
+
+── 合计 24/24 条读数 ──
+
+── §十 12 例 ＋ §八 三场景：examples.mjs（AI#46 · 2026-09-29）──
+file:///E:/linkdesk/scripts/dev/lib/cdp.mjs:106
+      throw new Error(`页面内异常：${d}`);
+            ^
+
+Error: 页面内异常：TypeError: cs.map is not a function
+    at <anonymous>:3:13
+    at <anonymous>:4:3
+    at Object.evaluate (file:///E:/linkdesk/scripts/dev/lib/cdp.mjs:106:13)
+    at async withTarget (file:///E:/linkdesk/scripts/dev/lib/cdp.mjs:131:12)
+    at async cmdsOf (file:///E:/linkdesk/scripts/dev/m4-fullchain/examples.mjs:180:28)
+    at async file:///E:/linkdesk/scripts/dev/m4-fullchain/examples.mjs:181:14
+
+Node.js v24.16.0
+
+── §十 12 例 ＋ §八 三场景：examples.mjs（AI#46 · 2026-09-29 净态实例）──
+
+── 前置 ──
+  ✔ ENV-USERDATA               记录目录 = C:/Users/fengy/AppData/Local/Temp/ldk-ai45
+  ✔ ENV-CDP                    target = ["pool","shell"]
+  ✔ ENV-PING                   pid=43124 · 命令面 115 条
+
+── §八② 只凭 GitHub 网址装插件（AI 发起 → 门 → 用户点） ──
+  ✔ B2.install.门出现             133ms · 按钮=["取消","确定"]
+  ✔ B2.install.点确认             clicked="确定"
+  ✔ B2.装成                      installed=true job={"success":true,"pluginId":"serial-monitor","version":"1.0.25"} · 通道耗时 1469ms
+    · 装成 = serial-monitor v1.0.25（来源只有那一条 URL：⛔ 没给包名、没给市场页）
+  ✔ B2.打开                      open-tab serial-monitor ⇒ accepted=true
+  ✔ B2.挂牌                      视图挂载 ⇒ 命令面 135 条（含 serial-monitor.*）
+  ✔ B2.CDP证人                   池标签条 = ["欢迎","发行说明 v0.2.21","插件市场","串口监视器"]
+
+── §十 例 9 消息回显（toggle 型命令） ──
+  ✔ E9.来回都成                    exec ⇒ ok=true ×2（toggle 两向）code=-/-
+
+── §十 例 10 发数据（无硬件 → 响亮失败才对） ──
+  ✔ E10.无口时响亮失败                ok=false code=ESHELLERROR · {"ok":false,"subcommand":"exec","code":"ESHELLERROR","message":"Error invoking remote method 'serial:sendText': Error: 串
+  ✔ E10.参数形状可读                 serial-monitor.send ⇒ desc=90字 params=[{"name":"sendMode","type":"string","required":true,"descrip when=false
+
+── §十 例 4 侧栏位置（非鼠标） ──
+  ✔ E4.侧栏可见                    sidebar={"visible":true,"width":280,"edge":"left","containerId":"explorer","containerTitle":"资源管理器","views":[{"id":"folders","title":"","pluginId":"file-tree","renderPath":"/@fs/C:/Users/fengy/AppData/Local/Temp/ldk-ai45/plugins/file-tree/views/FoldersView.bundle.js","minHeight":180},{"id":"search","title":"搜索","pluginId":"file-tree","renderPath":"/@fs/C:/Users/fengy/AppData/Local/Temp/ldk-ai45/plugins/file-tree/views/SearchView.bundle.js","order":1}],"containers":[{"containerId":"explorer","containerTitle":"资源管理器","views":[{"id":"folders","title":"","pluginId":"file-tree","renderPath":"/@fs/C:/Users/fengy/AppData/Local/Temp/ldk-ai45/plugins/file-tree/views/FoldersView.bundle.js","minHeight":180},{"id":"search","title":"搜索","pluginId":"file-tree","renderPath":"/@fs/C:/Users/fengy/AppData/Local/Temp/ldk-ai45/plugins/file-tree/views/SearchView.bundle.js","order":1}]},{"containerId":"marketplace","containerTitle":"插件市场","views":[{"id":"search","title":"搜索","pluginId":"marketplace","renderPath":"/@fs/C:/Users/fengy/AppData/Local/Temp/ldk-ai45/plugins/marketplace/views/SearchView.bundle.js","role":"toolbar","order":-1},{"id":"installed","title":"已安装","pluginId":"marketplace","renderPath":"/@fs/C:/Users/fengy/AppData/Local/Temp/ldk-ai45/plugins/marketplace/views/InstalledListView.bundle.js","order":0,"badge":4},{"id":"explore","title":"探索插件","pluginId":"marketplace","renderPath":"/@fs/C:/Users/fengy/AppData/Local/Temp/ldk-ai45/plugins/marketplace/views/ExploreView.bundle.js","order":1,"collapsed":true},{"id":"disabled","title":"已禁用","pluginId":"marketplace","renderPath":"/@fs/C:/Users/fengy/AppData/Local/Temp/ldk-ai45/plugins/marketplace/views/DisabledListView.bundle.js","order":2,"collapsed":true,"badge":0},{"id":"builtin","title":"内置","pluginId":"marketplace","renderPath":"/@fs/C:/Users/fengy/AppData/Local/Temp/ldk-ai45/plugins/marketplace/views/BuiltinListView.bundle.js","order":3,"collapsed":true,"badge":4}]},{"containerId":"panel-demo-sidebar","containerTitle":"面板演示","views":[{"id":"demo-sidebar","title":"侧栏演示","pluginId":"panel-demo","renderPath":"/@fs/E:/linkdesk/plugins/panel-demo/src/views/DemoSidebarView.tsx","order":0,"titleActions":[{"type":"split","id":"sidebar-add-log","command":"panel-demo.sidebarAddLog","icon":"codicon-add","title":"侧栏添加演示日志","args":{"level":"info"},"items":[{"label":"侧栏添加信息","command":"panel-demo.sidebarAddLog","args":{"level":"info"}},{"label":"侧栏添加警告","command":"panel-demo.sidebarAddLog","args":{"level":"warn"}},{"label":"侧栏添加错误","command":"panel-demo.sidebarAddLog","args":{"level":"error"}}]},{"type":"icon","id":"sidebar-clear-log","command":"panel-demo.sidebarClearLog","icon":"codicon-clear-all","title":"侧栏清空输出"}]}]},{"containerId":"serial-monitor","containerTitle":"串口监视器","views":[{"id":"sessions","title":"串口监视器会话","pluginId":"serial-monitor","renderPath":"/@fs/C:/Users/fengy/AppData/Local/Temp/ldk-ai45/plugins/serial-monitor/views/SessionListView.bundle.js","order":0,"minHeight":120},{"id":"receive-and-send","title":"收发设置 — 会话","pluginId":"serial-monitor","renderPath":"/@fs/C:/Users/fengy/AppData/Local/Temp/ldk-ai45/plugins/serial-monitor/views/SerialSettingsView.bundle.js"}]}],"collapsedViews":["explore","disabled","builtin"],"collapsed":false,"viewId":"file-tree","emptyText":"此容器没有已注册的视图","emptyHint":"安装插件以添加视图","minWidth":170,"maxWidth":600}
+  ✗ E4.移位成                     null → undefined（图标栏列 {"icons":[{"pluginId":"serial-monitor","icon":{"kind":"img","src":"linkdesk://serial-monitor/resources/icon-bar.svg"},"label":"串口监视器","location":"top"},{"pluginId":"file-tree","icon":{"kind":"img","src":"linkdesk://file-tree/resources/icon-bar.svg"},"label":"文件树","location":"top"},{"pluginId":"marketplace","icon":{"kind":"img","src":"linkdesk://marketplace/resources/icon.svg"},"label":"插件市场","location":"top"},{"pluginId":"settings","icon":{"kind":"img","src":"linkdesk://settings/resources/icon-bar.svg"},"label":"设置","location":"bottom"}],"activePluginId":"file-tree","hamburgerVisible":false,"navLabel":"导航"} → {"icons":[{"pluginId":"serial-monitor","icon":{"kind":"img","src":"linkdesk://serial-monitor/resources/icon-bar.svg"},"label":"串口监视器","location":"top"},{"pluginId":"file-tree","icon":{"kind":"img","src":"linkdesk://file-tree/resources/icon-bar.svg"},"label":"文件树","location":"top"},{"pluginId":"marketplace","icon":{"kind":"img","src":"linkdesk://marketplace/resources/icon.svg"},"label":"插件市场","location":"top"},{"pluginId":"settings","icon":{"kind":"img","src":"linkdesk://settings/resources/icon-bar.svg"},"label":"设置","location":"bottom"}],"activePluginId":"file-tree","hamburgerVisible":false,"navLabel":"导航"}）
+  ✗ E4.切回原位                    回到 x=undefined
+
+── §十 例 5 面板视图显隐（非鼠标） ──
+  ✗ E5.隐→显往返                   view=demo-output visible undefined → undefined → undefined
+
+── §十 例 6 开五个标签页 ──
+  ✗ E6.五个都开                    标签条 4 → 8（新增 ["app","设置","文件树","编辑器"]）
+
+── §十 例 8 两文件对比（两步手势 = 两行调用） ──
+    · 调之前：selectForCompare 已在命令面（file-tree 视图挂载时才注册）
+  ✔ E8.前置（视图挂载才挂牌）             命令面已见 file-tree.selectForCompare / compareWithSelected
+  ✔ E8.出 diff 标签页              exec ok=true/true · 池标签条命中 = "README.md ↔ CLAUDE.md"（全条：["欢迎","发行说明 v0.2.21","插件市场","串口监视器","app","设置","文件树","编辑器","README.md ↔ CLAUDE.md"]）
+
+── §十 例 11 嵌套分屏（池树 API） ──
+  ✗ E11.①右分                    root = {"type":"leaf","groupId":"main"} · 组数 1
+  ✗ E11.②再嵌一层                  嵌套 branch 数 = 0 · 组数 1 · root = {"type":"leaf","groupId":"main"}
+  ✔ E11.③宿主面复位（50/50）          resetSplitSizes ⇒ ok=true · sizes = null
+  ○ E11.比例精确设只有池 API           缺口：`updateSplitSizes(anchorGroupId, sizes)` 是池侧 tabAction；宿主/CLI 面只有 `workbench.action.resetSplitSizes`（整体回 50/50）⇒ 外部 AI 要「把某块拉宽到 70%」够不着（缺口 AI#53）
+
+── §十 例 12 空间定位问答 ──
+  ✔ E12.①开着吗                   serial-monitor 在 1 个组里（["main"]）
+  ✔ E12.②在哪                    布局树可走：root={"type":"leaf","groupId":"main"} · 组 = [{"id":"main","标签":["欢迎","发行说明 v0.2.21","插件市场","串口监视器","app","设置","文件树","编辑器","README.md ↔ CLAUDE.md"]}]
+  ○ E12.③拉宽某块（精确比例）            缺口：同上：树可读、位置可问答，但「精确比例」只有池 API（缺口 AI#53）
+
+── §十 例 3 市场源（对账表 = ＋M2 一条命令） ──
+  ✔ E3.命令面已见市场源命令              ["file-tree.refresh"]
+
+── §八① 零源码造主题插件（SDK validate + pack） ──
+  ✔ B1.validate                exit=0 · ✅ plugin.json 验证通过
+  ✔ B1.pack                    exit=0 · [linkdesk-plugin-sdk] ✔ theme-deep-slate.linkdesk-plugin（1.9 KB, 3 条目）→ theme-deep-slate.linkdesk-plugin
+
+── §八③ 全新电脑从零（软件都没有） ──
+  ○ B3.无净机可跑                   缺口：本机无干净机器 ⇒ 记 ○；手册《07-如何接入》＋《05-安装版》是该链第 1 跳（M3-手册.md:135 的验收口径）；真正的「从零」= 发版批 nsis 真机那一跳
+
+── 收尾 ──
+(node:15968) [DEP0190] DeprecationWarning: Passing args to a child process with shell option true can lead to security vulnerabilities, as the arguments are not escaped, only concatenated.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+  ✔ END.卸载（问门清单外的动作）           exec marketplace.uninstall ⇒ ok=true code=-（AI#29 口径：uninstall 不在 ask-first 两条里 ⇒ 不弹门——如实记）
+  ✔ END.命令面回落                  卸载后命令面 128 条（视图卸载 ⇒ serial-monitor.* 摘牌）
+
+── 合计 32 条读数：✔ 23 · ✗ 6 · ○ 缺口/边界 3 ──

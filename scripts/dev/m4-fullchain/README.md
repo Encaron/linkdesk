@@ -42,7 +42,16 @@ node scripts/dev/m4-fullchain/accept.mjs --channel cli     # 或 mcp / both
 | 池标签布局（**这条是主犯**） | 池页 `localStorage['layout:ws-1']`（`<ISO>/Local Storage/leveldb`） |
 | 布局镜像 / 窗口状态 | `<ISO>/layout-ws-1.json`、`<ISO>/windows-state.json` |
 
-⇒ 实测可行的做法：**停实例 → 清空 `<ISO>/`（只留 `plugins/`，然后把 `settings.json` 写回）→ 再起**。
+⇒ 实测可行的做法：**停实例 → 清空 `<ISO>/`（把 `settings.json` 写回）→ 再起**。
+🔴 **`plugins/` 要不要一起清，看跑哪件**（2026-09-29 会话 13 实测）：
+
+- 跑 **`accept.mjs`**（含 `S6` 装/卸整链）⇒ **`plugins/` 必须一起清**——留着它，`serial-monitor` 的目录还在，`S6.1` 会当场报「已存在安装目录」= **幻影失败**（首跑 41/42 就是这个）。
+- 跑 **`gate-accept.mjs` / `examples.mjs`**（不装插件）⇒ `plugins/` 留不留都行。
+
+```bash
+# 净态（连插件家一起清；settings.json 随后写回）
+for f in "$ISO"/*; do b=$(basename "$f"); case "$b" in settings.json) ;; *) rm -rf "$f";; esac; done
+```
 
 ```bash
 taskkill //PID <记录里的 pid> //T //F
@@ -95,6 +104,8 @@ for f in "$ISO"/*; do b=$(basename "$f"); case "$b" in plugins|settings.json) ;;
 
 - **`READINGS.txt`** —— 两腿各一次**完整跑**的 stdout ＋ 真 MCP 客户端（Claude Code）对接读数
   ＋ 离线三段读数 ＋ **附段：`gate-accept.mjs` 的 AI#29 读数**。PID / 端口 / 临时路径每次不同。
+- **`READINGS-AI45.txt`**（会话 13）—— §七 验收 1–7 全量真跑读数（CLI 39/39 · MCP 41/41 · 门 24/24 ×2 · **首跑 41/42 的实例残留说明**）。
+- **`examples.mjs` ＋ `READINGS-AI46-examples.txt`**（会话 13）—— §十 12 例 ＋ §八 三场景的**可重跑**验收器与定稿读数（34 条：✔ 28 · ✗ 0 · ○ 6）。用法：同一条 `LINKDESK_USER_DATA` / `LINKDESK_CDP` 环境下 `node scripts/dev/m4-fullchain/examples.mjs`。
 
 ## 五之二、同夹第二件验收器：`gate-accept.mjs`（`AI#29` 敏感动作的确认回路）
 
@@ -120,7 +131,26 @@ LINKDESK_USER_DATA=<iso> LINKDESK_CDP=http://127.0.0.1:9444 node scripts/dev/m4-
 3. **CDP 真按键的 target 看页面聚焦态**：窗未被 OS 聚焦时键事件落在 `BODY` ⇒ Enter 打不到面板、Escape 能到。
    真用户按键天然是聚焦窗，不受影响；验收器在这种情况下降级 DOM 合成 `KeyboardEvent`（仍不碰鼠标）。
 
-## 六、真 MCP 客户端（本棒实测：Claude Code CLI `2.1.233`）
+## 六、会话 13（`AI#45`–`AI#47`）新增坑与口径（**实测，不是猜的**）
+
+1. **隔离实例要显式钉界面语言**：`settings.json` 里写 `"app.language":"zh"`。验收器有按**中文文案**匹配的判据
+   （确认门文案统一、提示条等），不钉语言会因语言兜底而匹配不上（表现像「门没弹」）。
+2. **Vite deps 缓存过期会打断插件模块加载**：隔离实例走 dev 轨道，`node_modules/.vite` 陈旧时插件视图模块加载失败
+   （白屏／`describe` 迟迟不就绪）。修法 = 删 `node_modules/.vite` 再起 dev（仓内 `postinstall` 平时会自动清；
+   手工起 dev 的场合要自己管）。
+3. **hover-only 面的口径（重要）**：`CSS.forcePseudoState` 在**深层既有节点**上实测只改 `matches()`、**不改计算样式**
+   ⇒ 靠它验 hover 面会得到**假绿**。可信做法 = `scripts/dev/driver.mjs --mode mouse`（**元素锚定**：先取元素
+   再落到它的中心，⛔ 不推算坐标、不看窗口位置）；用了指针的读数**如实标注**，别写成「非坐标」。（细节见
+   [01-设计.md §三](../../../docs/04-软件更新/待抉择池/AI友好化-全自动操作/01-设计.md) 与收口报告 §五。）
+4. **宿主命令读「位置实参」**：`params[].name` 是**具名**声明，但 handler 取的是 `args[0]/args[1]`
+   ⇒ 照具名对象调用（`{containerId, viewId}`）会**静默无效**（`ok:true` 却没做事）。验收器一律按**平铺实参**调。
+   （⇒ 生长格 `AI#52`：执行面要不要兼容具名对象。）
+5. **命令注册时机 = 视图挂载时**：`file-tree.*` 这类命令**没挂载视图就不在命令面**，照 id 直接调会 `EUNKNOWN`
+   ⇒ 验收脚本要先 `open-tab` 再调（⇒ 生长格 `AI#54`）。同样：`commands.getCommands()` 是**异步**的，读面必须 await 后再断言。
+
+---
+
+## 七、真 MCP 客户端（本棒实测：Claude Code CLI `2.1.233`）
 
 配置形态**照产品自己产出的那份**（`cli/linkdeskctl/lib/mcp-config.mjs`：`mcpServers.linkdesk` +
 `command:"linkdeskctl"` + `args:["mcp"]`）；本机开发态把 `command` 换成 `node`、

@@ -1,0 +1,69 @@
+═══ AI#46·§十 12 例 ＋ §八 三场景 —— examples.mjs（2026-09-29 · 净态实例 · 定稿轮）═══
+
+── 前置 ──
+  ✔ ENV-USERDATA               记录目录 = C:/Users/fengy/AppData/Local/Temp/ldk-ai45
+  ✔ ENV-CDP                    target = ["pool","shell"]
+  ✔ ENV-PING                   pid=3900 · 命令面 110 条
+
+── §八② 只凭 GitHub 网址装插件（AI 发起 → 门 → 用户点） ──
+  ✔ B2.install.门出现             141ms · 按钮=["取消","确定"]
+  ✔ B2.install.点确认             clicked="确定"
+  ✔ B2.装成                      installed=true job={"success":true,"pluginId":"serial-monitor","version":"1.0.25"} · 通道耗时 1274ms
+    · 装成 = serial-monitor v1.0.25（来源只有那一条 URL：⛔ 没给包名、没给市场页）
+  ✔ B2.打开                      open-tab serial-monitor ⇒ accepted=true
+  ✔ B2.挂牌                      视图挂载 ⇒ 命令面 127 条（含 serial-monitor.*）
+  ✔ B2.CDP证人                   池标签条 = ["欢迎","发行说明 v0.2.21","串口监视器"]
+
+── §十 例 9 消息回显（toggle 型命令） ──
+  ✔ E9.来回都成                    exec ⇒ ok=true ×2（toggle 两向）code=-/-
+
+── §十 例 10 发数据（无硬件 → 响亮失败才对） ──
+  ✔ E10.无口时响亮失败                ok=false code=ESHELLERROR · {"ok":false,"subcommand":"exec","code":"ESHELLERROR","message":"Error invoking remote method 'serial:sendText': Error: 串
+  ✔ E10.参数形状可读                 serial-monitor.send ⇒ desc=90字 params=[{"name":"sendMode","type":"string","required":true,"descrip when=false
+
+── §十 例 4 侧栏位置（非鼠标） ──
+  ✔ E4.侧栏可见                    sidebar = {"visible":true,"width":280,"edge":"left","containerId":"explorer"}（图标栏高亮 = file-tree）
+  ✔ E4.移位成                     edge left → right（宽 280）
+  ✔ E4.切回原位                    回到 edge=left
+
+── §十 例 5 面板视图显隐（非鼠标） ──
+  ✔ E5.隐→显往返                   view=panel-demo/demo-output（输出）visible true → false → true
+  ○ E5b.手册形状吃不进去               缺口：对象形状 {containerId, viewId} ⇒ ok=true 但 visible 恒 true（**静默无效**：handler 只读位置参数 args[0]/args[1]，对象进来 typeof≠string 直接跳过）——手册 00-README 第 5 行的写法要改（AI 照手册调用会以为做了、其实没做）
+
+── §十 例 6 开五个标签页 ──
+  ✔ E6.五个都开（回读）                标签条 3 → 8 · 五个都在：["插件市场","设置","文件树","编辑器","app"]
+
+── §十 例 8 两文件对比（两步手势 = 两行调用） ──
+    · 调之前：selectForCompare 已在命令面（file-tree 视图挂载时才注册）
+  ✔ E8.前置（视图挂载才挂牌）             命令面已见 file-tree.selectForCompare / compareWithSelected
+  ✔ E8.出 diff 标签页              exec ok=true/true · 池标签条命中 = "README.md ↔ CLAUDE.md"（全条：["欢迎","发行说明 v0.2.21","串口监视器","app","设置","插件市场","文件树","编辑器","README.md ↔ CLAUDE.md"]）
+
+── §十 例 11 嵌套分屏（池树 API） ──
+  ✔ E11.①右分                    组 main（9 个标签）的 activeTab 上 horizontal 分 ⇒ root = {"type":"branch","direction":"horizontal","children":[{"type":"leaf","groupId":"main"},{"type":"leaf","groupId":"group-2"}],"sizes":[50,50]} · 组数 2
+  ✔ E11.②再嵌一层                  再在 main（8 个标签）上 vertical 分 ⇒ 嵌套 branch 数 = 2 · 组数 3 · root = {"type":"branch","direction":"horizontal","children":[{"type":"branch","direction":"vertical","children":[{"type":"leaf","groupId":"main"},{"type":"leaf","groupId":"group-4"}],"sizes":[50,50]},{"type":"leaf","groupId":"group-2"}],"sizes":[5
+  ✔ E11.③宿主面复位（50/50）          resetSplitSizes ⇒ ok=true · 各分支 ["\"sizes\":[50,50]","\"sizes\":[50,50]"]
+  ○ E11.比例精确设只有池 API           缺口：`updateSplitSizes(anchorGroupId, sizes)` 是池侧 tabAction；宿主/CLI 面只有 `workbench.action.resetSplitSizes`（整体回 50/50）⇒ 外部 AI 要「把某块拉宽到 70%」够不着（缺口 AI#53）
+  ○ E11s.单标签组自 split 静默 no-op  缺口：组 group-2（1 个标签）朝**自己**分 ⇒ 树/sizes 一字不变（ok=true 也无报错）——reducer 路径：源组变空 → 先摘叶 → 再 replaceLeafWithBranch(目标=刚摘掉的叶) 找不到目标 ⇒ return prev。⚠️ 朝**别组**分则是另一种：源叶被摘、该标签以兄弟叶并入别组（**层级不增、反而挪窝**）。鼠标拖拽同款载荷（useTabDrag.onDropSplit 传 targetGroupId=落点组）⇒ **既存隐患，不属本系列引入**（缺口 AI#55；候选修法：目标=源时跳过摘叶、原地建 branch）
+
+── §十 例 12 空间定位问答 ──
+  ✔ E12.①开着吗                   serial-monitor 在 1 个组里（["main"]）
+  ✔ E12.②在哪                    布局树可走：root={"type":"branch","direction":"horizontal","children":[{"type":"branch","direction":"vertical","children":[{"type":"leaf","groupId":"main"},{"type":"leaf","group · 组 = [{"id":"main","标签":["发行说明 v0.2.21","串口监视器","app","设置","插件市场","文件树","编辑器"]},{"id":"group-2","标签":["README.md ↔ CLAUDE.md"]},{"id":"group-4","标签":["欢迎"]}]
+  ○ E12.③拉宽某块（精确比例）            缺口：同上：树可读、位置可问答，但「精确比例」只有池 API（缺口 AI#53）
+
+── §十 例 3 市场源（对账表 = ＋M2 一条命令） ──
+  ○ E3.命令面仍缺                   缺口：marketplace.* 命令面（marketplace.enable / marketplace.disable / marketplace.uninstall / marketplace.retryInstall / marketplace.retryUpdate）里零条「加市场源」——功能在 = marketplace:src/services/marketSourceAdd.ts，池 UI 能写 marketplaceSources ⇒ 外部 AI 只能改设置数组，缺口仍在（生长格）
+
+── §八① 零源码造主题插件（SDK validate + pack） ──
+  ✔ B1.validate                exit=0 · ✅ plugin.json 验证通过
+  ✔ B1.pack                    exit=0 · [linkdesk-plugin-sdk] ✔ theme-deep-slate.linkdesk-plugin（1.9 KB, 3 条目）→ theme-deep-slate.linkdesk-plugin
+
+── §八③ 全新电脑从零（软件都没有） ──
+  ○ B3.无净机可跑                   缺口：本机无干净机器 ⇒ 记 ○；手册《07-如何接入》＋《05-安装版》是该链第 1 跳（M3-手册.md:135 的验收口径）；真正的「从零」= 发版批 nsis 真机那一跳
+
+── 收尾 ──
+(node:73760) [DEP0190] DeprecationWarning: Passing args to a child process with shell option true can lead to security vulnerabilities, as the arguments are not escaped, only concatenated.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+  ✔ END.卸载（问门清单外的动作）           exec marketplace.uninstall ⇒ ok=true code=-（AI#29 口径：uninstall 不在 ask-first 两条里 ⇒ 不弹门——如实记）
+  ✔ END.命令面回落                  卸载后命令面 121 条（视图卸载 ⇒ serial-monitor.* 摘牌）
+
+── 合计 34 条读数：✔ 28 · ✗ 0 · ○ 缺口/边界 6 ──
