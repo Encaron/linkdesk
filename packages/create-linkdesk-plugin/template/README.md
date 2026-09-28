@@ -21,7 +21,8 @@ You do not need to pre-create empty folders (git does not track them). **Create 
 | `resources/` | Assets — **three preset placeholders, each with a job comment inside**: `icon.svg` (small in-app icon) / `icon-bar.svg` (Icon Bar single-colour glyph) / `cover.svg` (README cover), plus any images referenced from the README | Always (replace the placeholders) |
 | `i18n/` | `en.json` (key = the source string; **do not create `zh.json`**) | Once you have UI text |
 | `themes/` · `languages/` · `snippets/` | Payloads for data-only plugins | Data-only plugins |
-| `src/index.tsx` | Entry (the `entry` in `plugin.json`) | Always for view plugins |
+| `src/index.tsx` | Entry (the `entry` in `plugin.json`) — also calls `registerPluginCommands()` **at the top level** (command handlers must work viewless; the top-level side effect is the only registration moment) | Always for view plugins |
+| `src/commands.ts` | Command sample — a runnable `hello` command (handler here; its title/description/params live in `plugin.json`'s `contributes.commands[]` — change both in the same stroke). Spec + checklist: author doc `21-command-ification-spec.md` | Add commands here |
 | `src/views/` | Sidebar / panel view components (the files `contributes.views` points at) | Once you have views |
 | `src/components/` | Components reused inside this plugin | When needed |
 | `src/services/` | Domain logic / IPC wrappers / data layer | When needed |

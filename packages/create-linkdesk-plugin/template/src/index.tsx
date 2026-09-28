@@ -11,13 +11,31 @@
  * 样式：LinkDesk 主题色一律走 CSS 变量 var(--xxx)（见 index.css 示例），禁硬编码 hex。
  * 文案：用 t() 读——key 就是中文原文，英文译文放 i18n/en.json（见作者文档 05-ui-conventions.md）。
  * 壳已 external react/react-dom/react-i18next/i18next——构建不会打进包，插件工程无需 npm i 它们。
+ *
+ * 命令：本插件自带一个能跑的命令样板（src/commands.ts）——**顶层**调用注册（命令 handler
+ * 要能无视图执行，顶层副作用才是唯一注册时机）；声明在 plugin.json 的 contributes.commands[]。
  */
 
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { registerPluginCommands } from "./commands";
 import "./index.css";
+
+registerPluginCommands();
 
 export default function HelloPlugin(_props: { isActive?: boolean; tabId?: string; sourceId?: string }) {
   const { t } = useTranslation();
+  const [reply, setReply] = useState("");
+
+  // 界面也只是命令的消费者之一——按钮走命令而不是直调函数，
+  // 这样命令面板 / 快捷键 / AI 与按钮用的是**同一条实现**（入口可多处，命令源唯一）。
+  const callHello = async () => {
+    const res = await window.linkdesk?.commands?.executeCommand<{ message: string }>(
+      "{{pluginName}}.hello",
+      { name: "LinkDesk" },
+    );
+    setReply(res?.message ?? "（命令没有返回）");
+  };
 
   return (
     <div className="{{pluginName}}-starter">
@@ -30,6 +48,17 @@ export default function HelloPlugin(_props: { isActive?: boolean; tabId?: string
         <code>npm run build</code> {t("打包出分发文件，可装进 LinkDesk 或发布到市场。")}
       </p>
       <p className="{{pluginName}}-starter__hint">{t("目录该放哪、发布怎么做，都写在 README.md 里。")}</p>
+      <p className="{{pluginName}}-starter__hint">
+        <code>src/commands.ts</code> {t("里有一条能跑的命令样板——按钮、命令面板、AI 调的是同一条。")}
+      </p>
+      <button className="{{pluginName}}-starter__button" onClick={callHello}>
+        {t("调一次命令")}
+      </button>
+      {reply && (
+        <p className="{{pluginName}}-starter__reply" role="status">
+          {reply}
+        </p>
+      )}
     </div>
   );
 }

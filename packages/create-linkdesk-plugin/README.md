@@ -35,7 +35,8 @@ my-cool-plugin/
 ├── resources/
 │   └── icon.svg          # placeholder icon — replace it with your own
 ├── src/
-│   ├── index.tsx         # view component, default export — the shell renders it with { isActive, tabId?, sourceId? }
+│   ├── index.tsx         # view component, default export — the shell renders it with { isActive, tabId?, sourceId? }; also registers the plugin's commands at the top level
+│   ├── commands.ts       # command sample — a runnable `hello` command (handler here; its title/description/params live in plugin.json's contributes.commands)
 │   └── index.css         # styling example — colors/font sizes via var(--xxx), spacing on a 4px grid
 └── i18n/
     └── en.json           # English translations (key = the source string)

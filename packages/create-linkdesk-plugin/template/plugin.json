@@ -51,6 +51,20 @@
     // ⚠️ statusBar 不是 contributes 的键——它是 plugin.json **顶层**的 statusBar[] 数组（写进 contributes 无效，见 17 号 ⑦ 状态栏）
     // 自带翻译：key=语言码, value=相对插件根的 JSON 文件。UI 文案用 t() 读这里；无需 zh.json——中文 key 原文自带兜底。
     "i18n": { "en": "i18n/en.json" },
+    // ── 命令（模板自带一个能跑的样板：handler 在 src/commands.ts 注册，本声明就是它的显示面）──
+    //    id 用 "<pluginId>." 前缀防撞；🔴 description 必写——命令索引 / 命令面板 / AI 选命令
+    //    全靠这一句，写「做什么 + 参数怎么给」，别写「这是一条命令」。
+    //    params 与 handler 实参逐位对应；改命令时 plugin.json 与 src/commands.ts 同笔改。
+    "commands": [
+      {
+        "id": "{{pluginName}}.hello",
+        "title": "打招呼",
+        "description": "返回一句问候（本插件的命令样板）。可无参数执行（向 world 问好），也可给 { name } 指定对象；返回 { message, plugin } 读数。",
+        "params": [
+          { "name": "args", "type": "object", "required": false, "description": "{ name?: string }——向谁问好；省略 = world" }
+        ]
+      }
+    ],
     // ── 需要「侧栏 / 底部面板 / 辅助侧栏」分区视图时：取消注释，在 src/views/ 放对应组件，
     //    容器 key 与 view id 用你的 pluginId 做前缀防撞（对标 plugins/panel-demo）──
     // "viewsContainers": { "{{pluginName}}-sidebar": { "title": "{{displayName}}", "location": "sidebar" } },
