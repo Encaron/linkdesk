@@ -21,17 +21,20 @@
 > 归属 = 开发期脚手架（不进软件产物、零用户可见面、不占版本号），**与本系列互不依赖**。**本件是任务、是第一棒（会话「外」）**——投入半小时到一晚量级，换掉之后每次验收都可能踩的假阴性。全文 = [../dev验收前置.md](../dev验收前置.md)。判据三条在该文件 §四。
 > 🔴 **本件也是任务、也要 AI 去做**（用户 2026-09-28 点名：「注意前置任务也是任务，也需要 ai 去做」）——**独立一棒（会话「外」）**：有格号 `D0#1`–`D0#3`、有判据（该文件 §四 三条）、**做完逐格回勾 ＋ 改文末「总结」表那一行 ＋ 在 [交接.md](交接.md) 写一条**，与第 1 轮同规格；⛔ 别当「顺手做掉的小事」。开场词 = [05-启动词.md](05-启动词.md) 第一段。
 
-#### D0#1 ⬜ 硬 reload 前置 ＋ 构建握手
+#### D0#1 ✅ 硬 reload 前置 ＋ 构建握手
 
-- [ ] **D0#1** 验收 driver 第一步对**全部调试 target** `location.reload()` 并等就绪；同笔打印/校验**构建哈希或时间戳**与现象读数并排记录。｜**病根**=04 侧栏折叠子实测：`plugin-states.json` 已更新而池快照没动（运行中 dev 实例的 HMR 吃不到**壳侧非组件模块**改动）⇒ 据此误判「修了没用」白查一轮。｜落点 = CDP driver 脚本（`scripts/dev/` 或 `scratch/`，**是否入库待定**）｜判据 = §四 第 1 条「代码未生效时**当场**可辨」
+- [x] **D0#1** 验收 driver 第一步对**全部调试 target** `location.reload()` 并等就绪；同笔打印/校验**构建哈希或时间戳**与现象读数并排记录。｜**病根**=04 侧栏折叠子实测：`plugin-states.json` 已更新而池快照没动（运行中 dev 实例的 HMR 吃不到**壳侧非组件模块**改动）⇒ 据此误判「修了没用」白查一轮。｜落点 = CDP driver 脚本（`scripts/dev/` 或 `scratch/`，**是否入库待定**）｜判据 = §四 第 1 条「代码未生效时**当场**可辨」
+- ✅ 2026-09-28 收口（`f54e59209`）· 落点 = **`scripts/dev/`（裁决：入库）**，理由三条见 [scripts/dev/README.md](../../../../scripts/dev/README.md) §入库裁决｜实现 = `npm run dev:driver -- reload`（第一步硬 reload 全部 page target 并等就绪）＋ `-- handshake`：**按文档分开判**「`performance.timeOrigin`（该文档加载时刻）vs 磁盘 mtime」、聚合取最坏、零可比对判 `no-evidence` ⛔ 不算过｜真机：正控 `in-sync` → `touch src/App.tsx` → 壳报 `/src/App.tsx` `newer-than-page` **而池不受影响**（两份文档、两个 HMR 图 = 04 病形）→ `reload` → 双文档就绪 → `in-sync`｜⚠️ **原判据（看 `?t=` 版本章）被真机推翻**：Vite 只在模块被 HMR 失效后才挂章，刚加载页面 **326 资源 / 0 章** ⇒ 一律假红；`?t=` 已降级为附加证人（`stale-stamp`）
 
-#### D0#2 ⬜ CDP driver 库固化
+#### D0#2 ✅ CDP driver 库固化
 
-- [ ] **D0#2** 把一次性脚本收敛成一组语义助手（`openSection` / `collapseSection` / `readSections` / `readLayout` / `readPoolSnapshot`），放固定位置。｜**病根**=04 侧栏折叠实修写了 **17 个**一次性驱动，每个都带「找 page target + 走 React fiber 读 props」的前戏，换一件又从零写。｜判据 = §四 第 2 条「同类验收第二次做**不新写脚本**」
+- [x] **D0#2** 把一次性脚本收敛成一组语义助手（`openSection` / `collapseSection` / `readSections` / `readLayout` / `readPoolSnapshot`），放固定位置。｜**病根**=04 侧栏折叠实修写了 **17 个**一次性驱动，每个都带「找 page target + 走 React fiber 读 props」的前戏，换一件又从零写。｜判据 = §四 第 2 条「同类验收第二次做**不新写脚本**」
+- ✅ 2026-09-28 收口（`f54e59209`）· 落点 = `scripts/dev/`（三层：`lib/cdp.mjs` 传输 · `lib/linkdesk-driver.mjs` 语义 · `driver.mjs` CLI，`npm run dev:driver`）｜五个助手全在，另从 17 个脚本里提炼 `readViewMenu` / `openView` / `hoverFace` / `buildHandshake` / `decouple`｜真机读数 = `sections` 6 行 · `layout` `containerId=explorer` / `collapsedViews=["explore","disabled","builtin"]` · `collapse`（点了 `true→false`）→ 再 `collapse`（**已是目标态，未点**）→ `open`（`false→true`）幂等三段全对｜零第三方依赖（只 `node:*` ＋ 相对路径，有自测守）＋ `selftest` **14/14**（纯函数，不需实例）｜⛔ **故意不接 `npm run check` 链**（要活实例、零产品面）；门禁射程已逐条核对（README §门禁射程）
 
-#### D0#3 ⬜ 与主系列解耦自检
+#### D0#3 ✅ 与主系列解耦自检
 
-- [ ] **D0#3** 判据 = §四 第 3 条「与《AI 友好化》**互不依赖**：本件做完，软件侧一行未改」。｜顺手：driver 里的 hover 面用 **`CSS.forcePseudoState` 强制伪状态**，为 `AI#47` 的验收面自检先立样板
+- [x] **D0#3** 判据 = §四 第 3 条「与《AI 友好化》**互不依赖**：本件做完，软件侧一行未改」。｜顺手：driver 里的 hover 面用 **`CSS.forcePseudoState` 强制伪状态**，为 `AI#47` 的验收面自检先立样板
+- ✅ 2026-09-28 收口（`f54e59209`）· 读数 = `npm run dev:driver -- decouple`：产品路径 `src / electron / packages / plugins` 未提交改动 **✔ 空**（`docs/04-软件更新/00-README.md` ✔ 干净，只报不拦）｜旁证 = 提交时 `commit-msg` 门禁自动判「**无软件侧代码 staged**——放行」｜顺手件：hover 样板已立，**默认真鼠标**——`.ldk-sidebar-section-header` `color` `rgb(138,138,138)` → `rgb(212,212,212)` 真变；而 `CSS.forcePseudoState` 对**深层既有节点只改 `matches()`、不改计算值**（同节点并排实测；强制探针却灵 ⇒ 机制没坏）⇒ `--mode force` **降级保留**并带警告。**留一条给 `AI#47`**：`mouse` 是可信路径
 
 ---
 
@@ -297,7 +300,7 @@
 ## 执行顺序与依赖
 
 ```
-D0#1–D0#3（系列外 · **第一棒**，不占 AI 格）
+D0#1–D0#3（系列外 · ✅ **2026-09-28 已收口**，不占 AI 格）
       ↓
 第 1 轮 M1 AI#1–AI#9 ────────────────┐（AI#1–#7 相互独立可并行；#7→#8→#9 串行）
       ↓                               │
@@ -327,11 +330,11 @@ D0#1–D0#3（系列外 · **第一棒**，不占 AI 格）
 
 ## 总结
 
-> **只在这里写数字**（别处不复写）。**当前 = 0 / 62 格已回勾**（另：系列外 `D0#1`–`D0#3` = 0/3）。
+> **只在这里写数字**（别处不复写）。**当前 = 0 / 62 格已回勾**（另：系列外 `D0#1`–`D0#3` = **3 / 3 ✅ 已收口**）。
 
 | 轮 | 模块 | 格 | 已回勾 | 状态 |
 |:--:|:--|:--|:--:|:--|
-| — | 系列外 dev 验收前置 | `D0#1`–`D0#3` | 0 / 3 | ⬜ 未开工（不占系列格） |
+| — | 系列外 dev 验收前置 | `D0#1`–`D0#3` | **3 / 3** | ✅ 2026-09-28 收口（`f54e59209`；不占系列格） |
 | 1 | **M1** 读取面进契约 | `AI#1`–`AI#9` | 0 / 9 | ⬜ 可开工（✅ 前置门已过） |
 | 2 | **M3** 文档与手册 | `AI#10`–`AI#16` | 0 / 7 | ⬜ 可开工（← M1） |
 | 3 | **M5** 安装版一致性 | `AI#17`–`AI#19` | 0 / 3 | ⬜ 可开工 |
