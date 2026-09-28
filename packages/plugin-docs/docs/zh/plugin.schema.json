@@ -299,7 +299,26 @@
               "id": { "type": "string", "description": "Command ID — e.g. terminal.clear" },
               "title": { "type": "string", "description": "Display name" },
               "category": { "type": "string", "description": "Command palette group" },
-              "when": { "type": "string", "description": "context key when condition — e.g. activeEditor == 'terminal'" }
+              "when": { "type": "string", "description": "context key when condition — e.g. activeEditor == 'terminal'" },
+              "description": {
+                "type": "string",
+                "description": "What this command does — the intent from the user/AI perspective. Do not restate the command id."
+              },
+              "params": {
+                "type": "array",
+                "description": "Parameter structure — items correspond positionally to the handler's arguments.",
+                "items": {
+                  "type": "object",
+                  "required": ["name", "type"],
+                  "properties": {
+                    "name": { "type": "string", "description": "Parameter name — must match the handler's parameter name (e.g. tabId / settingKey / groupId)" },
+                    "type": { "type": "string", "enum": ["string", "number", "boolean", "object"], "description": "Parameter type — object = structured payload (document its fields in description)" },
+                    "required": { "type": "boolean", "description": "Whether the parameter is required. Defaults to false." },
+                    "description": { "type": "string", "description": "One sentence on what this parameter is" }
+                  },
+                  "additionalProperties": false
+                }
+              }
             },
             "additionalProperties": false
           }

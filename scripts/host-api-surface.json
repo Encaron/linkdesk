@@ -721,7 +721,18 @@
     "contributes": [],
     "contributes.commands": [],
     "contributes.commands[].category": [],
+    "contributes.commands[].description": [],
     "contributes.commands[].id": [],
+    "contributes.commands[].params": [],
+    "contributes.commands[].params[].description": [],
+    "contributes.commands[].params[].name": [],
+    "contributes.commands[].params[].required": [],
+    "contributes.commands[].params[].type": [
+      "boolean",
+      "number",
+      "object",
+      "string"
+    ],
     "contributes.commands[].title": [],
     "contributes.commands[].when": [],
     "contributes.configuration": [],

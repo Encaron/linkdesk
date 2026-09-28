@@ -13,10 +13,32 @@
  */
 
 // ── 契约类型 ──
+/**
+ * 命令参数结构——M1 `AI#7`：命令**自带参数说明**，随 `commands.getCommands()` 一并返回。
+ * 位置语义：`params[i]` 与 handler 实参**逐位对应**（`name` 照 handler 实参名写，⛔ 别另起名）——
+ * 消费方（菜单/插件/自动化）照它拼 `executeCommand(id, ...params)` 即可，不必读源码猜。
+ */
+export interface LinkDeskCommandParam {
+    /** 参数名——照 handler 实参名（如 `tabId` / `settingKey` / `groupId`） */
+    name: string;
+    /** 参数类型——四值收敛（对象 = 结构化载荷，字段明细写在 description） */
+    type: "string" | "number" | "boolean" | "object";
+    /** 是否必填——缺省 `false`（可选） */
+    required?: boolean;
+    /** 一句话说明这个参数是什么（省略 = 名字已自明） */
+    description?: string;
+}
 export interface LinkDeskCommand {
     id: string;
     title: string;
     category?: string;
+    /**
+     * M1 `AI#7`：这条命令**干什么**——用户/AI 视角的意图（i18n key = 中文原文，与 title 同款），
+     * ⛔ 不复述命令 id（id 由字段本身给出）。可选、纯加法——存量命令不填即缺省。
+     */
+    description?: string;
+    /** M1 `AI#7`：参数结构（逐位对应 handler 实参）。可选、纯加法；无参数命令不填。 */
+    params?: LinkDeskCommandParam[];
 }
 /** 配方贡献域——theme 元数据 domains（混搭来源过滤）+ theme:changed 载荷（域级细粒度刷新）共用（06 §2/§6.2）。
  *  五域：colors（配色，colorways 恒贡献） + appearance 四风格域（radius/glass/font/background）。
@@ -98,6 +120,10 @@ export interface CommandsAPI {
          *   否则该命令会被算到名字第一段那个属主头上（借他人前缀 ⇒ 归属错、且异归属顶替拦不住）。
          *   照 `notifications.source` 先例（`ui.ts:26-32`）：池是单进程共享 realm，
          *   所有插件共用同一个 `window.linkdesk` ⇒ **无从自动注入，只能作者显式报**。
+         * M1 `AI#7`：`meta.description` / `meta.params` = 命令说明与参数结构（可选、只做加法）——
+         *   与 `title`/`category` 同路同步进壳注册表，随 `getCommands()` 出契约
+         *   （`LinkDeskCommand.description` / `LinkDeskCommand.params`）。
+         *   `params[i]` 与 handler 实参**逐位对应**（`name` 照 handler 实参名）。
          */
         registerCommand(commandId: string,
         handler: (...args: any[]) => Promise<unknown> | unknown, meta?: {
@@ -105,6 +131,8 @@ export interface CommandsAPI {
             category?: string;
             when?: string;
             pluginId?: string;
+            description?: string;
+            params?: LinkDeskCommandParam[];
         }): void;
         /** 注销插件的池内命令（约定：命令 ID 格式为 "pluginId.commandName"）——随视图 unmount 调用 */
         unregisterCommands(pluginId: string): void;

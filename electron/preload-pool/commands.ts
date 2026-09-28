@@ -101,7 +101,7 @@ export function buildCommands(events: EventSystemApi) {
      * 不传 meta 的旧调用向后兼容（纯池内命令，壳侧不可见）。
      */
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- 命令 handler 入参类型由插件调用方决定，对标 VS Code registerCommand 的 (...args: any[]) => any
-    registerCommand: (id: string, handler: (...args: any[]) => any, meta?: { title?: string; category?: string; when?: string; pluginId?: string }) => {
+    registerCommand: (id: string, handler: (...args: any[]) => any, meta?: { title?: string; category?: string; when?: string; pluginId?: string; description?: string; params?: { name: string; type: "string" | "number" | "boolean" | "object"; required?: boolean; description?: string }[] }) => {
       _poolCommands.set(id, handler);
       // E6#111b ②：注册方显式申报的真身份——优先于名字推定（照 notifications.source 先例）
       if (meta?.pluginId) _poolCommandOwners.set(id, meta.pluginId);

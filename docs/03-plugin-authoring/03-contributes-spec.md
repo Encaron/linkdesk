@@ -76,7 +76,12 @@
         "id": "cad.importDxf",
         "title": "Import DXF…",
         "category": "CAD",
-        "when": "activeEditor == 'cad'"
+        "when": "activeEditor == 'cad'",
+        "description": "Import CAD geometry from a DXF file into the current project",
+        "params": [
+          { "name": "layerFilter", "type": "string", "description": "Import only this layer (omit for all)" },
+          { "name": "explodeBlocks", "type": "boolean", "description": "Explode blocks into primitive entities" }
+        ]
       }
     ]
   }
@@ -89,6 +94,19 @@
 | `title` | ✅ | display name (an i18n key — the original Chinese text) |
 | `category` | ❌ | command palette grouping — "CAD" / "Terminal" / "File" |
 | `when` | ❌ | context key when condition. Without `when` the command is visible in any context |
+| `description` | ❌ | **what this command does** — the intent from the user/AI perspective (an i18n key, same rule as `title`). ⛔ Do not restate the `id`. Omitted = no description |
+| `params` | ❌ | **parameter structure** — an array corresponding positionally to the handler's arguments. Omitted = a command without parameters |
+
+**`params` item fields (positionally matching the handler's arguments):**
+
+| Field | Required | Description |
+|------|:--:|------|
+| `name` | ✅ | parameter name — **use the handler's own parameter name** (e.g. `tabId` / `settingKey` / `groupId`) |
+| `type` | ✅ | one of four values: `"string"` \| `"number"` \| `"boolean"` \| `"object"` (`object` = a structured payload; document its fields in `description`) |
+| `required` | ❌ | whether the parameter is required. Defaults to `false` (optional) |
+| `description` | ❌ | one sentence on what this parameter is (omit when the name speaks for itself) |
+
+> **`description` / `params` travel through `getCommands()` into the contract** (`LinkDeskCommand.description` / `LinkDeskCommand.params`) — consumers (the command palette, automation, AI) can build `executeCommand(id, ...params)` straight from `params` **instead of reading source code to guess the arguments**. The same optional fields exist on **runtime registration** (`registerCommand(id, handler, meta)`); the two are synonymous (declaring them once is enough — a runtime registration usually does not repeat them).
 
 **Declaring registers metadata (a placeholder):** `contributes.commands` only registers command metadata (id/title/category/when); **the real handler is registered on the pool side** (pool-side `_poolCommands` wins). A command whose handler was never registered is a no-op when invoked (with a diagnostic warn).
 

@@ -76,7 +76,12 @@
         "id": "cad.importDxf",
         "title": "导入 DXF…",
         "category": "CAD",
-        "when": "activeEditor == 'cad'"
+        "when": "activeEditor == 'cad'",
+        "description": "从 DXF 文件导入图形到当前工程",
+        "params": [
+          { "name": "layerFilter", "type": "string", "description": "只导入该图层（省略 = 全部）" },
+          { "name": "explodeBlocks", "type": "boolean", "description": "块是否炸开为基本图元" }
+        ]
       }
     ]
   }
@@ -89,8 +94,21 @@
 | `title` | ✅ | 显示名称（i18n key——中文原文） |
 | `category` | ❌ | 命令面板分组——"CAD" / "终端" / "文件" |
 | `when` | ❌ | context key when 条件。不加 `when` = 任何上下文可见 |
+| `description` | ❌ | **这条命令干什么**——用户/AI 视角的意图（i18n key，同 `title` 规矩）。⛔ 不复述 `id`。缺省 = 无说明 |
+| `params` | ❌ | **参数结构**——数组，逐位对应 handler 实参。缺省 = 无参数命令 |
 
-**声明即注册元数据（placeholder）：** `contributes.commands` 只注册命令元数据（id/title/category/when），**真实 handler 在池侧注册**（池侧 `_poolCommands` 优先）。不注册 handler 的命令被调用 → no-op（诊断 warn）。
+**`params` 条目字段（逐位对应 handler 实参）：**
+
+| 字段 | 必需 | 说明 |
+|------|:--:|------|
+| `name` | ✅ | 参数名——**照 handler 实参名写**（如 `tabId` / `settingKey` / `groupId`） |
+| `type` | ✅ | 四值收敛：`"string"` \| `"number"` \| `"boolean"` \| `"object"`（`object` = 结构化载荷，字段明细写在 `description`） |
+| `required` | ❌ | 是否必填。缺省 `false`（可选） |
+| `description` | ❌ | 一句话说明这个参数是什么（省略 = 名字已自明） |
+
+> **`description` / `params` 随 `getCommands()` 出契约**（`LinkDeskCommand.description` / `LinkDeskCommand.params`）——消费方（命令面板、自动化、AI）照 `params` 拼 `executeCommand(id, ...params)` 即可，**不必读源码猜参数**。同名字段在**运行时注册**（`registerCommand(id, handler, meta)`）上同样可选，两处同义（声明面写一次即可，运行时注册通常不必重复）。
+
+**声明即注册元数据（placeholder）：** `contributes.commands` 只注册命令元数据（id/title/category/when/description/params），**真实 handler 在池侧注册**（池侧 `_poolCommands` 优先）。不注册 handler 的命令被调用 → no-op（诊断 warn）。
 
 ```typescript
 // 池侧注册真实 handler（组件 mount 时）

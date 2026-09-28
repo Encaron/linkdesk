@@ -32,13 +32,14 @@ export async function handleCommandsChannel(channel: string, args: unknown[]): P
       // E5.8#43-4（①③）：末位 windowId = 注册窗口归属（主进程 sender 注入）——归属表登记路由
       // E6#111b：meta.pluginId = 注册方显式申报的真身份（②）——**回执把解析出的归属还给池侧**，
       //   池侧 on-command 激活据此取属主（H3：不再从名字第一段推）。
-      const [commandId, meta, windowId] = args as [string, { title?: string; category?: string; when?: string; pluginId?: string } | null, string?];
+      // M1 AI#7：meta 增 description/params（命令说明与参数结构）——本层 verbatim 透传，语义归注册表
+      const [commandId, meta, windowId] = args as [string, { title?: string; category?: string; when?: string; pluginId?: string; description?: string; params?: { name: string; type: "string" | "number" | "boolean" | "object"; required?: boolean; description?: string }[] } | null, string?];
       return registerPoolCommandMetadata(commandId, meta ?? {}, windowId);
     }
     case "commands:registerShell": {
       // E5.7#56：壳侧插件入口注册命令（双进程执行——壳 glob loader 侧半程真注册，
       // handler 存壳 preload 页面世界代理，执行走 _executeShellLocal 桥）
-      const [commandId, meta] = args as [string, { title?: string; category?: string; when?: string; pluginId?: string } | null];
+      const [commandId, meta] = args as [string, { title?: string; category?: string; when?: string; pluginId?: string; description?: string; params?: { name: string; type: "string" | "number" | "boolean" | "object"; required?: boolean; description?: string }[] } | null];
       return registerShellLocalCommand(commandId, meta ?? {});
     }
     case "commands:unregister": {

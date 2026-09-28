@@ -114,13 +114,16 @@ export async function parseContributions(pluginId: string, c: Record<string, unk
   // Phase 5c fix：静态导入替代动态 import()——动态 import 的 .then() 晚于组件 mount，
   // 导致 terminal 组件注册的真实 handler 被 placeholder 覆盖。
   if (c.commands) {
-    const cmds = contribArray<{ id: string; title: string; category?: string; when?: string }>(pluginId, "commands", c.commands);
+    // M1 AI#7：声明面同样可写 description/params（与运行时 registerCommand meta 同字段、同语义）
+    const cmds = contribArray<{ id: string; title: string; category?: string; when?: string; description?: string; params?: { name: string; type: "string" | "number" | "boolean" | "object"; required?: boolean; description?: string }[] }>(pluginId, "commands", c.commands);
     for (const cmd of cmds) {
       registerCommand(pluginId, {
         id: cmd.id,
         title: cmd.title,
         category: cmd.category,
         when: cmd.when,
+        description: cmd.description,
+        params: cmd.params,
         // E5.7 Bug C：元数据注册标 placeholder——真实 handler 注册在池侧（preload-pool _poolCommands）。
         // 壳执行时走 CommandRegistry.executeInPool 转发到池，不再调下面的诊断 warn。
         placeholder: true,

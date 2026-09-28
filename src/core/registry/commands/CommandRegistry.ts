@@ -15,6 +15,7 @@
  */
 
 import type { CancellationToken } from "../../utils/CancellationToken";
+import type { LinkDeskCommandParam } from "../../api/linkdesk-api/types"; // M1 AI#7：命令元数据与契约同型（`import type` 零运行时耦合）
 import { reportError } from "../../services/bootstrap/ErrorService";
 import { trackRegistration } from "../registrationTracker"; // E5.8#10：register 返 disposer——卸载自动逆序回滚
 
@@ -29,6 +30,13 @@ export interface Command {
   category?: string;
   /** context key when 条件——Phase 5 实现（见 ContextKeyService） */
   when?: string;
+  /**
+   * M1 `AI#7`：这条命令**干什么**——用户/AI 视角的意图（⛔ 不复述命令 id）。
+   * i18n 约定同 title（key = 中文原文）；随 `commands.getCommands()` 出契约（`LinkDeskCommand`）。
+   */
+  description?: string;
+  /** M1 `AI#7`：参数结构（逐位对应 handler 实参）——无参数命令不填。契约 `LinkDeskCommandParam` 同型 */
+  params?: LinkDeskCommandParam[];
   /**
    * 占位标记——loader.ts 按 plugin.json contributes.commands 注册的元数据命令。
    * handler 只是诊断 warn；真实 handler 由插件视图在池内 mount 时注册到池侧注册表
@@ -161,6 +169,10 @@ export function registerCommand(
     }
     existing.handler = command.handler;
     existing.title = command.title;
+    // M1 AI#7：可选元数据**有值才覆盖**——组件 mount 重注册只带 handler，不该把声明面写的
+    // description/params 抹掉（title 是必填故无条件覆盖，二者不同款）。
+    if (command.description !== undefined) existing.description = command.description;
+    if (command.params !== undefined) existing.params = command.params;
     // 组件重注册真实 handler 时清 placeholder——否则真实实现永远被转发分支拦截
     existing.placeholder = command.placeholder;
     // 重注册未新增条目——首注册者的 disposer 持有删除权，返回 no-op
@@ -199,7 +211,7 @@ const _poolCommandWindows = new Map<string, Set<string>>();
  * 命令面板/右键菜单的标题、分类、when 过滤全部由壳侧 getCommands 消费——
  * 池内注册必须回传元数据才可见（含动态 toggle 标题的重注册更新）。
  *
- * 已存在条目：只更新 title/category/when——不动 handler/placeholder。
+ * 已存在条目：只更新 title/category/when/description/params——不动 handler/placeholder。
  *   loader 元数据条目保持转发语义（Bug C 桥），壳原生命令保持壳侧执行。
  * 不存在条目：plugin.json 未声明的池内运行时命令——以占位条目登记入壳注册表
  *   （命令面板可见，执行走 executeInPool 转发到池）。
@@ -209,7 +221,7 @@ const _poolCommandWindows = new Map<string, Set<string>>();
  */
 export function registerPoolCommandMetadata(
   commandId: string,
-  meta: { title?: string; category?: string; when?: string; pluginId?: string },
+  meta: { title?: string; category?: string; when?: string; pluginId?: string; description?: string; params?: LinkDeskCommandParam[] },
   windowId?: string,
 ): CommandOwnership {
   // §8.6 归属表：登记该命令的注册窗口（多窗口同一命令在每窗各注册一次 → 集合多成员）
@@ -245,6 +257,9 @@ export function registerPoolCommandMetadata(
     if (meta.title !== undefined) existing.title = meta.title;
     if (meta.category !== undefined) existing.category = meta.category;
     if (meta.when !== undefined) existing.when = meta.when;
+    // M1 AI#7：说明与参数同走「有值才覆盖」——池侧重注册不带这两项时不抹掉声明面那份
+    if (meta.description !== undefined) existing.description = meta.description;
+    if (meta.params !== undefined) existing.params = meta.params;
     return owner;
   }
   // 命令 ID 约定 "pluginId.commandName"——**声明面查不到时才**退回前缀推定（preload-pool unregister 同约定）
@@ -253,6 +268,8 @@ export function registerPoolCommandMetadata(
     title: meta.title ?? commandId,
     category: meta.category,
     when: meta.when,
+    description: meta.description,
+    params: meta.params,
     placeholder: true,
     handler: async () => {
       console.warn(`[CommandRegistry] 命令 "${commandId}" 尚未绑定 handler——池内视图未挂载`);
@@ -276,7 +293,7 @@ export function registerPoolCommandMetadata(
  */
 export function registerShellLocalCommand(
   commandId: string,
-  meta: { title?: string; category?: string; when?: string; pluginId?: string },
+  meta: { title?: string; category?: string; when?: string; pluginId?: string; description?: string; params?: LinkDeskCommandParam[] },
 ): CommandOwnership {
   // E6#111b 判据③（H1 修点）：与 registerPoolCommandMetadata 同一条归属解析（①→②→③）
   const owner = _resolveOwner(
@@ -289,6 +306,8 @@ export function registerShellLocalCommand(
     title: meta.title ?? commandId,
     category: meta.category,
     when: meta.when,
+    description: meta.description,
+    params: meta.params,
     placeholder: false,
     handler: (...args) => {
       const bridge = window.linkdesk?.commands?._executeShellLocal;

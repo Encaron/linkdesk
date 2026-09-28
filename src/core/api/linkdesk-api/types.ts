@@ -1,8 +1,8 @@
 /**
  * linkdesk-api 类型域——自 linkdesk-api.ts 拆出（E5.8#0d.10-9a）。
- * 独立类型接口（非 LinkDeskAPI 成员）：LinkDeskCommand/LinkDeskTheme/LinkDeskLanguage/LinkDeskConfigSchema/
- * PluginListEntry/PluginInstallResult/PluginInfoEntry/PluginListSubset/EnvInfo/FileDecoration/
- * FileDecorationProvider/MenuItemDescriptor/NotificationHandle/PluginToastAction 14 接口 verbatim。
+ * 独立类型接口（非 LinkDeskAPI 成员）：LinkDeskCommand/LinkDeskCommandParam/LinkDeskTheme/LinkDeskLanguage/
+ * LinkDeskConfigSchema/PluginListEntry/PluginInstallResult/PluginInfoEntry/PluginListSubset/EnvInfo/
+ * FileDecoration/FileDecorationProvider/MenuItemDescriptor/NotificationHandle/PluginToastAction 15 接口 verbatim。
  * DialogOpenOptions 保路径 re-export 留在聚合器（../../types/ipc/dialogs）。
  * 依赖方向：types → ../types（PluginManifest）；被 10 个命名空间域文件 import（依赖基座，无反向）。
  */
@@ -11,10 +11,33 @@ import type { PluginManifest } from "../types";
 import type { ThemeSurface, ThemeBackground } from "../../services/ui/ThemeEngine";
 import type { ThemeDomain } from "../../types/theme";
 
+/**
+ * 命令参数结构——M1 `AI#7`：命令**自带参数说明**，随 `commands.getCommands()` 一并返回。
+ * 位置语义：`params[i]` 与 handler 实参**逐位对应**（`name` 照 handler 实参名写，⛔ 别另起名）——
+ * 消费方（菜单/插件/自动化）照它拼 `executeCommand(id, ...params)` 即可，不必读源码猜。
+ */
+export interface LinkDeskCommandParam {
+  /** 参数名——照 handler 实参名（如 `tabId` / `settingKey` / `groupId`） */
+  name: string;
+  /** 参数类型——四值收敛（对象 = 结构化载荷，字段明细写在 description） */
+  type: "string" | "number" | "boolean" | "object";
+  /** 是否必填——缺省 `false`（可选） */
+  required?: boolean;
+  /** 一句话说明这个参数是什么（省略 = 名字已自明） */
+  description?: string;
+}
+
 export interface LinkDeskCommand {
   id: string;
   title: string;
   category?: string;
+  /**
+   * M1 `AI#7`：这条命令**干什么**——用户/AI 视角的意图（i18n key = 中文原文，与 title 同款），
+   * ⛔ 不复述命令 id（id 由字段本身给出）。可选、纯加法——存量命令不填即缺省。
+   */
+  description?: string;
+  /** M1 `AI#7`：参数结构（逐位对应 handler 实参）。可选、纯加法；无参数命令不填。 */
+  params?: LinkDeskCommandParam[];
 }
 
 export interface LinkDeskTheme {

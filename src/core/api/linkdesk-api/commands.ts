@@ -4,7 +4,7 @@
  * 依赖方向：commands → ./types（LinkDeskCommand）；被聚合器交叉组装。
  */
 
-import type { LinkDeskCommand, LinkDeskConfigSchema, LinkDeskConfigurationContribution } from "./types";
+import type { LinkDeskCommand, LinkDeskCommandParam, LinkDeskConfigSchema, LinkDeskConfigurationContribution } from "./types";
 
 /** 命令 + 配置命名空间面——对标 VS Code vscode.commands + workspace.getConfiguration */
 export interface CommandsAPI {
@@ -30,12 +30,16 @@ export interface CommandsAPI {
      *   否则该命令会被算到名字第一段那个属主头上（借他人前缀 ⇒ 归属错、且异归属顶替拦不住）。
      *   照 `notifications.source` 先例（`ui.ts:26-32`）：池是单进程共享 realm，
      *   所有插件共用同一个 `window.linkdesk` ⇒ **无从自动注入，只能作者显式报**。
+     * M1 `AI#7`：`meta.description` / `meta.params` = 命令说明与参数结构（可选、只做加法）——
+     *   与 `title`/`category` 同路同步进壳注册表，随 `getCommands()` 出契约
+     *   （`LinkDeskCommand.description` / `LinkDeskCommand.params`）。
+     *   `params[i]` 与 handler 实参**逐位对应**（`name` 照 handler 实参名）。
      */
     registerCommand(
       commandId: string,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any -- 命令 handler 入参类型由插件调用方决定，对标 VS Code registerCommand 的 (...args: any[]) => any
       handler: (...args: any[]) => Promise<unknown> | unknown,
-      meta?: { title?: string; category?: string; when?: string; pluginId?: string },
+      meta?: { title?: string; category?: string; when?: string; pluginId?: string; description?: string; params?: LinkDeskCommandParam[] },
     ): void;
     /** 注销插件的池内命令（约定：命令 ID 格式为 "pluginId.commandName"）——随视图 unmount 调用 */
     unregisterCommands(pluginId: string): void;
