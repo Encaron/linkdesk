@@ -1,7 +1,7 @@
 # AI 友好化-全自动操作 · 执行清单
 
 > 2026-09-28 立单（ZCode 会话）。**🔥 进度唯一真相源：做完一个勾一个；当前进度与完成度只看文末「总结」表（别处不复写数字）。**
-> **状态：⬜ 未开工 · 零代码改动 · ✅ 前置门已过（用户 2026-09-28 拍板 A 组 8 条 ＋ P 组 5 条）**——[02-目录与切片规划.md §四](02-目录与切片规划.md) A 组已销（剩 B 组 B-1 待用户改 README 一行 ＋ C 组随收口轮）。
+> **状态：🚧 已开工——会话 1（第 1 轮 M1 读取面 `AI#1`–`AI#6`）2026-09-28 已交（6/9，真机 15/15）· 软件侧三笔读取面（`feat:`）· 零发版 · ✅ 前置门已过（用户 2026-09-28 拍板 A 组 8 条 ＋ P 组 5 条）**——[02-目录与切片规划.md §四](02-目录与切片规划.md) A 组已销（剩 B 组 B-1 待用户改 README 一行 ＋ C 组随收口轮）。
 > 🔴 **A-1 拍板改了执行序**（**M4 先于 M2**）⇒ 轮次 = M1 → M3 → M5 → **M4** → **M2** → 收口；**格号一字未动**（`AI#20`–`AI#30` 仍是 M2、`AI#31`–`AI#44` 仍是 M4）。
 > **🎯 系列目标**：把「**一个能够完全自动化的软件**」（「AI 友好四层」定稿之层 1「运行时操作」）落成工程件——判据三条 = **可读 · 可操作 · 可查**（[01-设计.md §三](01-设计.md)），验收面两条 = **与物理指针无关** ＋ **dev 验收前置**（[01-设计.md §三 验收面](01-设计.md) / [01-设计.md §七 第 7 条](01-设计.md)）。
 > **🔵 结构定案（2026-09-28）**：照 [E6-执行清单.md](../../../02-Electron架构/E6_插件生态与发布/E6-执行清单.md) 头部「结构定案」——**层 ≈ Phase 容器 · 轮 ≈ 一个执行批次 · 格 = 一个可回勾任务**。本系列 = 一个层（5 模块 + 收口），每模块 = 一轮，**编号 `AI#1`–`AI#49`，编号 ≠ 执行序**（编号是稳定 ID，插入序，不重编号不补位；执行序见文末「执行顺序与依赖」）。
@@ -44,29 +44,35 @@
 > 判据 = AI 全部经契约 API 即可回答 toast 六问 + 读出布局树与标签页列表——**零 DOM 读取**。
 > 顺序：`AI#1`–`AI#6` 相互独立可并行；**`AI#7` → `AI#8` → `AI#9` 是串行链**；`AI#8` 是第 2 轮（M3 手册）的硬前置。
 
-#### AI#1 ⬜ 通知读取面：list + subscribe
+#### AI#1 ✅ 通知读取面：list + subscribe
 
-- [ ] **AI#1** 给 `notifications` 契约补**只读列举**与**变更订阅**（或把 `pool.onLayout` 的 `statusBar.notif` 正式定格为读取通道并写进契约）。｜**现状实测**=契约面只有 `show`，全仓 grep `notifications.list` / `notifications.subscribe` / `onDidChangeNotification` **零命中**。｜落点 = `src/core/api/linkdesk-api/ui.ts:17`（契约）· `electron/preload-pool/namespaces-workspace.ts:32-36`（实现）· `src/hooks/usePoolSync/notif.ts:238-313`（壳侧数据源）· `src/core/types/pool/poolLayout.ts:665`（DTO 类型）｜判据 = 「铃铛里有几条、各是什么」**零 DOM 读取**可答｜详案 [M1-读取面.md](03-任务档案/M1-读取面.md)
+- [x] **AI#1** 给 `notifications` 契约补**只读列举**与**变更订阅**（或把 `pool.onLayout` 的 `statusBar.notif` 正式定格为读取通道并写进契约）。｜**现状实测**=契约面只有 `show`，全仓 grep `notifications.list` / `notifications.subscribe` / `onDidChangeNotification` **零命中**。｜落点 = `src/core/api/linkdesk-api/ui.ts:17`（契约）· `electron/preload-pool/namespaces-workspace.ts:32-36`（实现）· `src/hooks/usePoolSync/notif.ts:238-313`（壳侧数据源）· `src/core/types/pool/poolLayout.ts:665`（DTO 类型）｜判据 = 「铃铛里有几条、各是什么」**零 DOM 读取**可答｜详案 [M1-读取面.md](03-任务档案/M1-读取面.md)
+- ✅ 2026-09-28 收口 （本棒三笔：`bfb71f81c` 契约 · `eda592829` 壳侧 · `2906268f1` 池侧）｜落点 = 契约 `ui.ts` 的 `notifications.list/subscribe` ＋ 池宿主 `electron/preload-pool/namespaces-workspace.ts` ＋ 壳侧 provider（`usePoolSync/notif.ts` 的 `buildNotif` 原样复用，单一尺子 ⇒ 读取面 ≡ 屏幕）｜读数 = 真机 15 断言全过：`list()` 报全 DTO（`unread/panelTitle/clearLabel/minimizeLabel/emptyLabel/autoOpen/groups[label,unread,items[message,timeLabel,sourceLabel,actions]]`）；`subscribe` 回调在 `show` 后**真触发**（pings=2，信号无载荷，与 `notif:changed` 一一对应）｜⚠️ **一条真机发现**：被唤醒的未读会「自动展开面板 ＋ 认账」（E6#72d/73a）⇒ `unread` 会自己掉到 0，⛔ 别拿 unread 当「订阅是否生效」的判据（要拿「新条目出现在 list 里 ＋ pings 计数」）
 
-#### AI#2 ⬜ 通知按钮带 command/args（不再剥）
+#### AI#2 ✅ 通知按钮带 command/args（不再剥）
 
-- [ ] **AI#2** 面板 DTO 的 `actions` 带上 **`command` + `args`**，AI 才能回答「**该执行哪个按钮 / 按下去会发生什么**」。｜**现状实测**=`src/hooks/usePoolSync/notif.ts:280` 只输出 `{ label, isPrimary }`（`command`/`args` 被剥）；壳侧在 `src/core/services/plugins/IpcBridgeHandler/ui.ts:259-292` 把插件序列化的 `{command,args}` 收进了**闭包**（闭包跨进程不可序列化 ⇒ 必须让闭包同时携带 command/args 才透得出去）。｜落点 = 上述两个文件 + 壳 toast action 类型（开工时定位）｜⚠️ **碰撞**：与 **E6#57.x** 通知面同区，开工前按新 HEAD 对齐（[01-设计.md §四 M1 碰撞栏](01-设计.md)）｜判据 = toast 六问之「按钮里有什么 / 该执行哪个」——**零 DOM 读取**可答且**可执行**
+- [x] **AI#2** 面板 DTO 的 `actions` 带上 **`command` + `args`**，AI 才能回答「**该执行哪个按钮 / 按下去会发生什么**」。｜**现状实测**=`src/hooks/usePoolSync/notif.ts:280` 只输出 `{ label, isPrimary }`（`command`/`args` 被剥）；壳侧在 `src/core/services/plugins/IpcBridgeHandler/ui.ts:259-292` 把插件序列化的 `{command,args}` 收进了**闭包**（闭包跨进程不可序列化 ⇒ 必须让闭包同时携带 command/args 才透得出去）。｜落点 = 上述两个文件 + 壳 toast action 类型（开工时定位）｜⚠️ **碰撞**：与 **E6#57.x** 通知面同区，开工前按新 HEAD 对齐（[01-设计.md §四 M1 碰撞栏](01-设计.md)）｜判据 = toast 六问之「按钮里有什么 / 该执行哪个」——**零 DOM 读取**可答且**可执行**
+- ✅ 2026-09-28 收口（同上三笔）｜读数 = DTO `actions[0]` = `{label:"重试",isPrimary:true,command:"core.duplicateTab",args:[{tabId}]}`，与推入时**逐字一致**；照 DTO 调 `executeCommand(command, …, args)` 行为与**手点按钮**完全一致（两边各 +1 标签页，点击路径另收掉通知）｜🔴 **本棒最贵的一条踩坑留证（M3 手册必须写死）**：池侧契约调命令要带 **token 占位**——`executeCommand(id, undefined, ...args)`；池 preload 原样透传、壳 handler 把 `args[0]` 当 token 剥掉 ⇒ 少写 `undefined` 时真参数被吃、命令**静默空转**（不报错，最难查）
 
-#### AI#3 ⬜ tabs.list()（含活跃位）
+#### AI#3 ✅ tabs.list()（含活跃位）
 
-- [ ] **AI#3** `tabs` 命名空间补**只读列举**（含哪个是活跃标签）。｜**现状实测**=`src/core/api/linkdesk-api/tabs.ts:7` 只有 8 个操作面方法（create/openOrFocus/focus/close/focusBySourceId/updateLabelBySourceId/closeBySourceId/onDidChangeActiveTab），**无 `list`**；布局真相源在壳 `useTabManager`，壳侧无 getter。｜落点 = `tabs.ts` 契约 + 壳侧 getter + 池 preload 实现｜判据 = 「开了哪几个标签、哪个是活跃的」零 DOM 可答｜详案 [M1-读取面.md](03-任务档案/M1-读取面.md)
+- [x] **AI#3** `tabs` 命名空间补**只读列举**（含哪个是活跃标签）。｜**现状实测**=`src/core/api/linkdesk-api/tabs.ts:7` 只有 8 个操作面方法（create/openOrFocus/focus/close/focusBySourceId/updateLabelBySourceId/closeBySourceId/onDidChangeActiveTab），**无 `list`**；布局真相源在壳 `useTabManager`，壳侧无 getter。｜落点 = `tabs.ts` 契约 + 壳侧 getter + 池 preload 实现｜判据 = 「开了哪几个标签、哪个是活跃的」零 DOM 可答｜详案 [M1-读取面.md](03-任务档案/M1-读取面.md)
+- ✅ 2026-09-28 收口（同上三笔）｜读数 = `tabs.list()` 读出 `windows[0]`：`mode/ready/groups[id,activeTabId,tabs[…]]`（含每组活跃位）＋ 关掉活跃标签后活跃位跟着变（welcome-5 → 副本，真机）；`focus(...)` 仍走 `IPC.tabs.focus`——`list` **没夺写路径**（专门有一条断言守）
 
-#### AI#4 ⬜ 布局读取面（树 + 分组）
+#### AI#4 ✅ 布局读取面（树 + 分组）
 
-- [ ] **AI#4** 提供 `layout.get`，或把 `pool.onLayout` 的 **root / groups** 正式定格并文档化。｜**现状**=池侧唯 `pool.onLayout`（快照里有全量树 + 每组标签清单）**但未文档化**。｜落点 = `electron/preload-pool/layout.ts:46` · 契约类型 `src/core/types/pool/poolLayout.ts`｜判据 = §十 第 12 例「空间定位问答」三问全可答（开着吗 / 在哪 / 拉宽它）｜详案 [M1-读取面.md](03-任务档案/M1-读取面.md)
+- [x] **AI#4** 提供 `layout.get`，或把 `pool.onLayout` 的 **root / groups** 正式定格并文档化。｜**现状**=池侧唯 `pool.onLayout`（快照里有全量树 + 每组标签清单）**但未文档化**。｜落点 = `electron/preload-pool/layout.ts:46` · 契约类型 `src/core/types/pool/poolLayout.ts`｜判据 = §十 第 12 例「空间定位问答」三问全可答（开着吗 / 在哪 / 拉宽它）｜详案 [M1-读取面.md](03-任务档案/M1-读取面.md)
+- ✅ 2026-09-28 收口（同上三笔）｜裁决 = **定格 `pool.getLayout()`（不新开 `layout.get`）**：它已是每帧推的全量快照，再开一个 getter 就是第二把尺子｜读数 = `getLayout()` 与 `tabs.list()` **同源**（组/活跃位/标签逐条相等）；分屏后树如实变形 = `branch{direction,sizes}` ＋ 叶子数 ≡ 组数 ≡ tabs.list 组数；**每片都有树内路径**（空间定位三问可答：`{main:"root/0", group-4:"root/1/0", …}`）｜嵌套实测轨迹 = 2 组/depth 2 → 3 组/depth 3 → 4 组/depth 4 → 再分**被拒且不留鬼组**（`MAX_TREE_DEPTH=4`）｜⚠️ 另一道守卫：源组只剩 1 个标签时分屏被拒（V3 无空组占位 UI）⇒ 想连分得先复制一份；反向也通：**关掉某组全部标签 ⇒ 组随树收缩**（归零断言）
 
-#### AI#5 ⬜ 对话框进行中状态可读
+#### AI#5 ✅ 对话框进行中状态可读
 
-- [ ] **AI#5** 让 AI 能读到「有个 confirm/alert 正弹着」。｜**现状实测**=`src/core/services/ui/DialogService.ts:138` 的 `showConfirm` 是 Promise 式，**进行中状态完全不可见**。｜落点 = `DialogService.ts` + 契约面｜判据 = 弹着对话框时 AI 能报出它在等什么｜⚠️ 边界：这是**读取**，不是「让 AI 替用户点」——按钮归属仍按设计边界②（AI 是操作员）
+- [x] **AI#5** 让 AI 能读到「有个 confirm/alert 正弹着」。｜**现状实测**=`src/core/services/ui/DialogService.ts:138` 的 `showConfirm` 是 Promise 式，**进行中状态完全不可见**。｜落点 = `DialogService.ts` + 契约面｜判据 = 弹着对话框时 AI 能报出它在等什么｜⚠️ 边界：这是**读取**，不是「让 AI 替用户点」——按钮归属仍按设计边界②（AI 是操作员）
+- ✅ 2026-09-28 收口（同上三笔）｜读数 = 真弹一条 confirm（`workbench.action.resetSetting`）时 `dialogHost.pending()` 报 `{kind:"confirm",title:"",message:"确定要将「app.uiFontScale」重置为默认值吗？",buttons:["确定","取消"]}`——与屏幕**逐字对齐**（截图存证）；`el.click()` 收尾后 `pending()` 回 `[]`（**不留悬空登记**，兜底路径不登记由单测守）｜⚠️ 给 M2 的一条：`buttons` 序 = **声明序**（恒 `[确认, 取消]`），**不是屏幕左右位**（屏幕上取消在左、确定在右）——已写进契约注释｜边界不变：本格**只做读**，⛔ 不给 AI 代点按钮（设计边界②：AI 是操作员）
 
-#### AI#6 ⬜ wake / ttl / persistent 透传
+#### AI#6 ✅ wake / ttl / persistent 透传
 
-- [ ] **AI#6** 通知 DTO 补齐 `wake` / `ttl` / `persistent`（现在只有 `autoOpen` 边沿）。｜**现状实测**=`src/hooks/usePoolSync/notif.ts:103-121` 的 `shouldWake` 已在读 `n.wake`，**但没透传到面板 DTO**。｜落点 = `notif.ts` DTO 构造 + 契约类型｜判据 = toast 六问之「因为什么弹出」——从 ◐ 补成 ✅
+- [x] **AI#6** 通知 DTO 补齐 `wake` / `ttl` / `persistent`（现在只有 `autoOpen` 边沿）。｜**现状实测**=`src/hooks/usePoolSync/notif.ts:103-121` 的 `shouldWake` 已在读 `n.wake`，**但没透传到面板 DTO**。｜落点 = `notif.ts` DTO 构造 + 契约类型｜判据 = toast 六问之「因为什么弹出」——从 ◐ 补成 ✅
+- ✅ 2026-09-28 收口（同上三笔）｜读数 = 三条真机事实：①插件自发的**非进度**通知 `wake=true`（E6#73b 白名单：`wake = !options.progress`）· `ttl=6000` · **无** `persistent` 字段；②**进度**通知 `wake=false`（进度增量永不唤醒）· `ttl=0`；③`persistent:true` 的错误通知 `wake=true` · `ttl=0` · `persistent=true`｜⚠️ 判据修正（写进契约与单测）：**⛔ 别按「severity 决定唤醒」猜**——info 也唤醒，只有 progress 不唤醒
 
 #### AI#7 ⬜ 命令可读描述①：契约与注册面加 description + params
 
@@ -335,7 +341,7 @@ D0#1–D0#3（系列外 · ✅ **2026-09-28 已收口**，不占 AI 格）
 | 轮 | 模块 | 格 | 已回勾 | 状态 |
 |:--:|:--|:--|:--:|:--|
 | — | 系列外 dev 验收前置 | `D0#1`–`D0#3` | **3 / 3** | ✅ 2026-09-28 收口（`f54e59209`；不占系列格） |
-| 1 | **M1** 读取面进契约 | `AI#1`–`AI#9` | 0 / 9 | ⬜ 可开工（✅ 前置门已过） |
+| 1 | **M1** 读取面进契约 | `AI#1`–`AI#9` | **6 / 9** | 🚧 会话 1 已交（`AI#1`–`AI#6` ✅ 真机 15/15；余 `AI#7`–`AI#9` = 会话 2 串行链，`AI#8` 是第 2 轮硬前置） |
 | 2 | **M3** 文档与手册 | `AI#10`–`AI#16` | 0 / 7 | ⬜ 可开工（← M1） |
 | 3 | **M5** 安装版一致性 | `AI#17`–`AI#19` | 0 / 3 | ⬜ 可开工 |
 | 4 | **M4** MCP + CLI 双通道 | `AI#31`–`AI#44`（**含 `AI#38.1`–`AI#38.14` 十四子格**） | 0 / 27 | ⬜ 可开工（🌱 白名单生长；**A-1 改序后提前到第 4 轮**） |
