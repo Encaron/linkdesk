@@ -34,12 +34,12 @@
 |:--|:--|:--|
 | **00** | 本章——判据、目录、任务导航、软件自述 | 先读这一页 |
 | [01-操作路径总览](01-操作路径总览.md) | 三层门（命令／API／CLI+MCP）· 读状态→调命令→读结果 · 谁在哪（池／壳） | 第一次上手，或想知道「有没有 API 能做 X」 |
-| [02-命令与API索引](02-命令与API索引.md) | **全索引（机器生成）**：62 条宿主命令 + 46 个命名空间 / 249 个方法 | 找具体命令 id / 方法名 / 参数 |
+| [02-命令与API索引](02-命令与API索引.md) | **全索引（机器生成）**：63 条宿主命令 + 46 个命名空间 / 249 个方法 | 找具体命令 id / 方法名 / 参数 |
 | [03-按任务操作](03-按任务操作.md) | 配方：标签页 · 分屏与嵌套 · 通知 · 面板与侧栏 · 设置与主题 · 串口 · 布局问答 | 「我要做某件事」时 |
 | [04-手势隐藏规则](04-手势隐藏规则.md) | 屏幕上那些动作的**隐藏门控**（拖拽相位等）＋ 为什么别走手势 | 你的操作「调了没反应」时 |
 | [05-够不着清单与安装版路径](05-够不着清单与安装版路径.md) | A 类够不着 · 安装版启动／静默装／userData 文件面／更新后重连 | 在**安装版**上干活时 |
 | [06-CDP坑表](06-CDP坑表.md) | 开发期实机操作（CDP）的坑与正解 + 本仓 driver 库 | 要用 CDP 驱动界面时 |
-| 07（待写） | 如何接入：开关 / CLI `linkdeskctl` / MCP 配置 / 软件自述三件 | M4（接入双通道）落地后 |
+| [07-如何接入](07-如何接入.md) | **怎么把 AI 接上**：门锁与钥匙（开关/token）· 三路手把手（CLI／MCP／丢手册）· 软件自述三件 · ⚠️ 形态先写（CLI/MCP 功能归 M4；今天走 CDP 绕行） | 要接 AI 时（用户读前三节；AI 读自举） |
 
 ## 三、任务导航
 
@@ -79,6 +79,7 @@
 | 切主题／切语言 | 命令 `theme.pick` / `workbench.action.selectLanguage`；或 `linkdesk.theme.apply/getAvailable` |
 | 开某个文件（已知路径） | `linkdesk.tabs.create("editor", { filePath })`（对照 `CreateTabOptions`） |
 | 读／写文件（受控路径） | `linkdesk.filesystem.*`（`readTextFile` / `writeTextFile` / `listDir` / `watch` …） |
+| 打开**本手册**（软件内，不依赖源码） | 命令 `app.openAiManual`（菜单：帮助 → AI 操作手册） |
 
 ## 四、软件自述（AI 自己问路的三件）
 
@@ -86,13 +87,14 @@
 
 1. `await linkdesk.commands.getCommands()` —— 全量命令（含每条 `description` + `params`）。
 2. `await linkdesk.pool.getLayout()` / `linkdesk.tabs.list()` / `linkdesk.notifications.list()` —— 当前状态。
-3. **（M4 落地后）** `linkdeskctl --help`（CLI 自省）与 MCP 的 `tools/list`（AI 客户端直接拿到工具清单）。
+3. **（M4 落地后）** `linkdeskctl --help`（CLI 自省）与 MCP 的 `tools/list`（AI 客户端直接拿到工具清单）——怎么开关、怎么配、今天走哪条绕行路：[07-如何接入](07-如何接入.md)。
 
 ## 五、本手册的维护（改之前先读这段）
 
 - **02 章的两段生成区是机器生成的**：`npm run manual:build` 刷新；`npm run check` 逐字节盯漂
   （门禁 = `src/core/commands/aiManualIndex.test.ts`）。⛔ 别手改生成区——改了会被判红。
-- **手写章（00／01／03／04／05／06）改完必须跑 `npm run check`**：其中 `check-doc-links.mjs` 会校验
+- **手写章（00／01／03／04／05／06／07）改完必须跑 `npm run check`**：其中 `check-doc-links.mjs` 会校验
   本目录所有相对链接**真实存在**（链到还没建的章节会红）。
-- **载体**：随安装包发货 ＋ 软件内可打开（M3 `AI#16` 接线；未接线前本目录只在源码树里）。
+- **载体**：随安装包发货 ＋ 软件内可打开——**已接线（M3 `AI#16`）**：安装版落 `resources/ai-manual/`（本目录 8 个 `.md` 原样副本），
+  软件内入口 = 菜单 **帮助 → AI 操作手册**（命令 `app.openAiManual`，池侧壳视图 `ai-manual`）。
 - 本节引用的路径、命令 id、API 名一律**以运行时真源为准**（02 章两张表就是它们的快照）。
