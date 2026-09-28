@@ -31,10 +31,12 @@
  * 失败都 throw 中文可读错误 → bin.ts catch 打印；退出码由 bin 定。
  */
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { basename, join, resolve } from "node:path";
 import { createInterface } from "node:readline";
+import JSZip from "jszip";
+import * as jsonc from "jsonc-parser";
 import { derivePluginId, readPluginManifest } from "./validate.js";
 import { ghErrorDetail, ghHttp } from "./github-http.js";
 
@@ -519,6 +521,86 @@ export function releaseDownloadUrl(remote: GitHubRemote, tag: string, assetName:
   return `https://github.com/${remote.owner}/${remote.repo}/releases/download/${tag}/${assetName}`;
 }
 
+/* ── AI#51：资产版本**源头断言**（发版三轴纪律的硬闸）──────────────────────
+ *
+ * 病根（2026-09-29 会话 11 实测立案）：publish **不 build、复用 dist 现成分发件** ⇒ 四仓首发
+ * 资产全部 stale（settings 包里缺整个 1.0.22 功能）——tag 对、包内容错，错误活到消费侧
+ * （`sync:bundled` 下游闸）才被看见 ⇒ 整批删 release 重发 ≈ 35 分钟。
+ *
+ * 本断言把检查点挪到**上传之前**（`collectPreview` 内、任何网络触碰之前 ⇒ 秒级红）：
+ *   ① 分发件 zip 内 `plugin.json` 的 `version` 必须 == 本次 Release 版本（`plugin.json` = 发布号真源，
+ *      记忆 `plugin-json-version-is-release-source`）——build 忘跑 / 改版没重 build 当场拦；
+ *   ② 分发件必须**新鲜**：mtime 不早于 `plugin.json` / `package.json` / `src/**` 里最新一次变更
+ *      ——源码改过而 asset 没重打，发出去就是 stale 代码。
+ * 逃逸口 = `publish --force-build`（bin 层先跑本 SDK 的 build 再进 publish，见 bin.ts）。
+ */
+
+/** 读分发件 zip 顶部的 `plugin.json`（loader 解压期待它在顶，E6#7 契约）并取 `version`。
+ *  解析走 jsonc-parser（与 validate/packager 同一读取口径——dist manifest 是 JSON，
+ *  纯数据包通道拷的是作者原件、可能是 JSONC）。读不到 / 解析不出 version → null（由断言判红）。 */
+export async function readAssetManifestVersion(assetPath: string): Promise<string | null> {
+  const zip = await JSZip.loadAsync(readFileSync(assetPath));
+  const entry = zip.file("plugin.json");
+  if (!entry) return null;
+  const text = await entry.async("string");
+  const errors: jsonc.ParseError[] = [];
+  const parsed = jsonc.parse(text, errors, { allowTrailingComma: true, disallowComments: false }) as
+    | { version?: unknown }
+    | undefined;
+  if (errors.length > 0) return null;
+  return typeof parsed?.version === "string" ? parsed.version : null;
+}
+
+/** `root` 下「参与构建的源」的最新 mtime——`plugin.json` / `package.json` ＋ `src/**`（存在才计入）。
+ *  返回 null = 一个候选都没有（不构成 freshness 断言的输入）。只取 mtime，不读内容。 */
+export function newestSourceMtime(root: string): number | null {
+  let newest: number | null = null;
+  const consider = (p: string): void => {
+    const m = statSync(p).mtimeMs;
+    if (newest === null || m > newest) newest = m;
+  };
+  for (const name of ["plugin.json", "package.json"]) {
+    const p = join(root, name);
+    if (existsSync(p)) consider(p);
+  }
+  const walk = (dir: string): void => {
+    for (const e of readdirSync(dir, { withFileTypes: true })) {
+      const full = join(dir, e.name);
+      if (e.isDirectory()) walk(full);
+      else consider(full);
+    }
+  };
+  const srcDir = join(root, "src");
+  if (existsSync(srcDir)) walk(srcDir);
+  return newest;
+}
+
+/** AI#51 断言本体：分发件「版本对 ＋ 新鲜」才放行上传。任何一条不满足 = 中文可读错误（秒级红，
+ *  EXIT≠0，资产**不会**出现在任何 Release 上——此函数只在 `collectPreview` 里跑、网络调用之前）。 */
+export async function assertAssetCurrent(root: string, assetPath: string, releaseVersion: string): Promise<void> {
+  const assetName = basename(assetPath);
+  const zipVersion = await readAssetManifestVersion(assetPath);
+  if (zipVersion === null) {
+    throw new Error(
+      `分发件 ${assetName} 里读不到 plugin.json（或其 version）——这不是 build 产物。` +
+        `先跑 npm run build（= linkdesk-plugin-sdk build）重新产出再 publish`,
+    );
+  }
+  if (zipVersion !== releaseVersion) {
+    throw new Error(
+      `资产内 plugin.json 版本 ${zipVersion} ≠ Release 版本 ${releaseVersion}——分发件是旧构建` +
+        `（SDK publish 不 build、复用 dist 现成分发件）。先 npm run build 再 publish（或用 publish --force-build）`,
+    );
+  }
+  const newest = newestSourceMtime(root);
+  if (newest !== null && newest > statSync(assetPath).mtimeMs) {
+    throw new Error(
+      `分发件 ${assetName} 比源码旧（plugin.json / package.json / src/ 在 build 之后又改过）——` +
+        `发出去就是 stale 资产。先 npm run build 再 publish（或用 publish --force-build）`,
+    );
+  }
+}
+
 /** 未装插件读 README 的远端直链（E6#91c）——**用 tag 不用 default_branch**：这条 URL 与打进 zip 的
  *  那份 README 同源（同一 commit）；用 main 会让「未装浏览者看到的」与「装上后看到的」是两份内容。 */
 export function readmeRawUrl(remote: GitHubRemote, tag: string): string {
@@ -770,7 +852,7 @@ export interface PublishPreview {
   changelog?: string;
 }
 
-function collectPreview(root: string): PublishPreview {
+async function collectPreview(root: string): Promise<PublishPreview> {
   const pluginJsonPath = join(root, "plugin.json");
   if (!existsSync(pluginJsonPath)) {
     throw new Error(`当前目录不是插件工程——找不到 ${pluginJsonPath}。请 cd 进插件项目根再跑 linkdesk-plugin-sdk publish`);
@@ -782,6 +864,9 @@ function collectPreview(root: string): PublishPreview {
   if (!existsSync(assetPath)) {
     throw new Error(`找不到分发件 ${assetName}——先跑 npm run build（= linkdesk-plugin-sdk build）产出 .linkdesk-plugin 再发布`);
   }
+  // AI#51 源头断言——在一切网络触碰之前跑（秒级红）：版本对不上 / 比源码旧 = 拦下，别让 stale
+  // 资产活着上 Release（会话 11 四仓 stale 实测的检查点缺位，就补在这里）
+  await assertAssetCurrent(root, assetPath, view.version);
   const remoteUrl = gitRemoteOrigin(root);
   const remote = parseGitHubRemote(remoteUrl);
   if (!remote) {
@@ -854,7 +939,7 @@ async function confirmPublish(yes?: boolean): Promise<void> {
  * 跑发布。返回退出码（0 成功 / 1 失败）。所有失败 throw；bin catch 打印统一前缀。
  */
 export async function runPluginPublish(root: string, opts: PublishOptions = {}): Promise<number> {
-  const preview = collectPreview(root);
+  const preview = await collectPreview(root);
   process.stdout.write(renderPreview(preview) + "\n");
 
   if (opts.dryRun) {

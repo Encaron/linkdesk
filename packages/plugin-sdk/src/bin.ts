@@ -43,7 +43,9 @@ const USAGE = `linkdesk-plugin-sdk <command>
               package.json/隐藏项。--out <path> 可指定输出文件（缺省 = 插件根 <pluginId>.linkdesk-plugin）
   publish     一键发布（E6#26）——自动链路：建 GitHub Release → 上传 .linkdesk-plugin → 更新工程
               origin 仓库根 marketplace.json（多市场源模型）。发前预览确认；--yes 跳过（CI）；
-              --dry-run 只预览不碰网络。token：env LINKDESK_GITHUB_TOKEN，或首跑交互输入存入本机
+              --dry-run 只预览不碰网络；--force-build 发布前先跑本 SDK 的 build（AI#51 逃逸口——
+              publish 复用 dist 现成分发件，资产版本/新鲜度源头断言拦 stale，重 build 即过）。
+              token：env LINKDESK_GITHUB_TOKEN，或首跑交互输入存入本机
   validate    校验 plugin.json（参数 = 路径，默认 ./plugin.json）
   lint        E6#54d 门禁（eslint 12 规则 + 三 check 双轨，全 WARN 永不 fail；知情绕行 =
               eslint-disable 注释）。参数 = 工程根，默认 process.cwd()
@@ -130,13 +132,22 @@ async function main(): Promise<void> {
       break;
     }
     case "publish": {
-      // publish [--yes|--dry-run]——E6#26 自动发布链路（发前预览确认）
+      // publish [--yes|--dry-run|--force-build]——E6#26 自动发布链路（发前预览确认）＋ AI#51 源头断言
       const flags = rest.filter((a) => a.startsWith("-"));
-      const unknown = flags.filter((a) => a !== "--yes" && a !== "--dry-run");
+      const unknown = flags.filter((a) => a !== "--yes" && a !== "--dry-run" && a !== "--force-build");
       if (unknown.length > 0 || rest.some((a) => !a.startsWith("-"))) {
         console.error(USAGE);
         code = 1;
         break;
+      }
+      // AI#51 逃逸口：--force-build = publish 前先跑本 SDK 的 build ⇒ 分发件必然新鲜，
+      // collectPreview 里的资产版本/新鲜度断言自然过（默认路径 = 复用 dist，断言拦 stale）
+      if (rest.includes("--force-build")) {
+        const buildCode = await cmdBuild();
+        if (buildCode !== 0) {
+          code = buildCode;
+          break;
+        }
       }
       code = await runPluginPublish(process.cwd(), { yes: rest.includes("--yes"), dryRun: rest.includes("--dry-run") });
       break;

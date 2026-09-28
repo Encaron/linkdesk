@@ -9,13 +9,20 @@
  * **回归测试必须证明「在旧行为上会红」**。光断言「新实现对」证明不了边界有被守住；断言「朴素写法在这条
  * 用例上给出错误结果」才是。哪些用例两种写法一致、哪些分道扬镳，逐条写明。
  */
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { mkdtempSync, writeFileSync, rmSync, mkdirSync, utimesSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import JSZip from "jszip";
 import {
+  assertAssetCurrent,
   buildCatalogEntry,
   createEmptyCatalog,
   judgePublishReadiness,
+  newestSourceMtime,
   parsePorcelainStatus,
   readmeRawUrl,
+  readAssetManifestVersion,
   sliceChangelogSection,
   upsertCatalogEntry,
   withCatalogIdentity,
@@ -437,5 +444,83 @@ describe("parsePorcelainStatus——git status 解析", () => {
 
   it("原样保留 XY 状态码（作者靠它看懂是「改了没暂存」还是「已暂存」）", () => {
     expect(parsePorcelainStatus("MM plugin.json")).toEqual(["MM plugin.json"]);
+  });
+});
+
+/* ── AI#51：资产版本源头断言 ────────────────────────────────────────────
+ * 会话 11 实测立案：SDK publish 不 build、复用 dist 现成分发件 ⇒ 四仓首发资产全部 stale，
+ * tag 对、包内容错，错误活到下游闸才被看见。本组用例钉「上传前秒级红」的检查点：
+ * 真变异（manifest 新版本 ＋ stale zip）必须红且报两版本；新鲜产物必须放行。
+ * ⚠️ 对照基线说明：AI#51 之前 publish 对 stale 资产**没有任何检查**（缺失不是可对照的旧实现），
+ * 故本组以「stale ⇒ 红 / fresh ⇒ 绿」两正控＋报错文案为判据，不设 naive 对照函数。 */
+
+describe("AI#51 资产版本源头断言——assertAssetCurrent", () => {
+  let dir: string;
+
+  beforeEach(() => {
+    dir = mkdtempSync(join(tmpdir(), "ai51-assert-"));
+  });
+  afterEach(() => {
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  /** 造一只分发光标：zip 顶部 plugin.json（loader E6#7 契约）＋ 一份假 bundle */
+  async function writeAsset(id: string, zipVersion: string): Promise<string> {
+    const zip = new JSZip();
+    zip.file("plugin.json", JSON.stringify({ id, version: zipVersion }));
+    zip.file("index.js", "// bundle");
+    const assetPath = join(dir, `${id}.linkdesk-plugin`);
+    writeFileSync(assetPath, await zip.generateAsync({ type: "nodebuffer" }));
+    return assetPath;
+  }
+
+  it("真变异场景（会话 11 实测）：manifest 1.0.25 / 分发件里 1.0.24 ⇒ 红，报两版本与出路", async () => {
+    writeFileSync(join(dir, "plugin.json"), JSON.stringify({ id: "demo-plugin", version: "1.0.25" }));
+    const asset = await writeAsset("demo-plugin", "1.0.24");
+    await expect(assertAssetCurrent(dir, asset, "1.0.25")).rejects.toThrow(
+      /1\.0\.24.*≠.*1\.0\.25.*npm run build/s,
+    );
+  });
+
+  it("版本相符且分发件新鲜 ⇒ 放行（不抛）", async () => {
+    writeFileSync(join(dir, "plugin.json"), JSON.stringify({ id: "demo-plugin", version: "1.0.25" }));
+    mkdirSync(join(dir, "src"));
+    writeFileSync(join(dir, "src", "index.tsx"), "export {};");
+    const asset = await writeAsset("demo-plugin", "1.0.25");
+    // build 之后的常态：源码不比 asset 新——把两者 mtime 同拍（asset 晚一分钟）
+    const past = new Date(Date.now() - 60_000);
+    utimesSync(join(dir, "src", "index.tsx"), past, past);
+    utimesSync(join(dir, "plugin.json"), past, past);
+    await expect(assertAssetCurrent(dir, asset, "1.0.25")).resolves.toBeUndefined();
+  });
+
+  it("src/ 比 asset 新（build 后又改了源码）⇒ 红「比源码旧」", async () => {
+    writeFileSync(join(dir, "plugin.json"), JSON.stringify({ id: "demo-plugin", version: "1.0.25" }));
+    mkdirSync(join(dir, "src"));
+    writeFileSync(join(dir, "src", "index.tsx"), "export {};");
+    const asset = await writeAsset("demo-plugin", "1.0.25");
+    const past = new Date(Date.now() - 60_000);
+    utimesSync(asset, past, past); // 把 asset 拨旧——「build 之后源码又动过」的形态
+    await expect(assertAssetCurrent(dir, asset, "1.0.25")).rejects.toThrow(/比源码旧.*build/s);
+  });
+
+  it("分发件里没有 plugin.json ⇒ 红「读不到」（不是 build 产物）", async () => {
+    const zip = new JSZip();
+    zip.file("index.js", "// bundle");
+    const assetPath = join(dir, "demo-plugin.linkdesk-plugin");
+    writeFileSync(assetPath, await zip.generateAsync({ type: "nodebuffer" }));
+    await expect(assertAssetCurrent(dir, assetPath, "1.0.0")).rejects.toThrow(/读不到 plugin\.json/);
+  });
+
+  it("readAssetManifestVersion：JSONC 注释容忍（纯数据包通道拷作者原件的形态）", async () => {
+    const zip = new JSZip();
+    zip.file("plugin.json", "{\n  // 发布号\n  \"id\": \"demo-plugin\",\n  \"version\": \"2.0.0\",\n}");
+    const assetPath = join(dir, "demo-plugin.linkdesk-plugin");
+    writeFileSync(assetPath, await zip.generateAsync({ type: "nodebuffer" }));
+    await expect(readAssetManifestVersion(assetPath)).resolves.toBe("2.0.0");
+  });
+
+  it("newestSourceMtime：无候选（连 plugin.json 都没有）⇒ null（不构成断言输入）", async () => {
+    expect(newestSourceMtime(dir)).toBeNull();
   });
 });
