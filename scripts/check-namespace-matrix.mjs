@@ -81,6 +81,37 @@ const ROW_RE = /^\| (\w+) \| (\w+API) \| [^|]+ \| ([^|]+) \| ([^|]+) \| ([^|]+) 
 const STATS_RE =
   /契约 \*{0,2}(\d+)\*{0,2} 命名空间——pool 注入 \*{0,2}(\d+)\*{0,2}(?:（([^）]*)）)?；shell 注入 \*{0,2}(\d+)\*{0,2}；mock 注入 \*{0,2}(\d+)\*{0,2}/;
 
+/**
+ * 双语《01-插件API契约》里的契约数量（AI#9 起机械对账）。
+ *
+ * 为什么要有它：这同一件事在本仓有**三份副本**，而三份会各自漂——实测 2026-09-28：作者文档写
+ * 「契约 40 / 池 39 / 壳 22 / mock 12」，`surfaces.ts` 的注释写「池 44 / 壳 24」，活门禁读数
+ * 是「46 / 45 / 25 / 13」。文档与源注释各改各的，谁都没有灯。
+ *
+ * 🔴 **尺子不新造**：这两行的组序与 §2 表尾统计行完全一致（total / pool / poolNote / shell / mock），
+ * 所以判定直接复用 `judgeStats`——本表只负责「换一种排版把数字喂给同一把尺」
+ * （记忆《两把尺子必须同一份实现》：fork 第二把尺 = 下一个漂移点）。
+ * ⛔ 别在这里重写比较逻辑；要加语言 = 加一行 regex。
+ */
+export const AUTHOR_DOCS = [
+  {
+    file: "docs/03-插件制造/01-插件API契约.md",
+    label: "中文作者面",
+    /** §二摘要行：`| **契约 46 命名空间** | 池注入 45（唯一缺 \`bridge\`）；壳注入 25；mock 注入 13——… |` */
+    statsRe:
+      /契约 \*{0,2}(\d+)\*{0,2} 命名空间\*{0,2}[^|]*\| 池注入 \*{0,2}(\d+)\*{0,2}（([^）]*)）；壳注入 \*{0,2}(\d+)\*{0,2}；mock 注入 \*{0,2}(\d+)\*{0,2}/,
+    /** §3.0 生成源那行的「（N 域接口）」 */
+    ifaceRe: /（(\d+) 域接口）/,
+  },
+  {
+    file: "docs/03-plugin-authoring/01-plugin-api-contract.md",
+    label: "英文作者面",
+    statsRe:
+      /The contract has \*{0,2}(\d+)\*{0,2} namespaces\*{0,2}[^|]*\| The pool injects \*{0,2}(\d+)\*{0,2} \(([^)]*)\); the shell injects \*{0,2}(\d+)\*{0,2}; mock injects \*{0,2}(\d+)\*{0,2}/,
+    ifaceRe: /\((\d+) domain interfaces\)/,
+  },
+];
+
 /** §1 速览表行：`| **A. preload-pool** | 文件 | **39**（…） | 角色 |` */
 const OVERVIEW_RE = /^\| \*\*([A-D])\. [^|]+ \| [^|]+ \| \*\*(\d+)\*\*/;
 /** §1 里「+ N 域接口」的域接口数（只在 C 行） */
@@ -347,7 +378,10 @@ export function judgeFaceInjection(face, keys, contractNames, rows) {
 /**
  * ④ §2 表尾「覆盖统计」——返回不符清单（每条形如「pool 注入：表写 44，实为 45」；空 = 合规）。
  * 四个数字 + 「唯一缺 X」的 X 都要对得上；`poolNote` 里没有「唯一缺」措辞就不判那一条。
- * @param {RegExpExecArray} stats `STATS_RE` 的命中结果
+ *
+ * 复用于两处（**同一把尺**，别 fork）：矩阵 §2 表尾统计行（`STATS_RE`）、双语作者文档的摘要行
+ * （`AUTHOR_DOCS[].statsRe`）——两者的组序一致，故共用本函数。
+ * @param {RegExpExecArray} stats 命中结果（组序 = total / pool / poolNote / shell / mock）
  * @param {Record<string, string[]>} injected 三面真实注入键（pool/shell/mock）
  */
 export function judgeStats(stats, contractNames, injected) {
@@ -368,7 +402,10 @@ export function judgeStats(stats, contractNames, injected) {
     }
   }
   if (poolNote) {
-    const um = /唯一缺 (\w+)/.exec(poolNote);
+    // 「唯一缺 X」的三种写法：矩阵「唯一缺 bridge」/ 中文作者文档「唯一缺 `bridge`」/
+    // 英文作者文档「the only missing one is `bridge`」——同一判据，不因反引号或语种静默跳过。
+    const um =
+      /唯一缺 `?(\w+)`?/.exec(poolNote) ?? /the only missing one is `?(\w+)`?/.exec(poolNote);
     if (um) {
       const notPool = contractNames.filter((n) => !injected.pool.includes(n));
       if (notPool.length !== 1 || notPool[0] !== um[1]) {
@@ -392,6 +429,37 @@ export function judgeOverview(overview, expect) {
     if (!got) out.push({ kind: "missing", row });
     else if (got.claim !== expect[row])
       out.push({ kind: "mismatch", row, claim: got.claim, real: expect[row] });
+  }
+  return out;
+}
+
+/**
+ * ⑥ 双语作者文档《01-插件API契约》里的契约数量——返回不符清单（空 = 合规）。
+ *
+ * 三层口径里的第 ③ 层（AI#9）：**让作者文档那一行也机械对账**，否则修完这次，下次照旧漂。
+ * 数字全部由调用方传进来的活读数，本函数**不读盘**（自测能喂内存夹具）、**不自己算数**：
+ * @param {string} md 文档正文
+ * @param {{file: string, label: string, statsRe: RegExp, ifaceRe: RegExp}} doc `AUTHOR_DOCS` 的一项
+ * @param {{contractNames: string[], injected: Record<string, string[]>, ifaces: number}} live
+ *   活读数 = `parseContract()` 的命名空间名 + 三面注入源 + `domainInterfaceCount()`
+ *   （三样都由 `main()` 传同一批现算的值——与矩阵检查**同源**，不是重数一遍）
+ *
+ * 锚点找不到 ⇒ **响亮记一条**（文档被改写 ⇒ 换本表 regex 或恢复该行，⛔ 不静默当「无不符」）。
+ */
+export function judgeAuthorDoc(md, doc, live) {
+  const out = [];
+  const stats = doc.statsRe.exec(md);
+  if (!stats) {
+    out.push(
+      "找不到契约数量摘要行（期望形如 `| **契约 N 命名空间** | 池注入 N（唯一缺 X）；壳注入 N；mock 注入 N |`）",
+    );
+  } else {
+    out.push(...judgeStats(stats, live.contractNames, live.injected));
+  }
+  const iface = doc.ifaceRe.exec(md);
+  if (!iface) out.push("找不到「（N 域接口）」锚点（`- **生成源：** …` 那行）");
+  else if (Number(iface[1]) !== live.ifaces) {
+    out.push(`域接口数：文档写 ${iface[1]}，实为 ${live.ifaces}`);
   }
   return out;
 }
@@ -706,6 +774,68 @@ function runSelfTest() {
   );
   eqCase("正", "正控⑱：⑤ A–D 四行数字全对 ⇒ 无误", judgeOverview(PLAN.overview, expectMX), []);
 
+  /* ── H. ⑥ 双语作者文档里的契约数量（AI#9——同一件事的第三份副本） ── */
+  const BT = "`"; // 反引号：夹具里原样拼出文档中的 `唯一缺 \`bridge\`` 形状
+  const AD_ZH = AUTHOR_DOCS[0];
+  const AD_EN = AUTHOR_DOCS[1];
+  /** 活读数夹具：契约 3（缺 bridge 的池）——数字与下面两条「文档行」对齐时应当绿 */
+  const AD_LIVE = {
+    contractNames: ["app", "bridge", "other"],
+    injected: { pool: ["app", "other"], shell: ["app", "bridge"], mock: ["app"] },
+    ifaces: 7,
+  };
+  const adZhDoc = (t, p, note, s, m, iface) =>
+    [
+      `| **契约 ${t} 命名空间** | 池注入 ${p}（${note}）；壳注入 ${s}；mock 注入 ${m}——**以活读数为准** |`,
+      `- **生成源：** \`src/core/api/linkdesk-api.ts\` + \`linkdesk-api/\`（${iface} 域接口）+ \`src/core/types/ipc/*\``,
+    ].join("\n");
+  const adEnDoc = (t, p, note, s, m, iface) =>
+    [
+      `| **The contract has ${t} namespaces** | The pool injects ${p} (${note}); the shell injects ${s}; mock injects ${m} — live readings win |`,
+      `- **Generation sources:** \`src/core/api/linkdesk-api.ts\` + \`linkdesk-api/\` (${iface} domain interfaces) + \`src/core/types/ipc/*\``,
+    ].join("\n");
+  const adMissing = judgeAuthorDoc("## 这里什么锚点都没有\n", AD_ZH, AD_LIVE);
+  eqCase(
+    "负",
+    "负控⑭：⑥ 两条锚点都缺 ⇒ 各记一条（响亮；⛔ 不静默当「无不符」）",
+    [
+      adMissing.length === 2,
+      adMissing[0].startsWith("找不到契约数量摘要行"),
+      adMissing[1].startsWith("找不到「（N 域接口）」"),
+    ],
+    [true, true, true],
+  );
+  eqCase(
+    "正",
+    "正控⑲：⑥ 中文文档四个数字 + 「唯一缺 `bridge`」（带反引号）+ 域接口数全对 ⇒ 无误",
+    judgeAuthorDoc(adZhDoc(3, 2, `唯一缺 ${BT}bridge${BT}`, 2, 1, 7), AD_ZH, AD_LIVE),
+    [],
+  );
+  eqCase(
+    "正",
+    "正控⑳：⑥ 英文文档同款写法（the only missing one is `bridge`）⇒ 无误（同一把尺、两种语种）",
+    judgeAuthorDoc(adEnDoc(3, 2, `the only missing one is ${BT}bridge${BT}`, 2, 1, 7), AD_EN, AD_LIVE),
+    [],
+  );
+  eqCase(
+    "负",
+    "负控⑮：⑥ 英文文档把 pool 注入 2 写成 3 ⇒ 违规（2026-09-28 实测：文档写的是 39/22/12，活读数 45/25/13）",
+    judgeAuthorDoc(adEnDoc(3, 3, `the only missing one is ${BT}bridge${BT}`, 2, 1, 7), AD_EN, AD_LIVE),
+    ["pool 注入：表写 3，实为 2"],
+  );
+  eqCase(
+    "负",
+    "负控⑯：⑥ 中文文档「唯一缺」写错（写 app，实际缺 bridge）⇒ 违规（带反引号的写法照样被抓）",
+    judgeAuthorDoc(adZhDoc(3, 2, `唯一缺 ${BT}app${BT}`, 2, 1, 7), AD_ZH, AD_LIVE),
+    ["表写「唯一缺 app」，但实际未注入 pool 的是：[bridge]"],
+  );
+  eqCase(
+    "负",
+    "负控⑰：⑥ 域接口数不符（文档写 6，实为 7）⇒ 违规（与矩阵 §1 C 行同源同一把尺）",
+    judgeAuthorDoc(adZhDoc(3, 2, `唯一缺 ${BT}bridge${BT}`, 2, 1, 6), AD_ZH, AD_LIVE),
+    ["域接口数：文档写 6，实为 7"],
+  );
+
   /* ── 打印（风格照仓库样板：一例一行） ── */
   let bad = 0;
   for (const c of cases) {
@@ -866,6 +996,25 @@ function main() {
   }
 
   checkIpcSection(parsed, problems);
+
+  // ⑥ 双语作者文档《01-插件API契约》里的契约数量——同一件事的第三份副本（AI#9）
+  for (const doc of AUTHOR_DOCS) {
+    const docMd = readFileSync(resolve(ROOT, doc.file), "utf-8");
+    const bad = judgeAuthorDoc(docMd, doc, {
+      contractNames,
+      injected,
+      ifaces: realIfaces,
+    });
+    if (bad.length) {
+      problems.push({
+        what: `${doc.label}（${doc.file}）里的契约数量与实际不符`,
+        detail: bad.map((s) => `  · ${s}`).join("\n"),
+        fix:
+          "按活读数改写那一行（数字来自 contracts/linkdesk.d.ts + 三个注入源 + linkdesk-api/ 域接口）" +
+          "——⛔ 不要照 surfaces.ts 的注释抄，那份也会过期（本次就是这么被坑的）",
+      });
+    }
+  }
 
   if (problems.length) {
     console.error(`❌ 命名空间矩阵已漂移（${MATRIX}）\n`);
