@@ -15,6 +15,7 @@
   "scripts": {
     "dev": "npm run ui:build && vite",
     "dev:plugin": "node scripts/dev-plugin.mjs",
+    "dev:driver": "node scripts/dev/driver.mjs",
     "ui:build": "npm run build -w @linkdesk/ui",
     "build": "tsc -b && vite build && vite build --config vite.pool.config.ts && node scripts/build-pool-vendor.mjs",
     "preview": "vite preview",
