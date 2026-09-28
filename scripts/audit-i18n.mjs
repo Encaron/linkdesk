@@ -62,7 +62,38 @@ const EXCLUDE_RANGES = {
   // 且本文件运行于主进程（E5.7#49），不能 import 渲染进程 i18n（react-i18next）。补译归
   // 未来协议选择器显示点 t()（协议下拉框消费方出现时）。E5.8#37.9 记录。
   "src/core/commands/infra/registerBuiltinProtocols.ts": [[47, 47]],
+  // M1 `AI#8`：面板位置/对齐八条命令的 `description` 字面量住在查找表
+  // （PANEL_COMMAND_DESCRIPTIONS: Record<string,string>）里，**不是内联的 `description:` 字段**——
+  // 属性名级排除（见 §0 METADATA_VALUE_PROP）看不穿查找表，故按行排除。**同一批声明数据、同一条
+  // 裁决**（消费方 = 命令元数据 → 契约 → AI，今天零 UI 渲染消费方）。
+  // ⚠️ 撤销条件与 §0 完全一致：命令说明一旦进 UI，本排除与那条属性名排除**同笔撤销并补译**。
+  "src/core/commands/shell/panelCommands.ts": [[45, 54]],
 };
+
+/**
+ * 🔥 属性名级排除——`description` 的值是**声明数据，不是 UI 文字**（M1 `AI#7`/`AI#8`，2026-09-28）。
+ *
+ * 对象 = 命令元数据的 `description` / `params[].description`：宿主命令逐条补的「这条命令干什么」
+ * ＋ 每个参数的说明（`src/core/commands/**` ＋ `src/App/startup.ts` 的 `color-picker.pick`）。
+ * 消费方 = `commands.getCommands()` → 契约 `LinkDeskCommand` → 喂给 AI 的工具清单（function calling）
+ * ——**今天零渲染消费方**（命令面板不画它）。
+ *
+ * 🔴 为什么不能「补译了事」：壳侧译名住在 `lang-defaults` 插件，而该插件**源码已外移独立仓**
+ * （E6#99，本仓只有随包种子 zip，`check-bundled-freshness` 守）⇒ 仓内**没有**能加译名的落点，
+ * 硬加＝手改别人仓的产物。而本文件头已定：非 UI key 缺译文时 `parseMissingKeyHandler`
+ * 回退显示 key 本身 = **设计意图，不是漏翻**——元数据正属这一类。
+ *
+ * 判据与下方 manifest 侧的 `MANIFEST_TITLE_FIELDS`（**只收显示字段**、不收 `args` 数据）同源，
+ * 只是方向相反：那边是白名单（只有显示字段要译），这里**黑名单一条**（`description` 恒非显示）。
+ * 实测兜底：本规则生效前，全 `src/**` 非测试文件里的中文 `description:` 字面量**只有**这批命令元数据
+ * （其余全在 `*.test.*`——本审计本就整文件跳过）⇒ 对既有判定**零影响**，不开新洞。
+ *
+ * ⚠️ **撤销条件**：命令说明/参数说明一旦进 UI（命令面板副标题、设置页帮助文本……任何渲染点），
+ * 本规则必须撤销并把那些串补译——那时它们就是 UI 文字了。
+ */
+const METADATA_VALUE_PROP = "description";
+/** 命中串的**紧邻前缀**是不是 `description:`（即「这个中文串是那个字段的值」） */
+const METADATA_VALUE_PREFIX_RE = /(?:^|[\s,{[])description:\s*$/;
 
 // ── 1. 加载所有翻译 key ──
 // 2026-09-05 塌平单根：plugins/<id>（builtin/user 前缀全删）
@@ -236,6 +267,8 @@ function processFile(filePath, relPath) {
       STR_RE.lastIndex = 0;
       let m;
       while ((m = STR_RE.exec(eff)) !== null) {
+        // 声明数据（非 UI）——`description:` 的值＝命令/参数元数据，见上方 §0 的属性名级排除
+        if (METADATA_VALUE_PREFIX_RE.test(eff.slice(0, m.index))) continue;
         const text = unescapeStr(m[2]).trim();
         if (text.length < 2) continue;
         if (!/[一-鿿]/.test(text)) continue;
