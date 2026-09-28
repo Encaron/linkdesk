@@ -1,7 +1,7 @@
 # AI 友好化-全自动操作 · 执行清单
 
 > 2026-09-28 立单（ZCode 会话）。**🔥 进度唯一真相源：做完一个勾一个；当前进度与完成度只看文末「总结」表（别处不复写数字）。**
-> **状态：🚧 已开工——会话 1（第 1 轮 M1 读取面 `AI#1`–`AI#6`）2026-09-28 已交（6/9，真机 15/15）· 软件侧三笔读取面（`feat:`）· 零发版 · ✅ 前置门已过（用户 2026-09-28 拍板 A 组 8 条 ＋ P 组 5 条）**——[02-目录与切片规划.md §四](02-目录与切片规划.md) A 组已销（剩 B 组 B-1 待用户改 README 一行 ＋ C 组随收口轮）。
+> **状态：🚧 已开工——第 1 轮 M1（读取面进契约 `AI#1`–`AI#9`）2026-09-28 整轮收口（9/9）**：会话 1 六格（读面四件，真机 15/15）＋ 会话 2 三格（命令元数据，`npm run check` 全绿 208 文件 / 2813 tests）· 五笔提交全带类别前缀 · **零发版** · ✅ 前置门已过（用户 2026-09-28 拍板 A 组 8 条 ＋ P 组 5 条）——[02-目录与切片规划.md §四](02-目录与切片规划.md) A 组已销（剩 B 组 B-1 待用户改 README 一行 ＋ C 组随收口轮）。
 > 🔴 **A-1 拍板改了执行序**（**M4 先于 M2**）⇒ 轮次 = M1 → M3 → M5 → **M4** → **M2** → 收口；**格号一字未动**（`AI#20`–`AI#30` 仍是 M2、`AI#31`–`AI#44` 仍是 M4）。
 > **🎯 系列目标**：把「**一个能够完全自动化的软件**」（「AI 友好四层」定稿之层 1「运行时操作」）落成工程件——判据三条 = **可读 · 可操作 · 可查**（[01-设计.md §三](01-设计.md)），验收面两条 = **与物理指针无关** ＋ **dev 验收前置**（[01-设计.md §三 验收面](01-设计.md) / [01-设计.md §七 第 7 条](01-设计.md)）。
 > **🔵 结构定案（2026-09-28）**：照 [E6-执行清单.md](../../../02-Electron架构/E6_插件生态与发布/E6-执行清单.md) 头部「结构定案」——**层 ≈ Phase 容器 · 轮 ≈ 一个执行批次 · 格 = 一个可回勾任务**。本系列 = 一个层（5 模块 + 收口），每模块 = 一轮，**编号 `AI#1`–`AI#49`，编号 ≠ 执行序**（编号是稳定 ID，插入序，不重编号不补位；执行序见文末「执行顺序与依赖」）。
@@ -74,17 +74,27 @@
 - [x] **AI#6** 通知 DTO 补齐 `wake` / `ttl` / `persistent`（现在只有 `autoOpen` 边沿）。｜**现状实测**=`src/hooks/usePoolSync/notif.ts:103-121` 的 `shouldWake` 已在读 `n.wake`，**但没透传到面板 DTO**。｜落点 = `notif.ts` DTO 构造 + 契约类型｜判据 = toast 六问之「因为什么弹出」——从 ◐ 补成 ✅
 - ✅ 2026-09-28 收口（同上三笔）｜读数 = 三条真机事实：①插件自发的**非进度**通知 `wake=true`（E6#73b 白名单：`wake = !options.progress`）· `ttl=6000` · **无** `persistent` 字段；②**进度**通知 `wake=false`（进度增量永不唤醒）· `ttl=0`；③`persistent:true` 的错误通知 `wake=true` · `ttl=0` · `persistent=true`｜⚠️ 判据修正（写进契约与单测）：**⛔ 别按「severity 决定唤醒」猜**——info 也唤醒，只有 progress 不唤醒
 
-#### AI#7 ⬜ 命令可读描述①：契约与注册面加 description + params
+#### AI#7 ✅ 命令可读描述①：契约与注册面加 description + params
 
-- [ ] **AI#7** 让命令**自带说明与参数结构**——AI 才能「知道怎么调」而不是凭名字猜。｜🔴 **现状实测（本会话新证）**=`src/core/api/linkdesk-api/types.ts:14` 的 `LinkDeskCommand = { id, title, category? }`——**零 description、零参数**；`registerCommand` 的 `meta = {title, category, when, pluginId}`（`src/core/api/linkdesk-api/commands.ts:47`）同样没有。｜落点 = `types.ts:14` · `commands.ts:47` · `CommandRegistry.ts:23`（`interface Command`）· `plugin.schema.json` 的 `contributes.commands` · `linkdesk.d.ts` 派生｜🔴 **全加法**（新字段可选，存量插件零破坏）｜判据 = `getCommands()` 返回值里**每条命令都有可读说明 + 参数结构**｜详案 [M1-读取面.md](03-任务档案/M1-读取面.md)
+- [x] **AI#7** 让命令**自带说明与参数结构**——AI 才能「知道怎么调」而不是凭名字猜。｜🔴 **现状实测（本会话新证）**=`src/core/api/linkdesk-api/types.ts:14` 的 `LinkDeskCommand = { id, title, category? }`——**零 description、零参数**；`registerCommand` 的 `meta = {title, category, when, pluginId}`（`src/core/api/linkdesk-api/commands.ts:47`）同样没有。｜落点 = `types.ts:14` · `commands.ts:47` · `CommandRegistry.ts:23`（`interface Command`）· `plugin.schema.json` 的 `contributes.commands` · `linkdesk.d.ts` 派生｜🔴 **全加法**（新字段可选，存量插件零破坏）｜判据 = `getCommands()` 返回值里**每条命令都有可读说明 + 参数结构**｜详案 [M1-读取面.md](03-任务档案/M1-读取面.md)
+- ✅ 2026-09-28 收口（会话 2，commit `4b71863e2` ＋ 文档同笔）｜落点全中：契约 `LinkDeskCommand.description?` / `LinkDeskCommand.params?`（新接口 `LinkDeskCommandParam`：`name` / 四值收敛 `type` / `required` 缺省 false / `description`）· 壳注册表 `interface Command` · `registerCommand` meta（壳 preload ＋ 池 preload ＋ `IpcBridgeHandler/commands.ts` 两处 verbatim 透传）· 声明面 `contributions.ts`（`contributes.commands` 可写同字段）· `plugin.schema.json` 源 ＋ 三份同步副本 · `linkdesk.d.ts` / `host-api-surface.json` 派生物｜读数 = `contracts:check` ＋ schema 门禁 ＋ `typecheck` 全绿（派生物同步一致）
+- 🔥 **取值口径（会话 1 交下、本棒定死，M3 照抄别改名）**：`params` 与 handler 实参**逐位对应**、**照 handler 实参名**（`tabId` / `settingKey` / `groupId`，⛔ 别另起名）。**context 型命令发一个 `ctx` 对象参数**（字段明细写在它的 `description` 里，如 `{ settingKey: string }——目标设置项 id`）——⛔ **不把对象字段摊成顶层位置参数**：那样写出来的调用会缺 token 占位而**静默空转**（会话 1 遗留第 1 条）。**面向 AI 的说明里不暴露 token 占位**（对 AI 就是 `executeCommand(id, ...params)`）
 
-#### AI#8 ⬜ 命令可读描述②：宿主命令元数据逐条清扫
+#### AI#8 ✅ 命令可读描述②：宿主命令元数据逐条清扫
 
-- [ ] **AI#8** 给**壳侧全部宿主命令**（`core.*` / `workbench.action.*` / `editor.*` / `app.*` …）逐条补 `description` 与参数结构。｜**量在条数**（[01-设计.md](01-设计.md) §六 量级评估：「M1⑦ 命令说明逐条清扫——量在条数」）。｜落点 = `src/core/commands/`（`shell/coreCommands.ts` / `shell/tabCommands.ts` 等）｜依赖 = **`AI#7` 先行**（没有字段就没处填）｜判据 = 命令索引里**零「只有名字没有说明」**的宿主命令
+- [x] **AI#8** 给**壳侧全部宿主命令**（`core.*` / `workbench.action.*` / `editor.*` / `app.*` …）逐条补 `description` 与参数结构。｜**量在条数**（[01-设计.md](01-设计.md) §六 量级评估：「M1⑦ 命令说明逐条清扫——量在条数」）。｜落点 = `src/core/commands/`（`shell/coreCommands.ts` / `shell/tabCommands.ts` 等）｜依赖 = **`AI#7` 先行**（没有字段就没处填）｜判据 = 命令索引里**零「只有名字没有说明」**的宿主命令
+- ✅ 2026-09-28 收口（会话 2，commit `75969d4b9`）｜读数 = **63 条宿主命令零遗漏**（`shell/coreCommands.ts` ／ `panelCommands` ／ `settingsCommands` ／ `tabCommands` ／ `about` ／ `update` ／ `releaseNotes` ／ `developer` ／ `palette/quickPickCommand` ／ `input-bindings/shellMenus` ／ `App/startup.ts` 的 `color-picker.pick`）＋**机械证据** = 新单测 `src/core/commands/shell/commandMetadata.test.ts`（5 例，走真注册表：**62 条**有 `description`、`params` 的 `name/type` 非空且逐位对应 handler 形参名）｜✅ **本格做完，M3 手册（第 2 轮）的硬前置解除**
+- ⚠️ **覆盖缺口（如实报，不粉饰）**：`color-picker.pick` 在 `src/App/startup.ts` 里直接 `registerCommand`（不经 `ensureCoreCommands`）⇒ 单测只覆盖 **62 / 63**。补法留给后续（把该命令挪进 `ensureCoreCommands`，或单测另起一个用例）——⛔ 本棒不顺手改注册结构
+- 🔧 **jscpd 连带（首轮红，已修）**：四条设置项齿轮命令的 `params` ＋ handler 前置三行是 7 行重复（`duplication` 门禁 `exitCode:1`）⇒ 抽 `SETTING_KEY_PARAM` 常量 ＋ `settingKeyOf(args)` 助手（一处定义，四处引用）
+- 🔧 **i18n 连带（设计裁决，见 `scripts/audit-i18n.mjs` §0）**：87 条中文 `description` 一度被判「缺翻译」。**命令/参数说明是声明数据、不是 UI 文字**（消费方 = 契约 → AI，今天零渲染消费方），且壳侧译名住在已外移的 lang-defaults 插件仓（E6#99）⇒ 仓内**没有可加译名的落点**。处置 = 审计加**属性名级排除**（`description:` 的值）＋面板八条命令的查找表按行排除。⚠️ **撤销条件**：命令说明一旦进 UI，两条排除**同笔撤销并补译**
 
-#### AI#9 ⬜ 契约文档同笔 ＋ 数量订正
+#### AI#9 ✅ 契约文档同笔 ＋ 数量订正
 
-- [ ] **AI#9** `docs/03-插件制造/01-插件API契约.md` **补「读取面」章** ＋ **订正命名空间数量**。｜🔴 **实测漂移（本会话新证，三份数字两份过期）**=作者文档 `:34` 写「契约 **40** · 池注入 **39** · 壳注入 **22**」（❌ 最旧）；`src/core/api/linkdesk-api/surfaces.ts:24` 写「池 **44** = 43 唯一 + config 别名 · 壳 **24**」（⚠️ **也过期**）；**活门禁 `check-namespace-matrix.mjs` 实测 = 契约 46 · pool 45 · shell 25 · mock 13**（✅ 逐名对源，真相源）。｜落点 = `docs/03-插件制造/01-插件API契约.md` ＋ **`surfaces.ts:24` 过期注释同笔改对** ＋ `linkdesk.d.ts` 派生复核｜依赖 = `AI#1`–`AI#7` 全部落地后才写（否则写完就漂）｜判据 = 文档数字与**门禁活读数**一致（⛔ **不是**与 `surfaces.ts` 注释一致——照它改等于把错的抄一遍）＋ 尽量让这条数字**机械对账**（⛔ 别 fork 第二把尺）
+- [x] **AI#9** `docs/03-插件制造/01-插件API契约.md` **补「读取面」章** ＋ **订正命名空间数量**。｜🔴 **实测漂移（本会话新证，三份数字两份过期）**=作者文档 `:34` 写「契约 **40** · 池注入 **39** · 壳注入 **22**」（❌ 最旧）；`src/core/api/linkdesk-api/surfaces.ts:24` 写「池 **44** = 43 唯一 + config 别名 · 壳 **24**」（⚠️ **也过期**）；**活门禁 `check-namespace-matrix.mjs` 实测 = 契约 46 · pool 45 · shell 25 · mock 13**（✅ 逐名对源，真相源）。｜落点 = `docs/03-插件制造/01-插件API契约.md` ＋ **`surfaces.ts:24` 过期注释同笔改对** ＋ `linkdesk.d.ts` 派生复核｜依赖 = `AI#1`–`AI#7` 全部落地后才写（否则写完就漂）｜判据 = 文档数字与**门禁活读数**一致（⛔ **不是**与 `surfaces.ts` 注释一致——照它改等于把错的抄一遍）＋ 尽量让这条数字**机械对账**（⛔ 别 fork 第二把尺）
+- ✅ 2026-09-28 收口（会话 2，commits `2eb1ad311` 门禁 ＋ `e0b7f3df4` 文档）｜读数 = 门禁活读数 **契约 46 命名空间 / 15 域接口 · 池 45（唯一缺 `bridge`）· 壳 25 · mock 13**——中英作者文档两处数字已订正，`surfaces.ts` 两行过期注释（池 44→45、壳 24→25）同笔改对
+- ✅ **数字化（判据全条落地）**：门禁新增**第 ⑥ 项** `judgeAuthorDoc`——机械对账**双语**作者文档 §二 表的契约数量与 `N 域接口` 锚点；**尺子不新造**（复用 `judgeStats` ＋ `domainInterfaceCount()`，与 §1 A/C 行同源，记忆《两把尺子必须同一份实现》）；自测 **37 例**（正控 20 / 负控 17）｜**接线已验证会红**：把文档 46 改成 47，门禁立刻报「中文作者面…与实际不符」，改回即绿
+- ✅ 同笔补 **`§3.3 读取面`章**（中英双子）：五个读取面（`notifications.list/subscribe` · `tabs.list` · `pool.getLayout` · `dialogHost.pending` ＋ 命令元数据 `commands.getCommands()`）＋ 三条规矩（读取面 ≡ 屏幕同一把尺 · 信号不带载荷、答案问 `list()` · 文案已由壳 `t()` 解析、原样显示）＋ 边界（分离窗口策略子集 / 从未推过的布局为 `null` / 全窗口标签列表无「当前窗口」真相源 / `buttons` 序 = 声明序 `[确认, 取消]` 非屏幕左右 / 仅池侧）
+- ⚠️ **未做（有意，防 fork 第二把尺）**：同一节里「94 声明」那个数字**没动**——`parseContract()` 只暴露命名空间/接口，**没有权威尺子可量它**，硬改就是人肉抄一遍（正是本系列要治的病）。留待将来给「声明数」也立一把机械尺
 
 ---
 
@@ -336,18 +346,18 @@ D0#1–D0#3（系列外 · ✅ **2026-09-28 已收口**，不占 AI 格）
 
 ## 总结
 
-> **只在这里写数字**（别处不复写）。**当前 = 0 / 62 格已回勾**（另：系列外 `D0#1`–`D0#3` = **3 / 3 ✅ 已收口**）。
+> **只在这里写数字**（别处不复写）。**当前 = 9 / 62 格已回勾**（另：系列外 `D0#1`–`D0#3` = **3 / 3 ✅ 已收口**）。
 
 | 轮 | 模块 | 格 | 已回勾 | 状态 |
 |:--:|:--|:--|:--:|:--|
 | — | 系列外 dev 验收前置 | `D0#1`–`D0#3` | **3 / 3** | ✅ 2026-09-28 收口（`f54e59209`；不占系列格） |
-| 1 | **M1** 读取面进契约 | `AI#1`–`AI#9` | **6 / 9** | 🚧 会话 1 已交（`AI#1`–`AI#6` ✅ 真机 15/15；余 `AI#7`–`AI#9` = 会话 2 串行链，`AI#8` 是第 2 轮硬前置） |
-| 2 | **M3** 文档与手册 | `AI#10`–`AI#16` | 0 / 7 | ⬜ 可开工（← M1） |
+| 1 | **M1** 读取面进契约 | `AI#1`–`AI#9` | **9 / 9** | ✅ 2026-09-28 收口（会话 1 六格真机 15/15 读面 ＋ 会话 2 三格元数据）——第 2 轮（M3）硬前置**已解除** |
+| 2 | **M3** 文档与手册 | `AI#10`–`AI#16` | 0 / 7 | ⬜ **可开工（下一棒 = 会话 3，吃 M1 元数据）** |
 | 3 | **M5** 安装版一致性 | `AI#17`–`AI#19` | 0 / 3 | ⬜ 可开工 |
 | 4 | **M4** MCP + CLI 双通道 | `AI#31`–`AI#44`（**含 `AI#38.1`–`AI#38.14` 十四子格**） | 0 / 27 | ⬜ 可开工（🌱 白名单生长；**A-1 改序后提前到第 4 轮**） |
 | 5 | **M2** 操作面补齐 | `AI#20`–`AI#30` | 0 / 11 | ⬜ 可开工（🌱 会生长；**A-1 改序后排最后**） |
 | 6 | 验收与收口 | `AI#45`–`AI#49` | 0 / 5 | ⬜ 可开工 |
-| | **合计** | **62 格**（＋3 系列外） | **0 / 62** | ✅ **前置门已过**（2026-09-28 拍板 13 条） |
+| | **合计** | **62 格**（＋3 系列外） | **9 / 62** | ✅ **前置门已过**（2026-09-28 拍板 13 条）· **第 1 轮 M1 已整轮收口（9/9）** |
 
 **量级口径**：[01-设计.md §六](01-设计.md) 粗估 **60–80 格**，本单首版 **49 格**——**差额不是漏登记**，是 M2「唯一鼠标路径」与 M4「白名单」两处 🌱 **生长格**（审计发现一条补一格，`AI#50` 起续号）。⚠️ **2026-09-28 用户要求后 49 → 62**：`AI#38`（设置页「AI 接入」分区）按用户原话「HTML 里显示的设置页面的配置项，都要有任务」**展开为 14 个子格**（+13，逐项详案 [03-任务档案/M4-设置页.md](03-任务档案/M4-设置页.md)）——**量级判定不变**：中等偏大 ≈ E6 两到三个轮次，**远小于 E5.7 式推翻重做**；**全加法、零架构赌注**、唯一新机制 = M4（spike 先行）。
 
