@@ -15,6 +15,7 @@ export function registerDeveloperCommands(): void {
       id: "workbench.action.togglePluginDevTools",
       title: "切换插件 DevTools",
       category: "开发者",
+      description: "打开开发者工具（先选壳窗口还是池窗口）",
       handler: async () => {
         // E5.5#7-p15：直调 QuickPickService——不再 dispatch SHOW_DEVTOOLS_PICKER
         // E5.7#44：插件 DevTools 入口已删（per-tab 插件 WebView 消亡）——插件在池渲染进程内，

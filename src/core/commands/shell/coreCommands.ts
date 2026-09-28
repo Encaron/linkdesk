@@ -25,6 +25,23 @@ import { CONFIG_NONE_SENTINEL } from "../../services/ui/ThemeEngine"; // E5.8#15
 export type { CoreCallbacks } from "../infra/CoreCallbacks";
 export { updateCoreCallbacks } from "../infra/CoreCallbacks";
 import { getCallbacks, isRegistered, setRegistered } from "../infra/CoreCallbacks";
+import type { LinkDeskCommandParam } from "../../api/linkdesk-api/types";
+
+/**
+ * M1 `AI#7`：设置项齿轮类命令共用的 ctx 参数——四处命令同一份字面量，只写一遍
+ * （jscpd 门禁：抄成四份 = 6 行以上重复，本仓 `duplication` 直接红）。
+ */
+const SETTING_KEY_PARAM: LinkDeskCommandParam = {
+  name: "ctx",
+  type: "object",
+  required: true,
+  description: "{ settingKey: string }——目标设置项 id",
+};
+
+/** 从 ctx 实参取 settingKey——缺值返回 undefined（调用方静默返回：菜单项门控已保证有值）。 */
+function settingKeyOf(args: unknown[]): string | undefined {
+  return (args[0] as { settingKey?: string } | undefined)?.settingKey;
+}
 
 /* ── 命令定义 ── */
 
@@ -33,6 +50,7 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
     id: "workbench.action.showCommands",
     title: "命令面板",
     category: "视图",
+    description: "打开命令面板，搜索并运行任意命令",
     handler: async () => {
       showCommandPalette();
     },
@@ -45,6 +63,7 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
     id: "workbench.action.showOutput",
     title: "输出",
     category: "视图",
+    description: "打开输出面板查看日志",
     handler: async () => {
       window.dispatchEvent(new CustomEvent(CUSTOM_EVENTS.SHOW_OUTPUT));
     },
@@ -56,6 +75,7 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
     id: "workbench.action.exportWorkspace",
     title: "导出工作区",
     category: "文件",
+    description: "把当前布局与用户设置导出为工作区文件下载到本地",
     handler: async () => {
       const layout = getWorkspaceLayout();
       const settings = getUserSettings();
@@ -73,6 +93,7 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
     id: "workbench.action.importWorkspace",
     title: "导入工作区",
     category: "文件",
+    description: "从工作区文件恢复布局与用户设置",
     handler: async () => {
       // 🔴 文件选择走主进程 dialog（04 实测第二根因）：input.click() 的文件对话框需要 user
       //    gesture，而菜单点击的手势在 pool 树、本 handler 在壳树——user gesture 不跨 WebContents
@@ -106,6 +127,8 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
     id: "core.closeTab",
     title: "关闭",
     category: "标签页",
+    description: "关闭指定标签页",
+    params: [{ name: "ctx", type: "object", required: true, description: "{ tabId: string }——要关闭的标签页 id" }],
     handler: async (...args) => {
       const ctx = args[0] as { tabId?: string } | undefined;
       if (ctx?.tabId) getCallbacks()?.closeTab(ctx.tabId);
@@ -117,6 +140,8 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
     id: "core.closeOtherTabs",
     title: "关闭其他",
     category: "标签页",
+    description: "关闭同分组中除指定标签页以外的全部标签页",
+    params: [{ name: "ctx", type: "object", required: true, description: "{ tabId: string }——基准标签页 id（它的同组兄弟被关闭）" }],
     handler: async (...args) => {
       const ctx = args[0] as { tabId?: string } | undefined;
       if (ctx?.tabId) {
@@ -131,6 +156,8 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
     id: "core.closeRightTabs",
     title: "关闭右侧",
     category: "标签页",
+    description: "关闭同分组中指定标签页右侧的全部标签页",
+    params: [{ name: "ctx", type: "object", required: true, description: "{ tabId: string }——基准标签页 id（它右侧的兄弟被关闭）" }],
     handler: async (...args) => {
       const ctx = args[0] as { tabId?: string } | undefined;
       if (ctx?.tabId) {
@@ -148,6 +175,8 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
     id: "core.splitDown",
     title: "向下分屏",
     category: "标签页",
+    description: "把指定标签页所在分组上下分屏（新分组在下）",
+    params: [{ name: "ctx", type: "object", required: true, description: "{ tabId: string }——要分屏的标签页 id" }],
     handler: async (...args) => {
       const ctx = args[0] as { tabId?: string } | undefined;
       if (ctx?.tabId) getCallbacks()?.splitTab(ctx.tabId, "vertical");
@@ -159,6 +188,8 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
     id: "core.splitRight",
     title: "向右分屏",
     category: "标签页",
+    description: "把指定标签页所在分组左右分屏（新分组在右）",
+    params: [{ name: "ctx", type: "object", required: true, description: "{ tabId: string }——要分屏的标签页 id" }],
     handler: async (...args) => {
       const ctx = args[0] as { tabId?: string } | undefined;
       if (ctx?.tabId) getCallbacks()?.splitTab(ctx.tabId, "horizontal");
@@ -174,6 +205,8 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
     id: "core.closeAllTabs",
     title: "关闭全部",
     category: "标签页",
+    description: "关闭指定分组内的全部标签页",
+    params: [{ name: "ctx", type: "object", required: true, description: "{ groupId: string }——要清空的分组 id" }],
     handler: async (...args) => {
       const ctx = args[0] as { tabId?: string; groupId?: string } | undefined;
       if (ctx?.groupId) getCallbacks()?.closeAllTabs(ctx.groupId);
@@ -185,6 +218,8 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
     id: "core.duplicateTab",
     title: "复制标签页",
     category: "标签页",
+    description: "在指定标签页所在分组复制一条同内容的标签页",
+    params: [{ name: "ctx", type: "object", required: true, description: "{ tabId: string }——要复制的标签页 id" }],
     handler: async (...args) => {
       const ctx = args[0] as { tabId?: string } | undefined;
       if (ctx?.tabId) getCallbacks()?.duplicateTab(ctx.tabId);
@@ -196,6 +231,8 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
     id: "core.togglePin",
     title: "固定/取消固定",
     category: "标签页",
+    description: "固定或取消固定指定标签页（固定后不随批量关闭被关掉）",
+    params: [{ name: "ctx", type: "object", required: true, description: "{ tabId: string }——要固定/取消固定的标签页 id" }],
     handler: async (...args) => {
       const ctx = args[0] as { tabId?: string } | undefined;
       if (ctx?.tabId) getCallbacks()?.pinTab(ctx.tabId);
@@ -210,6 +247,8 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
     id: "core.openInNewWindow",
     title: "在新窗口中打开",
     category: "标签页",
+    description: "把指定标签页拖出为独立窗口",
+    params: [{ name: "ctx", type: "object", required: true, description: "{ tabId: string }——要拖出的标签页 id" }],
     handler: async (...args) => {
       const ctx = args[0] as { tabId?: string } | undefined;
       if (ctx?.tabId) getCallbacks()?.detachTab(ctx.tabId);
@@ -221,6 +260,8 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
     id: "core.mergeBackToMain",
     title: "并回主窗口",
     category: "标签页",
+    description: "把脱出窗口中的指定标签页并回主窗口",
+    params: [{ name: "ctx", type: "object", required: true, description: "{ tabId: string }——要并回主窗口的标签页 id" }],
     handler: async (...args) => {
       const ctx = args[0] as { tabId?: string } | undefined;
       if (ctx?.tabId) getCallbacks()?.mergeTabToMain(ctx.tabId);
@@ -241,9 +282,10 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
     id: "workbench.action.resetSetting",
     title: "重置此设置",
     category: "首选项",
+    description: "把指定设置项重置为默认值（先弹确认框）",
+    params: [SETTING_KEY_PARAM],
     handler: async (...args) => {
-      const ctx = args[0] as { settingKey?: string } | undefined;
-      const key = ctx?.settingKey;
+      const key = settingKeyOf(args);
       if (!key) return;
       const { showConfirm } = await import("../../services/ui/DialogService");
       const confirmed = await showConfirm(
@@ -286,9 +328,10 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
     id: "workbench.action.followTheme",
     title: "跟随主题",
     category: "首选项",
+    description: "取消指定设置项的用户覆盖，让它重新跟随当前主题",
+    params: [SETTING_KEY_PARAM],
     handler: async (...args) => {
-      const ctx = args[0] as { settingKey?: string } | undefined;
-      const key = ctx?.settingKey;
+      const key = settingKeyOf(args);
       if (!key) return;
       const { resetConfigurationValue } = await import("../../services/configuration/ConfigurationService");
       await resetConfigurationValue(key);
@@ -301,9 +344,10 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
     id: "workbench.action.copySettingId",
     title: "复制设置 ID",
     category: "首选项",
+    description: "把指定设置项的 id 复制到剪贴板",
+    params: [SETTING_KEY_PARAM],
     handler: async (...args) => {
-      const ctx = args[0] as { settingKey?: string } | undefined;
-      const key = ctx?.settingKey;
+      const key = settingKeyOf(args);
       if (!key) return;
       const { writeClipboardText } = await import("../../services/ui/ClipboardService");
       writeClipboardText(key);
@@ -317,9 +361,10 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
     id: "workbench.action.copySettingAsJson",
     title: "复制为 JSON",
     category: "首选项",
+    description: "把指定设置项的当前值以 JSON 复制到剪贴板",
+    params: [SETTING_KEY_PARAM],
     handler: async (...args) => {
-      const ctx = args[0] as { settingKey?: string } | undefined;
-      const key = ctx?.settingKey;
+      const key = settingKeyOf(args);
       if (!key) return;
       const { getConfigurationValue } = await import("../../services/configuration/ConfigurationService");
       const value = getConfigurationValue(key);
@@ -339,6 +384,8 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
     id: "workbench.action.openAppearanceStorage",
     title: "打开存储位置",
     category: "首选项",
+    description: "在系统资源管理器中打开外观存储目录（背景图存放处）",
+    params: [{ name: "ctx", type: "object", required: true, description: "{ settingKey: string }——目标设置项 id（仅 app.backgroundImage / app.zoneBackgroundImage 会出现本命令）" }],
     handler: async (...args) => {
       const ctx = args[0] as { settingKey?: string } | undefined;
       if (!ctx?.settingKey) return;
@@ -360,6 +407,7 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
     id: "view.zoomIn",
     title: "放大",
     category: "视图",
+    description: "放大界面（窗口缩放级别 +1，上限 8）",
     handler: async () => {
       const { getConfigurationValue, setConfigurationValue } = await import("../../services/configuration/ConfigurationService");
       const current = Number(getConfigurationValue<number>("window.zoomLevel")) || 0;
@@ -370,6 +418,7 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
     id: "view.zoomOut",
     title: "缩小",
     category: "视图",
+    description: "缩小界面（窗口缩放级别 -1，下限 -8）",
     handler: async () => {
       const { getConfigurationValue, setConfigurationValue } = await import("../../services/configuration/ConfigurationService");
       const current = Number(getConfigurationValue<number>("window.zoomLevel")) || 0;
@@ -380,6 +429,7 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
     id: "view.zoomReset",
     title: "重置缩放",
     category: "视图",
+    description: "把界面缩放恢复为 100%",
     handler: async () => {
       const { setConfigurationValue } = await import("../../services/configuration/ConfigurationService");
       await setConfigurationValue("window.zoomLevel", 0, "user");
@@ -428,6 +478,9 @@ export function ensureCoreCommands(): void {
       id: cmd.id,
       title: cmd.title,
       category: cmd.category,
+      // M1 AI#8：说明与参数必须同笔复制——注册是显式逐字段拷贝，漏一个字段 = 元数据静默丢失
+      description: cmd.description,
+      params: cmd.params,
       when: cmd.when, // E5.8#153-fix：when 必须落注册——命令面板过滤消费（commandPalette matches(cmd.when)）
       handler: cmd.handler,
     });

@@ -199,6 +199,8 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
         id: "color-picker.pick",
         title: t("选择颜色…"),
         category: t("开发人员"),
+        description: "弹出取色器让用户选一个颜色，并把色值返回给调用方",
+        params: [{ name: "opts", type: "object", required: false, description: "{ initialColor?: string; presets?: string[] }——浮层初始颜色与预设色，省略 = 空选择器" }],
         handler: async (...args: unknown[]) => {
           const opts = (args[0] as { initialColor?: string; presets?: string[] }) ?? {};
           const color = await import("../components/shared/color-picker/ColorPicker").then(m =>

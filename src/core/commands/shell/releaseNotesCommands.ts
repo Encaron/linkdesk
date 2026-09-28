@@ -78,6 +78,7 @@ export function registerReleaseNotesCommands(): void {
     id: "update.openReleaseNotes",
     title: "显示发行说明",
     category: "帮助",
+    description: "打开（或聚焦）发行说明标签页，查看历史版本的更新内容",
     handler: async () => {
       await openReleaseNotesTab();
     },
@@ -95,6 +96,8 @@ export function registerReleaseNotesCommands(): void {
     /** 左窄栏点了某一版——`args[0]` = 版本号（无 `v` 前缀） */
     id: "update.releaseNotesSelect",
     title: "Release Notes: Select Version",
+    description: "把发行说明正文切换到指定版本",
+    params: [{ name: "version", type: "string", required: true, description: "版本号（不带 v 前缀，如 0.2.21）" }],
     when: "false",
     handler: async (...args: unknown[]) => {
       const version = args[0];
@@ -111,6 +114,7 @@ export function registerReleaseNotesCommands(): void {
     /** 空态「重试」——重试当前那一版（不是「取最新」：用户上一步想看什么，就再来一次） */
     id: "update.releaseNotesRetry",
     title: "Release Notes: Retry",
+    description: "重新加载当前所选版本的发行说明",
     when: "false",
     handler: async () => {
       const { retryReleaseNotes } = await import("../../../hooks/useReleaseNotes");
@@ -122,6 +126,7 @@ export function registerReleaseNotesCommands(): void {
     /** 头部「刷新」（04「发行说明刷新按钮」）——绕过 24h 缓存现拉最新列表，保持当前所选版本 */
     id: "update.releaseNotesRefresh",
     title: "Release Notes: Refresh",
+    description: "绕过 24 小时缓存重新拉取发行说明列表（保持当前所选版本）",
     when: "false",
     handler: async () => {
       const { refreshReleaseNotes } = await import("../../../hooks/useReleaseNotes");
@@ -133,6 +138,7 @@ export function registerReleaseNotesCommands(): void {
     /** 横幅「知道了」——**只收横幅**，不记 `lastSeenVersion`（那是「弹过没」的账，两回事） */
     id: "update.releaseNotesDismissBanner",
     title: "Release Notes: Dismiss Banner",
+    description: "收掉发行说明横幅（只关横幅，不记已读版本）",
     when: "false",
     handler: async () => {
       const { dismissReleaseNotesBanner } = await import("../../../hooks/useReleaseNotes");

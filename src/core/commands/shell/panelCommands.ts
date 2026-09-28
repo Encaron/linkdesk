@@ -41,6 +41,18 @@ const PANEL_ALIGN_TITLES = {
   "workbench.action.alignPanelJustify": "面板两端对齐",
 } as const;
 
+/** M1 `AI#8`：位置/对齐八条命令的说明——单选语义（已是目标值则无动作），一句话点明「把它放到哪」。 */
+const PANEL_COMMAND_DESCRIPTIONS: Record<string, string> = {
+  "workbench.action.positionPanelBottom": "把底部面板停靠到窗口底部（已在该侧则无动作）",
+  "workbench.action.positionPanelTop": "把底部面板停靠到窗口顶部（已在该侧则无动作）",
+  "workbench.action.positionPanelLeft": "把底部面板停靠到窗口左侧（已在该侧则无动作）",
+  "workbench.action.positionPanelRight": "把底部面板停靠到窗口右侧（已在该侧则无动作）",
+  "workbench.action.alignPanelLeft": "把面板内容左对齐（已是该对齐则无动作）",
+  "workbench.action.alignPanelCenter": "把面板内容居中对齐（已是该对齐则无动作）",
+  "workbench.action.alignPanelRight": "把面板内容右对齐（已是该对齐则无动作）",
+  "workbench.action.alignPanelJustify": "把面板内容两端对齐（已是该对齐则无动作）",
+};
+
 /**
  * E5.8#37.7：面板右键菜单当前项 √（单选）——getItems 桥对 panelViewContext 子项逐项调用。
  * position 命令 → 目标 edge === 当前 edge；align 命令 → 目标 align === 当前 align。
@@ -76,6 +88,7 @@ export function registerPanelCommands(): void {
     id: "workbench.action.togglePanel",
     title: "切换底部面板可见性",
     category: "视图",
+    description: "显示/隐藏底部面板",
     handler: async () => {
       shellEvents.emit("panel:toggle", undefined);
     },
@@ -89,6 +102,7 @@ export function registerPanelCommands(): void {
     id: "workbench.action.toggleSidebarPosition",
     title: "切换侧栏位置",
     category: "视图",
+    description: "把主侧栏换到对侧（左 ↔ 右）",
     handler: async () => {
       const current = narrowSidebarEdge(layoutEngine.getZone("sidebar")?.dock?.edge);
       layoutEngine.dockTo("sidebar", current === "left" ? "right" : "left");
@@ -102,6 +116,7 @@ export function registerPanelCommands(): void {
       id,
       title: PANEL_POSITION_TITLES[id as keyof typeof PANEL_POSITION_TITLES],
       category: "视图",
+      description: PANEL_COMMAND_DESCRIPTIONS[id],
       handler: async () => positionPanel(edge as "bottom" | "top" | "left" | "right"),
     });
   }
@@ -112,6 +127,7 @@ export function registerPanelCommands(): void {
       id,
       title: PANEL_ALIGN_TITLES[id as keyof typeof PANEL_ALIGN_TITLES],
       category: "视图",
+      description: PANEL_COMMAND_DESCRIPTIONS[id],
       handler: async () => alignPanel(align as "left" | "center" | "right" | "justify"),
     });
   }
@@ -126,6 +142,11 @@ export function registerPanelCommands(): void {
     id: "workbench.action.togglePanelViewVisibility",
     title: "切换面板视图可见性",
     category: "视图",
+    description: "显示/隐藏底部面板中的指定视图",
+    params: [
+      { name: "containerId", type: "string", required: true, description: "视图所在容器 id" },
+      { name: "viewId", type: "string", required: true, description: "目标视图 id" },
+    ],
     handler: async (...args: unknown[]) => {
       const [containerId, viewId] = args as [string, string];
       if (typeof containerId === "string" && typeof viewId === "string") {
@@ -142,6 +163,11 @@ export function registerPanelCommands(): void {
     id: "workbench.action.revealFloatingPanel",
     title: "在悬浮面板中打开",
     category: "视图",
+    description: "把指定视图作为悬浮面板打开（已开同名面板则关闭）",
+    params: [
+      { name: "viewId", type: "string", required: true, description: "目标视图 id" },
+      { name: "pluginId", type: "string", required: false, description: "声明该视图的插件 id——同名 viewId 并存时用于消歧，省略 = 按 viewId 裸扫声明" },
+    ],
     handler: async (...args: unknown[]) => {
       const [viewId, pluginId] = args as [string, string];
       // E5.8#41.16：载荷复合寻址——commandArgs 携带 pluginId（标签页右键知道右键的是谁）→

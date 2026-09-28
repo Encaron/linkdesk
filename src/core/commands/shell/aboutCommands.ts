@@ -75,6 +75,7 @@ export function registerAboutCommands(): void {
     id: "app.about",
     title: "关于 LinkDesk",
     category: "帮助",
+    description: "打开（或聚焦）关于标签页，查看版本与运行环境信息",
     handler: async () => {
       await openAboutTab();
     },
@@ -87,6 +88,7 @@ export function registerAboutCommands(): void {
     /** 关于页「复制」——全字段 `key: value` 多行文本进剪贴板 */
     id: "app.aboutCopy",
     title: "About: Copy",
+    description: "把关于页的全部字段以 key: value 多行文本复制到剪贴板",
     when: "false",
     handler: async () => {
       const { getAboutCopyText } = await import("../../../hooks/useAbout");
@@ -121,6 +123,7 @@ export function registerAboutCommands(): void {
     id: "app.viewLicense",
     title: "查看许可证",
     category: "帮助",
+    description: "在系统浏览器中打开许可证全文",
     handler: async () => {
       window.open(LICENSE_URL, "_blank");
     },

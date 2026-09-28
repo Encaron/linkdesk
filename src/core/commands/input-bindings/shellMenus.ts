@@ -114,6 +114,8 @@ export function registerShellMenus(): void {
     id: "workbench.action.toggleContainerCollapse",
     title: "折叠",
     category: "视图",
+    description: "折叠/展开指定视图容器",
+    params: [{ name: "ctx", type: "object", required: true, description: "{ containerId: string }——目标容器 id" }],
     handler: async (...args: unknown[]) => {
       const ctx = args[0] as { containerId?: string } | undefined;
       if (ctx?.containerId) shellEvents.emit("view:toggleCollapse", { containerId: ctx.containerId });
@@ -126,6 +128,7 @@ export function registerShellMenus(): void {
     id: "workbench.action.toggleSidebarVisibility",
     title: "切换侧栏可见性",
     category: "视图",
+    description: "显示/隐藏主侧栏",
     handler: async () => {
       shellEvents.emit("sidebar:toggle", undefined);
     },
@@ -135,6 +138,8 @@ export function registerShellMenus(): void {
     id: "workbench.action.resetContainerPosition",
     title: "重置位置",
     category: "视图",
+    description: "把指定视图容器重置回默认位置",
+    params: [{ name: "ctx", type: "object", required: true, description: "{ containerId: string }——目标容器 id" }],
     handler: async (...args: unknown[]) => {
       const ctx = args[0] as { containerId?: string } | undefined;
       if (ctx?.containerId) shellEvents.emit("view:resetPosition", { containerId: ctx.containerId });
@@ -146,6 +151,8 @@ export function registerShellMenus(): void {
     id: "workbench.action.toggleViewVisibility",
     title: "切换视图可见性",
     category: "视图",
+    description: "显示/隐藏指定视图",
+    params: [{ name: "ctx", type: "object", required: true, description: "{ viewId: string; containerId?: string }——目标视图 id，containerId 用于同 viewId 消歧" }],
     handler: async (...args: unknown[]) => {
       const ctx = args[0] as { viewId?: string; containerId?: string } | undefined;
       if (ctx?.viewId) shellEvents.emit("view:toggleVisibility", { viewId: ctx.viewId, containerId: ctx.containerId });

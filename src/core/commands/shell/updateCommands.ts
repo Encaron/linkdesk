@@ -70,6 +70,7 @@ export function registerUpdateCommands(): void {
     id: "update.checkForUpdates",
     title: "检查更新…",
     category: "帮助",
+    description: "手动检查主软件更新（无更新与失败都会落一条通知）",
     handler: async () => {
       // E6#57.12：改走 `checkForUpdatesAndReport(true)` —— 它是**发起方自消化**那条路的一员
       // （见 useUpdateNotifications.ts 文件头）：本入口知道自己是「手动」，所以「无更新」要答话、
@@ -85,6 +86,7 @@ export function registerUpdateCommands(): void {
     id: "update.openUpdateFlow",
     title: "处理更新",
     category: "帮助",
+    description: "按当前更新状态处理更新：有新版本则开始下载，已下载则重启并安装",
     handler: async () => {
       const { getShellUpdateApi } = await import("../../../hooks/useUpdateState");
       const api = getShellUpdateApi();

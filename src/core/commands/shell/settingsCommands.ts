@@ -3,7 +3,7 @@
  * E5#44-3：从 coreCommands.ts 提取。
  */
 
-import { registerCommand } from "../../registry/commands/CommandRegistry";
+import { registerCommand, type Command } from "../../registry/commands/CommandRegistry";
 import { registerMenuItems, MENU_SLOTS } from "../../registry/commands/MenuRegistry";
 import { factorySlots } from "../../services/bootstrap/FactorySlots";
 import { setConfigurationValue, resetConfigurationValueBatch } from "../../services/configuration/ConfigurationService"; // E5.8#50.24：复位命令单一写入点
@@ -18,11 +18,15 @@ import { getFloatingPanelViewId, getTabCreatableViews } from "../../../pluginLoa
 import { resolveFloatingPanelOpenForm } from "../../services/ui/floatingPanelForm";
 
 export function registerSettingsCommands(): void {
-  const commands = [
+  // 🔴 显式标注 `Command[]`（不是可省的类型注解）：不标则数组字面量里的 `type: "object"`
+  // 会放宽成 `string`，`registerCommand` 当场编译红（M1 `AI#7` 的 params 是四值联合）。
+  const commands: Command[] = [
     {
       id: "core.openSettings",
       title: "设置",
       category: "视图",
+      description: "打开设置页（已有设置标签页/悬浮面板则聚焦它，不重复开）",
+      params: [{ name: "ctx", type: "object", required: false, description: "{ pluginId: string; scrollTo: string }——pluginId 定位到该插件的设置分组，scrollTo 滚动到指定设置项" }],
       handler: async (...args: unknown[]) => {
         const ctx = args[0] as { pluginId?: string; scrollTo?: string } | undefined;
         if (ctx?.pluginId) requestSettingsGroup(ctx.pluginId);
@@ -55,6 +59,8 @@ export function registerSettingsCommands(): void {
       // E5.8#50.24：升级两段式（配方→配色）——命令 id 归一化为 theme.* 族（09 §1 命令清单）
       id: "theme.pick",
       title: "主题：选择主题…",
+      description: "打开主题选择器切换当前主题",
+      params: [{ name: "ctx", type: "object", required: false, description: "{ pluginId: string }——只列该插件提供的主题，省略 = 列全部主题" }],
       handler: async (...args: unknown[]) => {
         const ctx = args[0] as { pluginId?: string } | undefined;
         // E5.5#7-p15：直调 QuickPickService——不再 dispatch SHOW_THEME_BROWSER
@@ -66,6 +72,7 @@ export function registerSettingsCommands(): void {
       // E5.8#50.24：复位外观——app.appearanceMode→followTheme（onApply 级联清 9 覆盖 + 6 域来源 + 强调色回配方，08 §7.3.5 单一写入点）
       id: "theme.resetAppearance",
       title: "外观：复位外观覆盖…",
+      description: "把外观模式复位为跟随主题，并清掉全部外观覆盖",
       handler: async () => {
         await setConfigurationValue("app.appearanceMode", "followTheme", "user");
       },
@@ -74,6 +81,7 @@ export function registerSettingsCommands(): void {
       // E5.8#90：复位混搭——批复位 3 来源键回跟随主题（保持自定义模式；域来源 onApply 重合并回主题基线，startup.ts 单一写入点；E5.8#132 surface 域删来源 4→3）
       id: "theme.resetMix",
       title: "混搭：复位为整体配方…",
+      description: "把混搭（分区外观）的各来源复位为跟随主题，保持自定义模式",
       handler: async () => {
         await resetConfigurationValueBatch(MIX_SOURCE_KEYS, "user");
       },
@@ -82,6 +90,7 @@ export function registerSettingsCommands(): void {
       id: "workbench.action.selectLanguage",
       title: "选择语言",
       category: "首选项",
+      description: "打开语言选择器切换界面语言",
       handler: async () => {
         // E5.5#7-p15：直调 QuickPickService——不再 dispatch SHOW_LANGUAGE_PICKER
         const { showLanguagePicker } = await import("../../../components/shared/language-picker/LanguagePicker");
@@ -92,6 +101,7 @@ export function registerSettingsCommands(): void {
       id: "workbench.action.openKeybindingsSettings",
       title: "打开键盘快捷方式",
       category: "首选项",
+      description: "打开键盘快捷方式设置页",
       handler: async () => { await openKeybindingsSettings(); },
     },
   ];

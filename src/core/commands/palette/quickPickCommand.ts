@@ -62,6 +62,8 @@ export function registerQuickPickCommand(): void {
   registerCommand(APP_PLUGIN_ID, {
     id: "quickpick.show",
     title: "QuickPick",
+    description: "弹出选择列表让用户选一项，并把选中项返回给调用方（取消返回 undefined）",
+    params: [{ name: "options", type: "object", required: true, description: "{ title?: string; items: { label: string; description?: string }[] }——候选列表与浮层标题" }],
     when: "false",
     handler: async (...args: unknown[]) => {
       return showQuickPick(args[0] as ShowQuickPickOptions);
