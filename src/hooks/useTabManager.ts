@@ -77,6 +77,7 @@ import {
   reduceSplitTab,
   reduceUnsplit,
   reduceUpdateSplitSizes,
+  reduceResetSplitSizes,
   reduceRestoreLayout,
 } from "./useTabManager/reducers-layout";
 export {
@@ -85,6 +86,7 @@ export {
   reduceSplitTab,
   reduceUnsplit,
   reduceUpdateSplitSizes,
+  reduceResetSplitSizes,
   reduceRestoreLayout,
 } from "./useTabManager/reducers-layout";
 
@@ -333,6 +335,12 @@ export function useTabManager() {
     setTabState((prev) => reduceUpdateSplitSizes(prev, anchorGroupId, sizes, branchIndex));
   }, []);
 
+  /** M2 `AI#21`：分屏比例整体复位（所有分支回 50/50）——`updateSplitSizes` 的非鼠标路径。
+   *  池双击分隔条复位只治单条分支（`useDividerDrag`），命令面需要「不用知道 branchIndex」的复位。 */
+  const resetSplitSizes = useCallback(() => {
+    setTabState((prev) => reduceResetSplitSizes(prev));
+  }, []);
+
   const setDirty = useCallback((tabId: string, dirty: boolean) => {
     setTabState((prev) => reduceSetDirty(prev, tabId, dirty));
   }, []);
@@ -450,6 +458,7 @@ export function useTabManager() {
     splitTabAt,
     unsplit,
     updateSplitSizes,
+    resetSplitSizes,
     moveTab,
     duplicateTab,
     reorderTab,

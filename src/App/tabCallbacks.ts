@@ -74,13 +74,16 @@ export interface CoreCallbacksDeps {
   closeWindow: (windowId: string) => void;
   /** 04「工作区导入导出-布局恢复断线」：导入的标签页布局恢复（restoreLayout 全流程，App 组件内组装） */
   restoreTabLayout: (layout: LayoutData) => { pluginId: string; tabId: string } | null;
+  /** M2 `AI#21`：分屏比例整体复位（useTabManager.resetSplitSizes）——命令面 non-mouse 路径 */
+  resetSplitSizes: () => void;
 }
 
 /** E5#5e-ii-f：核心回调——注册到 coreCommands，壳快捷键（Ctrl+W/Ctrl+Tab 等）走这里 */
 export function createCoreCallbacks(deps: CoreCallbacksDeps): CoreCallbacks {
-  const { closeTab, splitTab, tabState, handleFocusTab, unsplit, openOrFocusTab, restoreClosedTab, duplicateTab, pinTab, detachTab, mergeTabToMain, findTabWindow, windows, updateTabState, closeWindow, restoreTabLayout } = deps;
+  const { closeTab, splitTab, tabState, handleFocusTab, unsplit, openOrFocusTab, restoreClosedTab, duplicateTab, pinTab, detachTab, mergeTabToMain, findTabWindow, windows, updateTabState, closeWindow, restoreTabLayout, resetSplitSizes } = deps;
   return {
     restoreTabLayout,
+    resetSplitSizes,
     closeTab,
     closeOtherTabs: (groupId, exceptTabId) => {
       const g = tabState.groups.find((g) => g.id === groupId);

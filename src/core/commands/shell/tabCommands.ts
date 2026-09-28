@@ -46,6 +46,15 @@ export function registerTabCommands(): void {
       description: "在当前分组上切换分屏（分屏 ↔ 合并）",
       handler: async () => { getCallbacks()?.toggleSplit(); },
     },
+    // M2 `AI#21`：`updateSplitSizes` 通道的非鼠标路径——池侧双击分隔条复位只治被点的那一条分支
+    // （`useDividerDrag`），本命令治整棵树（所有分支回 50/50），AI 不必知道 branchIndex。
+    {
+      id: "workbench.action.resetSplitSizes",
+      title: "重置分屏比例",
+      category: "标签页",
+      description: "把所有分屏分支的比例恢复成均分（50/50）；未分屏时无效果",
+      handler: async () => { getCallbacks()?.resetSplitSizes?.(); },
+    },
     {
       id: "core.closeAllEditors",
       title: "关闭所有编辑器",

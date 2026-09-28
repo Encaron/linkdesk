@@ -30,6 +30,24 @@ export interface PoolFloatingPanelButton {
   expandOnHover?: boolean;
 }
 
+/** 面板显式几何（px）——I8-5/I8-7 拖拽/调高后取代默认居中大卡布局。
+ *  M2 `AI#20`：同一形状经 `panel.setFloatingBounds` 走 API 路径（非鼠标路径）设定。 */
+export interface FloatingPanelBounds {
+  top: number;
+  left: number;
+  width: number;
+  height: number;
+}
+
+/** `floatingPanelHost.getBounds()` 读数——池侧渲染盒的**真实**几何 + 面板身份 + 最大化态。
+ *  「无面板」不在此型内——返回类型是 `PoolFloatingPanelGeometry | null`。 */
+export interface PoolFloatingPanelGeometry extends FloatingPanelBounds {
+  viewId: string;
+  pluginId: string;
+  /** I8-9 最大化（纯视觉态，铺满窗口）——true 时几何 = 满窗盒（如实报，⛔ 不报「最大化前」的旧值） */
+  maximized: boolean;
+}
+
 export type PoolFloatingPanelData =
   | { open: false }
   | {
@@ -46,4 +64,22 @@ export type PoolFloatingPanelData =
       actions: PoolFloatingPanelButton[];
       /** 语言切换文案重推标记（refreshPanelText）——池仅更新标题/动作渲染，跳过焦点获取（I8-8 首次打开才入焦点） */
       refresh?: boolean;
+      /** M2 `AI#20`：**API 路径**显式几何（`panel.setFloatingBounds` 推入，一次性——⛔ 壳不把它存进
+       *  refreshPanelText 的底稿，否则语言切换重推会把用户拖过的面板弹回旧位）。
+       *  语义三分：**缺省** = 不动几何（拖拽/调高后的本地态原样保留）｜**部分字段** = 精确设定
+       *  （未带字段保持现值，同一套 I8-5/I8-7 钳制）｜**null** = 回默认居中大卡（拖拽前那一态）。 */
+      bounds?: Partial<FloatingPanelBounds> | null;
     };
+
+/** M2 `AI#20`：几何宿主请求——preload 转发 API 路径到池 FloatingPanelHost（池是几何真相源：
+ *  面板渲染在池，只有池知道它此刻真在哪；壳不存几何 ⇒ 不会是第二把尺）。
+ *  `set` 在最大化态下先退出最大化再设定（「设定必生效」——几何与满窗态互斥）。 */
+export type FloatingPanelBoundsHostRequest =
+  | { op: "set"; bounds: Partial<FloatingPanelBounds> | null }
+  | { op: "get" };
+
+/** M2 `AI#20`：池侧几何宿主实现——`set` 返回「有面板且已应用」，`get` 返回当前渲染几何（无面板 = null）。
+ *  形状对标 `quickPickHost.registerHost(fn)`（主世界函数经 contextBridge 代理进隔离世界存储）。 */
+export type FloatingPanelBoundsHostFn = (
+  req: FloatingPanelBoundsHostRequest,
+) => boolean | PoolFloatingPanelGeometry | null;

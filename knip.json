@@ -41,6 +41,11 @@
         //   零仓内消费方——非死代码。用法见同夹 README.md，读数原件 = 同夹 READINGS.txt。
         //   （它 import 的 `scripts/dev/lib/cdp.mjs` 被本入口与 m4-spike 双消费，knip 可见，不列。）
         "scripts/dev/m4-fullchain/accept.mjs",
+        // M2 敏感动作确认面验收器（AI#29，2026-09-28）：同一夹第二件——真 CLI 子进程发起敏感动作
+        //   ＋ CDP 真按键（Enter/Esc）应答确认门 ＋ 账本对账；命令行直跑（`node
+        //   scripts/dev/m4-fullchain/gate-accept.mjs`），零仓内消费方——非死代码。
+        //   用法与三条 harness 坑见同夹 README.md §五之二。
+        "scripts/dev/m4-fullchain/gate-accept.mjs",
         // M4 正式件（AI#34）：CLI 皮入口——PATH/安装器随包归 AI#40；lib/ 由它 import（knip 可见）。
         //   内核 electron/services/aiBridge/ 由 main.ts import，不在本表（正常依赖图）。
         "cli/linkdeskctl/linkdeskctl.mjs"

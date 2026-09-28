@@ -63,6 +63,7 @@ export const FILENAME_MAP = {
   "18-区域间互动.md": "18-cross-region-wiring.md",
   "19-组件速查.md": "19-component-cheatsheet.md",
   "20-我的插件加一条配置项.md": "20-adding-a-setting.md",
+  "21-插件命令化规范.md": "21-command-ification-spec.md",
   "主题/01-做一个主题插件.md": "themes/01-build-a-theme-plugin.md",
   "主题/02-主题字段速查.md": "themes/02-theme-field-index.md",
 };

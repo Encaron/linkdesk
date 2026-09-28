@@ -67,7 +67,10 @@ const EXCLUDE_RANGES = {
   // 属性名级排除（见 §0 METADATA_VALUE_PROP）看不穿查找表，故按行排除。**同一批声明数据、同一条
   // 裁决**（消费方 = 命令元数据 → 契约 → AI，今天零 UI 渲染消费方）。
   // ⚠️ 撤销条件与 §0 完全一致：命令说明一旦进 UI，本排除与那条属性名排除**同笔撤销并补译**。
-  "src/core/commands/shell/panelCommands.ts": [[45, 54]],
+  // 🔴 行号会随该表**上方**的增删漂移（实测：M2 `AI#21` 在文件里加了个 helper，区间从 45-54 滑到
+  //    47-56，末条「两端对齐」立刻假红）。**改了本文件就把这个区间跟着对一遍**——多了会静默放过
+  //    区间内别的中文串（假绿），少了当场假红。区间 = `const PANEL_COMMAND_DESCRIPTIONS` 那行到此表的 `};`。
+  "src/core/commands/shell/panelCommands.ts": [[47, 56]],
 };
 
 /**

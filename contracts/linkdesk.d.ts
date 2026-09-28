@@ -1466,6 +1466,14 @@ export interface PoolFloatingPanelButton {
     /** open-in 类型——默认纯图标、hover 展开全文（mockup .fp-act.open-in） */
     expandOnHover?: boolean;
 }
+/** 面板显式几何（px）——I8-5/I8-7 拖拽/调高后取代默认居中大卡布局。
+ *  M2 `AI#20`：同一形状经 `panel.setFloatingBounds` 走 API 路径（非鼠标路径）设定。 */
+export interface FloatingPanelBounds {
+    top: number;
+    left: number;
+    width: number;
+    height: number;
+}
 export type PoolFloatingPanelData = {
     open: false;
 } | {
@@ -1482,7 +1490,29 @@ export type PoolFloatingPanelData = {
     actions: PoolFloatingPanelButton[];
     /** 语言切换文案重推标记（refreshPanelText）——池仅更新标题/动作渲染，跳过焦点获取（I8-8 首次打开才入焦点） */
     refresh?: boolean;
+    /** M2 `AI#20`：**API 路径**显式几何（`panel.setFloatingBounds` 推入，一次性——⛔ 壳不把它存进
+     *  refreshPanelText 的底稿，否则语言切换重推会把用户拖过的面板弹回旧位）。
+     *  语义三分：**缺省** = 不动几何（拖拽/调高后的本地态原样保留）｜**部分字段** = 精确设定
+     *  （未带字段保持现值，同一套 I8-5/I8-7 钳制）｜**null** = 回默认居中大卡（拖拽前那一态）。 */
+    bounds?: Partial<FloatingPanelBounds> | null;
 };
+/** M2 `AI#20`：几何宿主请求——preload 转发 API 路径到池 FloatingPanelHost（池是几何真相源：
+ *  面板渲染在池，只有池知道它此刻真在哪；壳不存几何 ⇒ 不会是第二把尺）。
+ *  `set` 在最大化态下先退出最大化再设定（「设定必生效」——几何与满窗态互斥）。 */
+export type FloatingPanelBoundsHostRequest = {
+    op: "set";
+    bounds: Partial<FloatingPanelBounds> | null;
+} | {
+    op: "get";
+};
+/** `floatingPanelHost.getBounds()` 读数——池侧渲染盒的**真实**几何 + 面板身份 + 最大化态。
+ *  「无面板」不在此型内——返回类型是 `PoolFloatingPanelGeometry | null`。 */
+export interface PoolFloatingPanelGeometry extends FloatingPanelBounds {
+    viewId: string;
+    pluginId: string;
+    /** I8-9 最大化（纯视觉态，铺满窗口）——true 时几何 = 满窗盒（如实报，⛔ 不报「最大化前」的旧值） */
+    maximized: boolean;
+}
 /** UI 浮层/菜单/通知命名空间面——对标 VS Code vscode.window + ContextKey + 池内 QuickPick/Dialog/FloatingPanel 宿主桥 */
 export interface UiAPI {
     /** 通知——插件弹通知（E6#72：唯一通知面 = 铃铛宽通知面板，右下窄卡链路已整删），对标 VS Code vscode.window.showInformationMessage */
@@ -1616,6 +1646,22 @@ export interface UiAPI {
         onShow(cb: (data: PoolFloatingPanelData) => void): () => void;
         /** 动作回传——open-in（在主窗口中打开）/ close，壳侧 settle（业务语义壳侧重解析） */
         action(actionId: string): void;
+        /**
+         * M2 `AI#20`：注册几何宿主（池 FloatingPanelHost mount 时调）。主世界函数经 contextBridge
+         * 代理进隔离世界存储，同 `quickPickHost.registerHost` 先例。返回 unsubscribe。
+         * ⚠️ 面板渲染在池 ⇒ **几何真相源在池**：拖拽 / 调高 / `panel.setFloatingBounds` 这条 API 路径
+         * 最终都落在本宿主上（壳不存几何、不做几何计算）。
+         */
+        registerBoundsHost(fn: (req: FloatingPanelBoundsHostRequest) => boolean | PoolFloatingPanelGeometry | null): () => void;
+        /**
+         * M2 `AI#20`：读当前悬浮面板几何（**同步**——池内直答零 IPC，同 `dialogHost.current()` 先例）。
+         * 返回**实际生效**的几何（钳制 / 最大化后的真实结果，非调用方意图值）；**无面板** → `null`。
+         *
+         * 判据用法：`panel.setFloatingBounds({ top: 100, left: 80 })` 后调本函数对账——`top/left` 应等于
+         * 100/80（越界时等于被钳后的值）。⚠️ 壳侧 / CLI 的读数出口不是本函数（那是池内面），而是池上报的
+         * 壳镜像：命令 `workbench.action.getFloatingPanelBounds`。
+         */
+        getBounds(): PoolFloatingPanelGeometry | null;
     };
 }
 /** 端口列表条目——listPorts() 返回 */
@@ -2682,6 +2728,17 @@ export interface PanelAPI {
          *  E5.8#41.18：可选 pluginId 复合寻址——两插件同名 viewId（双设置套并存）时插件侧携带
          *  pluginId 精确命中目标套（壳侧路径 Ctrl+,/右键已带；裸 viewId 多命中 fail-loud no-op） */
         revealFloating(viewId: string, pluginId?: string): Promise<void>;
+        /**
+         * M2 `AI#20`：设定当前悬浮面板的几何（**非鼠标路径**——不与拖拽抢，两条路并存）。
+         *
+         * `bounds` 只带想改的字段（如只 `{ top, left }` 只挪位置，`height` 不动）；`null` = 回默认居中大卡
+         * （I8-5/I8-7 拖拽前那一态）。面板**未开**时 no-op（本 API 只改几何，⛔ 不开面板——开面板归 `revealFloating`）。
+         *
+         * ⚠️ 越界值按**拖拽同一套边界**钳制（不是拒绝）：`height < 300` → 300；`height > 窗口高 - 80` → 钳到上限；
+         * `top/left` 被钳进 6px 壳内边界；`width` 只设上限（窗口宽 - 12）。想读回**实际生效**的几何，用
+         * `floatingPanelHost.getBounds()`（池内同步直答）或壳命令 `workbench.action.getFloatingPanelBounds`。
+         */
+        setFloatingBounds(bounds: Partial<FloatingPanelBounds> | null): Promise<void>;
     };
 }
 /** 设置套条目——settings.list() 返回的一行。

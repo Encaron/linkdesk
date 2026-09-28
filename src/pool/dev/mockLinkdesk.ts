@@ -256,6 +256,10 @@ export function installMockLinkdesk(): void {
     floatingPanelHost: {
       onShow: floatingPanelReplay.subscribe,
       action: makeLogger("floatingPanelHost.action"),
+      // M2 `AI#20`：几何宿主——preview 无真实 FloatingPanelHost 注册（套件里注册即被覆盖），
+      // 未注册时 getBounds 恒 null、注册本身 no-op（与 preload 同语义：无面板/无宿主 → null）
+      registerBoundsHost: () => () => {},
+      getBounds: () => null,
     },
     commands: {
       registerCommand: (id: string, handler: (...args: unknown[]) => unknown) => {
@@ -317,6 +321,8 @@ export function installMockLinkdesk(): void {
     panel: {
       reveal: makeAsyncLogger("panel.reveal"),
       revealFloating: makeAsyncLogger("panel.revealFloating"),
+      // M2 `AI#20`：几何设定（壳侧消费，预览留桩——壳侧 FloatingPanelService 未开面板即 no-op 同款）
+      setFloatingBounds: makeAsyncLogger("panel.setFloatingBounds"),
     },
   } satisfies Partial<LinkDeskAPI>;
 

@@ -75,6 +75,17 @@ export function narrowSidebarEdge(edge: NonNullable<ZoneConfig["dock"]>["edge"] 
   return edge === "right" ? "right" : "left";
 }
 
+/**
+ * M2 `AI#21`：zone 尺寸的**默认值**——「重置某某尺寸」类命令（`workbench.action.resetSidebarWidth`
+ * / `…resetPanelSize`）的目标值，也是构造函数里初始配置的同一真相源（⛔ 别在命令侧另抄一份数字）。
+ * panel 的**竖条默认宽 300** 与池组装侧的回退同值（`usePoolSync` 推 `width` 时 `dock.width ?? 本值`）。
+ */
+export const DEFAULT_ZONE_SIZE = {
+  sidebarWidth: 280,
+  panelHeight: 220,
+  panelWidth: 300,
+} as const;
+
 /* ── LayoutEngine ── */
 
 export class LayoutEngine {
@@ -98,7 +109,7 @@ export class LayoutEngine {
       },
       {
         zone: "sidebar",
-        dock: { edge: "left", width: 280, minWidth: 170, maxWidth: 600, resizable: true, collapsedWidth: 4 },
+        dock: { edge: "left", width: DEFAULT_ZONE_SIZE.sidebarWidth, minWidth: 170, maxWidth: 600, resizable: true, collapsedWidth: 4 },
       },
       {
         zone: "main",
@@ -108,7 +119,7 @@ export class LayoutEngine {
         zone: "panel",
         dock: {
           edge: "bottom",
-          height: 220,
+          height: DEFAULT_ZONE_SIZE.panelHeight,
           minHeight: 120,
           maxHeight: 600,
           // E5.8#37.5：竖条钳制界（edge∈{left,right} 时 usePoolSync 组装推池 width + 钳制）——dockTo 换左/右边即启用

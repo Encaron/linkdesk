@@ -83,8 +83,14 @@ function SidebarSection({
     if (collapsible) setOpen((prev) => { const next = !prev; onToggleCollapse?.(!next); return next; });
   }, [collapsible, onToggleCollapse]);
 
+  // M2 `AI#22`：… 下拉开关——鼠标（onClick）与键盘（Enter/Space）共用同一条路径
+  const toggleMore = useCallback(() => setMoreOpen((p) => !p), []);
+
   const onKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
+      // M2 `AI#22`：只接管「header 自己拿到焦点」时的按键——否则 actions/… 里控件的
+      // Enter/Space 会被这里 preventDefault 掉（钮点不动、还顺手折叠了本节）。
+      if (e.target !== e.currentTarget) return;
       if (e.key === "Enter" || e.key === " ") {
         e.preventDefault();
         toggle();
@@ -92,6 +98,9 @@ function SidebarSection({
     },
     [toggle],
   );
+
+  // M2 `AI#22`：… 钮的可见名与提示文案同源（aria-label 给读屏/AI，data-hint 给人看的悬停提示）
+  const moreLabel = t("更多操作…");
 
   // E4V#43——ResizeObserver 检测 actions 溢出
   useEffect(() => {
@@ -184,8 +193,22 @@ function SidebarSection({
                 <span
                   ref={moreRef}
                   className={`ldk-sidebar-section-more${showActions === "default" ? " show-on-hover" : ""}`}
-                  onClick={(e) => { e.stopPropagation(); setMoreOpen((p) => !p); }}
-                  data-hint={t("更多操作…")}
+                  onClick={(e) => { e.stopPropagation(); toggleMore(); }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      e.stopPropagation(); // ⛔ 别冒到 header 的折叠键
+                      toggleMore();
+                    } else if (e.key === "Escape") {
+                      setMoreOpen(false);
+                    }
+                  }}
+                  role="button"
+                  tabIndex={0}
+                  aria-label={moreLabel}
+                  aria-haspopup="true"
+                  aria-expanded={moreOpen}
+                  {...{ [HINT_ATTR]: moreLabel }}
                 >
                   …
                   {moreOpen && (

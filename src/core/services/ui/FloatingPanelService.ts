@@ -17,7 +17,12 @@
  * 订阅走 App/bridges.ts（硬约束 19）；同 DialogService 模块级注册模式。
  */
 
-import type { PoolFloatingPanelData, PoolFloatingPanelButton } from "../../types/pool/poolFloatingPanel";
+import type {
+  FloatingPanelBounds,
+  PoolFloatingPanelData,
+  PoolFloatingPanelButton,
+  PoolFloatingPanelGeometry,
+} from "../../types/pool/poolFloatingPanel";
 
 /* ── 类型 ── */
 
@@ -101,6 +106,7 @@ export function pushPanel(options: FloatingPanelOptions): Promise<FloatingPanelC
   }
   _currentViewId = options.viewId;
   _currentPluginId = options.pluginId;
+  _lastGeometry = null; // M2 AI#20：新面板的几何未知——作废旧镜像，等池渲染后上报（防读到上一个面板的几何）
   let settle!: (reason: FloatingPanelCloseReason) => void;
   const promise = new Promise<FloatingPanelCloseReason>((resolve) => { settle = resolve; });
   _pending = { promise, settle };
@@ -126,11 +132,42 @@ export function refreshPanelText(title: string, actions: PoolFloatingPanelButton
   _renderer?.({ ..._currentOpen, title, actions, refresh: true });
 }
 
+/**
+ * M2 `AI#20`：设定悬浮面板几何（**非鼠标路径**——位置/高度可精确设定，AI 不必拖）。
+ * 面板未开 → no-op（⛔ 不凭几何无中生有开面板；开面板归 pushPanel / revealFloating）。
+ *
+ * 🔴 **只推不存**：`bounds` 是一次性指令，⛔ 不写进 `_currentOpen` 底稿——否则随后的
+ * `refreshPanelText`（语言切换重推）会带上这条**旧**几何，把用户后来拖过的面板弹回去。
+ * 几何真相源在池（只有它知道面板此刻真在哪），壳这一侧不留第二把尺（见 `reportGeometry`）。
+ */
+export function setBounds(bounds: Partial<FloatingPanelBounds> | null): void {
+  if (!_currentOpen) return;
+  // refresh:true —— 面板已开，这是一次「重推不重开」：池跳过焦点获取（与语言切换重推同一条通道语义）
+  _renderer?.({ ..._currentOpen, bounds, refresh: true });
+}
+
+/* ── M2 `AI#20`：几何镜像（可读面）── */
+
+/** 池上报的**最近一次落定**几何——面板渲染/钳制全在池，本值只是给壳命令/CLI 看的只读镜像。 */
+let _lastGeometry: PoolFloatingPanelGeometry | null = null;
+
+/** 池几何上报落点（bridges.ts 接 `floating-panel:geometry` 后调）——覆盖式快照，无累积。 */
+export function reportGeometry(geometry: PoolFloatingPanelGeometry): void {
+  _lastGeometry = geometry;
+}
+
+/** 读最近一次几何（壳命令 `workbench.action.getFloatingPanelBounds` 用）。null = 无面板 / 尚未上报。
+ *  ⚠️ 拖拽进行中的镜像会滞后到上一次落定值（池按「落定才上报」节流——每 pointermove 一发会打成洪水）。 */
+export function getLastGeometry(): PoolFloatingPanelGeometry | null {
+  return _lastGeometry;
+}
+
 /** 关闭悬浮面板（程序化）——先推 {open:false} 再 settle（dialog 桥纪律：stale close 不覆盖新开） */
 export function closePanel(): void {
   _currentViewId = null;
   _currentPluginId = null;
   _currentOpen = null;
+  _lastGeometry = null; // M2 AI#20：几何镜像随面板关闭清空（无面板 = 无几何；池关闭时不上报）
   _renderer?.({ open: false });
   const p = _pending;
   _pending = null;
@@ -145,6 +182,7 @@ export function handleFloatingPanelAction(actionId: string): void {
   _currentViewId = null;
   _currentPluginId = null;
   _currentOpen = null;
+  _lastGeometry = null; // M2 AI#20：同 closePanel——面板已关，镜像不留旧值
   _renderer?.({ open: false });
   const p = _pending;
   _pending = null;

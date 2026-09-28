@@ -13,6 +13,9 @@ import {
   closePanel,
   refreshPanelText,
   handleFloatingPanelAction,
+  setBounds,
+  reportGeometry,
+  getLastGeometry,
 } from "./FloatingPanelService";
 import type { PoolFloatingPanelData } from "../../types/pool/poolFloatingPanel";
 
@@ -123,5 +126,81 @@ describe("单实例语义（I8-10）", () => {
     expect(lastPush().pluginId).toBe("demo-plugin-b");
     expect(lastPush().viewId).toBe("demo-view");
     expect(newReason).not.toBe(oldReason);
+  });
+});
+
+/* ── M2 `AI#20`：非鼠标路径（几何设定）+ 可读面（几何镜像） ── */
+
+describe("setBounds（AI#20 几何设定——非鼠标路径）", () => {
+  it("面板已开 → 推 DTO 带 bounds + refresh:true（重推不重开，不抢焦点）", () => {
+    pushPanel(sampleOptions());
+    pushMock.mockClear();
+
+    setBounds({ top: 120, left: 90 });
+
+    const pushed = lastPush();
+    expect(pushed.open).toBe(true);
+    expect(pushed.bounds).toEqual({ top: 120, left: 90 });
+    expect(pushed.refresh).toBe(true); // 面板已开——池跳过焦点获取
+    expect(pushed.viewId).toBe("demo-view"); // 身份不变
+  });
+
+  it("bounds:null → 推「回默认居中大卡」语义（池侧回退到 CSS 默认）", () => {
+    pushPanel(sampleOptions());
+    pushMock.mockClear();
+
+    setBounds(null);
+    expect(lastPush().bounds).toBeNull();
+  });
+
+  it("面板未开 → no-op 零推送（⛔ 不凭几何无中生有开面板）", () => {
+    setBounds({ top: 1 });
+    expect(pushMock).not.toHaveBeenCalled();
+  });
+
+  it("⛔ 只推不存——bounds 不进底稿：随后 refreshPanelText 重推不带旧几何", () => {
+    pushPanel(sampleOptions());
+    setBounds({ top: 120, left: 90, width: 500, height: 450 });
+    pushMock.mockClear();
+
+    refreshPanelText("Démo Vue", [{ id: "close", label: "Fermer", icon: "close" }]);
+
+    const pushed = lastPush();
+    // 病根：若把 bounds 写进 _currentOpen，语言切换重推会带上这条旧几何，把用户后来拖过的面板弹回去
+    expect(pushed.bounds).toBeUndefined();
+    expect(pushed.title).toBe("Démo Vue");
+  });
+});
+
+describe("几何镜像（AI#20 可读面）", () => {
+  const GEOMETRY = { top: 120, left: 90, width: 500, height: 450, viewId: "demo-view", pluginId: "demo-plugin", maximized: false };
+
+  it("reportGeometry 覆盖式落值，getLastGeometry 读回", () => {
+    reportGeometry(GEOMETRY);
+    expect(getLastGeometry()).toEqual(GEOMETRY);
+
+    reportGeometry({ ...GEOMETRY, top: 200 });
+    expect(getLastGeometry()!.top).toBe(200); // 覆盖不是累积
+  });
+
+  it("pushPanel（开新面板）清镜像——防读到上一个面板的几何（新几何等池上报）", () => {
+    pushPanel(sampleOptions());
+    reportGeometry(GEOMETRY);
+    expect(getLastGeometry()).not.toBeNull();
+
+    pushPanel({ ...sampleOptions(), viewId: "other-view", pluginId: "other-plugin" });
+    expect(getLastGeometry()).toBeNull();
+  });
+
+  it("closePanel / handleFloatingPanelAction 清镜像（无面板 = 无几何）", () => {
+    pushPanel(sampleOptions());
+    reportGeometry(GEOMETRY);
+    closePanel();
+    expect(getLastGeometry()).toBeNull();
+
+    pushPanel(sampleOptions());
+    reportGeometry(GEOMETRY);
+    handleFloatingPanelAction("close");
+    expect(getLastGeometry()).toBeNull();
   });
 });

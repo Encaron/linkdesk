@@ -119,9 +119,11 @@ export const IPC = {
   },
   // E5.8#34.5：底部面板——插件 linkdesk.panel.reveal 请求（IpcBridge 代理到壳）
   // E5.8#39.5：revealFloating——悬浮面板声明制通用 API（同链：代理到壳 → shellEvents → App hook）
+  // M2 AI#20：setFloatingBounds——悬浮面板几何设定（非鼠标路径；同链代理到壳）
   panel: {
     reveal: 'panel:reveal',
     revealFloating: 'panel:reveal-floating',
+    setFloatingBounds: 'panel:set-floating-bounds',
   },
   path: {
     appDataDir: 'path:appDataDir',

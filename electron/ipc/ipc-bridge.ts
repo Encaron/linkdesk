@@ -138,6 +138,8 @@ export class IpcBridge {
     IPC.panel.reveal,
     // E5.8#39.5：panel.revealFloating——悬浮面板声明制通用 API（同链代理；IpcBridgeHandler/panel 域消费）
     IPC.panel.revealFloating,
+    // M2 AI#20：panel.setFloatingBounds——悬浮面板几何设定（非鼠标路径；同链代理，IpcBridgeHandler/panel 域消费）
+    IPC.panel.setFloatingBounds,
   ];
 
   constructor(

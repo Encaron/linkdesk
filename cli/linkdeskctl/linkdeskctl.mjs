@@ -54,9 +54,11 @@ const STATIC_USAGE = `linkdeskctl——一条命令控制运行中的 LinkDesk�
   tabs                          读标签快照（窗口/分组/标签树）
   open-tab <type>               开一个标签页（type = 视图/插件 id；可加 --opts '{"k":"v"}'）
   exec <commandId> [args…]      执行壳命令（能执行的 = describe 里 commands 清单那些；严格回传真结果）
+                                ⚠️ describe 的 askFirst.commands 里的敏感命令会先在软件里弹确认框，
+                                用户不点头 = EUSERDENIED、不执行（AI#29）
   install <source>              安装插件（zip 包 URL 或本地路径）——确认对话框在软件里弹出，用户点头才装
   notifications                 读通知面板（按钮的 command 事实随行）
-  notify-action <id> <action>   执行通知上的按钮（action = 按钮 label 或序号）
+  notify-action <id> <action>   执行通知上的按钮（action = 按钮 label 或序号；按钮背后是敏感命令时同样要点头）
   log                           读最近操作账（正门三件套之「账本」的读取面）
   mcp                           起 MCP stdio server（给 AI 客户端配置用——⛔ 别在终端里直接跑）
   mcp config [--for <client>]   生成 MCP 配置片段（--for codex = Codex TOML 形；缺省 = 通用 JSON）。
@@ -66,7 +68,7 @@ const STATIC_USAGE = `linkdeskctl——一条命令控制运行中的 LinkDesk�
 选项:
   --json                  机读输出（给 AI 用；失败时带 code + hint）
   --user-data-dir <路径>   指定实例的 userData（隔离实例必须给）
-  --timeout <毫秒>         单次请求超时（默认 5000；install 默认 600000——等用户点头）
+  --timeout <毫秒>         单次请求超时（默认 5000；**要用户点头的动作**默认 600000——等得起人）
   --token <凭据>           覆盖凭据（验证「凭据不对会被拒」用）
   --no-identity-check     跳过「应答者是不是记录里那个进程」的对齐（仅诊断用）
 
@@ -110,9 +112,34 @@ function dirsOf(opts) {
   return opts.userDataDir ? [opts.userDataDir] : candidateUserDataDirs();
 }
 
-function timeoutOf(opts, subcommand) {
+/**
+ * AI#29：这次调用**会不会停下来等用户点头**——会就吃「等点头」的长预算（人可能在走开），
+ * 否则 5 秒足够（普通命令由内核自己 8 秒封顶，不会长挂）。
+ *
+ * 🔴 为什么必须分出来：确认框等人以**分钟**计，而默认超时是**秒**级。客户端先超时 = AI 报「失败」，
+ *   用户随后一点头动作**又真的执行了**——「口头失败、实际发生」，比不装还坏。
+ *
+ * 敏感名单**从实例自省派生**（`describe.askFirst.commands`，AI#29 加的自述字段）——⛔ 不手抄第二份；
+ * 自省读不到就退回默认预算（那时连命令面都读不到，`exec` 本来就会以连接错误收场）。
+ */
+async function asksForUser(opts, subcommand, args) {
+  if (subcommand === "install" || subcommand === "notify-action") return true; // 装插件＝名单内；按钮背后是哪条命令读前不可知
+  if (subcommand !== "exec") return false;
+  const [commandId] = args;
+  if (!commandId) return false;
+  try {
+    const { result } = await callBridge("describe", {}, { userDataDirs: dirsOf(opts), timeoutMs: 5000, identityCheck: false });
+    const listed = (result && result.askFirst && result.askFirst.commands) || [];
+    return listed.some((r) => r && r.id === commandId);
+  } catch {
+    return false; // 自省失败 ⇒ 按普通命令（5s）——此时 exec 多半也连不上，超时长短不是瓶颈
+  }
+}
+
+/** 等待预算——`--timeout` 显式给的一律优先（人工覆盖权最高） */
+async function budgetOf(opts, subcommand, args = []) {
   if (Number.isFinite(opts.timeoutMs) && opts.timeoutMs > 0) return opts.timeoutMs;
-  return subcommand === "install" ? 600_000 : 5000; // install 等用户点头，不吃默认超时
+  return (await asksForUser(opts, subcommand, args)) ? 600_000 : 5000;
 }
 
 /** 子命令 → 一条内核操作请求；返回 null = 本地子命令（status），不发网络 */
@@ -176,7 +203,7 @@ async function helpText(opts) {
   let extra = OFFLINE_NOTE;
   let live = null;
   try {
-    const { result } = await callBridge("describe", {}, { userDataDirs: dirsOf(opts), timeoutMs: timeoutOf(opts, "describe") });
+    const { result } = await callBridge("describe", {}, { userDataDirs: dirsOf(opts), timeoutMs: await budgetOf(opts, "describe") });
     live = result;
   } catch (e) {
     extra = `\n离线说明（探测失败：${e.code}）:\n  ${e.message}` + (e.hint ? `\n  下一步：${e.hint}` : "") + OFFLINE_NOTE;
@@ -196,6 +223,9 @@ async function helpText(opts) {
         })
         .join("\n") +
       `\n  命令面（exec 可执行，运行期派生）：${live.commandCount} 条——逐条看 \`describe --json\`` +
+      (((live.askFirst && live.askFirst.commands) || []).length
+        ? `\n  要用户点头的动作（AI#29）：${live.askFirst.commands.map((r) => r.id).join("、")}——不点头 = EUSERDENIED、不执行`
+        : "") +
       `\n  对账：静态表有 / 实例无 = ${staticOnly.length ? staticOnly.join(",") : "(空)"} · 实例有 / 静态表无 = ${liveOnly.length ? liveOnly.join(",") : "(空)"}` +
       `\n  ⇒ 差集是空的就说明「文档没漂移」；非空即说明静态骨架该更新了。`;
   }
@@ -220,6 +250,12 @@ function render(op, result) {
     const lines = result.ops.map((o) => `${o.name.padEnd(14)} ${o.help}`);
     lines.push("", `命令面（exec 可执行）：${result.commandCount} 条`);
     for (const c of result.commands) lines.push(`  ${(c.id ?? "?").padEnd(36)} ${c.title ?? ""}`);
+    // AI#29：哪些动作会停下来等人点头——动手前就该看见，否则 AI 会把「在等人」当成「没反应」
+    const ask = (result.askFirst && result.askFirst.commands) || [];
+    if (ask.length) {
+      lines.push("", `要用户点头的动作（不点头 = EUSERDENIED、不执行）：`);
+      for (const r of ask) lines.push(`  ${(r.id ?? "?").padEnd(36)} ${r.what ?? ""}`);
+    }
     return lines.join("\n");
   }
   if (op === "tabs") {
@@ -330,9 +366,15 @@ async function main() {
     process.exit(1);
   }
 
+  const timeoutMs = await budgetOf(opts, subcommand, rest.slice(1));
+  // AI#29：要等人点头的那几条——先出声再去等，否则 AI（和用户）只看到一个「没反应」的终端
+  if (timeoutMs > 60_000 && !opts.json) {
+    process.stderr.write("等用户点头中…… 确认框已在软件里弹出（Enter = 同意 / Esc = 取消；不点 = 不执行，最长等 10 分钟）\n");
+  }
+
   const callOpts = {
     userDataDirs: dirsOf(opts),
-    timeoutMs: timeoutOf(opts, subcommand),
+    timeoutMs,
     token: opts.token,
     identityCheck: opts.identityCheck,
   };

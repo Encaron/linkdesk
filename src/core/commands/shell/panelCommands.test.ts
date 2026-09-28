@@ -14,11 +14,13 @@ import { clearMenus } from "../../registry/commands/MenuRegistry";
 import { ContextKeyService } from "../../registry/commands/ContextKeyService"; // #37.6 回归：换边当开关 when 门控
 import type { MenuItemDescriptor } from "../../api/linkdesk-api";
 import { handleSettingsChannel } from "../../services/plugins/IpcBridgeHandler/ui"; // #37.7：getItems 桥 checked 解析
-import { layoutEngine, narrowSidebarEdge } from "../../services/layout/LayoutEngine";
+import { layoutEngine, narrowSidebarEdge, DEFAULT_ZONE_SIZE } from "../../services/layout/LayoutEngine";
 import { ViewContainerService } from "../../services/layout/ViewContainerService"; // #37.7.1：面板视图清单数据源
 import { clearPluginStates } from "../../services/plugins/PluginStateService"; // #37.7.1：setVisible 落盘测试隔离
 import { registerPanelCommands, resolvePanelChecked } from "./panelCommands";
 import { registerShellMenus } from "../input-bindings/shellMenus"; // #37.6 回归：viewTitleContext 双 when 门控项真源
+import { shellEvents } from "../../react/events/ShellEvents"; // M2 AI#20：几何命令出口（三条命令共用）
+import { closePanel, reportGeometry } from "../../services/ui/FloatingPanelService"; // M2 AI#20：面板态 / 几何镜像
 
 /** 重置全局引擎——E5 默认 5 zone + rightSidebar（swap 规则消费方） */
 function resetEngine(): void {
@@ -291,5 +293,148 @@ describe("viewTitleContext getItems——侧栏换边双 when 门控（E5.8#37.6
     toggle = items.filter((i) => i.command === "workbench.action.toggleSidebarPosition");
     expect(toggle).toHaveLength(1);
     expect(toggle[0].label).toBe("移动到左侧");
+  });
+});
+
+/* ──M2 `AI#20`：悬浮面板几何的壳命令出口（非鼠标路径——设 / 重置 / 读）── */
+describe("registerPanelCommands——悬浮面板几何命令（M2 AI#20）", () => {
+  /** 采集 shellEvents 出口载荷——三条命令都只经这一条出口（壳命令与插件 API 同通道） */
+  let emitted: Array<{ bounds: unknown }> = [];
+  let off: (() => void) | undefined;
+
+  beforeEach(() => {
+    clearRegistrationLayers();
+    clearCommands();
+    clearMenus();
+    resetEngine();
+    closePanel(); // 清 FloatingPanelService 模块级态（_currentOpen / 几何镜像）
+    shellEvents.dispose("panel:set-floating-bounds"); // 清回放缓冲（E5#7h5）防跨用例串味
+    emitted = [];
+    off = shellEvents.on("panel:set-floating-bounds", (payload) => { emitted.push(payload); });
+    registerPanelCommands();
+  });
+
+  afterEach(() => {
+    off?.();
+    shellEvents.dispose("panel:set-floating-bounds");
+  });
+
+  // ⚠️ 第二个实参 = token 占位槽（`executeCommand(id, token, ...realArgs)`）——真实参数从第三位起。
+  // AI 侧不必关心该槽：`commands:execute` 桥与 M4 exec 白名单都固定补 `undefined`（见 IpcBridgeHandler/commands.ts）。
+  it("setFloatingPanelBounds 四参 → emit 一条完整 bounds（一参一字段）", async () => {
+    await executeCommand("workbench.action.setFloatingPanelBounds", undefined, 120, 90, 640, 420);
+    expect(emitted).toEqual([{ bounds: { top: 120, left: 90, width: 640, height: 420 } }]);
+  });
+
+  it("省略字段 → 不进 bounds（「未指定」与「0」语义区分——池据此保持现值）", async () => {
+    await executeCommand("workbench.action.setFloatingPanelBounds", undefined, 120, undefined, undefined, 420);
+    expect(emitted).toEqual([{ bounds: { top: 120, height: 420 } }]);
+  });
+
+  it("坏值（NaN / Infinity / 字符串）→ 当未指定丢弃（⛔ 不把 NaN 写进几何）", async () => {
+    await executeCommand("workbench.action.setFloatingPanelBounds", undefined, Number.NaN, Number.POSITIVE_INFINITY, "300", 0);
+    // 0 是有限数——合法（高 0 由池侧 MIN_HEIGHT 钳到 300）；其余三个被丢弃
+    expect(emitted).toEqual([{ bounds: { height: 0 } }]);
+  });
+
+  it("resetFloatingPanelBounds → emit bounds:null（回默认居中大卡）", async () => {
+    await executeCommand("workbench.action.resetFloatingPanelBounds");
+    expect(emitted).toEqual([{ bounds: null }]);
+  });
+
+  it("getFloatingPanelBounds → 无面板时 null（读面不虚报）", async () => {
+    await expect(executeCommand("workbench.action.getFloatingPanelBounds")).resolves.toBeNull();
+  });
+
+  it("getFloatingPanelBounds → 返回池上报的最近一次几何（设一次 → 读数与落点一致的对账出口）", async () => {
+    const geometry = { viewId: "settings", pluginId: "demo", maximized: false, top: 60, left: 60, width: 980, height: 640 };
+    reportGeometry(geometry);
+    await expect(executeCommand("workbench.action.getFloatingPanelBounds")).resolves.toEqual(geometry);
+  });
+});
+
+/* ──M2 `AI#21`：侧栏宽 / 面板尺寸的非鼠标路径（⛔ 只挂门牌——行为与拖拽那条通道逐字同款）── */
+describe("registerPanelCommands——尺寸命令（M2 AI#21）", () => {
+  beforeEach(() => {
+    clearRegistrationLayers();
+    clearCommands();
+    clearMenus();
+    resetEngine();
+    registerPanelCommands();
+  });
+
+  // ⚠️ 第二个实参仍是 token 占位槽（同 AI#20 块注释）。
+
+  it("setSidebarWidth → resizeZone('sidebar', N)（与池分隔线拖拽同一入口）", async () => {
+    expect(layoutEngine.getZone("sidebar")?.dock?.width).toBe(280);
+    await executeCommand("workbench.action.setSidebarWidth", undefined, 420);
+    expect(layoutEngine.getZone("sidebar")?.dock?.width).toBe(420);
+  });
+
+  it("setSidebarWidth 越界 → 与拖拽同一套钳制（170–600）", async () => {
+    await executeCommand("workbench.action.setSidebarWidth", undefined, 5000);
+    expect(layoutEngine.getZone("sidebar")?.dock?.width).toBe(600);
+    await executeCommand("workbench.action.setSidebarWidth", undefined, 10);
+    expect(layoutEngine.getZone("sidebar")?.dock?.width).toBe(170);
+  });
+
+  it("setSidebarWidth 坏值（非数 / NaN / Infinity）→ 无动作（⛔ 不把坏值写进布局）", async () => {
+    await executeCommand("workbench.action.setSidebarWidth", undefined, "400");
+    await executeCommand("workbench.action.setSidebarWidth", undefined, Number.NaN);
+    await executeCommand("workbench.action.setSidebarWidth", undefined, Number.POSITIVE_INFINITY);
+    expect(layoutEngine.getZone("sidebar")?.dock?.width).toBe(280); // 仍是默认
+  });
+
+  it("resetSidebarWidth → 回 DEFAULT_ZONE_SIZE.sidebarWidth（280，单一真相源）", async () => {
+    layoutEngine.resizeZone("sidebar", 520);
+    await executeCommand("workbench.action.resetSidebarWidth");
+    expect(layoutEngine.getZone("sidebar")?.dock?.width).toBe(DEFAULT_ZONE_SIZE.sidebarWidth);
+  });
+
+  it("setPanelSize 面板在底部（横带）→ 走**高轴** resizeZoneHeight", async () => {
+    expect(layoutEngine.getZone("panel")?.dock?.edge).toBe("bottom");
+    await executeCommand("workbench.action.setPanelSize", undefined, 380);
+    expect(layoutEngine.getZone("panel")?.dock?.height).toBe(380);
+    expect(layoutEngine.getZone("panel")?.dock?.width).toBeUndefined(); // 宽轴未被碰（横带无 width 值）
+  });
+
+  it("setPanelSize 面板在右侧（竖条）→ 走**宽轴** resizeZone（轴感知路由）", async () => {
+    layoutEngine.dockTo("panel", "right");
+    await executeCommand("workbench.action.setPanelSize", undefined, 380);
+    expect(layoutEngine.getZone("panel")?.dock?.width).toBe(380);
+    expect(layoutEngine.getZone("panel")?.dock?.height).toBe(220); // 高轴未被动过（仍是用例初始值）
+  });
+
+  it("setPanelSize 越界 → clamp 到当前轴的 min/max（横带 120–600）", async () => {
+    await executeCommand("workbench.action.setPanelSize", undefined, 9999);
+    expect(layoutEngine.getZone("panel")?.dock?.height).toBe(600);
+    await executeCommand("workbench.action.setPanelSize", undefined, 1);
+    expect(layoutEngine.getZone("panel")?.dock?.height).toBe(120);
+  });
+
+  it("setPanelSize 坏值 → 无动作", async () => {
+    await executeCommand("workbench.action.setPanelSize", undefined, Number.NaN);
+    expect(layoutEngine.getZone("panel")?.dock?.height).toBe(220); // 仍是默认
+  });
+
+  it("resetPanelSize 横带 → DEFAULT_ZONE_SIZE.panelHeight；竖条 → panelWidth", async () => {
+    layoutEngine.resizeZoneHeight("panel", 500);
+    await executeCommand("workbench.action.resetPanelSize");
+    expect(layoutEngine.getZone("panel")?.dock?.height).toBe(DEFAULT_ZONE_SIZE.panelHeight);
+
+    layoutEngine.dockTo("panel", "left");
+    layoutEngine.resizeZone("panel", 500);
+    await executeCommand("workbench.action.resetPanelSize");
+    expect(layoutEngine.getZone("panel")?.dock?.width).toBe(DEFAULT_ZONE_SIZE.panelWidth);
+  });
+
+  it("五条尺寸命令都只挂门牌——不引入新通道（无 shellEvents emit 副作用）", async () => {
+    const emitSpy = vi.spyOn(shellEvents, "emit");
+    await executeCommand("workbench.action.setSidebarWidth", undefined, 300);
+    await executeCommand("workbench.action.resetSidebarWidth");
+    await executeCommand("workbench.action.setPanelSize", undefined, 300);
+    await executeCommand("workbench.action.resetPanelSize");
+    expect(emitSpy).not.toHaveBeenCalled();
+    emitSpy.mockRestore();
   });
 });

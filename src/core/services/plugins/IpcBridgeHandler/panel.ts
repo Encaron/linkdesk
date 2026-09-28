@@ -4,6 +4,7 @@
  */
 
 import { shellEvents } from "../../../react/events/ShellEvents"; // E5.8#34.5
+import type { FloatingPanelBounds } from "../../../types/pool/poolFloatingPanel"; // M2 AI#20
 
 /** panel:* 处理器——插件调壳的 linkdesk.panel API（经 ShellEvents 事件总线）。全 case void emit 无返回 */
 export async function handlePanelChannel(channel: string, args: unknown[]): Promise<void> {
@@ -20,6 +21,16 @@ export async function handlePanelChannel(channel: string, args: unknown[]): Prom
       //（壳侧路径 Ctrl+,/右键同款载荷；裸 viewId 多命中 fail-loud no-op）
       const [viewId, pluginId] = args as [string, string | undefined];
       shellEvents.emit("panel:reveal-floating", { viewId, pluginId });
+      break;
+    }
+    // ── M2 `AI#20`：悬浮面板几何设定——插件调 linkdesk.panel.setFloatingBounds(bounds|null) ──
+    case "panel:set-floating-bounds": {
+      // wire 兜底（同 reveal-folding 的 viewId 守卫）：只放行「对象（部分字段）」与「null（回默认）」——
+      // undefined / 数字 / 字符串等坏值一律**忽略**（⛔ 不把坏载荷翻译成「回默认」这种有副作用的动作）
+      const [bounds] = args as [unknown];
+      if (bounds === null || (typeof bounds === "object" && bounds !== null)) {
+        shellEvents.emit("panel:set-floating-bounds", { bounds: bounds as Partial<FloatingPanelBounds> | null });
+      }
       break;
     }
     default:

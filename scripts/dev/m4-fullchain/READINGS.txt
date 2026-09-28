@@ -152,3 +152,89 @@ initialize 应答 +66ms
 tools/list 应答 +812ms: 10 工具
 linkdesk_status 应答 +1608ms: 状态: 离线 原因: NO_RECORD 详情: 没有通道记录（找过 …ldk-nonet）
 （软件没开时 tools/list 走离线静态表；在线时同一份 tools/list 改走实例 describe —— 见结项报告「spike 三难点」②）
+
+
+═══════════════════════════════════════════════════════════════════
+附：AI#29 敏感动作的**统一确认回路**读数原件 —— scripts/dev/m4-fullchain/gate-accept.mjs
+═══════════════════════════════════════════════════════════════════
+# 判据: 「敏感动作有统一确认回路，且该回路**不是唯一鼠标路径**」（03-任务档案/M2-操作面.md AI#29）
+# 时间: 2026-09-28 会话 10  轨道: dev（Vite :1420）+ 隔离实例 --user-data-dir=<ISO ldk-ai29> --remote-debugging-port=9444
+# 前置: userData/settings.json = {"ai.cli.enabled":true,"ai.mcp.enabled":true,"ai.auditLog.enabled":true}
+# 同实例另跑一次全链路回归（accept.mjs --channel cli）= 39/39，含 S6.2 装插件门（新措辞）与 S4 通知按钮腿
+# 同一版本连跑两遍（差异只在**窗口有没有被 OS 聚焦**，见下面的机制说明）；两遍都 24/24。
+# 机制（实测，写下来免得下一棒当回归）:
+#   · Enter 的监听在**面板**上、Escape 的监听在 window 上 ⇒ 键事件打给谁，取决于页面聚焦态：
+#     docFocus=true 时 CDP 真按键的 target = 聚焦元素（面板）⇒ Enter 生效；docFocus=false 时 target = BODY
+#     ⇒ Enter 打不到（Escape 照样生效）。⇒ 真用户按 Enter 天然是聚焦窗，不受影响；
+#     验收器在窗未聚焦时降级 DOM 合成 KeyboardEvent（仍不碰鼠标），读数如实标 dom。
+#   · 门就绪 ≠ 门出现：DialogHost 收到 show 后 50ms 才 focus 面板 ⇒ 验收器等到焦点落上面板再打字。
+#   · 面板消失晚 1–2 帧 ⇒ 「门已收」是轮询读数（≤2.5s），⛔ 不是 0ms 快照。
+
+── 跑法 1：窗口已聚焦（键盘两腿 = CDP 真按键 Input.dispatchKeyEvent） ──
+
+── 前置 ──
+  ✔ ENV-PING                   应答 pid=41568 通道=tcp 版本=0.2.21
+  ✔ ENV-CDP                    target = ["pool","shell"]
+
+── ① 自述面（describe.askFirst） ──
+  ✔ G0.1·自述含敏感命令               commands = ["update.openUpdateFlow"]
+  ✔ G0.2·自述含敏感操作               ops = ["install"]
+  ✔ G0.3·🔴 AI 没有应答面           9 个操作，命中 /dialog|answer|confirm|approve|reply/ 的 = []
+  ✔ G0.4·--help 能自查名单          --timeout <毫秒>         单次请求超时（默认 5000；**要用户点头的动作**默认 600000——等得起人）
+
+── ② 名单外不问 ──
+  ✔ G1.1·普通命令照旧                exec view.zoomReset ⇒ ok=true code=null
+  ✔ G1.2·普通命令不弹门               1.2s 内池里没有确认面板
+
+── ③ 键盘腿（Esc = 拒） ──
+  ✔ G2·门出现                     79ms · 按钮=["取消","确定"]
+  ✔ G2·门接得住键盘                  焦点=ldk-dialog-host-panel · docFocus=true · 就绪 625ms
+  ✔ G2·门文案统一                   AI 请求执行敏感命令「update.openUpdateFlow」： 处理主软件更新（有新版本会先下载，下载完**重启并装**） （问一声的原因：装更新 = 换掉正在跑的程序本体，不可回退） 允许吗？（不点 = 不执行） 取消 确定
+  ✔ G2·键盘腿(cdp)                按 Escape ⇒ exit=1 ok=false code=EUSERDENIED 646ms · hint=去软件里点那个确认框（键盘 Enter = 同意 / Esc = 取消）——**不点就不执行**；授权不缓存，下次还会问…
+  ✔ G2·门已收                     112ms 内面板消失
+  ✔ G2.5·被拒读数可自救               hint=去软件里点那个确认框（键盘 Enter = 同意 / Esc = 取消）——**不点就不执行**；授权不缓存，下次还会问（AI#29）。
+
+── ③ 键盘腿（Enter = 准） ──
+  ✔ G3·门出现                     85ms · 按钮=["取消","确定"]
+  ✔ G3·门接得住键盘                  焦点=ldk-dialog-host-panel · docFocus=true · 就绪 859ms
+  ✔ G3·门文案统一                   （同上逐字）
+  ✔ G3·键盘腿(cdp)                按 Enter ⇒ exit=0 ok=true code=null 904ms
+  ✔ G3·门已收                     126ms 内面板消失
+
+── ④ 账本（不撒谎） ──
+  ✔ G4.1·拒了记 ok=false          ts=2026-09-28T15:01:20.076Z op=exec ok=false code=EUSERDENIED arg=update.openUpdateFlow
+  ✔ G4.2·准了记 ok=true           ts=2026-09-28T15:01:21.082Z op=exec ok=true code=null arg=update.openUpdateFlow
+  ✔ G4.3·盘上账同一条                ai-bridge-log.jsonl 尾 8 行：同 G4.1 那条（ts/op/ok/code/arg 逐字一致）
+
+── ⑤ 负控 ──
+  ✔ G5.1·不存在的命令不问              code=EUNKNOWN · 门=没出现
+  ✔ G5.2·Esc 那次真没落地            同一条命令 Enter 那次 ok=true —— 同路径两种读法，差别只来自那一下按键
+── 合计 24/24 条读数 ──
+
+── 跑法 2：窗口未被 OS 聚焦（键盘两腿降级 DOM 合成 KeyboardEvent；仍不碰鼠标） ──
+
+  ✔ ENV-PING / ENV-CDP / G0.1–G0.4 / G1.1–G1.2   同上（读数一致，不重复抄）
+  ✔ G2·门出现                     90ms · 按钮=["取消","确定"]
+  ✔ G2·门接得住键盘                  焦点=ldk-dialog-host-panel · docFocus=false · 就绪 490ms
+  ✔ G2·门文案统一                   （同上逐字）
+    · CDP 真按键没让门收场——降级 DOM 合成 KeyboardEvent（仍不碰鼠标），读数标 dom
+  ✔ G2·键盘腿(dom-fallback)       按 Escape ⇒ exit=1 ok=false code=EUSERDENIED 3537ms · hint=（同上）
+  ✔ G2·门已收                     6ms 内面板消失
+  ✔ G2.5·被拒读数可自救           （同上）
+  ✔ G3·门出现                     89ms · docFocus=true（**读的那一刻**页面对 DOM 是聚焦的，真按键那一下仍没落到面板上 ⇒ 仍走降级，如实标注）· 就绪 943ms
+  ✔ G3·键盘腿(dom-fallback)       按 Enter ⇒ exit=0 ok=true code=null 3992ms
+  ✔ G3·门已收                     6ms 内面板消失
+  ✔ G4.1·拒了记 ok=false          ts=2026-09-28T15:04:07.067Z op=exec ok=false code=EUSERDENIED arg=update.openUpdateFlow
+  ✔ G4.2·准了记 ok=true           ts=2026-09-28T15:04:11.065Z op=exec ok=true code=null arg=update.openUpdateFlow
+  ✔ G4.3·盘上账同一条                ai-bridge-log.jsonl 尾 8 行：同 G4.1 那条
+  ✔ G5.1·不存在的命令不问              code=EUNKNOWN · 门=没出现
+  ✔ G5.2·Esc 那次真没落地            同一条命令 Enter 那次 ok=true
+── 合计 24/24 条读数 ──
+
+── 同实例全链路回归（accept.mjs --channel cli，AI#29 改动后） ──
+  39/39 —— 其中与本格直接相关的两条：
+  ✔ CLI-S6.2.门出现  146ms · AI 请求安装插件： <pkg> （问一声的原因：插件 = 陌生代码，装上就会运行） 允许吗？（不点 = 不执行）
+  ✔ CLI-S4.1.门出现  139ms · 确认安装 串口监视器 …（通知按钮 marketplace.retryInstall 触及安装 ⇒ 同一道门；按「确认安装」后才真跑）
+  ⇒ 结论：AI#29 把「问一声」从**入口**（install）挪到**动作**（exec/notifyAction/install 共用的那一处出口），
+     既有两条链的门都在，措辞统一；名单外命令照旧不问。
+（本文件的 PID/端口/临时路径每次都不同；上面两份读数来自同一版本的两只实例序，⛔ 不是同一只实例的两次抄录。）

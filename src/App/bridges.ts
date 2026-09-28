@@ -11,7 +11,7 @@ import { useEffect } from "react";
 import { QuickPickService } from "../core/services/ui/QuickPickService";
 import { TOAST_TTL_INFO } from "../core/services/ui/toast";
 import { registerDialogRenderers, resolveDialogButtons, type DialogOptions } from "../core/services/ui/DialogService";
-import { registerFloatingPanelRenderer, handleFloatingPanelAction } from "../core/services/ui/FloatingPanelService"; // E5.8#37（Phase 8 类型 B）
+import { registerFloatingPanelRenderer, handleFloatingPanelAction, reportGeometry } from "../core/services/ui/FloatingPanelService"; // E5.8#37（Phase 8 类型 B）＋ M2 AI#20 几何镜像
 import { pushToast } from "../core/services/ui/NotificationService";
 import { shellEvents } from "../core/react/events/ShellEvents";
 import { layoutEngine } from "../core/services/layout/LayoutEngine";
@@ -138,7 +138,26 @@ export function useUiBridges({ setPanelActiveViewId, panelActiveViewIdRef, detac
     const offDetach = events?.on("panel:detach", () => {
       detachPanel();
     });
-    return () => { offSelect?.(); offResize?.(); offToggleVis?.(); offDetach?.(); };
+    // M2 `AI#20`：悬浮面板几何上报（**可读面**）——池是几何真相源（面板渲染在池），本桥只把它落进
+    // FloatingPanelService 的只读镜像，供壳命令 `workbench.action.getFloatingPanelBounds` / CLI 对账。
+    // ⛔ 镜像不参与任何几何计算（渲染/钳制全在池 + 共享 floatingBounds）——不是第二把尺。
+    const offFpGeometry = events?.on("floating-panel:geometry", (payload) => {
+      // E5.7#97 通道契约 + wire 兜底：身份双字符串 + 四边有限数才收（坏值一律丢，不写脏镜像）
+      const p = (payload ?? {}) as Record<string, unknown>;
+      if (typeof p.viewId !== "string" || typeof p.pluginId !== "string") return;
+      const { top, left, width, height } = p;
+      if (typeof top !== "number" || !Number.isFinite(top)) return;
+      if (typeof left !== "number" || !Number.isFinite(left)) return;
+      if (typeof width !== "number" || !Number.isFinite(width)) return;
+      if (typeof height !== "number" || !Number.isFinite(height)) return;
+      reportGeometry({
+        top, left, width, height,
+        viewId: p.viewId,
+        pluginId: p.pluginId,
+        maximized: p.maximized === true,
+      });
+    });
+    return () => { offSelect?.(); offResize?.(); offToggleVis?.(); offDetach?.(); offFpGeometry?.(); };
   }, [setPanelActiveViewId, detachPanel]);
 
   // E5.8#32：桥接池面板 [+] 新建视图——panel:createView（现网 emit 零监听 no-op——#88 ③）→

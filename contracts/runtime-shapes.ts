@@ -1486,10 +1486,37 @@ function chkPoolFloatingPanelData(v: unknown, p: string, errs: string[]): void {
       if (_t197.refresh !== undefined) {
       if (!(_t197.refresh === false || _t197.refresh === true)) _t196.push(((p) + ".refresh") + ": 期望 false|true");
       }
+      if (_t197.bounds !== undefined) {
+      const _t200: string[] = [];
+        if (_t197.bounds !== null) _t200.push(((p) + ".bounds") + ": 期望 null");
+      const _t201 = 0;
+      if (_t200.length > 0) {
+      const _t202: string[] = [];
+        if (_t197.bounds === null || typeof _t197.bounds !== "object" || Array.isArray(_t197.bounds)) _t202.push(((p) + ".bounds") + ": 期望 object");
+        else {
+          const _t203 = _t197.bounds as Record<string, unknown>;
+          if (_t203.top !== undefined) {
+          if (typeof _t203.top !== "number") _t202.push((((p) + ".bounds") + ".top") + ": 期望 number，实收 " + typeof _t203.top);
+          }
+          if (_t203.left !== undefined) {
+          if (typeof _t203.left !== "number") _t202.push((((p) + ".bounds") + ".left") + ": 期望 number，实收 " + typeof _t203.left);
+          }
+          if (_t203.width !== undefined) {
+          if (typeof _t203.width !== "number") _t202.push((((p) + ".bounds") + ".width") + ": 期望 number，实收 " + typeof _t203.width);
+          }
+          if (_t203.height !== undefined) {
+          if (typeof _t203.height !== "number") _t202.push((((p) + ".bounds") + ".height") + ": 期望 number，实收 " + typeof _t203.height);
+          }
+        }
+      const _t204 = 0;
+      const _t205 = [{ e: _t200, s: _t201 }, { e: _t202, s: _t204 }].sort((a, b) => b.s - a.s || a.e.length - b.e.length)[0].e;
+      if (_t205.length > 0) _t196.push(..._t205);
+      }
+      }
     }
-  const _t200 = (v !== null && typeof v === "object" && !Array.isArray(v) ? (((v as Record<string, unknown>).open === true ? 1 : 0) + (((v as Record<string, unknown>).refresh === false) || ((v as Record<string, unknown>).refresh === true) ? 1 : 0)) : 0);
-  const _t201 = [{ e: _t193, s: _t195 }, { e: _t196, s: _t200 }].sort((a, b) => b.s - a.s || a.e.length - b.e.length)[0].e;
-  if (_t201.length > 0) errs.push(..._t201);
+  const _t206 = (v !== null && typeof v === "object" && !Array.isArray(v) ? (((v as Record<string, unknown>).open === true ? 1 : 0) + (((v as Record<string, unknown>).refresh === false) || ((v as Record<string, unknown>).refresh === true) ? 1 : 0)) : 0);
+  const _t207 = [{ e: _t193, s: _t195 }, { e: _t196, s: _t206 }].sort((a, b) => b.s - a.s || a.e.length - b.e.length)[0].e;
+  if (_t207.length > 0) errs.push(..._t207);
   }
 }
 

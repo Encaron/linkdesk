@@ -133,7 +133,9 @@
     ],
     "floatingPanelHost": [
       "action",
-      "onShow"
+      "getBounds",
+      "onShow",
+      "registerBoundsHost"
     ],
     "hotExit": [
       "clear",
@@ -185,7 +187,8 @@
     ],
     "panel": [
       "reveal",
-      "revealFloating"
+      "revealFloating",
+      "setFloatingBounds"
     ],
     "path": [
       "appDataDir",
@@ -489,7 +492,9 @@
     ],
     "floatingPanelHost": [
       "action",
-      "onShow"
+      "getBounds",
+      "onShow",
+      "registerBoundsHost"
     ],
     "hotExit": [
       "clear",
@@ -541,7 +546,8 @@
     ],
     "panel": [
       "reveal",
-      "revealFloating"
+      "revealFloating",
+      "setFloatingBounds"
     ],
     "path": [
       "appDataDir",

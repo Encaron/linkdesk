@@ -10,7 +10,11 @@ import { ipcRenderer } from 'electron';
 import { IPC } from '../ipc/channels';
 import { guardPush } from '../ipc/wire-guard';
 import type { PoolDialogData, PoolPendingDialog } from '../../src/core/types/pool/poolDialog';
-import type { PoolFloatingPanelData } from '../../src/core/types/pool/poolFloatingPanel';
+import type {
+  FloatingPanelBoundsHostFn,
+  PoolFloatingPanelData,
+  PoolFloatingPanelGeometry,
+} from '../../src/core/types/pool/poolFloatingPanel';
 
 // ── E5.7#17：pool:dialog 缓冲回放——Dialog 哑渲染数据可能在 DialogHost mount 前到达 ──
 // 对标 pool:quickpick 模式（硬约束 20）：模块顶层注册 + 缓冲 + onShow 回放。
@@ -74,6 +78,12 @@ const _floatingPanelBuffer: PoolFloatingPanelData[] = [];
 let _floatingPanelCallback: ((data: PoolFloatingPanelData) => void) | null = null;
 let _floatingPanelActive = false;
 
+// ── M2 `AI#20`：几何宿主注册槽——池 FloatingPanelHost 注册（getBounds 同步直答；主世界函数经代理进本侧存储，
+//    同 quickPickHost `_quickPickHostFn` 先例）。set 路径不经本槽（走壳 → DTO 推送），故此处只存不调 set。
+//    ⚠️ `FloatingPanelBoundsHostFn` 走 `src/core/types/pool` 的**共享类型**（本文件顶 E5.8#20 那条裁决：
+//    手抄一份 = 与语义类型漂移，构建期擦除零运行时依赖 ⇒ 直接 import type）。
+let _floatingPanelBoundsHostFn: FloatingPanelBoundsHostFn | null = null;
+
 ipcRenderer.on(IPC.pool.floatingPanel, (_event, data: PoolFloatingPanelData) => {
   // E5.8#22.5：pool:floating-panel 直收点接收边界断言——guard 只记录不阻断，透传缓冲
   guardPush(IPC.pool.floatingPanel, data);
@@ -105,5 +115,19 @@ export function buildFloatingPanelHost() {
     },
     /** 动作回传——open-in（在主窗口中打开）/ close（关闭按钮/Esc/遮罩），壳侧 settle（业务语义壳侧重解析） */
     action: (actionId: string) => ipcRenderer.send(IPC.pool.floatingPanelAction, { type: 'action', actionId }),
+
+    // ── M2 `AI#20`：几何宿主（池是几何真相源——面板渲染在池，壳不存几何） ──
+    /** 池 FloatingPanelHost mount 时注册几何宿主（主世界函数经 contextBridge 代理进隔离世界存储，
+     *  同 `quickPickHost.registerHost` 先例）。返回 unsubscribe。 */
+    registerBoundsHost: (fn: FloatingPanelBoundsHostFn) => {
+      _floatingPanelBoundsHostFn = fn;
+      return () => {
+        if (_floatingPanelBoundsHostFn === fn) _floatingPanelBoundsHostFn = null;
+      };
+    },
+    /** 读当前悬浮面板几何（**同步**——池内直答零 IPC，同 `dialogHost.current()` 先例）。
+     *  无面板 / 宿主未注册（旧池组件）→ null。 */
+    getBounds: (): PoolFloatingPanelGeometry | null =>
+      (_floatingPanelBoundsHostFn?.({ op: 'get' }) as PoolFloatingPanelGeometry | null | undefined) ?? null,
   };
 }

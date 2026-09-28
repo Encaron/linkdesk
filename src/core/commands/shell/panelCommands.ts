@@ -8,8 +8,10 @@ import { registerCommand } from "../../registry/commands/CommandRegistry";
 import { registerMenuItems, MENU_SLOTS } from "../../registry/commands/MenuRegistry";
 import { shellEvents } from "../../react/events/ShellEvents";
 import { APP_PLUGIN_ID } from "../../services/plugins/PluginStateService";
-import { layoutEngine, narrowSidebarEdge, narrowPanelEdge } from "../../services/layout/LayoutEngine"; // #37.6/#37.7 命令真相源
+import { layoutEngine, narrowSidebarEdge, narrowPanelEdge, DEFAULT_ZONE_SIZE } from "../../services/layout/LayoutEngine"; // #37.6/#37.7 命令真相源；M2 AI#21 尺寸默认值
 import { ViewContainerService } from "../../services/layout/ViewContainerService"; // E5.8#37.7.1：面板视图显隐清单命令
+import { getLastGeometry } from "../../services/ui/FloatingPanelService"; // M2 AI#20：悬浮面板几何读数
+import type { FloatingPanelBounds } from "../../types/pool/poolFloatingPanel"; // M2 AI#20：几何载荷形状
 
 /* ── E5.8#37.7：面板位置/对齐命令映射——命令 ID → 目标 edge/align（单一真相：注册 + resolvePanelChecked 共用）── */
 
@@ -80,6 +82,21 @@ function alignPanel(align: "left" | "center" | "right" | "justify"): void {
   layoutEngine.setAlign("panel", align);
 }
 
+/**
+ * M2 `AI#21`：面板尺寸应用器（**轴感知**）——`size === null` = 回默认值。
+ * 轴判据与池侧 `panel:resize` 的壳消费处（`src/App/bridges.ts` 的 `offResize`）逐字同款：
+ * `edge ∈ {left,right}` 走**宽轴**（`resizeZone`），`top/bottom` 走**高轴**（`resizeZoneHeight`）。
+ * 钳制仍在 LayoutEngine 一处（竖条 120–800 / 横带 120–600）——本函数只选轴，不管边界。
+ */
+function applyPanelSize(size: number | null): void {
+  const edge = narrowPanelEdge(layoutEngine.getZone("panel")?.dock?.edge);
+  if (edge === "left" || edge === "right") {
+    layoutEngine.resizeZone("panel", size ?? DEFAULT_ZONE_SIZE.panelWidth);
+  } else {
+    layoutEngine.resizeZoneHeight("panel", size ?? DEFAULT_ZONE_SIZE.panelHeight);
+  }
+}
+
 export function registerPanelCommands(): void {
   // E5.8#31：底部面板显隐切换（VS Code 标准 Ctrl+J）——与侧栏 Ctrl+B 同构：
   // 命令只做入口 emit panel:toggle，App usePanelHost 消费翻转 + 持久化。真相源 = App state。
@@ -106,6 +123,57 @@ export function registerPanelCommands(): void {
     handler: async () => {
       const current = narrowSidebarEdge(layoutEngine.getZone("sidebar")?.dock?.edge);
       layoutEngine.dockTo("sidebar", current === "left" ? "right" : "left");
+    },
+  });
+
+  // ── M2 `AI#21`：三条「拖拽专属」通道的**非鼠标路径**（⛔ 本格只加命令，不改那三条通道本身）──
+  // ① `setSidebarWidth`（池分隔线拖拽 commit → useSubscriptions 消费）→ 本命令走**同一个**
+  //    `layoutEngine.resizeZone`（钳制同一处：170–600 由 dock.minWidth/maxWidth 决定），只是发起方换成命令。
+  registerCommand(APP_PLUGIN_ID, {
+    id: "workbench.action.setSidebarWidth",
+    title: "设置侧栏宽度",
+    category: "视图",
+    description: "精确设定主侧栏宽度（px）——越界值按拖拽同一套边界钳制（170–600）",
+    params: [{ name: "width", type: "number", required: true, description: "侧栏宽度（px，钳到 170–600）" }],
+    handler: async (...args: unknown[]) => {
+      const width = args[0];
+      if (typeof width === "number" && Number.isFinite(width)) layoutEngine.resizeZone("sidebar", width);
+    },
+  });
+
+  registerCommand(APP_PLUGIN_ID, {
+    id: "workbench.action.resetSidebarWidth",
+    title: "重置侧栏宽度",
+    category: "视图",
+    description: "把主侧栏宽度恢复成默认值（280px）",
+    handler: async () => {
+      layoutEngine.resizeZone("sidebar", DEFAULT_ZONE_SIZE.sidebarWidth);
+    },
+  });
+
+  // ② `panel:resize`（池面板分隔线拖拽 → App/bridges.ts 消费）→ 本命令**镜像**同一套轴感知路由：
+  //    edge∈{left,right} → 宽轴 resizeZone；top/bottom → 高轴 resizeZoneHeight。
+  //    ⚠️ 两条路径必须同步改（池侧那条在 `src/App/bridges.ts` 的 `offResize`——本格按「只挂门牌」不动它）。
+  registerCommand(APP_PLUGIN_ID, {
+    id: "workbench.action.setPanelSize",
+    title: "设置面板尺寸",
+    category: "视图",
+    description: "精确设定底部面板尺寸（px）——按面板当前停靠边自动走宽轴或高轴；越界值按拖拽同一套边界钳制",
+    params: [{ name: "size", type: "number", required: true, description: "面板尺寸（px；横带 = 高，竖条 = 宽）" }],
+    handler: async (...args: unknown[]) => {
+      const size = args[0];
+      if (typeof size !== "number" || !Number.isFinite(size)) return;
+      applyPanelSize(size);
+    },
+  });
+
+  registerCommand(APP_PLUGIN_ID, {
+    id: "workbench.action.resetPanelSize",
+    title: "重置面板尺寸",
+    category: "视图",
+    description: "把面板尺寸恢复成默认值（横带高 220px / 竖条宽 300px）",
+    handler: async () => {
+      applyPanelSize(null);
     },
   });
 
@@ -181,8 +249,55 @@ export function registerPanelCommands(): void {
     },
   });
 
+  // M2 `AI#20`：悬浮面板几何命令（**非鼠标路径**——面板位置/高度可命令设定，AI 不必拖）。
+  // 与插件 API `linkdesk.panel.setFloatingBounds` 同一出口（emit `panel:set-floating-bounds`
+  // → App useFloatingPanelReveal → FloatingPanelService.setBounds → DTO 推池，与拖拽/调高同一套钳制）。
+  // 面板未开时消费方 no-op——本命令同样无可见效果（⛔ 不凭几何开面板；开面板走 revealFloatingPanel）。
+  registerCommand(APP_PLUGIN_ID, {
+    id: "workbench.action.setFloatingPanelBounds",
+    title: "设置悬浮面板位置与大小",
+    category: "视图",
+    description: "精确设定悬浮面板的顶边/左边/宽/高（px，省略的字段保持现值；越界值按拖拽同一套边界钳制）",
+    params: [
+      { name: "top", type: "number", required: false, description: "顶边距窗口顶部的像素值" },
+      { name: "left", type: "number", required: false, description: "左边距窗口左侧的像素值" },
+      { name: "width", type: "number", required: false, description: "面板宽度（px，上限 = 窗口宽 - 12）" },
+      { name: "height", type: "number", required: false, description: "面板高度（px，下限 300 / 上限 = 窗口高 - 80）" },
+    ],
+    handler: async (...args: unknown[]) => {
+      // 只收有限数——坏值当「未指定」（⛔ 不把 NaN 写进几何；池侧 clampApi 同款守卫双保险）
+      const bounds: Partial<FloatingPanelBounds> = {};
+      const [top, left, width, height] = args as [unknown, unknown, unknown, unknown];
+      for (const [key, value] of [["top", top], ["left", left], ["width", width], ["height", height]] as const) {
+        if (typeof value === "number" && Number.isFinite(value)) bounds[key] = value;
+      }
+      shellEvents.emit("panel:set-floating-bounds", { bounds });
+    },
+  });
+
+  // 回默认居中大卡（#41.6）——null 语义：回拖拽前那一态（池侧 setGeo(null)，CSS vw/vh 重新接管）
+  registerCommand(APP_PLUGIN_ID, {
+    id: "workbench.action.resetFloatingPanelBounds",
+    title: "重置悬浮面板位置与大小",
+    category: "视图",
+    description: "把悬浮面板恢复成默认居中大卡（等价于从未拖拽/调高过）",
+    handler: async () => {
+      shellEvents.emit("panel:set-floating-bounds", { bounds: null });
+    },
+  });
+
+  // 读面（**对账用**）：返回池上报的最近一次落定几何（FloatingPanelService 只读镜像）。
+  // 这是 `AI#20` 验收「设一次 → 读数与落点一致」的读数出口——M4 之后经 CLI `exec` 同一条命令可达。
+  // null = 无面板 / 尚未上报（几何真相源在池，壳只是把池的上报发出来）。
+  registerCommand(APP_PLUGIN_ID, {
+    id: "workbench.action.getFloatingPanelBounds",
+    title: "读取悬浮面板位置与大小",
+    category: "视图",
+    description: "返回悬浮面板当前几何（含 viewId/pluginId/最大化态）；无面板时返回 null",
+    handler: async () => getLastGeometry(),
+  });
+
   // E5.8#148：菜单栏「面板」顶级招牌已删——面板入口迁入 查看→界面→面板 显隐勾选子菜单
-  // （#33 招牌体系废弃：折叠=真消失 #159 + 显隐勾选 #148 取代"打开面板"命令招牌）。
   // 插件 contributes.menus.menuBar/panel + group:"panel" 条目仍归并进"panel"组
   // （titlebar collectMenuBarGroups 按 group 分组——注册表当桌子，双方零耦合，零删）。
 

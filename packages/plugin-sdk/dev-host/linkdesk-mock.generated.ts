@@ -147,6 +147,8 @@ export const linkdeskMock: Record<string, unknown> = {
   floatingPanelHost: {
     onShow: (..._args: unknown[]) => { console.info("[linkdesk-mock] floatingPanelHost.onShow", ..._args); return () => {}; },
     action: (..._args: unknown[]) => { console.info("[linkdesk-mock] floatingPanelHost.action", ..._args); },
+    registerBoundsHost: (..._args: unknown[]) => { console.info("[linkdesk-mock] floatingPanelHost.registerBoundsHost", ..._args); return () => {}; },
+    getBounds: (..._args: unknown[]) => { console.info("[linkdesk-mock] floatingPanelHost.getBounds", ..._args); },
   },
   serial: {
     listPorts: async (..._args: unknown[]) => { console.info("[linkdesk-mock] serial.listPorts", ..._args); return []; },
@@ -354,6 +356,7 @@ export const linkdeskMock: Record<string, unknown> = {
   panel: {
     reveal: async (..._args: unknown[]) => { console.info("[linkdesk-mock] panel.reveal", ..._args); },
     revealFloating: async (..._args: unknown[]) => { console.info("[linkdesk-mock] panel.revealFloating", ..._args); },
+    setFloatingBounds: async (..._args: unknown[]) => { console.info("[linkdesk-mock] panel.setFloatingBounds", ..._args); },
   },
   settings: {
     list: async (..._args: unknown[]) => { console.info("[linkdesk-mock] settings.list", ..._args); return []; },

@@ -19,6 +19,14 @@
  * 拖拽/调高后转显式 top/left/width/height；窗口 resize 时对显式几何再钳制。
  * 关闭即重置本地几何/最大化态（重开回默认居中大卡）。
  *
+ * M2 `AI#20`（**给浮动面板补非鼠标路径**——「A 类唯一够不着且无替代」）：除鼠标拖拽/调高外，
+ * 位置与高度可经 API/命令精确设定：
+ *   · 写 = `linkdesk.panel.setFloatingBounds(bounds|null)`（壳路由 → DTO `bounds` 字段 → 本组件应用）；
+ *   · 读 = `linkdesk.floatingPanelHost.getBounds()`（池内同步直答，零 IPC）＋ 几何上报壳
+ *     （`events.emit("floating-panel:geometry")` → 壳镜像 → 壳命令/CLI 可读）。
+ * 三条路径（拖拽 / 调高 / API）共用 `./floatingBounds` 的同一组常量与钳制 —— API 不可能把面板
+ * 设成「拖不出来」的状态（隐藏边界 MIN_HEIGHT / RESIZE_MAX_OFFSET / 6px inset 全生效）。
+ *
  * Path B：不 import @src/core 运行时模块——类型 import type OK，Z_INDEX 走 constants。
  */
 
@@ -34,8 +42,15 @@ import { Z_INDEX } from "../../../constants";
 import { getScrimTarget } from "../../../components/shared/overlay-portal/OverlayPortal"; // E5.8#107 浮层权威：遮罩归 scrim-plane
 import { OVERLAY_LAYER_ATTR, isTopmostOverlay } from "../../../components/shared/overlay-portal/overlayLayer"; // E6#73b ④ Esc 分层
 import { HINT_ATTR } from "../../../components/shared/hint-tip/hintAttrs"; // 04「悬停提示系统」：属性名走单一真相源（⛔ 别写 "data-hint" 字面量）
-import type { PoolFloatingPanelButton, PoolFloatingPanelData } from "../../../core/types/pool/poolFloatingPanel";
+import type {
+  FloatingPanelBounds,
+  FloatingPanelBoundsHostRequest,
+  PoolFloatingPanelButton,
+  PoolFloatingPanelData,
+  PoolFloatingPanelGeometry,
+} from "../../../core/types/pool/poolFloatingPanel";
 import PluginComponent from "../../shared/plugin-component/PluginComponent";
+import { boundsOfRect, clampApi, clampDragTo, clampResizeTo, CLAMP_INSET } from "./floatingBounds";
 import "./FloatingPanel.css";
 
 /* ── 池 API 形状——global.d.ts 的 window.linkdesk 是宽松类型，此处收窄到精确形状 ── */
@@ -43,22 +58,23 @@ import "./FloatingPanel.css";
 interface PoolFloatingPanelApi {
   onShow: (cb: (data: PoolFloatingPanelData) => void) => () => void;
   action: (actionId: string) => void;
+  /** M2 `AI#20`：几何宿主注册（`panel.setFloatingBounds` / `floatingPanelHost.getBounds` 落到它上面）。
+   *  可缺省——旧池 preload 无此面时组件不崩（能力降级为「只有鼠标路径」，同面板本身的老行为）。 */
+  registerBoundsHost?: (fn: (req: FloatingPanelBoundsHostRequest) => boolean | PoolFloatingPanelGeometry | null) => () => void;
 }
 
-/* ── 几何常量（I8 矩阵 + mockup 帧 1/3） ──
-   #41.6 默认居中大卡几何走 CSS vw/vh（内联 style 字符串）——EDGE_MARGIN/DEFAULT_WIDTH 常量已随右贴边默认态删除 */
+/* ── 显示文本 / 几何常量 ── */
+/* I8-5/I8-7 的隐藏边界（CLAMP_INSET / MIN_HEIGHT / RESIZE_MAX_OFFSET）与三条路径的钳制纯函数
+   住 `./floatingBounds`（M2 `AI#20` 抽——拖拽 / 调高 / API 共用一套边界，防 API 绕过限位）。 */
 
-const CLAMP_INSET = 6; // I8-5 壳内钳制：拖不出壳窗口边界（mockup clamp-zone inset:6px）
-const MIN_HEIGHT = 300; // I8-7 resize 最小高
-const RESIZE_MAX_OFFSET = 80; // I8-7 resize 最大 = 窗口高 - 80
-
-/** 显式几何——拖拽/调高后取代默认右贴边布局 */
-interface PanelGeometry {
-  top: number;
-  left: number;
-  width: number;
-  height: number;
-}
+/** #41.6 默认居中大卡几何——CSS 走 vw/vh（10vh / 7.5vw / 85vw / 80vh），此函数按同一配方折算 px。
+ *  用途仅一个：API 路径「只设部分字段」时，未指定字段的基线（面板尚未上屏 / 已最大化时按此折算）。 */
+const defaultBoundsOf = (vp: { width: number; height: number }): FloatingPanelBounds => ({
+  top: vp.height * 0.1,
+  left: vp.width * 0.075,
+  width: vp.width * 0.85,
+  height: vp.height * 0.8,
+});
 
 /* ── 内建图标 id → SVG（DTO icon 字段，mockup 标题栏 SVG） ── */
 const ICONS: Record<string, ReactNode> = {
@@ -86,8 +102,6 @@ const ICONS: Record<string, ReactNode> = {
   ),
 };
 
-const clamp = (v: number, lo: number, hi: number): number => Math.max(lo, Math.min(v, hi));
-
 export default function FloatingPanelHost() {
   // ── 池 API 引用（E5#89 约定：window.linkdesk 直接访问，不做 (window as any) 断言） ──
   const apiRef = useRef<PoolFloatingPanelApi | null>(null);
@@ -97,14 +111,60 @@ export default function FloatingPanelHost() {
   const api = apiRef.current;
 
   const [data, setData] = useState<PoolFloatingPanelData | null>(null);
-  const [geo, setGeo] = useState<PanelGeometry | null>(null); // null = 默认右贴边
+  const [geo, setGeo] = useState<FloatingPanelBounds | null>(null); // null = 默认居中大卡（vw/vh）
   const [maximized, setMaximized] = useState(false); // I8-9 池本地纯视觉 toggle
   const [dragging, setDragging] = useState(false); // I8-5 拖拽 CSS 态（投影抬升，无半透明）
   const panelRef = useRef<HTMLDivElement>(null);
   // I8-6 拖拽/调高后松手落在遮罩不得关闭——pointerup 后 click 同步触发，setTimeout(0) 延迟清标志
   const suppressBackdropRef = useRef(false);
   // 手势起始快照——setPointerCapture 持有期间 move/up 无闭包陈旧问题
-  const gestureRef = useRef<{ startX: number; startY: number; rect: PanelGeometry } | null>(null);
+  const gestureRef = useRef<{ startX: number; startY: number; rect: FloatingPanelBounds } | null>(null);
+
+  const viewport = () => ({ width: window.innerWidth, height: window.innerHeight });
+
+  /** 基线几何——API 路径「只设部分字段」时未指定字段的取值来源。
+   *  优先本轮已生效的显式几何；否则按 #41.6 默认配方折算（面板尚未上屏 / 最大化态下都走这条）。 */
+  const currentBounds = (): FloatingPanelBounds => geo ?? defaultBoundsOf(viewport());
+
+  /**
+   * 生效几何——**单一尺子**：渲染用的 `panelStyle`、读数 `floatingPanelHost.getBounds()`、
+   * 上报壳的 `floating-panel:geometry` 三处**共用本表达式**（同一个决策，不是三次测量）。
+   *   · 最大化 → 满窗盒（6px inset；与 `panelStyle` 的 right/bottom inset 同盒）
+   *   · 否则 → 显式几何；未设定（null）= #41.6 默认居中大卡折算 px
+   *
+   * 🔴 刻意**不**用 `getBoundingClientRect()` 实测：面板有 I8-13 入场动画（`scale(0.96)→1`，250ms），
+   * 实测会把**缩放后**的盒当几何报出去（调用方拿它跟刚设的 px 对账会差 4%，且开局 250ms 内读数不稳定）。
+   * 本函数返回的就是渲染决策本身 ⇒ 零误差、零动画耦合（`boundsOfRect` 仍只用于手势起始快照——
+   * 那里要的正是「此刻屏幕上真实的盒」）。
+   */
+  const effectiveBounds = (): FloatingPanelBounds => {
+    if (maximized) {
+      const vp = viewport();
+      return {
+        top: CLAMP_INSET,
+        left: CLAMP_INSET,
+        width: vp.width - CLAMP_INSET * 2,
+        height: vp.height - CLAMP_INSET * 2,
+      };
+    }
+    return geo ?? defaultBoundsOf(viewport());
+  };
+
+  /**
+   * M2 `AI#20` 几何宿主实现——`panel.setFloatingBounds` 与 `floatingPanelHost.getBounds` 都落到这里。
+   *   · `set`：无面板 → false（⛔ 不报成功）；null → 回默认居中大卡；对象 → 精确设定（**同一套** I8-5/I8-7
+   *     钳制，见 `./floatingBounds`）；最大化态先退出最大化（几何与满窗态互斥——「设定必生效」）。
+   *   · `get`：生效几何（`effectiveBounds`——钳制/最大化后的**真实结果**，非调用方意图值）；无面板 → null。
+   */
+  const handleBoundsHost = (req: FloatingPanelBoundsHostRequest): boolean | PoolFloatingPanelGeometry | null => {
+    if (!data?.open) return req.op === "get" ? null : false;
+    if (req.op === "get") {
+      return { ...effectiveBounds(), viewId: data.viewId, pluginId: data.pluginId, maximized };
+    }
+    setMaximized(false);
+    setGeo(req.bounds === null ? null : clampApi(currentBounds(), req.bounds, viewport()));
+    return true;
+  };
 
   // ── 订阅壳推送（preload 缓冲+回放——硬约束 20 消费侧） ──
   useEffect(() => {
@@ -112,16 +172,48 @@ export default function FloatingPanelHost() {
     return api.onShow((d: PoolFloatingPanelData) => {
       setData(d);
       if (!d.open) {
-        // 关闭即重置本地几何/最大化态——重开回默认右贴边（哑：壳 push {open:false} 驱动关闭）
+        // 关闭即重置本地几何/最大化态——重开回默认居中大卡（哑：壳 push {open:false} 驱动关闭）
         setGeo(null);
         setMaximized(false);
         return;
+      }
+      // M2 `AI#20`：API 路径几何——DTO 带 bounds 才动（缺省 = 保留拖拽/调高后的本地态）。
+      // ⛔ 与手势共用一套钳制（防 API 把面板设成拖不出来的状态）。
+      if (d.bounds !== undefined) {
+        setMaximized(false);
+        setGeo(d.bounds === null ? null : clampApi(geo ?? defaultBoundsOf(viewport()), d.bounds, viewport()));
       }
       // I8-8 焦点入面板（对标 DialogHost——Esc/键盘操作不误触面板外）。
       // refresh 重推（语言切换文案刷新）不抢焦点——面板已开，用户焦点可能在语言选择器/主区（2026-08-22 点修③）
       if (!d.refresh) setTimeout(() => panelRef.current?.focus(), 50);
     });
-  }, [api]);
+    // ⚠️ 依赖含 geo：onShow 闭包要靠它取 API 路径的基线（事件发生在渲染后，闭包取自本次渲染）
+  }, [api, geo]);
+
+  // ── M2 `AI#20`：向 preload 注册几何宿主（池是几何真相源——面板渲染在池，壳不存几何） ──
+  useEffect(() => {
+    if (!api?.registerBoundsHost) return undefined;
+    return api.registerBoundsHost(handleBoundsHost);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [api, data, maximized, geo]);
+
+  // ── M2 `AI#20`：几何上报壳（**可读面**——壳/命令/CLI 据此对账：设了什么、此刻落在哪） ──
+  // 池仍是唯一尺（本上报是**单向发布**，壳只存只读镜像，⛔ 壳侧不拿它做任何几何计算）。
+  // 只在「落定」时上报：拖拽/调高**进行中跳过**——每 pointermove 一发会把 IPC 打成洪水；
+  // 松手（dragging false）那一拍补发最终值，等效「一次手势一条消息」。
+  // ⚠️ 拖拽中途的镜像会滞后（价值有限，消费者是命令/CLI 而非渲染方）；关闭不上报——壳侧
+  //   closePanel/handleFloatingPanelAction 自清镜像（那些路径壳本来就知道）。
+  useEffect(() => {
+    if (!data?.open || dragging) return;
+    const { viewId, pluginId } = data;
+    window.linkdesk?.events?.emit("floating-panel:geometry", {
+      viewId,
+      pluginId,
+      maximized,
+      ...effectiveBounds(),
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data, dragging, maximized, geo]);
 
   // ── 键盘：Esc 关闭（I8-8；硬约束 14：活跃守卫 + data.open 入依赖） ──
   useEffect(() => {
@@ -134,25 +226,19 @@ export default function FloatingPanelHost() {
     return () => window.removeEventListener("keydown", handler);
   }, [data?.open, api]);
 
-  // ── 窗口 resize：显式几何再钳制（窗口变小后不越界；默认右贴边由 CSS 自适） ──
+  // ── 窗口 resize：显式几何原地再钳制（窗口变小后不越界；默认居中大卡由 CSS vw/vh 自适） ──
   const hasGeo = geo !== null;
   useEffect(() => {
     if (!hasGeo) return;
     const onResize = () => {
-      setGeo((g) => {
-        if (!g) return g;
-        return {
-          ...g,
-          top: clamp(g.top, CLAMP_INSET, window.innerHeight - g.height - CLAMP_INSET),
-          left: clamp(g.left, CLAMP_INSET, window.innerWidth - g.width - CLAMP_INSET),
-        };
-      });
+      // dx/dy = 0 = 不改位置，只把 top/left 重新钳进壳窗口（I8-5 同一套边界）
+      setGeo((g) => (g ? clampDragTo(g, 0, 0, viewport()) : g));
     };
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
   }, [hasGeo]);
 
-  /* ── I8-5 拖拽（顶部 6px 手柄）/ I8-7 resize（底部 8px 手柄）── 共用起手势 ── */
+  /* ── I8-5 拖拽（整条标题栏）/ I8-7 调高（底部 8px 手柄）── 共用起手势；钳制住 ./floatingBounds ── */
 
   const startGesture = (e: ReactPointerEvent<HTMLDivElement>) => {
     if (maximized) return; // I8-9 最大化态铺满窗口，不可拖/调
@@ -162,12 +248,8 @@ export default function FloatingPanelHost() {
     const rect = panelRef.current?.getBoundingClientRect();
     if (!rect) return;
     e.preventDefault(); // 防手势中文本选中
-    gestureRef.current = {
-      startX: e.clientX,
-      startY: e.clientY,
-      rect: { top: rect.top, left: rect.left, width: rect.width, height: rect.height },
-    };
-    setGeo({ top: rect.top, left: rect.left, width: rect.width, height: rect.height });
+    gestureRef.current = { startX: e.clientX, startY: e.clientY, rect: boundsOfRect(rect) };
+    setGeo(boundsOfRect(rect));
     setDragging(true);
     suppressBackdropRef.current = true;
     e.currentTarget.setPointerCapture(e.pointerId);
@@ -176,26 +258,15 @@ export default function FloatingPanelHost() {
   const onDragMove = (e: ReactPointerEvent<HTMLDivElement>) => {
     const g = gestureRef.current;
     if (!g) return;
-    setGeo({
-      // I8-5 壳内钳制——top/left 不出壳窗口边界（6px inset）
-      top: clamp(g.rect.top + (e.clientY - g.startY), CLAMP_INSET, window.innerHeight - g.rect.height - CLAMP_INSET),
-      left: clamp(g.rect.left + (e.clientX - g.startX), CLAMP_INSET, window.innerWidth - g.rect.width - CLAMP_INSET),
-      width: g.rect.width,
-      height: g.rect.height,
-    });
+    // I8-5 壳内钳制——top/left 不出壳窗口边界（6px inset）
+    setGeo(clampDragTo(g.rect, e.clientX - g.startX, e.clientY - g.startY, viewport()));
   };
-
-  /* ── I8-7 resize（底部 8px 手柄，只调高） ── */
 
   const onResizeMove = (e: ReactPointerEvent<HTMLDivElement>) => {
     const g = gestureRef.current;
     if (!g) return;
-    setGeo({
-      top: g.rect.top, // top 固定——从底部伸展
-      left: g.rect.left,
-      width: g.rect.width,
-      height: clamp(g.rect.height + (e.clientY - g.startY), MIN_HEIGHT, window.innerHeight - RESIZE_MAX_OFFSET),
-    });
+    // I8-7 只调高——top 固定（从底部伸展），高度 ∈ [MIN_HEIGHT, 窗口高 - 80]
+    setGeo(clampResizeTo(g.rect, e.clientY - g.startY, viewport()));
   };
 
   /** 手势收尾——清快照 + 退拖拽 CSS 态 + 下一拍才放行遮罩点击（I8-6） */

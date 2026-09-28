@@ -26,6 +26,7 @@ import {
   getCurrentFloatingPanelViewId,
   getCurrentFloatingPanelPluginId,
   refreshPanelText,
+  setBounds,
 } from "../core/services/ui/FloatingPanelService";
 import { getCallbacks } from "../core/commands/infra/CoreCallbacks";
 import { getTabCreatableViews } from "../pluginLoader/contributions/viewRegistry";
@@ -174,5 +175,16 @@ export function useFloatingPanelReveal(): void {
     return () => {
       i18n.off("languageChanged", onLangChanged);
     };
+  }, []);
+
+  // M2 `AI#20`：几何设定请求消费（非鼠标路径）——两条生产方共用本条出口：
+  //   ① 插件 linkdesk.panel.setFloatingBounds → IpcBridgeHandler/panel → shellEvents
+  //   ② 壳命令 workbench.action.setFloatingPanelBounds / …resetFloatingPanelBounds → shellEvents
+  // 面板未开 → FloatingPanelService.setBounds 内部 no-op（⛔ 不凭几何开面板）。
+  // ⚠️ 订阅会回放缓冲里最近一条（E5#7h5 总线语义——App 重挂时可能重放）——setBounds 幂等且未开即 no-op，重放无害。
+  useEffect(() => {
+    return shellEvents.on("panel:set-floating-bounds", ({ bounds }) => {
+      setBounds(bounds);
+    });
   }, []);
 }

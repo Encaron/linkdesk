@@ -17,6 +17,7 @@ import {
   reduceMoveTab,
   reduceSplitTab,
   reduceUnsplit,
+  reduceResetSplitSizes, // M2 AI#21：分屏比例整体复位
   reduceSetDirty,
   reduceRestoreLayout,
   reduceRemoveTab,
@@ -418,6 +419,76 @@ describe("reduceUnsplit", () => {
     const next = reduceUnsplit(state, leafIds[1]); // unsplit the new group
     expect(getAllLeafGroupIds(next.root)).toHaveLength(1);
     expect(next.groups).toHaveLength(1);
+  });
+});
+
+/* ── reduceResetSplitSizes（M2 AI#21：分屏比例整体复位的非鼠标路径）── */
+
+describe("reduceResetSplitSizes", () => {
+  /** 嵌套对照 fixture：root(70/30) → 左 g1；右 branch(20/80) → g2/g3 */
+  function nestedState(): TabState {
+    return {
+      groups: [
+        { id: "g1", tabs: [w("Alpha", "demo_alpha")], activeTabId: "workspace-demo_alpha" },
+        { id: "g2", tabs: [w("Beta", "demo_beta")], activeTabId: "workspace-demo_beta" },
+        { id: "g3", tabs: [w("Gamma", "demo_gamma")], activeTabId: "workspace-demo_gamma" },
+      ],
+      activeGroupId: "g1",
+      root: {
+        type: "branch", direction: "horizontal",
+        children: [
+          { type: "leaf", groupId: "g1" },
+          {
+            type: "branch", direction: "vertical",
+            children: [{ type: "leaf", groupId: "g2" }, { type: "leaf", groupId: "g3" }],
+            sizes: [20, 80],
+          },
+        ],
+        sizes: [70, 30],
+      },
+    };
+  }
+
+  it("所有分支递归回 50/50（含嵌套分支），叶子与分组原样保留", () => {
+    const next = reduceResetSplitSizes(nestedState());
+    const root = next.root as BranchNode;
+    expect(root.sizes).toEqual([50, 50]);
+    expect((root.children[1] as BranchNode).sizes).toEqual([50, 50]);
+    // 叶子结构不动
+    expect((root.children[0] as LeafNode).groupId).toBe("g1");
+    expect(getAllLeafGroupIds(next.root)).toEqual(["g1", "g2", "g3"]);
+    expect(next.groups).toHaveLength(3);
+    expect(next.activeGroupId).toBe("g1");
+  });
+
+  it("未分屏（root = leaf）→ 原状态引用（React bailout，零重渲染）", () => {
+    const state = stateWithTabs(w("Alpha", "demo_alpha"));
+    expect(reduceResetSplitSizes(state)).toBe(state);
+  });
+
+  it("全分支已是 50/50 → 原状态引用（幂等，不产生新对象）", () => {
+    const state = twoGroupState(); // root sizes [50, 50]
+    expect(reduceResetSplitSizes(state)).toBe(state);
+  });
+
+  it("仅一层不均衡 → 只换 root 引用，未变动的子树引用保持", () => {
+    const state = nestedState();
+    const rootBefore = state.root as BranchNode;
+    const leftLeafBefore = rootBefore.children[0];
+    const rightBranchBefore = rootBefore.children[1] as BranchNode;
+
+    const next = reduceResetSplitSizes(state);
+    const rootAfter = next.root as BranchNode;
+
+    expect(rootAfter).not.toBe(rootBefore);
+    expect(rootAfter.sizes).toEqual([50, 50]);
+    expect(rootAfter.children[0]).toBe(leftLeafBefore); // 叶子原引用
+    expect(rootAfter.children[1]).not.toBe(rightBranchBefore); // 子分支比例变了 → 新对象
+  });
+
+  it("对已有分屏状态调用两次 → 第二次起原引用（幂等收敛）", () => {
+    const once = reduceResetSplitSizes(nestedState());
+    expect(reduceResetSplitSizes(once)).toBe(once);
   });
 });
 

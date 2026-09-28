@@ -9,7 +9,7 @@ import type { DialogOpenOptions, DialogContentOpenOptions } from "../../types/ip
 import type { ManifestMenuItem } from "../../registry/commands/MenuRegistry";
 import type { PoolQuickPickData, PluginQuickPickOptions, PluginQuickPickRequest } from "../../types/pool/poolQuickPick";
 import type { PoolDialogData, PoolPendingDialog } from "../../types/pool/poolDialog";
-import type { PoolFloatingPanelData } from "../../types/pool/poolFloatingPanel";
+import type { PoolFloatingPanelData, FloatingPanelBoundsHostRequest, PoolFloatingPanelGeometry } from "../../types/pool/poolFloatingPanel";
 import type { NotifLayout } from "../../types/pool/poolLayout"; // M1 AI#1：读取面返回 = 面板 DTO 本身
 
 /** UI 浮层/菜单/通知命名空间面——对标 VS Code vscode.window + ContextKey + 池内 QuickPick/Dialog/FloatingPanel 宿主桥 */
@@ -154,5 +154,21 @@ export interface UiAPI {
     onShow(cb: (data: PoolFloatingPanelData) => void): () => void;
     /** 动作回传——open-in（在主窗口中打开）/ close，壳侧 settle（业务语义壳侧重解析） */
     action(actionId: string): void;
+    /**
+     * M2 `AI#20`：注册几何宿主（池 FloatingPanelHost mount 时调）。主世界函数经 contextBridge
+     * 代理进隔离世界存储，同 `quickPickHost.registerHost` 先例。返回 unsubscribe。
+     * ⚠️ 面板渲染在池 ⇒ **几何真相源在池**：拖拽 / 调高 / `panel.setFloatingBounds` 这条 API 路径
+     * 最终都落在本宿主上（壳不存几何、不做几何计算）。
+     */
+    registerBoundsHost(fn: (req: FloatingPanelBoundsHostRequest) => boolean | PoolFloatingPanelGeometry | null): () => void;
+    /**
+     * M2 `AI#20`：读当前悬浮面板几何（**同步**——池内直答零 IPC，同 `dialogHost.current()` 先例）。
+     * 返回**实际生效**的几何（钳制 / 最大化后的真实结果，非调用方意图值）；**无面板** → `null`。
+     *
+     * 判据用法：`panel.setFloatingBounds({ top: 100, left: 80 })` 后调本函数对账——`top/left` 应等于
+     * 100/80（越界时等于被钳后的值）。⚠️ 壳侧 / CLI 的读数出口不是本函数（那是池内面），而是池上报的
+     * 壳镜像：命令 `workbench.action.getFloatingPanelBounds`。
+     */
+    getBounds(): PoolFloatingPanelGeometry | null;
   };
 }

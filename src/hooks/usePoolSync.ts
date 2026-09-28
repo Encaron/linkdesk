@@ -26,7 +26,7 @@ import type { LinkDeskAPI } from "../core/api/linkdesk-api"; // E5.7#98：poolAp
 import type { StatusBarEntry } from "../core/react/events/ShellEvents"; // E5.7#8：动态状态栏条目
 import type { WindowShellState } from "../App/windows"; // E5.8#43-2：壳窗口注册表
 import { ViewContainerService } from "../core/services/layout/ViewContainerService";
-import { layoutEngine, narrowPanelEdge, narrowSidebarEdge } from "../core/services/layout/LayoutEngine"; // E5.6#11-fix7：池◀按钮→壳 setZoneWidth("sidebar", 28)；E5.8#36.9：edge 窄化守卫
+import { layoutEngine, narrowPanelEdge, narrowSidebarEdge, DEFAULT_ZONE_SIZE } from "../core/services/layout/LayoutEngine"; // E5.6#11-fix7：池◀按钮→壳 setZoneWidth("sidebar", 28)；E5.8#36.9：edge 窄化守卫
 import { getConfigurationValue } from "../core/services/configuration/ConfigurationService"; // E5.7#1：titleBar.menuBarVisible
 import { ContextKeyService } from "../core/registry/commands/ContextKeyService"; // E5.8#37.6：sidebarPosition 当开关 context key
 import { useUpdateState } from "./useUpdateState"; // E6#57.11：更新态 → TitleBar 按钮显隐/文字（九态映射在 updateCommands.ts）
@@ -245,9 +245,9 @@ export function usePoolSync({ windows, sidebarView, isSidebarVisible, panelActiv
         visible: true,
         edge: panelEdge,
         align: panelZone?.dock?.align ?? "center",
-        height: panelBounds?.height ?? panelZone?.dock?.height ?? 220,
+        height: panelBounds?.height ?? panelZone?.dock?.height ?? DEFAULT_ZONE_SIZE.panelHeight,
         // E5.8#36.9：轴感知尺寸——左/右面板推 width（竖条宽，池 grid #37.5 消费）；顶/底仍 height
-        ...(isVerticalPanel ? { width: panelBounds?.width ?? panelZone?.dock?.width ?? 300 } : {}),
+        ...(isVerticalPanel ? { width: panelBounds?.width ?? panelZone?.dock?.width ?? DEFAULT_ZONE_SIZE.panelWidth } : {}),
         activeViewId: validActiveId,
         views: panelViews,
         // 激活标记以渲染真源 validActiveId 为准——激活视图被隐藏时高亮回退视图而非隐藏视图

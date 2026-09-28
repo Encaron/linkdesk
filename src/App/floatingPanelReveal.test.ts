@@ -17,6 +17,8 @@ import {
 } from "./floatingPanelReveal";
 import { registerViewPlugin, clearRegistry } from "../pluginLoader/contributions/viewRegistry";
 import { pushPanel, closePanel, registerFloatingPanelRenderer } from "../core/services/ui/FloatingPanelService";
+import { shellEvents } from "../core/react/events/ShellEvents"; // M2 AI#20：几何设定两条生产方共用出口
+import type { PoolFloatingPanelData } from "../core/types/pool/poolFloatingPanel";
 
 // E5.8#40 显示文本铁律判别——标题/动作文案壳侧 t() 解析（池零自产文本）。mock i18n.t 返回 "T:<key>"
 // 前缀：断言能证明「标题经 t() 路径」（若实现是裸声明透传，前缀不存在 → 测试红）。
@@ -36,6 +38,28 @@ const { tMock, rendererMock, languageEmitter } = vi.hoisted(() => {
   };
 });
 vi.mock("../i18n", () => ({ default: { t: tMock, on: languageEmitter.on, off: languageEmitter.off } }));
+
+/* ── 夹具——「面板开着时的重推」用例共用（E5.8#40 显示文本铁律：标题 T:Gamma 供 t() 前缀判别） ── */
+
+/** 打开 demo-view-c 面板后清掉首推——后续断言只看事件驱动的那一推 */
+function openDemoPanelC(): void {
+  pushPanel({
+    viewId: "demo-view-c",
+    title: "T:Gamma",
+    pluginId: "demo-plugin-c",
+    renderPath: "/@fs/plugins/demo-plugin-c/src/views/DemoViewC.tsx",
+    actions: [],
+  });
+  rendererMock.mockClear();
+}
+
+/** 最近一次推给渲染器的 DTO（open:true 收窄） */
+function lastPushedPanel(): Extract<PoolFloatingPanelData, { open: true }> {
+  return rendererMock.mock.calls[rendererMock.mock.calls.length - 1][0] as Extract<
+    PoolFloatingPanelData,
+    { open: true }
+  >;
+}
 
 describe("resolveFloatingPanelView（E5.8#39.5 revealFloating 声明寻址）", () => {
   beforeEach(() => {
@@ -180,22 +204,12 @@ describe("useFloatingPanelReveal 语言切换重推（2026-08-22 点修③）", 
   });
 
   it("面板开着时 languageChanged → refreshPanelText 重推（refresh:true + 重解析 title/动作，身份不变）", () => {
-    pushPanel({
-      viewId: "demo-view-c",
-      title: "T:Gamma",
-      pluginId: "demo-plugin-c",
-      renderPath: "/@fs/plugins/demo-plugin-c/src/views/DemoViewC.tsx",
-      actions: [],
-    });
-    rendererMock.mockClear(); // 清掉 pushPanel 的首次推
+    openDemoPanelC();
 
     const { unmount } = renderHook(() => useFloatingPanelReveal());
     languageEmitter.fire(); // i18n.changeLanguage 同步触发 languageChanged
 
-    const pushed = rendererMock.mock.calls[rendererMock.mock.calls.length - 1][0] as Extract<
-      import("../core/types/pool/poolFloatingPanel").PoolFloatingPanelData,
-      { open: true }
-    >;
+    const pushed = lastPushedPanel();
     expect(pushed.refresh).toBe(true); // 池据此跳过焦点获取
     expect(pushed.viewId).toBe("demo-view-c"); // 身份不变（refresh 不是替换）
     expect(pushed.title).toBe("T:Gamma"); // 重解析——t() 前缀判别显示文本铁律
@@ -208,6 +222,65 @@ describe("useFloatingPanelReveal 语言切换重推（2026-08-22 点修③）", 
     rendererMock.mockClear();
     languageEmitter.fire();
     expect(rendererMock).not.toHaveBeenCalled();
+    unmount();
+  });
+});
+
+/* ──M2 `AI#20`：几何设定的非鼠标路径（壳命令 / 插件 API 共用出口）── */
+describe("useFloatingPanelReveal 几何设定（M2 AI#20）", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    seedViewContainerMocks();
+    closePanel();
+    // 回放缓冲（E5#7h5）：shellEvents 订阅时会立刻回放最近一条——清掉防上一个用例的 payload 串味
+    shellEvents.dispose("panel:set-floating-bounds");
+    rendererMock.mockClear();
+    registerFloatingPanelRenderer((data) => rendererMock(data));
+  });
+
+  it("面板开着时 panel:set-floating-bounds → 重推 DTO 带 bounds + refresh:true（身份不变、不重开）", () => {
+    openDemoPanelC();
+
+    const { unmount } = renderHook(() => useFloatingPanelReveal());
+    shellEvents.emit("panel:set-floating-bounds", { bounds: { top: 120, left: 90, width: 640, height: 420 } });
+
+    const pushed = lastPushedPanel();
+    expect(pushed.bounds).toEqual({ top: 120, left: 90, width: 640, height: 420 });
+    expect(pushed.refresh).toBe(true); // 面板已开——重推不重开（池跳过焦点获取）
+    expect(pushed.viewId).toBe("demo-view-c"); // 身份不变
+    unmount();
+  });
+
+  it("bounds:null → 重推带 null（回默认几何——与「不传 bounds」语义区分）", () => {
+    openDemoPanelC();
+
+    const { unmount } = renderHook(() => useFloatingPanelReveal());
+    shellEvents.emit("panel:set-floating-bounds", { bounds: null });
+
+    const pushed = lastPushedPanel();
+    expect(pushed.bounds).toBeNull();
+    unmount();
+  });
+
+  it("面板未开 → 零重推（no-op——⛔ 不凭几何开面板）", () => {
+    const { unmount } = renderHook(() => useFloatingPanelReveal());
+    rendererMock.mockClear();
+
+    shellEvents.emit("panel:set-floating-bounds", { bounds: { top: 10, left: 10 } });
+
+    expect(rendererMock).not.toHaveBeenCalled();
+    unmount();
+  });
+
+  it("订阅即回放缓冲（E5#7h5）→ 幂等消费：回放的一份几何也会落到渲染器，不抛不崩", () => {
+    // 缓冲里已有 payload（模拟 emit 早于本 hook 挂载的时序）——订阅应立刻回放
+    shellEvents.emit("panel:set-floating-bounds", { bounds: { top: 33 } });
+    openDemoPanelC();
+
+    const { unmount } = renderHook(() => useFloatingPanelReveal());
+
+    const pushed = lastPushedPanel();
+    expect(pushed.bounds).toEqual({ top: 33 });
     unmount();
   });
 });

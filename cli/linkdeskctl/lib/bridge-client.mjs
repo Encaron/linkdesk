@@ -28,7 +28,8 @@
  *
  * 操作级 code（内核白名单，`electron/services/aiBridge/whitelist.ts`）原样透传：
  * `EOP`（表外操作）/ `EUNKNOWN`（命令不在运行期派生命令面）/ `EARGS` / `ENOTFOUND` /
- * `ENOACTION` / `ESHELLTIMEOUT` / `ESHELLERROR` / `EPROTO` / `ETOOBIG` / `EERROR`。
+ * `ENOACTION` / `ESHELLTIMEOUT` / `ESHELLERROR` / `EPROTO` / `ETOOBIG` / `EERROR` /
+ * **`EUSERDENIED`（敏感动作没等到用户点头——AI#29：动作**没执行**，不是失败后重试的那类）**。
  *
  * 零第三方依赖，只 `node:*`（发安装包的 CLI 不许拖 node_modules——AI#40 随包的硬前提）。
  */
@@ -85,6 +86,15 @@ export function readRecord({ userDataDirs } = {}) {
   if (fs.existsSync(tokenPath)) token = fs.readFileSync(tokenPath, "utf8").trim();
   return { record, recordPath, token, tokenPath, searched: dirs };
 }
+
+/**
+ * 操作级 code 的人读下一步——内核说得出 code，说不出「用户此刻该干什么」。
+ * ⛔ 只补这一句，不另立一套错误分类（分类法住内核，见文件头）。
+ */
+const OP_HINTS = {
+  EUSERDENIED:
+    "去软件里点那个确认框（键盘 Enter = 同意 / Esc = 取消）——**不点就不执行**；授权不缓存，下次还会问（AI#29）。",
+};
 
 /** pid 还活着吗（`kill(pid,0)` 不发信号，纯探活；`EPERM` = 活着但不是我们的进程） */
 function pidAlive(pid) {
@@ -223,7 +233,8 @@ export async function callBridge(op, payload = {}, opts = {}) {
     sendOnce(endpoint, { token, op: opName, ...body }, timeoutMs).then(
       (msg) => {
         if (msg && msg.ok) return msg.result;
-        throw new BridgeError(msg && msg.code ? msg.code : "EERROR", (msg && msg.message) || "未知错误", null);
+        const code = msg && msg.code ? msg.code : "EERROR";
+        throw new BridgeError(code, (msg && msg.message) || "未知错误", OP_HINTS[code] ?? null);
       },
       (e) => {
         if (e instanceof BridgeError) throw e;

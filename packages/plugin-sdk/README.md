@@ -18,7 +18,7 @@ npm install -D @linkdesk/plugin-sdk
 > 自动生成，**勿手改**——由 `scripts/generate-api-cheatsheet.mjs` 从 `@linkdesk/contracts` 的 `linkdesk.d.ts` 现读产出，
 > `npm run check` 机械盯漂。完整签名与逐方法说明见 `linkdesk.d.ts` 本体（IDE 里可直接跳转）。
 
-**15 个域接口 → 46 个命名空间 / 249 个方法**，全部经 `window.linkdesk.<命名空间>.<方法>` 调用。 (plus 1 deprecated alias/es `config`, not counted twice)
+**15 个域接口 → 46 个命名空间 / 252 个方法**，全部经 `window.linkdesk.<命名空间>.<方法>` 调用。 (plus 1 deprecated alias/es `config`, not counted twice)
 
 | Namespace | Methods | Method | Notes |
 |:--|:--:|:--|:--|
@@ -37,7 +37,7 @@ npm install -D @linkdesk/plugin-sdk
 | `quickPick` | 1 | `show` | E5.7#63：插件 quickPick 选择器——池内本地桥（零 IPC，QuickPickHost 渲染） |
 | `quickPickHost` | 6 | `registerHost` `onShow` `select` `highlight` `close` `itemAction` | E5.7#63：QuickPick 宿主渲染桥——池 QuickPickHost 消费（壳 preload 无此面） |
 | `dialogHost` | 5 | `onShow` `current` `pending` `confirm` `cancel` | E5.7#17：Dialog 哑渲染订阅——池 DialogHost 消费（壳 preload 无此面） |
-| `floatingPanelHost` | 2 | `onShow` `action` | E5.8#37（Phase 8 类型 B）：悬浮面板哑渲染订阅——池 FloatingPanelHost 消费（壳 p… |
+| `floatingPanelHost` | 4 | `onShow` `action` `registerBoundsHost` `getBounds` | E5.8#37（Phase 8 类型 B）：悬浮面板哑渲染订阅——池 FloatingPanelHost 消费（壳 p… |
 | `serial` | 11 | `listPorts` `getStatus` `openPort` `closePort` `sendData` `sendText` `setDtr` `setRts` `onData` `onStats` `onSystem` | 串口——读/写/监听，对标 VS Code SerialPort API |
 | `clipboard` | 3 | `readText` `writeText` `writeFileList` | 剪贴板——读/写系统剪贴板 |
 | `p2p` | 2 | `send` `on` | E5#65：p2p 插件间定向推流——和 bridge.broadcast 同模式（fire-and-forget） |
@@ -63,7 +63,7 @@ npm install -D @linkdesk/plugin-sdk
 | `shell` | 6 | `showItemInFolder` `openInTerminal` `pluginLocation` `openPluginFolder` `startDrag` `relaunch`° | 壳级命令——revealInOS / openInTerminal / startDrag / relaunch，双端… |
 | `hotExit` ⚠️ | 3 | `save` `load` `clear` | 热退出暂存——编辑器未保存内容落盘（E5.7#53） |
 | `getFilePath` | 0 | (top-level function)`getFilePath: (file: File) => string;` | OS 拖入文件路径获取——双端注入 |
-| `panel` | 2 | `reveal` `revealFloating` | —— |
+| `panel` | 3 | `reveal` `revealFloating` `setFloatingBounds` | —— |
 | `settings` | 3 | `list` `getActive` `setActive` | —— |
 | `factorySlots` | 4 | `listRoles` `list` `getActive` `setActive` | —— |
 | `app` | 1 | `getVersion` | app 命名空间——只读产品身份 |

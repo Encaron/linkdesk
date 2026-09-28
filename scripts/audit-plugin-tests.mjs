@@ -50,76 +50,21 @@
  * 用法：node scripts/audit-plugin-tests.mjs [容器目录] [--json]
  *       （或 npm run audit:plugin-tests；默认容器 E:/linkdesk-plugins，两级内 <组>/<仓>/plugin.json）
  */
-import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { AUDIT_CALIBER, analyzeRepo } from "../packages/plugin-sdk/test-audit.mjs";
+// 仓发现与官方名单来源已抽成单一真相源（2026-09-28：加「有视图零命令」尺时抽出，两把审计尺共用）
+import { discoverPluginRepos, officialPluginIds } from "./lib/plugin-repos.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const AGENTS_SCRIPT = path.join(ROOT, "scripts", "sync-plugin-agents.mjs");
 const CONTAINER = process.argv.slice(2).find((a) => !a.startsWith("--")) || process.env.LINKDESK_PLUGIN_CONTAINER || "E:/linkdesk-plugins";
 const JSON_OUT = process.argv.includes("--json");
 
-const SKIP_DIRS = new Set(["node_modules", ".git", "dist", "release", "resources"]);
-const read = (p) => fs.readFileSync(p, "utf8");
-
-/** 官方仓名单 = sync-plugin-agents.mjs 的 FACTS 表（唯一真相源）；读不到 ⇒ null（降级：全部按官方报，并打一行警告）。 */
-function officialIds() {
-  try {
-    const text = read(AGENTS_SCRIPT);
-    const start = text.indexOf("const FACTS = {");
-    const end = text.indexOf("\n};", start);
-    if (start < 0 || end < 0) return null;
-    const ids = [...text.slice(start, end).matchAll(/^ {2}(?:"([^"]+)"|([A-Za-z][\w-]*)): \{/gm)].map((m) => m[1] || m[2]);
-    return ids.length ? new Set(ids) : null;
-  } catch {
-    return null;
-  }
-}
-
-/** 容器两级内找 <组>/<仓>/plugin.json（也接受容器本身就是一只仓）。 */
-function discoverRepos(root) {
-  const isRepo = (d) => {
-    try {
-      return fs.statSync(path.join(d, "plugin.json")).isFile();
-    } catch {
-      return false;
-    }
-  };
-  if (isRepo(root)) return [{ dir: root, id: path.basename(root), group: "" }];
-  const out = [];
-  let groups = [];
-  try {
-    groups = fs.readdirSync(root, { withFileTypes: true });
-  } catch {
-    return out;
-  }
-  for (const g of groups) {
-    if (!g.isDirectory() || SKIP_DIRS.has(g.name)) continue;
-    const gp = path.join(root, g.name);
-    if (isRepo(gp)) {
-      out.push({ dir: gp, id: g.name, group: "" });
-      continue;
-    }
-    let kids = [];
-    try {
-      kids = fs.readdirSync(gp, { withFileTypes: true });
-    } catch {
-      continue;
-    }
-    for (const k of kids) {
-      if (!k.isDirectory() || SKIP_DIRS.has(k.name)) continue;
-      const kp = path.join(gp, k.name);
-      if (isRepo(kp)) out.push({ dir: kp, id: k.name, group: g.name });
-    }
-  }
-  return out.sort((a, b) => a.id.localeCompare(b.id));
-}
-
 /* ─────────────────────────── 主流程 ─────────────────────────── */
 
-const ids = officialIds();
-const repos = discoverRepos(CONTAINER);
+const ids = officialPluginIds(AGENTS_SCRIPT);
+const repos = discoverPluginRepos(CONTAINER);
 const rows = repos.map((r) => ({ id: r.id, group: r.group, ...analyzeRepo(r.dir, { official: ids ? ids.has(r.id) : true }) }));
 const officialRows = rows.filter((r) => r.kind !== "third-party");
 const logicRows = officialRows.filter((r) => r.kind === "logic");

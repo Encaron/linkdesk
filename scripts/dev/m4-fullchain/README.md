@@ -94,7 +94,31 @@ for f in "$ISO"/*; do b=$(basename "$f"); case "$b" in plugins|settings.json) ;;
 ## 五、读数原件
 
 - **`READINGS.txt`** —— 两腿各一次**完整跑**的 stdout ＋ 真 MCP 客户端（Claude Code）对接读数
-  ＋ 离线三段读数。PID / 端口 / 临时路径每次不同。
+  ＋ 离线三段读数 ＋ **附段：`gate-accept.mjs` 的 AI#29 读数**。PID / 端口 / 临时路径每次不同。
+
+## 五之二、同夹第二件验收器：`gate-accept.mjs`（`AI#29` 敏感动作的确认回路）
+
+`accept.mjs` 的链是**业务链**，确认门只是顺带被点了一下；`gate-accept.mjs` 专打**门本身**——
+判据「敏感动作有统一确认回路，且该回路**不是唯一鼠标路径**」：
+
+```bash
+# 同一只隔离实例上跑（前置与 accept.mjs 完全相同；两件互不替代，都跑）
+LINKDESK_USER_DATA=<iso> LINKDESK_CDP=http://127.0.0.1:9444 node scripts/dev/m4-fullchain/gate-accept.mjs
+… --json
+```
+
+读数五段：① 自述面（`describe.askFirst`，含**反面**「AI 没有应答面」）② 名单外不问 ③ 键盘两腿
+（**Esc = 拒 ⇒ `EUSERDENIED`** ／ **Enter = 准 ⇒ ok**，优先 CDP 真按键，降级时如实标 `dom`）
+④ 账本两读面（CLI `log` ＋ 盘上 `ai-bridge-log.jsonl`）⑤ 负控（不存在的命令不问）。
+
+⚠️ **三条验收器自身的坑**（首跑实测，写在这里免得下一棒当回归）：
+
+1. **门出现 ≠ 门接得住键盘**：`DialogHost` 收到 show 后 **50ms** 才聚焦面板，而 Enter 的监听挂在面板上
+   ⇒ 门刚出现就打字，Enter 会打在 `BODY` 上（同期 Escape 照旧生效——它是 `window` 监听）。验收器等
+   「焦点落到面板」再打字，并单列一条 `门接得住键盘` 读数。
+2. **面板消失晚 1–2 帧** ⇒ `门已收` 是**轮询**读数（≤2.5s），⛔ 不是 0ms 快照。
+3. **CDP 真按键的 target 看页面聚焦态**：窗未被 OS 聚焦时键事件落在 `BODY` ⇒ Enter 打不到面板、Escape 能到。
+   真用户按键天然是聚焦窗，不受影响；验收器在这种情况下降级 DOM 合成 `KeyboardEvent`（仍不碰鼠标）。
 
 ## 六、真 MCP 客户端（本棒实测：Claude Code CLI `2.1.233`）
 

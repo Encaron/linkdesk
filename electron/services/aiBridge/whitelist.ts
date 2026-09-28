@@ -17,18 +17,24 @@
  *
  * 连接面六种（NO_RECORD/SWITCH_OFF/LAST_FAILED/APP_EXITED/REFUSED/EAUTH…）的**客户端**分类
  * 在 `cli/linkdeskctl/lib/bridge-client.mjs`（CLI/MCP/验收三处共用，⛔ 不许 fork）；本文件是
- * **内核侧**的操作级错误（EARGS/EUNKNOWN/ENOTFOUND/ENOACTION…），经应答的 `code` 字段原样
- * 传给客户端。两层合起来 = spike README 判据③「失败路径有可读原因」的全集。
+ * **内核侧**的操作级错误（EARGS/EUNKNOWN/ENOTFOUND/ENOACTION/EUSERDENIED…），经应答的 `code` 字段
+ * 原样传给客户端。两层合起来 = spike README 判据③「失败路径有可读原因」的全集。
+ *
+ * ## 🔴 敏感动作的确认回路（`AI#29`）在本文件的落法
+ *
+ * **一处执令出口**：`exec` 与 `notifyAction` 都经 `runShellCommand()` 执行壳命令，敏感命令
+ * （名单住 `sensitive.ts`，`describe` 的 `askFirst` 自述）在那里统一停下问用户；`install` 走
+ * 同一个 `askUser()`。⛔ **别在操作里直接 `ctx.shellRequest(IPC.commands.execute, …)`**——
+ * 那就是又开一个没有门的入口。
  */
 
 import { IPC } from '../../ipc/channels.js';
+import { coded } from './errors.js';
+import { askFirstCatalog, askFirstRuleForCommand, askFirstRuleForOp, askUser } from './sensitive.js';
 
-/** 带 code 的操作错误——应答 `{ ok:false, code, message }` 里的 code 就是它。 */
-export function coded(code: string, message: string): Error & { code: string } {
-  const e = new Error(message) as Error & { code: string };
-  e.code = code;
-  return e;
-}
+/** 带 code 的操作错误——构造器本体现在住 `errors.ts`（与 `sensitive.ts` 共用，避免循环 import）。
+ *  仍从这里**再导出**：既有调用方（`index.ts` / 单测）认的是这个出口，⛔ 不为搬家改一圈调用方。 */
+export { coded };
 
 /** 白清单版本——操作表形状变更时递增（客户端据此判断自省结果的新旧）。 */
 export const WHITELIST_VERSION = 1;
@@ -99,6 +105,20 @@ function findNotifItem(layout: unknown, notificationId: string): { actions: Arra
   return null;
 }
 
+/**
+ * 执行壳命令的**唯一出口**（AI#29）——`exec` 与 `notifyAction` 两条路都从这里过。
+ *
+ * 🔴 收口的原因（此前是两条各写一遍的 `ctx.shellRequest(IPC.commands.execute, …)`）：
+ *   敏感动作的确认**按目标命令判**，而「谁在执行命令」有两处 ⇒ 只给其中一处加门 =
+ *   另一处是敞开的（实测：`exec update.openUpdateFlow` 曾可无声重启并装新版本）。
+ *   收成一个函数后，「有没有门」不再取决于将来谁又写了一个执行入口。
+ */
+async function runShellCommand(ctx: BridgeOpContext, commandId: string, args: unknown[]): Promise<unknown> {
+  const rule = askFirstRuleForCommand(commandId);
+  if (rule) await askUser(ctx, `执行敏感命令「${rule.id}」`, `${rule.what}\n（问一声的原因：${rule.why}）`);
+  return ctx.shellRequest(IPC.commands.execute, [commandId, undefined, ...args]);
+}
+
 /* ── 操作表（本文件唯一的手写正文；describe 从它派生） ── */
 
 export const OPS: Record<string, BridgeOp> = {
@@ -114,6 +134,8 @@ export const OPS: Record<string, BridgeOp> = {
         ops: opCatalog(),
         commands,
         commandCount: commands.length,
+        // AI#29：哪些动作会先停下等人点头——**自述面**（AI 动手前就知道，客户端据此定等待预算）
+        askFirst: askFirstCatalog(),
       };
     },
   },
@@ -155,7 +177,7 @@ export const OPS: Record<string, BridgeOp> = {
   exec: {
     name: 'exec',
     kind: 'write',
-    help: '执行壳命令（能执行的 = describe 的 commands 清单里那些；严格回传真结果——做了/没做可分辨）',
+    help: '执行壳命令（能执行的 = describe 的 commands 清单里那些；严格回传真结果——做了/没做可分辨）。⚠️ describe 的 askFirst.commands 里的敏感命令会先在软件里弹确认框，用户不点头 = EUSERDENIED、不执行',
     params: [
       { name: 'commandId', type: 'string', required: true, description: '命令 id（如 app.openAiManual）' },
       { name: 'args', type: 'array', required: false, description: '透传给命令的实参' },
@@ -172,8 +194,10 @@ export const OPS: Record<string, BridgeOp> = {
           `命令 "${commandId}" 不在当前命令面（运行期派生白名单，共 ${commands.length} 条）——describe 可列出全部`,
         );
       }
-      // 缺口① 右半：壳侧严格执行出口回传真结果（未注册/抛错都会以 {error} 信封回来）
-      const result = await ctx.shellRequest(IPC.commands.execute, [commandId, undefined, ...extra]);
+      // 缺口① 右半：壳侧严格执行出口回传真结果（未注册/抛错都会以 {error} 信封回来）。
+      // 🔴 存在性查过**之后**才问一声：对一条不存在的命令弹确认框只是骚扰。
+      // AI#29：敏感命令由 runShellCommand 统一拦下问用户——⛔ 别绕开它直接 shellRequest。
+      const result = await runShellCommand(ctx, commandId, extra);
       return { commandId, result: result === undefined ? null : result };
     },
   },
@@ -181,22 +205,19 @@ export const OPS: Record<string, BridgeOp> = {
   install: {
     name: 'install',
     kind: 'write',
-    help: '安装插件（zip 包 URL 或本地路径）——确认对话框在软件里弹出，用户点头才装（装 = 问一声，AI#29；⛔ 不绕确认回路）',
+    help: '安装插件（zip 包 URL 或本地路径）——确认对话框在软件里弹出，用户点头才装（装 = 问一声，AI#29；⛔ 不绕确认回路）；用户不点头 = EUSERDENIED、不装',
     params: [
       { name: 'source', type: 'string', required: true, description: '插件包 URL（…linkdesk-plugin / zip）或本地路径' },
     ],
     run: async (req, ctx) => {
       const source = req.source;
       if (typeof source !== 'string' || !source) throw coded('EARGS', 'install 需要 source（URL 或本地路径）');
-      // 问一声：壳自己的确认对话框（DialogService.confirm）——用户可能在走开，等 10 分钟不算长
-      const confirmed = await ctx.shellRequest(
-        IPC.dialog.confirm,
-        [`AI 请求安装插件：\n${source}\n\n允许安装吗？`],
-        600_000,
-      );
-      if (confirmed !== true) {
-        return { installed: false, reason: '用户未确认（装 = 问一声——没点头就不装）' };
-      }
+      // 问一声：走**统一确认回路**（`sensitive.ts` 的 askUser——AI 侧唯一弹框出口），
+      // 文案取自名单表本身（⛔ 不在此手抄第二份 what/why）。
+      // 用户可能在走开，等 10 分钟不算长；没点头 ⇒ EUSERDENIED 上抛（⛔ 不再返回
+      // `{installed:false}` 那种「账面无错、其实没装」的形状——AI#29 把会话 8 记下的瑕疵一并修掉）。
+      const askRule = askFirstRuleForOp('install');
+      if (askRule) await askUser(ctx, askRule.what, `${source}\n（问一声的原因：${askRule.why}）`);
       // installWithProgress = 下载→解压→加载的完整 job（时长由网络决定）——同样放宽超时
       const job = await ctx.shellRequest(
         IPC.plugins.call,
@@ -218,7 +239,7 @@ export const OPS: Record<string, BridgeOp> = {
   notifyAction: {
     name: 'notifyAction',
     kind: 'write',
-    help: '执行通知上的按钮（按钮 = 命令——照 M1 AI#2 的 command/args 走 commands.execute，与手点同一条命令路径）',
+    help: '执行通知上的按钮（按钮 = 命令——照 M1 AI#2 的 command/args 走 commands.execute，与手点同一条命令路径）。⚠️ 按钮背后是敏感命令时同样要用户点头（AI#29）',
     params: [
       { name: 'notificationId', type: 'string', required: true, description: '通知 id（notifications 操作的返回里有）' },
       { name: 'action', type: 'string', required: true, description: '按钮 label 或序号（从 0 起）' },
@@ -240,7 +261,8 @@ export const OPS: Record<string, BridgeOp> = {
       if (!action.command) {
         throw coded('ENOACTION', `按钮「${action.label}」没有绑定命令（点击仅关闭通知）——无法远程执行`);
       }
-      const result = await ctx.shellRequest(IPC.commands.execute, [action.command, undefined, ...(action.args ?? [])]);
+      // AI#29：按钮背后是哪条命令**只有读到这里才知道** ⇒ 敏感性只能在此判，故与 exec 共用同一条出口
+      const result = await runShellCommand(ctx, action.command, action.args ?? []);
       return { pressed: true, notificationId, action: action.label, command: action.command, result: result === undefined ? null : result };
     },
   },

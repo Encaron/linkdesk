@@ -44,6 +44,12 @@ export interface CoreCallbacks {
    * 非组件代码（`lifecycle.ts` 的 RESTORE_WORKSPACE 监听器）经 `getCallbacks()?.` 调用。
    */
   restoreTabLayout?: (layout: LayoutData) => { pluginId: string; tabId: string } | null;
+  /**
+   * M2 `AI#21`：分屏比例整体复位（树里所有分支回 `[50, 50]`）——`workbench.action.resetSplitSizes`
+   * 的落点。⚠️ **可选成员**：与 `restoreTabLayout` 同款理由——非组件代码经 `getCallbacks()?.` 调用，
+   * 未注册（无 tab 管理器的宿主）时命令静默 no-op 而不是崩。
+   */
+  resetSplitSizes?: () => void;
 }
 
 let _callbacks: CoreCallbacks | null = null;

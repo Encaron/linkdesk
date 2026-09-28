@@ -124,7 +124,11 @@
   transition: opacity 0.1s ease;
 }
 
-.ldk-sidebar-section-header:hover .ldk-sidebar-section-actions.show-on-hover {
+/* M2 `AI#22`——`:focus-within` 是**键盘腿**：Tab 进 actions 里的钮时同样揭示。
+   ⚠️ 只有 `:hover` 时，键盘用户 Tab 进来的是**看不见的钮**（opacity:0 但可聚焦）——
+   鼠标路径不是唯一门，是「看得见」这件事本身漏了一条门。 */
+.ldk-sidebar-section-header:hover .ldk-sidebar-section-actions.show-on-hover,
+.ldk-sidebar-section-header:focus-within .ldk-sidebar-section-actions.show-on-hover {
   opacity: 1;
 }
 
@@ -165,7 +169,9 @@
   transition: opacity 0.1s ease;
 }
 
-.ldk-sidebar-section-header:hover .ldk-sidebar-section-more.show-on-hover {
+/* M2 `AI#22`：同 actions——`:focus-within` 让键盘也能揭示（⛔ 不是只有鼠标悬停才看得见） */
+.ldk-sidebar-section-header:hover .ldk-sidebar-section-more.show-on-hover,
+.ldk-sidebar-section-header:focus-within .ldk-sidebar-section-more.show-on-hover {
   opacity: 1;
 }
 

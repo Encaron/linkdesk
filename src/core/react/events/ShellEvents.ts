@@ -18,6 +18,8 @@
  * 设计依据：docs/02-Electron架构/E5_核心归一化与壳重构_待执行/01-壳通信骨架/ShellEvents类型系统.md
  */
 
+import type { FloatingPanelBounds } from "../../types/pool/poolFloatingPanel"; // M2 AI#20
+
 /**
  * 壳内事件类型表。
  * key = 事件名（"namespace:camelCase"），value = payload 类型。
@@ -56,6 +58,12 @@ export interface ShellEvents {
    *  pluginId」）——core.openSettings/标签页右键等壳侧路径已知插件，emit 带 pluginId；插件公开 API
    *  panel.revealFloating 契约只有 viewId（裸寻址，歧义时 fail-loud no-op）。未声明视图时消费方 no-op 不崩。 */
   "panel:reveal-floating": { viewId: string; pluginId?: string };
+  /** M2 `AI#20`：悬浮面板几何设定请求（**非鼠标路径**）——生产方 = ① IpcBridgeHandler/panel 域
+   *  （插件 `linkdesk.panel.setFloatingBounds`）② 壳命令 `workbench.action.setFloatingPanelBounds` /
+   *  `…resetFloatingPanelBounds`。App useFloatingPanelReveal 消费 → FloatingPanelService.setBounds
+   *  → DTO 带 `bounds` 推池应用（与拖拽/调高同一套隐藏边界钳制）。
+   *  payload = 部分字段精确设定（只带想改的字段）/ null = 回默认居中大卡。面板未开时消费方 no-op。 */
+  "panel:set-floating-bounds": { bounds: Partial<FloatingPanelBounds> | null };
 
   // ── 标签页（MainContent）──
   /** 标签页切换。payload = 新聚焦的标签页信息 */

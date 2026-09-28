@@ -51,15 +51,15 @@ const STATIC_TOOLS = [
     { name: "type", type: "string", required: true, description: "标签类型（视图/插件 id）" },
     { name: "opts", type: "object", required: false, description: "透传给视图的选项" },
   ] },
-  { op: "exec", description: "执行壳命令（能执行的 = linkdesk_describe 的 commands 清单里那些；严格回传真结果）", params: [
+  { op: "exec", description: "执行壳命令（能执行的 = linkdesk_describe 的 commands 清单里那些；严格回传真结果）。⚠️ describe 的 askFirst.commands 里的敏感命令会先在软件里弹确认框，用户不点头 = EUSERDENIED、不执行", params: [
     { name: "commandId", type: "string", required: true, description: "命令 id（如 app.openAiManual）" },
     { name: "args", type: "array", required: false, description: "透传给命令的实参" },
   ] },
-  { op: "install", description: "安装插件（zip 包 URL 或本地路径）——确认对话框在软件里弹出，用户点头才装", params: [
+  { op: "install", description: "安装插件（zip 包 URL 或本地路径）——确认对话框在软件里弹出，用户点头才装（不点头 = EUSERDENIED、不装）", params: [
     { name: "source", type: "string", required: true, description: "插件包 URL 或本地路径" },
   ] },
   { op: "notifications", description: "读通知面板（按钮的 command 事实随行）", params: [] },
-  { op: "notifyAction", description: "执行通知上的按钮（按钮 = 命令，与手点同一条命令路径）", params: [
+  { op: "notifyAction", description: "执行通知上的按钮（按钮 = 命令，与手点同一条命令路径；按钮背后是敏感命令时同样要用户点头）", params: [
     { name: "notificationId", type: "string", required: true, description: "通知 id（linkdesk_notifications 的返回里有）" },
     { name: "action", type: "string", required: true, description: "按钮 label 或序号（从 0 起）" },
   ] },
@@ -70,6 +70,11 @@ const STATIC_TOOLS = [
 
 const JSONRPC_ERROR = { PARSE: -32700, INVALID_REQUEST: -32600, METHOD_NOT_FOUND: -32601, INVALID_PARAMS: -32602, INTERNAL: -32603 };
 const WAITABLE_CODES = new Set(["NO_RECORD", "APP_EXITED", "REFUSED"]); // 等 得活的才等（开关关着/监听失败等不来）
+
+/** 会**停下来等用户点头**的动作（AI#29）——确认框等人以分钟计，秒级超时会把「在等人」误报成超时。
+ *  ⚠️ 给长预算，不是放宽错误：内核侧普通命令仍由自己的 8s 封顶，这里只是不许客户端先放弃。 */
+const ASKABLE_OPS = new Set(["exec", "install", "notifyAction"]);
+const ASK_TIMEOUT_MS = 600_000;
 
 /* ── stdio 收发（一行一条 JSON；⛔ stdout 只许放协议报文）── */
 
@@ -110,7 +115,9 @@ function statusSnapshot(ctx) {
  *  可等状态。等满如实把「等了多久」附进错误（AI#37 判据③）。 */
 async function callWithWait(op, payload, ctx) {
   const t0 = Date.now();
-  const attempt = () => callBridge(op, payload, { userDataDirs: ctx.userDataDirs, timeoutMs: ctx.timeoutMs });
+  // AI#29：要等人点头的动作给「等得起人」的预算（⛔ 不覆盖用户显式调大的值）
+  const timeoutMs = ASKABLE_OPS.has(op) ? Math.max(ctx.timeoutMs, ASK_TIMEOUT_MS) : ctx.timeoutMs;
+  const attempt = () => callBridge(op, payload, { userDataDirs: ctx.userDataDirs, timeoutMs });
   try {
     return await attempt();
   } catch (e) {

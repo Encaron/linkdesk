@@ -261,6 +261,28 @@ export function reduceUpdateSplitSizes(
   return prev;
 }
 
+/**
+ * M2 `AI#21`：分屏比例**整体复位**——树里所有 branch 的 sizes 回 `[50, 50]`
+ * （分屏时的初值，与 `splitTree.ts` 的 `replaceLeafWithBranch` 同源）。
+ *
+ * 这是 `updateSplitSizes` 通道的**非鼠标路径**：池侧双击分隔条只治被点的那一条分支
+ * （`useDividerDrag`），本函数治整棵树——AI 不必知道 branchIndex 也能把布局收回均分。
+ * 未分屏（树是单 leaf）→ 返回同一引用（调用方/测试可据此判「无事发生」）。
+ */
+export function reduceResetSplitSizes(prev: TabState): TabState {
+  const newRoot = resetBranchSizes(prev.root);
+  return newRoot === prev.root ? prev : { ...prev, root: newRoot };
+}
+
+function resetBranchSizes(node: SplitNode): SplitNode {
+  if (node.type === "leaf") return node;
+  const left = resetBranchSizes(node.children[0]);
+  const right = resetBranchSizes(node.children[1]);
+  const unchanged = left === node.children[0] && right === node.children[1]
+    && node.sizes[0] === 50 && node.sizes[1] === 50;
+  return unchanged ? node : { ...node, children: [left, right], sizes: [50, 50] };
+}
+
 /** 在树中定位并更新特定 branch 的 sizes */
 function updateBranchSizes(
   node: SplitNode,
