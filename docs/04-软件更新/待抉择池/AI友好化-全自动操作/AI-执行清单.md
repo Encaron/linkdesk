@@ -302,22 +302,33 @@
 
 ## 第 5 轮 · M2 操作面补齐（`AI#20`–`AI#30`）——开放清单，收口最难（✅ A-1 拍板后排最后）
 
+> ⏳ **本轮首轮 6 格（壳侧半 + 规范 + 尺子 + 敏感确认面）= `AI#20` / `AI#21` / `AI#22` / `AI#26` / `AI#28` / `AI#29`，2026-09-28 会话 10 收口 ⇒ M2 6 / 11**；余 = 插件侧跨仓三格（`AI#23`–`AI#25` · 会话 11）＋ 脚手架包（`AI#27`）＋ 总验收（`AI#30`）。
+
 > ↔ 调查待拍板 **P4**。[01-设计.md §四 M2](01-设计.md)；详案 = **[03-任务档案/M2-操作面.md](03-任务档案/M2-操作面.md)**。
 > 判据 = 全软件「**唯一鼠标路径**」清单清零（或每条有命令替代并在手册登记）＋ 浮动面板位置可被 API 设定 ＋ **新插件默认带命令面**。
 > ⚠️ **本轮的格数会生长**（`AI#50` 起续号）：审计发现一条「仅鼠标」路径就补一格，**量级是「加一条命令」，不是「推翻架构」**（[01-设计.md §9.4](01-设计.md) 诚实预告）。
 > **跨仓提醒**：`AI#23`–`AI#25`、`AI#27` 落在**插件独立仓**（`serial-monitor` / `file-tree` / `settings` / 脚手架包）⇒ 跨仓批次、**发版与目录收录 🟢 已获用户预授权（2026-09-28）：随时可发、不必逐次问**（⚠️ 但仍须一次走到端：发布 → 官方目录收录 → `sync:bundled`）。
 
-#### AI#20 ⬜ 浮动面板：补非鼠标路径（A 类唯一真缺口）
+#### AI#20 ✅ 浮动面板：补非鼠标路径（A 类唯一真缺口）——**2026-09-28 会话 10 验毕**
 
-- [ ] **AI#20** 给浮动面板补 API/命令（`panel.setFloatingBounds` 型，或 `revealFloating` 带坐标形参）。｜**现状实测**=`src/pool/floating/floating-panel/FloatingPanelHost.tsx:155-198`——顶部 6px 手柄拖拽 + 底部 8px 手柄调高（`startGesture` 共用，`onPointerDown` 在 266/311 行），拖后几何转**显式 px** 而**零 API 可设**。｜**这是 [01-设计.md §2.3](01-设计.md) A 类里唯一「够不着且无替代」的自家功能。**｜落点 = `FloatingPanelHost.tsx` + 契约面 + 命令｜判据 = 浮动面板的位置/高度可被 API 精确设定（AI 不需要拖）
+- [x] **AI#20** 给浮动面板补 API/命令（`panel.setFloatingBounds` 型，或 `revealFloating` 带坐标形参）。｜**现状实测**=`src/pool/floating/floating-panel/FloatingPanelHost.tsx:155-198`——顶部 6px 手柄拖拽 + 底部 8px 手柄调高（`startGesture` 共用，`onPointerDown` 在 266/311 行），拖后几何转**显式 px** 而**零 API 可设**。｜**这是 [01-设计.md §2.3](01-设计.md) A 类里唯一「够不着且无替代」的自家功能。**｜落点 = `FloatingPanelHost.tsx` + 契约面 + 命令｜判据 = 浮动面板的位置/高度可被 API 精确设定（AI 不需要拖）
+- ✅ **2026-09-28 收口（会话 10）｜判据「位置/高度可被 API 精确设定」= 通（读 → 设 → 读回三拍）**：**`design-flow` 8 维先走**（新能力面）；三条壳命令 `workbench.action.setFloatingPanelBounds` / `resetFloatingPanelBounds` / **`getFloatingPanelBounds`**（**读面不虚报**：无面板返 `null`）＋ 插件 API `linkdesk.panel.setFloatingBounds`（**与既有拖拽同一出口** `panel:set-floating-bounds`，⛔ 不开第二条路）。🔴 **限位一份、两处共用**：新抽 `src/pool/floating/floating-panel/floatingBounds.ts`（`clampDragTo` / `clampResizeTo` / **`clampApi`** ＋ `CLAMP_INSET 6` / `MIN_HEIGHT 300` / `RESIZE_MAX_OFFSET 80`）——拖拽与 API 走**同一套钳制**，⛔ 不为「AI 设的」留后门（否则 API 能拖出壳窗边界：给 AI 的路径比给人的更宽 = 反向破口）。单测 = `floatingBounds.test.ts` ＋ `FloatingPanelHost.test.tsx` ＋ `panelCommands.test.ts`（含「无面板不虚报」那条）。
 
-#### AI#21 ⬜ B 类「存在但未文档化」的通道进契约 ＋ 补用户命令
+#### AI#21 ✅ B 类「存在但未文档化」的通道进契约 ＋ 补用户命令——**2026-09-28 会话 10 验毕**
 
-- [ ] **AI#21** 三条既有替代通道**进契约文档**并补用户命令：`setSidebarWidth`（实测 `src/core/types/ipc/sidebarActions.ts:9` 已在枚举 + 壳侧 `src/hooks/usePoolSync/useSubscriptions.ts:134`）· `panel:resize`（实测 `src/App/bridges.ts:110-127`，**未文档化**）· `updateSplitSizes`（实测契约 `src/core/types/ipc/tabActions.ts:41` + handler `src/App/tabCallbacks.ts:309,433` + 双击复位 `src/pool/zones/main/MainZone/useDividerDrag.ts`）。｜补的命令例「重置面板尺寸」。｜判据 = 这三条在契约文档里查得到 + 有非鼠标路径可调
+- [x] **AI#21** 三条既有替代通道**进契约文档**并补用户命令：`setSidebarWidth`（实测 `src/core/types/ipc/sidebarActions.ts:9` 已在枚举 + 壳侧 `src/hooks/usePoolSync/useSubscriptions.ts:134`）· `panel:resize`（实测 `src/App/bridges.ts:110-127`，**未文档化**）· `updateSplitSizes`（实测契约 `src/core/types/ipc/tabActions.ts:41` + handler `src/App/tabCallbacks.ts:309,433` + 双击复位 `src/pool/zones/main/MainZone/useDividerDrag.ts`）。｜补的命令例「重置面板尺寸」。｜判据 = 这三条在契约文档里查得到 + 有非鼠标路径可调
+- ✅ **2026-09-28 收口（会话 10）｜判据两条都落（**只挂牌、零行为改动**）**：① **契约面**——三条通道进 `contracts/linkdesk.d.ts` ＋ 命名空间矩阵 ＋ API 速查表，作者面双语树（`docs/03-plugin-authoring/` ＋ `packages/plugin-docs/`）同笔；② **非鼠标路径**——补四条壳命令 `workbench.action.setSidebarWidth` / `resetSidebarWidth` / `setPanelSize` / `resetPanelSize` ＋ `resetSplitSizes`（池侧双击只治**被点的那条**分栏 ⇒ 命令给的是「一次复位」。⚠️ **轴感知路由逐字同款**：`setPanelSize` 镜像 `src/App/bridges.ts` 的 `offResize`、`setSidebarWidth` 走**同一个** `useSubscriptions` 出口——⛔ 不新写一份轴判断）。单测 = `tabCommands.test.ts` ＋ `panelCommands.test.ts`。
 
-#### AI#22 ⬜ C 类·壳侧：hover-only 面可发现性 ＋ aria
+#### AI#22 ✅ C 类·壳侧：hover-only 面可发现性 ＋ aria——**2026-09-28 会话 10 验毕**
 
-- [ ] **AI#22** 壳侧 hover 才出现的按钮补可发现性（`aria` + 命令侧引用）。｜依据 = [01-设计.md §2.3](01-设计.md) C 类尾行：**DOM 里在、`el.click()` 可点，属「可发现性」问题**（`SidebarSection.css:127` 等）。｜⚠️ **顺带**：提示面刚在 04「悬停提示系统 HintTip」收编过（`data-hint`，随 v0.2.20）⇒ **先看既有 HintTip 账，别拉第二份**（memory 提示面三套机制的教训：判据物必须覆盖**机制**）。｜判据 = 每个 hover-only 钮都能被**契约读取到它存在**且有命令/键盘替代
+- [x] **AI#22** 壳侧 hover 才出现的按钮补可发现性（`aria` + 命令侧引用）。｜依据 = [01-设计.md §2.3](01-设计.md) C 类尾行：**DOM 里在、`el.click()` 可点，属「可发现性」问题**（`SidebarSection.css:127` 等）。｜⚠️ **顺带**：提示面刚在 04「悬停提示系统 HintTip」收编过（`data-hint`，随 v0.2.20）⇒ **先看既有 HintTip 账，别拉第二份**（memory 提示面三套机制的教训：判据物必须覆盖**机制**）。｜判据 = 每个 hover-only 钮都能被**契约读取到它存在**且有命令/键盘替代
+- ✅ **2026-09-28 收口（会话 10）｜判据「能被契约读到 + 有键盘替代」= 通**：`SidebarSection.css` 补 **`:focus-within`** 键盘腿（原先只有 `:hover` ⇒ 键盘用户**看不见**那颗钮）＋ `SidebarSection.tsx` 补 `aria-*` 与**共用的 `toggleMore`**（鼠标与键盘走同一条逻辑，⛔ 不写两份开关）；新增 `SidebarSection.test.tsx` **8 条**（含键盘腿正控 ＋ 负控）。⚠️ **提示面照既有 HintTip 账办**（`data-hint`，⛔ 没拉第二份）＋ 手册 [04 章](../../../../docs/07-AI操作手册/04-手势隐藏规则.md) 两处同步；动了 `src/components/shared/**` ⇒ 同笔 `npm run ui:build`。
+
+#### AI#26 ✅ 插件命令化规范落 `docs/03-插件制造/`——**2026-09-28 会话 10 验毕**
+
+- [x] **AI#26** 把「**插件把主要业务动作注册为命令**」写进规范 ＋ **作者检查清单**。｜**意义**=这是「**插件自动被 AI 支持**」的最大化路径：按规范做的插件**生来可被 AI 操作**（[01-设计.md §八「为什么注册命令就够了」](01-设计.md)）。｜落点 = `docs/03-插件制造/00-README.md` 同族（新档或并入既有档）＋ 作者面双语树同步（`docs/03-plugin-authoring/`，**双语对齐门禁守**）｜判据 = 规范可查、检查清单可勾
+- ✅ **2026-09-28 收口（会话 10）｜判据「规范可查 + 检查清单可勾」= 通**：新档 `docs/03-插件制造/21-插件命令化规范.md` ＋ 英文镜 `docs/03-plugin-authoring/21-command-ification-spec.md`（**双语对齐门禁守**：`check-author-docs-bilingual.mjs` ＋ `FILENAME_MAP` ＋ 两处 README 索引同笔补行；`packages/plugin-docs/` 产物同笔重生成）；规范含**「什么算业务动作」判据** ＋ 可勾清单（挂钩 `AI#28` 的尺子 = 机械信号）。
+
 
 #### AI#23 ⬜ C 类·插件侧：serial-monitor（跨仓批次）
 
@@ -331,21 +342,19 @@
 
 - [ ] **AI#25** `settings` 补命令：**修改快捷键**的入口（`settings:src/views/keybinding-settings/KeybindingSettingsView.tsx:64`，现仅双击行进入编辑）。｜⚠️ **同时是本系列「设置页 AI 接入分区」的宿主仓**（见 [02 §四 B-5](02-目录与切片规划.md)）——**若用户要富 UI，本格一并处理；否则零插件改动**
 
-#### AI#26 ⬜ 插件命令化规范落 `docs/03-插件制造/`
-
-- [ ] **AI#26** 把「**插件把主要业务动作注册为命令**」写进规范 ＋ **作者检查清单**。｜**意义**=这是「**插件自动被 AI 支持**」的最大化路径：按规范做的插件**生来可被 AI 操作**（[01-设计.md §八「为什么注册命令就够了」](01-设计.md)）。｜落点 = `docs/03-插件制造/00-README.md` 同族（新档或并入既有档）＋ 作者面双语树同步（`docs/03-plugin-authoring/`，**双语对齐门禁守**）｜判据 = 规范可查、检查清单可勾
-
 #### AI#27 ⬜ 脚手架默认：新插件自带命令注册样板（作者轴包）
 
 - [ ] **AI#27** 让「**注册**」成为新插件的**默认动作**——脚手架模板自带命令注册样板。｜依据 = [01-设计.md §八](01-设计.md)：「**「不漏」的方式不是「记得做」，而是「忘了会红」**」。｜落点 = `@linkdesk/create-plugin` 脚手架（**作者轴 npm 包**，跨仓/跨包；走 `check:npm-release` ＋ 作者轴五步发版）｜判据 = 新生成的插件模板**默认就有一个可被 AI 调的命令**
 
-#### AI#28 ⬜ 只报不拦尺：有视图声明却零命令
+#### AI#28 ✅ 只报不拦尺：有视图声明却零命令——**2026-09-28 会话 10 验毕**
 
-- [ ] **AI#28** 新增只读审计 `scripts/audit-plugin-commands.mjs` ＋ `npm run audit:plugin-commands`：报出「**有视图声明却零命令**」的插件（**能机械查的静态信号**）。｜依据 = [01-设计.md §八 末](01-设计.md)「能机械查的 =『有视图声明却零命令』等静态信号」。｜🔴 **只报不拦**——⛔ **不进 `npm run check` / CI / `ci-verify.mjs`**（存量插件会被拦 ⇒ 会退化成假门禁，照 L11 覆盖尺同款纪律）｜判据 = 实跑出一份可读名单，`--self-test` 自测同批接线
+- [x] **AI#28** 新增只读审计 `scripts/audit-plugin-commands.mjs` ＋ `npm run audit:plugin-commands`：报出「**有视图声明却零命令**」的插件（**能机械查的静态信号**）。｜依据 = [01-设计.md §八 末](01-设计.md)「能机械查的 =『有视图声明却零命令』等静态信号」。｜🔴 **只报不拦**——⛔ **不进 `npm run check` / CI / `ci-verify.mjs`**（存量插件会被拦 ⇒ 会退化成假门禁，照 L11 覆盖尺同款纪律）｜判据 = 实跑出一份可读名单，`--self-test` 自测同批接线
+- ✅ **2026-09-28 收口（会话 10）｜判据两条都落（**只报不拦**纪律守住：⛔ 没进 `npm run check`）**：① **名单真的跑出来了**——先做**输入盘点**再判（17 只仓：16 只官方 ＋ 1 只住在 `official/` 下的第三方 `geme-tihu-bicycle`），「**空名单也要举证**」照记忆《空转判据 ≠ 零存量》办；② **`--self-test` 13 条**（正控 ①②③④⑤ ＋ 负控 ①②③③b④④b⑤，含「空容器算 0」与「objects/array 两形态都认」）同一批接线。读数（**只报不拦**的样本）：「**有视图零命令**」= `marketplace`（7 视图）/ `settings`（1 视图）；**整批缺 `description`** 三只 = `editor` 2/2 · `file-tree` 21/21 · `serial-monitor` 12/12 ⇒ 前者归 `AI#26` 规范的存量账（⛔ 不追溯第三方），后者是**命令已在但元数据缺**（`AI#11` 索引的输入）。npm script 三条 = `audit:plugin-commands` / `:json` / `:selftest`；仓发现复用 `scripts/lib/plugin-repos.mjs`（**单一真相源**，与 `audit:plugin-tests` 同一份，⛔ 不拉第二份）。
 
-#### AI#29 ⬜ 敏感动作确认面（与既有「装 = 问一声」对齐）
+#### AI#29 ✅ 敏感动作确认面（与既有「装 = 问一声」对齐）——**2026-09-28 会话 10 验毕**
 
-- [ ] **AI#29** 把「AI 能发起、但敏感动作要用户点头」落成一致机制（**装/卸插件 = 问一声**为既有先例）。｜依据 = [01-设计.md §八 追问场景②](01-设计.md)「🔴 安全确认：保留『装 = 问一声』」＋「**AI 友好 ≠ AI 无限制**」。｜判据 = 敏感动作有统一确认回路，且该回路**不是唯一鼠标路径**
+- [x] **AI#29** 把「AI 能发起、但敏感动作要用户点头」落成一致机制（**装/卸插件 = 问一声**为既有先例）。｜依据 = [01-设计.md §八 追问场景②](01-设计.md)「🔴 安全确认：保留『装 = 问一声』」＋「**AI 友好 ≠ AI 无限制**」。｜判据 = 敏感动作有统一确认回路，且该回路**不是唯一鼠标路径**
+- ✅ **2026-09-28 收口（会话 10）｜判据「统一确认回路 ＋ 不是唯一鼠标路径」= 通（真机 24 / 24 ×2 + 全链路回归 39 / 39）**。🔴 **本格的活眼是「问一声」原先挂在入口而不是动作上**：`install` 有门，而 `exec` / `notifyAction` 能拿到**同一条** `update.openUpdateFlow`（状态 `downloaded`/`ready` 时＝**重启并安装新版本，不可回退**）却**不问**——`exec` 是**零提问的静默出口**。修法 = **一处出口**：`runShellCommand`（`exec` 与 `notifyAction` 共用）＋ `askUser`（`install` 同用），名单 = `ASK_FIRST_COMMANDS` / `ASK_FIRST_OPS`（**新文件 `electron/services/aiBridge/sensitive.ts`**；`coded` 抽到 `errors.ts` 解环）。**三面自述**：`describe.askFirst`（`note` ＋ 名单：`install` / `update.openUpdateFlow`）+ CLI `--help` 活读一节 + MCP 两工具描述 ⇒ **AI 读得到「哪些要问」**。**机器可判的非成功态**：`EUSERDENIED`（+ 客户端 hint「Enter = 同意 / Esc = 取消」「不点就不执行」「授权不缓存」）——**顺手修掉会话 8 那条瑕疵**（拒绝却账面 `ok:true`；`install` 被拒现在上抛 `EUSERDENIED`）。🔴 **客户端预算**：确认等人以**分钟**计而默认超时是**秒**级 ⇒ CLI `asksForUser`/`budgetOf`（名单**从实例自省派生**，⛔ 不手抄）与 MCP `ASKABLE_OPS` 都给 **600s**——否则「客户端报失败、用户随后一点头**动作又真跑了**」（比不问更坏）。**边界三条**：确认面**归用户**（`describe.ops` 9 条里**没有任何应答面**——机械反证；⛔ 这正是「别把安全网拆了」）· 没点头 = **不做且报出来** · 不答 = fail-closed。单测 `sensitive.test.ts` 19 条（含「被拒 ⇒ `commands.execute` **从未被调**」负控）。**真机读数** = [`scripts/dev/m4-fullchain/gate-accept.mjs`](../../../../scripts/dev/m4-fullchain/gate-accept.mjs)（新验收器，读数原件在 READINGS.txt 附段）：门文案统一 · **Esc ⇒ `EUSERDENIED`** / **Enter ⇒ ok**（**CDP 真按键**；窗未聚焦时降级 DOM 合成并如实标 `dom`）· 账本两读面一致（`ok=false code=EUSERDENIED arg=update.openUpdateFlow`）· 名单外不问 · 不存在的命令不问；**同实例 `accept.mjs --channel cli` = 39/39**（「装」那条门与通知按钮腿都没被我这一改碰坏）。⚠️ **名单现只两条**（`install` ＋ `update.openUpdateFlow`；「门要稀，才有人抬头看」）——`uninstall` / 串口发数**仍不在通道上**，归 `AI#30` 的「唯一鼠标路径」审计范围。
 
 #### AI#30 ⬜ 「唯一鼠标路径清零」总验收
 
@@ -427,7 +436,7 @@ D0#1–D0#3（系列外 · ✅ **2026-09-28 已收口**，不占 AI 格）
 
 ## 总结
 
-> **只在这里写数字**（别处不复写）。**当前 = 45 / 62 格已回勾**（另：系列外 `D0#1`–`D0#3` = **3 / 3 ✅ 已收口**）。
+> **只在这里写数字**（别处不复写）。**当前 = 51 / 62 格已回勾**（另：系列外 `D0#1`–`D0#3` = **3 / 3 ✅ 已收口**）。
 
 | 轮 | 模块 | 格 | 已回勾 | 状态 |
 |:--:|:--|:--|:--:|:--|
@@ -436,9 +445,9 @@ D0#1–D0#3（系列外 · ✅ **2026-09-28 已收口**，不占 AI 格）
 | 2 | **M3** 文档与手册 | `AI#10`–`AI#16` | **7 / 7** | ✅ **2026-09-28 整轮收口**（会话 3 两交付：第一交付 `AI#10`–`AI#14` 手册七章落仓 `docs/07-AI操作手册/`，02 章生成式 ＋ 漂移门禁；**第二交付 `AI#15` 接入章（形态先写，M4 回填）＋ `AI#16` 手册随包与软件内入口**；`npm run check` 全绿 **213 文件 / 2854 tests**；`electron-builder --dir` 验 `resources/ai-manual/` **8 章落位**） |
 | 3 | **M5** 安装版一致性 | `AI#17`–`AI#19` | **3 / 3** | ✅ **2026-09-28 整轮收口**（会话 4：`AI#17` **更新那一跳端口不丢** ＝ 记录携带 ＋ ready 前复位；`AI#18` **二次带参启动** ＝ 并集裁决 ＋ **重启前等请求端口释放**（抓出并修掉一个打包态 5/5 复现的竞态：立刻重启 ⇒ 并集进程绑不上端口 ⇒「App 跑着但没调试口」）；**会话 9：`AI#19` ① 复验通过**（两条通道各走「装→打开→操作」一整链，登记在 `AI#44` 格）⇒ 补上最后一格；**真安装版那半**仍在发版批待验清单第 1–3 行） |
 | 4 | **M4** MCP + CLI 双通道 | `AI#31`–`AI#44`（**含 `AI#38.1`–`AI#38.14` 十四子格**） | **27 / 27** | ✅ **2026-09-28 整轮收口**（会话 5–9：spike＋内核＋CLI＋MCP＋**设置页「AI 接入」18 键全落**；**会话 9 · `AI#44` 全链路两腿**：**CLI 39/39 · MCP 41/41**（负控三条、跳过 0）＋ **真 MCP 客户端 Claude Code 挂上真调通** ＋ 离线态三段；`@linkdesk/ui` 两新原语 ＋ `settings` 消费；多窗口目标窗、单实例回归、安全评估在案；**残余四条在报告 §四**（冷启动窗口 ／ `notifyAction` 账目 `arg=null` ／ 只在 dev 轨道 ／ VS Code·Codex 未验）；check 全绿 **215 文件 / 2906 tests**） |
-| 5 | **M2** 操作面补齐 | `AI#20`–`AI#30` | 0 / 11 | ⬜ 可开工（🌱 会生长；**A-1 改序后排最后**） |
+| 5 | **M2** 操作面补齐 | `AI#20`–`AI#30` | **6 / 11** | 🚧 **首轮 6 格已收口**（2026-09-28 会话 10：壳侧半 `AI#20`/`AI#21`/`AI#22` ＋ 规范 `AI#26` ＋ 只报不拦尺 `AI#28` ＋ 敏感确认面 `AI#29`；真机读数 = `m4-fullchain/gate-accept.mjs` 24/24 ×2 ＋ 同实例全链路回归 39/39）；余 = 插件侧跨仓三格（`AI#23`–`AI#25`）＋ 脚手架包（`AI#27`）＋ 总验收（`AI#30`）＝ 会话 11/12（🌱 会生长） |
 | 6 | 验收与收口 | `AI#45`–`AI#49` | 0 / 5 | ⬜ 可开工 |
-| | **合计** | **62 格**（＋3 系列外） | **45 / 62** | ✅ **前置门已过**（2026-09-28 拍板 13 条）· 第 1 轮 M1 整轮 9/9 · **第 2 轮 M3 整轮 7/7（2026-09-28 收口）** · **第 3 轮 M5 整轮 3/3（会话 9 补上 `AI#19` ①）** · **第 5 轮 M4 整轮 27/27（2026-09-28 会话 5– 9 收口）** · **下一棒 = 第 5 轮 M2（`AI#20`–`AI#30`）** |
+| | **合计** | **62 格**（＋3 系列外） | **51 / 62** | ✅ **前置门已过**（2026-09-28 拍板 13 条）· 第 1 轮 M1 整轮 9/9 · **第 2 轮 M3 整轮 7/7（2026-09-28 收口）** · **第 3 轮 M5 整轮 3/3（会话 9 补上 `AI#19` ①）** · **第 4 轮 M4 整轮 27/27（2026-09-28 会话 5–9 收口）** · **第 5 轮 M2 首轮 6/11（会话 10 收口）** · **下一棒 = 会话 11 · M2 插件侧半（`AI#23`–`AI#25` ＋ `AI#27`，跨仓批次）** |
 
 **量级口径**：[01-设计.md §六](01-设计.md) 粗估 **60–80 格**，本单首版 **49 格**——**差额不是漏登记**，是 M2「唯一鼠标路径」与 M4「白名单」两处 🌱 **生长格**（审计发现一条补一格，`AI#50` 起续号）。⚠️ **2026-09-28 用户要求后 49 → 62**：`AI#38`（设置页「AI 接入」分区）按用户原话「HTML 里显示的设置页面的配置项，都要有任务」**展开为 14 个子格**（+13，逐项详案 [03-任务档案/M4-设置页.md](03-任务档案/M4-设置页.md)）——**量级判定不变**：中等偏大 ≈ E6 两到三个轮次，**远小于 E5.7 式推翻重做**；**全加法、零架构赌注**、唯一新机制 = M4（spike 先行）。
 

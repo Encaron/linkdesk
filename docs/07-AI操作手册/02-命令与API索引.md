@@ -32,7 +32,7 @@
 
 <!-- BEGIN COMMAND-INDEX -->
 
-**宿主命令 76 条 / 7 个分类**——插件命令不在本表（运行时用 `getCommands()` 查）。
+**宿主命令 84 条 / 7 个分类**——插件命令不在本表（运行时用 `getCommands()` 查）。
 
 ### 帮助（6）
 
@@ -58,7 +58,7 @@
 | `workbench.action.exportWorkspace` | 导出工作区 | 把当前布局与用户设置导出为工作区文件下载到本地 | —— | —— |
 | `workbench.action.importWorkspace` | 导入工作区 | 从工作区文件恢复布局与用户设置 | —— | —— |
 
-### 标签页（16）
+### 标签页（17）
 
 | 命令 id | 标题 | 说明 | 参数（调用实参） | when 门控 |
 |:--|:--|:--|:--|:--|
@@ -77,9 +77,10 @@
 | `workbench.action.focusNthTab` | 跳转到标签页 | 聚焦同分组中的第 n 个标签页 | `ctx`: object 必填 — { n: number }——目标标签页序号（从 1 起） | —— |
 | `workbench.action.nextTab` | 下一个标签页 | 聚焦同分组中的下一个标签页 | `ctx`: object 可选 — { shift: boolean }——true 则聚焦上一个，省略/false 聚焦下一个 | —— |
 | `workbench.action.reopenClosedEditor` | 重新打开已关闭的编辑器 | 撤销关闭：重新打开最近关闭的标签页 | —— | —— |
+| `workbench.action.resetSplitSizes` | 重置分屏比例 | 把所有分屏分支的比例恢复成均分（50/50）；未分屏时无效果 | —— | —— |
 | `workbench.action.toggleSplit` | 切换分屏 | 在当前分组上切换分屏（分屏 ↔ 合并） | —— | —— |
 
-### 视图（22）
+### 视图（29）
 
 | 命令 id | 标题 | 说明 | 参数（调用实参） | when 门控 |
 |:--|:--|:--|:--|:--|
@@ -91,12 +92,19 @@
 | `workbench.action.alignPanelJustify` | 面板两端对齐 | 把面板内容两端对齐（已是该对齐则无动作） | —— | —— |
 | `workbench.action.alignPanelLeft` | 面板左对齐 | 把面板内容左对齐（已是该对齐则无动作） | —— | —— |
 | `workbench.action.alignPanelRight` | 面板右对齐 | 把面板内容右对齐（已是该对齐则无动作） | —— | —— |
+| `workbench.action.getFloatingPanelBounds` | 读取悬浮面板位置与大小 | 返回悬浮面板当前几何（含 viewId/pluginId/最大化态）；无面板时返回 null | —— | —— |
 | `workbench.action.positionPanelBottom` | 面板移到底部 | 把底部面板停靠到窗口底部（已在该侧则无动作） | —— | —— |
 | `workbench.action.positionPanelLeft` | 面板移到左侧 | 把底部面板停靠到窗口左侧（已在该侧则无动作） | —— | —— |
 | `workbench.action.positionPanelRight` | 面板移到右侧 | 把底部面板停靠到窗口右侧（已在该侧则无动作） | —— | —— |
 | `workbench.action.positionPanelTop` | 面板移到顶部 | 把底部面板停靠到窗口顶部（已在该侧则无动作） | —— | —— |
 | `workbench.action.resetContainerPosition` | 重置位置 | 把指定视图容器重置回默认位置 | `ctx`: object 必填 — { containerId: string }——目标容器 id | —— |
+| `workbench.action.resetFloatingPanelBounds` | 重置悬浮面板位置与大小 | 把悬浮面板恢复成默认居中大卡（等价于从未拖拽/调高过） | —— | —— |
+| `workbench.action.resetPanelSize` | 重置面板尺寸 | 把面板尺寸恢复成默认值（横带高 220px / 竖条宽 300px） | —— | —— |
+| `workbench.action.resetSidebarWidth` | 重置侧栏宽度 | 把主侧栏宽度恢复成默认值（280px） | —— | —— |
 | `workbench.action.revealFloatingPanel` | 在悬浮面板中打开 | 把指定视图作为悬浮面板打开（已开同名面板则关闭） | `viewId`: string 必填 — 目标视图 id<br>`pluginId`: string 可选 — 声明该视图的插件 id——同名 viewId 并存时用于消歧，省略 = 按 viewId 裸扫声明 | —— |
+| `workbench.action.setFloatingPanelBounds` | 设置悬浮面板位置与大小 | 精确设定悬浮面板的顶边/左边/宽/高（px，省略的字段保持现值；越界值按拖拽同一套边界钳制） | `top`: number 可选 — 顶边距窗口顶部的像素值<br>`left`: number 可选 — 左边距窗口左侧的像素值<br>`width`: number 可选 — 面板宽度（px，上限 = 窗口宽 - 12）<br>`height`: number 可选 — 面板高度（px，下限 300 / 上限 = 窗口高 - 80） | —— |
+| `workbench.action.setPanelSize` | 设置面板尺寸 | 精确设定底部面板尺寸（px）——按面板当前停靠边自动走宽轴或高轴；越界值按拖拽同一套边界钳制 | `size`: number 必填 — 面板尺寸（px；横带 = 高，竖条 = 宽） | —— |
+| `workbench.action.setSidebarWidth` | 设置侧栏宽度 | 精确设定主侧栏宽度（px）——越界值按拖拽同一套边界钳制（170–600） | `width`: number 必填 — 侧栏宽度（px，钳到 170–600） | —— |
 | `workbench.action.showCommands` | 命令面板 | 打开命令面板，搜索并运行任意命令 | —— | —— |
 | `workbench.action.showOutput` | 输出 | 打开输出面板查看日志 | —— | —— |
 | `workbench.action.toggleContainerCollapse` | 折叠 | 折叠/展开指定视图容器 | `ctx`: object 必填 — { containerId: string }——目标容器 id | —— |
@@ -151,7 +159,7 @@
 
 <!-- BEGIN API-INDEX -->
 
-**15 个域接口 → 46 个命名空间 / 249 个方法**；调用一律 `window.linkdesk.<命名空间>.<方法>`。
+**15 个域接口 → 46 个命名空间 / 252 个方法**；调用一律 `window.linkdesk.<命名空间>.<方法>`。
 
 | 命名空间 | 域接口 | 方法数 | 方法 | 一句话 |
 |:--|:--|:--:|:--|:--|
@@ -172,7 +180,7 @@
 | `factorySlots` | FactorySlotsAPI | 4 | `listRoles` `list` `getActive` `setActive` | —— |
 | `fileAssociation` | EditorAPI | 1 | `getPluginFor` | E5.7#50：文件关联——扩展名→插件 ID（主进程 FileAssociationService 直答） |
 | `filesystem` | WorkspaceAPI | 12 | `readTextFile` `writeTextFile` `exists` `createDir` `copy` `rename` `remove` `listDir` `readBinaryFile` `writeBinaryFile` `watch` `readdir`° | 文件系统——插件读写（路径校验由主进程执行） |
-| `floatingPanelHost` | UiAPI | 2 | `onShow` `action` | E5.8#37（Phase 8 类型 B）：悬浮面板哑渲染订阅——池 FloatingPanelHost 消费（壳 preload 无此面）。 |
+| `floatingPanelHost` | UiAPI | 4 | `onShow` `action` `registerBoundsHost` `getBounds` | E5.8#37（Phase 8 类型 B）：悬浮面板哑渲染订阅——池 FloatingPanelHost 消费（壳 preload 无此面）。 |
 | `getFilePath` | ShellAPI | 0 | （顶层函数）`getFilePath: (file: File) => string;` | OS 拖入文件路径获取——双端注入 |
 | `hotExit` ⚠️ | ShellAPI | 3 | `save` `load` `clear` | 热退出暂存——编辑器未保存内容落盘（E5.7#53）。`?`：池侧独有（壳 preload 不注入） |
 | `keybindings` | KeybindingsAPI | 12 | `getKeybindings` `getConflicts` `registerKeybinding` `saveUserKeybindings` `removeKeybindingForCommand` `resetKeybindingToDefault` `findKeybindingForCommand` `setKeybindingCaptureActive` `keyboardEventToKeyString` `onChange` `syncToMainProcess`° `onForwardedEvent`° | —— |
@@ -182,7 +190,7 @@
 | `menu` | UiAPI | 2 | `registerItems` `getItems` | E5#69：菜单——插件声明式读写 |
 | `notifications` | UiAPI | 3 | `show` `list` `subscribe` | 通知——插件弹通知（E6#72：唯一通知面 = 铃铛宽通知面板，右下窄卡链路已整删），对标 VS Code vscode.window.showInformationMessage |
 | `p2p` | DataAPI | 2 | `send` `on` | E5#65：p2p 插件间定向推流——和 bridge.broadcast 同模式（fire-and-forget） |
-| `panel` | PanelAPI | 2 | `reveal` `revealFloating` | —— |
+| `panel` | PanelAPI | 3 | `reveal` `revealFloating` `setFloatingBounds` | —— |
 | `path` | WorkspaceAPI | 6 | `appDataDir`° `normalize` `join` `basename` `dirname` `extname` | 路径工具——壳/池双端注入（editor/file-tree 池插件消费 normalize/join 等）；appDataDir 双端同款（E5.8#0d.5：池侧补上——settings 插件池内解析 userData 路径） |
 | `pluginManager` | PluginsAPI | 13 | `list` `enable` `disable` `uninstall` `install` `installWithProgress`° `reinstall` `getDisabled` `getUninstalled` `isDisabled` `update`° `checkUpdates`° `notifyManifestChanged`° | 插件管理——桥接 IpcBridgeHandler → loader 函数。池权威（marketplace 插件消费），必选 |
 | `pluginState` | DataAPI | 3 | `get` `set` `onChange` | E5#71：插件持久化存储——集中缓存 + 文件持久化 |
