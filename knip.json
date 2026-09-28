@@ -29,7 +29,13 @@
         "electron/preload-pool.ts",
         "electron/preload-shell.ts",
         // E6#122：vendor spike 真机探针（npx electron 直跑的独立入口，零仓内消费方——非死代码）
-        "scripts/spike-ui-vendor-probe.cjs"
+        "scripts/spike-ui-vendor-probe.cjs",
+        // M4 spike（AI#31）：临时原型四件——`accept.mjs` 是入口；另三件由它按**路径字符串**
+        //   spawn/require（knip 看不见那种引用，故显式列入口，非死代码）。结论见同夹 README.md。
+        "scripts/dev/m4-spike/accept.mjs",
+        "scripts/dev/m4-spike/main-hook.cjs",
+        "scripts/dev/m4-spike/linkdeskctl.mjs",
+        "scripts/dev/m4-spike/mcp-stdio.mjs"
       ],
       "project": [
         // E5.8#2：plugins/ 排除——插件是独立 vite 构建产物（dist/plugins/*.js 构建自证），knip 只管壳 src/ + electron/

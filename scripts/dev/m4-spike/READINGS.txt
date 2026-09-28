@@ -1,0 +1,103 @@
+# M4 spike（AI#31）读数原件 —— 一次完整跑的 stdout
+#
+# 跑法: node scripts/dev/m4-spike/accept.mjs
+# 时间: 2026-09-28 14:54  轨道: dev（Vite dev server 在跑）+ 隔离 --user-data-dir
+# 结论与判据解读见同夹 README.md；本文件是**未经整理的读数**（PID/临时路径每次都不同）。
+
+m4-spike 验收（AI#31）—— 阶段: 全部
+  hook=scripts\dev\m4-spike\main-hook.cjs  electron=node_modules\electron\dist\electron.exe
+  ⚠️ 需要 Vite dev server（隔离实例走 isDev 轨道）
+  ✔ preflight.Vite dev server 可达（dev 轨道前置）         HTTP 200
+
+[norecord]
+  ✔ norecord.cli 报 NO_RECORD（不是瞎连）                 code=NO_RECORD exit=1
+  ✔ norecord.提示里列出找过哪些目录                           message 含「找过」
+  ✔ norecord.给了下一步                                 ① 软件没跑过？先起它。② 用了隔离实例（`--user-data-dir`）？把 `LINKDESK_USER_DAT
+  ✔ norecord.--help 离线照常可用（自举点）                    exit=0 1162B
+  ✔ norecord.--help 如实说在离线                         含「离线说明（探测失败」
+
+[off]
+  ✔ off.记录已写（关着也留痕）                                {"mode":"off","enabled":false,"listening":false}
+  ✔ off.mode=off ⇒ 未监听                             listening=false
+  ✔ off.CLI 说「开关是关的」（不是「拒绝连接」）                     code=SWITCH_OFF
+  ✔ off.话里带 pid 与版本（说清是谁）                          软件在跑（pid 67040，linkdesk 0.2.21），但 **AI 接入开关是关的**（门锁语义）
+  ✔ off.pid 就是我们 spawn 的那只                         spawn pid=67040
+  ✔ off.--help 仍可用且说明为何离线                          exit=0
+
+[tcp]
+  ✔ tcp.通道起来并写下地址                                  {"transport":"tcp","host":"127.0.0.1","port":55649}
+  ✔ tcp.ping 通                                     exit=0
+  ✔ tcp.🔴 认人：应答 pid == 我们 spawn 的 pid             应答=37824 spawn=37824
+  ✔ tcp.describe 运行期派生操作表                          describe,ping,tabs,exec,log
+  ✔ tcp.--help 附「运行中实例自省」                          在线自省节存在
+  ✔ tcp.--help 静态表与实例清单差集为空                        差集双向空
+  ✔ tcp.环境前置：壳缝通（壳渲染进程已挂载并应答）                      2826ms 内通
+  ✔ tcp.exec 一条 CLI 命令被接受                          exit=0 {"commandId":"app.openAiManual","result":null}
+  ✔ tcp.证人①（本通道读取面）看到新标签 ai-manual                 before=false after=true tabs=welcome-2,release-notes,ai-manual
+  ✔ tcp.证人②（CDP 独立读面）看到同一个标签                       cdp tabs=welcome,release-notes,ai-manual
+  ✔ tcp.两个证人一致（本通道 ⊆ CDP）                          bridge=true cdp=true
+  ✔ tcp.账本留下真调用（exec ok）                           账本 16 条
+  ✔ tcp.账本也留被拒的调用（先记后判）                            每条都有 ok 字段
+  ✔ tcp.缺口①：未知命令被静默接受（记现象，非本棒引入）                   exit=0 result={"commandId":"no.such.command.xyz","result":null}
+  ✔ tcp.缺口①.后果：账本把它记成 ok=true（⇒ 账本 ≠ 真实性凭据）        账本里 arg=no.such.command.xyz ⇒ [{"ts":"2026-09-28T06:54:30.480Z","op":"exec","arg":"no.such.command.xyz","ok":true,"code":null,"ms":1}]
+  ✔ tcp.✗ 负控：错凭据被拒（EAUTH）                          code=EAUTH
+  ✔ tcp.✗ 负控：表外操作被网关拒（EOP）                         code=EOP 未知操作 rm -rf /（本 spike 只有 describe / ping / tabs /
+  ✔ mcp(在线).tools/list 应答                          tools=linkdesk_status,describe,ping,tabs,exec,log
+  ✔ mcp(在线).清单来源 = 实例自省（不手抄）                       实例自省（白名单 v1）
+  ✔ mcp(在线).tools/call 真读到池快照                      isError=false {
+  "windows": [
+    {
+      "windowId":
+  ✔ tcp.强制杀后进程真退了（为下一阶段让出端口）                       exitCode=1
+  ✔ dead(接上).记录还在（不删 —— 好说「软件已退出」）                 listening=true exitedAt=(未盖章)
+  ✔ dead(接上).CLI 报 APP_EXITED（不是「拒绝连接」）            code=APP_EXITED
+  ✔ dead(接上).话里说清「残留记录」与下一步                        记录说在 127.0.0.1:55649 监听，但那个 pid（37824）已经不在了 —— 这是**残留记录**
+
+[pipe]
+  ✔ pipe.命名管道建起（transport=pipe）                    \\.\pipe\linkdesk-m4spike-a351c3ff
+  ✔ pipe.管道名含 userData 摘要（多实例不撞名）                  \\.\pipe\linkdesk-m4spike-a351c3ff
+  ✔ pipe.✨ 一条 CLI 命令走命名管道真读到实例                     应答 pid=20136 spawn=20136
+  ✔ pipe.管道下认人依旧对齐                                 pid 一致
+  ✔ pipe.环境前置：壳缝通                                  2954ms 内通
+  ✔ pipe.管道下也走得到壳（读快照）                             tabs=welcome-2,release-notes,ai-manual
+  ✔ pipe.✨ 管道下 exec 一条命令也真控制得住（ai-manual 由无到有）     before=false after=true
+
+[bind]
+  ✔ bind.地址取自配置（记录里就是 127.0.0.2）                   {"transport":"tcp","host":"127.0.0.2","port":63563}
+  ✔ bind.该地址上一条命令真通                                往返成功 pid=25756
+  ✔ bind.（如实）代码里没有「非本机即拒」的分支                       回环是默认值 ⇒ 换地址不改码；⚠️ 跨机绑定本轮未实测
+  ✔ bind.✗ 负控：同端口在 127.0.0.1 上无人听                  code=ECONNREFUSED（期望 ECONNREFUSED）
+
+[portbusy]
+  ✔ portbusy.软件照常起（通道失败不拖垮主程序）                     pid=37608
+  ✔ portbusy.🔴 监听失败被记下（不静默）                       lastError=EADDRINUSE
+  ✔ portbusy.CLI 报 LAST_FAILED（不是「开关关着」）           code=LAST_FAILED
+  ✔ portbusy.话里点名端口被占 + 下一步                        监听失败不会自动重试（同 M5 的 CDP 端口结论）。若是端口被占（EADDRINUSE）→ 换 `LINKDESK_
+
+[multi]
+  ✔ multi.第二只自己退出了（单实例锁生效）                         exitCode=0
+  ✔ multi.🔴 记录 pid 未被第二只改写                        现在 pid=61644 原 pid=61644
+  ✔ multi.🔴 记录仍说 listening（第二只没把它改成失败）            listening=true lastError=null
+  ✔ multi.第一只照常服务（CLI 仍通、pid 不变）                   pid=61644
+  ✔ multi.壳窗仍只有 1 只（第二只没开新窗）                       shellWindows=1（前值 0）
+  ✔ multi(负控).拆掉启动门 ⇒ 记录被第二只污染（证明门有用）              pid 62032 → 22688 lastError=null listening=true
+  ✔ multi(负控).污染后 CLI 会误报（正是要避免的假警报）               code=APP_EXITED pid=undefined
+
+[mcp]
+  ✔ mcp(无记录).tools/list 立刻应答（⛔ 不挂死）                88ms 内应答
+  ✔ mcp(无记录).清单退回静态表并标明来源                          静态表（离线）
+  ✔ mcp(无记录).每个工具带离线警示                             tools=6
+  ✔ mcp(无记录).linkdesk_status 离线可用（读文件面）            87ms 原因: NO_RECORD
+  ✔ mcp(无记录).status 给出下一步（不是死胡同）                   下一步: ① 起软件（`npm run dev` 或装好的 LinkDesk）；② 若是隔离实例，把 LINKDESK_
+  ✔ mcp(无记录).要软件的工具 ⇒ isError + 可读原因               79ms
+  ✔ mcp(无记录).🔴 立即返回，不挂死                           79ms（默认 WAIT_MS=0 ⇒ 不傻等）
+  ✔ mcp(强制离线).仍应答 + 标明静态表                          online=false
+  ✔ mcp(强制离线).连得上时同一 server 会自省（对比：本条应为 false）     online=false
+  ✔ mcp(等多久可配).WAIT_MS=800 真等约 800ms 再报原因          906ms
+  ✔ mcp(等多久可配).等满后如实说出「等了多久」                       无法调用 tabs（等了 820ms）：软件不在服务状态 [FORCED_OFFLINE] 负控：LINKDESK_MC
+
+[decouple]
+  ✔ decouple.产品路径无改动（src/electron/packages/plugins/cli） 空
+  ✔ decouple.用户手上的 00-README.md 干净                 干净
+
+读数 71 条：通过 71 · 未过 0
