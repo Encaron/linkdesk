@@ -438,3 +438,69 @@ describe("未读集合维护（E6#73g）", () => {
     expect(_seenIds.size).toBe(0);
   });
 });
+
+/**
+ * M1 读取面（AI#2 / AI#6）——AI 只经契约就要能答「按钮按下去执行什么」「这条为什么没弹」。
+ * 断言对象是 **DTO 本身**（不是 toast 内部字段）：AI 看得见的就是 DTO，DTO 少一项它就是瞎的。
+ */
+describe("buildNotif——读取面事实（M1 AI#2 按钮 command/args ｜ AI#6 wake/ttl/persistent）", () => {
+  /** 按 toast id 取面板里的 DTO 条目（面板 item id 就是 toast id） */
+  function itemOf(id: string) {
+    for (const g of buildNotif(t).groups) {
+      const hit = g.items.find((i) => i.id === id);
+      if (hit) return hit;
+    }
+    throw new Error(`面板里没有 id=${id} 的条目`);
+  }
+
+  it("AI#6：wake **恒带**——false 也是答案（「这条为什么没弹」），不是缺字段", () => {
+    const id = pushToast({ message: "演示消息", severity: "info", ttl: 0 });
+    expect(itemOf(id).wake).toBe(false);
+  });
+
+  it("AI#6：ttl 透传（0 = 不自动消失）＋ 真长驻才带 persistent", () => {
+    const id = pushToast({ message: "演示失败", severity: "error", ttl: 0, persistent: true, wake: true });
+    const item = itemOf(id);
+    expect(item.ttl).toBe(0);
+    expect(item.persistent).toBe(true);
+    expect(item.wake).toBe(true); // 「因为什么弹出」的答案就落在这一个读数上
+  });
+
+  it("AI#6：短 TTL 条目不带 persistent 字段（缺省形状不变）", () => {
+    const id = pushToast({ message: "演示消息", severity: "info", ttl: 6000 });
+    const item = itemOf(id);
+    expect(item.ttl).toBe(6000);
+    expect("persistent" in item).toBe(false);
+  });
+
+  it("AI#2：按钮的 command/args 随行落进 DTO（AI 据此自己调 executeCommand）", () => {
+    const id = pushToast({
+      message: "演示安装失败",
+      severity: "error",
+      ttl: 0,
+      actions: [
+        { label: "重试", isPrimary: true, command: "demo-plugin.retryInstall", args: ["http://demo.test/pkg"], onClick: () => {} },
+        { label: "忽略", onClick: () => {} },
+      ],
+    });
+    const item = itemOf(id);
+    expect(item.actions[0]).toMatchObject({
+      label: "重试",
+      isPrimary: true,
+      command: "demo-plugin.retryInstall",
+      args: ["http://demo.test/pkg"],
+    });
+    // 无 command 的按钮只带 label——不虚报 command（点了也只是关掉这条）
+    expect(item.actions[1]).toEqual({ label: "忽略" });
+  });
+
+  it("AI#2：args 为空数组也如实带出（「有 command 但无参」与「没 command」是两件事）", () => {
+    const id = pushToast({
+      message: "演示消息",
+      severity: "info",
+      ttl: 0,
+      actions: [{ label: "换个姿势", command: "demo-plugin.retryInstall", args: [], onClick: () => {} }],
+    });
+    expect(itemOf(id).actions[0]).toEqual({ label: "换个姿势", command: "demo-plugin.retryInstall", args: [] });
+  });
+});

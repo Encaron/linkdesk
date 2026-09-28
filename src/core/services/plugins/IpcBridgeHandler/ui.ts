@@ -10,8 +10,9 @@
  *   保护主力是 SDK 静态腿 `context-ownership`，这里是第二道网）。
  */
 
-import { confirm, alert, confirmContent } from "../../ui/DialogService"; // E5#67 + E6#71c 富内容确认
+import { confirm, alert, confirmContent, getPendingDialogs } from "../../ui/DialogService"; // E5#67 + E6#71c 富内容确认 + M1 AI#5 在途读取面
 import { pushToast, dismissToast, getToasts, updateToast, TOAST_TTL_ERROR, type ToastSeverity } from "../../ui/toast";
+import { notifSnapshot } from "../readSnapshots"; // M1 AI#1：通知面板快照（usePoolSync 注册的 buildNotif(t) 闭包）
 import { registerMenuItems, getMenuItems, MENU_SLOTS, type ManifestMenuItem } from "../../../registry/commands/MenuRegistry"; // E5#69
 import { ContextKeyService } from "../../../registry/commands/ContextKeyService"; // E5#70
 import { HOST_RESERVED_CONTEXT_KEYS_HOST_ONLY } from "../../../registry/host-reserved.generated"; // E6#111h（1.38）：宿主专用旗子·运行时第二道网
@@ -270,6 +271,10 @@ export async function handleUiMethod(method: string, args: unknown[]): Promise<u
       const actions = options?.actions?.map((a) => ({
         label: a.label,
         isPrimary: a.isPrimary,
+        // M1 AI#2：命令事实**随行落进 toast**（不只是收进闭包）——读取面（notifications.list()）
+        // 的 actions[] 正是从这里取 command/args。纯加法：onClick 闭包一字未动，点击路径零回归。
+        command: a.command,
+        args: a.args,
         onClick: () => {
           // executeCommand(id, _token?, ...args)——token 槽位显式 undefined 占位（E5.7#63.8 全仓惯例），
           // a.args 从第三位起才进 handler ...args；漏占位会让 args[0] 落进 token 被剥（实机/单测双证）。
@@ -326,6 +331,12 @@ export async function handleUiMethod(method: string, args: unknown[]): Promise<u
       dismissToast(handleId);
       break;
     }
+    // ── M1 AI#1：通知读取面——**只读列举**（面板 DTO 本体，与 statusBar.notif 同一序列化器）──
+    case "listNotifications":
+      return notifSnapshot.read();
+    // ── M1 AI#5：在途弹窗读取面——DialogService 登记的单槽（见该模块 `_pending` 的 🔴）──
+    case "getPendingDialogs":
+      return getPendingDialogs();
     default:
       throw new Error(`未知的 plugins 方法: ${method}`);
   }

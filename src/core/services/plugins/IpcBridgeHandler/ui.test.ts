@@ -18,6 +18,10 @@ import { registerCommand, clearCommands } from "../../../registry/commands/Comma
 import { getToasts, dismissToast, TOAST_TTL_ERROR, TOAST_SOURCE_CAP } from "../../ui/toast";
 import { ContextKeyService } from "../../../registry/commands/ContextKeyService";
 import { HOST_RESERVED_CONTEXT_KEYS_HOST_ONLY } from "../../../registry/host-reserved.generated";
+import { notifSnapshot } from "../readSnapshots"; // M1 AI#1：读取面的提供者槽
+import { confirm, registerDialogRenderers } from "../../ui/DialogService"; // M1 AI#5
+import type { NotifLayout } from "../../../types/pool/poolLayout";
+import type { PoolPendingDialog } from "../../../types/pool/poolDialog";
 
 const PLUGIN = "demo-plugin";
 
@@ -249,6 +253,71 @@ describe("contextKey:set 宿主专用旗子——运行时出声 ＋ 放行（E6
       await handleSettingsChannel("contextKey:set", [key, 1]);
       expect(errSpy, `旗子 ${key} 没出声`).toHaveBeenCalled();
       expect(ContextKeyService.getValue(key), `旗子 ${key} 的值没写进去`).toBe(1);
+    }
+  });
+});
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   M1 读取面（AI#1 / AI#5）——AI 只经契约问「铃铛面板上有什么」「有个弹窗在等什么」
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/** 壳侧 buildNotif(t) 产物的最小替身——只填必填八项，取值全是虚构值（硬约束 21） */
+const NOTIF_STUB: NotifLayout = {
+  unread: 1,
+  bellTitle: "1 条通知",
+  panelTitle: "通知",
+  clearLabel: "清除已完成",
+  minimizeLabel: "最小化",
+  emptyLabel: "暂无通知",
+  dismissTitle: "关闭",
+  groups: [],
+};
+
+describe("M1 读取面：listNotifications（AI#1）", () => {
+  it("提供者已注册 → **原样交回**壳侧快照（同一把尺：读取路上不许重算一遍）", async () => {
+    const off = notifSnapshot.register(() => NOTIF_STUB);
+    try {
+      expect(await handleUiMethod("listNotifications", [])).toBe(NOTIF_STUB);
+    } finally {
+      off();
+    }
+  });
+
+  it("提供者未注册（壳侧 usePoolSync 没挂上）⇒ **出声报错**，不是静默空面板", async () => {
+    // 静默返回空面板 = AI 读到「真的没有通知」，比报错危险得多（错得看不出来）
+    await expect(handleUiMethod("listNotifications", [])).rejects.toThrow(/notifSnapshot/);
+  });
+});
+
+describe("M1 读取面：getPendingDialogs（AI#5）", () => {
+  it("确认框在途 → 经契约读到 kind/标题/正文/按钮；结算即撤（不留悬空登记）", async () => {
+    let release!: (v: boolean) => void;
+    const off = registerDialogRenderers(
+      () => new Promise<boolean>((r) => { release = r; }),
+      async () => { /* alert 渲染器：本用例不用 */ },
+    );
+    try {
+      const answer = confirm({
+        title: "演示标题",
+        message: "演示正文",
+        confirmLabel: "确认演示",
+        cancelLabel: "取消演示",
+      });
+
+      const pending = (await handleUiMethod("getPendingDialogs", [])) as PoolPendingDialog[];
+      expect(pending).toHaveLength(1);
+      expect(pending[0]).toMatchObject({
+        kind: "confirm",
+        title: "演示标题",
+        message: "演示正文",
+        buttons: ["确认演示", "取消演示"], // 与画面同一解析（resolveDialogButtons）——读取面不说假话
+      });
+
+      release(true);
+      await expect(answer).resolves.toBe(true);
+      expect(await handleUiMethod("getPendingDialogs", [])).toEqual([]);
+    } finally {
+      off();
     }
   });
 });

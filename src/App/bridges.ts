@@ -10,7 +10,7 @@
 import { useEffect } from "react";
 import { QuickPickService } from "../core/services/ui/QuickPickService";
 import { TOAST_TTL_INFO } from "../core/services/ui/toast";
-import { registerDialogRenderers, type DialogOptions } from "../core/services/ui/DialogService";
+import { registerDialogRenderers, resolveDialogButtons, type DialogOptions } from "../core/services/ui/DialogService";
 import { registerFloatingPanelRenderer, handleFloatingPanelAction } from "../core/services/ui/FloatingPanelService"; // E5.8#37（Phase 8 类型 B）
 import { pushToast } from "../core/services/ui/NotificationService";
 import { shellEvents } from "../core/react/events/ShellEvents";
@@ -257,13 +257,18 @@ export function useUiBridges({ setPanelActiveViewId, panelActiveViewIdRef, detac
         });
         return;
       }
+      // 显示文本铁律——按钮文案壳侧 t() 解析（池原样渲染）。
+      // M1 AI#5：解析**收口**到 DialogService.resolveDialogButtons——读取面（dialogHost.pending()）
+      // 要说「在等哪几个按钮、文案是什么」，与这里必须是同一份实现（否则两把尺子，读取面迟早说假话）。
+      // ⚠️ 这里按「双钮」形态取（`isAlert` 缺省 false）＝**与改动前逐字一致**：alert 的 DTO 照样带
+      //    cancelLabel（DialogHost 的 `!data.isAlert &&` 使它不渲染——既有冗余，不动它，零回归面）。
+      const [confirmLabel, cancelLabel] = resolveDialogButtons(options);
       poolApi.pushDialog({
         open: true,
         title: options.title,
         message: options.message,
-        // 显示文本铁律——按钮文案壳侧 t() 解析（池原样渲染）
-        confirmLabel: options.confirmLabel ?? i18n.t("确定"),
-        cancelLabel: options.cancelLabel ?? i18n.t("取消"),
+        confirmLabel,
+        cancelLabel,
         isAlert,
       });
     };

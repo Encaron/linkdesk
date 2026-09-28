@@ -16,6 +16,18 @@ export interface ToastAction {
   label: string;
   /** true → 主按钮（accent 色），false/未设 → 次级文本按钮 */
   isPrimary?: boolean;
+  /**
+   * M1 `AI#2`：**可序列化事实面**——这个按钮按下去会执行什么（= `executeCommand(command, ...args)`）。
+   *
+   * 🔴 与 `onClick` **并存、不互替**：点击真路径永远走 `onClick` 闭包（面板点击 → 壳侧闭包 →
+   * `executeCommand`）；这两个字段是给**读取面**看的（通知 DTO → 契约 `notifications.list()` 的
+   * `actions[]`），让 AI 不必点按钮就能答「按钮里有什么 / 该执行哪个 / 按下去会发生什么」。
+   * 闭包不可序列化 ⇒ 反过来也成立不了（不能靠 command/args 重建闭包），故两份都要有：
+   * 少闭包 = 点不动；少命令字段 = 读不出。
+   */
+  command?: string;
+  /** 透传给命令 handler 的 `...args`（与 `command` 同源同配） */
+  args?: unknown[];
   onClick: () => void;
 }
 

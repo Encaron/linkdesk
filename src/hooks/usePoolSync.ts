@@ -43,7 +43,9 @@ import { buildStatusBarItems } from "./usePoolSync/statusbar";
 import { buildNotif } from "./usePoolSync/notif";
 import { buildCommandHints } from "./usePoolSync/hints"; // 04「悬停提示系统」件 1：命令表（提示条自动补文案/快捷键）
 import { useSyncSubscriptions } from "./usePoolSync/useSubscriptions";
-import { assembleWindowLayout, type WindowLayoutContext } from "./usePoolSync/windowLayout";
+import { assembleWindowLayout, serializeGroups, type WindowLayoutContext } from "./usePoolSync/windowLayout";
+// M1 读取面（AI#1 通知 / AI#3 标签）——core 侧读面槽：壳在这里把「答案」注册进去
+import { notifSnapshot, tabsSnapshot } from "../core/services/plugins/readSnapshots";
 
 export interface UsePoolSyncInput {
   /** E5.8#43-2：壳窗口注册表——每窗 tabState/mode/ready；本 hook 遍历就绪窗按模式策略组装布局并定向推送 */
@@ -330,4 +332,27 @@ export function usePoolSync({ windows, sidebarView, isSidebarVisible, panelActiv
       poolApi.pushLayout(assembleWindowLayout(win, ctx), win.windowId);
     }
   }, [windows, sidebarView, isSidebarVisible, panelActiveViewId, panelVisible, layoutVersion, t, chordLabel, eventEntries, updateState, releaseNotes, about, bootReady]);
+
+  // ── M1 读取面（`AI#1` 通知 / `AI#3` 标签）：把「答案」注册给 core 的读面槽 ──
+  // 🔴 为什么注册**闭包**而不是算完存 state：读面要的是**提问那一刻**的答案（AI 按需拉），
+  // 而 state 是渲染帧的快照——两者会错开。闭包每次 read() 现算，且用的仍是同一批序列化器
+  // （buildNotif / serializeGroups）⇒ **读到 = 画到**（⛔ 不 fork 第二把尺）。
+  // 🔴 为什么必须由壳 React 层注册：core（IpcBridgeHandler）不能 import hooks（依赖方向 core → 无）。
+  //    见 src/core/services/plugins/readSnapshots.ts 头注释。
+  useEffect(() => {
+    const offNotif = notifSnapshot.register(() => buildNotif(t));
+    const offTabs = tabsSnapshot.register(() => ({
+      windows: windows.map((win) => ({
+        windowId: win.windowId,
+        mode: win.mode,
+        ready: win.ready,
+        activeGroupId: win.tabState.activeGroupId,
+        // 分屏树同源（与 assembleWindowLayout 推给池的那份是同一个 tabState.root）
+        ...(win.tabState.root ? { root: win.tabState.root } : {}),
+        // groups 走**同一个** serializeGroups ⇒ 与布局树的 groups[].tabs[] 逐条对得上（AI#3 判据）
+        groups: serializeGroups(win.tabState, t, releaseNotes, about),
+      })),
+    }));
+    return () => { offNotif(); offTabs(); };
+  }, [windows, t, releaseNotes, about]);
 }

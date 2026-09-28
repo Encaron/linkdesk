@@ -26,6 +26,21 @@ import { subscribeToasts, subscribeNotifPanelOpen, dismissToast, getToasts, isPe
 import { cancelInstallJob, onDidChangeInstallJobs, updateInstallJobProgress } from "../../pluginLoader/lifecycle/install-queue"; // E6#73d：安装 job 表变化重推 + 取消 + 主进程进度回填
 import { _seenIds, markAllSeen, pruneSeen } from "./notif"; // 通知未读追踪——事件回传共享序列化侧同一实例
 
+/**
+ * M1 `AI#1`：通知面变更**信号**（池 `notifications.subscribe` 的源）。
+ *
+ * 🔴 为什么**无载荷**：带了快照 = 从第二条路把数据推一遍，池侧迟早有人直接用信号里的数据而不去
+ * 问权威（`notifications.list()`）——那就长出第二把尺。本函数只回答「**现在变了**」，要答案去问壳。
+ *
+ * ⚠️ 为什么由壳发：通知面的权威在壳（toast store 在壳渲染进程；池只是哑渲染）。
+ * 传输 = 壳 `events.emit` → 主进程 `broadcast` → 池 `events.on('notif:changed')`（**零新增 IPC 通道**）。
+ * ⚠️ 广播默认存 payload 供新池重放 ⇒ 新池可能收到一条「陈旧的变更信号」——订阅方是幂等重取语义
+ * （收到就 `list()`），无害，故不为它单开一条 storeForReplay:false 的专用路径。
+ */
+function emitNotifChanged(): void {
+  try { window.linkdesk?.events?.emit("notif:changed", undefined); } catch { /* 池/壳未就绪或纯前端预览——静默 */ }
+}
+
 interface UseSyncSubscriptionsInput {
   poolApiRef: MutableRefObject<NonNullable<LinkDeskAPI["pool"]> | null>;
   onTabAction?: (action: ShellTabAction) => void; // E5.7#96：wire 契约定型（E5.8#44-B：ShellTabAction 含 sourceWindowId）
@@ -226,12 +241,16 @@ export function useSyncSubscriptions({
   useEffect(() => subscribeToasts(() => {
     if (isNotifPanelOpen()) markAllSeen();
     pruneSeen();
+    emitNotifChanged(); // M1 AI#1：条目增删改（含未读/已读迁移）——通知面变了
     setLayoutVersion((v) => v + 1);
   }), [setLayoutVersion]);
   // E6#73d：安装 job 表变化（入队 / 抢到槽 / 阶段推进 / 出结果 / 被取消）→ 重推布局。
   // job 表与壳渲染进程同处一地，走**进程内回调**而非 IPC 往返（与池侧那条 `plugin:installJobs`
   // 广播同源同形，只是池读广播、壳直读）。进度心跳是高频事件——静默同值由 install-queue 内部拦住。
-  useEffect(() => onDidChangeInstallJobs(() => setLayoutVersion((v) => v + 1)), [setLayoutVersion]);
+  useEffect(() => onDidChangeInstallJobs(() => {
+    emitNotifChanged(); // M1 AI#1：面板前两段（进行中/等待中）与「已有结果」计数都吃 job 表
+    setLayoutVersion((v) => v + 1);
+  }), [setLayoutVersion]);
   // E6#73d：主进程段的进度（**下载百分比**主进程才拿得到）回到 job 表——阶段短语与 3px 进度条的实值。
   // 壳自己发的段进度不走这条（`lifecycle-ops.jobProgress` 同进程直呼），但主进程会把壳的 emit 也广播
   // 回来（IPC 管道两侧同源）——同值落表是幂等 no-op，不必过滤来源。
@@ -261,6 +280,7 @@ export function useSyncSubscriptions({
     const stop = () => { if (timer !== undefined) { clearInterval(timer); timer = undefined; } };
     const off = subscribeNotifPanelOpen((open) => {
       stop();
+      emitNotifChanged(); // M1 AI#1：面板开合会改变"哪些条目被折叠/时间文案基准"，通知面读数随之变
       if (!open) return;
       setLayoutVersion((v) => v + 1); // 打开瞬间先重算一次——打开前的标签可能是几十分钟前的陈旧值
       timer = setInterval(() => setLayoutVersion((v) => v + 1), 30_000);
@@ -294,6 +314,7 @@ export function useSyncSubscriptions({
       // 所以这里恰是「都落 false」，不是漏了 minimized。
       if (data.markSeen === true) {
         markAllSeen();
+        emitNotifChanged(); // M1 AI#1：认账改了未读数（onDidChange 不 fire，此前靠手动重推）
         setLayoutVersion((v) => v + 1);  // 标记已读不 fire toast 事件——手动重推
       }
     });

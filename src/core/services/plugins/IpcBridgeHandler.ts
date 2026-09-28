@@ -21,7 +21,7 @@ import { ContextKeyService } from "../../registry/commands/ContextKeyService"; /
 import { handlePluginManagerMethod } from "./IpcBridgeHandler/pluginManager"; // E5.8#0d.10-10a：插件管理域（PluginManagementAPI/setPluginAPI 属主迁入）
 import { handleConfigChannel, handleConfigurationMethod, subscribeConfiguration, unsubscribeConfiguration } from "./IpcBridgeHandler/configuration"; // E5.8#0d.10-10b：配置域
 import { handleCommandsChannel } from "./IpcBridgeHandler/commands"; // E5.8#0d.10-10c：命令域
-import { handleTabsChannel } from "./IpcBridgeHandler/tabs"; // E5.8#0d.10-10c：标签页域
+import { handleTabsChannel, handleTabsMethod } from "./IpcBridgeHandler/tabs"; // E5.8#0d.10-10c：标签页域 + M1 AI#3 读取面
 import { handleWorkspaceChannel, handleViewContainerChannel, subscribeWorkspace, unsubscribeWorkspace, subscribeViews, unsubscribeViews } from "./IpcBridgeHandler/workspace"; // E5.8#0d.10-10d：工作区/视图容器域
 import { handleDialogChannel, handleSettingsChannel, handleSettingsMethod, handleUiMethod, subscribeUi, unsubscribeUi } from "./IpcBridgeHandler/ui"; // E5.8#0d.10-10e：UI 浮层域
 import { handleKeybindingsMethod, subscribeKeybindings, unsubscribeKeybindings } from "./IpcBridgeHandler/keybindings"; // E5.8#0d.10-10f：快捷键域
@@ -256,7 +256,16 @@ async function handlePluginsCall(method: string, args: unknown[]): Promise<unkno
     case "updateNotification":
     case "finishNotification":
     case "cancelNotification":
+    // M1 AI#1：通知读取面（面板 DTO 本体——壳持全量，脱出窗也问得到）
+    case "listNotifications":
+    // M1 AI#5：在途弹窗读取面（DialogService 单槽——读得到"在等什么"，不改 Promise 语义）
+    case "getPendingDialogs":
       return handleUiMethod(method, args);
+    // ── M1 AI#3：标签清单读取面——壳是标签权威（React state，无第二份）（IpcBridgeHandler/tabs 域委派）──
+    // 🔴 走既有 plugins:call 门面而非新开 tabs:* 通道：本格只加一个读方法，新增通道要动主进程注册
+    //    + 命名空间矩阵 §3 计数 + 审计门禁多处，不值当（既有门面已通）。
+    case "listTabs":
+      return handleTabsMethod(method);
     // ── E5.8#50.18+#88：主题配方/配色（八方法）——IpcBridgeHandler/theme 域委派（查询壳侧权威/应用落配置）──
     case "theme.listRecipes":
     case "theme.getActive":

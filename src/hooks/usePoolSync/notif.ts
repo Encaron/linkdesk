@@ -269,11 +269,24 @@ export function buildNotif(t: TFunction): NotifLayout {
         timeLabel: n.createdAt ? formatTimeAgo(t, n.createdAt) : "",
         // E6#73g（S5）：来源行给**人类可读名**（完整 id 走同一解析路径）——此前甩的是原始 id
         ...(n.source ? { sourceLabel: t("来源: {{source}}", { source: resolveSourceName(t, n.source) }) } : {}),
-        actions: (n.actions ?? []).map((a) => ({ label: a.label, ...(a.isPrimary ? { isPrimary: true } : {}) })),
+        actions: (n.actions ?? []).map((a) => ({
+          label: a.label,
+          ...(a.isPrimary ? { isPrimary: true } : {}),
+          // M1 AI#2：按钮**按下去会执行什么**多带一份可序列化事实（纯加法）——
+          // 闭包 onClick 仍是唯一点击路径（池回传位置序号 → 壳侧闭包跑），
+          // 这两个字段只是让读取面（notifications.list()）能答「按钮里有什么 / 该执行哪个」。
+          ...(a.command ? { command: a.command } : {}),
+          ...(a.args !== undefined ? { args: a.args } : {}),
+        })),
         // E6#72c：进度旗标 + 百分比透传（原 71i 画在窄卡上，窄卡删后落点改宽面板）。
         // 只在 true 时带字段——非进度通知 DTO 形状不变（省略即缺省，池按 undefined 处理）。
         ...(n.progress ? { progress: true } : {}),
         ...(typeof n.percent === "number" ? { percent: n.percent } : {}),
+        // M1 AI#6：唤醒/存活三件套透传——**不是新判据**，是已有事实的读数出口。
+        // `wake` 恒带（false 也是答案：「这条为什么没弹」）；ttl/persistent 同 toast store 口径。
+        wake: n.wake === true,
+        ...(typeof n.ttl === "number" ? { ttl: n.ttl } : {}),
+        ...(n.persistent ? { persistent: true } : {}),
       })),
     });
   }
