@@ -369,6 +369,10 @@
 
 - [ ] **AI#50** 契约把 `sidebarAction` 的 `reorder` 变体（`containerId`/`viewId`/`newIndex`）写进 §pool 伞形行（与 `AI#21` 三条同款收账）＋ 手册 04 章总表加「拖侧栏视图排序 / 拖到图标栏」一行（图标栏 = `view:droppedOnIcon` 事件终点；壳命令化与否执行时判）。｜判据 = 契约查得到变体 ＋ 手册查得到该行（B 类「写进手册＋契约即消」同款）｜详案 = [03-任务档案/M2-操作面.md](03-任务档案/M2-操作面.md) `AI#50` 段｜**归属 = 会话 13 开工时先销（半小时级），再做 `AI#45`–`AI#49`**
 
+#### AI#51 ⬜ （生长格 · 发版基建，三轴通用非 M2 专属）SDK publish 内建「资产版本 == Release 版本」源头断言
+
+- [ ] **AI#51** `@linkdesk/plugin-sdk` 的 `publish` 在上传前断言：① 分发件内 `plugin.json.version` == Release 版本；② 资产新鲜（mtime 晚于最近一次源码/manifest 变更，或提供 `--force-build`）。｜**依据（2026-09-29 会话 11 实测立案）**：SDK `publish` **不 build、复用 dist 现成分发件** ⇒ 四仓首发资产全部 stale（settings 包里缺整个 1.0.22 功能），tag 对、包内容错，靠 `sync:bundled` 下游闸才拦下 ⇒ 整批删 release 重发 ≈ 35 分钟；错误活到消费侧才被看见 = 检查点缺位＋错位。｜**判据**：真变异实测——塞 stale dist ＋ 新 manifest ⇒ publish 当场红（秒级，EXIT≠0，报「资产内 plugin.json 版本 X ≠ Release 版本 Y——先 npm run build」）；fresh build ⇒ 绿；单测/`--self-test` 同批接线（照「门禁自测必须接线」纪律）。｜落点 = `packages/plugin-sdk/src/publish.js`（断言本体）｜**发版注意**：本格改 plugin-sdk ⇒ 作者轴五步发版，**顺带清 release:mark 排队**（contracts / plugin-sdk / plugin-docs 三包漂移一次记齐——见记忆《author-axis-npm-release-and-npx-cache》坑④）。｜配套纪律已沉淀 = 全局 skill `release-discipline` ＋ 记忆《release-discipline-three-axes》（2026-09-29 用户拍板「发版是长久的事，纪律只要发版就遵守」）；在该断言落地前，skill 第一.2 条「先 build 再 publish」是唯一防线。｜**归属 = 会话 13**（与 `AI#50` 同批先销，半小时级；发版批联动：plugin-sdk 升版时一并走）
+
 ---
 
 ## 第 6 轮 · 验收与收口（`AI#45`–`AI#49`）
