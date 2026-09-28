@@ -32,6 +32,7 @@ import { ContextKeyService } from "../core/registry/commands/ContextKeyService";
 import { useUpdateState } from "./useUpdateState"; // E6#57.11：更新态 → TitleBar 按钮显隐/文字（九态映射在 updateCommands.ts）
 import { useReleaseNotes } from "./useReleaseNotes"; // E6#57.13：发行说明标签页载荷（壳想、池画）
 import { useAbout } from "./useAbout"; // E6#57.14：关于标签页载荷（同款）
+import { useAiManual } from "./useAiManual"; // M3 AI#16：AI 操作手册标签页载荷（同款第三例）
 import { UPDATE_ACTIONABLE_KEY, UPDATE_BUTTON_LABEL_KEY, isUpdateActionable, updateButtonKeyFor } from "../core/commands/shell/updateCommands"; // E6#57.11
 import { getAssetPath } from "../core/utils/path/assetPath"; // E5.7#5：logoUrl——池不 import core，壳解析推送
 import { getTabCreatableViews } from "../pluginLoader/contributions/viewRegistry";
@@ -109,6 +110,11 @@ export function usePoolSync({ windows, sidebarView, isSidebarVisible, panelActiv
   // 都出新对象**（语言切换时标签要跟着变）——但那正是它该重推的时刻，稳态下 `useMemo` 命中缓存、
   // 引用恒等，所以进 deps 不会引起重推风暴。
   const about = useAbout();
+
+  // M3 AI#16：AI 操作手册态——同一条规矩的第三个实例，理由逐条同上。
+  // ⚠️ 本 hook 的快照就是 **DTO 本身**（稳态引用恒等，态真变才整体换新）——与 `useAbout` 的
+  // `useMemo([snap, t])` 形态不同但同样稳定，所以进 deps **不会**引起重推风暴。
+  const aiManual = useAiManual();
 
   // E5.7#8：Chord 状态栏提示——壳 StatusBar.tsx:88-115 逻辑迁入（字符串壳侧构建，池哑渲染）
   const [chordLabel, setChordLabel] = useState<string | null>(null);
@@ -317,6 +323,8 @@ export function usePoolSync({ windows, sidebarView, isSidebarVisible, panelActiv
       releaseNotes,
       // E6#57.14：关于载荷——同款（serializeGroups 盖章到那一个壳视图 tab 上）
       about,
+      // M3 AI#16：手册载荷——同款（只盖章到 ai-manual 那一个壳视图 tab 上）
+      aiManual,
       // 04「悬停提示系统」件 1：提示条总开关 + 命令表（窗口无关，恒推——assembleWindowLayout 不吃 zones）。
       // 缺省开：读不到配置（未初始化/键没注册）时不该变成"全软件没提示"。
       hintEnabled: getConfigurationValue<boolean>("app.hint.enabled") ?? true,
@@ -331,7 +339,7 @@ export function usePoolSync({ windows, sidebarView, isSidebarVisible, panelActiv
       if (!win.ready) continue;
       poolApi.pushLayout(assembleWindowLayout(win, ctx), win.windowId);
     }
-  }, [windows, sidebarView, isSidebarVisible, panelActiveViewId, panelVisible, layoutVersion, t, chordLabel, eventEntries, updateState, releaseNotes, about, bootReady]);
+  }, [windows, sidebarView, isSidebarVisible, panelActiveViewId, panelVisible, layoutVersion, t, chordLabel, eventEntries, updateState, releaseNotes, about, aiManual, bootReady]);
 
   // ── M1 读取面（`AI#1` 通知 / `AI#3` 标签）：把「答案」注册给 core 的读面槽 ──
   // 🔴 为什么注册**闭包**而不是算完存 state：读面要的是**提问那一刻**的答案（AI 按需拉），
@@ -350,9 +358,9 @@ export function usePoolSync({ windows, sidebarView, isSidebarVisible, panelActiv
         // 分屏树同源（与 assembleWindowLayout 推给池的那份是同一个 tabState.root）
         ...(win.tabState.root ? { root: win.tabState.root } : {}),
         // groups 走**同一个** serializeGroups ⇒ 与布局树的 groups[].tabs[] 逐条对得上（AI#3 判据）
-        groups: serializeGroups(win.tabState, t, releaseNotes, about),
+        groups: serializeGroups(win.tabState, t, releaseNotes, about, aiManual),
       })),
     }));
     return () => { offNotif(); offTabs(); };
-  }, [windows, t, releaseNotes, about]);
+  }, [windows, t, releaseNotes, about, aiManual]);
 }

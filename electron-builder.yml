@@ -66,6 +66,16 @@ extraResources:
     to: bundled-plugins
   - from: build/icon.ico
     to: icon.ico
+  # M3 `AI#16`（AI友好化-全自动操作/03-任务档案/M3-手册.md）：AI 操作手册随包发货——
+  # `docs/07-AI操作手册/*.md` → `<resources>/ai-manual/*.md`（只换父目录，章节名与 `00-`/`01-`
+  # 前缀保持原样 ⇒ 阅读顺序不变）。
+  # 🔴 为什么必须**搬家**而不是原地留在 `docs/`：`docs/` 不进安装包（files 白名单里没有它，
+  #    且它本来就不该整目录进包）。手册进包 = 一个**面向用户**的发货物，与源码树文档分开管。
+  # 读取端 = `electron/services/ai-manual.ts` 的 `manualDir()`（dev 读源码树那份，打包读这里的落点，
+  # 两处同名 `ai-manual` ⇒ 本文件的 `to` 与那个常量是**同一件事的两处声明**，改名须同改）。
+  # 离线恒可读（纯本地文件，零网络）——这是本格的硬要求（档案风险条目：⛔ 别做成需要联网才能看）。
+  - from: docs/07-AI操作手册
+    to: ai-manual
   # E6#15e：LSP 语言服务器不再壳发货——pyright 随 python 插件自带（.linkdesk-plugin zip 内 node_modules/pyright，
   # boot 自动装落 userData）。壳注册处按插件根把 langDef.lsp.args 一次绝对化（electron/plugins/lsp-arg-resolve.ts）→
   # spawn 命中 userData 路径，无需 ASAR 外拷贝。E5#114d 临时 hack 删除（核心无知：壳不背语言工具）。

@@ -20,6 +20,7 @@
 import type { LinkDeskAPI } from "../linkdesk-api";
 import type { DownloadProgress, ReleaseNotes, UpdateState } from "../../types/ipc/update";
 import type { ProductInfo } from "../../types/ipc/product";
+import type { AiManualPayload } from "../../types/ipc/aiManual";
 
 /** 池 preload 必暴露面（45 = 44 唯一 + config 别名；唯一缺 bridge；E6#72 删 toast 宿主桥面）——E5.8#34.5 加 panel（插件调 reveal 的池侧通道）；E5.8#37 加 floatingPanelHost（壳内悬浮面板哑渲染桥）；E5.8#41.12 加 settings（设置套枚举/切换，设置 UI 在池内渲染）；E5.8#41.14 加 factorySlots（任意 role 候选枚举/切换，设置 UI 通用区数据源）；E5.8#50.11 加 appearance（外观资产——选择图片拷贝入库）；E6#57.2a 加 app（只读产品身份——市场 minAppVersion E6#30.8c 消费） */
 export type PoolExposed = Pick<LinkDeskAPI,
@@ -124,12 +125,12 @@ export type ShellExposed = Pick<LinkDeskAPI,
     onProgress(cb: (progress: DownloadProgress) => void): () => void;
   };
   /**
-   * app 壳 = 契约的 `getVersion` **＋ 壳内私有扩展** `getProductInfo`。
+   * app 壳 = 契约的 `getVersion` **＋ 壳内私有扩展** `getProductInfo` / `getAiManual`。
    *
    * 🔴 与上面 `update` 段**同一条规矩的另一个实例**（`preload-shell` 的 `buildShellApp()` 头注
-   * 已写「两格必须同形」）：契约的 app 面只有 `getVersion`（E6#57.2b），而产品身份全量
-   * （关于页 8 字段 = `#57.14` 的数据源）属**壳内视图的取数**，不给池插件开
-   * （池 preload 只注入契约面 ⇒ 插件侧根本没有这个入口）。
+   * 已写「三格必须同形」）：契约的 app 面只有 `getVersion`（E6#57.2b），而产品身份全量
+   * （关于页 8 字段 = `#57.14` 的数据源）＋AI 操作手册（M3 `AI#16`）属**壳内视图的取数**，
+   * 不给池插件开（池 preload 只注入契约面 ⇒ 插件侧根本没有这两个入口）。
    *
    * ⚠️ **本段是 `#57.13` 补的，不是新暴露**——`getProductInfo` 运行时一直在
    * （`buildShellApp()` 工厂构造），只是**类型上缺这一行**：不补，壳侧消费它就会
@@ -140,6 +141,17 @@ export type ShellExposed = Pick<LinkDeskAPI,
   app: LinkDeskAPI["app"] & {
     /** 产品身份全量（`electron/product.ts` 的 `productInfo()`）——**壳内私有**，池侧不暴露 */
     getProductInfo(): Promise<ProductInfo>;
+    /**
+     * AI 操作手册全量（M3 `AI#16`）——**壳内私有扩展第三例**（`getProductInfo` 之后的同款：
+     * 壳内视图的数据源，属壳不属插件）。唯一消费者 = `src/hooks/useAiManual.ts`（模块单例）。
+     *
+     * 🔴 为什么不开给池：手册讲的是**本软件怎么被 AI 操作**（命令面/契约面/CLI+MCP），
+     * 是宿主的知识；而壳内视图与第三方插件共用同一个 `window.linkdesk` ⇒ 开给池 = 开给所有插件
+     * （同 `update.getReleaseNotes` 的边界论证，见该段）。数据走「壳想、池画」。
+     *
+     * ⚠️ `chapters: []` 是**合法回包**（这个构建没带手册），不是错误——消费方画空态，别当异常。
+     */
+    getAiManual(): Promise<AiManualPayload>;
   };
   /**
    * shell 壳 = 契约面 **＋ 壳内私有扩展** `onOpenPath`（E6#46b，`buildShellUpdate` 同先例同理由）：

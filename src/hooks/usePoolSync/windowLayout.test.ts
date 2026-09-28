@@ -12,6 +12,7 @@
 import { describe, it, expect } from "vitest";
 import type { TFunction } from "i18next";
 import type { TabState } from "../useTabManager/types";
+import type { PoolAiManualData } from "../../core/types/pool/poolLayout";
 import type { WindowShellState } from "../../App/windows";
 import {
   assembleWindowLayout,
@@ -219,5 +220,49 @@ describe("serializeGroups 标签页序列化", () => {
     state.groups[0].tabs[0].sourceId = "serial-monitor-49";
     tab = serializeGroups(state, t)[0].tabs[0];
     expect(tab.hint).toBeUndefined();
+  });
+});
+
+describe("serializeGroups 壳视图载荷盖章（M3 AI#16：手册）", () => {
+  /** 一个 `ai-manual` 壳视图标签页（身份 = type，无 pluginId——同两个兄弟壳视图） */
+  function manualTabState(): TabState {
+    const gid = "g1";
+    return {
+      groups: [
+        {
+          id: gid,
+          activeTabId: "t1",
+          tabs: [{ id: "t1", type: "ai-manual", label: "AI 操作手册", dirty: false }],
+        },
+      ],
+      activeGroupId: gid,
+      root: { type: "leaf", groupId: gid },
+    };
+  }
+
+  const DATA: PoolAiManualData = {
+    state: "content",
+    version: "9.9.9",
+    chapters: [{ id: "00-demo-home", title: "演示章首", markdown: "# 演示章首" }],
+  };
+
+  it("手册 tab ⇒ 盖章 `aiManual` + `shellRendered/shellType`（池据此路由到 AiManualPoolView）", () => {
+    const tab = serializeGroups(manualTabState(), t, undefined, undefined, DATA)[0].tabs[0];
+
+    expect(tab.shellRendered).toBe(true);
+    expect(tab.shellType).toBe("ai-manual");
+    expect(tab.aiManual).toBe(DATA); // 原样透传——池只画，池不组装
+  });
+
+  it("非手册 tab ⇒ 不携带 `aiManual`（载荷只盖章到那一个壳视图 tab 上）", () => {
+    const tab = serializeGroups(makeTabState(), t, undefined, undefined, DATA)[0].tabs[0];
+
+    expect(tab.aiManual).toBeUndefined();
+  });
+
+  it("壳侧载荷缺席（还没取到数）⇒ `aiManual` 为 undefined（池落回自己的 `loading` 兜底）", () => {
+    const tab = serializeGroups(manualTabState(), t)[0].tabs[0];
+
+    expect(tab.aiManual).toBeUndefined();
   });
 });

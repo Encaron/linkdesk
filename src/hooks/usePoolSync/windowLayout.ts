@@ -24,6 +24,7 @@ import type {
   IconBarIcon,
   PoolReleaseNotesData,
   PoolAboutData,
+  PoolAiManualData,
   PoolCommandHints,
 } from "../../core/types/pool/poolLayout";
 import type { WindowShellState, PoolZone } from "../../App/windows";
@@ -34,7 +35,7 @@ import { resolvedToIconBarIcon } from "./resolvedIcon"; // E6#69f：ResolvedIcon
 import { FileIconResolver } from "../../components/shared/file-icon/FileIconResolver"; // E6#69g：文件图标共享解析器（file-tree 同源，禁插件内双源/禁跨插件 import）
 import { IconRegistry } from "../../core/registry/appearance/IconRegistry"; // E6#69g：当前图标主题 mappings（app.iconTheme 变更 → layoutVersion 重算）
 import { getConfigurationValue } from "../../core/services/configuration/ConfigurationService"; // E6#69g：同步读 app.iconTheme（iconbar 读 menuStyle 同款）
-import { isShellRenderedTab, resolvePoolTabTitle, RELEASE_NOTES_TAB_TYPE, ABOUT_TAB_TYPE } from "../../core/utils/tabIdentity";
+import { isShellRenderedTab, resolvePoolTabTitle, RELEASE_NOTES_TAB_TYPE, ABOUT_TAB_TYPE, AI_MANUAL_TAB_TYPE } from "../../core/utils/tabIdentity";
 import { factorySlots } from "../../core/services/bootstrap/FactorySlots"; // E6#30.10b：活跃 marketplace 插件定位（iconbar 同源导入路径）
 import { ViewContainerService } from "../../core/services/layout/ViewContainerService"; // E6#30.10b：main 容器详情贡献寻址
 import type { ViewDescriptor } from "../../core/services/layout/ViewContainerService/types"; // E6#30.10b：_pluginId/_renderPath 内部标记字段读型
@@ -69,6 +70,12 @@ export interface WindowLayoutContext {
    * 同理 `tabBehavior.singleton` ⇒ 一窗最多一个，不按 tab 存一份。
    */
   about?: PoolAboutData;
+  /**
+   * M3 `AI#16`：AI 操作手册壳视图的载荷——与 `releaseNotes` / `about` **同一条规矩的第三个实例**
+   * （壳视图 per-tab 载荷挂 ctx、`serializeGroups` 盖章到那一个 tab）。
+   * 同理 `tabBehavior.singleton` ⇒ 一窗最多一个，不按 tab 存一份。
+   */
+  aiManual?: PoolAiManualData;
   /** 04「悬停提示系统」件 1：提示条总开关镜像（`app.hint.enabled`）——窗口无关，恒推 */
   hintEnabled: boolean;
   /** 04「悬停提示系统」件 1：命令表——窗口无关，恒推（见 PoolCommandHints 注释：与菜单同源） */
@@ -149,6 +156,7 @@ export function serializeGroups(
   t: TFunction,
   releaseNotes?: PoolReleaseNotesData,
   about?: PoolAboutData,
+  aiManual?: PoolAiManualData,
 ): PoolGroup[] {
   const flexMap = computeGroupFlexes(tabState.root);
   // E6#30.10b：主区详情贡献一次解析、盖章所有 plugin-detail tab（同一窗口内活跃 marketplace 唯一）
@@ -178,6 +186,7 @@ export function serializeGroups(
           : undefined;
       const isReleaseNotesTab = tab.type === RELEASE_NOTES_TAB_TYPE;
       const isAboutTab = tab.type === ABOUT_TAB_TYPE;
+      const isAiManualTab = tab.type === AI_MANUAL_TAB_TYPE;
       return {
         id: tab.id,
         pluginId: pid,
@@ -201,6 +210,8 @@ export function serializeGroups(
         releaseNotes: isReleaseNotesTab ? releaseNotes : undefined,
         // E6#57.14：关于载荷——同款（只盖章到那一个 tab，别的类型不携带）
         about: isAboutTab ? about : undefined,
+        // M3 AI#16：手册载荷——同款（只盖章到那一个 tab；池 ShellViewRenderer 路由到 AiManualPoolView）
+        aiManual: isAiManualTab ? aiManual : undefined,
       };
     }),
   }));
@@ -224,7 +235,7 @@ export function assembleWindowLayout(win: WindowShellState, ctx: WindowLayoutCon
     iconBar: include("iconBar") ? ctx.iconBar : undefined,
     sidebar: include("sidebar") ? ctx.sidebar : undefined,
     rightSidebar: include("rightSidebar") ? ctx.rightSidebar : undefined,
-    groups: serializeGroups(win.tabState, ctx.t, ctx.releaseNotes, ctx.about),
+    groups: serializeGroups(win.tabState, ctx.t, ctx.releaseNotes, ctx.about, ctx.aiManual),
     root: win.tabState.root,
     activeGroupId: win.tabState.activeGroupId,
     // 空数组 = [+] 按钮无创建菜单（池 GroupTabBar 空列表不弹菜单）

@@ -64,7 +64,9 @@ export function registerShellMenus(): void {
     // （无站点 / 政策待制定，见 docs/05-版本更新/壳版本/发行后-帮助菜单待补项.md），
     // 后一条有落点任务（许可证推荐任务），到位才声明，不放空壳菜单项。
     // （「显示发行说明」原也在这条清单里，`#57.13g` 落地后已移出；
-    //  「关于 LinkDesk」原在清单里，`#57.14g` 落地后已移出。）
+    //  「关于 LinkDesk」原在清单里，`#57.14g` 落地后已移出；
+    //  「AI 操作手册」M3 `AI#16` 落地后进 `helpLearn`——⚠️ 它**不是**上面那条「打开帮助」：
+    //  手册已随包发货、今天就有内容可看，故不受「不放空壳菜单项」的约束。）
     {
       command: "",
       label: "帮助",
@@ -79,6 +81,13 @@ export function registerShellMenus(): void {
         // 从「查看」移出（用户 2026-09-12 裁决：移入帮助，不是并存）。label 覆盖命令 title——
         // 同一命令在不同菜单用不同措辞是 label 的本职（VS Code 同款），命令 title 那一份不动。
         { command: "workbench.action.openKeybindingsSettings", label: "快捷键列表", group: "helpLearn" },
+        // ── M3 `AI#16`：AI 操作手册——插进 `helpLearn`（**预埋的学习/帮助锚点**，见上注：
+        // 它与将来那条「打开帮助」同组，属于同一类东西「我该去哪学怎么用这个软件」）。
+        // 顺序在「快捷键列表」之后：先手（快捷键）后书（手册），读起来自然。
+        // 恒显（无 when）——手册随包发货、离线恒可读（⛔ 不做成需要联网才能看，见 M3 档案风险条目）。
+        // 它与 `../发行后-帮助菜单待补项.md` 的「打开帮助」**不是同一件事**：那条要等一份独立
+        // 设计档（五问）才动菜单项；本条是**已发货的手册**的入口，今天就有内容可看，不放空壳。
+        { command: "app.openAiManual", group: "helpLearn" },
         // 复用现有命令 workbench.action.togglePluginDevTools（title「切换插件 DevTools」）——
         // 不新注册第二条第 5 条命令：同一条命令换个菜单词。**无 when 门控**——
         // 用户 2026-09-12 裁决「开启这个功能」（发行版里也要真能打开 devtool，

@@ -154,6 +154,20 @@ function buildShellApp() {
     getVersion: () => ipcRenderer.invoke(IPC.app.getVersion),
     // getProductInfo = 壳内私有扩展（关于标签页 E6#57.14 数据源；不在契约——池插件不可调）
     getProductInfo: () => ipcRenderer.invoke(IPC.app.getProductInfo),
+    /**
+     * AI 操作手册（M3 `AI#16`）——**壳内私有扩展的第三例**（前两例：`getProductInfo`、
+     * `update.getReleaseNotes`；三格必须同形，别在后人手里出现第四种写法）。
+     *
+     * 🔴 **池侧不暴露**：手册是**壳自己的面**（本软件怎么被 AI 操作，是宿主的知识，不是插件的），
+     * 而壳内视图与第三方插件共用同一个 `window.linkdesk`——「给池开一个」等价于「给所有插件开一个」，
+     * 二者不可分辨。⇒ 数据走「壳想、池画」：壳取好经 `pushLayout` 挂到标签页，池哑渲染
+     * （`src/hooks/useAiManual.ts` 是唯一消费者）。
+     *
+     * ⚠️ 与 `getProductInfo` 的差别：那一个是**身份**（一版一变，随包进 asar），本一个是**内容**
+     * （几十 KB 文本，随包进 `resources/ai-manual/`）。同轴之处 = 都在主进程读盘、都 main 直答、
+     * 都只在壳侧暴露。
+     */
+    getAiManual: () => ipcRenderer.invoke(IPC.app.getAiManual),
   };
 }
 

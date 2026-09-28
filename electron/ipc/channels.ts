@@ -28,6 +28,9 @@ export const IPC = {
     // 双登记启动即抛「second handler」；main 直答的域一律不进 PROXY（同款：update.* 四条命令）。
     getVersion: 'app:getVersion', // 只读：Electron app.getVersion()（package.json 单点，02 §2.3）
     getProductInfo: 'app:getProductInfo', // 只读：{ product, runtime } 全量身份（product.ts，关于页 8 字段）
+    // M3 AI#16：AI 操作手册——**壳内私有**（只 buildShellApp() 暴露，池 preload 不注入 ⇒ 插件调不到）。
+    // 同 main 直答域，⛔ 不进 PROXY_CHANNELS（理由同上：双登记）。
+    getAiManual: 'app:getAiManual', // 只读：{ version, chapters, dir }（services/ai-manual.ts）
   },
   bridge: {
     response: 'bridge:response',

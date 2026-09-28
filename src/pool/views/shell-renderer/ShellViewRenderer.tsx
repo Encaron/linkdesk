@@ -18,6 +18,7 @@ import PluginDetailViewHost from "../plugin-detail/PluginDetailViewHost";
 import OutputPoolView from "../output/OutputPoolView";
 import ReleaseNotesPoolView from "../release-notes/ReleaseNotesPoolView";
 import AboutView from "../about/AboutView";
+import AiManualPoolView from "../ai-manual/AiManualPoolView";
 
 /**
  * E5.7#71：壳视图类型常量表——路由契约字符串集中此表。
@@ -36,6 +37,8 @@ const SHELL_VIEWS = {
   ReleaseNotes: "release-notes",
   /** 关于（E6#57.14）——同款：壳取数、池只画，数据走 `PoolTab.about` */
   About: "about",
+  /** AI 操作手册（M3 `AI#16`）——同款第三例：壳取数、池只画，数据走 `PoolTab.aiManual` */
+  AiManual: "ai-manual",
 } as const;
 
 interface ShellViewRendererProps {
@@ -62,6 +65,9 @@ export default function ShellViewRenderer({ tab, isActive, creatableViews }: She
     case SHELL_VIEWS.About:
       // E6#57.14：同款——数据在壳侧取好（`useAbout`），本视图只画 `tab.about`
       return <AboutView tab={tab} isActive={isActive} />;
+    case SHELL_VIEWS.AiManual:
+      // M3 AI#16：同款——数据在壳侧取好（`useAiManual`），本视图只画 `tab.aiManual`
+      return <AiManualPoolView tab={tab} isActive={isActive} />;
     default:
       return (
         <div style={{

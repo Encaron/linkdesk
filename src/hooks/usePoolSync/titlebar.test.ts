@@ -22,6 +22,7 @@ import { registerShellMenus } from "../../core/commands/input-bindings/shellMenu
 import { registerUpdateCommands } from "../../core/commands/shell/updateCommands"; // E6#57.10：命令 title 回退源
 import { registerReleaseNotesCommands } from "../../core/commands/shell/releaseNotesCommands"; // E6#57.13g：帮助菜单首项的命令
 import { registerAboutCommands } from "../../core/commands/shell/aboutCommands"; // E6#57.14g：帮助/齿轮菜单末项的命令
+import { registerManualCommands } from "../../core/commands/shell/manualCommands"; // M3 AI#16：帮助菜单「AI 操作手册」项
 import { buildTitleBarMenuGroups, buildHamburgerMenuGroups, buildTitleBarSlots } from "./titlebar";
 
 const SHELL = "linkdesk.shell";
@@ -229,6 +230,8 @@ describe("E6#57.10 菜单内二级分组透传——帮助组正控 / 既有菜�
     // E6#57.14g：帮助/齿轮菜单新增的「关于 LinkDesk」也要照生产注册（coreCommands.ts 同批）——
     // 少了它，菜单里会把命令 id `app.about` 原样画出来（label 解析回退），测出的是假象。
     registerAboutCommands();
+    // M3 `AI#16`：帮助菜单的「AI 操作手册」项引用的命令——同一条理由（coreCommands.ts 同批注册）。
+    registerManualCommands();
     registerShellMenus();
   }
 
@@ -244,6 +247,9 @@ describe("E6#57.10 菜单内二级分组透传——帮助组正控 / 既有菜�
       //    写死位置而不是 `toContain`——插到第三位也算「在帮助菜单里」，但那不是设计要的。
       "update.openReleaseNotes",
       "workbench.action.openKeybindingsSettings",
+      // 🔴 M3 `AI#16`：AI 操作手册紧挨「快捷键列表」（**同为 `helpLearn`**——两个都是「查资料」，
+      //    同行无分隔线才是本意）。插在它之后而不是组首：快捷键是既有锚点，手册是新增的邻居。
+      "app.openAiManual",
       "workbench.action.togglePluginDevTools",
       "update.checkForUpdates",
       // 🔴 E6#57.14g：关于是**末项**（设计 06 §4.3 心智：版本信息随时可查，排在更新之后）。
@@ -256,15 +262,18 @@ describe("E6#57.10 菜单内二级分组透传——帮助组正控 / 既有菜�
     // 菜单里用更短/更贴切的说法——同一命令在不同菜单不同措辞是 label 的本职。
     // 🔴 首项**没有** label 覆盖 ⇒ 显示命令自己的 title（「显示发行说明」），两处措辞一致是刻意的。
     expect(help.items.map((i) => i.label)).toEqual([
-      "显示发行说明", "快捷键列表", "切换开发人员工具", "检查更新…", "关于 LinkDesk", "查看许可证",
+      "显示发行说明", "快捷键列表", "AI 操作手册", "切换开发人员工具", "检查更新…", "关于 LinkDesk", "查看许可证",
     ]);
     // 🔴 画线的依据：**不同的值**之间才出线（ContextMenu 相邻比较组的语义）。
     //    `helpRelease` 独占一组是设计（发布物相关自成一组），不是随手起的名字。
     // 🔴 E6#57.14g：`app.about` 前两项**同为 `helpUpdate`** ⇒ 它们之间**不出线**，两行读起来是一件事
     //    （「关于本机 / 软件更新」心智）。E6#57.10e：`helpLegal` 是**新组** ⇒ 许可证前面**画一条线**
     //    ——条数 5→6、不同分组名 4→5，分隔线 3→4。
+    // 🔴 M3 `AI#16`：`helpLearn` 连出两个（「快捷键列表」＋「AI 操作手册」）⇒ **不新增分隔线**
+    //    （不同分组名仍是 5、线仍是 4）；组内条数 6→7。这正是把手册放进 `helpLearn` 而不是自立新组的
+    //    用意——它和快捷键是同一件事（查资料），不该被线切开。
     expect(help.items.map((i) => i.group)).toEqual([
-      "helpRelease", "helpLearn", "helpDev", "helpUpdate", "helpUpdate", "helpLegal",
+      "helpRelease", "helpLearn", "helpLearn", "helpDev", "helpUpdate", "helpUpdate", "helpLegal",
     ]);
   });
 
@@ -281,9 +290,10 @@ describe("E6#57.10 菜单内二级分组透传——帮助组正控 / 既有菜�
     const parent = help.items[0];
     expect(parent).toMatchObject({ label: "帮助", command: "" });
     // E6#57.14g：末尾两个 `helpUpdate` = 「检查更新…」+「关于 LinkDesk」（同组 ⇒ 不画线，见上一条用例）；
-    // E6#57.10e：末尾 `helpLegal` = 查看许可证（新组）
+    // E6#57.10e：末尾 `helpLegal` = 查看许可证（新组）。M3 `AI#16`：`helpLearn` 亦连出两个
+    // （快捷键列表 ＋ AI 操作手册，见上一条用例的注释）。
     expect(parent.children!.map((c) => c.group)).toEqual([
-      "helpRelease", "helpLearn", "helpDev", "helpUpdate", "helpUpdate", "helpLegal",
+      "helpRelease", "helpLearn", "helpLearn", "helpDev", "helpUpdate", "helpUpdate", "helpLegal",
     ]);
   });
 

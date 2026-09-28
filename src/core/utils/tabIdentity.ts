@@ -106,7 +106,7 @@ function makeGenerateId(type: string, identityField: string | null): (opts?: Cre
  * 这些类型不由插件注册表渲染——壳自己处理（MainContent renderTabContent）。
  * 新插件不需要加到这里。这是封闭集合——只有壳级视图。 */
 
-const SHELL_RENDERED_TYPES = new Set(["plugin-detail", FALLBACK_PLUGIN_ID, "output", "release-notes", "about"]); // E3f #54 / E6#57.13 / E6#57.14
+const SHELL_RENDERED_TYPES = new Set(["plugin-detail", FALLBACK_PLUGIN_ID, "output", "release-notes", "about", "ai-manual"]); // E3f #54 / E6#57.13 / E6#57.14 / M3 AI#16
 
 /** 发行说明壳视图的类型串——**壳/池两侧共用的契约字符串**。
  *  池侧同义常量见 `src/pool/views/shell-renderer/ShellViewRenderer.tsx` 的 SHELL_VIEWS.ReleaseNotes
@@ -118,6 +118,11 @@ export const RELEASE_NOTES_TAB_TYPE = "release-notes";
  *  `ShellViewRenderer.tsx` 的 `SHELL_VIEWS.About`（两侧各自声明，新增壳视图需同步）。
  *  壳侧消费方 = `aboutCommands.ts`（打开 + 复制两条命令），**不写字面量**。 */
 export const ABOUT_TAB_TYPE = "about";
+
+/** AI 操作手册壳视图的类型串——M3 `AI#16`。与上两个同款：池侧同义常量见
+ *  `ShellViewRenderer.tsx` 的 `SHELL_VIEWS.AiManual`（Path B：池不得 value-import @src/core，
+ *  两侧各自声明，新增壳视图需同步）。壳侧消费方 = `manualCommands.ts` ＋ `shellMenus.ts` 的菜单项。 */
+export const AI_MANUAL_TAB_TYPE = "ai-manual";
 
 /* ── 壳内部类型元数据（最小特殊处理——plugin-detail / 欢迎 / 发行说明）── */
 
@@ -160,6 +165,20 @@ const SHELL_META: Record<string, TabIdentityMeta> = {
     identityField: null,
     fallbackLabel: "关于 LinkDesk",
     generateId: () => ABOUT_TAB_TYPE,
+  },
+  /**
+   * M3 `AI#16`：AI 操作手册标签页——与发行说明/关于**逐字段同形**（同一张表里的第三个实例）。
+   *
+   * ⚠️ 标题「AI 操作手册」是**手册自己的名字**（不是品牌名也不是插件名）：`getDefaultLabel`
+   * 走 `i18n.t("AI 操作手册")`，词典缺这条就原样返回中文——这是**有意的**，
+   * 手册正文只有中文一种（文档随包发货，不翻译），标签跟着它走才不会出现
+   * 「英文标签点开是中文文档」的错位。真要为标签补译，只加一条 lang-defaults 词条即可，不改本处。
+   */
+  [AI_MANUAL_TAB_TYPE]: {
+    singleton: true,
+    identityField: null,
+    fallbackLabel: "AI 操作手册",
+    generateId: () => AI_MANUAL_TAB_TYPE,
   },
 };
 

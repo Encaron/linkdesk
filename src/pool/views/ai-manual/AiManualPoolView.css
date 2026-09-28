@@ -1,0 +1,239 @@
+/**
+ * AiManualPoolView 样式——M3 `AI#16`。
+ *
+ * ## 形制直接沿用 `ReleaseNotesPoolView.css`（同一族的第三个视图）
+ *
+ * 骨架逐条同构：头部（跨全宽）＋ 左窄栏导航（220px）＋ 右主区内容——**这不是巧合**，
+ * 发行说明与手册在用户眼里是同一类东西（「一个我读它、它不变的东西」），
+ * 长得像比各自好看更重要。门禁口径也照抄，逐条记账：
+ *
+ * ① **间距网格**（`check-spacing-grid.mjs`：`padding`/`margin`/`gap` 的 px 必须 ≤6 或是 4 的倍数）
+ *    ——本文件所有间距值只从 4 / 6 / 8 / 12 / 16 / 20 / 24 / 40 里取（`height`/`width`/
+ *    `border-radius`/定位偏移**不在**该门禁扫描面内，故 `height: 26px`、`width: 220px` 原样）。
+ * ② **字号阶梯**（`check-font-scale-audit.mjs`：禁裸 px `font-size`/`line-height`）
+ *    ——一律 `var(--font-size-*)`（`xl`=18 / `md`=14 / `sm`=13 / `xs`=12 / `2xs`=11）。
+ * ③ **零硬编码色**（`check-css-hardcode.mjs`：`src/` 内禁 hex/rgb()/rgba()/hsl()）
+ *    ——只用 `var(--token)` 与既有写法 `color-mix(in srgb, var(--token) N%, transparent)`。
+ *    选中行**不**新造一个半透明蓝，直接用全仓唯一真值 `--bg-selection`（同发行说明的取舍）。
+ *
+ * ## 两处**有意**与发行说明不同（理由，不是疏漏）
+ *
+ * ① **正文列不设 `max-width` 阅读宽度上限**。设计 skill 的建议是给长文一个 measure 上限，
+ *    但本手册第 02 章有**宽表格**（命令表 4 列 / API 表 3 列），而 `MarkdownView` 的
+ *    `table { width: max-content; max-width: 100% }` 会**贴着容器收窄**——一加列宽上限，
+ *    表格立刻被挤成多行。手册的第一用途是**查表**，不是连续阅读 ⇒ 放弃 measure 上限，
+ *    换取表格不折行（同一个软件里与发行说明同形，也不再出现两种阅读宽度）。
+ * ② **零动效是自觉的**：本文件没有任何 `@keyframes`/`transition`（骨架不做 shimmer——
+ *    数据来自本机 IPC，通常不足一帧；`prefers-reduced-motion` 下本来也要关）。
+ *
+ * 🔴 **不写 `outline: none`**：全局 `*:focus-visible`（`index.css:268`）的焦点环是键盘用户
+ * 唯一的方位感——章节导航是按钮，抹掉焦点环就等于键盘走不到手册的章。
+ */
+
+.ldk-manual {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  /* 读文档要能选中复制（命令、路径、代码片段都得能拷出去）——按钮/导航保持不可选 */
+  user-select: text;
+}
+
+/* ── 头部（跨全宽）：手册名 + 「随本版本发货 · 内容是当前版本 vX.Y.Z」 ── */
+
+.ldk-manual-head {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--separator);
+}
+
+.ldk-manual-head-main {
+  min-width: 0;
+}
+
+.ldk-manual-title {
+  font-size: var(--font-size-xl);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+/**
+ * 版本对账行——**本视图的存在理由之一**：让用户/维护者一眼看出「我读的这版手册 = 我装的这版软件」。
+ * 版本号来自主进程 `app.getVersion()`（不是手册正文里的版本号，那个会滞后）。
+ */
+.ldk-manual-sub {
+  margin-top: 4px;
+  font-size: var(--font-size-2xs);
+  color: var(--text-muted);
+}
+
+/* ── 主体：左窄栏章节导航（配角 220px）+ 右主区正文（主角） ── */
+
+.ldk-manual-body {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  min-height: 0;
+}
+
+/* 空态要能把内容居中撑满剩余高度（grid 子项默认 stretch ⇒ 改成 flex 容器） */
+.ldk-manual-body--center {
+  display: flex;
+}
+
+.ldk-manual-nav {
+  min-width: 0;
+  overflow-y: auto;
+  padding: 8px 0;
+  border-right: 1px solid var(--separator);
+  user-select: none;
+}
+
+.ldk-manual-nav-head {
+  padding: 6px 20px 8px;
+  font-size: var(--font-size-2xs);
+  color: var(--text-muted);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/**
+ * 一章。**是 `<button>`**（整行可点、可 Tab、可 Enter）——所以要把浏览器给按钮的默认外观
+ * 逐条清零（`background`/`border`/`text-align`/`font-family`），否则它会按原生控件画。
+ * 章标题不折行溢出用省略号（标题可能长，导航列宽固定）。
+ */
+.ldk-manual-ch {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 6px 20px;
+  border: none;
+  border-left: 2px solid transparent;
+  background: transparent;
+  font-family: var(--font-ui);
+  font-size: var(--font-size-xs);
+  color: var(--text-secondary);
+  text-align: left;
+  cursor: pointer;
+}
+
+.ldk-manual-ch:hover {
+  background: var(--hover-overlay);
+  color: var(--text-primary);
+}
+
+/* 选中行 = 全仓统一的「选中底」+ accent 左竖条（同 `.ldk-rn-ver--on`） */
+.ldk-manual-ch--on,
+.ldk-manual-ch--on:hover {
+  background: var(--bg-selection);
+  color: var(--text-primary);
+  border-left-color: var(--accent);
+}
+
+.ldk-manual-ch-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ldk-manual-content {
+  min-width: 0;
+  overflow-y: auto;
+  padding: 16px 24px 40px;
+}
+
+/* ── 空态（这个构建没带手册） ── */
+
+/* M3 `AI#16` EXEMPT：空态的图标/标题尺寸与 `ReleaseNotesPoolView.css` 同值——**两个壳视图的空态
+   本来就该长一样**（同一个样式 idiom：图标块 → 标题 → 说明），⛔ 不抽公共类：壳视图各自独立
+   （`ldk-<view>-` 前缀各一份），抽类会把「换某一个视图的空态」变成跨视图改动。 */
+/* jscpd:ignore-start */
+.ldk-manual-empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 40px;
+}
+
+.ldk-manual-empty-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: 46px;
+  border-radius: var(--radius-lg);
+  background: var(--hover-overlay);
+  color: var(--text-muted);
+}
+
+.ldk-manual-empty-title {
+  margin-top: 4px;
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+/* jscpd:ignore-end */
+
+.ldk-manual-empty-desc {
+  margin: 0;
+  max-width: 360px;
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+  text-align: center;
+  line-height: 1.7;
+}
+
+/* 手册目录那一行——路径是**值**（等宽、可选中复制），外圈一句话才是文案 */
+.ldk-manual-empty-path {
+  margin: 0;
+  max-width: 480px;
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+  text-align: center;
+  line-height: 1.7;
+}
+
+.ldk-manual-empty-path code {
+  font-family: var(--font-mono);
+  color: var(--text-secondary);
+  word-break: break-all;
+}
+
+/* ── 骨架（加载中——形状与正文一一对应，零动效） ── */
+
+.ldk-manual-skel {
+  padding: 4px 0;
+}
+
+.ldk-manual-skel--head {
+  width: 100%;
+}
+
+.ldk-manual-skel-bar {
+  height: 10px;
+  margin-bottom: 8px;
+  border-radius: var(--radius-sm);
+  background: var(--hover-overlay);
+}
+
+.ldk-manual-skel-bar--h18 {
+  height: 18px;
+}
+
+.ldk-manual-w40 { width: 40%; }
+.ldk-manual-w70 { width: 70%; }
+.ldk-manual-w90 { width: 90%; }
+
+.ldk-manual-skel-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 8px 20px;
+}

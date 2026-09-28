@@ -19,6 +19,7 @@ import { registerPluginHandlers } from './ipc/handlers/plugin-handlers.js';
 import { registerDialogHandlers } from './ipc/handlers/dialog-handlers.js';
 import { registerEnvHandlers } from './ipc/handlers/env-handlers.js';
 import { registerProductHandlers } from './ipc/handlers/product-handlers.js'; // E6#57.3b：产品身份（app:getVersion/getProductInfo）
+import { registerManualHandlers } from './ipc/handlers/manual-handlers.js'; // M3 AI#16：AI 操作手册（app:getAiManual）
 import { registerClipboardHandlers } from './ipc/handlers/clipboard-handlers.js';
 import { registerRegistryHandlers } from './ipc/handlers/registry-handlers.js'; // E5.7#49：主进程三表直连 IPC
 import { registerHotExitHandlers } from './ipc/handlers/hot-exit-handlers.js'; // E5.7#38
@@ -96,6 +97,7 @@ function createWindow(workspaceFolder?: string, restoreWsWindowId?: string): voi
   registerPluginHandlers();
   registerEnvHandlers();
   registerProductHandlers(); // E6#57.3b：产品身份 main 直答（app:getVersion / app:getProductInfo）
+  registerManualHandlers();  // M3 AI#16：AI 操作手册 main 直答（app:getAiManual，壳内私有）
   registerClipboardHandlers();
   registerRegistryHandlers();  // E5.7#49：三表直连（数据由 plugin-manifest-loader 预加载）
   registerHotExitHandlers();   // E5.7#38

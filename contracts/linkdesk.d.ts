@@ -741,6 +741,48 @@ export type PoolAboutData = {
      */
     repoUrl?: string;
 };
+/** 手册一章——**字段与 `src/core/types/ipc/aiManual.ts` 的 `AiManualChapter` 同形**。
+ *  ⚠️ 为什么不直接 import 那个类型：池视图活在**渲染期**，而 `types/ipc/aiManual.ts` 是
+ *  **跨堆 wire 契约**（主进程 ↔ 壳 preload 双端 import）。池与它之间还隔着壳的一次转手
+ *  （`useAiManual` 组 DTO）——沿用 `PoolReleaseNotesHistoryItem` 对 `ReleaseNotes` 的既有做法：
+ *  壳把 wire 形状**原样搬**成池形状，两岸各一份、各自可独立演进（不是重复定义，是两岸各自的类型面）。 */
+export interface PoolAiManualChapter {
+    /** 章 id——文件名去 `.md`（`03-按任务操作`）。**稳定标识**，导航选中态与 key 认它，⛔ 不用标题当 id
+     *  （标题会改，改了选中态就丢）。 */
+    id: string;
+    /** 章标题——壳从正文首个 `# ` 解析（解析不到回落 id）。**是数据不是文案**：手册正文只有中文一种，
+     *  ⛔ 不进 `t()`（切语言不该改手册内容——手册是文档，随包发货的原文）。 */
+    title: string;
+    /** 章正文 markdown（GFM）——交给**唯一 md 渲染件** `MarkdownView`，池不自己解析。 */
+    markdown: string;
+}
+/**
+ * AI 操作手册标签页的壳→池数据——**三态判别联合**（与 `PoolReleaseNotesData` 同形）。
+ *
+ * 🔴 **池不做任何判定**（同族铁律）：`state` 是什么就画什么分支。
+ *
+ * ⚠️ **`empty` 覆盖两种来源，是**有意**的**：「这个构建没带手册」（`chapters: []`，主进程侧
+ * `ai-manual.ts` 不抛）与「非壳环境取不到」（vitest / 纯预览 ⇒ `getShellExposed()` 为 undefined）。
+ * 对读者是同一件事：**这里没有内容可看**，下面一行给出手册**应当**所在的目录让人自查。
+ * 差别只在 `dir`：主进程回包里带着真路径，取不到时是空串 ⇒ 视图少画那一行（不是画一个空路径）。
+ */
+export type PoolAiManualData = {
+    state: "loading";
+} | {
+    state: "content";
+    /**
+     * `app.getVersion()`——**「这本手册属于这一版」的唯一凭据**（`AI#16` 判据②：安装版里点得到手册
+     * **且内容是当前版本**）。壳在标题旁显式画出来，用户/维护者据此对账。
+     * 🔴 它来自**主进程的 `app.getVersion()`**，不是手册正文里的版本号——正文里的是给人读的叙述，会滞后。
+     */
+    version: string;
+    /** 全部章节，**按文件名升序**（`00-`/`01-` 前缀即阅读顺序，主进程已排好，池不再排） */
+    chapters: PoolAiManualChapter[];
+} | {
+    state: "empty";
+    /** 手册**应当**所在的绝对路径（主进程解析结果）——空态指路用；空串 = 路径都不知道 ⇒ 不画那一行 */
+    dir: string;
+};
 /** 标签页在池中的表示——壳 pushLayout 时序列化 */
 export interface PoolTab {
     id: string;
@@ -785,6 +827,9 @@ export interface PoolTab {
     /** E6#57.14：关于标签页的壳→池数据——与 `releaseNotes` **同一条规矩的第二个实例**
      *  （壳视图的 per-tab 载荷，**不是新范式**）。只有 `shellType === "about"` 那个标签页携带。 */
     about?: PoolAboutData;
+    /** M3 AI#16：AI 操作手册标签页的壳→池数据——同一条规矩的**第三个实例**
+     *  （壳视图的 per-tab 载荷）。只有 `shellType === "ai-manual"` 那个标签页携带（全窗最多一份）。 */
+    aiManual?: PoolAiManualData;
 }
 /** 分屏组——每个 group 占一个 flex 区域，内含 N 个 keep-alive 标签页 */
 export interface PoolGroup {
