@@ -19,9 +19,19 @@ import type { TabBarViewportRect, TabDragPositionPayload, AdsorbHintPayload } fr
 // E5.7#78：手写 buffer+callback+active 三件套 → IpcRelay<T>（electron/ipc/ipc-relay.ts）
 const _layoutRelay = new IpcRelay<PoolLayout>();
 
+/**
+ * M1 `AI#4`：最近一次收到的完整布局快照——`pool.getLayout()` 的答案。
+ *
+ * 🔴 与「不缓存旧值合并」铁律的关系：本变量**只作读数出口，不参与渲染**——渲染仍走 `onLayout` 整帧
+ * 替换（`_layoutRelay`），池不会拿它拼出半新半旧的布局。它存的就是最近一帧**整值**，语义等同
+ * 那帧本身。未收到过任何一帧 → `null`（不编一份空布局糊弄调用方）。
+ */
+let _lastLayout: PoolLayout | null = null;
+
 ipcRenderer.on(IPC.pool.layout, (_event, layout: PoolLayout) => {
   // E5.8#22.5：pool:layout 直收点接收边界断言——guard 只记录不阻断，透传缓冲
   guardPush(IPC.pool.layout, layout);
+  _lastLayout = layout;
   _layoutRelay.push(layout);
 });
 
@@ -43,6 +53,10 @@ const _beforeCloseHandlers = new Map<string, (tab: PoolTab) => boolean | Promise
 /** Pool 专属 API——onLayout 回放缓冲布局；ready/sidebarAction/tabAction 池→壳 直发；beforeClose 通道注册 + 调用 */
 export function buildPool() {
   return {
+    // M1 AI#4：按需读当前布局（树 + 分组）——最近一帧的整值，未推送过 → null。
+    // ⚠️ 脱出窗拿到的是**策略子集**（detached = titleBar+groups；drift = titleBar+panel）——
+    //    那些窗里 statusBar/sidebar/iconBar 不存在，是窗口模式的正常结果（不是丢数据）。
+    getLayout: (): PoolLayout | null => _lastLayout,
     onLayout: (cb: (layout: PoolLayout) => void) => _layoutRelay.onReady(cb),
     ready: () => ipcRenderer.send(IPC.pool.ready), // E5.7#54：不再带 zone——单 Pool 无路由
     sidebarAction: (action: unknown) => ipcRenderer.send(IPC.pool.sidebarAction, action),

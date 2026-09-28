@@ -10,6 +10,8 @@ import { listenDirect, type EventSystemApi } from '../ipc/event-system';
 import type { WorkspaceFolder } from '../../src/core/services/layout/WorkspaceService';
 import type { WorkspaceActiveChangedPayload, TabActivatedPayload } from '../../src/core/types/ipc/events';
 import type { DialogOpenOptions, DialogContentOpenOptions } from '../../src/core/types/ipc/dialogs';
+import type { TabsSnapshot } from '../../src/core/api/linkdesk-api/tabs'; // M1 AI#3：标签清单读取面返回类型
+import type { NotifLayout } from '../../src/core/types/pool/poolLayout'; // M1 AI#1：通知读取面返回类型
 
 /** workspace 命名空间——池插件完整工作区操作（E5.6#11.5a 扩展） */
 export function buildWorkspace(events: EventSystemApi) {
@@ -30,7 +32,7 @@ export function buildWorkspace(events: EventSystemApi) {
 }
 
 /** notifications 命名空间 */
-export function buildNotifications() {
+export function buildNotifications(events: EventSystemApi) {
   return {
     // E6#13.5b：show() 透传 options.actions（{id,label,isPrimary,command,args} 结构化克隆过 IPC，
     // 壳 showNotification 重建 closure 执行）。签名对齐 linkdesk-api/ui.ts notifications.show。
@@ -57,6 +59,16 @@ export function buildNotifications() {
           };
         });
     },
+    // M1 AI#1：只读列举——问**壳**要面板 DTO 本体（与 statusBar.notif 同一 buildNotif(t)）。
+    // ⚠️ 不从本窗那份 layout.statusBar.notif 挖：脱出窗的 statusBar 被窗口策略表裁掉，
+    //    走布局会答「没有通知」——假答案比没有答案更糟（门面必须问壳）。
+    list: (): Promise<NotifLayout> => ipcRenderer.invoke(IPC.plugins.call, 'listNotifications'),
+    // M1 AI#1：变更订阅——壳 `events.emit("notif:changed")` → 主进程广播 → 本处 events.on。
+    // 🔴 **信号无载荷**：回调不带快照（带了就长出第二把尺——有人会直接用信号里的数据而不去问权威）。
+    // 收到即自行 `list()` 重取。⚠️ 广播默认存 payload 供新池重放 ⇒ 新池可能收到一条陈旧变更信号，
+    // 本订阅是幂等重取语义（收到就拉一次），无害。
+    // 退订函数经 EventSystemApi.on 直通。
+    subscribe: (cb: () => void) => events.on('notif:changed', () => cb()),
   };
 }
 
@@ -64,7 +76,7 @@ export function buildNotifications() {
 export function buildTabs(events: EventSystemApi) {
   // E5.8#1d EXEMPT：壳 preload-shell 镜像——双 preload 各持 window.linkdesk.* 契约（tabs 命名空间），无法共享
   /* jscpd:ignore-start */
-  return {
+  const mirrored = {
     create: (type: string, opts?: Record<string, unknown>) =>
       ipcRenderer.invoke(IPC.tabs.create, type, opts),
     openOrFocus: (type: string, opts?: Record<string, unknown>) =>
@@ -83,6 +95,13 @@ export function buildTabs(events: EventSystemApi) {
     },
   };
   /* jscpd:ignore-end */
+  // M1 `AI#3`：list 是**池侧独有**读取面（壳自己是标签权威，不绕 IPC 问自己 ⇒ surfaces.ts 的
+  // ShellExposed.tabs 已 Omit 它），故放在镜像块**之外**——留在块内会和壳镜像区一起被 jscpd 豁免，
+  // 把「两面此处本就不同」这个事实一起藏掉。走既有 plugins:call 门面（零新增 IPC 通道）。
+  return {
+    ...mirrored,
+    list: (): Promise<TabsSnapshot> => ipcRenderer.invoke(IPC.plugins.call, 'listTabs'),
+  };
 }
 
 /** p2p 命名空间——插件间点对点 */

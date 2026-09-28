@@ -9,7 +9,7 @@
 import { ipcRenderer } from 'electron';
 import { IPC } from '../ipc/channels';
 import { guardPush } from '../ipc/wire-guard';
-import type { PoolDialogData } from '../../src/core/types/pool/poolDialog';
+import type { PoolDialogData, PoolPendingDialog } from '../../src/core/types/pool/poolDialog';
 import type { PoolFloatingPanelData } from '../../src/core/types/pool/poolFloatingPanel';
 
 // ── E5.7#17：pool:dialog 缓冲回放——Dialog 哑渲染数据可能在 DialogHost mount 前到达 ──
@@ -56,6 +56,10 @@ export function buildDialogHost() {
         _dialogActive = false;
       };
     },
+    // M1 AI#5：在途弹窗清单——问**壳**（DialogService 登记的在途 options：kind/标题/正文/按钮文案）。
+    // 与 current() 的分工见契约注释：current() = 本进程收到的哑渲染数据（画什么），
+    // pending() = 壳侧正在等什么（谁问的 / 富内容视图身份 / 按钮有几条）。单槽是现状（见契约 🔴）。
+    pending: (): Promise<PoolPendingDialog[]> => ipcRenderer.invoke(IPC.plugins.call, 'getPendingDialogs'),
     /** 确认（确定按钮 / Enter）——壳侧 settle(true) */
     confirm: () => ipcRenderer.send(IPC.pool.dialogAction, { type: 'confirm' }),
     /** 取消（取消按钮 / Escape / backdrop）——壳侧 settle(false) */

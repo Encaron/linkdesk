@@ -70,6 +70,7 @@ function createReplay<T>() {
   let buffer: T | null = null;
   let callback: ((data: T) => void) | null = null;
   let active = false;
+  let last: T | null = null; // M1 AI#4：最近一份整值——`pool.getLayout()` 的读数口（与真实 preload 同语义）
   return {
     /** 注册回调——缓冲立即回放并清空（StrictMode 双订阅不重放，preload-pool 同款） */
     subscribe: (cb: (data: T) => void) => {
@@ -84,12 +85,15 @@ function createReplay<T>() {
     },
     /** 推送——订阅前入缓冲，订阅后直推（只保留最后一份，全量快照语义） */
     push: (data: T) => {
+      last = data;
       if (active && callback) {
         try { callback(data); } catch { /* 订阅方静默 */ }
       } else {
         buffer = data;
       }
     },
+    /** 最近一份整值（未推送过 → null） */
+    getLast: () => last,
   };
 }
 
@@ -146,6 +150,8 @@ export function installMockLinkdesk(): void {
   // undefined 调用响亮失败）。边界一处断言，全文件零 any。
   const mockLinkdesk = {
     pool: {
+      // M1 AI#4：按需读当前布局——preview 无壳推送，最近一帧 = 最后一次 push 的整值（未推过 → null）
+      getLayout: () => layoutReplay.getLast(),
       onLayout: layoutReplay.subscribe,
       ready: makeLogger("pool.ready"),
       sidebarAction: makeLogger("pool.sidebarAction"),
@@ -239,6 +245,8 @@ export function installMockLinkdesk(): void {
     dialogHost: {
       // E6#71c：当前打开的 Dialog 数据（富内容视图取数口——mock 由 __mockPool.show/hide 追踪）
       current: () => mockDialogOpen,
+      // M1 AI#5：在途弹窗清单——问的是**壳**的在途请求，dev 预览没有壳 ⇒ 恒空（不编造）
+      pending: async () => [],
       onShow: dialogReplay.subscribe,
       confirm: makeLogger("dialogHost.confirm"),
       cancel: makeLogger("dialogHost.cancel"),

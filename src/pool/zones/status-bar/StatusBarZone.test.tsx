@@ -187,6 +187,7 @@ describe("E6#73d（C4）：行内 DOM 序 = 视觉序", () => {
                 timeLabel: "刚刚",
                 sourceLabel: "来源: demo-plugin",
                 actions: [{ label: "演示动作", isPrimary: true }],
+                wake: true,
               },
             ],
           },
@@ -292,7 +293,7 @@ describe("E6#73k：通知面 aria 语义", () => {
       items: [],
       notif: {
         ...NOTIF,
-        groups: [{ key: "demo-plugin", label: "demo-plugin", unread: 0, items: [{ id: "toast-1", iconClass: "codicon codicon-info", message: "演示消息", timeLabel: "刚刚", actions: [] }] }],
+        groups: [{ key: "demo-plugin", label: "demo-plugin", unread: 0, items: [{ id: "toast-1", iconClass: "codicon codicon-info", message: "演示消息", timeLabel: "刚刚", actions: [], wake: false }] }],
       },
     });
     fireEvent.click(document.querySelector(".ldk-status-bar-notif-btn")!);
@@ -324,7 +325,7 @@ describe("E6#73k：通知面 aria 语义", () => {
           items: [],
           notif: {
             ...NOTIF,
-            groups: [{ key: "demo-plugin", label: "demo-plugin", unread: 1, items: [{ id: "toast-1", iconClass: "codicon codicon-info", message: "演示消息", timeLabel: "刚刚", actions: [] }] }],
+            groups: [{ key: "demo-plugin", label: "demo-plugin", unread: 1, items: [{ id: "toast-1", iconClass: "codicon codicon-info", message: "演示消息", timeLabel: "刚刚", actions: [], wake: false }] }],
           },
         }}
       />,
@@ -362,7 +363,7 @@ describe("E6#73k：通知面 aria 语义", () => {
       items: [],
       notif: {
         ...NOTIF,
-        groups: [{ key: "demo-plugin", label: "demo-plugin", unread: 0, items: [{ id: "toast-1", iconClass: "codicon codicon-info", message: "演示消息", timeLabel: "刚刚", progress: true, actions: [] }] }],
+        groups: [{ key: "demo-plugin", label: "demo-plugin", unread: 0, items: [{ id: "toast-1", iconClass: "codicon codicon-info", message: "演示消息", timeLabel: "刚刚", progress: true, actions: [], wake: false }] }],
       },
     });
     fireEvent.click(document.querySelector(".ldk-status-bar-notif-btn")!);
@@ -400,7 +401,7 @@ describe("E6#73k：通知面 aria 语义", () => {
 describe("E6#73k（J5）：焦点管理", () => {
   const PANEL_ITEM: NotifLayout = {
     ...NOTIF,
-    groups: [{ key: "demo-plugin", label: "demo-plugin", unread: 0, items: [{ id: "toast-1", iconClass: "codicon codicon-info", message: "演示消息", timeLabel: "刚刚", actions: [] }] }],
+    groups: [{ key: "demo-plugin", label: "demo-plugin", unread: 0, items: [{ id: "toast-1", iconClass: "codicon codicon-info", message: "演示消息", timeLabel: "刚刚", actions: [], wake: false }] }],
   };
 
   it("点铃铛开 → 焦点落在**面板容器**上（不是「清除已完成」按钮上——随手一个 Enter 会把通知清了）", () => {

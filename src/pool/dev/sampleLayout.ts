@@ -188,6 +188,7 @@ export function buildSampleLayout(): PoolLayout {
                 timeLabel: "刚刚",
                 sourceLabel: "来源: 串口监视器",
                 actions: [],
+                wake: false, // M1 AI#6：样例 = 普通 info（不进唤醒白名单）
               },
             ],
           },
@@ -203,6 +204,8 @@ export function buildSampleLayout(): PoolLayout {
                 timeLabel: "5 分钟前",
                 sourceLabel: "来源: 插件市场",
                 actions: [{ label: "重试", isPrimary: true }],
+                wake: true, // M1 AI#6：带按钮的失败通知——样例即"会弹面板"那类（deriveWake 缺省口径）
+                persistent: true, // M1 AI#6：失败诊断长驻（与 persistent 同源判据 ttl<=0）
               },
             ],
           },

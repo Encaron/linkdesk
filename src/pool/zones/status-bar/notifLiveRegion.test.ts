@@ -33,7 +33,7 @@ function withJob(row: Partial<JobRow> & { id: string; statusLabel: string }): No
 function withToast(id: string, message: string): NotifLayout {
   return {
     ...EMPTY,
-    groups: [{ key: "demo", label: "demo", unread: 0, items: [{ id, iconClass: "demo-icon", message, timeLabel: "Demo Time", actions: [] }] }],
+    groups: [{ key: "demo", label: "demo", unread: 0, items: [{ id, iconClass: "demo-icon", message, timeLabel: "Demo Time", actions: [], wake: false }] }],
   };
 }
 
@@ -79,7 +79,7 @@ describe("E6#73k（J2）：通知面可听状态行——变了才播", () => {
     const seen = baseline(EMPTY);
     const next = scanNotifLive(seen, {
       ...withJob({ id: "job-a", statusLabel: "Demo 62%" }),
-      groups: [{ key: "demo", label: "demo", unread: 1, items: [{ id: "toast-1", iconClass: "demo-icon", message: "Demo Failed", timeLabel: "Demo Time", actions: [] }] }],
+      groups: [{ key: "demo", label: "demo", unread: 1, items: [{ id: "toast-1", iconClass: "demo-icon", message: "Demo Failed", timeLabel: "Demo Time", actions: [], wake: false }] }],
     });
     expect(next.announce).toBe("Demo Failed");
   });
@@ -89,8 +89,8 @@ describe("E6#73k（J2）：通知面可听状态行——变了才播", () => {
     const next = scanNotifLive(seen, {
       ...EMPTY,
       groups: [
-        { key: "a", label: "a", unread: 0, items: [{ id: "toast-1", iconClass: "demo-icon", message: "Demo First", timeLabel: "Demo Time", actions: [] }] },
-        { key: "b", label: "b", unread: 0, items: [{ id: "toast-2", iconClass: "demo-icon", message: "Demo Second", timeLabel: "Demo Time", actions: [] }] },
+        { key: "a", label: "a", unread: 0, items: [{ id: "toast-1", iconClass: "demo-icon", message: "Demo First", timeLabel: "Demo Time", actions: [], wake: false }] },
+        { key: "b", label: "b", unread: 0, items: [{ id: "toast-2", iconClass: "demo-icon", message: "Demo Second", timeLabel: "Demo Time", actions: [], wake: false }] },
       ],
     });
     expect(next.announce).toBe("Demo Second");

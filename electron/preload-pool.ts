@@ -144,7 +144,7 @@ try {
 
     // ── 工作区/交互域（4d）──
     workspace: buildWorkspace(events),
-    notifications: buildNotifications(),
+    notifications: buildNotifications(events), // M1 AI#1：需 events 做 notif:changed 变更订阅
     tabs: buildTabs(events),
     p2p: buildP2p(),
     dialog: buildDialog(),
