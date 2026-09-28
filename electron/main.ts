@@ -35,6 +35,7 @@ import { cleanupStaleDownloads } from './services/plugin-download.js'; // E6#31a
 import { cleanupUpdateResidue } from './services/update-download.js'; // E6#57.6d/e：启动清更新残留（.part + 方向守卫：删旧安装器，防自降级）
 import { readPendingInstallSync } from './services/update-install.js'; // M5 AI#17：装前捎带的调试开关（同步读，卡在 ready 之前）
 import { applyDebugSwitches, planDebugAdoption, waitRestartWindow, type DebugAdoptionPlan } from './services/debug-switches.js'; // M5 AI#17/#18：调试开关（CDP 家族）跨重启保留 + 二次启动路由
+import { initAiBridge } from './services/aiBridge/index.js'; // M4 AI#32：AI 接入内核（默认关；CLI/MCP 两张皮的正门）
 import { initUpdateService, registerUpdateHandlers } from './ipc/handlers/update-handlers.js'; // E6#57.8：更新机制装配（状态机 + 三条腿）+ update.* 命令通道
 import { fileService } from './services/file-service.js';
 import { pluginFileService } from './services/plugin-file-service.js'; // E6#78：插件目录位置解析
@@ -607,6 +608,9 @@ function routeLaunchItems(items: LaunchPaths): void {
 }
 
 app.whenReady().then(async () => {
+  // M4 AI#32：AI 接入内核（默认关——记录恒写，客户端才能分辨「没装过」与「开关关着」；
+  // 双门 = whenReady（本处）＋ hasSingleInstanceLock（内核内自查）——输锁的进程一句不做）
+  initAiBridge({ getShellWindows: () => windowManager?.getAllShells() ?? [] });
   registerProtocol();
   // E6#73j（G8）：先把「进程死在两次 rename 之间」留下的 <id>.bak 放回原位，再谈 ingest/发货/扫表。
   // 必须抢在这三步之前——否则发货夹会把内置版补进「看起来没装」的位置，覆盖掉本该复原的用户版。

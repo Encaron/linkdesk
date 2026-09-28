@@ -14,7 +14,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import {
   registerPoolCommandMetadata, resolvePoolExecution, unregisterPoolCommands,
-  purgePoolCommandWindows, executeCommand, registerCommand, getCommand, clearCommands,
+  purgePoolCommandWindows, executeCommand, executeCommandStrict, registerCommand, getCommand, clearCommands,
 } from "./CommandRegistry";
 
 /** executeInPool 的 emit 载荷快照——校验路由 targetWindowId */
@@ -152,5 +152,38 @@ describe("CommandRegistry 归属表维护（E5.8#43-4 ③）", () => {
     expect(result).toBe("shell");
     expect(called).toBe(1);
     expect(emitted).toHaveLength(0); // 非占位命令 → 壳侧直执行，不转发池
+  });
+});
+
+describe("CommandRegistry 严格执行出口（M4 AI#32 缺口①）", () => {
+  it("strict 未注册命令 ⇒ 抛错（非严格保持既有语义：warn 后返 undefined）", async () => {
+    await expect(executeCommandStrict("demo.no.such")).rejects.toThrow("未注册");
+    await expect(executeCommand("demo.no.such")).resolves.toBeUndefined();
+  });
+
+  it("strict handler 抛错 ⇒ 原样再抛；非严格 ⇒ 返 undefined（UI 面零改动）", async () => {
+    const boom = new Error("demo-handler-boom");
+    registerCommand("demo", { id: "demo.boom", title: "Boom", handler: async () => { throw boom; } });
+    await expect(executeCommandStrict("demo.boom")).rejects.toBe(boom);
+    await expect(executeCommand("demo.boom")).resolves.toBeUndefined();
+  });
+
+  it("strict 成功 ⇒ 结果照常透传（严格只改失败形态，不改成功路径）", async () => {
+    registerCommand("demo", { id: "demo.ok", title: "Ok", handler: async () => 42 });
+    await expect(executeCommandStrict("demo.ok")).resolves.toBe(42);
+  });
+
+  it("strict 占位命令池执行失败（executeResult error 载荷）⇒ 抛；非严格 ⇒ 返 undefined", async () => {
+    registerPoolCommandMetadata("demo.cmd", {}, "main");
+    const pStrict = executeCommandStrict("demo.cmd");
+    await flush();
+    resolvePoolExecution(emitted[0].requestId, { error: "demo-pool-boom" }, "main");
+    await expect(pStrict).rejects.toThrow("demo-pool-boom");
+
+    registerPoolCommandMetadata("demo.other", {}, "main");
+    const pLenient = executeCommand("demo.other");
+    await flush();
+    resolvePoolExecution(emitted[1].requestId, { error: "demo-pool-boom" }, "main");
+    await expect(pLenient).resolves.toBeUndefined();
   });
 });

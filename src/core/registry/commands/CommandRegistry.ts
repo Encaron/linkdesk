@@ -380,17 +380,21 @@ export function purgePoolCommandWindows(windowId: string): void {
  * executeInPool 转发池，命令属主插件由池侧 on-command miss 激活（electron/preload-pool/commands.ts）。
  */
 
-export async function executeCommand(
-  commandId: string,
-  // E5.7#63.8：占位参数——handler 合同已删 token，但调用方仍按旧槽位传 undefined
-  // （如 IpcBridgeHandler commands:execute 透传）。槽位保留 = 未来取消语义入口。
-  _token?: CancellationToken,
-  ...args: unknown[]
-): Promise<unknown> {
+/**
+ * 执行内核——strict 二择是 M4 `AI#32` 对缺口① 的修法（壳侧回传真结果）：
+ *   strict=false（UI 面既有语义，一字未动）：未注册只 warn、handler 抛错只 reportError——
+ *     命令面板/菜单/快捷键的调用方不关心失败形态（可见性已由 when 门控）。
+ *   strict=true（严格执行出口，命令桥 `commands:execute` 一条缝专用）：未注册 ⇒ 抛、
+ *     handler 抛错 ⇒ reportError 后**原样再抛**——桥上的调用方（AI / 池插件 fallback）从此
+ *     分辨得了「做了」与「没做」（对标 VS Code：executeCommand 对未知命令本就抛错）。
+ * 两条路 reportError 都走——错误服务照记，strict 只是**不再吞掉**，不是少记。
+ */
+async function runCommand(commandId: string, args: unknown[], strict: boolean): Promise<unknown> {
   const cmd = _commands.get(commandId);
   if (!cmd) {
     console.warn(`[CommandRegistry] 命令 "${commandId}" 未注册`);
-    return;
+    if (strict) throw new Error(`命令 "${commandId}" 未注册`);
+    return undefined;
   }
 
   try {
@@ -410,7 +414,32 @@ export async function executeCommand(
       source: cmd.category ?? "命令系统",
       error: err,
     });
+    if (strict) throw err instanceof Error ? err : new Error(String(err));
+    return undefined;
   }
+}
+
+export async function executeCommand(
+  commandId: string,
+  // E5.7#63.8：占位参数——handler 合同已删 token，但调用方仍按旧槽位传 undefined
+  // （如 IpcBridgeHandler commands:execute 透传）。槽位保留 = 未来取消语义入口。
+  _token?: CancellationToken,
+  ...args: unknown[]
+): Promise<unknown> {
+  return runCommand(commandId, args, false);
+}
+
+/**
+ * M4 `AI#32`（缺口①）：严格执行——未注册 / handler 抛错都以异常回传，⛔ 不再吞成 undefined。
+ * 唯一消费方 = 命令桥（`IpcBridgeHandler/commands.ts` 的 `commands:execute` 缝）；UI 面
+ * （面板/菜单/快捷键）继续走 `executeCommand`——那边的调用方靠 when 门控，失败形态无意义。
+ */
+export async function executeCommandStrict(
+  commandId: string,
+  _token?: CancellationToken,
+  ...args: unknown[]
+): Promise<unknown> {
+  return runCommand(commandId, args, true);
 }
 
 /* ── 壳→池 命令执行转发（E5.7 Bug C）── */

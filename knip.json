@@ -35,13 +35,17 @@
         "scripts/dev/m4-spike/accept.mjs",
         "scripts/dev/m4-spike/main-hook.cjs",
         "scripts/dev/m4-spike/linkdeskctl.mjs",
-        "scripts/dev/m4-spike/mcp-stdio.mjs"
+        "scripts/dev/m4-spike/mcp-stdio.mjs",
+        // M4 正式件（AI#34）：CLI 皮入口——PATH/安装器随包归 AI#40；lib/ 由它 import（knip 可见）。
+        //   内核 electron/services/aiBridge/ 由 main.ts import，不在本表（正常依赖图）。
+        "cli/linkdeskctl/linkdeskctl.mjs"
       ],
       "project": [
         // E5.8#2：plugins/ 排除——插件是独立 vite 构建产物（dist/plugins/*.js 构建自证），knip 只管壳 src/ + electron/
         "src/**/*.{ts,tsx}",
         "electron/**/*.ts",
-        "scripts/**/*.{mjs,cjs}"
+        "scripts/**/*.{mjs,cjs}",
+        "cli/**/*.mjs"
       ],
       "ignore": [
         // E6#54c：src/components/shared 单一源码中被插件消费、壳内零消费者的组件——54c 前插件直引

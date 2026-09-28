@@ -5,7 +5,7 @@
  */
 
 import {
-  executeCommand, resolvePoolExecution, registerPoolCommandMetadata,
+  executeCommandStrict, resolvePoolExecution, registerPoolCommandMetadata,
   registerShellLocalCommand, unregisterPoolCommands,
 } from "../../../registry/commands/CommandRegistry";
 import type { CancellationToken } from "../../../utils/CancellationToken"; // E5.7#97：commands:execute 槽位窄化
@@ -17,7 +17,9 @@ export async function handleCommandsChannel(channel: string, args: unknown[]): P
       // 池侧固定按旧槽位传 undefined 占位（E5.7#63.8 token 剥离后 handler 合同只剩 realArgs——
       // 壳侧 executeCommand(id, token, ...realArgs) 的 token 槽位保留为未来取消语义入口）
       const [commandId, token, ...rest] = args;
-      return executeCommand(commandId as string, token as CancellationToken | undefined, ...rest);
+      // M4 AI#32 缺口①：桥路径走严格执行——未注册 / handler 抛错经信封 {error} 回传真结果，
+      // 调用方（AI 桥 / 池插件 fallback）分辨得了「做了」与「没做」。UI 面仍走非严格 executeCommand。
+      return executeCommandStrict(commandId as string, token as CancellationToken | undefined, ...rest);
     }
     case "commands:executeResult": {
       // E5.7 Bug C：壳→池占位命令执行回传——resolve 壳侧 pending（已超时则静默丢弃）
