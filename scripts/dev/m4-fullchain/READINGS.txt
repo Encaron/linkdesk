@@ -1,0 +1,154 @@
+# M4 全链路验收（AI#44）读数原件 —— 两腿各一次完整跑 ＋ 真 MCP 客户端 ＋ 离线三段
+#
+# 工具: scripts/dev/m4-fullchain/accept.mjs（真 CLI 子进程 + 真 linkdeskctl mcp 常驻 stdio 会话 + CDP 证人）
+# 时间: 2026-09-28 会话 9  轨道: dev（Vite :1420）+ 隔离实例 --user-data-dir=<ISO> --remote-debugging-port=9444
+# 两腿各自净态重启（清 userData，只留 plugins/ + settings.json ⇒ 市场模块未导入）——配方见同夹 README.md §二；
+# 腿 1 是同一配方连跑的第二遍（两遍都 39/39）。
+# 解读见同夹 README.md 与 03-任务档案/M4-通道.md 的「AI#44 结项报告」；本文件是未经整理的读数（PID/端口/临时路径每次都不同）。
+═══════════════════════════════════════════════════════════════════
+腿 1 / 2：CLI（--channel cli）—— node scripts/dev/m4-fullchain/accept.mjs --channel cli
+═══════════════════════════════════════════════════════════════════
+
+
+── 前置 ──
+  ✔ ENV-CDP                        CDP http://127.0.0.1:9444 上的 target = ["shell","pool"]
+  ✔ ENV-USERDATA                   记录在盘：C:\Users\fengy\AppData\Local\Temp\ldk-ai44\ai-bridge.json
+
+── 通道 CLI：开标签 → 执行命令 → 读通知 → 执行通知按钮 ──
+  ✔ CLI-S0.1                       enabled=true listening=true pid=70616 127.0.0.1:54393
+  ✔ CLI-S0.2                       认人：应答 pid=70616 == 记录 pid=70616
+  ✔ CLI-S0.3 壳读面就绪                 等 0.2s 后命令面 102 条（冷启动时延）
+  ✔ CLI-S0.4 命令路径就绪                暖机命令 view.zoomReset ⇒ ok=true（等 0.2s）
+  ✔ CLI-S1.1 负控                    命令面102条里没有 marketplace.retryInstall ⇒ EUNKNOWN（运行期派生的白名单真在现取）
+  ✔ CLI-S1.2                       open-tab marketplace ⇒ accepted（tabs:create 是 fire 型，成不成看下一行）
+  ✔ CLI-S1.3 回读                    tabs 回读含 marketplace：{"windows":[{"windowId":"main","mode":"main","ready":true,"activeGroupId":"main","root":{"type":"leaf","groupId":"main"},"groups":[{"id":"ma
+  ✔ CLI-S1.4 CDP证人                 池标签条 = ["欢迎","发行说明 v0.2.21","插件市场"]
+  ✔ CLI-S1.5 生长                    命令面 102 → 107，新挂牌 = ["marketplace.enable","marketplace.disable","marketplace.uninstall","marketplace.retryInstall","marketplace.retryUpdate"]（「挂牌即进名单」）
+  ✔ CLI-S2.1.门出现                   698ms · 确认安装 串口监视器 确认前请查看来源与发布者。 发布者 官方 官方发布 来源 encaron/linkdesk-marketplace 描述 串口数据监视器——接收区（CM6）+ 发送栏（Monaco）+ 侧栏设置。LinkDesk 第一个视图插件，通用容器基础设施在此验证。不绑定任何特定用途。 版本 v1.0.24 大小 158 KB 取消 确认安装
+  ✔ CLI-S2.1.点确认                   clicked="确认安装" buttons=["取消","确认安装"]
+  ✔ CLI-S2.2                       exec 严格回执：ok=true code=- {
+  "ok": true,
+  "subcommand": "exec",
+  "op": "exec",
+  "servedBy": 70616,
+  "recordPid": 70616,
+  "result": {
+    "co
+  ✔ CLI-S2.3                       通知面板 1 条，其中带 command 的 1 条：id=toast-1 「serial-monitor：安装失败：网络连接不可用」
+  ✔ CLI-S2.4 CDP证人                 池通知面板 = [["重试"]]（按钮真在用户看得见的地方）
+  ✔ CLI-S3.1                       按钮事实随行：command=marketplace.retryInstall args=[{"pluginId":"serial-monitor","downloadUrl":"http://127.0.0.1:9/nope.linkdesk-plugin"}]（M1 AI#2 的 command/args 经 DTO 活着）
+  ✔ CLI-S3.2 负控                    乱点名按钮 ⇒ ENOTFOUND
+  ✔ CLI-S4.1.门出现                   140ms · 确认安装 串口监视器 确认前请查看来源与发布者。 发布者 官方 官方发布 来源 encaron/linkdesk-marketplace 描述 串口数据监视器——接收区（CM6）+ 发送栏（Monaco）+ 侧栏设置。LinkDesk 第一个视图插件，通用容器基础设施在此验证。不绑定任何特定用途。 版本 v1.0.24 大小 158 KB 取消 确认安装
+  ✔ CLI-S4.1.点确认                   clicked="确认安装" buttons=["取消","确认安装"]
+  ✔ CLI-S4.2                       按按钮 = 跑命令：pressed=true command=marketplace.retryInstall code=-
+  ✔ CLI-S4.3 双证人                   按钮那一下又跑出一条**新**的带 command 通知：toast-2（旧 toast-1 + 新 = 2 条）
+  ✔ CLI-S4.4 CDP证人                 池面板条数 1 → 2
+  ✔ CLI-S4.5 负控                    乱点通知 id ⇒ ENOTFOUND
+  ✔ CLI-S5.1                       账本本轮：exec(arg=marketplace.retryInstall) 成功 1 条 · notifyAction 成功 1 条（arg 只对 exec/install 记，见残余）
+  ✔ CLI-S5.2 负控留痕                  先记后判：被拒的那条也在账上（ok=false code=EUNKNOWN），本轮 1 条／账本读完 28 条
+
+── M5 AI#19 ① 复验（CLI 腿）：装一个插件 → 打开它 → 操作它（⛔ 全程走通道，不拿 CDP 冒充） ──
+  ✔ CLI-S6.0 前置                    插件包在盘上：E:\linkdesk-plugins\official\serial-monitor\serial-monitor.linkdesk-plugin
+  ✔ CLI-S6.1 装前                    命令面 107 条，无 serial-monitor.*（净态：上一腿装完已卸干净）
+  ✔ CLI-S6.2.门出现                   151ms · AI 请求安装插件： E:\linkdesk-plugins\official\serial-monitor\serial-monitor.linkdesk-plugin 允许安装吗？ 取消 确定
+  ✔ CLI-S6.2.点确认                   clicked="确定" buttons=["取消","确定"]
+  ✔ CLI-S6.3 装                     install ⇒ installed=true job={"success":true,"pluginId":"serial-monitor","version":"1.0.24"} code=-
+  ✔ CLI-S6.4 打开                    open-tab serial-monitor ⇒ accepted
+  ✔ CLI-S6.5 CDP证人                 池标签条 = ["欢迎","发行说明 v0.2.21","插件市场","串口监视器"]
+  ✔ CLI-S6.6 挂牌                    命令面 107 → 123，serial-monitor.* 新挂牌 16 条（视图挂载即挂牌）
+  ✔ CLI-S6.7 操作                    exec serial-monitor.toggleLineNumbers ⇒ ok=true code=-（装完就能操作它）
+  ✔ CLI-S7.1                       exec marketplace.disable ⇒ ok=true
+  ✔ CLI-S7.2 负控                    「已禁用：串口监视器」的按钮没绑命令 ⇒ notify-action ENOACTION（⛔ 不假装按得动）
+  ✔ CLI-S7.3 复原                    exec marketplace.enable ⇒ ok=true（不留半禁用态）
+  ✔ CLI-S6.9 还原                    exec marketplace.uninstall ⇒ ok=true code=-
+
+── 合计 39/39 条读数（跳过 0） ──
+
+═══════════════════════════════════════════════════════════════════
+腿 2 / 2：MCP（--channel mcp）—— 一个常驻 stdio 会话走完全链（initialize → tools/list → 全链 tools/call）
+═══════════════════════════════════════════════════════════════════
+
+
+── 前置 ──
+  ✔ ENV-CDP                        CDP http://127.0.0.1:9444 上的 target = ["shell","pool"]
+  ✔ ENV-USERDATA                   记录在盘：C:\Users\fengy\AppData\Local\Temp\ldk-ai44\ai-bridge.json
+  ✔ MCP-S0.0                       initialize ⇒ serverInfo={"name":"linkdesk","version":"0.2.21"}
+  ✔ MCP-S0.0b                      tools/list 在线派生 10 个：linkdesk_status linkdesk_describe linkdesk_ping linkdesk_tabs linkdesk_open_tab linkdesk_exec linkdesk_install linkdesk_notifications linkdesk_notify_action linkdesk_log
+
+── 通道 MCP：开标签 → 执行命令 → 读通知 → 执行通知按钮 ──
+  ✔ MCP-S0.1                       enabled=true listening=true pid=73096 127.0.0.1:61119
+  ✔ MCP-S0.2                       认人：应答 pid=73096 == 记录 pid=73096
+  ✔ MCP-S0.3 壳读面就绪                 等 0.0s 后命令面 102 条（冷启动时延）
+  ✔ MCP-S0.4 命令路径就绪                暖机命令 view.zoomReset ⇒ ok=true（等 0.1s）
+  ✔ MCP-S1.1 负控                    命令面102条里没有 marketplace.retryInstall ⇒ EUNKNOWN（运行期派生的白名单真在现取）
+  ✔ MCP-S1.2                       open-tab marketplace ⇒ accepted（tabs:create 是 fire 型，成不成看下一行）
+  ✔ MCP-S1.3 回读                    tabs 回读含 marketplace：{"windows":[{"windowId":"main","mode":"main","ready":true,"activeGroupId":"main","root":{"type":"leaf","groupId":"main"},"groups":[{"id":"ma
+  ✔ MCP-S1.4 CDP证人                 池标签条 = ["欢迎","发行说明 v0.2.21","插件市场"]
+  ✔ MCP-S1.5 生长                    命令面 102 → 107，新挂牌 = ["marketplace.enable","marketplace.disable","marketplace.uninstall","marketplace.retryInstall","marketplace.retryUpdate"]（「挂牌即进名单」）
+  ✔ MCP-S2.1.门出现                   668ms · 确认安装 串口监视器 确认前请查看来源与发布者。 发布者 官方 官方发布 来源 encaron/linkdesk-marketplace 描述 串口数据监视器——接收区（CM6）+ 发送栏（Monaco）+ 侧栏设置。LinkDesk 第一个视图插件，通用容器基础设施在此验证。不绑定任何特定用途。 版本 v1.0.24 大小 158 KB 取消 确认安装
+  ✔ MCP-S2.1.点确认                   clicked="确认安装" buttons=["取消","确认安装"]
+  ✔ MCP-S2.2                       exec 严格回执：ok=true code=- {
+  "commandId": "marketplace.retryInstall",
+  "result": null
+}
+  ✔ MCP-S2.3                       通知面板 1 条，其中带 command 的 1 条：id=toast-1 「serial-monitor：安装失败：网络连接不可用」
+  ✔ MCP-S2.4 CDP证人                 池通知面板 = [["重试"]]（按钮真在用户看得见的地方）
+  ✔ MCP-S3.1                       按钮事实随行：command=marketplace.retryInstall args=[{"pluginId":"serial-monitor","downloadUrl":"http://127.0.0.1:9/nope.linkdesk-plugin"}]（M1 AI#2 的 command/args 经 DTO 活着）
+  ✔ MCP-S3.2 负控                    乱点名按钮 ⇒ ENOTFOUND
+  ✔ MCP-S4.1.门出现                   142ms · 确认安装 串口监视器 确认前请查看来源与发布者。 发布者 官方 官方发布 来源 encaron/linkdesk-marketplace 描述 串口数据监视器——接收区（CM6）+ 发送栏（Monaco）+ 侧栏设置。LinkDesk 第一个视图插件，通用容器基础设施在此验证。不绑定任何特定用途。 版本 v1.0.24 大小 158 KB 取消 确认安装
+  ✔ MCP-S4.1.点确认                   clicked="确认安装" buttons=["取消","确认安装"]
+  ✔ MCP-S4.2                       按按钮 = 跑命令：pressed=true command=marketplace.retryInstall code=-
+  ✔ MCP-S4.3 双证人                   按钮那一下又跑出一条**新**的带 command 通知：toast-2（旧 toast-1 + 新 = 2 条）
+  ✔ MCP-S4.4 CDP证人                 池面板条数 1 → 2
+  ✔ MCP-S4.5 负控                    乱点通知 id ⇒ ENOTFOUND
+  ✔ MCP-S5.1                       账本本轮：exec(arg=marketplace.retryInstall) 成功 1 条 · notifyAction 成功 1 条（arg 只对 exec/install 记，见残余）
+  ✔ MCP-S5.2 负控留痕                  先记后判：被拒的那条也在账上（ok=false code=EUNKNOWN），本轮 1 条／账本读完 29 条
+
+── M5 AI#19 ① 复验（MCP 腿）：装一个插件 → 打开它 → 操作它（⛔ 全程走通道，不拿 CDP 冒充） ──
+  ✔ MCP-S6.0 前置                    插件包在盘上：E:\linkdesk-plugins\official\serial-monitor\serial-monitor.linkdesk-plugin
+  ✔ MCP-S6.1 装前                    命令面 107 条，无 serial-monitor.*（净态：上一腿装完已卸干净）
+  ✔ MCP-S6.2.门出现                   8ms · AI 请求安装插件： E:\linkdesk-plugins\official\serial-monitor\serial-monitor.linkdesk-plugin 允许安装吗？ 取消 确定
+  ✔ MCP-S6.2.点确认                   clicked="确定" buttons=["取消","确定"]
+  ✔ MCP-S6.3 装                     install ⇒ installed=true job={"success":true,"pluginId":"serial-monitor","version":"1.0.24"} code=-
+  ✔ MCP-S6.4 打开                    open-tab serial-monitor ⇒ accepted
+  ✔ MCP-S6.5 CDP证人                 池标签条 = ["欢迎","发行说明 v0.2.21","插件市场","串口监视器"]
+  ✔ MCP-S6.6 挂牌                    命令面 107 → 123，serial-monitor.* 新挂牌 16 条（视图挂载即挂牌）
+  ✔ MCP-S6.7 操作                    exec serial-monitor.toggleLineNumbers ⇒ ok=true code=-（装完就能操作它）
+  ✔ MCP-S7.1                       exec marketplace.disable ⇒ ok=true
+  ✔ MCP-S7.2 负控                    「已禁用：串口监视器」的按钮没绑命令 ⇒ notify-action ENOACTION（⛔ 不假装按得动）
+  ✔ MCP-S7.3 复原                    exec marketplace.enable ⇒ ok=true（不留半禁用态）
+  ✔ MCP-S6.9 还原                    exec marketplace.uninstall ⇒ ok=true code=-
+
+── 合计 41/41 条读数（跳过 0） ──
+
+═══════════════════════════════════════════════════════════════════
+补读数 B：真 MCP 客户端（Claude Code CLI 2.1.233 · --strict-mcp-config）
+═══════════════════════════════════════════════════════════════════
+
+$ claude -p "调用 linkdesk_status 和 linkdesk_ping…" --mcp-config <keep>/claude-mcp.json
+             --strict-mcp-config --allowedTools "mcp__linkdesk" --output-format stream-json --verbose
+（配置形态照产品自己产出的那份：cli/linkdeskctl/lib/mcp-config.mjs ⇒ mcpServers.linkdesk + args:["mcp"]；
+  本机开发态 command 换成 node、args 指到仓内 cli/linkdeskctl/linkdeskctl.mjs，env.LINKDESK_USER_DATA 指隔离实例）
+
+RAW         [claude-code:unrecognized_model] {"model":"deepseek-v4-flash","query_source":"sdk"}
+TEXT        I'll call both tools.
+TOOL_USE    mcp__linkdesk__linkdesk_status {}
+TOOL_USE    mcp__linkdesk__linkdesk_ping {}
+TOOL_RESULT [{"type":"text","text":"状态: 在线\n原因: -\n详情: 在服务：pid 70616 127.0.0.1:54393\n记录: C:\\Users\\fengy\\AppData\\Local\\Temp\\ldk-ai44\\ai-bridge.json\n下一步: 可直接调其它工具。"}]
+TOOL_RESULT [{"type":"text","text":"{\n \"pid\": 70616,\n \"appName\": \"linkdesk\",\n \"appVersion\": \"0.2.21\",\n \"transport\": \"tcp\",\n \"endpoint\": {\n \"transport\": \"tcp\",\n \"host\": \"127.0.0.1\",\n \"port\": 54393\n },\n \"userData\": \"C:\\\\Users\\\\fengy\\\\AppData\\\\Local\\\\Temp\\\\ldk-ai44\",\n \"startedAt\": \"2026-09-28T13:56:10.850Z\",\n \"uptimeMs\": 27456,\n \"shellWindows\": 1,\n \"allWindows\": 1,\n \"servedShellWindow\": \"main\"\n}"}]
+TEXT        两次返回里的值如下： **linkdesk_status** - pid: `70616`（出现在「详情」行：`在服务：pid 70616 127.0.0.1:54393`） - appVersion: 无 —— 这个工具没有返回 appVersion 字段 **linkdesk_ping** - pid: `70616` - appVersion: `0.2.21` 两边 pid 一致（70616）。
+RESULT      {"subtype":"success","is_error":false,"num_turns":3,"duration_ms":2448,"result":"两次返回里的值如下： **linkdesk_status** - pid: `70616`（出现在「详情」行：`在服务：pid 70616 127.0.0.1:54393`） - appVersion: 无 —— 这个工具没有返回 appVersion 字段 **linkdesk_ping** - pid: `70616` - appVersion: `0.2.21` 两边 pid 一致（70616）。"}
+
+═══════════════════════════════════════════════════════════════════
+补读数 C：离线态（记录里没有实例）—— MCP 冷启动悖论的另一半：软件没开时它怎么答
+═══════════════════════════════════════════════════════════════════
+
+$ LINKDESK_USER_DATA=<空目录 ldk-nonet> node cli/linkdeskctl/linkdeskctl.mjs status
+状态      没有通道记录（找过：C:/Users/fengy/AppData/Local/Temp/ldk-nonet）
+下一步    ① 软件没跑过？先起它。② 用了隔离实例（--user-data-dir）？把 LINKDESK_USER_DATA 指到那只目录。
+
+$ 同一个空 userData 经 MCP 皮（stdio 直连：initialize → tools/list → tools/call linkdesk_status）
+initialize 应答 +66ms
+tools/list 应答 +812ms: 10 工具
+linkdesk_status 应答 +1608ms: 状态: 离线 原因: NO_RECORD 详情: 没有通道记录（找过 …ldk-nonet）
+（软件没开时 tools/list 走离线静态表；在线时同一份 tools/list 改走实例 describe —— 见结项报告「spike 三难点」②）
