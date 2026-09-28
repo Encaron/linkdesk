@@ -45,6 +45,7 @@ The `docs/` tree is written in Chinese; it is the project's working memory.
 | [`docs/`](docs/) | Everything, indexed by phase |
 | [`docs/02-Electron架构/`](docs/02-Electron架构/) | Electron shell architecture |
 | [`docs/03-插件制造/`](docs/03-插件制造/) | Writing plugins — API contract, lifecycle, `plugin.json` |
+| [`docs/07-AI操作手册/`](docs/07-AI操作手册/) | Operating LinkDesk **as an AI agent** — commands, contract API, task recipes, CDP pitfalls (Chinese) |
 | [`docs/06-发布管理/发布清单.md`](docs/06-发布管理/发布清单.md) | Release checklist |
 | [`CLAUDE.md`](CLAUDE.md) | Architecture, hard constraints, dev commands |
 
