@@ -29,10 +29,12 @@
 
 | 事实 | 说明 |
 |------|------|
-| **契约 40 命名空间** | 池注入 39（唯一缺 `bridge`）；壳注入 22；mock 注入 12 |
+| **契约 46 命名空间** | 池注入 45（唯一缺 `bridge`）；壳注入 25；mock 注入 13——**以 `check-namespace-matrix` 门禁的活读数为准**（本行已由它机械对账，⛔ 别照 `surfaces.ts` 里的注释抄，那份也在漂） |
 | **池 = 插件运行时真相源** | 插件运行在池（pool）preload——池注入的命名空间为 **required**；`bridge` 真壳独有 |
 | **「仅壳」≠ 插件不可调** | `window.*`/`shell.*`/`hotExit.*`/`getFilePath` 池**实有注入**——旧版把这几面标 ❌ 仅壳是错的 |
 | **契约必选面漂移已清零** | `env.get(pluginId)` 转发、`clipboard.readText` 壳补、`dialog.openFile` 壳补——三项都已补齐实现，无 `?` 降级 |
+
+> **上面这张表只说「哪面能调」，不说「能读到什么」。** 读取面（插件/AI 读「现在有什么、在等什么」）单列一章——见 §3.3：**只有操作面、没有读取面的 API 是半成品**（能开标签页，却读不到现在开了哪些）。
 
 ---
 
@@ -42,7 +44,7 @@
 
 **`window.linkdesk.*` 的全部方法签名、入参、返回、载荷类型 = [contracts/linkdesk.d.ts](../../contracts/linkdesk.d.ts)**（自动生成，勿手改）。
 
-- **生成源：** `src/core/api/linkdesk-api.ts` + `linkdesk-api/`（14 域接口）+ `src/core/types/ipc/*` + `src/core/types/pool/*`（wire 载荷类型）
+- **生成源：** `src/core/api/linkdesk-api.ts` + `linkdesk-api/`（15 域接口）+ `src/core/types/ipc/*` + `src/core/types/pool/*`（wire 载荷类型）
 - **生成器：** `scripts/generate-contract.mjs`（Route C——契约类型文件为源，纯类型打包单文件）
 - **机械门禁：** preload 双端 `satisfies` 契约面类型 → tsc 漂移门禁；`npm run check` 内 `contracts:check` hash 字节比对
 - **覆盖矩阵：** 每个命名空间 × 池/壳/mock 四面覆盖 → [命名空间矩阵 §2](../02-Electron架构/E5.8_归一化基建/契约生成/命名空间矩阵.md#2-命名空间--四面覆盖矩阵)
@@ -101,7 +103,40 @@ async function list(): Promise<FileEntry[]> {
 | `workspace:changed` | `{ rootPath }` | 用户打开/切换文件夹 |
 | `plugin:installJobs` | `{ jobs: InstallJob[] }`（**全量快照，非增量**） | 壳侧安装/卸载队列变化（建 /补阶段与百分比 /补 `kind`·`cancellable`）。`InstallJob` = `{ jobId, pluginId, origin: "user"\|"dependency", kind: "install"\|"uninstall", cancellable: boolean, displayName, state: "queued"\|"running"\|"settled", terminal?: "success"\|"failed"\|"parked", error?, stage?, percent?, message? }`——**每次广播都是整表**，消费方**直接替换本地镜像**，别做增量合并。**晚订阅者拿到最新整表**：池 preload 顶层缓存一份、订阅时同步回放（视图重挂不会停在旧快照）。⚠️ 这是**公开事件面**，不是市场私有管道——任何插件可订阅做自己的进度面；⚠️ **`stage`/`percent`/`message`/`kind`/`cancellable` 均为只增不改的增补字段**，旧消费方忽略即可。⚠️ `origin: "dependency"` = 某插件自己拖来的依赖，藏在发起它的那一行（`origin: "user"`）里面 |
 
-### 3.3 与旧手写版的差异（读者注意）
+### 3.3 读取面——「现在有什么 / 在等什么」的机器出口
+
+§3.1/§3.2 讲的是**操作面**（插件能做什么）；本节讲**读取面**（插件/AI 能**读到**什么）。
+
+**为什么单列一章：** 操作面齐全 ≠ 自动化可行。能开标签页、能弹通知，却没有「现在开了哪些标签 / 面板里堆着什么通知 / 有没有弹窗在等用户」的读法，外部驱动方（AI、脚本、远程控制）就只能靠猜——**猜出来的状态与屏幕一不符，就成了假信息源**，比没有读取面更坏。
+
+| 读取面 | 方法 | 读到什么 |
+|:--|:--|:--|
+| **通知** | `notifications.list()` | 铃铛宽通知面板现状——条数、未读计数、每条文案与按钮、唤醒与存活判据。返回 = **面板的 DTO 本体**（`NotifLayout`，与 `pool.onLayout` 的 `statusBar.notif` 同一个 `buildNotif` 产出） |
+| **通知变更** | `notifications.subscribe(cb)` | 「**现在变了**」信号（新增/更新/收掉/认账/面板开合）。🔴 **回调不带载荷**——要答案请再 `list()`（「状态推流 + 按需拉」分工，同 `events.on` 那套） |
+| **标签** | `tabs.list()` | 全部窗口的标签清单（`TabsSnapshot`：`windowId`/`mode`/`ready`/`activeGroupId`/`root`/`groups`，每组含 `activeTabId`）。与推给池的布局树**同一个 `serializeGroups`** ⇒ 清单里的 `label`/`icon` 与屏幕上那一条必然一致 |
+| **布局** | `pool.getLayout()` | 本窗**最近一次** `onLayout` 的快照本体（树 `root` + 分组 `groups`）。未收到过任何推送 → `null`（⛔ 不编一份空布局） |
+| **在途弹窗** | `dialogHost.pending()` | 此刻正弹着、等用户决定的 confirm/alert（`options` 原形 + `kind` + 按钮文案 + 富内容视图身份）。空数组 = 此刻没有弹窗 |
+| **命令元数据** | `commands.getCommands()` | 全部命令的 `id`/`title`/`category`/**`description`**/**`params`**（后两者 M1 起有；`params[i]` 与 handler 实参**逐位对应**）——命令清单本身就是一份**可直接喂给大模型当工具清单（function calling）**的结构 |
+
+> 方法签名以 [contracts/linkdesk.d.ts](../../contracts/linkdesk.d.ts) 为准；上表只回答「哪几件、读什么」。
+
+**三条读取面规矩（写给实现者，也写给消费方）：**
+
+1. **读取面 ≡ 屏幕，同一把尺。** 返回的必须是**屏幕上那份 DTO 本体**，⛔ 不许另算一份摘要——两把尺子必然打架：读到的分组/未读/文案若与屏幕上画的不同，读取面就成了假信息源。
+2. **信号与答案分家。** 订阅只回答「**变了**」（无载荷），答案一律问 `list()`。信号里带了数据，就会有人不去问权威，于是又长出第二把尺。
+3. **文案已解析，原样显示。** `bellTitle`/`panelTitle`/分组 label/`timeLabel` 等文案类字段**已由壳按当前语言 `t()` 解析**（显示文本铁律）——调用方原样显示，不要再查一次 i18n。
+
+**边界（都是「如实报不知道」，不是缺陷）：**
+
+- `pool.getLayout()` 在**脱出窗**拿到的是策略子集（`WINDOW_MODE_STRATEGIES`：`detached` = `titleBar`+`groups`；`drift` = `titleBar`+`panel`）——那些窗里 `statusBar`/`sidebar`/`iconBar` 不存在。要跨窗看全貌用 `tabs.list()`（问壳）。
+- `tabs.list()` **全窗一次性给全**：壳侧没有「当前窗」这个真相源 ⇒ 调用方自己按 `windowId` 筛（⛔ 别指望壳猜你想看哪一窗）。
+- `notifications.list()` 经 `plugins:call` 问**壳**（壳持全量状态）——所以**脱出窗也拿得到**（只读本窗布局子集会答「没有通知」）。
+- `dialogHost.pending()` 的 `buttons` **序 = 声明序**（`[确认, 取消]`），**不是屏幕上的左右位**（实测：屏幕上取消画左、确认画右）。想动手就按序号调 `dialogHost.confirm()`/`cancel()`，⛔ 别拿视觉位置对号入座。
+- **池侧读、壳侧不实现**：`tabs.list()` / `pool.getLayout()` 在 `preload-shell` 里**不存在**（壳自己手上就是那份 state，不绕 IPC 问自己）。壳内视图要用请走壳自己的 service。
+
+**将来要加读取面：** 判据一句话——**「屏幕上有的，机器就得读得到」**。加一件前先问三句：① 返回的是不是屏幕那份 DTO 本体？② 有没有因此长出第二份状态/第二把尺？③ 消费方有没有不靠它的替代路径（没有 ⇒ 这是缺口，不是可选项）。
+
+### 3.4 与旧手写版的差异（读者注意）
 
 旧版 §3.x 逐命名空间方法清单已删除（= 手写第二份真相源，必然漂移）。生成的契约解决了几处**旧文档与实现不符**的漂移：
 

@@ -29,10 +29,12 @@ A few key points (a summary of Matrix §2; the matrix wins on details):
 
 | Fact | Explanation |
 |------|------|
-| **The contract has 40 namespaces** | The pool injects 39 (the only missing one is `bridge`); the shell injects 22; mock injects 12 |
+| **The contract has 46 namespaces** | The pool injects 45 (the only missing one is `bridge`); the shell injects 25; mock injects 13 — **the live readings of the `check-namespace-matrix` gate are authoritative** (this row is mechanically reconciled by it; ⛔ do not copy the comment in `surfaces.ts` — that one drifts too) |
 | **Pool = the plugin runtime source of truth** | Plugins run in the pool preload — namespaces injected by the pool are **required**; `bridge` is real-shell-only |
 | **"Shell-only" ≠ plugins can't call it** | `window.*`/`shell.*`/`hotExit.*`/`getFilePath` **are actually injected in the pool** — the older version's ❌ shell-only marking for those surfaces was wrong |
 | **Contract required-surface drift is now zero** | `env.get(pluginId)` forwarding, `clipboard.readText` shell completion, `dialog.openFile` shell completion — all three are implemented, with no `?` degradation |
+
+> **That table only says which surfaces are callable — not what can be read.** Read surfaces (reading "what is open right now / what is waiting on the user") get their own section — see §3.3: **an API with an operation surface but no read surface is half-finished** (you can open a tab, yet you cannot read which tabs are open).
 
 ---
 
@@ -42,7 +44,7 @@ A few key points (a summary of Matrix §2; the matrix wins on details):
 
 **Every method signature, parameter, return value, and payload type for `window.linkdesk.*` = [contracts/linkdesk.d.ts](https://github.com/Encaron/linkdesk/blob/electron/contracts/linkdesk.d.ts)** (auto-generated; do not hand-edit).
 
-- **Generation sources:** `src/core/api/linkdesk-api.ts` + `linkdesk-api/` (14 domain interfaces) + `src/core/types/ipc/*` + `src/core/types/pool/*` (wire payload types)
+- **Generation sources:** `src/core/api/linkdesk-api.ts` + `linkdesk-api/` (15 domain interfaces) + `src/core/types/ipc/*` + `src/core/types/pool/*` (wire payload types)
 - **Generator:** `scripts/generate-contract.mjs` (Route C — the contract type file is the source; pure types bundled into a single file)
 - **Mechanical gate:** the preload on both sides `satisfies` the contract surface types → tsc drift gate; `contracts:check` byte-compares hashes inside `npm run check`
 - **Coverage matrix:** every namespace × pool/shell/mock coverage → [Namespace Matrix §2](https://github.com/Encaron/linkdesk/blob/electron/docs/02-Electron架构/E5.8_归一化基建/契约生成/命名空间矩阵.md#2-命名空间--四面覆盖矩阵)
@@ -101,7 +103,40 @@ async function list(): Promise<FileEntry[]> {
 | `workspace:changed` | `{ rootPath }` | The user opens/switches a folder |
 | `plugin:installJobs` | `{ jobs: InstallJob[] }` (**a full snapshot, not a delta**) | The shell-side install/uninstall queue changes (added: stage and percent; added: `kind`·`cancellable`). `InstallJob` = `{ jobId, pluginId, origin: "user"\|"dependency", kind: "install"\|"uninstall", cancellable: boolean, displayName, state: "queued"\|"running"\|"settled", terminal?: "success"\|"failed"\|"parked", error?, stage?, percent?, message? }` — **every broadcast is the whole table**, so consumers **replace their local mirror outright** instead of merging deltas. **Late subscribers get the latest full table**: the pool preload caches one at the top level and replays it synchronously on subscribe (a remounted view never gets stuck on an old snapshot). ⚠️ This is a **public event surface**, not a marketplace-private pipe — any plugin can subscribe and build its own progress UI; ⚠️ **`stage`/`percent`/`message`/`kind`/`cancellable` are additive-only fields**, so older consumers can simply ignore them. ⚠️ `origin: "dependency"` = a dependency some plugin dragged in, nested inside the row that initiated it (`origin: "user"`) |
 
-### 3.3 Differences from the Old Hand-Written Version (note for readers)
+### 3.3 Read Surfaces — the machine-readable outlet for "what is open / what is waiting"
+
+§3.1/§3.2 describe the **operation surfaces** (what a plugin can do); this section describes the **read surfaces** (what a plugin/AI can **read**).
+
+**Why it gets its own section:** a complete operation surface does not add up to automation. If you can open tabs and raise notifications but cannot read "which tabs are open / what is stacked in the notification panel / whether a dialog is waiting on the user", an external driver (AI, scripts, remote control) can only guess — and **a guessed state that disagrees with the screen becomes a false source of truth**, which is worse than having no read surface at all.
+
+| Read surface | Method | What you get |
+|:--|:--|:--|
+| **Notifications** | `notifications.list()` | The state of the bell's wide notification panel — count, unread count, each entry's text and buttons, wake and persistence criteria. The return value **is the panel's own DTO** (`NotifLayout`, produced by the same `buildNotif` as `pool.onLayout`'s `statusBar.notif`) |
+| **Notification changes** | `notifications.subscribe(cb)` | A "**it changed just now**" signal (added/updated/dismissed/acknowledged, panel opened/closed). 🔴 **The callback carries no payload** — call `list()` again for the answer (the same "state push + pull on demand" split as `events.on`) |
+| **Tabs** | `tabs.list()` | The tab listing for **all** windows (`TabsSnapshot`: `windowId`/`mode`/`ready`/`activeGroupId`/`root`/`groups`, each group carrying `activeTabId`). Produced by the **same `serializeGroups`** as the layout tree pushed to the pool ⇒ the listing's `label`/`icon` necessarily match the tab drawn on screen |
+| **Layout** | `pool.getLayout()` | The snapshot body of the **most recent** `onLayout` in this window (tree `root` + groups `groups`). No push has arrived yet → `null` (⛔ never invent an empty layout) |
+| **Dialogs in flight** | `dialogHost.pending()` | The confirm/alert currently on screen waiting for the user (`options` verbatim + `kind` + button labels + rich-content view identity). An empty array = nothing is open right now |
+| **Command metadata** | `commands.getCommands()` | Every command's `id`/`title`/`category`/**`description`**/**`params`** (the latter two exist since M1; `params[i]` corresponds positionally to the handler's argument) — the command list itself is a structure you can **feed straight to a large model as a tool list (function calling)** |
+
+> Method signatures follow [contracts/linkdesk.d.ts](https://github.com/Encaron/linkdesk/blob/electron/contracts/linkdesk.d.ts); the table above only answers "which ones exist and what they read".
+
+**Three rules for read surfaces (for implementers and consumers alike):**
+
+1. **A read surface ≡ the screen, one single ruler.** It must return **the DTO that the screen is drawn from**, ⛔ never a separately computed summary — two rulers inevitably disagree: if the grouping/unread count/text you read differs from what is painted, the read surface has become a false source of truth.
+2. **Signals and answers are separate.** A subscription only answers "**it changed**" (no payload); answers always come from `list()`. Put data in the signal and someone will stop asking the authority, and a second ruler grows back.
+3. **Text is already resolved — display it as-is.** Text fields such as `bellTitle`/`panelTitle`/group labels/`timeLabel` are **already resolved by the shell with `t()` in the current language** (the display-text rule) — display them verbatim; do not run i18n again.
+
+**Boundaries (all of them "honestly report not knowing", not defects):**
+
+- In a **detached window**, `pool.getLayout()` returns a strategy subset (`WINDOW_MODE_STRATEGIES`: `detached` = `titleBar`+`groups`; `drift` = `titleBar`+`panel`) — `statusBar`/`sidebar`/`iconBar` do not exist there. To see the whole picture across windows, use `tabs.list()` (ask the shell).
+- `tabs.list()` returns **all windows in one shot**: the shell has no "current window" source of truth ⇒ filter by `windowId` yourself (⛔ do not expect the shell to guess which window you mean).
+- `notifications.list()` asks the **shell** via `plugins:call` (the shell holds the full state) — so it **also works in a detached window** (reading this window's layout subset would answer "no notifications").
+- In `dialogHost.pending()`, `buttons` is **in declaration order** (`[confirm, cancel]`), **not the left/right positions on screen** (measured: the screen paints cancel on the left and confirm on the right). To act, call `dialogHost.confirm()`/`cancel()` by index, ⛔ never by visual position.
+- **Pool-side only, not implemented in the shell:** `tabs.list()` / `pool.getLayout()` **do not exist** in `preload-shell` (the shell already holds that state in hand and will not ask itself over IPC). Shell views that need them should go through the shell's own services.
+
+**Adding a read surface later:** the criterion is one sentence — **"if it is on screen, the machine must be able to read it."** Before adding one, ask three questions: ① does it return the DTO the screen is drawn from? ② does it spawn a second piece of state / a second ruler? ③ does a consumer have a workaround that does not need it (if not ⇒ it is a gap, not an optional extra)?
+
+### 3.4 Differences from the Old Hand-Written Version (note for readers)
 
 The old §3.x per-namespace method list has been deleted (= a hand-written second source of truth, guaranteed to drift). The generated contract resolved several places where **the old docs disagreed with the implementation**:
 
