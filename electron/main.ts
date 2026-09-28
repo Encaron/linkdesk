@@ -20,6 +20,7 @@ import { registerDialogHandlers } from './ipc/handlers/dialog-handlers.js';
 import { registerEnvHandlers } from './ipc/handlers/env-handlers.js';
 import { registerProductHandlers } from './ipc/handlers/product-handlers.js'; // E6#57.3b：产品身份（app:getVersion/getProductInfo）
 import { registerManualHandlers } from './ipc/handlers/manual-handlers.js'; // M3 AI#16：AI 操作手册（app:getAiManual）
+import { registerAiBridgeHandlers } from './ipc/handlers/ai-bridge-handlers.js'; // M4 AI#38.4：AI 接入状态（app:getAiBridge）
 import { registerClipboardHandlers } from './ipc/handlers/clipboard-handlers.js';
 import { registerRegistryHandlers } from './ipc/handlers/registry-handlers.js'; // E5.7#49：主进程三表直连 IPC
 import { registerHotExitHandlers } from './ipc/handlers/hot-exit-handlers.js'; // E5.7#38
@@ -70,6 +71,23 @@ if (gotLock) {
   if (restored.length > 0) {
     console.log(`[main] 从待安装记录恢复调试开关（更新重启前带的就是这些）: ${restored.join(' ')}`);
   }
+  // ── M4 AI#38.3：设置页「调试端口（CDP）」开关——把配置值喂进重启那一跳（M5 挂账半）──
+  // 设置键 `ai.debug.remoteDebugging` = true 且 argv 里还没带端口 ⇒ 用默认端口 9333 补一个
+  // （走 applyDebugSwitches：appendSwitch ＋ 推回 argv 一份真相——更新重启保参（getDebugSwitches）、
+  // 并集裁决、两处 relaunch 从此都看得见它）。改动重启生效（appendSwitch 的时限在 ready 前）；
+  // 用户自己带参启动的端口优先（argv 已含 ⇒ applyDebugSwitches 跳过，并集语义「以请求为准」由
+  // second-instance 那半管）。关着 ⇒ 一行不 append，默认不监听不被这条路径破坏。
+  try {
+    const settings = JSON.parse(fs.readFileSync(path.join(app.getPath('userData'), 'settings.json'), 'utf8')) as Record<string, unknown>;
+    if (settings['ai.debug.remoteDebugging'] === true) {
+      const applied = applyDebugSwitches(['--remote-debugging-port=9333']);
+      if (applied.length > 0) {
+        console.log(`[main] 设置键 ai.debug.remoteDebugging=true ⇒ 补调试端口开关: ${applied.join(' ')}`);
+      }
+    }
+  } catch {
+    // 没有 settings.json / 读不动 = 开关关着（首次启动的常态）
+  }
 }
 
 // ── 窗口引用（后续 SerialService/file-service 需要 mainWindow.webContents.send()）──
@@ -118,6 +136,7 @@ function createWindow(workspaceFolder?: string, restoreWsWindowId?: string): voi
   registerEnvHandlers();
   registerProductHandlers(); // E6#57.3b：产品身份 main 直答（app:getVersion / app:getProductInfo）
   registerManualHandlers();  // M3 AI#16：AI 操作手册 main 直答（app:getAiManual，壳内私有）
+  registerAiBridgeHandlers();  // M4 AI#38.4：AI 接入状态 main 直答（app:getAiBridge，壳内私有）
   registerClipboardHandlers();
   registerRegistryHandlers();  // E5.7#49：三表直连（数据由 plugin-manifest-loader 预加载）
   registerHotExitHandlers();   // E5.7#38
@@ -610,7 +629,14 @@ function routeLaunchItems(items: LaunchPaths): void {
 app.whenReady().then(async () => {
   // M4 AI#32：AI 接入内核（默认关——记录恒写，客户端才能分辨「没装过」与「开关关着」；
   // 双门 = whenReady（本处）＋ hasSingleInstanceLock（内核内自查）——输锁的进程一句不做）
-  initAiBridge({ getShellWindows: () => windowManager?.getAllShells() ?? [] });
+  // AI#41：目标窗 = 聚焦壳窗（无焦点/已死 ⇒ 内核回退 getAllShells 首个）——与 pushDialog /
+  // pushQuickPick 同一口径；标签取自壳注册表（'main' / 'ws-N'），ping 可读「服务了哪只窗」。
+  initAiBridge({
+    getShellWindows: () => windowManager?.getAllShells() ?? [],
+    getFocusedShellWindow: () =>
+      windowManager ? windowManager.getShellForPoolId(windowManager.getFocusedWindowId()) ?? null : null,
+    shellWindowLabel: (win) => windowManager?.resolveShellWindowKey(win.webContents) ?? null,
+  });
   registerProtocol();
   // E6#73j（G8）：先把「进程死在两次 rename 之间」留下的 <id>.bak 放回原位，再谈 ingest/发货/扫表。
   // 必须抢在这三步之前——否则发货夹会把内置版补进「看起来没装」的位置，覆盖掉本该复原的用户版。

@@ -65,6 +65,9 @@ Once installed into LinkDesk, a "My Plugin" group appears on the left of the set
 | **A more fitting widget** (color picker / slider / file picker…) | `uiHint` — see the table below |
 | Subheadings inside the same group | `group` — entries sharing a `group` value collect under one second-level heading |
 | Dropdown options that **show a short label**, with the full sentence on hover | `enum` + `enumDescriptions`, together with `uiHint: "segmented"` |
+| The entry is not user-editable but **shows a live status** | `renderHint: "readonly"` + `statusCommand` — see 2.2 below |
+| The entry is a **button** (click to do something) | `renderHint: "action"` + `actionCommand` — see 2.3 below |
+| A one-line note under the group name / under each section | `subtitle` / `groupDescriptions` (written on the `configuration` level, not on a key) |
 
 **Known `uiHint` values** (an unknown value falls back to the default rendering for its `type`, without error):
 
@@ -89,6 +92,66 @@ Once installed into LinkDesk, a "My Plugin" group appears on the left of the set
 ```
 
 > ⚠️ **There is no `"integer"`** — integers use `"number"` too (with `step: 1`).
+
+### 2.1 Notes for the Group and Its Sections
+
+Besides the group name (`title`) you can add one subtitle line under it, and one line under each section (`group`) — **written on the `configuration` level**:
+
+```jsonc
+"configuration": {
+  "title": "My Plugin",
+  "subtitle": "What this whole group is about, in one line",
+  "groupDescriptions": { "Sampling": "The settings here affect the sampling stage" },
+  "properties": { /* … */ }
+}
+```
+
+Both are optional. The key in `groupDescriptions` **must match the `group` text on the entry character for character** (otherwise that line does not appear); sections you don't describe stay exactly as they were — no empty rows.
+
+### 2.2 Read-Only Status Row: Show **Live State**, Not a Configuration Value
+
+Some rows are not meant to be edited; they let the user (and an AI) **see what is happening right now** — for example "Channel status: running · 127.0.0.1:47001". Use `renderHint: "readonly"` for those: the value comes from the **return value of a command**, and it is re-fetched **every 3 seconds**, so what you see is a live reading.
+
+```jsonc
+"my-plugin.engine.status": {
+  "type": "string", "default": "",
+  "description": "Engine status",
+  "renderHint": "readonly",
+  "statusCommand": "my-plugin.engineStatus"   // ← a command you registered (returns one line of text)
+}
+```
+
+```ts
+// Register that command in your plugin — its return value is the text shown on the row (\n allowed)
+window.linkdesk?.commands?.registerCommand?.("my-plugin.engineStatus", async () => {
+  return connected ? `running · ${endpoint}` : "not connected";
+});
+```
+
+| Point | Explanation |
+|:--|:--|
+| Where the value comes from | **The command**, not `configuration` — that is why it can show runtime state; `default` only exists to satisfy validation and is never displayed |
+| What the command returns | A string (use `\n` for multiple lines; rendered as multiple lines) |
+| Whose command goes in `statusCommand` | **One of your own**; a shell command id works too, as long as you know what it returns |
+| Can the user edit it? | No — it is a read-only row with no input control |
+| What if the command does not exist yet | The row stays **blank** (no error, no placeholder) — so don't expect text before the command is registered |
+
+### 2.3 Button Row: Click to Do Something
+
+```jsonc
+"my-plugin.openDashboard": {
+  "type": "string", "default": "",
+  "description": "Open dashboard",              // ← this line is the button text
+  "renderHint": "action",
+  "actionCommand": "my-plugin.showDashboard"    // ← executed when clicked
+}
+```
+
+- **The button text is `description`** (there is no other string on an action row, so phrase it as an action, not as a noun explanation).
+- Clicking runs `actionCommand`; the command can be **one of your own** or **a shell command** (such as `app.openAiManual`).
+- To grey the button out while some condition holds, add `actionDisabledAll: [{ "key": "my-plugin.engine", "value": "off" }]` — the button is disabled while **every** listed entry matches the current configuration value. **Leaving the field out means the button is always clickable** (same when none of the entries matches).
+
+> All three are **general capabilities**: any plugin gets them by declaring them, and the host has no privilege here (a different settings plugin renders them just the same — the contract lives in `plugin.schema.json`).
 
 ---
 

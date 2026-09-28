@@ -50,12 +50,17 @@ async function openAiManualTab(): Promise<void> {
   await loading; // ③ 取数落地才返回
 }
 
+/** 命令 id 常量——壳内引用点（M4 `AI#38.6` 的设置页 action 键 `ai.guide.openManual`）共用一份，
+ *  ⛔ 别在配置声明里写字面量（gen-host-reserved 的 configKeys 扫描器会把 src/App/config 里的
+ *  `"app.*"` 字面量当宿主配置键收账，E5.8#78 扫描口径不分上下文）。 */
+export const OPEN_AI_MANUAL_COMMAND_ID = "app.openAiManual";
+
 export function registerManualCommands(): void {
   registerCommand(APP_PLUGIN_ID, {
     // 恒显（无 when）——同 app.about / app.viewLicense 的恒显原则：
     // 操作手册随时可查，没有「什么时候才给你看手册」这回事。**离线恒可读**（手册随包，
     // 不联网也要能打开——`AI#16` 的风险条目明写「⛔ 别做成需要联网才能看」）。
-    id: "app.openAiManual",
+    id: OPEN_AI_MANUAL_COMMAND_ID,
     title: "AI 操作手册",
     category: "帮助",
     description: "打开（或聚焦）AI 操作手册标签页：命令面、契约 API 与按任务操作的配方",

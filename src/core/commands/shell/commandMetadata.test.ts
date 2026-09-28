@@ -21,14 +21,20 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 import { ensureCoreCommands } from "./coreCommands";
 import { executeCommand, getCommands, resolveCommandOwnership } from "../../registry/commands/CommandRegistry";
 import { updateCoreCallbacks, type CoreCallbacks } from "../infra/CoreCallbacks";
-import { APP_PLUGIN_ID } from "../../services/plugins/PluginStateService";
+import { HOST_PSEUDO_PLUGIN_IDS } from "../../registry/host-reserved.generated";
 
 /** `LinkDeskCommandParam.type` 的四值收敛——契约（`linkdesk-api/types.ts`）与 schema 同款 */
 const PARAM_TYPES = ["string", "number", "boolean", "object"];
 
-/** 宿主命令 = 归属为壳（APP_PLUGIN_ID）的那些——插件命令不在本测试射程（作者面自负） */
+/**
+ * 宿主命令 = 归属为**任一宿主身份**的那些（`HOST_PSEUDO_PLUGIN_IDS`：app / appearance / ai-bridge）
+ * ——插件命令不在本测试射程（作者面自负）。
+ * 🔴 ⛔ 别退回 `=== APP_PLUGIN_ID`：新宿主身份（如 `ai-bridge` 的 13 条 `aiBridge.*`）会被静默漏扫，
+ *   而这一格存在的理由正是「新增一条命令忘写 description，没有任何东西会叫醒」。
+ */
 function hostCommands() {
-  return getCommands().filter((c) => resolveCommandOwnership(c.id).pluginId === APP_PLUGIN_ID);
+  const hostIds = new Set<string>(HOST_PSEUDO_PLUGIN_IDS);
+  return getCommands().filter((c) => hostIds.has(resolveCommandOwnership(c.id).pluginId));
 }
 
 const closeTab = vi.fn();

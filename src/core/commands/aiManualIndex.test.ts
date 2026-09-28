@@ -32,7 +32,7 @@ import { resolve } from "node:path";
 
 import { ensureCoreCommands } from "./shell/coreCommands";
 import { getCommands, resolveCommandOwnership, type Command } from "../registry/commands/CommandRegistry";
-import { APP_PLUGIN_ID } from "../services/plugins/PluginStateService";
+import { HOST_PSEUDO_PLUGIN_IDS } from "../registry/host-reserved.generated";
 import { ROOT, parseContract } from "../../../scripts/lib/contract-parse.mjs";
 
 const DOC_REL = "docs/07-AI操作手册/02-命令与API索引.md";
@@ -73,10 +73,16 @@ function paramCell(params: Command["params"]): string {
 /** 码位序——⛔ 不用 `localeCompare`：ICU 版本差异会让同一份实现在不同机器生成不同字节 ⇒ 门禁假红。 */
 const byCodeUnit = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
 
-/** 宿主（壳）命令 = 归属为壳的那些；插件命令不在本表（运行时才发现，核心无知原则）。 */
+/**
+ * 宿主（壳）命令 = 归属为**任一宿主身份**的那些；插件命令不在本表（运行时才发现，核心无知原则）。
+ * 🔴 判据用生成的宿主身份集（`HOST_PSEUDO_PLUGIN_IDS` = app / appearance / ai-bridge），
+ *   ⛔ 不是 `=== APP_PLUGIN_ID`——只认 `app` 时，宿主别的身份（如 `ai-bridge` 的 13 条
+ *   `aiBridge.*`）会被静默漏出表，而「表里没有的宿主命令 = 今天真的没有」（本章 §一）就成了假话。
+ */
 function hostCommands(): Command[] {
+  const hostIds = new Set<string>(HOST_PSEUDO_PLUGIN_IDS);
   return getCommands()
-    .filter((c) => resolveCommandOwnership(c.id).pluginId === APP_PLUGIN_ID)
+    .filter((c) => hostIds.has(resolveCommandOwnership(c.id).pluginId))
     .sort((a, b) => byCodeUnit(a.id, b.id));
 }
 

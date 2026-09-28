@@ -168,6 +168,13 @@ function buildShellApp() {
      * 都只在壳侧暴露。
      */
     getAiManual: () => ipcRenderer.invoke(IPC.app.getAiManual),
+    /**
+     * AI 接入状态（M4 `AI#38.4`）——**壳内私有扩展的第四例**（同 `getAiManual` 形：main 直答、
+     * 池 preload 不注入 ⇒ 插件调不到；设置页壳命令经它取数据，显示话术在命令里 t()）。
+     * 带动作参数：`{action:"regenerateToken"}` = 重新生成凭据（AI#38.9，旧凭据立即失效）。
+     */
+    getAiBridge: (action?: { action: 'get' | 'regenerateToken' }) =>
+      ipcRenderer.invoke(IPC.app.getAiBridge, action),
   };
 }
 

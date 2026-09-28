@@ -39,7 +39,13 @@
  *   ① **启动点 = `app.whenReady()` ＋ `app.hasSingleInstanceLock()` 双门**——输掉锁的进程不许
  *      改写记录/抢绑端口（否则 CLI 误报 APP_EXITED，spike 判据④负控实测）；
  *   ② **监听失败写 `lastError`**——否则「没开」与「开了没起来」在客户端不可分辨（EADDRINUSE 实测）；
- *   ③ **多窗口路由未做**（`sourceWindowId` 恒 "main"）——按目标窗路由是 AI#41 的活，别在本格顺手做。
+ *   ③ **多窗口路由**（AI#41，2026-09-28 补齐）——「目标窗口」= **当前聚焦的壳窗**（用户在看的那只），
+ *      无焦点/焦点窗已死 ⇒ 回退 `getShellWindows()` 首个（主壳窗）。这条与壳自己的口径一致：
+ *      命令面板 / 对话框 / 浮动面板的主进程推送默认都是 `getFocusedWindowId()`
+ *      （`electron/windows/window-manager.ts` 的 `pushQuickPick/pushDialog/pushFloatingPanel`）——
+ *      通道若另立一套窗口选择法，AI 开的标签页会落在用户没在看的窗里。
+ *      `ping` 报 `servedShellWindow`（'main' / 'ws-N'）⇒ **服务了哪个窗可观测、可复核**，不是「随机一只」。
+ *      ⛔ 仍未做（首版边界，记在案）：按名字**指名**窗口（如 `--window ws-2`）——操作表无窗口形参。
  */
 
 import { app, BrowserWindow, ipcMain } from 'electron';
@@ -54,6 +60,8 @@ import { OPS, coded, type BridgeOpContext, type LedgerEntry } from './whitelist.
 const RECORD_NAME = 'ai-bridge.json';
 /** 凭据文件名（userData 下，0600）。与记录分家：地址不是秘密，凭据是 */
 const TOKEN_NAME = 'ai-bridge.token';
+/** 操作日志文件名（userData 下，JSONL 追加）。`ai.auditLog.enabled` = true 才写（AI#43/#38.11） */
+const LOG_NAME = 'ai-bridge-log.jsonl';
 
 const MAX_REQUEST_BYTES = 1024 * 1024;
 const LEDGER_CAP = 200;
@@ -72,6 +80,8 @@ export interface BridgeConfig {
   port: number;
   /** 开关来源——env 显式 > 设置键；读数里说明「为什么开着/关着」用 */
   source: 'env' | 'settings' | 'default-off';
+  /** 操作日志落盘开关（AI#43；设置键 `ai.auditLog.enabled`，默认关）——只管**盘上**那份，内存账恒记 */
+  auditLog: boolean;
 }
 
 /**
@@ -83,6 +93,7 @@ export function resolveBridgeConfig(env: NodeJS.ProcessEnv, settingsFile: string
   let enabled = false;
   let transport: 'pipe' | 'tcp' = 'tcp';
   let source: BridgeConfig['source'] = 'default-off';
+  let auditLog = false;
   if (explicit === 'pipe' || explicit === 'tcp') {
     enabled = true;
     transport = explicit;
@@ -98,6 +109,7 @@ export function resolveBridgeConfig(env: NodeJS.ProcessEnv, settingsFile: string
         enabled = true;
         source = 'settings';
       }
+      auditLog = settings['ai.auditLog.enabled'] === true;
     } catch {
       // 没有 settings.json / 读不动 = 默认关（首次启动的常态，不是错误）
     }
@@ -107,7 +119,7 @@ export function resolveBridgeConfig(env: NodeJS.ProcessEnv, settingsFile: string
     : '127.0.0.1';
   const portRaw = Number(env.LINKDESK_AIBRIDGE_PORT);
   const port = Number.isFinite(portRaw) && portRaw > 0 ? Math.floor(portRaw) : 0;
-  return { enabled, transport, host, port, source };
+  return { enabled, transport, host, port, source, auditLog };
 }
 
 /** 凭据校验——收敛到这一处（换机制/加作用域只改这里；AI#42 的评估对象） */
@@ -143,6 +155,10 @@ interface BridgeRecord {
 export interface AiBridgeDeps {
   /** 壳窗注册表现取（壳崩重建后自动指向新实例——getter 闭包读最新引用，同 crash-recovery 先例） */
   getShellWindows: () => BrowserWindow[];
+  /** 当前聚焦壳窗（AI#41 的「目标窗口」——缺省 = 不启用焦点优先，恒回退 `getShellWindows()` 首个） */
+  getFocusedShellWindow?: () => BrowserWindow | null;
+  /** 壳窗标签（'main' / 'ws-N'）——`ping` 报「服务了哪个窗」用；缺省 = 不报 */
+  shellWindowLabel?: (win: BrowserWindow) => string | null;
 }
 
 interface PendingShellRequest {
@@ -156,11 +172,20 @@ const pendingShell = new Map<string, PendingShellRequest>();
 let shellSeq = 0;
 let record: BridgeRecord | null = null;
 let recordFile = '';
+let tokenFile = '';
 let token: string | null = null;
 let startedAtMs = 0;
 let endpoint: BridgeEndpoint | null = null;
 let getShellWindows: AiBridgeDeps['getShellWindows'] = () => [];
+let getFocusedShellWindow: () => BrowserWindow | null = () => null;
+let shellWindowLabel: (win: BrowserWindow) => string | null = () => null;
+/** 最近一次壳请求服务到的壳窗标签（AI#41：ping 可读） */
+let servedShellWindow: string | null = null;
 let pipeName = '';
+/** 操作日志落盘开关（启动时读设置键；内存账恒记，落盘看它——AI#43/#38.11） */
+let auditLogEnabled = false;
+/** 操作日志文件绝对路径（initAiBridge 时定；present=false 时为空串） */
+let logFile = '';
 
 function log(...parts: unknown[]): void {
   console.log('[ai-bridge]', ...parts);
@@ -177,25 +202,54 @@ function writeRecord(): void {
 }
 
 function ledgerEntry(op: string, arg: string | null, ok: boolean, code: string | null, ms: number): void {
-  ledger.push({ ts: new Date().toISOString(), op, arg, ok, code, ms });
+  const entry: LedgerEntry = { ts: new Date().toISOString(), op, arg, ok, code, ms };
+  ledger.push(entry);
   if (ledger.length > LEDGER_CAP) ledger.shift();
+  // 盘上那份（AI#43「账本」）：只在开关开着时写（AI#38.11 判据「关 ⇒ 不写」）。追加失败不出声打断业务。
+  if (auditLogEnabled && logFile) {
+    try {
+      fs.appendFileSync(logFile, JSON.stringify(entry) + '\n');
+    } catch (e) {
+      log('⚠️ 写操作日志失败:', e instanceof Error ? e.message : String(e));
+    }
+  }
+}
+
+/**
+ * 目标壳窗裁决（AI#41，纯函数——单测可钉）：**聚焦窗优先**，不可用 ⇒ 注册表首个。
+ * `alive` 注入（真实现 = 未销毁 + webContents 未销毁；单测给假窗）。
+ */
+export function pickShellWindow(args: {
+  focused: BrowserWindow | null | undefined;
+  shells: BrowserWindow[];
+  alive: (w: BrowserWindow | null | undefined) => boolean;
+}): BrowserWindow | null {
+  if (args.alive(args.focused)) return args.focused as BrowserWindow;
+  return args.shells.find((w) => args.alive(w)) ?? null;
+}
+
+/** 「还活着」判定——聚焦窗可能在两次读之间被关掉（多窗口下常态，不是异常） */
+function aliveWindow(w: BrowserWindow | null | undefined): boolean {
+  return !!w && !w.isDestroyed() && !w.webContents.isDestroyed();
 }
 
 /**
  * 主进程 → 壳渲染进程的一次请求（复用既有 bridge:* 信封，`IpcBridgeHandler`（壳 React）应答）。
  * requestId 前缀 `aibridge-`——IpcBridge 的 pending 表里没有它 ⇒ 各走各的，互不干扰。
- * ⚠️ `sourceWindowId: "main"` 与 IpcBridge 对主壳发起的兜底章一致；多窗口按目标窗路由 = AI#41。
+ * 目标窗 = `pickShellWindow`（聚焦窗优先，AI#41）；`sourceWindowId: "main"` 与 IpcBridge 对主壳
+ * 发起的兜底章一致（壳内视角，池寻址由壳自己归一——`pool-addressing` 的 windowId 双重身份）。
  */
 async function shellRequest(channel: string, args: unknown[], timeoutMs = SHELL_TIMEOUT_MS): Promise<unknown> {
   // 壳窗就绪等待——壳 React（IpcBridgeHandler）要等页面加载完才应答，窗存在但没就绪时会超时（客户端可见，重试即可）
   const deadline = Date.now() + timeoutMs;
   let win: BrowserWindow | null = null;
   for (;;) {
-    win = getShellWindows().find((w) => !w.isDestroyed() && !w.webContents.isDestroyed()) ?? null;
+    win = pickShellWindow({ focused: getFocusedShellWindow(), shells: getShellWindows(), alive: aliveWindow });
     if (win) break;
     if (Date.now() > deadline) throw coded('ENOSHELL', `壳窗在 ${timeoutMs}ms 内没有出现（软件可能还在启动）`);
     await new Promise((r) => setTimeout(r, 100));
   }
+  servedShellWindow = shellWindowLabel(win);
 
   const requestId = `${REQUEST_ID_PREFIX}${process.pid}-${++shellSeq}-${Date.now()}`;
   return new Promise<unknown>((resolve, reject) => {
@@ -219,7 +273,12 @@ const opContext: BridgeOpContext = {
     userData: app.getPath('userData'),
     startedAt: record?.startedAt ?? null,
     uptimeMs: Date.now() - startedAtMs,
-    shellWindows: BrowserWindow.getAllWindows().length,
+    /** 壳窗数（AI#41：多窗口下客户端一眼看出通道服务在几只窗上） */
+    shellWindows: getShellWindows().length,
+    /** 全部 BrowserWindow 数（含脱出窗等非壳窗——与 shellWindows 分列，别混一个字段） */
+    allWindows: BrowserWindow.getAllWindows().length,
+    /** 最近一次壳请求服务到的壳窗标签（'main' / 'ws-N'）——「操作到了哪只窗」的可观测面（AI#41） */
+    servedShellWindow,
   }),
   ledgerEntries: () => ledger,
 };
@@ -313,6 +372,8 @@ function createTokenFile(tokenFile: string): string {
  */
 export function initAiBridge(deps: AiBridgeDeps): void {
   getShellWindows = deps.getShellWindows;
+  getFocusedShellWindow = deps.getFocusedShellWindow ?? (() => null);
+  shellWindowLabel = deps.shellWindowLabel ?? (() => null);
   if (typeof app.hasSingleInstanceLock === 'function' && !app.hasSingleInstanceLock()) {
     log(`pid=${process.pid} 未持有单实例锁（抢锁失败的进程）⇒ 不监听、不写记录`);
     return;
@@ -321,8 +382,10 @@ export function initAiBridge(deps: AiBridgeDeps): void {
   startedAtMs = Date.now();
   const userData = app.getPath('userData');
   recordFile = path.join(userData, RECORD_NAME);
-  const tokenFile = path.join(userData, TOKEN_NAME);
+  tokenFile = path.join(userData, TOKEN_NAME);
+  logFile = path.join(userData, LOG_NAME);
   const config = resolveBridgeConfig(process.env, path.join(userData, 'settings.json'));
+  auditLogEnabled = config.auditLog;
 
   record = {
     v: 1,
@@ -404,4 +467,49 @@ export function initAiBridge(deps: AiBridgeDeps): void {
   } else {
     server.listen(config.port, config.host);
   }
+}
+
+/* ── 设置页/壳命令的读取口（AI#38.4 数据源 ＋ AI#38.9 重新生成凭据）──
+ * 设置页的只读状态行走壳命令 → `app:getAiBridge` → 这两个出口；⛔ 内核状态不再抄第二份到别处。 */
+
+/** 内核状态快照（本进程 = 单实例锁持有者时才有内容；壳命令格式化显示文字，这里只出**数据**） */
+export function bridgeSnapshot(): {
+  present: boolean;
+  pid: number;
+  enabled: boolean;
+  listening: boolean;
+  mode: 'pipe' | 'tcp' | 'off';
+  endpoint: BridgeEndpoint | null;
+  lastError: string | null;
+  startedAt: string | null;
+  uptimeMs: number;
+  /** 操作账尾部（内存账，上限 LEDGER_CAP——盘上全量在 ai-bridge-log.jsonl） */
+  ledger: LedgerEntry[];
+} {
+  return {
+    present: record !== null,
+    pid: process.pid,
+    enabled: record?.enabled ?? false,
+    listening: record?.listening ?? false,
+    mode: record?.mode ?? 'off',
+    endpoint: record?.endpoint ?? null,
+    lastError: record?.lastError ?? null,
+    startedAt: record?.startedAt ?? null,
+    uptimeMs: record ? Date.now() - startedAtMs : 0,
+    ledger: ledger.slice(-50),
+  };
+}
+
+/**
+ * 重新生成凭据（AI#38.9「重新生成凭据」的内核半）——**旧凭据立即失效**（内存 token 当场换新，
+ * `tokenOk` 校验的是内存这份）；新值写盘（0600），客户端重读 `ai-bridge.token` 即接上。
+ * 未持有锁 / 内核没起来 ⇒ 抛（壳命令转成人话）。
+ */
+export function regenerateBridgeToken(): string {
+  if (!record) throw coded('ENOTREADY', '内核没在跑（本进程未持有单实例锁）——无从重新生成凭据');
+  const fresh = crypto.randomBytes(32).toString('hex');
+  fs.writeFileSync(tokenFile, fresh, { mode: 0o600 });
+  token = fresh;
+  log('凭据已重新生成——旧凭据立即失效');
+  return fresh;
 }

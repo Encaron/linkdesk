@@ -6,6 +6,7 @@
  *      的前置）；env 显式覆盖设置键；settings.json 读不动 = 关（不是抛）。
  *   2. 🔴 凭据校验收敛一处（`tokenOk`）——空凭据 / 非串 / 长度不等一律 false（timingSafeEqual 前置）。
  *   3. 🔴 白名单自省面从操作表**派生**（AI#33 判据）——opCatalog 与 OPS 同源，每条自带 help/params。
+ *   4. 🔴 多窗口目标窗裁决（AI#41）——聚焦窗优先 / 死了回退注册表首个（`pickShellWindow` 纯函数）。
  * fixture 全虚构（token / 路径 / 端口，硬约束 21）。
  */
 
@@ -18,7 +19,7 @@ import { describe, it, expect, afterEach } from "vitest";
 import { electronMock } from "../electron-mock.js";
 void electronMock;
 
-import { resolveBridgeConfig, tokenOk } from "./index.js";
+import { resolveBridgeConfig, tokenOk, pickShellWindow } from "./index.js";
 import { OPS, opCatalog, WHITELIST_VERSION, coded } from "./whitelist.js";
 
 let tmpDirs: string[] = [];
@@ -128,5 +129,45 @@ describe("OPS 白名单（AI#33：自省面从同一张表派生）", () => {
     expect(e.code).toBe("EDEMO");
     expect(e.message).toBe("演示错误");
     expect(e).toBeInstanceOf(Error);
+  });
+});
+
+/**
+ * AI#41 多窗口：目标壳窗裁决（纯函数）。真机读数（两窗实例 ping / 操作落在聚焦窗）在交接条里；
+ * 这里钉「谁是目标」的规则——焦点优先、聚焦窗死了回退注册表首个、全死 = null（等窗循环的输入）。
+ */
+describe("pickShellWindow（AI#41：多窗口下的目标壳窗）", () => {
+  /** 假壳窗——只带 alive 判定用得到的字段（真 BrowserWindow 要 Electron 运行时） */
+  type FakeWin = { id: string; destroyed: boolean; wcDestroyed: boolean };
+  const alive = (w: unknown): boolean => {
+    const f = w as FakeWin | null | undefined;
+    return !!f && !f.destroyed && !f.wcDestroyed;
+  };
+  const w = (id: string, dead?: "win" | "wc"): FakeWin => ({ id, destroyed: dead === "win", wcDestroyed: dead === "wc" });
+
+  it("聚焦窗活着 ⇒ 目标是它（哪怕它不是注册表首个）", () => {
+    const main = w("main");
+    const ws2 = w("ws-2");
+    expect(pickShellWindow({ focused: ws2 as never, shells: [main, ws2] as never, alive })).toBe(ws2);
+  });
+
+  it("无焦点（null / undefined）⇒ 回退注册表首个（主壳窗）", () => {
+    const main = w("main");
+    const ws2 = w("ws-2");
+    expect(pickShellWindow({ focused: null, shells: [main, ws2] as never, alive })).toBe(main);
+    expect(pickShellWindow({ focused: undefined, shells: [main, ws2] as never, alive })).toBe(main);
+  });
+
+  it("聚焦窗已销毁（窗关了 / webContents 没了）⇒ 回退注册表首个，不把请求发给死窗", () => {
+    const main = w("main");
+    const ws2 = w("ws-2");
+    expect(pickShellWindow({ focused: w("ws-9", "win") as never, shells: [main, ws2] as never, alive })).toBe(main);
+    // 首个也死了 ⇒ 顺位找下一只活的（注册表里跳过死窗）
+    expect(pickShellWindow({ focused: w("ws-9", "wc") as never, shells: [w("main", "win"), ws2] as never, alive })).toBe(ws2);
+  });
+
+  it("一只活的都没有 ⇒ null（调用方据此进等窗循环，不是抛）", () => {
+    expect(pickShellWindow({ focused: w("main", "win") as never, shells: [w("ws-2", "win")] as never, alive })).toBeNull();
+    expect(pickShellWindow({ focused: null, shells: [], alive })).toBeNull();
   });
 });

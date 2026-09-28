@@ -31,6 +31,9 @@ export const IPC = {
     // M3 AI#16：AI 操作手册——**壳内私有**（只 buildShellApp() 暴露，池 preload 不注入 ⇒ 插件调不到）。
     // 同 main 直答域，⛔ 不进 PROXY_CHANNELS（理由同上：双登记）。
     getAiManual: 'app:getAiManual', // 只读：{ version, chapters, dir }（services/ai-manual.ts）
+    // M4 AI#38.4：AI 接入状态——**壳内私有第四例**（main 直答，⛔ 不进 PROXY_CHANNELS）。
+    // 带动作参数：{action:"get"} 读快照 / {action:"regenerateToken"} 重生成凭据（AI#38.9）。
+    getAiBridge: 'app:getAiBridge', // { present, enabled, listening, endpoint, debugPort, ops, ledger… }（services/aiBridge/info.ts）
   },
   bridge: {
     response: 'bridge:response',

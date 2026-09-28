@@ -76,9 +76,20 @@ extraResources:
   # 离线恒可读（纯本地文件，零网络）——这是本格的硬要求（档案风险条目：⛔ 别做成需要联网才能看）。
   - from: docs/07-AI操作手册
     to: ai-manual
+  # M4 `AI#40`：linkdeskctl CLI 随包（`<resources>/linkdeskctl/`）——零第三方依赖，垫片用随包
+  # Electron 以 node 模式跑（ELECTRON_RUN_AS_NODE，用户机器免装 node）。PATH 项（installer.nsh
+  # 「添加到 PATH」，默认勾）加的是 $INSTDIR ⇒ 敲得到的 `linkdeskctl` = 安装根的 .cmd 垫片（extraFiles）。
+  - from: cli/linkdeskctl
+    to: linkdeskctl
   # E6#15e：LSP 语言服务器不再壳发货——pyright 随 python 插件自带（.linkdesk-plugin zip 内 node_modules/pyright，
   # boot 自动装落 userData）。壳注册处按插件根把 langDef.lsp.args 一次绝对化（electron/plugins/lsp-arg-resolve.ts）→
   # spawn 命中 userData 路径，无需 ASAR 外拷贝。E5#114d 临时 hack 删除（核心无知：壳不背语言工具）。
+
+# M4 `AI#40`：linkdeskctl.cmd 垫片进**安装根**（extraFiles 相对 INSTDIR；PATH 加的就是 $INSTDIR）。
+# 垫片正文见 build/linkdeskctl.cmd 头注——随包 Electron 以 node 模式跑 resources/linkdeskctl。
+extraFiles:
+  - from: build/linkdeskctl.cmd
+    to: linkdeskctl.cmd
 
 win:
   icon: build/icon.ico # 04：显式声明（此前靠 build/ 约定目录兜底——挪目录/加平台会静默丢图标）

@@ -1,11 +1,13 @@
 /**
- * 机械检查：壳侧 app.* 配置项必须有保底默认值（audit-config-baseline，E5.8#137）。
+ * 机械检查：壳侧 app.* 与 ai.* 配置项必须有保底默认值（audit-config-baseline，E5.8#137）。
  *
  * 新能力设计流程 §五 5.2——新增 `app.*` 配置项必须：registerConfiguration 声明 + 保底默认值
- * （无插件也成立）+ 设置组归属。本脚本机械拦截第一条硬性部分：声明了但没有 `default:` 的 app.* 键。
+ * （无插件也成立）+ 设置组归属。本脚本机械拦截第一条硬性部分：声明了但没有 `default:` 的键。
+ * 🔴 AI#38.13（2026-09-28，拍板 P-4 = A）：射程从 `app.*` 扩到 `ai.*`（AI 接入分区，独立
+ *   pluginId "ai-bridge"）——新前缀不许是一块无门的配置区。
  *
- * 扫描 registerConfiguration 的 properties 对象（appearance.ts + startup.ts）——每个
- * `"app.xxx": { ... }` 块内必须有 `default:`。缺省默认值 = 用户未配置时读空值 → 下游 bug。
+ * 扫描 registerConfiguration 的 properties 对象（appearance.ts + startup.ts + update.ts + aiBridge.ts）——每个
+ * `"(app|ai).xxx": { ... }` 块内必须有 `default:`。缺省默认值 = 用户未配置时读空值 → 下游 bug。
  *
  * ── 🔴 E6#109p-b（1.28b）补自测 ＋ 一条**发现式断言**（治「清单漏登记」）──
  *   1.27 全量体检把本脚本判为**半瞎**，依据就是下面 `TARGETS` 自己写下的那条风险：
@@ -41,6 +43,7 @@ const TARGETS = [
   "src/App/config/appearance.ts",
   "src/App/startup.ts",
   "src/App/config/update.ts",
+  "src/App/config/aiBridge.ts", // AI#38.13：AI 接入分区（独立 pluginId "ai-bridge"，键前缀 ai.*）
 ];
 
 /** 从 offset 找匹配的右大括号——跳过字符串字面量（对标 check-ipc-audit findMatchingBrace） */
@@ -69,7 +72,7 @@ function findMatchingBrace(text, start) {
  */
 export function scanSource(relPath, src) {
   const violations = [];
-  const re = /"(app\.[\w.]+)":\s*\{/g;
+  const re = new RegExp(KEY_SCOPE_RE.source, "g");
   let m;
   while ((m = re.exec(src)) !== null) {
     const key = m[1];
@@ -82,15 +85,17 @@ export function scanSource(relPath, src) {
     const block = src.slice(open, close + 1);
     if (!/default\s*:/.test(block)) {
       violations.push(
-        `  ${relPath}  ⚠  "${key}" 声明了但块内无 default:——app.* 配置项必须带保底默认值（新能力设计流程 §五 5.2）`,
+        `  ${relPath}  ⚠  "${key}" 声明了但块内无 default:——app.*/ai.* 配置项必须带保底默认值（新能力设计流程 §五 5.2）`,
       );
     }
   }
   return violations;
 }
 
-/** 声明站点判定：既调 registerConfiguration( 又声明 app.* 键（非 /g 副本，免得 .test 带 lastIndex 状态） */
-const APP_KEY_DECL_RE = /"(app\.[\w.]+)":\s*\{/;
+/** 壳侧配置键射程（AI#38.13 起 = app.* + ai.*）——「(app|ai).」开头的字面量键 */
+const KEY_SCOPE_RE = /"(?:app|ai)\.[\w.]+":\s*\{/g;
+/** 同一条射程的非 /g 副本（.test 带 lastIndex 状态，不能共用） */
+const APP_KEY_DECL_RE = /"(?:app|ai)\.[\w.]+":\s*\{/;
 const REGISTER_CALL = "registerConfiguration(";
 
 /** 纯判据：`[{ rel, src }]` 里哪些文件是「壳配置声明站点」 */
@@ -153,24 +158,30 @@ function runSelfTest() {
       0,
     ],
     [
-      "正控④：源码里没有任何 app.* 键 ⇒ 0 条",
+      "正控④：源码里没有任何射程内键（app.*/ai.*）⇒ 0 条",
       scanSource("x.ts", `export function noop() {\n  return { a: 1 };\n}\n`).length,
       0,
     ],
     [
-      "正控⑤：发现式断言——已登记的声明文件集合（今日 3 个形态）⇒ 0 个未登记",
+      "正控⑤：合规 ai.* 块（AI#38.13 新射程，块内有 default:）⇒ 0 条",
+      scanSource("x.ts", `{ properties: { "ai.mcp.enabled": { type: "boolean", default: false } } }`).length,
+      0,
+    ],
+    [
+      "正控⑥：发现式断言——已登记的声明文件集合（今日 4 个形态，含 aiBridge.ts）⇒ 0 个未登记",
       unregisteredConfigSources(
         [
           { rel: "src/App/config/appearance.ts", src: `registerConfiguration("appearance", {\n  properties: {\n    "app.theme": { default: "dark" },\n  },\n});` },
           { rel: "src/App/startup.ts", src: `registerConfiguration(APP_PLUGIN_ID, {\n  properties: { "app.zoom": { default: 1 } },\n});` },
           { rel: "src/App/config/update.ts", src: `registerConfiguration("update", {\n  properties: { "app.update.channel": { default: "stable" } },\n});` },
+          { rel: "src/App/config/aiBridge.ts", src: `registerConfiguration("ai-bridge", {\n  properties: { "ai.mcp.enabled": { default: false } },\n});` },
         ],
         TARGETS,
       ).length,
       0,
     ],
     [
-      "正控⑥：调 registerConfiguration 但**不带任何 app.* 键**（contributions.ts 形态）⇒ 不要求登记，0 个",
+      "正控⑦：调 registerConfiguration 但**不带任何射程内键**（contributions.ts 形态）⇒ 不要求登记，0 个",
       unregisteredConfigSources(
         [{ rel: "src/pluginLoader/contributions/contributions.ts", src: `registerConfiguration(pluginId, {\n  properties: config.properties,\n});` }],
         TARGETS,
@@ -181,6 +192,11 @@ function runSelfTest() {
     [
       "负控①：声明了但块内无 default:（1.27 实测的探针形态）⇒ 1 条",
       scanSource("x.ts", `{ properties: { "app.probeNoDefault": { type: "string" } } }`).length,
+      1,
+    ],
+    [
+      "负控①b：ai.* 键同样受门禁管（AI#38.13 新射程的负控）⇒ 1 条",
+      scanSource("x.ts", `{ properties: { "ai.cli.enabled": { type: "boolean" } } }`).length,
       1,
     ],
     [
@@ -233,7 +249,7 @@ function main() {
   const sources = collectProductionSources(resolve(ROOT, "src"));
   const unregistered = unregisteredConfigSources(sources, TARGETS);
   if (unregistered.length > 0) {
-    console.error("❌ 下列生产文件声明了 app.* 配置，却不在本脚本的 TARGETS 里——它们**根本不被扫**，门禁静默放行：");
+    console.error("❌ 下列生产文件声明了 app.*/ai.* 配置，却不在本脚本的 TARGETS 里——它们**根本不被扫**，门禁静默放行：");
     for (const rel of unregistered) console.error(`   ${rel}`);
     console.error("\n   修法：把该文件加进 scripts/check-config-baseline.mjs 的 TARGETS 数组");
     console.error("        （并确认它的 properties 里每个 app.* 键都带 default:）。");
@@ -246,14 +262,14 @@ function main() {
 
   if (violations.length > 0) {
     console.error(violations.join("\n"));
-    console.error(`\n❌ ${violations.length} 处 app.* 配置项缺保底默认值——见新能力设计流程 §五 5.2。`);
+    console.error(`\n❌ ${violations.length} 处 app.*/ai.* 配置项缺保底默认值——见新能力设计流程 §五 5.2。`);
     process.exit(1);
   }
 
-  console.log(`✅ app.* 配置保底审计干净——${TARGETS.length} 文件全部配置项带 default。`);
+  console.log(`✅ app.*/ai.* 配置保底审计干净——${TARGETS.length} 文件全部配置项带 default。`);
   const declared = appConfigDeclarationSources(sources);
   console.log(
-    `✅ 发现式断言：src/ 下 ${declared.length} 个声明 app.* 配置的生产文件全部登记在 TARGETS（已扫 ${sources.length} 个 ts/tsx，无静默漏扫）。`,
+    `✅ 发现式断言：src/ 下 ${declared.length} 个声明 app.*/ai.* 配置的生产文件全部登记在 TARGETS（已扫 ${sources.length} 个 ts/tsx，无静默漏扫）。`,
   );
 }
 

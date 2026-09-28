@@ -1,0 +1,8 @@
+/* SectionSubtitle——分节副标题件（@linkdesk/ui）。M4 AI#38.12 · P-3 拍板 A。
+ * 一行小字：比正文小一号、muted 色、不做可点（就是文字）。 */
+.ldk-section-subtitle {
+  font-size: var(--font-size-2xs);
+  color: var(--text-muted);
+  line-height: 1.6;
+  margin-bottom: 8px;
+}

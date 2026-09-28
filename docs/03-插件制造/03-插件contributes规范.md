@@ -265,6 +265,12 @@ useEffect(() => {
 | `enumDescriptions` | ❌ | 选项说明——和 enum 一一对应 |
 | `uiHint` | ❌ | 渲染提示——SettingsView 按 hint 选择控件（已知值 `"color"`/`"fontFamily"`/`"fontSize"`/`"file"`/`"directory"`/`"slider"`/`"segmented"`/`"image"` 等，开放 string——未知 hint 降级回 type 默认渲染）。`"segmented"` = 分段单选（ghost 双轨制，配合 `enum` + `enumDescriptions` 声明，短标签 = enumDescription `—` 前段、tooltip = 全句） |
 | `group` | ❌ | **组内二级标题**——同 `group` 值的 key 在设置页归到子标题下渲染；无 `group` 的 key 保持平铺。声明中文节名即显示；节名标题走 i18n（插件 `contributes.i18n` 提供翻译）。零壳改动——壳机制对插件键同样生效。 |
+| `renderHint` | ❌ | 特殊行的渲染提示（开放 string，未知值降级回 `type` 默认渲染）。`"action"` = 渲染成**按钮**（按钮文字 = `description`，点击执行 `actionCommand`）；`"readonly"` = 渲染成**只读状态行**（值 = 执行 `statusCommand` 的返回值，每 3 秒重取；不读配置存储）。两个值都是通用能力——任何插件声明即生效，用法与示例见 [20-我的插件加一条配置项](20-我的插件加一条配置项.md) |
+| `actionCommand` | ❌ | `renderHint: "action"` 的行点击时执行的命令 id——可以是插件自己的命令，也可以是壳命令 |
+| `actionDisabledAll` | ❌ | `renderHint: "action"` 的按钮禁用条件——**列出的每一项都匹配当前配置值**时禁用，形如 `[{ "key": "…", "value": … }]`；**不声明（或空数组）= 按钮始终可点** |
+| `statusCommand` | ❌ | `renderHint: "readonly"` 的数据源命令 id——返回值（字符串）就是那一行显示的文字；值来自命令而非配置存储 |
+
+**分组层的两个可选字段**（写在 `configuration` 这层，不在键上）：`subtitle` = 分组名下面的一行副标题；`groupDescriptions` = **分节说明**，键 = 该 `group` 的原文（逐字相同才会显示）。两条都不声明 = 不渲染（零侵入）。
 
 **安装后效果：** Settings Editor 左侧导航树自动出现 "CAD 查看器" 分组 → 右侧自动渲染表单——不需要手写设置界面。
 

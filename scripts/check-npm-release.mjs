@@ -154,9 +154,11 @@ const PACKAGES = [
       "src/components/shared/keybinding-hint/**",
       "src/components/shared/markdown-view/**",
       "src/components/shared/number-input/**",
+      "src/components/shared/readonly-text/**", // M4 AI#38.12：只读文本展示件（P-2 拍板 A）
       "src/components/shared/overlay-portal/**",
       "src/components/shared/plugin-icon/**",
       "src/components/shared/segmented-radio/**",
+      "src/components/shared/section-subtitle/**", // M4 AI#38.12：分节副标题件（P-3 拍板 A）
       "src/components/shared/select-box/**",
       "src/components/shared/slider/**",
       "src/components/shared/string-list-editor/**",

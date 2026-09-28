@@ -65,6 +65,7 @@ export const HOST_RESERVED_CONFIG_KEYS: readonly string[] = [
 ];
 
 export const HOST_PSEUDO_PLUGIN_IDS: readonly string[] = [
+  "ai-bridge",
   "app",
   "appearance",
 ];

@@ -32,7 +32,7 @@
 
 <!-- BEGIN COMMAND-INDEX -->
 
-**宿主命令 63 条 / 7 个分类**——插件命令不在本表（运行时用 `getCommands()` 查）。
+**宿主命令 76 条 / 7 个分类**——插件命令不在本表（运行时用 `getCommands()` 查）。
 
 ### 帮助（6）
 
@@ -106,10 +106,23 @@
 | `workbench.action.toggleSidebarVisibility` | 切换侧栏可见性 | 显示/隐藏主侧栏 | —— | —— |
 | `workbench.action.toggleViewVisibility` | 切换视图可见性 | 显示/隐藏指定视图 | `ctx`: object 必填 — { viewId: string; containerId?: string }——目标视图 id，containerId 用于同 viewId 消歧 | —— |
 
-### 首选项（7）
+### 首选项（20）
 
 | 命令 id | 标题 | 说明 | 参数（调用实参） | when 门控 |
 |:--|:--|:--|:--|:--|
+| `aiBridge.cliInstall` | 查看安装说明 | 打开 CLI 安装说明对话框（linkdeskctl 怎么装、PATH 怎么配） | —— | —— |
+| `aiBridge.copyCliLine` | 复制这句话 | 复制一段可直接贴给终端型 AI 的话（含 linkdeskctl --help 指引）到剪贴板 | —— | —— |
+| `aiBridge.copyMcpConfig` | 复制 MCP 配置 | 复制 MCP 客户端配置片段到剪贴板（与 linkdeskctl mcp config --for 同一生成器，逐字一致） | —— | —— |
+| `aiBridge.mcpDetails` | 打开通道详情 | 打开通道详情对话框（连接地址、凭据存放位置、连不上的原因对照） | —— | —— |
+| `aiBridge.openLog` | 查看日志 | 打开操作日志对话框（谁在何时调了什么、结果如何；被拒的调用也在账上） | —— | —— |
+| `aiBridge.openScopeList` | 查看完整操作清单 | 打开完整操作清单对话框（每条白名单能力一条，写明怎么调；条数 = 白名单条数） | —— | —— |
+| `aiBridge.openSensitiveManager` | 管理敏感能力细分 | 打开敏感能力细分说明（首版粒度 = 总开关＋白名单整组，装/卸插件每次确认） | —— | —— |
+| `aiBridge.regenerateToken` | 重新生成凭据 | 重新生成 AI 接入凭据（旧凭据立即失效；明文不显示，客户端重读 ai-bridge.token 接上） | —— | —— |
+| `aiBridge.scopeSummary` | 开放范围明细 | 开放范围只读明细（只读数据源：读/做两栏从白名单 kind 派生，与 linkdeskctl --help 同源） | —— | —— |
+| `aiBridge.statusAuditLog` | 操作日志状态 | 操作日志落盘开关状态（只读数据源，跟随 ai.auditLog.enabled 配置值） | —— | —— |
+| `aiBridge.statusCli` | CLI 通道状态 | CLI 通道实时状态（只读数据源：CLI 与 MCP 共用同一个内核监听，状态同源） | —— | —— |
+| `aiBridge.statusDebug` | 调试端口状态 | CDP 调试端口实况（只读数据源：argv 是唯一真相，与命令行实况一致不猜） | —— | —— |
+| `aiBridge.statusMcp` | MCP 通道状态 | MCP 通道实时状态（只读数据源：返回「运行中 · 地址」等状态文本，供设置页状态行取用） | —— | —— |
 | `workbench.action.copySettingAsJson` | 复制为 JSON | 把指定设置项的当前值以 JSON 复制到剪贴板 | `ctx`: object 必填 — { settingKey: string }——目标设置项 id | —— |
 | `workbench.action.copySettingId` | 复制设置 ID | 把指定设置项的 id 复制到剪贴板 | `ctx`: object 必填 — { settingKey: string }——目标设置项 id | —— |
 | `workbench.action.followTheme` | 跟随主题 | 取消指定设置项的用户覆盖，让它重新跟随当前主题 | `ctx`: object 必填 — { settingKey: string }——目标设置项 id | `settingFollowTheme` |

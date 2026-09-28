@@ -65,6 +65,10 @@ export interface ConfigurationProperty {
   /** E5.8#50.26：renderHint "action" 按钮动作——点击执行此壳命令（混搭复位执行 theme.resetMix，
    *  单一写入点；onApply 被 IPC 剥除不可达插件，按钮经命令触发壳侧 onApply 链）。 */
   actionCommand?: string;
+  /** M4 AI#38.12：renderHint "readonly" 只读状态的运行时数据源——渲染时执行此**壳命令**取值
+   *  （返回 string；状态行的「运行中 · 地址」由命令侧 t() 拼装）。🔴 值来自命令、**不来自配置存储**
+   *  ——通用于一切插件（P-2 拍板 A；不为本系列开特权）。缺省 = 无数据源，显示 default 值原文。 */
+  statusCommand?: string;
   /** E5.8#50.26：renderHint "action" 按钮禁用条件——全部 {key,value} 匹配当前配置值时禁用
    *  （混搭复位「6 来源全跟随主题 → 置灰」，10 §6 决策记录 3）。 */
   actionDisabledAll?: Array<{ key: string; value: unknown }>;
@@ -100,6 +104,12 @@ export interface ConfigurationProperty {
 /** 插件贡献的 configuration 分组——对标 VS Code package.json contributes.configuration */
 export interface ConfigurationContribution {
   title: string;                                    // 分组名——Settings Editor 左侧树节点
+  /** M4 AI#38.12（P-3 拍板 A）：分区大标题下的一行副标题（可选；通用能力，任何插件可用）。
+   *  走壳 t() i18n（lang-defaults）。缺省 = 不渲染（零侵入）。 */
+  subtitle?: string;
+  /** M4 AI#38.12（P-3 拍板 A）：各分节（group）标题下的一行小字说明——键 = group 原文。
+   *  可选字段：缺省 = 该分节无副标题（零侵入）。 */
+  groupDescriptions?: Record<string, string>;
   properties: Record<string, ConfigurationProperty>;// key → 设置项定义
 }
 

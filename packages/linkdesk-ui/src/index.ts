@@ -7,7 +7,7 @@
  *
  * 导出面 = 插件实际消费集（E6#54c 锚点：4 内置插件 33 处 import 收敛于此）+ 必备类型。
  * 🔴 计数与 scripts/ui-surface.json 的 count 互为对账（E6#121 起机械校验，改导出面必同笔改这里）：
- *   - 23 组件（20 个 default 导出 + InlineInput / PluginIcon / FileIconResolver 具名）
+ *   - 25 组件（22 个 default 导出 + InlineInput / PluginIcon / FileIconResolver 具名）
  *   - 3 hooks（useClickPreview / useClipboardKeys / useDebouncedInput，E6#15h）
  *   - 4 helpers（pickIdentityArt / DEFAULT_PLUGIN_IDENTITY_URI / inferSliderStep / urlSourceKey）
  *   - 6 类型（IconDescriptor / InlineInputHandle / ContextMenuProps / ManifestIconShape / ResolvedIcon / HintTipProps）
@@ -34,6 +34,10 @@ export { default as HintCard } from "@shared/hint-card/HintCard";
 export { default as HintTip } from "@shared/hint-tip/HintTip";
 export type { HintTipProps } from "@shared/hint-tip/HintTip";
 export { default as NumberInput } from "@shared/number-input/NumberInput";
+// M4 AI#38.12（P-2/P-3 拍板 A）：只读文本展示件 ＋ 分节副标题件——设置页 renderHint "readonly"
+// 与 subtitle/groupDescriptions 的渲染原语；通用（任何插件可 import），就是文字、零交互。
+export { default as ReadOnlyText } from "@shared/readonly-text/ReadOnlyText";
+export { default as SectionSubtitle } from "@shared/section-subtitle/SectionSubtitle";
 export { default as SegmentedRadio } from "@shared/segmented-radio/SegmentedRadio";
 export { default as SelectBox } from "@shared/select-box/SelectBox";
 export { default as Slider } from "@shared/slider/Slider";

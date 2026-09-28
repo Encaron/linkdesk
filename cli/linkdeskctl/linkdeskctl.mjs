@@ -58,8 +58,10 @@ const STATIC_USAGE = `linkdeskctl——一条命令控制运行中的 LinkDesk�
   notifications                 读通知面板（按钮的 command 事实随行）
   notify-action <id> <action>   执行通知上的按钮（action = 按钮 label 或序号）
   log                           读最近操作账（正门三件套之「账本」的读取面）
-  mcp                           起 MCP stdio server（给 AI 客户端配置用——⛔ 别在终端里直接跑；
-                                客户端配置 = { "command": "<linkdeskctl 绝对路径>", "args": ["mcp"] }）
+  mcp                           起 MCP stdio server（给 AI 客户端配置用——⛔ 别在终端里直接跑）
+  mcp config [--for <client>]   生成 MCP 配置片段（--for codex = Codex TOML 形；缺省 = 通用 JSON）。
+                                与壳设置页「复制 MCP 配置」共用同一生成器（lib/mcp-config.mjs，
+                                ⛔ 不 fork）——「连一次，永久顺手」的粘贴源
 
 选项:
   --json                  机读输出（给 AI 用；失败时带 code + hint）
@@ -85,7 +87,7 @@ const OFFLINE_NOTE = `
 /* ── 参数解析（CLI 参数折成一条请求——解析与通道分离，前者可单测后者要真机） ── */
 
 function parseArgv(argv) {
-  const opts = { json: false, userDataDir: null, timeoutMs: null, token: undefined, identityCheck: true, help: false, optsJson: null, limit: null };
+  const opts = { json: false, userDataDir: null, timeoutMs: null, token: undefined, identityCheck: true, help: false, optsJson: null, limit: null, forClient: null };
   const rest = [];
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
@@ -97,6 +99,7 @@ function parseArgv(argv) {
     else if (a === "--no-identity-check") opts.identityCheck = false;
     else if (a === "--opts") opts.optsJson = argv[++i];
     else if (a === "--limit") opts.limit = Number(argv[++i]);
+    else if (a === "--for") opts.forClient = argv[++i]; // mcp config --for <client>（AI#40）
     else if (a.startsWith("--")) throw new BridgeError("EUSAGE", `未知选项 ${a}`, "看 `--help`。");
     else rest.push(a);
   }
@@ -207,7 +210,9 @@ function render(op, result) {
       `谁在服务  pid ${result.pid}  (${result.appName} ${result.appVersion})`,
       `通道      ${result.transport} ${fmtEndpoint(result.endpoint)}`,
       `已跑      ${Math.round(result.uptimeMs / 1000)}s（起于 ${result.startedAt}）`,
-      `壳窗      ${result.shellWindows}`,
+      `壳窗      ${result.shellWindows}${
+        result.servedShellWindow ? `（操作目标 = ${result.servedShellWindow}，聚焦窗优先）` : ""
+      }`,
       `userData  ${result.userData}`,
     ].join("\n");
   }
@@ -258,7 +263,12 @@ function renderStatus(found, live, opts) {
   if (live) {
     return {
       state: { code: "SERVING", message: `在服务（${fmtEndpoint(live.endpoint)}）`, hint: null },
-      text: [head, `状态      在服务  ${live.transport} ${fmtEndpoint(live.endpoint)}`, `已跑      ${Math.round(live.uptimeMs / 1000)}s · 壳窗 ${live.shellWindows}`].join("\n"),
+      text: [
+        head,
+        `状态      在服务  ${live.transport} ${fmtEndpoint(live.endpoint)}`,
+        `已跑      ${Math.round(live.uptimeMs / 1000)}s · 壳窗 ${live.shellWindows}` +
+          (live.servedShellWindow ? `（操作目标 = ${live.servedShellWindow}）` : ""),
+      ].join("\n"),
     };
   }
   const err = classify({ record, error: null, attempted: { searched, timeoutMs: 0 } });
@@ -296,6 +306,16 @@ async function main() {
 
   // MCP 皮（AI#36）——stdio server 模式：接管 stdin/stdout，不走普通子命令流程（AI#37：不读盘不挂死）
   if (subcommand === "mcp") {
+    // `mcp config [--for <client>]`（AI#40）——离线可用（纯文本生成，不连实例；配置片段只含
+    // 命令名 + args，MCP server 自己负责通道发现）。与壳「复制 MCP 配置」同一生成器。
+    if (rest[1] === "config") {
+      const { formatMcpConfig, mcpConfigClients } = await import("./lib/mcp-config.mjs");
+      const client = opts.forClient ?? "json";
+      const text = formatMcpConfig(client);
+      if (opts.json) console.log(JSON.stringify({ ok: true, subcommand: "mcp config", client, clients: mcpConfigClients(), config: text }, null, 2));
+      else console.log(text);
+      return;
+    }
     const { runMcpServer } = await import("./lib/mcp-server.mjs");
     runMcpServer({ userDataDir: opts.userDataDir });
     return; // 生命周期归 stdin（客户端关管道 = 退出）

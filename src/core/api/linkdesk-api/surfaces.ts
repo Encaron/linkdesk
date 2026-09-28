@@ -21,6 +21,7 @@ import type { LinkDeskAPI } from "../linkdesk-api";
 import type { DownloadProgress, ReleaseNotes, UpdateState } from "../../types/ipc/update";
 import type { ProductInfo } from "../../types/ipc/product";
 import type { AiManualPayload } from "../../types/ipc/aiManual";
+import type { AiBridgeInfo, AiBridgeInfoRequest } from "../../types/ipc/aiBridge";
 
 /** 池 preload 必暴露面（45 = 44 唯一 + config 别名；唯一缺 bridge；E6#72 删 toast 宿主桥面）——E5.8#34.5 加 panel（插件调 reveal 的池侧通道）；E5.8#37 加 floatingPanelHost（壳内悬浮面板哑渲染桥）；E5.8#41.12 加 settings（设置套枚举/切换，设置 UI 在池内渲染）；E5.8#41.14 加 factorySlots（任意 role 候选枚举/切换，设置 UI 通用区数据源）；E5.8#50.11 加 appearance（外观资产——选择图片拷贝入库）；E6#57.2a 加 app（只读产品身份——市场 minAppVersion E6#30.8c 消费） */
 export type PoolExposed = Pick<LinkDeskAPI,
@@ -152,6 +153,12 @@ export type ShellExposed = Pick<LinkDeskAPI,
      * ⚠️ `chapters: []` 是**合法回包**（这个构建没带手册），不是错误——消费方画空态，别当异常。
      */
     getAiManual(): Promise<AiManualPayload>;
+    /**
+     * AI 接入状态（M4 `AI#38.4`）——**壳内私有扩展第四例**（`getAiManual` 同款同形：main 直答、
+     * 池 preload 不注入 ⇒ 插件调不到）。**只出数据不出话术**：状态行的「运行中/已关闭」等显示文字
+     * 由壳命令拼装（t()）。`{action:"regenerateToken"}` = 重新生成凭据（`AI#38.9`，旧凭据立即失效）。
+     */
+    getAiBridge(action?: AiBridgeInfoRequest): Promise<AiBridgeInfo>;
   };
   /**
    * shell 壳 = 契约面 **＋ 壳内私有扩展** `onOpenPath`（E6#46b，`buildShellUpdate` 同先例同理由）：

@@ -1,0 +1,42 @@
+{
+  "$schema": "./node_modules/@linkdesk/plugin-sdk/schemas/plugin.schema.json",
+  "pluginId": "status-demo",
+  "name": "状态行夹具",
+  "version": "0.0.1",
+  "description": "M4 AI#38.12 验收夹具——第三方插件声明只读状态行与按钮行（证明 renderHint 是开放契约，不是宿主特权）",
+  "author": "linkdesk-dev",
+  "entry": "index.bundle.js",
+  "contributes": {
+    "configuration": {
+      "title": "状态行夹具",
+      "subtitle": "第三方插件声明的只读状态行与动作按钮——值的来源是它自己的命令，不是配置存储。",
+      "groupDescriptions": {
+        "演示": "这一段说明也由插件自己声明（groupDescriptions）。"
+      },
+      "properties": {
+        "status-demo.live": {
+          "type": "string",
+          "group": "演示",
+          "default": "",
+          "description": "夹具活读数——值来自 status-demo.probe 命令的返回值（每 3 秒重取）",
+          "renderHint": "readonly",
+          "statusCommand": "status-demo.probe"
+        },
+        "status-demo.poke": {
+          "type": "string",
+          "group": "演示",
+          "default": "",
+          "description": "戳一下夹具（写一行时间戳进配置）",
+          "renderHint": "action",
+          "actionCommand": "status-demo.poke"
+        },
+        "status-demo.plain": {
+          "type": "string",
+          "group": "演示",
+          "default": "默认渲染不受影响",
+          "description": "同组里的普通行——无 renderHint 时照常按 type 渲染"
+        }
+      }
+    }
+  }
+}

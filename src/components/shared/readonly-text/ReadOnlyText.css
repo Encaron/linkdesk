@@ -1,0 +1,17 @@
+/* ReadOnlyText——只读文本展示件（@linkdesk/ui）。M4 AI#38.12 · P-2 拍板 A。
+ * 就是文字：无交互、无花活；单行 = 等宽（状态值如 127.0.0.1:9333 好读），多行 = 正文小字。 */
+.ldk-readonly-text {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-2xs);
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ldk-readonly-text.multiline {
+  font-family: inherit;
+  white-space: pre-wrap;
+  overflow: visible;
+  text-overflow: unset;
+  line-height: 1.6;
+}

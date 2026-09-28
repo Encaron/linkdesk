@@ -48,6 +48,7 @@
     "app.zoneRadiusScale"
   ],
   "pseudoPluginIds": [
+    "ai-bridge",
     "app",
     "appearance"
   ],

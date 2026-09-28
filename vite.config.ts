@@ -13,7 +13,19 @@ const host = process.env.TAURI_DEV_HOST;
  * dev 未 setName/productName）。Vite 允许经 /@fs 服务该目录下的解压包（SDK bundle 物理在项目根外）。
  * Windows appData = %APPDATA%；非 Windows（无 APPDATA）不匹配任何 importer → 插件零效果。
  */
-const userPluginsHome = process.env.APPDATA ? join(process.env.APPDATA, "linkdesk", "plugins") : "";
+const defaultPluginsHome = process.env.APPDATA ? join(process.env.APPDATA, "linkdesk", "plugins") : "";
+
+/**
+ * 隔离实例（`electron . --user-data-dir <路径>`，见 scripts/dev/README）的插件家在**别的 userData** 下——
+ * 只认默认那份时，隔离实例里装的插件既进不了 `fs.allow`（`/@fs` 403）也拿不到下面的裸 specifier 兜底
+ * （react / @linkdesk/ui 解析不了）⇒ 视图整个挂在 "Failed to fetch dynamically imported module"。
+ * 故开一个环境变量口：`LINKDESK_USER_PLUGINS_HOME=<隔离实例>/plugins npm run dev`。
+ * 只影响 dev 轨道（`apply: serve` 系）；打包轨道走 `linkdesk://`，不经此处。
+ */
+const userPluginsHomes = [
+  defaultPluginsHome,
+  process.env.LINKDESK_USER_PLUGINS_HOME ?? "",
+].filter((p, i, a) => p !== "" && a.indexOf(p) === i);
 
 /**
  * 🔴 2026-09-19（L9 实机暴露）：上面那份是 **Windows 原生形态（反斜杠）**，只该给 fs.allow 用；
@@ -22,7 +34,7 @@ const userPluginsHome = process.env.APPDATA ? join(process.env.APPDATA, "linkdes
  * react 系在壳自身 import 图里、有 Vite 优化器兜底；直到 E6#123 插件开始裸 import `@linkdesk/ui`
  * （壳自己不 import 它 ⇒ 无兜底）才浮出水面——插件视图整个挂在 "Failed to resolve import"。
  */
-const userPluginsHomePosix = userPluginsHome.replace(/\\/g, "/");
+const userPluginsHomesPosix = userPluginsHomes.map((p) => p.replace(/\\/g, "/"));
 
 /**
  * E6#7（1.2-4）：dev-only 解析兜底——SDK 预构建的 index.bundle.js 把 react 系 externalize 成裸 import；
@@ -49,7 +61,7 @@ function resolveUserDataBundles(): Plugin {
   return {
     name: "linkdesk-userdata-bundle-externals",
     resolveId(source, importer) {
-      if (!userPluginsHomePosix || !importer?.includes(userPluginsHomePosix)) return null;
+      if (!userPluginsHomesPosix.some((home) => importer?.includes(home))) return null;
       if (!external.has(source)) return null;
       // createRequire.resolve 尊重包的 exports map（react/jsx-runtime 等 subpath）；
       // 返回值归一成正斜杠——Vite 内部 id 全是 posix，原生反斜杠路径是同一颗雷的另一半
@@ -99,7 +111,7 @@ export default defineConfig(async ({ command }) => {
       // E6#7（1.2-4）：默认只放行 workspace 根——userData 解压包在项目根外，需显式 allow
       // 才能经 /@fs/ 服务 SDK 预构建 bundle（dev 验证用；prod 走 linkdesk:// 不依赖 fs.allow）
       fs: {
-        allow: [__dirname, ...(userPluginsHome ? [userPluginsHome] : [])],
+        allow: [__dirname, ...userPluginsHomes],
       },
       host: host || false,
       hmr: host

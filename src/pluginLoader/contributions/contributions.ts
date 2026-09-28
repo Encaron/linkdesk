@@ -101,10 +101,19 @@ function contribObject<T extends object>(pluginId: string, key: string, v: unkno
 export async function parseContributions(pluginId: string, c: Record<string, unknown>, pluginRoot?: string): Promise<void> {
   // contributes.configuration → ConfigurationRegistry
   if (c.configuration) {
-    const config = contribObject<{ title: string; properties: Record<string, unknown> }>(pluginId, "configuration", c.configuration);
+    const config = contribObject<{
+      title: string;
+      subtitle?: string;
+      groupDescriptions?: Record<string, string>;
+      properties: Record<string, unknown>;
+    }>(pluginId, "configuration", c.configuration);
     if (config) {
       registerConfiguration(pluginId, {
         title: config.title,
+        // 分区副标题 / 分节说明（可选）——渲染方 = 设置插件，声明方 = 任何插件（⛔ 不是宿主特权；
+        // 未声明 = 不渲染）。形状见 plugin.schema.json 的同名两字段。
+        subtitle: config.subtitle,
+        groupDescriptions: config.groupDescriptions,
         properties: config.properties as Record<string, import("../../core/registry/ConfigurationRegistry").ConfigurationProperty>,
       });
     }

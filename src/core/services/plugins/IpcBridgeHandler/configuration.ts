@@ -65,7 +65,14 @@ export async function handleConfigurationMethod(method: string, args: unknown[])
           const { onApply: _onApply, ...rest } = prop as unknown as Record<string, unknown>;
           safeProps[key] = rest;
         }
-        return [pluginId, { title: contrib.title, properties: safeProps }];
+        // M4 AI#38.12：副标题两字段随行（statusCommand 在 rest 里天然带过；subtitle/groupDescriptions
+        // 是 contribution 级字段，这里显式带上——未声明 = undefined，结构化克隆后即缺席，零侵入）
+        return [pluginId, {
+          title: contrib.title,
+          subtitle: contrib.subtitle,
+          groupDescriptions: contrib.groupDescriptions,
+          properties: safeProps,
+        }];
       });
     }
     case "inspectConfiguration": {

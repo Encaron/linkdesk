@@ -32,7 +32,23 @@ npm run dev:driver -- status
 ```
 
 > 🔴 **`--user-data-dir` 是 Windows 上唯一真隔离**。设 `APPDATA` 不管用——Electron 走 `SHGetKnownFolderPath`，不读那个环境变量。
+> 🔴 **必须写等号形（`--user-data-dir=<路径>`）**：空格形（`--user-data-dir <路径>`）Chromium 不认，那个路径会掉进位置参数，
+> 进程照跑但用的是**默认 userData**（2026-09-28 实测：`ai-bridge` 记录写到了 `%APPDATA%\linkdesk`，而你并不知道）。
+> 自查一句：记录行 `[ai-bridge] ... userData=<路径>` 是不是你要的那个。
 > 🔴 **硬 reload 会丢已挂载视图**：dev 的隔离 profile 不恢复工作区 ⇒ `reload` 之后池里只剩「欢迎 ＋ 发行说明」，插件视图要重新开（`open-view <pluginId>`；图标栏里没有的只能人开）。
+
+### 隔离实例里装插件：`LINKDESK_USER_PLUGINS_HOME`
+
+隔离实例的插件家在**它自己的** userData 下（`<隔离 userData>/plugins`）；而 Vite 的 dev 兜底只认默认那家
+（`%APPDATA%\linkdesk\plugins`）⇒ 隔离实例里装的插件会整个挂在 `Failed to fetch dynamically imported module`
+（`/@fs` 403 ＋ 裸 specifier `react` / `@linkdesk/ui` 解析不了）。开一个环境变量口即可（只影响 dev 轨道）：
+
+```bash
+LINKDESK_USER_PLUGINS_HOME="$TEMP/linkdesk-driver-$$/plugins" npm run dev   # 起 Vite 前设好
+```
+
+**夹具** `fixtures/status-demo/` 就是这么用的——第三方插件视角声明只读状态行（`renderHint:"readonly"` ＋
+`statusCommand`）与动作行，验「这类渲染是开放契约，不是宿主特权」（M4 `AI#38.12`）。装法见该夹 `README.md`。
 
 ## 命令
 

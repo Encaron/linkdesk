@@ -450,6 +450,7 @@ import { registerUpdateCommands } from "./updateCommands"; // E6#57.10：主软�
 import { registerReleaseNotesCommands } from "./releaseNotesCommands"; // E6#57.13：发行说明标签页（打开 + 池侧三条动作）
 import { registerAboutCommands } from "./aboutCommands"; // E6#57.14：关于标签页（打开 + 池侧「复制」）
 import { registerManualCommands } from "./manualCommands"; // M3 AI#16：AI 操作手册（打开；帮助菜单入口）
+import { registerAiBridgeCommands } from "./aiBridgeCommands"; // M4 AI#38：AI 接入（状态出口＋设置页动作按钮）
 import { registerShellMenus } from "../input-bindings/shellMenus";
 import { registerQuickPickCommand } from "../palette/quickPickCommand"; // E5.7#18：quickpick.show 从 components/shared/QuickPick.tsx 迁入
 import { showCommandPalette } from "../palette/commandPalette"; // E5.7#18：命令面板入口从 components/shared/CommandPalette.tsx 迁入
@@ -470,6 +471,7 @@ export function ensureCoreCommands(): void {
   registerReleaseNotesCommands(); // E6#57.13：发行说明标签页（打开 + 池侧三条动作）
   registerAboutCommands(); // E6#57.14：关于标签页（打开 + 池侧「复制」）
   registerManualCommands(); // M3 AI#16：AI 操作手册标签页（打开；帮助菜单入口）
+  registerAiBridgeCommands(); // M4 AI#38：AI 接入（五条状态出口 ＋ 七条动作按钮）
   registerQuickPickCommand(); // E5.7#18：quickpick.show 插件命令
 
   // ── 注册核心命令 ──

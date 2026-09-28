@@ -76,6 +76,11 @@
         //   ⛔ 不给 KeybindingHint 加同类豁免——它有壳内真消费者（ContextMenu / HintTipRenderer），
         //   故那边把 Props 改回模块内私有（真断边就该修，不是压）。
         "src/components/shared/hint-tip/HintTip.tsx",
+        // M4 AI#38.12（2026-09-28）：ReadOnlyText / SectionSubtitle——只读文本展示件与分节副标题件，
+        //   壳内零消费方（消费方 = settings 插件经 @linkdesk/ui barrel + 插件 dist）——E6#54c 同型
+        //   断边误报豁免（@linkdesk/ui dist 即由它们构建而来；壳仓 src/ 内零 import 是**设计**）。
+        "src/components/shared/readonly-text/ReadOnlyText.tsx",
+        "src/components/shared/section-subtitle/SectionSubtitle.tsx",
         // E5.8#2：core 聚合器 + 其 re-export 面（@src/core 插件 API 入口，壳内按需直引具体文件——
         //   桶导出面向 plugins/ 排除域与 window.linkdesk 契约，knip 静态图不覆盖 IPC 字符串分发。
         //   ProtocolParser/ConfigurationRegistry/ThemeEngine/api-types/IpcBridgeHandler

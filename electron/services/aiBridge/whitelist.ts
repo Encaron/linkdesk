@@ -69,6 +69,8 @@ export interface BridgeOpContext {
 
 export interface BridgeOp {
   name: string;
+  /** 能力类别（AI#38.7 开放范围明细的「读/做」两栏从它派生——⛔ 设置页不手抄第二份） */
+  kind: 'read' | 'write';
   /** 一句人读说明——describe / `linkdeskctl --help` 自省面的正文（AI#35 判据的「怎么操作」） */
   help: string;
   params: BridgeOpParam[];
@@ -102,6 +104,7 @@ function findNotifItem(layout: unknown, notificationId: string): { actions: Arra
 export const OPS: Record<string, BridgeOp> = {
   describe: {
     name: 'describe',
+    kind: 'read',
     help: '自查：本实例支持的操作（白名单）＋ 可执行的命令面（运行期派生）——零源码环境 AI 的自举点',
     params: [],
     run: async (_req, ctx) => {
@@ -117,6 +120,7 @@ export const OPS: Record<string, BridgeOp> = {
 
   ping: {
     name: 'ping',
+    kind: 'read',
     help: '认人：谁在服务（pid / 通道 / 版本 / 已跑多久）——客户端每次调用先 ping 并把应答 pid 与记录对齐',
     params: [],
     run: async (_req, ctx) => ctx.identity(),
@@ -124,6 +128,7 @@ export const OPS: Record<string, BridgeOp> = {
 
   tabs: {
     name: 'tabs',
+    kind: 'read',
     help: '读标签快照（经壳读取面 plugins:call "listTabs"——M1 AI#3；壳是标签权威，无第二份）',
     params: [],
     run: async (_req, ctx) => ctx.shellRequest(IPC.plugins.call, ['listTabs']),
@@ -131,6 +136,7 @@ export const OPS: Record<string, BridgeOp> = {
 
   openTab: {
     name: 'openTab',
+    kind: 'write',
     help: '开一个标签页（经壳 tabs:create 通道——插件调壳的同一张缝；结果经 tabs 操作回读确认）',
     params: [
       { name: 'type', type: 'string', required: true, description: '标签类型（视图/插件 id，如 app）' },
@@ -148,6 +154,7 @@ export const OPS: Record<string, BridgeOp> = {
 
   exec: {
     name: 'exec',
+    kind: 'write',
     help: '执行壳命令（能执行的 = describe 的 commands 清单里那些；严格回传真结果——做了/没做可分辨）',
     params: [
       { name: 'commandId', type: 'string', required: true, description: '命令 id（如 app.openAiManual）' },
@@ -173,6 +180,7 @@ export const OPS: Record<string, BridgeOp> = {
 
   install: {
     name: 'install',
+    kind: 'write',
     help: '安装插件（zip 包 URL 或本地路径）——确认对话框在软件里弹出，用户点头才装（装 = 问一声，AI#29；⛔ 不绕确认回路）',
     params: [
       { name: 'source', type: 'string', required: true, description: '插件包 URL（…linkdesk-plugin / zip）或本地路径' },
@@ -201,6 +209,7 @@ export const OPS: Record<string, BridgeOp> = {
 
   notifications: {
     name: 'notifications',
+    kind: 'read',
     help: '读通知面板（经壳读取面 plugins:call "listNotifications"——M1 AI#1；按钮的 command 事实随行，M1 AI#2）',
     params: [],
     run: async (_req, ctx) => ctx.shellRequest(IPC.plugins.call, ['listNotifications']),
@@ -208,6 +217,7 @@ export const OPS: Record<string, BridgeOp> = {
 
   notifyAction: {
     name: 'notifyAction',
+    kind: 'write',
     help: '执行通知上的按钮（按钮 = 命令——照 M1 AI#2 的 command/args 走 commands.execute，与手点同一条命令路径）',
     params: [
       { name: 'notificationId', type: 'string', required: true, description: '通知 id（notifications 操作的返回里有）' },
@@ -237,6 +247,7 @@ export const OPS: Record<string, BridgeOp> = {
 
   log: {
     name: 'log',
+    kind: 'read',
     help: '读最近操作账（正门三件套之「账本」的读取面；先记后判——被拒的调用也在账上，AI#43）',
     params: [
       { name: 'limit', type: 'number', required: false, description: '返回最近几条（默认 20）' },
@@ -251,6 +262,6 @@ export const OPS: Record<string, BridgeOp> = {
 };
 
 /** 从 `OPS` **派生**（不手抄）——改表即改清单，改不到两处。AI#33 判据的机械保证。 */
-export function opCatalog(): Array<{ name: string; help: string; params: BridgeOpParam[] }> {
-  return Object.values(OPS).map((op) => ({ name: op.name, help: op.help, params: op.params }));
+export function opCatalog(): Array<{ name: string; kind: 'read' | 'write'; help: string; params: BridgeOpParam[] }> {
+  return Object.values(OPS).map((op) => ({ name: op.name, kind: op.kind, help: op.help, params: op.params }));
 }

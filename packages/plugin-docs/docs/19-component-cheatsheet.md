@@ -86,6 +86,8 @@ The version of `@linkdesk/ui` **equals the version of the LinkDesk shell you ins
 | `OverlayPortal` | Overlay portal host | Use it when a custom-drawn dialog needs to portal to body; don't scatter bare `createPortal` calls everywhere |
 | `HintTip` | Lightweight hover hint (component form) | For "give it a child element and one sentence" — **most cases just write the `data-hint` attribute, no import needed**; use this component when you want to control the wrapper yourself (see [05-UI Conventions](05-ui-conventions.md) §13; a native `title=` is red) |
 | `HintCard` | Anchored hover hint card (non-interactive) | For "hover a small badge, see a short explanation card": give `lines` (1–3 sentences) and the anchor element; triggering/positioning/glass are all handled by the shell; ⛔ no links or buttons inside the card |
+| `ReadOnlyText` | Read-only text (single-line or multi-line, not editable) | Showing a **read-only value**: paths, addresses, live status lines (this is what the settings page's read-only status rows use — declare `renderHint: "readonly"` + `statusCommand`, see [20-adding-a-setting](20-adding-a-setting.md)) |
+| `SectionSubtitle` | Section subtitle (one small line under a heading) | A one-line note under a group/section — the settings page renders `subtitle` / `groupDescriptions` with it, and you can use it directly when assembling your own explanatory block |
 
 > The list follows the package's actual export surface (`packages/linkdesk-ui/src/index.ts` is the single source of truth) — if this page disagrees with the package, **the package wins**.
 

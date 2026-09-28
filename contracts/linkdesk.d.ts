@@ -75,6 +75,9 @@ export interface LinkDeskConfigProperty {
     optionsFromDomain?: ThemeDomain;
     /** E5.8#50.26：renderHint "action" 按钮动作——点击执行此壳命令（第三方设置 UI 经 commands.executeCommand 触发） */
     actionCommand?: string;
+    /** M4 AI#38.12（P-2 拍板 A）：renderHint "readonly" 只读状态的运行时数据源——渲染时执行此壳命令取值
+     *  （返回 string；显示话术由命令侧拼装）。值来自命令、不来自配置存储——通用能力，任何插件可用 */
+    statusCommand?: string;
     /** E5.8#50.26：renderHint "action" 按钮禁用条件——全部 {key,value} 匹配当前配置值时禁用 */
     actionDisabledAll?: Array<{
         key: string;
@@ -90,11 +93,15 @@ export interface LinkDeskConfigSchema {
     [key: string]: LinkDeskConfigProperty;
 }
 /** 配置贡献条目——configuration.getConfigurationContributions() 返回形状（E5.8#41.14 🛤 命名）。
- * 与壳 ConfigurationRegistry 组装的 [pluginId, { title, properties }] 对齐——第三方设置 UI 不再 need cast */
+ * 与壳 ConfigurationRegistry 组装的 [pluginId, { title, subtitle?, groupDescriptions?, properties }] 对齐——第三方设置 UI 不再 need cast */
 export type LinkDeskConfigurationContribution = [
     string,
     {
         title: string;
+        /** M4 AI#38.12（P-3 拍板 A）：分区大标题下的一行副标题（可选；未声明 = 不渲染，零侵入） */
+        subtitle?: string;
+        /** M4 AI#38.12（P-3 拍板 A）：各分节（group）标题下的一行小字——键 = group 原文（可选，零侵入） */
+        groupDescriptions?: Record<string, string>;
         properties: Record<string, unknown>;
     }
 ];
