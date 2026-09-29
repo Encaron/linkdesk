@@ -33,7 +33,7 @@ export function MyView() {
 
 - **Single source, copying forbidden**: this package's `dist/` is a build artifact (the source lives only in the LinkDesk shell repository), and plugins depend on the npm distribution directly; do not fork components into a plugin and maintain them there.
 - **Follow the theme**: all components consume host CSS variables, so switching themes in a plugin recolors them automatically.
-- See the LinkDesk shell repository's `docs/02-Electron架构/E6_插件生态与发布/01-插件独立构建/07-共享组件独立分发设计.md`.
+- See the LinkDesk shell repository's `docs/02-Electron架构/插件生态与发布/01-插件独立构建/07-共享组件独立分发设计.md`.
 
 ## Development (inside the LinkDesk shell repository)
 

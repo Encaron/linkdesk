@@ -14,8 +14,8 @@
  * 其余命名空间维持 namespace 级 Pick。唯一真壳独有 = bridge；pool 四池侧方法（onLayout/ready/
  * sidebarAction/tabAction）唯一池独有。
  *
- * 设计出处：docs/02-Electron架构/E5.8_归一化基建/契约生成/03-契约生成设计.md §3.2
- * 覆盖矩阵：docs/02-Electron架构/E5.8_归一化基建/契约生成/命名空间矩阵.md §2
+ * 设计出处：docs/02-Electron架构/归一化基建/契约生成/03-契约生成设计.md §3.2
+ * 覆盖矩阵：docs/02-Electron架构/归一化基建/契约生成/命名空间矩阵.md §2
  */
 import type { LinkDeskAPI } from "../linkdesk-api";
 import type { DownloadProgress, ReleaseNotes, UpdateState } from "../../types/ipc/update";

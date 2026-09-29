@@ -13,7 +13,7 @@
  * 回滚中断容错（#9 验收）：单 disposer 抛错不中断后续回滚，错误入诊断面（ErrorService）。
  *
  * @see [[reversible-registration-decision]]（决策记录）
- * @see docs/02-Electron架构/E5.8_归一化基建/可逆注册/02-可逆注册设计.md §1
+ * @see docs/02-Electron架构/归一化基建/可逆注册/02-可逆注册设计.md §1
  */
 
 import { PluginLifecycle } from "../../pluginLoader/lifecycle/lifecycle-events";

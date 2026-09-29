@@ -1,5 +1,5 @@
 /**
- * 主软件更新 wire 契约——E6#57.4（设计：[06-主软件更新/07-数据流通格式.md](../../../../docs/02-Electron架构/E6_插件生态与发布/06-主软件更新/07-数据流通格式.md) §三）。
+ * 主软件更新 wire 契约——E6#57.4（设计：[06-主软件更新/07-数据流通格式.md](../../../../docs/02-Electron架构/插件生态与发布/06-主软件更新/07-数据流通格式.md) §三）。
  *
  * 主进程 UpdateService（`electron/services/update-service.ts`）产出、壳渲染 `useUpdateState` 消费——
  * 跨堆协议，按 serial 先例（E5.7#97）归口本目录：`electron/` 与 `src/` 双端 import 同一份类型，

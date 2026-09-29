@@ -4,7 +4,7 @@
  * 读源码依据：notificationsToasts.css / notificationsList.css / notificationsViewer.ts
  *
  * 设计文档：docs/phase4_插件系统/V3-Phase4-通知系统设计.md
- * 隔离模型（S3/S4/S6）见：docs/02-Electron架构/E6_插件生态与发布/03-插件市场/18-通知系统全账与设计定案.md §五 E
+ * 隔离模型（S3/S4/S6）见：docs/02-Electron架构/插件生态与发布/03-插件市场/18-通知系统全账与设计定案.md §五 E
  */
 
 import { readSync, writeSync } from "../configuration/StorageService";

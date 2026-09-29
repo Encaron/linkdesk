@@ -2,7 +2,7 @@
  * 主题数据模型纯类型——05 schema（Recipe + Colorway）落地。
  * 壳目录规范 §1：types/ 放跨模块共享纯类型（src / electron / contracts 三端同引）。
  *
- * 设计依据：docs/02-Electron架构/E5.8_归一化基建/外观主题化/05-主题数据模型.md（决策 A-F 冻结）。
+ * 设计依据：docs/02-Electron架构/归一化基建/外观主题化/05-主题数据模型.md（决策 A-F 冻结）。
  * 一句话：主题文件 = 一个配方 Recipe = 风格域 appearance（单值稀疏）+ 配色变体 colorways[]（颜色域多值）；
  * 稀疏覆盖，缺的域继承 :root 壳默认。新主题一律 colorways[]（决策 F 单写法）。
  */

@@ -18,12 +18,12 @@
  *   i18n 字典键（🔴 **本轴唯一保留的黄灯，永不在射程内**）。
  *
  * ── 数据来源（逐条给出处，不是推测） ──
- *   · `settings` = [03-任务-设置键归属评估 §10.2](../../../../docs/02-Electron架构/E6_插件生态与发布/01-插件独立构建/非样式命名空间归一化/03-任务-设置键归属评估.md)
+ *   · `settings` = [03-任务-设置键归属评估 §10.2](../../../../docs/02-Electron架构/插件生态与发布/01-插件独立构建/非样式命名空间归一化/03-任务-设置键归属评估.md)
  *     的 **19 键改名映射表**（1.33 产出）。形状 = 「只换第一段，词干零变化」。
  *   · `themeId` = 1.35 §十三 的 **9 配方 id**；`colorwayId` = 同处 **16 配色 id**。
  *     ⚠️ 配色那 **16 条本格不收进 `RENAME_ROUNDS`**：1.36 已把它们落成 `ThemeEngine/constants.ts` 的
  *     `COLORWAY_ID_MIGRATIONS` ＋ 读时归一，是**已经生效的机制**，重复登记 = 第二份清单。
- *   · `flag` = [07-任务-上下文旗子归属评估 §14.3](../../../../docs/02-Electron架构/E6_插件生态与发布/01-插件独立构建/非样式命名空间归一化/07-任务-上下文旗子归属评估.md)
+ *   · `flag` = [07-任务-上下文旗子归属评估 §14.3](../../../../docs/02-Electron架构/插件生态与发布/01-插件独立构建/非样式命名空间归一化/07-任务-上下文旗子归属评估.md)
  *     （1.37 产出）：`file-tree` 11 个（含**借来的 `inputFocus` 还回**）· `marketplace` 6 个 ·
  *     `serial-monitor` 2 个（**含死旗子 `serialSessionFocus` 的去留裁决，归 1.44**）。
  *     🔴 `settings` 的 4 个（`settingKey`/`settingFollowTheme`/`settingResetsToDefault`/`settingModified`）

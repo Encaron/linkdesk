@@ -10,7 +10,7 @@
  *     代码库两端以裸字符串消费（无 IPC 常量）——此处为唯一权威来源，生成器按字面量嵌入产物。
  *     改频道名 = 改这里 + 双侧 producer/consumer（grep 同名字符串）。
  *
- * 设计：docs/02-Electron架构/E5.8_归一化基建/契约生成/04-运行期校验设计.md §2
+ * 设计：docs/02-Electron架构/归一化基建/契约生成/04-运行期校验设计.md §2
  */
 
 import { IPC } from './channels';

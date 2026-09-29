@@ -1,9 +1,9 @@
 /**
  * update-download——E6#57.6 下载腿（`download`）：流式下载 + sha256 校验 + 启动残留清理/**方向守卫**。
  *
- * 设计：[06-主软件更新/01-更新机制设计.md](../../docs/02-Electron架构/E6_插件生态与发布/06-主软件更新/01-更新机制设计.md)
+ * 设计：[06-主软件更新/01-更新机制设计.md](../../docs/02-Electron架构/插件生态与发布/06-主软件更新/01-更新机制设计.md)
  * §2.4（`.part` 临时文件 / 进度 / sha256 校验 / rename / 残留清理）+ §2.5；契约见
- * [07-数据流通格式.md](../../docs/02-Electron架构/E6_插件生态与发布/06-主软件更新/07-数据流通格式.md) §三。
+ * [07-数据流通格式.md](../../docs/02-Electron架构/插件生态与发布/06-主软件更新/07-数据流通格式.md) §三。
  *
  * 本模块产出两样东西：**#57.4 注入的那条腿**（`UpdateServiceDeps.download`）＋ **启动清理**
  * （`cleanupUpdateResidue`，main boot 调一次，对标 plugin-download 的 `cleanupStaleDownloads`）。

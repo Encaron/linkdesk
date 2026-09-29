@@ -20,7 +20,7 @@
  *   比 cargo 多一步：建完仓**顺手做一次初始提交**——模板自带 `.gitignore`，作者第一步看到的
  *   就不是满屏 untracked，`git log` 也立刻有一笔可回退的基线。不想要仓的人用 `--no-git`。
  *
- * 生成产物契约：见 docs/02-Electron架构/E6_插件生态与发布/02-插件开发工具链/01-create-linkdesk-plugin脚手架.md。
+ * 生成产物契约：见 docs/02-Electron架构/插件生态与发布/02-插件开发工具链/01-create-linkdesk-plugin脚手架.md。
  */
 import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";

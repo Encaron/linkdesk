@@ -1,5 +1,5 @@
 # 🔥 E6#42b —— CI 自动构建（GitHub Actions）。设计稿：
-# docs/02-Electron架构/E6_插件生态与发布/05-文档与发布/02-发布流水线.md §一
+# docs/02-Electron架构/插件生态与发布/05-文档与发布/02-发布流水线.md §一
 #
 # 触发：① push 到 electron 分支 → 构建 + 上传 artifact
 #       ② push tag v*          → 构建 + 发 GitHub Release

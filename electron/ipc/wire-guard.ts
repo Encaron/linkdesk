@@ -4,7 +4,7 @@
  * 用途：preload 接收边界对推流载荷做形状断言——「哪条通道拿到异形数据」可查可诊断。
  *       guard 只记录不阻断：载荷照常透传 cb(payload)，断言自身绝不影响业务路径。
  *
- * 设计：docs/02-Electron架构/E5.8_归一化基建/契约生成/04-运行期校验设计.md §5
+ * 设计：docs/02-Electron架构/归一化基建/契约生成/04-运行期校验设计.md §5
  * 产物：contracts/runtime-shapes.ts（自动生成，validateWire 查表）
  */
 import { validateWire } from '../../contracts/runtime-shapes';

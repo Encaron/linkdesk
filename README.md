@@ -13,14 +13,14 @@
 > Version number and installer filename are on the Release page.
 > The single source of truth for the installer filename is the `artifactName` in
 > [`electron-builder.yml`](electron-builder.yml) — see
-> [02-发布流水线.md §〇](docs/02-Electron架构/E6_插件生态与发布/05-文档与发布/02-发布流水线.md)
+> [02-发布流水线.md §〇](docs/02-Electron架构/插件生态与发布/05-文档与发布/02-发布流水线.md)
 > for why that matters.
 
 ## Status
 
 🚧 **In development.** Under `0.x` — no release is a stable release yet.
 The current phase and its progress live in
-[E6-执行清单.md](docs/02-Electron架构/E6_插件生态与发布/E6-执行清单.md) (Chinese),
+[E6-执行清单.md](docs/02-Electron架构/插件生态与发布/E6-执行清单.md) (Chinese),
 which is the single source of truth for what is done and what is not.
 
 ## Build from source
