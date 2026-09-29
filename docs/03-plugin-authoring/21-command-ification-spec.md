@@ -123,6 +123,10 @@ useEffect(() => {
 - [ ] Each has a real handler registered pool-side (`registerCommand`), with `unregisterCommands(pluginId)` on `unmount`
 - [ ] Buttons/menu items and the command handler call **the same** action function (not two implementations)
 - [ ] Anything that changes state also has a **read-back** path (list/query)
+- [ ] The reply **distinguishes three states**: done / not done but not a failure / the call itself is wrong (`reason` is a distinguishable literal)
+- [ ] An **addressed command** (one taking a target id) that cannot find its target **refuses honestly and lists what exists** — ⛔ it never falls back to "the active one / the first one"
+- [ ] A **read command** reports "empty" and "could not read" **separately** (⛔ never report "unknown" as an empty array)
+- [ ] A toggle/flip command's reply carries the **value read back after the change** (`field` / `previous` / `value`)
 - [ ] Streams have a **pull** read-back path (cursor-based — ⛔ not a subscription) plus a water-level read
 - [ ] Self-test: install it → findable in the Command Palette → `description`/`params` visible in the command list → invoking it works **and the UI reflects it**
 - [ ] I walked these actions through **without a mouse** (keyboard / Command Palette) and every step was reachable
@@ -140,6 +144,69 @@ useEffect(() => {
   one is **default-by-construction**, the other is **knowing what to write**.
 - `when` only decides **whether a command shows up in menus/the palette** (and whether its keybinding fires); it does **not** block API
   calls — never use `when` as permission control.
+
+---
+
+## 7. Standing discipline (established 2026-09-29)
+
+- 🔴 **This is not a one-off delivery**: from here on, **every new feature / new plugin** must satisfy
+  "**① every user action has at least one non-mouse path; ② business actions are registered as commands, and the
+  registration meta carries `description` + `params`**". The same sentence is hard constraint 26 in the shell repo
+  (internal engineering rule, not linked here). Why: **holes grow back with each iteration** — the whole AI-friendliness
+  effort started from a hidden gate in an old feature that blocked an AI.
+- **Two mechanical self-checks** (run them, ⛔ do not eyeball it): `npm run audit:plugin-commands`
+  (**reports, never blocks** — flags "a view is declared but there are zero commands" and "a whole batch lacks
+  `description`") · `npm run manual:build` (byte-for-byte drift gate on the host-command manual index; plugin commands
+  **do not** need to enter it — being visible to `getCommands()` at runtime is enough).
+- **Verification is equally pointer-independent**: test commands through commands / APIs (or CLI / MCP), ⛔ never
+  "screenshot → guess coordinates → click"; for faces that exist **only under the pointer** (hover buttons), use
+  element anchoring ("grab the element, then act on the element itself") — ⛔ do not derive coordinates from window
+  position (those coordinates break under a different window layout).
+- ⚠️ **Three pitfalls from real runs** (hit during acceptance on 2026-09-29, written down to save the next person a round):
+  1. **Registration timing** — if you only `registerCommand` when the **view component mounts**, an external AI
+     **cannot see your commands** in the command list when the view was never opened (invoking one raises `EUNKNOWN`)
+     ⇒ if you can register at activate time, do not defer it to mount.
+  2. **Parameter shape** — `params` are **named**, while the execution face **originally** passed arguments **positionally**
+     ⇒ a caller following the named-object form **silently did nothing** (`ok=true` with no effect). **Fixed**
+     (2026-09-29): the command bridge seam (shared by `exec` and pool-side `executeCommand`) now expands a **single
+     named object** in declared `params` order — positional spreading still works; both forms are correct. ⚠️ The
+     narrowing: **exactly one object argument** + the command **declares ≥2 `params`** + at least one key **matches**;
+     commands with ≤1 `params` are not expanded (that object is legitimately its argument).
+  3. **Return value** — when the handler **returns nothing**, an outside caller only sees the envelope's `ok:true`, so
+     "**ran but did nothing**" (target missing / precondition unmet / argument missing) and "**actually did it**" look
+     **identical** to an AI, which then has to guess via screenshots and retries. **Rule**: if a command does work,
+     **return a receipt** — done: `{ ok: true }`; **not done but not a failure**: `{ ok: true, noop: true, reason: "<literal>" }`
+     (e.g. `"single-tab"` / `"max-depth"` / target missing); **this call itself is wrong**:
+     `{ ok: false, noop: true, reason }` (e.g. missing argument / host not registered). `reason` must be a
+     **distinguishable literal**, ⛔ never a catch-all "other". The two built-in split commands already set the example —
+     **your handler's return value is the answer the AI reads**.
+
+- 🔴 **Failure and addressing shapes** (established 2026-09-29; a standing convention alongside the three
+  pitfalls above, with precedents from the host config-write command and the serial plugin's session addressing):
+  1. **Read commands, and write commands that an outside caller addresses: bad arguments report in the payload, ⛔ never
+     by throwing.** A throw travels through the shell's `runCommand` catch → `reportError` → a **user-visible red toast**,
+     and "the caller wrote a bad argument" is something **the user can do nothing about** right then (a slap in the face
+     helps nobody). The uniform shape is `{ ok: false, noop: true, reason: "<literal>", error: "<one sentence for humans>" }`
+     — `reason` for code to branch on, `error` for humans/AI to read; when reporting "not found", **list what exists**
+     (⛔ do not make the caller ask again). ⚠️ **Be honest about the split, do not flatten it**: the older batch of
+     commands that "a human can click in a menu / context menu" (arguments filled in by the UI, so a bad argument can
+     only be a real bug) **keep throwing**. Both shapes coexisting is **intentional**: ⛔ do not convert old commands to
+     payloads, and do not write new ones as throws.
+  2. **If you name it, you must know the name**: a command taking a target id (`sessionId` / `tabId` / `key` / `uri` …)
+     **must hit when given one** — on a miss return `{ ok: false, noop: true, reason: "bad-…", error }` and list the
+     **available** candidates, ⛔ **never silently fall back** to "the active one / the first one": that produces
+     "**the books look fine, but a different object was changed**" — exactly the shape this effort keeps eradicating
+     (and the hardest to debug when several objects coexist). Only the default (no id given) uses the old
+     "active → first" semantics.
+  3. **Read commands: empty ≠ failure, and "cannot read" ≠ empty.** An empty read honestly returns
+     `{ ok: true, count: 0, … }`; an unreadable one (underlying error / that face not registered) returns
+     `{ ok: false, noop: true, reason: "read-failed" }` with the cause. "There is none" and "I do not know" call for
+     **opposite** responses (plug a device / change arguments vs. check drivers / permissions); blending them is the
+     "answered nothing but looked like an answer" defect — the very shape this effort keeps eradicating.
+  4. **Toggle/flip commands return the value read back**: `{ field, previous, value }` (`value` read **after** the change).
+     ⛔ Do not let the caller infer state from the command title, the schema default, or its own intent — especially since
+     **titles change with state** (dynamic titles); using one as a reading is **guaranteed wrong** (that is precisely how
+     the external AI misjudged the 0.2.25 retest).
 
 ---
 
