@@ -50,7 +50,7 @@
 
 <!-- BEGIN COMMAND-INDEX -->
 
-**宿主命令 91 条 / 7 个分类**——插件命令不在本表（运行时用 `getCommands()` 查）。
+**宿主命令 92 条 / 7 个分类**——插件命令不在本表（运行时用 `getCommands()` 查）。
 
 ### 帮助（6）
 
@@ -135,7 +135,7 @@
 | `workbench.action.toggleSidebarVisibility` | 切换侧栏可见性 | 显示/隐藏主侧栏 | —— | —— |
 | `workbench.action.toggleViewVisibility` | 切换视图可见性 | 显示/隐藏指定视图 | `ctx`: object 必填 — { viewId: string; containerId?: string }——目标视图 id，containerId 用于同 viewId 消歧 | —— |
 
-### 首选项（24）
+### 首选项（25）
 
 | 命令 id | 标题 | 说明 | 参数（调用实参） | when 门控 |
 |:--|:--|:--|:--|:--|
@@ -157,7 +157,8 @@
 | `workbench.action.copySettingId` | 复制设置 ID | 把指定设置项的 id 复制到剪贴板 | `ctx`: object 必填 — { settingKey: string }——目标设置项 id | —— |
 | `workbench.action.followTheme` | 跟随主题 | 取消指定设置项的用户覆盖，让它重新跟随当前主题 | `ctx`: object 必填 — { settingKey: string }——目标设置项 id | `settingFollowTheme` |
 | `workbench.action.getConfiguration` | 读取配置项 | 读一个配置键的值与来源分层（schema 默认／用户／工作区／生效值 ＋ declared 判定）——⛔ 不用去翻 settings.json；键名清单看 workbench.action.listConfigurations | `key`: string 必填 — 配置键，如 app.theme（键名清单：workbench.action.listConfigurations） | —— |
-| `workbench.action.listConfigurations` | 列出全部配置项 | 列出全部已注册配置键（按插件分组：类型／默认／枚举／说明）——不知道键名时先读这个，再去 workbench.action.getConfiguration 取值。只报声明面，⛔ 不含各键当前值 | —— | —— |
+| `workbench.action.listConfigurations` | 列出全部配置项 | 列出全部已注册配置键（按插件分组：类型／默认／枚举／说明 ＋ 该键**有没有被用户改过**：userValue／overridden）——不知道键名时先读这个，再去 workbench.action.getConfiguration 取分… | —— | —— |
+| `workbench.action.listOverrides` | 列出被改过的配置项 | 只列**有用户覆盖（user scope）或工作区覆盖**的配置键及其值——无覆盖的键不进结果，空表 = 谁都没被改过。问「哪些键被改过／我上一笔动了什么」用这一条，⛔ 不必逐键 getConfiguration、也不必拉全量 listC… | —— | —— |
 | `workbench.action.openAppearanceStorage` | 打开存储位置 | 在系统资源管理器中打开外观存储目录（背景图存放处） | `ctx`: object 必填 — { settingKey: string }——目标设置项 id（仅 app.backgroundImage / app.zoneBackgroundImage 会出现本命令） | `settingKey == 'app.backgroundImage' \|\| settingKey == 'app.zoneBackgroundImage'` |
 | `workbench.action.openKeybindingsSettings` | 打开键盘快捷方式 | 打开键盘快捷方式设置页 | —— | —— |
 | `workbench.action.resetSetting` | 重置此设置 | 把指定设置项重置为默认值（先弹确认框） | `ctx`: object 必填 — { settingKey: string }——目标设置项 id | `settingResetsToDefault \|\| (settingModified && !settingFollowTheme)` |

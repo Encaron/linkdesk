@@ -1,7 +1,7 @@
 /**
  * 壳读数命令——M2 `AI#62`：命令面**补读数**（配置 / 布局 / 容器与视图）。
  *
- * 🔴 为什么单独一个文件：这四条同属「AI 读数」一个概念（对外部 AI 与插件是**读**不是动作），
+ * 🔴 为什么单独一个文件：这一族同属「AI 读数」一个概念（对外部 AI 与插件是**读**不是动作），
  *    与 `panelCommands`（写几何）/`settingsCommands`（写设置）/`tabCommands`（写标签）同族——
  *    ⛔ 不散进那三个写面文件，否则下次找「怎么读」会去翻三个「怎么写」。
  *
@@ -20,7 +20,7 @@ import { registerCommand, type Command } from "../../registry/commands/CommandRe
 import { layoutEngine, narrowSidebarEdge, narrowPanelEdge } from "../../services/layout/LayoutEngine";
 import { ViewContainerService } from "../../services/layout/ViewContainerService";
 import { getMergedSchema, getConfigurationContributions } from "../../registry/ConfigurationRegistry";
-import { inspectConfiguration } from "../../services/configuration/ConfigurationService";
+import { inspectConfiguration, hasConfigurationValue } from "../../services/configuration/ConfigurationService";
 import { layoutSnapshot } from "../../services/plugins/readSnapshots";
 import { APP_PLUGIN_ID } from "../../services/plugins/PluginStateService";
 
@@ -110,7 +110,7 @@ export function registerReadCommands(): void {
       id: "workbench.action.listConfigurations",
       title: "列出全部配置项",
       category: "首选项",
-      description: "列出全部已注册配置键（按插件分组：类型／默认／枚举／说明）——不知道键名时先读这个，再去 workbench.action.getConfiguration 取值。只报声明面，⛔ 不含各键当前值",
+      description: "列出全部已注册配置键（按插件分组：类型／默认／枚举／说明 ＋ 该键**有没有被用户改过**：userValue／overridden）——不知道键名时先读这个，再去 workbench.action.getConfiguration 取分层值；只要「哪些键被改过、值各是什么」这一问，用 workbench.action.listOverrides",
       handler: async () => {
         // 🔴 遍历「贡献」而不是「合并 schema」：贡献里的键**只含被接受的**（异插件同键被拒的那份不进
         //    `properties`，见 `ConfigurationRegistry.registerConfiguration` 的 accepted 汇集）
@@ -125,12 +125,52 @@ export function registerReadCommands(): void {
             // enum/enumDescriptions 只在真声明时出现（⛔ 不填 `[]` 占位——空数组会被读成「允许值一个都没有」）
             ...(prop.enum ? { enum: prop.enum, ...(prop.enumDescriptions ? { enumDescriptions: prop.enumDescriptions } : {}) } : {}),
             description: prop.description,
+            // 🔴 覆盖面**就地**报在这张表上（生长格 `AI#70` 的 fail-safe 那一半）：⚠️ 曾实测踩过——
+            //    消费者拿这张表「挑一个没覆盖的键去验清覆盖门」，表里没有覆盖信息 ⇒ 只能自己推断 ⇒
+            //    推断恒真 ⇒ 挑中真有覆盖的键、把真覆盖删了。补在**消费者已经在看的地方**，
+            //    此后任何枚举本命令的调用方**不再有机会**误判（代价 = 表略胖，⛔ 不是缺陷）。
+            userValue: orNull(inspectConfiguration(key).userValue),
+            overridden: hasConfigurationValue(key),
           })),
         }));
         return {
           count: groups.reduce((n, g) => n + g.keys.length, 0),
           groups,
         };
+      },
+    },
+
+    {
+      id: "workbench.action.listOverrides",
+      title: "列出被改过的配置项",
+      category: "首选项",
+      description: "只列**有用户覆盖（user scope）或工作区覆盖**的配置键及其值——无覆盖的键不进结果，空表 = 谁都没被改过。问「哪些键被改过／我上一笔动了什么」用这一条，⛔ 不必逐键 getConfiguration、也不必拉全量 listConfigurations",
+      handler: async () => {
+        // 🔴 键集与 `listConfigurations` **同源**（都走 `getConfigurationContributions`）——本命令只做
+        //    「按覆盖与否过滤」这一件事，⛔ 不另造一份键清单（两份清单迟早分叉 = 第二把尺）。
+        // 🔴 覆盖判定与取值同样只认 `ConfigurationService`（`hasConfigurationValue` / `inspectConfiguration`）：
+        //    ⛔ 不在这里读 settings.json、不自己合并分层——单一权威在服务里，本命令只是它的一个出口。
+        const overrides: Array<{
+          key: string;
+          pluginId: string;
+          userValue: unknown;
+          workspaceValue: unknown;
+          effectiveValue: unknown;
+        }> = [];
+        for (const [pluginId, contrib] of getConfigurationContributions()) {
+          for (const key of Object.keys(contrib.properties)) {
+            if (!hasConfigurationValue(key)) continue;
+            const insp = inspectConfiguration(key);
+            overrides.push({
+              key,
+              pluginId,
+              userValue: orNull(insp.userValue),
+              workspaceValue: orNull(insp.workspaceValue),
+              effectiveValue: orNull(insp.effectiveValue),
+            });
+          }
+        }
+        return { count: overrides.length, overrides };
       },
     },
 

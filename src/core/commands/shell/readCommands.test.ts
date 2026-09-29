@@ -1,15 +1,17 @@
 /**
- * readCommands 测试——M2 `AI#62` 读数命令族（配置读 ／ 配置清单 ／ 布局读 ／ 容器与视图读）。
+ * readCommands 测试——M2 `AI#62` 读数命令族（配置读 ／ 配置清单 ／ 配置覆盖清单 ／ 布局读 ／ 容器与视图读）。
  *
  * 覆盖：
  *   - `getConfiguration`：五层合并读数（declared／userValue／effectiveValue）＋ 未知键**如实报**
  *     `declared:false` ＋ 两种调用形（逐位 / 单具名对象）等价 ＋ 坏参 ⇒ **载荷里的报错**（⛔ 不抛
  *     异常——抛会被壳侧 `reportError` 弹用户 toast）。
- *   - `listConfigurations`：分组清单（类型/默认/枚举/说明）＋ **不变量**：清单里每个键都能被
- *     `getConfiguration` 认下（贡献面与合并 schema 的键集一致，两家不许打架）。
+ *   - `listConfigurations`：分组清单（类型/默认/枚举/说明 ＋ 覆盖标记 `userValue`/`overridden`）＋
+ *     **不变量**：清单里每个键都能被 `getConfiguration` 认下（贡献面与合并 schema 的键集一致），
+ *     且 `overridden` 与 `getConfiguration` 的分层**逐键一致**（两家不许打架）。
+ *   - `listOverrides`：只列有覆盖的键 ＋ 值（负控：没人改过 ⇒ **空表**，不是全量清单换名）。
  *   - `getLayout`：窗口容器尺寸 ＋ 侧栏/面板几何 ＋ 显隐（读面槽）＋ 负控：槽未注册 ⇒ **大声抛**。
  *   - `listViews`：容器 → 视图 ＋ 归属插件 ＋ 可见/折叠态 ＋ 负控级边界：**异插件同名视图**各归各的。
- *   - 四条命令都只挂门牌——零 `shellEvents.emit`（无新通道）。
+ *   - 这一族都只挂门牌——零 `shellEvents.emit`（无新通道）。
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
@@ -310,7 +312,115 @@ describe("readCommands——listViews（AI#62 ③ 容器与视图读）", () => 
   });
 });
 
-describe("readCommands——四条命令都只挂门牌（零新通道）", () => {
+describe("readCommands——配置覆盖读数（`AI#70`：`listConfigurations` 的 overridden ＋ `listOverrides`）", () => {
+  beforeEach(baseSetup);
+
+  /** 判据面形状——只声明被测字段，其余走 Record（⛔ 别用 any：`--max-warnings 0` 会红） */
+  interface KeyFacts {
+    key: string;
+    userValue: unknown;
+    overridden: boolean;
+  }
+  interface OverrideRow {
+    key: string;
+    pluginId: string;
+    userValue: unknown;
+    workspaceValue: unknown;
+    effectiveValue: unknown;
+  }
+
+  /** 写一条用户层覆盖——持久化腿在测试环境必然失败（无 userDataDir），单测只关心**内存里的用户层**，
+   *  与 `ConfigurationService.test.ts` 同款处理（⛔ 不让 persist 失败把断言带崩）。 */
+  async function writeUserValue(key: string, value: unknown): Promise<void> {
+    try {
+      await setConfigurationValue(key, value);
+    } catch {
+      /* persist failed — expected in test */
+    }
+  }
+
+  async function keyFacts(): Promise<KeyFacts[]> {
+    const r = (await executeCommandStrict("workbench.action.listConfigurations")) as {
+      groups: Array<{ keys: KeyFacts[] }>;
+    };
+    return r.groups.flatMap((g) => g.keys);
+  }
+
+  it("listConfigurations：每条键**就地**报出「有没有被改过」（⛔ 不让调用方自己推断）", async () => {
+    expect((await keyFacts()).find((k) => k.key === "readtest.theme")).toMatchObject({
+      userValue: null,
+      overridden: false,
+    });
+
+    await writeUserValue("readtest.theme", "light");
+
+    const facts = await keyFacts();
+    expect(facts.find((k) => k.key === "readtest.theme")).toMatchObject({ userValue: "light", overridden: true });
+    // 同组未动过的键**仍报未覆盖**（⛔ 不是「有一个覆盖就整组为真」）
+    expect(facts.find((k) => k.key === "readtest.fontSize")).toMatchObject({ userValue: null, overridden: false });
+  });
+
+  it("不变量：overridden 与 getConfiguration 的分层逐键一致——两家不许打架", async () => {
+    await writeUserValue("readtest.fontSize", 18);
+
+    for (const k of await keyFacts()) {
+      const one = (await executeCommandStrict("workbench.action.getConfiguration", undefined, k.key)) as {
+        userValue: unknown;
+        workspaceValue: unknown;
+      };
+      expect(k.overridden).toBe(one.userValue !== null || one.workspaceValue !== null);
+      expect(k.userValue).toEqual(one.userValue);
+    }
+  });
+
+  it("listOverrides —— 负控：谁都没改过 ⇒ 空表（count:0），⛔ 不是「全量清单换个名字」", async () => {
+    const r = (await executeCommandStrict("workbench.action.listOverrides")) as {
+      count: number;
+      overrides: OverrideRow[];
+    };
+    expect(r.count).toBe(0);
+    expect(r.overrides).toEqual([]);
+  });
+
+  it("listOverrides —— 只列被改过的键 ＋ 值（未动的键不进结果）", async () => {
+    await writeUserValue("readtest.theme", "light");
+
+    const r = (await executeCommandStrict("workbench.action.listOverrides")) as {
+      count: number;
+      overrides: OverrideRow[];
+    };
+    expect(r.count).toBe(1);
+    expect(r.overrides[0]).toMatchObject({
+      key: "readtest.theme",
+      pluginId: CFG_PLUGIN,
+      userValue: "light",
+      workspaceValue: null,
+      effectiveValue: "light",
+    });
+    expect(r.overrides.map((o) => o.key)).not.toContain("readtest.fontSize");
+  });
+
+  it("listOverrides —— 与 getConfiguration 交叉一致：条数 = 覆盖条数，值逐条对得上", async () => {
+    await writeUserValue("readtest.theme", "light");
+    await writeUserValue("readtest.fontSize", 18);
+
+    const r = (await executeCommandStrict("workbench.action.listOverrides")) as {
+      count: number;
+      overrides: OverrideRow[];
+    };
+    expect(r.count).toBe(2);
+    for (const row of r.overrides) {
+      const one = (await executeCommandStrict("workbench.action.getConfiguration", undefined, row.key)) as {
+        userValue: unknown;
+        effectiveValue: unknown;
+      };
+      expect(row.userValue).toEqual(one.userValue);
+      expect(row.effectiveValue).toEqual(one.effectiveValue);
+    }
+  });
+});
+
+describe("readCommands——读数命令都只挂门牌（零新通道）", () => {
   beforeEach(baseSetup);
 
   it("执行不 emit shellEvents（读数命令不引入任何副作用通道）", async () => {
@@ -323,6 +433,7 @@ describe("readCommands——四条命令都只挂门牌（零新通道）", () =
     const emitSpy = vi.spyOn(shellEvents, "emit");
     await executeCommandStrict("workbench.action.getConfiguration", undefined, "readtest.theme");
     await executeCommandStrict("workbench.action.listConfigurations");
+    await executeCommandStrict("workbench.action.listOverrides");
     await executeCommandStrict("workbench.action.getLayout");
     await executeCommandStrict("workbench.action.listViews");
     expect(emitSpy).not.toHaveBeenCalled();
