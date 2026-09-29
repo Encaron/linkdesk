@@ -1,0 +1,17 @@
+#!/bin/sh
+# M4 AI#40 / AI#58: linkdeskctl shim for bash-family shells (Git Bash, MSYS2, Cygwin).
+# Why this file exists: cmd.exe / PowerShell resolve the bare name `linkdeskctl` to
+# linkdeskctl.cmd through PATHEXT, but POSIX shells never look at PATHEXT -- they need a
+# name with no extension. MSYS honours a shebang in an extensionless file, so this sibling
+# shim makes the same bare name work in both worlds (measured 2026-09-29 on Git Bash:
+# `linkdeskctl status` from C:\ resolved through PATH and printed the live instance).
+# Launch recipe mirrors linkdeskctl.cmd: run the CLI with the bundled Electron in node mode
+# (ELECTRON_RUN_AS_NODE), so the user machine needs no separate node install.
+# ASCII-only, LF-only on purpose -- see .gitattributes; scripts/check-cli-shims.mjs enforces it.
+self=$0
+case $self in
+  */*) ;;
+  *) self=$(command -v "$self" 2>/dev/null) || self=$0 ;;
+esac
+dir=$(cd "$(dirname "$self")" && pwd) || exit 1
+ELECTRON_RUN_AS_NODE=1 exec "$dir/LinkDesk.exe" "$dir/resources/linkdeskctl/linkdeskctl.mjs" "$@"

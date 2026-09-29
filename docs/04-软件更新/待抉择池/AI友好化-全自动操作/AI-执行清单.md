@@ -395,9 +395,10 @@
 
 - [ ] **AI#56** 「添加市场源」功能在（`marketplace:src/services/marketSourceAdd.ts`），**命令面零条**（`marketplace.*` 五条 = enable/disable/uninstall/retryInstall/retryUpdate）⇒ 外部 AI 只能改设置数组，[§十 #3](01-设计.md) 的「＋M2」仍未兑现。｜**证据**：`AI#46` E3 ○ 实跑｜**候选修法** = 补 `marketplace.addSource`（薄命令转发服务层）｜**判据** = CLI/MCP 能加源并回读目录含该源｜量级 = 小
 
-#### AI#58 ⬜ （生长格 · 2026-09-29 会话 14 收尾实测立案）`linkdeskctl` 在 bash 系壳里不认裸名字
+#### AI#58 ✅ （生长格 · 2026-09-29 会话 14 实测立案 ＋ 同日修发；修法 = 随包多一份无扩展名 POSIX 垫片）`linkdeskctl` 在 bash 系壳里不认裸名字
 
-- [ ] **AI#58** 装好的 CLI 正门在 **bash 系壳里只认 `linkdeskctl.cmd`**——`cmd.exe` / PowerShell 里裸敲 `linkdeskctl` 可以（PATHEXT 解析），但 Git Bash / MSYS2 **不解析 `.cmd` 后缀** ⇒ `bash: linkdeskctl: command not found`；而 AI 驱动器多的是跑 bash 的（本机实测 2026-09-29：`cd /c && linkdeskctl --help` = not found；`linkdeskctl.cmd status` = 正常读到在跑实例 `0.2.23 · pid 76092 · tcp 127.0.0.1:50931`）。｜**判据**：从任意目录、两种壳各跑一次——`cmd /c linkdeskctl status` 与 `bash -lc 'linkdeskctl status'` **都能出同一份读数**；修法 = 随包多出一个**无扩展名 POSIX 壳**（`#!/bin/sh` 转调 `.cmd`；MSYS 按内容判可执行）或 `linkdeskctl` 别名脚本，并在 `--help` 文末补「其它壳怎么调」一行。｜**归属** = 待排（与 `AI#52`–`AI#56` 同池）；**发版批联动**：改的是 `build/` 下的出货件 ⇒ 随下一个软件版出厂。
+- [x] **AI#58** 装好的 CLI 正门在 **bash 系壳里只认 `linkdeskctl.cmd`**——`cmd.exe` / PowerShell 里裸敲 `linkdeskctl` 可以（PATHEXT 解析），但 Git Bash / MSYS2 **不解析 `.cmd` 后缀** ⇒ `bash: linkdeskctl: command not found`；而 AI 驱动器多的是跑 bash 的（本机实测 2026-09-29：`cd /c && linkdeskctl --help` = not found；`linkdeskctl.cmd status` = 正常读到在跑实例 `0.2.23 · pid 76092 · tcp 127.0.0.1:50931`）。｜**判据**：从任意目录、两种壳各跑一次——`cmd /c linkdeskctl status` 与 `bash -lc 'linkdeskctl status'` **都能出同一份读数**；修法 = 随包多出一个**无扩展名 POSIX 壳**（`#!/bin/sh` 转调 `.cmd`；MSYS 按内容判可执行）或 `linkdeskctl` 别名脚本，并在 `--help` 文末补「其它壳怎么调」一行。｜**归属** = 待排（与 `AI#52`–`AI#56` 同池）；**发版批联动**：改的是 `build/` 下的出货件 ⇒ 随下一个软件版出厂。
+      —— ✅ **2026-09-29 销账（同日修发，随补丁版 `v0.2.24`）｜判据「两种壳各跑一次出同一份读数」两条都落**：① `cmd` 里裸敲 `linkdeskctl status`（真机、从 `C:\`）出读数；② **Git Bash 里裸敲同一个名字出同一份读数**（`0.2.23 · pid 76092 · 在服务 127.0.0.1:50931`；另 `--json` 机读 ✓ · `mcp config` ✓ · 退出码透传 `exit=1` ✓）。**修法** = `build/linkdeskctl`（**无扩展名 ＋ shebang**；`$0` 真机实测就是解析后的全路径 ⇒ `dirname` 自定位成立）＋ `electron-builder.yml` 的 `extraFiles` 第二条。**为什么不合成一份** = 两种壳的发现机制不相交（cmd 不认 shebang / POSIX 壳不认 `.cmd`）⇒ 只能两份实现 ＋ 一条对齐门禁。**同批新门禁** = [`scripts/check-cli-shims.mjs`](../../../../scripts/check-cli-shims.mjs)（ASCII-only · LF-only · 两份启动配方同参 · `extraFiles`/`extraResources` 声明齐；`--with-artifact` 再判产物逐字节），已接进 `npm run check`。**自测当场抓到自己的漏洞**：初版判据写 `includes("ELECTRON_RUN_AS_NODE")`，而垫片**注释里也写着这个词** ⇒ 把启动行删掉仍绿（负控③ 实测），改成**逐壳启动行正则契约**才红——9 例（1 正控 ＋ 8 负控）全过。｜**修前必答三件事**：① 根因 = POSIX 壳不解析 `PATHEXT`，安装根只有 `.cmd` 一份（`command not found`）；② 改法 = 同体 POSIX 垫片 ＋ 打包声明 ＋ 门禁；③ 可执行性 = 上列两壳真机读数。
 
 > **⛔ 两条被裁掉、不登记**（2026-09-29 `AI#46` 裁决，防「为凑数立格」）：① **图标栏点击**——源码口径 `icon:selected → 壳开标签`，非鼠标等价 = `open-tab <pluginId>`/`tabs.create`（手册在载）⇒ **非缺口**；② **`serial-monitor.send` 运行期元数据**——首跑曾见 desc/params 为空，**净态复跑推翻**（desc 90 字 ＋ params 4 项齐全）⇒ 不作缺口。
 
@@ -495,7 +496,7 @@ D0#1–D0#3（系列外 · ✅ **2026-09-28 已收口**，不占 AI 格）
 ## 总结
 
 > **只在这里写数字**（别处不复写）。**当前 = 62 / 62 格已回勾**（＋ 系列外 `D0#1`–`D0#3` = **3 / 3 ✅**；**生长格**：`AI#50` ✅（`eb894ebc0`）· `AI#51` ✅（`f74b0c25d`）· **`AI#52`–`AI#56` 已登记、⬜ 未做** · **`AI#57` 已登记（2026-09-29 会话 14 真机逼出：垫片 `linkdeskctl.cmd` 的中文注释撞 cmd 的 OEM 码页 ⇒ 启动 App 而非 CLI；**修已入库 `build/linkdeskctl.cmd`，已随补丁版 `0.2.23` 出厂（2026-09-29）**）**——**不计入 62 格预算**，照 §一「格数会生长」口径）。
-> ＋ **`AI#58`** 已登记、⬜ 未做（2026-09-29 会话 14 收尾实测：bash 系壳里要带 `.cmd` 才认——见本档 `#### AI#58`）。
+> ＋ **`AI#58`** 已修、已随补丁版 `v0.2.24` 出厂（2026-09-29 会话 14 同日：随包多一份无扩展名 POSIX 垫片，两种终端同一个名字——见本档 `#### AI#58`）。
 
 | 轮 | 模块 | 格 | 已回勾 | 状态 |
 |:--:|:--|:--|:--:|:--|

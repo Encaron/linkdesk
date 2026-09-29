@@ -85,11 +85,16 @@ extraResources:
   # boot 自动装落 userData）。壳注册处按插件根把 langDef.lsp.args 一次绝对化（electron/plugins/lsp-arg-resolve.ts）→
   # spawn 命中 userData 路径，无需 ASAR 外拷贝。E5#114d 临时 hack 删除（核心无知：壳不背语言工具）。
 
-# M4 `AI#40`：linkdeskctl.cmd 垫片进**安装根**（extraFiles 相对 INSTDIR；PATH 加的就是 $INSTDIR）。
-# 垫片正文见 build/linkdeskctl.cmd 头注——随包 Electron 以 node 模式跑 resources/linkdeskctl。
+# M4 `AI#40` / `AI#58`：**两个**垫片进安装根（extraFiles 相对 INSTDIR；PATH 加的就是 $INSTDIR）。
+#   ① linkdeskctl.cmd —— cmd 系壳（cmd.exe / PowerShell）靠 PATHEXT 发现（其中文注释曾把启动行读坏，AI#57）；
+#   ② linkdeskctl     —— POSIX 壳（Git Bash / MSYS2 / Cygwin）**不看 PATHEXT**，只能靠「无扩展名 ＋ shebang」。
+# 两种壳的发现机制不相交 ⇒ 同一件事的两份实现；启动配方（随包 Electron 以 node 模式跑
+# resources/linkdeskctl）与打包声明必须逐字对齐，由 scripts/check-cli-shims.mjs 机械把关。
 extraFiles:
   - from: build/linkdeskctl.cmd
     to: linkdeskctl.cmd
+  - from: build/linkdeskctl
+    to: linkdeskctl
 
 win:
   icon: build/icon.ico # 04：显式声明（此前靠 build/ 约定目录兜底——挪目录/加平台会静默丢图标）
