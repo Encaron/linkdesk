@@ -50,7 +50,7 @@
 
 <!-- BEGIN COMMAND-INDEX -->
 
-**宿主命令 89 条 / 7 个分类**——插件命令不在本表（运行时用 `getCommands()` 查）。
+**宿主命令 90 条 / 7 个分类**——插件命令不在本表（运行时用 `getCommands()` 查）。
 
 ### 帮助（6）
 
@@ -135,7 +135,7 @@
 | `workbench.action.toggleSidebarVisibility` | 切换侧栏可见性 | 显示/隐藏主侧栏 | —— | —— |
 | `workbench.action.toggleViewVisibility` | 切换视图可见性 | 显示/隐藏指定视图 | `ctx`: object 必填 — { viewId: string; containerId?: string }——目标视图 id，containerId 用于同 viewId 消歧 | —— |
 
-### 首选项（22）
+### 首选项（23）
 
 | 命令 id | 标题 | 说明 | 参数（调用实参） | when 门控 |
 |:--|:--|:--|:--|:--|
@@ -161,6 +161,7 @@
 | `workbench.action.openKeybindingsSettings` | 打开键盘快捷方式 | 打开键盘快捷方式设置页 | —— | —— |
 | `workbench.action.resetSetting` | 重置此设置 | 把指定设置项重置为默认值（先弹确认框） | `ctx`: object 必填 — { settingKey: string }——目标设置项 id | `settingResetsToDefault \|\| (settingModified && !settingFollowTheme)` |
 | `workbench.action.selectLanguage` | 选择语言 | 打开语言选择器切换界面语言 | —— | —— |
+| `workbench.action.setConfiguration` | 写入配置项 | 写一个配置键的用户值（user scope）——先按声明面校验（键是否声明／类型／枚举／上下界／是否显示槽／是否 ai.* 禁写），写完当场回读，回执带写入前后值。⛔ 它不替你想「该写什么值」：键名与默认值看 workbench.acti… | `ctx`: object 必填 — { key: string; value: unknown }——value 按该键声明类型给（字符串/数字/布尔/数组/对象直接给，⛔ 不必包成对象）；也可逐位写成 ("键名", 值) | —— |
 
 ### （未分类）（9）
 
