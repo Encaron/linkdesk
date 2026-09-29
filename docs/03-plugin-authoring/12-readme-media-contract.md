@@ -13,9 +13,9 @@ The `README.md` in the plugin root directory is displayed in the **"Details" tab
 | State | Where the README comes from | Relative-path media (assets shipped in the package) | https absolute-URL media |
 |:--|:--|:--:|:--:|
 | **Installed state** (the user downloaded and installed it, or it shipped with the shell, and then views the details) | Reads **the copy you packaged into the zip** | ✅ Shown | ✅ Shown |
-| **Marketplace preview state** (not installed; the list/details read the remote README of the catalog entry) | Reads the **remote readmeUrl** | ❌ Not shown (honestly hidden — at that moment there is no in-package copy of yours to resolve) | ✅ Shown |
+| **Marketplace preview state** (not installed; the list/details read the remote README of the catalog entry) | Reads the **remote readmeUrl** | ✅ Shown (relative paths are resolved against the readmeUrl's own directory into same-directory https links; excepted when readmeUrl is not https or has no directory segment) | ✅ Shown |
 
-> **What this means:** if you want the image/video to be guaranteed visible after the user has **installed** the plugin → use a **relative path pointing inside the package** (§3 below); if you want the image/video to be visible even to **visitors who haven't installed it yet** → use an **https absolute URL**. Shipping only relative-path media = visible only once installed.
+> **What this means:** relative-path media and https absolute-URL media are **both shown** in either state — provided the readmeUrl and the in-package assets line up relatively (readmeUrl at the repo root, assets placed relative to the repo root). The only thing to avoid is an asset that exists **only inside the package but not in the repository**: the preview state has no way to fetch it.
 
 ---
 

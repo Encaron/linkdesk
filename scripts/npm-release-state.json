@@ -213,8 +213,8 @@
     },
     {
       "name": "@linkdesk/plugin-docs",
-      "version": "0.1.44",
-      "contentHash": "51c5d11975eae1309c8fd230e0c857ee826e9ff897ab469747055b9e23e5924d",
+      "version": "0.1.45",
+      "contentHash": "4cfbb93aaf122b8d7a3ebf9936da8d8f00d91d5a03fbf1618c2a60f47d181357",
       "fileHashes": {
         "packages/plugin-docs/README.md": "6cd51394e987a3f2",
         "packages/plugin-docs/docs/00-readme.md": "ab34ec71ea7f4099",
@@ -229,7 +229,7 @@
         "packages/plugin-docs/docs/09-plugin-directory-layout.md": "569f618f21318a59",
         "packages/plugin-docs/docs/10-building-a-settings-plugin.md": "003f30a13b2f58e2",
         "packages/plugin-docs/docs/11-authoring-themes.md": "17059539724f8c55",
-        "packages/plugin-docs/docs/12-readme-media-contract.md": "a5d2ad89686860ef",
+        "packages/plugin-docs/docs/12-readme-media-contract.md": "f7cb640e07d9dbd3",
         "packages/plugin-docs/docs/13-development-guide.md": "9d5bfc94e2cc8621",
         "packages/plugin-docs/docs/14-data-pipeline-command-conventions.md": "36164c41f3799b8e",
         "packages/plugin-docs/docs/15-multi-repo-and-local-workspace.md": "e5d0b55556faf451",
@@ -253,7 +253,7 @@
         "packages/plugin-docs/docs/zh/09-插件目录规范.md": "a375f1c35d7af8aa",
         "packages/plugin-docs/docs/zh/10-如何造一个设置插件.md": "2bf06490394ebece",
         "packages/plugin-docs/docs/zh/11-主题制作.md": "93763e4bbed5544a",
-        "packages/plugin-docs/docs/zh/12-README说明区媒体契约.md": "69b6412ea9ae4980",
+        "packages/plugin-docs/docs/zh/12-README说明区媒体契约.md": "612f7993c107bf42",
         "packages/plugin-docs/docs/zh/13-插件开发指南.md": "dc0c9e701c61455f",
         "packages/plugin-docs/docs/zh/14-数据管道命令约定.md": "bf3c0b5e0f6fbf25",
         "packages/plugin-docs/docs/zh/15-多仓开发与本地工作区.md": "a5f81d3025a87a67",
