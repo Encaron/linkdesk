@@ -14,6 +14,7 @@ import { shellEvents } from "../core/react/events/ShellEvents";
 import { getTabLayout, getPanelLayout, getSidebarLayout } from "../core/services/layout/LayoutService";
 import { layoutEngine } from "../core/services/layout/LayoutEngine";
 import { syncCountersAfterRestore, type LayoutData } from "../hooks/useTabManager";
+import { primeRestoredShellDataTabs } from "./shellTabPriming";
 import type { CreateTabOptions } from "../core/api/types";
 
 export interface TabActionsDeps {
@@ -92,6 +93,9 @@ export function useTabActions({
         }
         const all = savedLayout.groups.flatMap((g: { tabs: { id: string; type: string }[] }) => g.tabs);
         syncCountersAfterRestore(all);
+        // 壳直渲染数据标签页（关于 / AI 手册）恢复后补 prime——否则壳侧快照恒 loading、池永远停在骨架
+        // （病根与修法见 shellTabPriming.ts 头注；发行说明不在此列，它有 releaseNotesOnLaunch 启动预热）。
+        primeRestoredShellDataTabs(all);
       }
     } catch { /* 恢复失败不影响启动 */ }
   }, [ready]); // eslint-disable-line react-hooks/exhaustive-deps

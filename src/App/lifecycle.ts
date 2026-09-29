@@ -19,6 +19,7 @@ import { factorySlots } from "../core/services/bootstrap/FactorySlots";
 import { onDidRequestShowChannel } from "../core/services/ui/LogChannel";
 import { getCallbacks, type CoreCallbacks } from "../core/commands/infra/CoreCallbacks";
 import { getCardLayout, saveWorkspaceLayout } from "../core/services/layout/LayoutService";
+import { primeRestoredShellDataTabs } from "./shellTabPriming";
 import { pushToast } from "../core/services/ui/toast";
 import i18n from "../i18n";
 
@@ -143,6 +144,8 @@ export function useAppLifecycle({ setTheme, setLang, sidebarView, setSidebarView
         try {
           const tabs = detail.layout.tabs as Parameters<NonNullable<CoreCallbacks["restoreTabLayout"]>>[0];
           getCallbacks()?.restoreTabLayout?.(tabs);
+          // 同 tabActions 启动恢复：导入进来的壳数据标签页（关于 / AI 手册）也要补 prime，见 shellTabPriming.ts
+          primeRestoredShellDataTabs(tabs.groups.flatMap((g: { tabs: { id: string; type: string }[] }) => g.tabs));
           void saveWorkspaceLayout(tabs, getCardLayout());
         } catch {
           pushToast({ source: "workspace", severity: "error", message: i18n.t("导入失败：不是有效的工作区文件") });
