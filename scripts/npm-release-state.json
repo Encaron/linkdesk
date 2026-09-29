@@ -119,7 +119,7 @@
     },
     {
       "name": "@linkdesk/ui",
-      "version": "0.2.27",
+      "version": "0.2.28",
       "contentHash": "eb6bd951de92f26d5acd160db9edcf61483f93b6020d06ffc58f398d82e354d7",
       "fileHashes": {
         "packages/linkdesk-ui/README.md": "9b032b907c299083",
@@ -210,12 +210,12 @@
     },
     {
       "name": "@linkdesk/plugin-docs",
-      "version": "0.1.41",
-      "contentHash": "b544b1d6e2da50ceed1936910f652eac8fb5007e9d8614fc0276213bf59347db",
+      "version": "0.1.42",
+      "contentHash": "ef15d7aa3fa0f6e5f46b93c379cf2105feece4ed3b9eb3e0e7fd0bdb5378fc1e",
       "fileHashes": {
         "packages/plugin-docs/README.md": "6cd51394e987a3f2",
         "packages/plugin-docs/docs/00-readme.md": "ffedc7f09a86272a",
-        "packages/plugin-docs/docs/01-plugin-api-contract.md": "2f31f7a238f56715",
+        "packages/plugin-docs/docs/01-plugin-api-contract.md": "e81aaf4072b21282",
         "packages/plugin-docs/docs/02-plugin-lifecycle.md": "aeda91886c7d874b",
         "packages/plugin-docs/docs/03-contributes-spec.md": "08a94813a15bf1a8",
         "packages/plugin-docs/docs/04-distribution-format.md": "e50eaad518539430",
