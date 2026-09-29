@@ -56,7 +56,7 @@
 | 7 | 在某个插件标签页里**做某件事** | = 该插件注册的命令（`linkdesk.commands.getCommands()` 里查） | ⚠️ 看插件 |
 | 8 | **两个 JSON 文件对比** | 两条命令：`file-tree.selectForCompare` → `file-tree.compareWithSelected`（参数 `{uri:"路径"}`；两步手势 = 两行调用）。⚠️ 这两条是**视图态命令**：需先 `open-tab file-tree`（视图挂载后才注册——`describe` 的 `commandsPending` 会先列出它们并写明这一步；`open-tab` 返回时命令面**已落定**，新挂牌的 id 在它的 `added` 里） | ✅ 现成（需装 file-tree 插件） |
 | 9 | 串口侧栏「**打开消息回显**」 | 插件注册的 toggle 型命令（标题随状态动态变） | ✅ 现成 |
-| 10 | 给 MCU **发东西 + AI 自己转编码** | 命令：`serial-monitor.send(sendMode, data, portName?, encoding?)`、`serial-monitor.setSendCoding`；API：`linkdesk.serial.sendText(text, enc, portName)`、`linkdesk.encoding.detect/decode/encode` | ✅ 现成（需装 serial-monitor 插件） |
+| 10 | 给 MCU **发东西 + AI 自己转编码 + 把回声读回来** | 命令：`serial-monitor.send(sendMode, data, portName?, encoding?)`、`serial-monitor.setSendCoding`、`serial-monitor.readSince(since, limit?, portName?)`（拉取式读回声，配 `receiveStatus` 看水位——见 03 章 §8）；API：`linkdesk.serial.sendText(text, enc, portName)`、`linkdesk.encoding.detect/decode/encode` | ✅ 现成（需装 serial-monitor 插件） |
 | 11 | **嵌套分屏**（左→右上下→右下再左右） | `linkdesk.pool.tabAction({action:"splitTab", direction, targetGroupId})` 逐层分裂；比例用 `{action:"updateSplitSizes", anchorGroupId, sizes:[a,b]}` | ✅ 现成 |
 | 12 | **空间定位问答**（「串口监视器在最右下角那一块」） | `linkdesk.tabs.list()`（全窗标签清单）／`linkdesk.pool.getLayout()`（本窗布局树） | ✅ 现成 |
 
