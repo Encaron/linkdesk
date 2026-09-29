@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "syncedAt": "2026-09-29T06:18:04.448Z",
+  "syncedAt": "2026-09-29T08:24:17.319Z",
   "note": "出厂种子的账（E6#101）。`seed:true` = 随包出厂（bootstrap 集，判据「断网零插件时用户能不能自救」）；`seed:false` = 纯市场（只登记，不随包）。谁随包是**数据**不是代码（硬约束 10）。刷新：npm run sync:bundled -- --latest；校验：npm run sync:bundled -- --offline。",
   "plugins": [
     {
@@ -22,9 +22,9 @@
     {
       "id": "lang-defaults",
       "repo": "Encaron/linkdesk-plugin-lang-defaults",
-      "version": "1.0.32",
-      "downloadUrl": "https://github.com/Encaron/linkdesk-plugin-lang-defaults/releases/download/v1.0.32/lang-defaults.linkdesk-plugin",
-      "fingerprint": "CHANGELOG.md:f75e498bbebaaddb44afda0d69425b9269253fe690489be70e92208ba0731ecb\nLICENSE:66ade75576a2f04b7f1a11340b8141cf42a26d3a64bc441e3822e193291d3051\nREADME.md:5bfbd656e092d376ccd5843af47631d3d3d1fc786978611384350b88dbb5862d\nen.json:ab71af03a153245dff5486af6266e6390eb0e13ef7c87fbd60e85d071d519555\nplugin.json:3c55a55f87068ce280e6a3758668a25b066d244e58cc40658520a074e7ba368e\nresources/cover.svg:5f4dc33217c392e0e32d58d8931d8e66c251012896d419b4d2bc487458108af0\nresources/icon.svg:3e541009fc343d47fb82c8d53076526cd445955eafab464cf8d92e0c4571e88b\nzh.json:6c118705d230e8f37d9966c81714d8f0c7ffb48a9b988722faeddbec5490174e",
+      "version": "1.0.33",
+      "downloadUrl": "https://github.com/Encaron/linkdesk-plugin-lang-defaults/releases/download/v1.0.33/lang-defaults.linkdesk-plugin",
+      "fingerprint": "CHANGELOG.md:6fb43bc70b86fb2101f20c3f59b6573e4280fa4c35a26f202b8f4f981bc6ad96\nLICENSE:66ade75576a2f04b7f1a11340b8141cf42a26d3a64bc441e3822e193291d3051\nREADME.md:5bfbd656e092d376ccd5843af47631d3d3d1fc786978611384350b88dbb5862d\nen.json:01b4a07086a9a401395abc115d69e7be97784ddbf210b3d5db3a509466a793c7\nplugin.json:ae9360deaff293a6e7b7b4923370635027c3eda8a79907a7980b81f0dee3d49c\nresources/cover.svg:5f4dc33217c392e0e32d58d8931d8e66c251012896d419b4d2bc487458108af0\nresources/icon.svg:3e541009fc343d47fb82c8d53076526cd445955eafab464cf8d92e0c4571e88b\nzh.json:6c118705d230e8f37d9966c81714d8f0c7ffb48a9b988722faeddbec5490174e",
       "seed": true
     },
     {
@@ -46,9 +46,9 @@
     {
       "id": "serial-monitor",
       "repo": "Encaron/linkdesk-plugin-serial-monitor",
-      "version": "1.0.26",
-      "downloadUrl": "https://github.com/Encaron/linkdesk-plugin-serial-monitor/releases/download/v1.0.26/serial-monitor.linkdesk-plugin",
-      "fingerprint": "CHANGELOG.md:5389752f9b649229acc6f0361f97c689a832a1f903998d7d7d5d6e475e54e9aa\nLICENSE:66ade75576a2f04b7f1a11340b8141cf42a26d3a64bc441e3822e193291d3051\nREADME.md:1eb3c0b4c4bf5f9eae9c321457980d95e79cb75115a00e3917285604e91aafcf\ni18n/en.json:98a15be85504aca411d7a27de3503990c0a9e0f1835d206ecd0a12b1eae1bd1e\nindex.bundle.css:8f0adee3e412fe2c02d919f88ffab49fd53e898a9bc6c2df3fbbc7be269aedb2\nindex.bundle.js:91c85d85f91e8d29c0664646c5446200e6807a5ecee39f149767237814db6263\nplugin.json:985a819348da0b388a4789214a215cafc530180336a77cdfba5b1e6d9ac5d0ed\nresources/cover.svg:cfe36821784bad38a84d51ed9349bfc54037f9ac5cdc09d9c61166ae940e8d73\nresources/icon-bar.svg:5d769d20d92899c4530b7372efb41a14539818a819ac640664e41275a51114e2\nresources/icon.svg:2583933e504c70e8f0b44ac2be3c82b3db48c75631c8511ce7bb30fe86a4990b\nstatusBar.bundle.js:52b352cafa96035aabb8df9d4964a763782266c8c92d54d7e1ae1e346e43442c\nviews/SerialSettingsView.bundle.js:0bf5a882225668d126e0cee610bf0945e9997cfccd9241baba18c3c2f947944a\nviews/SessionListView.bundle.js:af8ecff5df20e58bf6010b27ccc490afa61a51c210961ebaa422b83bbd3103b1",
+      "version": "1.0.27",
+      "downloadUrl": "https://github.com/Encaron/linkdesk-plugin-serial-monitor/releases/download/v1.0.27/serial-monitor.linkdesk-plugin",
+      "fingerprint": "CHANGELOG.md:60f416fba69a5fd7faf651c60a1ab52f32363281a757df635639a359861e823d\nLICENSE:66ade75576a2f04b7f1a11340b8141cf42a26d3a64bc441e3822e193291d3051\nREADME.md:1eb3c0b4c4bf5f9eae9c321457980d95e79cb75115a00e3917285604e91aafcf\ni18n/en.json:c55aac9a208ef0349fbb2357d2962396e1037b4c7a180f6b719bfbeb37c77967\nindex.bundle.css:8f0adee3e412fe2c02d919f88ffab49fd53e898a9bc6c2df3fbbc7be269aedb2\nindex.bundle.js:25c049628787c2384fb879f4e22bd65607ea897f2ae4dc8047831972bbd6bdf1\nplugin.json:afe5724c72ac3791c835a47174c9e582c10c3d9693550697a22e788a98780678\nresources/cover.svg:cfe36821784bad38a84d51ed9349bfc54037f9ac5cdc09d9c61166ae940e8d73\nresources/icon-bar.svg:5d769d20d92899c4530b7372efb41a14539818a819ac640664e41275a51114e2\nresources/icon.svg:2583933e504c70e8f0b44ac2be3c82b3db48c75631c8511ce7bb30fe86a4990b\nstatusBar.bundle.js:52b352cafa96035aabb8df9d4964a763782266c8c92d54d7e1ae1e346e43442c\nviews/SerialSettingsView.bundle.js:0bf5a882225668d126e0cee610bf0945e9997cfccd9241baba18c3c2f947944a\nviews/SessionListView.bundle.js:af8ecff5df20e58bf6010b27ccc490afa61a51c210961ebaa422b83bbd3103b1",
       "seed": false
     },
     {
