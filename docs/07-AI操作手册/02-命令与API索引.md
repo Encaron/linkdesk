@@ -40,6 +40,12 @@
 
    表里每条的 `description`/`params` 与这里返回的是同一份（元数据只做加法，进契约）。
 
+   ⚠️ **视图态命令不在这份快照里**：插件可以把命令注册在**视图挂载时**（`mount` 里 `registerCommand`）⇒
+   没开过那个视图，`getCommands()` 里就没有它。门② 在插件内 ⇒ 先 `tabs.create(pluginId)` 再读；
+   门③（外面接进来的 AI）另有一条**声明面**：`describe` 的 `commandsPending` 会列出「插件清单里声明了、
+   运行期还没注册」的命令，每条带 `needs`（照做的那一步，如 `先 open-tab <插件 id>`），
+   且 `open-tab` 返回时命令面**已经落定**（本次新挂牌的 id 在它的 `added` 里）。
+
 ## 二、宿主命令
 
 <!-- BEGIN COMMAND-INDEX -->

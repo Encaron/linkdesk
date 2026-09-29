@@ -29,6 +29,7 @@
  */
 
 import { IPC } from '../../ipc/channels.js';
+import { pickPendingCommands, settleCommandSurface, type DeclaredCommandSource, type PendingCommand } from './commandSurface.js';
 import { coded } from './errors.js';
 import { askFirstCatalog, askFirstRuleForCommand, askFirstRuleForOp, askUser } from './sensitive.js';
 
@@ -91,6 +92,23 @@ async function listShellCommands(ctx: BridgeOpContext): Promise<Array<{ id: stri
   return Array.isArray(list) ? (list as Array<{ id: string } & Record<string, unknown>>) : [];
 }
 
+/** 插件清单现取——`plugins:call "list"`（既有面；manifest 子集里带 `contributes`）——**声明面**的来源 */
+async function listShellPlugins(ctx: BridgeOpContext): Promise<DeclaredCommandSource[]> {
+  const list = await ctx.shellRequest(IPC.plugins.call, ['list']);
+  return Array.isArray(list) ? (list as DeclaredCommandSource[]) : [];
+}
+
+/**
+ * 「已声明、未注册」的命令（生长格 `AI#54` ①）——`describe.commandsPending` 的正文。
+ * 传入的 `registered` 用调用方手上那份（describe 刚取过的命令面），⛔ 别为它再取一次。
+ */
+async function listPendingCommands(
+  ctx: BridgeOpContext,
+  registered: readonly { id?: unknown }[],
+): Promise<PendingCommand[]> {
+  return pickPendingCommands(await listShellPlugins(ctx), registered);
+}
+
 /** 通知 DTO 里按 id 找条目（NotifLayout.groups[].items[].id，poolLayout.ts） */
 function findNotifItem(layout: unknown, notificationId: string): { actions: Array<{ label: string; command?: string; args?: unknown[] }> } | null {
   const groups = (layout as { groups?: Array<{ items?: unknown[] }> })?.groups;
@@ -134,6 +152,10 @@ export const OPS: Record<string, BridgeOp> = {
         ops: opCatalog(),
         commands,
         commandCount: commands.length,
+        // AI#54 ①：**声明面**——已声明（`contributes.commands`）而运行期未注册的命令（多为视图态：
+        // 该插件的视图挂载后才注册）。给 AI 的是**可发现性**：能规划下一步（先 open-tab），
+        // ⛔ 不是执行面——`exec` 只认上面那份 commands。
+        commandsPending: await listPendingCommands(ctx, commands),
         // AI#29：哪些动作会先停下等人点头——**自述面**（AI 动手前就知道，客户端据此定等待预算）
         askFirst: askFirstCatalog(),
       };
@@ -168,9 +190,17 @@ export const OPS: Record<string, BridgeOp> = {
       const type = req.type;
       if (typeof type !== 'string' || !type) throw coded('EARGS', 'openTab 需要 type（非空 string）');
       const opts = req.opts && typeof req.opts === 'object' ? req.opts : undefined;
+      // 开之前的命令面——用来算「这一开新挂牌了哪些命令」
+      const before = (await listShellCommands(ctx)).map((c) => c.id);
       await ctx.shellRequest(IPC.tabs.create, [type, opts]);
-      // tabs:create 是 fire 型（壳收到即 emit tab:create）——「开没开成」用 tabs 操作回读，不在这装成功
-      return { accepted: true, type };
+      // tabs:create 是 fire 型（壳收到即 emit tab:create）——「开没开成」用 tabs 操作回读，不在这装成功。
+      // 🔴 但**命令面的落定要等**（AI#54 ②）：池侧挂载 → 插件注册 → `commands:register` 回传是随后的
+      // 异步链，不等就会在 open-tab 与「新命令可用」之间留一段竞态空窗（AI 紧接着 exec 撞 EUNKNOWN）。
+      const settled = await settleCommandSurface(
+        async () => (await listShellCommands(ctx)).map((c) => c.id),
+        before,
+      );
+      return { accepted: true, type, added: settled.added, commandsSettled: settled.settled };
     },
   },
 
@@ -189,9 +219,14 @@ export const OPS: Record<string, BridgeOp> = {
       // 缺口① 左半：先查存在性——白名单 = 运行期派生的命令面，现取不缓存（AI#33 判据）
       const commands = await listShellCommands(ctx);
       if (!commands.some((c) => c && c.id === commandId)) {
+        // AI#54 ①：撞到「已声明、未注册」的命令时给**带指引的** EUNKNOWN（⛔ 不是干巴巴一句「不在命令面」）——
+        // 这类 id 多数是视图态命令，AI 照 `needs` 做一步就能用（外部 AI 报告里「只能靠猜」的正是这一段）。
+        const pending = (await listPendingCommands(ctx, commands)).find((p) => p.id === commandId);
         throw coded(
           'EUNKNOWN',
-          `命令 "${commandId}" 不在当前命令面（运行期派生白名单，共 ${commands.length} 条）——describe 可列出全部`,
+          pending
+            ? `命令 "${commandId}" 已由插件 "${pending.pluginId}" 声明、但运行期尚未注册——${pending.needs}`
+            : `命令 "${commandId}" 不在当前命令面（运行期派生白名单，共 ${commands.length} 条）——describe 可列出全部`,
         );
       }
       // 缺口① 右半：壳侧严格执行出口回传真结果（未注册/抛错都会以 {error} 信封回来）。
