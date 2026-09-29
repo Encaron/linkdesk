@@ -114,10 +114,10 @@ const FACTS = {
     what: "串口监视器——接收区（CM6）+ 发送栏（Monaco）+ 侧栏会话与设置。**它是本软件的第一只视图插件**，也是「后门 IPC 数据管道」的第一个消费者。",
     where: "图标栏顶部 ＋ 侧栏 ＋ 标签页 ＋ 状态栏——四处都有它（全仓出现区域最多的一只）。",
     layout:
-      "`src/index.tsx` 做顶层菜单注册与「关闭前回调」；\n接收区在 `src/cm6/*`（追加行 / 装饰 / 滚动 / 搜索 / 主题）；\n主视图 `src/views/SerialMonitorView/*`、设置 `src/views/SerialSettingsView/*`、会话列表 `src/views/SessionListView/*`；\n数据面 `src/services/SerialContext/*`；**独立环形缓冲 `src/utils/RingBuffer`**。",
+      "`src/index.tsx` 做顶层**接线**（插件级命令注册 + 接收日志订阅 + 「关闭前回调」）；\n接收区在 `src/cm6/*`（追加行 / 装饰 / 滚动 / 搜索 / 主题）；\n主视图 `src/views/SerialMonitorView/*`、设置 `src/views/SerialSettingsView/*`、会话列表 `src/views/SessionListView/*`；\n数据面 `src/services/SerialContext/*`；**独立环形缓冲 `src/utils/RingBuffer`**。",
     notes: [
       "🔴 `statusBar` 是**顶层字段**（不在 `contributes` 里）——**全仓只此一例**，照它写。",
-      "`menus` / `commands` 有一半是在**模块顶层**用 `window.linkdesk.menu.registerItems` 注册的（`contributes` 之外）——改菜单要**两边都看**。",
+      "🔴 **右键菜单只有一个源**：`plugin.json` 的 `contributes.menus`（加载器在插件装载时注册，与视图是否挂载无关）。⛔ 别再写模块顶层的 `window.linkdesk.menu.registerItems`——1.0.29 之前有这么一份，与声明式那份并存 ⇒ 菜单里同一项出现两次（壳的判重键含 `when`，两份的 `when` 一个有一个没有，兜不住）。",
       "🔴 **串口数据是「流」不是「事件」**：多个消费者各拿一份完整历史，别把它改成发布 / 订阅。",
       "`tabBehavior.invokeBeforeClose: \"close_port\"` —— 关标签页前要先关串口。",
       "`suggests: protocol-bracket` / `recommends: workspace`：跨插件的「推荐搭配」声明。",
