@@ -194,6 +194,31 @@ watching it for you).
 - **Host definition set unreadable** ⇒ the leg reports "**unverified**" instead of "0 issues"—that means a broken
   install; reinstall `@linkdesk/plugin-sdk`.
 
+### 7.7 A menu slot's name is its **value**, not its member name (from `@linkdesk/plugin-sdk` 0.1.56)
+
+Every menu slot id the host recognizes is **lowerCamelCase**: `menuBar` / `fileContext` / `cardContext` /
+`panelViewContext`… When you read host source you will also see a different spelling—`MENU_SLOTS.MenuBar`,
+`MENU_SLOTS.FileContext`—those are the **member names** of a constants table, **not** the slot values. Writing a
+member name where a slot id belongs (`registerItems("MenuBar", …)`, `contributes.menus: { "FileContext": … }`,
+`<ContextMenu menuId={"FileContext"} />`) **produces no error at all**: the host registry has no such key, so those
+menu items **never appear**—silently, on both the declarative and the imperative path.
+
+> Not hypothetical: file-tree lost its whole "File" menu this way for over two months, with no gate ever reporting
+> it (no such criterion existed at the time).
+
+- **The criterion (one rule, zero false positives)**: a slot id that differs from a host slot **value only by
+  letter case** ⇒ red. ⛔ "Unknown id" is **not** judged—`MenuId` is an open string and inventing your own
+  registration point is legal; what can be condemned is the case-only variant, which has no legitimate use.
+- **The fix**: use the lowerCamelCase value (`MenuBar` → `menuBar`, `FileContext` → `fileContext`)—and change
+  **both sides in the same commit**, since the registering side and the consuming side (`ContextMenu`'s `menuId`)
+  must agree.
+- **The host list ships with the package**: `schemas/host-menu-slots.json` (`entries: [{ key, value }]`—`key` is
+  the member name, `value` is what you must write). Leg id = `linkdesk/no-menu-slot-case`.
+- **List unreadable** ⇒ the leg reports "**unverified**" and red (⛔ never counts as 0 issues); reinstall
+  `@linkdesk/plugin-sdk`.
+- **Informed bypass**: `// eslint-disable-next-line linkdesk/no-menu-slot-case -- reason`—though a legitimate
+  deviation for this criterion essentially does not exist, so do not read it as permission.
+
 ---
 
 > **← Index:** [00-readme](00-readme.md) · **Related:** [15-multi-repo-and-local-workspace](15-multi-repo-and-local-workspace.md) · [06-plugin-json-spec](06-plugin-json-spec.md) · [plugin-source-externalization/09-naming-conventions.md](../02-Electron架构/E6_插件生态与发布/插件源码外移层/09-命名规范.md) (decision rationale)

@@ -157,6 +157,14 @@ useEffect(() => {
 | `settingItemGear` | the gear on a setting row (on row hover in the Settings Editor) |
 | `viewTitleContext` | right-click on a sidebar view title (collapse/reset position/views in the same group) |
 
+> 🔴 **The second column above is the slot id's *value*—copy the lowerCamelCase spelling.** ⛔ Never write the
+> **member name** of the host constants table (`MenuBar` / `FileContext` and friends): the host registry has no such
+> key, so those menu items **never appear**, silently, on both paths (this declarative table and imperative
+> `menu.registerItems`). The SDK gate `linkdesk/no-menu-slot-case` catches this class (criterion: differs from a
+> host value **by letter case only** ⇒ red; `@linkdesk/plugin-sdk` 0.1.56 onward). This is not hypothetical: the
+> official file-tree plugin once wrote the member names `MenuBar` / `FileContext` where slot values belong, and its
+> entire "File" menu **vanished for over two months** with no error reported anywhere.
+
 **Menu item fields:**
 
 | Field | Required | Description |

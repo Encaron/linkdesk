@@ -1,5 +1,7 @@
 /**
- * `runPluginLint()`——`npm run lint` 门禁编排（E6#54d）：eslint 规则腿 + **七条** check 扫描腿双轨（E6#111f/1.36：外观族 id 归属是第七条）。
+ * `runPluginLint()`——`npm run lint` 门禁编排（E6#54d）：eslint 规则腿 + **十二条** check 扫描腿双轨。
+ * ⚠️ 条数 = 下面 `legs` 数组的长度（今天 12）——本行历史上漂过（曾写「七条」而实为 11），
+ *    加腿时**同笔订正**这句话；`index.ts` 头部同一句同步。
  *
  * E6#109h-b①：`check-css-namespace` 腿升级为**双判据**——「裸定义类名/关键帧必须以本仓 `<pluginId>-`
  * 开头」（`checks/plugin-prefix.ts`，拍板 Q1=(A)，**不需要任何清单**）⊕「不得裸定义宿主保留名」
@@ -15,10 +17,10 @@
  * S3 跨方命中（选择器里出现 `ldk-*` 提及）必须自带自有 `.<pluginId>-*` 锚。两条全红、进腿报点。
  * 规则正文见 32 号档 §一（R0–R3）；1.25 实测插件侧存量 **0**（18 仓 ＋ 夹具）⇒ 纯预防、零重发成本。
  *
- * 对标壳 check 同款双轨（07 §六·载体双轨）：eslint（12 项注册规则，全 WARN）管 ts/tsx；
- * css-hardcode / font-scale / spacing-grid / css-namespace / command-ownership / config-ownership / appearance-ownership
- * 七条移植脚本管整工程（eslint 到不了 .css，
- * ts/tsx 的 rgb()/hsl() 也归 css-hardcode 补）。jscpd = 项目级可选（文档引导，不进编排）。
+ * 对标壳 check 同款双轨（07 §六·载体双轨）：eslint（`preset.ts` 的 `rules` 块 12 项注册规则，全 WARN）
+ * 管 ts/tsx；**十二条移植脚本腿**管整工程（eslint 到不了 .css，ts/tsx 的 rgb()/hsl() 也归
+ * css-hardcode 补）——逐腿 id 见下方 `legs` 数组，此处不复列（历史上抄漏过一次）。
+ * jscpd = 项目级可选（文档引导，不进编排）。
  *
  * 门禁哲学（07 §六·三档）：违规全 WARN **永不 fail build**——本编排按违规数统计并打印
  * 「未处理偏离」行；退出码只反映真 error（语法致命错 / 作者自配 error 规则），WARN 不拦。
@@ -40,6 +42,7 @@ import { runDanglingNameCheck } from "./checks/dangling-names.js";
 import { runDanglingOwnClassCheck } from "./checks/dangling-own-classes.js";
 import { runGlobalKeyListenerCheck } from "./checks/no-global-key-listener.js";
 import { runNativeTitleCheck } from "./checks/no-native-title.js";
+import { runMenuSlotCheck } from "./checks/menu-slots.js";
 import { runRetiredNameHint, type RetiredNameHint } from "./checks/retired-names.js";
 import { runCommandOwnershipCheck } from "./checks/command-ownership.js";
 import { runConfigOwnershipCheck } from "./checks/config-ownership.js";
@@ -70,7 +73,7 @@ export interface EslintRow {
 export interface PluginLintReport {
   files: number; // eslint 实际 lint 文件数
   eslintRows: EslintRow[]; // eslint 腿逐条偏离（含真 error——退出码依据）
-  legs: LintLeg[]; // 八 check 腿（七条扫描腿 ＋ 命名空间腿内部五条判据；id 见各自 CHECK_IDS）
+  legs: LintLeg[]; // **十二条** check 扫描腿（条数 = `runPluginLint` 里 `legs` 数组长度；id 见各自 CHECK_IDS，此处不复列——历史上抄漏过）
   totalCheckViolations: number;
   tsconfigUsed: string | null; // 实际喂 import-x resolver 的 tsconfig（无则 null）
   /** 本仓 pluginId（命名空间腿的前缀来源；取不到 ⇒ null 且该腿 fail-closed 报红） */
@@ -112,6 +115,9 @@ export interface PluginLintReport {
   globalKeyCounts: { sites: number; red: number };
   /** 04「悬停提示系统」件 2（2026-09-27）：原生 title= 腿读数（sites = 看见的小写标签站点含豁免；red = 判红） */
   nativeTitleCounts: { sites: number; red: number };
+  /** 文件树「打开文件夹入口」门禁件（2026-09-29）：菜单槽位大小写腿读数
+   *  （hostSlots = 随包名单规模；sites = 看过的槽位字面量站点含豁免；red = 判红） */
+  menuSlotCounts: { hostSlots: number; sites: number; red: number };
   /** 🟡 E6#119：退役名提示（只提示、⛔ 永不拒绝——不进任何腿报点） */
   retiredHints: RetiredNameHint[];
   /** 退役登记账的加载实况（found=false ⇒ 提示空转——报告里必须能看出来，不许静默） */
@@ -290,6 +296,18 @@ export async function runPluginLint(root: string, options: PluginLintOptions = {
    */
   const nativeTitle = runNativeTitleCheck(absRoot);
   /**
+   * 文件树「打开文件夹入口」门禁件（2026-09-29）：第十三条 check 腿 —— **菜单槽位 id 写成宿主
+   *   `MENU_SLOTS` 成员名判红**（`checks/menu-slots.ts`）。真实事故：`MenuBar` / `FileContext`
+   *   两个**成员名**被当成槽位值搬进插件，菜单项静默消失两个多月、无门禁报过——因为
+   *   `MenuId = string` 是开放字符串（「未知 id」无法判红），而写错的键在声明式与命令式两条
+   *   注册路径上都只是静默无输出。判据只收窄到**唯一既零假红、又无任何合法用途**的一条：
+   *   **与宿主某个值仅大小写不同 ⇒ 红**（宿主值一律小驼峰 `fileContext`，成员名是大驼峰）。
+   *   宿主名单随包下发（壳 `scripts/gen-host-menu-slots.mjs` 投影 `schemas/host-menu-slots.json`），
+   *   读不到 ⇒ fail-closed「未核验」（⛔ 不许当 0 处通过）。
+   *   ⚠️ 独立统计/独立收紧（同其余腿的「刻意不合并」口径）。
+   */
+  const menuSlots = runMenuSlotCheck(absRoot);
+  /**
    * 🟡 E6#119：**退役名提示**（`checks/retired-names.ts`）——`retired[]` **不是黑名单**：退役 ≠ 删除，
    *   本腿的报点**永不进 violations**（CI 严格腿看不见它），只以 ℹ 行打印「哪天退的休、替身是谁」。
    *   升级成拒绝 = 自选 2.0 的活，不在本批（⛔ 把提示升级成拒绝是本格禁区）。
@@ -442,6 +460,11 @@ export async function runPluginLint(root: string, options: PluginLintOptions = {
       label: "check-native-title",
       violations: nativeTitle.violations,
     },
+    {
+      id: "linkdesk/no-menu-slot-case（菜单槽位 id 写成了宿主 MENU_SLOTS 的成员名而不是它的值——只差大小写的键在两条注册路径上都静默失效；宿主名单随包下发）",
+      label: "check-menu-slot-case",
+      violations: menuSlots.violations,
+    },
   ];
   const totalCheckViolations =
     css.length +
@@ -455,7 +478,8 @@ export async function runPluginLint(root: string, options: PluginLintOptions = {
     uiCssImport.length +
     uiMinAppVersion.length +
     globalKeys.violations.length +
-    nativeTitle.violations.length;
+    nativeTitle.violations.length +
+    menuSlots.violations.length;
 
   return {    files: results.length,
     eslintRows,
@@ -493,6 +517,11 @@ export async function runPluginLint(root: string, options: PluginLintOptions = {
     },
     globalKeyCounts: { sites: globalKeys.sites.length, red: globalKeys.violations.length },
     nativeTitleCounts: { sites: nativeTitle.sites.length, red: nativeTitle.violations.length },
+    menuSlotCounts: {
+      hostSlots: menuSlots.hostSlotCount,
+      sites: menuSlots.sites.length,
+      red: menuSlots.violations.length,
+    },
     retiredHints: retiredNames.hints,
     retiredLedger: retiredNames.ledger.found
       ? { file: retiredNames.ledger.file, found: true, retiredCount: retiredNames.ledger.retired.length }

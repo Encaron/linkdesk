@@ -45,6 +45,13 @@ export const CHECK_IDS = {
    *  disable ＋ 理由（**理由必填**）。⚠️ 同名腿 id 壳侧门禁 `scripts/check-native-title.mjs` 也认同一批
    *  注释——两把尺子同一个口径（锚⑪）。 */
   noNativeTitle: "linkdesk/no-native-title",
+  /** 文件树「打开文件夹入口」门禁件（2026-09-29）：**菜单槽位 id 写成了宿主 `MENU_SLOTS` 的成员名
+   *  而不是它的值**判红（`checks/menu-slots.ts`）。真实事故：`MenuBar` / `FileContext` 这两个成员名
+   *  被当成槽位值搬进插件（壳仓 commit `af2ef5712`），菜单项静默消失两个多月、无门禁报过。
+   *  判据只有一条（**与宿主某个值仅大小写不同 ⇒ 红**，零假红）：`MenuId = string` 是开放字符串
+   *  ⇒「未知 id」不判；宿主名单随包下发 `schemas/host-menu-slots.json`（壳生成器投影）。
+   *  ⚠️ 合法偏离形态基本不存在（只差大小写的槽位 id 没有任何正当用途），豁免机制只是与其余腿同形。 */
+  menuSlotCase: "linkdesk/no-menu-slot-case",
 } as const;
 
 interface RawComment {

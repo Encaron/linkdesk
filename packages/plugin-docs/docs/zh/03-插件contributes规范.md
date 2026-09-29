@@ -157,6 +157,12 @@ useEffect(() => {
 | `settingItemGear` | 设置项齿轮（Settings Editor 行 hover） |
 | `viewTitleContext` | 侧栏视图 title 右键（折叠/重置位置/视图同组） |
 
+> 🔴 **上表第二列是槽位 id 的「值」，照抄小驼峰**——⛔ 别写宿主常量表的**成员名**（`MenuBar` / `FileContext`
+> 那一套）：成员名在宿主注册表里查不到，你那批菜单项会**静默不出现**，两条注册路径（本表声明式 ＋
+> `menu.registerItems` 命令式）都不报错。SDK 门禁 `linkdesk/no-menu-slot-case` 判这一类（判据：与宿主值
+> **仅差大小写** ⇒ 红；`@linkdesk/plugin-sdk` 0.1.56 起）。这不是假想的事故：官方 file-tree 插件曾把
+> `MenuBar` / `FileContext` 这两个成员名当槽位值写下，整个「文件」菜单**消失两个多月**而没有任何报错。
+
 **菜单项字段：**
 
 | 字段 | 必需 | 说明 |

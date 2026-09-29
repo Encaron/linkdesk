@@ -5,7 +5,8 @@
  *   "lint": "linkdesk-plugin-sdk lint"          // 两条腿全跑 + 打印报告（bin）
  *   // 或编程：linkdeskPluginLintConfig() 展开进作者自配 eslint.config.js
  *
- * 全量门禁 = eslint 规则腿 + **七条** check 扫描腿（lint.ts 编排）。规则 id 与 disable 注释格式
+ * 全量门禁 = eslint 规则腿 + **十二条** check 扫描腿（lint.ts 编排；条数 = 其 `legs` 数组长度，
+ * 今天 12——加腿时同笔订正本句与 lint.ts 头部同句）。规则 id 与 disable 注释格式
  * 见 src/eslint/rules.ts 头注（双源注记）。除下面这组**审计入口**外不暴露内部 check 函数——
  * bin lint 已聚合。（审计入口逐个带「不是第二条判据路径」的注记——腿用的就是同一个函数。）
  *
@@ -120,3 +121,13 @@ export type {
  */
 export { runContextOwnershipCheck, judgeContextKey, RE_CONTEXT_KEY_SET } from "./checks/context-ownership.js";
 export type { ContextOwnershipReport, ContextKeySite, ContextKeyCode } from "./checks/context-ownership.js";
+
+/**
+ * 文件树「打开文件夹入口」门禁件（2026-09-29）：`runMenuSlotCheck`（**菜单槽位 id 大小写判据**）。
+ *    判据只有一条：槽位 id 与宿主某个 `MENU_SLOTS` **值**仅大小写不同 ⇒ 红（`MenuBar` → `menuBar`；
+ *    成员名当成值 = 死键，两条注册路径都静默失效）。`MenuId = string` 是开放字符串 ⇒「未知 id」不判。
+ *    宿主名单随包下发 `schemas/host-menu-slots.json`（壳 `scripts/gen-host-menu-slots.mjs` 投影），
+ *    读不到 ⇒ fail-closed「未核验」。出处：docs/05-插件更新/文件树/01-打开文件夹入口-设计.md §二·六。
+ */
+export { runMenuSlotCheck, loadHostMenuSlots, judgeMenuSlot, findMenuSlotSites, MENU_SLOT_WHY, MENU_SLOT_CASE_ID } from "./checks/menu-slots.js";
+export type { MenuSlotReport, MenuSlotSite, MenuSlotVia, HostMenuSlots, HostMenuSlotEntry } from "./checks/menu-slots.js";

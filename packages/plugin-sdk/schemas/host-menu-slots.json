@@ -1,0 +1,65 @@
+{
+  "$comment": "宿主菜单槽位名单（随包下发）——生成物勿手改。唯一真源 = src/core/registry/commands/MenuRegistry.ts 的 MENU_SLOTS，由 scripts/gen-host-menu-slots.mjs 生成（--check 对账）。用途：作者侧 check 腿判「槽位 id 写成了 MENU_SLOTS 的成员名而不是它的值」——那种键在两条注册路径上都静默失效（判据与出处见 docs/05-插件更新/文件树/01-打开文件夹入口-设计.md §二·六）。",
+  "version": 1,
+  "generatedFrom": "scripts/gen-host-menu-slots.mjs",
+  "source": "src/core/registry/commands/MenuRegistry.ts",
+  "slotCount": 14,
+  "entries": [
+    {
+      "key": "CardContext",
+      "value": "cardContext"
+    },
+    {
+      "key": "CommandPalette",
+      "value": "commandPalette"
+    },
+    {
+      "key": "EditorContext",
+      "value": "editorContext"
+    },
+    {
+      "key": "ExtensionGear",
+      "value": "extensionGear"
+    },
+    {
+      "key": "FileContext",
+      "value": "fileContext"
+    },
+    {
+      "key": "IconBar",
+      "value": "iconBar"
+    },
+    {
+      "key": "MarketplaceItemGear",
+      "value": "marketplaceItemGear"
+    },
+    {
+      "key": "MenuBar",
+      "value": "menuBar"
+    },
+    {
+      "key": "Panel",
+      "value": "panel"
+    },
+    {
+      "key": "PanelViewContext",
+      "value": "panelViewContext"
+    },
+    {
+      "key": "QuickSendContext",
+      "value": "quickSendContext"
+    },
+    {
+      "key": "SettingItemGear",
+      "value": "settingItemGear"
+    },
+    {
+      "key": "TabContext",
+      "value": "tabContext"
+    },
+    {
+      "key": "ViewTitleContext",
+      "value": "viewTitleContext"
+    }
+  ]
+}
