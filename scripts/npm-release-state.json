@@ -3,19 +3,19 @@
   "packages": [
     {
       "name": "@linkdesk/contracts",
-      "version": "0.1.24",
-      "contentHash": "d431e83cf69905222c04499652a07927bffb98e15288a0072fc404314404fd54",
+      "version": "0.1.25",
+      "contentHash": "50f6cf19ffa042e7ea9d3ad148f080a6448f922ede69e9848fceb926ec4fda8d",
       "fileHashes": {
         "contracts/README.md": "24f92b03cbdacc4a",
-        "contracts/linkdesk.d.ts": "00785fdc894ff968"
+        "contracts/linkdesk.d.ts": "16958c6bbcfa34ca"
       }
     },
     {
       "name": "@linkdesk/plugin-sdk",
-      "version": "0.1.53",
-      "contentHash": "8015fd812d7ba6cd30c2360c36cd5133c1305f6e22d1388124c8d1064730dc12",
+      "version": "0.1.54",
+      "contentHash": "4f9e1dbc176b87c08075c1799ed1d3fdea253657afb560f0552373fb3e4d01cc",
       "fileHashes": {
-        "packages/plugin-sdk/README.md": "26cc063e27022e82",
+        "packages/plugin-sdk/README.md": "dd2a3dac5f82ce42",
         "packages/plugin-sdk/dev-host/dev-main.tsx": "49c59b28e17ca424",
         "packages/plugin-sdk/dev-host/index.html": "05b6731f90031d1a",
         "packages/plugin-sdk/dev-host/linkdesk-mock.generated.ts": "7fd7634a30c53ff0",
@@ -119,7 +119,7 @@
     },
     {
       "name": "@linkdesk/ui",
-      "version": "0.2.24",
+      "version": "0.2.25",
       "contentHash": "eb6bd951de92f26d5acd160db9edcf61483f93b6020d06ffc58f398d82e354d7",
       "fileHashes": {
         "packages/linkdesk-ui/README.md": "9b032b907c299083",
@@ -210,12 +210,12 @@
     },
     {
       "name": "@linkdesk/plugin-docs",
-      "version": "0.1.39",
-      "contentHash": "658cabaa83a10a5051d4e77743f1b34e2381aab77f03e9138df9506bd4435209",
+      "version": "0.1.40",
+      "contentHash": "2a422a3db79d82000010ec483ed13c474741e6655afaeec942568d73a48cce28",
       "fileHashes": {
         "packages/plugin-docs/README.md": "6cd51394e987a3f2",
         "packages/plugin-docs/docs/00-readme.md": "ffedc7f09a86272a",
-        "packages/plugin-docs/docs/01-plugin-api-contract.md": "3e55cf170ea9712f",
+        "packages/plugin-docs/docs/01-plugin-api-contract.md": "2f31f7a238f56715",
         "packages/plugin-docs/docs/02-plugin-lifecycle.md": "aeda91886c7d874b",
         "packages/plugin-docs/docs/03-contributes-spec.md": "08a94813a15bf1a8",
         "packages/plugin-docs/docs/04-distribution-format.md": "e50eaad518539430",
@@ -235,11 +235,11 @@
         "packages/plugin-docs/docs/18-cross-region-wiring.md": "47a88e44dc167f6d",
         "packages/plugin-docs/docs/19-component-cheatsheet.md": "068a20559b0ededf",
         "packages/plugin-docs/docs/20-adding-a-setting.md": "c89b6ee1f871edfe",
-        "packages/plugin-docs/docs/21-command-ification-spec.md": "27c5aa54c6581b22",
+        "packages/plugin-docs/docs/21-command-ification-spec.md": "0a4c2edcfe8f6c17",
         "packages/plugin-docs/docs/themes/01-build-a-theme-plugin.md": "fb049c1a5983a3ff",
         "packages/plugin-docs/docs/themes/02-theme-field-index.md": "d6eff9572b4a4ea9",
         "packages/plugin-docs/docs/zh/00-README.md": "95870165a957aaf8",
-        "packages/plugin-docs/docs/zh/01-插件API契约.md": "155b577362297f7c",
+        "packages/plugin-docs/docs/zh/01-插件API契约.md": "c3aa1002d1deb634",
         "packages/plugin-docs/docs/zh/02-插件生命周期.md": "0d9c46f4628c1dbf",
         "packages/plugin-docs/docs/zh/03-插件contributes规范.md": "fa6535e414cf7aea",
         "packages/plugin-docs/docs/zh/04-插件分发格式.md": "c885b1846ee824a6",
@@ -259,7 +259,7 @@
         "packages/plugin-docs/docs/zh/18-区域间互动.md": "f46c4a6bcc1c3010",
         "packages/plugin-docs/docs/zh/19-组件速查.md": "cae8c860da593258",
         "packages/plugin-docs/docs/zh/20-我的插件加一条配置项.md": "c01374c80211cbf8",
-        "packages/plugin-docs/docs/zh/21-插件命令化规范.md": "10cd98bf1566aecc",
+        "packages/plugin-docs/docs/zh/21-插件命令化规范.md": "8394cada435f9693",
         "packages/plugin-docs/docs/zh/plugin.schema.json": "262fe10cf7f694c4",
         "packages/plugin-docs/docs/zh/主题/01-做一个主题插件.md": "5953519d0db17615",
         "packages/plugin-docs/docs/zh/主题/02-主题字段速查.md": "a21149bb88d49aa9"
