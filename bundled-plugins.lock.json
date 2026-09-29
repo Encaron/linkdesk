@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "syncedAt": "2026-09-29T14:39:33.529Z",
+  "syncedAt": "2026-09-29T15:15:35.742Z",
   "note": "出厂种子的账（E6#101）。`seed:true` = 随包出厂（bootstrap 集，判据「断网零插件时用户能不能自救」）；`seed:false` = 纯市场（只登记，不随包）。谁随包是**数据**不是代码（硬约束 10）。刷新：npm run sync:bundled -- --latest；校验：npm run sync:bundled -- --offline。",
   "plugins": [
     {
@@ -14,9 +14,9 @@
     {
       "id": "file-tree",
       "repo": "Encaron/linkdesk-plugin-file-tree",
-      "version": "1.0.19",
-      "downloadUrl": "https://github.com/Encaron/linkdesk-plugin-file-tree/releases/download/v1.0.19/file-tree.linkdesk-plugin",
-      "fingerprint": "CHANGELOG.md:0a878f0bd032de94c8ad22dd8ede005a784fab11ed1c313738ee7b1a8f38a9fb\nLICENSE:66ade75576a2f04b7f1a11340b8141cf42a26d3a64bc441e3822e193291d3051\nREADME.md:2d31eed0abc9ac8cb673250518c77410625c7fc0cdc6c1acf79da739c95e7619\ni18n/en.json:c9efd68c97f860835491a1ef6ede16dd8719a7f2aeb4ae9fb7dad17b3cbdac66\nindex.bundle.css:02b025c73a562b296c99694c5aa95e06d34be056f03100e559640e018c82fb36\nindex.bundle.js:e359cdfbbf8f2e9f9ff9499901b5d42a60b5eeff08aa7a49aaf39eb1987e0ea5\nplugin.json:fa05e64d19c2ff12ea97e6020aa67b61aabb0eda95734e531c9083615a048b44\nresources/cover.svg:6e2b3e4fddfbb423af2fc38d357dabd9cea9220f19ff96becacf380b7561e732\nresources/icon-bar.svg:d04e6780472456215402e224a3edf9cf44573a09472dc42d9b56a70b4185d301\nresources/icon.svg:a9e02c9cc50e20b5e662c8c88d7aaf9ed2f0e182494127c27022ce2d3af2148c\nviews/FoldersView.bundle.js:e8faa1c7df991955b64d15e682051a3863a5b404a0b69c874c0ea393ca6206e5\nviews/OpenFolderView.bundle.js:28d942bc41fc058c6bed1a1bdfc9d19d3b1f4c3fdd99d6f8fa45f4560a0613a2\nviews/SearchView.bundle.js:6ab554c4fbf43bdc54d5083daed60b150f3078fe2a196de08fb549538c936f48",
+      "version": "1.0.20",
+      "downloadUrl": "https://github.com/Encaron/linkdesk-plugin-file-tree/releases/download/v1.0.20/file-tree.linkdesk-plugin",
+      "fingerprint": "CHANGELOG.md:48706cecb90e0fb10c394cd13098cdd9e63233dc8bc4f4336507351f2a70fa30\nLICENSE:66ade75576a2f04b7f1a11340b8141cf42a26d3a64bc441e3822e193291d3051\nREADME.md:2d31eed0abc9ac8cb673250518c77410625c7fc0cdc6c1acf79da739c95e7619\ni18n/en.json:c9efd68c97f860835491a1ef6ede16dd8719a7f2aeb4ae9fb7dad17b3cbdac66\nindex.bundle.css:6cadbca1dacee613c2f95cfdc556341c8b4a30a2b111d00f057bb04e26e8569f\nindex.bundle.js:e359cdfbbf8f2e9f9ff9499901b5d42a60b5eeff08aa7a49aaf39eb1987e0ea5\nplugin.json:3d14df118334cc8ccf4a26320c7eb8eaf637c3a341aacec6bc01ab154bb0c31b\nresources/cover.svg:6e2b3e4fddfbb423af2fc38d357dabd9cea9220f19ff96becacf380b7561e732\nresources/icon-bar.svg:d04e6780472456215402e224a3edf9cf44573a09472dc42d9b56a70b4185d301\nresources/icon.svg:a9e02c9cc50e20b5e662c8c88d7aaf9ed2f0e182494127c27022ce2d3af2148c\nviews/FoldersView.bundle.js:e8faa1c7df991955b64d15e682051a3863a5b404a0b69c874c0ea393ca6206e5\nviews/OpenFolderView.bundle.js:28d942bc41fc058c6bed1a1bdfc9d19d3b1f4c3fdd99d6f8fa45f4560a0613a2\nviews/SearchView.bundle.js:6ab554c4fbf43bdc54d5083daed60b150f3078fe2a196de08fb549538c936f48",
       "seed": true
     },
     {

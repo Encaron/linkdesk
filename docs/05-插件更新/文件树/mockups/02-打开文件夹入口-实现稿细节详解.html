@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<title>文件树「打开文件夹」侧栏入口 —— 实现稿细节详解（A 版 · 已出货 1.0.20）</title>
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     本图是【实现稿细节详解图】，不是竞标图——竞标（骨架 ×3 选一）见同目录 01-…-竞标.html。
+     用途：设计文档 §四.3 一直欠着的「A 版全状态细节图」；硬约束 16 的设计前置。
+
+     🔴 本图所有数字的来源分三类，图内逐处标注，不混：
+       ［实测］2026-09-29 隔离实例（fresh userData，装出厂种子 1.0.20）CDP 运行时读数
+       ［源码］插件仓 src/views/OpenFolderView.tsx / src/styles/OpenFolderView.css 逐字声明
+       ［token］壳仓 src/index.css 的 :root（暗）与 [data-theme="light"]（亮）真值
+
+     ⚠️ 本图的配色不是「皮肤提案」——侧栏这一段的每一处颜色都由主题系统供给（var(--xxx)），
+        本图只是把 var() 解析后的结果画出来。皮肤改动不该动这张图。
+     ═══════════════════════════════════════════════════════════════════════════ -->
+<style>
+  /* ── 暗色：壳真实 token 真值（src/index.css :root） ── */
+  :root {
+    --bg-window: #1E1E1E;
+    --bg-card: #2D2D2D;
+    --bg-input: #3C3C3C;
+    --bg-titlebar: #252526;
+    --bg-icon-bar: #18181B;
+    --bg-side-panel: #1E1E22;
+    --text-primary: #D4D4D4;
+    --text-secondary: #9D9D9D;
+    --text-muted: #8A8A8A;
+    --accent: #0078D4;
+    --accent-hover: #1A8CE8;
+    --text-on-accent: #FFFFFF;
+    --border: #3C3C3C;
+    --separator: #474747;
+    --hover-overlay: rgba(255, 255, 255, 0.06);
+    --status-connected: #4EC9B0;
+    --error: #E06C75;
+    /* FT#4 修复引入的两个 fallback 表达式（原只在 .file-tree-root 作用域内） */
+    --tree-bg-hover: color-mix(in srgb, var(--text-primary) 6%, transparent);
+    --tree-bg-selected: color-mix(in srgb, var(--accent) 15%, transparent);
+  }
+  /* ── 亮色：壳真实 token 真值（src/index.css [data-theme="light"]） ── */
+  .light {
+    --bg-window: #FFFFFF;
+    --bg-card: #F5F5F5;
+    --bg-input: #FFFFFF;
+    --bg-titlebar: #DDDDDD;
+    --bg-icon-bar: #F0F0F0;
+    --bg-side-panel: #F5F5F5;
+    --text-primary: #2D2D2D;
+    --text-secondary: #5A5A5A;
+    --text-muted: #767676;
+    --accent: #0078D4;
+    --accent-hover: #106EBE;
+    --border: #D4D4D4;
+    --separator: #E8E8E8;
+    --hover-overlay: rgba(0, 0, 0, 0.04);
+    --status-connected: #388A34;
+    --error: #B3261E;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #141414; color: var(--text-primary); font-family: "Segoe UI", "Microsoft YaHei", sans-serif; padding: 24px; }
+  h1 { font-size: 18px; font-weight: 600; }
+  h1 small { font-size: 13px; font-weight: 400; color: var(--text-muted); display: block; margin-top: 8px; line-height: 1.8; }
+  h2 { font-size: 15px; font-weight: 600; margin: 34px 0 6px; padding-top: 14px; border-top: 1px solid #2b2b2b; }
+  h2 span.hint { font-size: 12px; font-weight: 400; color: var(--text-muted); margin-left: 8px; }
+  h3 { font-size: 13px; font-weight: 600; color: var(--text-secondary); margin: 16px 0 6px; }
+  code { font-family: "JetBrains Mono", Consolas, monospace; font-size: 12px; background: rgba(128,128,128,0.14); padding: 1px 4px; border-radius: 3px; }
+  table { border-collapse: collapse; font-size: 12.5px; margin-top: 8px; }
+  th, td { border: 1px solid #333; padding: 5px 9px; text-align: left; vertical-align: top; }
+  th { background: rgba(128,128,128,0.12); font-weight: 600; color: var(--text-secondary); white-space: nowrap; }
+  td.mono, th.mono { font-family: "JetBrains Mono", Consolas, monospace; font-size: 11.5px; }
+  .mea { color: var(--status-connected); font-weight: 600; }   /* 实测 */
+  .src { color: #C8A2FF; }                                      /* 源码逐字 */
+  .tok { color: #E8AB3E; }                                      /* token 真值 */
+  .bad { color: var(--error); font-weight: 600; }
+
+  /* ── 软件完整轮廓（真实 zone 尺寸；沿用 01-竞标 的骨架，图例体系一致） ── */
+  .frames { display: flex; gap: 22px; flex-wrap: wrap; align-items: flex-start; margin-top: 18px; }
+  .frame-col { width: 486px; }
+  .frame-caption { padding: 8px 4px 6px; display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+  .frame-caption b { font-size: 13.5px; }
+  .frame-caption span { color: var(--text-secondary); font-size: 11.5px; }
+  .tag { font-size: 11px; color: #fff; background: var(--accent); padding: 2px 8px; border-radius: 3px; }
+  .tag.g { background: #3F6212; }
+  .tag.n { background: #8B5CF6; }
+  .tag.w { background: #9A3412; }
+
+  .app { width: 486px; height: 384px; display: flex; flex-direction: column; background: var(--bg-window); color: var(--text-primary); border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+  .titlebar { height: 30px; background: var(--bg-titlebar); display: flex; align-items: center; padding: 0 8px; gap: 10px; flex: none; }
+  .titlebar .logo { width: 12px; height: 12px; border: 1.5px solid var(--text-muted); transform: rotate(45deg); border-radius: 2px; }
+  .titlebar .app-name { font-size: 12px; color: var(--text-secondary); }
+  .titlebar .menu { display: flex; gap: 2px; }
+  .titlebar .menu span { font-size: 12px; color: var(--text-secondary); padding: 3px 8px; border-radius: 3px; }
+  .titlebar .win-btns { margin-left: auto; display: flex; gap: 6px; color: var(--text-secondary); font-size: 11px; }
+  .win-btns i { font-style: normal; padding: 2px 6px; }
+  .app-body { flex: 1; display: flex; min-height: 0; }
+  .icon-bar { width: 42px; background: var(--bg-icon-bar); display: flex; flex-direction: column; align-items: center; padding-top: 6px; gap: 4px; flex: none; }
+  .icon-bar .ic { width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; border-radius: 4px; color: var(--text-muted); font-size: 15px; position: relative; }
+  .icon-bar .ic.active { color: var(--text-primary); background: var(--hover-overlay); }
+  .icon-bar .ic.active::before { content: ""; position: absolute; left: -4px; top: 7px; bottom: 7px; width: 2px; background: var(--accent); border-radius: 1px; }
+
+  /* 侧栏宽度 = 真实窄栏 216px（本轮走查的下限场景；默认 280 见 §二） */
+  .sidebar { width: 216px; background: var(--bg-side-panel); border-right: 1px solid var(--separator); display: flex; flex-direction: column; flex: none; overflow: hidden; }
+  .sidebar.w280 { width: 280px; }
+  .sidebar-head { height: 35px; display: flex; align-items: center; padding: 0 12px; font-size: 12px; letter-spacing: 0.4px; color: var(--text-primary); flex: none; border-bottom: 1px solid var(--separator); }
+  .side-scroll { flex: 1; overflow-y: auto; min-height: 0; }
+
+  .section { border-bottom: 1px solid var(--separator); }
+  .sec-head { height: 24px; display: flex; align-items: center; padding: 0 8px 0 6px; gap: 4px; color: var(--text-secondary); font-size: 11px; letter-spacing: 0.4px; }
+  .sec-head .twistie { font-size: 9px; width: 10px; color: var(--text-muted); }
+  .sec-head .title { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .sec-head .acts { display: flex; gap: 2px; color: var(--text-muted); font-size: 11px; }
+
+  .tree { padding: 2px 4px 6px; }
+  .row { display: flex; align-items: center; gap: 5px; height: 22px; padding: 0 6px; font-size: 13px; color: var(--text-primary); border-radius: 3px; }
+  .row .twistie { font-size: 9px; width: 10px; color: var(--text-muted); }
+  .row .fi { font-style: normal; font-size: 12px; width: 14px; text-align: center; color: var(--text-secondary); }
+  .row.lvl2 { padding-left: 26px; }
+  .tree-empty-hint { padding: 8px; color: var(--text-muted); font-size: 13px; }
+
+  .search-body { padding: 8px 8px; display: flex; flex-direction: column; gap: 4px; }
+  .search-input { height: 24px; background: var(--bg-input); border: 1px solid var(--border); border-radius: 3px; font-size: 12px; color: var(--text-muted); display: flex; align-items: center; padding: 0 8px; gap: 6px; }
+  .search-row { display: flex; gap: 4px; }
+  .search-row .search-input { flex: 1; min-width: 0; }
+  .search-row .search-input.clipped { flex: none; width: 46px; }
+  .search-btn { height: 24px; padding: 0 10px; border: 1px solid var(--border); border-radius: 3px; font-size: 12px; color: var(--text-primary); background: var(--bg-card); display: flex; align-items: center; flex: none; }
+
+  /* ── 🔴 本补丁的降落点：常驻 section「打开文件夹」（源码逐字还原） ── */
+  .file-tree-open-folder { display: flex; flex-direction: column; gap: 4px; padding: 4px 8px; }
+  .file-tree-open-folder-btn {
+    height: 26px; display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%;
+    border: 1px solid var(--border); border-radius: 4px;
+    background: var(--bg-card); color: var(--text-primary);
+    font-size: 13px; font-family: inherit; cursor: pointer;
+  }
+  /* hover/active 走 fallback 写法（FT#4 修复点，见 §四） */
+  .file-tree-open-folder-btn:hover { background: var(--tree-bg-hover); border-color: var(--accent); }
+  .file-tree-open-folder-btn:active { background: var(--tree-bg-selected); }
+  .file-tree-open-folder-btn .codicon { font-size: 13px; }
+  .file-tree-open-folder-recent { display: flex; flex-direction: column; gap: 1px; }
+  .file-tree-open-folder-recent-label { color: var(--text-muted); font-size: 11px; padding: 2px 2px 1px; }
+  .file-tree-open-folder-recent-item {
+    height: 24px; display: flex; align-items: center; gap: 6px; width: 100%;
+    border: none; background: transparent; border-radius: 4px; padding: 0 4px;
+    color: var(--text-primary); font-size: 13px; font-family: inherit; cursor: pointer; text-align: left;
+  }
+  .file-tree-open-folder-recent-item:hover { background: var(--tree-bg-hover); }
+  .file-tree-open-folder-recent-icon { color: var(--text-secondary); flex: none; }
+  .file-tree-open-folder-recent-name { flex: none; max-width: 50%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .file-tree-open-folder-recent-path { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-muted); font-size: 11px; }
+
+  /* 状态样张（§四用）：把 :hover/:active 冻结成类，便于并排对照 */
+  .st-hover { background: var(--tree-bg-hover) !important; border-color: var(--accent) !important; }
+  .st-active { background: var(--tree-bg-selected) !important; }
+
+  .main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+  .tabbar { height: 35px; background: var(--bg-card); border-bottom: 1px solid var(--separator); display: flex; align-items: flex-end; flex: none; }
+  .tab { height: 30px; padding: 0 14px; font-size: 12px; color: var(--text-secondary); display: flex; align-items: center; gap: 6px; }
+  .tab.active { background: var(--bg-window); color: var(--text-primary); border-top: 1px solid var(--accent); }
+  .main-content { flex: 1; display: flex; align-items: center; justify-content: center; color: var(--text-muted); font-size: 12.5px; flex-direction: column; gap: 8px; text-align: center; padding: 0 12px; }
+  .main-content .big { font-size: 34px; opacity: 0.4; }
+  .statusbar { height: 22px; background: var(--bg-window); border-top: 1px solid var(--separator); display: flex; align-items: center; padding: 0 10px; gap: 14px; font-size: 11px; color: var(--text-muted); flex: none; }
+  .statusbar .right { margin-left: auto; display: flex; gap: 14px; }
+
+  .frame-note { padding: 8px 6px 2px; font-size: 12px; color: var(--text-muted); line-height: 1.85; }
+  .frame-note b { color: var(--text-secondary); }
+  .frame-note .ok { color: var(--status-connected); }
+  .frame-note .warn { color: var(--error); }
+
+  /* ── §三 剖面：带编号钉的实物 + 右侧声明表 ── */
+  .anat { display: flex; align-items: flex-start; gap: 40px; margin-top: 12px; flex-wrap: wrap; }
+  .anat-stage { width: 216px; background: var(--bg-side-panel); border: 1px solid var(--separator); border-radius: 4px; padding-bottom: 4px; position: relative; flex: none; }
+  .anat-stage .sec-head { border-bottom: 1px solid var(--separator); }
+  .pin { position: absolute; right: -13px; width: 18px; height: 18px; border-radius: 50%; background: var(--accent); color: #fff; font-size: 10.5px; font-weight: 700; display: flex; align-items: center; justify-content: center; z-index: 3; box-shadow: 0 0 0 2px #141414; }
+  .pin-wrap { position: relative; }
+  .pin-wrap .pin { top: 50%; transform: translateY(-50%); }
+  .anat-stage .sec-head .pin { top: 3px; right: 6px; }
+  .stage-label { font-size: 11px; color: var(--text-muted); padding: 6px 0 0; text-align: center; }
+
+  /* ── §四 状态样张 ── */
+  .strip { display: flex; gap: 18px; flex-wrap: wrap; margin-top: 10px; }
+  .strip-cell { width: 216px; }
+  .strip-cell .cell-head { font-size: 11.5px; color: var(--text-muted); padding: 0 0 5px; }
+  .strip-cell .box { background: var(--bg-side-panel); border: 1px solid var(--separator); border-radius: 4px; padding: 0; }
+  .swatch { display: inline-block; width: 11px; height: 11px; border-radius: 2px; border: 1px solid rgba(128,128,128,0.5); vertical-align: -1px; margin-right: 5px; }
+
+  .legend { font-size: 12.5px; color: var(--text-secondary); line-height: 1.9; margin-top: 8px; }
+  .legend b { color: var(--text-primary); }
+  .kd { font-size: 11.5px; color: var(--text-muted); }
+</style>
+</head>
+<body>
+
+<h1>文件树「打开文件夹」侧栏入口 —— 实现稿细节详解
+  <small>
+    <b>这是实现稿，不是竞标稿。</b>竞标（A/B/C 三选一，2026-09-13 定 A）见同目录 <code>01-打开文件夹入口-竞标.html</code>；本图补的是设计文档 <b>§四.3 一直欠着的「A 版全状态细节图」</b>（硬约束 16 的设计前置）。<br>
+    绘制依据 = <b>已出货的插件 1.0.20</b>。数字分三类，图内逐处标注：<span class="mea">［实测］</span>＝ 2026-09-29 隔离实例（fresh userData、装出厂种子 1.0.20）CDP 运行时读数；
+    <span class="src">［源码］</span>＝ 插件仓 <code>OpenFolderView.tsx</code> / <code>OpenFolderView.css</code> 逐字声明；<span class="tok">［token］</span>＝ 壳仓 <code>src/index.css</code> 的 <code>:root</code>（暗）与 <code>[data-theme="light"]</code>（亮）真值。<br>
+    ⚠️ <b>本图不是皮肤提案</b>——这一段每一处颜色都由主题系统供给（<code>var(--xxx)</code>），本图只是把 <code>var()</code> 解析后的结果画出来。皮肤怎么改都不该动这张图。
+  </small>
+</h1>
+
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+<h2>§一 三态全览 <span class="hint">窄栏 216px · 亮色主题 · 侧栏宽 = 本轮走查的下限场景（默认 280 见 §二）</span></h2>
+<div class="frames">
+
+  <!-- ── 态① 空态 · 无最近 ── -->
+  <div class="frame-col">
+    <div class="frame-caption"><span class="tag g">态①</span><b>空态 · 无最近</b><span>未开任何文件夹 ＋ 无历史 ⇒「最近」整块不渲染</span></div>
+    <div class="app light">
+      <div class="titlebar"><div class="logo"></div><div class="app-name">LinkDesk</div>
+        <div class="menu"><span>文件</span><span>查看</span><span>帮助</span></div>
+        <div class="win-btns"><i>─</i><i>□</i><i>×</i></div>
+      </div>
+      <div class="app-body">
+        <div class="icon-bar"><div class="ic">⌂</div><div class="ic active">🗀</div><div class="ic">⌕</div><div class="ic">▸</div><div class="ic">⚙</div></div>
+        <div class="sidebar">
+          <div class="sidebar-head">资源管理器</div>
+          <div class="side-scroll">
+            <div class="section">
+              <div class="sec-head"><span class="twistie">▾</span><span class="title">尚未打开文件夹</span></div>
+              <div class="tree"><div class="tree-empty-hint">您尚未打开文件夹。</div></div>
+            </div>
+            <div class="section">
+              <div class="sec-head"><span class="twistie">▸</span><span class="title">搜索</span></div>
+            </div>
+            <div class="section">
+              <div class="sec-head"><span class="twistie">▾</span><span class="title">打开文件夹</span></div>
+              <div class="file-tree-open-folder">
+                <button class="file-tree-open-folder-btn"><span class="codicon">📂</span>打开文件夹…</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="main">
+          <div class="tabbar"><div class="tab active">欢迎</div><div class="tab">＋</div></div>
+          <div class="main-content"><div class="big">⌂</div>（欢迎页已关闭——本场景正是「全软件再没有一处 UI 能打开文件夹」）</div>
+        </div>
+      </div>
+      <div class="statusbar"><span>Ln 1, Col 1</span><div class="right"><span>UTF-8</span><span>file-tree 1.0.20</span></div></div>
+    </div>
+    <div class="frame-note">
+      <b>渲染判据：</b><code>recent.length &gt; 0 &amp;&amp; (…)</code> —— <span class="ok">无最近项时该块整个不渲染</span>，不留空标题、不留空白块（<span class="src">［源码］OpenFolderView.tsx</span>）。<br>
+      <b>空态提示的分工：</b>「您尚未打开文件夹」归 <b>FOLDERS 自己</b>（FT#3 补的 <code>.file-tree-empty-hint</code>），本 section <b>不带引导卡</b>——按钮职责只归一处置（B 版引导卡形态已在竞标淘汰）。
+    </div>
+  </div>
+
+  <!-- ── 态② 空态 · 有最近 ── -->
+  <div class="frame-col">
+    <div class="frame-caption"><span class="tag g">态②</span><b>空态 · 有最近</b><span>清空了目录但有历史 ⇒「最近」出现</span></div>
+    <div class="app light">
+      <div class="titlebar"><div class="logo"></div><div class="app-name">LinkDesk</div>
+        <div class="menu"><span>文件</span><span>查看</span><span>帮助</span></div>
+        <div class="win-btns"><i>─</i><i>□</i><i>×</i></div>
+      </div>
+      <div class="app-body">
+        <div class="icon-bar"><div class="ic">⌂</div><div class="ic active">🗀</div><div class="ic">⌕</div><div class="ic">▸</div><div class="ic">⚙</div></div>
+        <div class="sidebar">
+          <div class="sidebar-head">资源管理器</div>
+          <div class="side-scroll">
+            <div class="section">
+              <div class="sec-head"><span class="twistie">▾</span><span class="title">尚未打开文件夹</span></div>
+              <div class="tree"><div class="tree-empty-hint">您尚未打开文件夹。</div></div>
+            </div>
+            <div class="section">
+              <div class="sec-head"><span class="twistie">▸</span><span class="title">搜索</span></div>
+            </div>
+            <div class="section">
+              <div class="sec-head"><span class="twistie">▾</span><span class="title">打开文件夹</span></div>
+              <div class="file-tree-open-folder">
+                <button class="file-tree-open-folder-btn"><span class="codicon">📂</span>打开文件夹…</button>
+                <div class="file-tree-open-folder-recent">
+                  <div class="file-tree-open-folder-recent-label">最近</div>
+                  <button class="file-tree-open-folder-recent-item">
+                    <span class="file-tree-open-folder-recent-icon">🗀</span>
+                    <span class="file-tree-open-folder-recent-name">ft4v2-root</span>
+                    <span class="file-tree-open-folder-recent-path">C:/Users/fengy/A…</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="main">
+          <div class="tabbar"><div class="tab active">欢迎</div><div class="tab">＋</div></div>
+          <div class="main-content"><div class="big">⌂</div>（欢迎页已关闭）</div>
+        </div>
+      </div>
+      <div class="statusbar"><span>Ln 1, Col 1</span><div class="right"><span>UTF-8</span><span>file-tree 1.0.20</span></div></div>
+    </div>
+    <div class="frame-note">
+      <b>条目结构：</b>图标 ＋ <b>name</b>（<code>max-width: 50%</code>，超出省略）＋ <b>path</b>（<code>flex:1; min-width:0</code>，超出省略，muted）。<br>
+      <b>数据源：</b><code>pluginState.get("app","recentFolders")</code> <b>只读</b>消费 ＋ <code>pluginState.onChange</code> 刷新（⚠️ 原稿写 <code>onDidChangeFolders</code>，实现时改口径：后者「广播在前、落盘在后」，同一条广播里读到的是上一版）。≤5 条。写方仍是欢迎页——<b>单写方</b>，本插件只读不写。<br>
+      <b>点击语义：</b><code>workspace.addFolder(path)</code> = <b>添加</b>（不是替换），与欢迎页最近列表、目录对话框同一个方法。
+    </div>
+  </div>
+
+  <!-- ── 态③ 有根态 ── -->
+  <div class="frame-col">
+    <div class="frame-caption"><span class="tag g">态③</span><b>有根态</b><span>section 照常驻留 ⇒ <b>任意时刻都能一把加根／换上下文</b></span></div>
+    <div class="app light">
+      <div class="titlebar"><div class="logo"></div><div class="app-name">LinkDesk</div>
+        <div class="menu"><span>文件</span><span>查看</span><span>帮助</span></div>
+        <div class="win-btns"><i>─</i><i>□</i><i>×</i></div>
+      </div>
+      <div class="app-body">
+        <div class="icon-bar"><div class="ic">⌂</div><div class="ic active">🗀</div><div class="ic">⌕</div><div class="ic">▸</div><div class="ic">⚙</div></div>
+        <div class="sidebar">
+          <div class="sidebar-head">资源管理器</div>
+          <div class="side-scroll">
+            <div class="section">
+              <div class="sec-head"><span class="twistie">▾</span><span class="title">FT4V2-ROOT</span><span class="acts"><i>＋</i><i>⟳</i></span></div>
+              <div class="tree">
+                <div class="row"><span class="twistie">▸</span><span class="fi">🗀</span>ft4v2-root</div>
+              </div>
+            </div>
+            <div class="section">
+              <div class="sec-head"><span class="twistie">▸</span><span class="title">搜索</span></div>
+            </div>
+            <div class="section">
+              <div class="sec-head"><span class="twistie">▾</span><span class="title">打开文件夹</span></div>
+              <div class="file-tree-open-folder">
+                <button class="file-tree-open-folder-btn"><span class="codicon">📂</span>打开文件夹…</button>
+                <div class="file-tree-open-folder-recent">
+                  <div class="file-tree-open-folder-recent-label">最近</div>
+                  <button class="file-tree-open-folder-recent-item">
+                    <span class="file-tree-open-folder-recent-icon">🗀</span>
+                    <span class="file-tree-open-folder-recent-name">ft4v2-root</span>
+                    <span class="file-tree-open-folder-recent-path">C:/Users/fengy/A…</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="main">
+          <div class="tabbar"><div class="tab active">欢迎</div><div class="tab">＋</div></div>
+          <div class="main-content"><div class="big">⌂</div>（主区与本 section 无耦合）</div>
+        </div>
+      </div>
+      <div class="statusbar"><span>Ln 1, Col 1</span><div class="right"><span>UTF-8</span><span>file-tree 1.0.20</span></div></div>
+    </div>
+    <div class="frame-note">
+      <b>有根时 section 不消失</b>（A 版定稿的全部理由：B/C 形态「有根即移除」＝ E4V#44 死锁近亲——注册即订阅，移除即 cleanup，广播没人听 ⇒ 永久死锁）。<br>
+      <b>FOLDERS 标题此时动态变根名／「工作区」</b>（既有逻辑，本补丁没碰）。<br>
+      <span class="ok">✅ 三态的容器读数逐字段相同</span>（表单见 §五）：空 ↔ 有根只换 section <b>内部内容</b>，容器宽度／滚动行为不变 ⇒ 这就是「<b>组件内部条件渲染</b>」，不是「外部替换整个组件」。
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+<h2>§二 默认栏宽（280px）· 暗色 <span class="hint">同一段 UI 在同一份 token 体系下的另一半；宽度由 <code>workbench.action.setSidebarWidth</code> 真调 <code>LayoutEngine</code> 得到</span></h2>
+<div class="frames">
+  <div class="frame-col">
+    <div class="frame-caption"><span class="tag n">280</span><b>默认栏宽 · 暗色 · 有根态</b><span>280 是 <code>DEFAULT_ZONE_SIZE.sidebarWidth</code>；暗色下按钮底 <span class="mea">实测 rgb(45,45,45)</span> = <code>--bg-card</code> <span class="tok">#2D2D2D</span></span></div>
+    <div class="app">
+      <div class="titlebar"><div class="logo"></div><div class="app-name">LinkDesk</div>
+        <div class="menu"><span>文件</span><span>查看</span><span>帮助</span></div>
+        <div class="win-btns"><i>─</i><i>□</i><i>×</i></div>
+      </div>
+      <div class="app-body">
+        <div class="icon-bar"><div class="ic">⌂</div><div class="ic active">🗀</div><div class="ic">⌕</div><div class="ic">▸</div><div class="ic">⚙</div></div>
+        <div class="sidebar w280">
+          <div class="sidebar-head">资源管理器</div>
+          <div class="side-scroll">
+            <div class="section">
+              <div class="sec-head"><span class="twistie">▾</span><span class="title">FT4V2-ROOT</span><span class="acts"><i>＋</i><i>⟳</i></span></div>
+              <div class="tree">
+                <div class="row"><span class="twistie">▸</span><span class="fi">🗀</span>ft4v2-root</div>
+              </div>
+            </div>
+            <div class="section">
+              <div class="sec-head"><span class="twistie">▾</span><span class="title">搜索</span></div>
+              <div class="search-body">
+                <div class="search-input">搜索</div>
+                <div class="search-row">
+                  <div class="search-input">要包含的文件</div>
+                  <div class="search-input">要排除的文件</div>
+                </div>
+                <div class="search-btn" style="align-self:flex-end;height:22px;border:none;background:transparent;color:var(--text-secondary)">替换</div>
+              </div>
+            </div>
+            <div class="section">
+              <div class="sec-head"><span class="twistie">▾</span><span class="title">打开文件夹</span></div>
+              <div class="file-tree-open-folder">
+                <button class="file-tree-open-folder-btn"><span class="codicon">📂</span>打开文件夹…</button>
+                <div class="file-tree-open-folder-recent">
+                  <div class="file-tree-open-folder-recent-label">最近</div>
+                  <button class="file-tree-open-folder-recent-item">
+                    <span class="file-tree-open-folder-recent-icon">🗀</span>
+                    <span class="file-tree-open-folder-recent-name">ft4v2-root</span>
+                    <span class="file-tree-open-folder-recent-path">C:/Users/fengy/AppData/Local/Temp/ft4v2-root</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="main">
+          <div class="tabbar"><div class="tab active">欢迎</div><div class="tab">＋</div></div>
+          <div class="main-content"><div class="big">⌂</div>（主区独立）</div>
+        </div>
+      </div>
+      <div class="statusbar"><span>Ln 1, Col 1</span><div class="right"><span>UTF-8</span><span>file-tree 1.0.20</span></div></div>
+    </div>
+    <div class="frame-note">
+      <b>280 下的实测（暗色 · 有根）：</b>视图宽／滚动宽 <span class="mea">264 == 264</span>（无横向溢出）· 主按钮 <span class="mea">248px</span> · <code>btnOver false</code> · 最近项 <code>items 1</code> · <code>nameClip false</code> · <code>pathClip true</code>（长路径按设计走省略号）· <code>docOverflow false</code>。<br>
+      <span class="kd">推导可自查：248 = 264 − 2×8（<code>.file-tree-open-folder</code> 的 <code>padding: …8px</code>），216 栏下 184 = 200 − 2×8 同式成立。</span>
+    </div>
+  </div>
+
+  <div class="frame-col">
+    <div class="frame-caption"><span class="tag w">216</span><b>窄栏 · 暗色 · 有根态</b><span>同一帧降到 216 ⇒ 按钮 184px，仍不出容器</span></div>
+    <div class="app">
+      <div class="titlebar"><div class="logo"></div><div class="app-name">LinkDesk</div>
+        <div class="menu"><span>文件</span><span>查看</span><span>帮助</span></div>
+        <div class="win-btns"><i>─</i><i>□</i><i>×</i></div>
+      </div>
+      <div class="app-body">
+        <div class="icon-bar"><div class="ic">⌂</div><div class="ic active">🗀</div><div class="ic">⌕</div><div class="ic">▸</div><div class="ic">⚙</div></div>
+        <div class="sidebar">
+          <div class="sidebar-head">资源管理器</div>
+          <div class="side-scroll">
+            <div class="section">
+              <div class="sec-head"><span class="twistie">▾</span><span class="title">FT4V2-ROOT</span><span class="acts"><i>＋</i><i>⟳</i></span></div>
+              <div class="tree"><div class="row"><span class="twistie">▸</span><span class="fi">🗀</span>ft4v2-root</div></div>
+            </div>
+            <div class="section">
+              <div class="sec-head"><span class="twistie">▾</span><span class="title">搜索</span></div>
+              <div class="search-body">
+                <div class="search-input">搜索</div>
+                <!-- ⚠️ 这里就是「范围外」的那处裁切：216 下「要排除的文件」被挤成「要排」 -->
+                <div class="search-row">
+                  <div class="search-input">要包含的文件</div>
+                  <div class="search-input clipped">要排</div>
+                </div>
+              </div>
+            </div>
+            <div class="section">
+              <div class="sec-head"><span class="twistie">▾</span><span class="title">打开文件夹</span></div>
+              <div class="file-tree-open-folder">
+                <button class="file-tree-open-folder-btn"><span class="codicon">📂</span>打开文件夹…</button>
+                <div class="file-tree-open-folder-recent">
+                  <div class="file-tree-open-folder-recent-label">最近</div>
+                  <button class="file-tree-open-folder-recent-item">
+                    <span class="file-tree-open-folder-recent-icon">🗀</span>
+                    <span class="file-tree-open-folder-recent-name">ft4v2-root</span>
+                    <span class="file-tree-open-folder-recent-path">C:/Users/fengy/A…</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="main">
+          <div class="tabbar"><div class="tab active">欢迎</div><div class="tab">＋</div></div>
+          <div class="main-content"><div class="big">⌂</div>（主区独立）</div>
+        </div>
+      </div>
+      <div class="statusbar"><span>Ln 1, Col 1</span><div class="right"><span>UTF-8</span><span>file-tree 1.0.20</span></div></div>
+    </div>
+    <div class="frame-note">
+      <b>216 下的实测（暗色 · 有根）：</b>视图宽／滚动宽 <span class="mea">200 == 200</span> · 主按钮 <span class="mea">184px</span> · <code>btnOver false</code> · <code>docOverflow false</code> ⇒ <b>本补丁这一段在窄栏零破格</b>。<br>
+      <span class="warn">⚠️ 图上「要排」不是本补丁的问题</span>——是<b>搜索 section 既有</b>的窄栏裁切（280 下正常），插件侧旧债、不在 FT# 改动面内。画在这里是为了<b>不把它误算到本补丁头上</b>。<br>
+      <b>下限：</b><code>setSidebarWidth(170)</code> 停在声明下限 <span class="mea">170</span>（dock <code>minWidth:170 / maxWidth:600</code>，钳制生效）。
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+<h2>§三 细节剖面 —— 这一段到底由什么摞起来 <span class="hint">带编号钉的实物（左）＋ 声明与实测对照（右）</span></h2>
+<div class="anat">
+  <div class="anat-stage">
+    <div class="sec-head"><span class="pin">①</span><span class="twistie">▾</span><span class="title">打开文件夹</span></div>
+    <div class="pin-wrap">
+      <div class="file-tree-open-folder">
+        <button class="file-tree-open-folder-btn"><span class="codicon">📂</span>打开文件夹…</button>
+        <div class="file-tree-open-folder-recent">
+          <div class="file-tree-open-folder-recent-label">最近</div>
+          <button class="file-tree-open-folder-recent-item">
+            <span class="file-tree-open-folder-recent-icon">🗀</span>
+            <span class="file-tree-open-folder-recent-name">ft4v2-root</span>
+            <span class="file-tree-open-folder-recent-path">C:/…/ft4v2-root</span>
+          </button>
+        </div>
+      </div>
+      <span class="pin" style="top:8px">②</span>
+      <span class="pin" style="top:34px">③</span>
+      <span class="pin" style="top:52px">④</span>
+      <span class="pin" style="top:52px; right:-33px">⑤</span>
+    </div>
+  </div>
+  <div>
+    <table>
+      <tr><th>钉</th><th>元素</th><th class="mono">声明（源码逐字）</th><th>实测／说明</th></tr>
+      <tr>
+        <td>①</td><td>sec-head</td>
+        <td class="mono src">height:24px; padding:0 8px 0 6px;<br>font-size:11px; letter-spacing:0.4px;<br>color: var(--text-secondary)</td>
+        <td>宿主给的 section 头（<span class="src">插件不拥有</span>，本补丁只借位）。标题译文走运行时注册那一笔。</td>
+      </tr>
+      <tr>
+        <td>②</td><td>主按钮</td>
+        <td class="mono src">height: calc(26px * var(--ui-scale));<br>width:100%;<br>border:1px solid var(--border);<br>background: var(--bg-card);<br>color: var(--text-primary);<br>font-size: var(--font-size-sm);<br>border-radius: var(--radius-sm);</td>
+        <td><span class="mea">实测 280 栏 248px ／ 216 栏 184px</span>（都 = 容器宽 − 2×8）· 暗色底 <span class="mea">rgb(45,45,45)</span> = <span class="tok">--bg-card #2D2D2D</span> · 文字 <span class="mea">rgb(212,212,212)</span> = <span class="tok">--text-primary #D4D4D4</span>。<br><span class="kd">26px = 树行基准（E5.8#172 定的 <code>--tree-item-height</code> 同源）× <code>--ui-scale</code>。</span></td>
+      </tr>
+      <tr>
+        <td>③</td><td>「最近」标签</td>
+        <td class="mono src">font-size: var(--font-size-2xs);<br>color: var(--text-muted)</td>
+        <td>11px muted。无最近项时<b>连同④⑤整块不渲染</b>。</td>
+      </tr>
+      <tr>
+        <td>④</td><td>最近项</td>
+        <td class="mono src">height: calc(24px * var(--ui-scale));<br>border:none; background:transparent;<br>border-radius: var(--radius-sm)</td>
+        <td><span class="mea">实测 items 1</span>（本轮 1 条历史）。常态底色 <span class="mea">rgba(0,0,0,0)</span> = 真 transparent（它是 <code>button</code>，但去掉了边框与底）。</td>
+      </tr>
+      <tr>
+        <td>⑤</td><td>name ／ path</td>
+        <td class="mono src">name: flex:none; max-width:50%;<br>　overflow:hidden; text-overflow:ellipsis;<br>path: flex:1; min-width:0;<br>　…ellipsis…; color: var(--text-muted);<br>　font-size: var(--font-size-2xs)</td>
+        <td><span class="mea">nameClip false</span> · <span class="mea">pathClip true</span>——<b>分工是对的</b>：名字保完整，路径让位走省略号（长路径本来就只能看个大意）。</td>
+      </tr>
+      <tr>
+        <td>—</td><td>容器</td>
+        <td class="mono src">display:flex; flex-direction:column;<br>gap:4px; padding:4px 8px</td>
+        <td>四个子件按 <code>gap 4px</code> 竖排；左右 8px 内边距 ⇒ 上表 ② 的宽度算式。</td>
+      </tr>
+    </table>
+  </div>
+</div>
+<div class="stage-label">左图＝按真实声明渲染的实物（216px 栏 · 暗色）</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+<h2>§四 三态取色 —— 以及 FT#4 当场抓到的那处缺陷 <span class="hint">hover / active 是走查的主要战场：静态截图永远看不出「hover 掉了底」</span></h2>
+
+<h3>4.1 三个状态的实物对照（暗色）</h3>
+<div class="strip">
+  <div class="strip-cell">
+    <div class="cell-head">常态（<code>--bg-card</code>）</div>
+    <div class="box"><div class="file-tree-open-folder">
+      <button class="file-tree-open-folder-btn"><span class="codicon">📂</span>打开文件夹…</button>
+    </div></div>
+  </div>
+  <div class="strip-cell">
+    <div class="cell-head">:hover（<code>--tree-bg-hover</code> ＋ accent 边）</div>
+    <div class="box"><div class="file-tree-open-folder">
+      <button class="file-tree-open-folder-btn st-hover"><span class="codicon">📂</span>打开文件夹…</button>
+    </div></div>
+  </div>
+  <div class="strip-cell">
+    <div class="cell-head">:active（<code>--tree-bg-selected</code>）</div>
+    <div class="box"><div class="file-tree-open-folder">
+      <button class="file-tree-open-folder-btn st-active"><span class="codicon">📂</span>打开文件夹…</button>
+    </div></div>
+  </div>
+</div>
+
+<h3>4.2 缺陷：hover 越「生效」越糟</h3>
+<table>
+  <tr><th>时点</th><th class="mono">主按钮 background</th><th class="mono">主按钮 border-color</th><th class="mono">最近项 background</th></tr>
+  <tr>
+    <td>常态</td>
+    <td class="mono"><span class="swatch" style="background:#2D2D2D"></span>rgb(45, 45, 45)</td>
+    <td class="mono">rgb(60, 60, 60) <span class="kd">= <span class="tok">--border #3C3C3C</span></span></td>
+    <td class="mono">rgba(0, 0, 0, 0)</td>
+  </tr>
+  <tr>
+    <td>强制 :hover <span class="bad">（修前 · 1.0.19）</span></td>
+    <td class="mono bad"><span class="swatch" style="background:transparent"></span>rgba(0, 0, 0, 0)  ← 底掉光</td>
+    <td class="mono">rgb(0, 120, 212)</td>
+    <td class="mono bad">rgba(0, 0, 0, 0)  ← 零反馈</td>
+  </tr>
+  <tr>
+    <td>强制 :hover <span class="ok" style="color:var(--status-connected);font-weight:600">（修后 · 1.0.20）</span></td>
+    <td class="mono"><span class="swatch" style="background:color-mix(in srgb, #D4D4D4 6%, transparent)"></span>color(srgb 0.831373 0.831373 0.831373 / 0.06)</td>
+    <td class="mono">rgb(0, 120, 212)</td>
+    <td class="mono">同上 6% 叠加</td>
+  </tr>
+</table>
+<div class="legend">
+  <b>真因（可指认到行）：</b><code>--tree-bg-hover</code> / <code>--tree-bg-selected</code> 只声明在 <b><code>.file-tree-root</code></b>（<code>file-tree-shell.css:23/25</code>），而本 section 的祖先链里<b>没有</b> <code>.file-tree-root</code> ⇒ <code>var()</code> 取到空串 ⇒ <code>background</code> 简写在<b>计算值期判非法</b> ⇒ 落到 <b>unset</b>（＝ transparent）。所以「hover 生效」的可见结果恰好是<b>有底变没底</b>；而同一规则里的 <code>border-color: var(--accent)</code> 反而正常（accent 是全局 token）——这个不对称就是最刺眼的病灶。<br>
+  <b>修法：</b>三处 <code>var()</code> 补 fallback，写法与 <code>SearchView.css</code> 既有两处<b>完全一致</b>（不发明第二种写法）：<br>
+  <code class="src">background: var(--tree-bg-hover, color-mix(in srgb, var(--text-primary) 6%, transparent));</code><br>
+  <b>自带交叉验证（值得记一笔）：</b>修后实测色的 RGB 三元组 <code>0.831373 = 212/255</code> <b>正好就是 <code>--text-primary</code></b>——即 fallback 公式与「若在 <code>.file-tree-root</code> 作用域内本该取到的值」<b>逐位相同</b>。修的是作用域缺失，不是换了个颜色。<br>
+  <b>取证方式：</b>CDP <code>CSS.forcePseudoState</code>（driver <code>--mode force</code>，脚本自带机制自证）；<b>修后是在全新隔离实例上装 1.0.20 真货复测</b>，不是改完源码就地看。
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+<h2>§五 窄栏（216px）读数表 <span class="hint">走的是产品自己的命令路径：<code>workbench.action.setSidebarWidth</code> → 池命令桥 → <code>LayoutEngine.resizeZone</code></span></h2>
+<table>
+  <tr><th>读数</th><th>280px（默认）</th><th>216px（窄栏）</th><th>判据</th></tr>
+  <tr><td>视图宽 ／ 滚动宽</td><td class="mono mea">264 == 264</td><td class="mono mea">200 == 200</td><td class="ok">无横向溢出</td></tr>
+  <tr><td>主按钮实测宽</td><td class="mono mea">248px</td><td class="mono mea">184px</td><td class="ok">= 容器宽 − 2×8，<code>btnOver false</code></td></tr>
+  <tr><td>最近项条数</td><td class="mono mea">1</td><td class="mono mea">1</td><td class="ok">计数不随栏宽变</td></tr>
+  <tr><td><code>nameClip</code> ／ <code>pathClip</code></td><td class="mono mea">false ／ true</td><td class="mono mea">false ／ true</td><td class="ok">名字保完整、路径让位（设计如此）</td></tr>
+  <tr><td><code>docOverflow</code></td><td class="mono mea">false</td><td class="mono mea">false</td><td class="ok">整页无溢出</td></tr>
+  <tr><td>空态 ↔ 有根态</td><td colspan="2" class="mono mea">容器读数逐字段相同</td><td class="ok">只换 section 内部内容（组件内条件渲染）</td></tr>
+  <tr><td>亮 ↔ 暗</td><td colspan="2" class="mono mea">两态下 token 都真换</td><td class="ok">面板／按钮／文字全部取自主题系统</td></tr>
+  <tr><td>下限钳制</td><td>—</td><td class="mono mea">setSidebarWidth(170) → 170</td><td class="ok">dock <code>minWidth:170</code> 生效</td></tr>
+  <tr><td>硬编码色值</td><td colspan="2" class="mono mea">19 处颜色全部 var(--xxx) ／ hex 命中 0</td><td class="ok">唯一 <code>#</code> 命中是注释里的 <code>#172</code>（工单号，非色值）</td></tr>
+</table>
+<div class="legend kd">
+  覆盖矩阵 = 亮/暗 × 空态/有根 × 280/216，<b>共 8 帧</b>（本轮全部真跑落图；§一/§二 画的是其中 5 帧的示意）。<br>
+  ⚠️ <b>两条如实记账、都不是产品缺陷</b>：① 池桥签名是 <code>executeCommand(commandId, token, ...args)</code>——<b>第二个参数是 token、实参从第 3 位起</b>；我早先按 <code>(id, ...args)</code> 传，于是命令看起来「no-op、参数被忽略」，是<b>我用法错</b>，更正后 216／170／reset 全部当场应验。② CDP 拖拽 <code>.ldk-zone-resize-handle.vertical</code> 不 resize（<code>mousemove/pointerdown/mousedown</code> 经探针证明<b>都到了</b>手柄上）＝ harness 限制，<b>不据此对产品下任何断言</b>；矩阵改走产品命令路径，反而更硬。
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+<h2>§六 红线与范围外</h2>
+<div class="legend">
+  <b>红线①（本文件存在的全部理由）：</b>本 section <b>永不卸载</b>——订阅（目前只有 <code>pluginState.onChange</code>）只挂这类常驻组件。<br>
+  <b>红线②：</b>空态／有根态<b>只允许组件内部条件渲染</b>，⛔ 绝不做「外部替换整个组件」（<code>registerViewEmptyContent</code> 形态：FoldersView 当年被整替换 ⇒ 订阅被 cleanup ⇒ <code>addFolder</code> 广播无人听 ⇒ <b>永久死锁</b>）。本补丁的三态读数逐字段相同，就是这条红线的机械证据。<br>
+  <b>打开动作走命令、不直连 API：</b>主按钮打 <code>file-tree.openFolder</code>（handler = <code>workspace.openFolder()</code>），与文件菜单、命令面板<b>同一条链</b>，不写第二份逻辑——<code>data-hint</code> 也才能带出该命令的快捷键。<br>
+  <span class="warn">⛔ 范围外（本图明确不认领）：</span>搜索 section 的窄栏裁切（§二 图内已标注）、最近列表<b>条目内容</b>逐条对账（FT#4 只核了计数与截断读数）、命令面板入口、主题切换跨插件回归、<b>实机 nsis 那半</b>——都归 <code>FT#5</code> 残余，见执行清单。
+</div>
+
+</body>
+</html>
