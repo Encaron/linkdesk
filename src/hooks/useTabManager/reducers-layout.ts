@@ -83,23 +83,63 @@ export function reduceMoveTab(prev: TabState, tabId: string, targetGroupId: stri
   };
 }
 
+/* ── 分屏回执——「跑了、但树没变」必须说得出为什么（M2 生长格 `AI#55`）──────────
+   修前：几种不同的「没做事」一律 `return prev`（`ok=true`、树一字不变、无报错）⇒ 同一个
+   `ok=true` 同时承担「执行了 / 没执行 / 超层」多种含义，AI 只能靠截图与反复试探去猜。
+   今日起：**单一权威 = 本层判定**（命令层只透出，⛔ 不重算深度/标签数——那会造第二份真相源）。 */
+
+/** 分屏没做成的原因——**可分辨的字面量**（新原因必须显式登记，⛔ 不加「其它」兜底）。
+ *  ⚠️ 不 export：唯一的消费者是本文件的 `refused()` 与 `SplitResult.reason`（导出过一版，
+ *  `knip` 判「无人 import」⇒ 收回模块内）。 */
+type SplitRefusal =
+  | "no-tab-id"      // 命令面缺参数（调用方没给 tabId）——原本也是静默 no-op
+  | "no-such-tab"    // tabId 不在任何组里（多数 = 刚被关掉）
+  | "single-tab"     // 自切、且源组只剩这一条标签 ⇒ 源组会变空（本仓无空组占位 UI）⇒ 拒绝
+  | "max-depth"      // 树深已到 `MAX_TREE_DEPTH`（splitTree.ts）——要再切得先合掉一格
+  | "no-such-target" // 指定 targetGroupId 不在树里（落点组已消失）
+  | "no-callbacks";  // 命令层专用：宿主没注册标签页管理器
+
+/** 分屏回执——命令面返回值形状（门③ 的 `exec` 原样透出）。
+ *  · `ok:true` 无 `noop` = 树变了；
+ *  · `ok:true` ＋ `noop:true` = **调用没问题、但树没变**，`reason` 说明为什么；
+ *  · `ok:false` ＋ `noop:true` = 这次**调用**有问题（缺参数 / 没宿主）。
+ *  ⛔ 三种都不许再靠「什么都不回」表达。 */
+export interface SplitResult {
+  ok: boolean;
+  noop?: true;
+  reason?: SplitRefusal;
+}
+
+/** 一次分屏尝试的完整产物：`state` 变没变 ＋ 回执（没变时 = 原引用） */
+export interface SplitAttempt {
+  state: TabState;
+  result: SplitResult;
+}
+
+const SPLIT_DONE: SplitResult = { ok: true };
+
+/** 没做事但**不是故障**——它是结果之一 */
+function refused(reason: SplitRefusal): SplitResult {
+  return { ok: true, noop: true, reason };
+}
+
 /**
- * 分屏——在指定目标面板的方向创建新面板，对标 VS Code "拖到另一个面板边缘"。
- * targetGroupId: 鼠标落点的面板（用来算分裂方向和位置）。
+ * 分屏（带目标面板与落点）——**判定单点**，`reduceSplitTabAt` 只是它的 `.state` 皮。
+ * 对标 VS Code「拖到另一个面板边缘」。
+ * targetGroupId: 鼠标落点的面板（用来算分裂方向和位置）。省略 = 源组自己（自切）。
  * zone: 拖拽落点方向（left/right/up/down）——决定新面板在目标面板的哪一侧。
- * 如果省略，默认用 tab 所在的源组，新面板放右边/下边。
  */
-export function reduceSplitTabAt(
+export function attemptSplitTabAt(
   prev: TabState,
   tabId: string,
   direction: "horizontal" | "vertical",
   targetGroupId?: string,
   zone?: "left" | "right" | "up" | "down"
-): TabState {
-  if (treeDepth(prev.root) >= MAX_TREE_DEPTH) return prev;
+): SplitAttempt {
+  if (treeDepth(prev.root) >= MAX_TREE_DEPTH) return { state: prev, result: refused("max-depth") };
 
   const sourceGroup = findGroup(prev, tabId);
-  if (!sourceGroup) return prev;
+  if (!sourceGroup) return { state: prev, result: refused("no-such-tab") };
 
   const tab = sourceGroup.tabs.find((t) => t.id === tabId)!;
   const effectiveTarget = targetGroupId ?? sourceGroup.id;
@@ -107,7 +147,14 @@ export function reduceSplitTabAt(
   // 从源组移除 tab
   const sourceRemaining = sourceGroup.tabs.filter((t) => t.id !== tabId);
 
-  // 创建新 group（含被拖走的 tab）
+  // 🔴 自切 ＋ 源组只剩这一条 ⇒ 源组会变空，而本仓没有空组占位 UI ⇒ **响亮拒绝**。
+  //    ⛔ 别退回老路「先摘叶、再到目标处建 branch」：单叶树时目标已消失 ⇒ 静默 `return prev`；
+  //    单组树时目标还在 ⇒ 同一条标签被留在**两个组**里（同 id 双开 = 更坏的静默）。
+  if (effectiveTarget === sourceGroup.id && sourceRemaining.length === 0) {
+    return { state: prev, result: refused("single-tab") };
+  }
+
+  // 创建新 group（含被拖走的 tab）——放在守卫之后：被拒的那几次不再白吃一个组号
   const newGroup = createGroup([tab]);
 
   // ── 处理源组变空 ──
@@ -146,36 +193,53 @@ export function reduceSplitTabAt(
     newGroup.id,
     newLeafSide
   );
-  if (!newRoot) return prev;
+  if (!newRoot) return { state: prev, result: refused("no-such-target") };
 
   return {
-    groups: groupsWithoutSource.concat(newGroup),
-    activeGroupId: newGroup.id,
-    root: newRoot,
+    state: {
+      groups: groupsWithoutSource.concat(newGroup),
+      activeGroupId: newGroup.id,
+      root: newRoot,
+    },
+    result: SPLIT_DONE,
   };
 }
 
-/** 分屏——在 tab 所在面板的方向创建新面板（向后兼容） */
-export function reduceSplitTab(
+/** 分屏（带目标面板与落点）——状态转换皮；回执走 `attemptSplitTabAt`（`AI#55`） */
+export function reduceSplitTabAt(
+  prev: TabState,
+  tabId: string,
+  direction: "horizontal" | "vertical",
+  targetGroupId?: string,
+  zone?: "left" | "right" | "up" | "down"
+): TabState {
+  return attemptSplitTabAt(prev, tabId, direction, targetGroupId, zone).state;
+}
+
+/**
+ * 分屏（源组自己）——`core.splitDown` / `core.splitRight` 那条路，**判定单点**同 `attemptSplitTabAt`。
+ */
+export function attemptSplitTab(
   prev: TabState,
   tabId: string,
   direction: "horizontal" | "vertical"
-): TabState {
+): SplitAttempt {
   // 深度限制
-  if (treeDepth(prev.root) >= MAX_TREE_DEPTH) return prev;
+  if (treeDepth(prev.root) >= MAX_TREE_DEPTH) return { state: prev, result: refused("max-depth") };
 
   const sourceGroup = findGroup(prev, tabId);
-  if (!sourceGroup) return prev;
-  if (sourceGroup.tabs.length < 1) return prev;
+  if (!sourceGroup) return { state: prev, result: refused("no-such-tab") };
+  if (sourceGroup.tabs.length < 1) return { state: prev, result: refused("no-such-tab") };
 
   const tab = sourceGroup.tabs.find((t) => t.id === tabId)!;
   const sourceRemaining = sourceGroup.tabs.filter((t) => t.id !== tabId);
 
-  // 创建新 group（含被拖走的 tab）
-  const newGroup = createGroup([tab]);
+  // ── 源组只有 1 个 tab → 分屏后源组会变空 → 拒绝（对标 VS Code 空组行为，V3 暂无空组占位 UI）──
+  //    `AI#55`：拒绝照旧，但**不再静默**——回 `noop` ＋ `reason`，AI 由此看得见「跑了、没变、为什么」。
+  if (sourceRemaining.length === 0) return { state: prev, result: refused("single-tab") };
 
-  // ── 源组只有 1 个 tab → 分屏后源组会变空 → 阻止（对标 VS Code 空组行为，V3 暂无空组占位 UI）──
-  if (sourceRemaining.length === 0) return prev;
+  // 创建新 group（含被拖走的 tab）——守卫之后才建：被拒的那几次不再白吃一个组号
+  const newGroup = createGroup([tab]);
 
   // ── 正常分屏：源组至少还有 1 个 tab，创建 branch ──
   const sourceActiveId = sourceGroup.activeTabId === tabId
@@ -183,7 +247,7 @@ export function reduceSplitTab(
     : sourceGroup.activeTabId;
 
   const newRoot = replaceLeafWithBranch(prev.root, sourceGroup.id, direction, newGroup.id);
-  if (!newRoot) return prev;
+  if (!newRoot) return { state: prev, result: refused("no-such-target") };
 
   const newGroups = prev.groups
     .map((g) =>
@@ -194,10 +258,22 @@ export function reduceSplitTab(
     .concat(newGroup);
 
   return {
-    groups: newGroups,
-    activeGroupId: newGroup.id,
-    root: newRoot,
+    state: {
+      groups: newGroups,
+      activeGroupId: newGroup.id,
+      root: newRoot,
+    },
+    result: SPLIT_DONE,
   };
+}
+
+/** 分屏——在 tab 所在面板的方向创建新面板（向后兼容皮；回执走 `attemptSplitTab`） */
+export function reduceSplitTab(
+  prev: TabState,
+  tabId: string,
+  direction: "horizontal" | "vertical"
+): TabState {
+  return attemptSplitTab(prev, tabId, direction).state;
 }
 
 /** 收起指定面板——从树中移除该 leaf。只有一个 leaf 时忽略。

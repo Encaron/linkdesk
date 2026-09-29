@@ -7,13 +7,15 @@
  */
 
 import type { WindowMode } from "../../types/windows"; // E5.8#45：WindowMode 单一真相源（core/types——壳策略层同源引用）
-import type { LayoutData } from "../../../hooks/useTabManager"; // 04 工作区导入恢复：整表替换的入参形状（同 useTabManager.restoreLayout）
+import type { LayoutData, SplitResult } from "../../../hooks/useTabManager"; // 04 工作区导入恢复：整表替换的入参形状（同 useTabManager.restoreLayout）／AI#55：分屏回执
 
 export interface CoreCallbacks {
   closeTab: (tabId: string) => void;
   closeOtherTabs: (groupId: string, exceptTabId: string) => void;
   closeRightTabs: (groupId: string, tabIndex: number) => void;
-  splitTab: (tabId: string, direction: "horizontal" | "vertical") => void;
+  /** M2 生长格 `AI#55`：分屏回执——树没变时必须回 `noop` ＋ `reason`（`ok:false` = 调用本身有问题）。
+   *  唯一权威 = reducer（`attemptSplitTab`）；命令层只透出，⛔ 不重算深度/标签数。 */
+  splitTab: (tabId: string, direction: "horizontal" | "vertical") => SplitResult;
   findGroupByTabId: (tabId: string) => { groupId: string; tabs: Array<{ id: string }> } | null;
   openTab: (pluginId: string) => string;
   /** E5.8#46.8：按聚焦窗关闭 active tab——sourceWindowId 来自键盘转发载荷（脱出窗关本窗 tab）；主窗/未注为 undefined */

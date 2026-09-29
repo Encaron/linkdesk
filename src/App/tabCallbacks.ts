@@ -28,7 +28,7 @@ import { FALLBACK_PLUGIN_ID } from "../core/utils/plugin/fallbackPluginId";
 import type { CoreCallbacks } from "../core/commands/shell/coreCommands";
 import type { ShellTabAction } from "../core/types/ipc/tabActions"; // E5.8#44-B：壳侧收 ShellTabAction（含 sourceWindowId）
 import type { CreateTabOptions } from "../core/api/types";
-import type { CloseTabResult, LayoutData, TabState, Tab } from "../hooks/useTabManager";
+import type { CloseTabResult, LayoutData, SplitResult, TabState, Tab } from "../hooks/useTabManager";
 import type { WindowMode, WindowShellState } from "./windows"; // E5.8#45：deps 类型同 relocation 返回值（WindowMode）——core 契约已宽化；#46.4：脱出窗路由查注册表
 
 /* ── handleFocusTab ── */
@@ -56,7 +56,8 @@ export function createFocusTabHandler(deps: FocusTabHandlerDeps): (tabId: string
 
 export interface CoreCallbacksDeps {
   closeTab: (tabId: string) => Promise<CloseTabResult>;
-  splitTab: (tabId: string, direction: "horizontal" | "vertical") => void;
+  /** M2 `AI#55`：返回回执原样上浮（`{ ok, noop?, reason? }`）——deps 声明与 useTabManager 同形，⛔ 不在这里吞成 void */
+  splitTab: (tabId: string, direction: "horizontal" | "vertical") => SplitResult;
   tabState: TabState;
   handleFocusTab: (tabId: string) => void;
   unsplit: (groupId?: string) => void;

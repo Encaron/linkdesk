@@ -26,6 +26,15 @@ export type { CoreCallbacks } from "../infra/CoreCallbacks";
 export { updateCoreCallbacks } from "../infra/CoreCallbacks";
 import { getCallbacks, isRegistered, setRegistered } from "../infra/CoreCallbacks";
 import type { LinkDeskCommandParam } from "../../api/linkdesk-api/types";
+import type { SplitResult } from "../../../hooks/useTabManager"; // AI#55：分屏命令的回执形状（⛔ 只借型，不引运行时——core 不反向依赖 hooks）
+
+/**
+ * `AI#55`：分屏命令的**调用面**失败（缺参数 / 没宿主）——与「做了但树没变」分开报。
+ * 后者的判定在 reducer（`attemptSplitTab`），命令层只原样透出，⛔ 不重算深度/标签数。
+ */
+function splitBadCall(reason: "no-tab-id" | "no-callbacks"): SplitResult {
+  return { ok: false, noop: true, reason };
+}
 
 /**
  * M1 `AI#7`：设置项齿轮类命令共用的 ctx 参数——四处命令同一份字面量，只写一遍
@@ -179,7 +188,8 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
     params: [{ name: "ctx", type: "object", required: true, description: "{ tabId: string }——要分屏的标签页 id" }],
     handler: async (...args) => {
       const ctx = args[0] as { tabId?: string } | undefined;
-      if (ctx?.tabId) getCallbacks()?.splitTab(ctx.tabId, "vertical");
+      if (!ctx?.tabId) return splitBadCall("no-tab-id");
+      return getCallbacks()?.splitTab(ctx.tabId, "vertical") ?? splitBadCall("no-callbacks");
     },
     menuId: MENU_SLOTS.TabContext,
     menuGroup: "split",
@@ -192,7 +202,8 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
     params: [{ name: "ctx", type: "object", required: true, description: "{ tabId: string }——要分屏的标签页 id" }],
     handler: async (...args) => {
       const ctx = args[0] as { tabId?: string } | undefined;
-      if (ctx?.tabId) getCallbacks()?.splitTab(ctx.tabId, "horizontal");
+      if (!ctx?.tabId) return splitBadCall("no-tab-id");
+      return getCallbacks()?.splitTab(ctx.tabId, "horizontal") ?? splitBadCall("no-callbacks");
     },
     menuId: MENU_SLOTS.TabContext,
     menuGroup: "split",

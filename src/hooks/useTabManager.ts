@@ -73,8 +73,8 @@ export {
 
 import {
   reduceMoveTab,
-  reduceSplitTabAt,
-  reduceSplitTab,
+  attemptSplitTab,
+  attemptSplitTabAt,
   reduceUnsplit,
   reduceUpdateSplitSizes,
   reduceResetSplitSizes,
@@ -84,11 +84,17 @@ export {
   reduceMoveTab,
   reduceSplitTabAt,
   reduceSplitTab,
+  attemptSplitTab,
+  attemptSplitTabAt,
   reduceUnsplit,
   reduceUpdateSplitSizes,
   reduceResetSplitSizes,
   reduceRestoreLayout,
 } from "./useTabManager/reducers-layout";
+// M2 生长格 `AI#55`：分屏回执的形状（命令面返回值 = 这套）
+// ⚠️ `export type … from` 不绑定本地名 ⇒ splitTab 的返回类型另起一行 import 进来
+export type { SplitResult, SplitAttempt } from "./useTabManager/reducers-layout";
+import type { SplitResult } from "./useTabManager/reducers-layout";
 
 /* ── Hook ── */
 
@@ -292,16 +298,20 @@ export function useTabManager() {
     setTabState((prev) => reduceMoveTab(prev, tabId, targetGroupId, insertIndex));
   }, []);
 
+  /** M2 生长格 `AI#55`：回执**同步预计算**（G6 ref 桥接同款——返回值走 ref、状态转换仍走函数式
+   *  updater 保持队列语义）⇒ 命令面（`core.splitDown`/`core.splitRight`）原样透出 `noop`/`reason`。 */
   const splitTab = useCallback(
-    (tabId: string, direction: "horizontal" | "vertical" = "horizontal") => {
-      setTabState((prev) => reduceSplitTab(prev, tabId, direction));
+    (tabId: string, direction: "horizontal" | "vertical" = "horizontal"): SplitResult => {
+      const eager = attemptSplitTab(tabStateRef.current, tabId, direction);
+      setTabState((prev) => attemptSplitTab(prev, tabId, direction).state);
+      return eager.result;
     },
     []
   );
 
   const splitTabAt = useCallback(
     (tabId: string, direction: "horizontal" | "vertical", targetGroupId?: string, zone?: "left" | "right" | "up" | "down") => {
-      setTabState((prev) => reduceSplitTabAt(prev, tabId, direction, targetGroupId, zone));
+      setTabState((prev) => attemptSplitTabAt(prev, tabId, direction, targetGroupId, zone).state);
     },
     []
   );

@@ -16,6 +16,8 @@ import {
   reduceCloseTab,
   reduceMoveTab,
   reduceSplitTab,
+  attemptSplitTab,   // M2 生长格 AI#55：分屏回执（noop/reason）——判定单点
+  attemptSplitTabAt, // 同上（带落点面板/方向那一路）
   reduceUnsplit,
   reduceResetSplitSizes, // M2 AI#21：分屏比例整体复位
   reduceSetDirty,
@@ -31,7 +33,7 @@ import {
   type TabState,
   type LayoutData,
 } from "./useTabManager";
-import { getAllLeafGroupIds, type SplitNode } from "../core/utils/splitTree";
+import { getAllLeafGroupIds, treeDepth, MAX_TREE_DEPTH, type SplitNode } from "../core/utils/splitTree";
 import { detectDropZone } from "../pool/hooks/tabDragTypes";
 import { registerViewPlugin, clearRegistry } from "../pluginLoader/contributions/viewRegistry";
 import { resolvePoolTabTitle } from "../core/utils/tabIdentity";
@@ -407,6 +409,124 @@ describe("reduceSplitTab", () => {
     // 第4次 split 应被忽略（深度已达上限）
     // 此时应有 <= 4 个 leaf
     expect(getAllLeafGroupIds(state.root).length).toBeLessThanOrEqual(4);
+  });
+});
+
+/* ── M2 生长格 AI#55：分屏回执（attemptSplitTab / attemptSplitTabAt）──
+ * 「没做成」过去是静默：单标签组自切回原状态、超层回原状态、tabId 找不到回原状态——三种**同形**，
+ * 命令面于是只有 `ok=true`，AI 只能靠截图猜。本组钉住三件事：
+ *   ① 拒绝要**说得出是哪种**（`noop` ＋ `reason`，字面量可分辨）；
+ *   ② 被拒的那几次**状态引用不变**（没白吃组号、没造空组、同一条标签不会同时在两个组里）；
+ *   ③ 既有**成功语义一字不改**（自切：源组少一条、新叶多一条；跨组：源叶被摘、标签以兄弟叶并入）。 */
+
+/** AI#55：一棵已达 MAX_TREE_DEPTH 的树（4 级；每个叶子 2 条标签 ⇒ 拒绝的原因只可能是「深度」） */
+function depthMaxState(): TabState {
+  const groups: TabState["groups"] = ["g1", "g2", "g3", "g4"].map((id, i) => {
+    const tabs = [w(`L${i}a`, "ws"), w(`L${i}b`, "ws")];
+    return { id, tabs, activeTabId: tabs[0].id };
+  });
+  const leaf = (id: string): SplitNode => ({ type: "leaf", groupId: id });
+  return {
+    groups,
+    activeGroupId: "g1",
+    root: {
+      type: "branch",
+      direction: "vertical",
+      sizes: [50, 50],
+      children: [
+        {
+          type: "branch",
+          direction: "vertical",
+          sizes: [50, 50],
+          children: [
+            { type: "branch", direction: "vertical", sizes: [50, 50], children: [leaf("g1"), leaf("g2")] },
+            leaf("g3"),
+          ],
+        },
+        leaf("g4"),
+      ],
+    },
+  };
+}
+
+describe("attemptSplitTab —— AI#55 分屏回执", () => {
+  it("正常自切：`ok` 且**无** noop（= 树真的变了），源组少一条、新叶多一条", () => {
+    let state = createInitialTabState();                      // [welcome]
+    const fallbackId = state.groups[0].tabs[0].id;            // 欢迎页 id 由计数器生成——从状态里取，不写死
+    state = reduceCreateTab(state, "terminal").state;         // [welcome, t1]
+    state = reduceCreateTab(state, "terminal").state;         // [welcome, t1, t2]
+
+    const attempt = attemptSplitTab(state, "terminal-1", "horizontal");
+
+    expect(attempt.result).toEqual({ ok: true });             // 无 noop 字段
+    expect(getAllLeafGroupIds(attempt.state.root)).toHaveLength(2);
+    const source = attempt.state.groups.find((g) => g.tabs.some((t) => t.id === fallbackId))!;
+    expect(source.tabs.map((t) => t.id)).toEqual([fallbackId, "terminal-2"]);
+    const moved = attempt.state.groups.find((g) => g.tabs.some((t) => t.id === "terminal-1"))!;
+    expect(moved.tabs).toHaveLength(1);
+  });
+
+  it("源组只剩这一条标签 ⇒ noop ＋ reason:'single-tab'，且状态引用不变（不造空组、不双开）", () => {
+    let state = createInitialTabState();
+    state = reduceCreateTab(state, "terminal").state;          // [welcome, t1]
+    state = reduceSplitTab(state, "terminal-1", "horizontal"); // [welcome] | [t1]
+
+    const attempt = attemptSplitTab(state, "terminal-1", "vertical");
+
+    expect(attempt.result).toEqual({ ok: true, noop: true, reason: "single-tab" });
+    expect(attempt.state).toBe(state);                         // 同一引用 ⇒ 树/组表都没动
+    // 老路在单叶树上会「同一条标签留在两个组里」（同 id 双开）——现在这条不可能
+    expect(attempt.state.groups.filter((g) => g.tabs.some((t) => t.id === "terminal-1"))).toHaveLength(1);
+  });
+
+  it("树深已达 MAX_TREE_DEPTH ⇒ noop ＋ reason:'max-depth'", () => {
+    const state = depthMaxState();
+    expect(treeDepth(state.root)).toBe(MAX_TREE_DEPTH);
+
+    const attempt = attemptSplitTab(state, state.groups[0].tabs[0].id, "horizontal");
+
+    expect(attempt.result).toEqual({ ok: true, noop: true, reason: "max-depth" });
+    expect(attempt.state).toBe(state);
+  });
+
+  it("tabId 不在任何组 ⇒ noop ＋ reason:'no-such-tab'（多数 = 它刚被关掉）", () => {
+    let state = createInitialTabState();
+    state = reduceCreateTab(state, "terminal").state;
+
+    const attempt = attemptSplitTab(state, "已经关掉的-id", "horizontal");
+
+    expect(attempt.result).toEqual({ ok: true, noop: true, reason: "no-such-tab" });
+    expect(attempt.state).toBe(state);
+  });
+});
+
+describe("attemptSplitTabAt —— AI#55 分屏回执（跨组拖拽）", () => {
+  it("拖到别组边缘：源叶被摘、标签以兄弟叶并入——既有语义不变，回执 `ok`", () => {
+    let state = createInitialTabState();
+    state = reduceCreateTab(state, "terminal").state;           // [welcome, t1]
+    state = reduceCreateTab(state, "terminal").state;           // [welcome, t1, t2]
+    const targetGroupId = state.groups[0].id;                   // 目标 = 源组（拖到自己的边缘）
+    state = reduceSplitTab(state, "terminal-2", "horizontal");   // [welcome,t1] | [t2]
+    const fromGroupId = state.groups.find((g) => g.tabs.some((t) => t.id === "terminal-2"))!.id;
+
+    const attempt = attemptSplitTabAt(state, "terminal-2", "vertical", targetGroupId, "right");
+
+    expect(attempt.result).toEqual({ ok: true });
+    expect(attempt.state.groups.some((g) => g.id === fromGroupId)).toBe(false); // 源叶被摘
+    const owner = attempt.state.groups.find((g) => g.tabs.some((t) => t.id === "terminal-2"))!;
+    expect(owner.id).not.toBe(fromGroupId);                     // 落进新叶
+    expect(getAllLeafGroupIds(attempt.state.root)).toHaveLength(2); // 摘一叶 + 添一叶
+    expect(owner.tabs).toHaveLength(1);
+  });
+
+  it("落点面板已消失 ⇒ noop ＋ reason:'no-such-target'", () => {
+    let state = createInitialTabState();
+    state = reduceCreateTab(state, "terminal").state;           // [welcome, t1]
+
+    const attempt = attemptSplitTabAt(state, "terminal-1", "horizontal", "group-已经没了", "right");
+
+    expect(attempt.result).toEqual({ ok: true, noop: true, reason: "no-such-target" });
+    expect(attempt.state).toBe(state);
   });
 });
 
