@@ -9,7 +9,7 @@
 ## 一、怎么用这份索引
 
 1. **找命令**：§二 按分类列全，`when 门控`列写明「什么条件下它才会出现」。
-2. **看参数**：`参数（调用实参）`列就是**调用实参**——逐位对应 handler 形参（元数据出处 = M1 `AI#7`/`AI#8`）。
+2. **看参数**：`参数（调用实参）`列就是**调用实参**——逐位对应 handler 形参（元数据出处 = 壳命令注册表的 `description`/`params`）。
 3. **调一条命令**（在**池窗口**的 `window.linkdesk` 上——池 = 执行真相源，见 [01-操作路径总览](01-操作路径总览.md)）：
 
    ```js
@@ -26,7 +26,7 @@
    await linkdesk.commands.getCommands();   // 全量：id / title / category / when / description / params
    ```
 
-   表里每条的 `description`/`params` 与这里返回的是同一份（M1 `AI#7`：元数据只做加法，进契约）。
+   表里每条的 `description`/`params` 与这里返回的是同一份（元数据只做加法，进契约）。
 
 ## 二、宿主命令
 
@@ -164,49 +164,49 @@
 | 命名空间 | 域接口 | 方法数 | 方法 | 一句话 |
 |:--|:--|:--:|:--|:--|
 | `app` | AppAPI | 1 | `getVersion` | app 命名空间——只读产品身份。版本号唯一运行时来源 = 主进程 app.getVersion()（package.json 单点，02 §2.3）。 |
-| `appearance` | AppearanceAPI | 2 | `importImage` `revealStorage` | E5.8#50.11：外观资产——本地选图拷贝入库（受控来源——用户任选路径不能 file:// 直读） |
+| `appearance` | AppearanceAPI | 2 | `importImage` `revealStorage` | 外观资产——本地选图拷贝入库（受控来源——用户任选路径不能 file:// 直读） |
 | `bridge` ⚠️ | ShellAPI | 4 | `onRequest` `respond` `broadcast` `notifyConfigChanged` | 壳↔插件通信中继——壳 preload 独有 |
 | `clipboard` | DataAPI | 3 | `readText` `writeText` `writeFileList` | 剪贴板——读/写系统剪贴板 |
 | `commands` | CommandsAPI | 5 | `execute` `executeCommand` `registerCommand` `unregisterCommands` `getCommands` | 命令——对标 VS Code vscode.commands |
-| `config` | CommandsAPI | 15 | （`@deprecated` 别名 → `configuration`，方法面同上） | @deprecated E3j #75——向后兼容别名，新代码用 configuration |
+| `config` | CommandsAPI | 15 | （`@deprecated` 别名 → `configuration`，方法面同上） | @deprecated 向后兼容别名，新代码用 configuration |
 | `configuration` | CommandsAPI | 15 | `get` `set` `getSchema` `onChange` `getConfigurationContributions` `inspectConfiguration` `getUserSettings` `onDidChangeConfiguration` `onPluginLifecycleChange` `consumeSettingsGroup` `onRequestSettingsGroup` `consumeScrollToSetting` `onRequestScrollToSetting` `consumeOpenKeybindings` `onRequestOpenKeybindings` | 配置—新名——对标 VS Code vscode.workspace.getConfiguration |
-| `contextKey` | UiAPI | 1 | `set` | E5#70：ContextKey——插件 SET 状态供壳 when 子句读 |
-| `decorations` | EditorAPI | 4 | `registerProvider` `unregisterProvider` `getDecoration` `onDidChange` | E5.7#60：文件装饰——池内本地注册表（零 IPC）。形状对标契约 §3.24 |
-| `dialog` | UiAPI | 5 | `confirm` `alert` `open` `openFile` `confirmContent` | E5#67：弹窗——确认/提示/文件选择 |
-| `dialogHost` | UiAPI | 5 | `onShow` `current` `pending` `confirm` `cancel` | E5.7#17：Dialog 哑渲染订阅——池 DialogHost 消费（壳 preload 无此面）。命名 dialogHost—— |
-| `encoding` | WorkspaceAPI | 3 | `detect` `decode` `encode` | E5.6#11.5a：编码检测/转换（主进程 EncodingService） |
+| `contextKey` | UiAPI | 1 | `set` | ContextKey——插件 SET 状态供壳 when 子句读 |
+| `decorations` | EditorAPI | 4 | `registerProvider` `unregisterProvider` `getDecoration` `onDidChange` | 文件装饰——池内本地注册表（零 IPC）。形状对标契约 §3.24 |
+| `dialog` | UiAPI | 5 | `confirm` `alert` `open` `openFile` `confirmContent` | 弹窗——确认/提示/文件选择 |
+| `dialogHost` | UiAPI | 5 | `onShow` `current` `pending` `confirm` `cancel` | Dialog 哑渲染订阅——池 DialogHost 消费（壳 preload 无此面）。命名 dialogHost—— |
+| `encoding` | WorkspaceAPI | 3 | `detect` `decode` `encode` | 编码检测/转换（主进程 EncodingService） |
 | `env` | WorkspaceAPI | 1 | `get` | 环境信息——对标 VS Code ExtensionContext |
 | `events` | DataAPI | 4 | `on` `emit` `heartbeat`° `notifyTheme`° | 通用事件订阅 + 发布——插件间数据管道。channel 为自由字符串，载荷按通道分型——订阅方收窄 |
 | `factorySlots` | FactorySlotsAPI | 4 | `listRoles` `list` `getActive` `setActive` | —— |
-| `fileAssociation` | EditorAPI | 1 | `getPluginFor` | E5.7#50：文件关联——扩展名→插件 ID（主进程 FileAssociationService 直答） |
+| `fileAssociation` | EditorAPI | 1 | `getPluginFor` | 文件关联——扩展名→插件 ID（主进程 FileAssociationService 直答） |
 | `filesystem` | WorkspaceAPI | 12 | `readTextFile` `writeTextFile` `exists` `createDir` `copy` `rename` `remove` `listDir` `readBinaryFile` `writeBinaryFile` `watch` `readdir`° | 文件系统——插件读写（路径校验由主进程执行） |
-| `floatingPanelHost` | UiAPI | 4 | `onShow` `action` `registerBoundsHost` `getBounds` | E5.8#37（Phase 8 类型 B）：悬浮面板哑渲染订阅——池 FloatingPanelHost 消费（壳 preload 无此面）。 |
+| `floatingPanelHost` | UiAPI | 4 | `onShow` `action` `registerBoundsHost` `getBounds` | （类型 B）：悬浮面板哑渲染订阅——池 FloatingPanelHost 消费（壳 preload 无此面）。 |
 | `getFilePath` | ShellAPI | 0 | （顶层函数）`getFilePath: (file: File) => string;` | OS 拖入文件路径获取——双端注入 |
-| `hotExit` ⚠️ | ShellAPI | 3 | `save` `load` `clear` | 热退出暂存——编辑器未保存内容落盘（E5.7#53）。`?`：池侧独有（壳 preload 不注入） |
+| `hotExit` ⚠️ | ShellAPI | 3 | `save` `load` `clear` | 热退出暂存——编辑器未保存内容落盘。`?`：池侧独有（壳 preload 不注入） |
 | `keybindings` | KeybindingsAPI | 12 | `getKeybindings` `getConflicts` `registerKeybinding` `saveUserKeybindings` `removeKeybindingForCommand` `resetKeybindingToDefault` `findKeybindingForCommand` `setKeybindingCaptureActive` `keyboardEventToKeyString` `onChange` `syncToMainProcess`° `onForwardedEvent`° | —— |
-| `langDef` | EditorAPI | 1 | `get` | E5.7#49：langDef——语言定义注册表（主进程直答）。只返回可序列化字段（monarch tokenizer 函数主进程侧剥壳） |
+| `langDef` | EditorAPI | 1 | `get` | langDef——语言定义注册表（主进程直答）。只返回可序列化字段（monarch tokenizer 函数主进程侧剥壳） |
 | `language` | AppearanceAPI | 5 | `getCurrent` `getAvailable` `set` `getInitial` `onChange` | —— |
-| `lsp` | EditorAPI | 4 | `spawn` `write` `dispose` `onData` | E5.6#14-lsp：LSP 桥——自动补全/F12/诊断/重命名 |
-| `menu` | UiAPI | 2 | `registerItems` `getItems` | E5#69：菜单——插件声明式读写 |
-| `notifications` | UiAPI | 3 | `show` `list` `subscribe` | 通知——插件弹通知（E6#72：唯一通知面 = 铃铛宽通知面板，右下窄卡链路已整删），对标 VS Code vscode.window.showInformationMessage |
-| `p2p` | DataAPI | 2 | `send` `on` | E5#65：p2p 插件间定向推流——和 bridge.broadcast 同模式（fire-and-forget） |
+| `lsp` | EditorAPI | 4 | `spawn` `write` `dispose` `onData` | LSP 桥——自动补全/F12/诊断/重命名 |
+| `menu` | UiAPI | 2 | `registerItems` `getItems` | 菜单——插件声明式读写 |
+| `notifications` | UiAPI | 3 | `show` `list` `subscribe` | 通知——插件弹通知（唯一通知面 = 铃铛宽通知面板，右下窄卡链路已整删），对标 VS Code vscode.window.showInformationMessage |
+| `p2p` | DataAPI | 2 | `send` `on` | p2p 插件间定向推流——和 bridge.broadcast 同模式（fire-and-forget） |
 | `panel` | PanelAPI | 3 | `reveal` `revealFloating` `setFloatingBounds` | —— |
-| `path` | WorkspaceAPI | 6 | `appDataDir`° `normalize` `join` `basename` `dirname` `extname` | 路径工具——壳/池双端注入（editor/file-tree 池插件消费 normalize/join 等）；appDataDir 双端同款（E5.8#0d.5：池侧补上——settings 插件池内解析 userData 路径） |
+| `path` | WorkspaceAPI | 6 | `appDataDir`° `normalize` `join` `basename` `dirname` `extname` | 路径工具——壳/池双端注入（editor/file-tree 池插件消费 normalize/join 等）；appDataDir 双端同款（池侧补上——settings 插件池内解析 userData 路径） |
 | `pluginManager` | PluginsAPI | 13 | `list` `enable` `disable` `uninstall` `install` `installWithProgress`° `reinstall` `getDisabled` `getUninstalled` `isDisabled` `update`° `checkUpdates`° `notifyManifestChanged`° | 插件管理——桥接 IpcBridgeHandler → loader 函数。池权威（marketplace 插件消费），必选 |
-| `pluginState` | DataAPI | 3 | `get` `set` `onChange` | E5#71：插件持久化存储——集中缓存 + 文件持久化 |
+| `pluginState` | DataAPI | 3 | `get` `set` `onChange` | 插件持久化存储——集中缓存 + 文件持久化 |
 | `plugins` | PluginsAPI | 14 | `resolvePath` `resolveEntry`° `getCompatibility`° `listDirs`° `listAll`° `listDisabledDirs`° `readManifest`° `readAllManifests`° `packageDownload`° `packageExtract`° `packageCancel`° `packageUpdateCheck`° `packageStageUpdate`° `packageCommitUpdate`° | 插件发现——双端注入：resolvePath 双端同面；读面（listDirs/listAll/readAllManifests/listDisabledDirs/readManifest）壳 preload 独有（loader 只在壳跑） |
 | `pool` | ShellAPI | 32 | `pushLayout` `onReady` `toggleDevTools` `onSidebarAction` `onTabAction` `onTabBarRects` `onDragPosition` `pushAdsorbHint` `onAdsorbIndex` `pushQuickPick` `onQuickPickAction` `pushDialog` `onDialogAction` `pushFloatingPanel` `onFloatingPanelAction` `onMemoryPressure` `createWindow` `closeWindow` `onWindowClosed` `onWindowBoundsChanged` `getLayout` `onLayout` `ready` `sidebarAction` `tabAction` `tabBarRects` `dragPosition` `onAdsorbHint` `adsorbIndex` `registerBeforeClose` `unregisterBeforeClose` `beforeClose` | 池控制——壳 preload：推送布局 + 注册池→壳动作回调；池 preload：收布局 + 发动作。双端各实现自己那半（方法级子集面，surfaces.ts） |
-| `protocol` | EditorAPI | 3 | `listProtocols` `getActiveProtocolId` `setActiveProtocolId` | E5.7#49：protocol——协议注册表（主进程直答）。返回前剥 parseLine/detect（JS 函数不可跨进程） |
-| `quickPick` | UiAPI | 1 | `show` | E5.7#63：插件 quickPick 选择器——池内本地桥（零 IPC，QuickPickHost 渲染）。结算 null → undefined |
-| `quickPickHost` | UiAPI | 6 | `registerHost` `onShow` `select` `highlight` `close` `itemAction` | E5.7#63：QuickPick 宿主渲染桥——池 QuickPickHost 消费（壳 preload 无此面） |
-| `search` | WorkspaceAPI | 1 | `searchFiles` | E5.6#11.5a：文件搜索——全文搜索/替换（IPC 到壳/主进程执行） |
+| `protocol` | EditorAPI | 3 | `listProtocols` `getActiveProtocolId` `setActiveProtocolId` | protocol——协议注册表（主进程直答）。返回前剥 parseLine/detect（JS 函数不可跨进程） |
+| `quickPick` | UiAPI | 1 | `show` | 插件 quickPick 选择器——池内本地桥（零 IPC，QuickPickHost 渲染）。结算 null → undefined |
+| `quickPickHost` | UiAPI | 6 | `registerHost` `onShow` `select` `highlight` `close` `itemAction` | QuickPick 宿主渲染桥——池 QuickPickHost 消费（壳 preload 无此面） |
+| `search` | WorkspaceAPI | 1 | `searchFiles` | 文件搜索——全文搜索/替换（IPC 到壳/主进程执行） |
 | `serial` | DataAPI | 11 | `listPorts` `getStatus` `openPort` `closePort` `sendData` `sendText` `setDtr` `setRts` `onData` `onStats` `onSystem` | 串口——读/写/监听，对标 VS Code SerialPort API |
 | `settings` | SettingsAPI | 3 | `list` `getActive` `setActive` | —— |
 | `shell` | ShellAPI | 6 | `showItemInFolder` `openInTerminal` `pluginLocation` `openPluginFolder` `startDrag` `relaunch`° | 壳级命令——revealInOS / openInTerminal / startDrag / relaunch，双端注入 |
 | `tabs` | TabsAPI | 9 | `create` `openOrFocus` `focus` `close` `focusBySourceId` `updateLabelBySourceId` `closeBySourceId` `onDidChangeActiveTab` `list` | —— |
 | `theme` | AppearanceAPI | 11 | `getCurrent` `getAvailable` `apply` `listRecipes` `getActive` `getEffectiveTokens` `setRecipe` `setColorway` `resetAppearance` `resetMix` `getBaselineSeeds` | —— |
 | `update` | UpdateAPI | 1 | `getState` | update 命名空间——只读更新状态（供「关于」类插件读宿主版本/更新态）。 |
-| `viewContainer` | EditorAPI | 4 | `getViewContainer` `getViews` `getView` `registerView` | E5.7#58：viewContainer——真 IPC 查询/更新（问壳侧注册表）。DTO 只含可序列化公开字段 |
+| `viewContainer` | EditorAPI | 4 | `getViewContainer` `getViews` `getView` `registerView` | viewContainer——真 IPC 查询/更新（问壳侧注册表）。DTO 只含可序列化公开字段 |
 | `window` | ShellAPI | 11 | `minimize` `maximize` `unmaximize` `close` `setZoom` `toggleDevTools` `isMaximized` `onMaximizeChange` `setAlwaysOnTop` `isAlwaysOnTop` `onAlwaysOnTopChange` | 窗口控制——TitleBar 按钮映射，双端注入（11 方法同通道，共享模块 electron/window-namespace.ts） |
 | `workspace` | WorkspaceAPI | 8 | `getFolders` `getActive` `setActive` `openFolder` `addFolder` `removeFolder` `onDidChangeFolders` `onDidChangeActiveWorkspace` | 工作区——池 preload 注入（壳侧经 WorkspaceService 直用）。池权威命名空间——插件必用面（file-tree），必选 |
 
@@ -222,5 +222,5 @@
 | §二 宿主命令 | 壳命令注册表（`getCommands()`） | 运行时的同一份：表里没有的宿主命令 = 今天真的没有 |
 | §三 API 面 | `contracts/linkdesk.d.ts` | 与 `@linkdesk/plugin-sdk` README 的速查表**同源同规**（那份由 `scripts/generate-api-cheatsheet.mjs` 生成）；两处各存一份只因**载体不同**（本手册随安装包发货，npm README 不随包） |
 
-⚠️ 本节两张表都**不包含**：插件自己注册的命令（运行时才知道）、M4 之后新增的 CLI/MCP 通道
-（接入方式见手册第 07 章，书写于 M4 落地后）。
+⚠️ 本节两张表都**不包含**：插件自己注册的命令（运行时才知道），以及 CLI/MCP 通道——
+那是**软件外**的入口（接入方式见手册第 07 章）。

@@ -24,11 +24,17 @@
  * 用法：
  *   node scripts/generate-contract.mjs           # 重新生成三产物
  *   node scripts/generate-contract.mjs --check   # 与磁盘比对（三产物，不一致退出码 1）——#21/#27d 门禁
+ *
+ * ⚠️ 产物①出口**剥工单编号**（`AI#63`，2026-09-29 用户拍板）：`.d.ts` 的读者是外部工程的 AI 与
+ *    第三方插件作者，他们手里没有本仓台账——`E5.7#63.5`/`AI#38.2` 只是噪声。源注释**不动**（仓内追溯
+ *    靠它 + git blame），只洗产物。实现见 `scripts/lib/strip-work-item-ids.mjs`；校验腿
+ *    `scripts/check-manual-ids.mjs`。
  */
 import ts from 'typescript';
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { stripWorkItemIds } from './lib/strip-work-item-ids.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = resolve(__dirname, '..');
@@ -195,9 +201,10 @@ export {};`;
 
 // 行尾空白归一化——TS printer 偶发 `, ` 逗号换行残留，git diff --cached --check 无豁免通道必须归零。
 // 先 CRLF→LF（源文件 Windows 行尾会经 trivia 进入产物），再剥行尾 [ \t]。
-const content = [banner, '// ── 契约类型 ──', ...blocks, '', ambient, '']
-  .join('\n')
-  .replace(/\r\n/g, '\n')
+const rawContent = [banner, '// ── 契约类型 ──', ...blocks, '', ambient, ''].join('\n');
+// 工单编号不进产物（AI#63）——**先剥编号、再归行尾**（剥完可能留缝上空白，让同一步收走）
+const content = stripWorkItemIds(rawContent)
+  .text.replace(/\r\n/g, '\n')
   .split('\n')
   .map((line) => line.replace(/[ \t]+$/, ''))
   .join('\n');

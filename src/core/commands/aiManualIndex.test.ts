@@ -34,6 +34,7 @@ import { ensureCoreCommands } from "./shell/coreCommands";
 import { getCommands, resolveCommandOwnership, type Command } from "../registry/commands/CommandRegistry";
 import { HOST_PSEUDO_PLUGIN_IDS } from "../registry/host-reserved.generated";
 import { ROOT, parseContract } from "../../../scripts/lib/contract-parse.mjs";
+import { stripWorkItemIdsInLine } from "../../../scripts/lib/strip-work-item-ids.mjs";
 
 const DOC_REL = "docs/07-AI操作手册/02-命令与API索引.md";
 /** 刷新腿的开关（唯一置位处 = `scripts/build-ai-manual.mjs`）——平时只读不写 */
@@ -50,6 +51,13 @@ const normEol = (s: string) => s.replace(/\r\n/g, "\n");
 
 /** 表格单元格转义：换行压成空格（表格里换行会撕裂行）、`|` 转义、多空格收敛。 */
 const esc = (s: string) => s.replace(/\r?\n/g, " ").replace(/\|/g, "\\|").replace(/\s+/g, " ").trim();
+
+/**
+ * 工单编号不进手册（`AI#63`，2026-09-29 用户拍板）——手册的读者是**外部工程的 AI**，本仓台账的
+ * `E5.7#63.5` 它认不出（用户原话：「我不认为外部其他工程文件的 ai 会认识这些序号」）。生成区是
+ * 机器写的，就在出口剥（手写散文的剥法见 `scripts/lib/strip-work-item-ids.mjs` 文件头）。
+ */
+const clean = (s: string) => stripWorkItemIdsInLine(s);
 
 /** 单行说明压到 `max` 字（超出以 `…` 结尾）——完整原文永远以 `getCommands()` 返回为准。 */
 function brief(s: string | undefined, max = 120): string {
@@ -107,8 +115,10 @@ function renderCommandIndex(commands: Command[]): string {
     out.push("| 命令 id | 标题 | 说明 | 参数（调用实参） | when 门控 |");
     out.push("|:--|:--|:--|:--|:--|");
     for (const c of list) {
-      const when = c.when?.trim() ? `\`${esc(c.when)}\`` : "——";
-      out.push(`| \`${c.id}\` | ${brief(c.title, 40)} | ${brief(c.description)} | ${paramCell(c.params)} | ${when} |`);
+      const when = c.when?.trim() ? `\`${esc(clean(c.when))}\`` : "——";
+      out.push(
+        `| \`${c.id}\` | ${brief(clean(c.title ?? ""), 40)} | ${brief(clean(c.description ?? ""))} | ${paramCell(c.params)} | ${when} |`,
+      );
     }
     out.push("");
   }
@@ -144,7 +154,7 @@ function renderApiIndex(): string {
       // 顶层函数属性命名空间（如 getFilePath）无子方法——直接展示签名形状
       methods = `（顶层函数）\`${esc(v.signature ?? "")}\``;
     }
-    out.push(`| \`${name}\`${mark} | ${v.iface} | ${v.methods.length} | ${methods} | ${brief(v.doc)} |`);
+    out.push(`| \`${name}\`${mark} | ${v.iface} | ${v.methods.length} | ${methods} | ${brief(clean(v.doc ?? ""))} |`);
   }
   if (optionalNamespaces.length || anyOptionalMethod) {
     out.push("");

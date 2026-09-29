@@ -24,44 +24,44 @@ npm install -D @linkdesk/plugin-sdk
 |:--|:--:|:--|:--|
 | `commands` | 5 | `execute` `executeCommand` `registerCommand` `unregisterCommands` `getCommands` | 命令——对标 VS Code vscode.commands |
 | `configuration` | 15 | `get` `set` `getSchema` `onChange` `getConfigurationContributions` `inspectConfiguration` `getUserSettings` `onDidChangeConfiguration` `onPluginLifecycleChange` `consumeSettingsGroup` `onRequestSettingsGroup` `consumeScrollToSetting` `onRequestScrollToSetting` `consumeOpenKeybindings` `onRequestOpenKeybindings` | 配置—新名——对标 VS Code vscode.workspace.getConfiguration |
-| `config` | 15 | （废弃别名 → `configuration`） | @deprecated E3j #75——向后兼容别名，新代码用 configuration |
+| `config` | 15 | （废弃别名 → `configuration`） | @deprecated 向后兼容别名，新代码用 configuration |
 | `theme` | 11 | `getCurrent` `getAvailable` `apply` `listRecipes` `getActive` `getEffectiveTokens` `setRecipe` `setColorway` `resetAppearance` `resetMix` `getBaselineSeeds` | —— |
 | `language` | 5 | `getCurrent` `getAvailable` `set` `getInitial` `onChange` | —— |
-| `appearance` | 2 | `importImage` `revealStorage` | E5.8#50.11：外观资产——本地选图拷贝入库（受控来源——用户任选路径不能 file:// 直读） |
+| `appearance` | 2 | `importImage` `revealStorage` | 外观资产——本地选图拷贝入库（受控来源——用户任选路径不能 file:// 直读） |
 | `tabs` | 9 | `create` `openOrFocus` `focus` `close` `focusBySourceId` `updateLabelBySourceId` `closeBySourceId` `onDidChangeActiveTab` `list` | —— |
 | `keybindings` | 12 | `getKeybindings` `getConflicts` `registerKeybinding` `saveUserKeybindings` `removeKeybindingForCommand` `resetKeybindingToDefault` `findKeybindingForCommand` `setKeybindingCaptureActive` `keyboardEventToKeyString` `onChange` `syncToMainProcess`° `onForwardedEvent`° | —— |
-| `notifications` | 3 | `show` `list` `subscribe` | 通知——插件弹通知（E6#72：唯一通知面 = 铃铛宽通知面板，右下窄卡链路已整删），对标 VS Code vscod… |
-| `menu` | 2 | `registerItems` `getItems` | E5#69：菜单——插件声明式读写 |
-| `contextKey` | 1 | `set` | E5#70：ContextKey——插件 SET 状态供壳 when 子句读 |
-| `dialog` | 5 | `confirm` `alert` `open` `openFile` `confirmContent` | E5#67：弹窗——确认/提示/文件选择 |
-| `quickPick` | 1 | `show` | E5.7#63：插件 quickPick 选择器——池内本地桥（零 IPC，QuickPickHost 渲染） |
-| `quickPickHost` | 6 | `registerHost` `onShow` `select` `highlight` `close` `itemAction` | E5.7#63：QuickPick 宿主渲染桥——池 QuickPickHost 消费（壳 preload 无此面） |
-| `dialogHost` | 5 | `onShow` `current` `pending` `confirm` `cancel` | E5.7#17：Dialog 哑渲染订阅——池 DialogHost 消费（壳 preload 无此面） |
-| `floatingPanelHost` | 4 | `onShow` `action` `registerBoundsHost` `getBounds` | E5.8#37（Phase 8 类型 B）：悬浮面板哑渲染订阅——池 FloatingPanelHost 消费（壳 p… |
+| `notifications` | 3 | `show` `list` `subscribe` | 通知——插件弹通知（唯一通知面 = 铃铛宽通知面板，右下窄卡链路已整删），对标 VS Code vscode.wind… |
+| `menu` | 2 | `registerItems` `getItems` | 菜单——插件声明式读写 |
+| `contextKey` | 1 | `set` | ContextKey——插件 SET 状态供壳 when 子句读 |
+| `dialog` | 5 | `confirm` `alert` `open` `openFile` `confirmContent` | 弹窗——确认/提示/文件选择 |
+| `quickPick` | 1 | `show` | 插件 quickPick 选择器——池内本地桥（零 IPC，QuickPickHost 渲染） |
+| `quickPickHost` | 6 | `registerHost` `onShow` `select` `highlight` `close` `itemAction` | QuickPick 宿主渲染桥——池 QuickPickHost 消费（壳 preload 无此面） |
+| `dialogHost` | 5 | `onShow` `current` `pending` `confirm` `cancel` | Dialog 哑渲染订阅——池 DialogHost 消费（壳 preload 无此面） |
+| `floatingPanelHost` | 4 | `onShow` `action` `registerBoundsHost` `getBounds` | （类型 B）：悬浮面板哑渲染订阅——池 FloatingPanelHost 消费（壳 preload 无此面） |
 | `serial` | 11 | `listPorts` `getStatus` `openPort` `closePort` `sendData` `sendText` `setDtr` `setRts` `onData` `onStats` `onSystem` | 串口——读/写/监听，对标 VS Code SerialPort API |
 | `clipboard` | 3 | `readText` `writeText` `writeFileList` | 剪贴板——读/写系统剪贴板 |
-| `p2p` | 2 | `send` `on` | E5#65：p2p 插件间定向推流——和 bridge.broadcast 同模式（fire-and-forget） |
+| `p2p` | 2 | `send` `on` | p2p 插件间定向推流——和 bridge.broadcast 同模式（fire-and-forget） |
 | `events` | 4 | `on` `emit` `heartbeat`° `notifyTheme`° | 通用事件订阅 + 发布——插件间数据管道 |
-| `pluginState` | 3 | `get` `set` `onChange` | E5#71：插件持久化存储——集中缓存 + 文件持久化 |
+| `pluginState` | 3 | `get` `set` `onChange` | 插件持久化存储——集中缓存 + 文件持久化 |
 | `workspace` | 8 | `getFolders` `getActive` `setActive` `openFolder` `addFolder` `removeFolder` `onDidChangeFolders` `onDidChangeActiveWorkspace` | 工作区——池 preload 注入（壳侧经 WorkspaceService 直用） |
 | `filesystem` | 12 | `readTextFile` `writeTextFile` `exists` `createDir` `copy` `rename` `remove` `listDir` `readBinaryFile` `writeBinaryFile` `watch` `readdir`° | 文件系统——插件读写（路径校验由主进程执行） |
 | `path` | 6 | `appDataDir`° `normalize` `join` `basename` `dirname` `extname` | 路径工具——壳/池双端注入（editor/file-tree 池插件消费 normalize/join 等） |
 | `env` | 1 | `get` | 环境信息——对标 VS Code ExtensionContext |
-| `search` | 1 | `searchFiles` | E5.6#11.5a：文件搜索——全文搜索/替换（IPC 到壳/主进程执行） |
-| `encoding` | 3 | `detect` `decode` `encode` | E5.6#11.5a：编码检测/转换（主进程 EncodingService） |
-| `decorations` | 4 | `registerProvider` `unregisterProvider` `getDecoration` `onDidChange` | E5.7#60：文件装饰——池内本地注册表（零 IPC） |
-| `fileAssociation` | 1 | `getPluginFor` | E5.7#50：文件关联——扩展名→插件 ID（主进程 FileAssociationService 直答） |
-| `langDef` | 1 | `get` | E5.7#49：langDef——语言定义注册表（主进程直答） |
-| `lsp` | 4 | `spawn` `write` `dispose` `onData` | E5.6#14-lsp：LSP 桥——自动补全/F12/诊断/重命名 |
-| `protocol` | 3 | `listProtocols` `getActiveProtocolId` `setActiveProtocolId` | E5.7#49：protocol——协议注册表（主进程直答） |
-| `viewContainer` | 4 | `getViewContainer` `getViews` `getView` `registerView` | E5.7#58：viewContainer——真 IPC 查询/更新（问壳侧注册表） |
+| `search` | 1 | `searchFiles` | 文件搜索——全文搜索/替换（IPC 到壳/主进程执行） |
+| `encoding` | 3 | `detect` `decode` `encode` | 编码检测/转换（主进程 EncodingService） |
+| `decorations` | 4 | `registerProvider` `unregisterProvider` `getDecoration` `onDidChange` | 文件装饰——池内本地注册表（零 IPC） |
+| `fileAssociation` | 1 | `getPluginFor` | 文件关联——扩展名→插件 ID（主进程 FileAssociationService 直答） |
+| `langDef` | 1 | `get` | langDef——语言定义注册表（主进程直答） |
+| `lsp` | 4 | `spawn` `write` `dispose` `onData` | LSP 桥——自动补全/F12/诊断/重命名 |
+| `protocol` | 3 | `listProtocols` `getActiveProtocolId` `setActiveProtocolId` | protocol——协议注册表（主进程直答） |
+| `viewContainer` | 4 | `getViewContainer` `getViews` `getView` `registerView` | viewContainer——真 IPC 查询/更新（问壳侧注册表） |
 | `plugins` | 14 | `resolvePath` `resolveEntry`° `getCompatibility`° `listDirs`° `listAll`° `listDisabledDirs`° `readManifest`° `readAllManifests`° `packageDownload`° `packageExtract`° `packageCancel`° `packageUpdateCheck`° `packageStageUpdate`° `packageCommitUpdate`° | 插件发现——双端注入：resolvePath 双端同面 |
 | `pluginManager` | 13 | `list` `enable` `disable` `uninstall` `install` `installWithProgress`° `reinstall` `getDisabled` `getUninstalled` `isDisabled` `update`° `checkUpdates`° `notifyManifestChanged`° | 插件管理——桥接 IpcBridgeHandler → loader 函数 |
 | `bridge` ⚠️ | 4 | `onRequest` `respond` `broadcast` `notifyConfigChanged` | 壳↔插件通信中继——壳 preload 独有 |
 | `pool` | 32 | `pushLayout` `onReady` `toggleDevTools` `onSidebarAction` `onTabAction` `onTabBarRects` `onDragPosition` `pushAdsorbHint` `onAdsorbIndex` `pushQuickPick` `onQuickPickAction` `pushDialog` `onDialogAction` `pushFloatingPanel` `onFloatingPanelAction` `onMemoryPressure` `createWindow` `closeWindow` `onWindowClosed` `onWindowBoundsChanged` `getLayout` `onLayout` `ready` `sidebarAction` `tabAction` `tabBarRects` `dragPosition` `onAdsorbHint` `adsorbIndex` `registerBeforeClose` `unregisterBeforeClose` `beforeClose` | 池控制——壳 preload：推送布局 + 注册池→壳动作回调 |
 | `window` | 11 | `minimize` `maximize` `unmaximize` `close` `setZoom` `toggleDevTools` `isMaximized` `onMaximizeChange` `setAlwaysOnTop` `isAlwaysOnTop` `onAlwaysOnTopChange` | 窗口控制——TitleBar 按钮映射，双端注入（11 方法同通道，共享模块 electron/window-name… |
 | `shell` | 6 | `showItemInFolder` `openInTerminal` `pluginLocation` `openPluginFolder` `startDrag` `relaunch`° | 壳级命令——revealInOS / openInTerminal / startDrag / relaunch，双端… |
-| `hotExit` ⚠️ | 3 | `save` `load` `clear` | 热退出暂存——编辑器未保存内容落盘（E5.7#53） |
+| `hotExit` ⚠️ | 3 | `save` `load` `clear` | 热退出暂存——编辑器未保存内容落盘 |
 | `getFilePath` | 0 | (top-level function)`getFilePath: (file: File) => string;` | OS 拖入文件路径获取——双端注入 |
 | `panel` | 3 | `reveal` `revealFloating` `setFloatingBounds` | —— |
 | `settings` | 3 | `list` `getActive` `setActive` | —— |

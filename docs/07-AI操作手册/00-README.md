@@ -34,12 +34,12 @@
 |:--|:--|:--|
 | **00** | 本章——判据、目录、任务导航、软件自述 | 先读这一页 |
 | [01-操作路径总览](01-操作路径总览.md) | 三层门（命令／API／CLI+MCP）· 读状态→调命令→读结果 · 谁在哪（池／壳） | 第一次上手，或想知道「有没有 API 能做 X」 |
-| [02-命令与API索引](02-命令与API索引.md) | **全索引（机器生成）**：76 条宿主命令 + 46 个命名空间 / 249 个方法 | 找具体命令 id / 方法名 / 参数 |
+| [02-命令与API索引](02-命令与API索引.md) | **全索引（机器生成）**：84 条宿主命令 + 46 个命名空间 / 252 个方法 | 找具体命令 id / 方法名 / 参数 |
 | [03-按任务操作](03-按任务操作.md) | 配方：标签页 · 分屏与嵌套 · 通知 · 面板与侧栏 · 设置与主题 · 串口 · 布局问答 | 「我要做某件事」时 |
 | [04-手势隐藏规则](04-手势隐藏规则.md) | 屏幕上那些动作的**隐藏门控**（拖拽相位等）＋ 为什么别走手势 | 你的操作「调了没反应」时 |
 | [05-够不着清单与安装版路径](05-够不着清单与安装版路径.md) | A 类够不着 · 安装版启动／静默装／userData 文件面／更新后重连 | 在**安装版**上干活时 |
 | [06-CDP坑表](06-CDP坑表.md) | 开发期实机操作（CDP）的坑与正解 + 本仓 driver 库 | 要用 CDP 驱动界面时 |
-| [07-如何接入](07-如何接入.md) | **怎么把 AI 接上**：门锁与钥匙（开关/token）· 三路手把手（CLI／MCP／丢手册）· 软件自述三件 · ⚠️ 形态先写（CLI/MCP 功能归 M4；今天走 CDP 绕行） | 要接 AI 时（用户读前三节；AI 读自举） |
+| [07-如何接入](07-如何接入.md) | **怎么把 AI 接上**：门锁与钥匙（开关/token）· 三路手把手（CLI／MCP／丢手册）· 软件自述三件 · ✅ **已发货**（CLI `linkdeskctl` ＋ MCP；设置页「AI 接入」一键开） | 要接 AI 时（用户读前三节；AI 读自举） |
 
 ## 三、任务导航
 
@@ -49,14 +49,14 @@
 |:--:|:--|:--|:--:|
 | 1 | AI 造一个全新**主题插件** | 作者文档《插件制造·主题制作》（本手册不含作者面） | ✅ 现成 |
 | 2 | AI 把它**发布上网** | 发布流程（作者面文档） | ✅ 现成 |
-| 3 | 添加第三方作者的**市场源** | 功能在，但**命令面缺** ⇒ 今天只能界面点 | ⛔ ＋M2 |
+| 3 | 添加第三方作者的**市场源** | 功能在，但**命令面缺** ⇒ 今天只能界面点 | ⛔ 只能界面点 |
 | 4 | 左侧面板移到**右侧** | `workbench.action.toggleSidebarPosition` | ✅ 现成 |
 | 5 | 底部面板**隐藏某个插件** | `workbench.action.togglePanelViewVisibility`（实参**平铺两个**：`containerId` → `viewId`，⛔ 不是一个对象——handler 按位置取；见 03 章例 5） | ✅ 现成 |
 | 6 | 同时**打开五个插件的标签页** | `linkdesk.tabs.create(pluginId)` / `openOrFocus(pluginId)` 循环 | ✅ 现成 |
 | 7 | 在某个插件标签页里**做某件事** | = 该插件注册的命令（`linkdesk.commands.getCommands()` 里查） | ⚠️ 看插件 |
 | 8 | **两个 JSON 文件对比** | 两条命令：`file-tree.selectForCompare` → `file-tree.compareWithSelected`（参数 `{uri:"路径"}`；两步手势 = 两行调用）。⚠️ 需先 `open-tab file-tree`（视图挂载后这批命令才注册） | ✅ 现成（需装 file-tree 插件） |
 | 9 | 串口侧栏「**打开消息回显**」 | 插件注册的 toggle 型命令（标题随状态动态变） | ✅ 现成 |
-| 10 | 给 MCU **发东西 + AI 自己转编码** | API：`linkdesk.serial.sendText(text, enc, portName)`；`linkdesk.encoding.detect/decode/encode`。缺的是「发送」的命令化与编码切换入口 | ✅ API ／ ⛔ ＋M2 命令 |
+| 10 | 给 MCU **发东西 + AI 自己转编码** | 命令：`serial-monitor.send(sendMode, data, portName?, encoding?)`、`serial-monitor.setSendCoding`；API：`linkdesk.serial.sendText(text, enc, portName)`、`linkdesk.encoding.detect/decode/encode` | ✅ 现成（需装 serial-monitor 插件） |
 | 11 | **嵌套分屏**（左→右上下→右下再左右） | `linkdesk.pool.tabAction({action:"splitTab", direction, targetGroupId})` 逐层分裂；比例用 `{action:"updateSplitSizes", anchorGroupId, sizes:[a,b]}` | ✅ 现成 |
 | 12 | **空间定位问答**（「串口监视器在最右下角那一块」） | `linkdesk.tabs.list()`（全窗标签清单）／`linkdesk.pool.getLayout()`（本窗布局树） | ✅ 现成 |
 
@@ -87,7 +87,7 @@
 
 1. `await linkdesk.commands.getCommands()` —— 全量命令（含每条 `description` + `params`）。
 2. `await linkdesk.pool.getLayout()` / `linkdesk.tabs.list()` / `linkdesk.notifications.list()` —— 当前状态。
-3. **（M4 落地后）** `linkdeskctl --help`（CLI 自省）与 MCP 的 `tools/list`（AI 客户端直接拿到工具清单）——怎么开关、怎么配、今天走哪条绕行路：[07-如何接入](07-如何接入.md)。
+3. **（软件外）** `linkdeskctl --help`（CLI 自省）与 MCP 的 `tools/list`（AI 客户端直接拿到工具清单）——怎么开关、怎么配、今天走哪条绕行路：[07-如何接入](07-如何接入.md)。
 
 ## 五、本手册的维护（改之前先读这段）
 
@@ -95,6 +95,6 @@
   （门禁 = `src/core/commands/aiManualIndex.test.ts`）。⛔ 别手改生成区——改了会被判红。
 - **手写章（00／01／03／04／05／06／07）改完必须跑 `npm run check`**：其中 `check-doc-links.mjs` 会校验
   本目录所有相对链接**真实存在**（链到还没建的章节会红）。
-- **载体**：随安装包发货 ＋ 软件内可打开——**已接线（M3 `AI#16`）**：安装版落 `resources/ai-manual/`（本目录 8 个 `.md` 原样副本），
+- **载体**：随安装包发货 ＋ 软件内可打开——**已接线**：安装版落 `resources/ai-manual/`（本目录 8 个 `.md` 原样副本），
   软件内入口 = 菜单 **帮助 → AI 操作手册**（命令 `app.openAiManual`，池侧壳视图 `ai-manual`）。
 - 本节引用的路径、命令 id、API 名一律**以运行时真源为准**（02 章两张表就是它们的快照）。

@@ -7,14 +7,14 @@
  * 改契约源 → 跑 `node scripts/generate-contract.mjs`（npm run check 里 check-contracts 强制）
  *
  * 用法（第三方插件作者）：
- *   拷贝本文件进项目 + tsconfig 引用，或 `npm i -D @linkdesk/contracts`（#22.6）
+ * 拷贝本文件进项目 + tsconfig 引用，或 `npm i -D @linkdesk/contracts`
  *   import type { PluginListEntry } from "linkdesk";
  *   window.linkdesk.filesystem.readFile(...)   // ambient 类型直出
  */
 
 // ── 契约类型 ──
 /**
- * 命令参数结构——M1 `AI#7`：命令**自带参数说明**，随 `commands.getCommands()` 一并返回。
+ * 命令参数结构——命令**自带参数说明**，随 `commands.getCommands()` 一并返回。
  * 位置语义：`params[i]` 与 handler 实参**逐位对应**（`name` 照 handler 实参名写，⛔ 别另起名）——
  * 消费方（菜单/插件/自动化）照它拼 `executeCommand(id, ...params)` 即可，不必读源码猜。
  */
@@ -33,18 +33,18 @@ export interface LinkDeskCommand {
     title: string;
     category?: string;
     /**
-     * M1 `AI#7`：这条命令**干什么**——用户/AI 视角的意图（i18n key = 中文原文，与 title 同款），
+     * 这条命令**干什么**——用户/AI 视角的意图（i18n key = 中文原文，与 title 同款），
      * ⛔ 不复述命令 id（id 由字段本身给出）。可选、纯加法——存量命令不填即缺省。
      */
     description?: string;
-    /** M1 `AI#7`：参数结构（逐位对应 handler 实参）。可选、纯加法；无参数命令不填。 */
+    /** 参数结构（逐位对应 handler 实参）。可选、纯加法；无参数命令不填。 */
     params?: LinkDeskCommandParam[];
 }
 /** 配方贡献域——theme 元数据 domains（混搭来源过滤）+ theme:changed 载荷（域级细粒度刷新）共用（06 §2/§6.2）。
  *  五域：colors（配色，colorways 恒贡献） + appearance 四风格域（radius/glass/font/background）。
- *  E5.8#132：surface 域删——per-surface 精调死键（A 删拍板），玻璃表面形态 token（--surface-*）归 glass 域。 */
+ * surface 域删——per-surface 精调死键（A 删拍板），玻璃表面形态 token（--surface-*）归 glass 域。 */
 export type ThemeDomain = "colors" | "font" | "radius" | "glass" | "background";
-/** 配置 schema 中的单个属性定义——E5.8#41.14 🛤 补全 uiHint/minimum/maximum/renderHint/dependsOn
+/** 配置 schema 中的单个属性定义——🛤 补全 uiHint/minimum/maximum/renderHint/dependsOn
  * （壳 SettingsView renderControl/SettingRow 官方控件切换 + 依赖显隐字段，与 SettingsView/types ConfigProperty 对齐） */
 export interface LinkDeskConfigProperty {
     type: string;
@@ -60,47 +60,47 @@ export interface LinkDeskConfigProperty {
     maximum?: number;
     /** 渲染提示——renderControl 第二判据（"action" 渲染操作按钮 / "color" 渲染色块预览） */
     renderHint?: string;
-    /** 等宽限定——仅 uiHint "fontFamily" 有意义。true/缺省 = 只列等宽族（编辑器字体）；false = 全字族（UI 字体）。E5.8#50.20 */
+    /** 等宽限定——仅 uiHint "fontFamily" 有意义。true/缺省 = 只列等宽族（编辑器字体）；false = 全字族（UI 字体）。 */
     monoOnly?: boolean;
     /** 依赖条件——本项仅在 dependsOn.key 配置值 === value 时显示（SettingRow 读它显隐整行） */
     dependsOn?: {
         key: string;
         value: unknown;
     };
-    /** 动态下拉数据源——uiHint "select" 时读取（渲染时调 theme.listRecipes() 动态取，E5.8#50.23）。
+    /** 动态下拉数据源——uiHint "select" 时读取（渲染时调 theme.listRecipes() 动态取）。
      *  "theme.colorways" = 活动配方（app.theme）配色变体（选项带预览色块）；
      *  "theme.sources" = 混搭来源（按 optionsFromDomain 过滤 RecipeMeta.domains）。 */
     optionsFrom?: string;
     /** 混搭来源域过滤——optionsFrom "theme.sources" 时按此域过滤 RecipeMeta.domains（10 §2 六域） */
     optionsFromDomain?: ThemeDomain;
-    /** E5.8#50.26：renderHint "action" 按钮动作——点击执行此壳命令（第三方设置 UI 经 commands.executeCommand 触发） */
+    /** renderHint "action" 按钮动作——点击执行此壳命令（第三方设置 UI 经 commands.executeCommand 触发） */
     actionCommand?: string;
-    /** M4 AI#38.12（P-2 拍板 A）：renderHint "readonly" 只读状态的运行时数据源——渲染时执行此壳命令取值
+    /** renderHint "readonly" 只读状态的运行时数据源——渲染时执行此壳命令取值
      *  （返回 string；显示话术由命令侧拼装）。值来自命令、不来自配置存储——通用能力，任何插件可用 */
     statusCommand?: string;
-    /** E5.8#50.26：renderHint "action" 按钮禁用条件——全部 {key,value} 匹配当前配置值时禁用 */
+    /** renderHint "action" 按钮禁用条件——全部 {key,value} 匹配当前配置值时禁用 */
     actionDisabledAll?: Array<{
         key: string;
         value: unknown;
     }>;
-    /** E5.8#78：组内二级标题——SettingsView 把同 group 的 key 归到子标题下渲染；无 group 保持平铺（零侵入） */
+    /** 组内二级标题——SettingsView 把同 group 的 key 归到子标题下渲染；无 group 保持平铺（零侵入） */
     group?: string;
-    /** E5.8#77：数值单位——uiHint "slider" 值标签单位（"×" / "px"；空 = 裸数值） */
+    /** 数值单位——uiHint "slider" 值标签单位（"×" / "px"；空 = 裸数值） */
     unit?: string;
 }
 /** 配置 schema——key → 属性定义（index signature 保持现有消费方） */
 export interface LinkDeskConfigSchema {
     [key: string]: LinkDeskConfigProperty;
 }
-/** 配置贡献条目——configuration.getConfigurationContributions() 返回形状（E5.8#41.14 🛤 命名）。
+/** 配置贡献条目——configuration.getConfigurationContributions() 返回形状（🛤 命名）。
  * 与壳 ConfigurationRegistry 组装的 [pluginId, { title, subtitle?, groupDescriptions?, properties }] 对齐——第三方设置 UI 不再 need cast */
 export type LinkDeskConfigurationContribution = [
     string,
     {
         title: string;
-        /** M4 AI#38.12（P-3 拍板 A）：分区大标题下的一行副标题（可选；未声明 = 不渲染，零侵入） */
+        /** 分区大标题下的一行副标题（可选；未声明 = 不渲染，零侵入） */
         subtitle?: string;
-        /** M4 AI#38.12（P-3 拍板 A）：各分节（group）标题下的一行小字——键 = group 原文（可选，零侵入） */
+        /** 各分节（group）标题下的一行小字——键 = group 原文（可选，零侵入） */
         groupDescriptions?: Record<string, string>;
         properties: Record<string, unknown>;
     }
@@ -109,7 +109,7 @@ export type LinkDeskConfigurationContribution = [
 export interface CommandsAPI {
     /** 命令——对标 VS Code vscode.commands */
     commands: {
-        /** @deprecated E3j #75——向后兼容别名，新代码用 executeCommand */
+        /** @deprecated 向后兼容别名，新代码用 executeCommand */
         execute<T = void>(commandId: string, ...args: any[]): Promise<T>;
         /** 执行壳侧命令 */
         executeCommand<T = void>(commandId: string, ...args: any[]): Promise<T>;
@@ -121,13 +121,13 @@ export interface CommandsAPI {
          * plugin.json contributes.commands 未声明的命令经 meta 注册后同样可见/可执行。
          * 真相源分工：壳 CommandRegistry = 显示真相源（title/category/when 唯一权威），
          * 池 = 执行真相源（handler 唯一权威，永不跨进程）——meta 只同步显示面。
-         * 🔴 **E6#111b：`meta.pluginId` = 注册方显式申报的真身份**（可选，只做加法）。
+         * 🔴 **`meta.pluginId` = 注册方显式申报的真身份**（可选，只做加法）。
          *   命令归属解析优先级 = ① plugin.json 声明面 → ② 本字段 → ③ 名字第一段推定。
          *   声明过的命令**不必填**（① 已权威）；只有「声明里没有、名字又不带自己前缀」的命令需要它，
          *   否则该命令会被算到名字第一段那个属主头上（借他人前缀 ⇒ 归属错、且异归属顶替拦不住）。
          *   照 `notifications.source` 先例（`ui.ts:26-32`）：池是单进程共享 realm，
          *   所有插件共用同一个 `window.linkdesk` ⇒ **无从自动注入，只能作者显式报**。
-         * M1 `AI#7`：`meta.description` / `meta.params` = 命令说明与参数结构（可选、只做加法）——
+         * `meta.description` / `meta.params` = 命令说明与参数结构（可选、只做加法）——
          *   与 `title`/`category` 同路同步进壳注册表，随 `getCommands()` 出契约
          *   （`LinkDeskCommand.description` / `LinkDeskCommand.params`）。
          *   `params[i]` 与 handler 实参**逐位对应**（`name` 照 handler 实参名）。
@@ -147,7 +147,7 @@ export interface CommandsAPI {
         getCommands(): Promise<LinkDeskCommand[]>;
         /** 壳侧插件入口模块级注册（双进程执行壳侧半程）——壳 preload 独有 */
         _executeShellLocal?(id: string, ...args: unknown[]): Promise<unknown>;
-        /** E6#62e 池 preload 独有内部钩——池 renderer 注册 on-command 激活回调（命令 miss → import 属主插件入口）。
+        /** 池 preload 独有内部钩——池 renderer 注册 on-command 激活回调（命令 miss → import 属主插件入口）。
          *  underscore 内部面（对标 _executeShellLocal），非插件作者 API——纯命令插件按需激活的接线位。 */
         _setCommandMissHandler?(handler: (pluginId: string) => Promise<boolean>): void;
     };
@@ -161,7 +161,7 @@ export interface CommandsAPI {
         getSchema(key?: string): Promise<LinkDeskConfigSchema>;
         /** 订阅配置变更——返回 unsubscribe 函数。值运行时动态，T 由订阅方 cb 推断（events.on 同款泛型，防逆变报错） */
         onChange<T = unknown>(key: string, cb: (value: T) => void): () => void;
-        // ══ E5.7#76：以下 9 个方法为设置页专用（SettingsView 渲染/实时刷新/跳转）。
+        // ══ 以下 9 个方法为设置页专用（SettingsView 渲染/实时刷新/跳转）。
         // 池 preload 注入（SettingsView 在池渲染）——required，壳 preload 无此面。
         // 通用插件请用上面的 get/set/getSchema/onChange。 ══
         getConfigurationContributions(): Promise<LinkDeskConfigurationContribution[]>;
@@ -173,20 +173,20 @@ export interface CommandsAPI {
         onRequestSettingsGroup(cb: (pluginId: string) => void): () => void;
         consumeScrollToSetting(): Promise<string | null>;
         onRequestScrollToSetting(cb: (key: string) => void): () => void;
-        /** E5.8#41.14 🔴 修复：切快捷键 tab——M1 同款双通道（替代错配 window 事件死路由）。
+        /** 🔴 修复：切快捷键 tab——同款双通道（替代错配 window 事件死路由）。
          *  mount 时消费 pending（未打开时"打开快捷键设置"命令的请求）；无请求返回 null */
         consumeOpenKeybindings(): Promise<{
             query?: string;
         } | null>;
-        /** E5.8#41.14：实时订阅——设置已打开时"打开快捷键设置"命令即时切 tab */
+        /** 实时订阅——设置已打开时"打开快捷键设置"命令即时切 tab */
         onRequestOpenKeybindings(cb: (payload: {
             query?: string;
         }) => void): () => void;
     };
-    /** @deprecated E3j #75——向后兼容别名，新代码用 configuration */
+    /** @deprecated 向后兼容别名，新代码用 configuration */
     config: CommandsAPI["configuration"];
 }
-/** E5.8#50.6：玻璃 + 悬浮面板质感字段——主题 JSON `surface`（缺省 = 无玻璃无悬浮）。
+/** 玻璃 + 悬浮面板质感字段——主题 JSON `surface`（缺省 = 无玻璃无悬浮）。
  * 纹理 texture 与 glass 正交（⑬ 纸纹分区不带玻璃也能用 per-surface 纹理）。 */
 export interface ThemeSurface {
     /** 玻璃配方——缺省 = 无玻璃 */
@@ -198,11 +198,11 @@ export interface ThemeSurface {
     /** 玻璃面叠加色 */
     tint?: string;
     /** 玻璃面不透明度（合成层基线）——1 = 不透明 / 0 = 全透见背景。写 --glass-opacity token（tint 盖片
-     *  opacity 消费）+ 播种反推进合成 alpha（#112：配方面基线，用户 app.glassOpacity 覆盖时优先） */
+     * opacity 消费）+ 播种反推进合成 alpha（配方面基线，用户 app.glassOpacity 覆盖时优先） */
     opacity?: number;
     /** 液态玻璃顶部高光强度——0 = 关 */
     specular?: number;
-    /** E5.8#63：顶部高光基色（发丝光边颜色）——缺省 = 白；alpha 仍走 specular */
+    /** 顶部高光基色（发丝光边颜色）——缺省 = 白；alpha 仍走 specular */
     specularColor?: string;
     /** 形变过渡 ms——0 = 关 */
     morph?: number;
@@ -210,35 +210,35 @@ export interface ThemeSurface {
     radius?: number;
     /** 投影浮起——true = 悬浮投影（引擎映射 --shadow-lift） */
     shadow?: boolean;
-    /** E5.8#50.28：可平铺纹理图资产路径（⑬ 纸纹分区）——应用全部 5 zone 表面，与 glass 正交独立生效 */
+    /** 可平铺纹理图资产路径（⑬ 纸纹分区）——应用全部 5 zone 表面，与 glass 正交独立生效 */
     texture?: string;
     /** 纹理不透明度——1 = 不透明 */
     textureOpacity?: number;
 }
-/** E5.8#50.6：图片背景质感字段——主题 JSON `background`（缺省 = 无图） */
+/** 图片背景质感字段——主题 JSON `background`（缺省 = 无图） */
 export interface ThemeBackground {
     /** 图片路径——作者提供可解析 URL，引擎写入 `--bg-image` 时 url() 包裹 */
     image?: string;
     /** 图片层不透明度——1 = 不透明。引擎写 `--bg-opacity`（.background-layer 清晰底图）+ `--surface-bg-opacity`
-     *  （镜像/纹理/切片 ::after 图像层）；用户 app.backgroundOpacity 覆盖时双 token 齐写（#115：图与底统一淡出，避免底图淡而镜像恒显） */
+     * （镜像/纹理/切片 ::after 图像层）；用户 app.backgroundOpacity 覆盖时双 token 齐写（图与底统一淡出，避免底图淡而镜像恒显） */
     opacity?: number;
     /** 图片遮罩明暗（0-1 rgba 透明度）——0 = 无遮罩 */
     mask?: number;
-    /** E5.8#63：遮罩基色（暗化层颜色）——缺省 = 黑；alpha 仍走 mask。仅 panorama 生效（同 mask） */
+    /** 遮罩基色（暗化层颜色）——缺省 = 黑；alpha 仍走 mask。仅 panorama 生效（同 mask） */
     maskColor?: string;
-    /** E5.8#50.29：切片模式——"panorama"（默认）= 现全窗语义零变化；"zones" = 同图连续切片挂 5 zone 表面（⑭ 影像分区） */
+    /** 切片模式——"panorama"（默认）= 现全窗语义零变化；"zones" = 同图连续切片挂 5 zone 表面（⑭ 影像分区） */
     mode?: "panorama" | "zones";
 }
 export interface LinkDeskTheme {
     name: string;
     type: "dark" | "light";
-    /** E5.8#50.6：玻璃/悬浮质感——主题 JSON `surface`（缺省 = 无玻璃无悬浮） */
+    /** 玻璃/悬浮质感——主题 JSON `surface`（缺省 = 无玻璃无悬浮） */
     surface?: ThemeSurface;
-    /** E5.8#50.6：图片背景——主题 JSON `background`（缺省 = 无图） */
+    /** 图片背景——主题 JSON `background`（缺省 = 无图） */
     background?: ThemeBackground;
     pluginId?: string;
 }
-/** E5.8#50.18：配色变体元数据——theme.listRecipes() 返回（colorways[] 元素，06 §2）。
+/** 配色变体元数据——theme.listRecipes() 返回（colorways[] 元素，06 §2）。
  *  预览色供 ThemePicker 卡片取色；单配色配方 = 1 项。 */
 export interface ColorwayMeta {
     /** 配色变体 id——全局唯一（theme.setColorway 入参；app.themeColor 动态 enum 存此） */
@@ -251,7 +251,7 @@ export interface ColorwayMeta {
         bgWindow: string;
     };
 }
-/** E5.8#50.18：配方元数据——theme.listRecipes() 返回（全部可用配方 + 配色变体 + 预览色，06 §2）。
+/** 配方元数据——theme.listRecipes() 返回（全部可用配方 + 配色变体 + 预览色，06 §2）。
  *  domains = 该配方贡献哪些域（混搭来源过滤依据，10 §2）；type = 明暗类别。 */
 export interface RecipeMeta {
     id: string;
@@ -274,7 +274,7 @@ export interface AppearanceAPI {
         getAvailable(): Promise<LinkDeskTheme[]>;
         /** 应用主题 */
         apply(themeId: string): Promise<void>;
-        // ── E5.8#50.18：配方/配色 06 §2 六方法——列表走 API（数据），选中走配置（持久化 app.*）──
+        // ── 配方/配色 06 §2 六方法——列表走 API（数据），选中走配置（持久化 app.*）──
         /** 全部可用配方（含各配色变体 + 预览色）——ThemePicker 卡片 / 配色与混搭动态 SelectBox 数据源 */
         listRecipes(): Promise<RecipeMeta[]>;
         /** 当前活动配方/配色——合并配置计算（getActiveRecipe + app.theme/app.themeColor 回退） */
@@ -288,11 +288,11 @@ export interface AppearanceAPI {
         setRecipe(recipeId: string): Promise<void>;
         /** 应用配色变体——落 app.themeColor */
         setColorway(colorwayId: string): Promise<void>;
-        /** 复位外观——对齐壳命令：app.appearanceMode→followTheme（onApply 级联清 9 覆盖 + 6 域来源 + 强调色回主题基线，E5.8#90 合并） */
+        /** 复位外观——对齐壳命令：app.appearanceMode→followTheme（onApply 级联清 9 覆盖 + 6 域来源 + 强调色回主题基线，合并） */
         resetAppearance(): Promise<void>;
-        /** 复位混搭——对齐壳命令：批复位 3 来源键回跟随主题（保持自定义模式，E5.8#90 app.mixMode 已删、#132 surface 域删） */
+        /** 复位混搭——对齐壳命令：批复位 3 来源键回跟随主题（保持自定义模式，app.mixMode 已删、surface 域删） */
         resetMix(): Promise<void>;
-        /** E5.8#88：外观覆盖键 → 主题/混搭基准种子值全集（设置页「已修改」徽标基准；无活动配方 → null） */
+        /** 外观覆盖键 → 主题/混搭基准种子值全集（设置页「已修改」徽标基准；无活动配方 → null） */
         getBaselineSeeds(): Promise<Record<string, unknown> | null>;
     };
     language: {
@@ -313,27 +313,27 @@ export interface AppearanceAPI {
             resources: Record<string, unknown>;
         }) => void): () => void;
     };
-    /** E5.8#50.11：外观资产——本地选图拷贝入库（受控来源——用户任选路径不能 file:// 直读） */
+    /** 外观资产——本地选图拷贝入库（受控来源——用户任选路径不能 file:// 直读） */
     appearance: {
-        /** 导入图片到 userData/appearance/（重名去重）——返回受控协议 URL（linkdesk-userdata://…，E5.8#64），
+        /** 导入图片到 userData/appearance/（重名去重）——返回受控协议 URL（linkdesk-userdata://…），
          *  供 app.backgroundImage 持久化；沙箱经特权协议加载（plain 绝对路径被拦截） */
         importImage(sourcePath: string): Promise<string>;
-        /** E5.8#153：打开外观存储目录（userData/appearance）——主进程解析路径并 shell.openPath 开资源管理器
+        /** 打开外观存储目录（userData/appearance）——主进程解析路径并 shell.openPath 开资源管理器
          *  内容（非高亮单文件）；目录缺省也建（打开即见存储位置），openPath 失败抛错 fail-loud。 */
         revealStorage(): Promise<void>;
     };
 }
 /**
- * 跨模块共享窗口类型——E5.8#45。core/types = 跨模块共享 type（壳目录规范：只放类型）。
+ * 跨模块共享窗口类型。core/types = 跨模块共享 type（壳目录规范：只放类型）。
  *
  * WindowMode 同时被壳策略层（src/App/windows.ts WINDOW_MODE_STRATEGIES 键 + WindowShellState.mode）
  * 与 core 回调契约（CoreCallbacks.findTabWindow）引用——core 不 import App，故类型下沉此处，
  * App 侧 import + re-export（消费方仍 `./windows` 引入，零改动）。
  *
- * 语义（#43/#45）：
+ * 语义
  *   main     主窗——全 zone；面板常驻；关窗=应用退出
  *   detached 脱出窗——tab 随窗；关窗=壳移除窗口状态（tab 随窗关闭，非回归）
- *   drift    漂移面板窗（#45）——面板专用窗（恒空 groups，主区空占位 I9-13）；
+ * drift    漂移面板窗——面板专用窗（恒空 groups，主区空占位 I9-13）；
  *            关窗=关闭面板（I9-13 拍板 A）
  */
 export type WindowMode = "main" | "detached" | "drift";
@@ -344,7 +344,7 @@ export interface PoolMenuItem {
     /** 点击执行的命令 ID——无 command 父项为 ""（汉堡不展平父项，点击 no-op） */
     command: string;
     /**
-     * E6#57.10：菜单内二级分组名——渲染层按它切分隔线（ContextMenu 语义：相邻不同 group 之间出一条线）。
+     * 菜单内二级分组名——渲染层按它切分隔线（ContextMenu 语义：相邻不同 group 之间出一条线）。
      * 有值才序列化（无分组 = 兜底 `__default` 一组，不画线）。显示文本铁律：池只比字符串，不解释语义。
      * ⚠️ 子菜单 children 上的 group 会被 ContextMenu 换成父项 group（mapChildren 语义）——
      * 分组只在**顶层菜单项**上生效。
@@ -352,7 +352,7 @@ export interface PoolMenuItem {
     group?: string;
     /** 快捷键显示文本——formatKeyLabel 后。仅汉堡（showKeybindings）；titlebar 下拉无快捷键（同壳行为） */
     shortcut?: string;
-    /** E5.8#148：当前项 √（显隐勾选菜单）——壳 buildTitleBarMenuGroups/汉堡经 resolveVisibilityChecked
+    /** 当前项 √（显隐勾选菜单）——壳 buildTitleBarMenuGroups/汉堡经 resolveVisibilityChecked
      *  序列化（zone 可见 = ✓）。显示文本铁律：池哑渲染原文，壳只推布尔。 */
     checked?: boolean;
     /** 子菜单——titlebar 仅 command+children 父项携带（无 command 父项由壳展平）；汉堡不展平 */
@@ -374,13 +374,13 @@ export interface TitleBarSlotButton {
     /** tooltip——壳侧已 t()（命令自报 title，回退 command id） */
     title: string;
     /**
-     * E6#57.11：按钮文字——**壳侧已解析完的最终字符串**（`$` context key 引用已取值、
+     * 按钮文字——**壳侧已解析完的最终字符串**（`$` context key 引用已取值、
      * 静态字面量已过 `t()`）。池是哑渲染：拿到什么画什么，不评估、不翻译、不认 `$`。
      * 有这个字段 ⇒ 渲染全文字按钮；没有 ⇒ 走 icon 那支。
      */
     label?: string;
 }
-/** 标题栏布局——Phase 2 #5 TitleBarZone 消费 */
+/** 标题栏布局——TitleBarZone 消费 */
 export interface TitleBarLayout {
     title: string;
     /** Logo 资源 URL——壳 getAssetPath 解析（Path B：池不 import core） */
@@ -393,7 +393,7 @@ export interface TitleBarLayout {
         left: TitleBarSlotButton[];
         right: TitleBarSlotButton[];
     };
-    /** 窗口控件 tooltip——显示文本铁律：壳 t() 解析后推送（E5.8#46.18：pin/unpin 置顶两态） */
+    /** 窗口控件 tooltip——显示文本铁律：壳 t() 解析后推送（pin/unpin 置顶两态） */
     windowControls: {
         minimize: string;
         maximize: string;
@@ -404,16 +404,16 @@ export interface TitleBarLayout {
     };
 }
 /** 池侧图标——壳序列化（池不 import pluginLoader，Lucide 名由池映射组件渲染）。
- *  图标栏 + 标签栏共用（E6#69f 标签栏视图标签 / #69g 文件标签走同一联合） */
+ * 图标栏 + 标签栏共用（标签栏视图标签 /  文件标签走同一联合） */
 export type IconBarIcon = {
     kind: "lucide";
     name: string;
-} // E5#100 Lucide 优先
+} //  Lucide 优先
  | {
     kind: "codicon";
     name: string;
     color?: string;
-} // codicon CSS 类（可选每图标色——文件图标主题数据，E6#69g）
+} // codicon CSS 类（可选每图标色——文件图标主题数据）
  | {
     kind: "img";
     src: string;
@@ -432,12 +432,12 @@ export interface IconBarItem {
     /** 图标位置——getIconLocation：顶部活动图标 / 底部齿轮 */
     location: "top" | "bottom";
 }
-/** 图标栏布局——Phase 2 #6 IconBarZone 消费 */
+/** 图标栏布局——IconBarZone 消费 */
 export interface IconBarLayout {
     icons: IconBarItem[];
     /** 激活图标——当前侧栏容器所属插件（侧栏折叠/无容器时不亮，壳 isActive 同款双重守卫） */
     activePluginId?: string;
-    /** E3f #52h：☰ 汉堡可见——menuStyle hamburger/both */
+    /** ☰ 汉堡可见——menuStyle hamburger/both */
     hamburgerVisible: boolean;
     /** 导航 aria-label——壳 t("导航")（显示文本铁律） */
     navLabel: string;
@@ -496,7 +496,7 @@ export interface SidebarViewMeta {
     id: string; // view ID（"folders" / "search" / "installed"）
     title: string; // 显示标题
     pluginId: string; // _pluginId——PluginComponent 用它定位插件根（resolvePath IPC）
-    renderPath: string; // _renderPath 归一化 URL（dev /@fs | prod linkdesk://）——池直动态 import（E6#62b）
+    renderPath: string; // _renderPath 归一化 URL（dev /@fs | prod linkdesk://）——池直动态 import
     role?: "toolbar" | "section"; // 默认 "section"
     order?: number;
     collapsed?: boolean; // 插件声明的初始折叠态（collapsed: true）
@@ -505,10 +505,10 @@ export interface SidebarViewMeta {
     titleTooltip?: string;
     singleViewPaneContainerTitle?: string; // mergeHeaderWhenSingle 时替代 containerTitle
     minHeight?: number; // 声明最小高度——PaneSash effectiveMinHeight
-    /** E5.8#36.6：视图动作区声明透传——侧栏 section header 右侧（#36.5 同一声明，两处消费） */
+    /** 视图动作区声明透传——侧栏 section header 右侧（同一声明，两处消费） */
     titleActions?: TitleActionWidget[];
 }
-/** E5.7#84：单个侧栏容器的池渲染数据——SidebarLayout.containers[] 元素（keep-alive 容器清单） */
+/** 单个侧栏容器的池渲染数据——SidebarLayout.containers[] 元素（keep-alive 容器清单） */
 export interface SidebarContainerLayout {
     containerId: string;
     containerTitle: string;
@@ -519,35 +519,35 @@ export interface SidebarContainerLayout {
 export interface SidebarLayout {
     visible: boolean;
     width: number;
-    /** 🆕 E5.8#36.8：侧栏所在边——#37.6 dockTo("sidebar", ...) 消费方（swap 规则：与 rightSidebar 恒占对边）。
-     *  池 grid（#37.5）据此决定 sidebar 落左槽还是右槽。缺省 "left"。 */
+    /** 🆕 侧栏所在边——dockTo("sidebar", ...) 消费方（swap 规则：与 rightSidebar 恒占对边）。
+     * 池 grid据此决定 sidebar 落左槽还是右槽。缺省 "left"。 */
     edge?: "left" | "right";
-    // ── E5.6#11a：容器元数据 ──
+    // ── 容器元数据 ──
     containerId: string | null; // "file-explorer" / "marketplace" / "serial-monitor"
     containerTitle: string; // "资源管理器" / "插件市场" / "串口监视器"
     mergeHeaderWhenSingle?: boolean;
     views: SidebarViewMeta[];
-    /** E5.7#84：keep-alive 容器清单——全部侧栏容器（非仅活动）序列化。
+    /** keep-alive 容器清单——全部侧栏容器（非仅活动）序列化。
      *  池按 containerId 常驻挂载、display:none 切换——切容器不卸载视图，插件组件状态不丢。
      *  容器随插件卸载从清单消失 → 池自然卸载（真相源在壳，池零缓存）。旧布局（无此字段）回退单容器渲染。 */
     containers?: SidebarContainerLayout[];
     collapsedViews?: string[]; // 持久化折叠的 view ID 集合——壳 loadCollapsedState()
-    /** E5.6#11-fix7：壳通知池侧栏是否折叠——折叠=真消失（#147/#159 无窄条/▶，grid auto 列 0 宽） */
+    /** 壳通知池侧栏是否折叠——折叠=真消失（无窄条/▶，grid auto 列 0 宽） */
     collapsed?: boolean;
-    // ── E5.7#10：侧栏 UI 文本壳侧 t() 推送（显示文本铁律——池渲染零自产文本） ──
+    // ── 侧栏 UI 文本壳侧 t() 推送（显示文本铁律——池渲染零自产文本） ──
     emptyText?: string; // 空状态主文案——"此容器没有已注册的视图"
     emptyHint?: string; // 空状态提示——"安装插件以添加视图"
-    // ── E5.7#13：拖拽钳制界——壳 LayoutEngine dock 声明推送（池本地钳制对齐壳 resizeZone，零硬编码） ──
+    // ── 拖拽钳制界——壳 LayoutEngine dock 声明推送（池本地钳制对齐壳 resizeZone，零硬编码） ──
     minWidth?: number; // 拖拽最小宽——壳 dock.minWidth（170）
     maxWidth?: number; // 拖拽最大宽——壳 dock.maxWidth（600）
     // ── 向后兼容 ──
     /** @deprecated 被 views[] 取代——保留给未迁移的代码 */
     viewId?: string | null;
 }
-/** 🆕 E5.8#36.8：右侧栏布局——右侧栏真 zone（决策 6，E5.8#36.7 addZone("rightSidebar") 消费方）。
+/** 🆕 右侧栏布局——右侧栏真 zone（决策 6，addZone("rightSidebar") 消费方）。
  *  与 SidebarLayout 对齐（消费字段同集），但**不携带自身 edge**——swap 规则保证 sidebar ↔ rightSidebar
- *  恒占对边，右栏 edge = sidebar 对边（池 grid #37.5 推导，防两处字面量）。
- *  E5.8#37.5 RightSidebarZone 真渲染：文案壳 t() 推送（显示文本铁律）。#159 无 ◀/▶ 折叠按钮——与左栏同款。 */
+ * 恒占对边，右栏 edge = sidebar 对边（池 grid  推导，防两处字面量）。
+ * RightSidebarZone 真渲染：文案壳 t() 推送（显示文本铁律）。无 ◀/▶ 折叠按钮——与左栏同款。 */
 export interface RightSidebarLayout {
     visible: boolean;
     width: number;
@@ -558,7 +558,7 @@ export interface RightSidebarLayout {
     views: SidebarViewMeta[];
     containers?: SidebarContainerLayout[];
     collapsedViews?: string[];
-    /** 🆕 E5.8#36.8 + #37.5 + #159：右栏折叠态——宽度 ≤48 派生（池），折叠=整个 zone 消失（与左栏 #147 同源，
+    /** 🆕 右栏折叠态——宽度 ≤48 派生（池），折叠=整个 zone 消失（与左栏  同源，
      *  无窄条/▶——折叠/展开仅走图标栏 toggle + 界面勾选菜单） */
     collapsed?: boolean;
     // ── 拖拽钳制界 + 空态文案（与 SidebarLayout 同语义）──
@@ -578,7 +578,7 @@ export interface PoolReleaseNotesHistoryItem {
  * 发行说明标签页的壳→池数据——**三态判别联合**（05 §2.4：态由拉取结果唯一决定，没有第四种）。
  *
  * 🔴 **池不做任何判定**：`state` 是什么就画什么分支。连「加载中还是已就绪」这种判断也不许池自己做
- * （那是壳的结论）——`#57.11` 的 context key 推送是同一条规矩的另一处落点。
+ * （那是壳的结论）——的 context key 推送是同一条规矩的另一处落点。
  *
  * 🔴 **缓存命中不经过加载态**（05 §2.4）：壳在渲染进程持有内存缓存（`useReleaseNotes` 的模块单例），
  * 所以「本次会话第二次打开」与「切换历史版本」都**直接落 `content`**，池的第一帧就有内容——不需要
@@ -778,7 +778,7 @@ export type PoolAiManualData = {
 } | {
     state: "content";
     /**
-     * `app.getVersion()`——**「这本手册属于这一版」的唯一凭据**（`AI#16` 判据②：安装版里点得到手册
+     * `app.getVersion()`——**「这本手册属于这一版」的唯一凭据**（判据②：安装版里点得到手册
      * **且内容是当前版本**）。壳在标题旁显式画出来，用户/维护者据此对账。
      * 🔴 它来自**主进程的 `app.getVersion()`**，不是手册正文里的版本号——正文里的是给人读的叙述，会滞后。
      */
@@ -800,11 +800,11 @@ export interface PoolTab {
      *  🔴 2026-09-27：⛔ 别拿 `sourceId` 当文案——它是跨组移动/事件寻址/插件绑数据的**功能键**
      *  （插件 API `tabs.closeBySourceId` 认的就是它），插件标签上常是 `settings-2`、`serial-monitor-49`
      *  这类内部 id，收编 HintTip 时曾被原样印在 tooltip 上。壳 serializeGroups 现场解析：
-     *  文件标签 → 完整路径（E5#53 原意），其余 → `undefined`。 */
+     * 文件标签 → 完整路径（原意），其余 → `undefined`。 */
     hint?: string;
     dirty?: boolean;
-    // 🆕 E5.6#16.5：TabBar 渲染所需元数据
-    /** 标签图标——IconBarIcon 判别联合（E6#69f/#69g：视图标签 = Type-2 身份图 img；文件标签 = 文件类型图标
+    // 🆕 TabBar 渲染所需元数据
+    /** 标签图标——IconBarIcon 判别联合（视图标签 = Type-2 身份图 img；文件标签 = 文件类型图标
      *  codicon/img。壳 serializeGroups 现场解析，池哑渲染——此前仅 emoji/img string，codicon/lucide 标签落空） */
     icon?: IconBarIcon;
     /** 固定标签页（对标 VS Code pinned tabs） */
@@ -819,22 +819,22 @@ export interface PoolTab {
     shellType?: string;
     /** plugin-detail 视图的目标插件 ID（哪个插件的详情页） */
     detailPluginId?: string;
-    /** E6#30.10b：plugin-detail 主区贡献视图的宿主插件 ID（factorySlots 活跃 marketplace 插件——贡献
+    /** plugin-detail 主区贡献视图的宿主插件 ID（factorySlots 活跃 marketplace 插件——贡献
      *  渲染面的是它，≠ detailPluginId）。壳 serializeGroups 现场解析盖章，池宿主加载贡献模块用（resolvePath
      *  要贡献插件根）；无活跃市场插件 → undefined = 无贡献。 */
     detailContributorId?: string;
-    /** E6#30.10b：plugin-detail 主区贡献视图 renderPath——活跃 marketplace 插件 contributes.views.main[]
+    /** plugin-detail 主区贡献视图 renderPath——活跃 marketplace 插件 contributes.views.main[]
      *  "plugin-detail" 声明的 _renderPath。壳 serializeGroups 现场解析盖章；池 ShellViewRenderer 消费：
      *  有 → 动态 import 市场 DetailView，缺/加载失败 → 壳 PluginDetailPoolView 保底。 */
     detailViewRenderPath?: string;
-    /** E6#57.13：发行说明标签页的壳→池数据（**壳想、池画**——壳取好挂在这里推下来，池只画）。
+    /** 发行说明标签页的壳→池数据（**壳想、池画**——壳取好挂在这里推下来，池只画）。
      *  ⚠️ 与 `detailPluginId`/`detailViewRenderPath` 同型（壳视图的 per-tab 载荷）——**不是新范式**。
      *  只有 `shellType === "release-notes"` 那一个标签页携带（全窗最多一份）。 */
     releaseNotes?: PoolReleaseNotesData;
-    /** E6#57.14：关于标签页的壳→池数据——与 `releaseNotes` **同一条规矩的第二个实例**
+    /** 关于标签页的壳→池数据——与 `releaseNotes` **同一条规矩的第二个实例**
      *  （壳视图的 per-tab 载荷，**不是新范式**）。只有 `shellType === "about"` 那个标签页携带。 */
     about?: PoolAboutData;
-    /** M3 AI#16：AI 操作手册标签页的壳→池数据——同一条规矩的**第三个实例**
+    /** AI 操作手册标签页的壳→池数据——同一条规矩的**第三个实例**
      *  （壳视图的 per-tab 载荷）。只有 `shellType === "ai-manual"` 那个标签页携带（全窗最多一份）。 */
     aiManual?: PoolAiManualData;
 }
@@ -871,13 +871,13 @@ export interface PanelViewMeta {
     id: string;
     title: string;
     pluginId: string;
-    /** E5.7#63.7：视图渲染入口路径——loader 解析（_renderPath），池 PluginComponent 动态 import。
+    /** 视图渲染入口路径——loader 解析（_renderPath），池 PluginComponent 动态 import。
      *  ShellViewMeta 同款（sidebar 贡献），面板视图零特殊通道。 */
     renderPath: string;
-    /** E5.8#36.5：视图动作区声明透传——PanelZone 标签栏右侧按活动视图渲染（无声明 → 右侧空白） */
+    /** 视图动作区声明透传——PanelZone 标签栏右侧按活动视图渲染（无声明 → 右侧空白） */
     titleActions?: TitleActionWidget[];
 }
-/** E5.8#34：容器切换器下拉 item——含隐藏视图 + 显隐/激活标记（mockup 帧 2 拍板） */
+/** 容器切换器下拉 item——含隐藏视图 + 显隐/激活标记（mockup 帧 2 拍板） */
 export interface PanelSwitcherItem {
     viewId: string;
     /** 视图名——壳 t() 已解析（显示文本铁律） */
@@ -889,50 +889,50 @@ export interface PanelSwitcherItem {
     /** 是否激活视图 */
     active: boolean;
 }
-/** E5.8#34：容器切换器下拉分组——dd-group 容器标题 + dd-item 列表 */
+/** 容器切换器下拉分组——dd-group 容器标题 + dd-item 列表 */
 export interface PanelSwitcherGroup {
     containerId: string;
     /** 容器标题——壳 t() 已解析 */
     containerTitle: string;
     items: PanelSwitcherItem[];
 }
-/** 底部面板布局——Phase 5 #21 PanelZone 消费 */
+/** 底部面板布局——PanelZone 消费 */
 export interface PanelLayout {
     visible: boolean;
     height: number;
-    /** 🆕 E5.8#36.8：面板 dock 边——#37.7 dockTo 消费方（面板位置）。顶/底=横带（align 控列跨度）；
+    /** 🆕 面板 dock 边——dockTo 消费方（面板位置）。顶/底=横带（align 控列跨度）；
      *  左/右=主区与对应侧栏间竖条（5 带排布）。缺省 "bottom"。 */
     edge?: "bottom" | "top" | "left" | "right";
-    /** 🆕 E5.8#36.8：面板横向对齐——#37.7 setAlign 消费方。几何由池 grid 推导（#37.5），壳只推配置。
+    /** 🆕 面板横向对齐——setAlign 消费方。几何由池 grid 推导，壳只推配置。
      *  center=主栏宽 / left=延伸到左侧栏之下 / right=延伸到右侧栏之下 / justify=全宽。缺省 "center"。 */
     align?: "left" | "center" | "right" | "justify";
-    /** 🆕 E5.8#36.8：面板宽——edge∈{left,right} 时使用（竖条宽）；顶/底仍用 height。缺省 300。 */
+    /** 🆕 面板宽——edge∈{left,right} 时使用（竖条宽）；顶/底仍用 height。缺省 300。 */
     width?: number;
     activeViewId: string;
     views: PanelViewMeta[];
-    // ── E5.7#21 + #37.5：拖拽钳制界——#13 同款（壳 LayoutEngine dock 声明推送，池零硬编码）。
+    // ── 拖拽钳制界——同款（壳 LayoutEngine dock 声明推送，池零硬编码）。
     //   轴感知：横带（edge∈{bottom,top}）用 minHeight/maxHeight；竖条（edge∈{left,right}）用 minWidth/maxWidth。 ──
     minHeight?: number;
     maxHeight?: number;
-    /** 🆕 E5.8#37.5：竖条面板（左/右）拖拽最小/最大宽——壳 dock.minWidth/maxWidth 推送 */
+    /** 🆕 竖条面板（左/右）拖拽最小/最大宽——壳 dock.minWidth/maxWidth 推送 */
     minWidth?: number;
     maxWidth?: number;
-    /** E5.7#63.7：[+] 按钮 tooltip——壳 t("新建面板视图") 推送（显示文本铁律；壳无 panel:createView 监听 = 安全 no-op） */
+    /** [+] 按钮 tooltip——壳 t("新建面板视图") 推送（显示文本铁律；壳无 panel:createView 监听 = 安全 no-op） */
     createTooltip?: string;
-    /** E5.8#34：容器切换器下拉 DTO——按容器分组列全部视图（含隐藏），mockup 帧 2 */
+    /** 容器切换器下拉 DTO——按容器分组列全部视图（含隐藏），mockup 帧 2 */
     switcher?: PanelSwitcherGroup[];
-    /** E5.8#34：空态占位主文本——全隐藏 / 无贡献视图时壳 t() 推送 */
+    /** 空态占位主文本——全隐藏 / 无贡献视图时壳 t() 推送 */
     emptyText?: string;
-    /** E5.8#34：空态占位指路——同 emptyText 壳 t() 推送 */
+    /** 空态占位指路——同 emptyText 壳 t() 推送 */
     emptyHint?: string;
-    /** 🆕 E5.8#45：面板可脱出（PanelZone ⤢ 按钮显隐）——true 时渲染脱出按钮，点击 emit "panel:detach"（壳 detachPanel 接）
+    /** 🆕 面板可脱出（PanelZone ⤢ 按钮显隐）——true 时渲染脱出按钮，点击 emit "panel:detach"（壳 detachPanel 接）
      *  ——脱出后漂移面板窗独占渲染本面板（主区空占位 I9-13），drift 窗内置 false（面板已在外，无需再脱出） */
     detachable?: boolean;
-    /** 🆕 E5.8#45：⤢ 按钮 tooltip——壳 t("面板独立窗口") 推送（显示文本铁律） */
+    /** 🆕 ⤢ 按钮 tooltip——壳 t("面板独立窗口") 推送（显示文本铁律） */
     detachTooltip?: string;
 }
 /** 状态栏条目——序列化自壳 StatusBar 三源（贡献/动态/事件）+ 壳固定项（显示文本铁律：壳 t() 已解析）。
- *  E5.8#20-c：改名 PoolStatusBarItem——与 api/types.ts StatusBarItem（manifest 贡献型）同名，
+ * 改名 PoolStatusBarItem——与 api/types.ts StatusBarItem（manifest 贡献型）同名，
  *  契约平铺进单文件会声明合并成幽灵复合型（pluginId 变必选）；池线用 Pool 前缀消歧。 */
 export interface PoolStatusBarItem {
     id: string;
@@ -944,7 +944,7 @@ export interface PoolStatusBarItem {
     align: "left" | "right";
     /** 点击执行的命令 ID */
     onClick?: string;
-    /** 自绘状态栏组件 marker——插件声明 appearsIn.statusBar 的归一化 URL（E6#62d：loader 注册时
+    /** 自绘状态栏组件 marker——插件声明 appearsIn.statusBar 的归一化 URL（loader 注册时
      *  算 ViewPluginEntry.statusBarRenderPath，壳读此发 marker）→ 池按 URL 直动态 import（serial-monitor 连接灯）。
      *  有值 = 自绘组件取代该插件全部静态项；无 = 普通条目。 */
     componentRenderPath?: string;
@@ -952,7 +952,7 @@ export interface PoolStatusBarItem {
     dividerBefore?: boolean;
 }
 /**
- * E6#73d：安装 job 的行——面板「进行中 / 等待安装中」两段的**唯一**行形状（18 档 §五 I.4）。
+ * 安装 job 的行——面板「进行中 / 等待安装中」两段的**唯一**行形状。
  *
  * **为什么结果区不在这里**：安装终态（成功 / 失败 / 已安装但缺依赖）由既有的 toast 发声
  * （成功 = lifecycle 消费端唯一口，失败 = settle 失败 toast 带 [重试]，见 73h/73e），
@@ -976,7 +976,7 @@ export interface NotifJobRow {
     /** [取消安装] 按钮文案（壳 t()） */
     cancelLabel?: string;
 }
-/** E6#73d：安装 job 段——面板固定三段里前两段的容器（顺序永不重排，§五 I.4） */
+/** 安装 job 段——面板固定三段里前两段的容器（顺序永不重排，§五 I.4） */
 export interface NotifSection {
     /** "running" | "queued"——段身份（池不做判别，只当 key 用） */
     key: string;
@@ -991,7 +991,7 @@ export interface NotifAction {
     label: string;
     isPrimary?: boolean;
     /**
-     * M1 `AI#2`：按下去会执行的命令 + 参数（壳 `executeCommand(command, ...args)`）。
+     * 按下去会执行的命令 + 参数（壳 `executeCommand(command, ...args)`）。
      *
      * 读取面用——AI 经契约读 DTO 就能答「按钮里有什么 / 该执行哪个 / 执行后做什么」，
      * 并**照它调 `commands.executeCommand` 真执行**（与手点按钮同一条命令路径）。
@@ -1013,14 +1013,14 @@ export interface NotifItem {
     /** 壳 t("来源: {{source}}")——无 source 则缺省 */
     sourceLabel?: string;
     actions: NotifAction[];
-    /** E6#72c：进度类通知——池据此画 3px 进度行（缺省 = 非进度通知，不画）。
+    /** 进度类通知——池据此画 3px 进度行（缺省 = 非进度通知，不画）。
      *  progress 由壳 toast 存储直通（pushToast/updateToast 的 progress 旗标）。 */
     progress?: boolean;
-    /** E6#72c：确定态百分比 0-100——有值画定宽填充，无值画不定态扫动（对标 E3e 原版语义）。
+    /** 确定态百分比 0-100——有值画定宽填充，无值画不定态扫动（对标  原版语义）。
      *  池侧渲染时自行钳位（壳不作保证——契约宽容，畸形值不撑破布局）。 */
     percent?: number;
     /**
-     * M1 `AI#6`：唤醒旗标（E6#73b 白名单的**只读透传**）——本条通知是否**允许**把面板弹出来。
+     * 唤醒旗标（白名单的**只读透传**）——本条通知是否**允许**把面板弹出来。
      *
      * 🔴 **恒在**（`false` 也有信息量：它就是「这条没弹」的答案，见 R5-4 的取舍）。AI 据此答
      * toast 六问之「**因为什么**弹出」：`wake:true` = 进白名单的四类之一（用户点击发起的安装 job /
@@ -1031,11 +1031,11 @@ export interface NotifItem {
      */
     wake: boolean;
     /**
-     * M1 `AI#6`：自动消失时长（ms，`0` = 不自动消失）。壳 toast 存储直通——`pushToast` 恒填。
+     * 自动消失时长（ms，`0` = 不自动消失）。壳 toast 存储直通——`pushToast` 恒填。
      * 与 `persistent` 同源判据（`ttl <= 0` ⇒ 常驻，见 toast.ts 的 `derivePersistent`）。
      */
     ttl?: number;
-    /** M1 `AI#6`：长驻（不自动消失、等用户手动点 ×）。只在 true 时带字段——同 `progress` 的缺省约定。 */
+    /** 长驻（不自动消失、等用户手动点 ×）。只在 true 时带字段——同 `progress` 的缺省约定。 */
     persistent?: boolean;
 }
 /** 通知分组——壳 NotificationCenter buildSourceGroups（source 第一段归类 + 未读排序） */
@@ -1045,7 +1045,7 @@ export interface NotifGroup {
     label: string;
     unread: number;
     items: NotifItem[];
-    /** E6#73f（S3/A6）：本组因超过「每来源 5 条」上限被淘汰折叠掉的**说明文案**（壳侧 t() 已解析，
+    /** 本组因超过「每来源 5 条」上限被淘汰折叠掉的**说明文案**（壳侧 t() 已解析，
      *  池哑渲染——同 timeLabel/sourceLabel/clearLabel 的「显示文本铁律」）。
      *  缺省 = 没折叠过（契约宽容——旧快照/测试替身不填此字段时行为不变，不渲染该行）。 */
     foldedLabel?: string;
@@ -1056,20 +1056,20 @@ export interface NotifLayout {
     /** 铃铛 tooltip——t("{{count}} 条通知") / t("通知") */
     bellTitle: string;
     panelTitle: string;
-    /** E6#73a：头部「清除已完成」按钮文案——只清**已出结果且已读**的旧消息，面板不关、进行中的一条不碰。 */
+    /** 头部「清除已完成」按钮文案——只清**已出结果且已读**的旧消息，面板不关、进行中的一条不碰。 */
     clearLabel: string;
-    /** E6#73a：头部「最小化」按钮文案——关闭面板的**唯一**动作（语义 = 收起，什么都不丢）。 */
+    /** 头部「最小化」按钮文案——关闭面板的**唯一**动作（语义 = 收起，什么都不丢）。 */
     minimizeLabel: string;
     emptyLabel: string;
     dismissTitle: string;
-    /** E6#73d：头部摘要（「3 项进行中 · 另有 4 项等待安装中」）——**没有安装 job 时缺省不渲染**。
+    /** 头部摘要（「3 项进行中 · 另有 4 项等待安装中」）——**没有安装 job 时缺省不渲染**。
      *  ⚠️ 只报**进行中 / 等待中**两个数：不写「已完成 N/M」——装了没有不由进度条消失来判定
      *  （18 档 §七 73d 行明令）。 */
     summaryLabel?: string;
-    /** E6#73d：安装 job 两段（进行中 → 等待安装中），固定序排在结果区之前。
+    /** 安装 job 两段（进行中 → 等待安装中），固定序排在结果区之前。
      *  缺省 = 没有在途安装（契约宽容——旧快照/测试替身不填此字段时行为不变，不渲染这两段）。 */
     sections?: NotifSection[];
-    /** E6#73d：第三段固定标题「已有结果」（§五 I.4 三段永不重排）。
+    /** 第三段固定标题「已有结果」（§五 I.4 三段永不重排）。
      *  结果**行**不在这里——它们是既有的按来源分组的 toast（见 NotifJobRow 注释）；
      *  本字段只提供那一区上方的固定标题。缺省 = 没有安装活动（不渲染该标题，避免纯通知场景凭空多一行）。 */
     resultLabel?: string;
@@ -1077,12 +1077,12 @@ export interface NotifLayout {
      *  行会被 TTL 收走/被来源折叠，用它计数会让摘要随无关动作跳变（18 档 §五 I.4 的样例即此计数）。 */
     resultSummary?: string;
     groups: NotifGroup[];
-    /** E6#72d：自动展开请求——壳判定「存在重要且未读的通知，且面板当前是关着的」时为 true。
+    /** 自动展开请求——壳判定「存在重要且未读的通知，且面板当前是关着的」时为 true。
      *  池侧只做 **false→true 边沿触发**（置面板为开），true 持续期间不反复动作；
      *  缺省 = 不自动展开（契约宽容——旧快照/测试替身不填此字段时行为不变）。 */
     autoOpen?: boolean;
 }
-/** 状态栏布局——Phase 2 #8 StatusBarZone 消费 */
+/** 状态栏布局——StatusBarZone 消费 */
 export interface StatusBarLayout {
     items: PoolStatusBarItem[];
     /** Chord 提示——壳 CHORD_CHANGED 构建的完整字符串（按键名是技术标识符，不走 i18n） */
@@ -1110,16 +1110,16 @@ export interface PoolLayout {
     iconBar?: IconBarLayout;
     /** 侧栏——缺省 = 池不渲染该 zone（脱出窗子集；主池恒推） */
     sidebar?: SidebarLayout;
-    /** E5.8#36.8：右侧栏真 zone 布局——RightSidebarLayout（edge 反推 = sidebar 对边，不携带自身 edge） */
+    /** 右侧栏真 zone 布局——RightSidebarLayout（edge 反推 = sidebar 对边，不携带自身 edge） */
     rightSidebar?: RightSidebarLayout;
     groups: PoolGroup[];
-    /** E5.8#30.15（P5）：聚焦面板 id——点面板空白/点标签设置（壳 reduceFocusGroup/FocusTab）。
+    /** 聚焦面板 id——点面板空白/点标签设置（壳 reduceFocusGroup/FocusTab）。
      *  池侧消费：accent 聚焦环 + isActive 单聚焦判定（tab.id === activeTabId && group.id === activeGroupId）。 */
     activeGroupId?: string;
-    /** E5.6#16.7：递归分屏树——MainRenderer 递归渲染，替代平铺 groups.map。
+    /** 递归分屏树——MainRenderer 递归渲染，替代平铺 groups.map。
      *  leaf = 单 GroupPane，branch = 水平/垂直 flex 容器。 */
     root?: SplitNode;
-    /** E5.6#16.7k-3：可创建为标签页的视图列表——池 GroupTabBar [+] 按钮动态菜单。
+    /** 可创建为标签页的视图列表——池 GroupTabBar [+] 按钮动态菜单。
      *  空数组 = [+] 不提供创建菜单（脱出窗 I9-6）；缺省 = 池兜底欢迎页 */
     creatableViews?: CreatableViewMeta[];
     panel?: PanelLayout;
@@ -1132,7 +1132,7 @@ export interface PoolLayout {
     commands?: PoolCommandHints;
 }
 /**
- * M1 `AI#3`：单窗标签清单——`groups` 与推给池的布局树**同一个序列化器**（`serializeGroups`）产出，
+ * 单窗标签清单——`groups` 与推给池的布局树**同一个序列化器**（`serializeGroups`）产出，
  * 故「清单里的 label/icon/title」与「屏幕上画的那一条」必然一致。
  */
 export interface TabsSnapshotWindow {
@@ -1149,7 +1149,7 @@ export interface TabsSnapshotWindow {
     groups: PoolGroup[];
 }
 /**
- * M1 `AI#3`：`tabs.list()` 的返回——**全部窗口一次给全**（含活跃位）。
+ * `tabs.list()` 的返回——**全部窗口一次给全**（含活跃位）。
  *
  * 🔴 为什么是全窗而不是「当前窗」：壳侧**没有**「当前窗」这个真相源（全仓 grep `activeWindowId` 零命中，
  * 窗口注册表里只有逐窗 mode/ready/tabState）——凭空造一个"当前窗"就是编数据。
@@ -1168,27 +1168,27 @@ export interface TabsAPI {
         focusBySourceId(sourceId: string): Promise<void>;
         updateLabelBySourceId(sourceId: string, label: string): Promise<void>;
         closeBySourceId(sourceId: string): Promise<void>;
-        /** E5.6#11.5g3：标签页激活订阅——文件树 autoReveal 消费（preload-pool 实有面，#98 补录契约） */
+        /** 标签页激活订阅——文件树 autoReveal 消费（preload-pool 实有面，补录契约） */
         onDidChangeActiveTab(cb: (data: {
             tabId: string;
             pluginId?: string;
             filePath?: string;
         }) => void): () => void;
         /**
-         * M1 `AI#3`：**只读列举**——开了哪几个标签、各属哪个插件、哪个是活跃的（每组 `activeTabId`）。
+         * **只读列举**——开了哪几个标签、各属哪个插件、哪个是活跃的（每组 `activeTabId`）。
          *
          * 🔴 为什么必须有它：布局真相源是壳的 `useTabManager`（React state），**壳侧无任何 getter**
          * （池侧只能被动等下一帧 `pool.onLayout`，而「现在有什么」不该靠等）。本方法 = 壳侧权威按需自曝。
          * 🔴 **池侧独有**：壳自己是标签权威、手上就是这份 state，不需要绕 IPC 问自己 ⇒ `preload-shell` 不实现
          * （`surfaces.ts` 的 `ShellExposed.tabs` Omit 已剔除 `list`——同 `onDidChangeActiveTab` 的理由）。
          *
-         * @returns 全部窗口的清单（见 `TabsSnapshot`；与 `AI#4` 的布局树**同源**——同一 `serializeGroups`）
+         * @returns 全部窗口的清单（见 `TabsSnapshot`；与  的布局树**同源**——同一 `serializeGroups`）
          */
         list(): Promise<TabsSnapshot>;
     };
 }
 /**
- * KeybindingRegistry 类型层——自 KeybindingRegistry.ts 拆出（E5.8#0d.10-8a）。
+ * KeybindingRegistry 类型层——自 KeybindingRegistry.ts 拆出。
  * 纯类型零逻辑。依赖方向：无（被 normalization / registry / chord / persistence / dispatch 消费）。
  */
 export interface Keybinding {
@@ -1202,7 +1202,7 @@ export interface Keybinding {
     source: "user" | "plugin" | "builtin";
     /** 插件 ID——卸载时精确匹配（B3 fix：原实现 source === "plugin" 会误删所有插件快捷键） */
     pluginId?: string;
-    /** E3f #59-F：执行时透传给 executeCommand 的额外参数 */
+    /** 执行时透传给 executeCommand 的额外参数 */
     args?: unknown[];
 }
 /** 壳→主进程快捷键表同步载荷（KeybindingRegistry.getKeybindingSyncData 输出） */
@@ -1221,9 +1221,9 @@ export interface KeyboardInput {
     code: string;
 }
 /**
- * E5.8#46.8：主进程 before-input-event 转发的 executeShortcut 载荷——键盘快照 + 来源窗标注。
+ * 主进程 before-input-event 转发的 executeShortcut 载荷——键盘快照 + 来源窗标注。
  * KeyboardInput 保持纯净（纯键盘字段）；来源作为组合类型必选字段（attachKeyboardRouting 恒有 windowId）。
- * 壳 dispatch 据此按聚焦窗裁决快捷键（Ctrl+W 关本窗 tab）——与 ShellTabAction 顶层 sourceWindowId 同构（#46.4 归一化）。
+ * 壳 dispatch 据此按聚焦窗裁决快捷键（Ctrl+W 关本窗 tab）——与 ShellTabAction 顶层 sourceWindowId 同构（归一化）。
  */
 export interface ForwardedKeyboardInput extends KeyboardInput {
     sourceWindowId: string;
@@ -1245,11 +1245,11 @@ export interface KeybindingsAPI {
         onChange(cb: () => void): () => void;
         /** 壳→主进程同步快捷键表（chord 状态机查表） */
         syncToMainProcess?(data: KeybindingSyncData): Promise<void>;
-        /** 接收主进程 before-input-event 转发的拦截事件（E5.8#46.8：载荷含 sourceWindowId——按聚焦窗裁决） */
+        /** 接收主进程 before-input-event 转发的拦截事件（载荷含 sourceWindowId——按聚焦窗裁决） */
         onForwardedEvent?(cb: (input: ForwardedKeyboardInput) => void): () => void;
     };
 }
-/** 通知主动作按钮描述（E6#13.5 缝隙 K1）——插件 notifications.show 传 actions，
+/** 通知主动作按钮描述（缝隙 K1）——插件 notifications.show 传 actions，
  *  经 IPC 序列化到壳；点击时壳 executeCommand(command, args) 真执行。
  *  对标 VS Code `INotificationAction`（命令面）。按钮文案 = 最终显示文本，壳不二次翻译。 */
 export interface PluginToastAction {
@@ -1267,7 +1267,7 @@ export interface PluginToastAction {
 }
 /** 进度通知句柄——progress=true 时 show() 返回 */
 export interface NotificationHandle {
-    /** 更新进度消息 + 可选进度百分比（E6#71i：0-100 确定条；不传 = 不定态动画照常推消息） */
+    /** 更新进度消息 + 可选进度百分比（0-100 确定条；不传 = 不定态动画照常推消息） */
     update(message: string, percent?: number): Promise<void>;
     /** 完成——关闭进度通知，可选弹完成 toast */
     finish(message?: string): Promise<void>;
@@ -1280,9 +1280,9 @@ export type ManifestMenuItem = string | {
     label?: string;
     when?: string;
     group?: string;
-    /** E5.8#33：排序权重——同 group 内越小越靠前（壳招牌用于菜单栏组序） */
+    /** 排序权重——同 group 内越小越靠前（壳招牌用于菜单栏组序） */
     order?: number;
-    /** E3f #52a：嵌套子菜单——有 children 时 command 可为空 */
+    /** 嵌套子菜单——有 children 时 command 可为空 */
     children?: ManifestMenuItem[];
 };
 /** 菜单项描述——menu.getItems() 返回（壳侧 when 过滤 + t() 翻译 + 快捷键解析后） */
@@ -1292,15 +1292,15 @@ export interface MenuItemDescriptor {
     group?: string;
     order?: number;
     when?: string;
-    /** 壳侧解析后的命令标题（E5.7#14 显示文本铁律） */
+    /** 壳侧解析后的命令标题（显示文本铁律） */
     title?: string;
     /** 已解析快捷键 "ctrl+shift+p" 形式 */
     shortcut?: string;
-    /** E5.8#37.7：当前项 √ 标记（单选语义——壳侧 getItems 动态解析，VS Code 菜单当前项同款）。
-     *  位置/对齐子菜单（当前 edge/align 命中项）+ #37.7.1 视图显隐列表（visible 视图项）共用。 */
+    /** 当前项 √ 标记（单选语义——壳侧 getItems 动态解析，VS Code 菜单当前项同款）。
+     * 位置/对齐子菜单（当前 edge/align 命中项）+ .1 视图显隐列表（visible 视图项）共用。 */
     checked?: boolean;
     /**
-     * E5.8#37.7.1：每项命令载荷——动态菜单项（如面板视图显隐清单）携带数据传给命令 handler。
+     * 每项命令载荷——动态菜单项（如面板视图显隐清单）携带数据传给命令 handler。
      * ContextMenu 的 context 是整菜单共享的（非 per-item），per-item 身份（如 containerId+viewId）
      * 必须走命令载荷：executeCommand(id, undefined, ...commandArgs, context) → 壳 handler 收 args
      * = [...commandArgs, context]。池哑渲染原文透传，不解释内容。
@@ -1309,9 +1309,9 @@ export interface MenuItemDescriptor {
     children?: Array<string | MenuItemDescriptor>;
 }
 /**
- * 对话框 wire 契约——E5.7#97。
+ * 对话框 wire 契约。
  *
- * 曾双份定义：linkdesk-api.ts（E5.7#73 插件侧）与 dialog-handlers.ts 内联结构体
+ * 曾双份定义：linkdesk-api.ts（插件侧）与 dialog-handlers.ts 内联结构体
  * 手工对齐——一边改另一边静默失效。本模块一处定义：
  * 插件 API re-export（保持既有 import 路径）+ preload + 主进程三端 import type。
  */
@@ -1324,7 +1324,7 @@ export interface DialogOpenOptions {
         extensions: string[];
     }[];
 }
-/** E6#71c 富内容确认打开参数——池插件 → 壳 DialogService（content 视图声明寻址）。
+/** 富内容确认打开参数——池插件 → 壳 DialogService（content 视图声明寻址）。
  *  title/message 兜底——content 视图解析失败时壳回落纯文字确认（弹窗仍出，不静默死）。 */
 export interface DialogContentOpenOptions {
     /** 兜底标题——content 解析失败回落用；池侧已 t() 解析 */
@@ -1372,7 +1372,7 @@ export interface PoolQuickPickItem {
     key: string;
     /** getSearchText(item)——池本地模糊匹配 */
     searchText: string;
-    /** E5.8#32：已激活项勾选标记——label 左侧 ✓。undefined = 无勾选（通用 QuickPick 不受影响）；true/false = 渲染固定占位保对齐 */
+    /** 已激活项勾选标记——label 左侧 ✓。undefined = 无勾选（通用 QuickPick 不受影响）；true/false = 渲染固定占位保对齐 */
     checked?: boolean;
     /** 第一行左——已 t() 解析 */
     label: string;
@@ -1392,7 +1392,7 @@ export interface PoolQuickPickData {
     items: PoolQuickPickItem[];
 }
 /**
- * Pool Dialog 哑渲染数据——E5.7#17（浮层归一化设计.md §7）。
+ * Pool Dialog 哑渲染数据——（浮层归一化设计.md §7）。
  *
  * 聪慧→哑数据流：壳 DialogService 桥（renderer 注册）把 options 序列化成 DTO 推送
  * （显示文本铁律——按钮文案已由壳侧 t() 解析，池原样渲染）。
@@ -1409,7 +1409,7 @@ export type PoolDialogData = {
     cancelLabel?: string;
     /** alert 模式——只有确定按钮，无取消/Escape/backdrop 关闭 */
     isAlert: boolean;
-    /** E6#71c 富内容槽——present 时替代 title/message/默认按钮渲染（弹窗机制不变：
+    /** 富内容槽——present 时替代 title/message/默认按钮渲染（弹窗机制不变
      *  居中/遮罩/Esc/trap/点遮罩取消仍由 DialogHost 提供）。内容 = 插件视图——
      *  壳不持渲染器，池经 PluginComponent 挂载（仿 FloatingPanel DTO）。payload 不透明——
      *  壳不解释、池原样持，内容视图经 window.linkdesk.dialogHost.current() 读。 */
@@ -1422,7 +1422,7 @@ export type PoolDialogData = {
     };
 };
 /**
- * M1 `AI#5`：**在途弹窗**的可读投影——「有没有 confirm/alert 正弹着、在等什么」。
+ * **在途弹窗**的可读投影——「有没有 confirm/alert 正弹着、在等什么」。
  *
  * 🔴 与 `PoolDialogData` 的关系：那个是**哑渲染载荷**（池照它画），这个是**问「现在在等什么」的答案**
  * （读 `DialogService` 登记的在途 options）。两者形状刻意同源但**不是同一条通道**：
@@ -1442,7 +1442,7 @@ export interface PoolPendingDialog {
      * ⚠️ 富内容模式（`content` 存在）下按钮由插件视图自画 ⇒ **空数组**（⛔ 别拿确定/取消去猜）。
      */
     buttons: string[];
-    /** E6#71c 富内容确认——内容 = 插件自绘视图。给**身份**（不给 renderPath：那是池内寻址键，
+    /** 富内容确认——内容 = 插件自绘视图。给**身份**（不给 renderPath：那是池内寻址键，
      *  而本面在池里问的是"壳在等什么"），⛔ 不带 payload（不透明载荷可能很大，读「在等什么」也用不上）。 */
     content?: {
         pluginId: string;
@@ -1450,7 +1450,7 @@ export interface PoolPendingDialog {
     };
 }
 /** 标题栏动作按钮——池渲染 + 回传壳侧重解析业务语义（池零语义，UI 机械知识除外）。
- *  E5.8#20-c：改名 PoolFloatingPanelButton——与 poolActions.ts PoolFloatingPanelAction（IPC 回传动作）
+ * 改名 PoolFloatingPanelButton——与 poolActions.ts PoolFloatingPanelAction（IPC 回传动作）
  *  同名，契约平铺进单文件会声明合并成幽灵复合型；按钮描述型用 Button 后缀消歧（契约族命名消歧惯例）。 */
 export interface PoolFloatingPanelButton {
     /** 动作 id——open-in（在主窗口中打开）/ maximize（最大化）/ close（关闭），壳侧重解析 */
@@ -1467,7 +1467,7 @@ export interface PoolFloatingPanelButton {
     expandOnHover?: boolean;
 }
 /** 面板显式几何（px）——I8-5/I8-7 拖拽/调高后取代默认居中大卡布局。
- *  M2 `AI#20`：同一形状经 `panel.setFloatingBounds` 走 API 路径（非鼠标路径）设定。 */
+ * 同一形状经 `panel.setFloatingBounds` 走 API 路径（非鼠标路径）设定。 */
 export interface FloatingPanelBounds {
     top: number;
     left: number;
@@ -1490,13 +1490,13 @@ export type PoolFloatingPanelData = {
     actions: PoolFloatingPanelButton[];
     /** 语言切换文案重推标记（refreshPanelText）——池仅更新标题/动作渲染，跳过焦点获取（I8-8 首次打开才入焦点） */
     refresh?: boolean;
-    /** M2 `AI#20`：**API 路径**显式几何（`panel.setFloatingBounds` 推入，一次性——⛔ 壳不把它存进
+    /** **API 路径**显式几何（`panel.setFloatingBounds` 推入，一次性——⛔ 壳不把它存进
      *  refreshPanelText 的底稿，否则语言切换重推会把用户拖过的面板弹回旧位）。
      *  语义三分：**缺省** = 不动几何（拖拽/调高后的本地态原样保留）｜**部分字段** = 精确设定
      *  （未带字段保持现值，同一套 I8-5/I8-7 钳制）｜**null** = 回默认居中大卡（拖拽前那一态）。 */
     bounds?: Partial<FloatingPanelBounds> | null;
 };
-/** M2 `AI#20`：几何宿主请求——preload 转发 API 路径到池 FloatingPanelHost（池是几何真相源：
+/** 几何宿主请求——preload 转发 API 路径到池 FloatingPanelHost（池是几何真相源
  *  面板渲染在池，只有池知道它此刻真在哪；壳不存几何 ⇒ 不会是第二把尺）。
  *  `set` 在最大化态下先退出最大化再设定（「设定必生效」——几何与满窗态互斥）。 */
 export type FloatingPanelBoundsHostRequest = {
@@ -1515,24 +1515,24 @@ export interface PoolFloatingPanelGeometry extends FloatingPanelBounds {
 }
 /** UI 浮层/菜单/通知命名空间面——对标 VS Code vscode.window + ContextKey + 池内 QuickPick/Dialog/FloatingPanel 宿主桥 */
 export interface UiAPI {
-    /** 通知——插件弹通知（E6#72：唯一通知面 = 铃铛宽通知面板，右下窄卡链路已整删），对标 VS Code vscode.window.showInformationMessage */
+    /** 通知——插件弹通知（唯一通知面 = 铃铛宽通知面板，右下窄卡链路已整删），对标 VS Code vscode.window.showInformationMessage */
     notifications: {
-        /** 弹出通知，**一律返回句柄**（含 update/finish/cancel）——E6#73f（S6）句柄隔离：
+        /** 弹出通知，**一律返回句柄**（含 update/finish/cancel）——句柄隔离
          *  此前只在 progress:true 时返回句柄 ⇒ persistent 的失败通知（带 [重试]）撤不下来，
-         *  用户手动重试成功后那条「安装失败」仍长驻，面板变成失败墙（18 档 A3/E4）。
+         * 用户手动重试成功后那条「安装失败」仍长驻，面板变成失败墙。
          *  ⇒ 一条通知只能被**创建它的那个句柄**更新/删除，不管它是不是进度条。
-         *  E6#13.5：options.actions 带主动作按钮——点击走壳 executeCommand(action.command, action.args)，
+         * options.actions 带主动作按钮——点击走壳 executeCommand(action.command, action.args)，
          *  命令 handler 插件自注册。不传 actions → 无按钮（现状）。error 类自动停留 8s。
-         *  E6#71j：options.persistent=true 长驻通知——不自动消失、等用户手动点 ×（错误诊断类用）;
-         *  常驻上限**按来源分桶**各 5 条（E6#73f S3），超出顶掉同来源最老的并给汇总提示 */
+         * options.persistent=true 长驻通知——不自动消失、等用户手动点 ×（错误诊断类用）;
+         * 常驻上限**按来源分桶**各 5 条，超出顶掉同来源最老的并给汇总提示 */
         show(message: string, options?: {
             type?: "info" | "warning" | "error";
-            /** true → 进度通知：update 可带 0-100 百分比驱动真进度条（E6#71i） */
+            /** true → 进度通知：update 可带 0-100 百分比驱动真进度条 */
             progress?: boolean;
-            /** true → 长驻通知：不自动消失（E6#71j）；错误诊断/需用户决定的场景用 */
+            /** true → 长驻通知：不自动消失；错误诊断/需用户决定的场景用 */
             persistent?: boolean;
             actions?: PluginToastAction[];
-            /** E6#73g（S5）生产者身份 id——**机器读的归属键，不含人类文案**（人类可读名由壳解析）。
+            /** 生产者身份 id——**机器读的归属键，不含人类文案**（人类可读名由壳解析）。
              *  面板**按来源分组**、每组各 5 条常驻配额都以此为键；不传 → 全落「其他」组。
              *  插件传自己的插件 id；壳自身域用 `app.<域>`（如 `app.update`）。
              *  ⚠️ **做不到自动注入**——池是单进程共享 realm，所有插件共用同一个 `window.linkdesk`，
@@ -1541,12 +1541,12 @@ export interface UiAPI {
             source?: string;
         }): Promise<NotificationHandle>;
         /**
-         * M1 `AI#1`：**只读列举**——面板里现在有什么（条数 / 未读 / 每条内容与按钮 / 唤醒与存活判据）。
+         * **只读列举**——面板里现在有什么（条数 / 未读 / 每条内容与按钮 / 唤醒与存活判据）。
          *
          * 🔴 为什么必须是这一个形状：返回的就是**铃铛宽面板的 DTO 本体**（`NotifLayout`，与
          * `pool.onLayout` 的 `statusBar.notif` 同一个 `buildNotif(t)` 产出）——**不是**另算一份摘要。
          * 两把尺子必然打架：AI 读到的分组/未读/文案若与屏幕上画的不同，读取面就成了假信息源。
-         * 设计原文（M1 路线 B）也承认布局快照里**已在推**这份数据，只是「没开门」；本方法就是那扇门，
+         * 设计原文（路线 B）也承认布局快照里**已在推**这份数据，只是「没开门」；本方法就是那扇门，
          * 而门后接的仍是同一份实现（⛔ 不 fork 第二把尺）。
          *
          * ⚠️ **脱出窗也拿得到**：本方法经 `plugins:call` 问**壳**（壳持全量状态），不读本窗那份布局子集
@@ -1557,7 +1557,7 @@ export interface UiAPI {
          */
         list(): Promise<NotifLayout>;
         /**
-         * M1 `AI#1`：**变更订阅**——通知面（新增/更新/收掉/认账/面板开合）有变化就回调。
+         * **变更订阅**——通知面（新增/更新/收掉/认账/面板开合）有变化就回调。
          *
          * 🔴 **信号无载荷**：回调**不带**快照——带了就等于把「数据」从第二条路推一遍，池侧便会有人直接
          * 用信号里的数据、而不去问权威（`list()`），于是又长出第二把尺。本订阅只回答
@@ -1572,35 +1572,35 @@ export interface UiAPI {
          */
         subscribe(cb: () => void): () => void;
     };
-    /** E5#69：菜单——插件声明式读写 */
+    /** 菜单——插件声明式读写 */
     menu: {
         registerItems(menuId: string, pluginId: string, items: ManifestMenuItem[]): Promise<void>;
         getItems(menuId: string, context?: Record<string, unknown>): Promise<MenuItemDescriptor[]>;
     };
-    /** E5#70：ContextKey——插件 SET 状态供壳 when 子句读 */
+    /** ContextKey——插件 SET 状态供壳 when 子句读 */
     contextKey: {
         set(key: string, value: unknown): Promise<void>;
         _getValue?(key: string): unknown;
     };
-    /** E5#67：弹窗——确认/提示/文件选择 */
+    /** 弹窗——确认/提示/文件选择 */
     dialog: {
         confirm(message: string): Promise<boolean>;
         alert(message: string): Promise<void>;
-        /** 文件/目录选择器——对标 Tauri dialog.open（E5.7#73：openFile 为插件侧规范名，本方法保留给既有消费方） */
+        /** 文件/目录选择器——对标 Tauri dialog.open（openFile 为插件侧规范名，本方法保留给既有消费方） */
         open(opts?: DialogOpenOptions): Promise<string | null>;
         /** 打开文件选择器——返回用户选中路径，取消 → null。安全由主进程控制 */
         openFile(opts?: DialogOpenOptions): Promise<string | null>;
-        /** E6#71c：富内容确认——确认框内容 = 插件自绘视图（content 视图声明寻址 + 不透明 payload）。
+        /** 富内容确认——确认框内容 = 插件自绘视图（content 视图声明寻址 + 不透明 payload）。
          *  弹窗机制同 confirm（居中/遮罩/Esc/焦点锁/点遮罩取消）；内容排版与按钮由插件视图自画
          *  （对标 VS Code「对话框是壳、内容插件定」）。title/message 兜底——content 视图解析
          *  失败时壳回落纯文字确认（弹窗仍出，不静默死）。返回 true = 确认，false = 取消/关闭。 */
         confirmContent(options: DialogContentOpenOptions): Promise<boolean>;
     };
-    /** E5.7#63：插件 quickPick 选择器——池内本地桥（零 IPC，QuickPickHost 渲染）。结算 null → undefined */
+    /** 插件 quickPick 选择器——池内本地桥（零 IPC，QuickPickHost 渲染）。结算 null → undefined */
     quickPick: {
         show(opts: PluginQuickPickOptions): Promise<unknown>;
     };
-    /** E5.7#63：QuickPick 宿主渲染桥——池 QuickPickHost 消费（壳 preload 无此面） */
+    /** QuickPick 宿主渲染桥——池 QuickPickHost 消费（壳 preload 无此面） */
     quickPickHost: {
         registerHost(fn: (req: PluginQuickPickRequest, settle: (key: string | null) => void) => void): () => void;
         onShow(cb: (data: PoolQuickPickData) => void): () => void;
@@ -1609,15 +1609,15 @@ export interface UiAPI {
         close(): void;
         itemAction(key: string, actionId: string): void;
     };
-    /** E5.7#17：Dialog 哑渲染订阅——池 DialogHost 消费（壳 preload 无此面）。命名 dialogHost——
+    /** Dialog 哑渲染订阅——池 DialogHost 消费（壳 preload 无此面）。命名 dialogHost——
      * dialog 命名空间已是插件侧 confirm/alert/open API */
     dialogHost: {
         onShow(cb: (data: PoolDialogData) => void): () => void;
-        /** E6#71c：当前打开的 Dialog 数据——富内容视图挂载后经 dialogHost.current()?.content?.payload
+        /** 当前打开的 Dialog 数据——富内容视图挂载后经 dialogHost.current()?.content?.payload
          *  取数（content 模式才可读；无打开/已关闭 → null）。壳 preload 无此面（池内本地读）。 */
         current(): PoolDialogData | null;
         /**
-         * M1 `AI#5`：**在途弹窗清单**——「有没有 confirm/alert 正弹着、在等什么」。
+         * **在途弹窗清单**——「有没有 confirm/alert 正弹着、在等什么」。
          *
          * 与 `current()` 的分工：`current()` 读的是**本进程收到的哑渲染数据**（`open:false` 即已关；
          * 内容已按池要画的形态给全）；`pending()` 读的是**壳侧 DialogService 的在途请求**
@@ -1626,10 +1626,10 @@ export interface UiAPI {
          *
          * 🔴 **单槽是现状的诚实描述，不是设计目标**：壳→池弹窗链路（`src/App/bridges.ts` 的 `pending`）
          * 同一时刻只承载一条，第二次 `confirm` 会覆盖前一条的 settle 闭包（那条 Promise 永不结算——
-         * **既有缺陷**）。M1 只做「读得到」，**不改 Promise 语义** ⇒ 本方法如实报「最后打开的那一条」。
+         * **既有缺陷**）。只做「读得到」，**不改 Promise 语义** ⇒ 本方法如实报「最后打开的那一条」。
          * 空数组 = 此刻没有弹窗。
          *
-         * ⚠️ 富内容确认（E6#71c）模式下**按钮由插件视图自画**，壳不知道有几条 ⇒
+         * ⚠️ 富内容确认模式下**按钮由插件视图自画**，壳不知道有几条 ⇒
          * `buttons` 为空数组、`content` 给出视图身份——⛔ 不要拿「确定/取消」去猜（编数据）。
          *
          * ⚠️ `buttons` 的**序 = 声明序**（`resolveDialogButtons` 恒为 `[确认, 取消]`），**不是屏幕上的左右位**
@@ -1640,21 +1640,21 @@ export interface UiAPI {
         confirm(): void;
         cancel(): void;
     };
-    /** E5.8#37（Phase 8 类型 B）：悬浮面板哑渲染订阅——池 FloatingPanelHost 消费（壳 preload 无此面）。
+    /** （类型 B）：悬浮面板哑渲染订阅——池 FloatingPanelHost 消费（壳 preload 无此面）。
      * 命名 floatingPanelHost——面板请求 API（panel.revealFloating）归 PanelAPI，宿主渲染桥归本面 */
     floatingPanelHost: {
         onShow(cb: (data: PoolFloatingPanelData) => void): () => void;
         /** 动作回传——open-in（在主窗口中打开）/ close，壳侧 settle（业务语义壳侧重解析） */
         action(actionId: string): void;
         /**
-         * M2 `AI#20`：注册几何宿主（池 FloatingPanelHost mount 时调）。主世界函数经 contextBridge
+         * 注册几何宿主（池 FloatingPanelHost mount 时调）。主世界函数经 contextBridge
          * 代理进隔离世界存储，同 `quickPickHost.registerHost` 先例。返回 unsubscribe。
          * ⚠️ 面板渲染在池 ⇒ **几何真相源在池**：拖拽 / 调高 / `panel.setFloatingBounds` 这条 API 路径
          * 最终都落在本宿主上（壳不存几何、不做几何计算）。
          */
         registerBoundsHost(fn: (req: FloatingPanelBoundsHostRequest) => boolean | PoolFloatingPanelGeometry | null): () => void;
         /**
-         * M2 `AI#20`：读当前悬浮面板几何（**同步**——池内直答零 IPC，同 `dialogHost.current()` 先例）。
+         * 读当前悬浮面板几何（**同步**——池内直答零 IPC，同 `dialogHost.current()` 先例）。
          * 返回**实际生效**的几何（钳制 / 最大化后的真实结果，非调用方意图值）；**无面板** → `null`。
          *
          * 判据用法：`panel.setFloatingBounds({ top: 100, left: 80 })` 后调本函数对账——`top/left` 应等于
@@ -1683,18 +1683,18 @@ export interface OpenPortConfig {
     stopBits?: number;
     parity?: string;
     encoding?: string;
-    /** E5.8#26 D8——资源归属声明：由插件 openPort 时自声明（pool WCV 多插件同 JS 上下文，
+    /** D8——资源归属声明：由插件 openPort 时自声明（pool WCV 多插件同 JS 上下文，
      *  主进程无法从 sender 识别插件），卸载时 closePortsByOwner 按此回收硬件资源。 */
     ownerPluginId?: string;
 }
-/** 串口数据载荷——serial.data 推送（E5.8#28：由原无口名 string 演化——D6 载荷对象化）。 */
+/** 串口数据载荷——serial.data 推送（由原无口名 string 演化——D6 载荷对象化）。 */
 export interface SerialDataPayload {
     /** 数据源端口 = 路由键——消费方按 portName 收自己的口的数据（多口并存各口各收） */
     portName: string;
     /** 解码后的行文本 */
     text: string;
 }
-/** 串口统计载荷——serial.stats 推送（E5.8#28：由原无口名 SerialStats 演化——S10 每口计数器的数据源）。
+/** 串口统计载荷——serial.stats 推送（由原无口名 SerialStats 演化——S10 每口计数器的数据源）。
  *  tx/rx 为推送增量（非累计值）——消费方自行累加。 */
 export interface SerialStatsPayload {
     /** 统计归属端口 = 路由键——各口计数器独立累加 */
@@ -1702,9 +1702,9 @@ export interface SerialStatsPayload {
     tx?: number;
     rx?: number;
 }
-/** 串口系统消息载荷——serial.system 推送（E5.8#28：由原无口名 string 演化——S12 正则挖口名 hack 的修根）。
+/** 串口系统消息载荷——serial.system 推送（由原无口名 string 演化——S12 正则挖口名 hack 的修根）。
  *  message 保留 V2 消息格式（如 `---- 已打开串行端口 COM3 ----`），portName 结构化免解析。
- *  E5.8#30.11（P1）——type 分类标签（审视 ①：来源端分类，一个概念一处写，不做消费端文案关键词判断）：
+ * ——type 分类标签（审视 ①：来源端分类，一个概念一处写，不做消费端文案关键词判断）
  *  status = 正常成功流程（开/关/波特率切换）；error = 非正常流程（同口二开拒绝 D8 / 驱动错误 / 拔线）。
  *  消费端按键路由：status 按口过滤（他口操作不显示）、error 全局可见（非活动标签页也显示）。 */
 export interface SerialSystemPayload {
@@ -1719,17 +1719,17 @@ export interface DataAPI {
     /** 串口——读/写/监听，对标 VS Code SerialPort API */
     serial: {
         listPorts(): Promise<SerialPortInfo[]>;
-        /** E5.8#26 D5 双形态：无参 → SerialStatus[]（全部打开口，空数组 = 全关）/ 有参 → 单口快照（F5 遍历恢复用） */
+        /** D5 双形态：无参 → SerialStatus[]（全部打开口，空数组 = 全关）/ 有参 → 单口快照（F5 遍历恢复用） */
         getStatus(): Promise<SerialStatus[]>;
         getStatus(portName: string): Promise<SerialStatus>;
         openPort(cfg: OpenPortConfig): Promise<void>;
-        /** E5.8#26 D2——portName 可选：缺省 = 唯一打开口（0 口抛「串口未打开」/ ≥2 口抛「多串口已打开，请指定 portName」） */
+        /** D2——portName 可选：缺省 = 唯一打开口（0 口抛「串口未打开」/ ≥2 口抛「多串口已打开，请指定 portName」） */
         closePort(portName?: string): Promise<void>;
         sendData(data: number[], portName?: string): Promise<void>;
         sendText(text: string, enc: string, portName?: string): Promise<void>;
         setDtr(enable: boolean, portName?: string): Promise<void>;
         setRts(enable: boolean, portName?: string): Promise<void>;
-        /** E5.8#28：载荷对象化——SerialDataPayload.portName = 路由键（多口并存各口各收） */
+        /** 载荷对象化——SerialDataPayload.portName = 路由键（多口并存各口各收） */
         onData(cb: (payload: SerialDataPayload) => void): () => void;
         onStats(cb: (payload: SerialStatsPayload) => void): () => void;
         onSystem(cb: (payload: SerialSystemPayload) => void): () => void;
@@ -1741,25 +1741,25 @@ export interface DataAPI {
         /** 写入文件列表——文件树复制粘贴用 */
         writeFileList(paths: string[]): Promise<void>;
     };
-    /** E5#65：p2p 插件间定向推流——和 bridge.broadcast 同模式（fire-and-forget） */
+    /** p2p 插件间定向推流——和 bridge.broadcast 同模式（fire-and-forget） */
     p2p: {
         send(target: string, channel: string, data: unknown): void;
         on(channel: string, cb: (data: unknown) => void): () => void;
     };
     /** 通用事件订阅 + 发布——插件间数据管道。channel 为自由字符串，载荷按通道分型——订阅方收窄 */
     events: {
-        /** E5.7#98：on 泛型化——载荷类型按订阅方 cb 推断（event-system EventSystemApi 同款，#97 已泛型化 impl），通道契约类型（ConfigurationChangedPayload 等）可直传 */
+        /** on 泛型化——载荷类型按订阅方 cb 推断（event-system EventSystemApi 同款，已泛型化 impl），通道契约类型（ConfigurationChangedPayload 等）可直传 */
         on<T = unknown>(channel: string, cb: (payload: T) => void): () => void;
         emit(channel: string, payload: unknown): void;
         heartbeat?(): void;
         notifyTheme?(isDark: boolean): void;
     };
-    /** E5#71：插件持久化存储——集中缓存 + 文件持久化 */
+    /** 插件持久化存储——集中缓存 + 文件持久化 */
     pluginState: {
         /** 读取持久化状态——运行时动态值，默认 unknown；调用方显式 get<string>(...) 窄化或自行收窄 */
         get<T = unknown>(pluginId: string, key: string): Promise<T | undefined>;
         set(pluginId: string, key: string, value: unknown): Promise<void>;
-        /** 订阅持久化状态变更——按 pluginId+key 精确匹配（通配键名订阅走 events.on("plugin-state:changed")，见 E5.8#20 补导出 PluginStateChangedPayload）。返回 unsubscribe */
+        /** 订阅持久化状态变更——按 pluginId+key 精确匹配（通配键名订阅走 events.on("plugin-state:changed")，见  补导出 PluginStateChangedPayload）。返回 unsubscribe */
         onChange(pluginId: string, key: string, cb: (value: unknown) => void): () => void;
     };
 }
@@ -1779,7 +1779,7 @@ export interface FileEntry {
     isFile: boolean;
     size?: number; // 字节
     modifiedAt?: number; // Unix 时间戳 ms
-    /** E4V#10: 文件是否只读（不可写） */
+    /** V 文件是否只读（不可写） */
     isReadonly?: boolean;
 }
 export interface FileChangeEvent {
@@ -1791,7 +1791,7 @@ export interface EnvInfo {
     appDataDir: string;
     pluginsRootDir: string;
     appPluginsDir: string;
-    /** E6#7（1.2-4）：用户安装包代码根 {userData}/plugins——.linkdesk-plugin 解压家（与 appPluginsDir 只读根分开） */
+    /** （1.2-4）：用户安装包代码根 {userData}/plugins——.linkdesk-plugin 解压家（与 appPluginsDir 只读根分开） */
     userPluginsDir: string;
     pluginDataDir?: string;
     pluginCacheDir?: string;
@@ -1841,7 +1841,7 @@ export interface WorkspaceAPI {
         exists(p: string): Promise<boolean>;
         createDir(p: string): Promise<void>;
         copy(src: string, dest: string): Promise<void>;
-        /** E5.8#25.2：重命名/移动文件或目录（主进程 fs.rename 原子；对标 POSIX rename / VS Code fs.rename） */
+        /** 重命名/移动文件或目录（主进程 fs.rename 原子；对标 POSIX rename / VS Code fs.rename） */
         rename(src: string, dest: string): Promise<void>;
         remove(p: string): Promise<void>;
         listDir(p: string): Promise<FileEntry[]>;
@@ -1852,7 +1852,7 @@ export interface WorkspaceAPI {
         /** 列出条目名——壳 preload 独有（池侧请用 listDir） */
         readdir?(p: string): Promise<string[]>;
     };
-    /** 路径工具——壳/池双端注入（editor/file-tree 池插件消费 normalize/join 等）；appDataDir 双端同款（E5.8#0d.5：池侧补上——settings 插件池内解析 userData 路径） */
+    /** 路径工具——壳/池双端注入（editor/file-tree 池插件消费 normalize/join 等）；appDataDir 双端同款（池侧补上——settings 插件池内解析 userData 路径） */
     path: {
         appDataDir?(): Promise<string>;
         normalize(p: string): string;
@@ -1865,19 +1865,19 @@ export interface WorkspaceAPI {
     env: {
         get(pluginId?: string): Promise<EnvInfo>;
     };
-    /** E5.6#11.5a：文件搜索——全文搜索/替换（IPC 到壳/主进程执行） */
+    /** 文件搜索——全文搜索/替换（IPC 到壳/主进程执行） */
     search: {
-        // E5.8#1c：wire 契约归口 src/core/types/ipc/search.ts——与 preload-pool buildSearch 双端同源
+        // wire 契约归口 src/core/types/ipc/search.ts——与 preload-pool buildSearch 双端同源
         searchFiles(opts: SearchWireOptions): Promise<SearchWireResult>;
     };
-    /** E5.6#11.5a：编码检测/转换（主进程 EncodingService） */
+    /** 编码检测/转换（主进程 EncodingService） */
     encoding: {
         detect(buffer: Uint8Array): Promise<string>;
         decode(buffer: Uint8Array, encoding: string): Promise<string>;
         encode(text: string, encoding: string): Promise<Uint8Array>;
     };
 }
-/** 文件装饰——E5.7#60 池内本地注册表。形状对标插件 API 契约 §3.24 */
+/** 文件装饰——池内本地注册表。形状对标插件 API 契约 §3.24 */
 export interface FileDecoration {
     badge?: string;
     tooltip?: string;
@@ -1891,18 +1891,18 @@ export interface FileDecorationProvider {
 }
 /** 文件装饰/关联/语言定义/LSP/协议/视图容器命名空间面——编辑器配套服务（主进程/池内直答） */
 export interface EditorAPI {
-    /** E5.7#60：文件装饰——池内本地注册表（零 IPC）。形状对标契约 §3.24 */
+    /** 文件装饰——池内本地注册表（零 IPC）。形状对标契约 §3.24 */
     decorations: {
         registerProvider(pluginId: string, provider: FileDecorationProvider): void;
         unregisterProvider(pluginId: string): void;
         getDecoration(uri: string): Promise<FileDecoration | null>;
         onDidChange(cb: (uris: string[]) => void): () => void;
     };
-    /** E5.7#50：文件关联——扩展名→插件 ID（主进程 FileAssociationService 直答） */
+    /** 文件关联——扩展名→插件 ID（主进程 FileAssociationService 直答） */
     fileAssociation: {
         getPluginFor(ext: string): Promise<string | undefined>;
     };
-    /** E5.7#49：langDef——语言定义注册表（主进程直答）。只返回可序列化字段（monarch tokenizer 函数主进程侧剥壳） */
+    /** langDef——语言定义注册表（主进程直答）。只返回可序列化字段（monarch tokenizer 函数主进程侧剥壳） */
     langDef: {
         get(extension: string): Promise<{
             id: string;
@@ -1912,14 +1912,14 @@ export interface EditorAPI {
             };
         } | null>;
     };
-    /** E5.6#14-lsp：LSP 桥——自动补全/F12/诊断/重命名 */
+    /** LSP 桥——自动补全/F12/诊断/重命名 */
     lsp: {
         spawn(command: string, args: string[] | undefined, pluginId: string): Promise<string>;
         write(channelId: string, data: string): void;
         dispose(channelId: string): Promise<unknown>;
         onData(cb: (channelId: string, data: string) => void): () => void;
     };
-    /** E5.7#49：protocol——协议注册表（主进程直答）。返回前剥 parseLine/detect（JS 函数不可跨进程） */
+    /** protocol——协议注册表（主进程直答）。返回前剥 parseLine/detect（JS 函数不可跨进程） */
     protocol: {
         listProtocols(): Promise<Array<{
             id: string;
@@ -1930,16 +1930,16 @@ export interface EditorAPI {
         getActiveProtocolId(): Promise<string>;
         setActiveProtocolId(protocolId: string): Promise<void>;
     };
-    /** E5.7#58：viewContainer——真 IPC 查询/更新（问壳侧注册表）。DTO 只含可序列化公开字段 */
+    /** viewContainer——真 IPC 查询/更新（问壳侧注册表）。DTO 只含可序列化公开字段 */
     viewContainer: {
         getViewContainer(id: string): Promise<Record<string, unknown> | undefined>;
         getViews(containerId: string): Promise<Array<Record<string, unknown>>>;
-        // E5.8#41.9.2：getView 复合寻址——(pluginId, viewId) 精确查视图元数据（#41.8 碰撞面 #2）
+        // getView 复合寻址——(pluginId, viewId) 精确查视图元数据（碰撞面）
         getView(pluginId: string, viewId: string): Promise<Record<string, unknown> | undefined>;
         registerView(pluginId: string, containerId: string, descriptor: Record<string, unknown>): Promise<void>;
     };
 }
-/** E6#7（1.2-4）：plugins.resolveEntry() 返回——resolvePath 的兄弟（discovery 族，非安装 handler）。
+/** （1.2-4）：plugins.resolveEntry() 返回——resolvePath 的兄弟（discovery 族，非安装 handler）。
  *  pool/运行时按 { root, entry } 拼 dev /@fs 与 prod linkdesk:// 两种 URL。 */
 export interface PluginEntryInfo {
     /** 插件目录绝对路径（正斜杠）；插件不存在 = null */
@@ -1949,7 +1949,7 @@ export interface PluginEntryInfo {
     /** 目录是否含 index.bundle.js（bundle 格式事实） */
     bundle: boolean;
 }
-/** 兼容读数请求（E6#117）——plugins.getCompatibility 入参：插件身份 ＋ 目录侧事实（未装插件由
+/** 兼容读数请求——plugins.getCompatibility 入参：插件身份 ＋ 目录侧事实（未装插件由
  *  调用方从 catalog 条目供给；已装插件以磁盘 manifest 为生效值，主进程覆盖） */
 export interface PluginCompatibilityRequest {
     pluginId: string;
@@ -1958,7 +1958,7 @@ export interface PluginCompatibilityRequest {
     /** 插件最后发版日（catalog `publishedAt`，ISO） */
     publishedAt?: string | null;
 }
-/** 兼容读数（E6#117）——状态算法单点在壳 `src/core/compat/compatibility.ts`；本面只给机器态，
+/** 兼容读数——状态算法单点在壳 `src/core/compat/compatibility.ts`；本面只给机器态，
  *  ⛔ 不携带任何用户可见句子（用户面文案归市场插件 i18n，用户面词表见 00 号档 §〇d） */
 export interface PluginCompatibilityReading {
     pluginId: string;
@@ -1982,7 +1982,7 @@ export interface PluginCompatibilityReading {
     unknown: string[];
 }
 /**
- * Phase 4 核心类型定义。
+ * 核心类型定义。
  * 插件元数据、标签页扩展字段、视图注册表条目。
  *
  * 设计依据：[[phase4-design-decisions]] + public/schemas/plugin.schema.json
@@ -2018,7 +2018,7 @@ export interface PluginManifest {
      * `{userData}/plugins/<pluginId>/`、分发件名 `<pluginId>.linkdesk-plugin`、市场目录去重键、
      * 卸载墓碑键、更新对账全部以它为准。
      *
-     * L7（E6#98g）起**要求显式声明**：不声明时退回「项目目录名」兜底（`derivePluginId`），而仓库名
+     * L7起**要求显式声明**：不声明时退回「项目目录名」兜底（`derivePluginId`），而仓库名
      * 与本地目录名是自由的——目录名一改身份就跟着改，且五条后果（安装目录并存两份 / 墓碑对不上 /
      * 市场出现两条 / 更新链静默断 / 插件数据看似丢失）没有一条会报错。兜底路径保留仅为向后兼容
      * 仓外的存量第三方插件。
@@ -2034,7 +2034,7 @@ export interface PluginManifest {
     version: string;
     icon?: string;
     iconSource?: "codicon" | "svg" | "url" | "lucide";
-    /** 市场展示图（cover art，14 档案双图标模型 E6#67）——svg 资产相对路径，可画得讲究复杂
+    /** 市场展示图（cover art，14 档案双图标模型）——svg 资产相对路径，可画得讲究复杂
      *  （与 icon 的「界面单色小图标」语义分开：壳图标栏/标签栏只读 icon）。缺省 → 市场回退用 icon。
      *  惯例：值 = 包内资源相对路径（如 "resources/cover.svg"）、iconSource 省略 → linkdesk:// 路径推断。 */
     marketIcon?: string;
@@ -2046,19 +2046,19 @@ export interface PluginManifest {
     tabBehavior?: TabBehavior;
     /** 系统插槽角色——声明此插件填充哪个系统级功能。settings=设置页，marketplace=插件市场。
      *  同一 role 多插件合法并存（一对多，全收进槽位候选）；默认 = 首注册稳定序
-     *  （E6#18b：core:true 无行为特权，不抢默认），用户切换的活动套持久化保持。
-     *  E5.7#65：开放 string——第三方可声明新角色名，壳零改动（FactorySlots 按字符串查表）。 */
+     * （core:true 无行为特权，不抢默认），用户切换的活动套持久化保持。
+     * 开放 string——第三方可声明新角色名，壳零改动（FactorySlots 按字符串查表）。 */
     factoryRole?: string;
     statusBar?: StatusBarItem[];
-    /** @deprecated E5#12——已迁移到 contributes.themes。仅 normalizeManifest 向后兼容用。 */
+    /** @deprecated 已迁移到 contributes.themes。仅 normalizeManifest 向后兼容用。 */
     file?: string;
-    /** @deprecated E5#12——已迁移到 contributes.themes。仅 normalizeManifest 向后兼容用。 */
+    /** @deprecated 已迁移到 contributes.themes。仅 normalizeManifest 向后兼容用。 */
     themes?: {
         id: string;
         name: string;
         file: string;
     }[];
-    /** @deprecated E5#12——已迁移到 contributes.languages。仅 normalizeManifest 向后兼容用。 */
+    /** @deprecated 已迁移到 contributes.languages。仅 normalizeManifest 向后兼容用。 */
     languages?: {
         code: string;
         name: string;
@@ -2074,18 +2074,18 @@ export interface PluginManifest {
         plugin: string;
         reason: string;
     }[];
-    /** 插件级激活顺序依赖（E5.8#13）——按 pluginId 声明，loader 先加载依赖再加载本插件。
-     *  纯声明：无版本约束（版本语义属 E6 市场范畴，激活顺序不承载）；缺依赖 → loader 状态机挂 PENDING。
+    /** 插件级激活顺序依赖——按 pluginId 声明，loader 先加载依赖再加载本插件。
+     * 纯声明：无版本约束（版本语义属  市场范畴，激活顺序不承载）；缺依赖 → loader 状态机挂 PENDING。
      *  与 ConfigurationRegistry 的配置项级 dependsOn（同一 manifest 内某配置项依赖另一配置项）不同域。 */
     requires?: string[];
     screenshots?: string[];
     minAppVersion?: string;
-    /** @deprecated E5.8#14——归并到 requires（插件级激活依赖统一由 requires 声明）。
-     *  零插件使用；loader 兼容读取直到 #14 落地迁移。 */
+    /** @deprecated 归并到 requires（插件级激活依赖统一由 requires 声明）。
+     * 零插件使用；loader 兼容读取直到  落地迁移。 */
     extensionDependencies?: string[];
     docs?: string;
     cardDocMap?: Record<string, string>;
-    /** @deprecated E5#109——使用 contributes.i18n 代替。每插件 `i18n/{lang}.json`，key=中文原文。见 [[i18n-round2-leftovers]] */
+    /** @deprecated 使用 contributes.i18n 代替。每插件 `i18n/{lang}.json`，key=中文原文。见 [[i18n-round2-leftovers]] */
     i18n?: Record<string, string>;
     cssVars?: Record<string, {
         dark: string;
@@ -2093,7 +2093,7 @@ export interface PluginManifest {
     }>;
     permissions?: ("serial" | "filesystem" | "network")[];
     /**
-     * Phase 5g：视图元数据——声明视图和壳的交互方式。
+     * g：视图元数据——声明视图和壳的交互方式。
      * 这些字段替代 Phase 3/4 的硬编码特殊判断（isSidebarOnlyView / BOTTOM_ICONS 等）。
      */
     /** 插件 UI 出现位置——声明式。替代 iconLocation + viewRole + keepSidebarOnFocus。
@@ -2105,46 +2105,46 @@ export interface PluginManifest {
         /** 自绘（代码）状态栏组件文件路径（相对插件根，.tsx）——存在 + 文件二合一声明（对标视图 render）。
          *  有值 = 插件自绘状态栏组件取代其静态 statusBar 贡献项；loader 注册时 resolveRuntimePluginRoot
          *  归一 → ViewPluginEntry.statusBarRenderPath（dev /@fs 源码 / prod linkdesk:// dist，SDK 打包后
-         *  此字段改写为 statusBar.bundle.js 编译表面），壳发 component marker → 池直动态 import（E6#62d）。
+         * 此字段改写为 statusBar.bundle.js 编译表面），壳发 component marker → 池直动态 import。
          *  缺省 = 无自绘组件（静态贡献项照常）。 */
         statusBar?: string;
     };
-    /** @deprecated E5#14——用 appearsIn.iconBar 替代。仅 viewRegistry.ts 向后兼容兜底。 */
+    /** @deprecated 用 appearsIn.iconBar 替代。仅 viewRegistry.ts 向后兼容兜底。 */
     iconLocation?: "top" | "bottom";
-    /** @deprecated E5#14——用 appearsIn.tabBar / appearsIn.sidePanel 替代。 */
+    /** @deprecated 用 appearsIn.tabBar / appearsIn.sidePanel 替代。 */
     viewRole?: "sidebarPrimary" | "tabOnly";
-    /** @deprecated E2c #19d 后已无 shellRendered 概念——壳级视图直接写 App.tsx，不走 plugin.json 声明。保留仅用于向后兼容。 */
+    /** @deprecated  后已无 shellRendered 概念——壳级视图直接写 App.tsx，不走 plugin.json 声明。保留仅用于向后兼容。 */
     shellRendered?: boolean;
-    /** @deprecated E5#14——appearsIn 归一化后不再需要。 */
+    /** @deprecated appearsIn 归一化后不再需要。 */
     keepSidebarOnFocus?: boolean;
     /**
-     * Phase 5：对标 VS Code package.json contributes。
+     * 对标 VS Code package.json contributes。
      * 使用 Record<string, unknown> 兼容未知 key——parseContributions 按 key 逐项检测。
      * 已知 key 的类型见下方 ContributesViewsContainers / ContributesViews。
      */
     contributes?: Record<string, unknown>;
 }
-/** 发现条目——plugins.listAll() 返回（E6#9a：主进程直扫 plugins/ 全子目录，替代渲染进程 import.meta.glob）。
+/** 发现条目——plugins.listAll() 返回（主进程直扫 plugins/ 全子目录，替代渲染进程 import.meta.glob）。
  *  打包/市场安装的插件不在源码树——glob 发现不了；listAll 以磁盘为唯一真源，dev/prod 同一面。
  *  完整 manifest 为纯 JSON 数据（IPC 可序列化），statusBar/contributes 等随 manifest 携带
- *  （#9b：statusBar 入口由消费方从 manifest.statusBar 派生，无需单独通道）。 */
+ * （statusBar 入口由消费方从 manifest.statusBar 派生，无需单独通道）。 */
 export interface PluginDiscoveryEntry {
     pluginId: string;
     /** manifest.entry——插件 JS 入口（无 = 纯贡献插件，只有 manifest 无组件） */
     entry?: string;
     /** 完整 plugin.json */
     manifest: PluginManifest;
-    /** E6#7（1.2-4）：目录含 index.bundle.js = SDK 打包的 .linkdesk-plugin 解压产物。
+    /** （1.2-4）：目录含 index.bundle.js = SDK 打包的 .linkdesk-plugin 解压产物。
      *  磁盘格式事实（非插件身份——硬约束 11）；bundle 插件 JS 入口恒 index.bundle.js（runtime 分支依据）。 */
     bundle?: boolean;
-    /** E6#7（1.2-4）：磁盘位置事实——home = 代码根（app = 只读 app 插件根 / userData = {userData}/plugins 用户安装家）。
+    /** （1.2-4）：磁盘位置事实——home = 代码根（app = 只读 app 插件根 / userData = {userData}/plugins 用户安装家）。
      *  subdir = 2026-09-05 塌平单根后恒 null（平铺树 root-direct 扫描不产出子目录；类型保留 null 供下游空安全）。 */
     origin?: {
         home: "app" | "userData";
         subdir: string | null;
     };
 }
-/** E6#73c：安装进度的 job 身份——壳侧 `installPlugin` 调主进程 fs/net 段（download/extract）时随行，
+/** 安装进度的 job 身份——壳侧 `installPlugin` 调主进程 fs/net 段（download/extract）时随行，
  *  主进程段据此把 `plugin:installProgress` 事件回填到**具体的 job/插件**（18 档 §五 I.6③ 的「事件侧回填」）。
  *  此前下载/解压段的事件**不带任何身份**，多单并行时百分比互相灌进同一行；N=1 时靠「归活跃会话」侥幸正确。
  *  `jobId` 是壳侧 job 表的产物（单一生产者，见 install-queue.ts）——主进程只透传，不生成、不持久化。 */
@@ -2153,7 +2153,7 @@ export interface PluginInstallJobRef {
     /** 池侧请求已带 id 时同带——下载段靠它把进度归到具体插件（待解压才知 id 的包流只有 jobId） */
     pluginId?: string;
 }
-/** E6#13b（段 B）：pluginManager.checkUpdates 返回——主进程 fetch catalog + semver 对比（壳传 current，壳是账本/磁盘 owner） */
+/** pluginManager.checkUpdates 返回——主进程 fetch catalog + semver 对比（壳传 current，壳是账本/磁盘 owner） */
 export interface PluginUpdateCheckResult {
     current: string;
     latestVersion: string;
@@ -2161,9 +2161,9 @@ export interface PluginUpdateCheckResult {
     update: boolean;
 }
 /** list() 的 manifest 序列化子集——与 handlePluginsCall "list" 投影字段对齐
- *  E6#30.5e/30.6c3：声明依赖 id 列表（manifest.requires 透传）——marketplace 判缺依赖 + 依赖/被依赖行
+ * 声明依赖 id 列表（manifest.requires 透传）——marketplace 判缺依赖 + 依赖/被依赖行
  *  数据源（dependencies.ts 引擎只壳内；消费经 list() 投影）。无 requires = undefined。
- *  E6#65a（14 档案批次一）：+ icon/iconSource——市场行/详情图标的数据通道（注释自认的"7 字段对齐"
+ * （14 档案批次一）：+ icon/iconSource——市场行/详情图标的数据通道（注释自认的"7 字段对齐"
  *  原取舍现在市场要图标，属同通道需扩，见 IpcBridgeHandler/pluginManager.ts list 投影同步）。 */
 export interface PluginListSubset {
     name?: string;
@@ -2174,34 +2174,34 @@ export interface PluginListSubset {
     statusBar?: PluginManifest["statusBar"];
     contributes?: PluginManifest["contributes"];
     requires?: string[];
-    // E6#65a（14 档案批次一数据通道）：icon/iconSource 透传——市场拿到插件图标
+    // （14 档案批次一数据通道）：icon/iconSource 透传——市场拿到插件图标
     // （行/详情 PluginIcon 渲染的唯一 manifest 数据源；无图标 = undefined → 消费端默认图兜底）。
-    // 与 E5.8#37.9.1 同构：list() 子集继续只挑 UI 消费字段，不整 manifest 过 IPC。
+    // 与  同构：list() 子集继续只挑 UI 消费字段，不整 manifest 过 IPC。
     icon?: PluginManifest["icon"];
     iconSource?: PluginManifest["iconSource"];
-    // E6#67（14 档案批次二·五）：marketIcon/marketIconSource 透传——市场展示图（cover art）数据通道。
+    // （14 档案批次二·五）：marketIcon/marketIconSource 透传——市场展示图（cover art）数据通道。
     // 市场消费「marketIcon ?? icon」在 marketplace 层 pick（壳界面只读 icon，故 list 一并透传两对）；
     // 无 marketIcon = undefined → 市场回退 icon，再空 → 默认封面。
     marketIcon?: PluginManifest["marketIcon"];
     marketIconSource?: PluginManifest["marketIconSource"];
 }
 /** 插件列表条目——pluginManager.list() 返回（主进程序列化后的 manifest 子集）。
- *  E5.7#98：Partial<PluginManifest> 过宽（component 等字段 IPC 不可达）——收窄为
+ * Partial<PluginManifest> 过宽（component 等字段 IPC 不可达）——收窄为
  *  IpcBridgeHandler.handlePluginsCall "list" 分支实际序列化的 7 字段，marketplace 消费。
- *  E5.8#15.5：pendingReason——缺依赖挂起原因（"等待依赖: xxx"）；无挂起 = undefined。
+ * pendingReason——缺依赖挂起原因（"等待依赖: xxx"）；无挂起 = undefined。
  *  有值 = 插件已安装但依赖未就绪（PENDING），列表/详情显示等待状态。 */
 export interface PluginListEntry {
     pluginId: string;
     manifest: PluginListSubset;
-    /** 缺依赖挂起原因——marketplace 显示 PENDING 徽标 + 详情提示条（E5.8#15.5） */
+    /** 缺依赖挂起原因——marketplace 显示 PENDING 徽标 + 详情提示条 */
     pendingReason?: string;
-    /** E6#73j（G6）：该插件**住哪**——`true` = 在用户安装家（`{userData}/plugins`），可被下载来的新包替换。
+    /** 该插件**住哪**——`true` = 在用户安装家（`{userData}/plugins`），可被下载来的新包替换。
      *  `false` = 只读 app 根（随包发货件 / 目录源安装的插件）——更新流对它必然抛「不在用户安装区」，
      *  市场**不得**渲染「更新到 vX」（那是点下去必失败的死钮，含 8 只官方随包插件在内）。
      *  判据唯一源 = `isPluginUpdatable`（磁盘住所事实，非插件身份——硬约束 11）。 */
     updatable?: boolean;
 }
-/** E6#73q：安装请求侧身份——job 表按 pluginId 去重、job 行要显示名，而两者都只有池侧知道
+/** 安装请求侧身份——job 表按 pluginId 去重、job 行要显示名，而两者都只有池侧知道
  *  （显示名今天只存在于池侧目录 store，壳拿不到）。
  *  jobId **不在这里**：它是壳侧 job 表的产物（单一生产者），池侧从 `plugin:installJobs` 广播里认领。 */
 export interface PluginInstallRequestOpts {
@@ -2214,17 +2214,17 @@ export interface PluginInstallRequestOpts {
     /** job 出身——行 = 一次用户动作（user，缺省）；插件拖来的依赖（dependency）藏在那一行里 */
     origin?: "user" | "dependency";
     /**
-     * E6#73o：依赖解析目录——传入后，本插件 `requires` 里**缺失**的依赖由壳在**同一安装 job 内**
+     * 依赖解析目录——传入后，本插件 `requires` 里**缺失**的依赖由壳在**同一安装 job 内**
      * 自动先装（内联递归、不占第二个槽——依赖解析复用 updateCheck 打本目录取最新直链）。
      * 不传 = 行为与现状一致（缺依赖 parked）。解析半径 = 本目录（壳不内置任何目录 URL）。
      * 设计定案：docs/02-Electron架构/E6_插件生态与发布/03-插件市场/20-依赖链自动安装设计定案.md。
      */
     catalogUrl?: string;
 }
-/** E5.7#81：安装结果——success:false 时 error 为中文失败原因（校验 / 版本冲突 / 复制失败）。
+/** 安装结果——success:false 时 error 为中文失败原因（校验 / 版本冲突 / 复制失败）。
  *  安装进度事件：events.on("plugin:installProgress", ({ stage, pluginId, message }) => ...)
  *  stage: validating | copying | loading | done | error
- *  E5.7#83：装卸广播（壳 loader → 唯一 Pool）：
+ * 装卸广播（壳 loader → 唯一 Pool）
  *  events.on("plugin:installed", ({ pluginId, version, reason }) => ...) reason: install | reinstall
  *  events.on("plugin:uninstalled", ({ pluginId, reason }) => ...) reason: uninstall */
 export interface PluginInstallResult {
@@ -2233,19 +2233,19 @@ export interface PluginInstallResult {
     version?: string;
     needRestart?: boolean;
     error?: string;
-    /** E6#73q（18 档 §五 I.6⑦）：第三类终态——**已安装但缺依赖**（装上去了，插件在列表里，但不可用）。
+    /** 第三类终态——**已安装但缺依赖**（装上去了，插件在列表里，但不可用）。
      *  为真时 success 也是 true（文件真落盘了），但消费方**不得渲染成「✓ 已安装」**——那是撒谎。
      *  job 行显示「已安装但缺依赖：{名}」。 */
     parked?: boolean;
-    /** E6#73d：用户在面板上点了「取消安装」——**不是失败**（`success` 为 false 只是「没装成」）。
+    /** 用户在面板上点了「取消安装」——**不是失败**（`success` 为 false 只是「没装成」）。
      *  消费方据此**不得**走失败分支（不弹错误 toast、不推 [重试]、不打红行）——用户主动叫停已表明意图，
      *  再报一次错等于拿用户自己的决定去吓他。job 行由队列侧**整条撤掉**（不渲染 ✗）。 */
     cancelled?: boolean;
 }
 /** 禁用/卸载列表条目——loader getDisabledPluginInfo/getUninstalledPluginInfo 序列化形状（PluginListSubset 的再子集）
- *  E6#30.5b：core 旗标透传——list() EXCLUDES 禁用插件，禁用态详情页卸载钮守 E6#18「core:true 详情页不画」
+ * core 旗标透传——list() EXCLUDES 禁用插件，禁用态详情页卸载钮守 「core:true 详情页不画」
  *  只能经此拿到 core（缓存 manifest 内取值，纯新增可选字段零回归）。
- *  E6#106：+ 图标四字段（icon/iconSource/marketIcon/marketIconSource）——**同 #65a 给 list() 补图标通道的
+ * + 图标四字段（icon/iconSource/marketIcon/marketIconSource）——**同  给 list() 补图标通道的
  *  同一先例**。禁用行此前只能退到目录条目取图，而目录条目的图标已改绝对 URL（未装态形态）⇒ 禁用行
  *  （明明插件还在盘上）会静默改拉远程图，断网即裂。补通道后裁决序与其它位统一：已装优先 → 目录 → 默认块。
  *  未安装列表（getUninstalledPluginInfo）**不补**：插件已不在盘上，本地无图可读，目录条目本就是唯一来源。 */
@@ -2255,17 +2255,17 @@ export interface PluginInfoEntry {
     description?: string;
     version?: string;
     core?: boolean;
-    /** E6#73j（G6）：同 `PluginListEntry.updatable` 的住所判据——禁用**不改住所**（disable 只记名单，
+    /** 同 `PluginListEntry.updatable` 的住所判据——禁用**不改住所**（disable 只记名单，
      *  目录原地不动）⇒ userData 家的禁用插件照样可更新，app 树的则否。 */
     updatable?: boolean;
-    /** E6#106：界面小图标（Type-1 剪影 for 图标栏插件 / Type-2 身份图 for 其余） */
+    /** 界面小图标（Type-1 剪影 for 图标栏插件 / Type-2 身份图 for 其余） */
     icon?: string;
     iconSource?: "codicon" | "svg" | "url" | "lucide";
-    /** E6#106：插件身份彩色图（Type-2）——行/详情展示位的第一候选 */
+    /** 插件身份彩色图（Type-2）——行/详情展示位的第一候选 */
     marketIcon?: string;
     marketIconSource?: "codicon" | "svg" | "url" | "lucide";
 }
-/** E6#11c/#13b（段 B）：更新结果——PluginInstallResult 的更新扩展。
+/** 更新结果——PluginInstallResult 的更新扩展。
  *  upToDate = catalog 直答已是最新（success:true 但非"更新发生"——UI 显示"已是最新"非红错误）；
  *  currentVersion 随行供 toast/日志显示 v旧→v新。needRestart 恒 true（bundle 模块缓存需重启激活）。 */
 export interface PluginUpdateResult extends PluginInstallResult {
@@ -2279,50 +2279,50 @@ export interface PluginsAPI {
     /** 插件发现——双端注入：resolvePath 双端同面；读面（listDirs/listAll/readAllManifests/listDisabledDirs/readManifest）壳 preload 独有（loader 只在壳跑） */
     plugins: {
         resolvePath(id: string): Promise<string>;
-        /** E6#7（1.2-4）：resolvePath 的兄弟（discovery 族）——返回 { root, entry, bundle }（bundle 入口恒 index.bundle.js）。
+        /** （1.2-4）：resolvePath 的兄弟（discovery 族）——返回 { root, entry, bundle }（bundle 入口恒 index.bundle.js）。
          *  可选——保 state.ts 守卫与两 preload 面（壳/池）编译不裂；调用方先判存在再调用。 */
         resolveEntry?(id: string): Promise<PluginEntryInfo>;
-        /** E6#117：兼容读数（只读）——「这份插件跟当前版本搭不搭」由壳单点算出（状态算法
+        /** 兼容读数（只读）——「这份插件跟当前版本搭不搭」由壳单点算出（状态算法
          *  `src/core/compat/compatibility.ts`；用户面五词与读数的对应表住该文件头注）。
          *  可选——同 resolveEntry 先例（保 mock 与既有实现面编译不裂；调用方先判存在）。 */
         getCompatibility?(req: PluginCompatibilityRequest): Promise<PluginCompatibilityReading>;
         listDirs?(): Promise<string[]>;
-        /** E6#9a：全量发现——[{ pluginId, entry, manifest }]（替代 import.meta.glob；打包插件不在源码树，主进程读盘唯一真源） */
+        /** 全量发现——[{ pluginId, entry, manifest }]（替代 import.meta.glob；打包插件不在源码树，主进程读盘唯一真源） */
         listAll?(): Promise<PluginDiscoveryEntry[]>;
         listDisabledDirs?(): Promise<string[]>;
         /** 返回 plugin.json 原始 JSON 文本——消费方自行 JSON.parse */
         readManifest?(id: string): Promise<string>;
-        /** E6#9c：全量 manifest——Record<pluginId, PluginManifest>（pluginManifests eager glob 的 IPC 替代） */
+        /** 全量 manifest——Record<pluginId, PluginManifest>（pluginManifests eager glob 的 IPC 替代） */
         readAllManifests?(): Promise<Record<string, PluginManifest>>;
-        /** E6#11/#13（1.2-5）：主进程真下载段——fetch .linkdesk-plugin 包 → {userData}/tmp/<原包名>（壳 preload 独有；loader 包安装流 packageOps 调）。
-         *  E6#73c：可带 job 身份——主进程段的进度事件据此回填 jobId/pluginId（缺省 = 事件不带身份，N=1 时归活跃会话） */
+        /** （1.2-5）：主进程真下载段——fetch .linkdesk-plugin 包 → {userData}/tmp/<原包名>（壳 preload 独有；loader 包安装流 packageOps 调）。
+         * 可带 job 身份——主进程段的进度事件据此回填 jobId/pluginId（缺省 = 事件不带身份，N=1 时归活跃会话） */
         packageDownload?(url: string, job?: PluginInstallJobRef): Promise<{
             zipPath: string;
             sizeBytes?: number;
         }>;
-        /** E6#11/#13（1.2-5）：主进程真解压段——共享 bundle-zip 语义 → {userData}/plugins/<id>/（2026-09-05 塌平单根；壳 preload 独有；目标已存在拒绝）。
-         *  E6#73c：job 同 packageDownload——解压段进度事件回填身份 */
+        /** （1.2-5）：主进程真解压段——共享 bundle-zip 语义 → {userData}/plugins/<id>/（2026-09-05 塌平单根；壳 preload 独有；目标已存在拒绝）。
+         * job 同 packageDownload——解压段进度事件回填身份 */
         packageExtract?(zipPath: string, expectedPluginId?: string, job?: PluginInstallJobRef): Promise<{
             pluginId: string;
             version: string;
             targetDir: string;
         }>;
-        /** E6#73d：按 jobId 中止在途下载——面板「取消安装」的唯一落点。
+        /** 按 jobId 中止在途下载——面板「取消安装」的唯一落点。
          *  AbortSignal 不可跨 IPC（结构化克隆拒绝），只能发这条**定向消息**；主进程只持
          *  jobId → AbortController 登记表，不解释语义。返回 false = 该 job 当前没有在途下载
          *  （已下完/未开始/非下载段）——调用方按「取消已受理，等终态」理解，不当失败。 */
         packageCancel?(jobId: string): Promise<boolean>;
-        /** E6#13b（段 B）：主进程真网络段——fetch marketplace.json → 版本对比（不碰账本——current 由壳传）。prerelease 默认忽略。 */
+        /** 主进程真网络段——fetch marketplace.json → 版本对比（不碰账本——current 由壳传）。prerelease 默认忽略。 */
         packageUpdateCheck?(pluginId: string, catalogUrl: string, currentVersion?: string): Promise<PluginUpdateCheckResult>;
-        /** E6#13b/c（段 B）：主进程真下载+解压段——下载到 tmp → 解压到 {userData}/tmp/.stage-<id>（id 一致 + 版本方向校验，不碰旧目录）。
-         *  E6#33c（锚①）：allowOlder 显式 true 放行「包内版本 < 当前」的降级（版本下拉选旧版 + F2 确认后传）；默认仍拒 <=；同版恒拒。
-         *  E6#73j（G1）：job 同 packageDownload——更新下载段的进度按 jobId 归行，并按 jobId 可真中止。 */
+        /** b/c：主进程真下载+解压段——下载到 tmp → 解压到 {userData}/tmp/.stage-<id>（id 一致 + 版本方向校验，不碰旧目录）。
+         * （锚①）：allowOlder 显式 true 放行「包内版本 < 当前」的降级（版本下拉选旧版 + F2 确认后传）；默认仍拒 <=；同版恒拒。
+         * job 同 packageDownload——更新下载段的进度按 jobId 归行，并按 jobId 可真中止。 */
         packageStageUpdate?(pluginId: string, source: string, currentVersion?: string, allowOlder?: boolean, job?: PluginInstallJobRef): Promise<{
             pluginId: string;
             newVersion: string;
             stagedDir: string;
         }>;
-        /** E6#13c（段 B）：主进程原子替换段——同卷 rename：target→.bak→staged→target→rm .bak（失败复原旧版） */
+        /** 主进程原子替换段——同卷 rename：target→.bak→staged→target→rm .bak（失败复原旧版） */
         packageCommitUpdate?(pluginId: string, stagedDir: string): Promise<{
             pluginId: string;
             version: string;
@@ -2334,29 +2334,29 @@ export interface PluginsAPI {
         enable(id: string): Promise<unknown>;
         disable(id: string): Promise<unknown>;
         uninstall(id: string): Promise<unknown>;
-        /** E6#73q：opts 携带请求侧身份（pluginId/displayName/origin）——job 表去重 + job 行显示名 */
+        /** opts 携带请求侧身份（pluginId/displayName/origin）——job 表去重 + job 行显示名 */
         install(path: string, opts?: PluginInstallRequestOpts): Promise<PluginInstallResult>;
-        /** E6#13（1.2-5）：url/.linkdesk-plugin 包安装流显式名（installPlugin 路由别名；壳与池 preload 双面同款——池经 plugins:call 代理）。进度走 plugin:installProgress 通道 */
+        /** （1.2-5）：url/.linkdesk-plugin 包安装流显式名（installPlugin 路由别名；壳与池 preload 双面同款——池经 plugins:call 代理）。进度走 plugin:installProgress 通道 */
         installWithProgress?(path: string, opts?: PluginInstallRequestOpts): Promise<PluginInstallResult>;
         reinstall(id: string): Promise<unknown>;
         getDisabled(): Promise<PluginInfoEntry[]>;
         getUninstalled(): Promise<PluginInfoEntry[]>;
         isDisabled(id: string): Promise<boolean>;
-        /** E6#11c（段 B）：安全更新（#11c 原子 + unload 机械路径）——opts: { catalogUrl?（走 check 选最新） | url?（直给更新包） }。
-         *  E6#33c（锚①）：allowOlder 显式 true 放行降级（版本下拉选旧版 + F2 确认后传）；默认拒 <=。 */
+        /** 安全更新（原子 + unload 机械路径）——opts: { catalogUrl?（走 check 选最新） | url?（直给更新包） }。
+         * （锚①）：allowOlder 显式 true 放行降级（版本下拉选旧版 + F2 确认后传）；默认拒 <=。 */
         update?(pluginId: string, opts?: {
             catalogUrl?: string;
             url?: string;
             allowOlder?: boolean;
         }): Promise<PluginUpdateResult>;
-        /** E6#13b（段 B）：只读查更新——有新版返回 downloadUrl（UI 徽标数据源；更新动作走 update） */
+        /** 只读查更新——有新版返回 downloadUrl（UI 徽标数据源；更新动作走 update） */
         checkUpdates?(pluginId: string, catalogUrl: string): Promise<PluginUpdateCheckResult>;
-        /** E5.7#48：装/卸/重装成功 → 通知主进程全量重扫三表 */
+        /** 装/卸/重装成功 → 通知主进程全量重扫三表 */
         notifyManifestChanged?(): void;
     };
 }
 /**
- * bridge 请求信封契约——E5.7#97。
+ * bridge 请求信封契约。
  *
  * 插件 IPC 请求经主进程转发到壳侧服务（IpcBridgeHandler）的信封：
  * requestId 用于 respond 关联，args 是命令自定参数（shell 侧 switch 收窄）。
@@ -2367,14 +2367,14 @@ export interface BridgeRequestPayload {
     channel: string;
     args: unknown[];
     /**
-     * E5.8#46.12：信封来源窗盖章——主进程按 sender 反查 windowId（池不知自身 windowId，#43-4 铁律），
+     * 信封来源窗盖章——主进程按 sender 反查 windowId（池不知自身 windowId，铁律），
      * 池→壳每一请求自带来源窗身份。壳按此路由按窗操作（sourceId 族：标签改/关/聚焦落到来源窗注册表，
      * 主窗照旧）——窗口身份丢失类（黑点/面板/弹窗）同根归一化。壳侧 switch 收窄时按需消费，无消费方忽略。
      */
     sourceWindowId?: string;
 }
 /**
- * 池→壳侧栏动作 wire 契约——E5.7#97。
+ * 池→壳侧栏动作 wire 契约。
  *
  * 原定义在 PoolSectionStack.tsx（池组件内部类型），但走 IPC pool.sidebarAction 到壳
  * （preload-shell → usePoolSync → ViewContainerService）——跨堆协议，归口本目录。
@@ -2383,12 +2383,12 @@ export interface SidebarAction {
     action: "reorder" | "setCollapsed" | "setVisible" | "toggleSidebarCollapse" | "setSidebarWidth";
     containerId?: string;
     viewId?: string;
-    /** E5.8#41.9.2：setCollapsed 复合键持久化——池侧 view 自带 pluginId（SidebarViewMeta），壳侧精确寻址同名视图 */
+    /** setCollapsed 复合键持久化——池侧 view 自带 pluginId（SidebarViewMeta），壳侧精确寻址同名视图 */
     pluginId?: string;
     newIndex?: number;
     collapsed?: boolean;
     visible?: boolean;
-    /** E5.7#13：分隔线拖拽 commit——resizeZone("sidebar", width)。E5.7#97 补入（原契约漏此变体） */
+    /** 分隔线拖拽 commit——resizeZone("sidebar", width)。补入（原契约漏此变体） */
     width?: number;
 }
 /** 分屏方向——池侧 onDropSplit 已从 drop zone 归一化（MainZone:382） */
@@ -2403,7 +2403,7 @@ export type PoolTabAction = {
     action: "focusTab";
     tabId: string;
 }
-// E5.8#30.15（P5）：点击面板空白聚焦该面板——只改 activeGroupId 不改 activeTabId
+// 点击面板空白聚焦该面板——只改 activeGroupId 不改 activeTabId
 //（activeTabId 已是该组活跃标签；焦点=用户在看哪个面板，命令路由/聚焦环依赖它）
  | {
     action: "focusGroup";
@@ -2432,7 +2432,7 @@ export type PoolTabAction = {
     newIndex: number;
     oldIndex: number;
 }
-// E5.8#51：newIndex = 目标组内插入缝（跨组拖拽落点 = 竖杠缝隙；缺省 append 末尾）
+// newIndex = 目标组内插入缝（跨组拖拽落点 = 竖杠缝隙；缺省 append 末尾）
  | {
     action: "moveTab";
     tabId: string;
@@ -2463,7 +2463,7 @@ export type PoolTabAction = {
     ];
     branchIndex?: number;
 }
-// E5.8#44-B：标签页拖出窗口后释放——screenX/Y = 释放点屏幕坐标（壳侧命中检测：TabBar→并窗 / 空白→新窗）
+// 标签页拖出窗口后释放——screenX/Y = 释放点屏幕坐标（壳侧命中检测：TabBar→并窗 / 空白→新窗）
  | {
     action: "releaseOutsideWindow";
     tabId: string;
@@ -2471,13 +2471,13 @@ export type PoolTabAction = {
     screenY: number;
 };
 /**
- * E5.8#43-4 ① 同款：壳侧接收的 tab 动作——主进程按 sender 解析注入 sourceWindowId（#44-B 权威窗口身份）。
+ * ① 同款：壳侧接收的 tab 动作——主进程按 sender 解析注入 sourceWindowId（权威窗口身份）。
  * 池永远不知自身 windowId；壳读 sourceWindowId 判源窗（detach 源 / 同窗不并）。
  */
 export type ShellTabAction = PoolTabAction & {
     sourceWindowId: string;
 };
-/** E5.8#44-B：TabBar viewport rect——池侧 getBoundingClientRect 上报（吸附/释放并窗命中检测数据源）。
+/** TabBar viewport rect——池侧 getBoundingClientRect 上报（吸附/释放并窗命中检测数据源）。
  *  坐标 = 视口相对（0,0 = 窗口内容区左上），壳持权威 window bounds 后转 screen（bounds.x + rect.left）。
  *  groupId 携带——命中后 mergeTabToWindow 直落目标组。 */
 export interface TabBarViewportRect {
@@ -2487,12 +2487,12 @@ export interface TabBarViewportRect {
     width: number;
     height: number;
 }
-/** 池→壳：TabBar rects 上报载荷——主进程按 sender 解析附上 windowId（E5.8#44-B） */
+/** 池→壳：TabBar rects 上报载荷——主进程按 sender 解析附上 windowId */
 export interface TabBarRectsPayload {
     windowId: string;
     rects: TabBarViewportRect[];
 }
-/** E5.8#44-C：拖拽位置上报载荷——池拖出手势（拎起后 mousemove 全程）上报，壳排除源窗转 screen 吸附命中检测。
+/** 拖拽位置上报载荷——池拖出手势（拎起后 mousemove 全程）上报，壳排除源窗转 screen 吸附命中检测。
  *  坐标 = 屏幕坐标（e.screenX/screenY——窗口 bounds 同为屏幕坐标，可直接命中）。canceled = Esc 取消（keydown 无坐标）。 */
 export interface TabDragPositionPayload {
     tabId: string;
@@ -2500,13 +2500,13 @@ export interface TabDragPositionPayload {
     screenY: number;
     /** Esc 取消拖拽——壳清吸附提示（keydown 无坐标，仅置标志；screenX/screenY 填 0） */
     canceled?: boolean;
-    /** E5.8#46.19：被拖标签标题——池上报供主进程幽灵窗渲染文字（主进程不持 tabState，标题由池带）。壳/吸附忽略此字段 */
+    /** 被拖标签标题——池上报供主进程幽灵窗渲染文字（主进程不持 tabState，标题由池带）。壳/吸附忽略此字段 */
     title?: string;
-    /** E5.8#46.19：光标是否在源窗外（屏坐标对照 winScreenX+视口尺寸，与 onMouseUp 窗外判定同源）——
+    /** 光标是否在源窗外（屏坐标对照 winScreenX+视口尺寸，与 onMouseUp 窗外判定同源）——
      *  窗外 → 主进程 OS 幽灵显示（DOM 浮块出窗被裁剪）；窗内 → OS 幽灵隐藏（DOM 浮块可见）。壳/吸附忽略此字段 */
     outside?: boolean;
-    /** E5.8#46.19 进化：拖拽幽灵外观——主题三色（源池 getComputedStyle 读 --bg-card/--border/--text-primary，
-     *  均为纯 hex 值）+ 被拖标签图标（E6#69g：池把 tab.icon 判别联合裁成幽灵窗可渲染形态——emoji 文本或 img
+    /** 进化：拖拽幽灵外观——主题三色（源池 getComputedStyle 读 --bg-card/--border/--text-primary，
+     * 均为纯 hex 值）+ 被拖标签图标（池把 tab.icon 判别联合裁成幽灵窗可渲染形态——emoji 文本或 img
      *  URL；codicon/lucide 无字形字体注入 → null，iconKind 区分渲染）。
      *  仅 outside=true（窗外）时主进程消费；壳/吸附忽略此字段。可选用——旧池不带上限。
      *  iconKind 判定与 DragOverlays 浮块同款（emoji：直渲文本；img：图片 URL）。 */
@@ -2520,12 +2520,12 @@ export interface TabDragPositionPayload {
         iconKind: "emoji" | "img" | null;
     };
 }
-/** 池→壳：拖拽位置上报载荷——主进程按 sender 解析附上 sourceWindowId（E5.8#44-C 源窗排除——池永远不知自身 windowId） */
+/** 池→壳：拖拽位置上报载荷——主进程按 sender 解析附上 sourceWindowId（源窗排除——池永远不知自身 windowId） */
 export type ShellTabDragPosition = TabDragPositionPayload & {
     sourceWindowId: string;
 };
 /** 壳→池：吸附提示载荷——目标窗 TabBar 插入指示（groupId 命中）/ 清除（groupId null = 无吸附目标，清光）。
- *  E5.8#46.10：groupId 命中时携带 viewportX/Y——光标在目标窗 viewport 坐标（壳由屏坐标 − 窗口 bounds 原点换算），
+ * groupId 命中时携带 viewportX/Y——光标在目标窗 viewport 坐标（壳由屏坐标 − 窗口 bounds 原点换算），
  *  目标池用它算插入缝隙（竖线落点，复用 computeTabInsertIndex）。 */
 export interface AdsorbHintPayload {
     groupId: string | null;
@@ -2533,7 +2533,7 @@ export interface AdsorbHintPayload {
     viewportY?: number;
 }
 /** 池→壳：吸附插入缝隙回传——目标池每次算出新的缝隙（竖线落点）就上报，壳存吸附注册表供释放并窗精确落位。
- *  windowId 由主进程按 sender 注入（池永远不知自身 windowId，E5.8#44 定案）。 */
+ * windowId 由主进程按 sender 注入（池永远不知自身 windowId，定案）。 */
 export interface AdsorbIndexPayload {
     windowId: string;
     groupId: string;
@@ -2550,17 +2550,17 @@ export interface PoolQuickPickAction {
 export interface PoolDialogAction {
     type: string;
 }
-/** 悬浮面板动作——action 按 actionId 回传（open-in/close），壳侧 settle Promise（E5.8#37 类型 B） */
+/** 悬浮面板动作——action 按 actionId 回传（open-in/close），壳侧 settle Promise（类型 B） */
 export interface PoolFloatingPanelAction {
     type: string;
     actionId?: string;
 }
-/** 内存压力通知——主进程 window-manager 采样超阈值（E5.7#39） */
+/** 内存压力通知——主进程 window-manager 采样超阈值 */
 export interface MemoryPressureData {
     totalRSS: number;
     threshold: number;
 }
-/** 壳→主：创建池窗请求——windowId 壳生成（tabState 归属），bounds 可选（E5.8#43-1 A4 多窗口底座） */
+/** 壳→主：创建池窗请求——windowId 壳生成（tabState 归属），bounds 可选（A4 多窗口底座） */
 export interface CreatePoolWindowRequest {
     windowId: string;
     width?: number;
@@ -2568,7 +2568,7 @@ export interface CreatePoolWindowRequest {
     x?: number;
     y?: number;
 }
-/** E5.8#43-3：池窗位置/大小变更矩形——主进程 moved/resized 事件上报（壳据 windowId 更新注册表 + 落盘 A6）。
+/** 池窗位置/大小变更矩形——主进程 moved/resized 事件上报（壳据 windowId 更新注册表 + 落盘 A6）。
  *  非独立契约入口（契约生成器 walkRefs 命中引用即强制 export 进 linkdesk.d.ts）——源码不 export，knip 不报死面。 */
 export interface WindowBounds {
     x: number;
@@ -2581,7 +2581,7 @@ export interface PoolWindowBoundsPayload {
     windowId: string;
     bounds: WindowBounds;
 }
-/** E6#78：插件磁盘位置——市场详情页「打开所在位置 / 数据位置」两行的数据源。
+/** 插件磁盘位置——市场详情页「打开所在位置 / 数据位置」两行的数据源。
  *  主进程解析（池内**零**安装路径知识——渲染侧只拿结果，不拼路径）。 */
 export interface PluginDiskLocation {
     /** 插件目录绝对路径（正斜杠——与 `plugins.resolvePath` 同规；消费端用作链接 tooltip，不自行拼接） */
@@ -2591,7 +2591,7 @@ export interface PluginDiskLocation {
      *  纯 UI 插件恒 null，**不是人人都有**，故不造空行。 */
     dataDir: string | null;
 }
-/** E6#78：`shell.openPluginFolder` 的两枚落点——安装目录 / 数据目录 */
+/** `shell.openPluginFolder` 的两枚落点——安装目录 / 数据目录 */
 export type PluginFolderKind = "install" | "data";
 /** 壳↔插件中继/池控制/窗口/壳级命令/热退出暂存命名空间面——双端注入面（bridge 真壳独有 / hotExit 池侧独有） */
 export interface ShellAPI {
@@ -2605,39 +2605,39 @@ export interface ShellAPI {
     /** 池控制——壳 preload：推送布局 + 注册池→壳动作回调；池 preload：收布局 + 发动作。双端各实现自己那半（方法级子集面，surfaces.ts） */
     pool: {
         // ── 壳侧（池 preload 无） ──
-        /** E5.8#43-2：windowId 可选定向推送（缺省 'main'）——壳窗口注册表遍历按 id 推送各窗布局 */
+        /** windowId 可选定向推送（缺省 'main'）——壳窗口注册表遍历按 id 推送各窗布局 */
         pushLayout(layout: PoolLayout, windowId?: string): void;
-        /** E5.8#43-1 A3：回调收 windowId（主池='main'，脱出池=壳生成 id）——壳据 id 定向推该窗布局 */
+        /** A3：回调收 windowId（主池='main'，脱出池=壳生成 id）——壳据 id 定向推该窗布局 */
         onReady(cb: (windowId: string) => void): () => void;
         toggleDevTools(): void;
         onSidebarAction(cb: (action: SidebarAction) => void): () => void;
-        // E5.8#44-B：壳侧收 action = ShellTabAction（主进程按 sender 注入 sourceWindowId——#43-4 权威窗口身份）
+        // 壳侧收 action = ShellTabAction（主进程按 sender 注入 sourceWindowId——权威窗口身份）
         onTabAction(cb: (action: ShellTabAction) => void): () => void;
-        // E5.8#44-B：池→壳 TabBar viewport rects 上报（吸附/释放并窗命中检测数据源）——windowId 由主进程注入
+        // 池→壳 TabBar viewport rects 上报（吸附/释放并窗命中检测数据源）——windowId 由主进程注入
         onTabBarRects(cb: (payload: TabBarRectsPayload) => void): () => void;
-        // E5.8#44-C：池→壳 拖拽位置上报（拎起后 mousemove 全程）——sourceWindowId 由主进程注入（壳排除源窗命中）
+        // 池→壳 拖拽位置上报（拎起后 mousemove 全程）——sourceWindowId 由主进程注入（壳排除源窗命中）
         onDragPosition(cb: (pos: ShellTabDragPosition) => void): () => void;
-        // E5.8#44-C：壳→池 吸附提示（目标窗 TabBar 插入指示/清除）——windowId 壳命中解析后定向推送（#46.10 载荷带 viewport 坐标）
+        // 壳→池 吸附提示（目标窗 TabBar 插入指示/清除）——windowId 壳命中解析后定向推送（载荷带 viewport 坐标）
         pushAdsorbHint(hint: AdsorbHintPayload, windowId: string): void;
-        // E5.8#46.10：池→壳 吸附插入缝隙回传（壳侧——windowId 由主进程注入，壳存吸附注册表供释放并窗精确落位）
+        // 池→壳 吸附插入缝隙回传（壳侧——windowId 由主进程注入，壳存吸附注册表供释放并窗精确落位）
         onAdsorbIndex(cb: (payload: AdsorbIndexPayload) => void): () => void;
         pushQuickPick(data: unknown): void;
         onQuickPickAction(cb: (action: PoolQuickPickAction) => void): () => void;
         pushDialog(data: unknown): void;
         onDialogAction(cb: (action: PoolDialogAction) => void): () => void;
-        // E5.8#37（Phase 8 类型 B）：壳内悬浮面板——pushPanel 哑渲染数据 + 动作回传
+        // （类型 B）：壳内悬浮面板——pushPanel 哑渲染数据 + 动作回传
         pushFloatingPanel(data: unknown): void;
         onFloatingPanelAction(cb: (action: PoolFloatingPanelAction) => void): () => void;
         onMemoryPressure(cb: (data: MemoryPressureData) => void): () => void;
-        // ── E5.8#43-1（A4）：多窗口底座——壳驱动创建/关闭池窗 + 监听 OS 关窗（主进程执行窗口生命周期）──
+        // ── ：多窗口底座——壳驱动创建/关闭池窗 + 监听 OS 关窗（主进程执行窗口生命周期）──
         createWindow(opts: CreatePoolWindowRequest): void;
         closeWindow(windowId: string): void;
         onWindowClosed(cb: (windowId: string) => void): () => void;
-        // ── E5.8#43-3：主→壳 池窗 bounds 变更（moved/resized 上报）——壳注册表更新 + 落盘浮窗位置（I9-14）──
+        // ── 主→壳 池窗 bounds 变更（moved/resized 上报）——壳注册表更新 + 落盘浮窗位置（I9-14）──
         onWindowBoundsChanged(cb: (payload: PoolWindowBoundsPayload) => void): () => void;
         // ── 池侧（壳 preload 无） ──
         /**
-         * M1 `AI#4`：**按需读当前布局**——本窗最近一次收到的完整布局快照（树 `root` + 分组 `groups`）。
+         * **按需读当前布局**——本窗最近一次收到的完整布局快照（树 `root` + 分组 `groups`）。
          *
          * 🔴 与 `onLayout` 是**同一把尺**：返回的就是最近一次 `onLayout` 的载荷本体。
          * 池按 whole-value 快照整帧渲染、**不缓存旧值合并**（`poolLayout.ts` 头注释两条铁律）——
@@ -2655,18 +2655,18 @@ export interface ShellAPI {
         ready(): void;
         sidebarAction(action: SidebarAction): void;
         tabAction(action: PoolTabAction): void;
-        // E5.8#44-B：池→壳 TabBar viewport rects 上报（池侧——MainZone useTabDrag 报告 getBoundingClientRect）
+        // 池→壳 TabBar viewport rects 上报（池侧——MainZone useTabDrag 报告 getBoundingClientRect）
         tabBarRects(rects: TabBarViewportRect[]): void;
-        // E5.8#44-C：池→壳 拖拽位置上报（池侧——useDragReorder 拎起后 mousemove 上报，壳吸附命中）
+        // 池→壳 拖拽位置上报（池侧——useDragReorder 拎起后 mousemove 上报，壳吸附命中）
         dragPosition(pos: TabDragPositionPayload): void;
-        // E5.8#44-C：壳→池 吸附提示订阅（池侧——MainZone 订阅目标窗 TabBar 插入指示/清除）
+        // 壳→池 吸附提示订阅（池侧——MainZone 订阅目标窗 TabBar 插入指示/清除）
         onAdsorbHint(cb: (hint: AdsorbHintPayload) => void): () => void;
-        // E5.8#46.10：池→壳 吸附插入缝隙回传（池侧——目标池算竖线落点后上报，壳释放并窗精确落位）
+        // 池→壳 吸附插入缝隙回传（池侧——目标池算竖线落点后上报，壳释放并窗精确落位）
         adsorbIndex(payload: {
             groupId: string;
             insertIndex: number;
         }): void;
-        // ── E5.8#30.16（P8）：通用「beforeClose 可取消」通道（池侧）──
+        // ── ：通用「beforeClose 可取消」通道（池侧）──
         // 插件注册 handler（自己定逻辑：弹确认/清理资源/返回 boolean 决定是否允许关标签页）；
         // GroupTabBar 关闭路径 `await beforeClose`——handler 返回 false（或 Promise<false>）则关闭被取消。
         registerBeforeClose(pluginId: string, handler: (tab: PoolTab) => boolean | Promise<boolean>): void;
@@ -2679,12 +2679,12 @@ export interface ShellAPI {
         maximize(): void;
         unmaximize(): void;
         close(): void;
-        /** E5.7#79：缩放因子 → 主进程 setZoomFactor(池 WCV) */
+        /** 缩放因子 → 主进程 setZoomFactor(池 WCV) */
         setZoom(factor: number): void;
         toggleDevTools(): Promise<void>;
         isMaximized(): Promise<boolean>;
         onMaximizeChange(cb: (maximized: boolean) => void): () => void;
-        /** E5.8#46.18：OS 级置顶（盖过其他应用）——true 置顶 / false 解除；按 sender 路由宿主窗 */
+        /** OS 级置顶（盖过其他应用）——true 置顶 / false 解除；按 sender 路由宿主窗 */
         setAlwaysOnTop(pinned: boolean): void;
         isAlwaysOnTop(): Promise<boolean>;
         onAlwaysOnTopChange(cb: (pinned: boolean) => void): () => void;
@@ -2693,24 +2693,24 @@ export interface ShellAPI {
     shell: {
         showItemInFolder(p: string): Promise<void>;
         openInTerminal(dirPath: string, terminalExe?: string, customCommand?: string): Promise<void>;
-        /** E6#78：已装插件的磁盘位置——市场详情页「打开所在位置 / 数据位置」的**判据**数据源
+        /** 已装插件的磁盘位置——市场详情页「打开所在位置 / 数据位置」的**判据**数据源
          *  （是否有数据目录决定那行画不画）。主进程解析（池内零安装路径知识）；盘上找不到该插件 → null。
          *  ⚠️ 与 `shell.showItemInFolder(p)` 的分工：**那个要路径、这个给身份**——调用方（市场）拿不到也不该拼绝对路径。 */
         pluginLocation(pluginId: string): Promise<PluginDiskLocation | null>;
-        /** E6#78：资源管理器打开插件的安装目录 / 数据目录——主进程解析路径后 `shell.openPath`。
-         *  开的是目录**内容**（与 E5.8#153 `appearance.revealStorage`「打开存储位置」同一手感），
+        /** 资源管理器打开插件的安装目录 / 数据目录——主进程解析路径后 `shell.openPath`。
+         * 开的是目录**内容**（与  `appearance.revealStorage`「打开存储位置」同一手感），
          *  **不是** `showItemInFolder` 的「父目录 + 选中它」。目录不存在时：`install` 抛错（插件不在盘上，
          *  不假装打开成功）；`data` 先建空目录再开（同 revealStorage——打开即见存储位置，空目录同样合法）。 */
         openPluginFolder(pluginId: string, kind: PluginFolderKind): Promise<void>;
         startDrag(filePath: string, iconPath?: string): void;
-        /** E6#73j（G4）：**真重启应用**（退出并重新启动进程）。
+        /** **真重启应用**（退出并重新启动进程）。
          *  与 `window.location.reload()` 的区别是「池在不在」——池是独立的 WebContentsView，壳 reload 不重建它，
          *  更新视图类插件后池里跑的仍是旧 bundle（界面看起来毫无变化）。
          *  诚实边界：整个应用会退出再起——未保存的编辑器内容由热退出（hotExit）负责，工作区布局走持久化恢复。
          *  壳 preload 独有（池不需要自己重启宿主）；调用后本进程随即终止，不要再依赖它的返回。 */
         relaunch?(): Promise<void>;
     };
-    /** 热退出暂存——编辑器未保存内容落盘（E5.7#53）。`?`：池侧独有（壳 preload 不注入） */
+    /** 热退出暂存——编辑器未保存内容落盘。`?`：池侧独有（壳 preload 不注入） */
     hotExit?: {
         save(filePath: string, content: string): Promise<void>;
         load(filePath: string): Promise<string | null>;
@@ -2725,11 +2725,11 @@ export interface PanelAPI {
         /** 聚焦底部面板视图——面板隐藏则展开并切到该视图；已显示则切换聚焦。viewId 不在 panel 容器时 no-op */
         reveal(viewId: string): Promise<void>;
         /** 壳内悬浮面板（类型 B）——按声明弹出某视图（I8-2 身份开关键）。viewId 未声明视图时 no-op。
-         *  E5.8#41.18：可选 pluginId 复合寻址——两插件同名 viewId（双设置套并存）时插件侧携带
+         * 可选 pluginId 复合寻址——两插件同名 viewId（双设置套并存）时插件侧携带
          *  pluginId 精确命中目标套（壳侧路径 Ctrl+,/右键已带；裸 viewId 多命中 fail-loud no-op） */
         revealFloating(viewId: string, pluginId?: string): Promise<void>;
         /**
-         * M2 `AI#20`：设定当前悬浮面板的几何（**非鼠标路径**——不与拖拽抢，两条路并存）。
+         * 设定当前悬浮面板的几何（**非鼠标路径**——不与拖拽抢，两条路并存）。
          *
          * `bounds` 只带想改的字段（如只 `{ top, left }` 只挪位置，`height` 不动）；`null` = 回默认居中大卡
          * （I8-5/I8-7 拖拽前那一态）。面板**未开**时 no-op（本 API 只改几何，⛔ 不开面板——开面板归 `revealFloating`）。
@@ -2755,7 +2755,7 @@ export interface SettingsAPI {
     settings: {
         /** 全部声明 factoryRole:"settings" 的设置套（含默认/内置），注册序 */
         list(): Promise<SettingsPluginInfo[]>;
-        /** 当前活动设置套 ID——读持久化激活（#41.12 落盘），无记录/已卸载回退默认（内置） */
+        /** 当前活动设置套 ID——读持久化激活（落盘），无记录/已卸载回退默认（内置） */
         getActive(): Promise<string | undefined>;
         /** 切换活动设置套——校验候选后落盘持久化（重启保持）。非候选 fail-loud 抛错 */
         setActive(pluginId: string): Promise<void>;
@@ -2769,7 +2769,7 @@ export interface FactorySlotEntry {
     pluginId: string;
     /** 插件显示名（manifest.name 原文，消费方自做 i18n） */
     title: string;
-    /** E5.8#41.18：该插件 contributes.floatingPanel.viewId（无声明 = undefined）——切换/打开候选悬浮面板用 */
+    /** 该插件 contributes.floatingPanel.viewId（无声明 = undefined）——切换/打开候选悬浮面板用 */
     viewId?: string;
 }
 /** factorySlots 命名空间面——双端注入（池内渲染侧实现走 IPC 桥） */
@@ -2779,20 +2779,20 @@ export interface FactorySlotsAPI {
         listRoles(): Promise<string[]>;
         /** 全部声明指定 factoryRole 的候选插件 [{pluginId, title}]，注册序 */
         list(role: string): Promise<FactorySlotEntry[]>;
-        /** 指定角色的活动插件 ID——读持久化激活（#41.12 落盘），无记录/已卸载回退默认（内置） */
+        /** 指定角色的活动插件 ID——读持久化激活（落盘），无记录/已卸载回退默认（内置） */
         getActive(role: string): Promise<string | undefined>;
         /** 切换指定角色活动插件——校验候选后落盘持久化（重启保持）。非候选 fail-loud 抛错 */
         setActive(role: string, pluginId: string): Promise<void>;
     };
 }
 /**
- * linkdesk-api app 域——主软件产品身份只读面（E6#57，06-主软件更新）。
- * 自 linkdesk-api.ts 拆出（E6#57.2a）——第 14 个命名空间域接口。
+ * linkdesk-api app 域——主软件产品身份只读面（06-主软件更新）。
+ * 自 linkdesk-api.ts 拆出——第 14 个命名空间域接口。
  * 依赖方向：app → 无（纯函数签名，零类型依赖）；被聚合器交叉组装。
  *
  * 暴露边界（00-README §三② 2026-08-30 拍板）：只读不写——版本号给第三方可读（市场 minAppVersion
- * 校验 E6#30.8c 消费），更新写命令（下载/重启）是壳私事不开放。ProductInfo（app:getProductInfo
- * 全量身份）非第三方插件面——主软件产品内部（关于页 E6#57.14）用，不进本契约（见 electron/product.ts）。
+ * 校验  消费），更新写命令（下载/重启）是壳私事不开放。ProductInfo（app:getProductInfo
+ * 全量身份）非第三方插件面——主软件产品内部（关于页）用，不进本契约（见 electron/product.ts）。
  */
 export interface AppAPI {
     /** app 命名空间——只读产品身份。版本号唯一运行时来源 = 主进程 app.getVersion()（package.json 单点，02 §2.3）。 */
@@ -2826,11 +2826,11 @@ export interface UpdateInfo {
  * 文案必须互不相同——「当前已是最新版本」和「tag 不是 SemVer」是两件事，不许各归一半。
  *
  * ⚠️ 暂不单独 `export`：当前唯一消费方是本文件的 `UpdateError.code`，knip 门禁不许空导出。
- * 壳侧要做「错误码 → 文案」映射时（#57.12）取 `UpdateError["code"]`，或届时把它升回具名导出。
+ * 壳侧要做「错误码 → 文案」映射时取 `UpdateError["code"]`，或届时把它升回具名导出。
  */
 export type UpdateErrorCode =
 // —— 检查腿（六类） ——
-/** 不可达/超时/代理未生效（本腿必走 main-fetch.ts，E6#76） */
+/** 不可达/超时/代理未生效（本腿必走 main-fetch.ts） */
 'network'
 /** GitHub 403/429（`x-ratelimit-remaining: 0`）→「稍后自动重试」，不说成网络故障 */
  | 'rate-limited'
@@ -2851,7 +2851,7 @@ export type UpdateErrorCode =
  | 'write-error'
 /**
  * 🔴 传输中断——两种子情形共用一个码：① 进程中途退出留下的下载 → 重启后归 `idle + interrupted`，
- * **不复活 `downloading`**（#57.6f）；② 本次下载**收了一半就断**（已收 < Content-Length，#57.6a）。
+ * **不复活 `downloading`**；② 本次下载**收了一半就断**（已收 < Content-Length）。
  * 两者的用户语义与处置完全相同（这次没下成，重下），拆两码只会让壳多写一条一模一样的文案。
  * ⚠️ 与 `network` 的分界：**连接阶段**就连不上 / 挂死超时 = `network`；**已经在下、半路断** = 本码。
  */
@@ -2860,13 +2860,13 @@ export type UpdateErrorCode =
  | 'canceled'
 // —— 启动复位（一类，非腿产出） ——
 /**
- * 🔴 上次更新**没装成，且安装器已不在盘上**（启动复位 #57.7a 算出，`update-install.ts` 的
+ * 🔴 上次更新**没装成，且安装器已不在盘上**（启动复位  算出，`update-install.ts` 的
  * `resolveStartupInstall`）——落 `idle + 本码`，`update` 保留。
  *
  * **为什么不复用 `interrupted`**（2026-09-12 拆码，超本格顺手修）：两者在腿内确实同义（都是
  * 「这次没下成，重下」），但**壳侧的处置不同**——本码是**启动时从盘上读回来的**，没有任何发起方，
  * 于是「谁发起谁出声」那条路（`checkForUpdatesAndReport`）根本走不到它 ⇒ 换成 `interrupted`
- * 时用户**下次启动零通知**（#57.12 实测：`initUpdateService` 丢弃 `resolution.outcome`，
+ * 时用户**下次启动零通知**（实测：`initUpdateService` 丢弃 `resolution.outcome`，
  * 而生产者对 `idle` 一律闭嘴）。壳的迁移驱动那条路**只认本码**才出声（`useUpdateNotifications`），
  * 于是「下载腿的断流」与「启动时的未完成」在机器上可分辨，不再靠「`update` 在不在」这种
  * 会随实现漂移的间接不变式。
@@ -2912,11 +2912,11 @@ export interface DownloadProgress {
  * ready = downloaded 的提示态（toast「重启并更新」已出）
  * ```
  *
- * 🔴 **`downloaded` 没有「回 idle」的边**（E6#57.12，2026-09-12 用户拍板；本文档旧版图里的
+ * 🔴 **`downloaded` 没有「回 idle」的边**（2026-09-12 用户拍板；本文档旧版图里的
  * `downloaded ──「稍后」──▶ idle` 是**错的**，已删）。通知面上的「稍后」**只收起那一条提示**，
  * 状态原地不动——安装器已经在盘上等着装了，把态降回 `idle` 只会让用户重下一遍。
- * 两个出口：`updating`（点「重启并更新」），或进程退出后由启动复位还原（#57.7a）。
- * 由此推出 #57.12g（已在 `electron/services/update-service.ts` 落地）：这两个态**免疫检查**——
+ * 两个出口：`updating`（点「重启并更新」），或进程退出后由启动复位还原。
+ * 由此推出 （已在 `electron/services/update-service.ts` 落地）：这两个态**免疫检查**——
  * 检查腿比的是 `latest > current`，已下好的版本必然还大于当前版本 ⇒ 一查必判 `available`，
  * 界面就从「重新启动」退回「下载更新」。
  *
@@ -2958,7 +2958,7 @@ export type UpdateState = {
     type: 'updating';
     update: UpdateInfo;
 }
-/** `downloaded` 的提示态——`warning` 由 `downloaded` 传递而来（消费者是壳，#57.9/#57.12） */
+/** `downloaded` 的提示态——`warning` 由 `downloaded` 传递而来（消费者是壳） */
  | {
     type: 'ready';
     update: UpdateInfo;
@@ -2975,9 +2975,9 @@ export interface UpdateAPI {
  * linkdesk API——插件代码的类型安全入口。
  * 对标 VS Code `vscode` 对象的全局命名空间结构。
  * 池 preload 注入的命名空间为插件运行时真相源（required）；
- * 仅 bridge（真壳独有）/ hotExit（池侧独有）为 `?` 可选——另一侧不注入（E5.8#22 审视 N1 修正：
+ * 仅 bridge（真壳独有）/ hotExit（池侧独有）为 `?` 可选——另一侧不注入（审视 N1 修正
  * 其余桥面 window/pool/shell/getFilePath 双端实有注入，契约标必选）。
- * E5.8#0d.10-9e：由 15 个命名空间域接口交叉组装（interface→type intersection，
+ * 由 15 个命名空间域接口交叉组装（interface→type intersection，
  * 索引访问 LinkDeskAPI["pool"]/["configuration"] 等消费方契约不变）。
  */
 export type LinkDeskAPI = CommandsAPI & AppearanceAPI & TabsAPI & KeybindingsAPI & UiAPI & DataAPI & WorkspaceAPI & EditorAPI & PluginsAPI & ShellAPI & PanelAPI & SettingsAPI & FactorySlotsAPI & AppAPI & UpdateAPI;
@@ -2993,7 +2993,7 @@ export interface IconThemeImage {
     /** 图像资产相对路径——壳加载时解析为 linkdesk:// 绝对 URL（getPluginAssetPath），消费方零解析负担 */
     imagePath: string;
 }
-/** 图标映射条目——双形态（E5.8#133 ④ 拍板：字体 glyph 或图像资产，同一主题可混用，壳零审查） */
+/** 图标映射条目——双形态（④ 拍板：字体 glyph 或图像资产，同一主题可混用，壳零审查） */
 export type IconThemeMapping = IconThemeGlyph | IconThemeImage;
 /** 图标主题映射表——fileExtensions/fileNames/folderNames → 双形态条目 */
 export interface IconThemeMappings {
@@ -3002,7 +3002,7 @@ export interface IconThemeMappings {
     folders?: Record<string, IconThemeMapping>;
     /** 文件夹打开态——可选，未指定则复用 folders */
     foldersExpanded?: Record<string, IconThemeMapping>;
-    /* ── 默认图标（E5.8#133.6：对齐 VS Code iconTheme 顶层默认键——未命中匹配表时用主题默认而非 codicon 保底） ── */
+    /* ── 默认图标（对齐 VS Code iconTheme 顶层默认键——未命中匹配表时用主题默认而非 codicon 保底） ── */
     /** 默认文件图标——未命中 files/extensions 时使用（缺省 = 壳 codicon 保底） */
     file?: IconThemeMapping;
     /** 默认文件夹图标——未命中 folders 时使用（缺省 = 壳 codicon 保底） */
