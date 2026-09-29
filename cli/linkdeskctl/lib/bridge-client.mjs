@@ -195,7 +195,7 @@ export function classify({ record, error, attempted }) {
       alive
         ? `软件在跑（pid ${record.pid}，${record.appName} ${record.appVersion}），但 **AI 接入开关是关的**（门锁语义）`
         : `开关是关的，而且那只进程（pid ${record.pid}）已经不在了`,
-      "关着时**连不进来**是设计意图（AI#39）。开它：设置页「AI 接入」——通道开关任一即可（`ai.mcp.enabled` / `ai.cli.enabled`），改完重启软件生效。",
+      "关着时**连不进来**是设计意图。开它：设置页「AI 接入」——通道开关任一即可（`ai.mcp.enabled` / `ai.cli.enabled`），改完重启软件生效。",
     );
   }
   if (!alive) {

@@ -67,7 +67,7 @@ useEffect(() => {
 
 ---
 
-## 3. Four things every command should get right
+## 3. Five things every command should get right
 
 1. **`id` carries your own prefix**: `<pluginId>.<action>` (e.g. `demo-notes.addNote`).
    Both AI and users list "what can this plugin do" by **prefix** — an id without one gets attributed to somebody else.
@@ -77,6 +77,26 @@ useEffect(() => {
    Callers build `executeCommand(id, ...params)` straight from it and **never have to read your source to guess arguments**.
 4. **State must be readable back.** Once a command changes state, provide a separate read path (a list/query command, or
    `configuration.get()`) — "do it, then verify" is basic behaviour for automation and AI, and with no read path it can only retry blindly.
+5. **Read streams back by pulling, with a cursor** (serial receive / logs / progress) — ⛔ never hand the caller a subscription.
+   External callers (`linkdeskctl` / MCP) are **request/response**: a `onData(cb)` is something they cannot hold — the callback would have
+   to live across process boundaries, nobody reconnects it after a drop, and whatever was missed is silently gone. The right shape is a
+   **pull** (example: the `serial-monitor` plugin's `readSince` / `receiveStatus`):
+
+   - **Signature**: `<plugin>.<area>Since(since, limit, …filters)` — `since` is the **cursor** ("how far I have read"), returning
+     `{ items, cursor, lost }`: `cursor` is the seq of the **last item returned**, to be passed back verbatim on the next call;
+     `lost` is how many items have already rolled out of your retention buffer. ⚠️ The cursor is a **global position**, not "the Nth
+     item" — a filter narrows the **returned items** only, while the cursor still advances; otherwise switching filters would make the
+     caller re-read or starve.
+   - **Keep a retention buffer — not just the one behind the UI.** The UI chain is usually **drain-on-consume** (thrown away after
+     render) and tied to the **view lifetime**, while the caller's first leg often happens with **no view open** ⇒ stand up a
+     **module-level** sink (subscribe at entry top level, keep an N-item ring log). ⚠️ Shell events give **each subscriber its own
+     channel** (`events.on` registers one `ipcRenderer.on` per subscriber), so your module-level subscription does **not** steal the
+     view's events — both chains coexist safely; say so in a comment for whoever reads the code next.
+   - **Add a water-level read** (`<plugin>.<area>Status()`: cursor / oldest seq / count / capacity / per-source counts) so the caller can
+     tell "not open" from "open but silent" from "you fell behind (`lost > 0`)" before deciding whether to pull.
+   - **Receipts, per the house rules**: no new data is not a failure — `{ ok: true, noop: true, reason: "no-new-data" }`; bad arguments,
+     or a cursor past the end (e.g. the UI reloaded and seq restarted at 0 while the caller still holds an old cursor) ⇒
+     `{ ok: false, noop: true, reason: … }`, handing back a **usable cursor**. ⛔ Never lump every case into "empty array + `ok:true`".
 
 ---
 
@@ -103,6 +123,7 @@ useEffect(() => {
 - [ ] Each has a real handler registered pool-side (`registerCommand`), with `unregisterCommands(pluginId)` on `unmount`
 - [ ] Buttons/menu items and the command handler call **the same** action function (not two implementations)
 - [ ] Anything that changes state also has a **read-back** path (list/query)
+- [ ] Streams have a **pull** read-back path (cursor-based — ⛔ not a subscription) plus a water-level read
 - [ ] Self-test: install it → findable in the Command Palette → `description`/`params` visible in the command list → invoking it works **and the UI reflects it**
 - [ ] I walked these actions through **without a mouse** (keyboard / Command Palette) and every step was reachable
 

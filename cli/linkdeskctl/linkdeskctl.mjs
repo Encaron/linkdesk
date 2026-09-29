@@ -227,7 +227,7 @@ async function helpText(opts) {
         .join("\n") +
       `\n  命令面（exec 可执行，运行期派生）：${live.commandCount} 条——逐条看 \`describe --json\`` +
       (((live.askFirst && live.askFirst.commands) || []).length
-        ? `\n  要用户点头的动作（AI#29）：${live.askFirst.commands.map((r) => r.id).join("、")}——不点头 = EUSERDENIED、不执行`
+        ? `\n  要用户点头的动作：${live.askFirst.commands.map((r) => r.id).join("、")}——不点头 = EUSERDENIED、不执行`
         : "") +
       `\n  对账：静态表有 / 实例无 = ${staticOnly.length ? staticOnly.join(",") : "(空)"} · 实例有 / 静态表无 = ${liveOnly.length ? liveOnly.join(",") : "(空)"}` +
       `\n  ⇒ 差集是空的就说明「文档没漂移」；非空即说明静态骨架该更新了。`;

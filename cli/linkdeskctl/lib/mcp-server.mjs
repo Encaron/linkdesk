@@ -201,7 +201,7 @@ async function callTool(name, args, ctx) {
       "",
       st.online
         ? "下一步: 可直接调其它工具。"
-        : "下一步: ① 起软件；② 隔离实例把 LINKDESK_USER_DATA 指过去；③ 开关关着 = 设置页「AI 接入」开（正式开关归 AI#38.3，今日 = settings.json 的 ai.cli.enabled，改完重启软件）。",
+        : "下一步: ① 起软件；② 隔离实例把 LINKDESK_USER_DATA 指过去；③ 开关关着 = 去设置页「AI 接入」打开（开关 = settings.json 的 `ai.cli.enabled` / `ai.mcp.enabled`，改完重启软件）。",
     ].filter(Boolean);
     return toolResult(lines.join("\n"));
   }
