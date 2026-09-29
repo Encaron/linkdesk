@@ -406,6 +406,16 @@
 - [ ] **AI#55** `splitTab` 的源组只有 1 个标签、且 `targetGroupId` 指向**自己**时：源组变空 → 先摘叶 → 再 `replaceLeafWithBranch(目标=刚摘掉的叶)` 找不到目标 ⇒ `return prev`（**`ok=true`、树与 sizes 一字不变、无报错**）；朝**别组**分则是另一种（源叶被摘、标签以兄弟叶并入别组——**层级不增、反而挪窝**）。｜**证据**：`AI#46` E11s 实跑 ＋ [reducers-layout.ts](../../../../src/hooks/useTabManager/reducers-layout.ts) `reduceSplitTabAt`；⚠️ **鼠标拖拽同款载荷**（[useTabDrag.ts `onDropSplit`](../../../../src/pool/zones/main/MainZone/useTabDrag.ts) 传 `targetGroupId=落点组`）⇒ 既存隐患｜**候选修法** = reducer 里「目标 == 源组」时跳过摘叶、原地建 branch（一处 ＋ 单测）｜**判据** = 单标签组自 split 后组数 +1 且标签仍在原组｜量级 = 小
       —— 🔁 **2026-09-29 重估（外部 AI 黑盒实测回收 · 量级 小 → 中）**：**独立复现**——同一个外部 AI 自己搭 4 层分屏树时撞上：被切那格只剩 1 条标签时 `exec core.splitDown` 返回 **`ok=true`** 而树一字未变；同一趟里「第 4 层再切」也是静默失败（我核了上限确在：[`src/core/utils/splitTree.ts`](../../../../src/core/utils/splitTree.ts) `:25` `MAX_TREE_DEPTH = 4`，超限在 `:285` 给出 reason、**但到不了 AI 手上**）。**它把这一类统称「静默失败」——这正是「直白度」的真天花板**：同一个 `ok=true` 同时承担 **执行了 / 没执行 / 被门控 / 超层 / 视图未挂载** 五种含义，AI 只能据此往下推理（它报告里「不得不靠截图与多次试探来确认」的直接来源）。⇒ **建议合并做**：本格与 `AI#54`（视图未挂载）、`AI#60`（超时）**共用一套「回执语义」**（执行了 / 没执行 / 被门控 / 超层 / 视图未挂载 / 还在跑），⛔ 别各修各的。**判据加一条**：静默 no-op 必须**响亮化**（至少回一个可分辨的 code）。「既存隐患」定性不变（鼠标拖拽同款载荷），优先级维持前列。
 
+      —— 🧭 **设计前置（8 维度 · 2026-09-29 会话 16 立项，与 `AI#60` 同一套「回执语义」）**：
+      ① **能力边界**：**壳能力**（分屏 reducer 的**回执**，不是新控件/新 API）；**保底** = 命令返回值的既有形状**只加不减**（多 `noop`/`reason` 两个字段，老调用方忽略即可）。
+      ② **API 设计**：⛔ 不加 `window.linkdesk.*`、⛔ 不动契约；动的是**命令面返回值**——`core.splitDown`/`core.splitRight`/`core.splitTab` 从「什么都不回」变成回 `{ ok: true, noop?: true, reason?: "max-depth" | … }`（命令返回值是既有面，门③ 的 `exec` **原样透出**，AI 由此看得见「跑了、但没变」）。
+      ③ **通信方式**：`CoreCallbacks.splitTab` 的签名从 `void` 改为**返回结果对象**——**单一权威 = reducer 的判定**，⛔ 命令层**不重算**深度/标签数（那会造第二份真相源）。
+      ④ **壳侧代码**：`src/hooks/useTabManager/reducers-layout.ts`（`reduceSplitTabAt`：自切那一支改为**原地建分支** ＋ 真正不可为时带 `reason`）＋ 它的调用点（`useTabManager` / `MainZone` 拖拽 `onDropSplit` 走**同一份**语义）＋ `src/core/commands/shell/coreCommands.ts` 三处命令回执。
+      ⑤ **插件侧代码**：**零**。
+      ⑥ **显示设计**：AI 侧 = `exec` 返回值里的 `noop`/`reason`；**用户侧零新增界面**（拖拽同款载荷，界面表现照旧）。
+      ⑦ **配置设计**：无（⛔ 不新增配置项、不引开关）。
+      ⑧ **验收**：reducer 单测（单标签组自切 ⇒ 组数 **+1** 且标签仍在原组 · 超 `MAX_TREE_DEPTH` ⇒ 带 `reason` 的 no-op · 朝别组的**既有语义不变**——源叶被摘、标签以兄弟叶并入）＋ 命令面单测（返回值形状）＋ `npm run check`；真机 = `exec core.splitDown` 在单标签组上必须能**看出结果**（不是 `ok=true` 的沉默）。
+
 #### AI#56 ⬜ （生长格）市场源「添加」未命令化
 
 - [ ] **AI#56** 「添加市场源」功能在（`marketplace:src/services/marketSourceAdd.ts`），**命令面零条**（`marketplace.*` 五条 = enable/disable/uninstall/retryInstall/retryUpdate）⇒ 外部 AI 只能改设置数组，[§十 #3](01-设计.md) 的「＋M2」仍未兑现。｜**证据**：`AI#46` E3 ○ 实跑｜**候选修法** = 补 `marketplace.addSource`（薄命令转发服务层）｜**判据** = CLI/MCP 能加源并回读目录含该源｜量级 = 小
@@ -428,6 +438,17 @@
 
 - [ ] **AI#60** 命令面 `exec` 走的统一通道给**壳侧答复**只留 **8 秒**（[`electron/services/aiBridge/index.ts`](../../../../electron/services/aiBridge/index.ts) `:71` `const SHELL_TIMEOUT_MS = 8_000;`；`shellRequest()` `:242` 到点 `:258` reject `coded('ESHELLTIMEOUT', '壳无应答（${timeoutMs}ms 超时，channel=${channel}）')`），而命令**合法**可以跑几分钟——样板 = `update.openUpdateFlow` 的下载腿（119 MB 安装包）。⇒ 命令**明明执行成功了**（下载推进到 100%、安装包落地、界面接着走更新），AI 那侧却只拿到 `[ESHELLTIMEOUT] 壳无应答`＋`EXIT=1`——**这个读数与「什么都没发生」不可分辨**，AI 会去重试、或向用户报「失败」。｜**证据（真机 `0.2.23 → 0.2.24` 整跳 · 本机安装版）**：`linkdeskctl exec update.openUpdateFlow` ⇒ `{"ok":false,"error":{"code":"ESHELLTIMEOUT","message":"壳无应答（8000ms 超时，channel=commands:execute）"}}`，退出码 **1**；而**同一时刻**更新界面正常推进、随后装完重启为 `0.2.24`（同一次真跑里两种读数并存 ⇒ 不是「命令没跑」，是**答复面预算不够**）。｜**候选修法**（牵动命令回执模型 ⇒ 先走 `design-flow` 技能（`.agents/skills/design-flow/SKILL.md`）定超时策略，⛔ 不是随手把常量调大）：① 命令元数据补「预期时长／可流式」位，长命令改**进度回执**（先回 `accepted` ＋ 句柄，再轮询/推送，答复面不再等结果）；② 或按命令名给**分档预算** ＋ 让超时读数**区别于执行失败**（如 `ETIMEOUT_PENDING` ＋「命令仍在跑，用 `status`/账本核对」，而不是「无应答」）；③ 最小半 = 文档补一句（[07-如何接入.md §八](../../../../docs/07-AI操作手册/07-如何接入.md) 现只写了「等点头以分钟计」，**没写这条 8 秒答复预算**）。｜**判据** = 拿一条真跑分钟级的命令（`update.openUpdateFlow` 的下载腿最方便）从 `exec` 发起：AI 侧必须能区分「**还在跑**」（不报错、可查进度）与「**真没应答**」，且⛔ 不许把**已经成功**的动作报成失败。｜量级 = **中**（动的是全部 142 条命令共用的超时口径 ＋ 回执模型；若只取 ③ 那一句话则 = 小）
       —— 🔁 **2026-09-29 精确化（外部 AI 黑盒实测回收）｜本格不是一个常量，是三个各走各的预算**：① **壳侧答复 8 秒**（[`electron/services/aiBridge/index.ts`](../../../../electron/services/aiBridge/index.ts) `:71` `SHELL_TIMEOUT_MS = 8_000`）——`exec` 的合法长命令撞的就是它；② **MCP 客户端默认 5 秒**（[`cli/linkdeskctl/lib/mcp-server.mjs`](../../../../cli/linkdeskctl/lib/mcp-server.mjs) `:278` `LINKDESK_MCP_TIMEOUT_MS || 5000`）——**不可询价**的操作走它，**比壳侧还紧**；③ **等人类点头 10 分钟**（[`electron/services/aiBridge/sensitive.ts`](../../../../electron/services/aiBridge/sensitive.ts) `:46` `ASK_TIMEOUT_MS = 600_000`；`exec`/`install`/`notifyAction` 在 `mcp-server.mjs:76` 的 `ASKABLE_OPS` 里 ⇒ 客户端的等待预算被撑到 600 秒）。**三者里只有 ③ 写进了手册**（[07-如何接入.md §八](../../../07-AI操作手册/07-如何接入.md) 只说「等点头以分钟计」，**没写 ① 的 8 秒、更没写 ② 的 5 秒**）。⇒ 外部 AI 报告把三条并成「超时不可分辨」一条，根因就在这。**修法目标随之从「调大常量」改为「统一口径 ＋ 让读数可分辨」**：至少让「**还在跑** / **正在等人点头** / **真没应答**」各有自己的 code 与文案（现况 = 一律 `TIMEOUT` ＋ [`bridge-client.mjs`](../../../../cli/linkdeskctl/lib/bridge-client.mjs) `:155` 的「**对面卡住了**」——把「正等着人点头」说成「对面死机」，AI 会当故障去重试）。量级维持 **中**；③ 那半仍是「小」。
+
+      —— 🧭 **设计前置（8 维度 · 2026-09-29 会话 16 立项）**：
+      ① **能力边界**：**壳能力**（通道内核的回执模型，不是插件能力、不是新控件）——三处预算与相位都在内核与皮里，**插件零感知**；**保底** = ⛔ 不改协议必填字段 ⇒ 老客户端照旧工作（新增的全是**读数与文案**，不存在「不升版就连不上」）。
+      ② **API 设计**：⛔ **不新增** `window.linkdesk.*`（插件面与 `contracts/linkdesk.d.ts` **零改动**）；只动**门③ 自省面**——`identity()`（`ping` 的正文，每次调用本来就会拉一次）增 `inFlight: [{op, phase, what, ms}]`，相位是**只读面**，AI 由此分辨「还在跑 / 正等人点头」；客户端（`cli/linkdeskctl/lib/bridge-client.mjs`）错误分类表增两码：`EPENDING`（还在跑）· `EASKPENDING`（正等人点头）。
+      ③ **通信方式**：仍是「一连接 = 一请求 = 一应答」，⛔ **不改协议行数**（发「中间行」= 破现有骨架，老客户端会把中间行当终答 ⇒ 必须升协议版本，代价与收益不成比例）；分辨靠**第二次廉价请求**：客户端在超时那一刻拿 2 秒预算再 `ping` 一次——与既有「每次调用先 ping 认人」**同一套路**，零新机制。数据流：内核记相位 → `ping` 读 → 客户端分类 → AI 读文案（不持久化）。
+      ④ **壳侧代码**：`electron/services/aiBridge/index.ts`（`inFlight` 登记表 ＋ `shellRequest` 进出登记 ＋ `identity` 回填 ＋ 超时文案改为「尚未收到壳侧答复——**命令可能仍在执行**」）· `sensitive.ts` 的 `askUser` 进出把相位标成 `ask-user`（`BridgeOpContext` 加**可选** `phase?()`，老 ctx / 既有单测不传也不崩）；目录不动（两文件都已在 `aiBridge/`）。**单一权威** = 相位只在 `index.ts` 记一处，⛔ 客户端不自己猜。
+      ⑤ **插件侧代码**：**零**（插件不感知相位与预算，也不需要改一行）。
+      ⑥ **显示设计**：AI 侧 = 错误码 ＋ 人话 hint（`bridge-client.mjs` 的 `OP_HINTS`）；**用户侧零界面改动**（人不看这些码；确认框本身不动）；手册 [07 章 §八](../../../07-AI操作手册/07-如何接入.md) 补一张**三预算表**（今天只写了「等点头以分钟计」）。
+      ⑦ **配置设计**：**不新增任何配置项**——三个预算各就其位（壳侧常量 8s · MCP 客户端 `LINKDESK_MCP_TIMEOUT_MS` 默认 5s · 等点头常量 600s）。⛔ **明确否掉「按命令名分档预算」的配置表**：那是拿配置掩盖「相位缺失」，且 142 条命令没人会维护那张表。
+      ⑧ **验收**：单测（相位进出 · `ping.inFlight` 形状 · 客户端超时三分类——假钟/假 socket 注入）＋ `npm run check`；**真机** = `exec update.openUpdateFlow` 的下载腿（合法分钟级命令）必须回**可分辨的「还在跑」**而不是「壳无应答」，且⛔ 不许把已成功的动作报成失败；静默 no-op 那半（`AI#55`）另有验收。
+      🔴 **口径（本格修法表述就此改写，「调大常量」作废）**：让三件事**各有名字**——`还在跑`（`EPENDING`）· `正等人点头`（`EASKPENDING`）· `真没应答`（`TIMEOUT`），并在同一条读数里说清是**客户端预算用完**还是**服务端没答**（这两件今天都叫 `TIMEOUT` ＋「对面卡住了」）。
 
 #### AI#61 ✅ （生长格 · 2026-09-29 外部 AI 黑盒实测逼出）手册的**入口面陈旧**——把已发货的正门说成「未发货」
 
