@@ -16,6 +16,10 @@ export default defineConfig({
       "electron/**/*.test.ts",
       // packages/*（作者侧 npm 包）——E6#91e 起收进来：SDK 的纯函数（CHANGELOG 切段等）与壳同一次 `npm run check` 跑
       "packages/**/*.test.ts",
+      // cli/linkdeskctl（`AI#59` 起收进来）：它是**随机出货的产品码**（extraResources 进安装包），
+      // 此前一行测试都没有 ⇒ 「status 吞真实错误」「status 跳过认人」两条一路活到 0.2.23 出厂版，
+      // 靠真机边界扫描才扫出来。纯报告面拆进 lib/status-report.mjs，测试用 .mjs（node ESM）。
+      "cli/**/*.test.mjs",
     ],
   },
   resolve: {

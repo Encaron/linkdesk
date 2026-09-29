@@ -30,8 +30,10 @@
  */
 
 import {
-  callBridge, BridgeError, readRecord, candidateUserDataDirs, classify, fmtEndpoint,
+  callBridge, BridgeError, readRecord, candidateUserDataDirs, fmtEndpoint,
 } from "./lib/bridge-client.mjs";
+// AI#59：分诊报告面住在这里（纯函数）——`status`/`ping` 的「谁在服务 / 为什么没成」不许被压平。
+import { renderStatus, resolvedServedBy } from "./lib/status-report.mjs";
 
 /* ── 静态骨架（离线时的 --help 正文）——与内核白名单的双向对账守漂移（AI#33/AI#35） ── */
 
@@ -288,38 +290,8 @@ function render(op, result) {
   return JSON.stringify(result, null, 2);
 }
 
-/** status 的客户端分诊（离线可用——读记录文件面，不需要软件活着） */
-function renderStatus(found, live, opts) {
-  const { record, recordPath, searched } = found;
-  if (!record) {
-    const err = classify({ record: null, error: null, attempted: { searched, timeoutMs: 0 } });
-    return { state: { code: err.code, message: err.message, hint: err.hint }, text: `状态      ${err.message}\n下一步    ${err.hint ?? "—"}` };
-  }
-  const head = `记录      ${recordPath}\n身份      ${record.appName} ${record.appVersion} · pid ${record.pid} · 起于 ${record.startedAt}`;
-  if (live) {
-    return {
-      state: { code: "SERVING", message: `在服务（${fmtEndpoint(live.endpoint)}）`, hint: null },
-      text: [
-        head,
-        `状态      在服务  ${live.transport} ${fmtEndpoint(live.endpoint)}`,
-        `已跑      ${Math.round(live.uptimeMs / 1000)}s · 壳窗 ${live.shellWindows}` +
-          (live.servedShellWindow ? `（操作目标 = ${live.servedShellWindow}）` : ""),
-      ].join("\n"),
-    };
-  }
-  const err = classify({ record, error: null, attempted: { searched, timeoutMs: 0 } });
-  if (err.code === "REFUSED" || err.code === "CONNECT_FAILED" || err.code === "TIMEOUT") {
-    // 探活未竟 ≠ 分诊结论（记录说在听但这次没连上）——如实报「记录面正常、这次没连上」
-    return {
-      state: { code: "RECORD_OK", message: `记录说在 ${fmtEndpoint(record.endpoint)} 监听（这次探活没连上：${err.code}）`, hint: err.hint },
-      text: [head, `状态      记录说在 ${fmtEndpoint(record.endpoint)} 监听（这次探活没连上：${err.code}）`, `下一步    ${err.hint ?? "稍等重试"}`].join("\n"),
-    };
-  }
-  return {
-    state: { code: err.code, message: err.message, hint: err.hint },
-    text: [head, `状态      ${err.message}`, `下一步    ${err.hint ?? "—"}`].join("\n"),
-  };
-}
+/* ── status 的客户端分诊（离线可用）住在 lib/status-report.mjs（AI#59——纯函数，配测试） ── */
+
 
 /* ── 主流程 ── */
 
@@ -384,14 +356,17 @@ async function main() {
     if (subcommand === "status") {
       const found = readRecord({ userDataDirs: callOpts.userDataDirs });
       let live = null;
+      let probeError = null;
       if (found.record && !found.record.lastError && found.record.enabled === true && found.record.mode !== "off") {
         try {
           live = await callBridge("ping", {}, callOpts).then((r) => r.result);
-        } catch {
-          live = null; // 探活失败不掩盖分诊结论——renderStatus 如实报「记录面正常、这次没连上」
+        } catch (e) {
+          // 🔴 AI#59：**不吞**探活的异常——吞掉它，renderStatus 就得重造结论，而重造出来的
+          //    code 恒为 CONNECT_FAILED ⇒「凭据不对」会被报成「没连上 → 稍等重试」。
+          probeError = e;
         }
       }
-      const out = renderStatus(found, live, opts);
+      const out = renderStatus(found, live, probeError);
       if (opts.json) {
         console.log(JSON.stringify({ ok: true, subcommand, state: out.state, record: found.record, recordPath: found.recordPath, searched: found.searched }, null, 2));
       } else {
@@ -402,7 +377,9 @@ async function main() {
 
     const { result, record, servedBy } = await callBridge(SUBCOMMAND_OPS[subcommand], payload, callOpts);
     if (opts.json) {
-      console.log(JSON.stringify({ ok: true, subcommand, op: SUBCOMMAND_OPS[subcommand], servedBy: servedBy ?? record.pid, recordPid: record.pid, result }, null, 2));
+      // 🔴 AI#59：`servedBy` = **谁在服务**，⛔ 不许拿记录 pid 兜底——`ping` 有意跳过认人，
+      //    错配时记录 pid 是假的，真应答者在 `result.pid`（人读形态本来就印它）。
+      console.log(JSON.stringify({ ok: true, subcommand, op: SUBCOMMAND_OPS[subcommand], servedBy: resolvedServedBy(servedBy, result, record), recordPid: record.pid, result }, null, 2));
     } else {
       console.log(render(SUBCOMMAND_OPS[subcommand], result));
     }
