@@ -196,6 +196,13 @@ export class LayoutEngine {
     this._recalculate();
   }
 
+  /** M2 `AI#62`：量过的容器尺寸读数——「窗口多大」那一半（`workbench.action.getLayout` 消费）。
+   *  ⛔ 不在这里现摸 `window.innerWidth`：core 层零 DOM 先例，尺寸由壳 `App/lifecycle.ts` 量了喂进来
+   *  （`setContainerSize` 同一对字段）。从未量过 = 0×0（壳尚未挂载），如实报 0 ⛔ 不猜。 */
+  getContainerSize(): { width: number; height: number } {
+    return { width: this._containerWidth, height: this._containerHeight };
+  }
+
   /** 调整 zone 尺寸——clamp 到 minWidth/maxWidth */
   resizeZone(zoneId: string, newWidth: number): void {
     const z = this._zones.find((z) => z.zone === zoneId);

@@ -270,6 +270,33 @@ class ViewContainerServiceClass extends RegistryBase {
     );
   }
 
+  /* ═══ M2 `AI#62`：容器内视图的归属反查 ═══ */
+
+  /**
+   * 读面——本容器内每个视图**连同它的归属插件**（一条一条配对返回）。
+   *
+   * 🔴 为什么是配对而不是「一份 id 清单」或「一份 pluginId 清单」：**异插件同名视图共存是合法状态**
+   *    （`registerView` 撞名只 `console.error` 提示、照样共存，见上方注册期探测）⇒ 拿裸 `viewId` 去
+   *    join 两份清单会张冠李戴。归属与描述符在同一趟循环里配对，碰撞面天然无歧义。
+   * 🔴 为什么落在属主这里而不是命令里：`_pluginId` 是**注册期打上的类内标记**（`registerView` 自己写，
+   *    本类 `setVisible`/`unregisterAll` 自己读）——命令层去读它 = 借别人家的私有字段，标记一改就静默失准。
+   *    故反查留在属主，命令只消费结果。
+   * ⚠️ 返回的 `descriptor` 带 `render`（React 组件）——**序列化前必须挑字段**（读数命令只取
+   *    `id`/`title` 这类声明面字段）。
+   *
+   * 用途 = `workbench.action.listViews`（`AI#62` 读数命令族）：「有哪些容器/视图、各自属于谁」。
+   */
+  listViewOwners(containerId: string): Array<{ pluginId: string; viewId: string; descriptor: ViewDescriptor }> {
+    const model = this._models.get(containerId);
+    if (!model) return [];
+    return model.allViewDescriptors.map((view) => ({
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- 内部标记字段（注册期打上，同本类 setVisible 读法）
+      pluginId: ((view as any)._pluginId as string | undefined) ?? "",
+      viewId: view.id,
+      descriptor: view,
+    }));
+  }
+
   /* ═══ E4V#44 View 空状态占位内容 ═══ */
 
   /** 注册 view 的空状态占位内容。对标 VS Code IViewContentDescriptor。

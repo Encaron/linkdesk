@@ -50,7 +50,7 @@
 
 <!-- BEGIN COMMAND-INDEX -->
 
-**宿主命令 84 条 / 7 个分类**——插件命令不在本表（运行时用 `getCommands()` 查）。
+**宿主命令 88 条 / 7 个分类**——插件命令不在本表（运行时用 `getCommands()` 查）。
 
 ### 帮助（6）
 
@@ -98,7 +98,7 @@
 | `workbench.action.resetSplitSizes` | 重置分屏比例 | 把所有分屏分支的比例恢复成均分（50/50）；未分屏时无效果 | —— | —— |
 | `workbench.action.toggleSplit` | 切换分屏 | 在当前分组上切换分屏（分屏 ↔ 合并） | —— | —— |
 
-### 视图（29）
+### 视图（31）
 
 | 命令 id | 标题 | 说明 | 参数（调用实参） | when 门控 |
 |:--|:--|:--|:--|:--|
@@ -111,6 +111,8 @@
 | `workbench.action.alignPanelLeft` | 面板左对齐 | 把面板内容左对齐（已是该对齐则无动作） | —— | —— |
 | `workbench.action.alignPanelRight` | 面板右对齐 | 把面板内容右对齐（已是该对齐则无动作） | —— | —— |
 | `workbench.action.getFloatingPanelBounds` | 读取悬浮面板位置与大小 | 返回悬浮面板当前几何（含 viewId/pluginId/最大化态）；无面板时返回 null | —— | —— |
+| `workbench.action.getLayout` | 读取布局 | 读当前布局：窗口容器尺寸 ＋ 侧栏（显隐／宽／贴边／边界）＋ 面板（显隐／激活视图／高宽／贴边／对齐／边界）。⛔ 分屏比例不在此重复报——tabs 操作里每个分组的 root.sizes 就是它 | —— | —— |
+| `workbench.action.listViews` | 列出容器与视图 | 列出全部容器与其中的视图（各自归属哪个插件、可见／折叠态）。这是注册面（有哪些）；「此刻屏幕上开着哪些」看 workbench.action.getLayout | —— | —— |
 | `workbench.action.positionPanelBottom` | 面板移到底部 | 把底部面板停靠到窗口底部（已在该侧则无动作） | —— | —— |
 | `workbench.action.positionPanelLeft` | 面板移到左侧 | 把底部面板停靠到窗口左侧（已在该侧则无动作） | —— | —— |
 | `workbench.action.positionPanelRight` | 面板移到右侧 | 把底部面板停靠到窗口右侧（已在该侧则无动作） | —— | —— |
@@ -132,7 +134,7 @@
 | `workbench.action.toggleSidebarVisibility` | 切换侧栏可见性 | 显示/隐藏主侧栏 | —— | —— |
 | `workbench.action.toggleViewVisibility` | 切换视图可见性 | 显示/隐藏指定视图 | `ctx`: object 必填 — { viewId: string; containerId?: string }——目标视图 id，containerId 用于同 viewId 消歧 | —— |
 
-### 首选项（20）
+### 首选项（22）
 
 | 命令 id | 标题 | 说明 | 参数（调用实参） | when 门控 |
 |:--|:--|:--|:--|:--|
@@ -152,6 +154,8 @@
 | `workbench.action.copySettingAsJson` | 复制为 JSON | 把指定设置项的当前值以 JSON 复制到剪贴板 | `ctx`: object 必填 — { settingKey: string }——目标设置项 id | —— |
 | `workbench.action.copySettingId` | 复制设置 ID | 把指定设置项的 id 复制到剪贴板 | `ctx`: object 必填 — { settingKey: string }——目标设置项 id | —— |
 | `workbench.action.followTheme` | 跟随主题 | 取消指定设置项的用户覆盖，让它重新跟随当前主题 | `ctx`: object 必填 — { settingKey: string }——目标设置项 id | `settingFollowTheme` |
+| `workbench.action.getConfiguration` | 读取配置项 | 读一个配置键的值与来源分层（schema 默认／用户／工作区／生效值 ＋ declared 判定）——⛔ 不用去翻 settings.json；键名清单看 workbench.action.listConfigurations | `key`: string 必填 — 配置键，如 app.theme（键名清单：workbench.action.listConfigurations） | —— |
+| `workbench.action.listConfigurations` | 列出全部配置项 | 列出全部已注册配置键（按插件分组：类型／默认／枚举／说明）——不知道键名时先读这个，再去 workbench.action.getConfiguration 取值。只报声明面，⛔ 不含各键当前值 | —— | —— |
 | `workbench.action.openAppearanceStorage` | 打开存储位置 | 在系统资源管理器中打开外观存储目录（背景图存放处） | `ctx`: object 必填 — { settingKey: string }——目标设置项 id（仅 app.backgroundImage / app.zoneBackgroundImage 会出现本命令） | `settingKey == 'app.backgroundImage' \|\| settingKey == 'app.zoneBackgroundImage'` |
 | `workbench.action.openKeybindingsSettings` | 打开键盘快捷方式 | 打开键盘快捷方式设置页 | —— | —— |
 | `workbench.action.resetSetting` | 重置此设置 | 把指定设置项重置为默认值（先弹确认框） | `ctx`: object 必填 — { settingKey: string }——目标设置项 id | `settingResetsToDefault \|\| (settingModified && !settingFollowTheme)` |

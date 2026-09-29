@@ -57,3 +57,17 @@ export const notifSnapshot = createSnapshotSlot<NotifLayout>("notifSnapshot");
  * 值 = 壳窗口注册表逐窗 `serializeGroups(...)`（与推给池的布局树**同一函数** ⇒ 两读数天然对得上，`AI#3` 判据）。
  */
 export const tabsSnapshot = createSnapshotSlot<TabsSnapshot>("tabsSnapshot");
+
+/** `AI#62` 布局显隐快照——`workbench.action.getLayout` 的**显隐那一半**的答案。
+ *  尺寸那一半直读 `layoutEngine`（core 自持）；显隐（侧栏/面板当前是否可见 ＋ 面板激活视图）的
+ *  唯一真相源在壳 React state（`usePoolSync` 拿得到、推给池的也是这几个值）⇒ 经槽注册，
+ *  ⛔ 不读 `LayoutService` 持久化缓存那半（那是防抖落盘的副本，会与屏幕错开一帧）。 */
+export interface LayoutVisibilitySnapshot {
+  sidebarVisible: boolean;
+  panelVisible: boolean;
+  panelActiveViewId: string | null;
+  /** 侧栏当前容器 id（`null` = 无/已坍缩——池侧渲染另有「上次非空」兜底，读数按壳 state 如实报） */
+  sidebarView: string | null;
+}
+
+export const layoutSnapshot = createSnapshotSlot<LayoutVisibilitySnapshot>("layoutSnapshot");

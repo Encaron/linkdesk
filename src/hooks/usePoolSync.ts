@@ -46,7 +46,7 @@ import { buildCommandHints } from "./usePoolSync/hints"; // 04「悬停提示系
 import { useSyncSubscriptions } from "./usePoolSync/useSubscriptions";
 import { assembleWindowLayout, serializeGroups, type WindowLayoutContext } from "./usePoolSync/windowLayout";
 // M1 读取面（AI#1 通知 / AI#3 标签）——core 侧读面槽：壳在这里把「答案」注册进去
-import { notifSnapshot, tabsSnapshot } from "../core/services/plugins/readSnapshots";
+import { notifSnapshot, tabsSnapshot, layoutSnapshot } from "../core/services/plugins/readSnapshots";
 
 export interface UsePoolSyncInput {
   /** E5.8#43-2：壳窗口注册表——每窗 tabState/mode/ready；本 hook 遍历就绪窗按模式策略组装布局并定向推送 */
@@ -361,6 +361,13 @@ export function usePoolSync({ windows, sidebarView, isSidebarVisible, panelActiv
         groups: serializeGroups(win.tabState, t, releaseNotes, about, aiManual),
       })),
     }));
-    return () => { offNotif(); offTabs(); };
-  }, [windows, t, releaseNotes, about, aiManual]);
+    // M2 AI#62：布局**显隐**那一半（尺寸那一半由命令直读 layoutEngine，core 自持）
+    const offLayout = layoutSnapshot.register(() => ({
+      sidebarVisible: isSidebarVisible,
+      panelVisible,
+      panelActiveViewId,
+      sidebarView,
+    }));
+    return () => { offNotif(); offTabs(); offLayout(); };
+  }, [windows, sidebarView, isSidebarVisible, panelActiveViewId, panelVisible, t, releaseNotes, about, aiManual]);
 }
