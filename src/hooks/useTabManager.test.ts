@@ -20,6 +20,8 @@ import {
   attemptSplitTabAt, // 同上（带落点面板/方向那一路）
   reduceUnsplit,
   reduceResetSplitSizes, // M2 AI#21：分屏比例整体复位
+  attemptUpdateSplitSizes, // M2 生长格 AI#53：分屏比例精确设（回执——判定单点）
+  reduceUpdateSplitSizes, // 同上的 `.state` 皮（池/鼠标路径）
   reduceSetDirty,
   reduceRestoreLayout,
   reduceRemoveTab,
@@ -542,33 +544,36 @@ describe("reduceUnsplit", () => {
   });
 });
 
+/* ── 嵌套对照 fixture（两个 describe 共用：AI#21 整体复位 ／ AI#53 精确设）── */
+
+/** root(70/30) → 左 g1；右 branch(20/80) → g2/g3。
+ *  先序分支号：**1 = root**、**2 = 右侧内层**（`_updateBranchSizesByIndex` 的前序计数）。 */
+function nestedState(): TabState {
+  return {
+    groups: [
+      { id: "g1", tabs: [w("Alpha", "demo_alpha")], activeTabId: "workspace-demo_alpha" },
+      { id: "g2", tabs: [w("Beta", "demo_beta")], activeTabId: "workspace-demo_beta" },
+      { id: "g3", tabs: [w("Gamma", "demo_gamma")], activeTabId: "workspace-demo_gamma" },
+    ],
+    activeGroupId: "g1",
+    root: {
+      type: "branch", direction: "horizontal",
+      children: [
+        { type: "leaf", groupId: "g1" },
+        {
+          type: "branch", direction: "vertical",
+          children: [{ type: "leaf", groupId: "g2" }, { type: "leaf", groupId: "g3" }],
+          sizes: [20, 80],
+        },
+      ],
+      sizes: [70, 30],
+    },
+  };
+}
+
 /* ── reduceResetSplitSizes（M2 AI#21：分屏比例整体复位的非鼠标路径）── */
 
 describe("reduceResetSplitSizes", () => {
-  /** 嵌套对照 fixture：root(70/30) → 左 g1；右 branch(20/80) → g2/g3 */
-  function nestedState(): TabState {
-    return {
-      groups: [
-        { id: "g1", tabs: [w("Alpha", "demo_alpha")], activeTabId: "workspace-demo_alpha" },
-        { id: "g2", tabs: [w("Beta", "demo_beta")], activeTabId: "workspace-demo_beta" },
-        { id: "g3", tabs: [w("Gamma", "demo_gamma")], activeTabId: "workspace-demo_gamma" },
-      ],
-      activeGroupId: "g1",
-      root: {
-        type: "branch", direction: "horizontal",
-        children: [
-          { type: "leaf", groupId: "g1" },
-          {
-            type: "branch", direction: "vertical",
-            children: [{ type: "leaf", groupId: "g2" }, { type: "leaf", groupId: "g3" }],
-            sizes: [20, 80],
-          },
-        ],
-        sizes: [70, 30],
-      },
-    };
-  }
-
   it("所有分支递归回 50/50（含嵌套分支），叶子与分组原样保留", () => {
     const next = reduceResetSplitSizes(nestedState());
     const root = next.root as BranchNode;
@@ -609,6 +614,115 @@ describe("reduceResetSplitSizes", () => {
   it("对已有分屏状态调用两次 → 第二次起原引用（幂等收敛）", () => {
     const once = reduceResetSplitSizes(nestedState());
     expect(reduceResetSplitSizes(once)).toBe(once);
+  });
+});
+
+/* ── attemptUpdateSplitSizes（M2 生长格 `AI#53`：分屏比例精确设 ＋ 回执）── */
+
+describe("attemptUpdateSplitSizes —— AI#53 设比例回执", () => {
+  it("anchor 路（AI 的常用形）：该组所在分支精确设成 [70, 30]，组表与叶子一字不动", () => {
+    const state = twoGroupState(); // root = branch(g1 | g2)，sizes [50, 50]
+    const attempt = attemptUpdateSplitSizes(state, "g2", [70, 30]);
+
+    expect(attempt.result).toEqual({ ok: true }); // 无 noop ⇒ 写入发生
+    const root = attempt.state.root as BranchNode;
+    expect(root.sizes).toEqual([70, 30]);
+    expect(getAllLeafGroupIds(attempt.state.root)).toEqual(["g1", "g2"]);
+    expect(attempt.state.groups).toBe(state.groups); // 组表原引用（只换树）
+  });
+
+  it("branchIndex 路（深树精确）：内层分支 [20, 80] → [30, 70]，外层 [70, 30] 不动", () => {
+    const attempt = attemptUpdateSplitSizes(nestedState(), "", [30, 70], 2);
+
+    expect(attempt.result).toEqual({ ok: true });
+    const root = attempt.state.root as BranchNode;
+    expect((root.children[1] as BranchNode).sizes).toEqual([30, 70]);
+    expect(root.sizes).toEqual([70, 30]); // 外层未被牵连
+  });
+
+  it("两路同给 ⇒ branchIndex 优先（既有 B35 语义不变）", () => {
+    // anchor 指向外层（g1 的父分支 = root），branchIndex 指向内层 ⇒ 改的是内层
+    const attempt = attemptUpdateSplitSizes(nestedState(), "g1", [30, 70], 2);
+
+    const root = attempt.state.root as BranchNode;
+    expect((root.children[1] as BranchNode).sizes).toEqual([30, 70]);
+    expect(root.sizes).toEqual([70, 30]);
+  });
+
+  it("未分屏（root = leaf）⇒ noop ＋ reason:'not-split'，状态引用不变", () => {
+    const state = stateWithTabs(w("Alpha", "demo_alpha"));
+    const attempt = attemptUpdateSplitSizes(state, "main", [70, 30]);
+
+    expect(attempt.result).toEqual({ ok: true, noop: true, reason: "not-split" });
+    expect(attempt.state).toBe(state);
+  });
+
+  it("anchor 不在树里 ⇒ noop ＋ reason:'no-such-group'（⛔ 不静默当没给）", () => {
+    const state = twoGroupState();
+    const attempt = attemptUpdateSplitSizes(state, "已经合掉的-g9", [70, 30]);
+
+    expect(attempt.result).toEqual({ ok: true, noop: true, reason: "no-such-group" });
+    expect(attempt.state).toBe(state);
+  });
+
+  it("只给 branchIndex 而树里没这条 ⇒ noop ＋ reason:'no-such-branch'", () => {
+    const state = nestedState(); // 只有 1、2 两条分支
+    const attempt = attemptUpdateSplitSizes(state, "", [70, 30], 9);
+
+    expect(attempt.result).toEqual({ ok: true, noop: true, reason: "no-such-branch" });
+    expect(attempt.state).toBe(state);
+  });
+
+  it("载荷坏 ⇒ ok:false ＋ reason:'bad-sizes'（形状坏在调用方，状态引用不变）", () => {
+    const state = twoGroupState();
+    const bad: unknown[] = [[], [70], [70, 30, 10], ["a", 30], [-1, 101], [0, 100], [Number.NaN, 50], "70,30", null];
+
+    for (const sizes of bad) {
+      const attempt = attemptUpdateSplitSizes(state, "g2", sizes as [number, number]);
+      expect(attempt.result, `sizes=${JSON.stringify(sizes)}`).toEqual({ ok: false, noop: true, reason: "bad-sizes" });
+      expect(attempt.state).toBe(state);
+    }
+  });
+
+  it("branchIndex 非整数 ⇒ ok:false ＋ reason:'bad-branch-index'（字符串/小数都算载荷坏）", () => {
+    const state = nestedState();
+    for (const idx of ["2", 1.5, Number.NaN]) {
+      const attempt = attemptUpdateSplitSizes(state, "g1", [70, 30], idx as unknown as number);
+      expect(attempt.result, `branchIndex=${String(idx)}`).toEqual({ ok: false, noop: true, reason: "bad-branch-index" });
+      expect(attempt.state).toBe(state);
+    }
+  });
+
+  it("定位两路都没给（空 anchor ＋ 无 index）⇒ ok:false ＋ reason:'no-anchor-id'", () => {
+    const state = twoGroupState();
+    const attempt = attemptUpdateSplitSizes(state, "", [70, 30]);
+
+    expect(attempt.result).toEqual({ ok: false, noop: true, reason: "no-anchor-id" });
+    expect(attempt.state).toBe(state);
+  });
+
+  it("`≤ 0` 的 branchIndex 视作**没给**（老代码 `> 0` 守卫的兼容）⇒ 走 anchor 路照样命中", () => {
+    const attempt = attemptUpdateSplitSizes(nestedState(), "g1", [70, 30], 0);
+
+    expect(attempt.result).toEqual({ ok: true });
+    expect((attempt.state.root as BranchNode).sizes).toEqual([70, 30]); // root（g1 的父分支）
+  });
+
+  it("设成与当前相同的值：`ok` 无 noop——「写入发生」与「值变了」是两件事（⛔ 不冒充没做）", () => {
+    const state = twoGroupState(); // 已是 [50, 50]
+    const attempt = attemptUpdateSplitSizes(state, "g1", [50, 50]);
+
+    expect(attempt.result).toEqual({ ok: true });
+    expect((attempt.state.root as BranchNode).sizes).toEqual([50, 50]);
+  });
+
+  it("`.state` 皮（`reduceUpdateSplitSizes`，池/鼠标路径）与 attempt 结果同一份树", () => {
+    const state = nestedState();
+    const skinned = reduceUpdateSplitSizes(state, "", [40, 60], 2);
+    const attempted = attemptUpdateSplitSizes(state, "", [40, 60], 2).state;
+
+    expect(skinned).toEqual(attempted);
+    expect(((skinned.root as BranchNode).children[1] as BranchNode).sizes).toEqual([40, 60]);
   });
 });
 

@@ -277,6 +277,7 @@ function makeCoreCallbacks(tabs: Array<typeof TAB1> = [TAB1, TAB2]) {
     handleFocusTab: vi.fn(),
     unsplit: vi.fn(),
     resetSplitSizes: vi.fn(), // M2 AI#21：分屏比例整体复位（非鼠标路径）
+    setSplitSizes: vi.fn(() => ({ ok: true })), // M2 生长格 AI#53：分屏比例精确设（带回执）
     openOrFocusTab: vi.fn(),
     restoreClosedTab: vi.fn(),
     duplicateTab: vi.fn(),

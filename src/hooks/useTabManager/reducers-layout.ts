@@ -123,6 +123,62 @@ function refused(reason: SplitRefusal): SplitResult {
   return { ok: true, noop: true, reason };
 }
 
+/* ── 设分屏比例回执——同一套「回执语义」的第二件（M2 生长格 `AI#53`）─────────────
+   修前：`reduceUpdateSplitSizes` 定位不到分支时一律 `return prev`（`ok=true`、无报错、
+   与「真设好了」同形）。今日起：判定单点在本层，命令面（`workbench.action.setSplitSizes`）
+   只透出 `noop`/`reason`。 */
+
+/** 设分屏比例没做成的原因——与 `SplitRefusal` **同族**（可分辨字面量，⛔ 不加「其它」兜底）。
+ *  ⚠️ 不 export：消费者 = 本文件的 `sizesRefused`/`sizesBadCall` ＋ 命令面借的 `SplitSizesResult`
+ *  （与 `SplitRefusal` 同款：导出过一版会被 `knip` 判「无人 import」）。 */
+type SplitSizesRefusal =
+  | "bad-sizes"        // sizes 不是「两个正数」（[70] / ["a",30] / [-1,100] / 0）——载荷坏在调用方
+  | "bad-branch-index" // branchIndex 给了，但不是整数（字符串 / 小数）——⛔ 不静默当「没给」
+  | "no-anchor-id"     // 定位两路都没给（既无 anchorGroupId 也无 branchIndex）——调用方问题
+  | "not-split"        // 树是单个 leaf ⇒ 没有分支可设（先分屏，再设比例）
+  | "no-such-branch"   // 只给了 branchIndex，树里没有这一条
+  | "no-such-group"    // 给了 anchorGroupId，它不在任何分支的叶子位上
+  | "no-callbacks";    // 命令层专用：宿主没注册标签页管理器
+
+/** 设比例回执——形状与 `SplitResult` 同族（门③ 的 `exec` 原样透出）。
+ *  · `ok:true` 无 `noop` = 树真变了（sizes 已精确写入）；
+ *  · `ok:true` ＋ `noop:true` = **调用没问题、但树没变**（没分屏 / 分支找不到）；
+ *  · `ok:false` ＋ `noop:true` = 这次**调用**有问题（载荷坏 / 缺定位 / 没宿主）。 */
+export interface SplitSizesResult {
+  ok: boolean;
+  noop?: true;
+  reason?: SplitSizesRefusal;
+}
+
+/** 一次设比例的完整产物：`state` 变没变 ＋ 回执（没变时 = 原引用） */
+interface SplitSizesAttempt {
+  state: TabState;
+  result: SplitSizesResult;
+}
+
+const SIZES_DONE: SplitSizesResult = { ok: true };
+
+/** 没做事但**不是故障**（树里没有这条分支可设） */
+function sizesRefused(reason: SplitSizesRefusal): SplitSizesResult {
+  return { ok: true, noop: true, reason };
+}
+
+/** 这次**调用**有问题——`ok:false`（与「跑了但没变」分开报，`AI#55` 口径） */
+function sizesBadCall(reason: SplitSizesRefusal): SplitSizesResult {
+  return { ok: false, noop: true, reason };
+}
+
+/** 载荷形态探针——`sizes` 类型上是 `[number, number]`，但命令面/池面都是**外部输入**，运行时仍要过形 */
+function isSizesPair(v: unknown): v is [number, number] {
+  return Array.isArray(v) && v.length === 2
+    && v.every((n) => typeof n === "number" && Number.isFinite(n) && n > 0);
+}
+
+/** `branchIndex` 形态探针——非整数一律当载荷坏（⛔ 不静默当「没给」，那会让人以为是 anchor 的错） */
+function isBranchIndex(v: unknown): boolean {
+  return typeof v === "number" && Number.isInteger(v);
+}
+
 /**
  * 分屏（带目标面板与落点）——**判定单点**，`reduceSplitTabAt` 只是它的 `.state` 皮。
  * 对标 VS Code「拖到另一个面板边缘」。
@@ -308,33 +364,57 @@ export function reduceUnsplit(prev: TabState, groupId: string): TabState {
 }
 
 /**
- * 更新分屏尺寸。
- * anchorGroupId: 参与 resize 的两个 group 中任意一个的 groupId——用于在树中定位对应的 branch。
- * 如果树中只有一个 branch（2-pane），anchorGroupId 可以为任意 groupId。
+ * 设分屏比例——**判定单点**，`reduceUpdateSplitSizes` 只是它的 `.state` 皮（既有调用点零改动）。
+ *
+ * 两条定位路（既有语义一字不动）：
+ *   ① `branchIndex`＝1 起、先序计数（B35 精确路，鼠标拖拽/双击分隔条用）；
+ *   ② `anchorGroupId`＝该组所在的**那条分支**（2-pane 等简单场景；AI 从 `tabs` 读数的 `root`
+ *      里挑该分支下任一叶子组即可命名，不必知道 index）。两路同给时仍 `branchIndex` 优先。
+ *
+ * ⚠️ 判定顺序：**载荷形状**（谁都能看出来，`ok:false`）→ 定位/树形（`ok:true, noop`）。
+ * ⛔ 树没变时必须回 `noop` ＋ `reason`——`AI#55` 的教训：一个 `ok=true` 不许同时承担
+ * 「做了」与「没做」两种含义。
  */
-/**
- * 更新分屏尺寸。
- * B35：优先用 branchIndex 精确定位分支（修复深层嵌套时 handle 定位错误）。
- * 无 branchIndex 时降级为旧 anchorGroupId 方案（向后兼容）。
- */
+export function attemptUpdateSplitSizes(
+  prev: TabState,
+  anchorGroupId: string,
+  sizes: [number, number],
+  branchIndex?: number,
+): SplitSizesAttempt {
+  if (!isSizesPair(sizes)) return { state: prev, result: sizesBadCall("bad-sizes") };
+  if (branchIndex != null && !isBranchIndex(branchIndex)) {
+    return { state: prev, result: sizesBadCall("bad-branch-index") };
+  }
+  // 既有语义：`≤ 0` 的 branchIndex 视作**没给**（老代码的 `> 0` 守卫）——照旧走 anchor 路
+  const useIndex = branchIndex != null && branchIndex > 0;
+  if (!anchorGroupId && !useIndex) return { state: prev, result: sizesBadCall("no-anchor-id") };
+  if (prev.root.type === "leaf") return { state: prev, result: sizesRefused("not-split") };
+
+  if (useIndex) {
+    const newRoot = updateBranchSizesByIndex(prev.root, branchIndex, sizes);
+    if (newRoot) return { state: { ...prev, root: newRoot }, result: SIZES_DONE };
+  }
+  if (anchorGroupId) {
+    const parent = findParentInTree(prev.root, anchorGroupId);
+    if (parent) {
+      const newRoot = updateBranchSizes(prev.root, parent.parent, sizes);
+      if (newRoot) return { state: { ...prev, root: newRoot }, result: SIZES_DONE };
+    }
+    // 给了 anchor 就以它报（⛔ 不把「它不在树里」说成「没给」）
+    return { state: prev, result: sizesRefused("no-such-group") };
+  }
+  // 只给了 branchIndex，而树里没有这一条
+  return { state: prev, result: sizesRefused("no-such-branch") };
+}
+
+/** `.state` 皮——池/壳既有调用点（含鼠标拖拽）照旧只用状态 */
 export function reduceUpdateSplitSizes(
   prev: TabState,
   anchorGroupId: string,
   sizes: [number, number],
   branchIndex?: number,
 ): TabState {
-  // B35：branchIndex 精确定位
-  if (branchIndex != null && branchIndex > 0) {
-    const newRoot = updateBranchSizesByIndex(prev.root, branchIndex, sizes);
-    if (newRoot) return { ...prev, root: newRoot };
-  }
-  // 降级：旧 anchorGroupId 方案（2-pane 等简单场景）
-  const parent = findParentInTree(prev.root, anchorGroupId);
-  if (parent) {
-    const newRoot = updateBranchSizes(prev.root, parent.parent, sizes);
-    if (newRoot) return { ...prev, root: newRoot };
-  }
-  return prev;
+  return attemptUpdateSplitSizes(prev, anchorGroupId, sizes, branchIndex).state;
 }
 
 /**

@@ -7,7 +7,7 @@
  */
 
 import type { WindowMode } from "../../types/windows"; // E5.8#45：WindowMode 单一真相源（core/types——壳策略层同源引用）
-import type { LayoutData, SplitResult } from "../../../hooks/useTabManager"; // 04 工作区导入恢复：整表替换的入参形状（同 useTabManager.restoreLayout）／AI#55：分屏回执
+import type { LayoutData, SplitResult, SplitSizesResult } from "../../../hooks/useTabManager"; // 04 工作区导入恢复：整表替换的入参形状（同 useTabManager.restoreLayout）／AI#55：分屏回执／AI#53：设比例回执
 
 export interface CoreCallbacks {
   closeTab: (tabId: string) => void;
@@ -52,6 +52,13 @@ export interface CoreCallbacks {
    * 未注册（无 tab 管理器的宿主）时命令静默 no-op 而不是崩。
    */
   resetSplitSizes?: () => void;
+  /**
+   * M2 生长格 `AI#53`：分屏比例**精确设**（把某条分支设成 `[70, 30]`）——`workbench.action.setSplitSizes`
+   * 的落点。定位两条路：`anchorGroupId`（该组所在分支）／`branchIndex`（1 起先序，鼠标拖拽那套）。
+   * ⚠️ **可选成员**：与 `resetSplitSizes` 同款理由（非组件代码经 `getCallbacks()?.` 调用）。
+   * 回执语义同 `splitTab`：`ok:true`＝改了 ／ `ok:true,noop,reason`＝没改 ／ `ok:false,noop,reason`＝这次调用有问题。
+   */
+  setSplitSizes?: (anchorGroupId: string, sizes: [number, number], branchIndex?: number) => SplitSizesResult;
 }
 
 let _callbacks: CoreCallbacks | null = null;

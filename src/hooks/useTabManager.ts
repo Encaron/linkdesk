@@ -75,6 +75,7 @@ import {
   reduceMoveTab,
   attemptSplitTab,
   attemptSplitTabAt,
+  attemptUpdateSplitSizes,
   reduceUnsplit,
   reduceUpdateSplitSizes,
   reduceResetSplitSizes,
@@ -86,15 +87,16 @@ export {
   reduceSplitTab,
   attemptSplitTab,
   attemptSplitTabAt,
+  attemptUpdateSplitSizes,
   reduceUnsplit,
   reduceUpdateSplitSizes,
   reduceResetSplitSizes,
   reduceRestoreLayout,
 } from "./useTabManager/reducers-layout";
-// M2 生长格 `AI#55`：分屏回执的形状（命令面返回值 = 这套）
-// ⚠️ `export type … from` 不绑定本地名 ⇒ splitTab 的返回类型另起一行 import 进来
-export type { SplitResult, SplitAttempt } from "./useTabManager/reducers-layout";
-import type { SplitResult } from "./useTabManager/reducers-layout";
+// M2 生长格 `AI#55`／`AI#53`：分屏与设比例的回执形状（命令面返回值 = 这套）
+// ⚠️ `export type … from` 不绑定本地名 ⇒ splitTab/setSplitSizes 的返回类型另起一行 import 进来
+export type { SplitResult, SplitAttempt, SplitSizesResult } from "./useTabManager/reducers-layout";
+import type { SplitResult, SplitSizesResult } from "./useTabManager/reducers-layout";
 
 /* ── Hook ── */
 
@@ -351,6 +353,18 @@ export function useTabManager() {
     setTabState((prev) => reduceResetSplitSizes(prev));
   }, []);
 
+  /** M2 生长格 `AI#53`：分屏比例**精确设**（`workbench.action.setSplitSizes` 的落点）。
+   *  回执**同步预计算**（G6 ref 桥接同款，见 `splitTab`）——状态转换仍走函数式 updater 保队列语义；
+   *  判定单点 = reducer（`attemptUpdateSplitSizes`），本层只透出。 */
+  const setSplitSizes = useCallback(
+    (anchorGroupId: string, sizes: [number, number], branchIndex?: number): SplitSizesResult => {
+      const eager = attemptUpdateSplitSizes(tabStateRef.current, anchorGroupId, sizes, branchIndex);
+      setTabState((prev) => attemptUpdateSplitSizes(prev, anchorGroupId, sizes, branchIndex).state);
+      return eager.result;
+    },
+    []
+  );
+
   const setDirty = useCallback((tabId: string, dirty: boolean) => {
     setTabState((prev) => reduceSetDirty(prev, tabId, dirty));
   }, []);
@@ -469,6 +483,7 @@ export function useTabManager() {
     unsplit,
     updateSplitSizes,
     resetSplitSizes,
+    setSplitSizes,
     moveTab,
     duplicateTab,
     reorderTab,

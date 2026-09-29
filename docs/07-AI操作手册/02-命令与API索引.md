@@ -50,7 +50,7 @@
 
 <!-- BEGIN COMMAND-INDEX -->
 
-**宿主命令 88 条 / 7 个分类**——插件命令不在本表（运行时用 `getCommands()` 查）。
+**宿主命令 89 条 / 7 个分类**——插件命令不在本表（运行时用 `getCommands()` 查）。
 
 ### 帮助（6）
 
@@ -76,7 +76,7 @@
 | `workbench.action.exportWorkspace` | 导出工作区 | 把当前布局与用户设置导出为工作区文件下载到本地 | —— | —— |
 | `workbench.action.importWorkspace` | 导入工作区 | 从工作区文件恢复布局与用户设置 | —— | —— |
 
-### 标签页（17）
+### 标签页（18）
 
 | 命令 id | 标题 | 说明 | 参数（调用实参） | when 门控 |
 |:--|:--|:--|:--|:--|
@@ -96,6 +96,7 @@
 | `workbench.action.nextTab` | 下一个标签页 | 聚焦同分组中的下一个标签页 | `ctx`: object 可选 — { shift: boolean }——true 则聚焦上一个，省略/false 聚焦下一个 | —— |
 | `workbench.action.reopenClosedEditor` | 重新打开已关闭的编辑器 | 撤销关闭：重新打开最近关闭的标签页 | —— | —— |
 | `workbench.action.resetSplitSizes` | 重置分屏比例 | 把所有分屏分支的比例恢复成均分（50/50）；未分屏时无效果 | —— | —— |
+| `workbench.action.setSplitSizes` | 设置分屏比例 | 把某条分屏分支的比例设成指定值（如 [70, 30]）；未分屏或分支找不到时回 noop 与 reason | `anchorGroupId`: string 可选 — 定位分支：该分支下任一叶子组 id（与 branchIndex 二选一；同给则 branchIndex 优先）<br>`sizes`: object 必填 — [number, number]——两侧比例，两个正数（如 [70, 30]）；是二元数组，不是对象<br>`branchIndex`: number 可选 — 精确定位分支：1 起、先序计数（鼠标拖拽同款；一般用 anchorGroupId 即可） | —— |
 | `workbench.action.toggleSplit` | 切换分屏 | 在当前分组上切换分屏（分屏 ↔ 合并） | —— | —— |
 
 ### 视图（31）

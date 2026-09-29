@@ -108,6 +108,7 @@ function App() {
     unsplit,
     updateSplitSizes,
     resetSplitSizes,
+    setSplitSizes,
     reorderTab,
     pinTab,
     openOrFocusTab,
@@ -200,7 +201,7 @@ function App() {
   const coreCallbacks: CoreCallbacks = useMemo(
     () => createCoreCallbacks({
       closeTab, splitTab, tabState, handleFocusTab, unsplit, openOrFocusTab, restoreClosedTab,
-      duplicateTab: _duplicateTab, pinTab, resetSplitSizes,
+      duplicateTab: _duplicateTab, pinTab, resetSplitSizes, setSplitSizes,
       detachTab: relocation.detachTabToNewWindow, mergeTabToMain: relocation.mergeTabToMain, findTabWindow: relocation.findTabWindow,
       windows, updateTabState, closeWindow,
       // 04「工作区导入导出-布局恢复断线」：导入时的标签页布局恢复——照启动恢复全流程
@@ -212,7 +213,7 @@ function App() {
         return focused;
       },
     }),
-    [closeTab, splitTab, tabState, handleFocusTab, unsplit, openOrFocusTab, restoreClosedTab, _duplicateTab, pinTab, resetSplitSizes, relocation, windows, updateTabState, closeWindow, restoreLayout],
+    [closeTab, splitTab, tabState, handleFocusTab, unsplit, openOrFocusTab, restoreClosedTab, _duplicateTab, pinTab, resetSplitSizes, setSplitSizes, relocation, windows, updateTabState, closeWindow, restoreLayout],
   );
   updateCoreCallbacks(coreCallbacks);
 

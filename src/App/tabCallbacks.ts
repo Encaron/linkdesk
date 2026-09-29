@@ -28,7 +28,7 @@ import { FALLBACK_PLUGIN_ID } from "../core/utils/plugin/fallbackPluginId";
 import type { CoreCallbacks } from "../core/commands/shell/coreCommands";
 import type { ShellTabAction } from "../core/types/ipc/tabActions"; // E5.8#44-B：壳侧收 ShellTabAction（含 sourceWindowId）
 import type { CreateTabOptions } from "../core/api/types";
-import type { CloseTabResult, LayoutData, SplitResult, TabState, Tab } from "../hooks/useTabManager";
+import type { CloseTabResult, LayoutData, SplitResult, SplitSizesResult, TabState, Tab } from "../hooks/useTabManager";
 import type { WindowMode, WindowShellState } from "./windows"; // E5.8#45：deps 类型同 relocation 返回值（WindowMode）——core 契约已宽化；#46.4：脱出窗路由查注册表
 
 /* ── handleFocusTab ── */
@@ -77,14 +77,17 @@ export interface CoreCallbacksDeps {
   restoreTabLayout: (layout: LayoutData) => { pluginId: string; tabId: string } | null;
   /** M2 `AI#21`：分屏比例整体复位（useTabManager.resetSplitSizes）——命令面 non-mouse 路径 */
   resetSplitSizes: () => void;
+  /** M2 生长格 `AI#53`：分屏比例精确设（useTabManager.setSplitSizes，带回执）——命令面 non-mouse 路径 */
+  setSplitSizes: (anchorGroupId: string, sizes: [number, number], branchIndex?: number) => SplitSizesResult;
 }
 
 /** E5#5e-ii-f：核心回调——注册到 coreCommands，壳快捷键（Ctrl+W/Ctrl+Tab 等）走这里 */
 export function createCoreCallbacks(deps: CoreCallbacksDeps): CoreCallbacks {
-  const { closeTab, splitTab, tabState, handleFocusTab, unsplit, openOrFocusTab, restoreClosedTab, duplicateTab, pinTab, detachTab, mergeTabToMain, findTabWindow, windows, updateTabState, closeWindow, restoreTabLayout, resetSplitSizes } = deps;
+  const { closeTab, splitTab, tabState, handleFocusTab, unsplit, openOrFocusTab, restoreClosedTab, duplicateTab, pinTab, detachTab, mergeTabToMain, findTabWindow, windows, updateTabState, closeWindow, restoreTabLayout, resetSplitSizes, setSplitSizes } = deps;
   return {
     restoreTabLayout,
     resetSplitSizes,
+    setSplitSizes,
     closeTab,
     closeOtherTabs: (groupId, exceptTabId) => {
       const g = tabState.groups.find((g) => g.id === groupId);
