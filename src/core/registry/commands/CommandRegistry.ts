@@ -389,6 +389,45 @@ export function purgePoolCommandWindows(windowId: string): void {
  *     分辨得了「做了」与「没做」（对标 VS Code：executeCommand 对未知命令本就抛错）。
  * 两条路 reportError 都走——错误服务照记，strict 只是**不再吞掉**，不是少记。
  */
+
+/**
+ * 命令桥的**具名实参 → 位置实参**展开（M4 `AI#52`「壳侧宽进」·2026-09-29 用户拍板）。
+ *
+ * ── 修的是什么 ──
+ *   命令元数据 `params[].name` 是**具名**的，而执行面按**位置**透传 ⇒ 外部 AI 照具名对象调用
+ *   **静默无效**（`ok=true` 但 handler 只读 `args[0]`、拿到对象当字符串直接跳过）。实证：
+ *   `executeCommand("workbench.action.togglePanelViewVisibility", undefined, {containerId, viewId})`
+ *   ⇒ `visible` 恒 `true`。⇒ 让**声明面成为唯一真相源**：`params` 的名字从此在执行面**真的可用**。
+ *
+ * ── 放宽的边界（窄口 —— ⛔ 四条都不展开，越界 = 把合法调用改坏）──
+ *   ① 只走**命令桥那条缝**（`executeCommandStrict`，门① / 门③ 共用）——UI 面（面板/菜单/快捷键）
+ *      维持纯位置语义，既有行为一字不动；
+ *   ② `args` 恰好 **1 个**，且它是**普通对象**（数组 / 字符串 / null 都不算——那些可能就是合法实参）；
+ *   ③ 该命令**声明了 ≥2 个 `params`**——arity=1 时「一个对象」本身就是它的合法实参
+ *      （`toggleViewVisibility({viewId})` 即此形），展开会产生歧义；
+ *   ④ 对象里**至少命中一个**声明名——键名全不匹配 = 调用方传的是自己的载荷对象，原样放行。
+ *
+ * ── 展开规则 ──
+ *   按 `params` **声明顺序**取值（对象键序不参与）、尾部没给的 `undefined` 剪掉（可选实参传不传
+ *   等价）。⚠️ 只认 `params[].name`：多出来的键被丢掉——位置调用面本来就看不见它们，属预期。
+ *
+ * @returns `expanded` = 命中的具名键（调用方/测试可观测；空数组 = 未展开、`args` 原样）
+ */
+export function expandNamedArgs(
+  params: LinkDeskCommandParam[] | undefined,
+  args: unknown[],
+): { args: unknown[]; expanded: string[] } {
+  if (!params || params.length < 2 || args.length !== 1) return { args, expanded: [] };
+  const only = args[0];
+  if (only === null || typeof only !== 'object' || Array.isArray(only)) return { args, expanded: [] };
+  const obj = only as Record<string, unknown>;
+  const named = params.filter((p) => Object.prototype.hasOwnProperty.call(obj, p.name));
+  if (named.length === 0) return { args, expanded: [] };
+  const out: unknown[] = params.map((p) => obj[p.name]);
+  while (out.length > 0 && out[out.length - 1] === undefined) out.pop();
+  return { args: out, expanded: named.map((p) => p.name) };
+}
+
 async function runCommand(commandId: string, args: unknown[], strict: boolean): Promise<unknown> {
   const cmd = _commands.get(commandId);
   if (!cmd) {
@@ -397,17 +436,20 @@ async function runCommand(commandId: string, args: unknown[], strict: boolean): 
     return undefined;
   }
 
+  // M4 `AI#52`：桥这条缝兼容「单个具名对象」——展开判据与四条边界见 `expandNamedArgs` 头注
+  const callArgs = strict ? expandNamedArgs(cmd.params, args).args : args;
+
   try {
     if (cmd.placeholder) {
       // E5.7 Bug C：占位命令的真实 handler 注册在池 preload 的 _poolCommands。
       // 壳→池转发：events.emit("commands:executeRequest") → 主进程 plugin:push 广播
       // → 池 preload 订阅执行 → invoke("commands:executeResult") → IpcBridgeHandler 回传。
-      return await executeInPool(cmd, args);
+      return await executeInPool(cmd, callArgs);
     }
     // E5.7#63.8：token 在此统一剥除——handler 合同只收 args。
     // 外层 token 参数保留（未来取消语义入口），与池 preload executeCommand
     // 剥 undefined 占位同语义——全仓 handler 样板唯一：(...args)。
-    return await cmd.handler(...args);
+    return await cmd.handler(...callArgs);
   } catch (err) {
     reportError({
       message: `命令 "${cmd.title}" 执行出错: ${err instanceof Error ? err.message : String(err)}`,

@@ -177,10 +177,10 @@ export const OPS: Record<string, BridgeOp> = {
   exec: {
     name: 'exec',
     kind: 'write',
-    help: '执行壳命令（能执行的 = describe 的 commands 清单里那些；严格回传真结果——做了/没做可分辨）。⚠️ describe 的 askFirst.commands 里的敏感命令会先在软件里弹确认框，用户不点头 = EUSERDENIED、不执行',
+    help: '执行壳命令（能执行的 = describe 的 commands 清单里那些；严格回传真结果——做了/没做可分辨）。⚠️ describe 的 askFirst.commands 里的敏感命令会先在软件里弹确认框，用户不点头 = EUSERDENIED、不执行。实参两种写法等价：**逐位平铺**（`args: [a, b]`）或**一个具名对象**（`{ 参数名: 值 }`——键名照 describe 里该命令的 `params[].name`，≥2 个参数时壳侧按声明顺序展开）',
     params: [
       { name: 'commandId', type: 'string', required: true, description: '命令 id（如 app.openAiManual）' },
-      { name: 'args', type: 'array', required: false, description: '透传给命令的实参' },
+      { name: 'args', type: 'array', required: false, description: '透传给命令的实参（逐位平铺，或一个具名对象——键名照该命令的 params[].name）' },
     ],
     run: async (req, ctx) => {
       const commandId = req.commandId;

@@ -57,7 +57,8 @@ const STATIC_USAGE = `linkdeskctl——一条命令控制运行中的 LinkDesk�
   open-tab <type>               开一个标签页（type = 视图/插件 id；可加 --opts '{"k":"v"}'）
   exec <commandId> [args…]      执行壳命令（能执行的 = describe 里 commands 清单那些；严格回传真结果）
                                 ⚠️ describe 的 askFirst.commands 里的敏感命令会先在软件里弹确认框，
-                                用户不点头 = EUSERDENIED、不执行（AI#29）
+                                用户不点头 = EUSERDENIED、不执行
+                                实参两种写法等价：逐位平铺，或一个具名对象（键名 = describe 里该命令的 params[].name）
   install <source>              安装插件（zip 包 URL 或本地路径）——确认对话框在软件里弹出，用户点头才装
   notifications                 读通知面板（按钮的 command 事实随行）
   notify-action <id> <action>   执行通知上的按钮（action = 按钮 label 或序号；按钮背后是敏感命令时同样要点头）

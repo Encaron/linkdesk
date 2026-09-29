@@ -51,9 +51,9 @@ const STATIC_TOOLS = [
     { name: "type", type: "string", required: true, description: "标签类型（视图/插件 id）" },
     { name: "opts", type: "object", required: false, description: "透传给视图的选项" },
   ] },
-  { op: "exec", description: "执行壳命令（能执行的 = linkdesk_describe 的 commands 清单里那些；严格回传真结果）。⚠️ describe 的 askFirst.commands 里的敏感命令会先在软件里弹确认框，用户不点头 = EUSERDENIED、不执行", params: [
+  { op: "exec", description: "执行壳命令（能执行的 = linkdesk_describe 的 commands 清单里那些；严格回传真结果）。⚠️ describe 的 askFirst.commands 里的敏感命令会先在软件里弹确认框，用户不点头 = EUSERDENIED、不执行。实参两种写法等价：**逐位平铺**（`args: [a, b]`）或**一个具名对象**（`{ 参数名: 值 }`——键名照 describe 里该命令的 `params[].name`，≥2 个参数时壳侧按声明顺序展开）", params: [
     { name: "commandId", type: "string", required: true, description: "命令 id（如 app.openAiManual）" },
-    { name: "args", type: "array", required: false, description: "透传给命令的实参" },
+    { name: "args", type: "array", required: false, description: "透传给命令的实参（逐位平铺，或一个具名对象——键名照该命令的 params[].name）" },
   ] },
   { op: "install", description: "安装插件（zip 包 URL 或本地路径）——确认对话框在软件里弹出，用户点头才装（不点头 = EUSERDENIED、不装）", params: [
     { name: "source", type: "string", required: true, description: "插件包 URL 或本地路径" },

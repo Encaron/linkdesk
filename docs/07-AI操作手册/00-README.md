@@ -51,7 +51,7 @@
 | 2 | AI 把它**发布上网** | 发布流程（作者面文档） | ✅ 现成 |
 | 3 | 添加第三方作者的**市场源** | 功能在，但**命令面缺** ⇒ 今天只能界面点 | ⛔ 只能界面点 |
 | 4 | 左侧面板移到**右侧** | `workbench.action.toggleSidebarPosition` | ✅ 现成 |
-| 5 | 底部面板**隐藏某个插件** | `workbench.action.togglePanelViewVisibility`（实参**平铺两个**：`containerId` → `viewId`，⛔ 不是一个对象——handler 按位置取；见 03 章例 5） | ✅ 现成 |
+| 5 | 底部面板**隐藏某个插件** | `workbench.action.togglePanelViewVisibility`（实参两个：`containerId`、`viewId`——平铺或写成一个具名对象都行；见 03 章例 5） | ✅ 现成 |
 | 6 | 同时**打开五个插件的标签页** | `linkdesk.tabs.create(pluginId)` / `openOrFocus(pluginId)` 循环 | ✅ 现成 |
 | 7 | 在某个插件标签页里**做某件事** | = 该插件注册的命令（`linkdesk.commands.getCommands()` 里查） | ⚠️ 看插件 |
 | 8 | **两个 JSON 文件对比** | 两条命令：`file-tree.selectForCompare` → `file-tree.compareWithSelected`（参数 `{uri:"路径"}`；两步手势 = 两行调用）。⚠️ 需先 `open-tab file-tree`（视图挂载后这批命令才注册） | ✅ 现成（需装 file-tree 插件） |

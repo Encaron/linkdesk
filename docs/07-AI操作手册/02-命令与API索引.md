@@ -10,6 +10,18 @@
 
 1. **找命令**：§二 按分类列全，`when 门控`列写明「什么条件下它才会出现」。
 2. **看参数**：`参数（调用实参）`列就是**调用实参**——逐位对应 handler 形参（元数据出处 = 壳命令注册表的 `description`/`params`）。
+   **两种写法等价**（`params` 的名字在执行面上真的可用——壳侧按声明顺序展开）：
+
+   ```js
+   // ① 逐位平铺：「参数（调用实参）」列怎么写就怎么传
+   await linkdesk.commands.executeCommand("workbench.action.togglePanelViewVisibility", undefined,
+     "panel-container-id", "serial-monitor.view");
+   // ② 一个具名对象（键名照那几列的参数名）——与 ① 等价
+   await linkdesk.commands.executeCommand("workbench.action.togglePanelViewVisibility", undefined,
+     { containerId: "panel-container-id", viewId: "serial-monitor.view" });
+   ```
+
+   ⚠️ 只有 1 个参数的命令**不展开**——那个对象本身就是它要的实参（如 `workbench.action.toggleViewVisibility` 的 `{ viewId: "x" }`），照「参数（调用实参）」列原样传。
 3. **调一条命令**（在**池窗口**的 `window.linkdesk` 上——池 = 执行真相源，见 [01-操作路径总览](01-操作路径总览.md)）：
 
    ```js
