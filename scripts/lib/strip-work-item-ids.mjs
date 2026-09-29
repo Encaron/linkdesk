@@ -15,7 +15,7 @@
  * ── 接线（三个调用点 + 一把尺子）──
  *   · `scripts/generate-contract.mjs` → 契约出口（只洗注释行）
  *   · `src/core/commands/aiManualIndex.test.ts` → 手册两个生成区的单元格
- *   · `scripts/check-manual-ids.mjs` → 校验腿（复用同一个 `WORK_ITEM_RE`，两边不会走散）
+ *   · `scripts/check-manual-surface.mjs` → 校验腿（复用同一个 `WORK_ITEM_RE`，两边不会走散）
  */
 
 /** e.g. `E5.7#63.5`、`E5.8#26`、`E6#13b/c`、`E3j #75`、`E6#73`、`E5.8#50.11` */

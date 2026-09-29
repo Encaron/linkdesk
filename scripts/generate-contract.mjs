@@ -28,7 +28,7 @@
  * ⚠️ 产物①出口**剥工单编号**（`AI#63`，2026-09-29 用户拍板）：`.d.ts` 的读者是外部工程的 AI 与
  *    第三方插件作者，他们手里没有本仓台账——`E5.7#63.5`/`AI#38.2` 只是噪声。源注释**不动**（仓内追溯
  *    靠它 + git blame），只洗产物。实现见 `scripts/lib/strip-work-item-ids.mjs`；校验腿
- *    `scripts/check-manual-ids.mjs`。
+ *    `scripts/check-manual-surface.mjs`（规则①）。
  */
 import ts from 'typescript';
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
