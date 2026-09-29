@@ -6,8 +6,12 @@
 import { registerCommand, type Command } from "../../registry/commands/CommandRegistry";
 import { registerMenuItems, MENU_SLOTS } from "../../registry/commands/MenuRegistry";
 import { factorySlots } from "../../services/bootstrap/FactorySlots";
-import { setConfigurationValue, resetConfigurationValueBatch, inspectConfiguration } from "../../services/configuration/ConfigurationService"; // E5.8#50.24：复位命令单一写入点；inspectConfiguration = AI#66 写入回执（写前/写后都在这一条链上读）
+import {
+  setConfigurationValue, resetConfigurationValue, resetConfigurationValueBatch,
+  inspectConfiguration, getUserSettings, diffUserSettings,
+} from "../../services/configuration/ConfigurationService"; // E5.8#50.24：复位命令单一写入点；inspectConfiguration = AI#66 写入回执（写前/写后都在这一条链上读）；AI#68 加 resetConfigurationValue（清覆盖）＋ getUserSettings/diffUserSettings（顺带变更比对）
 import { getMergedSchema, type ConfigurationProperty } from "../../registry/ConfigurationRegistry"; // AI#66：写入前按声明面校验（键是否声明／类型／枚举／上下界）
+import { pickStringArg } from "./readCommands"; // AI#68：键名实参「两形等价」（`{"key":"…"}` / 逐位）——读面已归一，⛔ 不在这里抄第二份
 import { MIX_SOURCE_KEYS } from "../../services/ui/ThemeEngine"; // E5.8#90：混搭来源 key 全集——theme.resetMix 批复位用（单一来源）
 import { getCallbacks } from "../infra/CoreCallbacks";
 // E5.5#7-p15：CUSTOM_EVENTS.SHOW_THEME_BROWSER / SHOW_LANGUAGE_PICKER 不再使用——走 QuickPickService
@@ -36,6 +40,53 @@ import { resolveFloatingPanelOpenForm } from "../../services/ui/floatingPanelFor
 const WRITE_BLOCKED_PREFIXES = ["ai."];
 const WRITE_BLOCKED_HINTS = ["readonly", "action"];
 
+/* ── M2 生长格 `AI#68`：**通用配置清覆盖**（`workbench.action.clearConfiguration`，与写面成对）──
+ *
+ * 🔴 为什么要有它：`AI#66` 把「写」补上后，闭环还缺最后一腿——**回到没有覆盖**。外部 AI 复测
+ *    0.2.26 时三条路全走不通：`setConfiguration` 传 `value:null` ⇒ `bad-type`；只给 key 不给 value
+ *    ⇒ `bad-args`；`workbench.action.resetSetting` 自述「先弹确认框」（无人值守没法用）⇒ 它的结论是
+ *    「写 ✅ / 回到上一个值 ✅ / 回到无覆盖 ❌」。本命令就是那一腿：**删掉 user 覆盖**。
+ *
+ * 🔴 复位面为什么必须连 `ai.*` 那道门一起照抄（这里比写面更要紧）：删覆盖 = 回落到**默认值**，而默认值
+ *    可能恰好是「开着」⇒ 不拦的话，「被管的那个」能把用户刻意关上的门重新解锁。判据共用上面那两个常量，
+ *    ⛔ 别再写一份（两份拒写面迟早分叉，而分叉的那一侧是门）。
+ *
+ * ⚠️ 与 `workbench.action.resetSetting`（设置页那枚「重置此设置」）**不是同一条**：那条会弹确认框、
+ *    且对声明了 `resetsToDefault` 的 string 键（字体/背景四键）**写 `__none__` 哨兵**（= 不跟随主题），
+ *    语义是「回到设置页的默认项」。本命令一律**删覆盖**（= 回落到 schema 默认／主题）——两者终点不同，
+ *    故回执里用 `notice` 把这个差别如实说出来，⛔ 不假装它们是一回事。 */
+
+/** 用户层快照（`getUserSettings` 已是浅拷）——写前／写后各取一份，用来回答「这一笔还顺带动了谁」 */
+function snapshotUserLayer(): Record<string, unknown> {
+  return getUserSettings();
+}
+
+/**
+ * 本次写入**顺带**动过的其它用户层键——`AI#68` 用来补上「合法却有副作用」那个校验面够不着的角落。
+ *
+ * 🔴 为什么需要：校验面管得住键名／类型／枚举／上下界／显示槽，管不住**副作用**——写 `app.appearanceMode`
+ *    会连带清掉自定义玻璃/背景那一批覆盖（`appearance.ts` 的 `onApply` 批量复位）。门外 AI 看不见这件事，
+ *    就会「改一个键、丢一片设置」。这里当场比对用户层，把顺带动的键连同**改后的值**一起报回去。
+ *
+ * 比对复用 `diffUserSettings`（既有纯函数，深比较——对象/数组值不会被误判成变更），⛔ 不另写一套。
+ */
+function alsoChangedKeys(before: Record<string, unknown>, selfKey: string): Array<{ key: string; userValue: unknown }> {
+  return diffUserSettings(before, getUserSettings())
+    .filter((c) => c.key !== selfKey)
+    .map((c) => ({ key: c.key, userValue: c.value ?? null }));
+}
+
+/**
+ * 给「顺带的级联」一个让位点——回执要报 `alsoChanged`，diff 就不能早于级联。
+ *
+ * applier 是**同步**调的（`runConfigApplier`），但各键 `onApply` 体内的批量复位是异步函数：同步段
+ * （内存写）当拍就落，余下的通知/持久化在微任务里排队。跳一拍再 diff，才不至于把「级联发生了」报成
+ * 「只动了这一键」（回执谎报「没动别的」正是本系列反复消灭的形状）。宏任务一跳足够，⛔ 不是等去抖。
+ */
+function settleCascades(): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, 0));
+}
+
 /** 拒写回执——**载荷里出声**（与读面 `badArg` 同形：⛔ 不抛异常，免得 AI 写错键名给用户弹红 toast）。 */
 function writeRefusal(
   key: string | null,
@@ -43,6 +94,15 @@ function writeRefusal(
   error: string,
 ): { key: string | null; applied: false; reason: string; error: string } {
   return { key, applied: false, reason, error };
+}
+
+/** 清覆盖的拒绝回执——与 `writeRefusal` 同款同形（字段名随动作换：`cleared`），**同一张拒写面** */
+function clearRefusal(
+  key: string | null,
+  reason: string,
+  error: string,
+): { key: string | null; cleared: false; reason: string; error: string } {
+  return { key, cleared: false, reason, error };
 }
 
 /**
@@ -106,7 +166,10 @@ function checkValueShape(
   if (!typeOk) {
     return {
       reason: "bad-type",
-      error: `配置键 "${key}" 声明类型是 ${t}，收到 ${describeValue(value)}（${Array.isArray(value) ? "array" : value === null ? "null" : typeof value}）——值要按声明类型给，逐键类型看 workbench.action.listConfigurations`,
+      error: `配置键 "${key}" 声明类型是 ${t}，收到 ${describeValue(value)}（${Array.isArray(value) ? "array" : value === null ? "null" : typeof value}）——值要按声明类型给，逐键类型看 workbench.action.listConfigurations`
+        // `AI#68`：null 是外部 AI 最容易拿来「表示删掉这个值」的形状（复测里它就是先试这个）——
+        // 在报错里直接把那条正门指出来，⛔ 别让它自己猜（null 对任何声明类型都不合法，故这里就是它的落点）
+        + (value === null ? "；想「删掉这条覆盖、回到默认」用 workbench.action.clearConfiguration" : ""),
     };
   }
   if (prop.enum && !prop.enum.includes(value as string)) {
@@ -237,7 +300,7 @@ export function registerSettingsCommands(): void {
           return writeRefusal(
             null,
             "bad-args",
-            `参数要 { key: string, value: unknown }（或逐位 ("键名", 值)）——收到 ${describeValue(args[0])}；键名清单看 workbench.action.listConfigurations`,
+            `参数要 { key: string, value: unknown }（或逐位 ("键名", 值)）——收到 ${describeValue(args[0])}；键名清单看 workbench.action.listConfigurations（⛔ 只给 key 不给 value ≠「清掉这条覆盖」——那是 workbench.action.clearConfiguration）`,
           );
         }
         const { key, value } = picked;
@@ -271,6 +334,7 @@ export function registerSettingsCommands(): void {
 
         // ── 写：写入前的用户层值先留底（回执要能回答「原来是啥」——改动可撤销的前提是知道改回什么） ──
         const previousUserValue = inspectConfiguration(key).userValue;
+        const beforeUser = snapshotUserLayer(); // AI#68：顺带变更（级联副作用）的比对基线——写前那一份
         let persisted = true;
         try {
           await setConfigurationValue(key, value, "user");
@@ -279,6 +343,7 @@ export function registerSettingsCommands(): void {
           // ⛔ 不能因为「内存里已经有了」就报成功。照读面先例：异常不外抛（外抛会被壳弹用户红 toast）。
           persisted = false;
           const msg = e instanceof Error ? e.message : String(e);
+          await settleCascades(); // 内存已写 ⇒ 级联可能也在跑：先让位再读，免得 alsoChanged 漏报
           const now = inspectConfiguration(key);
           return {
             key,
@@ -289,11 +354,13 @@ export function registerSettingsCommands(): void {
             previousUserValue: previousUserValue ?? null,
             userValue: now.userValue ?? null,
             effectiveValue: now.effectiveValue ?? null,
+            alsoChanged: alsoChangedKeys(beforeUser, key),
           };
         }
 
         // ── 回读对账：⛔ 不信「调用没抛」＝「值写进去了」——`setConfigurationValue` 对枚举违规是**静默
         //    return**（warn + 不写），照它报成功就是「回执说成功、盘上没动」。所以判据取回读结果本身。 ──
+        await settleCascades(); // AI#68：跳一拍再回读——级联与本次写入同批落地，alsoChanged 才不是空话
         const after = inspectConfiguration(key);
         const applied = sameValue(after.userValue, value);
         return {
@@ -309,6 +376,120 @@ export function registerSettingsCommands(): void {
           previousUserValue: previousUserValue ?? null,
           userValue: after.userValue ?? null,
           effectiveValue: after.effectiveValue ?? null,
+          alsoChanged: alsoChangedKeys(beforeUser, key),
+        };
+      },
+    },
+
+    /* ── M2 生长格 `AI#68`：通用配置**清覆盖**（写侧 = 上一格 `setConfiguration`，读侧 = `readCommands`）── */
+
+    {
+      id: "workbench.action.clearConfiguration",
+      title: "清除配置项覆盖",
+      category: "首选项",
+      // ⚠️ `description` **单行写**（同 readCommands／setConfiguration：多行拼接的续行不匹配审计的 `description:` 前缀豁免）
+      description: "删掉一个配置键的用户覆盖（user scope）——回到该键的默认值，是 workbench.action.setConfiguration 的反动作；同样按声明面校验（未声明／ai.* 禁写／显示槽一律拒），回执带清掉前后的值与本次顺带动过的其它键。本来就没有覆盖时如实回 noop ＋ reason=no-override。⛔ 别拿「写 null」或「只给键不给值」当清覆盖",
+      params: [
+        {
+          name: "key",
+          type: "string",
+          required: true,
+          description: "配置键，如 app.glassBlur（键名清单：workbench.action.listConfigurations）",
+        },
+      ],
+      handler: async (...args: unknown[]) => {
+        const key = pickStringArg(args, "key");
+        if (key === null) {
+          return clearRefusal(
+            null,
+            "bad-args",
+            `参数要 {"key":"…"}（或逐位 "键名"）——收到 ${describeValue(args[0])}；键名清单看 workbench.action.listConfigurations`,
+          );
+        }
+
+        // ── 三道门：判据与顺序**与 `setConfiguration` 逐条一致**（同一张拒写面，⛔ 别各写一套） ──
+        const prop = getMergedSchema()[key];
+        if (!prop) {
+          return clearRefusal(
+            key,
+            "undeclared",
+            `配置键 "${key}" 未声明——未声明的键不会有覆盖，也就没有可清的，键名清单看 workbench.action.listConfigurations`,
+          );
+        }
+        const blockedPrefix = WRITE_BLOCKED_PREFIXES.find((p) => key.startsWith(p));
+        if (blockedPrefix) {
+          return clearRefusal(
+            key,
+            "blocked",
+            `配置键 "${key}" 落在拒写面 "${blockedPrefix}"（AI 接入族：门锁／调试端口／账本开关）——清覆盖会回落到**默认值**，而默认值可能就是「开着」：被管的那个不许自己把门解锁，这些键只由用户在设置页里点`,
+          );
+        }
+        if (prop.renderHint && WRITE_BLOCKED_HINTS.includes(prop.renderHint)) {
+          return clearRefusal(
+            key,
+            "display-only",
+            `配置键 "${key}" 的 renderHint 是 "${prop.renderHint}"——这是显示槽（状态行／按钮），不是设置值，没有覆盖可清`,
+          );
+        }
+
+        const previousUserValue = inspectConfiguration(key).userValue;
+        const beforeUser = snapshotUserLayer();
+        // 「本来就没有覆盖」⇒ 如实报 `no-override`（⛔ 不报 cleared:true 假装清掉了一个不存在的东西：
+        // 「空 ≠ 失败」，但也**不是**「做成了」——调用方要能分辨「本来就没有」与「我刚清了」）
+        if (previousUserValue === undefined) {
+          return {
+            key,
+            cleared: false,
+            noop: true,
+            reason: "no-override",
+            previousUserValue: null,
+            userValue: null,
+            effectiveValue: inspectConfiguration(key).effectiveValue ?? null,
+            alsoChanged: [],
+          };
+        }
+
+        let persisted = true;
+        let persistError = "";
+        try {
+          await resetConfigurationValue(key, "user");
+        } catch (e) {
+          // 内存层已删、**落盘那一步失败**（测试环境无持久化即走这条）——必须说出来（重启会回来），
+          // ⛔ 不能因为「内存里已经没了」就报成功。照写面先例：异常不外抛（外抛会被壳弹用户红 toast）。
+          persisted = false;
+          persistError = e instanceof Error ? e.message : String(e);
+        }
+        await settleCascades();
+
+        // ── 回读对账：判据取「user 层真的没有这个键了」，⛔ 不信「调用没抛」＝「覆盖没了」 ──
+        const after = inspectConfiguration(key);
+        const cleared = after.userValue === undefined;
+        return {
+          key,
+          cleared,
+          persisted,
+          ...(persisted
+            ? cleared
+              ? {}
+              : {
+                  reason: "not-cleared",
+                  error: `配置键 "${key}" 清后回读 userValue 是 ${describeValue(after.userValue)}（不是「没有」）——没清掉，⛔ 别当清好了`,
+                }
+            : {
+                reason: "persist-failed",
+                error: `配置键 "${key}" 的覆盖已从内存删掉但**落盘失败**（${persistError}）——本次会话内是默认值，重启会回来`,
+              }),
+          previousUserValue: previousUserValue ?? null,
+          userValue: after.userValue ?? null,
+          effectiveValue: after.effectiveValue ?? null,
+          alsoChanged: alsoChangedKeys(beforeUser, key),
+          // 声明了 `resetsToDefault` 的 string 键（字体/背景四键）在设置页那枚按钮上写的是「不跟随主题」哨兵
+          // ——与本命令（删覆盖 = 回落到默认值／主题）**终点不同**，如实说出来，⛔ 不假装是一回事
+          ...(prop.resetsToDefault && prop.type !== "number"
+            ? {
+                notice: "该键在设置页还有一枚「重置为默认项」（效果 = 不跟随主题）——本命令删的是用户覆盖（回落到默认值／主题），两者终点不同",
+              }
+            : {}),
         };
       },
     },

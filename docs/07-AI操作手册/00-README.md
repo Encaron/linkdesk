@@ -75,7 +75,7 @@
 | 分屏／并屏／移标签／改分屏比例 | `linkdesk.pool.tabAction({action: "splitTab" \| "moveTab" \| "updateSplitSizes" \| …})` |
 | 底部面板／视图显隐、侧栏 | 命令 `workbench.action.togglePanel*` / `toggleSidebar*` / `toggleViewVisibility` |
 | 悬浮面板打开某视图 | 命令 `workbench.action.revealFloatingPanel`（`viewId`, `pluginId?`） |
-| 改设置项 | `linkdesk.configuration.get/set`（门②）——**软件外**（门③）用命令 `workbench.action.getConfiguration` / `workbench.action.setConfiguration`（⛔ 只写用户层；`ai.*` 与只读/动作项会被拒，见 [03 章 §6](03-按任务操作.md)） |
+| 改设置项 | `linkdesk.configuration.get/set`（门②）——**软件外**（门③）用命令 `workbench.action.getConfiguration` / `workbench.action.setConfiguration` / `workbench.action.clearConfiguration`（⛔ 只写用户层；删覆盖只有 `clearConfiguration` 一条路——`value:null` ≠ 删覆盖；`ai.*` 与只读/动作项会被拒，见 [03 章 §6](03-按任务操作.md)） |
 | 知道这台机器上有**哪些串口** | 命令 `serial-monitor.listPorts`（回 `{portName, description, open, sessionId}`；软件内也可 `linkdesk.serial.listPorts()`） |
 | 有**哪几条串口会话**／点名改某一条 | 命令 `serial-monitor.listSessions`（拿 `sessionId`）→ 再把 `{"sessionId":"…"}` 传给 `serial-monitor.toggle*` / `setSendCoding` / `closeSession` |
 | 切主题／切语言 | 命令 `theme.pick` / `workbench.action.selectLanguage`；或 `linkdesk.theme.apply/getAvailable` |

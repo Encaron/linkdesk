@@ -31,9 +31,12 @@ import { APP_PLUGIN_ID } from "../../services/plugins/PluginStateService";
  *    （arity=1 时「一个对象」可能就是它的合法实参，壳不替调用方猜）⇒ 本命令 arity=1，展开不生效，
  *    外部 AI 照 `params[].name` 写下的 `{"key":"…"}` 会**整包**落进 `args[0]`。这里认下来，两形等价。
  *
+ * ⚠️ **写面共用**（`AI#68`）：`settingsCommands` 的 `clearConfiguration` 也收同一个形状的键名参数
+ *    ⇒ 从读面导出、写面引用（同一件「两形等价」的归一只写一遍，⛔ 别各抄一份迟早分叉）。
+ *
  * @returns 合法 ⇒ 去掉首尾空白的键名；不合法 ⇒ `null`（调用方转成**载荷里的报错**，见 `badArg`）
  */
-function pickStringArg(args: unknown[], name: string): string | null {
+export function pickStringArg(args: unknown[], name: string): string | null {
   const raw = args[0];
   const value =
     raw !== null && typeof raw === "object" && !Array.isArray(raw)

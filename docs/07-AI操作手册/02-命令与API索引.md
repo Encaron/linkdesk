@@ -50,7 +50,7 @@
 
 <!-- BEGIN COMMAND-INDEX -->
 
-**宿主命令 90 条 / 7 个分类**——插件命令不在本表（运行时用 `getCommands()` 查）。
+**宿主命令 91 条 / 7 个分类**——插件命令不在本表（运行时用 `getCommands()` 查）。
 
 ### 帮助（6）
 
@@ -135,7 +135,7 @@
 | `workbench.action.toggleSidebarVisibility` | 切换侧栏可见性 | 显示/隐藏主侧栏 | —— | —— |
 | `workbench.action.toggleViewVisibility` | 切换视图可见性 | 显示/隐藏指定视图 | `ctx`: object 必填 — { viewId: string; containerId?: string }——目标视图 id，containerId 用于同 viewId 消歧 | —— |
 
-### 首选项（23）
+### 首选项（24）
 
 | 命令 id | 标题 | 说明 | 参数（调用实参） | when 门控 |
 |:--|:--|:--|:--|:--|
@@ -152,6 +152,7 @@
 | `aiBridge.statusCli` | CLI 通道状态 | CLI 通道实时状态（只读数据源：CLI 与 MCP 共用同一个内核监听，状态同源） | —— | —— |
 | `aiBridge.statusDebug` | 调试端口状态 | CDP 调试端口实况（只读数据源：argv 是唯一真相，与命令行实况一致不猜） | —— | —— |
 | `aiBridge.statusMcp` | MCP 通道状态 | MCP 通道实时状态（只读数据源：返回「运行中 · 地址」等状态文本，供设置页状态行取用） | —— | —— |
+| `workbench.action.clearConfiguration` | 清除配置项覆盖 | 删掉一个配置键的用户覆盖（user scope）——回到该键的默认值，是 workbench.action.setConfiguration 的反动作；同样按声明面校验（未声明／ai.* 禁写／显示槽一律拒），回执带清掉前后的值与本次顺带… | `key`: string 必填 — 配置键，如 app.glassBlur（键名清单：workbench.action.listConfigurations） | —— |
 | `workbench.action.copySettingAsJson` | 复制为 JSON | 把指定设置项的当前值以 JSON 复制到剪贴板 | `ctx`: object 必填 — { settingKey: string }——目标设置项 id | —— |
 | `workbench.action.copySettingId` | 复制设置 ID | 把指定设置项的 id 复制到剪贴板 | `ctx`: object 必填 — { settingKey: string }——目标设置项 id | —— |
 | `workbench.action.followTheme` | 跟随主题 | 取消指定设置项的用户覆盖，让它重新跟随当前主题 | `ctx`: object 必填 — { settingKey: string }——目标设置项 id | `settingFollowTheme` |
