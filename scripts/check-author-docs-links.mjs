@@ -2,7 +2,7 @@
 /**
  * 作者面文档门禁 ② —— **出界链接必须指向"作者真该看的东西"**（E6#105m）。
  *
- * 出处（唯一真源，本文不重述判据）：`docs/02-Electron架构/E6_插件生态与发布/插件源码外移层/11-作者面文档收口.md`
+ * 出处（唯一真源，本文不重述判据）：`docs/02-Electron架构/插件生态与发布/插件源码外移层/11-作者面文档收口.md`
  * （§〇 读者判定 + §二 Y1/Y7 + §八 两条门禁）。
  *
  * 判据一句话：**`docs/03-插件制造/**` 里的链接，只要落点在 `docs/03-插件制造/` **之外**，
@@ -117,7 +117,7 @@ function main() {
     console.error(
       "\n  两条正路：① 这链接该给作者看 ⇒ 加进 scripts/author-docs-outbound-allowlist.txt（**必须写真理由**）" +
         "\n            ② 不该给作者看（内部档案 / 壳开发规范 / 设计草图）⇒ 改成人话，别指。" +
-        "\n  判据 → docs/02-Electron架构/E6_插件生态与发布/插件源码外移层/11-作者面文档收口.md §八\n",
+        "\n  判据 → docs/02-Electron架构/插件生态与发布/插件源码外移层/11-作者面文档收口.md §八\n",
     );
     process.exit(1);
   }
@@ -133,7 +133,7 @@ function selfTest() {
     { name: "界内", from: `${docsRel}/00-README.md`, target: "17-区域地图.md", resolvesOut: false, flag: false },
     { name: "界内子夹", from: `${docsRel}/主题/01-做一个主题插件.md`, target: "../11-主题制作.md", resolvesOut: false, flag: false },
     { name: "界外已报备（SDK README）", from: `${docsRel}/13-插件开发指南.md`, target: "../../packages/plugin-sdk/README.md", resolvesOut: true, flag: false },
-    { name: "界外未报备（内部档案）", from: `${docsRel}/13-插件开发指南.md`, target: "../../docs/02-Electron架构/E6_插件生态与发布/E6-执行清单.md", resolvesOut: true, flag: true },
+    { name: "界外未报备（内部档案）", from: `${docsRel}/13-插件开发指南.md`, target: "../../docs/02-Electron架构/插件生态与发布/E6-执行清单.md", resolvesOut: true, flag: true },
   ];
   const allowlist = readAllowlist();
   const allowed = allowlist.map((e) => e.target);
@@ -152,7 +152,7 @@ function selfTest() {
     );
   }
   // 代码块里的示例链接不算引用
-  const prose = proseOnly("```\n[x](../02-Electron架构/E6_插件生态与发布/E6-执行清单.md)\n```\n正文 `[y](../a/b.md)` 结束\n");
+  const prose = proseOnly("```\n[x](../02-Electron架构/插件生态与发布/E6-执行清单.md)\n```\n正文 `[y](../a/b.md)` 结束\n");
   const inCode = extractTargets(prose).length;
   const okCode = inCode === 0;
   if (!okCode) bad++;

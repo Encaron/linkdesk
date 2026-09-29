@@ -2,7 +2,7 @@
 
 > **待抉择**——`src/core/api/**` 与 `src/core/types/**` 的 JSDoc 仍是中文：作者在编辑器里悬停 `window.linkdesk.commands.executeCommand` 读到的是中文说明，`@linkdesk/plugin-sdk` npm 页面上 API 速查表的 **Notes 列**也是中文。
 > **属软件本体更新**（动的是壳源码的注释面），**交付落点却是作者轴的 npm**（`@linkdesk/contracts` + `@linkdesk/plugin-sdk`）。
-> 2026-09-14 由 E6 第 7 层 7.8 增补（105n）登记在案——原「账④」，见 [E6 作者面文档收口 §11.8.5](../../02-Electron架构/E6_插件生态与发布/插件源码外移层/11-作者面文档收口.md)。
+> 2026-09-14 由 E6 第 7 层 7.8 增补（105n）登记在案——原「账④」，见 [E6 作者面文档收口 §11.8.5](../../02-Electron架构/插件生态与发布/插件源码外移层/11-作者面文档收口.md)。
 
 ---
 

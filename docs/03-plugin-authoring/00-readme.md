@@ -189,5 +189,5 @@ Full story → [04-distribution-format §Listing Is Two Steps](04-distribution-f
 ## Related
 
 - Contract type source of truth: `linkdesk.d.ts` inside the `@linkdesk/contracts` package (arrives with the SDK)
-- Theme system design doc (**the shell's why**; authors need not read it): repo `docs/02-Electron架构/E5.8_归一化基建/外观主题化/`
+- Theme system design doc (**the shell's why**; authors need not read it): repo `docs/02-Electron架构/归一化基建/外观主题化/`
 - Legacy Tauri-era docs: `docs/01-Tauri_P1至P5.5/` (historical reference only)

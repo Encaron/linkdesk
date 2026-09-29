@@ -35,7 +35,7 @@ Three roles: **data source** (terminal/serial/network) → **protocol** (encode/
 | Protocol | `<pluginId>.decode` | `modbus.decode` |
 
 **Rules:**
-- Prefix = plugin ID (the `id` field in `plugin.json`)
+- Prefix = the plugin identity (the `pluginId` field in `plugin.json` — not the per-entry `id`)
 - Action name = a verb (`sendBytes` / `encode` / `parse` / `decode`)
 - A data source is not named `send` — too vague. Byte-level push is `sendBytes`
 - `onData` is an event (Emitter), not a command — it goes through CoreEvents rather than the CommandRegistry. It is listed here only for naming consistency

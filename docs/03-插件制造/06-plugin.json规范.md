@@ -216,7 +216,7 @@ my-plugin/
 | `entry` | `string` | 入口文件路径，相对插件目录。**仅视图/标签页插件需要**——不是 schema 级必需（entryless 侧栏插件零 entry，见「图标栏出现规则」） |
 | `icon` | `string` | 图标标识——codicon/Lucide 名称或 SVG 路径（可选，缺省用默认图标） |
 
-> **`type` 字段已废弃**（E5.7 起不再必需，也不在 schema 必需列表）——loader 从 `entry`/`themes`/`languages`/`mode`/`resources`/`contributes` 等声明字段自动检测贡献类型。
+> **`type` 字段已废弃**（不再必需，也不在 schema 必需列表）——loader 从 `entry`/`themes`/`languages`/`mode`/`resources`/`contributes` 等声明字段自动检测贡献类型。
 
 ### 可选字段
 
@@ -689,5 +689,5 @@ pluginId "app" 是宿主自己的身份（宿主用它注册配置/外观/更新
 
 - `04-插件分发格式.md` — 分发/安装/版本兼容
 - `09-插件目录规范.md` — 源码目录结构与命名约定
-- [E6 第三方作者旅程](../02-Electron架构/E6_插件生态与发布/05-文档与发布/00-第三方作者旅程.md) — 从零到发布的完整路径
+- [第三方作者旅程](../02-Electron架构/插件生态与发布/05-文档与发布/00-第三方作者旅程.md) — 从零到发布的完整路径
 - `plugin.schema.json` — 同目录 JSON Schema 文件（权威版本，三拷贝 gate 之一）

@@ -34,7 +34,7 @@
  *
  * ── 负控（本文件自证「真会红」）──
  *   `--self-test`：① 合成串里的 `E5.7#63.5` / `AI#38.2` / `M1` / `Phase 4` 必须被判出；
- *   ② **路径不误伤**——`E6_插件生态与发布/`、`03-任务档案/M4-通道.md` 必须 0 命中（实证过：第一版
+ *   ② **路径不误伤**——`插件生态与发布/`、`03-任务档案/M4-通道.md` 必须 0 命中（实证过：第一版
  *   真把目录名 `E6_…` 削成了 `_…`，`check-doc-links.mjs` 当场红）；③ 干净串必须 0 命中。
  */
 import { readFileSync, readdirSync, statSync } from "node:fs";
@@ -242,7 +242,7 @@ function main() {
     if (bad.length > 40) console.error(`  …另有 ${bad.length - 40} 处`);
     console.error("");
     console.error("  怎么修：删掉编号本身，**留住冒号后的正文**；有日期可留的留日期（谁改的、为什么改 → git blame + 源注释）。");
-    console.error("  ⛔ 别把 `E6_插件生态与发布/`、`M4-通道.md` 这类**路径里的编号**当工单号删——那是文件/目录名的一部分。");
+    console.error("  ⛔ 别把 `插件生态与发布/`、`M4-通道.md` 这类**路径里的编号**当工单号删——那是文件/目录名的一部分。");
     console.error("  生成区（02 章）不用手改：编号在生成器出口就被剥了（`npm run manual:build`）。");
     process.exit(1);
   }
@@ -278,7 +278,7 @@ function selfTest() {
   eq("正控：`M1` 命中", findIds("（元数据出处 = M1 的约定）").length, 1);
   eq("正控：`Phase 4` 命中", findIds("Phase 4 之后新增的通道").length, 1);
   // ② 负控：路径里的编号**不**误伤（第一版真踩过：削掉目录名 ⇒ 断链）
-  eq("负控：目录名 `E6_插件生态与发布/` 不报", findIds("../02-Electron架构/E6_插件生态与发布/01-x.md").length, 0);
+  eq("负控：目录名 `插件生态与发布/` 不报", findIds("../02-Electron架构/插件生态与发布/01-x.md").length, 0);
   eq("负控：文件名 `M4-通道.md` 不报", findIds("`03-任务档案/M4-通道.md`").length, 0);
   // ③ 干净串不报（否则门禁恒红）
   eq("负控：干净串 0 命中", findIds("设置页「AI 接入 → 通道 → CLI 通道」一键开（2026-09-28）").length, 0);

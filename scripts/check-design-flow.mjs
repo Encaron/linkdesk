@@ -41,7 +41,7 @@ import { execSync } from "child_process";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, ".."); // 代码根（package.json 所在：linkdesk/）
-const CHECKLIST = "docs/02-Electron架构/E5.8_归一化基建/E5.8-执行清单.md";
+const CHECKLIST = "docs/02-Electron架构/归一化基建/E5.8-执行清单.md";
 const CHECKLIST_DIR = dirname(resolve(ROOT, CHECKLIST));
 const DOC_ROOT = "docs/02-Electron架构"; // ③ 扫描根
 const MIN_TASK = 145; // 存量豁免：#0a-#144 一律跳过
@@ -318,7 +318,7 @@ function runSelfTest() {
       [
         "③正控：文件名带「执行清单」⇒ 零（清单天然含标记）",
         false,
-        judgeCapabilityDoc("docs/02-Electron架构/E5.8_归一化基建/E5.8-执行清单.md", "window.linkdesk.foo\n"),
+        judgeCapabilityDoc("docs/02-Electron架构/归一化基建/E5.8-执行清单.md", "window.linkdesk.foo\n"),
         null,
       ],
       [

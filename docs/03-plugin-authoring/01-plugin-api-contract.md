@@ -23,7 +23,7 @@
 
 ## 2. Shell vs Plugin — API Differences
 
-Plugins and the shell run in the same renderer process, but the injected namespace surfaces differ. **Which process each surface is available in, and how the pool/shell/mock coverage works — the single source of truth is [Namespace Matrix §2 coverage table](../02-Electron架构/E5.8_归一化基建/契约生成/命名空间矩阵.md#2-命名空间--四面覆盖矩阵)**; no second list is hand-written here.
+Plugins and the shell run in the same renderer process, but the injected namespace surfaces differ. **Which process each surface is available in, and how the pool/shell/mock coverage works — the single source of truth is [Namespace Matrix §2 coverage table](../02-Electron架构/归一化基建/契约生成/命名空间矩阵.md#2-命名空间--四面覆盖矩阵)**; no second list is hand-written here.
 
 A few key points (a summary of Matrix §2; the matrix wins on details):
 
@@ -47,7 +47,7 @@ A few key points (a summary of Matrix §2; the matrix wins on details):
 - **Generation sources:** `src/core/api/linkdesk-api.ts` + `linkdesk-api/` (15 domain interfaces) + `src/core/types/ipc/*` + `src/core/types/pool/*` (wire payload types)
 - **Generator:** `scripts/generate-contract.mjs` (Route C — the contract type file is the source; pure types bundled into a single file)
 - **Mechanical gate:** the preload on both sides `satisfies` the contract surface types → tsc drift gate; `contracts:check` byte-compares hashes inside `npm run check`
-- **Coverage matrix:** every namespace × pool/shell/mock coverage → [Namespace Matrix §2](../02-Electron架构/E5.8_归一化基建/契约生成/命名空间矩阵.md#2-命名空间--四面覆盖矩阵)
+- **Coverage matrix:** every namespace × pool/shell/mock coverage → [Namespace Matrix §2](../02-Electron架构/归一化基建/契约生成/命名空间矩阵.md#2-命名空间--四面覆盖矩阵)
 
 ### 3.1 How Plugins Consume It
 

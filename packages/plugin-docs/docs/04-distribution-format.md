@@ -2,7 +2,7 @@
 
 > 2026-07-24 · updated 2026-08-21 · **full rewrite 2026-09-06 (flatten to single root + single-file zip distribution)**.
 > **How plugins are delivered, how they are installed, and the version-compatibility rules.** Modeled after VS Code's `.vsix`—LinkDesk distributes via a **single-file `.linkdesk-plugin` zip**.
-> The source of truth for packaging-format details = [linkdesk-plugin format spec](https://github.com/Encaron/linkdesk/blob/electron/docs/02-Electron架构/E6_插件生态与发布/01-插件独立构建/02-linkdesk-plugin格式规范.md) (this page only covers the author-side delivery/install/version story).
+> The source of truth for packaging-format details = [linkdesk-plugin format spec](https://github.com/Encaron/linkdesk/blob/electron/docs/02-Electron架构/插件生态与发布/01-插件独立构建/02-linkdesk-plugin格式规范.md) (this page only covers the author-side delivery/install/version story).
 
 ---
 
@@ -22,7 +22,7 @@ my-plugin/
 └── src/ …                      ← author source (does not go into the zip)
 ```
 
-**Who produces the zip:** [plugin-sdk](https://github.com/Encaron/linkdesk/tree/electron/packages/plugin-sdk) (`npm run publish` goes through the [author journey](https://github.com/Encaron/linkdesk/blob/electron/docs/02-Electron架构/E6_插件生态与发布/05-文档与发布/00-第三方作者旅程.md)) emits `<id>.linkdesk-plugin` + the unpacked directory `dist/<id>.linkdesk-plugin/` at **the project root**. All JS inside the zip is pre-built and self-contained (react-family packages are external, provided by the shell)—**there is no source compilation in the installed state**.
+**Who produces the zip:** [plugin-sdk](https://github.com/Encaron/linkdesk/tree/electron/packages/plugin-sdk) (`npm run publish` goes through the [author journey](https://github.com/Encaron/linkdesk/blob/electron/docs/02-Electron架构/插件生态与发布/05-文档与发布/00-第三方作者旅程.md)) emits `<id>.linkdesk-plugin` + the unpacked directory `dist/<id>.linkdesk-plugin/` at **the project root**. All JS inside the zip is pre-built and self-contained (react-family packages are external, provided by the shell)—**there is no source compilation in the installed state**.
 
 **Why a single file:** the shell loader only accepts pre-built bundles for installed plugins—`plugin-file-service` sees that `index.bundle.js` exists and overwrites the entry to point at it (`resolveEntry`; the bundle entry is always `index.bundle.js`). The zip is "one plugin = one file that can be downloaded, verified, and atomically replaced", and both install/uninstall and marketplace downloads work against it.
 
@@ -51,13 +51,13 @@ my-plugin/
 
 | Source root | Location | Form | HMR | Who lives here |
 |------|------|------|:--:|------|
-| **The plugin's own repo** | GitHub `Encaron/linkdesk-plugin-<id>` (local clones land under `E:\linkdesk-plugins\official\<id>\`) | source + SDK build (`npm run build` → `<id>.linkdesk-plugin`) | ✅ (`linkdesk-plugin-sdk dev`) | **every shipped plugin** (16 today)—one repo each, and the only source of truth for their source |
+| **The plugin's own repo** | GitHub `Encaron/linkdesk-plugin-<id>` (clone it into any local directory you like) | source + SDK build (`npm run build` → `<id>.linkdesk-plugin`) | ✅ (`linkdesk-plugin-sdk dev`) | **every shipped plugin**—one repo each, and the only source of truth for their source |
 | **Shell repo fixtures** | `<shell repo>/plugins/<id>/` (`env.appPluginsDir`) | source + Vite on-the-fly compilation | ✅ (`npm run dev` hot reload) | only the remaining **dev fixture**: `panel-demo` (not shipped, not in the zip) |
 | **Installed state** | `{userData}/plugins/<id>/` | pre-built bundle unpacked from the zip | ❌ (changing the package means rebuild + reinstall/rematerialize) | every plugin installed on the user's machine |
 
 > 🔴 **Why a shipped plugin's source can't be kept in both places**: as soon as the shell repo and the plugin repo each hold a copy, changing one leaves the other stale, and **no gate can detect the divergence** (the content-fingerprint gate only covers zip contents, not source) ⇒ the source of truth must be unique. What the shell repo keeps are **artifacts** (`bundled-plugins/*.linkdesk-plugin`) and **documentation archives**, not source.
 
-> **Real-device loop exception (author dev):** in the installed state, changing a package requires "rebuild + reinstall/rematerialize", which in **every author real-device verification** scenario means the one-shot-cycle pain of WPF v2. The real-device loop automates it—an SDK rebuild in seconds + a **direct write** into `{userData}/plugins/<id>` (same-disk overwrite semantics, effective on reload) becomes the cycle, and the author still never touches the shell. The distribution zip's "don't modify your own bundle" discipline is unchanged (that is the package for end users). Design archive → [author real-device debugging loop](https://github.com/Encaron/linkdesk/blob/electron/docs/02-Electron架构/E6_插件生态与发布/02-插件开发工具链/04-作者真机调试环.md).
+> **Real-device loop exception (author dev):** in the installed state, changing a package requires "rebuild + reinstall/rematerialize", which in **every author real-device verification** scenario means the one-shot-cycle pain of WPF v2. The real-device loop automates it—an SDK rebuild in seconds + a **direct write** into `{userData}/plugins/<id>` (same-disk overwrite semantics, effective on reload) becomes the cycle, and the author still never touches the shell. The distribution zip's "don't modify your own bundle" discipline is unchanged (that is the package for end users). Design archive → [author real-device debugging loop](https://github.com/Encaron/linkdesk/blob/electron/docs/02-Electron架构/插件生态与发布/02-插件开发工具链/04-作者真机调试环.md).
 
 > **Uninstall semantics (after 2026-09-05):** uninstalling an installed plugin = **delete the `{userData}/plugins/<id>/` directory + settle the ledger entry** (no longer a move into `.disabled/`); only app plugins uninstalled from a repo source tree get moved to the `plugins/.disabled/` graveyard (recoverable via reinstall). The sole owner of the ledger `installed-plugins.json` = the renderer-side PluginInstallService; boot only reads its `removed` marker to avoid accidental restoration.
 > 🔵 **Cross-check conclusion (does the `.disabled/` graveyard still have consumers):** **the mechanism remains, with no object at present**. The consumers are alive—`src/pluginLoader/loader.ts` reads it (`reinstallPlugin` / the uninstall toast's "undo" / cross-restart orphan cleanup all treat `env.appPluginsDir/.disabled` as the single authoritative surface). But `env.appPluginsDir` = the shell repo's `plugins/`, and the shipped plugins have moved out ⇒ only the one fixture remains there, and **there is no longer any "app plugin uninstalled from a repo source tree"**. ⇒ The mechanism is **retained** (it is part of the in-repo plugin dev path; removing it would touch three places in the loader plus the main-process scan surface, so risk outweighs benefit), but **don't** treat it as a revocable-uninstall channel for shipped plugins anymore.
@@ -173,4 +173,4 @@ Author-side notes on install/uninstall/update/reinstall are in [02 plugin lifecy
 ---
 
 > **← Previous:** `03-contributes-spec.md`
-> **→ Related:** `02-plugin-lifecycle.md` (install/uninstall/update) · `09-plugin-directory-layout.md` (source directory) · [linkdesk-plugin format spec](https://github.com/Encaron/linkdesk/blob/electron/docs/02-Electron架构/E6_插件生态与发布/01-插件独立构建/02-linkdesk-plugin格式规范.md) (the source of truth for the zip format)
+> **→ Related:** `02-plugin-lifecycle.md` (install/uninstall/update) · `09-plugin-directory-layout.md` (source directory) · [linkdesk-plugin format spec](https://github.com/Encaron/linkdesk/blob/electron/docs/02-Electron架构/插件生态与发布/01-插件独立构建/02-linkdesk-plugin格式规范.md) (the source of truth for the zip format)

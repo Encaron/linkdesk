@@ -2,7 +2,7 @@
 /**
  * 作者面文档门禁 ③ —— **双语对齐**（E6#105n）。
  *
- * 出处（唯一真源，本文不重述判据）：`docs/02-Electron架构/E6_插件生态与发布/插件源码外移层/11-作者面文档收口.md`
+ * 出处（唯一真源，本文不重述判据）：`docs/02-Electron架构/插件生态与发布/插件源码外移层/11-作者面文档收口.md`
  * 执行记录 §11.8（2026-09-14 用户拍板：中文树留作维护者面、英文树是作者面主显，双语必须上尺子）。
  *
  * 判据一句话：**中文树 `docs/03-插件制造/**` 与英文树 `docs/03-plugin-authoring/**` 必须篇篇对应**——
@@ -113,7 +113,7 @@ function main() {
     console.error(`\n❌ [author-docs-bilingual] 中英两棵树没有篇篇对齐（${problems.length} 处）：\n`);
     for (const p of problems) console.error("  " + p);
     console.error(
-      "\n  判据与处置口径 → docs/02-Electron架构/E6_插件生态与发布/插件源码外移层/11-作者面文档收口.md §11.8" +
+      "\n  判据与处置口径 → docs/02-Electron架构/插件生态与发布/插件源码外移层/11-作者面文档收口.md §11.8" +
         "\n  （加一篇文档 = 两棵树都加 + 在 scripts/check-author-docs-bilingual.mjs 的 FILENAME_MAP 里登记一行。）\n",
     );
     process.exit(1);

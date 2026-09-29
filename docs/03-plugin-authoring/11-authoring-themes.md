@@ -1,6 +1,6 @@
 # 11-Authoring Themes (third-party theme plugin author guide)
 
-> **Status:** final (2026-08-23) — the schema is frozen ([05](../02-Electron架构/E5.8_归一化基建/外观主题化/05-主题数据模型.md) decisions A-F).
+> **Status:** final (2026-08-23) — the schema is frozen ([05](../02-Electron架构/归一化基建/外观主题化/05-主题数据模型.md) decisions A-F).
 > **In one line:** a theme = a kind of plugin — one recipe json (style domain + colorway variants) + optional assets; a "domain contributor" inherits the default for any domain it leaves out, so the less you write the more stable it is.
 > **AI-friendliness:** the readers of this doc = **humans + AI** — an AI reading it can produce valid theme files, and an AI reading an example theme (such as the migrated mint-soda) can imitate equivalents. Every schema concept has exactly one way to be written (decision F: always `colorways[]`).
 > **2026-09-06 reconciliation with the implementation** (audit): flattened single root (no plugins/{builtin,user}) · shared controls via @linkdesk/ui · distribution = .linkdesk-plugin zip. References to the corresponding mechanisms have been removed from this page.
@@ -9,8 +9,8 @@
 
 - A theme is a **plugin** (hard constraint 10: the shell hard-codes no plugin id; themes also go through a plugin.json declaration).
 - One theme plugin = 1 recipe json (`appearance` style domain + `colorways[]` colorway variants). It may also contain multiple recipe json files.
-- **Domain contributor**: write only the domains you own; the rest inherit the shell defaults ([03 Domain Contributors](../02-Electron架构/E5.8_归一化基建/外观主题化/03-域贡献者与混搭.md)) — a pure-color theme = colors only; a glass theme = glass + colors.
-- **Style vs. colorway separation**: if you want "1 style base + N colorways" → put `colorways[]` in one recipe ([05 §2](../02-Electron架构/E5.8_归一化基建/外观主题化/05-主题数据模型.md) for the complete schema).
+- **Domain contributor**: write only the domains you own; the rest inherit the shell defaults ([03 Domain Contributors](../02-Electron架构/归一化基建/外观主题化/03-域贡献者与混搭.md)) — a pure-color theme = colors only; a glass theme = glass + colors.
+- **Style vs. colorway separation**: if you want "1 style base + N colorways" → put `colorways[]` in one recipe ([05 §2](../02-Electron架构/归一化基建/外观主题化/05-主题数据模型.md) for the complete schema).
 
 ## 2. Writing a theme (create the directories first → three steps)
 
@@ -65,7 +65,7 @@ theme-myglass/
 //     live in their own repos with the same project shape as third parties; the in-repo
 //     "../../../public/schemas/…" relative form **became void when the source moved out**.
 // Malformed-input interception: editor IntelliSense + the SDK's validateThemeJson (the same channel for npm projects and the official plugin repo)
-// Full schema in [05 §2](../02-Electron架构/E5.8_归一化基建/外观主题化/05-主题数据模型.md); the runtime parseThemeRecipe toast is the second line of defense
+// Full schema in [05 §2](../02-Electron架构/归一化基建/外观主题化/05-主题数据模型.md); the runtime parseThemeRecipe toast is the second line of defense
 {
   "id": "myglass", "name": "My Glass", "type": "dark",
   "appearance": {
@@ -127,8 +127,8 @@ theme-liquid-glass/
 
 | Domain | How to write it | Notes |
 |:--|:--|:--|
-| radius | six size steps | `--radius-pill`/`--radius-full` form values are not written here (excluded from the scale, [08 §3](../02-Electron架构/E5.8_归一化基建/外观主题化/08-持久化与配置.md)) |
-| glass | material keys + floating form | specular/morph = liquid glass's "specular highlight / response" ([02 §2.3](../02-Electron架构/E5.8_归一化基建/外观主题化/02-变量契约.md) material positioning); radius/shadow = floating corner radius / drop shadow (merged into glass after the surface domain was removed; inset is host-derived and border is not a field) |
+| radius | six size steps | `--radius-pill`/`--radius-full` form values are not written here (excluded from the scale, [08 §3](../02-Electron架构/归一化基建/外观主题化/08-持久化与配置.md)) |
+| glass | material keys + floating form | specular/morph = liquid glass's "specular highlight / response" ([02 §2.3](../02-Electron架构/归一化基建/外观主题化/02-变量契约.md) material positioning); radius/shadow = floating corner radius / drop shadow (merged into glass after the surface domain was removed; inset is host-derived and border is not a field) |
 | font | ui asset path + mono system family name | asset fonts take two steps: first register the family name with @font-face → then write `--font-ui` |
 | background | image asset + opacity + mask | relative path → getPluginAssetPath (hard constraint 12) |
 | colorways | style base + N colorways | 3-4 is recommended; a single colorway is still an array with 1 item (decision F) |
@@ -143,19 +143,19 @@ theme-liquid-glass/
 | Writing a top-level `colors` (no `colorways`) | **The old format is deprecated** (decision F) — the engine reads only `colorways[]`; even a single colorway goes in an array with 1 item |
 | Writing absolute paths | Everything blows up under packaged `file://` — always relative paths + getPluginAssetPath |
 | Repeating every color | Sparse override = write only the differing keys; unwritten ones inherit `:root`, which is more stable |
-| Wanting to break free of the accent color | Use **your own token** (e.g. `--toggle-on-bg`) instead of reading `--accent` ([04 §6](../02-Electron架构/E5.8_归一化基建/外观主题化/04-两层调节与设置页.md)) |
-| Large blur values | `--glass-blur` has a performance ceiling (large-area backdrop-filter is a GPU burden) — the contract will spell out the number ([02 §2.3](../02-Electron架构/E5.8_归一化基建/外观主题化/02-变量契约.md) pending decision) |
+| Wanting to break free of the accent color | Use **your own token** (e.g. `--toggle-on-bg`) instead of reading `--accent` ([04 §6](../02-Electron架构/归一化基建/外观主题化/04-两层调节与设置页.md)) |
+| Large blur values | `--glass-blur` has a performance ceiling (large-area backdrop-filter is a GPU burden) — the contract will spell out the number ([02 §2.3](../02-Electron架构/归一化基建/外观主题化/02-变量契约.md) pending decision) |
 
 ## 4. What theme authors get
 
-- Data: `window.linkdesk.theme.listRecipes()` (including colorways/preview colors) — third-party UIs can consume it too ([06 §6](../02-Electron架构/E5.8_归一化基建/外观主题化/06-主题API契约.md) pending decision 3: prefer reusing the general API).
+- Data: `window.linkdesk.theme.listRecipes()` (including colorways/preview colors) — third-party UIs can consume it too ([06 §6](../02-Electron架构/归一化基建/外观主题化/06-主题API契约.md) pending decision 3: prefer reusing the general API).
 - Applying: `setRecipe`/`setColorway`, or writing the `app.theme` configuration directly.
 - Events: `theme:changed` (the payload carries tokens) for live reactions.
-- Mix-and-match: your theme automatically shows up among the mix-and-match sources in the settings page according to the domains it contributes (`RecipeMeta.domains`), with **zero extra work for the author** ([10 §2](../02-Electron架构/E5.8_归一化基建/外观主题化/10-混搭设计.md)).
+- Mix-and-match: your theme automatically shows up among the mix-and-match sources in the settings page according to the domains it contributes (`RecipeMeta.domains`), with **zero extra work for the author** ([10 §2](../02-Electron架构/归一化基建/外观主题化/10-混搭设计.md)).
 
 ## 5. Migration (existing theme plugins — decision F: zero backward compatibility)
 
-The engine **reads only the new format** (`colorways[]`); the old flat format is no longer read ([05 §5](../02-Electron架构/E5.8_归一化基建/外观主题化/05-主题数据模型.md)). Converting existing theme plugins:
+The engine **reads only the new format** (`colorways[]`); the old flat format is no longer read ([05 §5](../02-Electron架构/归一化基建/外观主题化/05-主题数据模型.md)). Converting existing theme plugins:
 
 | Plugin | Current state | After migration |
 |:--|:--|:--|
@@ -167,7 +167,7 @@ Conversion = **pure data editing** (wrapping `colors` in a `colorways[]` array),
 
 ## 6. Related
 
-- Authoritative schema: [05-Theme Data Model](../02-Electron架构/E5.8_归一化基建/外观主题化/05-主题数据模型.md)
-- Authoritative API: [06-Theme API Contract](../02-Electron架构/E5.8_归一化基建/外观主题化/06-主题API契约.md)
-- Theme appearance doc set: [Appearance Theming README](../02-Electron架构/E5.8_归一化基建/外观主题化/README.md)
+- Authoritative schema: [05-Theme Data Model](../02-Electron架构/归一化基建/外观主题化/05-主题数据模型.md)
+- Authoritative API: [06-Theme API Contract](../02-Electron架构/归一化基建/外观主题化/06-主题API契约.md)
+- Theme appearance doc set: [Appearance Theming README](../02-Electron架构/归一化基建/外观主题化/README.md)
 - General plugin specs: [06-plugin-json-spec](06-plugin-json-spec.md) / [03-contributes-spec](03-contributes-spec.md)

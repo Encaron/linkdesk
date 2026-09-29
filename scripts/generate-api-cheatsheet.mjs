@@ -5,7 +5,7 @@
  *
  * 插件作者看 `@linkdesk/plugin-sdk` 的 npm 页面时，只有 `README.md` 会渲染。
  * 「有哪些命名空间、各有哪些方法」如果手写在 README 里，就等于**第二份真相源**——
- * 而第二份真相源必然漂移：实证见 `docs/02-Electron架构/E5.8_归一化基建/契约生成/命名空间矩阵.md`
+ * 而第二份真相源必然漂移：实证见 `docs/02-Electron架构/归一化基建/契约生成/命名空间矩阵.md`
  * （手维护，2026-08-20 停更；截至 2026-09-12 已漏 `appearance`/`floatingPanelHost`/`panel`/
  * `settings`/`factorySlots`/`app` 六个命名空间，且仍留着已从契约删除的 `config` 别名与 `toast`）。
  * 人读的清单一旦过期，作者就会照着不存在的面写代码。

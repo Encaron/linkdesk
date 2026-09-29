@@ -1,4 +1,5 @@
 # E6 服务 IPC 就绪——E5.5#46-#48
+> 非新能力——本档为存量设计存档，仅沿革记录，不新增任何 window.linkdesk 面。
 
 > 📖 **背景：** E6（插件生态与发布）需要三个核心服务：PluginInstallService（安装/卸载）、PluginUpdateService（更新检测）、PluginMarketplaceService（商店交互）。这三个服务为了兼容多 WebView，必须在 E5.5 中用 IPC 实现——不要等 E6 发现"import @src/core 静默失效"再返工。
 
@@ -123,7 +124,7 @@ registerPluginManagerHandlers(ipcMain, pluginViewRegistry) {
 
 ## 相关
 
-- [E6 执行清单](../E6_插件生态与发布/E6-执行清单.md)
-- [E6#28 代码签名坑位](../E6_插件生态与发布/E6-执行清单.md)
-- [E6#31e LSP 路径解析——插件自带 LSP 二进制定位](../E6_插件生态与发布/E6-执行清单.md)
+- [E6 执行清单](../插件生态与发布/E6-执行清单.md)
+- [E6#28 代码签名坑位](../插件生态与发布/E6-执行清单.md)
+- [E6#31e LSP 路径解析——插件自带 LSP 二进制定位](../插件生态与发布/E6-执行清单.md)
 - [IpcBridge.ts](linkdesk/electron/ipc-bridge.ts)

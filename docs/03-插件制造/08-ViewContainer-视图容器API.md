@@ -191,7 +191,7 @@ useEffect(() => {
 ```typescript
 // 查询——返回 DTO（可序列化公开字段，render/actions 已剥）
 const views = await window.linkdesk.viewContainer.getViews("explorer");      // ViewDto[]
-const view = await window.linkdesk.viewContainer.getView("folders");          // ViewDto | undefined
+const view = await window.linkdesk.viewContainer.getView("file-tree", "folders"); // 复合寻址 (pluginId, viewId)——精确防碰撞；ViewDto | undefined
 const container = await window.linkdesk.viewContainer.getViewContainer("explorer");
 
 // 更新元数据——标题随数据变化（对标 VS Code registerViews 更新）

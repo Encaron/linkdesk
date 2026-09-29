@@ -137,9 +137,9 @@ appearance.<domain>.<key>  write only the keys you want to change   →  unwritt
 | What you're looking up | Where to go |
 |:--|:--|
 | The type/enum/description of every recipe field | `theme.schema.json` · `schemas/theme.schema.json` inside the SDK package |
-| What variables mean and their defaults (font/radius/glass/background/shadow) | repo `docs/02-Electron架构/E5.8_归一化基建/外观主题化/02-变量契约.md` |
-| The data model (the three concepts: recipe / colorway variant / domain) | repo `docs/02-Electron架构/E5.8_归一化基建/外观主题化/05-主题数据模型.md` |
-| The theme API and events (`setRecipe` / `theme:changed`) | repo `docs/02-Electron架构/E5.8_归一化基建/外观主题化/06-主题API契约.md` |
+| What variables mean and their defaults (font/radius/glass/background/shadow) | repo `docs/02-Electron架构/归一化基建/外观主题化/02-变量契约.md` |
+| The data model (the three concepts: recipe / colorway variant / domain) | repo `docs/02-Electron架构/归一化基建/外观主题化/05-主题数据模型.md` |
+| The theme API and events (`setRecipe` / `theme:changed`) | repo `docs/02-Electron架构/归一化基建/外观主题化/06-主题API契约.md` |
 | The full table of the shell's default tokens | `:root` in the repo's `src/index.css` |
 
 > All of the above are reachable on GitHub; **inside your plugin project, the only one within arm's reach is `theme.schema.json` in the SDK package** — point `$schema` at it to get editor completion and validation errors.

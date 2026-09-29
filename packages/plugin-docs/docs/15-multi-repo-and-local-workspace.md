@@ -39,7 +39,7 @@ E:\linkdesk-plugins\
 
 **Repository names are not forced to carry any prefix; third parties have zero constraints.** This has been settled by the maintainer: naming your own plugin (repo) is a legitimate right of the author and can't be dictated.
 
-- **A recommended but non-mandatory convention**: official plugin repos uniformly use `linkdesk-plugin-<id>` (the text lives in [plugin-source-externalization/09-naming-conventions.md §5](https://github.com/Encaron/linkdesk/blob/electron/docs/02-Electron架构/E6_插件生态与发布/插件源码外移层/09-命名规范.md) — maintained in that one place only); third parties may do as they please.
+- **A recommended but non-mandatory convention**: official plugin repos uniformly use `linkdesk-plugin-<id>` (the text lives in [plugin-source-externalization/09-naming-conventions.md §5](https://github.com/Encaron/linkdesk/blob/electron/docs/02-Electron架构/插件生态与发布/插件源码外移层/09-命名规范.md) — maintained in that one place only); third parties may do as they please.
 - **The cost of renaming a repo**: published catalog entries have `owner/repo` embedded in `downloadUrl` / `readmeUrl`, so **renaming breaks the download and README links of already-published plugins** (the source itself is unaffected). Republishing one new entry after the rename heals it, but old version entries still point at the old links — **if you can avoid changing it, don't; if you must, do it early.**
 
 ---
@@ -54,7 +54,7 @@ Three "names" that have nothing to do with one another; conflating them is the r
 | **Display name** (`plugin.json`'s `name`) | What people see in the UI and on marketplace cards | ✅ **Change freely** (bump and republish when done) |
 | **Repository name** | The project repo on GitHub | ✅ Free (costs as per the previous section) |
 
-Benchmarked against the empirically verified VS Code position (`ms-vscode.cpptools`: identity = `publisher.name`, immutable; `displayName` = freely changeable; repository name unrelated to identity) → full measurement and reasoning → [plugin-source-externalization/09-naming-conventions.md](https://github.com/Encaron/linkdesk/blob/electron/docs/02-Electron架构/E6_插件生态与发布/插件源码外移层/09-命名规范.md); the author-facing rule text → [16-naming-conventions](16-naming-conventions.md).
+Benchmarked against the empirically verified VS Code position (`ms-vscode.cpptools`: identity = `publisher.name`, immutable; `displayName` = freely changeable; repository name unrelated to identity) → full measurement and reasoning → [plugin-source-externalization/09-naming-conventions.md](https://github.com/Encaron/linkdesk/blob/electron/docs/02-Electron架构/插件生态与发布/插件源码外移层/09-命名规范.md); the author-facing rule text → [16-naming-conventions](16-naming-conventions.md).
 
 ---
 

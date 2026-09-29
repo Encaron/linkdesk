@@ -1,7 +1,7 @@
 # Naming Conventions — Seven Names, One Identity
 
 > 2026-09-14 · **Reader = plugin author.** After reading, you can answer four questions: **how do I choose an id? can it be changed? how do I change the display name? what should the repo be called?**
-> The decision rationale and the VS Code empirical evidence live in [plugin-source-externalization/09-naming-conventions.md](https://github.com/Encaron/linkdesk/blob/electron/docs/02-Electron架构/E6_插件生态与发布/插件源码外移层/09-命名规范.md) — this document is the author-facing landing point, and of the two there is **only one place to maintain**: change the rule here first and point back; don't create a second copy.
+> The decision rationale and the VS Code empirical evidence live in [plugin-source-externalization/09-naming-conventions.md](https://github.com/Encaron/linkdesk/blob/electron/docs/02-Electron架构/插件生态与发布/插件源码外移层/09-命名规范.md) — this document is the author-facing landing point, and of the two there is **only one place to maintain**: change the rule here first and point back; don't create a second copy.
 
 ---
 
@@ -39,7 +39,7 @@
 - **How do I choose an id?** Character set per the table above; **immutable once published** — it = install directory name + uninstall record key + update reconciliation key, so swapping the id is swapping in a different plugin (old data appears lost, the update chain breaks silently). **Write `"pluginId"` explicitly in `plugin.json`**; don't rely on the directory-name fallback.
 - **Can I change the id?** No. If you want a different name, change the display name.
 - **How do I change the display name?** `plugin.json`'s `name` can be changed freely; when done, **bump the version and republish** (an installed user's copy is frozen per version, so others won't see the new name otherwise).
-- **What should the repo be called?** Completely free; no prefix is enforced. Official plugins are recommended to uniformly use `linkdesk-plugin-<id>` (the convention text lives in [plugin-source-externalization/09-naming-conventions.md §5](https://github.com/Encaron/linkdesk/blob/electron/docs/02-Electron架构/E6_插件生态与发布/插件源码外移层/09-命名规范.md), maintained only there once settled); third parties may do as they please.
+- **What should the repo be called?** Completely free; no prefix is enforced. Official plugins are recommended to uniformly use `linkdesk-plugin-<id>` (the convention text lives in [plugin-source-externalization/09-naming-conventions.md §5](https://github.com/Encaron/linkdesk/blob/electron/docs/02-Electron架构/插件生态与发布/插件源码外移层/09-命名规范.md), maintained only there once settled); third parties may do as they please.
 
 ---
 
@@ -221,4 +221,4 @@ menu items **never appear**—silently, on both the declarative and the imperati
 
 ---
 
-> **← Index:** [00-readme](00-readme.md) · **Related:** [15-multi-repo-and-local-workspace](15-multi-repo-and-local-workspace.md) · [06-plugin-json-spec](06-plugin-json-spec.md) · [plugin-source-externalization/09-naming-conventions.md](https://github.com/Encaron/linkdesk/blob/electron/docs/02-Electron架构/E6_插件生态与发布/插件源码外移层/09-命名规范.md) (decision rationale)
+> **← Index:** [00-readme](00-readme.md) · **Related:** [15-multi-repo-and-local-workspace](15-multi-repo-and-local-workspace.md) · [06-plugin-json-spec](06-plugin-json-spec.md) · [plugin-source-externalization/09-naming-conventions.md](https://github.com/Encaron/linkdesk/blob/electron/docs/02-Electron架构/插件生态与发布/插件源码外移层/09-命名规范.md) (decision rationale)

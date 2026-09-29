@@ -693,5 +693,5 @@ A plugin that fails any validation does not block other plugins from loading.
 
 - `04-distribution-format.md` — distribution/installation/version compatibility
 - `09-plugin-directory-layout.md` — source directory structure and naming conventions
-- [Third-party author journey](https://github.com/Encaron/linkdesk/blob/electron/docs/02-Electron架构/E6_插件生态与发布/05-文档与发布/00-第三方作者旅程.md) — the complete path from zero to publication
+- [Third-party author journey](https://github.com/Encaron/linkdesk/blob/electron/docs/02-Electron架构/插件生态与发布/05-文档与发布/00-第三方作者旅程.md) — the complete path from zero to publication
 - `plugin.schema.json` — the JSON Schema file in the same directory (the authoritative version, one of the three-copy gate)

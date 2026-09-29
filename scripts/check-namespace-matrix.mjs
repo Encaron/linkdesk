@@ -3,7 +3,7 @@
  *
  * ## 为什么需要它
  *
- * `docs/02-Electron架构/E5.8_归一化基建/契约生成/命名空间矩阵.md` 是**手维护**的表，而
+ * `docs/02-Electron架构/归一化基建/契约生成/命名空间矩阵.md` 是**手维护**的表，而
  * [01-插件API契约.md §二] 把它定为插件作者面的「**唯一真相源**…这里不再手写第二份清单」。
  * 手维护清单 + 无人对账 = 必然过期。实证：2026-09-12 查出该表停在 2026-08-20，自称「契约 40 命名空间」，
  * 而契约实为 **45**——**少 6 个**（`appearance`/`floatingPanelHost`/`panel`/`settings`/`factorySlots`/`app`，
@@ -61,7 +61,7 @@ import { resolve } from "node:path";
 import { ROOT, parseContract } from "./lib/contract-parse.mjs";
 import { stripComments } from "./lib/strip-comments.mjs";
 
-const MATRIX = "docs/02-Electron架构/E5.8_归一化基建/契约生成/命名空间矩阵.md";
+const MATRIX = "docs/02-Electron架构/归一化基建/契约生成/命名空间矩阵.md";
 /** §2 表头——表被重构时要响，不能静默 0 命中后「全部通过」 */
 const HEADER = "| 命名空间 | 契约域 | 契约标法 | pool | shell | mock |";
 

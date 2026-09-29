@@ -718,7 +718,7 @@ The three rules above govern **names**; this one governs **territory**. For cust
 
 **How it is enforced mechanically**: run `npm run lint` in the plugin project root (or `npm run verify` in CI) and each occurrence is reported—🔴 turns CI red, 🟡 only prints. When "it works locally but CI is red", read this section first.
 
-> 🔧 **Maintainer note (authors may skip)**: the rule text (including how the host registers its contract blocks and the floating-layer host exception) lives under `docs/02-Electron架构/E6_插件生态与发布/01-插件独立构建/样式命名空间归一化/`; the shell side is guarded by `scripts/check-css-namespace.mjs`, the plugin side by the SDK's `check-css-namespace` leg (token scope is the third criterion of that same leg, sharing one disable-comment id with the class-name and keyframe criteria).
+> 🔧 **Maintainer note (authors may skip)**: the rule text (including how the host registers its contract blocks and the floating-layer host exception) lives under `docs/02-Electron架构/插件生态与发布/01-插件独立构建/样式命名空间归一化/`; the shell side is guarded by `scripts/check-css-namespace.mjs`, the plugin side by the SDK's `check-css-namespace` leg (token scope is the third criterion of that same leg, sharing one disable-comment id with the class-name and keyframe criteria).
 
 ### 12.6 The selector itself needs a "landing spot" too—**anchorless selectors are forbidden** (2026-09-16)
 
@@ -759,7 +759,7 @@ button { border: none; }
 
 **Migration**: **zero instances today**—a full re-check of the official plugins plus the in-repo fixture (the "anchorless S2 / cross-party S3" columns of `npm run audit:plugin-prefix -- --all`) is **0** ⇒ **you have nothing to change**; this rule is **preventive**.
 
-> 🔧 **Maintainer note (authors may skip)**: the rule text (R0 scope / R1 host baseline / R2 / R3) plus the decision formulas and negative controls live in `docs/02-Electron架构/E6_插件生态与发布/01-插件独立构建/样式命名空间归一化/32-任务-选择器形态轴门禁与落地.md`; the host side is guarded by criteria ⑩⑪ of `scripts/check-css-namespace.mjs` (plus the runtime mirror on axis ④ of the probe), and the plugin side by the **fourth and fifth criteria** of the SDK's `check-css-namespace` leg (`checks/selector-form.ts` for S2/S3, and `checks/keyframe-refs.ts` for dangling keyframe references—the latter in place since **2026-09-18**, SDK `≥ 0.1.37`).
+> 🔧 **Maintainer note (authors may skip)**: the rule text (R0 scope / R1 host baseline / R2 / R3) plus the decision formulas and negative controls live in `docs/02-Electron架构/插件生态与发布/01-插件独立构建/样式命名空间归一化/32-任务-选择器形态轴门禁与落地.md`; the host side is guarded by criteria ⑩⑪ of `scripts/check-css-namespace.mjs` (plus the runtime mirror on axis ④ of the probe), and the plugin side by the **fourth and fifth criteria** of the SDK's `check-css-namespace` leg (`checks/selector-form.ts` for S2/S3, and `checks/keyframe-refs.ts` for dangling keyframe references—the latter in place since **2026-09-18**, SDK `≥ 0.1.37`).
 
 ---
 

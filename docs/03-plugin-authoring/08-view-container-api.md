@@ -192,7 +192,7 @@ useEffect(() => {
 ```typescript
 // Query — returns a DTO (serializable public fields; render/actions are stripped)
 const views = await window.linkdesk.viewContainer.getViews("explorer");      // ViewDto[]
-const view = await window.linkdesk.viewContainer.getView("folders");          // ViewDto | undefined
+const view = await window.linkdesk.viewContainer.getView("file-tree", "folders"); // composite addressing (pluginId, viewId) — collision-proof; ViewDto | undefined
 const container = await window.linkdesk.viewContainer.getViewContainer("explorer");
 
 // Update metadata — the title follows the data (aligned with VS Code's registerViews update)

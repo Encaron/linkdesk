@@ -42,7 +42,7 @@ Running `npm create linkdesk-plugin@latest` with no arguments asks for the plugi
 A new directory shows `plugin.json` + `src/index.tsx`, and placeholders like `{{pluginName}}` in `plugin.json` have **been replaced with your real plugin name** (`pluginId` / `name` / `description` / `author` are filled in too, with `author` defaulting to `git config user.name`). The CLI prints a line telling you **whether a git repo was created**: if it was, `git log` has one "initial skeleton" commit and the branch is called `main`.
 
 **Which doc has the details**
-[02-plugin-dev-toolchain/01-create-linkdesk-plugin-scaffold.md](../02-Electron架构/E6_插件生态与发布/02-插件开发工具链/01-create-linkdesk-plugin脚手架.md) — the **file-by-file contract** for the generated output (why each file exists, the placeholder rules, the roles of the 16 template files). **Don't look for the project structure here**; that doc is the single source of truth.
+[02-plugin-dev-toolchain/01-create-linkdesk-plugin-scaffold.md](../02-Electron架构/插件生态与发布/02-插件开发工具链/01-create-linkdesk-plugin脚手架.md) — the **file-by-file contract** for the generated output (why each file exists, the placeholder rules, the roles of the 16 template files). **Don't look for the project structure here**; that doc is the single source of truth.
 
 > ✅ **Repo creation (shipped 2026-09-14)**: the scaffold **creates the git repo for you** — following the three `cargo new` semantics, **not "always `git init`"**:
 > - the project directory is **not inside any git repo** ⇒ `git init -b main` automatically + **one initial commit** (the template ships a `.gitignore`, so your first step isn't a screenful of untracked files);
@@ -67,7 +67,7 @@ npm run dev        # = linkdesk-plugin-sdk dev
 A browser opens the dev host page automatically, showing the template's built-in **"Plugin is running ✨"**. Now edit the text in `src/index.tsx` and save — **the page updates instantly** (HMR, no restart).
 
 **Which doc has the details**
-[02-local-preview-environment.md](../02-Electron架构/E6_插件生态与发布/02-插件开发工具链/02-本地预览环境.md) — what the dev host is, why the author side needs zero configuration, and HMR's boundaries. This step **does not start the LinkDesk app**; it only runs the plugin's own preview host.
+[02-local-preview-environment.md](../02-Electron架构/插件生态与发布/02-插件开发工具链/02-本地预览环境.md) — what the dev host is, why the author side needs zero configuration, and HMR's boundaries. This step **does not start the LinkDesk app**; it only runs the plugin's own preview host.
 
 ---
 
@@ -168,7 +168,7 @@ npm run dev:real     # = linkdesk-plugin-sdk dev --real
 You can see your plugin in the LinkDesk app, behaving the same as in the preview. **One boundary to note**: an installed plugin runs the **prebuilt bundle**, so any source change requires a rebuild to take effect — that's not a bug, it's distribution discipline.
 
 **Which doc has the details**
-[04-author-real-machine-debug-loop.md](../02-Electron架构/E6_插件生态与发布/02-插件开发工具链/04-作者真机调试环.md) — how the real-machine loop automates "rebuild + write directly", and why changing the bundle of an installed plugin doesn't count as a hot update.
+[04-author-real-machine-debug-loop.md](../02-Electron架构/插件生态与发布/02-插件开发工具链/04-作者真机调试环.md) — how the real-machine loop automates "rebuild + write directly", and why changing the bundle of an installed plugin doesn't count as a hot update.
 
 ---
 
@@ -187,7 +187,7 @@ npm run build
 
 **Which docs have the details**
 - Distribution format and install flow → [04-distribution-format](04-distribution-format.md)
-- The byte-level format spec inside the zip → [01-plugin-standalone-build/02-linkdesk-plugin-format-spec.md](../02-Electron架构/E6_插件生态与发布/01-插件独立构建/02-linkdesk-plugin格式规范.md)
+- The byte-level format spec inside the zip → [01-plugin-standalone-build/02-linkdesk-plugin-format-spec.md](../02-Electron架构/插件生态与发布/01-插件独立构建/02-linkdesk-plugin格式规范.md)
 - Rules for images/GIFs/videos in a README → [12-readme-media-contract](12-readme-media-contract.md)
 
 ---
@@ -249,8 +249,8 @@ env:
 Step one: your `.linkdesk-plugin` asset shows up on the GitHub Release. Step two: once your entry is in the official catalog, **on a clean machine (default configuration, no marketplace sources added)** it can be found in the marketplace, installed, and updated — that's the criterion for "listing complete".
 
 **Which docs have the details**
-- The full chain (local → GitHub → the user's machine) → [03-plugin-release-pipeline.md](../02-Electron架构/E6_插件生态与发布/02-插件开发工具链/03-插件发布流水线.md)
-- The end-to-end journey from an author's perspective → [05-docs-and-release/00-third-party-author-journey.md](../02-Electron架构/E6_插件生态与发布/05-文档与发布/00-第三方作者旅程.md)
+- The full chain (local → GitHub → the user's machine) → [03-plugin-release-pipeline.md](../02-Electron架构/插件生态与发布/02-插件开发工具链/03-插件发布流水线.md)
+- The end-to-end journey from an author's perspective → [05-docs-and-release/00-third-party-author-journey.md](../02-Electron架构/插件生态与发布/05-文档与发布/00-第三方作者旅程.md)
 
 ---
 
@@ -260,7 +260,7 @@ Nothing to set up — but "should I test this?" deserves a straight answer.
 
 - **The toolchain is preinstalled.** `vitest` / `jsdom` / `@testing-library/react` are already in `devDependencies` — write `src/__tests__/<same-name>.test.ts` and run `npm run test`.
 - **The shared test ground comes from the SDK.** The minimal `window.linkdesk` mock lives in `@linkdesk/plugin-sdk/vitest-setup`, and your `vitest.setup.ts` is a **one-line pointer** to it. ⛔ **Do not paste a second copy into your repo** — a copied mock silently drifts from the shared one.
-- **Pure logic is what pays off.** A unit under `src/**/*.ts` that touches neither React nor `window.linkdesk` should get a test. Views and interactions are worth testing **when it pays off** — nothing measures that today.
+- **Pure logic is what pays off.** A unit under `src/**/*.ts` that touches neither React nor `window.linkdesk` should get a test. Views and interactions are worth testing **when it pays off**. ⚠️ **Zero tests get flagged**: the scaffold's built-in CI runs `@linkdesk/plugin-sdk/test-audit` in its section ⑥ — a pure-logic unit with no test turns the build red (criteria in the next bullet; declarative plugins are exempt).
 - **What counts as "covered" — two criteria, both mechanical.** A unit is covered when a test file shares its basename (`Foo.ts` ↔ `Foo.test.ts`) **or** any test file references it (a direct import or through a barrel). Grep is enough to self-check: `grep -rl "Foo" src/__tests__/`. Watch out for the false alarm: a unit exercised only *through* another tested module (the same-basename criterion cannot see cross-file coverage) is not "untested" — read what your tests actually cover before adding more.
 - **Views: smoke-test when it pays off.** The cheap, honest pattern is two assertions — the component **renders without crashing** and **one key interaction works** (click → the expected callback fires). Stub `react-i18next` with a fake `t` that echoes the key, stub the slice of `window.linkdesk` your view reads in your own test file (minimal surface), and keep fixtures fictional. Nobody is expected to chase deep UI coverage.
 - **Plugin-specific stubs stay in your own test files.** Does your code call something the shared mock does not cover (say `window.linkdesk.serial`)? Stub it with `vi.fn()` in the test that needs it — do not expect the shared mock to grow a branch for your plugin.
@@ -281,7 +281,7 @@ npm run test     # vitest run — an empty suite passes on purpose (passWithNoTe
 |---|---|---|
 | When the theme switches, my UI colors don't follow | Hardcoded hex | Iron rule 2 · [00-readme](00-readme.md#hard-constraints--before-you-write-any-plugin-code) |
 | Switch away from a tab and back: state is lost / content is empty | You conditionally rendered on `isActive` — under keep-alive it shouldn't unmount | [05-ui-conventions](05-ui-conventions.md) |
-| After `npm run build` the installed plugin still behaves the old way | Installed plugins run the prebuilt bundle; source changes need a rebuild | Step 7 · [04-author-real-machine-debug-loop.md](../02-Electron架构/E6_插件生态与发布/02-插件开发工具链/04-作者真机调试环.md) |
+| After `npm run build` the installed plugin still behaves the old way | Installed plugins run the prebuilt bundle; source changes need a rebuild | Step 7 · [04-author-real-machine-debug-loop.md](../02-Electron架构/插件生态与发布/02-插件开发工具链/04-作者真机调试环.md) |
 | The details page says "No changelog provided for this version" | The version went +1 but `CHANGELOG.md` didn't get a new section | Step 8 |
 | The plugin details page description area is empty | The description comes from the `README.md` file, and **`plugin.json` has no `readme` field** | [09-plugin-directory-layout](09-plugin-directory-layout.md) · [06-plugin-json-spec](06-plugin-json-spec.md) |
 | My context menu's styling doesn't match the shell | You hand-wrote the context menu | Step 6 · [05-ui-conventions](05-ui-conventions.md) |

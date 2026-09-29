@@ -25,7 +25,7 @@
 两条容易记错的：
 
 - 🔴 **五根轴与软件本体互不联动**（memory `version-axes-separated`）：**npm 发版 ≠ 软件 bump**——发这五个包时根 `package.json` 一动不动。拆焊只拆错轴的「版本相等」断言，**检测一条不撤**。
-- 🔴 **`@linkdesk/ui` 与软件本体**同号锁步**（E6#124 重锚定案，2026-09-19）**——五根轴里唯一的例外：ui 包版本号从此 = 发它的那个壳版本号（一条线，作者面无需对照表），**壳每次发版必带 ui 同号 bump**（`packages/linkdesk-ui/package.json` + `npm install` 同步 lock），机械断言 = 发布门禁判据⑤（`check-publish-gate.mjs` judgeUiVersionLockstep，不等判红）；撞号规则 = 壳让位 bump（npm 版本不可复用，`npm view @linkdesk/ui versions` 机械核对）。重锚点 = L9 翻通道发版（壳 0.2.12 → 0.2.13，ui 0.3.1 → 0.2.13，0.2.13 未被 ui 历史占用）。语义详见 [UI集中供给/00-整理档案.md §三](../02-Electron架构/E6_插件生态与发布/UI集中供给/00-整理档案.md)。
+- 🔴 **`@linkdesk/ui` 与软件本体**同号锁步**（E6#124 重锚定案，2026-09-19）**——五根轴里唯一的例外：ui 包版本号从此 = 发它的那个壳版本号（一条线，作者面无需对照表），**壳每次发版必带 ui 同号 bump**（`packages/linkdesk-ui/package.json` + `npm install` 同步 lock），机械断言 = 发布门禁判据⑤（`check-publish-gate.mjs` judgeUiVersionLockstep，不等判红）；撞号规则 = 壳让位 bump（npm 版本不可复用，`npm view @linkdesk/ui versions` 机械核对）。重锚点 = L9 翻通道发版（壳 0.2.12 → 0.2.13，ui 0.3.1 → 0.2.13，0.2.13 未被 ui 历史占用）。语义详见 [UI集中供给/00-整理档案.md §三](../02-Electron架构/插件生态与发布/UI集中供给/00-整理档案.md)。
 - ⚠️ **旧线 `0.3.0` / `0.3.1` 已弃用（2026-09-29 · 用户授权「你决定吧」后由 AI 执行）**——起因是随 v0.2.27 首次撞上隐式 latest 被拒：货架上躺着 **0.3.0 / 0.3.1**（2026-09-16 / 09-18 重锚**之前**那条旧线，数字在本线之上）⇒ `npm publish` 报 `Cannot implicitly apply the "latest" tag because previously published version 0.3.1 is higher than the new version 0.2.27.`。**处置 = 弃用（不是撤版）**：`npm deprecate "@linkdesk/ui@0.3.0" "<说明>" --registry=https://registry.npmjs.org`（0.3.1 同）⇒ 复核 registry：两条均带 `deprecated` 说明，`dist-tags.latest` 仍是 **0.2.27**。**弃用只加提示、不删 tarball、不动 dist-tags，且可逆**（再 deprecate 一个空消息即撤销）。
 - ✅ **弃用之后，`--tag latest` 不再必需（🔬 npm 源码实据，2026-09-29）**：`npm/lib/commands/publish.js` 的 `#registryVersions()` 在算「已发布最高版」时**显式跳过 deprecated 与 prerelease**（`if ((s.prerelease.length > 0) || packument.versions[v].deprecated) return []`，本机 npm 行号 225）⇒ 0.3.x 弃用后 `highestVersion` = **0.2.27**，下一次 ui 发版**隐式 latest 即可通过**。⇒ **根因已除**：`--tag latest` 从「今后每次都得带」降为「**可带可不带、带上无害**」（写成 `npm publish --registry=https://registry.npmjs.org --tag latest --access public` 仍是稳妥形状）。⚠️ 反面同样成立：**只要旧线还是弃用状态就不是障碍**——若哪天撤销弃用，这条拒信会立刻回来。
 - 🔴 **`@linkdesk/contracts` 不在 `workspaces` 里**（根 `workspaces = ["packages/*"]`）——它是五根轴里唯一住在 `packages/` 外面的一根，所以**发它的命令形状和另外四根不一样**（见 §二 ③）。
@@ -156,4 +156,4 @@ npm cache clean --force          # 全清（粗暴但有效）
 ## 七、和软件发版的关系（一句话）
 
 **互不触发。** 插件与作者轴的发版**不必与壳同批**；只有「这一版软件要带上某个插件的**新版出厂**」时才有顺序依赖——那件事的配方在
-[01-插件独立构建/05-内置插件迁移指南.md §2.1](../02-Electron架构/E6_插件生态与发布/01-插件独立构建/05-内置插件迁移指南.md)，软件本体的发版照 [发布清单.md](发布清单.md)。
+[01-插件独立构建/05-内置插件迁移指南.md §2.1](../02-Electron架构/插件生态与发布/01-插件独立构建/05-内置插件迁移指南.md)，软件本体的发版照 [发布清单.md](发布清单.md)。

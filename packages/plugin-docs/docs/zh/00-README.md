@@ -189,5 +189,5 @@ npm run publish                        # 发布到你自己的 GitHub 仓（上�
 ## 相关
 
 - 契约类型真相源：`@linkdesk/contracts` 包内 `linkdesk.d.ts`（随 SDK 到达）
-- 主题系统设计文档（**壳的为什么**，作者不必读）：仓库 `docs/02-Electron架构/E5.8_归一化基建/外观主题化/`
+- 主题系统设计文档（**壳的为什么**，作者不必读）：仓库 `docs/02-Electron架构/归一化基建/外观主题化/`
 - Tauri 时代旧版文档：`docs/01-Tauri_P1至P5.5/`（仅历史参考）
