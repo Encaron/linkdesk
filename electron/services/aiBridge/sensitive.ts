@@ -117,6 +117,13 @@ export function userDenied(what: string, subject: string): Error & { code: strin
 /** 本模块只用到 ctx 的这一个能力（结构型——不 import `whitelist.ts`，避免循环依赖） */
 export interface AskContext {
   shellRequest(channel: string, args: unknown[], timeoutMs?: number): Promise<unknown>;
+  /**
+   * 相位标记（AI#60，**可选**）：问话期间让内核记「这条请求正在等人点头」。客户端超时后回读相位，
+   * 才不会把「软件里弹着框、人在犹豫」误报成「对面卡住了」——后者会让 AI 重试，而用户随后一点头，
+   * 同一个动作就做了两遍（**最坏的形态**：AI 以为失败、事情真的发生了两次）。
+   * 字面量与 `whitelist.ts` 的 `BridgePhase` 同源，⛔ 不 import 它（成环）。
+   */
+  phase?(phase: 'op' | 'shell' | 'ask-user', what?: string | null): void;
 }
 
 /**
@@ -128,6 +135,14 @@ export interface AskContext {
  *   · `ESHELLTIMEOUT`——壳没应答（拿不到答复 ≠ 得到同意）。
  */
 export async function askUser(ctx: AskContext, what: string, subject: string): Promise<void> {
-  const confirmed = await ctx.shellRequest(IPC.dialog.confirm, [confirmPrompt(what, subject)], ASK_TIMEOUT_MS);
-  if (confirmed !== true) throw userDenied(what, subject);
+  // 进相位（AI#60）：从这一刻起「在等用户点头」就是事实——期间那条确认框请求**不许**把相位
+  // 改写成 `shell`（改写规则在内核：`index.ts` 的 `opContextFor`）。人可能在走开，这段时间以分钟计。
+  ctx.phase?.('ask-user', what);
+  try {
+    const confirmed = await ctx.shellRequest(IPC.dialog.confirm, [confirmPrompt(what, subject)], ASK_TIMEOUT_MS);
+    if (confirmed !== true) throw userDenied(what, subject);
+  } finally {
+    // 出相位：问完了（点头 / 没点头 / 壳超时）——回到「在办」，后续真请求会再标 `shell`
+    ctx.phase?.('op');
+  }
 }

@@ -22,9 +22,25 @@
  * | `LAST_FAILED` | 软件在跑、也想开，但**监听失败**（如 `EADDRINUSE`） | 改端口重启（`lastError` 有细节） |
  * | `APP_EXITED` | 记录说在监听，但那个 pid 已经不在了（残留记录） | 重启软件 |
  * | `REFUSED` | 记录说在监听、pid 也活着，但连接被拒 | 软件可能正在启动/退出，稍等重试 |
- * | `TIMEOUT` | 连上了，没应答 | — |
+ * | `TIMEOUT` | 连上了，没应答 | 先探相位（见下「超时三分类」），⛔ 别当失败重试 |
  * | `EAUTH` | 应答了，但**凭据不对** | 用 `ai-bridge.token` 里那份（重新生成 = 删掉它重启，AI#38.9） |
  * | `STALE_IDENTITY` | 应答的**不是记录里那个进程** | 🔴 M5 教训：存在 ≠ 是它 |
+ *
+ * ## 超时三分类（`EPENDING` / `EASKPENDING` / `TIMEOUT`）——「没拿到答复」不是一种故障，是三种
+ *
+ * 客户端**预算用完的那一刻**，用第二次廉价请求（`ping`，2 秒）回读服务端的**相位**
+ * （`identity().inFlight`：`op` / `shell` / `ask-user`），据此分说：
+ *
+ * | code | 意思是 | 下一步 |
+ * |---|---|---|
+ * | `EPENDING` | **还在跑**——服务端仍持有这条请求 | ⛔ 别重试；等它跑完再用读数面核实 |
+ * | `EASKPENDING` | **正等人点头**——软件里弹着确认框 | 去软件里点它（Enter 同意 / Esc 取消）；⛔ 别重试 |
+ * | `TIMEOUT` | **真没应答**——服务端当下没在办任何请求 | 查软件是否卡住；重试前想清楚会不会重复发生效果 |
+ * | `ESHELLTIMEOUT` | 服务端答了：**壳那半**没在预算内答复（命令可能仍在执行） | 文案由内核如实写；⛔ 别据此判断「没做」 |
+ *
+ * ⛔ 探活本身没回 / 对方是老版内核（没有 `inFlight` 字段）⇒ **不硬判**：原样报原错（探不透 ≠ 新故障）。
+ * 出处 = 生长格 `AI#60`（真机 `0.2.23 → 0.2.24` 整跳：`exec update.openUpdateFlow` 明明跑成了，
+ * AI 那侧只拿到「壳无应答」＋退出码 1 ⇒ 会重试、或向用户报「失败」）。
  *
  * 操作级 code（内核白名单，`electron/services/aiBridge/whitelist.ts`）原样透传：
  * `EOP`（表外操作）/ `EUNKNOWN`（命令不在运行期派生命令面）/ `EARGS` / `ENOTFOUND` /
@@ -90,11 +106,57 @@ export function readRecord({ userDataDirs } = {}) {
 /**
  * 操作级 code 的人读下一步——内核说得出 code，说不出「用户此刻该干什么」。
  * ⛔ 只补这一句，不另立一套错误分类（分类法住内核，见文件头）。
+ * ⛔ 文案里不写仓内工作序号（外部 AI 读不懂「AI#NN」，那是我们自己的队列号）。
  */
 const OP_HINTS = {
   EUSERDENIED:
-    "去软件里点那个确认框（键盘 Enter = 同意 / Esc = 取消）——**不点就不执行**；授权不缓存，下次还会问（AI#29）。",
+    "去软件里点那个确认框（键盘 Enter = 同意 / Esc = 取消）——**不点就不执行**；授权不缓存，下次还会问。",
+  EASKPENDING:
+    "**去软件里点那个确认框**（Enter = 同意 / Esc = 取消）——你这次调用已经放弃等待，但框还在；点完再用读数面核实。⛔ 别重试：重试只会再弹一个框。",
+  EPENDING:
+    "⛔ 别重试。等它跑完，再用读数面（`log` 账本 / `describe` / `tabs`）回读效果——重试 = 同一个动作做两遍。",
+  ESHELLTIMEOUT:
+    "这是**壳那半没在预算内答复**，⛔ 不是执行失败、⛔ 别据此判断「没做」。长命令（下载、装更新）合法超过这个预算：去界面或用读数面（`log` / `tabs` / `notifications`）核实它到底有没有跑起来。",
+  TIMEOUT:
+    "服务端此刻**没在办任何请求**（探活也没看到在办的事）⇒ 真没应答。先看软件是否卡住；重试前想清楚这条命令会不会重复发生效果。",
 };
+
+/** 探活预算——超时之后那一次「到底还在不在办」的回读，⛔ 别让它变成第二轮长等待 */
+export const PROBE_TIMEOUT_MS = 2000;
+
+/**
+ * 超时读数**三分类**（纯函数——单测直接打它；探活那半在 `callBridge` 里）。
+ *
+ * `inFlight` = 服务端当下在办的请求（`ping` 的 `identity().inFlight`）。
+ * 🔴 `null` / 字段缺席 ⇒ **不硬判**：返回 `null`，调用方原样报原错——
+ * 「探不透」不是一种新故障，也⛔ 不该被说成「真没应答」。
+ */
+export function classifyTimeout({ inFlight, timeoutMs, op }) {
+  if (!Array.isArray(inFlight)) return null;
+  const asking = inFlight.find((e) => e && e.phase === "ask-user");
+  if (asking) {
+    const what = asking.what ? `（在问：「${asking.what}」）` : "";
+    return new BridgeError(
+      "EASKPENDING",
+      `${op} 正在**等你点头**${what}——软件里弹着确认框，已等 ${asking.ms} 毫秒`,
+      OP_HINTS.EASKPENDING,
+    );
+  }
+  if (inFlight.length) {
+    const first = inFlight[0] || {};
+    const more = inFlight.length > 1 ? `（另有 ${inFlight.length - 1} 条）` : "";
+    return new BridgeError(
+      "EPENDING",
+      `${first.op || op} **还在跑**${more}——服务端仍持有它，已 ${first.ms} 毫秒没回`,
+      OP_HINTS.EPENDING,
+    );
+  }
+  return new BridgeError(
+    "TIMEOUT",
+    `客户端等待预算用完（${timeoutMs}ms 无应答），服务端此刻**没有在办任何请求**——真没应答`,
+    OP_HINTS.TIMEOUT,
+  );
+}
 
 /** pid 还活着吗（`kill(pid,0)` 不发信号，纯探活；`EPERM` = 活着但不是我们的进程） */
 function pidAlive(pid) {
@@ -152,7 +214,13 @@ export function classify({ record, error, attempted }) {
     );
   }
   if (code === "ETIMEDOUT" || code === "TIMEOUT") {
-    return new BridgeError("TIMEOUT", `连上了但无应答（${attempted.timeoutMs}ms 超时）`, "请求超时——通道在，但对面卡住了。");
+    // ⚠️ 这里**不下结论**（缺证据）：分类法这一层只知道「没在预算内拿到答复」，
+    //    到底是「还在跑 / 正等人点头 / 真没应答」由 `classifyTimeout` 拿相位分说（AI#60）。
+    return new BridgeError(
+      "TIMEOUT",
+      `连上了但无应答（${attempted.timeoutMs}ms 超时）`,
+      "请求超时——**不一定是失败**（命令可能还在跑、或正在等你点头）。⛔ 重试前想清楚会不会重复发生效果。",
+    );
   }
   return new BridgeError("CONNECT_FAILED", `连 ${fmtEndpoint(record.endpoint)} 失败：${error && error.message}`, null);
 }
@@ -255,6 +323,30 @@ export async function callBridge(op, payload = {}, opts = {}) {
     }
   }
 
-  const result = await run(op, payload);
+  /**
+   * 超时那一刻回读**相位**（AI#60）——第二次廉价请求（`ping` ＋ 2 秒），与「每次调用先 ping 认人」
+   * 同一套路，零新机制。⛔ 探不到（连探活都没答 / 老版内核没有 `inFlight`）⇒ 返回 `null` =
+   * 「不知道」，由 `classifyTimeout` 决定照原样报原错，⛔ 不编一个结论出来。
+   */
+  async function probeInFlight() {
+    try {
+      const msg = await sendOnce(endpoint, { token, op: "ping" }, PROBE_TIMEOUT_MS);
+      if (!msg || !msg.ok || !msg.result) return null;
+      return Array.isArray(msg.result.inFlight) ? msg.result.inFlight : null;
+    } catch {
+      return null;
+    }
+  }
+
+  let result;
+  try {
+    result = await run(op, payload);
+  } catch (e) {
+    // 🔴 只有「客户端这条腿没拿到答复」才需要三分类：服务端的 code（含 `ESHELLTIMEOUT`）已经
+    //    如实作答（哪个预算、可能仍在执行），⛔ 别在客户端二次演绎它。
+    const isLocalTimeout = e instanceof BridgeError && e.code === "TIMEOUT";
+    if (!isLocalTimeout) throw e;
+    throw classifyTimeout({ inFlight: await probeInFlight(), timeoutMs, op }) ?? e;
+  }
   return { result, record, endpoint, token, servedBy, searched, recordPath: found.recordPath };
 }

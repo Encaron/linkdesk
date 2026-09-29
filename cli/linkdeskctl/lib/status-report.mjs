@@ -70,12 +70,19 @@ export function renderStatus(found, live, probeError = null) {
       };
     }
     return {
-      state: { code: "SERVING", message: `在服务（${fmtEndpoint(live.endpoint)}）`, hint: null },
+      state: {
+        code: "SERVING",
+        message: `在服务（${fmtEndpoint(live.endpoint)}）`,
+        hint: null,
+        ...(Array.isArray(live.inFlight) && live.inFlight.length ? { inFlight: live.inFlight } : {}),
+      },
       text: [
         head,
         `状态      在服务  ${live.transport} ${fmtEndpoint(live.endpoint)}`,
         `已跑      ${Math.round(live.uptimeMs / 1000)}s · 壳窗 ${live.shellWindows}` +
           (live.servedShellWindow ? `（操作目标 = ${live.servedShellWindow}）` : ""),
+        // 相位面（AI#60）：让 AI **拉**得到「还在跑 / 正等人点头」——否则它只有自己超时那一条线索
+        ...(Array.isArray(live.inFlight) && live.inFlight.length ? [`在办      ${fmtInFlight(live.inFlight)}`] : []),
       ].join("\n"),
     };
   }
@@ -106,6 +113,23 @@ export function renderStatus(found, live, probeError = null) {
     state: { code: err.code, message: err.message, hint: err.hint },
     text: [head, `状态      ${err.message}`, `下一步    ${err.hint ?? "—"}`].join("\n"),
   };
+}
+
+/**
+ * 在办请求的一行人读（AI#60 的**拉**那一半）——`status` 里那一行。
+ * 相位词汇与内核一致（`op` / `shell` / `ask-user`）；⛔ 别在这里另立说法。
+ */
+export function fmtInFlight(list) {
+  const label = { op: "在办", shell: "壳侧等待", "ask-user": "等人点头" };
+  return list
+    .map((e) => {
+      const kind = label[e.phase] ?? e.phase ?? "?";
+      // `shell` 的 `what` = 通道名（短，有用）；`ask-user` 的 `what` 是一句人读正文 ⇒ 不进这一行
+      const extra = e.phase === "shell" && e.what ? ` ${e.what}` : "";
+      const tail = e.phase === "ask-user" ? " · 去软件里点它" : "";
+      return `${e.op || "?"}（${kind}${extra} · ${(Number(e.ms) / 1000).toFixed(1)}s${tail}）`;
+    })
+    .join(" · ");
 }
 
 /**

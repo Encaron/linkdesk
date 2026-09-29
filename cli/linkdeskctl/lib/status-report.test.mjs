@@ -11,7 +11,7 @@
 import { describe, expect, it } from "vitest";
 
 import { BridgeError } from "./bridge-client.mjs";
-import { renderStatus, resolvedServedBy } from "./status-report.mjs";
+import { fmtInFlight, renderStatus, resolvedServedBy } from "./status-report.mjs";
 
 /** 夹具：一只「自己活着」的记录——pid 用测试进程自己的，`classify` 的存活判定必然为真。 */
 function recordFixture(over = {}) {
@@ -105,6 +105,32 @@ describe("status 分诊：谁在服务 / 为什么没成（AI#59）", () => {
   it("🔴 负控④：STALE_IDENTITY 也不能被「连不上」类豁免吞掉（它不是网络故障）", () => {
     const out = renderStatus(foundFixture(), null, new BridgeError("STALE_IDENTITY", "有人应答，但不是记录里那个进程", "指对 --user-data-dir"));
     expect(out.state.code).toBe("STALE_IDENTITY");
+  });
+});
+
+describe("在办相位那一行（AI#60）：status 让 AI **拉**得到「还在跑 / 正等人点头」", () => {
+  const inflight = [
+    { op: "exec", phase: "shell", what: "commands:execute", ms: 3200 },
+    { op: "install", phase: "ask-user", what: "安装插件", ms: 61_000 },
+  ];
+
+  it("正控①：两相位各有说法（等人点头那半带「去软件里点它」）", () => {
+    expect(fmtInFlight(inflight)).toBe("exec（壳侧等待 commands:execute · 3.2s） · install（等人点头 · 61.0s · 去软件里点它）");
+  });
+
+  it("正控②：SERVING 且有人点头在等 ⇒ 正文多一行 `在办`，机读面带 `inFlight`", () => {
+    const out = renderStatus(foundFixture(), liveFixture({ inFlight: inflight }), null);
+    expect(out.state.code).toBe("SERVING");
+    expect(out.text).toContain("在办      ");
+    expect(out.state.inFlight).toEqual(inflight);
+  });
+
+  it("负控①：没有在办请求（老版内核缺字段 / 空数组）⇒ ⛔ 不许多印一行、也不许多一个字段", () => {
+    for (const live of [liveFixture(), liveFixture({ inFlight: [] })]) {
+      const out = renderStatus(foundFixture(), live, null);
+      expect(out.text).not.toContain("在办");
+      expect(out.state).not.toHaveProperty("inFlight");
+    }
   });
 });
 

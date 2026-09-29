@@ -46,6 +46,16 @@
  *      通道若另立一套窗口选择法，AI 开的标签页会落在用户没在看的窗里。
  *      `ping` 报 `servedShellWindow`（'main' / 'ws-N'）⇒ **服务了哪个窗可观测、可复核**，不是「随机一只」。
  *      ⛔ 仍未做（首版边界，记在案）：按名字**指名**窗口（如 `--window ws-2`）——操作表无窗口形参。
+ *
+ * ## 回执语义：相位登记表（AI#60）——「没拿到答复」不是一种故障，是三种
+ *
+ * 「壳侧没在预算内答复」曾经与「什么都没发生」**不可分辨**（真机 `0.2.23 → 0.2.24` 整跳上，
+ * `exec update.openUpdateFlow` 明明跑成了却回 `[ESHELLTIMEOUT] 壳无应答`、退出码 1 ⇒ AI 会重试、
+ * 或向用户报「失败」）。本文件记**相位**（`op` / `shell` / `ask-user`），客户端在自己预算用完那一刻
+ * 用**第二次廉价请求**（`ping`）读回去，把三件事分开：**还在跑** / **正等人点头** / **真没应答**；
+ * `ESHELLTIMEOUT` 的文案也照此如实写（壳没答 ≠ 命令没跑）。
+ * ⛔ **协议行数不变**——仍是一连接 = 一请求 = 一应答；往协议里塞「中间行」会让老客户端把中间行
+ * 当终答（等于强制升协议版本，代价与收益不成比例）。⛔ 也别把预算调大当修法（长命令没有上界）。
  */
 
 import { app, BrowserWindow, ipcMain } from 'electron';
@@ -54,7 +64,7 @@ import * as fs from 'node:fs';
 import * as net from 'node:net';
 import * as path from 'node:path';
 import { IPC } from '../../ipc/channels.js';
-import { OPS, coded, type BridgeOpContext, type LedgerEntry } from './whitelist.js';
+import { OPS, coded, type BridgeOpContext, type BridgePhase, type LedgerEntry } from './whitelist.js';
 
 /** 通道记录文件名（userData 下）。客户端（cli/linkdeskctl/lib/bridge-client.mjs）按同名找它——改名两处同笔 */
 const RECORD_NAME = 'ai-bridge.json';
@@ -69,6 +79,79 @@ const LEDGER_CAP = 200;
 const REQUEST_ID_PREFIX = 'aibridge-';
 /** 常规壳请求超时。装插件/确认对话框等长操作在各自操作里单独放宽 */
 const SHELL_TIMEOUT_MS = 8_000;
+
+/* ── 相位登记表（AI#60：「还在跑 / 正等人点头 / 真没应答」各有名字） ── */
+
+/**
+ * 一次请求此刻在**哪条腿**上。客户端在自己预算用完的那一刻，用**第二次廉价请求**（`ping`）
+ * 把它读回去，从而把三种「没拿到答复」分辨开——⛔ 客户端不自己猜，相位只在这里记。
+ * （词汇定义处 = `whitelist.ts` 的 `BridgePhase`，本文件从那里取用并再导出。）
+ */
+export type { BridgePhase };
+
+/** 给客户端读的一条在办请求（`identity().inFlight` 的正文） */
+export interface InFlightEntry {
+  op: string;
+  phase: BridgePhase;
+  /** 人读补充——`shell` 记通道名，`ask-user` 记「在问什么」；⛔ 不放实参正文（凭据 / 路径不出内核） */
+  what: string | null;
+  /** 已经办了多久——客户端据此说「已跑 3.2 秒，还在跑」，而不是「卡住了」 */
+  ms: number;
+}
+
+export interface InFlightHandle {
+  id: number;
+  /** 只读当前相位——「等人点头期间不被壳请求改写」那条判定要用它 */
+  phase(): BridgePhase;
+  set(phase: BridgePhase, what?: string | null): void;
+  /** 出表：请求结束（无论成败）。⛔ 不调它 = 那只请求永远被读成「还在跑」 */
+  done(): void;
+}
+
+/**
+ * 相位登记表（工厂——单测各造一份，互不干扰）。
+ *
+ * `snapshot(selfId)` **剔除自己**：`ping` 探活本身也是一条在办请求，不剔除的话每次探活都
+ * 「看见自己」⇒ 客户端永远读到「还在跑」——那是**必然说谎**。
+ */
+export function createInFlightRegistry(now: () => number = Date.now) {
+  const entries = new Map<number, { op: string; phase: BridgePhase; what: string | null; startedAt: number }>();
+  let seq = 0;
+  return {
+    begin(op: string): InFlightHandle {
+      const id = ++seq;
+      const entry = { op, phase: 'op' as BridgePhase, what: null as string | null, startedAt: now() };
+      entries.set(id, entry);
+      return {
+        id,
+        phase: () => entry.phase,
+        set: (phase, what = null) => {
+          entry.phase = phase;
+          entry.what = what;
+        },
+        done: () => {
+          entries.delete(id);
+        },
+      };
+    },
+    snapshot(selfId: number | null = null): InFlightEntry[] {
+      const t = now();
+      const out: InFlightEntry[] = [];
+      for (const [id, e] of entries) {
+        if (id === selfId) continue;
+        out.push({ op: e.op, phase: e.phase, what: e.what, ms: t - e.startedAt });
+      }
+      return out;
+    },
+    size: () => entries.size,
+  };
+}
+
+export type InFlightRegistry = ReturnType<typeof createInFlightRegistry>;
+
+/** 模块唯一那份（真实现用它；`ping` 经 `identity().inFlight` 读走）——⛔ 不导出：唯一消费者是同文件的
+ *  `opContextFor` 默认参数（导出会被 knip 当闲置面，且外面确实不需要它） */
+const inFlight = createInFlightRegistry();
 
 /* ── 配置解析（纯函数，单测友好） ── */
 
@@ -255,7 +338,16 @@ async function shellRequest(channel: string, args: unknown[], timeoutMs = SHELL_
   return new Promise<unknown>((resolve, reject) => {
     const timer = setTimeout(() => {
       pendingShell.delete(requestId);
-      reject(coded('ESHELLTIMEOUT', `壳无应答（${timeoutMs}ms 超时，channel=${channel}）`));
+      // AI#60：文案要**如实**——「壳没在预算内答复」⛔ 不等于「命令没执行」。长命令（如
+      // `update.openUpdateFlow` 的下载腿）合法跑几分钟，主进程先放弃等待是设计；但读数不能让
+      // AI 把「已经成功」当失败（真机整跳上撞过：界面照常推进，AI 那侧只拿到「壳无应答」）。
+      // 确认框那条**含义相反**（没等到答复 = 没点头 ⇒ 动作没执行，fail-closed）——同样叫超时，
+      // 故按通道分说，⛔ 别用一句通用话把两件事混成一个读数。
+      const detail =
+        channel === IPC.dialog.confirm
+          ? `没等到用户答复——**等于没点头**，动作没有执行（fail-closed）`
+          : `命令**可能仍在壳里执行**（长命令合法），也可能壳卡住了；这不是执行失败，⛔ 别据此判断「没做」`;
+      reject(coded('ESHELLTIMEOUT', `壳无应答（${timeoutMs}ms 超时，channel=${channel}）：${detail}`));
     }, timeoutMs);
     pendingShell.set(requestId, { resolve, reject, timer });
     win!.webContents.send(IPC.bridge.request, { requestId, channel, args, sourceWindowId: 'main' });
@@ -283,6 +375,35 @@ const opContext: BridgeOpContext = {
   ledgerEntries: () => ledger,
 };
 
+/**
+ * 一条请求的执行上下文（AI#60）——**相位在这条缝上进出**，`handleRequest` 与单测共用同一份。
+ *
+ *   · `begin` 即入表（phase = `op`）；返回的 `done()` 由调用方在 `finally` 里调；
+ *   · 壳请求 ⇒ 相位 `shell`（`what` = 通道名）；
+ *   · 等人点头期间（`ask-user`）**不被那条确认框请求改写**——否则客户端读到的相位是
+ *     「命令在跑」，而真相是「软件里弹着框等人」（那是最要命的一种误读：AI 会以为对面卡住而重试）；
+ *   · `identity()` 回填 `inFlight`（**剔除自己**——`ping` 也是一条在办请求）。
+ *
+ * `base` 可注入（默认模块那份 `opContext`）——单测给假壳请求即可钉住相位进出，⛔ 不必起窗口。
+ */
+export function opContextFor(
+  op: string,
+  base: BridgeOpContext = opContext,
+  registry: InFlightRegistry = inFlight,
+): { ctx: BridgeOpContext; done: () => void } {
+  const handle = registry.begin(op);
+  const ctx: BridgeOpContext = {
+    ...base,
+    shellRequest: (channel, args, timeoutMs) => {
+      if (handle.phase() !== 'ask-user') handle.set('shell', channel);
+      return base.shellRequest(channel, args, timeoutMs);
+    },
+    identity: () => ({ ...base.identity(), inFlight: registry.snapshot(handle.id) }),
+    phase: (phase, what) => handle.set(phase, what ?? null),
+  };
+  return { ctx, done: () => handle.done() };
+}
+
 async function handleRequest(req: unknown): Promise<unknown> {
   if (!req || typeof req !== 'object') throw coded('EPROTO', '请求必须是 JSON 对象');
   const body = req as Record<string, unknown>;
@@ -302,8 +423,9 @@ async function handleRequest(req: unknown): Promise<unknown> {
     throw coded('EOP', `未知操作 ${op || '(空)'}——describe 可列出全部（⛔ 网关只给白名单里的操作，不给任意 JS）`);
   }
   const t0 = Date.now();
+  const { ctx, done } = opContextFor(op);
   try {
-    const result = await handler.run(body, opContext);
+    const result = await handler.run(body, ctx);
     ledgerEntry(op, keyArg, true, null, Date.now() - t0);
     return result;
   } catch (e) {
@@ -311,6 +433,9 @@ async function handleRequest(req: unknown): Promise<unknown> {
     const code = err.code ?? 'EERROR';
     ledgerEntry(op, keyArg, false, code, Date.now() - t0);
     throw err.code ? err : coded('EERROR', err.message || String(err));
+  } finally {
+    // 出表（AI#60）：请求结束就不该再被读成「还在跑」——成功 / 失败 / 被拒**一律**出表
+    done();
   }
 }
 

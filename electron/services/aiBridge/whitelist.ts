@@ -64,6 +64,12 @@ export interface LedgerEntry {
   ms: number;
 }
 
+/**
+ * 一次请求此刻在**哪条腿**上（AI#60）——相位词汇的**唯一定义处**。
+ * `sensitive.ts` 的同名可选参数是**结构型**照抄（它 ⛔ 不 import 本模块，免得成环；见那里的注）。
+ */
+export type BridgePhase = 'op' | 'shell' | 'ask-user';
+
 /** 内核注入给操作的执行上下文——操作不直接碰 electron / net，只经它说话 */
 export interface BridgeOpContext {
   /** 主进程 → 壳渲染进程的一次请求（复用既有 bridge:* 信封，requestId 前缀 `aibridge-`） */
@@ -72,6 +78,11 @@ export interface BridgeOpContext {
   identity(): Record<string, unknown>;
   /** 操作账（log 操作读） */
   ledgerEntries(): LedgerEntry[];
+  /**
+   * 相位标记（AI#60，**可选**——老 ctx / 既有假 ctx 不传也不崩）：内核据此对客户端说
+   * 「这条请求正在等人点头」。⛔ 由内核实现记（`index.ts` 的 `opContextFor`），操作只声明事实。
+   */
+  phase?(phase: BridgePhase, what?: string | null): void;
 }
 
 export interface BridgeOp {
@@ -165,7 +176,7 @@ export const OPS: Record<string, BridgeOp> = {
   ping: {
     name: 'ping',
     kind: 'read',
-    help: '认人：谁在服务（pid / 通道 / 版本 / 已跑多久）——客户端每次调用先 ping 并把应答 pid 与记录对齐',
+    help: '认人：谁在服务（pid / 通道 / 版本 / 已跑多久）＋ 在办请求的相位（还在跑 / 正等人点头）——客户端每次调用先 ping 并把应答 pid 与记录对齐',
     params: [],
     run: async (_req, ctx) => ctx.identity(),
   },
