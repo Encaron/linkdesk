@@ -33,5 +33,5 @@
 
 ## 红线速记（详文见所指记忆，此处只指路）
 
-- 🔴 **不推**——`git push` 必须等用户本人点头，推必带代理（memory `push-wait-for-user` / `dev-environment`）。
+- 🟢 **可推（常态化授权）**——2026-09-29 用户拍板：发版链（软件 / 插件 / npm）**含 `git push` 一律自主走到端、不再逐次问**；推必带代理 127.0.0.1:7890（memory `push-wait-for-user` / `dev-environment`）。⛔ 仍归用户的两件：**撤版**、**改写已发布 tag**（失败未发布的 tag 移动重打照旧可做，先例 v0.2.12 / v0.2.22）。
 - 🔴 提交纪律（`npm run check` 全绿、类别前缀、版本号同步 CHANGELOG）与设计 skill 门禁，一律照 CLAUDE.md「提交前自检」「硬约束」执行——对本文件读者同样生效。
