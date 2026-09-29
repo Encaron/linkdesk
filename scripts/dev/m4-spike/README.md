@@ -214,7 +214,7 @@ tcp.缺口①.后果：账本把它记成 ok=true  [{"op":"exec","arg":"no.such.
 
 ## 九、记忆与正典指针
 
-- 正典：`docs/04-软件更新/待抉择池/AI友好化-全自动操作/03-任务档案/M4-通道.md`（本格 `AI#31`）＋ `01-设计.md §9.3`
+- 正典：`docs/04-软件更新/已落地/AI友好化-全自动操作/03-任务档案/M4-通道.md`（本格 `AI#31`）＋ `01-设计.md §9.3`
 - 复用件：`scripts/dev/`（D0 驱动：`lib/cdp.mjs` 的 CDP 读面就是本棒的「证人②」）
 - 记忆：`exclusive-resource-handover-and-probe-strength`（M5：独占资源交接 ＋ 探针强度 ⇒ 本棒的「认人」与「启动门」直接来自它）
 - 读数原件：[`READINGS.txt`](./READINGS.txt)

@@ -60,7 +60,7 @@
 | 11 | **嵌套分屏**（左→右上下→右下再左右） | `linkdesk.pool.tabAction({action:"splitTab", direction, targetGroupId})` 逐层分裂；比例用 `{action:"updateSplitSizes", anchorGroupId, sizes:[a,b]}` | ✅ 现成 |
 | 12 | **空间定位问答**（「串口监视器在最右下角那一块」） | `linkdesk.tabs.list()`（全窗标签清单）／`linkdesk.pool.getLayout()`（本窗布局树）。⚠️ 软件外（门③）走 `tabs` 操作（`windows[].root`/`groups`，同一份数据）——**别**用 `workbench.action.getLayout`：那条读的是窗口/侧栏/面板**几何**，不含分屏树 | ✅ 现成 |
 
-出处：`docs/04-软件更新/待抉择池/AI友好化-全自动操作/01-设计.md` §十（用户逐例提问的逐条对账）。
+出处：`docs/04-软件更新/已落地/AI友好化-全自动操作/01-设计.md` §十（用户逐例提问的逐条对账）。
 
 ### 3.2 日常动作速查
 

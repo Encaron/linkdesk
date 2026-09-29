@@ -6,7 +6,7 @@
  *   （`config/update.ts` 就是这么并的），左导航**永远不会出现「AI 接入」**——先例 = `appearance`
  *   （`config/appearance.ts`，独立身份 → 左导航「主题」）。
  *
- * 18 键全账（落地版 mockup = docs/04-软件更新/待抉择池/AI友好化-全自动操作/mockups/
+ * 18 键全账（落地版 mockup = docs/04-软件更新/已落地/AI友好化-全自动操作/mockups/
  * 02-设置页-AI接入分区-落地版.html；组件映射 = 同夹 03-任务档案/M4-设置页.md §0.7）：
  *   · 开关 ×4（`ai.mcp.enabled` / `ai.cli.enabled` / `ai.debug.remoteDebugging` / `ai.auditLog.enabled`）
  *   · 只读状态 ×5（`renderHint:"readonly"` ＋ `statusCommand` 指壳命令——`AI#38.12` 通用件，

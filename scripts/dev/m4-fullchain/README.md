@@ -141,7 +141,7 @@ LINKDESK_USER_DATA=<iso> LINKDESK_CDP=http://127.0.0.1:9444 node scripts/dev/m4-
 3. **hover-only 面的口径（重要）**：`CSS.forcePseudoState` 在**深层既有节点**上实测只改 `matches()`、**不改计算样式**
    ⇒ 靠它验 hover 面会得到**假绿**。可信做法 = `scripts/dev/driver.mjs --mode mouse`（**元素锚定**：先取元素
    再落到它的中心，⛔ 不推算坐标、不看窗口位置）；用了指针的读数**如实标注**，别写成「非坐标」。（细节见
-   [01-设计.md §三](../../../docs/04-软件更新/待抉择池/AI友好化-全自动操作/01-设计.md) 与收口报告 §五。）
+   [01-设计.md §三](../../../docs/04-软件更新/已落地/AI友好化-全自动操作/01-设计.md) 与收口报告 §五。）
 4. **宿主命令读「位置实参」**：`params[].name` 是**具名**声明，但 handler 取的是 `args[0]/args[1]`
    ⇒ 照具名对象调用（`{containerId, viewId}`）会**静默无效**（`ok:true` 却没做事）。验收器一律按**平铺实参**调。
    （⇒ 生长格 `AI#52`：执行面要不要兼容具名对象。）

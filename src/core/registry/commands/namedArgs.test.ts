@@ -1,6 +1,6 @@
 /**
  * `AI#52`「壳侧宽进」的判据——**命令桥的具名实参展开**（2026-09-29 用户拍板，出处见
- * `docs/04-软件更新/待抉择池/AI友好化-全自动操作/AI-执行清单.md`）。
+ * `docs/04-软件更新/已落地/AI友好化-全自动操作/AI-执行清单.md`）。
  *
  * ── 判据（照拍板原文）──
  *   ① **等价**：`executeCommandStrict(id, undefined, {a, b})` ≡ `executeCommandStrict(id, undefined, a, b)`
