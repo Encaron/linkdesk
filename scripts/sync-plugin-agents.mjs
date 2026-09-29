@@ -236,7 +236,7 @@ const FACTS = {
 /** 现场读一只仓的 `plugin.json` / `package.json`（读不到 ⇒ 抛出，让调用方报红） */
 function readRepo(dir) {
   // plugin.json 是 JSONC（可注释可尾逗号，官方格式——脚手架与 schema 都按 JSONC 教）；
-  // ⛔ 不许用 JSON.parse：第三方作者的合法 JSONC 清单（如 geme-tihu-bicycle）会当场炸掉整轮同步。
+  // ⛔ 不许用 JSON.parse：第三方作者的合法 JSONC 清单（注释 ＋ 尾逗号）会当场炸掉整轮同步。
   const manifestErrors = [];
   const manifest = parseJsonc(readFileSync(join(dir, "plugin.json"), "utf8"), manifestErrors, { allowTrailingComma: true });
   if (manifestErrors.length > 0 || !manifest || typeof manifest !== "object") {
@@ -365,7 +365,7 @@ const ids = readdirSync(CONTAINER, { withFileTypes: true })
   .sort();
 
 // 🔴 射程 = FACTS 表（官方发货仓的事实账）——**表 = 官方仓名单的唯一真相源**。
-// 容器里可能出现第三方作者仓（如 geme-tihu-bicycle，用户 pull 进来的）：它们不在表里 ⇒
+// 容器里可能出现第三方作者仓（用户自己 pull 进来的，仓名与本工程无关）：它们不在表里 ⇒
 // **跳过，不渲染、不比对、不写**——往别人的仓写 AGENTS.md 越权（⛔ 不写别人的仓）；
 // 若表外仓其实是「新收编的官方仓」，跳过清单会把它亮出来——该走的流程是补 FACTS 段，不是硬编码名单。
 const tableOutIds = ids.filter((id) => !(id in FACTS));

@@ -1,7 +1,7 @@
 # 02 · 会话三（AI-B）：SDK 新腿两件 —— `E6#136`–`#137`
 
 > **开工闸门**：🔴 **等会话一（AI-A）把 SDK 0.1.43 发完再开工**（两腿基于 0.1.43 发 0.1.44——SDK 版本串行，防并发发版撞号）。开工前去 `交接.md` 顶部确认会话一已收尾。
-> **本会话动谁**：`packages/plugin-sdk`（两腿）＋ 官方插件仓 **至多两个**（`serial-monitor`、`settings`，见 §二）＋ 维护者面文档（判据段落）。**⛔ 不碰** `geme-tihu-bicycle`（第三方仓，见 §二禁区）、**不碰** 壳 `src/`/`electron/`、**不碰** `packages/create-linkdesk-plugin` 与 `packages/plugin-docs`（除非 #136 判据文档必须进作者面树——见 §一联动，先在交接段声明再动）。
+> **本会话动谁**：`packages/plugin-sdk`（两腿）＋ 官方插件仓 **至多两个**（`serial-monitor`、`settings`，见 §二）＋ 维护者面文档（判据段落）。**⛔ 不碰**第三方作者仓（见 §二禁区）、**不碰** 壳 `src/`/`electron/`、**不碰** `packages/create-linkdesk-plugin` 与 `packages/plugin-docs`（除非 #136 判据文档必须进作者面树——见 §一联动，先在交接段声明再动）。
 > **两腿共同的纪律**：① 新腿 `--self-test` **同批接进壳仓 `npm run check`**（memory `gate-selftest-must-be-wired`——不接线的自测自己就是假门禁）；② **18 仓存量先普查后判红**——⛔ 不许「上腿即全红」；③ 口径锚词照 `E6#112 锚⑨` / `E6#119 锚⑩` 先例；④ **判据不许为凑绿放宽**（memory `gate-idle-vs-zero-violation`）——存量走逐处裁决或带理由的豁免注释，不改判据。
 
 ---
@@ -10,7 +10,7 @@
 
 ### 前因
 
-第三方作者在 CSS 头注释里写了 `--text-*/--accent`——其中 `*/` 把块注释**提前闭合**，后面的注释文字变成垃圾语法，把紧随其后的 `.geme-tihu-bicycle-root` 规则**整条吞掉**。PostCSS/Vite 解析全程零警告；TSX 里引用该类名的规则照旧在跑，样式就是不生效——靠逐条浏览器截图比对才发现。
+第三方作者在 CSS 头注释里写了 `--text-*/--accent`——其中 `*/` 把块注释**提前闭合**，后面的注释文字变成垃圾语法，把紧随其后的 `.<插件id>-root` 规则**整条吞掉**。PostCSS/Vite 解析全程零警告；TSX 里引用该类名的规则照旧在跑，样式就是不生效——靠逐条浏览器截图比对才发现。
 
 **为什么现有三条腿都没接住**（这正是缝隙所在，[dangling-names.ts 头注](../../../../packages/plugin-sdk/src/eslint/checks/dangling-names.ts)写得很清楚）：
 
@@ -65,7 +65,7 @@
 
 | 仓 | 位置 | 形态 |
 |:--|:--|:--|
-| `geme-tihu-bicycle`（**第三方**） | `src/index.tsx:272–273` | 游戏 keydown/keyup（作者不知道有规约） |
+| 第三方作者仓 | `src/index.tsx:272–273` | 游戏 keydown/keyup（作者不知道有规约） |
 | `serial-monitor`（官方） | `src/components/SearchBar.tsx:35`、`:53` | 两处 window keydown（搜索场景） |
 | `settings`（官方） | `src/views/keybinding-settings/useKeybindingEditor.ts:96` | **capture=true** 抓按键（快捷键**录制器**——输入被吞前抓原始键的形态） |
 
@@ -85,9 +85,9 @@
 3. **官方 2 仓逐处裁决**（每处三条证据在案，⛔ 不许批量改）：
    - `serial-monitor` SearchBar 两处：先读代码确认场景——若按键消费时焦点必在搜索框内 ⇒ 迁移到容器 `onKeyDown`（真迁移，PATCH bump 1.0.21 ＋ CHANGELOG ＋ 重发 ＋ 官方目录收录）；若确属「焦点在任何地方都要响应」的正当形态 ⇒ disable ＋ 理由，不 bump。
    - `settings` 录制器一处：录制器要在输入被吞前抓原始键，`container onKeyDown` 可能不够——大概率正当豁免（capture=true ＋ 理由注释）。**裁决结论与证据写进清单格回写段**。
-4. **geme-tihu-bicycle（⛔ 禁区）**：第三方仓**本工程不代改**。腿落地后它 CI 会红——在清单格回写段与 `交接.md` 各留一行「待转达作者」：正解已在报错文案里，等他下版自修。**不许**替他发版、不许收录他的仓。
+4. **第三方作者仓（⛔ 禁区）**：**本工程不代改**。腿落地后它 CI 会红——在清单格回写段与 `交接.md` 各留一行「待转达作者」：正解已在报错文案里，等他下版自修。**不许**替他发版、不许收录他的仓。
 5. **自测**：`--self-test` 覆盖——window/document 两形态红、单双引号、`addEventListener("keydown", fn, true)`（带 capture 参数）也红、disable 注释放行、正当容器 onKeyDown 不红。接进壳仓 check。
-6. **判红顺序（⛔ 不许上腿即全红）**：SDK 腿落地 ＋ 2 官方仓裁决**同会话内完成**——保证 0.1.44 发布时 18 仓 CI 全绿（geme-tihu-bicycle 除外，它不在官方 CI 面内）。
+6. **判红顺序（⛔ 不许上腿即全红）**：SDK 腿落地 ＋ 2 官方仓裁决**同会话内完成**——保证 0.1.44 发布时 18 仓 CI 全绿（第三方作者仓除外，它不在官方 CI 面内）。
 
 ### 验收
 
@@ -105,6 +105,6 @@
 
 1. `npm run check` 全绿（两腿 `--self-test` 已接线）。
 2. SDK bump 0.1.44 ＋ CHANGELOG ＋ lock ＋ `npm publish`（🔴 用户点头）＋ 现场证（memory `sdk-published-not-equal-enforced`）。
-3. 官方仓裁决与发版读数逐格回写 E6 清单；`交接.md` 顶部追加接力段（含「geme-tihu-bicycle 待转达作者」一行）。
+3. 官方仓裁决与发版读数逐格回写 E6 清单；`交接.md` 顶部追加接力段（含「第三方作者仓待转达作者」一行）。
 4. 两腿判据在维护者面文档的段落落笔 ＋ `sync:plugin-agents --check` 自证。
 5. **本层收口报告**：会话三是本层最后一棒——回写段里出本批简短收口（九格读数汇总 ＋ 残余边界 ＋ 待拍板三格现状），格式照 L8 第 7 格的收口惯例。

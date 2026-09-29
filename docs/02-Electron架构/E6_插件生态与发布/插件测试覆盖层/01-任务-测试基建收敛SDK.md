@@ -1,6 +1,8 @@
 # 01 · 会话一（AI-A）：测试地基收进 SDK ＋ 脚手架与五仓收敛 ＋ 文档同笔 —— `E6#144`–`E6#146`
 
-> **本会话动谁**：`packages/plugin-sdk`（新增 subpath）· 壳根 `vitest.setup.ts`（收一行）· `packages/create-linkdesk-plugin`（模板两文件 ＋ 两处 README）· 壳 `scripts/`（`check-scaffold` ＋ 两个 sync）· 中文维护者面 ＋ 作者面两棵树 · memory。**容器里**：**5 只**官方仓（`vitest.setup.ts` ＋ lock）＋ 18 只官方仓（`AGENTS.md`）。⚠️ 现存第 6 份副本身在第三方仓 `geme-tihu-bicycle`——**⛔ 不代改**（红线），只转达作者（[06 §三](06-待拍板方向题.md)）。
+> **非新能力**（`check-design-flow` §8.4 ③ 的声明）：本档只**搬测试地基 ＋ 加门禁**，⛔ 不新增 `window.linkdesk.*` 命名空间/方法、⛔ 不新增 `contributes.*` 键；文中出现的 `window.linkdesk.serial` 一类是**测试替身桩在哪个文件里**的说明，不是新面。
+>
+> **本会话动谁**：`packages/plugin-sdk`（新增 subpath）· 壳根 `vitest.setup.ts`（收一行）· `packages/create-linkdesk-plugin`（模板两文件 ＋ 两处 README）· 壳 `scripts/`（`check-scaffold` ＋ 两个 sync）· 中文维护者面 ＋ 作者面两棵树 · memory。**容器里**：**5 只**官方仓（`vitest.setup.ts` ＋ lock）＋ 18 只官方仓（`AGENTS.md`）。⚠️ 现存第 6 份副本身在第三方作者仓——**⛔ 不代改**（红线），只转达作者（[06 §三](06-待拍板方向题.md)）。
 > **发版**：`@linkdesk/plugin-sdk` **0.1.47** · `create-linkdesk-plugin` **0.1.14** · `@linkdesk/plugin-docs` **0.1.31**（三包各自 PATCH）。🔴 **三笔发版都要用户点头**；**壳 0.2.15 不动**（零 `src/`/`electron/` 改动）。
 > **上位纪律**：⛔ **不推送**（推送等用户点头）· ⛔ **不改 mock 语义**（只搬位置）· ⛔ 不给共享 mock 加参数/开关（否则 8 处指针不再是「一行」）· ⛔ 模板文件里**不许出现内部任务号**（`check-scaffold` 有这条判据）· ⛔ 容器里的每个仓**各自单独提交**。
 
@@ -67,7 +69,7 @@
 ### 前因
 
 - 模板 ＋ 6 仓那 7 份 4,028 B 拷贝的头注承诺了「两处同源」，但**没有任何门禁在守**（`check-scaffold.mjs` 只把 `vitest.setup.ts` 列在 `EXPECTED_FILES` 里——**只查在不在，不比内容**；`sync-plugin-ci.mjs` 只在人工跑时铺）。
-- ⚠️ **7 份现存的第 7 份在第三方仓**（`E:\linkdesk-plugins\official\geme-tihu-bicycle\vitest.setup.ts`）——⛔ **不代改**（红线：不写别人的仓）。它那份是**自足的完整 mock**（能跑，只是不跟共享地基升级），保持原样；作者的迁移建议走 [06 §三](06-待拍板方向题.md) 转达。**所以本格铺的是 5 仓，不是 6 仓。**
+- ⚠️ **7 份现存的第 7 份在第三方仓**（`E:\linkdesk-plugins\official\<第三方仓>\vitest.setup.ts`）——⛔ **不代改**（红线：不写别人的仓）。它那份是**自足的完整 mock**（能跑，只是不跟共享地基升级），保持原样；作者的迁移建议走 [06 §三](06-待拍板方向题.md) 转达。**所以本格铺的是 5 仓，不是 6 仓。**
 - 新插件从模板出生时带的是**完整 mock 体**⇒ 每生一只新插件就多一份会漂移的拷贝。
 - 「非视图插件怎么办」的答案也要落在同一处：**声明式插件无可测单元**，纪律段必须写明（否则下一只纯 JSON 插件的作者会以为「没测试 = 不合格」）。
 
@@ -83,7 +85,7 @@
 | `scripts/check-scaffold.mjs` | 加**指针形态断言** ＋ 同笔更新它自己的 `--self-test` |
 | `scripts/sync-plugin-ci.mjs` | `FOR_TESTED` **列表不变**（文件仍在），只在注释里写清「内容由模板决定，模板里已是一行指针」 |
 | 容器 **5 仓**（官方：serial-monitor / file-tree / editor / settings / marketplace） | `vitest.setup.ts` ＋ `package-lock.json`（`npm install` 后） |
-| ⛔ 第三方仓 `geme-tihu-bicycle` | **一字不动**（它的那份副本由作者自行决定迁不迁） |
+| ⛔ 第三方作者仓 | **一字不动**（它的那份副本由作者自行决定迁不迁） |
 | 容器 18 仓 | `AGENTS.md`（＋ `.vscode/settings.json` 若 `--dry-run` 报有差异） |
 
 ### 怎么修
@@ -96,10 +98,10 @@
    - **声明式插件**（纯 JSON / 主题 / 语言包）**无可测单元**——它们的门禁是 `npm run verify` 的结构与声明判据。
 2. **两处 README 的树行**照上表改（英文，作者面语言）。
 3. **`check-scaffold.mjs` 加断言**：`template/vitest.setup.ts` 必须是**指针形态**——建议三条一起（任一不满足即红）：① 含 `@linkdesk/plugin-sdk/vitest-setup`；② **不含** mock 标志串（`configurationMock` / `filesystemMock` / `tabsMock` 之类）；③ 行数 ≤ 5。**同笔**在它的 `--self-test` 里加对应例（现有 6 例 ⇒ ＋2：正例过、把 mock 体塞回去必须红）。
-4. **铺 5 仓**（官方五仓；⛔ `geme-tihu-bicycle` 不代改）：`node scripts/sync-plugin-ci.mjs --dry-run`（先看差异）⇒ 落盘 ⇒ **逐仓** `npm install --registry=https://registry.npmjs.org`（🔴 `--registry` 必须显式——本机默认 registry 是镜像，不指定会把 lock 里 `resolved` 改写成镜像地址）。
+4. **铺 5 仓**（官方五仓；⛔ 不代改第三方作者仓）：`node scripts/sync-plugin-ci.mjs --dry-run`（先看差异）⇒ 落盘 ⇒ **逐仓** `npm install --registry=https://registry.npmjs.org`（🔴 `--registry` 必须显式——本机默认 registry 是镜像，不指定会把 lock 里 `resolved` 改写成镜像地址）。
 5. **逐仓验证解析**：5 仓**各自**跑 `npm test`（绿）＋ `grep` 证据：lock 里 `@linkdesk/plugin-sdk` 落点 ≥ 0.1.47。⚠️ 5 仓里 4 只是出厂种子仓（settings / marketplace / file-tree / editor）——**本格不动它们的版本**，所以**不需要** `sync:bundled`（种子追新只跟插件版本走）。
-6. **铺 18 仓 AGENTS.md**：`node scripts/sync-plugin-agents.mjs --dry-run` ⇒ 落盘 ⇒ `--check` 绿。（18 仓 = 官方全部，**不含** `geme-tihu-bicycle`——脚本对第三方仓按设计跳过、⛔ 不写别人的仓。）
-7. **容器提交**：每个仓**各自一笔**（5 仓：`vitest.setup.ts` ＋ lock；18 仓：`AGENTS.md`）——⛔ 不许跨仓揉一笔、⛔ **不推送**（等用户点头）。⚠️ `geme-tihu-bicycle` **不出现在提交清单里**（我们没动它）。
+6. **铺 18 仓 AGENTS.md**：`node scripts/sync-plugin-agents.mjs --dry-run` ⇒ 落盘 ⇒ `--check` 绿。（18 仓 = 官方全部，**不含**第三方作者仓——脚本对第三方仓按设计跳过、⛔ 不写别人的仓。）
+7. **容器提交**：每个仓**各自一笔**（5 仓：`vitest.setup.ts` ＋ lock；18 仓：`AGENTS.md`）——⛔ 不许跨仓揉一笔、⛔ **不推送**（等用户点头）。⚠️ 第三方作者仓 **不出现在提交清单里**（我们没动它）。
 8. **发版 `create-linkdesk-plugin` 0.1.13 → 0.1.14**（模板两文件 ＋ 两处 README 都在黄灯面内 ⇒ 必须真发；🔴 要用户点头）＋ `npm run release:mark`。
 9. **冷启动实证**（照 memory `npm-cache-stale-scaffold` 的教训）：在临时目录用**刚发的 0.1.14**（或本地 `npm pack` 的 tarball）生成一只探针工程 ⇒ 确认新仓的 `vitest.setup.ts` 是一行指针、`npm install` 后 `npm test` 可跑、`AGENTS.md` 有纪律段。
 
@@ -119,7 +121,7 @@
 |:--|:--|
 | 指针真的解析得到 | 5 仓**逐仓** `npm test` 绿（不是只跑一仓） |
 | lock 落点 | 5 仓 lock 里 `@linkdesk/plugin-sdk` ≥ 0.1.47（读数抄进交接段） |
-| 第三方未动 | `git -C official/geme-tihu-bicycle status --porcelain` 输出为空 |
+| 第三方未动 | `git -C official/<第三方仓> status --porcelain` 输出为空 |
 | 脚手架门禁 | `check-scaffold` 主流程 ＋ `--self-test` 全绿（含新加的两例） |
 | 18 仓一致 | `node scripts/sync-plugin-agents.mjs --check` 绿 |
 | 形态断言真会咬人 | 自测反例：把 mock 体塞回 `template/vitest.setup.ts` ⇒ 断言红 |
@@ -189,6 +191,6 @@
 1. **壳仓 `npm run check` 全绿**（2,572＋ 用例；本会话动了全仓测试的地基 ⇒ 这条是硬证）。
 2. **`node scripts/sync-plugin-agents.mjs --check` 绿**（18 仓）。
 3. **三笔发版都过用户点头** ＋ `npm run release:mark` ＋ `check:npm-release` 绿。
-4. **容器落盘与提交**：5 仓（`vitest.setup.ts` ＋ lock）＋ 18 仓（`AGENTS.md`），**每仓单独一笔**，⛔ 不推送；`geme-tihu-bicycle` 零改动。
+4. **容器落盘与提交**：5 仓（`vitest.setup.ts` ＋ lock）＋ 18 仓（`AGENTS.md`），**每仓单独一笔**，⛔ 不推送；第三方作者仓零改动。
 5. **读数回写**：本会话三格的 ✅ 读数写进 `E6-执行清单.md` 对应行；[交接.md](交接.md) 顶部加「会话一收口段」（含唯一性 grep 读数 / 5 仓 `npm test` 与 lock 落点 / 探针工程三件读数 / 三个小闸走到哪一闸）；总纲 §〇b 若有数字变动则同笔订正。
 6. **三笔提交（壳仓）**：① SDK（`feat:`）② 脚手架 ＋ `scripts/`（`feat:`/`chore:` 视改动）③ 文档 ＋ memory（`docs:`）——各自单独一笔，⛔ 不揉。

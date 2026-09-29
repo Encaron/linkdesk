@@ -12,8 +12,8 @@
     },
     {
       "name": "@linkdesk/plugin-sdk",
-      "version": "0.1.54",
-      "contentHash": "4f9e1dbc176b87c08075c1799ed1d3fdea253657afb560f0552373fb3e4d01cc",
+      "version": "0.1.55",
+      "contentHash": "2c936be4a949438342206a3bddfadce6678f18c6e4025402684988b78133831a",
       "fileHashes": {
         "packages/plugin-sdk/README.md": "dd2a3dac5f82ce42",
         "packages/plugin-sdk/dev-host/dev-main.tsx": "49c59b28e17ca424",
@@ -46,7 +46,7 @@
         "packages/plugin-sdk/src/eslint/checks/dangling-names.test.ts": "3b52c99802947d34",
         "packages/plugin-sdk/src/eslint/checks/dangling-names.ts": "2328f244759e9387",
         "packages/plugin-sdk/src/eslint/checks/dangling-own-classes.test.ts": "530bb8f4d23d5bb3",
-        "packages/plugin-sdk/src/eslint/checks/dangling-own-classes.ts": "e850660358492648",
+        "packages/plugin-sdk/src/eslint/checks/dangling-own-classes.ts": "a2a1be5dfa8895fb",
         "packages/plugin-sdk/src/eslint/checks/disable.ts": "03ce95e411d31d27",
         "packages/plugin-sdk/src/eslint/checks/font-scale.ts": "df0292adc4daa6a4",
         "packages/plugin-sdk/src/eslint/checks/keyframe-refs.test.ts": "bfb937f2fb71b621",

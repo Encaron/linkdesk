@@ -35,17 +35,19 @@
  *   审计族：需要插件容器在场、**只读**（第三方仓只读报出、一字不写）、**不进 `npm run check`**、
  *   退出码恒 0（同 audit-plugin-dead-css / audit-plugin-scope）。⛔ 不引覆盖率百分比、不设阈值、不判红黄灯
  *   ——「升不升拦」已由用户 2026-09-26 拍板：**升**（E6#155 步二，判红落点 = 各仓 `ci-verify.mjs` 第六段）；
- *   本尺保持 19 仓只读盘点（盘点 ≠ 判红——两件事、两个落点、**判据同源**）。
+ *   本尺保持容器内**全部仓**的只读盘点（官方 ＋ 第三方；只数现场数，⛔ 不写死——盘点 ≠ 判红，
+ *   两件事、两个落点、**判据同源**）。
  *   ⛔ 本脚本不进 `check-gate-health.mjs` 自测域（那域的判据是文件名 `check-*.mjs`）⇒ 无需 `--self-test`。
  *
  * ── 审计核心（单一真源）──
  *   口径与两条判据住在 `packages/plugin-sdk/test-audit.mjs`（SDK subpath `@linkdesk/plugin-sdk/test-audit`，
- *   E6#155 步二起）：壳尺与 18 仓 CI 第六段调的是**同一份实现**，⛔ 任何一处都不许复制判据
+ *   E6#155 步二起）：壳尺与各官方仓 CI 第六段调的是**同一份实现**，⛔ 任何一处都不许复制判据
  *   （判据漂移 = 两把尺子打架，假红会让真红失效）。
  *
  * ── 官方仓名单来源 ──
  *   现场读 `scripts/sync-plugin-agents.mjs` 的 FACTS 表（那 = **官方仓名单唯一真相源**，会话一刚同步过
- *   AGENTS.md）。不在表里的仓 = 第三方作者仓（如 `geme-tihu-bicycle`）⇒ 单列、只读报出、⛔ 不代改。
+ *   AGENTS.md）。不在表里的仓 = 第三方作者仓 ⇒ 单列、只读报出、⛔ 不代改（仓名与本工程无关，
+ *   按现场目录认，⛔ 不在代码里写 id）。
  *
  * 用法：node scripts/audit-plugin-tests.mjs [容器目录] [--json]
  *       （或 npm run audit:plugin-tests；默认容器 E:/linkdesk-plugins，两级内 <组>/<仓>/plugin.json）
@@ -164,5 +166,5 @@ if (s.zeroTest || thirdPartyRows.some((r) => r.zeroTest.length)) {
 }
 
 console.log(`\n[plugin-tests] ⚠️ 零测 = 待裁决，不是判死——同名判据看不见跨文件覆盖，请逐条核（本层两次实测：file-tree 27%、marketplace 47% 的立案读数是假红）。`);
-console.log(`[plugin-tests] 只报不拦（exit 0）——本尺管 19 仓盘点；判红在**各仓 ci-verify.mjs 第六段**（E6#155 步二，2026-09-26 用户拍板；判据同源 @linkdesk/plugin-sdk/test-audit，⛔ 两处不许分叉）。`);
+console.log(`[plugin-tests] 只报不拦（exit 0）——本尺管容器内全部仓的盘点；判红在**各官方仓 ci-verify.mjs 第六段**（E6#155 步二，2026-09-26 用户拍板；判据同源 @linkdesk/plugin-sdk/test-audit，⛔ 两处不许分叉）。`);
 process.exitCode = 0;

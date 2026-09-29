@@ -1,22 +1,23 @@
 #!/usr/bin/env node
 /**
- * sync-plugin-ci——把脚手架模板里的「插件仓门禁三件套」铺到 18 只官方插件仓（E6#102 · L7 7.5 轮）。
+ * sync-plugin-ci——把脚手架模板里的「插件仓门禁三件套」铺到**官方发货仓**（只数现场从 FACTS 表读，
+ * 不写死；E6#102 · L7 7.5 轮）。
  *
- * 🔴 **为什么要有这个脚本**（而不是手改 18 遍）：清单的**唯一真相源是脚手架模板**
- *    （`packages/create-linkdesk-plugin/template/`）——「新插件一建出来就有检查」靠它。18 只官方插件
- *    仓是**同一个形状的历史工程**，它们的门禁文件必须是模板那几份的**逐字节副本**，否则「模板改了、
- *    18 只没跟」这类漂移**没有任何门禁能发现**（插件仓不在壳仓的 check 域里）。手改 18 遍 =
- *    18 份手抄，本脚本把「同源」变成机械动作。
+ * 🔴 **为什么要有这个脚本**（而不是手改每一只）：清单的**唯一真相源是脚手架模板**
+ *    （`packages/create-linkdesk-plugin/template/`）——「新插件一建出来就有检查」靠它。官方发货各仓
+ *    是**同一个形状的历史工程**，它们的门禁文件必须是模板那几份的**逐字节副本**，否则「模板改了、
+ *    各仓没跟」这类漂移**没有任何门禁能发现**（插件仓不在壳仓的 check 域里）。逐仓手改 =
+ *    逐份手抄，本脚本把「同源」变成机械动作。
  *
  * 铺什么（**按仓的实际情况分档**，不搞一刀切）：
- *   · 全部 18 只 —— `.github/workflows/ci.yml` + `scripts/ci-verify.mjs`（严格门禁）
+ *   · 全部官方发货仓 —— `.github/workflows/ci.yml` + `scripts/ci-verify.mjs`（严格门禁）
  *                  ＋ `package.json` 的 `verify` 脚本 ＋ devDependency `jsonc-parser`
  *   · 有测试的仓 —— 另加 `vitest.config.ts` + `vitest.setup.ts`（**运行时地基**，见 06 §二）
  *                  ＋ `package.json` 的 `test` 脚本 ＋ devDeps（`vitest` / `jsdom`，用 RTL 的加
  *                  `@testing-library/react`）——判据是**现场数测试文件**，不是照抄文档里的表
  *
  * ⚠️ 本脚本只改**本地容器**（`E:\linkdesk-plugins\official\<id>`）；**不碰 git、不推送**。
- *    推 18 个仓是用户点头之后的事（红线②），本脚本一个字都不推。
+ *    推各仓是用户点头之后的事（红线②），本脚本一个字都不推。
  *
  * 用法：
  *   node scripts/sync-plugin-ci.mjs --dry-run     # 只报差异，不落盘（先看它要干什么）
@@ -29,8 +30,13 @@
 import { cpSync, existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+// 官方仓名单的唯一真相源（`sync-plugin-agents.mjs` 的 FACTS 表）与仓发现口径住在 lib——
+// 与覆盖尺 `audit-plugin-tests.mjs` **共用同一份**：两份名单必然漂移（同一只仓在一把尺里在场、
+// 在另一把里缺席，而没有任何灯会亮）。
+import { officialPluginIds } from "./lib/plugin-repos.mjs";
 
 const ROOT = resolve(fileURLToPath(import.meta.url), "../..");
+const AGENTS_SCRIPT = join(ROOT, "scripts", "sync-plugin-agents.mjs");
 const TEMPLATE = join(ROOT, "packages", "create-linkdesk-plugin", "template");
 const CONTAINER = process.env.LINKDESK_PLUGIN_CONTAINER || "E:\\linkdesk-plugins\\official";
 const DRY = process.argv.includes("--dry-run");
@@ -57,10 +63,18 @@ if (!existsSync(CONTAINER)) {
 /**
  * 🔴 第三方仓**不代改**（L11 红线）：本脚本只负责**官方发货仓**的 CI/测试基建一致性。
  * 第三方作者自持的仓（用户 pull 进容器的）一行都不碰——它们自足能跑，迁不迁、何时迁归作者。
- * 口径与 `sync-plugin-agents.mjs` 的 FACTS 表同源（**表外 = 第三方**）；那边是从表推、
- * 这边是名单式，两边都只认「官方才写」，第三方仓永远不在写入集里。
+ * 名单口径与覆盖尺 `audit-plugin-tests.mjs` **同源**：官方仓名单的唯一真相源是
+ * `sync-plugin-agents.mjs` 的 FACTS 表——**表内 = 官方发货仓，表外 = 第三方**。
+ * ⛔ 这里不许写 id 名单（硬约束 10：壳代码零插件 ID 字面量；写死名单还会在「新收编一只官方仓」
+ * 时静默漏铺——漏在写入集外，没有任何灯会亮）。
  */
-const THIRD_PARTY = new Set(["geme-tihu-bicycle"]);
+const OFFICIAL_IDS = officialPluginIds(AGENTS_SCRIPT);
+if (!OFFICIAL_IDS) {
+  // ⛔ 名单读不到时**不许降级放行**：覆盖尺那边降级成「全按官方报」只是多报几行，
+  //    这边降级会把第三方作者仓当官方仓写入 = 越权改别人的仓。
+  console.error(`❌ 读不到官方仓名单（${AGENTS_SCRIPT} 的 FACTS 表——脚本形态变了？）`);
+  process.exit(1);
+}
 
 /** 容器下的插件仓 = 含 plugin.json 的一级目录（**不写死 id 清单**——加插件不用改脚本） */
 const repos = readdirSync(CONTAINER, { withFileTypes: true })
@@ -88,7 +102,7 @@ const skipped = [];
 const record = (repo, what) => changes.push(`${repo}: ${what}`);
 
 for (const id of repos) {
-  if (THIRD_PARTY.has(id)) {
+  if (!OFFICIAL_IDS.has(id)) {
     skipped.push(id);
     continue;
   }
@@ -145,7 +159,7 @@ for (const id of repos) {
 
 console.log(`${DRY ? "[dry-run] " : ""}容器：${CONTAINER}（${repos.length} 只）`);
 for (const c of changes) console.log(`  · ${c}`);
-if (skipped.length > 0) console.log(`  · 跳过第三方仓 ${skipped.length} 只（不代改）：${skipped.join("、")}`);
+if (skipped.length > 0) console.log(`  · 跳过第三方仓 ${skipped.length} 只（不在 FACTS 表内 · ⛔ 不代改）：${skipped.join("、")}`);
 const written = changes.filter((c) => !c.includes("无差异")).length;
 console.log(`\n${DRY ? "将改动" : "已改动"} ${written} 处。`);
 if (!DRY && written > 0) {
