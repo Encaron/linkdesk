@@ -1,5 +1,6 @@
 /**
- * HintTip 落点与尖角——**纯函数**（04「悬停提示系统」件 1；2026-09-27 落点返工版）。
+ * HintTip 落点/尖角/指针归属——**纯函数**（04「悬停提示系统」件 1；2026-09-27 落点返工版；
+ * 2026-09-30 补 `isPointerOnAnchor` 指针归属判据）。
  *
  * ── 为什么推翻初版判据（用户实机挑出的三处毛病，诊断全文见返工件 00-README §二）──
  * 初版把「贴不贴得下」判成**双轴整条 fits**，于是同一个机制长出三张脸：
@@ -196,4 +197,70 @@ export function computeTailOffset(
  */
 export function tailAxisOf(placement: TipPlacement): "left" | "top" {
   return isVertical(placement) ? "left" : "top";
+}
+
+/** 视口坐标下的一个点（`PointerEvent.clientX/clientY` 直接喂——与 `getBoundingClientRect()` 同系） */
+export interface TipPoint {
+  x: number;
+  y: number;
+}
+
+/**
+ * 沿 `parentNode` 往上走，**跨 Shadow 边界**（ShadowRoot 的 `parentNode` 是 `null`，要改走它的 `host`
+ * 才接得上光 DOM 那一侧）——`Element.contains` 不跨影子树，直接用会在"锚里有影子宿主"时误判为"不在锚上"。
+ */
+function reachesUpTo(node: Node | null, ancestor: Element): boolean {
+  for (let cur: Node | null = node; cur; cur = parentOrHost(cur)) {
+    if (cur === ancestor) return true;
+  }
+  return false;
+}
+
+/**
+ * 上一层祖先。两处 `as unknown as` 是**lib.dom.d.ts 的口径问题**，不是本件在猜：
+ * `Node.parentNode` 声明成 `ParentNode | null`（结构上不等于 `Node`，尽管运行时必定是 Node 或 null），
+ * 而 `host` 只长在 ShadowRoot 上、不在 `Node` 上。⛔ 别为了去掉这两个转换改成 `parentElement`——
+ * 影子树里 `parentElement` 是 `null`，正好把要跨的那一步弄丢。
+ */
+function parentOrHost(node: Node): Node | null {
+  const parent = node.parentNode as unknown as Node | null;
+  if (parent) return parent;
+  const shadowHosted = node as unknown as { host?: Node | null };
+  return shadowHosted.host ?? null;
+}
+
+/**
+ * 「几何变了之后，指针**还在锚上**吗」——收条判据的**唯一入口**（2026-09-30 用户实机立案）。
+ *
+ * ── 为什么要有这条判据 ──
+ * 条的生命周期原本只有四个收条动作：移开 / 失焦 / Esc / 点下 / 拖拽，而 `scroll`・`resize` 只**重算落点**
+ * （设计 §六·⑥「随锚滚动/移动重算」——那半句本身没错）。漏掉的是另一半：**鼠标不动、内容滚动的时刻**，
+ * 指针坐标没变、是锚从指针底下走掉了——浏览器**不会**发 `pointerout`（指针没动，动的是元素），
+ * 于是条既收不掉、又跟着旧锚一路滚出视口（用户原话「hint-tip 反而跟着滚动容器的东西往上滚动，直到我鼠标移动一下」）。
+ * 判据放在"几何重算"这一个点上，一并覆盖 resize / 分栏拖拽 / 面板折叠等**同族**场景——它们都走调用方的 `follow()`。
+ *
+ * ── 为什么是命中测试，而不是 `anchor.matches(":hover")` ──
+ * `:hover` 的刷新时机由引擎自己的指针重算决定，**恰恰在"滚动后指针没动"这个时刻不保证已更新**
+ * （要拦的就是它）；且 jsdom 恒为 false ⇒ 不可测。命中测试的输入全是显式的，能钉。
+ *
+ * ── 返回值三态（🔴 别把 `undefined` 当"不在锚上"）──
+ * - `true`：指针在锚上（含其后代）⇒ 照旧跟随；
+ * - `false`：指针已不在锚上 ⇒ 调用方收条；
+ * - `undefined`：**无从判断**——没记到坐标（键盘路径、合成事件不带 `clientX`）或环境没有
+ *   `document.elementFromPoint`（jsdom）。**调用方照旧跟随**：宁可不收，也不许凭猜误收。
+ *
+ * @param anchor 锚元素（含其后代——指针落在锚内部任何位置都算"还在锚上"）
+ * @param point 最后已知的指针位置（`null` = 没记到）
+ * @param hitTest 命中测试（生产传 `document.elementFromPoint`；注入是**为了纯函数可测**——
+ *   本函数不读 `document`/`window`，也就无所谓运行环境）
+ */
+export function isPointerOnAnchor(
+  anchor: Element,
+  point: TipPoint | null,
+  hitTest: (x: number, y: number) => Element | null,
+): boolean | undefined {
+  if (!point) return undefined; // 没有坐标 ⇒ 不判（⛔ 不猜"大概在锚上"）
+  const hit = hitTest(point.x, point.y);
+  if (!hit) return undefined; // 点不在窗口内 / 命中测试不可用 ⇒ 不判
+  return reachesUpTo(hit, anchor);
 }

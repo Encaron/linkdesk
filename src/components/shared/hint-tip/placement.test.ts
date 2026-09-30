@@ -8,7 +8,7 @@
  * 用例分组对着现行五条几何约定：① GAP 贴紧 ② 主轴判可贴＋副轴居中 ③ 绝不压锚
  * ④ 夹紧不裁字 ⑤ 尖角落位（含"方向由 CSS 那边配套"的边界）。
  */
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   EDGE_PX,
   GAP_PX,
@@ -16,6 +16,7 @@ import {
   TAIL_SIZE_PX,
   computeTailOffset,
   computeTipPosition,
+  isPointerOnAnchor,
   type TipAnchorRect,
   type TipPlacement,
 } from "./placement";
@@ -165,5 +166,71 @@ describe("computeTailOffset 尖角落位（沿条边指向锚的副轴中心）"
         expect(offset + TAIL_SIZE_PX).toBeLessThanOrEqual(extent - TAIL_EDGE_INSET_PX);
       }
     }
+  });
+});
+
+/**
+ * `isPointerOnAnchor`——「几何变了之后指针还在锚上吗」（2026-09-30 用户实机立案）。
+ * 命中测试是**注入的**，所以这一组不依赖 `document.elementFromPoint`（jsdom 根本没有它）——
+ * 钉的正是那三态：在锚上 / 不在锚上 / **无从判断**（⛔ 最后一态不许被当成"不在"）。
+ * 与上面几组不同，本组要真 DOM 元素（`contains`/影子树那两步），故用完清 body。
+ */
+describe("isPointerOnAnchor 指针归属（三态：true / false / undefined＝不判）", () => {
+  afterEach(() => {
+    document.body.innerHTML = "";
+  });
+
+  /** 小树：锚（带子元素）＋ 树外的一个元素（"指针底下已经换了别人"） */
+  function tree(): { anchor: HTMLButtonElement; child: HTMLElement; outsider: HTMLElement } {
+    const anchor = document.createElement("button");
+    const child = document.createElement("span");
+    anchor.appendChild(child);
+    const outsider = document.createElement("div");
+    document.body.append(anchor, outsider);
+    return { anchor, child, outsider };
+  }
+
+  it("命中锚自身 ⇒ true", () => {
+    const { anchor } = tree();
+    expect(isPointerOnAnchor(anchor, { x: 10, y: 10 }, () => anchor)).toBe(true);
+  });
+
+  it("命中锚的**后代** ⇒ true（指针落在按钮里的小图标上也算还在按钮上）", () => {
+    const { anchor, child } = tree();
+    expect(isPointerOnAnchor(anchor, { x: 10, y: 10 }, () => child)).toBe(true);
+  });
+
+  it("命中树外元素 ⇒ **false**（滚动把内容挪走了——这就是该收条的现场）", () => {
+    const { anchor, outsider } = tree();
+    expect(isPointerOnAnchor(anchor, { x: 10, y: 10 }, () => outsider)).toBe(false);
+  });
+
+  it("影子树里的节点也算在锚上（`Element.contains` 不跨影子树 ⇒ 必须走 host 那一步）", () => {
+    const { anchor } = tree();
+    const host = document.createElement("div");
+    const inner = document.createElement("i");
+    anchor.appendChild(host);
+    host.attachShadow({ mode: "open" }).appendChild(inner);
+    expect(anchor.contains(inner)).toBe(false); // 前提：光 DOM 的 contains 确实看不见它
+    expect(isPointerOnAnchor(anchor, { x: 10, y: 10 }, () => inner)).toBe(true);
+  });
+
+  it("**没记到坐标** ⇒ undefined，且**一次命中测试都不问**（省一次 elementFromPoint）", () => {
+    const { anchor } = tree();
+    const hitTest = vi.fn(() => anchor);
+    expect(isPointerOnAnchor(anchor, null, hitTest)).toBeUndefined();
+    expect(hitTest).not.toHaveBeenCalled();
+  });
+
+  it("命中测试返 null（点不在窗口内／环境没有 elementFromPoint）⇒ undefined（⛔ 不是 false ⇒ 不收条）", () => {
+    const { anchor } = tree();
+    expect(isPointerOnAnchor(anchor, { x: 10, y: 10 }, () => null)).toBeUndefined();
+  });
+
+  it("坐标原样透传给命中测试（不换算、不取整——视口坐标与 `getBoundingClientRect()` 同系）", () => {
+    const { anchor } = tree();
+    const hitTest = vi.fn(() => anchor);
+    isPointerOnAnchor(anchor, { x: 123.5, y: -4 }, hitTest);
+    expect(hitTest).toHaveBeenCalledWith(123.5, -4);
   });
 });

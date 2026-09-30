@@ -3,7 +3,8 @@
  *
  * ── 职责（壳给什么 / 调用方给什么）──
  * **壳给**：何时出（触发状态机）· 出在哪（主轴判可贴 · 副轴居中后夹紧 · 绝不压锚 ＋ 气泡尖角
- * → `placement.ts`）· 长什么样（`HintTip.css`）· 何时收；
+ * → `placement.ts`）· 长什么样（`HintTip.css`）· 何时收（移开/失焦/Esc/点击/拖拽 ＋ **几何变化后指针
+ * 已不在锚上** → `placement.ts` 的 `isPointerOnAnchor`）；
  * **调用方给**：文案与命令 id（写在**自己的 DOM 属性**上，见 `hintAttrs.ts`）。
  *
  * ── 为什么是「一处单例 + 全局委托」而不是「每个提示点一个组件」──
@@ -27,7 +28,7 @@
 import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 import OverlayPortal from "../overlay-portal/OverlayPortal";
 import KeybindingHint from "../keybinding-hint/KeybindingHint";
-import { computeTailOffset, computeTipPosition, tailAxisOf, type TipAnchorRect, type TipPlacement, type TipPosition, type TipSize } from "./placement";
+import { computeTailOffset, computeTipPosition, isPointerOnAnchor, tailAxisOf, type TipAnchorRect, type TipPlacement, type TipPoint, type TipPosition, type TipSize } from "./placement";
 import { DEFAULT_OPEN_DELAY_MS, HINT_ATTR, HINT_COMMAND_ATTR, HINT_DELAY_ATTR, HINT_PLACEMENT_ATTR, HINT_SELECTOR } from "./hintAttrs";
 import type { PoolCommandHints } from "../../../core/types/pool/poolLayout";
 import "./HintTip.css";
@@ -84,9 +85,23 @@ function viewportSize(): { width: number; height: number } {
   return { width: window.innerWidth, height: window.innerHeight };
 }
 
+/**
+ * 事件坐标 → 点（**只为真鼠标路径服务**）：拿不到有限数就是"没记到"（`null`），
+ * ⛔ 不许拿 `undefined`/`NaN` 当 0 去判——`isPointerOnAnchor` 的三态正是靠这个 `null` 立起来的。
+ */
+function eventPoint(e: PointerEvent): TipPoint | null {
+  const { clientX, clientY } = e;
+  return Number.isFinite(clientX) && Number.isFinite(clientY) ? { x: clientX, y: clientY } : null;
+}
+
+/** 条是用什么开的——只有鼠标开的条才受"指针还在锚上吗"约束（键盘路径没有指针可言） */
+type OpenSource = "pointer" | "focus";
+
 interface OpenState {
   anchor: Element;
   payload: HintPayload;
+  /** 开条来源（见 `OpenSource`——收条判据按它分流） */
+  openedBy: OpenSource;
   /** 实测落点（先出一个粗落点，`useLayoutEffect` 量到真尺寸立刻校正——paint 前完成，不闪帧） */
   pos: TipPosition;
   /** 尖角元素沿条边的落位（与 `pos` **同批**算出——渲染期不读布局） */
@@ -118,9 +133,15 @@ export default function HintTipRenderer({ commands, enabled = true }: HintTipRen
   const shownRef = useRef<Element | null>(null);
   /** 出条时写进锚的 `aria-describedby`，收条时归还（⛔ 不能留一个指向已消失元素的 id） */
   const prevDescribedBy = useRef<string | null>(null);
+  /**
+   * 最后已知的指针位置（只有鼠标路径写它，见 `show` / `enter`）——「指针还在锚上吗」判据的输入。
+   * 开条那刻**必须记一次**（用触发 `pointerover` 的坐标）：本件报障场景正是"鼠标一动不动直接滚"，
+   * 那时除了开条那一刻，没有任何事件会把坐标交出来。条开着期间由 `pointermove` 续（见活跃守卫 effect）。
+   */
+  const lastPoint = useRef<TipPoint | null>(null);
   const tipId = useId();
 
-  /** 收条：清待出计时器 ＋ 收已开的条 ＋ 归还 aria。幂等（没有条时也安全） */
+  /** 收条：清待出计时器 ＋ 收已开的条 ＋ 归还 aria（＋ 丢掉指针坐标——它只属于刚收掉的那条）。幂等（没有条时也安全） */
   const close = useCallback(() => {
     window.clearTimeout(timer.current);
     timer.current = undefined;
@@ -132,6 +153,7 @@ export default function HintTipRenderer({ commands, enabled = true }: HintTipRen
     }
     prevDescribedBy.current = null;
     shownRef.current = null;
+    lastPoint.current = null;
     setState(null);
   }, []);
 
@@ -148,13 +170,15 @@ export default function HintTipRenderer({ commands, enabled = true }: HintTipRen
 
   /** 出条（同步）：写 aria ＋ 先按锚矩形给粗落点（尺寸用 0——`useLayoutEffect` 立刻校正） */
   const show = useCallback(
-    (anchor: Element, payload: HintPayload) => {
+    (anchor: Element, payload: HintPayload, openedBy: OpenSource, point: TipPoint | null) => {
       if (!anchor.isConnected) return; // 锚已卸载 ⇒ 不出（保底①的结构等价物）
       const { pos, tail } = place(anchor, payload, ZERO_TIP);
+      // 归属判据的输入与条同批立起：键盘路径没有指针可言 ⇒ 记 null（判据那头成"不判"）
+      lastPoint.current = openedBy === "pointer" ? point : null;
       prevDescribedBy.current = anchor.getAttribute("aria-describedby");
       shownRef.current = anchor;
       anchor.setAttribute("aria-describedby", tipId);
-      setState({ anchor, payload, pos, tail, measured: false });
+      setState({ anchor, payload, openedBy, pos, tail, measured: false });
     },
     [place, tipId],
   );
@@ -183,22 +207,23 @@ export default function HintTipRenderer({ commands, enabled = true }: HintTipRen
     const findAnchor = (target: EventTarget | null): Element | null => (target instanceof Element ? target.closest(HINT_SELECTOR) : null);
 
     /** 进入一个提示点（pointer 走延时 / 键盘直达）——「密集排只出一张」的机制就在这里：
-     *  换锚时**先收旧再上新的延时**，⛔ 不排队不堆叠（窗口按钮那排鼠标扫过去只会看到一张，且是最后那个）。 */
-    const enter = (el: Element, delayOverride?: number) => {
+     *  换锚时**先收旧再上新的延时**，⛔ 不排队不堆叠（窗口按钮那排鼠标扫过去只会看到一张，且是最后那个）。
+     *  `point` 只有鼠标路径给得出来（延时到点才出条，所以坐标要**随事件传进来**——⛔ 不在这里读"当前的"指针）。 */
+    const enter = (el: Element, by: OpenSource, point: TipPoint | null = null, delayOverride?: number) => {
       if (el === shownRef.current || el === pendingRef.current) return; // 同一锚——不动
       const payload = resolveHintPayload(el, commands);
       close();
       if (!payload) return;
       const delay = delayOverride ?? payload.openDelayMs;
       if (delay <= 0) {
-        show(el, payload);
+        show(el, payload, by, point);
         return;
       }
       pendingRef.current = el;
       timer.current = setTimeout(() => {
         timer.current = undefined;
         pendingRef.current = null;
-        show(el, payload);
+        show(el, payload, by, point);
       }, delay);
     };
 
@@ -212,7 +237,7 @@ export default function HintTipRenderer({ commands, enabled = true }: HintTipRen
     const onPointerOver = (e: PointerEvent) => {
       if (suppressed.current) return; // 拖拽中——不出条
       const el = findAnchor(e.target);
-      if (el) enter(el);
+      if (el) enter(el, "pointer", eventPoint(e));
     };
     const onPointerOut = (e: PointerEvent) => {
       const el = findAnchor(e.target);
@@ -221,7 +246,7 @@ export default function HintTipRenderer({ commands, enabled = true }: HintTipRen
     // 键盘路径不延时（Tab 到按钮要立刻看见说明——延时是给鼠标"防划过闪一下"的）
     const onFocusIn = (e: FocusEvent) => {
       const el = findAnchor(e.target);
-      if (el) enter(el, 0);
+      if (el) enter(el, "focus", null, 0);
     };
     const onFocusOut = (e: FocusEvent) => {
       const el = findAnchor(e.target);
@@ -257,28 +282,50 @@ export default function HintTipRenderer({ commands, enabled = true }: HintTipRen
     };
   }, [enabled, commands, close, show]);
 
-  /* ── 条开着时才有意义的监听（活跃守卫——硬约束 14）：Esc 收 ＋ 滚动/缩放重算 ──
+  /* ── 条开着时才有意义的监听（活跃守卫——硬约束 14）：Esc 收 ＋ 滚动/缩放重算 ＋ 指针坐标续采 ──
      滚动重算用 capture 才能听到**内层滚动容器**（侧栏/主区各自滚，事件不冒泡到 window）。 */
   useEffect(() => {
     if (!state) return;
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") close();
     };
+    /** 命中测试（生产走 `document.elementFromPoint`；环境没有它——如 jsdom——就交回"无从判断"） */
+    const hitTest = (x: number, y: number): Element | null =>
+      typeof document.elementFromPoint === "function" ? document.elementFromPoint(x, y) : null;
+    /**
+     * 几何一变（滚动/缩放/reflow）就重算落点——**顺带判一次"指针还在锚上吗"**（2026-09-30 用户实机立案）。
+     * 为什么判据落在这里：这是全部几何变化的**唯一汇合点**（`scroll` capture ＋ `resize` 都走它），
+     * 判据放这里就一并覆盖了"内容滚动但鼠标没动"这族场景；⚠️ 只在**鼠标开的条**上判
+     * （键盘开的条没有指针，`openedBy` 一票否决）。
+     * ⚠️ 判据用 `=== false` 而非 `!`：`undefined` = 无从判断（没坐标/没命中测试）⇒ **照旧跟随**，
+     *    宁可多跟一帧，也不许凭猜把用户正看着的条收掉。
+     */
     const follow = () => {
       if (!state.anchor.isConnected) {
         close(); // 锚被卸载（切视图/换标签）——条不能留在屏幕上
+        return;
+      }
+      if (state.openedBy === "pointer" && isPointerOnAnchor(state.anchor, lastPoint.current, hitTest) === false) {
+        close(); // 锚从指针底下走掉了（滚动把内容挪了）——浏览器不发 pointerout，只能在这里收
         return;
       }
       const t = tipRef.current?.getBoundingClientRect();
       const { pos, tail } = place(state.anchor, state.payload, { width: t?.width ?? 0, height: t?.height ?? 0 });
       setState((cur) => (cur === state ? { ...cur, pos, tail, measured: true } : cur));
     };
+    /** 续采指针坐标（只写 ref，不引发渲染）——条开着时指针可能还在锚内移动，
+     *  坐标不更新的话"滚动后指针在哪"用的就是开条那一刻的旧样本。方向键/?都不需要：它只服务鼠标路径。 */
+    const onPointerMove = (e: PointerEvent) => {
+      lastPoint.current = eventPoint(e);
+    };
     document.addEventListener("keydown", onKeyDown);
     document.addEventListener("scroll", follow, true);
+    document.addEventListener("pointermove", onPointerMove, { passive: true });
     window.addEventListener("resize", follow);
     return () => {
       document.removeEventListener("keydown", onKeyDown);
       document.removeEventListener("scroll", follow, true);
+      document.removeEventListener("pointermove", onPointerMove);
       window.removeEventListener("resize", follow);
     };
   }, [state, close, place]);

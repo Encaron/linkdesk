@@ -243,4 +243,117 @@ describe("HintTipRenderer 状态机（委托监听 + 延时 + 开收 + aria 借�
       expect(tail.style.getPropertyValue("left")).toBe("");
     });
   });
+
+  describe("滚动/缩放后指针已不在锚上 ⇒ 收条（🔴 2026-09-30 用户实机立案）", () => {
+    /** jsdom 没有 `document.elementFromPoint`（Chromium 有）⇒ 本组显式桩一个，并负责还原。
+     *  ⚠️ 类型故意**不交叉 `Document`**：那份声明里 `elementFromPoint` 是必填方法，交集一上去就没法 `delete`。 */
+    type HitDoc = { elementFromPoint?: (x: number, y: number) => Element | null };
+    const hitDoc = document as unknown as HitDoc;
+    let originalHitTest: HitDoc["elementFromPoint"];
+    beforeEach(() => {
+      originalHitTest = hitDoc.elementFromPoint;
+    });
+    afterEach(() => {
+      if (originalHitTest) hitDoc.elementFromPoint = originalHitTest;
+      else delete hitDoc.elementFromPoint;
+    });
+
+    /** 桩：命中测试一律回答"指针底下是它" */
+    function hitReturns(el: Element | null): ReturnType<typeof vi.fn> {
+      const spy = vi.fn(() => el);
+      hitDoc.elementFromPoint = spy;
+      return spy;
+    }
+
+    /** 给锚一个真矩形——jsdom 无布局（`getBoundingClientRect()` 恒 0）⇒ 不桩就量不出"内容滚动了" */
+    function rectOf(top: number, bottom: number, left: number, right: number): DOMRect {
+      return { top, bottom, left, right, width: right - left, height: bottom - top, x: left, y: top, toJSON: () => ({}) } as DOMRect;
+    }
+
+    /** 鼠标路径开条（真实 `pointerover` 一定带坐标——开条那刻的坐标正是判据的第一份样本） */
+    function openByPointer(el: Element) {
+      fireEvent.pointerOver(el, { clientX: 20, clientY: 20 });
+      act(() => { vi.advanceTimersByTime(DEFAULT_OPEN_DELAY_MS); });
+    }
+
+    it("指针已不在锚上 ⇒ 收条并归还 aria（⛔ 不跟着旧锚一路滚出视口）", () => {
+      const { btn } = mount();
+      const elsewhere = document.createElement("div");
+      document.body.appendChild(elsewhere); // 滚动把内容挪走了 ⇒ 指针底下换了别人
+      openByPointer(btn);
+      expect(screen.queryByRole("tooltip")).not.toBeNull();
+      hitReturns(elsewhere);
+      fireEvent.scroll(btn); // 内层容器滚动（监听走 capture 才能听到）
+      expect(screen.queryByRole("tooltip")).toBeNull();
+      expect(btn.hasAttribute("aria-describedby")).toBe(false); // aria 照常归还
+    });
+
+    it("指针仍在锚上（命中锚的后代）⇒ 不收，且落点按**新矩形**重算（设计 §六「随锚滚动重算」的回归钉）", () => {
+      const { btn } = mount();
+      const icon = document.createElement("span");
+      btn.appendChild(icon); // 指针其实落在按钮里的小图标上
+      hitReturns(icon);
+      openByPointer(btn);
+      const tip = screen.getByRole("tooltip");
+      expect(tip.getAttribute("data-tip-placement")).toBe("bottom"); // 矩形全 0 ⇒ 首选 top 放不下、如实翻面
+      btn.getBoundingClientRect = () => rectOf(100, 120, 50, 150); // 滚动后锚跑到别处
+      fireEvent.scroll(btn);
+      expect(screen.queryByRole("tooltip")).not.toBeNull();
+      expect(tip.getAttribute("data-tip-placement")).toBe("top"); // 新位置上方够放 ⇒ 回到首选方位
+      expect(tip.style.top).toBe("94px"); // 100 − 条高 0 − GAP 6
+      expect(tip.style.left).toBe("100px"); // 与锚中心 x=100 对齐
+    });
+
+    it("键盘开的条 ⇒ 滚动不收（没有指针可言：`openedBy` 一票否决，且**一次命中测试也不问**）", () => {
+      const { btn } = mount();
+      const spy = hitReturns(document.body);
+      fireEvent.focusIn(btn); // 键盘路径不延时
+      act(() => { vi.advanceTimersByTime(DEFAULT_OPEN_DELAY_MS); });
+      fireEvent.scroll(btn);
+      expect(screen.queryByRole("tooltip")).not.toBeNull();
+      expect(spy).not.toHaveBeenCalled();
+    });
+
+    it("鼠标开的条但坐标没记到（事件根本没有 clientX 这两个属性）⇒ 无从判断 ⇒ 不收", () => {
+      const { btn } = mount();
+      hitReturns(document.body); // 就算底下已经是别人，也不许凭猜收
+      // ⚠️ `fireEvent.pointerOver` 造不出这个场景——`PointerEvent` 继承 `MouseEvent`，坐标缺省就是 **0**
+      // （是个合法坐标，不是"没记到"）。真正没有坐标的是**没有 MouseEvent 接口**的事件：
+      // 无 `PointerEvent` 的引擎里 testing-library 会退回 `Event`，插件/第三方合成事件也常这样。
+      btn.dispatchEvent(new Event("pointerover", { bubbles: true }));
+      act(() => { vi.advanceTimersByTime(DEFAULT_OPEN_DELAY_MS); });
+      expect(screen.queryByRole("tooltip")).not.toBeNull(); // 条照常出（坐标与出不出条无关）
+      fireEvent.scroll(btn);
+      expect(screen.queryByRole("tooltip")).not.toBeNull();
+    });
+
+    it("环境没有 elementFromPoint（jsdom 原生／老引擎）⇒ 无从判断 ⇒ 不收（降级方向：宁可不收）", () => {
+      const { btn } = mount();
+      // 不打桩：本环境本来就没有这个 API
+      expect(typeof hitDoc.elementFromPoint).not.toBe("function");
+      openByPointer(btn);
+      fireEvent.scroll(btn);
+      expect(screen.queryByRole("tooltip")).not.toBeNull();
+    });
+
+    it("锚已被卸载 ⇒ 滚动照样收（活跃守卫原有那条不许被新判据挤掉）", () => {
+      const { btn } = mount();
+      hitReturns(btn); // 指针判据这边"还在锚上"——收条必须由 isConnected 那条负责
+      openByPointer(btn);
+      btn.remove();
+      fireEvent.scroll(document.body);
+      expect(screen.queryByRole("tooltip")).toBeNull();
+    });
+
+    it("条开着时指针又移动过 ⇒ 用**最新**坐标判（`pointermove` 续采的钉：旧样本会漏收）", () => {
+      const { btn } = mount();
+      const elsewhere = document.createElement("div");
+      document.body.appendChild(elsewhere);
+      hitDoc.elementFromPoint = vi.fn((x: number) => (x > 500 ? elsewhere : btn));
+      openByPointer(btn); // 开条那刻 (20,20) ⇒ 命中锚
+      fireEvent.pointerMove(document, { clientX: 900, clientY: 20 }); // 指针挪开了（只验样本续采，不管 pointerout）
+      fireEvent.scroll(btn);
+      expect(screen.queryByRole("tooltip")).toBeNull();
+    });
+  });
 });
