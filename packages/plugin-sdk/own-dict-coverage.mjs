@@ -38,10 +38,12 @@
  *   · 主题数据文件自己的 `name` / `colorways[].name`（配方名 / 配色下拉名）。
  * 两处都得进判域——否则双语字面量在数据文件里照样溜过去（旧判据正是漏在这：本表原先把
  * `themes[].label` 列为豁免，主题数据文件**从不读**）。
- * ⛔ **图标主题不进本判域**（`contributes.iconThemes[].label` ＋ 图标数据文件）：图标主题的显示面还没
- *   打通——`app.iconTheme` 下拉当前列的是**原始 id**（`updateConfigurationEnum` 只写 enum、没有
- *   `enumDescriptions`），`RegisteredIconTheme.label` **零消费方**，即那条标签今天用户看不到、看到的是 id。
- *   判一条**没人渲染**的串 = 给作者派假活。显示面打通时**同笔**把 `iconThemes[].label` 纳入本表。
+ * ✅ **图标主题已进本判域**（2026-10-01 接线，`contributes.iconThemes[].label`）：此前显示面没打通
+ *   （`app.iconTheme` 下拉列的是**原始 id**——`updateConfigurationEnum` 只写 enum 没有 `enumDescriptions`，
+ *   `RegisteredIconTheme.label` 零消费方），判它 = 给作者派假活。现在壳侧把 label 当**枚举显示名**推给
+ *   设置页（`IconRegistry.iconThemeEnumOptions` → `syncIconThemeEnum` → 设置页 `t(enumDescriptions[i])`），
+ *   那条 label 就是用户在下拉里看到的字——按原计划**同笔纳入本表**（本文件上方那条撤销条件已兑现）。
+ *   ⛔ 图标**数据文件**仍不进判域：那里是 mappings（class/imagePath），没有显示名字段。
  *
  * ═══ 消费方（两轴同一份实现，⛔ 不许各写一份）═══
  *   · 作者侧：`create-linkdesk-plugin` 模板的 `scripts/ci-verify.mjs` ③ 段——插件仓 CI 判红
@@ -80,7 +82,6 @@ const CJK_RE = /[\u4e00-\u9fff]/;
  *    / `params[].description`——2026-09-28 裁决：消费方 = 契约 → AI，零渲染消费方）塞进来；
  *    撤销条件 = 那些说明一旦进 UI。
  * ⛔ 故意**不在表内**的专名/元数据（各有理由，与壳侧旧名单同一口径）：
- *    `contributes.iconThemes[].label`（显示面未打通，见上「为什么判到主题数据文件里」末段）、
  *    `languages[].label` / `langDefs[].aliases`（语言自称／`English`/`English (US)` 这种自称形式）、
  *    `icons.*.description`（作者面元数据，消费方是**别的作者**不是用户）、以及一切路径/ID/上下文键
  *    （`entry` / `icon` / `render` / `path` / `sidebar` / `when` / `key` / 菜单 `group` 槽位 / `cssVars` /
@@ -134,6 +135,11 @@ export const RENDERABLE_MANIFEST_FIELDS = [
     steps: ["contributes", "themes", "[]"],
     field: "label",
     consumer: "主题配方名（主题数据文件缺 name 时的兜底显示名——主题卡片 / 设置页「主题」项）",
+  },
+  {
+    steps: ["contributes", "iconThemes", "[]"],
+    field: "label",
+    consumer: "图标主题显示名（设置页 app.iconTheme 下拉——壳把 label 当 enumDescriptions 推，设置页 t() 解析）",
   },
 ];
 

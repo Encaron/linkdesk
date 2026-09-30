@@ -262,13 +262,25 @@ describe("主题数据文件名（2026-10-01「不要双语了」扩域）", () 
     expect(r.problems.join(" ")).toMatch(/themes\/mint\.json/);
   });
 
-  it("图标主题不进判域：label 零消费方（下拉列的是 id），判它 = 给作者派假活", () => {
-    const m = {
-      contributes: { iconThemes: [{ id: "p.icons", label: "粉彩图标集 Pastel Icons", path: "icons/pastel.json" }] },
-    };
-    expect(collectRenderableManifestStrings(m)).toHaveLength(0);
-    const root = fixture({ "plugin.json": m, "icons/pastel.json": { file: { imagePath: "a.svg" } } });
-    expect(checkOwnDictCoverage(root, { manifest: m }).manifestGap).toHaveLength(0);
+  it("图标主题 label 进判域（2026-10-01 显示面打通 ⇒ 同笔纳入）：住字典放行、没住判红", () => {
+    const iconThemes = [{ id: "p.icons", label: "粉彩图标集", path: "icons/pastel.json" }];
+    const withDict = { contributes: { iconThemes, i18n: { en: "i18n/en.json" } } };
+    const noDict = { contributes: { iconThemes } };
+    // ① 已被收成可渲染串，落点/消费方写清（下拉那条字）
+    const strings = collectRenderableManifestStrings(noDict);
+    expect(strings.map((s) => s.text)).toEqual(["粉彩图标集"]);
+    expect(strings[0].field).toBe("contributes.iconThemes[].label");
+    expect(strings[0].consumer).toContain("图标主题");
+    // ② 住本仓字典 ⇒ 放行（图标数据文件是 mappings、无显示名字段——不进判域，故 fixture 随便给）
+    const ok = fixture({
+      "plugin.json": withDict,
+      "icons/pastel.json": { file: { imagePath: "a.svg" } },
+      "i18n/en.json": { 粉彩图标集: "Pastel Icon Set" },
+    });
+    expect(checkOwnDictCoverage(ok, { manifest: withDict }).manifestGap).toHaveLength(0);
+    // ③ 反向负控（E6#165 的真病灶形态）：文案在本仓声明、译名却在别的仓（或没有）⇒ 必判红
+    const bad = fixture({ "plugin.json": noDict, "icons/pastel.json": { file: { imagePath: "a.svg" } } });
+    expect(checkOwnDictCoverage(bad, { manifest: noDict }).manifestGap.map((g) => g.text)).toEqual(["粉彩图标集"]);
   });
 
   it("THEME_FILE_NAME_FIELDS = 数据文件那条腿的判据表（配方名 ＋ 配色名）", () => {
