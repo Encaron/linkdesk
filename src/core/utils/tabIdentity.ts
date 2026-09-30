@@ -10,6 +10,10 @@
  * E5.7#67：FALLBACK_META 兜底表整删（terminal/workspace/editor 等插件 ID 硬编码表，
  *           硬约束 10 违例）——identityField 唯一来源 = plugin.json tabBehavior.identityField，
  *           viewRegistry 不可用时走通用兜底 null。测试模拟插件声明（useTabManager.test.ts beforeEach）。
+ * 2026-09-30 用户实机立案：插件详情页标签名的**第二名称来源**——viewRegistry 只登记「有 entry 或侧栏容器」的插件
+ *           （runtime.ts 登记门），纯数据插件（主题/语言）与被禁用插件恒不在册，详情页标签因此
+ *           一律退成壳兜底文案。此处补「壳自己记着的名字」为第二来源（manifest 索引 → 元数据缓存）
+ *           ——仍不认任何具体 pluginId，只多问一处壳本来就知道的名字。
  *
  * 新插件不需要在此加任何代码——getMeta() 从 viewRegistry 自动推导。
  *
@@ -21,6 +25,7 @@
 
 import i18n from "../../i18n";
 import { getViewPlugin } from "../../pluginLoader/contributions/viewRegistry";
+import { getManifestById, getMetadataCache } from "../../pluginLoader/resolution/state";
 import type { Tab } from "../../hooks/useTabManager";
 import type { CreateTabOptions } from "../api/types";
 import { normalizePath } from "./path/pathUtils";
@@ -42,7 +47,7 @@ interface TabIdentityMeta {
   identityField: string | null;
   /** 生成标签页 ID——每种类型有自己的策略 */
   generateId: (opts?: CreateTabOptions) => string;
-  /** viewRegistry 不可用时的兜底标签名 */
+  /** 两条名称来源都没命中时的兜底标签名（viewRegistry ＋ manifest 索引） */
   fallbackLabel: string;
   /** 旧 type→pluginId 映射（Phase 4 过渡期）*/
   legacyPluginId?: string;
@@ -335,13 +340,34 @@ export function isSameTabIdentity(t: Tab, type: string, opts?: CreateTabOptions)
 }
 
 /**
+ * 第二名称来源——壳**自己记着的**插件名（2026-09-30 用户实机立案）。两处，按「离盘上真相多近」排：
+ *
+ * 1. **manifest 索引**（`getManifestById`）——启动 `readAllManifests` 水合（`listPluginDirs` 只跳
+ *    坟场目录/隐藏名，不跳普通插件），覆盖全部已安装插件，**含纯数据插件**（主题/语言——它们注册进
+ *    ThemeRegistry/LanguageRegistry，不登记 viewRegistry，所以详情页此前必退兜底文案）。
+ * 2. **元数据缓存**（`getMetadataCache`）——`.disabled/` 坟场里的插件与已卸载插件都靠这份（B2 fix
+ *    立的缓存：卸载后市场仍要能浏览详情，`forgetPluginIndex` 时刻意不动它）。为什么必须有这一步：
+ *    禁用**不改住所**（只记名单、目录原地不动），重启后该插件不在索引里了——而市场「已禁用」列表
+ *    正是以它为主体，点开详情照样是这个标签页。
+ *
+ * 未安装插件不在索引、也不在缓存（无入口可打开其详情页），故两处并集即壳的全部信息来源。
+ */
+function lookupKnownName(pluginId: string): string | undefined {
+  const indexed = getManifestById(pluginId)?.name;
+  if (indexed) return indexed;
+  return getMetadataCache()[pluginId]?.name;
+}
+
+/**
  * 标签名——声明式推导，壳不知道具体插件是什么。
  *
  * 优先级：
  * 1. opts.label（调用方显式指定）
- * 2. identityField 的值——路径类取最后一段（文件名），非路径类取原值
- * 3. plugin.manifest.name（viewRegistry 可用时）
- * 4. fallbackLabel（viewRegistry 不可用时）
+ * 2. viewRegistry 命中 → plugin.manifest.name（详情页即目标插件名）
+ * 3. 壳已记的名字命中（**仅详情页**——目标插件是纯数据/被禁用插件时不在 viewRegistry；
+ *    顺序 = manifest 索引 → 元数据缓存）→ manifest.name
+ * 4. identityField 的值——路径类取最后一段（文件名），非路径类取原值
+ * 5. fallbackLabel（两条名称来源都没有）
  *
  * 🔥 新插件声明 tabBehavior.identityField 即可——不需要在此函数加分支。
  */
@@ -380,7 +406,15 @@ export function getDefaultLabel(
     return i18n.t(plugin.manifest.name);
   }
 
-  // fallback：viewRegistry 不可用（测试/极端边界）
+  // 详情页第二名称来源（2026-09-30）——**只给详情页**。那里的 pluginId 语义是「要展示谁的元数据」，
+  // 取不到就落「插件详情」＝对用户没答问题（纯数据插件/被禁用插件恒不在 viewRegistry）。
+  // 其余类型不走这条：注册表未命中说明「不是本插件」，退 type 串当名字是语义污染。
+  if (isPluginDetailView(type) && targetPluginId) {
+    const knownName = lookupKnownName(targetPluginId);
+    if (knownName) return i18n.t(knownName);
+  }
+
+  // fallback：两条名称来源都没命中（未知 id / 未安装插件——测试与极端边界）
   if (idValue) return idValue;
   return i18n.t(getMeta(type).fallbackLabel);
 }

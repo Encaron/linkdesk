@@ -3,7 +3,7 @@
  * 设计依据：[V3-Phase3-标签页分屏设计.md §3] + [V3-Phase3-补充-递归分屏.md]
  */
 
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { FALLBACK_PLUGIN_ID } from "../core/utils/plugin/fallbackPluginId";
 import {
   resetPluginCounter,
@@ -39,6 +39,7 @@ import { getAllLeafGroupIds, treeDepth, MAX_TREE_DEPTH, type SplitNode } from ".
 import { detectDropZone } from "../pool/hooks/tabDragTypes";
 import { registerViewPlugin, clearRegistry } from "../pluginLoader/contributions/viewRegistry";
 import { resolvePoolTabTitle } from "../core/utils/tabIdentity";
+import { setManifestInIndex, forgetPluginIndex, cachePluginMetadata } from "../pluginLoader/resolution/state";
 
 // E5.7#98：分支/叶子窄类型——替代 (x as any) 直取联合专属字段
 type BranchNode = Extract<SplitNode, { type: "branch" }>;
@@ -123,6 +124,56 @@ describe("createTabDefaults", () => {
     expect(createTabDefaults("workspace").label).toBe("workspace");
     expect(createTabDefaults("workspace", { workspaceName: "PID" }).label).toBe("PID");
     expect(createTabDefaults("settings").label).toBe("settings");
+  });
+});
+
+/* ── 插件详情页标签名——第二名称来源（2026-09-30 用户实机立案） ──
+ * 病灶：详情页标签名此前只查 viewRegistry，而该表只登记「有 entry 或侧栏容器」的插件
+ * ⇒ 纯数据插件（主题/语言）与被禁用插件恒不在册，标签一律退成壳兜底文案「插件详情」
+ * （用户可见：装的主题、随包语言包，详情页标题全叫「插件详情」）。
+ * 用例驱动真索引 / 真缓存（setManifestInIndex / cachePluginMetadata）——不 mock 模块，走壳真实读取路径。 */
+describe("插件详情页标签名——第二名称来源", () => {
+  const DATA_PLUGIN_ID = "demo-theme";
+  const GHOST_ID = "demo-ghost";
+  /** 元数据缓存没有删除入口（那份缓存是「故意留的」——卸载后市场仍要能浏览详情），
+   *  故缓存用例自带一个 id，不与上面几条共用。 */
+  const CACHED_ID = "demo-cached";
+
+  afterEach(() => {
+    forgetPluginIndex(DATA_PLUGIN_ID);
+    forgetPluginIndex(GHOST_ID);
+  });
+
+  it("纯数据插件（不在 viewRegistry、在索引）⇒ 用真名", () => {
+    setManifestInIndex(DATA_PLUGIN_ID, { name: "Demo Theme", version: "1.0.0" });
+    expect(createTabDefaults("plugin-detail", { pluginId: DATA_PLUGIN_ID }).label).toBe("Demo Theme");
+  });
+
+  it("detailPluginId 传入走同一条路（调用方两种字段写法等价）", () => {
+    setManifestInIndex(DATA_PLUGIN_ID, { name: "Demo Theme", version: "1.0.0" });
+    expect(createTabDefaults("plugin-detail", { detailPluginId: DATA_PLUGIN_ID }).label).toBe("Demo Theme");
+  });
+
+  it("viewRegistry 命中优先于索引（注册表里的 manifest 是运行时真相）", () => {
+    registerViewPlugin({ pluginId: DATA_PLUGIN_ID, manifest: { name: "Registry Name", version: "1.0.0" } });
+    setManifestInIndex(DATA_PLUGIN_ID, { name: "Index Name", version: "1.0.0" });
+    expect(createTabDefaults("plugin-detail", { pluginId: DATA_PLUGIN_ID }).label).toBe("Registry Name");
+  });
+
+  // 禁用不改住所（只记名单、目录原地不动）⇒ 重启后 .disabled/ 里的插件不在索引里了，
+  // 而市场「已禁用」列表照样开它的详情页——那一份名字只在元数据缓存里。
+  it("跨会话被禁用的插件（索引已无、元数据缓存在）⇒ 从缓存取真名", () => {
+    cachePluginMetadata(CACHED_ID, { name: "Demo Cached", version: "1.0.0" }, "disabled");
+    expect(createTabDefaults("plugin-detail", { pluginId: CACHED_ID }).label).toBe("Demo Cached");
+  });
+
+  it("两条来源都不认识 ⇒ 仍退壳兜底文案", () => {
+    expect(createTabDefaults("plugin-detail", { pluginId: GHOST_ID }).label).toBe("插件详情");
+  });
+
+  it("非详情页不吃索引兜底（索引不是「类型名」的第二来源）", () => {
+    setManifestInIndex(DATA_PLUGIN_ID, { name: "Demo Theme", version: "1.0.0" });
+    expect(createTabDefaults(DATA_PLUGIN_ID).label).toBe(DATA_PLUGIN_ID);
   });
 });
 
