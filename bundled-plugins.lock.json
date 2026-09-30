@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "syncedAt": "2026-09-30T02:52:54.856Z",
+  "syncedAt": "2026-09-30T03:08:00.428Z",
   "note": "出厂种子的账（E6#101）。`seed:true` = 随包出厂（bootstrap 集，判据「断网零插件时用户能不能自救」）；`seed:false` = 纯市场（只登记，不随包）。谁随包是**数据**不是代码（硬约束 10）。刷新：npm run sync:bundled -- --latest；校验：npm run sync:bundled -- --offline。",
   "plugins": [
     {
@@ -134,9 +134,9 @@
     {
       "id": "geme-tihu-bicycle",
       "repo": "Encaron/linkdesk-plugin-geme-tihu-bicycle",
-      "version": "1.0.1",
-      "downloadUrl": "https://github.com/Encaron/linkdesk-plugin-geme-tihu-bicycle/releases/download/v1.0.1/geme-tihu-bicycle.linkdesk-plugin",
-      "fingerprint": "CHANGELOG.md:89916677bbb7931bfb7b3feb822f420bedeef79e2d1a3919d57a2d035829d5b2\nREADME.md:026345d31a268952ffdc718c6eb63683e63d190138f2ae253c2cf267cfe8209c\ni18n/en.json:fe9a92caa82ed758e60ca96f27f3ebeb3b7a4c967aee09752b59e6f8e0ece5d5\nindex.bundle.css:fa553ce3857780c760c779aa53c7d0cf0b8ec67588dfe9222248b723f09e67d8\nindex.bundle.js:408052a3955a8edd9c58d90770540260e92f15532e98b8b6c18b7133e5842dac\nplugin.json:abd7cd3a5b3796c593768e7d7586f89d9e4033cc6e787416622ef42f55d0b230\nresources/cover.svg:d7b9e1d25e67859da8cbfb05eb9a24ab0d76c15afaf2e1d5f02cf92636624acc\nresources/icon-bar.svg:1835b91967730bc4b913d6a3cc54309ff4b2f610eb0410ef59177bf6c89640f9\nresources/icon.svg:1e3c8c7bc7fcc7d31708ff611681f77c0afe84a6526db90fdcd0be0c1033cb19",
+      "version": "1.0.2",
+      "downloadUrl": "https://github.com/Encaron/linkdesk-plugin-geme-tihu-bicycle/releases/download/v1.0.2/geme-tihu-bicycle.linkdesk-plugin",
+      "fingerprint": "CHANGELOG.md:2c270a57d3dcebbe41aa99bd7444c95c18dded68494c464dfe6140ef823ef30d\nREADME.md:026345d31a268952ffdc718c6eb63683e63d190138f2ae253c2cf267cfe8209c\ni18n/en.json:fe9a92caa82ed758e60ca96f27f3ebeb3b7a4c967aee09752b59e6f8e0ece5d5\nindex.bundle.css:fa553ce3857780c760c779aa53c7d0cf0b8ec67588dfe9222248b723f09e67d8\nindex.bundle.js:408052a3955a8edd9c58d90770540260e92f15532e98b8b6c18b7133e5842dac\nplugin.json:ffe445711d03c27adb06c3534adc9dafc8ed8fdaf62851c53d49622bf1013826\nresources/cover.svg:d7b9e1d25e67859da8cbfb05eb9a24ab0d76c15afaf2e1d5f02cf92636624acc\nresources/icon-bar.svg:1835b91967730bc4b913d6a3cc54309ff4b2f610eb0410ef59177bf6c89640f9\nresources/icon.svg:1e3c8c7bc7fcc7d31708ff611681f77c0afe84a6526db90fdcd0be0c1033cb19",
       "seed": false
     }
   ]
