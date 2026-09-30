@@ -16,7 +16,7 @@ import type { FontFaceSpec } from "../../core/types/ipc/events";
 import { getPluginAssetPath } from "../../core/utils/path/pluginAssetPath";
 import { registerTheme, getAvailableThemes, ensurePluginFontFacesCleanup, normalizeThemeValue, syncThemeColorEnum, fontFormatOf } from "../../core/services/ui/ThemeEngine";
 import { ThemeRegistry, parseThemeRecipe } from "../../core/registry/appearance/ThemeRegistry";
-import { IconRegistry } from "../../core/registry/appearance/IconRegistry";
+import { IconRegistry, iconThemeEnumOptions, ICON_THEME_FALLBACK_ID } from "../../core/registry/appearance/IconRegistry";
 import { LanguageRegistry } from "../../core/registry/languages/LanguageRegistry";
 import { pushToast, TOAST_TTL_INFO } from "../../core/services/ui/NotificationService";
 import { registerConfiguration, registerConfigurationDefaults, updateConfigurationEnum } from "../../core/registry/ConfigurationRegistry";
@@ -688,10 +688,13 @@ function syncAppLanguageEnum(): void {
 
 /** 同步 app.iconTheme 枚举——图标主题注册/注销后调用。不影响 onApply，只更新下拉选项。
  *  E5.8#133：枚举 = "default"（codicon 保底）+ 已登记图标主题 id。卸载插件 → 枚举消失（回退保底）。
- *  对标 syncAppThemeEnum——无主题时不更新（保 enum 空下拉变输入框的坑）；default 恒在。 */
+ *  对标 syncAppThemeEnum——无主题时不更新（保 enum 空下拉变输入框的坑）；default 恒在。
+ *  2026-10-01：**显示名随枚举同推**（`enumDescriptions` = 保底项 ＋ 各插件 `label` 的**中文原文**，
+ *    设置页 `t()` 解析成当前语言）——此前只推 id ⇒ 下拉里是裸 id。装/卸图标主题插件即刷新名字。
+ *    装配口径与静态声明同源（`IconRegistry.iconThemeEnumOptions`），⛔ 不在这里各拼一次。 */
 function syncIconThemeEnum(): void {
-  const themeIds = IconRegistry.getAll().map((t) => t.id);
-  updateConfigurationEnum("app.iconTheme", ["default", ...themeIds], "default");
+  const opts = iconThemeEnumOptions();
+  updateConfigurationEnum("app.iconTheme", opts.values, ICON_THEME_FALLBACK_ID, opts.descriptions);
 }
 
 export {

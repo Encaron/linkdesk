@@ -105,6 +105,12 @@ class IconRegistryImpl extends RegistryBase {
     return this.themes.has(themeId);
   }
 
+  /** `app.iconTheme` 枚举条目（id ＋ 显示名）——壳侧装配的唯一数据源（见文件末 `iconThemeEnumOptions`） */
+  getEnumEntries(): Array<{ id: string; label: string }> {
+    // label 在类型上必填，第三方手写 manifest 可能缺 —— 缺则退 id（宁可显示 id，不可显示 undefined）
+    return this.getAll().map((it) => ({ id: it.id, label: it.label || it.id }));
+  }
+
   /* ── 映射数据（E5.8#133.1：登记元数据与加载数据两步——loadIconThemeContributionData 写入） ── */
 
   /** 关联加载好的 mappings（含 imagePath 已解析 linkdesk:// 绝对 URL） */
@@ -179,3 +185,30 @@ class IconRegistryImpl extends RegistryBase {
 }
 
 export const IconRegistry = new IconRegistryImpl();
+
+/** `app.iconTheme` 保底项——壳自己的哨兵值（codicon 图标集）。值写死在配置声明处；**名字归壳**：
+ *  中文原文住本文件，英文译名住语言包仓（lang-defaults，E6#161「谁的仓谁译文」）。 */
+export const ICON_THEME_FALLBACK_ID = "default";
+/** 保底项的显示名（中文原文）——只在本文件装配进 `iconThemeEnumOptions`，故不导出（knip 视角无外部消费方）。 */
+const ICON_THEME_FALLBACK_LABEL = "内置图标集";
+
+/**
+ * `app.iconTheme` 枚举 ＋ 显示名（一一对应，2026-10-01 接线）。
+ *
+ * 为什么要名字这一栏：设置页枚举项的显示规则是 `t(enumDescriptions[i] ?? enum[i])`（settings 仓
+ * `renderControl.tsx`），而此前只推 id ⇒ 下拉里是裸 id（`theme-iconset-pastel.ld-iconset-pastel`），
+ * 插件在 `contributes.iconThemes[].label` 声明的名字**零消费方**。
+ *
+ * 壳侧两处同用这一份——`App/config/appearance.ts` 的静态声明 · `pluginLoader/contributions.ts`
+ * `syncIconThemeEnum()` 的装/卸动态刷新。⛔ 不各拼一次（防两处漂移）。
+ *
+ * ⚠️ `descriptions` 是**源码串**：保底项住本文件，插件项取 `contributes.iconThemes[].label`（中文原文）
+ * ——显示期由设置页 `t()` 解析成当前语言，与主题/配色名同一条口径（E6#165）；译名住**声明方本仓**字典。
+ */
+export function iconThemeEnumOptions(): { values: string[]; descriptions: string[] } {
+  const entries = IconRegistry.getEnumEntries();
+  return {
+    values: [ICON_THEME_FALLBACK_ID, ...entries.map((e) => e.id)],
+    descriptions: [ICON_THEME_FALLBACK_LABEL, ...entries.map((e) => e.label)],
+  };
+}

@@ -217,13 +217,23 @@ export function registerConfiguration(
   });
 }
 
-/** 动态更新配置项的 enum + default——不影响 onApply。用于主题列表/语言列表等运行时变化。 */
-export function updateConfigurationEnum(key: string, enumValues: string[], defaultValue?: string): void {
+/** 动态更新配置项的 enum + default（＋可选显示名 enumDescriptions）——不影响 onApply。用于主题列表/语言列表等运行时变化。
+ *  2026-10-01 加 descriptions：`app.iconTheme` 的显示名随枚举一起推（设置页 label 规则 =
+ *  `t(enumDescriptions[i] ?? enum[i])`）——此前只推 id ⇒ 下拉里是裸 id。传 undefined = 不动该项既有描述。 */
+export function updateConfigurationEnum(
+  key: string,
+  enumValues: string[],
+  defaultValue?: string,
+  descriptions?: string[],
+): void {
   for (const [, contrib] of _contributions) {
     if (contrib.properties[key]) {
       contrib.properties[key].enum = enumValues;
       if (defaultValue !== undefined) {
         contrib.properties[key].default = defaultValue;
+      }
+      if (descriptions) {
+        contrib.properties[key].enumDescriptions = descriptions;
       }
     }
   }

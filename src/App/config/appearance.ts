@@ -24,7 +24,7 @@ import {
   GLASS_SURFACE_DEFAULT_ALPHA,
 } from "../../core/services/ui/ThemeEngine";
 import { ThemeRegistry } from "../../core/registry/appearance/ThemeRegistry";
-import { IconRegistry } from "../../core/registry/appearance/IconRegistry";
+import { IconRegistry, iconThemeEnumOptions, ICON_THEME_FALLBACK_ID } from "../../core/registry/appearance/IconRegistry";
 import {
   getConfigurationValue, resetConfigurationValue, resetConfigurationValueBatch,
 } from "../../core/services/configuration/ConfigurationService";
@@ -42,6 +42,9 @@ import {
 type ConfigT = (key: string) => string;
 
 export function registerAppearanceConfiguration(t: ConfigT): void {
+  // 图标主题枚举 ＋ 显示名（同一份装配：保底项 + 已登记插件）——注册时取一次快照给静态声明；
+  //   装/卸插件后的刷新走 pluginLoader/contributions.ts 的 syncIconThemeEnum（同源同函数）。
+  const iconOptions = iconThemeEnumOptions();
   // ── E5.8#50.19：主题组——壳注册第二配置贡献（08 §5 决策 D：pluginId "appearance"，标题「主题」）。
   //    key 全表 = app.theme + app.appearanceMode（E5.8#90 单一外观主开关）+ app.themeColor
   //    + 外观 13 覆盖 + 域来源 3 键 + 复位（E5.8#97 域驱动重组后结构；E5.8#132 surface 域删来源 4→3）。
@@ -205,13 +208,17 @@ export function registerAppearanceConfiguration(t: ConfigT): void {
       "app.iconTheme": {
         type: "string",
         group: t("整体配方"), // E5.8#78：组内二级标题——主题组分节 1/6（图标主题与配色主题同区，VS Code「颜色主题 + 文件图标主题」心智）
-        default: "default",
-        enum: ["default", ...IconRegistry.getAll().map((t) => t.id)], // 注册时动态派生 + syncIconThemeEnum 持续刷新
+        default: ICON_THEME_FALLBACK_ID,
+        enum: iconOptions.values, // 注册时动态派生 + syncIconThemeEnum 持续刷新
+        // 2026-10-01：显示名与枚举同源装配（`IconRegistry.iconThemeEnumOptions`）——设置页枚举项的显示规则是
+        //   `t(enumDescriptions[i] ?? enum[i])`，此前只给 id ⇒ 下拉里是**裸 id**（插件声明的 label 零消费方）。
+        //   descriptions 是**源码串**（保底项归壳、插件项取 label 中文原文），显示期过 t()（E6#165 同口径）。
+        enumDescriptions: iconOptions.descriptions,
         // 🔴 不加 uiHint:"select"——该 uiHint 专走 DynamicSelect（optionsFrom 动态配方数据源），
         //   会去读 app.theme 当前配方的配色变体（串路 bug：图标主题下拉显示主题配色 "dark"）。
         //   图标主题枚举是静态注册集（default + IconRegistry），走 type:"string" + enum 普通 SelectBox
         //   （renderControl 枚举分支，对标 app.language 模式），enum 由 syncIconThemeEnum 装/卸动态刷新。
-        description: t("图标主题——文件图标集（default = 内置 codicon 保底）"),
+        description: t("图标主题——文件图标集（内置图标集 = codicon 保底）"),
         onApply: (v) => {
           const iconThemeId = v as string;
           // E5.8#133 ④：广播 payload 携带壳已解析的绝对路径 mappings（消费方零解析负担）；

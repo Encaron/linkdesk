@@ -9,7 +9,7 @@
  *   本文件只用**账里真有的**保底 id `default` 与虚构值（硬约束 21），故不受改名影响。
  */
 import { describe, it, expect, afterEach, vi } from "vitest";
-import { IconRegistry } from "./IconRegistry";
+import { IconRegistry, iconThemeEnumOptions, ICON_THEME_FALLBACK_ID } from "./IconRegistry";
 import { rollback } from "../registrationTracker";
 import type { IconThemeContribution, IconContribution } from "../../api/types";
 
@@ -71,8 +71,7 @@ describe("IconRegistry — 图标主题 id 归属仲裁", () => {
   });
 });
 
-describe("IconRegistry — 共享图标 id 归属仲裁", () => {
-  const disposers = useArbitrationCleanup();
+describe("IconRegistry — 共享图标 id 归属仲裁", () => {  const disposers = useArbitrationCleanup();
 
   it("共享图标**没有**宿主保留面 ⇒ 空位注册恒接受（账 sharedIcon 栏为空）", () => {
     disposers.push(IconRegistry.registerIcon("demo-icon", ICON, "demo-plugin"));
@@ -97,5 +96,38 @@ describe("IconRegistry — 共享图标 id 归属仲裁", () => {
     expect(IconRegistry.getIcon("demo-icon")?.description).toBe("v2");
     expect(err).not.toHaveBeenCalled();
     err.mockRestore();
+  });
+});
+
+/**
+ * 2026-10-01 接线：`app.iconTheme` 下拉的**显示名**。
+ * 病灶（此前）：枚举只推 id ⇒ 下拉里是裸 id，插件在 `contributes.iconThemes[].label` 声明的名字零消费方。
+ * 本组钉装配口径：保底项恒在首位（值 `default` ＋ 壳声明中文原文）＋ 插件项取 label 原样
+ * （**不在这里翻译**——显示期由设置页 `t()` 解析，E6#165 同口径）。
+ * ⚠️ 断言走 indexOf 而非固定下标：IconRegistry 是全局单例，别的用例可能已登记条目。
+ */
+describe("iconThemeEnumOptions — 枚举与显示名同源装配", () => {
+  const disposers = useArbitrationCleanup();
+
+  it("保底项恒在首位：值 = 壳哨兵 `default`、显示名 = 壳声明中文原文", () => {
+    const { values, descriptions } = iconThemeEnumOptions();
+    expect(values[0]).toBe(ICON_THEME_FALLBACK_ID);
+    expect(descriptions[0]).toBe("内置图标集");
+  });
+
+  it("插件项：显示名取 label 原文（未译——译名住插件本仓字典）", () => {
+    disposers.push(IconRegistry.register(iconTheme("demo-plugin.demo-icons", "薄荷苏打"), "demo-plugin"));
+    const { values, descriptions } = iconThemeEnumOptions();
+    const i = values.indexOf("demo-plugin.demo-icons");
+    expect(i).toBeGreaterThan(0);
+    expect(descriptions[i]).toBe("薄荷苏打");
+    expect(values.length).toBe(descriptions.length); // 一一对应——错位会让下拉整体串名
+  });
+
+  it("负控：label 缺失（手写 manifest）⇒ 显示名退 id，不出 undefined / 空串", () => {
+    disposers.push(IconRegistry.register({ id: "demo-plugin.ld-x", label: "", path: "icons.json" }, "demo-plugin"));
+    const { values, descriptions } = iconThemeEnumOptions();
+    const i = values.indexOf("demo-plugin.ld-x");
+    expect(descriptions[i]).toBe("demo-plugin.ld-x");
   });
 });

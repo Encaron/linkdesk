@@ -113,6 +113,25 @@ describe("ConfigurationRegistry — updateEnum / defaults", () => {
     expect(merged["test-plugin.theme"].default).toBe("Sunset");
   });
 
+  // 2026-10-01（app.iconTheme 显示名接线）：描述位是**可选第四参**——传即覆盖、不传不动既有值。
+  it("updateConfigurationEnum — 描述位随枚举同推（设置页 t(enumDescriptions[i]) 的数据源）", () => {
+    updateConfigurationEnum("test-plugin.theme", ["default", "demo-plugin.demo-icons"], "default", [
+      "内置图标集",
+      "薄荷苏打",
+    ]);
+    const prop = getMergedSchema()["test-plugin.theme"];
+    expect(prop.enum).toEqual(["default", "demo-plugin.demo-icons"]);
+    expect(prop.enumDescriptions).toEqual(["内置图标集", "薄荷苏打"]);
+  });
+
+  it("updateConfigurationEnum — 不传描述位 ⇒ 既有 enumDescriptions 原样不动（负控：别把描述清了只剩 id）", () => {
+    updateConfigurationEnum("test-plugin.theme", ["a"], "a", ["甲"]);
+    updateConfigurationEnum("test-plugin.theme", ["a", "b"], "a");
+    const prop = getMergedSchema()["test-plugin.theme"];
+    expect(prop.enum).toEqual(["a", "b"]);
+    expect(prop.enumDescriptions).toEqual(["甲"]);
+  });
+
   it("getDefaults — 返回所有配置项默认值", () => {
     const defaults = getDefaults();
     expect(defaults["test-plugin.theme"]).toBe("Dark");

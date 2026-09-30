@@ -362,16 +362,31 @@ export function collectHostReserved(root = ROOT) {
       for (const c of tail.matchAll(/\bid:\s*"([^"]+)"/g)) colorwayIds.add(c[1]);
     }
   }
-  /* ⑤c 宿主保底图标主题 id —— 从 `app.iconTheme` 声明块取 default ＋ 枚举里的字面量（"default" = codicon 保底） */
+  /* ⑤c 宿主保底图标主题 id —— `app.iconTheme` 取值空间里**宿主自己声明**的那些（"default" = codicon 保底）。
+   *   2026-10-01 起声明处不再写字面量：`default` 走常量 `ICON_THEME_FALLBACK_ID`、`enum` 走
+   *   `iconThemeEnumOptions().values`（枚举 ＋ 显示名同源装配，E6#165 图标主题显示面）⇒ 纯字面量扫描会
+   *   扫成**空家族**（`family-empty` 当场报红）。做法 = 先把该仓的字符串常量解出来，再对**两处真源**
+   *   （配置声明块 ／ 注册表函数体）里的字面量与标识符逐个求值；插件登记项是运行期数据，本就不进账。 */
   const iconThemeIds = new Set();
   {
-    const src = tryRead(path.join(root, "src", "App", "config", "appearance.ts"));
-    const keyAt = src.indexOf('"app.iconTheme"');
-    const obj = keyAt < 0 ? "" : objectLiteralAt(src, keyAt);
-    const dflt = obj.match(/\bdefault:\s*"([^"]+)"/);
-    if (dflt) iconThemeIds.add(dflt[1]);
-    const en = obj.match(/\benum:\s*\[([^\]]*)\]/);
-    if (en) for (const m of en[1].matchAll(/"([^"]+)"/g)) iconThemeIds.add(m[1]);
+    const declSrc = tryRead(path.join(root, "src", "App", "config", "appearance.ts"));
+    const regSrc = tryRead(path.join(root, "src", "core", "registry", "appearance", "IconRegistry.ts"));
+    const consts = new Map();
+    for (const m of regSrc.matchAll(/export const ([A-Za-z_$][\w$]*)\s*=\s*"([^"]+)"/g)) consts.set(m[1], m[2]);
+    const absorb = (expr) => {
+      for (const m of expr.matchAll(/"([^"]+)"|([A-Za-z_$][\w$]*)/g)) {
+        const v = m[1] ?? consts.get(m[2]);
+        if (v) iconThemeIds.add(v);
+      }
+    };
+    const keyAt = declSrc.indexOf('"app.iconTheme"');
+    const obj = keyAt < 0 ? "" : objectLiteralAt(declSrc, keyAt);
+    const dflt = obj.match(/\bdefault:\s*("[^"]+"|[A-Za-z_$][\w$]*)/);
+    if (dflt) absorb(dflt[1]);
+    const en = obj.match(/\benum:\s*([^,\n]+)/);
+    if (en) absorb(en[1]);
+    const vals = functionBodyAt(regSrc, "export function iconThemeEnumOptions(").match(/\bvalues:\s*\[([^\]]*)\]/);
+    if (vals) absorb(vals[1]);
   }
   /* ⑤d 宿主外观**哨兵值**（不是 id）——混搭来源「跟随主题」；从常量取值处扫，不手写字面量 */
   const sentinels = new Set();

@@ -14,12 +14,20 @@
  * fixture 命名遵守硬约束 21：虚构值（demo-plugin / demo-icon / Demo Icon），不指向真实插件。
  */
 
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, afterEach } from "vitest";
 import {
   normalizeIconThemeMappings,
   normalizeIconThemeFontMeta,
   resolvePluginDataUrl,
+  syncIconThemeEnum,
 } from "./contributions";
+import { IconRegistry, ICON_THEME_FALLBACK_ID } from "../../core/registry/appearance/IconRegistry";
+import {
+  clearConfigurationRegistrations,
+  getConfigurationContributions,
+  registerConfiguration,
+} from "../../core/registry/ConfigurationRegistry";
+import { rollback } from "../../core/registry/registrationTracker";
 
 describe("resolvePluginDataUrl——单一权威：恒 linkdesk://（E5.8#133.5）", () => {
   it("dev/prod 零分叉——恒返回 linkdesk://{pluginId}/{filePath}，不探测本地端口", () => {
@@ -232,5 +240,49 @@ describe("normalizeIconThemeFontMeta——自定义字体 font 段（E5.8#133.4�
     expect(normalizeIconThemeFontMeta({ font: { family: "demo-font" } }, "demo-plugin")).toBeNull();
     expect(warn).toHaveBeenCalledTimes(2);
     warn.mockRestore();
+  });
+});
+
+/**
+ * 2026-10-01 接线：`syncIconThemeEnum` 把**显示名随枚举一起推**（此前只推 id ⇒ 设置页下拉里是裸 id）。
+ * 钉的是**接线**，装配口径另有 IconRegistry.test.ts 的 `iconThemeEnumOptions` 一组——两处都留着：
+ * 这条证明「装/卸图标主题插件 ⇒ 下拉名字当场刷新」，即枚举同步这条既有路径真的带上了描述位。
+ */
+describe("syncIconThemeEnum — 枚举 ＋ 显示名同推（装/卸即刷新）", () => {
+  /** 造一个只含 app.iconTheme 的配置贡献（键名 = 真键，验证的是真实落点） */
+  function registerIconThemeKey(): void {
+    clearConfigurationRegistrations();
+    registerConfiguration("app", {
+      title: "主题",
+      properties: {
+        "app.iconTheme": { type: "string", default: ICON_THEME_FALLBACK_ID, description: "图标主题" },
+      },
+    });
+  }
+  const prop = () => getConfigurationContributions().get("app")!.properties["app.iconTheme"];
+
+  afterEach(() => {
+    clearConfigurationRegistrations();
+    rollback("demo-plugin");
+  });
+
+  it("装插件 → 枚举带 id、显示名带 label 原文；卸插件 → 回退保底单条", () => {
+    registerIconThemeKey();
+    syncIconThemeEnum();
+    expect(prop().enum).toEqual([ICON_THEME_FALLBACK_ID]);
+    expect(prop().enumDescriptions).toEqual(["内置图标集"]);
+
+    const dispose = IconRegistry.register(
+      { id: "demo-plugin.demo-icons", label: "薄荷苏打", path: "icons.json" },
+      "demo-plugin"
+    );
+    syncIconThemeEnum();
+    expect(prop().enum).toEqual([ICON_THEME_FALLBACK_ID, "demo-plugin.demo-icons"]);
+    expect(prop().enumDescriptions).toEqual(["内置图标集", "薄荷苏打"]);
+
+    dispose();
+    syncIconThemeEnum();
+    expect(prop().enum).toEqual([ICON_THEME_FALLBACK_ID]);
+    expect(prop().enumDescriptions).toEqual(["内置图标集"]);
   });
 });
