@@ -1,7 +1,7 @@
 # 04 待抉择池 · 齿轮归属与底部图标位
 
 > **左下齿轮收归壳 ＋ 底部位置去耦合**（2026-09-30 用户立案）。
-> **状态：🚧 施工中（2026-09-30 拍板当日）**——六条拍板见 §四／§4.1；**件 1 / 3 / 4 源码已落，件 2 源码已改而发布押后**（逐件状态见 §三）。余下 = [01-设计 §五](01-设计.md) 的 **dev 实机验收 ①–⑦**（软件轴攒批不发版，验完不上发版链）。
+> **状态：✅ 已落地（随壳 v0.2.32，2026-09-30）**——六条拍板见 §四／§4.1；件 1/3/4 已落并 dev 实测验收（读数见 [01-设计 §5.2b](01-设计.md)），件 2 与配套 `lang-defaults` 已发版并收录进官方目录，出厂种子已追新，壳 v0.2.32 已出安装包（Release 三资产齐）。逐件状态见 §三、发布链读数见 §六。
 > 归属：**04-软件更新 / 软件本体**（壳侧图标栏渲染 ＋ 菜单注册 ＋ 文档与门禁）**＋** [`../../05-插件更新/`](../../../05-插件更新/) 侧的**设置插件仓**（`Encaron/linkdesk-plugin-settings` 去掉 `appearsIn.iconBar`）。🔴 **两侧必须同批**——只改一侧，中间态就是「底部空窗、齿轮菜单开不出来」。
 > 本项按用户要求**建子夹而不是裸文件**（详案 ＋ 概念参考 ≥2 份 ⇒ 成套收口），先例同 [`../../已落地/悬停提示系统/`](../../已落地/悬停提示系统/00-README.md)。
 
@@ -65,8 +65,8 @@
 
 | 交界件 | 关系 |
 |:--|:--|
-| [待抉择池/菜单补全.md](../菜单补全.md) | 同属"壳 chrome 一次收口"族。⚠️ 该档的贡献点表里写着 `icon-bar/gear 图标栏齿轮菜单`——**本件落地后**，这句话要区分"齿轮按钮由壳渲染"与"齿轮菜单槽名 `extensionGear`"两件事（⛔ 该档里写的 `title-bar/file` 等**不是**本仓的槽名，那是 Tauri 时代的旧设计，别照抄）。 |
-| [待抉择池/项目管理器.md](../项目管理器.md) | 与配置文件（Profiles）是**近亲**（项目级设置 / 工作台布局 / 最近列表）。若将来合并设计，先看 [02-概念 §三](./02-概念-插件入口两条道与配置文件插件.md)。 |
+| [待抉择池/菜单补全.md](../../待抉择池/菜单补全.md) | 同属"壳 chrome 一次收口"族。⚠️ 该档的贡献点表里写着 `icon-bar/gear 图标栏齿轮菜单`——**本件落地后**，这句话要区分"齿轮按钮由壳渲染"与"齿轮菜单槽名 `extensionGear`"两件事（⛔ 该档里写的 `title-bar/file` 等**不是**本仓的槽名，那是 Tauri 时代的旧设计，别照抄）。 |
+| [待抉择池/项目管理器.md](../../待抉择池/项目管理器.md) | 与配置文件（Profiles）是**近亲**（项目级设置 / 工作台布局 / 最近列表）。若将来合并设计，先看 [02-概念 §三](./02-概念-插件入口两条道与配置文件插件.md)。 |
 | 🔴 **壳侧 `ProfileService`（已存在）** | **配置文件能力早已在壳里实现、但没有入口**——`src/core/services/plugins/ProfileService.ts`（399 行，`getProfiles`/`saveProfile`/`deleteProfile`/`snapshotCurrentAsProfile`/`switchProfile` ＋ 五维验证＋失败回退）＋ 设计档 [`04-E3d-Profile与激活.md`](../../../02-Electron架构/E3_多WebView与壳收尾_暂定/04-E3d-Profile与激活.md)；全仓**除服务本体/测试/re-export 外零消费方**。⇒ 与本案的直连：`switchProfile` 会**禁用/启用插件**，而齿轮今天正是设置插件的图标 ⇒ **某套 profile 不含设置插件时，齿轮会消失**；本件落地后齿轮恒在。完整存量清单见 [02-概念 §四 · 4.3](./02-概念-插件入口两条道与配置文件插件.md)。 |
 | E6#52a `linkdesk.patch.yml` | 配置文件能力的**最内核**（用户按稳定 id 覆盖任何插件配置）——E6 L6 层七格之一，**整层未开工、等开工令**（[E6-执行清单.md:12](../../../02-Electron架构/插件生态与发布/E6-执行清单.md)）。 |
 | E6#162「输出」死命令退场 | **同一根病根的前一次发作**：壳注册了一条背后没有插件支撑的命令。本件是同一个道理在**图标**上的版本（壳的图标不必长在插件的声明上）。 |
@@ -80,7 +80,7 @@
 |:--:|:--|:--|:--|:--|
 | 件 0 | 本夹（查清 ＋ 设计 ＋ 概念参考） | — | — | ✅ 已完成（2026-09-30） |
 | 件 1 | **壳侧**：齿轮改为壳自持的底栏按钮；底部图标回归"开自己" | 与件 2 **同批** | 壳仓 | ✅ **源码已落**——`poolLayout.ts`（`IconBarOwnedButton` ＋ `owned`）· `iconbar.ts`（构造 owned，`getAssetPath` 指壳资产）· `IconBarZone.tsx`（删身份规则 / `isBottom`，加 `renderOwned`，`menuId` 取自数据）· `sampleLayout.ts` · `windowLayout.test.ts` ＋ 新资产 `public/assets/icons/gear.svg`。i18n label 走 `t("管理")`（zh 靠回退即正确；en 词条待 `lang-defaults` 尾巴）· ✅ **dev 实机验收 ①/②/⑤/⑦ ＋ 反向对照全过**（CDP 驱隔离实例的逐条读数见 [01-设计 §5.2b](01-设计.md)） |
-| 件 2 | **设置插件仓**：`plugin.json` 去掉 `appearsIn.iconBar`（保留 `icon`）＋ bump ＋ release ＋ 收录目录 ＋ `sync:bundled` | 与件 1 **同批**（🔴 顺序：壳先能自渲染齿轮，插件后让位） | `Encaron/linkdesk-plugin-settings` | 🟡 **源码已改**（`appearsIn` 只留 `tabBar`），**未提交、未发版**；🔴 **bump 1.0.24 ＋ 抬 `minAppVersion` ＋ 发布 ＋ 目录收录 ＋ `sync:bundled` 全部押后到壳发版同批**（口径见 §4.1） |
+| 件 2 | **设置插件仓**：`plugin.json` 去掉 `appearsIn.iconBar`（保留 `icon`）＋ bump ＋ release ＋ 收录目录 ＋ `sync:bundled` | 与件 1 **同批**（🔴 顺序：壳先能自渲染齿轮，插件后让位） | `Encaron/linkdesk-plugin-settings` | ✅ **已发 v1.0.24 ＋ 已收录**：`appearsIn` 只留 `tabBar`、`minAppVersion` 抬到 **0.2.32**（`package.json` 同号）、Release `v1.0.24`、官方目录收录 `35e85ea`、出厂种子 1.0.23 → 1.0.24。配套 **`lang-defaults` v1.0.40**（补 en 词条「管理」= Manage）同批发布收录、种子 1.0.39 → 1.0.40 |
 | 件 3 | **空槽门控**：给齿轮里的「设置」条目补"槽已填充"条件，防物理删掉设置插件后留一条点了没反应的空壳 | — | 壳仓 | ✅ **已落**——`settingsSlotFilled` context key（`usePoolSync.ts` 随布局推送同步）＋ 菜单项 `when` ＋ `node scripts/gen-host-reserved.mjs` 重生宿主保留名账（专用旗子 7 → 8）＋ 中英命名规范 §七/§7 表 ＋ `settingsCommands.test.ts` 三例 |
 | 件 4 | **文档与门禁**：`06-plugin.json规范` 的 `bottom` 语义订正 ＋ `10-如何造一个设置插件` 模板删那行 ＋ 英文镜像同笔 | 随件 1 同批 | 壳仓 `docs/` | ✅ 已落（中英四件） |
 
@@ -112,7 +112,24 @@
 - **不改另外两个齿轮**：marketplace 的 `MarketplaceItemGear` 与设置项的 `SettingItemGear` 与本案无关，一律不碰。
 - **插件侧改动 = 跨仓批次**：设置插件源码真源 = `Encaron/linkdesk-plugin-settings`（本机克隆按 `E:\linkdesk-plugins\official\<id>\` 惯例）；壳仓内只有打包件 `bundled-plugins/settings.linkdesk-plugin`。本夹引用插件内文件一律写作 `<插件 id>:<仓内相对路径>`。
 - **第三方作者仓**：⛔ 不代改（硬约束 10 的同一条道理）。
-- **流程**：按 [04 README §一](../../00-README.md)——**已拍板、已开工**（六条见 §四；软件轴走**攒批不发版**，口径见 §4.1），版本号随下一批 release 统一定号。开工前请先过 [01-设计 §〇 拍板差异](./01-设计.md) ＋ §三 落点逐条 与工作区 `AGENTS.md` 的维护义务表。
+- **流程**：按 [04 README §一](../../00-README.md)——**已落地并归档**（六条拍板见 §四、发版口径见 §4.1、发布链读数见 §六）。
+
+---
+
+## 六、发布链读数（2026-09-30，全程实测）
+
+| 步 | 做了什么 | 读数 |
+|:--:|:--|:--|
+| 1 | 壳侧提交 | `9c1c21218`（件 1/3/4 ＋ 契约镜像补齐）→ 分支 CI **success（7m20s）** |
+| 2 | **设置插件 v1.0.24** | 仓内 `validate` / `verify`（八段） / `build` / `test`（87 例）全绿 → commit `29d8df8` → push → `publish`：Release `v1.0.24` ＋ asset ＋ 仓根 `marketplace.json`。⚠️ 发布前三道前置断言各拦过一次（工作区不干净 / 未推送 / 分发件 stale）——**都是设计内的闸**，按提示补步即过 |
+| 3 | **`lang-defaults` v1.0.40** | 补 `"管理": "Manage"`（en）＋ `"管理"`（zh）＝ 2 行；`plugin.json` ＋ `package.json` 同号 1.0.40；Release `v1.0.40` ＋ asset |
+| 4 | **官方目录收录** | 壳 `npm run catalog:official` 生成候选：**只更新 2 条**（settings 1.0.23→1.0.24 · lang-defaults 1.0.39→1.0.40），零新增、零第三方行被动过；落 `Encaron/linkdesk-marketplace` commit `35e85ea` |
+| 5 | **出厂种子追新** | `sync:bundled -- --latest`：settings 1.0.23→1.0.24、lang-defaults 1.0.39→1.0.40（其余 4 只随包件已是最新）＋ 两仓 `AGENTS.md` 事实表对齐 |
+| 6 | 发布前那一跑 | `npm run check` **EXIT=0**（含联网的 `check-bundled-freshness`）· `check:publish-gate` **①②③⑤ 全绿**（在 `write-product-json` 链路里跑，product.json 逐字节还原） |
+| 7 | 壳发布 | 提交 `a6833c90c`（种子 ＋ v0.2.32 发行说明补齿轮这条）→ tag `v0.2.32` → CI tag run **success** → Release 三资产齐：`linkdesk-setup-0.2.32.exe`（119,440,513 B）/ `latest.yml` / `.blockmap`，正文 1243 字符（CHANGELOG 同源） |
+| ⚠️ | **未做**（留给用户） | 清单 §三「**旧版实机点检查更新 → 真装上**」那条没跑——它要动**用户正在用的那只安装版**（会重启软件、换掉他手上的版本），故不擅自做 |
+
+> 🔴 **一条环境发现**（记在这儿，免得下次又白查一轮）：本机**本地打包**在 `E:\linkdesk-build\win-unpacked.tmp\d3dcompiler_47.dll` 上稳定 EPERM——定位到**这个文件名在该目录被拦**（同目录别的名字可写、同名字在 `%TEMP%` 可写），是**本机安全软件按「路径＋文件名」拦的**，与代码/构建配置无关。⇒ 本地 `npm run publish` 的打包那一段在本机会失败；**发布不受影响**（CI 在干净 runner 上打包，本次 tag run 即成功），本地只需跑门禁那半（`write-product-json` → `check:publish-gate` → `--restore`）。
 
 ---
 
