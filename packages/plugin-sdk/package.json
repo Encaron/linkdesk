@@ -26,7 +26,11 @@
       "types": "./svg-wellformed.d.ts",
       "default": "./svg-wellformed.mjs"
     },
-    "./package.json": "./package.json"
+    "./package.json": "./package.json",
+    "./own-dict-coverage": {
+      "types": "./own-dict-coverage.d.ts",
+      "default": "./own-dict-coverage.mjs"
+    }
   },
   "files": [
     "dist",
@@ -35,7 +39,9 @@
     "test-audit.mjs",
     "test-audit.d.ts",
     "svg-wellformed.mjs",
-    "svg-wellformed.d.ts"
+    "svg-wellformed.d.ts",
+    "own-dict-coverage.mjs",
+    "own-dict-coverage.d.ts"
   ],
   "sideEffects": false,
   "bin": {

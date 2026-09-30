@@ -62,6 +62,11 @@ import { runPluginLint, renderPluginLintReport } from "@linkdesk/plugin-sdk/esli
 import { validateThemeJson, validateIconThemeJson } from "@linkdesk/plugin-sdk";
 import { analyzeRepo } from "@linkdesk/plugin-sdk/test-audit";
 import { checkSvgWellformed, formatSvgViolation, svgViolationHint } from "@linkdesk/plugin-sdk/svg-wellformed";
+import {
+  checkOwnDictCoverage,
+  formatOwnDictIssue,
+  ownDictHint,
+} from "@linkdesk/plugin-sdk/own-dict-coverage";
 
 const ROOT = process.cwd();
 const failures = [];
@@ -337,26 +342,8 @@ if (dictDecls.length === 0) {
   }
 }
 
-/** ③ 黄灯：本仓 t() key 的自有字典覆盖度——**只报告不判红**（理由见文件头注） */
-if (sourceFiles.length > 0) {
-  const tKeys = new Set();
-  for (const file of sourceFiles) {
-    const text = readFileSync(file, "utf8");
-    for (const m of text.matchAll(/\bt\(\s*(["'])((?:\\.|(?!\1)[^\\\r\n])*)\1/g)) tKeys.add(m[2]);
-  }
-  const missing = [...tKeys].filter((k) => !dictKeys.has(k) && !/^[\x20-\x7e]*$/.test(k));
-  if (tKeys.size === 0) {
-    line("   （本仓源码里没有 t() 调用——没有可核的 key。）");
-  } else if (missing.length === 0) {
-    line(`   ✅ 本仓 ${tKeys.size} 个 t() key 全部命中自有字典。`);
-  } else {
-    line(
-      `   ⚠ 本仓 ${tKeys.size} 个 t() key 里，有 ${missing.length} 个不在自有字典——` +
-        `**黄灯不拦**（key 可能由应用级字典 lang-defaults 提供，插件仓看不到它）：`,
-    );
-    line(`       ${missing.slice(0, 8).join("、")}${missing.length > 8 ? ` … 等 ${missing.length} 个` : ""}`);
-  }
-}
+/* ③ 只判**字典声明完整性**（在不在 / 能不能解析 / 有没有空值）。
+   覆盖度（声明串与 t() key 有没有住进来）在 ⑧ 段判，判据本体住 SDK——⛔ 这里不复制一份。 */
 
 // ═══════════════ ④ 声明自洽（声明必须落在真实存在的文件上）═══════════════
 if (!manifest) {
@@ -598,6 +585,51 @@ if (audit.kind === "exempt") {
   }
 }
 
+// ═══════════════ ⑧ 自有字典覆盖度（「谁的仓谁译文」）═══════════════
+// 判据本体在 @linkdesk/plugin-sdk/own-dict-coverage（**单一实现**——壳侧 scripts/audit-i18n.mjs
+// 引的是同一份）。两条腿 severity 不同，理由见该模块头注（manifest = 红；源码 t() = 黄）。
+{
+  const cov = checkOwnDictCoverage(ROOT, { manifest });
+  if (cov.degraded) {
+    line(
+      `⏭ ⑧ 自有字典覆盖度：本仓字典声明读不动（${cov.problems.join("、")}）——无法判定，跳过。` +
+        `\n     上面 ③ 段先修：字典不完整时「全部缺口」是假红，而假红会让真红失效。`,
+    );
+  } else if (cov.manifestGap.length > 0) {
+    fail(
+      `⑧ 自有字典覆盖度：**本仓声明的 ${cov.manifestGap.length} 条可渲染文案没有译名**（自有字典：${dictSummary(cov)}）\n` +
+        cov.manifestGap
+          .map((g) => `       ${formatOwnDictIssue(g)}\n         修法：${ownDictHint(g)}`)
+          .join("\n") +
+        `\n     为什么是本仓的事：文案声明在**你这只仓**、渲染在壳或别的插件里——跨仓追不上` +
+        `（官方设置插件当初就是这么漏的：声明在设置仓、译名却指望官方语言包跟上）。`,
+    );
+  } else {
+    line(
+      `✅ ⑧ 自有字典覆盖度：本仓 ${cov.scanned.manifestStrings} 条可渲染声明串全部有译名` +
+        `（自有字典：${dictSummary(cov)}）。`,
+    );
+  }
+  if (!cov.degraded && cov.sourceGap.length > 0) {
+    line(
+      `   ⚠ 本仓 src 里 ${cov.scanned.sourceKeys} 个 t() 中文 key 有 ${cov.sourceGap.length} 个不在自有字典` +
+        `——**黄灯不拦**（可能由应用级字典 lang-defaults 提供，插件仓看不到它）：`,
+    );
+    line(
+      `       ${cov.sourceGap
+        .slice(0, 8)
+        .map((g) => JSON.stringify(g.key))
+        .join("、")}${cov.sourceGap.length > 8 ? ` … 等 ${cov.sourceGap.length} 个` : ""}`,
+    );
+    line(`       ${ownDictHint(cov.sourceGap[0])}`);
+  }
+}
+/** 自有字典的一句话摘要（⑧ 段自用；⛔ 别在别处再拼一份） */
+function dictSummary(cov) {
+  if (cov.dict.files.length === 0) return "无——本仓一份字典都没声明过";
+  return `${cov.dict.files.map((f) => f.rel).join("、")}，共 ${cov.dict.keys.size} 个 key`;
+}
+
 // ═══════════════ 结论 ═══════════════
 line("────────────────────────────────────────────────────────────");
 if (failures.length > 0) {
@@ -607,5 +639,5 @@ if (failures.length > 0) {
   console.error(`  eslint-disable 注释 + 理由（见上面报告尾部），别把检查删了。`);
   process.exitCode = 1;
 } else {
-  console.log(`✅ 插件仓自检全过（${pluginId}）——lint / 跨插件 / 字典 / 声明自洽 / 目录条目形态 / 测试覆盖 / SVG 资源合法性七段。`);
+  console.log(`✅ 插件仓自检全过（${pluginId}）——lint / 跨插件 / 字典完整性 / 声明自洽 / 目录条目形态 / 测试覆盖 / 自有字典覆盖度八段。`);
 }

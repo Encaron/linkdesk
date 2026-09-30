@@ -497,15 +497,55 @@ Plugin A contributes, plugin B references (`"icon": "stm32-chip"` + `"iconSource
 - Translation files are loaded through `fetchPluginDataFile` (bypassing the Vite glob cache — JSON in a newly installed plugin directory is discovered in real time).
 - The plugin text iron rule: **all UI text goes through `t()`**, and the i18n key is the original Chinese text (`05 §6`).
 
+#### 🔴 Whoever declares it translates it — your own text must be translated in your own repo (**a rule, not advice**)
+
+**In one line**: **the text you declare is the text you translate.** Anything your plugin declares that is rendered
+as UI text (`name` / `description` in `plugin.json`, view and container titles, command titles, configuration
+**group names / section descriptions / enum display names**, status-bar text, menu and title-bar labels,
+`titleActions` buttons and their dropdown items…), its translation **must live in your own repo's
+`i18n/<lang>.json`** and be declared in `contributes.i18n`.
+
+```jsonc
+// plugin.json
+{ "contributes": { "i18n": { "en": "i18n/en.json" } } }
+```
+```jsonc
+// i18n/en.json — key = the original Chinese text you declared, value = the translation
+{ "设置插件": "Settings", "打开方式": "Opening mode" }
+```
+
+**Why "anywhere is fine" is not fine**: when the declaration lives in your repo and the translation lives in
+**another repo** (for example `lang-defaults` in the shell repo), **the two can never keep up** — you add a
+declaration here and nobody over there knows; cross-repo sync relies on someone remembering, and nobody does.
+(This rule comes from a real miss: the settings plugin's own declaration items stayed Chinese in the English UI.)
+
+**Self-check and severity** (leg ⑧ of `npm run verify`; the judge itself lives in the SDK, your repo only calls it):
+
+| Object | Severity | Meaning |
+|------|:--:|------|
+| A renderable Chinese string you declared in `plugin.json` has no translation in your own repo | 🔴 **red** | Whoever holds the declaration owns the translation — another repo cannot save it |
+| A key from `t("original Chinese")` in your `src/**` is missing from your own dictionary | ⚠️ **yellow** | The app-level dictionary (`lang-defaults`) is a **legitimate provider**, but ownership is not yours |
+
+**⛔ Do not read "it's already in the app-level dictionary" as "nothing to do"** — that means **the UI looks fine
+today**, not that ownership is settled. If that dictionary changes, or your plugin happens to load in a different
+order on someone else's machine, you cannot predict the result. **Adding the pair to your own repo costs one JSON file.**
+
+**What does not count** (documented exemptions — don't "fix" them): `description` of commands and params
+(**declaration data** — for contracts and AI, never rendered) · theme/language-pack `label` and `langDefs`
+`aliases` (brand names and language self-names, **proper nouns, never translated**) · every path/ID/context-key
+field (`entry` / `render` / `path` / `when` / `key` / menu-slot `group`…). The **single source of truth** for the
+exemptions is the header of the SDK's `own-dict-coverage` module — **change that when the schema changes**, and
+⛔ never hand-copy a second list here.
+
 #### Bucket-key naming advice — **give your keys an owner** (advice, not a requirement)
 
 Your translation file is **one flat layer of keys**, and everyone writes into the same table: every plugin's keys, the shell's own keys, and the `lang-defaults` language pack's keys **live in one dictionary**. Within a language, the later registrant overwrites the earlier one — **and until now there was no notice at all**.
 
 **Advice**: give your keys an owner-bearing name, e.g. `serial-monitor.打开端口` instead of `打开端口`. Then even an accidental name clash is nobody else's business.
 
-🔴 **Why this is advice and not a requirement**: **an i18n key may legitimately live in the app-level dictionary**. The official `settings` plugin has 254 `t()` call sites and **not a single key of its own in its repo** — they all live in `lang-defaults`' `zh.json` / `en.json`. Inside your plugin repo there is only your own `i18n/*.json` — **you cannot see the shell's dictionary, nor any other plugin** — so "your key collided with someone" is **never decidable from your own repo**. Making it a blocker means guaranteed false positives, and false positives invalidate the rules that should really block. ⇒ **It is a yellow light, not a red one.**
+🔴 **Why this is advice and not a requirement**: **a key may legitimately live in the app-level dictionary** (the rule above governs **ownership**, not **reachability**). Inside your plugin repo there is only your own `i18n/*.json` — **you cannot see the shell's dictionary, nor any other plugin** — so "your key collided with someone" is **never decidable from your own repo**. Making it a blocker means guaranteed false positives, and false positives invalidate the rules that should really block. ⇒ **It is a yellow light, not a red one.**
 
-**How much overlap actually exists** (told plainly, not exaggerated — the counts below are a **measurement**, taken when the roster was 18 official plugins, not a live figure): those plugins declared **414 keys**, **65 of which overlap** the `lang-defaults` keys, and **3 of those already have divergent translations** — for example `命令`, where the shell says `Command` while `serial-monitor` says `Commands`. **When both are written into the same dictionary, which one the user actually sees depends on plugin load order.**
+**How much overlap actually exists** (told plainly, not exaggerated — the counts below are a **measurement**, taken when the roster was 18 official plugins, not a live figure): those plugins declared **414 keys**, **65 of which overlap** the `lang-defaults` keys, and **3 of those already have divergent translations** — for example `命令`, where the shell says `Command` while `serial-monitor` says `Commands`. **When both are written into the same dictionary, which one the user actually sees depends on plugin load order.** ⚠️ The cleanup for the ownership rule above is **additive** (your own dictionary gets the pair first, the old app-level entries **stay** for now — other plugins and the shell still reference them), so this overlap figure **does not drop to zero just because your repo grew a dictionary**.
 
 ⚠️ **Runtime behaviour**: when an overwrite happens the shell emits a `console.warn` naming the **key + language + writer**:
 
@@ -514,6 +554,8 @@ Your translation file is **one flat layer of keys**, and everyone writes into th
 ```
 
 **It is a notice, not a blocker** — the value is still written (the later registrant wins, exactly as today); the collision merely becomes traceable. The wording says only "already has this key, source unknown": the shell **can report who overwrote, but cannot report who owned it originally**, and it does not claim what it cannot do.
+
+⚠️ **Identical values stay silent** (since 2026-09-30): when both sides write the **same pair** (byte-identical value), nothing is reported — there is zero visible difference, and reporting it would drown out real divergence. During the cleanup for the ownership rule above, "own dictionary + app-level dictionary holding the same pair" is the normal state, so only a **differing value** is a real problem.
 
 🔴 **When NOT prefixing is legitimate**: **extensions** such as `.py` / `.ts`, and **language codes** such as `zh` / `en` — they are not "unowned", they **should never have an owner**, and prefixing them would be a semantic error.
 

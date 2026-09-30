@@ -247,7 +247,7 @@ Multi-theme package:
 | `minAppVersion` | `string` | Minimum app version requirement |
 | `docs` | `string` | Bundled documentation path (for resource plugins) |
 | `cardDocMap` | `object` | Card ID → documentation anchor mapping |
-| `i18n` | `object` | Plugin-bundled translations `{ "en": "i18n/en.json", "ja": "i18n/ja.json" }` — key = the plugin UI's source text (the author's native language is recommended). It lives under `contributes.i18n`, not at the top level |
+| `i18n` | `object` | Plugin-bundled translations `{ "en": "i18n/en.json", "ja": "i18n/ja.json" }` — key = the plugin UI's source text (the author's native language is recommended). It lives under `contributes.i18n`, not at the top level. 🔴 **Text your plugin declares must be translated in your own repo** (whoever declares it translates it — see `03 §3.9`) |
 | `cssVars` | `object` | Plugin-defined CSS variables `{ "--name": { "dark": "#fff", "light": "#000" } }` |
 | `permissions` | `string[]` | Permission declarations `["serial", "filesystem", "network"]` (enabled in Phase 5+) |
 

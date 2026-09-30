@@ -89,6 +89,18 @@ describe("i18nResources——键覆盖出声（E6#111j 判据①②③）", () =
     expect(i18n.getResourceBundle("zh", "translation")).toMatchObject({ 同一个键: "乙" });
   });
 
+  it("②′ 🔴 硬负控：异插件同键**同值** ⇒ 零输出（E6#161——清扫后同值并存是常态）", () => {
+    // 「谁的仓谁译文」落地后，同一键在自有字典与应用级字典两处并存同一对映射是常态
+    // （译名归到声明方，应用级那份不一定同步删）。值一样 ⇒ 界面零差别，报它 = 假红。
+    registerPluginLanguageBundle("zh", { 设置: "Settings" }, "plugin-a");
+    registerPluginLanguageBundle("zh", { 设置: "Settings" }, "plugin-b");
+    expect(warnText()).toBe("");
+    // 🔴 对照：值一旦不同 ⇒ 仍是真共写，必须出声（免得这条静默把真分歧一并吞掉）
+    registerPluginLanguageBundle("zh", { 设置: "Preferences" }, "plugin-c");
+    expect(warnText()).toContain("设置");
+    expect(warnText()).toContain("plugin-c");
+  });
+
   it("③ 同插件 en / zh 两份同键 ⇒ 零输出（中英两份是一个来源，不是共写）", () => {
     // 构造：他方（plugin-b）先在 **en 与 zh 两个语言**占住同一个键。
     // 然后本插件（plugin-a）以自己的 en / zh 两份写同一个键。
@@ -143,12 +155,13 @@ describe("i18nResources——键覆盖出声（E6#111j 判据①②③）", () =
     expect(warnText().match(/重复键/g) ?? []).toHaveLength(1);
   });
 
-  it("⑤′ 去重按「写入者」分账——三方撞同一键时后两方各出一条（不吞第三方）", () => {
+  it("⑤′ 去重按「写入者」分账——三方撞同一键且值各异时后两方各出一条（不吞第三方）", () => {
     // 🔴 官方真实情形：`搜索` 由 file-tree / marketplace / serial-monitor 三方共写。
     //   若去重只按「语言＋键」，第三个写者会被静默吞掉——那正是本轴要消灭的静默。
+    //   ⚠️ 三方**值必须各异**：同值不再出声（E6#161 判据②′），同值样本打不到去重集。
     registerPluginLanguageBundle("zh", { 搜索: "搜索" }, "plugin-a");
-    registerPluginLanguageBundle("zh", { 搜索: "Search" }, "plugin-b");
-    registerPluginLanguageBundle("zh", { 搜索: "Search" }, "plugin-c");
+    registerPluginLanguageBundle("zh", { 搜索: "Search-B" }, "plugin-b");
+    registerPluginLanguageBundle("zh", { 搜索: "Search-C" }, "plugin-c");
     expect(warnText().match(/搜索/g) ?? []).toHaveLength(2);
   });
 

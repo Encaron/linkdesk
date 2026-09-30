@@ -14,7 +14,11 @@
  *
  * E6#111j（1.40）：补「注册时键覆盖出声」——深合并的静默覆盖此前对用户不可见、对被覆盖方作者
  * 也不可见（他机器上没装对方插件）。详见 warnOnKeyOverlap。🔴 只出声不拦：i18n 键可以合法住在
- * 应用级字典（官方 settings 的 t() 键全在 lang-defaults），插件仓判不出撞键 ⇒ 硬判必出假红。
+ * 应用级字典（L11 之前官方 settings 的 t() 键全在 lang-defaults），插件仓判不出撞键 ⇒ 硬判必出假红。
+ *
+ * E6#161（「谁的仓谁译文」清扫后）：**同值覆盖不出声**——同一键在自有字典与应用级字典两处
+ * 并存**同一对映射**成了常态（清扫要让译名归到声明方，应用级字典那份不一定同步删）；值一样
+ * ⇒ 界面零差别，报它只会把真分歧淹掉。只有值**不同**才是真问题（同一键两处说法不一致，谁赢看注册序）。
  */
 import i18n from "../../i18n";
 import { trackRegistration } from "../../core/registry/registrationTracker";
@@ -63,6 +67,9 @@ function warnOnKeyOverlap(
     if (!(key in existing)) continue;
     // 本插件已写过该键 ⇒ 是自己覆盖自己，不出声（零误报是本条的硬判据）
     if (own.has(key)) continue;
+    // 同值覆盖不出声（E6#161）——值一样 = 界面零差别；只有值不同才是真问题（同键两处说法不一，
+    // 谁赢看注册序）。清扫期应用级字典与自有字典并存同一对映射是常态，报它会把真分歧淹掉。
+    if (JSON.stringify(existing[key]) === JSON.stringify(data[key])) continue;
     // 去重按「语言 ＋ 键 ＋ 写入者」——否则第三个写同一个键的人会被静默吞掉（那正是本轴要消灭的静默）
     const dedup = `${langCode}\u0000${key}\u0000${pluginId}`;
     if (_warnedKeyOverlaps.has(dedup)) continue;

@@ -13,10 +13,18 @@
  * **永不 exit 1**（哪怕 --strict）——实测有误报（产品专名 `t("LinkDesk")` / 动态前缀 `t("category.")`），
  * 按三档哲学只能配黄灯。白名单与既有 contributes.languages/themes 专名跳过**同一处**，不开第二份名单。
  *
+ * 🔥 E6#161（2026-09-30）第三职责——**manifest 声明串的「归属」腿**：
+ *   判「插件自己声明的可渲染文案有没有住**本仓**字典」（谁声明谁负责，判据本体住 SDK
+ *   `own-dict-coverage`，作者侧 `ci-verify` 引同一份）。旧腿两处失域：只走仓内 `plugins/`
+ *   （E6#99 源码外移后官方 16 仓不在任何一盏灯下）＋ 字段表只收 title/label 那批
+ *   （`group` / `subtitle` / `groupDescriptions` / `enumDescriptions` 不在内）。
+ *   已在案的缺口登记在 `scripts/i18n-manifest-debt.json`：**新缺口判红、还清未删行也判红**。
+ *
  * 用法：
  *   node scripts/audit-i18n.mjs          # 只报告
  *   node scripts/audit-i18n.mjs --strict # 门禁：**只对「缺翻译」** exit 1（已接入 npm run check）
  *                                        # 「可疑 key」是黄灯，strict 也不 fail
+ *                                        # manifest 归属缺口按账本登记判（新缺口/自腐账本 ⇒ 红）
  *
  * 输出：
  *   - 已翻译数 / 缺翻译数
@@ -35,6 +43,10 @@
 import { readFileSync, readdirSync, existsSync } from "fs";
 import { join } from "path";
 import JSZip from "jszip";
+// E6#161：判据本体（「谁的仓谁译文」）来自 SDK——与作者侧 ci-verify 引的**同一份**，⛔ 这里不复制
+import { checkOwnDictCoverage } from "../packages/plugin-sdk/own-dict-coverage.mjs";
+// 仓发现与官方名单的唯一真相源（与 audit-plugin-tests / sync-plugin-agents 同一份）
+import { discoverPluginRepos, officialPluginIds, readManifestJson } from "./lib/plugin-repos.mjs";
 
 // ── 0. 设计裁决排除——非 UI 数据/诊断（每项有出处注释，不得随意增删） ──
 const EXCLUDE_FILES = [
@@ -297,57 +309,63 @@ for (const root of ["src", "plugins"]) {
   walkDir(root, (full) => processFile(full, full.replace(/\\/g, "/")));
 }
 
-// ── 2b. 🔥 E5.8#37.9：plugin.json manifest 显示字段扫描 ──
-// 盲区修复：contributes.views[].title / viewsContainers[].title / titleActions.title+items[].label /
-// menus[].label / commands[].title 是**声明数据**，旧审计只扫 .ts/.tsx 源码 → 漏网。
-// 这些字段的消费方全部走 t() 路径（P2 归一化后）：
-//   views.title / viewsContainers.title        → buildSidebarViewMetas/buildPanelViewMetas DTO t()
-//   titleActions.title / items[].label         → ViewTitleActions 渲染 t()
-//   menus.label（含子菜单 children）           → getItems 桥 t()
-//   commands.title                             → 命令面板/菜单标题 t()
-// 因此这些字符串必须存在于某 i18n bundle（key = 中文原文）——漏了就是英文模式见中文。
-const MANIFEST_TITLE_FIELDS = ["title", "titleDescription", "titleTooltip", "singleViewPaneContainerTitle", "label"];
+// ── 2b. 🔥 E6#161：manifest 声明串——按「谁的仓谁译文」判（归属腿） ──
+// 判据本体住 SDK（`own-dict-coverage.mjs`，作者侧 `ci-verify` ⑧ 段引的是同一份）；
+// 仓清单 = `scripts/lib/plugin-repos.mjs`（官方名单的唯一真相源，⛔ 不写死 id）。
+// 🔴 与上一段（源码中文串 × 随包字典池）**判的不是同一件事**：那段问「用户能不能看见译名」，
+//    这段问「这条文案的译名该归谁」。所以「池里有」也算缺口——只是今天界面不错而已。
+const CONTAINER = process.env.LINKDESK_PLUGIN_CONTAINER || "E:/linkdesk-plugins";
+const DEBT_FILE = "scripts/i18n-manifest-debt.json";
+const officialIds = officialPluginIds("scripts/sync-plugin-agents.mjs");
+const containerThere = existsSync(CONTAINER);
 
-/** 从 contributes 树递归收集上述显示字段的字符串（只认字段名，不收集 args 数据等深部值） */
-function collectManifestStrings(node, out) {
-  if (Array.isArray(node)) { node.forEach((n) => collectManifestStrings(n, out)); return; }
-  if (!node || typeof node !== "object") return;
-  for (const k of MANIFEST_TITLE_FIELDS) {
-    const v = node[k];
-    if (typeof v === "string" && /[一-鿿]/.test(v)) out.add(v);
+/** 一趟判据：插件根 + manifest → 汇总（`pool` = 随包字典里已有译名） */
+function judgeRepo(dir, manifest, label, kind) {
+  const cov = checkOwnDictCoverage(dir, { manifest });
+  return {
+    label,
+    kind,
+    scanned: cov.scanned.manifestStrings,
+    dict: cov.dict.files.map((f) => f.rel),
+    degraded: cov.degraded,
+    problems: cov.problems,
+    gaps: cov.manifestGap.map((g) => ({ ...g, repo: label, pool: translated.has(g.text) })),
+    sourceGapCount: cov.sourceGap.length,
+    sourceKeyCount: cov.scanned.sourceKeys,
+  };
+}
+
+const judged = [];
+// ① 仓内夹具（`plugins/<id>`——演示插件仍住本仓）
+if (existsSync("plugins")) {
+  for (const e of readdirSync("plugins", { withFileTypes: true })) {
+    if (!e.isDirectory()) continue;
+    const dir = join("plugins", e.name);
+    if (!existsSync(join(dir, "plugin.json"))) continue;
+    const read = readManifestJson(join(dir, "plugin.json"));
+    if (!read.ok) { console.warn(`⚠ ${dir}/plugin.json 读不动（${read.why}）`); continue; }
+    judged.push(judgeRepo(dir, read.manifest, e.name, "仓内夹具"));
   }
-  for (const v of Object.values(node)) {
-    if (Array.isArray(v)) v.forEach((n) => collectManifestStrings(n, out));
-    else if (v && typeof v === "object") collectManifestStrings(v, out);
+}
+// ② 插件容器（官方 / 第三方——**只读**）
+if (containerThere) {
+  for (const r of discoverPluginRepos(CONTAINER)) {
+    const read = readManifestJson(join(r.dir, "plugin.json"));
+    if (!read.ok) continue;
+    const official = officialIds ? officialIds.has(r.id) : true;
+    judged.push(judgeRepo(r.dir, read.manifest, r.id, official ? "官方" : "第三方"));
   }
 }
 
-function walkManifests(dir) {
-  if (!existsSync(dir)) return;
-  for (const entry of readdirSync(dir, { withFileTypes: true })) {
-    if (entry.name.startsWith(".") || entry.name === "node_modules" || entry.name === "dist" || entry.name === "dist-electron") continue;
-    const full = join(dir, entry.name);
-    if (entry.isDirectory()) walkManifests(full);
-    else if (entry.name === "plugin.json") {
-      let manifest;
-      try { manifest = JSON.parse(readFileSync(full, "utf-8")); } catch { continue; }
-      if (!manifest?.contributes) continue;
-      // 专名跳过：languages[].name（语言名 = 本地自称，中文/日本語 永不翻译）+
-      // themes[].name（主题名 = 品牌名，薄荷苏打 Mint Soda 双语品牌）。非 UI 可译文本。
-      const contributes = { ...manifest.contributes };
-      delete contributes.languages;
-      delete contributes.themes;
-      const collected = new Set();
-      collectManifestStrings(contributes, collected);
-      const rel = full.replace(/\\/g, "/");
-      for (const text of collected) {
-        if (!found.has(text)) found.set(text, []);
-        found.get(text).push(`${rel} (contributes)`);
-      }
-    }
-  }
-}
-walkManifests("plugins");
+// 判域：**官方 + 仓内夹具**（这二者是本仓能管的），第三方仓只报告不判红——
+// 别人的声明该由**别人仓的 ci-verify ⑧ 段**拦（跨仓替人立账 = 拿别人的欠款卡自己的提交）。
+const gated = judged.filter((r) => r.kind !== "第三方");
+const thirdParty = judged.filter((r) => r.kind === "第三方");
+const thirdPartyGapCount = thirdParty.reduce((a, r) => a + r.gaps.length, 0);
+const allGaps = gated.flatMap((r) => r.gaps);
+const gapsByRepo = gated.filter((r) => r.gaps.length > 0).sort((a, b) => b.gaps.length - a.gaps.length);
+const uncovered = allGaps.filter((g) => !g.pool);
+const sourceDebt = gated.filter((r) => r.sourceGapCount > 0);
 
 // ── 3. 筛选真正缺翻译的（排除子串误报） ──
 const missing = [];
@@ -407,8 +425,106 @@ if (suspicious.length > 0) {
   console.log("");
 }
 
+// ── 4c. E6#161：manifest 归属缺口（谁的仓谁译文） ──
+const debtEntries = (() => {
+  try {
+    const doc = JSON.parse(readFileSync(DEBT_FILE, "utf-8"));
+    return Array.isArray(doc) ? doc : (doc?.entries ?? null);
+  } catch {
+    return null;
+  }
+})();
+/** 账本条目的身份键——用 JSON 数组避开分隔符碰撞（文案里什么字符都可能出现） */
+const debtKey = (e) => JSON.stringify([e.repo, e.field, e.text]);
+const registered = new Set((debtEntries ?? []).map(debtKey));
+const unregistered = allGaps.filter((g) => !registered.has(debtKey(g)));
+const gapKeys = new Set(allGaps.map(debtKey));
+const staleDebt = (debtEntries ?? []).filter((e) => !gapKeys.has(debtKey(e)));
+
+const kindCount = (k) => judged.filter((r) => r.kind === k).length;
+const scannedTotal = gated.reduce((a, r) => a + r.scanned, 0);
+console.log(`── manifest 声明串（归属 = 谁的仓谁译文 · E6#161）──`);
+if (!containerThere) {
+  console.log(
+    `⏭ 插件容器不在位（${CONTAINER}）——只审了仓内夹具；跨仓那半趟跳过` +
+      `（⛔ 不因此判红，设 LINKDESK_PLUGIN_CONTAINER 指到容器即可恢复）。`,
+  );
+}
+console.log(
+  `判了 ${judged.length} 只仓（官方 ${kindCount("官方")} · 仓内夹具 ${kindCount("仓内夹具")} · 第三方 ${kindCount("第三方")}）；` +
+    `判域内可渲染中文串 ${scannedTotal} 条（每仓各算一份），归属缺口 ${allGaps.length} 条`,
+);
+if (thirdParty.length > 0) {
+  console.log(
+    `⏭ 第三方仓 ${thirdParty.length} 只（缺口 ${thirdPartyGapCount} 条）**只报告不判红**——` +
+      `他们的声明由他们仓的 ci-verify ⑧ 段拦（跨仓替人立账 = 拿别人的欠款卡自己的提交）。`,
+  );
+}
+if (judged.length === 0) {
+  console.log(`⏭ 无仓可判（容器不在位且本仓无夹具插件）。`);
+} else if (allGaps.length === 0) {
+  console.log(`✅ 每条声明串都有本仓译名——归属成立（${scannedTotal} 条逐条有主）。`);
+} else {
+  console.log(
+    `   其中 ${uncovered.length} 条**池里也没有**（随包字典都没给译名 ⇒ 今日英文界面必然显中文）；` +
+      `${allGaps.length - uncovered.length} 条池里有（界面不错，但归属未落：声明在本仓、译名住别处，跨仓追不上）。\n`,
+  );
+  for (const r of gapsByRepo) {
+    const dictNote = r.dict.length === 0 ? " · **本仓一份字典都没声明**" : ` · 自有字典 ${r.dict.join("、")}`;
+    console.log(`  ${r.label}（${r.kind}）· 可渲染 ${r.scanned} 条 · 缺口 ${r.gaps.length} 条${dictNote}`);
+    for (const g of r.gaps) {
+      const mark = g.pool ? "（池里有）" : "（🔴 池里也没有）";
+      const fresh = !registered.has(debtKey(g));
+      console.log(`     ${fresh ? "🆕" : "  "} ${JSON.stringify(g.text)}  @${g.field}${mark}`);
+    }
+    if (r.degraded) console.log(`     ⏭ 另有 ${r.problems.length} 处判不了（字典读不动等），本仓读数不全。`);
+  }
+}
+for (const r of sourceDebt) {
+  console.log(
+    `  ⚠ ${r.label}：src 里 ${r.sourceKeyCount} 个 t() 中文 key，其中 ${r.sourceGapCount} 个不在自有字典` +
+      `（黄灯——应用级字典是合法提供方，硬判会有一堆假红；按「谁的仓」逐条迁）。`,
+  );
+}
+if (sourceDebt.length > 0) console.log("");
+if (debtEntries === null) {
+  console.log(`ℹ 债务账本 ${DEBT_FILE} 读不到 ⇒ 所有缺口都按「新缺口」算（门禁会红）。\n`);
+} else {
+  console.log(
+    `   债务账本 ${DEBT_FILE}：登记 ${debtEntries.length} 条 ⇒ 其中 ${debtEntries.length - staleDebt.length} 条仍在案` +
+      `（本轮不判红）；新缺口 ${unregistered.length} 条；已还清未删行 ${staleDebt.length} 条。\n`,
+  );
+}
+
 // ── 5. 门禁（--strict：缺翻译即失败——npm run check 机械拦截） ──
 if (process.argv.includes("--strict") && missing.length > 0) {
   console.log("❌ i18n 审计门禁未过——缺翻译字符串存在，请补译后重跑。");
+  process.exit(1);
+}
+
+// ── 5b. E6#161 门禁：manifest 归属缺口（账本登记制） ──
+// 两条铁律：① 新缺口（不在账本里）当场红；② 账本里已还清却没删行同样红（账本不许自腐）。
+// ⛔ 没有「一键重写账本」的开关——那等于把门拆了（见 i18n-manifest-debt.json 头部）。
+if (process.argv.includes("--strict") && (unregistered.length > 0 || staleDebt.length > 0)) {
+  const listing = (rows) =>
+    rows
+      .slice(0, 12)
+      .map((r) => `   ${r.repo}  ${JSON.stringify(r.text)}  @${r.field}`)
+      .join("\n") + (rows.length > 12 ? `\n   … 等 ${rows.length} 条` : "");
+  if (unregistered.length > 0) {
+    console.log(
+      `❌ i18n 归属门禁未过——${unregistered.length} 条声明串缺口**不在账本里**（新缺口）：\n` +
+        listing(unregistered) +
+        `\n   修法：在本仓 \`i18n/<lang>.json\` 补译并在 manifest 声明（谁的仓谁译文——声明在谁手里，译名就归谁）；` +
+        `确实要留债的，写进 ${DEBT_FILE} 并注明为什么。`,
+    );
+  }
+  if (staleDebt.length > 0) {
+    console.log(
+      `❌ i18n 归属门禁未过——账本里 ${staleDebt.length} 条**已还清却没删行**（账本不许自腐）：\n` +
+        listing(staleDebt) +
+        `\n   修法：把这几条从 ${DEBT_FILE} 删掉（缺口已消失 = 债务还清）。`,
+    );
+  }
   process.exit(1);
 }
