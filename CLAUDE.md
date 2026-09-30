@@ -3,7 +3,7 @@
 > **Electron + React 18 + TypeScript 通用容器。** 比 VS Code 更高级：VS Code 核心嵌了 Monaco 编辑器甩不掉，LinkDesk 核心是空壳。万物皆插件。
 > **历程**：V2（「名字写死 = 功能写死」之祸）→ V3 定圆形大厅 → Tauri P1-P6 ✅（2026-08-03）→ E1-E4 迁 Electron＋文件树/Monaco 插件 ✅ → E5–E5.6 归一化（封站）→ E5.7 极简 Pool（O(1)）✅ → E5.8 归一化基建 ✅ → E6。**废案**：Per-Tab WebView / 多 WebView / 双 Pool（O(N) 进程，被 E5.7 取代，结论见 memory `e5.7-extreme-simple-pool`）。
 > **当前进度（2026-09-30）**：🚀 **E6 收官中**——**已封站 = L4 · L5 · L7 · L8 · L9 · L10 · L11**（L0–L3 含 L3.5–L3.7 更早已闭）。🔴 **未完成**：**① L6「安全加固与出厂判定」整层七格**（`#48a`/`#48b`/`#49a`/`#50a`/`#51a`/`#52a`/`#52b`，`#30.8e` 随 `#49`）——**整层未开工、等开工令**；**② 几条零散**：`#53a-b`（装配清单 profile）/ `#56a-b`（会话级自指插件）两条产出都是「设计文档 → 你拍板」· `#141`–`#143`（L10 待拍板三格）· `#161`（i18n 审计 manifest 腿失域，2026-09-30 立案）。**逐格状态 · 派单门槛 · 层序账一律以 [E6-执行清单](docs/02-Electron架构/插件生态与发布/E6-执行清单.md) 为唯一真相源**（每层的任务账 / 实测读数 / 残余边界住各层 `00-整理档案.md`）。🟢 **E6 后迭代期**＝软件与插件按批攒发，台账 [软件 已落地/00-README](docs/04-软件更新/已落地/00-README.md) ＋ [05-插件更新/00-README](docs/05-插件更新/00-README.md)。**版本读数**（唯一真相源 = 各 `package.json`；改版同笔校准本行）：软件 **0.2.28** · `plugin-sdk` **0.1.60** · `@linkdesk/ui` **0.2.29** · `@linkdesk/contracts` **0.1.26** · `plugin-docs` **0.1.46** · `create-linkdesk-plugin` **0.1.19**。
-> 🔴 **改本文件的章法（防「进度行长成巨无霸」复发）**：进度行只写「**现状 ＋ 指针**」——过程流水 / 逐格读数 / 版本沿革一律住上列台账与各层 `00-整理档案.md` · `交接.md`；**加一段就同笔删一段**（单笔净增有上限）。机械门禁 = `npm run check` 的 `check-claude-md`（全文 / 单行 / 进度行 / 单笔净增 四条上限），判据与压缩标准见 skill `claude-md-maintenance` ＋ memory `claude-md-compression-criteria`。
+> 🔴 **改本文件的章法（防「进度行长成巨无霸」复发）**：进度行只写「**现状 ＋ 指针**」——过程流水 / 逐格读数 / 版本沿革一律住上列台账与各层 `00-整理档案.md` · `交接.md`；**加一段就同笔删一段**（单笔净增有上限）。机械门禁 = `npm run check` 的 `check-claude-md`（全文 / 行数 / 单行 / 进度行 / 单笔净增 五条上限，与 `cost` 审计的 CLAUDE.md 判据同口径），判据与压缩标准见 skill `claude-md-maintenance` ＋ memory `claude-md-compression-criteria`。
 > **仓库结构**：git / npm / VS Code 根合一于 `E:/linkdesk`（2026-09-04 filter-repo 重整，3119 commits，hash 全变内容全保）。出厂插件源码在仓外、随包构建期拉取；E6 完成即出厂 → 持续迭代走 `docs/04-软件更新/`（软件本体）＋ `docs/05-插件更新/`（插件档案，独立版本）。
 
 ## 架构——圆形大厅模型
@@ -105,41 +105,21 @@
 
 ```bash
 npm run check   # 🔥 提交前必跑：双工程 tsc + ESLint --max-warnings 0 + vitest + 各专项门禁
-#   ⚠️ check-bundled-freshness 默认联网比对官方目录，离线用 --offline；check-scaffold 需要 git 在 PATH
-#   ⚠️ check-css-namespace 判据①③ 为结构性规则（自己定义的类名一律 ldk- 开头，无白名单），
-#      ⑥ ldk- 跨域唯一性、⑨ token 作用域、⑦⑧⑩⑪ 选择器形态——详见 31/32 号档（见硬约束 23）
+#   ⚠️ 三个坑：check-bundled-freshness 默认联网比对官方目录（离线用 --offline）· check-scaffold 需 git 在 PATH · check-css-namespace 判据面见硬约束 23 与 31/32 号档
 #   ⚠️ 插件侧的腿在 SDK（插件仓 CI 判红）；壳仓 check 够不着插件源码，两套互不覆盖
 npm run sync:bundled        # 出厂种子保鲜（--latest 显式追新 / --offline 只校验指纹）
 npm run sync:plugin-ci      # 插件仓门禁铺装（只写本地容器，不碰 git）
 npm run sync:plugin-agents  # 18 只插件仓的 AGENTS.md（唯一维护入口，别手改；--check 漂移门禁）
 npm run pull:plugins        # 本地容器拉最新——只拉不推；🔴 容器哪级被 git init 就红着喊
 npm run docs:build          # 作者面文档包产物（docs:check 与真源逐字节比对，挂 check）
-npm run manual:build        # AI 操作手册 02 章「命令与API全索引」刷新（生成区 GENERATED：命令表 + API 表）
-                            #   ⛔ 别手改那一章的两段生成区；门禁 = src/core/commands/aiManualIndex.test.ts（挂 check 的 vitest 腿，
-                            #   逐字节比对 + 三条负控）；本生成器**故意不接 check-gate-health**（域外：generate-*/audit-* 用 --check）
+npm run manual:build        # AI 操作手册 02 章生成区刷新（⛔ 别手改那两段；门禁 = aiManualIndex.test.ts 逐字节比对＋三条负控；故意不接 check-gate-health〔域外〕）
 npm run backfill:catalog-identity  # 目录条目身份图回填（--check / --self-test；依赖 SDK dist）
-npm run audit:plugin-prefix # 插件 CSS 前缀只读审计（改名轮映射表；依赖 SDK dist；故意不接 check 链）
-npm run audit:plugin-scope  # 插件侧「非样式命名空间」清账面（改名前逐仓清单；只读、不接 check 链；
-                            #   ⚠️ 读 scripts/host-reserved.json（生成式）——壳仓命令/设置面改了要 npm run audit:plugin-scope:regen）
-                            #   改容器：npm run audit:plugin-scope -- <容器目录>（默认 E:/linkdesk-plugins/official）
-npm run audit:plugin-dead-css # 插件 CSS 死类只读审计（E6#113 尺子：定义了、本仓源码无人用的自写前缀类；
-                            #   容许动态拼接〔宁可漏报〕；只报不拦、不接 check 链、需插件容器在场）
-npm run audit:plugin-tests  # 插件测试覆盖只读审计（E6#153 尺子：19 仓表＋纯逻辑单元零测名单；
-                            #   命中 = 同名测试文件 ∨ 测试文件引用〔含目录桶〕；只报不拦、不接 check 链、需插件容器在场）
-npm run audit:nonnaming     # 非样式命名空间普查探针（①命令 id ②设置键 ③外观族 ⑤协议 id…＋⑩b 账背对账；
-                            #   2026-09-17（1.32）从 gitignore 的 scratch/ 搬进 scripts/，同笔删原件；只读、不接 check 链）
-npm run audit:nonnaming:json # 上条的机读输出（--json）
-npm run dev:driver          # dev 验收 driver（系列外 D0：硬 reload 前置 ＋ 构建握手 ＋ 语义助手 ＋ hover 样板／判据 3 解耦自检）
-                            #   ⚠️ 需一只**隔离实例**：`electron . --remote-debugging-port=9333 --user-data-dir="$TEMP/ld-$$"`
-                            #      （Windows 上只有 --user-data-dir 真隔离；APPDATA 无效）＋ `LINKDESK_CDP=http://127.0.0.1:9333`
-                            #   ⚠️ 用法/判据/实测读数/入库裁决全在 scripts/dev/README.md；⛔ 故意不接 check 链（要活实例、零产品面）
-                            #   ⚠️ `-- selftest` = 纯函数自测（不需实例）；`-- handshake` = 「代码生效了吗」当场可辨（⛔ 别跳过 reload）
+npm run audit:plugin-prefix / audit:plugin-scope / audit:plugin-dead-css / audit:plugin-tests / audit:nonnaming / audit:nonnaming:json
+                            # 六条只读尺（E6#113 死 CSS · #153 测试覆盖 · #111 非样式命名空间 …）——只报不拦、⛔ 不接 check 链、
+                            #   需插件容器在场、依赖 SDK dist；壳仓命令/设置面改了要走 audit:plugin-scope:regen（读 scripts/host-reserved.json）
+npm run dev:driver          # dev 验收 driver（D0 系列外；⛔ 故意不接 check 链——要活实例）——隔离实例 / LINKDESK_CDP / --selftest / --handshake 全在 scripts/dev/README.md
 npm run check:lockfile-sync # lockfile 同源门禁；升 packages/* 版本后必须重跑 npm install 同笔提交 lock
-npm run ui:build            # 🔴 改了壳共享组件（src/components/shared/**）后**必跑**——@linkdesk/ui 的 dist 是构建产物，
-                            #   而 dev 轨道解析的就是它（L9 设计原文：包 = **类型契约 + dev 解析体**）⇒ 只改源码不重建，
-                            #   dev 里**看不到任何变化**（插件那侧也一样，因为插件 bundle 对 ui 是裸 import、由宿主供给）。
-                            #   ⚠️ 打包轨道不用手动跑（build-pool-vendor 有「src 比 dist 新就重建」保鲜）；dev 轨道没有这层
-                            #   ——已接进 `npm run dev` 与 `npm run electron:dev` 启动链（2026-09-27，踩过）。
+npm run ui:build            # 🔴 改了壳共享组件（src/components/shared/**）后必跑——ui 的 dist 是构建产物、dev 轨道解析的就是它，不重建则 dev 里看不到任何变化（机制见 L9 00-整理档案）；打包轨道不用手跑（build-pool-vendor 有保鲜）
 npm run lint / dev / electron:dev / npx tsc --noEmit / npx vitest run
 ```
 

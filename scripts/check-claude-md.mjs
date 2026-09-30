@@ -17,12 +17,18 @@
  *   🔑 **它拦的不是「改 CLAUDE.md」**（改是必须的：每完成一件工程任务都要校准现状行）——
  *   拦的是**只加不减**：加一段就得同笔压/删一段（G4），且总量不许爬回巨无霸（G1–G3）。
  *
- * ── 四条判据（单位一律「**字符**」＝ 阅读税口径；字节数一并打印但不判定）──
+ * ── 五条判据（G1–G4 单位「**字符**」＝ 阅读税口径，字节数一并打印但不判定；G5 是行数）──
  *   G1 全文 ≤ `LIMITS.total`           —— 兜底：别爬回巨无霸（对齐 2026-09-28 那次压缩的量级）
  *   G2 任意单行 ≤ `LIMITS.line`        —— 挡「某一行变巨型」（2026-09-30 的病灶 = 第 5 行 18,392 字符）
  *   G3 「当前进度」行 ≤ `LIMITS.progress`，且**必须恰有一条**（0 条 / >1 条都红）
  *                                      —— 重灾区单列，逼「现状行短到能每次校准」（记忆第 1 条判据）
  *   G4 相对 `HEAD` 的**净增** ≤ `LIMITS.growth` —— 「加一段就同笔删一段」；无 git 时跳过（打印原因）
+ *   G5 行数 ≤ `LIMITS.lines`           —— 🔴 **与用户的 `cost` 审计同口径**（`~/.zcode/cost-audit.py`
+ *                                         的「CLAUDE.md 体量」判据 = `splitlines() <= 150`）。两条尺子必须同时绿，
+ *                                         否则用户每次收尾跑 `cost` 都再看见一次「CLAUDE.md 超了」。加这条的实测
+ *                                         根因：2026-09-30 那次内容砍了 56%（40,181 → 17,526 字符）而**行数几乎没动**
+ *                                         （166 → 166）⇒ 字符尺全绿、审计仍报红。本门禁比审计**严一行**
+ *                                         （`split("\n")` 比 `splitlines()` 多一个尾空行）⇒ 只会更早报红，绝不更晚。
  *   超限时打印**最长的几行 ＋ 行号**，并把「流水该往哪写」印出来（章法 = skill `claude-md-maintenance`）。
  *
  * ── 域外声明（免得下一个人以为漏了）──
@@ -42,12 +48,13 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, "..");
 const FILE = "CLAUDE.md";
 
-/** 体量阈值（字符）——见头注「阈值可调但调高不是修好」 */
+/** 体量阈值（G1–G4 = 字符，G5 = 行）——见头注「阈值可调但调高不是修好」 */
 export const LIMITS = {
   total: 20000,
   line: 1600,
   progress: 1200,
   growth: 1200,
+  lines: 150,
 };
 
 /** 进度行锚点——它必须**恰有一条**（G3）。选前缀而非「包含『进度』」是防误伤别的行 */
@@ -119,6 +126,18 @@ export function judgeClaudeMd({ text, headText = null, limits = LIMITS }) {
     }
   }
 
+  // G5 行数——与用户 cost-audit.py 的「CLAUDE.md 体量」同口径（见头注）：
+  // 字符尺全绿而行数爬回去 = 用户每次收尾跑 cost 又看见一次「超了」（2026-09-30 实测就是这么发生的）
+  const lineCount = lines.length;
+  if (lineCount > limits.lines) {
+    violations.push({
+      kind: "lines",
+      msg:
+        `CLAUDE.md **${lineCount}** 行，超行数上限 ${limits.lines}（+${lineCount - limits.lines}）` +
+        `——字符尺没超而这条超了，正是「内容砍了、行数没动」的复发形态：删段 / 合并重复的行（用户收尾跑 \`cost\` 用的就是这个口径）`,
+    });
+  }
+
   return {
     violations,
     stats: {
@@ -131,8 +150,7 @@ export function judgeClaudeMd({ text, headText = null, limits = LIMITS }) {
       growth,
       limits,
     },
-  };
-}
+  };}
 
 // ────────────────────────────────── 自测 ──────────────────────────────────
 
@@ -144,7 +162,7 @@ export function runSelfTest() {
   const cases = [
     // ── 正控 ──
     [
-      "正控①：**真实仓库今天的 CLAUDE.md** 四条全过（本门禁的基线自证）",
+      "正控①：**真实仓库今天的 CLAUDE.md** 五条全过（本门禁的基线自证）",
       judgeClaudeMd({ text: readFileSync(resolve(ROOT, FILE), "utf8") }).violations.length,
       0,
     ],
@@ -175,6 +193,11 @@ export function runSelfTest() {
         limits: { ...L, total: 100 },
       }).violations.map((v) => v.kind).join(","),
       "total",
+    ],
+    [
+      "正控⑦：行数**恰好等于**上限 ⇒ 不算超（对齐 `cost` 审计的 ≤150 边界）",
+      judgeClaudeMd({ text: mkText(Array.from({ length: L.lines }, (_, i) => (i === 0 ? P : "x"))) }).violations.length,
+      0,
     ],
     // ── 负控 ──
     [
@@ -217,9 +240,19 @@ export function runSelfTest() {
       "growth",
     ],
     [
-      "🔴 负控⑧：`LIMITS` 真值本身自洽（四条上限都是正整数且单行 < 全文）",
-      Object.values(L).every((v) => Number.isInteger(v) && v > 0) && L.line < L.total && L.progress < L.total,
+      "🔴 负控⑧：`LIMITS` 真值本身自洽（五条上限都是正整数，且单行 / 进度行 / 行数 < 全文）",
+      Object.values(L).every((v) => Number.isInteger(v) && v > 0) &&
+        L.line < L.total &&
+        L.progress < L.total &&
+        L.lines < L.total,
       true,
+    ],
+    [
+      "🔴 负控⑨：行数超上限 ⇒ 报 lines（**字符尺可能同时全绿**——正是 2026-09-30 复发的形态）",
+      judgeClaudeMd({ text: mkText(Array.from({ length: L.lines + 1 }, (_, i) => (i === 0 ? P : "x"))) })
+        .violations.map((v) => v.kind)
+        .join(","),
+      "lines",
     ],
   ];
 
@@ -267,12 +300,12 @@ function main() {
       `净增 ${stats.growth === null ? "○ 跳过（读不到 HEAD:CLAUDE.md）" : fmt(stats.growth)}`,
   );
   console.log(
-    `   上限：全文 ${fmt(stats.limits.total)} · 单行 ${fmt(stats.limits.line)} · ` +
-      `进度行 ${fmt(stats.limits.progress)} · 单笔净增 ${fmt(stats.limits.growth)}（单位一律字符）`,
+    `   上限：全文 ${fmt(stats.limits.total)} 字符 · 行数 ${stats.limits.lines} 行 · 单行 ${fmt(stats.limits.line)} 字符 · ` +
+      `进度行 ${fmt(stats.limits.progress)} 字符 · 单笔净增 ${fmt(stats.limits.growth)} 字符（行数这条与 \`cost\` 审计同口径）`,
   );
 
   if (violations.length === 0) {
-    console.log(`✅ CLAUDE.md 体量四条全过（最长的五行： ${stats.longest.map((l) => `L${l.line}=${fmt(l.len)}`).join(" · ")} ）`);
+    console.log(`✅ CLAUDE.md 体量五条全过（最长的五行： ${stats.longest.map((l) => `L${l.line}=${fmt(l.len)}`).join(" · ")} ）`);
     return;
   }
 
