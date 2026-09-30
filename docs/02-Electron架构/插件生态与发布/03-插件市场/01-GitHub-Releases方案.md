@@ -94,7 +94,7 @@ github.com/encaron/linkdesk-marketplace/
 
 | 新字段 | 必需 | 说明 |
 |:--|:--|:--|
-| `versions[]` | - | 版本历史 `{version, downloadUrl, publishedAt, changelog?}`，**最新在前**；顶层 `version`/`downloadUrl` 仍 = 最新（兼容旧条目）——版本下拉数据源 |
+| `versions[]` | - | 版本历史 `{version, downloadUrl, publishedAt, changelog?}`，**最新在前**；顶层 `version`/`downloadUrl` 仍 = 最新（兼容旧条目）——版本下拉数据源。🔴 **`changelog` 正文只写最近 N = 5 版**（E6#164；更早的**条目**仍全量保留 ⇒ 装旧版/比版本零损失，读侧缺正文即显「未提供」）：这份文件的体积 = 每个用户每次「检查更新」的下载量，历史散文无上限累积是它的成本病根 |
 | `readmeUrl` | - | 作者仓库 raw README——未装插件详情页数据源 |
 | `screenshots[]` | - | 截图 URL 数组——详情页画廊 |
 | `license` | - | 许可证标识——详情页侧栏 |

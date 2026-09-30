@@ -17,6 +17,7 @@ import JSZip from "jszip";
 import {
   assertAssetCurrent,
   buildCatalogEntry,
+  CHANGELOG_WINDOW,
   createEmptyCatalog,
   judgePublishReadiness,
   newestSourceMtime,
@@ -25,6 +26,8 @@ import {
   readAssetManifestVersion,
   sliceChangelogSection,
   upsertCatalogEntry,
+  windowCatalogChangelog,
+  windowChangelogText,
   withCatalogIdentity,
   PUBLISH_REMOTE_UPDATED_HINT,
   type ManifestView,
@@ -340,6 +343,139 @@ describe("E6#106 withCatalogIdentity——图标字段转未装态可解析形�
     );
     const merged = upsertCatalogEntry(upsertCatalogEntry(createEmptyCatalog(), first), second);
     expect(merged.plugins[0]!.marketIcon).toBe(first.marketIcon);
+  });
+});
+
+/* ────────────────────────────────────────────────────────────────────────
+   E6#164：分发面 changelog 窗口（目录 `versions[].changelog` ＋ zip 内 `CHANGELOG.md`）。
+   口径见 docs/…/01-插件独立构建/15-变更日志膨胀与分发面裁剪-立案与设计前置.md（N = 5）。
+   ⚠️ **反向对照**（memory `snapshot-shadows-truth-bug-class` 的硬要求）：`noWindow` 系列断言
+   代表**旧行为**（目录全量写正文 / zip 整份原样拷）。每条窗口用例都配一句「旧写法在这条输入上
+   必然多出来」——只断言新实现对，证明不了窗口真的关上了。
+   ──────────────────────────────────────────────────────────────────────── */
+describe("E6#164 分发面窗口", () => {
+  /** 6 段（v1.6.0 最新 → v1.1.0 最老），一段一条短正文——比窗口多一段，正好验边界。 */
+  const SIX = [
+    "# 更新日志",
+    "",
+    "## v1.6.0",
+    "- 第六（最新）",
+    "",
+    "## v1.5.0",
+    "- 第五",
+    "",
+    "## v1.4.0",
+    "- 第四",
+    "",
+    "## v1.3.0",
+    "- 第三",
+    "",
+    "## v1.2.0",
+    "- 第二",
+    "",
+    "## v1.1.0",
+    "- 第一（最老）",
+    "",
+  ].join("\n");
+
+  it("窗口常量是单一真相源（目录与 zip 同源，值 = 5）", () => {
+    expect(CHANGELOG_WINDOW).toBe(5);
+  });
+
+  it("段数在窗口内 ⇒ 原文逐字节返回（作者没写超就不动他的文件）", () => {
+    expect(windowChangelogText(SAMPLE)).toBe(SAMPLE);
+    expect(windowChangelogText(SAMPLE, 3)).toBe(SAMPLE); // SAMPLE 恰 3 段：边界上不裁
+  });
+
+  it("超窗 ⇒ 只留最近 N 段，文件标题保留、更老整段丢弃", () => {
+    const got = windowChangelogText(SIX);
+    expect(got.startsWith("# 更新日志")).toBe(true); // head（首个段标题之前）原样
+    expect(got).toContain("## v1.6.0");
+    expect(got).toContain("## v1.2.0"); // 第 5 段（窗口最后一格）在
+    expect(got).not.toContain("## v1.1.0"); // 第 6 段出窗
+    expect(got.trimEnd().endsWith("- 第二")).toBe(true); // 结尾即窗口末段的正文
+    // 反向对照：旧行为 = 原样拷整份
+    expect(SIX.includes("## v1.1.0")).toBe(true);
+  });
+
+  it("认不出段标题（自由格式）⇒ 原文返回，⛔ 不猜不裁", () => {
+    const free = "更新记录\n\n2026-01-01 修了个 bug\n2026-01-02 又修一个\n2026-01-03 再来\n2026-01-04 四条\n2026-01-05 五条\n2026-01-06 六条\n";
+    expect(windowChangelogText(free)).toBe(free);
+  });
+
+  it("围栏块里的 `## vX` 是示例文本、不算段（否则窗口会误裁真段）", () => {
+    const fenced = [
+      "# 更新日志",
+      "",
+      "## v1.5.0",
+      "- 最新",
+      "",
+      "```md",
+      "## v0.0.9 这是示例，不是段",
+      "```",
+      "",
+      "## v1.4.0",
+      "- 次新",
+      "",
+      "## v1.3.0",
+      "- 三",
+      "",
+      "## v1.2.0",
+      "- 四",
+      "",
+      "## v1.1.0",
+      "- 五（窗口内最后一段）",
+      "",
+    ].join("\n");
+    expect(windowChangelogText(fenced)).toBe(fenced); // 真段正好 5 ⇒ 不动；把围栏内那行算成段会变 6 ⇒ 必裁
+  });
+
+  it("BOM 不丢（记事本存过的文件窗口后仍带 BOM）", () => {
+    const got = windowChangelogText(`\uFEFF${SIX}`);
+    expect(got.startsWith("\uFEFF# 更新日志")).toBe(true);
+  });
+
+  it("目录条目：只剥窗口外那几条的 `changelog` 键，其余字段一个不动", () => {
+    const versions = Array.from({ length: 6 }, (_, i) => ({
+      version: `1.${6 - i}.0`,
+      downloadUrl: `https://example.invalid/v1${6 - i}.zip`,
+      publishedAt: `2026-09-0${6 - i}T00:00:00Z`,
+      changelog: `- 第 ${6 - i} 版`,
+    }));
+    const out = windowCatalogChangelog(versions);
+    expect(out.length).toBe(6); // 条目全在（可回装旧版）
+    expect(out[4]!.changelog).toBe("- 第 2 版"); // 第 5 条（窗口边缘）带正文
+    expect("changelog" in out[5]!).toBe(false); // 第 6 条：键整个不留，⛔ 不是空串
+    expect(out[5]!.version).toBe("1.1.0");
+    expect(out[5]!.downloadUrl).toBe("https://example.invalid/v11.zip");
+    expect(out[5]!.publishedAt).toBe("2026-09-01T00:00:00Z");
+    // 反向对照：旧行为是 versions 直出 ⇒ 6 条全带正文
+    expect(versions.every((v) => v.changelog !== undefined)).toBe(true);
+  });
+
+  it("upsertCatalogEntry 端到端：连发 7 版后目录 7 条全留、只有最近 5 条带正文", () => {
+    let catalog = createEmptyCatalog();
+    for (let i = 1; i <= 7; i++) {
+      const entry = buildCatalogEntry(
+        { id: "demo", name: "Demo", version: `1.${i}.0` } as ManifestView,
+        `https://example.invalid/v1${i}.zip`,
+        1,
+        "owner",
+        `2026-09-0${i}T00:00:00Z`,
+        { changelog: `- 第 ${i} 版的说明` },
+      );
+      catalog = upsertCatalogEntry(catalog, entry);
+    }
+    const versions = catalog.plugins[0]!.versions;
+    expect(versions.length).toBe(7);
+    expect(versions[0]!.version).toBe("1.7.0"); // 最新在前（窗口按数组序取前 N 的前提）
+    expect(versions.filter((v) => v.changelog !== undefined).map((v) => v.version)).toEqual([
+      "1.7.0",
+      "1.6.0",
+      "1.5.0",
+      "1.4.0",
+      "1.3.0",
+    ]);
   });
 });
 

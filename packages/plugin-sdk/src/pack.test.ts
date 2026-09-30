@@ -170,3 +170,66 @@ describe("zipTree —— build 通道确定性（E6#15o）", () => {
     expect(b1.equals(b2)).toBe(true);
   });
 });
+
+/* ────────────────────────────────────────────────────────────────────────
+   E6#164：包内 `CHANGELOG.md` 窗口（「整树打包」≠「整部历史随包」）。
+   真读数走**真 zip**（packPluginData → JSZip 解回），不是对着纯函数自说自话。
+   ──────────────────────────────────────────────────────────────────────── */
+describe("E6#164 包内 CHANGELOG 窗口（pack 通道）", () => {
+  /** 建一个最小可打包目录（数据插件形态：只有 plugin.json + 数据文件） */
+  const makeRoot = (changelog: string): string => {
+    const root = mkdtempSync(join(tmpdir(), "ldk-pack-window-"));
+    writeFileSync(join(root, "plugin.json"), JSON.stringify({ name: "Demo Window", version: "2.0.0" }));
+    writeFileSync(join(root, "themes.json"), '{"a":1}\n');
+    writeFileSync(join(root, "CHANGELOG.md"), changelog);
+    return root;
+  };
+
+  const sevenSections = (): string =>
+    `# 更新日志\n\n${Array.from({ length: 7 }, (_, i) => `## v2.${6 - i}.0\n- 第 ${7 - i} 条\n`).join("\n")}`;
+
+  it("7 段源码 ⇒ 包内只剩最近 5 段（条目结构不动、版本号仍取 manifest）", async () => {
+    const root = makeRoot(sevenSections());
+    try {
+      const res = await packPluginData({ root, outFile: join(root, "out.linkdesk-plugin") });
+      expect(res.version).toBe("2.0.0");
+      const zip = await JSZip.loadAsync(readFileSync(res.outPath));
+      const got = await zip.file("CHANGELOG.md")!.async("string");
+      expect(got.startsWith("# 更新日志")).toBe(true); // 文件标题保留
+      expect((got.match(/^## /gm) ?? []).length).toBe(5);
+      expect(got).toContain("## v2.6.0"); // 最新在
+      expect(got).toContain("## v2.2.0"); // 窗口最后一格在
+      expect(got).not.toContain("## v2.1.0"); // 出窗的那段没了
+      expect(zip.file("plugin.json")).toBeTruthy(); // 只动 CHANGELOG 一个条目的内容
+      expect(zip.file("themes.json")).toBeTruthy();
+      // 反向对照：源码 7 段 ⇒ 旧行为（整树原样拷）包里也 7 段
+      expect((readFileSync(join(root, "CHANGELOG.md"), "utf8").match(/^## /gm) ?? []).length).toBe(7);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("段数在窗口内 ⇒ 包内逐字节等于源码（作者没写超就不动他）", async () => {
+    const text = "# 更新日志\n\n## v2.0.0\n- 只有一版\n";
+    const root = makeRoot(text);
+    try {
+      const res = await packPluginData({ root, outFile: join(root, "out.linkdesk-plugin") });
+      const zip = await JSZip.loadAsync(readFileSync(res.outPath));
+      expect(await zip.file("CHANGELOG.md")!.async("string")).toBe(text);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("自由格式（认不出段标题）⇒ 原样进包，⛔ 不猜不裁", async () => {
+    const text = "更新记录\n\n2026-01-01 修了个 bug\n2026-01-02 又修一个\n2026-01-03 再来\n2026-01-04 四\n2026-01-05 五\n2026-01-06 六\n";
+    const root = makeRoot(text);
+    try {
+      const res = await packPluginData({ root, outFile: join(root, "out.linkdesk-plugin") });
+      const zip = await JSZip.loadAsync(readFileSync(res.outPath));
+      expect(await zip.file("CHANGELOG.md")!.async("string")).toBe(text);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+});

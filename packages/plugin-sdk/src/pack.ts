@@ -9,6 +9,10 @@
  * （loader 解压期待 plugin.json 在顶，E6#7 契约）。与 `build` 的静态清单不同——`build` 只拷一份
  * 白名单（plugin.json / i18n / icon / README / CHANGELOG），纯数据包的**本体**恰恰是白名单之外的
  * 数据文件（`themes/*.json` / `icons/**` / `en.json`），只能走「整树」。
+ * 🔴 **E6#164（2026-10-01）**：顶层 `CHANGELOG.md` 进包前**切到最近 N 版**（`windowChangelogText`，
+ *   N = `CHANGELOG_WINDOW`，与市场目录窗口、`build` 通道**同一份判据**）——「整树」不等于「整部历史」：
+ *   主题/语言这类插件正是 changelog 占包最大的一类（theme-defaults 实测 32.6%），而它每个用户每次
+ *   安装/更新都要下一次。认不出段标题的自由格式原样保留（⛔ 不猜）。
  *
  * 排除清单（三个理由）：
  *   - **构建/工具产物**：`node_modules/`、`dist/`、`<id>.linkdesk-plugin`（自己上一次的产物）、`*.tgz`
@@ -52,6 +56,8 @@ import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import JSZip from "jszip";
 import { derivePluginId, readPluginManifest, validatePluginJson } from "./validate.js";
+// E6#164：包内 CHANGELOG 窗口——判据与目录/build 通道同源（一处常量、一处切段实现）
+import { windowChangelogText } from "./publish.js";
 
 /**
  * 条目时间戳固定——值本身无意义，只要跨机器恒定。与壳仓 `scripts/pack-bundled-plugins.mjs` 同值。
@@ -186,7 +192,15 @@ export async function packPluginData(options: { root: string; outFile?: string }
   let normalizedCount = 0;
   let entryCount = 0;
   for (const rel of collectPluginFiles(root)) {
-    const { buf, normalized } = normalizeEol(readFileSync(join(root, rel)));
+    const raw = readFileSync(join(root, rel));
+    // E6#164：包内 `CHANGELOG.md` 只带**最近 N 版**（判据与目录窗口、build 通道同源一份：`windowChangelogText`
+    //   ＋ `CHANGELOG_WINDOW`）——走本通道的纯数据插件恰恰是 CHANGELOG 占比最大的一类
+    //   （theme-defaults 实测占包 32.6%、lang-defaults 17.2%）。
+    //   顺序 = 先按文本切窗口、再交下面同一套行尾归一（⛔ 不在这里另写行尾规则）。
+    //   前 8000 字节含 NUL（二进制）或认不出段标题 ⇒ 原样，不碰（同 normalizeEol 的二进制判据）。
+    const isChangelog = rel === "CHANGELOG.md" && !raw.subarray(0, 8000).includes(0);
+    const content = isChangelog ? Buffer.from(windowChangelogText(raw.toString("utf8")), "utf8") : raw;
+    const { buf, normalized } = normalizeEol(content);
     if (normalized) normalizedCount += 1;
     zip.file(rel, buf, { date: ZIP_ENTRY_DATE });
     entryCount += 1;

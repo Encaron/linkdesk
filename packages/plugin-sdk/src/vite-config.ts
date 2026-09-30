@@ -43,7 +43,7 @@
  *     终局位置，不再有「内层产物 → 汇总搬运」那一段）→ 静态清单 + jszip。归属唯一（packager），
  *     bin 只编排不重复 zip。
  *   - 静态清单从**源码 pluginRoot** 拷贝（非 outDir——outDir 每次 emptyOutDir 清空），含 plugin.json/
- *     icon/README.md/CHANGELOG.md（K2 缝隙）/ i18n 声明文件。
+ *     icon/README.md/CHANGELOG.md（K2 缝隙，**E6#164 起只带最近 N 版**）/ i18n 声明文件。
  *   - zip 条目相对 pkgDir、正斜杠、无外层目录（loader 解压期待 plugin.json 在顶，E6#7 契约）。
  *   - dev/serve 不触发 build 系 hook → packager 天然只在 build 跑。
  */
@@ -53,6 +53,10 @@ import { basename, dirname, extname, join, relative, resolve } from "node:path";
 import { build as viteBuild, type Plugin, type UserConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import JSZip from "jszip";
+// E6#164：包内 CHANGELOG 窗口——判据与目录窗口同源（`CHANGELOG_WINDOW` 一处常量、切段判据一处实现）。
+//   为什么从 publish.js 导入而不是在这里另写：切段/窗口是**同一份**契约（`sliceChangelogSection`
+//   与它同一个模块、同一套正则）——两处各写一份 = 窗口切掉的与读侧认得的不是同一批段。
+import { windowChangelogText } from "./publish.js";
 import {
   collectI18nDecls,
   derivePluginId,
@@ -197,6 +201,19 @@ function copyFileInto(root: string, pkgDir: string, rel: string): boolean {
   const dest = join(pkgDir, rel);
   mkdirSync(dirname(dest), { recursive: true });
   copyFileSync(src, dest);
+  return true;
+}
+
+/** E6#164：包内 `CHANGELOG.md` **按窗口写出**（读源码根原文 → 只留最近 N 版 → 落 pkgDir）。
+ *  ⛔ 不能再用 `copyFileInto` 原样拷贝——那是「整部历史随每一次安装/更新下载」：marketplace 包实测
+ *  该文件占 zip 的 24.3%（未压 41,078 B，包内最大单文件）。窗口大小与目录侧同一常量；
+ *  自由格式（认不出段标题）原样保留，作者零感知。缺文件照旧跳过（诚实：没写就没有）。 */
+function writeChangelogWindow(root: string, pkgDir: string): boolean {
+  const src = resolve(root, "CHANGELOG.md");
+  if (!isWithinRoot(root, src) || !existsSync(src)) return false;
+  const dest = join(pkgDir, "CHANGELOG.md");
+  mkdirSync(dirname(dest), { recursive: true });
+  writeFileSync(dest, windowChangelogText(readFileSync(src, "utf8")), "utf8");
   return true;
 }
 
@@ -567,7 +584,9 @@ export function defineLinkdeskPluginConfig(options: LinkdeskPluginOptions = {}):
         if (existsSync(join(root, "README.md"))) {
           copyReadmeReferencedAssets(root, pkgDir, readFileSync(join(root, "README.md"), "utf8"));
         }
-        copyFileInto(root, pkgDir, "CHANGELOG.md");
+        // E6#164：CHANGELOG 只随包带**最近 N 版**（窗口与市场目录同源）——从 copyFileInto 改过来，
+        //   理由见 writeChangelogWindow：包内整史 = 每次安装/更新都多下几十 KB 散文。
+        writeChangelogWindow(root, pkgDir);
         // 分发件随包带**许可证**（2026-09-15 补）：MIT 这类条款要求「所有副本或实质性部分里带版权声明」，
         //   而 zip 才是用户真正拿到的那一份——不随包 = 声明没跟着软件走。三个常见命名取第一个命中的。
         //   （`pack` 通道本来就整树带它；这里补的是 `build` 通道的白名单。）

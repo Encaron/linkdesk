@@ -33,7 +33,7 @@ hello-world.linkdesk-plugin          ← zip 文件，后缀 .linkdesk-plugin
   ├── index.bundle.css               ← 全插件聚合 CSS（有 css 才带；loader `<link>` 注入，对标 VS Code 扩展 css）
   ├── assets/                        ← Vite emit 静态资源（可选；字体/精灵图/音效/worker chunk，import 即自动 emit）
   ├── README.md                      ← 附带说明文档（可选；插件详情/市场数据源，K2）
-  └── CHANGELOG.md                   ← 更改日志（可选；详情页已装态变更数据源，K2）
+  └── CHANGELOG.md                   ← 更改日志（可选；详情页已装态变更数据源，K2；🔴 进包**只带最近 N = 5 版**，E6#164）
 ```
 
 > 🔥 **多表面模型（E6#15 定义 ／ E6#159 改型定案）**：一个插件 = 主入口 + 每 `contributes.views[].render`
@@ -79,7 +79,7 @@ my-plugin/
 ```
 
 Vite 配置（`defineLinkdeskPluginConfig`）：
-1. `plugin.json` → jsonc 解析后以严格 JSON 归一写入（源文件可注释/尾逗号，产物干净供壳加载）；`icon.svg` / `i18n/*.json` / `README.md` / `CHANGELOG.md` → 源码原样复制（存在才带）
+1. `plugin.json` → jsonc 解析后以严格 JSON 归一写入（源文件可注释/尾逗号，产物干净供壳加载）；`icon.svg` / `i18n/*.json` / `README.md` → 源码原样复制（存在才带）；🔴 `CHANGELOG.md` → **切到最近 N = 5 版后**写入（`windowChangelogText`，E6#164——窗口与市场目录 `versions[].changelog`、纯数据包（`pack` 通道）**同一份判据**；段数 ≤ N 时逐字节原样，作者仓文件一字不动）
 2. 收集可编译表面 = [主入口?] + 每唯一 `contributes.views[].render`（去重；同名去 `.tsx` 基名 + `_2` 防撞）
    + `appearsIn.statusBar` 声明的 `.tsx`（E6#62d）
 3. **全部表面 → 单次多入口 vite lib build**（`lib.entry` 一次给全，共享一个 rollup 模块图；产物直落终局位置）：

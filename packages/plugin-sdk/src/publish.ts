@@ -490,7 +490,8 @@ export function upsertCatalogEntry(catalog: MarketplaceCatalog, entry: CatalogPl
     ];
     const merged: CatalogPluginEntry = {
       ...entry,
-      versions: history,
+      // E6#164：历史只带窗口内 N 版的正文（更早版本条目仍全量保留 ⇒ 回装旧版/比版本零损失）
+      versions: windowCatalogChangelog(history),
       // 保历史字段：新 manifest 没填的（icon/description 等）回落到旧值，避免发布抖动丢展示数据
       icon: entry.icon ?? existing.icon,
       iconSource: entry.iconSource ?? existing.iconSource,
@@ -709,6 +710,79 @@ export function sliceChangelogSection(text: string, version: string): string | u
   if (start < 0) return undefined;
   const body = lines.slice(start, end).join("\n").trim();
   return body === "" ? undefined : body;
+}
+
+/* ── E6#164：分发面 changelog 窗口（目录 ＋ zip 共用一处判据）───────────────
+ *
+ * 病根：同一批散文同时住在三个分发面上，而**只有仓库文件是免费的**——
+ *   市场目录 `versions[].changelog`（每个用户每次「检查更新」全量下载，实测目录 193 KB
+ *   里 38.1% 是散文、≈9.2 KB/天且无上限）＋ 插件 zip 内 `CHANGELOG.md`（每次安装/更新
+ *   下载并常驻，marketplace 包实测占 24.3%）。壳侧三个面（安装包白名单 / npm `files`
+ *   白名单 / Release 每版独立）早已按行业正解做完，缺的就是这里一条窗口。
+ *
+ * 口径（2026-10-01 用户拍板）：**只带最近 N 版正文，更早版本仍保留版本条目**——回装旧版、
+ * 比版本号的能力零损失（读侧对缺 `changelog` 的条目早有「未提供」兜底）。
+ * 权衡与边界见 docs/02-Electron架构/插件生态与发布/01-插件独立构建/
+ * 15-变更日志膨胀与分发面裁剪-立案与设计前置.md。
+ */
+
+/** 分发面 changelog 窗口大小——**唯一常量**（目录窗口与 zip 窗口同源，⛔ 不许各写一份）。
+ *  编译期常量、⛔ 不是用户设置项：否则每个用户的目录形状互不相同 = 平台常量变成用户态漂移。 */
+export const CHANGELOG_WINDOW = 5;
+
+/**
+ * 按段标题切分（纯函数、零 IO）——`head` = 第一个段标题**之前**的行（文件标题/说明），
+ * `sections` = 逐段（含各自段标题行）。判据与 `sliceChangelogSection` **同一套**
+ * （`CHANGELOG_HEADING` ＋ 围栏感知），⛔ 不许另写一份正则——两处判据分叉 = 窗口切掉的
+ * 与读侧认得的不是同一批段。
+ */
+function splitChangelogSections(text: string): { head: string[]; sections: string[][] } {
+  const lines = text.replace(/^\uFEFF/, "").split(/\r?\n/); // BOM 剥离 + CRLF 兼容（同 sliceChangelogSection）
+  const head: string[] = [];
+  const sections: string[][] = [];
+  let cur: string[] | null = null;
+  let inFence = false;
+  for (const line of lines) {
+    if (!inFence && CHANGELOG_HEADING.test(line)) {
+      cur = [line];
+      sections.push(cur);
+      continue;
+    }
+    if (FENCE_LINE.test(line)) inFence = !inFence; // 围栏块内的段标题是示例文本，不算段
+    (cur ?? head).push(line);
+  }
+  return { head, sections };
+}
+
+/**
+ * 只留最近 N 版段落（纯函数、零 IO）——给 zip 用（包内 `CHANGELOG.md` 那一条）。
+ *
+ * 三条「不猜」纪律：① **段数在窗口内 ⇒ 原文逐字节返回**（含 BOM，一个字节都不动）；
+ * ② **认不出段标题（自由格式）⇒ 原文返回**——作者写成什么样就什么样，⛔ 不裁不猜；
+ * ③ 段与段之间的空行随**前一段**走（新段从标题行起算）⇒ 丢弃第 N+1 段时不会留下孤零零的间隔。
+ */
+export function windowChangelogText(text: string, window = CHANGELOG_WINDOW): string {
+  const { head, sections } = splitChangelogSections(text);
+  if (sections.length <= window) return text;
+  const bom = text.startsWith("\uFEFF") ? "\uFEFF" : "";
+  return bom + [...head, ...sections.slice(0, window)].flat().join("\n").trimEnd() + "\n";
+}
+
+/**
+ * 目录条目窗口（纯函数、零 IO）——给 `versions[]` 用：只保留**最近 N 版条目的 `changelog`**，
+ * 更早条目**只剥这一个键**（键整个不留，⛔ 不写空串——「缺字段」比「空值」诚实，读侧同一路兜底）。
+ *
+ * ⚠️ **倒序假设**：目录 `versions[]` 规约 = 最新在前（见模块头 §3.2）⇒ 窗口按数组序取前 N 条。
+ * 其余字段（version / downloadUrl / publishedAt 及将来新增的）**一律原样保留**——用展开＋删键
+ * 而不是逐字段重建，为的是「将来给条目加字段时，老版本条目不会被静默剥掉」。
+ */
+export function windowCatalogChangelog(versions: CatalogVersion[], window = CHANGELOG_WINDOW): CatalogVersion[] {
+  return versions.map((v, i) => {
+    if (i < window || v.changelog === undefined) return v;
+    const rest: CatalogVersion = { ...v };
+    delete rest.changelog;
+    return rest;
+  });
 }
 
 /* ── GitHub REST 操作（github-http.ts 之上的领域调用）────────────────── */
