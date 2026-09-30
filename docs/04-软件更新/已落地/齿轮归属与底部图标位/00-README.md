@@ -127,7 +127,7 @@
 | 5 | **出厂种子追新** | `sync:bundled -- --latest`：settings 1.0.23→1.0.24、lang-defaults 1.0.39→1.0.40（其余 4 只随包件已是最新）＋ 两仓 `AGENTS.md` 事实表对齐 |
 | 6 | 发布前那一跑 | `npm run check` **EXIT=0**（含联网的 `check-bundled-freshness`）· `check:publish-gate` **①②③⑤ 全绿**（在 `write-product-json` 链路里跑，product.json 逐字节还原） |
 | 7 | 壳发布 | 提交 `a6833c90c`（种子 ＋ v0.2.32 发行说明补齿轮这条）→ tag `v0.2.32` → CI tag run **success** → Release 三资产齐：`linkdesk-setup-0.2.32.exe`（119,440,513 B）/ `latest.yml` / `.blockmap`，正文 1243 字符（CHANGELOG 同源） |
-| ⚠️ | **未做**（留给用户） | 清单 §三「**旧版实机点检查更新 → 真装上**」那条没跑——它要动**用户正在用的那只安装版**（会重启软件、换掉他手上的版本），故不擅自做 |
+| 8 | **实机「检查更新」**（用户 2026-09-30 拍板：**只到发现新版为止**） | 对用户那只**正在用的安装版 0.2.30**（CDP `9333`，`file://` 轨道、dev driver 认不出故走原始 CDP）调 `window.linkdesk.update.checkForUpdates()`：检查前 `{type:"idle"}` → **`t+1s` 落 `{type:"available", version:"0.2.32", currentVersion:"0.2.30", publishedAt:"2026-09-30T13:08:31Z", downloadUrl:"…/linkdesk-setup-0.2.32.exe", size:119440513, checksum:"de668eb3…"}`** ⇒ 硬约束 24 那句判据「**用户现在打开软件，点得到这个更新吗**」= **点得到**（且 size/checksum 与 Release 资产逐项一致）。⚠️ **`downloadUpdate` → `quitAndInstall` 那两步没跑**——会重启用户正在用的软件，用户拍板停在发现 |
 
 > 🔴 **一条环境发现**（记在这儿，免得下次又白查一轮）：本机**本地打包**在 `E:\linkdesk-build\win-unpacked.tmp\d3dcompiler_47.dll` 上稳定 EPERM——定位到**这个文件名在该目录被拦**（同目录别的名字可写、同名字在 `%TEMP%` 可写），是**本机安全软件按「路径＋文件名」拦的**，与代码/构建配置无关。⇒ 本地 `npm run publish` 的打包那一段在本机会失败；**发布不受影响**（CI 在干净 runner 上打包，本次 tag run 即成功），本地只需跑门禁那半（`write-product-json` → `check:publish-gate` → `--restore`）。
 
