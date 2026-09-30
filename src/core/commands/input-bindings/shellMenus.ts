@@ -27,7 +27,6 @@ export function registerShellMenus(): void {
       group: "view",
       children: [
         { command: "workbench.action.showCommands", group: "view" },
-        { command: "workbench.action.showOutput", group: "view" },
         { command: "theme.pick", group: "view" }, // E5.8#50.24：theme.pick 归一化命令 id
         { command: "workbench.action.selectLanguage", group: "view" },
         // E6#57.10：「打开键盘快捷方式」已移入帮助菜单（label「快捷键列表」）——单一入口，不并存。

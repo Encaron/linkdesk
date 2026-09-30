@@ -50,7 +50,7 @@
 
 <!-- BEGIN COMMAND-INDEX -->
 
-**宿主命令 92 条 / 7 个分类**——插件命令不在本表（运行时用 `getCommands()` 查）。
+**宿主命令 91 条 / 7 个分类**——插件命令不在本表（运行时用 `getCommands()` 查）。
 
 ### 帮助（6）
 
@@ -99,7 +99,7 @@
 | `workbench.action.setSplitSizes` | 设置分屏比例 | 把某条分屏分支的比例设成指定值（如 [70, 30]）；未分屏或分支找不到时回 noop 与 reason | `anchorGroupId`: string 可选 — 定位分支：该分支下任一叶子组 id（与 branchIndex 二选一；同给则 branchIndex 优先）<br>`sizes`: object 必填 — [number, number]——两侧比例，两个正数（如 [70, 30]）；是二元数组，不是对象<br>`branchIndex`: number 可选 — 精确定位分支：1 起、先序计数（鼠标拖拽同款；一般用 anchorGroupId 即可） | —— |
 | `workbench.action.toggleSplit` | 切换分屏 | 在当前分组上切换分屏（分屏 ↔ 合并） | —— | —— |
 
-### 视图（31）
+### 视图（30）
 
 | 命令 id | 标题 | 说明 | 参数（调用实参） | when 门控 |
 |:--|:--|:--|:--|:--|
@@ -127,7 +127,6 @@
 | `workbench.action.setPanelSize` | 设置面板尺寸 | 精确设定底部面板尺寸（px）——按面板当前停靠边自动走宽轴或高轴；越界值按拖拽同一套边界钳制 | `size`: number 必填 — 面板尺寸（px；横带 = 高，竖条 = 宽） | —— |
 | `workbench.action.setSidebarWidth` | 设置侧栏宽度 | 精确设定主侧栏宽度（px）——越界值按拖拽同一套边界钳制（170–600） | `width`: number 必填 — 侧栏宽度（px，钳到 170–600） | —— |
 | `workbench.action.showCommands` | 命令面板 | 打开命令面板，搜索并运行任意命令 | —— | —— |
-| `workbench.action.showOutput` | 输出 | 打开输出面板查看日志 | —— | —— |
 | `workbench.action.toggleContainerCollapse` | 折叠 | 折叠/展开指定视图容器 | `ctx`: object 必填 — { containerId: string }——目标容器 id | —— |
 | `workbench.action.togglePanel` | 切换底部面板可见性 | 显示/隐藏底部面板 | —— | —— |
 | `workbench.action.togglePanelViewVisibility` | 切换面板视图可见性 | 显示/隐藏底部面板中的指定视图 | `containerId`: string 必填 — 视图所在容器 id<br>`viewId`: string 必填 — 目标视图 id | —— |

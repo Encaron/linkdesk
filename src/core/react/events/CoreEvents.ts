@@ -93,7 +93,6 @@ export const CUSTOM_EVENTS = {
   SHOW_PALETTE: "linkdesk:show-palette",
   SHOW_THEME_BROWSER: "linkdesk:show-theme-browser",
   SHOW_LANGUAGE_PICKER: "linkdesk:show-language-picker",
-  SHOW_OUTPUT: "linkdesk:show-output", // E3f #54
   RESTORE_WORKSPACE: "linkdesk:restore-workspace", // E3f #56
   SHOW_DEVTOOLS_PICKER: "linkdesk:show-devtools-picker", // E3f #58
   CHORD_CHANGED: "linkdesk:chord-changed",

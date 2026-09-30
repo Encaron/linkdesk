@@ -2,7 +2,7 @@
  * App 杂项生命周期 hook——useAppLifecycle：窗口/插件/状态同步订阅的聚合。
  * E5.8#0d.10-3c：自 App.tsx 拆出——unhandledrejection 兜底 / 插件卸载自动关闭侧栏+标签页 /
  * context key 同步（activeEditor）/ 图标排序持久化 / LayoutEngine 容器尺寸 / 配置→React 同步 /
- * 自定义事件（输出面板/工作区恢复/设置）+ 频道显示。
+ * 自定义事件（工作区恢复/设置）。
  * 依赖方向：lifecycle → core 服务/registry + pluginLoader；App 消费：useAppLifecycle({ setTheme, setLang, sidebarView, setSidebarView })。无反向。
  */
 
@@ -16,7 +16,6 @@ import { setConfigurationValue, onDidChangeConfiguration } from "../core/service
 import { setPluginStateValue, APP_PLUGIN_ID } from "../core/services/plugins/PluginStateService";
 import { ContextKeyService } from "../core/registry/commands/ContextKeyService";
 import { factorySlots } from "../core/services/bootstrap/FactorySlots";
-import { onDidRequestShowChannel } from "../core/services/ui/LogChannel";
 import { getCallbacks, type CoreCallbacks } from "../core/commands/infra/CoreCallbacks";
 import { getCardLayout, saveWorkspaceLayout } from "../core/services/layout/LayoutService";
 import { primeRestoredShellDataTabs } from "./shellTabPriming";
@@ -127,9 +126,7 @@ export function useAppLifecycle({ setTheme, setLang, sidebarView, setSidebarView
 
   /* ---- QuickPick 归一化（E5.5#7-p12）——所有浮层共用一个 QuickPick，QuickPickService 管理状态 ---- */
   useEffect(() => {
-    // 保留——非 QuickPick 事件（输出面板 / 工作区 / 设置）
-    const onOutput = () => { shellEvents.emit("icon:selected", "output"); };
-    window.addEventListener(CUSTOM_EVENTS.SHOW_OUTPUT, onOutput);
+    // 保留——非 QuickPick 事件（工作区 / 设置）
     const onRestoreWorkspace = (e: Event) => {
       const detail = (e as CustomEvent).detail as {
         layout?: { tabs?: { groups: unknown[]; activeGroupId: string }; cards?: unknown[] };
@@ -165,17 +162,8 @@ export function useAppLifecycle({ setTheme, setLang, sidebarView, setSidebarView
     };
     window.addEventListener(CUSTOM_EVENTS.OPEN_SETTINGS, onOpenSettings);
     return () => {
-      window.removeEventListener(CUSTOM_EVENTS.SHOW_OUTPUT, onOutput);
       window.removeEventListener(CUSTOM_EVENTS.RESTORE_WORKSPACE, onRestoreWorkspace);
       window.removeEventListener(CUSTOM_EVENTS.OPEN_SETTINGS, onOpenSettings);
     };
-  }, []);
-
-  // E3f #54：插件调 channel.show() → 自动打开输出面板并切换到该频道
-  useEffect(() => {
-    const unsub = onDidRequestShowChannel.event((_channelId: string) => {
-      shellEvents.emit("icon:selected", "output");
-    });
-    return unsub;
   }, []);
 }

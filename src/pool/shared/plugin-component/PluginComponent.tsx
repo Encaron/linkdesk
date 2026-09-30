@@ -32,6 +32,20 @@ type PluginModule = { default?: React.ComponentType<PluginViewProps> };
 const _lazyCache = new Map<string, React.ComponentType<PluginViewProps>>();
 
 /**
+ * 「插件不可用」占位——E6#162 归一化：**同步判空**（无 loader：坏 pluginId／无 plugins API）与
+ * **异步判空**（不在盘上：loader 存在性闸返回 null）走**同一个**组件与同一句文案，
+ * 不再一处画占位、一处 throw 到 ErrorBoundary（后者把「没有这只插件」报成「加载失败」）。
+ */
+function PluginUnavailable({ pluginId }: { pluginId: string }) {
+  const { t } = useTranslation();
+  return (
+    <div className="plugin-missing-view">
+      <p>{t('插件 "{{id}}" 不可用', { id: pluginId })}</p>
+    </div>
+  );
+}
+
+/**
  * E6#30.10b + #62b：池侧插件视图 loader 解析单实现——PluginComponent（主区/侧栏视图）与 plugin-detail
  * 主区贡献宿主（PluginDetailViewHost）共用同一条加载链。抽自原 useMemo body，两侧行为必须一致（不同
  * URL 形态判定会静默 404）：
@@ -66,10 +80,23 @@ export function resolvePluginViewLoader(pluginId: string, renderPath?: string): 
   if (!loader) {
     const lk = window.linkdesk;
     const isDev = import.meta.env.DEV;
-    if (lk?.plugins?.resolvePath) {
+    const resolveEntry = lk?.plugins?.resolveEntry;
+    if (lk?.plugins?.resolvePath || resolveEntry) {
       loader = (async () => {
         try {
-          const absPath: string = await lk.plugins.resolvePath(pluginId);
+          // 🔴 E6#162 存在性闸——**先问「在不在盘上」，再谈拼 URL**。
+          //   为什么必须前置：resolvePath 是「入口解析」语义——**未命中回退首根拼一个未必存在的路径**
+          //   （`electron/services/plugin-file-service.ts:198` 原话）。对宿主伪身份（app）／壳侧注册 id
+          //   （workbench、ai-bridge）／退役身份（update）／未安装插件，拼出来的 URL 必然 404，
+          //   而每次挂载都把它打成一条 error（2026-09-30 实测：占 protocol-debug.log 的 25.6%／33,550 行）。
+          //   权威判据 = resolveEntry 的 root（同文件 `:216`——未命中恒 `{root:null}`，即「它在不在盘上」）。
+          //   不在盘上 ⇒ 返回 null module（由下方 .then 画「不可用」，**不 throw**）——「没有这个插件」
+          //   是状态不是错误；**真**加载失败（import 抛错）仍走 catch 出声，两者不混。
+          const info = typeof resolveEntry === "function" ? await resolveEntry(pluginId) : null;
+          if (typeof resolveEntry === "function" && !info?.root) return null;
+          // legacy 壳（preload 无 resolveEntry）→ 退回 resolvePath 拼路径：此路在盘性不可判，
+          // 保持 #62b 旧行为不作更强断言（唯一执行者 = 池，preload 随壳发货，实机恒走上面的闸）。
+          const root = info?.root ?? (await lk.plugins.resolvePath(pluginId));
           if (renderPath) {
             // 非 URL renderPath 兜底 = repo 相对 mock key（仅 pool/dev/sampleLayout.ts 预览假数据形态
             // "../../plugins/<id>/<rest>"）→ 提取插件内相对路径经 resolvePath 拼 /@fs。真实注册
@@ -78,29 +105,25 @@ export function resolvePluginViewLoader(pluginId: string, renderPath?: string): 
             const rel = idx !== -1
               ? renderPath.slice(idx + pluginId.length + 2)
               : renderPath.split("/").slice(3).join("/");
-            const url = isDev ? `/@fs/${absPath}/${rel}` : `linkdesk://${pluginId}/${rel}`;
-            const mod = await import(/* @vite-ignore */ url);
-            return mod;
-          } else {
-            // 主区 tab：默认入口。E6#7：.linkdesk-plugin 解压包 JS 入口恒 index.bundle.js
-            // （磁盘格式事实），源码/运行时插件 = manifest.entry（缺省 src/index.tsx）——
-            // 经 resolveEntry 拿 { root, entry } 拼 URL，不写死 src/index.tsx（index.bundle.js
-            // 才是打包入口）。resolveEntry 缺失/无入口（纯贡献插件不该走到组件加载）→
-            // 落回 resolvePath + src/index.tsx legacy 兜底。
-            if (lk?.plugins?.resolveEntry) {
-              const info = await lk.plugins.resolveEntry(pluginId);
-              if (info?.root && info?.entry) {
-                const url = isDev
-                  ? `/@fs/${info.root}/${info.entry}`
-                  : `linkdesk://${pluginId}/${info.entry}`;
-                const mod = await import(/* @vite-ignore */ url);
-                return mod;
-              }
-            }
-            const url = isDev ? `/@fs/${absPath}/src/index.tsx` : `linkdesk://${pluginId}/src/index.tsx`;
+            const url = isDev ? `/@fs/${root}/${rel}` : `linkdesk://${pluginId}/${rel}`;
             const mod = await import(/* @vite-ignore */ url);
             return mod;
           }
+          // 主区 tab：默认入口。E6#7：.linkdesk-plugin 解压包 JS 入口恒 index.bundle.js
+          // （磁盘格式事实），源码/运行时插件 = manifest.entry——经 resolveEntry 拿 entry 拼 URL，
+          // 不写死 src/index.tsx（index.bundle.js 才是打包入口）。
+          if (info?.entry) {
+            const url = isDev
+              ? `/@fs/${root}/${info.entry}`
+              : `linkdesk://${pluginId}/${info.entry}`;
+            const mod = await import(/* @vite-ignore */ url);
+            return mod;
+          }
+          // 在盘上但清单无 entry（老清单/纯贡献插件走到组件加载）→ 落 src/index.tsx legacy 兜底。
+          // 与旧实现的分别：**在盘性已被上面的 root 闸证过**，所以这条兜底不再是「拼一条未必存在的路径」。
+          const url = isDev ? `/@fs/${root}/src/index.tsx` : `linkdesk://${pluginId}/src/index.tsx`;
+          const mod = await import(/* @vite-ignore */ url);
+          return mod;
         } catch (e) {
           console.error(`[PluginComponent] 动态加载插件 "${pluginId}" 失败:`, e);
           return null;
@@ -122,7 +145,6 @@ interface PluginComponentProps {
 }
 
 export default function PluginComponent({ pluginId, isActive, tabId, sourceId, renderPath }: PluginComponentProps) {
-  const { t } = useTranslation();
   // React.lazy 必须稳定引用——useMemo 按 pluginId + renderPath 缓存，防止每次渲染 new → unmount → flicker
   // E6#62b：renderPath URL 轨直 import（侧栏/主区 contributes.views）；无 renderPath → resolveEntry 拼入口 URL（主区 tab）
   // E5.6#11-fix7：_lazyCache 跨 mount 持久化 lazy 组件类型——React.lazy _payload._status 不随 unmount 丢失。
@@ -141,7 +163,14 @@ export default function PluginComponent({ pluginId, isActive, tabId, sourceId, r
         .then((mod) => {
           // 动态 import 模块命名空间——按 PluginModule 形状窄化（E5.7#98 替代 mod: any）
           const m = mod as PluginModule | null;
-          if (!m) throw new Error(i18n.t("插件 {{id}} 加载失败", { id: pluginId }));
+          // 🔴 E6#162：null module = 「盘上没这只插件」（loader 的存在性闸已判过）——**不是加载失败**。
+          //   这里画「不可用」而**不 throw**：throw 会落 ErrorBoundary ＋ error 日志，把「没有」报成「坏了」
+          //   （#37f 那族噪声的一半就是这么来的）。同笔剔除缓存条目——本次挂载照画，下次挂载重新探测，
+          //   运行时安装插件在广播窗口内被点开的瞬态「还没有」仍能自愈（与下面 catch 同一语义）。
+          if (!m) {
+            _lazyCache.delete(cacheKey);
+            return { default: () => <PluginUnavailable pluginId={pluginId} /> };
+          }
           return {
             default: m.default || (() => {
               throw new Error(i18n.t("插件 {{id}} 未导出 default 组件", { id: pluginId }));
@@ -194,11 +223,7 @@ export default function PluginComponent({ pluginId, isActive, tabId, sourceId, r
   }, [pluginId, renderPath]);
 
   if (!LazyComponent) {
-    return (
-      <div className="plugin-missing-view">
-        <p>{t('插件 "{{id}}" 不可用', { id: pluginId })}</p>
-      </div>
-    );
+    return <PluginUnavailable pluginId={pluginId} />;
   }
 
   return (

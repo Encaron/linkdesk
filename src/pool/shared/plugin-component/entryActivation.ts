@@ -23,7 +23,45 @@
  */
 import { resolvePluginViewLoader } from "./PluginComponent";
 
+/**
+ * E6#162（2026-09-30）**存在性闸**——属主不在盘上 ⇒ 不 import、不出声。
+ *
+ * 为什么必须有这道闸（实测读数）：miss 时属主有三档来源（真属主缓存 / 壳权威声明面 / 名字第一段
+ * 推定，见 `electron/preload-pool/commands.ts` 的 resolvePoolCommandOwner）——**后两档会产出不是插件的
+ * 字符串**：壳自己的命令住 `APP_PLUGIN_ID = "app"`（现场打点最多的那条即 app 属主的
+ * `workbench.action.showOutput`——该命令已随 E6#162 退场，读数留档）；`workbench.action.*` 经名字推定
+ * 得 `workbench`；宿主侧注册的 `ai-bridge`、退役身份 `update` 亦然。
+ * 对这些 id 调 resolvePluginViewLoader，会拼出一条**注定 404** 的入口 URL（dev
+ * `/@fs/<root>/plugins/<id>/src/index.tsx` / prod `linkdesk://<id>/src/index.tsx`，因为 resolvePath
+ * 是「未命中回退拼一个未必存在的路径」语义——`electron/services/plugin-file-service.ts:198` 原话）
+ * ⇒ 每次 miss 一条 `[PluginComponent] 动态加载插件 "X" 失败`。实测该形态占
+ * `protocol-debug.log` 的 25.6%（**33,550 行 / 5.84 MB**，日志总量 211,605 行 / 22.79 MB）。分号点名：
+ * `ai-bridge` **32,414**（全部集中在 2026-09-29T00:46→09-30T02:17 一个 25.5 小时窗口，≈21 行/分；
+ * 触发点 = **设置插件表面加载时执行宿主注册的 `ai-bridge` 状态命令**——现场逐行：`200 OK —
+ * settings/index.bundle.js` 紧接 `404 NOT FOUND — ai-bridge/src/index.tsx`，同刻三条一模一样的 error）、
+ * `app` 571、`update` 165、`workbench` 98、`core` 30 —— 五个 id 在这份安装里都没有对应插件目录，
+ * 即**每一次 miss 都白打一条 error**。闸后：不在盘上 ⇒ 返回 false ⇒ 照旧落 fallback（交壳执行）。
+ *
+ * 判据来源＝`resolveEntry().root`（E6#7 / E6#78：未命中恒 `{root:null}`），**不是**新增名单——
+ * 仓内 `HOST_PSEUDO_PLUGIN_IDS` 只覆盖 app/appearance（update 已退役），`workbench`/`ai-bridge`
+ * 这类「壳侧注册但不在清单里」的 id 会漏网；「在不在盘上」才是普适判据，且它已是 resolveEntry 的
+ * 现成语义（不新增 API、不新增硬编码名单——硬约束 6/10）。
+ *
+ * API 缺失（老壳 preload 无 resolveEntry）⇒ 不设闸，保持 #62e 原语义（兼容档）。
+ */
 export async function activatePluginEntryForCommands(pluginId: string): Promise<boolean> {
+  const plugins = window.linkdesk?.plugins;
+  const resolveEntry = plugins?.resolveEntry;
+  if (typeof resolveEntry === "function") {
+    try {
+      const info = await resolveEntry(pluginId);
+      if (!info?.root) return false;
+    } catch {
+      // 非法 pluginId（对象/空串——#37f 的 `[object Object]` 族）与 IPC 失败同归此路：
+      // 无可加载入口，静默放弃（load 侧由 PluginComponent 的既有守卫负责出声）。
+      return false;
+    }
+  }
   const loader = resolvePluginViewLoader(pluginId);
   if (!loader) return false;
   await loader();

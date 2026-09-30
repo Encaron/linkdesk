@@ -6,7 +6,7 @@
  * 解析结果——Path B 池不 import core，fixture 扮演壳给出最终形态，非硬编码违规）。
  *
  * 样本策略（零插件命名空间风险的边界）：
- *   主区只用 shellRendered 壳视图（welcome + output——ShellViewRenderer 池内路由，
+ *   主区只用 shellRendered 壳视图（welcome——ShellViewRenderer 池内路由，
  *   零插件代码加载）；侧栏推空容器（emptyText 渲染路径可见）；statusBar 不设
  *   component:true（不触发插件组件 glob）。想预览插件视图 → 需同步补 mock 插件
  *   命名空间（见 mockLinkdesk.ts 头注）。
@@ -141,14 +141,6 @@ export function buildSampleLayout(): PoolLayout {
             closeBehavior: "normal",
             shellRendered: true,
             shellType: "welcome",
-          },
-          {
-            id: "tab-output",
-            pluginId: "output",
-            title: "输出",
-            closeBehavior: "normal",
-            shellRendered: true,
-            shellType: "output",
           },
         ],
       },

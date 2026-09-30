@@ -111,7 +111,7 @@ function makeGenerateId(type: string, identityField: string | null): (opts?: Cre
  * 这些类型不由插件注册表渲染——壳自己处理（MainContent renderTabContent）。
  * 新插件不需要加到这里。这是封闭集合——只有壳级视图。 */
 
-const SHELL_RENDERED_TYPES = new Set(["plugin-detail", FALLBACK_PLUGIN_ID, "output", "release-notes", "about", "ai-manual"]); // E3f #54 / E6#57.13 / E6#57.14 / M3 AI#16
+const SHELL_RENDERED_TYPES = new Set(["plugin-detail", FALLBACK_PLUGIN_ID, "release-notes", "about", "ai-manual"]); // E6#57.13 / E6#57.14 / M3 AI#16
 
 /** 发行说明壳视图的类型串——**壳/池两侧共用的契约字符串**。
  *  池侧同义常量见 `src/pool/views/shell-renderer/ShellViewRenderer.tsx` 的 SHELL_VIEWS.ReleaseNotes

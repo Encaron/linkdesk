@@ -67,18 +67,9 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
     menuGroup: "navigation",
   },
   // E3f #58：开发者工具——切换插件 DevTools
-  // E3f #54：输出面板
-  {
-    id: "workbench.action.showOutput",
-    title: "输出",
-    category: "视图",
-    description: "打开输出面板查看日志",
-    handler: async () => {
-      window.dispatchEvent(new CustomEvent(CUSTOM_EVENTS.SHOW_OUTPUT));
-    },
-    menuId: MENU_SLOTS.ExtensionGear,
-    menuGroup: "navigation",
-  },
+  // E6#162（2026-09-30）：`workbench.action.showOutput`「输出」命令已退场——壳注册的输出命令背后
+  //   没有任何输出插件（视图只是 OutputPoolView 占位），属「壳假装自己有输出面板」的死耦合。
+  //   用户拍板：输出/终端等一律以**插件**形式进底部面板（面板区见 docs/05-插件更新/终端系统）。
   // E3f #56：工作区导入导出
   {
     id: "workbench.action.exportWorkspace",

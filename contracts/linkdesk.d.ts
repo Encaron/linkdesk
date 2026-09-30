@@ -813,9 +813,9 @@ export interface PoolTab {
     closeBehavior?: "normal" | "confirm" | "blocked";
     /** 单例插件（settings/marketplace 等）——TabBar 不显示 [×] 关闭按钮 */
     singleton?: boolean;
-    /** 壳内部视图（欢迎页/插件详情/输出面板）——MainPool 内容区不渲染 PluginComponent */
+    /** 壳内部视图（欢迎页/插件详情/发行说明/关于/AI 手册）——MainPool 内容区不渲染 PluginComponent */
     shellRendered?: boolean;
-    /** 壳内部视图类型——"welcome" | "plugin-detail" | "output"，池侧路由到对应组件 */
+    /** 壳内部视图类型——"welcome" | "plugin-detail"，池侧路由到对应组件 */
     shellType?: string;
     /** plugin-detail 视图的目标插件 ID（哪个插件的详情页） */
     detailPluginId?: string;
