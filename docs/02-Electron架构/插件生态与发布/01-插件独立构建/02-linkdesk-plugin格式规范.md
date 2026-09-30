@@ -25,34 +25,44 @@ hello-world.linkdesk-plugin          ← zip 文件，后缀 .linkdesk-plugin
   │   ├── en.json
   │   └── zh-CN.json
   ├── index.bundle.js                ← 主入口编译产物（有 entry 才带；见 §四「入口约定」）
-  ├── views/                         ← 每个 contributes.views[].render 一个独立编译表面（有视图才带）
+  ├── views/                         ← 每个 contributes.views[].render 一个编译表面（有视图才带）
+  ├── statusBar.bundle.js            ← 自绘状态栏表面（appearsIn.statusBar 声明 .tsx 才有；E6#62d）
   │   ├── SearchView.bundle.js
   │   └── InstalledListView.bundle.js
+  ├── <模块名>-<hash>.js             ← 跨表面共享模块的去重 chunk（E6#159；各表面按相对 specifier 引它；无共享模块则无）
   ├── index.bundle.css               ← 全插件聚合 CSS（有 css 才带；loader `<link>` 注入，对标 VS Code 扩展 css）
   ├── assets/                        ← Vite emit 静态资源（可选；字体/精灵图/音效/worker chunk，import 即自动 emit）
   ├── README.md                      ← 附带说明文档（可选；插件详情/市场数据源，K2）
   └── CHANGELOG.md                   ← 更改日志（可选；详情页已装态变更数据源，K2）
 ```
 
-> 🔥 **多表面模型（E6#15 实证定案）**：一个插件 = 主入口 + 每 `contributes.views[].render` 一个编译表面。
+> 🔥 **多表面模型（E6#15 定义 ／ E6#159 改型定案）**：一个插件 = 主入口 + 每 `contributes.views[].render`
+> 一个编译表面（＋ `appearsIn.statusBar` 的自绘状态栏表面，E6#62d）。
 > 单入口单 bundle 会把贡献的侧栏/面板视图静默丢掉（壳对源码树视图靠 glob 解析，zip 内无源码树——单入口 zip 装进
-> userData 后那些视图无从渲染，E6#15 实证）；**每表面一次独立 vite lib build**（loop-build，closeBundle 编排），
-> 各表面单文件自包含、入口 default 导出零失真。副作用代价 = 各表面共享模块重复打包（react 等壳 external 除外），
-> zip 大一点换正确性。不赌 vite 单 build 多 JS 入口（rollup 把共享图并进首个入口却丢其余入口 default 导出——空 facade，实证）。
+> userData 后那些视图无从渲染，E6#15 实证）。
+> **构建 = 单次多入口 lib build**（`lib.entry` 一次收全部表面，共享一个 rollup 模块图）——跨表面共享的模块只产
+> **一份** chunk，各表面按 rollup 自己算出的相对 specifier（包根表面 `./x.js`、`views/` 内表面 `../x.js`）引它
+> ⇒ **ESM「模块身份 = URL」的前提复位，「模块级 = 跨表面唯一真相」重新成立**，且**作者零改动**。
+> 两条机械判据随构建跑（SDK `surface-chunk-guard.ts`）：**入口齐备**（产物路径 = dist manifest 所指，防装上 404）
+> ＋ **共享模块唯一**（同一源模块只在 ≤1 个入口 chunk 里，防退回多份实例）——不成立即真红拦 build。
+> ⚠️ 与 E6#15 时代的两处差异（如实记账）：①**逐表面失败隔离退场**——整批原子成败，作者见红即修，
+> 不再悄悄产出「缺一个表面」的包；②**「空 facade」旧结论已订正**——那只对**非 lib** 的 `rollupOptions.input`
+> 多入口成立（lib 多入口的入口导出与跨入口去重都正常，E6#159 实测）。
 >
 > **无 entry 插件**（纯 contributes.views 的 view-only）→ zip 无 `index.bundle.js`，只 `views/*.bundle.js`。
 > **纯 JSON 插件**（theme/lang，无 React）→ zip 无任何 bundle.js，只有 `plugin.json` + JSON 资源（语言包/主题）→
 > 无需 build（无编译表面），loader 只注册贡献不加载入口（#15b JSON 12）。
 >
-> 🔴 **重复打包的后果成规（2026-09-30 补——marketplace 1.1.4 实机事故）**：ESM 模块身份 = URL ⇒ 同源 `services/...`
-> 在 N 份表面 bundle 里各内联一份 ⇒ **模块级可变状态（store / 守卫 / 去重表 / 订阅计数）在表面之间各长一个**——
-> 「模块级 = 跨视图唯一真相」这条单表面时代的前提，在多表面插件里**不成立且静默失效**。跨表面共享的可变状态
-> 必须走 **realm 级原语**（现例：marketplace `realmSlot`，SDK 原语版待发）；正典 → [12-多表面共享状态塌缩-立案.md](./12-多表面共享状态塌缩-立案.md)（`E6#158`）。
+> 🔴 **多表面共享状态的成规（2026-09-30——marketplace 1.1.4 实机事故换来的，E6#159 已从根上消掉）**：ESM 模块身份 = URL ⇒
+> 同源 `services/...` 若在 N 份表面 bundle 里各内联一份 ⇒ **模块级可变状态（store / 守卫 / 去重表 / 订阅计数）在表面之间各长一个**——
+> 「模块级 = 跨视图唯一真相」这条单表面时代的前提会**不成立且静默失效**（症状：侧栏翻了、主区详情不翻，须重启）。
+> **现况**：单次多入口构建保证共享模块单实例 ⇒ 多表面插件**不再需要**任何原语；存量包与特殊场景（如跨 realm 兜底）
+> 仍可用 realm 级原语（现例：marketplace `realmSlot`，SDK 原语版待发，E6#158）。现场取证 → [12-多表面共享状态塌缩-立案.md](./12-多表面共享状态塌缩-立案.md)。
 >
-> 🔴 **终局解（(a) 跨表面共享 chunk）＝ 本节「各表面单文件自包含」将被改写（`E6#159` 实施时同笔）**：共享模块只产一份 chunk、
-> 各表面以相对 import 引用它 —— 前提复位、作者零改动、第三方仓存量缺陷自然消失。两轨道（dev `/@fs`／prod `linkdesk://`）
-> 相对 import **可解析已验**，唯一硬点 = SDK assemble 落位错位（构建侧、不动加载器 ⇒ 壳侧目标零改动）。
-> 设计与 8 维度前置 → [13-跨表面共享chunk-设计前置.md](./13-跨表面共享chunk-设计前置.md)。
+> ✅ **终局解已实施（E6#159，2026-09-30）**：本节旧文「各表面单文件自包含 ／ 共享模块在表面间重复打包 ／ zip 大一点换正确性」
+> 与 §三 旧步骤「每个表面一次独立 lib build（产物 `surface.bundle.js`）」**一并作废**——现为「共享 chunk 单实例 ＋ 相对 import」。
+> 两轨道（dev `/@fs` ／ prod `linkdesk://`）相对 import 可解析已验；旧 assemble 的落位错位（chunk 落包根而表面被移入 `views/`
+> ⇒ 相对引用 404）随「产物直落终局位置」一并消失，**壳侧零改动**。设计与 8 维度前置 ／ 实测读数 → [13-跨表面共享chunk-设计前置.md](./13-跨表面共享chunk-设计前置.md)。
 
 ## 三、如何生成
 
@@ -71,13 +81,15 @@ my-plugin/
 Vite 配置（`defineLinkdeskPluginConfig`）：
 1. `plugin.json` → jsonc 解析后以严格 JSON 归一写入（源文件可注释/尾逗号，产物干净供壳加载）；`icon.svg` / `i18n/*.json` / `README.md` / `CHANGELOG.md` → 源码原样复制（存在才带）
 2. 收集可编译表面 = [主入口?] + 每唯一 `contributes.views[].render`（去重；同名去 `.tsx` 基名 + `_2` 防撞）
-3. **每个表面一次独立 vite lib build**（各自 outDir `.s/<key>`，产物 `surface.bundle.js`）：
-   - `react` / `react-dom` / `react-i18next` / `i18next` → external（壳提供）
+   + `appearsIn.statusBar` 声明的 `.tsx`（E6#62d）
+3. **全部表面 → 单次多入口 vite lib build**（`lib.entry` 一次给全，共享一个 rollup 模块图；产物直落终局位置）：
+   - `react` / `react-dom` / `react-dom/client` / `react/jsx-runtime` / `react-i18next` / `i18next` / `@linkdesk/ui` → external（壳池提供）
    - 其他依赖 → inline（自包含）
    - `worker: { format: "es" }`——monaco 等真 worker 需 code-split，lib 默认 iife 撞「worker 不支持 code-split」报错
-   - 单表面 css → 聚合写 `index.bundle.css`；其余 emit（`assets/`/worker chunk）随表面进包
-4. 主入口表面 → `index.bundle.js`；视图表面 → `views/<key>.bundle.js`；dist 内 `plugin.json` 的每 `render`
-   改写指向 `views/<key>.bundle.js`（**源码 plugin.json 保持作者视角 `src/views/X.tsx`**）
+   - `base: "./"`——worker/资产引用锚 `import.meta.url`（缺则烤成宿主绝对路径 ⇒ Monaco worker 全灭，E6#15o）
+   - **跨表面共享模块 → 去重 chunk**（`<模块名>-<hash>.js` 落包根，各表面相对引它）；聚合 css 一份 → `index.bundle.css`
+4. 主入口表面 → `index.bundle.js`；视图表面 → `views/<key>.bundle.js`；状态栏表面 → `statusBar.bundle.js`；
+   dist 内 `plugin.json` 的每 `render` 改写指向 `views/<key>.bundle.js`（**源码 plugin.json 保持作者视角 `src/views/X.tsx`**）
 5. 整个输出目录 → zip → `.linkdesk-plugin`（zip 条目顶层 = plugin.json，无外层目录）
 
 ## 四、入口与视图表面约定

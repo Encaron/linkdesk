@@ -16,13 +16,14 @@ my-plugin/
 │   ├── plugin.json             ← rewritten clone (contributes.views[].render → views/<View>.bundle.js)
 │   ├── index.bundle.js         ← main entry bundle (whenever the loader sees it, it becomes the runtime entry)
 │   ├── index.bundle.css        ← aggregated styles
-│   ├── views/<View>.bundle.js  ← one independent build per contributes.views[].render
+│   ├── views/<View>.bundle.js  ← one build surface per contributes.views[].render
+│   ├── <module>-<hash>.js      ← deduped chunk for modules shared across surfaces (each surface imports it relatively)
 │   ├── resources/ icon.svg etc.  ← resources ship inside the package
 │   └── (themes/ assets/ i18n/ node_modules/ …)  depending on plugin content
 └── src/ …                      ← author source (does not go into the zip)
 ```
 
-**Who produces the zip:** [plugin-sdk](https://github.com/Encaron/linkdesk/tree/electron/packages/plugin-sdk) (`npm run publish` goes through the [author journey](https://github.com/Encaron/linkdesk/blob/electron/docs/02-Electron架构/插件生态与发布/05-文档与发布/00-第三方作者旅程.md)) emits `<id>.linkdesk-plugin` + the unpacked directory `dist/<id>.linkdesk-plugin/` at **the project root**. All JS inside the zip is pre-built and self-contained (react-family packages are external, provided by the shell)—**there is no source compilation in the installed state**.
+**Who produces the zip:** [plugin-sdk](https://github.com/Encaron/linkdesk/tree/electron/packages/plugin-sdk) (`npm run publish` goes through the [author journey](https://github.com/Encaron/linkdesk/blob/electron/docs/02-Electron架构/插件生态与发布/05-文档与发布/00-第三方作者旅程.md)) emits `<id>.linkdesk-plugin` + the unpacked directory `dist/<id>.linkdesk-plugin/` at **the project root**. All JS inside the zip is pre-built (react-family packages are external, provided by the shell; modules shared across surfaces are emitted once as a deduped chunk)—**there is no source compilation in the installed state**.
 
 **Why a single file:** the shell loader only accepts pre-built bundles for installed plugins—`plugin-file-service` sees that `index.bundle.js` exists and overwrites the entry to point at it (`resolveEntry`; the bundle entry is always `index.bundle.js`). The zip is "one plugin = one file that can be downloaded, verified, and atomically replaced", and both install/uninstall and marketplace downloads work against it.
 

@@ -1,7 +1,7 @@
 # 13 · 跨表面共享 chunk——设计前置（`E6#159`，(a) 终局解）
 
 > ✅ **设计前置**：本档按 `Skill(design-flow)` 的 8 维度写全（§四），并对着 10 条软件核心理念逐条过（§五）。
-> **状态：📋 设计前置已立（未实施）**。归属 `E6#159`（自 `E6#158` 的 (a) 路拆出——用户 2026-09-30 拍板「(a) 是根治、(b) 是过渡」后立此格）。
+> **状态：✅ 已实施（实施轮 0 ＋ 轮 1 已落地，2026-09-30；轮 2 发版对照进行中）**。归属 `E6#159`（自 `E6#158` 的 (a) 路拆出——用户 2026-09-30 拍板「(a) 是根治、(b) 是过渡」后立此格）。
 > 上游 = [12-多表面共享状态塌缩-立案.md](./12-多表面共享状态塌缩-立案.md)（缺陷立案 ＋ 两条候选解）；本条只做 **(a) 跨表面共享 chunk** 的设计与落地。
 
 ---
@@ -39,18 +39,21 @@
 - **CSS 层级假设**：[bundleCss.ts](../../../../src/pool/shared/plugin-component/bundleCss.ts) `:43-51` 硬编码「表面恰在包根下一层」（靠 `/views/` 下标或最后一个 `/` 回根），且**全插件只链一份根 `index.bundle.css`**。⚠️ 若布局保持「表面在包根下一层、共享件在包根或同层」，此假设**仍然成立 ⇒ 壳侧零改动**（本格的目标形态）。
 - **表面收集的两个隐含约束**：只把 `render` 以 `.tsx` 结尾且存在的当可编译表面（`:115`）；每表面入口名固定 `surface.bundle.js`（`:443`，随后 assemble 改名改位）。
 
-### ⚠️ 两项未实证（留实施轮第一件事，别当已验）
+### ✅ 两项探针的实测结论（实施轮 0 已跑，2026-09-30，壳仓 `scratch/probe-159/`）
 
-1. **实机多文件首次加载**：现网**无多文件插件先例**。需手工造一只两文件探针插件（`views/A.bundle.js` ＋ 同层 `chunk.js`）走**现有安装通道**，验证 `linkdesk://` 下相对 import 真加载（含 standard-scheme/CORS 细节、`Access-Control-Allow-Origin` 与 `file://` 起源的池页面）。
-2. **lib 产物是否真产出 chunk**：Vite 6 lib 默认 `chunkFileNames = "[name]-[hash].js"`、`inlineDynamicImports` 只对 `umd/iife` 强制（源码级判据），**未实跑**。对首选形态（单次多入口 build）影响不大，但实验成本低，顺手验掉。
-   （另：`packages/plugin-sdk/src/dev-server.ts` 那条**作者浏览器预览轨**（端口 1421）对多文件的解析未逐行核。）
+1. **lib 产物真产 chunk，且入口导出零失真**（原「未实证」→ 已验）：`lib.entry = { index, "views/V1", "views/V2" }` 单次 build ⇒ 共享模块**只产一份** `shared-<hash>.js`，三入口 `default` 全在，三入口 import 到的是**同一份对象**（Node `import()` 实测 `===`）。嵌套表面的相对 specifier 由 rollup **按真实落位自动算对**（`views/V1.bundle.js` 引 `../shared-<hash>.js`；worker 产 `assets/*` 且被嵌套表面引作 `../assets/*`）——这正是旧 assemble「搬位后算不出来」的那件事。
+2. 🔴 **「空 facade」旧结论订正（归属记错，非形态有墙）**：E6#15 记的「vite 单 build 多 JS 入口丢其余入口 default 导出」**只对非 lib 的 `rollupOptions.input` 多入口成立**（本轮复现：三入口全成 1 字节空 chunk、共享代码整份消失）；**lib 多入口没有这个问题**，`preserveEntrySignatures: "strict"` 也非必需。⇒ 首选形态 (i) 无墙。
+3. ⏳ **仍待真机（未消）**：现网**无多文件插件先例**这条没变——改由**轮 2**（marketplace 7 表面真插件在新 SDK 下重建、走真安装通道加载）当探针，`linkdesk://` 下相对 import 的真实加载（standard-scheme/CORS 与 `file://` 起源的池页面）随轮 2 一并落读数，**不再另造一次性插件**。
+   （另：`packages/plugin-sdk/src/dev-server.ts` 那条**作者浏览器预览轨**（端口 1421）对多文件的解析未逐行核——随轮 2 预览一并看。）
 
 ## 三 实现形态（首选 / 备选）
 
-**(i) 单次多入口 build（首选）** —— 一次 vite build，`rollupOptions.input = { 主入口, ...每表面 }`，单一 outDir：**rollup 自己算去重、自己写相对 specifier**，最不容易错。
+**(i) 单次多入口 build（✅ 已按此实施）** —— 一次 vite build、单一 outDir，入口用 **`lib.entry` 对象**（`Object.fromEntries(表面 → 绝对路径)`，键 = 表面 finalName 去掉 `.bundle.js`）——**不是** `rollupOptions.input` 多入口（实测那条正是「空 facade」的来源，见 §二.2）：**rollup 自己算去重、自己按 chunk 真实落位写相对 specifier**，最不容易错。
 
-- 入口命名用 `entryFileNames` 函数按表面 key 映射到既有布局（`index.bundle.js` / `views/<Key>.bundle.js` / `statusBar.bundle.js`），与 `plugin.json` 的 `render` 值保持一一对应；`chunkFileNames` 用**稳定名**（见 §七）；`base: "./"` 与 external 清单（`DEFAULT_EXTERNAL`：react/react-dom/react-i18next/i18next/@linkdesk/ui）不变。
-- 代价：**「逐表面失败隔离」这条既定收益弱化**（一个表面构建失败 ⇒ 整批失败，从「运行期逐表面降级」变成「构建期整体失败」）——显式记账，不隐藏。
+- 入口产物名用 **`lib.fileName` 回调**（`(format, entryName) => \`${entryName}.bundle.js\``）直接映射回既有布局（`index.bundle.js` / `views/<Key>.bundle.js` / `statusBar.bundle.js`），与 `plugin.json` 的 `render` 值一一对应；共享 chunk 沿用 vite 默认 `[name]-[hash].js`（**不另立稳定名**——理由与后果见 §七 定死条）；`base: "./"`、`worker: { format: "es" }`、`cssCodeSplit: false`、external 清单（`DEFAULT_EXTERNAL`：react/react-dom/react-i18next/i18next/@linkdesk/ui）不变。
+- **落位修正 = assemble 搬位步骤整段删除**（新产物由 rollup 直接写进最终布局，不再有「移入 `views/` 后相对引用失配」这一形态，见 §二 硬点）。
+- 代价：**「逐表面失败隔离」这条既定收益弱化**（一个表面构建失败 ⇒ 整批失败，从「运行期逐表面降级」变成「构建期整体失败」）——已在 [02 号档](./02-linkdesk-plugin格式规范.md) §二 同笔记账，不隐藏。
+- ＋ **机械判据两条（G1/G2）随构建常驻**，见 §六。
 
 **(ii) 保留逐表面 build ＋ 外置共享 chunk（备选）** —— 多跑一次「共享层」build，把 shareable 模块产出为可被 external 化的 ESM chunk，各表面 build 把对应模块 id 标 external 并写相对 specifier。
 
@@ -84,25 +87,31 @@
 | ④ 无死代码 | ✅ 实施时删净被替换的旧构建路径 |
 | ⑤ 易拓展 | ✅ 新插件类型（重库自带单例）自动进入保护范围 |
 | ⑨ AI 友好三层 | ✅ 作者面文档**变短**（没有例外规则要教），AI 按常规 ESM 直觉生成即正确 |
-| ⑩ 健壮·生存力 | ⚠️ **唯一要盯的一条**：「逐表面失败隔离」弱化（§三 (i)），须在实施轮逐条复核并在 02 号档记账 |
+| ⑩ 健壮·生存力 | ✅ **已复核并记账**：「逐表面失败隔离」弱化（§三 (i)）＝ **批量原子化**（一个表面失败 ⇒ 整批红，作者见红即修，不再有「运行期逐表面降级」）；记账已落 [02 号档](./02-linkdesk-plugin格式规范.md) `:48` 与 §三 步骤 3 |
 | ① 禁硬编码 | ⚠️ chunk 命名/布局若写散在多处即违规 ⇒ 收在 `vite-config.ts` 一处 ＋ 02 号档 |
 
 ## 六 验收判据（机械 ＋ 真机）
 
-- **机械（可以造假不了）**：多表面插件的产物里，**同一共享模块只出现一次**（对 N 份产物 bundle 做「共享模块指纹唯一性」检查；对照现状 = 同一段代码在 N 份里各一份）。＋ `npm run check` 全绿。
+- **机械（✅ 已落地，进每次构建）**：判据两条，**看模块 id 不看指纹**（rollup `OutputChunk.modules` 的键）。实现 = [surface-chunk-guard.ts](../../../../packages/plugin-sdk/src/surface-chunk-guard.ts)（**纯函数、零 vite 依赖** ⇒ 可被 vitest 直测，绕开 `pack.test.ts:108` 的「测试不得引 `vite-config`」约束），挂在 [vite-config.ts](../../../../packages/plugin-sdk/src/vite-config.ts) 的 `generateBundle`（薄钩子）：
+  - **G1 入口齐备**：声明的每个表面 finalName 必须真被产出（护住 SDK ↔ loader 的接口面；非入口 chunk 同名不算数）。
+  - **G2 共享模块唯一**：任一源模块不得出现在 ≥2 个**入口** chunk 的 `modules` 里——缺陷类的机械指纹（worker 产物在 lib 模式是 `asset`、且本就是独立 realm，构造上不参与）。
+  - 命中即抛 `PACKAGER_RED` ⇒ **构建硬失败、不吞**。单测 **7 例全绿**（含反向对照：`s/p/src/services/store.ts` 跨三入口 = 旧形态必判红）；并实证**判据真挂上**（非只单测）：临时塞一个假期望表面 ⇒ `EXIT=1`、红前缀在、**zip 不产出**，撤掉后复绿。
+  - **fixture 端到端实测**（真插件 4 表面、打补丁 SDK 构建）：共享 `store-BQmg5hbX.js` **只一份**、三入口各 0 命中、`sameStoreObjectAsPanel: true`、单一聚合 `index.bundle.css`、dist manifest 的 `render` 已改写、zip 正常产出、日志 `4 表面`。
+- ＋ `npm run check` 全绿（含 `docs:check`）。
 - **真机（回归样本 = marketplace，现成 7 表面真仓）**：① 点「检查更新」侧栏与详情页**同帧翻新** ② 跨表面搜索过滤生效 ③ `events.on` 单次订阅（不再每表面各一次）。
 - **对照基线**：marketplace **1.1.6**（`realmSlot` 版）＝ 行为等价的参照——**(a) 落地后应做到「同一只插件，源码零改动，行为与 1.1.6 一致」**（这同时证明「作者本不该写那 8 处槽」）。
 
 ## 七 风险、边界与不并案
 
 - 🔴 **升级写盘原子性（本格内必须定）**：多文件后，若「表面已加载、chunk 尚未按需取」的窗口内发生原地升级，旧的按需 chunk 可能已被新文件替换/删除 ⇒ **新增一种跨文件 404 形态**。本格内须定死**布局与命名策略**（倾向：chunk 名稳定、升级写盘原子＝先落新目录再切换，或保留旧 chunk 不被同笔清掉）。⛔ **不并「池按 URL import 不 cache-bust（升级须重启）」那件**——那是加载器优化域的**另一个**已知面（12 号档 §六），本格只在**不新增失败形态**的意义上受它约束。
+- ✅ **本格已定死（实施轮 1）**：**chunk 名 = vite 默认 `[name]-[hash].js`**（内容哈希：同内容同址、改内容即换址）；升级写盘沿用**现状**（zip 整树覆盖写，`{userData}/plugins/<id>/` 无版本层）。⚠️ 如实结论：池按 URL import 不 cache-bust ⇒ **升级须重启**这条既有前提不变；「表面已加载、chunk 未取」窗口内就地升级仍可能 404——**但这是既有失败形态的延续、不是本格新增**（内容哈希比「稳定名同址换内容」更少静默错配：变了名就是明确 404，不会拿旧 chunk 配新 entry）。真正的原子升级（先落新目录再切换）属**池装载与升级写入域的另一格**，本格不并案，只保证不新增形态。
 - **老包不自动受益**：已发布/已安装的产物仍是单文件自包含 ⇒ 需要重建重发才享受 (a)。官方仓批量重建的轮次另议（marketplace 已有 1.1.6 先例，可作对照基线）；第三方仓由作者自行重建。
 - **文档层改写**：02 号档（壳侧契约）＋ 03-插件制造 04/09 号档（作者面）同笔；改写「单文件自包含」＝**一次公共面决策**，须与版本账一起定。
 - ⛔ **不是**「单例模式错了」，**不是**「加载器坏了」——12 号档 §六 两条边界继续有效。
 
 ## 八 实施轮次建议与版本账
 
-- **实施轮 0（先做，成本低、决定形态）**：§二 那两项**未实证**探针（手工两文件插件真机加载 ＋ lib chunk 产出）。
-- **实施轮 1**：按 §三 (i) 改写 `vite-config.ts` 构建内核 ＋ assemble 落位修正 ＋ 产物布局定稿（含 §七 原子性策略）；同步改写 02 号档与作者面两档；机械判据（§六）落地。
-- **实施轮 2**：marketplace 以**源码零改动**重建重发，与 1.1.6 行为对照；官方其余多表面仓择机重建。
-- **版本账**：SDK 产出版本（倾向 **MINOR**——作者零改动、老产物仍可跑，属契约「输出布局」变化）；**发布要用户点头**。壳侧目标**零改动**（若动到 `bundleCss.ts` 则另记一格）。
+- **实施轮 0（✅ 已完成，2026-09-30）**：§二 两项探针——**lib chunk 产出与入口导出保真已实测成立**（并顺带订正 E6#15「空 facade」的归属：非 lib 路由的问题，不是形态墙）；「真机多文件首次加载」**未消**，改由**轮 2 marketplace 真安装**充当探针（见 §二.3）。
+- **实施轮 1（✅ 已完成，2026-09-30）**：`vite-config.ts` 构建内核改写为 **`lib.entry` 多入口单次 build**（原 assemble 搬位整段删除）；机械判据 G1/G2（§六）落地并验证**真拦得住**；02 号档＋作者面两档（zh/en 两树）同步改写；`packages/plugin-docs/docs/**` 由 `npm run docs:build` 重生成；**壳侧 `src/` `electron/` 零改动**（`bundleCss.ts` 的「表面恰在包根下一层」层级假设在新布局下原样成立）。
+- **实施轮 2（进行中）**：marketplace 以**源码零改动**在新 SDK 下重建重发，与 **1.1.6** 行为对照（同帧翻新／跨表面过滤／单次订阅）；顺带落「真机多文件相对 import 首次加载」读数；官方其余多表面仓择机重建。
+- **版本账**：SDK 出版本 = **MINOR**（作者零改动、老产物仍可跑，属契约「输出布局」变化）；发布随轮 2 走（用户 2026-09-30 已授权「同意制作，同意发版对照」）。壳侧目标**零改动**（本轮已验证；若动到 `bundleCss.ts` 则另记一格）。

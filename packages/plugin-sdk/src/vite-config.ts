@@ -10,27 +10,38 @@
  * 构建裁决：
  *   - React/react-dom/react-i18next/**i18next** external（壳提供——插件自打 i18next 实例 → 翻译全空，
  *     B3 教训）；其他依赖 inline 完全自包含。
- *   - 🔥 E6#15（多表面打包）：一个插件 = 主入口 + 每 contributes.views[].render 一个编译表面。
- *     **每个表面一次独立 vite lib build**（closeBundle 编排 N 次内层 `build()`）→ 每表面单文件自包含。
- *     不赌 vite 单 build 多 JS 入口（实测 entry facade 空 chunk——rollup 把共享图并进首个入口却丢
- *     其余入口 default 导出；E6#15 实证）。各表面共享模块在表面间重复打包（react 等 external 除外，
- *     css 内联进各表面再合并去重）——zip 大一点，换来入口导出零失真 + 逐表面失败隔离。
+ *   - 🔥 E6#15／E6#159（多表面打包）：一个插件 = 主入口 + 每 contributes.views[].render 一个编译表面。
+ *     **单次多入口 lib build**（`lib.entry` 一次收全部表面，共享一个 rollup 模块图）——共享模块只产一份
+ *     chunk，各入口按 rollup 自己算出的相对 specifier 引它 ⇒ ESM「模块身份 = URL」的前提重新成立，
+ *     「模块级 = 跨表面唯一真相」不再靠作者自觉（marketplace 1.1.4 事故：逐表面独立构建让模块级 store
+ *     在表面之间各长一份，侧栏翻新而主区不翻新）。
+ *     ⚠️ 两条旧结论的订正（E6#159 实测，2026-09-30）：①「vite 单 build 多 JS 入口必丢其余入口导出
+ *     （空 facade）」只对**非 lib** 的 `rollupOptions.input` 多入口成立（lib 多入口的入口导出与跨入口去重
+ *     都正常，`preserveEntrySignatures` 也不必显式设）；②「逐表面失败隔离」随批量化退场——整批原子成败，
+ *     换来的是产物语义正确（作者见红即修，不再悄悄出缺表面的包）。
  *     zip 内布局：
  *         index.bundle.js            主入口（entry default 组件 + 模块级贡献副作用）
- *         views/<View>.bundle.js     每 contributes.views[].render 的独立表面（独立 lib build 产物）
+ *         views/<View>.bundle.js     每 contributes.views[].render 的表面
+ *         statusBar.bundle.js        appearsIn.statusBar 的自绘状态栏（E6#62d）
  *         index.bundle.css           全插件聚合 css（有则 loader <link> 注入，与 js 并列）
+ *         <模块名>-<hash>.js         跨表面共享模块的去重 chunk（lib 模式下被 import 的静态资产也发成 js 模块）
+ *         assets/*                   worker 等（monaco worker 从「每表面一份」变「一插件一份」）
  *     dist/ 内 plugin.json 的 render 字段改写指向 `views/<View>.bundle.js`（编译产物路径）——
  *     源码 plugin.json 保持作者视角 `src/views/X.tsx`；壳 loader 读 dist manifest 后
  *     dynamic-import `${root}/views/X.bundle.js`（既有 glob 外回退分支，E5.7#98）即命中。
- *   - CSS：每表面 lib build cssCodeSplit 强制 false → 各产单 css → packager 合并为 `index.bundle.css`
- *     （各表面 css 规则全局性，合并 = 源码模式壳 build 全插件 css 合一语义）。壳 loader 激活 bundle
+ *     🔴 两条机械判据随构建跑（`surface-chunk-guard.ts`）：**入口齐备**（防 dist manifest 指向不存在的
+ *     文件）＋ **共享模块唯一**（防退回多份实例）——不成立即 PACKAGER_RED 真红拦 build。
+ *   - CSS：cssCodeSplit 强制 false → 单次构建产**一份** `index.bundle.css`（lib `cssFileName` 定名；vite 在
+ *     给定名后无条件补 `.css`）。各表面 css 规则本具全局性，合一 = 源码模式壳 build 全插件 css 合一语义
+ *     （E6#159 之前是「逐表面各产一份再拼接」，拼出顺序随模块图，语义等价）。壳 loader 激活 bundle
  *     插件时 `<link rel=stylesheet>` 注入、卸载移除（对标 VS Code extension css 由宿主 link 的架构模型；
  *     入口同步 css 不会被 vite style-inject，entry css 期待 html <link>，插件 chunk 无 html 消费方）。
  *   - Worker（monaco 等）：`worker.format:"es"`——lib 模式 worker 默认 iife 撞 code-split 报错
  *     （Invalid value "iife" for worker.format），es 允许 worker 内动态 import。
  *   - 打包 = 内嵌私有插件 `linkdesk-plugin-packager` 的 Vite hook 序列。外层 build 只做哑入口
- *     （虚拟模块）承载 closeBundle——真实工作全在 closeBundle：逐表面 lib build → 汇总 pkgDir →
- *     静态清单 + jszip。归属唯一（packager），bin 只编排不重复 zip。
+ *     （虚拟模块）承载 closeBundle——真实工作全在 closeBundle：单次多入口 lib build（产物直落 pkgDir
+ *     终局位置，不再有「内层产物 → 汇总搬运」那一段）→ 静态清单 + jszip。归属唯一（packager），
+ *     bin 只编排不重复 zip。
  *   - 静态清单从**源码 pluginRoot** 拷贝（非 outDir——outDir 每次 emptyOutDir 清空），含 plugin.json/
  *     icon/README.md/CHANGELOG.md（K2 缝隙）/ i18n 声明文件。
  *   - zip 条目相对 pkgDir、正斜杠、无外层目录（loader 解压期待 plugin.json 在顶，E6#7 契约）。
@@ -50,6 +61,7 @@ import {
   validatePluginJson,
 } from "./validate.js";
 import { pinDirectoryEntryDates, zipTree } from "./pack.js";
+import { findDuplicatedEntryModules, missingEntries, type EmittedChunk } from "./surface-chunk-guard.js";
 
 /** 壳提供、插件不得重复打包的依赖——i18next 必须 external（B3：自打实例 → 翻译全空）。
  *  E6#15d 消费切换实证：`react-dom/client` 必须同列 external——池 import-map 已提供 clean 副本，
@@ -416,19 +428,69 @@ export function defineLinkdeskPluginConfig(options: LinkdeskPluginOptions = {}):
   const external = [...DEFAULT_EXTERNAL, ...(options.external ?? [])];
   const real = options.real ?? false; // E6#28.5 dev --real：跳过 zip 分发件与发布 banner，只产物化目录
 
-  /** 单表面 lib build——独立 outDir 子夹（.s/<key>），产物 surface.bundle.js（+ css/assets/worker） */
-  async function buildSurface(surface: Surface): Promise<void> {
-    const surfaceOut = join(outDir, ".s", surface.key);
+  /** 表面 → 构建入口键 = finalName 去掉 `.bundle.js`（`index` / `views/<View>` / `statusBar`）。
+   *  vite lib 的 `fileName` 回调收到键名，`${键}.bundle.js` 即最终相对路径 ⇒ 产物**直落终局位置**，
+   *  不再需要「内层产物再搬运改名」那一段（E6#159 前的 assemblePkgDir 正是搬运环节，
+   *  也是「嵌套表面的相对引用会被搬歪」的隐患来源）。 */
+  function entryKeyOf(surface: Surface): string {
+    return surface.finalName.replace(/\.bundle\.js$/, "");
+  }
+
+  /** E6#159 判据插件——两条硬判据随构建跑，每次都量（纯函数在 surface-chunk-guard.ts）：
+   *  G1 入口齐备（dist manifest 指向的文件真产出）／G2 共享模块唯一（同一源模块只在 ≤1 个入口 chunk 里）。
+   *  违背即 PACKAGER_RED → closeBundle 的 catch 重抛 → 真红拦 build（不静默出包）。 */
+  function surfaceChunkGuard(): Plugin {
+    return {
+      name: "linkdesk-plugin-surface-guard",
+      generateBundle(_options, bundle) {
+        const chunks: EmittedChunk[] = [];
+        for (const out of Object.values(bundle)) {
+          if (out.type !== "chunk") continue; // worker 产物是 asset——独立 realm，本就不该去重
+          chunks.push({
+            fileName: out.fileName,
+            isEntry: Boolean(out.isEntry),
+            moduleIds: Object.keys(out.modules),
+          });
+        }
+
+        const missing = missingEntries(
+          surfaces.map((s) => s.finalName),
+          chunks,
+        );
+        if (missing.length > 0) {
+          throw new Error(
+            `${PACKAGER_RED} 表面产物缺席：${missing.join("、")}\n` +
+              "  壳 loader 按 dist plugin.json 里的路径 dynamic-import（index.bundle.js ／ views/<View>.bundle.js ／ " +
+              "statusBar.bundle.js）——路径对不上 = 装上才 404。出口名恒为 `<键>.bundle.js`，本判据钉这条契约。",
+          );
+        }
+
+        const dup = findDuplicatedEntryModules(chunks);
+        if (dup.length > 0) {
+          const lines = dup.map((d) => `  ${d.moduleId} → ${d.fileNames.join(" ＋ ")}`);
+          throw new Error(
+            `${PACKAGER_RED} 跨表面共享模块被内联成多份（E6#159 判据）：\n${lines.join("\n")}\n` +
+              "  同一模块出现在 ≥2 个入口 chunk ⇒ 模块级可变状态（store／守卫／去重表／订阅计数）在表面之间各长一份，" +
+              "「模块级 = 跨表面唯一真相」静默失效（marketplace 1.1.4 事故形态）。单次多入口构建由 rollup 统一去重本不该" +
+              "出现这种情况——真被触发说明构建内核退化或被 output 配置带偏（正典：docs/02-Electron架构/插件生态与发布/" +
+              "01-插件独立构建/13-跨表面共享chunk-设计前置.md）。",
+          );
+        }
+      },
+    };
+  }
+
+  /** 单次多入口 lib build——全部表面同一个 rollup 模块图，产物直落 pkgDir（E6#159 根治点）。
+   *  语义与 E6#159 前逐表面构建逐条对齐：base "./"（E6#15o 自锚定 import.meta.url，缺则 worker/资产
+   *  烤成宿主绝对路径→Monaco worker 全灭）、react 系 external、生产 define、worker.format es、
+   *  cssCodeSplit false（单份聚合 css）、minify esbuild、sourcemap false。
+   *  ⚠️ 整批原子：任一表面编译失败 = 整批失败（逐表面失败隔离随批量化退场，见 13 号档 §五）。 */
+  async function buildSurfaces(): Promise<void> {
     await viteBuild({
       root,
       configFile: false, // 内层不重载作者 vite.config——避免递归
-      // E6#15o（2026-09-06）：base "./"——插件独立构建产物自锚定 import.meta.url。
-      //   Vite 默认 base "/" 把 worker/资产引用烤成宿主绝对路径（/assets/x），运行时按宿主 document
-      //   基址解析（打包态池页 = file:// app.asar）→ Monaco web worker 全灭（.ts 跳转挂，实机实证）。
-      //   base "./" 才走 customRelativeUrlMechanisms.es = new URL(rel, import.meta.url)——锚到插件自身
-      //   服务根（prod linkdesk://<id>/、dev dev-server origin），worker/图片/字体引用全对。
       base: "./",
-      plugins: [react()],
+      plugins: [react(), surfaceChunkGuard()],
       define: {
         // E6#15d：生产 define——任何仍被内联的 CJS/dev 模块（react-dom 等）的 process.env.NODE_ENV
         //   guard 都静态替换为 "production"，池运行态零 process 依赖（防御层；external 已挡主路）。
@@ -437,51 +499,21 @@ export function defineLinkdeskPluginConfig(options: LinkdeskPluginOptions = {}):
       worker: { format: "es" }, // monaco 等真 worker：es 允许动态 import（lib 默认 iife 撞 code-split）
       build: {
         lib: {
-          entry: surface.abs,
+          entry: Object.fromEntries(surfaces.map((s) => [entryKeyOf(s), s.abs])),
           formats: ["es"],
           // 全名含 .js——fileName 不带后缀时 Rollup 不自动补
-          fileName: () => "surface.bundle.js",
+          fileName: (_format, entryName) => `${entryName}.bundle.js`,
+          // 聚合 css 定名：vite 在给定名后**无条件补 ".css"** ⇒ 这里写 "index.bundle"，落盘即 index.bundle.css
+          cssFileName: "index.bundle",
         },
-        outDir: surfaceOut,
+        outDir: pkgDir,
         emptyOutDir: true,
-        cssCodeSplit: false, // 单 css/表面 → 汇总 index.bundle.css
+        cssCodeSplit: false, // 单次构建产一份 css → index.bundle.css
         rollupOptions: { external },
         sourcemap: false,
         minify: "esbuild",
       },
     });
-  }
-
-  /** 汇总：逐表面 surface.bundle.js → 终名；css 合并；assets/ 同深拷贝 */
-  async function assemblePkgDir(): Promise<void> {
-    rmSync(pkgDir, { recursive: true, force: true });
-    mkdirSync(pkgDir, { recursive: true });
-
-    let cssBuffer = Buffer.alloc(0);
-
-    for (const s of surfaces) {
-      const surfaceOut = join(outDir, ".s", s.key);
-      const mainJs = join(surfaceOut, "surface.bundle.js");
-      if (!existsSync(mainJs)) continue; // 该表面 build 失败/无产物——跳过（失败隔离）
-      const dest = join(pkgDir, s.finalName);
-      mkdirSync(dirname(dest), { recursive: true });
-      copyFileSync(mainJs, dest);
-
-      // css + 其余（assets/ worker 等）：排除 surface.bundle.js 后整夹同深拷入，css 汇聚暂存
-      for (const e of readdirSync(surfaceOut, { withFileTypes: true })) {
-        if (e.name === "surface.bundle.js") continue;
-        const sPath = join(surfaceOut, e.name);
-        if (e.isFile() && e.name.endsWith(".css")) {
-          cssBuffer = Buffer.concat([cssBuffer, readFileSync(sPath)]);
-          continue;
-        }
-        if (e.isDirectory()) copyTree(sPath, join(pkgDir, e.name));
-        else copyFileSync(sPath, join(pkgDir, e.name));
-      }
-    }
-    if (cssBuffer.length > 0) {
-      writeFileSync(join(pkgDir, "index.bundle.css"), cssBuffer);
-    }
   }
 
   /** 打包器——zip/校验的唯一归属点 */
@@ -503,27 +535,10 @@ export function defineLinkdeskPluginConfig(options: LinkdeskPluginOptions = {}):
     async closeBundle() {
       if (failed) return;
       try {
-        rmSync(join(outDir, ".s"), { recursive: true, force: true });
-        // 逐表面独立 lib build（fail 隔离：某一表面炸不阻断其他表面）
-        const results: Array<{ key: string; ok: boolean }> = [];
-        for (const s of surfaces) {
-          try {
-            await buildSurface(s);
-            results.push({ key: s.key, ok: true });
-          } catch (e) {
-            results.push({ key: s.key, ok: false });
-            this.warn(
-              `[linkdesk-plugin-packager] 表面 "${s.key}" build 失败：${e instanceof Error ? e.message : String(e)}`,
-            );
-          }
-        }
-        const ok = results.filter((r) => r.ok);
-        if (ok.length === 0) {
-          this.warn("[linkdesk-plugin-packager] 全部表面 build 失败，跳过打包");
-          return;
-        }
-
-        await assemblePkgDir();
+        // E6#159：单次多入口 lib build，产物直落 pkgDir 终局位置。先清 pkgDir——dev --real 直取该目录，
+        //   留下上一轮目录 = 静默喂旧包；构建失败即不留半成品（整批原子，见 buildSurfaces 注）。
+        rmSync(pkgDir, { recursive: true, force: true });
+        await buildSurfaces();
 
         // 静态清单（jsonc 归一 + E6#15 render 改写）先算——includeLspRuntimePackages 需对改写副本动
         // .bin args（E6#15m 解引用改写进 dist plugin.json，源码 plugin.json 保持作者视角 .bin 形态）
@@ -575,22 +590,18 @@ export function defineLinkdeskPluginConfig(options: LinkdeskPluginOptions = {}):
           const zipPath = join(root, pkgName);
           writeFileSync(zipPath, buf);
           const kb = (buf.byteLength / 1024).toFixed(1);
-          const failedKeys = results.filter((r) => !r.ok).map((r) => r.key);
-          const warnSuffix = failedKeys.length > 0 ? `（⚠ 失败表面: ${failedKeys.join(", ")}）` : "";
           console.log(
-            `[linkdesk-plugin-sdk] ✔ ${pkgName}（${kb} KB, ${ok.length}/${surfaces.length} 表面）→ ${relative(process.cwd(), zipPath)}${warnSuffix}`,
+            `[linkdesk-plugin-sdk] ✔ ${pkgName}（${kb} KB, ${surfaces.length} 表面）→ ${relative(process.cwd(), zipPath)}`,
           );
-          if (failedKeys.length === 0) {
-            // E6#25a：全表面干净才宣称可发布（部分表面失败 = warnSuffix 已示警，不发 banner）
-            console.log(
-              `[linkdesk-plugin-sdk] 🚀 Ready to publish! ${pkgName}——分发文件已就绪：装进 LinkDesk（插件详情 → 从本地 .linkdesk-plugin 安装）即可分发使用`,
-            );
-          }
+          // E6#25a：整批原子 ⇒ 走到这里即全表面干净，可直接宣称可发布（旧「部分表面失败 → 不发 banner」的那半句随批量化消失）
+          console.log(
+            `[linkdesk-plugin-sdk] 🚀 Ready to publish! ${pkgName}——分发文件已就绪：装进 LinkDesk（插件详情 → 从本地 .linkdesk-plugin 安装）即可分发使用`,
+          );
         }
-        rmSync(join(outDir, ".s"), { recursive: true, force: true });
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
-        if (msg.startsWith(PACKAGER_RED)) throw e; // E6#15m：.bin 不可解 = 作者配置错——真红拦 build，不吞（失败隔离只护表面级错误）
+        // PACKAGER_RED：作者配置错（.bin 不可解，E6#15m）或产物契约违背（surface-chunk-guard，E6#159）——真红拦 build，不吞
+        if (msg.startsWith(PACKAGER_RED)) throw e;
         this.warn(`[linkdesk-plugin-packager] 打包失败：${msg}`);
       }
     },
