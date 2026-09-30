@@ -1,5 +1,5 @@
 {
-  "$comment": "i18n manifest 归属缺口债务账本（E6#161）。判据 = packages/plugin-sdk/own-dict-coverage.mjs（『谁的仓谁译文』：插件自己声明的可渲染文案必须住本仓 i18n/<lang>.json——声明在谁手里，译名就归谁，跨仓追不上）。判域 = **官方 16 仓 ＋ 壳仓内夹具 plugins/panel-demo**（第三方仓只报告不判红：他们的声明由他们仓的 ci-verify ⑧ 段拦）。立案读数（2026-09-30）：官方 16 仓可渲染中文串 160 条 / 归属缺口 38 条（其中 25 条连随包字典也没有）；src t() 中文 key 343 条 / 缺口 59 条。本账本只做一件事：把**已在案**的缺口从 npm run check 的红里摘出来，好让尺子今天就能上岗。两条铁律——① 新缺口（不在此文件里）**当场判红**；② 已还清却没删行**同样判红**（账本不许自腐）。清理方向：按「谁的仓」逐仓补译发版，补一仓删一仓。⛔ 别用生成器整批重写本文件（那等于把门拆了）。",
+  "$comment": "i18n manifest 归属缺口债务账本（E6#161）。判据 = packages/plugin-sdk/own-dict-coverage.mjs（『谁的仓谁译文』：插件自己声明的可渲染文案必须住本仓 i18n/<lang>.json——声明在谁手里，译名就归谁，跨仓追不上）。判域 = **官方 16 仓 ＋ 壳仓内夹具 plugins/panel-demo**（第三方仓只报告不判红：他们的声明由他们仓的 ci-verify ⑧ 段拦）。立案读数（2026-09-30）：官方 16 仓可渲染中文串 160 条 / 归属缺口 38 条（其中 25 条连随包字典也没有）；src t() 中文 key 343 条 / 缺口 59 条。本账本只做一件事：把**已在案**的缺口从 npm run check 的红里摘出来，好让尺子今天就能上岗。两条铁律——① 新缺口（不在此文件里）**当场判红**；② 已还清却没删行**同样判红**（账本不许自腐）。清理方向：按「谁的仓」逐仓补译发版，补一仓删一仓。⛔ 别用生成器整批重写本文件（那等于把门拆了）。 进度：**settings 试点已还清**（2026-09-30 · 该仓 v1.0.23 新建自有字典 i18n/en.json 48 条 ＋ contributes.i18n，6 条已在案缺口全部落地 ⇒ 本账本删 6 行）——补齐顺序照「谁的仓谁译文」逐仓走。",
   "entries": [
     {
       "repo": "editor",
@@ -84,42 +84,6 @@
       "field": "(顶层).description",
       "text": "串口数据监视器——接收区（CM6）+ 发送栏（Monaco）+ 侧栏设置。LinkDesk 第一个视图插件，通用容器基础设施在此验证。不绑定任何特定用途。",
       "why": "自有字典已存在，缺 description ⇒ 待该仓补译发版"
-    },
-    {
-      "repo": "settings",
-      "field": "(顶层).description",
-      "text": "软件设置——主题、语言、插件管理",
-      "why": "E6#161 试点仓：随 settings 仓 i18n/en.json 落地后删本条"
-    },
-    {
-      "repo": "settings",
-      "field": "(顶层).name",
-      "text": "设置",
-      "why": "E6#161 试点仓：随 settings 仓 i18n/en.json 落地后删本条"
-    },
-    {
-      "repo": "settings",
-      "field": "contributes.commands[].title",
-      "text": "修改快捷键…",
-      "why": "E6#161 试点仓：随 settings 仓 i18n/en.json 落地后删本条"
-    },
-    {
-      "repo": "settings",
-      "field": "contributes.configuration.properties.*.description",
-      "text": "打开设置时的形态——floatingPanel 悬浮面板 / tab 标签页（只管第一次打开；打开之后仍可用面板右上角「在主窗口中打开」/ 标签页右键「在悬浮面板中打开」互相转换）",
-      "why": "E6#161 试点仓：随 settings 仓 i18n/en.json 落地后删本条"
-    },
-    {
-      "repo": "settings",
-      "field": "contributes.configuration.properties.*.group",
-      "text": "打开方式",
-      "why": "E6#161 试点仓：随 settings 仓 i18n/en.json 落地后删本条"
-    },
-    {
-      "repo": "settings",
-      "field": "contributes.configuration.title",
-      "text": "设置插件",
-      "why": "E6#161 试点仓：随 settings 仓 i18n/en.json 落地后删本条"
     },
     {
       "repo": "theme-aurora-glass",
