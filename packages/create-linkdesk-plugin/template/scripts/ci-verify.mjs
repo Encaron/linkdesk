@@ -35,6 +35,16 @@
  *                     （`@linkdesk/plugin-sdk/test-audit`，⛔ 别复制判据）。🔴 零测报出 ≠ 判死：
  *                     同名判据看不见跨文件覆盖（一跳传递假红实测过）⇒ 先核覆盖再补测，别写无意义测试凑数。
  *                     百分比不上门禁（覆盖口径已定稿为结构判据）；声明式/零逻辑仓按据豁免（无硬编码白名单）。
+ *   ⑦ SVG 资源合法性 —— **SVG 是 XML 文档**：整份必须能被严格 XML 解析器读完、且根元素是 `<svg>`。
+ *                     否则浏览器按 `image/svg+xml` 解析 `linkdesk://…/icon.svg`（界面 `<img>` / 图标栏 /
+ *                     市场行）时**当场失败**，表现是**破图，且没有任何报错**（文件在、200、声明正确
+ *                     ⇒ 上面 ④ 段那三条「存在性」检查全绿——这正是本条存在的理由，见下「出处」）。
+ *                     🔴 两个最常见的成因，都出自**把说明文字写进 SVG 注释**：XML 注释里禁止出现
+ *                     **连续两个连字符**（写 CSS 变量的字面量即中招）、`&nbsp;` 这类 XML 里不存在的实体。
+ *                     判据本体 = `@linkdesk/plugin-sdk/svg-wellformed`（⛔ 别复制判据），
+ *                     消费它**不需要新增任何 devDependency**（纯数据插件仓同样被覆盖）。
+ *                     出处：2026-09-30「市场图标破图」案——脚手架的占位图注释里就写着
+ *                     CSS 变量的字面量，第三方 AI 把那段注释连同画面一起搬进自己的图 ⇒ 复刻同一个错。
  *
  * ── 为什么 ③ 的覆盖度只能黄灯（不是漏做）──
  * `t()` 的 key 可以合法地住在**应用级字典**里（`lang-defaults` 插件，运行时由它经 LanguageRegistry
@@ -43,7 +53,7 @@
  * 同款理由）。所以：字典**文件本身**的问题判红（③ 上半），**跨仓才能回答**的覆盖度只报告。
  *
  * 用法：node scripts/ci-verify.mjs     （工程根 = cwd）
- * 退出码 0 = 六段全过；1 = 有红灯（逐条打印缺什么）
+ * 退出码 0 = 七段全过；1 = 有红灯（逐条打印缺什么）
  */
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { basename, dirname, join, relative, resolve, sep } from "node:path";
@@ -51,6 +61,7 @@ import { parse as parseJsonc, printParseErrorCode } from "jsonc-parser";
 import { runPluginLint, renderPluginLintReport } from "@linkdesk/plugin-sdk/eslint";
 import { validateThemeJson, validateIconThemeJson } from "@linkdesk/plugin-sdk";
 import { analyzeRepo } from "@linkdesk/plugin-sdk/test-audit";
+import { checkSvgWellformed, formatSvgViolation, svgViolationHint } from "@linkdesk/plugin-sdk/svg-wellformed";
 
 const ROOT = process.cwd();
 const failures = [];
@@ -566,6 +577,27 @@ if (audit.kind === "exempt") {
   );
 }
 
+// ═══════════════ ⑦ SVG 资源合法性（XML well-formedness）═══════════════
+// 判据本体在 @linkdesk/plugin-sdk/svg-wellformed（**单一实现**——壳侧 scripts/check-svg-wellformed.mjs
+// 引的是同一份）。作者侧消费它**零新增 devDependency**：走 SDK subpath，纯数据插件仓（无 tests ⇒ 无 jsdom）
+// 同样被覆盖——这也是本条没做成「壳仓那套 jsdom 复刻」的原因。
+{
+  const svg = checkSvgWellformed(ROOT);
+  if (svg.violations.length > 0) {
+    fail(
+      `⑦ SVG 资源合法性：${svg.violations.length} 份 .svg 不是一张能渲染的 SVG（浏览器会直接显示破图，且不报错）\n` +
+        svg.violations
+          .map((v) => `       ${formatSvgViolation(v)}\n         修法：${svgViolationHint(v)}`)
+          .join("\n"),
+    );
+  } else {
+    line(
+      `✅ ⑦ SVG 资源合法性：${svg.scanned} 份 .svg 全部能被严格 XML 解析器读完、根元素均为 svg` +
+        `（豁免：*.fixture.svg / *.mock.svg——测试夹具可故意放坏样本）。`,
+    );
+  }
+}
+
 // ═══════════════ 结论 ═══════════════
 line("────────────────────────────────────────────────────────────");
 if (failures.length > 0) {
@@ -575,5 +607,5 @@ if (failures.length > 0) {
   console.error(`  eslint-disable 注释 + 理由（见上面报告尾部），别把检查删了。`);
   process.exitCode = 1;
 } else {
-  console.log(`✅ 插件仓自检全过（${pluginId}）——lint / 跨插件 / 字典 / 声明自洽 / 目录条目形态 / 测试覆盖六段。`);
+  console.log(`✅ 插件仓自检全过（${pluginId}）——lint / 跨插件 / 字典 / 声明自洽 / 目录条目形态 / 测试覆盖 / SVG 资源合法性七段。`);
 }

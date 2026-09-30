@@ -1,6 +1,6 @@
 {
   "name": "@linkdesk/plugin-sdk",
-  "version": "0.1.58",
+  "version": "0.1.60",
   "description": "@linkdesk/plugin-sdk——LinkDesk 插件作者 SDK（对标 @types/vscode）：window.linkdesk.* 类型 + 一键 build(.linkdesk-plugin) + dev 宿主 + plugin.json 验证 + eslint 门禁（E6#54d）。作者 npm i 后零壳源码依赖。",
   "type": "module",
   "main": "./dist/index.js",
@@ -22,6 +22,10 @@
       "types": "./test-audit.d.ts",
       "default": "./test-audit.mjs"
     },
+    "./svg-wellformed": {
+      "types": "./svg-wellformed.d.ts",
+      "default": "./svg-wellformed.mjs"
+    },
     "./package.json": "./package.json"
   },
   "files": [
@@ -29,7 +33,9 @@
     "schemas",
     "dev-host",
     "test-audit.mjs",
-    "test-audit.d.ts"
+    "test-audit.d.ts",
+    "svg-wellformed.mjs",
+    "svg-wellformed.d.ts"
   ],
   "sideEffects": false,
   "bin": {
@@ -62,6 +68,7 @@
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-i18next": "^17.0.10",
+    "saxes": "^6.0.0",
     "vite": "^6.0.0"
   },
   "devDependencies": {

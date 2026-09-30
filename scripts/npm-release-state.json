@@ -12,8 +12,8 @@
     },
     {
       "name": "@linkdesk/plugin-sdk",
-      "version": "0.1.58",
-      "contentHash": "dbd6c0dcf5997b3816ff20749898e0f8aca351967846d86d9190ec819471b2fa",
+      "version": "0.1.60",
+      "contentHash": "cdded86fc241ffbe16c37aa82994f7a97238a0484b319e4ef6fb07c02542c629",
       "fileHashes": {
         "packages/plugin-sdk/README.md": "dd2a3dac5f82ce42",
         "packages/plugin-sdk/dev-host/dev-main.tsx": "49c59b28e17ca424",
@@ -86,6 +86,7 @@
         "packages/plugin-sdk/src/publish.ts": "7bbbf883bd2a5171",
         "packages/plugin-sdk/src/surface-chunk-guard.test.ts": "3024302f4d7dc833",
         "packages/plugin-sdk/src/surface-chunk-guard.ts": "00220b9009e85031",
+        "packages/plugin-sdk/src/svg-wellformed.test.ts": "f13678c6d6752a1c",
         "packages/plugin-sdk/src/types.ts": "ed009a0cae5843b1",
         "packages/plugin-sdk/src/validate.test.ts": "949c988493f4167a",
         "packages/plugin-sdk/src/validate.ts": "9d25bcaa130f23c2",
@@ -96,8 +97,8 @@
     },
     {
       "name": "create-linkdesk-plugin",
-      "version": "0.1.17",
-      "contentHash": "98a8e7f6482d7ec9995b789453f402715769c9c4df8d355c617ed3102f025cda",
+      "version": "0.1.19",
+      "contentHash": "cdce6aeeaff702f30084d882ec7031794b4ada2bc329d0566d521268ca64ac62",
       "fileHashes": {
         "packages/create-linkdesk-plugin/README.md": "7857d846b56de746",
         "packages/create-linkdesk-plugin/index.js": "e45fcdb44431de0c",
@@ -111,9 +112,9 @@
         "packages/create-linkdesk-plugin/template/package.json": "14ff8d5d7eef6d0b",
         "packages/create-linkdesk-plugin/template/plugin.json": "f039042a00e243c1",
         "packages/create-linkdesk-plugin/template/resources/cover.svg": "7dcd9223956231b4",
-        "packages/create-linkdesk-plugin/template/resources/icon-bar.svg": "2b644aa6d1c30751",
-        "packages/create-linkdesk-plugin/template/resources/icon.svg": "956f4aabbf183e5b",
-        "packages/create-linkdesk-plugin/template/scripts/ci-verify.mjs": "e3e1ededc64f07e6",
+        "packages/create-linkdesk-plugin/template/resources/icon-bar.svg": "380076715ba91bf2",
+        "packages/create-linkdesk-plugin/template/resources/icon.svg": "0fe377bb2f339027",
+        "packages/create-linkdesk-plugin/template/scripts/ci-verify.mjs": "c957b86c14cf88df",
         "packages/create-linkdesk-plugin/template/src/commands.ts": "96d32a23de3ac8a7",
         "packages/create-linkdesk-plugin/template/src/index.css": "73de642e752e1b62",
         "packages/create-linkdesk-plugin/template/src/index.tsx": "ecb857e492ebe3c1",
