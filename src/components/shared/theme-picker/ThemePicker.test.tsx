@@ -9,7 +9,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, fireEvent, cleanup } from "@testing-library/react";
 import ThemePicker from "./ThemePicker";
 import "@src/i18n"; // 装 parseMissingKeyHandler——{{count}} 插值在 jsdom 无资源时也替换（徽标计数断言）
-import { MINT, FOREST, HOST_FALLBACK, mockListRecipes, captureLifecycleChange } from "../theme-recipes.fixture";
+import { MINT, FOREST, mockListRecipes, captureLifecycleChange } from "../theme-recipes.fixture";
 
 afterEach(() => cleanup());
 
@@ -109,29 +109,6 @@ describe("ThemePicker", () => {
     expect(document.activeElement).toBe(cards[1]);
     expect(cards[1].getAttribute("tabindex")).toBe("0");
     expect(cards[0].getAttribute("tabindex")).toBe("-1");
-  });
-
-  it("来源行——插件配方「来自 X」/ 宿主兜底「壳自带」（2026-09-30 指认不明）", async () => {
-    // 两张卡名字上无从分辨（壳兜底曾叫 Dark、插件配方叫 Light）⇒ 归属行是唯一判据
-    mockListRecipes([MINT, HOST_FALLBACK]);
-    const { container } = renderPicker("demo-mint");
-    await vi.waitFor(() => {
-      expect(container.querySelectorAll(".ldk-theme-picker-card")).toHaveLength(2);
-    });
-    const rows = container.querySelectorAll(".ldk-theme-picker-source");
-    expect(rows).toHaveLength(2);
-    expect(rows[0]?.textContent).toBe("来自 Demo Plugin"); // 插件贡献
-    expect(rows[1]?.textContent).toBe("壳自带"); // 宿主内置兜底
-  });
-
-  it("来源字段缺席（旧载荷/桩）→ 不渲染来源行，⛔ 不许冒充壳自带", async () => {
-    const { source: _omitted, ...legacy } = MINT; // 造一份「旧载荷缺 source」的形状（_omitted 只用于剔除）
-    mockListRecipes([legacy as typeof MINT]);
-    const { container } = renderPicker("demo-mint");
-    await vi.waitFor(() => {
-      expect(container.querySelectorAll(".ldk-theme-picker-card")).toHaveLength(1);
-    });
-    expect(container.querySelector(".ldk-theme-picker-source")).toBeNull();
   });
 
   it("插件生命周期变化（onPluginLifecycleChange）→ 重拉配方列表（E5.8#60 F1.3）", async () => {

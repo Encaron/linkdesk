@@ -7,8 +7,8 @@
  * （09-命令面 §1 theme.pick：配方→配色两段 / theme.pickColorway 先并入 pick）。
  *
  * 🔴 2026-09-30「指认不明」：本入口读的是 `ThemeRegistry` 原件（不经 `theme.listRecipes` 载荷），
- *   故显示名/配色名/来源三条都走 `ThemeEngine/source.ts` 的同一份权威——与设置页卡片同规则，
- *   ⛔ 别在这里另写一份名字解析（壳兜底 t()、插件原样）。
+ *   故显示名与配色名走 `ThemeEngine/naming` 的同一份权威（壳兜底 t()、插件原样）——
+ *   ⛔ 别在这里另写一份名字解析；也⛔ 不加来源行/来源字段（用户 2026-09-30 明确否掉）。
  */
 
 import i18n from "../../../i18n"; // E5.7#15：serialize 在非 React 上下文解析显示文本（显示文本铁律）
@@ -22,16 +22,11 @@ import {
   loadTheme,
   recipeDisplayName,
   colorwayDisplayName,
-  recipeSourceOf,
 } from "../../../core/services/ui/ThemeEngine";
-import { recipeSourceLabel, type TranslateLike } from "../theme-picker/recipeSource";
 import { ThemeRegistry } from "../../../core/registry/appearance/ThemeRegistry"; // E3.5 #CP23
 import { setConfigurationValue } from "../../../core/services/configuration/ConfigurationService";
 import { QuickPickService } from "../../../core/services/ui/QuickPickService"; // E5.5#7-p15
 import type { ThemeRecipe, ThemeColorway } from "../../../core/types/theme"; // 05 schema 配方数据模型
-
-/** 来源行文案的 t 适配——非 React 上下文（QuickPick 在命令调起时构造，取**当下**语言） */
-const tForSource: TranslateLike = (key, options) => String(i18n.t(key, options as never));
 
 /**
  * E5.5#7-p15：命令式调起主题选择器——不再走 CustomEvent → App.tsx useState。
@@ -134,11 +129,10 @@ export function showThemePicker(pluginId?: string): void {
       searchText: recipeDisplayName(r),
       label: recipeDisplayName(r),
       checked: originalActive?.recipeId === r.id,
-      // detail = 明暗类别 · 配色数（多配色）· 来源（壳自带／来自 X）——「指认不明」的清单面落点
+      // detail = 明暗类别 · 配色数（多配色）——清单面只报这两条（⛔ 不加来源行，用户 2026-09-30 否掉）
       detail: [
         typeLabelOf(r.type),
         r.colorways.length > 1 ? i18n.t("{{count}} 配色", { count: r.colorways.length }) : "",
-        recipeSourceLabel(recipeSourceOf(r.id), tForSource),
       ].filter(Boolean).join(" · "),
     }),
     onClose: () => {

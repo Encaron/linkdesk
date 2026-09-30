@@ -1,22 +1,21 @@
 /**
  * ThemePicker——主题配方卡片选择器（E5.8#50.22）。
- * 卡片网格：配方名称 + 配色徽标（单配色 = 预览条 / 多配色 = 配色圆点 + 计数）+ **来源行** + 选中态 + 键盘可达。
- * 数据源 = window.linkdesk.theme.listRecipes()（06 §2 RecipeMeta——id/名称/明暗/配色预览色/来源）。
+ * 卡片网格：配方名称 + 配色徽标（单配色 = 预览条 / 多配色 = 配色圆点 + 计数）+ 选中态 + 键盘可达。
+ * 数据源 = window.linkdesk.theme.listRecipes()（06 §2 RecipeMeta——id/名称/明暗/配色预览色）。
  * 视觉对标 mockup 01-设置页-主题区（.ldk-theme-picker 四列网格 + .ldk-theme-picker-card 边框/悬停上浮/选中 accent 描边）。
  * 受控组件：value = 当前 app.theme 值；点卡片 → onChange(recipeId)（上层写配置 → onApply 应用配方）。
  * 键盘：方向键在卡片间移动焦点（roving tabindex）+ Enter/Space 激活（原生 button）。
  * 预览区/圆点色 = 配方数据（inline style）——非样式硬编码（同 renderControl 色块先例）；
  * 结构样式全走 CSS 变量（硬约束 1）。
  *
- * 🔴 2026-09-30「指认不明」：加**来源行**（壳自带／来自 X）——壳的内置兜底卡与插件卡名字上都无从分辨
- *    （曾经叫 `Dark` / `Light`，看着像同一套的深浅搭子，实际一个来自壳、一个来自插件）。归属进数据
- *    （`RecipeMeta.source`），此处只渲染文案（`recipeSource.ts` 单一权威）。
+ * 🔴 2026-09-30「指认不明」：壳的内置兜底卡与插件卡**靠名字分开**——壳那张叫「内置」、官方插件那只叫
+ *   「官方主题」（用户拍板口径）。曾试过在卡片上加「壳自带／来自 X」来源行，**用户明确否掉**（「我不需要」）
+ *   ⇒ 本组件只渲染配方名，⛔ 不加来源行、契约也不带来源字段。
  */
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import type { RecipeMeta } from "@linkdesk/contracts"; // E6#54a：出包类型重定向（@src 别名包内不可解析）
-import { recipeSourceLabel, type TranslateLike } from "./recipeSource";
 import "./ThemePicker.css";
 
 interface ThemePickerProps {
@@ -33,8 +32,6 @@ const NEUTRAL_BAR = "color-mix(in srgb, var(--text-secondary) 45%, transparent)"
 
 function ThemePicker({ value, onChange }: ThemePickerProps) {
   const { t } = useTranslation();
-  // 来源行文案（壳自带／来自 X）——t 在 React 上下文取（语言切换即重渲染）
-  const tForSource: TranslateLike = useCallback((key, options) => String(t(key, options as never)), [t]);
   const [recipes, setRecipes] = useState<RecipeMeta[]>([]);
   const [focusIndex, setFocusIndex] = useState(0);
   const cardRefs = useRef<Array<HTMLButtonElement | null>>([]);
@@ -99,7 +96,6 @@ function ThemePicker({ value, onChange }: ThemePickerProps) {
         const preview = recipe.colorways[0]?.preview;
         const accent = preview?.accent || NEUTRAL_BAR;
         const active = recipe.id === value;
-        const source = recipeSourceLabel(recipe.source, tForSource);
         return (
           <button
             key={recipe.id}
@@ -141,11 +137,6 @@ function ThemePicker({ value, onChange }: ThemePickerProps) {
                   : t("{{count}} 配色", { count: recipe.colorways.length })}
               </span>
             </div>
-            {/* 来源行——「壳自带」/「来自 X」；悬停提示走 `data-hint`（属性式铁律：
-                ⛔ 原生 `title=` 已由门禁 check-native-title 判红，第二把尺子必然漂移） */}
-            {source ? (
-              <div className="ldk-theme-picker-source" data-hint={source}>{source}</div>
-            ) : null}
           </button>
         );
       })}

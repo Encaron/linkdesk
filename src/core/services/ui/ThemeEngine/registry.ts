@@ -135,13 +135,15 @@ export function registerFallbackThemes(): void {
     //   与 theme-defaults "light" 配方的 "dark" 配色冲突 → 自定义模式配色下拉 React key 碰撞。
     //   改名 dark-fallback 不破坏遗留 app.themeColor="dark" 解析：resolveColorway 未命中回落 colorways[0]（空配色同渲染）。
     // 🔴 2026-09-30「指认不明」：显示名不再用颜色词 `Dark`/`Light`（与插件配方的 `Light` 并列时被读成
-    //   同一套的深浅搭子）——改「内置深色／内置浅色」，且**壳自己的名字是 UI 文字** ⇒ 显示期走
-    //   `ThemeEngine/source.ts` 的 `recipeDisplayName()`（t()，译名住语言包）。此处存的是**中文原文 key**。
-    { id: "dark", name: "内置深色", type: "dark", colorways: [{ id: "dark-fallback", name: "内置深色", colors: {} }] },
+    //   同一套的深浅搭子）——壳这张就叫**「内置」**（用户 2026-09-30 拍板：「原 dark 改为内置即可」），
+    //   浅色兜底 = 「内置浅色」；插件那只配方改名「官方主题」⇒ 两张卡从名字上就分得开。
+    //   且**壳自己的名字是 UI 文字** ⇒ 显示期走 `ThemeEngine/naming.ts` 的 `recipeDisplayName()`
+    //   （t()，译名住语言包）。此处存的是**中文原文 key**。
+    { id: "dark", name: "内置", type: "dark", colorways: [{ id: "dark-fallback", name: "深色", colors: {} }] },
     undefined
   );
   ThemeRegistry.registerRecipe(
-    { id: "light", name: "内置浅色", type: "light", colorways: [{ id: "light", name: "内置浅色", colors: {} }] },
+    { id: "light", name: "内置浅色", type: "light", colorways: [{ id: "light", name: "浅色", colors: {} }] },
     undefined
   );
 }

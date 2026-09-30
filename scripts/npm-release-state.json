@@ -3,24 +3,24 @@
   "packages": [
     {
       "name": "@linkdesk/contracts",
-      "version": "0.1.28",
-      "contentHash": "5e91599b09a5a4ddbdbc8ce8f2d70cd646779fe04ad958a193e35f8b3b43f6e1",
+      "version": "0.1.29",
+      "contentHash": "ebf03e8dd599e31180bda8a08aaf23e77bbc27a44d0823dfe77c579eb3588f48",
       "fileHashes": {
         "contracts/README.md": "24f92b03cbdacc4a",
-        "contracts/linkdesk.d.ts": "1ac97601560016ac"
+        "contracts/linkdesk.d.ts": "13fc1ff9b08ce3a5"
       }
     },
     {
       "name": "@linkdesk/plugin-sdk",
-      "version": "0.1.62",
-      "contentHash": "d15c64566e217da033eb4186edff85e554a666497aa620cc07f65bd0a711d197",
+      "version": "0.1.63",
+      "contentHash": "1420aae1c6b6c1eca5638026790f897a8ced316e60610c44368c848c838b8a52",
       "fileHashes": {
         "packages/plugin-sdk/README.md": "dd2a3dac5f82ce42",
         "packages/plugin-sdk/dev-host/dev-main.tsx": "49c59b28e17ca424",
         "packages/plugin-sdk/dev-host/index.html": "05b6731f90031d1a",
         "packages/plugin-sdk/dev-host/linkdesk-mock.generated.ts": "7fd7634a30c53ff0",
         "packages/plugin-sdk/dev-host/mock.ts": "a5c80cf9e01fae04",
-        "packages/plugin-sdk/schemas/host-css-names.json": "b992877de347ab54",
+        "packages/plugin-sdk/schemas/host-css-names.json": "3297f6a4a35923a2",
         "packages/plugin-sdk/schemas/host-menu-slots.json": "3677a4d73c61045f",
         "packages/plugin-sdk/schemas/host-reserved.json": "fa53235c6c0fce1e",
         "packages/plugin-sdk/schemas/icon-theme.schema.json": "81be40aac83072fb",
@@ -126,8 +126,8 @@
     },
     {
       "name": "@linkdesk/ui",
-      "version": "0.2.31",
-      "contentHash": "6f1353fcd441f3cad35d23701b5b2d4c855647af612ff3e9968c9b982eb112c4",
+      "version": "0.2.32",
+      "contentHash": "b9dcf3cd86d9314fb73a6f2334179a554b2c69701477988ad7a34174dbb84738",
       "fileHashes": {
         "packages/linkdesk-ui/README.md": "4a0ec460a3377590",
         "packages/linkdesk-ui/src/index.ts": "9dea2e375554b92f",
@@ -208,18 +208,17 @@
         "src/components/shared/string-list-editor/StringListEditor.tsx": "34d4369775b3155e",
         "src/components/shared/string-list-editor/urlSourceKey.test.ts": "e4d908d3f876fa24",
         "src/components/shared/string-list-editor/urlSourceKey.ts": "21599e9e28f9dcbf",
-        "src/components/shared/theme-picker/ThemePicker.css": "95263b79384455a0",
-        "src/components/shared/theme-picker/ThemePicker.test.tsx": "fa244aeb875643fb",
-        "src/components/shared/theme-picker/ThemePicker.tsx": "42b25f3b5ee2dfc0",
-        "src/components/shared/theme-picker/recipeSource.ts": "7ed19a357a0a6955",
+        "src/components/shared/theme-picker/ThemePicker.css": "28a50faf75a011b2",
+        "src/components/shared/theme-picker/ThemePicker.test.tsx": "5fba32182ef9ad17",
+        "src/components/shared/theme-picker/ThemePicker.tsx": "9e6b380135b45dfb",
         "src/components/shared/toggle/Toggle.css": "bbd7aadf07a5a7c5",
         "src/components/shared/toggle/Toggle.tsx": "c8554a52d4c9ec47"
       }
     },
     {
       "name": "@linkdesk/plugin-docs",
-      "version": "0.1.48",
-      "contentHash": "5706eeaed2afa13a5d911573f58f877297cce90a2223fbacd5d1da3f9699649e",
+      "version": "0.1.49",
+      "contentHash": "03ca7f2525f894b2f6117c92970a2769eebe25408a42a18c06a88f927702813c",
       "fileHashes": {
         "packages/plugin-docs/README.md": "6cd51394e987a3f2",
         "packages/plugin-docs/docs/00-readme.md": "ab34ec71ea7f4099",
@@ -233,7 +232,7 @@
         "packages/plugin-docs/docs/08-view-container-api.md": "a576d7db174ebdc6",
         "packages/plugin-docs/docs/09-plugin-directory-layout.md": "569f618f21318a59",
         "packages/plugin-docs/docs/10-building-a-settings-plugin.md": "2a36f9cb9f4f3ba2",
-        "packages/plugin-docs/docs/11-authoring-themes.md": "dde24f144518881a",
+        "packages/plugin-docs/docs/11-authoring-themes.md": "17059539724f8c55",
         "packages/plugin-docs/docs/12-readme-media-contract.md": "f7cb640e07d9dbd3",
         "packages/plugin-docs/docs/13-development-guide.md": "9d5bfc94e2cc8621",
         "packages/plugin-docs/docs/14-data-pipeline-command-conventions.md": "36164c41f3799b8e",
@@ -257,7 +256,7 @@
         "packages/plugin-docs/docs/zh/08-ViewContainer-视图容器API.md": "5765a0a85db77766",
         "packages/plugin-docs/docs/zh/09-插件目录规范.md": "a375f1c35d7af8aa",
         "packages/plugin-docs/docs/zh/10-如何造一个设置插件.md": "914ded641389b1f6",
-        "packages/plugin-docs/docs/zh/11-主题制作.md": "38de18785001cd21",
+        "packages/plugin-docs/docs/zh/11-主题制作.md": "93763e4bbed5544a",
         "packages/plugin-docs/docs/zh/12-README说明区媒体契约.md": "612f7993c107bf42",
         "packages/plugin-docs/docs/zh/13-插件开发指南.md": "dc0c9e701c61455f",
         "packages/plugin-docs/docs/zh/14-数据管道命令约定.md": "bf3c0b5e0f6fbf25",

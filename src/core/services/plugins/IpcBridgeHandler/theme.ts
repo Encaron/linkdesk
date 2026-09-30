@@ -8,14 +8,14 @@
  */
 
 import { ThemeRegistry } from "../../../registry/appearance/ThemeRegistry";
-import { recipeDomains, getActiveRecipe, getEffectiveTokens, normalizeThemeValue, normalizeThemeColorValue, deriveAppearanceSeedMap, getThemeBaseTokens, MIX_SOURCE_KEYS, recipeDisplayName, colorwayDisplayName, recipeSourceOf } from "../../ui/ThemeEngine";
+import { recipeDomains, getActiveRecipe, getEffectiveTokens, normalizeThemeValue, normalizeThemeColorValue, deriveAppearanceSeedMap, getThemeBaseTokens, MIX_SOURCE_KEYS, recipeDisplayName, colorwayDisplayName } from "../../ui/ThemeEngine";
 import { getConfigurationValue, setConfigurationValue, resetConfigurationValueBatch } from "../../configuration/ConfigurationService";
 import type { RecipeMeta, ColorwayMeta } from "../../../api/linkdesk-api/types";
 import type { ThemeRecipe } from "../../../types/theme";
 
 /** 配方 → RecipeMeta——预览色取该配色 accent/bg-window（缺该 token → 空串，卡片徽标兜底）。
- *  2026-09-30「指认不明」：显示名与配色名走 `ThemeEngine/source`（宿主兜底 t()、插件原样）＋ 带上
- *  `source`（谁提供的）——卡片「壳自带／来自 X」那一行就是它的渲染。 */
+ *  2026-09-30「指认不明」：显示名与配色名走 `ThemeEngine/naming`（宿主兜底 t()、插件原样）——
+ *  壳那张叫「内置」、官方插件那只叫「官方主题」，两张卡从名字上就分得开（⛔ 不加来源字段/来源行）。 */
 function toRecipeMeta(recipe: ThemeRecipe): RecipeMeta {
   const colorways: ColorwayMeta[] = recipe.colorways.map((cw) => ({
     id: cw.id,
@@ -31,7 +31,6 @@ function toRecipeMeta(recipe: ThemeRecipe): RecipeMeta {
     type: recipe.type,
     colorways,
     domains: recipeDomains(recipe),
-    source: recipeSourceOf(recipe.id),
   };
 }
 
