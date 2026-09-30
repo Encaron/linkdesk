@@ -3,11 +3,11 @@
   "packages": [
     {
       "name": "@linkdesk/contracts",
-      "version": "0.1.26",
-      "contentHash": "cc27b61046c32dbd02e1a1432e0385fa90d94145c00223245235800227d3ef0d",
+      "version": "0.1.27",
+      "contentHash": "3bac6b4693ac99748dcbec0c2cb77542ac66663fc873582818b32e5dd885dc5c",
       "fileHashes": {
         "contracts/README.md": "24f92b03cbdacc4a",
-        "contracts/linkdesk.d.ts": "5a047b8c9c15a45a"
+        "contracts/linkdesk.d.ts": "a376ec2277064757"
       }
     },
     {
@@ -126,8 +126,8 @@
     },
     {
       "name": "@linkdesk/ui",
-      "version": "0.2.29",
-      "contentHash": "d3c829f8a002080e6bac4a676d0903b3b5a0698beac29ba9feb2f9cb3adb8ae0",
+      "version": "0.2.30",
+      "contentHash": "a68303ee7803fe45869c713f44d368dcb62aba0f08f3444ebb9c3b7edc77069b",
       "fileHashes": {
         "packages/linkdesk-ui/README.md": "4a0ec460a3377590",
         "packages/linkdesk-ui/src/index.ts": "9dea2e375554b92f",
@@ -159,11 +159,11 @@
         "src/components/shared/hint-tip/HintTip.css": "7bcf6116799cbbcb",
         "src/components/shared/hint-tip/HintTip.test.tsx": "b1d9851a713afab3",
         "src/components/shared/hint-tip/HintTip.tsx": "75a281b1deac4251",
-        "src/components/shared/hint-tip/HintTipRenderer.test.tsx": "2335d6d7b69f2a1a",
-        "src/components/shared/hint-tip/HintTipRenderer.tsx": "a670314db9787e49",
+        "src/components/shared/hint-tip/HintTipRenderer.test.tsx": "d7dc83412dc6a0ca",
+        "src/components/shared/hint-tip/HintTipRenderer.tsx": "275d58b3df95f9e3",
         "src/components/shared/hint-tip/hintAttrs.ts": "cb61354e01bf4e99",
-        "src/components/shared/hint-tip/placement.test.ts": "e8dae6e4bf3dd6b3",
-        "src/components/shared/hint-tip/placement.ts": "c7f96a845270b6e3",
+        "src/components/shared/hint-tip/placement.test.ts": "eff720a6cdcecec4",
+        "src/components/shared/hint-tip/placement.ts": "61d324366d057e6e",
         "src/components/shared/hooks/useClickPreview.ts": "b37cf159056777ab",
         "src/components/shared/hooks/useClipboardKeys.ts": "d5c83295fa46f838",
         "src/components/shared/hooks/useDebouncedInput.ts": "29ff2824aaa8e951",
