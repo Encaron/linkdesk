@@ -12,8 +12,7 @@
  */
 import { ipcMain, app } from "electron";
 import { spawn, type ChildProcess } from "child_process";
-import * as path from "path";
-import * as fs from "fs";
+import { diagLog } from '../../services/diag-log.js'; // E6#163：诊断日志唯一写入口（带体积上限/轮转）
 import { IPC } from '../channels.js';
 import { IpcBridge } from '../ipc-bridge.js';
 // E5.8#24.6：spawn 前哨兵——纯函数模块（无 electron import，可直接 vitest）
@@ -45,13 +44,10 @@ function lspSpawnDirFor(langKey: string): string {
  * IPC 通道只注册一次 */
 let _registered = false;
 
-/** E5.8#24.6：写主进程诊断日志——console.error 不进 protocol-debug.log（%APPDATA%/linkdesk/），必须直接写文件 */
+/** E5.8#24.6：写主进程诊断日志——console.error 不进诊断日志文件（%APPDATA%/linkdesk/）。
+ *  E6#163：落盘归唯一写入口（原为自写 appendFileSync——无上限日志的七处成因之一）。 */
 function appendLspLog(tag: string, line: string): void {
-  try {
-    const logFile = path.join(app.getPath("userData"), "protocol-debug.log");
-    const ts = new Date().toISOString();
-    fs.appendFileSync(logFile, `[${ts}] [main] [${tag}] ${line}\n`);
-  } catch { /* ignore */ }
+  diagLog(`[main] [${tag}] ${line}`);
 }
 
 export function registerLspHandlers(): void {

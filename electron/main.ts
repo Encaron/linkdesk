@@ -28,6 +28,7 @@ import { registerAppearanceHandlers } from './ipc/handlers/appearance-handlers.j
 import { registerPoolHandlers } from './ipc/handlers/plugin-view-handlers.js'; // E5.6#8d
 import { registerLspHandlers } from './ipc/handlers/lsp-handlers.js'; // E4V#40s1
 import { registerPluginInstallHandlers } from './ipc/handlers/plugin-install-handlers.js'; // E6#11/#13（1.2-5）：装卸更主进程 fs/net 段
+import { diagLog } from './services/diag-log.js'; // E6#163：诊断日志唯一写入口（带体积上限/轮转）
 import { registerProtocol } from './plugins/protocol.js';
 import { ingestPluginBundles } from './plugins/bundle-ingest.js'; // E6#7（1.2-4）：启动解压 .linkdesk-plugin
 import { installBundledPlugins } from './plugins/bundled-install.js'; // E6#15c：首启自动装 bundled-plugins（发货夹）
@@ -589,14 +590,11 @@ function createWorkspaceWindow(workspaceFolder: string): void {
   console.log(`[main] workspace 窗已创建 ${wsId} folder=${workspaceFolder}`);
 }
 
-/** E6#47b-2：壳渲染进程 console 转发到 protocol-debug.log（首窗/工作窗共用，防两处漂移） */
+/** E6#47b-2：壳渲染进程 console 转发到诊断日志（首窗/工作窗共用，防两处漂移）。
+ *  E6#163：落盘走唯一写入口（带体积上限/轮转）——原为自写 appendFileSync，是「日志无上限」的七处成因之一。 */
 function forwardShellConsoleToFile(win: BrowserWindow): void {
   win.webContents.on('console-message', (event) => {
-    try {
-      const logFile = path.join(app.getPath('userData'), 'protocol-debug.log');
-      const ts = new Date().toISOString();
-      fs.appendFileSync(logFile, `[${ts}] [renderer] ${event.message}\n`);
-    } catch { /* ignore */ }
+    diagLog(`[renderer] ${event.message}`);
   });
 }
 

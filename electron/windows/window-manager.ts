@@ -8,8 +8,8 @@
  */
 
 import { BrowserWindow, WebContentsView, WebContents, app, nativeTheme, screen } from 'electron';
-import * as fs from 'fs';
 import * as path from 'path';
+import { diagLog } from '../services/diag-log.js'; // E6#163：诊断日志唯一写入口（带体积上限/轮转）
 import { seedBackgroundColor } from '../theme-seed.js'; // 04「启动过场」④A：池 WCV 背景同源 seed
 import { DEV_SERVER_URL } from '../constants.js'; // E5.6#5：Pool URL 构建（E5.7#45.5：shared/ 并入 constants.ts）
 import { attachKeyboardRouting } from './keyboard-router.js'; // E5.7 快捷键路由：池 WCV 挂载（工厂处——含 rebuildPool 覆盖）
@@ -175,12 +175,10 @@ export class WindowManager {
       const tag = `[pool:${debugLabel}]`;
       if (event.level === 'error') console.error(`${tag} ${event.message}`);
       else console.log(`${tag} ${event.message}`);
-      // E5.7#86 诊断：池渲染进程 console 也写 protocol-debug.log——与壳 [renderer] 同文件。
+      // E5.7#86 诊断：池渲染进程 console 也写诊断日志——与壳 [renderer] 同文件。
       // 此前池侧只打主进程终端——安装版 F12 禁用，池侧错误永远落不了盘（调试缺口）。
-      try {
-        const logFile = path.join(app.getPath('userData'), 'protocol-debug.log');
-        fs.appendFileSync(logFile, `[${new Date().toISOString()}] [pool] ${event.message}\n`);
-      } catch { /* ignore */ }
+      // E6#163：落盘走唯一写入口（带体积上限/轮转）。
+      diagLog(`[pool] ${event.message}`);
     });
 
     view.webContents.on('render-process-gone', (_event, details) => {
@@ -397,12 +395,10 @@ export class WindowManager {
   /** E5.8#43-1（A4）：壳侧主动关闭的窗口集合——closed 事件里跳过 notifyShellWindowClosed（壳已知道，防冗余通知） */
   private shellClosingWindows = new Set<string>();
 
-  /** E5.8#44 实机修复诊断：主进程关键路径写 protocol-debug.log（终端不可达时也能定位——与池 console-message 转发同文件） */
+  /** E5.8#44 实机修复诊断：主进程关键路径写诊断日志（终端不可达时也能定位——与池 console-message 转发同文件）。
+   *  E6#163：落盘走唯一写入口（原为自写 appendFileSync——无上限日志的七处成因之一）。 */
   private logToFile(msg: string): void {
-    try {
-      const logFile = path.join(app.getPath('userData'), 'protocol-debug.log');
-      fs.appendFileSync(logFile, `[${new Date().toISOString()}] [window-manager] ${msg}\n`);
-    } catch { /* ignore */ }
+    diagLog(`[window-manager] ${msg}`);
   }
 
   /**

@@ -15,17 +15,15 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { APP_SCHEME, APPEARANCE_SCHEME } from '../constants';
 import { envService } from '../services/env-service.js';
+import { diagLog } from '../services/diag-log.js'; // E6#163：诊断日志唯一写入口（带体积上限/轮转）
 // E6#7（1.2-4）：多根解析——resolveLinkdeskPath 单根版保留（7 单测不动），protocol 走 multi
 import { resolveLinkdeskPathMulti } from '../../src/core/utils/path/linkdeskProtocolPath.js';
 import { APPEARANCE_SUBDIR } from '../../src/core/utils/path/userDataImagePath.js';
 
-/** E5#114d 诊断：写入文件而非 console.log（生产环境 stdout 不可见） */
+/** E5#114d 诊断：写入文件而非 console.log（生产环境 stdout 不可见）。
+ *  E6#163：落盘归唯一写入口 `diagLog`（本模块曾是七处自写 appendFileSync 之一——日志无上限的成因）。 */
 function diag(msg: string): void {
-  try {
-    const logFile = path.join(app.getPath('userData'), 'protocol-debug.log');
-    const ts = new Date().toISOString();
-    fs.appendFileSync(logFile, `[${ts}] ${msg}\n`);
-  } catch { /* 诊断日志写失败不致命 */ }
+  diagLog(msg);
 }
 
 /**
@@ -133,7 +131,11 @@ export function registerProtocol(): void {
       }
       const buf = fs.readFileSync(fullPath);
       headers.set('Content-Length', String(stat.size));
-      diag(`200 OK — ${urlPath} → ${mimeType} (${buf.length} bytes)`);
+      // E6#163：成功请求默认**不记**——2026-09-30 实测它是日志体积第一大噪声源（22.8%／51,060 行）。
+      // 需要逐请求取证时置 LINKDESK_LOG_PROTOCOL_200=1 调回；失败面（403/404/500）恒记，不受该开关影响。
+      if (process.env.LINKDESK_LOG_PROTOCOL_200 === '1') {
+        diag(`200 OK — ${urlPath} → ${mimeType} (${buf.length} bytes)`);
+      }
       return new Response(buf, { status: 200, headers });
     } catch (err) {
       diag(`500 ERROR — ${urlPath}: ${String(err)}`);

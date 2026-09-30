@@ -13,19 +13,13 @@
  * 铁律 19/20：注册者（调用本函数的人）各自持有 once-guard；本模块无监听器、无状态。
  */
 
-import { app, ipcMain } from "electron";
-import { appendFileSync } from "fs";
-import * as path from "path";
+import { ipcMain } from "electron";
+import { diagLog } from "../services/diag-log.js"; // E6#163：诊断日志唯一写入口（带体积上限/轮转）
 
-/** 写主进程诊断日志——console.error 不进 protocol-debug.log，必须直写文件（lsp-handlers.ts 惯例） */
+/** 写主进程诊断日志——console.error 不进诊断日志文件，必须走唯一写入口（lsp-handlers.ts 惯例）。
+ *  E6#163：本处原为自写 appendFileSync（无上限日志的七处成因之一），现归 `diagLog`。 */
 function writeIpcLog(tag: string, line: string): void {
-  try {
-    const logFile = path.join(app.getPath("userData"), "protocol-debug.log");
-    const ts = new Date().toISOString();
-    appendFileSync(logFile, `[${ts}] [main] [${tag}] ${line}\n`);
-  } catch {
-    /* 日志失败不阻断调用 */
-  }
+  diagLog(`[main] [${tag}] ${line}`);
 }
 
 /** 单值摘要——长字符串截断、二进制只记字节数、深对象封顶，绝不 throw（循环引用等） */

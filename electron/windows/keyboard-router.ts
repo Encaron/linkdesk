@@ -16,27 +16,21 @@
  * createPoolView 工厂处挂载（初始创建 + rebuildPool 崩溃恢复全覆盖）。
  */
 
-import { BrowserWindow, WebContentsView, app, type Event, type Input } from 'electron';
-import * as fs from 'fs';
-import * as path from 'path';
+import { BrowserWindow, WebContentsView, type Event, type Input } from 'electron';
+import { diagLog } from '../services/diag-log.js'; // E6#163：诊断日志唯一写入口（带体积上限/轮转）
 import { IPC } from '../ipc/channels.js';
 // E5.7#97：KeyboardInput 归口 src/core/types/ipc/keyboard.ts——与壳 KeybindingRegistry 同源（原本地双份定义）
 import type { KeyboardInput, KeybindingSyncData } from '../../src/core/types/ipc/keyboard';
 // E5.8#1b：keybinding 归一化集中——主进程/壳/池三端共用单一权威源（防 E5.7#79 漂移复发）
 import { keyboardInputToKeyString } from '../../src/core/utils/keybindingNormalization.js';
 
-// ── 诊断日志（写 protocol-debug.log——与 renderer console-message 同文件）──
+// ── 诊断日志（走唯一写入口——与 renderer console-message 同文件。E6#163：原为自写 appendFileSync）──
 
 let _debugLog = false; // 生产静默，排查问题时改 true
 function debug(msg: string): void {
   if (!_debugLog) return;
-  const ts = new Date().toISOString();
-  const line = `[${ts}] [keyboard-router] ${msg}`;
-  console.error(line);
-  try {
-    const logFile = path.join(app.getPath('userData'), 'protocol-debug.log');
-    fs.appendFileSync(logFile, line + '\n');
-  } catch { /* ignore */ }
+  console.error(`[${new Date().toISOString()}] [keyboard-router] ${msg}`);
+  diagLog(`[keyboard-router] ${msg}`);
 }
 
 // ── 常量——与 KeybindingRegistry.CHORD_TIMEOUT 同值 ──
