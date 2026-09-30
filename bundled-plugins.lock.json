@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "syncedAt": "2026-09-30T12:52:12.033Z",
+  "syncedAt": "2026-09-30T20:59:11.816Z",
   "note": "出厂种子的账（E6#101）。`seed:true` = 随包出厂（bootstrap 集，判据「断网零插件时用户能不能自救」）；`seed:false` = 纯市场（只登记，不随包）。谁随包是**数据**不是代码（硬约束 10）。刷新：npm run sync:bundled -- --latest；校验：npm run sync:bundled -- --offline。",
   "plugins": [
     {
@@ -62,17 +62,17 @@
     {
       "id": "theme-aurora-glass",
       "repo": "Encaron/linkdesk-plugin-theme-aurora-glass",
-      "version": "1.0.8",
-      "downloadUrl": "https://github.com/Encaron/linkdesk-plugin-theme-aurora-glass/releases/download/v1.0.8/theme-aurora-glass.linkdesk-plugin",
-      "fingerprint": "CHANGELOG.md:c9f1fd10da105d2c4ddf71b077174f82108e08d433ea2b99b8754b4afbc653bc\nLICENSE:66ade75576a2f04b7f1a11340b8141cf42a26d3a64bc441e3822e193291d3051\nREADME.md:003ac71cb34917b2c6af14ac4d7e4361e04f28d19b9fd2510857dc36b77b4712\ni18n/en.json:04cb912da4bbe262b44aa763cc0308bfecec00faa61d51cad9be1a90e47b7704\nplugin.json:dbf5d9eb93cbef193ca08c8db618354190777d1b772e726d3f79fb402bdca3d1\nresources/aurora-bg.svg:1c5144ff5cfb368ee9c5c38492b93c9d1dcbae486763a9c040164ad063062d68\nresources/cover.svg:7c92af9f83b1ab47305af697b77bfa0c1dbeb58bec79c481a0cf03d1f6baf96c\nresources/icon.svg:dab676f3a55b54ec995ea9dde8314a3cd3849c7189b48490baca215da427ca8d\nthemes/aurora-glass.json:229fa2e61ba6acc9585ae68cb5eba1dbd9fba7b1cca72a01adeca6a15aa64009",
+      "version": "1.0.9",
+      "downloadUrl": "https://github.com/Encaron/linkdesk-plugin-theme-aurora-glass/releases/download/v1.0.9/theme-aurora-glass.linkdesk-plugin",
+      "fingerprint": "CHANGELOG.md:0ba303dbdd9d42a0103171520dfa7b3a4e98994b8420d2804f619ec6e7ef8d1d\nLICENSE:66ade75576a2f04b7f1a11340b8141cf42a26d3a64bc441e3822e193291d3051\nREADME.md:003ac71cb34917b2c6af14ac4d7e4361e04f28d19b9fd2510857dc36b77b4712\ni18n/en.json:927e4037c022a6ff13c8603b4008fd56af94164f36974dccf939e13da09a2264\nplugin.json:0bf79c296ac53adfdf486d6b3d9b4eb0e46b8c23230b5718e224104586b53cef\nresources/aurora-bg.svg:1c5144ff5cfb368ee9c5c38492b93c9d1dcbae486763a9c040164ad063062d68\nresources/cover.svg:7c92af9f83b1ab47305af697b77bfa0c1dbeb58bec79c481a0cf03d1f6baf96c\nresources/icon.svg:dab676f3a55b54ec995ea9dde8314a3cd3849c7189b48490baca215da427ca8d\nthemes/aurora-glass.json:174b5e1629051e47b358fc041cc1381f07bd1dd68a85f65237dd9094df458359",
       "seed": false
     },
     {
       "id": "theme-defaults",
       "repo": "Encaron/linkdesk-plugin-theme-defaults",
-      "version": "1.0.10",
-      "downloadUrl": "https://github.com/Encaron/linkdesk-plugin-theme-defaults/releases/download/v1.0.10/theme-defaults.linkdesk-plugin",
-      "fingerprint": "CHANGELOG.md:546e8b93547ea700fd45b10697e8097f6edf92fd033b89ea6db0fef66436287d\nLICENSE:66ade75576a2f04b7f1a11340b8141cf42a26d3a64bc441e3822e193291d3051\nREADME.md:770976b5c4d61f57f326a4e4b2a6148c9c1e6f867ffcff7914e0502a88d5bd1b\ni18n/en.json:2593efabad0034dfc32c83e713e74fb3244df47d02f401dda4f723e962039fd6\nplugin.json:b9b3ac600054d3f73cc3e8cf96a6fc27a3a69bd26cf28f0d1dd3952f2fb49f8b\nresources/icon.svg:a5f74acf260e697dc17311e2e675f3ac32f977dc84895d2bdd3eb36efc3d7609\nthemes/defaults.json:0be5245a346a3d65773b2a4c3fe8f2b138bd55603d4d5bcd8b60a96575674988",
+      "version": "1.0.11",
+      "downloadUrl": "https://github.com/Encaron/linkdesk-plugin-theme-defaults/releases/download/v1.0.11/theme-defaults.linkdesk-plugin",
+      "fingerprint": "CHANGELOG.md:0908465788d2fd31728b268b4588ed0f6f777e725b7c2ca8f554084523ee94ac\nLICENSE:66ade75576a2f04b7f1a11340b8141cf42a26d3a64bc441e3822e193291d3051\nREADME.md:770976b5c4d61f57f326a4e4b2a6148c9c1e6f867ffcff7914e0502a88d5bd1b\ni18n/en.json:eedb3466179aa06d50065b0819b7caa385f0049f5f2b15afadc9e2d36628b21d\nplugin.json:a816374f919cc204dc7d46fdf247658b22798a13e3fe6b40dd2c8f227b9516f5\nresources/icon.svg:a5f74acf260e697dc17311e2e675f3ac32f977dc84895d2bdd3eb36efc3d7609\nthemes/defaults.json:b3b78b4425922f1fc25306368c91e08794e42aab5c058f20b6bb0c2ee36c2e2e",
       "seed": true
     },
     {
@@ -86,49 +86,49 @@
     {
       "id": "theme-mint-soda",
       "repo": "Encaron/linkdesk-plugin-theme-mint-soda",
-      "version": "1.0.6",
-      "downloadUrl": "https://github.com/Encaron/linkdesk-plugin-theme-mint-soda/releases/download/v1.0.6/theme-mint-soda.linkdesk-plugin",
-      "fingerprint": "CHANGELOG.md:3dc0c6940d045302ef6ea4a626577bb31a8f895d85ffb2d8e358ccb525d75c66\nLICENSE:66ade75576a2f04b7f1a11340b8141cf42a26d3a64bc441e3822e193291d3051\nREADME.md:954dfdce5a4427003a90a9af0102dd8e488a1424ae50835204979b86b69da88d\ni18n/en.json:1032c2a23fa6ec9c68560875e44125a50f8f35bb5108437b8771cfd54fcdf440\nplugin.json:48a25b95c91407a77d135e651758f590af1aa6ee36927087a7e8d224636ec87c\nresources/icon.svg:6234428090a65476c44b16ca310f071f301bb212f90548ecc5c591f765ff3b99\nthemes/mint-soda.json:34b1492074b9faf1fbf1a11c07b4f14e335a47f44e32909cf1a0ee810ca7af72",
+      "version": "1.0.7",
+      "downloadUrl": "https://github.com/Encaron/linkdesk-plugin-theme-mint-soda/releases/download/v1.0.7/theme-mint-soda.linkdesk-plugin",
+      "fingerprint": "CHANGELOG.md:9f8abd4102674d2fd3d2abed4b96da64ca8e1622e3a7c9184b69879038d9ab7e\nLICENSE:66ade75576a2f04b7f1a11340b8141cf42a26d3a64bc441e3822e193291d3051\nREADME.md:954dfdce5a4427003a90a9af0102dd8e488a1424ae50835204979b86b69da88d\ni18n/en.json:23b3401a53692703d6d49efa95f3ffd817d68bf750ab6bfa313d0718cdb25e62\nplugin.json:444f57ddc5e1c485ffffe159a4008571ae338cf5aa7589983760cf539918ef63\nresources/icon.svg:6234428090a65476c44b16ca310f071f301bb212f90548ecc5c591f765ff3b99\nthemes/mint-soda.json:27565e9a68b55c39822b6e551bb0343ef037f1df5cf90f9faf50572085c9ab0b",
       "seed": false
     },
     {
       "id": "theme-panorama",
       "repo": "Encaron/linkdesk-plugin-theme-panorama",
-      "version": "1.0.6",
-      "downloadUrl": "https://github.com/Encaron/linkdesk-plugin-theme-panorama/releases/download/v1.0.6/theme-panorama.linkdesk-plugin",
-      "fingerprint": "CHANGELOG.md:430e1b22e22e38a5f480f299d93387efa034968e731cbb7e21961ae21ae7e7a6\nLICENSE:66ade75576a2f04b7f1a11340b8141cf42a26d3a64bc441e3822e193291d3051\nREADME.md:146274de6f63d0fca65d00c6591cc926f6a6299cf4bbeb6f2126da808422cd2d\ni18n/en.json:128bc8cbe4eb16d91a56e6c2cca13f242f40c386b4b2dfe192814da5881dc8c9\nplugin.json:eb66af4b9529b7703be63d304fdf601c3725f1d87adcd67370a64dde02d5d65e\nresources/icon.svg:e8890976d944521790c0afffd339bd9169b2ca591a1da9f2a4aa254d8b7483c5\nresources/sailor-moon.jpg:858f0173d0ccc5926a5eaeed28b883b2f1e1b676a1ae3bcb48e6fe1f6a0ee8f7\nthemes/panorama.json:8187b990ebcb7a0b437fc72c7c38cbba98f5c6287356f1a47c37fbdd9b645437",
+      "version": "1.0.7",
+      "downloadUrl": "https://github.com/Encaron/linkdesk-plugin-theme-panorama/releases/download/v1.0.7/theme-panorama.linkdesk-plugin",
+      "fingerprint": "CHANGELOG.md:402fea83dd96f5be0cbee8ab68b80e89379679e170281c2138c33b871cebd7e6\nLICENSE:66ade75576a2f04b7f1a11340b8141cf42a26d3a64bc441e3822e193291d3051\nREADME.md:146274de6f63d0fca65d00c6591cc926f6a6299cf4bbeb6f2126da808422cd2d\ni18n/en.json:8c32bdd89527df9ccfe7e9e757297816c3ba0d1c840b4e2ec2b0ec73f5c62709\nplugin.json:ae0b88ae95af1fffb18f23461ce06c9bfc14a180ab79f558ea2988bc688354a6\nresources/icon.svg:e8890976d944521790c0afffd339bd9169b2ca591a1da9f2a4aa254d8b7483c5\nresources/sailor-moon.jpg:858f0173d0ccc5926a5eaeed28b883b2f1e1b676a1ae3bcb48e6fe1f6a0ee8f7\nthemes/panorama.json:7a7a97835dd5b8619a6b98de574800ae9d7a30e4cba6fd128e4486f16cc3eb74",
       "seed": false
     },
     {
       "id": "theme-pill",
       "repo": "Encaron/linkdesk-plugin-theme-pill",
-      "version": "1.0.6",
-      "downloadUrl": "https://github.com/Encaron/linkdesk-plugin-theme-pill/releases/download/v1.0.6/theme-pill.linkdesk-plugin",
-      "fingerprint": "CHANGELOG.md:1c593d605c1c181374012c75e0f8b99b49760e573d880dad9f7b1ade0f478a27\nLICENSE:66ade75576a2f04b7f1a11340b8141cf42a26d3a64bc441e3822e193291d3051\nREADME.md:34c26538dec105c36267c232f75146f74cbaff6cf715a2673fc90562abc52a68\ni18n/en.json:e231d19d509146dc3a39cad18784bd4a02ae11e8cc9203056b459841328622d8\nplugin.json:d74674d18f68afb26b10a2229fadba985976a8312bb0eabea0986e87346f73e6\nresources/icon.svg:8a6aeac4063132cc317762a66366b1f77778474857d196598cbaaa119655d16d\nthemes/pill-bubble.json:f56323cda39a04db7629f24ffb59e9046eb0a70ff983ae864a4990c5fb7e6d11",
+      "version": "1.0.7",
+      "downloadUrl": "https://github.com/Encaron/linkdesk-plugin-theme-pill/releases/download/v1.0.7/theme-pill.linkdesk-plugin",
+      "fingerprint": "CHANGELOG.md:6d03d56424a308cad2bc314deb9dafb3daea96939b51d25bb1f232816084de5c\nLICENSE:66ade75576a2f04b7f1a11340b8141cf42a26d3a64bc441e3822e193291d3051\nREADME.md:34c26538dec105c36267c232f75146f74cbaff6cf715a2673fc90562abc52a68\ni18n/en.json:b199b0ddab15abaffbeaa1465ac6ce65c5fbbff73ae91dd0aeb9102ce676a568\nplugin.json:335044d9420015022da332284c233225b396eaa84de0d592879830accaa7e472\nresources/icon.svg:8a6aeac4063132cc317762a66366b1f77778474857d196598cbaaa119655d16d\nthemes/pill-bubble.json:8d2d6027c836a6a255f135b373b1b28a3d1e90b30bf13123f5991eef109abbc6",
       "seed": false
     },
     {
       "id": "theme-songti",
       "repo": "Encaron/linkdesk-plugin-theme-songti",
-      "version": "1.0.6",
-      "downloadUrl": "https://github.com/Encaron/linkdesk-plugin-theme-songti/releases/download/v1.0.6/theme-songti.linkdesk-plugin",
-      "fingerprint": "CHANGELOG.md:cd2240448cdf9d23124b736b61552bbbf13717d1be389beb03b73d311238f398\nLICENSE:66ade75576a2f04b7f1a11340b8141cf42a26d3a64bc441e3822e193291d3051\nREADME.md:244fdad2499c58130429a1269d4dc77c34b7ec9bb989eaac3fa574d9b0325542\ni18n/en.json:6703c7abd30822177d8c44dfb8bd34783953f201eb9b865c372473d4260b952c\nplugin.json:d6608d66c5fdf06ba01be90e7a9ac392bbd19ee32ea6eb56d00cc54e03c47314\nresources/icon.svg:3f1d2a420de4cd5cfd6cfced3b47d4e3c977c8ef665886f69e5f0cc7f1779dee\nthemes/songti-print.json:4f2af539912c7c0c22ce4ecddc3028733eb7395043aa393733fc9cb4b5fa2ad1",
+      "version": "1.0.7",
+      "downloadUrl": "https://github.com/Encaron/linkdesk-plugin-theme-songti/releases/download/v1.0.7/theme-songti.linkdesk-plugin",
+      "fingerprint": "CHANGELOG.md:bf3d927b9420e8173abb2b5ff3842d530e9913b7ff76b9a4a86da628b8ecfa1f\nLICENSE:66ade75576a2f04b7f1a11340b8141cf42a26d3a64bc441e3822e193291d3051\nREADME.md:244fdad2499c58130429a1269d4dc77c34b7ec9bb989eaac3fa574d9b0325542\ni18n/en.json:d2102a26d24c57afd904fe8a552dfe9036bdbd6adb7ab221ffc9de30cdf8c47a\nplugin.json:4e614e2a69ab081a67d48092496bf78cc9ed4b6f8cebd511192bcf8f68f02677\nresources/icon.svg:3f1d2a420de4cd5cfd6cfced3b47d4e3c977c8ef665886f69e5f0cc7f1779dee\nthemes/songti-print.json:7d9eb5f9f282b9056ac45c42859cf41e810d0cfb8078f2d60925d2a095db7064",
       "seed": false
     },
     {
       "id": "theme-terminal",
       "repo": "Encaron/linkdesk-plugin-theme-terminal",
-      "version": "1.0.7",
-      "downloadUrl": "https://github.com/Encaron/linkdesk-plugin-theme-terminal/releases/download/v1.0.7/theme-terminal.linkdesk-plugin",
-      "fingerprint": "CHANGELOG.md:39e5328d519c502ceb73c064d110a0ca814e5c7a26adc704605d6d9da2d7cebf\nLICENSE:66ade75576a2f04b7f1a11340b8141cf42a26d3a64bc441e3822e193291d3051\nREADME.md:0c5c2e3adf536a2e59864fd18c05088f3dae28c4802f3e5ff757c47de5753b4e\ni18n/en.json:ef2e6d1b3ff6f3cda34dcedfb928c6e5fb61809f1dad3aaaff59b011ea15982b\nplugin.json:13a77aff34f8f16103ab82b0fc15689668cb07a6746c442f7a178ba872654d49\nresources/cover.svg:3085754df8172f1318b0eed762ee01c89453ba632f603c0cb9dd41552847e660\nresources/icon.svg:6a39c9533b6646a99b2506d4b3570219714ecc34a54e1a3b0b5c912d095285f2\nthemes/terminal-monofont.json:fe9eb0a38d32e4a236cd7f027b0fc6ed7d05b00def8a9efd19261620bc9f0a5e",
+      "version": "1.0.8",
+      "downloadUrl": "https://github.com/Encaron/linkdesk-plugin-theme-terminal/releases/download/v1.0.8/theme-terminal.linkdesk-plugin",
+      "fingerprint": "CHANGELOG.md:003fea2a3e52d6ac748cdaa11dafa94a3c3f1a029a818f6639a3d03dbe9846f0\nLICENSE:66ade75576a2f04b7f1a11340b8141cf42a26d3a64bc441e3822e193291d3051\nREADME.md:0c5c2e3adf536a2e59864fd18c05088f3dae28c4802f3e5ff757c47de5753b4e\ni18n/en.json:78b82e47299469d998b9bc8b20d4267def06ce6f8a61413b1eb821f0296e31b6\nplugin.json:171e4b76e5ac700028747deac89625860a0761c2866817e05ddb6f999e31addb\nresources/cover.svg:3085754df8172f1318b0eed762ee01c89453ba632f603c0cb9dd41552847e660\nresources/icon.svg:6a39c9533b6646a99b2506d4b3570219714ecc34a54e1a3b0b5c912d095285f2\nthemes/terminal-monofont.json:26b74102b61c03cfe631918838b491a49024a8832a1305c4c3a9d1b93c13229b",
       "seed": false
     },
     {
       "id": "theme-twilight-forest",
       "repo": "Encaron/linkdesk-plugin-theme-twilight-forest",
-      "version": "1.0.6",
-      "downloadUrl": "https://github.com/Encaron/linkdesk-plugin-theme-twilight-forest/releases/download/v1.0.6/theme-twilight-forest.linkdesk-plugin",
-      "fingerprint": "CHANGELOG.md:926091959c73998ca21d1ed72002d923ec57d39215e4baa278c384e224cc8767\nLICENSE:66ade75576a2f04b7f1a11340b8141cf42a26d3a64bc441e3822e193291d3051\nREADME.md:c6aa44e697206eaab3539c9849f210664e1be404438cdc65126d94c33a85b2ff\ni18n/en.json:ace6e5fa99c77524db51db7f8c1b27f185476babb1d0c1643aa0973f7e80745a\nplugin.json:ea31fb83eb6911c5e6787d4e6a06ea3a76e4395a9365cacb90c1812b1f70c769\nresources/icon.svg:459169ee85bef40fa2b2c4f01a1b6dd840b33f3a1690dddb667fe753ccc6c5af\nthemes/twilight-forest.json:47ee9a86d0d043efec896e2774bb55410586afb8a68f8066b0c0b0d98b7b13e1",
+      "version": "1.0.7",
+      "downloadUrl": "https://github.com/Encaron/linkdesk-plugin-theme-twilight-forest/releases/download/v1.0.7/theme-twilight-forest.linkdesk-plugin",
+      "fingerprint": "CHANGELOG.md:3e7ed71a1d56a98f6aee2bf912d640533eb33af83144944f23b9f5f2cf02de8a\nLICENSE:66ade75576a2f04b7f1a11340b8141cf42a26d3a64bc441e3822e193291d3051\nREADME.md:c6aa44e697206eaab3539c9849f210664e1be404438cdc65126d94c33a85b2ff\ni18n/en.json:365e9b36f3191fa5a9d49d86d0471bcb2100abb2f0ab9feef94890e6d92435e2\nplugin.json:09b6259a59b82adc0bf8cda8e6452c763e07225dad244d52d67b772611772a68\nresources/icon.svg:459169ee85bef40fa2b2c4f01a1b6dd840b33f3a1690dddb667fe753ccc6c5af\nthemes/twilight-forest.json:049f74806b6d8acb32d2f73cab4e9d0fead7d0314f547d4edc2f6b60c1087d3e",
       "seed": false
     },
     {
