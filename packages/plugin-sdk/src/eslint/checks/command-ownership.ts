@@ -3,7 +3,7 @@
  *
  * ── 为什么（本件立项的那条轴）──
  * 命令 id 是**跨插件调用面**（`executeCommand`）＋ `menus[].command` / `keybindings[].command` 的引用目标。
- * 1.31 实测：官方 18 仓有 **26 个名 / 46 处** 的命令 id **不带本仓归属**（`editor.selectForCompare`
+ * 1.31 实测：官方各仓有 **26 个名 / 46 处** 的命令 id **不带本仓归属**（`editor.selectForCompare`
  * 属主其实是 `file-tree` 插件），且壳侧旧实现的归属**从名字第一段猜**（`commandId.split(".")[0]`）
  * ⇒ 两个插件用同一前缀时**静默互相覆盖**（不报错、只是有一个永远不生效）。
  * ⇒ 归属必须**从身份来**：`contributes.commands[].id` 的第一段就该是本仓 `pluginId`。

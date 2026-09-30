@@ -16,7 +16,7 @@
  * 🔥 E6#161（2026-09-30）第三职责——**manifest 声明串的「归属」腿**：
  *   判「插件自己声明的可渲染文案有没有住**本仓**字典」（谁声明谁负责，判据本体住 SDK
  *   `own-dict-coverage`，作者侧 `ci-verify` 引同一份）。旧腿两处失域：只走仓内 `plugins/`
- *   （E6#99 源码外移后官方 16 仓不在任何一盏灯下）＋ 字段表只收 title/label 那批
+ *   （E6#99 源码外移后官方各仓不在任何一盏灯下）＋ 字段表只收 title/label 那批
  *   （`group` / `subtitle` / `groupDescriptions` / `enumDescriptions` 不在内）。
  *   已在案的缺口登记在 `scripts/i18n-manifest-debt.json`：**新缺口判红、还清未删行也判红**。
  *

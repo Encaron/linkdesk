@@ -10,7 +10,7 @@
  * ── 为什么值得一条腿（不是理论风险）──
  * 壳侧判据⑧（`scripts/check-css-namespace.mjs:381`，`kind: "animation-ref-dangling"`）把这件事做了，
  * 但它的域是**宿主域 ＋ 共享组件域**（`allowedKeyframes = sharedKf + shellKf`）——**插件域那一半
- * 此前没有任何尺子**。1.27 复量推翻了 1.26 的「缺口为空」：官方 18 仓有 **3 处** `animation:` 引用
+ * 此前没有任何尺子**。1.27 复量推翻了 1.26 的「缺口为空」：官方各仓有 **3 处** `animation:` 引用
  * 与 3 处同名定义（`marketplace-ms-icon-spin` / `serial-monitor-slideDown` / `serial-monitor-fadeIn`），
  * **今天全自解析、零违规** ⇒ 本条是**纯预防性**：补的是「下一次有人改关键帧名时，有没有东西叫醒他」。
  *

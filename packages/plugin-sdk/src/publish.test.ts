@@ -74,7 +74,7 @@ describe("sliceChangelogSection——B1–B10 边界", () => {
 
   it("🔴 E6#109p-b（1.28）minAppVersion 随条目走——市场「拒装」腿的输入（此前生产端从不写它）", () => {
     // 1.27 体检抓到：市场侧读 catalog entry 的 minAppVersion 并据此拒装，而 buildCatalogEntry **不写**该键
-    // ⇒ 官方 18 仓条目 0/18 有它 ⇒ 那条腿永远不触发（空转）。本条钉住「manifest → 条目」这一段。
+    // ⇒ 官方各仓条目 无一条有它 ⇒ 那条腿永远不触发（空转）。本条钉住「manifest → 条目」这一段。
     const withMin: ManifestView = { id: "demo-plugin", name: "Demo", version: "1.0.0", minAppVersion: "0.2.0" };
     const entry = buildCatalogEntry(withMin, "https://example.invalid/a.zip", 1, "owner", "2026-09-11T00:00:00Z", {});
     expect(entry.minAppVersion).toBe("0.2.0");

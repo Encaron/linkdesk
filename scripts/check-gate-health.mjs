@@ -107,7 +107,7 @@ export const IDLE = [
     what: "市场「拒装」腿（catalog 条目的 `minAppVersion`）",
     why:
       "市场侧 `parse.ts` 读条目、`useInstallAction.ts` 拒装——**腿是齐的**；但生产端 `buildCatalogEntry()` **从不写该键**" +
-      "⇒ 官方 18 仓目录条目 **0/18 有**（准确说法：2/18 manifest 有声明、0/18 条目有）⇒ 那条腿永远不触发。",
+      "⇒ 官方各仓目录条目 **无一条有**（准确说法：2/18 manifest 有声明、条目无一条有）⇒ 那条腿永远不触发。",
     status: "已处置",
     who:
       "**1.28a** 补生产端（`ManifestView` / `collectManifestView` / `buildCatalogEntry`）＋ **1.28b 真发** `@linkdesk/plugin-sdk@0.1.28`（2026-09-16）。" +

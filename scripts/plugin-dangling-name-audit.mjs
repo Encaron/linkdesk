@@ -62,7 +62,7 @@
  *   · **目录**（已装插件 `%APPDATA%\linkdesk\plugins\<id>`、官方仓 `dist/<id>.linkdesk-plugin` 解包态）：直接读文件。
  *
  * ── 用法 ──
- *   node scripts/plugin-dangling-name-audit.mjs                 # 随包 6 只 ＋ 官方 18 仓（默认）
+ *   node scripts/plugin-dangling-name-audit.mjs                 # 随包 6 只 ＋ 官方各仓（默认）
  *   node scripts/plugin-dangling-name-audit.mjs <产物…>         # 只跑指定 zip/目录
  *   node scripts/plugin-dangling-name-audit.mjs --json          # 机读（格 4 读数用）
  *   node scripts/plugin-dangling-name-audit.mjs --quotas        # 只打宿主定义集读数（对账用）
@@ -654,7 +654,7 @@ function selfTest() {
    七、入口
    ══════════════════════════════════════════════════════════════════════════ */
 
-/** 默认输入面：随包 6 只（zip）＋ 官方 18 仓产物（没产物 ⇒ 记「未构建」，⛔ 不静默跳过） */
+/** 默认输入面：随包 6 只（zip）＋ 官方各仓产物（没产物 ⇒ 记「未构建」，⛔ 不静默跳过） */
 function defaultTargets() {
   const bundled = existsSync(DEFAULT_BUNDLED)
     ? readdirSync(DEFAULT_BUNDLED).filter((f) => f.endsWith(".linkdesk-plugin")).sort()

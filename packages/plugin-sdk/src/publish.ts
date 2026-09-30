@@ -393,7 +393,7 @@ export interface ManifestView {
    *
    * 修的是 1.27 体检抓到的**空转判据**：市场侧那条「拒装」腿（`marketplace/src/services/marketCatalog/parse.ts`
    * 读 → `useInstallAction.ts` 比对并拒装）**读的是 catalog 条目**，而生产端 `buildCatalogEntry()`
-   * **从不写这个键** ⇒ 官方 18 仓条目 **0/18 有**（只有 2 只在 plugin.json 里声明过）⇒ 那条腿永远不触发。
+   * **从不写这个键** ⇒ 官方各仓条目 **无一条有**（只有 2 只在 plugin.json 里声明过）⇒ 那条腿永远不触发。
    * ⇒ 本字段补上「manifest → 条目」这一段。⚠️ **存量条目不回溯**：已发布的条目要等各自**下次发布**才带上它。
    * ⚠️ 字段缺省 ⇒ **不写该键**（沿用本仓「缺省即不写」纪律；市场侧对 undefined 天然放行）。
    */

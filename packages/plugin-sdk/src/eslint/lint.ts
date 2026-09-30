@@ -247,7 +247,7 @@ export async function runPluginLint(root: string, options: PluginLintOptions = {
   const reserved = runReservedClassCheck(absRoot);
   /**
    * 🔴 E6#112（2026-09-18）：命名空间腿第五条判据 —— **插件域关键帧引用悬空**（`checks/keyframe-refs.ts`）。
-   *   域与壳侧判据⑧ **互补**：那边是宿主域 ＋ 共享组件域，本处是**插件域**（官方 18 仓今天 3 处引用、
+   *   域与壳侧判据⑧ **互补**：那边是宿主域 ＋ 共享组件域，本处是**插件域**（官方各仓今天 3 处引用、
    *   全部自解析 ⇒ 纯预防性）。允许集 = 本仓被扫描 CSS 的 `@keyframes` ∪ 宿主保留账那 8 条。
    *   ⚠️ 去重口径：与前面几条腿**同一处 `文件:行` 不重复报**（以先出的为准）——本判据报在属性名行，
    *     前缀腿报在 `@keyframes` 定义行，两处本就不同；fail-closed 那条与前缀腿的 `plugin.json:1`
@@ -346,7 +346,7 @@ export async function runPluginLint(root: string, options: PluginLintOptions = {
    *   三面：声明面（`contributes.configuration.properties` 的键）／弱默认值面（`contributes.configurationDefaults`
    *   的键）／运行时面（源码里 `registerConfiguration*` 第一个实参 = 身份字面量）。
    *   🔴 **1.49 收紧**：判据②（新键不带本仓前缀）**升红**，与判据① 一并进腿报点 ⇒ 插件仓 CI 拦。
-   *      收紧前提已满足：官方 18 仓清账完成（需改处 0）⇒ 不再有存量反例造成红窗。
+   *      收紧前提已满足：官方各仓清账完成（需改处 0）⇒ 不再有存量反例造成红窗。
    *   ⚠️ 与另几条腿**刻意不合并**（同命令腿的理由）：本腿的红站点独立收紧/独立统计。
    */
   const configOwnership = runConfigOwnershipCheck(absRoot);
@@ -366,7 +366,7 @@ export async function runPluginLint(root: string, options: PluginLintOptions = {
    * 🔴 E6#111h（1.38）：第八条 check 腿 —— **上下文旗子归属**（`checks/context-ownership.ts`）。
    *   一面：运行时面（源码里 `contextKey.set("<字面量>", …)` / `ContextKeyService.setValue("<字面量>", …)`）。
    *   🔴 **1.49 收紧**：判据③（新旗子不带本仓 `<pluginId>.` 前缀）**升红**（出处 = 轴上排序纪律
-   *      「1.49 才收紧为红」——官方 18 仓的 23 个裸旗子已由 1.42/1.44/1.47 清完）。
+   *      「1.49 才收紧为红」——官方各仓的 23 个裸旗子已由 1.42/1.44/1.47 清完）。
    *   🟠 **宿主公开约定面**（`contextKeysPublic`，今天 = `settings` 齿轮菜单的 4 个 `setting*`）**不判**：
    *      第三方设它合法（`MenuId` 是开放字符串 ⇒ 谁都能进 `settingItemGear` 槽）⇒ 只登记在
    *      `publicFace` 里让"谁在设约定面"可见，**不进任何退出码**。🔴 这是**已裁决的豁免**（1.46 丙路线），

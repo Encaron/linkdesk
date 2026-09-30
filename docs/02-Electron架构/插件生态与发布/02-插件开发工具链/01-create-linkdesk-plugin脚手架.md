@@ -323,7 +323,7 @@ export default function HelloPlugin(_props: { isActive?: boolean; tabId?: string
 }
 ```
 
-**gitignore → 生成物 `.gitignore`**（v2 新增——官方插件 0/20 有这文件，因为它们是 monorepo 构建、走仓根 `.gitignore`；**第三方作者是独立仓，必须自带**）：
+**gitignore → 生成物 `.gitignore`**（v2 新增——官方插件 无一条有这文件，因为它们是 monorepo 构建、走仓根 `.gitignore`；**第三方作者是独立仓，必须自带**）：
 
 ```gitignore
 node_modules/
@@ -503,7 +503,7 @@ npm 自动识别 `create-*` 前缀包名为 `npm create` 的别名：
 
 | # | v2 的理由 | 今天 |
 |:--|:--|:--|
-| ① | 官方 0 只写 | **实测 18/18 全部显式声明**（容器 `E:\linkdesk-plugins\official\*` 逐只 `grep '"pluginId"'` 都有）；硬约束 11 的正文说官方 **20 只**全声明 |
+| ① | 官方 0 只写 | **实测 18/18 全部显式声明**（容器 `E:\linkdesk-plugins\official\*` 逐只 `grep '"pluginId"'` 都有）；硬约束 11 的正文说官方各仓全声明 |
 | ② | 冗余 | 冗余**的事实**没变，**口径变了**——`pluginId` 是身份唯一键、**发布后不可变**（硬约束 11）；目录名兜底只为**兼容存量第三方插件**，新插件不该靠它 |
 | ③ | schema 不认 | **`#98g` 已把 `pluginId` 加进 schema**（`plugin.schema.json` 第 14 行）⇒ 它现在是正经字段，不再是「写了等于没写」 |
 
