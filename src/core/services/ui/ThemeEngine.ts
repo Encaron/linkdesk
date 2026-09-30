@@ -27,8 +27,9 @@ export { getEffectiveTokens, applyRadiusAbsolute, applyOverrides } from "./Theme
 
 export { recipeDomains, mergeDomains } from "./ThemeEngine/recipe";
 
-// 2026-09-30「Dark/Light 指认不明」：配方/配色显示名的唯一权威（宿主名走 t()、插件名原样）。
-//   门面只出生产面——`isHostRecipe` 是本模块内部判据（消费方要就直引 ./naming，照 getThemeVariables 先例）。
+// 2026-09-30「Dark/Light 指认不明」＋ 2026-10-01「我不要双语了」：配方/配色显示名的唯一权威。
+//   一条规则——名字一律中文原文、显示期一律 t()（壳兜底译名住语言包，插件名译名住该插件字典）。
+//   ⛔ 旧的归属二分（`isHostRecipe` 判宿主 t() / 插件原样）已随去双语化退场，门面只剩这两个函数。
 export { recipeDisplayName, colorwayDisplayName } from "./ThemeEngine/naming";
 
 export type { MixProfile } from "./ThemeEngine/mix";

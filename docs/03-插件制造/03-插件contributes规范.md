@@ -335,7 +335,7 @@ useEffect(() => {
 {
   "contributes": {
     "themes": [
-      { "id": "my-theme-dark", "label": "My Theme Dark", "uiTheme": "dark", "path": "themes/my-dark.json" }
+      { "id": "my-theme-dark", "label": "我的深色主题", "uiTheme": "dark", "path": "themes/my-dark.json" }
     ]
   }
 }
@@ -344,9 +344,16 @@ useEffect(() => {
 | 字段 | 必需 | 说明 |
 |------|:--:|------|
 | `id` | ✅ | 主题 ID |
-| `label` | ✅ | 显示名称 |
+| `label` | ✅ | 显示名称——**写中文原文**（中文界面原样显示）；英文译名住本仓 `i18n/en.json`（§3.9）。⛔ 不写双语字面量 |
 | `uiTheme` | ✅ | `"dark"` \| `"light"` \| `"highContrast"` |
 | `path` | ✅ | 主题定义 JSON 文件路径（`appearance` + `colorways[]`）——**相对插件目录** |
+
+> **🔥 名字的写法（2026-10-01 用户拍板「我不要双语了」）**：`label`、`path` 指向的配方 JSON 的顶层 `name`、
+> `colorways[].name` **一律写中文原文**——中文界面原样显示，英文界面由壳过 `t()` 显示**本仓字典**里的译名
+> （与 `app.themeColor` 同一条规则：谁的仓谁译文）。⛔ **不要写双语字面量**（`"薄荷苏打 Mint Soda"`）——
+> 中文界面会中英混排，而「名字里自带译名」这条病只有「字面量纯中文 ＋ 译名住字典」治得掉。
+> 判据机械守：`npm run verify` 第 ⑧ 段（`@linkdesk/plugin-sdk/own-dict-coverage`）把这三处**都**纳入判域
+> （`themes[].label` ＋ 配方文件里的 `name`/`colorways[].name`），缺译名当场红。写法与例见 [11-主题制作](11-主题制作.md) §⑤。
 
 声明是 metadata-only；主题颜色数据在加载时异步 fetch。旧格式顶层 `themes` 字段自动归一化（见 `02 §二.1`）。
 
@@ -494,6 +501,7 @@ node_modules/@linkdesk/plugin-sdk/schemas/host-reserved.json
 - `contributes.i18n` 的 key = 语言代码，value = JSON 翻译文件路径（key = 中文原文，value = 译文）。**不需要 zh.json**——中文 key 自带兜底。
 - 翻译文件经 `fetchPluginDataFile` 加载（绕开 Vite glob 缓存——新装插件目录的 JSON 实时发现）。
 - 插件文字铁律：**所有 UI 文字走 `t()`**，i18n key = 中文原文（`05 §6`）。
+- 🔴 **字面量只写原文，⛔ 不写双语**（2026-10-01 用户拍板「我不要双语了」）：字面量写成 `"薄荷苏打 Mint Soda"` 时，**中文界面也显中英混排**（key 即显示文本，取不到译文就原样输出）。正确写法 = 字面量 `"薄荷苏打"` ＋ 本仓字典 `{ "薄荷苏打": "Mint Soda" }`——中文界面回退原文、英文界面取译名。判据不判「有没有拉丁字母」（中文名里合法含专名，如「Cascadia Mono 终端」，机械判必假红），把关的是**「名字必须住字典」**：要么去掉英文，要么在字典里自我翻译，两条路都得本仓动手。
 
 #### 🔴 谁的仓谁译文——自有文案的译名必须住本仓（**规则，不是建议**）
 
@@ -525,8 +533,11 @@ node_modules/@linkdesk/plugin-sdk/schemas/host-reserved.json
 或者你的插件在别人的机器上碰巧换了加载顺序，你就无从预料。**补进自己仓只多一份 JSON。**
 
 **哪些不算**（有据的豁免，别乱补）：命令与参数的 `description`（**声明数据**——给契约与 AI 看，不进 UI）·
-主题/语言包的 `label` 与 `langDefs` 的 `aliases`（品牌名与语言自称，**专名不译**）· 一切路径/ID/上下文键字段
-（`entry` / `render` / `path` / `when` / `key` / 菜单槽位 `group`…）。豁免的**唯一真相源**是 SDK 的
+**语言包**的 `label` 与 `langDefs` 的 `aliases`（语言自称／`English`/`English (US)` 这种自称形式，**专名不译**）·
+图标主题的 `label` 与图标数据文件（**显示面未打通**：`app.iconTheme` 下拉今天列的是原始 id，那条标签用户看不到 ⇒
+解除条件见下）· 一切路径/ID/上下文键字段（`entry` / `render` / `path` / `when` / `key` / 菜单槽位 `group`…）。
+⛔ **主题的 `label` 已不在豁免之列**（2026-10-01 去双语化）：主题名要跟着界面语言走，故 `themes[].label` 与配方
+文件里的 `name`/`colorways[].name` 都要有本仓译名（`11 §⑤`）。豁免的**唯一真相源**是 SDK 的
 `own-dict-coverage` 模块头注——**改 schema 时同笔改那里**，⛔ 别在这里手抄第二份清单。
 
 #### 桶键命名建议——**给键加上归属**（建议，不是强制）

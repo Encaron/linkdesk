@@ -137,8 +137,8 @@ export function registerFallbackThemes(): void {
     // 🔴 2026-09-30「指认不明」：显示名不再用颜色词 `Dark`/`Light`（与插件配方的 `Light` 并列时被读成
     //   同一套的深浅搭子）——壳这张就叫**「内置」**（用户 2026-09-30 拍板：「原 dark 改为内置即可」），
     //   浅色兜底 = 「内置浅色」；插件那只配方改名「官方主题」⇒ 两张卡从名字上就分得开。
-    //   且**壳自己的名字是 UI 文字** ⇒ 显示期走 `ThemeEngine/naming.ts` 的 `recipeDisplayName()`
-    //   （t()，译名住语言包）。此处存的是**中文原文 key**。
+    //   且这里存的是**中文原文 key** ⇒ 显示期走 `ThemeEngine/naming.ts` 的 `recipeDisplayName()`
+    //   过 `t()` 取当前语言的译名（壳兜底译名住语言包；2026-10-01 起插件名同走这条，译名住各插件本仓字典）。
     { id: "dark", name: "内置", type: "dark", colorways: [{ id: "dark-fallback", name: "深色", colors: {} }] },
     undefined
   );

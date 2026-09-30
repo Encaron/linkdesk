@@ -2,7 +2,8 @@
  * DynamicSelect——动态选项下拉（E5.8#50.23）。
  * uiHint "select" + optionsFrom：选项不在配置注册表静态 enum，渲染时调 window.linkdesk.theme.listRecipes() 动态取。
  *  - optionsFrom "theme.colorways"：活动配方（app.theme）的配色变体，选项带预览色块（ColorwayMeta.preview.accent）；
- *    随 app.theme 变化重取（configuration.onChange 订阅）+ 下拉打开时刷新（SelectBox onOpen）。
+ *    随 app.theme 变化重取（configuration.onChange 订阅）+ 换语言重取（i18n.languageChanged，E6#165）+
+ *    下拉打开时刷新（SelectBox onOpen）。
  *  - optionsFrom "theme.sources"：混搭来源——「跟随主题」置顶 + 按 optionsFromDomain 过滤 RecipeMeta.domains 的配方。
  *  - E5.8#82 双语义（app.themeColor）：schema 静态声明 optionsFrom="theme.colorways"+optionsFromDomain="colors"，
  *    运行时按 app.appearanceMode 切换——跟随主题模式 = 配方内配色变体；自定义模式 = colors 域来源（sources+colors）。
@@ -12,6 +13,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
+import i18n from "../../../i18n"; // E6#165：换语言要重取（选项 label 是壳侧 t() 解析后的显示文本）
 import SelectBox from "./SelectBox";
 import type { RecipeMeta } from "@linkdesk/contracts"; // E6#54a：出包类型重定向（@src 别名包内不可解析）
 
@@ -112,17 +114,23 @@ function DynamicSelect({ value, onChange, optionsFrom, domain, disabled, placeho
   //   走 configuration.onPluginLifecycleChange（设置页专用通道，池侧桥自 IpcBridgeHandler/data.ts 泛化 nudge）。
   //   E5.8#60 F2.1 防回归：订阅回调必须引用稳定——refresh 为 useCallback（依赖 optionsFrom/domain/t/isCustomMode 恒定），
   //   内联箭头只包一层转发；严禁把非稳定闭包直接传入订阅（回放缓冲变死循环引擎，E5.8 铁律）。 */
+  // E6#165：语言切换 → 重取（选项 label 是壳侧解析结果：RecipeMeta/ColorwayMeta 的名字已过 t()，
+  //   语言一变旧载荷里的名字就过期；⛔ 不在渲染期现算——数据源是 IPC 载荷）。
+  const onLangChanged = useCallback(() => { void refresh(); }, [refresh]);
+
   useEffect(() => {
     void refresh();
     const offLifecycle = window.linkdesk?.configuration?.onPluginLifecycleChange?.(() => { void refresh(); });
     const offTheme = optionsFrom === "theme.colorways"
       ? window.linkdesk?.configuration?.onChange?.("app.theme", () => { void refresh(); })
       : undefined;
+    i18n.on("languageChanged", onLangChanged);
     return () => {
       offLifecycle?.();
       offTheme?.();
+      i18n.off("languageChanged", onLangChanged);
     };
-  }, [refresh, optionsFrom]);
+  }, [refresh, optionsFrom, onLangChanged]);
 
   // E5.8#82 显隐归一：app.themeColor 双语义（dualSemantics）跟随主题模式（非 custom）当前配方仅 1 配色变体 → 控件自隐
   // （用户想法 3「没多配色主题不该有 themeColor」）。仅限双语义——通用 colorways 下拉（无 domain）单配色仍显示

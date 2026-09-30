@@ -1,5 +1,6 @@
 /**
- * 配方/配色**显示名**的唯一权威（2026-09-30 用户实机立案「app.theme 卡片指认不明」）。
+ * 配方/配色**显示名**的唯一权威（2026-09-30 用户实机立案「app.theme 卡片指认不明」；
+ *  2026-10-01「我不要双语了」同笔翻面）。
  *
  * ── 要治的病 ──
  * 设置页「主题 · 整体配方」的卡片只打印配方的**显示名**，而显示名是自由文本：壳的内置兜底配方叫
@@ -12,35 +13,36 @@
  *   ⛔ **不做来源行**（曾试过在卡片上加「壳自带／来自 X」并进契约 `RecipeMeta.source`，用户明确否掉：
  *     「我不需要」）⇒ 只留**一条命名规则**，不引入任何归属字段/UI。
  *
- * ── 命名规则（谁的名字谁负责，E6#161「谁的仓谁译文」同一道理）──
- *   · **宿主兜底配方的名字 = 壳核心文字** ⇒ 显示期 `i18n.t()`（译名住语言包 `lang-defaults`）；
- *   · **插件贡献的配方名 = 作者声明数据** ⇒ 原样显示（中文原文即 key，缺译文静默回退 = 设计意图）。
+ * ── 命名规则（2026-10-01 用户立案「我不要双语了」⇒ 与 `app.themeColor` 同一条）──
+ *   名字**一律是中文原文**（壳兜底的「内置」「深色」，主题插件的「薄荷苏打」「海盐薄荷」），
+ *   显示期**一律 `i18n.t(名字)`**：
+ *     · 中文界面 ⇒ 取不到译文，`parseMissingKeyHandler` 静默回退原文（＝中文原文，设计意图）；
+ *     · 英文界面 ⇒ 取译名——壳兜底的译名住语言包（`lang-defaults`，壳核心文字），
+ *       **主题名的译名住该主题插件自己的字典**（E6#161「谁的仓谁译文」＋ 判据扩域到主题数据文件名）。
+ *   ⛔ **不再按归属二分**（旧形态：宿主 `t()`、插件原样）：那个形态的前提是「插件名字里自带译名」，
+ *   于是作者写 `"薄荷苏打 Mint Soda"` —— 中文界面读作中英混排。这条病只有「字面量纯中文 ＋ 译名住
+ *   字典」治得掉，故归属判据 `isHostRecipe` **退场**：它对显示名已无信息可用，留着只会让人以为还
+ *   有第二种规则（语料证据：插件仓 8 只主题名/配色名 已全部纯中文化并补本仓词条）。
  *
  * 🔴 **为什么不 import pluginLoader**：`pluginLoader/**` 反向 import `ThemeEngine` ⇒ 环依赖。本模块
- *   根本不需要插件清单（只判「是不是宿主兜底」＋ 对宿主名字过一遍 t()），故无装配槽、无解析器。
+ *   根本不需要插件清单（只对名字过一遍 t()），故无装配槽、无解析器。
  */
 
 import i18n from "../../../../i18n";
-import { ThemeRegistry } from "../../../registry/appearance/ThemeRegistry";
 import type { ThemeRecipe } from "../../../types/theme";
 
-/** 该配方是不是宿主内置兜底（无提供方插件）——归属判定的**唯一口径**（`getRecipeOwner` 为空即宿主） */
-export function isHostRecipe(recipeId: string): boolean {
-  return ThemeRegistry.getRecipeOwner(recipeId) === undefined;
+/**
+ * 配方**显示名**——一律过 t()（中文原文作 key；缺译文静默回退原文）。
+ * @param recipe 只需 name（调用方手里通常就是 ThemeRecipe / RecipeMeta 的形状）
+ */
+export function recipeDisplayName(recipe: Pick<ThemeRecipe, "name">): string {
+  return i18n.t(recipe.name);
 }
 
 /**
- * 配方**显示名**——宿主兜底走 t()（壳核心文字），插件配方原样（作者声明数据）。
- * @param recipe 只需 id + name（调用方手里通常就是 ThemeRecipe / RecipeMeta 的形状）
+ * 配色变体**显示名**——同一条规则。
+ * ⛔ 不再要 recipeId：归属与显示名已无关（旧签名 `(recipeId, name)` 的第二份规则已删）。
  */
-export function recipeDisplayName(recipe: Pick<ThemeRecipe, "id" | "name">): string {
-  return isHostRecipe(recipe.id) ? i18n.t(recipe.name) : recipe.name;
-}
-
-/**
- * 配色变体**显示名**——同一条规则（宿主兜底的配色名也是壳核心文字）。
- * 宿主两张兜底配方各只有一个配色（「深色」/「浅色」），插件配色名原样。
- */
-export function colorwayDisplayName(recipeId: string, colorwayName: string): string {
-  return isHostRecipe(recipeId) ? i18n.t(colorwayName) : colorwayName;
+export function colorwayDisplayName(colorwayName: string): string {
+  return i18n.t(colorwayName);
 }

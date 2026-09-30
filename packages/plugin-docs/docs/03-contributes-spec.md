@@ -337,7 +337,7 @@ The difference from `configuration`: `configuration` defines **your own** settin
 {
   "contributes": {
     "themes": [
-      { "id": "my-theme-dark", "label": "My Theme Dark", "uiTheme": "dark", "path": "themes/my-dark.json" }
+      { "id": "my-theme-dark", "label": "我的深色主题", "uiTheme": "dark", "path": "themes/my-dark.json" }
     ]
   }
 }
@@ -346,9 +346,19 @@ The difference from `configuration`: `configuration` defines **your own** settin
 | Field | Required | Description |
 |------|:--:|------|
 | `id` | ✅ | theme ID |
-| `label` | ✅ | display name |
+| `label` | ✅ | display name — **write the original Chinese text** (a Chinese UI shows it verbatim); the English translation lives in your own `i18n/en.json` (§3.9). ⛔ Do not write a bilingual literal |
 | `uiTheme` | ✅ | `"dark"` \| `"light"` \| `"highContrast"` |
 | `path` | ✅ | path to the theme definition JSON file (`appearance` + `colorways[]`) — **relative to the plugin directory** |
+
+> **🔥 How names are written (2026-10-01 user decision: "no more bilingual names")**: `label`, the top-level `name`
+> of the recipe JSON that `path` points to, and `colorways[].name` **all carry the original Chinese text** — a
+> Chinese UI shows it verbatim, and an English UI gets the translation from **your own dictionary** via the shell's
+> `t()` (the same rule as `app.themeColor`: whoever owns the repo owns the translation). ⛔ **Do not write a
+> bilingual literal** (`"薄荷苏打 Mint Soda"`) — a Chinese UI would then mix Chinese and English, and that disease
+> is only cured by "literal pure Chinese ＋ translation lives in the dictionary". A machine check guards this:
+> stage ⑧ of `npm run verify` (`@linkdesk/plugin-sdk/own-dict-coverage`) covers **all three** places
+> (`themes[].label` plus `name`/`colorways[].name` in the recipe file), and a missing translation turns red on the
+> spot. For the exact form and an example see [11-authoring-themes](11-authoring-themes.md) §⑤.
 
 The declaration is metadata-only; theme color data is fetched asynchronously at load time. A legacy top-level `themes` field is normalized automatically (see `02 §2.1`).
 
@@ -496,6 +506,7 @@ Plugin A contributes, plugin B references (`"icon": "stm32-chip"` + `"iconSource
 - In `contributes.i18n` the key = a language code and the value = the path to a JSON translation file (key = the original Chinese text, value = the translation). **No zh.json is needed** — Chinese keys fall back to themselves.
 - Translation files are loaded through `fetchPluginDataFile` (bypassing the Vite glob cache — JSON in a newly installed plugin directory is discovered in real time).
 - The plugin text iron rule: **all UI text goes through `t()`**, and the i18n key is the original Chinese text (`05 §6`).
+- 🔴 **Literals carry the original text only — never a bilingual string** (2026-10-01 user decision: "no more bilingual names"): writing the literal as `"薄荷苏打 Mint Soda"` makes **the Chinese UI mix Chinese and English too** (the key *is* the display text; with no translation available it is emitted verbatim). The correct form is the literal `"薄荷苏打"` plus your own dictionary entry `{ "薄荷苏打": "Mint Soda" }` — a Chinese UI falls back to the original, an English UI reads the translation. The check does not test for "contains Latin letters" (a Chinese name may legitimately contain a proper noun such as 「Cascadia Mono 终端」, and a mechanical test would produce false positives); what it enforces is **"the name must live in a dictionary"**: either drop the English or translate it in your own dictionary — both require work in your own repo.
 
 #### 🔴 Whoever declares it translates it — your own text must be translated in your own repo (**a rule, not advice**)
 
@@ -531,11 +542,15 @@ today**, not that ownership is settled. If that dictionary changes, or your plug
 order on someone else's machine, you cannot predict the result. **Adding the pair to your own repo costs one JSON file.**
 
 **What does not count** (documented exemptions — don't "fix" them): `description` of commands and params
-(**declaration data** — for contracts and AI, never rendered) · theme/language-pack `label` and `langDefs`
-`aliases` (brand names and language self-names, **proper nouns, never translated**) · every path/ID/context-key
-field (`entry` / `render` / `path` / `when` / `key` / menu-slot `group`…). The **single source of truth** for the
-exemptions is the header of the SDK's `own-dict-coverage` module — **change that when the schema changes**, and
-⛔ never hand-copy a second list here.
+(**declaration data** — for contracts and AI, never rendered) · **language-pack** `label` and `langDefs`
+`aliases` (language self-names such as `English`/`English (US)`, **proper nouns, never translated**) · icon-theme
+`label` and icon data files (**display path not wired up yet**: the `app.iconTheme` dropdown lists raw ids today,
+so that label is invisible to users ⇒ see below for the removal condition) · every path/ID/context-key
+field (`entry` / `render` / `path` / `when` / `key` / menu `group` slots…).
+⛔ **A theme's `label` is no longer exempt** (2026-10-01 de-bilingualization): a theme name must follow the UI
+language, so `themes[].label` and the recipe file's `name`/`colorways[].name` all need a translation in your own
+repo (`11 §⑤`). The **single source of truth** for exemptions is the header of the SDK's `own-dict-coverage`
+module — **change that one when you change the schema**, ⛔ never hand-copy a second list here.
 
 #### Bucket-key naming advice — **give your keys an owner** (advice, not a requirement)
 

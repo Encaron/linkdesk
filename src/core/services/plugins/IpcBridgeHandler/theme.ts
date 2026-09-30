@@ -14,12 +14,13 @@ import type { RecipeMeta, ColorwayMeta } from "../../../api/linkdesk-api/types";
 import type { ThemeRecipe } from "../../../types/theme";
 
 /** 配方 → RecipeMeta——预览色取该配色 accent/bg-window（缺该 token → 空串，卡片徽标兜底）。
- *  2026-09-30「指认不明」：显示名与配色名走 `ThemeEngine/naming`（宿主兜底 t()、插件原样）——
- *  壳那张叫「内置」、官方插件那只叫「官方主题」，两张卡从名字上就分得开（⛔ 不加来源字段/来源行）。 */
+ *  2026-09-30「指认不明」＋ 2026-10-01「我不要双语了」：显示名与配色名走 `ThemeEngine/naming` 的
+ *  同一条规则（名字是中文原文、这里过 t() 解析成当前语言）——中文界面「内置」/「薄荷苏打」，
+ *  英文界面取各自字典里的译名（壳兜底住语言包、主题插件住本仓 i18n）。⛔ 不加来源字段/来源行。 */
 function toRecipeMeta(recipe: ThemeRecipe): RecipeMeta {
   const colorways: ColorwayMeta[] = recipe.colorways.map((cw) => ({
     id: cw.id,
-    name: colorwayDisplayName(recipe.id, cw.name),
+    name: colorwayDisplayName(cw.name),
     preview: {
       accent: cw.colors?.accent ?? "",
       bgWindow: cw.colors?.["bg-window"] ?? "",

@@ -15,6 +15,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useTranslation } from "react-i18next";
+import i18n from "../../../i18n"; // E6#165：换语言要重取显示名（名字是壳侧 t() 解析结果，不是渲染期现算）
 import type { RecipeMeta } from "@linkdesk/contracts"; // E6#54a：出包类型重定向（@src 别名包内不可解析）
 import "./ThemePicker.css";
 
@@ -51,16 +52,22 @@ function ThemePicker({ value, onChange }: ThemePickerProps) {
     }).catch(() => { /* API 不可用——保持空列表 */ });
   }, []);
 
+  // 语言切换 → 重取（E6#165）：卡片名是**壳侧解析后的显示文本**（RecipeMeta.name 走 ThemeEngine/naming
+  //   的 t()），语言一变旧载荷里的名字就过期；⛔ 不在渲染期现算 t()——数据源是 IPC 载荷，池原样渲染。
+  const onLangChanged = useCallback(() => { void refresh(); }, [refresh]);
+
   useEffect(() => {
     let cancelled = false;
     const isActive = () => !cancelled;
     void refresh(isActive);
     const offLifecycle = window.linkdesk?.configuration?.onPluginLifecycleChange?.(() => { void refresh(); });
+    i18n.on("languageChanged", onLangChanged);
     return () => {
       cancelled = true;
       offLifecycle?.();
+      i18n.off("languageChanged", onLangChanged);
     };
-  }, [refresh]);
+  }, [refresh, onLangChanged]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     const n = recipes.length;

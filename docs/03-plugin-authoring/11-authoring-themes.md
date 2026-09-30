@@ -45,11 +45,11 @@ theme-myglass/
 // plugin.json — theme declaration goes through contributes.themes (modeled on VS Code; authoritative schema in plugin.schema.json)
 {
   "id": "theme-myglass",
-  "name": "My Glass Theme",
+  "name": "我的玻璃主题",
   "version": "0.1.0",
   "contributes": {
     "themes": [
-      { "id": "myglass", "label": "My Glass", "uiTheme": "dark", "path": "themes/myglass.json" }
+      { "id": "myglass", "label": "我的玻璃", "uiTheme": "dark", "path": "themes/myglass.json" }
     ]
   }
 }
@@ -67,7 +67,7 @@ theme-myglass/
 // Malformed-input interception: editor IntelliSense + the SDK's validateThemeJson (the same channel for npm projects and the official plugin repo)
 // Full field table in "themes/02-theme-field-index" and the SDK's theme.schema.json; the runtime parseThemeRecipe toast is the second line of defense
 {
-  "id": "myglass", "name": "My Glass", "type": "dark",
+  "id": "myglass", "name": "我的玻璃", "type": "dark",
   "appearance": {
     "radius": { "md": 10, "lg": 16 },
     "glass": { "blur": 16, "saturate": 1.3, "tint": "rgba(255,255,255,0.06)", "opacity": 0.9 },
@@ -75,8 +75,8 @@ theme-myglass/
     "background": { "image": "assets/bg.png", "opacity": 0.85, "mask": 0.3 }   // mask = 0-1 brightness coefficient (number); the base color goes through maskColor separately
   },
   "colorways": [
-    { "id": "violet", "name": "Violet", "colors": { "bg-window": "#0E0B16", "accent": "#8B5CF6" } },
-    { "id": "emerald", "name": "Emerald", "colors": { "bg-window": "#0A1410", "accent": "#34D399" } }
+    { "id": "violet", "name": "紫罗兰", "colors": { "bg-window": "#0E0B16", "accent": "#8B5CF6" } },
+    { "id": "emerald", "name": "翡翠", "colors": { "bg-window": "#0A1410", "accent": "#34D399" } }
   ]
 }
 ```
@@ -109,7 +109,7 @@ theme-liquid-glass/
 // themes/liquid-glass.json
 {
   "id": "liquid-glass",
-  "name": "Liquid Glass",
+  "name": "液态玻璃",
   "type": "dark",
   "appearance": {
     "radius": { "xs": 2, "sm": 4, "md": 8, "lg": 14, "xl": 20, "2xl": 24 },
@@ -118,9 +118,9 @@ theme-liquid-glass/
     "background": { "image": "assets/aurora.jpg", "opacity": 1, "mask": "rgba(0,0,0,0.88)" }
   },
   "colorways": [
-    { "id": "aurora", "name": "Aurora Violet", "colors": { "bg-window": "#0E0B16", "accent": "#8B5CF6" } },
-    { "id": "emerald", "name": "Emerald",   "colors": { "bg-window": "#0A1410", "accent": "#34D399" } },
-    { "id": "ocean",  "name": "Deep Ocean",   "colors": { "bg-window": "#0B121E", "accent": "#38BDF8" } }
+    { "id": "aurora", "name": "极光紫", "colors": { "bg-window": "#0E0B16", "accent": "#8B5CF6" } },
+    { "id": "emerald", "name": "翡翠",   "colors": { "bg-window": "#0A1410", "accent": "#34D399" } },
+    { "id": "ocean",  "name": "深海",   "colors": { "bg-window": "#0B121E", "accent": "#38BDF8" } }
   ]
 }
 ```
@@ -135,11 +135,41 @@ theme-liquid-glass/
 
 > **Sparse and omittable:** the fully-loaded example only means "every domain is written" — missing domains inherit the shell defaults and missing keys within a domain inherit too (§3 sparse override); the less you write, the more stable it is. A pure-color theme = only `colorways` (and can skip even `assets/`).
 
+### ⑤ Names and translations (Chinese source + your own dictionary)
+
+Three names are **always written as the Chinese source**: `contributes.themes[].label` in `plugin.json`, the recipe
+JSON's top-level `name`, and `colorways[].name`. The Chinese UI shows them as-is; for the English UI the shell runs
+them through `t()` and looks the translation up in **your own repo's dictionary** — the same rule as `app.themeColor`
+(whoever declares it translates it, see [03-contributes-spec](03-contributes-spec.md) §3.9).
+
+```jsonc
+// plugin.json — label is the Chinese source
+{ "contributes": { "themes": [{ "id": "my-theme.mint", "label": "薄荷苏打", "path": "themes/mint.json" }],
+                   "i18n": { "en": "i18n/en.json" } } }
+```
+```jsonc
+// themes/mint.json — the recipe name and the colorway names are the Chinese source too
+{ "name": "薄荷苏打", "colorways": [{ "id": "my-theme.mint-bubble", "name": "薄荷冰露" }] }
+```
+```jsonc
+// i18n/en.json — key = the Chinese source, value = the translation (no zh.json needed: a Chinese key falls back to itself)
+{ "薄荷苏打": "Mint Soda", "薄荷冰露": "Mint Frost" }
+```
+
+⛔ **Never write a bilingual literal** (`"薄荷苏打 Mint Soda"`): the key **is** the displayed text, and when the
+Chinese UI finds no translation for it, it prints the string verbatim ⇒ even the Chinese UI shows a mixed-script
+name. The judge enforces this mechanically: leg ⑧ of `npm run verify` (`@linkdesk/plugin-sdk/own-dict-coverage`) puts
+all three places in scope (`label` **plus** the data file's `name`/`colorways[].name`), and a missing translation goes red on the spot.
+
+ⓘ The JSON snippets in this doc keep their name literals in Chinese for exactly this reason — a theme file must
+contain the Chinese source no matter which language this page is written in.
+
 ## 3. Pitfalls
 
 | Pitfall | Explanation |
 |:--|:--|
 | Recipe json flattened into the plugin root | **Forbidden (§2 ⓪ directory spec)** — always put it in `themes/`; future i18n/README each get their own home |
+| Bilingual names (`"薄荷苏打 Mint Soda"`) | The Chinese UI would show a mixed-script name too — write the **Chinese source** literal; the translation lives in your own `i18n/en.json` (§2 ⑤) |
 | Writing a top-level `colors` (no `colorways`) | **The old format is deprecated** (decision F) — the engine reads only `colorways[]`; even a single colorway goes in an array with 1 item |
 | Writing absolute paths | Everything blows up under packaged `file://` — always relative paths + getPluginAssetPath |
 | Repeating every color | Sparse override = write only the differing keys; unwritten ones inherit `:root`, which is more stable |

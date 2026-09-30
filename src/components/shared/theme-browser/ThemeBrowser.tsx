@@ -6,8 +6,9 @@
  * 对标 VS Code `Preferences: Color Theme`（Ctrl+K Ctrl+T）升级版——配方→配色两段
  * （09-命令面 §1 theme.pick：配方→配色两段 / theme.pickColorway 先并入 pick）。
  *
- * 🔴 2026-09-30「指认不明」：本入口读的是 `ThemeRegistry` 原件（不经 `theme.listRecipes` 载荷），
- *   故显示名与配色名走 `ThemeEngine/naming` 的同一份权威（壳兜底 t()、插件原样）——
+ * 🔴 2026-09-30「指认不明」＋ 2026-10-01「我不要双语了」：本入口读的是 `ThemeRegistry` 原件（不经
+ *   `theme.listRecipes` 载荷），故显示名与配色名走 `ThemeEngine/naming` 的同一份权威——名字是中文原文，
+ *   这里过 `t()` 解析成当前语言（壳兜底译名住语言包、主题插件译名住本仓字典）。
  *   ⛔ 别在这里另写一份名字解析；也⛔ 不加来源行/来源字段（用户 2026-09-30 明确否掉）。
  */
 
@@ -84,7 +85,7 @@ export function showThemePicker(pluginId?: string): void {
       mode: "theme",
       items: recipe.colorways,
       placeholder: i18n.t("选择配色变体…"),
-      getSearchText: (cw) => colorwayDisplayName(recipe.id, cw.name),
+      getSearchText: (cw) => colorwayDisplayName(cw.name),
       getKey: (cw) => cw.id,
       onSelect: (cw) => { void commitTheme(recipe, cw.id); },
       onHighlight: (cw) => {
@@ -94,8 +95,8 @@ export function showThemePicker(pluginId?: string): void {
       // E5.7#15：聪慧→哑——池 DTO 序列化（显示文本铁律：壳侧 t() 解析后推送，池原样渲染）
       serialize: (cw) => ({
         key: cw.id,
-        searchText: colorwayDisplayName(recipe.id, cw.name),
-        label: colorwayDisplayName(recipe.id, cw.name),
+        searchText: colorwayDisplayName(cw.name),
+        label: colorwayDisplayName(cw.name),
         category: recipeDisplayName(recipe), // 配色归属配方——列表语境不丢
         checked: originalActive?.recipeId === recipe.id && originalActive.colorwayId === cw.id,
       }),
