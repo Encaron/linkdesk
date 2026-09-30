@@ -451,7 +451,7 @@ node_modules/@linkdesk/plugin-sdk/schemas/host-reserved.json
 
 > **🔥 mappings JSON 契约（立——icon-theme.schema.json 重写对齐引擎 normalizeIconThemeMappings）**：`path` 指向的 mappings 文件按 `icon-theme.schema.json` 校验——repo 内 = `public/schemas/icon-theme.schema.json`（`npm run check` 链 `check-theme-schema.mjs` 兼扫 `contributes.iconThemes`）；npm 作者 = 随 `@linkdesk/plugin-sdk` 分发的 `schemas/icon-theme.schema.json` + SDK `validateIconThemeJson`（同一 schema 文件，规则永不漂移）。运行时解析失败 warn/toast 是第二道防线。文件建议首行 `"$schema"` 引 schema 拿编辑器 IntelliSense。
 
-**id 命名规则：** 图标主题 id 只判**一条**——**不得**用宿主兜底 id `default`（判红：该 id 注册不上 ＋ 一条 `console.error`）。**不判**"带不带本仓前缀"：图标主题 id 会**原样显示在设置页**（选择器直接渲染 id 文本），给它改名 = 用户可见文字变化 ⇒ 本轮不动。想让它在下拉里好看，改的是 `label`（显示名），不是 id。
+**id 命名规则：** 图标主题 id 只判**一条**——**不得**用宿主兜底 id `default`（判红：该 id 注册不上 ＋ 一条 `console.error`）。**不判**"带不带本仓前缀"：图标主题 id 是**注册键**（用户选中的值存在 `app.iconTheme` 里），改名 = 要迁移盘上旧值，收益只落在 id 本身 ⇒ 本轮不动。⚠️ **2026-10-01 更正**：下拉**已改为渲染 `label`**（显示面打通，见下文豁免段）——想让它在下拉里好看，改的是 `label` 的**译名**（本仓字典），⛔ 不是改 id。
 
 ```
   → "appearanceIconThemeIds": ["default"]   ← 图标主题栏（只有这一条）
@@ -534,9 +534,13 @@ node_modules/@linkdesk/plugin-sdk/schemas/host-reserved.json
 
 **哪些不算**（有据的豁免，别乱补）：命令与参数的 `description`（**声明数据**——给契约与 AI 看，不进 UI）·
 **语言包**的 `label` 与 `langDefs` 的 `aliases`（语言自称／`English`/`English (US)` 这种自称形式，**专名不译**）·
-图标主题的 `label` 与图标数据文件（**显示面未打通**：`app.iconTheme` 下拉今天列的是原始 id，那条标签用户看不到 ⇒
-解除条件见下）· 一切路径/ID/上下文键字段（`entry` / `render` / `path` / `when` / `key` / 菜单槽位 `group`…）。
-⛔ **主题的 `label` 已不在豁免之列**（2026-10-01 去双语化）：主题名要跟着界面语言走，故 `themes[].label` 与配方
+图标主题的**图标数据文件**（mappings：`class`/`imagePath`，**没有显示名字段**，不译）· 一切路径/ID/上下文键字段
+（`entry` / `render` / `path` / `when` / `key` / 菜单槽位 `group`…）。
+⛔ **图标主题的 `label` 也不再豁免**（2026-10-01 显示面打通）：壳侧 `app.iconTheme` 下拉**已从「只列原始 id」改为
+「id ＋ 显示名」**（`IconRegistry.iconThemeEnumOptions` 把 `label` 当 `enumDescriptions` 推给设置页，设置页
+`t(enumDescriptions[i])` 解析）⇒ 那条 `label` 就是用户在下拉里读到的字，`contributes.iconThemes[].label`
+要有本仓译名（字面量纯中文、译名进本仓 `i18n/en.json`）。
+⛔ **主题的 `label` 同样不豁免**（2026-10-01 去双语化）：主题名要跟着界面语言走，故 `themes[].label` 与配方
 文件里的 `name`/`colorways[].name` 都要有本仓译名（`11 §⑤`）。豁免的**唯一真相源**是 SDK 的
 `own-dict-coverage` 模块头注——**改 schema 时同笔改那里**，⛔ 别在这里手抄第二份清单。
 
