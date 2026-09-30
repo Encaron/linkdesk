@@ -112,6 +112,57 @@ describe("computeTipPosition 绝不压锚（🔴 用户实机挑出的 ✕ 现�
   });
 });
 
+describe("computeTipPosition 兜底先忠于轴（🔴 2026-09-30 标签栏现场：条被甩到右侧挡住下一个标签）", () => {
+  // 用户报障的原始几何：1920×1440 窗口里的标签栏。标签贴在窗口顶部（标题栏 30px ＋ 标签 4px 上边距
+  // ＋ 面板偏移 ⇒ 实测上缘 37~42），条 200×31。**旧兜底**（直接跳"四面空间最大"）在宽窗口里必然选中
+  // "右"（W−right ≫ H−bottom）⇒ 前两只标签与"只有一只"时条横着压住下一个标签；第三只起右侧空间
+  // 反而变小才"看起来正常"。新兜底先在同一轴上翻面 ⇒ 无论第几只都落到标签**下方**。
+  const WIDE: { width: number; height: number } = { width: 1920, height: 1440 };
+  const TAB_TIP = { width: 200, height: 31 };
+  /** 第 n 只标签的矩形（min 64/max 240，这里取实测常见值 200×30，间距 204） */
+  const tabAt = (n: number, top = 39): TipAnchorRect => {
+    const left = 4 + (n - 1) * 204;
+    return { top, bottom: top + 30, left, right: left + 200 };
+  };
+
+  it("🔴 第 1 / 2 / 3 / 6 只标签 ⇒ 一律落**下方**（旧兜底：第 1、2 只落「right」＝ 压住下一个标签）", () => {
+    for (const n of [1, 2, 3, 6]) {
+      const p = computeTipPosition(tabAt(n), TAB_TIP, WIDE, "top");
+      expect(p.placement, `第 ${n} 只标签`).toBe("bottom");
+      expect(p.top).toBe(69 + GAP_PX); // 贴在标签下缘（39+30）
+    }
+  });
+
+  it("🔴 只有一只标签同理（最左 ⇒ 右侧空间最大，旧兜底必然选右）", () => {
+    const p = computeTipPosition(tabAt(1), TAB_TIP, WIDE, "top");
+    expect(p.placement).toBe("bottom");
+    expect(p.left).toBe(EDGE_PX); // 副轴居中后被左缘夹紧
+  });
+
+  it("锚上缘 37~44（「名义放得下、夹紧吃掉那 8px」的触发带）逐点落下方——顶上那一档也不许跳轴", () => {
+    for (let top = 37; top <= 44; top += 1) {
+      expect(computeTipPosition(tabAt(1, top), TAB_TIP, WIDE, "top").placement, `top=${top}`).toBe("bottom");
+    }
+  });
+
+  it("横向同病同治：窄窗里请求 left、被左缘夹紧 ⇒ 落**right**（⛔ 不是「下方」——旧兜底在 700×1200 里选的就是 bottom）", () => {
+    // 锚左侧只剩 210（名义够放 200+6），夹紧把条推回 anchor.left−GAP 之内 ⇒ tooClose；
+    // 而 1200 高的窗口里"下方"空间（870）> 右侧（290）⇒ 旧兜底跨轴跳到下面去
+    const p = computeTipPosition({ top: 300, bottom: 330, left: 210, right: 410 }, TAB_TIP, { width: 700, height: 1200 }, "left");
+    expect(p.placement).toBe("right");
+    expect(p.left).toBe(410 + GAP_PX);
+    expect(p.left).toBeGreaterThanOrEqual(410 + GAP_PX); // 回归断言：没压锚
+  });
+
+  it("不变量：请求轴的两面都放得下 ⇒ 兜底**不许跨轴**（上下恒上下、左右恒左右）", () => {
+    for (let top = 0; top <= 140; top += 2) {
+      // 窗口正中偏右的锚、条远小于窗口：上下两侧都放得下 ⇒ 结果必须留在纵轴上
+      const p = computeTipPosition({ top, bottom: top + 30, left: 900, right: 1100 }, TAB_TIP, WIDE, "top");
+      expect(["top", "bottom"], `top=${top}`).toContain(p.placement);
+    }
+  });
+});
+
 describe("computeTipPosition 保底（四面都不够 / 条比视口还大——⛔ 仍不裁字）", () => {
   it("四面都不够 ⇒ 取**空间最大**的一侧（宁可换个方位，也不把条塞回锚上）", () => {
     // 视口只剩 44px 高：上下都塞不下 28px+GAP 的条 ⇒ 左右里挑（left 500 > right 440）

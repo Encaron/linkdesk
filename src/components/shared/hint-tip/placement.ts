@@ -143,7 +143,8 @@ function placeOn(side: TipPlacement, anchor: TipAnchorRect, tip: TipSize, viewpo
 
 /**
  * 条的落点：首选方位够放 ⇒ 采用；不够 ⇒ 翻**主轴反面**；翻面也够不着 ⇒ 取空间最大的一侧；
- * 最后若"离锚太近"（夹紧把条拉回了锚上）⇒ 换空间最大的一侧重落一次。⛔ 任何一步都不裁字。
+ * 最后若"离锚太近"（夹紧把条拉回了锚上）⇒ 先换**同一轴的对面**，对面也不行才换空间最大的一侧重落。
+ * ⛔ 任何一步都不裁字。
  *
  * @param anchor  锚矩形（视口坐标——本件用 `position: fixed`，与 `getBoundingClientRect()` 同系）
  * @param tip     条的**实测**尺寸（先渲染后量；本函数不估计）
@@ -163,7 +164,14 @@ export function computeTipPosition(anchor: TipAnchorRect, tip: TipSize, viewport
   const pos = placeOn(side, anchor, tip, viewport);
   if (!tooClose(pos, tip, anchor)) return { ...pos, placement: side };
 
-  // 夹紧把条拉回锚上了（或四面都不够）⇒ 换空间最大的一侧重落（⛔ 仍不裁字）
+  // ① 先试**同一轴的对面**——夹紧吃掉的往往只是"边缘那 8px"，对面一般完好，而轴本身是语义
+  //    （条属于锚的上/下方、或左/右侧）。2026-09-30 标签栏现场：请求 top、名义放得下、却被视口
+  //    上缘推回锚内 ⇒ 直接跳四面 ⇒ 宽窗口里选中"右" ⇒ 条横着压住下一个标签（案卷 04 同名件）。
+  const mirror = OPPOSITE[side];
+  const mirrored = placeOn(mirror, anchor, tip, viewport);
+  if (!tooClose(mirrored, tip, anchor)) return { ...mirrored, placement: mirror };
+
+  // ② 对面也不行（＝这条轴上两面都不可行）⇒ 才退回"空间最大的一侧"（✕ 贴窗口角落那类现场的保底；⛔ 仍不裁字）
   const forced = roomiestSide(space);
   return { ...placeOn(forced, anchor, tip, viewport), placement: forced };
 }
