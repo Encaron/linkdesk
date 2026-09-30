@@ -47,6 +47,8 @@ const FOR_SOURCED = ["tsconfig.json"];
 // ⚠️ `vitest.setup.ts` 的**内容**由模板决定、本表只管「这只仓该不该有它」——模板里那份现在是一行指针
 //    （`import "@linkdesk/plugin-sdk/vitest-setup";`），所以铺下去的就是指针，不必在这里另做判断。
 const FOR_TESTED = ["vitest.config.ts", "vitest.setup.ts"];
+/** 允许**仓内就地扩写**的「地基件」——模板只保证最小地基，仓内自有钩子（如测试前置复位）留在原地 */
+const EXTENDABLE = new Set([...FOR_SOURCED, ...FOR_TESTED]);
 /** 版本区间与壳仓根 devDependencies 对齐（vitest/jsdom）与 SDK 的传递依赖同版（jsonc-parser） */
 const DEV_DEPS = {
   "jsonc-parser": "^3.3.1",
@@ -99,6 +101,7 @@ function testFiles(dir) {
 
 const changes = [];
 const skipped = [];
+const extended = [];
 const record = (repo, what) => changes.push(`${repo}: ${what}`);
 
 for (const id of repos) {
@@ -120,6 +123,22 @@ for (const id of repos) {
     const norm = (p) => readFileSync(p, "utf8").replace(/\r\n/g, "\n");
     const same = existsSync(to) && norm(to) === norm(from);
     if (same) continue;
+    // 🔴 「地基件」与「门禁件」区别对待（E6#161 实测教训）：`vitest.setup.ts` / `tsconfig.json` 这类
+    //    **配置/地基**文件，仓内**合法扩写**是常态（marketplace 就为多表面 realm 槽加了
+    //    `beforeEach(() => __resetRealmSlots())`——一次覆盖把它抹掉，23 例测试当场红）。
+    //    判据 = 模板的每个非空行**都**在本地文件里（= 模板是它的子集）⇒ 视为就地扩写，⛔ 不代改。
+    //    门禁件（`ci.yml` / `ci-verify.mjs`，ALWAYS 那两份）**不适用**：它们的价值就在逐字节同源。
+    if (EXTENDABLE.has(rel) && existsSync(to)) {
+      const lines = (p) => norm(p).split("\n").filter((l) => l.trim() !== "");
+      const tmpl = lines(from);
+      const local = lines(to);
+      if (tmpl.every((l) => local.includes(l))) {
+        extended.push(
+          `${id}: ${rel} 就地扩写（模板 ${tmpl.length} 行 ⊂ 本地 ${local.length} 行）——⛔ 保留仓内自有钩子，不代改`,
+        );
+        continue;
+      }
+    }
     record(id, `${existsSync(to) ? "更新" : "新增"} ${rel}`);
     if (!DRY) {
       cpSync(from, to, { recursive: true });
@@ -159,6 +178,7 @@ for (const id of repos) {
 
 console.log(`${DRY ? "[dry-run] " : ""}容器：${CONTAINER}（${repos.length} 只）`);
 for (const c of changes) console.log(`  · ${c}`);
+for (const e of extended) console.log(`  · ⏭ ${e}`);
 if (skipped.length > 0) console.log(`  · 跳过第三方仓 ${skipped.length} 只（不在 FACTS 表内 · ⛔ 不代改）：${skipped.join("、")}`);
 const written = changes.filter((c) => !c.includes("无差异")).length;
 console.log(`\n${DRY ? "将改动" : "已改动"} ${written} 处。`);
