@@ -43,6 +43,12 @@ hello-world.linkdesk-plugin          ← zip 文件，后缀 .linkdesk-plugin
 > **无 entry 插件**（纯 contributes.views 的 view-only）→ zip 无 `index.bundle.js`，只 `views/*.bundle.js`。
 > **纯 JSON 插件**（theme/lang，无 React）→ zip 无任何 bundle.js，只有 `plugin.json` + JSON 资源（语言包/主题）→
 > 无需 build（无编译表面），loader 只注册贡献不加载入口（#15b JSON 12）。
+>
+> 🔴 **重复打包的后果成规（2026-09-30 补——marketplace 1.1.4 实机事故）**：ESM 模块身份 = URL ⇒ 同源 `services/...`
+> 在 N 份表面 bundle 里各内联一份 ⇒ **模块级可变状态（store / 守卫 / 去重表 / 订阅计数）在表面之间各长一个**——
+> 「模块级 = 跨视图唯一真相」这条单表面时代的前提，在多表面插件里**不成立且静默失效**。跨表面共享的可变状态
+> 必须走 **realm 级原语**（现例：marketplace `realmSlot`，SDK 原语版待发）；正典与终局解（跨表面共享 chunk）
+> → [12-多表面共享状态塌缩-立案.md](./12-多表面共享状态塌缩-立案.md)（E6#158）。
 
 ## 三、如何生成
 
