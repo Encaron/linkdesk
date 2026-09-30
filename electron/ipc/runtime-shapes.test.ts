@@ -24,6 +24,9 @@ const validPoolLayout = {
   },
   iconBar: {
     icons: [{ pluginId: "terminal", icon: { kind: "lucide", name: "terminal" }, label: "终端", location: "top" as const }],
+    // 2026-09-30 齿轮归壳：owned = 壳自带按钮（今天只有齿轮）；必填字段——本夹具是无类型的
+    // wire 快照，tsc 点不到，只有运行期校验器（runtime-shapes）会喊「期望数组」
+    owned: [{ id: "gear", icon: { kind: "img", src: "/assets/icons/gear.svg" }, label: "管理", location: "bottom" as const, menuId: "extensionGear" }],
     hamburgerVisible: true,
     navLabel: "导航",
     hamburger: { title: "菜单", groups: [] },

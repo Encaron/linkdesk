@@ -5,8 +5,10 @@
  * E6#54b：resolvePluginIcon 已随 @linkdesk/ui 迁至 components/shared/plugin-icon/iconUtils（纯函数，壳/包同源）。
  */
 
-import type { IconBarLayout, IconBarItem } from "../../core/types/pool/poolLayout";
+import type { IconBarLayout, IconBarItem, IconBarOwnedButton } from "../../core/types/pool/poolLayout";
 import { getViewPlugins, getViewPlugin, getIconLocation } from "../../pluginLoader/contributions/viewRegistry";
+import { MENU_SLOTS } from "../../core/registry/commands/MenuRegistry"; // 2026-09-30：壳自带齿轮挂哪个菜单槽（owned.menuId）
+import { getAssetPath } from "../../core/utils/path/assetPath"; // 2026-09-30：齿轮图标 = 壳自带资产（硬约束 12）
 import { getConfigurationValue } from "../../core/services/configuration/ConfigurationService"; // E5.7#1：titleBar.menuBarVisible
 import { resolvePluginIcon } from "../../components/shared/plugin-icon/iconUtils";
 import { resolvedToIconBarIcon } from "./resolvedIcon"; // E6#69f：#69g ResolvedIcon→IconBarIcon 单源转换（iconbar/windowLayout 同消费）
@@ -73,8 +75,26 @@ export function buildIconBar(t: (key: string) => string, sidebarView: string | n
   const menuStyle = getConfigurationValue<string>("app.menuStyle") ?? "titlebar";
   const hamburgerVisible = MENU_STYLE_HAMBURGER_VISIBLE[menuStyle] ?? false;
 
+  // 壳自带图标栏按钮——齿轮（E3f 06 §3.2 原话「位置：图标栏底部 ⚙ 按钮。**永远可见——不依赖任何
+  // 插件**」；2026-09-30 拍板见 docs/04-软件更新/待抉择池/齿轮归属与底部图标位/）。此前这颗齿轮由
+  // 设置插件的 appearsIn.iconBar:"bottom" 提供——本件把图标收归壳，于是 location 退回纯几何、齿轮恒在。
+  // icon 走 img：壳自带资产（硬约束 12 一律 getAssetPath），与改前同一份剪影 + 同一条渲染路径
+  // （PoolPluginIcon img 分支 + 图标栏单色滤镜）⇒ 肉眼零差。
+  // label 走 t()：i18n key = 中文原文（硬约束 2）；zh 词条缺失时 parseMissingKeyHandler 回退返回
+  // key 本身 ⇒ 无需新增词条即正确显示（en 词条随 lang-defaults 同批补）。
+  const owned: IconBarOwnedButton[] = [
+    {
+      id: "gear",
+      icon: { kind: "img", src: getAssetPath("assets/icons/gear.svg") },
+      label: t("管理"),
+      location: "bottom",
+      menuId: MENU_SLOTS.ExtensionGear,
+    },
+  ];
+
   return {
     icons,
+    owned,
     ...(activePluginId ? { activePluginId } : {}),
     hamburgerVisible,
     navLabel: t("导航"),

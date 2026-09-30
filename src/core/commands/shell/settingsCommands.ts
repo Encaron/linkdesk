@@ -501,7 +501,11 @@ export function registerSettingsCommands(): void {
 
   // 齿轮菜单——设置/主题/语言/快捷键 四个入口（E5.8#50.24：theme.pick 归一化命令 id）
   registerMenuItems(MENU_SLOTS.ExtensionGear, APP_PLUGIN_ID, [
-    { command: "core.openSettings", group: "navigation" },
+    // 件 3（2026-09-30「齿轮归壳」）：设置槽为空（没装任何 factoryRole:"settings" 的套）⇒ 本项不显示
+    // ——齿轮已恒可见（壳自带 owned 按钮），不留「点了没反应」的空壳菜单项。when 由 usePoolSync 随
+    // 每次布局推送同步（与 sidebarPosition 同款 context key 机制，壳侧 getItems 一站式求值）。
+    // ⛔ 只门控菜单项显隐，不动 core.openSettings 本体路由（factorySlots.getActive 那条链）。
+    { command: "core.openSettings", group: "navigation", when: "settingsSlotFilled" },
     { command: "theme.pick", group: "navigation" },
     { command: "workbench.action.selectLanguage", group: "navigation" },
     { command: "workbench.action.openKeybindingsSettings", group: "navigation" },

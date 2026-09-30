@@ -7,8 +7,10 @@
  *   - 图标按钮（垂直排列，42px 宽；top/bottom 分列——壳 getIconLocation 序列化为 location 字段）
  *   - 激活高亮（activePluginId——壳侧已算好：侧栏展开 + 活动容器属于该插件）
  *   - 点击 → window.linkdesk.events.emit("icon:selected", pluginId) → 主进程转发 → 壳开标签
- *   - 底部图标（齿轮）例外——左键/右键弹 ExtensionGear 菜单（壳 IconBar 同款：
- *     location=bottom 即齿轮，零 pluginId 硬编码；菜单项壳 MenuRegistry 解析推送，池哑渲染）
+ *   - 壳自带按钮（iconBar.owned，今天 = 齿轮）例外——左键/右键弹它自带的 menuId
+ *     （壳 MenuRegistry 解析推送，池哑渲染）。🔴 **位置不决定行为**：location=bottom 只是几何位置，
+ *     不是「齿轮」身份——旧规则「location=bottom 即齿轮」已随 2026-09-30「齿轮归壳」拍板废除
+ *     （docs/04-软件更新/待抉择池/齿轮归属与底部图标位/）
  *   - 拖拽换位（#6 补丁 2026-08-14）——壳 IconBar 状态机迁入：乐观本地序 + mouseup
  *     emit icon:reordered → 壳持久化 iconOrder + 重推确认（#13 同款"乐观本地 + commit"模式，
  *     真相源在壳）。设计 §2.2"可选——远期"废止——零丢失铁律：壳已验证功能不得静默砍。
@@ -30,7 +32,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
-import type { IconBarLayout, IconBarItem } from "../../../core/types/pool/poolLayout";
+import type { IconBarLayout, IconBarItem, IconBarOwnedButton } from "../../../core/types/pool/poolLayout";
 import PoolPluginIcon from "../../shared/pool-plugin-icon/PoolPluginIcon";
 import ContextMenu from "@src/components/shared/context-menu/ContextMenu"; // 齿轮菜单——#14 门户（壳 IconBar 同款消费者）
 import { poolGroupsToDescriptors } from "../../shared/menu-items"; // E5.8#55：汉堡多组下拉 → ContextMenu 契约
@@ -59,8 +61,12 @@ function IconBarZone({ iconBar }: { iconBar: IconBarLayout }) {
   const [hamburgerOpen, setHamburgerOpen] = useState(false);
   const hamburgerBtnRef = useRef<HTMLButtonElement>(null);
 
-  // 齿轮菜单锚点（壳 IconBar gearAnchor 同款）——底部图标左键/右键 → ExtensionGear 菜单
+  // 齿轮菜单锚点——只有壳自带按钮（owned 里的齿轮）会设它（旧实现：任何 location=bottom 的插件图标）
   const [gearAnchor, setGearAnchor] = useState<{ x: number; y: number } | null>(null);
+
+  // 齿轮菜单槽位 id——取壳自带按钮里 id === "gear" 的那条（壳是真相源，池不认识槽位名字：
+  // 旧实现在 ContextMenu 上硬编码 "extensionGear"，本件改为从数据透传）
+  const gearMenuId = iconBar.owned.find((b) => b.id === "gear")?.menuId;
 
   // E5.8#55：汉堡下拉换 ContextMenu——点外关闭/Escape/失焦/滚轮由 ContextMenu 自管
   // （默认 variant="overlay"——汉堡是点击开关无 hover 切换，backdrop 吞第一击 + 点外关闭）
@@ -197,7 +203,7 @@ function IconBarZone({ iconBar }: { iconBar: IconBarLayout }) {
     })()
     : null;
 
-  const renderIcon = (item: IconBarItem, isBottom: boolean) => {
+  const renderIcon = (item: IconBarItem) => {
     const showBefore = dropTarget?.id === item.pluginId && dropTarget.pos === DROP_POS_TOP;
     const showAfter = dropTarget?.id === item.pluginId && dropTarget.pos === DROP_POS_BOTTOM;
     return (
@@ -211,27 +217,17 @@ function IconBarZone({ iconBar }: { iconBar: IconBarLayout }) {
             e.preventDefault(); // 阻止浏览器原生拖拽
             dragRef.current = { pluginId: item.pluginId, startY: e.clientY, moved: false };
           }}
-          onClick={(e) => {
+          onClick={() => {
             if (wasDragRef.current) {
               wasDragRef.current = false;
               dragRef.current = null;
               return;
             }
-            if (isBottom) {
-              // 底部图标（齿轮）：对标 VS Code 左下齿轮——左键弹 ExtensionGear 菜单，不开标签
-              // （壳 IconBar 同款语义；菜单含"打开设置"入口）
-              e.preventDefault();
-              setGearAnchor({ x: e.clientX, y: e.clientY });
-              return;
-            }
+            // 位置不再决定行为——底部插件图标与顶部一样开自己的标签页（旧实现：底部图标弹齿轮菜单、
+            // 自己的标签页永远打不开）。齿轮已改由壳自带按钮 owned 提供，见 renderOwned 与文件头注。
             // 壳侧消费方：壳 App 桥接 linkdesk.events.on → shellEvents → App 开标签（E5.7#6）
             window.linkdesk?.events?.emit("icon:selected", item.pluginId);
           }}
-          onContextMenu={isBottom ? (e) => {
-            // 右键同弹齿轮菜单（壳同款——顶部图标右键无菜单）
-            e.preventDefault();
-            setGearAnchor({ x: e.clientX, y: e.clientY });
-          } : undefined}
           // E4V#48：视图拖放落点——仅响应携带自定义 MIME 的 HTML5 拖拽（换位拖拽走 mousedown 不触发）
           onDragOver={(e) => {
             if (!e.dataTransfer.types.includes(VIEW_DRAG_MIME)) return;
@@ -271,6 +267,30 @@ function IconBarZone({ iconBar }: { iconBar: IconBarLayout }) {
     );
   };
 
+  /** 壳自带按钮（齿轮）——池哑渲染：图标 / label / 菜单槽位全由壳序列化给。
+   *  ⛔ 不挂 data-plugin-id——那会被 findTarget 的 [data-plugin-id] 查询当成拖拽落点，且它本来就
+   *  不在 localIcons 里（不进 iconOrder、不可拖、恒可见）。用 data-owned-id 独立标记。 */
+  const renderOwned = (item: IconBarOwnedButton) => (
+    <div key={item.id} className="ldk-icon-bar-item-wrapper">
+      <button
+        className="ldk-icon-btn"
+        data-owned-id={item.id}
+        onClick={(e) => {
+          e.preventDefault();
+          setGearAnchor({ x: e.clientX, y: e.clientY });
+        }}
+        onContextMenu={(e) => {
+          e.preventDefault();
+          setGearAnchor({ x: e.clientX, y: e.clientY });
+        }}
+        data-hint={item.label}
+        aria-label={item.label}
+      >
+        <PoolPluginIcon icon={item.icon} className="ldk-icon-bar-plugin-icon" alt={item.label} />
+      </button>
+    </div>
+  );
+
   return (
     <div className="ldk-icon-bar" role="navigation" aria-label={iconBar.navLabel} ref={barRef}>
       <div className="ldk-icon-bar-top">
@@ -300,14 +320,19 @@ function IconBarZone({ iconBar }: { iconBar: IconBarLayout }) {
             )}
           </>
         )}
-        {topIcons.map((item) => renderIcon(item, false))}
+        {topIcons.map((item) => renderIcon(item))}
       </div>
-      <div className="ldk-icon-bar-bottom">{bottomIcons.map((item) => renderIcon(item, true))}</div>
+      {/* 底部组：插件底部图标在前、壳自带按钮（齿轮）在后 ⇒ 齿轮恒在整列最末（VS Code 左下同款） */}
+      <div className="ldk-icon-bar-bottom">
+        {bottomIcons.map((item) => renderIcon(item))}
+        {iconBar.owned.map(renderOwned)}
+      </div>
 
-      {/* 齿轮菜单——底部图标左键/右键 → ExtensionGear（壳 IconBar 同款；#14 ContextMenu 门户） */}
-      {gearAnchor && (
+      {/* 齿轮菜单——锚点只可能来自壳自带按钮（owned）；槽位 id 由壳序列化下发
+          （⛔ 池不认识 "extensionGear" 这个名字；#14 ContextMenu 门户） */}
+      {gearAnchor && gearMenuId && (
         <ContextMenu
-          menuId={"extensionGear"}
+          menuId={gearMenuId}
           anchor={gearAnchor}
           context={{}}
           onClose={() => { setGearAnchor(null); (document.activeElement as HTMLElement)?.blur(); }}

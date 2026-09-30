@@ -12,7 +12,10 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { clearRegistrationLayers } from "../../registry/registrationTracker";
 import { executeCommand, clearCommands } from "../../registry/commands/CommandRegistry";
-import { clearMenus } from "../../registry/commands/MenuRegistry";
+import { clearMenus, MENU_SLOTS } from "../../registry/commands/MenuRegistry";
+import { ContextKeyService } from "../../registry/commands/ContextKeyService";
+import { handleSettingsChannel } from "../../services/plugins/IpcBridgeHandler/ui";
+import type { MenuItemDescriptor } from "../../api/linkdesk-api";
 import {
   registerConfiguration,
   registerConfigurationDefaults,
@@ -60,7 +63,9 @@ function seedSettings(opts: {
     name: "设置",
     version: "1.0.19",
     entry: tabCreatable ? "src/index.tsx" : undefined,
-    appearsIn: { iconBar: "bottom", tabBar: tabCreatable },
+    // 2026-09-30「齿轮归壳」后设置插件不再声明 iconBar（齿轮改由壳自带 owned 按钮提供）——
+    // fixture 与真 manifest 保持同形，免得下一个人照抄「设置插件声明 bottom」这个已被废除的写法
+    appearsIn: { tabBar: tabCreatable },
     factoryRole: "settings",
     contributes: opts.floatingPanel ? { floatingPanel: opts.floatingPanel } : {},
   } as unknown as PluginManifest;
@@ -159,5 +164,41 @@ describe("core.openSettings——首开形态分支（声明制）", () => {
     } finally {
       warn.mockRestore();
     }
+  });
+});
+
+describe("齿轮菜单——「设置」项空槽门控（2026-09-30 齿轮归壳 · 件 3）", () => {
+  beforeEach(() => {
+    clearRegistrationLayers();
+    clearCommands();
+    clearMenus();
+    clearRegistry();
+    clearConfigurationRegistrations();
+    ContextKeyService.clear();
+    registerSettingsCommands();
+  });
+
+  /** 经壳侧 menu:getItems 端到端（when 求值壳侧一站式——与 gearMenuWhen.test.ts 同一条路）。
+   *  齿轮菜单的 context 是空对象（池 `context={{}}`）⇒ 命中全局 ContextKeyService 的值。 */
+  const gearItems = async (): Promise<MenuItemDescriptor[]> =>
+    await handleSettingsChannel("menu:getItems", [MENU_SLOTS.ExtensionGear, {}]) as MenuItemDescriptor[];
+
+  it("settingsSlotFilled=false（槽空）⇒ 「设置」项不显示，其余项照旧", async () => {
+    ContextKeyService.setValue("settingsSlotFilled", false);
+    const items = await gearItems();
+    expect(items.find((i) => i.command === "core.openSettings")).toBeFalsy();
+    expect(items.find((i) => i.command === "theme.pick")).toBeTruthy();
+    expect(items.find((i) => i.command === "app.about")).toBeTruthy();
+  });
+
+  it("settingsSlotFilled=true（槽里有套）⇒ 「设置」项回来", async () => {
+    ContextKeyService.setValue("settingsSlotFilled", true);
+    const items = await gearItems();
+    expect(items.find((i) => i.command === "core.openSettings")).toBeTruthy();
+  });
+
+  it("键从未被设过（undefined）⇒ 项不显示——与 false 同判（首推之前不留空壳项）", async () => {
+    const items = await gearItems();
+    expect(items.find((i) => i.command === "core.openSettings")).toBeFalsy();
   });
 });

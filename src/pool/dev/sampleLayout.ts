@@ -73,7 +73,12 @@ export function buildSampleLayout(): PoolLayout {
         { pluginId: "file-tree", icon: { kind: "lucide", name: "FolderTree" }, label: "资源管理器", location: "top" },
         { pluginId: "marketplace", icon: { kind: "lucide", name: "ShoppingBag" }, label: "插件市场", location: "top" },
         { pluginId: "serial-monitor", icon: { kind: "lucide", name: "Monitor" }, label: "串口监视器", location: "top" },
-        { pluginId: "settings", icon: { kind: "lucide", name: "Settings" }, label: "设置", location: "bottom" },
+      ],
+      // 壳自带按钮（齿轮）——2026-09-30「齿轮归壳」后底部齿轮不再来自任何插件的
+      // appearsIn.iconBar；样例镜像真实壳的输出，故此处不再有 settings 底部条目。
+      // src 照 fixture 惯例写壳 getAssetPath 的 dev 解析结果（见上方 logoUrl）。
+      owned: [
+        { id: "gear", icon: { kind: "img", src: "/assets/icons/gear.svg" }, label: "管理", location: "bottom", menuId: "extensionGear" },
       ],
       activePluginId: "file-tree",
       hamburgerVisible: true,

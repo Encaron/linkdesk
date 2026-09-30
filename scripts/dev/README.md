@@ -32,6 +32,8 @@ npm run dev:driver -- status
 ```
 
 > 🔴 **`--user-data-dir` 是 Windows 上唯一真隔离**。设 `APPDATA` 不管用——Electron 走 `SHGetKnownFolderPath`，不读那个环境变量。
+> 🔴 **从 Electron 宿主（DSH / ZCode）的 shell 里起实例：先清 `ELECTRON_RUN_AS_NODE`**（2026-09-30 实测）。宿主自己是 Electron 应用 ⇒ 子进程继承 `ELECTRON_RUN_AS_NODE=1` ⇒ `npx electron .` **退化成纯 Node**，报 `TypeError: Cannot read properties of undefined (reading 'requestSingleInstanceLock')`。PowerShell：`Remove-Item Env:ELECTRON_RUN_AS_NODE`。
+> 🔴 **端口别撞用户那只**：用户的软件常年占着 9222/9333 ⇒ 隔离实例**另挑端口**；连上「别人的 target 清单」的表现就是 `targets（0）`（自己那只的 stderr 里会有 `bind() returned an error: …只允许使用一次`）。杀进程按命令行匹配（`Get-CimInstance Win32_Process | Where CommandLine -like '*<你的 user-data-dir 片段>*'`）**只杀自己那只**，⛔ 别按进程名一把梭。
 > 🔴 **必须写等号形（`--user-data-dir=<路径>`）**：空格形（`--user-data-dir <路径>`）Chromium 不认，那个路径会掉进位置参数，
 > 进程照跑但用的是**默认 userData**（2026-09-28 实测：`ai-bridge` 记录写到了 `%APPDATA%\linkdesk`，而你并不知道）。
 > 自查一句：记录行 `[ai-bridge] ... userData=<路径>` 是不是你要的那个。

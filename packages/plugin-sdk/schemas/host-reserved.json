@@ -57,6 +57,7 @@
     "editorCount",
     "editorHasSelection",
     "inputFocus",
+    "settingsSlotFilled",
     "sidebarPosition",
     "updateActionable",
     "updateButtonLabel"

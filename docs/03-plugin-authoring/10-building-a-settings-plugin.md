@@ -25,7 +25,7 @@ Follow the official settings plugin (= the `plugin.json` in **the settings plugi
   // omit core — uninstallable; core: true means the UI has no uninstall button (an anti-mistake-deletion flag, not a category)
   "factoryRole": "settings",                // ① the key — declares you are a member of the "settings set" family
   "entry": "src/index.tsx",                 // tab entry (appearsIn.tabBar requires entry)
-  "appearsIn": { "iconBar": "bottom", "tabBar": true },
+  "appearsIn": { "tabBar": true },          // ⛔ don't declare iconBar — the bottom-left gear belongs to the shell (bottom is a position, not the gear)
   "tabBehavior": { "singleton": true },     // singleton — switching won't open a duplicate if it's already open
   "contributes": {
     "viewsContainers": {

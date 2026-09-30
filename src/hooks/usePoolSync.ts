@@ -29,6 +29,7 @@ import { ViewContainerService } from "../core/services/layout/ViewContainerServi
 import { layoutEngine, narrowPanelEdge, narrowSidebarEdge, DEFAULT_ZONE_SIZE } from "../core/services/layout/LayoutEngine"; // E5.6#11-fix7：池◀按钮→壳 setZoneWidth("sidebar", 28)；E5.8#36.9：edge 窄化守卫
 import { getConfigurationValue } from "../core/services/configuration/ConfigurationService"; // E5.7#1：titleBar.menuBarVisible
 import { ContextKeyService } from "../core/registry/commands/ContextKeyService"; // E5.8#37.6：sidebarPosition 当开关 context key
+import { factorySlots } from "../core/services/bootstrap/FactorySlots"; // 2026-09-30 齿轮归壳·件 3：设置槽是否已填充 → settingsSlotFilled
 import { useUpdateState } from "./useUpdateState"; // E6#57.11：更新态 → TitleBar 按钮显隐/文字（九态映射在 updateCommands.ts）
 import { useReleaseNotes } from "./useReleaseNotes"; // E6#57.13：发行说明标签页载荷（壳想、池画）
 import { useAbout } from "./useAbout"; // E6#57.14：关于标签页载荷（同款）
@@ -144,6 +145,12 @@ export function usePoolSync({ windows, sidebarView, isSidebarVisible, panelActiv
     // 真相源 = LayoutEngine dock.edge（narrowSidebarEdge 收窄）——随每次重推保持同步，
     // 壳侧 when 过滤（buildTitleBarMenuGroups / buildHamburgerMenuGroups / ui.ts getItems）即可命中。
     ContextKeyService.setValue("sidebarPosition", narrowSidebarEdge(layoutEngine.getZone("sidebar")?.dock?.edge));
+
+    // 件 3（2026-09-30「齿轮归壳」）：设置槽是否已填充——齿轮菜单第 1 项（core.openSettings）的 when 门控。
+    // 槽空（没装任何 factoryRole:"settings" 的套）时该项不显示：齿轮已恒可见（壳自带 owned 按钮），
+    // 不留「点了没反应」的空壳项（本仓「不放空壳菜单项」纪律）。与上一行同一个顺序契约——必须在下方
+    // 组装 slots 之前 set，否则壳侧 getItems 读到的是上一轮的值。
+    ContextKeyService.setValue("settingsSlotFilled", !!factorySlots.getActive("settings"));
 
     // E6#57.11：TitleBar 更新按钮的两个 context key——**必须在下方组装 slots 之前 set**，
     // 否则 buildTitleBarSlots 读到的是上一轮的值（与上一行 sidebarPosition 同一个顺序契约）。

@@ -55,7 +55,7 @@ function makeCtx(): WindowLayoutContext {
       slots: { left: [], right: [] },
       windowControls: { minimize: "最小化", maximize: "最大化", restore: "还原", close: "关闭", pin: "置顶", unpin: "取消置顶" },
     },
-    iconBar: { icons: [], hamburgerVisible: false, navLabel: "nav" },
+    iconBar: { icons: [], owned: [], hamburgerVisible: false, navLabel: "nav" },
     sidebar: { visible: false, width: 0, containerId: null, containerTitle: "", views: [] },
     rightSidebar: { visible: false, width: 300, containerId: null, containerTitle: "", views: [] },
     panel: { visible: true, height: 220, activeViewId: "", views: [] },

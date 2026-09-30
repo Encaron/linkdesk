@@ -419,6 +419,8 @@ do not need it (`icon` *is* the identity image).
 
 > **opt-IN — without declaring `appearsIn.iconBar` there is no icon of yours in the icon bar.** The old `iconLocation` default of `"top"` (opt-OUT — the editor got squeezed into the icon bar even without declaring anything) has been deprecated; it is now controlled declaratively by `appearsIn.iconBar` (`"top"` = the upper icon group, `"bottom"` = the fixed bottom group).
 
+> 🔴 **`"bottom"` is a geometric position, not "the gear"** (corrected 2026-09-30): the bottom-left gear is a **shell-owned button** (the icon-bar layout's `owned` field) and has nothing to do with any plugin's declaration. Declaring `"bottom"` merely puts your icon in that bottom group, and clicking it **opens your own tab as usual** — the old "clicking a bottom icon opens the gear menu" behaviour has been removed (background: `docs/04-软件更新/待抉择池/齿轮归属与底部图标位/`).
+
 **Two paths to an icon:**
 
 | Path | Prerequisite | Description |

@@ -473,11 +473,10 @@ export interface TitleBarLayout {
   windowControls: { minimize: string; maximize: string; restore: string; close: string; pin: string; unpin: string };
 }
 
-/** 池侧图标——壳序列化（池不 import pluginLoader，Lucide 名由池映射组件渲染）。
- *  图标栏 + 标签栏共用（E6#69f 标签栏视图标签 / #69g 文件标签走同一联合） */
+/** 池侧图标——壳序列化（池不 import pluginLoader，Lucide 名由池映射组件渲染）；图标栏与标签栏共用 */
 export type IconBarIcon =
   | { kind: "lucide"; name: string }              // E5#100 Lucide 优先
-  | { kind: "codicon"; name: string; color?: string } // codicon CSS 类（可选每图标色——文件图标主题数据，E6#69g）
+  | { kind: "codicon"; name: string; color?: string } // codicon CSS 类（可选每图标色，E6#69g）
   | { kind: "img"; src: string }                  // linkdesk:// 协议 URL / data URI
   | { kind: "emoji"; text: string };              // 回退 emoji
 
@@ -487,13 +486,23 @@ export interface IconBarItem {
   icon: IconBarIcon;
   /** tooltip / aria-label——壳 t(manifest.name) */
   label: string;
-  /** 图标位置——getIconLocation：顶部活动图标 / 底部齿轮 */
-  location: "top" | "bottom";
+  location: "top" | "bottom"; // 主列 / 底部固定组——纯几何，⛔ 与「是不是齿轮」无关（齿轮见 owned）
+}
+
+/** 壳自带按钮——归属壳，不来自任何插件（今天只有齿轮）。 */
+export interface IconBarOwnedButton {
+  id: string; // 稳定身份——池渲染成 data-owned-id（⛔ 不是 data-plugin-id，那会被当拖拽落点）
+  icon: IconBarIcon; // 壳自带资产（壳 getAssetPath 解析后下发）
+  label: string; // tooltip / aria-label——壳 t() 解析
+  location: "bottom";
+  menuId: string; // 点击要弹的菜单槽位 id（池哑渲染，菜单项仍由壳 MenuRegistry 推送）
 }
 
 /** 图标栏布局——Phase 2 #6 IconBarZone 消费 */
 export interface IconBarLayout {
   icons: IconBarItem[];
+  /** 壳自带按钮——池在底部组末位渲染，恒可见/不可拖/不进 iconOrder。⛔ 别塞进 `icons`（那条数组整条在拖拽与持久化路径上，子夹 01-设计 §四）；必填：漏补即 tsc 红 */
+  owned: IconBarOwnedButton[];
   /** 激活图标——当前侧栏容器所属插件（侧栏折叠/无容器时不亮，壳 isActive 同款双重守卫） */
   activePluginId?: string;
   /** E3f #52h：☰ 汉堡可见——menuStyle hamburger/both */
