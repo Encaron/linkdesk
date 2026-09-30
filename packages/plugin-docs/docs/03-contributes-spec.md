@@ -456,7 +456,7 @@ No `font` section → zero custom fonts (codicon fallback / a pure image-asset t
 
 > **🔥 mappings JSON contract (established — icon-theme.schema.json rewritten to align with the engine's normalizeIconThemeMappings)**: the mappings file that `path` points to is validated against `icon-theme.schema.json` — inside the repo that is `public/schemas/icon-theme.schema.json` (`npm run check` chains `check-theme-schema.mjs`, which also scans `contributes.iconThemes`); for npm authors it is the `schemas/icon-theme.schema.json` shipped with `@linkdesk/plugin-sdk` plus the SDK's `validateIconThemeJson` (the same schema file, so the rules never drift). A runtime parse failure with warn/toast is the second line of defense. Files should begin with `"$schema"` pointing at the schema to get editor IntelliSense.
 
-**id naming rule:** an icon-theme id is judged on **one thing only** — it must **not** be the host fallback id `default` (red: the id is not registered, plus one `console.error`). The "carry your repo prefix" criterion is **not applied here**: an icon-theme id is **shown verbatim in the settings page** (the picker renders the id text), so renaming it would change user-visible text ⇒ it stays as it is. If you want it to read better in the dropdown, change the `label` (display name), not the id.
+**id naming rule:** an icon-theme id is judged on **one thing only** — it must **not** be the host fallback id `default` (red: the id is not registered, plus one `console.error`). The "carry your repo prefix" criterion is **not applied here**: an icon-theme id is a **registration key** (the value users store in `app.iconTheme`), so renaming it means migrating old values for no gain ⇒ it stays as it is. ⚠️ **Correction, 2026-10-01**: the dropdown **now renders the `label`** (display path wired up — see the exemption note below) — to make it read better in the dropdown, translate the `label` (in your own dictionary), ⛔ not the id.
 
 ```
   → "appearanceIconThemeIds": ["default"]   ← icon-theme column (this is its only entry)
@@ -543,11 +543,15 @@ order on someone else's machine, you cannot predict the result. **Adding the pai
 
 **What does not count** (documented exemptions — don't "fix" them): `description` of commands and params
 (**declaration data** — for contracts and AI, never rendered) · **language-pack** `label` and `langDefs`
-`aliases` (language self-names such as `English`/`English (US)`, **proper nouns, never translated**) · icon-theme
-`label` and icon data files (**display path not wired up yet**: the `app.iconTheme` dropdown lists raw ids today,
-so that label is invisible to users ⇒ see below for the removal condition) · every path/ID/context-key
-field (`entry` / `render` / `path` / `when` / `key` / menu `group` slots…).
-⛔ **A theme's `label` is no longer exempt** (2026-10-01 de-bilingualization): a theme name must follow the UI
+`aliases` (language self-names such as `English`/`English (US)`, **proper nouns, never translated**) · an icon theme's
+**icon data file** (mappings: `class`/`imagePath`, **no display-name field**, not translated) · every
+path/ID/context-key field (`entry` / `render` / `path` / `when` / `key` / menu `group` slots…).
+⛔ **An icon theme's `label` is no longer exempt either** (2026-10-01, display path wired up): the shell's
+`app.iconTheme` dropdown **now shows "id + display name"** instead of raw ids only (`IconRegistry.iconThemeEnumOptions`
+pushes `label` as `enumDescriptions`, resolved by the settings page through `t()`) ⇒ that `label` is what users read
+in the dropdown, so `contributes.iconThemes[].label` needs a translation in your own repo (Chinese literal,
+translation in your `i18n/en.json`).
+⛔ **A theme's `label` is likewise not exempt** (2026-10-01 de-bilingualization): a theme name must follow the UI
 language, so `themes[].label` and the recipe file's `name`/`colorways[].name` all need a translation in your own
 repo (`11 §⑤`). The **single source of truth** for exemptions is the header of the SDK's `own-dict-coverage`
 module — **change that one when you change the schema**, ⛔ never hand-copy a second list here.

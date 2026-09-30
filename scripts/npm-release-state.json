@@ -12,8 +12,8 @@
     },
     {
       "name": "@linkdesk/plugin-sdk",
-      "version": "0.1.65",
-      "contentHash": "36e8c61030b00b36e74a9d2d6159202f5fdf9ed43386f614f2cadb0a56809258",
+      "version": "0.1.66",
+      "contentHash": "277cfa38470bacfc25811c756e3ae7b8eda4186a977deb80d121a86d472114f3",
       "fileHashes": {
         "packages/plugin-sdk/README.md": "dd2a3dac5f82ce42",
         "packages/plugin-sdk/dev-host/dev-main.tsx": "49c59b28e17ca424",
@@ -80,7 +80,7 @@
         "packages/plugin-sdk/src/github-http.ts": "d73115f7e71469ee",
         "packages/plugin-sdk/src/index.ts": "928f32b0ef3b8a64",
         "packages/plugin-sdk/src/marketplace-schema.test.ts": "2004d6a3a8b0e058",
-        "packages/plugin-sdk/src/own-dict-coverage.test.ts": "5e286614862ea282",
+        "packages/plugin-sdk/src/own-dict-coverage.test.ts": "f4630728b11dafac",
         "packages/plugin-sdk/src/pack.test.ts": "e3f78cdc70153c82",
         "packages/plugin-sdk/src/pack.ts": "6252390ad81bbdb0",
         "packages/plugin-sdk/src/publish.test.ts": "1057db58522cdba8",
@@ -127,7 +127,7 @@
     {
       "name": "@linkdesk/ui",
       "version": "0.2.32",
-      "contentHash": "436c195cc6649aaa0149f391126279f7e54275d598649ca32ce88bdbfe6aa281",
+      "contentHash": "a9ee61de7d0568de8bb8100a82e54fd5ec448db043ec03f6271e7117fe885478",
       "fileHashes": {
         "packages/linkdesk-ui/README.md": "4a0ec460a3377590",
         "packages/linkdesk-ui/src/index.ts": "9dea2e375554b92f",
@@ -193,7 +193,7 @@
         "src/components/shared/segmented-radio/SegmentedRadio.test.tsx": "0a61c7a2b209b74a",
         "src/components/shared/segmented-radio/SegmentedRadio.tsx": "7c220fd42a038a8e",
         "src/components/shared/select-box/DynamicSelect.test.tsx": "32f5e9ee19060c49",
-        "src/components/shared/select-box/DynamicSelect.tsx": "4ca475b835fba383",
+        "src/components/shared/select-box/DynamicSelect.tsx": "c6c88cc86c04789d",
         "src/components/shared/select-box/SelectBox.css": "a7aa7a73bf626afc",
         "src/components/shared/select-box/SelectBox.tsx": "0117c0f47d408e9f",
         "src/components/shared/select-box/SelectBoxDropdown.test.tsx": "73c95c4e05e6e538",
@@ -210,21 +210,21 @@
         "src/components/shared/string-list-editor/urlSourceKey.ts": "21599e9e28f9dcbf",
         "src/components/shared/theme-picker/ThemePicker.css": "28a50faf75a011b2",
         "src/components/shared/theme-picker/ThemePicker.test.tsx": "5fba32182ef9ad17",
-        "src/components/shared/theme-picker/ThemePicker.tsx": "84e00a1a6137b9cf",
+        "src/components/shared/theme-picker/ThemePicker.tsx": "49228a1c0e8c943b",
         "src/components/shared/toggle/Toggle.css": "bbd7aadf07a5a7c5",
         "src/components/shared/toggle/Toggle.tsx": "c8554a52d4c9ec47"
       }
     },
     {
       "name": "@linkdesk/plugin-docs",
-      "version": "0.1.50",
-      "contentHash": "f061360e95b07b2dd793ba7d81558d37dbc1a3d435251eaa91050bf04cbd79e7",
+      "version": "0.1.51",
+      "contentHash": "a8f0cfeaf4950f6503377612f4fab8351ea72bf9d7f3386e801a06e82dca0787",
       "fileHashes": {
         "packages/plugin-docs/README.md": "6cd51394e987a3f2",
         "packages/plugin-docs/docs/00-readme.md": "ab34ec71ea7f4099",
         "packages/plugin-docs/docs/01-plugin-api-contract.md": "2f4300c19ff34587",
         "packages/plugin-docs/docs/02-plugin-lifecycle.md": "aeda91886c7d874b",
-        "packages/plugin-docs/docs/03-contributes-spec.md": "6014680ad6db3003",
+        "packages/plugin-docs/docs/03-contributes-spec.md": "d6a4215f21e02d00",
         "packages/plugin-docs/docs/04-distribution-format.md": "167705825b6dd3d4",
         "packages/plugin-docs/docs/05-ui-conventions.md": "20eb30589c551f67",
         "packages/plugin-docs/docs/06-plugin-json-spec.md": "6ac74b06ee5bbd1d",
@@ -248,7 +248,7 @@
         "packages/plugin-docs/docs/zh/00-README.md": "a9d10977f928b742",
         "packages/plugin-docs/docs/zh/01-插件API契约.md": "ad9d0ff3f17fa41b",
         "packages/plugin-docs/docs/zh/02-插件生命周期.md": "8316660f0875cf42",
-        "packages/plugin-docs/docs/zh/03-插件contributes规范.md": "4c4161297e60e0c7",
+        "packages/plugin-docs/docs/zh/03-插件contributes规范.md": "a3db28276fa384fa",
         "packages/plugin-docs/docs/zh/04-插件分发格式.md": "dc27fc81b82c36bf",
         "packages/plugin-docs/docs/zh/05-插件UI写法规约.md": "ec2816cd03defd55",
         "packages/plugin-docs/docs/zh/06-plugin.json规范.md": "776286696d7da65c",
