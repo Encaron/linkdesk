@@ -134,11 +134,14 @@ export function registerFallbackThemes(): void {
     // E5.8 主题过老修正：配色变体 id 须全局唯一（theme.ts L92 契约）——兜底 dark 配方配色 id 若仍为 "dark"
     //   与 theme-defaults "light" 配方的 "dark" 配色冲突 → 自定义模式配色下拉 React key 碰撞。
     //   改名 dark-fallback 不破坏遗留 app.themeColor="dark" 解析：resolveColorway 未命中回落 colorways[0]（空配色同渲染）。
-    { id: "dark", name: "Dark", type: "dark", colorways: [{ id: "dark-fallback", name: "Dark", colors: {} }] },
+    // 🔴 2026-09-30「指认不明」：显示名不再用颜色词 `Dark`/`Light`（与插件配方的 `Light` 并列时被读成
+    //   同一套的深浅搭子）——改「内置深色／内置浅色」，且**壳自己的名字是 UI 文字** ⇒ 显示期走
+    //   `ThemeEngine/source.ts` 的 `recipeDisplayName()`（t()，译名住语言包）。此处存的是**中文原文 key**。
+    { id: "dark", name: "内置深色", type: "dark", colorways: [{ id: "dark-fallback", name: "内置深色", colors: {} }] },
     undefined
   );
   ThemeRegistry.registerRecipe(
-    { id: "light", name: "Light", type: "light", colorways: [{ id: "light", name: "Light", colors: {} }] },
+    { id: "light", name: "内置浅色", type: "light", colorways: [{ id: "light", name: "内置浅色", colors: {} }] },
     undefined
   );
 }

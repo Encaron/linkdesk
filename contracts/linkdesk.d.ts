@@ -251,14 +251,36 @@ export interface ColorwayMeta {
         bgWindow: string;
     };
 }
+/**
+ * 配方来源——**这张卡片是谁提供的**（2026-09-30 用户实机立案「Dark/Light 指认不明」）。
+ *   · `host`   = 壳内置兜底配方（`registerFallbackThemes` 注册，无提供方插件；卸载全部主题插件后仍在）
+ *   · `plugin` = 插件贡献的配方；`name` = 该插件显示名（**壳侧已 `t(manifest.name)` 解析**，池侧哑渲染）
+ *
+ * 🔴 为什么要有这个字段：配方显示名是**自由文本**，两张来自不同提供方的卡（壳兜底 `dark` / 官方插件
+ *   的 `light`）在名字上无从分辨，用户只能猜——而名字恰好是唯一会撞车的东西。归属必须进数据。
+ */
+export type RecipeSource = {
+    kind: "host";
+} | {
+    kind: "plugin";
+    pluginId: string;
+    name: string;
+};
 /** 配方元数据——theme.listRecipes() 返回（全部可用配方 + 配色变体 + 预览色，06 §2）。
- *  domains = 该配方贡献哪些域（混搭来源过滤依据，10 §2）；type = 明暗类别。 */
+ *  domains = 该配方贡献哪些域（混搭来源过滤依据，10 §2）；type = 明暗类别；source = 提供方（见上）。 */
 export interface RecipeMeta {
     id: string;
     name: string;
     type: "light" | "dark";
     colorways: ColorwayMeta[];
     domains: ThemeDomain[];
+    /**
+     * 提供方——「这张卡片是谁给的」。
+     * 🔴 **壳返回的每一条都带它**（宿主兜底 ⇒ `kind:"host"`）；类型上写成可选，只为**不打断既有第三方
+     *   夹具/桩**（它们造 `RecipeMeta` 字面量时不该因为壳加了个只读标注就编译不过）——消费方若读到缺省，
+     *   应**不标注**（⛔ 不许当成「壳自带」：那会把插件配方错标成宿主兜底，正是本件要治的方向）。
+     */
+    source?: RecipeSource;
 }
 export interface LinkDeskLanguage {
     id: string;
@@ -403,8 +425,7 @@ export interface TitleBarLayout {
         unpin: string;
     };
 }
-/** 池侧图标——壳序列化（池不 import pluginLoader，Lucide 名由池映射组件渲染）。
- * 图标栏 + 标签栏共用（标签栏视图标签 /  文件标签走同一联合） */
+/** 池侧图标——壳序列化（池不 import pluginLoader，Lucide 名由池映射组件渲染）；图标栏与标签栏共用 */
 export type IconBarIcon = {
     kind: "lucide";
     name: string;
@@ -413,7 +434,7 @@ export type IconBarIcon = {
     kind: "codicon";
     name: string;
     color?: string;
-} // codicon CSS 类（可选每图标色——文件图标主题数据）
+} // codicon CSS 类（可选每图标色）
  | {
     kind: "img";
     src: string;
@@ -429,12 +450,21 @@ export interface IconBarItem {
     icon: IconBarIcon;
     /** tooltip / aria-label——壳 t(manifest.name) */
     label: string;
-    /** 图标位置——getIconLocation：顶部活动图标 / 底部齿轮 */
-    location: "top" | "bottom";
+    location: "top" | "bottom"; // 主列 / 底部固定组——纯几何，⛔ 与「是不是齿轮」无关（齿轮见 owned）
+}
+/** 壳自带按钮——归属壳，不来自任何插件（今天只有齿轮）。 */
+export interface IconBarOwnedButton {
+    id: string; // 稳定身份——池渲染成 data-owned-id（⛔ 不是 data-plugin-id，那会被当拖拽落点）
+    icon: IconBarIcon; // 壳自带资产（壳 getAssetPath 解析后下发）
+    label: string; // tooltip / aria-label——壳 t() 解析
+    location: "bottom";
+    menuId: string; // 点击要弹的菜单槽位 id（池哑渲染，菜单项仍由壳 MenuRegistry 推送）
 }
 /** 图标栏布局——IconBarZone 消费 */
 export interface IconBarLayout {
     icons: IconBarItem[];
+    /** 壳自带按钮——池在底部组末位渲染，恒可见/不可拖/不进 iconOrder。⛔ 别塞进 `icons`（那条数组整条在拖拽与持久化路径上，子夹 01-设计 §四）；必填：漏补即 tsc 红 */
+    owned: IconBarOwnedButton[];
     /** 激活图标——当前侧栏容器所属插件（侧栏折叠/无容器时不亮，壳 isActive 同款双重守卫） */
     activePluginId?: string;
     /** ☰ 汉堡可见——menuStyle hamburger/both */

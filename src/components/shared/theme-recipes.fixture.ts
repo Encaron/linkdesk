@@ -18,6 +18,7 @@ export const MINT: RecipeMeta = {
     { id: "tea", name: "Beta", preview: { accent: "#A5D8E8", bgWindow: "#F7FBF8" } },
   ],
   domains: ["colors", "glass"],
+  source: { kind: "plugin", pluginId: "demo-plugin", name: "Demo Plugin" },
 };
 
 /** 单配色深色配方——颜色域 */
@@ -27,6 +28,7 @@ export const FOREST: RecipeMeta = {
   type: "dark",
   colorways: [{ id: "pine", name: "Gamma", preview: { accent: "#4C8C6A", bgWindow: "#1B2A23" } }],
   domains: ["colors"],
+  source: { kind: "plugin", pluginId: "demo-plugin-b", name: "Demo Plugin B" },
 };
 
 /** 只贡献 font 域的配方——sources 域过滤用例（10 §2 六域互斥） */
@@ -36,6 +38,17 @@ export const SERIF: RecipeMeta = {
   type: "light",
   colorways: [{ id: "ink", name: "Ink", preview: { accent: "#222222", bgWindow: "#FAFAFA" } }],
   domains: ["font"],
+  source: { kind: "plugin", pluginId: "demo-plugin-c", name: "Demo Plugin C" },
+};
+
+/** 宿主内置兜底配方（无提供方插件）——来源行「壳自带」用例（2026-09-30 指认不明） */
+export const HOST_FALLBACK: RecipeMeta = {
+  id: "demo-host-fallback",
+  name: "Demo Builtin",
+  type: "dark",
+  colorways: [{ id: "demo-host-cw", name: "Demo Builtin", preview: { accent: "", bgWindow: "" } }],
+  domains: ["colors"],
+  source: { kind: "host" },
 };
 
 /** 注入 window.linkdesk.theme.listRecipes mock（as unknown as 收窄，同 dependencies.test 先例） */

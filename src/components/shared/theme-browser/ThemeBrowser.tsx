@@ -5,6 +5,10 @@
  *
  * 对标 VS Code `Preferences: Color Theme`（Ctrl+K Ctrl+T）升级版——配方→配色两段
  * （09-命令面 §1 theme.pick：配方→配色两段 / theme.pickColorway 先并入 pick）。
+ *
+ * 🔴 2026-09-30「指认不明」：本入口读的是 `ThemeRegistry` 原件（不经 `theme.listRecipes` 载荷），
+ *   故显示名/配色名/来源三条都走 `ThemeEngine/source.ts` 的同一份权威——与设置页卡片同规则，
+ *   ⛔ 别在这里另写一份名字解析（壳兜底 t()、插件原样）。
  */
 
 import i18n from "../../../i18n"; // E5.7#15：serialize 在非 React 上下文解析显示文本（显示文本铁律）
@@ -16,11 +20,18 @@ import {
   getCurrentTheme,
   getEffectiveAccentColor,
   loadTheme,
+  recipeDisplayName,
+  colorwayDisplayName,
+  recipeSourceOf,
 } from "../../../core/services/ui/ThemeEngine";
+import { recipeSourceLabel, type TranslateLike } from "../theme-picker/recipeSource";
 import { ThemeRegistry } from "../../../core/registry/appearance/ThemeRegistry"; // E3.5 #CP23
 import { setConfigurationValue } from "../../../core/services/configuration/ConfigurationService";
 import { QuickPickService } from "../../../core/services/ui/QuickPickService"; // E5.5#7-p15
 import type { ThemeRecipe, ThemeColorway } from "../../../core/types/theme"; // 05 schema 配方数据模型
+
+/** 来源行文案的 t 适配——非 React 上下文（QuickPick 在命令调起时构造，取**当下**语言） */
+const tForSource: TranslateLike = (key, options) => String(i18n.t(key, options as never));
 
 /**
  * E5.5#7-p15：命令式调起主题选择器——不再走 CustomEvent → App.tsx useState。
@@ -78,7 +89,7 @@ export function showThemePicker(pluginId?: string): void {
       mode: "theme",
       items: recipe.colorways,
       placeholder: i18n.t("选择配色变体…"),
-      getSearchText: (cw) => cw.name,
+      getSearchText: (cw) => colorwayDisplayName(recipe.id, cw.name),
       getKey: (cw) => cw.id,
       onSelect: (cw) => { void commitTheme(recipe, cw.id); },
       onHighlight: (cw) => {
@@ -88,9 +99,9 @@ export function showThemePicker(pluginId?: string): void {
       // E5.7#15：聪慧→哑——池 DTO 序列化（显示文本铁律：壳侧 t() 解析后推送，池原样渲染）
       serialize: (cw) => ({
         key: cw.id,
-        searchText: cw.name,
-        label: cw.name,
-        category: recipe.name, // 配色归属配方——列表语境不丢
+        searchText: colorwayDisplayName(recipe.id, cw.name),
+        label: colorwayDisplayName(recipe.id, cw.name),
+        category: recipeDisplayName(recipe), // 配色归属配方——列表语境不丢
         checked: originalActive?.recipeId === recipe.id && originalActive.colorwayId === cw.id,
       }),
       onClose: () => {
@@ -105,7 +116,7 @@ export function showThemePicker(pluginId?: string): void {
     mode: "theme",
     items: recipes,
     placeholder: i18n.t("选择主题配方…"),
-    getSearchText: (r) => r.name,
+    getSearchText: (r) => recipeDisplayName(r),
     getKey: (r) => r.id,
     onSelect: (recipe) => {
       if (recipe.colorways.length > 1) {
@@ -120,13 +131,15 @@ export function showThemePicker(pluginId?: string): void {
     },
     serialize: (r) => ({
       key: r.id,
-      searchText: r.name,
-      label: r.name,
+      searchText: recipeDisplayName(r),
+      label: recipeDisplayName(r),
       checked: originalActive?.recipeId === r.id,
-      detail:
-        r.colorways.length > 1
-          ? `${typeLabelOf(r.type)} · ${i18n.t("{{count}} 配色", { count: r.colorways.length })}`
-          : typeLabelOf(r.type),
+      // detail = 明暗类别 · 配色数（多配色）· 来源（壳自带／来自 X）——「指认不明」的清单面落点
+      detail: [
+        typeLabelOf(r.type),
+        r.colorways.length > 1 ? i18n.t("{{count}} 配色", { count: r.colorways.length }) : "",
+        recipeSourceLabel(recipeSourceOf(r.id), tForSource),
+      ].filter(Boolean).join(" · "),
     }),
     onClose: () => {
       // 阶段 2 已接管——桥 select 动作 onSelect→onClose 同步连发，防误关（stage-1 onClose 提前 return）

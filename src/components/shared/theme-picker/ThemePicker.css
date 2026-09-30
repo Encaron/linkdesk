@@ -101,3 +101,16 @@
   font-size: var(--font-size-sm); /* E5.8 Phase 12 #170：12→sm */
   padding: 8px 0;
 }
+
+/* 来源行——「壳自带」/「来自 X」（2026-09-30「app.theme 卡片指认不明」）。
+   字号 = 徽标同一步（--font-size-2xs，不新造类型阶）；层次靠**字号差**（配方名那行是 xs），
+   颜色用 --text-secondary 而**不是** --text-muted：深色主题下 muted(#8A8A8A) 对卡片底(#2D2D2D)
+   只有 ≈3.4:1，小字号正文需 ≥4.5:1（深色 secondary ≈4.7:1、浅色 ≈6.4:1，两主题都过）。 */
+.ldk-theme-picker-card .ldk-theme-picker-source {
+  padding: 0 8px 6px;
+  font-size: var(--font-size-2xs);
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

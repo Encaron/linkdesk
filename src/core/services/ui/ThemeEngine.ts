@@ -27,6 +27,11 @@ export { getEffectiveTokens, applyRadiusAbsolute, applyOverrides } from "./Theme
 
 export { recipeDomains, mergeDomains } from "./ThemeEngine/recipe";
 
+// 2026-09-30「Dark/Light 指认不明」：配方来源与显示名的唯一权威（归属进数据 ＋ 谁的名字谁负责）。
+//   门面只出生产面——`isHostRecipe` / `clearPluginNameResolver` 不进（前者 source.ts 内部判据、
+//   后者只给测试隔离；消费方要就直引 ./source，照 getThemeVariables 的先例）。
+export { recipeSourceOf, recipeDisplayName, colorwayDisplayName, setPluginNameResolver } from "./ThemeEngine/source";
+
 export type { MixProfile } from "./ThemeEngine/mix";
 export { getMixProfile, isMixSourceOwner, mergeMixDomains, syncThemeColorConfig, syncThemeColorEnum } from "./ThemeEngine/mix";
 

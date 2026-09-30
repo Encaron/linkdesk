@@ -67,14 +67,31 @@ export interface ColorwayMeta {
   preview: { accent: string; bgWindow: string };
 }
 
+/**
+ * 配方来源——**这张卡片是谁提供的**（2026-09-30 用户实机立案「Dark/Light 指认不明」）。
+ *   · `host`   = 壳内置兜底配方（`registerFallbackThemes` 注册，无提供方插件；卸载全部主题插件后仍在）
+ *   · `plugin` = 插件贡献的配方；`name` = 该插件显示名（**壳侧已 `t(manifest.name)` 解析**，池侧哑渲染）
+ *
+ * 🔴 为什么要有这个字段：配方显示名是**自由文本**，两张来自不同提供方的卡（壳兜底 `dark` / 官方插件
+ *   的 `light`）在名字上无从分辨，用户只能猜——而名字恰好是唯一会撞车的东西。归属必须进数据。
+ */
+export type RecipeSource = { kind: "host" } | { kind: "plugin"; pluginId: string; name: string };
+
 /** E5.8#50.18：配方元数据——theme.listRecipes() 返回（全部可用配方 + 配色变体 + 预览色，06 §2）。
- *  domains = 该配方贡献哪些域（混搭来源过滤依据，10 §2）；type = 明暗类别。 */
+ *  domains = 该配方贡献哪些域（混搭来源过滤依据，10 §2）；type = 明暗类别；source = 提供方（见上）。 */
 export interface RecipeMeta {
   id: string;
   name: string;
   type: "light" | "dark";
   colorways: ColorwayMeta[];
   domains: ThemeDomain[];
+  /**
+   * 提供方——「这张卡片是谁给的」。
+   * 🔴 **壳返回的每一条都带它**（宿主兜底 ⇒ `kind:"host"`）；类型上写成可选，只为**不打断既有第三方
+   *   夹具/桩**（它们造 `RecipeMeta` 字面量时不该因为壳加了个只读标注就编译不过）——消费方若读到缺省，
+   *   应**不标注**（⛔ 不许当成「壳自带」：那会把插件配方错标成宿主兜底，正是本件要治的方向）。
+   */
+  source?: RecipeSource;
 }
 
 /** 配置 schema 中的单个属性定义——E5.8#41.14 🛤 补全 uiHint/minimum/maximum/renderHint/dependsOn

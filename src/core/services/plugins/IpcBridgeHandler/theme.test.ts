@@ -10,7 +10,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { handleThemeMethod } from "./theme";
 import { ThemeRegistry } from "../../../registry/appearance/ThemeRegistry";
-import { applyRecipe, applyTheme } from "../../ui/ThemeEngine";
+import { applyRecipe, applyTheme, registerFallbackThemes } from "../../ui/ThemeEngine";
 import { rollback } from "../../../registry/registrationTracker";
 import {
   getConfigurationValue, applyRemoteConfigChange, clearConfigurationCache,
@@ -56,6 +56,16 @@ describe("IpcBridgeHandler/theme — 配方/配色 API（E5.8#50.18）", () => {
       preview: { accent: "#123456", bgWindow: "#0a0a0a" },
     });
     expect(colorways[1].preview.accent).toBe("#00aa88");
+    // 来源标注（2026-09-30 指认不明）——插件配方报 kind=plugin；解析器未装配 ⇒ 退化报 pluginId
+    expect(meta.source).toEqual({ kind: "plugin", pluginId: PLUGIN, name: PLUGIN });
+  });
+
+  it("listRecipes — 宿主兜底配方报 source.kind=host，显示名不再是颜色词", async () => {
+    registerFallbackThemes(); // 宿主兜底（无提供方插件；插件加载前就登记）
+    const list = (await handleThemeMethod("theme.listRecipes", [])) as Array<Record<string, unknown>>;
+    const dark = list.find((r) => r.id === "dark");
+    expect(dark?.source).toEqual({ kind: "host" });
+    expect(dark?.name).toBe("内置深色"); // 测试环境无字典 ⇒ t() 回退原文（= 壳侧中文 key）
   });
 
   it("getActive — applyRecipe 提交后返回活动配方/配色", async () => {

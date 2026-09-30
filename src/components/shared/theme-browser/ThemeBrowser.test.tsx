@@ -31,7 +31,10 @@ vi.mock("../../../core/services/configuration/ConfigurationService", async (impo
   return { ...mod, setConfigurationValue: setConfigMock };
 });
 
-vi.mock("../../../i18n", () => ({ default: { t: (s: string) => s } }));
+vi.mock("../../../i18n", () => ({
+  // {{name}} 插值照 parseMissingKeyHandler 的口径（来源行「来自 {{name}}」断言要读得出插件名）
+  default: { t: (s: string, o?: Record<string, unknown>) => (o?.name ? s.replace("{{name}}", String(o.name)) : s) },
+}));
 
 /* ── 夹具——虚构配方（硬约束 21：demo-* 前缀 + Alpha/Beta/Gamma） ── */
 
@@ -88,9 +91,18 @@ describe("showThemePicker（E5.8#50.24 两段式）", () => {
 
     const serialize = st.serialize as (r: ThemeRecipe) => Record<string, unknown>;
     expect(serialize(FOREST).checked).toBe(true);
-    expect(serialize(FOREST).detail).toBe("暗色主题");
+    expect(serialize(FOREST).detail).toBe("暗色主题 · 壳自带"); // 无归属插件 = 宿主兜底（2026-09-30 指认不明）
     expect(serialize(MINT).checked).toBe(false);
-    expect(String(serialize(MINT).detail)).toContain("配色"); // "浅色主题 · {{count}} 配色"（mock 不插值）
+    expect(String(serialize(MINT).detail)).toContain("配色"); // "浅色主题 · {{count}} 配色"（mock 不插值 count）
+  });
+
+  it("阶段 1 detail 的来源——插件配方报「来自 X」（归属进数据；解析器未装配 ⇒ 退化报 pluginId）", () => {
+    registerFixture(FOREST, "demo-plugin"); // 有归属插件
+    showThemePicker();
+
+    const st = stateOf();
+    const serialize = st.serialize as (r: ThemeRecipe) => Record<string, unknown>;
+    expect(String(serialize(FOREST).detail)).toContain("来自 demo-plugin");
   });
 
   it("多配色配方 Enter → 阶段 2 配色列表；阶段 1 onClose 被 transitioned 拦下不误关", () => {

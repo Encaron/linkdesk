@@ -152,6 +152,7 @@ theme-liquid-glass/
 - Applying: `setRecipe`/`setColorway`, or writing the `app.theme` configuration directly.
 - Events: `theme:changed` (the payload carries tokens) for live reactions.
 - Mix-and-match: your theme automatically shows up among the mix-and-match sources in the settings page according to the domains it contributes (`RecipeMeta.domains`), with **zero extra work for the author**.
+- Provenance: the theme card and the command palette mark **who provides** each recipe (shell built-in fallback = "Shell built-in", plugin-contributed = the plugin name) — that line is driven by `RecipeMeta.source`, and the plugin name comes from `plugin.json`'s `name`, with **zero extra work for the author**.
 
 ## 5. Migration (existing theme plugins — decision F: zero backward compatibility)
 

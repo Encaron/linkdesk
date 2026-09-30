@@ -27,6 +27,7 @@ import {
   normalizeRecipeId, // E6#111f／1.36：混搭 font/background 域来源（配方 id 空间）归一
   normalizeIconThemeId, // E6#111n／1.47：图标主题 id 空间归一（app.iconTheme 单语义专表）
   setAppearanceIdResolvers, // E6#111f／1.36：归属改名「顺序无关」解析器装配
+  setPluginNameResolver, // 2026-09-30：配方来源标注——插件显示名解析器装配
   syncThemeColorConfig,
   syncThemeColorEnum, // E5.8 Phase 11.14：app.themeColor 跨主题配色全集 enum（替换原 inline updateConfigurationEnum）
   APPEARANCE_OVERRIDE_KEYS,
@@ -35,6 +36,8 @@ import {
 } from "../../core/services/ui/ThemeEngine";
 import { ThemeRegistry } from "../../core/registry/appearance/ThemeRegistry";
 import { IconRegistry } from "../../core/registry/appearance/IconRegistry";
+import { getLoadedPluginManifests } from "../../pluginLoader/loader";
+import i18n from "../../i18n";
 import type { ThemeRecipe } from "../../core/types/theme";
 import {
   getConfigurationValue, setConfigurationValueBatch, inspectConfiguration,
@@ -57,6 +60,17 @@ setAppearanceIdResolvers({
   // E6#111n／1.47：第三空间——图标主题**自己的注册本**（IconRegistry），与 ThemeRegistry 互不相干
   //   （不许拿配方栏代替：某插件同时出主题与图标主题时两本内容不同，混用会映错空间）。
   icon: (id) => IconRegistry.getAll().some((t) => t.id === id),
+});
+
+/* ── 2026-09-30「app.theme 卡片指认不明」：插件显示名解析器装配（装配点 = 本文件，理由同上一条） ──
+ * 配方来源要报「来自 X 插件」——`ThemeEngine/source.ts` 拿不到插件清单（`pluginLoader/**` 反向
+ * import ThemeEngine ⇒ 直接 import 就是环依赖），故走**装配槽**喂进去。装配在本层：只有 App 层同时
+ * 够得着「引擎门面 + 插件加载器」。
+ * 名字照 tabIdentity/iconbar 的既有口径：`i18n.t(manifest.name)`（插件名 = 中文原文 key，译文住插件
+ * 自己的字典）——这里是非 React 上下文，故直接用 i18n.t，不用 useTranslation。 */
+setPluginNameResolver((pluginId) => {
+  const entry = getLoadedPluginManifests().find((p) => p.pluginId === pluginId);
+  return entry ? i18n.t(entry.manifest.name) : undefined;
 });
 
 /** E5.8#50.10+50.19：外观覆盖配置 onApply 统一入口——当前主题存在才重应用（启动时 app.theme 先注册先 apply，本组恒非空）。
