@@ -14,8 +14,10 @@
  * 本模块就是那条规则的机械尺（三层固化第 3 层）。
  *
  * ═══ 判据（两条，severity 不同——理由见下）═══
- *   ① **manifest 声明串**（红）：`plugin.json` 里**有渲染消费方**的字段值（清单见
- *      `RENDERABLE_MANIFEST_FIELDS`，逐条带消费方），若含中文，必须命中本仓**自己声明的字典**
+ *   ① **声明串**（红）：两处——(a) `plugin.json` 里**有渲染消费方**的字段值（清单见
+ *      `RENDERABLE_MANIFEST_FIELDS`，逐条带消费方）；(b) **主题数据文件里的名字**
+ *      （`contributes.themes[].path` 指到的 JSON 的 `name` / `colorways[].name`，见下「为什么判到
+ *      主题数据文件里」）。若含中文，必须命中本仓**自己声明的字典**
  *      （`contributes.i18n` / `contributes.languages[].path`）的某个 key。
  *      **为什么可以硬判**：声明在**本仓**、渲染在**壳或别的插件**——跨仓追不上，只有本仓能负责。
  *   ② **源码 `t()` 串**（黄）：本仓 `src/**` 里 `t("中文")` 字面量 key 没住在自有字典。
@@ -24,7 +26,22 @@
  *      存量缺口按「谁的仓」逐仓迁（settings 是试点）；迁完这条可以升红。
  * ⛔ **域外（本判据不管，别以为漏了）**：值译得对不对；跨仓撞键（归壳侧 `warnOnKeyOverlap`）；
  *   非中文原文的插件（E5.8#37.9 明文：作者可用任意语言原文做 key，缺译文静默回退 = 设计意图，
- *   不是漏翻——故本判据**只审中文串**）。
+ *   不是漏翻——故本判据**只审中文串**）；**「双语字面量」本身**不做机械判定（中文名里合法含拉丁专名，
+ *   像「Cascadia Mono 终端」——判「中英混排」必出假红，而假红会让真红失效）。把关的是「名字必须住字典」
+ *   这条：双语字面量要么去掉英文、要么在字典里自我翻译，两条路都得本仓动手。
+ *
+ * ═══ 为什么判到**主题数据文件里**（2026-10-01 扩域）═══
+ * 用户实机立案「**我不要双语了**」：主题族作者把译名写进位字面量（`"薄荷苏打 Mint Soda"`）⇒ 中文界面
+ * 也中英混排。定论 = 字面量只留**中文原文**、译名住本仓字典，显示期由壳过 `t()`（壳侧唯一权威 =
+ * `ThemeEngine/naming.ts`）。于是主题的名字有**两个落点、都在本仓**：
+ *   · `plugin.json` 的 `contributes.themes[].label`（主题数据文件缺 `name` 时的兜底显示名）；
+ *   · 主题数据文件自己的 `name` / `colorways[].name`（配方名 / 配色下拉名）。
+ * 两处都得进判域——否则双语字面量在数据文件里照样溜过去（旧判据正是漏在这：本表原先把
+ * `themes[].label` 列为豁免，主题数据文件**从不读**）。
+ * ⛔ **图标主题不进本判域**（`contributes.iconThemes[].label` ＋ 图标数据文件）：图标主题的显示面还没
+ *   打通——`app.iconTheme` 下拉当前列的是**原始 id**（`updateConfigurationEnum` 只写 enum、没有
+ *   `enumDescriptions`），`RegisteredIconTheme.label` **零消费方**，即那条标签今天用户看不到、看到的是 id。
+ *   判一条**没人渲染**的串 = 给作者派假活。显示面打通时**同笔**把 `iconThemes[].label` 纳入本表。
  *
  * ═══ 消费方（两轴同一份实现，⛔ 不许各写一份）═══
  *   · 作者侧：`create-linkdesk-plugin` 模板的 `scripts/ci-verify.mjs` ③ 段——插件仓 CI 判红
@@ -43,7 +60,7 @@ import { join, sep } from "node:path";
 
 /** 口径一句话——门禁与文档互钉用（改判据就改这句，两处锚词比对会跟着红） */
 export const OWN_DICT_CALIBER =
-  "谁的仓谁译文：插件自己声明的可渲染文案（manifest 渲染字段 ＋ 本仓 t() 中文 key）必须住在本仓声明的字典里——声明在谁手里，译名就归谁，跨仓追不上。";
+  "谁的仓谁译文：插件自己声明的可渲染文案（manifest 渲染字段 ＋ 主题数据文件里的名字 ＋ 本仓 t() 中文 key）必须住在本仓声明的字典里——声明在谁手里，译名就归谁，跨仓追不上。";
 
 /** 中文（CJK 统一表意）——只有含它的串才进判据（英文/法文原文插件 = 设计允许，见文件头 ⛔ 域外） */
 const CJK_RE = /[\u4e00-\u9fff]/;
@@ -63,7 +80,8 @@ const CJK_RE = /[\u4e00-\u9fff]/;
  *    / `params[].description`——2026-09-28 裁决：消费方 = 契约 → AI，零渲染消费方）塞进来；
  *    撤销条件 = 那些说明一旦进 UI。
  * ⛔ 故意**不在表内**的专名/元数据（各有理由，与壳侧旧名单同一口径）：
- *    `contributes.themes[].label` / `languages[].label` / `langDefs[].aliases`（品牌名／语言自称）、
+ *    `contributes.iconThemes[].label`（显示面未打通，见上「为什么判到主题数据文件里」末段）、
+ *    `languages[].label` / `langDefs[].aliases`（语言自称／`English`/`English (US)` 这种自称形式）、
  *    `icons.*.description`（作者面元数据，消费方是**别的作者**不是用户）、以及一切路径/ID/上下文键
  *    （`entry` / `icon` / `render` / `path` / `sidebar` / `when` / `key` / 菜单 `group` 槽位 / `cssVars` /
  *    `tabBehavior` / `minAppVersion` / `screenshots` / `resources`…）。
@@ -112,6 +130,20 @@ export const RENDERABLE_MANIFEST_FIELDS = [
   { steps: ["contributes", "titleBar", "left", "[]"], field: "label", consumer: "标题栏按钮文本" },
   { steps: ["contributes", "titleBar", "right", "[]"], field: "label", consumer: "标题栏按钮文本" },
   { steps: ["contributes", "fileAssociations", "[]"], field: "displayName", consumer: "「打开方式…」选择器显示名" },
+  {
+    steps: ["contributes", "themes", "[]"],
+    field: "label",
+    consumer: "主题配方名（主题数据文件缺 name 时的兜底显示名——主题卡片 / 设置页「主题」项）",
+  },
+];
+
+/**
+ * **主题数据文件里的名字规格**——判的是一份**外部 JSON 文件**（`contributes.themes[].path` 指到的那个），
+ * 不是 manifest 内的路径：配方名与配色名都住在那份文件里，manifest 的 `label` 只是兜底。
+ */
+export const THEME_FILE_NAME_FIELDS = [
+  { steps: [], field: "name", consumer: "主题配方名（主题卡片 / 配方名兜底）" },
+  { steps: ["colorways", "[]"], field: "name", consumer: "配色变体名（设置页配色下拉 / 主题选择器第二阶段）" },
 ];
 
 /** 默认跳过的目录名——构建产物 / 依赖 / 编辑器临时目录 */
@@ -257,6 +289,53 @@ export function collectRenderableManifestStrings(manifest) {
 }
 
 /**
+ * 扫**主题数据文件**里的可渲染中文串 → `[{ text, field, consumer }]` ＋ `problems`。
+ *
+ * 与 `collectRenderableManifestStrings` 的分工：那条腿只读 `plugin.json` 内部路径，这条腿读
+ * `contributes.themes[].path` 指到的**外部 JSON**（所以要 `absRoot`）。读不到 / 解析不动 ⇒ `problems`
+ * （调用方据此 `degraded`、跳过判红——一条也读不着时「全是缺口」是假红，同字典那条腿的立论）。
+ * `field` 写成 `themes/x.json.colorways[].name` 这种「文件 ＋ 落点」，作者照报错能直接定位。
+ */
+export function collectRenderableThemeStrings(absRoot, manifest) {
+  const out = [];
+  const problems = [];
+  const seen = new Set();
+  const themes = manifest?.contributes?.themes;
+  if (!Array.isArray(themes)) return { strings: out, problems };
+  for (const theme of themes) {
+    const rel = theme?.path;
+    if (typeof rel !== "string" || !rel) continue; // 没声明 path ⇒ 没有数据文件可判（自洽性归 ci-verify ④ 段）
+    let raw;
+    try {
+      raw = readFileSync(join(absRoot, rel.split("/").join(sep)), "utf8");
+    } catch {
+      problems.push(`${rel}（contributes.themes[].path 声明但读不到）`);
+      continue;
+    }
+    let data;
+    try {
+      data = JSON.parse(raw);
+    } catch (e) {
+      problems.push(`${rel} 不是合法 JSON：${e instanceof Error ? e.message : String(e)}`);
+      continue;
+    }
+    for (const spec of THEME_FILE_NAME_FIELDS) {
+      const tail = `${spec.steps.join(".")}${spec.steps.length ? "." : ""}${spec.field}`.replace(/\.\[\]/g, "[]");
+      const field = `${rel}.${tail}`;
+      for (const node of resolveSteps(data, spec.steps)) {
+        for (const v of fieldValues(node, spec)) {
+          if (typeof v !== "string" || !CJK_RE.test(v)) continue;
+          if (seen.has(v)) continue;
+          seen.add(v);
+          out.push({ text: v, field, consumer: spec.consumer });
+        }
+      }
+    }
+  }
+  return { strings: out, problems };
+}
+
+/**
  * 扫本仓 `src/**` 的 `t("…")` 字面量 key → `[{ key, at: ["src/x.tsx", …] }]`（只收含中文的 key）。
  * 与壳侧 `audit-i18n` 的 G2 分工：那边管**标识符形态**的 key（数据键名误走翻译），这边管**中文** key
  * （该不该由本仓提供译名）——**同一份正则**，免得同一个调用点两把尺子说法不同。
@@ -310,15 +389,29 @@ export function collectSourceTKeys(absRoot, options = {}) {
 export function checkOwnDictCoverage(absRoot, options = {}) {
   const manifest = options.manifest;
   const dict = loadOwnDict(absRoot, manifest);
+  const themeLeg = collectRenderableThemeStrings(absRoot, manifest);
+  // 两条腿合流：同一字面量在两处出现（`themes[].label` 与数据文件 `name` 常同串）只报**首个落点**
   const manifestStrings = collectRenderableManifestStrings(manifest);
+  const merged = [...manifestStrings];
+  const have = new Set(merged.map((s) => s.text));
+  for (const s of themeLeg.strings) {
+    if (have.has(s.text)) continue;
+    have.add(s.text);
+    merged.push(s);
+  }
   const sourceKeys = collectSourceTKeys(absRoot, options);
+  const problems = [...dict.problems, ...themeLeg.problems];
   return {
     dict,
-    scanned: { manifestStrings: manifestStrings.length, sourceKeys: sourceKeys.length },
-    manifestGap: manifestStrings.filter((s) => !dict.keys.has(s.text)),
+    scanned: {
+      manifestStrings: merged.length,
+      themeStrings: themeLeg.strings.length,
+      sourceKeys: sourceKeys.length,
+    },
+    manifestGap: merged.filter((s) => !dict.keys.has(s.text)),
     sourceGap: sourceKeys.filter((k) => !dict.keys.has(k.key)),
-    degraded: dict.degraded,
-    problems: dict.problems,
+    degraded: dict.degraded || themeLeg.problems.length > 0,
+    problems,
   };
 }
 

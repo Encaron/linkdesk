@@ -16,9 +16,11 @@ import { afterAll, describe, expect, it } from "vitest";
 import {
   OWN_DICT_CALIBER,
   RENDERABLE_MANIFEST_FIELDS,
+  THEME_FILE_NAME_FIELDS,
   checkOwnDictCoverage,
   collectOwnDictDecls,
   collectRenderableManifestStrings,
+  collectRenderableThemeStrings,
   collectSourceTKeys,
   formatOwnDictIssue,
   loadOwnDict,
@@ -202,5 +204,79 @@ describe("口径与报错文案（两轴同款）", () => {
     expect(ownDictHint(manifestIssue)).toMatch(/别去改官方语言包/);
     expect(ownDictHint(sourceIssue)).toMatch(/黄灯不拦/);
     expect(OWN_DICT_CALIBER).toMatch(/谁的仓/);
+    expect(OWN_DICT_CALIBER).toMatch(/主题数据文件里的名字/); // 2026-10-01 扩域：口径句跟着改
+  });
+});
+
+describe("主题数据文件名（2026-10-01「不要双语了」扩域）", () => {
+  /** 真形态：`contributes.themes[].label` ＋ 数据文件 `name` / `colorways[].name` */
+  const themeManifest = (label: string) => ({
+    name: "薄荷苏打",
+    contributes: {
+      themes: [{ id: "p.mint", label, uiTheme: "light", path: "themes/mint.json" }],
+      i18n: { en: "i18n/en.json" },
+    },
+  });
+  const themeData = {
+    id: "p.mint",
+    name: "薄荷苏打",
+    type: "light",
+    colorways: [{ id: "p.mint", name: "薄荷冰露" }],
+  };
+
+  it("数据文件里的配方名 / 配色名进判域，且报错指路到文件（旧判据从不读数据文件）", () => {
+    const manifest = themeManifest("薄荷苏打 Mint Soda");
+    const root = fixture({
+      "plugin.json": manifest,
+      "themes/mint.json": themeData,
+      "i18n/en.json": { 薄荷苏打: "Mint Soda" },
+    });
+    const r = checkOwnDictCoverage(root, { manifest });
+    const texts = r.manifestGap.map((g) => g.text);
+    expect(texts).toContain("薄荷苏打 Mint Soda"); // 双语字面量：字典里没有这一条 ⇒ 红
+    expect(texts).toContain("薄荷冰露"); // 数据文件配色名
+    expect(r.scanned.themeStrings).toBeGreaterThan(0);
+    expect(r.manifestGap.find((g) => g.text === "薄荷冰露")?.field).toBe("themes/mint.json.colorways[].name");
+    // 「薄荷苏打」在 label / 数据文件 name / 顶层 name 三处同串，字典里有 ⇒ 一条缺口都不报
+    expect(r.manifestGap.filter((g) => g.text === "薄荷苏打")).toHaveLength(0);
+  });
+
+  it("去双语后的验收形态：字面量纯中文 ＋ 本仓字典补齐 ⇒ 缺口清零", () => {
+    const manifest = themeManifest("薄荷苏打");
+    const root = fixture({
+      "plugin.json": manifest,
+      "themes/mint.json": themeData,
+      "i18n/en.json": { 薄荷苏打: "Mint Soda", 薄荷冰露: "Mint Frost" },
+    });
+    const r = checkOwnDictCoverage(root, { manifest });
+    expect(r.manifestGap).toHaveLength(0);
+    expect(r.degraded).toBe(false);
+    expect(collectRenderableThemeStrings(root, manifest).strings.map((s) => s.text)).toEqual(["薄荷苏打", "薄荷冰露"]);
+  });
+
+  it("数据文件读不动 ⇒ degraded（「读不着」不是「没译」，判红就是假红）", () => {
+    const manifest = themeManifest("薄荷苏打");
+    const root = fixture({ "plugin.json": manifest, "i18n/en.json": { 薄荷苏打: "Mint Soda" } });
+    const r = checkOwnDictCoverage(root, { manifest });
+    expect(r.degraded).toBe(true);
+    expect(r.problems.join(" ")).toMatch(/themes\/mint\.json/);
+  });
+
+  it("图标主题不进判域：label 零消费方（下拉列的是 id），判它 = 给作者派假活", () => {
+    const m = {
+      contributes: { iconThemes: [{ id: "p.icons", label: "粉彩图标集 Pastel Icons", path: "icons/pastel.json" }] },
+    };
+    expect(collectRenderableManifestStrings(m)).toHaveLength(0);
+    const root = fixture({ "plugin.json": m, "icons/pastel.json": { file: { imagePath: "a.svg" } } });
+    expect(checkOwnDictCoverage(root, { manifest: m }).manifestGap).toHaveLength(0);
+  });
+
+  it("THEME_FILE_NAME_FIELDS = 数据文件那条腿的判据表（配方名 ＋ 配色名）", () => {
+    expect(THEME_FILE_NAME_FIELDS.map((f) => f.field)).toEqual(["name", "name"]);
+    expect(THEME_FILE_NAME_FIELDS[1].steps).toEqual(["colorways", "[]"]);
+    // 没声明 path ⇒ 没有数据文件可判，不当缺口报（自洽性归作者仓 ci-verify ④ 段）
+    const noPath = { contributes: { themes: [{ id: "x", label: "纯净主题" }], i18n: { en: "i18n/en.json" } } };
+    const root = fixture({ "plugin.json": noPath, "i18n/en.json": { 纯净主题: "Pure" } });
+    expect(checkOwnDictCoverage(root, { manifest: noPath }).manifestGap).toHaveLength(0);
   });
 });

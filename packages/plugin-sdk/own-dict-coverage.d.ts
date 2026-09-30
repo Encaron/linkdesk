@@ -63,8 +63,8 @@ export interface OwnDictCheckOptions {
 
 export interface OwnDictCheckResult {
   dict: OwnDictLoad;
-  scanned: { manifestStrings: number; sourceKeys: number };
-  /** 红：声明在本仓的 manifest 渲染串没住本仓字典 */
+  scanned: { manifestStrings: number; themeStrings: number; sourceKeys: number };
+  /** 红：声明在本仓的 manifest 渲染串（含主题数据文件里的名字）没住本仓字典 */
   manifestGap: ManifestString[];
   /** 黄：本仓 `t("中文")` key 没住本仓字典（应用级字典是合法提供方） */
   sourceGap: SourceKey[];
@@ -81,10 +81,19 @@ export declare function loadOwnDict(absRoot: string, manifest: unknown): OwnDict
 /** manifest 里的**可渲染中文串**（按 text 去重，保留首个落点）。 */
 export declare function collectRenderableManifestStrings(manifest: unknown): ManifestString[];
 
+/**
+ * **主题数据文件**（`contributes.themes[].path` 指到的 JSON）里的可渲染中文串
+ * （`name` / `colorways[].name`）＋ 读不动的问题串。`field` 形如 `themes/x.json.colorways[].name`。
+ */
+export declare function collectRenderableThemeStrings(
+  absRoot: string,
+  manifest: unknown,
+): { strings: ManifestString[]; problems: string[] };
+
 /** 本仓 `src/**` 里 `t("…")` 的**中文**字面量 key（只收含中文的，非中文原文插件不在此列）。 */
 export declare function collectSourceTKeys(absRoot: string, options?: OwnDictCheckOptions): SourceKey[];
 
-/** 判据主体——manifest 缺口（红）＋ 源码 t() 缺口（黄）。 */
+/** 判据主体——manifest 缺口（红，含主题数据文件名）＋ 源码 t() 缺口（黄）。 */
 export declare function checkOwnDictCoverage(absRoot: string, options?: OwnDictCheckOptions): OwnDictCheckResult;
 
 /** 违规一律以投影类型表示（`text` 在 = manifest 缺口；`key` 在 = 源码缺口） */
@@ -103,5 +112,8 @@ export declare function isSourceFile(relPath: string): boolean;
 export declare const OWN_DICT_CALIBER: string;
 
 export declare const RENDERABLE_MANIFEST_FIELDS: RenderableFieldSpec[];
+
+/** **主题数据文件**里的名字规格（`name` / `colorways[].name`）——与上面那张表同一份判域。 */
+export declare const THEME_FILE_NAME_FIELDS: RenderableFieldSpec[];
 
 export declare const DEFAULT_SKIP_DIRS: Set<string>;
