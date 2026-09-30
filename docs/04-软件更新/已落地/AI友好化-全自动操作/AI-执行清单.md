@@ -353,7 +353,7 @@
 #### AI#28 ✅ 只报不拦尺：有视图声明却零命令——**2026-09-28 会话 10 验毕**
 
 - [x] **AI#28** 新增只读审计 `scripts/audit-plugin-commands.mjs` ＋ `npm run audit:plugin-commands`：报出「**有视图声明却零命令**」的插件（**能机械查的静态信号**）。｜依据 = [01-设计.md §八 末](01-设计.md)「能机械查的 =『有视图声明却零命令』等静态信号」。｜🔴 **只报不拦**——⛔ **不进 `npm run check` / CI / `ci-verify.mjs`**（存量插件会被拦 ⇒ 会退化成假门禁，照 L11 覆盖尺同款纪律）｜判据 = 实跑出一份可读名单，`--self-test` 自测同批接线
-- ✅ **2026-09-28 收口（会话 10）｜判据两条都落（**只报不拦**纪律守住：⛔ 没进 `npm run check`）**：① **名单真的跑出来了**——先做**输入盘点**再判（17 只仓：16 只官方 ＋ 1 只住在 `official/` 下的第三方 `geme-tihu-bicycle`），「**空名单也要举证**」照记忆《空转判据 ≠ 零存量》办；② **`--self-test` 13 条**（正控 ①②③④⑤ ＋ 负控 ①②③③b④④b⑤，含「空容器算 0」与「objects/array 两形态都认」）同一批接线。读数（**只报不拦**的样本）：「**有视图零命令**」= `marketplace`（7 视图）/ `settings`（1 视图）；**整批缺 `description`** 三只 = `editor` 2/2 · `file-tree` 21/21 · `serial-monitor` 12/12 ⇒ 前者归 `AI#26` 规范的存量账（⛔ 不追溯第三方），后者是**命令已在但元数据缺**（`AI#11` 索引的输入）。npm script 三条 = `audit:plugin-commands` / `:json` / `:selftest`；仓发现复用 `scripts/lib/plugin-repos.mjs`（**单一真相源**，与 `audit:plugin-tests` 同一份，⛔ 不拉第二份）。
+- ✅ **2026-09-28 收口（会话 10）｜判据两条都落（**只报不拦**纪律守住：⛔ 没进 `npm run check`）**：① **名单真的跑出来了**——先做**输入盘点**再判（17 只仓：16 只官方 ＋ 1 只住在 `official/` 下的第三方仓），「**空名单也要举证**」照记忆《空转判据 ≠ 零存量》办；② **`--self-test` 13 条**（正控 ①②③④⑤ ＋ 负控 ①②③③b④④b⑤，含「空容器算 0」与「objects/array 两形态都认」）同一批接线。读数（**只报不拦**的样本）：「**有视图零命令**」= `marketplace`（7 视图）/ `settings`（1 视图）；**整批缺 `description`** 三只 = `editor` 2/2 · `file-tree` 21/21 · `serial-monitor` 12/12 ⇒ 前者归 `AI#26` 规范的存量账（⛔ 不追溯第三方），后者是**命令已在但元数据缺**（`AI#11` 索引的输入）。npm script 三条 = `audit:plugin-commands` / `:json` / `:selftest`；仓发现复用 `scripts/lib/plugin-repos.mjs`（**单一真相源**，与 `audit:plugin-tests` 同一份，⛔ 不拉第二份）。
 
 #### AI#29 ✅ 敏感动作确认面（与既有「装 = 问一声」对齐）——**2026-09-28 会话 10 验毕**
 
