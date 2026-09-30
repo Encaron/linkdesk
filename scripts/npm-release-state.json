@@ -12,8 +12,8 @@
     },
     {
       "name": "@linkdesk/plugin-sdk",
-      "version": "0.1.57",
-      "contentHash": "8822865656d61992dae40a7c6c69d381a5c224c0ca5c43a1ea44852c5def90ef",
+      "version": "0.1.58",
+      "contentHash": "dbd6c0dcf5997b3816ff20749898e0f8aca351967846d86d9190ec819471b2fa",
       "fileHashes": {
         "packages/plugin-sdk/README.md": "dd2a3dac5f82ce42",
         "packages/plugin-sdk/dev-host/dev-main.tsx": "49c59b28e17ca424",
@@ -84,10 +84,12 @@
         "packages/plugin-sdk/src/pack.ts": "10ef0ba86491155d",
         "packages/plugin-sdk/src/publish.test.ts": "683938f79aeefc49",
         "packages/plugin-sdk/src/publish.ts": "7bbbf883bd2a5171",
+        "packages/plugin-sdk/src/surface-chunk-guard.test.ts": "3024302f4d7dc833",
+        "packages/plugin-sdk/src/surface-chunk-guard.ts": "00220b9009e85031",
         "packages/plugin-sdk/src/types.ts": "ed009a0cae5843b1",
         "packages/plugin-sdk/src/validate.test.ts": "949c988493f4167a",
         "packages/plugin-sdk/src/validate.ts": "9d25bcaa130f23c2",
-        "packages/plugin-sdk/src/vite-config.ts": "ec594032298986c5",
+        "packages/plugin-sdk/src/vite-config.ts": "041615c73e86d513",
         "packages/plugin-sdk/src/vitest-setup.test.ts": "bd55dc42017f41cf",
         "packages/plugin-sdk/src/vitest-setup.ts": "9a917591a9ce7616"
       }
@@ -213,15 +215,15 @@
     },
     {
       "name": "@linkdesk/plugin-docs",
-      "version": "0.1.45",
-      "contentHash": "4cfbb93aaf122b8d7a3ebf9936da8d8f00d91d5a03fbf1618c2a60f47d181357",
+      "version": "0.1.46",
+      "contentHash": "960881fd31fc33e84fa8716a058222bae9ca1e63a4b1386286ea5a181d26d6b1",
       "fileHashes": {
         "packages/plugin-docs/README.md": "6cd51394e987a3f2",
         "packages/plugin-docs/docs/00-readme.md": "ab34ec71ea7f4099",
         "packages/plugin-docs/docs/01-plugin-api-contract.md": "2f4300c19ff34587",
         "packages/plugin-docs/docs/02-plugin-lifecycle.md": "aeda91886c7d874b",
         "packages/plugin-docs/docs/03-contributes-spec.md": "b9ab270729d260c0",
-        "packages/plugin-docs/docs/04-distribution-format.md": "8a2d25340191ff0a",
+        "packages/plugin-docs/docs/04-distribution-format.md": "167705825b6dd3d4",
         "packages/plugin-docs/docs/05-ui-conventions.md": "20eb30589c551f67",
         "packages/plugin-docs/docs/06-plugin-json-spec.md": "5f8714b75c9fca53",
         "packages/plugin-docs/docs/07-plugin-to-plugin-communication.md": "ef34c052c31e7d38",
@@ -245,7 +247,7 @@
         "packages/plugin-docs/docs/zh/01-插件API契约.md": "ad9d0ff3f17fa41b",
         "packages/plugin-docs/docs/zh/02-插件生命周期.md": "8316660f0875cf42",
         "packages/plugin-docs/docs/zh/03-插件contributes规范.md": "9aed19fce14165a1",
-        "packages/plugin-docs/docs/zh/04-插件分发格式.md": "6a8c6469f218454d",
+        "packages/plugin-docs/docs/zh/04-插件分发格式.md": "dc27fc81b82c36bf",
         "packages/plugin-docs/docs/zh/05-插件UI写法规约.md": "ec2816cd03defd55",
         "packages/plugin-docs/docs/zh/06-plugin.json规范.md": "1d2a405eb5168018",
         "packages/plugin-docs/docs/zh/07-插件间通信.md": "bc972f0655240fa8",
