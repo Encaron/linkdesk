@@ -19,7 +19,8 @@
 
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { FolderOpen, Folder, BookOpen, X } from "lucide-react";
+import { FolderOpen, Folder, BookOpen, BookMarked, Keyboard, X } from "lucide-react";
+import { executePoolCommand } from "../../commands/executePoolCommand";
 import { PluginIcon } from "../../../components/shared/plugin-icon/PluginIcon";
 import { HINT_ATTR, HINT_DELAY_ATTR } from "../../../components/shared/hint-tip/hintAttrs";
 import type { CreatableViewMeta } from "../../../core/types/pool/poolLayout";
@@ -227,6 +228,16 @@ export default function WelcomePoolView({ isActive, creatableViews }: WelcomePoo
     });
   };
 
+  /**
+   * W4：文档还没写——点「使用文档」给一句指路（AI 手册随包发货、离线可读）。
+   * 不用 `window.open` 假装能开：仓库里没有可打开的文档页，撒谎比什么都不做更糟。
+   */
+  const showDocsHint = () => {
+    void api?.notifications?.show(t("用户文档整理中——先看「帮助 → AI 操作手册」（随包发货、离线可读）"), {
+      type: "info", toast: true, source: WELCOME_SOURCE,
+    });
+  };
+
   return (
     <div className="ldk-welcome-page">
       <div className="ldk-welcome-logo-bg" aria-hidden="true">
@@ -356,8 +367,32 @@ export default function WelcomePoolView({ isActive, creatableViews }: WelcomePoo
         <section className="ldk-welcome-section">
           <h2 className="ldk-welcome-section-title">{t("帮助")}</h2>
           <div className="ldk-welcome-help-links">
-            <span className="ldk-welcome-help-item"><BookOpen size={14} /> {t("使用文档")}</span>
-            <span className="ldk-welcome-help-item">⌨ {t("键盘快捷键")}</span>
+            {/* W4：死 <span> 全改真 <button>——键鼠同权（Tab 能到、Enter/Space 能按，浏览器原生行为，不再手搓）。
+                aria-label 显式重申词条原文：lucide SVG 不参与可访问名，图标纯装饰。 */}
+            <button
+              type="button"
+              className="ldk-welcome-help-item"
+              aria-label={t("使用文档")}
+              onClick={showDocsHint}
+            >
+              <BookOpen size={14} aria-hidden="true" /> {t("使用文档")}
+            </button>
+            <button
+              type="button"
+              className="ldk-welcome-help-item"
+              aria-label={t("键盘快捷键")}
+              onClick={() => executePoolCommand("workbench.action.openKeybindingsSettings")}
+            >
+              <Keyboard size={14} aria-hidden="true" /> {t("键盘快捷键")}
+            </button>
+            <button
+              type="button"
+              className="ldk-welcome-help-item"
+              aria-label={t("AI 操作手册")}
+              onClick={() => executePoolCommand("app.openAiManual")}
+            >
+              <BookMarked size={14} aria-hidden="true" /> {t("AI 操作手册")}
+            </button>
           </div>
         </section>
       </div>

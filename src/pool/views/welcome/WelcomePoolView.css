@@ -285,10 +285,31 @@
   gap: 16px;
 }
 
+/* W4：帮助项 = 真按钮（原为死 <span>，`cursor: default` 自证过）。按钮自带 UA 样式，逐条抹平；
+   hover/焦点态按 W6 交互规范补上。**版式（横排链接 → 预览图的整行列表＋右侧 kbd 提示）与
+   名称配色（--accent）留 T13 按冻结预览图统一微调**——此处只做「点得动、看得见焦点」。 */
 .ldk-welcome-help-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: inherit;
   font-size: var(--font-size-md); /* E5.8 Phase 12 #171：13→md */
   color: var(--text-muted);
-  cursor: default;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  transition: color 150ms ease;
+}
+
+.ldk-welcome-help-item:hover {
+  color: var(--text-primary);
+}
+
+.ldk-welcome-help-item:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+  color: var(--text-primary);
 }
 
 /* 正典实心几何水印背景——对标 VS Code 欢迎页 */

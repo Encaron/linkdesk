@@ -1,14 +1,16 @@
 /**
- * WelcomePoolView——**最近区健壮化（W3b / T6）**渲染单测。
+ * WelcomePoolView——**最近区健壮化（W3b / T6）＋ 帮助区按钮化（W4c / T7）**渲染单测。
  *
  * 纯数组语义（去重/合并/剔除）归 `recentList.test.ts`；本文件只测**组件把那些语义接对了吗**：
  * ① 容量归一（存 10 显 5，两列表同款）与清空即隐藏；
  * ② 失效批次（文件夹不存在 / 插件已卸载）→ 灰显＋角标＋**不自动删**；
  * ③ 点击失效项 = 解释一句（轻提示）＋剔除；点击正常项 = 照常打开（**零 toast**）；
  * ④ 「×」= 静默剔除、不冒泡到行、键盘 Enter/Space 等效；
- * ⑤ 写放大收敛（一次变更只落一次盘）与 `isActive` 接上（切回重跑加载）。
+ * ⑤ 写放大收敛（一次变更只落一次盘）与 `isActive` 接上（切回重跑加载）；
+ * ⑥ 帮助区三项都是真按钮（Tab 可达）＋各发哪条命令 / 哪条只出 toast。
  *
- * 🔴 三条**负控**（改回去必须红）：禁用插件不算卸载；装了什么读不到时不猜；读失败要说出来（不是"没有"）。
+ * 🔴 四条**负控**（改回去必须红）：禁用插件不算卸载；装了什么读不到时不猜；读失败要说出来（不是"没有"）；
+ *   帮助区不得退回 `<span>` 死文案。
  *
  * fixture 全虚构（硬约束 21）。⚠️ 断言**不打 `t()` 出来的字面文案**——测试环境没有 i18n 资源，
  *   `t(k)` 恒返回 key，拿它断言等于测了个恒真式；跨语言更会假红。故一律断**结构与类名**。
@@ -26,6 +28,8 @@ interface Stub {
   addedFolders: string[];
   openFolderCalls: number;
   tabActions: unknown[];
+  /** `executePoolCommand` 发出去的命令逐次记录（第二实参 = token 占位槽，恒 undefined） */
+  emitted: Array<[string, unknown[]]>;
 }
 
 let stub: Stub;
@@ -53,7 +57,7 @@ function installStub(o: StubOpts = {}): void {
   changeCb = null;
   stub = {
     state: { recentFolders: o.folders ?? [], recentViews: o.views ?? [] },
-    setCalls: [], shown: [], addedFolders: [], openFolderCalls: 0, tabActions: [],
+    setCalls: [], shown: [], addedFolders: [], openFolderCalls: 0, tabActions: [], emitted: [],
   };
   const get = o.getThrows
     ? vi.fn(async () => { throw new Error("演示：读不了"); })
@@ -84,6 +88,9 @@ function installStub(o: StubOpts = {}): void {
       },
     },
     pool: { tabAction: (a: unknown) => { stub.tabActions.push(a); } },
+    commands: {
+      executeCommand: (...args: unknown[]) => { stub.emitted.push([String(args[0]), args.slice(1)]); },
+    },
   };
 }
 
@@ -327,5 +334,57 @@ describe("WelcomePoolView（⑤ 落盘次数与刷新时机）", () => {
       const now = (window as unknown as { linkdesk: { pluginState: { get: { mock: { calls: unknown[] } } } } }).linkdesk.pluginState.get.mock.calls.length;
       expect(now).toBeGreaterThan(first);
     });
+  });
+});
+
+/* ── ⑥ 帮助区（W4c / T7）：死 span → 真按钮 ── */
+
+describe("WelcomePoolView（⑥ 帮助区按钮化）", () => {
+  /** 帮助区（最后一个 section）的三个按钮，DOM 序 = 使用文档 · 键盘快捷键 · AI 操作手册 */
+  async function helpButtons(): Promise<HTMLButtonElement[]> {
+    const { container } = await renderView();
+    const all = container.querySelectorAll(".ldk-welcome-section");
+    return [...all[all.length - 1].querySelectorAll<HTMLButtonElement>(".ldk-welcome-help-item")];
+  }
+
+  it("三项都是真 `<button>`：进 Tab 序（tabIndex 0）＋ aria-label 与可见文字一致（label-in-name）", async () => {
+    const btns = await helpButtons();
+
+    expect(btns).toHaveLength(3);
+    for (const b of btns) {
+      expect(b.tagName).toBe("BUTTON");
+      expect(b.tabIndex).toBe(0);
+      // 无 i18n 资源环境 ⇒ t(k) 恒返 key，此处断的是「两处用的是同一份文案」而非译文
+      expect(b.getAttribute("aria-label")).toBe(b.textContent?.trim());
+    }
+  });
+
+  it("🔴 负控：帮助区里**不再有 span 形态**（旧实现 `cursor: default` 的死文案回来必须红）", async () => {
+    const { container } = await renderView();
+
+    expect(container.querySelector("span.ldk-welcome-help-item")).toBeNull();
+  });
+
+  it("「键盘快捷键」→ 既有命令 `workbench.action.openKeybindingsSettings`（与帮助菜单同词）", async () => {
+    const btns = await helpButtons();
+    fireEvent.click(btns[1]);
+
+    expect(stub.emitted).toEqual([["workbench.action.openKeybindingsSettings", [undefined]]]);
+  });
+
+  it("「AI 操作手册」→ 既有命令 `app.openAiManual`", async () => {
+    const btns = await helpButtons();
+    fireEvent.click(btns[2]);
+
+    expect(stub.emitted).toEqual([["app.openAiManual", [undefined]]]);
+  });
+
+  it("「使用文档」→ 只出一条 toast 指路，**不发命令**（仓库里没有可打开的文档页，不假装能开）", async () => {
+    const btns = await helpButtons();
+    fireEvent.click(btns[0]);
+
+    expect(stub.emitted).toEqual([]);
+    expect(stub.shown).toHaveLength(1);
+    expect(stub.shown[0][1]).toMatchObject({ toast: true, source: "app.welcome" });
   });
 });
