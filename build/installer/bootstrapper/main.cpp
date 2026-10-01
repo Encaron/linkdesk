@@ -1,7 +1,7 @@
 // LinkDesk Installer Bootstrapper — 件 1a 引导器壳（件 1c：i18n 目录枚举与上次语言带出）
 // 规格：docs/04-软件更新/待抉择池/安装界面自绘/05-实现交接.md §4.2、§3.4
-// C++ Win32 + WebView2：无边框 780×570 逻辑像素、Per-Monitor V2、VirtualHostMapping 加载 app.html、
-// --debug 开 DevTools。UI 全部在 app.html/css/js（本文件只做窗口与宿主）。
+// C++ Win32 + WebView2：无边框窗（安装 780×570 ／卸载 720×540 逻辑像素）、Per-Monitor V2、
+// VirtualHostMapping 加载 app.html、--debug 开 DevTools。UI 全部在 app.html/css/js（本文件只做窗口与宿主）。
 // i18n：清单 = 扫 exe 旁 i18n/ 目录经 ?langs= 注入；上次选择 = 读 HKCU（写侧归件 2b）。
 //
 // 构建：build.cmd（vswhere → vcvars64 → rc → cl），产出 out\bootstrapper.exe
@@ -27,8 +27,9 @@
 #pragma comment(lib, "ole32.lib")
 #pragma comment(lib, "advapi32.lib")
 
-// ── 设计常量（05 §3.1：安装窗 780×570 逻辑像素）──────────────────────────
-static const int kWinW = 780, kWinH = 570;
+// ── 设计常量（05 §3.1：安装窗 780×570 逻辑像素；件 1d：卸载窗 720×540）────
+static int kWinW = 780, kWinH = 570;
+static bool g_uninstall = false;             // --uninstall：自绘卸载器模式（页面拿到 ?mode=uninstall）
 static const wchar_t kVHost[] = L"installer.local";   // → exe 所在目录
 static const wchar_t kStartUrl[] = L"https://installer.local/app.html";
 
@@ -207,7 +208,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)
         }
         return 0;
     case WM_DPICHANGED:
-        // 换显示器/改缩放：位置沿用系统建议位，尺寸守回 780×570 逻辑像素
+        // 换显示器/改缩放：位置沿用系统建议位，尺寸守回设计逻辑像素（安装 780×570 ／卸载 720×540）
         if (const RECT* sug = reinterpret_cast<const RECT*>(lp))
             SetWindowPos(hwnd, nullptr, sug->left, sug->top, 0, 0,
                          SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
@@ -294,10 +295,12 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, PWSTR, int nCmdShow)
     LPWSTR* argv = CommandLineToArgvW(GetCommandLineW(), &argc);
     for (int i = 1; argv && i < argc; ++i) {
         if (wcscmp(argv[i], L"--debug") == 0) g_debug = true;
+        if (wcscmp(argv[i], L"--uninstall") == 0) g_uninstall = true;
         if (wcsncmp(argv[i], L"--capture=", 10) == 0) g_capturePath = argv[i] + 10;
         if (wcsncmp(argv[i], L"--preview=", 10) == 0) g_previewQuery = argv[i] + 10;
     }
     if (argv) LocalFree(argv);
+    if (g_uninstall) { kWinW = 720; kWinH = 540; }   // 卸载窗比安装窗略小（E-卸载屏 mockup）
 
     // Per-Monitor V2 DPI（05 §4.2 验收项）
     SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
@@ -316,8 +319,8 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, PWSTR, int nCmdShow)
     wc.lpszClassName = L"LinkDeskInstallerBootstrapper";
     RegisterClassW(&wc);
 
-    // 无边框（WS_POPUP）＋ 780×570 逻辑像素、桌面居中（见 FitLogical）
-    g_hwnd = CreateWindowExW(0, wc.lpszClassName, L"LinkDesk 安装",
+    // 无边框（WS_POPUP）＋ 设计逻辑像素尺寸（安装 780×570 ／卸载 720×540）、桌面居中（见 FitLogical）
+    g_hwnd = CreateWindowExW(0, wc.lpszClassName, g_uninstall ? L"LinkDesk 卸载" : L"LinkDesk 安装",
                              WS_POPUP, 0, 0, kWinW, kWinH,
                              nullptr, nullptr, hInst, nullptr);
     if (!g_hwnd) return 1;
@@ -382,7 +385,7 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, PWSTR, int nCmdShow)
                     // 页面 → 宿主消息桥（页面只发极小的 JSON 串）：
                     //   {"type":"drag"}        → 无边框窗拖拽：页面发起的拖窗（WebView2 的鼠标
                     //                            消息到不了宿主 WndProc，孩子窗全吃掉）
-                    //   {"type":"close"|"exit"|"install-done"} → 关窗（细粒度分流归件 2c）
+                    //   {"type":"close"|"exit"|"install-done"|"uninstall-done"} → 关窗（细粒度分流归件 2c）
                     auto onMsg = new ComHandlerEvt<ICoreWebView2WebMessageReceivedEventHandler,
                                                   ICoreWebView2, ICoreWebView2WebMessageReceivedEventArgs>(
                         IID_ICoreWebView2WebMessageReceivedEventHandler,
@@ -399,7 +402,8 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, PWSTR, int nCmdShow)
                                              MAKELPARAM(pt.x, pt.y));
                             } else if (m.find(L"\"close\"") != std::wstring::npos
                                        || m.find(L"\"exit\"") != std::wstring::npos
-                                       || m.find(L"\"install-done\"") != std::wstring::npos) {
+                                       || m.find(L"\"install-done\"") != std::wstring::npos
+                                       || m.find(L"\"uninstall-done\"") != std::wstring::npos) {
                                 PostMessageW(g_hwnd, WM_CLOSE, 0, 0);
                             }
                             return S_OK;
@@ -428,6 +432,9 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, PWSTR, int nCmdShow)
                             ? std::vector<std::wstring>() : ScanI18nCodes(exeDir);
                     std::vector<std::wstring> params;
                     if (!g_previewQuery.empty()) params.push_back(g_previewQuery);
+                    // 模式交给页面（选屏组/微尘数/窗口内视觉微调）；--preview 里显式给了 mode= 就让它赢
+                    if (g_uninstall && g_previewQuery.find(L"mode=") == std::wstring::npos)
+                        params.push_back(L"mode=uninstall");
                     if (!codes.empty()) {
                         std::wstring joined;
                         for (size_t i = 0; i < codes.size(); ++i) { if (i) joined += L","; joined += codes[i]; }

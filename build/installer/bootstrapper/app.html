@@ -111,6 +111,62 @@
       <button class="btn ghost" type="button" data-action="exit" data-i18n="installer.error.exit">退出安装</button>
     </div>
   </div>
+
+  <!-- ⑦ 卸载（件 1d，直搬 mockups/E-卸载屏.html 四帧：确认 → 运行中检测 → 进度 → 完成）
+       id/class 与 mockup 逐字一致，只有与安装屏重名的才改名（s-progress→s-un-progress、
+       s-finish→s-un-finish、ph/pn/fill/p1..p4→uph/upn/ufill/u1..u4；#utrack 的 id 是新增的，
+       mockup 的 track 无 id，ARIA 写入需要）——两套屏同页共存，见 06-任务清单 1d 的 ⚠️。
+       卸载专属语义：破坏性按钮 .btn.danger、进度条墨色 .fill、收场不撒彩粒 -->
+  <!-- 帧 1 · 卸载确认（入口 = ARP「应用和功能」/ 开始菜单卸载项） -->
+  <div class="scr un" id="s-confirm">
+    <div class="brandline" data-drag>
+      <svg viewBox="0 0 100 110" aria-hidden="true"><path fill="#9a9a9a" fill-rule="evenodd" d="M50 0l43 25v50L50 110 7 75V25zM33 42a8 8 0 100 16 8 8 0 000-16zm34 0a8 8 0 100 16 8 8 0 000-16zm-17 26a8 8 0 100 16 8 8 0 000-16z"/></svg>
+      <span data-i18n="installer.uninstall.brand">LINKDESK · UNINSTALL</span>
+    </div>
+    <h1 data-drag data-i18n="installer.uninstall.confirm.title">要卸载 LinkDesk 吗？</h1>
+    <div class="sub" data-drag data-i18n="installer.uninstall.confirm.sub">安装位置：<code>C:\Users\fengy\AppData\Local\Programs\linkdesk</code> · 约 420 MB</div>
+    <label class="opt"><input type="checkbox" id="keepdata" checked><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span><span data-i18n="installer.uninstall.confirm.keepdata">保留我的数据</span><small data-i18n="installer.uninstall.confirm.keepdata.sub">工作区 · 设置 · 已装插件</small></span></label>
+    <div class="actions">
+      <button class="btn danger" type="button" data-action="uninstall" data-primary data-i18n="installer.uninstall.confirm.uninstall">卸载<span class="cir">→</span></button>
+      <button class="btn ghost" type="button" data-action="un-cancel" data-i18n="installer.uninstall.confirm.cancel">取消</button>
+    </div>
+  </div>
+
+  <!-- 帧 2 · 运行中检测（2d 接真 tasklist 检测；未运行则宿主直接推帧 3） -->
+  <div class="scr un" id="s-running">
+    <div class="brandline" data-drag>
+      <svg viewBox="0 0 100 110" aria-hidden="true"><path fill="#9a9a9a" fill-rule="evenodd" d="M50 0l43 25v50L50 110 7 75V25zM33 42a8 8 0 100 16 8 8 0 000-16zm34 0a8 8 0 100 16 8 8 0 000-16zm-17 26a8 8 0 100 16 8 8 0 000-16z"/></svg>
+      <span data-i18n="installer.uninstall.brand">LINKDESK · UNINSTALL</span>
+    </div>
+    <h1 data-drag data-i18n="installer.uninstall.running.title">LinkDesk 正在运行</h1>
+    <div class="sub" data-drag data-i18n="installer.uninstall.running.sub">关闭 LinkDesk 后继续卸载，未保存的工作区会先走保存流程。</div>
+    <div class="actions">
+      <button class="btn primary" type="button" data-action="un-continue" data-primary data-i18n="installer.uninstall.running.close">关闭并继续<span class="cir">→</span></button>
+      <button class="btn ghost" type="button" data-action="un-later" data-i18n="installer.uninstall.running.later">稍后</button>
+    </div>
+  </div>
+
+  <!-- 帧 3 · 卸载进度（左对齐变体、墨色条；无取消——点了卸载就走完） -->
+  <div class="scr un" id="s-un-progress">
+    <div class="ph" id="uph" data-drag>STEP 1 / 4 · 正在移除程序文件</div>
+    <div class="pct" data-drag><span id="upn">0</span><span>%</span></div>
+    <div class="track" id="utrack" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="卸载进度" data-i18n-aria="installer.uninstall.progress.aria"><div class="fill" id="ufill"></div></div>
+    <ul class="plist">
+      <li id="u1"><span class="st"></span><span data-i18n="installer.uninstall.progress.step1">关闭进程 · 移除程序文件</span></li>
+      <li id="u2"><span class="st"></span><span data-i18n="installer.uninstall.progress.step2">清理系统项（右键菜单 · linkdesk:// 协议 · 编辑器注册）</span></li>
+      <li id="u3"><span class="st"></span><span data-i18n="installer.uninstall.progress.step3">恢复 PATH（精确匹配，不碰用户改过的部分）</span></li>
+      <li id="u4"><span class="st"></span><span data-i18n="installer.uninstall.progress.step4">收尾校验（无残留 · 卸载器自删）</span></li>
+    </ul>
+  </div>
+
+  <!-- 帧 4 · 完成（数据去留如实呈现：勾了保留=绿徽章、没勾=黄徽章） -->
+  <div class="scr un" id="s-un-finish">
+    <div class="fin-ring"><svg viewBox="0 0 56 56" aria-hidden="true"><path d="M12 30l11 11 21-26"/></svg></div>
+    <h1 data-drag data-i18n="installer.uninstall.finish.title">已卸载。</h1>
+    <div class="datbadge" id="datbadge" data-drag>用户数据已保留 · C:\Users\fengy\AppData\Roaming\LinkDesk</div>
+    <div class="sub" data-drag data-i18n="installer.uninstall.finish.sub">谢谢使用 LinkDesk，有缘再见。</div>
+    <div class="actions"><button class="btn primary" type="button" data-action="un-done" data-primary data-i18n="installer.uninstall.finish.done">完成</button></div>
+  </div>
 </div></div>
 
 <script src="app.js"></script>

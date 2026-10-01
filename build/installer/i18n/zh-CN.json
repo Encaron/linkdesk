@@ -53,6 +53,7 @@
   "installer.uninstall.running.sub": "关闭 LinkDesk 后继续卸载，未保存的工作区会先走保存流程。",
   "installer.uninstall.running.close": "关闭并继续<span class=\"cir\">→</span>",
   "installer.uninstall.running.later": "稍后",
+  "installer.uninstall.progress.aria": "卸载进度",
   "installer.uninstall.progress.head1": "STEP 1 / 4 · 正在移除程序文件",
   "installer.uninstall.progress.head2": "STEP 2 / 4 · 清理系统项",
   "installer.uninstall.progress.head3": "STEP 3 / 4 · 恢复 PATH",

@@ -8,12 +8,14 @@
  *   · #s-error 补样式：mockup 没给该屏任何 CSS（h1 落到 UA 默认粗体、正文 16px），与完成屏的衬线语言
  *     不自洽；按同一设计语言补齐（衬线 34px h1 / .sub 13px / .errcode 小字 mono）——并排对照见 06 ⚠️ 注
  *   · html[data-i18n-pending]（件 1c 新增）：非默认语言首帧藏壳，词条到位再显（app.js 有 400ms 兜底）
+ *   · 件 1d：卸载屏（E-卸载屏.html 直搬）追加在本文件末尾，规则一律 .scr.un / html[data-mode=uninstall]
+ *     限定——两套屏同页共存（同一个 exe 的 --uninstall 模式），上方安装侧规则一字不动
  */
 
 :root{
   --bg:#F7F6F3; --desk:#E9E7E2; --glass:rgba(255,255,255,.5); --hair:rgba(0,0,0,.10);
   --txt:#1a1a1a; --txt2:rgba(26,26,26,.62); --txt3:rgba(26,26,26,.40);
-  --ink:#111111; --line:#EAEAEA;
+  --ink:#111111; --line:#EAEAEA; --danger:#B3261E;
   --orb1:#b9a8f5; --orb2:#9fe8c8;
   --serif:'Newsreader','Lyon Text',Georgia,'Songti SC',serif;
   --sans:'Geist','Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;
@@ -189,3 +191,45 @@ body{background:var(--desk);font-family:var(--sans);color:var(--txt);overflow:hi
   #confetti{display:none!important}
   .fin-ring path{stroke-dashoffset:0}
 }
+
+/* ── 件 1d：卸载屏（来源 mockups/E-卸载屏.html 直搬）────────────────────────
+   两套屏同页共存（同一个 exe、--uninstall 切模式），所以上方 1b 已验收的安装规则一个字不动，
+   卸载侧一律用 html[data-mode=uninstall] / .scr.un / #s-un-* 限定。
+   卸载专属语义：破坏性动作按钮 .btn.danger、进度条墨色（收场，不用安装时的彩条与粒子）、光球更小更淡。 */
+/* 模式门禁：卸载模式收掉安装五屏（#s-home 在标记里自带 .on，只靠 JS 会闪一帧双屏同亮） */
+html[data-mode=uninstall] #s-uac,html[data-mode=uninstall] #s-home,html[data-mode=uninstall] #s-progress,
+html[data-mode=uninstall] #s-finish,html[data-mode=uninstall] #s-error{display:none!important}
+html[data-mode=uninstall] .orb{width:380px;height:380px;opacity:.2}
+@keyframes rise-un{to{transform:translateY(-560px);opacity:0}}
+
+.scr.un{align-items:center;justify-content:center;text-align:center;padding:44px 56px 38px}
+#s-un-progress{align-items:flex-start;text-align:left}   /* 帧 3 = 左对齐变体（mockup 同款） */
+.scr.un h1{font:400 36px/1.2 var(--serif);letter-spacing:-.03em;margin-bottom:12px}
+.scr.un .sub{font:13px/1.8 var(--sans);color:var(--txt2);margin-bottom:8px}
+.scr.un .sub code{font-family:var(--mono);font-size:12px}
+.scr.un .actions{margin-top:30px;gap:16px}
+.brandline{display:flex;align-items:center;gap:10px;font:12px var(--mono);letter-spacing:.25em;
+           color:var(--txt2);text-transform:uppercase;margin-bottom:26px}
+.brandline svg{width:26px;height:29px;opacity:.85}
+.btn.primary{background:var(--ink)}
+.btn.danger{background:var(--danger)}
+.btn.danger:hover{box-shadow:0 8px 30px rgba(179,38,30,.28)}
+.scr.un .btn{padding:10px 10px 10px 30px}
+.scr.un .btn.ghost{padding:11px 24px;font-weight:500}
+.scr.un .opt{margin-top:22px;font:13.5px/1.5 var(--sans)}
+.scr.un .opt small{display:block;color:var(--txt3);font-size:11px}
+/* 帧 3：PCT 68px（安装 76px）＋ 墨色 fill（不带安装的紫光晕）；分段文案色比安装亮一档 */
+.scr.un .track{width:100%}
+#s-un-progress .pct{font:200 68px/1 var(--sans);margin-bottom:26px}
+#s-un-progress .pct span{font-size:24px}
+#s-un-progress .fill{background:var(--ink);box-shadow:none}
+#s-un-progress .fill::after{background:linear-gradient(90deg,transparent,rgba(255,255,255,.5),transparent)}
+#s-un-progress .plist{margin-top:24px;color:var(--txt2)}
+/* 帧 4：光环 84px（安装 92px）＋ 数据去留徽章（保留=绿、不保留=黄） */
+#s-un-finish .fin-ring{width:84px;height:84px;margin-bottom:24px;
+  background:radial-gradient(circle at 35% 30%,rgba(167,139,250,.25),rgba(52,211,153,.14));
+  box-shadow:0 0 50px rgba(138,111,240,.2),inset 0 1px 1px rgba(255,255,255,.7)}
+#s-un-finish .fin-ring svg{width:30px;height:30px}
+.datbadge{font:11px var(--mono);letter-spacing:.06em;color:#346538;background:#EDF3EC;
+          border-radius:9999px;padding:4px 12px;margin-bottom:26px}
+.datbadge.gone{color:#956400;background:#FBF3DB}

@@ -1,10 +1,11 @@
-/* LinkDesk 安装器界面逻辑（件 1b：六屏状态机接线 ／ 件 1c：i18n 装载器）
- * 来源：docs/04-软件更新/待抉择池/安装界面自绘/mockups/E-混合提案.html 的 <script>（直搬改造）
- * 拆掉的：设计注记/演示控制的写入（.cap/.note/「重新播放」/「演示：失败分支」）、9 秒假进度、写死的语言数组
+/* LinkDesk 安装器界面逻辑（件 1b：六屏状态机接线 ／ 件 1c：i18n 装载器 ／ 件 1d：卸载四帧）
+ * 来源：docs/04-软件更新/待抉择池/安装界面自绘/mockups/E-混合提案.html 与 E-卸载屏.html 的 <script>（直搬改造）
+ * 拆掉的：设计注记/演示控制的写入（.cap/.note/「重新播放」/「演示：失败分支」/enUI 文案补丁）、
+ *         9 秒假进度、写死的语言数组、badge() 里按下拉文字判语言的做法（改用 1c 的 t()）
  * 接上的：宿主消息桥（拖窗/关闭/件2 的安装动作）、Enter=主按钮、语言下拉（清单 = 宿主扫描 i18n/ 目录）
- * 件 2 接手点：ACTIONS.install 后的真 IO 与进度回调（setProgress）、setInstallDir/setVersion/setError、
- *             set-lang 的注册表持久化（HKCU\Software\LinkDesk\Installer → Language 写侧）、
- *             运行时真值的本地化（onLangChange 钩子）
+ * 件 2 接手点：ACTIONS.install / uninstall 后的真 IO 与进度回调（setProgress）、setInstallDir/setVersion/
+ *             setError/setUninstallInfo、set-lang 的注册表持久化（HKCU\Software\LinkDesk\Installer → Language
+ *             写侧）、运行时真值的本地化（onLangChange 钩子）、卸载三路关闭的宿主侧分流（2c/2d）
  */
 (function () {
 'use strict';
@@ -12,6 +13,13 @@
 const $ = (s, r) => (r || document).querySelector(s);
 const $$ = (s, r) => Array.prototype.slice.call((r || document).querySelectorAll(s));
 const q = new URLSearchParams(location.search);
+
+/* ── 模式（件 1d）：同一个壳、同一个入口，宿主 --uninstall 时挂 ?mode=uninstall ────────
+ * 两套屏同页共存，因此有一条硬约束：**安装屏与卸载屏的 id 不能重名**。冲突的四个
+ * （s-progress/s-finish 与 ph/pn/fill/p1..p4）在卸载侧改名 s-un- 前缀 / u 前缀，CSS 侧用 .scr.un /
+ * html[data-mode=uninstall] 双限定——1b 已验收的安装屏规则一个字不动（见 06-任务清单 1d ⚠️）。 */
+const MODE = q.get('mode') === 'uninstall' ? 'uninstall' : 'install';
+document.documentElement.dataset.mode = MODE;
 
 /* ── 宿主桥（WebView2）——浏览器里预览时不存在，退化为空实现 ─────────────── */
 const webview = (window.chrome && window.chrome.webview) || null;
@@ -26,29 +34,37 @@ if (q.get('seed')) {
   rnd = function () { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; };
 }
 
-/* ── 微尘粒子（常驻；与 mockup 同 14 粒、同取数顺序）────────────────────── */
+/* ── 微尘粒子（常驻；与 mockup 同取数顺序：左 → 时长 → 延迟 → 透明度）
+ * 卸载屏调淡调少（10 粒 / 10–20s / .08 档起 / 升幅 560px）——E-卸载屏 直搬 */
 (function dust() {
-  const box = $('#dust');
-  for (let i = 0; i < 14; i++) {
+  const un = MODE === 'uninstall', box = $('#dust');
+  for (let i = 0, n = un ? 10 : 14; i < n; i++) {
     const d = document.createElement('i');
     d.style.left = rnd() * 100 + '%';
-    d.style.animationDuration = (9 + rnd() * 10) + 's';
+    d.style.animationDuration = ((un ? 10 : 9) + rnd() * 10) + 's';
     d.style.animationDelay = (-rnd() * 15) + 's';
-    d.style.opacity = .12 + rnd() * .25;
+    d.style.opacity = (un ? .08 : .12) + rnd() * (un ? .18 : .25);
+    if (un) d.style.animationName = 'rise-un';
     box.appendChild(d);
   }
 })();
 
-/* ── 屏幕状态机（类名/ID 与 mockup 一致 = 规格）────────────────────────── */
-const SCREENS = ['uac', 'home', 'progress', 'finish', 'error'];
+/* ── 屏幕状态机（类名/ID 与 mockup 一致 = 规格；两套屏按模式分流）────────── */
+const SCREENS = {
+  install: ['uac', 'home', 'progress', 'finish', 'error'],
+  uninstall: ['confirm', 'running', 'un-progress', 'un-finish']
+};
 let cur = null;
 
 function go(id) {
-  if (SCREENS.indexOf(id) < 0) return;
+  if (SCREENS[MODE].indexOf(id) < 0) return;
   cur = id;
   $$('.scr').forEach(function (s) { s.classList.remove('on'); });
   $('#s-' + id).classList.add('on');
+  // 卸载进度屏 ✕ 置灰（E-卸载屏 设计点③：点了卸载就走完——可取消的清理反而不干净）
+  $('#xbtn').disabled = MODE === 'uninstall' && id === 'un-progress';
   if (id === 'finish') burst();          // 彩粒迸发只在进完成屏时打一次
+  if (id === 'un-finish') badge();       // 数据去留徽章按「保留我的数据」勾选态落一次（绿/黄）
 }
 
 /* 自定义展开区（home 的子状态，不是独立屏）——按钮文案随展开态换 key，文本由 1c 的 t() 渲染 */
@@ -59,25 +75,33 @@ function setCustom(open) {
 }
 
 /* ── 四段进度（数值/分段语义照 mockup；真数据由件 2 的 IO 回调喂）──────────
- * 段头文案走 t()（1c）：切语言时 refreshHead() 按当前分段重渲染 */
+ * 段头文案走 t()（1c）：切语言时 refreshHead() 按当前分段重渲染。
+ * 两套进度屏的取数口径不同（id 前缀 / 段头 key / 分段阈值）——安装 70·80·92，卸载 60·80·92（直搬） */
 const HEAD_KEYS = ['', 'installer.progress.head1', 'installer.progress.head2',
                    'installer.progress.head3', 'installer.progress.head4'];
+const UN_HEAD_KEYS = ['', 'installer.uninstall.progress.head1', 'installer.uninstall.progress.head2',
+                      'installer.uninstall.progress.head3', 'installer.uninstall.progress.head4'];
+const PROG = {
+  install: { keys: HEAD_KEYS, ph: '#ph', pn: '#pn', fill: '#fill', li: '#p', track: '#track',
+             seg: function (p) { return p < 70 ? 1 : p < 80 ? 2 : p < 92 ? 3 : 4; } },
+  uninstall: { keys: UN_HEAD_KEYS, ph: '#uph', pn: '#upn', fill: '#ufill', li: '#u', track: '#utrack',
+               seg: function (p) { return p < 60 ? 1 : p < 80 ? 2 : p < 92 ? 3 : 4; } }
+};
 let lastPct = 0;
-
-function segOf(p) { return p < 70 ? 1 : p < 80 ? 2 : p < 92 ? 3 : 4; }
 
 /* opt.force=true 用于重置/预览（否则数值只前进不倒退——规格 05 §3.3） */
 function setProgress(p, opt) {
   opt = opt || {};
+  const g = PROG[MODE];
   p = Math.max(0, Math.min(100, +p || 0));
   if (!opt.force && p < lastPct) p = lastPct;
   lastPct = p;
-  $('#pn').textContent = Math.floor(p);
-  $('#fill').style.width = p + '%';
-  const s = opt.step || segOf(p);
-  for (let i = 1; i <= 4; i++) $('#p' + i).className = i < s ? 'done' : i === s ? 'run' : '';
-  $('#ph').textContent = t(HEAD_KEYS[s]);
-  $('#track').setAttribute('aria-valuenow', String(Math.floor(p)));   // 进度条 ARIA（对账表）
+  $(g.pn).textContent = Math.floor(p);
+  $(g.fill).style.width = p + '%';
+  const s = opt.step || g.seg(p);
+  for (let i = 1; i <= 4; i++) $(g.li + i).className = i < s ? 'done' : i === s ? 'run' : '';
+  $(g.ph).textContent = t(g.keys[s]);
+  $(g.track).setAttribute('aria-valuenow', String(Math.floor(p)));   // 进度条 ARIA（对账表）
 }
 
 function resetProgress() { lastPct = 0; setProgress(0, { force: true }); }
@@ -123,6 +147,37 @@ function readOpts() {
   return o;
 }
 
+/* ── 卸载真值（2d 从宿主喂：安装位置 / 体积 / userData 路径）───────────────
+ * 这里的占位值 = E-卸载屏 mockup 原文（用户名的真实路径由 2d 的宿主提供）。
+ * ⚠️ confirm 的「安装位置」与完成屏的「用户数据」两条词条带 {path}/{size} 变量，
+ *    静态 data-i18n 补丁填不了变量 → 走 t(key, vars) 并挂 data-i18n-live（同 setError 口径）。 */
+const UNINFO = {
+  dir: 'C:\\Users\\fengy\\AppData\\Local\\Programs\\linkdesk',
+  size: '420 MB',
+  userData: 'C:\\Users\\fengy\\AppData\\Roaming\\LinkDesk'
+};
+function paintUninstall() {
+  if (MODE !== 'uninstall') return;
+  const sub = $('[data-i18n="installer.uninstall.confirm.sub"]');
+  sub.dataset.i18nLive = '1';   // 真值上屏后不再被静态词条盖回
+  sub.innerHTML = t('installer.uninstall.confirm.sub', { path: esc(UNINFO.dir), size: esc(UNINFO.size) });
+  badge();
+}
+/* 数据去留徽章：勾了保留=绿、没勾=黄（如实呈现，不玩文案花招） */
+function badge() {
+  const el = $('#datbadge');
+  if (!el) return;
+  const kept = $('#keepdata').checked;
+  el.className = 'datbadge' + (kept ? '' : ' gone');
+  el.textContent = kept ? t('installer.uninstall.finish.kept', { path: UNINFO.userData })
+                        : t('installer.uninstall.finish.gone');
+}
+function setUninstallInfo(info) {
+  if (!info) return;
+  ['dir', 'size', 'userData'].forEach(function (k) { if (info[k]) UNINFO[k] = info[k]; });
+  paintUninstall();
+}
+
 /* ── 动作表（与 markup 的 data-action 一一对应）────────────────────────── */
 const ACTIONS = {
   install: function () {
@@ -138,7 +193,22 @@ const ACTIONS = {
   exit: function () { post({ type: 'exit' }); },         // 失败屏出口（2c：清理后退出）
   done: function () { post({ type: 'install-done', launch: $('#runnow').checked }); },
   license: function () { post({ type: 'open-license' }); },  // ⚠️ 许可协议地址待定（发版前定，勿硬编码假 URL）
-  close: function () { closeByStage(); }
+  close: function () { closeByStage(); },
+
+  /* ── 卸载（件 1d 静态 UI；真清理/真进程检测归 2d）──────────────────────── */
+  uninstall: function () {
+    post({ type: 'uninstall-start', keep: $('#keepdata').checked });
+    // ⚠️ 2d 接真检测后这里要改成由宿主回话驱动：没在运行 → 直接推 un-progress；在运行 → 本屏（帧 2）
+    go('running');
+  },
+  'un-continue': function () {
+    resetProgress();
+    go('un-progress');
+    post({ type: 'uninstall-run', keep: $('#keepdata').checked });   // 2d：优雅关闭 → 逐条清理（禁 taskkill）
+  },
+  'un-later': function () { go('confirm'); },                        // 原路返回，什么都没动
+  'un-cancel': function () { post({ type: 'close' }); },             // 无任何写入直接退
+  'un-done': function () { post({ type: 'uninstall-done' }); }       // 卸载器退出（自删归 2d）
 };
 
 function cancelInstall() {
@@ -148,6 +218,12 @@ function cancelInstall() {
 }
 /* ✕ / Esc / Alt+F4 三路汇此，按阶段分流（规格 05 §4.3；细粒度回滚归 2c） */
 function closeByStage() {
+  if (MODE === 'uninstall') {
+    // 卸载进度中：✕ 置灰吞掉（go() 已 disabled；Esc/Alt+F4 的宿主侧分流归 2c）
+    if (cur === 'un-progress') return;
+    post({ type: 'close' });   // 确认/运行中=未写入任何内容；完成=等价完成——都是直接退
+    return;
+  }
   if (cur === 'progress') { cancelInstall(); return; }
   if (cur === 'finish') { post({ type: 'install-done', launch: $('#runnow').checked }); return; }
   post({ type: 'close' });         // 主屏/确认屏：未写入任何内容，直接退
@@ -209,6 +285,12 @@ $$('[data-i18n]', document.body).forEach(function (el) { AUTHORED[el.dataset.i18
  ['installer.progress.head2', 'STEP 2 / 4 · 注册 linkdesk:// 协议'],
  ['installer.progress.head3', 'STEP 3 / 4 · 写系统项'],
  ['installer.progress.head4', 'STEP 4 / 4 · 收尾校验']].forEach(function (p) { AUTHORED[p[0]] = p[1]; });
+/* 卸载段头同规（E-卸载屏 mockup 原文；#uph 同样没有标记挂点）
+   ⚠️ 与 i18n/zh-CN.json 的 installer.uninstall.progress.head* 逐字一致（改词条时同笔改这里） */
+[['installer.uninstall.progress.head1', 'STEP 1 / 4 · 正在移除程序文件'],
+ ['installer.uninstall.progress.head2', 'STEP 2 / 4 · 清理系统项'],
+ ['installer.uninstall.progress.head3', 'STEP 3 / 4 · 恢复 PATH'],
+ ['installer.uninstall.progress.head4', 'STEP 4 / 4 · 收尾校验']].forEach(function (p) { AUTHORED[p[0]] = p[1]; });
 
 function esc(s) {
   return String(s).replace(/[&<>"]/g, function (c) {
@@ -298,7 +380,10 @@ function selectLang(code) {
   onLangChange(code);
   post({ type: 'set-lang', lang: code });   // 持久化写注册表归件 2b
 }
-function onLangChange(/* code */) { /* 件 2：运行时真值（错误码文案 / 路径 / 版本）的本地化挂这里 */ }
+function onLangChange(/* code */) {
+  paintUninstall();   // 卸载侧带 {path}/{size} 的真值文案随语言重渲染（静态补丁填不了变量）
+  /* 件 2：运行时真值（错误码文案 / 路径 / 版本）的本地化挂这里 */
+}
 
 $('#lkdd-btn').addEventListener('click', function (e) {
   e.stopPropagation();
@@ -316,9 +401,18 @@ document.addEventListener('click', function (e) {
 
 /* ── 启动（等词条到位再首帧；字典坏了也照常起——回落链兜住文案）────────────
  * 预览参数（开发/验收用；产品运行不带）：
- * ?screen=uac|home|progress|finish|error  ?custom=1  ?pct=0..100  ?dust=0  ?seed=1  ?lang=  ?langs=（宿主注入） */
+ * ?mode=uninstall（宿主 --uninstall 注入）、?screen=uac|home|progress|finish|error|confirm|running|
+ * un-progress|un-finish、?custom=1、?pct=0..100、?keep=0（预览不保留数据的黄徽章）、?dust=0、?seed=1、
+ * ?lang=、?langs=（宿主注入） */
 function boot() {
   if (q.get('dust') === '0') $('#dust').remove();
+  if (MODE === 'uninstall') {
+    paintUninstall();                          // 真值上屏（2d 换成宿主喂的真数据）
+    if (q.get('keep') === '0') $('#keepdata').checked = false;
+    go(q.get('screen') || 'confirm');
+    if (q.get('pct') !== null) setProgress(+q.get('pct'), { force: true });
+    return;
+  }
   setInstallDir($('[data-role=path]').value);          // 让完成屏路径与输入框同源
   go(q.get('screen') || 'home');
   if (q.get('custom') === '1') setCustom(true);
@@ -345,7 +439,9 @@ function boot() {
 
 /* 供 3c 自动化/排查用（只读入口，产品行为不依赖它） */
 window.__lk = {
+  mode: MODE,
   go: go, setProgress: setProgress, readOpts: readOpts, setLang: selectLang, t: t,
+  setUninstallInfo: setUninstallInfo, badge: badge,
   state: function () { return cur; },
   i18n: function () { return { lang: lang, state: i18nState, langs: LANGS.map(function (l) { return l.code; }) }; }
 };
