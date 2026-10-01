@@ -1,0 +1,188 @@
+/* LinkDesk Installer — 安装界面样式
+ * 来源：docs/04-软件更新/待抉择池/安装界面自绘/mockups/E-混合提案.html（视觉与动效唯一真相源，直搬）
+ * 与 mockup 的差异（均为「拆掉演示脚手架」，非重设计）：
+ *   · 去掉 .cap/.note（设计注记）、「重新播放」/「演示：失败分支」（演示控制）
+ *   · 去掉 .stage 画布层与「桌面」底色：真实窗口 = .shell+.win 全幅渲染（05 §3.2）
+ *   · #s-uac 不仿造系统 UAC 对话框（mockup 注记：UAC 为系统绘制，不属于自绘面），改为壳内提示帧
+ *   · 内联 style / inline onclick → 类与事件在 app.js 接线（类名与 id 保持与 mockup 一致 = 规格）
+ *   · #s-error 补样式：mockup 没给该屏任何 CSS（h1 落到 UA 默认粗体、正文 16px），与完成屏的衬线语言
+ *     不自洽；按同一设计语言补齐（衬线 34px h1 / .sub 13px / .errcode 小字 mono）——并排对照见 06 ⚠️ 注
+ */
+
+:root{
+  --bg:#F7F6F3; --desk:#E9E7E2; --glass:rgba(255,255,255,.5); --hair:rgba(0,0,0,.10);
+  --txt:#1a1a1a; --txt2:rgba(26,26,26,.62); --txt3:rgba(26,26,26,.40);
+  --ink:#111111; --line:#EAEAEA;
+  --orb1:#b9a8f5; --orb2:#9fe8c8;
+  --serif:'Newsreader','Lyon Text',Georgia,'Songti SC',serif;
+  --sans:'Geist','Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;
+  --mono:'Geist Mono',Consolas,monospace;
+  --ease:cubic-bezier(.32,.72,0,1);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid #8a6ff0;outline-offset:2px}
+/* browser surfaces（craft-floor：浏览器默认面也要属于设计） */
+::selection{background:rgba(138,111,240,.25)}
+input{caret-color:var(--ink)}
+::-webkit-scrollbar{width:10px}
+::-webkit-scrollbar-thumb{background:rgba(0,0,0,.15);border-radius:5px;border:2px solid transparent;background-clip:content-box}
+::-webkit-scrollbar-track{background:transparent}
+.foot a{color:var(--txt2);text-decoration:underline;text-underline-offset:3px}
+
+html,body{width:100%;height:100%}
+/* 底色取 --desk（= mockup 的 body 底色）：真实窗口全幅渲染时，窗内所见 = .win(85% 白) 覆在此色上，
+   与 mockup 窗内/包边取色逐像素一致；--bg 按 §3.1 全表保留定义（mockup 里它只定义、没上任何面） */
+body{background:var(--desk);font-family:var(--sans);color:var(--txt);overflow:hidden;cursor:default}
+/* 拖窗区（规格 05 §4.3：brand 行与各屏空白区可拖窗）——文字不给选中、给默认箭头 */
+[data-drag]{user-select:none;cursor:default}
+
+/* 双光球：亮色化（A 的克制透明度） */
+.orb{position:absolute;width:420px;height:420px;border-radius:50%;filter:blur(90px);opacity:.26;pointer-events:none}
+.orb.a{background:var(--orb1);top:-140px;right:-80px;animation:fl1 22s ease-in-out infinite alternate}
+.orb.b{background:var(--orb2);bottom:-160px;left:-100px;animation:fl2 26s ease-in-out infinite alternate}
+@keyframes fl1{to{transform:translate(-70px,50px) scale(1.15)}}
+@keyframes fl2{to{transform:translate(60px,-40px) scale(.9)}}
+.grain{position:fixed;inset:0;pointer-events:none;opacity:.03;z-index:50;
+       background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence baseFrequency='.85' numOctaves='2'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)'/%3E%3C/svg%3E")}
+.dust{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.dust i{position:absolute;bottom:-8px;width:3px;height:3px;border-radius:50%;background:rgba(0,0,0,.3);
+        animation:rise linear infinite}
+@keyframes rise{to{transform:translateY(-620px);opacity:0}}
+
+/* 安装窗口：B 双包边骨架 × 亮色 token（真实窗口 = 全幅渲染） */
+.shell{position:absolute;inset:0;border-radius:32px;background:var(--glass);
+       border:1px solid var(--hair);padding:9px;backdrop-filter:blur(28px);
+       box-shadow:0 30px 80px rgba(0,0,0,.14),inset 0 1px 0 rgba(255,255,255,.8)}
+.win{position:relative;height:100%;border-radius:24px;background:rgba(252,252,250,.85);
+     border:1px solid var(--hair);overflow:hidden;display:flex;flex-direction:column}
+.xbtn{position:absolute;top:14px;right:16px;z-index:10;width:30px;height:30px;border:0;border-radius:9px;background:transparent;color:var(--txt2);cursor:pointer;display:grid;place-items:center;transition:background .2s}
+.xbtn:hover{background:rgba(0,0,0,.06)}
+.xbtn[disabled]{color:var(--txt3);cursor:default;background:transparent}
+
+.scr{position:absolute;inset:0;display:none;flex-direction:column;padding:44px 52px 38px;
+     animation:enter .8s var(--ease)}
+.scr.on{display:flex}
+@keyframes enter{from{opacity:0;transform:translateY(18px);filter:blur(6px)}to{opacity:1;transform:none;filter:blur(0)}}
+
+/* ① UAC 等待提示帧（壳内，非系统对话框仿真——见文件头注释） */
+#s-uac{align-items:center;justify-content:center;text-align:center}
+.wait{display:flex;flex-direction:column;align-items:center;gap:16px}
+.wait svg{width:40px;height:44px}
+.wait .t{font:13px/1.7 var(--sans);color:var(--txt2)}
+.wait .bar{width:220px;height:3px;border-radius:9999px;background:rgba(0,0,0,.08);overflow:hidden;position:relative}
+.wait .bar::after{content:'';position:absolute;inset:0;border-radius:9999px;
+     background:linear-gradient(90deg,transparent,rgba(138,111,240,.5),transparent);
+     background-size:200% 100%;animation:shimmer 1.6s linear infinite}
+
+/* 品牌行：A 的六边形图标（实心 + 三白孔）＋ A 的衬线 slogan */
+.brand{display:flex;align-items:center;gap:14px;margin-bottom:10px}
+.brand svg{width:40px;height:44px;flex:none}
+.brand .nm{font:600 19px/1.2 var(--sans);letter-spacing:-.02em}
+.brand .sl{font:italic 400 13.5px/1.4 var(--serif);color:var(--txt2);margin-top:2px}
+.ver{margin-left:auto;font:11px var(--mono);color:#1F6C9F;background:#E1F3FE;padding:3px 10px;border-radius:9999px;letter-spacing:.05em}
+.hero{flex:1;display:flex;flex-direction:column;justify-content:center}
+/* A 的衬线大标题（用户点名的「高级感」来源） */
+.hero h1{font:400 46px/1.1 var(--serif);letter-spacing:-.03em;margin-bottom:14px}
+.hero h1 em{font-style:italic}
+.hero p{font:14px/1.75 var(--sans);color:var(--txt2);max-width:44ch}
+.actions{display:flex;flex-wrap:wrap;align-items:center;gap:18px}
+/* B 的药丸按钮（button-in-button）× 亮色化：墨色实心 */
+.btn{display:inline-flex;align-items:center;gap:12px;font:600 14px var(--sans);color:#fff;
+     background:var(--ink);border:0;border-radius:9999px;padding:9px 9px 9px 28px;cursor:pointer;
+     transition:transform .5s var(--ease),box-shadow .5s var(--ease)}
+.btn .cir{width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,.16);display:grid;place-items:center;transition:transform .5s var(--ease)}
+.btn:hover{box-shadow:0 8px 30px rgba(0,0,0,.16)}
+.btn:hover .cir{transform:translate(3px,-1px) scale(1.06)}
+.btn:active{transform:scale(.98)}
+.btn.ghost{background:transparent;color:var(--txt2);border:1px solid var(--hair);padding:10px 22px;gap:0}
+.btn.ghost:hover{box-shadow:none;color:var(--txt)}
+/* ④ 自定义展开 */
+#custom{max-height:0;overflow:hidden;transition:max-height .7s var(--ease)}
+#custom.open{max-height:270px}
+.cust-in{margin-top:24px;padding-top:24px;border-top:1px solid var(--line)}
+.pathrow{display:flex;gap:8px;margin-bottom:18px}
+.pathrow input{flex:1;font:12.5px var(--mono);padding:11px 14px;border-radius:14px;border:1px solid var(--line);
+               background:rgba(255,255,255,.75);color:var(--txt);box-shadow:inset 0 1px 1px rgba(255,255,255,.6)}
+.pathrow input:focus{outline:none;border-color:#c4c0b8}
+.pathrow button{font:12px var(--sans);padding:0 16px;border-radius:14px;border:1px solid var(--line);background:#fff;color:var(--txt2);cursor:pointer}
+.opts{display:grid;grid-template-columns:1fr 1fr;gap:12px 26px}
+.opt{display:flex;gap:11px;align-items:flex-start;cursor:pointer;font:13px/1.5 var(--sans)}
+.opt input{position:absolute;opacity:0}
+.opt .box{width:17px;height:17px;flex:none;margin-top:1px;border-radius:6px;border:1px solid #c9c8c4;
+          background:#fff;display:grid;place-items:center;transition:all .3s var(--ease)}
+.opt .box svg{width:10px;height:10px;opacity:0;transform:scale(.4);transition:all .3s var(--ease)}
+.opt input:checked+.box{background:linear-gradient(135deg,#a78bfa,#34d399);border-color:transparent}
+.opt input:checked+.box svg{opacity:1;transform:scale(1)}
+.foot{margin-left:auto;font:12px var(--sans);color:var(--txt2)}
+
+/* ⑤ 进度：B 辉光流光 × 亮色（轨道浅灰、辉光减弱） */
+#s-progress{justify-content:center}
+.ph{font:11px var(--mono);letter-spacing:.18em;text-transform:uppercase;color:var(--txt2);margin-bottom:12px}
+.pct{font:200 76px/1 var(--sans);letter-spacing:-.05em;margin-bottom:28px;color:var(--ink);font-variant-numeric:tabular-nums}
+.pct span{font-size:26px}
+.track{height:8px;border-radius:9999px;background:rgba(0,0,0,.08);overflow:hidden;position:relative}
+.fill{height:100%;width:0%;border-radius:9999px;position:relative;transition:width .3s linear;
+      background:linear-gradient(90deg,#8a6ff0,#2fbf8a);box-shadow:0 0 14px rgba(138,111,240,.35)}
+.fill::after{content:'';position:absolute;inset:0;border-radius:9999px;
+      background:linear-gradient(90deg,transparent,rgba(255,255,255,.6),transparent);
+      background-size:200% 100%;animation:shimmer 1.6s linear infinite}
+@keyframes shimmer{from{background-position:200% 0}to{background-position:-200% 0}}
+.plist{margin-top:26px;font:12px/2.1 var(--mono);color:var(--txt3);letter-spacing:.04em}
+.plist li{list-style:none;display:flex;gap:12px}
+.plist .st{width:16px}
+.plist li.run{color:var(--txt2)}.plist li.run .st::after{content:'▸';color:#8a6ff0}
+.plist li.done{color:var(--txt2)}.plist li.done .st::after{content:'✓';color:#2fae7c}
+.prow{margin-top:26px;display:flex;gap:18px;align-items:center}
+.cancel{margin-top:26px;font:12px var(--sans);color:var(--txt2);background:none;border:0;cursor:pointer}
+.cancel:hover{color:var(--txt2)}
+
+/* ⑥ 完成：B 光晕对勾（亮色化）＋ D 彩粒迸发 */
+#s-finish{justify-content:center;align-items:center;text-align:center}
+#confetti{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+#confetti i{position:absolute;width:8px;height:14px;border-radius:2px;opacity:0}
+@keyframes burst{0%{opacity:1;transform:translate(0,0) rotate(0)}
+                 100%{opacity:0;transform:translate(var(--dx),var(--dy)) rotate(var(--rot))}}
+.fin-ring{width:92px;height:92px;border-radius:50%;display:grid;place-items:center;margin-bottom:26px;
+          background:radial-gradient(circle at 35% 30%,rgba(167,139,250,.30),rgba(52,211,153,.16));
+          border:1px solid var(--hair);box-shadow:0 0 60px rgba(138,111,240,.25),inset 0 1px 1px rgba(255,255,255,.7);
+          animation:pop .8s var(--ease)}
+@keyframes pop{from{transform:scale(.6);opacity:0}}
+.fin-ring svg{width:34px;height:34px}
+.fin-ring path{stroke:var(--ink);stroke-width:3.5;fill:none;stroke-linecap:round;stroke-dasharray:48;stroke-dashoffset:48;
+               animation:draw .7s .25s var(--ease) forwards}
+@keyframes draw{to{stroke-dashoffset:0}}
+#s-finish h1{font:400 34px/1.25 var(--serif);letter-spacing:-.03em;margin-bottom:10px}
+#s-finish .sub{font:13px/1.7 var(--sans);color:var(--txt2);margin-bottom:28px;font-family:var(--mono);font-size:12px}
+.runrow{margin-bottom:30px}
+#s-finish .actions{justify-content:center}
+
+/* 失败分支（02-流程设计 §三 的视觉落地：磁盘空间不足示例） */
+#s-error > svg{width:44px;height:44px;margin-bottom:22px}
+#s-error h1{font:400 34px/1.25 var(--serif);letter-spacing:-.03em;margin-bottom:10px}
+#s-error .sub{font:13px/1.7 var(--sans);color:var(--txt2);margin-bottom:12px}
+.errcode{font:11px var(--mono);color:var(--txt3);letter-spacing:.06em;margin-bottom:24px}
+#s-error .actions{margin-top:0}
+
+/* 自绘语言下拉（原生 select 画不进自绘界面；语言清单由 1c 从 build/installer/i18n/ 枚举） */
+#lkdd{position:absolute;top:8px;left:8px;z-index:40;font:12px var(--sans)}
+#lkdd-btn{display:flex;align-items:center;gap:7px;padding:6px 12px;border-radius:9999px;border:1px solid rgba(128,128,128,.4);background:rgba(255,255,255,.55);backdrop-filter:blur(6px);color:inherit;cursor:pointer;user-select:none;font:inherit;transition:box-shadow .3s var(--ease)}
+#lkdd-btn:hover{box-shadow:0 4px 16px rgba(0,0,0,.1)}
+#lkdd-btn .chev{transition:transform .25s var(--ease)}
+#lkdd.open #lkdd-btn .chev{transform:rotate(180deg)}
+/* ⚠️ 弹层锚点偏离 mockup（原样 right:0 ⇒ 配 top:8px;left:8px 的按钮，展开即出窗被裁——mockup 自身如此，
+   见 E-混合提案.html 注入样式）：改成 left 锚、向右展开，按钮位置不动（保证六屏并排对照仍然逐像素一致） */
+#lkdd-pop{position:absolute;top:calc(100% + 8px);left:0;min-width:168px;padding:6px;border-radius:14px;border:1px solid rgba(0,0,0,.08);background:rgba(255,255,255,.9);backdrop-filter:blur(20px);box-shadow:0 14px 44px rgba(0,0,0,.16);opacity:0;transform:translateY(-6px) scale(.96);transform-origin:top left;pointer-events:none;transition:opacity .2s var(--ease),transform .2s var(--ease)}
+#lkdd.open #lkdd-pop{opacity:1;transform:none;pointer-events:auto}
+#lkdd-pop .it{display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:9px;cursor:pointer;color:#1a1a1a;background:none;border:0;font:inherit;width:100%;text-align:left}
+#lkdd-pop .it:hover{background:rgba(0,0,0,.05)}
+#lkdd-pop .it .ck{width:14px;height:14px;flex:none;opacity:0}
+#lkdd-pop .it.on .ck{opacity:1}
+
+/* 动效降级：关掉运动，但状态语义留在终态（对勾画好、进度到位、彩粒不出现） */
+@media (prefers-reduced-motion:reduce){
+  *{animation-duration:.01ms!important;animation-delay:0s!important;transition-duration:.01ms!important}
+  .orb,.dust,.grain{animation:none!important}
+  .fill::after,.wait .bar::after{animation:none!important;background:none}
+  #confetti{display:none!important}
+  .fin-ring path{stroke-dashoffset:0}
+}

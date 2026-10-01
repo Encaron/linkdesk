@@ -18,15 +18,25 @@ build.cmd
 |:--|:--|
 | `out\bootstrapper.exe` | 正常启动：无边框 780×570 窗口加载 `app.html` |
 | `--debug` | 开 DevTools 并自动弹出（默认关闭；顺带开右键菜单） |
-| `--capture=<path.png>` | 页面渲染完成后自行截图存 PNG 并退出（件 1b「mockup vs 实机」并排对照取图口） |
+| `--preview=<query>` | 把 query 拼到启动 URL 上，供对照/排查直接摆屏：`screen=home\|custom\|progress\|finish\|error\|uac`（`custom` 展开自定义区）、`pct=<0-100>`（进度定格）、`dust=0`（关微尘）、`seed=1`（定序随机数） |
+| `--capture=<path.png>` | 页面渲染完成后自行截图存 PNG 并退出（单屏取图口） |
 | `LK_FORCE_NO_RUNTIME=1`（环境变量） | 模拟 WebView2 运行时缺失 → 系统对话框＋退出码 3（件 3c 非交互测兜底路径） |
 
-验收辅助脚本（`tools/`）：`window-probe.ps1`（列顶层窗口：类名/尺寸/标题）、`capture.ps1`（真桌面截图）、
-`verify-no-runtime.ps1`（兜底路径自动验证，断言退出码 3）。
+验收辅助脚本（`tools/`，PS 5.1 直跑，**改完 `app.*` 必须先 `build.cmd`**——exe 只从自己所在目录读页面）：
+
+| 脚本 | 用途 |
+|:--|:--|
+| `window-probe.ps1` | 列顶层窗口：类名/尺寸/标题 |
+| `capture.ps1` | 真桌面截图（最小化全部→屏幕拷贝→还原；`-NoMinimize` 供已清场时用） |
+| `verify-no-runtime.ps1` | 兜底路径自动验证，断言退出码 3 |
+| `mockup-shot.ps1` | 把 `E-混合提案.html` 拍成同尺寸 PNG：临时 harness 只去设计注记 + 钉 `.stage` 到 0,0，原文一字不改 |
+| `cmp-shots.ps1` | 六屏并排对照（左 mockup／右实机＋合成大图，产物 `out\cmp-*.png`），带资产新鲜度守卫 |
+| `interact-test.ps1` | 真键鼠交互验收：拖窗位移断言 / Enter 主按钮 / 下拉＋Esc / ✕ 退出（产物 `out\it-*.png`） |
 
 ## 二、实测事实（2026-10-01，本机 VS2022 Community ＋ WebView2 运行时 140.0.3485.94）
 
-- `out\bootstrapper.exe` = **195,072 字节**（预算 5MB，用掉 3.7%）。**C++ 路线据此定案**——C# self-contained 70MB+ 直接出局。
+- `out\bootstrapper.exe` = **195,072 字节**（件 1a 壳）；接入 1b 页面前端（消息桥 ＋ 焦点 ＋ 预览开关）后 **209,408 字节**
+  （预算 5MB，用掉 4.0%）。**C++ 路线据此定案**——C# self-contained 70MB+ 直接出局。
 - 无边框窗：`cls=LinkDeskInstallerBootstrapper`，窗口矩形 = 客户区 = 780×570（无任何非客户区）。
 - Per-Monitor V2：`GetProcessDpiAwareness` 实测返回 awareness=2；窗口按 `逻辑像素 × dpi/96` 建，并响应 `WM_DPICHANGED` 守回 780×570 逻辑尺寸。
 - 页面加载：`SetVirtualHostNameToFolderMapping`（`installer.local` → exe 目录）+ `https://installer.local/app.html`，`NavigationCompleted` 返回 success=1。
@@ -52,3 +62,7 @@ build.cmd
 - 页面根目录 = **exe 所在目录**（`out/`）：`app.html`、`app.css`、`app.js`、`i18n/` 都在这一层，构建脚本负责拷进去。
 - WebView2 用户数据夹 = `out/.wv2data`（安装器不落地用户配置；件 2 收尾应清掉）。
 - 窗口内没有任何系统装饰，**拖拽区、关闭按钮、Esc/Alt+F4 分流全部要在页面/宿主里自管**（1b 与 2c 的活）。
+- 页面 → 宿主消息桥（`postMessage` 一行 JSON）：`{"type":"drag"}`（拖窗）/ `{"type":"close"|"exit"|"install-done"}`（关窗）/
+  `{"type":"install-start"|"browse-dir"|"cancel"|"open-license",...}`（件 2 用，先通后接）。
+- **键盘焦点**：WebView2 不自动接手顶层窗焦点，`WM_SETFOCUS` → `MoveFocus(PROGRAMMATIC)`（controller 建好前的那次会落空，
+  建好后在前台再补一次）——否则 Enter/Tab/Esc 全部进不到页面。

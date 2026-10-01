@@ -1,26 +1,118 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh-CN" data-lang="zh-CN">
 <head>
 <meta charset="UTF-8">
 <title>LinkDesk 安装</title>
-<!-- 件 1a spike 占位页：只验证壳（无边框 / VirtualHostMapping / DevTools）。
-     真实 UI = 1b 从 mockups/E-混合提案.html 直搬（05-实现交接 §4.1），不在此页实现。 -->
-<style>
-  :root{--bg:#F7F6F3;--txt:#1a1a1a;--txt2:rgba(26,26,26,.62)}
-  *{margin:0;box-sizing:border-box}
-  body{background:var(--bg);color:var(--txt);font-family:'Segoe UI','Microsoft YaHei',sans-serif;
-       height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px}
-  .mono{font-family:Consolas,monospace;font-size:12px;color:var(--txt2)}
-</style>
+<!-- LinkDesk 安装器界面（件 1b：六屏静态 UI ＋ 状态机接线）
+     来源：docs/04-软件更新/待抉择池/安装界面自绘/mockups/E-混合提案.html（视觉与动效唯一真相源）
+     本文件的约定：
+       · class/id 与 mockup 逐字一致（类名即规格）；inline onclick 一律移到 app.js（data-action）
+       · data-i18n / data-i18n-aria = 文案挂点（1c 装载器替换 innerHTML / 属性；此处中文＝兜底文案）
+       · data-drag = 可拖窗区（brand 行与各屏空白区，规格 05 §4.3）
+       · data-primary = 该屏主按钮（Enter 触发，规格 05 §4.3）
+       · 真数据（版本号、安装路径、错误码、进度回调）由件 2 接；此处为 mockup 原值占位 -->
+<link rel="stylesheet" href="app.css">
 </head>
 <body>
-  <svg width="56" height="62" viewBox="0 0 100 110"><path fill="#111" fill-rule="evenodd" d="M50 0l43 25v50L50 110 7 75V25zM33 42a8 8 0 100 16 8 8 0 000-16zm34 0a8 8 0 100 16 8 8 0 000-16zm-17 26a8 8 0 100 16 8 8 0 000-16z"/></svg>
-  <div style="font-size:22px;font-weight:600">LinkDesk 安装器壳 · spike</div>
-  <div class="mono" id="env">windowOuter <span id="dim">—</span> × devicePixelRatio <span id="dpr">—</span></div>
-  <div class="mono">VirtualHostMapping: installer.local ✓ · 若见本页即壳加载成功</div>
-<script>
-  document.getElementById('dim').textContent = window.outerWidth + '×' + window.outerHeight;
-  document.getElementById('dpr').textContent = window.devicePixelRatio;
-</script>
+<div class="grain"></div>
+<div class="orb a"></div><div class="orb b"></div>
+<div class="dust" id="dust"></div>
+
+<!-- 自绘语言下拉：原生 select 画不进自绘界面；清单由 1c 从 build/installer/i18n/ 枚举 -->
+<div id="lkdd">
+  <button type="button" id="lkdd-btn" aria-haspopup="listbox" aria-expanded="false">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.8 3 2.8 15 0 18M12 3c-2.8 3-2.8 15 0 18"/></svg>
+    <span id="lkdd-cur">中文</span>
+    <svg class="chev" width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M2 4l4 4 4-4"/></svg>
+  </button>
+  <div id="lkdd-pop" role="listbox" aria-label="语言" data-i18n-aria="installer.lang.aria"></div>
+</div>
+
+<div class="shell"><div class="win">
+  <button type="button" id="xbtn" class="xbtn" aria-label="关闭窗口" data-i18n-aria="installer.chrome.close" data-action="close">
+    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M2 2l8 8M10 2l-8 8"/></svg>
+  </button>
+
+  <!-- ① UAC：系统弹窗由 Windows 绘制，此帧只是壳内等待提示（不仿造系统对话框） -->
+  <div class="scr" id="s-uac">
+    <div class="wait" data-drag>
+      <svg viewBox="0 0 100 110" aria-hidden="true"><path fill="#111" fill-rule="evenodd" d="M50 0l43 25v50L50 110 7 75V25zM33 42a8 8 0 100 16 8 8 0 000-16zm34 0a8 8 0 100 16 8 8 0 000-16zm-17 26a8 8 0 100 16 8 8 0 000-16z"/></svg>
+      <div class="t" role="status" data-i18n="installer.uac.wait">正在等待 Windows 权限确认…</div>
+      <div class="bar" aria-hidden="true"></div>
+    </div>
+  </div>
+
+  <!-- ② 主屏 ＋ ④ 自定义展开区（真实流程的起始屏：UAC 由系统在窗口出现前处理） -->
+  <div class="scr on" id="s-home">
+    <div class="brand" data-drag>
+      <svg viewBox="0 0 100 110" aria-hidden="true"><path fill="#111" fill-rule="evenodd" d="M50 0l43 25v50L50 110 7 75V25zM33 42a8 8 0 100 16 8 8 0 000-16zm34 0a8 8 0 100 16 8 8 0 000-16zm-17 26a8 8 0 100 16 8 8 0 000-16z"/></svg>
+      <div><div class="nm">LinkDesk</div><div class="sl" data-i18n="installer.brand.slogan">一个容器，装下你所有的工作方式。</div></div>
+      <div class="ver" id="ver">v0.2.34</div>
+    </div>
+    <div class="hero" data-drag>
+      <h1 data-i18n="installer.home.title">安装就一步，<em>然后交给它。</em></h1>
+      <p data-i18n="installer.home.sub">它不规定你怎么工作，它装下你怎么工作。</p>
+    </div>
+    <div id="custom">
+      <div class="cust-in">
+        <div class="pathrow">
+          <input data-role="path" value="C:\Users\fengy\AppData\Local\Programs\linkdesk" spellcheck="false" aria-label="安装位置" data-i18n-aria="installer.custom.path">
+          <button type="button" data-action="browse" data-i18n="installer.custom.browse">浏览…</button>
+        </div>
+        <div class="opts">
+          <label class="opt"><input type="checkbox" data-opt="filemenu"><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span data-i18n="installer.opt.filemenu">文件右键菜单「通过 LinkDesk 打开」</span></label>
+          <label class="opt"><input type="checkbox" data-opt="dirmenu"><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span data-i18n="installer.opt.dirmenu">目录右键菜单「通过 LinkDesk 打开」</span></label>
+          <label class="opt"><input type="checkbox" data-opt="editor" checked><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span data-i18n="installer.opt.editor">注册为受支持文件类型的编辑器</span></label>
+          <label class="opt"><input type="checkbox" data-opt="path" checked><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span data-i18n="installer.opt.path">添加到 PATH（重启终端后生效）</span></label>
+        </div>
+      </div>
+    </div>
+    <div class="actions">
+      <button class="btn" type="button" data-action="install" data-primary data-i18n="installer.home.install">立即安装<span class="cir">→</span></button>
+      <button class="btn ghost" type="button" id="custtoggle" data-action="toggle-custom" data-i18n="installer.customize">自定义安装</button>
+      <div class="foot" data-i18n="installer.home.foot">继续即同意 <a href="#" data-action="license">许可协议</a> · MIT</div>
+    </div>
+  </div>
+
+  <!-- ⑤ 进度（四段真实进度：数值与分段由件 2 的 IO 回调驱动） -->
+  <div class="scr" id="s-progress">
+    <div class="ph" id="ph" data-drag>STEP 1 / 4 · 正在解压文件</div>
+    <div class="pct" data-drag><span id="pn">0</span><span>%</span></div>
+    <div class="track" id="track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="安装进度" data-i18n-aria="installer.progress.aria"><div class="fill" id="fill"></div></div>
+    <ul class="plist">
+      <li id="p1"><span class="st"></span><span data-i18n="installer.progress.step1">解压文件（app + 出厂插件 + AI 手册）</span></li>
+      <li id="p2"><span class="st"></span><span data-i18n="installer.progress.step2">注册 linkdesk:// 协议</span></li>
+      <li id="p3"><span class="st"></span><span data-i18n="installer.progress.step3">写系统项（快捷方式 · 右键菜单 · PATH）</span></li>
+      <li id="p4"><span class="st"></span><span data-i18n="installer.progress.step4">收尾校验</span></li>
+    </ul>
+    <div class="prow">
+      <button class="cancel" type="button" data-action="cancel" data-i18n="installer.progress.cancel">取消安装</button>
+    </div>
+  </div>
+
+  <!-- ⑥ 完成 -->
+  <div class="scr" id="s-finish">
+    <div id="confetti"></div>
+    <div class="fin-ring"><svg viewBox="0 0 56 56" aria-hidden="true"><path d="M12 30l11 11 21-26"/></svg></div>
+    <h1 data-drag data-i18n="installer.finish.title">装好了。</h1>
+    <div class="sub" id="finish-path" data-drag>C:\Users\fengy\AppData\Local\Programs\linkdesk</div>
+    <div class="runrow"><label class="opt"><input type="checkbox" id="runnow" checked><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span data-i18n="installer.finish.run">运行 LinkDesk</span></label></div>
+    <div class="actions"><button class="btn" type="button" data-action="done" data-primary data-i18n="installer.finish.done">完成<span class="cir">→</span></button></div>
+  </div>
+
+  <!-- 失败分支（02-流程设计 §三 的视觉落地：磁盘空间不足示例；错误码与数字由件 2 填真值） -->
+  <div class="scr" id="s-error">
+    <svg viewBox="0 0 48 48" fill="none" stroke="#B3261E" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M24 6L4 42h40L24 6z"/><path d="M24 20v10"/><circle cx="24" cy="36" r="0.5" fill="#B3261E"/></svg>
+    <h1 data-drag data-i18n="installer.error.title">安装没有完成。</h1>
+    <div class="sub" role="alert" data-drag data-i18n="installer.error.sub">磁盘空间不足——目标盘至少需要 1 GB，当前可用 412 MB。</div>
+    <div class="errcode" id="errcode" data-drag>ERR-DISK-FULL · E-1042</div>
+    <div class="actions">
+      <button class="btn" type="button" data-action="retry" data-primary data-i18n="installer.error.retry">换个安装位置<span class="cir">→</span></button>
+      <button class="btn ghost" type="button" data-action="exit" data-i18n="installer.error.exit">退出安装</button>
+    </div>
+  </div>
+</div></div>
+
+<script src="app.js"></script>
 </body>
 </html>

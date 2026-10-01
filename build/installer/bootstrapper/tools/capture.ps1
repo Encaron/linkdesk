@@ -8,7 +8,8 @@
 param(
     [string]$ProcName = "bootstrapper",
     [string]$OutPath = "shot-window.png",
-    [int]$SettleMs = 1500
+    [int]$SettleMs = 1500,
+    [switch]$NoMinimize    # 桌面已由调用方清干净时跳过最小化/还原（避免还原动作抢走前台，见 interact-test.ps1）
 )
 $ErrorActionPreference = 'Stop'
 Add-Type @"
@@ -32,7 +33,7 @@ $r = New-Object Cap32+R
 $w = $r.Ri - $r.L; $h = $r.B - $r.T
 
 $shell = New-Object -ComObject Shell.Application
-$shell.MinimizeAll()
+if (-not $NoMinimize) { $shell.MinimizeAll() }
 Start-Sleep -Milliseconds $SettleMs
 try {
     $bmp = New-Object System.Drawing.Bitmap($w, $h)
@@ -41,5 +42,5 @@ try {
     $bmp.Save($OutPath, [System.Drawing.Imaging.ImageFormat]::Png)
     "saved $OutPath ${w}x${h}"
 } finally {
-    $shell.UndoMinimizeAll()
+    if (-not $NoMinimize) { $shell.UndoMinimizeAll() }
 }

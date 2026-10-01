@@ -36,6 +36,9 @@ static bool g_debug = false;
 // --capture=<path>：页面渲染完成后 CapturePreview 存 PNG 并退出
 // （件 1b「mockup vs 实机并排」逐屏对照的取图口；产品运行不用此参数）
 static std::wstring g_capturePath;
+// --preview=<query>：给起始 URL 挂查询串，如 --preview="screen=progress&pct=42&seed=1&dust=0"
+// （件 1b/3c 逐屏取图与状态定格；产品运行不带）
+static std::wstring g_previewQuery;
 
 // ── COM 回调（手写引用计数，Invoke 转发 lambda）───────────────────────────
 // 无参数完成回调（CapturePreview 等只回 HRESULT 的 handler）
@@ -181,6 +184,10 @@ static void FitLogical(HWND hwnd, UINT dpi, bool center)
 LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)
 {
     switch (msg) {
+    case WM_SETFOCUS:
+        // 键盘焦点必须落在网页里：WebView2 不自动接手顶层窗的焦点
+        if (g_controller) g_controller->MoveFocus(COREWEBVIEW2_MOVE_FOCUS_REASON_PROGRAMMATIC);
+        return 0;
     case WM_SIZE:
         if (g_controller) {
             RECT rc = {};
@@ -217,6 +224,7 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, PWSTR, int nCmdShow)
     for (int i = 1; argv && i < argc; ++i) {
         if (wcscmp(argv[i], L"--debug") == 0) g_debug = true;
         if (wcsncmp(argv[i], L"--capture=", 10) == 0) g_capturePath = argv[i] + 10;
+        if (wcsncmp(argv[i], L"--preview=", 10) == 0) g_previewQuery = argv[i] + 10;
     }
     if (argv) LocalFree(argv);
 
@@ -244,6 +252,10 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, PWSTR, int nCmdShow)
     if (!g_hwnd) return 1;
     FitLogical(g_hwnd, GetDpiForWindow(g_hwnd), true);
     ShowWindow(g_hwnd, nCmdShow);
+    // 无边框窗没有标题栏可点，键盘必须开箱可用（Enter=主按钮 / Tab / Esc）：
+    // 抢前台并把焦点打到顶层窗上，WM_SETFOCUS 再转交 WebView2（此时 controller 未建，见下方补一次）
+    SetForegroundWindow(g_hwnd);
+    SetFocus(g_hwnd);
 
     CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
 
@@ -292,6 +304,38 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, PWSTR, int nCmdShow)
                     GetClientRect(g_hwnd, &rc);
                     g_controller->put_Bounds(rc);
 
+                    // controller 建好前若已 WM_SETFOCUS，那次转交落空了：窗口仍在前台就补一次
+                    if (GetForegroundWindow() == g_hwnd)
+                        g_controller->MoveFocus(COREWEBVIEW2_MOVE_FOCUS_REASON_PROGRAMMATIC);
+
+                    // 页面 → 宿主消息桥（页面只发极小的 JSON 串）：
+                    //   {"type":"drag"}        → 无边框窗拖拽：页面发起的拖窗（WebView2 的鼠标
+                    //                            消息到不了宿主 WndProc，孩子窗全吃掉）
+                    //   {"type":"close"|"exit"|"install-done"} → 关窗（细粒度分流归件 2c）
+                    auto onMsg = new ComHandlerEvt<ICoreWebView2WebMessageReceivedEventHandler,
+                                                  ICoreWebView2, ICoreWebView2WebMessageReceivedEventArgs>(
+                        IID_ICoreWebView2WebMessageReceivedEventHandler,
+                        [](ICoreWebView2*, ICoreWebView2WebMessageReceivedEventArgs* a) -> HRESULT {
+                            LPWSTR raw = nullptr;
+                            if (!a || FAILED(a->TryGetWebMessageAsString(&raw)) || !raw) return S_OK;
+                            std::wstring m(raw);
+                            CoTaskMemFree(raw);
+                            if (m.find(L"\"drag\"") != std::wstring::npos) {
+                                POINT pt = {};
+                                GetCursorPos(&pt);
+                                ReleaseCapture();
+                                SendMessageW(g_hwnd, WM_NCLBUTTONDOWN, HTCAPTION,
+                                             MAKELPARAM(pt.x, pt.y));
+                            } else if (m.find(L"\"close\"") != std::wstring::npos
+                                       || m.find(L"\"exit\"") != std::wstring::npos
+                                       || m.find(L"\"install-done\"") != std::wstring::npos) {
+                                PostMessageW(g_hwnd, WM_CLOSE, 0, 0);
+                            }
+                            return S_OK;
+                        });
+                    web->add_WebMessageReceived(onMsg, nullptr);
+                    onMsg->Release();
+
                     if (!g_capturePath.empty()) {
                         // ⚠️ 事件必须先于 Navigate 注册——本地页面秒完成，后注册会错过
                         auto onNav = new ComHandlerEvt<ICoreWebView2NavigationCompletedEventHandler,
@@ -318,7 +362,9 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, PWSTR, int nCmdShow)
                         web->add_NavigationCompleted(onNav, nullptr);
                         onNav->Release();
                     }
-                    web->Navigate(kStartUrl);
+                    std::wstring startUrl = kStartUrl;
+                    if (!g_previewQuery.empty()) startUrl += L"?" + g_previewQuery;
+                    web->Navigate(startUrl.c_str());
                     return S_OK;
                 });
             e->CreateCoreWebView2Controller(g_hwnd, onCtrl);

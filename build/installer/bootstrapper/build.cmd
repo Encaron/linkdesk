@@ -14,8 +14,11 @@ if not exist out mkdir out
 rc /fo icon.res icon.rc
 if errorlevel 1 (echo rc failed & exit /b 1)
 
-rem app.html ships next to the exe (VirtualHostMapping root = exe dir)
+rem app.html + app.css + app.js ship next to the exe (VirtualHostMapping root = exe dir)
+rem NOTE: cmd's copy takes one source per call (multiple bare sources silently no-op)
 copy /y app.html out\ >nul
+copy /y app.css  out\ >nul
+copy /y app.js   out\ >nul
 
 cl /nologo /W3 /O2 /MT /EHsc /std:c++17 /utf-8 /DUNICODE /D_UNICODE ^
    /I ".sdk\webview2\include" ^
