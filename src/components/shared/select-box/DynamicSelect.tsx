@@ -13,7 +13,6 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import i18n from "../../../i18n"; // E6#165：换语言要重取（选项 label 是壳侧 t() 解析后的显示文本）
 import SelectBox from "./SelectBox";
 import type { RecipeMeta } from "@linkdesk/contracts"; // E6#54a：出包类型重定向（@src 别名包内不可解析）
 
@@ -43,7 +42,9 @@ const FOLLOW_THEME = "followTheme";
 const EMPTY_OPTIONS: DynamicOption[] = [];
 
 function DynamicSelect({ value, onChange, optionsFrom, domain, disabled, placeholder, title }: DynamicSelectProps) {
-  const { t } = useTranslation();
+  // i18n 实例取自 useTranslation（= 壳 src/i18n 经 initReactI18next 注册的同一单例）——
+  // ⛔ 不可 import 壳 "../../../i18n"：本目录是 @linkdesk/ui 声明发射的 rootDir，跨出去即 TS6059 构建红。
+  const { t, i18n } = useTranslation();
   const [options, setOptions] = useState<DynamicOption[]>(EMPTY_OPTIONS);
 
   // E5.8#82：app.themeColor 双语义信号 = optionsFrom "theme.colorways" + domain "colors"（schema 静态声明组合）。
@@ -130,7 +131,7 @@ function DynamicSelect({ value, onChange, optionsFrom, domain, disabled, placeho
       offTheme?.();
       i18n.off("languageChanged", onLangChanged);
     };
-  }, [refresh, optionsFrom, onLangChanged]);
+  }, [refresh, optionsFrom, onLangChanged, i18n]); // i18n = useTranslation 返回的单例，引用终生不变（进 deps 只为满足 exhaustive-deps）
 
   // E5.8#82 显隐归一：app.themeColor 双语义（dualSemantics）跟随主题模式（非 custom）当前配方仅 1 配色变体 → 控件自隐
   // （用户想法 3「没多配色主题不该有 themeColor」）。仅限双语义——通用 colorways 下拉（无 domain）单配色仍显示

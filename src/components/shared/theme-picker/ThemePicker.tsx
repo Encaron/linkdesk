@@ -15,7 +15,6 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import i18n from "../../../i18n"; // E6#165：换语言要重取显示名（名字是壳侧 t() 解析结果，不是渲染期现算）
 import type { RecipeMeta } from "@linkdesk/contracts"; // E6#54a：出包类型重定向（@src 别名包内不可解析）
 import "./ThemePicker.css";
 
@@ -32,7 +31,9 @@ const MAX_PREVIEW_DOTS = 6;
 const NEUTRAL_BAR = "color-mix(in srgb, var(--text-secondary) 45%, transparent)";
 
 function ThemePicker({ value, onChange }: ThemePickerProps) {
-  const { t } = useTranslation();
+  // i18n 实例取自 useTranslation（= 壳 src/i18n 经 initReactI18next 注册的同一单例）——
+  // ⛔ 不可 import 壳 "../../../i18n"：本目录是 @linkdesk/ui 声明发射的 rootDir，跨出去即 TS6059 构建红。
+  const { t, i18n } = useTranslation();
   const [recipes, setRecipes] = useState<RecipeMeta[]>([]);
   const [focusIndex, setFocusIndex] = useState(0);
   const cardRefs = useRef<Array<HTMLButtonElement | null>>([]);
@@ -67,7 +68,7 @@ function ThemePicker({ value, onChange }: ThemePickerProps) {
       offLifecycle?.();
       i18n.off("languageChanged", onLangChanged);
     };
-  }, [refresh, onLangChanged]);
+  }, [refresh, onLangChanged, i18n]); // i18n = useTranslation 返回的单例，引用终生不变（进 deps 只为满足 exhaustive-deps）
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     const n = recipes.length;

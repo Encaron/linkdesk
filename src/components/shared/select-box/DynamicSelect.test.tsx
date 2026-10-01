@@ -9,6 +9,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, fireEvent, screen, cleanup } from "@testing-library/react";
 import DynamicSelect from "./DynamicSelect";
+import "@src/i18n"; // E6#165：组件经 useTranslation().i18n 订阅 languageChanged——须真初始化 i18next（否则 react-i18next 回落对象无 .on）
 import { MINT, FOREST, SERIF, mockListRecipes, captureLifecycleChange } from "../theme-recipes.fixture";
 
 afterEach(() => cleanup());
