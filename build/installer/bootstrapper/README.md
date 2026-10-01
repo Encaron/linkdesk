@@ -18,7 +18,7 @@ build.cmd
 |:--|:--|
 | `out\bootstrapper.exe` | 正常启动：无边框 780×570 窗口加载 `app.html` |
 | `--debug` | 开 DevTools 并自动弹出（默认关闭；顺带开右键菜单） |
-| `--preview=<query>` | 把 query 拼到启动 URL 上，供对照/排查直接摆屏：`screen=home\|custom\|progress\|finish\|error\|uac`（`custom` 展开自定义区）、`pct=<0-100>`（进度定格）、`dust=0`（关微尘）、`seed=1`（定序随机数） |
+| `--preview=<query>` | 把 query 拼到启动 URL 上，供对照/排查直接摆屏：`screen=home\|custom\|progress\|finish\|error\|uac`（`custom` 展开自定义区）、`pct=<0-100>`（进度定格）、`dust=0`（关微尘）、`seed=1`（定序随机数）、`lang=<code>`（页面语言；词条从 `i18n/<code>.json` 取，认不得的值回落 zh-CN）、`langs=a,b`（词条清单，一般不手给——宿主扫目录后自己注入） |
 | `--capture=<path.png>` | 页面渲染完成后自行截图存 PNG 并退出（单屏取图口） |
 | `LK_FORCE_NO_RUNTIME=1`（环境变量） | 模拟 WebView2 运行时缺失 → 系统对话框＋退出码 3（件 3c 非交互测兜底路径） |
 
@@ -32,11 +32,14 @@ build.cmd
 | `mockup-shot.ps1` | 把 `E-混合提案.html` 拍成同尺寸 PNG：临时 harness 只去设计注记 + 钉 `.stage` 到 0,0，原文一字不改 |
 | `cmp-shots.ps1` | 六屏并排对照（左 mockup／右实机＋合成大图，产物 `out\cmp-*.png`），带资产新鲜度守卫 |
 | `interact-test.ps1` | 真键鼠交互验收：拖窗位移断言 / Enter 主按钮 / 下拉＋Esc / ✕ 退出（产物 `out\it-*.png`） |
+| `i18n-test.ps1` | 件 1c 词条装载器验收（39 断言）：探针页 iframe 实测 DOM ＋ 1px 图片信标回传（**不靠截图/OCR/时序运气**——靠本地 http.server 的访问日志），C1–C5 五路装载器 ＋ 三张 exe 实跑截图（带出注册表语言／扫目录，跑完复原注册表）；日志 `out\i18n-test.log` |
 
 ## 二、实测事实（2026-10-01，本机 VS2022 Community ＋ WebView2 运行时 140.0.3485.94）
 
-- `out\bootstrapper.exe` = **195,072 字节**（件 1a 壳）；接入 1b 页面前端（消息桥 ＋ 焦点 ＋ 预览开关）后 **209,408 字节**
-  （预算 5MB，用掉 4.0%）。**C++ 路线据此定案**——C# self-contained 70MB+ 直接出局。
+- `out\bootstrapper.exe` = **195,072 字节**（件 1a 壳）；接入 1b 页面前端（消息桥 ＋ 焦点 ＋ 预览开关）后 **209,408 字节**；
+  件 1c 加宿主扫目录/带出注册表语言/延迟截图后 **221,696 字节**（预算 5MB，用掉 4.2%）。
+  **C++ 路线据此定案**——C# self-contained 70MB+ 直接出局。
+  ⚠️ 页面与词条是**外部资源**（构建脚本拷进 `out/`），改 `app.*`/`i18n/*.json` **不改变 exe 体积**。
 - 无边框窗：`cls=LinkDeskInstallerBootstrapper`，窗口矩形 = 客户区 = 780×570（无任何非客户区）。
 - Per-Monitor V2：`GetProcessDpiAwareness` 实测返回 awareness=2；窗口按 `逻辑像素 × dpi/96` 建，并响应 `WM_DPICHANGED` 守回 780×570 逻辑尺寸。
 - 页面加载：`SetVirtualHostNameToFolderMapping`（`installer.local` → exe 目录）+ `https://installer.local/app.html`，`NavigationCompleted` 返回 success=1。
@@ -56,10 +59,19 @@ build.cmd
    PowerShell 5.1 对无 BOM 的 UTF-8 `.ps1` 按 ANSI 读，中文注释会炸成语法错误 → `tools/*.ps1` **必须带 BOM**。
 5. **运行时检测**读 `Microsoft\EdgeUpdate\Clients\{F3017226-...}` 的 `pv`（HKLM WOW6432Node / HKLM / HKCU 三路）；
    该键的 `pv=0.0.0.0` 视为未安装。注意路径 `wstring` 必须活过整个检测过程（临时对象 `.c_str()` 会变悬垂指针，曾误报「未安装」）。
+6. 🔴 **PS 5.1 把「弯引号」当定界符**：U+2019（’）视同**单引号**，U+201C/D（“ ”）视同**双引号**——写在单引号串里
+   （英文文案 `didn't`、`“Open with LinkDesk”` 之类）会当场把字符串截断，而**报错位置跑到几十行之后**
+   （实测报 `AmpersandNotAllowed`，指着一行看着毫无问题的 URL `&`）。`tools/*.ps1` 里含弯引号的断言一律改用**双引号串**；
+   改完先 `[System.Management.Automation.Language.Parser]::ParseInput()` 过一遍（0 错才算改对）。
 
 ## 四、宿主契约（件 1b 起会用到）
 
 - 页面根目录 = **exe 所在目录**（`out/`）：`app.html`、`app.css`、`app.js`、`i18n/` 都在这一层，构建脚本负责拷进去。
+- **词条与语言（件 1c）**：源在 `build/installer/i18n/*.json`（一语言一文件，`_meta.code/label` 供下拉标签），`build.cmd`
+  拷进 `out\i18n\`；宿主扫该目录得清单 → 注入 `?langs=`，上次语言从注册表 `HKCU\Software\LinkDesk\Installer → Language`
+  带出 → `?lang=`（写侧归 2b）。**加语言 = 加一个文件，零代码**；`_` 开头的文件名是预留位，不进清单。
+  页面回落链：当前语言 → zh-CN → 标记里的中文原文（含 `app.js` 里段头那一组）→ key 名。
+  ⚠️ 页面自己的标记属性名**别叫 `data-i18n`**——`applyI18n` 扫的就是它（见 `app.js` 注释里那次整页消失的事故）。
 - WebView2 用户数据夹 = `out/.wv2data`（安装器不落地用户配置；件 2 收尾应清掉）。
 - 窗口内没有任何系统装饰，**拖拽区、关闭按钮、Esc/Alt+F4 分流全部要在页面/宿主里自管**（1b 与 2c 的活）。
 - 页面 → 宿主消息桥（`postMessage` 一行 JSON）：`{"type":"drag"}`（拖窗）/ `{"type":"close"|"exit"|"install-done"}`（关窗）/

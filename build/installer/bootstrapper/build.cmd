@@ -20,6 +20,13 @@ copy /y app.html out\ >nul
 copy /y app.css  out\ >nul
 copy /y app.js   out\ >nul
 
+rem i18n: source lives in build/installer/i18n (spec 01 SS5); runtime copy sits next to the exe
+rem because the host enumerates <exedir>\i18n\*.json to build the language list
+if not exist "..\i18n" (echo FAIL: ..\i18n missing & exit /b 1)
+if not exist out\i18n mkdir out\i18n
+for %%F in (..\i18n\*.json) do copy /y "%%F" out\i18n\ >nul
+if not exist out\i18n\zh-CN.json (echo FAIL: out\i18n\zh-CN.json missing & exit /b 1)
+
 cl /nologo /W3 /O2 /MT /EHsc /std:c++17 /utf-8 /DUNICODE /D_UNICODE ^
    /I ".sdk\webview2\include" ^
    main.cpp icon.res ^

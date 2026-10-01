@@ -1,7 +1,8 @@
-// LinkDesk Installer Bootstrapper — 件 1a 引导器壳
-// 规格：docs/04-软件更新/待抉择池/安装界面自绘/05-实现交接.md §4.2
+// LinkDesk Installer Bootstrapper — 件 1a 引导器壳（件 1c：i18n 目录枚举与上次语言带出）
+// 规格：docs/04-软件更新/待抉择池/安装界面自绘/05-实现交接.md §4.2、§3.4
 // C++ Win32 + WebView2：无边框 780×570 逻辑像素、Per-Monitor V2、VirtualHostMapping 加载 app.html、
 // --debug 开 DevTools。UI 全部在 app.html/css/js（本文件只做窗口与宿主）。
+// i18n：清单 = 扫 exe 旁 i18n/ 目录经 ?langs= 注入；上次选择 = 读 HKCU（写侧归件 2b）。
 //
 // 构建：build.cmd（vswhere → vcvars64 → rc → cl），产出 out\bootstrapper.exe
 
@@ -10,6 +11,8 @@
 #include <shlwapi.h>
 #include <objidl.h>
 #include <string>
+#include <vector>
+#include <algorithm>
 #include <functional>
 #include <atomic>
 #include <wrl/client.h>
@@ -39,6 +42,11 @@ static std::wstring g_capturePath;
 // --preview=<query>：给起始 URL 挂查询串，如 --preview="screen=progress&pct=42&seed=1&dust=0"
 // （件 1b/3c 逐屏取图与状态定格；产品运行不带）
 static std::wstring g_previewQuery;
+// --capture 落图的延时定时器（件 1c 起 i18n 是异步 fetch：导航完成 ≠ 画面落定）
+static const UINT_PTR kCaptureTimer = 1;
+static const UINT kCaptureDelayMs = 1200;   // i18n fetch ＋ enter 入场动效 .8s 都在这之前落定
+
+static void DoCapture();   // 定义在 ExeDir() 之后（WndProc 的 WM_TIMER 要用）
 
 // ── COM 回调（手写引用计数，Invoke 转发 lambda）───────────────────────────
 // 无参数完成回调（CapturePreview 等只回 HRESULT 的 handler）
@@ -184,6 +192,9 @@ static void FitLogical(HWND hwnd, UINT dpi, bool center)
 LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)
 {
     switch (msg) {
+    case WM_TIMER:
+        if (wp == kCaptureTimer) { KillTimer(hwnd, kCaptureTimer); DoCapture(); }
+        return 0;
     case WM_SETFOCUS:
         // 键盘焦点必须落在网页里：WebView2 不自动接手顶层窗的焦点
         if (g_controller) g_controller->MoveFocus(COREWEBVIEW2_MOVE_FOCUS_REASON_PROGRAMMATIC);
@@ -215,6 +226,66 @@ static std::wstring ExeDir()
     GetModuleFileNameW(nullptr, path, MAX_PATH);
     PathRemoveFileSpecW(path);
     return path;
+}
+
+// --capture 落图：导航完成 ≠ 画面落定，实际在 WM_TIMER 里跑（见 kCaptureDelayMs）
+static void DoCapture()
+{
+    Microsoft::WRL::ComPtr<ICoreWebView2> webv;
+    if (g_controller) g_controller->get_CoreWebView2(&webv);
+    if (!webv) { PostQuitMessage(4); return; }
+    IStream* stream = nullptr;
+    if (SUCCEEDED(SHCreateStreamOnFileW(g_capturePath.c_str(), STGM_CREATE | STGM_WRITE, &stream))) {
+        auto onCap = new ComHandlerV<ICoreWebView2CapturePreviewCompletedHandler>(
+            IID_ICoreWebView2CapturePreviewCompletedHandler,
+            [](HRESULT) -> HRESULT { PostQuitMessage(0); return S_OK; });
+        webv->CapturePreview(COREWEBVIEW2_CAPTURE_PREVIEW_IMAGE_FORMAT_PNG, stream, onCap);
+        onCap->Release();
+        stream->Release();
+    } else {
+        PostQuitMessage(4);   // 截图文件打不开
+    }
+}
+
+// ── i18n（件 1c／规格 01 §五）：语言清单 = 扫 i18n/ 目录，加语言 = 加文件，零代码 ────
+// 返回去扩展名的语言码；zh-CN 打头、其余按字典序（顺序即下拉顺序，测试要确定性）。
+// `_` 前缀文件名留作约定文件（如 _template.json），不进清单。
+static std::vector<std::wstring> ScanI18nCodes(const std::wstring& exeDir)
+{
+    std::vector<std::wstring> codes;
+    WIN32_FIND_DATAW fd = {};
+    HANDLE h = FindFirstFileW((exeDir + L"\\i18n\\*.json").c_str(), &fd);
+    if (h != INVALID_HANDLE_VALUE) {
+        do {
+            if (fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) continue;
+            std::wstring name = fd.cFileName;
+            if (name.size() <= 5 || name[0] == L'_') continue;
+            std::wstring code = name.substr(0, name.size() - 5);
+            if (_wcsicmp(code.c_str(), L"zh-CN") == 0) code = L"zh-CN";
+            codes.push_back(code);
+        } while (FindNextFileW(h, &fd));
+        FindClose(h);
+    }
+    std::sort(codes.begin(), codes.end(), [](const std::wstring& a, const std::wstring& b) {
+        if (_wcsicmp(a.c_str(), b.c_str()) == 0) return false;         // 严格弱序：自比为假
+        if (_wcsicmp(a.c_str(), L"zh-CN") == 0) return true;
+        if (_wcsicmp(b.c_str(), L"zh-CN") == 0) return false;
+        return _wcsicmp(a.c_str(), b.c_str()) < 0;
+    });
+    return codes;
+}
+
+// 上次选择的语言（01 §五持久化：升级安装带出上次选择）。写侧归件 2b，这里只读。
+static std::wstring ReadSavedLanguage()
+{
+    HKEY h = nullptr;
+    if (RegOpenKeyExW(HKEY_CURRENT_USER, L"Software\\LinkDesk\\Installer", 0, KEY_READ, &h) != ERROR_SUCCESS)
+        return L"";
+    wchar_t buf[64] = {};
+    DWORD size = sizeof(buf);
+    bool ok = RegQueryValueExW(h, L"Language", nullptr, nullptr, (LPBYTE)buf, &size) == ERROR_SUCCESS && buf[0];
+    RegCloseKey(h);
+    return ok ? std::wstring(buf) : L"";
 }
 
 int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, PWSTR, int nCmdShow)
@@ -338,32 +409,42 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, PWSTR, int nCmdShow)
 
                     if (!g_capturePath.empty()) {
                         // ⚠️ 事件必须先于 Navigate 注册——本地页面秒完成，后注册会错过
+                        // 真正落图延后到 WM_TIMER：i18n 是异步 fetch，立即拍会拍到中文/半动画帧
                         auto onNav = new ComHandlerEvt<ICoreWebView2NavigationCompletedEventHandler,
                                                        ICoreWebView2, ICoreWebView2NavigationCompletedEventArgs>(
                             IID_ICoreWebView2NavigationCompletedEventHandler,
                             [](ICoreWebView2*, ICoreWebView2NavigationCompletedEventArgs*) -> HRESULT {
-                                Microsoft::WRL::ComPtr<ICoreWebView2> webv;
-                                g_controller->get_CoreWebView2(&webv);
-                                IStream* stream = nullptr;
-                                if (SUCCEEDED(SHCreateStreamOnFileW(
-                                        g_capturePath.c_str(), STGM_CREATE | STGM_WRITE, &stream))) {
-                                    auto onCap = new ComHandlerV<ICoreWebView2CapturePreviewCompletedHandler>(
-                                        IID_ICoreWebView2CapturePreviewCompletedHandler,
-                                        [](HRESULT) -> HRESULT { PostQuitMessage(0); return S_OK; });
-                                    webv->CapturePreview(
-                                        COREWEBVIEW2_CAPTURE_PREVIEW_IMAGE_FORMAT_PNG, stream, onCap);
-                                    onCap->Release();
-                                    stream->Release();
-                                } else {
-                                    PostQuitMessage(4);   // 截图文件打不开
-                                }
+                                SetTimer(g_hwnd, kCaptureTimer, kCaptureDelayMs, nullptr);
                                 return S_OK;
                             });
                         web->add_NavigationCompleted(onNav, nullptr);
                         onNav->Release();
                     }
+
+                    // i18n（件 1c）：语言清单 = 扫 i18n/ 目录后经 ?langs= 注入；上次选择经 ?lang= 带出。
+                    // --preview 里显式给了同名参数就让它赢（逐屏取图要定格清单与语言）
+                    std::vector<std::wstring> codes =
+                        g_previewQuery.find(L"langs=") != std::wstring::npos
+                            ? std::vector<std::wstring>() : ScanI18nCodes(exeDir);
+                    std::vector<std::wstring> params;
+                    if (!g_previewQuery.empty()) params.push_back(g_previewQuery);
+                    if (!codes.empty()) {
+                        std::wstring joined;
+                        for (size_t i = 0; i < codes.size(); ++i) { if (i) joined += L","; joined += codes[i]; }
+                        params.push_back(L"langs=" + joined);
+                    }
+                    if (g_previewQuery.find(L"lang=") == std::wstring::npos) {
+                        std::wstring saved = ReadSavedLanguage();
+                        if (!saved.empty()) params.push_back(L"lang=" + saved);
+                    }
                     std::wstring startUrl = kStartUrl;
-                    if (!g_previewQuery.empty()) startUrl += L"?" + g_previewQuery;
+                    if (!params.empty()) {
+                        startUrl += L"?";
+                        for (size_t i = 0; i < params.size(); ++i) {
+                            if (i) startUrl += L"&";
+                            startUrl += params[i];
+                        }
+                    }
                     web->Navigate(startUrl.c_str());
                     return S_OK;
                 });

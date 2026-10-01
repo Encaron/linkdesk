@@ -1,8 +1,10 @@
-/* LinkDesk 安装器界面逻辑（件 1b：六屏状态机接线）
+/* LinkDesk 安装器界面逻辑（件 1b：六屏状态机接线 ／ 件 1c：i18n 装载器）
  * 来源：docs/04-软件更新/待抉择池/安装界面自绘/mockups/E-混合提案.html 的 <script>（直搬改造）
- * 拆掉的：设计注记/演示控制的写入（.cap/.note/「重新播放」/「演示：失败分支」）、9 秒假进度
- * 接上的：宿主消息桥（拖窗/关闭/件2 的安装动作）、Enter=主按钮、语言下拉控件
- * 件 2 接手点：ACTIONS.install 后的真 IO 与进度回调（setProgress）、setInstallDir/setVersion/setError
+ * 拆掉的：设计注记/演示控制的写入（.cap/.note/「重新播放」/「演示：失败分支」）、9 秒假进度、写死的语言数组
+ * 接上的：宿主消息桥（拖窗/关闭/件2 的安装动作）、Enter=主按钮、语言下拉（清单 = 宿主扫描 i18n/ 目录）
+ * 件 2 接手点：ACTIONS.install 后的真 IO 与进度回调（setProgress）、setInstallDir/setVersion/setError、
+ *             set-lang 的注册表持久化（HKCU\Software\LinkDesk\Installer → Language 写侧）、
+ *             运行时真值的本地化（onLangChange 钩子）
  */
 (function () {
 'use strict';
@@ -49,16 +51,17 @@ function go(id) {
   if (id === 'finish') burst();          // 彩粒迸发只在进完成屏时打一次
 }
 
-/* 自定义展开区（home 的子状态，不是独立屏）——『收起』文案 1c 随装载器换成 t() */
-const custLabel = $('#custtoggle').textContent;
+/* 自定义展开区（home 的子状态，不是独立屏）——按钮文案随展开态换 key，文本由 1c 的 t() 渲染 */
 function setCustom(open) {
   $('#custom').classList.toggle('open', !!open);
-  $('#custtoggle').textContent = open ? '收起' : custLabel;
+  $('#custtoggle').dataset.i18n = open ? 'installer.collapse' : 'installer.customize';
+  applyI18n($('#custtoggle'));
 }
 
-/* ── 四段进度（数值/分段语义照 mockup；真数据由件 2 的 IO 回调喂）────────── */
-const PH = ['', 'STEP 1 / 4 · 正在解压文件', 'STEP 2 / 4 · 注册 linkdesk:// 协议',
-            'STEP 3 / 4 · 写系统项', 'STEP 4 / 4 · 收尾校验'];
+/* ── 四段进度（数值/分段语义照 mockup；真数据由件 2 的 IO 回调喂）──────────
+ * 段头文案走 t()（1c）：切语言时 refreshHead() 按当前分段重渲染 */
+const HEAD_KEYS = ['', 'installer.progress.head1', 'installer.progress.head2',
+                   'installer.progress.head3', 'installer.progress.head4'];
 let lastPct = 0;
 
 function segOf(p) { return p < 70 ? 1 : p < 80 ? 2 : p < 92 ? 3 : 4; }
@@ -73,11 +76,12 @@ function setProgress(p, opt) {
   $('#fill').style.width = p + '%';
   const s = opt.step || segOf(p);
   for (let i = 1; i <= 4; i++) $('#p' + i).className = i < s ? 'done' : i === s ? 'run' : '';
-  $('#ph').textContent = PH[s];
+  $('#ph').textContent = t(HEAD_KEYS[s]);
   $('#track').setAttribute('aria-valuenow', String(Math.floor(p)));   // 进度条 ARIA（对账表）
 }
 
 function resetProgress() { lastPct = 0; setProgress(0, { force: true }); }
+function refreshHead() { setProgress(lastPct, { force: true }); }   // 换语言后刷段头（数值不变，纯文案）
 
 /* ── 完成彩粒（D 提案单点混搭；取数顺序同 mockup，配色按亮色底）────────── */
 function burst() {
@@ -106,7 +110,11 @@ function setInstallDir(dir) {
 function setVersion(v) { if (v) $('#ver').textContent = 'v' + v; }
 function setError(code, msg) {
   if (code) $('#errcode').textContent = code;
-  if (msg) $('[data-i18n="installer.error.sub"]').textContent = msg;
+  if (msg) {
+    const sub = $('[data-i18n="installer.error.sub"]');
+    sub.dataset.i18nLive = '1';   // 真值上屏后不再被静态词条盖回（件 2 的失败文案本地化归 2c）
+    sub.textContent = msg;
+  }
   go('error');
 }
 function readOpts() {
@@ -178,39 +186,119 @@ document.addEventListener('keydown', function (e) {
   if (primary) { e.preventDefault(); primary.click(); }
 });
 
-/* ── 自绘语言下拉（原生 select 画不进自绘界面）──────────────────────────
- * 清单与文案切换归 1c 装载器：此处只管开关/选中态/键盘可达 */
-const LANGS = [{ code: 'zh-CN', label: '中文' }, { code: 'en', label: 'English' }];  // 1c：改为扫描 i18n/ 目录
-let lang = document.documentElement.dataset.lang || 'zh-CN';
+/* ── 1c i18n 装载器（规格 05 §3.4 / 01 §五）─────────────────────────────
+ * 语言清单 = 宿主扫描 i18n/ 目录后经 ?langs= 注入（加语言 = 加文件，零代码改动）；
+ * 词条 = fetch 同目录 <code>.json（虚拟主机 installer.local → exe 所在目录；件 3 改内嵌资源也不动这里）；
+ * t() 回落链 = 当前语言 → zh-CN → 标记原文 → key 名（开发期漏翻立刻可见）；
+ * 持久化读写归件 2（此处只消费 ?lang=、切换时只发 set-lang，不碰注册表）。 */
+const DEFAULT_LANG = 'zh-CN';
+const LANGS = [];                       // [{code,label}]——顺序 = 宿主注入顺序（zh-CN 打头）
+const DICTS = Object.create(null);
+let lang = DEFAULT_LANG;
+let i18nState = 'loading';              // loading | ready | failed
 
-(function buildLangs() {
-  const pop = $('#lkdd-pop');
-  pop.innerHTML = LANGS.map(function (l) {
-    return '<button type="button" class="it' + (l.code === lang ? ' on' : '') + '" role="option" data-code="' + l.code +
-      '" aria-selected="' + (l.code === lang) + '">' +
-      '<svg class="ck" viewBox="0 0 14 14" fill="none" stroke="#2fae7c" stroke-width="2" aria-hidden="true"><path d="M2.5 7.5l3 3 6-7"/></svg>' +
-      '<span>' + l.label + '</span></button>';
-  }).join('');
-  const it = pop.querySelector('.it.on');
-  if (it) $('#lkdd-cur').textContent = it.querySelector('span').textContent;
-})();
+/* 标记里的中文原文＝最后一道兜底：首帧抓一次，之后任何补丁都不回写它。
+   🔴 只在 body 内扫：<html> 自己也会挂标记（首帧隐藏用的 data-i18n-pending），把 <html> 当词条元素
+   会让 applyI18n 把整份文档的 innerHTML 换成「pending」——整页 DOM 没了（C2/C4 实测） */
+const AUTHORED = Object.create(null);
+$$('[data-i18n]', document.body).forEach(function (el) { AUTHORED[el.dataset.i18n] = el.innerHTML; });
+/* 段头是状态相关文案，标记里没有挂点（#ph 无 data-i18n）——中文原稿也登记进兜底层，
+   否则词条目录整个缺失时会退到 key 名（C5 实测：段头显示 installer.progress.head1）
+   ⚠️ 与 i18n/zh-CN.json 的 installer.progress.head* 逐字一致（改词条时同笔改这里） */
+[['installer.progress.head1', 'STEP 1 / 4 · 正在解压文件'],
+ ['installer.progress.head2', 'STEP 2 / 4 · 注册 linkdesk:// 协议'],
+ ['installer.progress.head3', 'STEP 3 / 4 · 写系统项'],
+ ['installer.progress.head4', 'STEP 4 / 4 · 收尾校验']].forEach(function (p) { AUTHORED[p[0]] = p[1]; });
+
+function esc(s) {
+  return String(s).replace(/[&<>"]/g, function (c) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+  });
+}
+
+function t(key, vars) {
+  if (!key) return '';
+  const d = DICTS[lang] || {}, z = DICTS[DEFAULT_LANG] || {};
+  let s = d[key] !== undefined ? d[key]
+        : z[key] !== undefined ? z[key]
+        : AUTHORED[key] !== undefined ? AUTHORED[key] : key;
+  if (vars) s = s.replace(/\{(\w+)\}/g, function (m, k) { return vars[k] !== undefined ? vars[k] : m; });
+  return s;
+}
+
+function i18nTargets(sel, root) {
+  const out = $$(sel, root);
+  if (root && root.nodeType === 1 && root.matches && root.matches(sel)) out.unshift(root);
+  return out;
+}
+/* 文案补丁：data-i18n → innerHTML（词条可含 <em>/<span class="cir">/<a>，与 mockup 的补丁同规）
+   data-i18n-aria → aria-label；data-i18n-live = 运行时真值已接管，别用静态词条盖回去 */
+function applyI18n(root) {
+  // 范围默认锁在 body：<html> 上的标记不是文案挂点（见 AUTHORED 处的说明）
+  i18nTargets('[data-i18n]', root || document.body).forEach(function (el) {
+    if (!root && el.hasAttribute('data-i18n-live')) return;
+    el.innerHTML = t(el.dataset.i18n);
+  });
+  i18nTargets('[data-i18n-aria]', root || document.body).forEach(function (el) {
+    el.setAttribute('aria-label', t(el.dataset.i18nAria));
+  });
+}
+
+/* 清单与词条：一个语言一个文件，坏掉的单个语言不拖垮整张清单 */
+function loadI18n() {
+  const codes = (q.get('langs') || '').split(',').map(function (s) { return s.trim(); }).filter(Boolean);
+  if (codes.indexOf(DEFAULT_LANG) < 0) codes.unshift(DEFAULT_LANG);
+  const want = (q.get('lang') || '').trim();
+  lang = codes.indexOf(want) >= 0 ? want : DEFAULT_LANG;
+  const fetches = typeof fetch === 'function' ? codes.map(function (c) {
+    return fetch('i18n/' + encodeURIComponent(c) + '.json', { cache: 'no-store' })
+      .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
+      .then(function (j) { return { code: c, dict: j }; })
+      .catch(function () { return null; });
+  }) : [];
+  return Promise.all(fetches).then(function (list) {
+    list.forEach(function (it) {
+      if (!it || !it.dict) return;
+      DICTS[it.code] = it.dict;
+      LANGS.push({ code: it.code, label: (it.dict._meta && it.dict._meta.label) || it.code });
+    });
+    i18nState = DICTS[DEFAULT_LANG] ? 'ready' : 'failed';
+  });
+}
 
 function openDd(open) {
   $('#lkdd').classList.toggle('open', !!open);
   $('#lkdd-btn').setAttribute('aria-expanded', String(!!open));
 }
+function buildLangs() {
+  const pop = $('#lkdd-pop');
+  pop.innerHTML = LANGS.map(function (l) {
+    return '<button type="button" class="it' + (l.code === lang ? ' on' : '') + '" role="option" data-code="' + esc(l.code) +
+      '" aria-selected="' + (l.code === lang) + '">' +
+      '<svg class="ck" viewBox="0 0 14 14" fill="none" stroke="#2fae7c" stroke-width="2" aria-hidden="true"><path d="M2.5 7.5l3 3 6-7"/></svg>' +
+      '<span>' + esc(l.label) + '</span></button>';
+  }).join('');
+  const sel = LANGS.filter(function (l) { return l.code === lang; })[0] || LANGS[0];
+  if (sel) $('#lkdd-cur').textContent = sel.label;
+}
 function selectLang(code) {
+  if (!LANGS.some(function (l) { return l.code === code; })) return;
   lang = code;
+  document.documentElement.lang = code;
   document.documentElement.dataset.lang = code;
-  $('#lkdd-cur').textContent = (LANGS.filter(function (l) { return l.code === code; })[0] || LANGS[0]).label;
   $$('#lkdd-pop .it').forEach(function (it) {
     const on = it.dataset.code === code;
     it.classList.toggle('on', on);
     it.setAttribute('aria-selected', String(on));
   });
+  const sel = LANGS.filter(function (l) { return l.code === code; })[0];
+  if (sel) $('#lkdd-cur').textContent = sel.label;
+  applyI18n();     // 整页重渲染（静态词条）
+  refreshHead();   // 进度段头是状态相关文案，单独刷
   onLangChange(code);
+  post({ type: 'set-lang', lang: code });   // 持久化写注册表归件 2b
 }
-function onLangChange(/* code */) { /* 1c：t() 全量重渲染（含运行时错误文案的占位符） */ }
+function onLangChange(/* code */) { /* 件 2：运行时真值（错误码文案 / 路径 / 版本）的本地化挂这里 */ }
 
 $('#lkdd-btn').addEventListener('click', function (e) {
   e.stopPropagation();
@@ -226,14 +314,39 @@ document.addEventListener('click', function (e) {
   if (!$('#lkdd').contains(e.target)) openDd(false);
 });
 
-/* ── 预览参数（开发/验收用；产品运行不带）───────────────────────────────
- * ?screen=uac|home|progress|finish|error   ?custom=1   ?pct=0..100   ?dust=0   ?seed=1 */
-if (q.get('dust') === '0') $('#dust').remove();
-setInstallDir($('[data-role=path]').value);            // 让完成屏路径与输入框同源
-go(q.get('screen') || 'home');
-if (q.get('custom') === '1') setCustom(true);
-if (q.get('pct') !== null) setProgress(+q.get('pct'), { force: true });
+/* ── 启动（等词条到位再首帧；字典坏了也照常起——回落链兜住文案）────────────
+ * 预览参数（开发/验收用；产品运行不带）：
+ * ?screen=uac|home|progress|finish|error  ?custom=1  ?pct=0..100  ?dust=0  ?seed=1  ?lang=  ?langs=（宿主注入） */
+function boot() {
+  if (q.get('dust') === '0') $('#dust').remove();
+  setInstallDir($('[data-role=path]').value);          // 让完成屏路径与输入框同源
+  go(q.get('screen') || 'home');
+  if (q.get('custom') === '1') setCustom(true);
+  if (q.get('pct') !== null) setProgress(+q.get('pct'), { force: true });
+}
+
+(function initI18n() {
+  const wanted = (q.get('lang') || '').trim();
+  // 非默认语言先藏壳（规则在 app.css）：首帧中文一闪而过是视觉瑕疵；400ms 兜底照常显示
+  if (wanted && wanted !== DEFAULT_LANG) document.documentElement.dataset.i18nPending = '1';
+  const reveal = function () { delete document.documentElement.dataset.i18nPending; };
+  setTimeout(reveal, 400);
+  const ready = function () {
+    document.documentElement.lang = lang;
+    document.documentElement.dataset.lang = lang;
+    applyI18n();
+    buildLangs();
+    boot();
+    refreshHead();   // 段头是状态相关文案（data-i18n 覆盖不到），首帧也得按当前语言落一次
+    reveal();
+  };
+  loadI18n().then(ready, ready);
+})();
 
 /* 供 3c 自动化/排查用（只读入口，产品行为不依赖它） */
-window.__lk = { go: go, setProgress: setProgress, readOpts: readOpts, state: function () { return cur; } };
+window.__lk = {
+  go: go, setProgress: setProgress, readOpts: readOpts, setLang: selectLang, t: t,
+  state: function () { return cur; },
+  i18n: function () { return { lang: lang, state: i18nState, langs: LANGS.map(function (l) { return l.code; }) }; }
+};
 })();

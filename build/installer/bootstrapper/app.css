@@ -7,6 +7,7 @@
  *   · 内联 style / inline onclick → 类与事件在 app.js 接线（类名与 id 保持与 mockup 一致 = 规格）
  *   · #s-error 补样式：mockup 没给该屏任何 CSS（h1 落到 UA 默认粗体、正文 16px），与完成屏的衬线语言
  *     不自洽；按同一设计语言补齐（衬线 34px h1 / .sub 13px / .errcode 小字 mono）——并排对照见 06 ⚠️ 注
+ *   · html[data-i18n-pending]（件 1c 新增）：非默认语言首帧藏壳，词条到位再显（app.js 有 400ms 兜底）
  */
 
 :root{
@@ -28,6 +29,8 @@ input{caret-color:var(--ink)}
 ::-webkit-scrollbar-thumb{background:rgba(0,0,0,.15);border-radius:5px;border:2px solid transparent;background-clip:content-box}
 ::-webkit-scrollbar-track{background:transparent}
 .foot a{color:var(--txt2);text-decoration:underline;text-underline-offset:3px}
+/* 件 1c：清单/词条到位前先藏壳（仅非默认语言会走到这里），别让中文一闪而过 */
+html[data-i18n-pending] .shell,html[data-i18n-pending] #lkdd{visibility:hidden}
 
 html,body{width:100%;height:100%}
 /* 底色取 --desk（= mockup 的 body 底色）：真实窗口全幅渲染时，窗内所见 = .win(85% 白) 覆在此色上，
