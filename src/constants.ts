@@ -10,6 +10,9 @@ export const Z_INDEX = {
   panelResizeHandle: 200,    // 面板拖拽尺寸手柄
   dragPreview: 500,          // 标签页拖拽预览
   dropZone: 1000,            // 分屏拖拽预览（Glassmorphism 内发光）
+  // W3a（欢迎页重设计 T5）：轻提示卡——盖池内容与拖拽预览（1000），但**被一切浮层盖住**
+  // （悬浮面板 1500 / 菜单 3000 / 命令面板 4000 / 对话框 5000）：一张 4s 的回执不该压住用户正在操作的面。
+  toast: 1200,
   // E5.8#37（Phase 8 类型 B）：壳内悬浮面板——右键 3000/QuickPick 4000/Dialog 5000/floatLayer 2000 全盖面板；
   // 面板盖池内容 + 拖拽预览（dropZone 1000）。I8-12。
   floatingPanel: 1500,

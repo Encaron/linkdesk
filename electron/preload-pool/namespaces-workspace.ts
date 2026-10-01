@@ -44,6 +44,9 @@ export function buildNotifications(events: EventSystemApi) {
       // E6#73g（S5）：生产者身份 id——面板按它分组、常驻配额按它分桶；不传 → 「其他」组。
       // 透传即可，壳 handler 侧取值（本层不解释、不校验——契约类型才是判据）。
       source?: string;
+      // W3a（欢迎页重设计 T5）：轻提示标记——壳据此把这条标成「池侧右下角自动消失小卡」
+      // （不进面板、不计未读）。同样只透传：判据在壳侧 handler 与池侧 ToastHost。
+      toast?: boolean;
     }) => {
       return ipcRenderer.invoke(IPC.plugins.call, 'showNotification', message, options)
         // E6#73f（S6）句柄隔离：壳 showNotification 已**一律**返回句柄 id（不再只在 progress 时返回）

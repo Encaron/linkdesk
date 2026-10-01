@@ -32,6 +32,7 @@ import PanelZone from "./zones/panel/PanelZone"; // E5.7#21 骨架 + #63.7 数�
 import RightSidebarZone from "./zones/right-sidebar/RightSidebarZone"; // E5.7#22：Phase 5 右侧栏骨架（壳侧暂无容器生产者）
 import BackgroundLayer from "./zones/BackgroundLayer"; // E5.8#50.8：全窗背景图片层（shell 首子，z-index 0——FloatingLayerHost 底镜像）
 import HintTipRenderer from "../components/shared/hint-tip/HintTipRenderer"; // 04「悬停提示系统」件 1：提示条单例渲染器
+import ToastHost from "./shared/toast/ToastHost"; // W3a（T5）：轻提示层——toast:true 条目的唯一渲染方
 
 function PoolZoneShell({ layout }: { layout: PoolLayout }) {
   // E5.8#37.5：归一化 DTO → 池 grid 唯一推导（列/行模板 + 各 zone grid 放置）。
@@ -124,6 +125,12 @@ function PoolZoneShell({ layout }: { layout: PoolLayout }) {
 
       {/* FloatingLayerHost——#25（Phase 4）：浮层统一容器——始终挂载 + pointer-events: none 默认穿透 */}
       <FloatingLayerHost />
+
+      {/* W3a（T5）轻提示层：`notifications.show(msg,{toast:true})` 的唯一渲染方（面板里没有这些条目）。
+          🔴 挂这里而不是 FloatingLayerHost 里：那条路径会给卡片套上"浮层隔离地板"的 backdrop-filter
+             （深度2 规则），而视觉契约（mockup 场景 2）是**不透明卡面 + 无磨砂**。
+          `notif` 缺省即什么都不画（脱出窗 statusBar 被策略表裁掉——那类窗本就不该弹轻提示）。 */}
+      <ToastHost notif={layout.statusBar?.notif} />
 
       {/* 04「悬停提示系统」件 1：提示条单例渲染器——**池根无条件挂载**。
           ① 全软件只需这一处：壳文档是纯状态持有者（App.tsx 的 ldk-app-shell 空壳，无可见 DOM），

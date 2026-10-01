@@ -346,8 +346,7 @@ export interface PoolMenuItem {
     /**
      * 菜单内二级分组名——渲染层按它切分隔线（ContextMenu 语义：相邻不同 group 之间出一条线）。
      * 有值才序列化（无分组 = 兜底 `__default` 一组，不画线）。显示文本铁律：池只比字符串，不解释语义。
-     * ⚠️ 子菜单 children 上的 group 会被 ContextMenu 换成父项 group（mapChildren 语义）——
-     * 分组只在**顶层菜单项**上生效。
+     * ⚠️ 子菜单 children 上的 group 会被 ContextMenu 换成父项 group（mapChildren 语义）——分组只在**顶层菜单项**生效。
      */
     group?: string;
     /** 快捷键显示文本——formatKeyLabel 后。仅汉堡（showKeybindings）；titlebar 下拉无快捷键（同壳行为） */
@@ -1076,8 +1075,7 @@ export interface NotifLayout {
      *  ⚠️ 只报**进行中 / 等待中**两个数：不写「已完成 N/M」——装了没有不由进度条消失来判定
      *  （18 档 §七 73d 行明令）。 */
     summaryLabel?: string;
-    /** 安装 job 两段（进行中 → 等待安装中），固定序排在结果区之前。
-     *  缺省 = 没有在途安装（契约宽容——旧快照/测试替身不填此字段时行为不变，不渲染这两段）。 */
+    /** 安装 job 两段（进行中 → 等待安装中），固定序排在结果区之前。缺省 = 没有在途安装（不渲染这两段）。 */
     sections?: NotifSection[];
     /** 第三段固定标题「已有结果」（§五 I.4 三段永不重排）。
      *  结果**行**不在这里——它们是既有的按来源分组的 toast（见 NotifJobRow 注释）；
@@ -1087,6 +1085,8 @@ export interface NotifLayout {
      *  行会被 TTL 收走/被来源折叠，用它计数会让摘要随无关动作跳变（18 档 §五 I.4 的样例即此计数）。 */
     resultSummary?: string;
     groups: NotifGroup[];
+    /** W3a（T5）：轻提示条目（`show(msg,{toast:true})`）——与 `groups` 互斥分流：不进 groups、不计 unread、不唤醒面板；池侧 ToastHost 渲染右下角自动消失小卡（≈4s·悬停暂停），到点由池发 notif:dismiss 收掉。缺省 = 无轻提示。 */
+    toasts?: NotifItem[];
     /** 自动展开请求——壳判定「存在重要且未读的通知，且面板当前是关着的」时为 true。
      *  池侧只做 **false→true 边沿触发**（置面板为开），true 持续期间不反复动作；
      *  缺省 = 不自动展开（契约宽容——旧快照/测试替身不填此字段时行为不变）。 */
@@ -1549,6 +1549,15 @@ export interface UiAPI {
              *  preload 无从知道「这次 show() 是哪个插件的树发的」⇒ **只能作者显式报**。
              *  ⚠️ 老插件不填就仍然全落「其他」组：这是**新契约**，要作者重新发布才生效。 */
             source?: string;
+            /** W3a（欢迎页重设计 T5）：**轻提示**——`true` ⇒ 池侧右下角弹一张自动消失的小卡（≈4s、
+             *  悬停暂停），由池侧 `ToastHost` 呈现。
+             *
+             *  🔴 **它是「一闪而过的反馈」，不是留档通道**：不进铃铛面板（`NotifLayout.groups` 里没有它）、
+             *  **不计未读**、不唤醒面板（`wake` 恒 false）——4s 到点由池收掉（`notif:dismiss`）。
+             *  ⇒ 任何「用户可能事后要回看」的内容都**不许**走它（那是 `persistent:true` 或写文件的事）。
+             *  典型场景：一次操作的结果反馈（「已从最近移除」这类，行消失/内容变化本身就是主反馈）。
+             *  缺省 `false` = 现有面板通知行为，一字不变（老插件不受影响）。 */
+            toast?: boolean;
         }): Promise<NotificationHandle>;
         /**
          * **只读列举**——面板里现在有什么（条数 / 未读 / 每条内容与按钮 / 唤醒与存活判据）。

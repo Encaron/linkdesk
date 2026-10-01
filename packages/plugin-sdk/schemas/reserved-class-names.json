@@ -37,6 +37,14 @@
     {
       "name": "ldk-view-skeleton-breath",
       "why": "宿主内容加载骨架呼吸（04「启动过场」④C）"
+    },
+    {
+      "name": "ldk-toast-in",
+      "why": "宿主池轻提示卡入场动画"
+    },
+    {
+      "name": "ldk-toast-out",
+      "why": "宿主池轻提示卡退场动画"
     }
   ]
 }

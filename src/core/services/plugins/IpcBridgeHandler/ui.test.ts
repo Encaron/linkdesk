@@ -197,6 +197,47 @@ describe("showNotification 来源身份（E6#73g S5）", () => {
 });
 
 /* ═══════════════════════════════════════════════════════════════════════════
+   W3a（欢迎页重设计 T5）：`showNotification(..., { toast: true })` = 轻提示
+   ═══════════════════════════════════════════════════════════════════════════
+   判据三条，缺一条这套「一闪而过的反馈」就会变成第二条通知面（E6#72 刚删掉的那种）：
+   ① `toast` 旗标必须落到存储上——池侧 `buildNotif` 与 `ToastHost` 都只认它；
+   ② `ttl: 0`（**生命周期归池**：壳的 setTimeout 不知道鼠标正停在卡上，悬停暂停只能池做）；
+   ③ `wake: false`（轻提示不唤醒铃铛面板——它不进分组、不计未读）。
+   还有一条**派生**：`ttl:0` ⇒ `persistent:true` ⇒ 仍受**按来源常驻配额**约束，
+   否则 `toast:true` 就成了绕过 TOAST_SOURCE_CAP 的无限堆积后门。 */
+
+describe("showNotification 轻提示（W3a T5）", () => {
+  it("toast:true → 落旗标 ＋ ttl:0 ＋ wake:false（生命周期归池，壳不自动收）", async () => {
+    const handle = await handleUiMethod("showNotification", [
+      "Demo hint",
+      { type: "warning", toast: true },
+    ]);
+    expect(typeof handle).toBe("string");
+    const t = activeToasts().find((x) => x.id === handle)!;
+    expect(t).toBeTruthy();
+    expect(t.toast).toBe(true);
+    expect(t.ttl).toBe(0);       // ← 壳侧不挂定时器：4s 到点由池发 notif:dismiss
+    expect(t.wake).toBe(false);  // ← 不唤醒面板
+  });
+
+  it("缺省（不传 toast）→ 现状一字不变：有 TTL、wake 照旧 —— 老插件不受影响", async () => {
+    const handle = await handleUiMethod("showNotification", ["Demo message", { type: "info" }]);
+    const t = activeToasts().find((x) => x.id === handle)!;
+    expect(t.toast).toBeUndefined();
+    expect(t.ttl).toBeGreaterThan(0);
+    expect(t.wake).toBe(true);
+  });
+
+  it("🔴 派生：ttl:0 ⇒ persistent ⇒ 仍按来源算常驻配额（不是绕开上限的后门）", async () => {
+    await handleUiMethod("showNotification", ["Demo hint", { type: "warning", toast: true, source: PLUGIN }]);
+    const t = activeToasts()[0]!;
+    expect(t.persistent).toBe(true);
+    const same = activeToasts().filter((x) => x.source === PLUGIN);
+    expect(same.length).toBeLessThanOrEqual(TOAST_SOURCE_CAP);
+  });
+});
+
+/* ═══════════════════════════════════════════════════════════════════════════
    E6#111h（1.38）：`contextKey:set` 过桥处的**运行时仲裁**（负控 ④ 真跑）
    ═══════════════════════════════════════════════════════════════════════════
    判据：经 IPC 写**宿主专用**旗子 ⇒ `console.error` **出声** ＋ **放行**。

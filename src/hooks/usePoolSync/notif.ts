@@ -234,9 +234,49 @@ function buildInstallSections(
   return { sections, summaryLabel, ...result };
 }
 
+/**
+ * 单条 toast → 面板 DTO 条目（`NotifItem`）——**两条出口共用的一处映射**：
+ * 面板分组（`groups[].items`）与轻提示（`toasts`）逐字段同构，各写一份必然漂移
+ * （轻提示会缺 timeLabel/来源行，或多了个面板没有的字段）。
+ */
+function toNotifItem(t: TFunction) {
+  return (n: Toast) => ({
+    id: n.id,
+    iconClass: getNotifIconClass(n),
+    message: n.message,
+    timeLabel: n.createdAt ? formatTimeAgo(t, n.createdAt) : "",
+    // E6#73g（S5）：来源行给**人类可读名**（完整 id 走同一解析路径）——此前甩的是原始 id
+    ...(n.source ? { sourceLabel: t("来源: {{source}}", { source: resolveSourceName(t, n.source) }) } : {}),
+    actions: (n.actions ?? []).map((a) => ({
+      label: a.label,
+      ...(a.isPrimary ? { isPrimary: true } : {}),
+      // M1 AI#2：按钮**按下去会执行什么**多带一份可序列化事实（纯加法）——
+      // 闭包 onClick 仍是唯一点击路径（池回传位置序号 → 壳侧闭包跑），
+      // 这两个字段只是让读取面（notifications.list()）能答「按钮里有什么 / 该执行哪个」。
+      ...(a.command ? { command: a.command } : {}),
+      ...(a.args !== undefined ? { args: a.args } : {}),
+    })),
+    // E6#72c：进度旗标 + 百分比透传（原 71i 画在窄卡上，窄卡删后落点改宽面板）。
+    // 只在 true 时带字段——非进度通知 DTO 形状不变（省略即缺省，池按 undefined 处理）。
+    ...(n.progress ? { progress: true } : {}),
+    ...(typeof n.percent === "number" ? { percent: n.percent } : {}),
+    // M1 AI#6：唤醒/存活三件套透传——**不是新判据**，是已有事实的读数出口。
+    // `wake` 恒带（false 也是答案：「这条为什么没弹」）；ttl/persistent 同 toast store 口径。
+    wake: n.wake === true,
+    ...(typeof n.ttl === "number" ? { ttl: n.ttl } : {}),
+    ...(n.persistent ? { persistent: true } : {}),
+  });
+}
+
 /** 通知面板数据——壳 NotificationCenter（source 分组/未读排序/时间文案）序列化为纯数据 */
 export function buildNotif(t: TFunction): NotifLayout {
-  const notifications = getToasts();
+  // W3a（欢迎页 T5）：**轻提示与面板通知分流**——`toast:true` 的条目走 `toasts` 出口（池右下角
+  // 自动消失小卡），**不进分组、不计未读、不唤醒**。它不是「通知中心里的一条」，是一闪而过的反馈：
+  // 计进未读会让铃铛为一个 4s 后就消失的东西飘红，进分组等于把一条已消失的提示留在面板里
+  // （两条路径都违反「轻提示 = 无痕」）。判据只有 `n.toast` 一处，两条出口同源。
+  const all = getToasts();
+  const notifications = all.filter((n) => n.toast !== true);
+  const ephemeral = all.filter((n) => n.toast === true);
   const unread = notifications.filter(isUnread).length;
 
   // E3e #50：source 第一段归类（"terminal.portErrors" → "terminal"）。
@@ -262,36 +302,18 @@ export function buildNotif(t: TFunction): NotifLayout {
       // E6#73f（S3/A6）：本组被上限折叠掉的条数——只在 >0 时带字段（缺省不渲染汇总行）。
       // 文案壳侧解析（池哑渲染），与 timeLabel/sourceLabel 同一「显示文本铁律」。
       ...(folded > 0 ? { foldedLabel: t("本组另有 {{count}} 条较早的已折叠", { count: folded }) } : {}),
-      items: items.map((n) => ({
-        id: n.id,
-        iconClass: getNotifIconClass(n),
-        message: n.message,
-        timeLabel: n.createdAt ? formatTimeAgo(t, n.createdAt) : "",
-        // E6#73g（S5）：来源行给**人类可读名**（完整 id 走同一解析路径）——此前甩的是原始 id
-        ...(n.source ? { sourceLabel: t("来源: {{source}}", { source: resolveSourceName(t, n.source) }) } : {}),
-        actions: (n.actions ?? []).map((a) => ({
-          label: a.label,
-          ...(a.isPrimary ? { isPrimary: true } : {}),
-          // M1 AI#2：按钮**按下去会执行什么**多带一份可序列化事实（纯加法）——
-          // 闭包 onClick 仍是唯一点击路径（池回传位置序号 → 壳侧闭包跑），
-          // 这两个字段只是让读取面（notifications.list()）能答「按钮里有什么 / 该执行哪个」。
-          ...(a.command ? { command: a.command } : {}),
-          ...(a.args !== undefined ? { args: a.args } : {}),
-        })),
-        // E6#72c：进度旗标 + 百分比透传（原 71i 画在窄卡上，窄卡删后落点改宽面板）。
-        // 只在 true 时带字段——非进度通知 DTO 形状不变（省略即缺省，池按 undefined 处理）。
-        ...(n.progress ? { progress: true } : {}),
-        ...(typeof n.percent === "number" ? { percent: n.percent } : {}),
-        // M1 AI#6：唤醒/存活三件套透传——**不是新判据**，是已有事实的读数出口。
-        // `wake` 恒带（false 也是答案：「这条为什么没弹」）；ttl/persistent 同 toast store 口径。
-        wake: n.wake === true,
-        ...(typeof n.ttl === "number" ? { ttl: n.ttl } : {}),
-        ...(n.persistent ? { persistent: true } : {}),
-      })),
+      items: items.map(toNotifItem(t)),
     });
   }
   // 有未读的组排前面
   groups.sort((a, b) => b.unread - a.unread);
+
+  // W3a（T5）：轻提示出口——**新的在前**（池侧 ToastHost 也按此序入队：队满顶替最旧时，
+  // 「最旧」= 数组末尾，两边判据同源）。空数组不带字段（契约宽容——旧快照/测试替身形状不变）。
+  const toasts = ephemeral
+    .slice()
+    .sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0))
+    .map(toNotifItem(t));
 
   // E6#73d：在途安装两段——排在结果区之前（§五 I.4 固定序）
   const install = buildInstallSections(t);
@@ -312,6 +334,7 @@ export function buildNotif(t: TFunction): NotifLayout {
     // 根本没有安装 job，标题会指向一堆无关的插件消息）。在途两段或已有终态，二者居一即带标题。
     ...(install.resultLabel ? { resultLabel: install.resultLabel, resultSummary: install.resultSummary } : {}),
     groups,
+    ...(toasts.length > 0 ? { toasts } : {}),
     // E6#72d：该弹的未读通知 + 面板当前收着 → 请求池自动展开。
     // 「面板已开」时不再请求（不二次打扰正在看的人）；池打开面板会回传开合镜像 →
     // 本值回落 false，故不存在「关掉又被弹开」的反复。

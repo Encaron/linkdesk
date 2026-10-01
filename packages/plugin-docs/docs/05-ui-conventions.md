@@ -323,6 +323,7 @@ const file = await window.linkdesk.dialog.openFile({
 > 1. **Notifications don't pop a card, don't steal focus, and don't block interaction**—they go into the bell (unread count +1), and the user only sees them after opening it. Don't treat notifications as a "must be seen" channel: if the user has to decide on the spot → use `dialog.confirm` (modal, steals focus).
 > 2. **Persistent notifications per source are quota-limited**—grouped by `options.source`, at most 5 persistent per group; beyond that, the oldest one from the same source is pushed out. A flood won't pile into a wall, but **don't count on notifications for long-term records either**.
 > 3. **Keyboard reachability means "the panel is reachable", not "notifications are reachable"**—the bell can be focused and opened with the keyboard, everything inside the panel can be reached with Tab, and `Esc` closes it; but the panel **has no focus trap** (non-modal, focus can leave freely). **Don't write assumptions like "Tab gets you to my notification button"**—the user may never open the panel at all.
+> 4. **The one exception is an explicit `toast: true`** (new in W3a): an entry from `show(msg, { toast: true })` **never enters the panel and never counts as unread**; instead a **card auto-appears bottom-right and auto-dismisses** (≈4s; hovering pauses the countdown). It is **a receipt for a single action**—the user may well miss it, so **never route anything worth re-reading through it** (use `persistent: true`, or write your own file). ⚠️ Point 1 above still describes the default: omit `toast` and it is panel-only.
 
 **Notification action buttons (`actions` on `notifications.show`):** failure / user-action-required notifications can carry an `actions` button array—clicking runs through the **command system** (modeled after VS Code's `showErrorMessage(msg, { title, command })` actions). Command handlers are registered by the plugin itself (`commands.registerCommand`):
 
@@ -565,6 +566,8 @@ both stylesheets land on the same element.
 | `ldk-rn-spin` | the release-notes page's refresh icon spin |
 | `ldk-boot-mark-breath` | the boot brand screen's breathing |
 | `ldk-view-skeleton-breath` | the content loading skeleton's breathing |
+| `ldk-toast-in` | the light-hint card's entrance animation |
+| `ldk-toast-out` | the light-hint card's exit animation |
 
 **The name you reference has to exist somewhere**—rule 2 above says "when you rename, change the reference in
 the same commit"; this is the other half, and **the machine checks it**: the name you write in

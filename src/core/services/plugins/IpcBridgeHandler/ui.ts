@@ -264,7 +264,7 @@ export async function handleUiMethod(method: string, args: unknown[]): Promise<u
     // 内联重解析执行（E6#73f：原先注释指向的 toast.runToastAction 无人调用，已随死代码簇删除）。
     case "showNotification": {
       const [message, options] = args as
-        | [string, { type?: string; progress?: boolean; persistent?: boolean; actions?: PluginToastAction[]; source?: string } | undefined];
+        | [string, { type?: string; progress?: boolean; persistent?: boolean; actions?: PluginToastAction[]; source?: string; toast?: boolean } | undefined];
       const severity: ToastSeverity =
         options?.type === "error" ? "error" :
         options?.type === "warning" ? "warning" : "info";
@@ -285,20 +285,32 @@ export async function handleUiMethod(method: string, args: unknown[]): Promise<u
       // info/warning 沿用默认 6000；progress 进度条不自动消失。
       // E6#71j：persistent 长驻——与 progress 同 ttl:0（不自动消失等手动 ×），叠加常驻上限淘汰。
       const persistent = options?.persistent === true;
-      const ttl = options?.progress || persistent ? 0 : severity === "error" ? TOAST_TTL_ERROR : undefined;
+      // W3a（欢迎页重设计 T5）：轻提示——生命周期**归池**（≈4s 自动消失 + 悬停暂停），
+      // 故壳侧一律 ttl:0 不自动收（壳的定时器不知道用户正把鼠标停在上面），由池到点发
+      // `notif:dismiss` 收掉。ttl:0 ⇒ persistent 派生为 true ⇒ 仍受按来源配额约束（防刷屏）。
+      const ephemeral = options?.toast === true;
+      const ttl = ephemeral || options?.progress || persistent ? 0 : severity === "error" ? TOAST_TTL_ERROR : undefined;
       // E6#73b（18 档 §五 B ③）：**插件自己发出的非进度通知**进唤醒白名单——它是「另一个来源的
       // 另一条新状态」（R5-17/R5-18，不许被市场那一路掩盖）。
       // ⚠️ `progress: true` 强制 `wake: false`（挂旗标**不能**吃缺省）：进度类通知此后还会被
       // `updateNotification` 一路改写，若它算唤醒，「10% 跳到 11% 就弹」（R5-6 明令否决）。
+      // W3a：轻提示同 progress 一条判据——**一闪而过的反馈不许弹面板**（它 4s 后就没了，
+      // 弹开的面板里什么都留不下，纯打扰）。
       const id = pushToast({
         // E6#73g（S5）：生产者身份随行——面板按它分组、常驻配额按它分桶。
         // 不传 → source 缺省 undefined → 归入「其他」组（故意留这个缺省：老插件不填也照跑）。
         source: options?.source,
         message, severity, actions,
         progress: !!options?.progress,
-        persistent,
+        // W3a：轻提示也标 `persistent`——语义上**确实**是「不自动消失」（不等到点由池来收，
+        // 它不会自己走），且这一标同时把它纳进 `evictOverflow` 的按来源配额。
+        // ⚠️ 别省这一项：显式 `persistent:false` 会**压掉** store 的 `derivePersistent(0)` 派生
+        // ⇒ `toast:true` 变成绕过 TOAST_SOURCE_CAP 的无限堆积后门（坏插件循环发轻提示 = OOM）。
+        persistent: persistent || ephemeral,
         ttl,
-        wake: !options?.progress,
+        wake: !options?.progress && !ephemeral,
+        // 只在为真时挂旗标（缺省不写 = 存储形状与老插件时期逐字相同，`"toast" in t` 为 false）。
+        ...(ephemeral ? { toast: true } : {}),
       });
       // E6#73f（S6）句柄隔离：**一律**返回句柄 id（原来只在 progress:true 时返回）。
       // 否则 persistent 的失败通知（带 [重试]）拿不到句柄 ⇒ 用户手动重试成功后那条「安装失败」

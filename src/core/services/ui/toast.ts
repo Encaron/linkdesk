@@ -65,6 +65,15 @@ export interface Toast {
    * 那会把 `progress` 与一切 warning 算「重要」，面板被每 30 秒一条的内存墙反复弹开（违反 R5-4）。
    */
   wake?: boolean;
+  /**
+   * W3a（欢迎页重设计 T5）：**轻提示**——`notifications.show(msg, { toast: true })` 置位。
+   *
+   * 🔴 与「面板通知」是**两条呈现路径**：本条由池侧 `ToastHost` 渲染成右下角自动消失的小卡
+   * （≈4s、悬停暂停），**不进 `buildNotif` 的分组、不计未读、不唤醒面板**（`wake` 恒 false）；
+   * 到点由**池**发 `notif:dismiss` 收掉——生命周期归池，因为「悬停暂停」只有渲染方知道。
+   * ⚠️ 故本条**不是**留档：用户事后可能要看的内容别走它（用 `persistent:true` 或写文件）。
+   */
+  toast?: boolean;
 }
 
 type ToastListener = (toasts: Toast[]) => void;
