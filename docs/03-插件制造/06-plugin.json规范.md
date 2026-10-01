@@ -452,6 +452,33 @@ my-plugin/
 
 视图由 ViewContainerService 按 `contributes.views[].render` 加载，图标走壳的 component-less 注册路径。**侧栏专用插件要图标 = `appearsIn.iconBar` + sidebar `viewsContainers`，不需要 `entry`、不需要 `src/index.tsx`**；**有标签页需求的插件才需要 `entry`**。
 
+### 「开始」卡与 [+] 菜单准入（appearsIn.standaloneOpenable）
+
+> 🔴 **opt-IN 白名单制（2026-10-02 起，缺省 `false`）——只声明 `appearsIn.tabBar: true` 不再自动进欢迎页「开始」卡与标签栏 [+] 创建菜单；要进就得再声明一行 `standaloneOpenable: true`。**
+
+**为什么拆出这个字段**：`tabBar` 回答的是「这插件**能不能**开成标签页」（能力），而欢迎页「开始」卡与 [+] 菜单回答的是另一个问题——「**此刻直接开它，有没有东西可看**」。二者长期被当成一回事，于是长出「编辑器进了开始卡、点开却是一个空的文件编辑器标签（ENOENT）」这类病：它有 tab 形态，但那是**按资源打开**的编辑器——没有文件就没有内容。`standaloneOpenable` 把后一个问题变成可声明的字段。
+
+| 你声明 | 「开始」卡 / [+] 菜单 | 命令面板 / 最近打开 / 会话恢复 / 悬浮面板「在主窗口中打开」 |
+|---|---|---|
+| `tabBar: true`（不声明本字段） | ❌ 不出现 | ✅ 照常能开 |
+| `tabBar: true` + `standaloneOpenable: true` | ✅ 出现 | ✅ 照常能开 |
+| `tabBar: true` + `standaloneOpenable: false` | ❌ 不出现（显式拒绝） | ✅ 照常能开 |
+
+> ⚠️ **本字段只管这两张菜单「列不列出来」，不判能力、不判权限。** 不声明它只是让插件从这两张菜单消失——用户 / 命令 / 脚本仍能打开它，最近记录与会话恢复照常工作。**声明 true = 多给一张入口；不写它 ≠ 禁用插件。**
+
+**什么时候该声明 `true`**：插件有一个**属于自己**的、打开即有内容的界面——串口监视器、Git 面板、文件树、设置页这类。
+**什么时候不该声明**（保持缺省）：插件的标签页形态是**按资源打开**的编辑器（要用户先选文件 / 对象），或它本身只是给别人提供数据 / 视图容器的底座。
+
+```json
+// 有独立内容的插件——进「开始」卡与 [+] 菜单
+{ "entry": "src/index.tsx", "appearsIn": { "iconBar": "top", "tabBar": true, "standaloneOpenable": true } }
+
+// 按资源打开的编辑器——有 tab 形态，但不占这两张菜单
+{ "entry": "src/index.tsx", "appearsIn": { "tabBar": true } }
+```
+
+> 🔴 **breaking 公告（对既有作者）**：本字段缺省为 `false`，故**此前只声明 `tabBar: true` 的插件，升级后会从「开始」卡与 [+] 菜单消失**（其余打开路径一律不受影响）。若你的插件打开即有内容，加一行 `standaloneOpenable: true`、bump 版本、重新 `publish` 即可恢复。
+
 ### `contributes` 字段（Phase 5+）——对标 VS Code
 
 > **插件一旦声明 `contributes`，系统自动接线——不需要改任何核心代码。**

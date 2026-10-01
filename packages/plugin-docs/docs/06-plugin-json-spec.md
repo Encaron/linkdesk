@@ -455,6 +455,33 @@ do not need it (`icon` *is* the identity image).
 
 Views are loaded by ViewContainerService from `contributes.views[].render`, and the icon goes through the shell's component-less registration path. **For a sidebar-only plugin to get an icon = `appearsIn.iconBar` + a sidebar `viewsContainers`, with no `entry` and no `src/index.tsx` needed**; **only plugins that need tabs need `entry`**.
 
+### Admission to the Start card and the [+] menu (appearsIn.standaloneOpenable)
+
+> 🔴 **opt-IN, allow-list, default `false` (since 2026-10-02) — declaring `appearsIn.tabBar: true` alone no longer puts you in the welcome page's Start card or the tab bar's [+] create menu; add one more line, `standaloneOpenable: true`, to be admitted.**
+
+**Why this field exists**: `tabBar` answers "**can** this plugin be opened as a tab" (capability), while the Start card and the [+] menu answer a different question — "**if I open it right now, is there anything to look at**". The two were long treated as one thing, which produced cases like "the editor shows up in the Start card, but clicking it opens an empty file-editor tab that errors with ENOENT": it has a tab form, but that form is a **per-resource** editor — with no file there is no content. `standaloneOpenable` turns the second question into a declarable field.
+
+| What you declare | Start card / [+] menu | Command palette / recent / session restore / floating panel "open in main window" |
+|---|---|---|
+| `tabBar: true` (field omitted) | ❌ not listed | ✅ still opens |
+| `tabBar: true` + `standaloneOpenable: true` | ✅ listed | ✅ still opens |
+| `tabBar: true` + `standaloneOpenable: false` | ❌ not listed (explicit refusal) | ✅ still opens |
+
+> ⚠️ **This field only governs whether those two menus list you. It is not a capability gate and not a permission gate.** Omitting it only removes the plugin from those two menus — users, commands and scripts can still open it, and recents and session restore keep working. **Turning it on = releasing one more entry point; leaving it off ≠ disabling the plugin.**
+
+**When to declare `true`**: the plugin has an interface of **its own** that shows content the moment it opens — a serial monitor, a Git panel, a file tree, a settings page.
+**When not to** (keep the default): the plugin's tab form is a **per-resource** editor (the user picks a file/object first), or the plugin is merely a base that provides data or view containers to others.
+
+```json
+// A plugin with content of its own — admitted to the Start card and the [+] menu
+{ "entry": "src/index.tsx", "appearsIn": { "iconBar": "top", "tabBar": true, "standaloneOpenable": true } }
+
+// A per-resource editor — has a tab form but stays out of those two menus
+{ "entry": "src/index.tsx", "appearsIn": { "tabBar": true } }
+```
+
+> 🔴 **Breaking-change notice (for existing authors)**: this field defaults to `false`, so **plugins that previously declared only `tabBar: true` will disappear from the Start card and the [+] menu after upgrading** (every other open path is unaffected). If your plugin shows content the moment it opens, add one line `standaloneOpenable: true`, bump the version and `publish` again to restore it.
+
 ### The `contributes` field (Phase 5+) — aligned with VS Code
 
 > **Once a plugin declares `contributes`, the system wires it up automatically — no core code changes needed.**

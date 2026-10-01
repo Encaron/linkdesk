@@ -33,8 +33,14 @@
   // ── 入口（视图插件 = 此文件 default 导出一个 React 组件）──
   "entry": "src/index.tsx",
 
-  // ── 出现位置：可作为主区标签页打开 ──
-  "appearsIn": { "tabBar": true },
+  // ── 出现位置（appearsIn）——两件事分开声明 ──
+  // tabBar              = 这插件**能以标签页形态打开**（能力）
+  // standaloneOpenable  = 进欢迎页「开始」卡与标签栏 [+] 创建菜单的**准入**（白名单制，缺省 false；
+  //                       只管这两张菜单列不列，不影响命令 / 最近打开 / 会话恢复）
+  //   ⚠️ 本模板的入口自带界面（打开即有内容）⇒ 声明 true。若你的插件是「按资源打开」的编辑器
+  //      （要用户先选文件才有的看），**删掉这一行**——否则它会出现在「开始」卡里，点开却是个空标签。
+  //      完整判据见作者面 06 号《plugin.json 规范》§「开始」卡与 [+] 菜单准入。
+  "appearsIn": { "tabBar": true, "standaloneOpenable": true },
   "tabBehavior": { "singleton": true }, // 全局只开一个实例，避免重复标签
 
   // ── 贡献点（contributes：全部可选，按需增删）──
