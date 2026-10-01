@@ -126,10 +126,10 @@
     },
     {
       "name": "@linkdesk/ui",
-      "version": "0.2.33",
-      "contentHash": "232b2f9021c47907d0c1ae21f983d0f506a918f0934543e33bcab97fb5ec0eb9",
+      "version": "0.2.34",
+      "contentHash": "85d30691aea6580aafa1237c3c78f80f31a4bc2f4fc2318a0e766178a40d2850",
       "fileHashes": {
-        "packages/linkdesk-ui/README.md": "4a0ec460a3377590",
+        "packages/linkdesk-ui/README.md": "e1fb3ac293515b86",
         "packages/linkdesk-ui/src/index.ts": "9dea2e375554b92f",
         "src/components/shared/badge/Badge.css": "a7455920db60daf9",
         "src/components/shared/badge/Badge.test.tsx": "ca68502b94361a74",
@@ -217,8 +217,8 @@
     },
     {
       "name": "@linkdesk/plugin-docs",
-      "version": "0.1.52",
-      "contentHash": "95aad8d67248afaa1c3650e91334bca6d989671b86842d46c68f947c51cd44da",
+      "version": "0.1.53",
+      "contentHash": "7b85dd601dc254c249479a875ac6ae93bc55ae2eec4aac9a3d862b11a7539a60",
       "fileHashes": {
         "packages/plugin-docs/README.md": "6cd51394e987a3f2",
         "packages/plugin-docs/docs/00-readme.md": "ab34ec71ea7f4099",
@@ -240,7 +240,7 @@
         "packages/plugin-docs/docs/16-naming-conventions.md": "c444c10ef50e23f4",
         "packages/plugin-docs/docs/17-region-map.md": "0bc3ebf8935b264a",
         "packages/plugin-docs/docs/18-cross-region-wiring.md": "47a88e44dc167f6d",
-        "packages/plugin-docs/docs/19-component-cheatsheet.md": "068a20559b0ededf",
+        "packages/plugin-docs/docs/19-component-cheatsheet.md": "e781ad9a23914476",
         "packages/plugin-docs/docs/20-adding-a-setting.md": "c89b6ee1f871edfe",
         "packages/plugin-docs/docs/21-command-ification-spec.md": "4c40526738188ecc",
         "packages/plugin-docs/docs/themes/01-build-a-theme-plugin.md": "fb049c1a5983a3ff",
@@ -264,7 +264,7 @@
         "packages/plugin-docs/docs/zh/16-命名规范.md": "bc6a173f691d682b",
         "packages/plugin-docs/docs/zh/17-区域地图.md": "2d3dbf49f691bc2b",
         "packages/plugin-docs/docs/zh/18-区域间互动.md": "f46c4a6bcc1c3010",
-        "packages/plugin-docs/docs/zh/19-组件速查.md": "cae8c860da593258",
+        "packages/plugin-docs/docs/zh/19-组件速查.md": "1f9df4094d2f7154",
         "packages/plugin-docs/docs/zh/20-我的插件加一条配置项.md": "c01374c80211cbf8",
         "packages/plugin-docs/docs/zh/21-插件命令化规范.md": "70eaaefb36d2be7d",
         "packages/plugin-docs/docs/zh/plugin.schema.json": "262fe10cf7f694c4",

@@ -42,7 +42,7 @@ import { Button, Toggle, ContextMenu } from "@linkdesk/ui";
 
 ### 2.1 Self-driven versioning (no lookup table)
 
-The version of `@linkdesk/ui` **moves on its own** (patch +1 per publish) and is unrelated to the shell version (🟢 since 2026-10-01, E6#166).
+The version of `@linkdesk/ui` **moves on its own** (patch +1 per publish) and is unrelated to the shell version (🟢 since 2026-10-01).
 
 - **Which one to install**: `npm i @linkdesk/ui@latest` gets you the newest. A new package is published only when the shared components actually change (checked at every shell release by the publish gate), so "latest package = the components inside the latest shell" holds by construction — nothing to look up.
 - **No need to chase upgrades**: styles and behavior are **served at runtime by the shell pool** — a shell upgrade refreshes your plugin's UI automatically, no matter which package version you installed.
