@@ -126,7 +126,7 @@
     },
     {
       "name": "@linkdesk/ui",
-      "version": "0.2.32",
+      "version": "0.2.33",
       "contentHash": "232b2f9021c47907d0c1ae21f983d0f506a918f0934543e33bcab97fb5ec0eb9",
       "fileHashes": {
         "packages/linkdesk-ui/README.md": "4a0ec460a3377590",
