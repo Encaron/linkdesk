@@ -40,6 +40,7 @@
         "iconBar": { "type": "string", "enum": ["top", "bottom"], "description": "Icon Bar position; omitted = no icon shown" },
         "sidePanel": { "type": "boolean", "description": "Has a Sidebar view container. Default false." },
         "tabBar": { "type": "boolean", "description": "Can be opened as a tab. Default false." },
+        "standaloneOpenable": { "type": "boolean", "default": false, "description": "Has a standalone surface worth opening on its own — declaring true is what admits the plugin to the Welcome page's Start card and the [+] create menu (both render the same filtered list). ⚠️ This gates those two menus ONLY: absent or false hides the plugin from them, but it does not make the plugin unopenable — commands, recents, session restore, and a floating panel's open-in action all still key off appearsIn.tabBar. Declare it when the plugin has content of its own to show; leave it off for plugins whose tab form is a per-resource editor (opening one with no resource has nothing to display). Default false." },
         "statusBar": { "type": "string", "description": "File path of a self-drawn (code) Status Bar component, relative to the plugin root, .tsx, e.g. \"src/components/statusBar.tsx\" — the pool renders it from the declared URL, replacing static statusBar contributions; omit it when you only contribute static entries." }
       }
     },

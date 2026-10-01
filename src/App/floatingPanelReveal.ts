@@ -11,7 +11,7 @@
  *
  * I8-2 身份开关键：无面板 → 开 / 同视图 → 关（toggle）/ 他面板 → 替换。决策 = 纯函数 decideFloatingPanelReveal 可测。
  * 通用默认动作 = open-in「在主窗口中打开」（I8-4 面板↔标签页互转）+ 最大化（I8-9 池本地 toggle）+ 关闭。
- * open-in 按内容插件「可开成标签页」（appearsIn.tabBar + entry，getTabCreatableViews）门控出现——settings/demo
+ * open-in 按内容插件「可开成标签页」（appearsIn.tabBar + entry，getTabOpenableViews）门控出现——settings/demo
  * 有 tab 形态才有，entryless 声明者天然无此按钮（打开动作无 tab 可落）；open-in 点击 → 池回传壳 settle
  * 'open-in' → 本 hook openTab 落当前活动 group 尾部（文件树打开落点规则同款，I8-4）。
  */
@@ -29,7 +29,7 @@ import {
   setBounds,
 } from "../core/services/ui/FloatingPanelService";
 import { getCallbacks } from "../core/commands/infra/CoreCallbacks";
-import { getTabCreatableViews } from "../pluginLoader/contributions/viewRegistry";
+import { getTabOpenableViews } from "../pluginLoader/contributions/viewRegistry";
 import type { PoolFloatingPanelButton } from "../core/types/pool/poolFloatingPanel";
 import i18n from "../i18n";
 
@@ -96,15 +96,16 @@ export function decideFloatingPanelReveal(
 
 /**
  * 通用默认动作集——open-in（I8-4 面板↔标签页互转）+ 最大化（I8-9 池本地 toggle，两态图标/文案 DTO 携带）+ 关闭。
- * open-in 仅当内容插件可开成标签页（appearsIn.tabBar + entry）时出现——settings/demo 有 tab 形态才有，
- * entryless 声明者传 openInPluginId 或传非 tab 型插件 → 按钮不出现（打开动作无 tab 可落）。
+ * open-in 仅当内容插件可开成标签页（getTabOpenableViews = appearsIn.tabBar + entry；⛔ 不吃 W2 的
+ * standaloneOpenable 准入——open-in 问的是**能力**，未声明准入的插件照样能开成标签页）时出现——settings/demo
+ * 有 tab 形态才有，entryless 声明者传 openInPluginId 或传非 tab 型插件 → 按钮不出现（打开动作无 tab 可落）。
  * 文案壳侧 t()（显示文本铁律）。顺序 = DTO 渲染序：open-in / maximize / close。
  */
 export function buildDefaultFloatingPanelActions(openInPluginId?: string): PoolFloatingPanelButton[] {
   const actions: PoolFloatingPanelButton[] = [];
   const canOpenInTab =
     typeof openInPluginId === "string" &&
-    getTabCreatableViews().some((v) => v.pluginId === openInPluginId);
+    getTabOpenableViews().some((v) => v.pluginId === openInPluginId);
   if (canOpenInTab) {
     actions.push({
       id: "open-in",

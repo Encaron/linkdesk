@@ -141,16 +141,30 @@ export function getIconLocation(pluginId: string): "top" | "bottom" | undefined 
 }
 
 /**
- * 获取可创建为标签页的视图插件——appearsIn.tabBar === true 且有 entry 声明。
- * 消费端：WelcomeView 快捷卡片、TabBar [+] 菜单、命令面板"打开视图"等。
+ * 获取**可开为标签页**的视图插件——**能力**判据：appearsIn.tabBar === true 且有 entry 声明。
+ * 消费端是「这插件能不能以标签页形态打开」的能力询问（悬浮面板 open-in 按钮、设置首开形态的 tab 支），
+ * ⛔ 不吃 W2 的准入字段：未声明 standaloneOpenable ⇏ 不能打开（准入只管两张创建菜单的展示）。
  * 🔥 2026-09-06 契约纠偏 + E6#62e：可创建 ≠ 已注册组件——registry 条目恒为元数据
  * （壳不 import 任何插件 JS，视图渲染唯一执行者 = 池 PluginComponent 按 renderPath /
  * resolveEntry URL 独立加载）。故 loader Step4 只注册元数据 stub 照常列出——点击交池渲染
  * （成不成由池的加载链/错误边界决定）。过滤只查 appearsIn.tabBar + entry 声明。
  */
-export function getTabCreatableViews(): ViewPluginEntry[] {
+export function getTabOpenableViews(): ViewPluginEntry[] {
   return Array.from(registry.values()).filter(
     (entry) => entry.manifest.appearsIn?.tabBar === true && !!entry.manifest.entry
+  );
+}
+
+/**
+ * 获取**准入两张创建菜单**的视图插件——**展示**判据：可开为标签页 ∧ appearsIn.standaloneOpenable === true。
+ * W2（2026-10-02 拍板：白名单制，schema 缺省 false）：WelcomeView 开始卡 + TabBar [+] 菜单同吃这一份
+ * （单一权威——池侧 payload `creatableViews` 的唯一来源，两个入口不各判一次）。
+ * ⚠️ 语义分层：这是**展示**判据不是**能力**判据——未声明只是不进这两张菜单，命令/最近/会话恢复/
+ * 悬浮面板 open-in 照常可开（那些消费方问的是能力，走 getTabOpenableViews）。
+ */
+export function getTabCreatableViews(): ViewPluginEntry[] {
+  return getTabOpenableViews().filter(
+    (entry) => entry.manifest.appearsIn?.standaloneOpenable === true
   );
 }
 

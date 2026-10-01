@@ -200,6 +200,10 @@ export interface PluginManifest {
     iconBar?: "top" | "bottom";
     sidePanel?: boolean;
     tabBar?: boolean;
+    /** W2 准入（2026-10-02 拍板：白名单制，缺省 false）——声明 true 才进欢迎页「开始」卡与 [+] 创建菜单。
+     *  ⚠️ 只管这两张菜单的**展示**：未声明 ⇏ 不能打开（命令/最近/会话恢复/悬浮面板 open-in 照常可开，
+     *  那些消费方问的是**能力**——getTabOpenableViews）。值域与 plugin.schema.json 的 appearsIn.standaloneOpenable 逐字一致。 */
+    standaloneOpenable?: boolean;
     /** 自绘（代码）状态栏组件文件路径（相对插件根，.tsx）——存在 + 文件二合一声明（对标视图 render）。
      *  有值 = 插件自绘状态栏组件取代其静态 statusBar 贡献项；loader 注册时 resolveRuntimePluginRoot
      *  归一 → ViewPluginEntry.statusBarRenderPath（dev /@fs 源码 / prod linkdesk:// dist，SDK 打包后

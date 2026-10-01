@@ -19,7 +19,7 @@ import { openKeybindingsSettings } from "../../registry/commands/KeybindingRegis
 import { requestSettingsGroup, requestScrollToSetting } from "../../registry/ConfigurationRegistry";
 import { APP_PLUGIN_ID } from "../../services/plugins/PluginStateService";
 import { shellEvents } from "../../react/events/ShellEvents";
-import { getFloatingPanelViewId, getTabCreatableViews } from "../../../pluginLoader/contributions/viewRegistry";
+import { getFloatingPanelViewId, getTabOpenableViews } from "../../../pluginLoader/contributions/viewRegistry";
 import { resolveFloatingPanelOpenForm } from "../../services/ui/floatingPanelForm";
 
 /* ── M2 生长格 `AI#66`：**通用配置写**（`workbench.action.setConfiguration`，读侧 = `AI#62` 的 `getConfiguration`）──
@@ -217,9 +217,11 @@ export function registerSettingsCommands(): void {
         // ⚠️ 只作用于「此刻没有设置标签页」这一支：上面聚焦支已 return，开成之后的面板↔标签页互转
         // （面板右上角「在主窗口中打开」/ 标签页右键「在悬浮面板中打开」）仍各走原路，不归这里管。
         const form = resolveFloatingPanelOpenForm(settingsPluginId);
-        // 声明 tab 且该插件**真能**开成标签页（appearsIn.tabBar + entry，同 open-in 按钮门控）→ 开标签页。
+        // 声明 tab 且该插件**真能**开成标签页（getTabOpenableViews = appearsIn.tabBar + entry，同 open-in 按钮门控）
+        // → 开标签页。⚠️ 问的是**能力**不是 W2 准入：未声明 standaloneOpenable 的插件照样能开成标签页
+        // （准入只管欢迎页开始卡与 [+] 菜单的展示）——故此处不吃 getTabCreatableViews。
         // 声明 tab 却无标签页形态 = 作者声明矛盾 ⇒ 落回面板（有面板就开），不静默无动作。
-        if (form === "tab" && getTabCreatableViews().some((v) => v.pluginId === settingsPluginId)) {
+        if (form === "tab" && getTabOpenableViews().some((v) => v.pluginId === settingsPluginId)) {
           getCallbacks()?.openTab(settingsPluginId);
           return;
         }

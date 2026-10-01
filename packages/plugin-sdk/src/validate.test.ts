@@ -100,6 +100,35 @@ describe("validatePluginJson——floatingPanel 首开形态（defaultForm / for
   });
 });
 
+/**
+ * `appearsIn.standaloneOpenable`（W2，2026-10-02 拍板）——**准入字段的 schema 面**。
+ *
+ * 为什么值得单列一组：这条准入的默认方向是**闭**的——不声明 = 从欢迎页「开始」卡与 [+] 菜单消失
+ * （白名单制）。schema 是这条契约唯一拦得住的地方（壳侧过滤只负责过滤，管不了「作者以为不写就默认可见」）。
+ * 正反例钉住「布尔、可省、显式 false 也合法」＋「非布尔判错」。
+ */
+describe("validatePluginJson——appearsIn.standaloneOpenable（W2 准入：白名单制缺省 false）", () => {
+  it("不声明 → valid（缺省合法；效果 = 不进两张创建菜单）", () => {
+    const res = validatePluginJson(fixture({ appearsIn: { tabBar: true } }));
+    expect(res.valid).toBe(true);
+  });
+
+  it("standaloneOpenable=true → valid（显式准入两张菜单）", () => {
+    const res = validatePluginJson(fixture({ appearsIn: { tabBar: true, standaloneOpenable: true } }));
+    expect(res.valid).toBe(true);
+  });
+
+  it("standaloneOpenable=false → valid（显式不准入也是合法声明，不是错）", () => {
+    const res = validatePluginJson(fixture({ appearsIn: { tabBar: true, standaloneOpenable: false } }));
+    expect(res.valid).toBe(true);
+  });
+
+  it("非布尔（字符串 / 数字）→ invalid（形状是布尔，拼错不许被当 truthy/falsy 静默放行）", () => {
+    expect(validatePluginJson(fixture({ appearsIn: { standaloneOpenable: "yes" } })).valid).toBe(false);
+    expect(validatePluginJson(fixture({ appearsIn: { standaloneOpenable: 1 } })).valid).toBe(false);
+  });
+});
+
 describe("validatePluginJson——墓碑提示（E6#91d）", () => {
   it("干净 manifest → 无 warnings 键（墓碑不是噪音）", () => {
     const res = validatePluginJson(fixture({}));
