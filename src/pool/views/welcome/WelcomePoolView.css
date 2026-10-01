@@ -122,14 +122,14 @@
   background: var(--separator);
 }
 
-/* ── 打开文件夹（全宽行卡）── */
+/* ── 卡基座（行卡 ／「开始」卡共用）──
+   ⛔ 别拆成两份同构声明：`npm run duplication`（jscpd · minLines 6）会对两份卡基座
+   判重复并 exit 1（实测 10 行 / 93 token）⇒ 整条 `npm run check` 断在这里。 */
 
-.ldk-welcome-open-folder {
+.ldk-welcome-open-folder,
+.ldk-welcome-card {
   display: flex;
   align-items: center;
-  gap: 12px;
-  width: 100%;
-  padding: 12px 16px;
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   background: var(--bg-card);
@@ -138,6 +138,14 @@
   font-family: inherit;
   font-size: var(--font-size-sm);
   text-align: left;
+}
+
+/* ── 打开文件夹（全宽行卡）── */
+
+.ldk-welcome-open-folder {
+  gap: 12px;
+  width: 100%;
+  padding: 12px 16px;
   transition: border-color 150ms ease, background 150ms ease;
 }
 
@@ -164,18 +172,8 @@
 }
 
 .ldk-welcome-card {
-  display: flex;
-  align-items: center;
   gap: 8px;
   padding: 12px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  background: var(--bg-card);
-  cursor: pointer;
-  color: var(--text-primary);
-  font-family: inherit;
-  font-size: var(--font-size-sm);
-  text-align: left;
   transition: border-color 150ms ease, background 150ms ease, transform 150ms ease;
 }
 
