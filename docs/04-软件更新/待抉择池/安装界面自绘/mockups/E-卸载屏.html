@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>E-卸载屏 · LinkDesk 自绘卸载界面 mockup（E 定稿设计语言扩展）</title>
+<!-- mockup 仅示意，真实实现走 build/installer/（docs/04-软件更新/待抉择池/安装界面自绘/01-技术方案.md）
+     设计语言 = E-混合提案定稿款复用：亮色玻璃（A 暖纸 token × B 双包边骨架）＋衬线标题＋微尘。
+     卸载专属语义：破坏性动作按钮用暗红、进度条用墨色（安静收场，不用安装时的彩条）；
+     清理口径移植自 installer.nsh customUnInstall（右键三键整树删 · 文件关联精确反注册 · PATH 标记＋备份精确恢复）；
+     自删机制 = 子进程延时删；ARP「应用和功能」的 UninstallString 指向本程序。
+     流程：确认 →（运行中检测）→ 进度 → 完成；语言下拉同安装器（读注册表带出上次选择） -->
+<style>
+  :root{
+    --bg:#F7F6F3; --desk:#E9E7E2; --glass:rgba(255,255,255,.5); --hair:rgba(0,0,0,.10);
+    --txt:#1a1a1a; --txt2:rgba(26,26,26,.62); --txt3:rgba(26,26,26,.40);
+    --ink:#111111; --line:#EAEAEA; --danger:#B3261E;
+    --orb1:#b9a8f5; --orb2:#9fe8c8;
+    --serif:'Newsreader','Lyon Text',Georgia,'Songti SC','SimSun',serif;
+    --sans:'Geist','Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;
+    --mono:'Geist Mono',Consolas,monospace;
+    --ease:cubic-bezier(.32,.72,0,1);
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid #8a6ff0;outline-offset:2px}
+  /* browser surfaces（craft-floor：浏览器默认面也要属于设计） */
+  ::selection{background:rgba(138,111,240,.25)}
+  input{caret-color:var(--ink)}
+  ::-webkit-scrollbar{width:10px}
+  ::-webkit-scrollbar-thumb{background:rgba(0,0,0,.15);border-radius:5px;border:2px solid transparent;background-clip:content-box}
+  ::-webkit-scrollbar-track{background:transparent}
+  body{background:var(--desk);font-family:var(--sans);color:var(--txt);min-height:100vh;
+       display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;overflow:hidden}
+  .stage{position:relative;width:min(720px,calc(100vw - 30px));height:min(540px,calc(100vh - 120px))} /* 卸载窗比安装窗略小 */
+  .orb{position:absolute;width:380px;height:380px;border-radius:50%;filter:blur(90px);opacity:.2;pointer-events:none}
+  .orb.a{background:var(--orb1);top:-120px;right:-70px;animation:fl1 22s ease-in-out infinite alternate}
+  .orb.b{background:var(--orb2);bottom:-140px;left:-90px;animation:fl2 26s ease-in-out infinite alternate}
+  @keyframes fl1{to{transform:translate(-70px,50px) scale(1.15)}}
+  @keyframes fl2{to{transform:translate(60px,-40px) scale(.9)}}
+  .grain{position:fixed;inset:0;pointer-events:none;opacity:.03;z-index:50;
+         background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence baseFrequency='.85' numOctaves='2'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)'/%3E%3C/svg%3E")}
+  .dust{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+  .dust i{position:absolute;bottom:-8px;width:3px;height:3px;border-radius:50%;background:rgba(0,0,0,.3);animation:rise linear infinite}
+  @keyframes rise{to{transform:translateY(-560px);opacity:0}}
+  .shell{position:absolute;inset:0;border-radius:32px;background:var(--glass);
+         border:1px solid var(--hair);padding:9px;backdrop-filter:blur(28px);
+         box-shadow:0 30px 80px rgba(0,0,0,.14),inset 0 1px 0 rgba(255,255,255,.8)}
+  .win{position:relative;height:100%;border-radius:24px;background:rgba(252,252,250,.85);
+       border:1px solid var(--hair);overflow:hidden;display:flex;flex-direction:column}
+  .xbtn{position:absolute;top:14px;right:16px;z-index:10;width:30px;height:30px;border:0;border-radius:9px;background:transparent;color:var(--txt2);cursor:pointer;display:grid;place-items:center;transition:background .2s}
+  .xbtn:hover{background:rgba(0,0,0,.06)}
+  .xbtn[disabled]{color:var(--txt3);cursor:default;background:transparent}
+  .cap{position:absolute;top:-36px;left:4px;font:11px/1.6 var(--mono);color:var(--txt3);letter-spacing:.1em;text-transform:uppercase}
+  .note{position:absolute;bottom:-66px;left:4px;right:4px;font:11.5px/1.7 var(--mono);color:var(--txt3)}
+  .note b{color:var(--txt2);font-weight:600}
+  .scr{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;
+       text-align:center;padding:44px 56px 38px;animation:enter .8s var(--ease)}
+  .scr.on{display:flex}
+  @keyframes enter{from{opacity:0;transform:translateY(18px);filter:blur(6px)}to{opacity:1;transform:none;filter:blur(0)}}
+  .brandline{display:flex;align-items:center;gap:10px;font:12px var(--mono);letter-spacing:.25em;color:var(--txt2);text-transform:uppercase;margin-bottom:26px}
+  .brandline svg{width:26px;height:29px;opacity:.85}
+  .scr h1{font:400 36px/1.2 var(--serif);letter-spacing:-.03em;margin-bottom:12px}
+  .scr .sub{font:13px/1.8 var(--sans);color:var(--txt2);margin-bottom:8px}
+  .scr .sub code{font-family:var(--mono);font-size:12px}
+  .actions{display:flex;flex-wrap:wrap;gap:16px;align-items:center;margin-top:30px}
+  .btn{display:inline-flex;align-items:center;gap:12px;font:600 14px var(--sans);color:#fff;
+       border:0;border-radius:9999px;padding:10px 10px 10px 30px;cursor:pointer;
+       transition:transform .5s var(--ease),box-shadow .5s var(--ease)}
+  .btn .cir{width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,.16);display:grid;place-items:center;transition:transform .5s var(--ease)}
+  .btn:hover{box-shadow:0 8px 30px rgba(0,0,0,.16)}
+  .btn:hover .cir{transform:translate(3px,-1px) scale(1.06)}
+  .btn:active{transform:scale(.98)}
+  .btn.primary{background:var(--ink)}
+  .btn.danger{background:var(--danger)}
+  .btn.danger:hover{box-shadow:0 8px 30px rgba(179,38,30,.28)}
+  .btn.ghost{background:transparent;color:var(--txt2);border:1px solid var(--hair);padding:11px 24px;gap:0;font-weight:500}
+  .btn.ghost:hover{box-shadow:none;color:var(--txt)}
+  .opt{display:flex;gap:11px;align-items:flex-start;cursor:pointer;font:13.5px/1.5 var(--sans);margin-top:22px}
+  .opt input{position:absolute;opacity:0}
+  .opt .box{width:17px;height:17px;flex:none;margin-top:1px;border-radius:6px;border:1px solid #c9c8c4;
+            background:#fff;display:grid;place-items:center;transition:all .3s var(--ease)}
+  .opt .box svg{width:10px;height:10px;opacity:0;transform:scale(.4);transition:all .3s var(--ease)}
+  .opt input:checked+.box{background:linear-gradient(135deg,#a78bfa,#34d399);border-color:transparent}
+  .opt input:checked+.box svg{opacity:1;transform:scale(1)}
+  .opt small{display:block;color:var(--txt3);font-size:11px}
+  /* 进度屏（左对齐变体） */
+  #s-progress{align-items:flex-start;text-align:left}
+  .ph{font:11px var(--mono);letter-spacing:.18em;text-transform:uppercase;color:var(--txt2);margin-bottom:12px}
+  .pct{font:200 68px/1 var(--sans);letter-spacing:-.05em;margin-bottom:26px;color:var(--ink);font-variant-numeric:tabular-nums}
+  .pct span{font-size:24px}
+  .track{width:100%;height:8px;border-radius:9999px;background:rgba(0,0,0,.08);overflow:hidden;position:relative}
+  .fill{height:100%;width:0%;border-radius:9999px;position:relative;transition:width .3s linear;background:var(--ink)}
+  .fill::after{content:'';position:absolute;inset:0;border-radius:9999px;
+        background:linear-gradient(90deg,transparent,rgba(255,255,255,.5),transparent);
+        background-size:200% 100%;animation:shimmer 1.6s linear infinite}
+  @keyframes shimmer{from{background-position:200% 0}to{background-position:-200% 0}}
+  .plist{margin-top:24px;font:12px/2.1 var(--mono);color:var(--txt2);letter-spacing:.04em}
+  .plist li{list-style:none;display:flex;gap:12px}
+  .plist .st{width:16px}
+  .plist li.run{color:var(--txt2)}.plist li.run .st::after{content:'▸';color:#8a6ff0}
+  .plist li.done{color:var(--txt2)}.plist li.done .st::after{content:'✓';color:#2fae7c}
+  /* 完成 */
+  .fin-ring{width:84px;height:84px;border-radius:50%;display:grid;place-items:center;margin-bottom:24px;
+            background:radial-gradient(circle at 35% 30%,rgba(167,139,250,.25),rgba(52,211,153,.14));
+            border:1px solid var(--hair);box-shadow:0 0 50px rgba(138,111,240,.2),inset 0 1px 1px rgba(255,255,255,.7);
+            animation:pop .8s var(--ease)}
+  @keyframes pop{from{transform:scale(.6);opacity:0}}
+  .fin-ring svg{width:30px;height:30px}
+  .fin-ring path{stroke:var(--ink);stroke-width:3.5;fill:none;stroke-linecap:round;stroke-dasharray:48;stroke-dashoffset:48;
+                 animation:draw .7s .25s var(--ease) forwards}
+  @keyframes draw{to{stroke-dashoffset:0}}
+  .datbadge{font:11px var(--mono);letter-spacing:.06em;color:#346538;background:#EDF3EC;
+            border-radius:9999px;padding:4px 12px;margin-bottom:26px}
+  .datbadge.gone{color:#956400;background:#FBF3DB}
+  @media (prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+</style>
+</head>
+<body>
+<div class="grain"></div>
+<div class="stage">
+  <div class="orb a"></div><div class="orb b"></div>
+  <div class="dust" id="dust"></div>
+  <div class="cap" id="cap">E-卸载屏 · 帧 1/4 · 卸载确认（从「应用和功能」或开始菜单进入）</div>
+  <div class="shell"><div class="win">
+    <button type="button" id="xbtn" class="xbtn" aria-label="关闭窗口"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M2 2l8 8M10 2l-8 8"/></svg></button>
+    <!-- 帧 1 · 卸载确认 -->
+    <div class="scr on" id="s-confirm">
+      <div class="brandline">
+        <svg viewBox="0 0 100 110"><path fill="#9a9a9a" fill-rule="evenodd" d="M50 0l43 25v50L50 110 7 75V25zM33 42a8 8 0 100 16 8 8 0 000-16zm34 0a8 8 0 100 16 8 8 0 000-16zm-17 26a8 8 0 100 16 8 8 0 000-16z"/></svg>
+        LINKDESK · UNINSTALL
+      </div>
+      <h1>要卸载 LinkDesk 吗？</h1>
+      <div class="sub">安装位置：<code>C:\Users\fengy\AppData\Local\Programs\linkdesk</code> · 约 420 MB</div>
+      <label class="opt"><input type="checkbox" id="keepdata" checked><span class="box"><svg viewBox="0 0 12 12"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span>保留我的数据<small>工作区 · 设置 · 已装插件</small></span></label>
+      <div class="actions">
+        <button class="btn danger" onclick="go('running')">卸载<span class="cir">→</span></button>
+        <button class="btn ghost" onclick="exitNote()">取消</button>
+      </div>
+    </div>
+    <!-- 帧 2 · 运行中检测 -->
+    <div class="scr" id="s-running">
+      <div class="brandline">
+        <svg viewBox="0 0 100 110"><path fill="#9a9a9a" fill-rule="evenodd" d="M50 0l43 25v50L50 110 7 75V25zM33 42a8 8 0 100 16 8 8 0 000-16zm34 0a8 8 0 100 16 8 8 0 000-16zm-17 26a8 8 0 100 16 8 8 0 000-16z"/></svg>
+        LINKDESK · UNINSTALL
+      </div>
+      <h1>LinkDesk 正在运行</h1>
+      <div class="sub">关闭 LinkDesk 后继续卸载，未保存的工作区会先走保存流程。</div>
+      <div class="actions">
+        <button class="btn primary" onclick="go('progress');start()">关闭并继续<span class="cir">→</span></button>
+        <button class="btn ghost" onclick="go('confirm')">稍后</button>
+      </div>
+    </div>
+    <!-- 帧 3 · 卸载进度 -->
+    <div class="scr" id="s-progress">
+      <div class="ph" id="ph">STEP 1 / 4 · 正在移除程序文件</div>
+      <div class="pct"><span id="pn">0</span><span>%</span></div>
+      <div class="track"><div class="fill" id="fill"></div></div>
+      <ul class="plist">
+        <li id="p1"><span class="st"></span>关闭进程 · 移除程序文件</li>
+        <li id="p2"><span class="st"></span>清理系统项（右键菜单 · linkdesk:// 协议 · 编辑器注册）</li>
+        <li id="p3"><span class="st"></span>恢复 PATH（精确匹配，不碰用户改过的部分）</li>
+        <li id="p4"><span class="st"></span>收尾校验（无残留 · 卸载器自删）</li>
+      </ul>
+    </div>
+    <!-- 帧 4 · 完成 -->
+    <div class="scr" id="s-finish">
+      <div class="fin-ring"><svg viewBox="0 0 56 56"><path d="M12 30l11 11 21-26"/></svg></div>
+      <h1>已卸载。</h1>
+      <div class="datbadge" id="datbadge">用户数据已保留 · C:\Users\fengy\AppData\Roaming\LinkDesk</div>
+      <div class="sub">谢谢使用 LinkDesk，有缘再见。</div>
+      <div class="actions"><button class="btn primary" onclick="exitNote()">完成</button></div>
+    </div>
+  </div></div>
+  <div class="note" id="note"><b>帧 1</b>——入口 = ARP「应用和功能」/ 开始菜单卸载项（UninstallString 指向自绘卸载器）。① 数据保留 checkbox 默认勾（userData 是用户资产，删除必须显式 opt-in）；② 「卸载」为唯一红色按钮＝破坏性动作语义；③ 取消 = 无任何写入直接退出。</div>
+</div>
+<script>
+const cap=document.getElementById('cap'),note=document.getElementById('note');
+const capTxt={running:'帧 2/4 · 运行中检测',progress:'帧 3/4 · 卸载进度——墨色进度条（安静收场）',finish:'帧 4/4 · 完成——数据去留如实呈现'};
+const noteTxt={
+ running:'<b>帧 2</b>——① 进程检测：tasklist 命中的不止主进程（升级中的安装器实例也算）；② 「关闭并继续」走软件自身的优雅退出流程（保存工作区），不是 taskkill 硬杀；③ 「稍后」原路返回确认屏，什么都没动。',
+ progress:'<b>设计点</b>——① 进度条换<b>墨色</b>：卸载是收场，不用安装时的彩条与粒子，微尘也调淡；② 四段真实分段（关进程删文件 → 清系统项 → 恢复 PATH → 校验自删），清理口径 = installer.nsh customUnInstall 现状移植（PATH 精确匹配：宁可不删，不误伤用户改过的 PATH）；③ 无取消——点了卸载就走完（可取消的清理反而不干净），右上角 ✕ 亦置灰、Alt+F4 同样被吞。',
+ finish:'<b>设计点</b>——① 数据徽章如实呈现去留（勾了保留=绿、没勾=黄），不玩文案花招；② 收尾校验含<b>卸载器自删</b>（子进程延时删，装完即净）；③ 「完成」→ 安装器退出；告辞语一行，体面不粘人。'};
+for(const dd of [document.getElementById('dust')]){for(let i=0;i<10;i++){const d=document.createElement('i');
+  d.style.left=Math.random()*100+'%';d.style.animationDuration=(10+Math.random()*10)+'s';
+  d.style.animationDelay=(-Math.random()*15)+'s';d.style.opacity=.08+Math.random()*.18;dd.appendChild(d);}}
+let raf=null,cur='confirm';
+function go(id){cur=id;document.querySelectorAll('.scr').forEach(s=>s.classList.remove('on'));
+  document.getElementById('s-'+id).classList.add('on');
+  document.getElementById('xbtn').disabled=(id==='progress');
+  cap.textContent='E-卸载屏 · '+(capTxt[id]||'');
+  if(noteTxt[id])note.innerHTML='<b>'+capTxt[id].split(' ·')[0]+'</b>——'+noteTxt[id];}
+function exitNote(){note.innerHTML='<b>退出</b>——卸载器退出（若已执行清理：子进程延时自删，目录无残留）。　<button onclick="location.reload()" style="font:12px var(--mono);border:0;background:none;color:#888;text-decoration:underline;cursor:pointer">重新播放</button>';
+  cap.textContent='E-卸载屏 · 播放完毕 · 安装器退出';}
+function start(){reset();
+  const t0=performance.now(),DUR=7000;
+  const seg=p=>p<60?1:p<80?2:p<92?3:4,
+        phTxt=['','STEP 1 / 4 · 正在移除程序文件','STEP 2 / 4 · 清理系统项','STEP 3 / 4 · 恢复 PATH','STEP 4 / 4 · 收尾校验'];
+  (function tick(t){const p=Math.min(100,(t-t0)/DUR*100),s=seg(p);
+    document.getElementById('pn').textContent=Math.floor(p);
+    document.getElementById('fill').style.width=p+'%';
+    document.getElementById('ph').textContent=phTxt[s];
+    for(let i=1;i<=4;i++){const li=document.getElementById('p'+i);li.className=i<s?'done':i===s?'run':'';}
+    if(p<100)raf=requestAnimationFrame(tick);else setTimeout(()=>{go('finish');badge()},500);})(t0);}
+function reset(){if(raf)cancelAnimationFrame(raf);raf=null;}
+/* ✕ 分阶段分流：confirm/running=未写入直接退 / progress=置灰吞掉 / finish=完成等价 */
+document.getElementById('xbtn').addEventListener('click',function(){
+  if(cur==='progress')return;
+  exitNote();
+});
+function enUI(){var c=document.getElementById('lkdd-cur');return c&&c.textContent==='English';}
+function badge(){document.getElementById('datbadge').className='datbadge'+(document.getElementById('keepdata').checked?'':' gone');
+  document.getElementById('datbadge').textContent=document.getElementById('keepdata').checked
+    ?(enUI()?'User data kept · C:\\Users\\fengy\\AppData\\Roaming\\LinkDesk':'用户数据已保留 · C:\\Users\\fengy\\AppData\\Roaming\\LinkDesk')
+    :(enUI()?'User data removed':'用户数据已一并移除');}
+</script>
+<script>
+/* i18n 示意补丁（01 §五）：自绘下拉同安装器；卸载器语言读注册表带出（不出现下拉也可——示意保留切换） */
+(function(){
+const ORIG=new Map();
+const LIST=[
+ ['#s-confirm h1','Uninstall LinkDesk?'],
+ ['#s-confirm .sub','Install location: <code>C:\\Users\\fengy\\AppData\\Local\\Programs\\linkdesk</code> · about 420 MB'],
+ ['#s-confirm .btn.danger','Uninstall<span class="cir">→</span>'],
+ ['#s-confirm .btn.ghost','Cancel'],
+ ['#s-running h1','LinkDesk is running'],
+ ['#s-running .sub','Uninstalling will continue after LinkDesk closes; unsaved workspaces go through its save flow first.'],
+ ['#s-running .btn.primary','Close & continue<span class="cir">→</span>'],
+ ['#s-running .btn.ghost','Later'],
+ ['#p1','Close processes · remove program files'],
+ ['#p2','Clean system entries (context menu · linkdesk:// protocol · editor registration)'],
+ ['#p3','Restore PATH (exact match only — never touches your edits)'],
+ ['#p4','Final residue check · self-delete'],
+ ['#s-finish h1','Uninstalled.'],
+ ['#s-finish .sub','Thanks for using LinkDesk — until we meet again.'],
+ ['#s-finish .btn.primary','Done']];
+function apply(lang){const en=lang==='en';
+ var xb=document.getElementById('xbtn');if(xb)xb.setAttribute('aria-label',en?'Close window':'关闭窗口');
+ LIST.forEach(function(p){var el=document.querySelector(p[0]);if(!el)return;
+  if(!ORIG.has(el))ORIG.set(el,el.innerHTML);el.innerHTML=en?p[1]:ORIG.get(el);});
+ var lab=document.querySelector('#s-confirm .opt span:last-child');
+ if(lab){if(!ORIG.has(lab))ORIG.set(lab,lab.innerHTML);
+  lab.innerHTML=en?'Keep my data<small>workspaces · settings · plugins</small>':ORIG.get(lab);}}
+const LANGS=[{code:'zh-CN',label:'中文'},{code:'en',label:'English'}];
+const st=document.createElement('style');
+st.textContent="#lkdd{position:absolute;top:8px;left:8px;z-index:40;font:12px 'Segoe UI',sans-serif}"
+ +"#lkdd-btn{display:flex;align-items:center;gap:7px;padding:6px 12px;border-radius:9999px;border:1px solid rgba(128,128,128,.4);background:rgba(255,255,255,.55);backdrop-filter:blur(6px);color:inherit;cursor:pointer;user-select:none;font:inherit;transition:box-shadow .3s var(--ease)}"
+ +"#lkdd-btn:hover{box-shadow:0 4px 16px rgba(0,0,0,.1)}"
+ +"#lkdd-btn .chev{transition:transform .25s var(--ease)}"
+ +"#lkdd.open #lkdd-btn .chev{transform:rotate(180deg)}"
+ +"#lkdd-pop{position:absolute;top:calc(100% + 8px);right:0;min-width:168px;padding:6px;border-radius:14px;border:1px solid rgba(0,0,0,.08);background:rgba(255,255,255,.9);backdrop-filter:blur(20px);box-shadow:0 14px 44px rgba(0,0,0,.16);opacity:0;transform:translateY(-6px) scale(.96);transform-origin:top right;pointer-events:none;transition:opacity .2s var(--ease),transform .2s var(--ease)}"
+ +"#lkdd.open #lkdd-pop{opacity:1;transform:none;pointer-events:auto}"
+ +"#lkdd-pop .it{display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:9px;cursor:pointer;color:#1a1a1a;background:none;border:0;font:inherit;width:100%;text-align:left}"
+ +"#lkdd-pop .it:hover{background:rgba(0,0,0,.05)}"
+ +"#lkdd-pop .it .ck{width:14px;height:14px;flex:none;opacity:0}"
+ +"#lkdd-pop .it.on .ck{opacity:1}";
+document.head.appendChild(st);
+const dd=document.createElement('div');dd.id='lkdd';
+dd.innerHTML='<button type="button" id="lkdd-btn" aria-haspopup="listbox" aria-expanded="false">'
+ +'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.8 3 2.8 15 0 18M12 3c-2.8 3-2.8 15 0 18"/></svg>'
+ +'<span id="lkdd-cur">中文</span>'
+ +'<svg class="chev" width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 4l4 4 4-4"/></svg></button>'
+ +'<div id="lkdd-pop" role="listbox" aria-label="语言">'+LANGS.map(function(l){return '<button type="button" class="it'+(l.code==='zh-CN'?' on':'')+'" role="option" aria-selected="'+(l.code==='zh-CN')+'" data-code="'+l.code+'">'
+   +'<svg class="ck" viewBox="0 0 14 14" fill="none" stroke="#2fae7c" stroke-width="2"><path d="M2.5 7.5l3 3 6-7"/></svg>'
+   +'<span>'+l.label+'</span></button>'}).join('')+'</div>';
+document.querySelector('.stage').appendChild(dd);
+function lkSet(code){apply(code);
+ document.getElementById('lkdd-cur').textContent=LANGS.find(function(l){return l.code===code}).label;
+ dd.querySelectorAll('.it').forEach(function(it){it.classList.toggle('on',it.dataset.code===code)});}
+dd.querySelector('#lkdd-btn').addEventListener('click',function(e){e.stopPropagation();var o=dd.classList.toggle('open');this.setAttribute('aria-expanded',o)});
+dd.querySelectorAll('.it').forEach(function(it){it.addEventListener('click',function(){lkSet(it.dataset.code);dd.classList.remove('open');document.getElementById('lkdd-btn').setAttribute('aria-expanded','false')})});
+document.addEventListener('click',function(e){if(!dd.contains(e.target))dd.classList.remove('open')});
+document.addEventListener('keydown',function(e){if(e.key==='Escape')dd.classList.remove('open')});
+})();
+</script>
+</body>
+</html>

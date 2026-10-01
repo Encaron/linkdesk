@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>竞标 E · 混合提案（亮色玻璃 ＋ A 标题图标 ＋ D 完成彩粒）— LinkDesk 安装界面 mockup</title>
+<!-- mockup 仅示意，真实实现走 build/installer/（docs/04-软件更新/待抉择池/安装界面自绘/01-技术方案.md）
+     混合构成（03-竞标评分与收口指南 §四 + 2026-10-01 用户三笔反馈改）：
+     ① 默认偏亮色（A 暖纸 token × B 双包边玻璃骨架融合）；② 无主题切换 UI；
+     ③ A 的品牌六边形图标 ＋ 衬线大标题（「安装就一步，然后交给它。」）；
+     ④ B 的药丸按钮/辉光流光进度/微尘；⑤ 完成槽 = D 彩粒迸发（动效预算集中打一次） -->
+<style>
+  :root{
+    --bg:#F7F6F3; --desk:#E9E7E2; --glass:rgba(255,255,255,.5); --hair:rgba(0,0,0,.10);
+    --txt:#1a1a1a; --txt2:rgba(26,26,26,.62); --txt3:rgba(26,26,26,.40);
+    --ink:#111111; --line:#EAEAEA;
+    --orb1:#b9a8f5; --orb2:#9fe8c8;
+    --serif:'Newsreader','Lyon Text',Georgia,'Songti SC',serif;
+    --sans:'Geist','Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;
+    --mono:'Geist Mono',Consolas,monospace;
+    --ease:cubic-bezier(.32,.72,0,1);
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid #8a6ff0;outline-offset:2px}
+  /* browser surfaces（craft-floor：浏览器默认面也要属于设计） */
+  ::selection{background:rgba(138,111,240,.25)}
+  input{caret-color:var(--ink)}
+  ::-webkit-scrollbar{width:10px}
+  ::-webkit-scrollbar-thumb{background:rgba(0,0,0,.15);border-radius:5px;border:2px solid transparent;background-clip:content-box}
+  ::-webkit-scrollbar-track{background:transparent}
+  .foot a{color:var(--txt2);text-decoration:underline;text-underline-offset:3px}
+  body{background:var(--desk);font-family:var(--sans);color:var(--txt);min-height:100vh;
+       display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;overflow:hidden}
+  .stage{position:relative;width:min(780px,calc(100vw - 30px));height:min(570px,calc(100vh - 120px))}
+  /* 双光球：亮色化（A 的克制透明度） */
+  .orb{position:absolute;width:420px;height:420px;border-radius:50%;filter:blur(90px);opacity:.26;pointer-events:none}
+  .orb.a{background:var(--orb1);top:-140px;right:-80px;animation:fl1 22s ease-in-out infinite alternate}
+  .orb.b{background:var(--orb2);bottom:-160px;left:-100px;animation:fl2 26s ease-in-out infinite alternate}
+  @keyframes fl1{to{transform:translate(-70px,50px) scale(1.15)}}
+  @keyframes fl2{to{transform:translate(60px,-40px) scale(.9)}}
+  .grain{position:fixed;inset:0;pointer-events:none;opacity:.03;z-index:50;
+         background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence baseFrequency='.85' numOctaves='2'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)'/%3E%3C/svg%3E")}
+  .dust{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+  .dust i{position:absolute;bottom:-8px;width:3px;height:3px;border-radius:50%;background:rgba(0,0,0,.3);
+          animation:rise linear infinite}
+  @keyframes rise{to{transform:translateY(-620px);opacity:0}}
+  /* 安装窗口：B 双包边骨架 × 亮色 token */
+  .shell{position:absolute;inset:0;border-radius:32px;background:var(--glass);
+         border:1px solid var(--hair);padding:9px;backdrop-filter:blur(28px);
+         box-shadow:0 30px 80px rgba(0,0,0,.14),inset 0 1px 0 rgba(255,255,255,.8)}
+  .win{position:relative;height:100%;border-radius:24px;background:rgba(252,252,250,.85);
+       border:1px solid var(--hair);overflow:hidden;display:flex;flex-direction:column}
+  .xbtn{position:absolute;top:14px;right:16px;z-index:10;width:30px;height:30px;border:0;border-radius:9px;background:transparent;color:var(--txt2);cursor:pointer;display:grid;place-items:center;transition:background .2s}
+  .xbtn:hover{background:rgba(0,0,0,.06)}
+  .xbtn[disabled]{color:var(--txt3);cursor:default;background:transparent}
+  .cap{position:absolute;top:-36px;left:4px;font:11px/1.6 var(--mono);color:var(--txt3);letter-spacing:.1em;text-transform:uppercase}
+  .note{position:absolute;bottom:-64px;left:4px;right:4px;font:11.5px/1.7 var(--mono);color:var(--txt3)}
+  .note b{color:var(--txt2);font-weight:600}
+  .scr{position:absolute;inset:0;display:none;flex-direction:column;padding:44px 52px 38px;
+       animation:enter .8s var(--ease)}
+  .scr.on{display:flex}
+  @keyframes enter{from{opacity:0;transform:translateY(18px);filter:blur(6px)}to{opacity:1;transform:none;filter:blur(0)}}
+  /* ② UAC */
+  #s-uac{align-items:center;justify-content:center}
+  .uac{width:420px;background:#1f1f1f;color:#eee;border:1px solid #3a3a3a;border-radius:8px;padding:22px 24px;font:13px/1.6 'Segoe UI',sans-serif}
+  .uac h3{font-size:15px;margin-bottom:10px;display:flex;align-items:center;gap:8px}
+  .uac .row{display:flex;gap:10px;margin:6px 0;color:#bbb}.uac .row b{color:#eee}
+  .uac .btns{display:flex;gap:10px;justify-content:flex-end;margin-top:14px}
+  .uac button{font:13px 'Segoe UI';padding:5px 18px;border-radius:4px;border:1px solid #555;background:#3a3a3a;color:#eee;cursor:pointer}
+  .uac .yes{background:#e8e8e8;color:#111}
+  /* 品牌行：A 的六边形图标（实心 + 三白孔）＋ A 的衬线 slogan */
+  .brand{display:flex;align-items:center;gap:14px;margin-bottom:10px}
+  .brand svg{width:40px;height:44px;flex:none}
+  .brand .nm{font:600 19px/1.2 var(--sans);letter-spacing:-.02em}
+  .brand .sl{font:italic 400 13.5px/1.4 var(--serif);color:var(--txt2);margin-top:2px}
+  .ver{margin-left:auto;font:11px var(--mono);color:#1F6C9F;background:#E1F3FE;padding:3px 10px;border-radius:9999px;letter-spacing:.05em}
+  .hero{flex:1;display:flex;flex-direction:column;justify-content:center}
+  /* A 的衬线大标题（用户点名的「高级感」来源） */
+  .hero h1{font:400 46px/1.1 var(--serif);letter-spacing:-.03em;margin-bottom:14px}
+  .hero h1 em{font-style:italic}
+  .hero p{font:14px/1.75 var(--sans);color:var(--txt2);max-width:44ch}
+  .actions{display:flex;flex-wrap:wrap;align-items:center;gap:18px}
+  /* B 的药丸按钮（button-in-button）× 亮色化：墨色实心 */
+  .btn{display:inline-flex;align-items:center;gap:12px;font:600 14px var(--sans);color:#fff;
+       background:var(--ink);border:0;border-radius:9999px;padding:9px 9px 9px 28px;cursor:pointer;
+       transition:transform .5s var(--ease),box-shadow .5s var(--ease)}
+  .btn .cir{width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,.16);display:grid;place-items:center;transition:transform .5s var(--ease)}
+  .btn:hover{box-shadow:0 8px 30px rgba(0,0,0,.16)}
+  .btn:hover .cir{transform:translate(3px,-1px) scale(1.06)}
+  .btn:active{transform:scale(.98)}
+  .btn.ghost{background:transparent;color:var(--txt2);border:1px solid var(--hair);padding:10px 22px;gap:0}
+  .btn.ghost:hover{box-shadow:none;color:var(--txt)}
+  /* ④ 自定义展开 */
+  #custom{max-height:0;overflow:hidden;transition:max-height .7s var(--ease)}
+  #custom.open{max-height:270px}
+  .cust-in{margin-top:24px;padding-top:24px;border-top:1px solid var(--line)}
+  .pathrow{display:flex;gap:8px;margin-bottom:18px}
+  .pathrow input{flex:1;font:12.5px var(--mono);padding:11px 14px;border-radius:14px;border:1px solid var(--line);
+                 background:rgba(255,255,255,.75);color:var(--txt);box-shadow:inset 0 1px 1px rgba(255,255,255,.6)}
+  .pathrow input:focus{outline:none;border-color:#c4c0b8}
+  .pathrow button{font:12px var(--sans);padding:0 16px;border-radius:14px;border:1px solid var(--line);background:#fff;color:var(--txt2);cursor:pointer}
+  .opts{display:grid;grid-template-columns:1fr 1fr;gap:12px 26px}
+  .opt{display:flex;gap:11px;align-items:flex-start;cursor:pointer;font:13px/1.5 var(--sans)}
+  .opt input{position:absolute;opacity:0}
+  .opt .box{width:17px;height:17px;flex:none;margin-top:1px;border-radius:6px;border:1px solid #c9c8c4;
+            background:#fff;display:grid;place-items:center;transition:all .3s var(--ease)}
+  .opt .box svg{width:10px;height:10px;opacity:0;transform:scale(.4);transition:all .3s var(--ease)}
+  .opt input:checked+.box{background:linear-gradient(135deg,#a78bfa,#34d399);border-color:transparent}
+  .opt input:checked+.box svg{opacity:1;transform:scale(1)}
+  .foot{margin-left:auto;font:12px var(--sans);color:var(--txt2)}
+  /* ⑤ 进度：B 辉光流光 × 亮色（轨道浅灰、辉光减弱） */
+  #s-progress{justify-content:center}
+  .ph{font:11px var(--mono);letter-spacing:.18em;text-transform:uppercase;color:var(--txt2);margin-bottom:12px}
+  .pct{font:200 76px/1 var(--sans);letter-spacing:-.05em;margin-bottom:28px;color:var(--ink);font-variant-numeric:tabular-nums}
+  .pct span{font-size:26px}
+  .track{height:8px;border-radius:9999px;background:rgba(0,0,0,.08);overflow:hidden;position:relative}
+  .fill{height:100%;width:0%;border-radius:9999px;position:relative;transition:width .3s linear;
+        background:linear-gradient(90deg,#8a6ff0,#2fbf8a);box-shadow:0 0 14px rgba(138,111,240,.35)}
+  .fill::after{content:'';position:absolute;inset:0;border-radius:9999px;
+        background:linear-gradient(90deg,transparent,rgba(255,255,255,.6),transparent);
+        background-size:200% 100%;animation:shimmer 1.6s linear infinite}
+  @keyframes shimmer{from{background-position:200% 0}to{background-position:-200% 0}}
+  .plist{margin-top:26px;font:12px/2.1 var(--mono);color:var(--txt3);letter-spacing:.04em}
+  .plist li{list-style:none;display:flex;gap:12px}
+  .plist .st{width:16px}
+  .plist li.run{color:var(--txt2)}.plist li.run .st::after{content:'▸';color:#8a6ff0}
+  .plist li.done{color:var(--txt2)}.plist li.done .st::after{content:'✓';color:#2fae7c}
+  .cancel{margin-top:26px;font:12px var(--sans);color:var(--txt2);background:none;border:0;cursor:pointer}
+  .cancel:hover{color:var(--txt2)}
+  /* ⑥ 完成：B 光晕对勾（亮色化）＋ D 彩粒迸发 */
+  #s-finish{justify-content:center;align-items:center;text-align:center}
+  #confetti{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+  #confetti i{position:absolute;width:8px;height:14px;border-radius:2px;opacity:0}
+  @keyframes burst{0%{opacity:1;transform:translate(0,0) rotate(0)}
+                   100%{opacity:0;transform:translate(var(--dx),var(--dy)) rotate(var(--rot))}}
+  .fin-ring{width:92px;height:92px;border-radius:50%;display:grid;place-items:center;margin-bottom:26px;
+            background:radial-gradient(circle at 35% 30%,rgba(167,139,250,.30),rgba(52,211,153,.16));
+            border:1px solid var(--hair);box-shadow:0 0 60px rgba(138,111,240,.25),inset 0 1px 1px rgba(255,255,255,.7);
+            animation:pop .8s var(--ease)}
+  @keyframes pop{from{transform:scale(.6);opacity:0}}
+  .fin-ring svg{width:34px;height:34px}
+  .fin-ring path{stroke:var(--ink);stroke-width:3.5;fill:none;stroke-linecap:round;stroke-dasharray:48;stroke-dashoffset:48;
+                 animation:draw .7s .25s var(--ease) forwards}
+  @keyframes draw{to{stroke-dashoffset:0}}
+  #s-finish h1{font:400 34px/1.25 var(--serif);letter-spacing:-.03em;margin-bottom:10px}
+  #s-finish .sub{font:13px/1.7 var(--sans);color:var(--txt2);margin-bottom:28px;font-family:var(--mono);font-size:12px}
+  .runrow{margin-bottom:30px}
+  #s-finish .actions{justify-content:center}
+  @media (prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+</style>
+</head>
+<body>
+<div class="grain"></div>
+<div class="stage">
+  <div class="orb a"></div><div class="orb b"></div>
+  <div class="dust" id="dust"></div>
+  <div class="cap" id="cap">竞标 E · 混合提案（亮色玻璃）· 帧 1/4 · UAC（系统绘制）</div>
+  <div class="shell"><div class="win">
+    <button type="button" id="xbtn" class="xbtn" aria-label="关闭窗口"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M2 2l8 8M10 2l-8 8"/></svg></button>
+    <div class="scr on" id="s-uac">
+      <div class="uac">
+        <h3><svg width="20" height="20" viewBox="0 0 24 24" style="flex:none"><path fill="#4cc2ff" d="M12 1l9 4v6c0 5.5-3.8 10.7-9 12-5.2-1.3-9-6.5-9-12V5z"/></svg>你要允许此应用对你的设备进行更改吗?</h3>
+        <div class="row"><span>应用</span><b>linkdesk-setup-0.2.34.exe</b></div>
+        <div class="row"><span>发布者</span><b>未知发布者</b></div>
+        <div class="btns"><button>否</button><button class="yes" onclick="go('home')">是</button></div>
+      </div>
+    </div>
+    <div class="scr" id="s-home">
+      <div class="brand">
+        <svg viewBox="0 0 100 110"><path fill="#111" fill-rule="evenodd" d="M50 0l43 25v50L50 110 7 75V25zM33 42a8 8 0 100 16 8 8 0 000-16zm34 0a8 8 0 100 16 8 8 0 000-16zm-17 26a8 8 0 100 16 8 8 0 000-16z"/></svg>
+        <div><div class="nm">LinkDesk</div><div class="sl">一个容器，装下你所有的工作方式。</div></div>
+        <div class="ver">v0.2.34</div>
+      </div>
+      <div class="hero">
+        <h1>安装就一步，<em>然后交给它。</em></h1>
+        <p>它不规定你怎么工作，它装下你怎么工作。</p>
+      </div>
+      <div id="custom">
+        <div class="cust-in">
+          <div class="pathrow">
+            <input value="C:\Users\fengy\AppData\Local\Programs\linkdesk" spellcheck="false">
+            <button onclick="return false">浏览…</button>
+          </div>
+          <div class="opts">
+            <label class="opt"><input type="checkbox"><span class="box"><svg viewBox="0 0 12 12"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span>文件右键菜单「通过 LinkDesk 打开」</span></label>
+            <label class="opt"><input type="checkbox"><span class="box"><svg viewBox="0 0 12 12"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span>目录右键菜单「通过 LinkDesk 打开」</span></label>
+            <label class="opt"><input type="checkbox" checked><span class="box"><svg viewBox="0 0 12 12"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span>注册为受支持文件类型的编辑器</span></label>
+            <label class="opt"><input type="checkbox" checked><span class="box"><svg viewBox="0 0 12 12"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span>添加到 PATH（重启终端后生效）</span></label>
+          </div>
+        </div>
+      </div>
+      <div class="actions">
+        <button class="btn" onclick="start()">立即安装<span class="cir">→</span></button>
+        <button class="btn ghost" id="custtoggle" onclick="toggleCustom()">自定义安装</button>
+        <div class="foot">继续即同意 <a href="#" onclick="return false">许可协议</a> · MIT</div>
+      </div>
+    </div>
+    <div class="scr" id="s-progress">
+      <div class="ph" id="ph">STEP 1 / 4 · 正在解压文件</div>
+      <div class="pct"><span id="pn">0</span><span>%</span></div>
+      <div class="track"><div class="fill" id="fill"></div></div>
+      <ul class="plist">
+        <li id="p1"><span class="st"></span>解压文件（app + 出厂插件 + AI 手册）</li>
+        <li id="p2"><span class="st"></span>注册 linkdesk:// 协议</li>
+        <li id="p3"><span class="st"></span>写系统项（快捷方式 · 右键菜单 · PATH）</li>
+        <li id="p4"><span class="st"></span>收尾校验</li>
+      </ul>
+      <div style="margin-top:26px;display:flex;gap:18px;align-items:center">
+        <button class="cancel" onclick="go('home');reset()">取消安装</button>
+        <button class="cancel" onclick="go('error')">演示：失败分支</button>
+      </div>
+    </div>
+    <div class="scr" id="s-finish">
+      <div id="confetti"></div>
+      <div class="fin-ring"><svg viewBox="0 0 56 56"><path d="M12 30l11 11 21-26"/></svg></div>
+      <h1>装好了。</h1>
+      <div class="sub">C:\Users\fengy\AppData\Local\Programs\linkdesk</div>
+      <div class="runrow"><label class="opt"><input type="checkbox" id="runnow" checked><span class="box"><svg viewBox="0 0 12 12"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span>运行 LinkDesk</span></label></div>
+      <div class="actions"><button class="btn" onclick="done()">完成<span class="cir">→</span></button></div>
+    </div>
+    <!-- 失败分支（02-流程设计 §三 的视觉落地：磁盘空间不足示例） -->
+    <div class="scr" id="s-error">
+      <svg width="44" height="44" viewBox="0 0 48 48" fill="none" stroke="#B3261E" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom:22px"><path d="M24 6L4 42h40L24 6z"/><path d="M24 20v10"/><circle cx="24" cy="36" r="0.5" fill="#B3261E"/></svg>
+      <h1>安装没有完成。</h1>
+      <div class="sub" role="alert">磁盘空间不足——目标盘至少需要 1 GB，当前可用 412 MB。</div>
+      <div style="font:11px var(--mono);color:var(--txt3);letter-spacing:.06em;margin-bottom:8px">ERR-DISK-FULL · E-1042</div>
+      <div class="actions">
+        <button class="btn" onclick="go('home')">换个安装位置<span class="cir">→</span></button>
+        <button class="btn ghost" onclick="exitInstall()">退出安装</button>
+      </div>
+    </div>
+  </div></div>
+  <div class="note" id="note"><b>帧 1</b>——UAC 弹窗为 Windows 系统绘制，不属于自绘面；本版自绘面从「是」之后开始。发布者名需代码签名证书。</div>
+</div>
+<script>
+const cap=document.getElementById('cap'),note=document.getElementById('note');
+const capTxt={home:'帧 2/3 · 主屏（③）＋自定义展开（④）——亮色玻璃底',progress:'帧 4/6 · 进度（⑤）——辉光流光进度条（亮色化）',finish:'帧 7/9 · 完成（⑥）——光晕对勾 ＋ D 彩粒迸发',error:'失败分支 · 错误屏（02-流程设计 §三 的视觉落地）'};
+const noteTxt={
+ home:'<b>设计点</b>——① 默认偏亮色：A 暖纸 token（2026-10-01 拍板）× B 双包边玻璃骨架融合，无主题切换；② A 的品牌六边形＋衬线 slogan ＋ A 的衬线大标题（用户点名的「高级感」）；③ 墨色药丸按钮＝B 的 button-in-button 亮色化；④ 4 个勾选项＝现状 E6#45 勾选页原样搬（默认两个勾）。',
+ progress:'<b>设计点</b>——① 进度槽 = B 辉光流光胶囊条亮色化（轨道浅灰、辉光减弱）；② 微尘粒子缓升常驻；③ 四段真实分段，IO 抖动平滑不倒退；④ 全 transform/opacity。',
+ finish:'<b>设计点</b>——① 完成槽 = <b>D 彩粒迸发</b>（进本屏时一次爆 40 粒、落定即止——动效预算集中打一次；配色已按亮色底调整）；② 底子 = B 光晕圆环＋描线对勾，标题换 A 衬线「装好了。」；③ 「运行 LinkDesk」默认勾，点完成 → 壳启动过场（九幕之⑦）相接。',
+ error:'<b>设计点</b>——① 说人话：先说结论「安装没有完成」，再用一句白话讲清问题与数字（需要 1 GB / 剩 412 MB），错误码只作小字技术锚点；② 恢复动作前置——「换个安装位置」是主按钮，直接回到自定义展开屏，不逼用户从头再来；③ 「退出安装」保证任何失败点都有干净出口（heuristic 9：识别·诊断·恢复）。'};
+// 微尘粒子
+const dust=document.getElementById('dust');
+for(let i=0;i<14;i++){const d=document.createElement('i');
+  d.style.left=Math.random()*100+'%';
+  d.style.animationDuration=(9+Math.random()*10)+'s';
+  d.style.animationDelay=(-Math.random()*15)+'s';
+  d.style.opacity=.12+Math.random()*.25;dust.appendChild(d);}
+let raf=null,cur='uac';
+function go(id){cur=id;document.querySelectorAll('.scr').forEach(s=>s.classList.remove('on'));
+  document.getElementById('s-'+id).classList.add('on');
+  cap.textContent='竞标 E · 混合提案（亮色玻璃）· '+(capTxt[id]||'');
+  if(noteTxt[id])note.innerHTML=(id==='home'?'<b>帧 2–3</b>':id==='progress'?'<b>帧 4–6</b>':'<b>帧 7–9</b>')+'——'+noteTxt[id];
+  if(id==='finish')burst();}
+function toggleCustom(){const c=document.getElementById('custom');c.classList.toggle('open');
+  document.getElementById('custtoggle').textContent=c.classList.contains('open')?'收起':'自定义安装';}
+function start(){go('progress');reset();
+  const t0=performance.now(),DUR=9000;
+  const seg=p=>p<70?1:p<80?2:p<92?3:4, phTxt=['','STEP 1 / 4 · 正在解压文件','STEP 2 / 4 · 注册 linkdesk:// 协议','STEP 3 / 4 · 写系统项','STEP 4 / 4 · 收尾校验'];
+  (function tick(t){const p=Math.min(100,(t-t0)/DUR*100);
+    document.getElementById('pn').textContent=Math.floor(p);
+    document.getElementById('fill').style.width=p+'%';
+    for(let i=1;i<=4;i++){const li=document.getElementById('p'+i),s=seg(p);
+      li.className=i<s?'done':i===s?'run':'';}
+    document.getElementById('ph').textContent=phTxt[seg(p)];
+    if(p<100)raf=requestAnimationFrame(tick);else setTimeout(()=>go('finish'),500);})(t0);}
+function reset(){if(raf)cancelAnimationFrame(raf);raf=null;}
+function exitInstall(){document.getElementById('note').innerHTML='<b>退出</b>——任何失败点都有干净出口；已解压文件按 02 §三「中途取消」口径回滚。'}
+function exitZero(){document.getElementById('note').innerHTML='<b>退出</b>——尚未开始安装，未写入任何内容，安装器直接退出。';document.getElementById('cap').textContent='竞标 E · 已退出';}
+/* ✕ 分阶段分流：主屏直退 / 进度=取消回滚 / 失败屏=退出 / 完成=完成（与主按钮等价） */
+document.getElementById('xbtn').addEventListener('click',function(){
+  if(cur==='progress'){go('home');reset();return;}
+  if(cur==='error'){exitInstall();return;}
+  if(cur==='finish'){done();return;}
+  exitZero();
+});
+/* D 彩粒迸发（混搭单点）——配色按亮色底调整 */
+function burst(){const box=document.getElementById('confetti');box.innerHTML='';
+  const cols=['#8a6ff0','#2fbf8a','#e8b04b','#f2f4ef','#5a4bd1'];
+  for(let i=0;i<40;i++){const c=document.createElement('i');
+    const ang=Math.random()*Math.PI*2,d=90+Math.random()*220;
+    c.style.setProperty('--dx',Math.cos(ang)*d+'px');
+    c.style.setProperty('--dy',Math.sin(ang)*d-80+'px');
+    c.style.setProperty('--rot',(Math.random()*720-360)+'deg');
+    c.style.left='50%';c.style.top='34%';
+    c.style.background=cols[i%cols.length];
+    c.style.animation=`burst ${.9+Math.random()*.7}s ${Math.random()*.15}s cubic-bezier(.16,1,.3,1) forwards`;
+    box.appendChild(c);}}
+function done(){document.getElementById('note').innerHTML='<b>幕 ⑦ 交接</b>——'+(document.getElementById('runnow').checked?'「运行 LinkDesk」勾着 ⇒ 安装器退出并拉起壳，与壳内启动过场无缝相接。':'勾掉 ⇒ 安装器仅退出。')+'　<button onclick="location.reload()" style="font:12px var(--mono);border:0;background:none;color:#888;text-decoration:underline;cursor:pointer">重新播放</button>';
+  document.getElementById('cap').textContent='竞标 E · 播放完毕 · 安装器退出';}
+</script>
+<script>
+/* i18n 示意补丁（01-技术方案 §五）：语言下拉＝目录枚举示意；真实实现落 build/installer/i18n/*.json，key 驱动全覆盖 */
+(function(){
+const ORIG=new Map();
+const OPT=[['Add \u201cOpen with LinkDesk\u201d to the file context menu',null],['Add \u201cOpen with LinkDesk\u201d to the directory context menu',null],['Register LinkDesk as an editor for supported file types',null],['Add to PATH (effective after restarting terminals)',null]];
+const LIST=[
+ ['#s-home .brand .sl','A container for every way you work.'],
+ ['#s-home .hero h1','One step to install, <em>then hand it over.</em>'],
+ ['#s-home .hero p','It doesn\u2019t dictate how you work — it holds whatever your work becomes.'],
+ ['#s-home .actions .btn:not(.ghost)','Install Now<span class="cir">→</span>'],
+ ['#custtoggle','Customize'],
+ ['#s-home .foot','By continuing you agree to the <a href="#" onclick="return false">License</a> · MIT'],
+ ['#p1','Extract files (app + bundled plugins + AI manual)'],
+ ['#p2','Register linkdesk:// protocol'],
+ ['#p3','Write system entries (shortcuts · context menu · PATH)'],
+ ['#p4','Final verification'],
+ ['#s-progress .cancel','Cancel install'],
+ ['#s-finish h1','All set.'],
+ ['#s-finish .actions .btn','Done<span class="cir">→</span>'],
+ ['#s-progress .demo','Preview: failure branch'],
+ ['#s-error h1','Installation didn\u2019t finish.'],
+ ['#s-error .sub','Not enough disk space \u2014 the target drive needs at least 1 GB, only 412 MB free.'],
+ ['#s-error .btn.primary','Choose another location<span class="cir">→</span>'],
+ ['#s-error .btn.ghost','Exit installer']];
+function apply(lang){const en=lang==='en';
+ var xb=document.getElementById('xbtn');if(xb)xb.setAttribute('aria-label',en?'Close window':'关闭窗口');
+ LIST.forEach(function(p){var el=document.querySelector(p[0]);if(!el)return;
+  if(!ORIG.has(el))ORIG.set(el,el.innerHTML);el.innerHTML=en?p[1]:ORIG.get(el);});
+ document.querySelectorAll('#s-home .opts .opt').forEach(function(lab,i){var t=lab.lastElementChild;
+  if(!ORIG.has(t))ORIG.set(t,t.innerHTML);
+  t.innerHTML=en?(OPT[i][1]?OPT[i][0]+'<small>'+OPT[i][1]+'</small>':OPT[i][0]):ORIG.get(t);});
+ var run=document.querySelector('#s-finish .opt');if(run){var t=run.lastElementChild;
+  if(!ORIG.has(t))ORIG.set(t,t.innerHTML);t.innerHTML=en?'Launch LinkDesk':ORIG.get(t);}}
+/* 自绘语言下拉（示意真实实现的 WebView2 自绘控件——原生 select 画不进自绘界面）：
+   语言清单 = 此数组模拟「扫描 build/installer/i18n/ 目录」的枚举结果（01 §五），加语言 = 数组/目录多一项 */
+const LANGS=[{code:'zh-CN',label:'中文'},{code:'en',label:'English'}];
+const st=document.createElement('style');
+st.textContent="#lkdd{position:absolute;top:8px;left:8px;z-index:40;font:12px 'Segoe UI',sans-serif}"
+ +"#lkdd-btn{display:flex;align-items:center;gap:7px;padding:6px 12px;border-radius:9999px;border:1px solid rgba(128,128,128,.4);background:rgba(255,255,255,.55);backdrop-filter:blur(6px);color:inherit;cursor:pointer;user-select:none;font:inherit;transition:box-shadow .3s var(--ease)}"
+ +"#lkdd-btn:hover{box-shadow:0 4px 16px rgba(0,0,0,.1)}"
+ +"#lkdd-btn .chev{transition:transform .25s var(--ease)}"
+ +"#lkdd.open #lkdd-btn .chev{transform:rotate(180deg)}"
+ +"#lkdd-pop{position:absolute;top:calc(100% + 8px);right:0;min-width:168px;padding:6px;border-radius:14px;border:1px solid rgba(0,0,0,.08);background:rgba(255,255,255,.9);backdrop-filter:blur(20px);box-shadow:0 14px 44px rgba(0,0,0,.16);opacity:0;transform:translateY(-6px) scale(.96);transform-origin:top right;pointer-events:none;transition:opacity .2s var(--ease),transform .2s var(--ease)}"
+ +"#lkdd.open #lkdd-pop{opacity:1;transform:none;pointer-events:auto}"
+ +"#lkdd-pop .it{display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:9px;cursor:pointer;color:#1a1a1a;background:none;border:0;font:inherit;width:100%;text-align:left}"
+ +"#lkdd-pop .it:hover{background:rgba(0,0,0,.05)}"
+ +"#lkdd-pop .it .ck{width:14px;height:14px;flex:none;opacity:0}"
+ +"#lkdd-pop .it.on .ck{opacity:1}";
+document.head.appendChild(st);
+const dd=document.createElement('div');dd.id='lkdd';
+dd.innerHTML='<button type="button" id="lkdd-btn" aria-haspopup="listbox" aria-expanded="false">'
+ +'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.8 3 2.8 15 0 18M12 3c-2.8 3-2.8 15 0 18"/></svg>'
+ +'<span id="lkdd-cur">中文</span>'
+ +'<svg class="chev" width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 4l4 4 4-4"/></svg></button>'
+ +'<div id="lkdd-pop" role="listbox" aria-label="语言">'+LANGS.map(function(l){return '<button type="button" class="it'+(l.code==='zh-CN'?' on':'')+'" role="option" aria-selected="'+(l.code==='zh-CN')+'" data-code="'+l.code+'">'
+   +'<svg class="ck" viewBox="0 0 14 14" fill="none" stroke="#2fae7c" stroke-width="2"><path d="M2.5 7.5l3 3 6-7"/></svg>'
+   +'<span>'+l.label+'</span></button>'}).join('')+'</div>';
+document.querySelector('.stage').appendChild(dd);
+function lkSet(code){apply(code);
+ document.getElementById('lkdd-cur').textContent=LANGS.find(function(l){return l.code===code}).label;
+ dd.querySelectorAll('.it').forEach(function(it){it.classList.toggle('on',it.dataset.code===code)});}
+dd.querySelector('#lkdd-btn').addEventListener('click',function(e){e.stopPropagation();var o=dd.classList.toggle('open');this.setAttribute('aria-expanded',o)});
+dd.querySelectorAll('.it').forEach(function(it){it.addEventListener('click',function(){lkSet(it.dataset.code);dd.classList.remove('open');document.getElementById('lkdd-btn').setAttribute('aria-expanded','false')})});
+document.addEventListener('click',function(e){if(!dd.contains(e.target))dd.classList.remove('open')});
+document.addEventListener('keydown',function(e){if(e.key==='Escape')dd.classList.remove('open')});
+})();
+</script>
+</body>
+</html>
