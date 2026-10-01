@@ -27,7 +27,8 @@
  *          且 (b) **今天确实没有接线**——已经接上自测却还留在豁免里 ⇒ 报「过期豁免」（逼人删条目）。
  *
  * ── ⛔ 域外声明（免得下一个人以为漏了）──
- *   本门禁的域 = **`scripts/check-*.mjs`**（文件名级）。以下**不在域内**，不是漏扫：
+ *   本门禁的域 = **`scripts/check-*.mjs`**（文件名级）——**其自测模块 `check-*.test.mjs` 不在域内**
+ *   （那是门禁的测试、不是门禁本身；`--self-test` 由宿主文件转发）。以下**不在域内**，不是漏扫：
  *   · `scripts/audit-*.mjs`（如 `audit-i18n.mjs`）、`scripts/plugin-css-prefix-audit.mjs`、
  *     `scripts/runtime-style-audit.mjs`、`scripts/generate-*.mjs`、`scripts/assert-*.mjs`、
  *     `scripts/write-product-json.mjs`、`scripts/sync-plugin-agents.mjs` 等
@@ -51,8 +52,13 @@ const ROOT = resolve(__dirname, "..");
 const PKG = resolve(ROOT, "package.json");
 const SCRIPTS = resolve(ROOT, "scripts");
 
-/** 判定域（文件名级）——只有它参与判定 */
+/** 判定域（文件名级）——只有它参与判定。
+ *  ⛔ 再排除 `*.test.mjs` / `*.spec.mjs`：那是门禁的**自测模块**（E6#0.6d 第一刀把内联自测
+ *     外迁后的新形态，如 `check-css-namespace.test.mjs`），**不是门禁本身**——门禁的 `--self-test`
+ *     仍由宿主文件转发（`node scripts/<gate>.mjs --self-test`），所以自测模块既不该要求接线、
+ *     也不该进域计数。 */
 const DOMAIN_RE = /^check-.*\.mjs$/;
+const TEST_MODULE_RE = /\.(test|spec)\.(mjs|cjs)$/;
 
 /**
  * 豁免清单（**文件级 ＋ 理由必填**）——初始只有 1 条。
@@ -202,8 +208,8 @@ export function judgeGateHealth({ files, chain, exempt, exists = () => true }) {
     .filter(Boolean);
   const exemptFiles = new Set(exempt.map((e) => e.file));
 
-  // 域外文件名一律忽略（域 = check-*.mjs）
-  const domain = files.filter((f) => DOMAIN_RE.test(f));
+  // 域外文件名一律忽略（域 = check-*.mjs；其自测模块 check-*.test.mjs 不算门禁——见 DOMAIN_RE 注释）
+  const domain = files.filter((f) => DOMAIN_RE.test(f) && !TEST_MODULE_RE.test(f));
 
   const wired = [];
   for (const f of domain) {
@@ -392,6 +398,11 @@ export function runSelfTest() {
       judgeGateHealth({ files: ["check-a.mjs"], chain: "node scripts/check-a.mjs", exempt: [E("check-a.mjs", "环境依赖：怎么在有环境处跑 = npm run demo")] }).violations.length,
       0,
     ],
+    [
+      "正控⑬：门禁的**自测模块**（`check-a.test.mjs`）不在域内 ⇒ 未接线也不红（域 ≠ 测试模块）",
+      judgeGateHealth({ files: ["check-a.mjs", "check-a.test.mjs"], chain: chainOf(["check-a"]), exempt: [] }).violations.length,
+      0,
+    ],
     // ── 负控（空转登记表）──
     [
       "🔴 负控⑦：条目缺 `who` ⇒ 报 idle-incomplete（⛔ 不许写「以后再补」）",
@@ -509,7 +520,7 @@ function main() {
   console.error(`❌ 门禁健康度不达标——${problems.length + failed.length} 处问题：\n`);
   for (const v of problems) console.error(`   [${v.kind}] ${v.msg}\n`);
   for (const f of failed) console.error(`   [self-test-failed] ${f.f} 的 --self-test **真跑失败**：${f.detail}\n`);
-  console.error(`   域 = scripts/check-*.mjs（${domain.length} 道）—— ⛔ audit-*.mjs / 生成器 / plugin-css-prefix-audit`);
+  console.error(`   域 = scripts/check-*.mjs（${domain.length} 道，不含 check-*.test.mjs 自测模块）—— ⛔ audit-*.mjs / 生成器 / plugin-css-prefix-audit`);
   console.error(`   等**不在域内**（后者是记忆 gate-selftest-must-be-wired 的**判据内例外**：它要 SDK dist，而 dist 是 gitignore 的）。`);
   process.exit(1);
 }

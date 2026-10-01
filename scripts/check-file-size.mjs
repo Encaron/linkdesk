@@ -23,7 +23,7 @@
  *      🔥 **E6#88（2026-09-11）扩域收官**——改名 `SCAN_PLUGINS` 并翻转 true，扫 **全部**
  *      `plugins/<id>/src/**`（主题/语言插件无 src，自然跳过）。休眠史：翻早 = 一屏 34 条红灯，
  *      淹没「哪条是我刚拆坏的」信号 ⇒ 硬依赖 3.6.2/3.6.3/3.6.4 三轮拆完（24 处超限归零）才翻。
- *      三档制见 §2.1：档 A `src/`+`electron/` → 800（allowlist 不动）/ 档 B `plugins/<id>/src/**`
+ *      三档制见 §2.1：档 A `src/`+`electron/`+`scripts/` → 800（allowlist 不动）/ 档 B `plugins/<id>/src/**`
  *      → 角色表 / 档 C `plugins/<id>/src/index.tsx` → 120。
  *      **未知 role 夹 / 根级未登记件 → 报错逼显式上档**，非兜底（防 per-scope 意图被静默瓦解）。
  *   5. 角色表（E6#88）：`.css` **恒 300**（放哪都算样式，含 co-located `views/*.css`——按扩展名
@@ -60,10 +60,17 @@ const ROOT = resolve(__dirname, "..");
 
 /** 壳 + electron 生产源码统一红线——>800 即红（801 起）。新门禁类别的常量权威 */
 export const DEFAULT_MAX_LINES = 800;
-/** 扫描域——src/ + electron/（plugins/ 是独立构建产物，插件体量守 03 插件制造文档规范不在此门禁） */
-const DEFAULT_SCOPE_DIRS = ["src", "electron"];
+/** 扫描域——src/ + electron/ + scripts/（plugins/ 是独立构建产物，插件体量守 03 插件制造文档规范不在此门禁）
+ *  🔥 **E6#0.6d（2026-10-01）加 `scripts/`**：门禁类脚本自己也是「生产源码」——体量失控同样要拆。
+ *  第一刀已把超线的 4 个脚本抽内联自测、`check-scaffold` 抽自测、`runtime-style-audit` 与
+ *  `generate-contract` 走 feature-folder 归零；**内联自测不占体量预算**（见 `isTestFile`）。
+ *  ⚠️ 加域后 `scripts/` 直接子项 101 > 夹宽阈值 12 ⇒ 会打一行黄灯（**永不计入退出码**）——
+ *  那不是故障，正是「该按角色分夹」的信号。 */
+export const DEFAULT_SCOPE_DIRS = ["src", "electron", "scripts"];
 const SKIP_DIRS = new Set(["node_modules", "dist", "dist-electron", ".git", ".vite", "__tests__"]);
-const EXT_RE = /\.(ts|tsx|css)$/;
+/** 参与体积判定的后缀——`mjs`/`cjs` 是 `scripts/` 的主形态（`.py` 是本仓唯一的 Python 腿）。
+ *  ⚠️ 扩后缀是**扩覆盖**，不是放行：加进来的文件同样按 800 判。 */
+const EXT_RE = /\.(ts|tsx|css|mjs|cjs|py)$/;
 
 /**
  * E6#88 门开关——插件域体积门禁。**翻于 2026-09-11**（3.6.2/3.6.3/3.6.4 三轮拆完后，
@@ -112,7 +119,14 @@ const EXEMPT_TOKEN = "@E6#0.6b";
 
 const norm = (p) => p.split(sep).join("/");
 const rel = (p) => norm(relative(ROOT, p));
-export const isTestFile = (p) => /\.(test|spec)\.(tsx?|jsx?)$/.test(p) || /\.d\.ts$/.test(p);
+/**
+ * 自测/声明文件**不占体量预算**。
+ * 🔴 E6#0.6d（2026-10-01）：后缀放宽到 `mjs|cjs`——第一刀把 `check-*.mjs` 的**内联自测**抽成同名
+ *    `*.test.mjs`（外迁形态）。若这里不跟着放宽，抽出来的自测模块会**反过来**把自己顶成红灯
+ *    （「拆了反倒更红」）；且自测是按判据数增长的，与生产体的阅读税不是一回事。
+ *    ⛔ 放宽的只是**自测后缀**，不是 800 这个数——门禁本体（`check-x.mjs`）照旧计体量。
+ */
+export const isTestFile = (p) => /\.(test|spec)\.(tsx?|jsx?|mjs|cjs)$/.test(p) || /\.d\.ts$/.test(p);
 
 function walk(dir, out = []) {
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
@@ -297,6 +311,11 @@ function runSelfTest() {
     eq("正控：isTestFile(`src/core/x.ts`) ⇒ false", "正控", () => isTestFile("src/core/x.ts"), false);
     eq("正控：isTestFile(`src/index.css`) ⇒ false", "正控", () => isTestFile("src/index.css"), false);
     eq("正控：isTestFile(`src/attest.ts`) ⇒ false（不误伤子串）", "正控", () => isTestFile("src/attest.ts"), false);
+    // ── E6#0.6d（2026-10-01）翻门：`scripts/` 进域 ＋ 外迁自测（`*.test.mjs`）不占体量 ──
+    eq("正控：扫描域含 `scripts`（翻门后不许被静默摘掉）", "正控", () => DEFAULT_SCOPE_DIRS.includes("scripts"), true);
+    eq("正控：isTestFile(`scripts/check-x.test.mjs`) ⇒ true（外迁自测不占体量预算）", "正控", () => isTestFile("scripts/check-x.test.mjs"), true);
+    eq("正控：isTestFile(`scripts/gen-x.mjs`) ⇒ false（门禁/生成器本体照旧计体量）", "正控", () => isTestFile("scripts/gen-x.mjs"), false);
+    eq("正控：isTestFile(`scripts/lib/a.spec.cjs`) ⇒ true（cjs 家族同界）", "正控", () => isTestFile("scripts/lib/a.spec.cjs"), true);
 
     // ── 正控：pluginLimit 档位解析（真实相对路径字符串）──
     eq("正控：`plugins/x/src/views/A.css` ⇒ 300（.css 恒样式档）", "正控", () => pluginLimit("plugins/x/src/views/A.css"), 300);
@@ -461,7 +480,7 @@ function main() {
   const pluginTier = SCAN_PLUGINS
     ? "档 B plugins/<id>/src 按角色表 · 档 C entry ≤120"
     : "⚠️ 插件档已关闭（SCAN_PLUGINS=false）——插件域当前无人看管";
-  console.log(`✅ 文件体积门禁通过——${checked - exemptCount} 个生产文件零超限${exemptNote}（档 A src/+electron/ >${DEFAULT_MAX_LINES} 行；${pluginTier}）`);
+  console.log(`✅ 文件体积门禁通过——${checked - exemptCount} 个生产文件零超限${exemptNote}（档 A src/+electron/+scripts/ >${DEFAULT_MAX_LINES} 行；${pluginTier}）`);
   const top = sizes.sort((a, b) => b.lines - a.lines).slice(0, 5);
   if (top.length) console.log(`   当前最大 ${top.length} 文件（逼近红线预警）：${top.map((t) => `${t.rel} ${t.lines}`).join("  /  ")}`);
   if (widthWarns.length) {
