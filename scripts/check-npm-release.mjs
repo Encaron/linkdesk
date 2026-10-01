@@ -54,10 +54,19 @@
  * 插件 README 的图片靠它才显示）**一个月无声**。**「脚手架」这个漏最要命**——它正是 L3.7 3.7.5 整轮要改的东西：
  * **改完骨架却不发版 = 那一轮的全部劳动第三方作者看不到。**
  */
-import { createHash } from "node:crypto";
-import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
-import { join, relative, resolve, sep } from "node:path";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { join, resolve } from "node:path";
 import { collectUiSharedDirs } from "./lib/ui-surface.mjs";
+// 🔴 surface 名单 / 内容哈希 / 逐文件漂移判据 → scripts/lib/npm-author-surface.mjs
+//    （E6#166 抽出：发布判据⑤「对货不对号」与黄灯共用同一份实现，别在这里另写一套）。
+import {
+  UI_SURFACE,
+  contentHash,
+  expandSurface,
+  formatSurfaceDrift,
+  listSurfaceDrift,
+  readReleaseState,
+} from "./lib/npm-author-surface.mjs";
 
 const REPO_ROOT = resolve(import.meta.dirname ?? __dirname, ".."); // scripts/ → repo 根
 const STATE_FILE = join(REPO_ROOT, "scripts", "npm-release-state.json");
@@ -135,36 +144,9 @@ const PACKAGES = [
     //   keybinding-hint（**不在 barrel 但随 HintTip 进包**——键帽件是被 HintTip/ContextMenu 共同消费的
     //   产物真源，它变了包内容就变了，不登记 = 静默漏发；AssertionFn 只查"barrel 有、surface 无"，
     //   surface 多登记一个真进包目录不触发误报）。
-    surface: [
-      "packages/linkdesk-ui/src/**",
-      "packages/linkdesk-ui/README.md",
-      "src/components/shared/badge/**",
-      "src/components/shared/button/**",
-      "src/components/shared/color-picker/**",
-      "src/components/shared/combobox/**",
-      "src/components/shared/context-menu/**",
-      "src/components/shared/file-icon/**",
-      "src/components/shared/file-path-input/**",
-      "src/components/shared/font-family-select/**",
-      "src/components/shared/form-row/**",
-      "src/components/shared/hint-card/**",
-      "src/components/shared/hint-tip/**",
-      "src/components/shared/hooks/**",
-      "src/components/shared/inline-input/**",
-      "src/components/shared/keybinding-hint/**",
-      "src/components/shared/markdown-view/**",
-      "src/components/shared/number-input/**",
-      "src/components/shared/readonly-text/**", // M4 AI#38.12：只读文本展示件（P-2 拍板 A）
-      "src/components/shared/overlay-portal/**",
-      "src/components/shared/plugin-icon/**",
-      "src/components/shared/segmented-radio/**",
-      "src/components/shared/section-subtitle/**", // M4 AI#38.12：分节副标题件（P-3 拍板 A）
-      "src/components/shared/select-box/**",
-      "src/components/shared/slider/**",
-      "src/components/shared/string-list-editor/**",
-      "src/components/shared/theme-picker/**",
-      "src/components/shared/toggle/**",
-    ],
+    // 🔴 名单本体 + 全部判据注释 → scripts/lib/npm-author-surface.mjs 的 UI_SURFACE
+    //    （E6#166 起与发布判据⑤共用同一份，别在这里另抄一份）。
+    surface: UI_SURFACE,
   },
   {
     // 🔴 E6#105l（L7 7.8 轮）：**第五根作者轴**——作者面文档包。
@@ -178,32 +160,7 @@ const PACKAGES = [
   },
 ];
 
-/** 展开 glob（支持 ** 递归目录），返回相对 repo 根的已存在文件排序列表 */
-function expandSurface(patterns) {
-  const out = new Set();
-  const walk = (base) => {
-    for (const ent of readdirSync(base, { withFileTypes: true })) {
-      const abs = join(base, ent.name);
-      const rel = relative(REPO_ROOT, abs);
-      if (ent.isDirectory()) {
-        // src/** 型前缀递归
-        const relDir = rel.split(sep).join("/");
-        if (patterns.some((p) => p.endsWith("/**") && relDir.startsWith(p.slice(0, -3)))) walk(abs);
-      } else {
-        out.add(rel.split(sep).join("/"));
-      }
-    }
-  };
-  for (const p of patterns) {
-    if (p.endsWith("/**")) {
-      const dirAbs = join(REPO_ROOT, p.slice(0, -3));
-      if (existsSync(dirAbs)) walk(dirAbs);
-    } else if (existsSync(join(REPO_ROOT, p))) {
-      out.add(p);
-    }
-  }
-  return [...out].sort();
-}
+// expandSurface / contentHash / 逐文件漂移判据 → scripts/lib/npm-author-surface.mjs（E6#166 抽出，与发布判据⑤共用）。
 
 // 🆕 E6#110 覆盖面断言（纯函数，--self-test 可复跑）：barrel 引用的 @shared 目录 ⊆ surface 登记的目录，
 // 缺一即红（主流程两模式都拦）。同时把一把梭 `src/components/shared/**` 判为违例——expandSurface 无排除
@@ -219,43 +176,9 @@ function uiSurfaceCoverage(surface, sharedDirs) {
   return { banned, missing: sharedDirs.filter((d) => !covered.has(d)) };
 }
 
-/**
- * sha256 over 排序文件列表内容（含路径分隔行——改名即漂移）。
- *
- * 🔴 **必须先归一行尾再入哈希**（2026-09-12 修，实测）：同一份仓库内容，本机工作区是 CRLF、
- * 干净检出是 LF（`.gitattributes` 的 `* text=auto eol=lf` 只约束「之后的检出」，**改写不了已经躺在
- * 盘上的旧字节**）⇒ 读原始字节算哈希 = 同一个内容在两次检出上得到两个哈希 ⇒ 基线**绑死记它的那台机器**。
- * 实证：`HEAD` 内容在本机（CRLF）算出 `8903790d…`、在干净检出（LF）算出 `b027cb7e…`，
- * 一个都对不上基线 ⇒ 换台机器/换次检出就必然误报。同类病本仓一天内已犯过两次
- * （`generate-contract.mjs` 2026-09-11 修、`generate-api-cheatsheet.mjs` 2026-09-12 CI 红），
- * 二者与 `contracts:check` 同款处理：**归一后再比**。
- * ⚠️ 判据不是「归一后灯灭了」（灯灭也可能因为基线本来就旧），而是：
- * **mark 之后，本机工作区与干净检出跑本脚本都必须静默**——不静默即说明还在绑机器。
- */
-function contentHash(surfaceFiles) {
-  const h = createHash("sha256");
-  const perFile = {};
-  for (const rel of surfaceFiles) {
-    const abs = join(REPO_ROOT, rel);
-    if (!existsSync(abs)) continue;
-    const bytes = readFileSync(abs, "utf8").split("\r\n").join("\n");
-    h.update(`### ${rel}\n`);
-    h.update(bytes);
-    // 🆕 E6#110：顺带留逐文件哈希（16 hex 足够防漂移误判）——黄灯亮时能报出漂移文件名单
-    perFile[rel] = createHash("sha256").update(bytes).digest("hex").slice(0, 16);
-  }
-  return { hash: h.digest("hex"), perFile };
-}
+// （contentHash 同上，已迁 scripts/lib/npm-author-surface.mjs。）
 
-function readState() {
-  if (!existsSync(STATE_FILE)) return [];
-  try {
-    const state = JSON.parse(readFileSync(STATE_FILE, "utf8"));
-    return Array.isArray(state.packages) ? state.packages : [];
-  } catch {
-    return [];
-  }
-}
+// （readState → lib 的 readReleaseState，E6#166。）
 
 function readVersion(dir) {
   const vf = join(REPO_ROOT, dir, "package.json");
@@ -415,7 +338,7 @@ if (process.argv.includes("--self-test")) process.exit(runSelfTest());
           `  ├ 下列 @shared 目录已被 barrel 引用（= 进包）但不在 surface——它们的改动不会点亮黄灯（静默漏发）：\n  │   ${missing.join("、")}`,
         );
       lines.push(
-        "  └ → 到本脚本 @linkdesk/ui 的 surface 逐条补 `src/components/shared/<名>/**`（与 packages/linkdesk-ui/src/index.ts 同笔核对），补完重跑。",
+        "  └ → 到 scripts/lib/npm-author-surface.mjs 的 UI_SURFACE 逐条补 `src/components/shared/<名>/**`（与 packages/linkdesk-ui/src/index.ts 同笔核对），补完重跑。",
       );
       console.error(lines.join("\n") + "\n");
       process.exit(1);
@@ -426,7 +349,7 @@ if (process.argv.includes("--self-test")) process.exit(runSelfTest());
 const warnings = [];
 const updated = [];
 const refusals = [];
-const priorState = readState();
+const priorState = readReleaseState();
 
 for (const pkg of PACKAGES) {
   const surfaceFiles = expandSurface(pkg.surface);
@@ -478,15 +401,10 @@ for (const pkg of PACKAGES) {
   if (currentHash !== baseline && !versionBumped) {
     // A. 内容变了、版本没动 → 货架可能落后（主提醒）。
     //    🆕 E6#110：基线存逐文件哈希 ⇒ 报出漂移文件名单（+ 新增 / - 移除 / ~ 内容变）；旧基线无数清单退回计数。
-    const drift = state.fileHashes
-      ? [
-          ...surfaceFiles.filter((f) => !(f in state.fileHashes)).map((f) => `+ ${f}`),
-          ...Object.keys(state.fileHashes).filter((f) => !surfaceFiles.includes(f)).map((f) => `- ${f}`),
-          ...surfaceFiles.filter((f) => f in state.fileHashes && currentPerFile[f] !== state.fileHashes[f]).map((f) => `~ ${f}`),
-        ]
-      : null;
+    //    E6#166：名单/漂移/格式化搬进 scripts/lib/npm-author-surface.mjs（与发布判据⑤共用同一份实现）。
+    const drift = state.fileHashes ? listSurfaceDrift(currentPerFile, state.fileHashes) : null;
     const driftText = drift
-      ? `漂移 ${drift.length} 个文件：${drift.slice(0, 10).join("；")}${drift.length > 10 ? `；…共 ${drift.length} 个` : ""}`
+      ? (formatSurfaceDrift(drift) ?? "漂移 0 个文件")
       : `${state.files ?? "?"} 文件基线漂移（旧基线未存逐文件哈希）`;
     warnings.push(
       `${pkg.name}: 作者面内容自 npm v${state.version} 发布后已变（${driftText}），` +

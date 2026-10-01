@@ -1,13 +1,15 @@
 /**
  * @linkdesk/ui 构建脚本（E6#54b）——`npm run build`
  *
- * 四步，顺序固定：
+ * 五步，顺序固定：
  *   1. vite lib build → dist/index.js（ESM，react 系 external）+ dist/*.css（聚合）
  *   2. 聚合 css 统一改名 index.css + 注入 `import "./index.css";`
  *      （vite lib 产出的 JS 不自带 css import——消费方是 vite build，JS 图可达即随包）
  *   3. tsc 声明发射：组件源码（壳 src/components/shared）mirror 成 dist/<folder>/<X>.d.ts
  *      （rootDir=shared → 镜像拓扑，d.ts 内部相对引用保持一致）
  *   4. 从 barrel src/index.ts 生成公共 dist/index.d.ts（@shared/<folder>/<File> → ./<folder>/<File>）
+ *   5. 盖「生产日期」：dist/shell-provenance.json 写入剪自哪个壳（壳版号 + 短 hash + 日期）——
+ *      E6#166 起 ui 版本号与壳脱钩，「从哪个壳剪的」由数据回答，不再靠版本号算术
  *
  * 单一源码防漂移（07 §四）：组件源码只存壳一处；dist/index.d.ts 由 barrel 生成——
  * 改公共导出面只改 src/index.ts 一处。
@@ -77,4 +79,19 @@ writeFileSync(
   resolve(DIST, "index.d.ts"),
   `/** @linkdesk/ui 公共类型入口（E6#54b 构建生成——勿手改；改导出面改 packages/linkdesk-ui/src/index.ts 后重跑 build） */\n${[...valueLines, ...typeLines].join("\n")}\n`,
 );
-console.log(`✓ dist 就绪：index.js(+css import) / index.css / <folder>/*.d.ts / index.d.ts（${valueLines.length} 值 + ${typeLines.length} 类型导出）`);
+// ── 5. 盖「生产日期」（E6#166）：出处戳随包走，作者看一眼就知道剪自哪个壳 ─────────────────
+const shellVersion = JSON.parse(readFileSync(resolve(ROOT, "package.json"), "utf8")).version;
+let commit = "unknown";
+try {
+  commit = execSync("git rev-parse --short HEAD", { cwd: ROOT, encoding: "utf8" }).trim();
+} catch {
+  // 无 git 的检出（极简 CI 等）⇒ 戳里如实写 unknown，不假装
+}
+writeFileSync(
+  resolve(DIST, "shell-provenance.json"),
+  `${JSON.stringify({ shellVersion, commit, cutAt: new Date().toISOString().slice(0, 10) }, null, 2)}\n`,
+);
+console.log(
+  `✓ dist 就绪：index.js(+css import) / index.css / <folder>/*.d.ts / index.d.ts` +
+    `（${valueLines.length} 值 + ${typeLines.length} 类型导出）/ shell-provenance.json（剪自壳 ${shellVersion}@${commit}）`,
+);
