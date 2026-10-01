@@ -141,6 +141,25 @@ describe("ThemeEngine — 外观覆盖 getAppearanceOverrides（E5.8#50.10）", 
     expect(getAppearanceOverrides()["font-ui"]).toBe(SYSTEM_FONT_STACK);
   });
 
+  /* ── W7b（T12）品牌字标 token `--font-mark`（EmptyStage 的 LinkDesk 字标）两态 ──
+     设计 §三 W7：显式族名 = 其值（跟随）；未设（空 / __none__ 哨兵）= 衬线栈
+     ——不写键 ⇒ 落 :root 静态衬线栈（字标是品牌资产，显式「系统字体」也不吃系统栈）。 */
+
+  it("T12 fontFamily 非空 → font-mark 同值（字标跟随用户字体）", () => {
+    applyRemoteConfigChange("app.fontFamily", "SimSun");
+    expect(getAppearanceOverrides()["font-mark"]).toBe("SimSun");
+  });
+
+  it("T12 fontFamily 空 → font-mark 不覆盖（未设 = :root 衬线栈）", () => {
+    applyRemoteConfigChange("app.fontFamily", "");
+    expect(getAppearanceOverrides()["font-mark"]).toBeUndefined();
+  });
+
+  it("T12 fontFamily __none__ → font-mark 不覆盖（哨兵按未设处理——不吃系统字体栈）", () => {
+    applyRemoteConfigChange("app.fontFamily", CONFIG_NONE_SENTINEL);
+    expect(getAppearanceOverrides()["font-mark"]).toBeUndefined();
+  });
+
   it("E5.8#85 surfaceRadius presence → 六键全写 md 档绝对 px（clamp 进标尺）", () => {
     applyRemoteConfigChange("app.surfaceRadius", 12);
     const overrides = getAppearanceOverrides();

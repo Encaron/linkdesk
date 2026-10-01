@@ -294,6 +294,11 @@ export function getAppearanceOverrides(): Record<string, string> {
   if (fontFamily != null && String(fontFamily).trim() !== "") {
     const trimmedFont = String(fontFamily).trim();
     overrides["font-ui"] = trimmedFont === CONFIG_NONE_SENTINEL ? SYSTEM_FONT_STACK : trimmedFont;
+    // W7b（T12）：品牌字标同步跟随——显式族名 ⇒ --font-mark 写同值（字标与正文同族）。
+    //   __none__（显式「系统字体」）按「未设」处理：不写键 ⇒ 落 :root 衬线栈——
+    //   字标是品牌资产，不吃系统字体栈（01-设计 §三 W7：未设/哨兵 = 衬线栈）。
+    //   无主题配方来源（recipe/mix flatten 不写本键）：主题字体不改变品牌字标。
+    if (trimmedFont !== CONFIG_NONE_SENTINEL) overrides["font-mark"] = trimmedFont;
   }
 
   // E5.8#95：等宽字体槽——app.fontFamilyMono 覆盖 --font-mono（空 = 不覆盖跟随主题；__none__ = 系统等宽栈）。

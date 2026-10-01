@@ -11,6 +11,7 @@
 import type { MouseEvent as ReactMouseEvent } from "react";
 import ErrorBoundary from "../../../shared/error-boundary/ErrorBoundary"; // E5.7#20：池侧版（不 import 壳 components 目录）
 import GroupTabBar from "../../../shared/group-tab-bar/GroupTabBar";
+import EmptyStage from "../../../shared/empty-stage/EmptyStage"; // W7b（T12）：零标签空场层
 import type { PoolGroup, PoolTab } from "../../../../core/types/pool/poolLayout";
 
 interface GroupPaneProps {
@@ -37,6 +38,13 @@ export default function GroupPane({
   creatableViews,
   adsorbInsertIndex,
 }: GroupPaneProps) {
+  // W7b（T12）：零标签 → 空场层补位（Visual contract = mockup 场景 4）。
+  //   GroupTabBar 零标签时整条 return null（含「+」——零标签不渲染 TabBar 是既有行为，
+  //   GroupTabBar.tsx:275），空组的面板整块交给 EmptyStage：主窗常态（T11 起 main 可空）。
+  if (tabs.length === 0) {
+    return <EmptyStage />;
+  }
+
   return (
     <ErrorBoundary pluginId={`pool-tabbar:${group.id}`}>
       <GroupTabBar

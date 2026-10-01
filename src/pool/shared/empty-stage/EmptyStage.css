@@ -1,0 +1,60 @@
+/**
+ * EmptyStage.css——W7b（欢迎页重设计 T12）零标签空场层。
+ * 视觉契约 = mockup 场景 4 的 `.empty-stage`
+ * （`docs/04-软件更新/待抉择池/欢迎标签页重设计/mockups/00-欢迎页重设计-预览.html`）。
+ *
+ * 单色（设计 §三 W7）：logo 与字标同用一枚 `--text-muted`，只靠透明度分层——
+ *   · logo `.14` = 装饰件（§六#1 对比度豁免），真镂空孔见 EmptyStage.tsx 的 evenodd 注释；
+ *   · 字标 46px 属「大字」⇒ 满不透明度，两主题都验 ≥3:1。
+ * 本文件零硬编码色值（`check-css-hardcode`）＋零自定义属性定义（命名空间判据 ⑨）＋
+ * 零顶层无锚选择器（判据 ⑩）——类名全部 `ldk-empty-stage-*` 自有族段（判据 ①③⑥）。
+ */
+.ldk-empty-stage {
+  /* 铺满所在容器：GroPane 里 = 面板整块（空组无标签条，见 GroupPane 注释）；
+     MainZone 零 groups 分支里 = 主区整块（flex 子项撑满）。 */
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  /* 空场是背景不是控件：不吃鼠标事件——点击穿过它落到面板上（聚焦该 group / 拖拽命中/双击分屏） */
+  pointer-events: none;
+  user-select: none;
+}
+
+/* 正典 logo（build/icon.svg 几何：实心六边形＋三孔），mockup 同尺寸 170×194（100% 基准） */
+.ldk-empty-stage-mark {
+  width: calc(170px * var(--ui-scale));
+  height: calc(194px * var(--ui-scale));
+  opacity: 0.14;
+}
+
+.ldk-empty-stage-wordmark {
+  font-family: var(--font-mark);
+  /* 46px 是 100% 基准（mockup 冻结值）；乘 --ui-scale 与全池度量同步（E5.8 Phase 12 #180 门禁：
+     裸 px 字号必须走 var(--font-size-*) 或 calc(*var(--ui-scale))——本字标不属字号标尺任一档） */
+  font-size: calc(46px * var(--ui-scale));
+  font-weight: 400;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+  color: var(--text-muted);
+}
+
+/* 斜体强调 = 斜 Desk（Link 直立；2026-10-02 拍板，强调「桌子」品牌意象） */
+.ldk-empty-stage-wordmark em {
+  font-style: italic;
+}
+
+/* 屏读专用文案（1px 盒 + clip-path 抠掉画面，StatusBarZone.css 同款配方）：
+   空场是装饰件，但「这里没有标签页」必须仍能被读出来——原零 groups 分支的可见一行字下沉至此 */
+.ldk-empty-stage-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

@@ -124,7 +124,9 @@ export const MANAGED_TOKEN_KEYS: string[] = [
   ...Object.keys(BACKGROUND_ZERO),
   ...RADIUS_SCALE_KEYS,
   "radius-pill", "radius-full",
-  "font-ui", "font-mono",
+  // W7b（T12）：font-mark = 品牌字标字体（EmptyStage 的 LinkDesk 字标）——非主题配方键，
+  //   只由 app.fontFamily 覆盖派生（seeds.ts getAppearanceOverrides），无主题来源 ⇒ 不在 recipe/mix flatten 内。
+  "font-ui", "font-mono", "font-mark",
   "ui-scale", ...FONT_SIZE_KEYS,
   ...GLASS_SURFACE_KEYS,
 ];

@@ -29,7 +29,6 @@
  */
 
 import { useMemo, useRef, useCallback } from "react";
-import { useTranslation } from "react-i18next";
 import type { PoolGroup } from "../../../core/types/pool/poolLayout";
 import type { SplitNode } from "../../../core/utils/splitTree";
 import { getAllLeafGroupIds } from "../../../core/utils/splitTree";
@@ -43,6 +42,7 @@ import { useTabDrag } from "./MainZone/useTabDrag";
 import GroupPane from "./MainZone/GroupPane";
 import TabContentLayer, { type TabContentItem } from "./MainZone/TabContentLayer";
 import DragOverlays from "./MainZone/DragOverlays";
+import EmptyStage from "../../shared/empty-stage/EmptyStage"; // W7b（T12）：零标签空场层
 
 // ═══════════════════════════════════════════════════════════
 // Props
@@ -62,7 +62,6 @@ interface MainZoneProps {
 // ═══════════════════════════════════════════════════════════
 
 export default function MainZone({ groups, root, creatableViews, activeGroupId }: MainZoneProps) {
-  const { t } = useTranslation();
   const containerRef = useRef<HTMLDivElement>(null);
 
   // ── Pool API（E5.7#98：LinkDeskAPI["pool"] 契约类型替代 any）──
@@ -144,20 +143,16 @@ export default function MainZone({ groups, root, creatableViews, activeGroupId }
   // ═════════════════════════════════════════════════════════
 
   if (groups.length === 0) {
+    // W7b（T12）：零 groups 兜底分支——原「没有打开的标签页」一行可见文案升级为 EmptyStage
+    //   （文案下沉为组件内屏读文案）。T11 拆「main 恒非空」后本分支近乎不可达：
+    //   reduceCloseTab/reduceRemoveTab 都保留空组（零 tabs 走 GroupPane 零 tabs 分支），
+    //   这里只剩「组表真为空」的异常兜底。
     return (
       <div
         className="ldk-main-zone" // E5.8#50.7：主区玻璃表面（index.css 消费 --surface-*/--glass-*；默认零值零变化）
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          height: "100%",
-          color: "var(--text-muted)", /* E5.8#128.3：去掉 hex fallback */
-          fontSize: "var(--font-size-md)", /* E5.8 Phase 12 #171：13→md */
-          userSelect: "none",
-        }}
+        style={{ display: "flex", height: "100%" }}
       >
-        {t("没有打开的标签页")}
+        <EmptyStage />
       </div>
     );
   }
