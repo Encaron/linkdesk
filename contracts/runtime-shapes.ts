@@ -1006,6 +1006,12 @@ function chkCreatableViewMeta(v: unknown, p: string, errs: string[]): void {
     const _t155 = v as Record<string, unknown>;
     if (typeof _t155.pluginId !== "string") errs.push(((p) + ".pluginId") + ": 期望 string，实收 " + typeof _t155.pluginId);
     if (typeof _t155.label !== "string") errs.push(((p) + ".label") + ": 期望 string，实收 " + typeof _t155.label);
+    if (_t155.icon !== undefined) {
+    if (typeof _t155.icon !== "string") errs.push(((p) + ".icon") + ": 期望 string，实收 " + typeof _t155.icon);
+    }
+    if (_t155.iconSource !== undefined) {
+    if (!(_t155.iconSource === "lucide" || _t155.iconSource === "codicon" || _t155.iconSource === "svg" || _t155.iconSource === "url")) errs.push(((p) + ".iconSource") + ": 期望 lucide|codicon|svg|url");
+    }
   }
 }
 function chkPanelViewMeta(v: unknown, p: string, errs: string[]): void {

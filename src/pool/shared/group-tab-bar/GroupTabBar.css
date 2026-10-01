@@ -288,3 +288,10 @@
 .ldk-group-tab-plus-menu-item:hover {
   background: var(--hover-overlay); /* E5.8#128.3：幽灵 --bg-hover → --hover-overlay（原无效值，现恢复 hover 反馈） */
 }
+
+/* W4b：「+」菜单「欢迎页」末项前的分隔线（与 creatableViews 分组） */
+.ldk-group-tab-plus-menu-sep {
+  height: 1px;
+  margin: 4px 0;
+  background: var(--separator);
+}

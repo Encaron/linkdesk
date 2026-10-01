@@ -199,7 +199,14 @@ export function serializeGroups(
         dirty: tab.dirty,
         icon,
         pinned: tab.pinned,
-        closeBehavior: behavior.confirmOnClose ? "confirm" : "normal",
+        // W4：isFallback 如实映射 closeBehavior——欢迎页**保留可关**（拍板 2026-10-01 §四3）。
+        // fallback 无 plugin.json ⇒ confirmOnClose 必缺 ⇒ 恒 normal（可关、不确认）——
+        // 显式写出，消除与 tabIdentity「不可关闭」旧注释的矛盾（该注释已同笔订正；W7 后关光即空场，无重生）。
+        closeBehavior: behavior.isFallback
+          ? "normal"
+          : behavior.confirmOnClose
+            ? "confirm"
+            : "normal",
         singleton: behavior.singleton,
         shellRendered: isShellRenderedTab(tab.type),
         shellType: isShellRenderedTab(tab.type) ? tab.type : undefined,

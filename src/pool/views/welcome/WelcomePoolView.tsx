@@ -122,7 +122,7 @@ export default function WelcomePoolView({ isActive: _isActive, creatableViews }:
       <div className="ldk-welcome-scroll">
         <header className="ldk-welcome-hero">
           <h1 className="ldk-welcome-title">LinkDesk</h1>
-          <p className="ldk-welcome-subtitle">{t("通用调试容器")}</p>
+          <p className="ldk-welcome-subtitle">{t("一个容器，装下你所有的工作方式")}</p>
         </header>
 
         <section className="ldk-welcome-section">
@@ -160,7 +160,11 @@ export default function WelcomePoolView({ isActive: _isActive, creatableViews }:
                   className="ldk-welcome-card"
                   onClick={() => handleShortcutClick(v.pluginId, v.label)}
                 >
-                  <PluginIcon pluginId={v.pluginId} className="ldk-welcome-card-icon" />
+                  <PluginIcon
+                    pluginId={v.pluginId}
+                    manifest={v.icon ? { icon: v.icon, iconSource: v.iconSource } : undefined}
+                    className="ldk-welcome-card-icon"
+                  />
                   <span className="ldk-welcome-card-label">{t(v.label)}</span>
                 </button>
               ))}
@@ -174,19 +178,27 @@ export default function WelcomePoolView({ isActive: _isActive, creatableViews }:
           <section className="ldk-welcome-section">
             <h2 className="ldk-welcome-section-title">{t("最近")}</h2>
             <div className="ldk-welcome-recent-list">
-              {recentViews.slice(0, 10).map((entry, i) => (
-                <button
-                  key={`${entry.pluginId}-${entry.workspaceName ?? ""}-${i}`}
-                  className="ldk-welcome-recent-item"
-                  onClick={() => handleRecentClick(entry)}
-                >
-                  <PluginIcon pluginId={entry.pluginId} className="ldk-welcome-recent-icon" />
-                  <span className="ldk-welcome-recent-label">{t(entry.label)}</span>
-                  {entry.workspaceName && (
-                    <span className="ldk-welcome-recent-workspace">{entry.workspaceName}</span>
-                  )}
-                </button>
-              ))}
+              {recentViews.slice(0, 10).map((entry, i) => {
+                // W1：最近行图标与开始卡同源——当前 creatableViews 里有该插件才携带预解析身份图
+                const meta = creatableViews?.find((c) => c.pluginId === entry.pluginId);
+                return (
+                  <button
+                    key={`${entry.pluginId}-${entry.workspaceName ?? ""}-${i}`}
+                    className="ldk-welcome-recent-item"
+                    onClick={() => handleRecentClick(entry)}
+                  >
+                    <PluginIcon
+                      pluginId={entry.pluginId}
+                      manifest={meta?.icon ? { icon: meta.icon, iconSource: meta.iconSource } : undefined}
+                      className="ldk-welcome-recent-icon"
+                    />
+                    <span className="ldk-welcome-recent-label">{t(entry.label)}</span>
+                    {entry.workspaceName && (
+                      <span className="ldk-welcome-recent-workspace">{entry.workspaceName}</span>
+                    )}
+                  </button>
+                );
+              })}
             </div>
           </section>
         )}

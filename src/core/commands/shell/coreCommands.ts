@@ -452,6 +452,7 @@ import { registerUpdateCommands } from "./updateCommands"; // E6#57.10：主软�
 import { registerReleaseNotesCommands } from "./releaseNotesCommands"; // E6#57.13：发行说明标签页（打开 + 池侧三条动作）
 import { registerAboutCommands } from "./aboutCommands"; // E6#57.14：关于标签页（打开 + 池侧「复制」）
 import { registerManualCommands } from "./manualCommands"; // M3 AI#16：AI 操作手册（打开；帮助菜单入口）
+import { registerWelcomeCommands } from "./welcomeCommands"; // 欢迎页重设计 W4a：app.openWelcome（帮助菜单/+/命令面板三入口共用）
 import { registerAiBridgeCommands } from "./aiBridgeCommands"; // M4 AI#38：AI 接入（状态出口＋设置页动作按钮）
 import { registerReadCommands } from "./readCommands"; // M2 AI#62：读数命令族（配置读／布局读／容器与视图读）
 import { registerShellMenus } from "../input-bindings/shellMenus";
@@ -474,6 +475,7 @@ export function ensureCoreCommands(): void {
   registerReleaseNotesCommands(); // E6#57.13：发行说明标签页（打开 + 池侧三条动作）
   registerAboutCommands(); // E6#57.14：关于标签页（打开 + 池侧「复制」）
   registerManualCommands(); // M3 AI#16：AI 操作手册标签页（打开；帮助菜单入口）
+  registerWelcomeCommands(); // 欢迎页重设计 W4a：app.openWelcome（打开；帮助菜单/+/命令面板三入口共用）
   registerAiBridgeCommands(); // M4 AI#38：AI 接入（五条状态出口 ＋ 七条动作按钮）
   registerReadCommands(); // M2 AI#62：读数命令族（配置读／布局读／容器与视图读——写侧 AI#21 的读侧补齐）
   registerQuickPickCommand(); // E5.7#18：quickpick.show 插件命令

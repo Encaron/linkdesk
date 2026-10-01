@@ -405,10 +405,11 @@ export interface PoolGroup {
   tabs: PoolTab[];
 }
 
-/** [+] 按钮可创建的视图类型——壳 pushLayout 时从 getTabCreatableViews() 动态计算 */
+/** [+] 可创建的视图类型——壳 pushLayout 时从 getTabCreatableViews() 计算；W1：icon/iconSource = 壳 pickIdentityArt() 预解析（与标签栏/市场同源），undefined ⇒ 池 emoji 兜底 */
 export interface CreatableViewMeta {
   pluginId: string;
   label: string;
+  icon?: string; iconSource?: "codicon" | "svg" | "url" | "lucide"; // 联合同 plugin.schema.json iconSource（契约生成源）
 }
 
 // ── E5.7#1：布局 zone 字段 ──

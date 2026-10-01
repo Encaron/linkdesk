@@ -77,6 +77,11 @@ export function registerShellMenus(): void {
         // 顺带 ContextMenu 会在它与下一项之间画一条分隔线——首项 + 空组分隔线正是设计要的样子。
         // 恒显（无 when）——「入口存在」不是「有更新才给你看」，用户随时可查历史版本说明。
         { command: "update.openReleaseNotes", group: "helpRelease" },
+        // ── 欢迎页重设计 W4b：欢迎页入口——helpLearn **首项**（先到家再学手艺：欢迎页是
+        //  「我该从哪开始」，先于快捷键/手册）。命令由 welcomeCommands.ts 注册（W4a）；
+        //  W7 后欢迎页不再是保底标签，本项是三个显式入口之一（帮助菜单/+/命令面板）。
+        //  恒显（无 when）——壳兜底页无需任何插件在场。
+        { command: "app.openWelcome", group: "helpLearn" },
         // 从「查看」移出（用户 2026-09-12 裁决：移入帮助，不是并存）。label 覆盖命令 title——
         // 同一命令在不同菜单用不同措辞是 label 的本职（VS Code 同款），命令 title 那一份不动。
         { command: "workbench.action.openKeybindingsSettings", label: "快捷键列表", group: "helpLearn" },

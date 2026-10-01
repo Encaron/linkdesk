@@ -34,8 +34,8 @@ import { FALLBACK_PLUGIN_ID } from "./plugin/fallbackPluginId";
 /* ── 元数据接口 ── */
 
 interface TabIdentityMeta {
-  /** 是否为保底标签页（全场无标签时自动创建，不可关闭）。
-   *  仅欢迎页声明——它没有 plugin.json，由本模块提供。 */
+  /** 是否为保底标签页（欢迎页）——**保留可关**（拍板 2026-10-01 §四3；W7 落地后零标签 ⇒
+   *  空场背景，不再自动重生，欢迎页只靠显式入口打开）。仅欢迎页声明——它没有 plugin.json，由本模块提供。 */
   isFallback?: boolean;
   /**
    * 单例——同 type 只允许一个标签页。**本字段是壳视图的出口**：插件的单例走

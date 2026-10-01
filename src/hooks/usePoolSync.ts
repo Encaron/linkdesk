@@ -37,6 +37,7 @@ import { useAiManual } from "./useAiManual"; // M3 AI#16：AI 操作手册标签
 import { UPDATE_ACTIONABLE_KEY, UPDATE_BUTTON_LABEL_KEY, isUpdateActionable, updateButtonKeyFor } from "../core/commands/shell/updateCommands"; // E6#57.11
 import { getAssetPath } from "../core/utils/path/assetPath"; // E5.7#5：logoUrl——池不 import core，壳解析推送
 import { getTabCreatableViews } from "../pluginLoader/contributions/viewRegistry";
+import { pickIdentityArt } from "../components/shared/plugin-icon/iconUtils"; // W1 图标链：壳侧预解析身份图
 // ── E5.8#0d.10-5：6 子模块聚合——序列化器 + 订阅组；E5.8#43-2：+ windowLayout（按窗口组装）──
 import { buildSidebarViewMetas, buildPanelViewMetas, buildPanelSwitcherGroups, buildEffectiveCollapsedViewIds } from "./usePoolSync/sidebar-panel";
 import { buildTitleBarMenuGroups, buildTitleBarSlots, MENU_STYLE_MENUBAR_VISIBLE } from "./usePoolSync/titlebar";
@@ -320,8 +321,13 @@ export function usePoolSync({ windows, sidebarView, isSidebarVisible, panelActiv
         ...(chordLabel ? { chordLabel } : {}),
         notif: buildNotif(t),
       },
-      // E5.8#37.9.1：标签栏 [+] 创建菜单 label 同 manifest.name——t() 解析后推流（iconbar 同款）
-      creatableViews: getTabCreatableViews().map((e) => ({ pluginId: e.pluginId, label: t(e.manifest.name) })),
+      // E5.8#37.9.1：标签栏 [+] 创建菜单 label 同 manifest.name——t() 解析后推流（iconbar 同款）。
+      // W1 图标链：icon/iconSource 由壳侧 pickIdentityArt() 预解析（恒返有效 descriptor）——
+      // 解析在壳、池零逻辑（与标签栏 windowLayout 同源同函数，防漂移重演）。
+      creatableViews: getTabCreatableViews().map((e) => {
+        const art = pickIdentityArt(e.manifest);
+        return { pluginId: e.pluginId, label: t(e.manifest.name), icon: art.icon, iconSource: art.iconSource };
+      }),
       // E5.8#45 面板独占性：存在漂移面板窗（mode:"drift"）→ 面板已脱出——main 停推 panel，
       // 漂移窗按 zones 推 panel。真相源 = 壳窗口注册表（windows 是依赖，mode 变化即重推）。
       // 与上方 panelDetached 同源（面板对象 detachable + 独占裁决共用同一判定）。

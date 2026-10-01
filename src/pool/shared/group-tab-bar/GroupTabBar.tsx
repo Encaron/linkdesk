@@ -36,6 +36,7 @@ import OverlayPortal from "../../../components/shared/overlay-portal/OverlayPort
 import { Z_INDEX } from "../../../constants"; // E5.8#107：裸 1001 → Z_INDEX 常量（禁裸数字）
 import PoolPluginIcon from "../pool-plugin-icon/PoolPluginIcon"; // E6#69g：标签图标哑渲染判别联合（codicon/img/emoji/lucide）
 import { revealDelta } from "./revealActiveTab"; // 04「标签栏内容自适应」：活动标签滚入视野的纯增量
+import { executePoolCommand } from "../../commands/executePoolCommand"; // W4b：「+」菜单「欢迎页」末项走命令派发
 import "./GroupTabBar.css";
 
 // ═══════════════════════════════════════════════════════════════════
@@ -439,6 +440,18 @@ export default function GroupTabBar({ groupId, tabs, activeTabId, draggingId, dr
                 {v.label}
               </button>
             ))}
+            {/* W4b：「+」菜单末项——分隔线＋「欢迎页」固定入口。菜单面纯文字（用户拍板，无图标）；
+                走命令派发不直调 tabAction——菜单语义归一（入口可多处，命令源唯一，与帮助菜单同落点）。 */}
+            <div className="ldk-group-tab-plus-menu-sep" role="separator" />
+            <button
+              className="ldk-group-tab-plus-menu-item"
+              onClick={() => {
+                executePoolCommand("app.openWelcome"); // 命令 id 唯一源 = 壳 welcomeCommands.ts OPEN_WELCOME_COMMAND_ID
+                setShowPlusMenu(false);
+              }}
+            >
+              {t("欢迎页")}
+            </button>
           </div>
           </OverlayPortal>
         )}
