@@ -52,7 +52,14 @@
         "scripts/dev/m4-fullchain/examples.mjs",
         // M4 正式件（AI#34）：CLI 皮入口——PATH/安装器随包归 AI#40；lib/ 由它 import（knip 可见）。
         //   内核 electron/services/aiBridge/ 由 main.ts import，不在本表（正常依赖图）。
-        "cli/linkdeskctl/linkdeskctl.mjs"
+        "cli/linkdeskctl/linkdeskctl.mjs",
+        // 安装界面自绘·件 2a（2026-10-01）：单文件安装包拼合器——命令行直跑
+        //   （`node scripts/build-installer.mjs --exe <壳.exe> --payload <app-*.7z> --out <安装包.exe>`，
+        //   另有 `--check <安装包.exe>` 独立自检），壳内零消费方——非死代码。
+        //   ⚠️ 插进 `npm run electron:build` 是**件 3b 出包链整合**的活（那时 knip 由 npm script 自动看见，
+        //   本行即可摘除）；本件刻意不先切 electron-builder.yml 的 target——单切会让顶层没有 .exe / latest.yml，
+        //   把 check-packaging-files 与 assert-installer-name 两道门禁弄红。理由见 06-任务清单 件 2a 首子项。
+        "scripts/build-installer.mjs"
       ],
       "project": [
         // E5.8#2：plugins/ 排除——插件是独立 vite 构建产物（dist/plugins/*.js 构建自证），knip 只管壳 src/ + electron/

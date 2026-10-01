@@ -1,2 +1,7 @@
 // 1  = ICON（Windows 资源序），指向仓内品牌图标
 1 ICON "..\\..\\icon.ico"
+
+// 2 = RCDATA：随包 7-Zip 控制台（7zr.exe，tools\\fetch-7z.ps1 取，不入仓）。
+// 解压载荷时落到 %TEMP% 执行后删；嵌成资源才保得住「安装包 = 单文件」。
+// 相对路径按 .rc 所在目录解析（与上面那条同理）。
+2 RCDATA "tools\\.cache\\7zr.exe"

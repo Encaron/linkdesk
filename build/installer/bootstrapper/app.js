@@ -229,6 +229,25 @@ function closeByStage() {
   post({ type: 'close' });         // 主屏/确认屏：未写入任何内容，直接退
 }
 
+/* ── 宿主 → 页面（件 2a）：安装在宿主进程里真跑，进度/成败由宿主回报 ─────────
+ * 宿主侧见 main.cpp 的 WM_LK_* → PostJson；这条路只走 ICoreWebView2::PostWebMessageAsJson。 */
+function onHostMessage(ev) {
+  let m = ev && ev.data;
+  if (typeof m === 'string') { try { m = JSON.parse(m); } catch (e) { return; } }
+  if (!m || !m.type) return;
+  if (m.type === 'progress') {
+    // 只前进不倒退：宿主已保证单调，这里再兜一道（IO 抖动 / 迟到消息）
+    if (typeof m.pct === 'number' && m.pct > lastPct) setProgress(m.pct);
+    return;
+  }
+  if (m.type === 'install-error') { setError(m.code || '', m.msg || ''); return; }   // setError 内含 go('error')
+  if (m.type === 'install-canceled') { resetProgress(); go('home'); return; }
+  if (m.type === 'install-done') { setProgress(100, { force: true }); go('finish'); return; }
+}
+if (window.chrome && window.chrome.webview) {
+  window.chrome.webview.addEventListener('message', onHostMessage);
+}
+
 document.addEventListener('click', function (e) {
   const el = e.target.closest ? e.target.closest('[data-action]') : null;
   if (!el) return;
@@ -414,9 +433,17 @@ function boot() {
     return;
   }
   setInstallDir($('[data-role=path]').value);          // 让完成屏路径与输入框同源
+  // 件 2a：宿主自报家门的真值 —— 目标目录（可能来自上次安装的注册表）与版本（marker 里读的）
+  if (q.get('dir')) setInstallDir(q.get('dir'));
+  if (q.get('ver')) setVersion(q.get('ver'));
   go(q.get('screen') || 'home');
   if (q.get('custom') === '1') setCustom(true);
   if (q.get('pct') !== null) setProgress(+q.get('pct'), { force: true });
+  // 开发/验收开关：摆到进度屏后自动点「立即安装」，走的是**页面真动作**（post install-start），
+  // 不是宿主短路——这样测的就是产品那条路。产品运行不带此参数。
+  if (q.get('autoinstall') === '1') {
+    if (q.get('screen') === 'progress' || !q.get('screen')) setTimeout(function () { ACTIONS.install(); }, 250);
+  }
 }
 
 (function initI18n() {

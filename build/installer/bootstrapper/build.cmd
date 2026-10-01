@@ -11,6 +11,12 @@ call "%VS%\VC\Auxiliary\Build\vcvars64.bat" >nul 2>&1
 cd /d "%~dp0"
 if not exist out mkdir out
 
+rem 7zr.exe is embedded as RCDATA (icon.rc id 2) -- fetch it once if the cache is empty.
+if not exist "tools\.cache\7zr.exe" (
+  echo fetching 7zr.exe ...
+  powershell -NoProfile -ExecutionPolicy Bypass -File "tools\fetch-7z.ps1" || exit /b 1
+)
+
 rc /fo icon.res icon.rc
 if errorlevel 1 (echo rc failed & exit /b 1)
 
@@ -27,9 +33,16 @@ if not exist out\i18n mkdir out\i18n
 for %%F in (..\i18n\*.json) do copy /y "%%F" out\i18n\ >nul
 if not exist out\i18n\zh-CN.json (echo FAIL: out\i18n\zh-CN.json missing & exit /b 1)
 
+rem Single-file product form: the page MUST travel inside the exe (there is no app.html next to a
+rem concatenated setup.exe). Generate the embedded-UI manifest + resource script, then compile it.
+rem Dev keeps using out\app.* -- see ResolveUiRoot() in main.cpp.
+node tools\gen-ui-rc.mjs || exit /b 1
+rc /fo ui.res out\ui.gen.rc
+if errorlevel 1 (echo rc ui failed & exit /b 1)
+
 cl /nologo /W3 /O2 /MT /EHsc /std:c++17 /utf-8 /DUNICODE /D_UNICODE ^
    /I ".sdk\webview2\include" ^
-   main.cpp icon.res ^
+   main.cpp icon.res ui.res ^
    /Fo"out\\" /Fe"out\bootstrapper.exe" ^
    /link ".sdk\webview2\x64\WebView2LoaderStatic.lib" shlwapi.lib
 if errorlevel 1 exit /b 1
