@@ -50,4 +50,4 @@
 
 ## 五、验收口径（提前立）
 
-打包态才见效 ⇒ 按 04 README §一既有口径：**攒批发版时用正式安装包补测**。实测清单：双击全流程九幕（[02-流程设计.md](02-流程设计.md) §二）· 覆盖安装（旧版升级，勾选按注册表现状反推、版本守卫生效）· 卸载干净（快捷方式 / 协议 / 右键 / PATH 无残留）· `npm run electron:build` 出包链全绿（`assert-installer-name` / `check-packaging-files` 扩展后）。
+打包态才见效 ⇒ 按 04 README §一既有口径：**攒批发版时用正式安装包补测**。实测清单：双击全流程九幕（[02-流程设计.md](02-流程设计.md) §二）· 覆盖安装（旧版升级，勾选按注册表现状反推、版本守卫生效）· 卸载干净（快捷方式 / 右键 / PATH 无残留）· `npm run electron:build` 出包链全绿（`assert-installer-name` / `check-packaging-files` 扩展后）。

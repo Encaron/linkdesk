@@ -49,7 +49,7 @@ node scripts\build-installer.mjs --exe out\bootstrapper.exe ^
 | `interact-test.ps1` | 真键鼠交互验收：拖窗位移断言 / Enter 主按钮 / 下拉＋Esc / ✕ 退出（产物 `out\it-*.png`） |
 | `i18n-test.ps1` | 件 1c 词条装载器验收（39 断言）：探针页 iframe 实测 DOM ＋ 1px 图片信标回传（**不靠截图/OCR/时序运气**——靠本地 http.server 的访问日志），C1–C5 五路装载器 ＋ 三张 exe 实跑截图（带出注册表语言／扫目录，跑完复原注册表）；日志 `out\i18n-test.log` |
 | `install-test.ps1` | 件 2a 验收（三路，跑**真安装包**）：路 B 静默装（退出码／文件数／字节数与 marker 声明对账）· 路 A 界面态（`--log` 证进度单调不倒退、四段边界到过、收在 100）· 路 C `--force-run` 拉起壳（**按安装目录路径认进程**，不按名字）。⚠️ 三条路的 `--dir` 全指临时目录，**不碰**真装的 LinkDesk；用法 `-Setup <安装包.exe>`。🔴 **件 2b 起必须加 `-AllowSystemWrites`**——安装现在会写真机注册表（关联/右键/PATH/ARP/快捷方式），而本脚本**没有备份还原**，不给开关就直接拒绝执行 |
-| `syswrite-test.ps1` | 件 2b 验收（**七路**，跑真安装包 ＋ **真机注册表**）：装前把要碰的键**全量导出备份**（`reg.exe export` 原样往返，值的类型/编码不经脚本手）＋ 跑完全部还原并**自检还原结果**。路 1 静默（勾选值按注册表现状**反推** ⇒ 逐键跟着装前现状走）· 路 1b 静默（预置三键 ⇒ 验 `*\shell` 的**写入侧**）· 路 2 界面态覆盖装（页面不勾的项**必须没写**）· 路 3 PATH 真追加/幂等 · 路 3b PATH **类型不降级**（`REG_EXPAND_SZ` 进必 `REG_EXPAND_SZ` 出）· 路 4 界面态**全新目录**（四段进度真读数断言）。开头有**新鲜度门禁**（见坑 11）。`-SkipRestore` 留现场、`-RestoreOnly` 按上次备份补救 |
+| `syswrite-test.ps1` | 件 2b 验收（**七路**，跑真安装包 ＋ **真机注册表**）：装前把要碰的键**全量导出备份**（`reg.exe export` 原样往返，值的类型/编码不经脚本手）＋ 跑完全部还原并**自检还原结果**。路 1 静默（勾选值按注册表现状**反推** ⇒ 逐键跟着装前现状走）· 路 1b 静默（预置三键 ⇒ 验 `*\shell` 的**写入侧**）· 路 2 界面态覆盖装（页面不勾的项**必须没写**）· 路 3 PATH 真追加/幂等 · 路 3b PATH **类型不降级**（`REG_EXPAND_SZ` 进必 `REG_EXPAND_SZ` 出）· 路 4 界面态**全新目录**（四段进度真读数断言）。开头有**新鲜度门禁**（见坑 11）。`-SkipRestore` 留现场、`-RestoreOnly` 按上次备份补救。**还原链自身健壮化**（2026-10-02 收口，见坑 13/14）：杀不掉进程**只警告不抛** · 还原每步套 `Restore-Step` 记账（一步失败不炸全链）· 还原自检**加断言 `UninstallString`** · 路 4 轮询带**卡死看门狗**（每 20s 打「日志静止秒数／末条 pct／进程活否／ARP 尾值」） |
 | `gen-ui-rc.mjs` | 生成 `out\ui.gen.rc` ＋ `out\ui.manifest`：把 `app.html/css/js` 与 `i18n/*.json` 编成 RCDATA（id 3 清单、id 10+ 文件）。**单文件产品态必须**——拼合后的 setup.exe 旁边没有 `app.html` |
 
 ## 二、实测事实（2026-10-01，本机 VS2022 Community ＋ WebView2 运行时 140.0.3485.94）
@@ -134,6 +134,22 @@ node scripts\build-installer.mjs --exe out\bootstrapper.exe ^
     结论是假的；接着就会把「静默装按现状反推 ⇒ 不该写这个键」误判成实现 bug（本件真踩过：一条断言红、一条
     提供程序读数假绿，两边一起把人带偏）。**判存在/取值一律走 .NET `RegistryKey.OpenSubKey` 的字面路径**
     （只认 `\` 作分隔，`*` 就是普通字符）；`tools\syswrite-test.ps1` 的 `Reg-Get/Reg-Has` 即此实现。
+13. 🔴 **`finally` 里抛一次异常 ⇒ 它后面的还原全免，真机就此留在测试态**（件 2b 收口实测）。
+    `syswrite-test.ps1` 的 `finally { Stop-SetupProcs; …; Restore-All }` 里排第一的 `Stop-SetupProcs` 用
+    `$proc.Kill()` 杀安装器时撞上「拒绝访问」抛出——而 **PowerShell 的 `finally` 块一抛就跳出整块**，
+    紧随其后的 `Restore-All` 压根没跑。读数是「测试红 ＋ 机器没还原」：ARP 的 `UninstallString` 指向
+    临时目录 `…\l1b`、PATH 里留着测试目录、桌面 lnk 被删。三条硬修：① 杀进程失败**只警告不抛**
+    （这个函数在 `finally` 第一位，它抛＝还原全免）；② `Restore-All` 每一步套 `Restore-Step` 记账，
+    跑完汇总报错而不再一步炸全链；③ 还原自检**补断言 `UninstallString`**——原来只断言 `DisplayName`，
+    而这次污染恰好不显示在 `DisplayName` 上，等于自检形同虚设。
+    同批还有个更隐蔽的：**`reg.exe` 的成功提示走 stderr**（`操作成功完成。`），在 `$ErrorActionPreference='Stop'`
+    下会被当成**终止性错误**——硬修后第一跑，18 条「导回」步骤全报失败而实际全对。故一律走 `Invoke-Reg`
+    （内部临时切 `Continue` ＋ 检查 `$LASTEXITCODE`）：**判成败看退出码，不看 stderr**。
+    机器被留在测试态时的补救：`-RestoreOnly`（按上次备份复位，跑完自己打印 0 条/几条失败）。
+14. **路 4 卡死一次、不可复现**（判为一次性环境事件，但已留现场抓手）：日志停在 `pct=70` 且无
+    `install-canceled`／`install-error`、临时解压目录已被清掉（说明 `ExtractPayload()` 已返回）、无 WER 崩溃记录；
+    同一二进制、同一机器**原样重跑 11 秒走完**，随后七路全量绿（0 失败）。轮询循环现每 20 秒打一行
+    「日志静止 n 秒／末条 `pct`／进程是否活／ARP 尾值」——再犯时有现场可读，不必靠猜。
 
 ## 四、宿主契约（件 1b 起会用到）
 

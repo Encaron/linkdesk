@@ -200,7 +200,7 @@
       <div class="track"><div class="fill" id="fill"></div></div>
       <ul class="plist">
         <li id="p1"><span class="st"></span>解压文件（app + 出厂插件 + AI 手册）</li>
-        <li id="p2"><span class="st"></span>注册 linkdesk:// 协议</li>
+        <li id="p2"><span class="st"></span>注册文件关联（加入「打开方式」候选）</li>
         <li id="p3"><span class="st"></span>写系统项（快捷方式 · 右键菜单 · PATH）</li>
         <li id="p4"><span class="st"></span>收尾校验</li>
       </ul>
@@ -256,7 +256,7 @@ function toggleCustom(){const c=document.getElementById('custom');c.classList.to
   document.getElementById('custtoggle').textContent=c.classList.contains('open')?'收起':'自定义安装';}
 function start(){go('progress');reset();
   const t0=performance.now(),DUR=9000;
-  const seg=p=>p<70?1:p<80?2:p<92?3:4, phTxt=['','STEP 1 / 4 · 正在解压文件','STEP 2 / 4 · 注册 linkdesk:// 协议','STEP 3 / 4 · 写系统项','STEP 4 / 4 · 收尾校验'];
+  const seg=p=>p<70?1:p<80?2:p<92?3:4, phTxt=['','STEP 1 / 4 · 正在解压文件','STEP 2 / 4 · 注册文件关联','STEP 3 / 4 · 写系统项','STEP 4 / 4 · 收尾校验'];
   (function tick(t){const p=Math.min(100,(t-t0)/DUR*100);
     document.getElementById('pn').textContent=Math.floor(p);
     document.getElementById('fill').style.width=p+'%';
@@ -302,7 +302,7 @@ const LIST=[
  ['#custtoggle','Customize'],
  ['#s-home .foot','By continuing you agree to the <a href="#" onclick="return false">License</a> · MIT'],
  ['#p1','Extract files (app + bundled plugins + AI manual)'],
- ['#p2','Register linkdesk:// protocol'],
+ ['#p2','Register file associations (add to the “Open with” list)'],
  ['#p3','Write system entries (shortcuts · context menu · PATH)'],
  ['#p4','Final verification'],
  ['#s-progress .cancel','Cancel install'],

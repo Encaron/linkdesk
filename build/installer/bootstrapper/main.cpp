@@ -867,21 +867,6 @@ static bool JsonGetBool(const std::wstring& js, const wchar_t* key, bool fallbac
     return fallback;
 }
 
-/** 段 2（70–80）：协议注册。
- *  🔴 **本格是空跑，且这不是「没做完」——是产品里根本没有这个注册。** 依据（2026-10-01 查）：
- *    · 05 §4.3 的注册表清单（「逐条不得增删」）里**没有** linkdesk:// 协议；
- *    · 全仓 grep `setAsDefaultProtocolClient` / `registerProtocol` / `linkdesk://` → **零命中**；
- *    · 实机读现装版（NSIS 0.2.33）的全部键 → **也没有**协议注册。
- *  但 mockup 的进度屏第 2 步文案就是「注册 linkdesk:// 协议」（用户已目检通过的屏）。
- *  ⇒ 三处对不上，**不自作主张写一条没人能处理的协议**（写了 = 系统里多一条点了没反应的
- *    「死」协议，比不写更糟）。此处如实空跑并**把落差记进 06/01 文档**，等用户拍板：
- *    要么补 app 侧协议处理 ＋ 这里补注册，要么把 mockup 该步文案改成实际做的事。
- *  ⇒ 进度仍走 70 → 80（保留四段视觉结构），但**70–80 之间不撒谎**：不做假读数。 */
-static void SegmentProtocol()
-{
-    // 有意留空——见上面那段。
-}
-
 /** 目录选择对话框（页面 `browse-dir` → 宿主）。选完把新路径经 `browse-dir-done` 发回页面。
  *  用 IFileOpenDialog(FOS_PICKFOLDERS)——Win11 上是系统「选择文件夹」新样式；
  *  SHBrowseForFolder 是老树形对话框，视觉上跟本安装包不搭。**必须在已 CoInitialize 的线程调用**。 */
@@ -944,16 +929,20 @@ static void InstallWorker()
     }
     if (g_hwnd) PostMessageW(g_hwnd, WM_LK_PROGRESS, 70, 0);
 
-    // 段 2（70–80）：协议注册——本格空跑（产品无此注册，理由见 SegmentProtocol 注释）
-    SegmentProtocol();
+    // E6#45 四项按勾选写。**单项失败不中断、也不把整次安装判死**——应用文件已经落地，
+    // 某个关联没写上不该让用户看到「安装失败」（那会把人吓去重装，越弄越糟）。
+    // 结果照 05 §4.3「一项失败不中断」留痕到调试输出（落点在段 4），供排障。
+    bool sysOk = true;
+
+    // 段 2（70–80）：注册文件关联——ProgId ＋ 13 个扩展的「打开方式」候选 ＋ 能力声明。
+    //   ⚠️ 本段原设计写的是「注册 linkdesk:// 协议」，但产品里既没有这个注册、也处理不了
+    //   该协议（2026-10-01 全仓 grep 零命中 ＋ 实机现装 NSIS 版也没有这条键）⇒ 2026-10-02
+    //   用户拍板**撤掉这项承诺**：文案与实现同改成真实存在的这段工作（不再空跑）。
+    if (g_opts.assoc) sysOk &= WriteAssociations(g_installDir);
+    if (g_canceled.load()) { PostMessageW(g_hwnd, WM_LK_CANCELED, 0, 0); CoUninitialize(); return; }
     if (g_hwnd) PostMessageW(g_hwnd, WM_LK_PROGRESS, 80, 0);
 
-    // 段 3（80–92）：写系统项（快捷方式 · 右键菜单 · PATH · 编辑器注册 · ARP）
-    //   E6#45 四项按勾选写。**单项失败不中断、也不把整次安装判死**——应用文件已经落地，
-    //   某个关联没写上不该让用户看到「安装失败」（那会把人吓去重装，越弄越糟）。
-    //   结果照 05 §4.3「一项失败不中断」留痕到调试输出，供排障。
-    bool sysOk = true;
-    if (g_opts.assoc) sysOk &= WriteAssociations(g_installDir);
+    // 段 3（80–92）：写系统项（右键菜单 · 快捷方式 · PATH · ARP）
     sysOk &= WriteContextMenus(g_installDir, g_opts.fileMenu, g_opts.dirMenu);
     if (g_opts.path) sysOk &= AddToPath(g_installDir);
     sysOk &= CreateShortcuts(g_installDir);

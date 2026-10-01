@@ -92,12 +92,13 @@ function Reg-DelTree([string]$sub) {
     if (Reg-Has $sub) {
         try { $HK.DeleteSubKeyTree($sub, $false) } catch {
             # `*` 这类键名删不掉时退回 reg.exe（同一件事的两个入口，一个不行换另一个）
-            & reg.exe delete "HKCU\$sub" /f | Out-Null
+            Invoke-Reg "删键树 $sub" @('delete', "HKCU\$sub", '/f') -AllowFail | Out-Null
         }
     }
 }
 function Reg-DelValue([string]$sub, [string]$name) {
-    & reg.exe delete "HKCU\$sub" /v $name /f | Out-Null
+    # 值/键本来就不在 ⇒ reg.exe 退 1 属预期，用 -AllowFail（"删干净了"这件事由调用方自己断言）
+    Invoke-Reg "删值 $sub\$name" @('delete', "HKCU\$sub", '/v', $name, '/f') -AllowFail | Out-Null
 }
 # 只为**预置**取值（路 1b 造「当初勾过」的现场、路 3b 造 REG_EXPAND_SZ 现场）——类型是我自己定的，
 # 不涉及往返未知类型，所以走 .NET 比 reg.exe 稳：值里带 `"`／`%1`／`%USERPROFILE%`，交给 reg.exe
@@ -135,22 +136,23 @@ foreach ($n in @('main.cpp', 'syswrite.cpp', 'syswrite.h', 'app.js', 'app.css', 
         if (-not $newest -or $t -gt $newest) { $newest = $t; $newestName = $n }
     }
 }
-$setupTime = (Get-Item $Setup).LastWriteTime
-if ($newest -and $setupTime -lt $newest) {
+$setupTime = $null
+if ($Setup) { $setupTime = (Get-Item $Setup).LastWriteTime }
+if ($newest -and $setupTime -and $setupTime -lt $newest) {
     Write-Host "🔴 安装包比源文件旧——先 build.cmd，再用 scripts/build-installer.mjs 重拼，别拿旧壳验收"
     Write-Host "     $([IO.Path]::GetFileName($Setup)) = $setupTime"
     Write-Host "     最新源 $newestName = $newest"
     exit 3
 }
 $shellExe = Join-Path $here '..\out\bootstrapper.exe'
-if (Test-Path $shellExe) {
+if ($setupTime -and (Test-Path $shellExe)) {
     $shellTime = (Get-Item $shellExe).LastWriteTime
     if ($shellTime -gt $setupTime) {
         Write-Host "🔴 壳 exe 比安装包新——壳重建了但没重拼载荷（out\bootstrapper.exe $shellTime > setup $setupTime）"
         exit 3
     }
 }
-Write-Host "新鲜度 OK：安装包 $setupTime ≥ 最新源 $newestName（$newest）"
+if ($setupTime) { Write-Host "新鲜度 OK：安装包 $setupTime ≥ 最新源 $newestName（$newest）" }
 
 $EXTS = @('.txt', '.py', '.js', '.json', '.md', '.html', '.css', '.ts', '.tsx', '.yaml', '.xml', '.csv', '.log')
 # 右键三项：键名 → command 参数。`*\` 与 `Directory\` 传的是 "%1"（被点的那一项本身），
@@ -177,27 +179,68 @@ $backDir    = Join-Path $Work '_back'
 $stateFile  = Join-Path $Work '_state.json'
 
 # ── 还原 ────────────────────────────────────────────────────────────────────
+# 🔴 还原的每一步都必须**各自兜异常**：还原是本脚本唯一的「把用户机器还回去」的路，
+#    它自己有一步抛异常，后面几步就不跑了——半还原比不还原更难发现。
+#    （定义必须在本节之前：`-RestoreOnly` 分支紧跟在下面，脚本自上而下执行。）
+$restoreBad = 0
+# 🔴 `reg.exe` 的提示语（`操作成功完成。`）**走 stderr**，而 `$ErrorActionPreference='Stop'`
+#    会把原生命令的 stderr 当**终止性错误** ⇒ 明明成功却抛异常。2026-10-02 实机两次栽在这：
+#    ① 上次 `Restore-All` 被一句成功提示打断，ARP/PATH 没还原（机器留在临时目录上）；
+#    ② 本次加固版又在 import 处假红 18 条。⇒ 原生调用一律经这里，临时把偏好降回 Continue。
+#    `-AllowFail`：删不存在的值/键时 reg.exe 退 1 是**预期**，不该抛（调用方自己判后果）。
+function Invoke-Reg([string]$what, [string[]]$regArgs, [switch]$AllowFail) {
+    $prev = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try { $out = & reg.exe @regArgs 2>&1 } finally { $ErrorActionPreference = $prev }
+    if ($LASTEXITCODE -ne 0 -and -not $AllowFail) {
+        throw "$what：reg.exe 退出码 $LASTEXITCODE（$(($out | Out-String).Trim())）"
+    }
+    return $LASTEXITCODE
+}
+function Restore-Step([string]$what, [scriptblock]$body) {
+    try { & $body } catch {
+        Write-Host "🔴 还原步骤失败：$what —— $($_.Exception.Message)"
+        $script:restoreBad++
+    }
+}
+function Restore-RegFile([string]$file) {
+    Invoke-Reg "import $file" @('import', $file) | Out-Null
+}
 function Restore-All {
     $st = Get-Content -LiteralPath $stateFile -Raw | ConvertFrom-Json
     Write-Host "`n=== 还原现场（备份 $backDir）==="
-    foreach ($r in $TREE_ROOTS) { Reg-DelTree $r }
-    foreach ($f in @($st.exports)) { & reg.exe import (Join-Path $backDir $f) | Out-Null }
+    foreach ($r in $TREE_ROOTS) { Restore-Step "删键树 $r" { Reg-DelTree $r } }
+    foreach ($f in @($st.exports)) { Restore-Step "导回 $f" { Restore-RegFile (Join-Path $backDir $f) } }
     if ($st.regAppsHad) {
-        & reg.exe add 'HKCU\Software\RegisteredApplications' /v LinkDesk /t (Reg-TypeName $st.regAppsKind) /d $st.regAppsVal /f | Out-Null
-    } else { Reg-DelValue 'Software\RegisteredApplications' 'LinkDesk' }
+        Restore-Step 'RegisteredApplications → LinkDesk' {
+            Invoke-Reg '写 RegisteredApplications' @('add', 'HKCU\Software\RegisteredApplications',
+                '/v', 'LinkDesk', '/t', (Reg-TypeName $st.regAppsKind), '/d', $st.regAppsVal, '/f') | Out-Null
+        }
+    } else { Restore-Step '删 RegisteredApplications → LinkDesk' { Reg-DelValue 'Software\RegisteredApplications' 'LinkDesk' } }
     if ($st.envHad) {
-        & reg.exe add 'HKCU\Environment' /v Path /t (Reg-TypeName $st.envKind) /d $st.envVal /f | Out-Null
-    } else { Reg-DelValue 'Environment' 'Path' }    foreach ($pair in @(@{ had = $st.desktopHad; f = 'desktop.lnk'; dst = $desktopLnk },
+        Restore-Step 'Environment → Path' {
+            Invoke-Reg '写 Environment\Path' @('add', 'HKCU\Environment',
+                '/v', 'Path', '/t', (Reg-TypeName $st.envKind), '/d', $st.envVal, '/f') | Out-Null
+        }
+    } else { Restore-Step '删 Environment → Path' { Reg-DelValue 'Environment' 'Path' } }
+    foreach ($pair in @(@{ had = $st.desktopHad; f = 'desktop.lnk'; dst = $desktopLnk },
                         @{ had = $st.menuHad;    f = 'menu.lnk';    dst = $menuLnk })) {
-        if ($pair.had) { Copy-Item -LiteralPath (Join-Path $backDir $pair.f) -Destination $pair.dst -Force }
-        else { Remove-Item -LiteralPath $pair.dst -Force -ErrorAction SilentlyContinue }
+        if ($pair.had) { Restore-Step "放回 $($pair.f)" { Copy-Item -LiteralPath (Join-Path $backDir $pair.f) -Destination $pair.dst -Force } }
+        else { Restore-Step "删 $($pair.dst)" { Remove-Item -LiteralPath $pair.dst -Force -ErrorAction SilentlyContinue } }
     }
     # 还原本身也要验——不然「跑完测试机器坏了」没人知道
     Say ((Reg-Get $ARP 'DisplayName') -eq $st.arpName0) "ARP DisplayName 已还原为 `"$($st.arpName0)`"（现值 `"$(Reg-Get $ARP 'DisplayName')`"）"
+    # 旧备份（2026-10-02 之前）没有这个字段 ⇒ 缺就跳过，不假红
+    if ($st.arpUninstall0) {
+        Say ((Reg-Get $ARP 'UninstallString') -eq $st.arpUninstall0) "ARP UninstallString 已还原为 `"$($st.arpUninstall0)`"（现值 `"$(Reg-Get $ARP 'UninstallString')`"）"
+    }
     Say ((Reg-Get 'Environment' 'Path') -eq $st.envVal) "PATH 已还原（长度 $((Reg-Get 'Environment' 'Path').Length)）"
     # 类型也要断言：路 3b 会临时把 PATH 改成 REG_EXPAND_SZ，只断言「值对」会让一次漏还原静默过关
     Say ((Reg-Kind 'Environment' 'Path') -eq $st.envKind) "PATH 值类型已还原（现 $([Microsoft.Win32.RegistryValueKind](Reg-Kind 'Environment' 'Path'))，应 $([Microsoft.Win32.RegistryValueKind]$st.envKind)）"
     Say ((Test-Path -LiteralPath $desktopLnk) -eq [bool]$st.desktopHad) "桌面 lnk 还原（应有=$($st.desktopHad)）"
+    if ($restoreBad -gt 0) {
+        Say $false "还原有 $restoreBad 个步骤抛过异常（见上面 🔴 行）——机器可能只还原了一半，请人工核对"
+    }
 }
 
 if ($RestoreOnly) {
@@ -231,11 +274,15 @@ if ($desktopHad) { Copy-Item -LiteralPath $desktopLnk -Destination (Join-Path $b
 if ($menuHad) { Copy-Item -LiteralPath $menuLnk -Destination (Join-Path $backDir 'menu.lnk') -Force }
 
 $arpName0 = Reg-Get $ARP 'DisplayName'
+# 🔴 卸载串才是**真正会变**的那个值：DisplayName 无论装到哪都是 `LinkDesk <ver>`，
+#    只断言它 ⇒「ARP 指向临时目录」这种脏状态能一路绿过去（2026-10-02 实机发生过）。
+$arpUninst0 = Reg-Get $ARP 'UninstallString'
 $envVal = Reg-Get 'Environment' 'Path'
 $envKindNum = Reg-Kind 'Environment' 'Path'      # 枚举数（还原时经 Reg-TypeName 转回 REG_*）
 @{
     exports    = $exports
     arpName0   = $arpName0
+    arpUninstall0 = $arpUninst0
     regAppsHad = $regAppsHad
     regAppsVal = Reg-Get 'Software\RegisteredApplications' 'LinkDesk'
     regAppsKind = if ($regAppsHad) { Reg-Kind 'Software\RegisteredApplications' 'LinkDesk' } else { 1 }
@@ -264,8 +311,15 @@ $path0 = $envVal
 function Stop-SetupProcs {
     Get-Process -ErrorAction SilentlyContinue |
         Where-Object { try { $_.Path -eq $Setup } catch { $false } } |
-        # [void] 是必要的：`WaitForExit()` 返回 bool，直接丢在管道里会打到控制台（无信息量的 `True`）
-        ForEach-Object { $_.Kill(); [void]$_.WaitForExit(5000) }
+        ForEach-Object {
+            $proc = $_
+            # [void] 是必要的：`WaitForExit()` 返回 bool，直接丢在管道里会打到控制台（无信息量的 `True`）
+            # 🔴 杀不掉**绝对不能往外抛**：本函数在 finally 里第一个被调，一抛就顶掉它后面的
+            #    `Restore-All` ⇒「测试红 + 机器没还原」。2026-10-02 实机就是这么留下脏 ARP 的：
+            #    读数是 `Stop-SetupProcs` 抛「拒绝访问」→ 还原整段没跑 → ARP/PATH 停在临时目录。
+            try { $proc.Kill(); [void]$proc.WaitForExit(5000) }
+            catch { Write-Host "⚠️ 杀不掉 PID $($proc.Id)（$($_.Exception.Message)）——继续，还原照做" }
+        }
 }
 
 # marker 里读版本（与 scripts/build-installer.mjs 的 64 字节契约同源）
@@ -433,13 +487,27 @@ try {
         -ArgumentList @('--preview=autoinstall=1', "--dir=$d4", "--log=$log4")
     $deadline = (Get-Date).AddSeconds(240)
     $done4 = $false
+    $t0 = Get-Date; $lastTxt = ''; $lastMove = Get-Date; $nextSay = (Get-Date).AddSeconds(20)
     while ((Get-Date) -lt $deadline) {
         if (Test-Path $log4) {
             $t4 = Get-Content -LiteralPath $log4 -Raw -ErrorAction SilentlyContinue
+            if ($t4 -ne $lastTxt) { $lastTxt = $t4; $lastMove = Get-Date }
             if ($t4 -match 'install-done') { $done4 = $true; break }
             if ($t4 -match 'install-error') { break }
         }
         if ($p4.HasExited) { break }
+        # 🔴 卡住时自动吐现场：2026-10-02 那次失败只留「末值 70」，无法判断卡在哪一段。
+        #    这里给「日志静止了多少秒 ＋ 末条是什么 ＋ 进程还活不活 ＋ ARP 动没动」——
+        #    解压完没解压完、离开解压段没有，一眼可判（见 06 该件实录）。
+        if ((Get-Date) -gt $nextSay) {
+            $lastMsg = ''
+            if ($t4) { $lastMsg = (($t4 -split "`r?`n" | Where-Object { $_ }) | Select-Object -Last 1) }
+            $stallSec = [int]((Get-Date) - $lastMove).TotalSeconds
+            $arpNow = (Reg-Get $ARP 'UninstallString') -replace '^.*\\', ''
+            Write-Host ("     等：{0}s（日志静止 {1}s）末条 {2}｜进程活 {3}｜ARP 尾 {4}" -f `
+                [int]((Get-Date) - $t0).TotalSeconds, $stallSec, $lastMsg, (-not $p4.HasExited), $arpNow)
+            $nextSay = (Get-Date).AddSeconds(20)
+        }
         Start-Sleep -Milliseconds 200
     }
     Say $done4 "全新目录装到 install-done"

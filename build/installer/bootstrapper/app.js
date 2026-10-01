@@ -302,7 +302,7 @@ $$('[data-i18n]', document.body).forEach(function (el) { AUTHORED[el.dataset.i18
    否则词条目录整个缺失时会退到 key 名（C5 实测：段头显示 installer.progress.head1）
    ⚠️ 与 i18n/zh-CN.json 的 installer.progress.head* 逐字一致（改词条时同笔改这里） */
 [['installer.progress.head1', 'STEP 1 / 4 · 正在解压文件'],
- ['installer.progress.head2', 'STEP 2 / 4 · 注册 linkdesk:// 协议'],
+ ['installer.progress.head2', 'STEP 2 / 4 · 注册文件关联'],
  ['installer.progress.head3', 'STEP 3 / 4 · 写系统项'],
  ['installer.progress.head4', 'STEP 4 / 4 · 收尾校验']].forEach(function (p) { AUTHORED[p[0]] = p[1]; });
 /* 卸载段头同规（E-卸载屏 mockup 原文；#uph 同样没有标记挂点）

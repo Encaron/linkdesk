@@ -46,7 +46,7 @@ $shim = @'
   if(q.get('pct')!==null){
     var p=+q.get('pct'), s=un?(p<60?1:p<80?2:p<92?3:4):(p<70?1:p<80?2:p<92?3:4);
     var PH=un?['','STEP 1 / 4 · 正在移除程序文件','STEP 2 / 4 · 清理系统项','STEP 3 / 4 · 恢复 PATH','STEP 4 / 4 · 收尾校验']
-             :['','STEP 1 / 4 · 正在解压文件','STEP 2 / 4 · 注册 linkdesk:// 协议','STEP 3 / 4 · 写系统项','STEP 4 / 4 · 收尾校验'];
+             :['','STEP 1 / 4 · 正在解压文件','STEP 2 / 4 · 注册文件关联','STEP 3 / 4 · 写系统项','STEP 4 / 4 · 收尾校验'];
     document.getElementById('pn').textContent=Math.floor(p);
     document.getElementById('fill').style.width=p+'%';
     for(var i=1;i<=4;i++){var li=document.getElementById('p'+i); li.className=i<s?'done':i===s?'run':'';}
