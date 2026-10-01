@@ -227,6 +227,14 @@ html, body, #root, #pool-root {
   background: var(--scrollbar-thumb-hover);
 }
 
+/* §六#4（W6/T13）浏览器默认面收编：::selection 不再用浏览器默认蓝，跟 accent 走。
+   壳自身 chrome 大量 user-select:none，所以这条主要作用于插件视图、输入框与手册正文——
+   正是"用户真会拖选"的地方。焦点环（`*:focus-visible`）与滚动条主题本就是壳 token，无需再补。 */
+::selection {
+  background: var(--accent);
+  color: var(--text-on-accent);
+}
+
 /* === 全局 UI class === */
 
 .ldk-setting-group {

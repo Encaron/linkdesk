@@ -1,10 +1,15 @@
 /**
  * @vitest-environment jsdom
  *
- * GroupPane 零 tabs 分支测试——W7b（欢迎页重设计 T12，设计 §三 W7）。
+ * GroupPane 零 tabs 分支测试——W7b（欢迎页重设计 T12，设计 §三 W7）；
+ * W6（T13）按冻结预览图修正：零标签**标签条保留**（只余右端「+」）。
  *
- * 锁的不变量：**零标签的组 ⇒ 空场层（EmptyStage）补位，标签栏不渲染**；有标签 ⇒ 照旧只有标签栏
- * （零标签分支不误吃正常态）。T11 拆掉「main 恒非空」后，「关掉最后一个标签页」即落入本分支。
+ * 锁的不变量：**零标签的组 ⇒ 空场层（EmptyStage）补位内容区 ＋ 标签条仍在场**
+ * （场景 4 的 frame-note 原话「标签栏只剩「+」，欢迎页靠 openWelcome 命令／+菜单／帮助菜单显式打开」）；
+ * 有标签 ⇒ 照旧只有标签栏、无空场层（零标签分支不误吃正常态）。T11 拆掉「main 恒非空」后，
+ * 「关掉最后一个标签页」即落入本分支——若标签条随零标签一起消失，全新安装首帧就没有「+」入口。
+ * ⚠️ 标签条**在场**由本测锁定；「条上真的只剩 +」在真组件侧由 GroupTabBar 的零列表渲染保证
+ * （本测把真条 mock 成桩，不重测它的内部）。
  *
  * GroupTabBar 被 mock 掉（本测只验 GroupPane 的分支选择，不测标签栏本身）——两点理由：
  *   ① PoolSectionStack.test.tsx 同款做法（不测的下游组件 mock 成 data-testid 桩）；
@@ -46,14 +51,14 @@ function renderPane(group: PoolGroup) {
   );
 }
 
-describe("GroupPane 零 tabs 分支（T12：空场层补位）", () => {
+describe("GroupPane 零 tabs 分支（T12 空场层 ＋ T13 标签条保留）", () => {
   afterEach(cleanup);
 
-  it("零标签 → 空场层在场、标签栏不在场", () => {
+  it("零标签 → 空场层补位内容区，且标签条仍在场（「+」的常驻入口不消失）", () => {
     const { container, queryByTestId } = renderPane(makeGroup([]));
     expect(container.querySelector(".ldk-empty-stage")).not.toBeNull();
     expect(container.querySelector(".ldk-empty-stage-wordmark")).not.toBeNull();
-    expect(queryByTestId("mock-tab-bar")).toBeNull();
+    expect(queryByTestId("mock-tab-bar")).not.toBeNull();
   });
 
   it("有标签 → 标签栏照旧、空场层不出现（零标签分支不误吃正常态）", () => {

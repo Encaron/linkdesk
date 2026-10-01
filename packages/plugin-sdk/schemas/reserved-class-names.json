@@ -49,6 +49,10 @@
     {
       "name": "ldk-welcome-skeleton-breath",
       "why": "宿主欢迎页最近列表加载骨架呼吸（04「启动过场」④C 同语言）"
+    },
+    {
+      "name": "ldk-welcome-in",
+      "why": "宿主欢迎页入场 fade-up（W6/T13：§六#2 全页唯一一处 authored moment）"
     }
   ]
 }

@@ -1098,7 +1098,11 @@
     "ldk-welcome-help-item",
     "ldk-welcome-help-links",
     "ldk-welcome-hero",
+    "ldk-welcome-hero-mark",
+    "ldk-welcome-hero-text",
     "ldk-welcome-logo-bg",
+    "ldk-welcome-open-folder",
+    "ldk-welcome-open-folder-icon",
     "ldk-welcome-page",
     "ldk-welcome-recent-badge",
     "ldk-welcome-recent-icon",
@@ -1111,6 +1115,7 @@
     "ldk-welcome-recent-subtitle",
     "ldk-welcome-recent-unavailable",
     "ldk-welcome-recent-workspace",
+    "ldk-welcome-row-name",
     "ldk-welcome-scroll",
     "ldk-welcome-section",
     "ldk-welcome-section-title",
@@ -1175,7 +1180,8 @@
     "ldk-toast-in",
     "ldk-toast-out",
     "ldk-view-skeleton-breath",
+    "ldk-welcome-in",
     "ldk-welcome-skeleton-breath"
   ],
-  "reservedKeyframeCount": 12
+  "reservedKeyframeCount": 13
 }

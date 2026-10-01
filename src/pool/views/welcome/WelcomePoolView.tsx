@@ -42,6 +42,14 @@ import "./WelcomePoolView.css";
 /** 骨架延迟：这段时间内到达就不占位（§七#7）——数据住本机 pluginState，正常必中，不必拿骨架闪用户一下 */
 const SKELETON_DELAY_MS = 100;
 
+/**
+ * 正典实心 logo 几何（W6/T13）——六边形外轮廓 + 三个 evenodd 真孔。
+ * `fillRule="evenodd"` 的孔是**透明**的（不是拿背景色画圆），所以水印叠在任何主题背景上都成立；
+ * 顶栏小标（App 标题栏）与空场层 EmptyStage 是同一枚几何，此处 hero 标与水印共用一条 path。
+ */
+const MARK_PATH =
+  "M50 4L96 30L96 84L50 110L4 84L4 30Z M42 36a8 8 0 1 0 16 0a8 8 0 1 0-16 0Z M24 72a8 8 0 1 0 16 0a8 8 0 1 0-16 0Z M60 72a8 8 0 1 0 16 0a8 8 0 1 0-16 0Z";
+
 interface WelcomePoolViewProps {
   isActive: boolean;
   creatableViews?: CreatableViewMeta[];
@@ -241,28 +249,27 @@ export default function WelcomePoolView({ isActive, creatableViews }: WelcomePoo
   return (
     <div className="ldk-welcome-page">
       <div className="ldk-welcome-logo-bg" aria-hidden="true">
-        <svg viewBox="0 0 160 160">
-          <polygon
-            points="80,10 147,45 147,115 80,150 13,115 13,45"
-            fill="none" stroke="var(--text-muted)" strokeWidth="2" strokeLinejoin="round"
-          />
-          <circle cx="80" cy="46" r="8" fill="var(--text-muted)" />
-          <circle cx="46" cy="108" r="8" fill="var(--text-muted)" />
-          <circle cx="114" cy="108" r="8" fill="var(--text-muted)" />
+        <svg viewBox="0 0 100 114">
+          <path fillRule="evenodd" fill="var(--text-muted)" d={MARK_PATH} />
         </svg>
       </div>
 
       <div className="ldk-welcome-scroll">
         <header className="ldk-welcome-hero">
-          <h1 className="ldk-welcome-title">LinkDesk</h1>
-          <p className="ldk-welcome-subtitle">{t("一个容器，装下你所有的工作方式")}</p>
+          <svg className="ldk-welcome-hero-mark" viewBox="0 0 100 114" aria-hidden="true">
+            <path fillRule="evenodd" fill="var(--accent)" d={MARK_PATH} />
+          </svg>
+          <div className="ldk-welcome-hero-text">
+            <h1 className="ldk-welcome-title">LinkDesk</h1>
+            <p className="ldk-welcome-subtitle">{t("一个容器，装下你所有的工作方式")}</p>
+          </div>
         </header>
 
         <section className="ldk-welcome-section">
           <h2 className="ldk-welcome-section-title">{t("文件夹")}</h2>
-          <button className="ldk-welcome-card ldk-welcome-open-folder" onClick={handleOpenFolder}>
-            <FolderOpen size={24} className="ldk-welcome-card-icon" />
-            <span className="ldk-welcome-card-label">{t("打开文件夹")}</span>
+          <button className="ldk-welcome-open-folder" onClick={handleOpenFolder}>
+            <FolderOpen size={20} className="ldk-welcome-open-folder-icon" aria-hidden="true" />
+            <span className="ldk-welcome-open-folder-label">{t("打开文件夹")}</span>
           </button>
           {foldersError ? (
             <p className="ldk-welcome-recent-unavailable">{t("最近列表不可用")}</p>
@@ -368,14 +375,17 @@ export default function WelcomePoolView({ isActive, creatableViews }: WelcomePoo
           <h2 className="ldk-welcome-section-title">{t("帮助")}</h2>
           <div className="ldk-welcome-help-links">
             {/* W4：死 <span> 全改真 <button>——键鼠同权（Tab 能到、Enter/Space 能按，浏览器原生行为，不再手搓）。
-                aria-label 显式重申词条原文：lucide SVG 不参与可访问名，图标纯装饰。 */}
+                aria-label 显式重申词条原文：lucide SVG 不参与可访问名，图标纯装饰。
+                W6（T13）：版式按冻结预览图改行列表（名称走 --accent，与「最近」行同一套行外观）——
+                右侧 kbd 提示**不做**：那需要新词条（本批零新增中文串），且会让 label-in-name 断言失真。 */}
             <button
               type="button"
               className="ldk-welcome-help-item"
               aria-label={t("使用文档")}
               onClick={showDocsHint}
             >
-              <BookOpen size={14} aria-hidden="true" /> {t("使用文档")}
+              <BookOpen size={14} aria-hidden="true" />
+              <span className="ldk-welcome-row-name">{t("使用文档")}</span>
             </button>
             <button
               type="button"
@@ -383,7 +393,8 @@ export default function WelcomePoolView({ isActive, creatableViews }: WelcomePoo
               aria-label={t("键盘快捷键")}
               onClick={() => executePoolCommand("workbench.action.openKeybindingsSettings")}
             >
-              <Keyboard size={14} aria-hidden="true" /> {t("键盘快捷键")}
+              <Keyboard size={14} aria-hidden="true" />
+              <span className="ldk-welcome-row-name">{t("键盘快捷键")}</span>
             </button>
             <button
               type="button"
@@ -391,7 +402,8 @@ export default function WelcomePoolView({ isActive, creatableViews }: WelcomePoo
               aria-label={t("AI 操作手册")}
               onClick={() => executePoolCommand("app.openAiManual")}
             >
-              <BookMarked size={14} aria-hidden="true" /> {t("AI 操作手册")}
+              <BookMarked size={14} aria-hidden="true" />
+              <span className="ldk-welcome-row-name">{t("AI 操作手册")}</span>
             </button>
           </div>
         </section>

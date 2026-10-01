@@ -7,8 +7,8 @@
   "files": [
     {
       "file": "src/index.css",
-      "count": 17,
-      "note": "宿主契约块 ＋ 三条文档级基线（组成见 32 号档 §二.1／§五：`*`·`*::before`·`*::after` 各 2（L190 ＋ L275 的 @media 副本）＝ 6 · `:root` 1 · `[data-theme=\"light\"]` 1 · `html` 1 · `body` 1 · `::-webkit-scrollbar` 一族 4 · `*:focus-visible` 1 · `input[type=\"number\"]` 1 · `select` 1）。逐条实证与依赖方见该档。"
+      "count": 18,
+      "note": "宿主契约块 ＋ 三条文档级基线（组成见 32 号档 §二.1／§五：`*`·`*::before`·`*::after` 各 2（L190 ＋ L275 的 @media 副本）＝ 6 · `:root` 1 · `[data-theme=\"light\"]` 1 · `html` 1 · `body` 1 · `::-webkit-scrollbar` 一族 4 · `::selection` 1（W6/T13 §六#4：浏览器默认面收编）· `*:focus-visible` 1 · `input[type=\"number\"]` 1 · `select` 1）。逐条实证与依赖方见该档。"
     }
   ],
   "idSelectors": {

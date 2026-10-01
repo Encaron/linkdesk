@@ -38,26 +38,27 @@ export default function GroupPane({
   creatableViews,
   adsorbInsertIndex,
 }: GroupPaneProps) {
-  // W7b（T12）：零标签 → 空场层补位（Visual contract = mockup 场景 4）。
-  //   GroupTabBar 零标签时整条 return null（含「+」——零标签不渲染 TabBar 是既有行为，
-  //   GroupTabBar.tsx:275），空组的面板整块交给 EmptyStage：主窗常态（T11 起 main 可空）。
-  if (tabs.length === 0) {
-    return <EmptyStage />;
-  }
-
+  // W7b（T12）＋ W6（T13）：零标签 = **标签条保留（只余「+」）** ＋ 空场层补位内容区。
+  //   契约 = 冻结预览图场景 4：`.tabbar` 不隐藏、`.wl/.wm/.tab` 隐藏、`.empty-stage` 铺满内容区
+  //   （frame-note 原话「标签栏只剩「+」，欢迎页靠 openWelcome 命令／+菜单／帮助菜单显式打开」）。
+  //   ⚠️ 这条修正了 T12 的临时形态（当时零标签整块给 EmptyStage，「+」随 GroupTabBar 的
+  //   `return null` 一起消失）——T13 按预览图收口，GroupTabBar 侧已改为零标签照渲染。
   return (
-    <ErrorBoundary pluginId={`pool-tabbar:${group.id}`}>
-      <GroupTabBar
-        groupId={group.id}
-        tabs={tabs}
-        activeTabId={group.activeTabId}
-        draggingId={draggingId ?? undefined}
-        dragInsertIndex={dragInsertIndex}
-        onTabDragStart={onTabDragStart}
-        onTabBarMount={(el) => onTabBarMount(group.id, el)}
-        creatableViews={creatableViews}
-        adsorbInsertIndex={adsorbInsertIndex}
-      />
-    </ErrorBoundary>
+    <>
+      <ErrorBoundary pluginId={`pool-tabbar:${group.id}`}>
+        <GroupTabBar
+          groupId={group.id}
+          tabs={tabs}
+          activeTabId={group.activeTabId}
+          draggingId={draggingId ?? undefined}
+          dragInsertIndex={dragInsertIndex}
+          onTabDragStart={onTabDragStart}
+          onTabBarMount={(el) => onTabBarMount(group.id, el)}
+          creatableViews={creatableViews}
+          adsorbInsertIndex={adsorbInsertIndex}
+        />
+      </ErrorBoundary>
+      {tabs.length === 0 && <EmptyStage />}
+    </>
   );
 }

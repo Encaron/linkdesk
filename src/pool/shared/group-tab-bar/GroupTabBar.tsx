@@ -272,8 +272,13 @@ export default function GroupTabBar({ groupId, tabs, activeTabId, draggingId, dr
 
   // ── 渲染 ──
 
-  // 无标签页——不渲染 TabBar（空 group 由 MainRenderer 处理）
-  if (tabs.length === 0) return null;
+  // W6（T13）：零标签**仍渲染标签条**——条上只余右端「+」（连同它的创建菜单）。
+  //   契约 = 冻结预览图场景 4（同夹 frame-note 原话「标签栏只剩「+」，欢迎页靠 openWelcome 命令／
+  //   +菜单／帮助菜单显式打开」）。原实现是 `if (tabs.length === 0) return null`——那会把「+」一起
+  //   吞掉：T11 拆掉「main 恒非空」后，全新安装的首帧就是零标签 ⇒ 用户失去唯一的常驻
+  //   「新建标签页」入口（只剩命令面板与帮助菜单）。空列表对本组件各处均安全：溢出测量恒 false
+  //   （scrollWidth == clientWidth）、自动滚入 effect 查不到 `[data-tab-id=""]` 即返回、
+  //   拖拽边缘滚动只在 draggingId 非空时启动。
 
   return (
     <div
