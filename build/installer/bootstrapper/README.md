@@ -30,7 +30,8 @@ node scripts\build-installer.mjs --exe out\bootstrapper.exe ^
 | `--debug` | 开 DevTools 并自动弹出（默认关闭；顺带开右键菜单） |
 | `--uninstall` | **卸载器模式**（件 1d）：无边框 **720×540** 窗口（标题「LinkDesk 卸载」），启动 URL 自动补 `?mode=uninstall` ⇒ 页面走卸载四帧（confirm/running/progress/finish）。同一 exe、同一页面，产品化入口（ARP `UninstallString` 指向本 exe）归件 2b/2d |
 | `--preview=<query>` | 把 query 拼到启动 URL 上，供对照/排查直接摆屏：`screen=home\|custom\|progress\|finish\|error\|uac`（`custom` 展开自定义区）、`pct=<0-100>`（进度定格）、`dust=0`（关微尘）、`seed=1`（定序随机数）、`lang=<code>`（页面语言；词条从 `i18n/<code>.json` 取，认不得的值回落 zh-CN）、`langs=a,b`（词条清单，一般不手给——宿主扫目录后自己注入）｜卸载态另有 `screen=un-confirm\|un-running\|un-progress\|un-finish`（**必须与 `--uninstall` 同给**：屏名不在当前模式的白名单里会被**静默拒绝**，症状＝实机整屏空白）与 `keep=0`（卸载完成屏「数据已一并移除」黄徽章态） |
-| `--capture=<path.png>` | 页面渲染完成后自行截图存 PNG 并退出（单屏取图口） |
+| `--capture=<path.png>` | 页面渲染完成后自行截图存 PNG 并退出（单屏取图口；走 WebView2 `CapturePreview`，只拍页面、**不触碰桌面**） |
+| `--capture-delay=<ms>` | 覆盖 `--capture` 的落图延时（默认 1200——i18n fetch ＋ 入场动效落定）。**要「动画跑完的定格帧」必须调大**：完成屏彩粒（`.burst`）实测 end time 995–1665ms，1.2s 拍下去拍到半空粒子（`cmp-shots.ps1` 因此传 `-SettleMs`）。非法值静默维持默认 |
 | `--silent`（或 `/S`） | **静默安装**（件 2a）：不建窗、**不碰 WebView2**（运行时缺失也装得上——那是能用界面的问题，不是装不上的问题）。解压 → 校验 → 退出码 0；失败码见 §四。更新链走的就是这条 |
 | `--force-run` | 装完把壳拉起来（`ShellExecute` `<安装目录>\LinkDesk.exe`）。对应用户点「运行 LinkDesk」与更新器 `app.relaunch()` 的 `${isForceRun}` 同位 |
 | `--dir=<路径>` | 指定安装目录（覆盖默认/已装目录探测）。静默与界面态都认；界面态由 `?dir=` 传给页面 |
@@ -42,16 +43,17 @@ node scripts\build-installer.mjs --exe out\bootstrapper.exe ^
 | 脚本 | 用途 |
 |:--|:--|
 | `window-probe.ps1` | 列顶层窗口：类名/尺寸/标题 |
-| `capture.ps1` | 真桌面截图（最小化全部→屏幕拷贝→还原；`-NoMinimize` 供已清场时用） |
+| `capture.ps1` | 真桌面截图（**最小化全部 → 屏幕拷贝 → 还原**，跑时会打印一行警告；`-NoMinimize` 供已清场时用）。🔴 全仓唯一会**掀掉用户全部前台窗口**的工具（每屏 4–5 秒）⇒ 批量取图走 `cmp-shots.ps1` 的默认路径（宿主自拍，不碰桌面） |
 | `verify-no-runtime.ps1` | 兜底路径自动验证，断言退出码 3 |
 | `mockup-shot.ps1` | 把 mockup 拍成同尺寸 PNG：临时 harness 只去设计注记 + 钉 `.stage` 到 0,0，原文一字不改。默认拍 `E-混合提案.html`（780×570）；`-Mock <path>` 换 mockup（如 E-卸载屏）、`-W/-H` 换画布、`-Scale` 配高 DPI。**自动识别卸载 mockup**：把页面的 `#s-confirm` 当信号，将 harness 用的 `un-` 前缀 id 折回 mockup 自身的 id，并支持 `?keep=0` 徽章态 |
-| `cmp-shots.ps1` | 并排对照（左 mockup／右实机＋合成大图），带资产新鲜度守卫。默认六屏 `out\cmp-*.png`（780×570）；`-Uninstall` 切卸载四帧 `out\cmp-un-*.png`（720×540，实机自动带 `--uninstall`）。`-Screen`/`-Screens` 指定屏（⚠️ `powershell -File` 下多值要写成重复参数，`-Screens a,b` 会被当成一个屏名）。**实机侧一律钉 `lang=zh-CN`** 与 mockup 对齐（`-Lang en` 取英文侧）——本机注册表存的语言是 `en`，不钉就是「左中文／右英文」的错配图（见脚本头口径 4） |
-| `interact-test.ps1` | 真键鼠交互验收：拖窗位移断言 / Enter 主按钮 / 下拉＋Esc / ✕ 退出（产物 `out\it-*.png`） |
+| `cmp-shots.ps1` | 并排对照（左 mockup／右实机＋合成大图），带资产新鲜度守卫。默认六屏 `out\cmp-*.png`（780×570）；`-Uninstall` 切卸载四帧 `out\cmp-un-*.png`（720×540，实机自动带 `--uninstall`）。`-Screen`/`-Screens` 指定屏（⚠️ `powershell -File` 下多值要写成重复参数，`-Screens a,b` 会被当成一个屏名）。**实机侧一律钉 `lang=zh-CN`** 与 mockup 对齐（`-Lang en` 取英文侧）——本机注册表存的语言是 `en`，不钉就是「左中文／右英文」的错配图（见脚本头口径 4）。**实机图默认由宿主自拍**（`--capture` ＋ `--capture-delay=$SettleMs`，只拍页面、**不触碰桌面**）；`-Desktop` 才改走真桌面拷贝（会 MinimizeAll，见口径 5） |
+| `interact-test.ps1` | 真键鼠交互验收：拖窗位移断言 / Enter 主按钮 / 下拉＋Esc / ✕ 退出（产物 `out\it-*.png`）。🔴 **必须显式 `-AllowDesktopMinimize`**（2026-10-02 加闸）：真键鼠事件要求桌面清空、否则点击会落到别的窗口上，脚本会把**全部前台窗口最小化并保持到跑完**——不给开关直接 `exit 3` |
 | `i18n-test.ps1` | 件 1c 词条装载器验收（39 断言）：探针页 iframe 实测 DOM ＋ 1px 图片信标回传（**不靠截图/OCR/时序运气**——靠本地 http.server 的访问日志），C1–C5 五路装载器 ＋ 三张 exe 实跑截图（带出注册表语言／扫目录，跑完复原注册表）；日志 `out\i18n-test.log` |
 | `install-test.ps1` | 件 2a 验收（三路，跑**真安装包**）：路 B 静默装（退出码／文件数／字节数与 marker 声明对账）· 路 A 界面态（`--log` 证进度单调不倒退、四段边界到过、收在 100）· 路 C `--force-run` 拉起壳（**按安装目录路径认进程**，不按名字）。⚠️ 三条路的 `--dir` 全指临时目录，**不碰**真装的 LinkDesk；用法 `-Setup <安装包.exe>`。🔴 **件 2b 起必须加 `-AllowSystemWrites`**——安装现在会写真机注册表（关联/右键/PATH/ARP/快捷方式），而本脚本**没有备份还原**，不给开关就直接拒绝执行 |
 | `syswrite-test.ps1` | 件 2b 验收（**七路**，跑真安装包 ＋ **真机注册表**）：装前把要碰的键**全量导出备份**（`reg.exe export` 原样往返，值的类型/编码不经脚本手）＋ 跑完全部还原并**自检还原结果**。路 1 静默（勾选值按注册表现状**反推** ⇒ 逐键跟着装前现状走）· 路 1b 静默（预置三键 ⇒ 验 `*\shell` 的**写入侧**）· 路 2 界面态覆盖装（页面不勾的项**必须没写**）· 路 3 PATH 真追加/幂等 · 路 3b PATH **类型不降级**（`REG_EXPAND_SZ` 进必 `REG_EXPAND_SZ` 出）· 路 4 界面态**全新目录**（四段进度真读数断言）。开头有**新鲜度门禁**（见坑 11）。`-SkipRestore` 留现场、`-RestoreOnly` 按上次备份补救。**还原链自身健壮化**（2026-10-02 收口，见坑 13/14）：杀不掉进程**只警告不抛** · 还原每步套 `Restore-Step` 记账（一步失败不炸全链）· 还原自检**加断言 `UninstallString`** · 路 4 轮询带**卡死看门狗**（每 20s 打「日志静止秒数／末条 pct／进程活否／ARP 尾值」） |
 | `gen-ui-rc.mjs` | 生成 `out\ui.gen.rc` ＋ `out\ui.manifest`：把 `app.html/css/js` 与 `i18n/*.json` 编成 RCDATA（id 3 清单、id 10+ 文件）。**单文件产品态必须**——拼合后的 setup.exe 旁边没有 `app.html` |
 | `dom-probe.mjs` | **快速读 DOM**（见下）：在真页面里求值、算几何，不起截图不做 OCR。`--click`/`--rect`/`--text`/`--eval` **按命令行顺序**执行；`--attach` 连已在跑的实例、`--keep` 测完不关窗 |
+| `pix-diff.ps1` | 两张同尺寸 PNG 比像素：只回报差异点数／最大通道差／差异包围盒，**不落图**——回答「改了样式后哪一屏变了、变在哪一块」比人眼看图便宜得多（读图付 token）。`-A out\app-home.png -B out\base-home.png`（`-Tol` 默认 6） |
 
 ### 快速读 DOM（不起截图、不做 OCR）
 
@@ -71,6 +73,8 @@ node tools\dom-probe.mjs --preview "screen=home&lang=zh-CN" --click "#lkdd-btn" 
 人肉版（只想瞄一眼）：`out\bootstrapper.exe --debug` 开 DevTools，Console 里 `$0.getBoundingClientRect()` 一样能用。
 
 ⚠️ 反过来说：哪天宿主自己设了 `AdditionalBrowserArguments`，环境变量会被顶掉，本脚本就得改成加启动参数（脚本头有注明）。
+
+**省钱的次序（2026-10-02 用户点名「截屏看效果费钱」后定）**：先 `dom-probe.mjs` 求值（一行数）→ 再 `pix-diff.ps1` 比图（一行数）→ **真要判断「好不好看」时才读 PNG**（读图付 token，且 780×570 里的 11px 小字容易看错）。像素通道留给「用户目检」这一步，不要拿它当默认验证手段。
 
 ## 二、实测事实（2026-10-01，本机 VS2022 Community ＋ WebView2 运行时 140.0.3485.94）
 

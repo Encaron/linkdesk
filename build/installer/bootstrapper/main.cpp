@@ -53,6 +53,10 @@ static std::wstring g_logPath;
 // --capture 落图的延时定时器（件 1c 起 i18n 是异步 fetch：导航完成 ≠ 画面落定）
 static const UINT_PTR kCaptureTimer = 1;
 static const UINT kCaptureDelayMs = 1200;   // i18n fetch ＋ enter 入场动效 .8s 都在这之前落定
+// --capture-delay=<ms>：覆盖上面的默认延时。取图工具要「动画跑完的定格帧」时用——
+// 完成屏的彩粒（.burst）end time 实测 995–1665ms，1.2s 拍下去会拍到半空中的粒子，
+// 与「桌面截屏等 4.2s」那批已验收图不一致（cmp-shots.ps1 因此显式传 -SettleMs）。
+static UINT g_captureDelayMs = kCaptureDelayMs;
 
 static void DoCapture();   // 定义在 ExeDir() 之后（WndProc 的 WM_TIMER 要用）
 
@@ -1092,6 +1096,10 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, PWSTR, int nCmdShow)
         if (wcscmp(argv[i], L"--force-run") == 0) g_forceRun = true;
         if (wcsncmp(argv[i], L"--dir=", 6) == 0) reqDir = argv[i] + 6;
         if (wcsncmp(argv[i], L"--capture=", 10) == 0) g_capturePath = argv[i] + 10;
+        if (wcsncmp(argv[i], L"--capture-delay=", 16) == 0) {
+            int ms = _wtoi(argv[i] + 16);
+            if (ms > 0) g_captureDelayMs = (UINT)ms;   // 非法值静默保持默认，取图口不值得为它报错
+        }
         if (wcsncmp(argv[i], L"--preview=", 10) == 0) g_previewQuery = argv[i] + 10;
         if (wcsncmp(argv[i], L"--log=", 6) == 0) g_logPath = argv[i] + 6;
     }
@@ -1252,7 +1260,7 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, PWSTR, int nCmdShow)
                                                        ICoreWebView2, ICoreWebView2NavigationCompletedEventArgs>(
                             IID_ICoreWebView2NavigationCompletedEventHandler,
                             [](ICoreWebView2*, ICoreWebView2NavigationCompletedEventArgs*) -> HRESULT {
-                                SetTimer(g_hwnd, kCaptureTimer, kCaptureDelayMs, nullptr);
+                                SetTimer(g_hwnd, kCaptureTimer, g_captureDelayMs, nullptr);
                                 return S_OK;
                             });
                         web->add_NavigationCompleted(onNav, nullptr);

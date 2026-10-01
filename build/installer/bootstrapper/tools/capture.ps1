@@ -33,7 +33,13 @@ $r = New-Object Cap32+R
 $w = $r.Ri - $r.L; $h = $r.B - $r.T
 
 $shell = New-Object -ComObject Shell.Application
-if (-not $NoMinimize) { $shell.MinimizeAll() }
+if (-not $NoMinimize) {
+    # 会掀掉用户全部前台窗口 —— 先喊一声，免得当成故障（2026-10-02 用户被连掀十次后加）
+    Write-Host ("⚠️  MinimizeAll：你的全部前台窗口将被最小化约 {0} 秒（跑完自动还原）。要避免请改用 " +
+                "bootstrapper.exe --capture=<png> 或 cmp-shots.ps1 默认路径（宿主自拍，不碰桌面）。" -f `
+                [Math]::Round($SettleMs / 1000 + 0.5))
+    $shell.MinimizeAll()
+}
 Start-Sleep -Milliseconds $SettleMs
 try {
     $bmp = New-Object System.Drawing.Bitmap($w, $h)

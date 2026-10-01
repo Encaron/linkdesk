@@ -6,13 +6,21 @@
 #     是否等于鼠标位移（不等就说明桥没通或落点不在拖拽区）。
 #   · Enter / ✕ / 下拉：分别验 data-primary 默认主按钮、data-action="close" 的 postMessage 桥、自绘下拉。
 # 桌面先 MinimizeAll 清场并保持（本脚本内截图一律 -NoMinimize），否则点击会打到别的前台窗口上。
+# 🔴 2026-10-02 加闸：MinimizeAll 会**掀掉用户正在看的全部前台窗口**并保持到跑完 ⇒ 必须显式给
+#    -AllowDesktopMinimize 才跑（与 install-test.ps1 的 -AllowSystemWrites 同款闸）。
 param(
     [int]$SettleMs = 2500,
     [int]$Dx = 60,          # 拖窗位移（逻辑像素）
     [int]$Dy = 40,
+    [switch]$AllowDesktopMinimize,   # 确认现在可以清空桌面（会最小化全部前台窗口并保持到跑完）
     [switch]$KeepOpen       # 调完不关窗（排查用）
 )
 $ErrorActionPreference = 'Stop'
+if (-not $AllowDesktopMinimize) {
+    Write-Host '拒绝执行：本脚本用真键鼠事件，必须清空桌面，因此会把**全部前台窗口最小化**并保持到跑完。'
+    Write-Host '确认这台机器上没人在用（没在游戏 / 没在看视频 / 没有别的重要前台窗口）后，加 -AllowDesktopMinimize 再跑。'
+    exit 3
+}
 $root = Split-Path -Parent $PSScriptRoot
 $exe = Join-Path $root 'out\bootstrapper.exe'
 $shot = Join-Path $PSScriptRoot 'capture.ps1'
