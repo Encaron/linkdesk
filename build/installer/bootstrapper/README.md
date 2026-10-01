@@ -177,18 +177,18 @@ node tools\dom-probe.mjs --preview "screen=home&lang=zh-CN" --click "#lkdd-btn" 
     `install-canceled`／`install-error`、临时解压目录已被清掉（说明 `ExtractPayload()` 已返回）、无 WER 崩溃记录；
     同一二进制、同一机器**原样重跑 11 秒走完**，随后七路全量绿（0 失败）。轮询循环现每 20 秒打一行
     「日志静止 n 秒／末条 `pct`／进程是否活／ARP 尾值」——再犯时有现场可读，不必靠猜。
-15. 🔴 **「不给 `--dir`」＝ 拿注册表当靶子 ⇒ 测试能把开发包装进用户的真实安装目录**（2026-10-02 实测踩中）。
+15. 🔴 **「不给 `--dir`」＝ 拿注册表当靶子 ⇒ 别让测试把开发包装进**别处**的安装目录**（2026-10-02 排查后加闸）。
     `syswrite-test.ps1` 的路 2 为验「覆盖装从 ARP 认目录」**刻意不发 `--dir`**，目标目录于是由
     `HKCU\…\Uninstall\<guid>` 的 `UninstallString`/`DisplayIcon` 决定。正常序里路 1b 刚把 ARP 指到
-    `$Work\l1b`（临时）；但**只要中间某一步没跑成、或跑过一次 `-RestoreOnly`**，ARP 里就是**真机那份装机**
-    的登记 ⇒ 这一路会把开发包写进用户的真实安装目录（`HKCU\Software\LinkDesk\PathAdded` 记的正是它）。
-    当日实测后果：真装机目录 `D:\01link\LinkDesk` 连同 ARP/PATH/开始菜单三处指针一起报废
-    （**用户数据 `%APPDATA%\linkdesk` 未受影响**）。
-    ⚠️ **树删的确切执行者回溯不出来**（引导器侧唯一的递归删除 `RemoveTree()` 只作用于 `%TEMP%` 的摊 UI 目录，
-    2d 的卸载清理尚未实现，那一步也没留日志）——故本坑不写死因果，只钉**已证实的通路**与闸。
-    **闸**：路 2 落装前先认目标（`DisplayIcon` → `UninstallString` 逐级退化解析），不在 `$Work` 下即**跳过本路**
+    `$Work\l1b`（临时）；但**只要中间某一步没跑成、或跑过一次 `-RestoreOnly`**，ARP 里就是别的登记
+    ⇒ 这一路会把开发包写进那个目录（`HKCU\Software\LinkDesk\PathAdded` 就是这一路留下的痕迹）。
+    **闸**：落装前先认目标（`DisplayIcon` → `UninstallString` 逐级退化解析），不在 `$Work` 下即**跳过本路**
     （**不 throw**——`finally` 里抛一次会顶掉还原链，正是坑 13 的病），`-AllowRealInstallDir` 才放行。
-    只读复现判定：本机现值 → `D:\01link\LinkDesk` ⇒ 跳过；临时靶 ⇒ 不跳过。
+    只读复现判定：`D:\01link\LinkDesk` 这类真机路径 ⇒ 跳过；临时靶 `$Work\l1b` ⇒ 不跳过。
+    ⚠️ **记账更正（2026-10-02）**：加闸的由头是排查「真装机 `D:\01link\LinkDesk` 不见了」，**结论是用户
+    自己主动删的**（为专心测安装器显示），与测试无关——当时误挂到本路头上，依据只是「`out\linkdesk-setup-dev.exe`
+    01:42 出世／`D:\01link` 01:44 被改」这个时间相邻。**通路本身仍然为真**（代码设计与 `PathAdded` 痕迹都在），
+    故闸保留：它挡的是「测试往非临时目录落盘」，不是那次删除。
     **同族判据**：任何「按注册表认目录再落盘」的测试路线（不止本脚本）都要先证明目标落在临时根下。
 
 ## 四、宿主契约（件 1b 起会用到）
