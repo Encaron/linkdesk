@@ -1,18 +1,17 @@
 /**
  * 标签页 CRUD 纯状态转换层——创建/打开/聚焦/关闭/复制/标记/重排/固定。
  * E5.8#0d.10-2c：自 useTabManager.ts 拆出——不依赖 React Hook，纯函数输入 TabState 输出新 TabState。
- * 依赖方向：reducers-tab → defaults（createTabDefaults/ensureFallback/pickNextActive）+ types + core 工具；无反向。
+ * 依赖方向：reducers-tab → defaults（createTabDefaults/pickNextActive）+ types + core 工具；无反向。
  */
 
 import type { CreateTabOptions } from "../../core/api/types";
-import { getTabBehavior, findFallbackPlugin } from "../../pluginLoader/contributions/viewRegistry";
-import { FALLBACK_PLUGIN_ID } from "../../core/utils/plugin/fallbackPluginId";
+import { getTabBehavior } from "../../pluginLoader/contributions/viewRegistry";
 import { findTabByIdentity, isSameTabIdentity } from "../../core/utils/tabIdentity";
 import { getAllLeafGroupIds, removeLeafFromTree } from "../../core/utils/splitTree";
 import { normalizePath } from "../../core/utils/path/pathUtils";
 import { allTabs, findGroup } from "./types";
 import type { TabState, CreateTabResult, CloseTabResult, Tab } from "./types";
-import { createTabDefaults, ensureFallback, pickNextActive } from "./defaults";
+import { createTabDefaults, pickNextActive } from "./defaults";
 
 export function reduceCreateTab(
   prev: TabState,
@@ -149,8 +148,8 @@ export function reduceFocusGroup(prev: TabState, groupId: string): TabState {
 
 /**
  * 组空时移除面板 leaf（reduceCloseTab/reduceRemoveTab 共用——同一逻辑只一处写）。
- * 多面板 → 从树中摘除该组返回新状态；单面板 → 返回 null（保留空组，兜底策略归调用方：
- * close=ensureFallback 补欢迎页 / remove=壳按窗口模式决策）。
+ * 多面板 → 从树中摘除该组返回新状态；单面板 → 返回 null（保留空组，策略归调用方：
+ * close=保留空组（W7 零标签 ⇒ 空场）/ remove=壳按窗口模式决策）。
  */
 function reduceRemoveEmptyGroup(prev: TabState, groupId: string): TabState | null {
   const allLeafIds = getAllLeafGroupIds(prev.root);
@@ -182,20 +181,18 @@ export function reduceCloseTab(prev: TabState, tabId: string): CloseTabResult {
   if (remaining.length === 0) {
     const removedTree = reduceRemoveEmptyGroup(prev, group.id);
     if (removedTree) {
-      // 多面板 → 移除该 leaf（ensureFallback 兜底幸存组——其余组非空时不生效）
+      // 多面板 → 移除该 leaf（幸存兄弟组接管焦点；组表非空，不涉及空场）
       const survivingGroup = prev.groups.find((g) => g.id === removedTree.activeGroupId);
-      return { closed: true, tabId, reason: "unsplit", state: ensureFallback(removedTree), newActiveTabId: survivingGroup?.activeTabId ?? "" };
+      return { closed: true, tabId, reason: "unsplit", state: removedTree, newActiveTabId: survivingGroup?.activeTabId ?? "" };
     }
-    // 单面板 + 最后一个标签页 → 全场 0 标签，ensureFallback 补欢迎页
-    const fbId = findFallbackPlugin()?.pluginId ?? FALLBACK_PLUGIN_ID;
-    const fb = createTabDefaults(fbId);
+    // 单面板 + 最后一个标签页 → 保留空组（W7：零标签 ⇒ 池渲染空场，不再补欢迎页）
     const newGroups = prev.groups.map((g) =>
-      g.id === group.id ? { ...g, tabs: [fb], activeTabId: fb.id } : g
+      g.id === group.id ? { ...g, tabs: [], activeTabId: "" } : g
     );
     return {
       closed: true, tabId,
       state: { ...prev, groups: newGroups, root: prev.root },
-      newActiveTabId: fb.id,
+      newActiveTabId: "",
     };
   }
 
@@ -231,8 +228,8 @@ export function reduceForceCloseTab(prev: TabState, tabId: string): CloseTabResu
 
 /**
  * E5.8#44：摘除标签页（不关不查 dirty）——跨窗口搬家源侧用（detach/merge 源窗）。
- * 差异 vs reduceCloseTab：无 dirty 阻断、不自动补 fallback——窗口模式策略归壳决策
- * （main 源 → ensureFallback 补欢迎页；detached 源 → 壳读 groups 空则关窗自灭 I9-8）。
+ * 差异 vs reduceCloseTab：无 dirty 阻断、不补任何标签——窗口模式策略归壳决策
+ * （main 源 → 空组（池渲染空场 W7）；detached 源 → 壳读 groups 空则关窗自灭 I9-8）。
  * 组变空 → 多面板移除该 leaf（同 reduceCloseTab）；单面板保留空组（壳按窗口模式处理）。
  * 返回 { state, removedTab }——removedTab 给目标窗 reduceInsertTab 用（id 保持，keep-alive key 不换）。
  */
@@ -246,7 +243,7 @@ export function reduceRemoveTab(prev: TabState, tabId: string): { state: TabStat
     // 多面板 → 摘除该 leaf（reduceCloseTab 共用 helper）
     const removedTree = reduceRemoveEmptyGroup(prev, group.id);
     if (removedTree) return { state: removedTree, removedTab: tab };
-    // 单面板 → 保留空组，壳按窗口模式决策（main=ensureFallback 补欢迎页 / detached=关窗自灭）
+    // 单面板 → 保留空组，壳按窗口模式决策（main=空场 W7 / detached=关窗自灭）
     const newGroups = prev.groups.map((g) => (g.id === group.id ? { ...g, tabs: [], activeTabId: "" } : g));
     return { state: { ...prev, groups: newGroups }, removedTab: tab };
   }
@@ -382,7 +379,7 @@ export function reducePinTab(prev: TabState, tabId: string): TabState {
 
 /* ── E5.8#46.2 资源事件族——跨窗资源联动全窗广播的纯 reducer 基元 ──
    匹配语义：file:* 事件按 sourceId || filePath（资源身份）；tabs API 按 sourceId || id（findTabBySourceId 同源）。
-   删除基元统一 remove 语义（不补 fallback）——窗口模式策略归壳（main=ensureFallback / detached=关窗自灭）。
+   删除基元统一 remove 语义（不补 fallback）——窗口模式策略归壳（main=空组（W7 空场）/ detached=关窗自灭）。
    dirty 语义：资源已消失类（file:deleted/plugin/folder）不查 dirty（无保存对象）；程序化关闭（closeBySourceId）dirty 静默阻断（#46.12 决策）。 */
 
 type TabMatcher = (tab: Tab) => boolean;

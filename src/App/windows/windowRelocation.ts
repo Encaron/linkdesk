@@ -5,7 +5,7 @@
  * 壳 = 窗口策略真相源（#43 三层架构）：读注册表（main tabState 活引用 + 脱出窗自持）判源窗，
  * 经 useTabManager（main）或 updateTabState（脱出窗）双路径落笔。
  *
- * 空源窗处理：main 源摘到空 → removeTab 内 ensureFallback 补欢迎页（主窗恒非空）；
+ * 空源窗处理：main 源摘到空 → 主窗可空（W7：池渲染空场，不再补欢迎页保底）；
  * detached 源摘到空 → 本模块 closeWindow 空窗自灭（I9-8）。
  *
  * 消费方：右键菜单 core.openInNewWindow/core.mergeBackToMain（CoreCallbacks 桥）+ 池拖出手势
@@ -25,7 +25,7 @@ export interface UseWindowRelocationDeps {
   createWindow: (windowId: string, tabState: TabState, bounds?: PoolWindowBoundsPayload["bounds"]) => void;
   closeWindow: (windowId: string) => void;
   updateTabState: (windowId: string, tabState: TabState) => void;
-  /** main 窗专用（useTabManager）——源侧摘除（内建 ensureFallback）/ 目标侧插入 */
+  /** main 窗专用（useTabManager）——源侧摘除（main 可空，不补保底）/ 目标侧插入 */
   removeTab: (tabId: string) => Tab | null;
   insertTab: (tab: Tab, targetGroupId?: string, index?: number) => void;
 }
@@ -96,7 +96,7 @@ export function useWindowRelocation(deps: UseWindowRelocationDeps): UseWindowRel
     return { x: main.bounds.x + 40, y: main.bounds.y + 40, width: main.bounds.width, height: main.bounds.height };
   }, []);
 
-  /** 从任意窗口摘 tab——main 走 useTabManager（内建 ensureFallback）；detached 走 reduceRemoveTab + updateTabState（空窗自灭） */
+  /** 从任意窗口摘 tab——main 走 useTabManager（main 可空——空场归池侧）；detached 走 reduceRemoveTab + updateTabState（空窗自灭） */
   const removeFromWindow = useCallback((windowId: string, tabId: string): Tab | null => {
     const src = windowsRef.current.find((w) => w.windowId === windowId);
     if (!src) return null;

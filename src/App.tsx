@@ -117,7 +117,7 @@ function App() {
     closeTabBySourceId,
     updateTabLabelBySourceId,
     restoreClosedTab,
-    removeTab, // E5.8#44：跨窗口搬迁源侧摘除（main 专用，内建 ensureFallback）
+    removeTab, // E5.8#44：跨窗口搬迁源侧摘除（main 专用——W7 起 main 可空，空场兜底在池侧）
     insertTab, // E5.8#44：跨窗口搬迁目标侧插入（main）
     renameResourceBySourceId, // E5.8#46.2：资源事件族——windowHost 广播 effect 主窗分支消费
     deleteResourceBySourceId,

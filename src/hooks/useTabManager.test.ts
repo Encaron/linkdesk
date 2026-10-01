@@ -59,6 +59,18 @@ function stateWithTabs(...tabs: Tab[]): TabState {
   };
 }
 
+/** W7 前初始态的等价 fixture（main 单组带一条欢迎页）——分屏/移动/关闭等用例拿它当填充标签。
+ *  W7 起 `createInitialTabState()` 返回**空 main 组**（零标签 ⇒ 池渲染空场），
+ *  「有欢迎页」的旧形态自本 helper 显式造出，不再由初态隐式提供。 */
+function withWelcome(): TabState {
+  const fb = createTabDefaults(FALLBACK_PLUGIN_ID);
+  return {
+    groups: [{ id: "main", tabs: [fb], activeTabId: fb.id }],
+    activeGroupId: "main",
+    root: { type: "leaf", groupId: "main" },
+  };
+}
+
 /** E5.8#44：双面板状态（g1/g2 各 1 tab，branch root）——跨窗口搬迁多面板 fixture（reduceRemoveTab/reduceInsertTab 共用） */
 function twoGroupState(): TabState {
   return {
@@ -209,15 +221,35 @@ describe("resolvePoolTabTitle（E5.8#37.9.1）", () => {
 
 /* ── 初始状态 ── */
 
-describe("createInitialTabState", () => {
-  it("Phase 4：默认 1 组 1 欢迎页，单 leaf", () => {
+describe("createInitialTabState（W7 起零标签）", () => {
+  it("main 单空组 + 单 leaf——不再自动生成欢迎页保底标签", () => {
     const state = createInitialTabState();
     expect(state.groups).toHaveLength(1);
-    expect(state.groups[0].tabs).toHaveLength(1);
-    expect(state.groups[0].tabs[0].type).toBe(FALLBACK_PLUGIN_ID);
-    expect(state.groups[0].activeTabId).toBe(state.groups[0].tabs[0].id);
+    expect(state.groups[0].id).toBe("main");
+    expect(state.groups[0].tabs).toHaveLength(0);
+    expect(state.groups[0].activeTabId).toBe("");
+    expect(state.activeGroupId).toBe("main");
     expect(state.root.type).toBe("leaf");
     expect((state.root as LeafNode).groupId).toBe("main");
+  });
+
+  it("🔴 负控：五条清空路径末条移除后都不复活欢迎页（零标签 ⇒ 空组）", () => {
+    // ① 逐个关（reduceCloseTab 单面板末条——原先是「自动替换为欢迎页」）
+    const seed = withWelcome();
+    const closed = reduceCloseTab(seed, seed.groups[0].tabs[0].id);
+    expect(closed.closed).toBe(true);
+    expect(allTabs(closed.state!)).toHaveLength(0);
+    expect(closed.state!.groups[0].tabs).toHaveLength(0);
+    expect(closed.state!.groups[0].activeTabId).toBe("");
+    expect(closed.newActiveTabId).toBe("");
+    // ② 按 sourceId 关 / ③ file:deleted / ④ 插件卸载 / ⑤ 文件夹移除
+    const one = () => stateWithTabs(resTab("t1", "E:/demo/a.txt", "Alpha"));
+    expect(allTabs(reduceCloseBySourceId(one(), "E:/demo/a.txt"))).toHaveLength(0);
+    expect(allTabs(reduceResourceDeleted(one(), "E:/demo/a.txt"))).toHaveLength(0);
+    expect(allTabs(reduceRemoveTabsByPlugin(stateWithTabs(resTab("t1", "E:/demo/a.txt", "Alpha", { pluginId: "demo-plugin" })), "demo-plugin"))).toHaveLength(0);
+    expect(allTabs(reduceRemoveTabsUnderFolder(one(), "E:/demo"))).toHaveLength(0);
+    // 负控：全流程里没有任何一处造出 fallback 标签
+    expect(closed.state!.groups.every((g) => g.tabs.every((t) => t.type !== FALLBACK_PLUGIN_ID))).toBe(true);
   });
 });
 
@@ -225,14 +257,14 @@ describe("createInitialTabState", () => {
 
 describe("reduceCreateTab", () => {
   it("创建终端标签页", () => {
-    const prev = createInitialTabState();
+    const prev = withWelcome();
     const r = reduceCreateTab(prev, "terminal");
     expect(r.state.groups[0].tabs).toHaveLength(2);
     expect(r.state.groups[0].activeTabId).toBe(r.createdId);
   });
 
   it("workspace 去重——同名聚焦不新增", () => {
-    const prev = createInitialTabState();
+    const prev = withWelcome();
     const r1 = reduceCreateTab(prev, "workspace", { workspaceName: "heart_rate" });
     expect(r1.state.groups[0].tabs).toHaveLength(2);
 
@@ -246,7 +278,7 @@ describe("reduceCreateTab", () => {
     // 真正的单例由 getTabBehavior().singleton 在运行时保证（plugin.json 声明）。
     // 测试环境 viewRegistry 未初始化，singleton 标记不可用。
     // autoId 保证即使 reducer 未阻止创建（因 singleton 标记缺失），id 也不会碰撞。
-    const prev = createInitialTabState();
+    const prev = withWelcome();
     const r1 = reduceCreateTab(prev, "settings");
     const r2 = reduceCreateTab(r1.state, "settings");
     // B78 fix：autoId 计数器保证每次调用生成唯一 id，不会像旧 ("settings") 那样碰撞
@@ -257,7 +289,7 @@ describe("reduceCreateTab", () => {
 
   it("分屏时在 activeGroupId 组中创建", () => {
     // Phase 5 rootfix：预览替换改为 opt-IN——默认不复用已有 tab
-    let state = createInitialTabState();
+    let state = withWelcome();
     const tr = reduceCreateTab(state, "terminal");
     state = reduceSplitTab(tr.state, tr.createdId, "horizontal");
     // Group A: [welcome], Group B: [terminal], active=Group B
@@ -268,7 +300,7 @@ describe("reduceCreateTab", () => {
 
   it("显式 pinned:false 触发预览替换（opt-IN）", () => {
     // Phase 5：pinned:false 显式请求预览模式 → 替换组内 unpinned tab
-    let state = createInitialTabState();
+    let state = withWelcome();
     // terminal 默认 pinned:false（createTabDefaults）
     const tr = reduceCreateTab(state, "terminal");
     state = tr.state;
@@ -283,7 +315,7 @@ describe("reduceCreateTab", () => {
 
 describe("reduceOpenOrFocus", () => {
   it("终端存在则聚焦", () => {
-    let state = createInitialTabState();               // [welcome]
+    let state = withWelcome();               // [welcome]
     state = reduceCreateTab(state, "terminal").state;   // [welcome, terminal-1]
     const r = reduceOpenOrFocus(state, "terminal", "terminal-1");
     expect(r.focusedId).toBe("terminal-1");
@@ -297,7 +329,7 @@ describe("reduceOpenOrFocus", () => {
   });
 
   it("workspace 不存在则隐式创建（Phase 4 归一化——任何 type 都可隐式创建）", () => {
-    const prev = createInitialTabState();
+    const prev = withWelcome();
     const r = reduceOpenOrFocus(prev, "workspace");
     expect(r.focusedId).not.toBeNull();
     expect(allTabs(r.state).some((t) => t.type === "workspace")).toBe(true);
@@ -308,7 +340,7 @@ describe("reduceOpenOrFocus", () => {
 
 describe("reduceMoveTab", () => {
   it("移动标签页到另一个组", () => {
-    let state = createInitialTabState();                      // [welcome]
+    let state = withWelcome();                      // [welcome]
     state = reduceCreateTab(state, "terminal").state;         // [welcome, terminal-1]
     state = reduceSplitTab(state, "terminal-1", "horizontal"); // [welcome] | [terminal-1]
 
@@ -330,7 +362,7 @@ describe("reduceMoveTab", () => {
 
   it("E5.8#51：跨组拖拽带插入缝 → 中插（竖杠落点），缺省 append 末尾", () => {
     // 构造：左组 [welcome, demo-view-2]、右组 [demo-view-1]——把 demo-view-2 拖到右组中间（insertIndex 0）
-    let state = createInitialTabState();
+    let state = withWelcome();
     state = reduceCreateTab(state, "demo-view").state; // [welcome, demo-view-1]
     state = reduceCreateTab(state, "demo-view").state; // [welcome, demo-view-1, demo-view-2]
     state = reduceSplitTab(state, "demo-view-1", "horizontal"); // [welcome, demo-view-2] | [demo-view-1]
@@ -354,23 +386,27 @@ describe("reduceMoveTab", () => {
 
 describe("reduceCloseTab", () => {
   it("关闭普通标签页", () => {
-    let state = createInitialTabState();
+    let state = withWelcome();
     state = reduceCreateTab(state, "workspace", { workspaceName: "pid" }).state;
     const r = reduceCloseTab(state, "workspace-pid");
     expect(r.closed).toBe(true);
     expect(allTabs(r.state!)).toHaveLength(1);
   });
 
-  it("Phase 4：关闭最后一个标签页 → 自动替换为欢迎页（对标浏览器）", () => {
-    const prev = createInitialTabState();
+  it("W7：关闭最后一个标签页 → 保留空组（不再自动替换为欢迎页——零标签 ⇒ 池渲染空场）", () => {
+    const prev = withWelcome();
     const r = reduceCloseTab(prev, prev.groups[0].tabs[0].id);
     expect(r.closed).toBe(true);
-    // 关闭后自动补了欢迎页
-    expect(allTabs(r.state!).some((t) => t.type === FALLBACK_PLUGIN_ID)).toBe(true);
+    expect(allTabs(r.state!)).toHaveLength(0);
+    expect(r.state!.groups[0].tabs).toHaveLength(0);
+    expect(r.state!.groups[0].activeTabId).toBe("");
+    expect(r.newActiveTabId).toBe("");
+    // 负控：欢迎页没有「重生」
+    expect(allTabs(r.state!).some((t) => t.type === FALLBACK_PLUGIN_ID)).toBe(false);
   });
 
   it("dirty 标签页拒绝关闭", () => {
-    let state = createInitialTabState();
+    let state = withWelcome();
     state = reduceCreateTab(state, "workspace", { workspaceName: "pid" }).state;
     state = reduceSetDirty(state, "workspace-pid", true);
     const r = reduceCloseTab(state, "workspace-pid");
@@ -379,7 +415,7 @@ describe("reduceCloseTab", () => {
   });
 
   it("关闭分屏面板中的标签页 → unsplit", () => {
-    let state = createInitialTabState();                     // [welcome]
+    let state = withWelcome();                     // [welcome]
     state = reduceCreateTab(state, "terminal").state;        // [welcome, terminal-1]
     state = reduceSplitTab(state, "terminal-1", "horizontal"); // [welcome] | [terminal-1]
     const r = reduceCloseTab(state, "terminal-1");
@@ -415,7 +451,7 @@ describe("reduceCloseTab", () => {
 
 describe("reduceSplitTab", () => {
   it("创建分屏：拆出一个标签页到新 leaf", () => {
-    let state = createInitialTabState();                    // [welcome]
+    let state = withWelcome();                    // [welcome]
     state = reduceCreateTab(state, "terminal").state;       // [welcome, terminal-1]
     const next = reduceSplitTab(state, "terminal-1", "horizontal");
     const leafIds = getAllLeafGroupIds(next.root);
@@ -428,7 +464,7 @@ describe("reduceSplitTab", () => {
 
   it("源组只有 1 个 tab → 阻止分屏（防止空面板）", () => {
     // 先创建 2-pane，然后尝试拆分 solo-tab 组
-    let state = createInitialTabState();                     // [welcome]
+    let state = withWelcome();                     // [welcome]
     state = reduceCreateTab(state, "terminal").state;        // [welcome, t1]
     state = reduceSplitTab(state, "terminal-1", "horizontal"); // [welcome] | [t1]
     // terminal-1 在 solo 组中（只有它自己），尝试分屏它 → 应被阻止
@@ -437,7 +473,7 @@ describe("reduceSplitTab", () => {
   });
 
   it("3-pane：源组有 ≥2 个 tab 时可创建多级分屏", () => {
-    let state = createInitialTabState();                      // [welcome]
+    let state = withWelcome();                      // [welcome]
     state = reduceCreateTab(state, "terminal").state;         // [welcome, t1]
     state = reduceCreateTab(state, "terminal").state;         // [welcome, t1, t2]
     state = reduceSplitTab(state, "terminal-2", "horizontal"); // [welcome,t1] | [t2]
@@ -450,7 +486,7 @@ describe("reduceSplitTab", () => {
 
   it("深度限制：超过 MAX_TREE_DEPTH 忽略", () => {
     // 创建深度为 MAX_TREE_DEPTH 的树，再分裂应返回原状态
-    let state = createInitialTabState();
+    let state = withWelcome();
     // 每分裂一次深度+1
     for (let i = 0; i < 4; i++) {
       state = reduceCreateTab(state, "terminal").state;
@@ -504,7 +540,7 @@ function depthMaxState(): TabState {
 
 describe("attemptSplitTab —— AI#55 分屏回执", () => {
   it("正常自切：`ok` 且**无** noop（= 树真的变了），源组少一条、新叶多一条", () => {
-    let state = createInitialTabState();                      // [welcome]
+    let state = withWelcome();                      // [welcome]
     const fallbackId = state.groups[0].tabs[0].id;            // 欢迎页 id 由计数器生成——从状态里取，不写死
     state = reduceCreateTab(state, "terminal").state;         // [welcome, t1]
     state = reduceCreateTab(state, "terminal").state;         // [welcome, t1, t2]
@@ -520,7 +556,7 @@ describe("attemptSplitTab —— AI#55 分屏回执", () => {
   });
 
   it("源组只剩这一条标签 ⇒ noop ＋ reason:'single-tab'，且状态引用不变（不造空组、不双开）", () => {
-    let state = createInitialTabState();
+    let state = withWelcome();
     state = reduceCreateTab(state, "terminal").state;          // [welcome, t1]
     state = reduceSplitTab(state, "terminal-1", "horizontal"); // [welcome] | [t1]
 
@@ -543,7 +579,7 @@ describe("attemptSplitTab —— AI#55 分屏回执", () => {
   });
 
   it("tabId 不在任何组 ⇒ noop ＋ reason:'no-such-tab'（多数 = 它刚被关掉）", () => {
-    let state = createInitialTabState();
+    let state = withWelcome();
     state = reduceCreateTab(state, "terminal").state;
 
     const attempt = attemptSplitTab(state, "已经关掉的-id", "horizontal");
@@ -555,7 +591,7 @@ describe("attemptSplitTab —— AI#55 分屏回执", () => {
 
 describe("attemptSplitTabAt —— AI#55 分屏回执（跨组拖拽）", () => {
   it("拖到别组边缘：源叶被摘、标签以兄弟叶并入——既有语义不变，回执 `ok`", () => {
-    let state = createInitialTabState();
+    let state = withWelcome();
     state = reduceCreateTab(state, "terminal").state;           // [welcome, t1]
     state = reduceCreateTab(state, "terminal").state;           // [welcome, t1, t2]
     const targetGroupId = state.groups[0].id;                   // 目标 = 源组（拖到自己的边缘）
@@ -573,7 +609,7 @@ describe("attemptSplitTabAt —— AI#55 分屏回执（跨组拖拽）", () => 
   });
 
   it("落点面板已消失 ⇒ noop ＋ reason:'no-such-target'", () => {
-    let state = createInitialTabState();
+    let state = withWelcome();
     state = reduceCreateTab(state, "terminal").state;           // [welcome, t1]
 
     const attempt = attemptSplitTabAt(state, "terminal-1", "horizontal", "group-已经没了", "right");
@@ -585,7 +621,7 @@ describe("attemptSplitTabAt —— AI#55 分屏回执（跨组拖拽）", () => 
 
 describe("reduceUnsplit", () => {
   it("取消分屏——指定 groupId 的 leaf 被移除", () => {
-    let state = createInitialTabState();                     // [welcome]
+    let state = withWelcome();                     // [welcome]
     state = reduceCreateTab(state, "terminal").state;        // [welcome, terminal-1]
     state = reduceSplitTab(state, "terminal-1", "horizontal"); // [welcome] | [terminal-1]
     const leafIds = getAllLeafGroupIds(state.root);
@@ -836,7 +872,7 @@ describe("reduceRestoreLayout", () => {
 describe("集成场景", () => {
   it("启动 → 开 workspace → 分屏 → 关分屏", () => {
     // Phase 5 rootfix：默认不复用预览——terminal 不替换 workspace
-    let s = createInitialTabState();
+    let s = withWelcome();
     expect(allTabs(s)).toHaveLength(1);
 
     s = reduceCreateTab(s, "workspace", { workspaceName: "heart_rate" }).state;
@@ -883,7 +919,7 @@ describe("reduceRemoveTab（E5.8#44）", () => {
     expect(r.state.groups[0].activeTabId).toBe("workspace-demo_beta");
   });
 
-  it("单面板最后一个 tab 摘走 → 保留空组（不补 fallback——壳按窗口模式决策：main=ensureFallback / detached=关窗）", () => {
+  it("单面板最后一个 tab 摘走 → 保留空组（main 可空 ⇒ 空场；detached 由壳关窗自灭）", () => {
     const s = stateWithTabs(w("Alpha", "demo_alpha"));
     const r = reduceRemoveTab(s, "workspace-demo_alpha");
     expect(r.removedTab?.id).toBe("workspace-demo_alpha");

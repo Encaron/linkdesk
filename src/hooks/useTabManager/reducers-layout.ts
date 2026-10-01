@@ -2,7 +2,7 @@
  * 分屏/布局纯状态转换层——移动/分裂/合屏/尺寸/布局恢复。
  * E5.8#0d.10-2d：自 useTabManager.ts 拆出——不依赖 React Hook，纯函数操作 SplitNode 树。
  * _groupCounter 属主在 defaults.ts——恢复布局经 syncGroupCounterFromGroups 受控同步，不直接读写。
- * 依赖方向：reducers-layout → defaults（createGroup/createInitialTabState/ensureFallback/syncGroupCounterFromGroups）+ types + core 工具；无反向。
+ * 依赖方向：reducers-layout → defaults（createGroup/createInitialTabState/syncGroupCounterFromGroups）+ types + core 工具；无反向。
  */
 
 import {
@@ -19,7 +19,7 @@ import {
 import { isPluginDetailView, resolveLegacyPluginId, syncCountersAfterRestore } from "../../core/utils/tabIdentity";
 import { findGroup } from "./types";
 import type { Tab, TabState, LayoutData } from "./types";
-import { createGroup, createInitialTabState, ensureFallback, syncGroupCounterFromGroups } from "./defaults";
+import { createGroup, createInitialTabState, syncGroupCounterFromGroups } from "./defaults";
 
 /**
  * 移动标签页到另一个组。
@@ -356,11 +356,12 @@ export function reduceUnsplit(prev: TabState, groupId: string): TabState {
         : g
     );
 
-  return ensureFallback({
+  // W7：不补保底标签——被摘组的标签已由 G1 迁移进幸存组，组表可空但树恒合法
+  return {
     groups: newGroups,
     activeGroupId: survivingId,
     root: result.tree,
-  });
+  };
 }
 
 /**
@@ -509,7 +510,7 @@ export function reduceRestoreLayout(saved: LayoutData): TabState {
   if (filteredGroups.length === 0) return createInitialTabState();
 
   // Phase 4：恢复布局尊重用户保存的内容——不强制插入欢迎页。
-  // 关闭所有标签页时会通过 ensureFallback 自动加回。
+  // W7：零标签是合法还原态（池渲染空场），恢复后不补任何保底标签。
 
   // G3：恢复布局后同步计数器——防止 F5 后模块级计数器归零导致新建 tab ID 碰撞
   syncCountersAfterRestore(filteredGroups.flatMap((g) => g.tabs));

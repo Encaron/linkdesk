@@ -21,7 +21,7 @@ import type { TabState, LayoutData, CloseTabResult, Tab } from "./useTabManager/
 export { allTabs, findGroup } from "./useTabManager/types";
 export type { TabType, Tab, TabGroup, TabState, LayoutData, CreateTabResult, CloseTabResult } from "./useTabManager/types";
 
-import { createInitialTabState, ensureFallback } from "./useTabManager/defaults";
+import { createInitialTabState } from "./useTabManager/defaults";
 export { createTabDefaults, createInitialTabState, createGroup, resetPluginCounter, syncCountersAfterRestore, resetFallbackCounter } from "./useTabManager/defaults";
 
 import {
@@ -238,7 +238,8 @@ export function useTabManager() {
   /** 按 sourceId 找标签页并关闭——和 focusTabBySourceId 对称的通用 API。
    *  插件删自己的数据模型时用此 API 关闭对应标签页。
    *  不依赖 tab.id === session.id 的假设——只用 sourceId 链接（或 id 直接匹配）。
-   *  E5.8#46.2：纯 reducer 化——reduceCloseBySourceId（sourceId/id 全匹配移除）+ ensureFallback（main 恒非空）。
+   *  E5.8#46.2：纯 reducer 化——reduceCloseBySourceId（sourceId/id 全匹配移除）。
+   *  W7：不补保底（零标签 ⇒ 主区空场，欢迎页归显式入口）。
    *  remove 语义：不弹 dirty 确认（资源身份消失）；dirty tab 静默跳过（#46.12 决策）。 */
   const closeTabBySourceId = useCallback(
     (sourceId: string): CloseTabResult => {
@@ -246,7 +247,7 @@ export function useTabManager() {
       // E5.8#46.2：closed = eager 有移除发生（调用方当 void 消费返回值）
       const prev = tabStateRef.current;
       const closed = reduceCloseBySourceId(prev, sourceId) !== prev;
-      setTabState((p) => ensureFallback(reduceCloseBySourceId(p, sourceId)));
+      setTabState((p) => reduceCloseBySourceId(p, sourceId));
       return { closed, tabId: sourceId };
     },
     []
@@ -385,19 +386,19 @@ export function useTabManager() {
     setTabState((prev) => reduceResourceRenamed(prev, oldSourceId, newSourceId, label));
   }, []);
 
-  /** 资源已删除（file:deleted）——remove 其全部标签 + ensureFallback（main 恒非空） */
+  /** 资源已删除（file:deleted）——remove 其全部标签（W7：末条也留空组，不补保底） */
   const deleteResourceBySourceId = useCallback((sourceId: string) => {
-    setTabState((prev) => ensureFallback(reduceResourceDeleted(prev, sourceId)));
+    setTabState((prev) => reduceResourceDeleted(prev, sourceId));
   }, []);
 
-  /** 插件卸载 → remove 其全部标签 + ensureFallback */
+  /** 插件卸载 → remove 其全部标签（W7：不补保底） */
   const removeTabsByPlugin = useCallback((pluginId: string) => {
-    setTabState((prev) => ensureFallback(reduceRemoveTabsByPlugin(prev, pluginId)));
+    setTabState((prev) => reduceRemoveTabsByPlugin(prev, pluginId));
   }, []);
 
-  /** workspace 文件夹移除 → remove 其下全部标签 + ensureFallback */
+  /** workspace 文件夹移除 → remove 其下全部标签（W7：不补保底） */
   const removeTabsUnderFolder = useCallback((folderUri: string) => {
-    setTabState((prev) => ensureFallback(reduceRemoveTabsUnderFolder(prev, folderUri)));
+    setTabState((prev) => reduceRemoveTabsUnderFolder(prev, folderUri));
   }, []);
 
   const reorderTab = useCallback((tabId: string, toIndex: number) => {
@@ -413,11 +414,11 @@ export function useTabManager() {
    * E5.8#44：摘除标签页（不关不查 dirty）——跨窗口搬家源侧用（detach/merge 源窗）。
    * 🔥 E5.7 Bug A：removedTab 返回值用 tabStateRef eager 预计算（updater 内只应用，不读返回值）。
    * main 专用（detached 源走 windowRelocation reduceRemoveTab + updateTabState 路径）——
-   * main 摘到空 = 组空 → ensureFallback 补欢迎页（main 恒非空，welcome 兜底）。
+   * main 摘到空 = 空组（W7：池渲染空场，不再补欢迎页保底）。
    */
   const removeTab = useCallback((tabId: string): Tab | null => {
     const eager = reduceRemoveTab(tabStateRef.current, tabId);
-    setTabState((prev) => ensureFallback(reduceRemoveTab(prev, tabId).state));
+    setTabState((prev) => reduceRemoveTab(prev, tabId).state);
     return eager.removedTab;
   }, []);
 

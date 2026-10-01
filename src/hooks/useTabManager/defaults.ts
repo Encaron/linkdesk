@@ -1,15 +1,12 @@
 /**
- * 标签页默认值工厂层——createTabDefaults + 组计数器 + 保底/初始状态。
+ * 标签页默认值工厂层——createTabDefaults + 组计数器 + 初始状态。
  * E5.8#0d.10-2b：自 useTabManager.ts 拆出——模块级 _groupCounter 状态属主在此。
- * 依赖方向：defaults → types + core/utils/tabIdentity + pluginLoader/viewRegistry（纯数据，无反向）；
- * reducers-tab/reducers-layout 消费 createGroup/ensureFallback/pickNextActive/syncGroupCounterFromGroups。
+ * 依赖方向：defaults → types + core/utils/tabIdentity（纯数据，无反向）；
+ * reducers-tab/reducers-layout 消费 createGroup/createInitialTabState/pickNextActive/syncGroupCounterFromGroups。
  */
 
 import type { CreateTabOptions } from "../../core/api/types";
-import { findFallbackPlugin } from "../../pluginLoader/contributions/viewRegistry";
-import { FALLBACK_PLUGIN_ID } from "../../core/utils/plugin/fallbackPluginId";
 import { getDefaultLabel, resolveLegacyPluginId, getMeta, isPluginDetailView } from "../../core/utils/tabIdentity";
-import { allTabs } from "./types";
 import type { Tab, TabGroup, TabState, TabType } from "./types";
 
 /** 重新导出 tabIdentity 的计数器工具（测试兼容）——计数器状态消费入口统一走本模块 */
@@ -86,21 +83,6 @@ export function syncGroupCounterFromGroups(groups: Pick<TabGroup, "id">[]): void
   );
 }
 
-/** Phase 4：只在全场标签页数为 0 时才补保底标签页（对标浏览器——全关才重生） */
-export function ensureFallback(state: TabState): TabState {
-  const all = allTabs(state);
-  if (all.length === 0) {
-    const fallbackId = findFallbackPlugin()?.pluginId ?? FALLBACK_PLUGIN_ID;
-    const fb = createTabDefaults(fallbackId);
-    const mainGroup = state.groups.find((g) => g.id === state.activeGroupId) ?? state.groups[0];
-    if (mainGroup) {
-      mainGroup.tabs = [fb];
-      mainGroup.activeTabId = fb.id;
-    }
-  }
-  return state;
-}
-
 /**
  * 选焦点标签页——关掉后选相邻的（优先右邻，右邻没了退左邻，对标 VS Code）。
  * 🔴 调用方必须传**删除前的原列表**：closedId 要在列表里找位次——传已删的 remaining 会让
@@ -116,12 +98,11 @@ export function pickNextActive(tabs: Tab[], closedId: string): string {
 
 /* ── 初始状态 ── */
 
+/** W7（2026-10-01 拍板）：初始态**零标签**——main 单空组，池侧渲染空场背景（EmptyStage）。
+ *  不再自动生成「欢迎页」保底标签；欢迎页改由三个显式入口打开（命令面板/帮助菜单/标签栏「+」）。 */
 export function createInitialTabState(): TabState {
-  // Phase 4：查 viewRegistry 找 isFallback 插件，没有则降级到 welcome
-  const fallbackId = findFallbackPlugin()?.pluginId ?? FALLBACK_PLUGIN_ID;
-  const fb = createTabDefaults(fallbackId);
   return {
-    groups: [{ id: "main", tabs: [fb], activeTabId: fb.id }],
+    groups: [{ id: "main", tabs: [], activeTabId: "" }],
     activeGroupId: "main",
     root: { type: "leaf", groupId: "main" },
   };
