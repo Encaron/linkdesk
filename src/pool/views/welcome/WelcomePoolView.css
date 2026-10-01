@@ -175,6 +175,107 @@
   border-radius: var(--radius-sm);
   background: var(--bg-card);
   border: 1px solid var(--separator);
+  /* §七#8 长路径省略：宽度按比例封顶，超出省略号（全路径靠行上的 data-hint 悬停看） */
+  max-width: 46%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── Recent 内层小标题 / 三态（W3b）── */
+
+/* §七#2「双最近撞名」：外层大区叫「最近」，文件夹区里层这条叫「最近文件夹」 */
+.ldk-welcome-recent-subtitle {
+  font-size: var(--font-size-2xs);
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: 0.05em;
+  margin: 4px 0;
+  padding: 0 8px;
+}
+
+/* 读失败态——说"不知道"，但别装成"没有"（§七#7 加载态的失败配套） */
+.ldk-welcome-recent-unavailable {
+  font-size: var(--font-size-md);
+  color: var(--text-muted);
+  margin: 0;
+  padding: 4px 8px;
+}
+
+/* 加载骨架（§七#7）：与启动过场 ④C 同语言（0.55↔1 / 1.4s），单行一条 */
+.ldk-welcome-recent-skeleton {
+  height: 16px;
+  margin: 4px 8px;
+  border-radius: var(--radius-xs);
+  background: var(--tab-hover-bg);
+  animation: ldk-welcome-skeleton-breath 1.4s ease-in-out infinite;
+}
+
+@keyframes ldk-welcome-skeleton-breath {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ldk-welcome-recent-skeleton {
+    animation: none;
+  }
+}
+
+/* ── 失效项（W3b）——已删除文件夹 / 已卸载插件 ──
+   🔴 灰显但**仍留在列、仍可点**：点击 = 解释一句 + 剔除，不是打开（见 handleRecentFolderClick / handleRecentClick）。
+   "它曾在这"这层反馈不能靠直接删实现——删了用户只会觉得"我明明用过，怎么没了"。 */
+.ldk-welcome-recent-item--missing {
+  opacity: 0.45;
+}
+
+.ldk-welcome-recent-item--missing .ldk-welcome-recent-label {
+  text-decoration: line-through;
+  text-decoration-color: var(--text-muted);
+}
+
+.ldk-welcome-recent-badge {
+  flex-shrink: 0;
+  font-size: var(--font-size-2xs);
+  color: var(--error);
+  border: 1px solid var(--error);
+  border-radius: var(--radius-xs);
+  padding: 0 4px;
+  white-space: nowrap;
+}
+
+/* ── 条目级「×」（W3b §七#5）──
+   ⚠️ 这里**故意与 mockup 不同**：mockup 写 `display:none`，真实实现不能用——
+   `display:none`/`visibility:hidden` 的元素**接不到键盘焦点**，而 §七#5 要求 × 键盘可达
+   （Tab 到它 ＋ Enter/Space 生效）。故用 `opacity: 0`（保留占位 ⇒ hover 时不发生横向位移）
+   ＋ `:focus-within`/`:focus-visible` 把它显出来。 */
+.ldk-welcome-recent-remove {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  border-radius: var(--radius-xs);
+  color: var(--text-muted);
+  opacity: 0;
+  transition: opacity 120ms ease, background 120ms ease, color 120ms ease;
+}
+
+.ldk-welcome-recent-item:hover .ldk-welcome-recent-remove,
+.ldk-welcome-recent-item:focus-within .ldk-welcome-recent-remove {
+  opacity: 1;
+}
+
+.ldk-welcome-recent-remove:hover {
+  background: var(--tab-hover-bg);
+  color: var(--error);
+}
+
+.ldk-welcome-recent-remove:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+  opacity: 1;
 }
 
 /* ── Help Links ── */

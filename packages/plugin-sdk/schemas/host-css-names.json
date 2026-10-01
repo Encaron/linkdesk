@@ -1096,10 +1096,16 @@
     "ldk-welcome-hero",
     "ldk-welcome-logo-bg",
     "ldk-welcome-page",
+    "ldk-welcome-recent-badge",
     "ldk-welcome-recent-icon",
     "ldk-welcome-recent-item",
+    "ldk-welcome-recent-item--missing",
     "ldk-welcome-recent-label",
     "ldk-welcome-recent-list",
+    "ldk-welcome-recent-remove",
+    "ldk-welcome-recent-skeleton",
+    "ldk-welcome-recent-subtitle",
+    "ldk-welcome-recent-unavailable",
     "ldk-welcome-recent-workspace",
     "ldk-welcome-scroll",
     "ldk-welcome-section",
@@ -1164,7 +1170,8 @@
     "ldk-selectbox-in",
     "ldk-toast-in",
     "ldk-toast-out",
-    "ldk-view-skeleton-breath"
+    "ldk-view-skeleton-breath",
+    "ldk-welcome-skeleton-breath"
   ],
-  "reservedKeyframeCount": 11
+  "reservedKeyframeCount": 12
 }

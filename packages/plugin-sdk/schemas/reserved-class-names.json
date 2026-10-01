@@ -45,6 +45,10 @@
     {
       "name": "ldk-toast-out",
       "why": "宿主池轻提示卡退场动画"
+    },
+    {
+      "name": "ldk-welcome-skeleton-breath",
+      "why": "宿主欢迎页最近列表加载骨架呼吸（04「启动过场」④C 同语言）"
     }
   ]
 }

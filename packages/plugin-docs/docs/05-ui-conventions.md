@@ -568,6 +568,7 @@ both stylesheets land on the same element.
 | `ldk-view-skeleton-breath` | the content loading skeleton's breathing |
 | `ldk-toast-in` | the light-hint card's entrance animation |
 | `ldk-toast-out` | the light-hint card's exit animation |
+| `ldk-welcome-skeleton-breath` | the welcome recent list loading skeleton's breathing |
 
 **The name you reference has to exist somewhere**—rule 2 above says "when you rename, change the reference in
 the same commit"; this is the other half, and **the machine checks it**: the name you write in
