@@ -76,6 +76,14 @@ export const EXEMPT = [
       "⚠️ 它也**不在 `npm run check` 链里**（挂 `lsp:smoke`）——这是**有意**的：check 必须能在" +
       "没有插件容器／没有 pyright 的机器上跑。1.27 本机实测：绿（走容器 `E:\\linkdesk-plugins\\official\\python`）。",
   },
+  {
+    file: "check-release-notes-sync.mjs",
+    why:
+      "**联网门禁**——真查 GitHub Releases API（`releases/latest`），且对账对象「上一版已发 Release ↔ 仓内段」" +
+      "**只在发版时变化**：平时提交里它恒为同一对值，接进 check 链只白付一次网络、不添信息。" +
+      "挂 `npm run publish` 前置（scripts/publish.mjs 步②′，E6#167）。" +
+      "**怎么在有环境处跑**：`node scripts/check-release-notes-sync.mjs`（联网即可，匿名额度足够；任意一次 npm run publish 也会带到）。",
+  },
 ];
 
 /**

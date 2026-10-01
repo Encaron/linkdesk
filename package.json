@@ -46,6 +46,7 @@
     "menu-slots:regen": "node scripts/gen-host-menu-slots.mjs",
     "menu-slots:check": "node scripts/gen-host-menu-slots.mjs --check",
     "check:publish-gate": "node scripts/check-publish-gate.mjs",
+    "check:release-notes-sync": "node scripts/check-release-notes-sync.mjs",
     "check:lockfile-sync": "node scripts/check-lockfile-sync.mjs",
     "check:lockfile-sync:selftest": "node scripts/check-lockfile-sync.mjs --self-test",
     "check:claude-md": "node scripts/check-claude-md.mjs",

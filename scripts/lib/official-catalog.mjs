@@ -51,8 +51,9 @@ export function networkHint(what, url) {
   );
 }
 
-/** 本模块自用的极薄 fetch 包装：附 UA + 可选 token，失败抛带话术的错 */
-async function ghFetch(url, { accept, raw = true, what }) {
+/** 本模块自用的极薄 fetch 包装：附 UA + 可选 token，失败抛带话术的错。
+ *  `allow404: true` ⇒ 404 返回 null 而不抛（「没有 Release」是事实不是故障，交调用方出声放行）。 */
+async function ghFetch(url, { accept, raw = true, what, allow404 = false }) {
   const headers = { "User-Agent": "linkdesk-bundled-sync", Accept: accept };
   const token = process.env.GITHUB_TOKEN || process.env.GH_TOKEN;
   if (token) headers.Authorization = `Bearer ${token}`;
@@ -64,6 +65,7 @@ async function ghFetch(url, { accept, raw = true, what }) {
     throw new Error(networkHint(what, url) + (cause ? `\n   （底层错误：${cause}）` : ""));
   }
   if (!res.ok) {
+    if (allow404 && res.status === 404) return null;
     const body = await res.text().catch(() => "");
     const auth = res.status === 401 || res.status === 403
       ? "\n   403/401 多为**速率限制或凭据问题**——设 GITHUB_TOKEN（或 GH_TOKEN）后重跑；匿名额度 60 次/时·IP。"
@@ -135,6 +137,31 @@ export function compareVersions(a, b) {
 }
 
 /**
+ * 读某仓 `releases/latest` → `{ tag, name, body } | null`（tag 保留 `v` 前缀原文；body 为 Release 正文）。
+ * E6#167：壳仓发版前置对账「已发 Release 正文 ↔ 仓内 CHANGELOG 段」的读数源；
+ * `readLatestReleaseTag` 改为它的薄壳（对外语义不变）。
+ * 404（一个 Release 都没有）→ `null`（是事实不是故障）；**网络 / 权限错 → 抛**（fail-closed，
+ * 由调用方决定红不红——对账门禁必须红，提示类调用方自己兜）。
+ */
+export async function readLatestRelease(repo) {
+  if (typeof repo !== "string" || !repo.includes("/")) return null;
+  const json = await ghFetch(`https://api.github.com/repos/${repo}/releases/latest`, {
+    accept: "application/vnd.github+json",
+    raw: false,
+    what: `${repo} 的最新 Release`,
+    allow404: true,
+  });
+  if (json === null) return null;
+  const tag = typeof json?.tag_name === "string" ? json.tag_name : null;
+  if (!tag) return null;
+  return {
+    tag,
+    name: typeof json?.name === "string" ? json.name : null,
+    body: typeof json?.body === "string" ? json.body : null,
+  };
+}
+
+/**
  * 读某插件仓 `releases/latest` 的 tag（去 `v`）——**「目录落后于 Release」这条警告的读数源**，
  * 不是 version 裁决源（裁决源按第 7.4 轮用户裁定 = 官方目录，见文件头）。
  *
@@ -147,13 +174,8 @@ export function compareVersions(a, b) {
 export async function readLatestReleaseTag(repo) {
   if (typeof repo !== "string" || !repo.includes("/")) return null;
   try {
-    const json = await ghFetch(`https://api.github.com/repos/${repo}/releases/latest`, {
-      accept: "application/vnd.github+json",
-      raw: false,
-      what: `${repo} 的最新 Release`,
-    });
-    const tag = typeof json?.tag_name === "string" ? json.tag_name.replace(/^v/, "") : null;
-    return tag || null;
+    const rel = await readLatestRelease(repo);
+    return rel ? rel.tag.replace(/^v/, "") : null;
   } catch {
     return null;
   }

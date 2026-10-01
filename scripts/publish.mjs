@@ -17,9 +17,11 @@
  *   4. **还原**（finally，无论成败）——逐字节放回写之前的样子。
  *   5. 打印你接下来要敲的两条命令（**本脚本不推、不打 tag**）。
  *
- * 🔴 本脚本**不碰网络、不打 tag、不推送**（推送须用户明确发话，见 memory `push-wait-for-user`）。
+ * 🔴 本脚本**不打 tag、不推送**（推送须用户明确发话，见 memory `push-wait-for-user`）。
  *   tag 由人工打、人工推——推了之后 CI 负责建 Release 并上传安装包。
  *   本脚本只把「该敲哪两条命令」打给你，并**先把版本号算好**，免得手抄错。
+ *   ⚠️ E6#167 起步②含一次**只读**的 GitHub API 查询（已发 Release 正文对账，
+ *   `check-release-notes-sync.mjs`）——只读，不改任何远端状态；「不推」的语义不变。
  *
  * 用法：
  *   npm run publish              # 完整发布（写→门禁→打包→还原→打印命令）
@@ -37,6 +39,7 @@ const ROOT = resolve(__dirname, "..");
 const PRODUCT = join(ROOT, "electron", "product.json");
 const WRITER = join(ROOT, "scripts", "write-product-json.mjs");
 const GATE = join(ROOT, "scripts", "check-publish-gate.mjs");
+const NOTES_GATE = join(ROOT, "scripts", "check-release-notes-sync.mjs");
 
 const noBuild = process.argv.includes("--no-build");
 
@@ -130,11 +133,17 @@ function main() {
   // 异常逃逸 / 提前退出也要还原（SIGINT 另有处理器）
   process.on("exit", restore);
 
-  // ── 2. 发布门禁 ①②③ ──
+  // ── 2. 发布门禁 ①②③⑤ ──
   say("\n② 发布门禁\n");
   if (run(process.execPath, [GATE]) !== 0) {
     restore();
     fail(`发布门禁未过——已还原 product.json，**没有打 tag、没有打包**。`);
+  }
+  // ── 2b. 已发正文对账（E6#167：上一版 Release 正文 ↔ 仓内 CHANGELOG 段，联网只读）──
+  say("\n②′ 已发 Release 正文对账（E6#167，联网只读）\n");
+  if (run(process.execPath, [NOTES_GATE]) !== 0) {
+    restore();
+    fail(`已发正文对账未过——仓内 CHANGELOG 与已发 Release 漂移，先修账再发。已还原 product.json，**没有打 tag、没有打包**。`);
   }
 
   // ── 3. 打包（内含判据④ + 安装器文件名门禁）──
