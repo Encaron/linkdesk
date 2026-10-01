@@ -30,6 +30,8 @@
 #                          （`--preview=autoinstall=1`，页面里两个右键框默认不勾）⇒ 断言三键**没被写**、
 #                          而 ProgId/Capabilities 写了。顺带覆盖「覆盖安装」：本路不给 --dir，目录从
 #                          ARP 键里读出来 ⇒ 断言 UninstallString **一字未变**。
+#                          🔴 正因「目录从 ARP 读」，本路落装前有**目标体检**：ARP 认出的目录不在 $Work
+#                          下就跳过本路（要拿真机目录当靶子才加 -AllowRealInstallDir）——见文件头 ⚠️。
 #   路 3  静默 · PATH 真追加  临时摘掉 PathAdded（备份其值），跑一次 ⇒ 断言 Path 末尾追加了目标目录、
 #                          PathBackup == 追加前的原值、再装一次不重复追加，然后还原。
 #                          **这是唯一会真改用户 PATH 的一路。**
@@ -46,13 +48,17 @@
 #   powershell -ExecutionPolicy Bypass -File tools\syswrite-test.ps1 -SkipRestore    # 调试：留现场
 #   powershell -ExecutionPolicy Bypass -File tools\syswrite-test.ps1 -RestoreOnly    # 只按上次的备份还原
 #
-# ⚠️ 不跑真 LinkDesk 的任何东西；安装目录一律 <临时根> 下。**不做 2d 的清理**（那是另一件的活）。
+# ⚠️ **安装目录一律 <临时根> 下——但路 2 是例外，靠闸守住**：那一路刻意不给 `--dir`（为验「覆盖装从
+#    ARP 认目录」），目标由注册表决定 ⇒ ARP 指向真机装机时，它就会写进**用户的真实安装目录**。
+#    2026-10-02 实测吃过亏（真装机连同 ARP/PATH/开始菜单指针一起报废），故落装前有目标体检闸：
+#    认出的目录不在 $Work 下即**跳过本路**（`-AllowRealInstallDir` 才放行）。**不做 2d 的清理**（那是另一件的活）。
 param(
     [string]$Setup = "",
     [string]$Work = "$env:TEMP\linkdesk-syswrite-test",
     [string]$SevenZip = "",
     [switch]$SkipRestore,
-    [switch]$RestoreOnly
+    [switch]$RestoreOnly,
+    [switch]$AllowRealInstallDir   # 解路 2 的目标体检闸（拿真机装机目录当靶子；见文件头 ⚠️）
 )
 $ErrorActionPreference = 'Stop'
 $here = Split-Path -Parent $MyInvocation.MyCommand.Path
@@ -62,6 +68,7 @@ if (-not $SevenZip) { $SevenZip = Join-Path $here '.cache\7zr.exe' }
 $SevenZip = (Resolve-Path $SevenZip -ErrorAction SilentlyContinue).Path
 
 $bad = 0
+$skip2 = $false   # 路 2 的目标体检闸（ARP 指到真机装机目录时跳过本路，见文件头 ⚠️）
 function Say($ok, $msg) {
     if ($ok) { Write-Host "OK   $msg" } else { Write-Host "FAIL $msg"; $script:bad++ }
 }
@@ -441,40 +448,59 @@ try {
 
     # ══ 路 2：界面态 · 勾选真值（含覆盖安装）═══════════════════════════════
     Write-Host "`n=== 路 2：界面态覆盖安装（页面真动作；两个右键框默认不勾）==="
-    # 先把三键删掉（含路 1b 预置的）：页面不勾 ⇒ 装完**必须仍然没有**（这才证明勾选真的接线了，
-    # 而不是「反正键都在、写没写看不出」）。删前的值已导出，还原照旧。
-    foreach ($m in $MENUS) { Reg-DelTree $m.k }
-    $uninstBefore = Reg-Get $ARP 'UninstallString'
-    $log = Join-Path $Work 'l2.log'
-    # ⚠️ `--preview` 的 query 是**同一个参数**（`--preview=<query>`），拆成两个参数时 query 会被丢掉，
-    #    症状＝窗口起来了但页面永远停在主屏，日志里一条消息都没有（件 2a 的 install-test.ps1 路 A 同款写法）。
-    $p2 = Start-Process -FilePath $Setup -PassThru `
-        -ArgumentList @('--preview=autoinstall=1', "--log=$log")
-    $deadline = (Get-Date).AddSeconds(150)
-    $done = $false
-    while ((Get-Date) -lt $deadline) {
-        if (Test-Path $log) {
-            $txt = Get-Content -LiteralPath $log -Raw -ErrorAction SilentlyContinue
-            if ($txt -match 'install-done') { $done = $true; break }
-            if ($txt -match 'install-error') { break }
+    # 🔴 落装前的**目标体检**（2026-10-02 加）：本路刻意不给 --dir ⇒ 引导器按 ARP 认「已装目录」当落装目标。
+    #    正常序里 ARP 刚被路 1b 指到 $Work\l1b；但只要有一步没跑成、或跑过一次 -RestoreOnly，ARP 就是
+    #    **真机那份装机**的登记 ⇒ 这一路会把开发包装进用户的真实安装目录（2026-10-02 实测到的正是这个形状）。
+    #    所以先认目标：不在 $Work 下就**跳过本路**。用跳过而不是 throw——throw 会顶掉 finally 后面的还原链
+    #    （坑 14 那个病：一次抛出，注册表就留在测试态）。
+    $tgtDir = Reg-Get $ARP 'DisplayIcon'
+    if ($tgtDir) { $tgtDir = Split-Path -Parent ($tgtDir -replace ',0$', '') }
+    else {
+        $tgtDir = Reg-Get $ARP 'UninstallString'
+        if ($tgtDir) { $tgtDir = Split-Path -Parent ($tgtDir -replace '^"([^"]+)".*$', '$1') }
+    }
+    if ($tgtDir -and ($tgtDir -notlike "$Work*") -and (-not $AllowRealInstallDir)) {
+        Write-Host "⚠️  跳过路 2：ARP 认出的覆盖目标是 `"$tgtDir`"，不在临时目录 `"$Work`" 下。"
+        Write-Host "    本路不给 --dir，跑下去会把开发包装进上面那个目录（真机装机目录会被覆盖）。"
+        Write-Host "    要拿真实目录当靶子（明确知道后果）才加 -AllowRealInstallDir；正常做法是先跑路 1/1b 把 ARP 指回临时目录。"
+        $skip2 = $true
+    }
+    if (-not $skip2) {
+        # 先把三键删掉（含路 1b 预置的）：页面不勾 ⇒ 装完**必须仍然没有**（这才证明勾选真的接线了，
+        # 而不是「反正键都在、写没写看不出」）。删前的值已导出，还原照旧。
+        foreach ($m in $MENUS) { Reg-DelTree $m.k }
+        $uninstBefore = Reg-Get $ARP 'UninstallString'
+        $log = Join-Path $Work 'l2.log'
+        # ⚠️ `--preview` 的 query 是**同一个参数**（`--preview=<query>`），拆成两个参数时 query 会被丢掉，
+        #    症状＝窗口起来了但页面永远停在主屏，日志里一条消息都没有（件 2a 的 install-test.ps1 路 A 同款写法）。
+        $p2 = Start-Process -FilePath $Setup -PassThru `
+            -ArgumentList @('--preview=autoinstall=1', "--log=$log")
+        $deadline = (Get-Date).AddSeconds(150)
+        $done = $false
+        while ((Get-Date) -lt $deadline) {
+            if (Test-Path $log) {
+                $txt = Get-Content -LiteralPath $log -Raw -ErrorAction SilentlyContinue
+                if ($txt -match 'install-done') { $done = $true; break }
+                if ($txt -match 'install-error') { break }
+            }
+            if ($p2.HasExited) { break }
+            Start-Sleep -Milliseconds 200
         }
-        if ($p2.HasExited) { break }
-        Start-Sleep -Milliseconds 200
+        Say $done "页面路径跑到 install-done（日志 $log）"
+        # 覆盖安装认的目录来自 ARP（本路没给 --dir）⇒ UninstallString 必须**一字不变**
+        # （不硬编码某个路径：路 1b 已经把它挪到 l1b 去了，写死 $d1 会假红）
+        Say ((Reg-Get $ARP 'UninstallString') -eq $uninstBefore) "覆盖装认的目录来自 ARP（UninstallString 一字未变：$(Reg-Get $ARP 'UninstallString')）"
+        foreach ($m in $MENUS) {
+            $got = Reg-Get $m.k ''
+            Say (($null -eq $got) -and (-not (Reg-Has "$($m.k)\command"))) "右键键**未写**（页面没勾）：$($m.k)"
+        }
+        # 编辑器注册走的是「本次装的目录」——本路没给 --dir ⇒ 目录来自 ARP，故从 DisplayIcon 反推
+        # （`<目录>\LinkDesk.exe,0` 去掉 `,0`）而不是写死某个目录
+        $exe2 = (Reg-Get $ARP 'DisplayIcon') -replace ',0$', ''
+        Say ((Reg-Get "$progId\shell\open\command" '') -eq "`"$exe2`" `"%1`"") `
+            "编辑器注册**照写**（页面默认勾；command=`"$(Reg-Get "$progId\shell\open\command" '')`"）"
+        Stop-SetupProcs
     }
-    Say $done "页面路径跑到 install-done（日志 $log）"
-    # 覆盖安装认的目录来自 ARP（本路没给 --dir）⇒ UninstallString 必须**一字不变**
-    # （不硬编码某个路径：路 1b 已经把它挪到 l1b 去了，写死 $d1 会假红）
-    Say ((Reg-Get $ARP 'UninstallString') -eq $uninstBefore) "覆盖装认的目录来自 ARP（UninstallString 一字未变：$(Reg-Get $ARP 'UninstallString')）"
-    foreach ($m in $MENUS) {
-        $got = Reg-Get $m.k ''
-        Say (($null -eq $got) -and (-not (Reg-Has "$($m.k)\command"))) "右键键**未写**（页面没勾）：$($m.k)"
-    }
-    # 编辑器注册走的是「本次装的目录」——本路没给 --dir ⇒ 目录来自 ARP，故从 DisplayIcon 反推
-    # （`<目录>\LinkDesk.exe,0` 去掉 `,0`）而不是写死某个目录
-    $exe2 = (Reg-Get $ARP 'DisplayIcon') -replace ',0$', ''
-    Say ((Reg-Get "$progId\shell\open\command" '') -eq "`"$exe2`" `"%1`"") `
-        "编辑器注册**照写**（页面默认勾；command=`"$(Reg-Get "$progId\shell\open\command" '')`"）"
-    Stop-SetupProcs
 
     # ══ 路 4：界面态 · **全新目录**（四段进度真读数 ＋ 系统项随新目录改写）════════════
     # 路 2 是**覆盖**装（目录里文件已齐 ⇒ 解压段没有中间读数可报，日志只剩段边界，实测仅 5 条）。
@@ -574,4 +600,5 @@ finally {
 }
 
 Write-Host "`n=== 汇总：$($bad) 条失败 ==="
+if ($skip2) { Write-Host "⚠️  路 2 被目标体检闸跳过（ARP 认出的目标不在 $Work 下）——覆盖装/勾选真值那一路**本次没验**。" }
 if ($bad -gt 0) { exit 1 }

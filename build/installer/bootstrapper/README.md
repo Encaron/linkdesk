@@ -50,7 +50,7 @@ node scripts\build-installer.mjs --exe out\bootstrapper.exe ^
 | `interact-test.ps1` | 真键鼠交互验收：拖窗位移断言 / Enter 主按钮 / 下拉＋Esc / ✕ 退出（产物 `out\it-*.png`）。🔴 **必须显式 `-AllowDesktopMinimize`**（2026-10-02 加闸）：真键鼠事件要求桌面清空、否则点击会落到别的窗口上，脚本会把**全部前台窗口最小化并保持到跑完**——不给开关直接 `exit 3` |
 | `i18n-test.ps1` | 件 1c 词条装载器验收（39 断言）：探针页 iframe 实测 DOM ＋ 1px 图片信标回传（**不靠截图/OCR/时序运气**——靠本地 http.server 的访问日志），C1–C5 五路装载器 ＋ 三张 exe 实跑截图（带出注册表语言／扫目录，跑完复原注册表）；日志 `out\i18n-test.log` |
 | `install-test.ps1` | 件 2a 验收（三路，跑**真安装包**）：路 B 静默装（退出码／文件数／字节数与 marker 声明对账）· 路 A 界面态（`--log` 证进度单调不倒退、四段边界到过、收在 100）· 路 C `--force-run` 拉起壳（**按安装目录路径认进程**，不按名字）。⚠️ 三条路的 `--dir` 全指临时目录，**不碰**真装的 LinkDesk；用法 `-Setup <安装包.exe>`。🔴 **件 2b 起必须加 `-AllowSystemWrites`**——安装现在会写真机注册表（关联/右键/PATH/ARP/快捷方式），而本脚本**没有备份还原**，不给开关就直接拒绝执行 |
-| `syswrite-test.ps1` | 件 2b 验收（**七路**，跑真安装包 ＋ **真机注册表**）：装前把要碰的键**全量导出备份**（`reg.exe export` 原样往返，值的类型/编码不经脚本手）＋ 跑完全部还原并**自检还原结果**。路 1 静默（勾选值按注册表现状**反推** ⇒ 逐键跟着装前现状走）· 路 1b 静默（预置三键 ⇒ 验 `*\shell` 的**写入侧**）· 路 2 界面态覆盖装（页面不勾的项**必须没写**）· 路 3 PATH 真追加/幂等 · 路 3b PATH **类型不降级**（`REG_EXPAND_SZ` 进必 `REG_EXPAND_SZ` 出）· 路 4 界面态**全新目录**（四段进度真读数断言）。开头有**新鲜度门禁**（见坑 11）。`-SkipRestore` 留现场、`-RestoreOnly` 按上次备份补救。**还原链自身健壮化**（2026-10-02 收口，见坑 13/14）：杀不掉进程**只警告不抛** · 还原每步套 `Restore-Step` 记账（一步失败不炸全链）· 还原自检**加断言 `UninstallString`** · 路 4 轮询带**卡死看门狗**（每 20s 打「日志静止秒数／末条 pct／进程活否／ARP 尾值」） |
+| `syswrite-test.ps1` | 件 2b 验收（**七路**，跑真安装包 ＋ **真机注册表**）：装前把要碰的键**全量导出备份**（`reg.exe export` 原样往返，值的类型/编码不经脚本手）＋ 跑完全部还原并**自检还原结果**。路 1 静默（勾选值按注册表现状**反推** ⇒ 逐键跟着装前现状走）· 路 1b 静默（预置三键 ⇒ 验 `*\shell` 的**写入侧**）· 路 2 界面态覆盖装（页面不勾的项**必须没写**）· 路 3 PATH 真追加/幂等 · 路 3b PATH **类型不降级**（`REG_EXPAND_SZ` 进必 `REG_EXPAND_SZ` 出）· 路 4 界面态**全新目录**（四段进度真读数断言）。开头有**新鲜度门禁**（见坑 11）。🔴 **路 2 有「目标体检」闸**（2026-10-02）：那一路刻意不给 `--dir`（为验「覆盖装从 ARP 认目录」）⇒ 落装前先认 ARP 里的目录，**不在 `$Work` 下就跳过本路**（要拿真机目录当靶子才加 `-AllowRealInstallDir`）；为什么加这闸见**坑 15**。`-SkipRestore` 留现场、`-RestoreOnly` 按上次备份补救。**还原链自身健壮化**（2026-10-02 收口，见坑 13/14）：杀不掉进程**只警告不抛** · 还原每步套 `Restore-Step` 记账（一步失败不炸全链）· 还原自检**加断言 `UninstallString`** · 路 4 轮询带**卡死看门狗**（每 20s 打「日志静止秒数／末条 pct／进程活否／ARP 尾值」） |
 | `gen-ui-rc.mjs` | 生成 `out\ui.gen.rc` ＋ `out\ui.manifest`：把 `app.html/css/js` 与 `i18n/*.json` 编成 RCDATA（id 3 清单、id 10+ 文件）。**单文件产品态必须**——拼合后的 setup.exe 旁边没有 `app.html` |
 | `dom-probe.mjs` | **快速读 DOM**（见下）：在真页面里求值、算几何，不起截图不做 OCR。`--click`/`--rect`/`--text`/`--eval` **按命令行顺序**执行；`--attach` 连已在跑的实例、`--keep` 测完不关窗 |
 | `pix-diff.ps1` | 两张同尺寸 PNG 比像素：只回报差异点数／最大通道差／差异包围盒，**不落图**——回答「改了样式后哪一屏变了、变在哪一块」比人眼看图便宜得多（读图付 token）。`-A out\app-home.png -B out\base-home.png`（`-Tol` 默认 6） |
@@ -177,6 +177,19 @@ node tools\dom-probe.mjs --preview "screen=home&lang=zh-CN" --click "#lkdd-btn" 
     `install-canceled`／`install-error`、临时解压目录已被清掉（说明 `ExtractPayload()` 已返回）、无 WER 崩溃记录；
     同一二进制、同一机器**原样重跑 11 秒走完**，随后七路全量绿（0 失败）。轮询循环现每 20 秒打一行
     「日志静止 n 秒／末条 `pct`／进程是否活／ARP 尾值」——再犯时有现场可读，不必靠猜。
+15. 🔴 **「不给 `--dir`」＝ 拿注册表当靶子 ⇒ 测试能把开发包装进用户的真实安装目录**（2026-10-02 实测踩中）。
+    `syswrite-test.ps1` 的路 2 为验「覆盖装从 ARP 认目录」**刻意不发 `--dir`**，目标目录于是由
+    `HKCU\…\Uninstall\<guid>` 的 `UninstallString`/`DisplayIcon` 决定。正常序里路 1b 刚把 ARP 指到
+    `$Work\l1b`（临时）；但**只要中间某一步没跑成、或跑过一次 `-RestoreOnly`**，ARP 里就是**真机那份装机**
+    的登记 ⇒ 这一路会把开发包写进用户的真实安装目录（`HKCU\Software\LinkDesk\PathAdded` 记的正是它）。
+    当日实测后果：真装机目录 `D:\01link\LinkDesk` 连同 ARP/PATH/开始菜单三处指针一起报废
+    （**用户数据 `%APPDATA%\linkdesk` 未受影响**）。
+    ⚠️ **树删的确切执行者回溯不出来**（引导器侧唯一的递归删除 `RemoveTree()` 只作用于 `%TEMP%` 的摊 UI 目录，
+    2d 的卸载清理尚未实现，那一步也没留日志）——故本坑不写死因果，只钉**已证实的通路**与闸。
+    **闸**：路 2 落装前先认目标（`DisplayIcon` → `UninstallString` 逐级退化解析），不在 `$Work` 下即**跳过本路**
+    （**不 throw**——`finally` 里抛一次会顶掉还原链，正是坑 13 的病），`-AllowRealInstallDir` 才放行。
+    只读复现判定：本机现值 → `D:\01link\LinkDesk` ⇒ 跳过；临时靶 ⇒ 不跳过。
+    **同族判据**：任何「按注册表认目录再落盘」的测试路线（不止本脚本）都要先证明目标落在临时根下。
 
 ## 四、宿主契约（件 1b 起会用到）
 
