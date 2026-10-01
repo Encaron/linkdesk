@@ -115,7 +115,10 @@
 
   /* ── 欢迎页本体 ── */
   .content{flex:1;overflow-x:hidden;overflow-y:auto;position:relative}
-  .wm{position:absolute;top:-40px;right:-30px;width:340px;height:340px;opacity:.05;pointer-events:none}
+  /* 🔴 2026-10-01 用户拍板更正：水印 = 页内居中铺底（与实机长期既有行为一致）。
+     原「右上角出血」（top:-40px/right:-30px/width:340px）**作废**——它与实机长期行为相反，
+     T13 照它实现 ⇒ 实机水印跑到右上角，用户目视后指出。⛔ 别再改回角落。 */
+  .wm{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(600px,80vw);height:min(600px,80vw);opacity:.06;pointer-events:none}
   .wl{position:relative;max-width:780px;margin:0 auto;padding:34px 48px 40px}
   .hero{display:flex;align-items:center;gap:16px;margin-bottom:8px}
   .hero .mark{width:44px;height:50px;flex:none}
@@ -271,8 +274,10 @@
       </div>
 
       <div class="content">
-        <!-- 水印：正典实心几何淡显（W6，随「程序图标」档案 §0.1.4 并案收口） -->
-        <svg class="wm" viewBox="0 0 160 160"><polygon points="80,10 147,45 147,115 80,150 13,115 13,45" fill="var(--text-muted)"/><circle cx="80" cy="52" r="9" fill="var(--bg-window)"/><circle cx="52" cy="104" r="9" fill="var(--bg-window)"/><circle cx="108" cy="104" r="9" fill="var(--bg-window)"/></svg>
+        <!-- 水印：正典实心几何淡显（W6，随「程序图标」档案 §0.1.4 并案收口）。
+             2026-10-01 用户拍板：位置＝页内居中；几何＝与 hero 标同一条 path（实机 `MARK_PATH`：六边形＋三个 evenodd 真孔）——
+             本图原先用的是「描边时代」的 160 方框多边形，已同笔换成实机那条 path，免得图/实机再对不上。 -->
+        <svg class="wm" viewBox="0 0 100 114"><path fill-rule="evenodd" fill="var(--text-muted)" d="M50 4L96 30L96 84L50 110L4 84L4 30Z M42 36a8 8 0 1 0 16 0a8 8 0 1 0-16 0Z M24 72a8 8 0 1 0 16 0a8 8 0 1 0-16 0Z M60 72a8 8 0 1 0 16 0a8 8 0 1 0-16 0Z"/></svg>
 
         <div class="wl">
           <!-- W5：hero 换新标语（与关于页同句） -->

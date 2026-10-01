@@ -425,16 +425,20 @@
 /* 焦点环交给全局 `*:focus-visible`（index.css）——此处不再重复定义（§六#4「从调色板收编」） */
 
 /* ── 水印（W6：描边 → 正典实心几何淡显）──
-   位置/尺寸照冻结预览图 `.wm{top:-40px;right:-30px;width:340px}`（乘 --ui-scale 跟随界面缩放）。
+   位置/尺寸 = **本件开工前既有行为**：页内居中铺底 `min(600px,80vw)`（乘 --ui-scale 跟随界面缩放）。
+   🔴 2026-10-01 用户目视实机后拍板：冻结预览图 `.wm` 那处「右上角出血 340px」**作废**——它与实机
+   长期既有行为相反（用户原话：「水印应该一直在软件主区标签页的中间」），T13「版式逐项照预览图重写」
+   把这一处一并搬了过去。预览图已同笔改正。⛔ 别再照旧图挪回右上角。
    `opacity` 属装饰层——实心几何淡显，不参与对比度判据（§六#1 装饰件豁免）。
    🔴 svg 内是 evenodd 单 path（孔为真透明孔）——见 tsx 的 MARK_PATH。 */
 .ldk-welcome-logo-bg {
   position: absolute;
-  top: calc(-40px * var(--ui-scale));
-  right: calc(-30px * var(--ui-scale));
-  width: calc(340px * var(--ui-scale));
-  height: calc(340px * var(--ui-scale));
-  opacity: 0.05;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: calc(min(600px, 80vw) * var(--ui-scale));
+  height: calc(min(600px, 80vw) * var(--ui-scale));
+  opacity: 0.06;
   pointer-events: none;
   z-index: 0;
 }
