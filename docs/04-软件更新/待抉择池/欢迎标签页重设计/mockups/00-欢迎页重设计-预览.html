@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>欢迎标签页重设计 · 设计预览 — LinkDesk</title>
+<!-- mockup 仅示意，真实实现走 var(--xxx) + ThemeEngine
+     档案：docs/04-软件更新/待抉择池/欢迎标签页重设计/（00-README.md · 01-设计.md）
+     类型：单方案＋状态详解（非竞标）· 设计系统：skill ui-ux-pro-max（2026-10-01）＋ 壳 token 体系
+     轮廓尺寸取壳实测：顶栏 30 / 图标栏 42 / 标签条 35 / 状态栏 22（html-blueprint §五） -->
+<style>
+  /* ── 壳真实 token（src/index.css 暗色默认值；亮色分支同源）── */
+  :root{
+    --bg-window:#1E1E1E; --bg-card:#2D2D2D; --bg-input:#3C3C3C;
+    --text-primary:#D4D4D4; --text-secondary:#9D9D9D; --text-muted:#8A8A8A;
+    --accent:#0078D4; --accent-hover:#1A8CE8; --text-on-accent:#FFFFFF;
+    --border:#3C3C3C; --separator:#474747;
+    --icon-active:#0078D4; --icon-inactive:#858585;
+    --bg-titlebar:#252526; --bg-icon-bar:#18181B; --bg-side-panel:#1E1E22;
+    --hover-overlay:rgba(255,255,255,0.06);
+    --error:#E06C75; --status-connected:#4EC9B0;
+    --sans:'Segoe UI','PingFang SC','Microsoft YaHei',system-ui,sans-serif;
+    --mono:'SF Mono',Consolas,monospace;
+  }
+  body.light{
+    --bg-window:#FFFFFF; --bg-card:#F5F5F5; --bg-input:#FFFFFF;
+    --text-primary:#2D2D2D; --text-secondary:#5A5A5A; --text-muted:#767676;
+    --accent:#0078D4; --accent-hover:#106EBE;
+    --border:#D4D4D4; --separator:#E8E8E8; --icon-inactive:#999999;
+    --bg-titlebar:#DDDDDD; --bg-icon-bar:#F0F0F0; --bg-side-panel:#F5F5F5;
+    --hover-overlay:rgba(0,0,0,0.04);
+    --error:#B3261E; --status-connected:#388A34;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:#141414;font-family:var(--sans);color:var(--text-primary);
+       min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:18px 12px 30px;transition:background .25s}
+  body.light{background:#D9D9DE}
+
+  /* ── 页头：caption + 场景切换 + 主题切换 ── */
+  .page-head{width:min(1180px,calc(100vw - 24px));display:flex;align-items:center;gap:14px;margin-bottom:12px;flex-wrap:wrap}
+  .page-head h1{font-size:15px;font-weight:600;letter-spacing:.02em;color:#eee}
+  body.light .page-head h1{color:#222}
+  .page-head .sub{font:11px/1.5 var(--mono);color:#8a8a8a}
+  .tabs{margin-left:auto;display:flex;gap:6px}
+  .tabs button{font:12px var(--sans);padding:6px 14px;border-radius:6px;border:1px solid #3a3a3a;
+       background:#232323;color:#bbb;cursor:pointer;transition:all .18s}
+  .tabs button.on{background:var(--accent);border-color:var(--accent);color:var(--text-on-accent)}
+  #themeBtn{font:12px var(--sans);padding:6px 14px;border-radius:6px;border:1px solid #3a3a3a;background:#232323;color:#bbb;cursor:pointer}
+
+  /* ── 窗口（完整轮廓）── */
+  .stage{width:min(1180px,calc(100vw - 24px))}
+  .win{height:min(700px,calc(100vh - 150px));min-height:520px;background:var(--bg-window);
+       border:1px solid #000;border-radius:8px;overflow:hidden;display:flex;flex-direction:column;
+       box-shadow:0 10px 40px rgba(0,0,0,.5);position:relative;transition:background .25s}
+
+  /* 顶栏 30px */
+  .titlebar{height:30px;flex:none;background:var(--bg-titlebar);display:flex;align-items:center;
+       padding:0 8px;gap:2px;position:relative;-webkit-app-region:drag}
+  .tb-logo{width:14px;height:16px;margin:0 6px 0 2px;flex:none}
+  .tb-name{font-size:12px;font-weight:600;color:var(--text-primary);margin-right:14px}
+  .tb-menu{font-size:12px;color:var(--text-secondary);padding:3px 9px;border-radius:4px;cursor:pointer;position:relative}
+  .tb-menu:hover{background:var(--hover-overlay)}
+  .tb-menu.on{background:var(--hover-overlay);color:var(--text-primary)}
+  .tb-spacer{flex:1}
+  .tb-ctl{display:flex;gap:2px}
+  .tb-ctl span{width:30px;height:22px;display:grid;place-items:center;color:var(--text-secondary);font-size:11px}
+  /* 帮助菜单下拉（scene-3）——width:max-content 防压窄 */
+  .dropdown{position:absolute;width:max-content;min-width:210px;background:var(--bg-card);
+       border:1px solid var(--border);border-radius:6px;padding:4px;box-shadow:0 8px 24px rgba(0,0,0,.4);
+       display:none;z-index:50;-webkit-app-region:no-drag}
+  .scene-3 .dropdown{display:block}
+  #helpMenu{top:29px;left:150px}
+  .dd-item{display:flex;align-items:center;gap:9px;font-size:12.5px;color:var(--text-primary);
+       padding:6px 12px;border-radius:4px;cursor:pointer;white-space:nowrap}
+  .dd-item:hover{background:var(--hover-overlay)}
+  .dd-item .k{margin-left:auto;font:10.5px var(--mono);color:var(--text-muted);padding-left:24px}
+  .dd-item.fresh{color:var(--accent)}
+  .dd-item.fresh:hover{background:var(--hover-overlay);color:var(--accent)}
+  .dd-sep{height:1px;background:var(--separator);margin:4px 6px}
+  .dd-tag{font:9.5px var(--mono);color:var(--accent);border:1px solid var(--accent);border-radius:3px;
+       padding:0 4px;margin-left:auto}
+
+  /* 中段：图标栏 42 + 侧栏 216 + 主区 */
+  .mid{flex:1;display:flex;min-height:0}
+  .icon-bar{width:42px;flex:none;background:var(--bg-icon-bar);display:flex;flex-direction:column;
+       align-items:center;padding-top:8px;gap:4px}
+  .ib{width:32px;height:32px;border-radius:6px;display:grid;place-items:center;color:var(--icon-inactive);
+       cursor:pointer;position:relative}
+  .ib:hover{background:var(--hover-overlay)}
+  .ib.on{color:var(--icon-active)}
+  .ib.on::before{content:"";position:absolute;left:-5px;top:6px;bottom:6px;width:2px;background:var(--icon-active);border-radius:2px}
+  .ib.gap{margin-top:auto;margin-bottom:8px}
+  .sidebar{width:216px;flex:none;background:var(--bg-side-panel);border-right:1px solid var(--separator);
+       display:flex;flex-direction:column;font-size:12px}
+  .sb-head{padding:8px 12px 6px;color:var(--text-secondary);font-weight:600;letter-spacing:.04em;display:flex}
+  .sb-head span{margin-left:auto;font:10px var(--mono);color:var(--text-muted)}
+  .sb-item{display:flex;align-items:center;gap:7px;padding:4px 12px 4px 18px;color:var(--text-primary);cursor:pointer}
+  .sb-item:hover{background:var(--hover-overlay)}
+  .sb-item svg{flex:none;color:var(--icon-inactive)}
+  .sb-item.sub{padding-left:34px;color:var(--text-secondary)}
+
+  /* 主区：标签条 35 + 内容 */
+  .main{flex:1;display:flex;flex-direction:column;min-width:0;background:var(--bg-window)}
+  .tabbar{height:35px;flex:none;background:var(--bg-card);display:flex;align-items:flex-end;padding:0 6px;gap:2px}
+  .tab{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text-secondary);
+       padding:0 10px;height:29px;border-radius:6px 6px 0 0;cursor:pointer;max-width:220px}
+  .tab.active{background:var(--bg-window);color:var(--text-primary);border:1px solid var(--border);border-bottom:none}
+  .tab .x{font-size:11px;color:var(--text-muted);border-radius:3px;width:16px;height:16px;display:grid;place-items:center}
+  .tab .x:hover{background:var(--hover-overlay);color:var(--text-primary)}
+  .tabbar .plus{margin-left:auto;margin-bottom:3px;width:24px;height:24px;border-radius:5px;display:grid;
+       place-items:center;color:var(--text-secondary);cursor:pointer;position:relative}
+  .tabbar .plus:hover{background:var(--hover-overlay);color:var(--text-primary)}
+  .scene-3 .tabbar .plus{background:var(--hover-overlay);color:var(--text-primary)}
+  #plusMenu{top:33px;right:8px}
+  /* 「+」菜单——W4：末项分隔线＋「欢迎页」固定入口（菜单面纯文字，图标规则已随拍板删除） */
+
+  /* ── 欢迎页本体 ── */
+  .content{flex:1;overflow-x:hidden;overflow-y:auto;position:relative}
+  .wm{position:absolute;top:-40px;right:-30px;width:340px;height:340px;opacity:.05;pointer-events:none}
+  .wl{position:relative;max-width:780px;margin:0 auto;padding:34px 48px 40px}
+  .hero{display:flex;align-items:center;gap:16px;margin-bottom:8px}
+  .hero .mark{width:44px;height:50px;flex:none}
+  .hero h1{font-size:26px;font-weight:600;letter-spacing:-.01em}
+  .hero p{font-size:13px;color:var(--text-secondary);margin-top:3px}
+  .sec{margin-top:26px}
+  .sec>h2{font-size:12px;font-weight:600;color:var(--text-secondary);letter-spacing:.08em;margin-bottom:10px;
+       display:flex;align-items:center;gap:8px}
+  .sec>h2::after{content:"";flex:1;height:1px;background:var(--separator)}
+  .open-folder{display:flex;align-items:center;gap:12px;width:100%;text-align:left;background:var(--bg-card);
+       border:1px solid var(--border);border-radius:8px;padding:12px 16px;cursor:pointer;color:var(--text-primary);
+       font-size:13px;transition:all .18s}
+  .open-folder:hover{border-color:var(--accent);background:var(--hover-overlay)}
+  .open-folder svg{color:var(--accent)}
+  .rows{display:flex;flex-direction:column;gap:2px;margin-top:8px}
+  .row{display:flex;align-items:center;gap:10px;padding:7px 12px;border-radius:6px;cursor:pointer;
+       font-size:12.5px;color:var(--text-primary);border:none;background:transparent;text-align:left;width:100%;position:relative}
+  .row:hover{background:var(--hover-overlay);padding-right:34px}
+  /* W3：条目级手动移除 ×——hover 才显现（克制），点击从「最近」剔除 */
+  .row .rx{position:absolute;right:8px;top:50%;transform:translateY(-50%);width:18px;height:18px;
+       display:none;place-items:center;border-radius:4px;color:var(--text-muted);font-size:11px;cursor:pointer}
+  .row:hover .rx{display:grid}
+  .row .rx:hover{background:var(--hover-overlay);color:var(--error)}
+  /* §七#2：内层小标题改「最近文件夹」（治与「最近」大区撞名）＋ §七#1 容量注记 */
+  .welcome-recent-subtitle{font-size:11px;color:var(--text-muted);margin:10px 0 2px;letter-spacing:.05em}
+  .welcome-recent-subtitle .cap-note{font:10px var(--mono);margin-left:6px;opacity:.75}
+  .row svg{color:var(--icon-inactive);flex:none}
+  .row .path{margin-left:auto;font:11px var(--mono);color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:46%}
+  .row .kbd{margin-left:auto;font:10.5px var(--mono);color:var(--text-muted)}
+  .row .kbd b{display:inline-block;border:1px solid var(--border);border-radius:4px;padding:1px 6px;
+       background:var(--bg-card);font-weight:400;margin-left:4px}
+  /* W3 失效项：灰显＋角标 */
+  .row.missing{opacity:.45}
+  .row.missing .name{text-decoration:line-through;text-decoration-color:var(--text-muted)}
+  .badge{font-size:10px;color:var(--error);border:1px solid var(--error);border-radius:3px;padding:0 5px;margin-left:8px;white-space:nowrap}
+  .row:hover .badge{opacity:1}
+  /* W1 图标卡（与市场同源 identity art） */
+  .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+  .card{display:flex;align-items:center;gap:11px;background:var(--bg-card);border:1px solid var(--border);
+       border-radius:8px;padding:12px 14px;cursor:pointer;font-size:12.5px;color:var(--text-primary);transition:all .18s;white-space:nowrap}
+  .card:hover{border-color:var(--accent);transform:translateY(-1px)}
+  .card:focus-visible,.row:focus-visible,.dd-item:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+  .card .art{width:26px;height:26px;flex:none}
+  .card .hint{margin-left:auto;font-size:10px;color:var(--text-muted);white-space:nowrap;flex:none}
+  /* W2 说明行 */
+  .optout{font-size:11px;color:var(--text-muted);margin-top:9px;line-height:1.8;display:flex;align-items:flex-start;gap:6px}
+  .optout svg{flex:none;margin-top:3px}
+  .optout code{font:10.5px var(--mono);color:var(--text-secondary);background:var(--bg-card);
+       border:1px solid var(--border);border-radius:4px;padding:1px 6px}
+  /* 帮助区：真按钮行 */
+  .help-row .name{color:var(--accent)}
+  /* toast（scene-2）——右下角，width:max-content */
+  .toast{position:absolute;right:18px;bottom:16px;width:max-content;display:none;align-items:center;gap:9px;
+       background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:10px 16px;font-size:12.5px;color:var(--text-primary);
+       box-shadow:0 8px 24px rgba(0,0,0,.4);z-index:60}
+  .scene-2 .toast{display:flex;animation:tin .25s ease-out}
+  @keyframes tin{from{opacity:0;transform:translateY(8px)}}
+  .toast svg{color:var(--error);flex:none}
+
+  /* 状态栏 22px */
+  .statusbar{height:22px;flex:none;background:var(--bg-window);border-top:1px solid var(--separator);
+       display:flex;align-items:center;padding:0 12px;gap:14px;font-size:11px;color:var(--text-secondary)}
+  .statusbar .dot{width:7px;height:7px;border-radius:50%;background:var(--status-connected)}
+  .statusbar .right{margin-left:auto;display:flex;gap:14px}
+
+  /* ── frame-note ── */
+  .frame-note{width:min(1180px,calc(100vw - 24px));margin-top:14px;font:11.5px/1.9 var(--mono);color:#9a9a9a}
+  body.light .frame-note{color:#555}
+  .frame-note b{color:#ddd;font-weight:600}
+  body.light .frame-note b{color:#222}
+  .frame-note .cap{font-size:12.5px;color:#ddd;margin-bottom:6px}
+  body.light .frame-note .cap{color:#222}
+  /* 场景 2 专属元素：默认隐藏，scene-2 显示 */
+  .s2{display:none !important}
+  body.scene-2 .s2{display:flex !important}
+  /* W7 零标签空场背景（scene-4）——不是标签页，是主区空态层 */
+  .empty-stage{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;gap:16px}
+  body.scene-4 .empty-stage{display:flex}
+  body.scene-4 .wl,body.scene-4 .wm,body.scene-4 .tab{display:none}
+  .empty-stage .bigmark{width:170px;height:194px;opacity:.14}
+  .empty-stage .wordmark{font:400 46px/1.1 'Newsreader','Lyon Text',Georgia,'Songti SC','SimSun',serif;
+       letter-spacing:-0.03em;color:var(--text-muted)}
+  .empty-stage .wordmark em{font-style:italic}
+</style>
+</head>
+<body class="scene-1">
+
+<div class="page-head">
+  <h1>欢迎标签页重设计 · 设计预览</h1>
+  <span class="sub">mockup 仅示意 · 真实实现走 var(--xxx) ＋ ThemeEngine · 档案 04/待抉择池/欢迎标签页重设计/</span>
+  <div class="tabs">
+    <button class="on" onclick="setScene(1,this)">场景 1 · 默认态</button>
+    <button onclick="setScene(2,this)">场景 2 · 失效项＋toast</button>
+    <button onclick="setScene(3,this)">场景 3 · 新入口</button>
+    <button onclick="setScene(4,this)">场景 4 · 空场</button>
+  </div>
+  <button id="themeBtn" onclick="toggleTheme()">☾ 暗色</button>
+</div>
+
+<div class="stage">
+<div class="win">
+
+  <!-- 顶栏 30px -->
+  <div class="titlebar">
+    <svg class="tb-logo" viewBox="0 0 100 114"><polygon points="50,4 96,30 96,84 50,110 4,84 4,30" fill="var(--accent)"/><circle cx="50" cy="36" r="7" fill="var(--text-on-accent)"/><circle cx="30" cy="72" r="7" fill="var(--text-on-accent)"/><circle cx="70" cy="72" r="7" fill="var(--text-on-accent)"/></svg>
+    <span class="tb-name">LinkDesk</span>
+    <span class="tb-menu">文件</span><span class="tb-menu">编辑</span><span class="tb-menu">查看</span>
+    <span class="tb-menu on">帮助</span>
+    <span class="tb-spacer"></span>
+    <div class="tb-ctl"><span>—</span><span>▢</span><span>✕</span></div>
+    <!-- W4：帮助菜单加「欢迎页」（shellMenus.ts helpLearn 组首项）——壳菜单组件只渲染文字，无图形 -->
+    <div class="dropdown" id="helpMenu">
+      <div class="dd-item fresh">欢迎页<span class="dd-tag">新增 W4</span></div>
+      <div class="dd-item">快捷键列表<span class="k">Ctrl+K Ctrl+S</span></div>
+      <div class="dd-item">AI 操作手册</div>
+      <div class="dd-sep"></div>
+      <div class="dd-item">检查更新…</div>
+      <div class="dd-item">关于 LinkDesk</div>
+    </div>
+  </div>
+
+  <div class="mid">
+    <!-- 图标栏 42px -->
+    <div class="icon-bar">
+      <div class="ib on"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></div>
+      <div class="ib"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h0a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h0a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v0a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></div>
+    </div>
+
+    <!-- 侧栏 216px -->
+    <div class="sidebar">
+      <div class="sb-head">资源管理器<span>…</span></div>
+      <div class="sb-item"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>demo-firmware<span style="margin-left:auto;font:10px var(--mono);color:var(--text-muted)">›</span></div>
+      <div class="sb-item sub"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>main.c</div>
+      <div class="sb-item sub"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>uart.c</div>
+      <div class="sb-item sub"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>README.md</div>
+    </div>
+
+    <!-- 主区 -->
+    <div class="main">
+      <div class="tabbar">
+        <div class="tab active"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2"><path d="M3 10l9-7 9 7v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>欢迎页<span class="x">✕</span></div>
+        <div class="tab"><span style="color:var(--status-connected)">▮</span>串口调试</div>
+        <!-- W4：「+」菜单末项加「欢迎页」——壳菜单组件只渲染文字，无图形 -->
+        <div class="plus">＋
+          <div class="dropdown" id="plusMenu">
+            <div class="dd-item">终端</div>
+            <div class="dd-item">Git</div>
+            <div class="dd-item">串口监视器</div>
+            <div class="dd-sep"></div>
+            <div class="dd-item fresh">欢迎页<span class="dd-tag">新增 W4</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <!-- 水印：正典实心几何淡显（W6，随「程序图标」档案 §0.1.4 并案收口） -->
+        <svg class="wm" viewBox="0 0 160 160"><polygon points="80,10 147,45 147,115 80,150 13,115 13,45" fill="var(--text-muted)"/><circle cx="80" cy="52" r="9" fill="var(--bg-window)"/><circle cx="52" cy="104" r="9" fill="var(--bg-window)"/><circle cx="108" cy="104" r="9" fill="var(--bg-window)"/></svg>
+
+        <div class="wl">
+          <!-- W5：hero 换新标语（与关于页同句） -->
+          <div class="hero">
+            <svg class="mark" viewBox="0 0 100 114"><polygon points="50,4 96,30 96,84 50,110 4,84 4,30" fill="var(--accent)"/><circle cx="50" cy="36" r="8" fill="var(--text-on-accent)"/><circle cx="32" cy="72" r="8" fill="var(--text-on-accent)"/><circle cx="68" cy="72" r="8" fill="var(--text-on-accent)"/></svg>
+            <div>
+              <h1>LinkDesk</h1>
+              <p>一个容器，装下你所有的工作方式</p>
+            </div>
+          </div>
+
+          <div class="sec">
+            <h2>文件夹</h2>
+            <button class="open-folder">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M12 11v6M9 14h6"/></svg>
+              打开文件夹
+            </button>
+            <!-- §七#2 撞名修正：内层小标题「最近」→「最近文件夹」；§七#1 容量统一显 5（示意 5 行封顶） -->
+            <h3 class="welcome-recent-subtitle">最近文件夹<span class="cap-note">· 最多显示 5 条</span></h3>
+            <div class="rows">
+              <button class="row"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span class="name">demo-firmware</span><span class="path">D:\01link\demo-firmware</span><span class="rx" role="button" tabindex="0" aria-label="从最近移除 demo-firmware" title="从最近移除" onclick="event.stopPropagation();this.closest('.row').remove()">✕</span></button>
+              <!-- W3：已删除 → 灰显＋角标（点击 toast ＋ 自动剔除） -->
+              <button class="row missing scene-hide s2"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span class="name">旧数据备份</span><span class="badge">已删除</span><span class="path">D:\01link\旧数据备份</span><span class="rx" role="button" tabindex="0" aria-label="从最近移除 旧数据备份" title="从最近移除" onclick="event.stopPropagation();this.closest('.row').remove()">✕</span></button>
+              <button class="row"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span class="name">plugin-lab</span><span class="path">E:\experiments\plugin-lab</span><span class="rx" role="button" tabindex="0" aria-label="从最近移除 plugin-lab" title="从最近移除" onclick="event.stopPropagation();this.closest('.row').remove()">✕</span></button>
+              <button class="row"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span class="name">firmware-old</span><span class="path">D:\01link\firmware-old</span><span class="rx" role="button" tabindex="0" aria-label="从最近移除 firmware-old" title="从最近移除" onclick="event.stopPropagation();this.closest('.row').remove()">✕</span></button>
+              <!-- §七#8 长路径省略示范（hover 见 title 全路径） -->
+              <button class="row" title="D:\01link\very-long-path\firmware-project-2026\bootloader-src"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span class="name">test-bench</span><span class="path">D:\01link\very-long-path\firmware-project-2026\bootloader-src</span><span class="rx" role="button" tabindex="0" aria-label="从最近移除 test-bench" title="从最近移除" onclick="event.stopPropagation();this.closest('.row').remove()">✕</span></button>
+            </div>
+          </div>
+
+          <div class="sec">
+            <h2>开始</h2>
+            <div class="cards">
+              <!-- W1：图标卡 = pickIdentityArt()，与插件市场同源（不再恒 📄） -->
+              <button class="card">
+                <svg class="art" viewBox="0 0 26 26"><rect x="1" y="3" width="24" height="20" rx="4" fill="#1E2A32"/><path d="M6 10l4 3-4 3" stroke="#4EC9B0" stroke-width="2" fill="none" stroke-linecap="round"/><path d="M13 17h7" stroke="#4EC9B0" stroke-width="2" stroke-linecap="round"/></svg>
+                终端<span class="hint">Ctrl+`</span>
+              </button>
+              <button class="card">
+                <svg class="art" viewBox="0 0 26 26"><circle cx="8" cy="7" r="3.4" fill="#E06C75"/><circle cx="8" cy="19" r="3.4" fill="#E06C75"/><circle cx="18" cy="13" r="3.4" fill="#E06C75"/><path d="M8 10.5v5M11 13h4" stroke="#E06C75" stroke-width="1.8"/></svg>
+                Git<span class="hint">Ctrl+Shift+G</span>
+              </button>
+              <button class="card">
+                <svg class="art" viewBox="0 0 26 26"><rect x="1" y="3" width="24" height="20" rx="4" fill="#12332E"/><path d="M4 13h4l2.5-6 4 12 2.5-6H22" stroke="#4EC9B0" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                串口监视器<span class="hint">数据源</span>
+              </button>
+              <button class="card">
+                <svg class="art" viewBox="0 0 26 26"><circle cx="13" cy="13" r="11" fill="#3A2E52"/><circle cx="13" cy="13" r="4.5" fill="none" stroke="#C8BFFF" stroke-width="2"/><circle cx="20" cy="8" r="1.6" fill="#C8BFFF"/><circle cx="7" cy="17" r="1.6" fill="#C8BFFF"/><circle cx="18" cy="19" r="1.6" fill="#C8BFFF"/></svg>
+                主题工坊<span class="hint">外观</span>
+              </button>
+            </div>
+            <!-- W2：准入声明——编辑器声明 standaloneOpenable:false ⇒ 不再进「开始」卡 -->
+            <div class="optout scene-hide s2"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg><span>准入改白名单制（拍板缺省 <code>false</code>）：官方各插件已声明 <code>standaloneOpenable: true</code>，编辑器未声明 ⇒ 不出现在「开始」（命令面板 / 最近仍可打开）—— <b>01-设计.md §三 W2</b></span></div>
+          </div>
+
+          <div class="sec">
+            <h2>最近</h2>
+            <div class="rows">
+              <button class="row"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="3"/><path d="M6 9l3 3-3 3M12 15h5"/></svg><span class="name">串口监视器 — COM3 @115200</span><span class="rx" role="button" tabindex="0" aria-label="从最近移除 串口监视器" title="从最近移除" onclick="event.stopPropagation();this.closest('.row').remove()">✕</span></button>
+              <button class="row"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 17l6-6-6-6"/><path d="M12 19h8"/></svg><span class="name">终端 — bash</span><span class="rx" role="button" tabindex="0" aria-label="从最近移除 终端" title="从最近移除" onclick="event.stopPropagation();this.closest('.row').remove()">✕</span></button>
+              <button class="row"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h0a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h0a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v0a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg><span class="name">设置</span><span class="rx" role="button" tabindex="0" aria-label="从最近移除 设置" title="从最近移除" onclick="event.stopPropagation();this.closest('.row').remove()">✕</span></button>
+              <button class="row"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="12" r="3"/><path d="M6 9v6"/><path d="M15 12H9"/></svg><span class="name">Git — 暂存区</span><span class="rx" role="button" tabindex="0" aria-label="从最近移除 Git" title="从最近移除" onclick="event.stopPropagation();this.closest('.row').remove()">✕</span></button>
+              <!-- W3：已卸载插件 → 灰显＋角标（与 creatableViews 比对） -->
+              <button class="row missing scene-hide s2"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M9 10h.01M15 10h.01M9 15c1 1 5 1 6 0"/></svg><span class="name">Python 控制台</span><span class="badge">已卸载</span><span class="rx" role="button" tabindex="0" aria-label="从最近移除 Python 控制台" title="从最近移除" onclick="event.stopPropagation();this.closest('.row').remove()">✕</span></button>
+            </div>
+          </div>
+
+          <div class="sec">
+            <h2>帮助</h2>
+            <div class="rows">
+              <!-- W4：死 <span> → 真按钮；使用文档 = toast 过渡 -->
+              <button class="row help-row" onclick="showDocToast()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V4a2 2 0 0 0-2-2H6.5A2.5 2.5 0 0 0 4 4.5z"/><path d="M20 17v5H6.5a2.5 2.5 0 0 1 0-5"/></svg><span class="name">使用文档</span><span class="kbd">用户文档整理中，先看手册 →</span></button>
+              <button class="row help-row"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10"/></svg><span class="name">键盘快捷键</span><span class="kbd"><b>Ctrl+K</b><b>Ctrl+S</b></span></button>
+              <button class="row help-row"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="14" rx="2"/><path d="M8 21h8M12 18v3"/></svg><span class="name">AI 操作手册</span><span class="kbd">随包发货 · 离线可读</span></button>
+            </div>
+          </div>
+        </div>
+
+        <!-- W3 toast：点击失效项 → 反馈＋剔除（width:max-content） -->
+        <div class="toast">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg>
+          「D:\01link\旧数据备份」已不存在，已从「最近」移除
+        </div>
+
+        <!-- W7 零标签空场背景：正典实心 logo 放大＋LinkDesk 字标（衬线＋斜体强调，单色，随 app.fontFamily 联动） -->
+        <div class="empty-stage">
+          <svg class="bigmark" viewBox="0 0 100 114"><polygon points="50,4 96,30 96,84 50,110 4,84 4,30" fill="var(--text-muted)"/><circle cx="50" cy="36" r="8" fill="var(--bg-window)"/><circle cx="32" cy="72" r="8" fill="var(--bg-window)"/><circle cx="68" cy="72" r="8" fill="var(--bg-window)"/></svg>
+          <div class="wordmark">Link<em>Desk</em></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 状态栏 22px -->
+  <div class="statusbar">
+    <span class="dot"></span><span>COM3 · 115200</span><span>UTF-8</span>
+    <div class="right"><span>Ln 12, Col 4</span><span>LinkDesk v0.2.33</span></div>
+  </div>
+
+</div>
+</div>
+
+<div class="frame-note">
+  <div class="cap"><b>验证点</b>（档案锚点＝同夹 01-设计.md §三／§六 impeccable 拦截清单；右上角可切明暗主题——版式随 token 自适应，零硬编码 hex；**菜单面纯文字**〔壳菜单组件不渲染图形，用户拍板〕、toast 无彩色左边条＝§六#5 已落图）</div>
+  <b>① W1 图标链</b>：开始卡/最近行图标 = 壳 pickIdentityArt() 解析结果随推流 payload 下发（usePoolSync.ts:324 现只推 {pluginId,label} ⇒ 恒 📄）——与插件市场同一套三图模型。<br>
+  <b>② W2 准入声明</b>：视图级 manifest 新字段，拍板**缺省 false＝白名单制**——未声明视图不进「开始」卡与「+」菜单，编辑器不声明即自然退出；命令面板/最近/会话恢复照常可开——壳不写插件名单（硬约束 10）。切「场景 2」看说明行。<br>
+  <b>③ W3 失效反馈</b>：已删除文件夹/已卸载插件条目灰显＋角标（保留在列，给「它曾在这」的反馈），点击弹 toast（width:max-content）并自动剔除；**条目级「×」手动移除**（hover 显现；真实实现 = 从 pluginState 剔除＋持久化，两个最近列表同款；本图点 × 即消失可试）；走既有 filesystem.exists 通道，顺手修去重/写放大/_isActive 三个伴生 bug。切「场景 2」看角标与 toast。<br>
+  <b>⑦ §七细节已落图</b>：「最近文件夹」小标题（撞名修正，§七#2）＋「最多显示 5 条」注记（容量归一，§七#1，待拍板）＋ test-bench 长路径省略示范（§七#8，hover 见全路径）——清空后灰字（§七#3）维持隐藏为默认，未另画。
+  <b>④ W4 入口三合一</b>：新命令 app.openWelcome ⇒ 帮助菜单（本帧已展开）、「+」菜单末项（本帧已展开）、命令面板三处入口；帮助区两行死 &lt;span&gt; 改真按钮，「⌨」emoji 换 SVG。切「场景 3」看两处菜单。<br>
+  <b>⑤ W5/W6 文案与观感</b>：标语换「一个容器，装下你所有的工作方式」（关于页同句，en 词条已住 lang-defaults 零新增）；水印随正典改实心淡显；卡片 hover/焦点态、aria/键盘可达按设计 skill checklist。<br>
+  <b>⑥ W7 零标签空场（追加拍板）</b>：关光标签页 ⇒ 不再自动重生欢迎页标签，主区渲染空场背景——正典实心 logo 放大＋LinkDesk 字标；字标字体 = 用户指定栈（Newsreader/Lyon/Georgia/宋体/serif · 46px/1.1 · -0.03em · em 斜体强调，实现走新派生变量 --font-mark：app.fontFamily 未设 = 该衬线栈，设了 = 跟随主题字体；em 落点暂以 Link*Desk* 示意、待确认）；logo 与字标同用一枚 --text-muted（单色，仅透明度分层）；标签栏只剩「+」，欢迎页靠 openWelcome 命令／+菜单／帮助菜单显式打开。切「场景 4」看效果。
+</div>
+
+<script>
+  function setScene(n, btn){
+    document.body.className = (document.body.classList.contains("light") ? "light " : "") + "scene-" + n;
+    document.querySelectorAll(".tabs button").forEach(b => b.classList.remove("on"));
+    btn.classList.add("on");
+  }
+  function toggleTheme(){
+    const b = document.body;
+    b.classList.toggle("light");
+    document.getElementById("themeBtn").textContent = b.classList.contains("light") ? "☀ 亮色" : "☾ 暗色";
+  }
+  /* 帮助区「使用文档」toast（W4 过渡反馈示意） */
+  function showDocToast(){
+    const t = document.querySelector(".toast");
+    t.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg>用户文档整理中——先看「帮助 → AI 操作手册」（随包发货、离线可读）';
+    t.style.display = "flex";
+    t.querySelector("svg").style.color = "var(--accent)";
+  }
+</script>
+</body>
+</html>
