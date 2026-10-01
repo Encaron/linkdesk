@@ -1,0 +1,2 @@
+// 1  = ICON（Windows 资源序），指向仓内品牌图标
+1 ICON "..\\..\\icon.ico"

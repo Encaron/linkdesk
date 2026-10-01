@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>LinkDesk 安装</title>
+<!-- 件 1a spike 占位页：只验证壳（无边框 / VirtualHostMapping / DevTools）。
+     真实 UI = 1b 从 mockups/E-混合提案.html 直搬（05-实现交接 §4.1），不在此页实现。 -->
+<style>
+  :root{--bg:#F7F6F3;--txt:#1a1a1a;--txt2:rgba(26,26,26,.62)}
+  *{margin:0;box-sizing:border-box}
+  body{background:var(--bg);color:var(--txt);font-family:'Segoe UI','Microsoft YaHei',sans-serif;
+       height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px}
+  .mono{font-family:Consolas,monospace;font-size:12px;color:var(--txt2)}
+</style>
+</head>
+<body>
+  <svg width="56" height="62" viewBox="0 0 100 110"><path fill="#111" fill-rule="evenodd" d="M50 0l43 25v50L50 110 7 75V25zM33 42a8 8 0 100 16 8 8 0 000-16zm34 0a8 8 0 100 16 8 8 0 000-16zm-17 26a8 8 0 100 16 8 8 0 000-16z"/></svg>
+  <div style="font-size:22px;font-weight:600">LinkDesk 安装器壳 · spike</div>
+  <div class="mono" id="env">windowOuter <span id="dim">—</span> × devicePixelRatio <span id="dpr">—</span></div>
+  <div class="mono">VirtualHostMapping: installer.local ✓ · 若见本页即壳加载成功</div>
+<script>
+  document.getElementById('dim').textContent = window.outerWidth + '×' + window.outerHeight;
+  document.getElementById('dpr').textContent = window.devicePixelRatio;
+</script>
+</body>
+</html>

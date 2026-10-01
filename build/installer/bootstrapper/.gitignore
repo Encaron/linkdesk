@@ -1,0 +1,9 @@
+# 引导器构建产物与依赖：不进 git
+# .sdk/ = WebView2 SDK（用 tools/fetch-sdk.ps1 取，版本钉在脚本里）
+.sdk/
+out/
+*.obj
+*.res
+*.exe
+spike.log
+.wv2data/

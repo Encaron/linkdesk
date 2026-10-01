@@ -1,0 +1,32 @@
+@echo off
+rem LinkDesk bootstrapper shell build (spec: 05-实现交接.md SS4.2, target <= 5MB single-file exe)
+rem Keep this file ASCII-only: cmd.exe parses it in the OEM codepage.
+setlocal
+set VSWHERE="C:\Program Files (x86)\Microsoft Visual Studio\Installer\vswhere.exe"
+for /f "usebackq delims=" %%i in (`%VSWHERE% -latest -property installationPath`) do set VS=%%i
+if not defined VS (echo VS not found & exit /b 1)
+rem vcvars prints a stray "file not found" line on this machine; rc/cl below are the real gate
+call "%VS%\VC\Auxiliary\Build\vcvars64.bat" >nul 2>&1
+
+cd /d "%~dp0"
+if not exist out mkdir out
+
+rc /fo icon.res icon.rc
+if errorlevel 1 (echo rc failed & exit /b 1)
+
+rem app.html ships next to the exe (VirtualHostMapping root = exe dir)
+copy /y app.html out\ >nul
+
+cl /nologo /W3 /O2 /MT /EHsc /std:c++17 /utf-8 /DUNICODE /D_UNICODE ^
+   /I ".sdk\webview2\include" ^
+   main.cpp icon.res ^
+   /Fo"out\\" /Fe"out\bootstrapper.exe" ^
+   /link ".sdk\webview2\x64\WebView2LoaderStatic.lib" shlwapi.lib
+if errorlevel 1 exit /b 1
+
+rem size budget gate: single-file exe must stay under 5MB
+for %%F in (out\bootstrapper.exe) do set SZ=%%~zF
+echo bootstrapper.exe %SZ% bytes
+powershell -NoProfile -Command "if (%SZ% -gt 5MB) { exit 1 }"
+if errorlevel 1 (echo FAIL: over 5MB budget & exit /b 1) else echo OK: within budget
+exit /b 0
