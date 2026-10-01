@@ -9,6 +9,7 @@
 #include <windows.h>
 #include <shellapi.h>
 #include <shlwapi.h>
+#include <shobjidl.h>   // 件 2b：IFileOpenDialog（browse-dir 目录对话框）
 #include <objidl.h>
 #include <string>
 #include <vector>
@@ -21,6 +22,9 @@
 
 #include "WebView2.h"
 #include "WebView2EnvironmentOptions.h"
+
+// 件 2b：系统写入（注册表 / 快捷方式 / PATH / ARP）——清单逐 key 照抄 build/installer.nsh
+#include "syswrite.h"
 
 #pragma comment(lib, "user32.lib")
 #pragma comment(lib, "shell32.lib")
@@ -58,7 +62,7 @@ static const UINT WM_LK_FAILED   = WM_APP + 2;   // 取 g_lastErrCode / g_lastEr
 static const UINT WM_LK_CANCELED = WM_APP + 3;
 static const UINT WM_LK_DONE     = WM_APP + 4;
 static std::wstring g_lastErrCode, g_lastErrMsg;
-static void StartInstall(const std::wstring& requestedDir);   // 定义在 2a 段
+static void StartInstall(const std::wstring& requestedDir, const TaskOptions& opts);   // 定义在 2a 段
 static void CancelInstall();
 static void PostJson(const std::wstring& json);               // 定义在 2a 段（宿主 → 页面）
 static std::wstring JsonEsc(const std::wstring& s);           // 定义在 2a 段（WndProc 要用）
@@ -371,6 +375,18 @@ static std::wstring g_installDir;                 // 目标安装目录
 static bool g_silent = false;                     // --silent ／ /S（更新链走这条；界面一律不建）
 static bool g_forceRun = false;                   // --force-run：装完把壳拉起来（NSIS ${isForceRun} 同位）
 
+/** 附加任务勾选（件 2b）——页面 install-start 里带过来，静默态用 DefaultTaskOptions() 反推 */
+static TaskOptions g_opts;
+
+/** 本安装包的版本（件 2b：ARP DisplayName/DisplayVersion 要写）。
+ *  来源 = 载荷 marker 的 `version[32]`（真安装包必有；开发期裸壳没有 ⇒ 空串）。 */
+static std::wstring PayloadVersion()
+{
+    std::wstring v;
+    for (const char* p = g_payload.version; *p; ++p) v += (wchar_t)(unsigned char)*p;
+    return v;
+}
+
 /** 带界面的安装阶段——分流 ✕/取消（归 2c 细粒度，这里先有基本态） */
 enum class Phase { Idle, Extracting, Finished };
 static Phase g_phase = Phase::Idle;
@@ -482,45 +498,15 @@ static std::wstring DefaultInstallDir()
     return base + L"\\Programs\\linkdesk";
 }
 
-/** 已装位置：扫 ARP 卸载项找 DisplayName = LinkDesk 的那条，取其 InstallLocation。
- *  ⚠️ 键名格式**沿用 electron-builder 现状**（2b 要照抄写入，键名必须认得出旧装）——
- *  这里按 DisplayName 认而不是写死键名，正是为了不把「键名格式」这个事实焊在代码里。 */
+/** 已装位置：**委托 `syswrite.cpp` 的 `ReadInstalledDir()`**（件 2b 起读侧唯一实现）。
+ *  🔴 旧实现按 `DisplayName == "LinkDesk"` 且读 `InstallLocation` 认——实机上两个前提都**不成立**
+ *  （实机 DisplayName = `"LinkDesk 0.2.33"`，那条键**没有** `InstallLocation`）⇒ 永远返回空，
+ *  升级时会**另装一份**而不是覆盖。改走 `UninstallString` / `DisplayIcon` 后与实机对齐。
+ *  ⚠️ 键名仍然不写死（ARP 键名 = `UUID.v5(appId)`，见 syswrite.cpp 文件头），
+ *  「键名格式」这个事实只住在 syswrite.cpp 一处。 */
 static std::wstring FindInstalledDir()
 {
-    static const wchar_t* kRoots[] = {
-        L"Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall",
-        L"Software\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall",
-    };
-    const HKEY hives[] = { HKEY_CURRENT_USER, HKEY_LOCAL_MACHINE, HKEY_LOCAL_MACHINE };
-    for (size_t r = 0; r < std::size(kRoots); ++r) {
-        for (size_t v = 0; v < 2; ++v) {
-            HKEY root = (v == 0) ? hives[r] : HKEY_LOCAL_MACHINE;
-            const wchar_t* path = (v == 0) ? kRoots[r] : L"Software\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall";
-            if (r == 1 && v == 1) continue;   // 两个根已在 (r=1,v=0) 覆盖；v=1 只给 r=0 补 32 位视图
-            HKEY h = nullptr;
-            if (RegOpenKeyExW(root, path, 0, KEY_READ, &h) != ERROR_SUCCESS) continue;
-            wchar_t sub[256] = {};
-            for (DWORD i = 0; RegEnumKeyW(h, i, sub, 256) == ERROR_SUCCESS; ++i) {
-                HKEY k = nullptr;
-                if (RegOpenKeyExW(h, sub, 0, KEY_READ, &k) != ERROR_SUCCESS) continue;
-                wchar_t name[128] = {}, loc[MAX_PATH] = {};
-                DWORD ns = sizeof(name), ls = sizeof(loc);
-                if (RegQueryValueExW(k, L"DisplayName", nullptr, nullptr, (LPBYTE)name, &ns) == ERROR_SUCCESS
-                    && _wcsicmp(name, L"LinkDesk") == 0
-                    && RegQueryValueExW(k, L"InstallLocation", nullptr, nullptr, (LPBYTE)loc, &ls) == ERROR_SUCCESS
-                    && loc[0]) {
-                    RegCloseKey(k);
-                    RegCloseKey(h);
-                    std::wstring out = loc;
-                    while (!out.empty() && (out.back() == L'\\' || out.back() == L'/')) out.pop_back();
-                    return out;
-                }
-                RegCloseKey(k);
-            }
-            RegCloseKey(h);
-        }
-    }
-    return L"";
+    return ReadInstalledDir();
 }
 
 /** 目标卷剩余空间（磁盘预检用，02 §三） */
@@ -767,6 +753,19 @@ static int RunSilentInstall()
     std::wstring err = ExtractPayload();
     if (!err.empty()) { OutputDebugStringW((L"[installer] " + err + L"\n").c_str()); return 5; }
     if (!VerifyInstall()) return 6;
+
+    // 件 2b：静默装也要写系统项——**勾选值取 DefaultTaskOptions()**（NSIS 静默安装跳过勾选页
+    // ⇒ 走的是默认集；升级时其中两项由注册表现状反推，这是「静默升级不复活」的实现面）。
+    // 静默路径没有窗、没有 WebView2 ⇒ 这里自己初始化 COM（快捷方式要 IShellLink）。
+    HRESULT hrCom = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
+    g_opts = DefaultTaskOptions();
+    if (g_opts.assoc) WriteAssociations(g_installDir);
+    WriteContextMenus(g_installDir, g_opts.fileMenu, g_opts.dirMenu);
+    if (g_opts.path) AddToPath(g_installDir);
+    CreateShortcuts(g_installDir);
+    WriteArpEntry(g_installDir, PayloadVersion());
+    if (SUCCEEDED(hrCom)) CoUninitialize();
+
     if (g_forceRun) {
         std::wstring exe = g_installDir + L"\\LinkDesk.exe";
         ShellExecuteW(nullptr, L"open", exe.c_str(), nullptr, g_installDir.c_str(), SW_SHOWNORMAL);
@@ -851,36 +850,138 @@ static std::wstring JsonGetString(const std::wstring& js, const wchar_t* key)
     return out;
 }
 
+/** 取一个布尔字段（件 2b：页面把四个勾选值放在 `"opts":{"assoc":true,...}` 里）。
+ *  ⚠️ 找不到 ≠ false —— 分开判：字段缺席时用**调用方给的默认值**（页面前端若还没接线，
+ *  不能因为「没带这个键」就把用户默认该有的关联/PATH 静默关掉）。 */
+static bool JsonGetBool(const std::wstring& js, const wchar_t* key, bool fallback)
+{
+    std::wstring pat = L"\"" + std::wstring(key) + L"\"";
+    size_t p = js.find(pat);
+    if (p == std::wstring::npos) return fallback;
+    p = js.find(L':', p + pat.size());
+    if (p == std::wstring::npos) return fallback;
+    size_t q = p + 1;
+    while (q < js.size() && (js[q] == L' ' || js[q] == L'\t')) ++q;
+    if (js.compare(q, 4, L"true") == 0) return true;
+    if (js.compare(q, 5, L"false") == 0) return false;
+    return fallback;
+}
+
+/** 段 2（70–80）：协议注册。
+ *  🔴 **本格是空跑，且这不是「没做完」——是产品里根本没有这个注册。** 依据（2026-10-01 查）：
+ *    · 05 §4.3 的注册表清单（「逐条不得增删」）里**没有** linkdesk:// 协议；
+ *    · 全仓 grep `setAsDefaultProtocolClient` / `registerProtocol` / `linkdesk://` → **零命中**；
+ *    · 实机读现装版（NSIS 0.2.33）的全部键 → **也没有**协议注册。
+ *  但 mockup 的进度屏第 2 步文案就是「注册 linkdesk:// 协议」（用户已目检通过的屏）。
+ *  ⇒ 三处对不上，**不自作主张写一条没人能处理的协议**（写了 = 系统里多一条点了没反应的
+ *    「死」协议，比不写更糟）。此处如实空跑并**把落差记进 06/01 文档**，等用户拍板：
+ *    要么补 app 侧协议处理 ＋ 这里补注册，要么把 mockup 该步文案改成实际做的事。
+ *  ⇒ 进度仍走 70 → 80（保留四段视觉结构），但**70–80 之间不撒谎**：不做假读数。 */
+static void SegmentProtocol()
+{
+    // 有意留空——见上面那段。
+}
+
+/** 目录选择对话框（页面 `browse-dir` → 宿主）。选完把新路径经 `browse-dir-done` 发回页面。
+ *  用 IFileOpenDialog(FOS_PICKFOLDERS)——Win11 上是系统「选择文件夹」新样式；
+ *  SHBrowseForFolder 是老树形对话框，视觉上跟本安装包不搭。**必须在已 CoInitialize 的线程调用**。 */
+static void PickInstallDir(const std::wstring& current)
+{
+    IFileOpenDialog* dlg = nullptr;
+    if (FAILED(CoCreateInstance(CLSID_FileOpenDialog, nullptr, CLSCTX_INPROC_SERVER,
+                                IID_PPV_ARGS(&dlg))) || !dlg) return;
+    DWORD flags = 0;
+    dlg->GetOptions(&flags);
+    dlg->SetOptions(flags | FOS_PICKFOLDERS | FOS_FORCEFILESYSTEM | FOS_PATHMUSTEXIST);
+    dlg->SetTitle(L"选择安装位置");
+    // 光标起点 = 输入框里那个目录（存在才设，否则对话框会弹到意料之外的地方）
+    if (!current.empty() && GetFileAttributesW(current.c_str()) != INVALID_FILE_ATTRIBUTES) {
+        IShellItem* start = nullptr;
+        if (SUCCEEDED(SHCreateItemFromParsingName(current.c_str(), nullptr, IID_PPV_ARGS(&start))) && start) {
+            dlg->SetFolder(start);
+            start->Release();
+        }
+    }
+    if (SUCCEEDED(dlg->Show(g_hwnd))) {
+        IShellItem* item = nullptr;
+        if (SUCCEEDED(dlg->GetResult(&item)) && item) {
+            PWSTR p = nullptr;
+            if (SUCCEEDED(item->GetDisplayName(SIGDN_FILESYSPATH, &p)) && p) {
+                PostJson(L"{\"type\":\"browse-dir-done\",\"dir\":\"" + JsonEsc(p) + L"\"}");
+                CoTaskMemFree(p);
+            }
+            item->Release();
+        }
+    }
+    dlg->Release();
+}
+
+/** 完成屏「运行 LinkDesk」勾上时拉起刚装好的 exe（装完就让人看见东西）。
+ *  ⚠️ 目录一律以 g_installDir 为准——那是这次真装的位置，不是注册表里可能过期的旧值。 */
+static void LaunchInstalledApp()
+{
+    if (g_installDir.empty()) return;
+    std::wstring exe = g_installDir + L"\\LinkDesk.exe";
+    if (GetFileAttributesW(exe.c_str()) == INVALID_FILE_ATTRIBUTES) return;
+    ShellExecuteW(nullptr, L"open", exe.c_str(), nullptr, g_installDir.c_str(), SW_SHOWNORMAL);
+}
+
 static void InstallWorker()
 {
+    // 工人线程也要 COM：快捷方式走 IShellLink（2b 的 CreateShortcuts）。
+    // ⚠️ 与 UI 线程的 COINIT 保持 APRARTMENTTHREADED；失败当无事（退化为「快捷方式建不了」）。
+    CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
+
     // 段 1（0–70）：解压——真进度，见 RunExtract
     std::wstring err = ExtractPayload();
-    if (g_canceled.load()) { PostMessageW(g_hwnd, WM_LK_CANCELED, 0, 0); return; }
+    if (g_canceled.load()) { PostMessageW(g_hwnd, WM_LK_CANCELED, 0, 0); CoUninitialize(); return; }
     if (!err.empty()) {
         g_lastErrCode = L"EXTRACT_FAILED";
         g_lastErrMsg = err;
         PostMessageW(g_hwnd, WM_LK_FAILED, 0, 0);
+        CoUninitialize();
         return;
     }
-    // 段 2/3（70–92）：注册 linkdesk:// 协议 · 写快捷方式/右键/PATH —— 归 2b，此格**未接线**
+    if (g_hwnd) PostMessageW(g_hwnd, WM_LK_PROGRESS, 70, 0);
+
+    // 段 2（70–80）：协议注册——本格空跑（产品无此注册，理由见 SegmentProtocol 注释）
+    SegmentProtocol();
+    if (g_hwnd) PostMessageW(g_hwnd, WM_LK_PROGRESS, 80, 0);
+
+    // 段 3（80–92）：写系统项（快捷方式 · 右键菜单 · PATH · 编辑器注册 · ARP）
+    //   E6#45 四项按勾选写。**单项失败不中断、也不把整次安装判死**——应用文件已经落地，
+    //   某个关联没写上不该让用户看到「安装失败」（那会把人吓去重装，越弄越糟）。
+    //   结果照 05 §4.3「一项失败不中断」留痕到调试输出，供排障。
+    bool sysOk = true;
+    if (g_opts.assoc) sysOk &= WriteAssociations(g_installDir);
+    sysOk &= WriteContextMenus(g_installDir, g_opts.fileMenu, g_opts.dirMenu);
+    if (g_opts.path) sysOk &= AddToPath(g_installDir);
+    sysOk &= CreateShortcuts(g_installDir);
+    sysOk &= WriteArpEntry(g_installDir, PayloadVersion());
+    if (g_canceled.load()) { PostMessageW(g_hwnd, WM_LK_CANCELED, 0, 0); CoUninitialize(); return; }
     if (g_hwnd) PostMessageW(g_hwnd, WM_LK_PROGRESS, 92, 0);
-    // 段 4（92–100）：收尾校验
+
+    // 段 4（92–100）：收尾校验——**成败只看文件是否落地**（系统项是「加分项」不是「必需项」）
     bool ok = VerifyInstall();
+    if (!sysOk) OutputDebugStringW(L"[installer] 部分系统项未写入（关联/右键/PATH/快捷方式/ARP）\n");
     if (g_hwnd) PostMessageW(g_hwnd, WM_LK_PROGRESS, 100, 0);
     if (!ok) {
         g_lastErrCode = L"VERIFY_FAILED";
         g_lastErrMsg = L"解压后没找到 LinkDesk.exe——安装包可能不完整";
         PostMessageW(g_hwnd, WM_LK_FAILED, 0, 0);
+        CoUninitialize();
         return;
     }
     PostMessageW(g_hwnd, WM_LK_DONE, 0, 0);
+    CoUninitialize();
 }
 
 /** 起一次界面态安装：目录解析 → 磁盘预检 → 工人线程解压。重复调用直接返回（防重复提交）。 */
-static void StartInstall(const std::wstring& requestedDir)
+static void StartInstall(const std::wstring& requestedDir, const TaskOptions& opts)
 {
     if (g_phase == Phase::Extracting) return;
     g_canceled = false;
+    g_opts = opts;
     if (!requestedDir.empty()) g_installDir = requestedDir;
     if (g_installDir.empty()) {
         std::wstring existing = FindInstalledDir();
@@ -1103,9 +1204,13 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, PWSTR, int nCmdShow)
                     // 页面 → 宿主消息桥（页面只发极小的 JSON 串）：
                     //   {"type":"drag"}        → 无边框窗拖拽：页面发起的拖窗（WebView2 的鼠标
                     //                            消息到不了宿主 WndProc，孩子窗全吃掉）
-                    //   {"type":"close"|"exit"|"install-done"|"uninstall-done"} → 关窗（细粒度分流归件 2c）
-                    //   {"type":"install-start","dir":"..."} → 起安装（件 2a；dir 缺省 = 解析出来的默认/上次目录）
-                    //   {"type":"cancel"}                    → 取消安装（件 2a；回滚归 2c）
+                    //   {"type":"close"|"exit"|"uninstall-done"} → 关窗（细粒度分流归件 2c）
+                    //   {"type":"install-start","dir":"...","opts":{...}} → 起安装
+                    //       （件 2a；dir 缺省 = 解析出来的默认/上次目录；opts 四项见件 2b TaskOptions）
+                    //   {"type":"install-done","launch":true} → 完成屏出口（件 2b：勾了「运行 LinkDesk」就拉起）
+                    //   {"type":"browse-dir","dir":"..."} → 目录对话框（件 2b；回 `browse-dir-done`）
+                    //   {"type":"set-lang","lang":"zh-CN"} → 语言持久化写侧（件 2b）
+                    //   {"type":"cancel"} → 取消安装（件 2a；回滚归 2c）
                     auto onMsg = new ComHandlerEvt<ICoreWebView2WebMessageReceivedEventHandler,
                                                   ICoreWebView2, ICoreWebView2WebMessageReceivedEventArgs>(
                         IID_ICoreWebView2WebMessageReceivedEventHandler,
@@ -1121,12 +1226,28 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, PWSTR, int nCmdShow)
                                 SendMessageW(g_hwnd, WM_NCLBUTTONDOWN, HTCAPTION,
                                              MAKELPARAM(pt.x, pt.y));
                             } else if (m.find(L"\"install-start\"") != std::wstring::npos) {
-                                StartInstall(JsonGetString(m, L"dir"));
+                                // 件 2b：附加任务四项按页面勾选走。**缺字段取默认值，不是取 false**
+                                //（页面键名 = data-opt 的四个；`editor` 就是 05 §4.3 的「编辑器注册」）
+                                TaskOptions o = DefaultTaskOptions();
+                                o.assoc    = JsonGetBool(m, L"editor",   o.assoc);
+                                o.fileMenu = JsonGetBool(m, L"filemenu", o.fileMenu);
+                                o.dirMenu  = JsonGetBool(m, L"dirmenu",  o.dirMenu);
+                                o.path     = JsonGetBool(m, L"path",     o.path);
+                                StartInstall(JsonGetString(m, L"dir"), o);
+                            } else if (m.find(L"\"browse-dir\"") != std::wstring::npos) {
+                                PickInstallDir(JsonGetString(m, L"dir"));
+                            } else if (m.find(L"\"set-lang\"") != std::wstring::npos) {
+                                // 件 2b：语言持久化**写侧**（读侧 1c 已通，见 ReadSavedLanguage）
+                                std::wstring code = JsonGetString(m, L"lang");
+                                if (!code.empty()) WriteInstallerLanguage(code);
                             } else if (m.find(L"\"cancel\"") != std::wstring::npos) {
                                 CancelInstall();
+                            } else if (m.find(L"\"install-done\"") != std::wstring::npos) {
+                                // 完成屏「运行 LinkDesk」勾了才拉——装完就让人看见东西，别让他自己找图标
+                                if (JsonGetBool(m, L"launch", false)) LaunchInstalledApp();
+                                PostMessageW(g_hwnd, WM_CLOSE, 0, 0);
                             } else if (m.find(L"\"close\"") != std::wstring::npos
                                        || m.find(L"\"exit\"") != std::wstring::npos
-                                       || m.find(L"\"install-done\"") != std::wstring::npos
                                        || m.find(L"\"uninstall-done\"") != std::wstring::npos) {
                                 PostMessageW(g_hwnd, WM_CLOSE, 0, 0);
                             }

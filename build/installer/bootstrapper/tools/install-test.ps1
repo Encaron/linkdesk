@@ -12,15 +12,33 @@
 # 用法：
 #   powershell -ExecutionPolicy Bypass -File tools\install-test.ps1 -Setup <安装包.exe> [-Work <临时根>]
 #
-# ⚠️ 两条路的 --dir 都指向临时目录：本脚本**不碰**真正装的 LinkDesk（`%LocalAppData%\Programs\linkdesk`）。
+# ⚠️ 三条路的 --dir 都指向临时目录：**不碰**真正装的那份 LinkDesk（`%LocalAppData%\Programs\linkdesk`）。
+# 🔴 但**会碰真机的注册表/快捷方式**（件 2b 起：关联/右键/PATH/ARP/快捷方式），故需 `-AllowSystemWrites`；
+#    要备份还原请改用 tools\syswrite-test.ps1（同一链路 ＋ 全量备份还原）。
 param(
     [Parameter(Mandatory=$true)][string]$Setup,
     [string]$Work = "$env:TEMP\linkdesk-install-test",
-    [int]$UiTimeoutSec = 90
+    [int]$UiTimeoutSec = 90,
+    [switch]$AllowSystemWrites
 )
 $ErrorActionPreference = 'Stop'
 $here = Split-Path -Parent $MyInvocation.MyCommand.Path
 $Setup = (Resolve-Path $Setup).Path
+
+# 🔴 2026-10-02（件 2b 收口）：本脚本**不再是无副作用的**。自 2b 把系统写入接线后，三条路里的
+#    每一次安装都会写**真机**：文件关联 · 右键两项（静默态按注册表现状反推）· **PATH 追加** ·
+#    桌面/开始菜单快捷方式 · ARP 键。而本脚本**没有备份/还原**（2a 时这些活还没写，当时确实安全）。
+#    所以这里硬拦一道——要跑必须显式认领；否则请改用带全量备份的 syswrite-test.ps1。
+if (-not $AllowSystemWrites) {
+    Write-Host @"
+🔴 拒绝执行：install-test.ps1 现在会**改真机的注册表与快捷方式**（件 2b 起：关联/右键/PATH/ARP/快捷方式），
+   而本脚本**没有备份还原**。要跑请二选一：
+     ① 加 -AllowSystemWrites 显式认领（跑完自行收拾 PATH 里的临时目录与 ARP 键）；
+     ② 或改跑 tools\syswrite-test.ps1 —— 同一条安装链路，但**全量备份 ＋ 无条件还原**，
+        收尾崩了还能用 `powershell -File tools\syswrite-test.ps1 -RestoreOnly` 补救。
+"@
+    exit 2
+}
 
 $bad = 0
 function Say($ok, $msg) {

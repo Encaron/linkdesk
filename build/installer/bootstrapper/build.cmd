@@ -42,7 +42,7 @@ if errorlevel 1 (echo rc ui failed & exit /b 1)
 
 cl /nologo /W3 /O2 /MT /EHsc /std:c++17 /utf-8 /DUNICODE /D_UNICODE ^
    /I ".sdk\webview2\include" ^
-   main.cpp icon.res ui.res ^
+   main.cpp syswrite.cpp icon.res ui.res ^
    /Fo"out\\" /Fe"out\bootstrapper.exe" ^
    /link ".sdk\webview2\x64\WebView2LoaderStatic.lib" shlwapi.lib
 if errorlevel 1 exit /b 1

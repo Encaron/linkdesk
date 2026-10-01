@@ -48,25 +48,40 @@ node scripts\build-installer.mjs --exe out\bootstrapper.exe ^
 | `cmp-shots.ps1` | 并排对照（左 mockup／右实机＋合成大图），带资产新鲜度守卫。默认六屏 `out\cmp-*.png`（780×570）；`-Uninstall` 切卸载四帧 `out\cmp-un-*.png`（720×540，实机自动带 `--uninstall`）。`-Screen`/`-Screens` 指定屏（⚠️ `powershell -File` 下多值要写成重复参数，`-Screens a,b` 会被当成一个屏名） |
 | `interact-test.ps1` | 真键鼠交互验收：拖窗位移断言 / Enter 主按钮 / 下拉＋Esc / ✕ 退出（产物 `out\it-*.png`） |
 | `i18n-test.ps1` | 件 1c 词条装载器验收（39 断言）：探针页 iframe 实测 DOM ＋ 1px 图片信标回传（**不靠截图/OCR/时序运气**——靠本地 http.server 的访问日志），C1–C5 五路装载器 ＋ 三张 exe 实跑截图（带出注册表语言／扫目录，跑完复原注册表）；日志 `out\i18n-test.log` |
-| `install-test.ps1` | 件 2a 验收（三路，跑**真安装包**）：路 B 静默装（退出码／文件数／字节数与 marker 声明对账）· 路 A 界面态（`--log` 证进度单调不倒退、四段边界到过、收在 100）· 路 C `--force-run` 拉起壳（**按安装目录路径认进程**，不按名字）。⚠️ 三条路的 `--dir` 全指临时目录，**不碰**真装的 LinkDesk；用法 `-Setup <安装包.exe>` |
+| `install-test.ps1` | 件 2a 验收（三路，跑**真安装包**）：路 B 静默装（退出码／文件数／字节数与 marker 声明对账）· 路 A 界面态（`--log` 证进度单调不倒退、四段边界到过、收在 100）· 路 C `--force-run` 拉起壳（**按安装目录路径认进程**，不按名字）。⚠️ 三条路的 `--dir` 全指临时目录，**不碰**真装的 LinkDesk；用法 `-Setup <安装包.exe>`。🔴 **件 2b 起必须加 `-AllowSystemWrites`**——安装现在会写真机注册表（关联/右键/PATH/ARP/快捷方式），而本脚本**没有备份还原**，不给开关就直接拒绝执行 |
+| `syswrite-test.ps1` | 件 2b 验收（**七路**，跑真安装包 ＋ **真机注册表**）：装前把要碰的键**全量导出备份**（`reg.exe export` 原样往返，值的类型/编码不经脚本手）＋ 跑完全部还原并**自检还原结果**。路 1 静默（勾选值按注册表现状**反推** ⇒ 逐键跟着装前现状走）· 路 1b 静默（预置三键 ⇒ 验 `*\shell` 的**写入侧**）· 路 2 界面态覆盖装（页面不勾的项**必须没写**）· 路 3 PATH 真追加/幂等 · 路 3b PATH **类型不降级**（`REG_EXPAND_SZ` 进必 `REG_EXPAND_SZ` 出）· 路 4 界面态**全新目录**（四段进度真读数断言）。开头有**新鲜度门禁**（见坑 11）。`-SkipRestore` 留现场、`-RestoreOnly` 按上次备份补救 |
 | `gen-ui-rc.mjs` | 生成 `out\ui.gen.rc` ＋ `out\ui.manifest`：把 `app.html/css/js` 与 `i18n/*.json` 编成 RCDATA（id 3 清单、id 10+ 文件）。**单文件产品态必须**——拼合后的 setup.exe 旁边没有 `app.html` |
 
 ## 二、实测事实（2026-10-01，本机 VS2022 Community ＋ WebView2 运行时 140.0.3485.94）
 
 - `out\bootstrapper.exe` = **195,072 字节**（件 1a 壳）；接入 1b 页面前端（消息桥 ＋ 焦点 ＋ 预览开关）后 **209,408 字节**；
   件 1c 加宿主扫目录/带出注册表语言/延迟截图后 **221,696 字节**；件 1d 加卸载模式（窗口尺寸/标题/URL 参数分流）后 **222,208 字节**。
-  件 2a 加装真载荷所需的三件（内嵌 `7zr.exe` ＋ 载荷定位/解压/进度 ＋ 内嵌 UI 资源）后 **995,328 字节**（预算 5MB，用掉 19.0%）。
+  件 2a 加装真载荷所需的三件（内嵌 `7zr.exe` ＋ 载荷定位/解压/进度 ＋ 内嵌 UI 资源）后 **995,328 字节**（预算 5MB，用掉 19.0%）；
+  件 2b 加系统写入（`syswrite.cpp`：文件关联/右键三键/PATH/ARP/快捷方式，多链 `shlwapi`＋`ole32`＋`shell32`）后 **1,030,656 字节**
+  （＝ **1.0 MiB**；预算 5 MiB＝5,242,880 ⇒ 用掉 **19.7%**）。
   **C++ 路线据此定案**——C# self-contained 70MB+ 直接出局。
   ⚠️ 件 2a 起页面与词条**同时**有两份去处：`out/app.*`（开发态磁盘，改完 `build.cmd` 即生效）与
   **exe 内的 RCDATA**（产品态，单文件拼合后旁边没有 `app.html`，只能内嵌）。两处都由 `build.cmd` 同笔产出，
   不存在「只更新了一处」——但**改了 `app.*` 忘了 `build.cmd`，产品态仍是旧的**（开发态看不出来）。
 - 无边框窗：`cls=LinkDeskInstallerBootstrapper`，窗口矩形 = 客户区 = 780×570（无任何非客户区）。
 - **载荷定位（件 2a）**：安装包 = `[壳.exe][marker 64B][app-*.7z]` 直拼。7-Zip **从文件尾**找归档签名，
-  所以追加在后面的 7z 能直接解，不必先拷到临时文件。实测：`7zr l linkdesk-setup-0.2.33.exe` 报
-  `Offset = 904704+64 = 904768`、`Physical Size = 4910133`。（marker 契约见 §四。）
+  所以追加在后面的 7z 能直接解，不必先拷到临时文件。实测（2026-10-02 件 2b 复核读数，壳 1,030,656）：
+  `7zr l linkdesk-setup-dev.exe` 报 `Offset = 1030656+64 = 1030720`、`Physical Size = 106302512`、
+  `Headers Size = 3263`、`Method = LZMA2:26 LZMA:20 BCJ2`、`Blocks = 2`。
+  ⚠️ 本行早先写的是 `Physical Size = 4910133`——那是**另一次读数的残留**（与同行「真载荷 106,303,059」
+  自相矛盾，7z 报的 `Physical Size` 应当**等于载荷长度**）。复核时已按现读数改齐；**见到两个数对不上，
+  先怀疑自己把两次读数拼在了一行**。（marker 契约见 §四。）
 - **真安装实测（件 2a，真载荷 106,303,059 字节 → 解压后 439,377,123 字节 / 204 个文件）**：
   静默装 5.7s 退出码 0，落位字节与 marker 声明**逐字节相等**；界面态 13 条进度消息、**0 处倒退**、
   收在 100、解压段 11 条真读数。exe 壳 + marker + 载荷 = **107,298,451 字节**。
+- **系统写入实测（件 2b，2026-10-02，`tools\syswrite-test.ps1` 七路全绿 0 失败）**：ARP 逐键与实机现装
+  对齐（含 `EstimatedSize` 429079 == 目录实测 429079 KB、**无 `Publisher`**、`Comments` 空串）· ProgId 三键 ·
+  13 扩展名 `OpenWithProgids`（**零长度**值）· Capabilities ＋ `RegisteredApplications` · 右键三键 ·
+  PATH 追加/幂等/`PathBackup`/**类型不降级** · 桌面＋开始菜单快捷方式（桌面实机被重定向到
+  `D:\360MoveData\…` ⇒ 只能走 `SHGetKnownFolderPath`）。壳 1,030,656 ＋ marker 64 ＋ 载荷 106,302,512
+  = **107,333,232 字节**；解压后 439,376,833 字节。
+  🔴 **但这一路差点被假绿放过**：改完 `syswrite.cpp` 忘了 `build.cmd`，harness 照样跑，绿的是**旧壳**
+  ——见 §三 坑 11，那条门禁现在硬拦。
 - Per-Monitor V2：`GetProcessDpiAwareness` 实测返回 awareness=2；窗口按 `逻辑像素 × dpi/96` 建，并响应 `WM_DPICHANGED` 守回 780×570 逻辑尺寸。
 - 页面加载：`SetVirtualHostNameToFolderMapping`（`installer.local` → exe 目录）+ `https://installer.local/app.html`，`NavigationCompleted` 返回 success=1。
 - 缺运行时：系统对话框（中文警告＋官方下载按钮）＋退出码 3。
@@ -103,8 +118,22 @@ node scripts\build-installer.mjs --exe out\bootstrapper.exe ^
 9. **`rc` 把路径里的 `\` 当转义符**：生成的 `out\ui.gen.rc` 里写 `"..\app.js"` 会变 `..pp.js`（`\a` = 响铃），
    报错是 `file not found`。`tools\gen-ui-rc.mjs` 因此把所有反斜杠**翻倍**输出。
 10. **单文件产品态没有 `app.html` 给宿主读**：第一次跑界面态测试时空屏且无日志——因为拼合后的 setup.exe 旁边什么都没有。
-   宿主 `ResolveUiRoot()` 因此分两态：exe 旁有 `app.html` ⇒ 用磁盘那份（开发态）；没有 ⇒ 把内嵌 RCDATA 摊到
-   `%TEMP%\linkdesk-bootstrapper-<pid>\` 再映射（产品态）。**「实机白屏 + 无日志」先查这条。**
+    宿主 `ResolveUiRoot()` 因此分两态：exe 旁有 `app.html` ⇒ 用磁盘那份（开发态）；没有 ⇒ 把内嵌 RCDATA 摊到
+    `%TEMP%\linkdesk-bootstrapper-<pid>\` 再映射（产品态）。**「实机白屏 + 无日志」先查这条。**
+11. 🔴 **改了 `.cpp` 忘了 `build.cmd` ⇒ 验收脚本照样「全绿」，绿的是旧壳**（件 2b 实测，**已加硬门禁**）。
+    当时读数：`syswrite.cpp` 10-02 00:39:42 改，`out\bootstrapper.exe` 00:38:12 编译，setup exe 00:45:18——
+    比源文件**旧 90 秒**；于是本该**通过**的「PATH 类型不降级」跑成 FAIL，害我去查一段其实已经正确的代码。
+    **这类假绿比红贵**：它给你一份看着成立的证据，而证据是陈的；同样的道理，失败也**不能只信一次读数**。
+    现在 `syswrite-test.ps1` 开头硬拦三件（不满足直接 `exit 3`，不往下跑）：① setup.exe 必须 ≥ 最新源
+    （`main.cpp`/`syswrite.cpp`/`syswrite.h`/`app.js`/`app.css`/`app.html`）；② 壳 exe 若在，必须 ≤ setup.exe
+    （否则＝重建了壳却没重拼）；③ 顺带一提，**Git Bash 里 `cmd.exe /c build.cmd` 是无效的**（MSYS 把 `/c`
+    当路径改写掉，cmd 起成交互式、`build.cmd` 根本没执行，症状是只打印一行 cmd 版本横幅）——用 `//c` 或
+    `MSYS_NO_PATHCONV=1`。
+12. 🔴 **注册表里的字面 `*` 键名，不能用 PowerShell 提供程序判存在**：`Test-Path -LiteralPath 'HKCU:\Software\Classes\*\shell\OpenWithLinkDesk'`
+    会**把 `*` 当通配符**去匹配（命中 `Directory\shell\OpenWithLinkDesk` ⇒ 返回 `True`），于是「本机有这个键」的
+    结论是假的；接着就会把「静默装按现状反推 ⇒ 不该写这个键」误判成实现 bug（本件真踩过：一条断言红、一条
+    提供程序读数假绿，两边一起把人带偏）。**判存在/取值一律走 .NET `RegistryKey.OpenSubKey` 的字面路径**
+    （只认 `\` 作分隔，`*` 就是普通字符）；`tools\syswrite-test.ps1` 的 `Reg-Get/Reg-Has` 即此实现。
 
 ## 四、宿主契约（件 1b 起会用到）
 

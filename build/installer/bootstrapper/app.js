@@ -243,6 +243,7 @@ function onHostMessage(ev) {
   if (m.type === 'install-error') { setError(m.code || '', m.msg || ''); return; }   // setError 内含 go('error')
   if (m.type === 'install-canceled') { resetProgress(); go('home'); return; }
   if (m.type === 'install-done') { setProgress(100, { force: true }); go('finish'); return; }
+  if (m.type === 'browse-dir-done') { setInstallDir(m.dir); return; }   // 件 2b：宿主选完目录回填
 }
 if (window.chrome && window.chrome.webview) {
   window.chrome.webview.addEventListener('message', onHostMessage);
