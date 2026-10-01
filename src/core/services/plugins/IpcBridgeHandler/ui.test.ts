@@ -197,43 +197,31 @@ describe("showNotification 来源身份（E6#73g S5）", () => {
 });
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   W3a（欢迎页重设计 T5）：`showNotification(..., { toast: true })` = 轻提示
+   插件面通知的唯一落点：铃铛宽面板（2026-10-01 回退 W3a/T5 的轻提示出口）
    ═══════════════════════════════════════════════════════════════════════════
-   判据三条，缺一条这套「一闪而过的反馈」就会变成第二条通知面（E6#72 刚删掉的那种）：
-   ① `toast` 旗标必须落到存储上——池侧 `buildNotif` 与 `ToastHost` 都只认它；
-   ② `ttl: 0`（**生命周期归池**：壳的 setTimeout 不知道鼠标正停在卡上，悬停暂停只能池做）；
-   ③ `wake: false`（轻提示不唤醒铃铛面板——它不进分组、不计未读）。
-   还有一条**派生**：`ttl:0` ⇒ `persistent:true` ⇒ 仍受**按来源常驻配额**约束，
-   否则 `toast:true` 就成了绕过 TOAST_SOURCE_CAP 的无限堆积后门。 */
+   🔴 全仓只有一个通知呈现面。右下角第二张卡被删过两次（E6#72 的常驻窄卡、W3a/T5 的轻提示小卡），
+   理由每次一样：与面板同角落、两套卡、连组件名都撞 ⇒ 本组是**负控**：落 store 的条目里不许再
+   出现任何「第二呈现面」旗标，且缺省必须照旧进面板（有 TTL、`wake` 照旧为真 = 该弹就弹）。 */
 
-describe("showNotification 轻提示（W3a T5）", () => {
-  it("toast:true → 落旗标 ＋ ttl:0 ＋ wake:false（生命周期归池，壳不自动收）", async () => {
-    const handle = await handleUiMethod("showNotification", [
-      "Demo hint",
-      { type: "warning", toast: true },
-    ]);
-    expect(typeof handle).toBe("string");
+describe("插件面通知只进铃铛面板（无第二呈现面旗标）", () => {
+  // 两例共用同一段收尾（jscpd 会判重）——「只在面板」的三条不变量抽一处
+  const expectLandsInPanel = async (label: string, options: Record<string, unknown>) => {
+    const handle = await handleUiMethod("showNotification", [label, options]);
     const t = activeToasts().find((x) => x.id === handle)!;
-    expect(t).toBeTruthy();
-    expect(t.toast).toBe(true);
-    expect(t.ttl).toBe(0);       // ← 壳侧不挂定时器：4s 到点由池发 notif:dismiss
-    expect(t.wake).toBe(false);  // ← 不唤醒面板
-  });
-
-  it("缺省（不传 toast）→ 现状一字不变：有 TTL、wake 照旧 —— 老插件不受影响", async () => {
-    const handle = await handleUiMethod("showNotification", ["Demo message", { type: "info" }]);
-    const t = activeToasts().find((x) => x.id === handle)!;
-    expect(t.toast).toBeUndefined();
+    expect((t as unknown as Record<string, unknown>).toast).toBeUndefined();
     expect(t.ttl).toBeGreaterThan(0);
     expect(t.wake).toBe(true);
+    return t;
+  };
+
+  it("缺省 → 进面板：有 TTL、wake=true（到点自消；缺省就会弹开面板）", async () => {
+    const t = await expectLandsInPanel("Demo message", { type: "info" });
+    expect(t.severity).toBe("info");
   });
 
-  it("🔴 派生：ttl:0 ⇒ persistent ⇒ 仍按来源算常驻配额（不是绕开上限的后门）", async () => {
-    await handleUiMethod("showNotification", ["Demo hint", { type: "warning", toast: true, source: PLUGIN }]);
-    const t = activeToasts()[0]!;
-    expect(t.persistent).toBe(true);
-    const same = activeToasts().filter((x) => x.source === PLUGIN);
-    expect(same.length).toBeLessThanOrEqual(TOAST_SOURCE_CAP);
+  it("老调用方仍传 `toast` 旗标 → 被忽略，照旧进面板（宽容：零破坏）", async () => {
+    const t = await expectLandsInPanel("Demo hint", { type: "warning", toast: true });
+    expect(t.severity).toBe("warning");
   });
 });
 

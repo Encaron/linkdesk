@@ -270,20 +270,19 @@ function toNotifItem(t: TFunction) {
 
 /** 通知面板数据——壳 NotificationCenter（source 分组/未读排序/时间文案）序列化为纯数据 */
 export function buildNotif(t: TFunction): NotifLayout {
-  // W3a（欢迎页 T5）：**轻提示与面板通知分流**——`toast:true` 的条目走 `toasts` 出口（池右下角
-  // 自动消失小卡），**不进分组、不计未读、不唤醒**。它不是「通知中心里的一条」，是一闪而过的反馈：
-  // 计进未读会让铃铛为一个 4s 后就消失的东西飘红，进分组等于把一条已消失的提示留在面板里
-  // （两条路径都违反「轻提示 = 无痕」）。判据只有 `n.toast` 一处，两条出口同源。
+  // 🔴 全仓只有**一个**通知呈现面 = 状态栏铃铛宽面板（`StatusBarZone`）——本函数产出的就是那个
+  // 面板的 DTO。2026-10-01 用户指令整笔删除 T5 的「轻提示第二出口」（`toast:true` ＋ 池侧
+  // ToastHost 小卡）：它与面板**同处右下角、两套卡、连组件名都撞**（两个 `ToastHost`），等于
+  // E6#72 已归一过的第二通知面换个名字复活。**不许再长第二条呈现出口**——要回执就走面板缺省
+  // （插件面 `wake=true` 会把面板弹开，到点自消，用户点开铃铛也翻得到）。
   const all = getToasts();
-  const notifications = all.filter((n) => n.toast !== true);
-  const ephemeral = all.filter((n) => n.toast === true);
-  const unread = notifications.filter(isUnread).length;
+  const unread = all.filter(isUnread).length;
 
   // E3e #50：source 第一段归类（"terminal.portErrors" → "terminal"）。
   // E6#73f 归一：分桶键走 toast 的 sourceKeyOf——与常驻上限淘汰分桶**同一个键函数**，
   // 面板分组与淘汰分桶不会各算各的（此前两处各写一遍 split(".")[0] || "__other__"）。
   const map = new Map<string, Toast[]>();
-  for (const n of notifications) {
+  for (const n of all) {
     const key = sourceKeyOf(n.source);
     if (!map.has(key)) map.set(key, []);
     map.get(key)!.push(n);
@@ -308,13 +307,6 @@ export function buildNotif(t: TFunction): NotifLayout {
   // 有未读的组排前面
   groups.sort((a, b) => b.unread - a.unread);
 
-  // W3a（T5）：轻提示出口——**新的在前**（池侧 ToastHost 也按此序入队：队满顶替最旧时，
-  // 「最旧」= 数组末尾，两边判据同源）。空数组不带字段（契约宽容——旧快照/测试替身形状不变）。
-  const toasts = ephemeral
-    .slice()
-    .sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0))
-    .map(toNotifItem(t));
-
   // E6#73d：在途安装两段——排在结果区之前（§五 I.4 固定序）
   const install = buildInstallSections(t);
 
@@ -334,7 +326,6 @@ export function buildNotif(t: TFunction): NotifLayout {
     // 根本没有安装 job，标题会指向一堆无关的插件消息）。在途两段或已有终态，二者居一即带标题。
     ...(install.resultLabel ? { resultLabel: install.resultLabel, resultSummary: install.resultSummary } : {}),
     groups,
-    ...(toasts.length > 0 ? { toasts } : {}),
     // E6#72d：该弹的未读通知 + 面板当前收着 → 请求池自动展开。
     // 「面板已开」时不再请求（不二次打扰正在看的人）；池打开面板会回传开合镜像 →
     // 本值回落 false，故不存在「关掉又被弹开」的反复。
@@ -344,6 +335,6 @@ export function buildNotif(t: TFunction): NotifLayout {
     // 最小化态在镜像里同样「不是开着的」，于是白名单条目照常把它弹回来，这正是 R5-4/R5-5 要的
     // 「最小化不是永久静音、出结果必冒出来」；`!isNotifMinimized()` 这一项**故意不写**（见 shouldWake）。
     autoOpen:
-      !isNotifPanelOpen() && notifications.some((n) => !_seenIds.has(n.id) && shouldWake(n)),
+      !isNotifPanelOpen() && all.some((n) => !_seenIds.has(n.id) && shouldWake(n)),
   };
 }

@@ -10,7 +10,7 @@
  * ── W3b 改了什么（01-设计 §三 W3 ＋ §七细节）──
  * ① 失效校验：文件夹逐条走 `filesystem.exists`，**不直接删**——灰显＋「已删除」角标（保留「它曾在这」的反馈）；
  * ② 最近视图：与**已装插件**集合比对 ⇒ 灰显＋「已卸载」角标；
- * ③ 点击失效项 = 一句轻提示（`toast:true`）＋ 从最近剔除；条目级「×」= 静默剔除（行消失即反馈，别聒噪）；
+ * ③ 点击失效项 = 一条面板通知（进铃铛，缺省即弹）＋ 从最近剔除；条目级「×」= 静默剔除（行消失即反馈，别聒噪）；
  * ④ 三条伴生缺陷同笔收口：去重口径（`recentList.sameRecentView`）／写放大（合并成一次落盘）／
  *    `isActive` 接上（切回欢迎页重跑加载 effect）；
  * ⑤ §七细节：两列表统一**显 5**（存 10）、内层小标题改「最近文件夹」（治与视图大区撞名）、
@@ -185,7 +185,7 @@ export default function WelcomePoolView({ isActive, creatableViews }: WelcomePoo
     if (missingFolders.has(folder.path)) {
       // 无效项点下去必须**有回应**：如实告诉用户它不在了，再把这条失效记录剔掉
       void api?.notifications?.show(t("此文件夹已不存在，已从最近移除"), {
-        type: "warning", toast: true, source: WELCOME_SOURCE,
+        type: "warning", source: WELCOME_SOURCE,
       });
       forgetFolder(folder.path);
       return;
@@ -193,7 +193,7 @@ export default function WelcomePoolView({ isActive, creatableViews }: WelcomePoo
     api?.workspace?.addFolder(folder.path);
   };
 
-  /** 条目级「×」——**无 toast**：行消失本身就是反馈（设计：与"失效自动剔除"并存，两种来源两种语气） */
+  /** 条目级「×」——**不发通知**：行消失本身就是反馈（设计：与"失效自动剔除"并存，两种来源两种语气） */
   const handleRemoveFolder = (folder: RecentFolder) => forgetFolder(folder.path);
 
   const handleShortcutClick = (pluginId: string, displayName: string) => {
@@ -224,7 +224,7 @@ export default function WelcomePoolView({ isActive, creatableViews }: WelcomePoo
   const handleRecentClick = (entry: RecentEntry) => {
     if (isUninstalled(entry)) {
       void api?.notifications?.show(t("此视图的插件已卸载，已从最近移除"), {
-        type: "warning", toast: true, source: WELCOME_SOURCE,
+        type: "warning", source: WELCOME_SOURCE,
       });
       void persistViews(dropRecentView(recentViews, entry));
       return;
@@ -242,7 +242,7 @@ export default function WelcomePoolView({ isActive, creatableViews }: WelcomePoo
    */
   const showDocsHint = () => {
     void api?.notifications?.show(t("用户文档整理中——先看「帮助 → AI 操作手册」（随包发货、离线可读）"), {
-      type: "info", toast: true, source: WELCOME_SOURCE,
+      type: "info", source: WELCOME_SOURCE,
     });
   };
 

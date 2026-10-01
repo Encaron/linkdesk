@@ -737,8 +737,6 @@ export interface NotifLayout {
    *  行会被 TTL 收走/被来源折叠，用它计数会让摘要随无关动作跳变（18 档 §五 I.4 的样例即此计数）。 */
   resultSummary?: string;
   groups: NotifGroup[];
-  /** W3a（T5）：轻提示条目（`show(msg,{toast:true})`）——与 `groups` 互斥分流：不进 groups、不计 unread、不唤醒面板；池侧 ToastHost 渲染右下角自动消失小卡（≈4s·悬停暂停），到点由池发 notif:dismiss 收掉。缺省 = 无轻提示。 */
-  toasts?: NotifItem[];
   /** E6#72d：自动展开请求——壳判定「存在重要且未读的通知，且面板当前是关着的」时为 true。
    *  池侧只做 **false→true 边沿触发**（置面板为开），true 持续期间不反复动作；
    *  缺省 = 不自动展开（契约宽容——旧快照/测试替身不填此字段时行为不变）。 */

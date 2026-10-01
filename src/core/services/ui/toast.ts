@@ -5,6 +5,12 @@
  *
  * 设计文档：docs/phase4_插件系统/V3-Phase4-通知系统设计.md
  * 隔离模型（S3/S4/S6）见：docs/02-Electron架构/插件生态与发布/03-插件市场/18-通知系统全账与设计定案.md §五 E
+ *
+ * 🔴 **全仓只有一个通知呈现面 = 状态栏铃铛宽面板**（`src/pool/zones/status-bar/StatusBarZone.tsx`）。
+ *    本 store 里的条目**全部**进那个面板。右下角历史上长过两次第二张卡，两次都被删：E6#72 的常驻
+ *    窄小卡（与面板重叠、拖选被破坏），以及 2026-10-01 用户指令整笔删除的 W3a/T5「轻提示小卡」
+ *    （与面板同角落、两套卡、组件名都撞 `ToastHost`）。**不许再建第二呈现面**——要「看一眼就过去」
+ *    的回执就用面板缺省：插件面通知 `wake:true` 会把面板弹开、到点自消，事后在铃铛里也翻得到。
  */
 
 import { readSync, writeSync } from "../configuration/StorageService";
@@ -65,15 +71,6 @@ export interface Toast {
    * 那会把 `progress` 与一切 warning 算「重要」，面板被每 30 秒一条的内存墙反复弹开（违反 R5-4）。
    */
   wake?: boolean;
-  /**
-   * W3a（欢迎页重设计 T5）：**轻提示**——`notifications.show(msg, { toast: true })` 置位。
-   *
-   * 🔴 与「面板通知」是**两条呈现路径**：本条由池侧 `ToastHost` 渲染成右下角自动消失的小卡
-   * （≈4s、悬停暂停），**不进 `buildNotif` 的分组、不计未读、不唤醒面板**（`wake` 恒 false）；
-   * 到点由**池**发 `notif:dismiss` 收掉——生命周期归池，因为「悬停暂停」只有渲染方知道。
-   * ⚠️ 故本条**不是**留档：用户事后可能要看的内容别走它（用 `persistent:true` 或写文件）。
-   */
-  toast?: boolean;
 }
 
 type ToastListener = (toasts: Toast[]) => void;

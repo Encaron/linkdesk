@@ -506,42 +506,25 @@ describe("buildNotif——读取面事实（M1 AI#2 按钮 command/args ｜ AI#6
 });
 
 /**
- * W3a（欢迎页重设计 T5）：轻提示分流——`toast:true` 的条目**只走 `toasts` 出口**。
+ * 2026-10-01：回退 W3a/T5 的「轻提示第二出口」——**通知只有一个呈现面（铃铛面板）**。
  *
- * 🔴 本组的唯一理由：轻提示与面板通知是**两条出口、一个存储**。分流判据（`n.toast === true`）
- * 一旦写歪，就会出两种坏法，两边都得抓：
- *   - 漏进 `groups` ⇒ 一条 4s 后就消失的提示被留档在面板里，用户点开铃铛看见一条「已经没了的消息」；
- *   - 计进 `unread` ⇒ 铃铛为一个一闪而过的回执飘红，且飘完就再也点不掉（条目本身已不在面板）。
+ * 🔴 本组是**负控**：`NotifLayout` 不许再带 `toasts` 出口，任何条目都只能进 `groups`。
+ * 右下角这条第二出口历史上长过两次都被删（E6#72 常驻窄卡 / 2026-10-01 轻提示小卡），理由每次
+ * 一样——与面板同角落、两套卡、组件名撞。判据一旦复活要在这里先翻红，别等用户截到两张叠卡。
  */
-describe("buildNotif——轻提示分流（W3a T5）", () => {
-  it("toast:true → 只出现在 `toasts`，不进 groups、不计 unread、不发 bellTitle 计数", () => {
-    pushToast({ message: "演示轻提示", severity: "info", ttl: 0, toast: true, source: "demo-plugin" });
+describe("buildNotif——唯一通知面（无第二出口）", () => {
+  it("DTO 不带 `toasts` 字段：条目只能进 groups、照常计未读", () => {
+    pushToast({ message: "演示消息", severity: "info", ttl: 6000, source: "demo-plugin" });
     const dto = buildNotif(t);
-    expect(dto.toasts?.map((i) => i.message)).toEqual(["演示轻提示"]);
-    expect(dto.groups).toEqual([]);
-    expect(dto.unread).toBe(0);
-    expect(dto.bellTitle).toBe("通知"); // 无未读 → 不出计数文案
-  });
-
-  it("🔴 两条出口互不串味：轻提示与面板通知同存时各归各的", () => {
-    pushToast({ message: "演示轻提示", severity: "info", ttl: 0, toast: true, source: "demo-plugin" });
-    pushToast({ message: "演示面板消息", severity: "info", ttl: 6000, source: "demo-plugin" });
-    const dto = buildNotif(t);
-    // 面板侧：只有非轻提示那条
-    expect(dto.groups.flatMap((g) => g.items.map((i) => i.message))).toEqual(["演示面板消息"]);
+    expect("toasts" in dto).toBe(false);
+    expect(dto.groups.flatMap((g) => g.items.map((i) => i.message))).toEqual(["演示消息"]);
     expect(dto.unread).toBe(1);
-    // 轻提示侧：只有带旗标那条
-    expect(dto.toasts?.map((i) => i.message)).toEqual(["演示轻提示"]);
   });
 
-  it("无轻提示 → **不带 `toasts` 字段**（契约宽容：旧快照/测试替身形状不变）", () => {
-    pushToast({ message: "演示面板消息", severity: "info", ttl: 6000 });
-    expect("toasts" in buildNotif(t)).toBe(false);
-  });
-
-  it("多条轻提示新的在前（池侧队满顶替最旧时，「最旧」= 数组末尾，两边判据同源）", () => {
-    pushToast({ message: "演示较早", severity: "info", ttl: 0, toast: true, createdAt: 1000 });
-    pushToast({ message: "演示较晚", severity: "info", ttl: 0, toast: true, createdAt: 2000 });
-    expect(buildNotif(t).toasts?.map((i) => i.message)).toEqual(["演示较晚", "演示较早"]);
+  it("残留的 `toast:true` 旗标（旧调用方/旧快照）不再分流：照旧进面板", () => {
+    pushToast({ message: "演示旧旗标", severity: "info", ttl: 6000, toast: true } as never);
+    const dto = buildNotif(t);
+    expect("toasts" in dto).toBe(false);
+    expect(dto.groups.flatMap((g) => g.items.map((i) => i.message))).toEqual(["演示旧旗标"]);
   });
 });

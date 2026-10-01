@@ -15,6 +15,13 @@
  *   - 壳侧 `setNotifPanelOpen` 只是「面板开合镜像」（原「隐藏 toast」语义随小卡删除失效），
  *     autoOpen 门禁消费它——面板已开就不再重复请求展开。
  *
+ * 🔴 **2026-10-01 用户指令：这是全仓唯一的通知呈现面，不许再长第二条。** W3a/T5 曾加过一条
+ *   `notifications.show(msg,{toast:true})` 的「轻提示小卡」（池侧 `src/pool/shared/toast/ToastHost`）
+ *   ——与铃铛面板**同处右下角**（面板 right:7px/bottom:29px、小卡 right:18px/bottom:30px 直接叠住）、
+ *   两套卡样式、连组件名都与 E6#72 删掉的那张撞名 ⇒ 已整笔删除（store 旗标 / DTO 字段 / IPC 形参 /
+ *   `Z_INDEX.toast` / 契约四件套 / 作者面双树文档全数回撤）。要「看一眼就过去」的回执**走面板缺省**
+ *   （插件面 `wake=true` 会把面板弹开、到点自消，事后在铃铛里翻得到），**不要再造第二种呈现**。
+ *
  * 与壳行为差异（诚实注记）：
  *   E5.8#107 浮层权威：面板已收敛为壳同款 OverlayPortal（进 #overlay-root）——原
  *   「fixed + document mousedown」手动实现删除。

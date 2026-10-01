@@ -1072,11 +1072,6 @@
     "ldk-titlebar-menu-btn",
     "ldk-titlebar-menus",
     "ldk-titlebar-slot-btn",
-    "ldk-toast",
-    "ldk-toast--leaving",
-    "ldk-toast-host",
-    "ldk-toast-icon",
-    "ldk-toast-msg",
     "ldk-toggle",
     "ldk-view-skeleton",
     "ldk-view-skeleton-card",
@@ -1177,11 +1172,9 @@
     "ldk-notif-progress-scan",
     "ldk-rn-spin",
     "ldk-selectbox-in",
-    "ldk-toast-in",
-    "ldk-toast-out",
     "ldk-view-skeleton-breath",
     "ldk-welcome-in",
     "ldk-welcome-skeleton-breath"
   ],
-  "reservedKeyframeCount": 13
+  "reservedKeyframeCount": 11
 }

@@ -40,6 +40,14 @@ const FOLDERS_10 = Array.from({ length: 10 }, (_, i) => ({ path: `E:/演示文�
 const VIEW_A = { pluginId: "demo.viewA", label: "演示视图甲" };
 const VIEW_B = { pluginId: "demo.viewB", label: "演示视图乙", workspaceName: "演示工作区" };
 
+/** 2026-10-01：欢迎页三条回执（失效项 / 未安装视图 / 「使用文档」）都只走铃铛面板——第二呈现面（`toast:true` 轻提示小卡）已整笔删除，收尾断言抽一处，别抄第二遍。 */
+async function expectPanelNotice(type: "info" | "warning"): Promise<void> {
+  await waitFor(() => { expect(stub.shown).toHaveLength(1); });
+  expect(stub.shown[0][1]).toMatchObject({ type, source: "app.welcome" });
+  // ⛔ 负控：第二呈现面旗标不许再出现
+  expect(stub.shown[0][1]).not.toHaveProperty("toast");
+}
+
 interface StubOpts {
   folders?: unknown;
   views?: unknown;
@@ -222,26 +230,24 @@ describe("WelcomePoolView（③ 点击）", () => {
     expect(stub.shown).toEqual([]);
   });
 
-  it("点失效文件夹 ⇒ 轻提示（warning ＋ toast:true）＋ 落盘剔除 ＋ **不**尝试打开", async () => {
+  it("点失效文件夹 ⇒ 面板通知（warning，进铃铛）＋ 落盘剔除 ＋ **不**尝试打开", async () => {
     installStub({ folders: [{ path: "E:/演示没了", name: "演示没了" }], exists: () => false });
     const { container } = await renderView();
     await waitFor(() => { expect(container.querySelectorAll(".ldk-welcome-recent-item")).toHaveLength(1); });
     fireEvent.click(section(container, 0).querySelector(".ldk-welcome-recent-item")!);
 
-    await waitFor(() => { expect(stub.shown).toHaveLength(1); });
-    expect(stub.shown[0][1]).toMatchObject({ type: "warning", toast: true });
+    await expectPanelNotice("warning");
     expect(stub.addedFolders).toEqual([]);
     expect(stub.setCalls).toEqual([["app", "recentFolders", []]]);
   });
 
-  it("点已卸载的视图 ⇒ 轻提示 ＋ 剔除 ＋ **不**发 createTab（点了不该再炸一次）", async () => {
+  it("点已卸载的视图 ⇒ 面板通知 ＋ 剔除 ＋ **不**发 createTab（点了不该再炸一次）", async () => {
     installStub({ views: [VIEW_A], list: async () => [] });
     const { container } = await renderView();
     await waitFor(() => { expect(section(container, 2).querySelectorAll(".ldk-welcome-recent-item")).toHaveLength(1); });
     fireEvent.click(section(container, 2).querySelector(".ldk-welcome-recent-item")!);
 
-    await waitFor(() => { expect(stub.shown).toHaveLength(1); });
-    expect(stub.shown[0][1]).toMatchObject({ type: "warning", toast: true });
+    await expectPanelNotice("warning");
     expect(stub.tabActions).toEqual([]);
     expect(stub.setCalls).toEqual([["app", "recentViews", []]]);
   });
@@ -379,12 +385,11 @@ describe("WelcomePoolView（⑥ 帮助区按钮化）", () => {
     expect(stub.emitted).toEqual([["app.openAiManual", [undefined]]]);
   });
 
-  it("「使用文档」→ 只出一条 toast 指路，**不发命令**（仓库里没有可打开的文档页，不假装能开）", async () => {
+  it("「使用文档」→ 只出一条面板通知指路，**不发命令**（仓库里没有可打开的文档页，不假装能开）", async () => {
     const btns = await helpButtons();
     fireEvent.click(btns[0]);
 
     expect(stub.emitted).toEqual([]);
-    expect(stub.shown).toHaveLength(1);
-    expect(stub.shown[0][1]).toMatchObject({ toast: true, source: "app.welcome" });
+    await expectPanelNotice("info");
   });
 });
