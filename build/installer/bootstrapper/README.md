@@ -45,12 +45,32 @@ node scripts\build-installer.mjs --exe out\bootstrapper.exe ^
 | `capture.ps1` | 真桌面截图（最小化全部→屏幕拷贝→还原；`-NoMinimize` 供已清场时用） |
 | `verify-no-runtime.ps1` | 兜底路径自动验证，断言退出码 3 |
 | `mockup-shot.ps1` | 把 mockup 拍成同尺寸 PNG：临时 harness 只去设计注记 + 钉 `.stage` 到 0,0，原文一字不改。默认拍 `E-混合提案.html`（780×570）；`-Mock <path>` 换 mockup（如 E-卸载屏）、`-W/-H` 换画布、`-Scale` 配高 DPI。**自动识别卸载 mockup**：把页面的 `#s-confirm` 当信号，将 harness 用的 `un-` 前缀 id 折回 mockup 自身的 id，并支持 `?keep=0` 徽章态 |
-| `cmp-shots.ps1` | 并排对照（左 mockup／右实机＋合成大图），带资产新鲜度守卫。默认六屏 `out\cmp-*.png`（780×570）；`-Uninstall` 切卸载四帧 `out\cmp-un-*.png`（720×540，实机自动带 `--uninstall`）。`-Screen`/`-Screens` 指定屏（⚠️ `powershell -File` 下多值要写成重复参数，`-Screens a,b` 会被当成一个屏名） |
+| `cmp-shots.ps1` | 并排对照（左 mockup／右实机＋合成大图），带资产新鲜度守卫。默认六屏 `out\cmp-*.png`（780×570）；`-Uninstall` 切卸载四帧 `out\cmp-un-*.png`（720×540，实机自动带 `--uninstall`）。`-Screen`/`-Screens` 指定屏（⚠️ `powershell -File` 下多值要写成重复参数，`-Screens a,b` 会被当成一个屏名）。**实机侧一律钉 `lang=zh-CN`** 与 mockup 对齐（`-Lang en` 取英文侧）——本机注册表存的语言是 `en`，不钉就是「左中文／右英文」的错配图（见脚本头口径 4） |
 | `interact-test.ps1` | 真键鼠交互验收：拖窗位移断言 / Enter 主按钮 / 下拉＋Esc / ✕ 退出（产物 `out\it-*.png`） |
 | `i18n-test.ps1` | 件 1c 词条装载器验收（39 断言）：探针页 iframe 实测 DOM ＋ 1px 图片信标回传（**不靠截图/OCR/时序运气**——靠本地 http.server 的访问日志），C1–C5 五路装载器 ＋ 三张 exe 实跑截图（带出注册表语言／扫目录，跑完复原注册表）；日志 `out\i18n-test.log` |
 | `install-test.ps1` | 件 2a 验收（三路，跑**真安装包**）：路 B 静默装（退出码／文件数／字节数与 marker 声明对账）· 路 A 界面态（`--log` 证进度单调不倒退、四段边界到过、收在 100）· 路 C `--force-run` 拉起壳（**按安装目录路径认进程**，不按名字）。⚠️ 三条路的 `--dir` 全指临时目录，**不碰**真装的 LinkDesk；用法 `-Setup <安装包.exe>`。🔴 **件 2b 起必须加 `-AllowSystemWrites`**——安装现在会写真机注册表（关联/右键/PATH/ARP/快捷方式），而本脚本**没有备份还原**，不给开关就直接拒绝执行 |
 | `syswrite-test.ps1` | 件 2b 验收（**七路**，跑真安装包 ＋ **真机注册表**）：装前把要碰的键**全量导出备份**（`reg.exe export` 原样往返，值的类型/编码不经脚本手）＋ 跑完全部还原并**自检还原结果**。路 1 静默（勾选值按注册表现状**反推** ⇒ 逐键跟着装前现状走）· 路 1b 静默（预置三键 ⇒ 验 `*\shell` 的**写入侧**）· 路 2 界面态覆盖装（页面不勾的项**必须没写**）· 路 3 PATH 真追加/幂等 · 路 3b PATH **类型不降级**（`REG_EXPAND_SZ` 进必 `REG_EXPAND_SZ` 出）· 路 4 界面态**全新目录**（四段进度真读数断言）。开头有**新鲜度门禁**（见坑 11）。`-SkipRestore` 留现场、`-RestoreOnly` 按上次备份补救。**还原链自身健壮化**（2026-10-02 收口，见坑 13/14）：杀不掉进程**只警告不抛** · 还原每步套 `Restore-Step` 记账（一步失败不炸全链）· 还原自检**加断言 `UninstallString`** · 路 4 轮询带**卡死看门狗**（每 20s 打「日志静止秒数／末条 pct／进程活否／ARP 尾值」） |
 | `gen-ui-rc.mjs` | 生成 `out\ui.gen.rc` ＋ `out\ui.manifest`：把 `app.html/css/js` 与 `i18n/*.json` 编成 RCDATA（id 3 清单、id 10+ 文件）。**单文件产品态必须**——拼合后的 setup.exe 旁边没有 `app.html` |
+| `dom-probe.mjs` | **快速读 DOM**（见下）：在真页面里求值、算几何，不起截图不做 OCR。`--click`/`--rect`/`--text`/`--eval` **按命令行顺序**执行；`--attach` 连已在跑的实例、`--keep` 测完不关窗 |
+
+### 快速读 DOM（不起截图、不做 OCR）
+
+「这句文案在不在」「这个元素的真实矩形多少」「点开的面板有没有出窗」——**直接在页面里求值**比截图读图准，也省。
+做法：宿主 `main.cpp` **没有**给 WebView2 设 `AdditionalBrowserArguments`（只按 `--debug` 开 DevTools），所以官方那条
+环境变量路线照样生效——起进程时带 `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS=--remote-debugging-port=9333`，
+`http://127.0.0.1:9333/json/list` 就列出页面 target（实测 Edg/140.0.3485.94），连上去对 `Runtime.evaluate` 求值即可。
+本机 Node v24 自带 `fetch` ＋ `WebSocket` ⇒ 脚本**零依赖**（这也是它写成 `.mjs` 而不是 `.ps1` 的原因：PS 5.1 没有 WebSocket 客户端）。
+
+```cmd
+rem 量「语言下拉展开后有没有被窗口裁掉」——先点开再量（顺序即语义）
+node tools\dom-probe.mjs --preview "screen=home&lang=zh-CN" --click "#lkdd-btn" --rect "#lkdd-pop" --text "#lkdd-pop"
+```
+
+`--rect` 回 `{x,y,w,h,right,bottom,outL,outR,outB,vis,win,text}`：`out*` 是出窗左/右/下三向，**「面板被裁」的判据就是它**；
+`win` 是页面视口尺寸，与 mockup 画布（780×570／卸载 720×540）对账时用它，别用窗口外框。
+人肉版（只想瞄一眼）：`out\bootstrapper.exe --debug` 开 DevTools，Console 里 `$0.getBoundingClientRect()` 一样能用。
+
+⚠️ 反过来说：哪天宿主自己设了 `AdditionalBrowserArguments`，环境变量会被顶掉，本脚本就得改成加启动参数（脚本头有注明）。
 
 ## 二、实测事实（2026-10-01，本机 VS2022 Community ＋ WebView2 运行时 140.0.3485.94）
 
@@ -128,7 +148,10 @@ node scripts\build-installer.mjs --exe out\bootstrapper.exe ^
     （`main.cpp`/`syswrite.cpp`/`syswrite.h`/`app.js`/`app.css`/`app.html`）；② 壳 exe 若在，必须 ≤ setup.exe
     （否则＝重建了壳却没重拼）；③ 顺带一提，**Git Bash 里 `cmd.exe /c build.cmd` 是无效的**（MSYS 把 `/c`
     当路径改写掉，cmd 起成交互式、`build.cmd` 根本没执行，症状是只打印一行 cmd 版本横幅）——用 `//c` 或
-    `MSYS_NO_PATHCONV=1`。
+    `MSYS_NO_PATHCONV=1`。**同族还有 `reg.exe` 的 `/v`**：Git Bash 里 `reg query "HKCU\...\Installer" /v Language`
+    会被 MSYS 把 `/v` 改写成路径，reg 报错退出；后面若还接了 `| grep language` 之类的过滤，症状就伪装成
+    「**这个值不存在**」（2026-10-02 查语言持久化时被绕了一下：值为 `en`，查询却空空如也，差点当成「没写过」）。
+    写 `//v`、或干脆不带 `/v` 列整个键（`Language  REG_SZ  en`），都能绕开。
 12. 🔴 **注册表里的字面 `*` 键名，不能用 PowerShell 提供程序判存在**：`Test-Path -LiteralPath 'HKCU:\Software\Classes\*\shell\OpenWithLinkDesk'`
     会**把 `*` 当通配符**去匹配（命中 `Directory\shell\OpenWithLinkDesk` ⇒ 返回 `True`），于是「本机有这个键」的
     结论是假的；接着就会把「静默装按现状反推 ⇒ 不该写这个键」误判成实现 bug（本件真踩过：一条断言红、一条

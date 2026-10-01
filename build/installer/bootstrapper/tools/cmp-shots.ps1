@@ -5,18 +5,23 @@
 # 两侧同源不同管线，所以必须都拍成 PNG 再并排看：
 #   左 = mockup（headless Edge 渲染 E-混合提案.html，见 mockup-shot.ps1）
 #   右 = 实机（启动 out\bootstrapper.exe --preview=...，真实桌面窗口截图，见 capture.ps1）
-# 三处口径对齐，否则并排无意义：
+# 四处口径对齐，否则并排无意义：
 #   1. 尺寸：mockup 的 .stage 被钉成 780×570；实机窗口就是 780×570（高 DPI 下实机是 780*scale，
 #      于是 mockup 用 -Scale 同倍渲染 —— 先拍实机量出实际像素宽再定倍数）
 #   2. 状态：进度屏两侧都定格在同一 pct；自定义屏两侧都展开（mockup 调 toggleCustom，实机 ?custom=1）
 #   3. 动效：都等入场/对勾/彩粒跑完再拍（mockup 用虚拟时间，实机用 -SettleMs 实时等待）
+#   4. 🔴 语言：宿主会把「上次选择」（`HKCU\Software\LinkDesk\Installer\Language`，本机实测 = `en`）
+#      作为 `?lang=` 附到实机 URL 上（main.cpp 只在 query 里没有 `lang=` 时才附）⇒ 不钉死拍出来就是
+#      **左中文 / 右英文**的错配图（2026-10-02 实测：十张图全中）。本脚本一律发 `lang=zh-CN` 对齐
+#      mockup 的默认语言；要看英文侧传 `-Lang en`。
 param(
     [string[]]$Screens = @(),              # 空 = 按 -Uninstall 取默认屏集
     [switch]$Uninstall,                    # 卸载屏对照（confirm/running/progress/finish，画布 720×540，--uninstall）
     [int]$Pct = 42,        # 进度屏定格百分比
     [int]$SettleMs = 4200, # 实机启动到截图之间的等待（入场 .8s + 对勾 .95s + 彩粒 1.75s，留足余量）
     [switch]$MockupOnly,   # 只拍 mockup（不启实机窗口）
-    [switch]$NoComposite   # 拍完不合成（保留单侧 PNG）
+    [switch]$NoComposite,  # 拍完不合成（保留单侧 PNG）
+    [string]$Lang = 'zh-CN' # 实机侧语言（钉死以对齐 mockup，见上方口径 4；要英文侧传 -Lang en）
 )
 $ErrorActionPreference = 'Stop'
 $tools = $PSScriptRoot
@@ -37,20 +42,21 @@ $mockLabel = if ($un) { 'E-卸载屏.html' } else { 'E-混合提案.html' }
 
 Add-Type -AssemblyName System.Drawing
 
-# 实机预览参数（与 app.js 的预览开关同口径：screen/custom/pct/dust）
+# 实机预览参数（与 app.js 的预览开关同口径：screen/custom/pct/dust）＋语言钉死（见口径 4）
 function PrevQuery([string]$s) {
-    switch ($s) {
-        'custom' { return 'screen=home&custom=1&dust=0' }
+    $q = switch ($s) {
+        'custom' { 'screen=home&custom=1&dust=0' }
         'progress' {
-            if ($un) { return "screen=un-progress&pct=$Pct&dust=0" }
-            return "screen=progress&pct=$Pct&dust=0"
+            if ($un) { "screen=un-progress&pct=$Pct&dust=0" }
+            else { "screen=progress&pct=$Pct&dust=0" }
         }
         default {
             # 卸载屏在页面里的 id 带 un- 前缀（finish -> un-finish）；confirm/running 同名
             $name = if ($un -and @('confirm', 'running') -notcontains $s) { "un-$s" } else { $s }
-            return "screen=$name&dust=0"
+            "screen=$name&dust=0"
         }
     }
+    return "$q&lang=$Lang"   # 带 lang= 会抑制宿主附上的「上次选择」（否则左右语言对不上）
 }
 
 function Composite([string]$a, [string]$b, [string]$out, [string]$label) {
