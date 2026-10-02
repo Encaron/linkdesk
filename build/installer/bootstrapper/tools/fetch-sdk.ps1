@@ -23,7 +23,11 @@ if ($Proxy) {
 
 $stage = Join-Path $env:TEMP "webview2-$Version-unpack"
 if (Test-Path $stage) { Remove-Item $stage -Recurse -Force }
-Expand-Archive -LiteralPath $tmp -DestinationPath $stage -Force
+# Zip extraction via .NET on purpose -- Expand-Archive is a PS 5.0 cmdlet, and on the GitHub
+# runner module cmdlets of that class do not resolve (2026-10-02: this same build died in
+# fetch-7z.ps1 with "Get-FileHash : The term ... is not recognized"). A .nupkg is a plain zip.
+try { Add-Type -AssemblyName System.IO.Compression.FileSystem -ErrorAction Stop } catch { }
+[System.IO.Compression.ZipFile]::ExtractToDirectory($tmp, $stage)
 
 # nupkg layout: build/native/include/*.h + build/native/x64/WebView2LoaderStatic.lib
 $src = Join-Path $stage "build\native"

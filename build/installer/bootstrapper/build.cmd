@@ -17,6 +17,14 @@ if not exist "tools\.cache\7zr.exe" (
   powershell -NoProfile -ExecutionPolicy Bypass -File "tools\fetch-7z.ps1" || exit /b 1
 )
 
+rem WebView2 SDK (headers + static loader) is not committed (see .gitignore) -- fetch it once if
+rem missing. There is no manual setup step in CI: the first tag run that compiles this shell died
+rem at cl because .sdk had never been fetched (2026-10-02), so this must be self-sufficient here.
+if not exist ".sdk\webview2\include" (
+  echo fetching WebView2 SDK ...
+  powershell -NoProfile -ExecutionPolicy Bypass -File "tools\fetch-sdk.ps1" || exit /b 1
+)
+
 rc /fo icon.res icon.rc
 if errorlevel 1 (echo rc failed & exit /b 1)
 

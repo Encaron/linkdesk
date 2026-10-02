@@ -8,11 +8,13 @@
 ## 一、建与跑
 
 ```cmd
-rem 1) 取 WebView2 SDK（不入仓，见 .gitignore；版本钉在脚本里）
-powershell -ExecutionPolicy Bypass -File tools\fetch-sdk.ps1
+rem 1) 依赖不必手工准备：build.cmd 缺什么自己取什么
+rem    · .sdk\webview2（WebView2 SDK，不入仓，见 .gitignore；版本钉在 fetch-sdk.ps1）
+rem    · tools\.cache\7zr.exe（钉 SHA-256，见 fetch-7z.ps1）
+rem    要单独取 / 走代理时才手跑：tools\fetch-sdk.ps1 [-Proxy http://127.0.0.1:7890]
+rem    🔴 CI 里没有「先手工准备」这一步——2026-10-02 首次编译壳的 tag 运行正是死在 .sdk 缺席上
 
 rem 2) 构建（vswhere→vcvars64→rc→cl），末尾体积门禁 ≤5MB
-rem    build.cmd 自己会在 tools\.cache\7zr.exe 缺失时调 fetch-7z.ps1 补（钉 SHA-256）
 build.cmd
 ```
 

@@ -17,13 +17,31 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+
+# SHA256 via .NET on purpose -- Get-FileHash exists only in Windows PowerShell 4.0+ and does NOT
+# resolve on the GitHub runner (2026-10-02: the tag run's build died here with
+# "Get-FileHash : The term 'Get-FileHash' is not recognized"). This route needs no module
+# auto-loading and works on every PowerShell. Keep this file ASCII-only (see header).
+function Get-Sha256([string]$Path) {
+    $sha = [System.Security.Cryptography.SHA256]::Create()
+    $fs = $null
+    try {
+        $fs = [System.IO.File]::OpenRead($Path)
+        $bytes = $sha.ComputeHash($fs)
+        return (($bytes | ForEach-Object { $_.ToString("x2") }) -join "")
+    } finally {
+        if ($fs -ne $null) { $fs.Dispose() }
+        $sha.Dispose()
+    }
+}
+
 $root = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)   # -> bootstrapper/
 $cache = Join-Path $root "tools\.cache"
 $dest = Join-Path $cache "7zr.exe"
 $url = "https://www.7-zip.org/a/7zr.exe"
 
 if (Test-Path $dest) {
-    $have = (Get-FileHash -LiteralPath $dest -Algorithm SHA256).Hash.ToLower()
+    $have = Get-Sha256 $dest
     if ($have -eq $Sha256) { Write-Host "7zr.exe already present and verified -> $dest"; exit 0 }
     Write-Host "cached 7zr.exe hash mismatch ($have) -- refetching"
     Remove-Item $dest -Force
@@ -38,7 +56,7 @@ if ($Proxy) {
     Invoke-WebRequest -Uri $url -OutFile $tmp -UseBasicParsing
 }
 
-$got = (Get-FileHash -LiteralPath $tmp -Algorithm SHA256).Hash.ToLower()
+$got = Get-Sha256 $tmp
 if ($got -ne $Sha256) {
     Remove-Item $tmp -Force
     throw "7zr.exe SHA256 mismatch: expected $Sha256, got $got (7-Zip moved the file -- re-pin deliberately)"
