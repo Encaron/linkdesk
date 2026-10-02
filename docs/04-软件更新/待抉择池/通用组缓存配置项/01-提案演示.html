@@ -1,0 +1,396 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>提案演示 · 通用组「存储」分节 ＋ 安装器「更多配置」</title>
+<!--
+  ⚠️ 本文件是**提案演示稿（非产品源、非生成物）**——2026-10-02 立项，用于用户拍板前过目。
+     · ⛔ 不是 build/installer/bootstrapper 的产品源，改产品请改 app.html/app.js/app.css 后跑 gen-review.mjs；
+     · ⛔ 也不要拿它当 3d-九幕评审.html 的替代——那份是生成物。
+     视觉来源（逐字沿用，不发明）：
+       · 面板① 安装器 —— build/installer/bootstrapper/app.css:25-56 的 :root token 与 :150-193 的按钮/勾选样式
+       · 面板② 应用内 —— src/index.css 浅色主题 token（--bg-window/--text-primary/--border/--accent…）
+                          ＋ settings 插件 SettingsView-rows.css 的 .settings-row 结构
+     ⚠️ 已知偏差：字体栈里 Geist 未随包（台账 §五 B），本页与真机一样回落到 Segoe UI——这是如实呈现，不是笔误。
+-->
+<style>
+  /* ══════════ 页面外壳（仅演示用，不属于任何产品视觉） ══════════ */
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:#EDECE9;color:#1a1a1a;
+       font:14px/1.6 'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;padding:32px 28px 80px}
+  .page-head{max-width:1180px;margin:0 auto 28px}
+  .page-head h1{font:600 20px/1.3 inherit;margin-bottom:8px}
+  .page-head p{color:#5b5b57;font-size:13px;max-width:96ch}
+  .page-head .warn{margin-top:10px;padding:9px 12px;border-left:3px solid #B3261E;background:#fff;border-radius:0 8px 8px 0;
+                   color:#5b2b27;font-size:12.5px}
+  .col{max-width:1180px;margin:0 auto;display:grid;gap:26px}
+  .block{background:#fff;border:1px solid rgba(0,0,0,.10);border-radius:18px;padding:20px 22px 24px}
+  .block > h2{font:600 15px/1.4 inherit;margin-bottom:4px}
+  .block > .sub{color:#6b6b67;font-size:12.5px;margin-bottom:16px}
+  .stage{display:flex;flex-wrap:wrap;gap:26px;align-items:flex-start}
+  .notes{flex:1 1 300px;min-width:280px;font-size:12.5px;color:#4a4a46}
+  .notes h3{font:600 12.5px inherit;color:#1a1a1a;margin-bottom:6px}
+  .notes ul{margin:0 0 14px 18px}
+  .notes li{margin-bottom:5px}
+  .tag{display:inline-block;font:600 11px/1 inherit;padding:3px 7px;border-radius:999px;vertical-align:1px}
+  .tag.new{background:#E4F4EA;color:#1E6B3A}
+  .tag.keep{background:#EFEFEC;color:#5b5b57}
+  .tag.q{background:#FDF0DC;color:#8A5A12}
+  .foot-note{margin-top:22px;color:#6b6b67;font-size:12px}
+
+  /* ══════════ 面板①：安装器（逐字沿用 app.css 的 token 与组件样式） ══════════ */
+  .win{
+    --bg:#F7F6F3; --desk:#E9E7E2; --glass:rgba(255,255,255,.5); --hair:rgba(0,0,0,.10);
+    --txt:#1a1a1a; --txt2:rgba(26,26,26,.62); --txt3:rgba(26,26,26,.40);
+    --ink:#111111; --line:#EAEAEA; --danger:#B3261E;
+    --serif:'Newsreader',Georgia,'Songti SC',serif;
+    --sans:'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;
+    --mono:Consolas,monospace;
+    --ease:cubic-bezier(.32,.72,0,1);
+    width:780px;height:570px;flex:none;background:var(--desk);border-radius:32px;
+    padding:22px;box-shadow:0 24px 60px rgba(0,0,0,.18);
+  }
+  .win .shell{background:var(--bg);border-radius:22px;height:100%;padding:30px 34px;position:relative;overflow:hidden;
+              display:flex;flex-direction:column}
+  .win .topbar{position:absolute;top:16px;right:20px;display:flex;gap:10px;align-items:center}
+  .win .topbar select{font:12px var(--sans);border:1px solid var(--hair);background:transparent;color:var(--txt2);
+                      border-radius:9999px;padding:4px 10px;cursor:pointer}
+  .win .topbar .x{border:0;background:transparent;color:var(--txt3);font-size:14px;cursor:pointer}
+  .win .hero{margin-top:26px}
+  .win .hero h1{font:400 46px/1.1 var(--serif);letter-spacing:-.03em;margin-bottom:14px}
+  .win .hero h1 em{font-style:italic}
+  .win .hero p{font:14px/1.75 var(--sans);color:var(--txt2);max-width:44ch}
+  .win .ver{font:11px var(--mono);letter-spacing:.18em;color:var(--txt2);text-transform:uppercase;margin-bottom:10px}
+  .win .stage2{margin-top:auto}
+  .win .pathrow{display:flex;gap:8px;margin-bottom:14px}
+  .win .pathrow input{flex:1;font:12.5px var(--mono);padding:11px 14px;border-radius:14px;border:1px solid var(--line);
+                      background:rgba(255,255,255,.75);color:var(--txt);
+                      box-shadow:inset 0 1px 1px rgba(255,255,255,.6)}
+  .win .pathrow input:focus{outline:none;border-color:#c4c0b8}
+  .win .pathrow button{font:12px var(--sans);padding:0 16px;border-radius:14px;border:1px solid var(--line);
+                       background:#fff;color:var(--txt2);cursor:pointer}
+  .win .actions{display:flex;flex-wrap:wrap;align-items:center;gap:18px}
+  .win .btn{display:inline-flex;align-items:center;gap:12px;font:600 14px var(--sans);color:#fff;background:var(--ink);
+            border:0;border-radius:9999px;padding:9px 22px;cursor:pointer;
+            transition:transform .5s var(--ease),box-shadow .5s var(--ease)}
+  .win .btn .cir{width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,.16);display:grid;place-items:center}
+  .win .btn:hover{box-shadow:0 8px 30px rgba(0,0,0,.16)}
+  .win .btn:active{transform:scale(.98)}
+  .win .btn.ghost{background:transparent;color:var(--txt2);border:1px solid var(--hair);padding:10px 22px;gap:0}
+  .win .btn.ghost:hover{box-shadow:none;color:var(--txt)}
+  .win .foot{margin-left:auto;font:12px var(--sans);color:var(--txt2)}
+  .win .foot a{color:var(--txt2);text-decoration:underline;text-underline-offset:3px}
+  /* ④ 自定义展开——原 max-height 270px（1fr 1fr 两列网格）。竖向 5 行 + 新增一行 ⇒ 必须抬高
+     （本稿取 420px）。这就是「未来好加配置项」要付的代价：高度是**写死的**，加行必须同步改这一处。 */
+  .win #custom{max-height:0;overflow:hidden;transition:max-height .7s var(--ease)}
+  .win #custom.open{max-height:420px}
+  .win .cust-in{margin-top:24px;padding-top:24px;padding-bottom:20px;border-top:1px solid var(--line)}
+  .win .opts{display:grid;grid-template-columns:1fr;gap:13px}   /* ← 由 1fr 1fr 改单列（用户要「竖向排列」） */
+  .win .opt{display:flex;gap:11px;align-items:flex-start;cursor:pointer;font:13px/1.5 var(--sans)}
+  .win .opt input{position:absolute;opacity:0}
+  .win .opt .box{width:17px;height:17px;flex:none;margin-top:1px;border-radius:6px;border:1px solid #c9c8c4;
+                 background:#fff;display:grid;place-items:center;transition:all .3s var(--ease)}
+  .win .opt .box svg{width:10px;height:10px;opacity:0;transform:scale(.4);transition:all .3s var(--ease)}
+  .win .opt input:checked+.box{background:linear-gradient(135deg,#a78bfa,#34d399);border-color:transparent}
+  .win .opt input:checked+.box svg{opacity:1;transform:scale(1)}
+  /* 🆕 选择缓存目录行——复选框行 + 一行路径/按钮，视觉沿用 .pathrow 的输入框与按钮 */
+  .win .opt-dir{display:grid;gap:8px;padding-left:28px}
+  .win .opt-dir .row{display:flex;gap:8px}
+  .win .opt-dir input.txt{flex:1;font:12.5px var(--mono);padding:9px 12px;border-radius:12px;border:1px solid var(--line);
+                          background:rgba(255,255,255,.75);color:var(--txt)}
+  .win .opt-dir button{font:12px var(--sans);padding:0 14px;border-radius:12px;border:1px solid var(--line);
+                       background:#fff;color:var(--txt2);cursor:pointer}
+  .win .opt-dir .hint{font:11.5px var(--sans);color:var(--txt3)}
+
+  /* ══════════ 面板②：应用内设置页（沿用 src/index.css 浅色 token） ══════════ */
+  .app{
+    --bg-window:#FFFFFF; --text-primary:#2D2D2D; --text-muted:#767676; --border:#D4D4D4;
+    --accent:#0078D4; --hover-overlay:rgba(0,0,0,.04); --radius-sm:4px;
+    --font-size-xs:12px; --font-size-sm:13px; --font-size-md:14px;
+    width:780px;height:570px;flex:none;display:flex;background:var(--bg-window);border:1px solid var(--border);
+    border-radius:10px;overflow:hidden;color:var(--text-primary);font-size:var(--font-size-md);
+    box-shadow:0 24px 60px rgba(0,0,0,.14)
+  }
+  .app .nav{width:168px;flex:none;border-right:1px solid var(--border);padding:12px 0;background:#FAFAFA}
+  .app .nav .item{padding:7px 16px;font-size:var(--font-size-sm);color:var(--text-muted);cursor:pointer}
+  .app .nav .item:hover{background:var(--hover-overlay)}
+  .app .nav .item.on{color:var(--text-primary);font-weight:600;box-shadow:inset 2px 0 0 var(--accent)}
+  .app .main{flex:1;min-width:0;display:flex;flex-direction:column}
+  .app .head{padding:14px 20px 10px;border-bottom:1px solid var(--border)}
+  .app .head h2{font-size:15px;font-weight:600;margin-bottom:2px}
+  .app .head p{font-size:var(--font-size-xs);color:var(--text-muted)}
+  .app .body{overflow:auto;padding:6px 20px 24px}
+  .app .sec{font-size:var(--font-size-xs);font-weight:600;color:var(--text-muted);text-transform:none;
+            letter-spacing:.02em;margin:18px 0 4px;padding-bottom:5px;border-bottom:1px solid var(--border)}
+  .app .sec .tag{margin-left:6px;vertical-align:1px}
+  .app .row{display:flex;align-items:flex-start;justify-content:space-between;padding:8px 0;gap:20px;
+            border-bottom:1px solid var(--border)}
+  .app .row-info{flex:1;min-width:0}
+  .app .row-label{display:flex;align-items:center;gap:8px}
+  .app .row-desc{font-size:var(--font-size-xs);color:var(--text-muted);margin-top:2px}
+  .app .row-ctl{flex:none;display:flex;align-items:center;gap:8px}
+  .app .val{font:12px Consolas,monospace;background:#F3F3F3;border:1px solid var(--border);border-radius:var(--radius-sm);
+            padding:4px 8px;color:var(--text-primary);max-width:290px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .app .btn{font-size:var(--font-size-xs);padding:4px 10px;border:1px solid var(--border);background:#fff;
+            color:var(--text-primary);border-radius:var(--radius-sm);cursor:pointer}
+  .app .btn:hover{background:var(--hover-overlay)}
+  .app .btn.danger{border-color:var(--danger,#B3261E)}
+  .app .btn.danger{color:#B3261E}
+  .app .sw{width:34px;height:18px;border-radius:999px;background:var(--accent);position:relative;flex:none}
+  .app .sw::after{content:"";position:absolute;top:2px;right:2px;width:14px;height:14px;border-radius:50%;background:#fff}
+  .app .sw.off{background:#C8C8C8}
+  .app .sw.off::after{right:auto;left:2px}
+
+  /* ══════════ 演示用弹层：确认框 / 文件夹选择框 / toast ══════════ */
+  .veil{position:fixed;inset:0;background:rgba(0,0,0,.34);display:none;align-items:center;justify-content:center;z-index:9}
+  .veil.on{display:flex}
+  .dlg{width:440px;background:#fff;border-radius:10px;padding:18px 20px;box-shadow:0 20px 50px rgba(0,0,0,.28);
+       font-size:13px;color:#2D2D2D}
+  .dlg h3{font-size:14px;margin-bottom:8px}
+  .dlg .list{margin:10px 0 12px 0;font-size:12.5px;color:#5b5b57}
+  .dlg .list b{color:#2D2D2D}
+  .dlg .dlg-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:14px}
+  .dlg button{font-size:12.5px;padding:6px 14px;border-radius:6px;border:1px solid #D4D4D4;background:#fff;cursor:pointer}
+  .dlg button.primary{background:#0078D4;border-color:#0078D4;color:#fff}
+  .dlg button.danger{background:#B3261E;border-color:#B3261E;color:#fff}
+  #toast{position:fixed;left:50%;bottom:34px;transform:translateX(-50%) translateY(14px);opacity:0;
+         background:#1F1F1F;color:#fff;font-size:12.5px;padding:9px 16px;border-radius:999px;
+         transition:opacity .28s,transform .28s;pointer-events:none;z-index:10}
+  #toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body>
+
+<div class="page-head">
+  <h1>提案演示 · 通用组新增「存储」分节 ＋ 安装器「更多配置」</h1>
+  <p>两处提案：<b>①</b> 安装器「自定义安装」旁加一个「更多配置」按钮，点开是竖向配置清单（未来加项只需加一行）；
+     <b>②</b> 应用内「设置 → 通用」新增一个「存储」分节，放「缓存位置 / 打开缓存目录 / 清除缓存」三行。
+     两个面板都<b>逐字沿用各自的既有设计系统</b>，没有发明新配色、新字体或新控件形态。</p>
+  <div class="warn"><b>这是提案稿，不是产品。</b>可点的按钮只在本页内演示交互（弹层是演示用的，不是真实系统框）。拍板后真正落地时：
+    安装器侧改 <code>build/installer/bootstrapper/app.{html,css,js}</code> 再跑 <code>gen-review.mjs</code> 重生成评审页；
+    应用内侧改 settings 插件仓 + 壳侧新增命令（详见同夹 00-提案.md）。</div>
+</div>
+
+<div class="col">
+
+  <!-- ═══════════ 面板 ① 安装器 ═══════════ -->
+  <section class="block">
+    <h2>① 安装器 · 「自定义安装」旁的「更多配置」</h2>
+    <div class="sub">图中已是<b>点开「更多配置」后的展开态</b>（默认收起，与今天一致）。</div>
+    <div class="stage">
+      <div class="win">
+        <div class="shell">
+          <div class="topbar">
+            <select><option>中文</option><option>English</option></select>
+            <button class="x" title="关闭">✕</button>
+          </div>
+
+          <div class="hero">
+            <div class="ver">v0.2.34</div>
+            <h1>Link<em>Desk</em></h1>
+            <p>一个容器，装下你所有的工作方式。</p>
+            <p style="margin-top:6px">安装就一步，然后交给它。<br>它不规定你怎么工作，它装下你怎么工作。</p>
+          </div>
+
+          <div class="stage2">
+            <div class="pathrow">
+              <input value="C:\Users\fengy\AppData\Local\Programs\linkdesk" readonly>
+              <button type="button">浏览…</button>
+            </div>
+
+            <!-- ④ 自定义展开：竖向 5 行 -->
+            <div id="custom" class="open">
+              <div class="cust-in">
+                <div class="opts">
+                  <label class="opt"><input type="checkbox" checked><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span>文件右键菜单「通过 LinkDesk 打开」</span></label>
+                  <label class="opt"><input type="checkbox" checked><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span>目录右键菜单「通过 LinkDesk 打开」</span></label>
+                  <label class="opt"><input type="checkbox" checked><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span>注册为受支持文件类型的编辑器</span></label>
+                  <label class="opt"><input type="checkbox" checked><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span>添加到 PATH（重启终端后生效）</span></label>
+
+                  <!-- 🆕 新增行：选择缓存目录 -->
+                  <label class="opt"><input type="checkbox" checked><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span>选择缓存目录</span></label>
+                  <div class="opt-dir">
+                    <div class="row">
+                      <input class="txt" readonly value="C:\Users\fengy\AppData\Roaming\linkdesk">
+                      <button type="button" data-act="pickdir">浏览…</button>
+                    </div>
+                    <div class="hint">留空 = 用默认位置。改到别的盘可省 C 盘空间；改完需重启软件生效。</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="actions">
+              <button class="btn" data-act="noop">立即安装<span class="cir">→</span></button>
+              <button class="btn ghost" data-act="toggle">自定义安装</button>
+              <button class="btn ghost" data-act="toggle">更多配置 ▾</button>
+              <div class="foot">继续即同意 <a href="#">许可协议</a> · MIT</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="notes">
+        <h3>这一版改了什么</h3>
+        <ul>
+          <li><span class="tag new">新</span> 「自定义安装」<b>右侧</b>多一个 <b>更多配置 ▾</b>（同为 ghost 药丸，不抢主按钮）。</li>
+          <li><span class="tag new">新</span> 展开区由 <b>两列网格改单列竖向</b>（原 <code>.opts</code> 是 <code>1fr 1fr</code>）——竖向才好在末尾不断加行。</li>
+          <li><span class="tag new">新</span> 第 5 行「选择缓存目录」：勾选框 + 只读路径 + 「浏览…」，视觉复用既有 <code>.pathrow</code> 的输入框/按钮。</li>
+          <li><span class="tag keep">沿用</span> 「自定义安装」与「更多配置」<b>做同一件事</b>（都只是展开/收起这块区域）——不新增心智负担。</li>
+        </ul>
+        <h3>落地必须一并处理的（否则会坏）</h3>
+        <ul>
+          <li><span class="tag q">代价</span> 展开高度是<b>写死的</b>（<code>#custom.open{max-height:270px}</code>）。竖向 5 行 + 路径行 ⇒ 实测需抬到约 <b>420px</b>。<b>以后每加一行都要同步改这个数</b>——这是"好加配置项"必须接受的代价，建议同时把写死高度改成由内容撑开。</li>
+          <li><span class="tag q">待定</span> 「添加到 PATH」<b>今天只存在于安装器</b>，应用内的「系统集成」三行里<b>没有</b>它——两个界面不同步。要不要借这次一起补齐（应用内也加一行），是决策点。</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════ 面板 ② 应用内设置页 ═══════════ -->
+  <section class="block">
+    <h2>② 应用内 · 设置 →「通用」新增「存储」分节</h2>
+    <div class="sub">左导航仍是「一个 pluginId 一项」，<b>不新增导航项</b>——三行都挂在「通用」内新开的二级分节里。</div>
+    <div class="stage">
+      <div class="app">
+        <div class="nav">
+          <div class="item on">通用</div>
+          <div class="item">主题</div>
+          <div class="item">AI 接入</div>
+          <div class="item">键位</div>
+          <div class="item">文件树</div>
+        </div>
+        <div class="main">
+          <div class="head">
+            <h2>通用</h2>
+            <p>界面语言、系统集成、更新与存储</p>
+          </div>
+          <div class="body">
+            <div class="sec">界面</div>
+            <div class="row"><div class="row-info"><div class="row-label">界面语言</div><div class="row-desc">中文 / English</div></div><div class="row-ctl"><span class="val">中文</span></div></div>
+            <div class="row"><div class="row-info"><div class="row-label">悬停提示</div><div class="row-desc">鼠标停在图标/按钮上时显示名称与快捷键</div></div><div class="row-ctl"><span class="sw"></span></div></div>
+            <div class="row"><div class="row-info"><div class="row-label">窗口缩放级别</div><div class="row-desc">0 为原始大小</div></div><div class="row-ctl"><span class="val">0</span></div></div>
+
+            <div class="sec">系统集成</div>
+            <div class="row"><div class="row-info"><div class="row-label">文件右键菜单</div><div class="row-desc">在资源管理器文件右键菜单中显示「Open with LinkDesk」</div></div><div class="row-ctl"><span class="sw off"></span></div></div>
+            <div class="row"><div class="row-info"><div class="row-label">文件类型关联</div><div class="row-desc">将 LinkDesk 注册为受支持文件类型的编辑器</div></div><div class="row-ctl"><span class="sw"></span></div></div>
+
+            <div class="sec">更新</div>
+            <div class="row"><div class="row-info"><div class="row-label">检查更新的方式</div><div class="row-desc">自动后台检查 / 仅在手动点击时检查</div></div><div class="row-ctl"><span class="val">自动</span></div></div>
+
+            <!-- 🆕 新分节 -->
+            <div class="sec">存储<span class="tag new">新</span></div>
+            <div class="row">
+              <div class="row-info"><div class="row-label">缓存位置</div>
+                <div class="row-desc">插件、主题、设置与浏览器缓存都住在这里。改到别的盘可省 C 盘空间，改完需重启软件。</div></div>
+              <div class="row-ctl"><span class="val">C:\Users\fengy\AppData\Roaming\linkdesk</span><button class="btn" data-act="pickdir">更改…</button></div>
+            </div>
+            <div class="row">
+              <div class="row-info"><div class="row-label">打开缓存目录</div>
+                <div class="row-desc">在资源管理器里打开上面这个文件夹（就是「打开存储位置」那种普通弹窗，不是必须处理的确认框）。</div></div>
+              <div class="row-ctl"><button class="btn" data-act="reveal">打开</button></div>
+            </div>
+            <div class="row">
+              <div class="row-info"><div class="row-label">清除缓存</div>
+                <div class="row-desc">只清<b>可再生</b>的缓存（浏览器缓存、发行说明缓存）。<b>不动</b>你的设置、已装插件、主题和布局。</div></div>
+              <div class="row-ctl"><button class="btn danger" data-act="confirmclear">清除…</button></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="notes">
+        <h3>三行各用什么</h3>
+        <ul>
+          <li><b>打开缓存目录</b> → 普通「动作行」（只读文本 + 按钮）。壳侧已有现成同款实现：<code>appearance.revealStorage</code>「打开存储位置」（背景图齿轮那个），主进程 <code>shell.openPath(目录)</code> 直接开资源管理器，<b>正是你要的那种普通弹窗</b>。</li>
+          <li><b>缓存位置</b> → 只读路径 + 「更改…」→ 弹<b>系统文件夹选择框</b>（不是必须处理的确认框）。</li>
+          <li><b>清除缓存</b> → 危险按钮 + <b>二次确认</b>（演示里点一下能看到）。</li>
+        </ul>
+        <h3>必须一起说清的坑</h3>
+        <ul>
+          <li><span class="tag q">硬约束</span> 软件运行中，Chromium 正占着缓存文件，<b>当场删不掉</b>——这与台账 §五 H（安装器清不干净 WebView2 目录）是同一个成因。所以"清除缓存"必须设计成<b>清完提示重启</b>，或<b>标记为下次启动时清</b>，不能假装当场干净。</li>
+          <li><span class="tag q">范围</span> 「缓存」这个词有两个意思：可再生的（浏览器缓存）和不可再生的（已装插件/主题/设置）。<b>只能清前者</b>，否则一次点击 = 恢复出厂。确认框里必须把这两类分开列。</li>
+          <li><span class="tag q">落点</span> 「缓存位置」一旦可改，就<b>多出一个落点</b>——按台账 §六 的铁律第 4 条，必须先登记进落点总账，否则新门禁会判红。</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<p class="foot-note">LinkDesk · 提案演示稿 · 2026-10-02 · 待用户拍板（未落产品源、未提交发版）</p>
+
+<!-- 演示弹层 -->
+<div class="veil" id="veil">
+  <div class="dlg" id="dlg-clear" style="display:none">
+    <h3>清除缓存？</h3>
+    <div class="list">
+      <b>会删</b>：浏览器缓存（Cache / GPUCache / Code Cache）、发行说明缓存。<br>
+      <b>不会删</b>：你的设置、已装插件、主题、布局、AI 接入凭据。<br><br>
+      部分文件此刻正被占用，需要<b>重启软件</b>后才能完全清掉。
+    </div>
+    <div class="dlg-actions">
+      <button data-act="close">取消</button>
+      <button class="danger" data-act="doclear">清除并重启</button>
+    </div>
+  </div>
+  <div class="dlg" id="dlg-dir" style="display:none">
+    <h3>选择文件夹</h3>
+    <div class="list">
+      <div style="border:1px solid #D4D4D4;border-radius:6px;padding:8px;background:#FAFAFA;font:12px Consolas,monospace;margin-bottom:8px">
+        C:\Users\fengy\AppData\Roaming\linkdesk
+      </div>
+      <div style="color:#767676">← 演示占位。真实实现是 <b>Windows 自己的文件夹选择框</b>（不是必须处理的确认框）。</div>
+    </div>
+    <div class="dlg-actions">
+      <button data-act="close">取消</button>
+      <button class="primary" data-act="close">选择文件夹</button>
+    </div>
+  </div>
+</div>
+<div id="toast"></div>
+
+<script>
+  const veil = document.getElementById('veil');
+  const dlgClear = document.getElementById('dlg-clear');
+  const dlgDir = document.getElementById('dlg-dir');
+  const toastEl = document.getElementById('toast');
+  let toastTimer;
+
+  function toast(msg){
+    toastEl.textContent = msg;
+    toastEl.classList.add('on');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toastEl.classList.remove('on'), 2200);
+  }
+  function openDlg(which){
+    dlgClear.style.display = 'none';
+    dlgDir.style.display = 'none';
+    which.style.display = 'block';
+    veil.classList.add('on');
+  }
+  function closeDlg(){ veil.classList.remove('on'); }
+
+  document.addEventListener('click', (e) => {
+    const el = e.target.closest('[data-act]');
+    if (!el) return;
+    switch (el.dataset.act) {
+      case 'toggle': {
+        // 演示：两个按钮（自定义安装 / 更多配置）都只是展开收起同一区域
+        const box = document.getElementById('custom');
+        box.classList.toggle('open');
+        toast(box.classList.contains('open') ? '已展开更多配置' : '已收起');
+        break;
+      }
+      case 'pickdir': openDlg(dlgDir); break;
+      case 'reveal':  toast('已在资源管理器中打开缓存目录'); break;
+      case 'confirmclear': openDlg(dlgClear); break;
+      case 'doclear': closeDlg(); toast('已清理可再生缓存 · 请重启软件完成收尾'); break;
+      case 'close':   closeDlg(); break;
+      case 'noop':    toast('（演示稿：安装按钮不接真流程）'); break;
+    }
+  });
+  veil.addEventListener('click', (e) => { if (e.target === veil) closeDlg(); });
+</script>
+</body>
+</html>
