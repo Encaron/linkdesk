@@ -63,7 +63,7 @@
 8. **ProtocolParser 独立可替换，RingBuffer 接口 `{ cardId, value }` 是硬边界**——任何代码不得写死「只有这一种协议」
 9. **核心无知原则**：往核心加东西前先问——加了之后核心更「知道自己是干什么的」了吗？是 → 别加，做成插件
 10. **禁止在 core/ 或 pluginLoader/ 写死插件 ID**（`if (pluginId === "terminal")` / `PLUGIN_ICON_PATH` / `BOTTOM_ICONS` 等一切形式）。所有差异性行为走 plugin.json 声明 → Registry 消费。Phase 5g 把 `TabType` 改成 `string` 就是为消灭此模式——不要写回来。🔴 **同一条道理管到全仓**（2026-09-29 用户拍板）：**第三方插件的 id 不许出现在壳内任何文件**——代码、脚本、门禁/跳过名单、注释、文档、技能、清单全算；工具要跳过第三方仓一律**按现场目录/数据认**（⛔ 不写名单），叙述外部作者的实测来历一律写成「**2026-09 首次由外部独立 AI 作者用 npm 包（脚手架 ＋ SDK ＋ UI 包）制作插件时…**」——⛔ 不点名某只插件、不写「壳外作者做了某插件遇到某麻烦」；⭐ **同一条道理管「这批仓的名号」**（2026-10-01 拍板：「什么所谓『官方xx（某个数字）仓』，完全不要这个东西」）：⛔ 不许写「官方 N 仓／官方 N 只／官方插件 N 只」这类**编号名号**（数字会烂），一律写「**官方各仓**」；要读数就带日期（可写「那时 18 只插件仓」）
-11. **插件身份唯一来源是 plugin.json 声明字段**。🔴 「插件身份 id」= 顶层 `pluginId`（发布后永不可变；`derivePluginId` 目录名兜底只为兼容存量）。`core: true` 仅 = 卸载按钮隐藏（纯 UI 防误删旗标）。代码注释禁止发明 schema 里没有的分类名词（「工厂插件」「内置插件」）——用字段名
+11. **插件身份唯一来源是 plugin.json 声明字段**。🔴 「插件身份 id」= 顶层 `pluginId`（发布后永不可变；`derivePluginId` 目录名兜底只为兼容存量）。`core: true` 仅 = 卸载按钮隐藏（纯 UI 防误删旗标）。代码注释禁止发明 schema 里没有的分类名词（「工厂插件」「内置插件」）——用字段名。🔴 **插件只有一个等级**——目录平铺单根，⛔ 无 builtin/user 之分；**设置页那套内置 UI 同样只是一台普通「设置插件」**（默认激活的那一台，可被第三方**整套替换**、可多套并存）⇒ ⛔ 说「设置插件属于壳」即错（2026-10-02 用户「大错特错」）
 12. **🔥 禁止硬编码路径——资产路径一律 `getAssetPath()`**（`src/core/utils/assetPath.ts`）。dev 下 `http://localhost:1420` 能工作只是巧合，打包后 `file://` 全炸。插件作者自定义图标同走 `resolvePluginIcon`
 13. **🔥 async 初始化必须防 StrictMode 双重 effect 竞态**——第二次调必须返回第一次的进行中 Promise（`_loadingPromise`），不能 return undefined（memory `invisible-bugs-lesson-59c` Bug 1）
 14. **🔥 useEffect 有回调 prop 做非 DOM 副作用时必须加活跃守卫**（`if (!open) return;` 且纳入依赖数组）；写完 grep 同组件其他 effect——漏守卫的就是 bug（同上 Bug 2）
