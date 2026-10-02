@@ -9,7 +9,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>设置页设计图 · 减法版（本轮只落一行）· 通用组缓存配置项</title>
+<title>设置页设计图 · 减法版（本轮只落存储那一对 · 两行）· 设置页-打开缓存目录</title>
 <style>
 /* ══ 评审壳（深色底板，不属产品样式）——照 06 原样 ══ */
 html,body{margin:0;background:#22222a}
@@ -163,11 +163,11 @@ table.diff td.k{color:#a8a49d;white-space:nowrap}
 </head>
 <body>
 
-<h1>设置页设计图 · 减法版（本轮只落一行）</h1>
-<p class="lead">本页 = <b>06 的减法版</b>：用户 2026-10-02 令「先做减法」——<b>不提供"改缓存地址"</b>，存储里只留两行：<b>① 只读显示缓存目录在哪</b>（＝你要的那句"我很长时间不知道缓存文件放在哪里"）＋ <b>② 一颗「打开缓存目录」按钮</b>；「已用空间」「清除缓存」两行先不做；安装器那一半整块撤除后属后话。<br>🔴 <b>不做 ≠ 作废</b>：<code>06-设计图-设置页.html</code>（三行全量版 · 含可编辑路径框）与 <code>07</code> 讨论稿<b>一字未改、继续留着</b>，将来随时启用。</p>
+<h1>设置页设计图 · 减法版（本轮只落存储那一对 · 两行）</h1>
+<p class="lead">本页 = <b>06 的减法版</b>：用户 2026-10-02 令「先做减法」——<b>不提供"改缓存地址"</b>，存储里只留两行：<b>① 一颗「打开缓存目录」按钮</b> ＋ <b>② 只读显示缓存目录在哪</b>（＝你要的那句"我很长时间不知道缓存文件放在哪里"）；2026-10-03 令：<b>按钮行在上、只读行在下</b>（这两行换了位置）；「已用空间」「清除缓存」两行先不做；安装器那一半整块撤除后属后话。<br>🔴 <b>不做 ≠ 作废</b>：<code>06-设计图-设置页.html</code>（三行全量版 · 含可编辑路径框）与 <code>07</code> 讨论稿<b>一字未改、继续留着</b>，将来随时启用。</p>
 <p class="look">存量九行（界面 / 系统集成 / 更新）＝照 <code>src/App/startup.ts</code>、
 <code>src/App/config/update.ts</code> 现有声明抄录，用来当参照物：新行要和它们同重同高。</p>
-<p class="look prop">新行＝本任务本轮唯一的提案（两行：<code>app.storage.cacheDir</code> 只读显示 ＋ <code>app.storage.openCacheDir</code> 打开按钮，均未落代码），行首带绿色「新」角标 ＋ 左侧竖条；落地后角标与竖条都不存在，与其余行完全一致。</p>
+<p class="look prop">新行＝本任务本轮唯一的提案（两行：<code>app.storage.openCacheDir</code> 打开按钮 ＋ <code>app.storage.cacheDir</code> 只读显示，均未落代码），行首带绿色「新」角标 ＋ 左侧竖条；落地后角标与竖条都不存在，与其余行完全一致。</p>
 
 <div class="stage">
   <div class="settings-root">
@@ -309,26 +309,11 @@ table.diff td.k{color:#a8a49d;white-space:nowrap}
           </div>
         </div>
 
-        <!-- ── 存储（本轮新增：两行——只读显示 ＋ 打开按钮）── -->
+        <!-- ── 存储（本轮新增：两行——打开按钮 ＋ 只读显示，2026-10-03 令对调）── -->
         <div class="settings-subsection newsec">
           <div class="settings-subsection-title">存储</div>
 
-          <!-- ① 只读显示"缓存在哪"：renderHint "readonly" + statusCommand（值来自壳命令，⛔ 不来自配置存储） -->
-          <div class="settings-row">
-            <div class="settings-row-info">
-              <div class="settings-row-label-line">
-                <label class="settings-row-label">app.storage.cacheDir</label>
-                <span class="new-badge">新</span>
-              </div>
-              <span class="settings-row-desc">缓存目录——缓存文件存放在这里（只读，软件内不提供修改）</span>
-            </div>
-            <div class="settings-row-control">
-              <span class="ldk-readonly-text">C:\Users\&lt;你&gt;\AppData\Roaming\linkdesk</span>
-            </div>
-            <button class="settings-row-gear">⚙</button>
-          </div>
-
-          <!-- ② 打开按钮行：renderHint "action" + actionCommand（按钮文案 = description） -->
+          <!-- ① 打开按钮行：renderHint "action" + actionCommand（按钮文案 = description） -->
           <div class="settings-row">
             <div class="settings-row-info">
               <div class="settings-row-label-line">
@@ -339,6 +324,21 @@ table.diff td.k{color:#a8a49d;white-space:nowrap}
             </div>
             <div class="settings-row-control">
               <button class="ldk-button">打开缓存目录</button>
+            </div>
+            <button class="settings-row-gear">⚙</button>
+          </div>
+
+          <!-- ② 只读显示"缓存在哪"：renderHint "readonly" + statusCommand（值来自壳命令，⛔ 不来自配置存储） -->
+          <div class="settings-row">
+            <div class="settings-row-info">
+              <div class="settings-row-label-line">
+                <label class="settings-row-label">app.storage.cacheDir</label>
+                <span class="new-badge">新</span>
+              </div>
+              <span class="settings-row-desc">缓存目录——缓存文件存放在这里（只读，软件内不提供修改）</span>
+            </div>
+            <div class="settings-row-control">
+              <span class="ldk-readonly-text">C:\Users\&lt;你&gt;\AppData\Roaming\linkdesk</span>
             </div>
             <button class="settings-row-gear">⚙</button>
           </div>
@@ -353,21 +353,22 @@ table.diff td.k{color:#a8a49d;white-space:nowrap}
 
 <div class="sec-h">本轮这两行：都是什么控件（都不给改）</div>
 
-<p class="look">① <b>app.storage.cacheDir</b> —— <b>只读显示"缓存在哪"</b>。声明 <code>renderHint:"readonly"</code>
-＋ <code>statusCommand</code>（指一条壳命令，返回值就是那行字）⇒ 渲染器走共享只读件 <code>ReadOnlyText</code>：
-<b>一行等宽灰字，无边框、无按钮、改不了</b>。<br>
-🚫 <b>本页上一稿画错了</b>——那一稿按 <code>uiHint:"directory"</code> 画成了可编辑路径框（＝"能改地址"），
-与你的令不符，已改掉。先例（同仓、已落地）：AI 接入那 5 组「状态行 ＋ 按钮行」——
-<code>ai.mcp.status</code>（只读）配 <code>ai.mcp.openDetails</code>（按钮），
-<code>ai.cli.status</code> 配 <code>ai.cli.openInstall</code>…形态与本页完全一致。</p>
-
-<p class="look">② <b>app.storage.openCacheDir</b> —— <b>一颗实心按钮「打开缓存目录」</b>。声明
+<p class="look">① <b>app.storage.openCacheDir</b> —— <b>一颗实心按钮「打开缓存目录」</b>。声明
 <code>renderHint:"action"</code> ＋ <code>actionCommand</code>；这类行只有一个字符串能承载文案 ⇒
 <b>按钮文字 = description</b>（先例 <code>app.mixReset</code>），所以描述就写成动作短语。<br>
 行为：点一下弹普通资源管理器窗口（<code>shell.openPath</code>，⛔ 不是模态框，照
 <code>app.backgroundImage</code>「打开存储位置」那套先例）；目录还不存在时 <b>先建再开</b>，不弹「找不到」。</p>
 
-<p class="look prop">✅ <b>已定（2026-10-02 用户拍板 A）</b>：① 只读路径 ＋ ② 打开按钮，<b>两行都留</b>。📌 备注：一行（路径 ＋ 按钮同排）其实可行，但要把控件收进<b>共享件</b>（<code>src/components/shared/</code>）＋ 设置插件加一行 <code>case</code>——本轮不做，留作将来。</p>
+<p class="look">② <b>app.storage.cacheDir</b> —— <b>只读显示"缓存在哪"</b>。声明 <code>renderHint:"readonly"</code>
+＋ <code>statusCommand</code>（指一条壳命令，返回值就是那行字）⇒ 渲染器走共享只读件 <code>ReadOnlyText</code>：
+<b>一行等宽灰字，无边框、无按钮、改不了</b>。<br>
+🚫 <b>本页上一稿画错了</b>——那一稿按 <code>uiHint:"directory"</code> 画成了可编辑路径框（＝"能改地址"），
+与你的令不符，已改掉。先例（同仓、已落地）：AI 接入那 5 组「状态行 ＋ 按钮行」——
+<code>ai.mcp.status</code>（只读）配 <code>ai.mcp.openDetails</code>（按钮），
+<code>ai.cli.status</code> 配 <code>ai.cli.openInstall</code>…<b>两行的形态</b>与本页这两行一致
+（⚠️ <b>先后顺序相反</b>：先例是只读在前，本轮按 2026-10-03 令<b>按钮在前</b>——位置一旦定下就别再动）。</p>
+
+<p class="look prop">✅ <b>已定（2026-10-02 用户拍板 A）</b>：① 打开按钮 ＋ ② 只读路径，<b>两行都留</b>（先后由 2026-10-03 令定：按钮在上）。📌 备注：一行（路径 ＋ 按钮同排）其实可行，但要把控件收进<b>共享件</b>（<code>src/components/shared/</code>）＋ 设置插件加一行 <code>case</code>——本轮不做，留作将来。</p>
 
 <p class="look">🔴 <b>软件内改缓存地址：本轮不做，设置里也不留任何口子</b>（可编辑路径框那一版＝
 <code>06</code> 的三行全量版，属"将来启用"）；安装器那一半同理，属后话。</p>
@@ -383,22 +384,7 @@ table.diff td.k{color:#a8a49d;white-space:nowrap}
       <div class="settings-subsection newsec" style="margin:0">
         <div class="settings-subsection-title">存储</div>
 
-        <!-- ① 只读显示（本轮落） -->
-        <div class="settings-row">
-          <div class="settings-row-info">
-            <div class="settings-row-label-line">
-              <label class="settings-row-label">app.storage.cacheDir</label>
-              <span class="new-badge">新</span>
-            </div>
-            <span class="settings-row-desc">缓存目录——缓存文件存放在这里（只读，软件内不提供修改）</span>
-          </div>
-          <div class="settings-row-control">
-            <span class="ldk-readonly-text">C:\Users\&lt;你&gt;\AppData\Roaming\linkdesk</span>
-          </div>
-          <button class="settings-row-gear">⚙</button>
-        </div>
-
-        <!-- ② 打开按钮（本轮落） -->
+        <!-- ① 打开按钮（本轮落） -->
         <div class="settings-row">
           <div class="settings-row-info">
             <div class="settings-row-label-line">
@@ -409,6 +395,21 @@ table.diff td.k{color:#a8a49d;white-space:nowrap}
           </div>
           <div class="settings-row-control">
             <button class="ldk-button">打开缓存目录</button>
+          </div>
+          <button class="settings-row-gear">⚙</button>
+        </div>
+
+        <!-- ② 只读显示（本轮落） -->
+        <div class="settings-row">
+          <div class="settings-row-info">
+            <div class="settings-row-label-line">
+              <label class="settings-row-label">app.storage.cacheDir</label>
+              <span class="new-badge">新</span>
+            </div>
+            <span class="settings-row-desc">缓存目录——缓存文件存放在这里（只读，软件内不提供修改）</span>
+          </div>
+          <div class="settings-row-control">
+            <span class="ldk-readonly-text">C:\Users\&lt;你&gt;\AppData\Roaming\linkdesk</span>
           </div>
           <button class="settings-row-gear">⚙</button>
         </div>
@@ -453,10 +454,10 @@ table.diff td.k{color:#a8a49d;white-space:nowrap}
 
 <table class="diff">
 <tr><th>项</th><th>本轮</th><th>说明</th></tr>
-<tr><td>设置页 <code>app.storage.cacheDir</code></td><td class="yes">做</td>
-    <td><b>只读显示行</b>（等宽灰字，把"缓存在哪"给你看）——不是输入框、改不了</td></tr>
 <tr><td>设置页 <code>app.storage.openCacheDir</code></td><td class="yes">做</td>
     <td>按钮行「打开缓存目录」⇒ 资源管理器（先例 <code>aiBridge</code> 的按钮行）</td></tr>
+<tr><td>设置页 <code>app.storage.cacheDir</code></td><td class="yes">做</td>
+    <td><b>只读显示行</b>（等宽灰字，把"缓存在哪"给你看）——不是输入框、改不了</td></tr>
 <tr><td>软件内<b>改</b>缓存地址</td><td class="no">不做</td>
     <td>＝可编辑路径框那一版，属 <code>06</code> 三行全量版（将来启用）；本轮设置里不留口子</td></tr>
 <tr><td>设置页 <code>app.storage.used</code></td><td class="no">⏸ 暂缓</td>

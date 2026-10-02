@@ -56,7 +56,7 @@ body{background:#141416;padding:34px 28px 90px;font-family:var(--sans);-webkit-f
 .fbtn{font:600 12.5px var(--sans);color:#f2f2f4;background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.16);
       border-radius:9999px;padding:8px 15px;cursor:pointer}
 .fbtn:hover{background:rgba(255,255,255,.18)}
-.fbtn.key{background:#8a6ff0;border-color:#8a6ff0;color:#fff}
+.fbtn.key{background:#8a6ff0;border-color:#8a6ff0;color:#161616}
 .fbtn.on{background:#2fbf8a;border-color:#2fbf8a;color:#04231a}
 .note{color:rgba(255,255,255,.5);font:12px/1.7 var(--sans);margin-left:auto;max-width:52ch}
 
@@ -132,14 +132,20 @@ body{background:#141416;padding:34px 28px 90px;font-family:var(--sans);-webkit-f
 
 /* ═══ ⑤ 容器态（本图要回答的东西；新绘）═══════════════════════════════════════
    设计意图一句话：**同一块 DOM 的第二种排布**——不是新开一屏、不是新一个页面。
-   ① 整页变容器：一块不透明面板（--bg）盖住品牌行与英雄区 ⇒ 竖向空间全给清单。
+   ① 整页变容器：面板**透明**、品牌行与英雄区**淡出**（⛔ 不铺自己的底色——那＝换表面＝换肤），
+      让出的竖向空间全给清单。
       「✕」与语言药丸挂在面板**之外**，照旧可用（容器不是"关不掉的模式"）。
    ② 项从 2×2 变竖列（同一批节点，靠 FLIP 补位移）。
    ③ 二级分组标题落定：①安装位置 ②给 LinkDesk 的权限 ③随包安装的插件。
    ④ 清单进可滚动层；动作行（返回／继续安装／许可协议）**在滚动层之外**常驻。 */
+/* 🔴 容器是「同一扇窗的第二种排布」，⛔ 不许换表面：面板留**透明**，让 .win 自己的底（--glass-win ＋ 双光球）
+   透上来 ⇒ 底色、光晕与欢迎屏同源。第一版给面板铺了一层不透明 --bg ＝ 换了一层肤，用户 2026-10-03 一眼看出
+   「为什么色调变了」——那层已删。面板仍然只铺位、不加 transform（F1），入场交给内容自己淡入。 */
 #s-home.more #custom{position:absolute;inset:0;display:flex;flex-direction:column;
-  padding:58px 52px 38px;background:var(--bg);animation:moreIn .3s var(--mo-ease)}
-@keyframes moreIn{from{opacity:0}}
+  padding:58px 52px 38px;background:transparent}
+/* 被容器让位的品牌行与英雄区：**真淡出**（不再靠一层底色遮住），不是硬闪 */
+#s-home.more .brand{opacity:0}
+#s-home.more .brand,#s-home.more .hero{transition:opacity var(--mo-defog) var(--mo-ease)}
 #s-home.more .actions{display:none}
 /* 英雄区高度一次到位（不做过渡）：过渡期间量到的是被插值的中间值 ⇒ FLIP 会算错 */
 #s-home.more .hero{flex-grow:0;min-height:0;overflow:hidden;opacity:0}
@@ -148,7 +154,7 @@ body{background:#141416;padding:34px 28px 90px;font-family:var(--sans);-webkit-f
 #s-home.more .cust-wrap{display:flex;flex-direction:column;flex:1 1 auto;min-height:0;overflow:visible}
 #s-home.more .cust-in{margin:0;padding:0;border-top:0;flex:1 1 auto;min-height:0;
   display:flex;flex-direction:column}
-#s-home.more .more-head{display:block}
+#s-home.more .more-head{display:block;animation:land var(--mo-tier) var(--mo-ease) backwards}
 #s-home.more .morelist{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain}
 #s-home.more .grp-h{display:block;animation:land var(--mo-tier) var(--mo-ease) backwards}
 #s-home.more .grp-h.g2{animation-delay:var(--mo-step)}
@@ -165,12 +171,22 @@ body{background:#141416;padding:34px 28px 90px;font-family:var(--sans);-webkit-f
 .grp-h:first-child{margin-top:0}
 .grp-h .tag{font:500 10.5px var(--mono);color:var(--txt3);letter-spacing:.08em;margin-left:8px;text-transform:uppercase}
 .grp-note{font:12px/1.6 var(--sans);color:var(--txt2)}
+/* ── 组③ 非空演示态：六个名字**全是演示假数据**（产品里今天的安装包空）⇒ 默认隐藏，按钮可切 ── */
+.pluglist{display:grid;grid-template-columns:1fr;gap:10px 26px}
+.pluglist[hidden],.grp-note[hidden]{display:none}   /* ⚠️ 必须自己写：类上的 display:grid 会盖掉 [hidden] 的 UA 样式 */
+.pluglist .opt em{display:block;font:11.5px/1.5 var(--sans);font-style:normal;color:var(--txt2);margin-top:2px}
+.pluglist .opt .meta{font:500 11.5px var(--mono);color:var(--txt3);letter-spacing:.04em;
+                     margin-left:auto;padding-left:14px;white-space:nowrap}
+.opt.iscore{cursor:default}
+.opt.iscore .box{border-style:dashed;border-color:var(--txt3)}
+.opt.iscore .box svg{opacity:.5;transform:none}
+.demo-tag{font:500 11.5px var(--mono);color:#2fbf8a;letter-spacing:.1em;margin-left:8px}
 .more-rule{height:1px;background:var(--line);margin:22px 0 0}
 .morebar{flex-wrap:wrap;align-items:center;gap:18px;margin-top:16px;padding-top:16px;border-top:1px solid var(--line)}
 
 /* 标注钉（只做图注：不吃鼠标事件，点得到底下的真控件） */
 .pin{position:absolute;z-index:20;pointer-events:none;width:22px;height:22px;border-radius:50%;
-     background:#8a6ff0;color:#fff;font:600 12px var(--sans);display:grid;place-items:center;
+     background:#8a6ff0;color:#161616;font:600 12px var(--sans);display:grid;place-items:center;
      box-shadow:0 2px 10px rgba(0,0,0,.28)}
 .pin.new{background:#2fbf8a}
 
@@ -178,7 +194,7 @@ body{background:#141416;padding:34px 28px 90px;font-family:var(--sans);-webkit-f
 .side{flex:1 1 300px;min-width:290px}
 .card{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.10);border-radius:14px;
       padding:16px 18px;margin:0 0 16px}
-.card h3{color:#f2f2f4;font:600 13.5px/1.3 var(--sans);margin:0 0 10px}
+.card h2{color:#f2f2f4;font:600 13.5px/1.3 var(--sans);margin:0 0 10px}
 .card p,.card li{color:rgba(255,255,255,.66);font:12.5px/1.75 var(--sans);margin:0 0 8px}
 .card ul{margin:0;padding-left:18px}
 .card b{color:#e8e2ff;font-weight:600}
@@ -199,12 +215,20 @@ table.t th{color:rgba(255,255,255,.5);font:500 11px var(--mono);letter-spacing:.
     被画成新的只有<b>容器</b>那一态。质感（玻璃模糊、微尘、光球、真字体）从略——那属于
     「安装界面自绘」那摊已定版的评审页 <code>已落地/安装界面自绘/3d-九幕评审.html</code>，本图不重复也不动它。
   </p>
+  <p class="pg-s" style="margin-top:-6px">
+    <b>2026-10-03 第二次改</b>：① 容器<b>不再自己铺底色</b>（面板改透明，窗子的底与光球自始至终没换）；
+    ② 主按钮<b>归位</b>——容器里「继续安装」回到它在欢迎屏占的那一格。两条都见右下角「两条边界」。
+    ③ 同轮过了设计 skill 的机械检查，清掉三处：钉号对比度过低、卡片标题层级跳级、正文里漏出的 Markdown 星号。
+    ④ 第三组「随包安装的插件」加了**可切换的演示态**（工具条上「⊕ 装几个示例插件」）——六个名字**全是演示假数据**（已标 DEMO），
+    默认仍是**空态＝今天的真样子**；点开能看到"插件多了怎么逐个勾"，其中「设置」做成**不给勾选框**的「内置」项（core 的另一条边界）。
+  </p>
 
   <div class="bar">
     <span class="lab">看这张图</span>
     <button class="fbtn key" id="f-play">▶ 演一遍（紧凑 → 容器）</button>
     <button class="fbtn" id="f-reset">⟲ 回到欢迎屏</button>
     <button class="fbtn" id="f-short">⊟ 把窗口压矮到 452px（看滚动条）</button>
+    <button class="fbtn" id="f-plug">⊕ 装几个示例插件（演示）</button>
     <span class="note">
       也可以<b>直接在窗里点</b>：先点「自定义安装」（展开区打开、旁边多出「更多配置」），
       再点「更多配置」→ 整页变容器；容器里点「返回」或按 <b>Esc</b> 退回紧凑态。
@@ -222,7 +246,7 @@ table.t th{color:rgba(255,255,255,.5);font:500 11px var(--mono);letter-spacing:.
             <button class="xbtn" title="关闭窗口" aria-label="关闭窗口">✕</button>
 
             <div class="scr on" id="s-home">
-              <!-- ① 品牌行（被容器态的面板盖住 ⇒ 面板里得有一句「现在在哪」） -->
+              <!-- ① 品牌行（容器态**淡出** ⇒ 面板里得有一句「现在在哪」；⛔ 不是拿一层底色盖住它） -->
               <div class="brand">
                 <svg viewBox="0 0 40 44" aria-hidden="true">
                   <path d="M20 1.5 37 11v22L20 42.5 3 33V11z" fill="#8a6ff0"/>
@@ -266,15 +290,28 @@ table.t th{color:rgba(255,255,255,.5);font:500 11px var(--mono);letter-spacing:.
                         <label class="opt"><input type="checkbox" data-opt="path" checked><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span>添加到 PATH（重启终端后生效）</span></label>
                       </div>
                       <!-- 组 ③ 随包安装的插件（今天没有数据源 ⇒ 如实画成空态，⛔ 不编造插件名） -->
-                      <div class="grp-h g3">随包安装的插件<span class="tag">③</span></div>
+                      <div class="grp-h g3" id="g3">随包安装的插件<span class="tag">③</span></div>
                       <div class="plugwrap">
-                        <div class="grp-note">本次安装包未随带可选插件。</div>
+                        <div class="grp-note" id="plug-empty">本次安装包未随带可选插件（今天产品里就是这样）。点上面「⊕ 装几个示例插件」看插件多了的样子。</div>
+                        <!-- ⚠️ 演示态：六个名字**全是假数据**（产品里没有这些插件 id，也⛔不许抄进产品源）。
+                             勾选项**照抄第二组权限项的同一枚原件**（同一方框／同一勾选动画），⛔ 不另造一套。 -->
+                        <div class="pluglist" id="plug-list" hidden>
+                          <p class="grp-note" style="margin:0">示例数据<span class="demo-tag">DEMO</span>——产品里今天的安装包没有可选插件，这几个名字只为演示"插件多了怎么逐个勾"。</p>
+                          <label class="opt"><input type="checkbox" data-plug="editor" checked><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span>编辑器<em>打开 .md · .txt · .json 的默认编辑器</em></span><span class="meta">12.4 MB</span></label>
+                          <label class="opt"><input type="checkbox" data-plug="serial-monitor"><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span>串口监视器<em>连上开发板，在窗里看串口输出</em></span><span class="meta">3.1 MB</span></label>
+                          <label class="opt"><input type="checkbox" data-plug="daily-note" checked><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span>我的一天<em>每天一页笔记，按日期自动归档</em></span><span class="meta">2.6 MB</span></label>
+                          <label class="opt"><input type="checkbox" data-plug="kanban"><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span>看板<em>把任务拖成列，和笔记双向联动</em></span><span class="meta">4.8 MB</span></label>
+                          <label class="opt"><input type="checkbox" data-plug="theme-gallery"><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span>主题<em>换配色与字体，含社区主题</em></span><span class="meta">1.9 MB</span></label>
+                          <div class="opt iscore" title="core 插件：随壳安装，界面不提供卸载"><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M3 6h6" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span>设置<em>随壳安装——界面不提供卸载</em></span><span class="meta">内置</span></div>
+                        </div>
                       </div>
                     </div>
-                    <!-- 动作行：在滚动层之外常驻（滚到底也够得着） -->
+                    <!-- 动作行：在滚动层之外常驻（滚到底也够得着）。
+                         ⛔ 主按钮恒在**第一格**（＝欢迎屏「立即安装」那一格），「返回」站次要槽位——
+                         这不是排版偏好：元素位置跨态不挪（用户 2026-10-03「继续安装跑右边了…十分不合理」）。 -->
                     <div class="morebar">
-                      <button class="btn ghost" type="button" id="more-back">返回</button>
                       <button class="btn" type="button" id="more-continue">继续安装<span class="cir">→</span></button>
+                      <button class="btn ghost" type="button" id="more-back">返回</button>
                       <div class="foot">继续即同意 <a href="#" onclick="return false">许可协议</a> · MIT</div>
                     </div>
                   </div>
@@ -306,20 +343,31 @@ table.t th{color:rgba(255,255,255,.5);font:500 11px var(--mono);letter-spacing:.
     <!-- ══ 说明列 ══════════════════════════════════════════════════════ -->
     <div class="side">
       <div class="card">
-        <h3>图注（钉号 ↔ 点）</h3>
+        <h2>图注（钉号 ↔ 点）</h2>
         <ul>
-          <li><b>1</b>「立即安装」——一路点安装的人走这颗，**永远不用进容器**，装出来的结果与今天完全一样。</li>
+          <li><b>1</b>「立即安装」——一路点安装的人走这颗，<b>永远不用进容器</b>，装出来的结果与今天完全一样。</li>
           <li><b>2</b>「更多配置」——<b>绿色钉＝本图新增</b>。只在点了「自定义安装」、展开区打开之后才出现（用户原话：「点击自定义安装之后，在自定义旁边再出现一个按钮」）。</li>
-          <li><b>3</b> 品牌行 ＋ 英雄区：进了容器<b>就被面板盖住</b>（用户第 6 条：「这些字就没了，就不要他了」）——所以面板顶上补一句「更多配置」，不然不知道自己在哪。</li>
+          <li><b>3</b> 品牌行 ＋ 英雄区：进了容器<b>淡出收走</b>（用户第 6 条：「这些字就没了，就不要他了」；⛔ 不是拿一层别的颜色盖住它们）——所以面板顶上补一句「更多配置」，不然不知道自己在哪。</li>
           <li><b>4</b> 紧凑态：路径行 ＋ <b>2×2</b> 四项勾选（今天的样子，位置一字未动）。</li>
           <li><b>6</b> 容器态：同一批勾选项变成<b>单列</b>，按二级标题分三组。</li>
-          <li><b>7</b> 容器动作行：返回 ／ 继续安装 ／ 许可协议那句——<b>在滚动层之外</b>，滚到底也够得着。</li>
+          <li><b>7</b> 容器动作行：<b>继续安装</b>（主按钮，占的就是欢迎屏「立即安装」那一格）／ 返回 ／ 许可协议那句——<b>在滚动层之外</b>，滚到底也够得着。</li>
         </ul>
         <p style="color:rgba(255,255,255,.45)">（钉 5 只在压矮窗口后出现：滚动条。）</p>
       </div>
 
       <div class="card">
-        <h3>三组为什么这么分（提前规划，不是事后补）</h3>
+        <h2>两条"边界"（按设计 skill 的判据复核过：跨态不许换位置、不许换表面）</h2>
+        <ul>
+          <li><b>表面不换肤</b>：容器只是同一扇窗的第二种排布——面板<b>透明</b>，窗子的底与双光球一直没动过；
+          变的只有内容排布。⛔ 不许为了"把标题遮住"就给面板铺一层别的颜色（第一版正是这么被打回的）。</li>
+          <li><b>主按钮槽位恒定</b>：欢迎屏是「立即安装」在前、「自定义安装」在后 ⇒ 容器里就<b>必须</b>是
+          「继续安装」在前、「返回」在后。主按钮永远占窗内左下那一格。这跟弹窗那套"取消左／确认右"是同一类规矩：
+          <b>约定一旦立下，跨态不挪</b>（第一版把「返回」排在前面，主按钮就被挤到右边了）。</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <h2>三组为什么这么分（提前规划，不是事后补）</h2>
         <table class="t">
           <tr><th>组</th><th>放什么</th><th>为什么</th></tr>
           <tr><td><b>① 安装位置</b></td><td>路径输入框 ＋「浏览…」（现成控件，零新造）<br><span style="color:rgba(255,255,255,.45)">将来的「缓存目录」也归这一组（预留槽位）</span></td><td>最要紧的一项，且与紧凑态同位 ⇒ 变形最小、最不容易看晕</td></tr>
@@ -331,10 +379,25 @@ table.t th{color:rgba(255,255,255,.5);font:500 11px var(--mono);letter-spacing:.
       </div>
 
       <div class="card">
-        <h3>动画时序（点「演一遍」看真效果）</h3>
+        <h2>随包插件的演示态（六个名字都是假数据）</h2>
+        <p>产品里<b>今天的安装包没有可选插件</b>（安装器只解一个 7z，源码里没有枚举插件的代码），所以默认画的仍是<b>空态</b>。
+        点工具条上「⊕ 装几个示例插件」能看到"以后插件多了"的样子，三条画法是有意的：</p>
+        <ul>
+          <li><b>勾选框与第二组权限项是同一枚原件</b>（同一方框、同一勾选动画、同一行距）——⛔ 不给插件另造一套，
+          否则用户会以为它们不是一回事，落地也要写两遍逻辑。</li>
+          <li>每行右边一枚<b>体积</b>（等宽字体，属于数据），下面一行小字说明它是干什么的——不勾的留成"可有可无"的那些。</li>
+          <li><b>「设置」不给勾选框</b>，右侧标「内置」：core 插件随壳安装，界面不提供卸载（本仓硬约束），安装器里同理——它没得选。</li>
+        </ul>
+        <p>⚠️ <code>editor</code>／<code>serial-monitor</code>／<code>daily-note</code>／<code>kanban</code>／<code>theme-gallery</code>／<code>setting</code>
+        这六个名字产品里<b>都没有</b>，只为演示；真实清单要等安装器能枚举 payload（见
+        <a href="04-任务清单.md" style="color:#c9bcff">04-任务清单.md</a> 阶段 3），那时这个演示态就该删掉。</p>
+      </div>
+
+      <div class="card">
+        <h2>动画时序（点「演一遍」看真效果）</h2>
         <table class="t">
           <tr><th>拍</th><th>发生什么</th><th>用什么</th></tr>
-          <tr><td>0–300ms</td><td>面板淡入（不透明 --bg 面盖住品牌行与英雄区）</td><td><code>opacity</code>，<code>--mo-ease</code></td></tr>
+          <tr><td>0–260ms</td><td>品牌行与英雄区<b>淡出</b>、容器内容<b>淡入</b>（面板本身透明 ⇒ 窗面自始至终没换）</td><td><code>opacity</code>，<code>--mo-defog</code>／<code>--mo-ease</code></td></tr>
           <tr><td>0–520ms</td><td>四项从 2×2 <b>滑/挤</b>到单列（同一批节点，不走"消失又出现"）</td><td>FLIP：换排布前量一次坐标 → 换 → 反向 <code>translate</code> 归零，<code>--ease</code></td></tr>
           <tr><td>+0/+40/+80/+120ms</td><td>三组标题 ＋ 空态说明<b>逐层落定</b>（各落 8px）</td><td>既有 <code>land</code> 关键帧，<code>--mo-step</code> 错峰</td></tr>
           <tr><td>全程</td><td>「返回」立刻可点；<b>Esc = 退一层</b>（回紧凑态，不是关窗）；✕ 仍关窗</td><td>键盘分流里给容器单开一层</td></tr>
@@ -345,14 +408,14 @@ table.t th{color:rgba(255,255,255,.5);font:500 11px var(--mono);letter-spacing:.
       </div>
 
       <div class="card">
-        <h3>滚动的理由（用户第 8 条）</h3>
+        <h2>滚动的理由（用户第 8 条）</h2>
         <p>窗口高度是死的（570px），而权限项和随包插件会<b>越来越多</b>。所以清单必须能滚，且
         「继续安装」<b>不能跟着滚走</b>——竖向空间不够时，用户仍然一伸手就够得着出口。</p>
         <p>点上面那颗「⊟ 把窗口压矮到 452px」，就能看到内容溢出、滚动条真的出现、动作行原地不动。</p>
       </div>
 
       <div class="card">
-        <h3>这张图与产品源的关系</h3>
+        <h2>这张图与产品源的关系</h2>
         <p>本图是<b>手绘示意</b>：控件位置与文案照现行安装器抄，<b>产品源一个字节没动</b>。
         落地实现（改 <code>app.html</code> / <code>app.css</code> / <code>app.js</code> ＋ i18n）是<b>下一轮的事</b>；
         实现之后，这张图应改用生成器从产品源重出，那时它才是生成物、并且<b>永不手改</b>。</p>
@@ -426,7 +489,7 @@ table.t th{color:rgba(255,255,255,.5);font:500 11px var(--mono);letter-spacing:.
     setTimeout(() => setCustom(true), 60);
     setTimeout(() => setMore(true), reduced() ? 120 : 900);   // 展开动画 .7s 走完再进容器
   });
-  $('#f-reset').addEventListener('click', () => { setMore(false); setCustom(false); $('#morelist').scrollTop = 0; });
+  $('#f-reset').addEventListener('click', () => { setMore(false); setCustom(false); setPlug(false); $('#morelist').scrollTop = 0; });
   $('#f-short').addEventListener('click', function () {
     frame.classList.toggle('short');
     this.classList.toggle('on');
@@ -434,10 +497,30 @@ table.t th{color:rgba(255,255,255,.5);font:500 11px var(--mono);letter-spacing:.
     pins(isMore());
   });
 
+  /* 组③ 演示态开关：默认仍是**空态**（＝今天的真样子），点一下才把六个假数据摆出来。
+     ⚠️ 这六个名字产品里没有，落地时第三组由真清单渲染（04 阶段 3）。 */
+  function setPlug(on) {
+    on = !!on;
+    $('#plug-list').hidden = !on;
+    $('#plug-empty').hidden = on;
+    const b = $('#f-plug');
+    b.classList.toggle('on', on);
+    b.textContent = on ? '⊖ 恢复空态（今天的真样子）' : '⊕ 装几个示例插件（演示）';
+    // 打开演示态就把第三组顶到滚动层顶部——否则六个插件都压在折线下面，等于没看见
+    if (on) {
+      const list = $('#morelist'), head = $('#g3');
+      list.scrollTop = Math.max(0, head.getBoundingClientRect().top - list.getBoundingClientRect().top + list.scrollTop - 2);
+    } else {
+      $('#morelist').scrollTop = 0;
+    }
+  }
+  $('#f-plug').addEventListener('click', () => setPlug($('#plug-list').hidden));
+
   /* 直达某个态（给截图与"我想直接看容器"用）：地址后面加 #more 直接进容器，#more,short 连压矮一起 */
   const h = (location.hash || '').toLowerCase();
   if (h.indexOf('more') >= 0) { setCustom(true); setMore(true); }
   if (h.indexOf('short') >= 0) $('#f-short').click();
+  if (h.indexOf('plug') >= 0) setPlug(true);      // #more,plug ＝ 容器 ＋ 把随包插件的演示态摆出来
 
   pins(isMore());
 })();
