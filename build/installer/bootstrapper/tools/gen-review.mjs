@@ -55,20 +55,45 @@ function must(s, from, to) { if (!s.includes(from)) throw new Error('定格标�
 const UD = 'C:\\Users\\fengy\\AppData\\Roaming\\linkdesk';
 const VER = '0.2.33';
 
+// 进度定格：按 app.js 同一套分段阈值（装 70/80/92，卸 60/80/92）＋同一段头词条
+function progTweak(install, pct) {
+  const seg = install ? (pct < 70 ? 1 : pct < 80 ? 2 : pct < 92 ? 3 : 4)
+                      : (pct < 60 ? 1 : pct < 80 ? 2 : pct < 92 ? 3 : 4);
+  const p = install ? '' : 'u';        // pn/fill/track：安装无前缀，卸载带 u
+  const li = install ? 'p' : 'u';      // 步骤列表 id：p1..p4 / u1..u4
+  const headFrom = install ? '>STEP 1 / 4 · 正在解压文件<' : '>STEP 1 / 4 · 正在移除程序文件<';
+  const headKey = (install ? 'installer.progress.head' : 'installer.uninstall.progress.head') + seg;
+  return s => {
+    s = must(s, `<span id="${p}pn">0</span>`, `<span id="${p}pn">${pct}</span>`);
+    s = must(s, `<div class="fill" id="${p}fill"></div>`, `<div class="fill" id="${p}fill" style="width:${pct}%"></div>`);
+    s = must(s, 'aria-valuenow="0"', `aria-valuenow="${pct}"`);
+    for (let i = 1; i <= 4; i++) {
+      const cls = i < seg ? 'done' : i === seg ? 'run' : '';
+      s = must(s, `<li id="${li}${i}">`, `<li id="${li}${i}"${cls ? ` class="${cls}"` : ''}>`);
+    }
+    return must(s, headFrom, '>' + t(headKey) + '<');
+  };
+}
+// 错误屏定格：#errcode 由 setError 写纯码、sub 写宿主真话
+function errTweak(code, msg) {
+  return s => {
+    s = must(s, 'id="errcode" data-drag>ERR-DISK-FULL · E-1042<', `id="errcode" data-drag>${code}<`);
+    const re = /(data-i18n="installer\.error\.sub">)[\s\S]*?(<\/div>)/;
+    if (!re.test(s)) throw new Error('error.sub 标记缺失');
+    return s.replace(re, '$1' + msg + '$2');
+  };
+}
+const setPathErr = (s, value, key) => {
+  s = must(s, 'id="custom"', 'id="custom" class="open"');
+  s = must(s, 'value="C:\\Users\\fengy\\AppData\\Local\\Programs\\linkdesk"', `value="${value}"`);
+  s = must(s, '<div class="patherr" id="patherr" role="alert" hidden></div>',
+    `<div class="patherr" id="patherr" role="alert">${t(key)}</div>`);
+  return must(s, `data-role="path" value="${value}"`, `data-role="path" class="bad" value="${value}"`);
+};
 const tweaks = {
   homeCustom: s => must(s, 'id="custom"', 'id="custom" class="open"'),
-  progress47: s => must(must(must(must(s,
-    '<span id="pn">0</span>', '<span id="pn">47</span>'),
-    '<div class="fill" id="fill"></div>', '<div class="fill" id="fill" style="width:47%"></div>'),
-    'aria-valuenow="0"', 'aria-valuenow="47"'),
-    '<li id="p1">', '<li id="p1" class="run">'),
-  unProgress73: s => must(must(must(must(must(must(s,
-    '<span id="upn">0</span>', '<span id="upn">73</span>'),
-    '<div class="fill" id="ufill"></div>', '<div class="fill" id="ufill" style="width:73%"></div>'),
-    'aria-valuenow="0"', 'aria-valuenow="73"'),
-    '>STEP 1 / 4 · 正在移除程序文件<', '>' + t('installer.uninstall.progress.head2') + '<'),
-    '<li id="u1">', '<li id="u1" class="done">'),
-    '<li id="u2">', '<li id="u2" class="run">'),
+  homeBadRoot: s => setPathErr(s, 'C:', 'installer.path.err.root'),
+  homeBadWrite: s => setPathErr(s, 'C:\\Windows', 'installer.path.err.write'),
   guardSame: s => must(must(must(s,
     'id="ver-title"></h1>', `id="ver-title">${t('installer.version.title.same', { version: VER })}</h1>`),
     'id="ver-sub" data-drag></div>', `id="ver-sub" data-drag>${t('installer.version.body.same', { version: VER })}</div>`),
@@ -77,43 +102,108 @@ const tweaks = {
     'id="ver-title"></h1>', `id="ver-title">${t('installer.version.title.older')}</h1>`),
     'id="ver-sub" data-drag></div>', `id="ver-sub" data-drag>${t('installer.version.body.older', { installed: '0.2.34', incoming: VER })}</div>`),
     'id="ver-code" data-drag></div>', `id="ver-code" data-drag>0.2.34  →  ${VER}</div>`),
+  progI47: progTweak(true, 47), progI75: progTweak(true, 75), progI85: progTweak(true, 85), progI95: progTweak(true, 95),
+  progU30: progTweak(false, 30), progU73: progTweak(false, 73), progU85: progTweak(false, 85), progU96: progTweak(false, 96),
+  errDiskFull: errTweak('DISK_FULL', '需要 2097216 MB，目标盘只剩 719862 MB'),
+  errExtract: errTweak('EXTRACT_FAILED', '7zr exit=2'),
+  errVerify: errTweak('VERIFY_FAILED', '解压后没找到 LinkDesk.exe——安装包可能不完整'),
+  errNoPayload: errTweak('NO_PAYLOAD', '这是开发期引导器壳，不含安装载荷（双击真实安装包才有）'),
+  errCancelKept: errTweak('CANCEL_KEPT', t('installer.cancel.kept')),
   confirmKeep0: s => must(s, 'id="keepdata" checked>', 'id="keepdata">'),
+  confirmDelconfirm: s => must(must(s,
+    'id="keepdata" checked>', 'id="keepdata">'),
+    '<div id="delconfirm" hidden>', '<div id="delconfirm">'),
+  confirmDelagree: s => must(must(must(s,
+    'id="keepdata" checked>', 'id="keepdata">'),
+    '<div id="delconfirm" hidden>', '<div id="delconfirm">'),
+    '<input type="checkbox" id="delagree">', '<input type="checkbox" id="delagree" checked>'),
+  runningTimeout: s => must(s,
+    '<div class="unwarn" id="unwarn" role="status" aria-live="polite" hidden',
+    '<div class="unwarn" id="unwarn" role="status" aria-live="polite"'),
   badgeKept: s => must(s,
-    `id="datbadge" data-drag>用户数据已保留 · C:\\Users\\fengy\\AppData\\Roaming\\LinkDesk</div>`,
+    'id="datbadge" data-drag>用户数据已保留 · C:\\Users\\fengy\\AppData\\Roaming\\LinkDesk</div>',
     `id="datbadge" data-drag>${t('installer.uninstall.finish.kept', { path: UD })}</div>`),
+  badgeGone: s => must(s,
+    '<div class="datbadge" id="datbadge" data-drag>用户数据已保留 · C:\\Users\\fengy\\AppData\\Roaming\\LinkDesk</div>',
+    `<div class="datbadge gone" id="datbadge" data-drag>${t('installer.uninstall.finish.gone')}</div>`),
+  lkddOpen: s => {
+    s = must(s, '<div id="lkdd">', '<div id="lkdd" class="open">');
+    const it = (code, label, on) =>
+      `<button type="button" class="it${on ? ' on' : ''}" role="option" data-code="${code}" aria-selected="${on}">` +
+      '<svg class="ck" viewBox="0 0 14 14" fill="none" stroke="#2fae7c" stroke-width="2" aria-hidden="true"><path d="M2.5 7.5l3 3 6-7"/></svg>' +
+      `<span>${label}</span></button>`;
+    return must(s,
+      '<div id="lkdd-pop" role="listbox" aria-label="语言" data-i18n-aria="installer.lang.aria"></div>',
+      '<div id="lkdd-pop" role="listbox" aria-label="语言" data-i18n-aria="installer.lang.aria">' +
+      it('zh-CN', '中文', true) + it('en', 'English', false) + '</div>');
+  },
 };
 
-// 屏幕序列（用户旅程：装 → 守卫 → 进度 → 完成/失败 → 卸载四帧），preview 列 = 对应真机缝（_3d-ui\*.bat）
+// 屏幕序列：产品能显示的**每一个态**，按用户旅程排（pv 列 = 对应真机缝 _3d-ui\*.bat）
 const sections = [
   { group: '安装（780×570）', items: [
-    { n: '① 欢迎 · 一键装', key: 'home', pv: '?screen=home',
+    { n: '① 欢迎 · 一键装（默认）', key: 'home', pv: '?screen=home',
       look: '标题衬线 Newsreader；路径行默认值＝默认安装位；右上语言下拉与 ✕；主按钮 hover/焦点态。' },
     { n: '② 自定义展开', key: 'home', mod: 'homeCustom', pv: '?screen=home&custom=1',
-      look: '展开动画的终态：路径行＋「浏览」＋右键菜单/开机自启等勾选项；路径改坏（输 C: ）时行内红字＋边框变红。' },
-    { n: '⑥ 版本守卫 · 同版', key: 'version', mod: 'guardSame', pv: '?screen=version&kind=same&from=0.2.33',
-      look: '机器已装同版本时的确认屏：默认取消，仍要安装是次按钮；语义=防误装，不吓人。' },
-    { n: '⑥ 版本守卫 · 降级', key: 'version', mod: 'guardOlder', pv: '?screen=version&kind=older&from=0.2.34&to=0.2.33',
-      look: '同版/降级守卫都会先问一句（升级方向不拦、直接放行）；注意 kind=older=「本包更旧」，别配反了。' },
-    { n: '③④ 四段进度 · 47%', key: 'progress', mod: 'progress47', pv: '?screen=progress&pct=47',
-      look: '段头「STEP 1 / 4 · 正在解压文件」（70/80/92 换段）；四步列表第一项运行态；数字＋条同步；取消按钮。' },
+      look: '展开动画终态：路径行＋「浏览」＋右键菜单等勾选项。' },
+    { n: '② 路径非法 · 行内报错（输 C: ⇒ root）', key: 'home', mod: 'homeBadRoot', pv: '页面真动作：输入 C:',
+      look: '页侧语法闸先拦：输入框变红＋ role=alert 文案「不要直接选整个盘」；不改全局错误屏。' },
+    { n: '② 路径写不进 · 宿主实测（write）', key: 'home', mod: 'homeBadWrite', pv: '宿主 dir-invalid 回话',
+      look: '宿主真试过写不进（如 C:\\Windows）就近报「没有权限」；文案不同、形态相同。' },
+    { n: '⑥ 守卫 · 同版', key: 'version', mod: 'guardSame', pv: '?screen=version&kind=same&from=0.2.33',
+      look: '机器已装同版本：默认取消，仍要安装是次按钮。' },
+    { n: '⑥ 守卫 · 降级', key: 'version', mod: 'guardOlder', pv: '?screen=version&kind=older&from=0.2.34&to=0.2.33',
+      look: '同版/降级才拦（升级方向不拦直接放行）；kind=older＝「本包更旧」，别配反。' },
+    { n: '③④ 进度 · 段1 47%（解压文件）', key: 'progress', mod: 'progI47', pv: '?screen=progress&pct=47',
+      look: '段头「STEP 1 / 4 · 正在解压文件」；四步列表第一项运行态；取消按钮。' },
+    { n: '③④ 进度 · 段2 75%（注册关联）', key: 'progress', mod: 'progI75', pv: '?screen=progress&pct=75',
+      look: '70/80/92 换段：段头与步骤态随段切换（70–80 = 注册文件关联）。' },
+    { n: '③④ 进度 · 段3 85%（写系统项）', key: 'progress', mod: 'progI85', pv: '?screen=progress&pct=85',
+      look: '段3「正在写系统项」：快捷方式／右键菜单／PATH 都在这段。' },
+    { n: '③④ 进度 · 段4 95%（收尾校验）', key: 'progress', mod: 'progI95', pv: '?screen=progress&pct=95',
+      look: '段4「正在收尾校验」：ARP 写入＋无残留判据；数值单调不回退。' },
     { n: '⑤ 完成', key: 'finish', pv: '?screen=finish',
       look: '路径＝实际安装位；「运行 LinkDesk」默认勾；彩带由 JS 生成（定格页无，真机/bat 可见）。' },
-    { n: '⑧ 失败 · 磁盘空间不足', key: 'error', pv: '?screen=error',
-      look: '错误码行＋人话文案＋「换个位置」；真机实弹截图 _3c\df2.png（DISK_FULL 是预检真拦的，不是演的）。' },
+    { n: '⑧ 失败 · 磁盘空间不足（DISK_FULL）', key: 'error', mod: 'errDiskFull', pv: '实弹：marker 补丁件',
+      look: '读数取自 3c 实测（2TiB 假载荷 vs E 盘剩余）；「换个安装位置」直接回自定义展开屏。' },
+    { n: '⑧ 失败 · 解压失败（EXTRACT_FAILED）', key: 'error', mod: 'errExtract', pv: '实弹：目标被占用',
+      look: 'msg＝7zr 退出码（LinkDesk 在跑覆盖装就是这条路，7zr 写不进锁着的 exe）；码为示意。' },
+    { n: '⑧ 失败 · 校验失败（VERIFY_FAILED）', key: 'error', mod: 'errVerify', pv: '宿主分支',
+      look: '解压完但没找到 LinkDesk.exe——包不完整/被杀软截胡。' },
+    { n: '⑧ 失败 · 开发壳无载荷（NO_PAYLOAD）', key: 'error', mod: 'errNoPayload', pv: '双击 out\\bootstrapper.exe',
+      look: '只在没有载荷的壳上出现；产品安装包恒有载荷。' },
+    { n: '⑧ 失败 · 取消回滚 · 旧装保留（CANCEL_KEPT）', key: 'error', mod: 'errCancelKept', pv: '覆盖装中途点取消',
+      look: '取消有两种结局：全新目录=整树回滚直接回欢迎屏；旧目录在=如实告知保留并建议重装完整。' },
     { n: '⑦ 等待权限', key: 'uac', pv: '?screen=uac',
-      look: '仅提权场景出现；进度细条动画；文案=正在等待 Windows 确认。' },
+      look: '仅提权场景出现；进度细条动画。' },
+    { n: '语言面板展开', key: 'home', mod: 'lkddOpen', pv: '点右上语言按钮',
+      look: '自绘下拉（原生 select 画不进自绘窗）；当前语言带绿勾；条目由 i18n 清单枚举。' },
   ]},
   { group: '卸载（720×540）', items: [
     { n: '帧1 · 确认（保留默认勾）', key: 'confirm', pv: '?mode=uninstall&screen=confirm',
-      look: '安装位置/体积真值；「保留我的数据」默认勾（绿徽章语义）；卸载是 danger 色主按钮。' },
-    { n: '帧1 · 勾掉保留（危险前提）', key: 'confirm', mod: 'confirmKeep0', pv: '?mode=uninstall&screen=confirm&keep=0',
-      look: '勾掉后此帧点「卸载」才露红色二次确认块（我确认删除才放行）——那一步请用 11 号 bat 或真机看。' },
+      look: '安装位置/体积真值；「保留我的数据」默认勾；卸载是 danger 色主按钮。' },
+    { n: '帧1 · 勾掉「保留我的数据」', key: 'confirm', mod: 'confirmKeep0', pv: '页面真动作：取消勾选',
+      look: '勾掉本体无动静——真正的确认在点「卸载」之后（下一节）。' },
+    { n: '帧1 · 点「卸载」后露二次确认', key: 'confirm', mod: 'confirmDelconfirm', pv: '页面真动作：勾掉→点卸载',
+      look: '红色警示块就地展开（不打扰只想保留数据的人）；「卸载」此时仍不放行。' },
+    { n: '帧1 · 勾「我确认删除」（放行前最后一态）', key: 'confirm', mod: 'confirmDelagree', pv: '页面真动作：再勾确认',
+      look: '勾上才真正放行；这一步之后就是不可逆删除。' },
     { n: '帧2 · LinkDesk 正在运行', key: 'running', pv: '?mode=uninstall&screen=running',
       look: '进程真检测才停这帧；「关闭并继续」= 发 WM_CLOSE 走软件自己的保存流程，不硬杀。' },
-    { n: '帧3 · 四段进度 · 73%', key: 'un-progress', mod: 'unProgress73', pv: '?mode=uninstall&screen=un-progress&pct=73',
-      look: '左对齐变体＋墨色条；73% 在 60–80 段 ⇒ 段头是清理系统项；无取消（卸载一路走完）。' },
-    { n: '帧4 · 完成（保留＝绿徽章）', key: 'un-finish', mod: 'badgeKept', pv: '?mode=uninstall&screen=un-finish',
-      look: '徽章=数据去向（保留绿/删除黄）；路径小写 linkdesk；「完成」收尾。' },
+    { n: '帧2 · 等退超时（黄色提示条）', key: 'running', mod: 'runningTimeout', pv: '拒关 10 秒后',
+      look: '等了 10s 还没退净（可能停在保存对话上）如实说明；「稍后」原路返回帧1。' },
+    { n: '帧3 · 段1 30%（移除程序文件）', key: 'un-progress', mod: 'progU30', pv: '?mode=uninstall&screen=un-progress&pct=30',
+      look: '左对齐变体＋墨色条；无取消（卸载一路走完）；keep=false 时 userData 在 56–59 一并删。' },
+    { n: '帧3 · 段2 73%（清理系统项）', key: 'un-progress', mod: 'progU73', pv: '?mode=uninstall&screen=un-progress&pct=73',
+      look: '60/80/92 换段：右键菜单／关联／RegisteredApplications。' },
+    { n: '帧3 · 段3 85%（恢复 PATH）', key: 'un-progress', mod: 'progU85', pv: '?mode=uninstall&screen=un-progress&pct=85',
+      look: 'PATH 精确匹配恢复（宁可不删也不误伤用户改过的）。' },
+    { n: '帧3 · 段4 96%（收尾校验）', key: 'un-progress', mod: 'progU96', pv: '?mode=uninstall&screen=un-progress&pct=96',
+      look: 'ARP 已消失判据＋自删收尾。' },
+    { n: '帧4 · 完成（绿徽章 · 数据保留）', key: 'un-finish', mod: 'badgeKept', pv: '?mode=uninstall&screen=un-finish',
+      look: '徽章=数据去向：保留＝绿，带 userData 路径（小写 linkdesk）。' },
+    { n: '帧4 · 完成（黄徽章 · 数据已删）', key: 'un-finish', mod: 'badgeGone', pv: '?mode=uninstall&screen=un-finish&keep=0',
+      look: '勾掉保留并走完 ⇒ 黄徽章如实告知「已删除」；下次新装即全新工作区＋仅出厂插件。' },
   ]},
 ];
 
