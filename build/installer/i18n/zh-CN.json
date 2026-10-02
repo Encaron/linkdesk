@@ -83,6 +83,6 @@
   "installer.uninstall.finish.title": "已卸载。",
   "installer.uninstall.finish.kept": "用户数据已保留 · {path}",
   "installer.uninstall.finish.gone": "用户数据已一并移除",
-  "installer.uninstall.finish.sub": "谢谢使用 LinkDesk，有缘再见。",
+  "installer.uninstall.finish.sub": "感谢使用 LinkDesk，有缘再见。",
   "installer.uninstall.finish.done": "完成"
 }

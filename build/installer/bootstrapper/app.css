@@ -12,6 +12,11 @@
  *     2026-10-02 拍板只嵌拉丁，中文仍走系统宋体）——见本文件 :root 下方那段注
  *   · 件 1d：卸载屏（E-卸载屏.html 直搬）追加在本文件末尾，规则一律 .scr.un / html[data-mode=uninstall]
  *     限定——两套屏同页共存（同一个 exe 的 --uninstall 模式），上方安装侧规则一字不动
+ *   · 3d 视觉评审定稿（2026-10-02 用户「定稿」，逐条见 docs/04-软件更新/待抉择池/安装界面自绘/3d-评审记录.md）：
+ *     药丸内移 20px＋内容顶距 44→58；三圈同心（.win 22 ／ 药丸 12，壳仍 32）；品牌行下移 12px；
+ *     自定义区补下边距 20px；路径错误行改成常驻带（不再跳版）；按钮左右对称 22px（带圆片者除外）＋禁用态；
+ *     进度数字字距归零（掐掉 .pct 继承来的 -.05em）；卸载确认屏收进内容列 .uncol(188px)；卸载完成环去色；
+ *     切屏过渡换成「屏面落定 ＋ 去雾 ＋ 内容分层」（--mo-* 令牌，原 enter .8s 已废）
  */
 
 :root{
@@ -23,6 +28,12 @@
   --sans:'Geist','Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;
   --mono:'Geist Mono',Consolas,monospace;
   --ease:cubic-bezier(.32,.72,0,1);
+  /* 切屏过渡（3d #18 用户 2026-10-02 定稿）：窗不动 · 屏面落定 · 内容按阅读顺序逐层落定。
+     --ease 仍是旧曲线，pop/draw/勾选/圆片/悬停继续用它，本次一字不动。 */
+  --mo-dur:.42s; --mo-rise:10px;      /* 屏面落定：时长 / 位移（原 enter 是 .8s / 18px） */
+  --mo-defog:.26s; --mo-blur:4px;     /* 去雾独立且更短 ⇒ 先变清楚、后到齐 */
+  --mo-ease:cubic-bezier(.16,1,.3,1); /* 指数级减速，与彩粒 burst 同一条曲线 */
+  --mo-step:.04s; --mo-tier:.38s; --mo-tier-rise:8px;  /* 内容层：错峰 / 时长 / 位移 */
 }
 /* 件 3b：随包 Newsreader **拉丁子集**（用户 2026-10-02 拍板：中文不嵌，仍走系统宋体——中文衬线
    子集数 MB，逼近 5MB 壳预算）。两份文件 = Google Fonts 官方 `latin` 子集原样（正体 57KB ＋
@@ -75,16 +86,32 @@ body{background:var(--desk);font-family:var(--sans);color:var(--txt);overflow:hi
 .shell{position:absolute;inset:0;border-radius:32px;background:var(--glass);
        border:1px solid var(--hair);padding:9px;backdrop-filter:blur(28px);
        box-shadow:0 30px 80px rgba(0,0,0,.14),inset 0 1px 0 rgba(255,255,255,.8)}
-.win{position:relative;height:100%;border-radius:24px;background:rgba(252,252,250,.85);
+/* 三圈同心（3d #3）：窗口左上角圆心恒为 (32,32) ⇒ R_内 = 32 − 该圈间隙（壳 32 ／ 面 10 → 22）。
+   原 24 与壳不同心，角上玻璃包边被挤到最窄 7.7px。 */
+.win{position:relative;height:100%;border-radius:22px;background:rgba(252,252,250,.85);
      border:1px solid var(--hair);overflow:hidden;display:flex;flex-direction:column}
 .xbtn{position:absolute;top:14px;right:16px;z-index:10;width:30px;height:30px;border:0;border-radius:9px;background:transparent;color:var(--txt2);cursor:pointer;display:grid;place-items:center;transition:background .2s}
 .xbtn:hover{background:rgba(0,0,0,.06)}
 .xbtn[disabled]{color:var(--txt3);cursor:default;background:transparent}
 
-.scr{position:absolute;inset:0;display:none;flex-direction:column;padding:44px 52px 38px;
-     animation:enter .8s var(--ease)}
+/* 顶距 58（3d #1）：语言药丸内移到 20px 后底边到 49px，品牌行/错误屏图标的 x 52-96 正在药丸
+   x 20-107 之内 ⇒ 内容不下移就撞上。⚠️ .scr.un 是并列的另一条规则，两处要同改（下方件 1d 段）。 */
+/* 切屏过渡（3d #18）：换的是同一扇 .win 里的 .scr、窗口根本没动 ⇒ 屏面只「落定」10px，
+   去雾单独一条且更早收干净，子元素按 DOM（＝阅读）顺序每层错开 40ms。
+   原 enter（整屏刚体上浮 18px ＋ 全域模糊，单曲线 .8s）已废——位移会让人误以为窗口在滑。 */
+.scr{position:absolute;inset:0;display:none;flex-direction:column;padding:58px 52px 38px;
+     animation:settle var(--mo-dur) var(--mo-ease),defog var(--mo-defog) var(--mo-ease)}
 .scr.on{display:flex}
-@keyframes enter{from{opacity:0;transform:translateY(18px);filter:blur(6px)}to{opacity:1;transform:none;filter:blur(0)}}
+@keyframes settle{from{opacity:0;transform:translateY(var(--mo-rise))}to{opacity:1;transform:none}}
+@keyframes defog{from{filter:blur(var(--mo-blur))}to{filter:blur(0)}}
+/* .fin-ring 自带 pop、#confetti 是整幅覆盖层（跟着位移会歪掉彩粒爆心）⇒ 两者不参与分层。
+   :where(#confetti) 把该列选择器权重压回 0，不因一个 id 把整条规则抬到 ID 级。 */
+.scr.on > *:not(.fin-ring):not(:where(#confetti)){animation:land var(--mo-tier) var(--mo-ease) backwards}
+@keyframes land{from{opacity:0;transform:translateY(var(--mo-tier-rise))}to{opacity:1;transform:none}}
+.scr.on > *:nth-child(2){animation-delay:var(--mo-step)}
+.scr.on > *:nth-child(3){animation-delay:calc(var(--mo-step) * 2)}
+.scr.on > *:nth-child(4){animation-delay:calc(var(--mo-step) * 3)}
+.scr.on > *:nth-child(n+5){animation-delay:calc(var(--mo-step) * 4)}
 
 /* ① UAC 等待提示帧（壳内，非系统对话框仿真——见文件头注释） */
 #s-uac{align-items:center;justify-content:center;text-align:center}
@@ -97,7 +124,9 @@ body{background:var(--desk);font-family:var(--sans);color:var(--txt);overflow:hi
      background-size:200% 100%;animation:shimmer 1.6s linear infinite}
 
 /* 品牌行：A 的六边形图标（实心 + 三白孔）＋ A 的衬线 slogan */
-.brand{display:flex;align-items:center;gap:14px;margin-bottom:10px}
+/* 品牌行下移 12（3d #4）：上方语言药丸底边到 49px，行顶原只余 9px ⇒ 改 21px。
+   整行同走（hero/自定义区/按钮跟着下移 12，屏内节奏不变）。 */
+.brand{display:flex;align-items:center;gap:14px;margin:12px 0 10px}
 .brand svg{width:40px;height:44px;flex:none}
 .brand .nm{font:600 19px/1.2 var(--sans);letter-spacing:-.02em}
 .brand .sl{font:italic 400 13.5px/1.4 var(--serif);color:var(--txt2);margin-top:2px}
@@ -109,20 +138,31 @@ body{background:var(--desk);font-family:var(--sans);color:var(--txt);overflow:hi
 .hero p{font:14px/1.75 var(--sans);color:var(--txt2);max-width:44ch}
 .actions{display:flex;flex-wrap:wrap;align-items:center;gap:18px}
 /* B 的药丸按钮（button-in-button）× 亮色化：墨色实心 */
+/* 3d #7：28px 左内边距是给 .cir 圆片留位的，不带圆片的按钮（⑥ 守卫「退出安装」、卸载完成「完成」）
+   文字因此偏右 ⇒ 默认左右对称 22px（与 .btn.ghost 同档），真有 .cir 才恢复。
+   :has() 需 Chromium 105+（WebView2 满足）；万一是老运行时只退化为现状，不会坏。 */
 .btn{display:inline-flex;align-items:center;gap:12px;font:600 14px var(--sans);color:#fff;
-     background:var(--ink);border:0;border-radius:9999px;padding:9px 9px 9px 28px;cursor:pointer;
+     background:var(--ink);border:0;border-radius:9999px;padding:9px 22px;cursor:pointer;
      transition:transform .5s var(--ease),box-shadow .5s var(--ease)}
+.btn:has(.cir){padding:9px 9px 9px 28px}
 .btn .cir{width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,.16);display:grid;place-items:center;transition:transform .5s var(--ease)}
 .btn:hover{box-shadow:0 8px 30px rgba(0,0,0,.16)}
 .btn:hover .cir{transform:translate(3px,-1px) scale(1.06)}
 .btn:active{transform:scale(.98)}
 .btn.ghost{background:transparent;color:var(--txt2);border:1px solid var(--hair);padding:10px 22px;gap:0}
 .btn.ghost:hover{box-shadow:none;color:var(--txt)}
+/* 禁用态（3d #9，用户「直接置灰就行」）：解压完成（＝提交点，段 2 起）的「取消安装」。
+   只做「灰」、不加禁用文案；必须同时压掉 hover——.btn.ghost:hover 会把禁用按钮点亮，
+   与禁用语义相反。段号判断与宿主一致（app.js setProgress 按同一分界禁用）。 */
+.btn:disabled{opacity:.45;cursor:default;box-shadow:none}
+.btn.ghost:disabled:hover{color:var(--txt2);box-shadow:none}
 /* ④ 自定义展开 */
 #custom{max-height:0;overflow:hidden;transition:max-height .7s var(--ease)}
 #custom.open{max-height:270px}
-.cust-in{margin-top:24px;padding-top:24px;border-top:1px solid var(--line)}
-.pathrow{display:flex;gap:8px;margin-bottom:18px}
+/* 下边距 20（3d #5）：原来只有上半边，展开态下 #custom 底边与 .actions 顶边相接（间距 0）。
+   只能加在这里——.actions 全文件 7 处，全局加上边距会连累别的屏。 */
+.cust-in{margin-top:24px;padding-top:24px;padding-bottom:20px;border-top:1px solid var(--line)}
+.pathrow{display:flex;gap:8px;margin-bottom:8px}
 .pathrow input{flex:1;font:12.5px var(--mono);padding:11px 14px;border-radius:14px;border:1px solid var(--line);
                background:rgba(255,255,255,.75);color:var(--txt);box-shadow:inset 0 1px 1px rgba(255,255,255,.6)}
 .pathrow input:focus{outline:none;border-color:#c4c0b8}
@@ -141,7 +181,9 @@ body{background:var(--desk);font-family:var(--sans);color:var(--txt);overflow:hi
 #s-progress{justify-content:center}
 .ph{font:11px var(--mono);letter-spacing:.18em;text-transform:uppercase;color:var(--txt2);margin-bottom:12px}
 .pct{font:200 76px/1 var(--sans);letter-spacing:-.05em;margin-bottom:28px;color:var(--ink);font-variant-numeric:tabular-nums}
-.pct span{font-size:26px}
+/* 字距归零（3d #10）：letter-spacing 继承的是**计算后长度**，.pct 那条 -.05em 按 76px 解析 =
+   -3.8px，26px 的子 span 白白背上（十位/个位被吸到一起的真正原因）。字号一字不动。 */
+.pct span{font-size:26px;letter-spacing:0}
 .track{height:8px;border-radius:9999px;background:rgba(0,0,0,.08);overflow:hidden;position:relative}
 .fill{height:100%;width:0%;border-radius:9999px;position:relative;transition:width .3s linear;
       background:linear-gradient(90deg,#8a6ff0,#2fbf8a);box-shadow:0 0 14px rgba(138,111,240,.35)}
@@ -155,8 +197,9 @@ body{background:var(--desk);font-family:var(--sans);color:var(--txt);overflow:hi
 .plist li.run{color:var(--txt2)}.plist li.run .st::after{content:'▸';color:#8a6ff0}
 .plist li.done{color:var(--txt2)}.plist li.done .st::after{content:'✓';color:#2fae7c}
 .prow{margin-top:26px;display:flex;gap:18px;align-items:center}
-.cancel{margin-top:26px;font:12px var(--sans);color:var(--txt2);background:none;border:0;cursor:pointer}
-.cancel:hover{color:var(--txt2)}
+/* 3d #8：原 .cancel（background:none;border:0;无 padding ⇒ 命中区只有文字 48×15、hover 与基态同色）
+   两条已删——按钮换成 .btn.ghost（靶区 101×41、hover/焦点态自来），见 app.html ③④ 进度屏。 */
+
 
 /* ⑥ 完成：B 光晕对勾（亮色化）＋ D 彩粒迸发 */
 #s-finish{justify-content:center;align-items:center;text-align:center}
@@ -191,13 +234,17 @@ body{background:var(--desk);font-family:var(--sans);color:var(--txt);overflow:hi
 
 /* 件 2c · 路径行内错误：就地贴在输入框下（UX 规则「错误靠近出问题的字段」＋ role=alert）。
    只染边框不算数——文字才是判据，颜色只是同一句判据的第二通道（对比度达标的 --danger）。 */
-.patherr{font:11px/1.5 var(--mono);color:var(--danger);letter-spacing:.04em;margin:-10px 0 14px}
-.patherr[hidden]{display:none}
+/* 常驻带 8 / 17 / 8（3d #6）：原 margin 负值＋[hidden] 不占位 ⇒ 错误一出现就把下面整块顶下去
+   （布局跳动）。从头留好位置，app.js 不必改（它只管 hidden 与 textContent）。 */
+.patherr{font:11px/1.5 var(--mono);color:var(--danger);letter-spacing:.04em;margin:0 0 8px;min-height:17px}
+.patherr[hidden]{display:block}
 .pathrow input.bad,.pathrow input.bad:focus{border-color:var(--danger)}
 
 /* 自绘语言下拉（原生 select 画不进自绘界面；语言清单由 1c 从 build/installer/i18n/ 枚举） */
-#lkdd{position:absolute;top:8px;left:8px;z-index:40;font:12px var(--sans)}
-#lkdd-btn{display:flex;align-items:center;gap:7px;padding:6px 12px;border-radius:9999px;border:1px solid rgba(128,128,128,.4);background:rgba(255,255,255,.55);backdrop-filter:blur(6px);color:inherit;cursor:pointer;user-select:none;font:inherit;transition:box-shadow .3s var(--ease)}
+#lkdd{position:absolute;top:20px;left:20px;z-index:40;font:12px var(--sans)}
+/* ⚠️ 与 #1 同一套几何：药丸内移到 20 并被 .win/.shell 的同心圆角收成 12px 圆角矩形
+   （原 9999 药丸自成一派，是第三种圆角族）。 */
+#lkdd-btn{display:flex;align-items:center;gap:7px;padding:6px 12px;border-radius:12px;border:1px solid rgba(128,128,128,.4);background:rgba(255,255,255,.55);backdrop-filter:blur(6px);color:inherit;cursor:pointer;user-select:none;font:inherit;transition:box-shadow .3s var(--ease)}
 #lkdd-btn:hover{box-shadow:0 4px 16px rgba(0,0,0,.1)}
 #lkdd-btn .chev{transition:transform .25s var(--ease)}
 #lkdd.open #lkdd-btn .chev{transform:rotate(180deg)}
@@ -230,7 +277,8 @@ html[data-mode=uninstall] #s-version{display:none!important}
 html[data-mode=uninstall] .orb{width:380px;height:380px;opacity:.2}
 @keyframes rise-un{to{transform:translateY(-560px);opacity:0}}
 
-.scr.un{align-items:center;justify-content:center;text-align:center;padding:44px 56px 38px}
+.scr.un{align-items:center;justify-content:center;text-align:center;padding:58px 56px 38px}
+   /* ↑ 顶距 58 与上面 .scr 同步（3d #1）——本条特异性更高，只改上一条卸载侧 12 幕不生效 */
 #s-un-progress{align-items:flex-start;text-align:left}   /* 帧 3 = 左对齐变体（mockup 同款） */
 .scr.un h1{font:400 36px/1.2 var(--serif);letter-spacing:-.03em;margin-bottom:12px}
 .scr.un .sub{font:13px/1.8 var(--sans);color:var(--txt2);margin-bottom:8px}
@@ -242,7 +290,9 @@ html[data-mode=uninstall] .orb{width:380px;height:380px;opacity:.2}
 .btn.primary{background:var(--ink)}
 .btn.danger{background:var(--danger)}
 .btn.danger:hover{box-shadow:0 8px 30px rgba(179,38,30,.28)}
-.scr.un .btn{padding:10px 10px 10px 30px}
+/* 3d #7（卸载侧同构）：30px 左内边距同理只给 .cir 留位 ⇒ 不带圆片的「完成」在 .scr.un 前缀下偏右 20px。 */
+.scr.un .btn{padding:10px 22px}
+.scr.un .btn:has(.cir){padding:10px 10px 10px 30px}
 .scr.un .btn.ghost{padding:11px 24px;font-weight:500}
 .scr.un .opt{margin-top:22px;font:13.5px/1.5 var(--sans)}
 .scr.un .opt small{display:block;color:var(--txt3);font-size:11px}
@@ -255,17 +305,31 @@ html[data-mode=uninstall] .orb{width:380px;height:380px;opacity:.2}
    复选行收紧行距（.scr.un .opt 的 22px 是给屏级选项的，块内不需要那么大） */
 .unwarn.danger{color:var(--danger)}
 #delconfirm .opt{margin-top:12px}
+/* 帧 1 内容列（3d #14 / #15）：屏幕整体仍居中，只把两行选项与 #delconfirm 收进一条以中线为轴、
+   列内左对齐的窄列 ⇒ 三个左沿归一（原各自 fit-content 居中，两个方框左沿差 70px）。
+   列宽 188 = 13 个全角字 + 28 内边距 ⇒ 那句 23 字警示断成 13/10 两行（原 285 宽末行只剩「复。」2 字）。
+   ⚠️ 列内 .unwarn 必须掐掉它自己的 max-width 与 auto 外边距：宽度只由列一处定义，
+      否则「列宽 vs 块宽」两套 ch 度量会再错开一遍（同一类坑）。 */
+.uncol{width:100%;max-width:188px;margin:22px auto 0;text-align:left}
+.uncol .opt{margin-top:0}
+.uncol .unwarn{max-width:none;margin:10px 0 0}
 /* 帧 3：PCT 68px（安装 76px）＋ 墨色 fill（不带安装的紫光晕）；分段文案色比安装亮一档 */
 .scr.un .track{width:100%}
 #s-un-progress .pct{font:200 68px/1 var(--sans);margin-bottom:26px}
-#s-un-progress .pct span{font-size:24px}
+#s-un-progress .pct span{font-size:24px;letter-spacing:0}   /* 字距归零，同安装侧（3d #10） */
 #s-un-progress .fill{background:var(--ink);box-shadow:none}
 #s-un-progress .fill::after{background:linear-gradient(90deg,transparent,rgba(255,255,255,.5),transparent)}
 #s-un-progress .plist{margin-top:24px;color:var(--txt2)}
 /* 帧 4：光环 84px（安装 92px）＋ 数据去留徽章（保留=绿、不保留=黄） */
+/* 去色（3d #17）：这个环原来整条沿用安装侧的紫→绿渐变＋紫光晕 ⇒ 一个环三种颜色，在
+   「把 LinkDesk 从这台机器上拿掉」这一屏读起来像庆祝。同一套屏系的进度条早已墨色化
+   （下面 #s-un-progress .fill），只剩这个环没跟上。底色换成产品自己的「面」--glass，语义全交对勾。
+   ⚠️ 不能照 .fill 填 --ink：84px 实心黑盘会把同为 --ink 的对勾整个吞掉。
+   ⚠️ 安装侧 ⑥ 完成屏那个 92px 环一字不动——那里是庆祝时刻，紫绿光晕＋彩粒是有意的。
+   ⚠️ .datbadge 的绿/黄不动：信息色（数据保留/已删）且有文字兜底，不属装饰。 */
 #s-un-finish .fin-ring{width:84px;height:84px;margin-bottom:24px;
-  background:radial-gradient(circle at 35% 30%,rgba(167,139,250,.25),rgba(52,211,153,.14));
-  box-shadow:0 0 50px rgba(138,111,240,.2),inset 0 1px 1px rgba(255,255,255,.7)}
+  background:var(--glass);
+  box-shadow:inset 0 1px 1px rgba(255,255,255,.7)}
 #s-un-finish .fin-ring svg{width:30px;height:30px}
 .datbadge{font:11px var(--mono);letter-spacing:.06em;color:#346538;background:#EDF3EC;
           border-radius:9999px;padding:4px 12px;margin-bottom:26px}

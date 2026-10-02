@@ -119,6 +119,11 @@ function setProgress(p, opt) {
   const s = opt.step || g.seg(p);
   for (let i = 1; i <= 4; i++) $(g.li + i).className = i < s ? 'done' : i === s ? 'run' : '';
   $(g.ph).textContent = t(g.keys[s]);
+  /* 3d #9：解压完成（＝宿主提交点，段 2 起）不再受理取消 ⇒ 按同一段号把按钮置灰。
+     段 1 照旧可取消；只有安装侧有这颗按钮（[data-action=cancel]；卸载的 un-cancel 不吃这条选择器）。
+     resetProgress() 会再走一遍本函数（s=1）⇒ 新一轮安装自动恢复可用。 */
+  const cbtn = $('[data-action=cancel]');
+  if (cbtn) cbtn.disabled = (s >= 2);
   $(g.track).setAttribute('aria-valuenow', String(Math.floor(p)));   // 进度条 ARIA（对账表）
 }
 

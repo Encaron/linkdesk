@@ -12,7 +12,8 @@
  *   · 卸载侧规则原文挂在 html[data-mode=uninstall] ⇒ 评审页一页装两种模式，改挂 .mode-un（双写类保权值）
  *   · 动态位（进度读数/段头/守卫文案/徽章）按 app.js 同一套 i18n 词条与分段阈值定格
  *   · 微尘粒子照抄 app.js 的 dust()（同取数顺序：左→时长→延迟→透明度；seed 固定 ⇒ 每次打开同图样）
- * 定格页没有的东西（真机才有）：语言切换、confetti 彩带、按钮交互——交互态走 _3d-ui\*.bat。
+ * 定格页没有的东西（真机才有）：语言切换、按钮交互——交互态走 _3d-ui\*.bat。
+ * 帧间过渡／完成屏动画（settle · defog · land · pop · draw · 彩粒）由顶部「帧间过渡实演」一节**实演**（R2，装/卸两窗）。
  * 🔴 产出文件不许手改——手改下次重生成就被冲掉。
  */
 import { readFileSync, writeFileSync } from 'node:fs';
@@ -71,6 +72,13 @@ function progTweak(install, pct) {
       const cls = i < seg ? 'done' : i === seg ? 'run' : '';
       s = must(s, `<li id="${li}${i}">`, `<li id="${li}${i}"${cls ? ` class="${cls}"` : ''}>`);
     }
+    // #9（用户拍板「直接置灰就行」）：宿主的提交点在解压完成（段 2 起，安装侧 pct ≥ 70）——
+    //    此后 main.cpp 不再受理取消（段 2/3 的取消检查点是故意撤掉的），但页面原来仍显示可点的
+    //    「取消安装」⇒ UI 在承诺一件宿主做不到的事。定格预览把「已禁用」这个结果冻进来，
+    //    与真落地 app.js setProgress() 里的 cbtn.disabled = (s >= 2) 一一对应。
+    if (install && pct >= 70) s = must(s,
+      '<button class="btn ghost" type="button" data-action="cancel"',
+      '<button class="btn ghost" type="button" data-action="cancel" disabled');
     return must(s, headFrom, '>' + t(headKey) + '<');
   };
 }
@@ -138,6 +146,11 @@ const tweaks = {
       it('zh-CN', '中文', true) + it('en', 'English', false) + '</div>');
   },
 };
+
+/* 候选组全部撤回（2026-10-02 用户最终拍板「算了都不要了，保持最开始的，但是分开不粘连
+   的版本就行」）——三批候选（句子领读 / 放大 / 换字面）已从评审页删除；进度数字维持 app.css
+   原样 26/24px，只保留 #10 那条字距修（letter-spacing:0 ＝「分开不粘连」）。
+   撤回经过与两条遗留观察见 3d-评审记录.md #11~#13。 */
 
 // 屏幕序列：产品能显示的**每一个态**，按用户旅程排（pv 列 = 对应真机缝 _3d-ui\*.bat）
 const sections = [
@@ -207,6 +220,10 @@ const sections = [
   ]},
 ];
 
+/* 2026-10-02 3d 定稿：原先这里的 previewPatches()（#8 取消按钮换 .btn.ghost、#14 确认屏加 .uncol
+   包裹、#16 谢谢→感谢）与文件末尾整块「3d 评审·待落地改动」CSS 已一并撤除——那三处标记手术与
+   #1~#18 的样式现都已是产品源（app.html / app.css / app.js）原文，本页只做忠实抽取，不再打补丁。 */
+
 let body = '';
 for (const g of sections) {
   body += `\n<h1 class="group">${g.group}</h1>\n`;
@@ -220,11 +237,58 @@ for (const g of sections) {
     if (it.mod) s = tweaks[it.mod](s);
     body += `\n<section class="review-item" data-screen="${it.key}"${it.mod ? ` data-state="${it.mod}"` : ''}>
   <h2>${it.n} <code>${it.pv}</code></h2>
-  <div class="stage ${un ? 'stage-uninstall mode-un' : 'stage-install'}">${s}</div>
+  <div class="stage ${un ? 'stage-uninstall mode-un' : 'stage-install'}${it.cls ? ' ' + it.cls : ''}">${s}</div>
   <p class="look">看点：${it.look}</p>
 </section>\n`;
   }
 }
+
+/* 评审页自身（R2 · 用户 2026-10-02「两帧之间的过渡是什么动画，当前 html 只有静态，我无法观测」）：
+   产品切帧**只有入场**——app.css 的 `.scr{animation:settle…,defog…}`（3d #18 定稿版：屏面落定 10px/.42s、
+   去雾 .26s、子元素按阅读顺序每层错开 40ms；原 enter .8s/18px/6px 模糊已废）；旧屏则是硬切（app.js go()
+   摘 .on ⇒ display:none，无出场动画、无交叉淡化）。定格页每节只点亮一屏、且 30 屏只在页面加载时各播一次
+   （都在首屏之外）⇒ 这件事在定格页里天然看不见。这里把**卸载四帧装进同一扇真窗**，
+   点按钮切帧／连播——机制与产品同（摘/加 .on），动画由产品那份 CSS 播，不是另写一套。
+   ⚠️ 这是评审工具的功能，不是产品改动，不进 app.css；真机看仍走 _3d-ui\15-真卸载.bat。 */
+let demoUn = chrome.replace('class="scr on"', 'class="scr"');
+demoUn = tweaks.progU73(demoUn);        // 帧3 停在 73%（段2），四步态与真机一致
+demoUn = tweaks.badgeKept(demoUn);      // 帧4 绿徽章（保留数据）
+demoUn = must(demoUn, '<div class="scr un" id="s-confirm">', '<div class="scr un on" id="s-confirm">');
+/* 安装窗：源里 #s-home 自带 .on ⇒ 先灭再点亮（否则两屏同亮）；进度定格 47%（段1）。 */
+let demoIn = chrome.replace('class="scr on"', 'class="scr"');
+demoIn = tweaks.progI47(demoIn);
+demoIn = must(demoIn, '<div class="scr" id="s-home">', '<div class="scr on" id="s-home">');
+const demoHtml = `
+<section class="review-item" id="demo-frames">
+  <h2>▶ 帧间过渡实演（评审页自身，不是产品改动） <code>点按钮切帧 · 动画跑的是产品真 CSS</code></h2>
+  <p class="look prop">#18 切屏动效（<b>2026-10-02 定稿，已落地 app.css</b>）＝<b>窗不动 · 屏面落定 · 内容按阅读顺序逐层落定</b>：
+屏面只落 10px、走指数级减速（.42s）；去雾拆成独立一条且更短（.26s）——先变清楚、后到齐；屏面里的直接子元素
+每层错开 40ms、各落 8px（标题 → 正文 → 按钮）。首层合计位移仍≈18px（与旧版同一血缘），越靠后越少 ⇒ 收束而非发散；
+全程 ≤.54s（旧版 enter 是 .8s/18px/6px 全域模糊）。⚠️ 只含<b>入场</b>；出场（旧屏硬切）保持现状、本次未动。</p>
+  <p class="look">切帧本身只有<b>入场</b>、没有出场：旧屏是硬切（go() 摘 .on ⇒ display:none，不可过渡），新屏才播入场动画
+（现版＝<code>settle</code>＋<code>defog</code>＋子元素 <code>land</code>：屏面落 10px/.42s、去雾 .26s、逐层错开 40ms；令牌见 app.css :root 的 --mo-*）。
+两个完成屏另有两段共用动画：环 <code>pop</code>（0.6 倍长大到 1，0.8s —— 你说的「圆跳一下」）＋对勾 <code>draw</code>
+（延迟 .25s、历时 .7s 自己画出来）。安装侧还多一层<b>彩粒迸发</b>（40 颗 5 色、自环心向上炸开，参数照
+<code>app.js</code> 的 <code>burst()</code> 原样）——切到「⑤ 装好了」即可看到，且每次切进去都重播。</p>
+  <div class="demo-bar"><span class="demo-lab">安装窗 780×570</span>
+    <button type="button" class="dbtn on" data-stage="in" data-go="home">① 欢迎</button>
+    <button type="button" class="dbtn" data-stage="in" data-go="progress">③④ 进度 47%</button>
+    <button type="button" class="dbtn" data-stage="in" data-go="finish">⑤ 装好了（环跳一下＋彩粒）</button>
+    <button type="button" class="dbtn play" data-play="in">▶ 依次播放（连播两轮）</button>
+  </div>
+  <div class="stage stage-install" id="demo-stage-in" data-frames="home,progress,finish">${demoIn}</div>
+  <div class="demo-bar sec"><span class="demo-lab">卸载窗 720×540</span>
+    <button type="button" class="dbtn on" data-stage="un" data-go="confirm">帧1 · 确认</button>
+    <button type="button" class="dbtn" data-stage="un" data-go="running">帧2 · 运行中</button>
+    <button type="button" class="dbtn" data-stage="un" data-go="un-progress">帧3 · 进度 73%</button>
+    <button type="button" class="dbtn" data-stage="un" data-go="un-finish">帧4 · 完成（环同样跳一下）</button>
+    <button type="button" class="dbtn play" data-play="un">▶ 依次播放（连播两轮）</button>
+  </div>
+  <div class="stage stage-uninstall mode-un" id="demo-stage-un" data-frames="confirm,running,un-progress,un-finish">${demoUn}</div>
+  <p class="look">同一个 <code>.fin-ring</code> 两侧共用 ⇒ <code>pop</code>／<code>draw</code> 两段动画装/卸都有（卸载侧只覆盖尺寸与配色，没动动画）；
+只有<b>彩粒</b>是安装专属（真源 <code>#confetti</code> 只写在 <code>#s-finish</code> 里，app.css 卸载段落注释明写「收场，不用安装时的彩条与粒子」）。
+「依次播放」每 1.4s 切一帧（&gt; 0.8s，看得完整）；<code>prefers-reduced-motion</code> 下彩粒被整条关掉、两段动画压到瞬时。</p>
+</section>`;
 
 const out = `<!doctype html>
 <!-- 🔴 生成文件，勿手改——改 UI 后重跑 build/installer/bootstrapper/tools/gen-review.mjs -->
@@ -239,29 +303,46 @@ ${css}
 <style>
 /* ── 评审壳（浅色、不碰产品样式；app.css 原文在前，这里只管页面本身）────── */
 html,body{overflow:auto!important;height:auto!important}
-body{background:#efede9;color:#33332f;font-family:Consolas,monospace;padding:28px 32px 80px;max-width:1040px;margin:0 auto}
-.lead{font:13px/1.8 Consolas,monospace;color:#55534e;background:#f7f6f3;border:1px solid rgba(0,0,0,.09);border-radius:8px;padding:12px 16px}
-.group{font:600 15px/1 Consolas,monospace;letter-spacing:.08em;color:#8a6ff0;margin:52px 0 4px;text-transform:uppercase}
+/* ⚠️ 评审壳只许在 body 上设「页面级」属性（底色/内边距/居中），**不许设 color / font-family**：
+   产品窗口整棵子树挂在 body 下，这里设了就会被窗内元素继承走（.nm、.hero h1 em 自己不写 color ⇒ 变灰）。
+   评审壳自己的文字一律在各自规则里显式声明字体与颜色。 */
+body{background:#22222a;padding:28px 32px 80px;max-width:1040px;margin:0 auto}
+.lead{font:13px/1.8 Consolas,monospace;color:#b6b2ab;background:#2c2c35;border:1px solid rgba(255,255,255,.10);border-radius:8px;padding:12px 16px}
+.group{font:600 15px/1 Consolas,monospace;letter-spacing:.08em;color:#a892ff;margin:52px 0 4px;text-transform:uppercase}
 .review-item{margin:34px 0}
-.review-item h2{font:400 14px/1.4 Consolas,monospace;color:#1a1a1a;margin:0 0 4px}
-.review-item h2 code{font-size:11px;color:#6b6963;background:rgba(0,0,0,.055);padding:2px 8px;border-radius:6px;margin-left:8px}
+.review-item h2{font:400 14px/1.4 Consolas,monospace;color:#f0ede8;margin:0 0 4px}
+.review-item h2 code{font-size:11px;color:#b6b2ab;background:rgba(255,255,255,.08);padding:2px 8px;border-radius:6px;margin-left:8px}
 /* 舞台＝产品 OS 窗口本体：--desk 底色（窗角露出的就是它）＋DWM 12px 圆角＋系统阴影 */
-.stage{position:relative;background:var(--desk);border-radius:12px;overflow:hidden;box-shadow:0 24px 70px rgba(0,0,0,.20),0 4px 14px rgba(0,0,0,.10);margin:12px 0 8px}
+.stage{position:relative;background:var(--desk);border-radius:12px;overflow:hidden;box-shadow:0 26px 70px rgba(0,0,0,.55),0 4px 16px rgba(0,0,0,.40);margin:12px 0 8px}
 .stage-install{width:780px;height:570px}
 .stage-uninstall{width:720px;height:540px}
 /* grain 在产品里是 fixed（贴视口）；评审页里必须按住舞台，否则铺满整页 */
 .stage .grain{position:absolute}
-.look{font:12px/1.8 Consolas,monospace;color:#6b6963;margin:0}
+.look{font:12px/1.8 Consolas,monospace;color:#a8a49d;margin:0}
 .look::before{content:'看';display:inline-block;background:#8a6ff0;color:#fff;border-radius:4px;padding:1px 5px;margin-right:8px;font-size:10px}
+.look.prop::before{content:'案';background:#2fbf8a}
+/* 评审壳（R2）「帧间过渡实演」那一节的控件——在页面顶部，方便一眼看到；不属产品样式、不进 app.css */
+.demo-bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:10px 0 0}
+.demo-bar.sec{margin-top:26px}      /* 第二个窗（卸载）与上方安装窗拉开 */
+.demo-lab{font:12px/1 Consolas,monospace;color:#8d8880;margin-right:2px}
+.dbtn{font:12px/1 Consolas,monospace;color:#d8d4cd;background:#2c2c35;border:1px solid rgba(255,255,255,.14);
+      border-radius:8px;padding:8px 12px;cursor:pointer}
+.dbtn:hover{color:#fff;border-color:rgba(255,255,255,.32)}
+.dbtn.on{color:#fff;background:#4a3f7a;border-color:#8a6ff0}
+.dbtn.play{background:#8a6ff0;color:#fff;border-color:#8a6ff0}
+.dbtn.play.playing{background:#5c4bb0}
+
 </style>
 </head>
 <body>
-<h1 style="font:400 20px/1.4 Consolas,monospace;color:#1a1a1a">安装器全 UI 评审 · 3d</h1>
+<h1 style="font:400 20px/1.4 Consolas,monospace;color:#f5f2ed">安装器全 UI 评审 · 3d</h1>
 <p class="lead">本页每节＝<b>一扇完整真窗口</b>：噪点、光球、玻璃壳、微尘、语言面板、✕，全部取自产品源
 （app.html/app.css）原文，只点亮目标屏——<b>非手抄、非暗色变体</b>。改 UI 后重跑
-<code>node tools/gen-review.mjs</code> 同步。定格静态：按钮不可点、语言切换不可用、完成屏彩带由 JS 生成——
+<code>node tools/gen-review.mjs</code> 同步。定格静态：按钮不可点、语言切换不可用、完成屏彩带由 JS 生成（唯一例外＝顶部
+「帧间过渡实演」一节，那几颗按钮只为演示切帧动画）——
 <b>交互态/真机态</b>用 <code>E:\\linkdesk-build\\_3d-ui\\</code> 里的 bat（01 真流程 / 15 真卸载）。
 验收基线：04 审计 18/20 不跌破。在 ZCode 内置浏览器里直接点元素留言即可。</p>
+${demoHtml}
 ${body}
 <script>
 /* 微尘照抄 app.js 的 dust()：同取数顺序（左→时长→延迟→透明度）＋固定 seed ⇒ 每次打开图样一致 */
@@ -280,6 +361,67 @@ ${body}
       if (un) d.style.animationName = 'rise-un';
       box.appendChild(d);
     }
+  });
+})();
+
+/* 帧间过渡实演（R2）：切帧＝摘/加 .on，与产品 app.js go(id) 同一套机制 ⇒ 入场动画由产品 CSS 真播。
+   安装窗的「⑤ 装好了」另按 app.js burst() 的原参数补发彩粒（#confetti 只写在真源 #s-finish 里）。 */
+(function () {
+  var seed = 0x9E3779B9;
+  function crnd() { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; }
+  var COLS = ['#8a6ff0', '#2fbf8a', '#e8b04b', '#f2f4ef', '#5a4bd1'];
+  function burst(st) {
+    var box = st.querySelector('#confetti');
+    if (!box) return;
+    box.innerHTML = '';
+    for (var i = 0; i < 40; i++) {              /* 40 颗、5 色、环心(50%/34%)向上炸开——逐项同 app.js */
+      var c = document.createElement('i');
+      var ang = crnd() * Math.PI * 2, d = 90 + crnd() * 220;
+      c.style.setProperty('--dx', Math.cos(ang) * d + 'px');
+      c.style.setProperty('--dy', Math.sin(ang) * d - 80 + 'px');
+      c.style.setProperty('--rot', (crnd() * 720 - 360) + 'deg');
+      c.style.left = '50%'; c.style.top = '34%';
+      c.style.background = COLS[i % COLS.length];
+      c.style.animation = 'burst ' + (0.9 + crnd() * 0.7) + 's ' + (crnd() * 0.15) + 's cubic-bezier(.16,1,.3,1) forwards';
+      box.appendChild(c);
+    }
+  }
+  [].forEach.call(document.querySelectorAll('.stage[id^="demo-stage-"]'), function (st) {
+    var key = st.id.replace('demo-stage-', '');
+    var ids = st.getAttribute('data-frames').split(',');
+    var btns = [].slice.call(document.querySelectorAll('.dbtn[data-stage="' + key + '"][data-go]'));
+    var play = document.querySelector('.dbtn.play[data-play="' + key + '"]');
+    if (!play) return;
+    var PLAY = play.textContent;
+    var timer = null, i = 0;
+    function go(id) {
+      [].forEach.call(st.querySelectorAll('.scr'), function (s) { s.classList.remove('on'); });
+      var t = st.querySelector('#s-' + id);
+      if (t) {
+        void t.offsetWidth;        /* 强制回流：同一屏再点亮也要重播动画（否则 display 同帧内不变化） */
+        t.classList.add('on');
+      }
+      btns.forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-go') === id); });
+      if (id === 'finish') burst(st);           /* 只有安装的完成屏有彩粒 */
+    }
+    function stop() {
+      if (!timer) return;
+      clearInterval(timer); timer = null;
+      play.textContent = PLAY; play.classList.remove('playing');
+    }
+    btns.forEach(function (b) {
+      b.addEventListener('click', function () { stop(); go(b.getAttribute('data-go')); });
+    });
+    play.addEventListener('click', function () {
+      if (timer) { stop(); return; }
+      play.textContent = '⏸ 停止'; play.classList.add('playing');
+      go(ids[0]); i = 0;
+      timer = setInterval(function () {
+        i++;
+        go(ids[i % ids.length]);
+        if (i >= ids.length * 2) stop();        /* 连播两轮 */
+      }, 1400);
+    });
   });
 })();
 </script>

@@ -20,6 +20,11 @@
  *     2026-10-02 拍板只嵌拉丁，中文仍走系统宋体）——见本文件 :root 下方那段注
  *   · 件 1d：卸载屏（E-卸载屏.html 直搬）追加在本文件末尾，规则一律 .scr.un / .mode-un.mode-un
  *     限定——两套屏同页共存（同一个 exe 的 --uninstall 模式），上方安装侧规则一字不动
+ *   · 3d 视觉评审定稿（2026-10-02 用户「定稿」，逐条见 docs/04-软件更新/待抉择池/安装界面自绘/3d-评审记录.md）：
+ *     药丸内移 20px＋内容顶距 44→58；三圈同心（.win 22 ／ 药丸 12，壳仍 32）；品牌行下移 12px；
+ *     自定义区补下边距 20px；路径错误行改成常驻带（不再跳版）；按钮左右对称 22px（带圆片者除外）＋禁用态；
+ *     进度数字字距归零（掐掉 .pct 继承来的 -.05em）；卸载确认屏收进内容列 .uncol(188px)；卸载完成环去色；
+ *     切屏过渡换成「屏面落定 ＋ 去雾 ＋ 内容分层」（--mo-* 令牌，原 enter .8s 已废）
  */
 
 :root{
@@ -31,6 +36,12 @@
   --sans:'Geist','Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;
   --mono:'Geist Mono',Consolas,monospace;
   --ease:cubic-bezier(.32,.72,0,1);
+  /* 切屏过渡（3d #18 用户 2026-10-02 定稿）：窗不动 · 屏面落定 · 内容按阅读顺序逐层落定。
+     --ease 仍是旧曲线，pop/draw/勾选/圆片/悬停继续用它，本次一字不动。 */
+  --mo-dur:.42s; --mo-rise:10px;      /* 屏面落定：时长 / 位移（原 enter 是 .8s / 18px） */
+  --mo-defog:.26s; --mo-blur:4px;     /* 去雾独立且更短 ⇒ 先变清楚、后到齐 */
+  --mo-ease:cubic-bezier(.16,1,.3,1); /* 指数级减速，与彩粒 burst 同一条曲线 */
+  --mo-step:.04s; --mo-tier:.38s; --mo-tier-rise:8px;  /* 内容层：错峰 / 时长 / 位移 */
 }
 /* 件 3b：随包 Newsreader **拉丁子集**（用户 2026-10-02 拍板：中文不嵌，仍走系统宋体——中文衬线
    子集数 MB，逼近 5MB 壳预算）。两份文件 = Google Fonts 官方 `latin` 子集原样（正体 57KB ＋
@@ -83,16 +94,32 @@ body{background:var(--desk);font-family:var(--sans);color:var(--txt);overflow:hi
 .shell{position:absolute;inset:0;border-radius:32px;background:var(--glass);
        border:1px solid var(--hair);padding:9px;backdrop-filter:blur(28px);
        box-shadow:0 30px 80px rgba(0,0,0,.14),inset 0 1px 0 rgba(255,255,255,.8)}
-.win{position:relative;height:100%;border-radius:24px;background:rgba(252,252,250,.85);
+/* 三圈同心（3d #3）：窗口左上角圆心恒为 (32,32) ⇒ R_内 = 32 − 该圈间隙（壳 32 ／ 面 10 → 22）。
+   原 24 与壳不同心，角上玻璃包边被挤到最窄 7.7px。 */
+.win{position:relative;height:100%;border-radius:22px;background:rgba(252,252,250,.85);
      border:1px solid var(--hair);overflow:hidden;display:flex;flex-direction:column}
 .xbtn{position:absolute;top:14px;right:16px;z-index:10;width:30px;height:30px;border:0;border-radius:9px;background:transparent;color:var(--txt2);cursor:pointer;display:grid;place-items:center;transition:background .2s}
 .xbtn:hover{background:rgba(0,0,0,.06)}
 .xbtn[disabled]{color:var(--txt3);cursor:default;background:transparent}
 
-.scr{position:absolute;inset:0;display:none;flex-direction:column;padding:44px 52px 38px;
-     animation:enter .8s var(--ease)}
+/* 顶距 58（3d #1）：语言药丸内移到 20px 后底边到 49px，品牌行/错误屏图标的 x 52-96 正在药丸
+   x 20-107 之内 ⇒ 内容不下移就撞上。⚠️ .scr.un 是并列的另一条规则，两处要同改（下方件 1d 段）。 */
+/* 切屏过渡（3d #18）：换的是同一扇 .win 里的 .scr、窗口根本没动 ⇒ 屏面只「落定」10px，
+   去雾单独一条且更早收干净，子元素按 DOM（＝阅读）顺序每层错开 40ms。
+   原 enter（整屏刚体上浮 18px ＋ 全域模糊，单曲线 .8s）已废——位移会让人误以为窗口在滑。 */
+.scr{position:absolute;inset:0;display:none;flex-direction:column;padding:58px 52px 38px;
+     animation:settle var(--mo-dur) var(--mo-ease),defog var(--mo-defog) var(--mo-ease)}
 .scr.on{display:flex}
-@keyframes enter{from{opacity:0;transform:translateY(18px);filter:blur(6px)}to{opacity:1;transform:none;filter:blur(0)}}
+@keyframes settle{from{opacity:0;transform:translateY(var(--mo-rise))}to{opacity:1;transform:none}}
+@keyframes defog{from{filter:blur(var(--mo-blur))}to{filter:blur(0)}}
+/* .fin-ring 自带 pop、#confetti 是整幅覆盖层（跟着位移会歪掉彩粒爆心）⇒ 两者不参与分层。
+   :where(#confetti) 把该列选择器权重压回 0，不因一个 id 把整条规则抬到 ID 级。 */
+.scr.on > *:not(.fin-ring):not(:where(#confetti)){animation:land var(--mo-tier) var(--mo-ease) backwards}
+@keyframes land{from{opacity:0;transform:translateY(var(--mo-tier-rise))}to{opacity:1;transform:none}}
+.scr.on > *:nth-child(2){animation-delay:var(--mo-step)}
+.scr.on > *:nth-child(3){animation-delay:calc(var(--mo-step) * 2)}
+.scr.on > *:nth-child(4){animation-delay:calc(var(--mo-step) * 3)}
+.scr.on > *:nth-child(n+5){animation-delay:calc(var(--mo-step) * 4)}
 
 /* ① UAC 等待提示帧（壳内，非系统对话框仿真——见文件头注释） */
 #s-uac{align-items:center;justify-content:center;text-align:center}
@@ -105,7 +132,9 @@ body{background:var(--desk);font-family:var(--sans);color:var(--txt);overflow:hi
      background-size:200% 100%;animation:shimmer 1.6s linear infinite}
 
 /* 品牌行：A 的六边形图标（实心 + 三白孔）＋ A 的衬线 slogan */
-.brand{display:flex;align-items:center;gap:14px;margin-bottom:10px}
+/* 品牌行下移 12（3d #4）：上方语言药丸底边到 49px，行顶原只余 9px ⇒ 改 21px。
+   整行同走（hero/自定义区/按钮跟着下移 12，屏内节奏不变）。 */
+.brand{display:flex;align-items:center;gap:14px;margin:12px 0 10px}
 .brand svg{width:40px;height:44px;flex:none}
 .brand .nm{font:600 19px/1.2 var(--sans);letter-spacing:-.02em}
 .brand .sl{font:italic 400 13.5px/1.4 var(--serif);color:var(--txt2);margin-top:2px}
@@ -117,20 +146,31 @@ body{background:var(--desk);font-family:var(--sans);color:var(--txt);overflow:hi
 .hero p{font:14px/1.75 var(--sans);color:var(--txt2);max-width:44ch}
 .actions{display:flex;flex-wrap:wrap;align-items:center;gap:18px}
 /* B 的药丸按钮（button-in-button）× 亮色化：墨色实心 */
+/* 3d #7：28px 左内边距是给 .cir 圆片留位的，不带圆片的按钮（⑥ 守卫「退出安装」、卸载完成「完成」）
+   文字因此偏右 ⇒ 默认左右对称 22px（与 .btn.ghost 同档），真有 .cir 才恢复。
+   :has() 需 Chromium 105+（WebView2 满足）；万一是老运行时只退化为现状，不会坏。 */
 .btn{display:inline-flex;align-items:center;gap:12px;font:600 14px var(--sans);color:#fff;
-     background:var(--ink);border:0;border-radius:9999px;padding:9px 9px 9px 28px;cursor:pointer;
+     background:var(--ink);border:0;border-radius:9999px;padding:9px 22px;cursor:pointer;
      transition:transform .5s var(--ease),box-shadow .5s var(--ease)}
+.btn:has(.cir){padding:9px 9px 9px 28px}
 .btn .cir{width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,.16);display:grid;place-items:center;transition:transform .5s var(--ease)}
 .btn:hover{box-shadow:0 8px 30px rgba(0,0,0,.16)}
 .btn:hover .cir{transform:translate(3px,-1px) scale(1.06)}
 .btn:active{transform:scale(.98)}
 .btn.ghost{background:transparent;color:var(--txt2);border:1px solid var(--hair);padding:10px 22px;gap:0}
 .btn.ghost:hover{box-shadow:none;color:var(--txt)}
+/* 禁用态（3d #9，用户「直接置灰就行」）：解压完成（＝提交点，段 2 起）的「取消安装」。
+   只做「灰」、不加禁用文案；必须同时压掉 hover——.btn.ghost:hover 会把禁用按钮点亮，
+   与禁用语义相反。段号判断与宿主一致（app.js setProgress 按同一分界禁用）。 */
+.btn:disabled{opacity:.45;cursor:default;box-shadow:none}
+.btn.ghost:disabled:hover{color:var(--txt2);box-shadow:none}
 /* ④ 自定义展开 */
 #custom{max-height:0;overflow:hidden;transition:max-height .7s var(--ease)}
 #custom.open{max-height:270px}
-.cust-in{margin-top:24px;padding-top:24px;border-top:1px solid var(--line)}
-.pathrow{display:flex;gap:8px;margin-bottom:18px}
+/* 下边距 20（3d #5）：原来只有上半边，展开态下 #custom 底边与 .actions 顶边相接（间距 0）。
+   只能加在这里——.actions 全文件 7 处，全局加上边距会连累别的屏。 */
+.cust-in{margin-top:24px;padding-top:24px;padding-bottom:20px;border-top:1px solid var(--line)}
+.pathrow{display:flex;gap:8px;margin-bottom:8px}
 .pathrow input{flex:1;font:12.5px var(--mono);padding:11px 14px;border-radius:14px;border:1px solid var(--line);
                background:rgba(255,255,255,.75);color:var(--txt);box-shadow:inset 0 1px 1px rgba(255,255,255,.6)}
 .pathrow input:focus{outline:none;border-color:#c4c0b8}
@@ -149,7 +189,9 @@ body{background:var(--desk);font-family:var(--sans);color:var(--txt);overflow:hi
 #s-progress{justify-content:center}
 .ph{font:11px var(--mono);letter-spacing:.18em;text-transform:uppercase;color:var(--txt2);margin-bottom:12px}
 .pct{font:200 76px/1 var(--sans);letter-spacing:-.05em;margin-bottom:28px;color:var(--ink);font-variant-numeric:tabular-nums}
-.pct span{font-size:26px}
+/* 字距归零（3d #10）：letter-spacing 继承的是**计算后长度**，.pct 那条 -.05em 按 76px 解析 =
+   -3.8px，26px 的子 span 白白背上（十位/个位被吸到一起的真正原因）。字号一字不动。 */
+.pct span{font-size:26px;letter-spacing:0}
 .track{height:8px;border-radius:9999px;background:rgba(0,0,0,.08);overflow:hidden;position:relative}
 .fill{height:100%;width:0%;border-radius:9999px;position:relative;transition:width .3s linear;
       background:linear-gradient(90deg,#8a6ff0,#2fbf8a);box-shadow:0 0 14px rgba(138,111,240,.35)}
@@ -163,8 +205,9 @@ body{background:var(--desk);font-family:var(--sans);color:var(--txt);overflow:hi
 .plist li.run{color:var(--txt2)}.plist li.run .st::after{content:'▸';color:#8a6ff0}
 .plist li.done{color:var(--txt2)}.plist li.done .st::after{content:'✓';color:#2fae7c}
 .prow{margin-top:26px;display:flex;gap:18px;align-items:center}
-.cancel{margin-top:26px;font:12px var(--sans);color:var(--txt2);background:none;border:0;cursor:pointer}
-.cancel:hover{color:var(--txt2)}
+/* 3d #8：原 .cancel（background:none;border:0;无 padding ⇒ 命中区只有文字 48×15、hover 与基态同色）
+   两条已删——按钮换成 .btn.ghost（靶区 101×41、hover/焦点态自来），见 app.html ③④ 进度屏。 */
+
 
 /* ⑥ 完成：B 光晕对勾（亮色化）＋ D 彩粒迸发 */
 #s-finish{justify-content:center;align-items:center;text-align:center}
@@ -199,13 +242,17 @@ body{background:var(--desk);font-family:var(--sans);color:var(--txt);overflow:hi
 
 /* 件 2c · 路径行内错误：就地贴在输入框下（UX 规则「错误靠近出问题的字段」＋ role=alert）。
    只染边框不算数——文字才是判据，颜色只是同一句判据的第二通道（对比度达标的 --danger）。 */
-.patherr{font:11px/1.5 var(--mono);color:var(--danger);letter-spacing:.04em;margin:-10px 0 14px}
-.patherr[hidden]{display:none}
+/* 常驻带 8 / 17 / 8（3d #6）：原 margin 负值＋[hidden] 不占位 ⇒ 错误一出现就把下面整块顶下去
+   （布局跳动）。从头留好位置，app.js 不必改（它只管 hidden 与 textContent）。 */
+.patherr{font:11px/1.5 var(--mono);color:var(--danger);letter-spacing:.04em;margin:0 0 8px;min-height:17px}
+.patherr[hidden]{display:block}
 .pathrow input.bad,.pathrow input.bad:focus{border-color:var(--danger)}
 
 /* 自绘语言下拉（原生 select 画不进自绘界面；语言清单由 1c 从 build/installer/i18n/ 枚举） */
-#lkdd{position:absolute;top:8px;left:8px;z-index:40;font:12px var(--sans)}
-#lkdd-btn{display:flex;align-items:center;gap:7px;padding:6px 12px;border-radius:9999px;border:1px solid rgba(128,128,128,.4);background:rgba(255,255,255,.55);backdrop-filter:blur(6px);color:inherit;cursor:pointer;user-select:none;font:inherit;transition:box-shadow .3s var(--ease)}
+#lkdd{position:absolute;top:20px;left:20px;z-index:40;font:12px var(--sans)}
+/* ⚠️ 与 #1 同一套几何：药丸内移到 20 并被 .win/.shell 的同心圆角收成 12px 圆角矩形
+   （原 9999 药丸自成一派，是第三种圆角族）。 */
+#lkdd-btn{display:flex;align-items:center;gap:7px;padding:6px 12px;border-radius:12px;border:1px solid rgba(128,128,128,.4);background:rgba(255,255,255,.55);backdrop-filter:blur(6px);color:inherit;cursor:pointer;user-select:none;font:inherit;transition:box-shadow .3s var(--ease)}
 #lkdd-btn:hover{box-shadow:0 4px 16px rgba(0,0,0,.1)}
 #lkdd-btn .chev{transition:transform .25s var(--ease)}
 #lkdd.open #lkdd-btn .chev{transform:rotate(180deg)}
@@ -238,7 +285,8 @@ body{background:var(--desk);font-family:var(--sans);color:var(--txt);overflow:hi
 .mode-un.mode-un .orb{width:380px;height:380px;opacity:.2}
 @keyframes rise-un{to{transform:translateY(-560px);opacity:0}}
 
-.scr.un{align-items:center;justify-content:center;text-align:center;padding:44px 56px 38px}
+.scr.un{align-items:center;justify-content:center;text-align:center;padding:58px 56px 38px}
+   /* ↑ 顶距 58 与上面 .scr 同步（3d #1）——本条特异性更高，只改上一条卸载侧 12 幕不生效 */
 #s-un-progress{align-items:flex-start;text-align:left}   /* 帧 3 = 左对齐变体（mockup 同款） */
 .scr.un h1{font:400 36px/1.2 var(--serif);letter-spacing:-.03em;margin-bottom:12px}
 .scr.un .sub{font:13px/1.8 var(--sans);color:var(--txt2);margin-bottom:8px}
@@ -250,7 +298,9 @@ body{background:var(--desk);font-family:var(--sans);color:var(--txt);overflow:hi
 .btn.primary{background:var(--ink)}
 .btn.danger{background:var(--danger)}
 .btn.danger:hover{box-shadow:0 8px 30px rgba(179,38,30,.28)}
-.scr.un .btn{padding:10px 10px 10px 30px}
+/* 3d #7（卸载侧同构）：30px 左内边距同理只给 .cir 留位 ⇒ 不带圆片的「完成」在 .scr.un 前缀下偏右 20px。 */
+.scr.un .btn{padding:10px 22px}
+.scr.un .btn:has(.cir){padding:10px 10px 10px 30px}
 .scr.un .btn.ghost{padding:11px 24px;font-weight:500}
 .scr.un .opt{margin-top:22px;font:13.5px/1.5 var(--sans)}
 .scr.un .opt small{display:block;color:var(--txt3);font-size:11px}
@@ -263,17 +313,31 @@ body{background:var(--desk);font-family:var(--sans);color:var(--txt);overflow:hi
    复选行收紧行距（.scr.un .opt 的 22px 是给屏级选项的，块内不需要那么大） */
 .unwarn.danger{color:var(--danger)}
 #delconfirm .opt{margin-top:12px}
+/* 帧 1 内容列（3d #14 / #15）：屏幕整体仍居中，只把两行选项与 #delconfirm 收进一条以中线为轴、
+   列内左对齐的窄列 ⇒ 三个左沿归一（原各自 fit-content 居中，两个方框左沿差 70px）。
+   列宽 188 = 13 个全角字 + 28 内边距 ⇒ 那句 23 字警示断成 13/10 两行（原 285 宽末行只剩「复。」2 字）。
+   ⚠️ 列内 .unwarn 必须掐掉它自己的 max-width 与 auto 外边距：宽度只由列一处定义，
+      否则「列宽 vs 块宽」两套 ch 度量会再错开一遍（同一类坑）。 */
+.uncol{width:100%;max-width:188px;margin:22px auto 0;text-align:left}
+.uncol .opt{margin-top:0}
+.uncol .unwarn{max-width:none;margin:10px 0 0}
 /* 帧 3：PCT 68px（安装 76px）＋ 墨色 fill（不带安装的紫光晕）；分段文案色比安装亮一档 */
 .scr.un .track{width:100%}
 #s-un-progress .pct{font:200 68px/1 var(--sans);margin-bottom:26px}
-#s-un-progress .pct span{font-size:24px}
+#s-un-progress .pct span{font-size:24px;letter-spacing:0}   /* 字距归零，同安装侧（3d #10） */
 #s-un-progress .fill{background:var(--ink);box-shadow:none}
 #s-un-progress .fill::after{background:linear-gradient(90deg,transparent,rgba(255,255,255,.5),transparent)}
 #s-un-progress .plist{margin-top:24px;color:var(--txt2)}
 /* 帧 4：光环 84px（安装 92px）＋ 数据去留徽章（保留=绿、不保留=黄） */
+/* 去色（3d #17）：这个环原来整条沿用安装侧的紫→绿渐变＋紫光晕 ⇒ 一个环三种颜色，在
+   「把 LinkDesk 从这台机器上拿掉」这一屏读起来像庆祝。同一套屏系的进度条早已墨色化
+   （下面 #s-un-progress .fill），只剩这个环没跟上。底色换成产品自己的「面」--glass，语义全交对勾。
+   ⚠️ 不能照 .fill 填 --ink：84px 实心黑盘会把同为 --ink 的对勾整个吞掉。
+   ⚠️ 安装侧 ⑥ 完成屏那个 92px 环一字不动——那里是庆祝时刻，紫绿光晕＋彩粒是有意的。
+   ⚠️ .datbadge 的绿/黄不动：信息色（数据保留/已删）且有文字兜底，不属装饰。 */
 #s-un-finish .fin-ring{width:84px;height:84px;margin-bottom:24px;
-  background:radial-gradient(circle at 35% 30%,rgba(167,139,250,.25),rgba(52,211,153,.14));
-  box-shadow:0 0 50px rgba(138,111,240,.2),inset 0 1px 1px rgba(255,255,255,.7)}
+  background:var(--glass);
+  box-shadow:inset 0 1px 1px rgba(255,255,255,.7)}
 #s-un-finish .fin-ring svg{width:30px;height:30px}
 .datbadge{font:11px var(--mono);letter-spacing:.06em;color:#346538;background:#EDF3EC;
           border-radius:9999px;padding:4px 12px;margin-bottom:26px}
@@ -283,29 +347,462 @@ body{background:var(--desk);font-family:var(--sans);color:var(--txt);overflow:hi
 <style>
 /* ── 评审壳（浅色、不碰产品样式；app.css 原文在前，这里只管页面本身）────── */
 html,body{overflow:auto!important;height:auto!important}
-body{background:#efede9;color:#33332f;font-family:Consolas,monospace;padding:28px 32px 80px;max-width:1040px;margin:0 auto}
-.lead{font:13px/1.8 Consolas,monospace;color:#55534e;background:#f7f6f3;border:1px solid rgba(0,0,0,.09);border-radius:8px;padding:12px 16px}
-.group{font:600 15px/1 Consolas,monospace;letter-spacing:.08em;color:#8a6ff0;margin:52px 0 4px;text-transform:uppercase}
+/* ⚠️ 评审壳只许在 body 上设「页面级」属性（底色/内边距/居中），**不许设 color / font-family**：
+   产品窗口整棵子树挂在 body 下，这里设了就会被窗内元素继承走（.nm、.hero h1 em 自己不写 color ⇒ 变灰）。
+   评审壳自己的文字一律在各自规则里显式声明字体与颜色。 */
+body{background:#22222a;padding:28px 32px 80px;max-width:1040px;margin:0 auto}
+.lead{font:13px/1.8 Consolas,monospace;color:#b6b2ab;background:#2c2c35;border:1px solid rgba(255,255,255,.10);border-radius:8px;padding:12px 16px}
+.group{font:600 15px/1 Consolas,monospace;letter-spacing:.08em;color:#a892ff;margin:52px 0 4px;text-transform:uppercase}
 .review-item{margin:34px 0}
-.review-item h2{font:400 14px/1.4 Consolas,monospace;color:#1a1a1a;margin:0 0 4px}
-.review-item h2 code{font-size:11px;color:#6b6963;background:rgba(0,0,0,.055);padding:2px 8px;border-radius:6px;margin-left:8px}
+.review-item h2{font:400 14px/1.4 Consolas,monospace;color:#f0ede8;margin:0 0 4px}
+.review-item h2 code{font-size:11px;color:#b6b2ab;background:rgba(255,255,255,.08);padding:2px 8px;border-radius:6px;margin-left:8px}
 /* 舞台＝产品 OS 窗口本体：--desk 底色（窗角露出的就是它）＋DWM 12px 圆角＋系统阴影 */
-.stage{position:relative;background:var(--desk);border-radius:12px;overflow:hidden;box-shadow:0 24px 70px rgba(0,0,0,.20),0 4px 14px rgba(0,0,0,.10);margin:12px 0 8px}
+.stage{position:relative;background:var(--desk);border-radius:12px;overflow:hidden;box-shadow:0 26px 70px rgba(0,0,0,.55),0 4px 16px rgba(0,0,0,.40);margin:12px 0 8px}
 .stage-install{width:780px;height:570px}
 .stage-uninstall{width:720px;height:540px}
 /* grain 在产品里是 fixed（贴视口）；评审页里必须按住舞台，否则铺满整页 */
 .stage .grain{position:absolute}
-.look{font:12px/1.8 Consolas,monospace;color:#6b6963;margin:0}
+.look{font:12px/1.8 Consolas,monospace;color:#a8a49d;margin:0}
 .look::before{content:'看';display:inline-block;background:#8a6ff0;color:#fff;border-radius:4px;padding:1px 5px;margin-right:8px;font-size:10px}
+.look.prop::before{content:'案';background:#2fbf8a}
+/* 评审壳（R2）「帧间过渡实演」那一节的控件——在页面顶部，方便一眼看到；不属产品样式、不进 app.css */
+.demo-bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:10px 0 0}
+.demo-bar.sec{margin-top:26px}      /* 第二个窗（卸载）与上方安装窗拉开 */
+.demo-lab{font:12px/1 Consolas,monospace;color:#8d8880;margin-right:2px}
+.dbtn{font:12px/1 Consolas,monospace;color:#d8d4cd;background:#2c2c35;border:1px solid rgba(255,255,255,.14);
+      border-radius:8px;padding:8px 12px;cursor:pointer}
+.dbtn:hover{color:#fff;border-color:rgba(255,255,255,.32)}
+.dbtn.on{color:#fff;background:#4a3f7a;border-color:#8a6ff0}
+.dbtn.play{background:#8a6ff0;color:#fff;border-color:#8a6ff0}
+.dbtn.play.playing{background:#5c4bb0}
+
 </style>
 </head>
 <body>
-<h1 style="font:400 20px/1.4 Consolas,monospace;color:#1a1a1a">安装器全 UI 评审 · 3d</h1>
+<h1 style="font:400 20px/1.4 Consolas,monospace;color:#f5f2ed">安装器全 UI 评审 · 3d</h1>
 <p class="lead">本页每节＝<b>一扇完整真窗口</b>：噪点、光球、玻璃壳、微尘、语言面板、✕，全部取自产品源
 （app.html/app.css）原文，只点亮目标屏——<b>非手抄、非暗色变体</b>。改 UI 后重跑
-<code>node tools/gen-review.mjs</code> 同步。定格静态：按钮不可点、语言切换不可用、完成屏彩带由 JS 生成——
+<code>node tools/gen-review.mjs</code> 同步。定格静态：按钮不可点、语言切换不可用、完成屏彩带由 JS 生成（唯一例外＝顶部
+「帧间过渡实演」一节，那几颗按钮只为演示切帧动画）——
 <b>交互态/真机态</b>用 <code>E:\linkdesk-build\_3d-ui\</code> 里的 bat（01 真流程 / 15 真卸载）。
 验收基线：04 审计 18/20 不跌破。在 ZCode 内置浏览器里直接点元素留言即可。</p>
+
+<section class="review-item" id="demo-frames">
+  <h2>▶ 帧间过渡实演（评审页自身，不是产品改动） <code>点按钮切帧 · 动画跑的是产品真 CSS</code></h2>
+  <p class="look prop">#18 切屏动效（<b>2026-10-02 定稿，已落地 app.css</b>）＝<b>窗不动 · 屏面落定 · 内容按阅读顺序逐层落定</b>：
+屏面只落 10px、走指数级减速（.42s）；去雾拆成独立一条且更短（.26s）——先变清楚、后到齐；屏面里的直接子元素
+每层错开 40ms、各落 8px（标题 → 正文 → 按钮）。首层合计位移仍≈18px（与旧版同一血缘），越靠后越少 ⇒ 收束而非发散；
+全程 ≤.54s（旧版 enter 是 .8s/18px/6px 全域模糊）。⚠️ 只含<b>入场</b>；出场（旧屏硬切）保持现状、本次未动。</p>
+  <p class="look">切帧本身只有<b>入场</b>、没有出场：旧屏是硬切（go() 摘 .on ⇒ display:none，不可过渡），新屏才播入场动画
+（现版＝<code>settle</code>＋<code>defog</code>＋子元素 <code>land</code>：屏面落 10px/.42s、去雾 .26s、逐层错开 40ms；令牌见 app.css :root 的 --mo-*）。
+两个完成屏另有两段共用动画：环 <code>pop</code>（0.6 倍长大到 1，0.8s —— 你说的「圆跳一下」）＋对勾 <code>draw</code>
+（延迟 .25s、历时 .7s 自己画出来）。安装侧还多一层<b>彩粒迸发</b>（40 颗 5 色、自环心向上炸开，参数照
+<code>app.js</code> 的 <code>burst()</code> 原样）——切到「⑤ 装好了」即可看到，且每次切进去都重播。</p>
+  <div class="demo-bar"><span class="demo-lab">安装窗 780×570</span>
+    <button type="button" class="dbtn on" data-stage="in" data-go="home">① 欢迎</button>
+    <button type="button" class="dbtn" data-stage="in" data-go="progress">③④ 进度 47%</button>
+    <button type="button" class="dbtn" data-stage="in" data-go="finish">⑤ 装好了（环跳一下＋彩粒）</button>
+    <button type="button" class="dbtn play" data-play="in">▶ 依次播放（连播两轮）</button>
+  </div>
+  <div class="stage stage-install" id="demo-stage-in" data-frames="home,progress,finish">
+<div class="grain"></div>
+<div class="orb a"></div><div class="orb b"></div>
+<div class="dust" id="dust"></div>
+
+<!-- 自绘语言下拉：原生 select 画不进自绘界面；清单由 1c 从 build/installer/i18n/ 枚举 -->
+<div id="lkdd">
+  <button type="button" id="lkdd-btn" aria-haspopup="listbox" aria-expanded="false">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.8 3 2.8 15 0 18M12 3c-2.8 3-2.8 15 0 18"/></svg>
+    <span id="lkdd-cur">中文</span>
+    <svg class="chev" width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M2 4l4 4 4-4"/></svg>
+  </button>
+  <div id="lkdd-pop" role="listbox" aria-label="语言" data-i18n-aria="installer.lang.aria"></div>
+</div>
+
+<div class="shell"><div class="win">
+  <button type="button" id="xbtn" class="xbtn" aria-label="关闭窗口" data-i18n-aria="installer.chrome.close" data-action="close">
+    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M2 2l8 8M10 2l-8 8"/></svg>
+  </button>
+
+  <!-- ① UAC：系统弹窗由 Windows 绘制，此帧只是壳内等待提示（不仿造系统对话框） -->
+  <div class="scr" id="s-uac">
+    <div class="wait" data-drag>
+      <svg viewBox="0 0 100 110" aria-hidden="true"><path fill="#111" fill-rule="evenodd" d="M50 0l43 25v50L50 110 7 75V25zM33 42a8 8 0 100 16 8 8 0 000-16zm34 0a8 8 0 100 16 8 8 0 000-16zm-17 26a8 8 0 100 16 8 8 0 000-16z"/></svg>
+      <div class="t" role="status" data-i18n="installer.uac.wait">正在等待 Windows 权限确认…</div>
+      <div class="bar" aria-hidden="true"></div>
+    </div>
+  </div>
+
+  <!-- ② 主屏 ＋ ④ 自定义展开区（真实流程的起始屏：UAC 由系统在窗口出现前处理） -->
+  <div class="scr on" id="s-home">
+    <div class="brand" data-drag>
+      <svg viewBox="0 0 100 110" aria-hidden="true"><path fill="#111" fill-rule="evenodd" d="M50 0l43 25v50L50 110 7 75V25zM33 42a8 8 0 100 16 8 8 0 000-16zm34 0a8 8 0 100 16 8 8 0 000-16zm-17 26a8 8 0 100 16 8 8 0 000-16z"/></svg>
+      <div><div class="nm">LinkDesk</div><div class="sl" data-i18n="installer.brand.slogan">一个容器，装下你所有的工作方式。</div></div>
+      <div class="ver" id="ver">v0.2.34</div>
+    </div>
+    <div class="hero" data-drag>
+      <h1 data-i18n="installer.home.title">安装就一步，<em>然后交给它。</em></h1>
+      <p data-i18n="installer.home.sub">它不规定你怎么工作，它装下你怎么工作。</p>
+    </div>
+    <div id="custom">
+      <div class="cust-in">
+        <div class="pathrow">
+          <input data-role="path" value="C:\Users\fengy\AppData\Local\Programs\linkdesk" spellcheck="false" aria-label="安装位置" aria-describedby="patherr" data-i18n-aria="installer.custom.path">
+          <button type="button" data-action="browse" data-i18n="installer.custom.browse">浏览…</button>
+        </div>
+        <!-- 路径行内错误（件 2c）：就地贴在输入框正下方（UX 规则「错误靠近出问题的字段」），
+             role=alert 让读屏也播报；说的是**哪儿不对**，不是只把边框染红。
+             语法错由页面即时判（app.js pathSyntaxError），写不进去由宿主回 dir-invalid 判。 -->
+        <div class="patherr" id="patherr" role="alert" hidden></div>
+        <div class="opts">
+          <label class="opt"><input type="checkbox" data-opt="filemenu"><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span data-i18n="installer.opt.filemenu">文件右键菜单「通过 LinkDesk 打开」</span></label>
+          <label class="opt"><input type="checkbox" data-opt="dirmenu"><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span data-i18n="installer.opt.dirmenu">目录右键菜单「通过 LinkDesk 打开」</span></label>
+          <label class="opt"><input type="checkbox" data-opt="editor" checked><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span data-i18n="installer.opt.editor">注册为受支持文件类型的编辑器</span></label>
+          <label class="opt"><input type="checkbox" data-opt="path" checked><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span data-i18n="installer.opt.path">添加到 PATH（重启终端后生效）</span></label>
+        </div>
+      </div>
+    </div>
+    <div class="actions">
+      <button class="btn" type="button" data-action="install" data-primary data-i18n="installer.home.install">立即安装<span class="cir">→</span></button>
+      <button class="btn ghost" type="button" id="custtoggle" data-action="toggle-custom" data-i18n="installer.customize">自定义安装</button>
+      <div class="foot" data-i18n="installer.home.foot">继续即同意 <a href="#" data-action="license">许可协议</a> · MIT</div>
+    </div>
+  </div>
+
+  <!-- ⑤ 进度（四段真实进度：数值与分段由件 2 的 IO 回调驱动）
+       件 2c：段头挂 role=status ＋ aria-live=polite——段头文案是「现在在做什么」，
+       读屏要能听到换段，但别像报警那样打断（进度条本体的 aria-valuenow 由 setProgress 写） -->
+  <div class="scr" id="s-progress">
+    <div class="ph" id="ph" role="status" aria-live="polite" data-drag>STEP 1 / 4 · 正在解压文件</div>
+    <div class="pct" data-drag><span id="pn">47</span><span>%</span></div>
+    <div class="track" id="track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="47" aria-label="安装进度" data-i18n-aria="installer.progress.aria"><div class="fill" id="fill" style="width:47%"></div></div>
+    <ul class="plist">
+      <li id="p1" class="run"><span class="st"></span><span data-i18n="installer.progress.step1">解压文件（app + 出厂插件 + AI 手册）</span></li>
+      <li id="p2"><span class="st"></span><span data-i18n="installer.progress.step2">注册文件关联（加入「打开方式」候选）</span></li>
+      <li id="p3"><span class="st"></span><span data-i18n="installer.progress.step3">写系统项（快捷方式 · 右键菜单 · PATH）</span></li>
+      <li id="p4"><span class="st"></span><span data-i18n="installer.progress.step4">收尾校验</span></li>
+    </ul>
+    <div class="prow">
+      <button class="btn ghost" type="button" data-action="cancel" data-i18n="installer.progress.cancel">取消安装</button>
+    </div>
+  </div>
+
+  <!-- ⑥ 完成 -->
+  <div class="scr" id="s-finish">
+    <div id="confetti"></div>
+    <div class="fin-ring"><svg viewBox="0 0 56 56" aria-hidden="true"><path d="M12 30l11 11 21-26"/></svg></div>
+    <h1 data-drag data-i18n="installer.finish.title">装好了。</h1>
+    <div class="sub" id="finish-path" data-drag>C:\Users\fengy\AppData\Local\Programs\linkdesk</div>
+    <div class="runrow"><label class="opt"><input type="checkbox" id="runnow" checked><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span data-i18n="installer.finish.run">运行 LinkDesk</span></label></div>
+    <div class="actions"><button class="btn" type="button" data-action="done" data-primary data-i18n="installer.finish.done">完成<span class="cir">→</span></button></div>
+  </div>
+
+  <!-- 失败分支（02-流程设计 §三 的视觉落地：磁盘空间不足示例；错误码与数字由件 2 填真值） -->
+  <div class="scr" id="s-error">
+    <svg viewBox="0 0 48 48" fill="none" stroke="#B3261E" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M24 6L4 42h40L24 6z"/><path d="M24 20v10"/><circle cx="24" cy="36" r="0.5" fill="#B3261E"/></svg>
+    <h1 data-drag data-i18n="installer.error.title">安装没有完成。</h1>
+    <div class="sub" role="alert" data-drag data-i18n="installer.error.sub">磁盘空间不足——目标盘至少需要 1 GB，当前可用 412 MB。</div>
+    <div class="errcode" id="errcode" data-drag>ERR-DISK-FULL · E-1042</div>
+    <div class="actions">
+      <button class="btn" type="button" data-action="retry" data-primary data-i18n="installer.error.retry">换个安装位置<span class="cir">→</span></button>
+      <button class="btn ghost" type="button" data-action="exit" data-i18n="installer.error.exit">退出安装</button>
+    </div>
+  </div>
+
+  <!-- 版本守卫（件 2c）：同版 / 降级时先问一句再装。**复用 #s-error 的骨架**（CSS 里两个 id 并列同一组规则），
+       但语义不是「出错」——图标走 currentColor=--txt2 中性灰，不用红（--danger 只留给卸载那个破坏性按钮）。
+       层级口径：安全的「退出安装」是主按钮（Enter 也走它）——与 NSIS 版 MB_DEFBUTTON2 = 否 同一条，
+       「仍要安装」降为幽灵按钮：降级/重装是用户主动要的例外，不该是默认诱惑。
+       文案带变量 ⇒ 走 t(key, vars) 由 app.js 渲染（title/body 无 data-i18n，同段头那套兜底登记）。 -->
+  <div class="scr" id="s-version">
+    <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M24 6L4 42h40L24 6z"/><path d="M24 20v10"/><circle cx="24" cy="36" r="0.5" fill="currentColor"/></svg>
+    <h1 data-drag id="ver-title"></h1>
+    <div class="sub" role="alert" id="ver-sub" data-drag></div>
+    <div class="errcode" id="ver-code" data-drag></div>
+    <div class="actions">
+      <button class="btn" type="button" data-action="ver-exit" data-primary data-i18n="installer.version.exit">退出安装</button>
+      <button class="btn ghost" type="button" data-action="ver-proceed" data-i18n="installer.version.proceed">仍要安装</button>
+    </div>
+  </div>
+
+  <!-- ⑦ 卸载（件 1d，直搬 mockups/E-卸载屏.html 四帧：确认 → 运行中检测 → 进度 → 完成）
+       id/class 与 mockup 逐字一致，只有与安装屏重名的才改名（s-progress→s-un-progress、
+       s-finish→s-un-finish、ph/pn/fill/p1..p4→uph/upn/ufill/u1..u4；#utrack 的 id 是新增的，
+       mockup 的 track 无 id，ARIA 写入需要）——两套屏同页共存，见 06-任务清单 1d 的 ⚠️。
+       卸载专属语义：破坏性按钮 .btn.danger、进度条墨色 .fill、收场不撒彩粒 -->
+  <!-- 帧 1 · 卸载确认（入口 = ARP「应用和功能」/ 开始菜单卸载项） -->
+  <div class="scr un" id="s-confirm">
+    <div class="brandline" data-drag>
+      <svg viewBox="0 0 100 110" aria-hidden="true"><path fill="#9a9a9a" fill-rule="evenodd" d="M50 0l43 25v50L50 110 7 75V25zM33 42a8 8 0 100 16 8 8 0 000-16zm34 0a8 8 0 100 16 8 8 0 000-16zm-17 26a8 8 0 100 16 8 8 0 000-16z"/></svg>
+      <span data-i18n="installer.uninstall.brand">LINKDESK · UNINSTALL</span>
+    </div>
+    <h1 data-drag data-i18n="installer.uninstall.confirm.title">要卸载 LinkDesk 吗？</h1>
+    <div class="sub" data-drag data-i18n="installer.uninstall.confirm.sub">安装位置：<code>C:\Users\fengy\AppData\Local\Programs\linkdesk</code> · 约 420 MB</div>
+    <!-- 3d #14/#15：两行选项与 #delconfirm 收进一条内容列（列 188px、以中线为轴、列内左对齐）
+         ⇒ 三个方框/警示块左沿归一；屏幕其余部分（标题/正文/按钮行）仍居中。样式见 app.css .uncol -->
+    <div class="uncol">
+      <label class="opt"><input type="checkbox" id="keepdata" checked><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span><span data-i18n="installer.uninstall.confirm.keepdata">保留我的数据</span><small data-i18n="installer.uninstall.confirm.keepdata.sub">工作区 · 设置 · 已装插件</small></span></label>
+      <!-- 件 2d：行内二次确认（02 §二幕⑨——删 userData 不可逆，必须用户亲眼确认过）。
+           勾掉「保留我的数据」时**不立刻露**：点「卸载」才露（不打扰只想保留数据的人）；
+           勾回「保留」即收起。样式复用 .unwarn（超时提示那块），只多一个 danger 色变体。 -->
+      <div id="delconfirm" hidden>
+        <div class="unwarn danger" data-i18n="installer.uninstall.confirm.deleteWarn">这会删除全部工作区、设置与已装插件，不可恢复。</div>
+        <label class="opt"><input type="checkbox" id="delagree"><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span data-i18n="installer.uninstall.confirm.deleteConfirm">我确认删除我的数据</span></label>
+      </div>
+    </div>
+    <div class="actions">
+      <button class="btn danger" type="button" data-action="uninstall" data-primary data-i18n="installer.uninstall.confirm.uninstall">卸载<span class="cir">→</span></button>
+      <button class="btn ghost" type="button" data-action="un-cancel" data-i18n="installer.uninstall.confirm.cancel">取消</button>
+    </div>
+  </div>
+
+  <!-- 帧 2 · 运行中检测（件 2c：宿主真查进程表；没在跑就直接推帧 3，在跑才停在这一帧） -->
+  <div class="scr un" id="s-running">
+    <div class="brandline" data-drag>
+      <svg viewBox="0 0 100 110" aria-hidden="true"><path fill="#9a9a9a" fill-rule="evenodd" d="M50 0l43 25v50L50 110 7 75V25zM33 42a8 8 0 100 16 8 8 0 000-16zm34 0a8 8 0 100 16 8 8 0 000-16zm-17 26a8 8 0 100 16 8 8 0 000-16z"/></svg>
+      <span data-i18n="installer.uninstall.brand">LINKDESK · UNINSTALL</span>
+    </div>
+    <h1 data-drag data-i18n="installer.uninstall.running.title">LinkDesk 正在运行</h1>
+    <div class="sub" data-drag data-i18n="installer.uninstall.running.sub">关闭 LinkDesk 后继续卸载，未保存的工作区会先走保存流程。</div>
+    <!-- 件 2c：等了 10s 还没等到它自己退（可能正卡在保存对话框上）——如实说一句，
+         别装作还在等。role=status 让读屏播报；「稍后」按钮就在下面，出路一直在。 -->
+    <div class="unwarn" id="unwarn" role="status" aria-live="polite" hidden data-i18n="installer.uninstall.running.timeout">等了 10 秒仍未等到 LinkDesk 退出。它可能正停在保存对话上——请手动关掉它的窗口，或点「稍后」。</div>
+    <div class="actions">
+      <button class="btn primary" type="button" data-action="un-continue" data-primary data-i18n="installer.uninstall.running.close">关闭并继续<span class="cir">→</span></button>
+      <button class="btn ghost" type="button" data-action="un-later" data-i18n="installer.uninstall.running.later">稍后</button>
+    </div>
+  </div>
+
+  <!-- 帧 3 · 卸载进度（左对齐变体、墨色条；无取消——点了卸载就走完） -->
+  <div class="scr un" id="s-un-progress">
+    <div class="ph" id="uph" role="status" aria-live="polite" data-drag>STEP 1 / 4 · 正在移除程序文件</div>
+    <div class="pct" data-drag><span id="upn">0</span><span>%</span></div>
+    <div class="track" id="utrack" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="47" aria-label="卸载进度" data-i18n-aria="installer.uninstall.progress.aria"><div class="fill" id="ufill"></div></div>
+    <ul class="plist">
+      <li id="u1"><span class="st"></span><span data-i18n="installer.uninstall.progress.step1">关闭进程 · 移除程序文件</span></li>
+      <li id="u2"><span class="st"></span><span data-i18n="installer.uninstall.progress.step2">清理系统项（右键菜单 · 编辑器注册）</span></li>
+      <li id="u3"><span class="st"></span><span data-i18n="installer.uninstall.progress.step3">恢复 PATH（精确匹配，不碰用户改过的部分）</span></li>
+      <li id="u4"><span class="st"></span><span data-i18n="installer.uninstall.progress.step4">收尾校验（无残留 · 卸载器自删）</span></li>
+    </ul>
+  </div>
+
+  <!-- 帧 4 · 完成（数据去留如实呈现：勾了保留=绿徽章、没勾=黄徽章） -->
+  <div class="scr un" id="s-un-finish">
+    <div class="fin-ring"><svg viewBox="0 0 56 56" aria-hidden="true"><path d="M12 30l11 11 21-26"/></svg></div>
+    <h1 data-drag data-i18n="installer.uninstall.finish.title">已卸载。</h1>
+    <div class="datbadge" id="datbadge" data-drag>用户数据已保留 · C:\Users\fengy\AppData\Roaming\LinkDesk</div>
+    <div class="sub" data-drag data-i18n="installer.uninstall.finish.sub">感谢使用 LinkDesk，有缘再见。</div>
+    <div class="actions"><button class="btn primary" type="button" data-action="un-done" data-primary data-i18n="installer.uninstall.finish.done">完成</button></div>
+  </div>
+</div></div>
+
+
+</div>
+  <div class="demo-bar sec"><span class="demo-lab">卸载窗 720×540</span>
+    <button type="button" class="dbtn on" data-stage="un" data-go="confirm">帧1 · 确认</button>
+    <button type="button" class="dbtn" data-stage="un" data-go="running">帧2 · 运行中</button>
+    <button type="button" class="dbtn" data-stage="un" data-go="un-progress">帧3 · 进度 73%</button>
+    <button type="button" class="dbtn" data-stage="un" data-go="un-finish">帧4 · 完成（环同样跳一下）</button>
+    <button type="button" class="dbtn play" data-play="un">▶ 依次播放（连播两轮）</button>
+  </div>
+  <div class="stage stage-uninstall mode-un" id="demo-stage-un" data-frames="confirm,running,un-progress,un-finish">
+<div class="grain"></div>
+<div class="orb a"></div><div class="orb b"></div>
+<div class="dust" id="dust"></div>
+
+<!-- 自绘语言下拉：原生 select 画不进自绘界面；清单由 1c 从 build/installer/i18n/ 枚举 -->
+<div id="lkdd">
+  <button type="button" id="lkdd-btn" aria-haspopup="listbox" aria-expanded="false">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.8 3 2.8 15 0 18M12 3c-2.8 3-2.8 15 0 18"/></svg>
+    <span id="lkdd-cur">中文</span>
+    <svg class="chev" width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M2 4l4 4 4-4"/></svg>
+  </button>
+  <div id="lkdd-pop" role="listbox" aria-label="语言" data-i18n-aria="installer.lang.aria"></div>
+</div>
+
+<div class="shell"><div class="win">
+  <button type="button" id="xbtn" class="xbtn" aria-label="关闭窗口" data-i18n-aria="installer.chrome.close" data-action="close">
+    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M2 2l8 8M10 2l-8 8"/></svg>
+  </button>
+
+  <!-- ① UAC：系统弹窗由 Windows 绘制，此帧只是壳内等待提示（不仿造系统对话框） -->
+  <div class="scr" id="s-uac">
+    <div class="wait" data-drag>
+      <svg viewBox="0 0 100 110" aria-hidden="true"><path fill="#111" fill-rule="evenodd" d="M50 0l43 25v50L50 110 7 75V25zM33 42a8 8 0 100 16 8 8 0 000-16zm34 0a8 8 0 100 16 8 8 0 000-16zm-17 26a8 8 0 100 16 8 8 0 000-16z"/></svg>
+      <div class="t" role="status" data-i18n="installer.uac.wait">正在等待 Windows 权限确认…</div>
+      <div class="bar" aria-hidden="true"></div>
+    </div>
+  </div>
+
+  <!-- ② 主屏 ＋ ④ 自定义展开区（真实流程的起始屏：UAC 由系统在窗口出现前处理） -->
+  <div class="scr" id="s-home">
+    <div class="brand" data-drag>
+      <svg viewBox="0 0 100 110" aria-hidden="true"><path fill="#111" fill-rule="evenodd" d="M50 0l43 25v50L50 110 7 75V25zM33 42a8 8 0 100 16 8 8 0 000-16zm34 0a8 8 0 100 16 8 8 0 000-16zm-17 26a8 8 0 100 16 8 8 0 000-16z"/></svg>
+      <div><div class="nm">LinkDesk</div><div class="sl" data-i18n="installer.brand.slogan">一个容器，装下你所有的工作方式。</div></div>
+      <div class="ver" id="ver">v0.2.34</div>
+    </div>
+    <div class="hero" data-drag>
+      <h1 data-i18n="installer.home.title">安装就一步，<em>然后交给它。</em></h1>
+      <p data-i18n="installer.home.sub">它不规定你怎么工作，它装下你怎么工作。</p>
+    </div>
+    <div id="custom">
+      <div class="cust-in">
+        <div class="pathrow">
+          <input data-role="path" value="C:\Users\fengy\AppData\Local\Programs\linkdesk" spellcheck="false" aria-label="安装位置" aria-describedby="patherr" data-i18n-aria="installer.custom.path">
+          <button type="button" data-action="browse" data-i18n="installer.custom.browse">浏览…</button>
+        </div>
+        <!-- 路径行内错误（件 2c）：就地贴在输入框正下方（UX 规则「错误靠近出问题的字段」），
+             role=alert 让读屏也播报；说的是**哪儿不对**，不是只把边框染红。
+             语法错由页面即时判（app.js pathSyntaxError），写不进去由宿主回 dir-invalid 判。 -->
+        <div class="patherr" id="patherr" role="alert" hidden></div>
+        <div class="opts">
+          <label class="opt"><input type="checkbox" data-opt="filemenu"><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span data-i18n="installer.opt.filemenu">文件右键菜单「通过 LinkDesk 打开」</span></label>
+          <label class="opt"><input type="checkbox" data-opt="dirmenu"><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span data-i18n="installer.opt.dirmenu">目录右键菜单「通过 LinkDesk 打开」</span></label>
+          <label class="opt"><input type="checkbox" data-opt="editor" checked><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span data-i18n="installer.opt.editor">注册为受支持文件类型的编辑器</span></label>
+          <label class="opt"><input type="checkbox" data-opt="path" checked><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span data-i18n="installer.opt.path">添加到 PATH（重启终端后生效）</span></label>
+        </div>
+      </div>
+    </div>
+    <div class="actions">
+      <button class="btn" type="button" data-action="install" data-primary data-i18n="installer.home.install">立即安装<span class="cir">→</span></button>
+      <button class="btn ghost" type="button" id="custtoggle" data-action="toggle-custom" data-i18n="installer.customize">自定义安装</button>
+      <div class="foot" data-i18n="installer.home.foot">继续即同意 <a href="#" data-action="license">许可协议</a> · MIT</div>
+    </div>
+  </div>
+
+  <!-- ⑤ 进度（四段真实进度：数值与分段由件 2 的 IO 回调驱动）
+       件 2c：段头挂 role=status ＋ aria-live=polite——段头文案是「现在在做什么」，
+       读屏要能听到换段，但别像报警那样打断（进度条本体的 aria-valuenow 由 setProgress 写） -->
+  <div class="scr" id="s-progress">
+    <div class="ph" id="ph" role="status" aria-live="polite" data-drag>STEP 1 / 4 · 正在解压文件</div>
+    <div class="pct" data-drag><span id="pn">0</span><span>%</span></div>
+    <div class="track" id="track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="73" aria-label="安装进度" data-i18n-aria="installer.progress.aria"><div class="fill" id="fill"></div></div>
+    <ul class="plist">
+      <li id="p1"><span class="st"></span><span data-i18n="installer.progress.step1">解压文件（app + 出厂插件 + AI 手册）</span></li>
+      <li id="p2"><span class="st"></span><span data-i18n="installer.progress.step2">注册文件关联（加入「打开方式」候选）</span></li>
+      <li id="p3"><span class="st"></span><span data-i18n="installer.progress.step3">写系统项（快捷方式 · 右键菜单 · PATH）</span></li>
+      <li id="p4"><span class="st"></span><span data-i18n="installer.progress.step4">收尾校验</span></li>
+    </ul>
+    <div class="prow">
+      <button class="btn ghost" type="button" data-action="cancel" data-i18n="installer.progress.cancel">取消安装</button>
+    </div>
+  </div>
+
+  <!-- ⑥ 完成 -->
+  <div class="scr" id="s-finish">
+    <div id="confetti"></div>
+    <div class="fin-ring"><svg viewBox="0 0 56 56" aria-hidden="true"><path d="M12 30l11 11 21-26"/></svg></div>
+    <h1 data-drag data-i18n="installer.finish.title">装好了。</h1>
+    <div class="sub" id="finish-path" data-drag>C:\Users\fengy\AppData\Local\Programs\linkdesk</div>
+    <div class="runrow"><label class="opt"><input type="checkbox" id="runnow" checked><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span data-i18n="installer.finish.run">运行 LinkDesk</span></label></div>
+    <div class="actions"><button class="btn" type="button" data-action="done" data-primary data-i18n="installer.finish.done">完成<span class="cir">→</span></button></div>
+  </div>
+
+  <!-- 失败分支（02-流程设计 §三 的视觉落地：磁盘空间不足示例；错误码与数字由件 2 填真值） -->
+  <div class="scr" id="s-error">
+    <svg viewBox="0 0 48 48" fill="none" stroke="#B3261E" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M24 6L4 42h40L24 6z"/><path d="M24 20v10"/><circle cx="24" cy="36" r="0.5" fill="#B3261E"/></svg>
+    <h1 data-drag data-i18n="installer.error.title">安装没有完成。</h1>
+    <div class="sub" role="alert" data-drag data-i18n="installer.error.sub">磁盘空间不足——目标盘至少需要 1 GB，当前可用 412 MB。</div>
+    <div class="errcode" id="errcode" data-drag>ERR-DISK-FULL · E-1042</div>
+    <div class="actions">
+      <button class="btn" type="button" data-action="retry" data-primary data-i18n="installer.error.retry">换个安装位置<span class="cir">→</span></button>
+      <button class="btn ghost" type="button" data-action="exit" data-i18n="installer.error.exit">退出安装</button>
+    </div>
+  </div>
+
+  <!-- 版本守卫（件 2c）：同版 / 降级时先问一句再装。**复用 #s-error 的骨架**（CSS 里两个 id 并列同一组规则），
+       但语义不是「出错」——图标走 currentColor=--txt2 中性灰，不用红（--danger 只留给卸载那个破坏性按钮）。
+       层级口径：安全的「退出安装」是主按钮（Enter 也走它）——与 NSIS 版 MB_DEFBUTTON2 = 否 同一条，
+       「仍要安装」降为幽灵按钮：降级/重装是用户主动要的例外，不该是默认诱惑。
+       文案带变量 ⇒ 走 t(key, vars) 由 app.js 渲染（title/body 无 data-i18n，同段头那套兜底登记）。 -->
+  <div class="scr" id="s-version">
+    <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M24 6L4 42h40L24 6z"/><path d="M24 20v10"/><circle cx="24" cy="36" r="0.5" fill="currentColor"/></svg>
+    <h1 data-drag id="ver-title"></h1>
+    <div class="sub" role="alert" id="ver-sub" data-drag></div>
+    <div class="errcode" id="ver-code" data-drag></div>
+    <div class="actions">
+      <button class="btn" type="button" data-action="ver-exit" data-primary data-i18n="installer.version.exit">退出安装</button>
+      <button class="btn ghost" type="button" data-action="ver-proceed" data-i18n="installer.version.proceed">仍要安装</button>
+    </div>
+  </div>
+
+  <!-- ⑦ 卸载（件 1d，直搬 mockups/E-卸载屏.html 四帧：确认 → 运行中检测 → 进度 → 完成）
+       id/class 与 mockup 逐字一致，只有与安装屏重名的才改名（s-progress→s-un-progress、
+       s-finish→s-un-finish、ph/pn/fill/p1..p4→uph/upn/ufill/u1..u4；#utrack 的 id 是新增的，
+       mockup 的 track 无 id，ARIA 写入需要）——两套屏同页共存，见 06-任务清单 1d 的 ⚠️。
+       卸载专属语义：破坏性按钮 .btn.danger、进度条墨色 .fill、收场不撒彩粒 -->
+  <!-- 帧 1 · 卸载确认（入口 = ARP「应用和功能」/ 开始菜单卸载项） -->
+  <div class="scr un on" id="s-confirm">
+    <div class="brandline" data-drag>
+      <svg viewBox="0 0 100 110" aria-hidden="true"><path fill="#9a9a9a" fill-rule="evenodd" d="M50 0l43 25v50L50 110 7 75V25zM33 42a8 8 0 100 16 8 8 0 000-16zm34 0a8 8 0 100 16 8 8 0 000-16zm-17 26a8 8 0 100 16 8 8 0 000-16z"/></svg>
+      <span data-i18n="installer.uninstall.brand">LINKDESK · UNINSTALL</span>
+    </div>
+    <h1 data-drag data-i18n="installer.uninstall.confirm.title">要卸载 LinkDesk 吗？</h1>
+    <div class="sub" data-drag data-i18n="installer.uninstall.confirm.sub">安装位置：<code>C:\Users\fengy\AppData\Local\Programs\linkdesk</code> · 约 420 MB</div>
+    <!-- 3d #14/#15：两行选项与 #delconfirm 收进一条内容列（列 188px、以中线为轴、列内左对齐）
+         ⇒ 三个方框/警示块左沿归一；屏幕其余部分（标题/正文/按钮行）仍居中。样式见 app.css .uncol -->
+    <div class="uncol">
+      <label class="opt"><input type="checkbox" id="keepdata" checked><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span><span data-i18n="installer.uninstall.confirm.keepdata">保留我的数据</span><small data-i18n="installer.uninstall.confirm.keepdata.sub">工作区 · 设置 · 已装插件</small></span></label>
+      <!-- 件 2d：行内二次确认（02 §二幕⑨——删 userData 不可逆，必须用户亲眼确认过）。
+           勾掉「保留我的数据」时**不立刻露**：点「卸载」才露（不打扰只想保留数据的人）；
+           勾回「保留」即收起。样式复用 .unwarn（超时提示那块），只多一个 danger 色变体。 -->
+      <div id="delconfirm" hidden>
+        <div class="unwarn danger" data-i18n="installer.uninstall.confirm.deleteWarn">这会删除全部工作区、设置与已装插件，不可恢复。</div>
+        <label class="opt"><input type="checkbox" id="delagree"><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span data-i18n="installer.uninstall.confirm.deleteConfirm">我确认删除我的数据</span></label>
+      </div>
+    </div>
+    <div class="actions">
+      <button class="btn danger" type="button" data-action="uninstall" data-primary data-i18n="installer.uninstall.confirm.uninstall">卸载<span class="cir">→</span></button>
+      <button class="btn ghost" type="button" data-action="un-cancel" data-i18n="installer.uninstall.confirm.cancel">取消</button>
+    </div>
+  </div>
+
+  <!-- 帧 2 · 运行中检测（件 2c：宿主真查进程表；没在跑就直接推帧 3，在跑才停在这一帧） -->
+  <div class="scr un" id="s-running">
+    <div class="brandline" data-drag>
+      <svg viewBox="0 0 100 110" aria-hidden="true"><path fill="#9a9a9a" fill-rule="evenodd" d="M50 0l43 25v50L50 110 7 75V25zM33 42a8 8 0 100 16 8 8 0 000-16zm34 0a8 8 0 100 16 8 8 0 000-16zm-17 26a8 8 0 100 16 8 8 0 000-16z"/></svg>
+      <span data-i18n="installer.uninstall.brand">LINKDESK · UNINSTALL</span>
+    </div>
+    <h1 data-drag data-i18n="installer.uninstall.running.title">LinkDesk 正在运行</h1>
+    <div class="sub" data-drag data-i18n="installer.uninstall.running.sub">关闭 LinkDesk 后继续卸载，未保存的工作区会先走保存流程。</div>
+    <!-- 件 2c：等了 10s 还没等到它自己退（可能正卡在保存对话框上）——如实说一句，
+         别装作还在等。role=status 让读屏播报；「稍后」按钮就在下面，出路一直在。 -->
+    <div class="unwarn" id="unwarn" role="status" aria-live="polite" hidden data-i18n="installer.uninstall.running.timeout">等了 10 秒仍未等到 LinkDesk 退出。它可能正停在保存对话上——请手动关掉它的窗口，或点「稍后」。</div>
+    <div class="actions">
+      <button class="btn primary" type="button" data-action="un-continue" data-primary data-i18n="installer.uninstall.running.close">关闭并继续<span class="cir">→</span></button>
+      <button class="btn ghost" type="button" data-action="un-later" data-i18n="installer.uninstall.running.later">稍后</button>
+    </div>
+  </div>
+
+  <!-- 帧 3 · 卸载进度（左对齐变体、墨色条；无取消——点了卸载就走完） -->
+  <div class="scr un" id="s-un-progress">
+    <div class="ph" id="uph" role="status" aria-live="polite" data-drag>STEP 2 / 4 · 清理系统项</div>
+    <div class="pct" data-drag><span id="upn">73</span><span>%</span></div>
+    <div class="track" id="utrack" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="73" aria-label="卸载进度" data-i18n-aria="installer.uninstall.progress.aria"><div class="fill" id="ufill" style="width:73%"></div></div>
+    <ul class="plist">
+      <li id="u1" class="done"><span class="st"></span><span data-i18n="installer.uninstall.progress.step1">关闭进程 · 移除程序文件</span></li>
+      <li id="u2" class="run"><span class="st"></span><span data-i18n="installer.uninstall.progress.step2">清理系统项（右键菜单 · 编辑器注册）</span></li>
+      <li id="u3"><span class="st"></span><span data-i18n="installer.uninstall.progress.step3">恢复 PATH（精确匹配，不碰用户改过的部分）</span></li>
+      <li id="u4"><span class="st"></span><span data-i18n="installer.uninstall.progress.step4">收尾校验（无残留 · 卸载器自删）</span></li>
+    </ul>
+  </div>
+
+  <!-- 帧 4 · 完成（数据去留如实呈现：勾了保留=绿徽章、没勾=黄徽章） -->
+  <div class="scr un" id="s-un-finish">
+    <div class="fin-ring"><svg viewBox="0 0 56 56" aria-hidden="true"><path d="M12 30l11 11 21-26"/></svg></div>
+    <h1 data-drag data-i18n="installer.uninstall.finish.title">已卸载。</h1>
+    <div class="datbadge" id="datbadge" data-drag>用户数据已保留 · C:\Users\fengy\AppData\Roaming\linkdesk</div>
+    <div class="sub" data-drag data-i18n="installer.uninstall.finish.sub">感谢使用 LinkDesk，有缘再见。</div>
+    <div class="actions"><button class="btn primary" type="button" data-action="un-done" data-primary data-i18n="installer.uninstall.finish.done">完成</button></div>
+  </div>
+</div></div>
+
+
+</div>
+  <p class="look">同一个 <code>.fin-ring</code> 两侧共用 ⇒ <code>pop</code>／<code>draw</code> 两段动画装/卸都有（卸载侧只覆盖尺寸与配色，没动动画）；
+只有<b>彩粒</b>是安装专属（真源 <code>#confetti</code> 只写在 <code>#s-finish</code> 里，app.css 卸载段落注释明写「收场，不用安装时的彩条与粒子」）。
+「依次播放」每 1.4s 切一帧（&gt; 0.8s，看得完整）；<code>prefers-reduced-motion</code> 下彩粒被整条关掉、两段动画压到瞬时。</p>
+</section>
 
 <h1 class="group">安装（780×570）</h1>
 
@@ -390,7 +887,7 @@ body{background:#efede9;color:#33332f;font-family:Consolas,monospace;padding:28p
       <li id="p4"><span class="st"></span><span data-i18n="installer.progress.step4">收尾校验</span></li>
     </ul>
     <div class="prow">
-      <button class="cancel" type="button" data-action="cancel" data-i18n="installer.progress.cancel">取消安装</button>
+      <button class="btn ghost" type="button" data-action="cancel" data-i18n="installer.progress.cancel">取消安装</button>
     </div>
   </div>
 
@@ -445,13 +942,17 @@ body{background:#efede9;color:#33332f;font-family:Consolas,monospace;padding:28p
     </div>
     <h1 data-drag data-i18n="installer.uninstall.confirm.title">要卸载 LinkDesk 吗？</h1>
     <div class="sub" data-drag data-i18n="installer.uninstall.confirm.sub">安装位置：<code>C:\Users\fengy\AppData\Local\Programs\linkdesk</code> · 约 420 MB</div>
-    <label class="opt"><input type="checkbox" id="keepdata" checked><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span><span data-i18n="installer.uninstall.confirm.keepdata">保留我的数据</span><small data-i18n="installer.uninstall.confirm.keepdata.sub">工作区 · 设置 · 已装插件</small></span></label>
-    <!-- 件 2d：行内二次确认（02 §二幕⑨——删 userData 不可逆，必须用户亲眼确认过）。
-         勾掉「保留我的数据」时**不立刻露**：点「卸载」才露（不打扰只想保留数据的人）；
-         勾回「保留」即收起。样式复用 .unwarn（超时提示那块），只多一个 danger 色变体。 -->
-    <div id="delconfirm" hidden>
-      <div class="unwarn danger" data-i18n="installer.uninstall.confirm.deleteWarn">这会删除全部工作区、设置与已装插件，不可恢复。</div>
-      <label class="opt"><input type="checkbox" id="delagree"><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span data-i18n="installer.uninstall.confirm.deleteConfirm">我确认删除我的数据</span></label>
+    <!-- 3d #14/#15：两行选项与 #delconfirm 收进一条内容列（列 188px、以中线为轴、列内左对齐）
+         ⇒ 三个方框/警示块左沿归一；屏幕其余部分（标题/正文/按钮行）仍居中。样式见 app.css .uncol -->
+    <div class="uncol">
+      <label class="opt"><input type="checkbox" id="keepdata" checked><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span><span data-i18n="installer.uninstall.confirm.keepdata">保留我的数据</span><small data-i18n="installer.uninstall.confirm.keepdata.sub">工作区 · 设置 · 已装插件</small></span></label>
+      <!-- 件 2d：行内二次确认（02 §二幕⑨——删 userData 不可逆，必须用户亲眼确认过）。
+           勾掉「保留我的数据」时**不立刻露**：点「卸载」才露（不打扰只想保留数据的人）；
+           勾回「保留」即收起。样式复用 .unwarn（超时提示那块），只多一个 danger 色变体。 -->
+      <div id="delconfirm" hidden>
+        <div class="unwarn danger" data-i18n="installer.uninstall.confirm.deleteWarn">这会删除全部工作区、设置与已装插件，不可恢复。</div>
+        <label class="opt"><input type="checkbox" id="delagree"><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span data-i18n="installer.uninstall.confirm.deleteConfirm">我确认删除我的数据</span></label>
+      </div>
     </div>
     <div class="actions">
       <button class="btn danger" type="button" data-action="uninstall" data-primary data-i18n="installer.uninstall.confirm.uninstall">卸载<span class="cir">→</span></button>
@@ -494,7 +995,7 @@ body{background:#efede9;color:#33332f;font-family:Consolas,monospace;padding:28p
     <div class="fin-ring"><svg viewBox="0 0 56 56" aria-hidden="true"><path d="M12 30l11 11 21-26"/></svg></div>
     <h1 data-drag data-i18n="installer.uninstall.finish.title">已卸载。</h1>
     <div class="datbadge" id="datbadge" data-drag>用户数据已保留 · C:\Users\fengy\AppData\Roaming\LinkDesk</div>
-    <div class="sub" data-drag data-i18n="installer.uninstall.finish.sub">谢谢使用 LinkDesk，有缘再见。</div>
+    <div class="sub" data-drag data-i18n="installer.uninstall.finish.sub">感谢使用 LinkDesk，有缘再见。</div>
     <div class="actions"><button class="btn primary" type="button" data-action="un-done" data-primary data-i18n="installer.uninstall.finish.done">完成</button></div>
   </div>
 </div></div>
@@ -585,7 +1086,7 @@ body{background:#efede9;color:#33332f;font-family:Consolas,monospace;padding:28p
       <li id="p4"><span class="st"></span><span data-i18n="installer.progress.step4">收尾校验</span></li>
     </ul>
     <div class="prow">
-      <button class="cancel" type="button" data-action="cancel" data-i18n="installer.progress.cancel">取消安装</button>
+      <button class="btn ghost" type="button" data-action="cancel" data-i18n="installer.progress.cancel">取消安装</button>
     </div>
   </div>
 
@@ -640,13 +1141,17 @@ body{background:#efede9;color:#33332f;font-family:Consolas,monospace;padding:28p
     </div>
     <h1 data-drag data-i18n="installer.uninstall.confirm.title">要卸载 LinkDesk 吗？</h1>
     <div class="sub" data-drag data-i18n="installer.uninstall.confirm.sub">安装位置：<code>C:\Users\fengy\AppData\Local\Programs\linkdesk</code> · 约 420 MB</div>
-    <label class="opt"><input type="checkbox" id="keepdata" checked><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span><span data-i18n="installer.uninstall.confirm.keepdata">保留我的数据</span><small data-i18n="installer.uninstall.confirm.keepdata.sub">工作区 · 设置 · 已装插件</small></span></label>
-    <!-- 件 2d：行内二次确认（02 §二幕⑨——删 userData 不可逆，必须用户亲眼确认过）。
-         勾掉「保留我的数据」时**不立刻露**：点「卸载」才露（不打扰只想保留数据的人）；
-         勾回「保留」即收起。样式复用 .unwarn（超时提示那块），只多一个 danger 色变体。 -->
-    <div id="delconfirm" hidden>
-      <div class="unwarn danger" data-i18n="installer.uninstall.confirm.deleteWarn">这会删除全部工作区、设置与已装插件，不可恢复。</div>
-      <label class="opt"><input type="checkbox" id="delagree"><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span data-i18n="installer.uninstall.confirm.deleteConfirm">我确认删除我的数据</span></label>
+    <!-- 3d #14/#15：两行选项与 #delconfirm 收进一条内容列（列 188px、以中线为轴、列内左对齐）
+         ⇒ 三个方框/警示块左沿归一；屏幕其余部分（标题/正文/按钮行）仍居中。样式见 app.css .uncol -->
+    <div class="uncol">
+      <label class="opt"><input type="checkbox" id="keepdata" checked><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span><span data-i18n="installer.uninstall.confirm.keepdata">保留我的数据</span><small data-i18n="installer.uninstall.confirm.keepdata.sub">工作区 · 设置 · 已装插件</small></span></label>
+      <!-- 件 2d：行内二次确认（02 §二幕⑨——删 userData 不可逆，必须用户亲眼确认过）。
+           勾掉「保留我的数据」时**不立刻露**：点「卸载」才露（不打扰只想保留数据的人）；
+           勾回「保留」即收起。样式复用 .unwarn（超时提示那块），只多一个 danger 色变体。 -->
+      <div id="delconfirm" hidden>
+        <div class="unwarn danger" data-i18n="installer.uninstall.confirm.deleteWarn">这会删除全部工作区、设置与已装插件，不可恢复。</div>
+        <label class="opt"><input type="checkbox" id="delagree"><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span data-i18n="installer.uninstall.confirm.deleteConfirm">我确认删除我的数据</span></label>
+      </div>
     </div>
     <div class="actions">
       <button class="btn danger" type="button" data-action="uninstall" data-primary data-i18n="installer.uninstall.confirm.uninstall">卸载<span class="cir">→</span></button>
@@ -689,7 +1194,7 @@ body{background:#efede9;color:#33332f;font-family:Consolas,monospace;padding:28p
     <div class="fin-ring"><svg viewBox="0 0 56 56" aria-hidden="true"><path d="M12 30l11 11 21-26"/></svg></div>
     <h1 data-drag data-i18n="installer.uninstall.finish.title">已卸载。</h1>
     <div class="datbadge" id="datbadge" data-drag>用户数据已保留 · C:\Users\fengy\AppData\Roaming\LinkDesk</div>
-    <div class="sub" data-drag data-i18n="installer.uninstall.finish.sub">谢谢使用 LinkDesk，有缘再见。</div>
+    <div class="sub" data-drag data-i18n="installer.uninstall.finish.sub">感谢使用 LinkDesk，有缘再见。</div>
     <div class="actions"><button class="btn primary" type="button" data-action="un-done" data-primary data-i18n="installer.uninstall.finish.done">完成</button></div>
   </div>
 </div></div>
@@ -780,7 +1285,7 @@ body{background:#efede9;color:#33332f;font-family:Consolas,monospace;padding:28p
       <li id="p4"><span class="st"></span><span data-i18n="installer.progress.step4">收尾校验</span></li>
     </ul>
     <div class="prow">
-      <button class="cancel" type="button" data-action="cancel" data-i18n="installer.progress.cancel">取消安装</button>
+      <button class="btn ghost" type="button" data-action="cancel" data-i18n="installer.progress.cancel">取消安装</button>
     </div>
   </div>
 
@@ -835,13 +1340,17 @@ body{background:#efede9;color:#33332f;font-family:Consolas,monospace;padding:28p
     </div>
     <h1 data-drag data-i18n="installer.uninstall.confirm.title">要卸载 LinkDesk 吗？</h1>
     <div class="sub" data-drag data-i18n="installer.uninstall.confirm.sub">安装位置：<code>C:\Users\fengy\AppData\Local\Programs\linkdesk</code> · 约 420 MB</div>
-    <label class="opt"><input type="checkbox" id="keepdata" checked><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span><span data-i18n="installer.uninstall.confirm.keepdata">保留我的数据</span><small data-i18n="installer.uninstall.confirm.keepdata.sub">工作区 · 设置 · 已装插件</small></span></label>
-    <!-- 件 2d：行内二次确认（02 §二幕⑨——删 userData 不可逆，必须用户亲眼确认过）。
-         勾掉「保留我的数据」时**不立刻露**：点「卸载」才露（不打扰只想保留数据的人）；
-         勾回「保留」即收起。样式复用 .unwarn（超时提示那块），只多一个 danger 色变体。 -->
-    <div id="delconfirm" hidden>
-      <div class="unwarn danger" data-i18n="installer.uninstall.confirm.deleteWarn">这会删除全部工作区、设置与已装插件，不可恢复。</div>
-      <label class="opt"><input type="checkbox" id="delagree"><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span data-i18n="installer.uninstall.confirm.deleteConfirm">我确认删除我的数据</span></label>
+    <!-- 3d #14/#15：两行选项与 #delconfirm 收进一条内容列（列 188px、以中线为轴、列内左对齐）
+         ⇒ 三个方框/警示块左沿归一；屏幕其余部分（标题/正文/按钮行）仍居中。样式见 app.css .uncol -->
+    <div class="uncol">
+      <label class="opt"><input type="checkbox" id="keepdata" checked><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span><span data-i18n="installer.uninstall.confirm.keepdata">保留我的数据</span><small data-i18n="installer.uninstall.confirm.keepdata.sub">工作区 · 设置 · 已装插件</small></span></label>
+      <!-- 件 2d：行内二次确认（02 §二幕⑨——删 userData 不可逆，必须用户亲眼确认过）。
+           勾掉「保留我的数据」时**不立刻露**：点「卸载」才露（不打扰只想保留数据的人）；
+           勾回「保留」即收起。样式复用 .unwarn（超时提示那块），只多一个 danger 色变体。 -->
+      <div id="delconfirm" hidden>
+        <div class="unwarn danger" data-i18n="installer.uninstall.confirm.deleteWarn">这会删除全部工作区、设置与已装插件，不可恢复。</div>
+        <label class="opt"><input type="checkbox" id="delagree"><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span data-i18n="installer.uninstall.confirm.deleteConfirm">我确认删除我的数据</span></label>
+      </div>
     </div>
     <div class="actions">
       <button class="btn danger" type="button" data-action="uninstall" data-primary data-i18n="installer.uninstall.confirm.uninstall">卸载<span class="cir">→</span></button>
@@ -884,7 +1393,7 @@ body{background:#efede9;color:#33332f;font-family:Consolas,monospace;padding:28p
     <div class="fin-ring"><svg viewBox="0 0 56 56" aria-hidden="true"><path d="M12 30l11 11 21-26"/></svg></div>
     <h1 data-drag data-i18n="installer.uninstall.finish.title">已卸载。</h1>
     <div class="datbadge" id="datbadge" data-drag>用户数据已保留 · C:\Users\fengy\AppData\Roaming\LinkDesk</div>
-    <div class="sub" data-drag data-i18n="installer.uninstall.finish.sub">谢谢使用 LinkDesk，有缘再见。</div>
+    <div class="sub" data-drag data-i18n="installer.uninstall.finish.sub">感谢使用 LinkDesk，有缘再见。</div>
     <div class="actions"><button class="btn primary" type="button" data-action="un-done" data-primary data-i18n="installer.uninstall.finish.done">完成</button></div>
   </div>
 </div></div>
@@ -975,7 +1484,7 @@ body{background:#efede9;color:#33332f;font-family:Consolas,monospace;padding:28p
       <li id="p4"><span class="st"></span><span data-i18n="installer.progress.step4">收尾校验</span></li>
     </ul>
     <div class="prow">
-      <button class="cancel" type="button" data-action="cancel" data-i18n="installer.progress.cancel">取消安装</button>
+      <button class="btn ghost" type="button" data-action="cancel" data-i18n="installer.progress.cancel">取消安装</button>
     </div>
   </div>
 
@@ -1030,13 +1539,17 @@ body{background:#efede9;color:#33332f;font-family:Consolas,monospace;padding:28p
     </div>
     <h1 data-drag data-i18n="installer.uninstall.confirm.title">要卸载 LinkDesk 吗？</h1>
     <div class="sub" data-drag data-i18n="installer.uninstall.confirm.sub">安装位置：<code>C:\Users\fengy\AppData\Local\Programs\linkdesk</code> · 约 420 MB</div>
-    <label class="opt"><input type="checkbox" id="keepdata" checked><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span><span data-i18n="installer.uninstall.confirm.keepdata">保留我的数据</span><small data-i18n="installer.uninstall.confirm.keepdata.sub">工作区 · 设置 · 已装插件</small></span></label>
-    <!-- 件 2d：行内二次确认（02 §二幕⑨——删 userData 不可逆，必须用户亲眼确认过）。
-         勾掉「保留我的数据」时**不立刻露**：点「卸载」才露（不打扰只想保留数据的人）；
-         勾回「保留」即收起。样式复用 .unwarn（超时提示那块），只多一个 danger 色变体。 -->
-    <div id="delconfirm" hidden>
-      <div class="unwarn danger" data-i18n="installer.uninstall.confirm.deleteWarn">这会删除全部工作区、设置与已装插件，不可恢复。</div>
-      <label class="opt"><input type="checkbox" id="delagree"><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span data-i18n="installer.uninstall.confirm.deleteConfirm">我确认删除我的数据</span></label>
+    <!-- 3d #14/#15：两行选项与 #delconfirm 收进一条内容列（列 188px、以中线为轴、列内左对齐）
+         ⇒ 三个方框/警示块左沿归一；屏幕其余部分（标题/正文/按钮行）仍居中。样式见 app.css .uncol -->
+    <div class="uncol">
+      <label class="opt"><input type="checkbox" id="keepdata" checked><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span><span data-i18n="installer.uninstall.confirm.keepdata">保留我的数据</span><small data-i18n="installer.uninstall.confirm.keepdata.sub">工作区 · 设置 · 已装插件</small></span></label>
+      <!-- 件 2d：行内二次确认（02 §二幕⑨——删 userData 不可逆，必须用户亲眼确认过）。
+           勾掉「保留我的数据」时**不立刻露**：点「卸载」才露（不打扰只想保留数据的人）；
+           勾回「保留」即收起。样式复用 .unwarn（超时提示那块），只多一个 danger 色变体。 -->
+      <div id="delconfirm" hidden>
+        <div class="unwarn danger" data-i18n="installer.uninstall.confirm.deleteWarn">这会删除全部工作区、设置与已装插件，不可恢复。</div>
+        <label class="opt"><input type="checkbox" id="delagree"><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span data-i18n="installer.uninstall.confirm.deleteConfirm">我确认删除我的数据</span></label>
+      </div>
     </div>
     <div class="actions">
       <button class="btn danger" type="button" data-action="uninstall" data-primary data-i18n="installer.uninstall.confirm.uninstall">卸载<span class="cir">→</span></button>
@@ -1079,7 +1592,7 @@ body{background:#efede9;color:#33332f;font-family:Consolas,monospace;padding:28p
     <div class="fin-ring"><svg viewBox="0 0 56 56" aria-hidden="true"><path d="M12 30l11 11 21-26"/></svg></div>
     <h1 data-drag data-i18n="installer.uninstall.finish.title">已卸载。</h1>
     <div class="datbadge" id="datbadge" data-drag>用户数据已保留 · C:\Users\fengy\AppData\Roaming\LinkDesk</div>
-    <div class="sub" data-drag data-i18n="installer.uninstall.finish.sub">谢谢使用 LinkDesk，有缘再见。</div>
+    <div class="sub" data-drag data-i18n="installer.uninstall.finish.sub">感谢使用 LinkDesk，有缘再见。</div>
     <div class="actions"><button class="btn primary" type="button" data-action="un-done" data-primary data-i18n="installer.uninstall.finish.done">完成</button></div>
   </div>
 </div></div>
@@ -1170,7 +1683,7 @@ body{background:#efede9;color:#33332f;font-family:Consolas,monospace;padding:28p
       <li id="p4"><span class="st"></span><span data-i18n="installer.progress.step4">收尾校验</span></li>
     </ul>
     <div class="prow">
-      <button class="cancel" type="button" data-action="cancel" data-i18n="installer.progress.cancel">取消安装</button>
+      <button class="btn ghost" type="button" data-action="cancel" data-i18n="installer.progress.cancel">取消安装</button>
     </div>
   </div>
 
@@ -1225,13 +1738,17 @@ body{background:#efede9;color:#33332f;font-family:Consolas,monospace;padding:28p
     </div>
     <h1 data-drag data-i18n="installer.uninstall.confirm.title">要卸载 LinkDesk 吗？</h1>
     <div class="sub" data-drag data-i18n="installer.uninstall.confirm.sub">安装位置：<code>C:\Users\fengy\AppData\Local\Programs\linkdesk</code> · 约 420 MB</div>
-    <label class="opt"><input type="checkbox" id="keepdata" checked><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span><span data-i18n="installer.uninstall.confirm.keepdata">保留我的数据</span><small data-i18n="installer.uninstall.confirm.keepdata.sub">工作区 · 设置 · 已装插件</small></span></label>
-    <!-- 件 2d：行内二次确认（02 §二幕⑨——删 userData 不可逆，必须用户亲眼确认过）。
-         勾掉「保留我的数据」时**不立刻露**：点「卸载」才露（不打扰只想保留数据的人）；
-         勾回「保留」即收起。样式复用 .unwarn（超时提示那块），只多一个 danger 色变体。 -->
-    <div id="delconfirm" hidden>
-      <div class="unwarn danger" data-i18n="installer.uninstall.confirm.deleteWarn">这会删除全部工作区、设置与已装插件，不可恢复。</div>
-      <label class="opt"><input type="checkbox" id="delagree"><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span data-i18n="installer.uninstall.confirm.deleteConfirm">我确认删除我的数据</span></label>
+    <!-- 3d #14/#15：两行选项与 #delconfirm 收进一条内容列（列 188px、以中线为轴、列内左对齐）
+         ⇒ 三个方框/警示块左沿归一；屏幕其余部分（标题/正文/按钮行）仍居中。样式见 app.css .uncol -->
+    <div class="uncol">
+      <label class="opt"><input type="checkbox" id="keepdata" checked><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span><span data-i18n="installer.uninstall.confirm.keepdata">保留我的数据</span><small data-i18n="installer.uninstall.confirm.keepdata.sub">工作区 · 设置 · 已装插件</small></span></label>
+      <!-- 件 2d：行内二次确认（02 §二幕⑨——删 userData 不可逆，必须用户亲眼确认过）。
+           勾掉「保留我的数据」时**不立刻露**：点「卸载」才露（不打扰只想保留数据的人）；
+           勾回「保留」即收起。样式复用 .unwarn（超时提示那块），只多一个 danger 色变体。 -->
+      <div id="delconfirm" hidden>
+        <div class="unwarn danger" data-i18n="installer.uninstall.confirm.deleteWarn">这会删除全部工作区、设置与已装插件，不可恢复。</div>
+        <label class="opt"><input type="checkbox" id="delagree"><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span data-i18n="installer.uninstall.confirm.deleteConfirm">我确认删除我的数据</span></label>
+      </div>
     </div>
     <div class="actions">
       <button class="btn danger" type="button" data-action="uninstall" data-primary data-i18n="installer.uninstall.confirm.uninstall">卸载<span class="cir">→</span></button>
@@ -1274,7 +1791,7 @@ body{background:#efede9;color:#33332f;font-family:Consolas,monospace;padding:28p
     <div class="fin-ring"><svg viewBox="0 0 56 56" aria-hidden="true"><path d="M12 30l11 11 21-26"/></svg></div>
     <h1 data-drag data-i18n="installer.uninstall.finish.title">已卸载。</h1>
     <div class="datbadge" id="datbadge" data-drag>用户数据已保留 · C:\Users\fengy\AppData\Roaming\LinkDesk</div>
-    <div class="sub" data-drag data-i18n="installer.uninstall.finish.sub">谢谢使用 LinkDesk，有缘再见。</div>
+    <div class="sub" data-drag data-i18n="installer.uninstall.finish.sub">感谢使用 LinkDesk，有缘再见。</div>
     <div class="actions"><button class="btn primary" type="button" data-action="un-done" data-primary data-i18n="installer.uninstall.finish.done">完成</button></div>
   </div>
 </div></div>
@@ -1365,7 +1882,7 @@ body{background:#efede9;color:#33332f;font-family:Consolas,monospace;padding:28p
       <li id="p4"><span class="st"></span><span data-i18n="installer.progress.step4">收尾校验</span></li>
     </ul>
     <div class="prow">
-      <button class="cancel" type="button" data-action="cancel" data-i18n="installer.progress.cancel">取消安装</button>
+      <button class="btn ghost" type="button" data-action="cancel" data-i18n="installer.progress.cancel">取消安装</button>
     </div>
   </div>
 
@@ -1420,13 +1937,17 @@ body{background:#efede9;color:#33332f;font-family:Consolas,monospace;padding:28p
     </div>
     <h1 data-drag data-i18n="installer.uninstall.confirm.title">要卸载 LinkDesk 吗？</h1>
     <div class="sub" data-drag data-i18n="installer.uninstall.confirm.sub">安装位置：<code>C:\Users\fengy\AppData\Local\Programs\linkdesk</code> · 约 420 MB</div>
-    <label class="opt"><input type="checkbox" id="keepdata" checked><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span><span data-i18n="installer.uninstall.confirm.keepdata">保留我的数据</span><small data-i18n="installer.uninstall.confirm.keepdata.sub">工作区 · 设置 · 已装插件</small></span></label>
-    <!-- 件 2d：行内二次确认（02 §二幕⑨——删 userData 不可逆，必须用户亲眼确认过）。
-         勾掉「保留我的数据」时**不立刻露**：点「卸载」才露（不打扰只想保留数据的人）；
-         勾回「保留」即收起。样式复用 .unwarn（超时提示那块），只多一个 danger 色变体。 -->
-    <div id="delconfirm" hidden>
-      <div class="unwarn danger" data-i18n="installer.uninstall.confirm.deleteWarn">这会删除全部工作区、设置与已装插件，不可恢复。</div>
-      <label class="opt"><input type="checkbox" id="delagree"><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span data-i18n="installer.uninstall.confirm.deleteConfirm">我确认删除我的数据</span></label>
+    <!-- 3d #14/#15：两行选项与 #delconfirm 收进一条内容列（列 188px、以中线为轴、列内左对齐）
+         ⇒ 三个方框/警示块左沿归一；屏幕其余部分（标题/正文/按钮行）仍居中。样式见 app.css .uncol -->
+    <div class="uncol">
+      <label class="opt"><input type="checkbox" id="keepdata" checked><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span><span data-i18n="installer.uninstall.confirm.keepdata">保留我的数据</span><small data-i18n="installer.uninstall.confirm.keepdata.sub">工作区 · 设置 · 已装插件</small></span></label>
+      <!-- 件 2d：行内二次确认（02 §二幕⑨——删 userData 不可逆，必须用户亲眼确认过）。
+           勾掉「保留我的数据」时**不立刻露**：点「卸载」才露（不打扰只想保留数据的人）；
+           勾回「保留」即收起。样式复用 .unwarn（超时提示那块），只多一个 danger 色变体。 -->
+      <div id="delconfirm" hidden>
+        <div class="unwarn danger" data-i18n="installer.uninstall.confirm.deleteWarn">这会删除全部工作区、设置与已装插件，不可恢复。</div>
+        <label class="opt"><input type="checkbox" id="delagree"><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span data-i18n="installer.uninstall.confirm.deleteConfirm">我确认删除我的数据</span></label>
+      </div>
     </div>
     <div class="actions">
       <button class="btn danger" type="button" data-action="uninstall" data-primary data-i18n="installer.uninstall.confirm.uninstall">卸载<span class="cir">→</span></button>
@@ -1469,7 +1990,7 @@ body{background:#efede9;color:#33332f;font-family:Consolas,monospace;padding:28p
     <div class="fin-ring"><svg viewBox="0 0 56 56" aria-hidden="true"><path d="M12 30l11 11 21-26"/></svg></div>
     <h1 data-drag data-i18n="installer.uninstall.finish.title">已卸载。</h1>
     <div class="datbadge" id="datbadge" data-drag>用户数据已保留 · C:\Users\fengy\AppData\Roaming\LinkDesk</div>
-    <div class="sub" data-drag data-i18n="installer.uninstall.finish.sub">谢谢使用 LinkDesk，有缘再见。</div>
+    <div class="sub" data-drag data-i18n="installer.uninstall.finish.sub">感谢使用 LinkDesk，有缘再见。</div>
     <div class="actions"><button class="btn primary" type="button" data-action="un-done" data-primary data-i18n="installer.uninstall.finish.done">完成</button></div>
   </div>
 </div></div>
@@ -1560,7 +2081,7 @@ body{background:#efede9;color:#33332f;font-family:Consolas,monospace;padding:28p
       <li id="p4"><span class="st"></span><span data-i18n="installer.progress.step4">收尾校验</span></li>
     </ul>
     <div class="prow">
-      <button class="cancel" type="button" data-action="cancel" data-i18n="installer.progress.cancel">取消安装</button>
+      <button class="btn ghost" type="button" data-action="cancel" data-i18n="installer.progress.cancel">取消安装</button>
     </div>
   </div>
 
@@ -1615,13 +2136,17 @@ body{background:#efede9;color:#33332f;font-family:Consolas,monospace;padding:28p
     </div>
     <h1 data-drag data-i18n="installer.uninstall.confirm.title">要卸载 LinkDesk 吗？</h1>
     <div class="sub" data-drag data-i18n="installer.uninstall.confirm.sub">安装位置：<code>C:\Users\fengy\AppData\Local\Programs\linkdesk</code> · 约 420 MB</div>
-    <label class="opt"><input type="checkbox" id="keepdata" checked><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span><span data-i18n="installer.uninstall.confirm.keepdata">保留我的数据</span><small data-i18n="installer.uninstall.confirm.keepdata.sub">工作区 · 设置 · 已装插件</small></span></label>
-    <!-- 件 2d：行内二次确认（02 §二幕⑨——删 userData 不可逆，必须用户亲眼确认过）。
-         勾掉「保留我的数据」时**不立刻露**：点「卸载」才露（不打扰只想保留数据的人）；
-         勾回「保留」即收起。样式复用 .unwarn（超时提示那块），只多一个 danger 色变体。 -->
-    <div id="delconfirm" hidden>
-      <div class="unwarn danger" data-i18n="installer.uninstall.confirm.deleteWarn">这会删除全部工作区、设置与已装插件，不可恢复。</div>
-      <label class="opt"><input type="checkbox" id="delagree"><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span data-i18n="installer.uninstall.confirm.deleteConfirm">我确认删除我的数据</span></label>
+    <!-- 3d #14/#15：两行选项与 #delconfirm 收进一条内容列（列 188px、以中线为轴、列内左对齐）
+         ⇒ 三个方框/警示块左沿归一；屏幕其余部分（标题/正文/按钮行）仍居中。样式见 app.css .uncol -->
+    <div class="uncol">
+      <label class="opt"><input type="checkbox" id="keepdata" checked><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span><span data-i18n="installer.uninstall.confirm.keepdata">保留我的数据</span><small data-i18n="installer.uninstall.confirm.keepdata.sub">工作区 · 设置 · 已装插件</small></span></label>
+      <!-- 件 2d：行内二次确认（02 §二幕⑨——删 userData 不可逆，必须用户亲眼确认过）。
+           勾掉「保留我的数据」时**不立刻露**：点「卸载」才露（不打扰只想保留数据的人）；
+           勾回「保留」即收起。样式复用 .unwarn（超时提示那块），只多一个 danger 色变体。 -->
+      <div id="delconfirm" hidden>
+        <div class="unwarn danger" data-i18n="installer.uninstall.confirm.deleteWarn">这会删除全部工作区、设置与已装插件，不可恢复。</div>
+        <label class="opt"><input type="checkbox" id="delagree"><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span data-i18n="installer.uninstall.confirm.deleteConfirm">我确认删除我的数据</span></label>
+      </div>
     </div>
     <div class="actions">
       <button class="btn danger" type="button" data-action="uninstall" data-primary data-i18n="installer.uninstall.confirm.uninstall">卸载<span class="cir">→</span></button>
@@ -1664,7 +2189,7 @@ body{background:#efede9;color:#33332f;font-family:Consolas,monospace;padding:28p
     <div class="fin-ring"><svg viewBox="0 0 56 56" aria-hidden="true"><path d="M12 30l11 11 21-26"/></svg></div>
     <h1 data-drag data-i18n="installer.uninstall.finish.title">已卸载。</h1>
     <div class="datbadge" id="datbadge" data-drag>用户数据已保留 · C:\Users\fengy\AppData\Roaming\LinkDesk</div>
-    <div class="sub" data-drag data-i18n="installer.uninstall.finish.sub">谢谢使用 LinkDesk，有缘再见。</div>
+    <div class="sub" data-drag data-i18n="installer.uninstall.finish.sub">感谢使用 LinkDesk，有缘再见。</div>
     <div class="actions"><button class="btn primary" type="button" data-action="un-done" data-primary data-i18n="installer.uninstall.finish.done">完成</button></div>
   </div>
 </div></div>
@@ -1755,7 +2280,7 @@ body{background:#efede9;color:#33332f;font-family:Consolas,monospace;padding:28p
       <li id="p4"><span class="st"></span><span data-i18n="installer.progress.step4">收尾校验</span></li>
     </ul>
     <div class="prow">
-      <button class="cancel" type="button" data-action="cancel" data-i18n="installer.progress.cancel">取消安装</button>
+      <button class="btn ghost" type="button" data-action="cancel" disabled data-i18n="installer.progress.cancel">取消安装</button>
     </div>
   </div>
 
@@ -1810,13 +2335,17 @@ body{background:#efede9;color:#33332f;font-family:Consolas,monospace;padding:28p
     </div>
     <h1 data-drag data-i18n="installer.uninstall.confirm.title">要卸载 LinkDesk 吗？</h1>
     <div class="sub" data-drag data-i18n="installer.uninstall.confirm.sub">安装位置：<code>C:\Users\fengy\AppData\Local\Programs\linkdesk</code> · 约 420 MB</div>
-    <label class="opt"><input type="checkbox" id="keepdata" checked><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span><span data-i18n="installer.uninstall.confirm.keepdata">保留我的数据</span><small data-i18n="installer.uninstall.confirm.keepdata.sub">工作区 · 设置 · 已装插件</small></span></label>
-    <!-- 件 2d：行内二次确认（02 §二幕⑨——删 userData 不可逆，必须用户亲眼确认过）。
-         勾掉「保留我的数据」时**不立刻露**：点「卸载」才露（不打扰只想保留数据的人）；
-         勾回「保留」即收起。样式复用 .unwarn（超时提示那块），只多一个 danger 色变体。 -->
-    <div id="delconfirm" hidden>
-      <div class="unwarn danger" data-i18n="installer.uninstall.confirm.deleteWarn">这会删除全部工作区、设置与已装插件，不可恢复。</div>
-      <label class="opt"><input type="checkbox" id="delagree"><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span data-i18n="installer.uninstall.confirm.deleteConfirm">我确认删除我的数据</span></label>
+    <!-- 3d #14/#15：两行选项与 #delconfirm 收进一条内容列（列 188px、以中线为轴、列内左对齐）
+         ⇒ 三个方框/警示块左沿归一；屏幕其余部分（标题/正文/按钮行）仍居中。样式见 app.css .uncol -->
+    <div class="uncol">
+      <label class="opt"><input type="checkbox" id="keepdata" checked><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span><span data-i18n="installer.uninstall.confirm.keepdata">保留我的数据</span><small data-i18n="installer.uninstall.confirm.keepdata.sub">工作区 · 设置 · 已装插件</small></span></label>
+      <!-- 件 2d：行内二次确认（02 §二幕⑨——删 userData 不可逆，必须用户亲眼确认过）。
+           勾掉「保留我的数据」时**不立刻露**：点「卸载」才露（不打扰只想保留数据的人）；
+           勾回「保留」即收起。样式复用 .unwarn（超时提示那块），只多一个 danger 色变体。 -->
+      <div id="delconfirm" hidden>
+        <div class="unwarn danger" data-i18n="installer.uninstall.confirm.deleteWarn">这会删除全部工作区、设置与已装插件，不可恢复。</div>
+        <label class="opt"><input type="checkbox" id="delagree"><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span data-i18n="installer.uninstall.confirm.deleteConfirm">我确认删除我的数据</span></label>
+      </div>
     </div>
     <div class="actions">
       <button class="btn danger" type="button" data-action="uninstall" data-primary data-i18n="installer.uninstall.confirm.uninstall">卸载<span class="cir">→</span></button>
@@ -1859,7 +2388,7 @@ body{background:#efede9;color:#33332f;font-family:Consolas,monospace;padding:28p
     <div class="fin-ring"><svg viewBox="0 0 56 56" aria-hidden="true"><path d="M12 30l11 11 21-26"/></svg></div>
     <h1 data-drag data-i18n="installer.uninstall.finish.title">已卸载。</h1>
     <div class="datbadge" id="datbadge" data-drag>用户数据已保留 · C:\Users\fengy\AppData\Roaming\LinkDesk</div>
-    <div class="sub" data-drag data-i18n="installer.uninstall.finish.sub">谢谢使用 LinkDesk，有缘再见。</div>
+    <div class="sub" data-drag data-i18n="installer.uninstall.finish.sub">感谢使用 LinkDesk，有缘再见。</div>
     <div class="actions"><button class="btn primary" type="button" data-action="un-done" data-primary data-i18n="installer.uninstall.finish.done">完成</button></div>
   </div>
 </div></div>
@@ -1950,7 +2479,7 @@ body{background:#efede9;color:#33332f;font-family:Consolas,monospace;padding:28p
       <li id="p4"><span class="st"></span><span data-i18n="installer.progress.step4">收尾校验</span></li>
     </ul>
     <div class="prow">
-      <button class="cancel" type="button" data-action="cancel" data-i18n="installer.progress.cancel">取消安装</button>
+      <button class="btn ghost" type="button" data-action="cancel" disabled data-i18n="installer.progress.cancel">取消安装</button>
     </div>
   </div>
 
@@ -2005,13 +2534,17 @@ body{background:#efede9;color:#33332f;font-family:Consolas,monospace;padding:28p
     </div>
     <h1 data-drag data-i18n="installer.uninstall.confirm.title">要卸载 LinkDesk 吗？</h1>
     <div class="sub" data-drag data-i18n="installer.uninstall.confirm.sub">安装位置：<code>C:\Users\fengy\AppData\Local\Programs\linkdesk</code> · 约 420 MB</div>
-    <label class="opt"><input type="checkbox" id="keepdata" checked><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span><span data-i18n="installer.uninstall.confirm.keepdata">保留我的数据</span><small data-i18n="installer.uninstall.confirm.keepdata.sub">工作区 · 设置 · 已装插件</small></span></label>
-    <!-- 件 2d：行内二次确认（02 §二幕⑨——删 userData 不可逆，必须用户亲眼确认过）。
-         勾掉「保留我的数据」时**不立刻露**：点「卸载」才露（不打扰只想保留数据的人）；
-         勾回「保留」即收起。样式复用 .unwarn（超时提示那块），只多一个 danger 色变体。 -->
-    <div id="delconfirm" hidden>
-      <div class="unwarn danger" data-i18n="installer.uninstall.confirm.deleteWarn">这会删除全部工作区、设置与已装插件，不可恢复。</div>
-      <label class="opt"><input type="checkbox" id="delagree"><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span data-i18n="installer.uninstall.confirm.deleteConfirm">我确认删除我的数据</span></label>
+    <!-- 3d #14/#15：两行选项与 #delconfirm 收进一条内容列（列 188px、以中线为轴、列内左对齐）
+         ⇒ 三个方框/警示块左沿归一；屏幕其余部分（标题/正文/按钮行）仍居中。样式见 app.css .uncol -->
+    <div class="uncol">
+      <label class="opt"><input type="checkbox" id="keepdata" checked><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span><span data-i18n="installer.uninstall.confirm.keepdata">保留我的数据</span><small data-i18n="installer.uninstall.confirm.keepdata.sub">工作区 · 设置 · 已装插件</small></span></label>
+      <!-- 件 2d：行内二次确认（02 §二幕⑨——删 userData 不可逆，必须用户亲眼确认过）。
+           勾掉「保留我的数据」时**不立刻露**：点「卸载」才露（不打扰只想保留数据的人）；
+           勾回「保留」即收起。样式复用 .unwarn（超时提示那块），只多一个 danger 色变体。 -->
+      <div id="delconfirm" hidden>
+        <div class="unwarn danger" data-i18n="installer.uninstall.confirm.deleteWarn">这会删除全部工作区、设置与已装插件，不可恢复。</div>
+        <label class="opt"><input type="checkbox" id="delagree"><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span data-i18n="installer.uninstall.confirm.deleteConfirm">我确认删除我的数据</span></label>
+      </div>
     </div>
     <div class="actions">
       <button class="btn danger" type="button" data-action="uninstall" data-primary data-i18n="installer.uninstall.confirm.uninstall">卸载<span class="cir">→</span></button>
@@ -2054,7 +2587,7 @@ body{background:#efede9;color:#33332f;font-family:Consolas,monospace;padding:28p
     <div class="fin-ring"><svg viewBox="0 0 56 56" aria-hidden="true"><path d="M12 30l11 11 21-26"/></svg></div>
     <h1 data-drag data-i18n="installer.uninstall.finish.title">已卸载。</h1>
     <div class="datbadge" id="datbadge" data-drag>用户数据已保留 · C:\Users\fengy\AppData\Roaming\LinkDesk</div>
-    <div class="sub" data-drag data-i18n="installer.uninstall.finish.sub">谢谢使用 LinkDesk，有缘再见。</div>
+    <div class="sub" data-drag data-i18n="installer.uninstall.finish.sub">感谢使用 LinkDesk，有缘再见。</div>
     <div class="actions"><button class="btn primary" type="button" data-action="un-done" data-primary data-i18n="installer.uninstall.finish.done">完成</button></div>
   </div>
 </div></div>
@@ -2145,7 +2678,7 @@ body{background:#efede9;color:#33332f;font-family:Consolas,monospace;padding:28p
       <li id="p4" class="run"><span class="st"></span><span data-i18n="installer.progress.step4">收尾校验</span></li>
     </ul>
     <div class="prow">
-      <button class="cancel" type="button" data-action="cancel" data-i18n="installer.progress.cancel">取消安装</button>
+      <button class="btn ghost" type="button" data-action="cancel" disabled data-i18n="installer.progress.cancel">取消安装</button>
     </div>
   </div>
 
@@ -2200,13 +2733,17 @@ body{background:#efede9;color:#33332f;font-family:Consolas,monospace;padding:28p
     </div>
     <h1 data-drag data-i18n="installer.uninstall.confirm.title">要卸载 LinkDesk 吗？</h1>
     <div class="sub" data-drag data-i18n="installer.uninstall.confirm.sub">安装位置：<code>C:\Users\fengy\AppData\Local\Programs\linkdesk</code> · 约 420 MB</div>
-    <label class="opt"><input type="checkbox" id="keepdata" checked><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span><span data-i18n="installer.uninstall.confirm.keepdata">保留我的数据</span><small data-i18n="installer.uninstall.confirm.keepdata.sub">工作区 · 设置 · 已装插件</small></span></label>
-    <!-- 件 2d：行内二次确认（02 §二幕⑨——删 userData 不可逆，必须用户亲眼确认过）。
-         勾掉「保留我的数据」时**不立刻露**：点「卸载」才露（不打扰只想保留数据的人）；
-         勾回「保留」即收起。样式复用 .unwarn（超时提示那块），只多一个 danger 色变体。 -->
-    <div id="delconfirm" hidden>
-      <div class="unwarn danger" data-i18n="installer.uninstall.confirm.deleteWarn">这会删除全部工作区、设置与已装插件，不可恢复。</div>
-      <label class="opt"><input type="checkbox" id="delagree"><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span data-i18n="installer.uninstall.confirm.deleteConfirm">我确认删除我的数据</span></label>
+    <!-- 3d #14/#15：两行选项与 #delconfirm 收进一条内容列（列 188px、以中线为轴、列内左对齐）
+         ⇒ 三个方框/警示块左沿归一；屏幕其余部分（标题/正文/按钮行）仍居中。样式见 app.css .uncol -->
+    <div class="uncol">
+      <label class="opt"><input type="checkbox" id="keepdata" checked><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span><span data-i18n="installer.uninstall.confirm.keepdata">保留我的数据</span><small data-i18n="installer.uninstall.confirm.keepdata.sub">工作区 · 设置 · 已装插件</small></span></label>
+      <!-- 件 2d：行内二次确认（02 §二幕⑨——删 userData 不可逆，必须用户亲眼确认过）。
+           勾掉「保留我的数据」时**不立刻露**：点「卸载」才露（不打扰只想保留数据的人）；
+           勾回「保留」即收起。样式复用 .unwarn（超时提示那块），只多一个 danger 色变体。 -->
+      <div id="delconfirm" hidden>
+        <div class="unwarn danger" data-i18n="installer.uninstall.confirm.deleteWarn">这会删除全部工作区、设置与已装插件，不可恢复。</div>
+        <label class="opt"><input type="checkbox" id="delagree"><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span data-i18n="installer.uninstall.confirm.deleteConfirm">我确认删除我的数据</span></label>
+      </div>
     </div>
     <div class="actions">
       <button class="btn danger" type="button" data-action="uninstall" data-primary data-i18n="installer.uninstall.confirm.uninstall">卸载<span class="cir">→</span></button>
@@ -2249,7 +2786,7 @@ body{background:#efede9;color:#33332f;font-family:Consolas,monospace;padding:28p
     <div class="fin-ring"><svg viewBox="0 0 56 56" aria-hidden="true"><path d="M12 30l11 11 21-26"/></svg></div>
     <h1 data-drag data-i18n="installer.uninstall.finish.title">已卸载。</h1>
     <div class="datbadge" id="datbadge" data-drag>用户数据已保留 · C:\Users\fengy\AppData\Roaming\LinkDesk</div>
-    <div class="sub" data-drag data-i18n="installer.uninstall.finish.sub">谢谢使用 LinkDesk，有缘再见。</div>
+    <div class="sub" data-drag data-i18n="installer.uninstall.finish.sub">感谢使用 LinkDesk，有缘再见。</div>
     <div class="actions"><button class="btn primary" type="button" data-action="un-done" data-primary data-i18n="installer.uninstall.finish.done">完成</button></div>
   </div>
 </div></div>
@@ -2340,7 +2877,7 @@ body{background:#efede9;color:#33332f;font-family:Consolas,monospace;padding:28p
       <li id="p4"><span class="st"></span><span data-i18n="installer.progress.step4">收尾校验</span></li>
     </ul>
     <div class="prow">
-      <button class="cancel" type="button" data-action="cancel" data-i18n="installer.progress.cancel">取消安装</button>
+      <button class="btn ghost" type="button" data-action="cancel" data-i18n="installer.progress.cancel">取消安装</button>
     </div>
   </div>
 
@@ -2395,13 +2932,17 @@ body{background:#efede9;color:#33332f;font-family:Consolas,monospace;padding:28p
     </div>
     <h1 data-drag data-i18n="installer.uninstall.confirm.title">要卸载 LinkDesk 吗？</h1>
     <div class="sub" data-drag data-i18n="installer.uninstall.confirm.sub">安装位置：<code>C:\Users\fengy\AppData\Local\Programs\linkdesk</code> · 约 420 MB</div>
-    <label class="opt"><input type="checkbox" id="keepdata" checked><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span><span data-i18n="installer.uninstall.confirm.keepdata">保留我的数据</span><small data-i18n="installer.uninstall.confirm.keepdata.sub">工作区 · 设置 · 已装插件</small></span></label>
-    <!-- 件 2d：行内二次确认（02 §二幕⑨——删 userData 不可逆，必须用户亲眼确认过）。
-         勾掉「保留我的数据」时**不立刻露**：点「卸载」才露（不打扰只想保留数据的人）；
-         勾回「保留」即收起。样式复用 .unwarn（超时提示那块），只多一个 danger 色变体。 -->
-    <div id="delconfirm" hidden>
-      <div class="unwarn danger" data-i18n="installer.uninstall.confirm.deleteWarn">这会删除全部工作区、设置与已装插件，不可恢复。</div>
-      <label class="opt"><input type="checkbox" id="delagree"><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span data-i18n="installer.uninstall.confirm.deleteConfirm">我确认删除我的数据</span></label>
+    <!-- 3d #14/#15：两行选项与 #delconfirm 收进一条内容列（列 188px、以中线为轴、列内左对齐）
+         ⇒ 三个方框/警示块左沿归一；屏幕其余部分（标题/正文/按钮行）仍居中。样式见 app.css .uncol -->
+    <div class="uncol">
+      <label class="opt"><input type="checkbox" id="keepdata" checked><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span><span data-i18n="installer.uninstall.confirm.keepdata">保留我的数据</span><small data-i18n="installer.uninstall.confirm.keepdata.sub">工作区 · 设置 · 已装插件</small></span></label>
+      <!-- 件 2d：行内二次确认（02 §二幕⑨——删 userData 不可逆，必须用户亲眼确认过）。
+           勾掉「保留我的数据」时**不立刻露**：点「卸载」才露（不打扰只想保留数据的人）；
+           勾回「保留」即收起。样式复用 .unwarn（超时提示那块），只多一个 danger 色变体。 -->
+      <div id="delconfirm" hidden>
+        <div class="unwarn danger" data-i18n="installer.uninstall.confirm.deleteWarn">这会删除全部工作区、设置与已装插件，不可恢复。</div>
+        <label class="opt"><input type="checkbox" id="delagree"><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span data-i18n="installer.uninstall.confirm.deleteConfirm">我确认删除我的数据</span></label>
+      </div>
     </div>
     <div class="actions">
       <button class="btn danger" type="button" data-action="uninstall" data-primary data-i18n="installer.uninstall.confirm.uninstall">卸载<span class="cir">→</span></button>
@@ -2444,7 +2985,7 @@ body{background:#efede9;color:#33332f;font-family:Consolas,monospace;padding:28p
     <div class="fin-ring"><svg viewBox="0 0 56 56" aria-hidden="true"><path d="M12 30l11 11 21-26"/></svg></div>
     <h1 data-drag data-i18n="installer.uninstall.finish.title">已卸载。</h1>
     <div class="datbadge" id="datbadge" data-drag>用户数据已保留 · C:\Users\fengy\AppData\Roaming\LinkDesk</div>
-    <div class="sub" data-drag data-i18n="installer.uninstall.finish.sub">谢谢使用 LinkDesk，有缘再见。</div>
+    <div class="sub" data-drag data-i18n="installer.uninstall.finish.sub">感谢使用 LinkDesk，有缘再见。</div>
     <div class="actions"><button class="btn primary" type="button" data-action="un-done" data-primary data-i18n="installer.uninstall.finish.done">完成</button></div>
   </div>
 </div></div>
@@ -2535,7 +3076,7 @@ body{background:#efede9;color:#33332f;font-family:Consolas,monospace;padding:28p
       <li id="p4"><span class="st"></span><span data-i18n="installer.progress.step4">收尾校验</span></li>
     </ul>
     <div class="prow">
-      <button class="cancel" type="button" data-action="cancel" data-i18n="installer.progress.cancel">取消安装</button>
+      <button class="btn ghost" type="button" data-action="cancel" data-i18n="installer.progress.cancel">取消安装</button>
     </div>
   </div>
 
@@ -2590,13 +3131,17 @@ body{background:#efede9;color:#33332f;font-family:Consolas,monospace;padding:28p
     </div>
     <h1 data-drag data-i18n="installer.uninstall.confirm.title">要卸载 LinkDesk 吗？</h1>
     <div class="sub" data-drag data-i18n="installer.uninstall.confirm.sub">安装位置：<code>C:\Users\fengy\AppData\Local\Programs\linkdesk</code> · 约 420 MB</div>
-    <label class="opt"><input type="checkbox" id="keepdata" checked><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span><span data-i18n="installer.uninstall.confirm.keepdata">保留我的数据</span><small data-i18n="installer.uninstall.confirm.keepdata.sub">工作区 · 设置 · 已装插件</small></span></label>
-    <!-- 件 2d：行内二次确认（02 §二幕⑨——删 userData 不可逆，必须用户亲眼确认过）。
-         勾掉「保留我的数据」时**不立刻露**：点「卸载」才露（不打扰只想保留数据的人）；
-         勾回「保留」即收起。样式复用 .unwarn（超时提示那块），只多一个 danger 色变体。 -->
-    <div id="delconfirm" hidden>
-      <div class="unwarn danger" data-i18n="installer.uninstall.confirm.deleteWarn">这会删除全部工作区、设置与已装插件，不可恢复。</div>
-      <label class="opt"><input type="checkbox" id="delagree"><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span data-i18n="installer.uninstall.confirm.deleteConfirm">我确认删除我的数据</span></label>
+    <!-- 3d #14/#15：两行选项与 #delconfirm 收进一条内容列（列 188px、以中线为轴、列内左对齐）
+         ⇒ 三个方框/警示块左沿归一；屏幕其余部分（标题/正文/按钮行）仍居中。样式见 app.css .uncol -->
+    <div class="uncol">
+      <label class="opt"><input type="checkbox" id="keepdata" checked><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span><span data-i18n="installer.uninstall.confirm.keepdata">保留我的数据</span><small data-i18n="installer.uninstall.confirm.keepdata.sub">工作区 · 设置 · 已装插件</small></span></label>
+      <!-- 件 2d：行内二次确认（02 §二幕⑨——删 userData 不可逆，必须用户亲眼确认过）。
+           勾掉「保留我的数据」时**不立刻露**：点「卸载」才露（不打扰只想保留数据的人）；
+           勾回「保留」即收起。样式复用 .unwarn（超时提示那块），只多一个 danger 色变体。 -->
+      <div id="delconfirm" hidden>
+        <div class="unwarn danger" data-i18n="installer.uninstall.confirm.deleteWarn">这会删除全部工作区、设置与已装插件，不可恢复。</div>
+        <label class="opt"><input type="checkbox" id="delagree"><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span data-i18n="installer.uninstall.confirm.deleteConfirm">我确认删除我的数据</span></label>
+      </div>
     </div>
     <div class="actions">
       <button class="btn danger" type="button" data-action="uninstall" data-primary data-i18n="installer.uninstall.confirm.uninstall">卸载<span class="cir">→</span></button>
@@ -2639,7 +3184,7 @@ body{background:#efede9;color:#33332f;font-family:Consolas,monospace;padding:28p
     <div class="fin-ring"><svg viewBox="0 0 56 56" aria-hidden="true"><path d="M12 30l11 11 21-26"/></svg></div>
     <h1 data-drag data-i18n="installer.uninstall.finish.title">已卸载。</h1>
     <div class="datbadge" id="datbadge" data-drag>用户数据已保留 · C:\Users\fengy\AppData\Roaming\LinkDesk</div>
-    <div class="sub" data-drag data-i18n="installer.uninstall.finish.sub">谢谢使用 LinkDesk，有缘再见。</div>
+    <div class="sub" data-drag data-i18n="installer.uninstall.finish.sub">感谢使用 LinkDesk，有缘再见。</div>
     <div class="actions"><button class="btn primary" type="button" data-action="un-done" data-primary data-i18n="installer.uninstall.finish.done">完成</button></div>
   </div>
 </div></div>
@@ -2730,7 +3275,7 @@ body{background:#efede9;color:#33332f;font-family:Consolas,monospace;padding:28p
       <li id="p4"><span class="st"></span><span data-i18n="installer.progress.step4">收尾校验</span></li>
     </ul>
     <div class="prow">
-      <button class="cancel" type="button" data-action="cancel" data-i18n="installer.progress.cancel">取消安装</button>
+      <button class="btn ghost" type="button" data-action="cancel" data-i18n="installer.progress.cancel">取消安装</button>
     </div>
   </div>
 
@@ -2785,13 +3330,17 @@ body{background:#efede9;color:#33332f;font-family:Consolas,monospace;padding:28p
     </div>
     <h1 data-drag data-i18n="installer.uninstall.confirm.title">要卸载 LinkDesk 吗？</h1>
     <div class="sub" data-drag data-i18n="installer.uninstall.confirm.sub">安装位置：<code>C:\Users\fengy\AppData\Local\Programs\linkdesk</code> · 约 420 MB</div>
-    <label class="opt"><input type="checkbox" id="keepdata" checked><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span><span data-i18n="installer.uninstall.confirm.keepdata">保留我的数据</span><small data-i18n="installer.uninstall.confirm.keepdata.sub">工作区 · 设置 · 已装插件</small></span></label>
-    <!-- 件 2d：行内二次确认（02 §二幕⑨——删 userData 不可逆，必须用户亲眼确认过）。
-         勾掉「保留我的数据」时**不立刻露**：点「卸载」才露（不打扰只想保留数据的人）；
-         勾回「保留」即收起。样式复用 .unwarn（超时提示那块），只多一个 danger 色变体。 -->
-    <div id="delconfirm" hidden>
-      <div class="unwarn danger" data-i18n="installer.uninstall.confirm.deleteWarn">这会删除全部工作区、设置与已装插件，不可恢复。</div>
-      <label class="opt"><input type="checkbox" id="delagree"><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span data-i18n="installer.uninstall.confirm.deleteConfirm">我确认删除我的数据</span></label>
+    <!-- 3d #14/#15：两行选项与 #delconfirm 收进一条内容列（列 188px、以中线为轴、列内左对齐）
+         ⇒ 三个方框/警示块左沿归一；屏幕其余部分（标题/正文/按钮行）仍居中。样式见 app.css .uncol -->
+    <div class="uncol">
+      <label class="opt"><input type="checkbox" id="keepdata" checked><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span><span data-i18n="installer.uninstall.confirm.keepdata">保留我的数据</span><small data-i18n="installer.uninstall.confirm.keepdata.sub">工作区 · 设置 · 已装插件</small></span></label>
+      <!-- 件 2d：行内二次确认（02 §二幕⑨——删 userData 不可逆，必须用户亲眼确认过）。
+           勾掉「保留我的数据」时**不立刻露**：点「卸载」才露（不打扰只想保留数据的人）；
+           勾回「保留」即收起。样式复用 .unwarn（超时提示那块），只多一个 danger 色变体。 -->
+      <div id="delconfirm" hidden>
+        <div class="unwarn danger" data-i18n="installer.uninstall.confirm.deleteWarn">这会删除全部工作区、设置与已装插件，不可恢复。</div>
+        <label class="opt"><input type="checkbox" id="delagree"><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span data-i18n="installer.uninstall.confirm.deleteConfirm">我确认删除我的数据</span></label>
+      </div>
     </div>
     <div class="actions">
       <button class="btn danger" type="button" data-action="uninstall" data-primary data-i18n="installer.uninstall.confirm.uninstall">卸载<span class="cir">→</span></button>
@@ -2834,7 +3383,7 @@ body{background:#efede9;color:#33332f;font-family:Consolas,monospace;padding:28p
     <div class="fin-ring"><svg viewBox="0 0 56 56" aria-hidden="true"><path d="M12 30l11 11 21-26"/></svg></div>
     <h1 data-drag data-i18n="installer.uninstall.finish.title">已卸载。</h1>
     <div class="datbadge" id="datbadge" data-drag>用户数据已保留 · C:\Users\fengy\AppData\Roaming\LinkDesk</div>
-    <div class="sub" data-drag data-i18n="installer.uninstall.finish.sub">谢谢使用 LinkDesk，有缘再见。</div>
+    <div class="sub" data-drag data-i18n="installer.uninstall.finish.sub">感谢使用 LinkDesk，有缘再见。</div>
     <div class="actions"><button class="btn primary" type="button" data-action="un-done" data-primary data-i18n="installer.uninstall.finish.done">完成</button></div>
   </div>
 </div></div>
@@ -2925,7 +3474,7 @@ body{background:#efede9;color:#33332f;font-family:Consolas,monospace;padding:28p
       <li id="p4"><span class="st"></span><span data-i18n="installer.progress.step4">收尾校验</span></li>
     </ul>
     <div class="prow">
-      <button class="cancel" type="button" data-action="cancel" data-i18n="installer.progress.cancel">取消安装</button>
+      <button class="btn ghost" type="button" data-action="cancel" data-i18n="installer.progress.cancel">取消安装</button>
     </div>
   </div>
 
@@ -2980,13 +3529,17 @@ body{background:#efede9;color:#33332f;font-family:Consolas,monospace;padding:28p
     </div>
     <h1 data-drag data-i18n="installer.uninstall.confirm.title">要卸载 LinkDesk 吗？</h1>
     <div class="sub" data-drag data-i18n="installer.uninstall.confirm.sub">安装位置：<code>C:\Users\fengy\AppData\Local\Programs\linkdesk</code> · 约 420 MB</div>
-    <label class="opt"><input type="checkbox" id="keepdata" checked><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span><span data-i18n="installer.uninstall.confirm.keepdata">保留我的数据</span><small data-i18n="installer.uninstall.confirm.keepdata.sub">工作区 · 设置 · 已装插件</small></span></label>
-    <!-- 件 2d：行内二次确认（02 §二幕⑨——删 userData 不可逆，必须用户亲眼确认过）。
-         勾掉「保留我的数据」时**不立刻露**：点「卸载」才露（不打扰只想保留数据的人）；
-         勾回「保留」即收起。样式复用 .unwarn（超时提示那块），只多一个 danger 色变体。 -->
-    <div id="delconfirm" hidden>
-      <div class="unwarn danger" data-i18n="installer.uninstall.confirm.deleteWarn">这会删除全部工作区、设置与已装插件，不可恢复。</div>
-      <label class="opt"><input type="checkbox" id="delagree"><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span data-i18n="installer.uninstall.confirm.deleteConfirm">我确认删除我的数据</span></label>
+    <!-- 3d #14/#15：两行选项与 #delconfirm 收进一条内容列（列 188px、以中线为轴、列内左对齐）
+         ⇒ 三个方框/警示块左沿归一；屏幕其余部分（标题/正文/按钮行）仍居中。样式见 app.css .uncol -->
+    <div class="uncol">
+      <label class="opt"><input type="checkbox" id="keepdata" checked><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span><span data-i18n="installer.uninstall.confirm.keepdata">保留我的数据</span><small data-i18n="installer.uninstall.confirm.keepdata.sub">工作区 · 设置 · 已装插件</small></span></label>
+      <!-- 件 2d：行内二次确认（02 §二幕⑨——删 userData 不可逆，必须用户亲眼确认过）。
+           勾掉「保留我的数据」时**不立刻露**：点「卸载」才露（不打扰只想保留数据的人）；
+           勾回「保留」即收起。样式复用 .unwarn（超时提示那块），只多一个 danger 色变体。 -->
+      <div id="delconfirm" hidden>
+        <div class="unwarn danger" data-i18n="installer.uninstall.confirm.deleteWarn">这会删除全部工作区、设置与已装插件，不可恢复。</div>
+        <label class="opt"><input type="checkbox" id="delagree"><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span data-i18n="installer.uninstall.confirm.deleteConfirm">我确认删除我的数据</span></label>
+      </div>
     </div>
     <div class="actions">
       <button class="btn danger" type="button" data-action="uninstall" data-primary data-i18n="installer.uninstall.confirm.uninstall">卸载<span class="cir">→</span></button>
@@ -3029,7 +3582,7 @@ body{background:#efede9;color:#33332f;font-family:Consolas,monospace;padding:28p
     <div class="fin-ring"><svg viewBox="0 0 56 56" aria-hidden="true"><path d="M12 30l11 11 21-26"/></svg></div>
     <h1 data-drag data-i18n="installer.uninstall.finish.title">已卸载。</h1>
     <div class="datbadge" id="datbadge" data-drag>用户数据已保留 · C:\Users\fengy\AppData\Roaming\LinkDesk</div>
-    <div class="sub" data-drag data-i18n="installer.uninstall.finish.sub">谢谢使用 LinkDesk，有缘再见。</div>
+    <div class="sub" data-drag data-i18n="installer.uninstall.finish.sub">感谢使用 LinkDesk，有缘再见。</div>
     <div class="actions"><button class="btn primary" type="button" data-action="un-done" data-primary data-i18n="installer.uninstall.finish.done">完成</button></div>
   </div>
 </div></div>
@@ -3120,7 +3673,7 @@ body{background:#efede9;color:#33332f;font-family:Consolas,monospace;padding:28p
       <li id="p4"><span class="st"></span><span data-i18n="installer.progress.step4">收尾校验</span></li>
     </ul>
     <div class="prow">
-      <button class="cancel" type="button" data-action="cancel" data-i18n="installer.progress.cancel">取消安装</button>
+      <button class="btn ghost" type="button" data-action="cancel" data-i18n="installer.progress.cancel">取消安装</button>
     </div>
   </div>
 
@@ -3175,13 +3728,17 @@ body{background:#efede9;color:#33332f;font-family:Consolas,monospace;padding:28p
     </div>
     <h1 data-drag data-i18n="installer.uninstall.confirm.title">要卸载 LinkDesk 吗？</h1>
     <div class="sub" data-drag data-i18n="installer.uninstall.confirm.sub">安装位置：<code>C:\Users\fengy\AppData\Local\Programs\linkdesk</code> · 约 420 MB</div>
-    <label class="opt"><input type="checkbox" id="keepdata" checked><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span><span data-i18n="installer.uninstall.confirm.keepdata">保留我的数据</span><small data-i18n="installer.uninstall.confirm.keepdata.sub">工作区 · 设置 · 已装插件</small></span></label>
-    <!-- 件 2d：行内二次确认（02 §二幕⑨——删 userData 不可逆，必须用户亲眼确认过）。
-         勾掉「保留我的数据」时**不立刻露**：点「卸载」才露（不打扰只想保留数据的人）；
-         勾回「保留」即收起。样式复用 .unwarn（超时提示那块），只多一个 danger 色变体。 -->
-    <div id="delconfirm" hidden>
-      <div class="unwarn danger" data-i18n="installer.uninstall.confirm.deleteWarn">这会删除全部工作区、设置与已装插件，不可恢复。</div>
-      <label class="opt"><input type="checkbox" id="delagree"><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span data-i18n="installer.uninstall.confirm.deleteConfirm">我确认删除我的数据</span></label>
+    <!-- 3d #14/#15：两行选项与 #delconfirm 收进一条内容列（列 188px、以中线为轴、列内左对齐）
+         ⇒ 三个方框/警示块左沿归一；屏幕其余部分（标题/正文/按钮行）仍居中。样式见 app.css .uncol -->
+    <div class="uncol">
+      <label class="opt"><input type="checkbox" id="keepdata" checked><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span><span data-i18n="installer.uninstall.confirm.keepdata">保留我的数据</span><small data-i18n="installer.uninstall.confirm.keepdata.sub">工作区 · 设置 · 已装插件</small></span></label>
+      <!-- 件 2d：行内二次确认（02 §二幕⑨——删 userData 不可逆，必须用户亲眼确认过）。
+           勾掉「保留我的数据」时**不立刻露**：点「卸载」才露（不打扰只想保留数据的人）；
+           勾回「保留」即收起。样式复用 .unwarn（超时提示那块），只多一个 danger 色变体。 -->
+      <div id="delconfirm" hidden>
+        <div class="unwarn danger" data-i18n="installer.uninstall.confirm.deleteWarn">这会删除全部工作区、设置与已装插件，不可恢复。</div>
+        <label class="opt"><input type="checkbox" id="delagree"><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span data-i18n="installer.uninstall.confirm.deleteConfirm">我确认删除我的数据</span></label>
+      </div>
     </div>
     <div class="actions">
       <button class="btn danger" type="button" data-action="uninstall" data-primary data-i18n="installer.uninstall.confirm.uninstall">卸载<span class="cir">→</span></button>
@@ -3224,7 +3781,7 @@ body{background:#efede9;color:#33332f;font-family:Consolas,monospace;padding:28p
     <div class="fin-ring"><svg viewBox="0 0 56 56" aria-hidden="true"><path d="M12 30l11 11 21-26"/></svg></div>
     <h1 data-drag data-i18n="installer.uninstall.finish.title">已卸载。</h1>
     <div class="datbadge" id="datbadge" data-drag>用户数据已保留 · C:\Users\fengy\AppData\Roaming\LinkDesk</div>
-    <div class="sub" data-drag data-i18n="installer.uninstall.finish.sub">谢谢使用 LinkDesk，有缘再见。</div>
+    <div class="sub" data-drag data-i18n="installer.uninstall.finish.sub">感谢使用 LinkDesk，有缘再见。</div>
     <div class="actions"><button class="btn primary" type="button" data-action="un-done" data-primary data-i18n="installer.uninstall.finish.done">完成</button></div>
   </div>
 </div></div>
@@ -3315,7 +3872,7 @@ body{background:#efede9;color:#33332f;font-family:Consolas,monospace;padding:28p
       <li id="p4"><span class="st"></span><span data-i18n="installer.progress.step4">收尾校验</span></li>
     </ul>
     <div class="prow">
-      <button class="cancel" type="button" data-action="cancel" data-i18n="installer.progress.cancel">取消安装</button>
+      <button class="btn ghost" type="button" data-action="cancel" data-i18n="installer.progress.cancel">取消安装</button>
     </div>
   </div>
 
@@ -3370,13 +3927,17 @@ body{background:#efede9;color:#33332f;font-family:Consolas,monospace;padding:28p
     </div>
     <h1 data-drag data-i18n="installer.uninstall.confirm.title">要卸载 LinkDesk 吗？</h1>
     <div class="sub" data-drag data-i18n="installer.uninstall.confirm.sub">安装位置：<code>C:\Users\fengy\AppData\Local\Programs\linkdesk</code> · 约 420 MB</div>
-    <label class="opt"><input type="checkbox" id="keepdata" checked><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span><span data-i18n="installer.uninstall.confirm.keepdata">保留我的数据</span><small data-i18n="installer.uninstall.confirm.keepdata.sub">工作区 · 设置 · 已装插件</small></span></label>
-    <!-- 件 2d：行内二次确认（02 §二幕⑨——删 userData 不可逆，必须用户亲眼确认过）。
-         勾掉「保留我的数据」时**不立刻露**：点「卸载」才露（不打扰只想保留数据的人）；
-         勾回「保留」即收起。样式复用 .unwarn（超时提示那块），只多一个 danger 色变体。 -->
-    <div id="delconfirm" hidden>
-      <div class="unwarn danger" data-i18n="installer.uninstall.confirm.deleteWarn">这会删除全部工作区、设置与已装插件，不可恢复。</div>
-      <label class="opt"><input type="checkbox" id="delagree"><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span data-i18n="installer.uninstall.confirm.deleteConfirm">我确认删除我的数据</span></label>
+    <!-- 3d #14/#15：两行选项与 #delconfirm 收进一条内容列（列 188px、以中线为轴、列内左对齐）
+         ⇒ 三个方框/警示块左沿归一；屏幕其余部分（标题/正文/按钮行）仍居中。样式见 app.css .uncol -->
+    <div class="uncol">
+      <label class="opt"><input type="checkbox" id="keepdata" checked><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span><span data-i18n="installer.uninstall.confirm.keepdata">保留我的数据</span><small data-i18n="installer.uninstall.confirm.keepdata.sub">工作区 · 设置 · 已装插件</small></span></label>
+      <!-- 件 2d：行内二次确认（02 §二幕⑨——删 userData 不可逆，必须用户亲眼确认过）。
+           勾掉「保留我的数据」时**不立刻露**：点「卸载」才露（不打扰只想保留数据的人）；
+           勾回「保留」即收起。样式复用 .unwarn（超时提示那块），只多一个 danger 色变体。 -->
+      <div id="delconfirm" hidden>
+        <div class="unwarn danger" data-i18n="installer.uninstall.confirm.deleteWarn">这会删除全部工作区、设置与已装插件，不可恢复。</div>
+        <label class="opt"><input type="checkbox" id="delagree"><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span data-i18n="installer.uninstall.confirm.deleteConfirm">我确认删除我的数据</span></label>
+      </div>
     </div>
     <div class="actions">
       <button class="btn danger" type="button" data-action="uninstall" data-primary data-i18n="installer.uninstall.confirm.uninstall">卸载<span class="cir">→</span></button>
@@ -3419,7 +3980,7 @@ body{background:#efede9;color:#33332f;font-family:Consolas,monospace;padding:28p
     <div class="fin-ring"><svg viewBox="0 0 56 56" aria-hidden="true"><path d="M12 30l11 11 21-26"/></svg></div>
     <h1 data-drag data-i18n="installer.uninstall.finish.title">已卸载。</h1>
     <div class="datbadge" id="datbadge" data-drag>用户数据已保留 · C:\Users\fengy\AppData\Roaming\LinkDesk</div>
-    <div class="sub" data-drag data-i18n="installer.uninstall.finish.sub">谢谢使用 LinkDesk，有缘再见。</div>
+    <div class="sub" data-drag data-i18n="installer.uninstall.finish.sub">感谢使用 LinkDesk，有缘再见。</div>
     <div class="actions"><button class="btn primary" type="button" data-action="un-done" data-primary data-i18n="installer.uninstall.finish.done">完成</button></div>
   </div>
 </div></div>
@@ -3510,7 +4071,7 @@ body{background:#efede9;color:#33332f;font-family:Consolas,monospace;padding:28p
       <li id="p4"><span class="st"></span><span data-i18n="installer.progress.step4">收尾校验</span></li>
     </ul>
     <div class="prow">
-      <button class="cancel" type="button" data-action="cancel" data-i18n="installer.progress.cancel">取消安装</button>
+      <button class="btn ghost" type="button" data-action="cancel" data-i18n="installer.progress.cancel">取消安装</button>
     </div>
   </div>
 
@@ -3565,13 +4126,17 @@ body{background:#efede9;color:#33332f;font-family:Consolas,monospace;padding:28p
     </div>
     <h1 data-drag data-i18n="installer.uninstall.confirm.title">要卸载 LinkDesk 吗？</h1>
     <div class="sub" data-drag data-i18n="installer.uninstall.confirm.sub">安装位置：<code>C:\Users\fengy\AppData\Local\Programs\linkdesk</code> · 约 420 MB</div>
-    <label class="opt"><input type="checkbox" id="keepdata" checked><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span><span data-i18n="installer.uninstall.confirm.keepdata">保留我的数据</span><small data-i18n="installer.uninstall.confirm.keepdata.sub">工作区 · 设置 · 已装插件</small></span></label>
-    <!-- 件 2d：行内二次确认（02 §二幕⑨——删 userData 不可逆，必须用户亲眼确认过）。
-         勾掉「保留我的数据」时**不立刻露**：点「卸载」才露（不打扰只想保留数据的人）；
-         勾回「保留」即收起。样式复用 .unwarn（超时提示那块），只多一个 danger 色变体。 -->
-    <div id="delconfirm" hidden>
-      <div class="unwarn danger" data-i18n="installer.uninstall.confirm.deleteWarn">这会删除全部工作区、设置与已装插件，不可恢复。</div>
-      <label class="opt"><input type="checkbox" id="delagree"><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span data-i18n="installer.uninstall.confirm.deleteConfirm">我确认删除我的数据</span></label>
+    <!-- 3d #14/#15：两行选项与 #delconfirm 收进一条内容列（列 188px、以中线为轴、列内左对齐）
+         ⇒ 三个方框/警示块左沿归一；屏幕其余部分（标题/正文/按钮行）仍居中。样式见 app.css .uncol -->
+    <div class="uncol">
+      <label class="opt"><input type="checkbox" id="keepdata" checked><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span><span data-i18n="installer.uninstall.confirm.keepdata">保留我的数据</span><small data-i18n="installer.uninstall.confirm.keepdata.sub">工作区 · 设置 · 已装插件</small></span></label>
+      <!-- 件 2d：行内二次确认（02 §二幕⑨——删 userData 不可逆，必须用户亲眼确认过）。
+           勾掉「保留我的数据」时**不立刻露**：点「卸载」才露（不打扰只想保留数据的人）；
+           勾回「保留」即收起。样式复用 .unwarn（超时提示那块），只多一个 danger 色变体。 -->
+      <div id="delconfirm" hidden>
+        <div class="unwarn danger" data-i18n="installer.uninstall.confirm.deleteWarn">这会删除全部工作区、设置与已装插件，不可恢复。</div>
+        <label class="opt"><input type="checkbox" id="delagree"><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span data-i18n="installer.uninstall.confirm.deleteConfirm">我确认删除我的数据</span></label>
+      </div>
     </div>
     <div class="actions">
       <button class="btn danger" type="button" data-action="uninstall" data-primary data-i18n="installer.uninstall.confirm.uninstall">卸载<span class="cir">→</span></button>
@@ -3614,7 +4179,7 @@ body{background:#efede9;color:#33332f;font-family:Consolas,monospace;padding:28p
     <div class="fin-ring"><svg viewBox="0 0 56 56" aria-hidden="true"><path d="M12 30l11 11 21-26"/></svg></div>
     <h1 data-drag data-i18n="installer.uninstall.finish.title">已卸载。</h1>
     <div class="datbadge" id="datbadge" data-drag>用户数据已保留 · C:\Users\fengy\AppData\Roaming\LinkDesk</div>
-    <div class="sub" data-drag data-i18n="installer.uninstall.finish.sub">谢谢使用 LinkDesk，有缘再见。</div>
+    <div class="sub" data-drag data-i18n="installer.uninstall.finish.sub">感谢使用 LinkDesk，有缘再见。</div>
     <div class="actions"><button class="btn primary" type="button" data-action="un-done" data-primary data-i18n="installer.uninstall.finish.done">完成</button></div>
   </div>
 </div></div>
@@ -3705,7 +4270,7 @@ body{background:#efede9;color:#33332f;font-family:Consolas,monospace;padding:28p
       <li id="p4"><span class="st"></span><span data-i18n="installer.progress.step4">收尾校验</span></li>
     </ul>
     <div class="prow">
-      <button class="cancel" type="button" data-action="cancel" data-i18n="installer.progress.cancel">取消安装</button>
+      <button class="btn ghost" type="button" data-action="cancel" data-i18n="installer.progress.cancel">取消安装</button>
     </div>
   </div>
 
@@ -3760,13 +4325,17 @@ body{background:#efede9;color:#33332f;font-family:Consolas,monospace;padding:28p
     </div>
     <h1 data-drag data-i18n="installer.uninstall.confirm.title">要卸载 LinkDesk 吗？</h1>
     <div class="sub" data-drag data-i18n="installer.uninstall.confirm.sub">安装位置：<code>C:\Users\fengy\AppData\Local\Programs\linkdesk</code> · 约 420 MB</div>
-    <label class="opt"><input type="checkbox" id="keepdata" checked><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span><span data-i18n="installer.uninstall.confirm.keepdata">保留我的数据</span><small data-i18n="installer.uninstall.confirm.keepdata.sub">工作区 · 设置 · 已装插件</small></span></label>
-    <!-- 件 2d：行内二次确认（02 §二幕⑨——删 userData 不可逆，必须用户亲眼确认过）。
-         勾掉「保留我的数据」时**不立刻露**：点「卸载」才露（不打扰只想保留数据的人）；
-         勾回「保留」即收起。样式复用 .unwarn（超时提示那块），只多一个 danger 色变体。 -->
-    <div id="delconfirm" hidden>
-      <div class="unwarn danger" data-i18n="installer.uninstall.confirm.deleteWarn">这会删除全部工作区、设置与已装插件，不可恢复。</div>
-      <label class="opt"><input type="checkbox" id="delagree"><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span data-i18n="installer.uninstall.confirm.deleteConfirm">我确认删除我的数据</span></label>
+    <!-- 3d #14/#15：两行选项与 #delconfirm 收进一条内容列（列 188px、以中线为轴、列内左对齐）
+         ⇒ 三个方框/警示块左沿归一；屏幕其余部分（标题/正文/按钮行）仍居中。样式见 app.css .uncol -->
+    <div class="uncol">
+      <label class="opt"><input type="checkbox" id="keepdata" checked><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span><span data-i18n="installer.uninstall.confirm.keepdata">保留我的数据</span><small data-i18n="installer.uninstall.confirm.keepdata.sub">工作区 · 设置 · 已装插件</small></span></label>
+      <!-- 件 2d：行内二次确认（02 §二幕⑨——删 userData 不可逆，必须用户亲眼确认过）。
+           勾掉「保留我的数据」时**不立刻露**：点「卸载」才露（不打扰只想保留数据的人）；
+           勾回「保留」即收起。样式复用 .unwarn（超时提示那块），只多一个 danger 色变体。 -->
+      <div id="delconfirm" hidden>
+        <div class="unwarn danger" data-i18n="installer.uninstall.confirm.deleteWarn">这会删除全部工作区、设置与已装插件，不可恢复。</div>
+        <label class="opt"><input type="checkbox" id="delagree"><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span data-i18n="installer.uninstall.confirm.deleteConfirm">我确认删除我的数据</span></label>
+      </div>
     </div>
     <div class="actions">
       <button class="btn danger" type="button" data-action="uninstall" data-primary data-i18n="installer.uninstall.confirm.uninstall">卸载<span class="cir">→</span></button>
@@ -3809,7 +4378,7 @@ body{background:#efede9;color:#33332f;font-family:Consolas,monospace;padding:28p
     <div class="fin-ring"><svg viewBox="0 0 56 56" aria-hidden="true"><path d="M12 30l11 11 21-26"/></svg></div>
     <h1 data-drag data-i18n="installer.uninstall.finish.title">已卸载。</h1>
     <div class="datbadge" id="datbadge" data-drag>用户数据已保留 · C:\Users\fengy\AppData\Roaming\LinkDesk</div>
-    <div class="sub" data-drag data-i18n="installer.uninstall.finish.sub">谢谢使用 LinkDesk，有缘再见。</div>
+    <div class="sub" data-drag data-i18n="installer.uninstall.finish.sub">感谢使用 LinkDesk，有缘再见。</div>
     <div class="actions"><button class="btn primary" type="button" data-action="un-done" data-primary data-i18n="installer.uninstall.finish.done">完成</button></div>
   </div>
 </div></div>
@@ -3902,7 +4471,7 @@ body{background:#efede9;color:#33332f;font-family:Consolas,monospace;padding:28p
       <li id="p4"><span class="st"></span><span data-i18n="installer.progress.step4">收尾校验</span></li>
     </ul>
     <div class="prow">
-      <button class="cancel" type="button" data-action="cancel" data-i18n="installer.progress.cancel">取消安装</button>
+      <button class="btn ghost" type="button" data-action="cancel" data-i18n="installer.progress.cancel">取消安装</button>
     </div>
   </div>
 
@@ -3957,13 +4526,17 @@ body{background:#efede9;color:#33332f;font-family:Consolas,monospace;padding:28p
     </div>
     <h1 data-drag data-i18n="installer.uninstall.confirm.title">要卸载 LinkDesk 吗？</h1>
     <div class="sub" data-drag data-i18n="installer.uninstall.confirm.sub">安装位置：<code>C:\Users\fengy\AppData\Local\Programs\linkdesk</code> · 约 420 MB</div>
-    <label class="opt"><input type="checkbox" id="keepdata" checked><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span><span data-i18n="installer.uninstall.confirm.keepdata">保留我的数据</span><small data-i18n="installer.uninstall.confirm.keepdata.sub">工作区 · 设置 · 已装插件</small></span></label>
-    <!-- 件 2d：行内二次确认（02 §二幕⑨——删 userData 不可逆，必须用户亲眼确认过）。
-         勾掉「保留我的数据」时**不立刻露**：点「卸载」才露（不打扰只想保留数据的人）；
-         勾回「保留」即收起。样式复用 .unwarn（超时提示那块），只多一个 danger 色变体。 -->
-    <div id="delconfirm" hidden>
-      <div class="unwarn danger" data-i18n="installer.uninstall.confirm.deleteWarn">这会删除全部工作区、设置与已装插件，不可恢复。</div>
-      <label class="opt"><input type="checkbox" id="delagree"><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span data-i18n="installer.uninstall.confirm.deleteConfirm">我确认删除我的数据</span></label>
+    <!-- 3d #14/#15：两行选项与 #delconfirm 收进一条内容列（列 188px、以中线为轴、列内左对齐）
+         ⇒ 三个方框/警示块左沿归一；屏幕其余部分（标题/正文/按钮行）仍居中。样式见 app.css .uncol -->
+    <div class="uncol">
+      <label class="opt"><input type="checkbox" id="keepdata" checked><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span><span data-i18n="installer.uninstall.confirm.keepdata">保留我的数据</span><small data-i18n="installer.uninstall.confirm.keepdata.sub">工作区 · 设置 · 已装插件</small></span></label>
+      <!-- 件 2d：行内二次确认（02 §二幕⑨——删 userData 不可逆，必须用户亲眼确认过）。
+           勾掉「保留我的数据」时**不立刻露**：点「卸载」才露（不打扰只想保留数据的人）；
+           勾回「保留」即收起。样式复用 .unwarn（超时提示那块），只多一个 danger 色变体。 -->
+      <div id="delconfirm" hidden>
+        <div class="unwarn danger" data-i18n="installer.uninstall.confirm.deleteWarn">这会删除全部工作区、设置与已装插件，不可恢复。</div>
+        <label class="opt"><input type="checkbox" id="delagree"><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span data-i18n="installer.uninstall.confirm.deleteConfirm">我确认删除我的数据</span></label>
+      </div>
     </div>
     <div class="actions">
       <button class="btn danger" type="button" data-action="uninstall" data-primary data-i18n="installer.uninstall.confirm.uninstall">卸载<span class="cir">→</span></button>
@@ -4006,7 +4579,7 @@ body{background:#efede9;color:#33332f;font-family:Consolas,monospace;padding:28p
     <div class="fin-ring"><svg viewBox="0 0 56 56" aria-hidden="true"><path d="M12 30l11 11 21-26"/></svg></div>
     <h1 data-drag data-i18n="installer.uninstall.finish.title">已卸载。</h1>
     <div class="datbadge" id="datbadge" data-drag>用户数据已保留 · C:\Users\fengy\AppData\Roaming\LinkDesk</div>
-    <div class="sub" data-drag data-i18n="installer.uninstall.finish.sub">谢谢使用 LinkDesk，有缘再见。</div>
+    <div class="sub" data-drag data-i18n="installer.uninstall.finish.sub">感谢使用 LinkDesk，有缘再见。</div>
     <div class="actions"><button class="btn primary" type="button" data-action="un-done" data-primary data-i18n="installer.uninstall.finish.done">完成</button></div>
   </div>
 </div></div>
@@ -4097,7 +4670,7 @@ body{background:#efede9;color:#33332f;font-family:Consolas,monospace;padding:28p
       <li id="p4"><span class="st"></span><span data-i18n="installer.progress.step4">收尾校验</span></li>
     </ul>
     <div class="prow">
-      <button class="cancel" type="button" data-action="cancel" data-i18n="installer.progress.cancel">取消安装</button>
+      <button class="btn ghost" type="button" data-action="cancel" data-i18n="installer.progress.cancel">取消安装</button>
     </div>
   </div>
 
@@ -4152,13 +4725,17 @@ body{background:#efede9;color:#33332f;font-family:Consolas,monospace;padding:28p
     </div>
     <h1 data-drag data-i18n="installer.uninstall.confirm.title">要卸载 LinkDesk 吗？</h1>
     <div class="sub" data-drag data-i18n="installer.uninstall.confirm.sub">安装位置：<code>C:\Users\fengy\AppData\Local\Programs\linkdesk</code> · 约 420 MB</div>
-    <label class="opt"><input type="checkbox" id="keepdata"><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span><span data-i18n="installer.uninstall.confirm.keepdata">保留我的数据</span><small data-i18n="installer.uninstall.confirm.keepdata.sub">工作区 · 设置 · 已装插件</small></span></label>
-    <!-- 件 2d：行内二次确认（02 §二幕⑨——删 userData 不可逆，必须用户亲眼确认过）。
-         勾掉「保留我的数据」时**不立刻露**：点「卸载」才露（不打扰只想保留数据的人）；
-         勾回「保留」即收起。样式复用 .unwarn（超时提示那块），只多一个 danger 色变体。 -->
-    <div id="delconfirm" hidden>
-      <div class="unwarn danger" data-i18n="installer.uninstall.confirm.deleteWarn">这会删除全部工作区、设置与已装插件，不可恢复。</div>
-      <label class="opt"><input type="checkbox" id="delagree"><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span data-i18n="installer.uninstall.confirm.deleteConfirm">我确认删除我的数据</span></label>
+    <!-- 3d #14/#15：两行选项与 #delconfirm 收进一条内容列（列 188px、以中线为轴、列内左对齐）
+         ⇒ 三个方框/警示块左沿归一；屏幕其余部分（标题/正文/按钮行）仍居中。样式见 app.css .uncol -->
+    <div class="uncol">
+      <label class="opt"><input type="checkbox" id="keepdata"><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span><span data-i18n="installer.uninstall.confirm.keepdata">保留我的数据</span><small data-i18n="installer.uninstall.confirm.keepdata.sub">工作区 · 设置 · 已装插件</small></span></label>
+      <!-- 件 2d：行内二次确认（02 §二幕⑨——删 userData 不可逆，必须用户亲眼确认过）。
+           勾掉「保留我的数据」时**不立刻露**：点「卸载」才露（不打扰只想保留数据的人）；
+           勾回「保留」即收起。样式复用 .unwarn（超时提示那块），只多一个 danger 色变体。 -->
+      <div id="delconfirm" hidden>
+        <div class="unwarn danger" data-i18n="installer.uninstall.confirm.deleteWarn">这会删除全部工作区、设置与已装插件，不可恢复。</div>
+        <label class="opt"><input type="checkbox" id="delagree"><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span data-i18n="installer.uninstall.confirm.deleteConfirm">我确认删除我的数据</span></label>
+      </div>
     </div>
     <div class="actions">
       <button class="btn danger" type="button" data-action="uninstall" data-primary data-i18n="installer.uninstall.confirm.uninstall">卸载<span class="cir">→</span></button>
@@ -4201,7 +4778,7 @@ body{background:#efede9;color:#33332f;font-family:Consolas,monospace;padding:28p
     <div class="fin-ring"><svg viewBox="0 0 56 56" aria-hidden="true"><path d="M12 30l11 11 21-26"/></svg></div>
     <h1 data-drag data-i18n="installer.uninstall.finish.title">已卸载。</h1>
     <div class="datbadge" id="datbadge" data-drag>用户数据已保留 · C:\Users\fengy\AppData\Roaming\LinkDesk</div>
-    <div class="sub" data-drag data-i18n="installer.uninstall.finish.sub">谢谢使用 LinkDesk，有缘再见。</div>
+    <div class="sub" data-drag data-i18n="installer.uninstall.finish.sub">感谢使用 LinkDesk，有缘再见。</div>
     <div class="actions"><button class="btn primary" type="button" data-action="un-done" data-primary data-i18n="installer.uninstall.finish.done">完成</button></div>
   </div>
 </div></div>
@@ -4292,7 +4869,7 @@ body{background:#efede9;color:#33332f;font-family:Consolas,monospace;padding:28p
       <li id="p4"><span class="st"></span><span data-i18n="installer.progress.step4">收尾校验</span></li>
     </ul>
     <div class="prow">
-      <button class="cancel" type="button" data-action="cancel" data-i18n="installer.progress.cancel">取消安装</button>
+      <button class="btn ghost" type="button" data-action="cancel" data-i18n="installer.progress.cancel">取消安装</button>
     </div>
   </div>
 
@@ -4347,13 +4924,17 @@ body{background:#efede9;color:#33332f;font-family:Consolas,monospace;padding:28p
     </div>
     <h1 data-drag data-i18n="installer.uninstall.confirm.title">要卸载 LinkDesk 吗？</h1>
     <div class="sub" data-drag data-i18n="installer.uninstall.confirm.sub">安装位置：<code>C:\Users\fengy\AppData\Local\Programs\linkdesk</code> · 约 420 MB</div>
-    <label class="opt"><input type="checkbox" id="keepdata"><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span><span data-i18n="installer.uninstall.confirm.keepdata">保留我的数据</span><small data-i18n="installer.uninstall.confirm.keepdata.sub">工作区 · 设置 · 已装插件</small></span></label>
-    <!-- 件 2d：行内二次确认（02 §二幕⑨——删 userData 不可逆，必须用户亲眼确认过）。
-         勾掉「保留我的数据」时**不立刻露**：点「卸载」才露（不打扰只想保留数据的人）；
-         勾回「保留」即收起。样式复用 .unwarn（超时提示那块），只多一个 danger 色变体。 -->
-    <div id="delconfirm">
-      <div class="unwarn danger" data-i18n="installer.uninstall.confirm.deleteWarn">这会删除全部工作区、设置与已装插件，不可恢复。</div>
-      <label class="opt"><input type="checkbox" id="delagree"><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span data-i18n="installer.uninstall.confirm.deleteConfirm">我确认删除我的数据</span></label>
+    <!-- 3d #14/#15：两行选项与 #delconfirm 收进一条内容列（列 188px、以中线为轴、列内左对齐）
+         ⇒ 三个方框/警示块左沿归一；屏幕其余部分（标题/正文/按钮行）仍居中。样式见 app.css .uncol -->
+    <div class="uncol">
+      <label class="opt"><input type="checkbox" id="keepdata"><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span><span data-i18n="installer.uninstall.confirm.keepdata">保留我的数据</span><small data-i18n="installer.uninstall.confirm.keepdata.sub">工作区 · 设置 · 已装插件</small></span></label>
+      <!-- 件 2d：行内二次确认（02 §二幕⑨——删 userData 不可逆，必须用户亲眼确认过）。
+           勾掉「保留我的数据」时**不立刻露**：点「卸载」才露（不打扰只想保留数据的人）；
+           勾回「保留」即收起。样式复用 .unwarn（超时提示那块），只多一个 danger 色变体。 -->
+      <div id="delconfirm">
+        <div class="unwarn danger" data-i18n="installer.uninstall.confirm.deleteWarn">这会删除全部工作区、设置与已装插件，不可恢复。</div>
+        <label class="opt"><input type="checkbox" id="delagree"><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span data-i18n="installer.uninstall.confirm.deleteConfirm">我确认删除我的数据</span></label>
+      </div>
     </div>
     <div class="actions">
       <button class="btn danger" type="button" data-action="uninstall" data-primary data-i18n="installer.uninstall.confirm.uninstall">卸载<span class="cir">→</span></button>
@@ -4396,7 +4977,7 @@ body{background:#efede9;color:#33332f;font-family:Consolas,monospace;padding:28p
     <div class="fin-ring"><svg viewBox="0 0 56 56" aria-hidden="true"><path d="M12 30l11 11 21-26"/></svg></div>
     <h1 data-drag data-i18n="installer.uninstall.finish.title">已卸载。</h1>
     <div class="datbadge" id="datbadge" data-drag>用户数据已保留 · C:\Users\fengy\AppData\Roaming\LinkDesk</div>
-    <div class="sub" data-drag data-i18n="installer.uninstall.finish.sub">谢谢使用 LinkDesk，有缘再见。</div>
+    <div class="sub" data-drag data-i18n="installer.uninstall.finish.sub">感谢使用 LinkDesk，有缘再见。</div>
     <div class="actions"><button class="btn primary" type="button" data-action="un-done" data-primary data-i18n="installer.uninstall.finish.done">完成</button></div>
   </div>
 </div></div>
@@ -4487,7 +5068,7 @@ body{background:#efede9;color:#33332f;font-family:Consolas,monospace;padding:28p
       <li id="p4"><span class="st"></span><span data-i18n="installer.progress.step4">收尾校验</span></li>
     </ul>
     <div class="prow">
-      <button class="cancel" type="button" data-action="cancel" data-i18n="installer.progress.cancel">取消安装</button>
+      <button class="btn ghost" type="button" data-action="cancel" data-i18n="installer.progress.cancel">取消安装</button>
     </div>
   </div>
 
@@ -4542,13 +5123,17 @@ body{background:#efede9;color:#33332f;font-family:Consolas,monospace;padding:28p
     </div>
     <h1 data-drag data-i18n="installer.uninstall.confirm.title">要卸载 LinkDesk 吗？</h1>
     <div class="sub" data-drag data-i18n="installer.uninstall.confirm.sub">安装位置：<code>C:\Users\fengy\AppData\Local\Programs\linkdesk</code> · 约 420 MB</div>
-    <label class="opt"><input type="checkbox" id="keepdata"><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span><span data-i18n="installer.uninstall.confirm.keepdata">保留我的数据</span><small data-i18n="installer.uninstall.confirm.keepdata.sub">工作区 · 设置 · 已装插件</small></span></label>
-    <!-- 件 2d：行内二次确认（02 §二幕⑨——删 userData 不可逆，必须用户亲眼确认过）。
-         勾掉「保留我的数据」时**不立刻露**：点「卸载」才露（不打扰只想保留数据的人）；
-         勾回「保留」即收起。样式复用 .unwarn（超时提示那块），只多一个 danger 色变体。 -->
-    <div id="delconfirm">
-      <div class="unwarn danger" data-i18n="installer.uninstall.confirm.deleteWarn">这会删除全部工作区、设置与已装插件，不可恢复。</div>
-      <label class="opt"><input type="checkbox" id="delagree" checked><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span data-i18n="installer.uninstall.confirm.deleteConfirm">我确认删除我的数据</span></label>
+    <!-- 3d #14/#15：两行选项与 #delconfirm 收进一条内容列（列 188px、以中线为轴、列内左对齐）
+         ⇒ 三个方框/警示块左沿归一；屏幕其余部分（标题/正文/按钮行）仍居中。样式见 app.css .uncol -->
+    <div class="uncol">
+      <label class="opt"><input type="checkbox" id="keepdata"><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span><span data-i18n="installer.uninstall.confirm.keepdata">保留我的数据</span><small data-i18n="installer.uninstall.confirm.keepdata.sub">工作区 · 设置 · 已装插件</small></span></label>
+      <!-- 件 2d：行内二次确认（02 §二幕⑨——删 userData 不可逆，必须用户亲眼确认过）。
+           勾掉「保留我的数据」时**不立刻露**：点「卸载」才露（不打扰只想保留数据的人）；
+           勾回「保留」即收起。样式复用 .unwarn（超时提示那块），只多一个 danger 色变体。 -->
+      <div id="delconfirm">
+        <div class="unwarn danger" data-i18n="installer.uninstall.confirm.deleteWarn">这会删除全部工作区、设置与已装插件，不可恢复。</div>
+        <label class="opt"><input type="checkbox" id="delagree" checked><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span data-i18n="installer.uninstall.confirm.deleteConfirm">我确认删除我的数据</span></label>
+      </div>
     </div>
     <div class="actions">
       <button class="btn danger" type="button" data-action="uninstall" data-primary data-i18n="installer.uninstall.confirm.uninstall">卸载<span class="cir">→</span></button>
@@ -4591,7 +5176,7 @@ body{background:#efede9;color:#33332f;font-family:Consolas,monospace;padding:28p
     <div class="fin-ring"><svg viewBox="0 0 56 56" aria-hidden="true"><path d="M12 30l11 11 21-26"/></svg></div>
     <h1 data-drag data-i18n="installer.uninstall.finish.title">已卸载。</h1>
     <div class="datbadge" id="datbadge" data-drag>用户数据已保留 · C:\Users\fengy\AppData\Roaming\LinkDesk</div>
-    <div class="sub" data-drag data-i18n="installer.uninstall.finish.sub">谢谢使用 LinkDesk，有缘再见。</div>
+    <div class="sub" data-drag data-i18n="installer.uninstall.finish.sub">感谢使用 LinkDesk，有缘再见。</div>
     <div class="actions"><button class="btn primary" type="button" data-action="un-done" data-primary data-i18n="installer.uninstall.finish.done">完成</button></div>
   </div>
 </div></div>
@@ -4682,7 +5267,7 @@ body{background:#efede9;color:#33332f;font-family:Consolas,monospace;padding:28p
       <li id="p4"><span class="st"></span><span data-i18n="installer.progress.step4">收尾校验</span></li>
     </ul>
     <div class="prow">
-      <button class="cancel" type="button" data-action="cancel" data-i18n="installer.progress.cancel">取消安装</button>
+      <button class="btn ghost" type="button" data-action="cancel" data-i18n="installer.progress.cancel">取消安装</button>
     </div>
   </div>
 
@@ -4737,13 +5322,17 @@ body{background:#efede9;color:#33332f;font-family:Consolas,monospace;padding:28p
     </div>
     <h1 data-drag data-i18n="installer.uninstall.confirm.title">要卸载 LinkDesk 吗？</h1>
     <div class="sub" data-drag data-i18n="installer.uninstall.confirm.sub">安装位置：<code>C:\Users\fengy\AppData\Local\Programs\linkdesk</code> · 约 420 MB</div>
-    <label class="opt"><input type="checkbox" id="keepdata" checked><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span><span data-i18n="installer.uninstall.confirm.keepdata">保留我的数据</span><small data-i18n="installer.uninstall.confirm.keepdata.sub">工作区 · 设置 · 已装插件</small></span></label>
-    <!-- 件 2d：行内二次确认（02 §二幕⑨——删 userData 不可逆，必须用户亲眼确认过）。
-         勾掉「保留我的数据」时**不立刻露**：点「卸载」才露（不打扰只想保留数据的人）；
-         勾回「保留」即收起。样式复用 .unwarn（超时提示那块），只多一个 danger 色变体。 -->
-    <div id="delconfirm" hidden>
-      <div class="unwarn danger" data-i18n="installer.uninstall.confirm.deleteWarn">这会删除全部工作区、设置与已装插件，不可恢复。</div>
-      <label class="opt"><input type="checkbox" id="delagree"><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span data-i18n="installer.uninstall.confirm.deleteConfirm">我确认删除我的数据</span></label>
+    <!-- 3d #14/#15：两行选项与 #delconfirm 收进一条内容列（列 188px、以中线为轴、列内左对齐）
+         ⇒ 三个方框/警示块左沿归一；屏幕其余部分（标题/正文/按钮行）仍居中。样式见 app.css .uncol -->
+    <div class="uncol">
+      <label class="opt"><input type="checkbox" id="keepdata" checked><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span><span data-i18n="installer.uninstall.confirm.keepdata">保留我的数据</span><small data-i18n="installer.uninstall.confirm.keepdata.sub">工作区 · 设置 · 已装插件</small></span></label>
+      <!-- 件 2d：行内二次确认（02 §二幕⑨——删 userData 不可逆，必须用户亲眼确认过）。
+           勾掉「保留我的数据」时**不立刻露**：点「卸载」才露（不打扰只想保留数据的人）；
+           勾回「保留」即收起。样式复用 .unwarn（超时提示那块），只多一个 danger 色变体。 -->
+      <div id="delconfirm" hidden>
+        <div class="unwarn danger" data-i18n="installer.uninstall.confirm.deleteWarn">这会删除全部工作区、设置与已装插件，不可恢复。</div>
+        <label class="opt"><input type="checkbox" id="delagree"><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span data-i18n="installer.uninstall.confirm.deleteConfirm">我确认删除我的数据</span></label>
+      </div>
     </div>
     <div class="actions">
       <button class="btn danger" type="button" data-action="uninstall" data-primary data-i18n="installer.uninstall.confirm.uninstall">卸载<span class="cir">→</span></button>
@@ -4786,7 +5375,7 @@ body{background:#efede9;color:#33332f;font-family:Consolas,monospace;padding:28p
     <div class="fin-ring"><svg viewBox="0 0 56 56" aria-hidden="true"><path d="M12 30l11 11 21-26"/></svg></div>
     <h1 data-drag data-i18n="installer.uninstall.finish.title">已卸载。</h1>
     <div class="datbadge" id="datbadge" data-drag>用户数据已保留 · C:\Users\fengy\AppData\Roaming\LinkDesk</div>
-    <div class="sub" data-drag data-i18n="installer.uninstall.finish.sub">谢谢使用 LinkDesk，有缘再见。</div>
+    <div class="sub" data-drag data-i18n="installer.uninstall.finish.sub">感谢使用 LinkDesk，有缘再见。</div>
     <div class="actions"><button class="btn primary" type="button" data-action="un-done" data-primary data-i18n="installer.uninstall.finish.done">完成</button></div>
   </div>
 </div></div>
@@ -4877,7 +5466,7 @@ body{background:#efede9;color:#33332f;font-family:Consolas,monospace;padding:28p
       <li id="p4"><span class="st"></span><span data-i18n="installer.progress.step4">收尾校验</span></li>
     </ul>
     <div class="prow">
-      <button class="cancel" type="button" data-action="cancel" data-i18n="installer.progress.cancel">取消安装</button>
+      <button class="btn ghost" type="button" data-action="cancel" data-i18n="installer.progress.cancel">取消安装</button>
     </div>
   </div>
 
@@ -4932,13 +5521,17 @@ body{background:#efede9;color:#33332f;font-family:Consolas,monospace;padding:28p
     </div>
     <h1 data-drag data-i18n="installer.uninstall.confirm.title">要卸载 LinkDesk 吗？</h1>
     <div class="sub" data-drag data-i18n="installer.uninstall.confirm.sub">安装位置：<code>C:\Users\fengy\AppData\Local\Programs\linkdesk</code> · 约 420 MB</div>
-    <label class="opt"><input type="checkbox" id="keepdata" checked><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span><span data-i18n="installer.uninstall.confirm.keepdata">保留我的数据</span><small data-i18n="installer.uninstall.confirm.keepdata.sub">工作区 · 设置 · 已装插件</small></span></label>
-    <!-- 件 2d：行内二次确认（02 §二幕⑨——删 userData 不可逆，必须用户亲眼确认过）。
-         勾掉「保留我的数据」时**不立刻露**：点「卸载」才露（不打扰只想保留数据的人）；
-         勾回「保留」即收起。样式复用 .unwarn（超时提示那块），只多一个 danger 色变体。 -->
-    <div id="delconfirm" hidden>
-      <div class="unwarn danger" data-i18n="installer.uninstall.confirm.deleteWarn">这会删除全部工作区、设置与已装插件，不可恢复。</div>
-      <label class="opt"><input type="checkbox" id="delagree"><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span data-i18n="installer.uninstall.confirm.deleteConfirm">我确认删除我的数据</span></label>
+    <!-- 3d #14/#15：两行选项与 #delconfirm 收进一条内容列（列 188px、以中线为轴、列内左对齐）
+         ⇒ 三个方框/警示块左沿归一；屏幕其余部分（标题/正文/按钮行）仍居中。样式见 app.css .uncol -->
+    <div class="uncol">
+      <label class="opt"><input type="checkbox" id="keepdata" checked><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span><span data-i18n="installer.uninstall.confirm.keepdata">保留我的数据</span><small data-i18n="installer.uninstall.confirm.keepdata.sub">工作区 · 设置 · 已装插件</small></span></label>
+      <!-- 件 2d：行内二次确认（02 §二幕⑨——删 userData 不可逆，必须用户亲眼确认过）。
+           勾掉「保留我的数据」时**不立刻露**：点「卸载」才露（不打扰只想保留数据的人）；
+           勾回「保留」即收起。样式复用 .unwarn（超时提示那块），只多一个 danger 色变体。 -->
+      <div id="delconfirm" hidden>
+        <div class="unwarn danger" data-i18n="installer.uninstall.confirm.deleteWarn">这会删除全部工作区、设置与已装插件，不可恢复。</div>
+        <label class="opt"><input type="checkbox" id="delagree"><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span data-i18n="installer.uninstall.confirm.deleteConfirm">我确认删除我的数据</span></label>
+      </div>
     </div>
     <div class="actions">
       <button class="btn danger" type="button" data-action="uninstall" data-primary data-i18n="installer.uninstall.confirm.uninstall">卸载<span class="cir">→</span></button>
@@ -4981,7 +5574,7 @@ body{background:#efede9;color:#33332f;font-family:Consolas,monospace;padding:28p
     <div class="fin-ring"><svg viewBox="0 0 56 56" aria-hidden="true"><path d="M12 30l11 11 21-26"/></svg></div>
     <h1 data-drag data-i18n="installer.uninstall.finish.title">已卸载。</h1>
     <div class="datbadge" id="datbadge" data-drag>用户数据已保留 · C:\Users\fengy\AppData\Roaming\LinkDesk</div>
-    <div class="sub" data-drag data-i18n="installer.uninstall.finish.sub">谢谢使用 LinkDesk，有缘再见。</div>
+    <div class="sub" data-drag data-i18n="installer.uninstall.finish.sub">感谢使用 LinkDesk，有缘再见。</div>
     <div class="actions"><button class="btn primary" type="button" data-action="un-done" data-primary data-i18n="installer.uninstall.finish.done">完成</button></div>
   </div>
 </div></div>
@@ -5072,7 +5665,7 @@ body{background:#efede9;color:#33332f;font-family:Consolas,monospace;padding:28p
       <li id="p4"><span class="st"></span><span data-i18n="installer.progress.step4">收尾校验</span></li>
     </ul>
     <div class="prow">
-      <button class="cancel" type="button" data-action="cancel" data-i18n="installer.progress.cancel">取消安装</button>
+      <button class="btn ghost" type="button" data-action="cancel" data-i18n="installer.progress.cancel">取消安装</button>
     </div>
   </div>
 
@@ -5127,13 +5720,17 @@ body{background:#efede9;color:#33332f;font-family:Consolas,monospace;padding:28p
     </div>
     <h1 data-drag data-i18n="installer.uninstall.confirm.title">要卸载 LinkDesk 吗？</h1>
     <div class="sub" data-drag data-i18n="installer.uninstall.confirm.sub">安装位置：<code>C:\Users\fengy\AppData\Local\Programs\linkdesk</code> · 约 420 MB</div>
-    <label class="opt"><input type="checkbox" id="keepdata" checked><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span><span data-i18n="installer.uninstall.confirm.keepdata">保留我的数据</span><small data-i18n="installer.uninstall.confirm.keepdata.sub">工作区 · 设置 · 已装插件</small></span></label>
-    <!-- 件 2d：行内二次确认（02 §二幕⑨——删 userData 不可逆，必须用户亲眼确认过）。
-         勾掉「保留我的数据」时**不立刻露**：点「卸载」才露（不打扰只想保留数据的人）；
-         勾回「保留」即收起。样式复用 .unwarn（超时提示那块），只多一个 danger 色变体。 -->
-    <div id="delconfirm" hidden>
-      <div class="unwarn danger" data-i18n="installer.uninstall.confirm.deleteWarn">这会删除全部工作区、设置与已装插件，不可恢复。</div>
-      <label class="opt"><input type="checkbox" id="delagree"><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span data-i18n="installer.uninstall.confirm.deleteConfirm">我确认删除我的数据</span></label>
+    <!-- 3d #14/#15：两行选项与 #delconfirm 收进一条内容列（列 188px、以中线为轴、列内左对齐）
+         ⇒ 三个方框/警示块左沿归一；屏幕其余部分（标题/正文/按钮行）仍居中。样式见 app.css .uncol -->
+    <div class="uncol">
+      <label class="opt"><input type="checkbox" id="keepdata" checked><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span><span data-i18n="installer.uninstall.confirm.keepdata">保留我的数据</span><small data-i18n="installer.uninstall.confirm.keepdata.sub">工作区 · 设置 · 已装插件</small></span></label>
+      <!-- 件 2d：行内二次确认（02 §二幕⑨——删 userData 不可逆，必须用户亲眼确认过）。
+           勾掉「保留我的数据」时**不立刻露**：点「卸载」才露（不打扰只想保留数据的人）；
+           勾回「保留」即收起。样式复用 .unwarn（超时提示那块），只多一个 danger 色变体。 -->
+      <div id="delconfirm" hidden>
+        <div class="unwarn danger" data-i18n="installer.uninstall.confirm.deleteWarn">这会删除全部工作区、设置与已装插件，不可恢复。</div>
+        <label class="opt"><input type="checkbox" id="delagree"><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span data-i18n="installer.uninstall.confirm.deleteConfirm">我确认删除我的数据</span></label>
+      </div>
     </div>
     <div class="actions">
       <button class="btn danger" type="button" data-action="uninstall" data-primary data-i18n="installer.uninstall.confirm.uninstall">卸载<span class="cir">→</span></button>
@@ -5176,7 +5773,7 @@ body{background:#efede9;color:#33332f;font-family:Consolas,monospace;padding:28p
     <div class="fin-ring"><svg viewBox="0 0 56 56" aria-hidden="true"><path d="M12 30l11 11 21-26"/></svg></div>
     <h1 data-drag data-i18n="installer.uninstall.finish.title">已卸载。</h1>
     <div class="datbadge" id="datbadge" data-drag>用户数据已保留 · C:\Users\fengy\AppData\Roaming\LinkDesk</div>
-    <div class="sub" data-drag data-i18n="installer.uninstall.finish.sub">谢谢使用 LinkDesk，有缘再见。</div>
+    <div class="sub" data-drag data-i18n="installer.uninstall.finish.sub">感谢使用 LinkDesk，有缘再见。</div>
     <div class="actions"><button class="btn primary" type="button" data-action="un-done" data-primary data-i18n="installer.uninstall.finish.done">完成</button></div>
   </div>
 </div></div>
@@ -5267,7 +5864,7 @@ body{background:#efede9;color:#33332f;font-family:Consolas,monospace;padding:28p
       <li id="p4"><span class="st"></span><span data-i18n="installer.progress.step4">收尾校验</span></li>
     </ul>
     <div class="prow">
-      <button class="cancel" type="button" data-action="cancel" data-i18n="installer.progress.cancel">取消安装</button>
+      <button class="btn ghost" type="button" data-action="cancel" data-i18n="installer.progress.cancel">取消安装</button>
     </div>
   </div>
 
@@ -5322,13 +5919,17 @@ body{background:#efede9;color:#33332f;font-family:Consolas,monospace;padding:28p
     </div>
     <h1 data-drag data-i18n="installer.uninstall.confirm.title">要卸载 LinkDesk 吗？</h1>
     <div class="sub" data-drag data-i18n="installer.uninstall.confirm.sub">安装位置：<code>C:\Users\fengy\AppData\Local\Programs\linkdesk</code> · 约 420 MB</div>
-    <label class="opt"><input type="checkbox" id="keepdata" checked><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span><span data-i18n="installer.uninstall.confirm.keepdata">保留我的数据</span><small data-i18n="installer.uninstall.confirm.keepdata.sub">工作区 · 设置 · 已装插件</small></span></label>
-    <!-- 件 2d：行内二次确认（02 §二幕⑨——删 userData 不可逆，必须用户亲眼确认过）。
-         勾掉「保留我的数据」时**不立刻露**：点「卸载」才露（不打扰只想保留数据的人）；
-         勾回「保留」即收起。样式复用 .unwarn（超时提示那块），只多一个 danger 色变体。 -->
-    <div id="delconfirm" hidden>
-      <div class="unwarn danger" data-i18n="installer.uninstall.confirm.deleteWarn">这会删除全部工作区、设置与已装插件，不可恢复。</div>
-      <label class="opt"><input type="checkbox" id="delagree"><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span data-i18n="installer.uninstall.confirm.deleteConfirm">我确认删除我的数据</span></label>
+    <!-- 3d #14/#15：两行选项与 #delconfirm 收进一条内容列（列 188px、以中线为轴、列内左对齐）
+         ⇒ 三个方框/警示块左沿归一；屏幕其余部分（标题/正文/按钮行）仍居中。样式见 app.css .uncol -->
+    <div class="uncol">
+      <label class="opt"><input type="checkbox" id="keepdata" checked><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span><span data-i18n="installer.uninstall.confirm.keepdata">保留我的数据</span><small data-i18n="installer.uninstall.confirm.keepdata.sub">工作区 · 设置 · 已装插件</small></span></label>
+      <!-- 件 2d：行内二次确认（02 §二幕⑨——删 userData 不可逆，必须用户亲眼确认过）。
+           勾掉「保留我的数据」时**不立刻露**：点「卸载」才露（不打扰只想保留数据的人）；
+           勾回「保留」即收起。样式复用 .unwarn（超时提示那块），只多一个 danger 色变体。 -->
+      <div id="delconfirm" hidden>
+        <div class="unwarn danger" data-i18n="installer.uninstall.confirm.deleteWarn">这会删除全部工作区、设置与已装插件，不可恢复。</div>
+        <label class="opt"><input type="checkbox" id="delagree"><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span data-i18n="installer.uninstall.confirm.deleteConfirm">我确认删除我的数据</span></label>
+      </div>
     </div>
     <div class="actions">
       <button class="btn danger" type="button" data-action="uninstall" data-primary data-i18n="installer.uninstall.confirm.uninstall">卸载<span class="cir">→</span></button>
@@ -5371,7 +5972,7 @@ body{background:#efede9;color:#33332f;font-family:Consolas,monospace;padding:28p
     <div class="fin-ring"><svg viewBox="0 0 56 56" aria-hidden="true"><path d="M12 30l11 11 21-26"/></svg></div>
     <h1 data-drag data-i18n="installer.uninstall.finish.title">已卸载。</h1>
     <div class="datbadge" id="datbadge" data-drag>用户数据已保留 · C:\Users\fengy\AppData\Roaming\LinkDesk</div>
-    <div class="sub" data-drag data-i18n="installer.uninstall.finish.sub">谢谢使用 LinkDesk，有缘再见。</div>
+    <div class="sub" data-drag data-i18n="installer.uninstall.finish.sub">感谢使用 LinkDesk，有缘再见。</div>
     <div class="actions"><button class="btn primary" type="button" data-action="un-done" data-primary data-i18n="installer.uninstall.finish.done">完成</button></div>
   </div>
 </div></div>
@@ -5462,7 +6063,7 @@ body{background:#efede9;color:#33332f;font-family:Consolas,monospace;padding:28p
       <li id="p4"><span class="st"></span><span data-i18n="installer.progress.step4">收尾校验</span></li>
     </ul>
     <div class="prow">
-      <button class="cancel" type="button" data-action="cancel" data-i18n="installer.progress.cancel">取消安装</button>
+      <button class="btn ghost" type="button" data-action="cancel" data-i18n="installer.progress.cancel">取消安装</button>
     </div>
   </div>
 
@@ -5517,13 +6118,17 @@ body{background:#efede9;color:#33332f;font-family:Consolas,monospace;padding:28p
     </div>
     <h1 data-drag data-i18n="installer.uninstall.confirm.title">要卸载 LinkDesk 吗？</h1>
     <div class="sub" data-drag data-i18n="installer.uninstall.confirm.sub">安装位置：<code>C:\Users\fengy\AppData\Local\Programs\linkdesk</code> · 约 420 MB</div>
-    <label class="opt"><input type="checkbox" id="keepdata" checked><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span><span data-i18n="installer.uninstall.confirm.keepdata">保留我的数据</span><small data-i18n="installer.uninstall.confirm.keepdata.sub">工作区 · 设置 · 已装插件</small></span></label>
-    <!-- 件 2d：行内二次确认（02 §二幕⑨——删 userData 不可逆，必须用户亲眼确认过）。
-         勾掉「保留我的数据」时**不立刻露**：点「卸载」才露（不打扰只想保留数据的人）；
-         勾回「保留」即收起。样式复用 .unwarn（超时提示那块），只多一个 danger 色变体。 -->
-    <div id="delconfirm" hidden>
-      <div class="unwarn danger" data-i18n="installer.uninstall.confirm.deleteWarn">这会删除全部工作区、设置与已装插件，不可恢复。</div>
-      <label class="opt"><input type="checkbox" id="delagree"><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span data-i18n="installer.uninstall.confirm.deleteConfirm">我确认删除我的数据</span></label>
+    <!-- 3d #14/#15：两行选项与 #delconfirm 收进一条内容列（列 188px、以中线为轴、列内左对齐）
+         ⇒ 三个方框/警示块左沿归一；屏幕其余部分（标题/正文/按钮行）仍居中。样式见 app.css .uncol -->
+    <div class="uncol">
+      <label class="opt"><input type="checkbox" id="keepdata" checked><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span><span data-i18n="installer.uninstall.confirm.keepdata">保留我的数据</span><small data-i18n="installer.uninstall.confirm.keepdata.sub">工作区 · 设置 · 已装插件</small></span></label>
+      <!-- 件 2d：行内二次确认（02 §二幕⑨——删 userData 不可逆，必须用户亲眼确认过）。
+           勾掉「保留我的数据」时**不立刻露**：点「卸载」才露（不打扰只想保留数据的人）；
+           勾回「保留」即收起。样式复用 .unwarn（超时提示那块），只多一个 danger 色变体。 -->
+      <div id="delconfirm" hidden>
+        <div class="unwarn danger" data-i18n="installer.uninstall.confirm.deleteWarn">这会删除全部工作区、设置与已装插件，不可恢复。</div>
+        <label class="opt"><input type="checkbox" id="delagree"><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span data-i18n="installer.uninstall.confirm.deleteConfirm">我确认删除我的数据</span></label>
+      </div>
     </div>
     <div class="actions">
       <button class="btn danger" type="button" data-action="uninstall" data-primary data-i18n="installer.uninstall.confirm.uninstall">卸载<span class="cir">→</span></button>
@@ -5566,7 +6171,7 @@ body{background:#efede9;color:#33332f;font-family:Consolas,monospace;padding:28p
     <div class="fin-ring"><svg viewBox="0 0 56 56" aria-hidden="true"><path d="M12 30l11 11 21-26"/></svg></div>
     <h1 data-drag data-i18n="installer.uninstall.finish.title">已卸载。</h1>
     <div class="datbadge" id="datbadge" data-drag>用户数据已保留 · C:\Users\fengy\AppData\Roaming\LinkDesk</div>
-    <div class="sub" data-drag data-i18n="installer.uninstall.finish.sub">谢谢使用 LinkDesk，有缘再见。</div>
+    <div class="sub" data-drag data-i18n="installer.uninstall.finish.sub">感谢使用 LinkDesk，有缘再见。</div>
     <div class="actions"><button class="btn primary" type="button" data-action="un-done" data-primary data-i18n="installer.uninstall.finish.done">完成</button></div>
   </div>
 </div></div>
@@ -5657,7 +6262,7 @@ body{background:#efede9;color:#33332f;font-family:Consolas,monospace;padding:28p
       <li id="p4"><span class="st"></span><span data-i18n="installer.progress.step4">收尾校验</span></li>
     </ul>
     <div class="prow">
-      <button class="cancel" type="button" data-action="cancel" data-i18n="installer.progress.cancel">取消安装</button>
+      <button class="btn ghost" type="button" data-action="cancel" data-i18n="installer.progress.cancel">取消安装</button>
     </div>
   </div>
 
@@ -5712,13 +6317,17 @@ body{background:#efede9;color:#33332f;font-family:Consolas,monospace;padding:28p
     </div>
     <h1 data-drag data-i18n="installer.uninstall.confirm.title">要卸载 LinkDesk 吗？</h1>
     <div class="sub" data-drag data-i18n="installer.uninstall.confirm.sub">安装位置：<code>C:\Users\fengy\AppData\Local\Programs\linkdesk</code> · 约 420 MB</div>
-    <label class="opt"><input type="checkbox" id="keepdata" checked><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span><span data-i18n="installer.uninstall.confirm.keepdata">保留我的数据</span><small data-i18n="installer.uninstall.confirm.keepdata.sub">工作区 · 设置 · 已装插件</small></span></label>
-    <!-- 件 2d：行内二次确认（02 §二幕⑨——删 userData 不可逆，必须用户亲眼确认过）。
-         勾掉「保留我的数据」时**不立刻露**：点「卸载」才露（不打扰只想保留数据的人）；
-         勾回「保留」即收起。样式复用 .unwarn（超时提示那块），只多一个 danger 色变体。 -->
-    <div id="delconfirm" hidden>
-      <div class="unwarn danger" data-i18n="installer.uninstall.confirm.deleteWarn">这会删除全部工作区、设置与已装插件，不可恢复。</div>
-      <label class="opt"><input type="checkbox" id="delagree"><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span data-i18n="installer.uninstall.confirm.deleteConfirm">我确认删除我的数据</span></label>
+    <!-- 3d #14/#15：两行选项与 #delconfirm 收进一条内容列（列 188px、以中线为轴、列内左对齐）
+         ⇒ 三个方框/警示块左沿归一；屏幕其余部分（标题/正文/按钮行）仍居中。样式见 app.css .uncol -->
+    <div class="uncol">
+      <label class="opt"><input type="checkbox" id="keepdata" checked><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span><span data-i18n="installer.uninstall.confirm.keepdata">保留我的数据</span><small data-i18n="installer.uninstall.confirm.keepdata.sub">工作区 · 设置 · 已装插件</small></span></label>
+      <!-- 件 2d：行内二次确认（02 §二幕⑨——删 userData 不可逆，必须用户亲眼确认过）。
+           勾掉「保留我的数据」时**不立刻露**：点「卸载」才露（不打扰只想保留数据的人）；
+           勾回「保留」即收起。样式复用 .unwarn（超时提示那块），只多一个 danger 色变体。 -->
+      <div id="delconfirm" hidden>
+        <div class="unwarn danger" data-i18n="installer.uninstall.confirm.deleteWarn">这会删除全部工作区、设置与已装插件，不可恢复。</div>
+        <label class="opt"><input type="checkbox" id="delagree"><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span data-i18n="installer.uninstall.confirm.deleteConfirm">我确认删除我的数据</span></label>
+      </div>
     </div>
     <div class="actions">
       <button class="btn danger" type="button" data-action="uninstall" data-primary data-i18n="installer.uninstall.confirm.uninstall">卸载<span class="cir">→</span></button>
@@ -5761,7 +6370,7 @@ body{background:#efede9;color:#33332f;font-family:Consolas,monospace;padding:28p
     <div class="fin-ring"><svg viewBox="0 0 56 56" aria-hidden="true"><path d="M12 30l11 11 21-26"/></svg></div>
     <h1 data-drag data-i18n="installer.uninstall.finish.title">已卸载。</h1>
     <div class="datbadge" id="datbadge" data-drag>用户数据已保留 · C:\Users\fengy\AppData\Roaming\LinkDesk</div>
-    <div class="sub" data-drag data-i18n="installer.uninstall.finish.sub">谢谢使用 LinkDesk，有缘再见。</div>
+    <div class="sub" data-drag data-i18n="installer.uninstall.finish.sub">感谢使用 LinkDesk，有缘再见。</div>
     <div class="actions"><button class="btn primary" type="button" data-action="un-done" data-primary data-i18n="installer.uninstall.finish.done">完成</button></div>
   </div>
 </div></div>
@@ -5852,7 +6461,7 @@ body{background:#efede9;color:#33332f;font-family:Consolas,monospace;padding:28p
       <li id="p4"><span class="st"></span><span data-i18n="installer.progress.step4">收尾校验</span></li>
     </ul>
     <div class="prow">
-      <button class="cancel" type="button" data-action="cancel" data-i18n="installer.progress.cancel">取消安装</button>
+      <button class="btn ghost" type="button" data-action="cancel" data-i18n="installer.progress.cancel">取消安装</button>
     </div>
   </div>
 
@@ -5907,13 +6516,17 @@ body{background:#efede9;color:#33332f;font-family:Consolas,monospace;padding:28p
     </div>
     <h1 data-drag data-i18n="installer.uninstall.confirm.title">要卸载 LinkDesk 吗？</h1>
     <div class="sub" data-drag data-i18n="installer.uninstall.confirm.sub">安装位置：<code>C:\Users\fengy\AppData\Local\Programs\linkdesk</code> · 约 420 MB</div>
-    <label class="opt"><input type="checkbox" id="keepdata" checked><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span><span data-i18n="installer.uninstall.confirm.keepdata">保留我的数据</span><small data-i18n="installer.uninstall.confirm.keepdata.sub">工作区 · 设置 · 已装插件</small></span></label>
-    <!-- 件 2d：行内二次确认（02 §二幕⑨——删 userData 不可逆，必须用户亲眼确认过）。
-         勾掉「保留我的数据」时**不立刻露**：点「卸载」才露（不打扰只想保留数据的人）；
-         勾回「保留」即收起。样式复用 .unwarn（超时提示那块），只多一个 danger 色变体。 -->
-    <div id="delconfirm" hidden>
-      <div class="unwarn danger" data-i18n="installer.uninstall.confirm.deleteWarn">这会删除全部工作区、设置与已装插件，不可恢复。</div>
-      <label class="opt"><input type="checkbox" id="delagree"><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span data-i18n="installer.uninstall.confirm.deleteConfirm">我确认删除我的数据</span></label>
+    <!-- 3d #14/#15：两行选项与 #delconfirm 收进一条内容列（列 188px、以中线为轴、列内左对齐）
+         ⇒ 三个方框/警示块左沿归一；屏幕其余部分（标题/正文/按钮行）仍居中。样式见 app.css .uncol -->
+    <div class="uncol">
+      <label class="opt"><input type="checkbox" id="keepdata" checked><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span><span data-i18n="installer.uninstall.confirm.keepdata">保留我的数据</span><small data-i18n="installer.uninstall.confirm.keepdata.sub">工作区 · 设置 · 已装插件</small></span></label>
+      <!-- 件 2d：行内二次确认（02 §二幕⑨——删 userData 不可逆，必须用户亲眼确认过）。
+           勾掉「保留我的数据」时**不立刻露**：点「卸载」才露（不打扰只想保留数据的人）；
+           勾回「保留」即收起。样式复用 .unwarn（超时提示那块），只多一个 danger 色变体。 -->
+      <div id="delconfirm" hidden>
+        <div class="unwarn danger" data-i18n="installer.uninstall.confirm.deleteWarn">这会删除全部工作区、设置与已装插件，不可恢复。</div>
+        <label class="opt"><input type="checkbox" id="delagree"><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span data-i18n="installer.uninstall.confirm.deleteConfirm">我确认删除我的数据</span></label>
+      </div>
     </div>
     <div class="actions">
       <button class="btn danger" type="button" data-action="uninstall" data-primary data-i18n="installer.uninstall.confirm.uninstall">卸载<span class="cir">→</span></button>
@@ -5956,7 +6569,7 @@ body{background:#efede9;color:#33332f;font-family:Consolas,monospace;padding:28p
     <div class="fin-ring"><svg viewBox="0 0 56 56" aria-hidden="true"><path d="M12 30l11 11 21-26"/></svg></div>
     <h1 data-drag data-i18n="installer.uninstall.finish.title">已卸载。</h1>
     <div class="datbadge" id="datbadge" data-drag>用户数据已保留 · C:\Users\fengy\AppData\Roaming\linkdesk</div>
-    <div class="sub" data-drag data-i18n="installer.uninstall.finish.sub">谢谢使用 LinkDesk，有缘再见。</div>
+    <div class="sub" data-drag data-i18n="installer.uninstall.finish.sub">感谢使用 LinkDesk，有缘再见。</div>
     <div class="actions"><button class="btn primary" type="button" data-action="un-done" data-primary data-i18n="installer.uninstall.finish.done">完成</button></div>
   </div>
 </div></div>
@@ -6047,7 +6660,7 @@ body{background:#efede9;color:#33332f;font-family:Consolas,monospace;padding:28p
       <li id="p4"><span class="st"></span><span data-i18n="installer.progress.step4">收尾校验</span></li>
     </ul>
     <div class="prow">
-      <button class="cancel" type="button" data-action="cancel" data-i18n="installer.progress.cancel">取消安装</button>
+      <button class="btn ghost" type="button" data-action="cancel" data-i18n="installer.progress.cancel">取消安装</button>
     </div>
   </div>
 
@@ -6102,13 +6715,17 @@ body{background:#efede9;color:#33332f;font-family:Consolas,monospace;padding:28p
     </div>
     <h1 data-drag data-i18n="installer.uninstall.confirm.title">要卸载 LinkDesk 吗？</h1>
     <div class="sub" data-drag data-i18n="installer.uninstall.confirm.sub">安装位置：<code>C:\Users\fengy\AppData\Local\Programs\linkdesk</code> · 约 420 MB</div>
-    <label class="opt"><input type="checkbox" id="keepdata" checked><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span><span data-i18n="installer.uninstall.confirm.keepdata">保留我的数据</span><small data-i18n="installer.uninstall.confirm.keepdata.sub">工作区 · 设置 · 已装插件</small></span></label>
-    <!-- 件 2d：行内二次确认（02 §二幕⑨——删 userData 不可逆，必须用户亲眼确认过）。
-         勾掉「保留我的数据」时**不立刻露**：点「卸载」才露（不打扰只想保留数据的人）；
-         勾回「保留」即收起。样式复用 .unwarn（超时提示那块），只多一个 danger 色变体。 -->
-    <div id="delconfirm" hidden>
-      <div class="unwarn danger" data-i18n="installer.uninstall.confirm.deleteWarn">这会删除全部工作区、设置与已装插件，不可恢复。</div>
-      <label class="opt"><input type="checkbox" id="delagree"><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span data-i18n="installer.uninstall.confirm.deleteConfirm">我确认删除我的数据</span></label>
+    <!-- 3d #14/#15：两行选项与 #delconfirm 收进一条内容列（列 188px、以中线为轴、列内左对齐）
+         ⇒ 三个方框/警示块左沿归一；屏幕其余部分（标题/正文/按钮行）仍居中。样式见 app.css .uncol -->
+    <div class="uncol">
+      <label class="opt"><input type="checkbox" id="keepdata" checked><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span><span data-i18n="installer.uninstall.confirm.keepdata">保留我的数据</span><small data-i18n="installer.uninstall.confirm.keepdata.sub">工作区 · 设置 · 已装插件</small></span></label>
+      <!-- 件 2d：行内二次确认（02 §二幕⑨——删 userData 不可逆，必须用户亲眼确认过）。
+           勾掉「保留我的数据」时**不立刻露**：点「卸载」才露（不打扰只想保留数据的人）；
+           勾回「保留」即收起。样式复用 .unwarn（超时提示那块），只多一个 danger 色变体。 -->
+      <div id="delconfirm" hidden>
+        <div class="unwarn danger" data-i18n="installer.uninstall.confirm.deleteWarn">这会删除全部工作区、设置与已装插件，不可恢复。</div>
+        <label class="opt"><input type="checkbox" id="delagree"><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span data-i18n="installer.uninstall.confirm.deleteConfirm">我确认删除我的数据</span></label>
+      </div>
     </div>
     <div class="actions">
       <button class="btn danger" type="button" data-action="uninstall" data-primary data-i18n="installer.uninstall.confirm.uninstall">卸载<span class="cir">→</span></button>
@@ -6151,7 +6768,7 @@ body{background:#efede9;color:#33332f;font-family:Consolas,monospace;padding:28p
     <div class="fin-ring"><svg viewBox="0 0 56 56" aria-hidden="true"><path d="M12 30l11 11 21-26"/></svg></div>
     <h1 data-drag data-i18n="installer.uninstall.finish.title">已卸载。</h1>
     <div class="datbadge gone" id="datbadge" data-drag>用户数据已一并移除</div>
-    <div class="sub" data-drag data-i18n="installer.uninstall.finish.sub">谢谢使用 LinkDesk，有缘再见。</div>
+    <div class="sub" data-drag data-i18n="installer.uninstall.finish.sub">感谢使用 LinkDesk，有缘再见。</div>
     <div class="actions"><button class="btn primary" type="button" data-action="un-done" data-primary data-i18n="installer.uninstall.finish.done">完成</button></div>
   </div>
 </div></div>
@@ -6178,6 +6795,67 @@ body{background:#efede9;color:#33332f;font-family:Consolas,monospace;padding:28p
       if (un) d.style.animationName = 'rise-un';
       box.appendChild(d);
     }
+  });
+})();
+
+/* 帧间过渡实演（R2）：切帧＝摘/加 .on，与产品 app.js go(id) 同一套机制 ⇒ 入场动画由产品 CSS 真播。
+   安装窗的「⑤ 装好了」另按 app.js burst() 的原参数补发彩粒（#confetti 只写在真源 #s-finish 里）。 */
+(function () {
+  var seed = 0x9E3779B9;
+  function crnd() { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; }
+  var COLS = ['#8a6ff0', '#2fbf8a', '#e8b04b', '#f2f4ef', '#5a4bd1'];
+  function burst(st) {
+    var box = st.querySelector('#confetti');
+    if (!box) return;
+    box.innerHTML = '';
+    for (var i = 0; i < 40; i++) {              /* 40 颗、5 色、环心(50%/34%)向上炸开——逐项同 app.js */
+      var c = document.createElement('i');
+      var ang = crnd() * Math.PI * 2, d = 90 + crnd() * 220;
+      c.style.setProperty('--dx', Math.cos(ang) * d + 'px');
+      c.style.setProperty('--dy', Math.sin(ang) * d - 80 + 'px');
+      c.style.setProperty('--rot', (crnd() * 720 - 360) + 'deg');
+      c.style.left = '50%'; c.style.top = '34%';
+      c.style.background = COLS[i % COLS.length];
+      c.style.animation = 'burst ' + (0.9 + crnd() * 0.7) + 's ' + (crnd() * 0.15) + 's cubic-bezier(.16,1,.3,1) forwards';
+      box.appendChild(c);
+    }
+  }
+  [].forEach.call(document.querySelectorAll('.stage[id^="demo-stage-"]'), function (st) {
+    var key = st.id.replace('demo-stage-', '');
+    var ids = st.getAttribute('data-frames').split(',');
+    var btns = [].slice.call(document.querySelectorAll('.dbtn[data-stage="' + key + '"][data-go]'));
+    var play = document.querySelector('.dbtn.play[data-play="' + key + '"]');
+    if (!play) return;
+    var PLAY = play.textContent;
+    var timer = null, i = 0;
+    function go(id) {
+      [].forEach.call(st.querySelectorAll('.scr'), function (s) { s.classList.remove('on'); });
+      var t = st.querySelector('#s-' + id);
+      if (t) {
+        void t.offsetWidth;        /* 强制回流：同一屏再点亮也要重播动画（否则 display 同帧内不变化） */
+        t.classList.add('on');
+      }
+      btns.forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-go') === id); });
+      if (id === 'finish') burst(st);           /* 只有安装的完成屏有彩粒 */
+    }
+    function stop() {
+      if (!timer) return;
+      clearInterval(timer); timer = null;
+      play.textContent = PLAY; play.classList.remove('playing');
+    }
+    btns.forEach(function (b) {
+      b.addEventListener('click', function () { stop(); go(b.getAttribute('data-go')); });
+    });
+    play.addEventListener('click', function () {
+      if (timer) { stop(); return; }
+      play.textContent = '⏸ 停止'; play.classList.add('playing');
+      go(ids[0]); i = 0;
+      timer = setInterval(function () {
+        i++;
+        go(ids[i % ids.length]);
+        if (i >= ids.length * 2) stop();        /* 连播两轮 */
+      }, 1400);
+    });
   });
 })();
 </script>
