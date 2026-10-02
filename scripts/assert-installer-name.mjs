@@ -35,6 +35,16 @@
  *      既当被验者又当判据；此处一侧是 yml、一侧是 ts）。抽不出常量时**判红不放行**：
  *      「抽不出来 ⇒ 什么都没错」就是恒绿假门禁的写法（同 ② 的注释）。
  *
+ * ── 🔴 件 3b 订正（2026-10-02）：断言对象换了，**名字没换** ──
+ *   出包链从「electron-builder 出 NSIS 安装器」改成「electron-builder 出 **7z 载荷** ＋ 自绘引导器壳
+ *   拼单文件」（见 electron-builder.yml 头注 / `scripts/build-installer.mjs`）。于是：
+ *     · 本门禁断言的那个 exe = **拼出来的引导器安装包**（仍是 `linkdesk-setup-<ver>.exe`）；
+ *     · `electron-builder.yml` 的 `artifactName` 现在命名的是**载荷 7z**（拼合脚本按它找输入），
+ *       判据① 因此**照旧成立**（它钉的是「这个名字形状只有一处声明」）；
+ *     · 判据③ 的 latest.yml **件 3b 起由 `scripts/build-installer.mjs` 写**（electron-builder 在 7z
+ *       目标下不再产出它）。⚠️ 独立性小了一档：原先比「electron-builder 写元数据 ↔ 磁盘」，现在两侧
+ *       同源；守的病（元数据与产物名不一致）没变。**该说的都写在这，别以为它还是自动生成的。**
+ *
  * 用法：
  *   node scripts/assert-installer-name.mjs              # 查真实产物（electron:build 尾部自动跑）
  *   node scripts/assert-installer-name.mjs --self-test  # 负例/正例自测（纯内存，不落任何文件）
@@ -99,7 +109,9 @@ function checkArtifactName(yamlText) {
   return { ok: true, msg: `artifactName = ${TEMPLATE}` };
 }
 
-/** 判据②：输出目录顶层有且只有一个 .exe，且名字逐字符等于期望名。entries = 顶层文件名数组。 */
+/** 判据②：输出目录顶层有且只有一个 .exe，且名字逐字符等于期望名。entries = 顶层文件名数组。
+ *  ⚠️ 件 3b 起输出目录里**还并排躺着一个载荷 `.7z`**（`linkdesk-setup-<ver>.7z`）——这里刻意
+ *  只数 `.exe`：「有且只有一个 **exe**」是用户双击的那个，载荷不是候选。 */
 function checkBuildOutput(entries, expectedName) {
   const exes = entries.filter((n) => /\.exe$/i.test(n));
   if (exes.length === 0) {
@@ -169,7 +181,9 @@ function checkLatestYml(ymlText, expectedName) {
       ok: false,
       msg:
         `输出目录里没有 latest.yml。\n` +
-        `      ⇒ 更新器没有可读的版本元数据，检查更新都无从谈起。NSIS 目标应产出它。`,
+        `      ⇒ 更新器没有可读的版本元数据，检查更新都无从谈起。\n` +
+        `      件 3b 起由 scripts/build-installer.mjs 在拼完安装包后写（electron-builder 在 7z 目标下不再产出它）；\n` +
+        `      缺了它多半是那一步没跑 / 落到了别的目录。`,
     };
   }
   const path = topLevelValue(ymlText, "path");

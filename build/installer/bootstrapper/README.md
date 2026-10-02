@@ -146,14 +146,21 @@ node tools\dom-probe.mjs --preview "screen=home&lang=zh-CN" --click "#lkdd-btn" 
 - 缺运行时：系统对话框（中文警告＋官方下载按钮）＋退出码 3。
 - **门禁（件 3a，2026-10-02）**：`scripts/check-packaging-files.mjs` 除原有「product.json 进 asar」外，
   加了一整个**安装器资源**主体（判据 ④⑤⑥，自测 41 例）：
-  - **源层**（默认模式，挂 `npm run check`，不需要任何产物）——④ 引导器必备源 11 件（壳 / syswrite /
-    procguard / 页面三件套 / build.cmd / icon.rc / gen-ui-rc）齐套；⑤ `build/installer/i18n/` 的
+  - **源层**（默认模式，挂 `npm run check`，不需要任何产物）——④ 引导器必备源 **14 件**（壳 / syswrite /
+    procguard / 页面三件套 / build.cmd / icon.rc / gen-ui-rc ＋ 件 3b 的随包字体两份与 `OFL.txt`）齐套；
+    ⑤ `build/installer/i18n/` 的
     非 `_` 前缀词条**至少一份 ＋ zh-CN 必须是其中之一**（回落链的锚）、每份能解析、`_meta.code` 与文件名
     对齐、key 以 `installer.` 起且段内无空格/中文、值非空。⚠️ **刻意不判 en 与 zh-CN 键集对称**——
     「缺键回落」是件 1c C3 确立的设计，对称断言会假红。
   - **产物层**（`--with-artifact`，跟 `①/②/③` 同挂 electron:build 尾部）——⑥ `out\bootstrapper.exe` 在、
-    ≤5MB、**比编译源新**，页面三件套新于源，词条副本与源逐字相同。🔴 这一层就是给**坑 11** 配的机械闸：
+    ≤5MB、**比编译源新**（编译源含字体与 `OFL.txt`——它们经 `gen-ui-rc → ui.res` 进 exe），页面三件套
+    新于源，词条副本与源逐字相同，`out\fonts\` 两份字体新于源。🔴 这一层就是给**坑 11** 配的机械闸：
     改了 `syswrite.cpp` 忘了 `build.cmd` ⇒ 现在门禁当场红，替掉「harness 绿的是旧壳」那种假绿。
+  - **件 3b 随包字体**（2026-10-02）：`fonts/` 两份 Newsreader **拉丁子集**（Google Fonts 官方 `latin`
+    切片，正体 57KB ＋ 斜体 62KB）＋ `OFL.txt`。`app.css` 用 `unicode-range` 把它钉在拉丁区段（中文仍走
+    系统宋体），`font-display:swap` 免 FOIT。两态同源：开发态 `build.cmd` 复制到 `out\fonts\`，
+    单文件态 `gen-ui-rc.mjs` 编进 RCDATA、`main.cpp` 按清单建子目录摊到临时目录。⚠️ 字体静默 404
+    不报错，只是**悄悄换回退体**——所以 `out\fonts\` 的新鲜度进了判据⑥。
 
 ## 三、坑（都花过时间，别重踩）
 

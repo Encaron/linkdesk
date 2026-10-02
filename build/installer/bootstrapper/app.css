@@ -8,6 +8,8 @@
  *   · #s-error 补样式：mockup 没给该屏任何 CSS（h1 落到 UA 默认粗体、正文 16px），与完成屏的衬线语言
  *     不自洽；按同一设计语言补齐（衬线 34px h1 / .sub 13px / .errcode 小字 mono）——并排对照见 06 ⚠️ 注
  *   · html[data-i18n-pending]（件 1c 新增）：非默认语言首帧藏壳，词条到位再显（app.js 有 400ms 兜底）
+ *   · 件 3b：补 `@font-face` 随包 Newsreader **拉丁子集**（mockup 只写字体栈、字体全交给系统；用户
+ *     2026-10-02 拍板只嵌拉丁，中文仍走系统宋体）——见本文件 :root 下方那段注
  *   · 件 1d：卸载屏（E-卸载屏.html 直搬）追加在本文件末尾，规则一律 .scr.un / html[data-mode=uninstall]
  *     限定——两套屏同页共存（同一个 exe 的 --uninstall 模式），上方安装侧规则一字不动
  */
@@ -22,6 +24,21 @@
   --mono:'Geist Mono',Consolas,monospace;
   --ease:cubic-bezier(.32,.72,0,1);
 }
+/* 件 3b：随包 Newsreader **拉丁子集**（用户 2026-10-02 拍板：中文不嵌，仍走系统宋体——中文衬线
+   子集数 MB，逼近 5MB 壳预算）。两份文件 = Google Fonts 官方 `latin` 子集原样（正体 57KB ＋
+   斜体 62KB，合计 120KB）：
+     · unicode-range **照抄 Google 那份**（不是自造）——把这套字钉死在拉丁区段，中文/日文等
+       走下一个候选（Songti SC → serif），不会出现"拉丁字用嵌体、汉字用回退体"中途换字丢基线；
+     · font-display:swap —— 设计规约 font-loading 明列：不许 FOIT（字体没到位时先显回退体）；
+       栈尾 Georgia/宋体与 Newsreader 同为旧体衬线，首帧回退不跳行，故不另加 size-adjust；
+     · 路径 `fonts/…` 相对 app.css：开发态=out\fonts\（build.cmd 复制），
+       单文件态=内嵌 RCDATA 摊到临时目录（gen-ui-rc.mjs 收这几份文件，main.cpp 按清单建子目录）。 */
+@font-face{font-family:'Newsreader';font-style:normal;font-weight:400;font-display:swap;
+  src:url('fonts/newsreader-latin-400.woff2') format('woff2');
+  unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:'Newsreader';font-style:italic;font-weight:400;font-display:swap;
+  src:url('fonts/newsreader-latin-400-italic.woff2') format('woff2');
+  unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
 *{margin:0;padding:0;box-sizing:border-box}
 button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid #8a6ff0;outline-offset:2px}
 /* browser surfaces（craft-floor：浏览器默认面也要属于设计） */

@@ -1,7 +1,15 @@
 # electron-builder 打包配置
 #
 # E1 步 7：替代 Tauri 的 tauri.conf.json。
-# 生成 NSIS 安装器（Windows .exe）。
+#
+# 🔴 件 3b（2026-10-02）：出包从「electron-builder 生成 NSIS 安装器」改为
+#    「electron-builder 只出 **7z 载荷** ＋ 自绘引导器壳拼单文件」：
+#      win.target = 7z  ⇒  `<产物目录>/linkdesk-setup-<ver>.7z`（= win-unpacked 整棵）
+#      scripts/build-installer.mjs ⇒ 把它拼在 `build/installer/bootstrapper/out/bootstrapper.exe`
+#      之后（中间 64 字节 marker）得到用户双击的 `linkdesk-setup-<ver>.exe`
+#    ⇒ NSIS 全退场：安装界面、注册表写入、卸载器全部归引导器（见 04 `安装界面自绘/`）。
+#    ⚠️ 因此本文件不再负责**安装器**行为（无 nsis 段），但 `artifactName` / `directories.output`
+#      仍是**载荷名与产物目录的唯一真理源**——build-installer.mjs 的默认路径就是从这两处推的。
 #
 # 关键设计：
 #   - 插件源码不进包（extraResources = 只读 bundled-plugins 发货夹 + icon）；
@@ -33,6 +41,13 @@ copyright: Copyright © 2026 LinkDesk
 # latest.yml 不再改写 ⇒ 磁盘名 / latest.yml path / Release asset / 下载链接四处同名。
 # ⚠️ 是 ${name} 不是 ${productName}——productName 是大写 L/D 的 LinkDesk，大小写在 URL 场景敏感。
 # 门禁：scripts/assert-installer-name.mjs（已链进 electron:build 与 CI）。
+#
+# 🔴 件 3b 订正（2026-10-02）——上面那套病根链**依然成立**，但**主体换了**：
+#   现在 `artifactName` 命名的是**载荷 7z**（`linkdesk-setup-<ver>.7z`），改它不再直接改安装器的名字；
+#   用户双击的那个 `linkdesk-setup-<ver>.exe` 由 `scripts/build-installer.mjs` 用**同一个形状**产出
+#   （它的默认 `--out` 与这里是同一模板），名门禁 ② 拿**磁盘真值**对账、④ 拿**运行时消费方**对账。
+#   ⇒ 「安全名翻译」那条老路（electron-builder 把空格换连字符）随 NSIS 退场而**结构性消失**；
+#     保留 artifactName 是为了载荷名可预测（拼合脚本按它找输入），不是为了安装器名。
 artifactName: "${name}-setup-${version}.${ext}"
 
 directories:
@@ -104,13 +119,17 @@ extraFiles:
 win:
   icon: build/icon.ico # 04：显式声明（此前靠 build/ 约定目录兜底——挪目录/加平台会静默丢图标）
   target:
-    - target: nsis
+    # 🔴 件 3b：只有 7z——出的是**载荷**，安装器由引导器壳拼成（见文件头）。
+    #    7z 的 `win-unpacked/` 照常产出（应用 asar 在里面，check-packaging-files ②③ 判它）。
+    - target: 7z
       arch: [x64]
 
-nsis:
-  oneClick: false
-  allowToChangeInstallationDirectory: true
-  createDesktopShortcut: true
+# 🔴 件 3b：`nsis:` 段已删除（NSIS 全退场）。
+#   它原先声明的 three 项（oneClick:false / allowToChangeInstallationDirectory:true /
+#   createDesktopShortcut:true）在自绘安装界面里各自有对应实现：
+#     · 非一键 + 可选安装目录 ⇒ 引导器主屏的路径行（含行内校验）
+#     · 桌面快捷方式          ⇒ 引导器安装段的「自定义选项」勾选（默认勾）
+#   ⚠️ `build/installer.nsh` 文件**暂不删**（用户定的规矩：件 3c 实机清单过之前留着当后路）。
 
 # 自动 rebuild 原生模块（serialport）以匹配 Electron 的 Node.js ABI
 npmRebuild: true

@@ -222,6 +222,12 @@ const BOOTSTRAPPER_REQUIRED = [
   "bootstrapper/build.cmd",
   "bootstrapper/icon.rc",
   "bootstrapper/tools/gen-ui-rc.mjs",
+  // 件 3b：随包字体（用户 2026-10-02 拍板只嵌拉丁子集）＋ OFL 许可文本。
+  // 少了 woff2 ⇒ `@font-face` 静默 404、浏览器**默默**用回退体——不报错、只是变样，最难发现；
+  // OFL.txt 少了则是许可不合规（SIL OFL 1.1 要求字体分发须随附许可副本）。
+  "bootstrapper/fonts/newsreader-latin-400.woff2",
+  "bootstrapper/fonts/newsreader-latin-400-italic.woff2",
+  "bootstrapper/fonts/OFL.txt",
 ];
 
 /** **编进 exe** 的源——产物新鲜度的对照面：改其中任何一个而没重跑 `build.cmd` ⇒ exe 是旧货。 */
@@ -232,10 +238,17 @@ const BOOTSTRAPPER_COMPILE_SOURCES = [
   "bootstrapper/procguard.cpp",
   "bootstrapper/procguard.h",
   "bootstrapper/icon.rc",
+  // 字体与许可文本经 `gen-ui-rc.mjs` → `ui.res` 编进 exe（不是编译源，但同样决定产物内容）
+  "bootstrapper/fonts/newsreader-latin-400.woff2",
+  "bootstrapper/fonts/newsreader-latin-400-italic.woff2",
+  "bootstrapper/fonts/OFL.txt",
 ];
 
 /** 页面三件套：`build.cmd` 拷进 `out\` **且**由 `gen-ui-rc.mjs` 编进 RCDATA（两态同一份源）。 */
 const UI_FILES = ["app.html", "app.css", "app.js"];
+
+/** 随包字体：同上两态，但开发态的副本落在 `out\fonts\`（子目录，故与 UI_FILES 分开判）。 */
+const FONT_FILES = ["newsreader-latin-400.woff2", "newsreader-latin-400-italic.woff2"];
 
 /** build.cmd 的体积预算（README §4.2「target ≤ 5MB single-file exe」）。 */
 const BOOTSTRAPPER_MAX_BYTES = 5 * 1024 * 1024;
@@ -359,7 +372,8 @@ function readI18nDir(dir) {
 /**
  * 判据⑥（产物层）：`out\` 里的引导器产物真在、且不是旧货。
  * input = { exe: {size, mtimeMs} | null, compileSourcesMtime: number,
- *           ui: [{name, outExists, outMtime, srcMtime}], i18n: [{name, outExists, same}] }
+ *           ui: [{name, outExists, outMtime, srcMtime}], i18n: [{name, outExists, same}],
+ *           fonts: [{name, outExists, outMtime, srcMtime}] }
  * 纯判定，读盘那一步在 collectBootstrapperArtifacts()。
  */
 function checkBootstrapperArtifacts(info) {
@@ -389,6 +403,11 @@ function checkBootstrapperArtifacts(info) {
     if (!i.outExists) problems.push(`\`out\\i18n\\${i.name}\` 不在 —— 语言清单会少这一门`);
     else if (!i.same) problems.push(`\`out\\i18n\\${i.name}\` 与源不一致 —— 改了词条没重跑 build.cmd`);
   }
+  for (const f of info.fonts) {
+    if (!f.outExists) problems.push(`\`out\\fonts\\${f.name}\` 不在 —— 开发态预览会静默用回退体`);
+    else if (f.outMtime < f.srcMtime)
+      problems.push(`\`out\\fonts\\${f.name}\` 比源旧 —— 换了字体没重跑 build.cmd`);
+  }
   if (problems.length > 0) {
     return {
       ok: false,
@@ -397,7 +416,7 @@ function checkBootstrapperArtifacts(info) {
   }
   return {
     ok: true,
-    msg: `⑥ 引导器产物 —— exe ${info.exe.size} 字节（≤5MB）＋ 页面三件套新于源 ＋ 词条副本与源逐字相同`,
+    msg: `⑥ 引导器产物 —— exe ${info.exe.size} 字节（≤5MB）＋ 页面三件套新于源 ＋ 词条副本与源逐字相同 ＋ 字体副本新于源`,
   };
 }
 
@@ -436,6 +455,11 @@ function collectBootstrapperArtifacts() {
         same = false;
       }
       return { name: f.name, outExists: true, same };
+    }),
+    fonts: FONT_FILES.map((name) => {
+      const src = stat(join(BOOTSTRAPPER_DIR, "fonts", name));
+      const out = stat(join(outDir, "fonts", name));
+      return { name, outExists: out !== null, outMtime: out?.mtimeMs ?? 0, srcMtime: src?.mtimeMs ?? 0 };
     }),
   };
 }
@@ -525,6 +549,7 @@ function runSelfTest() {
       { name: "zh-CN.json", outExists: true, same: true },
       { name: "en.json", outExists: true, same: true },
     ],
+    fonts: FONT_FILES.map((name) => ({ name, outExists: true, outMtime: 2000, srcMtime: 1000 })),
   };
 
   const cases = [
@@ -635,6 +660,8 @@ function runSelfTest() {
     ["⑥ 引导器产物(页面三件套缺)", checkBootstrapperArtifacts({ ...ART_OK, ui: ART_OK.ui.map((u) => (u.name === "app.js" ? { ...u, outExists: false } : u)) }), false],
     ["⑥ 引导器产物(词条副本不一致)", checkBootstrapperArtifacts({ ...ART_OK, i18n: [{ name: "en.json", outExists: true, same: false }] }), false],
     ["⑥ 引导器产物(词条副本缺)", checkBootstrapperArtifacts({ ...ART_OK, i18n: [{ name: "en.json", outExists: false, same: false }] }), false],
+    ["⑥ 引导器产物(字体副本缺)", checkBootstrapperArtifacts({ ...ART_OK, fonts: ART_OK.fonts.map((f) => ({ ...f, outExists: false })) }), false],
+    ["⑥ 引导器产物(字体副本旧)", checkBootstrapperArtifacts({ ...ART_OK, fonts: ART_OK.fonts.map((f) => (f.name.endsWith("italic.woff2") ? { ...f, outMtime: 1 } : f)) }), false],
   ];
 
   let bad = 0;

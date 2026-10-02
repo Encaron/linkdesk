@@ -33,6 +33,14 @@ if not exist out\i18n mkdir out\i18n
 for %%F in (..\i18n\*.json) do copy /y "%%F" out\i18n\ >nul
 if not exist out\i18n\zh-CN.json (echo FAIL: out\i18n\zh-CN.json missing & exit /b 1)
 
+rem Fat-face assets (3b): Newsreader latin subset. app.css references fonts\... relative to the page,
+rem so dev mode (out\app.html) needs out\fonts\ too. OFL.txt is embedded only (no runtime reader).
+if not exist "fonts" (echo FAIL: fonts missing & exit /b 1)
+if not exist out\fonts mkdir out\fonts
+for %%F in (fonts\*.woff2) do copy /y "%%F" out\fonts\ >nul
+if not exist out\fonts\newsreader-latin-400.woff2 (echo FAIL: latin subset missing & exit /b 1)
+if not exist out\fonts\newsreader-latin-400-italic.woff2 (echo FAIL: latin italic subset missing & exit /b 1)
+
 rem Single-file product form: the page MUST travel inside the exe (there is no app.html next to a
 rem concatenated setup.exe). Generate the embedded-UI manifest + resource script, then compile it.
 rem Dev keeps using out\app.* -- see ResolveUiRoot() in main.cpp.

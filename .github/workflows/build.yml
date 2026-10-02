@@ -221,21 +221,24 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           # 🔴 2026-09-11 订正：原来只有 `<产物>/*.exe` 一项 —— **latest.yml 从没上传过**。
-          #    为什么要带上它和 .blockmap，说准确点（2026-09-11 二次订正，别照旧说法抄）：
+          #    为什么带 latest.yml，说准确点（2026-09-11 二次订正 ＋ 2026-10-02 件 3b 三次订正）：
           #      · **本仓的更新器不读 latest.yml** —— `06-主软件更新/00-README.md` 明写
           #        「自研更新机制，不用 electron-updater」，`01-更新机制设计.md` §2.3 走的是
           #        GitHub Releases API（`releases/latest` → `tag_name` 比版本 → 按 asset 名精确匹配）。
           #        ⚠️ 所以**不许**再写「不传 latest.yml ⇒ 更新 404 / 永远没有新版」——那条推论
           #        假定用了 electron-updater，与本仓设计不符（此处原先就是这么写的，已订正）。
-          #      · 真正该带上它的理由有两条：① `latest.yml` 的 `path` 是 E6#42e 三道门禁里
-          #        **第三条独立证据**（磁盘名 / 配置 / 产物元数据三方对账）——它是暴露
-          #        「安全名翻译」的现场；② 它是 electron-builder 自动生成的发布惯例伴随件，
-          #        将来若真改用 electron-updater 就必须要它。两者都成立，故保留三件。
+          #      · 带它的理由：① `latest.yml` 的 `path` 是 E6#42e 三道门禁里**第三条证据**
+          #        （磁盘名 / 配置 / 产物元数据对账）；② 它是发布惯例伴随件，将来若真改用
+          #        electron-updater 就必须要它。
+          #        ⚠️ 件 3b：它**不再由 electron-builder 生成**——出包改 `target: 7z` 后，
+          #        electron-builder 给的是载荷、不产 latest.yml；改由 `scripts/build-installer.mjs`
+          #        拼完安装包后写（字段从真产物算 size/sha512）。文件仍在这里列着、路径不变。
           #      · 三件里**唯一功能上必需的是 `.exe`**：自研更新器按 asset 名找的就是它。
+          #      · 🔴 件 3b：`*.blockmap` **已从列表删除** —— 它是 NSIS 差分更新的伴随件，
+          #        `target: 7z` 的链不再产出（glob 匹配不到东西，只会让 Release 步骤空转）。
           files: |
             ${{ steps.installer.outputs.path }}
             ${{ steps.installer.outputs.dir }}/latest.yml
-            ${{ steps.installer.outputs.dir }}/*.blockmap
           # 🔴 Release 正文 = **下载信息块 ＋ CHANGELOG 那段正文**（§1.3 / §2.2），
           #    不是 GitHub 自动罗列的 commit 列表（那是流水，用户看不懂，也不是人写的那份说明）。
           #    ⚠️ E6#43a 起正文不再直接读 `release-body.md`（那只是 CHANGELOG 段），

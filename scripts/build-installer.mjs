@@ -30,7 +30,7 @@
  *    三个字段任何一个写错，症状都是「双击安装包说自己是开发期裸壳」，而不是报错。
  *
  * 用法：
- *   node scripts/build-installer.mjs                      # 默认：拼 <out>/linkdesk-setup-<ver>.7z
+ *   node scripts/build-installer.mjs                      # 默认：拼 <产物目录>/linkdesk-setup-<ver>.exe（并写 latest.yml）
  *   node scripts/build-installer.mjs --payload=a.7z --out=b.exe
  *   node scripts/build-installer.mjs --check <setup.exe>  # 只校验既有产物的 marker 自洽
  */
@@ -45,11 +45,13 @@ import {
   readdirSync,
   closeSync,
   statSync,
+  writeFileSync,
 } from "node:fs";
-import { dirname, join, resolve } from "node:path";
+import { createHash } from "node:crypto";
+import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { nestedValue } from "./lib/yaml-lite.mjs";
+import { nestedValue, topLevelValue } from "./lib/yaml-lite.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, "..");
@@ -119,6 +121,48 @@ export function dirBytes(dir) {
   return total;
 }
 
+/**
+ * 写发布伴随件 `latest.yml`（件 3b）。
+ *
+ * 为什么轮到我们自己写（原先由 electron-builder 在 NSIS 目标下自动生成）：
+ *   出包改成 `target: 7z` 后 electron-builder **不再产出** latest.yml——它给的是**载荷 7z**，
+ *   不是安装器；而 CI 的 Release 上传列表里有它，`assert-installer-name` 判据③ 也拿它当
+ *   「磁盘之外的第二份证据」。⇒ 由**产出安装器的这一步**顺手写，字段全部**从刚落盘的真产物算**
+ *   （size/sha512 读的就是那个 exe），不是手抄的第二份真相。
+ * ⚠️ 独立性如实说**小了一档**：③ 原先比的是「electron-builder 写元数据 ↔ 磁盘」，现在是
+ *   「本脚本写元数据 ↔ 磁盘」——同源。它守的病（元数据与产物名不一致）没变，但少了「别人写的」
+ *   这层交叉验证；而 electron-builder 那条**安全名翻译**的老病已随 NSIS 退场**结构性消失**
+ *   （见 electron-builder.yml 头注）。换 electron-updater 那天，这个文件必须是**真生产者**产出的。
+ * 🔴 只在**默认落点**写：`--out=` 是给 spike/测试用的，不该在任意目录留发布伴随件。
+ */
+function writeLatestYml(outPath, ver) {
+  const buf = readFileSync(outPath);
+  const sha512 = createHash("sha512").update(buf).digest("base64");
+  const name = basename(outPath);
+  const ymlPath = join(dirname(outPath), "latest.yml");
+  let note = "";
+  if (existsSync(ymlPath)) {
+    const prev = topLevelValue(readFileSync(ymlPath, "utf8"), "path");
+    note =
+      prev && prev !== name
+        ? `（覆盖掉既有那份：它的 path=${prev}）`
+        : "（幂等重写，path 未变）";
+  }
+  writeFileSync(
+    ymlPath,
+    `version: ${ver}\n` +
+      `files:\n` +
+      `  - url: ${name}\n` +
+      `    sha512: ${sha512}\n` +
+      `    size: ${buf.length}\n` +
+      `path: ${name}\n` +
+      `sha512: ${sha512}\n` +
+      `releaseDate: '${new Date().toISOString()}'\n`,
+    "utf8"
+  );
+  return { ymlPath, note };
+}
+
 function main() {
   if (process.argv.includes("--check")) {
     const p = process.argv[process.argv.indexOf("--check") + 1];
@@ -140,6 +184,7 @@ function main() {
     arg("exe") ?? join(ROOT, "build", "installer", "bootstrapper", "out", "bootstrapper.exe")
   );
   const payloadPath = resolve(arg("payload") ?? join(outDir, `linkdesk-setup-${ver}.7z`));
+  const outIsDefault = arg("out") === null; // 只有默认落点才写 latest.yml（见 writeLatestYml）
   const outPath = resolve(arg("out") ?? join(outDir, `linkdesk-setup-${ver}.exe`));
   const unpackedFrom = arg("unpacked-from") ?? join(outDir, "win-unpacked");
 
@@ -186,10 +231,14 @@ function main() {
     const total = statSync(outPath).size;
     const r = verifyMarker(readFileSync(outPath));
     if (!r.ok) fail(`拼完自检不过：${r.msg}\n  产物：${outPath}`);
+    const latest = outIsDefault ? writeLatestYml(outPath, ver) : null;
     process.stdout.write(
       `✅ ${outPath}\n` +
         `   壳 ${total - MARKER_SIZE - payloadSize} ＋ marker 64 ＋ 载荷 ${payloadSize} ＝ ${total} 字节\n` +
-        `   解压后 ${unpacked} 字节（源 ${unpackedFrom}）\n`
+        `   解压后 ${unpacked} 字节（源 ${unpackedFrom}）\n` +
+        (latest
+          ? `   latest.yml 已写（自真产物算 size/sha512）：${latest.ymlPath} ${latest.note}\n`
+          : "")
     );
   })().catch((e) => fail(String(e && e.stack ? e.stack : e)));
 }

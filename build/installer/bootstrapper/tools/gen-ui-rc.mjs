@@ -32,6 +32,9 @@ const OUT = join(HERE, "out");
 export const UI_MANIFEST_RES = 3;
 export const UI_FILE_RES_BASE = 10;
 
+/** 件 3b 随包字体（Newsreader 拉丁子集）——`fonts\` 下的几个文件，由 build.cmd 校验在场。 */
+export const FONT_FILES = ["newsreader-latin-400.woff2", "newsreader-latin-400-italic.woff2"];
+
 /** 清单条目：exe 内 id → 页面根下的相对路径（正斜杠，运行时按它建子目录）。 */
 export function collectUiFiles() {
   const files = [
@@ -46,6 +49,13 @@ export function collectUiFiles() {
     if (!name.endsWith(".json") || name.startsWith("_")) continue;
     files.push([`i18n/${name}`, join(i18nDir, name)]);
   }
+  // 件 3b：随包字体 ＋ OFL 许可文本。许可文本**故意**一起嵌——SIL OFL 1.1 要求字体分发随附
+  // 许可副本，而产品态只有单文件；不嵌进去就「随」不上（临时目录那份会在退出时删掉，
+  // 所以仓里的 `fonts/OFL.txt` 与发布页的许可注记才是长期落点，这里只是让它随产物走）。
+  for (const name of FONT_FILES) {
+    files.push([`fonts/${name}`, join(HERE, "fonts", name)]);
+  }
+  files.push(["fonts/OFL.txt", join(HERE, "fonts", "OFL.txt")]);
   for (const [rel, abs] of files) {
     if (!existsSync(abs)) throw new Error(`UI 资源缺失：${rel}（${abs}）`);
   }
