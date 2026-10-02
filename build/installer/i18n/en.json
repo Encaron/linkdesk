@@ -22,6 +22,14 @@
   "installer.opt.editor": "Register LinkDesk as an editor for supported file types",
   "installer.opt.path": "Add to PATH (effective after restarting terminals)",
 
+  "installer.more.open": "More options",
+  "installer.more.title": "More options",
+  "installer.more.sub": "Pick everything now, so you never have to hunt for it later.",
+  "installer.more.back": "Back",
+  "installer.more.cachedir": "Cache folder",
+  "installer.more.cachedir.sub": "Plugins, themes and runtime caches live here; leave empty for the default.",
+  "installer.more.cachedir.ph": "Default location",
+
   "installer.progress.aria": "Install progress",
   "installer.progress.head1": "STEP 1 / 4 · Extracting files",
   "installer.progress.head2": "STEP 2 / 4 · Registering file associations",

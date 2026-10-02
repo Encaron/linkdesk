@@ -9,6 +9,10 @@
  *             写侧）、运行时真值的本地化（onLangChange 钩子）
  * 件 2c 已落：close-request 单入口分流、version-guard 确认屏、dir-invalid 行内错、uninstall-* 检测/超时；
  *             **卸载的真清理（帧 3 进度 / 帧 4 徽章真值）仍归 2d**——这里只把进程检测与关窗接活。
+ * 2026-10-02 立项「更多配置页」（档 docs/04-软件更新/待抉择池/通用组缓存配置项/）：
+ *             #s-more 屏（竖向配置清单 + 缓存目录行）、欢迎屏入口、勾选态两处同源（uiOpts）、
+ *             Esc 退一层。**宿主侧仍未接**：`browse-cachedir`（件 2e：照 PickInstallDir 加 PickCacheDir
+ *             → 回 `cache-dir-done`）与它写进 HKCU\Software\LinkDesk 的落点——发版前必须接上，别留死按钮。
  */
 (function () {
 'use strict';
@@ -54,7 +58,7 @@ if (q.get('seed')) {
 
 /* ── 屏幕状态机（类名/ID 与 mockup 一致 = 规格；两套屏按模式分流）────────── */
 const SCREENS = {
-  install: ['uac', 'home', 'progress', 'finish', 'error', 'version'],
+  install: ['uac', 'home', 'more', 'progress', 'finish', 'error', 'version'],
   uninstall: ['confirm', 'running', 'un-progress', 'un-finish']
 };
 let cur = null;
@@ -155,7 +159,8 @@ function setInstallDir(dir) {
   $('#finish-path').textContent = dir;
   clearPathErr();     // 值被换成合法的了（浏览对话框 / 宿主的 dir=），上一句判词即刻作废
 }
-function setVersion(v) { if (v) $('#ver').textContent = 'v' + v; }
+/* 版本号现有两处挂点（欢迎屏 + 更多配置页各一个 .ver）——同一份真值，一起写 */
+function setVersion(v) { if (v) $$('.ver').forEach(function (el) { el.textContent = 'v' + v; }); }
 function setError(code, msg) {
   if (code) $('#errcode').textContent = code;
   if (msg) {
@@ -165,9 +170,31 @@ function setError(code, msg) {
   }
   go('error');
 }
+/* ── 附加任务勾选：**一份状态，两处标记**（2026-10-02「更多配置页」立项）───────────
+ * 四个 data-opt 现在同时长在欢迎屏的自定义展开区与 #s-more 更多配置页里。两处问的是同一件事，
+ * 所以值只存这里一份（uiOpts）：
+ *   · 任一处改动 → setOpt 回写 uiOpts 并重画**两处**（paintOpts）；
+ *   · readOpts() 只读这份，不再扫 DOM——原来那版是「谁最后被读谁的 checked 说了算」，
+ *     两份标记各带自己的属性就会长出静默分歧（用户点名的场景：前一页四个全勾，
+ *     翻到更多配置页必须还是四个勾；反过来在这一页勾掉、返回欢迎屏也得是勾掉的）。
+ * 标记里那几条 checked = 首帧默认值（静态评审页照它显示）；boot() 会 paintOpts() 归一到本表。
+ * ⚠️ 加新勾选项：本表加一键 ＋ **两处标记各加一行**，别只加一处。 */
+const OPT_DEFAULTS = { filemenu: false, dirmenu: false, editor: true, path: true };
+const uiOpts = Object.assign({}, OPT_DEFAULTS);
+function paintOpts() {
+  $$('[data-opt]').forEach(function (el) { el.checked = !!uiOpts[el.dataset.opt]; });
+}
+function setOpt(key, checked) {
+  if (!Object.prototype.hasOwnProperty.call(OPT_DEFAULTS, key)) return;
+  uiOpts[key] = !!checked;
+  paintOpts();
+}
+$$('[data-opt]').forEach(function (el) {
+  el.addEventListener('change', function () { setOpt(el.dataset.opt, el.checked); });
+});
 function readOpts() {
   const o = {};
-  $$('[data-opt]').forEach(function (el) { o[el.dataset.opt] = el.checked; });
+  Object.keys(OPT_DEFAULTS).forEach(function (k) { o[k] = !!uiOpts[k]; });
   return o;
 }
 
@@ -210,6 +237,67 @@ function clearPathErr() {
   $('[data-role=path]').classList.remove('bad');
 }
 
+/* ── 更多配置页 · 缓存目录行（2026-10-02 立项；宿主接线归件 2e）────────────────
+ * 语法判据与安装位置**同一套**（pathSyntaxError），只多一条：**留空是合法的**——
+ * 留空 = 用默认位置（默认路径由宿主自报 ?cachedir= 落成 placeholder，标记里不写真实路径）。
+ * 为什么单开一条 #cacheerr 而不复用 #patherr：两处判词各贴各的字段旁（「错误靠近出问题的字段」），
+ * 共用一条带会让「到底哪个字段错了」只剩视觉通道，读屏听不出。
+ *
+ * 🔴 落点契约（这一行的值最终去哪儿，别让它成为第二份真相）：页面只发 `cacheDir` 字段，
+ *    宿主写进安装器自己的家（HKCU\Software\LinkDesk），**软件侧首次运行读它当默认值，
+ *    之后一律以软件里的设置为准**；「打开缓存目录」永远由软件侧解析当前生效路径。
+ *    详见 docs/04-软件更新/待抉择池/通用组缓存配置项/01-方案与落点契约.md §三。 */
+let cacheDefault = '';                    // 宿主自报的默认缓存位置（placeholder 用；空则退 i18n 文案）
+function cacheSyntaxError(v) {
+  const s = String(v == null ? '' : v).trim();
+  if (!s) return '';                      // 留空 = 默认位置，是合法选择，不是漏填
+  return pathSyntaxError(s);
+}
+function paintCache() {
+  const inp = $('[data-role=cachedir]');
+  if (!inp) return;
+  if (!inp.value) inp.placeholder = cacheDefault || t('installer.more.cachedir.ph');
+}
+function showCacheErr(reason) {
+  const el = $('#cacheerr');
+  if (!el) return;
+  el.textContent = t(PATH_ERR_KEY[reason] || PATH_ERR_KEY.write);
+  el.hidden = false;
+  $('[data-role=cachedir]').classList.add('bad');
+}
+function clearCacheErr() {
+  const el = $('#cacheerr');
+  if (!el || el.hidden) return;
+  el.hidden = true;
+  el.textContent = '';
+  $('[data-role=cachedir]').classList.remove('bad');
+}
+/* 宿主自报的默认位置（?cachedir=）——只落 placeholder，不落 value：
+   value 空 = 「用默认位置」，用户真挑过才写 value。 */
+function setCacheDefault(p) { if (p) { cacheDefault = p; paintCache(); } }
+/* 宿主的目录对话框选完回填（cache-dir-done）——值换成新的了，上一句判词即刻作废 */
+function setCacheDir(p) {
+  const inp = $('[data-role=cachedir]');
+  if (!inp || !p) return;
+  inp.value = p;
+  clearCacheErr();
+  paintCache();
+}
+function readCacheDir() {
+  const inp = $('[data-role=cachedir]');
+  return inp ? inp.value.trim() : '';
+}
+/* 输入举止与安装位置同一套（UX 规则「输入时/离焦判，不要只在提交时才报」） */
+(function wireCacheInput() {
+  const inp = $('[data-role=cachedir]');
+  if (!inp) return;
+  inp.addEventListener('input', clearCacheErr);
+  inp.addEventListener('blur', function () {
+    const bad = cacheSyntaxError(inp.value);
+    if (bad) showCacheErr(bad); else clearCacheErr();
+  });
+})();
+
 /* ── 件 2c · 版本守卫屏 ────────────────────────────────────────────────────
  * 宿主的 VersionGuard 结论（同版 / 降级）由 version-guard 消息送进来，复用失败屏骨架问一句，
  * **默认答案是「退出安装」**（主按钮 = Enter；与 NSIS 版 MB_DEFBUTTON2 = 否 同一条）。
@@ -240,11 +328,18 @@ function beginInstall(allowOlder) {
   const bad = pathSyntaxError(inp.value);
   if (bad) { setCustom(true); go('home'); showPathErr(bad); return; }
   clearPathErr();
+  // 更多配置页的缓存目录：留空合法（= 默认位置），填了就必须是个能落地的绝对路径。
+  // 判词住 #cacheerr ⇒ 出错时把人送回**那一屏**（不是欢迎屏）——别让他在看不见错的地方干瞪眼。
+  // ⚠️ 先于 starting 置位：这一步没过就压根没提交，防重位不该被占掉。
+  const cbad = cacheSyntaxError(readCacheDir());
+  if (cbad) { go('more'); showCacheErr(cbad); return; }
+  clearCacheErr();
   starting = true;
   setCustom(false);
   go('progress');
   resetProgress();
-  post({ type: 'install-start', dir: inp.value, opts: readOpts(), allowOlder: !!allowOlder });
+  post({ type: 'install-start', dir: inp.value, cacheDir: readCacheDir(),
+         opts: readOpts(), allowOlder: !!allowOlder });
 }
 
 /* 输入框的两条事件（UX 规则「输入时/离焦判，不要只在提交时才报」）：
@@ -309,6 +404,14 @@ const ACTIONS = {
   install: function () { beginInstall(false); },
   'toggle-custom': function () { setCustom(!$('#custom').classList.contains('open')); },
   browse: function () { post({ type: 'browse-dir', dir: $('[data-role=path]').value }); },  // 目录对话框在宿主（2b）
+  /* 更多配置页（2026-10-02 立项）：欢迎屏 ⇄ 该屏来回切。返回只切屏、不重置任何东西——
+     勾选态住在 uiOpts、自定义展开态住在 #custom 的 class 上，两者都不随屏幕走，
+     所以「展开着点进更多配置、返回后还是展开的」天然成立，不必另记状态。 */
+  'open-more': function () { go('more'); },
+  'more-back': function () { go('home'); },
+  // 缓存目录的目录对话框也在宿主（件 2e 待接：照 PickInstallDir 加一个 PickCacheDir，回 cache-dir-done）。
+  // ⚠️ 与 open-license 同类：宿主没受理之前，这颗按钮点下去是**没有回话的**（发版前必须接上，别留死按钮）。
+  'browse-cachedir': function () { post({ type: 'browse-cachedir', dir: readCacheDir() }); },
   cancel: function () { cancelInstall(); },
   retry: function () { clearPathErr(); setCustom(true); go('home'); },   // 02 §三：换位置直接回自定义展开屏
   exit: function () { post({ type: 'exit' }); },         // 失败屏出口
@@ -358,7 +461,9 @@ function closeByStage() {
   }
   if (cur === 'progress') { cancelInstall(); return; }
   if (cur === 'finish') { post({ type: 'install-done', launch: $('#runnow').checked }); return; }
-  // 主屏 / 失败屏 / 版本守卫屏：守卫屏一个字节都还没写，关窗 = 等同于退出安装
+  // 主屏 / 更多配置 / 失败屏 / 版本守卫屏：这几屏都还没写过一个字节，关窗 = 等同于退出安装。
+  // ⚠️ 「更多配置」在这里**不退一层**：✕ 与 Alt+F4 说的原话是「关掉安装器」；
+  //    「退一层」只挂在 Esc 与那颗「返回」按钮上（见 keydown 与本文件 ACTIONS['more-back']）。
   post({ type: 'close' });
 }
 
@@ -391,6 +496,7 @@ function onHostMessage(ev) {
   }
   if (m.type === 'install-done') { starting = false; setProgress(100, { force: true }); go('finish'); return; }
   if (m.type === 'browse-dir-done') { setInstallDir(m.dir); return; }   // 件 2b：宿主选完目录回填
+  if (m.type === 'cache-dir-done') { setCacheDir(m.dir); return; }      // 件 2e：更多配置页的缓存目录回填
   /* ── 件 2c ────────────────────────────────────────────────────────────── */
   if (m.type === 'close-request') { closeByStage(); return; }   // Alt+F4 / 任务栏关闭 → 按当前屏分流
   if (m.type === 'version-guard') {                             // 同版/降级：换确认屏，默认答案是退出
@@ -464,8 +570,10 @@ document.addEventListener('mousedown', function (e) {
 document.addEventListener('keydown', function (e) {
   if (e.key === 'Escape') {
     // 件 2c：Esc 是「三路汇一」的第三路。弹层开着时先收弹层（Esc 的通用语义），
-    // 没收的就按当前屏分流——和 ✕ / Alt+F4 走同一个 closeByStage。
+    // 2026-10-02：再退「子页」一层——更多配置是欢迎屏的下级，Esc 该回到上级而不是把安装器关掉；
+    // 其余的才按当前屏分流，与 ✕ / Alt+F4 走同一个 closeByStage（那两路的原话是「关窗」，不在此列）。
     if ($('#lkdd').classList.contains('open')) { openDd(false); return; }
+    if (cur === 'more') { go('home'); return; }
     closeByStage();
     return;
   }
@@ -609,6 +717,7 @@ function selectLang(code) {
 }
 function onLangChange(/* code */) {
   paintUninstall();   // 卸载侧带 {path}/{size} 的真值文案随语言重渲染（静态补丁填不了变量）
+  paintCache();       // 缓存目录的 placeholder 兜底是 i18n 文案（宿主没自报默认位置时才用它）
   if (cur === 'version') renderVersion();   // 件 2c：守卫屏整屏都是运行时文案（无 data-i18n 挂点）
   /* 件 2：运行时真值（错误码文案 / 路径 / 版本）的本地化挂这里 */
 }
@@ -629,8 +738,9 @@ document.addEventListener('click', function (e) {
 
 /* ── 启动（等词条到位再首帧；字典坏了也照常起——回落链兜住文案）────────────
  * 预览参数（开发/验收用；产品运行不带）：
- * ?mode=uninstall（宿主 --uninstall 注入）、?screen=uac|home|progress|finish|error|version|confirm|running|
- * un-progress|un-finish、?custom=1、?pct=0..100、?keep=0（预览不保留数据的黄徽章）、?dust=0、?seed=1、
+ * ?mode=uninstall（宿主 --uninstall 注入）、?screen=uac|home|more|progress|finish|error|version|confirm|running|
+ * un-progress|un-finish、?custom=1、?cachedir=（缓存目录默认位置，落 placeholder 不落 value）、
+ * ?pct=0..100、?keep=0（预览不保留数据的黄徽章）、?dust=0、?seed=1、
  * ?lang=、?langs=（宿主注入）、?kind=same|older&from=&to=（?screen=version 的守卫屏取图入口）、
  * ?autoinstall=1（安装侧摆好后自动点「立即安装」）、?autouninstall=1&autocontinue=1（卸载侧同规，
  * 供 2c 的进程守卫验收——两点都走**页面真动作**，测的是产品那条路） */
@@ -662,6 +772,11 @@ function boot() {
   // 件 2a：宿主自报家门的真值 —— 目标目录（可能来自上次安装的注册表）与版本（marker 里读的）
   if (q.get('dir')) setInstallDir(q.get('dir'));
   if (q.get('ver')) setVersion(q.get('ver'));
+  // 件 2e：缓存目录的**默认位置**同样由宿主自报（?cachedir=）——落 placeholder、不进 value。
+  // value 空 = 「用默认位置」，用户挑过才写 value ⇒ 标记里一个真实路径都不用写（防硬编码）。
+  if (q.get('cachedir')) setCacheDefault(q.get('cachedir'));
+  paintCache();       // placeholder 兜底文案（含换语言后的重算）
+  paintOpts();        // 勾选态归一到 uiOpts：标记里的 checked 只是首帧默认值，不参与后续判定
   // 件 2c：版本守卫屏的取图入口（宿主没带 payload 时走不到守卫，这条路专供逐屏对照/目检）
   if (q.get('screen') === 'version') {
     showVersionGuard(q.get('kind') === 'same' ? 'same' : 'older', q.get('from') || '', q.get('to') || '');
@@ -704,6 +819,9 @@ window.__lk = {
   setUninstallInfo: setUninstallInfo, badge: badge,
   // 件 2c：3c 的验收腿要能直接摆出守卫屏 / 问出路径判据 / 走一次汇一关闭
   showVersionGuard: showVersionGuard, pathSyntaxError: pathSyntaxError, closeByStage: closeByStage,
+  // 2026-10-02「更多配置页」：3c 验收腿要能直接摆出该屏 / 判缓存目录 / 灌勾选态与缓存目录
+  setCacheDir: setCacheDir, setCacheDefault: setCacheDefault, cacheSyntaxError: cacheSyntaxError,
+  setOpt: setOpt,
   state: function () { return cur; },
   i18n: function () { return { lang: lang, state: i18nState, langs: LANGS.map(function (l) { return l.code; }) }; }
 };

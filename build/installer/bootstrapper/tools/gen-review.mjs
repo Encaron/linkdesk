@@ -103,10 +103,60 @@ const setPathErr = (s, value, key) => {
     `<div class="patherr" id="patherr" role="alert">${t(key)}</div>`);
   return must(s, `data-role="path" value="${value}"`, `data-role="path" class="bad" value="${value}"`);
 };
+/* ★ 屏内切片助手（2026-10-02 加，给「更多配置」页定格用）——
+   must() 是 split/join ＝ **全串替换**：直接改 `data-opt="filemenu">` 会连**欢迎屏自定义展开区**
+   那一份一起改（两屏同名同语义，正是本件要的共性）。所以凡"只该改某一屏"的手术，必须先把
+   该屏 <div class="scr" id="s-x">…</div> 切出来（配对计数、幕内嵌套不限层），在切片内改，再拼回。 */
+function inScreen(s, id, fn) {
+  const at = s.indexOf(`id="s-${id}"`);
+  if (at < 0) throw new Error('屏标记缺失: s-' + id);
+  const start = s.lastIndexOf('<div', at);
+  if (start < 0) throw new Error('屏起始标记缺失: s-' + id);
+  let depth = 0, end = -1;
+  const re = /<div\b|<\/div>/g;
+  re.lastIndex = start;
+  let m;
+  while ((m = re.exec(s))) {
+    if (m[0] === '</div>') { if (--depth === 0) { end = m.index + 6; break; } }
+    else depth++;
+  }
+  if (end < 0) throw new Error('屏未闭合: s-' + id);
+  return s.slice(0, start) + fn(s.slice(start, end)) + s.slice(end);
+}
+
+/* 「更多配置」页定格（4 态）。逐项与 app.js 对齐：
+   · 默认态＝filemenu/dirmenu 未勾、editor/path 已勾 —— app.js 的 OPT_DEFAULTS 原样；
+   · placeholder＝宿主自报的默认缓存位置（真机上由 ?cachedir= 落成 placeholder）——
+     **标记里一个真实路径都不写**，评审页这份真值是定格用，不是产品源里的字符串；
+   · 判词复用 installer.path.err.*（app.js 就是这么复用的），改错时输入框加 class="bad"（同 #patherr 手法）。 */
+const CACHE_DEFAULT = UD;                    // = %APPDATA%\linkdesk（默认缓存位置，仅评审页定格用）
+function moreTweak(o) {
+  o = o || {};
+  const val = o.value != null ? o.value : '';
+  const ph = o.ph != null ? o.ph : CACHE_DEFAULT;
+  return s => inScreen(s, 'more', seg => {
+    seg = must(seg,
+      '<input id="cachedir" data-role="cachedir" value="" spellcheck="false"',
+      `<input id="cachedir" data-role="cachedir" value="${val}" placeholder="${ph}" spellcheck="false"`);
+    if (o.check) for (const k of o.check) seg = must(seg, `data-opt="${k}">`, `data-opt="${k}" checked>`);
+    if (o.err) {
+      seg = must(seg, `data-role="cachedir" value="${val}"`, `data-role="cachedir" class="bad" value="${val}"`);
+      seg = must(seg, '<div class="patherr" id="cacheerr" role="alert" hidden></div>',
+        `<div class="patherr" id="cacheerr" role="alert">${t(o.err)}</div>`);
+    }
+    return seg;
+  });
+}
+
 const tweaks = {
   homeCustom: s => must(s, 'id="custom"', 'id="custom" class="open"'),
   homeBadRoot: s => setPathErr(s, 'C:', 'installer.path.err.root'),
   homeBadWrite: s => setPathErr(s, 'C:\\Windows', 'installer.path.err.write'),
+  // ④b 更多配置页四态（2026-10-02 用户立项）
+  moreDefault: moreTweak({}),
+  moreAll: moreTweak({ check: ['filemenu', 'dirmenu'] }),
+  moreSet: moreTweak({ value: 'D:\\LinkDesk\\cache' }),
+  moreBad: moreTweak({ value: 'cache', err: 'installer.path.err.absolute' }),
   guardSame: s => must(must(must(s,
     'id="ver-title"></h1>', `id="ver-title">${t('installer.version.title.same', { version: VER })}</h1>`),
     'id="ver-sub" data-drag></div>', `id="ver-sub" data-drag>${t('installer.version.body.same', { version: VER })}</div>`),
@@ -168,6 +218,14 @@ const sections = [
       look: '页侧语法闸先拦：输入框变红＋ role=alert 文案「不要直接选整个盘」；不改全局错误屏。' },
     { n: '② 路径写不进 · 宿主实测（write）', key: 'home', mod: 'homeBadWrite', pv: '宿主 dir-invalid 回话',
       look: '宿主真试过写不进（如 C:\\Windows）就近报「没有权限」；文案不同、形态相同。' },
+    { n: '④b 更多配置 · 默认', key: 'more', mod: 'moreDefault', pv: '?screen=more',
+      look: '★ 本件新增页：欢迎屏「自定义安装」旁的「更多配置」进来。四项竖向排列（以后加配置项只加一行）；默认＝关联两项未勾、编辑器/PATH 已勾；缓存目录留空＝用默认位置（灰字是宿主自报的真值，标记里不写路径）。' },
+    { n: '④b 更多配置 · 四项已勾带过来', key: 'more', mod: 'moreAll', pv: '欢迎屏勾四项 → 更多配置',
+      look: '★ 用户点名的场景：在欢迎屏自定义展开区把四项都勾上，进这一页四项**是勾上的**（同一份勾选态，两屏共用；反向返回也同步）。' },
+    { n: '④b 更多配置 · 缓存目录已改', key: 'more', mod: 'moreSet', pv: '点「浏览…」选完回填',
+      look: '选了别的目录：输入框显示真值且可编辑。⚠️ 宿主侧「浏览…」尚未接线（件 2e）——发版前不接就是颗死按钮。' },
+    { n: '④b 更多配置 · 缓存目录非法', key: 'more', mod: 'moreBad', pv: '页面真动作：输入 cache',
+      look: '语法闸先拦：输入框变红＋ role=alert 就地报错，「立即安装」不放行且把人送回这一屏。留空反而是合法的（＝用默认位置）。' },
     { n: '⑥ 守卫 · 同版', key: 'version', mod: 'guardSame', pv: '?screen=version&kind=same&from=0.2.33',
       look: '机器已装同版本：默认取消，仍要安装是次按钮。' },
     { n: '⑥ 守卫 · 降级', key: 'version', mod: 'guardOlder', pv: '?screen=version&kind=older&from=0.2.34&to=0.2.33',

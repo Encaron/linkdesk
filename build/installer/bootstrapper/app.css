@@ -20,6 +20,9 @@
  *   · 件 3d-2（3d #2，用户 2026-10-02「可以改」）：真窗口逐像素透明 ⇒ 窗口轮廓＝.shell 的 **32px** 弧线，
  *     系统那圈 ≈8px 小圆角与它露出的 --desk 灰楔形一并消失（html/body 留透明、桌面色挪到 .frame，
  *     main.cpp 侧做逐像素 alpha，失败则本段整段不生效、退回原样）
+ *   · 2026-10-02 立项「更多配置页」（档 docs/04-软件更新/待抉择池/通用组缓存配置项/）：欢迎屏动作行补
+ *     「更多配置」入口，并新增 #s-more 屏。样式追加在 .foot 之后（单列列表 / .morehead / .morepath），
+ *     上方各件既有规则一字不动；勾选框本体继续用 .opt/.box（两处必须长得一样，见该段注）
  */
 
 :root{
@@ -191,6 +194,24 @@ html[data-alpha] .frame{border-radius:32px;background:var(--desk);overflow:hidde
 .opt input:checked+.box{background:linear-gradient(135deg,#a78bfa,#34d399);border-color:transparent}
 .opt input:checked+.box svg{opacity:1;transform:scale(1)}
 .foot{margin-left:auto;font:12px var(--sans);color:var(--txt2)}
+
+/* ④b 更多配置页（2026-10-02 立项；档案 docs/04-软件更新/待抉择池/通用组缓存配置项/）
+   与欢迎屏自定义展开区的**刻意差异**：那边是 1fr 1fr 两列网格（就四项，配对好看），这边单列 ——
+   这一页是「装前可选项的家」，每项一行，以后加项只加一行，不必再算两列配对（用户点名的理由）。
+   ⚠️ 只覆盖列与行距，不碰 .opts 的其它属性：勾选框本体（.opt/.box）两边必须长得一模一样，
+      否则「同一批 data-opt、同一份状态」这件事在视觉上就露馅了。 */
+#s-more .opts{grid-template-columns:1fr;row-gap:11px}
+/* 头部（不是 .hero）：这一页是清单，标题只交代「这是哪儿」，不该像欢迎屏那样占满剩余高度。
+   衬线 34px 沿用 #s-finish h1 / #s-error h1 那条既有字号档，不为这一页另立第三档。 */
+.morehead{margin:2px 0 16px}
+.morehead h1{font:400 34px/1.25 var(--serif);letter-spacing:-.03em;margin-bottom:8px}
+.morehead p{font:13px/1.7 var(--sans);color:var(--txt2)}
+/* 缓存目录行：一条发丝线与上面的勾选项分组——上面问「要不要」，这一行问「放哪儿」，语义不同。
+   .pathrow / .patherr / .opt 一律复用欢迎屏那套既有样式，**不为这一页另造控件**。 */
+.morepath{margin-top:11px;padding-top:14px;border-top:1px solid var(--line)}
+.morepath .lab{display:block;font:13px/1.5 var(--sans);margin-bottom:8px;cursor:pointer}
+.morepath .lab small{display:block;color:var(--txt3);font-size:11px;margin-top:3px}
+.morepath .pathrow{margin-bottom:0}
 
 /* ⑤ 进度：B 辉光流光 × 亮色（轨道浅灰、辉光减弱） */
 #s-progress{justify-content:center}
