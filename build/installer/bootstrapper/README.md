@@ -230,9 +230,9 @@ node tools\dom-probe.mjs --preview "screen=home&lang=zh-CN" --click "#lkdd-btn" 
     复制自己的映像**（蠕虫启发式）；Defender 是关着的（本机），`Get-MpThreatDetection` 恒空。
     **改法（现设计）**：不整份自复制，改**自提取**——只写自身前 `g_markerAt` 字节（＝ 1MB 纯壳，
     不含 7z 载荷）到 `INSTDIR\linkdesk-setup.exe`，与 NSIS 的 1MB Uninstall.exe 同量级，还省 106MB
-    磁盘；壳不含载荷对 `--uninstall` 无影响（工人不碰 payload）。⚠️ **待验**：1MB 自提取能否过
-    360 的行为监控——**用户把 360 开回来后必须复测**（装一次 → 等 10s → 副本还在 ＋ 静默卸载跑通）。
-    若仍被拦 ⇒ 备选：壳 exe 随 7z 载荷分发（由 7zr 落盘，中性），3b 出包链加一步。
+    磁盘；壳不含载荷对 `--uninstall` 无影响（工人不碰 payload）。✅ **360 复测通过**（2026-10-02
+    12:22，360 开启状态）：1MB 副本存活 60s ＋ 静默卸载全链跑通（204/204 · arp-gone · 退 0）——
+    自提取写法不在其行为监控的靶子上。
     **同族判据**：凡是「进程把自己的映像往外复制」的安装器设计，都要在 360/火绒/腾讯管家下验一遍。
 18. 🔴 **验收脚本的注册表备份链，`reg.exe` 一律数组传参**（`Start-Process -ArgumentList @('export',$full,$file,'/y')`）：
     手拼字符串的引号转义（`` `\" `` ＋ `\"` 混用）在 export/delete/import 上各踩一次，症状是
