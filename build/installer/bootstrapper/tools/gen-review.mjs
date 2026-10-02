@@ -43,23 +43,12 @@ css = css.replace(/url\('?(fonts\/[^')]+)'?\)/g, (_, p) => {
 // 卸载侧样式键原本挂在根元素上；评审页两种模式同页 ⇒ 改挂 .mode-un（类写两遍补回被 html 选择器占掉的那份权值）
 css = css.split('html[data-mode=uninstall]').join('.mode-un.mode-un');
 
-// 抽幕：定位 id="s-…" 所在的 <div>，<div\b|</div> 配对计数到闭合
-function extract(id) {
-  const at = html.indexOf(`id="${id}"`);
-  if (at < 0) throw new Error('app.html 里没有 ' + id);
-  const start = html.lastIndexOf('<div', at);
-  const re = /<div\b|<\/div>/g;
-  re.lastIndex = start;
-  let depth = 0, m;
-  while ((m = re.exec(html))) {
-    depth += m[0] === '<div' ? 1 : -1;
-    if (depth === 0) return html.slice(start, re.lastIndex);
-  }
-  throw new Error('div 配对失败: ' + id);
-}
-const scr = {};
-for (const k of ['uac', 'home', 'progress', 'finish', 'error', 'version', 'confirm', 'running', 'un-progress', 'un-finish'])
-  scr[k] = extract('s-' + k);
+// 整窗抽取：body 内**原文**（grain 噪点＋orb 光球×2＋dust 微尘＋lkdd 语言面板＋xbtn＋shell 玻璃壳＋win＋全部屏）。
+// 每节一份、只点亮目标屏——评审页看到的必须是产品窗口本身，不是拼贴。grain 是 fixed，评审页里按住舞台。
+const b0 = html.indexOf('<body>') + '<body>'.length;
+const b1 = html.lastIndexOf('</body>');
+if (b0 < 6 || b1 < 0) throw new Error('app.html 缺 body 标记');
+const chrome = html.slice(b0, b1).replace(/<script\b[\s\S]*?<\/script>/g, '');
 
 // 每节的小手术——全部按 app.js 的运行时口径定格（缺标记即抛错，防止静默错位）
 function must(s, from, to) { if (!s.includes(from)) throw new Error('定格标记缺失: ' + from); return s.split(from).join(to); }
@@ -132,15 +121,16 @@ let body = '';
 for (const g of sections) {
   body += `\n<h1 class="group">${g.group}</h1>\n`;
   for (const it of g.items) {
-    let s = scr[it.key];
-    if (it.mod) s = tweaks[it.mod](s);
     const un = it.key.startsWith('un-') || ['confirm', 'running'].includes(it.key);
-    body += `\n<section class="review-item" data-screen="${it.key}" ${it.mod ? `data-state="${it.mod}"` : ''}>
+    // 先把源里自带的 on（s-home）灭掉，再点亮目标屏——同一套 .scr/.on 显隐机制原样生效
+    let s = chrome.replace('class="scr on"', 'class="scr"');
+    const plain = `<div class="scr${un ? ' un' : ''}" id="s-${it.key}">`;
+    if (!s.includes(plain)) throw new Error('屏标记缺失: ' + plain);
+    s = s.replace(plain, `<div class="scr${un ? ' un' : ''} on" id="s-${it.key}">`);
+    if (it.mod) s = tweaks[it.mod](s);
+    body += `\n<section class="review-item" data-screen="${it.key}"${it.mod ? ` data-state="${it.mod}"` : ''}>
   <h2>${it.n} <code>${it.pv}</code></h2>
-  <div class="stage ${un ? 'stage-uninstall mode-un' : 'stage-install'}">
-    <div class="dust" aria-hidden="true"></div>
-    ${s}
-  </div>
+  <div class="stage ${un ? 'stage-uninstall mode-un' : 'stage-install'}">${s}</div>
   <p class="look">看点：${it.look}</p>
 </section>\n`;
   }
@@ -157,29 +147,31 @@ const out = `<!doctype html>
 ${css}
 </style>
 <style>
-/* ── 评审壳（盖过 app.css 的窗口态 body 规则）────────────────────────── */
+/* ── 评审壳（浅色、不碰产品样式；app.css 原文在前，这里只管页面本身）────── */
 html,body{overflow:auto!important;height:auto!important}
-body{background:#141416;color:#cfcfd4;font-family:Consolas,monospace;padding:28px 32px 80px;max-width:980px;margin:0 auto}
-.lead{font:13px/1.8 Consolas,monospace;color:#9a9aa2;background:#1e1e22;border:1px solid #2c2c33;border-radius:8px;padding:12px 16px}
+body{background:#efede9;color:#33332f;font-family:Consolas,monospace;padding:28px 32px 80px;max-width:1040px;margin:0 auto}
+.lead{font:13px/1.8 Consolas,monospace;color:#55534e;background:#f7f6f3;border:1px solid rgba(0,0,0,.09);border-radius:8px;padding:12px 16px}
 .group{font:600 15px/1 Consolas,monospace;letter-spacing:.08em;color:#8a6ff0;margin:52px 0 4px;text-transform:uppercase}
 .review-item{margin:34px 0}
-.review-item h2{font:400 14px/1.4 Consolas,monospace;color:#e8e8ec;margin:0 0 4px}
-.review-item h2 code{font-size:11px;color:#7c7c86;background:#1e1e22;padding:2px 8px;border-radius:6px;margin-left:8px}
-.stage{position:relative;border-radius:12px;overflow:hidden;box-shadow:0 10px 44px rgba(0,0,0,.5);margin:10px 0 8px}
+.review-item h2{font:400 14px/1.4 Consolas,monospace;color:#1a1a1a;margin:0 0 4px}
+.review-item h2 code{font-size:11px;color:#6b6963;background:rgba(0,0,0,.055);padding:2px 8px;border-radius:6px;margin-left:8px}
+/* 舞台＝产品 OS 窗口本体：--desk 底色（窗角露出的就是它）＋DWM 12px 圆角＋系统阴影 */
+.stage{position:relative;background:var(--desk);border-radius:12px;overflow:hidden;box-shadow:0 24px 70px rgba(0,0,0,.20),0 4px 14px rgba(0,0,0,.10);margin:12px 0 8px}
 .stage-install{width:780px;height:570px}
 .stage-uninstall{width:720px;height:540px}
-/* 源里 .scr 靠 .on 显隐（一窗一幕）；评审页一幕一节，全部常显 */
-.stage .scr{display:flex!important}
-.look{font:12px/1.8 Consolas,monospace;color:#8f8f98;margin:0}
+/* grain 在产品里是 fixed（贴视口）；评审页里必须按住舞台，否则铺满整页 */
+.stage .grain{position:absolute}
+.look{font:12px/1.8 Consolas,monospace;color:#6b6963;margin:0}
 .look::before{content:'看';display:inline-block;background:#8a6ff0;color:#fff;border-radius:4px;padding:1px 5px;margin-right:8px;font-size:10px}
 </style>
 </head>
 <body>
-<h1 style="font:400 20px/1.4 Consolas,monospace;color:#fff">安装器全 UI 评审 · 3d</h1>
-<p class="lead">本页每幕都从产品源（app.html/app.css）原文抽取，<b>非手抄</b>；改 UI 后重跑
-<code>node tools/gen-review.mjs</code> 同步。定格静态：按钮不可点、语言切换不可用——<b>交互态/真机态</b>用
-<code>E:\\linkdesk-build\\_3d-ui\\</code> 里的 bat（01 真流程 / 15 真卸载）。验收基线：04 审计 18/20 不跌破。
-在 ZCode 内置浏览器里直接点元素留言即可。</p>
+<h1 style="font:400 20px/1.4 Consolas,monospace;color:#1a1a1a">安装器全 UI 评审 · 3d</h1>
+<p class="lead">本页每节＝<b>一扇完整真窗口</b>：噪点、光球、玻璃壳、微尘、语言面板、✕，全部取自产品源
+（app.html/app.css）原文，只点亮目标屏——<b>非手抄、非暗色变体</b>。改 UI 后重跑
+<code>node tools/gen-review.mjs</code> 同步。定格静态：按钮不可点、语言切换不可用、完成屏彩带由 JS 生成——
+<b>交互态/真机态</b>用 <code>E:\\linkdesk-build\\_3d-ui\\</code> 里的 bat（01 真流程 / 15 真卸载）。
+验收基线：04 审计 18/20 不跌破。在 ZCode 内置浏览器里直接点元素留言即可。</p>
 ${body}
 <script>
 /* 微尘照抄 app.js 的 dust()：同取数顺序（左→时长→延迟→透明度）＋固定 seed ⇒ 每次打开图样一致 */
