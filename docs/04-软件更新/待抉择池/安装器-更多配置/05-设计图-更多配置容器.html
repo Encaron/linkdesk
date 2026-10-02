@@ -1,0 +1,446 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>设计图 · 安装器「更多配置」容器（手绘示意 · 2026-10-03）</title>
+<style>
+/* ─────────────────────────────────────────────────────────────────────────────
+   这是一张**文档里的设计图**（手绘示意），不是产品源生成物，也**不碰产品源**。
+   · 窗口尺寸、控件位置、控件文案、配色 token 值：全部照**现行安装器**（build/installer/
+     bootstrapper 的 app.html / app.css）抄下来 —— 抄的是常量与结构，产品源一个字节没改。
+   · 被画的部分（容器）是**新绘**：它是本图要回答的东西。
+   · 窗口质感（玻璃模糊 / 微尘粒子 / 光球、真字体文件）**从略**——那属于「安装界面自绘」
+     那摊的定版评审页（已落地/安装界面自绘/3d-九幕评审.html），本图不重复它、也不动它。
+   · 落地实现之后，这张图应**改用生成器**从产品源重出（那时它才成为生成物）：
+     node tools/gen-review.mjs --only=<场景> --out="…/安装器-更多配置/05-设计图-更多配置容器.html"
+   ───────────────────────────────────────────────────────────────────────────── */
+:root{
+  /* ↓ 照 app.css :root 原值抄（视觉不跑偏）；容器新绘部分只用这些既有 token，不新编色 */
+  --bg:#F7F6F3; --desk:#E9E7E2; --glass:rgba(255,255,255,.5); --hair:rgba(0,0,0,.10);
+  --txt:#1a1a1a; --txt2:rgba(26,26,26,.62); --txt3:rgba(26,26,26,.40);
+  --ink:#111111; --line:#EAEAEA; --danger:#B3261E;
+  --orb1:#b9a8f5; --orb2:#9fe8c8;
+  --brand:#8a6ff0; --brand-soft:#a78bfa; --brand-mint:#34d399;
+  --ok:#2fbf8a;
+  --ver-ink:#1F6C9F; --ver-bg:#E1F3FE;
+  --on-ink:#fff; --surface:#fff; --glass-win:rgba(252,252,250,.85);
+  --line-strong:#c4c0b8; --line-box:#c9c8c4;
+  --shade-4:rgba(0,0,0,.04); --shade-6:rgba(0,0,0,.06); --shade-8:rgba(0,0,0,.08);
+  --shade-14:rgba(0,0,0,.14); --shade-15:rgba(0,0,0,.15); --shade-16:rgba(0,0,0,.16); --shade-30:rgba(0,0,0,.3);
+  --frost-16:rgba(255,255,255,.16); --frost-60:rgba(255,255,255,.6); --frost-70:rgba(255,255,255,.7);
+  --frost-75:rgba(255,255,255,.75); --frost-80:rgba(255,255,255,.8); --frost-90:rgba(255,255,255,.9);
+  --serif:'Newsreader','Lyon Text',Georgia,'Songti SC',serif;
+  --sans:'Geist','Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;
+  --mono:'Geist Mono',Consolas,monospace;
+  /* 动效令牌：照 app.css 原值（--mo-morph 是**本图提议新增**的那一条，见文末「动画时序」） */
+  --ease:cubic-bezier(.32,.72,0,1);
+  --mo-dur:.42s; --mo-rise:10px; --mo-defog:.26s; --mo-blur:4px;
+  --mo-ease:cubic-bezier(.16,1,.3,1);
+  --mo-step:.04s; --mo-tier:.38s; --mo-tier-rise:8px;
+  --mo-morph:.52s;
+}
+
+/* 图页本身（评审壳）：只设页面级属性，⚠️ 不设 color/font-family 给全局——会漏进窗内 */
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{background:#141416;padding:34px 28px 90px;font-family:var(--sans);-webkit-font-smoothing:antialiased}
+.page{max-width:1180px;margin:0 auto}
+.pg-h{color:#f2f2f4;font:600 20px/1.3 var(--sans);margin:0 0 8px;letter-spacing:-.01em}
+.pg-s{color:rgba(255,255,255,.62);font:13px/1.8 var(--sans);margin:0 0 22px;max-width:96ch}
+.pg-s b{color:#e8e2ff;font-weight:600}
+.pg-s code{font:12px var(--mono);background:rgba(255,255,255,.08);padding:1px 6px;border-radius:5px;color:#d9d2ff}
+.bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:0 0 18px;padding:12px 14px;
+     background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.10);border-radius:14px}
+.bar .lab{font:11px var(--mono);letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.5)}
+.fbtn{font:600 12.5px var(--sans);color:#f2f2f4;background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.16);
+      border-radius:9999px;padding:8px 15px;cursor:pointer}
+.fbtn:hover{background:rgba(255,255,255,.18)}
+.fbtn.key{background:#8a6ff0;border-color:#8a6ff0;color:#fff}
+.fbtn.on{background:#2fbf8a;border-color:#2fbf8a;color:#04231a}
+.note{color:rgba(255,255,255,.5);font:12px/1.7 var(--sans);margin-left:auto;max-width:52ch}
+
+/* ── 舞台：真尺寸窗口 780×570（产品窗口就是这个尺寸，见 app.css 的 .win / .scr）────── */
+.stage-wrap{display:flex;gap:34px;align-items:flex-start;flex-wrap:wrap}
+.stage{position:relative;flex:none}
+.frame{position:relative;width:780px;height:570px;border-radius:32px;background:var(--desk);
+       box-shadow:0 24px 70px var(--shade-14)}
+.frame.short{height:452px}
+.orb{position:absolute;width:420px;height:420px;border-radius:50%;filter:blur(90px);opacity:.26;pointer-events:none}
+.orb.a{background:var(--orb1);top:-140px;right:-80px}
+.orb.b{background:var(--orb2);bottom:-160px;left:-100px}
+.shell{position:absolute;inset:0;border-radius:32px;background:var(--glass);border:1px solid var(--hair);
+       padding:9px;box-shadow:inset 0 1px 0 var(--frost-80)}
+.win{position:relative;height:100%;border-radius:22px;background:var(--glass-win);border:1px solid var(--hair);
+     overflow:hidden;display:flex;flex-direction:column}
+.xbtn{position:absolute;top:14px;right:16px;z-index:10;width:30px;height:30px;border:0;border-radius:9px;
+      background:transparent;color:var(--txt2);cursor:pointer;display:grid;place-items:center;font:13px var(--sans)}
+.xbtn:hover{background:var(--shade-6)}
+/* 语言药丸（真实实现里挂在 .frame 上、在 .win 之外 ⇒ 容器态**不会**被盖住，这一点要能看出来） */
+.lkdd{position:absolute;top:20px;left:20px;z-index:9;display:flex;align-items:center;gap:7px;
+      font:12px var(--sans);color:var(--txt2);background:var(--frost-70);border:1px solid var(--hair);
+      border-radius:9999px;padding:6px 12px}
+.lkdd .cr{font-size:9px;opacity:.6}
+
+/* 屏（照 .scr 原规则：绝对定位铺满、padding 58/52/38、只有 .on 才显示） */
+.scr{position:absolute;inset:0;display:none;flex-direction:column;padding:58px 52px 38px}
+.scr.on{display:flex}
+.brand{display:flex;align-items:center;gap:14px;margin:12px 0 10px}
+.brand svg{width:40px;height:44px;flex:none}
+.brand .nm{font:600 19px/1.2 var(--sans);letter-spacing:-.02em;color:var(--txt)}
+.brand .sl{font:italic 400 13.5px/1.4 var(--serif);color:var(--txt2);margin-top:2px}
+.ver{margin-left:auto;font:11px var(--mono);color:var(--ver-ink);background:var(--ver-bg);padding:3px 10px;
+     border-radius:9999px;letter-spacing:.05em}
+.hero{flex:1;display:flex;flex-direction:column;justify-content:center}
+.hero h1{font:400 46px/1.1 var(--serif);letter-spacing:-.03em;margin:0 0 14px;color:var(--ink)}
+.hero h1 em{font-style:italic}
+.hero p{font:14px/1.75 var(--sans);color:var(--txt2);max-width:44ch;margin:0}
+.actions{display:flex;flex-wrap:wrap;align-items:center;gap:18px}
+.btn{display:inline-flex;align-items:center;gap:12px;font:600 14px var(--sans);color:var(--on-ink);
+     background:var(--ink);border:0;border-radius:9999px;padding:9px 22px;cursor:pointer;
+     transition:transform .5s var(--ease),box-shadow .5s var(--ease)}
+.btn:has(.cir){padding:9px 9px 9px 28px}
+.btn .cir{width:30px;height:30px;border-radius:50%;background:var(--frost-16);display:grid;place-items:center;
+          transition:transform .5s var(--ease)}
+.btn:hover{box-shadow:0 8px 30px var(--shade-16)}
+.btn:hover .cir{transform:translate(3px,-1px) scale(1.06)}
+.btn.ghost{background:transparent;color:var(--txt2);border:1px solid var(--hair);padding:10px 22px;gap:0}
+.btn.ghost:hover{box-shadow:none;color:var(--txt)}
+.foot{margin-left:auto;font:12px var(--sans);color:var(--txt2)}
+.foot a{color:var(--txt2);text-decoration:underline;text-underline-offset:3px}
+
+/* ④ 紧凑展开区（照 app.css：grid-template-rows 0fr↔1fr，裁剪层无内边距） */
+#custom{display:grid;grid-template-rows:0fr;transition:grid-template-rows .7s var(--ease)}
+#custom.open{grid-template-rows:1fr}
+.cust-wrap{overflow:hidden;min-height:0}
+.cust-in{margin-top:24px;padding-top:24px;padding-bottom:20px;border-top:1px solid var(--line)}
+.pathrow{display:flex;gap:8px;margin-bottom:8px}
+.pathrow input{flex:1;font:12.5px var(--mono);padding:11px 14px;border-radius:14px;border:1px solid var(--line);
+               background:var(--frost-75);color:var(--txt);box-shadow:inset 0 1px 1px var(--frost-60)}
+.pathrow button{font:12px var(--sans);padding:0 16px;border-radius:14px;border:1px solid var(--line);
+                background:var(--surface);color:var(--txt2);cursor:pointer}
+.opts{display:grid;grid-template-columns:1fr 1fr;gap:12px 26px}
+.opt{display:flex;gap:11px;align-items:flex-start;cursor:pointer;font:13px/1.5 var(--sans);color:var(--txt)}
+.opt input{position:absolute;opacity:0}
+.opt .box{width:17px;height:17px;flex:none;margin-top:1px;border-radius:6px;border:1px solid var(--line-box);
+          background:var(--surface);display:grid;place-items:center;transition:all .3s var(--ease)}
+.opt .box svg{width:10px;height:10px;opacity:0;transform:scale(.4);transition:all .3s var(--ease)}
+.opt input:checked+.box{background:linear-gradient(135deg,var(--brand-soft),var(--brand-mint));border-color:transparent}
+.opt input:checked+.box svg{opacity:1;transform:scale(1)}
+#moretoggle{display:none}
+#custom.open~.actions #moretoggle{display:inline-flex}
+
+/* ═══ ⑤ 容器态（本图要回答的东西；新绘）═══════════════════════════════════════
+   设计意图一句话：**同一块 DOM 的第二种排布**——不是新开一屏、不是新一个页面。
+   ① 整页变容器：一块不透明面板（--bg）盖住品牌行与英雄区 ⇒ 竖向空间全给清单。
+      「✕」与语言药丸挂在面板**之外**，照旧可用（容器不是"关不掉的模式"）。
+   ② 项从 2×2 变竖列（同一批节点，靠 FLIP 补位移）。
+   ③ 二级分组标题落定：①安装位置 ②给 LinkDesk 的权限 ③随包安装的插件。
+   ④ 清单进可滚动层；动作行（返回／继续安装／许可协议）**在滚动层之外**常驻。 */
+#s-home.more #custom{position:absolute;inset:0;display:flex;flex-direction:column;
+  padding:58px 52px 38px;background:var(--bg);animation:moreIn .3s var(--mo-ease)}
+@keyframes moreIn{from{opacity:0}}
+#s-home.more .actions{display:none}
+/* 英雄区高度一次到位（不做过渡）：过渡期间量到的是被插值的中间值 ⇒ FLIP 会算错 */
+#s-home.more .hero{flex-grow:0;min-height:0;overflow:hidden;opacity:0}
+/* 面板 → wrap → inner → 清单，四节都得是 flex 列且 min-height:0；少一节，压矮窗口时清单就不肯收缩、
+   「返回／继续安装」会被挤出窗外（这是画图时实测到的，已记进 01 §四 F7） */
+#s-home.more .cust-wrap{display:flex;flex-direction:column;flex:1 1 auto;min-height:0;overflow:visible}
+#s-home.more .cust-in{margin:0;padding:0;border-top:0;flex:1 1 auto;min-height:0;
+  display:flex;flex-direction:column}
+#s-home.more .more-head{display:block}
+#s-home.more .morelist{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain}
+#s-home.more .grp-h{display:block;animation:land var(--mo-tier) var(--mo-ease) backwards}
+#s-home.more .grp-h.g2{animation-delay:var(--mo-step)}
+#s-home.more .grp-h.g3{animation-delay:calc(var(--mo-step) * 2)}
+#s-home.more .plugwrap{display:block;animation:land var(--mo-tier) var(--mo-ease) backwards;
+  animation-delay:calc(var(--mo-step) * 3)}
+#s-home.more .morebar{display:flex}
+#s-home.more .opts{grid-template-columns:1fr}
+@keyframes land{from{opacity:0;transform:translateY(var(--mo-tier-rise))}to{opacity:1;transform:none}}
+.more-head,.morebar,.grp-h,.plugwrap{display:none}
+.more-head{font:600 15px/1.2 var(--sans);letter-spacing:-.01em;color:var(--txt);margin-bottom:16px}
+.more-head .hint{font:400 12px/1.5 var(--sans);color:var(--txt2);margin-left:10px;letter-spacing:0}
+.grp-h{font:600 12.5px/1.4 var(--sans);letter-spacing:-.01em;color:var(--txt);margin:22px 0 10px}
+.grp-h:first-child{margin-top:0}
+.grp-h .tag{font:500 10.5px var(--mono);color:var(--txt3);letter-spacing:.08em;margin-left:8px;text-transform:uppercase}
+.grp-note{font:12px/1.6 var(--sans);color:var(--txt2)}
+.more-rule{height:1px;background:var(--line);margin:22px 0 0}
+.morebar{flex-wrap:wrap;align-items:center;gap:18px;margin-top:16px;padding-top:16px;border-top:1px solid var(--line)}
+
+/* 标注钉（只做图注：不吃鼠标事件，点得到底下的真控件） */
+.pin{position:absolute;z-index:20;pointer-events:none;width:22px;height:22px;border-radius:50%;
+     background:#8a6ff0;color:#fff;font:600 12px var(--sans);display:grid;place-items:center;
+     box-shadow:0 2px 10px rgba(0,0,0,.28)}
+.pin.new{background:#2fbf8a}
+
+/* 右侧说明列 */
+.side{flex:1 1 300px;min-width:290px}
+.card{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.10);border-radius:14px;
+      padding:16px 18px;margin:0 0 16px}
+.card h3{color:#f2f2f4;font:600 13.5px/1.3 var(--sans);margin:0 0 10px}
+.card p,.card li{color:rgba(255,255,255,.66);font:12.5px/1.75 var(--sans);margin:0 0 8px}
+.card ul{margin:0;padding-left:18px}
+.card b{color:#e8e2ff;font-weight:600}
+.card code{font:11.5px var(--mono);background:rgba(255,255,255,.08);padding:1px 5px;border-radius:5px;color:#d9d2ff}
+table.t{width:100%;border-collapse:collapse;margin:0 0 6px}
+table.t th,table.t td{text-align:left;font:12px/1.6 var(--sans);color:rgba(255,255,255,.66);
+  padding:5px 8px;border-bottom:1px solid rgba(255,255,255,.08);vertical-align:top}
+table.t th{color:rgba(255,255,255,.5);font:500 11px var(--mono);letter-spacing:.08em;text-transform:uppercase}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <h1 class="pg-h">设计图 · 安装器「更多配置」容器</h1>
+  <p class="pg-s">
+    2026-10-03 · <b>手绘示意</b>（本图是文档，<b>没有改任何产品源代码</b>）。
+    窗口 780×570、品牌行／英雄区／路径行／四项勾选／三颗按钮的<b>位置与文案，照现行安装器一笔一笔抄</b>；
+    被画成新的只有<b>容器</b>那一态。质感（玻璃模糊、微尘、光球、真字体）从略——那属于
+    「安装界面自绘」那摊已定版的评审页 <code>已落地/安装界面自绘/3d-九幕评审.html</code>，本图不重复也不动它。
+  </p>
+
+  <div class="bar">
+    <span class="lab">看这张图</span>
+    <button class="fbtn key" id="f-play">▶ 演一遍（紧凑 → 容器）</button>
+    <button class="fbtn" id="f-reset">⟲ 回到欢迎屏</button>
+    <button class="fbtn" id="f-short">⊟ 把窗口压矮到 452px（看滚动条）</button>
+    <span class="note">
+      也可以<b>直接在窗里点</b>：先点「自定义安装」（展开区打开、旁边多出「更多配置」），
+      再点「更多配置」→ 整页变容器；容器里点「返回」或按 <b>Esc</b> 退回紧凑态。
+    </span>
+  </div>
+
+  <div class="stage-wrap">
+    <!-- ══ 舞台 ══════════════════════════════════════════════════════════ -->
+    <div class="stage">
+      <div class="frame" id="frame">
+        <div class="orb a"></div><div class="orb b"></div>
+        <div class="lkdd"><span>中文</span><span class="cr">▾</span></div>
+        <div class="shell">
+          <div class="win">
+            <button class="xbtn" title="关闭窗口" aria-label="关闭窗口">✕</button>
+
+            <div class="scr on" id="s-home">
+              <!-- ① 品牌行（被容器态的面板盖住 ⇒ 面板里得有一句「现在在哪」） -->
+              <div class="brand">
+                <svg viewBox="0 0 40 44" aria-hidden="true">
+                  <path d="M20 1.5 37 11v22L20 42.5 3 33V11z" fill="#8a6ff0"/>
+                  <circle cx="14.5" cy="15" r="2.6" fill="#fff"/>
+                  <circle cx="25.5" cy="15" r="2.6" fill="#fff"/>
+                  <circle cx="20" cy="28" r="2.6" fill="#fff"/>
+                </svg>
+                <div>
+                  <div class="nm">LinkDesk</div>
+                  <div class="sl">一个容器，装下你所有的工作方式。</div>
+                </div>
+                <div class="ver">v0.2.36</div>
+              </div>
+
+              <!-- ② 英雄区（容器态收起：把竖向空间让给清单） -->
+              <div class="hero">
+                <h1>安装就一步，<em>然后交给它。</em></h1>
+                <p>它不规定你怎么工作，它装下你怎么工作。</p>
+              </div>
+
+              <!-- ③④ 自定义展开区 → 容器态是它的「第二种排布」 -->
+              <div id="custom">
+                <div class="cust-wrap">
+                  <div class="cust-in">
+                    <div class="more-head">
+                      <span>更多配置</span><span class="hint">三组：装到哪 · 给什么权限 · 随包带什么</span>
+                    </div>
+                    <div class="morelist" id="morelist">
+                      <!-- 组 ① 安装位置 -->
+                      <div class="grp-h g1">安装位置<span class="tag">①</span></div>
+                      <div class="pathrow">
+                        <input value="%LocalAppData%\Programs\LinkDesk" spellcheck="false" aria-label="安装位置">
+                        <button type="button">浏览…</button>
+                      </div>
+                      <!-- 组 ② 给 LinkDesk 的权限（四项就是原来那四项，一字未动、默认值也没动） -->
+                      <div class="grp-h g2">给 LinkDesk 的权限<span class="tag">②</span></div>
+                      <div class="opts">
+                        <label class="opt"><input type="checkbox" data-opt="filemenu"><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span>文件右键菜单「通过 LinkDesk 打开」</span></label>
+                        <label class="opt"><input type="checkbox" data-opt="dirmenu"><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span>目录右键菜单「通过 LinkDesk 打开」</span></label>
+                        <label class="opt"><input type="checkbox" data-opt="editor" checked><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span>注册为受支持文件类型的编辑器</span></label>
+                        <label class="opt"><input type="checkbox" data-opt="path" checked><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span>添加到 PATH（重启终端后生效）</span></label>
+                      </div>
+                      <!-- 组 ③ 随包安装的插件（今天没有数据源 ⇒ 如实画成空态，⛔ 不编造插件名） -->
+                      <div class="grp-h g3">随包安装的插件<span class="tag">③</span></div>
+                      <div class="plugwrap">
+                        <div class="grp-note">本次安装包未随带可选插件。</div>
+                      </div>
+                    </div>
+                    <!-- 动作行：在滚动层之外常驻（滚到底也够得着） -->
+                    <div class="morebar">
+                      <button class="btn ghost" type="button" id="more-back">返回</button>
+                      <button class="btn" type="button" id="more-continue">继续安装<span class="cir">→</span></button>
+                      <div class="foot">继续即同意 <a href="#" onclick="return false">许可协议</a> · MIT</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- ⑤ 动作行：立即安装 ＋「自定义安装」；「更多配置」只在展开后才出现（本图新增的那颗） -->
+              <div class="actions">
+                <button class="btn" type="button">立即安装<span class="cir">→</span></button>
+                <button class="btn ghost" type="button" id="custtoggle">自定义安装</button>
+                <button class="btn ghost" type="button" id="moretoggle">更多配置</button>
+                <div class="foot">继续即同意 <a href="#" onclick="return false">许可协议</a> · MIT</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 图注钉（①…⑦ 与右侧说明列对应；纯图注，不吃鼠标） -->
+      <div class="pin" id="pin-1" style="left:652px;top:462px">1</div>
+      <div class="pin new" id="pin-2" style="left:560px;top:462px">2</div>
+      <div class="pin" id="pin-3" style="left:16px;top:120px">3</div>
+      <div class="pin" id="pin-4" style="left:16px;top:292px">4</div>
+      <div class="pin" id="pin-5" style="left:16px;top:300px;display:none">5</div>
+      <div class="pin" id="pin-6" style="left:16px;top:214px;display:none">6</div>
+      <div class="pin" id="pin-7" style="left:16px;top:414px;display:none">7</div>
+    </div>
+
+    <!-- ══ 说明列 ══════════════════════════════════════════════════════ -->
+    <div class="side">
+      <div class="card">
+        <h3>图注（钉号 ↔ 点）</h3>
+        <ul>
+          <li><b>1</b>「立即安装」——一路点安装的人走这颗，**永远不用进容器**，装出来的结果与今天完全一样。</li>
+          <li><b>2</b>「更多配置」——<b>绿色钉＝本图新增</b>。只在点了「自定义安装」、展开区打开之后才出现（用户原话：「点击自定义安装之后，在自定义旁边再出现一个按钮」）。</li>
+          <li><b>3</b> 品牌行 ＋ 英雄区：进了容器<b>就被面板盖住</b>（用户第 6 条：「这些字就没了，就不要他了」）——所以面板顶上补一句「更多配置」，不然不知道自己在哪。</li>
+          <li><b>4</b> 紧凑态：路径行 ＋ <b>2×2</b> 四项勾选（今天的样子，位置一字未动）。</li>
+          <li><b>6</b> 容器态：同一批勾选项变成<b>单列</b>，按二级标题分三组。</li>
+          <li><b>7</b> 容器动作行：返回 ／ 继续安装 ／ 许可协议那句——<b>在滚动层之外</b>，滚到底也够得着。</li>
+        </ul>
+        <p style="color:rgba(255,255,255,.45)">（钉 5 只在压矮窗口后出现：滚动条。）</p>
+      </div>
+
+      <div class="card">
+        <h3>三组为什么这么分（提前规划，不是事后补）</h3>
+        <table class="t">
+          <tr><th>组</th><th>放什么</th><th>为什么</th></tr>
+          <tr><td><b>① 安装位置</b></td><td>路径输入框 ＋「浏览…」（现成控件，零新造）<br><span style="color:rgba(255,255,255,.45)">将来的「缓存目录」也归这一组（预留槽位）</span></td><td>最要紧的一项，且与紧凑态同位 ⇒ 变形最小、最不容易看晕</td></tr>
+          <tr><td><b>② 给 LinkDesk 的权限</b></td><td>就是今天那四项，<b>文案与默认值一字未动</b></td><td>它们本来就是「向系统要权限」（右键菜单／文件关联／PATH）</td></tr>
+          <tr><td><b>③ 随包安装的插件</b></td><td>今天<b>空态</b>（安装器现在只解一个 7z，没有任何插件清单可列）</td><td>用户要的正是"以后随包插件多了能逐个勾"——组先立着</td></tr>
+        </table>
+        <p>⚠️ <b>组序我把「安装位置」提到了第一组</b>（你口述的顺序是 权限 → 插件 → 目录）。理由：它是"装到哪"、
+        是这批里唯一必须看的一项，而且与紧凑态位置最近、动画最干净。若你要按你说的顺序，改回来是一句话的事。</p>
+      </div>
+
+      <div class="card">
+        <h3>动画时序（点「演一遍」看真效果）</h3>
+        <table class="t">
+          <tr><th>拍</th><th>发生什么</th><th>用什么</th></tr>
+          <tr><td>0–300ms</td><td>面板淡入（不透明 --bg 面盖住品牌行与英雄区）</td><td><code>opacity</code>，<code>--mo-ease</code></td></tr>
+          <tr><td>0–520ms</td><td>四项从 2×2 <b>滑/挤</b>到单列（同一批节点，不走"消失又出现"）</td><td>FLIP：换排布前量一次坐标 → 换 → 反向 <code>translate</code> 归零，<code>--ease</code></td></tr>
+          <tr><td>+0/+40/+80/+120ms</td><td>三组标题 ＋ 空态说明<b>逐层落定</b>（各落 8px）</td><td>既有 <code>land</code> 关键帧，<code>--mo-step</code> 错峰</td></tr>
+          <tr><td>全程</td><td>「返回」立刻可点；<b>Esc = 退一层</b>（回紧凑态，不是关窗）；✕ 仍关窗</td><td>键盘分流里给容器单开一层</td></tr>
+          <tr><td>系统开"减少动态效果"</td><td>位移整段跳过，直接到终态</td><td>JS 里先判 <code>prefers-reduced-motion</code>（CSS 那条覆盖管不到 JS 动画，必须自己判）</td></tr>
+        </table>
+        <p>时长与曲线<b>全部沿用产品既有令牌</b>（<code>--ease</code> / <code>--mo-ease</code> / <code>--mo-step</code> / <code>--mo-tier</code>），
+        只提议新增一条 <code>--mo-morph</code>＝0.52s（重排位移时长，JS 也读它，不硬编码）。</p>
+      </div>
+
+      <div class="card">
+        <h3>滚动的理由（用户第 8 条）</h3>
+        <p>窗口高度是死的（570px），而权限项和随包插件会<b>越来越多</b>。所以清单必须能滚，且
+        「继续安装」<b>不能跟着滚走</b>——竖向空间不够时，用户仍然一伸手就够得着出口。</p>
+        <p>点上面那颗「⊟ 把窗口压矮到 452px」，就能看到内容溢出、滚动条真的出现、动作行原地不动。</p>
+      </div>
+
+      <div class="card">
+        <h3>这张图与产品源的关系</h3>
+        <p>本图是<b>手绘示意</b>：控件位置与文案照现行安装器抄，<b>产品源一个字节没动</b>。
+        落地实现（改 <code>app.html</code> / <code>app.css</code> / <code>app.js</code> ＋ i18n）是<b>下一轮的事</b>；
+        实现之后，这张图应改用生成器从产品源重出，那时它才是生成物、并且<b>永不手改</b>。</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* 本图自带的演示脚本：只服务于"让你现在就能看到动画"，约 60 行，不引库。
+   它与将来要写进 app.js 的做法**同构**（同一套类名、同一套令牌），所以在这里看到的时长/手感就是落地后的手感。 */
+(function () {
+  const $ = (s, r) => (r || document).querySelector(s);
+  const $$ = (s, r) => Array.prototype.slice.call((r || document).querySelectorAll(s));
+  const home = $('#s-home'), frame = $('#frame');
+  const reduced = () => window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const tok = (n, d) => getComputedStyle(document.documentElement).getPropertyValue(n).trim() || d;
+  const morphMs = () => { const v = tok('--mo-morph', '.52s'), n = parseFloat(v) || .52; return v.indexOf('ms') >= 0 ? n : n * 1000; };
+
+  const isMore = () => home.classList.contains('more');
+  function setCustom(open) {
+    if (!open && isMore()) setMore(false);            // 容器态与紧凑态是同一块 DOM 的两种排布
+    $('#custom').classList.toggle('open', !!open);
+    $('#custtoggle').textContent = open ? '收起' : '自定义安装';
+  }
+  function setMore(open) {
+    open = !!open;
+    if (open === isMore()) return;
+    if (open && !$('#custom').classList.contains('open')) setCustom(true);
+    // ① 起点必须在换排布**之前**量
+    const items = $$('.opts .opt', home).concat($$('.pathrow', home));
+    const before = items.map(el => el.getBoundingClientRect());
+    home.classList.toggle('more', open);              // ② 布局一次到位
+    $('#morelist').scrollTop = 0;                     // 每次进来都从头看
+    if (!reduced()) {                                 // ③ 位移让 FLIP 补，路线与曲线用产品令牌
+      const dur = morphMs(), ease = tok('--ease', 'cubic-bezier(.32,.72,0,1)');
+      items.forEach((el, i) => {
+        const a = before[i], b = el.getBoundingClientRect();
+        if (a.width < 1 || a.height < 1) return;      // 起点还没落定（如地址栏直达 #more）⇒ 别做无意义的 FLIP
+        const dx = a.left - b.left, dy = a.top - b.top;
+        if (!dx && !dy) return;
+        el.animate([{ transform: 'translate(' + dx + 'px,' + dy + 'px)' }, { transform: 'none' }],
+                   { duration: dur, easing: ease });
+      });
+    }
+    pins(open);
+  }
+  /* 图注钉跟着态走（纯图注，与产品逻辑无关） */
+  function pins(more) {
+    $('#pin-1').style.display = more ? 'none' : 'grid';
+    $('#pin-2').style.display = more ? 'none' : 'grid';
+    $('#pin-3').style.display = more ? 'none' : 'grid';
+    $('#pin-4').style.display = more ? 'none' : 'grid';
+    $('#pin-6').style.display = more ? 'grid' : 'none';
+    $('#pin-7').style.display = more ? 'grid' : 'none';
+    $('#pin-5').style.display = (more && frame.classList.contains('short')) ? 'grid' : 'none';
+  }
+
+  $('#custtoggle').addEventListener('click', () => setCustom(!$('#custom').classList.contains('open')));
+  $('#moretoggle').addEventListener('click', () => setMore(true));
+  $('#more-back').addEventListener('click', () => setMore(false));
+  $('#more-continue').addEventListener('click', () => {
+    // 产品里这里 = 与「立即安装」同一个出口（beginInstall）。图上只回一句提示，不假装真装。
+    setMore(false);
+    alert('产品里这颗＝与「立即安装」同一个出口（同一份勾选、同一个 beginInstall），不是第二条安装路径。');
+  });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && isMore()) setMore(false); });
+
+  $('#f-play').addEventListener('click', () => {
+    setCustom(false); setMore(false);
+    setTimeout(() => setCustom(true), 60);
+    setTimeout(() => setMore(true), reduced() ? 120 : 900);   // 展开动画 .7s 走完再进容器
+  });
+  $('#f-reset').addEventListener('click', () => { setMore(false); setCustom(false); $('#morelist').scrollTop = 0; });
+  $('#f-short').addEventListener('click', function () {
+    frame.classList.toggle('short');
+    this.classList.toggle('on');
+    this.textContent = frame.classList.contains('short') ? '⊞ 还原 570px' : '⊟ 把窗口压矮到 452px（看滚动条）';
+    pins(isMore());
+  });
+
+  /* 直达某个态（给截图与"我想直接看容器"用）：地址后面加 #more 直接进容器，#more,short 连压矮一起 */
+  const h = (location.hash || '').toLowerCase();
+  if (h.indexOf('more') >= 0) { setCustom(true); setMore(true); }
+  if (h.indexOf('short') >= 0) $('#f-short').click();
+
+  pins(isMore());
+})();
+</script>
+</body>
+</html>
