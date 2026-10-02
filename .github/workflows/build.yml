@@ -34,6 +34,9 @@ permissions:
 jobs:
   build:
     runs-on: windows-latest
+    # 🔴 2026-10-03：整 job 上限 30 分钟。此前没有上限——一次「等 WebView2 端口」的挂死
+    #   把一轮 tag 运行拖成 17 分钟（那还只是其中一步）。超时即红，不再无限拖。
+    timeout-minutes: 30
 
     steps:
       # 🔴 订正 ⑥（2026-09-12，E6#57.15d）：**必须 fetch-depth: 0**。
@@ -161,36 +164,19 @@ jobs:
           echo "path=$exe" >> "$GITHUB_OUTPUT"
           echo "dir=${exe%/*}" >> "$GITHUB_OUTPUT"
 
-      # 🔴 台账 §五 D（2026-10-02）：**安装器验收进 CI**。
-      #   动机：这一批（系统写入 / 真卸载 / 版本与进程守卫 / 路径规整）此前只在开发者机上手动跑过，
-      #   「发版前记得跑」靠人记——而人一定会忘，忘了的代价是用户装出问题（本台账整本就是这么来的）。
-      #   为什么能在 CI 跑：它们要**真机注册表**，而 windows-latest 是一次性 VM，跑完即销毁，
-      #   正是跑这类测试最干净的地方（带备份还原的脚本在这里连「还」都可以不做）。
-      #   分档（不是省事，是花得值不值）：
-      #     · 页面级路径规整（b1）**每次运行都跑**——10 秒级，且它是「盘根自动补层」的唯一守卫。
-      #     · 三支重型（真装真卸、各装 3–6 次）**只在 tag 跑**：它们每个要几分钟，而判据是
-      #       「这一版能不能发」，push 时跑等于给每次提交加十分钟。
-      #   ⚠️ 靶子一律是**刚拼好的那个安装包**（上一步的真值路径），不是另建的测试包——
-      #      测的必须是即将发给用户的那一份。b1 只用页面（走 electron:build 顺带产出的**干净壳**）。
-      #   ⚠️ 任一条红 = 本版不发：这门禁的意义就在这，别改成 continue-on-error。
-      - name: Installer acceptance · 路径规整（页面级，每次跑）
-        shell: pwsh
-        run: |
-          node build/installer/bootstrapper/tools/b1-path-test.mjs
-          if ($LASTEXITCODE -ne 0) { throw "b1-path-test 红（退出码 $LASTEXITCODE）——盘根自动补层那条守卫响了" }
-
-      - name: Installer acceptance · 系统写入 / 真卸载 / 守卫（发版门禁，仅 tag）
-        if: startsWith(github.ref, 'refs/tags/v')
-        shell: pwsh
-        run: |
-          $exe = "${{ steps.installer.outputs.path }}"
-          Write-Host "待测安装包：$exe"
-          powershell -NoProfile -ExecutionPolicy Bypass -File build/installer/bootstrapper/tools/guard-test.ps1 -Setup $exe
-          if ($LASTEXITCODE -ne 0) { throw "guard-test 红（退出码 $LASTEXITCODE）" }
-          powershell -NoProfile -ExecutionPolicy Bypass -File build/installer/bootstrapper/tools/syswrite-test.ps1 -Setup $exe
-          if ($LASTEXITCODE -ne 0) { throw "syswrite-test 红（退出码 $LASTEXITCODE）" }
-          powershell -NoProfile -ExecutionPolicy Bypass -File build/installer/bootstrapper/tools/uninstall-test.ps1 -Setup $exe
-          if ($LASTEXITCODE -ne 0) { throw "uninstall-test 红（退出码 $LASTEXITCODE）" }
+      # 🔴 2026-10-03：**安装器验收撤出 CI**（用户令：「实在不行安装器这里不要检测了」／
+      #   「我不想以后每次都跑一个小时只发一个版」）。此前它是「发版门禁」，撤的原因**不是它不重要**，
+      #   而是**CI 这儿根本跑不了**：两档都要真桌面 ＋ 真 WebView2 窗口（b1 靠 CDP 驱动页面，
+      #   三支重型靠 `--preview=` 让页面自己走），而 CI 上壳起得来、**WebView2 环境回调一次都不来**。
+      #   实测（run 37044234699，2026-10-03）：宿主日志只有 `[host] … debugArg=--remote-debugging-port=9440`
+      #   （⇒ 变量真传进去了、运行时检测也过了），**没有 `hr=0x…`、没有页面、端口 240s × 2 次不开**；
+      #   本机跑同一支 10 秒级全绿。自 2026-10-02 15:00Z 加进 CI 起，这一步**从未绿过一次**，
+      #   而它每红一次就把 tag 运行拖长 8 分钟、并让 Release 一路 skipped。
+      #   ⛔ 别照抄回来。要跑就照 `build/installer/bootstrapper/README.md` 的「剩下这些必须有人动手」
+      #      一节在**真机**跑（发版前）：
+      #        页面级路径规整（盘根自动补层那条守卫）：`node build/installer/bootstrapper/tools/b1-path-test.mjs`
+      #        系统写入／真卸载／守卫：`tools\{guard,syswrite,uninstall}-test.ps1 -Setup <安装包>`
+      #   CI 从此只负责它能负责的三件：装得起来、安装包名字对得上、Release 真发出去。
 
       # 🔴 E6#43a —— Release 正文 = **下载信息块 ＋ CHANGELOG 那段正文**（02 §2.2 的模板）。
       # 为什么拼而不是写进 CHANGELOG：CHANGELOG 是「变更说明」，下载信息是「发布元数据」，
