@@ -1,0 +1,382 @@
+<!doctype html>
+<!-- ⚠️ 手绘设计图，非生成件（与 05-设计图-更多配置页.html 的「生成件」性质不同）。
+     为什么不做 1:1 复刻（2026-10-02 用户拍板）：设置页大体形式已固定，控件全部走壳共享组件
+     （@linkdesk/ui 的 Toggle/SelectBox/NumberInput/FilePathInput/Button + ReadOnlyText），
+     HTML 示意即接近真实；主题另由 ThemeEngine 在运行时改写，画死某一套主题反而失真。
+     ⇒ 本页只回答一件事：新增的「存储」三行在真设置页里长什么样、和既有行比是否协调。
+     安装器那页相反——那是完全新绘的界面，HTML 展示什么就是什么，故必须 1:1。两者因果勿倒置。 -->
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>设置页设计图 · 通用组「存储」分区（通用组缓存配置项）</title>
+<style>
+/* ══ 评审壳（深色底板，不属产品样式）══ */
+html,body{margin:0;background:#22222a}
+body{padding:28px 32px 72px;max-width:1020px;margin:0 auto;
+     font:13px/1.8 Consolas,"Courier New",monospace;color:#b6b2ab}
+h1{font:400 20px/1.4 Consolas,monospace;color:#f5f2ed;margin:0 0 10px}
+.lead{font-size:13px;background:#2c2c35;border:1px solid rgba(255,255,255,.10);
+      border-radius:8px;padding:12px 16px;margin:0 0 8px}
+.lead b{color:#e9e6e0}
+.look{font-size:12px;color:#a8a49d;margin:10px 0 0}
+.look::before{content:'看';display:inline-block;background:#8a6ff0;color:#fff;border-radius:4px;
+              padding:1px 5px;margin-right:8px;font-size:10px}
+.look.prop::before{content:'案';background:#2fbf8a}
+.stage{position:relative;margin:16px 0 8px;border-radius:10px;overflow:hidden;
+       box-shadow:0 26px 70px rgba(0,0,0,.55),0 4px 16px rgba(0,0,0,.40)}
+.sec-h{font:600 15px/1 Consolas,monospace;letter-spacing:.08em;color:#a892ff;
+       margin:52px 0 10px;text-transform:uppercase}
+.note{font-size:12px;color:#8d8880;margin:6px 0 0}
+
+/* ══ 产品侧：栈内变量＝真壳 token 的**默认（深色）主题**实值，
+      在此页就地声明只为让静态图能亮起来；真机由 ThemeEngine 写入同名变量 ══ */
+.stage .settings-root{
+  --bg-window:#1E1E1E; --bg-card:#2D2D2D; --bg-input:#3C3C3C;
+  --text-primary:#D4D4D4; --text-secondary:#9D9D9D; --text-muted:#8A8A8A;
+  --accent:#0078D4; --accent-hover:#1A8CE8; --border:#3C3C3C; --separator:#474747;
+  --text-on-accent:#FFFFFF; --hover-overlay:rgba(255,255,255,.06);
+  --tab-active-bg:#2D2D2D; --toggle-knob:#FFFFFF;
+  --radius-sm:4px; --radius-md:6px;
+  --font-size-2xs:11px; --font-size-xs:12px; --font-size-sm:13px;
+  --font-size-md:14px; --font-size-lg:16px; --font-size-xl:18px;
+  --ui-scale:1;
+  --font-ui:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Microsoft YaHei",sans-serif;
+}
+
+/* ══ 以下自「设置插件 src/views/SettingsView.css」按真规则抄录（值未改，删了与本屏无关的节）══ */
+.settings-editor{display:flex;flex-direction:column;height:640px;background:var(--bg-window);
+                 color:var(--text-primary);font-family:var(--font-ui);font-size:var(--font-size-md)}
+.settings-tab-bar{display:flex;border-bottom:1px solid var(--border);padding:0 16px}
+.settings-tab{padding:8px 16px;font-size:var(--font-size-md);background:transparent;border:none;
+  border-bottom:2px solid transparent;color:var(--text-muted);cursor:pointer;margin-bottom:-1px}
+.settings-tab.active{color:var(--text-primary);border-bottom-color:var(--accent)}
+.settings-search-bar{display:flex;align-items:center;padding:8px 16px;
+  border-bottom:1px solid var(--border);gap:8px}
+.settings-search-icon{font-size:var(--font-size-lg);color:var(--text-muted);flex-shrink:0}
+.settings-json-btn{display:flex;align-items:center;gap:4px;padding:4px 8px;background:transparent;
+  border:1px solid var(--border);color:var(--text-primary);font-size:var(--font-size-sm);
+  cursor:pointer;border-radius:2px;margin-left:auto}
+.settings-body{display:flex;flex:1;overflow:hidden}
+.settings-nav{width:200px;flex-shrink:0;overflow-y:auto;border-right:1px solid var(--border);padding:8px 0}
+.settings-nav-item{display:flex;align-items:center;justify-content:space-between;width:100%;
+  padding:6px 20px;font-size:var(--font-size-md);color:var(--text-primary);background:transparent;
+  border:none;border-left:2px solid transparent;cursor:pointer;text-align:left}
+.settings-nav-item.active{background:var(--hover-overlay);color:var(--text-primary);
+  font-weight:500;border-left-color:var(--accent)}
+.settings-nav-count{font-size:var(--font-size-xs);color:var(--text-muted);
+  background:var(--hover-overlay);padding:0 6px;border-radius:10px}
+.settings-form{flex:1;overflow-y:auto;padding:20px 28px}
+.settings-group-title{font-size:var(--font-size-xl);font-weight:600;margin:0 0 20px 0;
+  padding-bottom:12px;border-bottom:1px solid var(--border);color:var(--text-primary)}
+.settings-subsection{margin-bottom:6px}
+.settings-subsection-title{display:flex;align-items:center;gap:8px;font-size:var(--font-size-sm);
+  font-weight:600;letter-spacing:.05em;margin:22px 0 10px 0;color:var(--text-secondary)}
+.settings-subsection-title::before{content:"";width:3px;height:12px;border-radius:2px;
+  background:color-mix(in srgb,var(--accent) 55%,transparent)}
+
+/* 行（真值抄自 SettingsView-rows.css） */
+.settings-row{display:flex;align-items:flex-start;justify-content:space-between;
+  padding:8px 0;border-bottom:1px solid var(--border);gap:20px}
+.settings-row-info{flex:1;min-width:0}
+.settings-row-label-line{display:flex;align-items:center;gap:8px;min-width:0}
+.settings-row-label{display:block;font-size:var(--font-size-md);font-weight:500;color:var(--text-primary);
+  margin-bottom:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.settings-row-desc{display:block;font-size:var(--font-size-sm);color:var(--text-muted);line-height:1.5;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.settings-row-control{flex-shrink:0;display:flex;align-items:center;min-width:100px;justify-content:flex-end}
+.settings-row-gear{flex-shrink:0;width:calc(24px * var(--ui-scale));height:calc(24px * var(--ui-scale));
+  display:flex;align-items:center;justify-content:center;background:transparent;border:none;
+  border-radius:3px;color:var(--text-muted);font-size:var(--font-size-lg);cursor:pointer;
+  opacity:0;transition:opacity 120ms ease;margin-left:4px}
+.settings-row:hover .settings-row-gear{opacity:1}
+.settings-source-badge{flex-shrink:0;display:inline-flex;align-items:center;gap:3px;
+  font-size:var(--font-size-xs);line-height:1;padding:3px 6px;border-radius:var(--radius-sm);white-space:nowrap}
+.settings-source-badge--user{color:var(--text-on-accent);background:var(--accent);opacity:.92}
+.settings-source-badge--mix{color:var(--text-primary);background:var(--tab-active-bg)}
+
+/* ══ 控件（示意：真身是壳共享组件，此处手绘其外观；尺寸/圆角照组件惯例）══ */
+.ldk-toggle{width:34px;height:18px;border-radius:9px;background:var(--separator);position:relative;
+  flex-shrink:0;cursor:pointer;transition:background 150ms ease}
+.ldk-toggle.on{background:var(--accent)}
+.ldk-toggle i{position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;
+  background:var(--toggle-knob);transition:left 150ms ease}
+.ldk-toggle.on i{left:18px}
+.ldk-selectbox-trigger{display:flex;align-items:center;justify-content:space-between;gap:8px;
+  min-width:150px;padding:4px 8px;background:var(--bg-input);border:1px solid var(--border);
+  border-radius:var(--radius-sm);color:var(--text-primary);font-size:var(--font-size-sm);
+  font-family:var(--font-ui);cursor:pointer}
+.ldk-selectbox-arrow{color:var(--text-muted);font-size:10px}
+.ldk-number-input{display:flex;align-items:center;background:var(--bg-input);
+  border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden}
+.ldk-number-input-field{width:52px;padding:4px 6px;background:transparent;border:none;
+  color:var(--text-primary);font-size:var(--font-size-sm);text-align:center;font-family:var(--font-ui)}
+.ldk-number-input-btn{width:22px;border:none;background:transparent;color:var(--text-secondary);
+  cursor:pointer;font-size:var(--font-size-sm);line-height:1}
+.ldk-number-input-btn+ .ldk-number-input-field{border-left:1px solid var(--border)}
+.ldk-input{padding:4px 8px;background:var(--bg-input);border:1px solid var(--border);
+  border-radius:var(--radius-sm);color:var(--text-primary);font-size:var(--font-size-sm);
+  font-family:var(--font-ui);min-width:0}
+.ldk-button{padding:4px 12px;background:var(--accent);border:1px solid var(--accent);
+  border-radius:var(--radius-sm);color:var(--text-on-accent);font-size:var(--font-size-sm);
+  font-family:var(--font-ui);cursor:pointer;white-space:nowrap}
+.ldk-readonly-text{font-size:var(--font-size-sm);color:var(--text-secondary);
+  font-variant-numeric:tabular-nums;white-space:nowrap}
+.ldk-inline-input{flex:1;display:flex;align-items:center;padding:4px 8px;background:var(--bg-input);
+  border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text-muted);
+  font-size:var(--font-size-sm);font-family:var(--font-ui)}
+/* 缓存目录行：FilePathInput＝输入框 + 「选择文件夹」按钮（示意） */
+.fp{display:flex;align-items:center;gap:8px;min-width:0}
+.fp .ldk-input{width:260px;color:var(--text-secondary)}
+
+/* 标案：本页新画的只有「存储」三行，给它一道左竖条 + 提案角标，便于一眼分清存量与新增 */
+.newsec{position:relative}
+.newsec>.settings-row{border-bottom-color:transparent}
+.newsec>.settings-row::after{content:"";position:absolute;left:0;right:0;bottom:0;
+  height:1px;background:var(--border)}
+.newsec::before{content:"";position:absolute;left:-14px;top:34px;bottom:6px;width:2px;
+  border-radius:2px;background:color-mix(in srgb,var(--accent) 60%,transparent)}
+.new-badge{flex-shrink:0;font-size:var(--font-size-2xs);line-height:1;padding:2px 5px;
+  border-radius:var(--radius-sm);background:#2fbf8a;color:#0d2b20;font-weight:600;
+  font-family:var(--font-ui)}
+</style>
+</head>
+<body>
+
+<h1>设置页设计图 · 通用组「存储」分区</h1>
+<p class="lead">本页只回答一件事：<b>新增的「存储」三行放进真设置页里长什么样</b>。<br>
+左栏＝分组树（一个插件一条），右栏＝该组的设置行，行的结构、间距、控件形态都照产品现状：
+行里是「<b>原始配置键</b>」作标题、配置描述作副行、右侧控件、行尾 hover 才露的齿轮。
+<b>深色值只是就地铺的默认主题</b>——真机上这套颜色由 ThemeEngine 按所选主题改写，所以这里画死的配色不作数，
+也不用对到像素。</p>
+<p class="look">存量九行（界面 / 系统集成 / 更新）＝照 <code>src/App/startup.ts</code>、
+<code>src/App/config/update.ts</code> 现有声明抄录，用来当参照物：新三行要和它们同重同高。</p>
+<p class="look prop">新三行＝本任务提案（<code>app.storage.*</code>，尚未落代码），行首带绿色「新」角标 + 左侧竖条；
+落地后角标与竖条都不存在，与其余行完全一致。</p>
+
+<div class="stage">
+  <div class="settings-root">
+  <div class="settings-editor">
+
+    <!-- 双 tab：设置 / 快捷键（真组件 SettingsView.tsx） -->
+    <div class="settings-tab-bar">
+      <button class="settings-tab active">设置</button>
+      <button class="settings-tab">快捷键</button>
+    </div>
+
+    <!-- 搜索栏 + Open JSON -->
+    <div class="settings-search-bar">
+      <span class="settings-search-icon">⌕</span>
+      <span class="ldk-inline-input">搜索设置</span>
+      <button class="settings-json-btn">{ }&nbsp;<span style="font-size:11px">JSON</span></button>
+    </div>
+
+    <div class="settings-body">
+      <!-- 左：分组树。条目随已装插件而定，「通用」是本任务标的，其余仅作占位示意 -->
+      <nav class="settings-nav">
+        <button class="settings-nav-item active">通用<span class="settings-nav-count">12</span></button>
+        <button class="settings-nav-item">主题<span class="settings-nav-count">26</span></button>
+        <button class="settings-nav-item">AI 接入<span class="settings-nav-count">5</span></button>
+        <button class="settings-nav-item">插件管理<span class="settings-nav-count">4</span></button>
+      </nav>
+
+      <!-- 右：表单 -->
+      <div class="settings-form">
+        <h2 class="settings-group-title">通用</h2>
+
+        <!-- ── 界面 ── -->
+        <div class="settings-subsection">
+          <div class="settings-subsection-title">界面</div>
+
+          <div class="settings-row">
+            <div class="settings-row-info">
+              <div class="settings-row-label-line"><label class="settings-row-label">app.language</label></div>
+              <span class="settings-row-desc">界面语言</span>
+            </div>
+            <div class="settings-row-control">
+              <button class="ldk-selectbox-trigger">中文（简体）<span class="ldk-selectbox-arrow">▼</span></button>
+            </div>
+            <button class="settings-row-gear">⚙</button>
+          </div>
+
+          <div class="settings-row">
+            <div class="settings-row-info">
+              <div class="settings-row-label-line"><label class="settings-row-label">app.menuStyle</label></div>
+              <span class="settings-row-desc">菜单栏样式——标题栏 / 汉堡菜单 / 两者都显示</span>
+            </div>
+            <div class="settings-row-control">
+              <button class="ldk-selectbox-trigger">标题栏<span class="ldk-selectbox-arrow">▼</span></button>
+            </div>
+            <button class="settings-row-gear">⚙</button>
+          </div>
+
+          <div class="settings-row">
+            <div class="settings-row-info">
+              <div class="settings-row-label-line"><label class="settings-row-label">app.hint.enabled</label></div>
+              <span class="settings-row-desc">悬停提示——鼠标停在图标/按钮上时显示名称与快捷键</span>
+            </div>
+            <div class="settings-row-control">
+              <span class="ldk-toggle on"><i></i></span>
+            </div>
+            <button class="settings-row-gear">⚙</button>
+          </div>
+
+          <div class="settings-row">
+            <div class="settings-row-info">
+              <div class="settings-row-label-line"><label class="settings-row-label">window.zoomLevel</label></div>
+              <span class="settings-row-desc">窗口缩放级别——0 为原始大小，每 ±1 放大/缩小 20%</span>
+            </div>
+            <div class="settings-row-control">
+              <span class="ldk-number-input">
+                <button class="ldk-number-input-btn">−</button>
+                <span class="ldk-number-input-field">0</span>
+                <button class="ldk-number-input-btn">+</button>
+              </span>
+            </div>
+            <button class="settings-row-gear">⚙</button>
+          </div>
+        </div>
+
+        <!-- ── 系统集成 ── -->
+        <div class="settings-subsection">
+          <div class="settings-subsection-title">系统集成</div>
+
+          <div class="settings-row">
+            <div class="settings-row-info">
+              <div class="settings-row-label-line"><label class="settings-row-label">app.osIntegration.fileMenu</label></div>
+              <span class="settings-row-desc">在资源管理器文件右键菜单中显示「Open with LinkDesk」</span>
+            </div>
+            <div class="settings-row-control"><span class="ldk-toggle"><i></i></span></div>
+            <button class="settings-row-gear">⚙</button>
+          </div>
+
+          <div class="settings-row">
+            <div class="settings-row-info">
+              <div class="settings-row-label-line"><label class="settings-row-label">app.osIntegration.dirMenu</label></div>
+              <span class="settings-row-desc">在资源管理器文件夹右键菜单中显示「Open with LinkDesk」</span>
+            </div>
+            <div class="settings-row-control"><span class="ldk-toggle"><i></i></span></div>
+            <button class="settings-row-gear">⚙</button>
+          </div>
+
+          <div class="settings-row">
+            <div class="settings-row-info">
+              <div class="settings-row-label-line"><label class="settings-row-label">app.osIntegration.fileAssoc</label></div>
+              <span class="settings-row-desc">将 LinkDesk 注册为受支持文件类型的编辑器（「打开方式」里可选）</span>
+            </div>
+            <div class="settings-row-control"><span class="ldk-toggle on"><i></i></span></div>
+            <button class="settings-row-gear">⚙</button>
+          </div>
+        </div>
+
+        <!-- ── 更新 ── -->
+        <div class="settings-subsection">
+          <div class="settings-subsection-title">更新</div>
+
+          <div class="settings-row">
+            <div class="settings-row-info">
+              <div class="settings-row-label-line"><label class="settings-row-label">app.update.mode</label></div>
+              <span class="settings-row-desc">检查更新的方式——自动后台检查 / 仅在手动点击时检查</span>
+            </div>
+            <div class="settings-row-control">
+              <button class="ldk-selectbox-trigger">自动<span class="ldk-selectbox-arrow">▼</span></button>
+            </div>
+            <button class="settings-row-gear">⚙</button>
+          </div>
+
+          <div class="settings-row">
+            <div class="settings-row-info">
+              <div class="settings-row-label-line"><label class="settings-row-label">app.update.showReleaseNotes</label></div>
+              <span class="settings-row-desc">更新到新版本后，首次启动时自动打开发行说明</span>
+            </div>
+            <div class="settings-row-control"><span class="ldk-toggle on"><i></i></span></div>
+            <button class="settings-row-gear">⚙</button>
+          </div>
+        </div>
+
+        <!-- ── 存储（本任务新增）── -->
+        <div class="settings-subsection newsec">
+          <div class="settings-subsection-title">存储</div>
+
+          <!-- ① 缓存目录：uiHint "directory" → FilePathInput（输入框 + 选择文件夹） -->
+          <div class="settings-row">
+            <div class="settings-row-info">
+              <div class="settings-row-label-line">
+                <label class="settings-row-label">app.storage.cacheDir</label>
+                <span class="new-badge">新</span>
+              </div>
+              <span class="settings-row-desc">缓存目录——插件下载、主题资源等缓存文件的存放位置（空 = 用默认位置）</span>
+            </div>
+            <div class="settings-row-control">
+              <span class="fp">
+                <span class="ldk-input">C:\Users\fengy\AppData\Roaming\linkdesk</span>
+                <button class="ldk-button">选择文件夹</button>
+              </span>
+            </div>
+            <button class="settings-row-gear">⚙</button>
+          </div>
+
+          <!-- ② 已用空间：renderHint "readonly" → 值来自壳命令，只读、每 3 秒刷新 -->
+          <div class="settings-row">
+            <div class="settings-row-info">
+              <div class="settings-row-label-line">
+                <label class="settings-row-label">app.storage.used</label>
+                <span class="new-badge">新</span>
+              </div>
+              <span class="settings-row-desc">缓存已用空间</span>
+            </div>
+            <div class="settings-row-control">
+              <span class="ldk-readonly-text">14.6 MB</span>
+            </div>
+            <button class="settings-row-gear">⚙</button>
+          </div>
+
+          <!-- ③ 清除缓存：renderHint "action" → 实心动作按钮，文案取描述行 -->
+          <div class="settings-row">
+            <div class="settings-row-info">
+              <div class="settings-row-label-line">
+                <label class="settings-row-label">app.storage.clear</label>
+                <span class="new-badge">新</span>
+              </div>
+              <span class="settings-row-desc">清除缓存（只清可再生的临时文件，不动插件与设置）</span>
+            </div>
+            <div class="settings-row-control">
+              <button class="ldk-button">清除缓存（只清可再生的临时文件，不动插件与设置）</button>
+            </div>
+            <button class="settings-row-gear">⚙</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+  </div>
+</div>
+<p class="note">上图＝点开左栏「通用」时的右栏全貌（滚动条位置示意到「存储」为止）。深色＝默认主题；换主题后配色随之变，本页不对色。</p>
+
+<div class="sec-h">三行的控件选择（照 renderControl 的真实分支）</div>
+
+<p class="look">① <b>app.storage.cacheDir</b> 声明 <code>uiHint:"directory"</code> ⇒ 走共享
+<code>FilePathInput dialogType="directory"</code>，与既有「文件/目录」类设置完全同款，没有新控件要写。</p>
+<p class="look">② <b>app.storage.used</b> 声明 <code>renderHint:"readonly"</code> + <code>statusCommand</code> ⇒
+走共享 <code>ReadOnlyText</code>，值由壳命令回传、每 3 秒刷新。<b>值必须回字符串</b>；命令不在或抛错时此处
+留空（不回落 <code>default</code>——那就是写死的假绿）。</p>
+<p class="look">③ <b>app.storage.clear</b> 声明 <code>renderHint:"action"</code> + <code>actionCommand</code> ⇒
+共享实心 <code>Button</code>，点一下执行壳命令（清缓存）。</p>
+<p class="look prop">🔴 ②与③<b>不能并成一行</b>：渲染器里 <code>readonly</code> 分支在最前、<code>action</code>
+分支其后，两者互斥——同一行只会出一样。所以「已用空间」与「清除缓存」各占一行，图上即此形。</p>
+<p class="look">次级判据：<b>一个只读数字挤在按钮旁边</b>（并成一行的诱惑）看起来更省地方，但点了读不到
+「点之前是多少、点之后少了多少」——分行之后数字有了固定的位置，清完刷新即可对比。这也是照真渲染器的
+能力边界来画的，不是审美偏好。</p>
+
+<div class="sec-h">与本任务安装器侧的关系</div>
+<p class="look">安装器那三行（缓存位置 / 已用 / 清除）是本任务的重头，本页只补设置页这一半：
+用户在软件里看到的同一组能力。两侧的键与命令同名同源（<code>app.storage.*</code> /
+<code>storage.reportCacheSize</code> / <code>storage.clearCache</code>），安装器的按钮要活，
+壳侧 <code>browse-cachedir</code> 宿主桥（件 2e）必须先落地，否则是死按钮。</p>
+<p class="look prop">待定（详见同目录 <code>00-README.md</code> 与 <code>03-实现交接.md</code>）：三行的
+<b>分组名</b>用「存储」还是并入「系统集成」、<b>已用空间</b>是否连「缓存目录所在盘剩余」一起报、
+<b>清除缓存</b>要不要二次确认——图上按「独立分区 + 只报已用 + 不弹确认」画，改判后重出此图。</p>
+
+</body>
+</html>
