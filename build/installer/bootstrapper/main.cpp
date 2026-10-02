@@ -483,23 +483,30 @@ static std::atomic<bool> g_canceled{ false };
  *  true  = 覆盖装（里头是旧版安装）⇒ 一个文件都不删——整树删会把旧装一起端掉（06 2d 格的设计题）。 */
 static bool g_dirHadContent = false;
 
+/** 往 `--log=` 那条文件追加一行 UTF-8。产品运行不带该参数 ⇒ 整段是空转。
+ *  为什么单独拎出来：宿主**起不来 WebView2** 时页面还没影，PostJson 那条路根本走不到，
+ *  而那条路上的失败（CI 上表现为「进程活着、调试端口没人听」）必须有落盘的判据——
+ *  2026-10-03 就是靠猜差一点把「装载器报错」误读成「CI 冷启动慢」。 */
+static void AppendLogLine(const std::wstring& line)
+{
+    if (g_logPath.empty()) return;
+    HANDLE f = CreateFileW(g_logPath.c_str(), FILE_APPEND_DATA, FILE_SHARE_READ,
+                           nullptr, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
+    if (f == INVALID_HANDLE_VALUE) return;
+    std::wstring full = line + L"\r\n";
+    int n = WideCharToMultiByte(CP_UTF8, 0, full.c_str(), (int)full.size(), nullptr, 0, nullptr, nullptr);
+    std::string u(n, '\0');
+    WideCharToMultiByte(CP_UTF8, 0, full.c_str(), (int)full.size(), u.data(), n, nullptr, nullptr);
+    DWORD wrote = 0;
+    WriteFile(f, u.data(), (DWORD)u.size(), &wrote, nullptr);
+    CloseHandle(f);
+}
+
 static void PostJson(const std::wstring& json)
 {
     // --log=<path>：把每条宿主 → 页面的消息追加落盘（件 3c 自动化验收要「进度单调」的可读证据，
     // 不靠截图猜）。产品运行不带此参数。写失败当无事——日志不该影响安装。
-    if (!g_logPath.empty()) {
-        HANDLE f = CreateFileW(g_logPath.c_str(), FILE_APPEND_DATA, FILE_SHARE_READ,
-                               nullptr, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
-        if (f != INVALID_HANDLE_VALUE) {
-            std::wstring line = json + L"\r\n";
-            int n = WideCharToMultiByte(CP_UTF8, 0, line.c_str(), (int)line.size(), nullptr, 0, nullptr, nullptr);
-            std::string u(n, '\0');
-            WideCharToMultiByte(CP_UTF8, 0, line.c_str(), (int)line.size(), u.data(), n, nullptr, nullptr);
-            DWORD wrote = 0;
-            WriteFile(f, u.data(), (DWORD)u.size(), &wrote, nullptr);
-            CloseHandle(f);
-        }
-    }
+    AppendLogLine(json);
     Microsoft::WRL::ComPtr<ICoreWebView2> web;
     if (g_controller) g_controller->get_CoreWebView2(&web);
     if (web) web->PostWebMessageAsJson(json.c_str());
@@ -1753,10 +1760,24 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, PWSTR, int nCmdShow)
     Microsoft::WRL::ComPtr<ICoreWebView2EnvironmentOptions> opts =
         Microsoft::WRL::Make<CoreWebView2EnvironmentOptions>();
 
+    // 起环境前把「本进程看到的那些变量」落盘（--log= 时才写）：验收脚本等不到调试端口时，
+    // 这一行能立刻分开「变量没传进来」与「传进来了但装载器/运行时不认」。
+    {
+        wchar_t argsBuf[1024] = {};
+        DWORD n = GetEnvironmentVariableW(L"WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS", argsBuf, 1024);
+        std::wstring line = L"[host] exeDir=" + exeDir +
+            L" userData=" + userData +
+            L" debugArg=" + (n > 0 ? std::wstring(argsBuf) : std::wstring(L"(未设置)"));
+        AppendLogLine(line);
+    }
+
     auto onEnv = new ComHandler<ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler, ICoreWebView2Environment*>(
         IID_ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler,
         [exeDir](HRESULT result, ICoreWebView2Environment* e) -> HRESULT {
             if (FAILED(result) || !e) {
+                wchar_t hr[64] = {};
+                swprintf(hr, 64, L"[host] WebView2 环境创建失败 hr=0x%08lX", (unsigned long)result);
+                AppendLogLine(hr);
                 MessageBoxW(nullptr, L"WebView2 环境创建失败。", L"LinkDesk 安装", MB_ICONERROR);
                 PostQuitMessage(2);
                 return result;

@@ -34,10 +34,14 @@
 //                   于是拿到的是它的 target —— 报错只有「target 有 2 个但都不是 app.html」，
 //                   查半天才发现压根不是我们的窗。换成 9440 + 预探。）
 //   --settle <ms>  等加载/动画，默认 2500（点击后另等 400ms 让 0.2s 过渡跑完）
-//   --wait <ms>    等 CDP 页面**出现**的上限，默认 90000（与 install-test.ps1 的 90s 窗口口径一致）。
+//   --wait <ms>    等 CDP 页面**出现**的上限，默认 240000（与 install-test.ps1 的 90s 窗口口径一致）。
 //                  🔴 2026-10-02 CI 实测：默认原先 15s，在 windows-latest 上第一条就红——
 //                  本脚本常是**全场第一个起 WebView2 的**（`npm run check` 不碰 exe），
 //                  一次性 VM 上冷启动远超本机那 2–3 秒。成功即返回，加长不影响快路径。
+//                  🔴 2026-10-03 90s 仍然红（v0.2.36 tag 两次＋更早的两笔 docs 提交同一处），
+//                  故：① 上限提到 240s；② 超时且壳还活着就**杀掉重起一次**（首跑把运行时捂热，
+//                  第二跑走快路径）；③ 起窗时带 `--log=`，超时把宿主那几行打出来——
+//                  否则「装载器报错」与「只是慢」在日志里长得一模一样。
 //   --click <sel>  求值前先点一下（可重复，按命令行顺序）
 //   --rect <sel>   {x,y,w,h,right,bottom,outL,outR,outB,vis,win,text}——元素在**窗口坐标系**里的实际几何
 //                  （out* = 出窗左/右/下三向，「面板展开有没有被裁」就看它；win = 视口尺寸）
@@ -52,7 +56,9 @@
 // ⚠️ 输出里 `win` 是页面视口尺寸——与 mockup 画布（780×570 / 卸载 720×540）对账时用它，别用窗口外框。
 
 import { spawn } from 'node:child_process';
+import { readFileSync, rmSync } from 'node:fs';
 import net from 'node:net';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -64,7 +70,7 @@ const one = (n, d = null) => { const i = argv.indexOf(n); return i >= 0 ? argv[i
 const exe = one('--exe', path.join(here, '..', 'out', 'bootstrapper.exe'));
 const port = Number(one('--port', '9440'));
 const settle = Number(one('--settle', '2500'));
-const wait = Number(one('--wait', '90000'));
+const wait = Number(one('--wait', '240000'));
 const keep = has('--keep');
 const attach = has('--attach');
 
@@ -170,6 +176,36 @@ async function pageTarget(timeoutMs) {
 }
 
 let child = null;
+let childLog = null;                                    // 宿主自己写的几行（--log= 那条），超时后打出来
+
+/** 把宿主那几行打出来（有才打）。等不到端口时，「装载器报错」与「只是慢」在别处长得一模一样。 */
+function dumpChildLog(why) {
+  if (!childLog) return;
+  let text = '';
+  try { text = readFileSync(childLog, 'utf8').trim(); } catch { /* 没写出来 = 连宿主都没走到那 */ }
+  console.log(`\n宿主日志（--log，${why}）：${text ? '\n' + text : '（空文件——宿主那几行都没走到）'}`);
+}
+
+/** 起窗（含 `--log=` 落盘）。抽出来是为了超时能杀掉重起一次——见下面 RETRIES 的注释。 */
+function launch() {
+  const args = [];
+  if (has('--uninstall')) args.push('--uninstall');
+  const q = one('--preview');
+  if (q) args.push('--preview=' + q);   // ⚠️ query 必须与 --preview 同一个参数（拆开会丢，见 README 坑 4/04）
+  if (!childLog) {
+    childLog = path.join(os.tmpdir(), `lk-probe-${process.pid}-${Date.now()}.log`);
+    try { rmSync(childLog, { force: true }); } catch { /* 清不掉就追加，无妨 */ }
+  }
+  args.push('--log=' + childLog);
+  childExit = null;
+  child = spawn(exe, args, {
+    env: { ...process.env, WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS: `--remote-debugging-port=${port}` },
+    stdio: 'ignore',
+  });
+  child.on('error', (e) => { console.error('起窗失败：' + e.message); });
+  child.on('exit', (code) => { childExit = code; });
+}
+
 try {
   if (!attach) {
     // 🔴 起窗前先探端口：占了就**当场说清是谁占的**，别硬连（硬连会在 15 秒后报一句
@@ -184,19 +220,26 @@ try {
         `端口 ${port} 已被占用${who}——那不是我们要的窗，硬连会读到别人的 target。\n` +
         `  改端口：--port <别的端口>（如 9441）；想知道是谁：netstat -ano | findstr :${port}`);
     }
-    const args = [];
-    if (has('--uninstall')) args.push('--uninstall');
-    const q = one('--preview');
-    if (q) args.push('--preview=' + q);   // ⚠️ query 必须与 --preview 同一个参数（拆开会丢，见 README 坑 4/04）
-    child = spawn(exe, args, {
-      env: { ...process.env, WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS: `--remote-debugging-port=${port}` },
-      stdio: 'ignore',
-    });
-    child.on('error', (e) => { console.error('起窗失败：' + e.message); });
-    child.on('exit', (code) => { childExit = code; });
+    launch();
   }
 
-  const target = await pageTarget(wait);
+  // 🔴 RETRIES = 1（共两次）：一次性 CI 机器上本脚本常是全场第一个起 WebView2 的，
+  //    第一跑要把运行时捂热；超时且壳还活着 ⇒ 杀掉重起，第二跑走快路径。
+  //    壳**自己退了**（childExit 非 null）不重试——那是真的起不来，重试只会重复同一封信。
+  let target = null;
+  for (let attempt = 0; attempt <= 1 && !target; attempt++) {
+    try {
+      target = await pageTarget(wait);
+    } catch (err) {
+      dumpChildLog(`第 ${attempt + 1} 次尝试`);
+      if (attach || attempt === 1 || childExit !== null) throw err;
+      console.log(`\n⚠️ 第 1 次等满 ${Math.round(wait / 1000)}s 仍无调试端口；壳还在跑 ⇒ 杀掉重起一次（冷启动兜底）。`);
+      try { child.kill(); } catch { /* 已经没了更好 */ }
+      await sleep(2000);
+      if (await portListening(port)) throw err;          // 杀不干净就别叠加第二个窗
+      launch();
+    }
+  }
   const cdp = await Cdp.connect(target.webSocketDebuggerUrl);
   await sleep(settle);                                  // 等词条装载 + 入场动效落定
 
