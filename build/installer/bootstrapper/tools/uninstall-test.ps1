@@ -151,9 +151,16 @@ try {
     Backup-Value ('Software\Classes\' + $ext + '\OpenWithProgids') 'LinkDesk.Document'
   }
   # 快捷方式：先备份现存的 .lnk（可能本来就有），卸载测试后原样放回
+  # 🔴 台账 §三 #4：安装现在会在开始菜单**多建一条卸载项**（`Uninstall LinkDesk.lnk`）——
+  #    它同样要备份/还原，否则本脚本每跑一次就在用户开始菜单里留一条指向临时目录的卸载快捷方式。
+  $lnkTargets = @(
+    @{ dir = [Environment]::GetFolderPath('Desktop');  name = 'LinkDesk.lnk' },
+    @{ dir = [Environment]::GetFolderPath('Programs'); name = 'LinkDesk.lnk' },
+    @{ dir = [Environment]::GetFolderPath('Programs'); name = 'Uninstall LinkDesk.lnk' }
+  )
   $lnkBackups = @()
-  foreach ($folder in @([Environment]::GetFolderPath('Desktop'), [Environment]::GetFolderPath('Programs'))) {
-    $lnk = Join-Path $folder 'LinkDesk.lnk'
+  foreach ($t in $lnkTargets) {
+    $lnk = Join-Path $t.dir $t.name
     if (Test-Path -LiteralPath $lnk) {
       $bak = Join-Path $work ('lnk-' + [guid]::NewGuid().ToString('N').Substring(0,6) + '.lnk')
       Copy-Item -LiteralPath $lnk -Destination $bak
@@ -188,6 +195,21 @@ try {
     if (Test-Path -LiteralPath (Join-Path $inst 'linkdesk-setup.exe')) { Pass '卸载器副本已落 INSTDIR（ARP 指的那份）' }
     else { Bail 'INSTDIR 里没有 linkdesk-setup.exe —— ARP 卸载是死链接' }
     if (-not (Reg-KeyGone $arp)) { Pass 'ARP 键已登记' } else { Bail 'ARP 键没写' }
+    # 🔴 台账 §三 #4：装完**必须**有开始菜单卸载项（与启动项不同名），否则「卸载」只剩设置里那条
+    $unLnk = Join-Path ([Environment]::GetFolderPath('Programs')) 'Uninstall LinkDesk.lnk'
+    if (Test-Path -LiteralPath $unLnk) { Pass '开始菜单卸载项已建（Uninstall LinkDesk.lnk）' }
+    else { Bail "开始菜单卸载项没建：$unLnk" }
+    # 🔴 台账 §三 #3：图标索引必须是**单个** `,0`（写成 `,0,0` 资源管理器会当文件名 ⇒ 白板图标）
+    $wsT = New-Object -ComObject WScript.Shell
+    foreach ($t in @(@{ dir = [Environment]::GetFolderPath('Desktop');  name = 'LinkDesk.lnk' },
+                     @{ dir = [Environment]::GetFolderPath('Programs'); name = 'LinkDesk.lnk' })) {
+      $lnk = Join-Path $t.dir $t.name
+      if (Test-Path -LiteralPath $lnk) {
+        $il = $wsT.CreateShortcut($lnk).IconLocation
+        if ($il -eq ((Join-Path $inst 'LinkDesk.exe') + ',0')) { Pass "$($t.name) 图标索引正确（…\LinkDesk.exe,0）" }
+        else { Bail "$($t.name) 图标 = `"$il`"（应 <安装目录>\LinkDesk.exe,0）" }
+      } else { Bail "快捷方式缺失：$lnk" }
+    }
     # 预置一个「旧装的」右键键 ⇒ 升级反推 fileMenu=true ⇒ 安装会重写它 ⇒ 卸载必须删它
     $k = [Microsoft.Win32.Registry]::CurrentUser.CreateSubKey($menuFile); $k.SetValue('', 'Open with LinkDesk'); $k.Close()
     $rc = 0
@@ -220,10 +242,12 @@ try {
     else { Bail "$extLeft 个扩展名值残留" }
     if (Reg-KeyGone ($vendor + '\Capabilities')) { Pass 'Capabilities 整树已删' } else { Bail 'Capabilities 残留' }
     $lnkGone = $true
-    foreach ($folder in @([Environment]::GetFolderPath('Desktop'), [Environment]::GetFolderPath('Programs'))) {
-      if (Test-Path -LiteralPath (Join-Path $folder 'LinkDesk.lnk')) { $lnkGone = $false }
+    $lnkLeft = @()
+    foreach ($t in $lnkTargets) {
+      $lnk = Join-Path $t.dir $t.name
+      if (Test-Path -LiteralPath $lnk) { $lnkGone = $false; $lnkLeft += $t.name }
     }
-    if ($lnkGone) { Pass '桌面＋开始菜单 .lnk 已删' } else { Bail '.lnk 残留' }
+    if ($lnkGone) { Pass '桌面＋开始菜单 .lnk 已删（含卸载项）' } else { Bail "残留 .lnk：$($lnkLeft -join '、')" }
     if ($hasRealUserData) { Pass 'userData 原样未动（keep=true ＋ 真 userData 在场）' }
     if (Wait-DirGone $inst) { Pass 'INSTDIR 已自删（del + rd）' } else { Bail 'INSTDIR 没删掉——自删链断了' }
   }

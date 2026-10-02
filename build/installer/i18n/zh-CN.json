@@ -22,14 +22,6 @@
   "installer.opt.editor": "注册为受支持文件类型的编辑器",
   "installer.opt.path": "添加到 PATH（重启终端后生效）",
 
-  "installer.more.open": "更多配置",
-  "installer.more.title": "更多配置",
-  "installer.more.sub": "装之前挑好，装完就不用再找。",
-  "installer.more.back": "返回",
-  "installer.more.cachedir": "缓存目录",
-  "installer.more.cachedir.sub": "插件、主题与运行时缓存都放这里；留空 = 用默认位置。",
-  "installer.more.cachedir.ph": "默认位置",
-
   "installer.progress.aria": "安装进度",
   "installer.progress.head1": "STEP 1 / 4 · 正在解压文件",
   "installer.progress.head2": "STEP 2 / 4 · 注册文件关联",

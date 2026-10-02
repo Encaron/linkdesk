@@ -20,9 +20,6 @@
  *   · 件 3d-2（3d #2，用户 2026-10-02「可以改」）：真窗口逐像素透明 ⇒ 窗口轮廓＝.shell 的 **32px** 弧线，
  *     系统那圈 ≈8px 小圆角与它露出的 --desk 灰楔形一并消失（html/body 留透明、桌面色挪到 .frame，
  *     main.cpp 侧做逐像素 alpha，失败则本段整段不生效、退回原样）
- *   · 2026-10-02 立项「更多配置页」（档 docs/04-软件更新/待抉择池/通用组缓存配置项/）：欢迎屏动作行补
- *     「更多配置」入口，并新增 #s-more 屏。样式追加在 .foot 之后（单列列表 / .morehead / .morepath），
- *     上方各件既有规则一字不动；勾选框本体继续用 .opt/.box（两处必须长得一样，见该段注）
  */
 
 :root{
@@ -30,6 +27,28 @@
   --txt:#1a1a1a; --txt2:rgba(26,26,26,.62); --txt3:rgba(26,26,26,.40);
   --ink:#111111; --line:#EAEAEA; --danger:#B3261E;
   --orb1:#b9a8f5; --orb2:#9fe8c8;
+  /* ── 台账 §五 E（2026-10-02）：原先散在各规则里的裸色/半透明色，**值一个都没改**，只收进 token。
+        三层命名：① 语义（--brand/--ok/--ver-*/--kept-*/--gone-*/--danger-a28/--ring-*）
+                  ② 叠加阶梯（--shade-N = 黑 N% / --frost-N = 白 N%，N = 百分数去掉小数点）
+                  ③ 面与线（--surface/--glass-win/--line-*）
+        🔴 门禁 scripts/check-css-hardcode.mjs 从这一笔起也扫本目录（含 app.html）：裸 hex 回潮即红。
+        ⚠️ 残余（已记档，未纳入）——app.js 里两处**运行时**配色（彩粒色板、语言下拉对勾）不进本表：
+           JS 不消费 CSS 变量，硬凑反而多一层运行期耦合。 */
+  --brand:#8a6ff0; --brand-soft:#a78bfa; --brand-mint:#34d399;
+  --brand-a50:rgba(138,111,240,.5); --brand-a25:rgba(138,111,240,.25);
+  --ok:#2fbf8a; --ok-ink:#2fae7c;
+  --ring-1:rgba(167,139,250,.30); --ring-2:rgba(52,211,153,.16);
+  --danger-a28:rgba(179,38,30,.28);
+  --ver-ink:#1F6C9F; --ver-bg:#E1F3FE;
+  --kept-ink:#346538; --kept-bg:#EDF3EC; --gone-ink:#956400; --gone-bg:#FBF3DB;
+  --on-ink:#fff; --surface:#fff; --glass-win:rgba(252,252,250,.85); --ink-mute:#9a9a9a;
+  --line-strong:#c4c0b8; --line-box:#c9c8c4; --line-glass:rgba(128,128,128,.4);
+  --shade-4:rgba(0,0,0,.04); --shade-5:rgba(0,0,0,.05); --shade-6:rgba(0,0,0,.06);
+  --shade-8:rgba(0,0,0,.08); --shade-14:rgba(0,0,0,.14); --shade-15:rgba(0,0,0,.15);
+  --shade-16:rgba(0,0,0,.16); --shade-30:rgba(0,0,0,.3);
+  --frost-16:rgba(255,255,255,.16); --frost-55:rgba(255,255,255,.55); --frost-60:rgba(255,255,255,.6);
+  --frost-70:rgba(255,255,255,.7); --frost-75:rgba(255,255,255,.75); --frost-80:rgba(255,255,255,.8);
+  --frost-90:rgba(255,255,255,.9);
   --serif:'Newsreader','Lyon Text',Georgia,'Songti SC',serif;
   --sans:'Geist','Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;
   --mono:'Geist Mono',Consolas,monospace;
@@ -56,13 +75,27 @@
 @font-face{font-family:'Newsreader';font-style:italic;font-weight:400;font-display:swap;
   src:url('fonts/newsreader-latin-400-italic.woff2') format('woff2');
   unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+/* 台账 §五 B（2026-10-02 用户拍板「打包 Geist」）：`--sans`/`--mono` 的**栈首两个字体名从此
+   真有字可依**。原先 `--sans:'Geist',…` 写着一个既没随包、本机也没装的字体名 ⇒ 页面**从来没
+   用上过** Geist（静默回落 Segoe UI）。**评审页与实机一起回落，所以谁都没发现**——正是
+   "评审与实机一致 ⇒ 漂移无人察觉"的活标本。
+   两份文件 = Google Fonts 官方 `latin` 子集原样（正文 29KB ＋ 等宽 23KB）。**同一份 URL 服务
+   `400` 与 `500` 两个 weight ⇒ 那是**可变字体**（含 HVAR/MVAR 轴表）⇒ 这里按 `font-weight:100 900`
+   声明一次即可，不要按 weight 拆两份（拆了是同一份文件写两遍，白占体积）。
+   其余规矩（unicode-range 照抄 Google、font-display:swap、路径相对 app.css）同上面 Newsreader 那段。 */
+@font-face{font-family:'Geist';font-style:normal;font-weight:100 900;font-display:swap;
+  src:url('fonts/geist-latin-400.woff2') format('woff2');
+  unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:'Geist Mono';font-style:normal;font-weight:100 900;font-display:swap;
+  src:url('fonts/geist-mono-latin-400.woff2') format('woff2');
+  unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
 *{margin:0;padding:0;box-sizing:border-box}
-button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid #8a6ff0;outline-offset:2px}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
 /* browser surfaces（craft-floor：浏览器默认面也要属于设计） */
-::selection{background:rgba(138,111,240,.25)}
+::selection{background:var(--brand-a25)}
 input{caret-color:var(--ink)}
 ::-webkit-scrollbar{width:10px}
-::-webkit-scrollbar-thumb{background:rgba(0,0,0,.15);border-radius:5px;border:2px solid transparent;background-clip:content-box}
+::-webkit-scrollbar-thumb{background:var(--shade-15);border-radius:5px;border:2px solid transparent;background-clip:content-box}
 ::-webkit-scrollbar-track{background:transparent}
 .foot a{color:var(--txt2);text-decoration:underline;text-underline-offset:3px}
 /* 件 1c：清单/词条到位前先藏壳（仅非默认语言会走到这里），别让中文一闪而过 */
@@ -96,20 +129,20 @@ html[data-alpha] .frame{border-radius:32px;background:var(--desk);overflow:hidde
 .grain{position:absolute;inset:0;pointer-events:none;opacity:.03;z-index:50;
        background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence baseFrequency='.85' numOctaves='2'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)'/%3E%3C/svg%3E")}
 .dust{position:absolute;inset:0;pointer-events:none;overflow:hidden}
-.dust i{position:absolute;bottom:-8px;width:3px;height:3px;border-radius:50%;background:rgba(0,0,0,.3);
+.dust i{position:absolute;bottom:-8px;width:3px;height:3px;border-radius:50%;background:var(--shade-30);
         animation:rise linear infinite}
 @keyframes rise{to{transform:translateY(-620px);opacity:0}}
 
 /* 安装窗口：B 双包边骨架 × 亮色 token（真实窗口 = 全幅渲染） */
 .shell{position:absolute;inset:0;border-radius:32px;background:var(--glass);
        border:1px solid var(--hair);padding:9px;backdrop-filter:blur(28px);
-       box-shadow:0 30px 80px rgba(0,0,0,.14),inset 0 1px 0 rgba(255,255,255,.8)}
+       box-shadow:0 30px 80px var(--shade-14),inset 0 1px 0 var(--frost-80)}
 /* 三圈同心（3d #3）：窗口左上角圆心恒为 (32,32) ⇒ R_内 = 32 − 该圈间隙（壳 32 ／ 面 10 → 22）。
    原 24 与壳不同心，角上玻璃包边被挤到最窄 7.7px。 */
-.win{position:relative;height:100%;border-radius:22px;background:rgba(252,252,250,.85);
+.win{position:relative;height:100%;border-radius:22px;background:var(--glass-win);
      border:1px solid var(--hair);overflow:hidden;display:flex;flex-direction:column}
 .xbtn{position:absolute;top:14px;right:16px;z-index:10;width:30px;height:30px;border:0;border-radius:9px;background:transparent;color:var(--txt2);cursor:pointer;display:grid;place-items:center;transition:background .2s}
-.xbtn:hover{background:rgba(0,0,0,.06)}
+.xbtn:hover{background:var(--shade-6)}
 .xbtn[disabled]{color:var(--txt3);cursor:default;background:transparent}
 
 /* 顶距 58（3d #1）：语言药丸内移到 20px 后底边到 49px，品牌行/错误屏图标的 x 52-96 正在药丸
@@ -136,9 +169,9 @@ html[data-alpha] .frame{border-radius:32px;background:var(--desk);overflow:hidde
 .wait{display:flex;flex-direction:column;align-items:center;gap:16px}
 .wait svg{width:40px;height:44px}
 .wait .t{font:13px/1.7 var(--sans);color:var(--txt2)}
-.wait .bar{width:220px;height:3px;border-radius:9999px;background:rgba(0,0,0,.08);overflow:hidden;position:relative}
+.wait .bar{width:220px;height:3px;border-radius:9999px;background:var(--shade-8);overflow:hidden;position:relative}
 .wait .bar::after{content:'';position:absolute;inset:0;border-radius:9999px;
-     background:linear-gradient(90deg,transparent,rgba(138,111,240,.5),transparent);
+     background:linear-gradient(90deg,transparent,var(--brand-a50),transparent);
      background-size:200% 100%;animation:shimmer 1.6s linear infinite}
 
 /* 品牌行：A 的六边形图标（实心 + 三白孔）＋ A 的衬线 slogan */
@@ -148,7 +181,7 @@ html[data-alpha] .frame{border-radius:32px;background:var(--desk);overflow:hidde
 .brand svg{width:40px;height:44px;flex:none}
 .brand .nm{font:600 19px/1.2 var(--sans);letter-spacing:-.02em}
 .brand .sl{font:italic 400 13.5px/1.4 var(--serif);color:var(--txt2);margin-top:2px}
-.ver{margin-left:auto;font:11px var(--mono);color:#1F6C9F;background:#E1F3FE;padding:3px 10px;border-radius:9999px;letter-spacing:.05em}
+.ver{margin-left:auto;font:11px var(--mono);color:var(--ver-ink);background:var(--ver-bg);padding:3px 10px;border-radius:9999px;letter-spacing:.05em}
 .hero{flex:1;display:flex;flex-direction:column;justify-content:center}
 /* A 的衬线大标题（用户点名的「高级感」来源） */
 .hero h1{font:400 46px/1.1 var(--serif);letter-spacing:-.03em;margin-bottom:14px}
@@ -159,12 +192,12 @@ html[data-alpha] .frame{border-radius:32px;background:var(--desk);overflow:hidde
 /* 3d #7：28px 左内边距是给 .cir 圆片留位的，不带圆片的按钮（⑥ 守卫「退出安装」、卸载完成「完成」）
    文字因此偏右 ⇒ 默认左右对称 22px（与 .btn.ghost 同档），真有 .cir 才恢复。
    :has() 需 Chromium 105+（WebView2 满足）；万一是老运行时只退化为现状，不会坏。 */
-.btn{display:inline-flex;align-items:center;gap:12px;font:600 14px var(--sans);color:#fff;
+.btn{display:inline-flex;align-items:center;gap:12px;font:600 14px var(--sans);color:var(--on-ink);
      background:var(--ink);border:0;border-radius:9999px;padding:9px 22px;cursor:pointer;
      transition:transform .5s var(--ease),box-shadow .5s var(--ease)}
 .btn:has(.cir){padding:9px 9px 9px 28px}
-.btn .cir{width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,.16);display:grid;place-items:center;transition:transform .5s var(--ease)}
-.btn:hover{box-shadow:0 8px 30px rgba(0,0,0,.16)}
+.btn .cir{width:30px;height:30px;border-radius:50%;background:var(--frost-16);display:grid;place-items:center;transition:transform .5s var(--ease)}
+.btn:hover{box-shadow:0 8px 30px var(--shade-16)}
 .btn:hover .cir{transform:translate(3px,-1px) scale(1.06)}
 .btn:active{transform:scale(.98)}
 .btn.ghost{background:transparent;color:var(--txt2);border:1px solid var(--hair);padding:10px 22px;gap:0}
@@ -174,44 +207,32 @@ html[data-alpha] .frame{border-radius:32px;background:var(--desk);overflow:hidde
    与禁用语义相反。段号判断与宿主一致（app.js setProgress 按同一分界禁用）。 */
 .btn:disabled{opacity:.45;cursor:default;box-shadow:none}
 .btn.ghost:disabled:hover{color:var(--txt2);box-shadow:none}
-/* ④ 自定义展开 */
-#custom{max-height:0;overflow:hidden;transition:max-height .7s var(--ease)}
-#custom.open{max-height:270px}
+/* ④ 自定义展开（台账 §五 F：检测器命中 `layout-transition`——`transition:max-height` 会为动画
+   逐帧改布局。改 `grid-template-rows:0fr→1fr`：**布局只算一次终态**，中间由浏览器合成；
+   时长/曲线/终态高度一字未改（原 `max-height:270px` 是"刚好够"的经验值，`1fr` 取真实高度，
+   展开终态**完全一致**——自然高度 ≤270 时两者等值）。
+   ⚠️ 需要一层**无内边距的包裹**（.cust-wrap）：内边距/边框在 `box-sizing:border-box` 下会让
+   元素高度有下限 ⇒ 折叠态会留一条 ~45px 的空带。故 padding/border 留在里层 .cust-in 上。 */
+#custom{display:grid;grid-template-rows:0fr;transition:grid-template-rows .7s var(--ease)}
+#custom.open{grid-template-rows:1fr}
+.cust-wrap{overflow:hidden;min-height:0}
 /* 下边距 20（3d #5）：原来只有上半边，展开态下 #custom 底边与 .actions 顶边相接（间距 0）。
    只能加在这里——.actions 全文件 7 处，全局加上边距会连累别的屏。 */
 .cust-in{margin-top:24px;padding-top:24px;padding-bottom:20px;border-top:1px solid var(--line)}
 .pathrow{display:flex;gap:8px;margin-bottom:8px}
 .pathrow input{flex:1;font:12.5px var(--mono);padding:11px 14px;border-radius:14px;border:1px solid var(--line);
-               background:rgba(255,255,255,.75);color:var(--txt);box-shadow:inset 0 1px 1px rgba(255,255,255,.6)}
-.pathrow input:focus{outline:none;border-color:#c4c0b8}
-.pathrow button{font:12px var(--sans);padding:0 16px;border-radius:14px;border:1px solid var(--line);background:#fff;color:var(--txt2);cursor:pointer}
+               background:var(--frost-75);color:var(--txt);box-shadow:inset 0 1px 1px var(--frost-60)}
+.pathrow input:focus{outline:none;border-color:var(--line-strong)}
+.pathrow button{font:12px var(--sans);padding:0 16px;border-radius:14px;border:1px solid var(--line);background:var(--surface);color:var(--txt2);cursor:pointer}
 .opts{display:grid;grid-template-columns:1fr 1fr;gap:12px 26px}
 .opt{display:flex;gap:11px;align-items:flex-start;cursor:pointer;font:13px/1.5 var(--sans)}
 .opt input{position:absolute;opacity:0}
-.opt .box{width:17px;height:17px;flex:none;margin-top:1px;border-radius:6px;border:1px solid #c9c8c4;
-          background:#fff;display:grid;place-items:center;transition:all .3s var(--ease)}
+.opt .box{width:17px;height:17px;flex:none;margin-top:1px;border-radius:6px;border:1px solid var(--line-box);
+          background:var(--surface);display:grid;place-items:center;transition:all .3s var(--ease)}
 .opt .box svg{width:10px;height:10px;opacity:0;transform:scale(.4);transition:all .3s var(--ease)}
-.opt input:checked+.box{background:linear-gradient(135deg,#a78bfa,#34d399);border-color:transparent}
+.opt input:checked+.box{background:linear-gradient(135deg,var(--brand-soft),var(--brand-mint));border-color:transparent}
 .opt input:checked+.box svg{opacity:1;transform:scale(1)}
 .foot{margin-left:auto;font:12px var(--sans);color:var(--txt2)}
-
-/* ④b 更多配置页（2026-10-02 立项；档案 docs/04-软件更新/待抉择池/通用组缓存配置项/）
-   与欢迎屏自定义展开区的**刻意差异**：那边是 1fr 1fr 两列网格（就四项，配对好看），这边单列 ——
-   这一页是「装前可选项的家」，每项一行，以后加项只加一行，不必再算两列配对（用户点名的理由）。
-   ⚠️ 只覆盖列与行距，不碰 .opts 的其它属性：勾选框本体（.opt/.box）两边必须长得一模一样，
-      否则「同一批 data-opt、同一份状态」这件事在视觉上就露馅了。 */
-#s-more .opts{grid-template-columns:1fr;row-gap:11px}
-/* 头部（不是 .hero）：这一页是清单，标题只交代「这是哪儿」，不该像欢迎屏那样占满剩余高度。
-   衬线 34px 沿用 #s-finish h1 / #s-error h1 那条既有字号档，不为这一页另立第三档。 */
-.morehead{margin:2px 0 16px}
-.morehead h1{font:400 34px/1.25 var(--serif);letter-spacing:-.03em;margin-bottom:8px}
-.morehead p{font:13px/1.7 var(--sans);color:var(--txt2)}
-/* 缓存目录行：一条发丝线与上面的勾选项分组——上面问「要不要」，这一行问「放哪儿」，语义不同。
-   .pathrow / .patherr / .opt 一律复用欢迎屏那套既有样式，**不为这一页另造控件**。 */
-.morepath{margin-top:11px;padding-top:14px;border-top:1px solid var(--line)}
-.morepath .lab{display:block;font:13px/1.5 var(--sans);margin-bottom:8px;cursor:pointer}
-.morepath .lab small{display:block;color:var(--txt3);font-size:11px;margin-top:3px}
-.morepath .pathrow{margin-bottom:0}
 
 /* ⑤ 进度：B 辉光流光 × 亮色（轨道浅灰、辉光减弱） */
 #s-progress{justify-content:center}
@@ -220,18 +241,22 @@ html[data-alpha] .frame{border-radius:32px;background:var(--desk);overflow:hidde
 /* 字距归零（3d #10）：letter-spacing 继承的是**计算后长度**，.pct 那条 -.05em 按 76px 解析 =
    -3.8px，26px 的子 span 白白背上（十位/个位被吸到一起的真正原因）。字号一字不动。 */
 .pct span{font-size:26px;letter-spacing:0}
-.track{height:8px;border-radius:9999px;background:rgba(0,0,0,.08);overflow:hidden;position:relative}
+.track{height:8px;border-radius:9999px;background:var(--shade-8);overflow:hidden;position:relative}
+/* 台账 §五 F：原先这条进度条带 `box-shadow:0 0 14px rgba(138,111,240,.35)`（零偏移彩光）。
+   零偏移的**彩色**光晕不表达高度/景深、只表达"发光"（检测器 dark-glow 的判据），而这个条
+   已经有渐变本体＋`::after` 流光，再加一圈光就是装饰噪音 ⇒ **直接去掉**，不改成高度阴影
+   （8px 高的进度条上投阴影本来就看不见）。 */
 .fill{height:100%;width:0%;border-radius:9999px;position:relative;transition:width .3s linear;
-      background:linear-gradient(90deg,#8a6ff0,#2fbf8a);box-shadow:0 0 14px rgba(138,111,240,.35)}
+      background:linear-gradient(90deg,var(--brand),var(--ok))}
 .fill::after{content:'';position:absolute;inset:0;border-radius:9999px;
-      background:linear-gradient(90deg,transparent,rgba(255,255,255,.6),transparent);
+      background:linear-gradient(90deg,transparent,var(--frost-60),transparent);
       background-size:200% 100%;animation:shimmer 1.6s linear infinite}
 @keyframes shimmer{from{background-position:200% 0}to{background-position:-200% 0}}
 .plist{margin-top:26px;font:12px/2.1 var(--mono);color:var(--txt3);letter-spacing:.04em}
 .plist li{list-style:none;display:flex;gap:12px}
 .plist .st{width:16px}
-.plist li.run{color:var(--txt2)}.plist li.run .st::after{content:'▸';color:#8a6ff0}
-.plist li.done{color:var(--txt2)}.plist li.done .st::after{content:'✓';color:#2fae7c}
+.plist li.run{color:var(--txt2)}.plist li.run .st::after{content:'▸';color:var(--brand)}
+.plist li.done{color:var(--txt2)}.plist li.done .st::after{content:'✓';color:var(--ok-ink)}
 .prow{margin-top:26px;display:flex;gap:18px;align-items:center}
 /* 3d #8：原 .cancel（background:none;border:0;无 padding ⇒ 命中区只有文字 48×15、hover 与基态同色）
    两条已删——按钮换成 .btn.ghost（靶区 101×41、hover/焦点态自来），见 app.html ③④ 进度屏。 */
@@ -244,8 +269,8 @@ html[data-alpha] .frame{border-radius:32px;background:var(--desk);overflow:hidde
 @keyframes burst{0%{opacity:1;transform:translate(0,0) rotate(0)}
                  100%{opacity:0;transform:translate(var(--dx),var(--dy)) rotate(var(--rot))}}
 .fin-ring{width:92px;height:92px;border-radius:50%;display:grid;place-items:center;margin-bottom:26px;
-          background:radial-gradient(circle at 35% 30%,rgba(167,139,250,.30),rgba(52,211,153,.16));
-          border:1px solid var(--hair);box-shadow:0 0 60px rgba(138,111,240,.25),inset 0 1px 1px rgba(255,255,255,.7);
+          background:radial-gradient(circle at 35% 30%,var(--ring-1),var(--ring-2));
+          border:1px solid var(--hair);box-shadow:0 0 60px var(--brand-a25),inset 0 1px 1px var(--frost-70);
           animation:pop .8s var(--ease)}
 @keyframes pop{from{transform:scale(.6);opacity:0}}
 .fin-ring svg{width:34px;height:34px}
@@ -280,16 +305,16 @@ html[data-alpha] .frame{border-radius:32px;background:var(--desk);overflow:hidde
 #lkdd{position:absolute;top:20px;left:20px;z-index:40;font:12px var(--sans)}
 /* ⚠️ 与 #1 同一套几何：药丸内移到 20 并被 .win/.shell 的同心圆角收成 12px 圆角矩形
    （原 9999 药丸自成一派，是第三种圆角族）。 */
-#lkdd-btn{display:flex;align-items:center;gap:7px;padding:6px 12px;border-radius:12px;border:1px solid rgba(128,128,128,.4);background:rgba(255,255,255,.55);backdrop-filter:blur(6px);color:inherit;cursor:pointer;user-select:none;font:inherit;transition:box-shadow .3s var(--ease)}
-#lkdd-btn:hover{box-shadow:0 4px 16px rgba(0,0,0,.1)}
+#lkdd-btn{display:flex;align-items:center;gap:7px;padding:6px 12px;border-radius:12px;border:1px solid var(--line-glass);background:var(--frost-55);backdrop-filter:blur(6px);color:inherit;cursor:pointer;user-select:none;font:inherit;transition:box-shadow .3s var(--ease)}
+#lkdd-btn:hover{box-shadow:0 4px 16px var(--hair)}
 #lkdd-btn .chev{transition:transform .25s var(--ease)}
 #lkdd.open #lkdd-btn .chev{transform:rotate(180deg)}
 /* ⚠️ 弹层锚点偏离 mockup（原样 right:0 ⇒ 配 top:8px;left:8px 的按钮，展开即出窗被裁——mockup 自身如此，
    见 E-混合提案.html 注入样式）：改成 left 锚、向右展开，按钮位置不动（保证六屏并排对照仍然逐像素一致） */
-#lkdd-pop{position:absolute;top:calc(100% + 8px);left:0;min-width:168px;padding:6px;border-radius:14px;border:1px solid rgba(0,0,0,.08);background:rgba(255,255,255,.9);backdrop-filter:blur(20px);box-shadow:0 14px 44px rgba(0,0,0,.16);opacity:0;transform:translateY(-6px) scale(.96);transform-origin:top left;pointer-events:none;transition:opacity .2s var(--ease),transform .2s var(--ease)}
+#lkdd-pop{position:absolute;top:calc(100% + 8px);left:0;min-width:168px;padding:6px;border-radius:14px;border:1px solid var(--shade-8);background:var(--frost-90);backdrop-filter:blur(20px);box-shadow:0 14px 44px var(--shade-16);opacity:0;transform:translateY(-6px) scale(.96);transform-origin:top left;pointer-events:none;transition:opacity .2s var(--ease),transform .2s var(--ease)}
 #lkdd.open #lkdd-pop{opacity:1;transform:none;pointer-events:auto}
-#lkdd-pop .it{display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:9px;cursor:pointer;color:#1a1a1a;background:none;border:0;font:inherit;width:100%;text-align:left}
-#lkdd-pop .it:hover{background:rgba(0,0,0,.05)}
+#lkdd-pop .it{display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:9px;cursor:pointer;color:var(--txt);background:none;border:0;font:inherit;width:100%;text-align:left}
+#lkdd-pop .it:hover{background:var(--shade-5)}
 #lkdd-pop .it .ck{width:14px;height:14px;flex:none;opacity:0}
 #lkdd-pop .it.on .ck{opacity:1}
 
@@ -325,7 +350,7 @@ html[data-mode=uninstall] .orb{width:380px;height:380px;opacity:.2}
 .brandline svg{width:26px;height:29px;opacity:.85}
 .btn.primary{background:var(--ink)}
 .btn.danger{background:var(--danger)}
-.btn.danger:hover{box-shadow:0 8px 30px rgba(179,38,30,.28)}
+.btn.danger:hover{box-shadow:0 8px 30px var(--danger-a28)}
 /* 3d #7（卸载侧同构）：30px 左内边距同理只给 .cir 留位 ⇒ 不带圆片的「完成」在 .scr.un 前缀下偏右 20px。 */
 .scr.un .btn{padding:10px 22px}
 .scr.un .btn:has(.cir){padding:10px 10px 10px 30px}
@@ -334,7 +359,7 @@ html[data-mode=uninstall] .orb{width:380px;height:380px;opacity:.2}
 .scr.un .opt small{display:block;color:var(--txt3);font-size:11px}
 /* 件 2c · 卸载「运行中检测」帧的超时提示：等的过程中它自己退掉是常态，
    所以不是错误（不取 --danger），只是一段需要读一眼的说明——安静底 + 常规字色。 */
-.unwarn{font:12px/1.6 var(--sans);color:var(--txt2);background:rgba(0,0,0,.04);
+.unwarn{font:12px/1.6 var(--sans);color:var(--txt2);background:var(--shade-4);
         border:1px solid var(--hair);border-radius:12px;padding:10px 14px;margin:10px auto 0;max-width:44ch}
 .unwarn[hidden]{display:none}
 /* 件 2d：二次确认块——提示文字取 --danger（全屏唯一红 = 破坏性动作的语义，这里正是）；
@@ -354,7 +379,7 @@ html[data-mode=uninstall] .orb{width:380px;height:380px;opacity:.2}
 #s-un-progress .pct{font:200 68px/1 var(--sans);margin-bottom:26px}
 #s-un-progress .pct span{font-size:24px;letter-spacing:0}   /* 字距归零，同安装侧（3d #10） */
 #s-un-progress .fill{background:var(--ink);box-shadow:none}
-#s-un-progress .fill::after{background:linear-gradient(90deg,transparent,rgba(255,255,255,.5),transparent)}
+#s-un-progress .fill::after{background:linear-gradient(90deg,transparent,var(--glass),transparent)}
 #s-un-progress .plist{margin-top:24px;color:var(--txt2)}
 /* 帧 4：光环 84px（安装 92px）＋ 数据去留徽章（保留=绿、不保留=黄） */
 /* 去色（3d #17）：这个环原来整条沿用安装侧的紫→绿渐变＋紫光晕 ⇒ 一个环三种颜色，在
@@ -365,8 +390,17 @@ html[data-mode=uninstall] .orb{width:380px;height:380px;opacity:.2}
    ⚠️ .datbadge 的绿/黄不动：信息色（数据保留/已删）且有文字兜底，不属装饰。 */
 #s-un-finish .fin-ring{width:84px;height:84px;margin-bottom:24px;
   background:var(--glass);
-  box-shadow:inset 0 1px 1px rgba(255,255,255,.7)}
+  box-shadow:inset 0 1px 1px var(--frost-70)}
 #s-un-finish .fin-ring svg{width:30px;height:30px}
-.datbadge{font:11px var(--mono);letter-spacing:.06em;color:#346538;background:#EDF3EC;
+.datbadge{font:11px var(--mono);letter-spacing:.06em;color:var(--kept-ink);background:var(--kept-bg);
           border-radius:9999px;padding:4px 12px;margin-bottom:26px}
-.datbadge.gone{color:#956400;background:#FBF3DB}
+.datbadge.gone{color:var(--gone-ink);background:var(--gone-bg)}
+
+/* app.html 内联 SVG 的**颜色**归这里（台账 §五 E）：标记得只留形状（fill-rule/d/stroke-width），
+   颜色一律走 token——表现属性里写 var() 在部分内核里不生效，所以放 CSS。 */
+.wait svg path,.brand svg path{fill:var(--ink)}
+.brandline svg path{fill:var(--ink-mute)}
+.opt .box svg path{stroke:var(--on-ink)}
+#lkdd-pop .ck path{stroke:var(--ok-ink)}
+#s-error > svg{stroke:var(--danger)}
+#s-error > svg circle{fill:var(--danger)}

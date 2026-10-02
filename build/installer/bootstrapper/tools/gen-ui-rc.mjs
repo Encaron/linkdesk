@@ -32,8 +32,16 @@ const OUT = join(HERE, "out");
 export const UI_MANIFEST_RES = 3;
 export const UI_FILE_RES_BASE = 10;
 
-/** 件 3b 随包字体（Newsreader 拉丁子集）——`fonts\` 下的几个文件，由 build.cmd 校验在场。 */
-export const FONT_FILES = ["newsreader-latin-400.woff2", "newsreader-latin-400-italic.woff2"];
+/** 件 3b 随包字体（Newsreader 拉丁子集）＋ 台账 §五 B 补的 Geist（正体/等宽拉丁子集）
+ *  ——`fonts\` 下的这几个文件，由 build.cmd 校验在场。
+ *  🔴 Geist 是**变体字体**（一个 woff2 覆盖 100–900 字重）⇒ 只列 400 这一份，
+ *     app.css 里用一条 `font-weight:100 900` 的 @font-face 声明，不必再收 500/700 的副本。 */
+export const FONT_FILES = [
+  "newsreader-latin-400.woff2",
+  "newsreader-latin-400-italic.woff2",
+  "geist-latin-400.woff2",
+  "geist-mono-latin-400.woff2",
+];
 
 /** 清单条目：exe 内 id → 页面根下的相对路径（正斜杠，运行时按它建子目录）。 */
 export function collectUiFiles() {

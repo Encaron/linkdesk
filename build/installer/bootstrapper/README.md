@@ -36,7 +36,7 @@ node scripts\build-installer.mjs --exe out\bootstrapper.exe ^
 | `--capture-delay=<ms>` | 覆盖 `--capture` 的落图延时（默认 1200——i18n fetch ＋ 入场动效落定）。**要「动画跑完的定格帧」必须调大**：完成屏彩粒（`.burst`）实测 end time 995–1665ms，1.2s 拍下去拍到半空粒子（`cmp-shots.ps1` 因此传 `-SettleMs`）。非法值静默维持默认 |
 | `--silent`（或 `/S`） | **静默安装**（件 2a）：不建窗、**不碰 WebView2**（运行时缺失也装得上——那是能用界面的问题，不是装不上的问题）。解压 → 校验 → 退出码 0；失败码见 §四。更新链走的就是这条。件 2c：**版本守卫同版/降级 ⇒ 不弹窗、退 1602**（`ERROR_INSTALL_USEREXIT`，被拦时一个字节没写） |
 | `--force-run` | 装完把壳拉起来（`ShellExecute` `<安装目录>\LinkDesk.exe`）。对应用户点「运行 LinkDesk」与更新器 `app.relaunch()` 的 `${isForceRun}` 同位 |
-| `--dir=<路径>` | 指定安装目录（覆盖默认/已装目录探测）。静默与界面态都认；界面态由 `?dir=` 传给页面 |
+| `--dir=<路径>` | 指定安装目录（覆盖默认/已装目录探测）。静默与界面态都认；界面态由 `?dir=` 传给页面。🔴 **这是「精确指定」——宿主不补层**；「盘根自动补一层 `\linkdesk`」是**页面**的规整动作，只作用在用户亲手给的目录上（见坑 19） |
 | `--log=<路径>` | 把每条**宿主→页面**消息落盘（一行一条 JSON）——进度不靠截图猜，直接对日志断言单调性（`tools\install-test.ps1` 的判据） |
 | `LK_FORCE_NO_RUNTIME=1`（环境变量） | 模拟 WebView2 运行时缺失 → 系统对话框＋退出码 3（件 3c 非交互测兜底路径） |
 | `LK_GUARD_ASSUME_VERSION=<ver>`（环境变量，件 2c） | 覆盖版本守卫读到的「已装版本」——不用改注册表就能摆出同版/更旧/更新三种情形（`tools\guard-test.ps1` 靠它做到**零系统写入**）。与 `LK_FORCE_NO_RUNTIME` 同族：**产品运行不带** |
@@ -59,15 +59,35 @@ node scripts\build-installer.mjs --exe out\bootstrapper.exe ^
 | `guard-test.ps1` | 件 2c 验收（**四路 18 断言**，🔴 **零系统写入**——不碰注册表与真装目录）：路 1 静默版本守卫（同版/更旧 ⇒ 退 **1602** 且目标目录一字节没建；更新 ⇒ 放行，用「放行后下一道闸退 5」证放行）· 路 2 界面态守卫真接线（`version-guard` 进日志 ＋ **无** `progress`）· 路 3 进程守卫三态（3a 无实例 ⇒ `uninstall-norun→closed`；3b 有实例 ⇒ 帧拦在「正在运行」＋ **replica 自己的日志出现 `close-request`**（证明走的是 WM_CLOSE 优雅关，非强杀）＋ 对端退净 ⇒ `uninstall-closed`；3c 拒关（`LK_IGNORE_CLOSE=1`）⇒ 10s 后 `uninstall-close-timeout` 且**对端还活着**）· 路 4 路径守卫宿主半边（`dir-invalid` 就近回页面）。判据全走 `--log` ＋ 退出码；replica = 壳改名 `out\LinkDesk.exe`（跑完自删），**开跑前发现有别的 `LinkDesk.exe` 在跑直接 `exit 3`**（本脚本会向每个同名进程发 WM_CLOSE，不许碰别人的）。`-Road <1..4>` 单跑、`-Keep` 留 replica |
 | `uninstall-test.ps1` | 件 2d 验收（**三路 29 断言**，🔴 会写真机注册表——装前**全量快照**（整键 `reg export`＋单值 .NET 带类型）跑完无条件还原并自检；桌面/开始菜单 .lnk 同样备份还原）：路 1 全链（静默装→覆盖装（右键反推）→静默卸 ⇒ `customUnInstall` 清单**逐条对账**：ARP/右键三键/ProgId/Capabilities/RegisteredApplications/13 扩展名值/PATH 精确恢复（逐字符＋类型）/标记值/.lnk/INSTDIR 自删，userData 原样未动）· 路 2 PATH 误伤保护（装后人为改 PATH ⇒ 卸载**一字不动**）· 路 3 界面态全流程（自动缝走帧 1→3→4，`uninstall-finished`＋60/80/92/100 进度＋WM_CLOSE 干净退出后 INSTDIR 自删——**不能 Stop-Process**：杀进程跳过退出路径＝自删子进程不产生）。🔴 **keep=0（真删 userData）不在此脚本测**——真 `%APPDATA%\linkdesk` 删了不可逆，实机验证归 3c「卸载两分支各一次」；keep=0 的删除与程序树删除是同一段 WipeTree，路 1 已实删验证。🔴 工人带**目标体检闸**：卸载目录必须真有 `LinkDesk.exe`（与 VerifyInstall 同判据），开发壳 out\／下载夹里的裸 setup.exe 都过不了闸——只演流程不删任何东西（360 关着也不许抱侥幸）。`-Road <1..3>` 单跑 |
 | `gen-ui-rc.mjs` | 生成 `out\ui.gen.rc` ＋ `out\ui.manifest`：把 `app.html/css/js` 与 `i18n/*.json` 编成 RCDATA（id 3 清单、id 10+ 文件）。**单文件产品态必须**——拼合后的 setup.exe 旁边没有 `app.html` |
-| `dom-probe.mjs` | **快速读 DOM**（见下）：在真页面里求值、算几何，不起截图不做 OCR。`--click`/`--rect`/`--text`/`--eval` **按命令行顺序**执行；`--attach` 连已在跑的实例、`--keep` 测完不关窗 |
+| `dom-probe.mjs` | **快速读 DOM**（见下）：在真页面里求值、算几何，不起截图不做 OCR。`--click`/`--rect`/`--text`/`--eval` **按命令行顺序**执行；`--assert <js>` 只认 `=== true`（假即退 1，给 CI 当门禁用）；`--attach` 连已在跑的实例、`--keep` 测完不关窗。端口默认 **9440**，起窗前**先探端口**（撞上正在跑的 LinkDesk 本体时当场报错，不再连到别人的 target——坑 21） |
+| `b1-path-test.mjs` | **路径规整回归**（19 判据，真页面求真函数）：`normalizeInstallDir` 的规整表（盘根/盘符/尾部斜杠/幂等/UNC/相对路径不规整）＋ `pathSyntaxError` 的语法闸（其中「`D:\` 不再报 root」是 B-1 的**旧行为红**）。只需开发壳 `out\bootstrapper.exe`，不起安装、不写注册表 ⇒ 已挂 CI 每次运行 |
 | `pix-diff.ps1` | 两张同尺寸 PNG 比像素：只回报差异点数／最大通道差／差异包围盒，**不落图**——回答「改了样式后哪一屏变了、变在哪一块」比人眼看图便宜得多（读图付 token）。`-A out\app-home.png -B out\base-home.png`（`-Tol` 默认 6） |
+
+### 发版前必跑清单（2026-10-02 立，台账 §五 D）
+
+**CI 已经替你跑掉的那部分**（`.github/workflows/build.yml`，构建出安装包之后）：
+`b1-path-test.mjs` **每次运行**都跑（10 秒级，且它是「盘根自动补层」的唯一守卫）；
+`guard-test` / `syswrite-test` / `uninstall-test` **只在 tag 上**跑（要真机注册表，而 windows-latest
+是一次性 VM，跑完即销毁——正是跑它们最干净的地方；每次 push 都跑等于给每次提交加十分钟）。
+**任一条红 = 本版不发**，别改成 `continue-on-error`。
+
+**剩下这些必须有人动手**（要真桌面 / 真键鼠 / 注册表语言，CI 跑不了或不该跑）：
+
+| 必跑 | 为什么非它不可 |
+|:--|:--|
+| `i18n-test.ps1` | 唯一验「词条真装载 ＋ 注册表语言真带出」的一支（探针页 iframe ＋ 1px 信标回传，不靠 OCR／时序运气） |
+| `install-test.ps1 -AllowSystemWrites` | 三路真安装（含界面态四段进度读数）。它会写真机注册表而**没有备份还原**（备份还原在 syswrite-test），故不进 CI 的无人值守链 |
+| `interact-test.ps1 -AllowDesktopMinimize` | 真键鼠验收（拖窗位移 / Enter / 下拉＋Esc / ✕）。要桌面清空且会**最小化用户全部前台窗口**并保持到跑完 ⇒ 只适合发版前安静的时段自己跑 |
+| `capture.ps1` / `cmp-shots.ps1` | 像素级目检（动了样式之后）。⚠️ 按上面「省钱的次序」：先 `dom-probe` 求值、再 `pix-diff.ps1` 比图，**确认非目检不可**再截图 |
+
+跑完界面态那几支，顺手看一眼 `%TEMP%` 里有没有 `linkdesk-bootstrapper-*` 残留（坑 20）。
 
 ### 快速读 DOM（不起截图、不做 OCR）
 
 「这句文案在不在」「这个元素的真实矩形多少」「点开的面板有没有出窗」——**直接在页面里求值**比截图读图准，也省。
 做法：宿主 `main.cpp` **没有**给 WebView2 设 `AdditionalBrowserArguments`（只按 `--debug` 开 DevTools），所以官方那条
-环境变量路线照样生效——起进程时带 `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS=--remote-debugging-port=9333`，
-`http://127.0.0.1:9333/json/list` 就列出页面 target（实测 Edg/140.0.3485.94），连上去对 `Runtime.evaluate` 求值即可。
+环境变量路线照样生效——起进程时带 `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS=--remote-debugging-port=9440`，
+`http://127.0.0.1:9440/json/list` 就列出页面 target（实测 Edg/140.0.3485.94），连上去对 `Runtime.evaluate` 求值即可。
 本机 Node v24 自带 `fetch` ＋ `WebSocket` ⇒ 脚本**零依赖**（这也是它写成 `.mjs` 而不是 `.ps1` 的原因：PS 5.1 没有 WebSocket 客户端）。
 
 ```cmd
@@ -284,6 +304,27 @@ node tools\dom-probe.mjs --preview "screen=home&lang=zh-CN" --click "#lkdd-btn" 
     的每步把退出码纳入记账（WARN 不许吞 import 失败）；③ 整键 export 的路径必须带 `HKCU\` 前缀；
     ④ 单值还原用 .NET（带 `GetValueKind`，值不存在时 kind 留空 ⇒ 还原=删掉——`GetValueKind` 对
     不存在的值会**抛 IOException**，要先判 `GetValue` 返回非 null）。
+19. 🔴 **选中盘根（`D:\`）曾会被页面判成非法路径**（台账 §二 B-1，2026-10-02 用户拍板修）。
+    旧行为：`pathSyntaxError('D:\\')` 回 `root` ⇒ 输入框当场标红。B-1 之后页面**先补层再判**：
+    用户亲手给的目录（浏览对话框选完 / 手输后失焦 / 点安装时，共三处）末段不是 `linkdesk`
+    （不分大小写）就追加一层 ⇒ `D:\` 变 `D:\linkdesk`，再不会混装（「卸载＝整树递归删」也从
+    隐患变成安全）。**三处刻意不碰**：① 从别处来的目录一律不规整——ARP 反推的旧目录（覆盖装必须
+    落回同一处，改了＝另装一份）、宿主 `?dir=` 注入的默认值、`--silent` 走的 `DefaultInstallDir()`；
+    ② 宿主 `--dir=` 仍是**精确指定、不补层**（故既有测试一条都不用改）；③ i18n 的
+    `installer.path.err.root` 词条**不删**——宿主 `ValidateInstallDir` 的 root 判留着，`--dir=D:\`
+    那条路还会回来。判据 `tools/b1-path-test.mjs`（真页面求真函数，19 条），其中
+    「`pathSyntaxError('D:\\') === ''`」就是这条的**旧行为红**。
+20. 🔴 **退出时清临时 UI 目录，撞上 `msedgewebview2.exe` 还在退场**（台账 §五 H）。症状：跑完界面态，
+    `%TEMP%` 里留着 `linkdesk-bootstrapper-<pid>` 与它的 `.wv2data`——文件被浏览器进程占着，一次
+    `DeleteFile` 删不掉，而旧代码删一遍就不管了。**改法两条**：① `RemoveTree` 带**有界重试**
+    （10 × 200ms）；② `ResolveUiRoot()` **先清旧、再建新**（把 `linkdesk-bootstrapper-*` 全扫一遍
+    删掉）⇒ 上一次没删净的，下一次起窗顺手收走。**不做**的事：不枚举、不等待 `msedgewebview2.exe`
+    ——那是别人的进程，按名字杀会误伤用户正在用的软件。判据：`tools/install-test.ps1` 路 A
+    （退出后不留新目录 ＋ 起窗前预置的假残留必须被扫掉）。
+21. 🔴 **`dom-probe.mjs` 的 CDP 端口会与「正在运行的 LinkDesk 本体」撞**（2026-10-02 实测）。
+    旧默认端口 9333 被用户开着的 `LinkDesk.exe` 占着 ⇒ 连上的是**它的** target，而报错只有一句
+    「target 有 2 个但都不是 app.html」，查半天才发现压根不是我们的窗。**改法**：默认端口换 9440
+    ＋ 起窗前**先探端口**，被占就当场报错并指名占用者（`--port <别的端口>` 绕开）。
 
 ## 四、宿主契约（件 1b 起会用到）
 

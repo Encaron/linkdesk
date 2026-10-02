@@ -23,23 +23,32 @@
 //   node tools\dom-probe.mjs --preview "screen=home" --rect "#lkdd-btn" --rect ".xbtn"
 //   node tools\dom-probe.mjs --preview "screen=home" --click "#lkdd-btn" --rect "#lkdd-pop"
 //   node tools\dom-probe.mjs --uninstall --text "#u2"
-//   node tools\dom-probe.mjs --attach --port 9333 --eval "document.documentElement.dataset.mode"
+//   node tools\dom-probe.mjs --attach --port 9440 --eval "document.documentElement.dataset.mode"
 // 参数：
 //   --exe <path>   默认 ..\out\bootstrapper.exe（开发态壳）；产品态给拼好的 setup exe 也行
 //   --preview <q>  页面 query（同官方口径，如 `screen=home&custom=1`；屏名须在当前模式白名单里，否则静默不切）
 //   --uninstall    加 `--uninstall`（720×540 卸载态）
-//   --port <n>     CDP 端口，默认 9333
+//   --port <n>     CDP 端口，默认 9440
+//                  🔴 起窗前**先探端口**：被占就当场报错并指名占用者，不再硬连。
+//                  （2026-10-02 实机踩过：默认 9333 与**正在运行的 LinkDesk 本体**撞了，
+//                   于是拿到的是它的 target —— 报错只有「target 有 2 个但都不是 app.html」，
+//                   查半天才发现压根不是我们的窗。换成 9440 + 预探。）
 //   --settle <ms>  等加载/动画，默认 2500（点击后另等 400ms 让 0.2s 过渡跑完）
 //   --click <sel>  求值前先点一下（可重复，按命令行顺序）
 //   --rect <sel>   {x,y,w,h,right,bottom,outL,outR,outB,vis,win,text}——元素在**窗口坐标系**里的实际几何
 //                  （out* = 出窗左/右/下三向，「面板展开有没有被裁」就看它；win = 视口尺寸）
 //   --text <sel>   textContent（截尾）
 //   --eval <js>    自由表达式（`returnByValue` 原样回传，Promise 会 await）
+//   --assert <js>  同 --eval，但要**判真假**：表达式求值结果 `=== true` → ✅；其余（false / null /
+//                  对象 / 抛错）→ 🔴 且退出码 1，并把实得值打出来。所以断言表达式**只返回布尔**，
+//                  细节靠多跑一条 `--eval`（或让它在 false 时 throw）。
+//                  给 CI / 一键回归用——台账 §二 B-1 的路径规整就是这么卡的。
 //   --keep         测完不关窗（排查用）
 // 退出码：0 全通；1 出错（等不到 CDP 页面 / 页面里抛错 / 找不到必需参数）。
 // ⚠️ 输出里 `win` 是页面视口尺寸——与 mockup 画布（780×570 / 卸载 720×540）对账时用它，别用窗口外框。
 
 import { spawn } from 'node:child_process';
+import net from 'node:net';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -49,7 +58,7 @@ const has = (n) => argv.includes(n);
 const one = (n, d = null) => { const i = argv.indexOf(n); return i >= 0 ? argv[i + 1] : d; };
 
 const exe = one('--exe', path.join(here, '..', 'out', 'bootstrapper.exe'));
-const port = Number(one('--port', '9333'));
+const port = Number(one('--port', '9440'));
 const settle = Number(one('--settle', '2500'));
 const keep = has('--keep');
 const attach = has('--attach');
@@ -57,7 +66,7 @@ const attach = has('--attach');
 // 动作**按命令行顺序**执行——这条对本工具很关键：语言下拉那种「点开才露出来」的面板，
 // 量法就是先 `--click` 再 `--rect`；乱序执行量到的是点开前的几何，会得出错误的「没出窗」结论。
 const actions = argv.reduce((acc, a, i) => {
-  const kind = { '--click': 'click', '--rect': 'rect', '--text': 'text', '--eval': 'eval' }[a];
+  const kind = { '--click': 'click', '--rect': 'rect', '--text': 'text', '--eval': 'eval', '--assert': 'assert' }[a];
   return kind ? [...acc, { kind, arg: argv[i + 1] }] : acc;
 }, []);
 
@@ -112,6 +121,15 @@ class Cdp {
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+/** 端口上已经有东西在听吗？（起窗前问一次——被占的端口会让我们读到**别人的** target） */
+const portListening = (p) => new Promise((res) => {
+  const s = net.connect({ host: '127.0.0.1', port: p });
+  const done = (v) => { try { s.destroy(); } catch {} res(v); };
+  s.on('connect', () => done(true));
+  s.on('error', () => done(false));
+  s.setTimeout(1200, () => done(false));
+});
+
 async function pageTarget(timeoutMs) {
   const t0 = Date.now();
   let last = '';
@@ -130,6 +148,18 @@ async function pageTarget(timeoutMs) {
 let child = null;
 try {
   if (!attach) {
+    // 🔴 起窗前先探端口：占了就**当场说清是谁占的**，别硬连（硬连会在 15 秒后报一句
+    //    「target 有 N 个但都不是 app.html」——那是别人的窗，误导排查方向）
+    if (await portListening(port)) {
+      let who = '';
+      try {
+        const v = await (await fetch(`http://127.0.0.1:${port}/json/version`)).json();
+        who = v.Browser ? `（${v.Browser}）` : '';
+      } catch { /* 不是 CDP：普通服务占着 */ }
+      throw new Error(
+        `端口 ${port} 已被占用${who}——那不是我们要的窗，硬连会读到别人的 target。\n` +
+        `  改端口：--port <别的端口>（如 9441）；想知道是谁：netstat -ano | findstr :${port}`);
+    }
     const args = [];
     if (has('--uninstall')) args.push('--uninstall');
     const q = one('--preview');
@@ -157,6 +187,13 @@ try {
       console.log('rect   : ' + JSON.stringify(await cdp.eval(rectJs(arg))));
     } else if (kind === 'text') {
       console.log('text   : ' + JSON.stringify(await cdp.eval(`(() => { const el = document.querySelector(${JSON.stringify(arg)}); return el ? (el.textContent || '').trim() : null; })()`)));
+    } else if (kind === 'assert') {
+      // 断言动作：**只有 `=== true` 算过**（对象/字符串/undefined 一律红——避免「返回个对象就算过」的假绿）
+      const got = await cdp.eval(arg);
+      const pass = got === true;
+      console.log(`${pass ? '✅ assert' : '🔴 assert'} : ${arg.slice(0, 90)}${arg.length > 90 ? '…' : ''}` +
+        (pass ? '' : ` —— 实得 ${JSON.stringify(got)}`));
+      if (!pass) process.exitCode = 1;
     } else {
       console.log('eval   : ' + JSON.stringify(await cdp.eval(arg)));
     }

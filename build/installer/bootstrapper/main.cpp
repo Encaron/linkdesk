@@ -50,6 +50,12 @@ static int kWinW = 780, kWinH = 570;
 static bool g_uninstall = false;             // --uninstall：自绘卸载器模式（页面拿到 ?mode=uninstall）
 static const wchar_t kVHost[] = L"installer.local";   // → exe 所在目录
 static const wchar_t kStartUrl[] = L"https://installer.local/app.html";
+/** 「许可协议」链接的去处（台账 §五 A：页面一直在发 `open-license`，宿主**从来没受理** ⇒ 死按钮）。
+ *  指仓库根那份 LICENSE（MIT）。**用 `HEAD` 而不是写死分支名**——默认分支今天叫 electron
+ *  （2026-10-02 用 GitHub API 核过：default_branch=electron、仓库 public、license=MIT），
+ *  将来改名这个链接自己跟着走，不会烂。⛔ 别改成 raw.githubusercontent：浏览器里是纯文本，
+ *  用户要的是能读的页面。 */
+static const wchar_t kLicenseUrl[] = L"https://github.com/Encaron/linkdesk/blob/HEAD/LICENSE";
 
 static HWND g_hwnd = nullptr;
 // 🔴 必须全局持有：控制器一旦释放，WebView2 连同浏览器实例即被销毁（导航事件永不触发）
@@ -1508,21 +1514,42 @@ static const int kUiManifestRes = 3;
 static const int kUiFileResBase  = 10;
 static std::wstring g_uiTempDir;   // 摊出来的临时目录（dev 态为空 = 退出时不用清）
 
-/** 递归删目录（退出时清临时 UI；失败当无事——%TEMP% 本来就会被系统回收）。 */
-static void RemoveTree(const std::wstring& dir)
+/** 删一遍目录树；返回 false = 还有没删掉的（交给外面重试）。 */
+static bool RemoveTreeOnce(const std::wstring& dir)
 {
+    if (GetFileAttributesW(dir.c_str()) == INVALID_FILE_ATTRIBUTES) return true;   // 不存在 = 已达成
+    bool allOk = true;
     WIN32_FIND_DATAW fd = {};
     HANDLE h = FindFirstFileW((dir + L"\\*").c_str(), &fd);
     if (h != INVALID_HANDLE_VALUE) {
         do {
             if (wcscmp(fd.cFileName, L".") == 0 || wcscmp(fd.cFileName, L"..") == 0) continue;
             std::wstring p = dir + L"\\" + fd.cFileName;
-            if (fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) RemoveTree(p);
-            else { SetFileAttributesW(p.c_str(), FILE_ATTRIBUTE_NORMAL); DeleteFileW(p.c_str()); }
+            if (fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
+                if (!RemoveTreeOnce(p)) allOk = false;
+            } else {
+                SetFileAttributesW(p.c_str(), FILE_ATTRIBUTE_NORMAL);
+                if (!DeleteFileW(p.c_str())) allOk = false;
+            }
         } while (FindNextFileW(h, &fd));
         FindClose(h);
     }
-    RemoveDirectoryW(dir.c_str());
+    if (!RemoveDirectoryW(dir.c_str()) && GetLastError() != ERROR_FILE_NOT_FOUND) allOk = false;
+    return allOk;
+}
+
+/** 递归删目录（退出时清临时 UI）。
+ *  🔴 **带回试**（台账 §五 H 实机所见）：退出瞬间 msedgewebview2.exe 还在退场，摊出来的
+ *     app.* / fonts 被占着 ⇒ 原来那种"删一遍就不管"会让 `%TEMP%\linkdesk-bootstrapper-<pid>`
+ *     成片留下。现在：删不干净就 `Sleep` 200ms 再来，最多 10 次（2s 窗口）。
+ *  ⛔ **不要**为此去枚举/等待 `msedgewebview2.exe` 进程——那等于把清理绑死在别人的进程名上，
+ *     WebView2 一改名/一换实现就烂；「重试几秒，还不行算了」自己能好（%TEMP% 系统会回收）。 */
+static void RemoveTree(const std::wstring& dir)
+{
+    for (int i = 0; i < 10; ++i) {
+        if (RemoveTreeOnce(dir)) return;
+        Sleep(200);
+    }
 }
 
 /** 页面根取在哪：
@@ -1543,7 +1570,19 @@ static std::wstring ResolveUiRoot()
     DWORD sz = SizeofResource(nullptr, mf);
     if (!txt || !sz) return ExeDir();
 
-    std::wstring dir = TempBase() + L"\\linkdesk-bootstrapper-" + std::to_wstring(GetCurrentProcessId());
+    // 台账 §五 H：**先清旧、再建新**。历史版本的"删一遍不管"在 %TEMP% 里攒下一堆
+    // linkdesk-bootstrapper-<pid>；新 pid 与它们不同名，只清自己那条是扫不到的。
+    // 这里把同前缀的都清一遍（别的安装器实例正在用？句柄被占 ⇒ 删不掉就跳过，不阻塞本次安装）。
+    std::wstring base = TempBase();
+    WIN32_FIND_DATAW sf = {};
+    HANDLE sh = FindFirstFileW((base + L"\\linkdesk-bootstrapper-*").c_str(), &sf);
+    if (sh != INVALID_HANDLE_VALUE) {
+        do {
+            if (sf.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) RemoveTree(base + L"\\" + sf.cFileName);
+        } while (FindNextFileW(sh, &sf));
+        FindClose(sh);
+    }
+    std::wstring dir = base + L"\\linkdesk-bootstrapper-" + std::to_wstring(GetCurrentProcessId());
     RemoveTree(dir);                       // 同 pid 的残留（理论上没有）先清掉
     CreateDirectoryW(dir.c_str(), nullptr);
 
@@ -1747,6 +1786,8 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, PWSTR, int nCmdShow)
                     //   {"type":"install-done","launch":true} → 完成屏出口（件 2b：勾了「运行 LinkDesk」就拉起）
                     //   {"type":"browse-dir","dir":"..."} → 目录对话框（件 2b；回 `browse-dir-done`）
                     //   {"type":"set-lang","lang":"zh-CN"} → 语言持久化写侧（件 2b）
+                    //   {"type":"open-license"} → 用系统默认浏览器打开许可协议（台账 §五 A，
+                    //                             地址见 kLicenseUrl）
                     //   {"type":"cancel"} → 取消安装（件 2a；回滚归 2c）
                     // ── 件 2c 新增 ────────────────────────────────────────────────
                     //   {"type":"install-start","allowOlder":true} → 版本守卫屏上点了「仍要安装」
@@ -1800,6 +1841,14 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, PWSTR, int nCmdShow)
                                 }
                             } else if (m.find(L"\"browse-dir\"") != std::wstring::npos) {
                                 PickInstallDir(JsonGetString(m, L"dir"));
+                            } else if (m.find(L"\"open-license\"") != std::wstring::npos) {
+                                // 台账 §五 A：页面一直在发这条，宿主**从来没受理** ⇒ 欢迎屏的
+                                // 「许可协议」是死按钮（点下去毫无回话）。受理 = 用系统默认浏览器
+                                // 打开仓库根那份 LICENSE（地址见 kLicenseUrl）。
+                                // ShellExecuteW 不阻塞 UI 线程；打不开也**不弹框**——开浏览器失败
+                                // 不是安装流程该管的事，静默即可（别把用户吓一跳）。
+                                ShellExecuteW(nullptr, L"open", kLicenseUrl, nullptr, nullptr,
+                                              SW_SHOWNORMAL);
                             } else if (m.find(L"\"set-lang\"") != std::wstring::npos) {
                                 // 件 2b：语言持久化**写侧**（读侧 1c 已通，见 ReadSavedLanguage）
                                 std::wstring code = JsonGetString(m, L"lang");
@@ -1912,6 +1961,8 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, PWSTR, int nCmdShow)
     // 单文件产品态：把摊出来的页面连同 .wv2data 一起清掉（dev 态 g_uiTempDir 为空，不动 out\uff09
     if (!g_uiTempDir.empty()) {
         g_controller.Reset();
+        Sleep(300);                        // 给 msedgewebview2.exe 一点开始退场的时间；
+                                           // 真结束与否不靠等——由 RemoveTree 的重试兜住
         RemoveTree(g_uiTempDir);
     }
     // 件 2d：卸载器自删（产品态 = INSTDIR\linkdesk-setup.exe 才会真删；只认 --uninstall 路径，

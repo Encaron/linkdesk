@@ -54,7 +54,12 @@ bool WriteArpEntry(const std::wstring& installDir, const std::wstring& version);
  *  默认的开始菜单项在 nsis 退休后**没人做了 ⇒ 必须自己建**）。
  *  🔴 路径一律走 `SHGetKnownFolderPath`——实机桌面被重定向到 `D:\360MoveData\...`，
  *  写 `%USERPROFILE%\Desktop` 会**静默建到错地方**（实测量到，见 README 坑 11）。
- *  ⚠️ 调用前该线程必须已 `CoInitializeEx`。 */
+ *  ⚠️ 调用前该线程必须已 `CoInitializeEx`。
+ *  **一共三条**（2026-10-02 起；台账 §三 #3/#4）：
+ *    ① 桌面 `LinkDesk.lnk`（启动）② 开始菜单 `LinkDesk.lnk`（启动）
+ *    ③ 开始菜单 `<卸载项名>.lnk`（**卸载**：目标 = `<INSTDIR>\linkdesk-setup.exe`，带 `--uninstall`）。
+ *  ③ 是 `app.html` 一直写在注释里的那条「开始菜单卸载项」——原实现漏建，用户实机找不到卸载入口。
+ *  ⚠️ ③ 与 ② **必须不同名**（同名会互相覆盖）；图标一律传**纯路径**（不带 `,0`，§三 #3）。 */
 bool CreateShortcuts(const std::wstring& installDir);
 
 // ── 读侧 ──────────────────────────────────────────────────────────────────
@@ -81,7 +86,7 @@ bool WriteInstallerLanguage(const std::wstring& code);
 // 必须同笔改那里，退役后本文件即唯一真相源）。两处**有意超出** nsh 清单（出处 02 §二幕⑨
 // 「反注册：快捷方式 / 右键菜单 / 编辑器注册 / PATH 项 / 安装目录」——nsh 时代这两件由
 // electron-builder 代做，T3-b 后没人做了）：
-//   · `DeleteShortcuts`（桌面＋开始菜单 .lnk，与 CreateShortcuts 严格互逆）
+//   · `DeleteShortcuts`（桌面＋开始菜单共三条 .lnk——两条启动项＋一条卸载项，与 CreateShortcuts 严格互逆）
 //   · `DeleteArpEntry`（nsh 的卸载器由 NSIS 生成、自动删自己的 ARP 键；自绘卸载器要自己删）
 // 安装目录与 userData 的目录树删除不在此层（归 main.cpp 的工人线程，进度要按文件计数）。
 
@@ -111,7 +116,9 @@ bool DeleteAssociations();
  *  无论动没动 PATH，`PathBackup`/`PathAdded` 两个标记值都会删掉（同 nsh）。 */
 bool RestorePath(bool* touched);
 
-/** 桌面 ＋ 开始菜单 `LinkDesk.lnk` 删除（与 CreateShortcuts 同路径，不存在则无害）。 */
+/** 桌面 ＋ 开始菜单快捷方式删除——**三条一起删**（`LinkDesk.lnk` ×2 ＋ 卸载项 ×1，
+ *  路径与 CreateShortcuts 同款，不存在则无害）。
+ *  🔴 卸载项**漏删比不建更糟**：会留下一条指向已消失程序、已消失 exe 的死「卸载」入口。 */
 bool DeleteShortcuts();
 
 /** ARP 卸载项整键删（键名 = 写侧同一条 v5 UUID）。 */

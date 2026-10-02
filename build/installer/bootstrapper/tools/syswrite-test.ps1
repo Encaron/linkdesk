@@ -188,6 +188,9 @@ $TREE_ROOTS = @(
 
 $desktopLnk = Join-Path ([Environment]::GetFolderPath('Desktop')) 'LinkDesk.lnk'
 $menuLnk    = Join-Path ([Environment]::GetFolderPath('Programs')) 'LinkDesk.lnk'
+# 台账 §三 #4：开始菜单**多了一条卸载项**（`Uninstall LinkDesk`）。它同样要进备份/还原——
+# 不备份的话，本测试每跑一次就往用户开始菜单里丢一条指向临时目录的卸载快捷方式（跑完还不清）。
+$uninstallLnk = Join-Path ([Environment]::GetFolderPath('Programs')) 'Uninstall LinkDesk.lnk'
 $backDir    = Join-Path $Work '_back'
 $stateFile  = Join-Path $Work '_state.json'
 
@@ -237,7 +240,8 @@ function Restore-All {
         }
     } else { Restore-Step '删 Environment → Path' { Reg-DelValue 'Environment' 'Path' } }
     foreach ($pair in @(@{ had = $st.desktopHad; f = 'desktop.lnk'; dst = $desktopLnk },
-                        @{ had = $st.menuHad;    f = 'menu.lnk';    dst = $menuLnk })) {
+                        @{ had = $st.menuHad;    f = 'menu.lnk';    dst = $menuLnk },
+                        @{ had = $st.uninstallHad; f = 'uninstall.lnk'; dst = $uninstallLnk })) {
         if ($pair.had) { Restore-Step "放回 $($pair.f)" { Copy-Item -LiteralPath (Join-Path $backDir $pair.f) -Destination $pair.dst -Force } }
         else { Restore-Step "删 $($pair.dst)" { Remove-Item -LiteralPath $pair.dst -Force -ErrorAction SilentlyContinue } }
     }
@@ -283,8 +287,10 @@ $regAppsHad = Reg-HasValue 'Software\RegisteredApplications' 'LinkDesk'
 $envHad = Reg-HasValue 'Environment' 'Path'
 $desktopHad = Test-Path -LiteralPath $desktopLnk
 $menuHad = Test-Path -LiteralPath $menuLnk
+$uninstallHad = Test-Path -LiteralPath $uninstallLnk
 if ($desktopHad) { Copy-Item -LiteralPath $desktopLnk -Destination (Join-Path $backDir 'desktop.lnk') -Force }
 if ($menuHad) { Copy-Item -LiteralPath $menuLnk -Destination (Join-Path $backDir 'menu.lnk') -Force }
+if ($uninstallHad) { Copy-Item -LiteralPath $uninstallLnk -Destination (Join-Path $backDir 'uninstall.lnk') -Force }
 
 $arpName0 = Reg-Get $ARP 'DisplayName'
 # 🔴 卸载串才是**真正会变**的那个值：DisplayName 无论装到哪都是 `LinkDesk <ver>`，
@@ -304,8 +310,9 @@ $envKindNum = Reg-Kind 'Environment' 'Path'      # 枚举数（还原时经 Reg-
     envKind    = if ($envHad) { $envKindNum } else { 1 }
     desktopHad = $desktopHad
     menuHad    = $menuHad
+    uninstallHad = $uninstallHad
 } | ConvertTo-Json | Set-Content -LiteralPath $stateFile -Encoding UTF8
-Write-Host "备份完成：$($exports.Count) 个键树导出 · 桌面 lnk=$desktopHad · 开始菜单 lnk=$menuHad · 状态 $stateFile"
+Write-Host "备份完成：$($exports.Count) 个键树导出 · 桌面 lnk=$desktopHad · 开始菜单 lnk=$menuHad · 卸载 lnk=$uninstallHad · 状态 $stateFile"
 $path0 = $envVal
 
 # ── 装前反推表（静默安装的勾选值来源）─────────────────────────────────────────
@@ -425,13 +432,31 @@ try {
     Say ((Reg-Get 'Environment' 'Path') -eq $path0) "PATH 未改动（PathAdded 已在 ⇒ 幂等跳过）"
 
     # 快捷方式：目标必须是**这次**装的目录（实机桌面被重定向到 D:\360MoveData\… ⇒ 只能走 KnownFolder）
+    # 🔴 台账 §三 #3：**图标索引要读**（不只是目标）。曾经把 IconLocation 写成 `"<exe>,0,0"`——
+    #    那是 NSIS 的三段写法，WScript/资源管理器会把这串当**文件名**找 ⇒ 找不到 ⇒ 回落白板图标。
+    #    WScript 的 IconLocation 回读已经归一（`path,index`），所以断言的正是「索引恰好一个」。
     $ws = New-Object -ComObject WScript.Shell
     foreach ($lnk in @($desktopLnk, $menuLnk)) {
         if (Test-Path -LiteralPath $lnk) {
-            $t = $ws.CreateShortcut($lnk).TargetPath
+            $sc = $ws.CreateShortcut($lnk)
+            $t = $sc.TargetPath
             Say ($t -eq (Join-Path $d1 'LinkDesk.exe')) "快捷方式 $([IO.Path]::GetFileName($lnk)) 指向 $t"
+            Say ($sc.IconLocation -eq "$(Join-Path $d1 'LinkDesk.exe'),0") `
+                "快捷方式 $([IO.Path]::GetFileName($lnk)) 图标 = `"$($sc.IconLocation)`"（应 `"<安装目录>\LinkDesk.exe,0`"）"
         } else { Say $false "快捷方式缺失：$lnk" }
     }
+
+    # 🔴 台账 §三 #4：开始菜单**卸载项**（`Uninstall LinkDesk.lnk`）。
+    #    与启动项**不同名**是刻意的：同名会互相覆盖（一条 .lnk 只能一个目标）。
+    #    目标 = 安装根那份自拷贝的卸载器；参数 `--uninstall`；图标同样「路径 + 单个 0」。
+    if (Test-Path -LiteralPath $uninstallLnk) {
+        $sc = $ws.CreateShortcut($uninstallLnk)
+        Say ($sc.TargetPath -eq (Join-Path $d1 'linkdesk-setup.exe')) `
+            "卸载项指向 $($sc.TargetPath)（应 <安装目录>\linkdesk-setup.exe）"
+        Say ($sc.Arguments -eq '--uninstall') "卸载项参数 = `"$($sc.Arguments)`"（应 --uninstall）"
+        Say ($sc.IconLocation -eq "$(Join-Path $d1 'linkdesk-setup.exe'),0") `
+            "卸载项图标 = `"$($sc.IconLocation)`"（应 `"<安装目录>\linkdesk-setup.exe,0`"）"
+    } else { Say $false "开始菜单卸载项缺失：$uninstallLnk（台账 §三 #4：卸载不能只靠设置里那条）" }
 
     # ══ 路 1b：静默 · 反推为勾 ⇒ `*\shell` 的写入侧 ═══════════════════════════
     Write-Host "`n=== 路 1b：预置三个右键键（模拟「当初勾过」）⇒ 静默装必须改写指向本次目录 ==="

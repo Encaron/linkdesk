@@ -227,6 +227,9 @@ const BOOTSTRAPPER_REQUIRED = [
   // OFL.txt 少了则是许可不合规（SIL OFL 1.1 要求字体分发须随附许可副本）。
   "bootstrapper/fonts/newsreader-latin-400.woff2",
   "bootstrapper/fonts/newsreader-latin-400-italic.woff2",
+  // 台账 §五 B：Geist 从来没生效过（评审页与实机都静默回落 Segoe UI）——补齐这套文件
+  "bootstrapper/fonts/geist-latin-400.woff2",
+  "bootstrapper/fonts/geist-mono-latin-400.woff2",
   "bootstrapper/fonts/OFL.txt",
 ];
 
@@ -241,6 +244,8 @@ const BOOTSTRAPPER_COMPILE_SOURCES = [
   // 字体与许可文本经 `gen-ui-rc.mjs` → `ui.res` 编进 exe（不是编译源，但同样决定产物内容）
   "bootstrapper/fonts/newsreader-latin-400.woff2",
   "bootstrapper/fonts/newsreader-latin-400-italic.woff2",
+  "bootstrapper/fonts/geist-latin-400.woff2",
+  "bootstrapper/fonts/geist-mono-latin-400.woff2",
   "bootstrapper/fonts/OFL.txt",
 ];
 
@@ -248,7 +253,12 @@ const BOOTSTRAPPER_COMPILE_SOURCES = [
 const UI_FILES = ["app.html", "app.css", "app.js"];
 
 /** 随包字体：同上两态，但开发态的副本落在 `out\fonts\`（子目录，故与 UI_FILES 分开判）。 */
-const FONT_FILES = ["newsreader-latin-400.woff2", "newsreader-latin-400-italic.woff2"];
+const FONT_FILES = [
+  "newsreader-latin-400.woff2",
+  "newsreader-latin-400-italic.woff2",
+  "geist-latin-400.woff2",
+  "geist-mono-latin-400.woff2",
+];
 
 /** build.cmd 的体积预算（README §4.2「target ≤ 5MB single-file exe」）。 */
 const BOOTSTRAPPER_MAX_BYTES = 5 * 1024 * 1024;

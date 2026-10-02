@@ -65,8 +65,21 @@ const chrome = html.slice(b0, b1).replace(/<script\b[\s\S]*?<\/script>/g, '');
 
 // 每节的小手术——全部按 app.js 的运行时口径定格（缺标记即抛错，防止静默错位）
 function must(s, from, to) { if (!s.includes(from)) throw new Error('定格标记缺失: ' + from); return s.split(from).join(to); }
-const UD = 'C:\\Users\\fengy\\AppData\\Roaming\\linkdesk';
-const VER = '0.2.33';
+/* 标准位占位（台账 §三 #2 / §五 C：出厂件里不许再出现开发机绝对路径）——
+   卸载完成屏的 userData 徽章就定格成这个。 */
+const UD = '%APPDATA%\\linkdesk';
+const VER = '0.2.35';
+
+/* 台账 §二 B-1 的真源：从 app.js **原文**里取出 `normalizeInstallDir` 来算落点。
+   🔴 生成器里硬编码「D:\\ ⇒ D:\\linkdesk」＝生成器与产品两张皮（评审页绿、产品红照样看不出来）。
+   这里取出的是产品那份函数的源码本体；浏览器侧同一组断言的活跑法见 dom-probe.mjs --eval
+   （`window.__lk.normalizeInstallDir`，app.js 导出表里的同一个函数）。 */
+const normalizeInstallDir = (() => {
+  const m = readFileSync(join(root, 'app.js'), 'utf8')
+    .match(/function normalizeInstallDir\(v\)\s*\{[\s\S]*?\n\}/);
+  if (!m) throw new Error('app.js 里找不到 normalizeInstallDir —— 第 3 幕取不到真源');
+  return new Function(m[0] + '\nreturn normalizeInstallDir;')();
+})();
 
 // 进度定格：按 app.js 同一套分段阈值（装 70/80/92，卸 60/80/92）＋同一段头词条
 function progTweak(install, pct) {
@@ -105,73 +118,32 @@ function errTweak(code, msg) {
 }
 const setPathErr = (s, value, key) => {
   s = must(s, 'id="custom"', 'id="custom" class="open"');
-  s = must(s, 'value="C:\\Users\\fengy\\AppData\\Local\\Programs\\linkdesk"', `value="${value}"`);
+  s = must(s, 'value="%LocalAppData%\\Programs\\linkdesk"', `value="${value}"`);
   s = must(s, '<div class="patherr" id="patherr" role="alert" hidden></div>',
     `<div class="patherr" id="patherr" role="alert">${t(key)}</div>`);
   return must(s, `data-role="path" value="${value}"`, `data-role="path" class="bad" value="${value}"`);
 };
-/* ★ 屏内切片助手（2026-10-02 加，给「更多配置」页定格用）——
-   must() 是 split/join ＝ **全串替换**：直接改 `data-opt="filemenu">` 会连**欢迎屏自定义展开区**
-   那一份一起改（两屏同名同语义，正是本件要的共性）。所以凡"只该改某一屏"的手术，必须先把
-   该屏 <div class="scr" id="s-x">…</div> 切出来（配对计数、幕内嵌套不限层），在切片内改，再拼回。 */
-function inScreen(s, id, fn) {
-  const at = s.indexOf(`id="s-${id}"`);
-  if (at < 0) throw new Error('屏标记缺失: s-' + id);
-  const start = s.lastIndexOf('<div', at);
-  if (start < 0) throw new Error('屏起始标记缺失: s-' + id);
-  let depth = 0, end = -1;
-  const re = /<div\b|<\/div>/g;
-  re.lastIndex = start;
-  let m;
-  while ((m = re.exec(s))) {
-    if (m[0] === '</div>') { if (--depth === 0) { end = m.index + 6; break; } }
-    else depth++;
-  }
-  if (end < 0) throw new Error('屏未闭合: s-' + id);
-  return s.slice(0, start) + fn(s.slice(start, end)) + s.slice(end);
-}
-
-/* 「更多配置」页定格（4 态）。逐项与 app.js 对齐：
-   · 默认态＝filemenu/dirmenu 未勾、editor/path 已勾 —— app.js 的 OPT_DEFAULTS 原样；
-   · placeholder＝宿主自报的默认缓存位置（真机上由 ?cachedir= 落成 placeholder）——
-     **标记里一个真实路径都不写**，评审页这份真值是定格用，不是产品源里的字符串；
-   · 判词复用 installer.path.err.*（app.js 就是这么复用的），改错时输入框加 class="bad"（同 #patherr 手法）。 */
-const CACHE_DEFAULT = UD;                    // = %APPDATA%\linkdesk（默认缓存位置，仅评审页定格用）
-function moreTweak(o) {
-  o = o || {};
-  const val = o.value != null ? o.value : '';
-  const ph = o.ph != null ? o.ph : CACHE_DEFAULT;
-  return s => inScreen(s, 'more', seg => {
-    seg = must(seg,
-      '<input id="cachedir" data-role="cachedir" value="" spellcheck="false"',
-      `<input id="cachedir" data-role="cachedir" value="${val}" placeholder="${ph}" spellcheck="false"`);
-    if (o.check) for (const k of o.check) seg = must(seg, `data-opt="${k}">`, `data-opt="${k}" checked>`);
-    if (o.err) {
-      seg = must(seg, `data-role="cachedir" value="${val}"`, `data-role="cachedir" class="bad" value="${val}"`);
-      seg = must(seg, '<div class="patherr" id="cacheerr" role="alert" hidden></div>',
-        `<div class="patherr" id="cacheerr" role="alert">${t(o.err)}</div>`);
-    }
-    return seg;
-  });
-}
-
 const tweaks = {
   homeCustom: s => must(s, 'id="custom"', 'id="custom" class="open"'),
-  homeBadRoot: s => setPathErr(s, 'C:', 'installer.path.err.root'),
+  /* 台账 §二 B-1（2026-10-02 用户拍板）：安装目录自动补一层 `\linkdesk`。
+     本幕定格「输 `D:\` ⇒ 失焦后自动补成 `D:\linkdesk`，**没有报错行**」——旧口径那条
+     「输盘根 ⇒ 报 root 错」已随 B-1 撤掉（页侧 root 分支不可达；宿主侧 `--dir=` 那条仍拦）。
+     🔴 落点取自上面那个真源函数（不硬编码）；无报错 = `.patherr` 保持 hidden。
+     真机上这一步是 blur handler 干的活：`输入框.blur()` → normalize → 写回 → 校验（app.js wirePathInput）。 */
+  homeDollarRoot: s => {
+    s = must(s, 'id="custom"', 'id="custom" class="open"');
+    return must(s, 'value="%LocalAppData%\\Programs\\linkdesk"',
+      `value="${normalizeInstallDir('D:\\')}"`);
+  },
   homeBadWrite: s => setPathErr(s, 'C:\\Windows', 'installer.path.err.write'),
-  // ④b 更多配置页四态（2026-10-02 用户立项）
-  moreDefault: moreTweak({}),
-  moreAll: moreTweak({ check: ['filemenu', 'dirmenu'] }),
-  moreSet: moreTweak({ value: 'D:\\LinkDesk\\cache' }),
-  moreBad: moreTweak({ value: 'cache', err: 'installer.path.err.absolute' }),
   guardSame: s => must(must(must(s,
     'id="ver-title"></h1>', `id="ver-title">${t('installer.version.title.same', { version: VER })}</h1>`),
     'id="ver-sub" data-drag></div>', `id="ver-sub" data-drag>${t('installer.version.body.same', { version: VER })}</div>`),
     'id="ver-code" data-drag></div>', `id="ver-code" data-drag>${VER}</div>`),
   guardOlder: s => must(must(must(s,
     'id="ver-title"></h1>', `id="ver-title">${t('installer.version.title.older')}</h1>`),
-    'id="ver-sub" data-drag></div>', `id="ver-sub" data-drag>${t('installer.version.body.older', { installed: '0.2.34', incoming: VER })}</div>`),
-    'id="ver-code" data-drag></div>', `id="ver-code" data-drag>0.2.34  →  ${VER}</div>`),
+    'id="ver-sub" data-drag></div>', `id="ver-sub" data-drag>${t('installer.version.body.older', { installed: '0.2.36', incoming: VER })}</div>`),
+    'id="ver-code" data-drag></div>', `id="ver-code" data-drag>0.2.36  →  ${VER}</div>`),
   progI47: progTweak(true, 47), progI75: progTweak(true, 75), progI85: progTweak(true, 85), progI95: progTweak(true, 95),
   progU30: progTweak(false, 30), progU73: progTweak(false, 73), progU85: progTweak(false, 85), progU96: progTweak(false, 96),
   errDiskFull: errTweak('DISK_FULL', '需要 2097216 MB，目标盘只剩 719862 MB'),
@@ -191,16 +163,16 @@ const tweaks = {
     '<div class="unwarn" id="unwarn" role="status" aria-live="polite" hidden',
     '<div class="unwarn" id="unwarn" role="status" aria-live="polite"'),
   badgeKept: s => must(s,
-    'id="datbadge" data-drag>用户数据已保留 · C:\\Users\\fengy\\AppData\\Roaming\\LinkDesk</div>',
+    'id="datbadge" data-drag>用户数据已保留 · %APPDATA%\\linkdesk</div>',
     `id="datbadge" data-drag>${t('installer.uninstall.finish.kept', { path: UD })}</div>`),
   badgeGone: s => must(s,
-    '<div class="datbadge" id="datbadge" data-drag>用户数据已保留 · C:\\Users\\fengy\\AppData\\Roaming\\LinkDesk</div>',
+    '<div class="datbadge" id="datbadge" data-drag>用户数据已保留 · %APPDATA%\\linkdesk</div>',
     `<div class="datbadge gone" id="datbadge" data-drag>${t('installer.uninstall.finish.gone')}</div>`),
   lkddOpen: s => {
     s = must(s, '<div id="lkdd">', '<div id="lkdd" class="open">');
     const it = (code, label, on) =>
       `<button type="button" class="it${on ? ' on' : ''}" role="option" data-code="${code}" aria-selected="${on}">` +
-      '<svg class="ck" viewBox="0 0 14 14" fill="none" stroke="#2fae7c" stroke-width="2" aria-hidden="true"><path d="M2.5 7.5l3 3 6-7"/></svg>' +
+      '<svg class="ck" viewBox="0 0 14 14" fill="none" stroke-width="2" aria-hidden="true"><path d="M2.5 7.5l3 3 6-7"/></svg>' +
       `<span>${label}</span></button>`;
     return must(s,
       '<div id="lkdd-pop" role="listbox" aria-label="语言" data-i18n-aria="installer.lang.aria"></div>',
@@ -221,21 +193,13 @@ const sections = [
       look: '标题衬线 Newsreader；路径行默认值＝默认安装位；右上语言下拉与 ✕；主按钮 hover/焦点态。' },
     { n: '② 自定义展开', key: 'home', mod: 'homeCustom', pv: '?screen=home&custom=1',
       look: '展开动画终态：路径行＋「浏览」＋右键菜单等勾选项。' },
-    { n: '② 路径非法 · 行内报错（输 C: ⇒ root）', key: 'home', mod: 'homeBadRoot', pv: '页面真动作：输入 C:',
-      look: '页侧语法闸先拦：输入框变红＋ role=alert 文案「不要直接选整个盘」；不改全局错误屏。' },
+    { n: '② 路径规整 · 输盘根自动补层（B-1）', key: 'home', mod: 'homeDollarRoot', pv: '页面真动作：输入 D:\\ 后失焦',
+      look: '★ 台账 §二 B-1（2026-10-02 用户拍板）：用户自己选/自己敲的目录，最后一段不是 linkdesk 就自动补一层——输 D:\\ 得到 D:\\linkdesk，**不再报错**（旧口径「不要直接选整个盘」已撤；宿主侧 --dir= 那条仍拦）。落点取自 app.js 真源函数，不是这儿手写的。' },
     { n: '② 路径写不进 · 宿主实测（write）', key: 'home', mod: 'homeBadWrite', pv: '宿主 dir-invalid 回话',
       look: '宿主真试过写不进（如 C:\\Windows）就近报「没有权限」；文案不同、形态相同。' },
-    { n: '④b 更多配置 · 默认', key: 'more', mod: 'moreDefault', pv: '?screen=more',
-      look: '★ 本件新增页：欢迎屏「自定义安装」旁的「更多配置」进来。四项竖向排列（以后加配置项只加一行）；默认＝关联两项未勾、编辑器/PATH 已勾；缓存目录留空＝用默认位置（灰字是宿主自报的真值，标记里不写路径）。' },
-    { n: '④b 更多配置 · 四项已勾带过来', key: 'more', mod: 'moreAll', pv: '欢迎屏勾四项 → 更多配置',
-      look: '★ 用户点名的场景：在欢迎屏自定义展开区把四项都勾上，进这一页四项**是勾上的**（同一份勾选态，两屏共用；反向返回也同步）。' },
-    { n: '④b 更多配置 · 缓存目录已改', key: 'more', mod: 'moreSet', pv: '点「浏览…」选完回填',
-      look: '选了别的目录：输入框显示真值且可编辑。⚠️ 宿主侧「浏览…」尚未接线（件 2e）——发版前不接就是颗死按钮。' },
-    { n: '④b 更多配置 · 缓存目录非法', key: 'more', mod: 'moreBad', pv: '页面真动作：输入 cache',
-      look: '语法闸先拦：输入框变红＋ role=alert 就地报错，「立即安装」不放行且把人送回这一屏。留空反而是合法的（＝用默认位置）。' },
-    { n: '⑥ 守卫 · 同版', key: 'version', mod: 'guardSame', pv: '?screen=version&kind=same&from=0.2.33',
+    { n: '⑥ 守卫 · 同版', key: 'version', mod: 'guardSame', pv: '?screen=version&kind=same&from=0.2.35',
       look: '机器已装同版本：默认取消，仍要安装是次按钮。' },
-    { n: '⑥ 守卫 · 降级', key: 'version', mod: 'guardOlder', pv: '?screen=version&kind=older&from=0.2.34&to=0.2.33',
+    { n: '⑥ 守卫 · 降级', key: 'version', mod: 'guardOlder', pv: '?screen=version&kind=older&from=0.2.36&to=0.2.35',
       look: '同版/降级才拦（升级方向不拦直接放行）；kind=older＝「本包更旧」，别配反。' },
     { n: '③④ 进度 · 段1 47%（解压文件）', key: 'progress', mod: 'progI47', pv: '?screen=progress&pct=47',
       look: '段头「STEP 1 / 4 · 正在解压文件」；四步列表第一项运行态；取消按钮。' },

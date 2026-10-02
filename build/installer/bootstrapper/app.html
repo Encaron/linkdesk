@@ -39,7 +39,7 @@
   <!-- ① UAC：系统弹窗由 Windows 绘制，此帧只是壳内等待提示（不仿造系统对话框） -->
   <div class="scr" id="s-uac">
     <div class="wait" data-drag>
-      <svg viewBox="0 0 100 110" aria-hidden="true"><path fill="#111" fill-rule="evenodd" d="M50 0l43 25v50L50 110 7 75V25zM33 42a8 8 0 100 16 8 8 0 000-16zm34 0a8 8 0 100 16 8 8 0 000-16zm-17 26a8 8 0 100 16 8 8 0 000-16z"/></svg>
+      <svg viewBox="0 0 100 110" aria-hidden="true"><path fill-rule="evenodd" d="M50 0l43 25v50L50 110 7 75V25zM33 42a8 8 0 100 16 8 8 0 000-16zm34 0a8 8 0 100 16 8 8 0 000-16zm-17 26a8 8 0 100 16 8 8 0 000-16z"/></svg>
       <div class="t" role="status" data-i18n="installer.uac.wait">正在等待 Windows 权限确认…</div>
       <div class="bar" aria-hidden="true"></div>
     </div>
@@ -48,18 +48,24 @@
   <!-- ② 主屏 ＋ ④ 自定义展开区（真实流程的起始屏：UAC 由系统在窗口出现前处理） -->
   <div class="scr on" id="s-home">
     <div class="brand" data-drag>
-      <svg viewBox="0 0 100 110" aria-hidden="true"><path fill="#111" fill-rule="evenodd" d="M50 0l43 25v50L50 110 7 75V25zM33 42a8 8 0 100 16 8 8 0 000-16zm34 0a8 8 0 100 16 8 8 0 000-16zm-17 26a8 8 0 100 16 8 8 0 000-16z"/></svg>
+      <svg viewBox="0 0 100 110" aria-hidden="true"><path fill-rule="evenodd" d="M50 0l43 25v50L50 110 7 75V25zM33 42a8 8 0 100 16 8 8 0 000-16zm34 0a8 8 0 100 16 8 8 0 000-16zm-17 26a8 8 0 100 16 8 8 0 000-16z"/></svg>
       <div><div class="nm">LinkDesk</div><div class="sl" data-i18n="installer.brand.slogan">一个容器，装下你所有的工作方式。</div></div>
-      <div class="ver" id="ver">v0.2.34</div>
+      <div class="ver" id="ver">v0.2.35</div>
     </div>
     <div class="hero" data-drag>
       <h1 data-i18n="installer.home.title">安装就一步，<em>然后交给它。</em></h1>
       <p data-i18n="installer.home.sub">它不规定你怎么工作，它装下你怎么工作。</p>
     </div>
     <div id="custom">
+      <!-- .cust-wrap = 展开动画的裁剪层（台账 §五 F：`transition:max-height` → `grid-template-rows`）。
+           必须**无内边距**：内边距会让折叠态有高度下限，留一条空带。padding/border 都在里层。 -->
+      <div class="cust-wrap">
       <div class="cust-in">
         <div class="pathrow">
-          <input data-role="path" value="C:\Users\fengy\AppData\Local\Programs\linkdesk" spellcheck="false" aria-label="安装位置" aria-describedby="patherr" data-i18n-aria="installer.custom.path">
+          <!-- 🔴 台账 §三 #2 / §五 C：这里原先写死**开发机的用户目录绝对路径**（带真实用户名）。正常跑时
+               由宿主 `?dir=` 覆盖，覆盖一旦失效用户就看到别人的机器路径。现改**标准位占位文字**
+               （2026-10-02 用户拍板）：注入失败时用户看到的是"该装哪"，不是"别人装哪"。 -->
+          <input data-role="path" value="%LocalAppData%\Programs\linkdesk" spellcheck="false" aria-label="安装位置" aria-describedby="patherr" data-i18n-aria="installer.custom.path">
           <button type="button" data-action="browse" data-i18n="installer.custom.browse">浏览…</button>
         </div>
         <!-- 路径行内错误（件 2c）：就地贴在输入框正下方（UX 规则「错误靠近出问题的字段」），
@@ -67,56 +73,18 @@
              语法错由页面即时判（app.js pathSyntaxError），写不进去由宿主回 dir-invalid 判。 -->
         <div class="patherr" id="patherr" role="alert" hidden></div>
         <div class="opts">
-          <label class="opt"><input type="checkbox" data-opt="filemenu"><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span data-i18n="installer.opt.filemenu">文件右键菜单「通过 LinkDesk 打开」</span></label>
-          <label class="opt"><input type="checkbox" data-opt="dirmenu"><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span data-i18n="installer.opt.dirmenu">目录右键菜单「通过 LinkDesk 打开」</span></label>
-          <label class="opt"><input type="checkbox" data-opt="editor" checked><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span data-i18n="installer.opt.editor">注册为受支持文件类型的编辑器</span></label>
-          <label class="opt"><input type="checkbox" data-opt="path" checked><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span data-i18n="installer.opt.path">添加到 PATH（重启终端后生效）</span></label>
+          <label class="opt"><input type="checkbox" data-opt="filemenu"><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span data-i18n="installer.opt.filemenu">文件右键菜单「通过 LinkDesk 打开」</span></label>
+          <label class="opt"><input type="checkbox" data-opt="dirmenu"><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span data-i18n="installer.opt.dirmenu">目录右键菜单「通过 LinkDesk 打开」</span></label>
+          <label class="opt"><input type="checkbox" data-opt="editor" checked><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span data-i18n="installer.opt.editor">注册为受支持文件类型的编辑器</span></label>
+          <label class="opt"><input type="checkbox" data-opt="path" checked><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span data-i18n="installer.opt.path">添加到 PATH（重启终端后生效）</span></label>
         </div>
+      </div>
       </div>
     </div>
     <div class="actions">
       <button class="btn" type="button" data-action="install" data-primary data-i18n="installer.home.install">立即安装<span class="cir">→</span></button>
       <button class="btn ghost" type="button" id="custtoggle" data-action="toggle-custom" data-i18n="installer.customize">自定义安装</button>
-      <button class="btn ghost" type="button" data-action="open-more" data-i18n="installer.more.open">更多配置</button>
       <div class="foot" data-i18n="installer.home.foot">继续即同意 <a href="#" data-action="license">许可协议</a> · MIT</div>
-    </div>
-  </div>
-
-  <!-- ④b 更多配置（2026-10-02 用户立项；档见 docs/04-软件更新/待抉择池/通用组缓存配置项/）
-       欢迎屏「自定义安装」旁的新入口：把装前可选项集中成一页，**竖向排列**（#s-more .opts 单列覆盖）
-       ——以后加配置项只加一行，不必再算两列配对（用户原话「这样未来添加新的配置项好添加」）。
-       · 四个勾选框与欢迎屏自定义展开区**同名同语义**（同一批 data-opt 键）⇒ 两侧共用 app.js 里
-         那一份 uiOpts，在欢迎屏勾好再进来就是勾上的，反之亦然（用户点名的场景）；
-       · 缓存目录只在**这一页**（自定义展开区保持紧凑）；留空 = 用默认位置，
-         默认路径由宿主自报（?cachedir= → 落成 placeholder）——**标记里一个真实路径都不写**（防硬编码）；
-       · Esc / 「返回」都回欢迎屏（不是关窗）：这一页是子页，不是终点；关窗仍走 ✕ 与 Alt+F4。 -->
-  <div class="scr" id="s-more">
-    <div class="brand" data-drag>
-      <svg viewBox="0 0 100 110" aria-hidden="true"><path fill="#111" fill-rule="evenodd" d="M50 0l43 25v50L50 110 7 75V25zM33 42a8 8 0 100 16 8 8 0 000-16zm34 0a8 8 0 100 16 8 8 0 000-16zm-17 26a8 8 0 100 16 8 8 0 000-16z"/></svg>
-      <div><div class="nm">LinkDesk</div><div class="sl" data-i18n="installer.brand.slogan">一个容器，装下你所有的工作方式。</div></div>
-      <div class="ver">v0.2.34</div>
-    </div>
-    <div class="morehead" data-drag>
-      <h1 data-i18n="installer.more.title">更多配置</h1>
-      <p data-i18n="installer.more.sub">装之前挑好，装完就不用再找。</p>
-    </div>
-    <div class="opts">
-      <label class="opt"><input type="checkbox" data-opt="filemenu"><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span data-i18n="installer.opt.filemenu">文件右键菜单「通过 LinkDesk 打开」</span></label>
-      <label class="opt"><input type="checkbox" data-opt="dirmenu"><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span data-i18n="installer.opt.dirmenu">目录右键菜单「通过 LinkDesk 打开」</span></label>
-      <label class="opt"><input type="checkbox" data-opt="editor" checked><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span data-i18n="installer.opt.editor">注册为受支持文件类型的编辑器</span></label>
-      <label class="opt"><input type="checkbox" data-opt="path" checked><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span data-i18n="installer.opt.path">添加到 PATH（重启终端后生效）</span></label>
-    </div>
-    <div class="morepath">
-      <label class="lab" for="cachedir"><span data-i18n="installer.more.cachedir">缓存目录</span><small data-i18n="installer.more.cachedir.sub">插件、主题与运行时缓存都放这里；留空 = 用默认位置。</small></label>
-      <div class="pathrow">
-        <input id="cachedir" data-role="cachedir" value="" spellcheck="false" aria-label="缓存目录" aria-describedby="cacheerr" data-i18n-aria="installer.more.cachedir">
-        <button type="button" data-action="browse-cachedir" data-i18n="installer.custom.browse">浏览…</button>
-      </div>
-      <div class="patherr" id="cacheerr" role="alert" hidden></div>
-    </div>
-    <div class="actions">
-      <button class="btn" type="button" data-action="install" data-primary data-i18n="installer.home.install">立即安装<span class="cir">→</span></button>
-      <button class="btn ghost" type="button" data-action="more-back" data-i18n="installer.more.back">返回</button>
     </div>
   </div>
 
@@ -143,14 +111,14 @@
     <div id="confetti"></div>
     <div class="fin-ring"><svg viewBox="0 0 56 56" aria-hidden="true"><path d="M12 30l11 11 21-26"/></svg></div>
     <h1 data-drag data-i18n="installer.finish.title">装好了。</h1>
-    <div class="sub" id="finish-path" data-drag>C:\Users\fengy\AppData\Local\Programs\linkdesk</div>
-    <div class="runrow"><label class="opt"><input type="checkbox" id="runnow" checked><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span data-i18n="installer.finish.run">运行 LinkDesk</span></label></div>
+    <div class="sub" id="finish-path" data-drag>%LocalAppData%\Programs\linkdesk</div>
+    <div class="runrow"><label class="opt"><input type="checkbox" id="runnow" checked><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span data-i18n="installer.finish.run">运行 LinkDesk</span></label></div>
     <div class="actions"><button class="btn" type="button" data-action="done" data-primary data-i18n="installer.finish.done">完成<span class="cir">→</span></button></div>
   </div>
 
   <!-- 失败分支（02-流程设计 §三 的视觉落地：磁盘空间不足示例；错误码与数字由件 2 填真值） -->
   <div class="scr" id="s-error">
-    <svg viewBox="0 0 48 48" fill="none" stroke="#B3261E" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M24 6L4 42h40L24 6z"/><path d="M24 20v10"/><circle cx="24" cy="36" r="0.5" fill="#B3261E"/></svg>
+    <svg viewBox="0 0 48 48" fill="none" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M24 6L4 42h40L24 6z"/><path d="M24 20v10"/><circle cx="24" cy="36" r="0.5"/></svg>
     <h1 data-drag data-i18n="installer.error.title">安装没有完成。</h1>
     <div class="sub" role="alert" data-drag data-i18n="installer.error.sub">磁盘空间不足——目标盘至少需要 1 GB，当前可用 412 MB。</div>
     <div class="errcode" id="errcode" data-drag>ERR-DISK-FULL · E-1042</div>
@@ -184,21 +152,21 @@
   <!-- 帧 1 · 卸载确认（入口 = ARP「应用和功能」/ 开始菜单卸载项） -->
   <div class="scr un" id="s-confirm">
     <div class="brandline" data-drag>
-      <svg viewBox="0 0 100 110" aria-hidden="true"><path fill="#9a9a9a" fill-rule="evenodd" d="M50 0l43 25v50L50 110 7 75V25zM33 42a8 8 0 100 16 8 8 0 000-16zm34 0a8 8 0 100 16 8 8 0 000-16zm-17 26a8 8 0 100 16 8 8 0 000-16z"/></svg>
+      <svg viewBox="0 0 100 110" aria-hidden="true"><path fill-rule="evenodd" d="M50 0l43 25v50L50 110 7 75V25zM33 42a8 8 0 100 16 8 8 0 000-16zm34 0a8 8 0 100 16 8 8 0 000-16zm-17 26a8 8 0 100 16 8 8 0 000-16z"/></svg>
       <span data-i18n="installer.uninstall.brand">LINKDESK · UNINSTALL</span>
     </div>
     <h1 data-drag data-i18n="installer.uninstall.confirm.title">要卸载 LinkDesk 吗？</h1>
-    <div class="sub" data-drag data-i18n="installer.uninstall.confirm.sub">安装位置：<code>C:\Users\fengy\AppData\Local\Programs\linkdesk</code> · 约 420 MB</div>
+    <div class="sub" data-drag data-i18n="installer.uninstall.confirm.sub">安装位置：<code>%LocalAppData%\Programs\linkdesk</code> · 约 420 MB</div>
     <!-- 3d #14/#15：两行选项与 #delconfirm 收进一条内容列（列 188px、以中线为轴、列内左对齐）
          ⇒ 三个方框/警示块左沿归一；屏幕其余部分（标题/正文/按钮行）仍居中。样式见 app.css .uncol -->
     <div class="uncol">
-      <label class="opt"><input type="checkbox" id="keepdata" checked><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span><span data-i18n="installer.uninstall.confirm.keepdata">保留我的数据</span><small data-i18n="installer.uninstall.confirm.keepdata.sub">工作区 · 设置 · 已装插件</small></span></label>
+      <label class="opt"><input type="checkbox" id="keepdata" checked><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span><span data-i18n="installer.uninstall.confirm.keepdata">保留我的数据</span><small data-i18n="installer.uninstall.confirm.keepdata.sub">工作区 · 设置 · 已装插件</small></span></label>
       <!-- 件 2d：行内二次确认（02 §二幕⑨——删 userData 不可逆，必须用户亲眼确认过）。
            勾掉「保留我的数据」时**不立刻露**：点「卸载」才露（不打扰只想保留数据的人）；
            勾回「保留」即收起。样式复用 .unwarn（超时提示那块），只多一个 danger 色变体。 -->
       <div id="delconfirm" hidden>
         <div class="unwarn danger" data-i18n="installer.uninstall.confirm.deleteWarn">这会删除全部工作区、设置与已装插件，不可恢复。</div>
-        <label class="opt"><input type="checkbox" id="delagree"><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span data-i18n="installer.uninstall.confirm.deleteConfirm">我确认删除我的数据</span></label>
+        <label class="opt"><input type="checkbox" id="delagree"><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span data-i18n="installer.uninstall.confirm.deleteConfirm">我确认删除我的数据</span></label>
       </div>
     </div>
     <div class="actions">
@@ -210,7 +178,7 @@
   <!-- 帧 2 · 运行中检测（件 2c：宿主真查进程表；没在跑就直接推帧 3，在跑才停在这一帧） -->
   <div class="scr un" id="s-running">
     <div class="brandline" data-drag>
-      <svg viewBox="0 0 100 110" aria-hidden="true"><path fill="#9a9a9a" fill-rule="evenodd" d="M50 0l43 25v50L50 110 7 75V25zM33 42a8 8 0 100 16 8 8 0 000-16zm34 0a8 8 0 100 16 8 8 0 000-16zm-17 26a8 8 0 100 16 8 8 0 000-16z"/></svg>
+      <svg viewBox="0 0 100 110" aria-hidden="true"><path fill-rule="evenodd" d="M50 0l43 25v50L50 110 7 75V25zM33 42a8 8 0 100 16 8 8 0 000-16zm34 0a8 8 0 100 16 8 8 0 000-16zm-17 26a8 8 0 100 16 8 8 0 000-16z"/></svg>
       <span data-i18n="installer.uninstall.brand">LINKDESK · UNINSTALL</span>
     </div>
     <h1 data-drag data-i18n="installer.uninstall.running.title">LinkDesk 正在运行</h1>
@@ -241,7 +209,7 @@
   <div class="scr un" id="s-un-finish">
     <div class="fin-ring"><svg viewBox="0 0 56 56" aria-hidden="true"><path d="M12 30l11 11 21-26"/></svg></div>
     <h1 data-drag data-i18n="installer.uninstall.finish.title">已卸载。</h1>
-    <div class="datbadge" id="datbadge" data-drag>用户数据已保留 · C:\Users\fengy\AppData\Roaming\LinkDesk</div>
+    <div class="datbadge" id="datbadge" data-drag>用户数据已保留 · %APPDATA%\linkdesk</div>
     <div class="sub" data-drag data-i18n="installer.uninstall.finish.sub">感谢使用 LinkDesk，有缘再见。</div>
     <div class="actions"><button class="btn primary" type="button" data-action="un-done" data-primary data-i18n="installer.uninstall.finish.done">完成</button></div>
   </div>

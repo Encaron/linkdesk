@@ -28,6 +28,13 @@ static const wchar_t* kProductName  = L"LinkDesk";
 static const wchar_t* kAppExe       = L"LinkDesk.exe";
 /** 卸载器 = **本引导器壳自己**在安装时落进 INSTDIR 的那一份（2d 实现；此处只写路径）。 */
 static const wchar_t* kUninstallExe = L"linkdesk-setup.exe";
+/** 开始菜单里那条**卸载项**的名字（台账 §三 #4）。
+ *  ⚠️ 必须与启动项 `kProductName` 区分开——同一个开始菜单目录下两条同名 .lnk 会互相覆盖
+ *  （谁后建谁赢），等于卸载入口永远不出现。
+ *  🔴 **固定英文名**（2026-10-02 用户拍板「纯英文即可」）：与系统语言无关，中英文机器上都是这一条。
+ *     快捷方式名**不参与 i18n 门禁**——它不是 `t()` 管的 UI 文字，是**文件名**（与 `LinkDesk.lnk` 同规；
+ *     现有启动项本来就是恒英文名，这里随它）。 */
+static const wchar_t* kUninstallShortcutName = L"Uninstall LinkDesk";
 
 /** ARP 键名 —— `UUID.v5(appId, ELECTRON_BUILDER_NS_UUID)`：
  *    appId = electron-builder.yml 的 `com.linkdesk.app`
@@ -190,6 +197,18 @@ bool WriteContextMenus(const std::wstring& installDir, bool fileMenu, bool dirMe
 }
 
 // ── PATH（标记 ＋ 备份法）─────────────────────────────────────────────────
+/** PATH 该用什么值类型写回（安装侧追加、卸载侧还原都用它）——台账 §三 #1 的唯一判据。
+ *  🔴 规矩一：值里**有 `%` ⇒ 一律 `REG_EXPAND_SZ`**。`REG_SZ` 里的 `%USERPROFILE%` 永远不会被展开，
+ *     PATH 上那一项等于失效；实机脏数据就是这种（「值类型被降级成 REG_SZ」的画像）。这里不只是"照抄原类型"，
+ *     而是**把已经脏掉的值顺手治回来**——只读不治 = 把缺陷原样传下去。
+ *  🔴 规矩二：值里没有 `%` 时**保留原类型**（`REG_EXPAND_SZ` 不降级；其余按 `REG_SZ`），
+ *     不凭"升格更安全"乱改用户注册表。 */
+static DWORD PathValueType(const std::wstring& v, DWORD fallback)
+{
+    if (v.find(L'%') != std::wstring::npos) return REG_EXPAND_SZ;
+    return fallback == REG_EXPAND_SZ ? REG_EXPAND_SZ : REG_SZ;
+}
+
 bool AddToPath(const std::wstring& installDir)
 {
     // 幂等：标记在 ⇒ 不重复追加、不覆盖备份（同 installer.nsh）
@@ -200,8 +219,8 @@ bool AddToPath(const std::wstring& installDir)
     // ⚠️ **原值是什么类型就写回什么类型**：`REG_EXPAND_SZ` 里存的是没展开的 `%USERPROFILE%…`，
     //    降级成 `REG_SZ` 会让这些变量**永远不再展开**。实机 PATH 就含
     //    `%USERPROFILE%\AppData\Local\Microsoft\WindowsApps` 这类项（2026-10-01 读数）。
-    const DWORD newType = oldPath.empty() ? REG_SZ
-                                          : (oldType == REG_EXPAND_SZ ? REG_EXPAND_SZ : REG_SZ);
+    //    判据统一在 PathValueType（含 `%` 必 EXPAND；否则保原类型）——安装/卸载两侧同一把尺子。
+    const DWORD newType = oldPath.empty() ? REG_SZ : PathValueType(oldPath, oldType);
     bool ok = SetStr(HKEY_CURRENT_USER, kVendor, L"PathBackup", oldPath);
     ok &= SetStrTyped(HKEY_CURRENT_USER, L"Environment", L"Path",
                       oldPath.empty() ? installDir : oldPath + L";" + installDir, newType);
@@ -239,8 +258,13 @@ bool WriteArpEntry(const std::wstring& installDir, const std::wstring& version)
 }
 
 // ── 快捷方式 ──────────────────────────────────────────────────────────────
+/** 建一条 .lnk。
+ *  🔴 `iconFile` 是**文件路径、不带 `,0`**；图标索引由下一条 `SetIconLocation` 的第二参数（恒 0）传。
+ *     ⛔ 路径里再拼 `,0` 会被序列化成 `…exe,0,0` ⇒ Windows 去找 `…exe,0` 这个**不存在的文件**，
+ *     回落通用白纸图标（台账 §三 #3，实机已证）。2026-10-02 前本函数的身就是那么拼的。
+ *  `args` = 要写进 .lnk 的启动参数（空 = 不带参数）。卸载项靠它带 `--uninstall`。 */
 static bool MakeLink(const std::wstring& lnk, const std::wstring& target, const std::wstring& workDir,
-                     const std::wstring& icon)
+                     const std::wstring& iconFile, const std::wstring& args = L"")
 {
     IShellLinkW* link = nullptr;
     if (FAILED(CoCreateInstance(CLSID_ShellLink, nullptr, CLSCTX_INPROC_SERVER,
@@ -248,7 +272,9 @@ static bool MakeLink(const std::wstring& lnk, const std::wstring& target, const 
         return false;
     link->SetPath(target.c_str());
     link->SetWorkingDirectory(workDir.c_str());
-    link->SetIconLocation(icon.c_str(), 0);
+    // 同一个 IShellLinkW 接口自带 SetArguments，不需要新头文件/新 CLSID
+    if (!args.empty()) link->SetArguments(args.c_str());
+    link->SetIconLocation(iconFile.c_str(), 0);
     IPersistFile* pf = nullptr;
     bool ok = false;
     if (SUCCEEDED(link->QueryInterface(IID_PPV_ARGS(&pf)))) {
@@ -274,7 +300,9 @@ static std::wstring KnownFolder(REFKNOWNFOLDERID id)
 bool CreateShortcuts(const std::wstring& installDir)
 {
     const std::wstring target = installDir + L"\\" + kAppExe;
-    const std::wstring icon = target + L",0";
+    // 🔴 图标值 = **exe 路径本身**，不拼 `,0`（台账 §三 #3：拼上会成 `…exe,0,0`，
+    //    Windows 当成文件名 `…exe,0` ⇒ 找不到 ⇒ 回落默认图标）。索引由 MakeLink 里传 0。
+    const std::wstring icon = target;
     bool ok = false;
 
     std::wstring desktop = KnownFolder(FOLDERID_Desktop);
@@ -285,6 +313,17 @@ bool CreateShortcuts(const std::wstring& installDir)
     std::wstring programs = KnownFolder(FOLDERID_Programs);
     if (!programs.empty())
         ok |= MakeLink(programs + L"\\" + kProductName + L".lnk", target, installDir, icon);
+
+    // 件（台账 §三 #4）：开始菜单里**再补一条卸载入口**——指向 INSTDIR 里的卸载器
+    // （= 本安装包自己落在 INSTDIR 的那份拷贝），带 `--uninstall` 起卸载流程，
+    // 图标仍取 app exe（资源图标在 exe 里；卸载器 exe 无自有图标资源）。
+    // ⚠️ 与启动项 .lnk **不同名**（见 kUninstallShortcutName 注释）——同名会互相覆盖。
+    // ⚠️ 删除侧 DeleteShortcuts **必须同款删掉**：否则卸载后留下一条指向已删程序的
+    //    「卸载 LinkDesk」死项——比当初不建更糟（台账 §三 #4 明写）。
+    const std::wstring setup = installDir + L"\\" + kUninstallExe;
+    if (!programs.empty())
+        ok |= MakeLink(programs + L"\\" + kUninstallShortcutName + L".lnk",
+                       setup, installDir, icon, L"--uninstall");
     return ok;
 }
 
@@ -510,21 +549,24 @@ bool RestorePath(bool* touched)
     const std::wstring backupPlusAdded = backup.empty() ? added : backup + L";" + added;
 
     bool touchedNow = false;
-    if (cur == backupPlusAdded) {
-        // 正是我们加的那一次 ⇒ 恢复备份（**类型跟当前值走**：REG_EXPAND_SZ 不能降级，同 AddToPath）
-        touchedNow = SetStrTyped(HKEY_CURRENT_USER, L"Environment", L"Path", backup, curType);
-    } else if (cur == added) {
-        // 装的时候 PATH 本来是空的 ⇒ 空了就删值，有备份就还原
-        if (backup.empty()) {
-            HKEY h = nullptr;
-            if (RegOpenKeyExW(HKEY_CURRENT_USER, L"Environment", 0, KEY_SET_VALUE, &h) == ERROR_SUCCESS) {
-                RegDeleteValueW(h, L"Path");
-                RegCloseKey(h);
-            }
-            touchedNow = true;
-        } else {
-            touchedNow = SetStrTyped(HKEY_CURRENT_USER, L"Environment", L"Path", backup, curType);
+    // 🔴 分支顺序有讲究（台账 §三 #1 顺手修）：`backup` 为空时 `backupPlusAdded == added`，
+    //    若先判 `cur == backupPlusAdded` 会命中「写回空备份」⇒ PATH 上留一个**空的 REG_SZ 值**，
+    //    下面那条「本该把值删掉」的分支永远到不了（死代码）。所以**空备份优先**判。
+    if (backup.empty() && cur == added) {
+        // 装的时候本来就没有/是空 ⇒ 把整个值删掉（不留空值，同 nsh 的 DeleteRegValue）
+        HKEY h = nullptr;
+        if (RegOpenKeyExW(HKEY_CURRENT_USER, L"Environment", 0, KEY_SET_VALUE, &h) == ERROR_SUCCESS) {
+            RegDeleteValueW(h, L"Path");
+            RegCloseKey(h);
         }
+        touchedNow = true;
+    } else if (cur == backupPlusAdded || cur == added) {
+        // 正是我们加的那一次（`cur == added` = 用户把别家路径删光了，只剩我们加的那段）⇒
+        // 还原备份。**类型同样过 PathValueType**：`REG_EXPAND_SZ` 不能降级，含 `%` 的还得治回来
+        //（原先这里写 `curType`——那是"安装时我们写下去的类型"，不是备份原本的类型，
+        //  卸载侧的值类型门禁就漏在这一句上）。
+        touchedNow = SetStrTyped(HKEY_CURRENT_USER, L"Environment", L"Path", backup,
+                                 PathValueType(backup, curType));
     }
     // else：用户装后改过 PATH ⇒ **不动**（删错别家路径的代价远大于留一段死路径，同 nsh）
 
@@ -550,6 +592,11 @@ bool DeleteShortcuts()
         ok = false;
     std::wstring programs = KnownFolder(FOLDERID_Programs);
     if (!programs.empty() && !DeleteFileW((programs + L"\\" + kProductName + L".lnk").c_str())
+        && GetLastError() != ERROR_FILE_NOT_FOUND)
+        ok = false;
+    // 卸载项（台账 §三 #4 配套）：**必须一起删**。少了这一条，用户卸载后开始菜单里
+    // 会留一条指向已消失程序与已消失 exe 的「卸载 LinkDesk」死项——比当初不建更糟。
+    if (!programs.empty() && !DeleteFileW((programs + L"\\" + kUninstallShortcutName + L".lnk").c_str())
         && GetLastError() != ERROR_FILE_NOT_FOUND)
         ok = false;
     return ok;

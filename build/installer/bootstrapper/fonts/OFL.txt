@@ -1,4 +1,11 @@
+本目录随包两份字体族（各取 Google Fonts 官方 `latin` 子集），**同为 SIL OFL 1.1**，
+下方许可正文是它们共用的那一份，故只抄一遍：
+
+This directory ships two font families. Both are licensed under the SIL Open Font
+License, Version 1.1; the license text below is the one they share.
+
 Copyright 2020 The Newsreader Project Authors (http://github.com/productiontype/Newsreader)
+Copyright 2024 The Geist Project Authors (https://github.com/vercel/geist-font)
 
 This Font Software is licensed under the SIL Open Font License, Version 1.1.
 This license is copied below, and is also available with a FAQ at:

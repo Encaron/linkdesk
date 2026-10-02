@@ -17,6 +17,12 @@
  *   4. `var(--x, #hex)` 幽灵 fallback **不豁免**（Exempt-1 只认 `--name:` 定义，var() 内 fallback 是
  *      #128.7 消灭过的幽灵 token——回潮即红灯）。
  *
+ * 🔴 2026-10-02（发版后问题台账 §五 E）：扫描域加上**安装器自绘界面** `build/installer/bootstrapper`
+ *   （css + **html 内联 SVG 的 fill/stroke**）——那套界面自成一页、不消费壳的主题变量，此前在门外，
+ *   于是攒下一批裸 hex。顺序：**先把它自家的裸值归并进 app.css 顶部的 token 表，再开闸**
+ *   （反了会当场一片红）。新增扩展名 `html`：仅此目录下有，src/plugins 无 html 生产文件（已核）。
+ *   `out/`（rc 中间产物）跳过。
+ *
  * 用法：node scripts/check-css-hardcode.mjs（已挂 npm run check）
  *       node scripts/check-css-hardcode.mjs --self-test
  * 退出码 0 = 零硬编码，退出码 1 = 有违规（打印到 stderr，附文件:行 + 内容 + 豁免类别）。
@@ -35,9 +41,12 @@ const ROOT = resolve(__dirname, "..");
 // 🔴 E6#99（L7 第 7.2 轮）覆盖域结论：`plugins/` 保留在扫描域内——18 只发货插件搬走后仓内仍有两只
 //   开发夹具（panel-demo——2026-09-28 floating-panel-demo 已随插件下架删除），它同样不许裸写 hex；发货插件的硬编码色改由
 //   各插件仓自己的审计管（7.5 轮落）。白名单里指向发货插件的两条死路径已同笔删除（见下）。
-const SCAN_DIRS = ["src", "plugins"];
-const SKIP_DIRS = new Set(["node_modules", "dist", "dist-electron", ".git", ".vite", "__tests__"]);
-const EXT_RE = /\.(css|tsx|ts)$/;
+//   🔴 2026-10-02（台账 §五 E）：加 `build/installer/bootstrapper`——安装器自绘界面。
+//   它不消费壳的主题变量（自成一页），故有权**自带 token 表**（app.css 顶部，定义行照常豁免）；
+//   受审的是消费面：页内任何裸 hex/rgba 都该走它自己的 var(--x)。
+const SCAN_DIRS = ["src", "plugins", "build/installer/bootstrapper"];
+const SKIP_DIRS = new Set(["node_modules", "dist", "dist-electron", ".git", ".vite", "__tests__", "out"]);
+const EXT_RE = /\.(css|tsx|ts|html)$/;
 
 /** 文档化路径白名单——每项必须有理由（git diff 可见）；新增豁免需解释为何不是 token 定义 */
 const EXEMPT_FILES = [

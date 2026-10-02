@@ -91,6 +91,17 @@ if ($markerAt -ge 0) {
 }
 
 Write-Host "`n=== 路 A：界面态安装（--preview=autoinstall=1 --log=）==="
+# 🔴 台账 §五 H：界面态会在 %TEMP% 摊一份 UI（`linkdesk-bootstrapper-<pid>`），退出时该删净。两条断言：
+#    ① 退出后**不留新目录**——证明退出清理真的跑到（含对 msedgewebview2 还占着文件的重试）
+#    ② 起窗前**预置一个假残留**，跑完它必须不见——证明「先清旧、再建新」那条扫除分支在跑
+#    （基线先拍，好与机器上原有的残留分开算；扫除会把机器上原有的那些一并收走，那正是它的活。）
+$uiTempBefore = @(Get-ChildItem -Directory $env:TEMP -Filter 'linkdesk-bootstrapper-*' -ErrorAction SilentlyContinue |
+                  ForEach-Object { $_.Name })
+$staleUi = Join-Path $env:TEMP 'linkdesk-bootstrapper-99999'
+Remove-Item -Recurse -Force $staleUi -ErrorAction SilentlyContinue
+New-Item -ItemType Directory -Force -Path $staleUi | Out-Null
+Set-Content -LiteralPath (Join-Path $staleUi 'stale.txt') -Value 'x'
+Write-Host "     起窗前：已有 $($uiTempBefore.Count) 个 linkdesk-bootstrapper-* 目录；另预置假残留 linkdesk-bootstrapper-99999"
 $uiDir = Join-Path $Work 'ui'
 $log = Join-Path $Work 'host.log'
 Remove-Item -Force $log -ErrorAction SilentlyContinue
@@ -128,6 +139,14 @@ if (Test-Path $log) {
     $uiFiles = Get-ChildItem -Recurse -File $uiDir -ErrorAction SilentlyContinue
     Say ($null -ne $uiFiles -and $uiFiles.Count -gt 0) "界面态也真落了文件（$($uiFiles.Count) 个）"
 }
+
+# §五 H：退出清理 ＋ 起窗前的旧目录扫除
+Start-Sleep -Milliseconds 1500     # 退出清理带重试（10×200ms），给它跑完再数
+Say (-not (Test-Path -LiteralPath $staleUi)) "起窗前的假残留已被扫掉（linkdesk-bootstrapper-99999 不见了）"
+$uiTempAfter = @(Get-ChildItem -Directory $env:TEMP -Filter 'linkdesk-bootstrapper-*' -ErrorAction SilentlyContinue |
+                 ForEach-Object { $_.Name })
+$newUiDirs = @($uiTempAfter | Where-Object { $uiTempBefore -notcontains $_ })
+Say ($newUiDirs.Count -eq 0) "本次界面态没留下新临时目录（新 $($newUiDirs.Count) 个$(if($newUiDirs){'：'+($newUiDirs -join '、')})）"
 
 Write-Host "`n=== 路 C：静默安装 ＋ 装完拉壳（--silent --force-run）==="
 $frDir = Join-Path $Work 'forcerun'
