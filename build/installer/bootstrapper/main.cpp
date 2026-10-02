@@ -79,6 +79,8 @@ static const UINT WM_LK_DONE     = WM_APP + 4;
 static std::wstring g_lastErrCode, g_lastErrMsg;
 static void StartInstall(const std::wstring& requestedDir, const TaskOptions& opts);   // 定义在 2a 段
 static void CancelInstall();
+static bool RollbackInstallDir();   // 件 2d：取消安装的回滚（定义在 2d 段，工人线程里调用）
+static bool DirHasContent(const std::wstring& dir);   // 件 2d：装前目录判据（同上）
 static void PostJson(const std::wstring& json);               // 定义在 2a 段（宿主 → 页面）
 static std::wstring JsonEsc(const std::wstring& s);           // 定义在 2a 段（WndProc 要用）
 
@@ -300,7 +302,10 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)
         g_lastErrMsg.clear();
         return 0;
     case WM_LK_CANCELED:
-        PostJson(L"{\"type\":\"install-canceled\"}");
+        // 件 2d：wp = 1 已回滚干净（目录是我们这次建的/本来空的，已删）· 0 原样保留
+        // （覆盖装——装前目录里就有旧版，删了会误伤；页面据此如实交代，见 app.js）
+        PostJson(wp ? L"{\"type\":\"install-canceled\",\"rollback\":\"removed\"}"
+                    : L"{\"type\":\"install-canceled\",\"rollback\":\"kept\"}");
         return 0;
     case WM_LK_DONE:
         // 件 2d：两种模式共用「工人收尾」这条消息，页面两套屏各认各的词
@@ -460,6 +465,11 @@ static Phase g_phase = Phase::Idle;
  *  这里是本进程自己拉起的 7zr 子进程——TerminateProcess 正当） */
 static HANDLE g_child = nullptr;
 static std::atomic<bool> g_canceled{ false };
+
+/** 件 2d · 取消回滚的判据：**装前** INSTDIR 里有没有东西（在 CreateDirectoryW 之前取）。
+ *  false = 目录不存在或是空的 ⇒ 取消时整树删掉（里面只可能是我们这次解压落的）；
+ *  true  = 覆盖装（里头是旧版安装）⇒ 一个文件都不删——整树删会把旧装一起端掉（06 2d 格的设计题）。 */
+static bool g_dirHadContent = false;
 
 static void PostJson(const std::wstring& json)
 {
@@ -1162,15 +1172,28 @@ static void InstallWorker()
 
     // 段 1（0–70）：解压——真进度，见 RunExtract
     std::wstring err = ExtractPayload();
-    if (g_canceled.load()) { PostMessageW(g_hwnd, WM_LK_CANCELED, 0, 0); CoUninitialize(); return; }
+    if (g_canceled.load()) {
+        // 件 2d · 取消的回滚：清掉这次解压落进 INSTDIR 的文件。**必须排在这里**——此刻系统项
+        // 一个都没写（提交点在下面），机器上唯一的痕迹就是这些文件，能干净退回装前状态。
+        bool removed = RollbackInstallDir();
+        g_phase = Phase::Idle;      // 放行下一次重试；否则 StartInstall 开头的早退会静默吞掉它
+        PostMessageW(g_hwnd, WM_LK_CANCELED, removed ? 1 : 0, 0);
+        CoUninitialize();
+        return;
+    }
     if (!err.empty()) {
         g_lastErrCode = L"EXTRACT_FAILED";
         g_lastErrMsg = err;
+        g_phase = Phase::Idle;
         PostMessageW(g_hwnd, WM_LK_FAILED, 0, 0);
         CoUninitialize();
         return;
     }
     if (g_hwnd) PostMessageW(g_hwnd, WM_LK_PROGRESS, 70, 0);
+    // 🔴 **提交点**（件 2d）：解压成功 ⇒ 这次安装不再受理取消。此后写的全是注册表/快捷方式/
+    //    PATH/ARP，而**写了一半的注册表没有回滚可言**。原先段 2/3 后面那两个取消检查点，实际效果是
+    //    「取消掉一个已经写进系统的安装」（页面回主屏、机器上关联却留着），比不响应更糟 ⇒ 撤掉。
+    //    取消的语义就此收窄为「解压阶段可取消，且取消即清干净」（与 NSIS 的取消同位）。
 
     // E6#45 四项按勾选写。**单项失败不中断、也不把整次安装判死**——应用文件已经落地，
     // 某个关联没写上不该让用户看到「安装失败」（那会把人吓去重装，越弄越糟）。
@@ -1182,7 +1205,6 @@ static void InstallWorker()
     //   该协议（2026-10-01 全仓 grep 零命中 ＋ 实机现装 NSIS 版也没有这条键）⇒ 2026-10-02
     //   用户拍板**撤掉这项承诺**：文案与实现同改成真实存在的这段工作（不再空跑）。
     if (g_opts.assoc) sysOk &= WriteAssociations(g_installDir);
-    if (g_canceled.load()) { PostMessageW(g_hwnd, WM_LK_CANCELED, 0, 0); CoUninitialize(); return; }
     if (g_hwnd) PostMessageW(g_hwnd, WM_LK_PROGRESS, 80, 0);
 
     // 段 3（80–92）：写系统项（右键菜单 · 快捷方式 · PATH · ARP）
@@ -1193,13 +1215,13 @@ static void InstallWorker()
     // 卸载器）——**必须排在 WriteArpEntry 之前**，ARP 的键值与 EstimatedSize 都要算上它
     sysOk &= InstallUninstallerCopy(g_selfPath, g_installDir, g_markerAt);
     sysOk &= WriteArpEntry(g_installDir, PayloadVersion());
-    if (g_canceled.load()) { PostMessageW(g_hwnd, WM_LK_CANCELED, 0, 0); CoUninitialize(); return; }
     if (g_hwnd) PostMessageW(g_hwnd, WM_LK_PROGRESS, 92, 0);
 
     // 段 4（92–100）：收尾校验——**成败只看文件是否落地**（系统项是「加分项」不是「必需项」）
     bool ok = VerifyInstall();
     if (!sysOk) OutputDebugStringW(L"[installer] 部分系统项未写入（关联/右键/PATH/快捷方式/ARP）\n");
     if (g_hwnd) PostMessageW(g_hwnd, WM_LK_PROGRESS, 100, 0);
+    g_phase = Phase::Idle;                  // 收尾（成/败）都要放行重来，见上面取消段的注
     if (!ok) {
         g_lastErrCode = L"VERIFY_FAILED";
         g_lastErrMsg = L"解压后没找到 LinkDesk.exe——安装包可能不完整";
@@ -1258,13 +1280,17 @@ static void StartInstall(const std::wstring& requestedDir, const TaskOptions& op
         PostJson(L"{\"type\":\"dir-invalid\",\"reason\":\"" + bad + L"\"}");
         return;
     }
+    // 件 2d：取消回滚的判据**必须在建目录之前取**——建完再问，得到的永远是「有内容」。
+    g_dirHadContent = DirHasContent(g_installDir);
     CreateDirectoryW(g_installDir.c_str(), nullptr);
     g_phase = Phase::Extracting;
     std::thread(InstallWorker).detach();
 }
 
-/** 取消：终止我们自己拉起的 7zr（**不是**去杀 LinkDesk——那条路的禁令见 §4.3）。
- *  已解压文件的回滚归 2d（2026-10-02 用户拍板，见 06 2d 格）；本函数只如实取消。 */
+/** 取消（**只对解压阶段有效**，件 2d）：置取消位 ＋ 终止我们自己拉起的 7zr
+ *  （**不是**去杀 LinkDesk——那条路的禁令见 §4.3）。真回滚在工人线程里做
+ *  （InstallWorker 收工前的 RollbackInstallDir）——本函数在 UI 线程，只置位，不许阻塞。
+ *  过了提交点（解压完，见 InstallWorker）之后再来的取消一律吞掉：那以后写的全是系统项，没法回滚。 */
 static void CancelInstall()
 {
     g_canceled = true;
@@ -1300,9 +1326,10 @@ static long long CountFiles(const std::wstring& dir, const std::wstring& skip)
 }
 
 /** 递归删目录树（跳过 skip = 自己那份 exe，退出后子进程收），按「完成文件数 / 总数」回报进度。
- *  单个文件删不掉（被占用/权限）**不中断**——清理要尽力走完，跟安装侧「一项失败不中断」同口径。 */
+ *  单个文件删不掉（被占用/权限）**不中断**——清理要尽力走完，跟安装侧「一项失败不中断」同口径。
+ *  report=false：不往页面发进度（取消回滚用——那一刻页面已经回主屏，发进度只会打乱它的读数）。 */
 static void WipeTree(const std::wstring& dir, const std::wstring& skip, TreeStat& st,
-                     int pctFrom, int pctTo)
+                     int pctFrom, int pctTo, bool report = true)
 {
     WIN32_FIND_DATAW fd = {};
     HANDLE h = FindFirstFileW((dir + L"\\*").c_str(), &fd);
@@ -1311,18 +1338,56 @@ static void WipeTree(const std::wstring& dir, const std::wstring& skip, TreeStat
         if (wcscmp(fd.cFileName, L".") == 0 || wcscmp(fd.cFileName, L"..") == 0) continue;
         std::wstring p = dir + L"\\" + fd.cFileName;
         if (fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
-            WipeTree(p, skip, st, pctFrom, pctTo);
+            // ⚠️ `report` 必须**透传**给递归——少传这一个参数，子目录里的文件删除会退回默认
+            //    report=true 继续发进度（2026-10-02 实测踩过：取消回滚发了 10 条 pct:0，
+            //    把页面的「只前进不倒退」读数打乱。是路 5a 的日志逐行读出来的）。
+            WipeTree(p, skip, st, pctFrom, pctTo, report);
             RemoveDirectoryW(p.c_str());
         } else {
             if (!skip.empty() && _wcsicmp(p.c_str(), skip.c_str()) == 0) continue;
             SetFileAttributesW(p.c_str(), FILE_ATTRIBUTE_NORMAL);
             if (DeleteFileW(p.c_str())) ++st.done;
-            if (st.total > 0 && g_hwnd)
+            if (report && st.total > 0 && g_hwnd)
                 PostMessageW(g_hwnd, WM_LK_PROGRESS,
                              pctFrom + (int)((pctTo - pctFrom) * st.done / st.total), 0);
         }
     } while (FindNextFileW(h, &fd));
     FindClose(h);
+}
+
+/** 装前目录里有没有东西（件 2d · 取消回滚的判据）：不存在 / 空目录 ⇒ false，有内容 ⇒ true。
+ *  只回答一件事：取消时能不能把 INSTDIR 整树删掉。用 FindFirstFileW 而不是
+ *  PathIsDirectoryEmptyW——后者对「存在但不是目录」的路径给的是别的错，这里一律当「没内容」。 */
+static bool DirHasContent(const std::wstring& dir)
+{
+    if (GetFileAttributesW(dir.c_str()) == INVALID_FILE_ATTRIBUTES) return false;
+    WIN32_FIND_DATAW fd = {};
+    HANDLE h = FindFirstFileW((dir + L"\\*").c_str(), &fd);
+    if (h == INVALID_HANDLE_VALUE) return false;
+    bool any = false;
+    do {
+        if (wcscmp(fd.cFileName, L".") == 0 || wcscmp(fd.cFileName, L"..") == 0) continue;
+        any = true;
+        break;
+    } while (FindNextFileW(h, &fd));
+    FindClose(h);
+    return any;
+}
+
+/** 件 2d · 取消安装的回滚：清掉这次解压落进 INSTDIR 的文件，让机器退回装前状态。
+ *  🔴 **只在「装前目录不存在或为空」时动手**（g_dirHadContent 是建目录之前取的）——覆盖装时
+ *  目录里是**旧版安装**的文件，整树删会连旧装一起端掉（06 2d 格的设计题）。那种情况返回 false，
+ *  由页面如实交代「原目录已保留，本次解压的文件可能覆盖了其中一部分」。
+ *  ⚠️ 在工人线程里调用（7zr 已终止、没有任何句柄开着）；UI 线程的 CancelInstall 只置位不做事。 */
+static bool RollbackInstallDir()
+{
+    if (g_installDir.empty() || g_dirHadContent) return false;
+    TreeStat st;
+    st.total = CountFiles(g_installDir, L"");
+    WipeTree(g_installDir, L"", st, 0, 0, false);
+    RemoveDirectoryW(g_installDir.c_str());   // 目录本身也是我们这次建的，一并收掉
+    TraceLine(L"[install] 取消回滚 done=" + std::to_wstring(st.done) + L"/" + std::to_wstring(st.total));
+    return true;
 }
 
 static void UninstallWorker(bool keep)

@@ -41,6 +41,7 @@
   "installer.error.sub": "Not enough disk space — the target drive needs at least 1 GB, only 412 MB free.",
   "installer.error.retry": "Choose another location<span class=\"cir\">→</span>",
   "installer.error.exit": "Exit installer",
+  "installer.cancel.kept": "Installation cancelled. The target folder already held an older install, so it was left as-is — files extracted this time may have partially overwritten it. Run the installer again to finish.",
 
   "installer.version.title.same": "This version is already installed.",
   "installer.version.title.older": "A newer version is installed.",

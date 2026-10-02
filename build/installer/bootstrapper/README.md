@@ -29,7 +29,7 @@ node scripts\build-installer.mjs --exe out\bootstrapper.exe ^
 | `out\bootstrapper.exe` | 正常启动：无边框 780×570 窗口加载 `app.html` |
 | `--debug` | 开 DevTools 并自动弹出（默认关闭；顺带开右键菜单） |
 | `--uninstall` | **卸载器模式**（件 1d 静态 UI ／ 件 2b ARP 指向 ／ **件 2d 真清理**）：无边框 **720×540** 窗口（标题「LinkDesk 卸载」），启动 URL 自动补 `?mode=uninstall` ⇒ 页面走卸载四帧（confirm/running/progress/finish）。同 `--dir=`/`--log=`；界面态额外注入 `usize=`（体积 MB）与 `udata=`（userData 路径）给四帧真数据。**静默卸载 = `--uninstall /S`**（ARP `QuietUninstallString` 同款）：不建窗，keep 恒 true（静默永不删用户数据）。清理清单 = `customUnInstall` 逐条（syswrite 卸载侧）＋ 目录树自删 ＋ 子进程自删；**工人带目标体检闸**（目录必须真有 `LinkDesk.exe`，见 syswrite.h/uninstall-test.ps1） |
-| `--preview=<query>` | 把 query 拼到启动 URL 上，供对照/排查直接摆屏：`screen=home\|custom\|progress\|finish\|error\|uac`（`custom` 展开自定义区）、`pct=<0-100>`（进度定格）、`dust=0`（关微尘）、`seed=1`（定序随机数）、`lang=<code>`（页面语言；词条从 `i18n/<code>.json` 取，认不得的值回落 zh-CN）、`langs=a,b`（词条清单，一般不手给——宿主扫目录后自己注入）｜卸载态另有 `screen=un-confirm\|un-running\|un-progress\|un-finish`（**必须与 `--uninstall` 同给**：屏名不在当前模式的白名单里会被**静默拒绝**，症状＝实机整屏空白）与 `keep=0`（卸载完成屏「数据已一并移除」黄徽章态）｜件 2c 增：`screen=version&kind=same\|older&from=<已装>&to=<本包>`（**版本守卫屏**取图口——真载荷的守卫在页面白名单里也认 `version`，但开发壳无载荷走不到守卫，取图走这条）、`autouninstall=1`（卸载确认屏自动点「卸载」）＋ `autocontinue=1`（摆到「正在运行」后自动点「关闭并继续」，供 `tools\guard-test.ps1`）｜⚠️ 三个 `auto*=1` 走的都是**页面真动作**（post 链同产品），不是宿主短路 |
+| `--preview=<query>` | 把 query 拼到启动 URL 上，供对照/排查直接摆屏：`screen=home\|custom\|progress\|finish\|error\|uac`（`custom` 展开自定义区）、`pct=<0-100>`（进度定格）、`dust=0`（关微尘）、`seed=1`（定序随机数）、`lang=<code>`（页面语言；词条从 `i18n/<code>.json` 取，认不得的值回落 zh-CN）、`langs=a,b`（词条清单，一般不手给——宿主扫目录后自己注入）｜卸载态另有 `screen=un-confirm\|un-running\|un-progress\|un-finish`（**必须与 `--uninstall` 同给**：屏名不在当前模式的白名单里会被**静默拒绝**，症状＝实机整屏空白）与 `keep=0`（卸载完成屏「数据已一并移除」黄徽章态）｜件 2c 增：`screen=version&kind=same\|older&from=<已装>&to=<本包>`（**版本守卫屏**取图口——真载荷的守卫在页面白名单里也认 `version`，但开发壳无载荷走不到守卫，取图走这条）、`autouninstall=1`（卸载确认屏自动点「卸载」）＋ `autocontinue=1`（摆到「正在运行」后自动点「关闭并继续」，供 `tools\guard-test.ps1`）｜⚠️ 三个 `auto*=1` 走的都是**页面真动作**（post 链同产品），不是宿主短路（件 2d 另增 `autocancel=<pct>`：缺省 5——进度爬到该读数自动点一次「取消安装」，供 `tools\syswrite-test.ps1` 路 5 验回滚；取 5% 而非第一条进度，因为 pct=0 时盘上还没有文件，删个空目录也算通过是假绿） |
 | `--capture=<path.png>` | 页面渲染完成后自行截图存 PNG 并退出（单屏取图口；走 WebView2 `CapturePreview`，只拍页面、**不触碰桌面**） |
 | `--capture-delay=<ms>` | 覆盖 `--capture` 的落图延时（默认 1200——i18n fetch ＋ 入场动效落定）。**要「动画跑完的定格帧」必须调大**：完成屏彩粒（`.burst`）实测 end time 995–1665ms，1.2s 拍下去拍到半空粒子（`cmp-shots.ps1` 因此传 `-SettleMs`）。非法值静默维持默认 |
 | `--silent`（或 `/S`） | **静默安装**（件 2a）：不建窗、**不碰 WebView2**（运行时缺失也装得上——那是能用界面的问题，不是装不上的问题）。解压 → 校验 → 退出码 0；失败码见 §四。更新链走的就是这条。件 2c：**版本守卫同版/降级 ⇒ 不弹窗、退 1602**（`ERROR_INSTALL_USEREXIT`，被拦时一个字节没写） |
@@ -129,6 +129,18 @@ node tools\dom-probe.mjs --preview "screen=home&lang=zh-CN" --click "#lkdd-btn" 
   60/80/92/100 到位、WM_CLOSE 干净退出后自删）。🔴 过程中抓到并修掉两个设计级问题：① **360 秒删
   自复制副本**（坑 17）⇒ 改 1MB 纯壳自提取；② 卸载工人加**目标体检闸**（目录里必须有 `LinkDesk.exe`）
   ——没有它，从错误目录跑一次 `--uninstall` 就把那个目录（或真 userData）删了。
+- **取消安装的回滚实测（件 2d 尾格，2026-10-02，`tools\syswrite-test.ps1` 路 5 两分路全绿）**：
+  取消被收窄为**只对解压段有效**——解压一成功就过「提交点」，此后写的全是注册表/快捷方式/PATH/ARP，
+  而**写了一半的注册表没有回滚可言**；原先段 2/3 之后那两个取消检查点因此**撤掉**（它们的实际效果是
+  「取消掉一个已经写进系统的安装」：页面回主屏、机器上关联却留着——比不响应更糟）。判据落在
+  「**装前目录里有没有东西**」（`DirHasContent`，在建目录**之前**取）：不存在/是空目录 ⇒ 取消把已解压
+  的文件**连目录一起删净**（`rollback:"removed"`，页面静默回主屏）；有内容 = 覆盖装 ⇒ **一个文件都不删**
+  （`rollback:"kept"`，删了就误伤旧装；页面复用失败屏如实交代 `installer.cancel.kept`，码 `CANCEL_KEPT`）。
+  实测：5a 全新目录在 `pct 5` 时取消 ⇒ 目录连文件一起消失、ARP 一字未动；5b 预置了旧装的目录里取消 ⇒
+  旧文件原样还在、目录保留、ARP 一字未动。⚠️ 验收缝 `?autocancel=<pct>` 取 5% 而非第一条进度——
+  pct=0 时盘上还什么都没有，「删了个空目录」也算通过，是假绿。🔴 过程中抓到并修掉：`WipeTree` 的
+  **递归调用漏传 `report`** ⇒ 回滚期间仍从子目录往外发进度（实测 10 条 `pct:0`，打乱页面「只前进不
+  倒退」）——由路 5a 的宿主日志逐行读出来，已修，并在路 5 补了一条单调性断言守着它。
 - Per-Monitor V2：`GetProcessDpiAwareness` 实测返回 awareness=2；窗口按 `逻辑像素 × dpi/96` 建，并响应 `WM_DPICHANGED` 守回 780×570 逻辑尺寸。
 - 页面加载：`SetVirtualHostNameToFolderMapping`（`installer.local` → exe 目录）+ `https://installer.local/app.html`，`NavigationCompleted` 返回 success=1。
 - 缺运行时：系统对话框（中文警告＋官方下载按钮）＋退出码 3。
@@ -258,8 +270,12 @@ node tools\dom-probe.mjs --preview "screen=home&lang=zh-CN" --click "#lkdd-btn" 
   与 NSIS 版 `installer.nsh` 同一口径；被拦时目标目录一个字节没建）。件 2d：静默卸载（`--uninstall /S`）成功也退 0。
 - **宿主 → 页面消息**（`PostWebMessageAsJson`，**必须在 UI 线程调**；工人线程用 `WM_APP+1..4` 转一手）：
   `{"type":"progress","pct":0-100}`（只前进不倒退）· `{"type":"install-error","code","msg"}` ·
-  `{"type":"install-canceled"}` · `{"type":"install-done"}`（安装收尾；卸载模式同一信号改发
+  `{"type":"install-canceled","rollback":"removed"|"kept"}` · `{"type":"install-done"}`（安装收尾；卸载模式同一信号改发
   `{"type":"uninstall-finished"}`——工人完成 ⇒ 完成屏）。
+  件 2d 的 `rollback`：**removed** = 装前目录不存在/为空，已解压的文件**连目录一起删净**（页面静默回主屏）；
+  **kept** = 装前目录里就有旧版（覆盖装），整树删会误伤旧装 ⇒ 一个文件不删，页面复用失败屏如实交代
+  （`installer.cancel.kept`，码 `CANCEL_KEPT`）。**取消只对解压段有效**：解压一完就过「提交点」，
+  此后写的全是系统项（注册表/快捷方式/PATH/ARP），取消一律吞掉——写了一半的注册表没有回滚可言。
   件 2c 增：`{"type":"close-request"}`（宿主收到 WM_CLOSE 时回问页面——三路汇一的宿主半边）·
   `{"type":"version-guard","kind":"same|older","installed","incoming"}`（守卫结论，页面换守卫屏）·
   `{"type":"dir-invalid","reason":"empty|length|root|write"}`（宿主建目录/写探针失败，页面就近行内错）·

@@ -599,6 +599,82 @@ try {
     Say ($k3b -eq 2) "PATH 类型未被降级（现 $([Microsoft.Win32.RegistryValueKind]$k3b)，应 ExpandString）"
     Say ((Reg-Get 'Environment' 'Path') -eq "$pathNow;$d3b") "EXPAND 路径下同样只追加不覆盖"
     Say ((Reg-Get 'Software\LinkDesk' 'PathBackup') -eq $pathNow) "PathBackup 记的是追加前的原值"
+
+    # ══ 路 5：界面态 · **取消安装的回滚**（件 2d 尾格）════════════════════════════════
+    # 取消只对**解压段**有效：解压一完就过了宿主的「提交点」，此后写的全是注册表/快捷方式/
+    # PATH/ARP——写了一半的注册表没有回滚可言，故那时再来的取消一律吞掉（main.cpp InstallWorker）。
+    # 缝：`?autocancel=5` ⇒ 进度爬到 5% 时点「取消安装」。取 5% 而不是第一条进度，是因为 pct=0
+    # 时盘上还什么都没有——那样「删了个空目录」也算通过，是假绿。两分路各验一半：
+    #   5a 全新目录（装前不存在）⇒ 回滚把文件**连目录一起**删净，且没碰 ARP；
+    #   5b 覆盖装（装前目录里已有旧版）⇒ **一个文件都不许删**（删了就误伤旧装，是这条的反面）。
+    $arp5 = Reg-Get $ARP 'UninstallString'
+    Write-Host "`n=== 路 5a：全新目录里取消 ⇒ 回滚删净（目录都不留）==="
+    $d5a = Join-Path $Work 'l5a'
+    Remove-Item -Recurse -Force $d5a -ErrorAction SilentlyContinue
+    $log5a = Join-Path $Work 'l5a.log'
+    Remove-Item -Force $log5a -ErrorAction SilentlyContinue
+    $p5a = Start-Process -FilePath $Setup -PassThru `
+        -ArgumentList @('--preview=autoinstall=1&autocancel=5', "--dir=$d5a", "--log=$log5a")
+    $deadline = (Get-Date).AddSeconds(240)
+    $t5a = ''
+    while ((Get-Date) -lt $deadline) {
+        if (Test-Path $log5a) {
+            $t5a = Get-Content -LiteralPath $log5a -Raw -ErrorAction SilentlyContinue
+            if ($t5a -match 'install-canceled') { break }
+            # 取消没赶上（跑到装完）⇒ 立刻停：别让本路白等满 240s，也把「取消失效」这件事显性化
+            if ($t5a -match 'install-done') { break }
+        }
+        if ($p5a.HasExited) { break }
+        Start-Sleep -Milliseconds 200
+    }
+    # 日志里出现 install-canceled 时，回滚**已经做完**——宿主是「先回滚、再回这条消息」的顺序
+    Say ($t5a -match '"type":"install-canceled","rollback":"removed"') "回了 install-canceled{rollback:removed}"
+    Say (-not ($t5a -match 'install-done')) "没跑到 install-done（确实停在解压段）"
+    # 解压段的进度真读数是「取消确实发生在解压中」的旁证（4 段里只该有第 1 段的读数）
+    $p5aPcts = @()
+    if ($t5a) {
+        $p5aPcts = [regex]::Matches($t5a, '"type":"progress","pct":(\d+)') |
+                   ForEach-Object { [int]$_.Groups[1].Value }
+    }
+    Say (($p5aPcts.Count -gt 0) -and ($p5aPcts[-1] -lt 70)) `
+        "末条进度 $(if ($p5aPcts) { $p5aPcts[-1] } else { '—' }) < 70（取消落在解压段）"
+    # 回滚阶段**不许再发进度**：页面此刻已回主屏，多余的读数会打乱它的「只前进不倒退」。
+    # （2026-10-02 实测：WipeTree 递归漏传 report ⇒ 回滚发了 10 条 pct:0，就是这里读出来的。）
+    $back5 = 0
+    for ($k = 1; $k -lt $p5aPcts.Count; $k++) { if ($p5aPcts[$k] -lt $p5aPcts[$k-1]) { $back5++ } }
+    Say ($back5 -eq 0) "进度只前进不倒退（倒退 $back5 处）——回滚不许再发进度"
+    Stop-SetupProcs
+    Say (-not (Test-Path -LiteralPath $d5a)) "回滚删净：$d5a 已不存在（目录都没留）"
+    Say ((Reg-Get $ARP 'UninstallString') -eq $arp5) "取消的安装没碰 ARP（仍是路 4 留下那条）"
+
+    Write-Host "`n=== 路 5b：覆盖装里取消 ⇒ 旧目录原样保留（不误伤旧装）==="
+    $d5b = Join-Path $Work 'l5b'
+    Remove-Item -Recurse -Force $d5b -ErrorAction SilentlyContinue
+    New-Item -ItemType Directory -Force -Path $d5b | Out-Null
+    $sentinel = Join-Path $d5b 'old-install.txt'
+    Set-Content -LiteralPath $sentinel -Value 'OLD-INSTALL-MARKER' -Encoding ASCII
+    $log5b = Join-Path $Work 'l5b.log'
+    Remove-Item -Force $log5b -ErrorAction SilentlyContinue
+    $p5b = Start-Process -FilePath $Setup -PassThru `
+        -ArgumentList @('--preview=autoinstall=1&autocancel=5', "--dir=$d5b", "--log=$log5b")
+    $deadline = (Get-Date).AddSeconds(240)
+    $t5b = ''
+    while ((Get-Date) -lt $deadline) {
+        if (Test-Path $log5b) {
+            $t5b = Get-Content -LiteralPath $log5b -Raw -ErrorAction SilentlyContinue
+            if ($t5b -match 'install-canceled') { break }
+            if ($t5b -match 'install-done') { break }
+        }
+        if ($p5b.HasExited) { break }
+        Start-Sleep -Milliseconds 200
+    }
+    Say ($t5b -match '"type":"install-canceled","rollback":"kept"') "回了 install-canceled{rollback:kept}"
+    Say (-not ($t5b -match 'install-done')) "没跑到 install-done"
+    Stop-SetupProcs
+    Say (Test-Path -LiteralPath $d5b) "原目录保留（没被整树删）"
+    Say ((Get-Content -LiteralPath $sentinel -Raw -ErrorAction SilentlyContinue) -match 'OLD-INSTALL-MARKER') `
+        "旧文件原样还在（$sentinel）"
+    Say ((Reg-Get $ARP 'UninstallString') -eq $arp5) "覆盖装取消同样没碰 ARP"
 }
 finally {
     Stop-SetupProcs

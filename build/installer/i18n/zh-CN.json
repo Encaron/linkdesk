@@ -41,6 +41,7 @@
   "installer.error.sub": "磁盘空间不足——目标盘至少需要 1 GB，当前可用 412 MB。",
   "installer.error.retry": "换个安装位置<span class=\"cir\">→</span>",
   "installer.error.exit": "退出安装",
+  "installer.cancel.kept": "已取消安装。目标目录里已有旧的安装，为免误删，原目录原样保留——本次已解压的文件可能覆盖了其中一部分，建议重新运行安装程序把它装完整。",
 
   "installer.version.title.same": "已安装相同版本。",
   "installer.version.title.older": "已装的是更新的版本。",

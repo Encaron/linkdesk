@@ -62,6 +62,18 @@ let cur = null;
    每一次宿主的回话（progress / install-error / version-guard / dir-invalid / canceled / done）都解除它。 */
 let starting = false;
 
+/* 件 2d 验收缝（?autocancel=<pct>，缺省 5）：进度爬到该读数就点一次「取消安装」。
+   取「已解压若干文件」的点，不是第一条进度——pct=0 时盘上还什么都没有，那样测不出回滚
+   （「删了个空目录」也算通过，是假绿）。与 autoinstall 同规：走的是页面真动作（ACTIONS.cancel），
+   产品运行不带此参数。解压一完就过了宿主的提交点、取消不再受理 ⇒ 这个缝只在解压段有效。 */
+const AUTOCANCEL = (function () {
+  const v = q.get('autocancel');
+  if (v === null) return -1;
+  const n = parseInt(v, 10);
+  return (!isFinite(n) || n <= 1) ? 5 : Math.min(n, 60);   // ?autocancel=1 ⇒ 默认 5%
+})();
+let autocancelArmed = AUTOCANCEL > 0;
+
 function go(id) {
   if (SCREENS[MODE].indexOf(id) < 0) return;
   cur = id;
@@ -353,12 +365,25 @@ function onHostMessage(ev) {
   if (!m || !m.type) return;
   if (m.type === 'progress') {
     starting = false;   // 宿主开始干活了 ⇒ 解除防重位
+    // 件 2d 验收缝：解压段爬到阈值就取消（只发一次；见上面 AUTOCANCEL 的注）
+    if (autocancelArmed && typeof m.pct === 'number' && m.pct >= AUTOCANCEL) {
+      autocancelArmed = false;
+      cancelInstall();
+      return;
+    }
     // 只前进不倒退：宿主已保证单调，这里再兜一道（IO 抖动 / 迟到消息）
     if (typeof m.pct === 'number' && m.pct > lastPct) setProgress(m.pct);
     return;
   }
   if (m.type === 'install-error') { starting = false; setError(m.code || '', m.msg || ''); return; }   // setError 内含 go('error')
-  if (m.type === 'install-canceled') { starting = false; resetProgress(); go('home'); return; }
+  if (m.type === 'install-canceled') {   // 件 2d：回滚的结果决定「静默回主屏」还是「要说清楚」
+    starting = false; resetProgress();
+    // removed = 目录是我们这次建的/本来空的，已连目录一起删净 ⇒ 装前什么样就是什么样，静默回主屏；
+    // kept    = 装前目录里就有旧版（覆盖装），整树删会误伤旧装，故原样保留 —— **不能装作无事发生**：
+    //           复用失败屏如实交代「原目录已保留、本次解压的文件可能覆盖了其中一部分」，并给出重装出口。
+    if (m.rollback === 'kept') { setError('CANCEL_KEPT', t('installer.cancel.kept')); return; }
+    go('home'); return;
+  }
   if (m.type === 'install-done') { starting = false; setProgress(100, { force: true }); go('finish'); return; }
   if (m.type === 'browse-dir-done') { setInstallDir(m.dir); return; }   // 件 2b：宿主选完目录回填
   /* ── 件 2c ────────────────────────────────────────────────────────────── */
