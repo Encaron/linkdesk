@@ -7,13 +7,16 @@
 #   删了不可逆——它的实机验证归 3c「卸载两分支各一次」（用户在真机上做）。本脚本三路全部
 #   keep=true；keep=0 的删除逻辑与程序树删除是同一段 WipeTree，路 1 已实删验证。
 #
-# 路 1 全链（静默装 → 静默卸）：装好基线（卸载器副本/ARP/关联/PATH/快捷方式都在）
-#   → INSTDIR\linkdesk-setup.exe --uninstall /S → 逐条断言 customUnInstall 清单 + 自删收尾。
+# 路 1 全链（静默装 → 静默卸）：装好基线（卸载器副本 uninstall.exe/ARP/关联/PATH/快捷方式都在）
+#   → INSTDIR\uninstall.exe --uninstall /S → 逐条断言 customUnInstall 清单 + 自删收尾。
 # 路 2 PATH 误伤保护：装后人为改 PATH（模拟用户）→ 卸载 → 断言 PATH **一字未动**（宁可不删）
 #   ＋ PathBackup/PathAdded 标记清掉。
 # 路 3 界面态全流程：自动缝（?autouninstall=1&autocontinue=1）走帧 1→3→4，
 #   断言四段进度到 100 ＋ `uninstall-finished` ＋ 干净退出后目录自删。⚠️ 关窗走 WM_CLOSE
 #   （完成屏 = 等价完成）——**不能 Stop-Process**：杀进程会跳过退出路径 ⇒ 自删子进程不产生。
+# 路 5 双击副本（回归 2026-10-02 实机 bug）：`uninstall.exe` **不带任何参数**双击 ⇒ 停在帧 1 确认屏；
+#   在帧 1 点 ✕ 走人 ⇒ 卸载器/程序本体/ARP **一样都不许少**（0.2.35 在那条路上自删 ⇒ 卸载入口变死链）；
+#   末尾再补一腿真卸载，验证「跑完了才自删」的正路仍然通。原文与归因见 台账 §三 #6。
 # 路 4（3c-2）旧版 NSIS 覆盖链（需 `-LegacySetup <旧版安装包>`）：静默装**旧版 NSIS 包**到临时目录
 #   → 灭掉旧版 runAfterFinish 拉起的 app → **界面态、不给 --dir**（目录从**旧版写的真 ARP 键**反推）
 #   → 断言：落在旧目录 / ARP 换代 / UninstallString 被接管 / PATH 旧段只一份 / 真机默认目录未被碰
@@ -28,7 +31,7 @@
 #      `Start-Process -Wait` **永久挂起**——SmartScreen 把这次启动吃了（`smartscreen.exe` 起、setup
 #      进程根本不出现、窗口也没有），日志停在「路 4」那行后再无动静。故本路对旧版装改用**有限等待**。
 #
-# 用法：powershell -File tools\uninstall-test.ps1 [-Road 1|2|3|4] [-LegacySetup <旧包>] [-KeepWork]
+# 用法：powershell -File tools\uninstall-test.ps1 [-Road 1|2|3|5|4] [-LegacySetup <旧包>] [-KeepWork]
 
 param(
   [string]$Setup = (Join-Path $PSScriptRoot '..\out\linkdesk-setup-2d.exe'),
@@ -151,8 +154,8 @@ try {
     Backup-Value ('Software\Classes\' + $ext + '\OpenWithProgids') 'LinkDesk.Document'
   }
   # 快捷方式：先备份现存的 .lnk（可能本来就有），卸载测试后原样放回
-  # 🔴 台账 §三 #4：安装现在会在开始菜单**多建一条卸载项**（`Uninstall LinkDesk.lnk`）——
-  #    它同样要备份/还原，否则本脚本每跑一次就在用户开始菜单里留一条指向临时目录的卸载快捷方式。
+  # 🔴 台账 §三 #4 改判：`Uninstall LinkDesk.lnk` 是 0.2.35 建的旧卸载项，本版不建但仍会清——
+  #    备份/还原照旧必要：① 覆盖装/卸载会把它清掉，跑完得原样放回用户机器；② 跑完不留测试残留。
   $lnkTargets = @(
     @{ dir = [Environment]::GetFolderPath('Desktop');  name = 'LinkDesk.lnk' },
     @{ dir = [Environment]::GetFolderPath('Programs'); name = 'LinkDesk.lnk' },
@@ -173,7 +176,7 @@ try {
     return $p.ExitCode
   }
   function Uninstall-Silent { param([string]$Dir)
-    $p = Start-Process -FilePath (Join-Path $Dir 'linkdesk-setup.exe') -ArgumentList @('--uninstall', '/S') -Wait -PassThru
+    $p = Start-Process -FilePath (Join-Path $Dir 'uninstall.exe') -ArgumentList @('--uninstall', '/S') -Wait -PassThru
     return $p.ExitCode
   }
   function Wait-DirGone { param([string]$Dir)   # 自删子进程 ping 3s + del + rd，给足 15s
@@ -192,13 +195,15 @@ try {
     $rc = Install-Test $inst
     if ($rc -eq 0) { Pass "静默装退 0" } else { Bail "静默装退 $rc"; throw '装都装不上，后面免谈' }
     # 装好基线
-    if (Test-Path -LiteralPath (Join-Path $inst 'linkdesk-setup.exe')) { Pass '卸载器副本已落 INSTDIR（ARP 指的那份）' }
-    else { Bail 'INSTDIR 里没有 linkdesk-setup.exe —— ARP 卸载是死链接' }
+    if (Test-Path -LiteralPath (Join-Path $inst 'uninstall.exe')) { Pass '卸载器副本已落 INSTDIR（uninstall.exe；ARP 与双击都指它）' }
+    else { Bail 'INSTDIR 里没有 uninstall.exe —— 双击卸载与 ARP 都是死链' }
     if (-not (Reg-KeyGone $arp)) { Pass 'ARP 键已登记' } else { Bail 'ARP 键没写' }
-    # 🔴 台账 §三 #4：装完**必须**有开始菜单卸载项（与启动项不同名），否则「卸载」只剩设置里那条
+    # 🔴 台账 §三 #4 改判（2026-10-03）：开始菜单**只放本体**，`Uninstall LinkDesk.lnk` 起不再创建
+    #    （用户原话：「那儿你给我提供的不是我 linkdesk 本体，而是一个卸载程序」）。
+    #    卸载入口 = INSTDIR 的 `uninstall.exe`（双击即卸载界面）＋ ARP。这里若它还在 ⇒ 撤建没生效。
     $unLnk = Join-Path ([Environment]::GetFolderPath('Programs')) 'Uninstall LinkDesk.lnk'
-    if (Test-Path -LiteralPath $unLnk) { Pass '开始菜单卸载项已建（Uninstall LinkDesk.lnk）' }
-    else { Bail "开始菜单卸载项没建：$unLnk" }
+    if (Test-Path -LiteralPath $unLnk) { Bail "开始菜单还留着旧卸载项：$unLnk（本版起不建、且覆盖装要清）" }
+    else { Pass '开始菜单没有卸载项（只放本体 —— 那儿放的该是我 LinkDesk 本体）' }
     # 🔴 台账 §三 #3：图标索引必须是**单个** `,0`（写成 `,0,0` 资源管理器会当文件名 ⇒ 白板图标）
     $wsT = New-Object -ComObject WScript.Shell
     foreach ($t in @(@{ dir = [Environment]::GetFolderPath('Desktop');  name = 'LinkDesk.lnk' },
@@ -278,7 +283,7 @@ try {
     if ($rc -ne 0) { Bail "静默装退 $rc"; throw '装不上' }
     $log = Join-Path $outDir 'uninstall-r3.log'
     Remove-Item -LiteralPath $log -ErrorAction SilentlyContinue
-    $p = Start-Process -FilePath (Join-Path $inst 'linkdesk-setup.exe') `
+    $p = Start-Process -FilePath (Join-Path $inst 'uninstall.exe') `
            -ArgumentList @('--uninstall', ('--preview=screen=confirm&lang=zh-CN&autouninstall=1&autocontinue=1'), ('--log=' + $log)) -PassThru
     $script:procs += $p
     $done = $false
@@ -303,6 +308,44 @@ try {
       else { Bail '15s 没退出'; Stop-Procs }
     } else { Bail '找不到主窗（窗口没了？）'; Stop-Procs }
     if (Wait-DirGone $inst) { Pass 'INSTDIR 已自删' } else { Bail 'INSTDIR 没删掉' }
+  }
+
+  # ══════════ 路 5 · 双击副本 ＋ 帧 1 点 ✕（回归 2026-10-02 实机 bug）══════════
+  # 用户原话：「我在开始页面点击 uninstall 后，仅仅点 x 退出，D:\01link\linkdesk 的
+  # linkdesk-setup.exe 就消失了，然后开始页面的 uninstall 也失效了」。
+  # 归因（已查实）：0.2.35 的退出路径是「g_uninstall ⇒ 一律自删」，点 ✕（一个字节都没写）也照删。
+  # 本路钉两件事：① 副本**不带任何参数**双击就进我们自己的卸载界面（帧 1 确认屏）；
+  #             ② 在帧 1 点 ✕ 走人 ⇒ 卸载器 / 程序本体 / ARP **一样都不许少**。
+  if ($Road -eq 0 -or $Road -eq 5) {
+    Note "路 5 · 双击副本（不给任何参数）→ 帧 1 点 ✕ ⇒ 卸载器与 ARP 必须原封不动"
+    $inst = Join-Path $work 'i5'
+    $rc = Install-Test $inst
+    if ($rc -ne 0) { Bail "静默装退 $rc"; throw '装不上' }
+    $un5 = Join-Path $inst 'uninstall.exe'
+    if (-not (Test-Path -LiteralPath $un5)) { Bail '卸载器副本不在（路 5 前提不成立）'; throw '副本不在' }
+    # ⚠️ **一个参数都不给**——这就是用户双击的那一下
+    $p5 = Start-Process -FilePath $un5 -PassThru
+    $script:procs += $p5
+    for ($i = 0; $i -lt 40; $i++) { if ($p5.HasExited -or $p5.MainWindowHandle -ne [IntPtr]::Zero) { break }; Start-Sleep -Milliseconds 500 }
+    if ($p5.HasExited) { Bail '双击副本直接退出了（该停在帧 1 确认屏等用户点）' }
+    elseif ($p5.MainWindowHandle -eq [IntPtr]::Zero) { Bail '找不到主窗'; Stop-Procs }
+    else {
+      Pass '双击副本进了我们自己的界面（无参数也停在帧 1 —— 不必让用户会加开关）'
+      # 帧 1 点 ✕：什么都没做就退出
+      Add-Type 'using System;using System.Runtime.InteropServices;public class W5 { [DllImport("user32.dll")] public static extern bool PostMessageW(IntPtr h, uint m, IntPtr w, IntPtr l); }' -ErrorAction SilentlyContinue
+      [W5]::PostMessageW($p5.MainWindowHandle, 0x0010, [IntPtr]::Zero, [IntPtr]::Zero) | Out-Null
+      if ($p5.WaitForExit(15000)) { Pass '帧 1 点 ✕ 后干净退出' } else { Bail '15s 没退出'; Stop-Procs }
+    }
+    Start-Sleep -Seconds 3                     # 自删子进程（若发生）ping 3s 才动手——给足时间再断言
+    if (Test-Path -LiteralPath $un5) { Pass '🔴 卸载器副本**仍在**（点 ✕ 不许自删 —— 实机 bug 已修）' }
+    else { Bail '卸载器副本被删了！点 ✕ 什么都没做也自删 = 2026-10-02 实机 bug 复现' }
+    if (Test-Path -LiteralPath (Join-Path $inst 'LinkDesk.exe')) { Pass '程序本体仍在（✕ 不是卸载）' }
+    else { Bail '程序本体没了' }
+    if (-not (Reg-KeyGone $arp)) { Pass 'ARP 键仍在（卸载入口没变成死链）' } else { Bail 'ARP 键被删了' }
+    # 收尾：真卸一次清场——顺带验证「跑完了才自删」的正路仍然通
+    $rc5 = Uninstall-Silent $inst
+    if ($rc5 -eq 0) { Pass '路 5 收尾：真卸载退 0' } else { Bail "路 5 收尾卸载退 $rc5" }
+    if (Wait-DirGone $inst) { Pass '路 5 收尾：INSTDIR 整树已自删（跑完才删的正路仍通）' } else { Bail '路 5 收尾：INSTDIR 没删掉' }
   }
 
   # ══════════ 路 4 · 旧版 NSIS 覆盖链（3c-2）══════════
@@ -354,9 +397,12 @@ try {
       #    ⇒ 静默退 **5**、界面态报 7zr 错，而且**一个字节都没装**（这一条本身就是 3c 的发现，见 06）。
       $run = @(Get-Process -Name 'LinkDesk' -ErrorAction SilentlyContinue)
       if ($run.Count -gt 0) { Note ("  NOTE  旧版装完拉起了 LinkDesk（" + $run.Count + " 个）——测试里灭掉"); $run | Stop-Process -Force; Start-Sleep -Seconds 3 }
+      # 台账 §三 #4 改判配套：种一个旧命副本（0.2.34/0.2.35 的形态），覆盖装后必须被清掉
+      $seedOld = Join-Path $legacy 'linkdesk-setup.exe'
+      Set-Content -LiteralPath $seedOld -Value 'x' -NoNewline
       # 目标体检：真机默认目录这一轮**不许被动**（本路的目录一律来自 ARP 反推 = $work 下）
       $defDir = Join-Path $env:LOCALAPPDATA 'Programs\linkdesk'
-      $defSetup = Join-Path $defDir 'linkdesk-setup.exe'
+      $defSetup = Join-Path $defDir 'uninstall.exe'
       $defStamp = if (Test-Path -LiteralPath $defSetup) { (Get-Item -LiteralPath $defSetup).LastWriteTime } else { $null }
       # ── 新版覆盖（**界面态、不给 --dir**）：目录从旧版写的**真 ARP** 反推；守卫拿真 ARP 版本比
       #    （临时摘掉假设缝）——「旧 ARP 键兼容」的正题就在这一腿 ──
@@ -379,14 +425,16 @@ try {
         else { Pass '守卫没弹确认屏（旧 0.2.32 → 新 = 判升级 ⇒ 放行；同版/降级才弹，2c 已专测）' }
       }
       # 反推生效的硬证据：装完落在**旧目录**（页面 dir 字段来自宿主 FindInstalledDir ⇒ 读的就是这把旧 ARP 键）
-      if (Test-Path -LiteralPath (Join-Path $legacy 'linkdesk-setup.exe')) { Pass '新版落在旧 INSTDIR（ARP 反推生效，没另起炉灶）' }
+      if (Test-Path -LiteralPath (Join-Path $legacy 'uninstall.exe')) { Pass '新版落在旧 INSTDIR（ARP 反推生效，没另起炉灶）' }
       else { Bail '新版没落进旧目录（反推断了——会在默认目录另装一份）' }
+      if (-not (Test-Path -LiteralPath $seedOld)) { Pass '旧命副本 linkdesk-setup.exe 已被覆盖装清掉（台账 §三 #4）' }
+      else { Bail '旧命副本还在——清理规则没生效（用户会继续看到「装好的软件里塞了个安装器」）' }
       $newVer = $null; $newUn = $null
       $k = [Microsoft.Win32.Registry]::CurrentUser.OpenSubKey($arp)
       if ($k) { $newVer = $k.GetValue('DisplayVersion'); $newUn = $k.GetValue('UninstallString'); $k.Close() }
       if ($newVer -and $newVer -ne $legacyVer) { Pass ("ARP 版本已换代：$legacyVer → $newVer") }
       else { Bail ("ARP 版本没换代（还是 $newVer）") }
-      if ($newUn -like ('*' + $legacy + '\linkdesk-setup.exe*')) { Pass 'UninstallString 已改指新卸载器（旧 ARP 键被接管）' }
+      if ($newUn -like ('*' + $legacy + '\uninstall.exe*')) { Pass 'UninstallString 已改指新卸载器（旧 ARP 键被接管）' }
       else { Bail ("UninstallString 没接管：$newUn") }
       $env_ = [Microsoft.Win32.Registry]::CurrentUser.OpenSubKey('Environment')
       $pathN = $env_.GetValue('Path', ''); $env_.Close()

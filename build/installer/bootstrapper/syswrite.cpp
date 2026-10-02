@@ -26,15 +26,25 @@ static const wchar_t* kCapsPath = L"Software\\LinkDesk\\Capabilities";
  *  （实机 ARP 的 `DisplayName` 与 `DisplayIcon` 都用它）。 */
 static const wchar_t* kProductName  = L"LinkDesk";
 static const wchar_t* kAppExe       = L"LinkDesk.exe";
-/** 卸载器 = **本引导器壳自己**在安装时落进 INSTDIR 的那一份（2d 实现；此处只写路径）。 */
-static const wchar_t* kUninstallExe = L"linkdesk-setup.exe";
-/** 开始菜单里那条**卸载项**的名字（台账 §三 #4）。
- *  ⚠️ 必须与启动项 `kProductName` 区分开——同一个开始菜单目录下两条同名 .lnk 会互相覆盖
- *  （谁后建谁赢），等于卸载入口永远不出现。
- *  🔴 **固定英文名**（2026-10-02 用户拍板「纯英文即可」）：与系统语言无关，中英文机器上都是这一条。
- *     快捷方式名**不参与 i18n 门禁**——它不是 `t()` 管的 UI 文字，是**文件名**（与 `LinkDesk.lnk` 同规；
- *     现有启动项本来就是恒英文名，这里随它）。 */
-static const wchar_t* kUninstallShortcutName = L"Uninstall LinkDesk";
+/** 卸载器 = **本引导器壳自己**在安装时落进 INSTDIR 的那一份（2d 实现；此处只写路径）。
+ *  🔴 名字就叫 `uninstall.exe`（2026-10-03 用户拍板，台账 §三 #4 改判）：这个名字是**给人点的**
+ *     ——双击它（不带任何参数）主机侧直接进卸载模式（main.cpp 判本进程名；见 UninstallerExeName）。
+ *     0.2.34/0.2.35 用的旧名 `linkdesk-setup.exe` 被用户读成「又让我装一遍 / 这不是我的程序本体，
+ *     是个安装器」⇒ 改名；旧名只留给存量机器清理（PurgeLegacyUninstallArtifacts）。 */
+static const wchar_t* kUninstallExe = L"uninstall.exe";
+/** 0.2.34/0.2.35 的**旧卸载器名** —— 只为存量机器清理而存在（② 见 PurgeLegacyUninstallArtifacts）。 */
+static const wchar_t* kLegacyUninstallExe = L"linkdesk-setup.exe";
+/** 开始菜单那条**卸载项**的名字 —— 🔴 **本版起不再创建**（2026-10-03 用户拍板：开始菜单里只放
+ *  本体；把卸载器当第二个应用摆出来、还借 app 的图标，用户读成「你给我的是个卸载程序，不是我本体」）。
+ *  卸载入口保留两条：INSTDIR 里那个 `uninstall.exe`（双击即卸载界面）＋ ARP（设置 → 应用）。
+ *  常量留着**只为删除**：存量机器上那条「Uninstall LinkDesk」旧 .lnk 是指向旧副本的死链，
+ *  由 DeleteShortcuts（卸载侧）与 PurgeLegacyUninstallArtifacts（安装侧）清掉。
+ *  （旧注释留痕：它与启动项必须不同名，否则同一个开始菜单目录下两条同名 .lnk 互相覆盖。） */
+static const wchar_t* kLegacyUninstallShortcutName = L"Uninstall LinkDesk";
+
+/** 卸载器副本的文件名（`kUninstallExe` 的出口）。main.cpp 判「本进程是不是那份副本」
+ *  （双击即卸载模式 / 自删闸）与写侧**共用同一份判据**——不许两处各写一个字面量。 */
+const wchar_t* UninstallerExeName() { return kUninstallExe; }
 
 /** ARP 键名 —— `UUID.v5(appId, ELECTRON_BUILDER_NS_UUID)`：
  *    appId = electron-builder.yml 的 `com.linkdesk.app`
@@ -314,16 +324,11 @@ bool CreateShortcuts(const std::wstring& installDir)
     if (!programs.empty())
         ok |= MakeLink(programs + L"\\" + kProductName + L".lnk", target, installDir, icon);
 
-    // 件（台账 §三 #4）：开始菜单里**再补一条卸载入口**——指向 INSTDIR 里的卸载器
-    // （= 本安装包自己落在 INSTDIR 的那份拷贝），带 `--uninstall` 起卸载流程，
-    // 图标仍取 app exe（资源图标在 exe 里；卸载器 exe 无自有图标资源）。
-    // ⚠️ 与启动项 .lnk **不同名**（见 kUninstallShortcutName 注释）——同名会互相覆盖。
-    // ⚠️ 删除侧 DeleteShortcuts **必须同款删掉**：否则卸载后留下一条指向已删程序的
-    //    「卸载 LinkDesk」死项——比当初不建更糟（台账 §三 #4 明写）。
-    const std::wstring setup = installDir + L"\\" + kUninstallExe;
-    if (!programs.empty())
-        ok |= MakeLink(programs + L"\\" + kUninstallShortcutName + L".lnk",
-                       setup, installDir, icon, L"--uninstall");
+    // 🔴 开始菜单**不再**放「卸载 LinkDesk」那条（2026-10-03 用户拍板，台账 §三 #4 改判）：
+    //    开始菜单里只放本体。用户的读法很直接——「那里你给我提供的不是我 linkdesk 本体，
+    //    而是一个卸载程序」；而且它借的是 app 的图标，看起来就像多装了一个同名程序。
+    //    卸载入口两条就够：INSTDIR\uninstall.exe（双击即卸载界面）＋ ARP（设置 → 应用）。
+    //    ⚠️ 存量机器上那条旧 .lnk 由 PurgeLegacyUninstallArtifacts / DeleteShortcuts 清掉。
     return ok;
 }
 
@@ -477,39 +482,87 @@ static bool DelTree(HKEY root, const std::wstring& sub)
     return st == ERROR_SUCCESS || st == ERROR_FILE_NOT_FOUND || st == ERROR_PATH_NOT_FOUND;
 }
 
+/** 单文件字节数；拿不到返回 false。 */
+static bool FileBytes(const std::wstring& path, unsigned long long* out)
+{
+    WIN32_FILE_ATTRIBUTE_DATA fad = {};
+    if (!GetFileAttributesExW(path.c_str(), GetFileExInfoStandard, &fad)) return false;
+    *out = ((unsigned long long)fad.nFileSizeHigh << 32) | fad.nFileSizeLow;
+    return true;
+}
+
 bool InstallUninstallerCopy(const std::wstring& selfPath, const std::wstring& installDir,
                             unsigned long long shellBytes)
 {
     const std::wstring dst = installDir + L"\\" + kUninstallExe;
-    // 源 == 目标（产品态从 INSTDIR 里重跑安装包）⇒ 无事可做
+    // 源 == 目标（存量机器上从 INSTDIR 里重跑那份副本）⇒ 无事可做
     if (_wcsicmp(selfPath.c_str(), dst.c_str()) == 0) return true;
-    // 🔴 只提取前 shellBytes 字节（纯壳，不含 7z 载荷）——360 的自复制启发式见 syswrite.h。
-    //    shellBytes=0（开发壳没载荷可量）⇒ 退化成整份复制。
-    HANDLE src = CreateFileW(selfPath.c_str(), GENERIC_READ,
-                             FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
-                             nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
-    if (src == INVALID_HANDLE_VALUE) return false;
-    LARGE_INTEGER li = {};
-    if (!GetFileSizeEx(src, &li)) { CloseHandle(src); return false; }
-    unsigned long long total = shellBytes;
-    if (total == 0 || total > (unsigned long long)li.QuadPart) total = (unsigned long long)li.QuadPart;
 
-    HANDLE out = CreateFileW(dst.c_str(), GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS,
-                             FILE_ATTRIBUTE_NORMAL, nullptr);
-    if (out == INVALID_HANDLE_VALUE) { CloseHandle(src); return false; }
-    bool ok = true;
-    std::vector<char> buf(1u << 20);
-    unsigned long long done = 0;
-    while (ok && done < total) {
-        DWORD want = (DWORD)((total - done > buf.size()) ? buf.size() : (total - done));
-        DWORD got = 0;
-        if (!ReadFile(src, buf.data(), want, &got, nullptr) || got == 0) { ok = false; break; }
-        DWORD w = 0;
-        ok &= WriteFile(out, buf.data(), got, &w, nullptr) && w == got;
-        done += got;
+    // 🔴 写临时名 → 核字节数 → 改名就位；任一步失败重来，最多 3 次。
+    //    0.2.35 实机出现过「ARP 与开始菜单都指着它、文件却不在磁盘上」：这一步原先是**单发**，
+    //    且失败只走调试输出 ⇒ 卸载入口当场变死链，安装流程和用户都不知道（台账 §三 #6）。
+    //    常见失败面：杀软扫描期持有文件（共享位 0 = 独占打开）、磁盘瞬时占用。
+    const std::wstring tmp = dst + L".tmp";
+    for (int attempt = 1; attempt <= 3; ++attempt) {
+        HANDLE src = CreateFileW(selfPath.c_str(), GENERIC_READ,
+                                 FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+                                 nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+        if (src == INVALID_HANDLE_VALUE) return false;   // 源读不到：重试没有意义
+        LARGE_INTEGER li = {};
+        if (!GetFileSizeEx(src, &li)) { CloseHandle(src); return false; }
+        // 🔴 只提取前 shellBytes 字节（纯壳，不含 7z 载荷）——360 的自复制启发式见 syswrite.h。
+        //    shellBytes=0（开发壳没载荷可量）⇒ 退化成整份复制。
+        unsigned long long total = shellBytes;
+        if (total == 0 || total > (unsigned long long)li.QuadPart) total = (unsigned long long)li.QuadPart;
+
+        HANDLE out = CreateFileW(tmp.c_str(), GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS,
+                                 FILE_ATTRIBUTE_NORMAL, nullptr);
+        if (out == INVALID_HANDLE_VALUE) { CloseHandle(src); Sleep(250); continue; }
+        bool ok = true;
+        std::vector<char> buf(1u << 20);
+        unsigned long long done = 0;
+        while (ok && done < total) {
+            DWORD want = (DWORD)((total - done > buf.size()) ? buf.size() : (total - done));
+            DWORD got = 0;
+            if (!ReadFile(src, buf.data(), want, &got, nullptr) || got == 0) { ok = false; break; }
+            DWORD w = 0;
+            ok &= WriteFile(out, buf.data(), got, &w, nullptr) && w == got;
+            done += got;
+        }
+        CloseHandle(out);
+        CloseHandle(src);
+        // 落盘核对：字节数对得上才算写完（半截文件比没有更糟——ARP 会指着它）
+        unsigned long long written = 0;
+        ok = ok && FileBytes(tmp, &written) && written == total;
+        if (ok && MoveFileExW(tmp.c_str(), dst.c_str(), MOVEFILE_REPLACE_EXISTING)) return true;
+        DeleteFileW(tmp.c_str());
+        OutputDebugStringW((L"[installer] 卸载器副本第 " + std::to_wstring(attempt)
+                            + (ok ? L" 次改名失败\n" : L" 次写盘不完整\n")).c_str());
+        Sleep(250);
     }
-    CloseHandle(out);
-    CloseHandle(src);
+    OutputDebugStringW(L"[installer] 卸载器副本写不进 INSTDIR（3 次都没成）——卸载入口会指向不存在的文件\n");
+    return false;
+}
+
+/** 清掉 0.2.34/0.2.35 时代留下的两件「安装器残影」（覆盖安装时跑，台账 §三 #4 改判配套）：
+ *  ① `<INSTDIR>\linkdesk-setup.exe` —— 旧命的卸载器副本。用户读成「装好的软件里塞了个安装器」。
+ *     🔴 只删 ≤8MB 的（我们的纯壳 ≈1.27MB）：真安装包 106MB，用户万一把自己的安装包放进安装
+ *     目录里，**绝不许**误删。
+ *  ② 开始菜单 `Uninstall LinkDesk.lnk` —— 指向 ① 的那条旧卸载项（本版不再创建）。 */
+bool PurgeLegacyUninstallArtifacts(const std::wstring& installDir)
+{
+    bool ok = true;
+    const std::wstring legacy = installDir + L"\\" + kLegacyUninstallExe;
+    unsigned long long sz = 0;
+    if (FileBytes(legacy, &sz) && sz > 0 && sz <= (8ull << 20)) {
+        if (!DeleteFileW(legacy.c_str()) && GetLastError() != ERROR_FILE_NOT_FOUND) ok = false;
+        else OutputDebugStringW(L"[installer] 已清掉旧命的卸载器副本 linkdesk-setup.exe\n");
+    }
+    std::wstring programs = KnownFolder(FOLDERID_Programs);
+    if (!programs.empty()
+        && !DeleteFileW((programs + L"\\" + kLegacyUninstallShortcutName + L".lnk").c_str())
+        && GetLastError() != ERROR_FILE_NOT_FOUND)
+        ok = false;
     return ok;
 }
 
@@ -594,9 +647,10 @@ bool DeleteShortcuts()
     if (!programs.empty() && !DeleteFileW((programs + L"\\" + kProductName + L".lnk").c_str())
         && GetLastError() != ERROR_FILE_NOT_FOUND)
         ok = false;
-    // 卸载项（台账 §三 #4 配套）：**必须一起删**。少了这一条，用户卸载后开始菜单里
-    // 会留一条指向已消失程序与已消失 exe 的「卸载 LinkDesk」死项——比当初不建更糟。
-    if (!programs.empty() && !DeleteFileW((programs + L"\\" + kUninstallShortcutName + L".lnk").c_str())
+    // 🔴 旧开始菜单卸载项（0.2.35 及更早建的）：**必须一起删**。本版不再创建它（见
+    //    CreateShortcuts），但存量机器上有——留着就是一条指向旧副本的死「卸载 LinkDesk」项。
+    //    删的目标不存在时 DeleteFileW 报 ERROR_FILE_NOT_FOUND，按成功算（清理要幂等）。
+    if (!programs.empty() && !DeleteFileW((programs + L"\\" + kLegacyUninstallShortcutName + L".lnk").c_str())
         && GetLastError() != ERROR_FILE_NOT_FOUND)
         ok = false;
     return ok;

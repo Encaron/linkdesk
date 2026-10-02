@@ -47,7 +47,11 @@ static bool g_alphaOk = false;              // 件 3d-2：宿主侧三段（层/
 
 // ── 设计常量（05 §3.1：安装窗 780×570 逻辑像素；件 1d：卸载窗 720×540）────
 static int kWinW = 780, kWinH = 570;
-static bool g_uninstall = false;             // --uninstall：自绘卸载器模式（页面拿到 ?mode=uninstall）
+static bool g_uninstall = false;             // --uninstall（或双击副本）：自绘卸载器模式（页面拿到 ?mode=uninstall）
+/** 卸载**真跑完**了（段 4 收尾校验通过）——自删闸的唯一扳机。
+ *  🔴 0.2.35 的闸只有「g_uninstall ⇒ 退出即自删」，于是用户在帧 1 点 ✕（**什么都没做**）
+ *  也把 INSTDIR 里的卸载器删了 ⇒ ARP 当场变死链（2026-10-02 实机 bug，台账 §三 #6）。 */
+static bool g_uninstallDone = false;
 static const wchar_t kVHost[] = L"installer.local";   // → exe 所在目录
 static const wchar_t kStartUrl[] = L"https://installer.local/app.html";
 /** 「许可协议」链接的去处（台账 §五 A：页面一直在发 `open-license`，宿主**从来没受理** ⇒ 死按钮）。
@@ -1020,9 +1024,10 @@ static int RunSilentInstall()
     WriteContextMenus(g_installDir, g_opts.fileMenu, g_opts.dirMenu);
     if (g_opts.path) AddToPath(g_installDir);
     CreateShortcuts(g_installDir);
+    PurgeLegacyUninstallArtifacts(g_installDir);   // 台账 §三 #4：清旧命残影（覆盖装时；≤8MB 才动）
     bool unCopyOk = InstallUninstallerCopy(g_selfPath, g_installDir, g_markerAt);   // 件 2d：ARP 指的卸载器
     TraceLine(L"[install] uninstaller-copy ok=" + std::wstring(unCopyOk ? L"1" : L"0")
-              + L" dst=" + g_installDir + L"\\linkdesk-setup.exe");
+              + L" dst=" + g_installDir + L"\\" + UninstallerExeName());
     WriteArpEntry(g_installDir, PayloadVersion());
     TraceLine(L"[install] arp written; silent install done");
     if (SUCCEEDED(hrCom)) CoUninitialize();
@@ -1219,9 +1224,16 @@ static void InstallWorker()
     sysOk &= WriteContextMenus(g_installDir, g_opts.fileMenu, g_opts.dirMenu);
     if (g_opts.path) sysOk &= AddToPath(g_installDir);
     sysOk &= CreateShortcuts(g_installDir);
-    // 件 2d：把壳自己复制成 `<INSTDIR>\linkdesk-setup.exe`（ARP UninstallString 指向的那份
+    // 台账 §三 #4：清 0.2.34/0.2.35 留下的旧命残影（`linkdesk-setup.exe` 副本 ＋ 旧开始菜单卸载项）
+    sysOk &= PurgeLegacyUninstallArtifacts(g_installDir);
+    // 件 2d：把壳自己提取成 `<INSTDIR>\uninstall.exe`（ARP UninstallString 指向的那份
     // 卸载器）——**必须排在 WriteArpEntry 之前**，ARP 的键值与 EstimatedSize 都要算上它
-    sysOk &= InstallUninstallerCopy(g_selfPath, g_installDir, g_markerAt);
+    bool unCopyOk = InstallUninstallerCopy(g_selfPath, g_installDir, g_markerAt);
+    // 🔴 这一步失败原先只落 OutputDebugStringW（无痕）⇒ 卸载入口静默变死链而没人知道。
+    //    现在留一行 LK_TRACE 台账（桌面「装完找不到卸载入口」那类报修先看它，台账 §三 #6）。
+    TraceLine(L"[install] uninstaller-copy ok=" + std::wstring(unCopyOk ? L"1" : L"0")
+              + L" dst=" + g_installDir + L"\\" + UninstallerExeName());
+    sysOk &= unCopyOk;
     sysOk &= WriteArpEntry(g_installDir, PayloadVersion());
     if (g_hwnd) PostMessageW(g_hwnd, WM_LK_PROGRESS, 92, 0);
 
@@ -1461,7 +1473,11 @@ static void UninstallWorker(bool keep)
     // 校验失败也不拦收场（残留如实留在机器上，比卡死在 99% 强）；自删在退出后由子进程做。
     bool ok = ReadInstalledVersion().empty();
     if (!ok) OutputDebugStringW(L"[installer] 卸载收尾校验：ARP 键仍在（删除失败？）\n");
-    TraceLine(std::wstring(L"[uninstall] 收尾校验 arp-gone=") + (ok ? L"1" : L"0"));
+    TraceLine(std::wstring(L"[uninstall] 收尾校验 arp-gone=") + (ok ? L"1" : L"0")
+              + L" selfdelete=" + (ok ? L"1" : L"0"));
+    // 🔴 自删闸的扳机（SpawnSelfDelete 第三道闸）：只有走到这儿且校验通过，退出时才许可删自己。
+    //    体检没过的早退分支（上面 legit=false）不置位 ⇒ 那种「只走流程」的卸载也不自删。
+    g_uninstallDone = ok;
     if (g_hwnd) PostMessageW(g_hwnd, WM_LK_PROGRESS, 100, 0);
     if (g_hwnd) PostMessageW(g_hwnd, WM_LK_DONE, 0, 0);
     CoUninitialize();
@@ -1486,16 +1502,29 @@ static int RunSilentUninstall()
     return 0;
 }
 
-/** 卸载器自删（05 §4.3：子进程 `cmd /c ping -n 2 … & del <自身>`）。
- *  🔴 **只认产品态**：本进程 exe 名 = `linkdesk-setup.exe`（安装时 InstallUninstallerCopy
- *  落进 INSTDIR 的那份）才删；开发壳（bootstrapper.exe / 测试副本）一律不删——否则测试
- *  一次就把 out\ 自己端了。ping 延时给本进程留出退出时间；rd 只收已空的目录。 */
-static void SpawnSelfDelete()
+/** g_selfPath 的文件名是不是 name（大小写不敏感）——「本进程是不是 INSTDIR 里那份卸载器副本」
+ *  的唯一判据，wWinMain（双击即卸载）与 SpawnSelfDelete（自删闸①）共用。 */
+static bool SelfBaseNameIs(const wchar_t* name)
 {
     const wchar_t* base = g_selfPath.c_str();
     for (const wchar_t* q = g_selfPath.c_str(); *q; ++q)
         if (*q == L'\\' || *q == L'/') base = q + 1;
-    if (_wcsicmp(base, L"linkdesk-setup.exe") != 0) return;
+    return _wcsicmp(base, name) == 0;
+}
+
+/** 卸载器自删（05 §4.3：子进程 `cmd /c ping -n 2 … & del <自身>`）。
+ *  🔴 三道闸，缺一条都会出事：
+ *   ① 名 = `uninstall.exe`（写侧 `UninstallerExeName()` 那一份）——开发壳 bootstrapper.exe、
+ *      测试动过的副本一律不删，否则测试一次就把 out\ 自己端了；
+ *   ② 本进程**没有 7z 载荷**——用户手里的安装包本体（不管叫什么名）绝不删；
+ *   ③ `g_uninstallDone`——**只有卸载真跑完**才删。用户点 ✕（帧 1/2 退出、一个字节都没写）
+ *      不许删：0.2.35 漏的正是这道闸，实机一按 ✕ 卸载入口就没了（台账 §三 #6）。
+ *  ping 延时给本进程留出退出时间；rd 只收已空的目录。 */
+static void SpawnSelfDelete()
+{
+    if (!SelfBaseNameIs(UninstallerExeName())) return;
+    if (g_hasPayload) return;
+    if (!g_uninstallDone) return;
     std::wstring cmd = L"cmd.exe /c ping -n 3 127.0.0.1 >nul & del /f /q \"" + g_selfPath
                      + L"\" & rd /q \"" + ExeDir() + L"\"";
     STARTUPINFOW si = {};
@@ -1632,10 +1661,18 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, PWSTR, int nCmdShow)
         if (wcsncmp(argv[i], L"--log=", 6) == 0) g_logPath = argv[i] + 6;
     }
     if (argv) LocalFree(argv);
-    if (g_uninstall) { kWinW = 720; kWinH = 540; }   // 卸载窗比安装窗略小（E-卸载屏 mockup）
 
     g_selfPath = [] { wchar_t p[MAX_PATH] = {}; GetModuleFileNameW(nullptr, p, MAX_PATH); return std::wstring(p); }();
     g_hasPayload = FindPayload();
+
+    // 🔴 双击即卸载（2026-10-03 用户拍板，台账 §三 #4 改判）：INSTDIR 里那份副本就叫
+    //    `uninstall.exe`，**用户双击它、不带任何参数**，必须直接进我们自绘的卸载界面
+    //    （老卸载体验就是「点开就有界面」——不能要求用户自己会加开关）。
+    //    判据两条**都要**：① 文件名 = `uninstall.exe`（UninstallerExeName() 那份，唯一真相源）
+    //    ② 本进程**没有 7z 载荷**（纯壳副本才够格；用户手里的安装包哪怕改名成这个，有载荷 ⇒ 照旧当安装包）。
+    //    ⚠️ 必须在 FindPayload 之后判（② 就是它），也必须排在下面所有 g_uninstall 分支之前。
+    if (!g_uninstall && !g_hasPayload && SelfBaseNameIs(UninstallerExeName())) g_uninstall = true;
+    if (g_uninstall) { kWinW = 720; kWinH = 540; }   // 卸载窗比安装窗略小（E-卸载屏 mockup）
 
     // 件 2d：静默卸载（ARP「应用和功能」的静默卸载 = QuietUninstallString `--uninstall /S`）。
     // 不建窗、不碰 WebView2；keep 恒 true（静默永不删用户数据，见 RunSilentUninstall）。
@@ -1965,8 +2002,9 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, PWSTR, int nCmdShow)
                                            // 真结束与否不靠等——由 RemoveTree 的重试兜住
         RemoveTree(g_uiTempDir);
     }
-    // 件 2d：卸载器自删（产品态 = INSTDIR\linkdesk-setup.exe 才会真删；只认 --uninstall 路径，
-    // 安装模式绝不能走到这儿——那是用户手里的安装包本体）
+    // 件 2d：卸载器自删（三道闸见 SpawnSelfDelete：名对 / 无载荷 / **卸载真跑完**）。
+    // 🔴 用户点 ✕「什么都没做」的那条路**不删**——0.2.35 就是在这儿删掉了 INSTDIR 的卸载器，
+    //    让 ARP 与开始菜单一起变死链（台账 §三 #6）。安装模式也不能走到这儿（那是用户手里的安装包本体）。
     if (g_uninstall) SpawnSelfDelete();
     return (int)msg.wParam;
 }

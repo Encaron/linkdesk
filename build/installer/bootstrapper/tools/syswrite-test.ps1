@@ -188,8 +188,9 @@ $TREE_ROOTS = @(
 
 $desktopLnk = Join-Path ([Environment]::GetFolderPath('Desktop')) 'LinkDesk.lnk'
 $menuLnk    = Join-Path ([Environment]::GetFolderPath('Programs')) 'LinkDesk.lnk'
-# 台账 §三 #4：开始菜单**多了一条卸载项**（`Uninstall LinkDesk`）。它同样要进备份/还原——
-# 不备份的话，本测试每跑一次就往用户开始菜单里丢一条指向临时目录的卸载快捷方式（跑完还不清）。
+# 台账 §三 #4 改判（2026-10-03）：`Uninstall LinkDesk.lnk` 是 0.2.35 建的旧卸载项，本版**不再创建**，
+# 但仍必须进备份/还原——两个用途：① 覆盖装/卸载会把它清掉，测试跑完得原样放回用户机器；
+# ② 路 1c 会故意种一个同名文件验证清理规则（`had=false` 时由还原链负责删掉）。
 $uninstallLnk = Join-Path ([Environment]::GetFolderPath('Programs')) 'Uninstall LinkDesk.lnk'
 $backDir    = Join-Path $Work '_back'
 $stateFile  = Join-Path $Work '_state.json'
@@ -374,12 +375,19 @@ try {
     $p1 = Start-Process -FilePath $Setup -ArgumentList @('--silent', "--dir=$d1") -PassThru -Wait
     Say ($p1.ExitCode -eq 0) "退出码 $($p1.ExitCode)（期望 0）"
     Say (Test-Path (Join-Path $d1 'LinkDesk.exe')) "LinkDesk.exe 落在 $d1"
+    # 🔴 卸载器副本：名字必须是 `uninstall.exe`（2026-10-03 用户拍板「双击就开我们自己的卸载界面」），
+    #    且必须是**纯壳**（≈1.3MB）——整份自复制是 107MB（台账 §三 #4 的原始病根，别回退）
+    $un = Join-Path $d1 'uninstall.exe'
+    if (Test-Path -LiteralPath $un) {
+        $unKb = [math]::Ceiling((Get-Item -LiteralPath $un).Length / 1KB)
+        Say ($unKb -lt 8192) "卸载器副本 uninstall.exe = $unKb KB（<8192 ⇒ 纯壳，不是整份安装包）"
+    } else { Say $false "INSTDIR 里没有 uninstall.exe —— 双击卸载与 ARP 都会是死链" }
 
     # ARP：逐值与实机现装逐字对齐（无 Publisher、Comments 空、DisplayIcon 带 ,0）
     Say ((Reg-Get $ARP 'DisplayName') -eq "LinkDesk $ver") "ARP DisplayName = `"$(Reg-Get $ARP 'DisplayName')`""
     Say ((Reg-Get $ARP 'DisplayVersion') -eq $ver) "DisplayVersion = $ver"
-    Say ((Reg-Get $ARP 'UninstallString') -eq "`"$d1\linkdesk-setup.exe`" --uninstall") "UninstallString 指向安装根 ＋ --uninstall"
-    Say ((Reg-Get $ARP 'QuietUninstallString') -eq "`"$d1\linkdesk-setup.exe`" --uninstall /S") "QuietUninstallString 带 /S"
+    Say ((Reg-Get $ARP 'UninstallString') -eq "`"$d1\uninstall.exe`" --uninstall") "UninstallString 指向安装根 ＋ --uninstall"
+    Say ((Reg-Get $ARP 'QuietUninstallString') -eq "`"$d1\uninstall.exe`" --uninstall /S") "QuietUninstallString 带 /S"
     Say ((Reg-Get $ARP 'DisplayIcon') -eq "$d1\LinkDesk.exe,0") "DisplayIcon 带 ``,0`` 后缀"
     Say ((Reg-HasValue $ARP 'Comments') -and ((Reg-Get $ARP 'Comments') -eq '')) "Comments 存在且为空串"
     Say ((Reg-Get $ARP 'NoModify') -eq 1 -and (Reg-Get $ARP 'NoRepair') -eq 1) "NoModify/NoRepair = 1"
@@ -446,17 +454,26 @@ try {
         } else { Say $false "快捷方式缺失：$lnk" }
     }
 
-    # 🔴 台账 §三 #4：开始菜单**卸载项**（`Uninstall LinkDesk.lnk`）。
-    #    与启动项**不同名**是刻意的：同名会互相覆盖（一条 .lnk 只能一个目标）。
-    #    目标 = 安装根那份自拷贝的卸载器；参数 `--uninstall`；图标同样「路径 + 单个 0」。
+    # 🔴 台账 §三 #4 改判（2026-10-03）：开始菜单**只放本体**——`Uninstall LinkDesk.lnk` 起不再创建
+    #    （用户原话：「那里你给我提供的不是我 linkdesk 本体，而是一个卸载程序」）。卸载入口两条：
+    #    INSTDIR 的 `uninstall.exe`（双击即卸载界面）＋ ARP。存量机器上的旧 .lnk 由清理规则带走。
     if (Test-Path -LiteralPath $uninstallLnk) {
-        $sc = $ws.CreateShortcut($uninstallLnk)
-        Say ($sc.TargetPath -eq (Join-Path $d1 'linkdesk-setup.exe')) `
-            "卸载项指向 $($sc.TargetPath)（应 <安装目录>\linkdesk-setup.exe）"
-        Say ($sc.Arguments -eq '--uninstall') "卸载项参数 = `"$($sc.Arguments)`"（应 --uninstall）"
-        Say ($sc.IconLocation -eq "$(Join-Path $d1 'linkdesk-setup.exe'),0") `
-            "卸载项图标 = `"$($sc.IconLocation)`"（应 `"<安装目录>\linkdesk-setup.exe,0`"）"
-    } else { Say $false "开始菜单卸载项缺失：$uninstallLnk（台账 §三 #4：卸载不能只靠设置里那条）" }
+        Say $false "开始菜单还有旧卸载项 $uninstallLnk —— 本版起不该再建（存量机器应被覆盖装的清理规则清掉）"
+    } else { Say $true "开始菜单没有卸载项（只放本体：桌面/开始菜单各一条 LinkDesk.lnk）" }
+
+    # ══ 路 1c：覆盖装清旧命残影（0.2.34/0.2.35 → 本版）════════════════════════
+    Write-Host "`n=== 路 1c：种旧命副本 ＋ 旧开始菜单卸载项 ⇒ 对同目录覆盖装必须一并清掉 ==="
+    # 台账 §三 #4 改判配套：旧名 `linkdesk-setup.exe`（用户读成「装好的软件里塞了个安装器」）与它那条
+    # 开始菜单 .lnk 都是 0.2.34/0.2.35 的形态。种上，再对**同一个目录**跑一次静默装（= 真覆盖装）。
+    $seedLegacy = Join-Path $d1 'linkdesk-setup.exe'
+    Set-Content -LiteralPath $seedLegacy -Value 'x' -NoNewline
+    Set-Content -LiteralPath $uninstallLnk -Value 'x' -NoNewline
+    Say ((Test-Path -LiteralPath $seedLegacy) -and (Test-Path -LiteralPath $uninstallLnk)) '种子已摆好（旧命副本 ＋ 旧卸载项 .lnk）'
+    $p1c = Start-Process -FilePath $Setup -ArgumentList @('--silent', "--dir=$d1") -PassThru -Wait
+    Say ($p1c.ExitCode -eq 0) "覆盖装退 $($p1c.ExitCode)（期望 0）"
+    Say (-not (Test-Path -LiteralPath $seedLegacy)) '旧命副本 linkdesk-setup.exe 已被清掉（≤8MB ⇒ 命中清理规则）'
+    Say (-not (Test-Path -LiteralPath $uninstallLnk)) '旧开始菜单卸载项已被清掉'
+    Say (Test-Path -LiteralPath (Join-Path $d1 'uninstall.exe')) '新命副本 uninstall.exe 仍在（清理没误伤自己）'
 
     # ══ 路 1b：静默 · 反推为勾 ⇒ `*\shell` 的写入侧 ═══════════════════════════
     Write-Host "`n=== 路 1b：预置三个右键键（模拟「当初勾过」）⇒ 静默装必须改写指向本次目录 ==="
@@ -468,8 +485,15 @@ try {
         Reg-Set "$($m.k)\command" '' "$oldExe $($m.arg)"
     }
     $d1b = Join-Path $Work 'l1b'
+    New-Item -ItemType Directory -Force -Path $d1b | Out-Null
+    # 台账 §三 #4 清理规则的**护栏**：>8MB 的同名文件**不许删**（用户把安装包放进 INSTDIR 的极端情形；
+    # 真安装包 106MB，误删是灾难）。纯壳 ≈1.3MB 落在删除侧 ⇒ 8MB 这条线两向都要钉住。
+    $seedBig = Join-Path $d1b 'linkdesk-setup.exe'
+    $fs = [IO.File]::Create($seedBig); $fs.SetLength(9MB); $fs.Close()
     $p1b = Start-Process -FilePath $Setup -ArgumentList @('--silent', "--dir=$d1b") -PassThru -Wait
     Say ($p1b.ExitCode -eq 0) "退出码 $($p1b.ExitCode)（期望 0）"
+    Say (Test-Path -LiteralPath $seedBig) '>8MB 的同名文件仍在（护栏：它可能是用户的安装包 ⇒ 不许删）'
+    Say (Test-Path -LiteralPath (Join-Path $d1b 'uninstall.exe')) '新名副本 uninstall.exe 已落 INSTDIR'
     foreach ($m in $MENUS) {
         $gotT = Reg-Get $m.k ''; $gotI = Reg-Get $m.k 'Icon'; $gotC = Reg-Get "$($m.k)\command" ''
         Say (($gotT -eq 'Open with LinkDesk') -and ($gotI -eq "`"$d1b\LinkDesk.exe`"") -and

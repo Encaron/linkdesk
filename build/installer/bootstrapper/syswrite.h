@@ -55,11 +55,12 @@ bool WriteArpEntry(const std::wstring& installDir, const std::wstring& version);
  *  🔴 路径一律走 `SHGetKnownFolderPath`——实机桌面被重定向到 `D:\360MoveData\...`，
  *  写 `%USERPROFILE%\Desktop` 会**静默建到错地方**（实测量到，见 README 坑 11）。
  *  ⚠️ 调用前该线程必须已 `CoInitializeEx`。
- *  **一共三条**（2026-10-02 起；台账 §三 #3/#4）：
- *    ① 桌面 `LinkDesk.lnk`（启动）② 开始菜单 `LinkDesk.lnk`（启动）
- *    ③ 开始菜单 `<卸载项名>.lnk`（**卸载**：目标 = `<INSTDIR>\linkdesk-setup.exe`，带 `--uninstall`）。
- *  ③ 是 `app.html` 一直写在注释里的那条「开始菜单卸载项」——原实现漏建，用户实机找不到卸载入口。
- *  ⚠️ ③ 与 ② **必须不同名**（同名会互相覆盖）；图标一律传**纯路径**（不带 `,0`，§三 #3）。 */
+ *  **一共两条**（2026-10-03 起；台账 §三 #4 改判）：① 桌面 `LinkDesk.lnk` ② 开始菜单 `LinkDesk.lnk`。
+ *  🔴 开始菜单里**只放本体**：0.2.35 曾再建一条「卸载 LinkDesk」（借 app 图标、指向 INSTDIR 里的
+ *  卸载器），用户实机读成「开始菜单给我的不是我 LinkDesk 本体，而是一个卸载程序」⇒ **撤掉**。
+ *  卸载入口保持两条：`<INSTDIR>\uninstall.exe`（双击即卸载界面）＋ ARP（设置 → 应用）。
+ *  存量机器上那条旧卸载项由 `PurgeLegacyUninstallArtifacts` / `DeleteShortcuts` 清掉。
+ *  图标一律传**纯路径**（不带 `,0`，§三 #3）。 */
 bool CreateShortcuts(const std::wstring& installDir);
 
 // ── 读侧 ──────────────────────────────────────────────────────────────────
@@ -86,20 +87,33 @@ bool WriteInstallerLanguage(const std::wstring& code);
 // 必须同笔改那里，退役后本文件即唯一真相源）。两处**有意超出** nsh 清单（出处 02 §二幕⑨
 // 「反注册：快捷方式 / 右键菜单 / 编辑器注册 / PATH 项 / 安装目录」——nsh 时代这两件由
 // electron-builder 代做，T3-b 后没人做了）：
-//   · `DeleteShortcuts`（桌面＋开始菜单共三条 .lnk——两条启动项＋一条卸载项，与 CreateShortcuts 严格互逆）
+//   · `DeleteShortcuts`（桌面＋开始菜单的启动项 .lnk ×2 ＋ **旧版遗留的开始菜单卸载项**——与 CreateShortcuts 严格互逆）
 //   · `DeleteArpEntry`（nsh 的卸载器由 NSIS 生成、自动删自己的 ARP 键；自绘卸载器要自己删）
 // 安装目录与 userData 的目录树删除不在此层（归 main.cpp 的工人线程，进度要按文件计数）。
 
-/** 把引导器壳提取成 `<安装目录>\linkdesk-setup.exe`（ARP `UninstallString` 指向的那份卸载器）。
+/** 把引导器壳提取成 `<安装目录>\uninstall.exe`（ARP `UninstallString` 指向的那份卸载器；
+ *  🔴 名字就叫 `uninstall.exe`，主机侧**双击它即进卸载模式**——见 `UninstallerExeName`）。
  *  🔴 **不是整份自复制**——只写前 `shellBytes` 字节（＝纯壳，不含 7z 载荷）：
  *    ① 体积与 NSIS 的 1MB Uninstall.exe 同量级（整份复制 = INSTDIR 白多 107MB）；
  *    ② 2026-10-02 实测：**360 行为监控会把「安装器 CopyFileW 自己的整份映像」秒删**
  *       （自复制＝蠕虫启发式），中性进程写出的文件没事——改自提取并实测能否过 360，
  *       过不了就得换思路（记录在 06 2d）。
+ *  🔴 写临时名 → 核字节数 → 改名就位，失败**重试 3 次**：0.2.35 是单发且失败只写调试输出，
+ *  实机出现过「ARP 与开始菜单都指着它、文件却不在」的死链（台账 §三 #6）。
  *  `shellBytes` = 调用方（main.cpp）的 `g_markerAt`（marker 偏移＝纯壳大小）；0 = 无载荷的开发壳
  *  ⇒ 退化成整份复制。`selfPath` = 调用方的 `g_selfPath`。 */
 bool InstallUninstallerCopy(const std::wstring& selfPath, const std::wstring& installDir,
                             unsigned long long shellBytes);
+
+/** 卸载器副本的文件名（写侧 `kUninstallExe` 的出口）。main.cpp 靠它判「本进程是不是那份副本」
+ *  （双击即卸载模式 / 自删闸）——**这个名字只有这一处真相源**，别在别处再写字面量。 */
+const wchar_t* UninstallerExeName();
+
+/** 覆盖安装时清掉 0.2.34/0.2.35 时代的两件残影：
+ *  ① `<INSTDIR>\linkdesk-setup.exe`（旧命的卸载器副本；用户读成「装好的软件里塞了个安装器」）
+ *     —— 🔴 **只删 ≤8MB 的**：真安装包 106MB，用户万一把它放进安装目录，绝不许误删；
+ *  ② 开始菜单 `Uninstall LinkDesk.lnk`（指向 ① 的旧卸载项）。 */
+bool PurgeLegacyUninstallArtifacts(const std::wstring& installDir);
 
 /** 右键三键**整树删**（`*\shell` / `Directory\shell` / `Directory\Background\shell` 的
  *  OpenWithLinkDesk）——与安装时勾没勾无关，清理要彻底（不存在则无害）。 */
@@ -116,9 +130,9 @@ bool DeleteAssociations();
  *  无论动没动 PATH，`PathBackup`/`PathAdded` 两个标记值都会删掉（同 nsh）。 */
 bool RestorePath(bool* touched);
 
-/** 桌面 ＋ 开始菜单快捷方式删除——**三条一起删**（`LinkDesk.lnk` ×2 ＋ 卸载项 ×1，
- *  路径与 CreateShortcuts 同款，不存在则无害）。
- *  🔴 卸载项**漏删比不建更糟**：会留下一条指向已消失程序、已消失 exe 的死「卸载」入口。 */
+/** 桌面 ＋ 开始菜单快捷方式删除：`LinkDesk.lnk` ×2 ＋ **旧开始菜单卸载项**
+ *  （`Uninstall LinkDesk.lnk`——0.2.35 及更早建的；本版不再创建，但存量机器上有）。不存在则无害。
+ *  🔴 那条旧卸载项**漏删比不建更糟**：会留下一条指向已消失程序、已消失 exe 的死「卸载」入口。 */
 bool DeleteShortcuts();
 
 /** ARP 卸载项整键删（键名 = 写侧同一条 v5 UUID）。 */

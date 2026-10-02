@@ -35,7 +35,7 @@
         ⚠️ 残余（已记档，未纳入）——app.js 里两处**运行时**配色（彩粒色板、语言下拉对勾）不进本表：
            JS 不消费 CSS 变量，硬凑反而多一层运行期耦合。 */
   --brand:#8a6ff0; --brand-soft:#a78bfa; --brand-mint:#34d399;
-  --brand-a50:rgba(138,111,240,.5); --brand-a25:rgba(138,111,240,.25);
+  --brand-a50:rgba(138,111,240,.5); --brand-a35:rgba(138,111,240,.35); --brand-a25:rgba(138,111,240,.25);
   --ok:#2fbf8a; --ok-ink:#2fae7c;
   --ring-1:rgba(167,139,250,.30); --ring-2:rgba(52,211,153,.16);
   --danger-a28:rgba(179,38,30,.28);
@@ -242,12 +242,14 @@ html[data-alpha] .frame{border-radius:32px;background:var(--desk);overflow:hidde
    -3.8px，26px 的子 span 白白背上（十位/个位被吸到一起的真正原因）。字号一字不动。 */
 .pct span{font-size:26px;letter-spacing:0}
 .track{height:8px;border-radius:9999px;background:var(--shade-8);overflow:hidden;position:relative}
-/* 台账 §五 F：原先这条进度条带 `box-shadow:0 0 14px rgba(138,111,240,.35)`（零偏移彩光）。
-   零偏移的**彩色**光晕不表达高度/景深、只表达"发光"（检测器 dark-glow 的判据），而这个条
-   已经有渐变本体＋`::after` 流光，再加一圈光就是装饰噪音 ⇒ **直接去掉**，不改成高度阴影
-   （8px 高的进度条上投阴影本来就看不见）。 */
+/* 🔴 这圈彩光是**定版里的**，不是新设计——2026-10-03 用户拍板：「UI 效果已经订过版，禁止再乱改」。
+   来由：0.2.35 清「更多配置」等前 AI 遗留时，顺手把这圈彩光也按「零偏移彩光＝装饰噪音」删了，
+   实机当场被打回（用户：「为什么安装时候那个彩色进度条没了？」「让你删它不是让你删我进度条动效的理由」）。
+   判据：清理**改判遗留物** ≠ 改**定版** UI；本目录一切视觉照 mockups 定版直搬
+   （真相源 mockups/E-混合提案.html:117 `box-shadow:0 0 14px rgba(138,111,240,.35)`）。
+   颜色照旧收进 token（--brand-a35），别写裸 hex（门禁 check-css-hardcode 扫本目录）。 */
 .fill{height:100%;width:0%;border-radius:9999px;position:relative;transition:width .3s linear;
-      background:linear-gradient(90deg,var(--brand),var(--ok))}
+      background:linear-gradient(90deg,var(--brand),var(--ok));box-shadow:0 0 14px var(--brand-a35)}
 .fill::after{content:'';position:absolute;inset:0;border-radius:9999px;
       background:linear-gradient(90deg,transparent,var(--frost-60),transparent);
       background-size:200% 100%;animation:shimmer 1.6s linear infinite}
