@@ -35,6 +35,9 @@ plugins/*/*.linkdesk-plugin
 # 2026-09-15 用户拍板：非 Claude 工具（ZCode / Codex）共用同一批技能——`.agents/skills` 是
 #   `.claude/skills` 的本机副本（28MB），`.codex` / `.zcode` 是各自 CLI 的按项目状态
 #   （钩子配置 / plan 产物）。三者一律只留磁盘，绝不入库。
+# 🔁 2026-10-03 追记：impeccable 把上面这条**反转**了——它的真身移入用户级
+#   `~/.agents/skills/impeccable`，工程内 `.claude/skills/impeccable` 现为指向它的入口联接
+#   （技能是 AI 工具不是产品件；上游升级一次 = 5.4 万行删除，不该记进产品史）。
 .agents/
 .codex/
 .zcode/

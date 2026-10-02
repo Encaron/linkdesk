@@ -68,7 +68,7 @@
 13. **🔥 async 初始化必须防 StrictMode 双重 effect 竞态**——第二次调必须返回第一次的进行中 Promise（`_loadingPromise`），不能 return undefined（memory `invisible-bugs-lesson-59c` Bug 1）
 14. **🔥 useEffect 有回调 prop 做非 DOM 副作用时必须加活跃守卫**（`if (!open) return;` 且纳入依赖数组）；写完 grep 同组件其他 effect——漏守卫的就是 bug（同上 Bug 2）
 15. **🔥🔥🔥 出了隐形 bug 不要猜——`git checkout` 逐 commit 二分定位**。找到最后正常与首个异常之间的 diff，bug 就在那个 commit 里
-16. **🔥🔥🔥🔥 任何 CSS/样式/配色/字体/间距/布局改动前，必须先经 `Skill` 调设计 skill 拿设计系统**（默认 `ui-ux-pro-max`；可竞标 taste 系/impeccable，见 memory `design-skills-inventory`）。不调 skill = 违反硬约束；落地走 CSS 变量，禁硬编码 hex/px
+16. **🔥🔥🔥🔥 任何 CSS/样式/配色/字体/间距/布局改动前，必须先经 `Skill` 调设计 skill 拿设计系统**（默认 `ui-ux-pro-max`；可竞标 taste 系/impeccable，见 memory `design-skills-inventory`）；🔴 **技能住用户级**——impeccable 真身 = `C:/Users/fengy/.agents/skills/impeccable`（≥4.5），工程内 `.claude/skills/impeccable` 只是指向它的**入口联接**（2026-10-03 出库，⛔ 别再 force-add 回仓）。不调 skill = 违反硬约束；落地走 CSS 变量，禁硬编码 hex/px
 17. **🔥 `useRef` 不得用于影响渲染输出的状态**——渲染决策走 `useState`；ref 仅用于 DOM 引用、前值对比、generation counter（#58e 教训：全插件标签页空白）
 18. **🔥 Electron 窗口顶部 30px 是 `-webkit-app-region: drag` 拖拽区**——所有 fixed 叠加层必须 `top: 30px` 起步（OS 级截事件，`z-index` 无效）
 19. **🔥 禁止模块级 `_initialized` guard + IPC 监听器注册**——导入即执行 = 永不清理 = 僵尸回调。IPC 监听走 `useEffect` + 引用计数；ESLint `linkdesk/no-module-level-ipc-listener` 机械拦截
