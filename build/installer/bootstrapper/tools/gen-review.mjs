@@ -43,9 +43,14 @@ css = css.replace(/url\('?(fonts\/[^')]+)'?\)/g, (_, p) => {
 });
 // 卸载侧样式键原本挂在根元素上；评审页两种模式同页 ⇒ 改挂 .mode-un（类写两遍补回被 html 选择器占掉的那份权值）
 css = css.split('html[data-mode=uninstall]').join('.mode-un.mode-un');
+// 件 3d-2（#2 透明窗）：`html[data-alpha] …` 那道门（宿主 put_DefaultBackgroundColor 成功后才挂）在定格页里
+// 一律当成立——评审页要看的就是落地后的样子。剥掉前缀后 `body{background:transparent}` 与评审壳那句同权值，
+// 评审壳写在后面 ⇒ 靠文档序赢，评审页自己的深色底板不受影响。
+css = css.split('html[data-alpha] ').join('');
 
-// 整窗抽取：body 内**原文**（grain 噪点＋orb 光球×2＋dust 微尘＋lkdd 语言面板＋xbtn＋shell 玻璃壳＋win＋全部屏）。
-// 每节一份、只点亮目标屏——评审页看到的必须是产品窗口本身，不是拼贴。grain 是 fixed，评审页里按住舞台。
+// 整窗抽取：body 内**原文**（frame 外框＋grain 噪点＋orb 光球×2＋dust 微尘＋lkdd 语言面板＋xbtn＋shell 玻璃壳＋win＋全部屏）。
+// 每节一份、只点亮目标屏——评审页看到的必须是产品窗口本身，不是拼贴。grain/orb/dust 全挂在 .frame 下
+// （件 3d-2 已把 grain 由 fixed 改 absolute），舞台上自动被 32px 弧线收住，评审壳不必再管。
 const b0 = html.indexOf('<body>') + '<body>'.length;
 const b1 = html.lastIndexOf('</body>');
 if (b0 < 6 || b1 < 0) throw new Error('app.html 缺 body 标记');
@@ -312,12 +317,14 @@ body{background:#22222a;padding:28px 32px 80px;max-width:1040px;margin:0 auto}
 .review-item{margin:34px 0}
 .review-item h2{font:400 14px/1.4 Consolas,monospace;color:#f0ede8;margin:0 0 4px}
 .review-item h2 code{font-size:11px;color:#b6b2ab;background:rgba(255,255,255,.08);padding:2px 8px;border-radius:6px;margin-left:8px}
-/* 舞台＝产品 OS 窗口本体：--desk 底色（窗角露出的就是它）＋DWM 12px 圆角＋系统阴影 */
-.stage{position:relative;background:var(--desk);border-radius:12px;overflow:hidden;box-shadow:0 26px 70px rgba(0,0,0,.55),0 4px 16px rgba(0,0,0,.40);margin:12px 0 8px}
+/* 舞台＝产品 OS 窗口本体的**外沿**。件 3d-2（#2）后真窗口逐像素透明 ⇒ 窗口轮廓＝产品自己 .frame 的 32px 弧线
+   （桌面色也由 .frame 自己画，舞台不再铺 --desk），窗外露出的就是桌面——评审页里用页面深色底板顶当「桌面」。
+   圆角跟着对齐 32px；这圈阴影是评审页加的**参照**：无边框窗真机没有系统阴影，别当成真机行为。 */
+.stage{position:relative;background:transparent;border-radius:32px;overflow:hidden;box-shadow:0 26px 70px rgba(0,0,0,.55),0 4px 16px rgba(0,0,0,.40);margin:12px 0 8px}
 .stage-install{width:780px;height:570px}
 .stage-uninstall{width:720px;height:540px}
-/* grain 在产品里是 fixed（贴视口）；评审页里必须按住舞台，否则铺满整页 */
-.stage .grain{position:absolute}
+/* grain 原先在产品里是 fixed（贴视口 ⇒ 会逃出圆角裁切、铺满整页），评审页才需要「.stage .grain{position:absolute}」压住。
+   件 3d-2 已把它改成 absolute 并由 .frame（overflow:hidden）收着 ⇒ 产品自己就按住舞台，那条覆盖随之撤销。 */
 .look{font:12px/1.8 Consolas,monospace;color:#a8a49d;margin:0}
 .look::before{content:'看';display:inline-block;background:#8a6ff0;color:#fff;border-radius:4px;padding:1px 5px;margin-right:8px;font-size:10px}
 .look.prop::before{content:'案';background:#2fbf8a}
@@ -338,7 +345,8 @@ body{background:#22222a;padding:28px 32px 80px;max-width:1040px;margin:0 auto}
 <h1 style="font:400 20px/1.4 Consolas,monospace;color:#f5f2ed">安装器全 UI 评审 · 3d</h1>
 <p class="lead">本页每节＝<b>一扇完整真窗口</b>：噪点、光球、玻璃壳、微尘、语言面板、✕，全部取自产品源
 （app.html/app.css）原文，只点亮目标屏——<b>非手抄、非暗色变体</b>。改 UI 后重跑
-<code>node tools/gen-review.mjs</code> 同步。定格静态：按钮不可点、语言切换不可用、完成屏彩带由 JS 生成（唯一例外＝顶部
+<code>node tools/gen-review.mjs</code> 同步。窗角那圈系统小圆角已去掉（件 3d-2／#2 已落地：真窗口逐像素透明，
+轮廓＝玻璃壳自己的 32px 弧线，窗外露出的深色＝评审页底板顶当的「桌面」）。定格静态：按钮不可点、语言切换不可用、完成屏彩带由 JS 生成（唯一例外＝顶部
 「帧间过渡实演」一节，那几颗按钮只为演示切帧动画）——
 <b>交互态/真机态</b>用 <code>E:\\linkdesk-build\\_3d-ui\\</code> 里的 bat（01 真流程 / 15 真卸载）。
 验收基线：04 审计 18/20 不跌破。在 ZCode 内置浏览器里直接点元素留言即可。</p>

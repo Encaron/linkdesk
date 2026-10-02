@@ -93,6 +93,15 @@ node tools\dom-probe.mjs --preview "screen=home&lang=zh-CN" --click "#lkdd-btn" 
   **exe 内的 RCDATA**（产品态，单文件拼合后旁边没有 `app.html`，只能内嵌）。两处都由 `build.cmd` 同笔产出，
   不存在「只更新了一处」——但**改了 `app.*` 忘了 `build.cmd`，产品态仍是旧的**（开发态看不出来）。
 - 无边框窗：`cls=LinkDeskInstallerBootstrapper`，窗口矩形 = 客户区 = 780×570（无任何非客户区）。
+  - **件 3d-2（2026-10-02，3d #2）：逐像素透明**——建窗后 `WS_EX_LAYERED` ＋ `SetLayeredWindowAttributes(…, 255, LWA_ALPHA)`
+    ＋ `DwmExtendFrameIntoClientArea(-1,-1,-1,-1)`（**三段返回值全成**才置 `g_alphaOk`），controller 就绪后
+    `ICoreWebView2Controller2::put_DefaultBackgroundColor{0,0,0,0}`。成事才把角偏好翻 `DWMWCP_ROUND(2) → DONOTROUND(1)`
+    并给页面注入 `data-alpha`；**缺任一半就一字不翻** ⇒ 页面（`app.css` 那段整块挂在 `html[data-alpha]` 下）退回
+    不透明＋系统圆角——绝不半成：半成会让客户区露未绘制像素（黑角），比现状难看。
+    桌面色随之由页面新增的 `.frame` 画（`position:absolute;inset:0`，半径 32 ＋ 裁切都挂它）——**body 底色会传播到画布、
+    画布不吃 radius**，只给 body 加圆角是白设；`.grain` 也从 `fixed` 改 `absolute` 才收得住。窗口轮廓＝`.shell` 的 32px 弧线。
+    ⚠️ **只过编译（`build.cmd` 绿、壳 1,235,456 字节），未真机验证**：Win10 透明机制待复测；透明楔形区仍吃鼠标点击、
+    无边框窗依旧没有系统阴影（两条与旧状一致）。
 - **载荷定位（件 2a）**：安装包 = `[壳.exe][marker 64B][app-*.7z]` 直拼。7-Zip **从文件尾**找归档签名，
   所以追加在后面的 7z 能直接解，不必先拷到临时文件。实测（2026-10-02 件 2b 复核读数，壳 1,030,656）：
   `7zr l linkdesk-setup-dev.exe` 报 `Offset = 1030656+64 = 1030720`、`Physical Size = 106302512`、
@@ -121,6 +130,8 @@ node tools\dom-probe.mjs --preview "screen=home&lang=zh-CN" --click "#lkdd-btn" 
   实测：home/version ⇒ `close` · progress ⇒ `cancel` · finish ⇒ `install-done{launch}` · 卸载 progress ⇒
   **零消息**（置灰吞掉）。防重复提交——stub 宿主回话连点三下只发出 1 条 `install-start`。DWM 圆角——
   `DwmGetWindowAttribute(33)` 读回 `2`（DWMWCP_ROUND），Win10 无此属性号自动直角、无版本分支。
+  ⚠️ 该读数出自**不透明态（件 3d-2 之前）**；透明链路成事时会再翻 `DONOTROUND(1)`（轮廓交给页面自己画），
+  失败则保持本读数——具体走哪支看 `main.cpp` 的 `g_alphaOk`。
 - **卸载实测（件 2d，2026-10-02，`tools\uninstall-test.ps1` 三路 29 断言全绿 ＋ `LK_TRACE` 工人流水）**：
   静默装 → 覆盖装（右键反推生效）→ 静默卸：`customUnInstall` 清单**逐条对账**全过（右键三键整树 ·
   ProgId/Capabilities · RegisteredApplications · 13 扩展名值（扩展名键不动）· PATH **逐字符**恢复＋类型

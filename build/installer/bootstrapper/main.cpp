@@ -42,6 +42,8 @@
 #define DWMWA_WINDOW_CORNER_PREFERENCE 33   // 老 SDK 头上没有这个属性号
 #endif
 static const DWORD kDwmCornerRound = 2;     // DWMWCP_ROUND
+static const DWORD kDwmCornerNone  = 1;     // DWMWCP_DONOTROUND（3d #2：透明后轮廓自己画，别让系统再切一刀）
+static bool g_alphaOk = false;              // 件 3d-2：宿主侧三段（层/玻璃/透明底）全成才让页面翻透明，否则退回今天的样子
 
 // ── 设计常量（05 §3.1：安装窗 780×570 逻辑像素；件 1d：卸载窗 720×540）────
 static int kWinW = 780, kWinH = 570;
@@ -1637,9 +1639,27 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, PWSTR, int nCmdShow)
     // 件 2c：Win11 原生圆角。无边框窗（WS_POPUP）系统不给圆角，画出来的四角是直角，
     // 和自绘界面里那一圈 12px 圆角对不上。⚠️ Win10 及更老没有这个属性号 ⇒ DwmSetWindowAttribute
     // 返 E_INVALIDARG，**忽略即可**（那边本来就该是直角，不退回自绘圆角）。
+    // 件 3d-2（3d #2）后：这一档只在「WebView2 透明没做成」时还起作用——真透明成事时会翻成
+    // DONOTROUND（见下方 onCtrl 那段），轮廓交给页面里 .shell 的 32px 弧线。
     {
         DWORD pref = kDwmCornerRound;
         DwmSetWindowAttribute(g_hwnd, DWMWA_WINDOW_CORNER_PREFERENCE, &pref, sizeof(pref));
+    }
+    // 件 3d-2（3d #2，用户 2026-10-02「可以改」）：把真窗口做成逐像素透明——窗口轮廓改由页面里
+    // .shell 的 32px 弧线决定 ⇒ 系统那圈 ≈8px 小圆角（DWMWCP_ROUND，半径不可设）与它露出的 --desk
+    // 灰楔形一并消失。配方＝DWM「一块玻璃」：WS_EX_LAYERED ＋ 整体 alpha 255（不做整体降透明）
+    // ＋ 边框延伸到整个客户区（-1,-1,-1,-1）。**另一半在 WebView2 侧**（put_DefaultBackgroundColor
+    // 全透明，见 onCtrl 那段）——缺任何一半，客户区都是实心白。
+    // ⚠️ 无边框窗本来就没有系统阴影，透明后依旧没有（评审页那层阴影是页面自己加的参照，不是真机行为）。
+    // ⚠️ 窗外那圈透明楔形仍会吃鼠标点击（LWA_ALPHA 不做点击穿透；穿透要 LWA_COLORKEY，会啃烂抗锯齿的弧线）。
+    {
+        SetWindowLongPtrW(g_hwnd, GWL_EXSTYLE, GetWindowLongPtrW(g_hwnd, GWL_EXSTYLE) | WS_EX_LAYERED);
+        BOOL layered = SetLayeredWindowAttributes(g_hwnd, 0, 255, LWA_ALPHA);
+        MARGINS mg = {-1, -1, -1, -1};
+        // 三段都必须成：任何一段失败 ⇒ g_alphaOk 保持 false，页面那边就不翻透明、原样退回（不透明＋系统圆角）。
+        // 只信返回值、不信「调过就算」——半成状态下页面若先翻了透明，客户区会露出未绘制像素（黑角），比现状难看。
+        g_alphaOk = (layered != FALSE) &&
+                    SUCCEEDED(DwmExtendFrameIntoClientArea(g_hwnd, &mg));
     }
     FitLogical(g_hwnd, GetDpiForWindow(g_hwnd), true);
     ShowWindow(g_hwnd, nCmdShow);
@@ -1695,6 +1715,24 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, PWSTR, int nCmdShow)
                     RECT rc = {};
                     GetClientRect(g_hwnd, &rc);
                     g_controller->put_Bounds(rc);
+
+                    // 件 3d-2（3d #2）：WebView2 底色全透明——逐像素 alpha 的另一半（窗体那半见
+                    // CreateWindowEx 之后那段）。**两半都成**才给页面挂 data-alpha：app.css 那段据此把
+                    // --desk 画进 .frame 的 32px 弧内、窗外留透明，并把系统圆角关掉（轮廓已由页面自己画）。
+                    // 缺任一半（老 WebView2 运行时/老 SDK/层或玻璃没设上）什么都不动 ⇒ 页面保持今天的
+                    // 不透明样子（qw 已铺满整窗，窗前只多一圈透明楔形）：不白不黑，不退回坏相。
+                    if (c && g_alphaOk) {
+                        Microsoft::WRL::ComPtr<ICoreWebView2Controller2> c2;
+                        if (SUCCEEDED(c->QueryInterface(IID_PPV_ARGS(c2.GetAddressOf()))) && c2) {
+                            COREWEBVIEW2_COLOR clear = {0, 0, 0, 0};   // A=0 ⇒ 全透明（结构体序是 A/R/G/B）
+                            if (SUCCEEDED(c2->put_DefaultBackgroundColor(clear))) {
+                                DWORD none = kDwmCornerNone;
+                                DwmSetWindowAttribute(g_hwnd, DWMWA_WINDOW_CORNER_PREFERENCE, &none, sizeof(none));
+                                web->AddScriptToExecuteOnDocumentCreated(
+                                    L"document.documentElement.setAttribute('data-alpha','1');", nullptr);
+                            }
+                        }
+                    }
 
                     // controller 建好前若已 WM_SETFOCUS，那次转交落空了：窗口仍在前台就补一次
                     if (GetForegroundWindow() == g_hwnd)

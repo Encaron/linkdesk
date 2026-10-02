@@ -17,6 +17,9 @@
  *     自定义区补下边距 20px；路径错误行改成常驻带（不再跳版）；按钮左右对称 22px（带圆片者除外）＋禁用态；
  *     进度数字字距归零（掐掉 .pct 继承来的 -.05em）；卸载确认屏收进内容列 .uncol(188px)；卸载完成环去色；
  *     切屏过渡换成「屏面落定 ＋ 去雾 ＋ 内容分层」（--mo-* 令牌，原 enter .8s 已废）
+ *   · 件 3d-2（3d #2，用户 2026-10-02「可以改」）：真窗口逐像素透明 ⇒ 窗口轮廓＝.shell 的 **32px** 弧线，
+ *     系统那圈 ≈8px 小圆角与它露出的 --desk 灰楔形一并消失（html/body 留透明、桌面色挪到 .frame，
+ *     main.cpp 侧做逐像素 alpha，失败则本段整段不生效、退回原样）
  */
 
 :root{
@@ -66,6 +69,16 @@ html,body{width:100%;height:100%}
 /* 底色取 --desk（= mockup 的 body 底色）：真实窗口全幅渲染时，窗内所见 = .win(85% 白) 覆在此色上，
    与 mockup 窗内/包边取色逐像素一致；--bg 按 §3.1 全表保留定义（mockup 里它只定义、没上任何面） */
 body{background:var(--desk);font-family:var(--sans);color:var(--txt);overflow:hidden;cursor:default}
+/* 件 3d-2（3d #2，用户 2026-10-02「可以改」）：真窗口逐像素透明——窗口轮廓改由 .shell 的 32px 弧线决定，
+   系统那圈 ≈8px 小圆角（DWMWCP_ROUND，半径由系统定、设不了 32）与它露出的 --desk 灰楔形一并消失。
+   ⚠️ 桌面色必须从 body 挪到 .frame：**body 的底色会被传播到画布**（html 底色透明时），画布不吃半径裁切
+   ⇒ 只给 body 加 border-radius 是白设（角上照样铺满）。故：html/body 留透明、--desk 由 .frame 画，
+   半径与裁切都挂 .frame——它 position:absolute 才成为 grain/orb/dust 的包含块，overflow:hidden 才收得住它们。
+   ⚠️ 整段只在 html 元素挂上 data-alpha 属性后才生效：宿主 main.cpp 的 put_DefaultBackgroundColor 成功才注入；
+   老 WebView2 运行时注入不了 ⇒ 整段不生效、退回今天的样子（不透明 ＋ 系统圆角），不会留白角。 */
+.frame{position:absolute;inset:0}
+html[data-alpha] body{background:transparent}
+html[data-alpha] .frame{border-radius:32px;background:var(--desk);overflow:hidden}
 /* 拖窗区（规格 05 §4.3：brand 行与各屏空白区可拖窗）——文字不给选中、给默认箭头 */
 [data-drag]{user-select:none;cursor:default}
 
@@ -75,7 +88,9 @@ body{background:var(--desk);font-family:var(--sans);color:var(--txt);overflow:hi
 .orb.b{background:var(--orb2);bottom:-160px;left:-100px;animation:fl2 26s ease-in-out infinite alternate}
 @keyframes fl1{to{transform:translate(-70px,50px) scale(1.15)}}
 @keyframes fl2{to{transform:translate(60px,-40px) scale(.9)}}
-.grain{position:fixed;inset:0;pointer-events:none;opacity:.03;z-index:50;
+/* 件 3d-2：fixed → absolute（3d #2 透明窗）——fixed 会逃出 .frame 的半径裁切，在窗外留一层方形噪点；
+   贴 .frame 与原先贴视口几何等价（.frame 本就铺满窗口）。 */
+.grain{position:absolute;inset:0;pointer-events:none;opacity:.03;z-index:50;
        background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence baseFrequency='.85' numOctaves='2'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)'/%3E%3C/svg%3E")}
 .dust{position:absolute;inset:0;pointer-events:none;overflow:hidden}
 .dust i{position:absolute;bottom:-8px;width:3px;height:3px;border-radius:50%;background:rgba(0,0,0,.3);
