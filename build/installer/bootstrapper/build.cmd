@@ -1,5 +1,5 @@
 @echo off
-rem LinkDesk bootstrapper shell build (spec: 05-实现交接.md SS4.2, target <= 5MB single-file exe)
+rem LinkDesk bootstrapper shell build (spec: installer handoff doc 05 SS4.2, target <= 5MB single-file exe)
 rem Keep this file ASCII-only: cmd.exe parses it in the OEM codepage.
 setlocal
 set VSWHERE="C:\Program Files (x86)\Microsoft Visual Studio\Installer\vswhere.exe"
@@ -43,7 +43,7 @@ if not exist out\i18n\zh-CN.json (echo FAIL: out\i18n\zh-CN.json missing & exit 
 
 rem Fat-face assets (3b): Newsreader latin subset. app.css references fonts\... relative to the page,
 rem so dev mode (out\app.html) needs out\fonts\ too. OFL.txt is embedded only (no runtime reader).
-rem Geist (latin + mono latin) was added per 台账 §五 B -- it had never actually loaded before.
+rem Geist (latin + mono latin) was added per release-issue ledger 5-B -- it had never actually loaded before.
 if not exist "fonts" (echo FAIL: fonts missing & exit /b 1)
 if not exist out\fonts mkdir out\fonts
 for %%F in (fonts\*.woff2) do copy /y "%%F" out\fonts\ >nul
