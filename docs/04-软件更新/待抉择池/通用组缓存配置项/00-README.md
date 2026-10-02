@@ -9,7 +9,7 @@
 
 **安装器侧那一半（「更多配置」页）已从产品源整块撤除。** 用户原话：那部分「**目前那个 html 还未定稿，这个实现完全是错误的，需要让另一个 AI 自己设计 html，重新完成**」。
 
-- **撤除范围（一处不剩）**：`app.html`（欢迎屏入口按钮 ＋ 整个 `#s-more` 屏）· `app.css`（`#s-more .opts` / `.morehead` / `.morepath`）· `app.js`（`SCREENS` 的 `'more'`、双标记勾选态 `OPT_DEFAULTS`/`uiOpts`/`paintOpts`/`setOpt`、缓存目录整段、`ACTIONS` 的 `open-more`/`more-back`/`browse-cachedir`、`beginInstall` 的缓存校验与 `cacheDir` 字段、`cache-dir-done` 分支、Esc 退一层、`boot()` 的 `?cachedir=`、`window.__lk` 四个导出）· `i18n/{zh-CN,en}.json` 各 7 条 `installer.more.*` · `tools/gen-review.mjs`（`inScreen()` ＋ `moreTweak()` ＋ 四态 `tweaks` ＋ 四幕 `sections`）。逐条清单见台账 `docs/04-软件更新/待抉择池/安装界面自绘/发版后问题台账.md` **§七 末条**。
+- **撤除范围（一处不剩）**：`app.html`（欢迎屏入口按钮 ＋ 整个 `#s-more` 屏）· `app.css`（`#s-more .opts` / `.morehead` / `.morepath`）· `app.js`（`SCREENS` 的 `'more'`、双标记勾选态 `OPT_DEFAULTS`/`uiOpts`/`paintOpts`/`setOpt`、缓存目录整段、`ACTIONS` 的 `open-more`/`more-back`/`browse-cachedir`、`beginInstall` 的缓存校验与 `cacheDir` 字段、`cache-dir-done` 分支、Esc 退一层、`boot()` 的 `?cachedir=`、`window.__lk` 四个导出）· `i18n/{zh-CN,en}.json` 各 7 条 `installer.more.*` · `tools/gen-review.mjs`（`inScreen()` ＋ `moreTweak()` ＋ 四态 `tweaks` ＋ 四幕 `sections`）。逐条清单见台账 `docs/04-软件更新/已落地/安装界面自绘/发版后问题台账.md` **§七 末条**。
 - ⚠️ **本档下面凡说「安装器 UI 一截已落产品源」「05 是生成件」「账目见 §五」的话，一律按本条读**——那些代码**已不在仓库里**；`05-设计图-更多配置页.html` 也**已删除**（源自产品源，源没了就再也生成不出来，留着只会误导）。
 - 🔴 **重新落地的前置条件**：**先出定稿的 HTML**（用户要"另一位 AI 自己设计 html"）＋ 用户拍板，**然后**才动产品源。`07-齿轮声明与安装器UI-定稿草案.md` 可以当讨论底，但**不是可直接落地的定稿**；⛔ 不许把撤掉的实现"抄回去"就算完。
 - **本档 00–04 · 06（设置页手绘示意）· 07 一字未动**，继续可用。设置页那一半（软件本体「存储」分节）**不受本条影响**，照旧推进。

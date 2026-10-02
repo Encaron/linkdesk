@@ -44,7 +44,7 @@ if (-not $Screens) { $Screens = if ($un) { @('confirm', 'running', 'progress', '
 $stageW = if ($un) { 720 } else { 780 }
 $stageH = if ($un) { 540 } else { 570 }
 $pre    = if ($un) { 'un-' } else { '' }
-$mockPath  = if ($un) { Join-Path $root '..\..\..\docs\04-软件更新\待抉择池\安装界面自绘\mockups\E-卸载屏.html' } else { Join-Path $root '..\..\..\docs\04-软件更新\待抉择池\安装界面自绘\mockups\E-混合提案.html' }
+$mockPath  = if ($un) { Join-Path $root '..\..\..\docs\04-软件更新\已落地\安装界面自绘\mockups\E-卸载屏.html' } else { Join-Path $root '..\..\..\docs\04-软件更新\已落地\安装界面自绘\mockups\E-混合提案.html' }
 $mockLabel = if ($un) { 'E-卸载屏.html' } else { 'E-混合提案.html' }
 
 

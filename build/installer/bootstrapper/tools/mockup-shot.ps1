@@ -18,7 +18,7 @@ param(
 $ErrorActionPreference = 'Stop'
 
 $root = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)   # -> bootstrapper/
-$mock = if ($Mock) { $Mock } else { Join-Path $root '..\..\..\docs\04-软件更新\待抉择池\安装界面自绘\mockups\E-混合提案.html' }
+$mock = if ($Mock) { $Mock } else { Join-Path $root '..\..\..\docs\04-软件更新\已落地\安装界面自绘\mockups\E-混合提案.html' }
 $tag = if ($Mock) { 'un' } else { 'in' }
 $edge = 'C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe'
 if (-not (Test-Path $mock)) { throw "mockup not found: $mock" }

@@ -4,7 +4,7 @@
  * 为什么生成而不是手写：手抄的副本必然漂移；本页每节都从 app.html/app.css 原文来，改 UI 后重跑即同步。
  *
  * 用法：cd build/installer/bootstrapper && node tools/gen-review.mjs
- * 产出：docs/04-软件更新/待抉择池/安装界面自绘/3d-九幕评审.html（单文件，file:// 直开，无需服务器）
+ * 产出：docs/04-软件更新/已落地/安装界面自绘/3d-九幕评审.html（单文件，file:// 直开，无需服务器）
  *
  * 保真手段：
  *   · 每幕 = app.html 里 <div class="scr" id="s-…">…</div> 原文（配对计数抽取，幕内嵌套不限层）
@@ -30,7 +30,7 @@ const root = dirname(here);                                       // …/bootstr
 const flag = k => (process.argv.find(a => a.startsWith('--' + k + '=')) || '').slice(k.length + 3);
 const only = flag('only') ? flag('only').split(',').map(s => s.trim()).filter(Boolean) : null;
 const outPath = flag('out') ? resolve(flag('out')) : (process.argv[2] ||
-  join(root, '..', '..', '..', 'docs', '04-软件更新', '待抉择池', '安装界面自绘', '3d-九幕评审.html'));
+  join(root, '..', '..', '..', 'docs', '04-软件更新', '已落地', '安装界面自绘', '3d-九幕评审.html'));
 
 const html = readFileSync(join(root, 'app.html'), 'utf8');
 let css = readFileSync(join(root, 'app.css'), 'utf8');

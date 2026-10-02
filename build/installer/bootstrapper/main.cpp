@@ -1,5 +1,5 @@
 // LinkDesk Installer Bootstrapper — 件 1a 引导器壳（件 1c：i18n 目录枚举与上次语言带出）
-// 规格：docs/04-软件更新/待抉择池/安装界面自绘/05-实现交接.md §4.2、§3.4
+// 规格：docs/04-软件更新/已落地/安装界面自绘/05-实现交接.md §4.2、§3.4
 // C++ Win32 + WebView2：无边框窗（安装 780×570 ／卸载 720×540 逻辑像素）、Per-Monitor V2、
 // VirtualHostMapping 加载 app.html、--debug 开 DevTools。UI 全部在 app.html/css/js（本文件只做窗口与宿主）。
 // i18n：清单 = 扫 exe 旁 i18n/ 目录经 ?langs= 注入；上次选择 = 读 HKCU（写侧归件 2b）。
