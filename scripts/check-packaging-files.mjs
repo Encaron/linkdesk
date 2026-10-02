@@ -41,14 +41,25 @@
  *   dev 期 product.json 故意留占位 0.1.0，覆写它的是壳发布脚本 + 发布门禁
  *   （E6#57.15a②/#57.15d）——那是另一条任务，别在这里顺手加，加了必假红。
  *
+ * ── 第二主体：安装器资源齐套（件 3a，判据 ④⑤⑥）──
+ *   `build/installer/` 是自绘安装界面的家（引导器壳源码 ＋ 页面三件套 ＋ 词条）。它与 product.json
+ *   同属「**少了不报错、只是白屏/半套**」那一类：页面三件套少一件 = 白屏，词条少一份 = 语言下拉空，
+ *   生成器少了 = 产品态 exe 里没有内嵌页面（旁边也没有 app.html 可读）。
+ *   两层的钩子与 product.json **刻意一致**（理由同一套）：
+ *     ① 源层（默认模式，挂 `npm run check`）——**仓里那份源**在不在、口径对不对。`out/` 是
+ *        .gitignore 的 ⇒ 「盘上有」不等于「仓里有」；这一层不需要任何产物，每次提交都能拦。
+ *     ② 产物层（`--with-artifact`）——`out\` 里的 exe 与页面三件套真在、**不是旧货**（mtime 比源新）、
+ *        词条副本与源逐字节相同、exe ≤5MB 预算。拦「改了源忘了 `build.cmd`」——README §三 坑 11
+ *        就是这个：改完 `syswrite.cpp` 忘了重建，harness 绿的是**旧壳**。
+ *
  * 用法：
- *   node scripts/check-packaging-files.mjs                  # ① 配置层（npm run check）
- *   node scripts/check-packaging-files.mjs --with-artifact  # ①+② 产物层（electron:build 尾部）
+ *   node scripts/check-packaging-files.mjs                  # ①②… 源层/配置层（npm run check）
+ *   node scripts/check-packaging-files.mjs --with-artifact  # 含产物层（electron:build 尾部）
  *   node scripts/check-packaging-files.mjs --self-test      # 纯内存自测，不碰磁盘产物
  * 退出码 0 = 全过；1 = 有红拦（打印到 stderr）。
  */
 
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -187,6 +198,248 @@ function checkProductJsonContent(text) {
   return { ok: true, msg: `③ 内容层 —— updateUrl = ${url}` };
 }
 
+// ═══════════════ 第二主体：安装器资源齐套（件 3a，判据 ④⑤⑥） ═══════════════
+
+const INSTALLER_DIR = join(ROOT, "build", "installer");
+const BOOTSTRAPPER_DIR = join(INSTALLER_DIR, "bootstrapper");
+const I18N_SRC_DIR = join(INSTALLER_DIR, "i18n");
+
+/**
+ * 🔴 契约字面量——引导器**必备源**（取舍同 assert-installer-name ①：从现场抽 ⇒ 有人删了源、
+ * 清单跟着一起变 ⇒ 断言恒真 = 假门禁）。
+ * 只列「少了就一定坏」的那些：壳、系统写入/进程守卫两模块、页面三件套、构建脚本、图标脚本、
+ * 产品态 RCDATA 生成器。**不含** README / tools 下的测试脚本（那些是给人看的，不影响产物）。
+ */
+const BOOTSTRAPPER_REQUIRED = [
+  "bootstrapper/main.cpp",
+  "bootstrapper/syswrite.cpp",
+  "bootstrapper/syswrite.h",
+  "bootstrapper/procguard.cpp",
+  "bootstrapper/procguard.h",
+  "bootstrapper/app.html",
+  "bootstrapper/app.css",
+  "bootstrapper/app.js",
+  "bootstrapper/build.cmd",
+  "bootstrapper/icon.rc",
+  "bootstrapper/tools/gen-ui-rc.mjs",
+];
+
+/** **编进 exe** 的源——产物新鲜度的对照面：改其中任何一个而没重跑 `build.cmd` ⇒ exe 是旧货。 */
+const BOOTSTRAPPER_COMPILE_SOURCES = [
+  "bootstrapper/main.cpp",
+  "bootstrapper/syswrite.cpp",
+  "bootstrapper/syswrite.h",
+  "bootstrapper/procguard.cpp",
+  "bootstrapper/procguard.h",
+  "bootstrapper/icon.rc",
+];
+
+/** 页面三件套：`build.cmd` 拷进 `out\` **且**由 `gen-ui-rc.mjs` 编进 RCDATA（两态同一份源）。 */
+const UI_FILES = ["app.html", "app.css", "app.js"];
+
+/** build.cmd 的体积预算（README §4.2「target ≤ 5MB single-file exe」）。 */
+const BOOTSTRAPPER_MAX_BYTES = 5 * 1024 * 1024;
+
+/**
+ * 词条 key 口径（01 §五 §3.4「key 命名按屏」）：**以 `installer.` 起、点分段、每段全 ASCII 字母数字**。
+ * 🔴 刻意**不**收紧到固定段数：本仓真实 key 面里 `installer.customize`（2 段）与
+ * `installer.uninstall.confirm.keepdata.sub`（5 段）并存，钉段数 = 假红。
+ * 这条判据拦的是**另一类**：漏了 `installer.` 前缀、段里混空格/中文、空段（`a..b`）、尾点。
+ */
+const I18N_KEY_RE = /^installer(\.[A-Za-z0-9]+)+$/;
+
+/**
+ * 判据④（源层）：必备源是否齐全。exists = (rel: string) => boolean（相对 build/installer/）。
+ */
+function checkInstallerSources(exists) {
+  const missing = BOOTSTRAPPER_REQUIRED.filter((rel) => !exists(rel));
+  if (missing.length > 0) {
+    return {
+      ok: false,
+      msg:
+        `④ 安装器源 —— 引导器缺 ${missing.length} 件：\n` +
+        missing.map((rel) => `        - build/installer/${rel}`).join("\n") +
+        `\n      🔴 别当「没就没」放过：少的是**随包进 exe 的资源**（页面三件套 / RCDATA 生成器 / 系统写入模块）。\n` +
+        `      症状是白屏、语言下拉空、或注册表只写了半套——**都不报错**。`,
+    };
+  }
+  return { ok: true, msg: `④ 安装器源 —— 引导器 ${BOOTSTRAPPER_REQUIRED.length} 件齐套` };
+}
+
+/**
+ * 判据⑤（源层）：词条齐套与口径。
+ * input = [{ name, text }]（`build/installer/i18n/*.json`，**含** `_` 前缀的预留位）；text=null = 读不出来。
+ *
+ * 只判四件事，**刻意不判 en 与 zh-CN 的键集对称**——件 1c 的 C3 用例（ja 只翻三条键、其余走回落）
+ * 把「缺键回落」确立成了**设计**（01 §五 §3.4「加语言 = 加文件，零代码」），对称断言会与设计打架（假红）。
+ */
+function checkI18n(files) {
+  if (!Array.isArray(files) || files.length === 0) {
+    return { ok: false, msg: "⑤ 词条 —— 源目录 build/installer/i18n/ 里一份词条都没有（语言清单会空）" };
+  }
+  const live = files.filter((f) => !String(f.name).startsWith("_")); // `_` 开头 = 预留位，不进清单（同宿主扫描口径）
+  if (live.length === 0) {
+    return {
+      ok: false,
+      msg: "⑤ 词条 —— 源目录里一份**非** `_` 开头的词条都没有。\n      `_` 前缀是预留位、不进语言清单（宿主 `readdir` 口径），只剩它们 = 语言下拉是空的。",
+    };
+  }
+  if (!live.some((f) => f.name === "zh-CN.json")) {
+    return {
+      ok: false,
+      msg:
+        "⑤ 词条 —— 少了 `zh-CN.json`。它是回落链的**锚**（app.js：当前语言 → zh-CN → 标记里的原文 → key 名），\n" +
+        "      删了它，**所有**语言的缺键都会一路掉到标记原文（英文/日文界面里混中文，或整片空白）。",
+    };
+  }
+  const problems = [];
+  for (const f of live) {
+    if (typeof f.text !== "string") {
+      problems.push(`${f.name}：读不出来`);
+      continue;
+    }
+    let j;
+    try {
+      j = JSON.parse(f.text);
+    } catch (e) {
+      problems.push(`${f.name}：不是合法 JSON（${e.message}）`);
+      continue;
+    }
+    if (j === null || typeof j !== "object" || Array.isArray(j)) {
+      problems.push(`${f.name}：顶层不是对象`);
+      continue;
+    }
+    const wantCode = String(f.name).replace(/\.json$/, "");
+    if (j?._meta?.code !== wantCode) {
+      problems.push(
+        `${f.name}：\`_meta.code\` = ${JSON.stringify(j?._meta?.code)}，与文件名不符` +
+          `（宿主把它当下拉 value、页面把它当 lang 值 ⇒ 不符会「选了没反应」）`
+      );
+    }
+    const keys = Object.keys(j).filter((k) => k !== "_meta");
+    const badKey = keys.filter((k) => !I18N_KEY_RE.test(k));
+    if (badKey.length > 0) {
+      problems.push(
+        `${f.name}：${badKey.length} 个 key 不合 \`installer.<组>.<名>\` 口径 —— ` +
+          `${badKey.slice(0, 3).join(", ")}${badKey.length > 3 ? " …" : ""}`
+      );
+    }
+    const badVal = keys.filter((k) => typeof j[k] !== "string" || j[k].trim() === "");
+    if (badVal.length > 0) {
+      problems.push(
+        `${f.name}：${badVal.length} 个词条是空串/非字符串 —— ` +
+          `${badVal.slice(0, 3).join(", ")}${badVal.length > 3 ? " …" : ""}`
+      );
+    }
+  }
+  if (problems.length > 0) {
+    return {
+      ok: false,
+      msg: `⑤ 词条 —— ${problems.length} 处不合口径：\n` + problems.map((p) => `        - ${p}`).join("\n"),
+    };
+  }
+  return { ok: true, msg: `⑤ 词条 —— ${live.length} 份齐套（zh-CN 锚在、口径对，共 ${live.length} 门语言）` };
+}
+
+/** 扫一个 i18n 目录成 `[{name, text}]`（读不出来给 text=null，不抛）。 */
+function readI18nDir(dir) {
+  if (!existsSync(dir)) return [];
+  return readdirSync(dir)
+    .filter((f) => f.endsWith(".json"))
+    .sort()
+    .map((name) => {
+      try {
+        return { name, text: readFileSync(join(dir, name), "utf8") };
+      } catch {
+        return { name, text: null };
+      }
+    });
+}
+
+/**
+ * 判据⑥（产物层）：`out\` 里的引导器产物真在、且不是旧货。
+ * input = { exe: {size, mtimeMs} | null, compileSourcesMtime: number,
+ *           ui: [{name, outExists, outMtime, srcMtime}], i18n: [{name, outExists, same}] }
+ * 纯判定，读盘那一步在 collectBootstrapperArtifacts()。
+ */
+function checkBootstrapperArtifacts(info) {
+  const problems = [];
+  if (!info.exe) {
+    problems.push("`out\\bootstrapper.exe` 不在 —— 先跑 build/installer/bootstrapper/build.cmd");
+  } else {
+    if (info.exe.size > BOOTSTRAPPER_MAX_BYTES) {
+      problems.push(
+        `\`out\\bootstrapper.exe\` = ${info.exe.size} 字节 > 5MB 预算` +
+          `（build.cmd 里那道闸也会拦——这里再判一次是因为门禁不该只活在构建脚本里）`
+      );
+    }
+    if (info.exe.mtimeMs < info.compileSourcesMtime) {
+      problems.push(
+        "`out\\bootstrapper.exe` **比编译源旧** —— 改了 .cpp/.h/icon.rc 却没重跑 build.cmd。\n" +
+          "          这就是 README §三 坑 11：harness 会绿，但绿的是**旧壳**。"
+      );
+    }
+  }
+  for (const u of info.ui) {
+    if (!u.outExists) problems.push(`\`out\\${u.name}\` 不在`);
+    else if (u.outMtime < u.srcMtime)
+      problems.push(`\`out\\${u.name}\` 比源旧 —— 改了页面没重跑 build.cmd`);
+  }
+  for (const i of info.i18n) {
+    if (!i.outExists) problems.push(`\`out\\i18n\\${i.name}\` 不在 —— 语言清单会少这一门`);
+    else if (!i.same) problems.push(`\`out\\i18n\\${i.name}\` 与源不一致 —— 改了词条没重跑 build.cmd`);
+  }
+  if (problems.length > 0) {
+    return {
+      ok: false,
+      msg: `⑥ 引导器产物 —— ${problems.length} 处不合口：\n` + problems.map((p) => `        - ${p}`).join("\n"),
+    };
+  }
+  return {
+    ok: true,
+    msg: `⑥ 引导器产物 —— exe ${info.exe.size} 字节（≤5MB）＋ 页面三件套新于源 ＋ 词条副本与源逐字相同`,
+  };
+}
+
+/** 读盘：把判据⑥要的现场收成一个纯数据对象。 */
+function collectBootstrapperArtifacts() {
+  const outDir = join(BOOTSTRAPPER_DIR, "out");
+  const stat = (p) => {
+    try {
+      const s = statSync(p);
+      return { size: s.size, mtimeMs: s.mtimeMs };
+    } catch {
+      return null;
+    }
+  };
+  const exe = stat(join(outDir, "bootstrapper.exe"));
+  const compileSourcesMtime = BOOTSTRAPPER_COMPILE_SOURCES.reduce((mx, rel) => {
+    const s = stat(join(INSTALLER_DIR, rel));
+    return s ? Math.max(mx, s.mtimeMs) : mx;
+  }, 0);
+  const srcFiles = readI18nDir(I18N_SRC_DIR);
+  return {
+    exe,
+    compileSourcesMtime,
+    ui: UI_FILES.map((name) => {
+      const src = stat(join(BOOTSTRAPPER_DIR, name));
+      const out = stat(join(outDir, name));
+      return { name, outExists: out !== null, outMtime: out?.mtimeMs ?? 0, srcMtime: src?.mtimeMs ?? 0 };
+    }),
+    i18n: srcFiles.map((f) => {
+      const out = join(outDir, "i18n", f.name);
+      if (!existsSync(out)) return { name: f.name, outExists: false, same: false };
+      let same = false;
+      try {
+        same = readFileSync(out, "utf8") === f.text;
+      } catch {
+        same = false;
+      }
+      return { name: f.name, outExists: true, same };
+    }),
+  };
+}
+
 function fail(msg) {
   process.stderr.write(`\n🔴 ${msg}\n`);
 }
@@ -253,6 +506,27 @@ function runSelfTest() {
     2
   );
 
+  // 件 3a 夹具：词条（形状照本仓真实两份）与产物现场（纯数据，不读盘）
+  const I18N_OK = [
+    {
+      name: "zh-CN.json",
+      text: JSON.stringify({ _meta: { code: "zh-CN", label: "中文" }, "installer.home.title": "安装就一步" }),
+    },
+    {
+      name: "en.json",
+      text: JSON.stringify({ _meta: { code: "en", label: "English" }, "installer.home.title": "One step" }),
+    },
+  ];
+  const ART_OK = {
+    exe: { size: 3_000_000, mtimeMs: 2000 },
+    compileSourcesMtime: 1000,
+    ui: UI_FILES.map((name) => ({ name, outExists: true, outMtime: 2000, srcMtime: 1000 })),
+    i18n: [
+      { name: "zh-CN.json", outExists: true, same: true },
+      { name: "en.json", outExists: true, same: true },
+    ],
+  };
+
   const cases = [
     // 判据①
     ["① 配置层", checkConfigList(list(YAML_OK), REQUIRED), true],
@@ -287,6 +561,80 @@ function runSelfTest() {
       { ok: expectedRelFromProductTs("const p = getPath();") === null, msg: "null" },
       true,
     ],
+    // ── 判据④：安装器必备源（件 3a）──
+    ["④ 安装器源", checkInstallerSources(() => true), true],
+    ["④ 安装器源(少一件页面三件套)", checkInstallerSources((rel) => rel !== "bootstrapper/app.js"), false],
+    ["④ 安装器源(少 RCDATA 生成器)", checkInstallerSources((rel) => rel !== "bootstrapper/tools/gen-ui-rc.mjs"), false],
+    ["④ 安装器源(空目录)", checkInstallerSources(() => false), false],
+    // ── 判据⑤：词条齐套与口径（件 3a）──
+    ["⑤ 词条", checkI18n(I18N_OK), true],
+    [
+      "⑤ 词条(缺 zh-CN 锚)",
+      checkI18n([{ name: "en.json", text: JSON.stringify({ _meta: { code: "en" }, "installer.home.title": "x" }) }]),
+      false,
+    ],
+    [
+      "⑤ 词条(code 与文件名不符)",
+      checkI18n([{ name: "zh-CN.json", text: JSON.stringify({ _meta: { code: "zh" }, "installer.home.title": "x" }) }]),
+      false,
+    ],
+    [
+      "⑤ 词条(key 不合 installer. 前缀口径)",
+      checkI18n([{ name: "zh-CN.json", text: JSON.stringify({ _meta: { code: "zh-CN" }, homeTitle: "x" }) }]),
+      false,
+    ],
+    [
+      "⑤ 词条(key 段里混空格)",
+      checkI18n([{ name: "zh-CN.json", text: JSON.stringify({ _meta: { code: "zh-CN" }, "installer.home title": "x" }) }]),
+      false,
+    ],
+    [
+      "⑤ 词条(两段 key `installer.customize` ⇒ 合规，本仓真实存在)",
+      checkI18n([{ name: "zh-CN.json", text: JSON.stringify({ _meta: { code: "zh-CN" }, "installer.customize": "自定义" }) }]),
+      true,
+    ],
+    [
+      "⑤ 词条(空串值)",
+      checkI18n(I18N_OK.map((f) => (f.name === "en.json" ? { ...f, text: JSON.stringify({ _meta: { code: "en" }, "installer.home.title": "" }) } : f))),
+      false,
+    ],
+    ["⑤ 词条(坏 JSON)", checkI18n([{ name: "zh-CN.json", text: "{ not json" }]), false],
+    ["⑤ 词条(读不出来)", checkI18n([{ name: "zh-CN.json", text: null }]), false],
+    [
+      "⑤ 词条(只有 `_` 前缀的预留位)",
+      checkI18n([
+        { name: "_template.json", text: JSON.stringify({ _meta: { code: "x" }, "installer.home.title": "x" }) },
+      ]),
+      false,
+    ],
+    ["⑤ 词条(空目录)", checkI18n([]), false],
+    // ⭐ 这一条钉住「**刻意不判对称**」：ja 只翻一条键、其余走回落，是本仓确立的设计（件 1c C3）
+    [
+      "⑤ 词条(第三语言只翻一条键 ⇒ 合规，回落是设计不是缺漏)",
+      checkI18n([
+        ...I18N_OK,
+        { name: "ja.json", text: JSON.stringify({ _meta: { code: "ja" }, "installer.home.title": "ワンステップ" }) },
+      ]),
+      true,
+    ],
+    [
+      "⑤ 词条(zh-CN 里带 _ 前缀键共存 ⇒ 只 _meta 被豁免，别的 _ 键要判)",
+      checkI18n([{ name: "zh-CN.json", text: JSON.stringify({ _meta: { code: "zh-CN" }, _note: "预留", "installer.home.title": "x" }) }]),
+      false,
+    ],
+    // ── 判据⑥：引导器产物（件 3a）──
+    ["⑥ 引导器产物", checkBootstrapperArtifacts(ART_OK), true],
+    ["⑥ 引导器产物(exe 缺)", checkBootstrapperArtifacts({ ...ART_OK, exe: null }), false],
+    [
+      "⑥ 引导器产物(exe 比编译源旧 ⇒ 坑 11 旧壳)",
+      checkBootstrapperArtifacts({ ...ART_OK, compileSourcesMtime: 9000 }),
+      false,
+    ],
+    ["⑥ 引导器产物(超 5MB 预算)", checkBootstrapperArtifacts({ ...ART_OK, exe: { size: 6 * 1024 * 1024, mtimeMs: 2000 } }), false],
+    ["⑥ 引导器产物(页面三件套旧)", checkBootstrapperArtifacts({ ...ART_OK, ui: ART_OK.ui.map((u) => (u.name === "app.css" ? { ...u, outMtime: 1 } : u)) }), false],
+    ["⑥ 引导器产物(页面三件套缺)", checkBootstrapperArtifacts({ ...ART_OK, ui: ART_OK.ui.map((u) => (u.name === "app.js" ? { ...u, outExists: false } : u)) }), false],
+    ["⑥ 引导器产物(词条副本不一致)", checkBootstrapperArtifacts({ ...ART_OK, i18n: [{ name: "en.json", outExists: true, same: false }] }), false],
+    ["⑥ 引导器产物(词条副本缺)", checkBootstrapperArtifacts({ ...ART_OK, i18n: [{ name: "en.json", outExists: false, same: false }] }), false],
   ];
 
   let bad = 0;
@@ -343,6 +691,10 @@ function main() {
   const yamlText = readFileSync(BUILDER_YML, "utf8");
   checks.push(checkConfigList(blockList(yamlText, "files"), expectedRel));
 
+  // ④⑤ 安装器资源（源层：不需要任何产物 ⇒ 每次提交都能拦「有人删了源 / 改坏了词条口径」）
+  checks.push(checkInstallerSources((rel) => existsSync(join(INSTALLER_DIR, rel))));
+  checks.push(checkI18n(readI18nDir(I18N_SRC_DIR)));
+
   // ②③ 产物层（仅在显式要求时跑；缺产物判红，不跳过）
   if (process.argv.includes("--with-artifact")) {
     const outDirRaw = nestedValue(yamlText, "directories", "output") ?? "dist";
@@ -365,6 +717,9 @@ function main() {
       }
       checks.push(checkProductJsonContent(text));
     }
+
+    // ⑥ 引导器产物（同一钩子：electron:build 尾部——那时 build.cmd 刚跑过，缺产物判红不跳过）
+    checks.push(checkBootstrapperArtifacts(collectBootstrapperArtifacts()));
   }
 
   for (const c of checks) {
@@ -374,7 +729,7 @@ function main() {
   const failed = checks.filter((c) => !c.ok);
   if (failed.length > 0) {
     fail(
-      `目标路径：${expectedRel}\n  配置：${BUILDER_YML}\n  （两层判据的分工与病根见本文件头注）`
+      `目标路径：${expectedRel}\n  配置：${BUILDER_YML}\n  安装器资源：${INSTALLER_DIR}\n  （两层判据的分工与病根见本文件头注）`
     );
     process.exit(1);
   }
